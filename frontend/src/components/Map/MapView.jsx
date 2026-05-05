@@ -13,6 +13,8 @@ import {
   updateAdvisoryLayerData,
 } from '../../layers/advisories/advisoryLayers.js'
 import { buildBriefingRoute } from '../../services/navdata/routePlanner.js'
+import { fetchAdsbData } from '../../api/adsbApi.js'
+import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../../layers/aviation/addAdsbLayer.js'
 import './MapView.css'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -47,6 +49,7 @@ const MET_LAYERS = [
   { id: 'sigmet',    label: 'SIGMET',    color: ADVISORY_LAYER_DEFS.sigmet.color },
   { id: 'airmet',    label: 'AIRMET',    color: ADVISORY_LAYER_DEFS.airmet.color },
   { id: 'sigwx',     label: 'SIGWX',     color: '#a78bfa' },
+  { id: 'adsb',      label: 'ADS-B',     color: '#10b981' },
 ]
 
 const emptyGeoJSON = { type: 'FeatureCollection', features: [] }
@@ -296,11 +299,13 @@ function MapView({
   const [routeResult,         setRouteResult]        = useState(null)
   const [routeError,          setRouteError]         = useState(null)
   const [routeLoading,        setRouteLoading]       = useState(false)
+  const [adsbData,            setAdsbData]           = useState(null)
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
 
   const airportGeoJSON   = useMemo(() => createAirportGeoJSON(airports),         [airports])
   const lightningGeoJSON = useMemo(() => createLightningGeoJSON(lightningData),   [lightningData])
+  const adsbGeoJSON      = useMemo(() => createAdsbGeoJSON(adsbData),             [adsbData])
   const radarFrame       = useMemo(() => getRadarFrame(echoMeta),                 [echoMeta])
   const satFrame         = useMemo(() => getSatFrame(satMeta),                    [satMeta])
   const sigmetFeatures   = useMemo(() => advisoryItemsToFeatureCollection(sigmetData, 'sigmet'),      [sigmetData])
@@ -319,6 +324,21 @@ function MapView({
   function toggleMet(id) {
     setMetVisibility((prev) => ({ ...prev, [id]: !prev[id] }))
   }
+
+  // ── ADS-B Polling ─────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    let timeoutId
+
+    async function poll() {
+      const data = await fetchAdsbData()
+      if (data) setAdsbData(data)
+      timeoutId = setTimeout(poll, 5000)
+    }
+
+    poll()
+    return () => clearTimeout(timeoutId)
+  }, [])
 
   // ── Map init ──────────────────────────────────────────────────────────────
 
@@ -408,6 +428,11 @@ function MapView({
         map.on('mouseleave', AIRPORT_CIRCLE_LAYER, () => { map.getCanvas().style.cursor = '' })
       }
 
+      // ADS-B
+      addAdsbLayers(map)
+      bindAdsbHover(map)
+      setAdsbVisibility(map, metVisibility.adsb)
+
       if (!advisoryHandlerBound) {
         advisoryHandlerBound = true
         const advisoryLayerIds = [
@@ -483,6 +508,15 @@ function MapView({
     map.getSource(LIGHTNING_SOURCE)?.setData(lightningGeoJSON)
     setLightningVisibility(map, metVisibility.lightning)
   }, [lightningGeoJSON, metVisibility.lightning, isStyleReady])
+
+  // ── Sync ADS-B ────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return
+    map.getSource(ADSB_SOURCE_ID)?.setData(adsbGeoJSON)
+    setAdsbVisibility(map, metVisibility.adsb)
+  }, [adsbGeoJSON, metVisibility.adsb, isStyleReady])
 
   // ── Sync airport data ─────────────────────────────────────────────────────
 
