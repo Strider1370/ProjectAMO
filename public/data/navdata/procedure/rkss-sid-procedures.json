@@ -1,0 +1,1157 @@
+{
+  "RKSS-SID-OSPOT2U": {
+    "airport": "RKSS",
+    "cycle": "AIRAC 2025-06-26",
+    "dataModel": "procedure-canonical-v1",
+    "endFix": "OSPOT",
+    "enrouteFix": "OSPOT",
+    "fixes": [
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.5005278, "lon": 126.8663056 },
+        "id": "UD050",
+        "legDistanceNm": null,
+        "pathTerminator": null,
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.3712778, "lon": 126.9179444 },
+        "id": "UD060",
+        "legDistanceNm": 8.1,
+        "pathTerminator": null,
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.2342500, "lon": 127.0357222 },
+        "id": "UD080",
+        "legDistanceNm": 10.0,
+        "pathTerminator": null,
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.1066944, "lon": 127.1371944 },
+        "id": "UG100",
+        "legDistanceNm": 9.1,
+        "pathTerminator": null,
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 36.9626944, "lon": 127.2503333 },
+        "id": "UG130",
+        "legDistanceNm": 10.2,
+        "pathTerminator": null,
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 36.8383611, "lon": 127.3485833 },
+        "id": "OSPOT",
+        "legDistanceNm": 8.8,
+        "pathTerminator": null,
+        "sequence": 6,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      }
+    ],
+    "fullName": "Ospot Two Uniform",
+    "geometry": {
+      "coordinates": [
+        [126.8663056, 37.5005278],
+        [126.9179444, 37.3712778],
+        [127.0357222, 37.2342500],
+        [127.1371944, 37.1066944],
+        [127.2503333, 36.9626944],
+        [127.3485833, 36.8383611]
+      ],
+      "type": "LineString"
+    },
+    "id": "RKSS-SID-OSPOT2U",
+    "isComplete": true,
+    "name": "OSPOT2U",
+    "notes": [
+      "This record intentionally duplicates fix and segment data so each procedure can be reviewed independently.",
+      "Coordinates are extracted from RKSS SID/STAR chart coding tables where available; altitude/speed/path-terminator fields are reserved for row-level table parsing."
+    ],
+    "routeType": "RNAV",
+    "runways": ["14L/R"],
+    "segments": [
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 8.1,
+        "from": "UD050",
+        "geometry": {
+          "coordinates": [
+            [126.8663056, 37.5005278],
+            [126.9179444, 37.3712778]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2U-001",
+        "procedureId": "RKSS-SID-OSPOT2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UD060"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 10.0,
+        "from": "UD060",
+        "geometry": {
+          "coordinates": [
+            [126.9179444, 37.3712778],
+            [127.0357222, 37.2342500]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2U-002",
+        "procedureId": "RKSS-SID-OSPOT2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UD080"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 9.1,
+        "from": "UD080",
+        "geometry": {
+          "coordinates": [
+            [127.0357222, 37.2342500],
+            [127.1371944, 37.1066944]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2U-003",
+        "procedureId": "RKSS-SID-OSPOT2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UG100"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 10.2,
+        "from": "UG100",
+        "geometry": {
+          "coordinates": [
+            [127.1371944, 37.1066944],
+            [127.2503333, 36.9626944]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2U-004",
+        "procedureId": "RKSS-SID-OSPOT2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UG130"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 8.8,
+        "from": "UG130",
+        "geometry": {
+          "coordinates": [
+            [127.2503333, 36.9626944],
+            [127.3485833, 36.8383611]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2U-005",
+        "procedureId": "RKSS-SID-OSPOT2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "to": "OSPOT"
+      }
+    ],
+    "sequence": [
+      "UD050",
+      "UD060",
+      "UD080",
+      "UG100",
+      "UG130",
+      "OSPOT"
+    ],
+    "source": "(2-28) SID_2.pdf",
+    "startFix": "UD050",
+    "type": "SID",
+    "unresolvedPoints": []
+  },
+  "RKSS-SID-EGOBA2U": {
+    "airport": "RKSS",
+    "cycle": "AIRAC 2025-06-26",
+    "dataModel": "procedure-canonical-v1",
+    "endFix": "EGOBA",
+    "enrouteFix": "EGOBA",
+    "fixes": [
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.5005278, "lon": 126.8663056 },
+        "id": "UD050",
+        "legDistanceNm": null,
+        "pathTerminator": null,
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.4136111, "lon": 126.9283611 },
+        "id": "SEL",
+        "legDistanceNm": 6.0,
+        "pathTerminator": null,
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.4874167, "lon": 127.3794167 },
+        "id": "EGOBA",
+        "legDistanceNm": 22.0,
+        "pathTerminator": null,
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      }
+    ],
+    "fullName": "Egoba Two Uniform",
+    "geometry": {
+      "coordinates": [
+        [126.8663056, 37.5005278],
+        [126.9283611, 37.4136111],
+        [127.3794167, 37.4874167]
+      ],
+      "type": "LineString"
+    },
+    "id": "RKSS-SID-EGOBA2U",
+    "isComplete": true,
+    "name": "EGOBA2U",
+    "notes": [
+      "This record intentionally duplicates fix and segment data so each procedure can be reviewed independently."
+    ],
+    "routeType": "RNAV",
+    "runways": ["14L/R"],
+    "segments": [
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 6.0,
+        "from": "UD050",
+        "geometry": {
+          "coordinates": [
+            [126.8663056, 37.5005278],
+            [126.9283611, 37.4136111]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-EGOBA2U-001",
+        "procedureId": "RKSS-SID-EGOBA2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "to": "SEL"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 22.0,
+        "from": "SEL",
+        "geometry": {
+          "coordinates": [
+            [126.9283611, 37.4136111],
+            [127.3794167, 37.4874167]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-EGOBA2U-002",
+        "procedureId": "RKSS-SID-EGOBA2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "to": "EGOBA"
+      }
+    ],
+    "sequence": [
+      "UD050",
+      "SEL",
+      "EGOBA"
+    ],
+    "source": "(2-28) SID_2.pdf",
+    "startFix": "UD050",
+    "type": "SID",
+    "unresolvedPoints": []
+  },
+  "RKSS-SID-NOPIK2U": {
+    "airport": "RKSS",
+    "cycle": "AIRAC 2025-06-26",
+    "dataModel": "procedure-canonical-v1",
+    "endFix": "NOPIK",
+    "enrouteFix": "NOPIK",
+    "fixes": [
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.5005278, "lon": 126.8663056 },
+        "id": "UD050",
+        "legDistanceNm": null,
+        "pathTerminator": null,
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.3950556, "lon": 126.9081389 },
+        "id": "UP050",
+        "legDistanceNm": 6.6,
+        "pathTerminator": null,
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.3584722, "lon": 126.7691389 },
+        "id": "UP060",
+        "legDistanceNm": 7.0,
+        "pathTerminator": null,
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.4121667, "lon": 126.5938056 },
+        "id": "UP059",
+        "legDistanceNm": 9.0,
+        "pathTerminator": null,
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.4107500, "lon": 126.3732778 },
+        "id": "UP100",
+        "legDistanceNm": 10.5,
+        "pathTerminator": null,
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.4033333, "lon": 125.6513889 },
+        "id": "NOPIK",
+        "legDistanceNm": 34.5,
+        "pathTerminator": null,
+        "sequence": 6,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      }
+    ],
+    "fullName": "Nopik Two Uniform",
+    "geometry": {
+      "coordinates": [
+        [126.8663056, 37.5005278],
+        [126.9081389, 37.3950556],
+        [126.7691389, 37.3584722],
+        [126.5938056, 37.4121667],
+        [126.3732778, 37.4107500],
+        [125.6513889, 37.4033333]
+      ],
+      "type": "LineString"
+    },
+    "id": "RKSS-SID-NOPIK2U",
+    "isComplete": true,
+    "name": "NOPIK2U",
+    "notes": [
+      "This record intentionally duplicates fix and segment data so each procedure can be reviewed independently."
+    ],
+    "routeType": "RNAV",
+    "runways": ["14L/R"],
+    "segments": [
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 6.6,
+        "from": "UD050",
+        "geometry": {
+          "coordinates": [
+            [126.8663056, 37.5005278],
+            [126.9081389, 37.3950556]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-NOPIK2U-001",
+        "procedureId": "RKSS-SID-NOPIK2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UP050"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 7.0,
+        "from": "UP050",
+        "geometry": {
+          "coordinates": [
+            [126.9081389, 37.3950556],
+            [126.7691389, 37.3584722]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-NOPIK2U-002",
+        "procedureId": "RKSS-SID-NOPIK2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UP060"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 9.0,
+        "from": "UP060",
+        "geometry": {
+          "coordinates": [
+            [126.7691389, 37.3584722],
+            [126.5938056, 37.4121667]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-NOPIK2U-003",
+        "procedureId": "RKSS-SID-NOPIK2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UP059"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 10.5,
+        "from": "UP059",
+        "geometry": {
+          "coordinates": [
+            [126.5938056, 37.4121667],
+            [126.3732778, 37.4107500]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-NOPIK2U-004",
+        "procedureId": "RKSS-SID-NOPIK2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UP100"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 34.5,
+        "from": "UP100",
+        "geometry": {
+          "coordinates": [
+            [126.3732778, 37.4107500],
+            [125.6513889, 37.4033333]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-NOPIK2U-005",
+        "procedureId": "RKSS-SID-NOPIK2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "to": "NOPIK"
+      }
+    ],
+    "sequence": [
+      "UD050",
+      "UP050",
+      "UP060",
+      "UP059",
+      "UP100",
+      "NOPIK"
+    ],
+    "source": "(2-28) SID_2.pdf",
+    "startFix": "UD050",
+    "type": "SID",
+    "unresolvedPoints": []
+  },
+  "RKSS-SID-BULTI2U": {
+    "airport": "RKSS",
+    "cycle": "AIRAC 2025-06-26",
+    "dataModel": "procedure-canonical-v1",
+    "endFix": "BULTI",
+    "enrouteFix": "BULTI",
+    "fixes": [
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.5005278, "lon": 126.8663056 },
+        "id": "UD050",
+        "legDistanceNm": null,
+        "pathTerminator": null,
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.3712778, "lon": 126.9179444 },
+        "id": "UD060",
+        "legDistanceNm": 8.1,
+        "pathTerminator": null,
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.2342500, "lon": 127.0357222 },
+        "id": "UD080",
+        "legDistanceNm": 10.0,
+        "pathTerminator": null,
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.0906667, "lon": 126.9806944 },
+        "id": "UD100",
+        "legDistanceNm": 9.0,
+        "pathTerminator": null,
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 36.9310000, "lon": 126.9198056 },
+        "id": "UPDET",
+        "legDistanceNm": 10.0,
+        "pathTerminator": null,
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 36.7228611, "lon": 126.8249167 },
+        "id": "BULTI",
+        "legDistanceNm": 13.3,
+        "pathTerminator": null,
+        "sequence": 6,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      }
+    ],
+    "fullName": "Bulti Two Uniform",
+    "geometry": {
+      "coordinates": [
+        [126.8663056, 37.5005278],
+        [126.9179444, 37.3712778],
+        [127.0357222, 37.2342500],
+        [126.9806944, 37.0906667],
+        [126.9198056, 36.9310000],
+        [126.8249167, 36.7228611]
+      ],
+      "type": "LineString"
+    },
+    "id": "RKSS-SID-BULTI2U",
+    "isComplete": true,
+    "name": "BULTI2U",
+    "notes": [
+      "This record intentionally duplicates fix and segment data so each procedure can be reviewed independently."
+    ],
+    "routeType": "RNAV",
+    "runways": ["14L/R"],
+    "segments": [
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 8.1,
+        "from": "UD050",
+        "geometry": {
+          "coordinates": [
+            [126.8663056, 37.5005278],
+            [126.9179444, 37.3712778]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2U-001",
+        "procedureId": "RKSS-SID-BULTI2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UD060"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 10.0,
+        "from": "UD060",
+        "geometry": {
+          "coordinates": [
+            [126.9179444, 37.3712778],
+            [127.0357222, 37.2342500]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2U-002",
+        "procedureId": "RKSS-SID-BULTI2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UD080"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 9.0,
+        "from": "UD080",
+        "geometry": {
+          "coordinates": [
+            [127.0357222, 37.2342500],
+            [126.9806944, 37.0906667]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2U-003",
+        "procedureId": "RKSS-SID-BULTI2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UD100"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 10.0,
+        "from": "UD100",
+        "geometry": {
+          "coordinates": [
+            [126.9806944, 37.0906667],
+            [126.9198056, 36.9310000]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2U-004",
+        "procedureId": "RKSS-SID-BULTI2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UPDET"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 13.3,
+        "from": "UPDET",
+        "geometry": {
+          "coordinates": [
+            [126.9198056, 36.9310000],
+            [126.8249167, 36.7228611]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2U-005",
+        "procedureId": "RKSS-SID-BULTI2U",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "to": "BULTI"
+      }
+    ],
+    "sequence": [
+      "UD050",
+      "UD060",
+      "UD080",
+      "UD100",
+      "UPDET",
+      "BULTI"
+    ],
+    "source": "(2-28) SID_2.pdf",
+    "startFix": "UD050",
+    "type": "SID",
+    "unresolvedPoints": []
+  },
+  "RKSS-SID-OSPOT2Z": {
+    "airport": "RKSS",
+    "cycle": "AIRAC 2025-06-26",
+    "dataModel": "procedure-canonical-v1",
+    "endFix": "OSPOT",
+    "enrouteFix": "OSPOT",
+    "fixes": [
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.5005278, "lon": 126.8663056 },
+        "id": "UD050",
+        "legDistanceNm": null,
+        "pathTerminator": null,
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.3950556, "lon": 126.9081389 },
+        "id": "UP050",
+        "legDistanceNm": 6.6,
+        "pathTerminator": null,
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.2295000, "lon": 127.0953056 },
+        "id": "ZD080",
+        "legDistanceNm": 13.4,
+        "pathTerminator": null,
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.1408889, "lon": 127.1950278 },
+        "id": "ZD100",
+        "legDistanceNm": 7.1,
+        "pathTerminator": null,
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 36.9838611, "lon": 127.2748889 },
+        "id": "ZG130",
+        "legDistanceNm": 10.2,
+        "pathTerminator": null,
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 36.8383611, "lon": 127.3485833 },
+        "id": "OSPOT",
+        "legDistanceNm": 9.4,
+        "pathTerminator": null,
+        "sequence": 6,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      }
+    ],
+    "fullName": "Ospot Two Zulu",
+    "geometry": {
+      "coordinates": [
+        [126.8663056, 37.5005278],
+        [126.9081389, 37.3950556],
+        [127.0953056, 37.2295000],
+        [127.1950278, 37.1408889],
+        [127.2748889, 36.9838611],
+        [127.3485833, 36.8383611]
+      ],
+      "type": "LineString"
+    },
+    "id": "RKSS-SID-OSPOT2Z",
+    "isComplete": true,
+    "name": "OSPOT2Z",
+    "notes": [
+      "This record intentionally duplicates fix and segment data so each procedure can be reviewed independently."
+    ],
+    "routeType": "RNAV",
+    "runways": ["14L/R"],
+    "segments": [
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 6.6,
+        "from": "UD050",
+        "geometry": {
+          "coordinates": [
+            [126.8663056, 37.5005278],
+            [126.9081389, 37.3950556]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2Z-001",
+        "procedureId": "RKSS-SID-OSPOT2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UP050"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 13.4,
+        "from": "UP050",
+        "geometry": {
+          "coordinates": [
+            [126.9081389, 37.3950556],
+            [127.0953056, 37.2295000]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2Z-002",
+        "procedureId": "RKSS-SID-OSPOT2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "to": "ZD080"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 7.1,
+        "from": "ZD080",
+        "geometry": {
+          "coordinates": [
+            [127.0953056, 37.2295000],
+            [127.1950278, 37.1408889]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2Z-003",
+        "procedureId": "RKSS-SID-OSPOT2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "to": "ZD100"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 10.2,
+        "from": "ZD100",
+        "geometry": {
+          "coordinates": [
+            [127.1950278, 37.1408889],
+            [127.2748889, 36.9838611]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2Z-004",
+        "procedureId": "RKSS-SID-OSPOT2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "to": "ZG130"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 9.4,
+        "from": "ZG130",
+        "geometry": {
+          "coordinates": [
+            [127.2748889, 36.9838611],
+            [127.3485833, 36.8383611]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-OSPOT2Z-005",
+        "procedureId": "RKSS-SID-OSPOT2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "to": "OSPOT"
+      }
+    ],
+    "sequence": [
+      "UD050",
+      "UP050",
+      "ZD080",
+      "ZD100",
+      "ZG130",
+      "OSPOT"
+    ],
+    "source": "(2-28) SID_2.pdf",
+    "startFix": "UD050",
+    "type": "SID",
+    "unresolvedPoints": []
+  },
+  "RKSS-SID-BULTI2Z": {
+    "airport": "RKSS",
+    "cycle": "AIRAC 2025-06-26",
+    "dataModel": "procedure-canonical-v1",
+    "endFix": "BULTI",
+    "enrouteFix": "BULTI",
+    "fixes": [
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.5005278, "lon": 126.8663056 },
+        "id": "UD050",
+        "legDistanceNm": null,
+        "pathTerminator": null,
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.3950556, "lon": 126.9081389 },
+        "id": "UP050",
+        "legDistanceNm": 6.6,
+        "pathTerminator": null,
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.2295000, "lon": 127.0953056 },
+        "id": "ZD080",
+        "legDistanceNm": 13.4,
+        "pathTerminator": null,
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.1408889, "lon": 127.1950278 },
+        "id": "ZD100",
+        "legDistanceNm": 7.1,
+        "pathTerminator": null,
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 37.0372778, "lon": 127.1947500 },
+        "id": "ZD120",
+        "legDistanceNm": 6.2,
+        "pathTerminator": null,
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 36.8250833, "lon": 126.9446667 },
+        "id": "ZD119",
+        "legDistanceNm": 17.5,
+        "pathTerminator": null,
+        "sequence": 6,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": { "maxFt": null, "minFt": null, "raw": null },
+        "coordinates": { "lat": 36.7228611, "lon": 126.8249167 },
+        "id": "BULTI",
+        "legDistanceNm": 8.4,
+        "pathTerminator": null,
+        "sequence": 7,
+        "source": "(2-28) SID_2.pdf",
+        "speedKt": null
+      }
+    ],
+    "fullName": "Bulti Two Zulu",
+    "geometry": {
+      "coordinates": [
+        [126.8663056, 37.5005278],
+        [126.9081389, 37.3950556],
+        [127.0953056, 37.2295000],
+        [127.1950278, 37.1408889],
+        [127.1947500, 37.0372778],
+        [126.9446667, 36.8250833],
+        [126.8249167, 36.7228611]
+      ],
+      "type": "LineString"
+    },
+    "id": "RKSS-SID-BULTI2Z",
+    "isComplete": true,
+    "name": "BULTI2Z",
+    "notes": [
+      "This record intentionally duplicates fix and segment data so each procedure can be reviewed independently."
+    ],
+    "routeType": "RNAV",
+    "runways": ["14L/R"],
+    "segments": [
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 6.6,
+        "from": "UD050",
+        "geometry": {
+          "coordinates": [
+            [126.8663056, 37.5005278],
+            [126.9081389, 37.3950556]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2Z-001",
+        "procedureId": "RKSS-SID-BULTI2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "(2-28) SID_2.pdf",
+        "to": "UP050"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 13.4,
+        "from": "UP050",
+        "geometry": {
+          "coordinates": [
+            [126.9081389, 37.3950556],
+            [127.0953056, 37.2295000]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2Z-002",
+        "procedureId": "RKSS-SID-BULTI2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "(2-28) SID_2.pdf",
+        "to": "ZD080"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 7.1,
+        "from": "ZD080",
+        "geometry": {
+          "coordinates": [
+            [127.0953056, 37.2295000],
+            [127.1950278, 37.1408889]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2Z-003",
+        "procedureId": "RKSS-SID-BULTI2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "(2-28) SID_2.pdf",
+        "to": "ZD100"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 6.2,
+        "from": "ZD100",
+        "geometry": {
+          "coordinates": [
+            [127.1950278, 37.1408889],
+            [127.1947500, 37.0372778]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2Z-004",
+        "procedureId": "RKSS-SID-BULTI2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "(2-28) SID_2.pdf",
+        "to": "ZD120"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 17.5,
+        "from": "ZD120",
+        "geometry": {
+          "coordinates": [
+            [127.1947500, 37.0372778],
+            [126.9446667, 36.8250833]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2Z-005",
+        "procedureId": "RKSS-SID-BULTI2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "(2-28) SID_2.pdf",
+        "to": "ZD119"
+      },
+      {
+        "airport": "RKSS",
+        "cycle": "AIRAC 2025-06-26",
+        "distanceNm": 8.4,
+        "from": "ZD119",
+        "geometry": {
+          "coordinates": [
+            [126.9446667, 36.8250833],
+            [126.8249167, 36.7228611]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKSS-SID-BULTI2Z-006",
+        "procedureId": "RKSS-SID-BULTI2Z",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 6,
+        "source": "(2-28) SID_2.pdf",
+        "to": "BULTI"
+      }
+    ],
+    "sequence": [
+      "UD050",
+      "UP050",
+      "ZD080",
+      "ZD100",
+      "ZD120",
+      "ZD119",
+      "BULTI"
+    ],
+    "source": "(2-28) SID_2.pdf",
+    "startFix": "UD050",
+    "type": "SID",
+    "unresolvedPoints": []
+  }
+}
