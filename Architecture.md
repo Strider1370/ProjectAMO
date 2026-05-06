@@ -1,146 +1,63 @@
 # Project Architecture
 
-This project is a Vite + React aviation weather dashboard focused on Mapbox-based Korean aviation map layers, weather data, and route briefing data. It has been restructured into a frontend, backend, and shared codebase.
+> **Purpose**: First stop for any task. Read this before searching code.
+> **Rule**: Stay lean. If a section can be derived by reading one file, remove it.
+> **Maintenance**: Update at the end of any task that changes the file map, non-obvious rules, or task patterns.
 
-## Root Structure
+Vite + React aviation weather dashboard. Mapbox-based Korean aviation map, weather overlays, route briefing.
+
+## File Map
 
 ```text
 ProjectAMO/
-  agents.md
-  Architecture.md
-  backend/
+  .claude/launch.json          ← dev server config (Frontend :5173, Backend :3001)
   frontend/
-  public/
-  reference/
-  scripts/
-  shared/
-  package.json
-  package-lock.json
+    vite.config.js
+    public/                    ← Vite's publicDir (root public/ is redundant)
+      data/                    ← GeoJSON + navdata JSON served directly to Mapbox
+      Symbols/                 ← aviation chart icon images
+      Geo/                     ← Korean boundary GeoJSON (neighbors, sido, sigungu)
+    src/
+      App.jsx                  ← shell state: activePanel, UTC clock
+      api/
+        weatherApi.js          ← backend weather fetch
+        adsbApi.js             ← ADS-B fetch
+      components/
+        Sidebar/Sidebar.jsx    ← icon→panel wiring (1=aviation, 2=met, 4=route-check)
+        Map/MapView.jsx        ← map init, layer toggles, 3 conditional panels, geo boundary logic
+        Map/MapView.css
+      config/mapConfig.js      ← initial center/zoom, bounds
+      layers/aviation/
+        aviationWfsLayers.js   ← layer definitions (ids, colors, urls, options)
+        addAviationWfsLayers.js← Mapbox source/layer creation for all aviation WFS layers
+        addAdsbLayer.js        ← ADS-B flight marker layer
+      services/navdata/
+        routePlanner.js        ← route path search using navdata JSON
+  backend/
+    server.js                  ← entry point, Express routes
+    src/
+      store.js                 ← in-memory cache with SHA-256 change detection
+      index.js                 ← cron scheduler (13 weather types, per-type lock)
+      api-client.js            ← upstream weather API calls
+      parsers/                 ← per-type raw response parsers
+      processors/              ← per-type data transformers
+  shared/                      ← constants used by both frontend and backend
 ```
 
-## Frontend Application Source
+## Non-obvious Rules
 
-```text
-frontend/
-  index.html
-  vite.config.js
-  src/
-    main.jsx
-    App.jsx
-    App.css
-    api/
-      weatherApi.js
-      adsbApi.js
-    components/
-      Map/
-        MapView.jsx
-        MapView.css
-      Sidebar/
-        Sidebar.jsx
-        Sidebar.css
-    config/
-      mapConfig.js
-    layers/
-      aviation/
-        aviationWfsLayers.js
-        addAviationWfsLayers.js
-        addAdsbLayer.js
-    services/
-      navdata/
-        routePlanner.js
-```
+- **Mapbox slots**: raster overlays (satellite, radar, SIGWX) → `slot: 'middle'`; aviation/geo/ADS-B → `slot: 'top'`. Aviation always renders above rasters.
+- **Geo boundary visibility**: shown only when satellite or radar is active. Controlled in `MapView.jsx` via `useEffect` watching `metVisibility`.
+- **Sido/sigungu zoom split**: sido visible zoom < 9, sigungu visible zoom ≥ 9. Zoom 9 = initial zoom (6) + 3 steps.
+- **Static assets path**: always use `frontend/public/` — root-level `public/` is not served by Vite.
+- **WFS layer split**: definitions in `aviationWfsLayers.js`, rendering in `addAviationWfsLayers.js`. Don't mix.
 
-- `App.jsx`: owns global shell state such as active side panel and UTC clock.
-- `api/weatherApi.js`: API client for fetching weather data from the backend.
-- `api/adsbApi.js`: API client for fetching ADS-B flight tracking data.
-- `components/Sidebar`: fixed left navigation rail.
-- `components/Map`: Mapbox map view, aviation layer toggles, route check panel, and route preview rendering.
-- `config/mapConfig.js`: initial map center, zoom limits, and max bounds.
-- `layers/aviation`: aviation layer definitions, Mapbox source/layer creation, and ADS-B layer rendering.
-- `services/navdata/routePlanner.js`: loads generated navdata and finds route paths between entry/exit fixes.
+## Task Patterns
 
-## Backend Service
+If your task matches one of these, open `EntryPoints.md` at the listed number for the step-by-step flow.
 
-```text
-backend/
-  server.js
-  src/
-    api-client.js
-    config.js
-    index.js
-    parsers/
-    processors/
-    stats.js
-    store.js
-```
-
-- Node.js backend for fetching, parsing, and serving aviation weather data.
-
-## Shared Code
-
-```text
-shared/
-  airports.js
-  alert-defaults.js
-  warning-types.js
-  weather-icons.js
-```
-
-- Constants and configurations shared between the frontend and backend.
-
-## Public Static Assets
-
-```text
-public/
-  favicon.svg
-  data/
-    fir.geojson
-    sectors.geojson
-    waypoints.geojson
-    navaids.geojson
-    airports.geojson
-    navdata/
-      airports.json
-      waypoints.json
-      navaids.json
-      navpoints.json
-      routes.json
-      route-segments.json
-      route-graph.json
-      airport-route-links.json
-      cycle.json
-      README.md
-  Symbols/
-```
-
-- `public/data/*.geojson`: map display data consumed directly by Mapbox.
-- `public/data/navdata/*.json`: normalized briefing and route-planning data.
-- `public/Symbols`: aviation chart symbols and app-specific colored symbol variants.
-
-## Reference Data
-
-```text
-reference/
-  AD 1.3.pdf
-  ENR 2.1.pdf
-  ENR 3.1.pdf
-  ENR 3.2.pdf
-  ENR 4.1.pdf
-  html/
-    KR-ENR-3.1-en-GB.html
-    KR-ENR-3.3-en-GB.html
-    KR-ENR-4.1-en-GB.html
-```
-
-- PDF files are retained as source references.
-- HTML eAIP files are preferred for route parsing because table structure is more reliable than PDF text extraction.
-
-## Scripts
-
-```text
-scripts/
-  generate_navdata.py
-```
-
-`generate_navdata.py` reads map GeoJSON and AIP/eAIP reference files, then generates normalized route-planning JSON under `public/data/navdata`.
-
+1. Add a new aviation WFS layer
+2. Modify ADS-B display
+3. Wire a new sidebar panel
+4. Add a new MET raster overlay
+5. Add a new backend data type

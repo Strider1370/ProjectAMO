@@ -38,6 +38,15 @@ const LIGHTNING_SOURCE      = 'kma-lightning'
 const LIGHTNING_GROUND_LAYER = 'kma-lightning-ground'
 const LIGHTNING_CLOUD_LAYER  = 'kma-lightning-cloud'
 
+const GEO_BOUNDARY_COLOR     = '#facc15'
+const GEO_BOUNDARY_WIDTH     = 1
+const GEO_SIGUNGU_MIN_ZOOM   = 9
+const GEO_LAYERS = [
+  { sourceId: 'geo-neighbors', layerId: 'geo-neighbors-line', url: '/Geo/korea_neighbors_masked.v1.geojson', minzoom: 0 },
+  { sourceId: 'geo-sido',      layerId: 'geo-sido-line',      url: '/Geo/sido.json',                         minzoom: 0,                    maxzoom: GEO_SIGUNGU_MIN_ZOOM },
+  { sourceId: 'geo-sigungu',   layerId: 'geo-sigungu-line',   url: '/Geo/sigungu.json',                      minzoom: GEO_SIGUNGU_MIN_ZOOM },
+]
+
 const HIDDEN_ROAD_COLOR = 'rgba(255,255,255,0)'
 const VISIBLE_ROAD_COLORS = { roads: '#d6dde6', trunks: '#c6d1dd', motorways: '#b9c7d4' }
 
@@ -114,7 +123,7 @@ function addOrUpdateImageOverlay(map, { sourceId, layerId, frame, opacity }) {
       id: layerId,
       type: 'raster',
       source: sourceId,
-      slot: 'top',
+      slot: 'middle',
       paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0 },
     })
   }
@@ -267,6 +276,37 @@ function setLightningVisibility(map, isVisible) {
   setMapLayerVisible(map, LIGHTNING_CLOUD_LAYER, isVisible)
 }
 
+// ── Geo boundary layers ───────────────────────────────────────────────────────
+
+function addGeoBoundaryLayers(map) {
+  GEO_LAYERS.forEach(({ sourceId, layerId, url, minzoom, maxzoom }) => {
+    if (!map.getSource(sourceId)) {
+      map.addSource(sourceId, { type: 'geojson', data: url })
+    }
+    if (!map.getLayer(layerId)) {
+      const layerDef = {
+        id: layerId,
+        type: 'line',
+        source: sourceId,
+        slot: 'top',
+        minzoom,
+        layout: { visibility: 'none' },
+        paint: {
+          'line-color': GEO_BOUNDARY_COLOR,
+          'line-width': GEO_BOUNDARY_WIDTH,
+          'line-opacity': 0.85,
+        },
+      }
+      if (maxzoom !== undefined) layerDef.maxzoom = maxzoom
+      map.addLayer(layerDef)
+    }
+  })
+}
+
+function setGeoBoundaryVisibility(map, show) {
+  GEO_LAYERS.forEach(({ layerId }) => setMapLayerVisible(map, layerId, show))
+}
+
 // ── Route state ───────────────────────────────────────────────────────────────
 
 const initialRouteForm = {
@@ -415,6 +455,9 @@ function MapView({
       addLightningLayers(map, lightningGeoJSON)
       setLightningVisibility(map, metVisibility.lightning)
 
+      // Geo boundaries (coastline + admin)
+      addGeoBoundaryLayers(map)
+
       // Airport circles
       addAirportLayers(map, airportGeoJSON)
 
@@ -508,6 +551,14 @@ function MapView({
     map.getSource(LIGHTNING_SOURCE)?.setData(lightningGeoJSON)
     setLightningVisibility(map, metVisibility.lightning)
   }, [lightningGeoJSON, metVisibility.lightning, isStyleReady])
+
+  // ── Sync geo boundaries ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return
+    setGeoBoundaryVisibility(map, metVisibility.satellite || metVisibility.radar)
+  }, [metVisibility.satellite, metVisibility.radar, isStyleReady])
 
   // ── Sync ADS-B ────────────────────────────────────────────────────────────
 
@@ -650,44 +701,47 @@ function MapView({
         </section>
       )}
 
-      {/* Layers panel */}
-      <div className="dev-layer-panel" aria-label="Layer toggles">
-        <div className="dev-layer-panel-title">Layers</div>
-
-        {/* ── MET ── */}
-        <div className="dev-layer-section-title">MET</div>
-        {MET_LAYERS.map((layer) => {
-          const disabled = isMetLayerDisabled(layer.id)
-          const badge    = metLayerBadge(layer.id)
-          return (
-            <label key={layer.id} className={`dev-layer-toggle${disabled ? ' is-disabled' : ''}`}>
+      {/* Aviation layers panel */}
+      {activePanel === 'aviation' && (
+        <div className="dev-layer-panel" aria-label="Aviation layer toggles">
+          <div className="dev-layer-panel-title">Aviation</div>
+          {AVIATION_WFS_LAYERS.map((layer) => (
+            <label key={layer.id} className="dev-layer-toggle">
               <input
                 type="checkbox"
-                checked={metVisibility[layer.id]}
-                disabled={disabled}
-                onChange={() => toggleMet(layer.id)}
+                checked={aviationVisibility[layer.id]}
+                onChange={() => toggleAviation(layer.id)}
               />
               <span className="dev-layer-swatch" style={{ background: layer.color }} />
-              <span>{layer.label}</span>
-              {badge != null && <span className="dev-layer-count">{badge}</span>}
+              <span>{layer.nameEn}</span>
             </label>
-          )
-        })}
+          ))}
+        </div>
+      )}
 
-        {/* ── AVIATION ── */}
-        <div className="dev-layer-section-title">AVIATION</div>
-        {AVIATION_WFS_LAYERS.map((layer) => (
-          <label key={layer.id} className="dev-layer-toggle">
-            <input
-              type="checkbox"
-              checked={aviationVisibility[layer.id]}
-              onChange={() => toggleAviation(layer.id)}
-            />
-            <span className="dev-layer-swatch" style={{ background: layer.color }} />
-            <span>{layer.nameEn}</span>
-          </label>
-        ))}
-      </div>
+      {/* MET layers panel */}
+      {activePanel === 'met' && (
+        <div className="dev-layer-panel" aria-label="MET layer toggles">
+          <div className="dev-layer-panel-title">MET</div>
+          {MET_LAYERS.map((layer) => {
+            const disabled = isMetLayerDisabled(layer.id)
+            const badge    = metLayerBadge(layer.id)
+            return (
+              <label key={layer.id} className={`dev-layer-toggle${disabled ? ' is-disabled' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={metVisibility[layer.id]}
+                  disabled={disabled}
+                  onChange={() => toggleMet(layer.id)}
+                />
+                <span className="dev-layer-swatch" style={{ background: layer.color }} />
+                <span>{layer.label}</span>
+                {badge != null && <span className="dev-layer-count">{badge}</span>}
+              </label>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

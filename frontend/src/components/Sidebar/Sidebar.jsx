@@ -28,17 +28,26 @@ function SidebarButton({ item, onClick }) {
   )
 }
 
+const PANEL_MAP = {
+  Layers:    'aviation',
+  Cloud:     'met',
+  Documents: 'route-check',
+}
+
 function Sidebar({ activePanel, onPanelToggle }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-group">
-        {topItems.map((item) => (
-          <SidebarButton
-            key={item.label}
-            item={{ ...item, active: item.label === 'Layers' ? activePanel === 'route-check' : item.active }}
-            onClick={item.label === 'Layers' ? () => onPanelToggle('route-check') : undefined}
-          />
-        ))}
+        {topItems.map((item) => {
+          const panelId = PANEL_MAP[item.label]
+          return (
+            <SidebarButton
+              key={item.label}
+              item={{ ...item, active: panelId ? activePanel === panelId : false }}
+              onClick={panelId ? () => onPanelToggle(panelId) : undefined}
+            />
+          )
+        })}
       </div>
       <div className="sidebar-group sidebar-group-bottom">
         {bottomItems.map((item) => (

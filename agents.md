@@ -60,6 +60,14 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+## 5. Architecture Map
+
+**Start at `Architecture.md`. Update it when reality drifts.**
+
+- Before any task: read `Architecture.md`. If Task Patterns lists a match, follow that number in `EntryPoints.md`.
+- After any task: update if files moved, a role memo is stale, a new non-obvious rule appeared, or a task flow changed. Otherwise don't touch.
+- Before adding a line, check if a line can be removed. Both files must stay scannable in seconds.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

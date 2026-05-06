@@ -440,6 +440,7 @@ export function addAviationWfsLayers(map, vworldKey, domain) {
         paint: {
           'fill-color': '#1f78a8',
           'fill-opacity': 0.22,
+          'fill-outline-color': 'rgba(0,0,0,0)',
         },
         layout: {
           visibility,
