@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { MAP_CONFIG } from '../../config/mapConfig.js'
+import { MAP_CONFIG, BASEMAP_OPTIONS } from '../../config/mapConfig.js'
 import { addAviationWfsLayers } from '../../layers/aviation/addAviationWfsLayers.js'
 import { AVIATION_WFS_LAYERS } from '../../layers/aviation/aviationWfsLayers.js'
 import {
@@ -340,6 +340,8 @@ function MapView({
   const [routeError,          setRouteError]         = useState(null)
   const [routeLoading,        setRouteLoading]       = useState(false)
   const [adsbData,            setAdsbData]           = useState(null)
+  const [basemapId,           setBasemapId]          = useState('standard')
+  const [basemapMenuOpen,     setBasemapMenuOpen]    = useState(false)
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
 
@@ -390,22 +392,12 @@ function MapView({
 
     mapboxgl.accessToken = token
 
+    const initialBasemap = BASEMAP_OPTIONS[0]
+
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/standard',
-      config: {
-        basemap: {
-          showPlaceLabels: false, showPedestrianRoads: false,
-          showPointOfInterestLabels: false, showRoadLabels: false,
-          show3dObjects: false, show3dBuildings: false,
-          show3dTrees: false, show3dLandmarks: false,
-          showIndoorLabels: false,
-          theme: 'faded',
-          font: 'Noto Sans CJK JP',
-          colorWater: '#88bedd',
-          colorGreenspace: '#c5dcb8',
-        },
-      },
+      style: initialBasemap.style,
+      config: { basemap: initialBasemap.config },
       center: MAP_CONFIG.center,
       zoom: MAP_CONFIG.zoom,
       minZoom: MAP_CONFIG.minZoom,
@@ -421,8 +413,15 @@ function MapView({
     let airportHandlerBound = false
     let advisoryHandlerBound = false
 
+    // zoom handler lives outside style.load to avoid duplicate registration on style switch
+    let roadsVisible = map.getZoom() >= ROAD_VISIBILITY_ZOOM
+    map.on('zoom', () => {
+      if (!map.isStyleLoaded()) return
+      const should = map.getZoom() >= ROAD_VISIBILITY_ZOOM
+      if (should !== roadsVisible) { roadsVisible = should; applyRoadVisibility(map, roadsVisible) }
+    })
+
     map.on('style.load', () => {
-      let roadsVisible = map.getZoom() >= ROAD_VISIBILITY_ZOOM
       applyRoadVisibility(map, roadsVisible)
 
       // Aviation WFS
@@ -495,11 +494,6 @@ function MapView({
           map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = '' })
         })
       }
-
-      map.on('zoom', () => {
-        const should = map.getZoom() >= ROAD_VISIBILITY_ZOOM
-        if (should !== roadsVisible) { roadsVisible = should; applyRoadVisibility(map, roadsVisible) }
-      })
 
       setIsStyleReady(true)
     })
@@ -651,6 +645,17 @@ function MapView({
 
   // ── Layer panel helpers ───────────────────────────────────────────────────
 
+  function switchBasemap(id) {
+    const map = mapRef.current
+    if (!map || id === basemapId) return
+    const option = BASEMAP_OPTIONS.find((o) => o.id === id)
+    if (!option) return
+    setBasemapId(id)
+    setBasemapMenuOpen(false)
+    setIsStyleReady(false)
+    map.setStyle(option.style, { config: { basemap: option.config } })
+  }
+
   function isMetLayerDisabled(id) {
     if (id === 'radar')     return !radarFrame
     if (id === 'satellite') return !satFrame
@@ -675,6 +680,45 @@ function MapView({
       <div ref={mapContainerRef} className="map-view" />
 
       {error && <div className="map-view-error" role="alert">{error}</div>}
+
+      {/* Basemap switcher */}
+      <div className="basemap-switcher">
+        {(() => {
+          const current = BASEMAP_OPTIONS.find((o) => o.id === basemapId)
+          return (
+            <button
+              className="basemap-switcher-toggle"
+              onClick={() => setBasemapMenuOpen((o) => !o)}
+              title="Change base map"
+            >
+              <img
+                className="basemap-switcher-thumb"
+                src={current?.thumbnail}
+                alt={current?.label}
+              />
+            </button>
+          )
+        })()}
+        {basemapMenuOpen && (
+          <ul className="basemap-switcher-menu">
+            {BASEMAP_OPTIONS.map((option) => (
+              <li key={option.id}>
+                <button
+                  className={`basemap-switcher-item${option.id === basemapId ? ' is-active' : ''}`}
+                  onClick={() => switchBasemap(option.id)}
+                >
+                  <img
+                    className="basemap-switcher-thumb"
+                    src={option.thumbnail}
+                    alt={option.label}
+                  />
+                  <span>{option.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* Route check panel */}
       {activePanel === 'route-check' && (

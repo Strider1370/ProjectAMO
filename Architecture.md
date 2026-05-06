@@ -15,7 +15,8 @@ ProjectAMO/
     vite.config.js
     public/                    ← Vite's publicDir (root public/ is redundant)
       data/                    ← GeoJSON + navdata JSON served directly to Mapbox
-      Symbols/                 ← aviation chart icon images
+      Symbols/                 ← aviation chart icon SVGs (10 core files at root; reference copies in Symbols/Reference Symbols/)
+      basemap-thumbs/          ← local thumbnail PNGs for basemap switcher UI (standard/dark/satellite)
       Geo/                     ← Korean boundary GeoJSON (neighbors, sido, sigungu)
     src/
       App.jsx                  ← shell state: activePanel, UTC clock
@@ -26,7 +27,7 @@ ProjectAMO/
         Sidebar/Sidebar.jsx    ← icon→panel wiring (1=aviation, 2=met, 4=route-check)
         Map/MapView.jsx        ← map init, layer toggles, 3 conditional panels, geo boundary logic
         Map/MapView.css
-      config/mapConfig.js      ← initial center/zoom, bounds
+      config/mapConfig.js      ← initial center/zoom, bounds; BASEMAP_OPTIONS (id, style URL, config, thumbnail path)
       layers/aviation/
         aviationWfsLayers.js   ← layer definitions (ids, colors, urls, options)
         addAviationWfsLayers.js← Mapbox source/layer creation for all aviation WFS layers
@@ -51,6 +52,8 @@ ProjectAMO/
 - **Sido/sigungu zoom split**: sido visible zoom < 9, sigungu visible zoom ≥ 9. Zoom 9 = initial zoom (6) + 3 steps.
 - **Static assets path**: always use `frontend/public/` — root-level `public/` is not served by Vite.
 - **WFS layer split**: definitions in `aviationWfsLayers.js`, rendering in `addAviationWfsLayers.js`. Don't mix.
+- **Basemap switching**: `switchBasemap()` calls `map.setStyle()`, which wipes all layers. The existing `style.load` handler in `MapView.jsx` re-adds all sources and layers on every style change — do not bypass this. The zoom listener must be registered **outside** `style.load` to avoid duplicate registration on each switch.
+- **Symbol SVG structure**: Core aviation symbols embed a white silhouette `<g id="...-bg">` layer internally to block route lines from rendering through icons. Do not flatten or re-export these SVGs without preserving that group.
 
 ## Task Patterns
 

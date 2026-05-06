@@ -253,6 +253,77 @@
   line-height: 1.45;
 }
 
+.basemap-switcher {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.basemap-switcher-toggle {
+  display: block;
+  padding: 3px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.basemap-switcher-toggle:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.28);
+}
+
+.basemap-switcher-thumb {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.basemap-switcher-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  display: flex;
+  gap: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+}
+
+.basemap-switcher-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.basemap-switcher-item:hover {
+  border-color: #94a3b8;
+}
+
+.basemap-switcher-item.is-active {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
 .airport-metar-marker {
   width: 14px;
   height: 14px;
