@@ -3,7 +3,9 @@
     "allow": [
       "mcp__Claude_Preview__preview_start",
       "Bash(python3 -c \"import json; data=json.load\\(open\\('C:/Users/Jond Doe/Desktop/Project/ProjectAMO/frontend/public/geo/sido.json'\\)\\); print\\(data['type'], len\\(data.get\\('features',[]\\)\\), data['features'][0]['geometry']['type'] if data.get\\('features'\\) else 'N/A'\\)\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
     ]
   }
 }

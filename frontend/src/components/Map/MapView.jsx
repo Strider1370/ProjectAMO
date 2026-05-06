@@ -225,10 +225,10 @@ function addAirportLayers(map, data) {
     map.addLayer({
       id: AIRPORT_CIRCLE_LAYER, type: 'circle', source: AIRPORT_SOURCE_ID, slot: 'top',
       paint: {
-        'circle-radius': ['case', ['boolean', ['feature-state', 'selected'], false], 12, 9],
+        'circle-radius': ['case', ['boolean', ['feature-state', 'selected'], false], 8, 5],
         'circle-color':  ['case', ['boolean', ['feature-state', 'selected'], false], '#f97316', '#0f766e'],
         'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 2,
+        'circle-stroke-width': 1.5,
         'circle-opacity': 0.95,
       },
     })
@@ -240,7 +240,7 @@ function addAirportLayers(map, data) {
         'text-field': ['get', 'icao'],
         'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
         'text-size': 12,
-        'text-offset': [0, 1.35],
+        'text-offset': [0, 0.8],
         'text-anchor': 'top',
         'text-allow-overlap': false,
       },
@@ -576,6 +576,19 @@ function MapView({
     if (!map || !isStyleReady) return
     addAirportLayers(map, airportGeoJSON)
     map.getSource(AIRPORT_SOURCE_ID)?.setData(airportGeoJSON)
+
+    // Hide WFS airport labels if they have an active marker
+    const labelLayerId = 'aviation-airports-label'
+    const baseFilter = ['==', ['geometry-type'], 'Point']
+
+    if (map.getLayer(labelLayerId)) {
+      const icaos = airportGeoJSON.features.map(f => f.properties.icao).filter(Boolean)
+      const filter = icaos.length > 0
+        ? ['all', baseFilter, ['!', ['in', ['get', 'icao'], ['literal', icaos]]]]
+        : baseFilter
+
+      map.setFilter(labelLayerId, filter)
+    }
   }, [airportGeoJSON, isStyleReady])
 
   // ── Sync airport selected state ───────────────────────────────────────────

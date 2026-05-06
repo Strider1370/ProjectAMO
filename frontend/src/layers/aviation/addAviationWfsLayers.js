@@ -141,8 +141,8 @@ function addSectorLabelLayer(map, layer, visibility) {
     },
     paint: {
       'text-color': layer.color,
-      'text-halo-color': '#eef6ed',
-      'text-halo-width': 4,
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 1.5,
       'text-halo-blur': 0,
     },
   })
@@ -230,38 +230,6 @@ function addPointLayer(map, layer, visibility) {
   })
 }
 
-function addPointMaskLayer(map, layer, visibility) {
-  if (!layer.pointMaskLayerId || map.getLayer(layer.pointMaskLayerId)) {
-    return
-  }
-
-  map.addLayer({
-    id: layer.pointMaskLayerId,
-    type: 'circle',
-    source: layer.sourceId,
-    slot: 'top',
-    filter: POINT_FILTER,
-    paint: {
-      'circle-color': '#eef6ed',
-      'circle-radius': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        5,
-        Math.max(4, layer.pointMaskRadius - 2),
-        9,
-        layer.pointMaskRadius,
-        12,
-        layer.pointMaskRadius + 2,
-      ],
-      'circle-opacity': 0.96,
-    },
-    layout: {
-      visibility,
-    },
-  })
-}
-
 function addPointLabelLayer(map, layer, visibility) {
   if (!layer.pointLabelLayerId || map.getLayer(layer.pointLabelLayerId)) {
     return
@@ -295,54 +263,13 @@ function addPointLabelLayer(map, layer, visibility) {
     },
     paint: {
       'text-color': layer.color,
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 1.5,
     },
   })
 }
 
-function addPointLabelMaskLayer(map, layer, visibility) {
-  if (!layer.pointLabelLayerId) {
-    return
-  }
 
-  const labelMaskLayerId = layer.pointLabelMaskLayerId ?? `${layer.pointLabelLayerId}-mask`
-  if (map.getLayer(labelMaskLayerId)) {
-    return
-  }
-
-  map.addLayer({
-    id: labelMaskLayerId,
-    type: 'symbol',
-    source: layer.sourceId,
-    slot: 'top',
-    filter: POINT_FILTER,
-    layout: {
-      visibility,
-      'text-field': ['get', layer.labelField ?? 'ident'],
-      'text-size': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        5,
-        8,
-        8,
-        10,
-        11,
-        12,
-      ],
-      'text-font': ['Noto Sans CJK JP Bold'],
-      'text-anchor': 'top',
-      'text-offset': [0, 0.75],
-      'text-allow-overlap': true,
-      'text-ignore-placement': true,
-    },
-    paint: {
-      'text-color': '#eef6ed',
-      'text-halo-color': '#eef6ed',
-      'text-halo-width': 3,
-      'text-halo-blur': 0,
-    },
-  })
-}
 
 function addRouteLabelLayer(map, layer, visibility) {
   if (!layer.routeLabelLayerId || map.getLayer(layer.routeLabelLayerId)) {
@@ -390,19 +317,12 @@ function addRouteLabelLayer(map, layer, visibility) {
 
 function movePointLayersToTop(map) {
   AVIATION_WFS_LAYERS.forEach((layer) => {
-    ;[layer.pointMaskLayerId, layer.pointLayerId].forEach((layerId) => {
-      if (layerId && map.getLayer(layerId)) {
-        map.moveLayer(layerId)
-      }
-    })
+    if (layer.pointLayerId && map.getLayer(layer.pointLayerId)) {
+      map.moveLayer(layer.pointLayerId)
+    }
   })
 
   AVIATION_WFS_LAYERS.forEach((layer) => {
-    const labelMaskLayerId = layer.pointLabelMaskLayerId ?? `${layer.pointLabelLayerId}-mask`
-    if (layer.pointLabelLayerId && map.getLayer(labelMaskLayerId)) {
-      map.moveLayer(labelMaskLayerId)
-    }
-
     if (layer.pointLabelLayerId && map.getLayer(layer.pointLabelLayerId)) {
       map.moveLayer(layer.pointLabelLayerId)
     }
@@ -465,9 +385,7 @@ export function addAviationWfsLayers(map, vworldKey, domain) {
       })
     }
 
-    addPointMaskLayer(map, layer, visibility)
     addPointLayer(map, layer, visibility)
-    addPointLabelMaskLayer(map, layer, visibility)
     addPointLabelLayer(map, layer, visibility)
     addHoverLayer(map, layer, visibility)
 

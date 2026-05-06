@@ -74,19 +74,19 @@ export const AVIATION_WFS_LAYERS = [
       values: {
         'conventional-intersection-flyby': {
           imageId: 'symbol-intersection-conventional-flyby',
-          url: '/Symbols/App-Symbols/waypoint-conventional-flyby.svg',
+          url: '/Symbols/waypoint-conventional-flyby.svg',
         },
         'conventional-intersection-flyover': {
           imageId: 'symbol-intersection-conventional-flyover',
-          url: '/Symbols/App-Symbols/waypoint-conventional-flyover.svg',
+          url: '/Symbols/waypoint-conventional-flyover.svg',
         },
         'rnav-waypoint-flyby': {
           imageId: 'symbol-waypoint-rnav-flyby',
-          url: '/Symbols/App-Symbols/waypoint-rnav-flyby.svg',
+          url: '/Symbols/waypoint-rnav-flyby.svg',
         },
         'rnav-waypoint-flyover': {
           imageId: 'symbol-waypoint-rnav-flyover',
-          url: '/Symbols/App-Symbols/waypoint-rnav-flyover.svg',
+          url: '/Symbols/waypoint-rnav-flyover.svg',
         },
       },
     },
@@ -111,15 +111,15 @@ export const AVIATION_WFS_LAYERS = [
       values: {
         VORTAC: {
           imageId: 'symbol-vortac',
-          url: '/Symbols/App-Symbols/navaid-vortac.svg',
+          url: '/Symbols/navaid-vortac.svg',
         },
         'VOR/DME': {
           imageId: 'symbol-vor-dme',
-          url: '/Symbols/App-Symbols/navaid-vor-dme.svg',
+          url: '/Symbols/navaid-vor-dme.svg',
         },
         TACAN: {
           imageId: 'symbol-tacan',
-          url: '/Symbols/App-Symbols/navaid-tacan.svg',
+          url: '/Symbols/navaid-tacan.svg',
         },
       },
     },
@@ -143,15 +143,15 @@ export const AVIATION_WFS_LAYERS = [
       values: {
         civil: {
           imageId: 'symbol-airport-civil',
-          url: '/Symbols/ICAO-Annex-4-SVG-Symbols/84.svg',
+          url: '/Symbols/airport-civil.svg',
         },
         joint: {
           imageId: 'symbol-airport-joint',
-          url: '/Symbols/ICAO-Annex-4-SVG-Symbols/88.svg',
+          url: '/Symbols/airport-joint.svg',
         },
         military: {
           imageId: 'symbol-airport-military',
-          url: '/Symbols/ICAO-Annex-4-SVG-Symbols/86.svg',
+          url: '/Symbols/airport-military.svg',
         },
       },
     },
