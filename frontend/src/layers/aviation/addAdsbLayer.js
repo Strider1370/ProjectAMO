@@ -71,12 +71,19 @@ export function bindAdsbHover(map) {
     map.getCanvas().style.cursor = 'pointer'
     const props = e.features[0].properties
 
+    const altFt = props.baro_altitude ? Math.round(props.baro_altitude * 3.28084) : null
+    const spdKt = props.velocity ? Math.round(props.velocity * 1.94384) : null
+
     const html = `
-      <div style="font-family: sans-serif; font-size: 12px; line-height: 1.4;">
-        <strong>${props.callsign}</strong> (${props.icao24})<br/>
-        Alt: ${props.baro_altitude ? Math.round(props.baro_altitude) + ' ft' : 'N/A'}<br/>
-        Spd: ${props.velocity ? Math.round(props.velocity) + ' m/s' : 'N/A'}<br/>
-        Hdg: ${props.true_track ? Math.round(props.true_track) + '°' : 'N/A'}
+      <div style="font-family: sans-serif; font-size: 12px; line-height: 1.4; padding: 4px;">
+        <div style="font-weight: 800; color: #10b981; border-bottom: 1px solid #eee; margin-bottom: 4px;">
+          ${props.callsign} <span style="font-weight: 400; color: #94a3b8; font-size: 10px;">${props.icao24}</span>
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr><td style="color: #64748b;">Alt:</td><td style="text-align: right; font-weight: 600;">${altFt ? altFt.toLocaleString() + ' ft' : '—'}</td></tr>
+          <tr><td style="color: #64748b;">Spd:</td><td style="text-align: right; font-weight: 600;">${spdKt ? spdKt + ' kt' : '—'}</td></tr>
+          <tr><td style="color: #64748b;">Hdg:</td><td style="text-align: right; font-weight: 600;">${props.true_track ? Math.round(props.true_track) + '°' : '—'}</td></tr>
+        </table>
       </div>
     `
 

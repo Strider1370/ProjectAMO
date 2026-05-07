@@ -5,7 +5,7 @@
   z-index: 20;
   display: flex;
   flex-direction: column;
-  width: 680px;
+  width: 800px;
   height: 100%;
   background: #ffffff;
   border-left: 1px solid #d1d5db;
@@ -140,7 +140,219 @@
   text-align: center;
 }
 
-/* ── METAR ── */
+/* ── METAR v2 (세로형 위젯) ── */
+.ap-metar-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ap-mv2-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ap-mv2-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ap-mv2-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #1e293b;
+  color: #f1f5f9;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-family: 'Consolas', 'Menlo', monospace;
+}
+
+.ap-mv2-time {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.ap-mv2-rain-badge {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ap-mv2-rain-label {
+  color: #475569;
+}
+
+.ap-mv2-rain-value {
+  color: #2563eb;
+}
+
+/* ── 비행 규칙 배너 ── */
+.ap-mv2-cat-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  color: #fff;
+}
+
+.ap-mv2-cat-code {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.ap-mv2-cat-label {
+  font-size: 15px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+/* ── 지표 그리드 ── */
+.ap-mv2-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  gap: 8px;
+}
+
+.ap-mv2-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.ap-mv2-card--alert {
+  outline: 2px dashed #dc2626;
+  outline-offset: -2px;
+}
+
+.ap-mv2-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.ap-mv2-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ap-mv2-card-aside {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ap-mv2-card-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.ap-mv2-card-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.1;
+  font-family: 'Consolas', 'Menlo', monospace;
+}
+
+.ap-mv2-card-value--weather {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 20px;
+}
+
+
+.ap-mv2-card-sub {
+  margin-left: 4px;
+  font-size: 15px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.ap-mv2-card-foot {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.ap-mv2-wind-arrow {
+  width: 48px;
+  height: 48px;
+  color: #2563eb;
+  transition: transform 0.4s ease;
+  stroke-width: 2.5px;
+}
+
+.ap-mv2-crosswind-arrow {
+  width: 48px;
+  height: 48px;
+  color: #64748b;
+  stroke-width: 2.5px;
+}
+
+.ap-mv2-weather-icon {
+  width: 56px !important;
+  height: 56px !important;
+  flex-shrink: 0;
+}
+
+/* ── 하단 보조 정보 ── */
+.ap-mv2-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ap-mv2-footer-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.ap-mv2-footer-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.ap-mv2-footer-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  font-family: 'Consolas', 'Menlo', monospace;
+}
+
 .ap-raw {
   margin-bottom: 12px;
   padding: 10px 12px;
@@ -161,7 +373,7 @@
   gap: 7px;
 }
 
-.ap-dl > div {
+.ap-dl>div {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -170,7 +382,7 @@
   border-bottom: 1px solid #f1f5f9;
 }
 
-.ap-dl > div:last-child {
+.ap-dl>div:last-child {
   border-bottom: none;
 }
 
@@ -229,11 +441,30 @@
   border-radius: 3px;
 }
 
-.ap-taf-type--base   { background: #dbeafe; color: #1d4ed8; }
-.ap-taf-type--becmg  { background: #d1fae5; color: #065f46; }
-.ap-taf-type--tempo  { background: #fef3c7; color: #92400e; }
-.ap-taf-type--prob30 { background: #ede9fe; color: #5b21b6; }
-.ap-taf-type--prob40 { background: #ede9fe; color: #5b21b6; }
+.ap-taf-type--base {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.ap-taf-type--becmg {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.ap-taf-type--tempo {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ap-taf-type--prob30 {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.ap-taf-type--prob40 {
+  background: #ede9fe;
+  color: #5b21b6;
+}
 
 .ap-taf-time {
   font-size: 11px;

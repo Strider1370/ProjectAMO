@@ -1,5 +1,20 @@
 import { useState } from 'react'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
+import {
+  getFlightCategory,
+  classifyVisibilityCategory,
+  classifyCeilingCategory,
+  computeRelativeHumidity,
+  computeFeelsLikeC,
+  hasHighWindCondition,
+  getCrosswindComponentKt,
+  getCrosswindSide,
+  pickCrosswindArrow,
+} from '../../utils/helpers.js'
+import { convertWeatherToKorean } from '../../utils/visual-mapper.js'
+import { resolveWeatherVisual } from '../../utils/weather-visual-resolver.js'
+import WeatherIcon from '../WeatherIcon.jsx'
+import { MoveUp } from 'lucide-react'
 import './AirportPanel.css'
 
 const TABS = [
@@ -32,35 +47,217 @@ function fmtKst(iso) {
   } catch { return iso }
 }
 
+function fmtKstShort(iso) {
+  if (!iso) return '—'
+  try {
+    const d = new Date(iso)
+    const kst = new Date(d.getTime() + 9 * 3600 * 1000)
+    const mo = String(kst.getUTCMonth() + 1).padStart(2, '0')
+    const dd = String(kst.getUTCDate()).padStart(2, '0')
+    const hh = String(kst.getUTCHours()).padStart(2, '0')
+    const mm = String(kst.getUTCMinutes()).padStart(2, '0')
+    return `${mo}-${dd} ${hh}:${mm} KST`
+  } catch { return iso }
+}
+
+function getWindDirectionRotation(wind) {
+  if (!wind || wind.calm || !Number.isFinite(wind.direction)) return 0
+  return ((wind.direction % 360) + 360 + 180) % 360
+}
+
 // ── METAR tab ────────────────────────────────────────────────────────────────
 
-function MetarTab({ metar }) {
+function MetarTab({ metar, amosData, icao, airportMeta }) {
   if (!metar) return <div className="ap-empty">METAR 데이터 없음</div>
-  const obs = metar.observation
+
+  const obs  = metar.observation
   const disp = obs?.display
   const hdr  = metar.header
 
+  // ── 계산 ────────────────────────────────────────────────────────────────────
+  const wind       = obs?.wind || null
+  const windSpeed  = wind?.speed
+  const windGust   = wind?.gust
+  const visibility = obs?.visibility?.value
+
+  const clouds     = obs?.clouds || []
+  const ceilingCloud = clouds
+    .filter((c) => c.amount === 'BKN' || c.amount === 'OVC')
+    .sort((a, b) => (a.base ?? Infinity) - (b.base ?? Infinity))[0]
+  const ceilingFt  = ceilingCloud?.base ?? null
+
+  const flightCat  = getFlightCategory(visibility, ceilingFt, icao)
+  const visCat     = classifyVisibilityCategory(visibility, icao)
+  const ceilCat    = classifyCeilingCategory(ceilingFt, icao)
+
+  const tempC      = obs?.temperature?.air
+  const dewpointC  = obs?.temperature?.dewpoint
+  const rh         = computeRelativeHumidity(tempC, dewpointC)
+  const feelsLike  = computeFeelsLikeC({ tempC, dewpointC, windKt: windSpeed, observedAt: hdr?.observation_time })
+
+  const runwayHdg  = airportMeta?.runway_hdg ?? null
+  const highWind   = hasHighWindCondition(wind)
+  const crosswindKt = getCrosswindComponentKt(wind, runwayHdg)
+  const crosswindSide = getCrosswindSide(wind, runwayHdg)
+  const crosswindArrow = pickCrosswindArrow(wind, runwayHdg)
+
+  const weatherKorean = convertWeatherToKorean(disp?.weather, obs?.cavok, clouds)
+  const weatherVisual = resolveWeatherVisual(obs, hdr?.observation_time)
+
+  const obsTime    = hdr?.observation_time || hdr?.issue_time
+  const visValue   = disp?.visibility != null ? `${disp.visibility} m` : '—'
+  const ceilValue  = Number.isFinite(ceilingFt) ? `${ceilingFt} ft` : 'NSC'
+  const windDir    = wind?.calm ? 'CALM' : wind?.variable ? 'VRB' : Number.isFinite(wind?.direction) ? `${wind.direction}°` : '—'
+  const windSpeedText = wind?.calm ? '0' : Number.isFinite(windSpeed) ? `${windSpeed}` : '—'
+  const windGustText  = Number.isFinite(windGust) ? `G${windGust}` : null
+  const windRotation  = getWindDirectionRotation(wind)
+  const tempDisplay   = Number.isFinite(tempC) ? `${Math.round(tempC)}°C` : '—'
+  const rhDisplay     = Number.isFinite(rh) ? `${Math.round(rh)}%` : '—'
+  const feelsLikeText = feelsLike.value != null ? `체감 ${feelsLike.value.toFixed(1)}°C` : null
+
+  const amos       = amosData
+  const rainMm     = amos?.daily_rainfall?.mm
+  const rainText   = rainMm != null && rainMm > 0 ? `${rainMm.toFixed(1)} mm` : null
+
+  const qnhRaw = disp?.qnh ?? '—'
+  const qnh = qnhRaw.startsWith('Q') ? `${qnhRaw.substring(1)} hPa` : qnhRaw
+
   return (
-    <div className="ap-metar">
-      {metar.raw && <div className="ap-raw">{metar.raw}</div>}
-      <dl className="ap-dl">
-        <div><dt>관측시각</dt><dd>{fmtTime(hdr?.observation_time || hdr?.issue_time)}</dd></div>
-        <div><dt>바람</dt><dd>{disp?.wind ?? '—'}</dd></div>
-        <div><dt>시정</dt><dd>{disp?.visibility != null ? `${disp.visibility} m` : '—'}</dd></div>
-        {disp?.weather && <div><dt>현재날씨</dt><dd>{disp.weather}</dd></div>}
-        <div><dt>구름</dt><dd>{disp?.clouds ?? '—'}</dd></div>
-        <div><dt>기온/이슬점</dt><dd>{disp?.temperature ?? '—'}</dd></div>
-        <div><dt>QNH</dt><dd>{disp?.qnh ?? '—'}</dd></div>
+    <div className="ap-metar-v2">
+      {/* ── 헤더 ── */}
+      <div className="ap-mv2-header">
+        <div className="ap-mv2-header-left">
+          <span className="ap-mv2-badge">{hdr?.report_type || 'METAR'}</span>
+          <span className="ap-mv2-time">{fmtKstShort(obsTime)}</span>
+        </div>
+      </div>
+
+      {/* ── 비행 규칙 배너 ── */}
+      <div className="ap-mv2-cat-banner" style={{ backgroundColor: flightCat.color }}>
+        <span className="ap-mv2-cat-code">{flightCat.category}</span>
+        <span className="ap-mv2-cat-label">{flightCat.labelKo}</span>
+      </div>
+
+      {/* ── 지표 그리드 ── */}
+      <div className="ap-mv2-grid">
+        {/* 시정 */}
+        <div
+          className="ap-mv2-card"
+          style={{
+            backgroundColor: visCat.bg,
+            borderLeft: `3px solid ${visCat.border}`,
+          }}
+        >
+          <div className="ap-mv2-card-label">시정</div>
+          <div className="ap-mv2-card-value" style={{ color: visCat.valueColor }}>{visValue}</div>
+        </div>
+
+        {/* 운고 */}
+        <div
+          className="ap-mv2-card"
+          style={{
+            backgroundColor: ceilCat.bg,
+            borderLeft: `3px solid ${ceilCat.border}`,
+          }}
+        >
+          <div className="ap-mv2-card-label">운고</div>
+          <div className="ap-mv2-card-value" style={{ color: ceilCat.valueColor }}>{ceilValue}</div>
+        </div>
+
+        {/* 바람 */}
+        <div className={`ap-mv2-card${highWind ? ' ap-mv2-card--alert' : ''}`}>
+          <div className="ap-mv2-card-body">
+            <div className="ap-mv2-card-content">
+              <div className="ap-mv2-card-label">바람</div>
+              <div className="ap-mv2-card-value">
+                {`${windDir}/${windSpeedText}kt`}
+                {windGustText && <span className="ap-mv2-card-sub">{windGustText}</span>}
+              </div>
+            </div>
+            <div className="ap-mv2-card-aside">
+              <MoveUp
+                className="ap-mv2-wind-arrow"
+                style={{ transform: `rotate(${windRotation}deg)` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 측풍 */}
+        <div className="ap-mv2-card">
+          <div className="ap-mv2-card-body">
+            <div className="ap-mv2-card-content">
+              <div className="ap-mv2-card-label">측풍</div>
+              <div className="ap-mv2-card-value">
+                {Number.isFinite(crosswindKt)
+                  ? `${crosswindSide ? crosswindSide + '/' : ''}${Math.round(crosswindKt)}kt`
+                  : runwayHdg == null ? '활주로 미지정' : '—'}
+              </div>
+            </div>
+            <div className="ap-mv2-card-aside">
+              <MoveUp
+                className="ap-mv2-crosswind-arrow"
+                style={{ 
+                  transform: `rotate(${
+                    crosswindArrow === '←' ? 270 : 
+                    crosswindArrow === '→' ? 90 : 0
+                  }deg)` 
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 현재날씨 */}
+        <div className="ap-mv2-card">
+          <div className="ap-mv2-card-body">
+            <div className="ap-mv2-card-content">
+              <div className="ap-mv2-card-label">현재 날씨</div>
+              <div className="ap-mv2-card-value ap-mv2-card-value--weather">{weatherKorean}</div>
+            </div>
+            <div className="ap-mv2-card-aside">
+              <WeatherIcon visual={weatherVisual} className="ap-mv2-weather-icon" />
+            </div>
+          </div>
+        </div>
+
+        {/* 일강수량 */}
+        <div className="ap-mv2-card">
+          <div className="ap-mv2-card-label">일강수량</div>
+          <div className="ap-mv2-card-value">{rainText || '- mm'}</div>
+        </div>
+
+        {/* QNH */}
+        <div className="ap-mv2-card">
+          <div className="ap-mv2-card-label">QNH</div>
+          <div className="ap-mv2-card-value">{qnh}</div>
+        </div>
+
+        {/* 온도/습도 */}
+        <div className="ap-mv2-card">
+          <div className="ap-mv2-card-label">온도/습도</div>
+          <div className="ap-mv2-card-value">{tempDisplay} / {rhDisplay}</div>
+          {feelsLikeText && <div className="ap-mv2-card-foot">{feelsLikeText}</div>}
+        </div>
+      </div>
+
+      {/* ── 하단 보조 정보 ── */}
+      <div className="ap-mv2-footer">
         {obs?.rvr?.length > 0 && (
-          <div><dt>RVR</dt><dd>{obs.rvr.map((r) => `R${r.runway}/${r.mean}m`).join(' ')}</dd></div>
-        )}
-        {obs?.wind_shear && (
-          <div>
-            <dt>Wind Shear</dt>
-            <dd>{obs.wind_shear.all_runways ? 'All Rwys' : obs.wind_shear.runways?.join(', ') || '—'}</dd>
+          <div className="ap-mv2-footer-item">
+            <span className="ap-mv2-footer-label">RVR</span>
+            <span className="ap-mv2-footer-value">{obs.rvr.map((r) => `R${r.runway}/${r.mean}m`).join(' ')}</span>
           </div>
         )}
-      </dl>
+        {obs?.wind_shear && (
+          <div className="ap-mv2-footer-item">
+            <span className="ap-mv2-footer-label">Wind Shear</span>
+            <span className="ap-mv2-footer-value">
+              {obs.wind_shear.all_runways ? 'All Rwys' : obs.wind_shear.runways?.join(', ') || '—'}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -283,7 +480,7 @@ function AirportPanel({ airport, weatherData, onClose }) {
         </nav>
 
         <div className="airport-panel-body">
-          {tab === 'metar' && <MetarTab metar={metar} />}
+          {tab === 'metar' && <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} />}
           {tab === 'taf'   && <TafTab taf={taf} />}
           {tab === 'amos'  && <AmosTab amos={amos} />}
           {tab === 'warn'  && <WarningTab warning={warning} />}

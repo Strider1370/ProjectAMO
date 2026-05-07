@@ -1,4 +1,4 @@
-module.exports = [
+export default [
   { icao: "RKSI", name: "Incheon International Airport", lat: 37.4602, lon: 126.4407, runway_hdg: 150, amos_stn: 113 },
   { icao: "RKSS", name: "Gimpo International Airport", lat: 37.5586, lon: 126.7906, runway_hdg: 140, amos_stn: 110 },
   { icao: "RKPC", name: "Jeju International Airport", lat: 33.5104, lon: 126.4929, runway_hdg: 70, amos_stn: 182 },

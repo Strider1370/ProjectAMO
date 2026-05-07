@@ -26,16 +26,9 @@ function resolveDataPath(dataPath) {
   return path.isAbsolute(dataPath) ? dataPath : path.resolve(projectRoot, dataPath)
 }
 
-export const airports = [
-  { icao: 'RKSI', name: 'Incheon International Airport', lat: 37.4602, lon: 126.4407, amos_stn: null },
-  { icao: 'RKSS', name: 'Gimpo International Airport', lat: 37.5586, lon: 126.7906, amos_stn: null },
-  { icao: 'RKPC', name: 'Jeju International Airport', lat: 33.5104, lon: 126.4929, amos_stn: null },
-  { icao: 'RKPK', name: 'Gimhae International Airport', lat: 35.1795, lon: 128.9382, amos_stn: null },
-  { icao: 'RKJB', name: 'Muan International Airport', lat: 34.9914, lon: 126.3828, amos_stn: null },
-  { icao: 'RKNY', name: 'Yangyang International Airport', lat: 38.0613, lon: 128.6692, amos_stn: null },
-  { icao: 'RKPU', name: 'Ulsan Airport', lat: 35.5935, lon: 129.3518, amos_stn: null },
-  { icao: 'RKJY', name: 'Yeosu Airport', lat: 34.8424, lon: 127.6162, amos_stn: null },
-]
+import airportsData from '../../shared/airports.js'
+
+export const airports = airportsData
 
 export const api = {
   base_url: process.env.API_BASE_URL || 'https://apihub.kma.go.kr/api/typ02/openApi',

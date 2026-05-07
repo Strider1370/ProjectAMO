@@ -18,7 +18,12 @@
       "Bash(rename \"satelite.png.png\" \"satellite.png\")",
       "Bash(git push *)",
       "Bash(git pull *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(node -e ' *)",
+      "Bash(python -c ' *)",
+      "Bash(pip install *)",
+      "Bash(python -c \"import pdfplumber; print\\('ok'\\)\")",
+      "Bash(python parse_rksi_star.py)"
     ]
   }
 }
