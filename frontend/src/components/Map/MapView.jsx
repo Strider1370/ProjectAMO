@@ -13,6 +13,7 @@ import {
   updateAdvisoryLayerData,
 } from '../../layers/advisories/advisoryLayers.js'
 import { buildBriefingRoute, buildVfrRoute } from '../../services/navdata/routePlanner.js'
+import { getProcedures, KNOWN_AIRPORTS } from '../../services/navdata/procedureData.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../../layers/aviation/addAdsbLayer.js'
 import './MapView.css'
@@ -34,6 +35,12 @@ const ROUTE_HL_LAYER_IDS = [ROUTE_HL_WP_ICON, ROUTE_HL_WP_LABEL, ROUTE_HL_NA_ICO
 
 const VFR_WP_CIRCLE = 'vfr-wp-circle'
 const VFR_WP_LABEL  = 'vfr-wp-label'
+
+const PROC_PREVIEW_SOURCE = 'procedure-preview'
+const PROC_SID_LINE  = 'procedure-sid-line'
+const PROC_STAR_LINE = 'procedure-star-line'
+const PROC_WP_CIRCLE = 'procedure-wp-circle'
+const PROC_WP_LABEL  = 'procedure-wp-label'
 
 const AIRPORT_SOURCE_ID     = 'kma-weather-airports'
 const AIRPORT_CIRCLE_LAYER  = 'kma-weather-airports-circle'
@@ -131,6 +138,115 @@ function buildVfrGeoJSON(waypoints) {
         geometry: { type: 'Point', coordinates: [wp.lon, wp.lat] },
       })),
     ],
+  }
+}
+
+function buildProcedureGeoJSON(sid, star) {
+  const features = []
+  function addProc(proc, role) {
+    if (!proc) return
+    const fixes = proc.fixes.filter((f) => f.lat != null && f.lon != null)
+    if (fixes.length < 2) return
+    const coords = fixes.map((f) => [f.lon, f.lat])
+    features.push({ type: 'Feature', properties: { role: `${role}-line` }, geometry: { type: 'LineString', coordinates: coords } })
+    fixes.forEach((f) => features.push({
+      type: 'Feature',
+      properties: { role: `${role}-wp`, label: f.id },
+      geometry: { type: 'Point', coordinates: [f.lon, f.lat] },
+    }))
+  }
+  addProc(sid, 'sid')
+  addProc(star, 'star')
+  return { type: 'FeatureCollection', features }
+}
+
+function augmentRouteWithProcedures(previewGeojson, sid, star) {
+  if (!sid && !star) return previewGeojson
+  const lineFeature = previewGeojson.features.find((f) => f.properties.role === 'route-preview-line')
+  if (!lineFeature) return previewGeojson
+
+  // baseCoords = [depAirport, entryFix, ...airways..., exitFix, arrAirport]
+  const baseCoords = lineFeature.geometry.coordinates
+  const depCoord = baseCoords[0]
+  const arrCoord = baseCoords[baseCoords.length - 1]
+
+  // sidCoords: procedure fixes from first SID wp → entryFix (NO departure airport)
+  // starCoords: procedure fixes from exitFix → last STAR wp (NO arrival airport)
+  const sidCoords  = (sid?.fixes  ?? []).filter((f) => f.lat != null && f.lon != null).map((f) => [f.lon, f.lat])
+  const starCoords = (star?.fixes ?? []).filter((f) => f.lat != null && f.lon != null).map((f) => [f.lon, f.lat])
+
+  let combined
+  if (sidCoords.length > 0 && starCoords.length > 0) {
+    // dep → [SID wps → entryFix] → [airways middle] → [exitFix → STAR wps] → arr
+    combined = [depCoord, ...sidCoords, ...baseCoords.slice(2, -2), ...starCoords, arrCoord]
+  } else if (sidCoords.length > 0) {
+    // dep → [SID wps → entryFix] → [airways middle → exitFix → arr]
+    combined = [depCoord, ...sidCoords, ...baseCoords.slice(2)]
+  } else {
+    // [dep → entryFix → airways middle] → [exitFix → STAR wps] → arr
+    combined = [...baseCoords.slice(0, -2), ...starCoords, arrCoord]
+  }
+
+  if (combined.length < 2) return previewGeojson
+  return {
+    ...previewGeojson,
+    features: previewGeojson.features.map((f) =>
+      f.properties.role === 'route-preview-line'
+        ? { ...f, geometry: { ...f.geometry, coordinates: combined } }
+        : f
+    ),
+  }
+}
+
+function addProcedurePreviewLayers(map) {
+  if (!map.getSource(PROC_PREVIEW_SOURCE)) {
+    map.addSource(PROC_PREVIEW_SOURCE, { type: 'geojson', data: emptyGeoJSON })
+  }
+  if (!map.getLayer(PROC_SID_LINE)) {
+    map.addLayer({
+      id: PROC_SID_LINE, type: 'line', source: PROC_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'sid-line'],
+      paint: { 'line-color': '#2563eb', 'line-width': 2, 'line-dasharray': [5, 3] },
+    })
+  }
+  if (!map.getLayer(PROC_STAR_LINE)) {
+    map.addLayer({
+      id: PROC_STAR_LINE, type: 'line', source: PROC_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'star-line'],
+      paint: { 'line-color': '#7c3aed', 'line-width': 2, 'line-dasharray': [5, 3] },
+    })
+  }
+  if (!map.getLayer(PROC_WP_CIRCLE)) {
+    map.addLayer({
+      id: PROC_WP_CIRCLE, type: 'circle', source: PROC_PREVIEW_SOURCE, slot: 'top',
+      filter: ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp']],
+      paint: {
+        'circle-radius': 4,
+        'circle-color': ['case', ['==', ['get', 'role'], 'sid-wp'], '#2563eb', '#7c3aed'],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1.5,
+      },
+    })
+  }
+  if (!map.getLayer(PROC_WP_LABEL)) {
+    map.addLayer({
+      id: PROC_WP_LABEL, type: 'symbol', source: PROC_PREVIEW_SOURCE, slot: 'top',
+      filter: ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp']],
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': ['Noto Sans CJK JP Bold'],
+        'text-size': 10,
+        'text-anchor': 'top',
+        'text-offset': [0, 0.8],
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': ['case', ['==', ['get', 'role'], 'sid-wp'], '#2563eb', '#7c3aed'],
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1.5,
+      },
+    })
   }
 }
 
@@ -575,11 +691,55 @@ function MapView({
   const [basemapMenuOpen,     setBasemapMenuOpen]    = useState(false)
   const [vfrWaypoints,        setVfrWaypoints]       = useState([])
   const [hoveredWpInfo,       setHoveredWpInfo]      = useState(null)
+  const [sidOptions,          setSidOptions]         = useState([])
+  const [starOptions,         setStarOptions]        = useState([])
+  const [selectedSid,         setSelectedSid]        = useState(null)
+  const [selectedStar,        setSelectedStar]       = useState(null)
   const vfrWaypointsRef = useRef([])
   const hideTimerRef    = useRef(null)
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
   useEffect(() => { vfrWaypointsRef.current = vfrWaypoints }, [vfrWaypoints])
+
+  // ── Procedure loading ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const airport = routeForm.departureAirport
+    if (!KNOWN_AIRPORTS.includes(airport)) { setSidOptions([]); setSelectedSid(null); return }
+    getProcedures(airport, 'SID').then((procs) => { setSidOptions(procs); setSelectedSid(null) })
+  }, [routeForm.departureAirport])
+
+  useEffect(() => {
+    const airport = routeForm.arrivalAirport
+    if (!KNOWN_AIRPORTS.includes(airport)) { setStarOptions([]); setSelectedStar(null); return }
+    getProcedures(airport, 'STAR').then((procs) => { setStarOptions(procs); setSelectedStar(null) })
+  }, [routeForm.arrivalAirport])
+
+  // ── Procedure preview on map ──────────────────────────────────────────────
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return
+    addProcedurePreviewLayers(map)
+
+    if (routeResult?.flightRule === 'IFR' && (selectedSid || selectedStar)) {
+      const augmented = augmentRouteWithProcedures(routeResult.previewGeojson, selectedSid, selectedStar)
+      map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(augmented)
+      const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar)
+      const wpOnly = { ...procGeojson, features: procGeojson.features.filter((f) => !f.properties.role.endsWith('-line')) }
+      map.getSource(PROC_PREVIEW_SOURCE)?.setData(wpOnly)
+    } else {
+      const geojson = buildProcedureGeoJSON(selectedSid, selectedStar)
+      map.getSource(PROC_PREVIEW_SOURCE)?.setData(geojson)
+      if (geojson.features.length > 0 && !routeResult) {
+        const coords = geojson.features.flatMap((f) =>
+          f.geometry.type === 'Point' ? [f.geometry.coordinates] : f.geometry.coordinates
+        )
+        const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]))
+        map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: 500 })
+      }
+    }
+  }, [selectedSid, selectedStar, routeResult, isStyleReady])
 
   const airportGeoJSON   = useMemo(() => createAirportGeoJSON(airports),         [airports])
   const lightningGeoJSON = useMemo(() => createLightningGeoJSON(lightningData),   [lightningData])
@@ -668,6 +828,7 @@ function MapView({
       // Route preview
       addRoutePreviewLayers(map)
       addVfrWaypointLayers(map)
+      addProcedurePreviewLayers(map)
       bindSectorHover(map)
       if (!vfrInteractionsBound) {
         vfrInteractionsBound = true
@@ -894,9 +1055,12 @@ function MapView({
     setRouteResult(null)
     setRouteError(null)
     setVfrWaypoints([])
+    setSelectedSid(null)
+    setSelectedStar(null)
     const map = mapRef.current
-    if (map?.isStyleLoaded() && map.getSource(ROUTE_PREVIEW_SOURCE)) {
-      map.getSource(ROUTE_PREVIEW_SOURCE).setData(emptyGeoJSON)
+    if (map?.isStyleLoaded()) {
+      map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
+      map.getSource(PROC_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
     }
   }, [activePanel])
 
@@ -911,9 +1075,12 @@ function MapView({
     setRouteResult(null)
     setRouteError(null)
     setVfrWaypoints([])
+    setSelectedSid(null)
+    setSelectedStar(null)
     const map = mapRef.current
-    if (map?.isStyleLoaded() && map.getSource(ROUTE_PREVIEW_SOURCE)) {
-      map.getSource(ROUTE_PREVIEW_SOURCE).setData(emptyGeoJSON)
+    if (map?.isStyleLoaded()) {
+      map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
+      map.getSource(PROC_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
     }
   }
 
@@ -956,8 +1123,15 @@ function MapView({
         setVfrWaypoints([])
         if (map?.isStyleLoaded()) {
           addRoutePreviewLayers(map)
-          map.getSource(ROUTE_PREVIEW_SOURCE).setData(result.previewGeojson)
-          const coords = result.previewGeojson.features.flatMap((f) =>
+          const displayGeojson = augmentRouteWithProcedures(result.previewGeojson, selectedSid, selectedStar)
+          map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(displayGeojson)
+          if (selectedSid || selectedStar) {
+            addProcedurePreviewLayers(map)
+            const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar)
+            const wpOnly = { ...procGeojson, features: procGeojson.features.filter((f) => !f.properties.role.endsWith('-line')) }
+            map.getSource(PROC_PREVIEW_SOURCE)?.setData(wpOnly)
+          }
+          const coords = displayGeojson.features.flatMap((f) =>
             f.geometry.type === 'Point' ? [f.geometry.coordinates] : f.geometry.coordinates
           )
           if (coords.length > 0) {
@@ -1087,16 +1261,81 @@ function MapView({
               </label>
             )}
             {/* Row 2 */}
-            <label>DEP Airport<input value={routeForm.departureAirport} onChange={(e) => updateRouteField('departureAirport', e.target.value)} /></label>
+            <label>DEP Airport
+              <select
+                value={KNOWN_AIRPORTS.includes(routeForm.departureAirport) ? routeForm.departureAirport : '__direct__'}
+                onChange={(e) => updateRouteField('departureAirport', e.target.value === '__direct__' ? '' : e.target.value)}
+              >
+                {KNOWN_AIRPORTS.map((ap) => <option key={ap} value={ap}>{ap}</option>)}
+                <option value="__direct__">직접 입력</option>
+              </select>
+              {!KNOWN_AIRPORTS.includes(routeForm.departureAirport) && (
+                <input className="proc-direct-input" value={routeForm.departureAirport} placeholder="ICAO" onChange={(e) => updateRouteField('departureAirport', e.target.value)} />
+              )}
+            </label>
             {routeForm.flightRule === 'IFR'
-              ? <label>Entry Fix<input value={routeForm.entryFix} onChange={(e) => updateRouteField('entryFix', e.target.value)} /></label>
-              : <label>ARR Airport<input value={routeForm.arrivalAirport} onChange={(e) => updateRouteField('arrivalAirport', e.target.value)} /></label>
+              ? (
+                <label>{sidOptions.length > 0 ? 'SID' : 'Entry Fix'}
+                  {sidOptions.length > 0
+                    ? (
+                      <select value={selectedSid?.id ?? ''} onChange={(e) => {
+                        const proc = sidOptions.find((p) => p.id === e.target.value) ?? null
+                        setSelectedSid(proc)
+                        if (proc) updateRouteField('entryFix', proc.enrouteFix ?? '')
+                      }}>
+                        <option value="">-- 없음 --</option>
+                        {sidOptions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                      </select>
+                    )
+                    : <input value={routeForm.entryFix} onChange={(e) => updateRouteField('entryFix', e.target.value)} />
+                  }
+                </label>
+              )
+              : (
+                <label>ARR Airport
+                  <select
+                    value={KNOWN_AIRPORTS.includes(routeForm.arrivalAirport) ? routeForm.arrivalAirport : '__direct__'}
+                    onChange={(e) => updateRouteField('arrivalAirport', e.target.value === '__direct__' ? '' : e.target.value)}
+                  >
+                    {KNOWN_AIRPORTS.map((ap) => <option key={ap} value={ap}>{ap}</option>)}
+                    <option value="__direct__">직접 입력</option>
+                  </select>
+                  {!KNOWN_AIRPORTS.includes(routeForm.arrivalAirport) && (
+                    <input className="proc-direct-input" value={routeForm.arrivalAirport} placeholder="ICAO" onChange={(e) => updateRouteField('arrivalAirport', e.target.value)} />
+                  )}
+                </label>
+              )
             }
             {/* Row 3: IFR only */}
             {routeForm.flightRule === 'IFR' && (
               <>
-                <label>ARR Airport<input value={routeForm.arrivalAirport} onChange={(e) => updateRouteField('arrivalAirport', e.target.value)} /></label>
-                <label>Exit Fix<input value={routeForm.exitFix} onChange={(e) => updateRouteField('exitFix', e.target.value)} /></label>
+                <label>ARR Airport
+                  <select
+                    value={KNOWN_AIRPORTS.includes(routeForm.arrivalAirport) ? routeForm.arrivalAirport : '__direct__'}
+                    onChange={(e) => updateRouteField('arrivalAirport', e.target.value === '__direct__' ? '' : e.target.value)}
+                  >
+                    {KNOWN_AIRPORTS.map((ap) => <option key={ap} value={ap}>{ap}</option>)}
+                    <option value="__direct__">직접 입력</option>
+                  </select>
+                  {!KNOWN_AIRPORTS.includes(routeForm.arrivalAirport) && (
+                    <input className="proc-direct-input" value={routeForm.arrivalAirport} placeholder="ICAO" onChange={(e) => updateRouteField('arrivalAirport', e.target.value)} />
+                  )}
+                </label>
+                <label>{starOptions.length > 0 ? 'STAR' : 'Exit Fix'}
+                  {starOptions.length > 0
+                    ? (
+                      <select value={selectedStar?.id ?? ''} onChange={(e) => {
+                        const proc = starOptions.find((p) => p.id === e.target.value) ?? null
+                        setSelectedStar(proc)
+                        if (proc) updateRouteField('exitFix', proc.startFix ?? '')
+                      }}>
+                        <option value="">-- 없음 --</option>
+                        {starOptions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                      </select>
+                    )
+                    : <input value={routeForm.exitFix} onChange={(e) => updateRouteField('exitFix', e.target.value)} />
+                  }
+                </label>
               </>
             )}
             <button type="submit" disabled={routeLoading}>{routeLoading ? 'Searching...' : 'Search'}</button>
@@ -1113,9 +1352,17 @@ function MapView({
                   <div><dt>Segments</dt><dd>{routeResult.segments.length}</dd></div>
                 )}
               </dl>
-              {routeResult.flightRule === 'IFR' && (
-                <div className="route-check-sequence">{routeResult.displaySequence.join(' → ')}</div>
-              )}
+              {routeResult.flightRule === 'IFR' && (() => {
+                const seq = routeResult.displaySequence
+                const display = seq.length < 2 ? seq : [
+                  seq[0],
+                  ...(selectedSid  ? [`[${selectedSid.name}]`]  : []),
+                  ...seq.slice(1, -1),
+                  ...(selectedStar ? [`[${selectedStar.name}]`] : []),
+                  seq[seq.length - 1],
+                ]
+                return <div className="route-check-sequence">{display.join(' → ')}</div>
+              })()}
               {routeResult.flightRule === 'VFR' && vfrWaypoints.length >= 2 && (
                 <div className="route-check-sequence">{vfrWaypoints.map((wp) => wp.id).join(' → ')}</div>
               )}

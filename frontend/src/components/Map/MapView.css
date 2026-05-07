@@ -263,6 +263,10 @@
   line-height: 1.45;
 }
 
+.proc-direct-input {
+  margin-top: 4px;
+}
+
 .basemap-switcher {
   position: absolute;
   top: 12px;
