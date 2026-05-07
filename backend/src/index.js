@@ -15,8 +15,9 @@ import adsbProcessor from './processors/adsb-processor.js'
 import satelliteProcessor from './processors/satellite-processor.js'
 import groundForecastProcessor from './processors/ground-forecast-processor.js'
 import environmentProcessor from './processors/environment-processor.js'
+import airportInfoProcessor from './processors/airport-info-processor.js'
 
-const locks = { metar: false, taf: false, warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, adsb: false, satellite: false, ground_forecast: false, environment: false };
+const locks = { metar: false, taf: false, warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, adsb: false, satellite: false, ground_forecast: false, environment: false, airport_info: false };
 
 async function runWithLock(type, job) {
   if (locks[type]) {
@@ -57,6 +58,7 @@ async function main() {
   cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite", satelliteProcessor.process));
   cron.schedule(config.schedule.ground_forecast_interval, () => runWithLock("ground_forecast", groundForecastProcessor.process));
   cron.schedule(config.schedule.environment_interval, () => runWithLock("environment", environmentProcessor.process));
+  cron.schedule(config.schedule.airport_info_interval, () => runWithLock("airport_info", airportInfoProcessor.process));
 
   // 서버 시작 직후 1회 즉시 수집
   console.log("Running initial data collection...");
@@ -74,6 +76,7 @@ async function main() {
     runWithLock("satellite", satelliteProcessor.process),
     runWithLock("ground_forecast", groundForecastProcessor.process),
     runWithLock("environment", environmentProcessor.process),
+    runWithLock("airport_info", airportInfoProcessor.process),
   ]);
   console.log("Initial data collection complete.");
 }

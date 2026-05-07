@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import config from './config.js'
 
-const TYPES = ['metar', 'taf', 'warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'ground_forecast', 'ground_overview', 'environment']
+const TYPES = ['metar', 'taf', 'warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'ground_forecast', 'ground_overview', 'environment', 'airport_info']
 const FILE_PREFIX = {
   metar: 'METAR',
   taf: 'TAF',
@@ -16,6 +16,7 @@ const FILE_PREFIX = {
   ground_forecast: 'GROUND_FORECAST',
   ground_overview: 'GROUND_OVERVIEW',
   environment: 'ENVIRONMENT',
+  airport_info: 'AIRPORT_INFO',
 }
 
 const cache = {
@@ -31,6 +32,7 @@ const cache = {
   ground_forecast: { hash: null, prev_data: null },
   ground_overview: { hash: null, prev_data: null },
   environment: { hash: null, prev_data: null },
+  airport_info: { hash: null, prev_data: null },
 }
 
 export function ensureDirectories(basePath) {

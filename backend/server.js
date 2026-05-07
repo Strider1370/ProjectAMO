@@ -41,6 +41,7 @@ app.get('/api/adsb',            (_, res) => sendLatest(res, 'adsb'))
 app.get('/api/ground-forecast', (_, res) => sendLatest(res, 'ground_forecast'))
 app.get('/api/ground-overview', (_, res) => sendLatest(res, 'ground_overview'))
 app.get('/api/environment',     (_, res) => sendLatest(res, 'environment'))
+app.get('/api/airport-info',    (_, res) => sendLatest(res, 'airport_info'))
 
 app.get('/api/radar/echo-meta', (_, res) =>
   sendJsonFile(res, path.join(__dirname, 'data', 'radar', 'echo_meta.json'))

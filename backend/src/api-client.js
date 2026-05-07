@@ -54,6 +54,7 @@ function isSuccessByType(type, resultCode, resultMsg) {
   if (resultCode == null) return false
   if (resultCode === '00') return true
   if (type === 'warning' && resultCode === '03' && /NO_DATA/i.test(resultMsg || '')) return true
+  if (type === 'airport_info' && resultCode === '03') return true
   return false
 }
 
@@ -120,9 +121,29 @@ export async function fetchSigwxLow(tmfc, options = {}) {
   return fetchTextWithRetries(url, 'sigwx_low', options)
 }
 
+export function buildAirportInfoUrl(icao, baseDate, baseTime) {
+  const params = new URLSearchParams({
+    numOfRows: 10,
+    pageNo: 1,
+    dataType: 'XML',
+    base_date: baseDate,
+    base_time: baseTime,
+    airPortCd: icao,
+    authKey: api.auth_key,
+  })
+  return `${api.base_url}${api.endpoints.airport_info}?${params.toString()}`
+}
+
+export async function fetchAirportInfo(icao, baseDate, baseTime, options = {}) {
+  const url = buildAirportInfoUrl(icao, baseDate, baseTime)
+  return fetchTextWithRetries(url, 'airport_info', options)
+}
+
 export default {
   fetch: fetchApi,
   fetchSigwxLow,
+  fetchAirportInfo,
   buildUrl,
   buildSigwxLowUrl,
+  buildAirportInfoUrl,
 }

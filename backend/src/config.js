@@ -51,6 +51,7 @@ export const api = {
     warning: '/AmmService/getWarning',
     sigmet: '/AmmIwxxmService/getSigmet',
     airmet: '/AmmIwxxmService/getAirmet',
+    airport_info: '/AirPortService/getAirPort',
   },
   auth_key: process.env.KMA_AUTH_KEY || process.env.API_AUTH_KEY || '',
   airkorea_key: process.env.AIRKOREA_API_KEY || '',
@@ -169,6 +170,7 @@ export const schedule = {
   adsb_interval: '*/5 * * * *',
   ground_forecast_interval: '30 6,11,18,23 * * *',
   environment_interval: '10 * * * *',
+  airport_info_interval: '*/30 * * * *',
 }
 
 export const storage = {
