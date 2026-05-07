@@ -12,7 +12,7 @@ import {
   setAdvisoryVisibility,
   updateAdvisoryLayerData,
 } from '../../layers/advisories/advisoryLayers.js'
-import { buildBriefingRoute } from '../../services/navdata/routePlanner.js'
+import { buildBriefingRoute, buildVfrRoute } from '../../services/navdata/routePlanner.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../../layers/aviation/addAdsbLayer.js'
 import './MapView.css'
@@ -32,6 +32,8 @@ const ROUTE_HL_AW_LINE  = 'route-hl-aw-line'
 const ROUTE_HL_AW_LABEL = 'route-hl-aw-label'
 const ROUTE_HL_LAYER_IDS = [ROUTE_HL_WP_ICON, ROUTE_HL_WP_LABEL, ROUTE_HL_NA_ICON, ROUTE_HL_NA_LABEL, ROUTE_HL_AW_LINE, ROUTE_HL_AW_LABEL]
 
+const VFR_WP_CIRCLE = 'vfr-wp-circle'
+const VFR_WP_LABEL  = 'vfr-wp-label'
 
 const AIRPORT_SOURCE_ID     = 'kma-weather-airports'
 const AIRPORT_CIRCLE_LAYER  = 'kma-weather-airports-circle'
@@ -71,6 +73,158 @@ const MET_LAYERS = [
 ]
 
 const emptyGeoJSON = { type: 'FeatureCollection', features: [] }
+
+// ── VFR waypoint helpers ─────────────────────────────────────────────────────
+
+function greatCircleNm(lon1, lat1, lon2, lat2) {
+  const R = 3440.065
+  const toRad = (d) => d * Math.PI / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
+function calcVfrDistance(waypoints) {
+  let total = 0
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    total += greatCircleNm(waypoints[i].lon, waypoints[i].lat, waypoints[i + 1].lon, waypoints[i + 1].lat)
+  }
+  return Number(total.toFixed(2))
+}
+
+function segmentPointDistSq(ax, ay, bx, by, px, py) {
+  const dx = bx - ax, dy = by - ay
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return (px - ax) ** 2 + (py - ay) ** 2
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq))
+  return (px - ax - t * dx) ** 2 + (py - ay - t * dy) ** 2
+}
+
+function findInsertIndex(waypoints, lngLat) {
+  const { lng, lat } = lngLat
+  let minDist = Infinity
+  let insertIdx = 1
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const a = waypoints[i], b = waypoints[i + 1]
+    const d = segmentPointDistSq(a.lon, a.lat, b.lon, b.lat, lng, lat)
+    if (d < minDist) { minDist = d; insertIdx = i + 1 }
+  }
+  return insertIdx
+}
+
+function relabeledWaypoints(waypoints) {
+  let wpCount = 0
+  return waypoints.map((wp) => wp.fixed ? wp : { ...wp, id: `WP${++wpCount}` })
+}
+
+function buildVfrGeoJSON(waypoints) {
+  if (waypoints.length < 2) return emptyGeoJSON
+  const coords = waypoints.map((wp) => [wp.lon, wp.lat])
+  return {
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates: coords } },
+      ...waypoints.map((wp, i) => ({
+        type: 'Feature',
+        properties: { role: 'vfr-waypoint', wpIndex: i, fixed: wp.fixed ? 1 : 0, label: wp.id },
+        geometry: { type: 'Point', coordinates: [wp.lon, wp.lat] },
+      })),
+    ],
+  }
+}
+
+function addVfrWaypointLayers(map) {
+  if (!map.getLayer(VFR_WP_CIRCLE)) {
+    map.addLayer({
+      id: VFR_WP_CIRCLE, type: 'circle', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'vfr-waypoint'],
+      paint: {
+        'circle-radius': 7,
+        'circle-color': ['case', ['==', ['get', 'fixed'], 1], '#f97316', '#ffffff'],
+        'circle-stroke-color': ['case', ['==', ['get', 'fixed'], 1], '#ffffff', '#2563eb'],
+        'circle-stroke-width': 2,
+        'circle-opacity': 0.95,
+      },
+    })
+  }
+  if (!map.getLayer(VFR_WP_LABEL)) {
+    map.addLayer({
+      id: VFR_WP_LABEL, type: 'symbol', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+      filter: ['all', ['==', ['get', 'role'], 'vfr-waypoint'], ['==', ['get', 'fixed'], 0]],
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': ['Noto Sans CJK JP Bold'],
+        'text-size': 10,
+        'text-anchor': 'top',
+        'text-offset': [0, 0.8],
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: { 'text-color': '#2563eb', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+    })
+  }
+}
+
+function bindVfrInteractions(map, vfrWaypointsRef, setVfrWaypoints) {
+  let draggingIdx = -1
+
+  map.on('mousedown', VFR_WP_CIRCLE, (e) => {
+    e.preventDefault()
+    const wpIdx = e.features[0].properties.wpIndex
+    if (vfrWaypointsRef.current[wpIdx]?.fixed) return
+    draggingIdx = wpIdx
+    map.dragPan.disable()
+    map.getCanvas().style.cursor = 'grabbing'
+  })
+
+  map.on('mousedown', ROUTE_PREVIEW_LINE, (e) => {
+    if (vfrWaypointsRef.current.length < 2) return
+    const wpHit = map.queryRenderedFeatures(e.point, { layers: [VFR_WP_CIRCLE] })
+    if (wpHit.length > 0) return
+    e.preventDefault()
+    const wps = vfrWaypointsRef.current
+    const insertIdx = findInsertIndex(wps, e.lngLat)
+    const wpCount = wps.filter((wp) => !wp.fixed).length
+    const newWp = { id: `WP${wpCount + 1}`, lon: e.lngLat.lng, lat: e.lngLat.lat }
+    const next = relabeledWaypoints([...wps.slice(0, insertIdx), newWp, ...wps.slice(insertIdx)])
+    vfrWaypointsRef.current = next
+    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(buildVfrGeoJSON(next))
+    draggingIdx = insertIdx
+    map.dragPan.disable()
+    map.getCanvas().style.cursor = 'grabbing'
+  })
+
+  map.on('mousemove', ROUTE_PREVIEW_LINE, () => {
+    if (draggingIdx < 0) map.getCanvas().style.cursor = 'crosshair'
+  })
+  map.on('mouseleave', ROUTE_PREVIEW_LINE, () => {
+    if (draggingIdx < 0) map.getCanvas().style.cursor = ''
+  })
+  map.on('mousemove', VFR_WP_CIRCLE, () => {
+    if (draggingIdx < 0) map.getCanvas().style.cursor = 'grab'
+  })
+  map.on('mouseleave', VFR_WP_CIRCLE, () => {
+    if (draggingIdx < 0) map.getCanvas().style.cursor = ''
+  })
+
+  map.on('mousemove', (e) => {
+    if (draggingIdx < 0) return
+    const updated = vfrWaypointsRef.current.map((wp, i) =>
+      i === draggingIdx ? { ...wp, lon: e.lngLat.lng, lat: e.lngLat.lat } : wp
+    )
+    vfrWaypointsRef.current = updated
+    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(buildVfrGeoJSON(updated))
+  })
+
+  map.on('mouseup', () => {
+    if (draggingIdx < 0) return
+    setVfrWaypoints([...vfrWaypointsRef.current])
+    draggingIdx = -1
+    map.dragPan.enable()
+    map.getCanvas().style.cursor = ''
+  })
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -386,6 +540,7 @@ function setGeoBoundaryVisibility(map, show) {
 // ── Route state ───────────────────────────────────────────────────────────────
 
 const initialRouteForm = {
+  flightRule: 'IFR',
   departureAirport: 'RKSS', entryFix: 'GOGET',
   exitFix: 'REMOS', arrivalAirport: 'RKPC', routeType: 'ALL',
 }
@@ -418,8 +573,13 @@ function MapView({
   const [adsbData,            setAdsbData]           = useState(null)
   const [basemapId,           setBasemapId]          = useState('standard')
   const [basemapMenuOpen,     setBasemapMenuOpen]    = useState(false)
+  const [vfrWaypoints,        setVfrWaypoints]       = useState([])
+  const [hoveredWpInfo,       setHoveredWpInfo]      = useState(null)
+  const vfrWaypointsRef = useRef([])
+  const hideTimerRef    = useRef(null)
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
+  useEffect(() => { vfrWaypointsRef.current = vfrWaypoints }, [vfrWaypoints])
 
   const airportGeoJSON   = useMemo(() => createAirportGeoJSON(airports),         [airports])
   const lightningGeoJSON = useMemo(() => createLightningGeoJSON(lightningData),   [lightningData])
@@ -488,6 +648,7 @@ function MapView({
 
     let airportHandlerBound = false
     let advisoryHandlerBound = false
+    let vfrInteractionsBound = false
 
     // zoom handler lives outside style.load to avoid duplicate registration on style switch
     let roadsVisible = map.getZoom() >= ROAD_VISIBILITY_ZOOM
@@ -506,7 +667,12 @@ function MapView({
 
       // Route preview
       addRoutePreviewLayers(map)
+      addVfrWaypointLayers(map)
       bindSectorHover(map)
+      if (!vfrInteractionsBound) {
+        vfrInteractionsBound = true
+        bindVfrInteractions(map, vfrWaypointsRef, setVfrWaypoints)
+      }
 
       // Satellite overlay
       const hasSat = addOrUpdateImageOverlay(map, { sourceId: SATELLITE_SOURCE, layerId: SATELLITE_LAYER, frame: satFrame, opacity: 0.92 })
@@ -591,12 +757,47 @@ function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady) return
-    if (routeResult) {
+    if (routeResult?.flightRule === 'IFR') {
       applyRouteHighlight(map, routeResult.navpointIds)
     } else {
       clearRouteHighlight(map)
     }
   }, [routeResult, isStyleReady])
+
+  // ── VFR waypoint sync ────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady || vfrWaypoints.length < 2) return
+    addVfrWaypointLayers(map)
+    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(buildVfrGeoJSON(vfrWaypoints))
+  }, [vfrWaypoints, isStyleReady])
+
+  // ── VFR WP hover (X 버튼 표시용) ────────────────────────────────────────
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return
+
+    const onWpMove = (e) => {
+      clearTimeout(hideTimerRef.current)
+      const wpIdx = e.features[0].properties.wpIndex
+      const wp = vfrWaypointsRef.current[wpIdx]
+      if (!wp || wp.fixed) { setHoveredWpInfo(null); return }
+      const pos = map.project([wp.lon, wp.lat])
+      setHoveredWpInfo({ idx: wpIdx, x: pos.x, y: pos.y })
+    }
+    const onWpLeave = () => {
+      hideTimerRef.current = setTimeout(() => setHoveredWpInfo(null), 120)
+    }
+
+    map.on('mousemove', VFR_WP_CIRCLE, onWpMove)
+    map.on('mouseleave', VFR_WP_CIRCLE, onWpLeave)
+    return () => {
+      map.off('mousemove', VFR_WP_CIRCLE, onWpMove)
+      map.off('mouseleave', VFR_WP_CIRCLE, onWpLeave)
+    }
+  }, [isStyleReady])
 
   // ── Sync MET overlays ─────────────────────────────────────────────────────
 
@@ -692,6 +893,7 @@ function MapView({
     if (activePanel === 'route-check') return
     setRouteResult(null)
     setRouteError(null)
+    setVfrWaypoints([])
     const map = mapRef.current
     if (map?.isStyleLoaded() && map.getSource(ROUTE_PREVIEW_SOURCE)) {
       map.getSource(ROUTE_PREVIEW_SOURCE).setData(emptyGeoJSON)
@@ -704,23 +906,64 @@ function MapView({
     setRouteForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  function switchFlightRule(rule) {
+    setRouteForm((prev) => ({ ...prev, flightRule: rule }))
+    setRouteResult(null)
+    setRouteError(null)
+    setVfrWaypoints([])
+    const map = mapRef.current
+    if (map?.isStyleLoaded() && map.getSource(ROUTE_PREVIEW_SOURCE)) {
+      map.getSource(ROUTE_PREVIEW_SOURCE).setData(emptyGeoJSON)
+    }
+  }
+
+  function deleteVfrWaypoint(idx) {
+    const next = relabeledWaypoints(vfrWaypoints.filter((_, i) => i !== idx))
+    setVfrWaypoints(next)
+    setHoveredWpInfo(null)
+    const map = mapRef.current
+    if (map?.isStyleLoaded()) {
+      map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(next.length >= 2 ? buildVfrGeoJSON(next) : emptyGeoJSON)
+    }
+  }
+
   async function handleRouteSearch(e) {
     e.preventDefault()
     setRouteLoading(true)
     setRouteError(null)
     try {
-      const result = await buildBriefingRoute(routeForm)
+      const result = routeForm.flightRule === 'VFR'
+        ? await buildVfrRoute(routeForm)
+        : await buildBriefingRoute(routeForm)
       setRouteResult(result)
       const map = mapRef.current
-      if (map?.isStyleLoaded()) {
-        addRoutePreviewLayers(map)
-        map.getSource(ROUTE_PREVIEW_SOURCE).setData(result.previewGeojson)
-        const coords = result.previewGeojson.features.flatMap((f) =>
-          f.geometry.type === 'Point' ? [f.geometry.coordinates] : f.geometry.coordinates
-        )
-        if (coords.length > 0) {
+      if (result.flightRule === 'VFR') {
+        const pts = result.previewGeojson.features.filter((f) => f.properties.role === 'route-preview-point')
+        const initialWaypoints = [
+          { id: result.departureAirport, lon: pts[0].geometry.coordinates[0], lat: pts[0].geometry.coordinates[1], fixed: true },
+          { id: result.arrivalAirport,   lon: pts[1].geometry.coordinates[0], lat: pts[1].geometry.coordinates[1], fixed: true },
+        ]
+        setVfrWaypoints(initialWaypoints)
+        if (map?.isStyleLoaded()) {
+          addRoutePreviewLayers(map)
+          addVfrWaypointLayers(map)
+          map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(buildVfrGeoJSON(initialWaypoints))
+          const coords = initialWaypoints.map((wp) => [wp.lon, wp.lat])
           const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]))
           map.fitBounds(bounds, { padding: 80, maxZoom: 8, duration: 500 })
+        }
+      } else {
+        setVfrWaypoints([])
+        if (map?.isStyleLoaded()) {
+          addRoutePreviewLayers(map)
+          map.getSource(ROUTE_PREVIEW_SOURCE).setData(result.previewGeojson)
+          const coords = result.previewGeojson.features.flatMap((f) =>
+            f.geometry.type === 'Point' ? [f.geometry.coordinates] : f.geometry.coordinates
+          )
+          if (coords.length > 0) {
+            const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]))
+            map.fitBounds(bounds, { padding: 80, maxZoom: 8, duration: 500 })
+          }
         }
       }
     } catch (err) {
@@ -766,6 +1009,16 @@ function MapView({
   return (
     <div className="map-view-wrapper">
       <div ref={mapContainerRef} className="map-view" />
+
+      {hoveredWpInfo && (
+        <button
+          className="vfr-wp-delete"
+          style={{ left: hoveredWpInfo.x + 8, top: hoveredWpInfo.y - 16 }}
+          onClick={() => deleteVfrWaypoint(hoveredWpInfo.idx)}
+          onMouseEnter={() => clearTimeout(hideTimerRef.current)}
+          onMouseLeave={() => setHoveredWpInfo(null)}
+        >×</button>
+      )}
 
       {error && <div className="map-view-error" role="alert">{error}</div>}
 
@@ -813,27 +1066,59 @@ function MapView({
         <section className="route-check-panel" aria-label="Route check panel">
           <div className="route-check-title">Route Check</div>
           <form className="route-check-form" onSubmit={handleRouteSearch}>
+            {/* Row 1: Flight rule + Route Type (IFR only) */}
+            <div className={`route-check-flight-rule${routeForm.flightRule === 'VFR' ? ' full-width' : ''}`}>
+              <label className="route-check-radio">
+                <input type="radio" name="flightRule" value="IFR" checked={routeForm.flightRule === 'IFR'} onChange={() => switchFlightRule('IFR')} />
+                IFR
+              </label>
+              <label className="route-check-radio">
+                <input type="radio" name="flightRule" value="VFR" checked={routeForm.flightRule === 'VFR'} onChange={() => switchFlightRule('VFR')} />
+                VFR
+              </label>
+            </div>
+            {routeForm.flightRule === 'IFR' && (
+              <label>Route Type
+                <select value={routeForm.routeType} onChange={(e) => updateRouteField('routeType', e.target.value)}>
+                  <option value="ALL">All</option>
+                  <option value="RNAV">RNAV</option>
+                  <option value="ATS">ATS</option>
+                </select>
+              </label>
+            )}
+            {/* Row 2 */}
             <label>DEP Airport<input value={routeForm.departureAirport} onChange={(e) => updateRouteField('departureAirport', e.target.value)} /></label>
-            <label>Entry Fix<input value={routeForm.entryFix} onChange={(e) => updateRouteField('entryFix', e.target.value)} /></label>
-            <label>Exit Fix<input value={routeForm.exitFix} onChange={(e) => updateRouteField('exitFix', e.target.value)} /></label>
-            <label>ARR Airport<input value={routeForm.arrivalAirport} onChange={(e) => updateRouteField('arrivalAirport', e.target.value)} /></label>
-            <label>Route Type
-              <select value={routeForm.routeType} onChange={(e) => updateRouteField('routeType', e.target.value)}>
-                <option value="ALL">All</option>
-                <option value="RNAV">RNAV</option>
-                <option value="ATS">ATS</option>
-              </select>
-            </label>
+            {routeForm.flightRule === 'IFR'
+              ? <label>Entry Fix<input value={routeForm.entryFix} onChange={(e) => updateRouteField('entryFix', e.target.value)} /></label>
+              : <label>ARR Airport<input value={routeForm.arrivalAirport} onChange={(e) => updateRouteField('arrivalAirport', e.target.value)} /></label>
+            }
+            {/* Row 3: IFR only */}
+            {routeForm.flightRule === 'IFR' && (
+              <>
+                <label>ARR Airport<input value={routeForm.arrivalAirport} onChange={(e) => updateRouteField('arrivalAirport', e.target.value)} /></label>
+                <label>Exit Fix<input value={routeForm.exitFix} onChange={(e) => updateRouteField('exitFix', e.target.value)} /></label>
+              </>
+            )}
             <button type="submit" disabled={routeLoading}>{routeLoading ? 'Searching...' : 'Search'}</button>
           </form>
           {routeError && <div className="route-check-error">{routeError}</div>}
           {routeResult && (
             <div className="route-check-result">
               <dl>
-                <div><dt>Distance</dt><dd>{routeResult.distanceNm} NM</dd></div>
-                <div><dt>Segments</dt><dd>{routeResult.segments.length}</dd></div>
+                <div>
+                  <dt>Distance</dt>
+                  <dd>{routeResult.flightRule === 'VFR' && vfrWaypoints.length >= 2 ? calcVfrDistance(vfrWaypoints) : routeResult.distanceNm} NM</dd>
+                </div>
+                {routeResult.flightRule === 'IFR' && (
+                  <div><dt>Segments</dt><dd>{routeResult.segments.length}</dd></div>
+                )}
               </dl>
-              <div className="route-check-sequence">{routeResult.displaySequence.join(' → ')}</div>
+              {routeResult.flightRule === 'IFR' && (
+                <div className="route-check-sequence">{routeResult.displaySequence.join(' → ')}</div>
+              )}
+              {routeResult.flightRule === 'VFR' && vfrWaypoints.length >= 2 && (
+                <div className="route-check-sequence">{vfrWaypoints.map((wp) => wp.id).join(' → ')}</div>
+              )}
             </div>
           )}
         </section>

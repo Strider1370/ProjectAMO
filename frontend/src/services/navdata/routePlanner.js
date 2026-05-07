@@ -38,6 +38,15 @@ function normalizeIdent(value) {
   return value.trim().toUpperCase()
 }
 
+function haversineNm(lon1, lat1, lon2, lat2) {
+  const R = 3440.065
+  const toRad = (d) => d * Math.PI / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return Number((2 * R * Math.asin(Math.sqrt(a))).toFixed(2))
+}
+
 function coordinatesOf(point) {
   return [point.coordinates.lon, point.coordinates.lat]
 }
@@ -171,6 +180,36 @@ function buildRouteDisplaySequence(departureAirport, arrivalAirport, path, segme
   return sequence
 }
 
+export async function buildVfrRoute({ departureAirport, arrivalAirport }) {
+  const navdata = await loadNavdata()
+  const departureId = normalizeIdent(departureAirport)
+  const arrivalId = normalizeIdent(arrivalAirport)
+
+  const departure = navdata.airports[departureId]
+  const arrival = navdata.airports[arrivalId]
+
+  if (!departure) throw new Error(`${departureId} airport not found`)
+  if (!arrival) throw new Error(`${arrivalId} airport not found`)
+
+  const depCoords = coordinatesOf(departure)
+  const arrCoords = coordinatesOf(arrival)
+
+  return {
+    flightRule: 'VFR',
+    departureAirport: departureId,
+    arrivalAirport: arrivalId,
+    distanceNm: haversineNm(...depCoords, ...arrCoords),
+    previewGeojson: {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates: [depCoords, arrCoords] } },
+        { type: 'Feature', properties: { role: 'route-preview-point', sequence: 1 }, geometry: { type: 'Point', coordinates: depCoords } },
+        { type: 'Feature', properties: { role: 'route-preview-point', sequence: 2 }, geometry: { type: 'Point', coordinates: arrCoords } },
+      ],
+    },
+  }
+}
+
 export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, arrivalAirport, routeType }) {
   const navdata = await loadNavdata()
   const departureId = normalizeIdent(departureAirport)
@@ -217,6 +256,7 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
   const routeTypes = [...new Set(segments.map((segment) => segment.routeType))]
 
   return {
+    flightRule: 'IFR',
     departureAirport: departureId,
     arrivalAirport: arrivalId,
     entryFix: entryId,

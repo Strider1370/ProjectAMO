@@ -164,6 +164,33 @@
   font-weight: 700;
 }
 
+.route-check-flight-rule {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 30px;
+}
+
+.route-check-flight-rule.full-width {
+  grid-column: 1 / -1;
+}
+
+.route-check-form .route-check-radio {
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  color: #334155;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.route-check-form .route-check-radio input {
+  width: auto;
+  height: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
 .route-check-form button {
   grid-column: 1 / -1;
   height: 32px;
@@ -305,6 +332,32 @@
 .basemap-switcher-item.is-active {
   border-color: #2563eb;
   color: #2563eb;
+}
+
+.vfr-wp-delete {
+  position: absolute;
+  z-index: 10;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 1.5px solid #dc2626;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: background 0.1s, color 0.1s;
+}
+
+.vfr-wp-delete:hover {
+  background: #dc2626;
+  color: #ffffff;
 }
 
 .airport-metar-marker {
