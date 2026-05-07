@@ -118,7 +118,7 @@ function findShortestPath(routeGraph, routeSegmentsById, startId, endId, routeTy
   }
 }
 
-function buildPreviewGeometry(departureAirport, arrivalAirport, navpoints, path) {
+function buildPreviewGeometry(departureAirport, arrivalAirport, navpoints, path, segments) {
   const coordinates = [
     coordinatesOf(departureAirport),
     ...path.navpointIds.map((id) => coordinatesOf(navpoints[id])),
@@ -130,23 +130,23 @@ function buildPreviewGeometry(departureAirport, arrivalAirport, navpoints, path)
     features: [
       {
         type: 'Feature',
-        properties: {
-          role: 'route-preview-line',
-        },
-        geometry: {
-          type: 'LineString',
-          coordinates,
-        },
+        properties: { role: 'route-preview-line' },
+        geometry: { type: 'LineString', coordinates },
       },
       ...coordinates.map((coordinate, index) => ({
         type: 'Feature',
-        properties: {
-          role: 'route-preview-point',
-          sequence: index + 1,
-        },
+        properties: { role: 'route-preview-point', sequence: index + 1 },
+        geometry: { type: 'Point', coordinates: coordinate },
+      })),
+      ...segments.map((segment, index) => ({
+        type: 'Feature',
+        properties: { role: 'route-segment-line', routeId: segment.routeId },
         geometry: {
-          type: 'Point',
-          coordinates: coordinate,
+          type: 'LineString',
+          coordinates: [
+            coordinatesOf(navpoints[path.navpointIds[index]]),
+            coordinatesOf(navpoints[path.navpointIds[index + 1]]),
+          ],
         },
       })),
     ],
@@ -228,6 +228,6 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
     routeTypes,
     segments,
     displaySequence: buildRouteDisplaySequence(departureId, arrivalId, path, segments),
-    previewGeojson: buildPreviewGeometry(departure, arrival, navdata.navpoints, path),
+    previewGeojson: buildPreviewGeometry(departure, arrival, navdata.navpoints, path, segments),
   }
 }

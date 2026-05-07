@@ -56,6 +56,8 @@ ProjectAMO/
 - **WFS layer split**: definitions in `aviationWfsLayers.js`, rendering in `addAviationWfsLayers.js`. Don't mix.
 - **Basemap switching**: `switchBasemap()` calls `map.setStyle()`, which wipes all layers. The existing `style.load` handler in `MapView.jsx` re-adds all sources and layers on every style change — do not bypass this. The zoom listener must be registered **outside** `style.load` to avoid duplicate registration on each switch.
 - **Symbol SVG structure**: Core aviation symbols embed a white silhouette `<g id="...-bg">` layer internally to block route lines from rendering through icons. Do not flatten or re-export these SVGs without preserving that group.
+- **Route preview source dual role**: `ROUTE_PREVIEW_SOURCE` (`briefing-route-preview`) holds three feature roles: `route-preview-line` (full orange path), `route-preview-point` (waypoint circles), and `route-segment-line` (per-segment LineStrings with `routeId`). The highlight layers `ROUTE_HL_AW_LINE`/`ROUTE_HL_AW_LABEL` filter on `route-segment-line` — do not remove those features from `buildPreviewGeometry`.
+- **Route highlight independence**: `applyRouteHighlight` adds 6 `ROUTE_HL_*` layers (waypoint icons/labels, navaid icons/labels, segment line/label) that are active whenever `routeResult` is set, regardless of aviation layer toggle state. Sourced from WFS for point layers, `ROUTE_PREVIEW_SOURCE` for segment lines.
 - **airport_info API params**: Unlike other KMA endpoints, `AirPortService/getAirPort` uses `base_date` (YYYYMMDD), `base_time` (0600/1700 KST), `airPortCd` (ICAO). URL built in `buildAirportInfoUrl()` in `api-client.js`, not via the standard `buildUrl()`. Bulletins issued twice daily at 06:00 and 17:00 KST.
 
 ## Task Patterns

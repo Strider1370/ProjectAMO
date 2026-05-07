@@ -24,6 +24,15 @@ const ROUTE_PREVIEW_SOURCE  = 'briefing-route-preview'
 const ROUTE_PREVIEW_LINE    = 'briefing-route-preview-line'
 const ROUTE_PREVIEW_POINT   = 'briefing-route-preview-point'
 
+const ROUTE_HL_WP_ICON  = 'route-hl-wp-icon'
+const ROUTE_HL_WP_LABEL = 'route-hl-wp-label'
+const ROUTE_HL_NA_ICON  = 'route-hl-na-icon'
+const ROUTE_HL_NA_LABEL = 'route-hl-na-label'
+const ROUTE_HL_AW_LINE  = 'route-hl-aw-line'
+const ROUTE_HL_AW_LABEL = 'route-hl-aw-label'
+const ROUTE_HL_LAYER_IDS = [ROUTE_HL_WP_ICON, ROUTE_HL_WP_LABEL, ROUTE_HL_NA_ICON, ROUTE_HL_NA_LABEL, ROUTE_HL_AW_LINE, ROUTE_HL_AW_LABEL]
+
+
 const AIRPORT_SOURCE_ID     = 'kma-weather-airports'
 const AIRPORT_CIRCLE_LAYER  = 'kma-weather-airports-circle'
 const AIRPORT_LABEL_LAYER   = 'kma-weather-airports-label'
@@ -198,6 +207,73 @@ function addRoutePreviewLayers(map) {
       paint: { 'circle-color': '#f97316', 'circle-radius': 4, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 },
     })
   }
+}
+
+
+function applyRouteHighlight(map, navpointIds) {
+  const ptFilter = (ids) => ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'ident'], ['literal', ids]]]
+
+  const wpCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'waypoint')
+  const naCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'navaid')
+  const awCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'ats-route')
+
+  function buildIconExpr(cfg) {
+    const { property, fallback, values } = cfg.iconImageByProperty
+    const expr = ['match', ['get', property]]
+    Object.entries(values).forEach(([v, icon]) => expr.push(v, icon.imageId))
+    expr.push(values[fallback].imageId)
+    return expr
+  }
+
+  function addOrUpdate(id, layerDef, filter) {
+    if (!map.getLayer(id)) {
+      map.addLayer({ id, ...layerDef, filter })
+    } else {
+      map.setFilter(id, filter)
+      map.setLayoutProperty(id, 'visibility', 'visible')
+    }
+  }
+
+  addOrUpdate(ROUTE_HL_WP_ICON, {
+    type: 'symbol', source: wpCfg.sourceId, slot: 'top',
+    layout: { 'icon-image': buildIconExpr(wpCfg), 'icon-size': wpCfg.iconSize ?? 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true },
+  }, ptFilter(navpointIds))
+
+  addOrUpdate(ROUTE_HL_WP_LABEL, {
+    type: 'symbol', source: wpCfg.sourceId, slot: 'top',
+    layout: { 'text-field': ['get', 'ident'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.75], 'text-allow-overlap': true, 'text-ignore-placement': true },
+    paint: { 'text-color': wpCfg.color, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+  }, ptFilter(navpointIds))
+
+  addOrUpdate(ROUTE_HL_NA_ICON, {
+    type: 'symbol', source: naCfg.sourceId, slot: 'top',
+    layout: { 'icon-image': buildIconExpr(naCfg), 'icon-size': naCfg.iconSize ?? 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true },
+  }, ptFilter(navpointIds))
+
+  addOrUpdate(ROUTE_HL_NA_LABEL, {
+    type: 'symbol', source: naCfg.sourceId, slot: 'top',
+    layout: { 'text-field': ['get', 'ident'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.75], 'text-allow-overlap': true, 'text-ignore-placement': true },
+    paint: { 'text-color': naCfg.color, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+  }, ptFilter(navpointIds))
+
+  const segFilter = ['==', ['get', 'role'], 'route-segment-line']
+
+  addOrUpdate(ROUTE_HL_AW_LINE, {
+    type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+    paint: { 'line-color': awCfg.color, 'line-width': awCfg.lineWidth, 'line-opacity': awCfg.lineOpacity },
+  }, segFilter)
+
+  addOrUpdate(ROUTE_HL_AW_LABEL, {
+    type: 'symbol', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+    layout: { 'symbol-placement': 'line', 'symbol-spacing': 200, 'text-field': ['get', 'routeId'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-rotation-alignment': 'map', 'text-pitch-alignment': 'map', 'text-keep-upright': true, 'text-allow-overlap': false, 'text-ignore-placement': false },
+    paint: { 'text-color': awCfg.color, 'text-halo-color': '#eef6ed', 'text-halo-width': 1.5 },
+  }, segFilter)
+}
+
+function clearRouteHighlight(map) {
+  ROUTE_HL_LAYER_IDS.forEach((id) => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
+  })
 }
 
 function bindSectorHover(map) {
@@ -510,6 +586,18 @@ function MapView({
     AVIATION_WFS_LAYERS.forEach((l) => setLayerVisibility(map, l, aviationVisibility[l.id]))
   }, [aviationVisibility])
 
+  // ── Route highlight (경로 구간 레이어 강제 표시) ──────────────────────────
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return
+    if (routeResult) {
+      applyRouteHighlight(map, routeResult.navpointIds)
+    } else {
+      clearRouteHighlight(map)
+    }
+  }, [routeResult, isStyleReady])
+
   // ── Sync MET overlays ─────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -741,15 +829,8 @@ function MapView({
           {routeError && <div className="route-check-error">{routeError}</div>}
           {routeResult && (
             <div className="route-check-result">
-              <div className="route-check-summary">
-                {[routeResult.departureAirport, routeResult.entryFix, routeResult.exitFix, routeResult.arrivalAirport].map((v) => (
-                  <span key={v}>{v}</span>
-                ))}
-              </div>
               <dl>
                 <div><dt>Distance</dt><dd>{routeResult.distanceNm} NM</dd></div>
-                <div><dt>Routes</dt><dd>{routeResult.routeIds.join(', ')}</dd></div>
-                <div><dt>Types</dt><dd>{routeResult.routeTypes.join(', ')}</dd></div>
                 <div><dt>Segments</dt><dd>{routeResult.segments.length}</dd></div>
               </dl>
               <div className="route-check-sequence">{routeResult.displaySequence.join(' → ')}</div>

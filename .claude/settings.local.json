@@ -12,7 +12,13 @@
       "PowerShell(Test-NetConnection -ComputerName localhost -Port 5173)",
       "Read(//c/ProgramData/**)",
       "Read(//c/Users/John/**)",
-      "Bash(curl -s http://localhost:5173)"
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(rename \"standard.png.png\" \"standard.png\")",
+      "Bash(rename \"dark.png.png\" \"dark.png\")",
+      "Bash(rename \"satelite.png.png\" \"satellite.png\")",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)"
     ]
   }
 }
