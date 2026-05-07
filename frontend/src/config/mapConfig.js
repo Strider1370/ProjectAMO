@@ -29,6 +29,7 @@ export const BASEMAP_OPTIONS = [
       font: 'Noto Sans CJK JP',
       colorWater: '#88bedd',
       colorGreenspace: '#c5dcb8',
+      colorRoads: 'hsla(0, 0%, 88%, 0.2)',
     },
   },
   {

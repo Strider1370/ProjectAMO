@@ -266,27 +266,29 @@ function AirportPanel({ airport, weatherData, onClose }) {
         <button className="airport-panel-close" onClick={onClose} aria-label="닫기">✕</button>
       </header>
 
-      <nav className="airport-panel-tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`airport-panel-tab${tab === t.id ? ' is-active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-            {t.id === 'warn' && warnCount > 0 && (
-              <span className="ap-tab-badge">{warnCount}</span>
-            )}
-          </button>
-        ))}
-      </nav>
+      <div className="airport-panel-main">
+        <nav className="airport-panel-tabs">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`airport-panel-tab${tab === t.id ? ' is-active' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+              {t.id === 'warn' && warnCount > 0 && (
+                <span className="ap-tab-badge">{warnCount}</span>
+              )}
+            </button>
+          ))}
+        </nav>
 
-      <div className="airport-panel-body">
-        {tab === 'metar' && <MetarTab metar={metar} />}
-        {tab === 'taf'   && <TafTab taf={taf} />}
-        {tab === 'amos'  && <AmosTab amos={amos} />}
-        {tab === 'warn'  && <WarningTab warning={warning} />}
-        {tab === 'info'  && <AirportInfoTab info={airportInfo} />}
+        <div className="airport-panel-body">
+          {tab === 'metar' && <MetarTab metar={metar} />}
+          {tab === 'taf'   && <TafTab taf={taf} />}
+          {tab === 'amos'  && <AmosTab amos={amos} />}
+          {tab === 'warn'  && <WarningTab warning={warning} />}
+          {tab === 'info'  && <AirportInfoTab info={airportInfo} />}
+        </div>
       </div>
     </aside>
   )
