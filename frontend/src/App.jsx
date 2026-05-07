@@ -19,6 +19,7 @@ function App() {
   const [activePanel, setActivePanel] = useState(null)
   const [selectedAirport, setSelectedAirport] = useState(null)
   const [weatherData, setWeatherData] = useState(null)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
 
   // UTC clock
   useEffect(() => {
@@ -54,8 +55,13 @@ function App() {
   )
 
   return (
-    <div className="app">
-      <Sidebar activePanel={activePanel} onPanelToggle={togglePanel} />
+    <div className={`app ${isSidebarExpanded ? 'sidebar-is-expanded' : ''}`}>
+      <Sidebar 
+        activePanel={activePanel} 
+        onPanelToggle={togglePanel} 
+        isExpanded={isSidebarExpanded}
+        onExpandToggle={setIsSidebarExpanded}
+      />
       <main className="map-shell">
         <MapView
           activePanel={activePanel}

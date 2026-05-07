@@ -133,7 +133,7 @@ function MetarTab({ metar, amosData, icao, airportMeta }) {
       </div>
 
       {/* ── 비행 규칙 배너 ── */}
-      <div className="ap-mv2-cat-banner" style={{ backgroundColor: flightCat.color }}>
+      <div className={`ap-mv2-cat-banner ap-mv2-cat-banner--${flightCat.category}`}>
         <span className="ap-mv2-cat-code">{flightCat.category}</span>
         <span className="ap-mv2-cat-label">{flightCat.labelKo}</span>
       </div>

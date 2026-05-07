@@ -7,22 +7,35 @@
   flex-direction: column;
   width: 800px;
   height: 100%;
-  background: #ffffff;
-  border-left: 1px solid #d1d5db;
-  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.15);
+  /* 프리미엄 글래스모피즘 그라데이션 */
+  background: linear-gradient(
+    165deg, 
+    rgba(255, 255, 255, 0.88) 0%, 
+    rgba(230, 238, 250, 0.92) 100%
+  );
+  backdrop-filter: blur(32px) saturate(120%);
+  -webkit-backdrop-filter: blur(32px) saturate(120%);
+  border-left: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    -10px 0 40px rgba(15, 23, 42, 0.1),
+    inset 1px 0 0 rgba(255, 255, 255, 0.8);
   color: #1e293b;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Karla', system-ui, -apple-system, sans-serif;
   font-size: 13px;
   overflow: hidden;
 }
 
-/* ── Header ── */
+/* ── Header (깊이감 있는 톤 보정) ── */
 .airport-panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  background: #1e293b;
+  padding: 20px 24px;
+  /* 본문보다 한 단계 더 깊이감 있는 톤 적용 */
+  background: rgba(148, 163, 184, 0.12); 
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
   flex-shrink: 0;
 }
 
@@ -33,33 +46,37 @@
 }
 
 .airport-panel-icao {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  color: #f1f5f9;
-  font-family: 'Consolas', 'Menlo', monospace;
+  letter-spacing: -0.02em;
+  color: #1e1e1e;
 }
 
 .airport-panel-name {
-  font-size: 12px;
-  color: #94a3b8;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .airport-panel-close {
-  background: none;
+  background: #f1f5f9;
   border: none;
-  color: #94a3b8;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  font-size: 16px;
-  padding: 4px 6px;
-  border-radius: 4px;
-  line-height: 1;
-  transition: color 0.15s, background 0.15s;
+  color: #64748b;
+  transition: all 160ms ease;
 }
 
 .airport-panel-close:hover {
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.68);
+  color: #334155;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
 }
 
 /* ── Main (tabs + body side by side) ── */
@@ -74,10 +91,11 @@
 .airport-panel-tabs {
   display: flex;
   flex-direction: column;
-  width: 72px;
+  width: 80px;
   flex-shrink: 0;
-  border-right: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-right: 1px solid rgba(148, 163, 184, 0.3);
+  background: transparent; /* 투명하게 변경하여 본체 색상 노출 */
+  padding: 12px 0;
 }
 
 .airport-panel-tab {
@@ -89,48 +107,47 @@
   padding: 14px 4px;
   background: none;
   border: none;
-  border-left: 3px solid transparent;
-  color: #94a3b8;
-  font-size: 10px;
+  color: #64748b;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
   cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
-  text-align: center;
-  line-height: 1.3;
+  transition: all 160ms ease;
 }
 
 .airport-panel-tab:hover {
-  color: #475569;
-  background: #f1f5f9;
+  color: #334155;
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .airport-panel-tab.is-active {
   color: #2563eb;
-  border-left-color: #2563eb;
-  background: #eff6ff;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(226, 236, 250, 0.9)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 10px rgba(37, 99, 235, 0.12);
+  position: relative;
 }
 
 .ap-tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: #ef4444;
-  color: #ffffff;
+  background: #e11d48;
+  color: #fff;
   font-size: 10px;
-  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 700;
 }
 
 /* ── Body ── */
 .airport-panel-body {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 18px;
-  background: #ffffff;
+  padding: 24px;
+  background: transparent; /* 투명하게 변경하여 본체 색상 노출 */
 }
 
 .ap-empty {
@@ -144,7 +161,7 @@
 .ap-metar-v2 {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
 .ap-mv2-header {
@@ -184,61 +201,73 @@
   white-space: nowrap;
 }
 
-.ap-mv2-rain-label {
-  color: #475569;
-}
-
-.ap-mv2-rain-value {
-  color: #2563eb;
-}
-
-/* ── 비행 규칙 배너 ── */
+/* ── 비행 규칙 배너 (이미지 가이드 반영 - 배너만 수정) ── */
 .ap-mv2-cat-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  color: #fff;
+  display: flex !important;
+  flex-direction: column !important; /* 위아래 2줄 고정 */
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 20px; /* 높이 적정 수준으로 축소 */
+  border-radius: 12px;
+  color: #ffffff !important;
+  text-align: center;
+  font-family: 'Pretendard', 'Inter', 'Noto Sans KR', sans-serif;
 }
+
+.ap-mv2-cat-banner--VFR { background-color: #1b7a3d !important; }
+.ap-mv2-cat-banner--MVFR { background-color: #1d4ed8 !important; }
+.ap-mv2-cat-banner--IFR { background-color: #b45309 !important; }
+.ap-mv2-cat-banner--LIFR { background-color: #b91c1c !important; }
 
 .ap-mv2-cat-code {
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  line-height: 1;
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1.1;
+  margin: 0;
+  color: #ffffff !important;
 }
 
 .ap-mv2-cat-label {
-  font-size: 15px;
-  font-weight: 600;
-  opacity: 0.9;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+  color: #ffffff !important;
 }
 
 /* ── 지표 그리드 ── */
 .ap-mv2-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-auto-rows: 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
 
 .ap-mv2-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-left-width: 3px;
-  border-radius: 8px;
-  padding: 12px 14px;
+  background: #ffffff; /* 본체 배경과 확실히 대비되는 순백색 */
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  justify-content: center;
+  gap: 8px;
+  box-shadow: 
+    0 4px 12px rgba(15, 23, 42, 0.04),
+    0 1px 2px rgba(15, 23, 42, 0.02);
+  transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ap-mv2-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 24px rgba(15, 23, 42, 0.08),
+    0 4px 8px rgba(15, 23, 42, 0.04);
 }
 
 .ap-mv2-card--alert {
   outline: 2px dashed #dc2626;
   outline-offset: -2px;
+  background: rgba(254, 242, 242, 0.8);
 }
 
 .ap-mv2-card-body {
@@ -266,16 +295,16 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #94a3b8;
+  color: #7b8aa0;
 }
 
 .ap-mv2-card-value {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 800;
   color: #1e293b;
   line-height: 1.1;
   font-family: 'Consolas', 'Menlo', monospace;
@@ -290,12 +319,12 @@
 .ap-mv2-card-sub {
   margin-left: 4px;
   font-size: 15px;
-  color: #64748b;
+  color: #6b7280;
   font-weight: 600;
 }
 
 .ap-mv2-card-foot {
-  font-size: 14px;
+  font-size: 13px;
   color: #64748b;
   font-weight: 500;
 }
@@ -347,7 +376,7 @@
 }
 
 .ap-mv2-footer-value {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #1e293b;
   font-family: 'Consolas', 'Menlo', monospace;

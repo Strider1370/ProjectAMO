@@ -21,9 +21,15 @@ body {
 }
 
 .map-shell {
-  margin-left: 60px;
-  width: calc(100vw - 60px);
+  margin-left: 56px;
+  width: calc(100vw - 56px);
   height: calc(100vh - 24px);
+  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1), width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-is-expanded .map-shell {
+  margin-left: 260px;
+  width: calc(100vw - 260px);
 }
 
 .utc-bar {

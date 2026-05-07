@@ -2,44 +2,230 @@
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 10;
+  z-index: 100;
   display: flex;
   flex-direction: column;
-  width: 60px;
-  height: calc(100vh - 24px);
-  border-right: 1px solid #e2e8f0;
-  background: #ffffff;
+  align-items: center;
+  width: 56px;
+  height: 100%;
+  background: rgba(248, 251, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(203, 213, 225, 0.7);
+  box-shadow:
+    4px 0 18px rgba(15, 23, 42, 0.06),
+    inset -1px 0 0 rgba(255, 255, 255, 0.65);
+  padding: 12px 0;
+  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
-.sidebar-group {
+.sidebar.is-expanded {
+  width: 260px;
+  align-items: flex-start;
+  padding: 12px 16px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* 축소 시 중앙 */
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.sidebar.is-expanded .sidebar-header {
+  justify-content: flex-start; /* 확장 시 왼쪽 */
+  gap: 12px;
+}
+
+.sidebar-logo-text {
+  font-family: 'Karla', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: #1e1e1e;
+}
+
+.sidebar-search-container {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.sidebar-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fafafa;
+  border: 1px solid #e7e7e7;
+  border-radius: 6px;
+  padding: 12px;
+  height: 44px;
+}
+
+.search-icon {
+  color: #9a9a9a;
+  flex-shrink: 0;
+}
+
+.search-input {
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-size: 16px;
+  color: #1e1e1e;
+  outline: none;
+}
+
+.sidebar-section {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  align-items: center; /* 축소 시 중앙 */
   width: 100%;
 }
 
-.sidebar-group-bottom {
-  margin-top: auto;
-  border-top: 1px solid #e2e8f0;
+.sidebar.is-expanded .sidebar-section {
+  align-items: flex-start; /* 확장 시 왼쪽 */
 }
 
-.sidebar-button {
+.sidebar-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center; /* 축소 시 중앙 */
+  width: 100%;
+}
+
+.sidebar.is-expanded .sidebar-menu-list {
+  align-items: flex-start; /* 확장 시 왼쪽 */
+}
+
+.sidebar-spacer {
+  flex: 1;
+}
+
+.sidebar-icon-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 52px;
-  border: none;
+  color: #64748b;
   background: transparent;
-  color: #94a3b8;
+  border: 1px solid transparent;
   cursor: pointer;
+  transition: all 160ms ease;
+  position: relative;
+  white-space: nowrap;
 }
 
-.sidebar-button:hover {
-  background: #f8fafc;
-  color: #475569;
+.sidebar-icon-button.is-expanded {
+  width: 100%;
+  height: 44px;
+  justify-content: flex-start;
+  padding: 0 12px;
+  gap: 12px;
+  border-radius: 6px;
 }
 
-.sidebar-button.is-active {
-  background: #eff6ff;
+.sidebar-icon-button:hover {
+  background: rgba(255, 255, 255, 0.68);
+  color: #334155;
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 3px 8px rgba(15, 23, 42, 0.08);
+}
+
+.sidebar-icon-button.is-active {
   color: #2563eb;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(226, 236, 250, 0.9)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 10px rgba(37, 99, 235, 0.12);
+}
+
+.sidebar-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.sidebar-label {
+  font-family: 'Karla', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  margin-left: 0;
+}
+
+.sidebar-badge-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #e51c1c;
+  border: 2px solid rgba(248, 251, 255, 0.94);
+  border-radius: 50%;
+}
+
+.sidebar-badge-count {
+  margin-left: auto;
+  background: #e51c1c;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  min-width: 20px;
+}
+
+.sidebar-divider {
+  width: 100%;
+  height: 1px;
+  background: #d9d9d9;
+  margin: 12px 0;
+}
+
+.sidebar-profile {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* 축소 시 중앙 */
+  gap: 10px;
+  width: 100%;
+  padding: 4px;
+}
+
+.sidebar.is-expanded .sidebar-profile {
+  justify-content: flex-start; /* 확장 시 왼쪽 */
+  padding: 4px 8px;
+}
+
+.profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+.profile-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1e1e1e;
+}
+
+.profile-email {
+  font-size: 12px;
+  color: #64748b;
 }
