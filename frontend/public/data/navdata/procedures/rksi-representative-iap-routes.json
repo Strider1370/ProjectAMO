@@ -1,0 +1,2917 @@
+{
+  "metadata": {
+    "airport": "RKSI",
+    "cycle": "AIRAC 2025-08-21",
+    "dataModel": "representative-iap-routes-v1",
+    "description": "Representative IAP routes for connecting RKSI STAR endFixes to runway landing-flow groups. Designed to match rksi-star-procedures.json procedure-canonical-v1 structure.",
+    "sourceFiles": [
+      "(2-51) INSTR APCH CHART.pdf",
+      "rksi-star-procedures.json"
+    ],
+    "method": "8 representative routes by STAR endFix and runway group: BITIM/MUNAN for RWY15/16, PAMBI/ENPIL for RWY33/34. Missed approach is excluded."
+  },
+  "representativeIapMap": {
+    "BITIM|15": "RKSI-IAP-BITIM-RWY15-REP",
+    "BITIM|16": "RKSI-IAP-BITIM-RWY16-REP",
+    "MUNAN|15": "RKSI-IAP-MUNAN-RWY15-REP",
+    "MUNAN|16": "RKSI-IAP-MUNAN-RWY16-REP",
+    "PAMBI|33": "RKSI-IAP-PAMBI-RWY33-REP",
+    "PAMBI|34": "RKSI-IAP-PAMBI-RWY34-REP",
+    "ENPIL|33": "RKSI-IAP-ENPIL-RWY33-REP",
+    "ENPIL|34": "RKSI-IAP-ENPIL-RWY34-REP"
+  },
+  "starToIapCandidates": {
+    "RKSI-STAR-OLMEN3C": {
+      "starName": "OLMEN3C",
+      "endFix": "BITIM",
+      "runways": [
+        "15L/R",
+        "16L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-BITIM-RWY15-REP",
+        "RKSI-IAP-BITIM-RWY16-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-BITIM-RWY15-REP"
+    },
+    "RKSI-STAR-GUKDO3C": {
+      "starName": "GUKDO3C",
+      "endFix": "BITIM",
+      "runways": [
+        "15L/R",
+        "16L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-BITIM-RWY15-REP",
+        "RKSI-IAP-BITIM-RWY16-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-BITIM-RWY15-REP"
+    },
+    "RKSI-STAR-KARBU3C": {
+      "starName": "KARBU3C",
+      "endFix": "BITIM",
+      "runways": [
+        "15L/R",
+        "16L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-BITIM-RWY15-REP",
+        "RKSI-IAP-BITIM-RWY16-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-BITIM-RWY15-REP"
+    },
+    "RKSI-STAR-GUKDO2H": {
+      "starName": "GUKDO2H",
+      "endFix": "MUNAN",
+      "runways": [
+        "15L/R",
+        "16L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-MUNAN-RWY15-REP",
+        "RKSI-IAP-MUNAN-RWY16-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-MUNAN-RWY15-REP"
+    },
+    "RKSI-STAR-KARBU2H": {
+      "starName": "KARBU2H",
+      "endFix": "MUNAN",
+      "runways": [
+        "15L/R",
+        "16L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-MUNAN-RWY15-REP",
+        "RKSI-IAP-MUNAN-RWY16-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-MUNAN-RWY15-REP"
+    },
+    "RKSI-STAR-BIKSI2M": {
+      "starName": "BIKSI2M",
+      "endFix": "ENPIL",
+      "runways": [
+        "33L/R",
+        "34L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-ENPIL-RWY33-REP",
+        "RKSI-IAP-ENPIL-RWY34-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-ENPIL-RWY33-REP"
+    },
+    "RKSI-STAR-CUN2M": {
+      "starName": "CUN2M",
+      "endFix": "ENPIL",
+      "runways": [
+        "33L/R",
+        "34L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-ENPIL-RWY33-REP",
+        "RKSI-IAP-ENPIL-RWY34-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-ENPIL-RWY33-REP"
+    },
+    "RKSI-STAR-GONAV3M": {
+      "starName": "GONAV3M",
+      "endFix": "ENPIL",
+      "runways": [
+        "33L/R",
+        "34L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-ENPIL-RWY33-REP",
+        "RKSI-IAP-ENPIL-RWY34-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-ENPIL-RWY33-REP"
+    },
+    "RKSI-STAR-MAKSA2M": {
+      "starName": "MAKSA2M",
+      "endFix": "ENPIL",
+      "runways": [
+        "33L/R",
+        "34L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-ENPIL-RWY33-REP",
+        "RKSI-IAP-ENPIL-RWY34-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-ENPIL-RWY33-REP"
+    },
+    "RKSI-STAR-OLMEN2E": {
+      "starName": "OLMEN2E",
+      "endFix": "ENPIL",
+      "runways": [
+        "33L/R",
+        "34L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-ENPIL-RWY33-REP",
+        "RKSI-IAP-ENPIL-RWY34-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-ENPIL-RWY33-REP"
+    },
+    "RKSI-STAR-GUKDO2E": {
+      "starName": "GUKDO2E",
+      "endFix": "ENPIL",
+      "runways": [
+        "33L/R",
+        "34L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-ENPIL-RWY33-REP",
+        "RKSI-IAP-ENPIL-RWY34-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-ENPIL-RWY33-REP"
+    },
+    "RKSI-STAR-KARBU2E": {
+      "starName": "KARBU2E",
+      "endFix": "ENPIL",
+      "runways": [
+        "33L/R",
+        "34L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-ENPIL-RWY33-REP",
+        "RKSI-IAP-ENPIL-RWY34-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-ENPIL-RWY33-REP"
+    },
+    "RKSI-STAR-REBIT1Y": {
+      "starName": "REBIT1Y",
+      "endFix": "PAMBI",
+      "runways": [
+        "33L/R",
+        "34L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-PAMBI-RWY33-REP",
+        "RKSI-IAP-PAMBI-RWY34-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-PAMBI-RWY33-REP"
+    },
+    "RKSI-STAR-OLMEN1Y": {
+      "starName": "OLMEN1Y",
+      "endFix": "PAMBI",
+      "runways": [
+        "33L/R",
+        "34L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-PAMBI-RWY33-REP",
+        "RKSI-IAP-PAMBI-RWY34-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-PAMBI-RWY33-REP"
+    }
+  },
+  "iapRoutes": {
+    "RKSI-IAP-MUNAN-RWY15-REP": {
+      "airport": "RKSI",
+      "cycle": "AIRAC 2025-08-21",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "MUNAN",
+        "runwayGroup": [
+          "15L/R"
+        ],
+        "selectedRunway": "15L",
+        "coveredRunways": [
+          "15L",
+          "15R"
+        ],
+        "reason": "Representative IAP route from MUNAN for RKSI RWY 15 landing flow"
+      },
+      "entryFix": "MUNAN",
+      "endFix": "THR RWY 15L",
+      "runways": [
+        "15L/R"
+      ],
+      "name": "MUNAN-RWY15-REP",
+      "fullName": "Representative IAP from MUNAN to 15L",
+      "sourceProcedure": "ILS Y or LOC Y RWY 15L",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 37.56925,
+            "lon": 126.1980556
+          },
+          "id": "MUNAN",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 37.6317222,
+            "lon": 126.3083333
+          },
+          "id": "PUDIM",
+          "role": "IF",
+          "legDistanceNm": 6.5,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1600,
+            "raw": "+1600"
+          },
+          "coordinates": {
+            "lat": 37.5481944,
+            "lon": 126.3829167
+          },
+          "id": "NOPEN",
+          "role": "FAF",
+          "legDistanceNm": 6.1,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 980,
+            "raw": "980"
+          },
+          "coordinates": {
+            "lat": 37.5225556,
+            "lon": 126.4057778
+          },
+          "id": "D3.0 ISLL",
+          "role": "SDF / LOC ONLY",
+          "legDistanceNm": 1.9,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4953056,
+            "lon": 126.4300556
+          },
+          "id": "D1.0 ISLL",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 2.0,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 23,
+            "raw": "THR ELEV 23"
+          },
+          "coordinates": {
+            "lat": 37.4839444,
+            "lon": 126.4401556
+          },
+          "id": "THR RWY 15L",
+          "role": "Runway Threshold",
+          "legDistanceNm": 0.8,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.1980556,
+            37.56925
+          ],
+          [
+            126.3083333,
+            37.6317222
+          ],
+          [
+            126.3829167,
+            37.5481944
+          ],
+          [
+            126.4057778,
+            37.5225556
+          ],
+          [
+            126.4300556,
+            37.4953056
+          ],
+          [
+            126.4401556,
+            37.4839444
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.5,
+          "from": "MUNAN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.1980556,
+                37.56925
+              ],
+              [
+                126.3083333,
+                37.6317222
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY15-REP-001",
+          "procedureId": "RKSI-IAP-MUNAN-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "PUDIM"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.1,
+          "from": "PUDIM",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3083333,
+                37.6317222
+              ],
+              [
+                126.3829167,
+                37.5481944
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY15-REP-002",
+          "procedureId": "RKSI-IAP-MUNAN-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "NOPEN"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 1.9,
+          "from": "NOPEN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3829167,
+                37.5481944
+              ],
+              [
+                126.4057778,
+                37.5225556
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY15-REP-003",
+          "procedureId": "RKSI-IAP-MUNAN-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D3.0 ISLL"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 2.0,
+          "from": "D3.0 ISLL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4057778,
+                37.5225556
+              ],
+              [
+                126.4300556,
+                37.4953056
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY15-REP-004",
+          "procedureId": "RKSI-IAP-MUNAN-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D1.0 ISLL"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 0.8,
+          "from": "D1.0 ISLL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4300556,
+                37.4953056
+              ],
+              [
+                126.4401556,
+                37.4839444
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY15-REP-005",
+          "procedureId": "RKSI-IAP-MUNAN-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "THR RWY 15L"
+        }
+      ],
+      "sequence": [
+        "MUNAN",
+        "PUDIM",
+        "NOPEN",
+        "D3.0 ISLL",
+        "D1.0 ISLL",
+        "THR RWY 15L"
+      ],
+      "notes": [
+        "Representative IAP route for connecting STAR endFix to RKSI runway landing flow.",
+        "Missed approach fixes and holding patterns are excluded.",
+        "legDistanceNm uses chart/profile distance where available; final MAPt-to-THR distances are rounded for map display.",
+        "Use geometry.coordinates for Mapbox LineString rendering. Coordinates are [lon, lat]."
+      ],
+      "source": "(2-51) INSTR APCH CHART.pdf"
+    },
+    "RKSI-IAP-BITIM-RWY15-REP": {
+      "airport": "RKSI",
+      "cycle": "AIRAC 2025-08-21",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "BITIM",
+        "runwayGroup": [
+          "15L/R"
+        ],
+        "selectedRunway": "15L",
+        "coveredRunways": [
+          "15L",
+          "15R"
+        ],
+        "reason": "Representative IAP route from BITIM for RKSI RWY 15 landing flow"
+      },
+      "entryFix": "BITIM",
+      "endFix": "THR RWY 15L",
+      "runways": [
+        "15L/R"
+      ],
+      "name": "BITIM-RWY15-REP",
+      "fullName": "Representative IAP from BITIM to 15L",
+      "sourceProcedure": "ILS Y or LOC Y RWY 15L",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3500,
+            "raw": "+3500 / +3000"
+          },
+          "coordinates": {
+            "lat": 37.68,
+            "lon": 126.4100278
+          },
+          "id": "BITIM",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 37.6717222,
+            "lon": 126.3461944
+          },
+          "id": "OLTEM",
+          "role": "SDF",
+          "legDistanceNm": 3.1,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 37.6317222,
+            "lon": 126.3083333
+          },
+          "id": "PUDIM",
+          "role": "IF",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1600,
+            "raw": "+1600"
+          },
+          "coordinates": {
+            "lat": 37.5481944,
+            "lon": 126.3829167
+          },
+          "id": "NOPEN",
+          "role": "FAF",
+          "legDistanceNm": 6.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 980,
+            "raw": "980"
+          },
+          "coordinates": {
+            "lat": 37.5225556,
+            "lon": 126.4057778
+          },
+          "id": "D3.0 ISLL",
+          "role": "SDF / LOC ONLY",
+          "legDistanceNm": 1.9,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4953056,
+            "lon": 126.4300556
+          },
+          "id": "D1.0 ISLL",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 2.0,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 23,
+            "raw": "THR ELEV 23"
+          },
+          "coordinates": {
+            "lat": 37.4839444,
+            "lon": 126.4401556
+          },
+          "id": "THR RWY 15L",
+          "role": "Runway Threshold",
+          "legDistanceNm": 0.8,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.4100278,
+            37.68
+          ],
+          [
+            126.3461944,
+            37.6717222
+          ],
+          [
+            126.3083333,
+            37.6317222
+          ],
+          [
+            126.3829167,
+            37.5481944
+          ],
+          [
+            126.4057778,
+            37.5225556
+          ],
+          [
+            126.4300556,
+            37.4953056
+          ],
+          [
+            126.4401556,
+            37.4839444
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.1,
+          "from": "BITIM",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4100278,
+                37.68
+              ],
+              [
+                126.3461944,
+                37.6717222
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY15-REP-001",
+          "procedureId": "RKSI-IAP-BITIM-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "OLTEM"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.0,
+          "from": "OLTEM",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3461944,
+                37.6717222
+              ],
+              [
+                126.3083333,
+                37.6317222
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY15-REP-002",
+          "procedureId": "RKSI-IAP-BITIM-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "PUDIM"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.1,
+          "from": "PUDIM",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3083333,
+                37.6317222
+              ],
+              [
+                126.3829167,
+                37.5481944
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY15-REP-003",
+          "procedureId": "RKSI-IAP-BITIM-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "NOPEN"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 1.9,
+          "from": "NOPEN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3829167,
+                37.5481944
+              ],
+              [
+                126.4057778,
+                37.5225556
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY15-REP-004",
+          "procedureId": "RKSI-IAP-BITIM-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D3.0 ISLL"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 2.0,
+          "from": "D3.0 ISLL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4057778,
+                37.5225556
+              ],
+              [
+                126.4300556,
+                37.4953056
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY15-REP-005",
+          "procedureId": "RKSI-IAP-BITIM-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D1.0 ISLL"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 0.8,
+          "from": "D1.0 ISLL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4300556,
+                37.4953056
+              ],
+              [
+                126.4401556,
+                37.4839444
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY15-REP-006",
+          "procedureId": "RKSI-IAP-BITIM-RWY15-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "THR RWY 15L"
+        }
+      ],
+      "sequence": [
+        "BITIM",
+        "OLTEM",
+        "PUDIM",
+        "NOPEN",
+        "D3.0 ISLL",
+        "D1.0 ISLL",
+        "THR RWY 15L"
+      ],
+      "notes": [
+        "Representative IAP route for connecting STAR endFix to RKSI runway landing flow.",
+        "Missed approach fixes and holding patterns are excluded.",
+        "legDistanceNm uses chart/profile distance where available; final MAPt-to-THR distances are rounded for map display.",
+        "Use geometry.coordinates for Mapbox LineString rendering. Coordinates are [lon, lat]."
+      ],
+      "source": "(2-51) INSTR APCH CHART.pdf"
+    },
+    "RKSI-IAP-MUNAN-RWY16-REP": {
+      "airport": "RKSI",
+      "cycle": "AIRAC 2025-08-21",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "MUNAN",
+        "runwayGroup": [
+          "16L/R"
+        ],
+        "selectedRunway": "16R",
+        "coveredRunways": [
+          "16L",
+          "16R"
+        ],
+        "reason": "Representative IAP route from MUNAN for RKSI RWY 16 landing flow"
+      },
+      "entryFix": "MUNAN",
+      "endFix": "THR RWY 16R",
+      "runways": [
+        "16L/R"
+      ],
+      "name": "MUNAN-RWY16-REP",
+      "fullName": "Representative IAP from MUNAN to 16R",
+      "sourceProcedure": "ILS or LOC RWY 16R",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 2000,
+            "raw": "+2000 / +1600"
+          },
+          "coordinates": {
+            "lat": 37.56925,
+            "lon": 126.1980556
+          },
+          "id": "MUNAN",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 37.6165556,
+            "lon": 126.2815278
+          },
+          "id": "OLKIK",
+          "role": "IF",
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1600,
+            "raw": "+1600"
+          },
+          "coordinates": {
+            "lat": 37.5330556,
+            "lon": 126.3561389
+          },
+          "id": "OSERI",
+          "role": "FAF",
+          "legDistanceNm": 6.1,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 990,
+            "raw": "990"
+          },
+          "coordinates": {
+            "lat": 37.5072778,
+            "lon": 126.3791111
+          },
+          "id": "D3.0 IRFS",
+          "role": "SDF / LOC ONLY",
+          "legDistanceNm": 1.9,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4814444,
+            "lon": 126.4021389
+          },
+          "id": "D1.1 IRFS",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 1.9,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 23,
+            "raw": "THR ELEV 23"
+          },
+          "coordinates": {
+            "lat": 37.4688083,
+            "lon": 126.4133833
+          },
+          "id": "THR RWY 16R",
+          "role": "Runway Threshold",
+          "legDistanceNm": 0.9,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.1980556,
+            37.56925
+          ],
+          [
+            126.2815278,
+            37.6165556
+          ],
+          [
+            126.3561389,
+            37.5330556
+          ],
+          [
+            126.3791111,
+            37.5072778
+          ],
+          [
+            126.4021389,
+            37.4814444
+          ],
+          [
+            126.4133833,
+            37.4688083
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 5.1,
+          "from": "MUNAN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.1980556,
+                37.56925
+              ],
+              [
+                126.2815278,
+                37.6165556
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY16-REP-001",
+          "procedureId": "RKSI-IAP-MUNAN-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "OLKIK"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.1,
+          "from": "OLKIK",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.2815278,
+                37.6165556
+              ],
+              [
+                126.3561389,
+                37.5330556
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY16-REP-002",
+          "procedureId": "RKSI-IAP-MUNAN-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "OSERI"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 1.9,
+          "from": "OSERI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3561389,
+                37.5330556
+              ],
+              [
+                126.3791111,
+                37.5072778
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY16-REP-003",
+          "procedureId": "RKSI-IAP-MUNAN-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D3.0 IRFS"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 1.9,
+          "from": "D3.0 IRFS",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3791111,
+                37.5072778
+              ],
+              [
+                126.4021389,
+                37.4814444
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY16-REP-004",
+          "procedureId": "RKSI-IAP-MUNAN-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D1.1 IRFS"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 0.9,
+          "from": "D1.1 IRFS",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4021389,
+                37.4814444
+              ],
+              [
+                126.4133833,
+                37.4688083
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-MUNAN-RWY16-REP-005",
+          "procedureId": "RKSI-IAP-MUNAN-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "THR RWY 16R"
+        }
+      ],
+      "sequence": [
+        "MUNAN",
+        "OLKIK",
+        "OSERI",
+        "D3.0 IRFS",
+        "D1.1 IRFS",
+        "THR RWY 16R"
+      ],
+      "notes": [
+        "Representative IAP route for connecting STAR endFix to RKSI runway landing flow.",
+        "Missed approach fixes and holding patterns are excluded.",
+        "legDistanceNm uses chart/profile distance where available; final MAPt-to-THR distances are rounded for map display.",
+        "Use geometry.coordinates for Mapbox LineString rendering. Coordinates are [lon, lat]."
+      ],
+      "source": "(2-51) INSTR APCH CHART.pdf"
+    },
+    "RKSI-IAP-BITIM-RWY16-REP": {
+      "airport": "RKSI",
+      "cycle": "AIRAC 2025-08-21",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "BITIM",
+        "runwayGroup": [
+          "16L/R"
+        ],
+        "selectedRunway": "16R",
+        "coveredRunways": [
+          "16L",
+          "16R"
+        ],
+        "reason": "Representative IAP route from BITIM for RKSI RWY 16 landing flow"
+      },
+      "entryFix": "BITIM",
+      "endFix": "THR RWY 16R",
+      "runways": [
+        "16L/R"
+      ],
+      "name": "BITIM-RWY16-REP",
+      "fullName": "Representative IAP from BITIM to 16R",
+      "sourceProcedure": "ILS or LOC RWY 16R",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3500,
+            "raw": "+3500 / +3000"
+          },
+          "coordinates": {
+            "lat": 37.68,
+            "lon": 126.4100278
+          },
+          "id": "BITIM",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 37.6665556,
+            "lon": 126.3064444
+          },
+          "id": "ATKON",
+          "role": "SDF",
+          "legDistanceNm": 5.0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 37.6165556,
+            "lon": 126.2815278
+          },
+          "id": "OLKIK",
+          "role": "IF",
+          "legDistanceNm": 3.2,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1600,
+            "raw": "+1600"
+          },
+          "coordinates": {
+            "lat": 37.5330556,
+            "lon": 126.3561389
+          },
+          "id": "OSERI",
+          "role": "FAF",
+          "legDistanceNm": 6.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 990,
+            "raw": "990"
+          },
+          "coordinates": {
+            "lat": 37.5072778,
+            "lon": 126.3791111
+          },
+          "id": "D3.0 IRFS",
+          "role": "SDF / LOC ONLY",
+          "legDistanceNm": 1.9,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4814444,
+            "lon": 126.4021389
+          },
+          "id": "D1.1 IRFS",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 1.9,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 23,
+            "raw": "THR ELEV 23"
+          },
+          "coordinates": {
+            "lat": 37.4688083,
+            "lon": 126.4133833
+          },
+          "id": "THR RWY 16R",
+          "role": "Runway Threshold",
+          "legDistanceNm": 0.9,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.4100278,
+            37.68
+          ],
+          [
+            126.3064444,
+            37.6665556
+          ],
+          [
+            126.2815278,
+            37.6165556
+          ],
+          [
+            126.3561389,
+            37.5330556
+          ],
+          [
+            126.3791111,
+            37.5072778
+          ],
+          [
+            126.4021389,
+            37.4814444
+          ],
+          [
+            126.4133833,
+            37.4688083
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 5.0,
+          "from": "BITIM",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4100278,
+                37.68
+              ],
+              [
+                126.3064444,
+                37.6665556
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY16-REP-001",
+          "procedureId": "RKSI-IAP-BITIM-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "ATKON"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.2,
+          "from": "ATKON",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3064444,
+                37.6665556
+              ],
+              [
+                126.2815278,
+                37.6165556
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY16-REP-002",
+          "procedureId": "RKSI-IAP-BITIM-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "OLKIK"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.1,
+          "from": "OLKIK",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.2815278,
+                37.6165556
+              ],
+              [
+                126.3561389,
+                37.5330556
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY16-REP-003",
+          "procedureId": "RKSI-IAP-BITIM-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "OSERI"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 1.9,
+          "from": "OSERI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3561389,
+                37.5330556
+              ],
+              [
+                126.3791111,
+                37.5072778
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY16-REP-004",
+          "procedureId": "RKSI-IAP-BITIM-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D3.0 IRFS"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 1.9,
+          "from": "D3.0 IRFS",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3791111,
+                37.5072778
+              ],
+              [
+                126.4021389,
+                37.4814444
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY16-REP-005",
+          "procedureId": "RKSI-IAP-BITIM-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D1.1 IRFS"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 0.9,
+          "from": "D1.1 IRFS",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4021389,
+                37.4814444
+              ],
+              [
+                126.4133833,
+                37.4688083
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-BITIM-RWY16-REP-006",
+          "procedureId": "RKSI-IAP-BITIM-RWY16-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "THR RWY 16R"
+        }
+      ],
+      "sequence": [
+        "BITIM",
+        "ATKON",
+        "OLKIK",
+        "OSERI",
+        "D3.0 IRFS",
+        "D1.1 IRFS",
+        "THR RWY 16R"
+      ],
+      "notes": [
+        "Representative IAP route for connecting STAR endFix to RKSI runway landing flow.",
+        "Missed approach fixes and holding patterns are excluded.",
+        "legDistanceNm uses chart/profile distance where available; final MAPt-to-THR distances are rounded for map display.",
+        "Use geometry.coordinates for Mapbox LineString rendering. Coordinates are [lon, lat]."
+      ],
+      "source": "(2-51) INSTR APCH CHART.pdf"
+    },
+    "RKSI-IAP-PAMBI-RWY33-REP": {
+      "airport": "RKSI",
+      "cycle": "AIRAC 2025-08-21",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "PAMBI",
+        "runwayGroup": [
+          "33L/R"
+        ],
+        "selectedRunway": "33L",
+        "coveredRunways": [
+          "33L",
+          "33R"
+        ],
+        "reason": "Representative IAP route from PAMBI for RKSI RWY 33 landing flow"
+      },
+      "entryFix": "PAMBI",
+      "endFix": "THR RWY 33L",
+      "runways": [
+        "33L/R"
+      ],
+      "name": "PAMBI-RWY33-REP",
+      "fullName": "Representative IAP from PAMBI to 33L",
+      "sourceProcedure": "ILS or LOC RWY 33L",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3600,
+            "raw": "+3600"
+          },
+          "coordinates": {
+            "lat": 37.18175,
+            "lon": 126.5428889
+          },
+          "id": "PAMBI",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 37.24175,
+            "lon": 126.6490556
+          },
+          "id": "POSOK",
+          "role": "IF",
+          "legDistanceNm": 6.2,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3600,
+            "raw": "+3600"
+          },
+          "coordinates": {
+            "lat": 37.3040278,
+            "lon": 126.5940556
+          },
+          "id": "LEGUN",
+          "role": "SDF",
+          "legDistanceNm": 4.6,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 2600,
+            "raw": "+2600"
+          },
+          "coordinates": {
+            "lat": 37.3485278,
+            "lon": 126.5546667
+          },
+          "id": "BATAP",
+          "role": "FAF",
+          "legDistanceNm": 3.3,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4428333,
+            "lon": 126.471
+          },
+          "id": "D1.0 INLL",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 6.9,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 23,
+            "raw": "THR ELEV 23"
+          },
+          "coordinates": {
+            "lat": 37.454225,
+            "lon": 126.4608556
+          },
+          "id": "THR RWY 33L",
+          "role": "Runway Threshold",
+          "legDistanceNm": 0.8,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.5428889,
+            37.18175
+          ],
+          [
+            126.6490556,
+            37.24175
+          ],
+          [
+            126.5940556,
+            37.3040278
+          ],
+          [
+            126.5546667,
+            37.3485278
+          ],
+          [
+            126.471,
+            37.4428333
+          ],
+          [
+            126.4608556,
+            37.454225
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.2,
+          "from": "PAMBI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5428889,
+                37.18175
+              ],
+              [
+                126.6490556,
+                37.24175
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY33-REP-001",
+          "procedureId": "RKSI-IAP-PAMBI-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "POSOK"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 4.6,
+          "from": "POSOK",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.6490556,
+                37.24175
+              ],
+              [
+                126.5940556,
+                37.3040278
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY33-REP-002",
+          "procedureId": "RKSI-IAP-PAMBI-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "LEGUN"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.3,
+          "from": "LEGUN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5940556,
+                37.3040278
+              ],
+              [
+                126.5546667,
+                37.3485278
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY33-REP-003",
+          "procedureId": "RKSI-IAP-PAMBI-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "BATAP"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.9,
+          "from": "BATAP",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5546667,
+                37.3485278
+              ],
+              [
+                126.471,
+                37.4428333
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY33-REP-004",
+          "procedureId": "RKSI-IAP-PAMBI-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D1.0 INLL"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 0.8,
+          "from": "D1.0 INLL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.471,
+                37.4428333
+              ],
+              [
+                126.4608556,
+                37.454225
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY33-REP-005",
+          "procedureId": "RKSI-IAP-PAMBI-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "THR RWY 33L"
+        }
+      ],
+      "sequence": [
+        "PAMBI",
+        "POSOK",
+        "LEGUN",
+        "BATAP",
+        "D1.0 INLL",
+        "THR RWY 33L"
+      ],
+      "notes": [
+        "Representative IAP route for connecting STAR endFix to RKSI runway landing flow.",
+        "Missed approach fixes and holding patterns are excluded.",
+        "legDistanceNm uses chart/profile distance where available; final MAPt-to-THR distances are rounded for map display.",
+        "Use geometry.coordinates for Mapbox LineString rendering. Coordinates are [lon, lat]."
+      ],
+      "source": "(2-51) INSTR APCH CHART.pdf"
+    },
+    "RKSI-IAP-ENPIL-RWY33-REP": {
+      "airport": "RKSI",
+      "cycle": "AIRAC 2025-08-21",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "ENPIL",
+        "runwayGroup": [
+          "33L/R"
+        ],
+        "selectedRunway": "33L",
+        "coveredRunways": [
+          "33L",
+          "33R"
+        ],
+        "reason": "Representative IAP route from ENPIL for RKSI RWY 33 landing flow"
+      },
+      "entryFix": "ENPIL",
+      "endFix": "THR RWY 33L",
+      "runways": [
+        "33L/R"
+      ],
+      "name": "ENPIL-RWY33-REP",
+      "fullName": "Representative IAP from ENPIL to 33L",
+      "sourceProcedure": "ILS or LOC RWY 33L",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 7000,
+            "raw": "+7000"
+          },
+          "coordinates": {
+            "lat": 37.1608333,
+            "lon": 126.7261111
+          },
+          "id": "ENPIL",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 37.1996111,
+            "lon": 126.68625
+          },
+          "id": "KE019",
+          "role": "SDF",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 37.24175,
+            "lon": 126.6490556
+          },
+          "id": "POSOK",
+          "role": "IF",
+          "legDistanceNm": 3.1,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3600,
+            "raw": "+3600"
+          },
+          "coordinates": {
+            "lat": 37.3040278,
+            "lon": 126.5940556
+          },
+          "id": "LEGUN",
+          "role": "SDF",
+          "legDistanceNm": 4.6,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 2600,
+            "raw": "+2600"
+          },
+          "coordinates": {
+            "lat": 37.3485278,
+            "lon": 126.5546667
+          },
+          "id": "BATAP",
+          "role": "FAF",
+          "legDistanceNm": 3.3,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4428333,
+            "lon": 126.471
+          },
+          "id": "D1.0 INLL",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 6.9,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 23,
+            "raw": "THR ELEV 23"
+          },
+          "coordinates": {
+            "lat": 37.454225,
+            "lon": 126.4608556
+          },
+          "id": "THR RWY 33L",
+          "role": "Runway Threshold",
+          "legDistanceNm": 0.8,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.7261111,
+            37.1608333
+          ],
+          [
+            126.68625,
+            37.1996111
+          ],
+          [
+            126.6490556,
+            37.24175
+          ],
+          [
+            126.5940556,
+            37.3040278
+          ],
+          [
+            126.5546667,
+            37.3485278
+          ],
+          [
+            126.471,
+            37.4428333
+          ],
+          [
+            126.4608556,
+            37.454225
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.0,
+          "from": "ENPIL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.7261111,
+                37.1608333
+              ],
+              [
+                126.68625,
+                37.1996111
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY33-REP-001",
+          "procedureId": "RKSI-IAP-ENPIL-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "KE019"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.1,
+          "from": "KE019",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.68625,
+                37.1996111
+              ],
+              [
+                126.6490556,
+                37.24175
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY33-REP-002",
+          "procedureId": "RKSI-IAP-ENPIL-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "POSOK"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 4.6,
+          "from": "POSOK",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.6490556,
+                37.24175
+              ],
+              [
+                126.5940556,
+                37.3040278
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY33-REP-003",
+          "procedureId": "RKSI-IAP-ENPIL-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "LEGUN"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.3,
+          "from": "LEGUN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5940556,
+                37.3040278
+              ],
+              [
+                126.5546667,
+                37.3485278
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY33-REP-004",
+          "procedureId": "RKSI-IAP-ENPIL-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "BATAP"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.9,
+          "from": "BATAP",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5546667,
+                37.3485278
+              ],
+              [
+                126.471,
+                37.4428333
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY33-REP-005",
+          "procedureId": "RKSI-IAP-ENPIL-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D1.0 INLL"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 0.8,
+          "from": "D1.0 INLL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.471,
+                37.4428333
+              ],
+              [
+                126.4608556,
+                37.454225
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY33-REP-006",
+          "procedureId": "RKSI-IAP-ENPIL-RWY33-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "THR RWY 33L"
+        }
+      ],
+      "sequence": [
+        "ENPIL",
+        "KE019",
+        "POSOK",
+        "LEGUN",
+        "BATAP",
+        "D1.0 INLL",
+        "THR RWY 33L"
+      ],
+      "notes": [
+        "Representative IAP route for connecting STAR endFix to RKSI runway landing flow.",
+        "Missed approach fixes and holding patterns are excluded.",
+        "legDistanceNm uses chart/profile distance where available; final MAPt-to-THR distances are rounded for map display.",
+        "Use geometry.coordinates for Mapbox LineString rendering. Coordinates are [lon, lat]."
+      ],
+      "source": "(2-51) INSTR APCH CHART.pdf"
+    },
+    "RKSI-IAP-PAMBI-RWY34-REP": {
+      "airport": "RKSI",
+      "cycle": "AIRAC 2025-08-21",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "PAMBI",
+        "runwayGroup": [
+          "34L/R"
+        ],
+        "selectedRunway": "34R",
+        "coveredRunways": [
+          "34L",
+          "34R"
+        ],
+        "reason": "Representative IAP route from PAMBI for RKSI RWY 34 landing flow"
+      },
+      "entryFix": "PAMBI",
+      "endFix": "THR RWY 34R",
+      "runways": [
+        "34L/R"
+      ],
+      "name": "PAMBI-RWY34-REP",
+      "fullName": "Representative IAP from PAMBI to 34R",
+      "sourceProcedure": "ILS or LOC RWY 34R",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 2600,
+            "raw": "+2600"
+          },
+          "coordinates": {
+            "lat": 37.18175,
+            "lon": 126.5428889
+          },
+          "id": "PAMBI",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1600,
+            "raw": "+1600"
+          },
+          "coordinates": {
+            "lat": 37.2309722,
+            "lon": 126.6299722
+          },
+          "id": "NIPUT",
+          "role": "IF",
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1600,
+            "raw": "+1600"
+          },
+          "coordinates": {
+            "lat": 37.2932222,
+            "lon": 126.5749444
+          },
+          "id": "DALKA",
+          "role": "SDF",
+          "legDistanceNm": 4.6,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1600,
+            "raw": "+1600"
+          },
+          "coordinates": {
+            "lat": 37.3791944,
+            "lon": 126.4987778
+          },
+          "id": "PIPAN",
+          "role": "FAF / LOC ONLY",
+          "legDistanceNm": 6.3,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4321389,
+            "lon": 126.45175
+          },
+          "id": "D1.0 IRKN",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 3.9,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 23,
+            "raw": "THR ELEV 23"
+          },
+          "coordinates": {
+            "lat": 37.4434139,
+            "lon": 126.441725
+          },
+          "id": "THR RWY 34R",
+          "role": "Runway Threshold",
+          "legDistanceNm": 0.8,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.5428889,
+            37.18175
+          ],
+          [
+            126.6299722,
+            37.2309722
+          ],
+          [
+            126.5749444,
+            37.2932222
+          ],
+          [
+            126.4987778,
+            37.3791944
+          ],
+          [
+            126.45175,
+            37.4321389
+          ],
+          [
+            126.441725,
+            37.4434139
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 5.1,
+          "from": "PAMBI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5428889,
+                37.18175
+              ],
+              [
+                126.6299722,
+                37.2309722
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY34-REP-001",
+          "procedureId": "RKSI-IAP-PAMBI-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "NIPUT"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 4.6,
+          "from": "NIPUT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.6299722,
+                37.2309722
+              ],
+              [
+                126.5749444,
+                37.2932222
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY34-REP-002",
+          "procedureId": "RKSI-IAP-PAMBI-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "DALKA"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.3,
+          "from": "DALKA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5749444,
+                37.2932222
+              ],
+              [
+                126.4987778,
+                37.3791944
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY34-REP-003",
+          "procedureId": "RKSI-IAP-PAMBI-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "PIPAN"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.9,
+          "from": "PIPAN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4987778,
+                37.3791944
+              ],
+              [
+                126.45175,
+                37.4321389
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY34-REP-004",
+          "procedureId": "RKSI-IAP-PAMBI-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D1.0 IRKN"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 0.8,
+          "from": "D1.0 IRKN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.45175,
+                37.4321389
+              ],
+              [
+                126.441725,
+                37.4434139
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-PAMBI-RWY34-REP-005",
+          "procedureId": "RKSI-IAP-PAMBI-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "THR RWY 34R"
+        }
+      ],
+      "sequence": [
+        "PAMBI",
+        "NIPUT",
+        "DALKA",
+        "PIPAN",
+        "D1.0 IRKN",
+        "THR RWY 34R"
+      ],
+      "notes": [
+        "Representative IAP route for connecting STAR endFix to RKSI runway landing flow.",
+        "Missed approach fixes and holding patterns are excluded.",
+        "legDistanceNm uses chart/profile distance where available; final MAPt-to-THR distances are rounded for map display.",
+        "Use geometry.coordinates for Mapbox LineString rendering. Coordinates are [lon, lat]."
+      ],
+      "source": "(2-51) INSTR APCH CHART.pdf"
+    },
+    "RKSI-IAP-ENPIL-RWY34-REP": {
+      "airport": "RKSI",
+      "cycle": "AIRAC 2025-08-21",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "ENPIL",
+        "runwayGroup": [
+          "34L/R"
+        ],
+        "selectedRunway": "34R",
+        "coveredRunways": [
+          "34L",
+          "34R"
+        ],
+        "reason": "Representative IAP route from ENPIL for RKSI RWY 34 landing flow"
+      },
+      "entryFix": "ENPIL",
+      "endFix": "THR RWY 34R",
+      "runways": [
+        "34L/R"
+      ],
+      "name": "ENPIL-RWY34-REP",
+      "fullName": "Representative IAP from ENPIL to 34R",
+      "sourceProcedure": "ILS or LOC RWY 34R",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 7000,
+            "raw": "+7000"
+          },
+          "coordinates": {
+            "lat": 37.1608333,
+            "lon": 126.7261111
+          },
+          "id": "ENPIL",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 37.189,
+            "lon": 126.667
+          },
+          "id": "PY019",
+          "role": "SDF",
+          "legDistanceNm": 3.3,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 37.2309722,
+            "lon": 126.6299722
+          },
+          "id": "NIPUT",
+          "role": "IF",
+          "legDistanceNm": 3.1,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1600,
+            "raw": "+1600"
+          },
+          "coordinates": {
+            "lat": 37.2932222,
+            "lon": 126.5749444
+          },
+          "id": "DALKA",
+          "role": "SDF",
+          "legDistanceNm": 4.6,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1600,
+            "raw": "+1600"
+          },
+          "coordinates": {
+            "lat": 37.3791944,
+            "lon": 126.4987778
+          },
+          "id": "PIPAN",
+          "role": "FAF / LOC ONLY",
+          "legDistanceNm": 6.3,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4321389,
+            "lon": 126.45175
+          },
+          "id": "D1.0 IRKN",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 3.9,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 23,
+            "raw": "THR ELEV 23"
+          },
+          "coordinates": {
+            "lat": 37.4434139,
+            "lon": 126.441725
+          },
+          "id": "THR RWY 34R",
+          "role": "Runway Threshold",
+          "legDistanceNm": 0.8,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.7261111,
+            37.1608333
+          ],
+          [
+            126.667,
+            37.189
+          ],
+          [
+            126.6299722,
+            37.2309722
+          ],
+          [
+            126.5749444,
+            37.2932222
+          ],
+          [
+            126.4987778,
+            37.3791944
+          ],
+          [
+            126.45175,
+            37.4321389
+          ],
+          [
+            126.441725,
+            37.4434139
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.3,
+          "from": "ENPIL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.7261111,
+                37.1608333
+              ],
+              [
+                126.667,
+                37.189
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY34-REP-001",
+          "procedureId": "RKSI-IAP-ENPIL-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "PY019"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.1,
+          "from": "PY019",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.667,
+                37.189
+              ],
+              [
+                126.6299722,
+                37.2309722
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY34-REP-002",
+          "procedureId": "RKSI-IAP-ENPIL-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "NIPUT"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 4.6,
+          "from": "NIPUT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.6299722,
+                37.2309722
+              ],
+              [
+                126.5749444,
+                37.2932222
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY34-REP-003",
+          "procedureId": "RKSI-IAP-ENPIL-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "DALKA"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 6.3,
+          "from": "DALKA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5749444,
+                37.2932222
+              ],
+              [
+                126.4987778,
+                37.3791944
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY34-REP-004",
+          "procedureId": "RKSI-IAP-ENPIL-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "PIPAN"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 3.9,
+          "from": "PIPAN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4987778,
+                37.3791944
+              ],
+              [
+                126.45175,
+                37.4321389
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY34-REP-005",
+          "procedureId": "RKSI-IAP-ENPIL-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "D1.0 IRKN"
+        },
+        {
+          "airport": "RKSI",
+          "cycle": "AIRAC 2025-08-21",
+          "distanceNm": 0.8,
+          "from": "D1.0 IRKN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.45175,
+                37.4321389
+              ],
+              [
+                126.441725,
+                37.4434139
+              ]
+            ]
+          },
+          "id": "RKSI-IAP-ENPIL-RWY34-REP-006",
+          "procedureId": "RKSI-IAP-ENPIL-RWY34-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 6,
+          "source": "(2-51) INSTR APCH CHART.pdf",
+          "to": "THR RWY 34R"
+        }
+      ],
+      "sequence": [
+        "ENPIL",
+        "PY019",
+        "NIPUT",
+        "DALKA",
+        "PIPAN",
+        "D1.0 IRKN",
+        "THR RWY 34R"
+      ],
+      "notes": [
+        "Representative IAP route for connecting STAR endFix to RKSI runway landing flow.",
+        "Missed approach fixes and holding patterns are excluded.",
+        "legDistanceNm uses chart/profile distance where available; final MAPt-to-THR distances are rounded for map display.",
+        "Use geometry.coordinates for Mapbox LineString rendering. Coordinates are [lon, lat]."
+      ],
+      "source": "(2-51) INSTR APCH CHART.pdf"
+    }
+  }
+}

@@ -23,7 +23,9 @@
       "Bash(python -c ' *)",
       "Bash(pip install *)",
       "Bash(python -c \"import pdfplumber; print\\('ok'\\)\")",
-      "Bash(python parse_rksi_star.py)"
+      "Bash(python parse_rksi_star.py)",
+      "Bash(python -c \"from pdf2image import convert_from_path; print\\('ok'\\)\")",
+      "Bash(xargs grep -l \"route-check\\\\|RouteCheck\\\\|routeCheck\\\\|routePlanner\\\\|ROUTE_PREVIEW\")"
     ]
   }
 }

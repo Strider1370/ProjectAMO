@@ -271,3 +271,19 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
     previewGeojson: buildPreviewGeometry(departure, arrival, navdata.navpoints, path, segments),
   }
 }
+
+const iapDataCache = {}
+
+export async function loadIapData(icao) {
+  if (!icao) return null
+  const key = icao.toUpperCase()
+  if (!iapDataCache[key]) {
+    try {
+      iapDataCache[key] = await fetchJson(`procedures/${key.toLowerCase()}-representative-iap-routes.json`)
+    } catch (e) {
+      console.warn(`Failed to load IAP data for ${key}`, e)
+      return null
+    }
+  }
+  return iapDataCache[key]
+}

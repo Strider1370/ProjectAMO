@@ -1,0 +1,4335 @@
+{
+  "metadata": {
+    "airport": "RKSS",
+    "dataModel": "procedure-canonical-v1",
+    "generatedFor": "Project KMA route display",
+    "source": "(2-23) RKSS STAR.pdf",
+    "notes": [
+      "Built to mirror the user's RKSI STAR JSON structure: fixes, geometry, segments, sequence, startFix/endFix.",
+      "Holding patterns are excluded.",
+      "Some altitude constraints are stored as raw chart strings where exact min/max parsing is ambiguous.",
+      "Not for operational navigation; intended for map rendering and route-context analysis. Verify against the current AIP before operational use."
+    ]
+  },
+  "starProcedures": {
+    "RKSS-STAR-OLMEN2U": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-09-03",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "DOKDO",
+      "enrouteFix": "OLMEN",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": 15000,
+            "minFt": 15000,
+            "raw": "@FL150"
+          },
+          "coordinates": {
+            "lat": 36.7370556,
+            "lon": 126.991
+          },
+          "id": "OLMEN",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.0237778,
+            "lon": 127.3212222
+          },
+          "id": "UPKIG",
+          "legDistanceNm": 23.4,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.1290556,
+            "lon": 127.4437222
+          },
+          "id": "KAKSO",
+          "legDistanceNm": 8.6,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 9000,
+            "minFt": null,
+            "raw": "-9000"
+          },
+          "coordinates": {
+            "lat": 37.2303333,
+            "lon": 127.4443056
+          },
+          "id": "DU063",
+          "legDistanceNm": 6.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.3629722,
+            "lon": 127.2047778
+          },
+          "id": "SUPOM",
+          "legDistanceNm": 14.0,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4136111,
+            "lon": 126.9283611
+          },
+          "id": "SEL",
+          "legDistanceNm": 13.6,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 8000,
+            "minFt": 8000,
+            "raw": "@8000"
+          },
+          "coordinates": {
+            "lat": 37.4578333,
+            "lon": 126.8026111
+          },
+          "id": "DU030",
+          "legDistanceNm": 6.6,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 7000,
+            "raw": "+7000"
+          },
+          "coordinates": {
+            "lat": 37.4866667,
+            "lon": 126.7
+          },
+          "id": "DUDOT",
+          "legDistanceNm": 5.2,
+          "pathTerminator": "TF",
+          "sequence": 8,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4982222,
+            "lon": 126.5966944
+          },
+          "id": "DU022",
+          "legDistanceNm": 5.0,
+          "pathTerminator": "TF",
+          "sequence": 9,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 220
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.5693611,
+            "lon": 126.5074167
+          },
+          "id": "DU018",
+          "legDistanceNm": 6.0,
+          "pathTerminator": "TF",
+          "sequence": 10,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 220
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 4000,
+            "raw": "+4000"
+          },
+          "coordinates": {
+            "lat": 37.60475,
+            "lon": 126.5519722
+          },
+          "id": "DOKDO",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 11,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Olmen Two Uniform",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.991,
+            36.7370556
+          ],
+          [
+            127.3212222,
+            37.0237778
+          ],
+          [
+            127.4437222,
+            37.1290556
+          ],
+          [
+            127.4443056,
+            37.2303333
+          ],
+          [
+            127.2047778,
+            37.3629722
+          ],
+          [
+            126.9283611,
+            37.4136111
+          ],
+          [
+            126.8026111,
+            37.4578333
+          ],
+          [
+            126.7,
+            37.4866667
+          ],
+          [
+            126.5966944,
+            37.4982222
+          ],
+          [
+            126.5074167,
+            37.5693611
+          ],
+          [
+            126.5519722,
+            37.60475
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-OLMEN2U",
+      "isComplete": true,
+      "name": "OLMEN2U",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-23 / 2-23-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "14L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 23.4,
+          "from": "OLMEN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.991,
+                36.7370556
+              ],
+              [
+                127.3212222,
+                37.0237778
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-001",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "UPKIG"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 8.6,
+          "from": "UPKIG",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.3212222,
+                37.0237778
+              ],
+              [
+                127.4437222,
+                37.1290556
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-002",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "KAKSO"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 6.1,
+          "from": "KAKSO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.4437222,
+                37.1290556
+              ],
+              [
+                127.4443056,
+                37.2303333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-003",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU063"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 14.0,
+          "from": "DU063",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.4443056,
+                37.2303333
+              ],
+              [
+                127.2047778,
+                37.3629722
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-004",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "SUPOM"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 13.6,
+          "from": "SUPOM",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.2047778,
+                37.3629722
+              ],
+              [
+                126.9283611,
+                37.4136111
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-005",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "SEL"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 6.6,
+          "from": "SEL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.9283611,
+                37.4136111
+              ],
+              [
+                126.8026111,
+                37.4578333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-006",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU030"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 5.2,
+          "from": "DU030",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.8026111,
+                37.4578333
+              ],
+              [
+                126.7,
+                37.4866667
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-007",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DUDOT"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 5.0,
+          "from": "DUDOT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.7,
+                37.4866667
+              ],
+              [
+                126.5966944,
+                37.4982222
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-008",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 8,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU022"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 6.0,
+          "from": "DU022",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5966944,
+                37.4982222
+              ],
+              [
+                126.5074167,
+                37.5693611
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-009",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 9,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU018"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 3.0,
+          "from": "DU018",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5074167,
+                37.5693611
+              ],
+              [
+                126.5519722,
+                37.60475
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2U-010",
+          "procedureId": "RKSS-STAR-OLMEN2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 10,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DOKDO"
+        }
+      ],
+      "sequence": [
+        "OLMEN",
+        "UPKIG",
+        "KAKSO",
+        "DU063",
+        "SUPOM",
+        "SEL",
+        "DU030",
+        "DUDOT",
+        "DU022",
+        "DU018",
+        "DOKDO"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "OLMEN"
+    },
+    "RKSS-STAR-GUKDO2U": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-09-03",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "DOKDO",
+      "enrouteFix": "GUKDO",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 16000,
+            "raw": "+FL160"
+          },
+          "coordinates": {
+            "lat": 37.0196944,
+            "lon": 127.6396111
+          },
+          "id": "GUKDO",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.1708056,
+            "lon": 127.5512778
+          },
+          "id": "GU069",
+          "legDistanceNm": 10.0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 9000,
+            "minFt": null,
+            "raw": "-9000"
+          },
+          "coordinates": {
+            "lat": 37.2303333,
+            "lon": 127.4443056
+          },
+          "id": "DU063",
+          "legDistanceNm": 6.2,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.3629722,
+            "lon": 127.2047778
+          },
+          "id": "SUPOM",
+          "legDistanceNm": 14.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4136111,
+            "lon": 126.9283611
+          },
+          "id": "SEL",
+          "legDistanceNm": 13.6,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 8000,
+            "minFt": 8000,
+            "raw": "@8000"
+          },
+          "coordinates": {
+            "lat": 37.4578333,
+            "lon": 126.8026111
+          },
+          "id": "DU030",
+          "legDistanceNm": 6.6,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 7000,
+            "raw": "+7000"
+          },
+          "coordinates": {
+            "lat": 37.4866667,
+            "lon": 126.7
+          },
+          "id": "DUDOT",
+          "legDistanceNm": 5.2,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4982222,
+            "lon": 126.5966944
+          },
+          "id": "DU022",
+          "legDistanceNm": 5.0,
+          "pathTerminator": "TF",
+          "sequence": 8,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 220
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.5693611,
+            "lon": 126.5074167
+          },
+          "id": "DU018",
+          "legDistanceNm": 6.0,
+          "pathTerminator": "TF",
+          "sequence": 9,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 220
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 4000,
+            "raw": "+4000"
+          },
+          "coordinates": {
+            "lat": 37.60475,
+            "lon": 126.5519722
+          },
+          "id": "DOKDO",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 10,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Gukdo Two Uniform",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            127.6396111,
+            37.0196944
+          ],
+          [
+            127.5512778,
+            37.1708056
+          ],
+          [
+            127.4443056,
+            37.2303333
+          ],
+          [
+            127.2047778,
+            37.3629722
+          ],
+          [
+            126.9283611,
+            37.4136111
+          ],
+          [
+            126.8026111,
+            37.4578333
+          ],
+          [
+            126.7,
+            37.4866667
+          ],
+          [
+            126.5966944,
+            37.4982222
+          ],
+          [
+            126.5074167,
+            37.5693611
+          ],
+          [
+            126.5519722,
+            37.60475
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-GUKDO2U",
+      "isComplete": true,
+      "name": "GUKDO2U",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-23 / 2-23-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "14L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 10.0,
+          "from": "GUKDO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.6396111,
+                37.0196944
+              ],
+              [
+                127.5512778,
+                37.1708056
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2U-001",
+          "procedureId": "RKSS-STAR-GUKDO2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "GU069"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 6.2,
+          "from": "GU069",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.5512778,
+                37.1708056
+              ],
+              [
+                127.4443056,
+                37.2303333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2U-002",
+          "procedureId": "RKSS-STAR-GUKDO2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU063"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 14.0,
+          "from": "DU063",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.4443056,
+                37.2303333
+              ],
+              [
+                127.2047778,
+                37.3629722
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2U-003",
+          "procedureId": "RKSS-STAR-GUKDO2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "SUPOM"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 13.6,
+          "from": "SUPOM",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.2047778,
+                37.3629722
+              ],
+              [
+                126.9283611,
+                37.4136111
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2U-004",
+          "procedureId": "RKSS-STAR-GUKDO2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "SEL"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 6.6,
+          "from": "SEL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.9283611,
+                37.4136111
+              ],
+              [
+                126.8026111,
+                37.4578333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2U-005",
+          "procedureId": "RKSS-STAR-GUKDO2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU030"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 5.2,
+          "from": "DU030",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.8026111,
+                37.4578333
+              ],
+              [
+                126.7,
+                37.4866667
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2U-006",
+          "procedureId": "RKSS-STAR-GUKDO2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DUDOT"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 5.0,
+          "from": "DUDOT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.7,
+                37.4866667
+              ],
+              [
+                126.5966944,
+                37.4982222
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2U-007",
+          "procedureId": "RKSS-STAR-GUKDO2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU022"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 6.0,
+          "from": "DU022",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5966944,
+                37.4982222
+              ],
+              [
+                126.5074167,
+                37.5693611
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2U-008",
+          "procedureId": "RKSS-STAR-GUKDO2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 8,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU018"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 3.0,
+          "from": "DU018",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5074167,
+                37.5693611
+              ],
+              [
+                126.5519722,
+                37.60475
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2U-009",
+          "procedureId": "RKSS-STAR-GUKDO2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 9,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DOKDO"
+        }
+      ],
+      "sequence": [
+        "GUKDO",
+        "GU069",
+        "DU063",
+        "SUPOM",
+        "SEL",
+        "DU030",
+        "DUDOT",
+        "DU022",
+        "DU018",
+        "DOKDO"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "GUKDO"
+    },
+    "RKSS-STAR-KARBU2U": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-09-03",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "DOKDO",
+      "enrouteFix": "KARBU",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 13000,
+            "raw": "+13000"
+          },
+          "coordinates": {
+            "lat": 37.5330556,
+            "lon": 127.6644444
+          },
+          "id": "KARBU",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 12000,
+            "raw": "+12000"
+          },
+          "coordinates": {
+            "lat": 37.4874167,
+            "lon": 127.3794167
+          },
+          "id": "EGOBA",
+          "legDistanceNm": 13.9,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4136111,
+            "lon": 126.9283611
+          },
+          "id": "SEL",
+          "legDistanceNm": 22.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 8000,
+            "minFt": 8000,
+            "raw": "@8000"
+          },
+          "coordinates": {
+            "lat": 37.4578333,
+            "lon": 126.8026111
+          },
+          "id": "DU030",
+          "legDistanceNm": 6.6,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 7000,
+            "raw": "+7000"
+          },
+          "coordinates": {
+            "lat": 37.4866667,
+            "lon": 126.7
+          },
+          "id": "DUDOT",
+          "legDistanceNm": 5.2,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4982222,
+            "lon": 126.5966944
+          },
+          "id": "DU022",
+          "legDistanceNm": 5.0,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 220
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.5693611,
+            "lon": 126.5074167
+          },
+          "id": "DU018",
+          "legDistanceNm": 6.0,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 220
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 4000,
+            "raw": "+4000"
+          },
+          "coordinates": {
+            "lat": 37.60475,
+            "lon": 126.5519722
+          },
+          "id": "DOKDO",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 8,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Karbu Two Uniform",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            127.6644444,
+            37.5330556
+          ],
+          [
+            127.3794167,
+            37.4874167
+          ],
+          [
+            126.9283611,
+            37.4136111
+          ],
+          [
+            126.8026111,
+            37.4578333
+          ],
+          [
+            126.7,
+            37.4866667
+          ],
+          [
+            126.5966944,
+            37.4982222
+          ],
+          [
+            126.5074167,
+            37.5693611
+          ],
+          [
+            126.5519722,
+            37.60475
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-KARBU2U",
+      "isComplete": true,
+      "name": "KARBU2U",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-23 / 2-23-2.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "14L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 13.9,
+          "from": "KARBU",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.6644444,
+                37.5330556
+              ],
+              [
+                127.3794167,
+                37.4874167
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2U-001",
+          "procedureId": "RKSS-STAR-KARBU2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "EGOBA"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 22.0,
+          "from": "EGOBA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.3794167,
+                37.4874167
+              ],
+              [
+                126.9283611,
+                37.4136111
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2U-002",
+          "procedureId": "RKSS-STAR-KARBU2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "SEL"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 6.6,
+          "from": "SEL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.9283611,
+                37.4136111
+              ],
+              [
+                126.8026111,
+                37.4578333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2U-003",
+          "procedureId": "RKSS-STAR-KARBU2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU030"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 5.2,
+          "from": "DU030",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.8026111,
+                37.4578333
+              ],
+              [
+                126.7,
+                37.4866667
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2U-004",
+          "procedureId": "RKSS-STAR-KARBU2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DUDOT"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 5.0,
+          "from": "DUDOT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.7,
+                37.4866667
+              ],
+              [
+                126.5966944,
+                37.4982222
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2U-005",
+          "procedureId": "RKSS-STAR-KARBU2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU022"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 6.0,
+          "from": "DU022",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5966944,
+                37.4982222
+              ],
+              [
+                126.5074167,
+                37.5693611
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2U-006",
+          "procedureId": "RKSS-STAR-KARBU2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU018"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-09-03",
+          "distanceNm": 3.0,
+          "from": "DU018",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5074167,
+                37.5693611
+              ],
+              [
+                126.5519722,
+                37.60475
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2U-007",
+          "procedureId": "RKSS-STAR-KARBU2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DOKDO"
+        }
+      ],
+      "sequence": [
+        "KARBU",
+        "EGOBA",
+        "SEL",
+        "DU030",
+        "DUDOT",
+        "DU022",
+        "DU018",
+        "DOKDO"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "KARBU"
+    },
+    "RKSS-STAR-REBIT2U": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "DOKDO",
+      "enrouteFix": "REBIT",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": 17000,
+            "minFt": null,
+            "raw": "-FL170"
+          },
+          "coordinates": {
+            "lat": 37.2008333,
+            "lon": 125.4868611
+          },
+          "id": "REBIT",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 12000,
+            "raw": "+12000"
+          },
+          "coordinates": {
+            "lat": 37.3035,
+            "lon": 125.6961389
+          },
+          "id": "PU060",
+          "legDistanceNm": 11.8,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 9000,
+            "raw": "+9000"
+          },
+          "coordinates": {
+            "lat": 37.4283889,
+            "lon": 125.9525
+          },
+          "id": "PU046",
+          "legDistanceNm": 14.4,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 7000,
+            "raw": "+7000"
+          },
+          "coordinates": {
+            "lat": 37.5405556,
+            "lon": 126.1844444
+          },
+          "id": "PU033",
+          "legDistanceNm": 13.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.5775278,
+            "lon": 126.3450833
+          },
+          "id": "PU025",
+          "legDistanceNm": 8.0,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 4000,
+            "raw": "+4000"
+          },
+          "coordinates": {
+            "lat": 37.60475,
+            "lon": 126.5519722
+          },
+          "id": "DOKDO",
+          "legDistanceNm": 10.0,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Rebit Two Uniform",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            125.4868611,
+            37.2008333
+          ],
+          [
+            125.6961389,
+            37.3035
+          ],
+          [
+            125.9525,
+            37.4283889
+          ],
+          [
+            126.1844444,
+            37.5405556
+          ],
+          [
+            126.3450833,
+            37.5775278
+          ],
+          [
+            126.5519722,
+            37.60475
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-REBIT2U",
+      "isComplete": true,
+      "name": "REBIT2U",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-24 / 2-24-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "14L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 11.8,
+          "from": "REBIT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.4868611,
+                37.2008333
+              ],
+              [
+                125.6961389,
+                37.3035
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2U-001",
+          "procedureId": "RKSS-STAR-REBIT2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PU060"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 14.4,
+          "from": "PU060",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.6961389,
+                37.3035
+              ],
+              [
+                125.9525,
+                37.4283889
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2U-002",
+          "procedureId": "RKSS-STAR-REBIT2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PU046"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 13.0,
+          "from": "PU046",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.9525,
+                37.4283889
+              ],
+              [
+                126.1844444,
+                37.5405556
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2U-003",
+          "procedureId": "RKSS-STAR-REBIT2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PU033"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 8.0,
+          "from": "PU033",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.1844444,
+                37.5405556
+              ],
+              [
+                126.3450833,
+                37.5775278
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2U-004",
+          "procedureId": "RKSS-STAR-REBIT2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PU025"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 10.0,
+          "from": "PU025",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3450833,
+                37.5775278
+              ],
+              [
+                126.5519722,
+                37.60475
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2U-005",
+          "procedureId": "RKSS-STAR-REBIT2U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DOKDO"
+        }
+      ],
+      "sequence": [
+        "REBIT",
+        "PU060",
+        "PU046",
+        "PU033",
+        "PU025",
+        "DOKDO"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "REBIT"
+    },
+    "RKSS-STAR-REBIT2Z": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "DOKDO",
+      "enrouteFix": "REBIT",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": 17000,
+            "minFt": null,
+            "raw": "-FL170"
+          },
+          "coordinates": {
+            "lat": 37.2008333,
+            "lon": 125.4868611
+          },
+          "id": "REBIT",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 11000,
+            "minFt": 11000,
+            "raw": "@11000"
+          },
+          "coordinates": {
+            "lat": 37.1383056,
+            "lon": 125.8012778
+          },
+          "id": "PZ061",
+          "legDistanceNm": 15.5,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 9000,
+            "raw": "+9000"
+          },
+          "coordinates": {
+            "lat": 37.1411389,
+            "lon": 126.057
+          },
+          "id": "PZ049",
+          "legDistanceNm": 12.3,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 8000,
+            "raw": "+8000"
+          },
+          "coordinates": {
+            "lat": 37.1795,
+            "lon": 126.3321944
+          },
+          "id": "PZ040",
+          "legDistanceNm": 13.4,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.2728611,
+            "lon": 126.4435556
+          },
+          "id": "PZ035",
+          "legDistanceNm": 7.7,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 7000,
+            "raw": "+7000"
+          },
+          "coordinates": {
+            "lat": 37.3541389,
+            "lon": 126.5407778
+          },
+          "id": "PZ030",
+          "legDistanceNm": 6.7,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.42825,
+            "lon": 126.6296944
+          },
+          "id": "PZ026",
+          "legDistanceNm": 6.1,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.4982222,
+            "lon": 126.5966944
+          },
+          "id": "DU022",
+          "legDistanceNm": 4.5,
+          "pathTerminator": "TF",
+          "sequence": 8,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 220
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.5693611,
+            "lon": 126.5074167
+          },
+          "id": "DU018",
+          "legDistanceNm": 6.0,
+          "pathTerminator": "TF",
+          "sequence": 9,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 220
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 4000,
+            "raw": "+4000"
+          },
+          "coordinates": {
+            "lat": 37.60475,
+            "lon": 126.5519722
+          },
+          "id": "DOKDO",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 10,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Rebit Two Zulu",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            125.4868611,
+            37.2008333
+          ],
+          [
+            125.8012778,
+            37.1383056
+          ],
+          [
+            126.057,
+            37.1411389
+          ],
+          [
+            126.3321944,
+            37.1795
+          ],
+          [
+            126.4435556,
+            37.2728611
+          ],
+          [
+            126.5407778,
+            37.3541389
+          ],
+          [
+            126.6296944,
+            37.42825
+          ],
+          [
+            126.5966944,
+            37.4982222
+          ],
+          [
+            126.5074167,
+            37.5693611
+          ],
+          [
+            126.5519722,
+            37.60475
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-REBIT2Z",
+      "isComplete": true,
+      "name": "REBIT2Z",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-24 / 2-24-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables.",
+        "Chart note: expect REBIT 2Z when RKSI RWY 33L/R and 34L/R are in use."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "14L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 15.5,
+          "from": "REBIT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.4868611,
+                37.2008333
+              ],
+              [
+                125.8012778,
+                37.1383056
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Z-001",
+          "procedureId": "RKSS-STAR-REBIT2Z",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PZ061"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 12.3,
+          "from": "PZ061",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.8012778,
+                37.1383056
+              ],
+              [
+                126.057,
+                37.1411389
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Z-002",
+          "procedureId": "RKSS-STAR-REBIT2Z",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PZ049"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 13.4,
+          "from": "PZ049",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.057,
+                37.1411389
+              ],
+              [
+                126.3321944,
+                37.1795
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Z-003",
+          "procedureId": "RKSS-STAR-REBIT2Z",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PZ040"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 7.7,
+          "from": "PZ040",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.3321944,
+                37.1795
+              ],
+              [
+                126.4435556,
+                37.2728611
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Z-004",
+          "procedureId": "RKSS-STAR-REBIT2Z",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PZ035"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 6.7,
+          "from": "PZ035",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4435556,
+                37.2728611
+              ],
+              [
+                126.5407778,
+                37.3541389
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Z-005",
+          "procedureId": "RKSS-STAR-REBIT2Z",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PZ030"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 6.1,
+          "from": "PZ030",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5407778,
+                37.3541389
+              ],
+              [
+                126.6296944,
+                37.42825
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Z-006",
+          "procedureId": "RKSS-STAR-REBIT2Z",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PZ026"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 4.5,
+          "from": "PZ026",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.6296944,
+                37.42825
+              ],
+              [
+                126.5966944,
+                37.4982222
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Z-007",
+          "procedureId": "RKSS-STAR-REBIT2Z",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU022"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 6.0,
+          "from": "DU022",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5966944,
+                37.4982222
+              ],
+              [
+                126.5074167,
+                37.5693611
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Z-008",
+          "procedureId": "RKSS-STAR-REBIT2Z",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 8,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DU018"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 3.0,
+          "from": "DU018",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5074167,
+                37.5693611
+              ],
+              [
+                126.5519722,
+                37.60475
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Z-009",
+          "procedureId": "RKSS-STAR-REBIT2Z",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 9,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DOKDO"
+        }
+      ],
+      "sequence": [
+        "REBIT",
+        "PZ061",
+        "PZ049",
+        "PZ040",
+        "PZ035",
+        "PZ030",
+        "PZ026",
+        "DU022",
+        "DU018",
+        "DOKDO"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "REBIT"
+    },
+    "RKSS-STAR-OLMEN2T": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "BUMSI",
+      "enrouteFix": "OLMEN",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": 13000,
+            "minFt": null,
+            "raw": "-13000"
+          },
+          "coordinates": {
+            "lat": 36.7370556,
+            "lon": 126.991
+          },
+          "id": "OLMEN",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 12000,
+            "raw": "+12000"
+          },
+          "coordinates": {
+            "lat": 36.9626944,
+            "lon": 127.2503333
+          },
+          "id": "DT043",
+          "legDistanceNm": 18.4,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.1290556,
+            "lon": 127.4437222
+          },
+          "id": "KAKSO",
+          "legDistanceNm": 13.6,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 10000,
+            "raw": "+10000"
+          },
+          "coordinates": {
+            "lat": 37.2303333,
+            "lon": 127.4443056
+          },
+          "id": "DT038",
+          "legDistanceNm": 6.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.2798333,
+            "lon": 127.3550833
+          },
+          "id": "DT034",
+          "legDistanceNm": 5.2,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 8000,
+            "raw": "+8000"
+          },
+          "coordinates": {
+            "lat": 37.2528333,
+            "lon": 127.1693333
+          },
+          "id": "BUMSI",
+          "legDistanceNm": 9.0,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Olmen Two Tango",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.991,
+            36.7370556
+          ],
+          [
+            127.2503333,
+            36.9626944
+          ],
+          [
+            127.4437222,
+            37.1290556
+          ],
+          [
+            127.4443056,
+            37.2303333
+          ],
+          [
+            127.3550833,
+            37.2798333
+          ],
+          [
+            127.1693333,
+            37.2528333
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-OLMEN2T",
+      "isComplete": true,
+      "name": "OLMEN2T",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-25 / 2-25-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "32L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 18.4,
+          "from": "OLMEN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.991,
+                36.7370556
+              ],
+              [
+                127.2503333,
+                36.9626944
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2T-001",
+          "procedureId": "RKSS-STAR-OLMEN2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DT043"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 13.6,
+          "from": "DT043",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.2503333,
+                36.9626944
+              ],
+              [
+                127.4437222,
+                37.1290556
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2T-002",
+          "procedureId": "RKSS-STAR-OLMEN2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "KAKSO"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 6.1,
+          "from": "KAKSO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.4437222,
+                37.1290556
+              ],
+              [
+                127.4443056,
+                37.2303333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2T-003",
+          "procedureId": "RKSS-STAR-OLMEN2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DT038"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 5.2,
+          "from": "DT038",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.4443056,
+                37.2303333
+              ],
+              [
+                127.3550833,
+                37.2798333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2T-004",
+          "procedureId": "RKSS-STAR-OLMEN2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DT034"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 9.0,
+          "from": "DT034",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.3550833,
+                37.2798333
+              ],
+              [
+                127.1693333,
+                37.2528333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-OLMEN2T-005",
+          "procedureId": "RKSS-STAR-OLMEN2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "BUMSI"
+        }
+      ],
+      "sequence": [
+        "OLMEN",
+        "DT043",
+        "KAKSO",
+        "DT038",
+        "DT034",
+        "BUMSI"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "OLMEN"
+    },
+    "RKSS-STAR-GUKDO2T": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "BUMSI",
+      "enrouteFix": "GUKDO",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 16000,
+            "raw": "+FL160"
+          },
+          "coordinates": {
+            "lat": 37.0196944,
+            "lon": 127.6396944
+          },
+          "id": "GUKDO",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.1708056,
+            "lon": 127.5512778
+          },
+          "id": "GT044",
+          "legDistanceNm": 10.0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.2303333,
+            "lon": 127.4443056
+          },
+          "id": "DT038",
+          "legDistanceNm": 6.2,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.2798333,
+            "lon": 127.3550833
+          },
+          "id": "DT034",
+          "legDistanceNm": 5.2,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 8000,
+            "raw": "+8000"
+          },
+          "coordinates": {
+            "lat": 37.2528333,
+            "lon": 127.1693333
+          },
+          "id": "BUMSI",
+          "legDistanceNm": 9.0,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Gukdo Two Tango",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            127.6396944,
+            37.0196944
+          ],
+          [
+            127.5512778,
+            37.1708056
+          ],
+          [
+            127.4443056,
+            37.2303333
+          ],
+          [
+            127.3550833,
+            37.2798333
+          ],
+          [
+            127.1693333,
+            37.2528333
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-GUKDO2T",
+      "isComplete": true,
+      "name": "GUKDO2T",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-25 / 2-25-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "32L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 10.0,
+          "from": "GUKDO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.6396944,
+                37.0196944
+              ],
+              [
+                127.5512778,
+                37.1708056
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2T-001",
+          "procedureId": "RKSS-STAR-GUKDO2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "GT044"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 6.2,
+          "from": "GT044",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.5512778,
+                37.1708056
+              ],
+              [
+                127.4443056,
+                37.2303333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2T-002",
+          "procedureId": "RKSS-STAR-GUKDO2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DT038"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 5.2,
+          "from": "DT038",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.4443056,
+                37.2303333
+              ],
+              [
+                127.3550833,
+                37.2798333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2T-003",
+          "procedureId": "RKSS-STAR-GUKDO2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DT034"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 9.0,
+          "from": "DT034",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.3550833,
+                37.2798333
+              ],
+              [
+                127.1693333,
+                37.2528333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GUKDO2T-004",
+          "procedureId": "RKSS-STAR-GUKDO2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "BUMSI"
+        }
+      ],
+      "sequence": [
+        "GUKDO",
+        "GT044",
+        "DT038",
+        "DT034",
+        "BUMSI"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "GUKDO"
+    },
+    "RKSS-STAR-KARBU2T": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "BUMSI",
+      "enrouteFix": "KARBU",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 16000,
+            "raw": "+FL160"
+          },
+          "coordinates": {
+            "lat": 37.5330556,
+            "lon": 127.6644444
+          },
+          "id": "KARBU",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 12000,
+            "raw": "+12000"
+          },
+          "coordinates": {
+            "lat": 37.4874167,
+            "lon": 127.3794167
+          },
+          "id": "EGOBA",
+          "legDistanceNm": 13.9,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": 9000,
+            "minFt": null,
+            "raw": "-9000"
+          },
+          "coordinates": {
+            "lat": 37.3467778,
+            "lon": 127.2880833
+          },
+          "id": "KT033",
+          "legDistanceNm": 9.5,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 8000,
+            "raw": "+8000"
+          },
+          "coordinates": {
+            "lat": 37.2528333,
+            "lon": 127.1693333
+          },
+          "id": "BUMSI",
+          "legDistanceNm": 8.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": 250,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Karbu Two Tango",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            127.6644444,
+            37.5330556
+          ],
+          [
+            127.3794167,
+            37.4874167
+          ],
+          [
+            127.2880833,
+            37.3467778
+          ],
+          [
+            127.1693333,
+            37.2528333
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-KARBU2T",
+      "isComplete": true,
+      "name": "KARBU2T",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-25 / 2-25-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "32L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 13.9,
+          "from": "KARBU",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.6644444,
+                37.5330556
+              ],
+              [
+                127.3794167,
+                37.4874167
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2T-001",
+          "procedureId": "RKSS-STAR-KARBU2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "EGOBA"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 9.5,
+          "from": "EGOBA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.3794167,
+                37.4874167
+              ],
+              [
+                127.2880833,
+                37.3467778
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2T-002",
+          "procedureId": "RKSS-STAR-KARBU2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "KT033"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 8.0,
+          "from": "KT033",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.2880833,
+                37.3467778
+              ],
+              [
+                127.1693333,
+                37.2528333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-KARBU2T-003",
+          "procedureId": "RKSS-STAR-KARBU2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "BUMSI"
+        }
+      ],
+      "sequence": [
+        "KARBU",
+        "EGOBA",
+        "KT033",
+        "BUMSI"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "KARBU"
+    },
+    "RKSS-STAR-REBIT2T": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "BUMSI",
+      "enrouteFix": "REBIT",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 15000,
+            "raw": "+FL150"
+          },
+          "coordinates": {
+            "lat": 37.2008333,
+            "lon": 125.4868611
+          },
+          "id": "REBIT",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 11000,
+            "minFt": null,
+            "raw": "-11000"
+          },
+          "coordinates": {
+            "lat": 37.1383056,
+            "lon": 125.8012778
+          },
+          "id": "PT091",
+          "legDistanceNm": 15.5,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.1441389,
+            "lon": 126.4103889
+          },
+          "id": "PT062",
+          "legDistanceNm": 29.2,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 1200011000,
+            "minFt": null,
+            "raw": "-12000/+11000"
+          },
+          "coordinates": {
+            "lat": 37.1450278,
+            "lon": 126.5498056
+          },
+          "id": "PT055",
+          "legDistanceNm": 6.7,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.0662222,
+            "lon": 126.6193333
+          },
+          "id": "PT053",
+          "legDistanceNm": 5.8,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 10000,
+            "minFt": 10000,
+            "raw": "@10000"
+          },
+          "coordinates": {
+            "lat": 37.0668056,
+            "lon": 126.91
+          },
+          "id": "PT041",
+          "legDistanceNm": 14.0,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 9000,
+            "minFt": null,
+            "raw": "-9000"
+          },
+          "coordinates": {
+            "lat": 37.1777222,
+            "lon": 127.1239444
+          },
+          "id": "PT030",
+          "legDistanceNm": 12.2,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 8000,
+            "raw": "+8000"
+          },
+          "coordinates": {
+            "lat": 37.2528333,
+            "lon": 127.1693333
+          },
+          "id": "BUMSI",
+          "legDistanceNm": 5.0,
+          "pathTerminator": "TF",
+          "sequence": 8,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Rebit Two Tango",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            125.4868611,
+            37.2008333
+          ],
+          [
+            125.8012778,
+            37.1383056
+          ],
+          [
+            126.4103889,
+            37.1441389
+          ],
+          [
+            126.5498056,
+            37.1450278
+          ],
+          [
+            126.6193333,
+            37.0662222
+          ],
+          [
+            126.91,
+            37.0668056
+          ],
+          [
+            127.1239444,
+            37.1777222
+          ],
+          [
+            127.1693333,
+            37.2528333
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-REBIT2T",
+      "isComplete": true,
+      "name": "REBIT2T",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-26 / 2-26-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "32L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 15.5,
+          "from": "REBIT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.4868611,
+                37.2008333
+              ],
+              [
+                125.8012778,
+                37.1383056
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2T-001",
+          "procedureId": "RKSS-STAR-REBIT2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT091"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 29.2,
+          "from": "PT091",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.8012778,
+                37.1383056
+              ],
+              [
+                126.4103889,
+                37.1441389
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2T-002",
+          "procedureId": "RKSS-STAR-REBIT2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT062"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 6.7,
+          "from": "PT062",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4103889,
+                37.1441389
+              ],
+              [
+                126.5498056,
+                37.1450278
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2T-003",
+          "procedureId": "RKSS-STAR-REBIT2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT055"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 5.8,
+          "from": "PT055",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.5498056,
+                37.1450278
+              ],
+              [
+                126.6193333,
+                37.0662222
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2T-004",
+          "procedureId": "RKSS-STAR-REBIT2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT053"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 14.0,
+          "from": "PT053",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.6193333,
+                37.0662222
+              ],
+              [
+                126.91,
+                37.0668056
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2T-005",
+          "procedureId": "RKSS-STAR-REBIT2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT041"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 12.2,
+          "from": "PT041",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.91,
+                37.0668056
+              ],
+              [
+                127.1239444,
+                37.1777222
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2T-006",
+          "procedureId": "RKSS-STAR-REBIT2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT030"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 5.0,
+          "from": "PT030",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.1239444,
+                37.1777222
+              ],
+              [
+                127.1693333,
+                37.2528333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2T-007",
+          "procedureId": "RKSS-STAR-REBIT2T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "BUMSI"
+        }
+      ],
+      "sequence": [
+        "REBIT",
+        "PT091",
+        "PT062",
+        "PT055",
+        "PT053",
+        "PT041",
+        "PT030",
+        "BUMSI"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "REBIT"
+    },
+    "RKSS-STAR-REBIT2Q": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "BUMSI",
+      "enrouteFix": "REBIT",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": 13000,
+            "minFt": null,
+            "raw": "-13000"
+          },
+          "coordinates": {
+            "lat": 37.2008333,
+            "lon": 125.4868611
+          },
+          "id": "REBIT",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 8000,
+            "minFt": 8000,
+            "raw": "@8000"
+          },
+          "coordinates": {
+            "lat": 37.1383056,
+            "lon": 125.8012778
+          },
+          "id": "PQ091",
+          "legDistanceNm": 15.5,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.1412222,
+            "lon": 126.0659444
+          },
+          "id": "PQ078",
+          "legDistanceNm": 12.7,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 8000,
+            "minFt": 8000,
+            "raw": "@8000"
+          },
+          "coordinates": {
+            "lat": 37.1428333,
+            "lon": 126.2397222
+          },
+          "id": "PQ070",
+          "legDistanceNm": 8.3,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.0329722,
+            "lon": 126.53175
+          },
+          "id": "PQ058",
+          "legDistanceNm": 15.5,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.1548611,
+            "lon": 127.07975
+          },
+          "id": "PQ032",
+          "legDistanceNm": 27.3,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 8000,
+            "raw": "+8000"
+          },
+          "coordinates": {
+            "lat": 37.2528333,
+            "lon": 127.1693333
+          },
+          "id": "BUMSI",
+          "legDistanceNm": 7.3,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Rebit Two Quebec",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            125.4868611,
+            37.2008333
+          ],
+          [
+            125.8012778,
+            37.1383056
+          ],
+          [
+            126.0659444,
+            37.1412222
+          ],
+          [
+            126.2397222,
+            37.1428333
+          ],
+          [
+            126.53175,
+            37.0329722
+          ],
+          [
+            127.07975,
+            37.1548611
+          ],
+          [
+            127.1693333,
+            37.2528333
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-REBIT2Q",
+      "isComplete": true,
+      "name": "REBIT2Q",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-27 / 2-27-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables.",
+        "Chart note: expect REBIT 2Q when RKSI RWY 15L/R and 16L/R are in use."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "32L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 15.5,
+          "from": "REBIT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.4868611,
+                37.2008333
+              ],
+              [
+                125.8012778,
+                37.1383056
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Q-001",
+          "procedureId": "RKSS-STAR-REBIT2Q",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PQ091"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 12.7,
+          "from": "PQ091",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.8012778,
+                37.1383056
+              ],
+              [
+                126.0659444,
+                37.1412222
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Q-002",
+          "procedureId": "RKSS-STAR-REBIT2Q",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PQ078"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 8.3,
+          "from": "PQ078",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.0659444,
+                37.1412222
+              ],
+              [
+                126.2397222,
+                37.1428333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Q-003",
+          "procedureId": "RKSS-STAR-REBIT2Q",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PQ070"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 15.5,
+          "from": "PQ070",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.2397222,
+                37.1428333
+              ],
+              [
+                126.53175,
+                37.0329722
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Q-004",
+          "procedureId": "RKSS-STAR-REBIT2Q",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PQ058"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 27.3,
+          "from": "PQ058",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.53175,
+                37.0329722
+              ],
+              [
+                127.07975,
+                37.1548611
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Q-005",
+          "procedureId": "RKSS-STAR-REBIT2Q",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PQ032"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 7.3,
+          "from": "PQ032",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.07975,
+                37.1548611
+              ],
+              [
+                127.1693333,
+                37.2528333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-REBIT2Q-006",
+          "procedureId": "RKSS-STAR-REBIT2Q",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "BUMSI"
+        }
+      ],
+      "sequence": [
+        "REBIT",
+        "PQ091",
+        "PQ078",
+        "PQ070",
+        "PQ058",
+        "PQ032",
+        "BUMSI"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "REBIT"
+    },
+    "RKSS-STAR-LEGAK1U": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "DOKDO",
+      "enrouteFix": "LEGAK",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 13000,
+            "raw": "+13000"
+          },
+          "coordinates": {
+            "lat": 37.0558333,
+            "lon": 124.8308611
+          },
+          "id": "LEGAK",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 15000,
+            "raw": "+FL150"
+          },
+          "coordinates": {
+            "lat": 37.0715556,
+            "lon": 125.7973056
+          },
+          "id": "PU063",
+          "legDistanceNm": 46.4,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 15000,
+            "raw": "+FL150"
+          },
+          "coordinates": {
+            "lat": 37.2791389,
+            "lon": 126.0925278
+          },
+          "id": "PU044",
+          "legDistanceNm": 18.9,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 9000,
+            "raw": "+9000"
+          },
+          "coordinates": {
+            "lat": 37.4528056,
+            "lon": 126.33675
+          },
+          "id": "PU029",
+          "legDistanceNm": 15.6,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 4000,
+            "raw": "+4000"
+          },
+          "coordinates": {
+            "lat": 37.60475,
+            "lon": 126.5519722
+          },
+          "id": "DOKDO",
+          "legDistanceNm": 13.7,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF"
+        }
+      ],
+      "fullName": "Legak One Uniform",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            124.8308611,
+            37.0558333
+          ],
+          [
+            125.7973056,
+            37.0715556
+          ],
+          [
+            126.0925278,
+            37.2791389
+          ],
+          [
+            126.33675,
+            37.4528056
+          ],
+          [
+            126.5519722,
+            37.60475
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-LEGAK1U",
+      "isComplete": true,
+      "name": "LEGAK1U",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-28 / 2-28-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "14L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 46.4,
+          "from": "LEGAK",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                124.8308611,
+                37.0558333
+              ],
+              [
+                125.7973056,
+                37.0715556
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-LEGAK1U-001",
+          "procedureId": "RKSS-STAR-LEGAK1U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PU063"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 18.9,
+          "from": "PU063",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                125.7973056,
+                37.0715556
+              ],
+              [
+                126.0925278,
+                37.2791389
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-LEGAK1U-002",
+          "procedureId": "RKSS-STAR-LEGAK1U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PU044"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 15.6,
+          "from": "PU044",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.0925278,
+                37.2791389
+              ],
+              [
+                126.33675,
+                37.4528056
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-LEGAK1U-003",
+          "procedureId": "RKSS-STAR-LEGAK1U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PU029"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 13.7,
+          "from": "PU029",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.33675,
+                37.4528056
+              ],
+              [
+                126.5519722,
+                37.60475
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-LEGAK1U-004",
+          "procedureId": "RKSS-STAR-LEGAK1U",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "DOKDO"
+        }
+      ],
+      "sequence": [
+        "LEGAK",
+        "PU063",
+        "PU044",
+        "PU029",
+        "DOKDO"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "LEGAK"
+    },
+    "RKSS-STAR-LEGAK1T": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "SUNEM",
+      "enrouteFix": "LEGAK",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 11000,
+            "raw": "+11000"
+          },
+          "coordinates": {
+            "lat": 37.0558333,
+            "lon": 124.8308611
+          },
+          "id": "LEGAK",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 15000,
+            "raw": "+FL150"
+          },
+          "coordinates": {
+            "lat": 37.0763333,
+            "lon": 126.2483889
+          },
+          "id": "PT075",
+          "legDistanceNm": 46.4,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 15000,
+            "raw": "+FL150"
+          },
+          "coordinates": {
+            "lat": 37.1445278,
+            "lon": 126.4685278
+          },
+          "id": "PT054",
+          "legDistanceNm": 21.7,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 10000,
+            "raw": "+10000"
+          },
+          "coordinates": {
+            "lat": 37.2335278,
+            "lon": 126.7055
+          },
+          "id": "PT042",
+          "legDistanceNm": 11.3,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 9000,
+            "raw": "+9000"
+          },
+          "coordinates": {
+            "lat": 37.2835,
+            "lon": 126.8394167
+          },
+          "id": "PT029",
+          "legDistanceNm": 12.6,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 7000,
+            "raw": "+7000"
+          },
+          "coordinates": {
+            "lat": 37.2835,
+            "lon": 126.8394167
+          },
+          "id": "SUNEM",
+          "legDistanceNm": 7.1,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null,
+          "role": "IAF",
+          "remarks": "Coordinate duplicated from chart extraction for PT029/SUNEM; verify against current AIP if used for navigation-grade geometry."
+        }
+      ],
+      "fullName": "Legak One Tango",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            124.8308611,
+            37.0558333
+          ],
+          [
+            126.2483889,
+            37.0763333
+          ],
+          [
+            126.4685278,
+            37.1445278
+          ],
+          [
+            126.7055,
+            37.2335278
+          ],
+          [
+            126.8394167,
+            37.2835
+          ],
+          [
+            126.8394167,
+            37.2835
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-LEGAK1T",
+      "isComplete": true,
+      "name": "LEGAK1T",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-28 / 2-28-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "32L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 46.4,
+          "from": "LEGAK",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                124.8308611,
+                37.0558333
+              ],
+              [
+                126.2483889,
+                37.0763333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-LEGAK1T-001",
+          "procedureId": "RKSS-STAR-LEGAK1T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT075"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 21.7,
+          "from": "PT075",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.2483889,
+                37.0763333
+              ],
+              [
+                126.4685278,
+                37.1445278
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-LEGAK1T-002",
+          "procedureId": "RKSS-STAR-LEGAK1T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT054"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 11.3,
+          "from": "PT054",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.4685278,
+                37.1445278
+              ],
+              [
+                126.7055,
+                37.2335278
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-LEGAK1T-003",
+          "procedureId": "RKSS-STAR-LEGAK1T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT042"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 12.6,
+          "from": "PT042",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.7055,
+                37.2335278
+              ],
+              [
+                126.8394167,
+                37.2835
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-LEGAK1T-004",
+          "procedureId": "RKSS-STAR-LEGAK1T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "PT029"
+        },
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 7.1,
+          "from": "PT029",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.8394167,
+                37.2835
+              ],
+              [
+                126.8394167,
+                37.2835
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-LEGAK1T-005",
+          "procedureId": "RKSS-STAR-LEGAK1T",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "SUNEM"
+        }
+      ],
+      "sequence": [
+        "LEGAK",
+        "PT075",
+        "PT054",
+        "PT042",
+        "PT029",
+        "SUNEM"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "LEGAK"
+    },
+    "RKSS-STAR-GONAV-TRANSITION": {
+      "airport": "RKSS",
+      "cycle": "AIRAC 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "endFix": "LEGAK",
+      "enrouteFix": "GONAV",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.1801111,
+            "lon": 124.4146111
+          },
+          "id": "GONAV",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 15000,
+            "raw": "+FL150"
+          },
+          "coordinates": {
+            "lat": 37.0558333,
+            "lon": 124.8308611
+          },
+          "id": "LEGAK",
+          "legDistanceNm": 21.3,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-23) RKSS STAR.pdf",
+          "speedKt": null
+        }
+      ],
+      "fullName": "Gonav Transition",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            124.4146111,
+            37.1801111
+          ],
+          [
+            124.8308611,
+            37.0558333
+          ]
+        ]
+      },
+      "id": "RKSS-STAR-GONAV-TRANSITION",
+      "isComplete": true,
+      "name": "GONAV TRANSITION",
+      "notes": [
+        "Parsed from AIP Korea (2-23) RKSS STAR.pdf, RKSS AD CHART 2-28 / 2-28-1.",
+        "Holding patterns excluded. Coordinates from Aeronautical Data Tabulation coding tables.",
+        "Transition procedure included because it appears in the STAR chart; it can be linked before LEGAK1U or LEGAK1T."
+      ],
+      "routeType": "RNAV",
+      "runways": [
+        "14L/R",
+        "32L/R"
+      ],
+      "segments": [
+        {
+          "airport": "RKSS",
+          "cycle": "AIRAC 2025-06-26",
+          "distanceNm": 21.3,
+          "from": "GONAV",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                124.4146111,
+                37.1801111
+              ],
+              [
+                124.8308611,
+                37.0558333
+              ]
+            ]
+          },
+          "id": "RKSS-STAR-GONAV-TRANSITION-001",
+          "procedureId": "RKSS-STAR-GONAV-TRANSITION",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-23) RKSS STAR.pdf",
+          "to": "LEGAK"
+        }
+      ],
+      "sequence": [
+        "GONAV",
+        "LEGAK"
+      ],
+      "source": "(2-23) RKSS STAR.pdf",
+      "startFix": "GONAV"
+    }
+  }
+}

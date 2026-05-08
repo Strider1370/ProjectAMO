@@ -263,6 +263,23 @@
   line-height: 1.45;
 }
 
+.route-check-total-dist {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dist-breakdown {
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 10px;
+}
+
 .proc-direct-input {
   margin-top: 4px;
 }

@@ -12,7 +12,7 @@ import {
   setAdvisoryVisibility,
   updateAdvisoryLayerData,
 } from '../../layers/advisories/advisoryLayers.js'
-import { buildBriefingRoute, buildVfrRoute } from '../../services/navdata/routePlanner.js'
+import { buildBriefingRoute, buildVfrRoute, loadIapData } from '../../services/navdata/routePlanner.js'
 import { getProcedures, KNOWN_AIRPORTS } from '../../services/navdata/procedureData.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../../layers/aviation/addAdsbLayer.js'
@@ -20,49 +20,50 @@ import './MapView.css'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const ROAD_VISIBILITY_ZOOM  = 8
-const ROUTE_PREVIEW_SOURCE  = 'briefing-route-preview'
-const ROUTE_PREVIEW_LINE    = 'briefing-route-preview-line'
-const ROUTE_PREVIEW_POINT   = 'briefing-route-preview-point'
+const ROAD_VISIBILITY_ZOOM = 8
+const ROUTE_PREVIEW_SOURCE = 'briefing-route-preview'
+const ROUTE_PREVIEW_LINE = 'briefing-route-preview-line'
+const ROUTE_PREVIEW_POINT = 'briefing-route-preview-point'
 
-const ROUTE_HL_WP_ICON  = 'route-hl-wp-icon'
+const ROUTE_HL_WP_ICON = 'route-hl-wp-icon'
 const ROUTE_HL_WP_LABEL = 'route-hl-wp-label'
-const ROUTE_HL_NA_ICON  = 'route-hl-na-icon'
+const ROUTE_HL_NA_ICON = 'route-hl-na-icon'
 const ROUTE_HL_NA_LABEL = 'route-hl-na-label'
-const ROUTE_HL_AW_LINE  = 'route-hl-aw-line'
+const ROUTE_HL_AW_LINE = 'route-hl-aw-line'
 const ROUTE_HL_AW_LABEL = 'route-hl-aw-label'
 const ROUTE_HL_LAYER_IDS = [ROUTE_HL_WP_ICON, ROUTE_HL_WP_LABEL, ROUTE_HL_NA_ICON, ROUTE_HL_NA_LABEL, ROUTE_HL_AW_LINE, ROUTE_HL_AW_LABEL]
 
 const VFR_WP_CIRCLE = 'vfr-wp-circle'
-const VFR_WP_LABEL  = 'vfr-wp-label'
+const VFR_WP_LABEL = 'vfr-wp-label'
 
 const PROC_PREVIEW_SOURCE = 'procedure-preview'
-const PROC_SID_LINE  = 'procedure-sid-line'
+const PROC_SID_LINE = 'procedure-sid-line'
 const PROC_STAR_LINE = 'procedure-star-line'
+const PROC_IAP_LINE = 'procedure-iap-line'
 const PROC_WP_CIRCLE = 'procedure-wp-circle'
-const PROC_WP_LABEL  = 'procedure-wp-label'
+const PROC_WP_LABEL = 'procedure-wp-label'
 
-const AIRPORT_SOURCE_ID     = 'kma-weather-airports'
-const AIRPORT_CIRCLE_LAYER  = 'kma-weather-airports-circle'
-const AIRPORT_LABEL_LAYER   = 'kma-weather-airports-label'
+const AIRPORT_SOURCE_ID = 'kma-weather-airports'
+const AIRPORT_CIRCLE_LAYER = 'kma-weather-airports-circle'
+const AIRPORT_LABEL_LAYER = 'kma-weather-airports-label'
 
-const SATELLITE_SOURCE      = 'kma-satellite-overlay'
-const SATELLITE_LAYER       = 'kma-satellite-overlay'
-const RADAR_SOURCE          = 'kma-radar-overlay'
-const RADAR_LAYER           = 'kma-radar-overlay'
-const SIGWX_SOURCE          = 'kma-sigwx-overlay'
-const SIGWX_LAYER           = 'kma-sigwx-overlay'
-const LIGHTNING_SOURCE      = 'kma-lightning'
+const SATELLITE_SOURCE = 'kma-satellite-overlay'
+const SATELLITE_LAYER = 'kma-satellite-overlay'
+const RADAR_SOURCE = 'kma-radar-overlay'
+const RADAR_LAYER = 'kma-radar-overlay'
+const SIGWX_SOURCE = 'kma-sigwx-overlay'
+const SIGWX_LAYER = 'kma-sigwx-overlay'
+const LIGHTNING_SOURCE = 'kma-lightning'
 const LIGHTNING_GROUND_LAYER = 'kma-lightning-ground'
-const LIGHTNING_CLOUD_LAYER  = 'kma-lightning-cloud'
+const LIGHTNING_CLOUD_LAYER = 'kma-lightning-cloud'
 
-const GEO_BOUNDARY_COLOR     = '#facc15'
-const GEO_BOUNDARY_WIDTH     = 1
-const GEO_SIGUNGU_MIN_ZOOM   = 9
+const GEO_BOUNDARY_COLOR = '#facc15'
+const GEO_BOUNDARY_WIDTH = 1
+const GEO_SIGUNGU_MIN_ZOOM = 9
 const GEO_LAYERS = [
   { sourceId: 'geo-neighbors', layerId: 'geo-neighbors-line', url: '/Geo/korea_neighbors_masked.v1.geojson', minzoom: 0 },
-  { sourceId: 'geo-sido',      layerId: 'geo-sido-line',      url: '/Geo/sido.json',                         minzoom: 0,                    maxzoom: GEO_SIGUNGU_MIN_ZOOM },
-  { sourceId: 'geo-sigungu',   layerId: 'geo-sigungu-line',   url: '/Geo/sigungu.json',                      minzoom: GEO_SIGUNGU_MIN_ZOOM },
+  { sourceId: 'geo-sido', layerId: 'geo-sido-line', url: '/Geo/sido.json', minzoom: 0, maxzoom: GEO_SIGUNGU_MIN_ZOOM },
+  { sourceId: 'geo-sigungu', layerId: 'geo-sigungu-line', url: '/Geo/sigungu.json', minzoom: GEO_SIGUNGU_MIN_ZOOM },
 ]
 
 const HIDDEN_ROAD_COLOR = 'rgba(255,255,255,0)'
@@ -70,13 +71,13 @@ const VISIBLE_ROAD_COLORS = { roads: '#d6dde6', trunks: '#c6d1dd', motorways: '#
 
 // MET layer definitions (order = display order in panel)
 const MET_LAYERS = [
-  { id: 'radar',     label: 'Radar',     color: '#38bdf8' },
+  { id: 'radar', label: 'Radar', color: '#38bdf8' },
   { id: 'satellite', label: 'Satellite', color: '#64748b' },
   { id: 'lightning', label: 'Lightning', color: '#facc15' },
-  { id: 'sigmet',    label: 'SIGMET',    color: ADVISORY_LAYER_DEFS.sigmet.color },
-  { id: 'airmet',    label: 'AIRMET',    color: ADVISORY_LAYER_DEFS.airmet.color },
-  { id: 'sigwx',     label: 'SIGWX',     color: '#a78bfa' },
-  { id: 'adsb',      label: 'ADS-B',     color: '#10b981' },
+  { id: 'sigmet', label: 'SIGMET', color: ADVISORY_LAYER_DEFS.sigmet.color },
+  { id: 'airmet', label: 'AIRMET', color: ADVISORY_LAYER_DEFS.airmet.color },
+  { id: 'sigwx', label: 'SIGWX', color: '#a78bfa' },
+  { id: 'adsb', label: 'ADS-B', color: '#10b981' },
 ]
 
 const emptyGeoJSON = { type: 'FeatureCollection', features: [] }
@@ -141,7 +142,7 @@ function buildVfrGeoJSON(waypoints) {
   }
 }
 
-function buildProcedureGeoJSON(sid, star) {
+function buildProcedureGeoJSON(sid, star, iap) {
   const features = []
   function addProc(proc, role) {
     if (!proc) return
@@ -157,34 +158,49 @@ function buildProcedureGeoJSON(sid, star) {
   }
   addProc(sid, 'sid')
   addProc(star, 'star')
+  if (iap) {
+    const iapFixes = (iap.fixes ?? []).filter((f) => f.coordinates?.lat != null)
+    if (iapFixes.length >= 2) {
+      features.push({ type: 'Feature', properties: { role: 'iap-line' }, geometry: iap.geometry })
+      iapFixes.forEach((f) => features.push({
+        type: 'Feature',
+        properties: { role: 'iap-wp', label: f.id },
+        geometry: { type: 'Point', coordinates: [f.coordinates.lon, f.coordinates.lat] },
+      }))
+    }
+  }
   return { type: 'FeatureCollection', features }
 }
 
-function augmentRouteWithProcedures(previewGeojson, sid, star) {
-  if (!sid && !star) return previewGeojson
+function augmentRouteWithProcedures(previewGeojson, sid, star, iap) {
+  if (!sid && !star && !iap) return previewGeojson
   const lineFeature = previewGeojson.features.find((f) => f.properties.role === 'route-preview-line')
   if (!lineFeature) return previewGeojson
 
   // baseCoords = [depAirport, entryFix, ...airways..., exitFix, arrAirport]
-  const baseCoords = lineFeature.geometry.coordinates
-  const depCoord = baseCoords[0]
-  const arrCoord = baseCoords[baseCoords.length - 1]
+  let combined = [...lineFeature.geometry.coordinates]
+  const depCoord = combined[0]
+  const arrCoord = combined[combined.length - 1]
 
-  // sidCoords: procedure fixes from first SID wp → entryFix (NO departure airport)
-  // starCoords: procedure fixes from exitFix → last STAR wp (NO arrival airport)
-  const sidCoords  = (sid?.fixes  ?? []).filter((f) => f.lat != null && f.lon != null).map((f) => [f.lon, f.lat])
+  // 1. Process SID: replace [dep, entryFix] with [dep, ...sidCoords]
+  const sidCoords = (sid?.fixes ?? []).filter((f) => f.lat != null && f.lon != null).map((f) => [f.lon, f.lat])
+  if (sidCoords.length > 0) {
+    // sidCoords already ends at entryFix
+    combined = [depCoord, ...sidCoords, ...combined.slice(2)]
+  }
+
+  // 2. Process STAR & IAP: replace [exitFix, arr] with [...starCoords, ...iapTail]
   const starCoords = (star?.fixes ?? []).filter((f) => f.lat != null && f.lon != null).map((f) => [f.lon, f.lat])
+  const iapCoords = iap?.geometry?.coordinates ?? []
+  const iapTail = iapCoords.length > 1 ? iapCoords.slice(1) : []
 
-  let combined
-  if (sidCoords.length > 0 && starCoords.length > 0) {
-    // dep → [SID wps → entryFix] → [airways middle] → [exitFix → STAR wps] → arr
-    combined = [depCoord, ...sidCoords, ...baseCoords.slice(2, -2), ...starCoords, arrCoord]
-  } else if (sidCoords.length > 0) {
-    // dep → [SID wps → entryFix] → [airways middle → exitFix → arr]
-    combined = [depCoord, ...sidCoords, ...baseCoords.slice(2)]
-  } else {
-    // [dep → entryFix → airways middle] → [exitFix → STAR wps] → arr
-    combined = [...baseCoords.slice(0, -2), ...starCoords, arrCoord]
+  if (starCoords.length > 0) {
+    // starCoords starts at exitFix
+    const tail = iapTail.length > 0 ? iapTail : [arrCoord]
+    combined = [...combined.slice(0, -2), ...starCoords, ...tail]
+  } else if (iapTail.length > 0) {
+    // No STAR but have IAP (starts at exitFix)
+    combined = [...combined.slice(0, -1), ...iapTail]
   }
 
   if (combined.length < 2) return previewGeojson
@@ -216,13 +232,24 @@ function addProcedurePreviewLayers(map) {
       paint: { 'line-color': '#7c3aed', 'line-width': 2, 'line-dasharray': [5, 3] },
     })
   }
+  if (!map.getLayer(PROC_IAP_LINE)) {
+    map.addLayer({
+      id: PROC_IAP_LINE, type: 'line', source: PROC_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'iap-line'],
+      paint: { 'line-color': '#0ea5e9', 'line-width': 2, 'line-dasharray': [3, 3] },
+    })
+  }
   if (!map.getLayer(PROC_WP_CIRCLE)) {
     map.addLayer({
       id: PROC_WP_CIRCLE, type: 'circle', source: PROC_PREVIEW_SOURCE, slot: 'top',
-      filter: ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp']],
+      filter: ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp'], ['==', ['get', 'role'], 'iap-wp']],
       paint: {
         'circle-radius': 4,
-        'circle-color': ['case', ['==', ['get', 'role'], 'sid-wp'], '#2563eb', '#7c3aed'],
+        'circle-color': ['case',
+          ['==', ['get', 'role'], 'sid-wp'], '#2563eb',
+          ['==', ['get', 'role'], 'iap-wp'], '#0ea5e9',
+          '#7c3aed',
+        ],
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 1.5,
       },
@@ -231,7 +258,7 @@ function addProcedurePreviewLayers(map) {
   if (!map.getLayer(PROC_WP_LABEL)) {
     map.addLayer({
       id: PROC_WP_LABEL, type: 'symbol', source: PROC_PREVIEW_SOURCE, slot: 'top',
-      filter: ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp']],
+      filter: ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp'], ['==', ['get', 'role'], 'iap-wp']],
       layout: {
         'text-field': ['get', 'label'],
         'text-font': ['Noto Sans CJK JP Bold'],
@@ -242,7 +269,11 @@ function addProcedurePreviewLayers(map) {
         'text-ignore-placement': true,
       },
       paint: {
-        'text-color': ['case', ['==', ['get', 'role'], 'sid-wp'], '#2563eb', '#7c3aed'],
+        'text-color': ['case',
+          ['==', ['get', 'role'], 'sid-wp'], '#2563eb',
+          ['==', ['get', 'role'], 'iap-wp'], '#0ea5e9',
+          '#7c3aed',
+        ],
         'text-halo-color': '#ffffff',
         'text-halo-width': 1.5,
       },
@@ -345,8 +376,8 @@ function bindVfrInteractions(map, vfrWaypointsRef, setVfrWaypoints) {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function applyRoadVisibility(map, show) {
-  map.setConfigProperty('basemap', 'colorRoads',     show ? VISIBLE_ROAD_COLORS.roads     : HIDDEN_ROAD_COLOR)
-  map.setConfigProperty('basemap', 'colorTrunks',    show ? VISIBLE_ROAD_COLORS.trunks    : HIDDEN_ROAD_COLOR)
+  map.setConfigProperty('basemap', 'colorRoads', show ? VISIBLE_ROAD_COLORS.roads : HIDDEN_ROAD_COLOR)
+  map.setConfigProperty('basemap', 'colorTrunks', show ? VISIBLE_ROAD_COLORS.trunks : HIDDEN_ROAD_COLOR)
   map.setConfigProperty('basemap', 'colorMotorways', show ? VISIBLE_ROAD_COLORS.motorways : HIDDEN_ROAD_COLOR)
 }
 
@@ -572,7 +603,7 @@ function addAirportLayers(map, data) {
       id: AIRPORT_CIRCLE_LAYER, type: 'circle', source: AIRPORT_SOURCE_ID, slot: 'top',
       paint: {
         'circle-radius': ['case', ['boolean', ['feature-state', 'selected'], false], 8, 5],
-        'circle-color':  ['case', ['boolean', ['feature-state', 'selected'], false], '#f97316', '#0f766e'],
+        'circle-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#f97316', '#0f766e'],
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 1.5,
         'circle-opacity': 0.95,
@@ -675,28 +706,31 @@ function MapView({
   selectedAirport,
   onAirportSelect,
 }) {
-  const mapContainerRef  = useRef(null)
-  const mapRef           = useRef(null)
-  const onSelectRef      = useRef(onAirportSelect)
-  const [error,               setError]             = useState(null)
-  const [isStyleReady,        setIsStyleReady]       = useState(false)
-  const [aviationVisibility,  setAviationVisibility] = useState(initAviationVisibility)
-  const [metVisibility,       setMetVisibility]      = useState(initMetVisibility)
-  const [routeForm,           setRouteForm]          = useState(initialRouteForm)
-  const [routeResult,         setRouteResult]        = useState(null)
-  const [routeError,          setRouteError]         = useState(null)
-  const [routeLoading,        setRouteLoading]       = useState(false)
-  const [adsbData,            setAdsbData]           = useState(null)
-  const [basemapId,           setBasemapId]          = useState('standard')
-  const [basemapMenuOpen,     setBasemapMenuOpen]    = useState(false)
-  const [vfrWaypoints,        setVfrWaypoints]       = useState([])
-  const [hoveredWpInfo,       setHoveredWpInfo]      = useState(null)
-  const [sidOptions,          setSidOptions]         = useState([])
-  const [starOptions,         setStarOptions]        = useState([])
-  const [selectedSid,         setSelectedSid]        = useState(null)
-  const [selectedStar,        setSelectedStar]       = useState(null)
+  const mapContainerRef = useRef(null)
+  const mapRef = useRef(null)
+  const onSelectRef = useRef(onAirportSelect)
+  const [error, setError] = useState(null)
+  const [isStyleReady, setIsStyleReady] = useState(false)
+  const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
+  const [metVisibility, setMetVisibility] = useState(initMetVisibility)
+  const [routeForm, setRouteForm] = useState(initialRouteForm)
+  const [routeResult, setRouteResult] = useState(null)
+  const [routeError, setRouteError] = useState(null)
+  const [routeLoading, setRouteLoading] = useState(false)
+  const [adsbData, setAdsbData] = useState(null)
+  const [basemapId, setBasemapId] = useState('standard')
+  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
+  const [vfrWaypoints, setVfrWaypoints] = useState([])
+  const [hoveredWpInfo, setHoveredWpInfo] = useState(null)
+  const [sidOptions, setSidOptions] = useState([])
+  const [starOptions, setStarOptions] = useState([])
+  const [selectedSid, setSelectedSid] = useState(null)
+  const [selectedStar, setSelectedStar] = useState(null)
+  const [iapData, setIapData] = useState(null)
+  const [iapCandidates, setIapCandidates] = useState([])
+  const [selectedIapKey, setSelectedIapKey] = useState(null)
   const vfrWaypointsRef = useRef([])
-  const hideTimerRef    = useRef(null)
+  const hideTimerRef = useRef(null)
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
   useEffect(() => { vfrWaypointsRef.current = vfrWaypoints }, [vfrWaypoints])
@@ -715,6 +749,41 @@ function MapView({
     getProcedures(airport, 'STAR').then((procs) => { setStarOptions(procs); setSelectedStar(null) })
   }, [routeForm.arrivalAirport])
 
+  // ── IAP data loading ──────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const airport = routeForm.arrivalAirport
+    if (['RKSI', 'RKSS', 'RKPC'].includes(airport)) {
+      loadIapData(airport).then(setIapData)
+    } else {
+      setIapData(null)
+      setIapCandidates([])
+      setSelectedIapKey(null)
+    }
+  }, [routeForm.arrivalAirport])
+
+  useEffect(() => {
+    if (!selectedStar || !iapData) {
+      setIapCandidates([])
+      setSelectedIapKey(null)
+      return
+    }
+    const entry = iapData.starToIapCandidates?.[selectedStar.id]
+    if (!entry) {
+      setIapCandidates([])
+      setSelectedIapKey(null)
+      return
+    }
+    const candidates = entry.candidateIapKeys.map((key) => ({
+      key,
+      label: `RWY ${iapData.iapRoutes[key]?.representativeFor?.runwayGroup?.join(', ') ?? key}`,
+    }))
+    setIapCandidates(candidates)
+    setSelectedIapKey(entry.defaultIapKey)
+  }, [selectedStar, iapData])
+
+  const selectedIap = iapData?.iapRoutes?.[selectedIapKey] ?? null
+
   // ── Procedure preview on map ──────────────────────────────────────────────
 
   useEffect(() => {
@@ -723,13 +792,13 @@ function MapView({
     addProcedurePreviewLayers(map)
 
     if (routeResult?.flightRule === 'IFR' && (selectedSid || selectedStar)) {
-      const augmented = augmentRouteWithProcedures(routeResult.previewGeojson, selectedSid, selectedStar)
+      const augmented = augmentRouteWithProcedures(routeResult.previewGeojson, selectedSid, selectedStar, selectedIap)
       map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(augmented)
-      const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar)
+      const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap)
       const wpOnly = { ...procGeojson, features: procGeojson.features.filter((f) => !f.properties.role.endsWith('-line')) }
       map.getSource(PROC_PREVIEW_SOURCE)?.setData(wpOnly)
     } else {
-      const geojson = buildProcedureGeoJSON(selectedSid, selectedStar)
+      const geojson = buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap)
       map.getSource(PROC_PREVIEW_SOURCE)?.setData(geojson)
       if (geojson.features.length > 0 && !routeResult) {
         const coords = geojson.features.flatMap((f) =>
@@ -739,20 +808,20 @@ function MapView({
         map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: 500 })
       }
     }
-  }, [selectedSid, selectedStar, routeResult, isStyleReady])
+  }, [selectedSid, selectedStar, selectedIap, routeResult, isStyleReady])
 
-  const airportGeoJSON   = useMemo(() => createAirportGeoJSON(airports),         [airports])
-  const lightningGeoJSON = useMemo(() => createLightningGeoJSON(lightningData),   [lightningData])
-  const adsbGeoJSON      = useMemo(() => createAdsbGeoJSON(adsbData),             [adsbData])
-  const radarFrame       = useMemo(() => getRadarFrame(echoMeta),                 [echoMeta])
-  const satFrame         = useMemo(() => getSatFrame(satMeta),                    [satMeta])
-  const sigmetFeatures   = useMemo(() => advisoryItemsToFeatureCollection(sigmetData, 'sigmet'),      [sigmetData])
-  const sigmetLabels     = useMemo(() => advisoryItemsToLabelFeatureCollection(sigmetData, 'sigmet'), [sigmetData])
-  const airmetFeatures   = useMemo(() => advisoryItemsToFeatureCollection(airmetData, 'airmet'),      [airmetData])
-  const airmetLabels     = useMemo(() => advisoryItemsToLabelFeatureCollection(airmetData, 'airmet'), [airmetData])
+  const airportGeoJSON = useMemo(() => createAirportGeoJSON(airports), [airports])
+  const lightningGeoJSON = useMemo(() => createLightningGeoJSON(lightningData), [lightningData])
+  const adsbGeoJSON = useMemo(() => createAdsbGeoJSON(adsbData), [adsbData])
+  const radarFrame = useMemo(() => getRadarFrame(echoMeta), [echoMeta])
+  const satFrame = useMemo(() => getSatFrame(satMeta), [satMeta])
+  const sigmetFeatures = useMemo(() => advisoryItemsToFeatureCollection(sigmetData, 'sigmet'), [sigmetData])
+  const sigmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(sigmetData, 'sigmet'), [sigmetData])
+  const airmetFeatures = useMemo(() => advisoryItemsToFeatureCollection(airmetData, 'airmet'), [airmetData])
+  const airmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(airmetData, 'airmet'), [airmetData])
 
-  const sigmetCount  = sigmetFeatures.features.length
-  const airmetCount  = airmetFeatures.features.length
+  const sigmetCount = sigmetFeatures.features.length
+  const airmetCount = airmetFeatures.features.length
   const lightningCount = lightningGeoJSON.features.length
 
   function toggleAviation(id) {
@@ -890,7 +959,7 @@ function MapView({
             if (!desc) return
             new mapboxgl.Popup({ closeButton: true, maxWidth: '320px' })
               .setLngLat(e.lngLat)
-              .setHTML(`<pre class="mapbox-advisory-popup">${desc.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</pre>`)
+              .setHTML(`<pre class="mapbox-advisory-popup">${desc.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</pre>`)
               .addTo(map)
           })
           map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer' })
@@ -966,13 +1035,13 @@ function MapView({
     const map = mapRef.current
     if (!map || !isStyleReady) return
 
-    const hasSat   = addOrUpdateImageOverlay(map, { sourceId: SATELLITE_SOURCE, layerId: SATELLITE_LAYER, frame: satFrame,   opacity: 0.92 })
-    const hasRadar = addOrUpdateImageOverlay(map, { sourceId: RADAR_SOURCE,     layerId: RADAR_LAYER,     frame: radarFrame, opacity: 0.88 })
-    const hasSigwx = addOrUpdateImageOverlay(map, { sourceId: SIGWX_SOURCE,     layerId: SIGWX_LAYER,     frame: sigwxFrontMeta, opacity: 0.85 })
+    const hasSat = addOrUpdateImageOverlay(map, { sourceId: SATELLITE_SOURCE, layerId: SATELLITE_LAYER, frame: satFrame, opacity: 0.92 })
+    const hasRadar = addOrUpdateImageOverlay(map, { sourceId: RADAR_SOURCE, layerId: RADAR_LAYER, frame: radarFrame, opacity: 0.88 })
+    const hasSigwx = addOrUpdateImageOverlay(map, { sourceId: SIGWX_SOURCE, layerId: SIGWX_LAYER, frame: sigwxFrontMeta, opacity: 0.85 })
 
-    setMapLayerVisible(map, SATELLITE_LAYER, hasSat   && metVisibility.satellite)
-    setMapLayerVisible(map, RADAR_LAYER,     hasRadar && metVisibility.radar)
-    setMapLayerVisible(map, SIGWX_LAYER,     hasSigwx && metVisibility.sigwx)
+    setMapLayerVisible(map, SATELLITE_LAYER, hasSat && metVisibility.satellite)
+    setMapLayerVisible(map, RADAR_LAYER, hasRadar && metVisibility.radar)
+    setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && metVisibility.sigwx)
   }, [satFrame, radarFrame, sigwxFrontMeta, metVisibility, isStyleReady])
 
   // ── Sync SIGMET / AIRMET ──────────────────────────────────────────────────
@@ -1057,6 +1126,8 @@ function MapView({
     setVfrWaypoints([])
     setSelectedSid(null)
     setSelectedStar(null)
+    setIapCandidates([])
+    setSelectedIapKey(null)
     const map = mapRef.current
     if (map?.isStyleLoaded()) {
       map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
@@ -1077,6 +1148,8 @@ function MapView({
     setVfrWaypoints([])
     setSelectedSid(null)
     setSelectedStar(null)
+    setIapCandidates([])
+    setSelectedIapKey(null)
     const map = mapRef.current
     if (map?.isStyleLoaded()) {
       map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
@@ -1108,7 +1181,7 @@ function MapView({
         const pts = result.previewGeojson.features.filter((f) => f.properties.role === 'route-preview-point')
         const initialWaypoints = [
           { id: result.departureAirport, lon: pts[0].geometry.coordinates[0], lat: pts[0].geometry.coordinates[1], fixed: true },
-          { id: result.arrivalAirport,   lon: pts[1].geometry.coordinates[0], lat: pts[1].geometry.coordinates[1], fixed: true },
+          { id: result.arrivalAirport, lon: pts[1].geometry.coordinates[0], lat: pts[1].geometry.coordinates[1], fixed: true },
         ]
         setVfrWaypoints(initialWaypoints)
         if (map?.isStyleLoaded()) {
@@ -1123,11 +1196,11 @@ function MapView({
         setVfrWaypoints([])
         if (map?.isStyleLoaded()) {
           addRoutePreviewLayers(map)
-          const displayGeojson = augmentRouteWithProcedures(result.previewGeojson, selectedSid, selectedStar)
+          const displayGeojson = augmentRouteWithProcedures(result.previewGeojson, selectedSid, selectedStar, selectedIap)
           map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(displayGeojson)
           if (selectedSid || selectedStar) {
             addProcedurePreviewLayers(map)
-            const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar)
+            const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap)
             const wpOnly = { ...procGeojson, features: procGeojson.features.filter((f) => !f.properties.role.endsWith('-line')) }
             map.getSource(PROC_PREVIEW_SOURCE)?.setData(wpOnly)
           }
@@ -1162,18 +1235,18 @@ function MapView({
   }
 
   function isMetLayerDisabled(id) {
-    if (id === 'radar')     return !radarFrame
+    if (id === 'radar') return !radarFrame
     if (id === 'satellite') return !satFrame
     if (id === 'lightning') return lightningCount === 0
-    if (id === 'sigmet')    return sigmetCount === 0
-    if (id === 'airmet')    return airmetCount === 0
-    if (id === 'sigwx')     return !sigwxFrontMeta
+    if (id === 'sigmet') return sigmetCount === 0
+    if (id === 'airmet') return airmetCount === 0
+    if (id === 'sigwx') return !sigwxFrontMeta
     return false
   }
 
   function metLayerBadge(id) {
-    if (id === 'sigmet')    return sigmetCount  > 0 ? sigmetCount  : null
-    if (id === 'airmet')    return airmetCount  > 0 ? airmetCount  : null
+    if (id === 'sigmet') return sigmetCount > 0 ? sigmetCount : null
+    if (id === 'airmet') return airmetCount > 0 ? airmetCount : null
     if (id === 'lightning') return lightningCount > 0 ? lightningCount : null
     return null
   }
@@ -1336,8 +1409,19 @@ function MapView({
                     : <input value={routeForm.exitFix} onChange={(e) => updateRouteField('exitFix', e.target.value)} />
                   }
                 </label>
+                {iapCandidates.length > 0 && (
+                  <label>RWY
+                    <select value={selectedIapKey ?? ''} onChange={(e) => setSelectedIapKey(e.target.value || null)}>
+                      {iapCandidates.map(({ key, label }) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               </>
             )}
+
+
             <button type="submit" disabled={routeLoading}>{routeLoading ? 'Searching...' : 'Search'}</button>
           </form>
           {routeError && <div className="route-check-error">{routeError}</div>}
@@ -1354,14 +1438,33 @@ function MapView({
               </dl>
               {routeResult.flightRule === 'IFR' && (() => {
                 const seq = routeResult.displaySequence
-                const display = seq.length < 2 ? seq : [
+                const display = [
                   seq[0],
-                  ...(selectedSid  ? [`[${selectedSid.name}]`]  : []),
+                  ...(selectedSid ? [`[${selectedSid.name}]`] : []),
                   ...seq.slice(1, -1),
                   ...(selectedStar ? [`[${selectedStar.name}]`] : []),
-                  seq[seq.length - 1],
+                  ...(selectedIap ? [`[${selectedIap.name}]`] : []),
+                  selectedIap ? (selectedIap.fixes[selectedIap.fixes.length - 1].id) : seq[seq.length - 1],
                 ]
-                return <div className="route-check-sequence">{display.join(' → ')}</div>
+
+                // Calculate total distance
+                const airwayDist = routeResult.distanceNm || 0
+                const sidDist = selectedSid?.fixes?.reduce((acc, f) => acc + (f.legDistanceNm || 0), 0) || 0
+                const starDist = selectedStar?.fixes?.reduce((acc, f) => acc + (f.legDistanceNm || 0), 0) || 0
+                const iapDist = selectedIap?.fixes?.reduce((acc, f) => acc + (f.legDistanceNm || 0), 0) || 0
+                const totalDist = Number((airwayDist + sidDist + starDist + iapDist).toFixed(1))
+
+                return (
+                  <>
+                    <div className="route-check-total-dist">
+                      Total Distance: <strong>{totalDist} NM</strong>
+                      {(sidDist > 0 || starDist > 0 || iapDist > 0) && (
+                        <span className="dist-breakdown"> ({airwayDist} + {Number((sidDist + starDist + iapDist).toFixed(1))})</span>
+                      )}
+                    </div>
+                    <div className="route-check-sequence">{display.join(' → ')}</div>
+                  </>
+                )
               })()}
               {routeResult.flightRule === 'VFR' && vfrWaypoints.length >= 2 && (
                 <div className="route-check-sequence">{vfrWaypoints.map((wp) => wp.id).join(' → ')}</div>
@@ -1395,7 +1498,7 @@ function MapView({
           <div className="dev-layer-panel-title">MET</div>
           {MET_LAYERS.map((layer) => {
             const disabled = isMetLayerDisabled(layer.id)
-            const badge    = metLayerBadge(layer.id)
+            const badge = metLayerBadge(layer.id)
             return (
               <label key={layer.id} className={`dev-layer-toggle${disabled ? ' is-disabled' : ''}`}>
                 <input
