@@ -141,6 +141,19 @@
   gap: 8px;
 }
 
+.route-check-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.route-check-field-label {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .route-check-form label {
   display: flex;
   flex-direction: column;
@@ -167,28 +180,59 @@
 .route-check-flight-rule {
   display: flex;
   align-items: center;
-  gap: 14px;
-  height: 30px;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 2px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
 }
 
-.route-check-flight-rule.full-width {
+.route-check-flight-rule-field.full-width {
   grid-column: 1 / -1;
 }
 
 .route-check-form .route-check-radio {
+  position: relative;
   flex-direction: row;
   align-items: center;
-  gap: 5px;
-  color: #334155;
-  font-size: 11px;
+  justify-content: center;
+  gap: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
 }
 
 .route-check-form .route-check-radio input {
-  width: auto;
-  height: auto;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
   margin: 0;
   cursor: pointer;
+}
+
+.route-check-flight-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 52px;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 9px;
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+
+.route-check-flight-option.is-active {
+  background: #1e293b;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+}
+
+.route-check-flight-divider {
+  display: none;
 }
 
 .route-check-form button {
@@ -223,35 +267,6 @@
   color: #334155;
 }
 
-.route-check-result dl {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin: 0;
-}
-
-.route-check-result dl div {
-  padding: 7px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  background: #f8fafc;
-}
-
-.route-check-result dt {
-  color: #64748b;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.route-check-result dd {
-  margin: 2px 0 0;
-  color: #0f172a;
-  font-size: 12px;
-  font-weight: 800;
-  overflow-wrap: anywhere;
-}
-
 .route-check-sequence {
   margin-top: 8px;
   padding: 8px;
@@ -282,6 +297,32 @@
 
 .proc-direct-input {
   margin-top: 4px;
+}
+
+.route-check-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.route-check-form .route-check-actions button {
+  grid-column: auto;
+  width: 100%;
+}
+
+.route-check-search-button {
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.route-check-secondary-button {
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .basemap-switcher {

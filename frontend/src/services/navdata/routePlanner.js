@@ -1,4 +1,6 @@
 const NAVDATA_BASE_URL = '/data/navdata'
+const FIR_EXIT_AIRPORT = 'FIR_EXIT'
+const FIR_IN_AIRPORT = 'FIR_IN'
 
 let navdataCache = null
 
@@ -14,12 +16,13 @@ async function fetchJson(path) {
 
 export async function loadNavdata() {
   if (!navdataCache) {
-    const [airports, navpoints, routeGraph, routeSegments, routes] = await Promise.all([
+    const [airports, navpoints, routeGraph, routeSegments, routes, routeDirectionMetadata] = await Promise.all([
       fetchJson('airports.json'),
       fetchJson('navpoints.json'),
       fetchJson('route-graph.json'),
       fetchJson('route-segments.json'),
       fetchJson('routes.json'),
+      fetchJson('route-direction-metadata.json'),
     ])
 
     navdataCache = {
@@ -28,6 +31,7 @@ export async function loadNavdata() {
       routeGraph,
       routeSegmentsById: Object.fromEntries(routeSegments.map((segment) => [segment.id, segment])),
       routes,
+      routeDirectionMetadata,
     }
   }
 
@@ -59,7 +63,74 @@ function isAllowedRouteType(segment, routeType) {
   return routeType === 'ALL' || getRouteType(segment) === routeType
 }
 
-function findShortestPath(routeGraph, routeSegmentsById, startId, endId, routeType) {
+export async function loadRouteDirectionMetadata() {
+  const navdata = await loadNavdata()
+  return navdata.routeDirectionMetadata
+}
+
+export async function loadNavpoints() {
+  const navdata = await loadNavdata()
+  return navdata.navpoints
+}
+
+function getRouteSequenceDirection(route, fromId, toId) {
+  const sequence = route?.sequence
+
+  if (!Array.isArray(sequence)) {
+    return null
+  }
+
+  const fromIndex = sequence.indexOf(fromId)
+  const toIndex = sequence.indexOf(toId)
+
+  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+    return null
+  }
+
+  return toIndex > fromIndex ? 'sequence' : 'reverse'
+}
+
+function getSegmentAllowedDirection(routeMeta, fromId, toId) {
+  const segmentRules = routeMeta?.segmentRules
+
+  if (!Array.isArray(segmentRules) || segmentRules.length === 0) {
+    return null
+  }
+
+  const matchingRule = segmentRules.find((rule) => {
+    if (!rule?.from || !rule?.to) {
+      return false
+    }
+
+    return (
+      (rule.from === fromId && rule.to === toId) ||
+      (rule.from === toId && rule.to === fromId)
+    )
+  })
+
+  return matchingRule?.allowedDirection ?? null
+}
+
+function isAllowedRouteDirection(segment, routes, routeDirectionMetadata, fromId, toId) {
+  const routeId = segment.routeId
+  const route = routes?.[routeId]
+  const routeMeta = routeDirectionMetadata?.routes?.[routeId]
+  const allowedDirection = getSegmentAllowedDirection(routeMeta, fromId, toId) ?? routeMeta?.allowedDirection ?? 'both'
+
+  if (allowedDirection === 'both' || allowedDirection === 'conditional') {
+    return true
+  }
+
+  const actualDirection = getRouteSequenceDirection(route, fromId, toId)
+
+  if (!actualDirection) {
+    return true
+  }
+
+  return actualDirection === allowedDirection
+}
+
+function findShortestPath(routeGraph, routeSegmentsById, routes, routeDirectionMetadata, startId, endId, routeType) {
   const distances = new Map([[startId, 0]])
   const previous = new Map()
   const visited = new Set()
@@ -82,7 +153,11 @@ function findShortestPath(routeGraph, routeSegmentsById, startId, endId, routeTy
     for (const link of routeGraph[current.id] ?? []) {
       const segment = routeSegmentsById[link.segmentId]
 
-      if (!segment || !isAllowedRouteType(segment, routeType)) {
+      if (
+        !segment ||
+        !isAllowedRouteType(segment, routeType) ||
+        !isAllowedRouteDirection(segment, routes, routeDirectionMetadata, current.id, link.to)
+      ) {
         continue
       }
 
@@ -127,12 +202,24 @@ function findShortestPath(routeGraph, routeSegmentsById, startId, endId, routeTy
   }
 }
 
-function buildPreviewGeometry(departureAirport, arrivalAirport, navpoints, path, segments) {
-  const coordinates = [
-    coordinatesOf(departureAirport),
-    ...path.navpointIds.map((id) => coordinatesOf(navpoints[id])),
-    coordinatesOf(arrivalAirport),
-  ]
+function buildPreviewGeometry(departurePoint, terminalPoint, navpoints, path, segments) {
+  const departureCoords = coordinatesOf(departurePoint)
+  const pathCoords = path.navpointIds.map((id) => coordinatesOf(navpoints[id]))
+  const firstPathCoord = pathCoords[0]
+  const hasDuplicateStart =
+    firstPathCoord?.[0] === departureCoords[0] &&
+    firstPathCoord?.[1] === departureCoords[1]
+  const coordinates = hasDuplicateStart ? pathCoords : [departureCoords, ...pathCoords]
+
+  if (terminalPoint) {
+    const terminalCoords = coordinatesOf(terminalPoint)
+    const lastCoord = coordinates[coordinates.length - 1]
+    const isDuplicateTerminal = lastCoord?.[0] === terminalCoords[0] && lastCoord?.[1] === terminalCoords[1]
+
+    if (!isDuplicateTerminal) {
+      coordinates.push(terminalCoords)
+    }
+  }
 
   return {
     type: 'FeatureCollection',
@@ -162,8 +249,10 @@ function buildPreviewGeometry(departureAirport, arrivalAirport, navpoints, path,
   }
 }
 
-function buildRouteDisplaySequence(departureAirport, arrivalAirport, path, segments) {
-  const sequence = [departureAirport, path.navpointIds[0]]
+function buildRouteDisplaySequence(departureLabel, terminalId, path, segments) {
+  const sequence = departureLabel === path.navpointIds[0]
+    ? [path.navpointIds[0]]
+    : [departureLabel, path.navpointIds[0]]
   let currentRouteId = null
 
   segments.forEach((segment, index) => {
@@ -175,7 +264,9 @@ function buildRouteDisplaySequence(departureAirport, arrivalAirport, path, segme
     sequence.push(path.navpointIds[index + 1])
   })
 
-  sequence.push(arrivalAirport)
+  if (sequence[sequence.length - 1] !== terminalId) {
+    sequence.push(terminalId)
+  }
 
   return sequence
 }
@@ -217,17 +308,19 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
   const entryId = normalizeIdent(entryFix)
   const exitId = normalizeIdent(exitFix)
   const selectedRouteType = routeType ?? 'ALL'
+  const isFirExitRoute = arrivalId === FIR_EXIT_AIRPORT
+  const isFirInRoute = departureId === FIR_IN_AIRPORT
 
-  const departure = navdata.airports[departureId]
-  const arrival = navdata.airports[arrivalId]
+  const departure = isFirInRoute ? null : navdata.airports[departureId]
+  const arrival = isFirExitRoute ? null : navdata.airports[arrivalId]
   const entry = navdata.navpoints[entryId]
   const exit = navdata.navpoints[exitId]
 
-  if (!departure) {
+  if (!isFirInRoute && !departure) {
     throw new Error(`${departureId} airport not found`)
   }
 
-  if (!arrival) {
+  if (!isFirExitRoute && !arrival) {
     throw new Error(`${arrivalId} airport not found`)
   }
 
@@ -242,6 +335,8 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
   const path = findShortestPath(
     navdata.routeGraph,
     navdata.routeSegmentsById,
+    navdata.routes,
+    navdata.routeDirectionMetadata,
     entryId,
     exitId,
     selectedRouteType,
@@ -254,11 +349,15 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
   const segments = path.segmentIds.map((id) => navdata.routeSegmentsById[id])
   const routeIds = [...new Set(segments.map((segment) => segment.routeId))]
   const routeTypes = [...new Set(segments.map((segment) => segment.routeType))]
+  const terminalPoint = isFirExitRoute ? exit : arrival
+  const terminalId = isFirExitRoute ? exitId : arrivalId
+  const departurePoint = isFirInRoute ? entry : departure
+  const departureLabel = isFirInRoute ? entryId : departureId
 
   return {
     flightRule: 'IFR',
-    departureAirport: departureId,
-    arrivalAirport: arrivalId,
+    departureAirport: departureLabel,
+    arrivalAirport: terminalId,
     entryFix: entryId,
     exitFix: exitId,
     routeType: selectedRouteType,
@@ -267,9 +366,34 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
     routeIds,
     routeTypes,
     segments,
-    displaySequence: buildRouteDisplaySequence(departureId, arrivalId, path, segments),
-    previewGeojson: buildPreviewGeometry(departure, arrival, navdata.navpoints, path, segments),
+    displaySequence: buildRouteDisplaySequence(departureLabel, terminalId, path, segments),
+    previewGeojson: buildPreviewGeometry(departurePoint, terminalPoint, navdata.navpoints, path, segments),
   }
+}
+
+export async function canBuildBriefingRoutePath({ entryFix, exitFix, routeType }) {
+  const navdata = await loadNavdata()
+  const entryId = normalizeIdent(entryFix)
+  const exitId = normalizeIdent(exitFix)
+  const selectedRouteType = routeType ?? 'ALL'
+
+  if (!entryId || !exitId) {
+    return false
+  }
+
+  if (!navdata.navpoints[entryId] || !navdata.navpoints[exitId]) {
+    return false
+  }
+
+  return !!findShortestPath(
+    navdata.routeGraph,
+    navdata.routeSegmentsById,
+    navdata.routes,
+    navdata.routeDirectionMetadata,
+    entryId,
+    exitId,
+    selectedRouteType,
+  )
 }
 
 const iapDataCache = {}

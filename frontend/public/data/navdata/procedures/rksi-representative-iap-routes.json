@@ -177,6 +177,32 @@
       ],
       "defaultIapKey": "RKSI-IAP-ENPIL-RWY33-REP"
     },
+    "RKSI-STAR-REBIT2H": {
+      "starName": "REBIT2H",
+      "endFix": "MUNAN",
+      "runways": [
+        "15L/R",
+        "16L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-MUNAN-RWY15-REP",
+        "RKSI-IAP-MUNAN-RWY16-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-MUNAN-RWY15-REP"
+    },
+    "RKSI-STAR-OLMEN2H": {
+      "starName": "OLMEN2H",
+      "endFix": "MUNAN",
+      "runways": [
+        "15L/R",
+        "16L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSI-IAP-MUNAN-RWY15-REP",
+        "RKSI-IAP-MUNAN-RWY16-REP"
+      ],
+      "defaultIapKey": "RKSI-IAP-MUNAN-RWY15-REP"
+    },
     "RKSI-STAR-REBIT1Y": {
       "starName": "REBIT1Y",
       "endFix": "PAMBI",

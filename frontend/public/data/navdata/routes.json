@@ -301,6 +301,25 @@
     ],
     "type": "RNAV"
   },
+  "Y579": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Y579",
+    "segmentCount": 5,
+    "sequence": [
+      "TENAS",
+      "AGSUS",
+      "DABIK",
+      "BULGA",
+      "BEDOM",
+      "PSN"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
   "Y590": {
     "cycle": "AIRAC 2026-04-15",
     "id": "Y590",
@@ -341,6 +360,29 @@
     ],
     "type": "RNAV"
   },
+  "Y655": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Y655",
+    "segmentCount": 9,
+    "sequence": [
+      "GONAV",
+      "DALPO",
+      "NONOS",
+      "BIDRI",
+      "DANPA",
+      "PALSA",
+      "TOLIS",
+      "ENSUM",
+      "BONSO",
+      "ATOTI"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
   "Y657": {
     "cycle": "AIRAC 2026-04-15",
     "id": "Y657",
@@ -352,6 +394,27 @@
     ],
     "sequenceSource": "ENR 3.3 HTML",
     "sources": [
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
+  "Y659": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Y659",
+    "segmentCount": 7,
+    "sequence": [
+      "KUZ",
+      "ELPOS",
+      "RINBO",
+      "MELES",
+      "OPEDA",
+      "TGU",
+      "LAPAL",
+      "KPO"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
       "ENR 3.2"
     ],
     "type": "RNAV"
@@ -492,6 +555,26 @@
     ],
     "type": "RNAV"
   },
+  "Y744": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Y744",
+    "segmentCount": 6,
+    "sequence": [
+      "PILIT",
+      "NOBUT",
+      "OSVOM",
+      "LOSTO",
+      "KPO",
+      "APARU",
+      "PSN"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
   "Y781": {
     "cycle": "AIRAC 2026-04-15",
     "id": "Y781",
@@ -534,6 +617,37 @@
     ],
     "type": "RNAV"
   },
+  "Z50": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Z50",
+    "segmentCount": 2,
+    "sequence": [
+      "EGOBA",
+      "SOT",
+      "BULTI"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
+  "Z51": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Z51",
+    "segmentCount": 2,
+    "sequence": [
+      "BOPTA",
+      "MOXID",
+      "BEDES"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
   "Z52": {
     "cycle": "AIRAC 2026-04-15",
     "id": "Z52",
@@ -542,6 +656,53 @@
       "OLMEN",
       "POSAN",
       "KAKSO"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
+  "Z53": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Z53",
+    "segmentCount": 2,
+    "sequence": [
+      "BITUX",
+      "TEBEX",
+      "BASEM"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
+  "Z54": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Z54",
+    "segmentCount": 2,
+    "sequence": [
+      "SOT",
+      "MONSI",
+      "GOGET"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
+  "Z55": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Z55",
+    "segmentCount": 1,
+    "sequence": [
+      "AGAVO",
+      "NONOS"
     ],
     "sequenceSource": "ENR 3.3 HTML",
     "sources": [
@@ -563,6 +724,20 @@
     "sequenceSource": "ENR 3.3 HTML",
     "sources": [
       "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
+  "Z57": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Z57",
+    "segmentCount": 1,
+    "sequence": [
+      "RILRO",
+      "DALPO"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
       "ENR 3.2"
     ],
     "type": "RNAV"
@@ -597,6 +772,38 @@
     ],
     "type": "RNAV"
   },
+  "Z82": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Z82",
+    "segmentCount": 1,
+    "sequence": [
+      "CJU",
+      "PANSI"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
+  "Z83": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Z83",
+    "segmentCount": 4,
+    "sequence": [
+      "TGU",
+      "MASTA",
+      "SARAM",
+      "ENGOT",
+      "ANROD"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
   "Z84": {
     "cycle": "AIRAC 2026-04-15",
     "id": "Z84",
@@ -604,6 +811,22 @@
     "sequence": [
       "PSN",
       "KALEK"
+    ],
+    "sequenceSource": "ENR 3.3 HTML",
+    "sources": [
+      "ENR 3.1",
+      "ENR 3.2"
+    ],
+    "type": "RNAV"
+  },
+  "Z85": {
+    "cycle": "AIRAC 2026-04-15",
+    "id": "Z85",
+    "segmentCount": 2,
+    "sequence": [
+      "BILUM",
+      "PAPLU",
+      "RUGMA"
     ],
     "sequenceSource": "ENR 3.3 HTML",
     "sources": [

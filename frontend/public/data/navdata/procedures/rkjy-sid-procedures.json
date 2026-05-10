@@ -1,0 +1,743 @@
+{
+  "metadata": {
+    "airport": "RKJY",
+    "cycle": "AIRAC 11/22 - 1/23",
+    "description": "RKJY RNAV SID Procedures with Runway THR added to fix CA leg disconnection"
+  },
+  "sidProcedures": {
+    "RKJY-SID-ANUBA1M": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 11/22",
+      "dataModel": "SID",
+      "id": "RKJY-SID-ANUBA1M",
+      "name": "ANUBA 1M",
+      "fullName": "RNAV ANUBA ONE MIKE DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": ["17"],
+      "startFix": "RWY35",
+      "endFix": "ANUBA",
+      "source": "2-8 RKJY SID / 2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "6.9% climb is required until reaching 600 ft for OBST avoidance and until reaching 8 000 ft for ATC purpose. Departure turns are limited maximum of 220 kt IAS until JY803.",
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.833481, "lon": 127.621583 },
+          "id": "RWY35",
+          "role": "THR",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "2-15 RKJY IAP (THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.651528, "lon": 127.713806 },
+          "id": "JY801",
+          "role": null,
+          "legDistanceNm": 11.7,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 220
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.609028, "lon": 127.830167 },
+          "id": "JY802",
+          "role": null,
+          "legDistanceNm": 6.3,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 220
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.740306, "lon": 127.900556 },
+          "id": "JY803",
+          "role": null,
+          "legDistanceNm": 8.6,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 220
+        },
+        {
+          "altitude": { "maxFt": 8000, "minFt": 8000, "raw": "@8000" },
+          "coordinates": { "lat": 34.842861, "lon": 127.619083 },
+          "id": "YSU",
+          "role": null,
+          "legDistanceNm": 15.2,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 8000, "minFt": 8000, "raw": "@8000" },
+          "coordinates": { "lat": 35.129417, "lon": 127.589667 },
+          "id": "ANUBA",
+          "role": null,
+          "legDistanceNm": 17.2,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.621583, 34.833481],
+          [127.713806, 34.651528],
+          [127.830167, 34.609028],
+          [127.900556, 34.740306],
+          [127.619083, 34.842861],
+          [127.589667, 35.129417]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 11.7, "from": "RWY35", "to": "JY801",
+          "geometry": { "type": "LineString", "coordinates": [[127.621583, 34.833481], [127.713806, 34.651528]] },
+          "id": "RKJY-SID-ANUBA1M-001", "procedureId": "RKJY-SID-ANUBA1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "Interpolated CA/CF"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 6.3, "from": "JY801", "to": "JY802",
+          "geometry": { "type": "LineString", "coordinates": [[127.713806, 34.651528], [127.830167, 34.609028]] },
+          "id": "RKJY-SID-ANUBA1M-002", "procedureId": "RKJY-SID-ANUBA1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 8.6, "from": "JY802", "to": "JY803",
+          "geometry": { "type": "LineString", "coordinates": [[127.830167, 34.609028], [127.900556, 34.740306]] },
+          "id": "RKJY-SID-ANUBA1M-003", "procedureId": "RKJY-SID-ANUBA1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 15.2, "from": "JY803", "to": "YSU",
+          "geometry": { "type": "LineString", "coordinates": [[127.900556, 34.740306], [127.619083, 34.842861]] },
+          "id": "RKJY-SID-ANUBA1M-004", "procedureId": "RKJY-SID-ANUBA1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 17.2, "from": "YSU", "to": "ANUBA",
+          "geometry": { "type": "LineString", "coordinates": [[127.619083, 34.842861], [127.589667, 35.129417]] },
+          "id": "RKJY-SID-ANUBA1M-005", "procedureId": "RKJY-SID-ANUBA1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 5, "source": "2-8-1 Coding Table"
+        }
+      ],
+      "sequence": ["RWY35", "JY801", "JY802", "JY803", "YSU", "ANUBA"]
+    },
+    "RKJY-SID-POVOR1M": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 11/22",
+      "dataModel": "SID",
+      "id": "RKJY-SID-POVOR1M",
+      "name": "POVOR 1M",
+      "fullName": "RNAV POVOR ONE MIKE DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": ["17"],
+      "startFix": "RWY35",
+      "endFix": "POVOR",
+      "source": "2-8 RKJY SID / 2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "6.9% climb is required until reaching 600 ft for OBST avoidance and until reaching 8 000 ft for ATC purpose.",
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.833481, "lon": 127.621583 },
+          "id": "RWY35",
+          "role": "THR",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "2-15 RKJY IAP (THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.651528, "lon": 127.713806 },
+          "id": "JY801",
+          "role": null,
+          "legDistanceNm": 11.7,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 7000, "minFt": 7000, "raw": "@7000" },
+          "coordinates": { "lat": 34.420167, "lon": 127.725167 },
+          "id": "JY806",
+          "role": null,
+          "legDistanceNm": 13.9,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 8000, "minFt": 8000, "raw": "@8000" },
+          "coordinates": { "lat": 34.255472, "lon": 127.733250 },
+          "id": "POVOR",
+          "role": null,
+          "legDistanceNm": 9.9,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.621583, 34.833481],
+          [127.713806, 34.651528],
+          [127.725167, 34.420167],
+          [127.733250, 34.255472]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 11.7, "from": "RWY35", "to": "JY801",
+          "geometry": { "type": "LineString", "coordinates": [[127.621583, 34.833481], [127.713806, 34.651528]] },
+          "id": "RKJY-SID-POVOR1M-001", "procedureId": "RKJY-SID-POVOR1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "Interpolated CA/CF"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 13.9, "from": "JY801", "to": "JY806",
+          "geometry": { "type": "LineString", "coordinates": [[127.713806, 34.651528], [127.725167, 34.420167]] },
+          "id": "RKJY-SID-POVOR1M-002", "procedureId": "RKJY-SID-POVOR1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 9.9, "from": "JY806", "to": "POVOR",
+          "geometry": { "type": "LineString", "coordinates": [[127.725167, 34.420167], [127.733250, 34.255472]] },
+          "id": "RKJY-SID-POVOR1M-003", "procedureId": "RKJY-SID-POVOR1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "2-8-1 Coding Table"
+        }
+      ],
+      "sequence": ["RWY35", "JY801", "JY806", "POVOR"]
+    },
+    "RKJY-SID-TEDAN1M": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 11/22",
+      "dataModel": "SID",
+      "id": "RKJY-SID-TEDAN1M",
+      "name": "TEDAN 1M",
+      "fullName": "RNAV TEDAN ONE MIKE DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": ["17"],
+      "startFix": "RWY35",
+      "endFix": "TEDAN",
+      "source": "2-8 RKJY SID / 2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "7.0% climb is required until reaching 4 000 ft for OBST avoidance and until reaching 9 000 ft for ATC purpose.",
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.833481, "lon": 127.621583 },
+          "id": "RWY35",
+          "role": "THR",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "2-15 RKJY IAP (THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 7000, "raw": "+7000" },
+          "coordinates": { "lat": 34.815472, "lon": 127.506250 },
+          "id": "JY804",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "DF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": null, "raw": "-9000" },
+          "coordinates": { "lat": 35.039417, "lon": 127.369361 },
+          "id": "JY805",
+          "role": null,
+          "legDistanceNm": 15.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": 9000, "raw": "@9000" },
+          "coordinates": { "lat": 35.128833, "lon": 127.314472 },
+          "id": "TEDAN",
+          "role": null,
+          "legDistanceNm": 6.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.621583, 34.833481],
+          [127.685548, 34.708426],
+          [127.682643, 34.699709],
+          [127.677869, 34.691566],
+          [127.671384, 34.684266],
+          [127.663401, 34.678048],
+          [127.654183, 34.673116],
+          [127.644032, 34.669634],
+          [127.633283, 34.667715],
+          [127.622289, 34.667423],
+          [127.611411, 34.668767],
+          [127.601008, 34.671703],
+          [127.591421, 34.676135],
+          [127.506250, 34.815472],
+          [127.369361, 35.039417],
+          [127.314472, 35.128833]
+        ]
+      },
+      "displayPoints": [
+        {
+          "id": "ARC START",
+          "coordinates": {
+            "lat": 34.708426,
+            "lon": 127.685548
+          }
+        },
+        {
+          "id": "ARC END",
+          "coordinates": {
+            "lat": 34.676135,
+            "lon": 127.591421
+          }
+        },
+        {
+          "id": "ARC CENTER",
+          "coordinates": {
+            "lat": 34.717177,
+            "lon": 127.625833
+          }
+        }
+      ],
+      "segments": [
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 0, "from": "RWY35", "to": "JY804",
+          "geometry": { "type": "LineString", "coordinates": [[127.621583, 34.833481], [127.506250, 34.815472]] },
+          "id": "RKJY-SID-TEDAN1M-001", "procedureId": "RKJY-SID-TEDAN1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "Interpolated CA/DF"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 15.0, "from": "JY804", "to": "JY805",
+          "geometry": { "type": "LineString", "coordinates": [[127.506250, 34.815472], [127.369361, 35.039417]] },
+          "id": "RKJY-SID-TEDAN1M-002", "procedureId": "RKJY-SID-TEDAN1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 11/22", "distanceNm": 6.0, "from": "JY805", "to": "TEDAN",
+          "geometry": { "type": "LineString", "coordinates": [[127.369361, 35.039417], [127.314472, 35.128833]] },
+          "id": "RKJY-SID-TEDAN1M-003", "procedureId": "RKJY-SID-TEDAN1M", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "2-8-1 Coding Table"
+        }
+      ],
+      "sequence": ["RWY35", "JY804", "JY805", "TEDAN"]
+    },
+    "RKJY-SID-POVOR1R": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 1/23",
+      "dataModel": "SID",
+      "id": "RKJY-SID-POVOR1R",
+      "name": "POVOR 1R",
+      "fullName": "RNAV POVOR ONE ROMEO DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": ["35"],
+      "startFix": "RWY17",
+      "endFix": "POVOR",
+      "source": "2-10 RKJY SID / 2-10-1 Coding Table",
+      "isComplete": true,
+      "notes": "5.8% climb is required for ATC purpose and 5.6% climb is required until reaching 2 100 ft for OBST avoidance. Departure turns are limited maximum of 220 kt IAS until JY853.",
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.851036, "lon": 127.612992 },
+          "id": "RWY17",
+          "role": "THR",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "2-15 RKJY IAP (THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.943917, "lon": 127.567472 },
+          "id": "JY851",
+          "role": null,
+          "legDistanceNm": 5.8,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 220
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.991972, "lon": 127.712306 },
+          "id": "JY852",
+          "role": null,
+          "legDistanceNm": 7.7,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 220
+        },
+        {
+          "altitude": { "maxFt": 3500, "minFt": 3500, "raw": "@3500" },
+          "coordinates": { "lat": 34.893639, "lon": 127.760306 },
+          "id": "JY853",
+          "role": null,
+          "legDistanceNm": 6.3,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 220
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 6000, "raw": "+6000" },
+          "coordinates": { "lat": 34.784861, "lon": 127.698333 },
+          "id": "JY857",
+          "role": null,
+          "legDistanceNm": 7.2,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 7000, "raw": "+7000" },
+          "coordinates": { "lat": 34.713139, "lon": 127.657611 },
+          "id": "JY854",
+          "role": null,
+          "legDistanceNm": 4.7,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 8000, "minFt": 8000, "raw": "@8000" },
+          "coordinates": { "lat": 34.255472, "lon": 127.733250 },
+          "id": "POVOR",
+          "role": null,
+          "legDistanceNm": 27.7,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.612992, 34.851036],
+          [127.567472, 34.943917],
+          [127.712306, 34.991972],
+          [127.760306, 34.893639],
+          [127.698333, 34.784861],
+          [127.657611, 34.713139],
+          [127.733250, 34.255472]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 5.8, "from": "RWY17", "to": "JY851",
+          "geometry": { "type": "LineString", "coordinates": [[127.612992, 34.851036], [127.567472, 34.943917]] },
+          "id": "RKJY-SID-POVOR1R-001", "procedureId": "RKJY-SID-POVOR1R", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "Interpolated CA/CF"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 7.7, "from": "JY851", "to": "JY852",
+          "geometry": { "type": "LineString", "coordinates": [[127.567472, 34.943917], [127.712306, 34.991972]] },
+          "id": "RKJY-SID-POVOR1R-002", "procedureId": "RKJY-SID-POVOR1R", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 6.3, "from": "JY852", "to": "JY853",
+          "geometry": { "type": "LineString", "coordinates": [[127.712306, 34.991972], [127.760306, 34.893639]] },
+          "id": "RKJY-SID-POVOR1R-003", "procedureId": "RKJY-SID-POVOR1R", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 7.2, "from": "JY853", "to": "JY857",
+          "geometry": { "type": "LineString", "coordinates": [[127.760306, 34.893639], [127.698333, 34.784861]] },
+          "id": "RKJY-SID-POVOR1R-004", "procedureId": "RKJY-SID-POVOR1R", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 4.7, "from": "JY857", "to": "JY854",
+          "geometry": { "type": "LineString", "coordinates": [[127.698333, 34.784861], [127.657611, 34.713139]] },
+          "id": "RKJY-SID-POVOR1R-005", "procedureId": "RKJY-SID-POVOR1R", "procedureType": "SID", "routeType": "RNAV", "sequence": 5, "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 27.7, "from": "JY854", "to": "POVOR",
+          "geometry": { "type": "LineString", "coordinates": [[127.657611, 34.713139], [127.733250, 34.255472]] },
+          "id": "RKJY-SID-POVOR1R-006", "procedureId": "RKJY-SID-POVOR1R", "procedureType": "SID", "routeType": "RNAV", "sequence": 6, "source": "2-10-1 Coding Table"
+        }
+      ],
+      "sequence": ["RWY17", "JY851", "JY852", "JY853", "JY857", "JY854", "POVOR"]
+    },
+    "RKJY-SID-ANUBA1R": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 1/23",
+      "dataModel": "SID",
+      "id": "RKJY-SID-ANUBA1R",
+      "name": "ANUBA 1R",
+      "fullName": "RNAV ANUBA ONE ROMEO DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": ["35"],
+      "startFix": "RWY17",
+      "endFix": "ANUBA",
+      "source": "2-10 RKJY SID / 2-10-1 Coding Table",
+      "isComplete": true,
+      "notes": "5.8% climb is required for ATC purpose and 4.9% climb is required until reaching 4 500 ft for OBST avoidance.",
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.851036, "lon": 127.612992 },
+          "id": "RWY17",
+          "role": "THR",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "2-15 RKJY IAP (THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.943917, "lon": 127.567472 },
+          "id": "JY851",
+          "role": null,
+          "legDistanceNm": 5.8,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 5000, "minFt": 5000, "raw": "@5000" },
+          "coordinates": { "lat": 35.129417, "lon": 127.589667 },
+          "id": "ANUBA",
+          "role": null,
+          "legDistanceNm": 11.2,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.612992, 34.851036],
+          [127.567472, 34.943917],
+          [127.589667, 35.129417]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 5.8, "from": "RWY17", "to": "JY851",
+          "geometry": { "type": "LineString", "coordinates": [[127.612992, 34.851036], [127.567472, 34.943917]] },
+          "id": "RKJY-SID-ANUBA1R-001", "procedureId": "RKJY-SID-ANUBA1R", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "Interpolated CA/CF"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 11.2, "from": "JY851", "to": "ANUBA",
+          "geometry": { "type": "LineString", "coordinates": [[127.567472, 34.943917], [127.589667, 35.129417]] },
+          "id": "RKJY-SID-ANUBA1R-002", "procedureId": "RKJY-SID-ANUBA1R", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "2-10-1 Coding Table"
+        }
+      ],
+      "sequence": ["RWY17", "JY851", "ANUBA"]
+    },
+    "RKJY-SID-TEDAN1R": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 1/23",
+      "dataModel": "SID",
+      "id": "RKJY-SID-TEDAN1R",
+      "name": "TEDAN 1R",
+      "fullName": "RNAV TEDAN ONE ROMEO DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": ["35"],
+      "startFix": "RWY17",
+      "endFix": "TEDAN",
+      "source": "2-10 RKJY SID / 2-10-1 Coding Table",
+      "isComplete": true,
+      "notes": "7.0% climb is required until reaching 4 000 ft for OBST avoidance. The first turn(at 4 000 ft) is limited maximum of 240 kt IAS.",
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.851036, "lon": 127.612992 },
+          "id": "RWY17",
+          "role": "THR",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "2-15 RKJY IAP (THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 5000, "minFt": 5000, "raw": "@5000" },
+          "coordinates": { "lat": 35.128833, "lon": 127.314472 },
+          "id": "TEDAN",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "DF",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 240
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.612992, 34.851036],
+          [127.550920, 34.976768],
+          [127.314472, 35.128833]
+        ]
+      },
+      "displayPoints": [
+        {
+          "id": "ARC START",
+          "coordinates": {
+            "lat": 34.976768,
+            "lon": 127.550920
+          }
+        }
+      ],
+      "segments": [
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 0, "from": "RWY17", "to": "TEDAN",
+          "geometry": { "type": "LineString", "coordinates": [[127.612992, 34.851036], [127.314472, 35.128833]] },
+          "id": "RKJY-SID-TEDAN1R-001", "procedureId": "RKJY-SID-TEDAN1R", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "Interpolated CA/DF"
+        }
+      ],
+      "sequence": ["RWY17", "TEDAN"]
+    },
+    "RKJY-SID-POVOR6R": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 1/23",
+      "dataModel": "SID",
+      "id": "RKJY-SID-POVOR6R",
+      "name": "POVOR 6R",
+      "fullName": "RNAV POVOR SIX ROMEO DEPATURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": ["35"],
+      "startFix": "RWY17",
+      "endFix": "POVOR",
+      "source": "2-10 RKJY SID / 2-10-1 Coding Table",
+      "isComplete": true,
+      "notes": "7.0% climb is required until reaching 4 000 ft for OBST avoidance. Departure turns are limited maximum of 240 kt IAS until JY865.",
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.851036, "lon": 127.612992 },
+          "id": "RWY17",
+          "role": "THR",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "2-15 RKJY IAP (THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 5000, "minFt": 5000, "raw": "@5000" },
+          "coordinates": { "lat": 34.799583, "lon": 127.517528 },
+          "id": "JY865",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "DF",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 6000, "raw": "+6000" },
+          "coordinates": { "lat": 34.683889, "lon": 127.563639 },
+          "id": "JY866",
+          "role": null,
+          "legDistanceNm": 7.3,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 8000, "minFt": 8000, "raw": "@8000" },
+          "coordinates": { "lat": 34.255472, "lon": 127.733250 },
+          "id": "POVOR",
+          "role": null,
+          "legDistanceNm": 27.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.612992, 34.851036],
+          [127.550920, 34.976768],
+          [127.537825, 34.980765],
+          [127.523999, 34.982418],
+          [127.510057, 34.981655],
+          [127.496622, 34.978508],
+          [127.484292, 34.973119],
+          [127.473619, 34.965727],
+          [127.465078, 34.956663],
+          [127.459050, 34.946331],
+          [127.517528, 34.799583],
+          [127.563639, 34.683889],
+          [127.733250, 34.255472]
+        ]
+      },
+      "displayPoints": [
+        {
+          "id": "ARC START",
+          "coordinates": {
+            "lat": 34.976768,
+            "lon": 127.550920
+          }
+        },
+        {
+          "id": "ARC END",
+          "coordinates": {
+            "lat": 34.946332,
+            "lon": 127.459045
+          }
+        },
+        {
+          "id": "ARC CENTER",
+          "coordinates": {
+            "lat": 34.928234,
+            "lon": 127.521414
+          }
+        }
+      ],
+      "segments": [
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 0, "from": "RWY17", "to": "JY865",
+          "geometry": { "type": "LineString", "coordinates": [[127.612992, 34.851036], [127.517528, 34.799583]] },
+          "id": "RKJY-SID-POVOR6R-001", "procedureId": "RKJY-SID-POVOR6R", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "Interpolated CA/DF"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 7.3, "from": "JY865", "to": "JY866",
+          "geometry": { "type": "LineString", "coordinates": [[127.517528, 34.799583], [127.563639, 34.683889]] },
+          "id": "RKJY-SID-POVOR6R-002", "procedureId": "RKJY-SID-POVOR6R", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKJY", "cycle": "AIRAC 1/23", "distanceNm": 27.0, "from": "JY866", "to": "POVOR",
+          "geometry": { "type": "LineString", "coordinates": [[127.563639, 34.683889], [127.733250, 34.255472]] },
+          "id": "RKJY-SID-POVOR6R-003", "procedureId": "RKJY-SID-POVOR6R", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "2-10-1 Coding Table"
+        }
+      ],
+      "sequence": ["RWY17", "JY865", "JY866", "POVOR"]
+    }
+  }
+}

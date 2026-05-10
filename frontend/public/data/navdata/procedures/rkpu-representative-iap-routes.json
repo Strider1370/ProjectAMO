@@ -1,0 +1,294 @@
+{
+  "metadata": {
+    "airport": "RKPU",
+    "cycle": "AIRAC 9/24",
+    "description": "RKPU Representative IAPs bridging IAFs (MAKKY, HAEGU) to Runway Thresholds based on official charts"
+  },
+  "representativeIapMap": {
+    "MAKKY|18": "RKPU-IAP-MAKKY-RWY18-REP",
+    "HAEGU|36": "RKPU-IAP-HAEGU-RWY36-REP"
+  },
+  "starToIapCandidates": {
+    "RKPU-STAR-MAKKY-REP": {
+      "starName": "MAKKY ARRIVAL",
+      "endFix": "MAKKY",
+      "runways": ["18"],
+      "candidateIapKeys": ["RKPU-IAP-MAKKY-RWY18-REP"],
+      "defaultIapKey": "RKPU-IAP-MAKKY-RWY18-REP"
+    },
+    "RKPU-STAR-HAEGU-REP": {
+      "starName": "HAEGU ARRIVAL",
+      "endFix": "HAEGU",
+      "runways": ["36"],
+      "candidateIapKeys": ["RKPU-IAP-HAEGU-RWY36-REP"],
+      "defaultIapKey": "RKPU-IAP-HAEGU-RWY36-REP"
+    }
+  },
+  "iapRoutes": {
+    "RKPU-IAP-MAKKY-RWY18-REP": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 9/24",
+      "dataModel": "IAP",
+      "procedureType": "APPROACH",
+      "routeType": "RNP",
+      "representative": true,
+      "representativeFor": ["RNP Y RWY 18", "VOR RWY 18"],
+      "entryFix": "MAKKY",
+      "endFix": "RWY18",
+      "runways": ["18"],
+      "name": "REP MAKKY 18",
+      "fullName": "Representative Approach from MAKKY to RWY 18",
+      "sourceProcedure": "RNP Y RWY 18",
+      "notes": "Derived from RKPU AD CHART 2-12 and 2-12-1.",
+      "source": "2-12 RKPU INSTR APCH CHART",
+      "fixes": [
+        {
+          "altitude": { "maxFt": 5000, "minFt": 5000, "raw": "@5000" },
+          "coordinates": { "lat": 35.871889, "lon": 129.259944 },
+          "id": "MAKKY",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 4000, "raw": "+4000" },
+          "coordinates": { "lat": 35.807528, "lon": 129.281944 },
+          "id": "SEDMO",
+          "role": "IF",
+          "legDistanceNm": 4.0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 3000, "raw": "+3000" },
+          "coordinates": { "lat": 35.737278, "lon": 129.305944 },
+          "id": "PU402",
+          "role": "SDF",
+          "legDistanceNm": 4.4,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 2400, "raw": "+2400" },
+          "coordinates": { "lat": 35.695417, "lon": 129.320222 },
+          "id": "BINJO",
+          "role": "FAF",
+          "legDistanceNm": 2.6,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 1300, "raw": "+1300" },
+          "coordinates": { "lat": 35.654306, "lon": 129.334889 },
+          "id": "PU403",
+          "role": "SDF",
+          "legDistanceNm": 2.6,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 990, "raw": "+990" },
+          "coordinates": { "lat": 35.638250, "lon": 129.340667 },
+          "id": "IGMEL",
+          "role": "MAPt",
+          "legDistanceNm": 1.0,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.602469, "lon": 129.350983 },
+          "id": "RWY18",
+          "role": "THR",
+          "legDistanceNm": 2.2,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "RKPU AD CHART 2-14-1 (THR)",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [129.259944, 35.871889],
+          [129.281944, 35.807528],
+          [129.305944, 35.737278],
+          [129.320222, 35.695417],
+          [129.334889, 35.654306],
+          [129.340667, 35.638250],
+          [129.350983, 35.602469]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 4.0, "from": "MAKKY", "to": "SEDMO",
+          "geometry": { "type": "LineString", "coordinates": [[129.259944, 35.871889], [129.281944, 35.807528]] },
+          "id": "RKPU-IAP-MAKKY-RWY18-REP-001", "procedureId": "RKPU-IAP-MAKKY-RWY18-REP", "procedureType": "APPROACH", "routeType": "RNP", "sequence": 1, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 4.4, "from": "SEDMO", "to": "PU402",
+          "geometry": { "type": "LineString", "coordinates": [[129.281944, 35.807528], [129.305944, 35.737278]] },
+          "id": "RKPU-IAP-MAKKY-RWY18-REP-002", "procedureId": "RKPU-IAP-MAKKY-RWY18-REP", "procedureType": "APPROACH", "routeType": "RNP", "sequence": 2, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 2.6, "from": "PU402", "to": "BINJO",
+          "geometry": { "type": "LineString", "coordinates": [[129.305944, 35.737278], [129.320222, 35.695417]] },
+          "id": "RKPU-IAP-MAKKY-RWY18-REP-003", "procedureId": "RKPU-IAP-MAKKY-RWY18-REP", "procedureType": "APPROACH", "routeType": "RNP", "sequence": 3, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 2.6, "from": "BINJO", "to": "PU403",
+          "geometry": { "type": "LineString", "coordinates": [[129.320222, 35.695417], [129.334889, 35.654306]] },
+          "id": "RKPU-IAP-MAKKY-RWY18-REP-004", "procedureId": "RKPU-IAP-MAKKY-RWY18-REP", "procedureType": "APPROACH", "routeType": "RNP", "sequence": 4, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 1.0, "from": "PU403", "to": "IGMEL",
+          "geometry": { "type": "LineString", "coordinates": [[129.334889, 35.654306], [129.340667, 35.638250]] },
+          "id": "RKPU-IAP-MAKKY-RWY18-REP-005", "procedureId": "RKPU-IAP-MAKKY-RWY18-REP", "procedureType": "APPROACH", "routeType": "RNP", "sequence": 5, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 2.2, "from": "IGMEL", "to": "RWY18",
+          "geometry": { "type": "LineString", "coordinates": [[129.340667, 35.638250], [129.350983, 35.602469]] },
+          "id": "RKPU-IAP-MAKKY-RWY18-REP-006", "procedureId": "RKPU-IAP-MAKKY-RWY18-REP", "procedureType": "APPROACH", "routeType": "RNP", "sequence": 6, "source": "Calculated to THR"
+        }
+      ],
+      "sequence": ["MAKKY", "SEDMO", "PU402", "BINJO", "PU403", "IGMEL", "RWY18"]
+    },
+    "RKPU-IAP-HAEGU-RWY36-REP": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 9/24",
+      "dataModel": "IAP",
+      "procedureType": "APPROACH",
+      "routeType": "ILS",
+      "representative": true,
+      "representativeFor": ["ILS Z RWY 36", "LOC Z RWY 36", "RNP RWY 36"],
+      "entryFix": "HAEGU",
+      "endFix": "RWY36",
+      "runways": ["36"],
+      "name": "REP HAEGU 36",
+      "fullName": "Representative Approach from HAEGU to RWY 36",
+      "sourceProcedure": "ILS Z or LOC Z RWY 36",
+      "notes": "Derived from RKPU AD CHART 2-16 and 2-16-1.",
+      "source": "2-16 RKPU INSTR APCH CHART",
+      "fixes": [
+        {
+          "altitude": { "maxFt": 5000, "minFt": 5000, "raw": "@5000" },
+          "coordinates": { "lat": 35.535194, "lon": 129.542306 },
+          "id": "HAEGU",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-16-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 3500, "raw": "+3500" },
+          "coordinates": { "lat": 35.438361, "lon": 129.484139 },
+          "id": "PU501",
+          "role": "SDF",
+          "legDistanceNm": 6.5,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-16-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 2500, "raw": "+2500" },
+          "coordinates": { "lat": 35.431778, "lon": 129.365222 },
+          "id": "LUKLI",
+          "role": "IF",
+          "legDistanceNm": 5.8,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-16-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 1400, "raw": "+1400" },
+          "coordinates": { "lat": 35.516000, "lon": 129.358194 },
+          "id": "IULSD4.3",
+          "role": "FAF",
+          "legDistanceNm": 5.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-16-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.565472, "lon": 129.354083 },
+          "id": "IULSD1.3",
+          "role": "MAPt",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-16-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.584486, "lon": 129.352486 },
+          "id": "RWY36",
+          "role": "THR",
+          "legDistanceNm": 1.3,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-16-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [129.542306, 35.535194],
+          [129.484139, 35.438361],
+          [129.365222, 35.431778],
+          [129.358194, 35.516000],
+          [129.354083, 35.565472],
+          [129.352486, 35.584486]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 6.5, "from": "HAEGU", "to": "PU501",
+          "geometry": { "type": "LineString", "coordinates": [[129.542306, 35.535194], [129.484139, 35.438361]] },
+          "id": "RKPU-IAP-HAEGU-RWY36-REP-001", "procedureId": "RKPU-IAP-HAEGU-RWY36-REP", "procedureType": "APPROACH", "routeType": "ILS", "sequence": 1, "source": "2-16-1 Coding Table"
+        },
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 5.8, "from": "PU501", "to": "LUKLI",
+          "geometry": { "type": "LineString", "coordinates": [[129.484139, 35.438361], [129.365222, 35.431778]] },
+          "id": "RKPU-IAP-HAEGU-RWY36-REP-002", "procedureId": "RKPU-IAP-HAEGU-RWY36-REP", "procedureType": "APPROACH", "routeType": "ILS", "sequence": 2, "source": "2-16-1 Coding Table"
+        },
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 5.0, "from": "LUKLI", "to": "IULSD4.3",
+          "geometry": { "type": "LineString", "coordinates": [[129.365222, 35.431778], [129.358194, 35.516000]] },
+          "id": "RKPU-IAP-HAEGU-RWY36-REP-003", "procedureId": "RKPU-IAP-HAEGU-RWY36-REP", "procedureType": "APPROACH", "routeType": "ILS", "sequence": 3, "source": "2-16-1 Coding Table"
+        },
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 3.0, "from": "IULSD4.3", "to": "IULSD1.3",
+          "geometry": { "type": "LineString", "coordinates": [[129.358194, 35.516000], [129.354083, 35.565472]] },
+          "id": "RKPU-IAP-HAEGU-RWY36-REP-004", "procedureId": "RKPU-IAP-HAEGU-RWY36-REP", "procedureType": "APPROACH", "routeType": "ILS", "sequence": 4, "source": "2-16-1 Coding Table"
+        },
+        {
+          "airport": "RKPU", "cycle": "AIRAC 9/24", "distanceNm": 1.3, "from": "IULSD1.3", "to": "RWY36",
+          "geometry": { "type": "LineString", "coordinates": [[129.354083, 35.565472], [129.352486, 35.584486]] },
+          "id": "RKPU-IAP-HAEGU-RWY36-REP-005", "procedureId": "RKPU-IAP-HAEGU-RWY36-REP", "procedureType": "APPROACH", "routeType": "ILS", "sequence": 5, "source": "2-16-1 Coding Table"
+        }
+      ],
+      "sequence": ["HAEGU", "PU501", "LUKLI", "IULSD4.3", "IULSD1.3", "RWY36"]
+    }
+  }
+}

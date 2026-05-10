@@ -1062,7 +1062,7 @@
     "geometry": {
       "coordinates": [
         [
-          124.0,
+          124,
           37.166667
         ],
         [
@@ -1474,7 +1474,7 @@
           37.641389
         ],
         [
-          133.0,
+          133,
           37.666111
         ]
       ],
@@ -2545,6 +2545,126 @@
   },
   {
     "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 68.15,
+    "from": "TENAS",
+    "geometry": {
+      "coordinates": [
+        [
+          131.574167,
+          37.638889
+        ],
+        [
+          130.678889,
+          36.755833
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y579-001",
+    "routeId": "Y579",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "AGSUS"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 36.18,
+    "from": "AGSUS",
+    "geometry": {
+      "coordinates": [
+        [
+          130.678889,
+          36.755833
+        ],
+        [
+          130.195278,
+          36.295278
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y579-002",
+    "routeId": "Y579",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "DABIK"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 28.13,
+    "from": "DABIK",
+    "geometry": {
+      "coordinates": [
+        [
+          130.195278,
+          36.295278
+        ],
+        [
+          129.823333,
+          35.935833
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y579-003",
+    "routeId": "Y579",
+    "routeType": "RNAV",
+    "sequence": 3,
+    "source": "ENR 3.3 HTML",
+    "to": "BULGA"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 40.17,
+    "from": "BULGA",
+    "geometry": {
+      "coordinates": [
+        [
+          129.823333,
+          35.935833
+        ],
+        [
+          129.298333,
+          35.420278
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y579-004",
+    "routeId": "Y579",
+    "routeType": "RNAV",
+    "sequence": 4,
+    "source": "ENR 3.3 HTML",
+    "to": "BEDOM"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 23.11,
+    "from": "BEDOM",
+    "geometry": {
+      "coordinates": [
+        [
+          129.298333,
+          35.420278
+        ],
+        [
+          128.999444,
+          35.1225
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y579-005",
+    "routeId": "Y579",
+    "routeType": "RNAV",
+    "sequence": 5,
+    "source": "ENR 3.3 HTML",
+    "to": "PSN"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
     "distanceNm": 28.85,
     "from": "BEDAR",
     "geometry": {
@@ -2602,7 +2722,7 @@
           31.720556
         ],
         [
-          125.0,
+          125,
           31.83
         ]
       ],
@@ -2622,7 +2742,7 @@
     "geometry": {
       "coordinates": [
         [
-          124.0,
+          124,
           37.166667
         ],
         [
@@ -2833,6 +2953,222 @@
   },
   {
     "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 12.22,
+    "from": "GONAV",
+    "geometry": {
+      "coordinates": [
+        [
+          124.414722,
+          37.18
+        ],
+        [
+          124.414722,
+          36.976389
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y655-001",
+    "routeId": "Y655",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "DALPO"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 17.83,
+    "from": "DALPO",
+    "geometry": {
+      "coordinates": [
+        [
+          124.414722,
+          36.976389
+        ],
+        [
+          124.414722,
+          36.679444
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y655-002",
+    "routeId": "Y655",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "NONOS"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 20.66,
+    "from": "NONOS",
+    "geometry": {
+      "coordinates": [
+        [
+          124.414722,
+          36.679444
+        ],
+        [
+          124.414722,
+          36.335278
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y655-003",
+    "routeId": "Y655",
+    "routeType": "RNAV",
+    "sequence": 3,
+    "source": "ENR 3.3 HTML",
+    "to": "BIDRI"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 49.55,
+    "from": "BIDRI",
+    "geometry": {
+      "coordinates": [
+        [
+          124.414722,
+          36.335278
+        ],
+        [
+          124.414722,
+          35.51
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y655-004",
+    "routeId": "Y655",
+    "routeType": "RNAV",
+    "sequence": 4,
+    "source": "ENR 3.3 HTML",
+    "to": "DANPA"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 89.14,
+    "from": "DANPA",
+    "geometry": {
+      "coordinates": [
+        [
+          124.414722,
+          35.51
+        ],
+        [
+          124.414722,
+          34.025278
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y655-005",
+    "routeId": "Y655",
+    "routeType": "RNAV",
+    "sequence": 5,
+    "source": "ENR 3.3 HTML",
+    "to": "PALSA"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 11.02,
+    "from": "PALSA",
+    "geometry": {
+      "coordinates": [
+        [
+          124.414722,
+          34.025278
+        ],
+        [
+          124.414722,
+          33.841667
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y655-006",
+    "routeId": "Y655",
+    "routeType": "RNAV",
+    "sequence": 6,
+    "source": "ENR 3.3 HTML",
+    "to": "TOLIS"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 99.22,
+    "from": "TOLIS",
+    "geometry": {
+      "coordinates": [
+        [
+          124.414722,
+          33.841667
+        ],
+        [
+          124.776389,
+          32.217222
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y655-007",
+    "routeId": "Y655",
+    "routeType": "RNAV",
+    "sequence": 7,
+    "source": "ENR 3.3 HTML",
+    "to": "ENSUM"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 106.16,
+    "from": "ENSUM",
+    "geometry": {
+      "coordinates": [
+        [
+          124.776389,
+          32.217222
+        ],
+        [
+          125.1475,
+          30.477778
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y655-008",
+    "routeId": "Y655",
+    "routeType": "RNAV",
+    "sequence": 8,
+    "source": "ENR 3.3 HTML",
+    "to": "BONSO"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 28.59,
+    "from": "BONSO",
+    "geometry": {
+      "coordinates": [
+        [
+          125.1475,
+          30.477778
+        ],
+        [
+          125.198333,
+          30.003611
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y655-009",
+    "routeId": "Y655",
+    "routeType": "RNAV",
+    "sequence": 9,
+    "source": "ENR 3.3 HTML",
+    "to": "ATOTI"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
     "distanceNm": 54.62,
     "from": "KWA",
     "geometry": {
@@ -2878,6 +3214,174 @@
     "sequence": 2,
     "source": "ENR 3.3 HTML",
     "to": "TGU"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 8.47,
+    "from": "KUZ",
+    "geometry": {
+      "coordinates": [
+        [
+          126.611389,
+          35.910278
+        ],
+        [
+          126.785278,
+          35.902778
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y659-001",
+    "routeId": "Y659",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "ELPOS"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 5.44,
+    "from": "ELPOS",
+    "geometry": {
+      "coordinates": [
+        [
+          126.785278,
+          35.902778
+        ],
+        [
+          126.896944,
+          35.897778
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y659-002",
+    "routeId": "Y659",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "RINBO"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 17.77,
+    "from": "RINBO",
+    "geometry": {
+      "coordinates": [
+        [
+          126.896944,
+          35.897778
+        ],
+        [
+          127.261667,
+          35.880833
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y659-003",
+    "routeId": "Y659",
+    "routeType": "RNAV",
+    "sequence": 3,
+    "source": "ENR 3.3 HTML",
+    "to": "MELES"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 17.19,
+    "from": "MELES",
+    "geometry": {
+      "coordinates": [
+        [
+          127.261667,
+          35.880833
+        ],
+        [
+          127.614444,
+          35.863611
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y659-004",
+    "routeId": "Y659",
+    "routeType": "RNAV",
+    "sequence": 4,
+    "source": "ENR 3.3 HTML",
+    "to": "OPEDA"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 47.63,
+    "from": "OPEDA",
+    "geometry": {
+      "coordinates": [
+        [
+          127.614444,
+          35.863611
+        ],
+        [
+          128.590833,
+          35.809722
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y659-005",
+    "routeId": "Y659",
+    "routeType": "RNAV",
+    "sequence": 5,
+    "source": "ENR 3.3 HTML",
+    "to": "TGU"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 24.51,
+    "from": "TGU",
+    "geometry": {
+      "coordinates": [
+        [
+          128.590833,
+          35.809722
+        ],
+        [
+          129.081111,
+          35.903611
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y659-006",
+    "routeId": "Y659",
+    "routeType": "RNAV",
+    "sequence": 6,
+    "source": "ENR 3.3 HTML",
+    "to": "LAPAL"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 19.62,
+    "from": "LAPAL",
+    "geometry": {
+      "coordinates": [
+        [
+          129.081111,
+          35.903611
+        ],
+        [
+          129.474444,
+          35.977222
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y659-007",
+    "routeId": "Y659",
+    "routeType": "RNAV",
+    "sequence": 7,
+    "source": "ENR 3.3 HTML",
+    "to": "KPO"
   },
   {
     "cycle": "AIRAC 2026-04-15",
@@ -3270,7 +3774,7 @@
     "geometry": {
       "coordinates": [
         [
-          124.0,
+          124,
           37.166667
         ],
         [
@@ -4465,6 +4969,150 @@
   },
   {
     "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 19.38,
+    "from": "PILIT",
+    "geometry": {
+      "coordinates": [
+        [
+          129.291944,
+          37.441944
+        ],
+        [
+          129.3325,
+          37.120833
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y744-001",
+    "routeId": "Y744",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "NOBUT"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 28.68,
+    "from": "NOBUT",
+    "geometry": {
+      "coordinates": [
+        [
+          129.3325,
+          37.120833
+        ],
+        [
+          129.391944,
+          36.645556
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y744-002",
+    "routeId": "Y744",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "OSVOM"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 18.57,
+    "from": "OSVOM",
+    "geometry": {
+      "coordinates": [
+        [
+          129.391944,
+          36.645556
+        ],
+        [
+          129.43,
+          36.337778
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y744-003",
+    "routeId": "Y744",
+    "routeType": "RNAV",
+    "sequence": 3,
+    "source": "ENR 3.3 HTML",
+    "to": "LOSTO"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 21.75,
+    "from": "LOSTO",
+    "geometry": {
+      "coordinates": [
+        [
+          129.43,
+          36.337778
+        ],
+        [
+          129.474444,
+          35.977222
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y744-004",
+    "routeId": "Y744",
+    "routeType": "RNAV",
+    "sequence": 4,
+    "source": "ENR 3.3 HTML",
+    "to": "KPO"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 37.28,
+    "from": "KPO",
+    "geometry": {
+      "coordinates": [
+        [
+          129.474444,
+          35.977222
+        ],
+        [
+          129.158889,
+          35.411667
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y744-005",
+    "routeId": "Y744",
+    "routeType": "RNAV",
+    "sequence": 5,
+    "source": "ENR 3.3 HTML",
+    "to": "APARU"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 19.04,
+    "from": "APARU",
+    "geometry": {
+      "coordinates": [
+        [
+          129.158889,
+          35.411667
+        ],
+        [
+          128.999444,
+          35.1225
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Y744-006",
+    "routeId": "Y744",
+    "routeType": "RNAV",
+    "sequence": 6,
+    "source": "ENR 3.3 HTML",
+    "to": "PSN"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
     "distanceNm": 19.87,
     "from": "TGU",
     "geometry": {
@@ -4801,6 +5449,102 @@
   },
   {
     "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 28.86,
+    "from": "EGOBA",
+    "geometry": {
+      "coordinates": [
+        [
+          127.379444,
+          37.4875
+        ],
+        [
+          127.031667,
+          37.094444
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z50-001",
+    "routeId": "Z50",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "SOT"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 24.42,
+    "from": "SOT",
+    "geometry": {
+      "coordinates": [
+        [
+          127.031667,
+          37.094444
+        ],
+        [
+          126.825,
+          36.722778
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z50-002",
+    "routeId": "Z50",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "BULTI"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 21.68,
+    "from": "BOPTA",
+    "geometry": {
+      "coordinates": [
+        [
+          126.616111,
+          36.735
+        ],
+        [
+          126.733056,
+          36.386389
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z51-001",
+    "routeId": "Z51",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "MOXID"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 14.62,
+    "from": "MOXID",
+    "geometry": {
+      "coordinates": [
+        [
+          126.733056,
+          36.386389
+        ],
+        [
+          126.812222,
+          36.151389
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z51-002",
+    "routeId": "Z51",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "BEDES"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
     "distanceNm": 16.34,
     "from": "OLMEN",
     "geometry": {
@@ -4846,6 +5590,126 @@
     "sequence": 2,
     "source": "ENR 3.3 HTML",
     "to": "KAKSO"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 17.05,
+    "from": "BITUX",
+    "geometry": {
+      "coordinates": [
+        [
+          128.03,
+          36.279167
+        ],
+        [
+          127.991389,
+          36.561389
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z53-001",
+    "routeId": "Z53",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "TEBEX"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 17.05,
+    "from": "TEBEX",
+    "geometry": {
+      "coordinates": [
+        [
+          127.991389,
+          36.561389
+        ],
+        [
+          127.952778,
+          36.843611
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z53-002",
+    "routeId": "Z53",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "BASEM"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 11.71,
+    "from": "SOT",
+    "geometry": {
+      "coordinates": [
+        [
+          127.031667,
+          37.094444
+        ],
+        [
+          126.8375,
+          37.213056
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z54-001",
+    "routeId": "Z54",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "MONSI"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 19.67,
+    "from": "MONSI",
+    "geometry": {
+      "coordinates": [
+        [
+          126.8375,
+          37.213056
+        ],
+        [
+          126.51,
+          37.411667
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z54-002",
+    "routeId": "Z54",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "GOGET"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 35.38,
+    "from": "AGAVO",
+    "geometry": {
+      "coordinates": [
+        [
+          124,
+          37.166667
+        ],
+        [
+          124.414722,
+          36.679444
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z55-001",
+    "routeId": "Z55",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "NONOS"
   },
   {
     "cycle": "AIRAC 2026-04-15",
@@ -4921,6 +5785,30 @@
   },
   {
     "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 14.47,
+    "from": "RILRO",
+    "geometry": {
+      "coordinates": [
+        [
+          124.245,
+          37.175833
+        ],
+        [
+          124.414722,
+          36.976389
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z57-001",
+    "routeId": "Z57",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "DALPO"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
     "distanceNm": 23.81,
     "from": "PILIT",
     "geometry": {
@@ -4969,6 +5857,126 @@
   },
   {
     "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 31.02,
+    "from": "CJU",
+    "geometry": {
+      "coordinates": [
+        [
+          126.624167,
+          33.384722
+        ],
+        [
+          126.206944,
+          33.003889
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z82-001",
+    "routeId": "Z82",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "PANSI"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 19.87,
+    "from": "TGU",
+    "geometry": {
+      "coordinates": [
+        [
+          128.590833,
+          35.809722
+        ],
+        [
+          128.561111,
+          35.479722
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z83-001",
+    "routeId": "Z83",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "MASTA"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 21.25,
+    "from": "MASTA",
+    "geometry": {
+      "coordinates": [
+        [
+          128.561111,
+          35.479722
+        ],
+        [
+          128.529722,
+          35.126667
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z83-002",
+    "routeId": "Z83",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "SARAM"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 19.11,
+    "from": "SARAM",
+    "geometry": {
+      "coordinates": [
+        [
+          128.529722,
+          35.126667
+        ],
+        [
+          128.497778,
+          34.809444
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z83-003",
+    "routeId": "Z83",
+    "routeType": "RNAV",
+    "sequence": 3,
+    "source": "ENR 3.3 HTML",
+    "to": "ENGOT"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 10.61,
+    "from": "ENGOT",
+    "geometry": {
+      "coordinates": [
+        [
+          128.497778,
+          34.809444
+        ],
+        [
+          128.497778,
+          34.632778
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z83-004",
+    "routeId": "Z83",
+    "routeType": "RNAV",
+    "sequence": 4,
+    "source": "ENR 3.3 HTML",
+    "to": "ANROD"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
     "distanceNm": 43.76,
     "from": "PSN",
     "geometry": {
@@ -4990,6 +5998,54 @@
     "sequence": 1,
     "source": "ENR 3.3 HTML",
     "to": "KALEK"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 11.57,
+    "from": "BILUM",
+    "geometry": {
+      "coordinates": [
+        [
+          127.0775,
+          33.770278
+        ],
+        [
+          127.060278,
+          33.578056
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z85-001",
+    "routeId": "Z85",
+    "routeType": "RNAV",
+    "sequence": 1,
+    "source": "ENR 3.3 HTML",
+    "to": "PAPLU"
+  },
+  {
+    "cycle": "AIRAC 2026-04-15",
+    "distanceNm": 64.71,
+    "from": "PAPLU",
+    "geometry": {
+      "coordinates": [
+        [
+          127.060278,
+          33.578056
+        ],
+        [
+          126.964722,
+          32.503333
+        ]
+      ],
+      "type": "LineString"
+    },
+    "id": "Z85-002",
+    "routeId": "Z85",
+    "routeType": "RNAV",
+    "sequence": 2,
+    "source": "ENR 3.3 HTML",
+    "to": "RUGMA"
   },
   {
     "cycle": "AIRAC 2026-04-15",

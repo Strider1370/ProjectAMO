@@ -1,0 +1,1690 @@
+{
+  "metadata": {
+    "airport": "RKJB",
+    "cycle": "AIRAC 11/25",
+    "description": "RKJB RNAV SID Procedures (All 5 Procedures)"
+  },
+  "sidProcedures": {
+    "RKJB-SID-MAKSA1N": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "SID",
+      "id": "RKJB-SID-MAKSA1N",
+      "name": "MAKSA 1N",
+      "fullName": "RNAV MAKSA ONE NOVEMBER DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "01"
+      ],
+      "startFix": "RWY19",
+      "endFix": "MAKSA",
+      "source": "2-7 RKJB SID / 2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "Departure turns are limited to maximum of 230 kt IAS until JB802. Departure turns are limited to maximum of 290 kt IAS until JB808.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.004025,
+            "lon": 126.382728
+          },
+          "id": "RWY19",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3500,
+            "raw": "+3500"
+          },
+          "coordinates": {
+            "lat": 35.170528,
+            "lon": 126.382389
+          },
+          "id": "BEMGA",
+          "role": null,
+          "legDistanceNm": 10,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 290
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": null,
+            "raw": "-6000"
+          },
+          "coordinates": {
+            "lat": 35.214944,
+            "lon": 126.659611
+          },
+          "id": "NAKZY",
+          "role": null,
+          "legDistanceNm": 13.9,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 290
+        },
+        {
+          "altitude": {
+            "maxFt": 8000,
+            "minFt": null,
+            "raw": "-8000"
+          },
+          "coordinates": {
+            "lat": 35.304778,
+            "lon": 126.785222
+          },
+          "id": "JB809",
+          "role": null,
+          "legDistanceNm": 8.2,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 290
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.3815,
+            "lon": 126.892806
+          },
+          "id": "JB808",
+          "role": null,
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 290
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.503139,
+            "lon": 126.906111
+          },
+          "id": "MAKSA",
+          "role": null,
+          "legDistanceNm": 7.3,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.382728,
+            35.004025
+          ],
+          [
+            126.382389,
+            35.170528
+          ],
+          [
+            126.659611,
+            35.214944
+          ],
+          [
+            126.785222,
+            35.304778
+          ],
+          [
+            126.892806,
+            35.3815
+          ],
+          [
+            126.906111,
+            35.503139
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 10,
+          "from": "RWY19",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.382728,
+                35.004025
+              ],
+              [
+                126.382389,
+                35.170528
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1N-000",
+          "procedureId": "RKJB-SID-MAKSA1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-8-1 Coding Table",
+          "to": "BEMGA"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 13.9,
+          "from": "BEMGA",
+          "to": "NAKZY",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.382389,
+                35.170528
+              ],
+              [
+                126.659611,
+                35.214944
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1N-001",
+          "procedureId": "RKJB-SID-MAKSA1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 8.2,
+          "from": "NAKZY",
+          "to": "JB809",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.659611,
+                35.214944
+              ],
+              [
+                126.785222,
+                35.304778
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1N-002",
+          "procedureId": "RKJB-SID-MAKSA1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7,
+          "from": "JB809",
+          "to": "JB808",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.785222,
+                35.304778
+              ],
+              [
+                126.892806,
+                35.3815
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1N-003",
+          "procedureId": "RKJB-SID-MAKSA1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.3,
+          "from": "JB808",
+          "to": "MAKSA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.892806,
+                35.3815
+              ],
+              [
+                126.906111,
+                35.503139
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1N-004",
+          "procedureId": "RKJB-SID-MAKSA1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY19",
+        "BEMGA",
+        "NAKZY",
+        "JB809",
+        "JB808",
+        "MAKSA"
+      ]
+    },
+    "RKJB-SID-DOTOL1N": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "SID",
+      "id": "RKJB-SID-DOTOL1N",
+      "name": "DOTOL 1N",
+      "fullName": "RNAV DOTOL ONE NOVEMBER DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "01"
+      ],
+      "startFix": "RWY19",
+      "endFix": "DOTOL",
+      "source": "2-7 RKJB SID / 2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "Departure turns are limited to maximum of 230 kt IAS until JB802.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.004025,
+            "lon": 126.382728
+          },
+          "id": "RWY19",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.097639,
+            "lon": 126.382083
+          },
+          "id": "JB801",
+          "role": null,
+          "legDistanceNm": 5.62,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 4000,
+            "minFt": null,
+            "raw": "-4000"
+          },
+          "coordinates": {
+            "lat": 35.096722,
+            "lon": 126.221611
+          },
+          "id": "JB802",
+          "role": null,
+          "legDistanceNm": 7.9,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 4000,
+            "minFt": null,
+            "raw": "-4000"
+          },
+          "coordinates": {
+            "lat": 34.979861,
+            "lon": 126.222722
+          },
+          "id": "JB803",
+          "role": null,
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": 6000,
+            "raw": "@6000"
+          },
+          "coordinates": {
+            "lat": 34.905556,
+            "lon": 126.304278
+          },
+          "id": "JB804",
+          "role": null,
+          "legDistanceNm": 6,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 9000,
+            "minFt": null,
+            "raw": "-9000"
+          },
+          "coordinates": {
+            "lat": 34.677667,
+            "lon": 126.553028
+          },
+          "id": "JB805",
+          "role": null,
+          "legDistanceNm": 18.4,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.592472,
+            "lon": 126.645528
+          },
+          "id": "JB806",
+          "role": null,
+          "legDistanceNm": 6.9,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 13000,
+            "raw": "+13000"
+          },
+          "coordinates": {
+            "lat": 34.50075,
+            "lon": 126.635917
+          },
+          "id": "JB807",
+          "role": null,
+          "legDistanceNm": 5.5,
+          "pathTerminator": "TF",
+          "sequence": 8,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.254278,
+            "lon": 126.610167
+          },
+          "id": "DOTOL",
+          "role": null,
+          "legDistanceNm": 14.8,
+          "pathTerminator": "TF",
+          "sequence": 9,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.382728,
+            35.004025
+          ],
+          [
+            126.382083,
+            35.097639
+          ],
+          [
+            126.221611,
+            35.096722
+          ],
+          [
+            126.222722,
+            34.979861
+          ],
+          [
+            126.304278,
+            34.905556
+          ],
+          [
+            126.553028,
+            34.677667
+          ],
+          [
+            126.645528,
+            34.592472
+          ],
+          [
+            126.635917,
+            34.50075
+          ],
+          [
+            126.610167,
+            34.254278
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 5.62,
+          "from": "RWY19",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.382728,
+                35.004025
+              ],
+              [
+                126.382083,
+                35.097639
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1N-000",
+          "procedureId": "RKJB-SID-DOTOL1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-8-1 Coding Table",
+          "to": "JB801"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.9,
+          "from": "JB801",
+          "to": "JB802",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.382083,
+                35.097639
+              ],
+              [
+                126.221611,
+                35.096722
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1N-001",
+          "procedureId": "RKJB-SID-DOTOL1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7,
+          "from": "JB802",
+          "to": "JB803",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.221611,
+                35.096722
+              ],
+              [
+                126.222722,
+                34.979861
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1N-002",
+          "procedureId": "RKJB-SID-DOTOL1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 6,
+          "from": "JB803",
+          "to": "JB804",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.222722,
+                34.979861
+              ],
+              [
+                126.304278,
+                34.905556
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1N-003",
+          "procedureId": "RKJB-SID-DOTOL1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 18.4,
+          "from": "JB804",
+          "to": "JB805",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.304278,
+                34.905556
+              ],
+              [
+                126.553028,
+                34.677667
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1N-004",
+          "procedureId": "RKJB-SID-DOTOL1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 6.9,
+          "from": "JB805",
+          "to": "JB806",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.553028,
+                34.677667
+              ],
+              [
+                126.645528,
+                34.592472
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1N-005",
+          "procedureId": "RKJB-SID-DOTOL1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 5.5,
+          "from": "JB806",
+          "to": "JB807",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.645528,
+                34.592472
+              ],
+              [
+                126.635917,
+                34.50075
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1N-006",
+          "procedureId": "RKJB-SID-DOTOL1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 7,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 14.8,
+          "from": "JB807",
+          "to": "DOTOL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.635917,
+                34.50075
+              ],
+              [
+                126.610167,
+                34.254278
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1N-007",
+          "procedureId": "RKJB-SID-DOTOL1N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 8,
+          "source": "2-8-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY19",
+        "JB801",
+        "JB802",
+        "JB803",
+        "JB804",
+        "JB805",
+        "JB806",
+        "JB807",
+        "DOTOL"
+      ]
+    },
+    "RKJB-SID-MAKSA1S": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "SID",
+      "id": "RKJB-SID-MAKSA1S",
+      "name": "MAKSA 1S",
+      "fullName": "RNAV MAKSA ONE SIERRA DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "19"
+      ],
+      "startFix": "RWY01",
+      "endFix": "MAKSA",
+      "source": "2-9-1 Coding Table",
+      "isComplete": true,
+      "notes": "Departure turns are limited to maximum of 240 kt IAS until JB855.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.978789,
+            "lon": 126.382903
+          },
+          "id": "RWY01",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 34.85025,
+            "lon": 126.383722
+          },
+          "id": "JB851",
+          "role": null,
+          "legDistanceNm": 7.72,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-9-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": 7000,
+            "minFt": null,
+            "raw": "-7000"
+          },
+          "coordinates": {
+            "lat": 34.850889,
+            "lon": 126.534694
+          },
+          "id": "JB852",
+          "role": null,
+          "legDistanceNm": 7.5,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 10000,
+            "raw": "+10000"
+          },
+          "coordinates": {
+            "lat": 34.977583,
+            "lon": 126.686111
+          },
+          "id": "JB853",
+          "role": null,
+          "legDistanceNm": 10.6,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.126528,
+            "lon": 126.865111
+          },
+          "id": "SAMUL",
+          "role": null,
+          "legDistanceNm": 12.5,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.503139,
+            "lon": 126.906111
+          },
+          "id": "MAKSA",
+          "role": null,
+          "legDistanceNm": 22.7,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.382903,
+            34.978789
+          ],
+          [
+            126.383722,
+            34.85025
+          ],
+          [
+            126.534694,
+            34.850889
+          ],
+          [
+            126.686111,
+            34.977583
+          ],
+          [
+            126.865111,
+            35.126528
+          ],
+          [
+            126.906111,
+            35.503139
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.72,
+          "from": "RWY01",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.382903,
+                34.978789
+              ],
+              [
+                126.383722,
+                34.85025
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1S-000",
+          "procedureId": "RKJB-SID-MAKSA1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-9-1 Coding Table",
+          "to": "JB851"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.5,
+          "from": "JB851",
+          "to": "JB852",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.383722,
+                34.85025
+              ],
+              [
+                126.534694,
+                34.850889
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1S-001",
+          "procedureId": "RKJB-SID-MAKSA1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 10.6,
+          "from": "JB852",
+          "to": "JB853",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.534694,
+                34.850889
+              ],
+              [
+                126.686111,
+                34.977583
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1S-002",
+          "procedureId": "RKJB-SID-MAKSA1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 12.5,
+          "from": "JB853",
+          "to": "SAMUL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.686111,
+                34.977583
+              ],
+              [
+                126.865111,
+                35.126528
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1S-003",
+          "procedureId": "RKJB-SID-MAKSA1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 22.7,
+          "from": "SAMUL",
+          "to": "MAKSA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.865111,
+                35.126528
+              ],
+              [
+                126.906111,
+                35.503139
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA1S-004",
+          "procedureId": "RKJB-SID-MAKSA1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-9-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY01",
+        "JB851",
+        "JB852",
+        "JB853",
+        "SAMUL",
+        "MAKSA"
+      ]
+    },
+    "RKJB-SID-MAKSA6S": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "SID",
+      "id": "RKJB-SID-MAKSA6S",
+      "name": "MAKSA 6S",
+      "fullName": "RNAV MAKSA SIX SIERRA DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "19"
+      ],
+      "startFix": "RWY01",
+      "endFix": "MAKSA",
+      "source": "2-9-1 Coding Table",
+      "isComplete": true,
+      "notes": "Departure turns are limited to maximum of 240 kt IAS until JB855.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.978789,
+            "lon": 126.382903
+          },
+          "id": "RWY01",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 34.85025,
+            "lon": 126.383722
+          },
+          "id": "JB851",
+          "role": null,
+          "legDistanceNm": 7.72,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-9-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.849361,
+            "lon": 126.2035
+          },
+          "id": "JB854",
+          "role": null,
+          "legDistanceNm": 8.9,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-9-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": 9000,
+            "minFt": 9000,
+            "raw": "@9000"
+          },
+          "coordinates": {
+            "lat": 34.977889,
+            "lon": 126.202417
+          },
+          "id": "JB855",
+          "role": null,
+          "legDistanceNm": 7.7,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-9-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": 9000,
+            "minFt": 9000,
+            "raw": "@9000"
+          },
+          "coordinates": {
+            "lat": 35.190361,
+            "lon": 126.606722
+          },
+          "id": "JB858",
+          "role": null,
+          "legDistanceNm": 23.6,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.336694,
+            "lon": 126.887917
+          },
+          "id": "JB859",
+          "role": null,
+          "legDistanceNm": 16.4,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.503139,
+            "lon": 126.906111
+          },
+          "id": "MAKSA",
+          "role": null,
+          "legDistanceNm": 10,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.382903,
+            34.978789
+          ],
+          [
+            126.383722,
+            34.85025
+          ],
+          [
+            126.2035,
+            34.849361
+          ],
+          [
+            126.202417,
+            34.977889
+          ],
+          [
+            126.606722,
+            35.190361
+          ],
+          [
+            126.887917,
+            35.336694
+          ],
+          [
+            126.906111,
+            35.503139
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.72,
+          "from": "RWY01",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.382903,
+                34.978789
+              ],
+              [
+                126.383722,
+                34.85025
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA6S-000",
+          "procedureId": "RKJB-SID-MAKSA6S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-9-1 Coding Table",
+          "to": "JB851"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 8.9,
+          "from": "JB851",
+          "to": "JB854",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.383722,
+                34.85025
+              ],
+              [
+                126.2035,
+                34.849361
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA6S-001",
+          "procedureId": "RKJB-SID-MAKSA6S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.7,
+          "from": "JB854",
+          "to": "JB855",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.2035,
+                34.849361
+              ],
+              [
+                126.202417,
+                34.977889
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA6S-002",
+          "procedureId": "RKJB-SID-MAKSA6S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 23.6,
+          "from": "JB855",
+          "to": "JB858",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.202417,
+                34.977889
+              ],
+              [
+                126.606722,
+                35.190361
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA6S-003",
+          "procedureId": "RKJB-SID-MAKSA6S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 16.4,
+          "from": "JB858",
+          "to": "JB859",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.606722,
+                35.190361
+              ],
+              [
+                126.887917,
+                35.336694
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA6S-004",
+          "procedureId": "RKJB-SID-MAKSA6S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 10,
+          "from": "JB859",
+          "to": "MAKSA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.887917,
+                35.336694
+              ],
+              [
+                126.906111,
+                35.503139
+              ]
+            ]
+          },
+          "id": "RKJB-SID-MAKSA6S-005",
+          "procedureId": "RKJB-SID-MAKSA6S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "2-9-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY01",
+        "JB851",
+        "JB854",
+        "JB855",
+        "JB858",
+        "JB859",
+        "MAKSA"
+      ]
+    },
+    "RKJB-SID-DOTOL1S": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "SID",
+      "id": "RKJB-SID-DOTOL1S",
+      "name": "DOTOL 1S",
+      "fullName": "RNAV DOTOL ONE SIERRA DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "19"
+      ],
+      "startFix": "RWY01",
+      "endFix": "DOTOL",
+      "source": "2-9-1 Coding Table",
+      "isComplete": true,
+      "notes": "Departure turns are limited to maximum of 240 kt IAS until JB855.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.978789,
+            "lon": 126.382903
+          },
+          "id": "RWY01",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3000,
+            "raw": "+3000"
+          },
+          "coordinates": {
+            "lat": 34.85025,
+            "lon": 126.383722
+          },
+          "id": "JB851",
+          "role": null,
+          "legDistanceNm": 7.72,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 7000,
+            "minFt": null,
+            "raw": "-7000"
+          },
+          "coordinates": {
+            "lat": 34.719778,
+            "lon": 126.384528
+          },
+          "id": "RELEX",
+          "role": null,
+          "legDistanceNm": 7.8,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 9000,
+            "minFt": null,
+            "raw": "-9000"
+          },
+          "coordinates": {
+            "lat": 34.545056,
+            "lon": 126.539333
+          },
+          "id": "JB856",
+          "role": null,
+          "legDistanceNm": 13,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.4425,
+            "lon": 126.629806
+          },
+          "id": "JB857",
+          "role": null,
+          "legDistanceNm": 7.6,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 12000,
+            "minFt": null,
+            "raw": "-12000"
+          },
+          "coordinates": {
+            "lat": 34.254278,
+            "lon": 126.610167
+          },
+          "id": "DOTOL",
+          "role": null,
+          "legDistanceNm": 11.3,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-9-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            126.382903,
+            34.978789
+          ],
+          [
+            126.383722,
+            34.85025
+          ],
+          [
+            126.384528,
+            34.719778
+          ],
+          [
+            126.539333,
+            34.545056
+          ],
+          [
+            126.629806,
+            34.4425
+          ],
+          [
+            126.610167,
+            34.254278
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.72,
+          "from": "RWY01",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.382903,
+                34.978789
+              ],
+              [
+                126.383722,
+                34.85025
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1S-000",
+          "procedureId": "RKJB-SID-DOTOL1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-9-1 Coding Table",
+          "to": "JB851"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.8,
+          "from": "JB851",
+          "to": "RELEX",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.383722,
+                34.85025
+              ],
+              [
+                126.384528,
+                34.719778
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1S-001",
+          "procedureId": "RKJB-SID-DOTOL1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 13,
+          "from": "RELEX",
+          "to": "JB856",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.384528,
+                34.719778
+              ],
+              [
+                126.539333,
+                34.545056
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1S-002",
+          "procedureId": "RKJB-SID-DOTOL1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.6,
+          "from": "JB856",
+          "to": "JB857",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.539333,
+                34.545056
+              ],
+              [
+                126.629806,
+                34.4425
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1S-003",
+          "procedureId": "RKJB-SID-DOTOL1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-9-1 Coding Table"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 11.3,
+          "from": "JB857",
+          "to": "DOTOL",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                126.629806,
+                34.4425
+              ],
+              [
+                126.610167,
+                34.254278
+              ]
+            ]
+          },
+          "id": "RKJB-SID-DOTOL1S-004",
+          "procedureId": "RKJB-SID-DOTOL1S",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-9-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY01",
+        "JB851",
+        "RELEX",
+        "JB856",
+        "JB857",
+        "DOTOL"
+      ]
+    }
+  }
+}

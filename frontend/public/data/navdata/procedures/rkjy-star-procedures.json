@@ -1,0 +1,537 @@
+{
+  "metadata": {
+    "airport": "RKJY",
+    "cycle": "AIRAC 7/25",
+    "description": "RKJY RNAV STAR Procedures (All 5 Procedures)"
+  },
+  "starProcedures": {
+    "RKJY-STAR-TEDAN1D": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKJY-STAR-TEDAN1D",
+      "name": "TEDAN 1D",
+      "fullName": "RNAV TEDAN ONE DELTA ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["17"],
+      "startFix": "TEDAN",
+      "endFix": "YEONA",
+      "source": "2-12-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.128833, "lon": 127.314472 },
+          "id": "TEDAN",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 34.951056, "lon": 127.414472 },
+          "id": "YEONA",
+          "role": "IAF",
+          "legDistanceNm": 11.7,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.314472, 35.128833],
+          [127.414472, 34.951056]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 11.7,
+          "from": "TEDAN",
+          "to": "YEONA",
+          "geometry": { "type": "LineString", "coordinates": [[127.314472, 35.128833], [127.414472, 34.951056]] },
+          "id": "RKJY-STAR-TEDAN1D-001",
+          "procedureId": "RKJY-STAR-TEDAN1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-12-1 Coding Table"
+        }
+      ],
+      "sequence": ["TEDAN", "YEONA"]
+    },
+    "RKJY-STAR-NISAV1D": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKJY-STAR-NISAV1D",
+      "name": "NISAV 1D",
+      "fullName": "RNAV NISAV ONE DELTA ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["17"],
+      "startFix": "NISAV",
+      "endFix": "YEONA",
+      "source": "2-12-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.255306, "lon": 127.976389 },
+          "id": "NISAV",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": 9000, "raw": "@9000" },
+          "coordinates": { "lat": 34.452111, "lon": 127.774833 },
+          "id": "AVMET",
+          "role": null,
+          "legDistanceNm": 15.5,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": 9000, "raw": "@9000" },
+          "coordinates": { "lat": 34.634167, "lon": 127.587222 },
+          "id": "ADGES",
+          "role": null,
+          "legDistanceNm": 14.3,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 7000, "minFt": 7000, "raw": "@7000" },
+          "coordinates": { "lat": 34.798889, "lon": 127.498611 },
+          "id": "ISDOV",
+          "role": null,
+          "legDistanceNm": 10.8,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 5000, "minFt": 5000, "raw": "@5000" },
+          "coordinates": { "lat": 34.873889, "lon": 127.458056 },
+          "id": "BUGYO",
+          "role": null,
+          "legDistanceNm": 4.9,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 34.951056, "lon": 127.414472 },
+          "id": "YEONA",
+          "role": "IAF",
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.976389, 34.255306],
+          [127.774833, 34.452111],
+          [127.587222, 34.634167],
+          [127.498611, 34.798889],
+          [127.458056, 34.873889],
+          [127.414472, 34.951056]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 15.5,
+          "from": "NISAV",
+          "to": "AVMET",
+          "geometry": { "type": "LineString", "coordinates": [[127.976389, 34.255306], [127.774833, 34.452111]] },
+          "id": "RKJY-STAR-NISAV1D-001",
+          "procedureId": "RKJY-STAR-NISAV1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 14.3,
+          "from": "AVMET",
+          "to": "ADGES",
+          "geometry": { "type": "LineString", "coordinates": [[127.774833, 34.452111], [127.587222, 34.634167]] },
+          "id": "RKJY-STAR-NISAV1D-002",
+          "procedureId": "RKJY-STAR-NISAV1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 10.8,
+          "from": "ADGES",
+          "to": "ISDOV",
+          "geometry": { "type": "LineString", "coordinates": [[127.587222, 34.634167], [127.498611, 34.798889]] },
+          "id": "RKJY-STAR-NISAV1D-003",
+          "procedureId": "RKJY-STAR-NISAV1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.9,
+          "from": "ISDOV",
+          "to": "BUGYO",
+          "geometry": { "type": "LineString", "coordinates": [[127.498611, 34.798889], [127.458056, 34.873889]] },
+          "id": "RKJY-STAR-NISAV1D-004",
+          "procedureId": "RKJY-STAR-NISAV1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.1,
+          "from": "BUGYO",
+          "to": "YEONA",
+          "geometry": { "type": "LineString", "coordinates": [[127.458056, 34.873889], [127.414472, 34.951056]] },
+          "id": "RKJY-STAR-NISAV1D-005",
+          "procedureId": "RKJY-STAR-NISAV1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-12-1 Coding Table"
+        }
+      ],
+      "sequence": ["NISAV", "AVMET", "ADGES", "ISDOV", "BUGYO", "YEONA"]
+    },
+    "RKJY-STAR-TEDAN1E": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKJY-STAR-TEDAN1E",
+      "name": "TEDAN 1E",
+      "fullName": "RNAV TEDAN ONE ECHO ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["17"],
+      "startFix": "TEDAN",
+      "endFix": "SKOTA",
+      "source": "2-12-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.128833, "lon": 127.314472 },
+          "id": "TEDAN",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 35.101361, "lon": 127.490056 },
+          "id": "SKOTA",
+          "role": "IAF",
+          "legDistanceNm": 8.8,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.314472, 35.128833],
+          [127.490056, 35.101361]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 8.8,
+          "from": "TEDAN",
+          "to": "SKOTA",
+          "geometry": { "type": "LineString", "coordinates": [[127.314472, 35.128833], [127.490056, 35.101361]] },
+          "id": "RKJY-STAR-TEDAN1E-001",
+          "procedureId": "RKJY-STAR-TEDAN1E",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-12-1 Coding Table"
+        }
+      ],
+      "sequence": ["TEDAN", "SKOTA"]
+    },
+    "RKJY-STAR-TEDAN3C": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKJY-STAR-TEDAN3C",
+      "name": "TEDAN 3C",
+      "fullName": "RNAV TEDAN THREE CHARLIE ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["35"],
+      "startFix": "TEDAN",
+      "endFix": "SOONA",
+      "source": "2-13-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.128833, "lon": 127.314472 },
+          "id": "TEDAN",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-13-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": 9000, "raw": "@9000" },
+          "coordinates": { "lat": 34.902778, "lon": 127.430000 },
+          "id": "ISRIV",
+          "role": null,
+          "legDistanceNm": 14.7,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-13-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 8000, "raw": "+8000" },
+          "coordinates": { "lat": 34.743611, "lon": 127.510833 },
+          "id": "SEHEE",
+          "role": null,
+          "legDistanceNm": 10.3,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-13-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 5000, "minFt": 5000, "raw": "@5000" },
+          "coordinates": { "lat": 34.596167, "lon": 127.585528 },
+          "id": "MENIV",
+          "role": null,
+          "legDistanceNm": 9.6,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-13-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 4000, "raw": "+4000" },
+          "coordinates": { "lat": 34.640972, "lon": 127.715556 },
+          "id": "SOONA",
+          "role": "IAF",
+          "legDistanceNm": 7.0,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-13-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.314472, 35.128833],
+          [127.430000, 34.902778],
+          [127.510833, 34.743611],
+          [127.585528, 34.596167],
+          [127.715556, 34.640972]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 14.7,
+          "from": "TEDAN",
+          "to": "ISRIV",
+          "geometry": { "type": "LineString", "coordinates": [[127.314472, 35.128833], [127.430000, 34.902778]] },
+          "id": "RKJY-STAR-TEDAN3C-001",
+          "procedureId": "RKJY-STAR-TEDAN3C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-13-1 Coding Table"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 10.3,
+          "from": "ISRIV",
+          "to": "SEHEE",
+          "geometry": { "type": "LineString", "coordinates": [[127.430000, 34.902778], [127.510833, 34.743611]] },
+          "id": "RKJY-STAR-TEDAN3C-002",
+          "procedureId": "RKJY-STAR-TEDAN3C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-13-1 Coding Table"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 9.6,
+          "from": "SEHEE",
+          "to": "MENIV",
+          "geometry": { "type": "LineString", "coordinates": [[127.510833, 34.743611], [127.585528, 34.596167]] },
+          "id": "RKJY-STAR-TEDAN3C-003",
+          "procedureId": "RKJY-STAR-TEDAN3C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-13-1 Coding Table"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7.0,
+          "from": "MENIV",
+          "to": "SOONA",
+          "geometry": { "type": "LineString", "coordinates": [[127.585528, 34.596167], [127.715556, 34.640972]] },
+          "id": "RKJY-STAR-TEDAN3C-004",
+          "procedureId": "RKJY-STAR-TEDAN3C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-13-1 Coding Table"
+        }
+      ],
+      "sequence": ["TEDAN", "ISRIV", "SEHEE", "MENIV", "SOONA"]
+    },
+    "RKJY-STAR-NISAV1C": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKJY-STAR-NISAV1C",
+      "name": "NISAV 1C",
+      "fullName": "RNAV NISAV ONE CHARLIE ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["35"],
+      "startFix": "NISAV",
+      "endFix": "SOONA",
+      "source": "2-13-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.255306, "lon": 127.976389 },
+          "id": "NISAV",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-13-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 6000, "minFt": null, "raw": "-6000" },
+          "coordinates": { "lat": 34.392556, "lon": 127.883889 },
+          "id": "JY752",
+          "role": null,
+          "legDistanceNm": 9.4,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-13-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 4000, "raw": "+4000" },
+          "coordinates": { "lat": 34.640972, "lon": 127.715556 },
+          "id": "SOONA",
+          "role": "IAF",
+          "legDistanceNm": 17.1,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-13-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.976389, 34.255306],
+          [127.883889, 34.392556],
+          [127.715556, 34.640972]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 9.4,
+          "from": "NISAV",
+          "to": "JY752",
+          "geometry": { "type": "LineString", "coordinates": [[127.976389, 34.255306], [127.883889, 34.392556]] },
+          "id": "RKJY-STAR-NISAV1C-001",
+          "procedureId": "RKJY-STAR-NISAV1C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-13-1 Coding Table"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 17.1,
+          "from": "JY752",
+          "to": "SOONA",
+          "geometry": { "type": "LineString", "coordinates": [[127.883889, 34.392556], [127.715556, 34.640972]] },
+          "id": "RKJY-STAR-NISAV1C-002",
+          "procedureId": "RKJY-STAR-NISAV1C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-13-1 Coding Table"
+        }
+      ],
+      "sequence": ["NISAV", "JY752", "SOONA"]
+    }
+  }
+}

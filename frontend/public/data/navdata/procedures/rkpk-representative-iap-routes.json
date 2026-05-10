@@ -1,0 +1,977 @@
+{
+  "metadata": {
+    "airport": "RKPK",
+    "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+    "dataModel": "representative-iap-routes-v1",
+    "description": "Representative IAP routes for connecting STAR endFixes to RKPK runway landing-flow groups.",
+    "sourceFiles": [
+      "(2-26) RKPK INSTR APCH CHART(1).pdf",
+      "(2-22) RKPK STAR.pdf"
+    ],
+    "method": "Representative routes by STAR endFix and runway group. Missed approach is excluded. RWY 18 is encoded as circling-only to MAPt because no fixed straight-in THR track is provided."
+  },
+  "representativeIapMap": {
+    "PEDLO|36": "RKPK-IAP-PEDLO-RWY36-REP",
+    "KEVOX|36": "RKPK-IAP-KEVOX-RWY36-REP",
+    "GAYHA|18": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+  },
+  "starToIapCandidates": {
+    "RKPK-STAR-PEDLO2APARU": {
+      "starName": "PEDLO2APARU",
+      "endFix": "PEDLO",
+      "runways": [
+        "36L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-PEDLO-RWY36-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-PEDLO-RWY36-REP"
+    },
+    "RKPK-STAR-PEDLO2KALEK": {
+      "starName": "PEDLO2KALEK",
+      "endFix": "PEDLO",
+      "runways": [
+        "36L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-PEDLO-RWY36-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-PEDLO-RWY36-REP"
+    },
+    "RKPK-STAR-PEDLO2INVOK": {
+      "starName": "PEDLO2INVOK",
+      "endFix": "PEDLO",
+      "runways": [
+        "36L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-PEDLO-RWY36-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-PEDLO-RWY36-REP"
+    },
+    "RKPK-STAR-PEDLO2APELA": {
+      "starName": "PEDLO2APELA",
+      "endFix": "PEDLO",
+      "runways": [
+        "36L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-PEDLO-RWY36-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-PEDLO-RWY36-REP"
+    },
+    "RKPK-STAR-PEDLO2BUSAN": {
+      "starName": "PEDLO2BUSAN",
+      "endFix": "PEDLO",
+      "runways": [
+        "36L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-PEDLO-RWY36-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-PEDLO-RWY36-REP"
+    },
+    "RKPK-STAR-KEVOX3MASTA": {
+      "starName": "KEVOX3MASTA",
+      "endFix": "KEVOX",
+      "runways": [
+        "36L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-KEVOX-RWY36-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-KEVOX-RWY36-REP"
+    },
+    "RKPK-STAR-KEVOX3KALOD": {
+      "starName": "KEVOX3KALOD",
+      "endFix": "KEVOX",
+      "runways": [
+        "36L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-KEVOX-RWY36-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-KEVOX-RWY36-REP"
+    },
+    "RKPK-STAR-KEVOX3SARAM": {
+      "starName": "KEVOX3SARAM",
+      "endFix": "KEVOX",
+      "runways": [
+        "36L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-KEVOX-RWY36-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-KEVOX-RWY36-REP"
+    },
+    "RKPK-STAR-KEVOX3ANROD": {
+      "starName": "KEVOX3ANROD",
+      "endFix": "KEVOX",
+      "runways": [
+        "36L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-KEVOX-RWY36-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-KEVOX-RWY36-REP"
+    },
+    "RKPK-STAR-GAYHA3MASTA": {
+      "starName": "GAYHA3MASTA",
+      "endFix": "GAYHA",
+      "runways": [
+        "18L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+    },
+    "RKPK-STAR-GAYHA3KALOD": {
+      "starName": "GAYHA3KALOD",
+      "endFix": "GAYHA",
+      "runways": [
+        "18L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+    },
+    "RKPK-STAR-GAYHA3APARU": {
+      "starName": "GAYHA3APARU",
+      "endFix": "GAYHA",
+      "runways": [
+        "18L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+    },
+    "RKPK-STAR-GAYHA3BUSAN": {
+      "starName": "GAYHA3BUSAN",
+      "endFix": "GAYHA",
+      "runways": [
+        "18L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+    },
+    "RKPK-STAR-GAYHA3ANROD": {
+      "starName": "GAYHA3ANROD",
+      "endFix": "GAYHA",
+      "runways": [
+        "18L/R"
+      ],
+      "candidateIapKeys": [
+        "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+      ],
+      "defaultIapKey": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP"
+    }
+  },
+  "iapRoutes": {
+    "RKPK-IAP-PEDLO-RWY36-REP": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-IAP-PEDLO-RWY36-REP",
+      "name": "PEDLO-RWY36-REP",
+      "fullName": "Representative IAP from PEDLO to THR RWY 36L",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "PEDLO",
+      "endFix": "THR RWY 36L",
+      "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+      "isComplete": true,
+      "notes": [
+        "Representative ILS/LOC route for RWY 36 flow via PEDLO. Missed approach and holding excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 34.98975,
+            "lon": 129.1375833
+          },
+          "id": "PEDLO",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3300,
+            "raw": "+3300"
+          },
+          "coordinates": {
+            "lat": 34.9747222,
+            "lon": 128.9633333
+          },
+          "id": "AKEVI",
+          "role": "IF",
+          "legDistanceNm": 8.6,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 2100,
+            "raw": "+2100"
+          },
+          "coordinates": {
+            "lat": 35.0589167,
+            "lon": 128.9525278
+          },
+          "id": "OLMOG",
+          "role": "FAF",
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 13,
+            "raw": "+13"
+          },
+          "coordinates": {
+            "lat": 35.1651944,
+            "lon": 128.9388333
+          },
+          "id": "THR RWY 36L",
+          "role": "Runway Threshold",
+          "legDistanceNm": 6.4,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.1375833,
+            34.98975
+          ],
+          [
+            128.9633333,
+            34.9747222
+          ],
+          [
+            128.9525278,
+            35.0589167
+          ],
+          [
+            128.9388333,
+            35.1651944
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 8.6,
+          "from": "PEDLO",
+          "to": "AKEVI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.1375833,
+                34.98975
+              ],
+              [
+                128.9633333,
+                34.9747222
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-PEDLO-RWY36-REP-001",
+          "procedureId": "RKPK-IAP-PEDLO-RWY36-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 5.1,
+          "from": "AKEVI",
+          "to": "OLMOG",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9633333,
+                34.9747222
+              ],
+              [
+                128.9525278,
+                35.0589167
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-PEDLO-RWY36-REP-002",
+          "procedureId": "RKPK-IAP-PEDLO-RWY36-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 6.4,
+          "from": "OLMOG",
+          "to": "THR RWY 36L",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9525278,
+                35.0589167
+              ],
+              [
+                128.9388333,
+                35.1651944
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-PEDLO-RWY36-REP-003",
+          "procedureId": "RKPK-IAP-PEDLO-RWY36-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        }
+      ],
+      "sequence": [
+        "PEDLO",
+        "AKEVI",
+        "OLMOG",
+        "THR RWY 36L"
+      ],
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "PEDLO",
+        "runwayGroup": [
+          "36L/R"
+        ],
+        "selectedRunway": "36L",
+        "coveredRunways": [
+          "36L/R"
+        ],
+        "reason": "Representative IAP route from PEDLO for RKPK RWY 36L landing flow"
+      },
+      "entryFix": "PEDLO",
+      "sourceProcedure": "ILS Z RWY 36L"
+    },
+    "RKPK-IAP-KEVOX-RWY36-REP": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-IAP-KEVOX-RWY36-REP",
+      "name": "KEVOX-RWY36-REP",
+      "fullName": "Representative IAP from KEVOX to THR RWY 36L",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "KEVOX",
+      "endFix": "THR RWY 36L",
+      "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+      "isComplete": true,
+      "notes": [
+        "Representative ILS/LOC route for RWY 36 flow via KEVOX. Missed approach and holding excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.0143611,
+            "lon": 128.7297778
+          },
+          "id": "KEVOX",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 34.9644167,
+            "lon": 128.8423056
+          },
+          "id": "PK711",
+          "role": "SDF",
+          "legDistanceNm": 6.3,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3300,
+            "raw": "+3300"
+          },
+          "coordinates": {
+            "lat": 34.9747222,
+            "lon": 128.9633333
+          },
+          "id": "AKEVI",
+          "role": "IF",
+          "legDistanceNm": 6.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 2100,
+            "raw": "+2100"
+          },
+          "coordinates": {
+            "lat": 35.0589167,
+            "lon": 128.9525278
+          },
+          "id": "OLMOG",
+          "role": "FAF",
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 13,
+            "raw": "+13"
+          },
+          "coordinates": {
+            "lat": 35.1651944,
+            "lon": 128.9388333
+          },
+          "id": "THR RWY 36L",
+          "role": "Runway Threshold",
+          "legDistanceNm": 6.4,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.7297778,
+            35.0143611
+          ],
+          [
+            128.8423056,
+            34.9644167
+          ],
+          [
+            128.9633333,
+            34.9747222
+          ],
+          [
+            128.9525278,
+            35.0589167
+          ],
+          [
+            128.9388333,
+            35.1651944
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 6.3,
+          "from": "KEVOX",
+          "to": "PK711",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7297778,
+                35.0143611
+              ],
+              [
+                128.8423056,
+                34.9644167
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-KEVOX-RWY36-REP-001",
+          "procedureId": "RKPK-IAP-KEVOX-RWY36-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 6.0,
+          "from": "PK711",
+          "to": "AKEVI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.8423056,
+                34.9644167
+              ],
+              [
+                128.9633333,
+                34.9747222
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-KEVOX-RWY36-REP-002",
+          "procedureId": "RKPK-IAP-KEVOX-RWY36-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 5.1,
+          "from": "AKEVI",
+          "to": "OLMOG",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9633333,
+                34.9747222
+              ],
+              [
+                128.9525278,
+                35.0589167
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-KEVOX-RWY36-REP-003",
+          "procedureId": "RKPK-IAP-KEVOX-RWY36-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 6.4,
+          "from": "OLMOG",
+          "to": "THR RWY 36L",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9525278,
+                35.0589167
+              ],
+              [
+                128.9388333,
+                35.1651944
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-KEVOX-RWY36-REP-004",
+          "procedureId": "RKPK-IAP-KEVOX-RWY36-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        }
+      ],
+      "sequence": [
+        "KEVOX",
+        "PK711",
+        "AKEVI",
+        "OLMOG",
+        "THR RWY 36L"
+      ],
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "KEVOX",
+        "runwayGroup": [
+          "36L/R"
+        ],
+        "selectedRunway": "36L",
+        "coveredRunways": [
+          "36L/R"
+        ],
+        "reason": "Representative IAP route from KEVOX for RKPK RWY 36L landing flow"
+      },
+      "entryFix": "KEVOX",
+      "sourceProcedure": "ILS Z RWY 36L"
+    },
+    "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP",
+      "name": "GAYHA-RWY18-CIRCLING-REP",
+      "fullName": "Representative IAP from GAYHA to ZIKKO",
+      "procedureType": "IAP",
+      "routeType": "RNP APCH",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "GAYHA",
+      "endFix": "ZIKKO",
+      "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+      "isComplete": true,
+      "notes": [
+        "Circling-only representative approach route for RWY 18 flow using RNP B RWY 18L/R.",
+        "Final circling maneuver is not a fixed ground track; route is encoded only to MAPt ZIKKO for weather sampling.",
+        "Missed approach and holding excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.2228889,
+            "lon": 128.6317778
+          },
+          "id": "GAYHA",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 35.1111944,
+            "lon": 128.65
+          },
+          "id": "OVTUS",
+          "role": null,
+          "legDistanceNm": 6.75,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 4000,
+            "raw": "+4000"
+          },
+          "coordinates": {
+            "lat": 35.0305556,
+            "lon": 128.7782778
+          },
+          "id": "NOORI",
+          "role": "IF",
+          "legDistanceNm": 7.95,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": 210
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3500,
+            "raw": "+3500"
+          },
+          "coordinates": {
+            "lat": 35.0679722,
+            "lon": 128.8131111
+          },
+          "id": "PK731",
+          "role": null,
+          "legDistanceNm": 2.82,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 2600,
+            "raw": "+2600"
+          },
+          "coordinates": {
+            "lat": 35.1063889,
+            "lon": 128.8489444
+          },
+          "id": "WAYBI",
+          "role": "FAF",
+          "legDistanceNm": 2.9,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1700,
+            "raw": "+1700"
+          },
+          "coordinates": {
+            "lat": 35.1633611,
+            "lon": 128.9021667
+          },
+          "id": "ZIKKO",
+          "role": "MAPt / Circling",
+          "legDistanceNm": 4.3,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.6317778,
+            35.2228889
+          ],
+          [
+            128.65,
+            35.1111944
+          ],
+          [
+            128.7782778,
+            35.0305556
+          ],
+          [
+            128.8131111,
+            35.0679722
+          ],
+          [
+            128.8489444,
+            35.1063889
+          ],
+          [
+            128.9021667,
+            35.1633611
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 6.75,
+          "from": "GAYHA",
+          "to": "OVTUS",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.6317778,
+                35.2228889
+              ],
+              [
+                128.65,
+                35.1111944
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP-001",
+          "procedureId": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP",
+          "procedureType": "IAP",
+          "routeType": "RNP APCH",
+          "sequence": 1,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 7.95,
+          "from": "OVTUS",
+          "to": "NOORI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.65,
+                35.1111944
+              ],
+              [
+                128.7782778,
+                35.0305556
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP-002",
+          "procedureId": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP",
+          "procedureType": "IAP",
+          "routeType": "RNP APCH",
+          "sequence": 2,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 2.82,
+          "from": "NOORI",
+          "to": "PK731",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7782778,
+                35.0305556
+              ],
+              [
+                128.8131111,
+                35.0679722
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP-003",
+          "procedureId": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP",
+          "procedureType": "IAP",
+          "routeType": "RNP APCH",
+          "sequence": 3,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 2.9,
+          "from": "PK731",
+          "to": "WAYBI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.8131111,
+                35.0679722
+              ],
+              [
+                128.8489444,
+                35.1063889
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP-004",
+          "procedureId": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP",
+          "procedureType": "IAP",
+          "routeType": "RNP APCH",
+          "sequence": 4,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-09-18 / 2026-02-05",
+          "distanceNm": 4.3,
+          "from": "WAYBI",
+          "to": "ZIKKO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.8489444,
+                35.1063889
+              ],
+              [
+                128.9021667,
+                35.1633611
+              ]
+            ]
+          },
+          "id": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP-005",
+          "procedureId": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP",
+          "procedureType": "IAP",
+          "routeType": "RNP APCH",
+          "sequence": 5,
+          "source": "(2-26) RKPK INSTR APCH CHART(1).pdf"
+        }
+      ],
+      "sequence": [
+        "GAYHA",
+        "OVTUS",
+        "NOORI",
+        "PK731",
+        "WAYBI",
+        "ZIKKO"
+      ],
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "GAYHA",
+        "runwayGroup": [
+          "18L/R"
+        ],
+        "selectedRunway": "18L/R",
+        "coveredRunways": [
+          "18L/R"
+        ],
+        "reason": "Representative IAP route from GAYHA for RKPK RWY 18L/R landing flow"
+      },
+      "entryFix": "GAYHA",
+      "sourceProcedure": "RNP B RWY 18L/R",
+      "circlingOnly": true,
+      "approachEndType": "MAPt",
+      "circlingRunways": [
+        "18L",
+        "18R"
+      ],
+      "circlingNote": "Circling maneuver from MAPt to runway is not encoded as geometry."
+    }
+  }
+}

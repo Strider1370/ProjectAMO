@@ -1,0 +1,809 @@
+{
+  "metadata": {
+    "airport": "RKJB",
+    "cycle": "AIRAC 11/25",
+    "description": "RKJB RNAV STAR Procedures (All 6 Procedures)"
+  },
+  "starProcedures": {
+    "RKJB-STAR-MANGI2C": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "STAR",
+      "id": "RKJB-STAR-MANGI2C",
+      "name": "MANGI 2C",
+      "fullName": "RNAV MANGI TWO CHARLIE ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["01"],
+      "startFix": "MANGI",
+      "endFix": "PEGRO",
+      "source": "2-11 RKJB STAR",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.503139, "lon": 126.742139 },
+          "id": "MANGI",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 11000, "raw": "+11000" },
+          "coordinates": { "lat": 35.255028, "lon": 126.715611 },
+          "id": "OSROX",
+          "role": null,
+          "legDistanceNm": 14.9,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 8000, "raw": "+8000" },
+          "coordinates": { "lat": 35.049000, "lon": 126.693694 },
+          "id": "JB704",
+          "role": null,
+          "legDistanceNm": 12.4,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.916528, "lon": 126.679667 },
+          "id": "VASVA",
+          "role": null,
+          "legDistanceNm": 8.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 34.769167, "lon": 126.567250 },
+          "id": "PEGRO",
+          "role": "IAF",
+          "legDistanceNm": 10.4,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.742139, 35.503139],
+          [126.715611, 35.255028],
+          [126.693694, 35.049000],
+          [126.679667, 34.916528],
+          [126.567250, 34.769167]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 14.9,
+          "from": "MANGI",
+          "to": "OSROX",
+          "geometry": { "type": "LineString", "coordinates": [[126.742139, 35.503139], [126.715611, 35.255028]] },
+          "id": "RKJB-STAR-MANGI2C-001",
+          "procedureId": "RKJB-STAR-MANGI2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-11 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 12.4,
+          "from": "OSROX",
+          "to": "JB704",
+          "geometry": { "type": "LineString", "coordinates": [[126.715611, 35.255028], [126.693694, 35.049000]] },
+          "id": "RKJB-STAR-MANGI2C-002",
+          "procedureId": "RKJB-STAR-MANGI2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-11 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 8.0,
+          "from": "JB704",
+          "to": "VASVA",
+          "geometry": { "type": "LineString", "coordinates": [[126.693694, 35.049000], [126.679667, 34.916528]] },
+          "id": "RKJB-STAR-MANGI2C-003",
+          "procedureId": "RKJB-STAR-MANGI2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-11 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 10.4,
+          "from": "VASVA",
+          "to": "PEGRO",
+          "geometry": { "type": "LineString", "coordinates": [[126.679667, 34.916528], [126.567250, 34.769167]] },
+          "id": "RKJB-STAR-MANGI2C-004",
+          "procedureId": "RKJB-STAR-MANGI2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-11 RKJB STAR"
+        }
+      ],
+      "sequence": ["MANGI", "OSROX", "JB704", "VASVA", "PEGRO"]
+    },
+    "RKJB-STAR-MANGI2H": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "STAR",
+      "id": "RKJB-STAR-MANGI2H",
+      "name": "MANGI 2H",
+      "fullName": "RNAV MANGI TWO HOTEL ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["01"],
+      "startFix": "MANGI",
+      "endFix": "OVGEN",
+      "source": "2-11 RKJB STAR",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.503139, "lon": 126.742139 },
+          "id": "MANGI",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 11000, "raw": "+11000" },
+          "coordinates": { "lat": 35.255028, "lon": 126.715611 },
+          "id": "OSROX",
+          "role": null,
+          "legDistanceNm": 14.9,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": null, "raw": "-9000" },
+          "coordinates": { "lat": 35.180722, "lon": 126.605694 },
+          "id": "JB703",
+          "role": null,
+          "legDistanceNm": 7.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 8000, "raw": "+8000" },
+          "coordinates": { "lat": 35.012472, "lon": 126.358167 },
+          "id": "JB702",
+          "role": null,
+          "legDistanceNm": 15.8,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 7000, "raw": "+7000" },
+          "coordinates": { "lat": 34.886000, "lon": 126.169528 },
+          "id": "JB701",
+          "role": null,
+          "legDistanceNm": 12.0,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 34.772833, "lon": 126.196639 },
+          "id": "OVGEN",
+          "role": "IAF",
+          "legDistanceNm": 6.9,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.742139, 35.503139],
+          [126.715611, 35.255028],
+          [126.605694, 35.180722],
+          [126.358167, 35.012472],
+          [126.169528, 34.886000],
+          [126.196639, 34.772833]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 14.9,
+          "from": "MANGI",
+          "to": "OSROX",
+          "geometry": { "type": "LineString", "coordinates": [[126.742139, 35.503139], [126.715611, 35.255028]] },
+          "id": "RKJB-STAR-MANGI2H-001",
+          "procedureId": "RKJB-STAR-MANGI2H",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-11 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.0,
+          "from": "OSROX",
+          "to": "JB703",
+          "geometry": { "type": "LineString", "coordinates": [[126.715611, 35.255028], [126.605694, 35.180722]] },
+          "id": "RKJB-STAR-MANGI2H-002",
+          "procedureId": "RKJB-STAR-MANGI2H",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-11 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 15.8,
+          "from": "JB703",
+          "to": "JB702",
+          "geometry": { "type": "LineString", "coordinates": [[126.605694, 35.180722], [126.358167, 35.012472]] },
+          "id": "RKJB-STAR-MANGI2H-003",
+          "procedureId": "RKJB-STAR-MANGI2H",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-11 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 12.0,
+          "from": "JB702",
+          "to": "JB701",
+          "geometry": { "type": "LineString", "coordinates": [[126.358167, 35.012472], [126.169528, 34.886000]] },
+          "id": "RKJB-STAR-MANGI2H-004",
+          "procedureId": "RKJB-STAR-MANGI2H",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-11 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 6.9,
+          "from": "JB701",
+          "to": "OVGEN",
+          "geometry": { "type": "LineString", "coordinates": [[126.169528, 34.886000], [126.196639, 34.772833]] },
+          "id": "RKJB-STAR-MANGI2H-005",
+          "procedureId": "RKJB-STAR-MANGI2H",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-11 RKJB STAR"
+        }
+      ],
+      "sequence": ["MANGI", "OSROX", "JB703", "JB702", "JB701", "OVGEN"]
+    },
+    "RKJB-STAR-KAMIT2C": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "STAR",
+      "id": "RKJB-STAR-KAMIT2C",
+      "name": "KAMIT 2C",
+      "fullName": "RNAV KAMIT TWO CHARLIE ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["01"],
+      "startFix": "KAMIT",
+      "endFix": "OLBES",
+      "source": "2-11 RKJB STAR",
+      "isComplete": true,
+      "notes": "Cross KAMIT at 270 kt IAS or less.",
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.253917, "lon": 126.771583 },
+          "id": "KAMIT",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-11 RKJB STAR",
+          "speedKt": 270
+        },
+        {
+          "altitude": { "maxFt": 12000, "minFt": null, "raw": "-13000 / -12000" },
+          "coordinates": { "lat": 34.304083, "lon": 126.716333 },
+          "id": "JB705",
+          "role": null,
+          "legDistanceNm": 4.1,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-11 RKJB STAR",
+          "speedKt": 270
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": null, "raw": "-9000" },
+          "coordinates": { "lat": 34.471000, "lon": 126.531694 },
+          "id": "JB706",
+          "role": null,
+          "legDistanceNm": 13.6,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-11 RKJB STAR",
+          "speedKt": 270
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 6000, "raw": "+6000" },
+          "coordinates": { "lat": 34.602250, "lon": 126.375556 },
+          "id": "OLBES",
+          "role": "IAF",
+          "legDistanceNm": 11.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-11 RKJB STAR",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.771583, 34.253917],
+          [126.716333, 34.304083],
+          [126.531694, 34.471000],
+          [126.375556, 34.602250]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 4.1,
+          "from": "KAMIT",
+          "to": "JB705",
+          "geometry": { "type": "LineString", "coordinates": [[126.771583, 34.253917], [126.716333, 34.304083]] },
+          "id": "RKJB-STAR-KAMIT2C-001",
+          "procedureId": "RKJB-STAR-KAMIT2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-11 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 13.6,
+          "from": "JB705",
+          "to": "JB706",
+          "geometry": { "type": "LineString", "coordinates": [[126.716333, 34.304083], [126.531694, 34.471000]] },
+          "id": "RKJB-STAR-KAMIT2C-002",
+          "procedureId": "RKJB-STAR-KAMIT2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-11 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 11.0,
+          "from": "JB706",
+          "to": "OLBES",
+          "geometry": { "type": "LineString", "coordinates": [[126.531694, 34.471000], [126.375556, 34.602250]] },
+          "id": "RKJB-STAR-KAMIT2C-003",
+          "procedureId": "RKJB-STAR-KAMIT2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-11 RKJB STAR"
+        }
+      ],
+      "sequence": ["KAMIT", "JB705", "JB706", "OLBES"]
+    },
+    "RKJB-STAR-MANGI1D": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "STAR",
+      "id": "RKJB-STAR-MANGI1D",
+      "name": "MANGI 1D",
+      "fullName": "RNAV MANGI ONE DELTA ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["19"],
+      "startFix": "MANGI",
+      "endFix": "DOWAN",
+      "source": "2-12 RKJB STAR",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.503139, "lon": 126.742139 },
+          "id": "MANGI",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": 8000, "raw": "-9000 / +8000" },
+          "coordinates": { "lat": 35.253722, "lon": 126.715472 },
+          "id": "JB755",
+          "role": null,
+          "legDistanceNm": 15.0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 35.154472, "lon": 126.554444 },
+          "id": "DOWAN",
+          "role": "IAF",
+          "legDistanceNm": 9.9,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.742139, 35.503139],
+          [126.715472, 35.253722],
+          [126.554444, 35.154472]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 15.0,
+          "from": "MANGI",
+          "to": "JB755",
+          "geometry": { "type": "LineString", "coordinates": [[126.742139, 35.503139], [126.715472, 35.253722]] },
+          "id": "RKJB-STAR-MANGI1D-001",
+          "procedureId": "RKJB-STAR-MANGI1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-12 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 9.9,
+          "from": "JB755",
+          "to": "DOWAN",
+          "geometry": { "type": "LineString", "coordinates": [[126.715472, 35.253722], [126.554444, 35.154472]] },
+          "id": "RKJB-STAR-MANGI1D-002",
+          "procedureId": "RKJB-STAR-MANGI1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-12 RKJB STAR"
+        }
+      ],
+      "sequence": ["MANGI", "JB755", "DOWAN"]
+    },
+    "RKJB-STAR-SAMUL1D": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "STAR",
+      "id": "RKJB-STAR-SAMUL1D",
+      "name": "SAMUL 1D",
+      "fullName": "RNAV SAMUL ONE DELTA ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["19"],
+      "startFix": "SAMUL",
+      "endFix": "DOWAN",
+      "source": "2-12 RKJB STAR",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.126528, "lon": 126.865111 },
+          "id": "SAMUL",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.126222, "lon": 126.812111 },
+          "id": "KWA",
+          "role": null,
+          "legDistanceNm": 2.6,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 7000, "minFt": 7000, "raw": "@7000" },
+          "coordinates": { "lat": 35.125278, "lon": 126.701806 },
+          "id": "DALSU",
+          "role": null,
+          "legDistanceNm": 5.4,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 35.154472, "lon": 126.554444 },
+          "id": "DOWAN",
+          "role": "IAF",
+          "legDistanceNm": 7.5,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.865111, 35.126528],
+          [126.812111, 35.126222],
+          [126.701806, 35.125278],
+          [126.554444, 35.154472]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 2.6,
+          "from": "SAMUL",
+          "to": "KWA",
+          "geometry": { "type": "LineString", "coordinates": [[126.865111, 35.126528], [126.812111, 35.126222]] },
+          "id": "RKJB-STAR-SAMUL1D-001",
+          "procedureId": "RKJB-STAR-SAMUL1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-12 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 5.4,
+          "from": "KWA",
+          "to": "DALSU",
+          "geometry": { "type": "LineString", "coordinates": [[126.812111, 35.126222], [126.701806, 35.125278]] },
+          "id": "RKJB-STAR-SAMUL1D-002",
+          "procedureId": "RKJB-STAR-SAMUL1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-12 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.5,
+          "from": "DALSU",
+          "to": "DOWAN",
+          "geometry": { "type": "LineString", "coordinates": [[126.701806, 35.125278], [126.554444, 35.154472]] },
+          "id": "RKJB-STAR-SAMUL1D-003",
+          "procedureId": "RKJB-STAR-SAMUL1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-12 RKJB STAR"
+        }
+      ],
+      "sequence": ["SAMUL", "KWA", "DALSU", "DOWAN"]
+    },
+    "RKJB-STAR-KAMIT1D": {
+      "airport": "RKJB",
+      "cycle": "AIRAC 11/25",
+      "dataModel": "STAR",
+      "id": "RKJB-STAR-KAMIT1D",
+      "name": "KAMIT 1D",
+      "fullName": "RNAV KAMIT ONE DELTA ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["19"],
+      "startFix": "KAMIT",
+      "endFix": "AYEON",
+      "source": "2-12 RKJB STAR",
+      "isComplete": true,
+      "notes": "Cross KAMIT at 270 kt IAS or less.",
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 34.253917, "lon": 126.771583 },
+          "id": "KAMIT",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-12 RKJB STAR",
+          "speedKt": 270
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 13000, "raw": "+13000" },
+          "coordinates": { "lat": 34.516083, "lon": 126.799472 },
+          "id": "JB751",
+          "role": null,
+          "legDistanceNm": 15.8,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": null, "raw": "-9000" },
+          "coordinates": { "lat": 34.725333, "lon": 126.557944 },
+          "id": "JB752",
+          "role": null,
+          "legDistanceNm": 17.3,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 8000, "raw": "+8000" },
+          "coordinates": { "lat": 34.883694, "lon": 126.373889 },
+          "id": "JB753",
+          "role": null,
+          "legDistanceNm": 13.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 6000, "raw": "+6000" },
+          "coordinates": { "lat": 35.023833, "lon": 126.210111 },
+          "id": "JB754",
+          "role": null,
+          "legDistanceNm": 11.7,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 35.152833, "lon": 126.208917 },
+          "id": "AYEON",
+          "role": "IAF",
+          "legDistanceNm": 7.7,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-12 RKJB STAR",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.771583, 34.253917],
+          [126.799472, 34.516083],
+          [126.557944, 34.725333],
+          [126.373889, 34.883694],
+          [126.210111, 35.023833],
+          [126.208917, 35.152833]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 15.8,
+          "from": "KAMIT",
+          "to": "JB751",
+          "geometry": { "type": "LineString", "coordinates": [[126.771583, 34.253917], [126.799472, 34.516083]] },
+          "id": "RKJB-STAR-KAMIT1D-001",
+          "procedureId": "RKJB-STAR-KAMIT1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-12 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 17.3,
+          "from": "JB751",
+          "to": "JB752",
+          "geometry": { "type": "LineString", "coordinates": [[126.799472, 34.516083], [126.557944, 34.725333]] },
+          "id": "RKJB-STAR-KAMIT1D-002",
+          "procedureId": "RKJB-STAR-KAMIT1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-12 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 13.1,
+          "from": "JB752",
+          "to": "JB753",
+          "geometry": { "type": "LineString", "coordinates": [[126.557944, 34.725333], [126.373889, 34.883694]] },
+          "id": "RKJB-STAR-KAMIT1D-003",
+          "procedureId": "RKJB-STAR-KAMIT1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-12 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 11.7,
+          "from": "JB753",
+          "to": "JB754",
+          "geometry": { "type": "LineString", "coordinates": [[126.373889, 34.883694], [126.210111, 35.023833]] },
+          "id": "RKJB-STAR-KAMIT1D-004",
+          "procedureId": "RKJB-STAR-KAMIT1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-12 RKJB STAR"
+        },
+        {
+          "airport": "RKJB",
+          "cycle": "AIRAC 11/25",
+          "distanceNm": 7.7,
+          "from": "JB754",
+          "to": "AYEON",
+          "geometry": { "type": "LineString", "coordinates": [[126.210111, 35.023833], [126.208917, 35.152833]] },
+          "id": "RKJB-STAR-KAMIT1D-005",
+          "procedureId": "RKJB-STAR-KAMIT1D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-12 RKJB STAR"
+        }
+      ],
+      "sequence": ["KAMIT", "JB751", "JB752", "JB753", "JB754", "AYEON"]
+    }
+  }
+}

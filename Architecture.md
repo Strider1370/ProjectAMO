@@ -63,6 +63,8 @@ ProjectAMO/
 
 ## Task Patterns
 
+Working draft note: `frontend/public/data/navdata/route-direction-segment-review.json` is an intermediate ENR 3.1/3.2 segment-direction review file and is not consumed by runtime logic.
+
 If your task matches one of these, open `EntryPoints.md` at the listed number for the step-by-step flow.
 
 1. Add a new aviation WFS layer

@@ -1,0 +1,2763 @@
+{
+  "metadata": {
+    "id": "route-direction-metadata",
+    "cycle": "AIRAC 2026-04-15",
+    "dataModel": "route-direction-metadata-v2-segment-rules",
+    "method": "Route-level allowedDirection with optional segmentRules overrides. 'sequence' means follow routes.json sequence order; 'reverse' means use the reverse order; 'both' means allow both directions; 'conditional' means keep the segment open for route search until a stricter rule model is implemented.",
+    "sourceFiles": [
+      "routes.json",
+      "route-graph.json"
+    ],
+    "warning": "For weather-route display and representative route generation only. Not for operational flight planning. Review current AIP ENR remarks for actual direction restrictions."
+  },
+  "directionSemantics": {
+    "allowedDirection": {
+      "sequence": "Use the route sequence as stored in routes.json.",
+      "reverse": "Use the reverse of the route sequence stored in routes.json.",
+      "both": "Allow both sequence and reverse; filter by flow/airport policy if needed.",
+      "conditional": "Temporarily allow both directions for route search on segments that need AIP remark-aware handling."
+    },
+    "primaryUse": {
+      "outbound": "Primarily useful when leaving the Korean domestic route network toward FIR boundary or away from the departure airport.",
+      "inbound": "Primarily useful when entering from FIR boundary toward Korean domestic route network/arrival airport.",
+      "mixed": "Use depends on airport pair, sector, and ENR remarks."
+    }
+  },
+  "airportProfiles": {
+    "RKSI": {
+      "recommendedOutboundBoundaryFixes": {
+        "westbound": [
+          "AGAVO"
+        ],
+        "eastbound": [
+          "SAPRA",
+          "LANAT",
+          "KANSU"
+        ],
+        "southeastbound": [
+          "APELA",
+          "SAMDO",
+          "BESNA"
+        ],
+        "southbound": [
+          "MUGUS",
+          "RUGMA"
+        ],
+        "southwestbound": [
+          "ATOTI",
+          "BEDAR"
+        ]
+      }
+    }
+  },
+  "routes": {
+    "A582": {
+      "routeId": "A582",
+      "routeType": "ATS",
+      "sequenceStart": "SEL",
+      "sequenceEnd": "APELA",
+      "sequenceLength": 11,
+      "primaryUse": "mixed",
+      "flow": "southeast-northwest",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "APELA"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "APELA"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "ATS counterpart/parallel to Y782 sequence toward APELA."
+      ],
+      "segmentRules": [
+        {
+          "from": "SEL",
+          "to": "POLEG",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "POLEG",
+          "to": "SOT",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "SOT",
+          "to": "OSPOT",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "OSPOT",
+          "to": "VASLI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "VASLI",
+          "to": "MAKDU",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "MAKDU",
+          "to": "BITUX",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "BITUX",
+          "to": "TGU",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "TGU",
+          "to": "KALOD",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "KALOD",
+          "to": "PSN",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "PSN",
+          "to": "APELA",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        }
+      ]
+    },
+    "A595": {
+      "routeId": "A595",
+      "routeType": "ATS",
+      "sequenceStart": "CJU",
+      "sequenceEnd": "SAMDO",
+      "sequenceLength": 3,
+      "primaryUse": "outbound",
+      "flow": "southeastbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "SAMDO"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "SAMDO"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "ATS route CJU -> TAMNA -> SAMDO."
+      ],
+      "segmentRules": [
+        {
+          "from": "CJU",
+          "to": "TAMNA",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "TAMNA",
+          "to": "SAMDO",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        }
+      ]
+    },
+    "B467": {
+      "routeId": "B467",
+      "routeType": "ATS",
+      "sequenceStart": "KAE",
+      "sequenceEnd": "KANSU",
+      "sequenceLength": 7,
+      "primaryUse": "outbound",
+      "flow": "eastbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "KANSU"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "KANSU"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "ATS counterpart/parallel to Y437 sequence toward KANSU."
+      ],
+      "segmentRules": [
+        {
+          "from": "KAE",
+          "to": "LESBU",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "LESBU",
+          "to": "UGOVI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "UGOVI",
+          "to": "BUSKO",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "BUSKO",
+          "to": "TENAS",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "TENAS",
+          "to": "MALSO",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "MALSO",
+          "to": "KANSU",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        }
+      ]
+    },
+    "B576": {
+      "routeId": "B576",
+      "routeType": "ATS",
+      "sequenceStart": "SEL",
+      "sequenceEnd": "ATOTI",
+      "sequenceLength": 16,
+      "primaryUse": "inbound",
+      "flow": "northbound",
+      "allowedDirection": "reverse",
+      "boundaryFixes": [
+        "ATOTI"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "ATOTI"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "ATS counterpart/parallel to Y722; use reverse direction from ATOTI toward SOT/SEL side for inbound."
+      ],
+      "segmentRules": [
+        {
+          "from": "SEL",
+          "to": "POLEG",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "POLEG",
+          "to": "SOT",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "SOT",
+          "to": "OLMEN",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "OLMEN",
+          "to": "ENTEL",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "ENTEL",
+          "to": "RINBO",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "RINBO",
+          "to": "LINTA",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "LINTA",
+          "to": "KWA",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "KWA",
+          "to": "IPDAS",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "IPDAS",
+          "to": "CJU",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "CJU",
+          "to": "SOSDO",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "SOSDO",
+          "to": "SAMLO",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "SAMLO",
+          "to": "NIRAT",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "NIRAT",
+          "to": "ELGEP",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "ELGEP",
+          "to": "TESIM",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "TESIM",
+          "to": "ATOTI",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        }
+      ]
+    },
+    "G585": {
+      "routeId": "G585",
+      "routeType": "ATS",
+      "sequenceStart": "SEL",
+      "sequenceEnd": "SAPRA",
+      "sequenceLength": 12,
+      "primaryUse": "outbound",
+      "flow": "eastbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "SAPRA"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "SAPRA"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "ATS counterpart/parallel to Y685 sequence toward SAPRA."
+      ],
+      "segmentRules": [
+        {
+          "from": "SEL",
+          "to": "KALMA",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditional, reverse toward SEL generally authorized."
+        },
+        {
+          "from": "KALMA",
+          "to": "KAKSO",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditional, reverse toward SEL generally authorized."
+        },
+        {
+          "from": "KAKSO",
+          "to": "GUKDO",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditional, reverse toward SEL generally authorized."
+        },
+        {
+          "from": "GUKDO",
+          "to": "ENSAL",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditional, reverse toward SEL generally authorized."
+        },
+        {
+          "from": "ENSAL",
+          "to": "BASEM",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditional, reverse toward SEL generally authorized."
+        },
+        {
+          "from": "BASEM",
+          "to": "BIGOB",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditional, reverse toward SEL generally authorized."
+        },
+        {
+          "from": "BIGOB",
+          "to": "CUN",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditional, reverse toward SEL generally authorized."
+        },
+        {
+          "from": "CUN",
+          "to": "ELAPI",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditional, reverse toward SEL generally authorized."
+        },
+        {
+          "from": "ELAPI",
+          "to": "KPO",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditional, reverse toward SEL generally authorized."
+        },
+        {
+          "from": "KPO",
+          "to": "BULGA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Boundary-side continuation not covered by the KPO-SEL remark; keep open until route-level policy is finalized."
+        },
+        {
+          "from": "BULGA",
+          "to": "SAPRA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Boundary-side continuation not covered by the KPO-SEL remark; keep open until route-level policy is finalized."
+        }
+      ]
+    },
+    "G597": {
+      "routeId": "G597",
+      "routeType": "ATS",
+      "sequenceStart": "AGAVO",
+      "sequenceEnd": "LANAT",
+      "sequenceLength": 17,
+      "primaryUse": "mixed",
+      "flow": "east-west",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "AGAVO",
+        "LANAT"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "AGAVO",
+        "LANAT"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "ATS counterpart/parallel to Y697; use directional rules similar to Y697."
+      ],
+      "directionalRules": [
+        {
+          "use": "outbound",
+          "flow": "westbound",
+          "direction": "reverse",
+          "towardBoundaryFix": "AGAVO"
+        },
+        {
+          "use": "outbound",
+          "flow": "eastbound",
+          "direction": "sequence",
+          "towardBoundaryFix": "LANAT"
+        }
+      ],
+      "segmentRules": [
+        {
+          "from": "AGAVO",
+          "to": "GONAV",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO explicitly authorized westbound, sequence toward inland requires PPR/exception handling."
+        },
+        {
+          "from": "GONAV",
+          "to": "DANTI",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO explicitly authorized westbound, sequence toward inland requires PPR/exception handling."
+        },
+        {
+          "from": "DANTI",
+          "to": "ANSIM",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO explicitly authorized westbound, sequence toward inland requires PPR/exception handling."
+        },
+        {
+          "from": "ANSIM",
+          "to": "BINIL",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO explicitly authorized westbound, sequence toward inland requires PPR/exception handling."
+        },
+        {
+          "from": "BINIL",
+          "to": "NOPIK",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO explicitly authorized westbound, sequence toward inland requires PPR/exception handling."
+        },
+        {
+          "from": "NOPIK",
+          "to": "GOGET",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO explicitly authorized westbound, sequence toward inland requires PPR/exception handling."
+        },
+        {
+          "from": "GOGET",
+          "to": "SEL",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO explicitly authorized westbound, sequence toward inland requires PPR/exception handling."
+        },
+        {
+          "from": "SEL",
+          "to": "EGOBA",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment around SEL; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "EGOBA",
+          "to": "KARBU",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment between SEL and KAE side; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "KARBU",
+          "to": "TORUS",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment between SEL and KAE side; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "TORUS",
+          "to": "BIKSI",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment between SEL and KAE side; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "BIKSI",
+          "to": "KAE",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment between SEL and KAE side; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "KAE",
+          "to": "PILIT",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "KAE-LANAT side; reverse toward KAE is conditionally authorized by PPR from LANAT side."
+        },
+        {
+          "from": "PILIT",
+          "to": "ESNEG",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "KAE-LANAT side; reverse toward KAE is conditionally authorized by PPR from LANAT side."
+        },
+        {
+          "from": "ESNEG",
+          "to": "AGSUS",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "KAE-LANAT side; reverse toward KAE is conditionally authorized by PPR from LANAT side."
+        },
+        {
+          "from": "AGSUS",
+          "to": "LANAT",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "KAE-LANAT side; reverse toward KAE is conditionally authorized by PPR from LANAT side."
+        }
+      ]
+    },
+    "L512": {
+      "routeId": "L512",
+      "routeType": "RNAV",
+      "sequenceStart": "TENAS",
+      "sequenceEnd": "ANDOL",
+      "sequenceLength": 3,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "ANDOL"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "ANDOL"
+      ],
+      "confidence": "high",
+      "notes": [
+        "Domestic/eastern connector route ending at FIR boundary fix ANDOL."
+      ],
+      "segmentRules": [
+        {
+          "from": "TENAS",
+          "to": "SABET",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "SABET",
+          "to": "ANDOL",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "V543": {
+      "routeId": "V543",
+      "routeType": "ATS",
+      "sequenceStart": "DALSU",
+      "sequenceEnd": "PSN",
+      "sequenceLength": 9,
+      "primaryUse": "mixed",
+      "flow": "southeast-northwest",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "ATS domestic connector; no FIR boundary fix in sequence."
+      ],
+      "segmentRules": [
+        {
+          "from": "DALSU",
+          "to": "KWA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "KWA",
+          "to": "SAMUL",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "SAMUL",
+          "to": "TEDAN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "TEDAN",
+          "to": "ANUBA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "ANUBA",
+          "to": "SAPDI",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "SAPDI",
+          "to": "SARAM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "SARAM",
+          "to": "ANKUS",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "ANKUS",
+          "to": "PSN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "W45": {
+      "routeId": "W45",
+      "routeType": "ATS",
+      "sequenceStart": "KWJ",
+      "sequenceEnd": "PSN",
+      "sequenceLength": 3,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "ATS domestic connector; no FIR boundary fix in sequence."
+      ],
+      "segmentRules": [
+        {
+          "from": "KWJ",
+          "to": "RIMPO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "RIMPO",
+          "to": "PSN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Y233": {
+      "routeId": "Y233",
+      "routeType": "RNAV",
+      "sequenceStart": "BUSKO",
+      "sequenceEnd": "KANSU",
+      "sequenceLength": 4,
+      "primaryUse": "mixed",
+      "flow": "east-west",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "KANSU"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "KANSU"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "No explicit one-way restriction is stated in ENR 3.3; treat as bidirectional for route search."
+      ],
+      "segmentRules": [
+        {
+          "from": "BUSKO",
+          "to": "SELPA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "SELPA",
+          "to": "ONATA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "ONATA",
+          "to": "KANSU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "No explicit one-way restriction was identified for this segment."
+        }
+      ]
+    },
+    "Y253": {
+      "routeId": "Y253",
+      "routeType": "RNAV",
+      "sequenceStart": "DALSU",
+      "sequenceEnd": "PSN",
+      "sequenceLength": 9,
+      "primaryUse": "mixed",
+      "flow": "southeast-northwest",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "Domestic connector route; no FIR boundary fix in sequence."
+      ],
+      "segmentRules": [
+        {
+          "from": "DALSU",
+          "to": "KWA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "KWA",
+          "to": "SAMUL",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "SAMUL",
+          "to": "TEDAN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "TEDAN",
+          "to": "ANUBA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "ANUBA",
+          "to": "SAPDI",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "SAPDI",
+          "to": "SARAM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "SARAM",
+          "to": "ANKUS",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "ANKUS",
+          "to": "PSN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Y437": {
+      "routeId": "Y437",
+      "routeType": "RNAV",
+      "sequenceStart": "KAE",
+      "sequenceEnd": "KANSU",
+      "sequenceLength": 7,
+      "primaryUse": "mixed",
+      "flow": "east-west",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "KANSU"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "KANSU"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "No explicit one-way restriction is stated in ENR 3.3; treat as bidirectional for route search."
+      ],
+      "segmentRules": [
+        {
+          "from": "KAE",
+          "to": "LESBU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "LESBU",
+          "to": "UGOVI",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "UGOVI",
+          "to": "BUSKO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "BUSKO",
+          "to": "TENAS",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "TENAS",
+          "to": "MALSO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "MALSO",
+          "to": "KANSU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "No explicit one-way restriction was identified for this segment."
+        }
+      ]
+    },
+    "Y571": {
+      "routeId": "Y571",
+      "routeType": "RNAV",
+      "sequenceStart": "SOSDO",
+      "sequenceEnd": "PSN",
+      "sequenceLength": 8,
+      "primaryUse": "mixed",
+      "flow": "north-south connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "Domestic connector route; no FIR boundary fix in sequence."
+      ],
+      "segmentRules": [
+        {
+          "from": "SOSDO",
+          "to": "OMKIM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "OMKIM",
+          "to": "PAPLU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "PAPLU",
+          "to": "AKPON",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "AKPON",
+          "to": "NISAV",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "NISAV",
+          "to": "ANROD",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "ANROD",
+          "to": "POVEM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "POVEM",
+          "to": "PSN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Y572": {
+      "routeId": "Y572",
+      "routeType": "RNAV",
+      "sequenceStart": "PSN",
+      "sequenceEnd": "RUGMA",
+      "sequenceLength": 11,
+      "primaryUse": "outbound",
+      "flow": "southbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "RUGMA"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "RUGMA"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "Use sequence direction PSN -> ... -> RUGMA for south/southeast boundary flow."
+      ],
+      "segmentRules": [
+        {
+          "from": "PSN",
+          "to": "OLMUD",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        },
+        {
+          "from": "OLMUD",
+          "to": "ENGOT",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        },
+        {
+          "from": "ENGOT",
+          "to": "POVOR",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        },
+        {
+          "from": "POVOR",
+          "to": "UPGOS",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        },
+        {
+          "from": "UPGOS",
+          "to": "BILUM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        },
+        {
+          "from": "BILUM",
+          "to": "BEPKO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        },
+        {
+          "from": "BEPKO",
+          "to": "CJU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        },
+        {
+          "from": "CJU",
+          "to": "OMKIM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        },
+        {
+          "from": "OMKIM",
+          "to": "TOSAN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        },
+        {
+          "from": "TOSAN",
+          "to": "RUGMA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Treat as two-way pending full FLAS-aware logic."
+        }
+      ]
+    },
+    "Y590": {
+      "routeId": "Y590",
+      "routeType": "RNAV",
+      "sequenceStart": "BEDAR",
+      "sequenceEnd": "SADLI",
+      "sequenceLength": 4,
+      "primaryUse": "mixed",
+      "flow": "southwest-northeast",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "BEDAR"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "BEDAR"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "Boundary side is BEDAR; use route search constraints by airport pair."
+      ],
+      "segmentRules": [
+        {
+          "from": "BEDAR",
+          "to": "ELGEP",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary BEDAR inbound leg."
+        },
+        {
+          "from": "ELGEP",
+          "to": "IKEDO",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary BEDAR inbound leg."
+        },
+        {
+          "from": "IKEDO",
+          "to": "SADLI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary BEDAR inbound leg."
+        }
+      ]
+    },
+    "Y644": {
+      "routeId": "Y644",
+      "routeType": "RNAV",
+      "sequenceStart": "AGAVO",
+      "sequenceEnd": "EGOBA",
+      "sequenceLength": 10,
+      "primaryUse": "mixed",
+      "flow": "west-east",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "AGAVO"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "AGAVO"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "West boundary side is AGAVO; useful as connector rather than single-direction airway."
+      ],
+      "segmentRules": [
+        {
+          "from": "AGAVO",
+          "to": "RILRO",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary AGAVO inbound leg."
+        },
+        {
+          "from": "RILRO",
+          "to": "GONAV",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary AGAVO inbound leg."
+        },
+        {
+          "from": "GONAV",
+          "to": "BODOL",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary AGAVO inbound leg."
+        },
+        {
+          "from": "BODOL",
+          "to": "REBIT",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary AGAVO inbound leg."
+        },
+        {
+          "from": "REBIT",
+          "to": "BELTU",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary AGAVO inbound leg."
+        },
+        {
+          "from": "BELTU",
+          "to": "BOGAN",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary AGAVO inbound leg."
+        },
+        {
+          "from": "BOGAN",
+          "to": "MONSI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary AGAVO inbound leg."
+        },
+        {
+          "from": "MONSI",
+          "to": "POLEG",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary AGAVO inbound leg."
+        },
+        {
+          "from": "POLEG",
+          "to": "EGOBA",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Primary AGAVO inbound leg."
+        }
+      ]
+    },
+    "Y659": {
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "sequenceStart": "KUZ",
+      "sequenceEnd": "KPO",
+      "sequenceLength": 8,
+      "primaryUse": "mixed",
+      "flow": "east-west",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "medium",
+      "notes": [
+        "Domestic RNAV east-west connector. Keep both directions open for route search."
+      ],
+      "segmentRules": [
+        {
+          "from": "KUZ",
+          "to": "ELPOS",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "ELPOS",
+          "to": "RINBO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "RINBO",
+          "to": "MELES",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "MELES",
+          "to": "OPEDA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "OPEDA",
+          "to": "TGU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "TGU",
+          "to": "LAPAL",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "LAPAL",
+          "to": "KPO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Y657": {
+      "routeId": "Y657",
+      "routeType": "RNAV",
+      "sequenceStart": "KWA",
+      "sequenceEnd": "TGU",
+      "sequenceLength": 3,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "Domestic connector route; no FIR boundary fix in sequence."
+      ],
+      "segmentRules": [
+        {
+          "from": "KWA",
+          "to": "IGDOK",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "IGDOK",
+          "to": "TGU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Y677": {
+      "routeId": "Y677",
+      "routeType": "RNAV",
+      "sequenceStart": "TOLIS",
+      "sequenceEnd": "SAMDO",
+      "sequenceLength": 6,
+      "primaryUse": "outbound",
+      "flow": "southeastbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "SAMDO"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "SAMDO"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "Use sequence direction TOLIS -> ... -> SAMDO for southeast/Fukuoka FIR boundary flow."
+      ],
+      "segmentRules": [
+        {
+          "from": "TOLIS",
+          "to": "LIMDI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "LIMDI",
+          "to": "REMOS",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "REMOS",
+          "to": "CJU",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "CJU",
+          "to": "TAMNA",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "TAMNA",
+          "to": "SAMDO",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        }
+      ]
+    },
+    "Y685": {
+      "routeId": "Y685",
+      "routeType": "RNAV",
+      "sequenceStart": "SEL",
+      "sequenceEnd": "SAPRA",
+      "sequenceLength": 12,
+      "primaryUse": "outbound",
+      "flow": "eastbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "SAPRA"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "SAPRA"
+      ],
+      "confidence": "high",
+      "notes": [
+        "Use sequence direction SEL -> ... -> SAPRA for eastbound/Japan-side outbound flow."
+      ],
+      "segmentRules": [
+        {
+          "from": "SEL",
+          "to": "KALMA",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditionally allowed, reverse toward SEL is generally authorized."
+        },
+        {
+          "from": "KALMA",
+          "to": "KAKSO",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditionally allowed, reverse toward SEL is generally authorized."
+        },
+        {
+          "from": "KAKSO",
+          "to": "GUKDO",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditionally allowed, reverse toward SEL is generally authorized."
+        },
+        {
+          "from": "GUKDO",
+          "to": "ENSAL",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditionally allowed, reverse toward SEL is generally authorized."
+        },
+        {
+          "from": "ENSAL",
+          "to": "BASEM",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditionally allowed, reverse toward SEL is generally authorized."
+        },
+        {
+          "from": "BASEM",
+          "to": "BIGOB",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditionally allowed, reverse toward SEL is generally authorized."
+        },
+        {
+          "from": "BIGOB",
+          "to": "CUN",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditionally allowed, reverse toward SEL is generally authorized."
+        },
+        {
+          "from": "CUN",
+          "to": "ELAPI",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditionally allowed, reverse toward SEL is generally authorized."
+        },
+        {
+          "from": "ELAPI",
+          "to": "KPO",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "Part of SEL-KPO segment; eastbound toward KPO is conditionally allowed, reverse toward SEL is generally authorized."
+        },
+        {
+          "from": "KPO",
+          "to": "BULGA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Boundary-side continuation not covered by the KPO-SEL remark; keep open until route-level policy is finalized."
+        },
+        {
+          "from": "BULGA",
+          "to": "SAPRA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Boundary-side continuation not covered by the KPO-SEL remark; keep open until route-level policy is finalized."
+        }
+      ]
+    },
+    "Y697": {
+      "routeId": "Y697",
+      "routeType": "RNAV",
+      "sequenceStart": "AGAVO",
+      "sequenceEnd": "LANAT",
+      "sequenceLength": 17,
+      "primaryUse": "mixed",
+      "flow": "east-west",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "AGAVO",
+        "LANAT"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "AGAVO",
+        "LANAT"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "Treat as bidirectional/conditional in the app. For RKSI westbound use reverse side toward AGAVO; eastbound use sequence side toward LANAT where applicable."
+      ],
+      "directionalRules": [
+        {
+          "use": "outbound",
+          "flow": "westbound",
+          "direction": "reverse",
+          "towardBoundaryFix": "AGAVO"
+        },
+        {
+          "use": "outbound",
+          "flow": "eastbound",
+          "direction": "sequence",
+          "towardBoundaryFix": "LANAT"
+        }
+      ],
+      "segmentRules": [
+        {
+          "from": "AGAVO",
+          "to": "OLBIM",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO is explicitly authorized westbound, sequence toward inland remains under review."
+        },
+        {
+          "from": "OLBIM",
+          "to": "NOGON",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO is explicitly authorized westbound, sequence toward inland remains under review."
+        },
+        {
+          "from": "NOGON",
+          "to": "ANSIM",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO is explicitly authorized westbound, sequence toward inland remains under review."
+        },
+        {
+          "from": "ANSIM",
+          "to": "BINIL",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO is explicitly authorized westbound, sequence toward inland remains under review."
+        },
+        {
+          "from": "BINIL",
+          "to": "NOPIK",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO is explicitly authorized westbound, sequence toward inland remains under review."
+        },
+        {
+          "from": "NOPIK",
+          "to": "GOGET",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO is explicitly authorized westbound, sequence toward inland remains under review."
+        },
+        {
+          "from": "GOGET",
+          "to": "SEL",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "AGAVO-SEL side; reverse toward AGAVO is explicitly authorized westbound, sequence toward inland remains under review."
+        },
+        {
+          "from": "SEL",
+          "to": "EGOBA",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment around SEL; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "EGOBA",
+          "to": "KARBU",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment between SEL and KAE side; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "KARBU",
+          "to": "TORUS",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment between SEL and KAE side; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "TORUS",
+          "to": "BIKSI",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment between SEL and KAE side; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "BIKSI",
+          "to": "KAE",
+          "allowedDirection": "both",
+          "confidence": "low",
+          "note": "Bridge segment between SEL and KAE side; keep open until central corridor policy is split out."
+        },
+        {
+          "from": "KAE",
+          "to": "PILIT",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "KAE-LANAT side; sequence toward LANAT is conditionally constrained by westbound PPR remark from LANAT to KAE."
+        },
+        {
+          "from": "PILIT",
+          "to": "ESNEG",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "KAE-LANAT side; sequence toward LANAT is conditionally constrained by westbound PPR remark from LANAT to KAE."
+        },
+        {
+          "from": "ESNEG",
+          "to": "AGSUS",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "KAE-LANAT side; sequence toward LANAT is conditionally constrained by westbound PPR remark from LANAT to KAE."
+        },
+        {
+          "from": "AGSUS",
+          "to": "LANAT",
+          "allowedDirection": "conditional",
+          "confidence": "high",
+          "note": "KAE-LANAT side; sequence toward LANAT is conditionally constrained by westbound PPR remark from LANAT to KAE."
+        }
+      ]
+    },
+    "Y711": {
+      "routeId": "Y711",
+      "routeType": "RNAV",
+      "sequenceStart": "MONSI",
+      "sequenceEnd": "MUGUS",
+      "sequenceLength": 19,
+      "primaryUse": "outbound",
+      "flow": "southbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "MUGUS"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "MUGUS"
+      ],
+      "confidence": "high",
+      "notes": [
+        "Use sequence direction toward MUGUS for southbound/outbound flow."
+      ],
+      "segmentRules": [
+        {
+          "from": "MONSI",
+          "to": "BULTI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "BULTI",
+          "to": "MEKIL",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "MEKIL",
+          "to": "GONAX",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "GONAX",
+          "to": "BEDES",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "BEDES",
+          "to": "ELPOS",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "ELPOS",
+          "to": "MANGI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "MANGI",
+          "to": "DALSU",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "DALSU",
+          "to": "NULDI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "NULDI",
+          "to": "DOTOL",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "DOTOL",
+          "to": "KIDOS",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "KIDOS",
+          "to": "REMOS",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "REMOS",
+          "to": "PANSI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "PANSI",
+          "to": "DOMKO",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "DOMKO",
+          "to": "PONIK",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "PONIK",
+          "to": "IKEDO",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "IKEDO",
+          "to": "KANKA",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "KANKA",
+          "to": "BONSO",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "No segment-specific restriction identified."
+        },
+        {
+          "from": "BONSO",
+          "to": "MUGUS",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Outbound boundary leg; below FL320 continuation should transition to Z86 then B576."
+        }
+      ]
+    },
+    "Y722": {
+      "routeId": "Y722",
+      "routeType": "RNAV",
+      "sequenceStart": "SOT",
+      "sequenceEnd": "ATOTI",
+      "sequenceLength": 17,
+      "primaryUse": "inbound",
+      "flow": "northbound",
+      "allowedDirection": "reverse",
+      "boundaryFixes": [
+        "ATOTI"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "ATOTI"
+      ],
+      "confidence": "high",
+      "notes": [
+        "routes.json sequence ends at ATOTI; use reverse direction ATOTI -> ... -> SOT for northbound/inbound flow."
+      ],
+      "segmentRules": [
+        {
+          "from": "SOT",
+          "to": "OLMEN",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "OLMEN",
+          "to": "GUNKU",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "GUNKU",
+          "to": "PEBRI",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "PEBRI",
+          "to": "ATASO",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "ATASO",
+          "to": "MAKSA",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "MAKSA",
+          "to": "SAMUL",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "SAMUL",
+          "to": "KAMIT",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "KAMIT",
+          "to": "GUKSU",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "GUKSU",
+          "to": "LOSNI",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "LOSNI",
+          "to": "CJU",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "CJU",
+          "to": "SOSDO",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "SOSDO",
+          "to": "SAMLO",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "SAMLO",
+          "to": "NIRAT",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "NIRAT",
+          "to": "ELGEP",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "ELGEP",
+          "to": "TESIM",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        },
+        {
+          "from": "TESIM",
+          "to": "ATOTI",
+          "allowedDirection": "reverse",
+          "confidence": "medium",
+          "note": "Uniform route; reverse direction applies to this segment."
+        }
+      ]
+    },
+    "Y781": {
+      "routeId": "Y781",
+      "routeType": "RNAV",
+      "sequenceStart": "TGU",
+      "sequenceEnd": "BESNA",
+      "sequenceLength": 5,
+      "primaryUse": "outbound",
+      "flow": "southeastbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "BESNA"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "BESNA"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "Southeast boundary route from TGU/PSN-side corridor; RKSI direct use may be secondary."
+      ],
+      "segmentRules": [
+        {
+          "from": "TGU",
+          "to": "MASTA",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "MASTA",
+          "to": "ANKUS",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "ANKUS",
+          "to": "OMOTU",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "OMOTU",
+          "to": "BESNA",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        }
+      ]
+    },
+    "Y782": {
+      "routeId": "Y782",
+      "routeType": "RNAV",
+      "sequenceStart": "SEL",
+      "sequenceEnd": "APELA",
+      "sequenceLength": 11,
+      "primaryUse": "outbound",
+      "flow": "southeastbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "APELA"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "APELA"
+      ],
+      "confidence": "high",
+      "notes": [
+        "No explicit one-way restriction is stated in ENR 3.3; treat as bidirectional for route search."
+      ],
+      "segmentRules": [
+        {
+          "from": "SEL",
+          "to": "POLEG",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "POLEG",
+          "to": "SOT",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "SOT",
+          "to": "OSPOT",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "OSPOT",
+          "to": "VASLI",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "VASLI",
+          "to": "MAKDU",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "MAKDU",
+          "to": "BITUX",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "BITUX",
+          "to": "TGU",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "TGU",
+          "to": "KALOD",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "KALOD",
+          "to": "PSN",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        },
+        {
+          "from": "PSN",
+          "to": "APELA",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        }
+      ]
+    },
+    "Z50": {
+      "routeId": "Z50",
+      "routeType": "RNAV",
+      "sequenceStart": "EGOBA",
+      "sequenceEnd": "BULTI",
+      "sequenceLength": 3,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "Short connector route."
+      ],
+      "segmentRules": [
+        {
+          "from": "EGOBA",
+          "to": "SOT",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "SOT",
+          "to": "BULTI",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z51": {
+      "routeId": "Z51",
+      "routeType": "RNAV",
+      "sequenceStart": "BOPTA",
+      "sequenceEnd": "BEDES",
+      "sequenceLength": 3,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "Short connector route."
+      ],
+      "segmentRules": [
+        {
+          "from": "BOPTA",
+          "to": "MOXID",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "MOXID",
+          "to": "BEDES",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z52": {
+      "routeId": "Z52",
+      "routeType": "RNAV",
+      "sequenceStart": "OLMEN",
+      "sequenceEnd": "KAKSO",
+      "sequenceLength": 3,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "Short connector route."
+      ],
+      "segmentRules": [
+        {
+          "from": "OLMEN",
+          "to": "POSAN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "POSAN",
+          "to": "KAKSO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z53": {
+      "routeId": "Z53",
+      "routeType": "RNAV",
+      "sequenceStart": "BITUX",
+      "sequenceEnd": "BASEM",
+      "sequenceLength": 3,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "Short connector route."
+      ],
+      "segmentRules": [
+        {
+          "from": "BITUX",
+          "to": "TEBEX",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "TEBEX",
+          "to": "BASEM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z56": {
+      "routeId": "Z56",
+      "routeType": "RNAV",
+      "sequenceStart": "KANSU",
+      "sequenceEnd": "IGRAS",
+      "sequenceLength": 4,
+      "primaryUse": "mixed",
+      "flow": "east-west",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "KANSU",
+        "IGRAS"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "KANSU",
+        "IGRAS"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "Use sequence direction KANSU -> ... -> IGRAS for east boundary flow."
+      ],
+      "segmentRules": [
+        {
+          "from": "KANSU",
+          "to": "PALDU",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "PALDU",
+          "to": "SABET",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        },
+        {
+          "from": "SABET",
+          "to": "IGRAS",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        }
+      ]
+    },
+    "Z63": {
+      "routeId": "Z63",
+      "routeType": "RNAV",
+      "sequenceStart": "PILIT",
+      "sequenceEnd": "LESBU",
+      "sequenceLength": 2,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "Short connector route."
+      ],
+      "segmentRules": [
+        {
+          "from": "PILIT",
+          "to": "LESBU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z81": {
+      "routeId": "Z81",
+      "routeType": "RNAV",
+      "sequenceStart": "KIDOS",
+      "sequenceEnd": "CJU",
+      "sequenceLength": 2,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "low",
+      "notes": [
+        "Short connector route KIDOS-CJU."
+      ],
+      "segmentRules": [
+        {
+          "from": "KIDOS",
+          "to": "CJU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z84": {
+      "routeId": "Z84",
+      "routeType": "RNAV",
+      "sequenceStart": "PSN",
+      "sequenceEnd": "KALEK",
+      "sequenceLength": 2,
+      "primaryUse": "outbound",
+      "flow": "eastbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "KALEK"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "KALEK"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "No explicit one-way restriction is stated in ENR 3.3; treat as bidirectional for route search."
+      ],
+      "segmentRules": [
+        {
+          "from": "PSN",
+          "to": "KALEK",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        }
+      ]
+    },
+    "Z86": {
+      "routeId": "Z86",
+      "routeType": "RNAV",
+      "sequenceStart": "BONSO",
+      "sequenceEnd": "ATOTI",
+      "sequenceLength": 2,
+      "primaryUse": "outbound",
+      "flow": "southbound",
+      "allowedDirection": "sequence",
+      "boundaryFixes": [
+        "ATOTI"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "ATOTI"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "Use sequence direction BONSO -> ATOTI for south/southwest boundary flow."
+      ],
+      "segmentRules": [
+        {
+          "from": "BONSO",
+          "to": "ATOTI",
+          "allowedDirection": "sequence",
+          "confidence": "medium",
+          "note": "Uniform route; sequence direction applies to this segment."
+        }
+      ]
+    },
+    "Z91": {
+      "routeId": "Z91",
+      "routeType": "RNAV",
+      "sequenceStart": "PSN",
+      "sequenceEnd": "INVOK",
+      "sequenceLength": 2,
+      "primaryUse": "mixed",
+      "flow": "east-west",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "INVOK"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "INVOK"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "No explicit one-way restriction is stated in ENR 3.3; treat as bidirectional for route search."
+      ],
+      "segmentRules": [
+        {
+          "from": "PSN",
+          "to": "INVOK",
+            "allowedDirection": "both",
+          "confidence": "medium",
+            "note": "No explicit one-way restriction was identified for this segment."
+        }
+      ]
+    },
+    "Y579": {
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "sequenceStart": "TENAS",
+      "sequenceEnd": "PSN",
+      "sequenceLength": 6,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "medium",
+      "notes": [
+        "Domestic eastbound connector toward PSN; keep both directions open for route search."
+      ],
+      "segmentRules": [
+        {
+          "from": "TENAS",
+          "to": "AGSUS",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "AGSUS",
+          "to": "DABIK",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "DABIK",
+          "to": "BULGA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "BULGA",
+          "to": "BEDOM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "BEDOM",
+          "to": "PSN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Y655": {
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "sequenceStart": "GONAV",
+      "sequenceEnd": "ATOTI",
+      "sequenceLength": 10,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "ATOTI"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "ATOTI"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "RNAV connector toward ATOTI; keep both directions open until stricter flow logic is modeled."
+      ],
+      "segmentRules": [
+        {
+          "from": "GONAV",
+          "to": "DALPO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "DALPO",
+          "to": "NONOS",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "NONOS",
+          "to": "BIDRI",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "BIDRI",
+          "to": "DANPA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "DANPA",
+          "to": "PALSA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "PALSA",
+          "to": "TOLIS",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "TOLIS",
+          "to": "ENSUM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "ENSUM",
+          "to": "BONSO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "BONSO",
+          "to": "ATOTI",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Y744": {
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "sequenceStart": "PILIT",
+      "sequenceEnd": "PSN",
+      "sequenceLength": 7,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "medium",
+      "notes": [
+        "Domestic east-coast connector; keep both directions open for route search."
+      ],
+      "segmentRules": [
+        {
+          "from": "PILIT",
+          "to": "NOBUT",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "NOBUT",
+          "to": "OSVOM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "OSVOM",
+          "to": "LOSTO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "LOSTO",
+          "to": "KPO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "KPO",
+          "to": "APARU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "APARU",
+          "to": "PSN",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z54": {
+      "routeId": "Z54",
+      "routeType": "RNAV",
+      "sequenceStart": "SOT",
+      "sequenceEnd": "GOGET",
+      "sequenceLength": 3,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "medium",
+      "notes": [
+        "Short RNAV connector between SOT and GOGET via MONSI; keep both directions open."
+      ],
+      "segmentRules": [
+        {
+          "from": "SOT",
+          "to": "MONSI",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "MONSI",
+          "to": "GOGET",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z55": {
+      "routeId": "Z55",
+      "routeType": "RNAV",
+      "sequenceStart": "AGAVO",
+      "sequenceEnd": "NONOS",
+      "sequenceLength": 2,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "AGAVO"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "AGAVO"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "Short AGAVO-side RNAV connector; keep both directions open until stricter boundary flow logic is modeled."
+      ],
+      "segmentRules": [
+        {
+          "from": "AGAVO",
+          "to": "NONOS",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z57": {
+      "routeId": "Z57",
+      "routeType": "RNAV",
+      "sequenceStart": "RILRO",
+      "sequenceEnd": "DALPO",
+      "sequenceLength": 2,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "medium",
+      "notes": [
+        "Short west-side RNAV connector; keep both directions open."
+      ],
+      "segmentRules": [
+        {
+          "from": "RILRO",
+          "to": "DALPO",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z82": {
+      "routeId": "Z82",
+      "routeType": "RNAV",
+      "sequenceStart": "CJU",
+      "sequenceEnd": "PANSI",
+      "sequenceLength": 2,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "medium",
+      "notes": [
+        "Short RNAV connector between CJU and PANSI; keep both directions open."
+      ],
+      "segmentRules": [
+        {
+          "from": "CJU",
+          "to": "PANSI",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z83": {
+      "routeId": "Z83",
+      "routeType": "RNAV",
+      "sequenceStart": "TGU",
+      "sequenceEnd": "ANROD",
+      "sequenceLength": 5,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [],
+      "detectedBoundaryFixesInSequence": [],
+      "confidence": "medium",
+      "notes": [
+        "Domestic RNAV connector from TGU toward ANROD; keep both directions open."
+      ],
+      "segmentRules": [
+        {
+          "from": "TGU",
+          "to": "MASTA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "MASTA",
+          "to": "SARAM",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "SARAM",
+          "to": "ENGOT",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "ENGOT",
+          "to": "ANROD",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    },
+    "Z85": {
+      "routeId": "Z85",
+      "routeType": "RNAV",
+      "sequenceStart": "BILUM",
+      "sequenceEnd": "RUGMA",
+      "sequenceLength": 3,
+      "primaryUse": "mixed",
+      "flow": "connector",
+      "allowedDirection": "both",
+      "boundaryFixes": [
+        "RUGMA"
+      ],
+      "detectedBoundaryFixesInSequence": [
+        "RUGMA"
+      ],
+      "confidence": "medium",
+      "notes": [
+        "RNAV connector toward RUGMA boundary; keep both directions open until stricter boundary flow logic is modeled."
+      ],
+      "segmentRules": [
+        {
+          "from": "BILUM",
+          "to": "PAPLU",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        },
+        {
+          "from": "PAPLU",
+          "to": "RUGMA",
+          "allowedDirection": "both",
+          "confidence": "medium",
+          "note": "Uniform route; keep both directions for this segment."
+        }
+      ]
+    }
+  }
+}

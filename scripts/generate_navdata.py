@@ -10,9 +10,9 @@ from pypdf import PdfReader
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_DATA = ROOT / "public" / "data"
-REFERENCE = ROOT / "reference"
-REFERENCE_HTML = REFERENCE / "html"
+PUBLIC_DATA = ROOT / "frontend" / "public" / "data"
+REFERENCE = ROOT / "reference" / "AIP"
+REFERENCE_HTML = ROOT / "reference" / "html"
 OUT_DIR = PUBLIC_DATA / "navdata"
 
 AIRAC_CYCLE = "AIRAC 2026-04-15"

@@ -1,0 +1,776 @@
+{
+  "metadata": {
+    "airport": "RKPU",
+    "cycle": "AIRAC 9/24",
+    "description": "RKPU RNAV SID Procedures with DER applied using official IAP THR coordinates"
+  },
+  "sidProcedures": {
+    "RKPU-SID-KPO1M": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 9/24",
+      "dataModel": "SID",
+      "id": "RKPU-SID-KPO1M",
+      "name": "KPO 1M",
+      "fullName": "RNAV POHANG ONE MIKE DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "18"
+      ],
+      "startFix": "RWY36",
+      "endFix": "KPO",
+      "source": "2-6-1 Coding Table",
+      "isComplete": true,
+      "notes": "Departure turns limited to max 250 kt IAS until PU852.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.584486,
+            "lon": 129.352486
+          },
+          "id": "RWY36",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-16-1 RKPU IAP (RWY 36 THR)",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": 4000,
+            "minFt": null,
+            "raw": "-4000"
+          },
+          "coordinates": {
+            "lat": 35.533139,
+            "lon": 129.370028
+          },
+          "id": "PU851",
+          "role": null,
+          "legDistanceNm": 3.1,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-6-1 Coding Table",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.614222,
+            "lon": 129.271333
+          },
+          "id": "PU852",
+          "role": null,
+          "legDistanceNm": 6.8,
+          "pathTerminator": "DF",
+          "sequence": 3,
+          "source": "2-6-1 Coding Table",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": 6000,
+            "raw": "@6000"
+          },
+          "coordinates": {
+            "lat": 35.691278,
+            "lon": 129.314306
+          },
+          "id": "PU853",
+          "role": null,
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-6-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": 6000,
+            "raw": "@6000"
+          },
+          "coordinates": {
+            "lat": 35.977194,
+            "lon": 129.474528
+          },
+          "id": "KPO",
+          "role": null,
+          "legDistanceNm": 18.8,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-6-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.352486,
+            35.584486
+          ],
+          [
+            129.370028,
+            35.533139
+          ],
+          [
+            129.271333,
+            35.614222
+          ],
+          [
+            129.314306,
+            35.691278
+          ],
+          [
+            129.474528,
+            35.977194
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "from": "RWY36",
+          "to": "PU851",
+          "distanceNm": 3.1,
+          "id": "RKPU-SID-KPO1M-001",
+          "sequence": 1,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.352486,
+                35.584486
+              ],
+              [
+                129.370028,
+                35.533139
+              ]
+            ]
+          }
+        },
+        {
+          "from": "PU851",
+          "to": "PU852",
+          "distanceNm": 6.8,
+          "id": "RKPU-SID-KPO1M-002",
+          "sequence": 2,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.370028,
+                35.533139
+              ],
+              [
+                129.271333,
+                35.614222
+              ]
+            ]
+          }
+        },
+        {
+          "from": "PU852",
+          "to": "PU853",
+          "distanceNm": 5.1,
+          "id": "RKPU-SID-KPO1M-003",
+          "sequence": 3,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.271333,
+                35.614222
+              ],
+              [
+                129.314306,
+                35.691278
+              ]
+            ]
+          }
+        },
+        {
+          "from": "PU853",
+          "to": "KPO",
+          "distanceNm": 18.8,
+          "id": "RKPU-SID-KPO1M-004",
+          "sequence": 4,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.314306,
+                35.691278
+              ],
+              [
+                129.474528,
+                35.977194
+              ]
+            ]
+          }
+        }
+      ],
+      "sequence": [
+        "RWY36",
+        "PU851",
+        "PU852",
+        "PU853",
+        "KPO"
+      ]
+    },
+    "RKPU-SID-APARU1M": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 9/24",
+      "dataModel": "SID",
+      "id": "RKPU-SID-APARU1M",
+      "name": "APARU 1M",
+      "fullName": "RNAV APARU ONE MIKE DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "18"
+      ],
+      "startFix": "RWY36",
+      "endFix": "APARU",
+      "source": "2-6-1 Coding Table",
+      "isComplete": true,
+      "notes": "Departure turns limited to max 250 kt IAS until PU852.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.584486,
+            "lon": 129.352486
+          },
+          "id": "RWY36",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-16-1 RKPU IAP (RWY 36 THR)",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": 4000,
+            "minFt": null,
+            "raw": "-4000"
+          },
+          "coordinates": {
+            "lat": 35.533139,
+            "lon": 129.370028
+          },
+          "id": "PU851",
+          "role": null,
+          "legDistanceNm": 3.1,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-6-1 Coding Table",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": 6000,
+            "raw": "@6000"
+          },
+          "coordinates": {
+            "lat": 35.411694,
+            "lon": 129.158917
+          },
+          "id": "APARU",
+          "role": null,
+          "legDistanceNm": 12.6,
+          "pathTerminator": "DF",
+          "sequence": 3,
+          "source": "2-6-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.352486,
+            35.584486
+          ],
+          [
+            129.370028,
+            35.533139
+          ],
+          [
+            129.158917,
+            35.411694
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "from": "RWY36",
+          "to": "PU851",
+          "distanceNm": 3.1,
+          "id": "RKPU-SID-APARU1M-001",
+          "sequence": 1,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.352486,
+                35.584486
+              ],
+              [
+                129.370028,
+                35.533139
+              ]
+            ]
+          }
+        },
+        {
+          "from": "PU851",
+          "to": "APARU",
+          "distanceNm": 12.6,
+          "id": "RKPU-SID-APARU1M-002",
+          "sequence": 2,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.370028,
+                35.533139
+              ],
+              [
+                129.158917,
+                35.411694
+              ]
+            ]
+          }
+        }
+      ],
+      "sequence": [
+        "RWY36",
+        "PU851",
+        "APARU"
+      ]
+    },
+    "RKPU-SID-KPO1R": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 9/24",
+      "dataModel": "SID",
+      "id": "RKPU-SID-KPO1R",
+      "name": "KPO 1R",
+      "fullName": "RNAV POHANG ONE ROMEO DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "36"
+      ],
+      "startFix": "RWY18",
+      "endFix": "KPO",
+      "source": "2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "Departure turns limited to max 200 kt IAS until PU801.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.602469,
+            "lon": 129.350983
+          },
+          "id": "RWY18",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-14-1 RKPU IAP (RWY 18 THR)",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.635778,
+            "lon": 129.348194
+          },
+          "id": "PU801",
+          "role": null,
+          "legDistanceNm": 2,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 200
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": null,
+            "raw": "-6000"
+          },
+          "coordinates": {
+            "lat": 35.830111,
+            "lon": 129.252389
+          },
+          "id": "PU802",
+          "role": null,
+          "legDistanceNm": 12.5,
+          "pathTerminator": "CF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 215
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": 6000,
+            "raw": "@6000"
+          },
+          "coordinates": {
+            "lat": 35.977194,
+            "lon": 129.474528
+          },
+          "id": "KPO",
+          "role": null,
+          "legDistanceNm": 14,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 215
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.350983,
+            35.602469
+          ],
+          [
+            129.348194,
+            35.635778
+          ],
+          [
+            129.252389,
+            35.830111
+          ],
+          [
+            129.474528,
+            35.977194
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "from": "RWY18",
+          "to": "PU801",
+          "distanceNm": 2,
+          "id": "RKPU-SID-KPO1R-001",
+          "sequence": 1,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.350983,
+                35.602469
+              ],
+              [
+                129.348194,
+                35.635778
+              ]
+            ]
+          }
+        },
+        {
+          "from": "PU801",
+          "to": "PU802",
+          "distanceNm": 12.5,
+          "id": "RKPU-SID-KPO1R-002",
+          "sequence": 2,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.348194,
+                35.635778
+              ],
+              [
+                129.252389,
+                35.830111
+              ]
+            ]
+          }
+        },
+        {
+          "from": "PU802",
+          "to": "KPO",
+          "distanceNm": 14,
+          "id": "RKPU-SID-KPO1R-003",
+          "sequence": 3,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.252389,
+                35.830111
+              ],
+              [
+                129.474528,
+                35.977194
+              ]
+            ]
+          }
+        }
+      ],
+      "sequence": [
+        "RWY18",
+        "PU801",
+        "PU802",
+        "KPO"
+      ]
+    },
+    "RKPU-SID-APARU1R": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 9/24",
+      "dataModel": "SID",
+      "id": "RKPU-SID-APARU1R",
+      "name": "APARU 1R",
+      "fullName": "RNAV APARU ONE ROMEO DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "36"
+      ],
+      "startFix": "RWY18",
+      "endFix": "APARU",
+      "source": "2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "Departure turns limited to max 200 kt IAS until PU801.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.602469,
+            "lon": 129.350983
+          },
+          "id": "RWY18",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-14-1 RKPU IAP (RWY 18 THR)",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.635778,
+            "lon": 129.348194
+          },
+          "id": "PU801",
+          "role": null,
+          "legDistanceNm": 2,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 200
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": null,
+            "raw": "-6000"
+          },
+          "coordinates": {
+            "lat": 35.830111,
+            "lon": 129.252389
+          },
+          "id": "PU802",
+          "role": null,
+          "legDistanceNm": 12.5,
+          "pathTerminator": "CF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": 250
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": null,
+            "raw": "-6000"
+          },
+          "coordinates": {
+            "lat": 35.71275,
+            "lon": 129.326306
+          },
+          "id": "PU803",
+          "role": null,
+          "legDistanceNm": 7.9,
+          "pathTerminator": "DF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 6000,
+            "minFt": 6000,
+            "raw": "@6000"
+          },
+          "coordinates": {
+            "lat": 35.411694,
+            "lon": 129.158917
+          },
+          "id": "APARU",
+          "role": null,
+          "legDistanceNm": 19.8,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.350983,
+            35.602469
+          ],
+          [
+            129.348194,
+            35.635778
+          ],
+          [
+            129.252389,
+            35.830111
+          ],
+          [
+            129.326306,
+            35.71275
+          ],
+          [
+            129.158917,
+            35.411694
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "from": "RWY18",
+          "to": "PU801",
+          "distanceNm": 2,
+          "id": "RKPU-SID-APARU1R-001",
+          "sequence": 1,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.350983,
+                35.602469
+              ],
+              [
+                129.348194,
+                35.635778
+              ]
+            ]
+          }
+        },
+        {
+          "from": "PU801",
+          "to": "PU802",
+          "distanceNm": 12.5,
+          "id": "RKPU-SID-APARU1R-002",
+          "sequence": 2,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.348194,
+                35.635778
+              ],
+              [
+                129.252389,
+                35.830111
+              ]
+            ]
+          }
+        },
+        {
+          "from": "PU802",
+          "to": "PU803",
+          "distanceNm": 7.9,
+          "id": "RKPU-SID-APARU1R-003",
+          "sequence": 3,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.252389,
+                35.830111
+              ],
+              [
+                129.326306,
+                35.71275
+              ]
+            ]
+          }
+        },
+        {
+          "from": "PU803",
+          "to": "APARU",
+          "distanceNm": 19.8,
+          "id": "RKPU-SID-APARU1R-004",
+          "sequence": 4,
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.326306,
+                35.71275
+              ],
+              [
+                129.158917,
+                35.411694
+              ]
+            ]
+          }
+        }
+      ],
+      "sequence": [
+        "RWY18",
+        "PU801",
+        "PU802",
+        "PU803",
+        "APARU"
+      ]
+    }
+  }
+}

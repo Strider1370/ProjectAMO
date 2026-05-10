@@ -6,25 +6,196 @@
     "endFix": "KAMIT",
     "enrouteFix": "KAMIT",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.7033611, "lon": 126.7135556 }, "id": "PC811", "legDistanceNm": null, "pathTerminator": "DF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 10000, "minFt": null, "raw": "-10000" }, "coordinates": { "lat": 33.9617222, "lon": 126.7406944 }, "id": "OLLEH", "legDistanceNm": 15.5, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 14000, "raw": "+FL140" }, "coordinates": { "lat": 34.2539167, "lon": 126.7715833 }, "id": "KAMIT", "legDistanceNm": 17.6, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5148778,
+          "lon": 126.4976417
+        },
+        "id": "RWY25",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.7033611,
+          "lon": 126.7135556
+        },
+        "id": "PC811",
+        "legDistanceNm": 15.64,
+        "pathTerminator": "DF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 10000,
+          "minFt": null,
+          "raw": "-10000"
+        },
+        "coordinates": {
+          "lat": 33.9617222,
+          "lon": 126.7406944
+        },
+        "id": "OLLEH",
+        "legDistanceNm": 15.5,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 14000,
+          "raw": "+FL140"
+        },
+        "coordinates": {
+          "lat": 34.2539167,
+          "lon": 126.7715833
+        },
+        "id": "KAMIT",
+        "legDistanceNm": 17.6,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Kamit Two Echo",
-    "geometry": { "coordinates": [ [126.7135556, 33.7033611], [126.7406944, 33.9617222], [126.7715833, 34.2539167] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4976417,
+          33.5148778
+        ],
+        [
+          126.7135556,
+          33.7033611
+        ],
+        [
+          126.7406944,
+          33.9617222
+        ],
+        [
+          126.7715833,
+          34.2539167
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-KAMIT2E",
     "isComplete": true,
     "name": "KAMIT2E",
-    "notes": ["Initial CA leg omitted from geometry."],
-    "routeType": "RNAV",
-    "runways": ["07"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 15.5, "from": "PC811", "geometry": { "coordinates": [ [126.7135556, 33.7033611], [126.7406944, 33.9617222] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT2E-001", "procedureId": "RKPC-SID-KAMIT2E", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "OLLEH" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 17.6, "from": "OLLEH", "geometry": { "coordinates": [ [126.7406944, 33.9617222], [126.7715833, 34.2539167] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT2E-002", "procedureId": "RKPC-SID-KAMIT2E", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "KAMIT" }
+    "notes": [
+      "Initial CA leg omitted from geometry."
     ],
-    "sequence": ["PC811", "OLLEH", "KAMIT"],
+    "routeType": "RNAV",
+    "runways": [
+      "07"
+    ],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 15.64,
+        "from": "RWY25",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4976417,
+              33.5148778
+            ],
+            [
+              126.7135556,
+              33.7033611
+            ]
+          ]
+        },
+        "id": "RKPC-SID-KAMIT2E-000",
+        "procedureId": "RKPC-SID-KAMIT2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PC811"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 15.5,
+        "from": "PC811",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7135556,
+              33.7033611
+            ],
+            [
+              126.7406944,
+              33.9617222
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT2E-001",
+        "procedureId": "RKPC-SID-KAMIT2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "OLLEH"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 17.6,
+        "from": "OLLEH",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7406944,
+              33.9617222
+            ],
+            [
+              126.7715833,
+              34.2539167
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT2E-002",
+        "procedureId": "RKPC-SID-KAMIT2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "KAMIT"
+      }
+    ],
+    "sequence": [
+      "RWY25",
+      "PC811",
+      "OLLEH",
+      "KAMIT"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "PC811",
+    "startFix": "RWY25",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -35,23 +206,146 @@
     "endFix": "AKPON",
     "enrouteFix": "AKPON",
     "fixes": [
-      { "altitude": { "maxFt": 9000, "minFt": 6000, "raw": "-9000 / +6000" }, "coordinates": { "lat": 33.6408889, "lon": 126.7437222 }, "id": "PALRI", "legDistanceNm": null, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.7804444, "lon": 127.3313889 }, "id": "AKPON", "legDistanceNm": 30.6, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5148778,
+          "lon": 126.4976417
+        },
+        "id": "RWY25",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": 9000,
+          "minFt": 6000,
+          "raw": "-9000 / +6000"
+        },
+        "coordinates": {
+          "lat": 33.6408889,
+          "lon": 126.7437222
+        },
+        "id": "PALRI",
+        "legDistanceNm": 14.45,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.7804444,
+          "lon": 127.3313889
+        },
+        "id": "AKPON",
+        "legDistanceNm": 30.6,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Akpon One Echo",
-    "geometry": { "coordinates": [ [126.7437222, 33.6408889], [127.3313889, 33.7804444] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4976417,
+          33.5148778
+        ],
+        [
+          126.7437222,
+          33.6408889
+        ],
+        [
+          127.3313889,
+          33.7804444
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-AKPON1E",
     "isComplete": true,
     "name": "AKPON1E",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["07"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 30.6, "from": "PALRI", "geometry": { "coordinates": [ [126.7437222, 33.6408889], [127.3313889, 33.7804444] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1E-001", "procedureId": "RKPC-SID-AKPON1E", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "AKPON" }
+    "runways": [
+      "07"
     ],
-    "sequence": ["PALRI", "AKPON"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 14.45,
+        "from": "RWY25",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4976417,
+              33.5148778
+            ],
+            [
+              126.7437222,
+              33.6408889
+            ]
+          ]
+        },
+        "id": "RKPC-SID-AKPON1E-000",
+        "procedureId": "RKPC-SID-AKPON1E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PALRI"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 30.6,
+        "from": "PALRI",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7437222,
+              33.6408889
+            ],
+            [
+              127.3313889,
+              33.7804444
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1E-001",
+        "procedureId": "RKPC-SID-AKPON1E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "AKPON"
+      }
+    ],
+    "sequence": [
+      "RWY25",
+      "PALRI",
+      "AKPON"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "PALRI",
+    "startFix": "RWY25",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -62,23 +356,146 @@
     "endFix": "TAMNA",
     "enrouteFix": "TAMNA",
     "fixes": [
-      { "altitude": { "maxFt": 9000, "minFt": 6000, "raw": "-9000 / +6000" }, "coordinates": { "lat": 33.6408889, "lon": 126.7437222 }, "id": "PALRI", "legDistanceNm": null, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.4709722, "lon": 127.3313889 }, "id": "TAMNA", "legDistanceNm": 31.2, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5148778,
+          "lon": 126.4976417
+        },
+        "id": "RWY25",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": 9000,
+          "minFt": 6000,
+          "raw": "-9000 / +6000"
+        },
+        "coordinates": {
+          "lat": 33.6408889,
+          "lon": 126.7437222
+        },
+        "id": "PALRI",
+        "legDistanceNm": 14.45,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4709722,
+          "lon": 127.3313889
+        },
+        "id": "TAMNA",
+        "legDistanceNm": 31.2,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Tamna Two Echo",
-    "geometry": { "coordinates": [ [126.7437222, 33.6408889], [127.3313889, 33.4709722] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4976417,
+          33.5148778
+        ],
+        [
+          126.7437222,
+          33.6408889
+        ],
+        [
+          127.3313889,
+          33.4709722
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-TAMNA2E",
     "isComplete": true,
     "name": "TAMNA2E",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["07"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 31.2, "from": "PALRI", "geometry": { "coordinates": [ [126.7437222, 33.6408889], [127.3313889, 33.4709722] ], "type": "LineString" }, "id": "RKPC-SID-TAMNA2E-001", "procedureId": "RKPC-SID-TAMNA2E", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "TAMNA" }
+    "runways": [
+      "07"
     ],
-    "sequence": ["PALRI", "TAMNA"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 14.45,
+        "from": "RWY25",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4976417,
+              33.5148778
+            ],
+            [
+              126.7437222,
+              33.6408889
+            ]
+          ]
+        },
+        "id": "RKPC-SID-TAMNA2E-000",
+        "procedureId": "RKPC-SID-TAMNA2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PALRI"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 31.2,
+        "from": "PALRI",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7437222,
+              33.6408889
+            ],
+            [
+              127.3313889,
+              33.4709722
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-TAMNA2E-001",
+        "procedureId": "RKPC-SID-TAMNA2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "TAMNA"
+      }
+    ],
+    "sequence": [
+      "RWY25",
+      "PALRI",
+      "TAMNA"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "PALRI",
+    "startFix": "RWY25",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -89,29 +506,290 @@
     "endFix": "PANSI",
     "enrouteFix": "PANSI",
     "fixes": [
-      { "altitude": { "maxFt": 9000, "minFt": 9000, "raw": "@9000" }, "coordinates": { "lat": 33.6408889, "lon": 126.7437222 }, "id": "PALRI", "legDistanceNm": null, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": 250 },
-      { "altitude": { "maxFt": 9000, "minFt": 9000, "raw": "@9000" }, "coordinates": { "lat": 33.4987500, "lon": 126.8472222 }, "id": "PC813", "legDistanceNm": 10.0, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": 250 },
-      { "altitude": { "maxFt": 9000, "minFt": 9000, "raw": "@9000" }, "coordinates": { "lat": 33.3846111, "lon": 126.6241111 }, "id": "CJU", "legDistanceNm": 13.1, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 10000, "minFt": null, "raw": "-10000" }, "coordinates": { "lat": 33.2601111, "lon": 126.4870833 }, "id": "PC814", "legDistanceNm": 10.2, "pathTerminator": "TF", "sequence": 4, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.0040000, "lon": 126.2069722 }, "id": "PANSI", "legDistanceNm": 20.8, "pathTerminator": "TF", "sequence": 5, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5148778,
+          "lon": 126.4976417
+        },
+        "id": "RWY25",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": 9000,
+          "minFt": 9000,
+          "raw": "@9000"
+        },
+        "coordinates": {
+          "lat": 33.6408889,
+          "lon": 126.7437222
+        },
+        "id": "PALRI",
+        "legDistanceNm": 14.45,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": 250
+      },
+      {
+        "altitude": {
+          "maxFt": 9000,
+          "minFt": 9000,
+          "raw": "@9000"
+        },
+        "coordinates": {
+          "lat": 33.49875,
+          "lon": 126.8472222
+        },
+        "id": "PC813",
+        "legDistanceNm": 10,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": 250
+      },
+      {
+        "altitude": {
+          "maxFt": 9000,
+          "minFt": 9000,
+          "raw": "@9000"
+        },
+        "coordinates": {
+          "lat": 33.3846111,
+          "lon": 126.6241111
+        },
+        "id": "CJU",
+        "legDistanceNm": 13.1,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 10000,
+          "minFt": null,
+          "raw": "-10000"
+        },
+        "coordinates": {
+          "lat": 33.2601111,
+          "lon": 126.4870833
+        },
+        "id": "PC814",
+        "legDistanceNm": 10.2,
+        "pathTerminator": "TF",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.004,
+          "lon": 126.2069722
+        },
+        "id": "PANSI",
+        "legDistanceNm": 20.8,
+        "pathTerminator": "TF",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Pansi Two Echo",
-    "geometry": { "coordinates": [ [126.7437222, 33.6408889], [126.8472222, 33.4987500], [126.6241111, 33.3846111], [126.4870833, 33.2601111], [126.2069722, 33.0040000] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4976417,
+          33.5148778
+        ],
+        [
+          126.7437222,
+          33.6408889
+        ],
+        [
+          126.8472222,
+          33.49875
+        ],
+        [
+          126.6241111,
+          33.3846111
+        ],
+        [
+          126.4870833,
+          33.2601111
+        ],
+        [
+          126.2069722,
+          33.004
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-PANSI2E",
     "isComplete": true,
     "name": "PANSI2E",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["07"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 10.0, "from": "PALRI", "geometry": { "coordinates": [ [126.7437222, 33.6408889], [126.8472222, 33.4987500] ], "type": "LineString" }, "id": "RKPC-SID-PANSI2E-001", "procedureId": "RKPC-SID-PANSI2E", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "PC813" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 13.1, "from": "PC813", "geometry": { "coordinates": [ [126.8472222, 33.4987500], [126.6241111, 33.3846111] ], "type": "LineString" }, "id": "RKPC-SID-PANSI2E-002", "procedureId": "RKPC-SID-PANSI2E", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "CJU" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 10.2, "from": "CJU", "geometry": { "coordinates": [ [126.6241111, 33.3846111], [126.4870833, 33.2601111] ], "type": "LineString" }, "id": "RKPC-SID-PANSI2E-003", "procedureId": "RKPC-SID-PANSI2E", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "RKPC SID.pdf", "to": "PC814" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 20.8, "from": "PC814", "geometry": { "coordinates": [ [126.4870833, 33.2601111], [126.2069722, 33.0040000] ], "type": "LineString" }, "id": "RKPC-SID-PANSI2E-004", "procedureId": "RKPC-SID-PANSI2E", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "RKPC SID.pdf", "to": "PANSI" }
+    "runways": [
+      "07"
     ],
-    "sequence": ["PALRI", "PC813", "CJU", "PC814", "PANSI"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 14.45,
+        "from": "RWY25",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4976417,
+              33.5148778
+            ],
+            [
+              126.7437222,
+              33.6408889
+            ]
+          ]
+        },
+        "id": "RKPC-SID-PANSI2E-000",
+        "procedureId": "RKPC-SID-PANSI2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PALRI"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 10,
+        "from": "PALRI",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7437222,
+              33.6408889
+            ],
+            [
+              126.8472222,
+              33.49875
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-PANSI2E-001",
+        "procedureId": "RKPC-SID-PANSI2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "PC813"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 13.1,
+        "from": "PC813",
+        "geometry": {
+          "coordinates": [
+            [
+              126.8472222,
+              33.49875
+            ],
+            [
+              126.6241111,
+              33.3846111
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-PANSI2E-002",
+        "procedureId": "RKPC-SID-PANSI2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "CJU"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 10.2,
+        "from": "CJU",
+        "geometry": {
+          "coordinates": [
+            [
+              126.6241111,
+              33.3846111
+            ],
+            [
+              126.4870833,
+              33.2601111
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-PANSI2E-003",
+        "procedureId": "RKPC-SID-PANSI2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "to": "PC814"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 20.8,
+        "from": "PC814",
+        "geometry": {
+          "coordinates": [
+            [
+              126.4870833,
+              33.2601111
+            ],
+            [
+              126.2069722,
+              33.004
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-PANSI2E-004",
+        "procedureId": "RKPC-SID-PANSI2E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "to": "PANSI"
+      }
+    ],
+    "sequence": [
+      "RWY25",
+      "PALRI",
+      "PC813",
+      "CJU",
+      "PC814",
+      "PANSI"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "PALRI",
+    "startFix": "RWY25",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -122,29 +800,290 @@
     "endFix": "LIMDI",
     "enrouteFix": "LIMDI",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.6408889, "lon": 126.7437222 }, "id": "PALRI", "legDistanceNm": null, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": 250 },
-      { "altitude": { "maxFt": 9000, "minFt": 9000, "raw": "@9000" }, "coordinates": { "lat": 33.4987500, "lon": 126.8472222 }, "id": "PC813", "legDistanceNm": 10.0, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": 250 },
-      { "altitude": { "maxFt": 9000, "minFt": 9000, "raw": "@9000" }, "coordinates": { "lat": 33.3846111, "lon": 126.6241111 }, "id": "CJU", "legDistanceNm": 13.1, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 15000, "raw": "+FL150" }, "coordinates": { "lat": 33.4490278, "lon": 126.3252222 }, "id": "PC816", "legDistanceNm": 15.5, "pathTerminator": "TF", "sequence": 4, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.5536944, "lon": 125.8313889 }, "id": "LIMDI", "legDistanceNm": 25.6, "pathTerminator": "TF", "sequence": 5, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5148778,
+          "lon": 126.4976417
+        },
+        "id": "RWY25",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.6408889,
+          "lon": 126.7437222
+        },
+        "id": "PALRI",
+        "legDistanceNm": 14.45,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": 250
+      },
+      {
+        "altitude": {
+          "maxFt": 9000,
+          "minFt": 9000,
+          "raw": "@9000"
+        },
+        "coordinates": {
+          "lat": 33.49875,
+          "lon": 126.8472222
+        },
+        "id": "PC813",
+        "legDistanceNm": 10,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": 250
+      },
+      {
+        "altitude": {
+          "maxFt": 9000,
+          "minFt": 9000,
+          "raw": "@9000"
+        },
+        "coordinates": {
+          "lat": 33.3846111,
+          "lon": 126.6241111
+        },
+        "id": "CJU",
+        "legDistanceNm": 13.1,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 15000,
+          "raw": "+FL150"
+        },
+        "coordinates": {
+          "lat": 33.4490278,
+          "lon": 126.3252222
+        },
+        "id": "PC816",
+        "legDistanceNm": 15.5,
+        "pathTerminator": "TF",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5536944,
+          "lon": 125.8313889
+        },
+        "id": "LIMDI",
+        "legDistanceNm": 25.6,
+        "pathTerminator": "TF",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Limdi One Echo",
-    "geometry": { "coordinates": [ [126.7437222, 33.6408889], [126.8472222, 33.4987500], [126.6241111, 33.3846111], [126.3252222, 33.4490278], [125.8313889, 33.5536944] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4976417,
+          33.5148778
+        ],
+        [
+          126.7437222,
+          33.6408889
+        ],
+        [
+          126.8472222,
+          33.49875
+        ],
+        [
+          126.6241111,
+          33.3846111
+        ],
+        [
+          126.3252222,
+          33.4490278
+        ],
+        [
+          125.8313889,
+          33.5536944
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-LIMDI1E",
     "isComplete": true,
     "name": "LIMDI1E",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["07"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 10.0, "from": "PALRI", "geometry": { "coordinates": [ [126.7437222, 33.6408889], [126.8472222, 33.4987500] ], "type": "LineString" }, "id": "RKPC-SID-LIMDI1E-001", "procedureId": "RKPC-SID-LIMDI1E", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "PC813" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 13.1, "from": "PC813", "geometry": { "coordinates": [ [126.8472222, 33.4987500], [126.6241111, 33.3846111] ], "type": "LineString" }, "id": "RKPC-SID-LIMDI1E-002", "procedureId": "RKPC-SID-LIMDI1E", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "CJU" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 15.5, "from": "CJU", "geometry": { "coordinates": [ [126.6241111, 33.3846111], [126.3252222, 33.4490278] ], "type": "LineString" }, "id": "RKPC-SID-LIMDI1E-003", "procedureId": "RKPC-SID-LIMDI1E", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "RKPC SID.pdf", "to": "PC816" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 25.6, "from": "PC816", "geometry": { "coordinates": [ [126.3252222, 33.4490278], [125.8313889, 33.5536944] ], "type": "LineString" }, "id": "RKPC-SID-LIMDI1E-004", "procedureId": "RKPC-SID-LIMDI1E", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "RKPC SID.pdf", "to": "LIMDI" }
+    "runways": [
+      "07"
     ],
-    "sequence": ["PALRI", "PC813", "CJU", "PC816", "LIMDI"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 14.45,
+        "from": "RWY25",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4976417,
+              33.5148778
+            ],
+            [
+              126.7437222,
+              33.6408889
+            ]
+          ]
+        },
+        "id": "RKPC-SID-LIMDI1E-000",
+        "procedureId": "RKPC-SID-LIMDI1E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PALRI"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 10,
+        "from": "PALRI",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7437222,
+              33.6408889
+            ],
+            [
+              126.8472222,
+              33.49875
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-LIMDI1E-001",
+        "procedureId": "RKPC-SID-LIMDI1E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "PC813"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 13.1,
+        "from": "PC813",
+        "geometry": {
+          "coordinates": [
+            [
+              126.8472222,
+              33.49875
+            ],
+            [
+              126.6241111,
+              33.3846111
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-LIMDI1E-002",
+        "procedureId": "RKPC-SID-LIMDI1E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "CJU"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 15.5,
+        "from": "CJU",
+        "geometry": {
+          "coordinates": [
+            [
+              126.6241111,
+              33.3846111
+            ],
+            [
+              126.3252222,
+              33.4490278
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-LIMDI1E-003",
+        "procedureId": "RKPC-SID-LIMDI1E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "to": "PC816"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 25.6,
+        "from": "PC816",
+        "geometry": {
+          "coordinates": [
+            [
+              126.3252222,
+              33.4490278
+            ],
+            [
+              125.8313889,
+              33.5536944
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-LIMDI1E-004",
+        "procedureId": "RKPC-SID-LIMDI1E",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "to": "LIMDI"
+      }
+    ],
+    "sequence": [
+      "RWY25",
+      "PALRI",
+      "PC813",
+      "CJU",
+      "PC816",
+      "LIMDI"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "PALRI",
+    "startFix": "RWY25",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -155,29 +1094,292 @@
     "endFix": "KAMIT",
     "enrouteFix": "KAMIT",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.4577778, "lon": 126.3866667 }, "id": "MEXER", "legDistanceNm": null, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 10000, "minFt": 8000, "raw": "-10000 / +8000" }, "coordinates": { "lat": 33.6794444, "lon": 126.2310833 }, "id": "PC832", "legDistanceNm": null, "pathTerminator": "DF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 13000, "raw": "+13000" }, "coordinates": { "lat": 33.8357778, "lon": 126.5124444 }, "id": "PC833", "legDistanceNm": 16.9, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 17000, "raw": "+FL170" }, "coordinates": { "lat": 33.9617222, "lon": 126.7406944 }, "id": "OLLEH", "legDistanceNm": 13.7, "pathTerminator": "TF", "sequence": 4, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 34.2539167, "lon": 126.7715833 }, "id": "KAMIT", "legDistanceNm": 17.6, "pathTerminator": "TF", "sequence": 5, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4998806,
+          "lon": 126.4684722
+        },
+        "id": "RWY07",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4577778,
+          "lon": 126.3866667
+        },
+        "id": "MEXER",
+        "legDistanceNm": 4.81,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 10000,
+          "minFt": 8000,
+          "raw": "-10000 / +8000"
+        },
+        "coordinates": {
+          "lat": 33.6794444,
+          "lon": 126.2310833
+        },
+        "id": "PC832",
+        "legDistanceNm": null,
+        "pathTerminator": "DF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 13000,
+          "raw": "+13000"
+        },
+        "coordinates": {
+          "lat": 33.8357778,
+          "lon": 126.5124444
+        },
+        "id": "PC833",
+        "legDistanceNm": 16.9,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 17000,
+          "raw": "+FL170"
+        },
+        "coordinates": {
+          "lat": 33.9617222,
+          "lon": 126.7406944
+        },
+        "id": "OLLEH",
+        "legDistanceNm": 13.7,
+        "pathTerminator": "TF",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 34.2539167,
+          "lon": 126.7715833
+        },
+        "id": "KAMIT",
+        "legDistanceNm": 17.6,
+        "pathTerminator": "TF",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Kamit One Whiskey",
-    "geometry": { "coordinates": [ [126.3866667, 33.4577778], [126.2310833, 33.6794444], [126.5124444, 33.8357778], [126.7406944, 33.9617222], [126.7715833, 34.2539167] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4684722,
+          33.4998806
+        ],
+        [
+          126.3866667,
+          33.4577778
+        ],
+        [
+          126.2310833,
+          33.6794444
+        ],
+        [
+          126.5124444,
+          33.8357778
+        ],
+        [
+          126.7406944,
+          33.9617222
+        ],
+        [
+          126.7715833,
+          34.2539167
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-KAMIT1W",
     "isComplete": true,
     "name": "KAMIT1W",
-    "notes": ["DF leg to PC832 inherently has no fixed leg distance defined."],
-    "routeType": "RNAV",
-    "runways": ["25"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": null, "from": "MEXER", "geometry": { "coordinates": [ [126.3866667, 33.4577778], [126.2310833, 33.6794444] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT1W-001", "procedureId": "RKPC-SID-KAMIT1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "PC832" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 16.9, "from": "PC832", "geometry": { "coordinates": [ [126.2310833, 33.6794444], [126.5124444, 33.8357778] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT1W-002", "procedureId": "RKPC-SID-KAMIT1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "PC833" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 13.7, "from": "PC833", "geometry": { "coordinates": [ [126.5124444, 33.8357778], [126.7406944, 33.9617222] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT1W-003", "procedureId": "RKPC-SID-KAMIT1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "RKPC SID.pdf", "to": "OLLEH" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 17.6, "from": "OLLEH", "geometry": { "coordinates": [ [126.7406944, 33.9617222], [126.7715833, 34.2539167] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT1W-004", "procedureId": "RKPC-SID-KAMIT1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "RKPC SID.pdf", "to": "KAMIT" }
+    "notes": [
+      "DF leg to PC832 inherently has no fixed leg distance defined."
     ],
-    "sequence": ["MEXER", "PC832", "PC833", "OLLEH", "KAMIT"],
+    "routeType": "RNAV",
+    "runways": [
+      "25"
+    ],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 4.81,
+        "from": "RWY07",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4684722,
+              33.4998806
+            ],
+            [
+              126.3866667,
+              33.4577778
+            ]
+          ]
+        },
+        "id": "RKPC-SID-KAMIT1W-000",
+        "procedureId": "RKPC-SID-KAMIT1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "MEXER"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": null,
+        "from": "MEXER",
+        "geometry": {
+          "coordinates": [
+            [
+              126.3866667,
+              33.4577778
+            ],
+            [
+              126.2310833,
+              33.6794444
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT1W-001",
+        "procedureId": "RKPC-SID-KAMIT1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "PC832"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 16.9,
+        "from": "PC832",
+        "geometry": {
+          "coordinates": [
+            [
+              126.2310833,
+              33.6794444
+            ],
+            [
+              126.5124444,
+              33.8357778
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT1W-002",
+        "procedureId": "RKPC-SID-KAMIT1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "PC833"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 13.7,
+        "from": "PC833",
+        "geometry": {
+          "coordinates": [
+            [
+              126.5124444,
+              33.8357778
+            ],
+            [
+              126.7406944,
+              33.9617222
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT1W-003",
+        "procedureId": "RKPC-SID-KAMIT1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "to": "OLLEH"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 17.6,
+        "from": "OLLEH",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7406944,
+              33.9617222
+            ],
+            [
+              126.7715833,
+              34.2539167
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT1W-004",
+        "procedureId": "RKPC-SID-KAMIT1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "to": "KAMIT"
+      }
+    ],
+    "sequence": [
+      "RWY07",
+      "MEXER",
+      "PC832",
+      "PC833",
+      "OLLEH",
+      "KAMIT"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "MEXER",
+    "startFix": "RWY07",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -188,29 +1390,290 @@
     "endFix": "IPDAS",
     "enrouteFix": "IPDAS",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.4577778, "lon": 126.3866667 }, "id": "MEXER", "legDistanceNm": null, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 10000, "minFt": 8000, "raw": "-10000 / +8000" }, "coordinates": { "lat": 33.6794444, "lon": 126.2310833 }, "id": "PC832", "legDistanceNm": null, "pathTerminator": "DF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 13000, "minFt": 13000, "raw": "@13000" }, "coordinates": { "lat": 33.8357778, "lon": 126.5124444 }, "id": "PC833", "legDistanceNm": 16.9, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 13000, "minFt": 13000, "raw": "@13000" }, "coordinates": { "lat": 33.9295000, "lon": 126.6821389 }, "id": "PC834", "legDistanceNm": 10.2, "pathTerminator": "TF", "sequence": 4, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 13000, "minFt": 13000, "raw": "@13000" }, "coordinates": { "lat": 34.2540833, "lon": 126.7170556 }, "id": "IPDAS", "legDistanceNm": 19.5, "pathTerminator": "TF", "sequence": 5, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4998806,
+          "lon": 126.4684722
+        },
+        "id": "RWY07",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4577778,
+          "lon": 126.3866667
+        },
+        "id": "MEXER",
+        "legDistanceNm": 4.81,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 10000,
+          "minFt": 8000,
+          "raw": "-10000 / +8000"
+        },
+        "coordinates": {
+          "lat": 33.6794444,
+          "lon": 126.2310833
+        },
+        "id": "PC832",
+        "legDistanceNm": null,
+        "pathTerminator": "DF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 13000,
+          "minFt": 13000,
+          "raw": "@13000"
+        },
+        "coordinates": {
+          "lat": 33.8357778,
+          "lon": 126.5124444
+        },
+        "id": "PC833",
+        "legDistanceNm": 16.9,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 13000,
+          "minFt": 13000,
+          "raw": "@13000"
+        },
+        "coordinates": {
+          "lat": 33.9295,
+          "lon": 126.6821389
+        },
+        "id": "PC834",
+        "legDistanceNm": 10.2,
+        "pathTerminator": "TF",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 13000,
+          "minFt": 13000,
+          "raw": "@13000"
+        },
+        "coordinates": {
+          "lat": 34.2540833,
+          "lon": 126.7170556
+        },
+        "id": "IPDAS",
+        "legDistanceNm": 19.5,
+        "pathTerminator": "TF",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Ipdas One Whiskey",
-    "geometry": { "coordinates": [ [126.3866667, 33.4577778], [126.2310833, 33.6794444], [126.5124444, 33.8357778], [126.6821389, 33.9295000], [126.7170556, 34.2540833] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4684722,
+          33.4998806
+        ],
+        [
+          126.3866667,
+          33.4577778
+        ],
+        [
+          126.2310833,
+          33.6794444
+        ],
+        [
+          126.5124444,
+          33.8357778
+        ],
+        [
+          126.6821389,
+          33.9295
+        ],
+        [
+          126.7170556,
+          34.2540833
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-IPDAS1W",
     "isComplete": true,
     "name": "IPDAS1W",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["25"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": null, "from": "MEXER", "geometry": { "coordinates": [ [126.3866667, 33.4577778], [126.2310833, 33.6794444] ], "type": "LineString" }, "id": "RKPC-SID-IPDAS1W-001", "procedureId": "RKPC-SID-IPDAS1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "PC832" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 16.9, "from": "PC832", "geometry": { "coordinates": [ [126.2310833, 33.6794444], [126.5124444, 33.8357778] ], "type": "LineString" }, "id": "RKPC-SID-IPDAS1W-002", "procedureId": "RKPC-SID-IPDAS1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "PC833" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 10.2, "from": "PC833", "geometry": { "coordinates": [ [126.5124444, 33.8357778], [126.6821389, 33.9295000] ], "type": "LineString" }, "id": "RKPC-SID-IPDAS1W-003", "procedureId": "RKPC-SID-IPDAS1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "RKPC SID.pdf", "to": "PC834" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 19.5, "from": "PC834", "geometry": { "coordinates": [ [126.6821389, 33.9295000], [126.7170556, 34.2540833] ], "type": "LineString" }, "id": "RKPC-SID-IPDAS1W-004", "procedureId": "RKPC-SID-IPDAS1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "RKPC SID.pdf", "to": "IPDAS" }
+    "runways": [
+      "25"
     ],
-    "sequence": ["MEXER", "PC832", "PC833", "PC834", "IPDAS"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 4.81,
+        "from": "RWY07",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4684722,
+              33.4998806
+            ],
+            [
+              126.3866667,
+              33.4577778
+            ]
+          ]
+        },
+        "id": "RKPC-SID-IPDAS1W-000",
+        "procedureId": "RKPC-SID-IPDAS1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "MEXER"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": null,
+        "from": "MEXER",
+        "geometry": {
+          "coordinates": [
+            [
+              126.3866667,
+              33.4577778
+            ],
+            [
+              126.2310833,
+              33.6794444
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-IPDAS1W-001",
+        "procedureId": "RKPC-SID-IPDAS1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "PC832"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 16.9,
+        "from": "PC832",
+        "geometry": {
+          "coordinates": [
+            [
+              126.2310833,
+              33.6794444
+            ],
+            [
+              126.5124444,
+              33.8357778
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-IPDAS1W-002",
+        "procedureId": "RKPC-SID-IPDAS1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "PC833"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 10.2,
+        "from": "PC833",
+        "geometry": {
+          "coordinates": [
+            [
+              126.5124444,
+              33.8357778
+            ],
+            [
+              126.6821389,
+              33.9295
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-IPDAS1W-003",
+        "procedureId": "RKPC-SID-IPDAS1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "to": "PC834"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 19.5,
+        "from": "PC834",
+        "geometry": {
+          "coordinates": [
+            [
+              126.6821389,
+              33.9295
+            ],
+            [
+              126.7170556,
+              34.2540833
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-IPDAS1W-004",
+        "procedureId": "RKPC-SID-IPDAS1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "to": "IPDAS"
+      }
+    ],
+    "sequence": [
+      "RWY07",
+      "MEXER",
+      "PC832",
+      "PC833",
+      "PC834",
+      "IPDAS"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "MEXER",
+    "startFix": "RWY07",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -221,31 +1684,338 @@
     "endFix": "AKPON",
     "enrouteFix": "AKPON",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.4285278, "lon": 126.3299444 }, "id": "PC841", "legDistanceNm": 8.0, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.2939722, "lon": 126.3548056 }, "id": "PC842", "legDistanceNm": 8.2, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 12000, "raw": "+12000" }, "coordinates": { "lat": 33.3210000, "lon": 126.5912778 }, "id": "PC846", "legDistanceNm": 12.0, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.3979167, "lon": 126.7308889 }, "id": "ATIMO", "legDistanceNm": 8.4, "pathTerminator": "TF", "sequence": 4, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 17000, "raw": "+FL170" }, "coordinates": { "lat": 33.5781389, "lon": 127.0601389 }, "id": "PAPLU", "legDistanceNm": 19.7, "pathTerminator": "TF", "sequence": 5, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.7804444, "lon": 127.3313889 }, "id": "AKPON", "legDistanceNm": 18.2, "pathTerminator": "TF", "sequence": 6, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4998806,
+          "lon": 126.4684722
+        },
+        "id": "RWY07",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4285278,
+          "lon": 126.3299444
+        },
+        "id": "PC841",
+        "legDistanceNm": 8.15,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.2939722,
+          "lon": 126.3548056
+        },
+        "id": "PC842",
+        "legDistanceNm": 8.2,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 12000,
+          "raw": "+12000"
+        },
+        "coordinates": {
+          "lat": 33.321,
+          "lon": 126.5912778
+        },
+        "id": "PC846",
+        "legDistanceNm": 12,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.3979167,
+          "lon": 126.7308889
+        },
+        "id": "ATIMO",
+        "legDistanceNm": 8.4,
+        "pathTerminator": "TF",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 17000,
+          "raw": "+FL170"
+        },
+        "coordinates": {
+          "lat": 33.5781389,
+          "lon": 127.0601389
+        },
+        "id": "PAPLU",
+        "legDistanceNm": 19.7,
+        "pathTerminator": "TF",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.7804444,
+          "lon": 127.3313889
+        },
+        "id": "AKPON",
+        "legDistanceNm": 18.2,
+        "pathTerminator": "TF",
+        "sequence": 7,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Akpon One Whiskey",
-    "geometry": { "coordinates": [ [126.3299444, 33.4285278], [126.3548056, 33.2939722], [126.5912778, 33.3210000], [126.7308889, 33.3979167], [127.0601389, 33.5781389], [127.3313889, 33.7804444] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4684722,
+          33.4998806
+        ],
+        [
+          126.3299444,
+          33.4285278
+        ],
+        [
+          126.3548056,
+          33.2939722
+        ],
+        [
+          126.5912778,
+          33.321
+        ],
+        [
+          126.7308889,
+          33.3979167
+        ],
+        [
+          127.0601389,
+          33.5781389
+        ],
+        [
+          127.3313889,
+          33.7804444
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-AKPON1W",
     "isComplete": true,
     "name": "AKPON1W",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["25"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 8.2, "from": "PC841", "geometry": { "coordinates": [ [126.3299444, 33.4285278], [126.3548056, 33.2939722] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1W-001", "procedureId": "RKPC-SID-AKPON1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "PC842" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 12.0, "from": "PC842", "geometry": { "coordinates": [ [126.3548056, 33.2939722], [126.5912778, 33.3210000] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1W-002", "procedureId": "RKPC-SID-AKPON1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "PC846" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 8.4, "from": "PC846", "geometry": { "coordinates": [ [126.5912778, 33.3210000], [126.7308889, 33.3979167] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1W-003", "procedureId": "RKPC-SID-AKPON1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "RKPC SID.pdf", "to": "ATIMO" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 19.7, "from": "ATIMO", "geometry": { "coordinates": [ [126.7308889, 33.3979167], [127.0601389, 33.5781389] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1W-004", "procedureId": "RKPC-SID-AKPON1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "RKPC SID.pdf", "to": "PAPLU" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 18.2, "from": "PAPLU", "geometry": { "coordinates": [ [127.0601389, 33.5781389], [127.3313889, 33.7804444] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1W-005", "procedureId": "RKPC-SID-AKPON1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 5, "source": "RKPC SID.pdf", "to": "AKPON" }
+    "runways": [
+      "25"
     ],
-    "sequence": ["PC841", "PC842", "PC846", "ATIMO", "PAPLU", "AKPON"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 8.15,
+        "from": "RWY07",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4684722,
+              33.4998806
+            ],
+            [
+              126.3299444,
+              33.4285278
+            ]
+          ]
+        },
+        "id": "RKPC-SID-AKPON1W-000",
+        "procedureId": "RKPC-SID-AKPON1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PC841"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 8.2,
+        "from": "PC841",
+        "geometry": {
+          "coordinates": [
+            [
+              126.3299444,
+              33.4285278
+            ],
+            [
+              126.3548056,
+              33.2939722
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1W-001",
+        "procedureId": "RKPC-SID-AKPON1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "PC842"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 12,
+        "from": "PC842",
+        "geometry": {
+          "coordinates": [
+            [
+              126.3548056,
+              33.2939722
+            ],
+            [
+              126.5912778,
+              33.321
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1W-002",
+        "procedureId": "RKPC-SID-AKPON1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "PC846"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 8.4,
+        "from": "PC846",
+        "geometry": {
+          "coordinates": [
+            [
+              126.5912778,
+              33.321
+            ],
+            [
+              126.7308889,
+              33.3979167
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1W-003",
+        "procedureId": "RKPC-SID-AKPON1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "to": "ATIMO"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 19.7,
+        "from": "ATIMO",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7308889,
+              33.3979167
+            ],
+            [
+              127.0601389,
+              33.5781389
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1W-004",
+        "procedureId": "RKPC-SID-AKPON1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "to": "PAPLU"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 18.2,
+        "from": "PAPLU",
+        "geometry": {
+          "coordinates": [
+            [
+              127.0601389,
+              33.5781389
+            ],
+            [
+              127.3313889,
+              33.7804444
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1W-005",
+        "procedureId": "RKPC-SID-AKPON1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "to": "AKPON"
+      }
+    ],
+    "sequence": [
+      "RWY07",
+      "PC841",
+      "PC842",
+      "PC846",
+      "ATIMO",
+      "PAPLU",
+      "AKPON"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "PC841",
+    "startFix": "RWY07",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -256,31 +2026,338 @@
     "endFix": "TAMNA",
     "enrouteFix": "TAMNA",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.4285278, "lon": 126.3299444 }, "id": "PC841", "legDistanceNm": 8.0, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.2939722, "lon": 126.3548056 }, "id": "PC842", "legDistanceNm": 8.2, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 12000, "raw": "+12000" }, "coordinates": { "lat": 33.3210000, "lon": 126.5912778 }, "id": "PC846", "legDistanceNm": 12.0, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.3979167, "lon": 126.7308889 }, "id": "ATIMO", "legDistanceNm": 8.4, "pathTerminator": "TF", "sequence": 4, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 17000, "raw": "+FL170" }, "coordinates": { "lat": 33.4175556, "lon": 126.8900000 }, "id": "PC845", "legDistanceNm": 8.1, "pathTerminator": "TF", "sequence": 5, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.4709722, "lon": 127.3313889 }, "id": "TAMNA", "legDistanceNm": 22.4, "pathTerminator": "TF", "sequence": 6, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4998806,
+          "lon": 126.4684722
+        },
+        "id": "RWY07",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4285278,
+          "lon": 126.3299444
+        },
+        "id": "PC841",
+        "legDistanceNm": 8.15,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.2939722,
+          "lon": 126.3548056
+        },
+        "id": "PC842",
+        "legDistanceNm": 8.2,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 12000,
+          "raw": "+12000"
+        },
+        "coordinates": {
+          "lat": 33.321,
+          "lon": 126.5912778
+        },
+        "id": "PC846",
+        "legDistanceNm": 12,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.3979167,
+          "lon": 126.7308889
+        },
+        "id": "ATIMO",
+        "legDistanceNm": 8.4,
+        "pathTerminator": "TF",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 17000,
+          "raw": "+FL170"
+        },
+        "coordinates": {
+          "lat": 33.4175556,
+          "lon": 126.89
+        },
+        "id": "PC845",
+        "legDistanceNm": 8.1,
+        "pathTerminator": "TF",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4709722,
+          "lon": 127.3313889
+        },
+        "id": "TAMNA",
+        "legDistanceNm": 22.4,
+        "pathTerminator": "TF",
+        "sequence": 7,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Tamna Three Whiskey",
-    "geometry": { "coordinates": [ [126.3299444, 33.4285278], [126.3548056, 33.2939722], [126.5912778, 33.3210000], [126.7308889, 33.3979167], [126.8900000, 33.4175556], [127.3313889, 33.4709722] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4684722,
+          33.4998806
+        ],
+        [
+          126.3299444,
+          33.4285278
+        ],
+        [
+          126.3548056,
+          33.2939722
+        ],
+        [
+          126.5912778,
+          33.321
+        ],
+        [
+          126.7308889,
+          33.3979167
+        ],
+        [
+          126.89,
+          33.4175556
+        ],
+        [
+          127.3313889,
+          33.4709722
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-TAMNA3W",
     "isComplete": true,
     "name": "TAMNA3W",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["25"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 8.2, "from": "PC841", "geometry": { "coordinates": [ [126.3299444, 33.4285278], [126.3548056, 33.2939722] ], "type": "LineString" }, "id": "RKPC-SID-TAMNA3W-001", "procedureId": "RKPC-SID-TAMNA3W", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "PC842" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 12.0, "from": "PC842", "geometry": { "coordinates": [ [126.3548056, 33.2939722], [126.5912778, 33.3210000] ], "type": "LineString" }, "id": "RKPC-SID-TAMNA3W-002", "procedureId": "RKPC-SID-TAMNA3W", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "PC846" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 8.4, "from": "PC846", "geometry": { "coordinates": [ [126.5912778, 33.3210000], [126.7308889, 33.3979167] ], "type": "LineString" }, "id": "RKPC-SID-TAMNA3W-003", "procedureId": "RKPC-SID-TAMNA3W", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "RKPC SID.pdf", "to": "ATIMO" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 8.1, "from": "ATIMO", "geometry": { "coordinates": [ [126.7308889, 33.3979167], [126.8900000, 33.4175556] ], "type": "LineString" }, "id": "RKPC-SID-TAMNA3W-004", "procedureId": "RKPC-SID-TAMNA3W", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "RKPC SID.pdf", "to": "PC845" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 22.4, "from": "PC845", "geometry": { "coordinates": [ [126.8900000, 33.4175556], [127.3313889, 33.4709722] ], "type": "LineString" }, "id": "RKPC-SID-TAMNA3W-005", "procedureId": "RKPC-SID-TAMNA3W", "procedureType": "SID", "routeType": "RNAV", "sequence": 5, "source": "RKPC SID.pdf", "to": "TAMNA" }
+    "runways": [
+      "25"
     ],
-    "sequence": ["PC841", "PC842", "PC846", "ATIMO", "PC845", "TAMNA"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 8.15,
+        "from": "RWY07",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4684722,
+              33.4998806
+            ],
+            [
+              126.3299444,
+              33.4285278
+            ]
+          ]
+        },
+        "id": "RKPC-SID-TAMNA3W-000",
+        "procedureId": "RKPC-SID-TAMNA3W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PC841"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 8.2,
+        "from": "PC841",
+        "geometry": {
+          "coordinates": [
+            [
+              126.3299444,
+              33.4285278
+            ],
+            [
+              126.3548056,
+              33.2939722
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-TAMNA3W-001",
+        "procedureId": "RKPC-SID-TAMNA3W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "PC842"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 12,
+        "from": "PC842",
+        "geometry": {
+          "coordinates": [
+            [
+              126.3548056,
+              33.2939722
+            ],
+            [
+              126.5912778,
+              33.321
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-TAMNA3W-002",
+        "procedureId": "RKPC-SID-TAMNA3W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "PC846"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 8.4,
+        "from": "PC846",
+        "geometry": {
+          "coordinates": [
+            [
+              126.5912778,
+              33.321
+            ],
+            [
+              126.7308889,
+              33.3979167
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-TAMNA3W-003",
+        "procedureId": "RKPC-SID-TAMNA3W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "to": "ATIMO"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 8.1,
+        "from": "ATIMO",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7308889,
+              33.3979167
+            ],
+            [
+              126.89,
+              33.4175556
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-TAMNA3W-004",
+        "procedureId": "RKPC-SID-TAMNA3W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "to": "PC845"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 22.4,
+        "from": "PC845",
+        "geometry": {
+          "coordinates": [
+            [
+              126.89,
+              33.4175556
+            ],
+            [
+              127.3313889,
+              33.4709722
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-TAMNA3W-005",
+        "procedureId": "RKPC-SID-TAMNA3W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "to": "TAMNA"
+      }
+    ],
+    "sequence": [
+      "RWY07",
+      "PC841",
+      "PC842",
+      "PC846",
+      "ATIMO",
+      "PC845",
+      "TAMNA"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "PC841",
+    "startFix": "RWY07",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -291,23 +2368,146 @@
     "endFix": "PANSI",
     "enrouteFix": "PANSI",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.4285278, "lon": 126.3299444 }, "id": "PC841", "legDistanceNm": 8.0, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.0040000, "lon": 126.2069722 }, "id": "PANSI", "legDistanceNm": 26.2, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4998806,
+          "lon": 126.4684722
+        },
+        "id": "RWY07",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4285278,
+          "lon": 126.3299444
+        },
+        "id": "PC841",
+        "legDistanceNm": 8.15,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.004,
+          "lon": 126.2069722
+        },
+        "id": "PANSI",
+        "legDistanceNm": 26.2,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Pansi Two Whiskey",
-    "geometry": { "coordinates": [ [126.3299444, 33.4285278], [126.2069722, 33.0040000] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4684722,
+          33.4998806
+        ],
+        [
+          126.3299444,
+          33.4285278
+        ],
+        [
+          126.2069722,
+          33.004
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-PANSI2W",
     "isComplete": true,
     "name": "PANSI2W",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["25"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 26.2, "from": "PC841", "geometry": { "coordinates": [ [126.3299444, 33.4285278], [126.2069722, 33.0040000] ], "type": "LineString" }, "id": "RKPC-SID-PANSI2W-001", "procedureId": "RKPC-SID-PANSI2W", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "PANSI" }
+    "runways": [
+      "25"
     ],
-    "sequence": ["PC841", "PANSI"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 8.15,
+        "from": "RWY07",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4684722,
+              33.4998806
+            ],
+            [
+              126.3299444,
+              33.4285278
+            ]
+          ]
+        },
+        "id": "RKPC-SID-PANSI2W-000",
+        "procedureId": "RKPC-SID-PANSI2W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PC841"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 26.2,
+        "from": "PC841",
+        "geometry": {
+          "coordinates": [
+            [
+              126.3299444,
+              33.4285278
+            ],
+            [
+              126.2069722,
+              33.004
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-PANSI2W-001",
+        "procedureId": "RKPC-SID-PANSI2W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "PANSI"
+      }
+    ],
+    "sequence": [
+      "RWY07",
+      "PC841",
+      "PANSI"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "PC841",
+    "startFix": "RWY07",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -318,25 +2518,194 @@
     "endFix": "LIMDI",
     "enrouteFix": "LIMDI",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.4577778, "lon": 126.3866667 }, "id": "MEXER", "legDistanceNm": 4.7, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.5450278, "lon": 126.1708056 }, "id": "LEDIN", "legDistanceNm": null, "pathTerminator": "DF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.5536944, "lon": 125.8313889 }, "id": "LIMDI", "legDistanceNm": 17.0, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4998806,
+          "lon": 126.4684722
+        },
+        "id": "RWY07",
+        "legDistanceNm": null,
+        "pathTerminator": "IF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null,
+        "role": "Runway Threshold"
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.4577778,
+          "lon": 126.3866667
+        },
+        "id": "MEXER",
+        "legDistanceNm": 4.81,
+        "pathTerminator": "CF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5450278,
+          "lon": 126.1708056
+        },
+        "id": "LEDIN",
+        "legDistanceNm": null,
+        "pathTerminator": "DF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5536944,
+          "lon": 125.8313889
+        },
+        "id": "LIMDI",
+        "legDistanceNm": 17,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Limdi One Whiskey",
-    "geometry": { "coordinates": [ [126.3866667, 33.4577778], [126.1708056, 33.5450278], [125.8313889, 33.5536944] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4684722,
+          33.4998806
+        ],
+        [
+          126.3866667,
+          33.4577778
+        ],
+        [
+          126.1708056,
+          33.5450278
+        ],
+        [
+          125.8313889,
+          33.5536944
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-LIMDI1W",
     "isComplete": true,
     "name": "LIMDI1W",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["25"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": null, "from": "MEXER", "geometry": { "coordinates": [ [126.3866667, 33.4577778], [126.1708056, 33.5450278] ], "type": "LineString" }, "id": "RKPC-SID-LIMDI1W-001", "procedureId": "RKPC-SID-LIMDI1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "LEDIN" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 17.0, "from": "LEDIN", "geometry": { "coordinates": [ [126.1708056, 33.5450278], [125.8313889, 33.5536944] ], "type": "LineString" }, "id": "RKPC-SID-LIMDI1W-002", "procedureId": "RKPC-SID-LIMDI1W", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "LIMDI" }
+    "runways": [
+      "25"
     ],
-    "sequence": ["MEXER", "LEDIN", "LIMDI"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 4.81,
+        "from": "RWY07",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.4684722,
+              33.4998806
+            ],
+            [
+              126.3866667,
+              33.4577778
+            ]
+          ]
+        },
+        "id": "RKPC-SID-LIMDI1W-000",
+        "procedureId": "RKPC-SID-LIMDI1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "MEXER"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": null,
+        "from": "MEXER",
+        "geometry": {
+          "coordinates": [
+            [
+              126.3866667,
+              33.4577778
+            ],
+            [
+              126.1708056,
+              33.5450278
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-LIMDI1W-001",
+        "procedureId": "RKPC-SID-LIMDI1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "LEDIN"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 17,
+        "from": "LEDIN",
+        "geometry": {
+          "coordinates": [
+            [
+              126.1708056,
+              33.5450278
+            ],
+            [
+              125.8313889,
+              33.5536944
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-LIMDI1W-002",
+        "procedureId": "RKPC-SID-LIMDI1W",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "LIMDI"
+      }
+    ],
+    "sequence": [
+      "RWY07",
+      "MEXER",
+      "LEDIN",
+      "LIMDI"
+    ],
     "source": "RKPC SID.pdf",
-    "startFix": "MEXER",
+    "startFix": "RWY07",
     "type": "SID",
     "unresolvedPoints": []
   },
@@ -347,29 +2716,287 @@
     "endFix": "KAMIT",
     "enrouteFix": "KAMIT",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.5621667, "lon": 126.4094722 }, "id": "PC861", "legDistanceNm": 4.7, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 5000, "minFt": null, "raw": "-5000" }, "coordinates": { "lat": 33.6514722, "lon": 126.4088889 }, "id": "PC871", "legDistanceNm": 5.3, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 8000, "minFt": null, "raw": "-8000" }, "coordinates": { "lat": 33.7213611, "lon": 126.5218611 }, "id": "PC872", "legDistanceNm": 7.0, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 11000, "raw": "+11000" }, "coordinates": { "lat": 33.8102222, "lon": 126.6660278 }, "id": "TOREN", "legDistanceNm": 9.0, "pathTerminator": "TF", "sequence": 4, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 12000, "minFt": null, "raw": "-12000" }, "coordinates": { "lat": 33.9617222, "lon": 126.7406944 }, "id": "OLLEH", "legDistanceNm": 9.8, "pathTerminator": "TF", "sequence": 5, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 16000, "minFt": null, "raw": "-FL160" }, "coordinates": { "lat": 34.2539167, "lon": 126.7715833 }, "id": "KAMIT", "legDistanceNm": 17.6, "pathTerminator": "TF", "sequence": 6, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5621667,
+          "lon": 126.4094722
+        },
+        "id": "PC861",
+        "legDistanceNm": 4.7,
+        "pathTerminator": "CF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 5000,
+          "minFt": null,
+          "raw": "-5000"
+        },
+        "coordinates": {
+          "lat": 33.6514722,
+          "lon": 126.4088889
+        },
+        "id": "PC871",
+        "legDistanceNm": 5.3,
+        "pathTerminator": "TF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 8000,
+          "minFt": null,
+          "raw": "-8000"
+        },
+        "coordinates": {
+          "lat": 33.7213611,
+          "lon": 126.5218611
+        },
+        "id": "PC872",
+        "legDistanceNm": 7,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 11000,
+          "raw": "+11000"
+        },
+        "coordinates": {
+          "lat": 33.8102222,
+          "lon": 126.6660278
+        },
+        "id": "TOREN",
+        "legDistanceNm": 9,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 12000,
+          "minFt": null,
+          "raw": "-12000"
+        },
+        "coordinates": {
+          "lat": 33.9617222,
+          "lon": 126.7406944
+        },
+        "id": "OLLEH",
+        "legDistanceNm": 9.8,
+        "pathTerminator": "TF",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 16000,
+          "minFt": null,
+          "raw": "-FL160"
+        },
+        "coordinates": {
+          "lat": 34.2539167,
+          "lon": 126.7715833
+        },
+        "id": "KAMIT",
+        "legDistanceNm": 17.6,
+        "pathTerminator": "TF",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Kamit Two November",
-    "geometry": { "coordinates": [ [126.4094722, 33.5621667], [126.4088889, 33.6514722], [126.5218611, 33.7213611], [126.6660278, 33.8102222], [126.7406944, 33.9617222], [126.7715833, 34.2539167] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4094722,
+          33.5621667
+        ],
+        [
+          126.4088889,
+          33.6514722
+        ],
+        [
+          126.5218611,
+          33.7213611
+        ],
+        [
+          126.6660278,
+          33.8102222
+        ],
+        [
+          126.7406944,
+          33.9617222
+        ],
+        [
+          126.7715833,
+          34.2539167
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-KAMIT2N",
     "isComplete": true,
     "name": "KAMIT2N",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["31"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 5.3, "from": "PC861", "geometry": { "coordinates": [ [126.4094722, 33.5621667], [126.4088889, 33.6514722] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT2N-001", "procedureId": "RKPC-SID-KAMIT2N", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "PC871" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 7.0, "from": "PC871", "geometry": { "coordinates": [ [126.4088889, 33.6514722], [126.5218611, 33.7213611] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT2N-002", "procedureId": "RKPC-SID-KAMIT2N", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "PC872" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 9.0, "from": "PC872", "geometry": { "coordinates": [ [126.5218611, 33.7213611], [126.6660278, 33.8102222] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT2N-003", "procedureId": "RKPC-SID-KAMIT2N", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "RKPC SID.pdf", "to": "TOREN" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 9.8, "from": "TOREN", "geometry": { "coordinates": [ [126.6660278, 33.8102222], [126.7406944, 33.9617222] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT2N-004", "procedureId": "RKPC-SID-KAMIT2N", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "RKPC SID.pdf", "to": "OLLEH" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 17.6, "from": "OLLEH", "geometry": { "coordinates": [ [126.7406944, 33.9617222], [126.7715833, 34.2539167] ], "type": "LineString" }, "id": "RKPC-SID-KAMIT2N-005", "procedureId": "RKPC-SID-KAMIT2N", "procedureType": "SID", "routeType": "RNAV", "sequence": 5, "source": "RKPC SID.pdf", "to": "KAMIT" }
+    "runways": [
+      "31"
     ],
-    "sequence": ["PC861", "PC871", "PC872", "TOREN", "OLLEH", "KAMIT"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 5.3,
+        "from": "PC861",
+        "geometry": {
+          "coordinates": [
+            [
+              126.4094722,
+              33.5621667
+            ],
+            [
+              126.4088889,
+              33.6514722
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT2N-001",
+        "procedureId": "RKPC-SID-KAMIT2N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PC871"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 7,
+        "from": "PC871",
+        "geometry": {
+          "coordinates": [
+            [
+              126.4088889,
+              33.6514722
+            ],
+            [
+              126.5218611,
+              33.7213611
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT2N-002",
+        "procedureId": "RKPC-SID-KAMIT2N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "PC872"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 9,
+        "from": "PC872",
+        "geometry": {
+          "coordinates": [
+            [
+              126.5218611,
+              33.7213611
+            ],
+            [
+              126.6660278,
+              33.8102222
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT2N-003",
+        "procedureId": "RKPC-SID-KAMIT2N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "TOREN"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 9.8,
+        "from": "TOREN",
+        "geometry": {
+          "coordinates": [
+            [
+              126.6660278,
+              33.8102222
+            ],
+            [
+              126.7406944,
+              33.9617222
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT2N-004",
+        "procedureId": "RKPC-SID-KAMIT2N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "to": "OLLEH"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 17.6,
+        "from": "OLLEH",
+        "geometry": {
+          "coordinates": [
+            [
+              126.7406944,
+              33.9617222
+            ],
+            [
+              126.7715833,
+              34.2539167
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-KAMIT2N-005",
+        "procedureId": "RKPC-SID-KAMIT2N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "to": "KAMIT"
+      }
+    ],
+    "sequence": [
+      "PC861",
+      "PC871",
+      "PC872",
+      "TOREN",
+      "OLLEH",
+      "KAMIT"
+    ],
     "source": "RKPC SID.pdf",
     "startFix": "PC861",
     "type": "SID",
@@ -382,29 +3009,287 @@
     "endFix": "AKPON",
     "enrouteFix": "AKPON",
     "fixes": [
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.5621667, "lon": 126.4094722 }, "id": "PC861", "legDistanceNm": 4.7, "pathTerminator": "CF", "sequence": 1, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 5000, "minFt": null, "raw": "-5000" }, "coordinates": { "lat": 33.6514722, "lon": 126.4088889 }, "id": "PC871", "legDistanceNm": 5.3, "pathTerminator": "TF", "sequence": 2, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": 8000, "minFt": null, "raw": "-8000" }, "coordinates": { "lat": 33.7213611, "lon": 126.5218611 }, "id": "PC872", "legDistanceNm": 7.0, "pathTerminator": "TF", "sequence": 3, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": 11000, "raw": "+11000" }, "coordinates": { "lat": 33.8102222, "lon": 126.6660278 }, "id": "TOREN", "legDistanceNm": 9.0, "pathTerminator": "TF", "sequence": 4, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.8105556, "lon": 127.1857778 }, "id": "PC874", "legDistanceNm": 26.0, "pathTerminator": "TF", "sequence": 5, "source": "RKPC SID.pdf", "speedKt": null },
-      { "altitude": { "maxFt": null, "minFt": null, "raw": null }, "coordinates": { "lat": 33.7804444, "lon": 127.3313889 }, "id": "AKPON", "legDistanceNm": 7.5, "pathTerminator": "TF", "sequence": 6, "source": "RKPC SID.pdf", "speedKt": null }
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.5621667,
+          "lon": 126.4094722
+        },
+        "id": "PC861",
+        "legDistanceNm": 4.7,
+        "pathTerminator": "CF",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 5000,
+          "minFt": null,
+          "raw": "-5000"
+        },
+        "coordinates": {
+          "lat": 33.6514722,
+          "lon": 126.4088889
+        },
+        "id": "PC871",
+        "legDistanceNm": 5.3,
+        "pathTerminator": "TF",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": 8000,
+          "minFt": null,
+          "raw": "-8000"
+        },
+        "coordinates": {
+          "lat": 33.7213611,
+          "lon": 126.5218611
+        },
+        "id": "PC872",
+        "legDistanceNm": 7,
+        "pathTerminator": "TF",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": 11000,
+          "raw": "+11000"
+        },
+        "coordinates": {
+          "lat": 33.8102222,
+          "lon": 126.6660278
+        },
+        "id": "TOREN",
+        "legDistanceNm": 9,
+        "pathTerminator": "TF",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.8105556,
+          "lon": 127.1857778
+        },
+        "id": "PC874",
+        "legDistanceNm": 26,
+        "pathTerminator": "TF",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      },
+      {
+        "altitude": {
+          "maxFt": null,
+          "minFt": null,
+          "raw": null
+        },
+        "coordinates": {
+          "lat": 33.7804444,
+          "lon": 127.3313889
+        },
+        "id": "AKPON",
+        "legDistanceNm": 7.5,
+        "pathTerminator": "TF",
+        "sequence": 6,
+        "source": "RKPC SID.pdf",
+        "speedKt": null
+      }
     ],
     "fullName": "Akpon One November",
-    "geometry": { "coordinates": [ [126.4094722, 33.5621667], [126.4088889, 33.6514722], [126.5218611, 33.7213611], [126.6660278, 33.8102222], [127.1857778, 33.8105556], [127.3313889, 33.7804444] ], "type": "LineString" },
+    "geometry": {
+      "coordinates": [
+        [
+          126.4094722,
+          33.5621667
+        ],
+        [
+          126.4088889,
+          33.6514722
+        ],
+        [
+          126.5218611,
+          33.7213611
+        ],
+        [
+          126.6660278,
+          33.8102222
+        ],
+        [
+          127.1857778,
+          33.8105556
+        ],
+        [
+          127.3313889,
+          33.7804444
+        ]
+      ],
+      "type": "LineString"
+    },
     "id": "RKPC-SID-AKPON1N",
     "isComplete": true,
     "name": "AKPON1N",
     "notes": [],
     "routeType": "RNAV",
-    "runways": ["31"],
-    "segments": [
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 5.3, "from": "PC861", "geometry": { "coordinates": [ [126.4094722, 33.5621667], [126.4088889, 33.6514722] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1N-001", "procedureId": "RKPC-SID-AKPON1N", "procedureType": "SID", "routeType": "RNAV", "sequence": 1, "source": "RKPC SID.pdf", "to": "PC871" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 7.0, "from": "PC871", "geometry": { "coordinates": [ [126.4088889, 33.6514722], [126.5218611, 33.7213611] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1N-002", "procedureId": "RKPC-SID-AKPON1N", "procedureType": "SID", "routeType": "RNAV", "sequence": 2, "source": "RKPC SID.pdf", "to": "PC872" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 9.0, "from": "PC872", "geometry": { "coordinates": [ [126.5218611, 33.7213611], [126.6660278, 33.8102222] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1N-003", "procedureId": "RKPC-SID-AKPON1N", "procedureType": "SID", "routeType": "RNAV", "sequence": 3, "source": "RKPC SID.pdf", "to": "TOREN" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 26.0, "from": "TOREN", "geometry": { "coordinates": [ [126.6660278, 33.8102222], [127.1857778, 33.8105556] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1N-004", "procedureId": "RKPC-SID-AKPON1N", "procedureType": "SID", "routeType": "RNAV", "sequence": 4, "source": "RKPC SID.pdf", "to": "PC874" },
-      { "airport": "RKPC", "cycle": "AIRAC 2025-08-21", "distanceNm": 7.5, "from": "PC874", "geometry": { "coordinates": [ [127.1857778, 33.8105556], [127.3313889, 33.7804444] ], "type": "LineString" }, "id": "RKPC-SID-AKPON1N-005", "procedureId": "RKPC-SID-AKPON1N", "procedureType": "SID", "routeType": "RNAV", "sequence": 5, "source": "RKPC SID.pdf", "to": "AKPON" }
+    "runways": [
+      "31"
     ],
-    "sequence": ["PC861", "PC871", "PC872", "TOREN", "PC874", "AKPON"],
+    "segments": [
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 5.3,
+        "from": "PC861",
+        "geometry": {
+          "coordinates": [
+            [
+              126.4094722,
+              33.5621667
+            ],
+            [
+              126.4088889,
+              33.6514722
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1N-001",
+        "procedureId": "RKPC-SID-AKPON1N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 1,
+        "source": "RKPC SID.pdf",
+        "to": "PC871"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 7,
+        "from": "PC871",
+        "geometry": {
+          "coordinates": [
+            [
+              126.4088889,
+              33.6514722
+            ],
+            [
+              126.5218611,
+              33.7213611
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1N-002",
+        "procedureId": "RKPC-SID-AKPON1N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 2,
+        "source": "RKPC SID.pdf",
+        "to": "PC872"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 9,
+        "from": "PC872",
+        "geometry": {
+          "coordinates": [
+            [
+              126.5218611,
+              33.7213611
+            ],
+            [
+              126.6660278,
+              33.8102222
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1N-003",
+        "procedureId": "RKPC-SID-AKPON1N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 3,
+        "source": "RKPC SID.pdf",
+        "to": "TOREN"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 26,
+        "from": "TOREN",
+        "geometry": {
+          "coordinates": [
+            [
+              126.6660278,
+              33.8102222
+            ],
+            [
+              127.1857778,
+              33.8105556
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1N-004",
+        "procedureId": "RKPC-SID-AKPON1N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 4,
+        "source": "RKPC SID.pdf",
+        "to": "PC874"
+      },
+      {
+        "airport": "RKPC",
+        "cycle": "AIRAC 2025-08-21",
+        "distanceNm": 7.5,
+        "from": "PC874",
+        "geometry": {
+          "coordinates": [
+            [
+              127.1857778,
+              33.8105556
+            ],
+            [
+              127.3313889,
+              33.7804444
+            ]
+          ],
+          "type": "LineString"
+        },
+        "id": "RKPC-SID-AKPON1N-005",
+        "procedureId": "RKPC-SID-AKPON1N",
+        "procedureType": "SID",
+        "routeType": "RNAV",
+        "sequence": 5,
+        "source": "RKPC SID.pdf",
+        "to": "AKPON"
+      }
+    ],
+    "sequence": [
+      "PC861",
+      "PC871",
+      "PC872",
+      "TOREN",
+      "PC874",
+      "AKPON"
+    ],
     "source": "RKPC SID.pdf",
     "startFix": "PC861",
     "type": "SID",

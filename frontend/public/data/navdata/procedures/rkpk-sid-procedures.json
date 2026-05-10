@@ -1,0 +1,1763 @@
+{
+  "metadata": {
+    "airport": "RKPK",
+    "type": "sid-procedures",
+    "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+    "dataModel": "procedure-canonical-v1",
+    "source": "(2-14) RKPK SID.pdf",
+    "createdBy": "ChatGPT",
+    "notes": [
+      "RNAV/GNSS SID transitions only: OPONO 3 and BURIM 3.",
+      "Initial runway heading/vector legs are not encoded as fixed geometry; map route starts from OPONO or BURIM."
+    ]
+  },
+  "sidProcedures": {
+    "RKPK-SID-OPONO3KALOD": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-SID-OPONO3KALOD",
+      "name": "OPONO3KALOD",
+      "fullName": "Opono Three KALOD Transition",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "RWY18L",
+      "endFix": "KALOD",
+      "source": "(2-14) RKPK SID.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS SID transition extracted from RKPK SID chart; runway heading/vector portion before first named fix is not drawn.",
+        "Conventional VOR/DME/RADAR SID procedures are excluded per user request (A option)."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "RWY18L",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "OPONO",
+          "role": null,
+          "legDistanceNm": 0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 35.5033611,
+            "lon": 128.7740278
+          },
+          "id": "KALOD",
+          "role": null,
+          "legDistanceNm": 11.98,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.7740278,
+            35.5033611
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 0,
+          "from": "RWY18L",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.7295,
+                35.3067222
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3KALOD-000",
+          "procedureId": "RKPK-SID-OPONO3KALOD",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "to": "OPONO"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 11.98,
+          "from": "OPONO",
+          "to": "KALOD",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.7740278,
+                35.5033611
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3KALOD-001",
+          "procedureId": "RKPK-SID-OPONO3KALOD",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf"
+        }
+      ],
+      "sequence": [
+        "RWY18L",
+        "OPONO",
+        "KALOD"
+      ],
+      "type": "SID",
+      "enrouteFix": "KALOD",
+      "unresolvedPoints": []
+    },
+    "RKPK-SID-OPONO3MASTA": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-SID-OPONO3MASTA",
+      "name": "OPONO3MASTA",
+      "fullName": "Opono Three MASTA Transition",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "RWY18L",
+      "endFix": "MASTA",
+      "source": "(2-14) RKPK SID.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS SID transition extracted from RKPK SID chart; runway heading/vector portion before first named fix is not drawn.",
+        "Conventional VOR/DME/RADAR SID procedures are excluded per user request (A option)."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "RWY18L",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "OPONO",
+          "role": null,
+          "legDistanceNm": 0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 35.4797222,
+            "lon": 128.5611111
+          },
+          "id": "MASTA",
+          "role": null,
+          "legDistanceNm": 13.25,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.5611111,
+            35.4797222
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 0,
+          "from": "RWY18L",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.7295,
+                35.3067222
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3MASTA-000",
+          "procedureId": "RKPK-SID-OPONO3MASTA",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "to": "OPONO"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 13.25,
+          "from": "OPONO",
+          "to": "MASTA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.5611111,
+                35.4797222
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3MASTA-001",
+          "procedureId": "RKPK-SID-OPONO3MASTA",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf"
+        }
+      ],
+      "sequence": [
+        "RWY18L",
+        "OPONO",
+        "MASTA"
+      ],
+      "type": "SID",
+      "enrouteFix": "MASTA",
+      "unresolvedPoints": []
+    },
+    "RKPK-SID-OPONO3ENGOT": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-SID-OPONO3ENGOT",
+      "name": "OPONO3ENGOT",
+      "fullName": "Opono Three ENGOT Transition",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "RWY18L",
+      "endFix": "ENGOT",
+      "source": "(2-14) RKPK SID.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS SID transition extracted from RKPK SID chart; runway heading/vector portion before first named fix is not drawn.",
+        "Conventional VOR/DME/RADAR SID procedures are excluded per user request (A option)."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "RWY18L",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "OPONO",
+          "role": null,
+          "legDistanceNm": 0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.2283333,
+            "lon": 128.6422778
+          },
+          "id": "PK521",
+          "role": null,
+          "legDistanceNm": 6.36,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.0934167,
+            "lon": 128.5296389
+          },
+          "id": "SARAM",
+          "role": null,
+          "legDistanceNm": 8.29,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 34.8095778,
+            "lon": 128.4977389
+          },
+          "id": "ENGOT",
+          "role": null,
+          "legDistanceNm": 19.06,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.6422778,
+            35.2283333
+          ],
+          [
+            128.5296389,
+            35.0934167
+          ],
+          [
+            128.4977389,
+            34.8095778
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 0,
+          "from": "RWY18L",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.7295,
+                35.3067222
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3ENGOT-000",
+          "procedureId": "RKPK-SID-OPONO3ENGOT",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "to": "OPONO"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 6.36,
+          "from": "OPONO",
+          "to": "PK521",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.6422778,
+                35.2283333
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3ENGOT-001",
+          "procedureId": "RKPK-SID-OPONO3ENGOT",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 8.29,
+          "from": "PK521",
+          "to": "SARAM",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.6422778,
+                35.2283333
+              ],
+              [
+                128.5296389,
+                35.0934167
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3ENGOT-002",
+          "procedureId": "RKPK-SID-OPONO3ENGOT",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 19.06,
+          "from": "SARAM",
+          "to": "ENGOT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.5296389,
+                35.0934167
+              ],
+              [
+                128.4977389,
+                34.8095778
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3ENGOT-003",
+          "procedureId": "RKPK-SID-OPONO3ENGOT",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-14) RKPK SID.pdf"
+        }
+      ],
+      "sequence": [
+        "RWY18L",
+        "OPONO",
+        "PK521",
+        "SARAM",
+        "ENGOT"
+      ],
+      "type": "SID",
+      "enrouteFix": "ENGOT",
+      "unresolvedPoints": []
+    },
+    "RKPK-SID-OPONO3BESNA": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-SID-OPONO3BESNA",
+      "name": "OPONO3BESNA",
+      "fullName": "Opono Three BESNA Transition",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "RWY18L",
+      "endFix": "BESNA",
+      "source": "(2-14) RKPK SID.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS SID transition extracted from RKPK SID chart; runway heading/vector portion before first named fix is not drawn.",
+        "Conventional VOR/DME/RADAR SID procedures are excluded per user request (A option)."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "RWY18L",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "OPONO",
+          "role": null,
+          "legDistanceNm": 0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.2283333,
+            "lon": 128.6422778
+          },
+          "id": "PK521",
+          "role": null,
+          "legDistanceNm": 6.36,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.1234167,
+            "lon": 128.7440278
+          },
+          "id": "PK522",
+          "role": null,
+          "legDistanceNm": 8.04,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 34.6216667,
+            "lon": 129.1308333
+          },
+          "id": "BESNA",
+          "role": null,
+          "legDistanceNm": 35.62,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.6422778,
+            35.2283333
+          ],
+          [
+            128.7440278,
+            35.1234167
+          ],
+          [
+            129.1308333,
+            34.6216667
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 0,
+          "from": "RWY18L",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.7295,
+                35.3067222
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3BESNA-000",
+          "procedureId": "RKPK-SID-OPONO3BESNA",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "to": "OPONO"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 6.36,
+          "from": "OPONO",
+          "to": "PK521",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.6422778,
+                35.2283333
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3BESNA-001",
+          "procedureId": "RKPK-SID-OPONO3BESNA",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 8.04,
+          "from": "PK521",
+          "to": "PK522",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.6422778,
+                35.2283333
+              ],
+              [
+                128.7440278,
+                35.1234167
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3BESNA-002",
+          "procedureId": "RKPK-SID-OPONO3BESNA",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 35.62,
+          "from": "PK522",
+          "to": "BESNA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7440278,
+                35.1234167
+              ],
+              [
+                129.1308333,
+                34.6216667
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3BESNA-003",
+          "procedureId": "RKPK-SID-OPONO3BESNA",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-14) RKPK SID.pdf"
+        }
+      ],
+      "sequence": [
+        "RWY18L",
+        "OPONO",
+        "PK521",
+        "PK522",
+        "BESNA"
+      ],
+      "type": "SID",
+      "enrouteFix": "BESNA",
+      "unresolvedPoints": []
+    },
+    "RKPK-SID-OPONO3BUSAN": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-SID-OPONO3BUSAN",
+      "name": "OPONO3BUSAN",
+      "fullName": "Opono Three BUSAN(PSN) Transition",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "RWY18L",
+      "endFix": "PSN",
+      "source": "(2-14) RKPK SID.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS SID transition extracted from RKPK SID chart; runway heading/vector portion before first named fix is not drawn.",
+        "Conventional VOR/DME/RADAR SID procedures are excluded per user request (A option)."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "RWY18L",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null,
+          "role": "Runway Threshold"
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.3067222,
+            "lon": 128.7295
+          },
+          "id": "OPONO",
+          "role": null,
+          "legDistanceNm": 0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.2283333,
+            "lon": 128.6422778
+          },
+          "id": "PK521",
+          "role": null,
+          "legDistanceNm": 6.36,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.1234167,
+            "lon": 128.7440278
+          },
+          "id": "PK522",
+          "role": null,
+          "legDistanceNm": 8.04,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 35.1226389,
+            "lon": 128.9995833
+          },
+          "id": "PSN",
+          "role": null,
+          "legDistanceNm": 12.44,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.7295,
+            35.3067222
+          ],
+          [
+            128.6422778,
+            35.2283333
+          ],
+          [
+            128.7440278,
+            35.1234167
+          ],
+          [
+            128.9995833,
+            35.1226389
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 0,
+          "from": "RWY18L",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.7295,
+                35.3067222
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3BUSAN-000",
+          "procedureId": "RKPK-SID-OPONO3BUSAN",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "to": "OPONO"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 6.36,
+          "from": "OPONO",
+          "to": "PK521",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7295,
+                35.3067222
+              ],
+              [
+                128.6422778,
+                35.2283333
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3BUSAN-001",
+          "procedureId": "RKPK-SID-OPONO3BUSAN",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 8.04,
+          "from": "PK521",
+          "to": "PK522",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.6422778,
+                35.2283333
+              ],
+              [
+                128.7440278,
+                35.1234167
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3BUSAN-002",
+          "procedureId": "RKPK-SID-OPONO3BUSAN",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 12.44,
+          "from": "PK522",
+          "to": "PSN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7440278,
+                35.1234167
+              ],
+              [
+                128.9995833,
+                35.1226389
+              ]
+            ]
+          },
+          "id": "RKPK-SID-OPONO3BUSAN-003",
+          "procedureId": "RKPK-SID-OPONO3BUSAN",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "(2-14) RKPK SID.pdf"
+        }
+      ],
+      "sequence": [
+        "RWY18L",
+        "OPONO",
+        "PK521",
+        "PK522",
+        "PSN"
+      ],
+      "type": "SID",
+      "enrouteFix": "PSN",
+      "unresolvedPoints": []
+    },
+    "RKPK-SID-BURIM3ENGOT": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-SID-BURIM3ENGOT",
+      "name": "BURIM3ENGOT",
+      "fullName": "Burim Three ENGOT Transition",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "BURIM",
+      "endFix": "ENGOT",
+      "source": "(2-14) RKPK SID.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS SID transition extracted from RKPK SID chart; runway heading/vector portion before first named fix is not drawn.",
+        "Conventional VOR/DME/RADAR SID procedures are excluded per user request (A option)."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.9978611,
+            "lon": 128.9466944
+          },
+          "id": "BURIM",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 34.8928889,
+            "lon": 128.9516111
+          },
+          "id": "BAHDA",
+          "role": null,
+          "legDistanceNm": 6.29,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 34.8095778,
+            "lon": 128.4977389
+          },
+          "id": "ENGOT",
+          "role": null,
+          "legDistanceNm": 22.96,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.9466944,
+            34.9978611
+          ],
+          [
+            128.9516111,
+            34.8928889
+          ],
+          [
+            128.4977389,
+            34.8095778
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 6.29,
+          "from": "BURIM",
+          "to": "BAHDA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9466944,
+                34.9978611
+              ],
+              [
+                128.9516111,
+                34.8928889
+              ]
+            ]
+          },
+          "id": "RKPK-SID-BURIM3ENGOT-001",
+          "procedureId": "RKPK-SID-BURIM3ENGOT",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 22.96,
+          "from": "BAHDA",
+          "to": "ENGOT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9516111,
+                34.8928889
+              ],
+              [
+                128.4977389,
+                34.8095778
+              ]
+            ]
+          },
+          "id": "RKPK-SID-BURIM3ENGOT-002",
+          "procedureId": "RKPK-SID-BURIM3ENGOT",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf"
+        }
+      ],
+      "sequence": [
+        "BURIM",
+        "BAHDA",
+        "ENGOT"
+      ],
+      "type": "SID",
+      "enrouteFix": "ENGOT",
+      "unresolvedPoints": []
+    },
+    "RKPK-SID-BURIM3BESNA": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-SID-BURIM3BESNA",
+      "name": "BURIM3BESNA",
+      "fullName": "Burim Three BESNA Transition",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "BURIM",
+      "endFix": "BESNA",
+      "source": "(2-14) RKPK SID.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS SID transition extracted from RKPK SID chart; runway heading/vector portion before first named fix is not drawn.",
+        "Conventional VOR/DME/RADAR SID procedures are excluded per user request (A option)."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.9978611,
+            "lon": 128.9466944
+          },
+          "id": "BURIM",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 34.8928889,
+            "lon": 128.9516111
+          },
+          "id": "BAHDA",
+          "role": null,
+          "legDistanceNm": 6.29,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 34.6216667,
+            "lon": 129.1308333
+          },
+          "id": "BESNA",
+          "role": null,
+          "legDistanceNm": 18.51,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.9466944,
+            34.9978611
+          ],
+          [
+            128.9516111,
+            34.8928889
+          ],
+          [
+            129.1308333,
+            34.6216667
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 6.29,
+          "from": "BURIM",
+          "to": "BAHDA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9466944,
+                34.9978611
+              ],
+              [
+                128.9516111,
+                34.8928889
+              ]
+            ]
+          },
+          "id": "RKPK-SID-BURIM3BESNA-001",
+          "procedureId": "RKPK-SID-BURIM3BESNA",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 18.51,
+          "from": "BAHDA",
+          "to": "BESNA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9516111,
+                34.8928889
+              ],
+              [
+                129.1308333,
+                34.6216667
+              ]
+            ]
+          },
+          "id": "RKPK-SID-BURIM3BESNA-002",
+          "procedureId": "RKPK-SID-BURIM3BESNA",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf"
+        }
+      ],
+      "sequence": [
+        "BURIM",
+        "BAHDA",
+        "BESNA"
+      ],
+      "type": "SID",
+      "enrouteFix": "BESNA",
+      "unresolvedPoints": []
+    },
+    "RKPK-SID-BURIM3INVOK": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-SID-BURIM3INVOK",
+      "name": "BURIM3INVOK",
+      "fullName": "Burim Three INVOK Transition",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "BURIM",
+      "endFix": "INVOK",
+      "source": "(2-14) RKPK SID.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS SID transition extracted from RKPK SID chart; runway heading/vector portion before first named fix is not drawn.",
+        "Conventional VOR/DME/RADAR SID procedures are excluded per user request (A option)."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.9978611,
+            "lon": 128.9466944
+          },
+          "id": "BURIM",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 34.8928889,
+            "lon": 128.9516111
+          },
+          "id": "BAHDA",
+          "role": null,
+          "legDistanceNm": 6.29,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 34.7886111,
+            "lon": 129.3230556
+          },
+          "id": "INVOK",
+          "role": null,
+          "legDistanceNm": 19.38,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.9466944,
+            34.9978611
+          ],
+          [
+            128.9516111,
+            34.8928889
+          ],
+          [
+            129.3230556,
+            34.7886111
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 6.29,
+          "from": "BURIM",
+          "to": "BAHDA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9466944,
+                34.9978611
+              ],
+              [
+                128.9516111,
+                34.8928889
+              ]
+            ]
+          },
+          "id": "RKPK-SID-BURIM3INVOK-001",
+          "procedureId": "RKPK-SID-BURIM3INVOK",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 19.38,
+          "from": "BAHDA",
+          "to": "INVOK",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9516111,
+                34.8928889
+              ],
+              [
+                129.3230556,
+                34.7886111
+              ]
+            ]
+          },
+          "id": "RKPK-SID-BURIM3INVOK-002",
+          "procedureId": "RKPK-SID-BURIM3INVOK",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf"
+        }
+      ],
+      "sequence": [
+        "BURIM",
+        "BAHDA",
+        "INVOK"
+      ],
+      "type": "SID",
+      "enrouteFix": "INVOK",
+      "unresolvedPoints": []
+    },
+    "RKPK-SID-BURIM3BUSAN": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-SID-BURIM3BUSAN",
+      "name": "BURIM3BUSAN",
+      "fullName": "Burim Three BUSAN(PSN) Transition",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "BURIM",
+      "endFix": "PSN",
+      "source": "(2-14) RKPK SID.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS SID transition extracted from RKPK SID chart; runway heading/vector portion before first named fix is not drawn.",
+        "Conventional VOR/DME/RADAR SID procedures are excluded per user request (A option)."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.9978611,
+            "lon": 128.9466944
+          },
+          "id": "BURIM",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 34.9089722,
+            "lon": 129.0332778
+          },
+          "id": "PK513",
+          "role": null,
+          "legDistanceNm": 6.83,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 34.9789722,
+            "lon": 129.1395
+          },
+          "id": "PK514",
+          "role": null,
+          "legDistanceNm": 6.71,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": 230
+        },
+        {
+          "altitude": {
+            "maxFt": 5000,
+            "minFt": 5000,
+            "raw": "@5000"
+          },
+          "coordinates": {
+            "lat": 35.1226389,
+            "lon": 128.9995833
+          },
+          "id": "PSN",
+          "role": null,
+          "legDistanceNm": 11.03,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-14) RKPK SID.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.9466944,
+            34.9978611
+          ],
+          [
+            129.0332778,
+            34.9089722
+          ],
+          [
+            129.1395,
+            34.9789722
+          ],
+          [
+            128.9995833,
+            35.1226389
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 6.83,
+          "from": "BURIM",
+          "to": "PK513",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9466944,
+                34.9978611
+              ],
+              [
+                129.0332778,
+                34.9089722
+              ]
+            ]
+          },
+          "id": "RKPK-SID-BURIM3BUSAN-001",
+          "procedureId": "RKPK-SID-BURIM3BUSAN",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 6.71,
+          "from": "PK513",
+          "to": "PK514",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.0332778,
+                34.9089722
+              ],
+              [
+                129.1395,
+                34.9789722
+              ]
+            ]
+          },
+          "id": "RKPK-SID-BURIM3BUSAN-002",
+          "procedureId": "RKPK-SID-BURIM3BUSAN",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-14) RKPK SID.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2023-07-27 / 2025-12-11",
+          "distanceNm": 11.03,
+          "from": "PK514",
+          "to": "PSN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.1395,
+                34.9789722
+              ],
+              [
+                128.9995833,
+                35.1226389
+              ]
+            ]
+          },
+          "id": "RKPK-SID-BURIM3BUSAN-003",
+          "procedureId": "RKPK-SID-BURIM3BUSAN",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "(2-14) RKPK SID.pdf"
+        }
+      ],
+      "sequence": [
+        "BURIM",
+        "PK513",
+        "PK514",
+        "PSN"
+      ],
+      "type": "SID",
+      "enrouteFix": "PSN",
+      "unresolvedPoints": []
+    }
+  }
+}

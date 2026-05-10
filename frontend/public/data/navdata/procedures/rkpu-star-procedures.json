@@ -1,0 +1,421 @@
+{
+  "metadata": {
+    "airport": "RKPU",
+    "cycle": "AIRAC 7/25",
+    "description": "RKPU RNAV STAR Procedures (All 4 Procedures)"
+  },
+  "starProcedures": {
+    "RKPU-STAR-LAPAL2D": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKPU-STAR-LAPAL2D",
+      "name": "LAPAL 2D",
+      "fullName": "RNAV LAPAL TWO DELTA ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["18"],
+      "startFix": "LAPAL",
+      "endFix": "MAKKY",
+      "source": "2-10-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.903500, "lon": 129.081111 },
+          "id": "LAPAL",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 7000, "minFt": 7000, "raw": "@7000" },
+          "coordinates": { "lat": 35.926722, "lon": 129.200889 },
+          "id": "DOGDI",
+          "role": null,
+          "legDistanceNm": 6.0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 35.871889, "lon": 129.259944 },
+          "id": "MAKKY",
+          "role": "IAF",
+          "legDistanceNm": 4.4,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [129.081111, 35.903500],
+          [129.200889, 35.926722],
+          [129.259944, 35.871889]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 6.0,
+          "from": "LAPAL",
+          "to": "DOGDI",
+          "geometry": { "type": "LineString", "coordinates": [[129.081111, 35.903500], [129.200889, 35.926722]] },
+          "id": "RKPU-STAR-LAPAL2D-001",
+          "procedureId": "RKPU-STAR-LAPAL2D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.4,
+          "from": "DOGDI",
+          "to": "MAKKY",
+          "geometry": { "type": "LineString", "coordinates": [[129.200889, 35.926722], [129.259944, 35.871889]] },
+          "id": "RKPU-STAR-LAPAL2D-002",
+          "procedureId": "RKPU-STAR-LAPAL2D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table"
+        }
+      ],
+      "sequence": ["LAPAL", "DOGDI", "MAKKY"]
+    },
+    "RKPU-STAR-APARU2D": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKPU-STAR-APARU2D",
+      "name": "APARU 2D",
+      "fullName": "RNAV APARU TWO DELTA ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["18"],
+      "startFix": "APARU",
+      "endFix": "MAKKY",
+      "source": "2-10-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.411694, "lon": 129.158917 },
+          "id": "APARU",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.787056, "lon": 129.412833 },
+          "id": "PU751",
+          "role": null,
+          "legDistanceNm": 25.7,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 7000, "raw": "+7000" },
+          "coordinates": { "lat": 35.899056, "lon": 129.371972 },
+          "id": "PU752",
+          "role": null,
+          "legDistanceNm": 7.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 35.871889, "lon": 129.259944 },
+          "id": "MAKKY",
+          "role": "IAF",
+          "legDistanceNm": 5.7,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [129.158917, 35.411694],
+          [129.412833, 35.787056],
+          [129.371972, 35.899056],
+          [129.259944, 35.871889]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 25.7,
+          "from": "APARU",
+          "to": "PU751",
+          "geometry": { "type": "LineString", "coordinates": [[129.158917, 35.411694], [129.412833, 35.787056]] },
+          "id": "RKPU-STAR-APARU2D-001",
+          "procedureId": "RKPU-STAR-APARU2D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7.0,
+          "from": "PU751",
+          "to": "PU752",
+          "geometry": { "type": "LineString", "coordinates": [[129.412833, 35.787056], [129.371972, 35.899056]] },
+          "id": "RKPU-STAR-APARU2D-002",
+          "procedureId": "RKPU-STAR-APARU2D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.7,
+          "from": "PU752",
+          "to": "MAKKY",
+          "geometry": { "type": "LineString", "coordinates": [[129.371972, 35.899056], [129.259944, 35.871889]] },
+          "id": "RKPU-STAR-APARU2D-003",
+          "procedureId": "RKPU-STAR-APARU2D",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table"
+        }
+      ],
+      "sequence": ["APARU", "PU751", "PU752", "MAKKY"]
+    },
+    "RKPU-STAR-LAPAL2C": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKPU-STAR-LAPAL2C",
+      "name": "LAPAL 2C",
+      "fullName": "RNAV LAPAL TWO CHARLIE ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["36"],
+      "startFix": "LAPAL",
+      "endFix": "HAEGU",
+      "source": "2-11-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.903500, "lon": 129.081111 },
+          "id": "LAPAL",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-11-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 7000, "minFt": 7000, "raw": "@7000" },
+          "coordinates": { "lat": 35.926722, "lon": 129.200889 },
+          "id": "DOGDI",
+          "role": null,
+          "legDistanceNm": 6.0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-11-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 7000, "minFt": 7000, "raw": "@7000" },
+          "coordinates": { "lat": 35.579111, "lon": 129.409806 },
+          "id": "PU701",
+          "role": null,
+          "legDistanceNm": 23.2,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-11-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 35.535194, "lon": 129.542306 },
+          "id": "HAEGU",
+          "role": "IAF",
+          "legDistanceNm": 7.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-11-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [129.081111, 35.903500],
+          [129.200889, 35.926722],
+          [129.409806, 35.579111],
+          [129.542306, 35.535194]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 6.0,
+          "from": "LAPAL",
+          "to": "DOGDI",
+          "geometry": { "type": "LineString", "coordinates": [[129.081111, 35.903500], [129.200889, 35.926722]] },
+          "id": "RKPU-STAR-LAPAL2C-001",
+          "procedureId": "RKPU-STAR-LAPAL2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-11-1 Coding Table"
+        },
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 23.2,
+          "from": "DOGDI",
+          "to": "PU701",
+          "geometry": { "type": "LineString", "coordinates": [[129.200889, 35.926722], [129.409806, 35.579111]] },
+          "id": "RKPU-STAR-LAPAL2C-002",
+          "procedureId": "RKPU-STAR-LAPAL2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-11-1 Coding Table"
+        },
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7.0,
+          "from": "PU701",
+          "to": "HAEGU",
+          "geometry": { "type": "LineString", "coordinates": [[129.409806, 35.579111], [129.542306, 35.535194]] },
+          "id": "RKPU-STAR-LAPAL2C-003",
+          "procedureId": "RKPU-STAR-LAPAL2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-11-1 Coding Table"
+        }
+      ],
+      "sequence": ["LAPAL", "DOGDI", "PU701", "HAEGU"]
+    },
+    "RKPU-STAR-APARU2C": {
+      "airport": "RKPU",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKPU-STAR-APARU2C",
+      "name": "APARU 2C",
+      "fullName": "RNAV APARU TWO CHARLIE ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["36"],
+      "startFix": "APARU",
+      "endFix": "HAEGU",
+      "source": "2-11-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 35.411694, "lon": 129.158917 },
+          "id": "APARU",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-11-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 7000, "raw": "+7000" },
+          "coordinates": { "lat": 35.579111, "lon": 129.409806 },
+          "id": "PU701",
+          "role": null,
+          "legDistanceNm": 15.9,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-11-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 5000, "raw": "+5000" },
+          "coordinates": { "lat": 35.535194, "lon": 129.542306 },
+          "id": "HAEGU",
+          "role": "IAF",
+          "legDistanceNm": 7.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-11-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [129.158917, 35.411694],
+          [129.409806, 35.579111],
+          [129.542306, 35.535194]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 15.9,
+          "from": "APARU",
+          "to": "PU701",
+          "geometry": { "type": "LineString", "coordinates": [[129.158917, 35.411694], [129.409806, 35.579111]] },
+          "id": "RKPU-STAR-APARU2C-001",
+          "procedureId": "RKPU-STAR-APARU2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "2-11-1 Coding Table"
+        },
+        {
+          "airport": "RKPU",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7.0,
+          "from": "PU701",
+          "to": "HAEGU",
+          "geometry": { "type": "LineString", "coordinates": [[129.409806, 35.579111], [129.542306, 35.535194]] },
+          "id": "RKPU-STAR-APARU2C-002",
+          "procedureId": "RKPU-STAR-APARU2C",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-11-1 Coding Table"
+        }
+      ],
+      "sequence": ["APARU", "PU701", "HAEGU"]
+    }
+  }
+}

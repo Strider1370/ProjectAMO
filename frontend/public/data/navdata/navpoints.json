@@ -2,7 +2,7 @@
   "AGAVO": {
     "coordinates": {
       "lat": 37.166667,
-      "lon": 124.0
+      "lon": 124
     },
     "cycle": "AIRAC 2026-04-15",
     "id": "AGAVO",
@@ -17,7 +17,8 @@
       "G597",
       "Y644",
       "Y697",
-      "Z52"
+      "Z52",
+      "Z55"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -48,6 +49,7 @@
       "A582",
       "G597",
       "Y572",
+      "Y579",
       "Y697"
     ],
     "source": null,
@@ -90,7 +92,7 @@
   "ANDOL": {
     "coordinates": {
       "lat": 37.666111,
-      "lon": 133.0
+      "lon": 133
     },
     "cycle": "AIRAC 2026-04-15",
     "id": "ANDOL",
@@ -158,7 +160,8 @@
     ],
     "routes": [
       "Y437",
-      "Z81"
+      "Z81",
+      "Z83"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -244,7 +247,8 @@
     ],
     "routes": [
       "Y697",
-      "Y722"
+      "Y722",
+      "Y744"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -328,6 +332,7 @@
     "routes": [
       "B576",
       "Y644",
+      "Y655",
       "Y711",
       "Z86"
     ],
@@ -359,7 +364,8 @@
     "routes": [
       "G585",
       "Y685",
-      "Y782"
+      "Y782",
+      "Z53"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -413,7 +419,8 @@
     ],
     "routes": [
       "Y697",
-      "Y782"
+      "Y782",
+      "Z51"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -441,7 +448,8 @@
     ],
     "routes": [
       "A582",
-      "Y572"
+      "Y572",
+      "Y579"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -546,7 +554,8 @@
       "RNAV"
     ],
     "routes": [
-      "Y644"
+      "Y644",
+      "Y655"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -631,7 +640,8 @@
     ],
     "routes": [
       "Y571",
-      "Z84"
+      "Z84",
+      "Z85"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -688,7 +698,8 @@
     ],
     "routes": [
       "Y781",
-      "Y782"
+      "Y782",
+      "Z53"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -768,7 +779,8 @@
     ],
     "routes": [
       "B576",
-      "Y644"
+      "Y644",
+      "Y655"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -794,7 +806,8 @@
       "RNAV"
     ],
     "routes": [
-      "Y782"
+      "Y782",
+      "Z51"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -824,6 +837,7 @@
       "A582",
       "G585",
       "Y572",
+      "Y579",
       "Y685"
     ],
     "source": null,
@@ -852,7 +866,8 @@
     ],
     "routes": [
       "Y697",
-      "Y782"
+      "Y782",
+      "Z50"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -947,7 +962,8 @@
     ],
     "routes": [
       "A582",
-      "Y572"
+      "Y572",
+      "Y579"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -975,7 +991,9 @@
     ],
     "routes": [
       "Y644",
-      "Z56"
+      "Y655",
+      "Z56",
+      "Z57"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -1030,7 +1048,8 @@
       "RNAV"
     ],
     "routes": [
-      "Y644"
+      "Y644",
+      "Y655"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -1139,7 +1158,8 @@
       "W45",
       "Y644",
       "Y697",
-      "Y782"
+      "Y782",
+      "Z50"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -1224,6 +1244,7 @@
     ],
     "routes": [
       "V543",
+      "Y659",
       "Y677",
       "Y697"
     ],
@@ -1253,7 +1274,8 @@
     ],
     "routes": [
       "Y571",
-      "Z81"
+      "Z81",
+      "Z83"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -1305,7 +1327,8 @@
       "RNAV"
     ],
     "routes": [
-      "Y644"
+      "Y644",
+      "Y655"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -1390,7 +1413,8 @@
       "G597",
       "W45",
       "Y697",
-      "Z52"
+      "Z52",
+      "Z54"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -1419,7 +1443,8 @@
     ],
     "routes": [
       "G597",
-      "Y644"
+      "Y644",
+      "Y655"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -2052,7 +2077,7 @@
   "LAMEN": {
     "coordinates": {
       "lat": 31.61,
-      "lon": 124.0
+      "lon": 124
     },
     "cycle": "AIRAC 2026-04-15",
     "id": "LAMEN",
@@ -2120,6 +2145,7 @@
     ],
     "routes": [
       "V543",
+      "Y659",
       "Y677"
     ],
     "source": null,
@@ -2257,7 +2283,8 @@
     ],
     "routes": [
       "Y697",
-      "Y722"
+      "Y722",
+      "Y744"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -2448,7 +2475,8 @@
     "routes": [
       "W45",
       "Y781",
-      "Z81"
+      "Z81",
+      "Z83"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -2503,6 +2531,7 @@
     ],
     "routes": [
       "V543",
+      "Y659",
       "Y677"
     ],
     "source": null,
@@ -2534,7 +2563,8 @@
       "W45",
       "Y644",
       "Y697",
-      "Z52"
+      "Z52",
+      "Z54"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -2561,7 +2591,8 @@
       "RNAV"
     ],
     "routes": [
-      "Y782"
+      "Y782",
+      "Z51"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -2671,7 +2702,8 @@
     ],
     "routes": [
       "Y697",
-      "Y722"
+      "Y722",
+      "Y744"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -2725,7 +2757,9 @@
     ],
     "routes": [
       "Y644",
-      "Z52"
+      "Y655",
+      "Z52",
+      "Z55"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -2998,6 +3032,7 @@
     ],
     "routes": [
       "V543",
+      "Y659",
       "Y677"
     ],
     "source": null,
@@ -3055,7 +3090,8 @@
     ],
     "routes": [
       "Y697",
-      "Y722"
+      "Y722",
+      "Y744"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -3111,7 +3147,8 @@
       "RNAV"
     ],
     "routes": [
-      "Y644"
+      "Y644",
+      "Y655"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -3138,7 +3175,8 @@
     ],
     "routes": [
       "Y697",
-      "Z81"
+      "Z81",
+      "Z82"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -3165,7 +3203,8 @@
     ],
     "routes": [
       "Y437",
-      "Z84"
+      "Z84",
+      "Z85"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -3220,6 +3259,7 @@
     "routes": [
       "G597",
       "Y697",
+      "Y744",
       "Z63"
     ],
     "source": null,
@@ -3457,7 +3497,8 @@
     ],
     "routes": [
       "Y644",
-      "Z56"
+      "Z56",
+      "Z57"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -3511,6 +3552,7 @@
     ],
     "routes": [
       "V543",
+      "Y659",
       "Y677"
     ],
     "source": null,
@@ -3541,7 +3583,8 @@
     "routes": [
       "A582",
       "Y571",
-      "Z84"
+      "Z84",
+      "Z85"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -3587,7 +3630,7 @@
   "SADLI": {
     "coordinates": {
       "lat": 31.83,
-      "lon": 125.0
+      "lon": 125
     },
     "cycle": "AIRAC 2026-04-15",
     "id": "SADLI",
@@ -3775,7 +3818,8 @@
     "routes": [
       "W45",
       "Y253",
-      "Z81"
+      "Z81",
+      "Z83"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -3925,7 +3969,8 @@
       "RNAV"
     ],
     "routes": [
-      "Y782"
+      "Y782",
+      "Z53"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -3985,7 +4030,8 @@
       "A595",
       "L512",
       "Y437",
-      "Y572"
+      "Y572",
+      "Y579"
     ],
     "source": null,
     "sourceMarkerTypes": [
@@ -4061,6 +4107,7 @@
     ],
     "routes": [
       "Y644",
+      "Y655",
       "Y677"
     ],
     "source": null,

@@ -26,7 +26,152 @@
     "APOMO|32L": "RKSS-IAP-APOMO-RWY32L-REP",
     "APOMO|32R": "RKSS-IAP-APOMO-RWY32R-REP"
   },
-  "starToIapCandidates": {},
+  "starToIapCandidates": {
+    "RKSS-STAR-OLMEN2U": {
+      "starName": "OLMEN2U",
+      "endFix": "DOKDO",
+      "runways": [
+        "14L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-DOKDO-RWY14L-REP",
+        "RKSS-IAP-DOKDO-RWY14R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-DOKDO-RWY14R-REP"
+    },
+    "RKSS-STAR-GUKDO2U": {
+      "starName": "GUKDO2U",
+      "endFix": "DOKDO",
+      "runways": [
+        "14L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-DOKDO-RWY14L-REP",
+        "RKSS-IAP-DOKDO-RWY14R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-DOKDO-RWY14R-REP"
+    },
+    "RKSS-STAR-KARBU2U": {
+      "starName": "KARBU2U",
+      "endFix": "DOKDO",
+      "runways": [
+        "14L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-DOKDO-RWY14L-REP",
+        "RKSS-IAP-DOKDO-RWY14R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-DOKDO-RWY14R-REP"
+    },
+    "RKSS-STAR-REBIT2U": {
+      "starName": "REBIT2U",
+      "endFix": "DOKDO",
+      "runways": [
+        "14L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-DOKDO-RWY14L-REP",
+        "RKSS-IAP-DOKDO-RWY14R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-DOKDO-RWY14R-REP"
+    },
+    "RKSS-STAR-REBIT2Z": {
+      "starName": "REBIT2Z",
+      "endFix": "DOKDO",
+      "runways": [
+        "14L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-DOKDO-RWY14L-REP",
+        "RKSS-IAP-DOKDO-RWY14R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-DOKDO-RWY14R-REP"
+    },
+    "RKSS-STAR-LEGAK1U": {
+      "starName": "LEGAK1U",
+      "endFix": "DOKDO",
+      "runways": [
+        "14L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-DOKDO-RWY14L-REP",
+        "RKSS-IAP-DOKDO-RWY14R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-DOKDO-RWY14R-REP"
+    },
+    "RKSS-STAR-OLMEN2T": {
+      "starName": "OLMEN2T",
+      "endFix": "BUMSI",
+      "runways": [
+        "32L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-BUMSI-RWY32L-REP",
+        "RKSS-IAP-BUMSI-RWY32R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-BUMSI-RWY32R-REP"
+    },
+    "RKSS-STAR-GUKDO2T": {
+      "starName": "GUKDO2T",
+      "endFix": "BUMSI",
+      "runways": [
+        "32L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-BUMSI-RWY32L-REP",
+        "RKSS-IAP-BUMSI-RWY32R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-BUMSI-RWY32R-REP"
+    },
+    "RKSS-STAR-KARBU2T": {
+      "starName": "KARBU2T",
+      "endFix": "BUMSI",
+      "runways": [
+        "32L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-BUMSI-RWY32L-REP",
+        "RKSS-IAP-BUMSI-RWY32R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-BUMSI-RWY32R-REP"
+    },
+    "RKSS-STAR-REBIT2T": {
+      "starName": "REBIT2T",
+      "endFix": "BUMSI",
+      "runways": [
+        "32L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-BUMSI-RWY32L-REP",
+        "RKSS-IAP-BUMSI-RWY32R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-BUMSI-RWY32R-REP"
+    },
+    "RKSS-STAR-REBIT2Q": {
+      "starName": "REBIT2Q",
+      "endFix": "BUMSI",
+      "runways": [
+        "32L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-BUMSI-RWY32L-REP",
+        "RKSS-IAP-BUMSI-RWY32R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-BUMSI-RWY32R-REP"
+    },
+    "RKSS-STAR-LEGAK1T": {
+      "starName": "LEGAK1T",
+      "endFix": "SUNEM",
+      "runways": [
+        "32L/R"
+      ],
+      "candidateIapKeys": [
+        "RKSS-IAP-SUNEM-RWY32L-REP",
+        "RKSS-IAP-SUNEM-RWY32R-REP"
+      ],
+      "defaultIapKey": "RKSS-IAP-SUNEM-RWY32R-REP"
+    }
+  },
   "iapRoutes": {
     "RKSS-IAP-DOKDO-RWY14L-REP": {
       "airport": "RKSS",

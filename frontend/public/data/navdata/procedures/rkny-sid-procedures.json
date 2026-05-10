@@ -1,0 +1,1987 @@
+{
+  "metadata": {
+    "airport": "RKNY",
+    "cycle": "AIRAC 7/25",
+    "description": "RKNY RNAV SID Procedures with DER applied for seamless runway connection"
+  },
+  "sidProcedures": {
+    "RKNY-SID-KAE2E": {
+      "airport": "RKNY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "SID",
+      "id": "RKNY-SID-KAE2E",
+      "name": "KAE 2E",
+      "fullName": "RNAV GANGWON TWO ECHO DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "15"
+      ],
+      "startFix": "RWY15",
+      "endFix": "KAE",
+      "source": "2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "MNM 5.5%(to 6 500 ft) climb is required for OBST avoidance. MNM 8.0% climb is required for ATC purpose.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.052558,
+            "lon": 128.678125
+          },
+          "id": "RWY15",
+          "role": "DER",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "AIP RKNY AD 2.12 (RWY 33 THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.978139,
+            "lon": 128.754333
+          },
+          "id": "NY050",
+          "role": null,
+          "legDistanceNm": 5.6,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 7000,
+            "minFt": null,
+            "raw": "-7000"
+          },
+          "coordinates": {
+            "lat": 37.902528,
+            "lon": 128.754167
+          },
+          "id": "NY070",
+          "role": null,
+          "legDistanceNm": 4.5,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.817556,
+            "lon": 128.754
+          },
+          "id": "NY090",
+          "role": null,
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 10000,
+            "minFt": 10000,
+            "raw": "@10000"
+          },
+          "coordinates": {
+            "lat": 37.700778,
+            "lon": 128.753778
+          },
+          "id": "KAE",
+          "role": null,
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.678125,
+            38.052558
+          ],
+          [
+            128.754333,
+            37.978139
+          ],
+          [
+            128.754167,
+            37.902528
+          ],
+          [
+            128.754,
+            37.817556
+          ],
+          [
+            128.753778,
+            37.700778
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.6,
+          "from": "RWY15",
+          "to": "NY050",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.678125,
+                38.052558
+              ],
+              [
+                128.754333,
+                37.978139
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2E-001",
+          "procedureId": "RKNY-SID-KAE2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "Interpolated CF"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.5,
+          "from": "NY050",
+          "to": "NY070",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754333,
+                37.978139
+              ],
+              [
+                128.754167,
+                37.902528
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2E-002",
+          "procedureId": "RKNY-SID-KAE2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.1,
+          "from": "NY070",
+          "to": "NY090",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754167,
+                37.902528
+              ],
+              [
+                128.754,
+                37.817556
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2E-003",
+          "procedureId": "RKNY-SID-KAE2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7,
+          "from": "NY090",
+          "to": "KAE",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754,
+                37.817556
+              ],
+              [
+                128.753778,
+                37.700778
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2E-004",
+          "procedureId": "RKNY-SID-KAE2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY15",
+        "NY050",
+        "NY070",
+        "NY090",
+        "KAE"
+      ]
+    },
+    "RKNY-SID-BIKSI2E": {
+      "airport": "RKNY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "SID",
+      "id": "RKNY-SID-BIKSI2E",
+      "name": "BIKSI 2E",
+      "fullName": "RNAV BIKSI TWO ECHO DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "15"
+      ],
+      "startFix": "RWY15",
+      "endFix": "BIKSI",
+      "source": "2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "MNM 5.5%(to 6 500 ft) climb is required for OBST avoidance. MNM 8.0% climb is required for ATC purpose.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.052558,
+            "lon": 128.678125
+          },
+          "id": "RWY15",
+          "role": "DER",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "AIP RKNY AD 2.12 (RWY 33 THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.978139,
+            "lon": 128.754333
+          },
+          "id": "NY050",
+          "role": null,
+          "legDistanceNm": 5.6,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 7000,
+            "minFt": null,
+            "raw": "-7000"
+          },
+          "coordinates": {
+            "lat": 37.902528,
+            "lon": 128.754167
+          },
+          "id": "NY070",
+          "role": null,
+          "legDistanceNm": 4.5,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.817556,
+            "lon": 128.754
+          },
+          "id": "NY090",
+          "role": null,
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 10000,
+            "minFt": 10000,
+            "raw": "@10000"
+          },
+          "coordinates": {
+            "lat": 37.700778,
+            "lon": 128.753778
+          },
+          "id": "KAE",
+          "role": null,
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.675556,
+            "lon": 128.584444
+          },
+          "id": "BIKSI",
+          "role": null,
+          "legDistanceNm": 8.2,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.678125,
+            38.052558
+          ],
+          [
+            128.754333,
+            37.978139
+          ],
+          [
+            128.754167,
+            37.902528
+          ],
+          [
+            128.754,
+            37.817556
+          ],
+          [
+            128.753778,
+            37.700778
+          ],
+          [
+            128.584444,
+            37.675556
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.6,
+          "from": "RWY15",
+          "to": "NY050",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.678125,
+                38.052558
+              ],
+              [
+                128.754333,
+                37.978139
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2E-001",
+          "procedureId": "RKNY-SID-BIKSI2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "Interpolated CF"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.5,
+          "from": "NY050",
+          "to": "NY070",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754333,
+                37.978139
+              ],
+              [
+                128.754167,
+                37.902528
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2E-002",
+          "procedureId": "RKNY-SID-BIKSI2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.1,
+          "from": "NY070",
+          "to": "NY090",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754167,
+                37.902528
+              ],
+              [
+                128.754,
+                37.817556
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2E-003",
+          "procedureId": "RKNY-SID-BIKSI2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7,
+          "from": "NY090",
+          "to": "KAE",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754,
+                37.817556
+              ],
+              [
+                128.753778,
+                37.700778
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2E-004",
+          "procedureId": "RKNY-SID-BIKSI2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 8.2,
+          "from": "KAE",
+          "to": "BIKSI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.753778,
+                37.700778
+              ],
+              [
+                128.584444,
+                37.675556
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2E-005",
+          "procedureId": "RKNY-SID-BIKSI2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY15",
+        "NY050",
+        "NY070",
+        "NY090",
+        "KAE",
+        "BIKSI"
+      ]
+    },
+    "RKNY-SID-PILIT2E": {
+      "airport": "RKNY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "SID",
+      "id": "RKNY-SID-PILIT2E",
+      "name": "PILIT 2E",
+      "fullName": "RNAV PILIT TWO ECHO DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "15"
+      ],
+      "startFix": "RWY15",
+      "endFix": "PILIT",
+      "source": "2-8-1 Coding Table",
+      "isComplete": true,
+      "notes": "MNM 5.5%(to 6 500 ft) climb is required for OBST avoidance. MNM 8.0% climb is required for ATC purpose.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.052558,
+            "lon": 128.678125
+          },
+          "id": "RWY15",
+          "role": "DER",
+          "legDistanceNm": null,
+          "pathTerminator": "NA",
+          "sequence": 1,
+          "source": "AIP RKNY AD 2.12 (RWY 33 THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.978139,
+            "lon": 128.754333
+          },
+          "id": "NY050",
+          "role": null,
+          "legDistanceNm": 5.6,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 7000,
+            "minFt": null,
+            "raw": "-7000"
+          },
+          "coordinates": {
+            "lat": 37.902528,
+            "lon": 128.754167
+          },
+          "id": "NY070",
+          "role": null,
+          "legDistanceNm": 4.5,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.817556,
+            "lon": 128.754
+          },
+          "id": "NY090",
+          "role": null,
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 10000,
+            "minFt": 10000,
+            "raw": "@10000"
+          },
+          "coordinates": {
+            "lat": 37.700778,
+            "lon": 128.753778
+          },
+          "id": "KAE",
+          "role": null,
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.442056,
+            "lon": 129.291889
+          },
+          "id": "PILIT",
+          "role": null,
+          "legDistanceNm": 30,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-8-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.678125,
+            38.052558
+          ],
+          [
+            128.754333,
+            37.978139
+          ],
+          [
+            128.754167,
+            37.902528
+          ],
+          [
+            128.754,
+            37.817556
+          ],
+          [
+            128.753778,
+            37.700778
+          ],
+          [
+            129.291889,
+            37.442056
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.6,
+          "from": "RWY15",
+          "to": "NY050",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.678125,
+                38.052558
+              ],
+              [
+                128.754333,
+                37.978139
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2E-001",
+          "procedureId": "RKNY-SID-PILIT2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "Interpolated CF"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.5,
+          "from": "NY050",
+          "to": "NY070",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754333,
+                37.978139
+              ],
+              [
+                128.754167,
+                37.902528
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2E-002",
+          "procedureId": "RKNY-SID-PILIT2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.1,
+          "from": "NY070",
+          "to": "NY090",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754167,
+                37.902528
+              ],
+              [
+                128.754,
+                37.817556
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2E-003",
+          "procedureId": "RKNY-SID-PILIT2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7,
+          "from": "NY090",
+          "to": "KAE",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754,
+                37.817556
+              ],
+              [
+                128.753778,
+                37.700778
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2E-004",
+          "procedureId": "RKNY-SID-PILIT2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-8-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 30,
+          "from": "KAE",
+          "to": "PILIT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.753778,
+                37.700778
+              ],
+              [
+                129.291889,
+                37.442056
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2E-005",
+          "procedureId": "RKNY-SID-PILIT2E",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-8-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY15",
+        "NY050",
+        "NY070",
+        "NY090",
+        "KAE",
+        "PILIT"
+      ]
+    },
+    "RKNY-SID-KAE2N": {
+      "airport": "RKNY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "SID",
+      "id": "RKNY-SID-KAE2N",
+      "name": "KAE 2N",
+      "fullName": "RNAV GANGWON TWO NOVEMBER DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "33"
+      ],
+      "startFix": "RWY15",
+      "endFix": "KAE",
+      "source": "2-10-1 Coding Table",
+      "isComplete": true,
+      "notes": "Maximum speed for the first turn(to NY040) is limited to 240 kt IAS due to airspace restriction(RK P518). MNM 6.6% climb is required for ATC purpose.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.07005,
+            "lon": 128.660183
+          },
+          "id": "RWY15",
+          "role": "Runway Threshold",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "AIP RKNY AD 2.12 (RWY 15 THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.095972,
+            "lon": 128.633583
+          },
+          "id": "NY000",
+          "role": null,
+          "legDistanceNm": 2,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.0575,
+            "lon": 128.7545
+          },
+          "id": "NY040",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "DF",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 37.978139,
+            "lon": 128.754333
+          },
+          "id": "NY050",
+          "role": null,
+          "legDistanceNm": 4.8,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.902528,
+            "lon": 128.754167
+          },
+          "id": "NY070",
+          "role": null,
+          "legDistanceNm": 4.5,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.817556,
+            "lon": 128.754
+          },
+          "id": "NY090",
+          "role": null,
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 10000,
+            "minFt": 10000,
+            "raw": "@10000"
+          },
+          "coordinates": {
+            "lat": 37.700778,
+            "lon": 128.753778
+          },
+          "id": "KAE",
+          "role": null,
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.660183,
+            38.07005
+          ],
+          [
+            128.633583,
+            38.095972
+          ],
+          [
+            128.7545,
+            38.0575
+          ],
+          [
+            128.754333,
+            37.978139
+          ],
+          [
+            128.754167,
+            37.902528
+          ],
+          [
+            128.754,
+            37.817556
+          ],
+          [
+            128.753778,
+            37.700778
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 2,
+          "from": "RWY15",
+          "to": "NY000",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.660183,
+                38.07005
+              ],
+              [
+                128.633583,
+                38.095972
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2N-001",
+          "procedureId": "RKNY-SID-KAE2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "Interpolated CF"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 6.1,
+          "from": "NY000",
+          "to": "NY040",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.633583,
+                38.095972
+              ],
+              [
+                128.7545,
+                38.0575
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2N-002",
+          "procedureId": "RKNY-SID-KAE2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "Interpolated DF"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.8,
+          "from": "NY040",
+          "to": "NY050",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7545,
+                38.0575
+              ],
+              [
+                128.754333,
+                37.978139
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2N-003",
+          "procedureId": "RKNY-SID-KAE2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.5,
+          "from": "NY050",
+          "to": "NY070",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754333,
+                37.978139
+              ],
+              [
+                128.754167,
+                37.902528
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2N-004",
+          "procedureId": "RKNY-SID-KAE2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.1,
+          "from": "NY070",
+          "to": "NY090",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754167,
+                37.902528
+              ],
+              [
+                128.754,
+                37.817556
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2N-005",
+          "procedureId": "RKNY-SID-KAE2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7,
+          "from": "NY090",
+          "to": "KAE",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754,
+                37.817556
+              ],
+              [
+                128.753778,
+                37.700778
+              ]
+            ]
+          },
+          "id": "RKNY-SID-KAE2N-006",
+          "procedureId": "RKNY-SID-KAE2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "2-10-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY15",
+        "NY000",
+        "NY040",
+        "NY050",
+        "NY070",
+        "NY090",
+        "KAE"
+      ]
+    },
+    "RKNY-SID-BIKSI2N": {
+      "airport": "RKNY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "SID",
+      "id": "RKNY-SID-BIKSI2N",
+      "name": "BIKSI 2N",
+      "fullName": "RNAV BIKSI TWO NOVEMBER DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "33"
+      ],
+      "startFix": "RWY15",
+      "endFix": "BIKSI",
+      "source": "2-10-1 Coding Table",
+      "isComplete": true,
+      "notes": "Maximum speed for the first turn(to NY040) is limited to 240 kt IAS due to airspace restriction(RK P518). MNM 6.6% climb is required for ATC purpose.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.07005,
+            "lon": 128.660183
+          },
+          "id": "RWY15",
+          "role": "Runway Threshold",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "AIP RKNY AD 2.12 (RWY 15 THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.095972,
+            "lon": 128.633583
+          },
+          "id": "NY000",
+          "role": null,
+          "legDistanceNm": 2,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.0575,
+            "lon": 128.7545
+          },
+          "id": "NY040",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "DF",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 37.978139,
+            "lon": 128.754333
+          },
+          "id": "NY050",
+          "role": null,
+          "legDistanceNm": 4.8,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.902528,
+            "lon": 128.754167
+          },
+          "id": "NY070",
+          "role": null,
+          "legDistanceNm": 4.5,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.817556,
+            "lon": 128.754
+          },
+          "id": "NY090",
+          "role": null,
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 10000,
+            "minFt": 10000,
+            "raw": "@10000"
+          },
+          "coordinates": {
+            "lat": 37.700778,
+            "lon": 128.753778
+          },
+          "id": "KAE",
+          "role": null,
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.675556,
+            "lon": 128.584444
+          },
+          "id": "BIKSI",
+          "role": null,
+          "legDistanceNm": 8.2,
+          "pathTerminator": "TF",
+          "sequence": 8,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.660183,
+            38.07005
+          ],
+          [
+            128.633583,
+            38.095972
+          ],
+          [
+            128.7545,
+            38.0575
+          ],
+          [
+            128.754333,
+            37.978139
+          ],
+          [
+            128.754167,
+            37.902528
+          ],
+          [
+            128.754,
+            37.817556
+          ],
+          [
+            128.753778,
+            37.700778
+          ],
+          [
+            128.584444,
+            37.675556
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 2,
+          "from": "RWY15",
+          "to": "NY000",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.660183,
+                38.07005
+              ],
+              [
+                128.633583,
+                38.095972
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2N-001",
+          "procedureId": "RKNY-SID-BIKSI2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "Interpolated CF"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 6.1,
+          "from": "NY000",
+          "to": "NY040",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.633583,
+                38.095972
+              ],
+              [
+                128.7545,
+                38.0575
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2N-002",
+          "procedureId": "RKNY-SID-BIKSI2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "Interpolated DF"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.8,
+          "from": "NY040",
+          "to": "NY050",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7545,
+                38.0575
+              ],
+              [
+                128.754333,
+                37.978139
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2N-003",
+          "procedureId": "RKNY-SID-BIKSI2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.5,
+          "from": "NY050",
+          "to": "NY070",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754333,
+                37.978139
+              ],
+              [
+                128.754167,
+                37.902528
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2N-004",
+          "procedureId": "RKNY-SID-BIKSI2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.1,
+          "from": "NY070",
+          "to": "NY090",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754167,
+                37.902528
+              ],
+              [
+                128.754,
+                37.817556
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2N-005",
+          "procedureId": "RKNY-SID-BIKSI2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7,
+          "from": "NY090",
+          "to": "KAE",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754,
+                37.817556
+              ],
+              [
+                128.753778,
+                37.700778
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2N-006",
+          "procedureId": "RKNY-SID-BIKSI2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 8.2,
+          "from": "KAE",
+          "to": "BIKSI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.753778,
+                37.700778
+              ],
+              [
+                128.584444,
+                37.675556
+              ]
+            ]
+          },
+          "id": "RKNY-SID-BIKSI2N-007",
+          "procedureId": "RKNY-SID-BIKSI2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 7,
+          "source": "2-10-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY15",
+        "NY000",
+        "NY040",
+        "NY050",
+        "NY070",
+        "NY090",
+        "KAE",
+        "BIKSI"
+      ]
+    },
+    "RKNY-SID-PILIT2N": {
+      "airport": "RKNY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "SID",
+      "id": "RKNY-SID-PILIT2N",
+      "name": "PILIT 2N",
+      "fullName": "RNAV PILIT TWO NOVEMBER DEPARTURE",
+      "procedureType": "SID",
+      "routeType": "RNAV",
+      "runways": [
+        "33"
+      ],
+      "startFix": "RWY15",
+      "endFix": "PILIT",
+      "source": "2-10-1 Coding Table",
+      "isComplete": true,
+      "notes": "Maximum speed for the first turn(to NY040) is limited to 240 kt IAS due to airspace restriction(RK P518). MNM 6.6% climb is required for ATC purpose.",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.07005,
+            "lon": 128.660183
+          },
+          "id": "RWY15",
+          "role": "Runway Threshold",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "AIP RKNY AD 2.12 (RWY 15 THR)",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.095972,
+            "lon": 128.633583
+          },
+          "id": "NY000",
+          "role": null,
+          "legDistanceNm": 2,
+          "pathTerminator": "CF",
+          "sequence": 2,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 38.0575,
+            "lon": 128.7545
+          },
+          "id": "NY040",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "DF",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table",
+          "speedKt": 240
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 37.978139,
+            "lon": 128.754333
+          },
+          "id": "NY050",
+          "role": null,
+          "legDistanceNm": 4.8,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.902528,
+            "lon": 128.754167
+          },
+          "id": "NY070",
+          "role": null,
+          "legDistanceNm": 4.5,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.817556,
+            "lon": 128.754
+          },
+          "id": "NY090",
+          "role": null,
+          "legDistanceNm": 5.1,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": 10000,
+            "minFt": 10000,
+            "raw": "@10000"
+          },
+          "coordinates": {
+            "lat": 37.700778,
+            "lon": 128.753778
+          },
+          "id": "KAE",
+          "role": null,
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "sequence": 7,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 37.442056,
+            "lon": 129.291889
+          },
+          "id": "PILIT",
+          "role": null,
+          "legDistanceNm": 30,
+          "pathTerminator": "TF",
+          "sequence": 8,
+          "source": "2-10-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.660183,
+            38.07005
+          ],
+          [
+            128.633583,
+            38.095972
+          ],
+          [
+            128.7545,
+            38.0575
+          ],
+          [
+            128.754333,
+            37.978139
+          ],
+          [
+            128.754167,
+            37.902528
+          ],
+          [
+            128.754,
+            37.817556
+          ],
+          [
+            128.753778,
+            37.700778
+          ],
+          [
+            129.291889,
+            37.442056
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 2,
+          "from": "RWY15",
+          "to": "NY000",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.660183,
+                38.07005
+              ],
+              [
+                128.633583,
+                38.095972
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2N-001",
+          "procedureId": "RKNY-SID-PILIT2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "Interpolated CF"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 6.1,
+          "from": "NY000",
+          "to": "NY040",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.633583,
+                38.095972
+              ],
+              [
+                128.7545,
+                38.0575
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2N-002",
+          "procedureId": "RKNY-SID-PILIT2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "Interpolated DF"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.8,
+          "from": "NY040",
+          "to": "NY050",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7545,
+                38.0575
+              ],
+              [
+                128.754333,
+                37.978139
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2N-003",
+          "procedureId": "RKNY-SID-PILIT2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 3,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 4.5,
+          "from": "NY050",
+          "to": "NY070",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754333,
+                37.978139
+              ],
+              [
+                128.754167,
+                37.902528
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2N-004",
+          "procedureId": "RKNY-SID-PILIT2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 4,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 5.1,
+          "from": "NY070",
+          "to": "NY090",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754167,
+                37.902528
+              ],
+              [
+                128.754,
+                37.817556
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2N-005",
+          "procedureId": "RKNY-SID-PILIT2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 5,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 7,
+          "from": "NY090",
+          "to": "KAE",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.754,
+                37.817556
+              ],
+              [
+                128.753778,
+                37.700778
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2N-006",
+          "procedureId": "RKNY-SID-PILIT2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 6,
+          "source": "2-10-1 Coding Table"
+        },
+        {
+          "airport": "RKNY",
+          "cycle": "AIRAC 7/25",
+          "distanceNm": 30,
+          "from": "KAE",
+          "to": "PILIT",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.753778,
+                37.700778
+              ],
+              [
+                129.291889,
+                37.442056
+              ]
+            ]
+          },
+          "id": "RKNY-SID-PILIT2N-007",
+          "procedureId": "RKNY-SID-PILIT2N",
+          "procedureType": "SID",
+          "routeType": "RNAV",
+          "sequence": 7,
+          "source": "2-10-1 Coding Table"
+        }
+      ],
+      "sequence": [
+        "RWY15",
+        "NY000",
+        "NY040",
+        "NY050",
+        "NY070",
+        "NY090",
+        "KAE",
+        "PILIT"
+      ]
+    }
+  }
+}

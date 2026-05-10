@@ -1,0 +1,1892 @@
+{
+  "metadata": {
+    "airport": "RKPK",
+    "type": "star-procedures",
+    "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+    "dataModel": "procedure-canonical-v1",
+    "source": "(2-22) RKPK STAR.pdf",
+    "createdBy": "ChatGPT",
+    "notes": [
+      "Converted from AIP aeronautical data tabulation/coding tables.",
+      "Designed for map display and weather sampling, not for operational navigation."
+    ]
+  },
+  "starProcedures": {
+    "RKPK-STAR-PEDLO2APARU": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-PEDLO2APARU",
+      "name": "PEDLO2APARU",
+      "fullName": "APARU Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "APARU",
+      "endFix": "PEDLO",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.4116944,
+            "lon": 129.1589167
+          },
+          "id": "APARU",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 7000,
+            "raw": "+7000"
+          },
+          "coordinates": {
+            "lat": 35.1566111,
+            "lon": 129.146
+          },
+          "id": "UGIPO",
+          "role": null,
+          "legDistanceNm": 15.3,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 34.98975,
+            "lon": 129.1375833
+          },
+          "id": "PEDLO",
+          "role": "IAF",
+          "legDistanceNm": 10.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": 230
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.1589167,
+            35.4116944
+          ],
+          [
+            129.146,
+            35.1566111
+          ],
+          [
+            129.1375833,
+            34.98975
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 15.3,
+          "from": "APARU",
+          "to": "UGIPO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.1589167,
+                35.4116944
+              ],
+              [
+                129.146,
+                35.1566111
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-PEDLO2APARU-001",
+          "procedureId": "RKPK-STAR-PEDLO2APARU",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 10.0,
+          "from": "UGIPO",
+          "to": "PEDLO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.146,
+                35.1566111
+              ],
+              [
+                129.1375833,
+                34.98975
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-PEDLO2APARU-002",
+          "procedureId": "RKPK-STAR-PEDLO2APARU",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "APARU",
+        "UGIPO",
+        "PEDLO"
+      ],
+      "type": "STAR",
+      "enrouteFix": "PEDLO",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-PEDLO2KALEK": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-PEDLO2KALEK",
+      "name": "PEDLO2KALEK",
+      "fullName": "KALEK Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "KALEK",
+      "endFix": "PEDLO",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.2088889,
+            "lon": 129.8847222
+          },
+          "id": "KALEK",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.1899444,
+            "lon": 129.6826111
+          },
+          "id": "HAEUN",
+          "role": null,
+          "legDistanceNm": 10.0,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 34.98975,
+            "lon": 129.1375833
+          },
+          "id": "PEDLO",
+          "role": "IAF",
+          "legDistanceNm": 29.39,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": 230
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.8847222,
+            35.2088889
+          ],
+          [
+            129.6826111,
+            35.1899444
+          ],
+          [
+            129.1375833,
+            34.98975
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 10.0,
+          "from": "KALEK",
+          "to": "HAEUN",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.8847222,
+                35.2088889
+              ],
+              [
+                129.6826111,
+                35.1899444
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-PEDLO2KALEK-001",
+          "procedureId": "RKPK-STAR-PEDLO2KALEK",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 29.39,
+          "from": "HAEUN",
+          "to": "PEDLO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.6826111,
+                35.1899444
+              ],
+              [
+                129.1375833,
+                34.98975
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-PEDLO2KALEK-002",
+          "procedureId": "RKPK-STAR-PEDLO2KALEK",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "KALEK",
+        "HAEUN",
+        "PEDLO"
+      ],
+      "type": "STAR",
+      "enrouteFix": "PEDLO",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-PEDLO2INVOK": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-PEDLO2INVOK",
+      "name": "PEDLO2INVOK",
+      "fullName": "INVOK Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "INVOK",
+      "endFix": "PEDLO",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.7886111,
+            "lon": 129.3230556
+          },
+          "id": "INVOK",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 34.98975,
+            "lon": 129.1375833
+          },
+          "id": "PEDLO",
+          "role": "IAF",
+          "legDistanceNm": 15.13,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": 230
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.3230556,
+            34.7886111
+          ],
+          [
+            129.1375833,
+            34.98975
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 15.13,
+          "from": "INVOK",
+          "to": "PEDLO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.3230556,
+                34.7886111
+              ],
+              [
+                129.1375833,
+                34.98975
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-PEDLO2INVOK-001",
+          "procedureId": "RKPK-STAR-PEDLO2INVOK",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "INVOK",
+        "PEDLO"
+      ],
+      "type": "STAR",
+      "enrouteFix": "PEDLO",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-PEDLO2APELA": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-PEDLO2APELA",
+      "name": "PEDLO2APELA",
+      "fullName": "APELA Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "APELA",
+      "endFix": "PEDLO",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.7230556,
+            "lon": 129.2333333
+          },
+          "id": "APELA",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 34.98975,
+            "lon": 129.1375833
+          },
+          "id": "PEDLO",
+          "role": "IAF",
+          "legDistanceNm": 16.66,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": 230
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.2333333,
+            34.7230556
+          ],
+          [
+            129.1375833,
+            34.98975
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 16.66,
+          "from": "APELA",
+          "to": "PEDLO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.2333333,
+                34.7230556
+              ],
+              [
+                129.1375833,
+                34.98975
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-PEDLO2APELA-001",
+          "procedureId": "RKPK-STAR-PEDLO2APELA",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "APELA",
+        "PEDLO"
+      ],
+      "type": "STAR",
+      "enrouteFix": "PEDLO",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-PEDLO2BUSAN": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-PEDLO2BUSAN",
+      "name": "PEDLO2BUSAN",
+      "fullName": "BUSAN(PSN) Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "PSN",
+      "endFix": "PEDLO",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.1226389,
+            "lon": 128.9995833
+          },
+          "id": "PSN",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 34.98975,
+            "lon": 129.1375833
+          },
+          "id": "PEDLO",
+          "role": "IAF",
+          "legDistanceNm": 10.47,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": 230
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.9995833,
+            35.1226389
+          ],
+          [
+            129.1375833,
+            34.98975
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 10.47,
+          "from": "PSN",
+          "to": "PEDLO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9995833,
+                35.1226389
+              ],
+              [
+                129.1375833,
+                34.98975
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-PEDLO2BUSAN-001",
+          "procedureId": "RKPK-STAR-PEDLO2BUSAN",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "PSN",
+        "PEDLO"
+      ],
+      "type": "STAR",
+      "enrouteFix": "PEDLO",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-KEVOX3MASTA": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-KEVOX3MASTA",
+      "name": "KEVOX3MASTA",
+      "fullName": "MASTA Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "MASTA",
+      "endFix": "KEVOX",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.4797222,
+            "lon": 128.5611111
+          },
+          "id": "MASTA",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.1111944,
+            "lon": 128.65
+          },
+          "id": "OVTUS",
+          "role": null,
+          "legDistanceNm": 22.5,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.0143611,
+            "lon": 128.7297778
+          },
+          "id": "KEVOX",
+          "role": "IAF",
+          "legDistanceNm": 7.01,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": 230
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.5611111,
+            35.4797222
+          ],
+          [
+            128.65,
+            35.1111944
+          ],
+          [
+            128.7297778,
+            35.0143611
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 22.5,
+          "from": "MASTA",
+          "to": "OVTUS",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.5611111,
+                35.4797222
+              ],
+              [
+                128.65,
+                35.1111944
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-KEVOX3MASTA-001",
+          "procedureId": "RKPK-STAR-KEVOX3MASTA",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 7.01,
+          "from": "OVTUS",
+          "to": "KEVOX",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.65,
+                35.1111944
+              ],
+              [
+                128.7297778,
+                35.0143611
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-KEVOX3MASTA-002",
+          "procedureId": "RKPK-STAR-KEVOX3MASTA",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "MASTA",
+        "OVTUS",
+        "KEVOX"
+      ],
+      "type": "STAR",
+      "enrouteFix": "KEVOX",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-KEVOX3KALOD": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-KEVOX3KALOD",
+      "name": "KEVOX3KALOD",
+      "fullName": "KALOD Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "KALOD",
+      "endFix": "KEVOX",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.5033611,
+            "lon": 128.7740278
+          },
+          "id": "KALOD",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.1111944,
+            "lon": 128.65
+          },
+          "id": "OVTUS",
+          "role": null,
+          "legDistanceNm": 24.27,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.0143611,
+            "lon": 128.7297778
+          },
+          "id": "KEVOX",
+          "role": "IAF",
+          "legDistanceNm": 7.01,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": 230
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.7740278,
+            35.5033611
+          ],
+          [
+            128.65,
+            35.1111944
+          ],
+          [
+            128.7297778,
+            35.0143611
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 24.27,
+          "from": "KALOD",
+          "to": "OVTUS",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7740278,
+                35.5033611
+              ],
+              [
+                128.65,
+                35.1111944
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-KEVOX3KALOD-001",
+          "procedureId": "RKPK-STAR-KEVOX3KALOD",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 7.01,
+          "from": "OVTUS",
+          "to": "KEVOX",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.65,
+                35.1111944
+              ],
+              [
+                128.7297778,
+                35.0143611
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-KEVOX3KALOD-002",
+          "procedureId": "RKPK-STAR-KEVOX3KALOD",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "KALOD",
+        "OVTUS",
+        "KEVOX"
+      ],
+      "type": "STAR",
+      "enrouteFix": "KEVOX",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-KEVOX3SARAM": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-KEVOX3SARAM",
+      "name": "KEVOX3SARAM",
+      "fullName": "SARAM Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "SARAM",
+      "endFix": "KEVOX",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.12675,
+            "lon": 128.5296389
+          },
+          "id": "SARAM",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.0143611,
+            "lon": 128.7297778
+          },
+          "id": "KEVOX",
+          "role": "IAF",
+          "legDistanceNm": 11.94,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": 230
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.5296389,
+            35.12675
+          ],
+          [
+            128.7297778,
+            35.0143611
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 11.94,
+          "from": "SARAM",
+          "to": "KEVOX",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.5296389,
+                35.12675
+              ],
+              [
+                128.7297778,
+                35.0143611
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-KEVOX3SARAM-001",
+          "procedureId": "RKPK-STAR-KEVOX3SARAM",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "SARAM",
+        "KEVOX"
+      ],
+      "type": "STAR",
+      "enrouteFix": "KEVOX",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-KEVOX3ANROD": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-KEVOX3ANROD",
+      "name": "KEVOX3ANROD",
+      "fullName": "ANROD Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "36L/R"
+      ],
+      "startFix": "ANROD",
+      "endFix": "KEVOX",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.6326833,
+            "lon": 128.4977028
+          },
+          "id": "ANROD",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 34.8909917,
+            "lon": 128.5930639
+          },
+          "id": "NUKBA",
+          "role": null,
+          "legDistanceNm": 16.18,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.0143611,
+            "lon": 128.7297778
+          },
+          "id": "KEVOX",
+          "role": "IAF",
+          "legDistanceNm": 10.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": 230
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.4977028,
+            34.6326833
+          ],
+          [
+            128.5930639,
+            34.8909917
+          ],
+          [
+            128.7297778,
+            35.0143611
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 16.18,
+          "from": "ANROD",
+          "to": "NUKBA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.4977028,
+                34.6326833
+              ],
+              [
+                128.5930639,
+                34.8909917
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-KEVOX3ANROD-001",
+          "procedureId": "RKPK-STAR-KEVOX3ANROD",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 10.0,
+          "from": "NUKBA",
+          "to": "KEVOX",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.5930639,
+                34.8909917
+              ],
+              [
+                128.7297778,
+                35.0143611
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-KEVOX3ANROD-002",
+          "procedureId": "RKPK-STAR-KEVOX3ANROD",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "ANROD",
+        "NUKBA",
+        "KEVOX"
+      ],
+      "type": "STAR",
+      "enrouteFix": "KEVOX",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-GAYHA3MASTA": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-GAYHA3MASTA",
+      "name": "GAYHA3MASTA",
+      "fullName": "MASTA Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "MASTA",
+      "endFix": "GAYHA",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.4797222,
+            "lon": 128.5611111
+          },
+          "id": "MASTA",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.2228889,
+            "lon": 128.6317778
+          },
+          "id": "GAYHA",
+          "role": "IAF",
+          "legDistanceNm": 15.77,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.5611111,
+            35.4797222
+          ],
+          [
+            128.6317778,
+            35.2228889
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 15.77,
+          "from": "MASTA",
+          "to": "GAYHA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.5611111,
+                35.4797222
+              ],
+              [
+                128.6317778,
+                35.2228889
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-GAYHA3MASTA-001",
+          "procedureId": "RKPK-STAR-GAYHA3MASTA",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "MASTA",
+        "GAYHA"
+      ],
+      "type": "STAR",
+      "enrouteFix": "GAYHA",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-GAYHA3KALOD": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-GAYHA3KALOD",
+      "name": "GAYHA3KALOD",
+      "fullName": "KALOD Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "KALOD",
+      "endFix": "GAYHA",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.5033611,
+            "lon": 128.7740278
+          },
+          "id": "KALOD",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.2228889,
+            "lon": 128.6317778
+          },
+          "id": "GAYHA",
+          "role": "IAF",
+          "legDistanceNm": 18.19,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.7740278,
+            35.5033611
+          ],
+          [
+            128.6317778,
+            35.2228889
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 18.19,
+          "from": "KALOD",
+          "to": "GAYHA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7740278,
+                35.5033611
+              ],
+              [
+                128.6317778,
+                35.2228889
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-GAYHA3KALOD-001",
+          "procedureId": "RKPK-STAR-GAYHA3KALOD",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "KALOD",
+        "GAYHA"
+      ],
+      "type": "STAR",
+      "enrouteFix": "GAYHA",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-GAYHA3APARU": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-GAYHA3APARU",
+      "name": "GAYHA3APARU",
+      "fullName": "APARU Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "APARU",
+      "endFix": "GAYHA",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.4116944,
+            "lon": 129.1589167
+          },
+          "id": "APARU",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.2394722,
+            "lon": 128.7830833
+          },
+          "id": "ARECO",
+          "role": null,
+          "legDistanceNm": 21.14,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.2228889,
+            "lon": 128.6317778
+          },
+          "id": "GAYHA",
+          "role": "IAF",
+          "legDistanceNm": 7.5,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.1589167,
+            35.4116944
+          ],
+          [
+            128.7830833,
+            35.2394722
+          ],
+          [
+            128.6317778,
+            35.2228889
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 21.14,
+          "from": "APARU",
+          "to": "ARECO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                129.1589167,
+                35.4116944
+              ],
+              [
+                128.7830833,
+                35.2394722
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-GAYHA3APARU-001",
+          "procedureId": "RKPK-STAR-GAYHA3APARU",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 7.5,
+          "from": "ARECO",
+          "to": "GAYHA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7830833,
+                35.2394722
+              ],
+              [
+                128.6317778,
+                35.2228889
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-GAYHA3APARU-002",
+          "procedureId": "RKPK-STAR-GAYHA3APARU",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "APARU",
+        "ARECO",
+        "GAYHA"
+      ],
+      "type": "STAR",
+      "enrouteFix": "GAYHA",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-GAYHA3BUSAN": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-GAYHA3BUSAN",
+      "name": "GAYHA3BUSAN",
+      "fullName": "BUSAN(PSN) Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "PSN",
+      "endFix": "GAYHA",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.1226389,
+            "lon": 128.9995833
+          },
+          "id": "PSN",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.2394722,
+            "lon": 128.7830833
+          },
+          "id": "ARECO",
+          "role": null,
+          "legDistanceNm": 12.74,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.2228889,
+            "lon": 128.6317778
+          },
+          "id": "GAYHA",
+          "role": "IAF",
+          "legDistanceNm": 7.5,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.9995833,
+            35.1226389
+          ],
+          [
+            128.7830833,
+            35.2394722
+          ],
+          [
+            128.6317778,
+            35.2228889
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 12.74,
+          "from": "PSN",
+          "to": "ARECO",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.9995833,
+                35.1226389
+              ],
+              [
+                128.7830833,
+                35.2394722
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-GAYHA3BUSAN-001",
+          "procedureId": "RKPK-STAR-GAYHA3BUSAN",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 7.5,
+          "from": "ARECO",
+          "to": "GAYHA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.7830833,
+                35.2394722
+              ],
+              [
+                128.6317778,
+                35.2228889
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-GAYHA3BUSAN-002",
+          "procedureId": "RKPK-STAR-GAYHA3BUSAN",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "PSN",
+        "ARECO",
+        "GAYHA"
+      ],
+      "type": "STAR",
+      "enrouteFix": "GAYHA",
+      "unresolvedPoints": []
+    },
+    "RKPK-STAR-GAYHA3ANROD": {
+      "airport": "RKPK",
+      "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+      "dataModel": "procedure-canonical-v1",
+      "id": "RKPK-STAR-GAYHA3ANROD",
+      "name": "GAYHA3ANROD",
+      "fullName": "ANROD Transition",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": [
+        "18L/R"
+      ],
+      "startFix": "ANROD",
+      "endFix": "GAYHA",
+      "source": "(2-22) RKPK STAR.pdf",
+      "isComplete": true,
+      "notes": [
+        "RNAV/GNSS STAR converted from coding table; holding pattern excluded."
+      ],
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.6326833,
+            "lon": 128.4977028
+          },
+          "id": "ANROD",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 35.12675,
+            "lon": 128.5296389
+          },
+          "id": "SARAM",
+          "role": null,
+          "legDistanceNm": 29.64,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 6000,
+            "raw": "+6000"
+          },
+          "coordinates": {
+            "lat": 35.2228889,
+            "lon": 128.6317778
+          },
+          "id": "GAYHA",
+          "role": "IAF",
+          "legDistanceNm": 7.64,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-22) RKPK STAR.pdf",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            128.4977028,
+            34.6326833
+          ],
+          [
+            128.5296389,
+            35.12675
+          ],
+          [
+            128.6317778,
+            35.2228889
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 29.64,
+          "from": "ANROD",
+          "to": "SARAM",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.4977028,
+                34.6326833
+              ],
+              [
+                128.5296389,
+                35.12675
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-GAYHA3ANROD-001",
+          "procedureId": "RKPK-STAR-GAYHA3ANROD",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 1,
+          "source": "(2-22) RKPK STAR.pdf"
+        },
+        {
+          "airport": "RKPK",
+          "cycle": "AIRAC 2025-12-11 / 2025-06-26",
+          "distanceNm": 7.64,
+          "from": "SARAM",
+          "to": "GAYHA",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                128.5296389,
+                35.12675
+              ],
+              [
+                128.6317778,
+                35.2228889
+              ]
+            ]
+          },
+          "id": "RKPK-STAR-GAYHA3ANROD-002",
+          "procedureId": "RKPK-STAR-GAYHA3ANROD",
+          "procedureType": "STAR",
+          "routeType": "RNAV",
+          "sequence": 2,
+          "source": "(2-22) RKPK STAR.pdf"
+        }
+      ],
+      "sequence": [
+        "ANROD",
+        "SARAM",
+        "GAYHA"
+      ],
+      "type": "STAR",
+      "enrouteFix": "GAYHA",
+      "unresolvedPoints": []
+    }
+  }
+}

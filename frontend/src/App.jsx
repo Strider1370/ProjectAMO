@@ -66,6 +66,7 @@ function App() {
         <MapView
           activePanel={activePanel}
           airports={weatherData?.airports || []}
+          metarData={weatherData?.metar || null}
           echoMeta={weatherData?.echoMeta || null}
           satMeta={weatherData?.satMeta || null}
           sigmetData={weatherData?.sigmet || null}

@@ -1,0 +1,255 @@
+{
+  "metadata": {
+    "airport": "RKNY",
+    "cycle": "AIRAC 7/25",
+    "description": "RKNY RNAV STAR Procedures (RWY 33)"
+  },
+  "starProcedures": {
+    "RKNY-STAR-KAE2H": {
+      "airport": "RKNY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKNY-STAR-KAE2H",
+      "name": "KAE 2H",
+      "fullName": "RNAV GANGWON TWO HOTEL ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["33"],
+      "startFix": "KAE",
+      "endFix": "DUBUN",
+      "source": "2-12-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 37.700778, "lon": 128.753778 },
+          "id": "KAE",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 37.753111, "lon": 128.673528 },
+          "id": "NY049",
+          "role": null,
+          "legDistanceNm": 6.3,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 10000, "raw": "+10000" },
+          "coordinates": { "lat": 37.874833, "lon": 128.673694 },
+          "id": "NY042",
+          "role": null,
+          "legDistanceNm": 7.3,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": null, "raw": "-9000" },
+          "coordinates": { "lat": 38.074583, "lon": 128.673833 },
+          "id": "NY031",
+          "role": null,
+          "legDistanceNm": 12.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 7500, "raw": "+7500" },
+          "coordinates": { "lat": 38.072667, "lon": 128.766611 },
+          "id": "NIMAL",
+          "role": null,
+          "legDistanceNm": 4.5,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 6000, "raw": "+6000" },
+          "coordinates": { "lat": 38.087361, "lon": 128.870500 },
+          "id": "DUBUN",
+          "role": "IAF",
+          "legDistanceNm": 5.0,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [128.753778, 37.700778],
+          [128.673528, 37.753111],
+          [128.673694, 37.874833],
+          [128.673833, 38.074583],
+          [128.766611, 38.072667],
+          [128.870500, 38.087361]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 6.3, "from": "KAE", "to": "NY049",
+          "geometry": { "type": "LineString", "coordinates": [[128.753778, 37.700778], [128.673528, 37.753111]] },
+          "id": "RKNY-STAR-KAE2H-001", "procedureId": "RKNY-STAR-KAE2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 1, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 7.3, "from": "NY049", "to": "NY042",
+          "geometry": { "type": "LineString", "coordinates": [[128.673528, 37.753111], [128.673694, 37.874833]] },
+          "id": "RKNY-STAR-KAE2H-002", "procedureId": "RKNY-STAR-KAE2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 2, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 12.0, "from": "NY042", "to": "NY031",
+          "geometry": { "type": "LineString", "coordinates": [[128.673694, 37.874833], [128.673833, 38.074583]] },
+          "id": "RKNY-STAR-KAE2H-003", "procedureId": "RKNY-STAR-KAE2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 3, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 4.5, "from": "NY031", "to": "NIMAL",
+          "geometry": { "type": "LineString", "coordinates": [[128.673833, 38.074583], [128.766611, 38.072667]] },
+          "id": "RKNY-STAR-KAE2H-004", "procedureId": "RKNY-STAR-KAE2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 4, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 5.0, "from": "NIMAL", "to": "DUBUN",
+          "geometry": { "type": "LineString", "coordinates": [[128.766611, 38.072667], [128.870500, 38.087361]] },
+          "id": "RKNY-STAR-KAE2H-005", "procedureId": "RKNY-STAR-KAE2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 5, "source": "2-12-1 Coding Table"
+        }
+      ],
+      "sequence": ["KAE", "NY049", "NY042", "NY031", "NIMAL", "DUBUN"]
+    },
+    "RKNY-STAR-BIKSI2H": {
+      "airport": "RKNY",
+      "cycle": "AIRAC 7/25",
+      "dataModel": "STAR",
+      "id": "RKNY-STAR-BIKSI2H",
+      "name": "BIKSI 2H",
+      "fullName": "RNAV BIKSI TWO HOTEL ARRIVAL",
+      "procedureType": "STAR",
+      "routeType": "RNAV",
+      "runways": ["33"],
+      "startFix": "BIKSI",
+      "endFix": "DUBUN",
+      "source": "2-12-1 Coding Table",
+      "isComplete": true,
+      "notes": null,
+      "fixes": [
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 37.675556, "lon": 128.584444 },
+          "id": "BIKSI",
+          "role": null,
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": null, "raw": null },
+          "coordinates": { "lat": 37.753111, "lon": 128.673528 },
+          "id": "NY049",
+          "role": null,
+          "legDistanceNm": 6.3,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 10000, "raw": "+10000" },
+          "coordinates": { "lat": 37.874833, "lon": 128.673694 },
+          "id": "NY042",
+          "role": null,
+          "legDistanceNm": 7.3,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": 9000, "minFt": null, "raw": "-9000" },
+          "coordinates": { "lat": 38.074583, "lon": 128.673833 },
+          "id": "NY031",
+          "role": null,
+          "legDistanceNm": 12.0,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 7500, "raw": "+7500" },
+          "coordinates": { "lat": 38.072667, "lon": 128.766611 },
+          "id": "NIMAL",
+          "role": null,
+          "legDistanceNm": 4.5,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        },
+        {
+          "altitude": { "maxFt": null, "minFt": 6000, "raw": "+6000" },
+          "coordinates": { "lat": 38.087361, "lon": 128.870500 },
+          "id": "DUBUN",
+          "role": "IAF",
+          "legDistanceNm": 5.0,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "2-12-1 Coding Table",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [128.584444, 37.675556],
+          [128.673528, 37.753111],
+          [128.673694, 37.874833],
+          [128.673833, 38.074583],
+          [128.766611, 38.072667],
+          [128.870500, 38.087361]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 6.3, "from": "BIKSI", "to": "NY049",
+          "geometry": { "type": "LineString", "coordinates": [[128.584444, 37.675556], [128.673528, 37.753111]] },
+          "id": "RKNY-STAR-BIKSI2H-001", "procedureId": "RKNY-STAR-BIKSI2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 1, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 7.3, "from": "NY049", "to": "NY042",
+          "geometry": { "type": "LineString", "coordinates": [[128.673528, 37.753111], [128.673694, 37.874833]] },
+          "id": "RKNY-STAR-BIKSI2H-002", "procedureId": "RKNY-STAR-BIKSI2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 2, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 12.0, "from": "NY042", "to": "NY031",
+          "geometry": { "type": "LineString", "coordinates": [[128.673694, 37.874833], [128.673833, 38.074583]] },
+          "id": "RKNY-STAR-BIKSI2H-003", "procedureId": "RKNY-STAR-BIKSI2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 3, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 4.5, "from": "NY031", "to": "NIMAL",
+          "geometry": { "type": "LineString", "coordinates": [[128.673833, 38.074583], [128.766611, 38.072667]] },
+          "id": "RKNY-STAR-BIKSI2H-004", "procedureId": "RKNY-STAR-BIKSI2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 4, "source": "2-12-1 Coding Table"
+        },
+        {
+          "airport": "RKNY", "cycle": "AIRAC 7/25", "distanceNm": 5.0, "from": "NIMAL", "to": "DUBUN",
+          "geometry": { "type": "LineString", "coordinates": [[128.766611, 38.072667], [128.870500, 38.087361]] },
+          "id": "RKNY-STAR-BIKSI2H-005", "procedureId": "RKNY-STAR-BIKSI2H", "procedureType": "STAR", "routeType": "RNAV", "sequence": 5, "source": "2-12-1 Coding Table"
+        }
+      ],
+      "sequence": ["BIKSI", "NY049", "NY042", "NY031", "NIMAL", "DUBUN"]
+    }
+  }
+}

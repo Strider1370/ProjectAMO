@@ -8,6 +8,13 @@
       "to": "GONAV"
     },
     {
+      "distanceNm": 35.38,
+      "routeId": "Z55",
+      "routeType": "RNAV",
+      "segmentId": "Z55-001",
+      "to": "NONOS"
+    },
+    {
       "distanceNm": 7.53,
       "routeId": "Y697",
       "routeType": "RNAV",
@@ -23,6 +30,13 @@
     }
   ],
   "AGSUS": [
+    {
+      "distanceNm": 36.18,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-002",
+      "to": "DABIK"
+    },
     {
       "distanceNm": 47.02,
       "routeId": "G597",
@@ -50,6 +64,13 @@
       "routeType": "RNAV",
       "segmentId": "Y697-016",
       "to": "LANAT"
+    },
+    {
+      "distanceNm": 68.15,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-001",
+      "to": "TENAS"
     }
   ],
   "AKPON": [
@@ -122,6 +143,13 @@
     }
   ],
   "ANROD": [
+    {
+      "distanceNm": 10.61,
+      "routeId": "Z83",
+      "routeType": "RNAV",
+      "segmentId": "Z83-004",
+      "to": "ENGOT"
+    },
     {
       "distanceNm": 34.35,
       "routeId": "Y571",
@@ -197,6 +225,22 @@
       "to": "TEDAN"
     }
   ],
+  "APARU": [
+    {
+      "distanceNm": 37.28,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-005",
+      "to": "KPO"
+    },
+    {
+      "distanceNm": 19.04,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-006",
+      "to": "PSN"
+    }
+  ],
   "APELA": [
     {
       "distanceNm": 26.6,
@@ -230,6 +274,13 @@
     }
   ],
   "ATOTI": [
+    {
+      "distanceNm": 28.59,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-009",
+      "to": "BONSO"
+    },
     {
       "distanceNm": 28.59,
       "routeId": "Z86",
@@ -280,6 +331,13 @@
       "routeType": "RNAV",
       "segmentId": "Y685-005",
       "to": "ENSAL"
+    },
+    {
+      "distanceNm": 17.05,
+      "routeId": "Z53",
+      "routeType": "RNAV",
+      "segmentId": "Z53-002",
+      "to": "TEBEX"
     }
   ],
   "BEDAR": [
@@ -305,6 +363,29 @@
       "routeType": "RNAV",
       "segmentId": "Y711-004",
       "to": "GONAX"
+    },
+    {
+      "distanceNm": 14.62,
+      "routeId": "Z51",
+      "routeType": "RNAV",
+      "segmentId": "Z51-002",
+      "to": "MOXID"
+    }
+  ],
+  "BEDOM": [
+    {
+      "distanceNm": 40.17,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-004",
+      "to": "BULGA"
+    },
+    {
+      "distanceNm": 23.11,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-005",
+      "to": "PSN"
     }
   ],
   "BELTU": [
@@ -346,6 +427,22 @@
       "routeType": "RNAV",
       "segmentId": "Y781-004",
       "to": "OMOTU"
+    }
+  ],
+  "BIDRI": [
+    {
+      "distanceNm": 49.55,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-004",
+      "to": "DANPA"
+    },
+    {
+      "distanceNm": 20.66,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-003",
+      "to": "NONOS"
     }
   ],
   "BIGOB": [
@@ -417,6 +514,13 @@
       "to": "BEPKO"
     },
     {
+      "distanceNm": 11.57,
+      "routeId": "Z85",
+      "routeType": "RNAV",
+      "segmentId": "Z85-001",
+      "to": "PAPLU"
+    },
+    {
       "distanceNm": 17.0,
       "routeId": "Y572",
       "routeType": "RNAV",
@@ -470,6 +574,13 @@
       "to": "MAKDU"
     },
     {
+      "distanceNm": 17.05,
+      "routeId": "Z53",
+      "routeType": "RNAV",
+      "segmentId": "Z53-001",
+      "to": "TEBEX"
+    },
+    {
       "distanceNm": 39.19,
       "routeId": "A582",
       "routeType": "ATS",
@@ -519,10 +630,24 @@
   "BONSO": [
     {
       "distanceNm": 28.59,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-009",
+      "to": "ATOTI"
+    },
+    {
+      "distanceNm": 28.59,
       "routeId": "Z86",
       "routeType": "RNAV",
       "segmentId": "Z86-001",
       "to": "ATOTI"
+    },
+    {
+      "distanceNm": 106.16,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-008",
+      "to": "ENSUM"
     },
     {
       "distanceNm": 67.17,
@@ -539,7 +664,30 @@
       "to": "MUGUS"
     }
   ],
+  "BOPTA": [
+    {
+      "distanceNm": 21.68,
+      "routeId": "Z51",
+      "routeType": "RNAV",
+      "segmentId": "Z51-001",
+      "to": "MOXID"
+    }
+  ],
   "BULGA": [
+    {
+      "distanceNm": 40.17,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-004",
+      "to": "BEDOM"
+    },
+    {
+      "distanceNm": 28.13,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-003",
+      "to": "DABIK"
+    },
     {
       "distanceNm": 17.14,
       "routeId": "G585",
@@ -583,6 +731,13 @@
       "routeType": "RNAV",
       "segmentId": "Y711-001",
       "to": "MONSI"
+    },
+    {
+      "distanceNm": 24.42,
+      "routeId": "Z50",
+      "routeType": "RNAV",
+      "segmentId": "Z50-002",
+      "to": "SOT"
     }
   ],
   "BUSKO": [
@@ -659,6 +814,13 @@
       "to": "OMKIM"
     },
     {
+      "distanceNm": 31.02,
+      "routeId": "Z82",
+      "routeType": "RNAV",
+      "segmentId": "Z82-001",
+      "to": "PANSI"
+    },
+    {
       "distanceNm": 12.05,
       "routeId": "Y677",
       "routeType": "RNAV",
@@ -724,6 +886,45 @@
       "to": "ELAPI"
     }
   ],
+  "DABIK": [
+    {
+      "distanceNm": 36.18,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-002",
+      "to": "AGSUS"
+    },
+    {
+      "distanceNm": 28.13,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-003",
+      "to": "BULGA"
+    }
+  ],
+  "DALPO": [
+    {
+      "distanceNm": 12.22,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-001",
+      "to": "GONAV"
+    },
+    {
+      "distanceNm": 17.83,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-002",
+      "to": "NONOS"
+    },
+    {
+      "distanceNm": 14.47,
+      "routeId": "Z57",
+      "routeType": "RNAV",
+      "segmentId": "Z57-001",
+      "to": "RILRO"
+    }
+  ],
   "DALSU": [
     {
       "distanceNm": 5.43,
@@ -752,6 +953,22 @@
       "routeType": "RNAV",
       "segmentId": "Y711-008",
       "to": "NULDI"
+    }
+  ],
+  "DANPA": [
+    {
+      "distanceNm": 49.55,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-004",
+      "to": "BIDRI"
+    },
+    {
+      "distanceNm": 89.14,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-005",
+      "to": "PALSA"
     }
   ],
   "DANTI": [
@@ -837,6 +1054,13 @@
       "routeType": "RNAV",
       "segmentId": "Y697-008",
       "to": "SEL"
+    },
+    {
+      "distanceNm": 28.86,
+      "routeId": "Z50",
+      "routeType": "RNAV",
+      "segmentId": "Z50-001",
+      "to": "SOT"
     }
   ],
   "ELAPI": [
@@ -922,14 +1146,35 @@
       "to": "BEDES"
     },
     {
+      "distanceNm": 8.47,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-001",
+      "to": "KUZ"
+    },
+    {
       "distanceNm": 24.09,
       "routeId": "Y711",
       "routeType": "RNAV",
       "segmentId": "Y711-006",
       "to": "MANGI"
+    },
+    {
+      "distanceNm": 5.44,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-002",
+      "to": "RINBO"
     }
   ],
   "ENGOT": [
+    {
+      "distanceNm": 10.61,
+      "routeId": "Z83",
+      "routeType": "RNAV",
+      "segmentId": "Z83-004",
+      "to": "ANROD"
+    },
     {
       "distanceNm": 21.11,
       "routeId": "Y572",
@@ -943,6 +1188,13 @@
       "routeType": "RNAV",
       "segmentId": "Y572-003",
       "to": "POVOR"
+    },
+    {
+      "distanceNm": 19.11,
+      "routeId": "Z83",
+      "routeType": "RNAV",
+      "segmentId": "Z83-003",
+      "to": "SARAM"
     }
   ],
   "ENSAL": [
@@ -973,6 +1225,22 @@
       "routeType": "RNAV",
       "segmentId": "Y685-004",
       "to": "GUKDO"
+    }
+  ],
+  "ENSUM": [
+    {
+      "distanceNm": 106.16,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-008",
+      "to": "BONSO"
+    },
+    {
+      "distanceNm": 99.22,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-007",
+      "to": "TOLIS"
     }
   ],
   "ENTEL": [
@@ -1023,6 +1291,13 @@
   ],
   "GOGET": [
     {
+      "distanceNm": 19.67,
+      "routeId": "Z54",
+      "routeType": "RNAV",
+      "segmentId": "Z54-002",
+      "to": "MONSI"
+    },
+    {
       "distanceNm": 40.95,
       "routeId": "G597",
       "routeType": "ATS",
@@ -1065,6 +1340,13 @@
       "routeType": "RNAV",
       "segmentId": "Y644-003",
       "to": "BODOL"
+    },
+    {
+      "distanceNm": 12.22,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-001",
+      "to": "DALPO"
     },
     {
       "distanceNm": 13.73,
@@ -1506,6 +1788,13 @@
   ],
   "KPO": [
     {
+      "distanceNm": 37.28,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-005",
+      "to": "APARU"
+    },
+    {
       "distanceNm": 17.14,
       "routeId": "G585",
       "routeType": "ATS",
@@ -1532,6 +1821,29 @@
       "routeType": "RNAV",
       "segmentId": "Y685-009",
       "to": "ELAPI"
+    },
+    {
+      "distanceNm": 19.62,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-007",
+      "to": "LAPAL"
+    },
+    {
+      "distanceNm": 21.75,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-004",
+      "to": "LOSTO"
+    }
+  ],
+  "KUZ": [
+    {
+      "distanceNm": 8.47,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-001",
+      "to": "ELPOS"
     }
   ],
   "KWA": [
@@ -1608,6 +1920,22 @@
       "routeType": "RNAV",
       "segmentId": "Y697-016",
       "to": "AGSUS"
+    }
+  ],
+  "LAPAL": [
+    {
+      "distanceNm": 19.62,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-007",
+      "to": "KPO"
+    },
+    {
+      "distanceNm": 24.51,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-006",
+      "to": "TGU"
     }
   ],
   "LESBU": [
@@ -1693,6 +2021,22 @@
       "routeType": "RNAV",
       "segmentId": "Y722-009",
       "to": "GUKSU"
+    }
+  ],
+  "LOSTO": [
+    {
+      "distanceNm": 21.75,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-004",
+      "to": "KPO"
+    },
+    {
+      "distanceNm": 18.57,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-003",
+      "to": "OSVOM"
     }
   ],
   "MAKDU": [
@@ -1796,10 +2140,24 @@
       "to": "ANKUS"
     },
     {
+      "distanceNm": 21.25,
+      "routeId": "Z83",
+      "routeType": "RNAV",
+      "segmentId": "Z83-002",
+      "to": "SARAM"
+    },
+    {
       "distanceNm": 19.87,
       "routeId": "Y781",
       "routeType": "RNAV",
       "segmentId": "Y781-001",
+      "to": "TGU"
+    },
+    {
+      "distanceNm": 19.87,
+      "routeId": "Z83",
+      "routeType": "RNAV",
+      "segmentId": "Z83-001",
       "to": "TGU"
     }
   ],
@@ -1819,6 +2177,22 @@
       "to": "GONAX"
     }
   ],
+  "MELES": [
+    {
+      "distanceNm": 17.19,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-004",
+      "to": "OPEDA"
+    },
+    {
+      "distanceNm": 17.77,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-003",
+      "to": "RINBO"
+    }
+  ],
   "MONSI": [
     {
       "distanceNm": 17.57,
@@ -1835,11 +2209,41 @@
       "to": "BULTI"
     },
     {
+      "distanceNm": 19.67,
+      "routeId": "Z54",
+      "routeType": "RNAV",
+      "segmentId": "Z54-002",
+      "to": "GOGET"
+    },
+    {
       "distanceNm": 7.44,
       "routeId": "Y644",
       "routeType": "RNAV",
       "segmentId": "Y644-008",
       "to": "POLEG"
+    },
+    {
+      "distanceNm": 11.71,
+      "routeId": "Z54",
+      "routeType": "RNAV",
+      "segmentId": "Z54-001",
+      "to": "SOT"
+    }
+  ],
+  "MOXID": [
+    {
+      "distanceNm": 14.62,
+      "routeId": "Z51",
+      "routeType": "RNAV",
+      "segmentId": "Z51-002",
+      "to": "BEDES"
+    },
+    {
+      "distanceNm": 21.68,
+      "routeId": "Z51",
+      "routeType": "RNAV",
+      "segmentId": "Z51-001",
+      "to": "BOPTA"
     }
   ],
   "MUGUS": [
@@ -1897,6 +2301,22 @@
       "to": "ANROD"
     }
   ],
+  "NOBUT": [
+    {
+      "distanceNm": 28.68,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-002",
+      "to": "OSVOM"
+    },
+    {
+      "distanceNm": 19.38,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-001",
+      "to": "PILIT"
+    }
+  ],
   "NOGON": [
     {
       "distanceNm": 19.94,
@@ -1911,6 +2331,29 @@
       "routeType": "RNAV",
       "segmentId": "Y697-002",
       "to": "OLBIM"
+    }
+  ],
+  "NONOS": [
+    {
+      "distanceNm": 35.38,
+      "routeId": "Z55",
+      "routeType": "RNAV",
+      "segmentId": "Z55-001",
+      "to": "AGAVO"
+    },
+    {
+      "distanceNm": 20.66,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-003",
+      "to": "BIDRI"
+    },
+    {
+      "distanceNm": 17.83,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-002",
+      "to": "DALPO"
     }
   ],
   "NOPIK": [
@@ -2090,6 +2533,22 @@
       "to": "SELPA"
     }
   ],
+  "OPEDA": [
+    {
+      "distanceNm": 17.19,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-004",
+      "to": "MELES"
+    },
+    {
+      "distanceNm": 47.63,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-005",
+      "to": "TGU"
+    }
+  ],
   "OSPOT": [
     {
       "distanceNm": 21.62,
@@ -2120,6 +2579,22 @@
       "to": "VASLI"
     }
   ],
+  "OSVOM": [
+    {
+      "distanceNm": 18.57,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-003",
+      "to": "LOSTO"
+    },
+    {
+      "distanceNm": 28.68,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-002",
+      "to": "NOBUT"
+    }
+  ],
   "PALDU": [
     {
       "distanceNm": 40.29,
@@ -2136,7 +2611,30 @@
       "to": "SABET"
     }
   ],
+  "PALSA": [
+    {
+      "distanceNm": 89.14,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-005",
+      "to": "DANPA"
+    },
+    {
+      "distanceNm": 11.02,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-006",
+      "to": "TOLIS"
+    }
+  ],
   "PANSI": [
+    {
+      "distanceNm": 31.02,
+      "routeId": "Z82",
+      "routeType": "RNAV",
+      "segmentId": "Z82-001",
+      "to": "CJU"
+    },
     {
       "distanceNm": 33.42,
       "routeId": "Y711",
@@ -2161,11 +2659,25 @@
       "to": "AKPON"
     },
     {
+      "distanceNm": 11.57,
+      "routeId": "Z85",
+      "routeType": "RNAV",
+      "segmentId": "Z85-001",
+      "to": "BILUM"
+    },
+    {
       "distanceNm": 28.39,
       "routeId": "Y571",
       "routeType": "RNAV",
       "segmentId": "Y571-002",
       "to": "OMKIM"
+    },
+    {
+      "distanceNm": 64.71,
+      "routeId": "Z85",
+      "routeType": "RNAV",
+      "segmentId": "Z85-002",
+      "to": "RUGMA"
     }
   ],
   "PEBRI": [
@@ -2219,6 +2731,13 @@
       "routeType": "RNAV",
       "segmentId": "Z63-001",
       "to": "LESBU"
+    },
+    {
+      "distanceNm": 19.38,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-001",
+      "to": "NOBUT"
     }
   ],
   "POLEG": [
@@ -2359,6 +2878,13 @@
       "to": "ANKUS"
     },
     {
+      "distanceNm": 19.04,
+      "routeId": "Y744",
+      "routeType": "RNAV",
+      "segmentId": "Y744-006",
+      "to": "APARU"
+    },
+    {
       "distanceNm": 26.6,
       "routeId": "A582",
       "routeType": "ATS",
@@ -2371,6 +2897,13 @@
       "routeType": "RNAV",
       "segmentId": "Y782-010",
       "to": "APELA"
+    },
+    {
+      "distanceNm": 23.11,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-005",
+      "to": "BEDOM"
     },
     {
       "distanceNm": 25.6,
@@ -2477,6 +3010,13 @@
       "to": "AGAVO"
     },
     {
+      "distanceNm": 14.47,
+      "routeId": "Z57",
+      "routeType": "RNAV",
+      "segmentId": "Z57-001",
+      "to": "DALPO"
+    },
+    {
       "distanceNm": 8.12,
       "routeId": "Y644",
       "routeType": "RNAV",
@@ -2502,6 +3042,13 @@
   ],
   "RINBO": [
     {
+      "distanceNm": 5.44,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-002",
+      "to": "ELPOS"
+    },
+    {
       "distanceNm": 29.45,
       "routeId": "B576",
       "routeType": "ATS",
@@ -2514,9 +3061,23 @@
       "routeType": "ATS",
       "segmentId": "B576-006",
       "to": "LINTA"
+    },
+    {
+      "distanceNm": 17.77,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-003",
+      "to": "MELES"
     }
   ],
   "RUGMA": [
+    {
+      "distanceNm": 64.71,
+      "routeId": "Z85",
+      "routeType": "RNAV",
+      "segmentId": "Z85-002",
+      "to": "PAPLU"
+    },
     {
       "distanceNm": 31.56,
       "routeId": "Y572",
@@ -2716,6 +3277,20 @@
       "to": "ANKUS"
     },
     {
+      "distanceNm": 19.11,
+      "routeId": "Z83",
+      "routeType": "RNAV",
+      "segmentId": "Z83-003",
+      "to": "ENGOT"
+    },
+    {
+      "distanceNm": 21.25,
+      "routeId": "Z83",
+      "routeType": "RNAV",
+      "segmentId": "Z83-002",
+      "to": "MASTA"
+    },
+    {
       "distanceNm": 1.57,
       "routeId": "V543",
       "routeType": "ATS",
@@ -2850,6 +3425,27 @@
   ],
   "SOT": [
     {
+      "distanceNm": 24.42,
+      "routeId": "Z50",
+      "routeType": "RNAV",
+      "segmentId": "Z50-002",
+      "to": "BULTI"
+    },
+    {
+      "distanceNm": 28.86,
+      "routeId": "Z50",
+      "routeType": "RNAV",
+      "segmentId": "Z50-001",
+      "to": "EGOBA"
+    },
+    {
+      "distanceNm": 11.71,
+      "routeId": "Z54",
+      "routeType": "RNAV",
+      "segmentId": "Z54-001",
+      "to": "MONSI"
+    },
+    {
       "distanceNm": 21.55,
       "routeId": "B576",
       "routeType": "ATS",
@@ -2929,6 +3525,22 @@
       "to": "SAMDO"
     }
   ],
+  "TEBEX": [
+    {
+      "distanceNm": 17.05,
+      "routeId": "Z53",
+      "routeType": "RNAV",
+      "segmentId": "Z53-002",
+      "to": "BASEM"
+    },
+    {
+      "distanceNm": 17.05,
+      "routeId": "Z53",
+      "routeType": "RNAV",
+      "segmentId": "Z53-001",
+      "to": "BITUX"
+    }
+  ],
   "TEDAN": [
     {
       "distanceNm": 13.52,
@@ -2960,6 +3572,13 @@
     }
   ],
   "TENAS": [
+    {
+      "distanceNm": 68.15,
+      "routeId": "Y579",
+      "routeType": "RNAV",
+      "segmentId": "Y579-001",
+      "to": "AGSUS"
+    },
     {
       "distanceNm": 62.06,
       "routeId": "B467",
@@ -3063,20 +3682,55 @@
       "to": "KALOD"
     },
     {
+      "distanceNm": 24.51,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-006",
+      "to": "LAPAL"
+    },
+    {
       "distanceNm": 19.87,
       "routeId": "Y781",
       "routeType": "RNAV",
       "segmentId": "Y781-001",
       "to": "MASTA"
+    },
+    {
+      "distanceNm": 19.87,
+      "routeId": "Z83",
+      "routeType": "RNAV",
+      "segmentId": "Z83-001",
+      "to": "MASTA"
+    },
+    {
+      "distanceNm": 47.63,
+      "routeId": "Y659",
+      "routeType": "RNAV",
+      "segmentId": "Y659-005",
+      "to": "OPEDA"
     }
   ],
   "TOLIS": [
+    {
+      "distanceNm": 99.22,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-007",
+      "to": "ENSUM"
+    },
     {
       "distanceNm": 72.85,
       "routeId": "Y677",
       "routeType": "RNAV",
       "segmentId": "Y677-001",
       "to": "LIMDI"
+    },
+    {
+      "distanceNm": 11.02,
+      "routeId": "Y655",
+      "routeType": "RNAV",
+      "segmentId": "Y655-006",
+      "to": "PALSA"
     }
   ],
   "TORUS": [

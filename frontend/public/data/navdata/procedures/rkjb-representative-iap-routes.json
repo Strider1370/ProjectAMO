@@ -1,0 +1,150 @@
+{
+  "metadata": {
+    "airport": "RKJB",
+    "cycle": "AIRAC 9/24",
+    "description": "RKJB Representative IAPs covering all 5 STAR end-fixes to Runway Thresholds"
+  },
+  "representativeIapMap": {
+    "PEGRO|01": "RKJB-IAP-PEGRO-RWY01-REP",
+    "OVGEN|01": "RKJB-IAP-OVGEN-RWY01-REP",
+    "OLBES|01": "RKJB-IAP-OLBES-RWY01-REP",
+    "AYEON|19": "RKJB-IAP-AYEON-RWY19-REP",
+    "DOWAN|19": "RKJB-IAP-DOWAN-RWY19-REP"
+  },
+  "starToIapCandidates": {
+    "RKJB-STAR-MANGI2C": {
+      "starName": "MANGI 2C",
+      "endFix": "PEGRO",
+      "runways": ["01"],
+      "candidateIapKeys": ["RKJB-IAP-PEGRO-RWY01-REP"],
+      "defaultIapKey": "RKJB-IAP-PEGRO-RWY01-REP"
+    },
+    "RKJB-STAR-MANGI2H": {
+      "starName": "MANGI 2H",
+      "endFix": "OVGEN",
+      "runways": ["01"],
+      "candidateIapKeys": ["RKJB-IAP-OVGEN-RWY01-REP"],
+      "defaultIapKey": "RKJB-IAP-OVGEN-RWY01-REP"
+    },
+    "RKJB-STAR-KAMIT2C": {
+      "starName": "KAMIT 2C",
+      "endFix": "OLBES",
+      "runways": ["01"],
+      "candidateIapKeys": ["RKJB-IAP-OLBES-RWY01-REP"],
+      "defaultIapKey": "RKJB-IAP-OLBES-RWY01-REP"
+    },
+    "RKJB-STAR-KAMIT1D": {
+      "starName": "KAMIT 1D",
+      "endFix": "AYEON",
+      "runways": ["19"],
+      "candidateIapKeys": ["RKJB-IAP-AYEON-RWY19-REP"],
+      "defaultIapKey": "RKJB-IAP-AYEON-RWY19-REP"
+    },
+    "RKJB-STAR-MANGI1D": {
+      "starName": "MANGI 1D",
+      "endFix": "DOWAN",
+      "runways": ["19"],
+      "candidateIapKeys": ["RKJB-IAP-DOWAN-RWY19-REP"],
+      "defaultIapKey": "RKJB-IAP-DOWAN-RWY19-REP"
+    },
+    "RKJB-STAR-SAMUL1D": {
+      "starName": "SAMUL 1D",
+      "endFix": "DOWAN",
+      "runways": ["19"],
+      "candidateIapKeys": ["RKJB-IAP-DOWAN-RWY19-REP"],
+      "defaultIapKey": "RKJB-IAP-DOWAN-RWY19-REP"
+    }
+  },
+  "iapRoutes": {
+    "RKJB-IAP-PEGRO-RWY01-REP": {
+      "airport": "RKJB", "cycle": "AIRAC 9/24", "dataModel": "IAP", "procedureType": "APPROACH", "routeType": "ILS",
+      "representative": true, "representativeFor": ["ILS Z RWY 01"],
+      "entryFix": "PEGRO", "endFix": "RWY01", "runways": ["01"], "name": "REP PEGRO 01", "fullName": "REP from PEGRO to RWY 01",
+      "sourceProcedure": "ILS Z RWY 01", "source": "2-15 RKJB INSTR APCH CHART",
+      "fixes": [
+        { "altitude": { "minFt": 5000, "maxFt": null, "raw": "+5000" }, "coordinates": { "lat": 34.769167, "lon": 126.567250 }, "id": "PEGRO", "legDistanceNm": 9.3, "pathTerminator": "TF", "sequence": 1, "source": "2-15 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 3000, "maxFt": null, "raw": "+3000" }, "coordinates": { "lat": 34.803028, "lon": 126.384250 }, "id": "KEVAP", "legDistanceNm": 5.5, "pathTerminator": "TF", "sequence": 2, "source": "2-15 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 1700, "maxFt": null, "raw": "+1700" }, "coordinates": { "lat": 34.895167, "lon": 126.383472 }, "id": "IMUN", "legDistanceNm": 5.2, "pathTerminator": "TF", "sequence": 3, "source": "2-15 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": null, "maxFt": null, "raw": null }, "coordinates": { "lat": 34.978789, "lon": 126.382903 }, "id": "RWY01", "legDistanceNm": null, "pathTerminator": "TF", "sequence": 4, "source": "2-15 RKJB INSTR APCH CHART" }
+      ],
+      "geometry": { "type": "LineString", "coordinates": [[126.56725, 34.769167], [126.38425, 34.803028], [126.383472, 34.895167], [126.382903, 34.978789]] },
+      "segments": [
+        { "from": "PEGRO", "to": "KEVAP", "distanceNm": 9.3, "id": "RKJB-IAP-PEGRO-RWY01-REP-01", "sequence": 1, "geometry": { "type": "LineString", "coordinates": [[126.56725, 34.769167], [126.38425, 34.803028]] } },
+        { "from": "KEVAP", "to": "IMUN", "distanceNm": 5.5, "id": "RKJB-IAP-PEGRO-RWY01-REP-02", "sequence": 2, "geometry": { "type": "LineString", "coordinates": [[126.38425, 34.803028], [126.383472, 34.895167]] } },
+        { "from": "IMUN", "to": "RWY01", "distanceNm": 5.2, "id": "RKJB-IAP-PEGRO-RWY01-REP-03", "sequence": 3, "geometry": { "type": "LineString", "coordinates": [[126.383472, 34.895167], [126.382903, 34.978789]] } }
+      ]
+    },
+    "RKJB-IAP-OVGEN-RWY01-REP": {
+      "airport": "RKJB", "cycle": "AIRAC 9/24", "dataModel": "IAP", "procedureType": "APPROACH", "routeType": "ILS",
+      "representative": true, "representativeFor": ["ILS Z RWY 01"],
+      "entryFix": "OVGEN", "endFix": "RWY01", "runways": ["01"], "name": "REP OVGEN 01", "fullName": "REP from OVGEN to RWY 01",
+      "sourceProcedure": "ILS Z RWY 01", "source": "2-15 RKJB INSTR APCH CHART",
+      "fixes": [
+        { "altitude": { "minFt": 5000, "maxFt": null, "raw": "+5000" }, "coordinates": { "lat": 34.772833, "lon": 126.196639 }, "id": "OVGEN", "legDistanceNm": 9.5, "pathTerminator": "TF", "sequence": 1, "source": "2-15 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 3000, "maxFt": null, "raw": "+3000" }, "coordinates": { "lat": 34.803028, "lon": 126.384250 }, "id": "KEVAP", "legDistanceNm": 5.5, "pathTerminator": "TF", "sequence": 2, "source": "2-15 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 1700, "maxFt": null, "raw": "+1700" }, "coordinates": { "lat": 34.895167, "lon": 126.383472 }, "id": "IMUN", "legDistanceNm": 5.2, "pathTerminator": "TF", "sequence": 3, "source": "2-15 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": null, "maxFt": null, "raw": null }, "coordinates": { "lat": 34.978789, "lon": 126.382903 }, "id": "RWY01", "legDistanceNm": null, "pathTerminator": "TF", "sequence": 4, "source": "2-15 RKJB INSTR APCH CHART" }
+      ],
+      "geometry": { "type": "LineString", "coordinates": [[126.196639, 34.772833], [126.38425, 34.803028], [126.383472, 34.895167], [126.382903, 34.978789]] },
+      "segments": [
+        { "from": "OVGEN", "to": "KEVAP", "distanceNm": 9.5, "id": "RKJB-IAP-OVGEN-RWY01-REP-01", "sequence": 1, "geometry": { "type": "LineString", "coordinates": [[126.196639, 34.772833], [126.38425, 34.803028]] } },
+        { "from": "KEVAP", "to": "IMUN", "distanceNm": 5.5, "id": "RKJB-IAP-OVGEN-RWY01-REP-02", "sequence": 2, "geometry": { "type": "LineString", "coordinates": [[126.38425, 34.803028], [126.383472, 34.895167]] } },
+        { "from": "IMUN", "to": "RWY01", "distanceNm": 5.2, "id": "RKJB-IAP-OVGEN-RWY01-REP-03", "sequence": 3, "geometry": { "type": "LineString", "coordinates": [[126.383472, 34.895167], [126.382903, 34.978789]] } }
+      ]
+    },
+    "RKJB-IAP-OLBES-RWY01-REP": {
+      "airport": "RKJB", "cycle": "AIRAC 9/24", "dataModel": "IAP", "procedureType": "APPROACH", "routeType": "ILS",
+      "representative": true, "representativeFor": ["ILS Z RWY 01"],
+      "entryFix": "OLBES", "endFix": "RWY01", "runways": ["01"], "name": "REP OLBES 01", "fullName": "REP from OLBES to RWY 01",
+      "sourceProcedure": "ILS Z RWY 01", "source": "2-15 RKJB INSTR APCH CHART",
+      "fixes": [
+        { "altitude": { "minFt": 6000, "maxFt": null, "raw": "+6000" }, "coordinates": { "lat": 34.602250, "lon": 126.375556 }, "id": "OLBES", "legDistanceNm": 12.0, "pathTerminator": "TF", "sequence": 1, "source": "2-15 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 3000, "maxFt": null, "raw": "+3000" }, "coordinates": { "lat": 34.803028, "lon": 126.384250 }, "id": "KEVAP", "legDistanceNm": 5.5, "pathTerminator": "TF", "sequence": 2, "source": "2-15 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 1700, "maxFt": null, "raw": "+1700" }, "coordinates": { "lat": 34.895167, "lon": 126.383472 }, "id": "IMUN", "legDistanceNm": 5.2, "pathTerminator": "TF", "sequence": 3, "source": "2-15 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": null, "maxFt": null, "raw": null }, "coordinates": { "lat": 34.978789, "lon": 126.382903 }, "id": "RWY01", "legDistanceNm": null, "pathTerminator": "TF", "sequence": 4, "source": "2-15 RKJB INSTR APCH CHART" }
+      ],
+      "geometry": { "type": "LineString", "coordinates": [[126.375556, 34.60225], [126.38425, 34.803028], [126.383472, 34.895167], [126.382903, 34.978789]] },
+      "segments": [
+        { "from": "OLBES", "to": "KEVAP", "distanceNm": 12.0, "id": "RKJB-IAP-OLBES-RWY01-REP-01", "sequence": 1, "geometry": { "type": "LineString", "coordinates": [[126.375556, 34.60225], [126.38425, 34.803028]] } },
+        { "from": "KEVAP", "to": "IMUN", "distanceNm": 5.5, "id": "RKJB-IAP-OLBES-RWY01-REP-02", "sequence": 2, "geometry": { "type": "LineString", "coordinates": [[126.38425, 34.803028], [126.383472, 34.895167]] } },
+        { "from": "IMUN", "to": "RWY01", "distanceNm": 5.2, "id": "RKJB-IAP-OLBES-RWY01-REP-03", "sequence": 3, "geometry": { "type": "LineString", "coordinates": [[126.383472, 34.895167], [126.382903, 34.978789]] } }
+      ]
+    },
+    "RKJB-IAP-AYEON-RWY19-REP": {
+      "airport": "RKJB", "cycle": "AIRAC 9/24", "dataModel": "IAP", "procedureType": "APPROACH", "routeType": "ILS",
+      "representative": true, "representativeFor": ["ILS Z RWY 19"],
+      "entryFix": "AYEON", "endFix": "RWY19", "runways": ["19"], "name": "REP AYEON 19", "fullName": "REP from AYEON to RWY 19",
+      "sourceProcedure": "ILS Z RWY 19", "source": "2-19 RKJB INSTR APCH CHART",
+      "fixes": [
+        { "altitude": { "minFt": 5000, "maxFt": null, "raw": "+5000" }, "coordinates": { "lat": 35.152833, "lon": 126.208917 }, "id": "AYEON", "legDistanceNm": 8.5, "pathTerminator": "TF", "sequence": 1, "source": "2-19 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 2700, "maxFt": null, "raw": "+2700" }, "coordinates": { "lat": 35.152083, "lon": 126.381694 }, "id": "KASPU", "legDistanceNm": 4.0, "pathTerminator": "TF", "sequence": 2, "source": "2-19 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 1700, "maxFt": null, "raw": "+1700" }, "coordinates": { "lat": 35.086750, "lon": 126.382139 }, "id": "IMAN", "legDistanceNm": 5.0, "pathTerminator": "TF", "sequence": 3, "source": "2-19 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": null, "maxFt": null, "raw": null }, "coordinates": { "lat": 35.004025, "lon": 126.382728 }, "id": "RWY19", "legDistanceNm": null, "pathTerminator": "TF", "sequence": 4, "source": "2-19 RKJB INSTR APCH CHART" }
+      ],
+      "geometry": { "type": "LineString", "coordinates": [[126.208917, 35.152833], [126.381694, 35.152083], [126.382139, 35.08675], [126.382728, 35.004025]] },
+      "segments": [
+        { "from": "AYEON", "to": "KASPU", "distanceNm": 8.5, "id": "RKJB-IAP-AYEON-RWY19-REP-01", "sequence": 1, "geometry": { "type": "LineString", "coordinates": [[126.208917, 35.152833], [126.381694, 35.152083]] } },
+        { "from": "KASPU", "to": "IMAN", "distanceNm": 4.0, "id": "RKJB-IAP-AYEON-RWY19-REP-02", "sequence": 2, "geometry": { "type": "LineString", "coordinates": [[126.381694, 35.152083], [126.382139, 35.08675]] } },
+        { "from": "IMAN", "to": "RWY19", "distanceNm": 5.0, "id": "RKJB-IAP-AYEON-RWY19-REP-03", "sequence": 3, "geometry": { "type": "LineString", "coordinates": [[126.382139, 35.08675], [126.382728, 35.004025]] } }
+      ]
+    },
+    "RKJB-IAP-DOWAN-RWY19-REP": {
+      "airport": "RKJB", "cycle": "AIRAC 9/24", "dataModel": "IAP", "procedureType": "APPROACH", "routeType": "ILS",
+      "representative": true, "representativeFor": ["ILS Z RWY 19"],
+      "entryFix": "DOWAN", "endFix": "RWY19", "runways": ["19"], "name": "REP DOWAN 19", "fullName": "REP from DOWAN to RWY 19",
+      "sourceProcedure": "ILS Z RWY 19", "source": "2-19 RKJB INSTR APCH CHART",
+      "fixes": [
+        { "altitude": { "minFt": 5000, "maxFt": null, "raw": "+5000" }, "coordinates": { "lat": 35.154472, "lon": 126.554444 }, "id": "DOWAN", "legDistanceNm": 8.5, "pathTerminator": "TF", "sequence": 1, "source": "2-19 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 2700, "maxFt": null, "raw": "+2700" }, "coordinates": { "lat": 35.152083, "lon": 126.381694 }, "id": "KASPU", "legDistanceNm": 4.0, "pathTerminator": "TF", "sequence": 2, "source": "2-19 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": 1700, "maxFt": null, "raw": "+1700" }, "coordinates": { "lat": 35.086750, "lon": 126.382139 }, "id": "IMAN", "legDistanceNm": 5.0, "pathTerminator": "TF", "sequence": 3, "source": "2-19 RKJB INSTR APCH CHART" },
+        { "altitude": { "minFt": null, "maxFt": null, "raw": null }, "coordinates": { "lat": 35.004025, "lon": 126.382728 }, "id": "RWY19", "legDistanceNm": null, "pathTerminator": "TF", "sequence": 4, "source": "2-19 RKJB INSTR APCH CHART" }
+      ],
+      "geometry": { "type": "LineString", "coordinates": [[126.554444, 35.154472], [126.381694, 35.152083], [126.382139, 35.08675], [126.382728, 35.004025]] },
+      "segments": [
+        { "from": "DOWAN", "to": "KASPU", "distanceNm": 8.5, "id": "RKJB-IAP-DOWAN-RWY19-REP-01", "sequence": 1, "geometry": { "type": "LineString", "coordinates": [[126.554444, 35.154472], [126.381694, 35.152083]] } },
+        { "from": "KASPU", "to": "IMAN", "distanceNm": 4.0, "id": "RKJB-IAP-DOWAN-RWY19-REP-02", "sequence": 2, "geometry": { "type": "LineString", "coordinates": [[126.381694, 35.152083], [126.382139, 35.08675]] } },
+        { "from": "IMAN", "to": "RWY19", "distanceNm": 5.0, "id": "RKJB-IAP-DOWAN-RWY19-REP-03", "sequence": 3, "geometry": { "type": "LineString", "coordinates": [[126.382139, 35.08675], [126.382728, 35.004025]] } }
+      ]
+    }
+  }
+}
