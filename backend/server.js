@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = process.env.BACKEND_PORT || 3001
 const HOST = process.env.BACKEND_HOST || '127.0.0.1'
-const DATA_ROOT = path.join(__dirname, 'data')
+const DATA_ROOT = config.storage.base_path
 
 app.disable('x-powered-by')
 app.set('trust proxy', true)

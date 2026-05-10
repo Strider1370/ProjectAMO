@@ -4,6 +4,11 @@ import https from 'https'
 import path from 'path'
 import config from '../config.js'
 
+let tokenCache = {
+  accessToken: null,
+  expiresAt: 0,
+}
+
 // Point-in-polygon (ray casting) for FIR boundary filtering
 let _firPolygon = null;
 function loadFirPolygon() {
@@ -75,12 +80,11 @@ async function fetchWithTimeout(url, timeoutMs = config.adsb.timeout_ms) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const headers = await buildRequestHeaders()
     try {
       const response = await fetch(url, {
         signal: controller.signal,
-        headers: {
-          "User-Agent": "KMA-Weather-Dashboard/1.0"
-        }
+        headers,
       });
 
       if (!response.ok) {
@@ -93,21 +97,79 @@ async function fetchWithTimeout(url, timeoutMs = config.adsb.timeout_ms) {
         throw error;
       }
 
-      return await fetchViaHttpsRequest(url, timeoutMs);
+      return await fetchViaHttpsRequest(url, timeoutMs, headers);
     }
   } finally {
     clearTimeout(timer);
   }
 }
 
-function fetchViaHttpsRequest(url, timeoutMs) {
+async function buildRequestHeaders() {
+  const headers = {
+    "User-Agent": "KMA-Weather-Dashboard/1.0"
+  }
+
+  const token = await getAccessToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  return headers
+}
+
+async function getAccessToken() {
+  const clientId = String(config.adsb.client_id || '').trim()
+  const clientSecret = String(config.adsb.client_secret || '').trim()
+
+  if (!clientId || !clientSecret) {
+    return null
+  }
+
+  const now = Date.now()
+  if (tokenCache.accessToken && tokenCache.expiresAt > now + 60_000) {
+    return tokenCache.accessToken
+  }
+
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: clientId,
+    client_secret: clientSecret,
+  })
+
+  const response = await fetch(config.adsb.token_url, {
+    method: 'POST',
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "KMA-Weather-Dashboard/1.0",
+    },
+    body,
+  })
+
+  if (!response.ok) {
+    throw new Error(`OpenSky token HTTP ${response.status}`)
+  }
+
+  const payload = await response.json()
+  const accessToken = payload?.access_token
+  if (!accessToken) {
+    throw new Error('OpenSky token missing access_token')
+  }
+
+  const expiresIn = Number(payload?.expires_in || 300)
+  tokenCache = {
+    accessToken,
+    expiresAt: now + expiresIn * 1000,
+  }
+
+  return accessToken
+}
+
+function fetchViaHttpsRequest(url, timeoutMs, headers) {
   return new Promise((resolve, reject) => {
     const request = https.request(url, {
       method: "GET",
       rejectUnauthorized: false,
-      headers: {
-        "User-Agent": "KMA-Weather-Dashboard/1.0"
-      }
+      headers,
     }, (response) => {
       let body = "";
       response.setEncoding("utf8");

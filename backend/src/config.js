@@ -139,6 +139,9 @@ export const satellite = {
 
 export const adsb = {
   url: process.env.ADSB_API_URL || 'https://opensky-network.org/api/states/all',
+  token_url: process.env.ADSB_TOKEN_URL || 'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token',
+  client_id: process.env.ADSB_CLIENT_ID || process.env.OPENSKY_CLIENT_ID || '',
+  client_secret: process.env.ADSB_CLIENT_SECRET || process.env.OPENSKY_CLIENT_SECRET || '',
   timeout_ms: 20000,
   max_history_frames: 36,
   bounds: {
@@ -160,7 +163,7 @@ export const schedule = {
   lightning_interval: '*/5 * * * *',
   radar_echo_interval: '*/5 * * * *',
   satellite_interval: '*/10 * * * *',
-  adsb_interval: '*/5 * * * *',
+  adsb_interval: '*/1 * * * *',
   ground_forecast_interval: '30 6,11,18,23 * * *',
   environment_interval: '10 * * * *',
   airport_info_interval: '*/30 * * * *',
