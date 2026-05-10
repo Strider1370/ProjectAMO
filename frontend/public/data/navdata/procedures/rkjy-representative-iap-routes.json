@@ -1,0 +1,1017 @@
+{
+  "metadata": {
+    "airport": "RKJY",
+    "cycle": "AIRAC 9/24 source charts",
+    "dataModel": "representative-iap-routes-v1",
+    "description": "Representative IAP routes for connecting RKJY STAR endFixes to runway landing-flow groups.",
+    "sourceFiles": [
+      "(2-15) RKJY INSTR APCH CHART.pdf",
+      "rkjy-star-procedures.json"
+    ],
+    "method": "Representative non-RNP ILS/LOC arrivals by STAR endFix and landing runway. RNP, VOR, missed approach, and holding tracks are excluded.",
+    "scope": "ILS/LOC representative IAP routes for Route Check preview and STAR-to-IAP arrival display."
+  },
+  "representativeIapMap": {
+    "YEONA|17": "RKJY-IAP-YEONA-RWY17-REP",
+    "SKOTA|17": "RKJY-IAP-SKOTA-RWY17-REP",
+    "SOONA|35": "RKJY-IAP-SOONA-RWY35-REP"
+  },
+  "starToIapCandidates": {
+    "RKJY-STAR-TEDAN1D": {
+      "starName": "TEDAN 1D",
+      "endFix": "YEONA",
+      "runways": [
+        "17"
+      ],
+      "candidateIapKeys": [
+        "RKJY-IAP-YEONA-RWY17-REP"
+      ],
+      "defaultIapKey": "RKJY-IAP-YEONA-RWY17-REP"
+    },
+    "RKJY-STAR-NISAV1D": {
+      "starName": "NISAV 1D",
+      "endFix": "YEONA",
+      "runways": [
+        "17"
+      ],
+      "candidateIapKeys": [
+        "RKJY-IAP-YEONA-RWY17-REP"
+      ],
+      "defaultIapKey": "RKJY-IAP-YEONA-RWY17-REP"
+    },
+    "RKJY-STAR-TEDAN1E": {
+      "starName": "TEDAN 1E",
+      "endFix": "SKOTA",
+      "runways": [
+        "17"
+      ],
+      "candidateIapKeys": [
+        "RKJY-IAP-SKOTA-RWY17-REP"
+      ],
+      "defaultIapKey": "RKJY-IAP-SKOTA-RWY17-REP"
+    },
+    "RKJY-STAR-TEDAN3C": {
+      "starName": "TEDAN 3C",
+      "endFix": "SOONA",
+      "runways": [
+        "35"
+      ],
+      "candidateIapKeys": [
+        "RKJY-IAP-SOONA-RWY35-REP"
+      ],
+      "defaultIapKey": "RKJY-IAP-SOONA-RWY35-REP"
+    },
+    "RKJY-STAR-NISAV1C": {
+      "starName": "NISAV 1C",
+      "endFix": "SOONA",
+      "runways": [
+        "35"
+      ],
+      "candidateIapKeys": [
+        "RKJY-IAP-SOONA-RWY35-REP"
+      ],
+      "defaultIapKey": "RKJY-IAP-SOONA-RWY35-REP"
+    }
+  },
+  "iapRoutes": {
+    "RKJY-IAP-YEONA-RWY17-REP": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 9/24 source charts",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "YEONA",
+        "runwayGroup": [
+          "17"
+        ],
+        "coveredRunways": [
+          "17"
+        ],
+        "selectedRunway": "17",
+        "reason": "Representative non-RNP IAP route for connecting RKJY STAR endFix YEONA to RWY 17 final approach."
+      },
+      "entryFix": "YEONA",
+      "endFix": "THR RWY 17",
+      "runways": [
+        "17"
+      ],
+      "name": "YEONA-RWY17-REP",
+      "fullName": "Representative ILS Y or LOC Y RWY 17 from YEONA",
+      "sourceProcedure": "ILS Y or LOC Y RWY 17",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 34.951056,
+            "lon": 127.414472
+          },
+          "id": "YEONA",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 17",
+          "speedKt": 200
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3600,
+            "raw": "+3600"
+          },
+          "coordinates": {
+            "lat": 35.027733,
+            "lon": 127.52602
+          },
+          "id": "IYSO D11.6",
+          "role": "IF",
+          "legDistanceNm": 7.16,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 17",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 2700,
+            "raw": "+2700"
+          },
+          "coordinates": {
+            "lat": 34.981402,
+            "lon": 127.548864
+          },
+          "id": "IYSO D8.6",
+          "role": "SDF",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 17",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1700,
+            "raw": "+1700"
+          },
+          "coordinates": {
+            "lat": 34.928889,
+            "lon": 127.574722
+          },
+          "id": "IYSO D5.2",
+          "role": "FAF",
+          "legDistanceNm": 3.4,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 17",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.882549,
+            "lon": 127.59751
+          },
+          "id": "IYSO D2.2",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 17",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 28,
+            "raw": "+28"
+          },
+          "coordinates": {
+            "lat": 34.851036,
+            "lon": 127.612992
+          },
+          "id": "THR RWY 17",
+          "role": "Runway Threshold",
+          "legDistanceNm": 2.04,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / THR RWY 17",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            127.414472,
+            34.951056
+          ],
+          [
+            127.52602,
+            35.027733
+          ],
+          [
+            127.548864,
+            34.981402
+          ],
+          [
+            127.574722,
+            34.928889
+          ],
+          [
+            127.59751,
+            34.882549
+          ],
+          [
+            127.612992,
+            34.851036
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 7.16,
+          "from": "YEONA",
+          "to": "IYSO D11.6",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.414472,
+                34.951056
+              ],
+              [
+                127.52602,
+                35.027733
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-YEONA-RWY17-REP-001",
+          "procedureId": "RKJY-IAP-YEONA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 3.0,
+          "from": "IYSO D11.6",
+          "to": "IYSO D8.6",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.52602,
+                35.027733
+              ],
+              [
+                127.548864,
+                34.981402
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-YEONA-RWY17-REP-002",
+          "procedureId": "RKJY-IAP-YEONA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 3.4,
+          "from": "IYSO D8.6",
+          "to": "IYSO D5.2",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.548864,
+                34.981402
+              ],
+              [
+                127.574722,
+                34.928889
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-YEONA-RWY17-REP-003",
+          "procedureId": "RKJY-IAP-YEONA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 3.0,
+          "from": "IYSO D5.2",
+          "to": "IYSO D2.2",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.574722,
+                34.928889
+              ],
+              [
+                127.59751,
+                34.882549
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-YEONA-RWY17-REP-004",
+          "procedureId": "RKJY-IAP-YEONA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 2.04,
+          "from": "IYSO D2.2",
+          "to": "THR RWY 17",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.59751,
+                34.882549
+              ],
+              [
+                127.612992,
+                34.851036
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-YEONA-RWY17-REP-005",
+          "procedureId": "RKJY-IAP-YEONA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        }
+      ],
+      "sequence": [
+        "YEONA",
+        "IYSO D11.6",
+        "IYSO D8.6",
+        "IYSO D5.2",
+        "IYSO D2.2",
+        "THR RWY 17"
+      ],
+      "notes": [
+        "Representative IAP route for STAR-to-IAP connection and map display.",
+        "RNP procedures excluded per user request.",
+        "Missed approach fixes and holding patterns excluded.",
+        "Intermediate DME fixes are chart-aligned centerline points derived from the published ILS/LOC geometry."
+      ],
+      "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+    },
+    "RKJY-IAP-SKOTA-RWY17-REP": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 9/24 source charts",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "SKOTA",
+        "runwayGroup": [
+          "17"
+        ],
+        "coveredRunways": [
+          "17"
+        ],
+        "selectedRunway": "17",
+        "reason": "Representative non-RNP IAP route for connecting RKJY STAR endFix SKOTA to RWY 17 final approach."
+      },
+      "entryFix": "SKOTA",
+      "endFix": "THR RWY 17",
+      "runways": [
+        "17"
+      ],
+      "name": "SKOTA-RWY17-REP",
+      "fullName": "Representative ILS Z or LOC Z RWY 17 from SKOTA",
+      "sourceProcedure": "ILS Z or LOC Z RWY 17",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 5000,
+            "raw": "+5000"
+          },
+          "coordinates": {
+            "lat": 35.101361,
+            "lon": 127.490056
+          },
+          "id": "SKOTA",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Z or LOC Z RWY 17",
+          "speedKt": 200
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3600,
+            "raw": "+3600"
+          },
+          "coordinates": {
+            "lat": 35.027797,
+            "lon": 127.526216
+          },
+          "id": "AGUTI",
+          "role": "IF",
+          "legDistanceNm": 4.76,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Z or LOC Z RWY 17",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 2600,
+            "raw": "+2600"
+          },
+          "coordinates": {
+            "lat": 34.9768,
+            "lon": 127.551241
+          },
+          "id": "JY401",
+          "role": "SDF",
+          "legDistanceNm": 3.3,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Z or LOC Z RWY 17",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1700,
+            "raw": "+1700"
+          },
+          "coordinates": {
+            "lat": 34.928889,
+            "lon": 127.574722
+          },
+          "id": "IYSO D5.2",
+          "role": "FAF",
+          "legDistanceNm": 3.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Z or LOC Z RWY 17",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.882549,
+            "lon": 127.59751
+          },
+          "id": "IYSO D2.2",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 3.0,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Z or LOC Z RWY 17",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 28,
+            "raw": "+28"
+          },
+          "coordinates": {
+            "lat": 34.851036,
+            "lon": 127.612992
+          },
+          "id": "THR RWY 17",
+          "role": "Runway Threshold",
+          "legDistanceNm": 2.04,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / THR RWY 17",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            127.490056,
+            35.101361
+          ],
+          [
+            127.526216,
+            35.027797
+          ],
+          [
+            127.551241,
+            34.9768
+          ],
+          [
+            127.574722,
+            34.928889
+          ],
+          [
+            127.59751,
+            34.882549
+          ],
+          [
+            127.612992,
+            34.851036
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 4.76,
+          "from": "SKOTA",
+          "to": "AGUTI",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.490056,
+                35.101361
+              ],
+              [
+                127.526216,
+                35.027797
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SKOTA-RWY17-REP-001",
+          "procedureId": "RKJY-IAP-SKOTA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 3.3,
+          "from": "AGUTI",
+          "to": "JY401",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.526216,
+                35.027797
+              ],
+              [
+                127.551241,
+                34.9768
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SKOTA-RWY17-REP-002",
+          "procedureId": "RKJY-IAP-SKOTA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 3.1,
+          "from": "JY401",
+          "to": "IYSO D5.2",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.551241,
+                34.9768
+              ],
+              [
+                127.574722,
+                34.928889
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SKOTA-RWY17-REP-003",
+          "procedureId": "RKJY-IAP-SKOTA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 3.0,
+          "from": "IYSO D5.2",
+          "to": "IYSO D2.2",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.574722,
+                34.928889
+              ],
+              [
+                127.59751,
+                34.882549
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SKOTA-RWY17-REP-004",
+          "procedureId": "RKJY-IAP-SKOTA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 2.04,
+          "from": "IYSO D2.2",
+          "to": "THR RWY 17",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.59751,
+                34.882549
+              ],
+              [
+                127.612992,
+                34.851036
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SKOTA-RWY17-REP-005",
+          "procedureId": "RKJY-IAP-SKOTA-RWY17-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        }
+      ],
+      "sequence": [
+        "SKOTA",
+        "AGUTI",
+        "JY401",
+        "IYSO D5.2",
+        "IYSO D2.2",
+        "THR RWY 17"
+      ],
+      "notes": [
+        "Representative IAP route for STAR-to-IAP connection and map display.",
+        "RNP procedures excluded per user request.",
+        "Missed approach fixes and holding patterns excluded.",
+        "AGUTI and JY401 are chart-aligned intermediate points on the published ILS Z/LOC Z arrival path."
+      ],
+      "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+    },
+    "RKJY-IAP-SOONA-RWY35-REP": {
+      "airport": "RKJY",
+      "cycle": "AIRAC 9/24 source charts",
+      "dataModel": "procedure-canonical-v1",
+      "procedureType": "IAP",
+      "routeType": "ILS/LOC",
+      "representative": true,
+      "representativeFor": {
+        "entryFix": "SOONA",
+        "runwayGroup": [
+          "35"
+        ],
+        "coveredRunways": [
+          "35"
+        ],
+        "selectedRunway": "35",
+        "reason": "Representative non-RNP IAP route for connecting RKJY STAR endFix SOONA to RWY 35 final approach."
+      },
+      "entryFix": "SOONA",
+      "endFix": "THR RWY 35",
+      "runways": [
+        "35"
+      ],
+      "name": "SOONA-RWY35-REP",
+      "fullName": "Representative ILS Y or LOC Y RWY 35 from SOONA",
+      "sourceProcedure": "ILS Y or LOC Y RWY 35",
+      "fixes": [
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 4000,
+            "raw": "+4000"
+          },
+          "coordinates": {
+            "lat": 34.640972,
+            "lon": 127.715556
+          },
+          "id": "SOONA",
+          "role": "IAF",
+          "legDistanceNm": null,
+          "pathTerminator": "IF",
+          "sequence": 1,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 35",
+          "speedKt": 200
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 3100,
+            "raw": "+3100"
+          },
+          "coordinates": {
+            "lat": 34.68782,
+            "lon": 127.692544
+          },
+          "id": "IYSU D9.6",
+          "role": "IF",
+          "legDistanceNm": 3.03,
+          "pathTerminator": "TF",
+          "sequence": 2,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 35",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1700,
+            "raw": "+1700"
+          },
+          "coordinates": {
+            "lat": 34.755862,
+            "lon": 127.65943
+          },
+          "id": "IYSU D5.2",
+          "role": "FAF",
+          "legDistanceNm": 4.4,
+          "pathTerminator": "TF",
+          "sequence": 3,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 35",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 1030,
+            "raw": "+1030"
+          },
+          "coordinates": {
+            "lat": 34.788333,
+            "lon": 127.643606
+          },
+          "id": "IYSU D3.1",
+          "role": "SDF / LOC ONLY",
+          "legDistanceNm": 2.1,
+          "pathTerminator": "TF",
+          "sequence": 4,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 35",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": null,
+            "raw": null
+          },
+          "coordinates": {
+            "lat": 34.802249,
+            "lon": 127.636821
+          },
+          "id": "IYSU D2.2",
+          "role": "MAPt / LOC ONLY",
+          "legDistanceNm": 0.9,
+          "pathTerminator": "TF",
+          "sequence": 5,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / ILS Y or LOC Y RWY 35",
+          "speedKt": null
+        },
+        {
+          "altitude": {
+            "maxFt": null,
+            "minFt": 31,
+            "raw": "+31"
+          },
+          "coordinates": {
+            "lat": 34.833481,
+            "lon": 127.621583
+          },
+          "id": "THR RWY 35",
+          "role": "Runway Threshold",
+          "legDistanceNm": 2.02,
+          "pathTerminator": "TF",
+          "sequence": 6,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf / THR RWY 35",
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            127.715556,
+            34.640972
+          ],
+          [
+            127.692544,
+            34.68782
+          ],
+          [
+            127.65943,
+            34.755862
+          ],
+          [
+            127.643606,
+            34.788333
+          ],
+          [
+            127.636821,
+            34.802249
+          ],
+          [
+            127.621583,
+            34.833481
+          ]
+        ]
+      },
+      "segments": [
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 3.03,
+          "from": "SOONA",
+          "to": "IYSU D9.6",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.715556,
+                34.640972
+              ],
+              [
+                127.692544,
+                34.68782
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SOONA-RWY35-REP-001",
+          "procedureId": "RKJY-IAP-SOONA-RWY35-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 1,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 4.4,
+          "from": "IYSU D9.6",
+          "to": "IYSU D5.2",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.692544,
+                34.68782
+              ],
+              [
+                127.65943,
+                34.755862
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SOONA-RWY35-REP-002",
+          "procedureId": "RKJY-IAP-SOONA-RWY35-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 2,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 2.1,
+          "from": "IYSU D5.2",
+          "to": "IYSU D3.1",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.65943,
+                34.755862
+              ],
+              [
+                127.643606,
+                34.788333
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SOONA-RWY35-REP-003",
+          "procedureId": "RKJY-IAP-SOONA-RWY35-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 3,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 0.9,
+          "from": "IYSU D3.1",
+          "to": "IYSU D2.2",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.643606,
+                34.788333
+              ],
+              [
+                127.636821,
+                34.802249
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SOONA-RWY35-REP-004",
+          "procedureId": "RKJY-IAP-SOONA-RWY35-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 4,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        },
+        {
+          "airport": "RKJY",
+          "cycle": "AIRAC 9/24 source charts",
+          "distanceNm": 2.02,
+          "from": "IYSU D2.2",
+          "to": "THR RWY 35",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                127.636821,
+                34.802249
+              ],
+              [
+                127.621583,
+                34.833481
+              ]
+            ]
+          },
+          "id": "RKJY-IAP-SOONA-RWY35-REP-005",
+          "procedureId": "RKJY-IAP-SOONA-RWY35-REP",
+          "procedureType": "IAP",
+          "routeType": "ILS/LOC",
+          "sequence": 5,
+          "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+        }
+      ],
+      "sequence": [
+        "SOONA",
+        "IYSU D9.6",
+        "IYSU D5.2",
+        "IYSU D3.1",
+        "IYSU D2.2",
+        "THR RWY 35"
+      ],
+      "notes": [
+        "Representative IAP route for STAR-to-IAP connection and map display.",
+        "RNP procedures excluded per user request.",
+        "Missed approach fixes and holding patterns excluded.",
+        "Intermediate DME fixes are chart-aligned centerline points derived from the published ILS/LOC geometry."
+      ],
+      "source": "(2-15) RKJY INSTR APCH CHART.pdf"
+    }
+  }
+}

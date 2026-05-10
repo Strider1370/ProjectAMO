@@ -41,6 +41,7 @@ const PANEL_MAP = {
   Aviation:      'aviation',
   MET:           'met',
   'pre-briefing': 'route-check',
+  Settings:      'settings',
 }
 
 function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle }) {
@@ -87,9 +88,17 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle }) {
 
       {/* 하단 섹션 */}
       <div className="sidebar-section">
-        {bottomItems.map((item) => (
-          <SidebarButton key={item.label} item={item} isExpanded={isExpanded} />
-        ))}
+        {bottomItems.map((item) => {
+          const panelId = PANEL_MAP[item.label]
+          return (
+            <SidebarButton
+              key={item.label}
+              item={{ ...item, active: panelId ? activePanel === panelId : false }}
+              isExpanded={isExpanded}
+              onClick={panelId ? () => onPanelToggle(panelId) : undefined}
+            />
+          )
+        })}
         
         {/* 구분선 */}
         <div className="sidebar-divider" />

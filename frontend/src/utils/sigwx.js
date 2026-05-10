@@ -4,6 +4,41 @@ const SIGWX_MAP_RANGES = {
 }
 
 const SIGWX_SYMBOL_BASE = '/Symbols/Reference%20Symbols/icon_sigwx'
+const SIGWX_ICON_EXCLUDED_PREFIXES = ['L_', 'BOX_']
+
+export const SIGWX_FILTER_OPTIONS = [
+  { key: 'pressure', label: 'Pressure/Front' },
+  { key: 'cloud', label: 'Cloud' },
+  { key: 'turbulence', label: 'Turb' },
+  { key: 'icing', label: 'Icing' },
+  { key: 'visibility', label: 'SFC VIS' },
+  { key: 'freezing', label: 'Freezing' },
+  { key: 'wind', label: 'Wind' },
+]
+
+export const SIGWX_LEGEND_ITEMS = [
+  { label: 'Thunderstorm', asset: 'tu.png' },
+  { label: 'Strong wind', asset: 'box_wind.png' },
+  { label: 'Turbulence', asset: 'moderate_turbulence.png' },
+  { label: 'Icing', asset: 'Moderate aircraft icing.png' },
+  { label: 'Precipitation', asset: 'rain.png' },
+  { label: 'Freezing rain', asset: 'freezing_precipitation.png' },
+  { label: 'Fog/Hail', asset: 'widespread_fog.png' },
+  { label: 'Strong wind area', asset: 'L_WIND.PNG' },
+  { label: 'Turbulence area', asset: 'L_TU.png' },
+  { label: 'Icing area', asset: 'L_ICE.png' },
+  { label: 'Cloudy area', asset: 'L_CB.png' },
+  { label: 'Precipitation area', asset: 'L_RAIN.png' },
+  { label: 'Low visibility area', asset: 'low_visibility_area.png' },
+  { label: 'Freezing level', asset: 'L_FREEZ.png' },
+  { label: 'Cold/Warm front', asset: 'L_STAT.png' },
+  { label: 'Occluded/Stationary front', asset: 'L_OCCL.png' },
+]
+
+export function sigwxAssetUrl(fileName) {
+  if (!fileName) return ''
+  return `${SIGWX_SYMBOL_BASE}/${String(fileName).split('/').map(encodeURIComponent).join('/')}`
+}
 
 function normalizeText(value) {
   return String(value || '').replace(/&#10;/g, ' ').replace(/\s+/g, ' ').trim()
@@ -43,6 +78,51 @@ function centerOfCoords(coords) {
   ]
 }
 
+function chaikinPass(points, isClosed) {
+  if (!Array.isArray(points) || points.length < 2) return points || []
+  const next = []
+
+  if (!isClosed) {
+    next.push(points[0])
+  }
+
+  const limit = isClosed ? points.length : points.length - 1
+  for (let i = 0; i < limit; i += 1) {
+    const current = points[i]
+    const following = points[(i + 1) % points.length]
+    if (!current || !following) continue
+    next.push([
+      (0.75 * current[0]) + (0.25 * following[0]),
+      (0.75 * current[1]) + (0.25 * following[1]),
+    ])
+    next.push([
+      (0.25 * current[0]) + (0.75 * following[0]),
+      (0.25 * current[1]) + (0.75 * following[1]),
+    ])
+  }
+
+  if (!isClosed) {
+    next.push(points[points.length - 1])
+  } else if (next.length > 0) {
+    next.push(next[0])
+  }
+
+  return next
+}
+
+function smoothSigwxCoords(coords, tension = 0, isClosed = false) {
+  if (!Array.isArray(coords) || coords.length < 3 || tension <= 0) {
+    return coords || []
+  }
+
+  const iterations = Math.max(1, Math.min(3, Math.round(1 + (2 * Math.max(0, Math.min(1, tension))))))
+  let current = isClosed ? [...coords, coords[0]] : [...coords]
+  for (let i = 0; i < iterations; i += 1) {
+    current = chaikinPass(current, isClosed)
+  }
+  return current
+}
+
 function labelPosition(item, source, coords) {
   const rect = item?.rect_label
   if (rect && Number.isFinite(rect.left) && Number.isFinite(rect.top) && Number.isFinite(rect.width) && Number.isFinite(rect.height)) {
@@ -72,11 +152,13 @@ function phenomenonName(item) {
   const itemName = String(item?.item_name || item?.text_label || '').toLowerCase()
   const iconTokens = Array.isArray(item?.icon_tokens) ? item.icon_tokens.map((token) => String(token).toLowerCase()) : []
 
-  if (contour === 'freezing_level') return 'FZ LEVEL'
-  if (contour === 'sfc_vis') return 'SFC VIS'
+  if (contour === 'freezing_level') return '0℃'
+  if (contour === 'sfc_vis') return 'SFCVIS'
   if (contour === 'icing_area' || itemName.includes('ice') || iconTokens.some((token) => token.includes('ice'))) return 'ICING'
   if (contour === 'ktg' || itemName.includes('turb') || iconTokens.some((token) => token.includes('turb'))) return 'TURB'
   if (contour === 'cld') return 'CLOUD'
+  if (contour === 'pressure') return 'PRESSURE'
+  if (contour === 'font_line') return 'FRONT'
   return normalizeText(item?.text_label || item?.item_name || item?.contour_name || 'SIGWX').toUpperCase()
 }
 
@@ -90,14 +172,25 @@ function intensityLabel(item) {
   return ''
 }
 
-function sigwxLabel(item) {
+export function sigwxLabel(item) {
   const base = phenomenonName(item)
   const intensity = intensityLabel(item)
-  if (String(item?.contour_name || '').toLowerCase() === 'freezing_level') {
-    return normalizeText(item?.label || item?.text_label || base)
+  const contour = String(item?.contour_name || '').toLowerCase()
+  const rawLabel = normalizeText(item?.label || item?.text_label || item?.item_name)
+
+  if (contour === 'freezing_level') {
+    return rawLabel || '0℃'
   }
+  if (contour === 'sfc_vis') return rawLabel || 'SFCVIS'
   if (intensity && base && !base.startsWith(intensity)) return `${intensity} ${base}`
-  return base || normalizeText(item?.label || item?.text_label || item?.icon_name || 'SIGWX')
+  return base || rawLabel || 'SIGWX'
+}
+
+function sigwxAltitudeParts(item) {
+  const rawLabel = normalizeText(item?.label || item?.text_label)
+  const parts = rawLabel.split(/\s+/).filter(Boolean)
+  if (parts.length !== 2) return null
+  return { upper: parts[0], lower: parts[1] }
 }
 
 function needsLabelMarker(item) {
@@ -111,11 +204,11 @@ function needsLabelMarker(item) {
 function isArrowItem(item) {
   const type = Number(item?.item_type)
   const contour = String(item?.contour_name || '').toLowerCase()
-  const label = String(item?.label || '').trim().toLowerCase()
-  const hasLine = Array.isArray(item?.lat_lngs) && item.lat_lngs.length >= 2
+  const label = normalizeText(item?.label || '').toLowerCase()
+  const hasLine = (Array.isArray(item?.lat_lngs) && item.lat_lngs.length >= 2) || (Array.isArray(item?.fpv_points) && item.fpv_points.length >= 2)
   if (!hasLine || contour === 'freezing_level') return false
   if (type === 9) return contour === 'cld' || contour === 'font_line' || contour === 'pressure' || contour === ''
-  if (type === 10) return contour === '' || label.includes('km/h')
+  if (type === 10) return contour === '' || contour === 'pressure' || label.includes('km/h')
   return false
 }
 
@@ -138,12 +231,14 @@ function iconFileName(item) {
   for (const candidate of candidates) {
     const value = String(candidate).trim()
     if (!value) continue
+    const upper = value.toUpperCase()
+    if (SIGWX_ICON_EXCLUDED_PREFIXES.some((prefix) => upper.startsWith(prefix))) continue
     return /\.(png|jpg|jpeg|webp)$/i.test(value) ? value : `${value}.png`
   }
 
   const contour = String(item?.contour_name || '').toLowerCase()
   const itemName = String(item?.item_name || '').toLowerCase()
-  const label = String(item?.label || item?.text_label || '').toLowerCase()
+  const label = normalizeText(item?.label || item?.text_label).toLowerCase()
   if (contour === 'freezing_level') {
     if (label.includes('sfc')) return 'freezing_level_sfc.png'
     if (label.includes('050') || label.includes(':50')) return 'freezing_level_050.png'
@@ -153,64 +248,263 @@ function iconFileName(item) {
   return null
 }
 
-function encodedSymbolUrl(fileName) {
-  return `${SIGWX_SYMBOL_BASE}/${String(fileName).split('/').map(encodeURIComponent).join('/')}`
+export function getSigwxFilterKey(contourName, item = null) {
+  const contour = String(contourName || item?.contour_name || '').toLowerCase()
+  const itemName = String(item?.item_name || '').toLowerCase()
+  if (contour === 'pressure' || contour === 'font_line') return 'pressure'
+  if (contour === 'cld') return 'cloud'
+  if (contour === 'freezing_level') return 'freezing'
+  if (contour === 'sfc_vis') return 'visibility'
+  if (contour === 'sfc_wind') return 'wind'
+  if (contour === 'icing_area' || itemName.includes('ice')) return 'icing'
+  if (contour === 'ktg' || itemName.includes('turb')) return 'turbulence'
+  return 'pressure'
+}
+
+function overlayRoleForItem(item) {
+  const contour = String(item?.contour_name || '').toLowerCase()
+  if (contour === 'cld') return 'cloud'
+  if (contour === 'pressure' || contour === 'font_line') return 'front'
+  return null
+}
+
+function baseGroupKey(item, index) {
+  const contour = String(item?.contour_name || '').toLowerCase()
+  const label = normalizeText(item?.label || item?.text_label || item?.item_name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  if (contour === 'pressure' || contour === 'font_line') return 'pressure-system'
+  if (contour === 'cld') return label ? `cloud-${label}` : `cloud-${index}`
+  if (contour === 'freezing_level') return label ? `freezing-${label}` : `freezing-${index}`
+  if (contour === 'sfc_vis') return label ? `sfc-vis-${label}` : `sfc-vis-${index}`
+  if (contour === 'sfc_wind') return label ? `wind-${label}` : `wind-${index}`
+  if (getSigwxFilterKey(contour, item) === 'icing') return label ? `icing-${label}` : `icing-${index}`
+  if (getSigwxFilterKey(contour, item) === 'turbulence') return label ? `turb-${label}` : `turb-${index}`
+  return label ? `${contour || 'sigwx'}-${label}` : `${contour || 'sigwx'}-${index}`
+}
+
+function groupLabelForItem(item) {
+  const contour = String(item?.contour_name || '').toLowerCase()
+  if (contour === 'pressure' || contour === 'font_line') return 'Pressure / Front'
+  return sigwxLabel(item)
+}
+
+function lineTypeForMapbox(item) {
+  return String(item?.line_type || '')
 }
 
 function featureProperties(item, index) {
   const fileName = iconFileName(item)
+  const label = sigwxLabel(item)
+  const altitudeParts = sigwxAltitudeParts(item)
   return {
     id: item?.id || `sigwx-low-${index}`,
-    label: sigwxLabel(item),
+    label,
+    rawLabel: normalizeText(item?.label || item?.text_label || item?.item_name),
     contour: item?.contour_name || '',
     itemName: item?.item_name || '',
     itemType: Number(item?.item_type) || 0,
     colorLine: item?.color_line || '#7c3aed',
     colorBack: item?.color_back || '#a78bfa',
     lineWidth: Number(item?.line_width) || 2,
+    lineType: lineTypeForMapbox(item),
     isFill: Boolean(item?.is_fill || item?.is_close),
     iconKey: fileName ? `sigwx-${fileName}` : '',
-    iconUrl: fileName ? encodedSymbolUrl(fileName) : '',
+    iconUrl: fileName ? sigwxAssetUrl(fileName) : '',
+    iconScale: String(item?.contour_name || '').toLowerCase() === 'freezing_level' ? 0.92 : 0.82,
+    filterKey: getSigwxFilterKey(item?.contour_name, item),
+    overlayRole: overlayRoleForItem(item),
+    chipText: contourChipText(item),
+    chipTone: contourChipTone(item),
+    altitudeUpper: altitudeParts?.upper || '',
+    altitudeLower: altitudeParts?.lower || '',
   }
 }
 
-export function sigwxLowToMapboxData(payload) {
+function contourChipText(item) {
+  const contour = String(item?.contour_name || '').toLowerCase()
+  const label = normalizeText(item?.label || item?.text_label || '')
+  if (contour === 'freezing_level') return label || '0℃'
+  if (contour === 'sfc_vis') return label || 'SFCVIS'
+  if (getSigwxFilterKey(contour, item) === 'turbulence') return sigwxLabel(item)
+  if (getSigwxFilterKey(contour, item) === 'icing') return sigwxLabel(item)
+  return ''
+}
+
+function contourChipTone(item) {
+  const filterKey = getSigwxFilterKey(item?.contour_name, item)
+  if (filterKey === 'freezing') return 'neutral'
+  if (filterKey === 'visibility') return 'green'
+  if (filterKey === 'icing') return 'blue'
+  if (filterKey === 'turbulence') return 'orange'
+  return 'neutral'
+}
+
+function shouldRenderTextChip(item) {
+  const contour = String(item?.contour_name || '').toLowerCase()
+  if (needsLabelMarker(item) && iconFileName(item)) return false
+  return contour === 'freezing_level'
+    || contour === 'sfc_vis'
+    || getSigwxFilterKey(contour, item) === 'turbulence'
+    || getSigwxFilterKey(contour, item) === 'icing'
+}
+
+function shouldRenderArrowLabel(item) {
+  if (!isArrowItem(item)) return false
+  const contour = String(item?.contour_name || '').toLowerCase()
+  const label = normalizeText(item?.label || item?.text_label)
+  return contour === 'pressure' || /km\/h/i.test(label)
+}
+
+function shouldRenderGenericLabel(item) {
+  const contour = String(item?.contour_name || '').toLowerCase()
+  if (shouldRenderTextChip(item) || shouldRenderArrowLabel(item)) return false
+  if (contour === 'font_line' || contour === 'pressure') return normalizeText(item?.label || item?.text_label).length > 0
+  return true
+}
+
+function registerGroup(groups, enriched) {
+  const existing = groups.get(enriched.groupKey)
+  if (existing) {
+    existing.memberCount += 1
+    existing.overlayRole = existing.overlayRole || enriched.overlayRole
+    existing.lineColor = existing.lineColor || enriched.properties.colorLine
+    return existing
+  }
+
+  const group = {
+    mapKey: enriched.groupKey,
+    label: enriched.groupLabel,
+    contour: enriched.contour,
+    filterKey: enriched.filterKey,
+    overlayRole: enriched.overlayRole,
+    memberCount: 1,
+    lineColor: enriched.properties.colorLine,
+  }
+  groups.set(group.mapKey, group)
+  return group
+}
+
+function buildPathGeometry(coords, closed, tension = 0) {
+  const smoothedCoords = smoothSigwxCoords(coords, tension, closed)
+  const pathCoords = closed && smoothedCoords.length >= 3 && (smoothedCoords[0][0] !== smoothedCoords[smoothedCoords.length - 1][0] || smoothedCoords[0][1] !== smoothedCoords[smoothedCoords.length - 1][1])
+    ? [...smoothedCoords, smoothedCoords[0]]
+    : smoothedCoords
+
+  if (closed && pathCoords.length >= 4) {
+    return { type: 'Polygon', coordinates: [pathCoords] }
+  }
+  if (pathCoords.length >= 2) {
+    return { type: 'LineString', coordinates: pathCoords }
+  }
+  return null
+}
+
+export function sigwxLowToMapboxData(payload, options = {}) {
   const source = payload?.source || payload
   const items = Array.isArray(payload?.items) ? payload.items : []
+  const hiddenGroupKeys = new Set(options.hiddenGroupKeys || [])
+  const filters = options.filters || {}
+  const iconImages = new Map()
+  const groups = new Map()
+
+  const enrichedItems = items.map((item, index) => {
+    const coords = itemCoordinates(item, source)
+    const properties = featureProperties(item, index)
+    const contour = String(item?.contour_name || '').toLowerCase()
+    const groupKey = baseGroupKey(item, index)
+    const groupLabel = groupLabelForItem(item)
+    const filterKey = properties.filterKey
+    const overlayRole = properties.overlayRole
+    const labelPoint = labelPosition(item, source, coords)
+    const closed = Boolean(item?.is_close || item?.is_fill)
+
+    const enriched = {
+      item,
+      index,
+      coords,
+      contour,
+      closed,
+      labelPoint,
+      filterKey,
+      overlayRole,
+      groupKey,
+      groupLabel,
+      properties: {
+        ...properties,
+        groupKey,
+        groupLabel,
+      },
+    }
+
+    registerGroup(groups, enriched)
+    return enriched
+  })
+
+  const groupList = [...groups.values()].map((group) => ({
+    ...group,
+    hidden: hiddenGroupKeys.has(group.mapKey),
+    enabledByFilter: filters[group.filterKey] !== false,
+  }))
+
+  const visibleGroupKeys = new Set(
+    groupList
+      .filter((group) => !group.hidden && group.enabledByFilter)
+      .map((group) => group.mapKey),
+  )
+
   const polygonFeatures = []
   const lineFeatures = []
   const labelFeatures = []
   const iconFeatures = []
-  const iconImages = new Map()
+  const arrowLabelFeatures = []
+  const textChipFeatures = []
 
-  items.forEach((item, index) => {
-    const coords = itemCoordinates(item, source)
-    if (coords.length === 0) return
+  enrichedItems.forEach((entry) => {
+    if (entry.coords.length === 0) return
+    if (!visibleGroupKeys.has(entry.groupKey)) return
 
-    const properties = featureProperties(item, index)
-    const labelPoint = labelPosition(item, source, coords)
-    const closed = Boolean(item?.is_close || item?.is_fill)
-    const pathCoords = closed && coords.length >= 3 && (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1])
-      ? [...coords, coords[0]]
-      : coords
+    const { item, coords, closed, labelPoint, properties } = entry
+    const geometry = buildPathGeometry(coords, closed, Number(item?.curve_tension) || 0)
 
-    if (needsPath(item) && pathCoords.length >= 2) {
-      const pathFeature = {
+    if (needsPath(item) && geometry) {
+      const feature = {
         type: 'Feature',
         id: properties.id,
         properties,
-        geometry: closed && pathCoords.length >= 4
-          ? { type: 'Polygon', coordinates: [pathCoords] }
-          : { type: 'LineString', coordinates: pathCoords },
+        geometry,
       }
-      if (pathFeature.geometry.type === 'Polygon') polygonFeatures.push(pathFeature)
-      else lineFeatures.push(pathFeature)
+      if (geometry.type === 'Polygon') polygonFeatures.push(feature)
+      else lineFeatures.push(feature)
     }
 
-    if (labelPoint) {
+    if (labelPoint && shouldRenderGenericLabel(item)) {
       labelFeatures.push({
         type: 'Feature',
         id: `${properties.id}-label`,
+        properties,
+        geometry: { type: 'Point', coordinates: labelPoint },
+      })
+    }
+
+    if (labelPoint && shouldRenderArrowLabel(item)) {
+      arrowLabelFeatures.push({
+        type: 'Feature',
+        id: `${properties.id}-arrow-label`,
+        properties: {
+          ...properties,
+          label: normalizeText(item?.label || item?.text_label || properties.label),
+        },
+        geometry: { type: 'Point', coordinates: labelPoint },
+      })
+    }
+
+    if (labelPoint && shouldRenderTextChip(item)) {
+      textChipFeatures.push({
+        type: 'Feature',
+        id: `${properties.id}-chip`,
         properties,
         geometry: { type: 'Point', coordinates: labelPoint },
       })
@@ -232,6 +526,9 @@ export function sigwxLowToMapboxData(payload) {
     lines: { type: 'FeatureCollection', features: lineFeatures },
     labels: { type: 'FeatureCollection', features: labelFeatures },
     icons: { type: 'FeatureCollection', features: iconFeatures },
+    arrowLabels: { type: 'FeatureCollection', features: arrowLabelFeatures },
+    textChips: { type: 'FeatureCollection', features: textChipFeatures },
     iconImages: [...iconImages.entries()].map(([id, url]) => ({ id, url })),
+    groups: groupList,
   }
 }

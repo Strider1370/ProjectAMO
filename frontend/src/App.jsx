@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { loadWeatherData } from './api/weatherApi.js'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { buildSnapshotMetaFromData, fetchSnapshotMeta, loadChangedWeatherData, loadWeatherData } from './api/weatherApi.js'
 import AirportPanel from './components/AirportPanel/AirportPanel.jsx'
 import MapView from './components/Map/MapView.jsx'
 import Sidebar from './components/Sidebar/Sidebar.jsx'
@@ -14,12 +14,41 @@ function formatUtcTime(date) {
 
 const REFRESH_INTERVAL_MS = 60_000
 
+function hashesDiffer(prev, next) {
+  return (prev?.hash || null) !== (next?.hash || null)
+}
+
+function framesDiffer(prev, next) {
+  return (prev?.tm || null) !== (next?.tm || null)
+}
+
+function detectSnapshotChanges(prev, next) {
+  return {
+    metar: hashesDiffer(prev?.metar, next?.metar),
+    taf: hashesDiffer(prev?.taf, next?.taf),
+    warning: hashesDiffer(prev?.warning, next?.warning),
+    sigmet: hashesDiffer(prev?.sigmet, next?.sigmet),
+    airmet: hashesDiffer(prev?.airmet, next?.airmet),
+    sigwxLow: hashesDiffer(prev?.sigwxLow, next?.sigwxLow),
+    amos: hashesDiffer(prev?.amos, next?.amos),
+    lightning: hashesDiffer(prev?.lightning, next?.lightning),
+    airportInfo: hashesDiffer(prev?.airportInfo, next?.airportInfo),
+    echoMeta: framesDiffer(prev?.echoMeta, next?.echoMeta),
+    satMeta: framesDiffer(prev?.satMeta, next?.satMeta),
+  }
+}
+
+function hasSnapshotChanges(changes) {
+  return Object.values(changes).some(Boolean)
+}
+
 function App() {
   const [utcTime, setUtcTime] = useState(() => formatUtcTime(new Date()))
   const [activePanel, setActivePanel] = useState(null)
   const [selectedAirport, setSelectedAirport] = useState(null)
   const [weatherData, setWeatherData] = useState(null)
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const snapshotMetaRef = useRef(null)
 
   // UTC clock
   useEffect(() => {
@@ -30,18 +59,51 @@ function App() {
   // Weather data fetch loop
   useEffect(() => {
     let mounted = true
+    let polling = false
 
-    async function fetchData() {
+    async function fetchInitialData() {
       try {
         const data = await loadWeatherData()
-        if (mounted) setWeatherData(data)
+        if (!mounted) return
+        setWeatherData(data)
+        snapshotMetaRef.current = buildSnapshotMetaFromData(data)
       } catch (err) {
         console.warn('[App] Weather data fetch failed:', err.message)
       }
     }
 
-    fetchData()
-    const timer = window.setInterval(fetchData, REFRESH_INTERVAL_MS)
+    async function pollChangedData() {
+      if (polling) return
+      if (!snapshotMetaRef.current) {
+        await fetchInitialData()
+        return
+      }
+      polling = true
+
+      try {
+        const latestMeta = await fetchSnapshotMeta()
+        if (!mounted || !latestMeta) return
+
+        const changes = detectSnapshotChanges(snapshotMetaRef.current, latestMeta)
+        if (!hasSnapshotChanges(changes)) return
+
+        const changedData = await loadChangedWeatherData(changes)
+        if (!mounted) return
+
+        setWeatherData((prev) => {
+          const nextData = { ...(prev || {}), ...changedData }
+          snapshotMetaRef.current = buildSnapshotMetaFromData(nextData)
+          return nextData
+        })
+      } catch (err) {
+        console.warn('[App] Weather incremental fetch failed:', err.message)
+      } finally {
+        polling = false
+      }
+    }
+
+    fetchInitialData()
+    const timer = window.setInterval(pollChangedData, REFRESH_INTERVAL_MS)
     return () => { mounted = false; window.clearInterval(timer) }
   }, [])
 
@@ -73,6 +135,7 @@ function App() {
           airmetData={weatherData?.airmet || null}
           lightningData={weatherData?.lightning || null}
           sigwxLowData={weatherData?.sigwxLow || null}
+          sigwxLowHistoryData={weatherData?.sigwxLowHistory || null}
           sigwxFrontMeta={weatherData?.sigwxFrontMeta || null}
           sigwxCloudMeta={weatherData?.sigwxCloudMeta || null}
           selectedAirport={selectedAirport}

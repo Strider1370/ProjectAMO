@@ -16,7 +16,7 @@ import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapDa
 import { getProcedures, KNOWN_AIRPORTS } from '../../services/navdata/procedureData.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../../layers/aviation/addAdsbLayer.js'
-import { sigwxLowToMapboxData } from '../../utils/sigwx.js'
+import { SIGWX_FILTER_OPTIONS, SIGWX_LEGEND_ITEMS, sigwxAssetUrl, sigwxLowToMapboxData } from '../../utils/sigwx.js'
 import './MapView.css'
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -115,16 +115,73 @@ const SIGWX_CLOUD_SOURCE = 'kma-sigwx-cloud-overlay'
 const SIGWX_CLOUD_LAYER = 'kma-sigwx-cloud-overlay'
 const SIGWX_POLYGON_SOURCE = 'kma-sigwx-low-polygons'
 const SIGWX_POLYGON_LAYER = 'kma-sigwx-low-polygons'
+const SIGWX_POLYGON_OUTLINE_LAYER = 'kma-sigwx-low-polygons-outline'
 const SIGWX_LINE_SOURCE = 'kma-sigwx-low-lines'
 const SIGWX_LINE_LAYER = 'kma-sigwx-low-lines'
 const SIGWX_LABEL_SOURCE = 'kma-sigwx-low-labels'
 const SIGWX_LABEL_LAYER = 'kma-sigwx-low-labels'
 const SIGWX_ICON_SOURCE = 'kma-sigwx-low-icons'
 const SIGWX_ICON_LAYER = 'kma-sigwx-low-icons'
-const SIGWX_VECTOR_LAYERS = [SIGWX_POLYGON_LAYER, SIGWX_LINE_LAYER, SIGWX_LABEL_LAYER, SIGWX_ICON_LAYER]
+const SIGWX_ARROW_LABEL_SOURCE = 'kma-sigwx-low-arrow-labels'
+const SIGWX_ARROW_LABEL_LAYER = 'kma-sigwx-low-arrow-labels'
+const SIGWX_TEXT_CHIP_SOURCE = 'kma-sigwx-low-text-chips'
+const SIGWX_TEXT_CHIP_LAYER = 'kma-sigwx-low-text-chips'
+const SIGWX_VECTOR_LAYERS = [
+  SIGWX_POLYGON_LAYER,
+  SIGWX_POLYGON_OUTLINE_LAYER,
+  SIGWX_LINE_LAYER,
+  SIGWX_LABEL_LAYER,
+  SIGWX_ICON_LAYER,
+  SIGWX_ARROW_LABEL_LAYER,
+  SIGWX_TEXT_CHIP_LAYER,
+]
 const LIGHTNING_SOURCE = 'kma-lightning'
 const LIGHTNING_GROUND_LAYER = 'kma-lightning-ground'
 const LIGHTNING_CLOUD_LAYER = 'kma-lightning-cloud'
+const LIGHTNING_ICON_IDS = [
+  'lightning-0-10',
+  'lightning-10-20',
+  'lightning-20-30',
+  'lightning-30-40',
+  'lightning-40-50',
+  'lightning-50-60',
+]
+const LIGHTNING_BLINK_INTERVAL_MS = 800
+const LIGHTNING_TIME_WINDOW_MINUTES = 60
+const LIGHTNING_AGE_BANDS = [
+  { min: 0, max: 10, color: '#ff1f1f', opacity: 1, iconId: 'lightning-0-10' },
+  { min: 10, max: 20, color: '#ff00ff', opacity: 0.92, iconId: 'lightning-10-20' },
+  { min: 20, max: 30, color: '#2f55ff', opacity: 0.85, iconId: 'lightning-20-30' },
+  { min: 30, max: 40, color: '#1dd9e6', opacity: 0.78, iconId: 'lightning-30-40' },
+  { min: 40, max: 50, color: '#25d90a', opacity: 0.7, iconId: 'lightning-40-50' },
+  { min: 50, max: 60, color: '#ffeb00', opacity: 0.62, iconId: 'lightning-50-60' },
+]
+const RADAR_RAINRATE_LEGEND = [
+  { label: '150', color: 'rgb(51, 50, 59)' },
+  { label: '110', color: 'rgb(2, 4, 138)' },
+  { label: '90', color: 'rgb(75, 79, 170)' },
+  { label: '70', color: 'rgb(178, 180, 219)' },
+  { label: '60', color: 'rgb(141, 6, 219)' },
+  { label: '50', color: 'rgb(174, 44, 250)' },
+  { label: '40', color: 'rgb(201, 107, 248)' },
+  { label: '30', color: 'rgb(223, 170, 250)' },
+  { label: '25', color: 'rgb(174, 5, 7)' },
+  { label: '20', color: 'rgb(202, 4, 6)' },
+  { label: '15', color: 'rgb(246, 61, 4)' },
+  { label: '10', color: 'rgb(237, 118, 7)' },
+  { label: '9', color: 'rgb(211, 175, 10)' },
+  { label: '8', color: 'rgb(237, 196, 10)' },
+  { label: '7', color: 'rgb(251, 218, 32)' },
+  { label: '6', color: 'rgb(254, 247, 19)' },
+  { label: '5', color: 'rgb(18, 92, 5)' },
+  { label: '4', color: 'rgb(7, 135, 6)' },
+  { label: '3', color: 'rgb(6, 187, 8)' },
+  { label: '2', color: 'rgb(8, 250, 8)' },
+  { label: '1.0', color: 'rgb(4, 74, 231)' },
+  { label: '0.5', color: 'rgb(6, 153, 238)' },
+  { label: '0.1', color: 'rgb(8, 198, 246)' },
+  { label: '0.0', color: 'rgb(247, 252, 249)' },
+]
 
 const GEO_BOUNDARY_COLOR = '#facc15'
 const GEO_BOUNDARY_WIDTH = 1
@@ -570,6 +627,51 @@ function ensureMapImage(map, { id, url }) {
   })
 }
 
+function createSigwxChipImage({ fill, stroke }) {
+  const width = 64
+  const height = 26
+  const radius = 6
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  ctx.beginPath()
+  ctx.moveTo(radius, 1)
+  ctx.lineTo(width - radius - 1, 1)
+  ctx.quadraticCurveTo(width - 1, 1, width - 1, radius)
+  ctx.lineTo(width - 1, height - radius - 1)
+  ctx.quadraticCurveTo(width - 1, height - 1, width - radius - 1, height - 1)
+  ctx.lineTo(radius, height - 1)
+  ctx.quadraticCurveTo(1, height - 1, 1, height - radius - 1)
+  ctx.lineTo(1, radius)
+  ctx.quadraticCurveTo(1, 1, radius, 1)
+  ctx.closePath()
+  ctx.fillStyle = fill
+  ctx.fill()
+  ctx.strokeStyle = stroke
+  ctx.lineWidth = 2
+  ctx.stroke()
+  return ctx.getImageData(0, 0, width, height)
+}
+
+function ensureSigwxChipImages(map) {
+  const images = [
+    { id: 'sigwx-chip-neutral', fill: 'rgba(255,255,255,0.96)', stroke: '#111827' },
+    { id: 'sigwx-chip-green', fill: 'rgba(236, 253, 245, 0.96)', stroke: '#16a34a' },
+    { id: 'sigwx-chip-blue', fill: 'rgba(239, 246, 255, 0.96)', stroke: '#2563eb' },
+    { id: 'sigwx-chip-orange', fill: 'rgba(255, 247, 237, 0.96)', stroke: '#ea580c' },
+  ]
+
+  images.forEach((image) => {
+    if (map.hasImage(image.id)) return
+    const data = createSigwxChipImage(image)
+    if (!data || map.hasImage(image.id)) return
+    map.addImage(image.id, data, { pixelRatio: 2 })
+  })
+}
+
 function addOrUpdateGeoJsonSource(map, sourceId, data) {
   const source = map.getSource(sourceId)
   if (source) {
@@ -579,12 +681,35 @@ function addOrUpdateGeoJsonSource(map, sourceId, data) {
   }
 }
 
+function buildSigwxDashArrayExpression() {
+  return [
+    'match',
+    ['get', 'lineType'],
+    '2', ['literal', [8, 6]],
+    '3', ['literal', [10, 6]],
+    '4', ['literal', [10, 4, 2, 4]],
+    '5', ['literal', [14, 8]],
+    '6', ['literal', [16, 6]],
+    '7', ['literal', [12, 4, 2, 4, 2, 4]],
+    '8', ['literal', [18, 6]],
+    '301', ['literal', [10, 6]],
+    '302', ['literal', [10, 6]],
+    '303', ['literal', [10, 6]],
+    '304', ['literal', [10, 6]],
+    '310', ['literal', [10, 6]],
+    ['literal', [1, 0]],
+  ]
+}
+
 function addOrUpdateSigwxLowLayers(map, data) {
   const empty = emptyGeoJSON
+  ensureSigwxChipImages(map)
   addOrUpdateGeoJsonSource(map, SIGWX_POLYGON_SOURCE, data?.polygons || empty)
   addOrUpdateGeoJsonSource(map, SIGWX_LINE_SOURCE, data?.lines || empty)
   addOrUpdateGeoJsonSource(map, SIGWX_LABEL_SOURCE, data?.labels || empty)
   addOrUpdateGeoJsonSource(map, SIGWX_ICON_SOURCE, data?.icons || empty)
+  addOrUpdateGeoJsonSource(map, SIGWX_ARROW_LABEL_SOURCE, data?.arrowLabels || empty)
+  addOrUpdateGeoJsonSource(map, SIGWX_TEXT_CHIP_SOURCE, data?.textChips || empty)
 
   data?.iconImages?.forEach((image) => ensureMapImage(map, image))
 
@@ -601,6 +726,21 @@ function addOrUpdateSigwxLowLayers(map, data) {
     })
   }
 
+  if (!map.getLayer(SIGWX_POLYGON_OUTLINE_LAYER)) {
+    map.addLayer({
+      id: SIGWX_POLYGON_OUTLINE_LAYER,
+      type: 'line',
+      source: SIGWX_POLYGON_SOURCE,
+      slot: 'top',
+      paint: {
+        'line-color': ['coalesce', ['get', 'colorLine'], '#7c3aed'],
+        'line-opacity': 0.95,
+        'line-width': ['coalesce', ['get', 'lineWidth'], 2],
+        'line-dasharray': buildSigwxDashArrayExpression(),
+      },
+    })
+  }
+
   if (!map.getLayer(SIGWX_LINE_LAYER)) {
     map.addLayer({
       id: SIGWX_LINE_LAYER,
@@ -611,6 +751,7 @@ function addOrUpdateSigwxLowLayers(map, data) {
         'line-color': ['coalesce', ['get', 'colorLine'], '#7c3aed'],
         'line-opacity': 0.95,
         'line-width': ['coalesce', ['get', 'lineWidth'], 2],
+        'line-dasharray': buildSigwxDashArrayExpression(),
       },
     })
   }
@@ -623,8 +764,9 @@ function addOrUpdateSigwxLowLayers(map, data) {
       slot: 'top',
       layout: {
         'icon-image': ['get', 'iconKey'],
-        'icon-size': 0.55,
+        'icon-size': ['coalesce', ['get', 'iconScale'], 0.82],
         'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
       },
     })
   }
@@ -649,6 +791,63 @@ function addOrUpdateSigwxLowLayers(map, data) {
       },
     })
   }
+
+  if (!map.getLayer(SIGWX_ARROW_LABEL_LAYER)) {
+    map.addLayer({
+      id: SIGWX_ARROW_LABEL_LAYER,
+      type: 'symbol',
+      source: SIGWX_ARROW_LABEL_SOURCE,
+      slot: 'top',
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
+        'text-size': 12,
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': '#111827',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2,
+      },
+    })
+  }
+
+  if (!map.getLayer(SIGWX_TEXT_CHIP_LAYER)) {
+    map.addLayer({
+      id: SIGWX_TEXT_CHIP_LAYER,
+      type: 'symbol',
+      source: SIGWX_TEXT_CHIP_SOURCE,
+      slot: 'top',
+      layout: {
+        'icon-image': [
+          'match',
+          ['get', 'chipTone'],
+          'green', 'sigwx-chip-green',
+          'blue', 'sigwx-chip-blue',
+          'orange', 'sigwx-chip-orange',
+          'sigwx-chip-neutral',
+        ],
+        'icon-text-fit': 'both',
+        'icon-text-fit-padding': [5, 7, 5, 7],
+        'text-field': ['get', 'chipText'],
+        'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
+        'text-size': 12,
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': [
+          'match',
+          ['get', 'chipTone'],
+          'green', '#166534',
+          'blue', '#1d4ed8',
+          'orange', '#c2410c',
+          '#111827',
+        ],
+      },
+    })
+  }
 }
 
 function setSigwxLowVisibility(map, isVisible) {
@@ -669,17 +868,88 @@ function createAirportGeoJSON(airports) {
   }
 }
 
-function createLightningGeoJSON(lightningData) {
-  const strikes = lightningData?.strikes || []
+function getLightningAgeBand(ageMinutes) {
+  return LIGHTNING_AGE_BANDS.find((band) => ageMinutes >= band.min && ageMinutes < band.max) ?? null
+}
+
+function createLightningCrossImage(color) {
+  const size = 32
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  ctx.translate(size / 2, size / 2)
+  ctx.lineCap = 'round'
+
+  // Black outline for contrast against raster backgrounds.
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)'
+  ctx.lineWidth = 6
+  ctx.beginPath()
+  ctx.moveTo(-9, 0)
+  ctx.lineTo(9, 0)
+  ctx.moveTo(0, -9)
+  ctx.lineTo(0, 9)
+  ctx.stroke()
+
+  ctx.strokeStyle = color
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.moveTo(-9, 0)
+  ctx.lineTo(9, 0)
+  ctx.moveTo(0, -9)
+  ctx.lineTo(0, 9)
+  ctx.stroke()
+
+  return ctx.getImageData(0, 0, size, size)
+}
+
+function ensureLightningIcons(map) {
+  LIGHTNING_AGE_BANDS.forEach((band) => {
+    if (map.hasImage(band.iconId)) return
+    const image = createLightningCrossImage(band.color)
+    if (!image) return
+    map.addImage(band.iconId, image)
+  })
+}
+
+function buildLightningOpacityExpression(blinkOff = false) {
+  if (blinkOff) return 0
+  return [
+    'coalesce',
+    ['get', 'opacity'],
+    1,
+  ]
+}
+
+function createLightningGeoJSON(lightningData, referenceTimeMs) {
+  const strikes = lightningData?.nationwide?.strikes || lightningData?.strikes || []
+  const baseTimeMs = Number.isFinite(referenceTimeMs) ? referenceTimeMs : Date.now()
   return {
     type: 'FeatureCollection',
     features: strikes
       .filter((s) => Number.isFinite(s.lon) && Number.isFinite(s.lat))
+      .map((s) => {
+        const strikeTimeMs = new Date(s.time).getTime()
+        if (!Number.isFinite(strikeTimeMs)) return null
+        const ageMinutes = (baseTimeMs - strikeTimeMs) / 60000
+        if (ageMinutes < 0 || ageMinutes > LIGHTNING_TIME_WINDOW_MINUTES) return null
+        const band = getLightningAgeBand(ageMinutes)
+        if (!band) return null
+        return { s, ageMinutes, band }
+      })
+      .filter(Boolean)
       .map((s, i) => ({
         type: 'Feature',
         id: i,
-        properties: { type: s.type || 'cloud' },
-        geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
+        properties: {
+          type: s.s.type_name || (s.s.type === 'G' ? 'ground' : 'cloud'),
+          ageMinutes: Number(s.ageMinutes.toFixed(1)),
+          iconKey: s.band.iconId,
+          opacity: s.band.opacity,
+        },
+        geometry: { type: 'Point', coordinates: [s.s.lon, s.s.lat] },
       })),
   }
 }
@@ -690,6 +960,66 @@ function getRadarFrame(echoMeta) {
 
 function getSatFrame(satMeta) {
   return satMeta?.latest || satMeta?.frames?.[satMeta.frames.length - 1] || null
+}
+
+function parseFrameTmToMs(tm) {
+  if (!tm || !/^\d{12}$/.test(String(tm))) return null
+  const raw = String(tm)
+  const date = new Date(Date.UTC(
+    Number(raw.slice(0, 4)),
+    Number(raw.slice(4, 6)) - 1,
+    Number(raw.slice(6, 8)),
+    Number(raw.slice(8, 10)) - 9,
+    Number(raw.slice(10, 12)),
+    0,
+    0,
+  ))
+  const ms = date.getTime()
+  return Number.isFinite(ms) ? ms : null
+}
+
+function formatReferenceTimeLabel(timeMs) {
+  if (!Number.isFinite(timeMs)) return '--:--'
+  const kst = new Date(timeMs + 9 * 60 * 60 * 1000)
+  const hours = String(kst.getUTCHours()).padStart(2, '0')
+  const minutes = String(kst.getUTCMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+function parseSigwxTmfcToMs(tmfc) {
+  if (!tmfc || !/^\d{10}$/.test(String(tmfc))) return null
+  const raw = String(tmfc)
+  const date = new Date(Date.UTC(
+    Number(raw.slice(0, 4)),
+    Number(raw.slice(4, 6)) - 1,
+    Number(raw.slice(6, 8)),
+    Number(raw.slice(8, 10)) - 9,
+    0,
+    0,
+    0,
+  ))
+  const ms = date.getTime()
+  return Number.isFinite(ms) ? ms : null
+}
+
+function formatSigwxStamp(value) {
+  const timeMs = value?.includes?.('T')
+    ? Date.parse(value)
+    : parseSigwxTmfcToMs(value)
+  if (!Number.isFinite(timeMs)) return '-'
+  const kst = new Date(timeMs + 9 * 60 * 60 * 1000)
+  const month = String(kst.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(kst.getUTCDate()).padStart(2, '0')
+  const hours = String(kst.getUTCHours()).padStart(2, '0')
+  const minutes = String(kst.getUTCMinutes()).padStart(2, '0')
+  return `${month}/${day} ${hours}:${minutes} KST`
+}
+
+function formatAdvisoryPanelLabel(item, kind) {
+  const base = kind === 'sigmet' ? 'SIGMET' : 'AIRMET'
+  const sequence = item?.sequence_number ? ` ${item.sequence_number}` : ''
+  const phenomenon = item?.phenomenon_code || item?.phenomenon_label || ''
+  return `${base}${sequence}${phenomenon ? ` ${phenomenon}` : ''}`
 }
 
 // ???? Initial state factories ??????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -885,21 +1215,35 @@ function addAirportLayers(map, data) {
 // ???? Lightning layers ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 function addLightningLayers(map, data) {
+  ensureLightningIcons(map)
+
   if (!map.getSource(LIGHTNING_SOURCE)) {
     map.addSource(LIGHTNING_SOURCE, { type: 'geojson', data })
   }
   if (!map.getLayer(LIGHTNING_GROUND_LAYER)) {
     map.addLayer({
-      id: LIGHTNING_GROUND_LAYER, type: 'circle', source: LIGHTNING_SOURCE, slot: 'top',
+      id: LIGHTNING_GROUND_LAYER, type: 'symbol', source: LIGHTNING_SOURCE, slot: 'top',
       filter: ['==', ['get', 'type'], 'ground'],
-      paint: { 'circle-radius': 4, 'circle-color': '#facc15', 'circle-opacity': 0.85, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1 },
+      layout: {
+        'icon-image': ['get', 'iconKey'],
+        'icon-size': 0.62,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: { 'icon-opacity': buildLightningOpacityExpression(false) },
     })
   }
   if (!map.getLayer(LIGHTNING_CLOUD_LAYER)) {
     map.addLayer({
-      id: LIGHTNING_CLOUD_LAYER, type: 'circle', source: LIGHTNING_SOURCE, slot: 'top',
+      id: LIGHTNING_CLOUD_LAYER, type: 'symbol', source: LIGHTNING_SOURCE, slot: 'top',
       filter: ['==', ['get', 'type'], 'cloud'],
-      paint: { 'circle-radius': 3, 'circle-color': '#a78bfa', 'circle-opacity': 0.7, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1 },
+      layout: {
+        'icon-image': ['get', 'iconKey'],
+        'icon-size': 0.48,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: { 'icon-opacity': buildLightningOpacityExpression(false) },
     })
   }
 }
@@ -907,6 +1251,15 @@ function addLightningLayers(map, data) {
 function setLightningVisibility(map, isVisible) {
   setMapLayerVisible(map, LIGHTNING_GROUND_LAYER, isVisible)
   setMapLayerVisible(map, LIGHTNING_CLOUD_LAYER, isVisible)
+}
+
+function setLightningBlinkState(map, blinkOff) {
+  if (map.getLayer(LIGHTNING_GROUND_LAYER)) {
+    map.setPaintProperty(LIGHTNING_GROUND_LAYER, 'icon-opacity', buildLightningOpacityExpression(blinkOff))
+  }
+  if (map.getLayer(LIGHTNING_CLOUD_LAYER)) {
+    map.setPaintProperty(LIGHTNING_CLOUD_LAYER, 'icon-opacity', buildLightningOpacityExpression(blinkOff))
+  }
 }
 
 // ???? Geo boundary layers ??????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -960,6 +1313,7 @@ function MapView({
   airmetData = null,
   lightningData = null,
   sigwxLowData = null,
+  sigwxLowHistoryData = null,
   sigwxFrontMeta = null,
   sigwxCloudMeta = null,
   selectedAirport,
@@ -972,6 +1326,16 @@ function MapView({
   const [isStyleReady, setIsStyleReady] = useState(false)
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
   const [metVisibility, setMetVisibility] = useState(initMetVisibility)
+  const [blinkLightning, setBlinkLightning] = useState(false)
+  const [lightningBlinkOff, setLightningBlinkOff] = useState(false)
+  const [lightningReferenceTimeMs, setLightningReferenceTimeMs] = useState(() => Date.now())
+  const [sigwxHistoryIndex, setSigwxHistoryIndex] = useState(0)
+  const [sigwxLegendOpen, setSigwxLegendOpen] = useState(false)
+  const [openAdvisoryPanel, setOpenAdvisoryPanel] = useState(null)
+  const [sigwxFilter, setSigwxFilter] = useState(() => Object.fromEntries(SIGWX_FILTER_OPTIONS.map((option) => [option.key, true])))
+  const [hiddenAdvisoryKeys, setHiddenAdvisoryKeys] = useState({ sigwxLow: [], sigmet: [], airmet: [] })
+  const [selectedSigwxFrontMeta, setSelectedSigwxFrontMeta] = useState(sigwxFrontMeta)
+  const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
   const [routeForm, setRouteForm] = useState(initialRouteForm)
   const [routeResult, setRouteResult] = useState(null)
   const [routeError, setRouteError] = useState(null)
@@ -1000,6 +1364,28 @@ function MapView({
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
   useEffect(() => { vfrWaypointsRef.current = vfrWaypoints }, [vfrWaypoints])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setLightningReferenceTimeMs(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!metVisibility.lightning || !blinkLightning) {
+      setLightningBlinkOff(false)
+      return undefined
+    }
+    const timer = window.setInterval(() => {
+      setLightningBlinkOff((prev) => !prev)
+    }, LIGHTNING_BLINK_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [metVisibility.lightning, blinkLightning])
+
+  useEffect(() => {
+    if (!metVisibility.sigwx) {
+      setSigwxLegendOpen(false)
+    }
+  }, [metVisibility.sigwx])
 
   // ???? Procedure loading ??????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -1403,20 +1789,138 @@ function MapView({
   }, [isFirInMode, isFirExitMode, routeForm.entryFix, routeForm.exitFix, navpointsById, isStyleReady, routeResult, selectedSid, selectedStar, selectedIap])
 
   const airportGeoJSON = useMemo(() => createAirportGeoJSON(airports), [airports])
-  const lightningGeoJSON = useMemo(() => createLightningGeoJSON(lightningData), [lightningData])
+  const lightningGeoJSON = useMemo(
+    () => createLightningGeoJSON(lightningData, lightningReferenceTimeMs),
+    [lightningData, lightningReferenceTimeMs],
+  )
   const adsbGeoJSON = useMemo(() => createAdsbGeoJSON(adsbData), [adsbData])
   const radarFrame = useMemo(() => getRadarFrame(echoMeta), [echoMeta])
   const satFrame = useMemo(() => getSatFrame(satMeta), [satMeta])
-  const sigmetFeatures = useMemo(() => advisoryItemsToFeatureCollection(sigmetData, 'sigmet'), [sigmetData])
-  const sigmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(sigmetData, 'sigmet'), [sigmetData])
-  const airmetFeatures = useMemo(() => advisoryItemsToFeatureCollection(airmetData, 'airmet'), [airmetData])
-  const airmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(airmetData, 'airmet'), [airmetData])
-  const sigwxLowMapData = useMemo(() => sigwxLowToMapboxData(sigwxLowData), [sigwxLowData])
+  const sigmetItems = useMemo(() => (
+    (sigmetData?.items || []).map((item, index) => ({
+      ...item,
+      mapKey: item.id || `sigmet-${index}`,
+      panelLabel: formatAdvisoryPanelLabel(item, 'sigmet'),
+    }))
+  ), [sigmetData])
+  const airmetItems = useMemo(() => (
+    (airmetData?.items || []).map((item, index) => ({
+      ...item,
+      mapKey: item.id || `airmet-${index}`,
+      panelLabel: formatAdvisoryPanelLabel(item, 'airmet'),
+    }))
+  ), [airmetData])
+  const visibleSigmetPayload = useMemo(() => ({
+    ...sigmetData,
+    items: sigmetItems.filter((item) => !hiddenAdvisoryKeys.sigmet.includes(item.mapKey)),
+  }), [sigmetData, sigmetItems, hiddenAdvisoryKeys.sigmet])
+  const visibleAirmetPayload = useMemo(() => ({
+    ...airmetData,
+    items: airmetItems.filter((item) => !hiddenAdvisoryKeys.airmet.includes(item.mapKey)),
+  }), [airmetData, airmetItems, hiddenAdvisoryKeys.airmet])
+  const sigmetFeatures = useMemo(() => advisoryItemsToFeatureCollection(visibleSigmetPayload, 'sigmet'), [visibleSigmetPayload])
+  const sigmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(visibleSigmetPayload, 'sigmet'), [visibleSigmetPayload])
+  const airmetFeatures = useMemo(() => advisoryItemsToFeatureCollection(visibleAirmetPayload, 'airmet'), [visibleAirmetPayload])
+  const airmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(visibleAirmetPayload, 'airmet'), [visibleAirmetPayload])
+  const sigwxHistoryEntries = useMemo(() => {
+    const history = Array.isArray(sigwxLowHistoryData) ? sigwxLowHistoryData : []
+    if (history.length > 0) return history
+    return sigwxLowData ? [sigwxLowData] : []
+  }, [sigwxLowHistoryData, sigwxLowData])
+  const selectedSigwxEntry = sigwxHistoryEntries[sigwxHistoryIndex] || sigwxHistoryEntries[0] || sigwxLowData || null
+  const sigwxLowMapData = useMemo(() => sigwxLowToMapboxData(selectedSigwxEntry, {
+    hiddenGroupKeys: hiddenAdvisoryKeys.sigwxLow,
+    filters: sigwxFilter,
+  }), [selectedSigwxEntry, hiddenAdvisoryKeys.sigwxLow, sigwxFilter])
+  const sigwxGroups = sigwxLowMapData.groups || []
+  const visibleSigwxGroups = useMemo(
+    () => sigwxGroups.filter((group) => !group.hidden && group.enabledByFilter),
+    [sigwxGroups],
+  )
+  const showVisibleSigwxFrontOverlay = useMemo(
+    () => visibleSigwxGroups.some((group) => group.overlayRole === 'front'),
+    [visibleSigwxGroups],
+  )
+  const showVisibleSigwxCloudOverlay = useMemo(
+    () => visibleSigwxGroups.some((group) => group.overlayRole === 'cloud'),
+    [visibleSigwxGroups],
+  )
+  const advisoryBadgeItems = useMemo(() => ([
+    metVisibility.sigwx ? { key: 'sigwxLow', label: 'SIGWX_LOW', count: sigwxGroups.length, tone: 'sigwx' } : null,
+    metVisibility.sigmet ? { key: 'sigmet', label: 'SIGMET', count: sigmetItems.length, tone: 'sigmet' } : null,
+    metVisibility.airmet ? { key: 'airmet', label: 'AIRMET', count: airmetItems.length, tone: 'airmet' } : null,
+  ].filter(Boolean)), [metVisibility.sigwx, metVisibility.sigmet, metVisibility.airmet, sigwxGroups.length, sigmetItems.length, airmetItems.length])
+  const advisoryPanelItems = useMemo(() => {
+    if (openAdvisoryPanel === 'sigwxLow') return sigwxGroups
+    if (openAdvisoryPanel === 'sigmet') return sigmetItems
+    if (openAdvisoryPanel === 'airmet') return airmetItems
+    return []
+  }, [openAdvisoryPanel, sigwxGroups, sigmetItems, airmetItems])
+
+  useEffect(() => {
+    if (sigwxHistoryIndex >= sigwxHistoryEntries.length) {
+      setSigwxHistoryIndex(0)
+    }
+  }, [sigwxHistoryEntries.length, sigwxHistoryIndex])
+
+  useEffect(() => {
+    const selectedTmfc = selectedSigwxEntry?.tmfc
+    if (!selectedTmfc) {
+      setSelectedSigwxFrontMeta(null)
+      setSelectedSigwxCloudMeta(null)
+      return
+    }
+
+    let cancelled = false
+    const isLatestTmfc = selectedTmfc === sigwxLowData?.tmfc
+
+    async function loadSigwxMeta() {
+      if (isLatestTmfc) {
+        setSelectedSigwxFrontMeta(sigwxFrontMeta)
+        setSelectedSigwxCloudMeta(sigwxCloudMeta)
+      } else {
+        setSelectedSigwxFrontMeta(null)
+        setSelectedSigwxCloudMeta(null)
+      }
+
+      const [frontResponse, cloudResponse] = await Promise.all([
+        fetch(`/api/sigwx-front-meta?tmfc=${selectedTmfc}`).then((res) => (res.ok ? res.json() : null)).catch(() => null),
+        fetch(`/api/sigwx-cloud-meta?tmfc=${selectedTmfc}`).then((res) => (res.ok ? res.json() : null)).catch(() => null),
+      ])
+
+      if (cancelled) return
+      setSelectedSigwxFrontMeta(frontResponse)
+      setSelectedSigwxCloudMeta(cloudResponse)
+    }
+
+    loadSigwxMeta()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedSigwxEntry?.tmfc, sigwxLowData?.tmfc, sigwxFrontMeta, sigwxCloudMeta])
+
+  useEffect(() => {
+    if (openAdvisoryPanel === 'sigwxLow' && !metVisibility.sigwx) setOpenAdvisoryPanel(null)
+    if (openAdvisoryPanel === 'sigmet' && !metVisibility.sigmet) setOpenAdvisoryPanel(null)
+    if (openAdvisoryPanel === 'airmet' && !metVisibility.airmet) setOpenAdvisoryPanel(null)
+  }, [openAdvisoryPanel, metVisibility.sigwx, metVisibility.sigmet, metVisibility.airmet])
 
   const sigmetCount = sigmetFeatures.features.length
   const airmetCount = airmetFeatures.features.length
-  const sigwxCount = sigwxLowMapData.labels.features.length
+  const sigwxCount = sigwxGroups.length
   const lightningCount = lightningGeoJSON.features.length
+  const radarLegendVisible = metVisibility.radar && !!radarFrame
+  const lightningLegendVisible = metVisibility.lightning
+  const radarReferenceTimeMs = useMemo(
+    () => parseFrameTmToMs(radarFrame?.tm) ?? Date.now(),
+    [radarFrame?.tm],
+  )
+  const lightningLegendEntries = useMemo(() => (
+    LIGHTNING_AGE_BANDS.map((band) => ({
+      ...band,
+      label: formatReferenceTimeLabel(lightningReferenceTimeMs - band.max * 60 * 1000),
+    }))
+  ), [lightningReferenceTimeMs])
 
   function toggleAviation(id) {
     setAviationVisibility((prev) => ({ ...prev, [id]: !prev[id] }))
@@ -1508,11 +2012,11 @@ function MapView({
       setMapLayerVisible(map, RADAR_LAYER, hasRadar && metVisibility.radar)
 
       // SIGWX overlay
-      const hasSigwx = addOrUpdateImageOverlay(map, { sourceId: SIGWX_SOURCE, layerId: SIGWX_LAYER, frame: sigwxFrontMeta, opacity: 0.85 })
-      const hasSigwxCloud = addOrUpdateImageOverlay(map, { sourceId: SIGWX_CLOUD_SOURCE, layerId: SIGWX_CLOUD_LAYER, frame: sigwxCloudMeta, opacity: 0.65 })
+      const hasSigwx = addOrUpdateImageOverlay(map, { sourceId: SIGWX_SOURCE, layerId: SIGWX_LAYER, frame: selectedSigwxFrontMeta, opacity: 0.85 })
+      const hasSigwxCloud = addOrUpdateImageOverlay(map, { sourceId: SIGWX_CLOUD_SOURCE, layerId: SIGWX_CLOUD_LAYER, frame: selectedSigwxCloudMeta, opacity: 0.65 })
       addOrUpdateSigwxLowLayers(map, sigwxLowMapData)
-      setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && metVisibility.sigwx)
-      setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && metVisibility.sigwx)
+      setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && metVisibility.sigwx && showVisibleSigwxFrontOverlay)
+      setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && metVisibility.sigwx && showVisibleSigwxCloudOverlay)
       setSigwxLowVisibility(map, metVisibility.sigwx)
 
       // SIGMET / AIRMET advisories
@@ -1636,16 +2140,16 @@ function MapView({
 
     const hasSat = addOrUpdateImageOverlay(map, { sourceId: SATELLITE_SOURCE, layerId: SATELLITE_LAYER, frame: satFrame, opacity: 0.92 })
     const hasRadar = addOrUpdateImageOverlay(map, { sourceId: RADAR_SOURCE, layerId: RADAR_LAYER, frame: radarFrame, opacity: 0.88 })
-    const hasSigwx = addOrUpdateImageOverlay(map, { sourceId: SIGWX_SOURCE, layerId: SIGWX_LAYER, frame: sigwxFrontMeta, opacity: 0.85 })
-    const hasSigwxCloud = addOrUpdateImageOverlay(map, { sourceId: SIGWX_CLOUD_SOURCE, layerId: SIGWX_CLOUD_LAYER, frame: sigwxCloudMeta, opacity: 0.65 })
+    const hasSigwx = addOrUpdateImageOverlay(map, { sourceId: SIGWX_SOURCE, layerId: SIGWX_LAYER, frame: selectedSigwxFrontMeta, opacity: 0.85 })
+    const hasSigwxCloud = addOrUpdateImageOverlay(map, { sourceId: SIGWX_CLOUD_SOURCE, layerId: SIGWX_CLOUD_LAYER, frame: selectedSigwxCloudMeta, opacity: 0.65 })
     addOrUpdateSigwxLowLayers(map, sigwxLowMapData)
 
     setMapLayerVisible(map, SATELLITE_LAYER, hasSat && metVisibility.satellite)
     setMapLayerVisible(map, RADAR_LAYER, hasRadar && metVisibility.radar)
-    setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && metVisibility.sigwx)
-    setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && metVisibility.sigwx)
+    setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && metVisibility.sigwx && showVisibleSigwxFrontOverlay)
+    setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && metVisibility.sigwx && showVisibleSigwxCloudOverlay)
     setSigwxLowVisibility(map, metVisibility.sigwx)
-  }, [satFrame, radarFrame, sigwxFrontMeta, sigwxCloudMeta, sigwxLowMapData, metVisibility, isStyleReady])
+  }, [satFrame, radarFrame, selectedSigwxFrontMeta, selectedSigwxCloudMeta, sigwxLowMapData, metVisibility, isStyleReady, showVisibleSigwxFrontOverlay, showVisibleSigwxCloudOverlay])
 
   // ???? Sync SIGMET / AIRMET ????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -1666,7 +2170,8 @@ function MapView({
     addLightningLayers(map, lightningGeoJSON)
     map.getSource(LIGHTNING_SOURCE)?.setData(lightningGeoJSON)
     setLightningVisibility(map, metVisibility.lightning)
-  }, [lightningGeoJSON, metVisibility.lightning, isStyleReady])
+    setLightningBlinkState(map, metVisibility.lightning && blinkLightning && lightningBlinkOff)
+  }, [lightningGeoJSON, metVisibility.lightning, blinkLightning, lightningBlinkOff, isStyleReady])
 
   // ???? Sync geo boundaries ??????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -1890,20 +2395,51 @@ function MapView({
   function isMetLayerDisabled(id) {
     if (id === 'radar') return !radarFrame
     if (id === 'satellite') return !satFrame
-    if (id === 'lightning') return lightningCount === 0
-    if (id === 'sigmet') return sigmetCount === 0
-    if (id === 'airmet') return airmetCount === 0
-    if (id === 'sigwx') return !sigwxFrontMeta && !sigwxCloudMeta && sigwxCount === 0
     return false
   }
 
   function metLayerBadge(id) {
-    if (id === 'sigmet') return sigmetCount > 0 ? sigmetCount : null
-    if (id === 'airmet') return airmetCount > 0 ? airmetCount : null
-    if (id === 'lightning') return lightningCount > 0 ? lightningCount : null
-    if (id === 'sigwx') return sigwxCount > 0 ? sigwxCount : null
+    if (id === 'sigmet') return sigmetCount
+    if (id === 'airmet') return airmetCount
+    if (id === 'lightning') return lightningCount
+    if (id === 'sigwx') return sigwxCount
     return null
   }
+
+  function toggleSigwxLegend(event) {
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+    setSigwxLegendOpen((prev) => !prev)
+  }
+
+  function toggleSigwxGroup(groupKey) {
+    setHiddenAdvisoryKeys((prev) => {
+      const current = new Set(prev.sigwxLow || [])
+      if (current.has(groupKey)) current.delete(groupKey)
+      else current.add(groupKey)
+      return { ...prev, sigwxLow: [...current] }
+    })
+  }
+
+  function toggleSigwxFilter(filterKey) {
+    setSigwxFilter((prev) => ({ ...prev, [filterKey]: prev[filterKey] === false }))
+  }
+
+  function toggleAdvisoryPanel(key) {
+    setOpenAdvisoryPanel((prev) => (prev === key ? null : key))
+  }
+
+  function toggleAdvisoryVisibility(kind, mapKey) {
+    setHiddenAdvisoryKeys((prev) => {
+      const current = new Set(prev[kind] || [])
+      if (current.has(mapKey)) current.delete(mapKey)
+      else current.add(mapKey)
+      return { ...prev, [kind]: [...current] }
+    })
+  }
+
+  const sigwxIssueLabel = formatSigwxStamp(selectedSigwxEntry?.fetched_at)
+  const sigwxValidLabel = formatSigwxStamp(selectedSigwxEntry?.tmfc)
 
   function buildIfrSequenceTokens(result) {
     const seq = result?.displaySequence ?? []
@@ -1963,6 +2499,154 @@ function MapView({
       )}
 
       {error && <div className="map-view-error" role="alert">{error}</div>}
+
+      {(radarLegendVisible || lightningLegendVisible) && (
+        <div className="map-right-legends">
+          {radarLegendVisible && (
+            <div className="rainrate-legend" aria-label="Radar rain rate legend">
+              <div className="rainrate-legend-title">mm/h</div>
+              <div className="rainrate-legend-scale">
+                {RADAR_RAINRATE_LEGEND.map((entry) => (
+                  <div key={entry.label} className="rainrate-legend-row">
+                    <span className="rainrate-legend-label">{entry.label}</span>
+                    <span
+                      className="rainrate-legend-swatch"
+                      style={{ backgroundColor: entry.color }}
+                      aria-hidden="true"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {lightningLegendVisible && (
+            <div className="lightning-time-legend" aria-label="Lightning time legend">
+              <div className="lightning-time-legend-title">LIGHTNING</div>
+              <div className="lightning-time-legend-sub">10 MIN</div>
+              <div className="lightning-time-legend-current">
+                {formatReferenceTimeLabel(radarLegendVisible ? radarReferenceTimeMs : lightningReferenceTimeMs)}
+              </div>
+              <div className="lightning-time-legend-scale">
+                {lightningLegendEntries.map((entry) => (
+                  <div key={entry.iconId} className="lightning-time-legend-row">
+                    <span className="lightning-time-legend-label">{entry.label}</span>
+                    <span
+                      className="lightning-time-legend-swatch"
+                      style={{ backgroundColor: entry.color }}
+                      aria-hidden="true"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {advisoryBadgeItems.length > 0 && (
+        <div className="advisory-badge-bar" aria-label="Advisory badges">
+          {advisoryBadgeItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`advisory-badge advisory-badge--${item.tone}${openAdvisoryPanel === item.key ? ' is-active' : ''}`}
+              onClick={() => toggleAdvisoryPanel(item.key)}
+            >
+              <span className="advisory-badge-label">{item.label}</span>
+              <span className="advisory-badge-count">{item.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {openAdvisoryPanel && (
+        <section className={`advisory-detail-panel advisory-detail-panel--${openAdvisoryPanel}`} aria-label={`${openAdvisoryPanel} detail panel`}>
+          <div className="advisory-detail-header">
+            <div className="advisory-detail-title">
+              {openAdvisoryPanel === 'sigwxLow' ? 'SIGWX_LOW' : openAdvisoryPanel === 'sigmet' ? 'SIGMET' : 'AIRMET'}
+            </div>
+            <button type="button" className="advisory-detail-close" onClick={() => setOpenAdvisoryPanel(null)}>×</button>
+          </div>
+          <div className="advisory-detail-list">
+            {advisoryPanelItems.length === 0 && <div className="advisory-detail-empty">No active items</div>}
+            {openAdvisoryPanel === 'sigwxLow' && advisoryPanelItems.map((group) => {
+              const visible = !hiddenAdvisoryKeys.sigwxLow.includes(group.mapKey)
+              return (
+                <label key={group.mapKey} className="advisory-detail-item">
+                  <input type="checkbox" checked={visible} onChange={() => toggleAdvisoryVisibility('sigwxLow', group.mapKey)} />
+                  <span className="advisory-detail-line" style={{ backgroundColor: group.lineColor || '#7c3aed' }} />
+                  <span className="advisory-detail-text">{group.label}</span>
+                </label>
+              )
+            })}
+            {openAdvisoryPanel === 'sigmet' && advisoryPanelItems.map((item) => {
+              const visible = !hiddenAdvisoryKeys.sigmet.includes(item.mapKey)
+              return (
+                <label key={item.mapKey} className="advisory-detail-item">
+                  <input type="checkbox" checked={visible} onChange={() => toggleAdvisoryVisibility('sigmet', item.mapKey)} />
+                  <span className="advisory-detail-line advisory-detail-line--sigmet" />
+                  <span className="advisory-detail-text">{item.panelLabel}</span>
+                </label>
+              )
+            })}
+            {openAdvisoryPanel === 'airmet' && advisoryPanelItems.map((item) => {
+              const visible = !hiddenAdvisoryKeys.airmet.includes(item.mapKey)
+              return (
+                <label key={item.mapKey} className="advisory-detail-item">
+                  <input type="checkbox" checked={visible} onChange={() => toggleAdvisoryVisibility('airmet', item.mapKey)} />
+                  <span className="advisory-detail-line advisory-detail-line--airmet" />
+                  <span className="advisory-detail-text">{item.panelLabel}</span>
+                </label>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {metVisibility.sigwx && selectedSigwxEntry && (
+        <div className="sigwx-history-bar" aria-label="SIGWX history controls">
+          <button
+            type="button"
+            className="sigwx-history-button"
+            onClick={() => setSigwxHistoryIndex((prev) => Math.min(sigwxHistoryEntries.length - 1, prev + 1))}
+            disabled={sigwxHistoryIndex >= sigwxHistoryEntries.length - 1}
+          >
+            Prev
+          </button>
+          <div className="sigwx-history-meta">
+            <div className="sigwx-history-title">SIGWX_LOW {sigwxHistoryEntries.length > 0 ? sigwxHistoryEntries.length : ''}</div>
+            <div className="sigwx-history-stamp">발표 {sigwxIssueLabel}</div>
+            <div className="sigwx-history-stamp">유효 {sigwxValidLabel}</div>
+          </div>
+          <button
+            type="button"
+            className="sigwx-history-button"
+            onClick={() => setSigwxHistoryIndex((prev) => Math.max(0, prev - 1))}
+            disabled={sigwxHistoryIndex <= 0}
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {sigwxLegendOpen && (
+        <div className="sigwx-legend-modal" role="dialog" aria-modal="false" aria-label="SIGWX legend">
+          <div className="sigwx-legend-header">
+            <div className="sigwx-legend-title">SIGWX Legend</div>
+            <button type="button" className="sigwx-legend-close" onClick={toggleSigwxLegend}>×</button>
+          </div>
+          <div className="sigwx-legend-table">
+            {SIGWX_LEGEND_ITEMS.map((item) => (
+              <div key={item.label} className="sigwx-legend-row">
+                <span className="sigwx-legend-label">{item.label}</span>
+                <span className="sigwx-legend-sign sigwx-legend-sign--asset" aria-hidden="true">
+                  <img src={sigwxAssetUrl(item.asset)} alt="" />
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Basemap switcher */}
       <div className="basemap-switcher">
@@ -2290,6 +2974,44 @@ function MapView({
               </label>
             )
           })}
+          {metVisibility.lightning && !isMetLayerDisabled('lightning') && (
+            <label className="dev-layer-subtoggle">
+              <input
+                type="checkbox"
+                checked={blinkLightning}
+                onChange={() => setBlinkLightning((prev) => !prev)}
+              />
+              <span>Blink</span>
+            </label>
+          )}
+        </div>
+      )}
+
+      {activePanel === 'settings' && (
+        <div className="dev-layer-panel settings-panel" aria-label="Options panel">
+          <div className="dev-layer-panel-title">Options</div>
+          {metVisibility.sigwx && (
+            <>
+              <div className="dev-layer-section-title">SIGWX</div>
+              <div className="settings-actions">
+                <button type="button" className="dev-layer-inline-button" onClick={toggleSigwxLegend}>Legend</button>
+              </div>
+              <div className="dev-layer-section-title">SIGWX Filters</div>
+              <div className="dev-filter-grid">
+                {SIGWX_FILTER_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={`dev-filter-chip${sigwxFilter[option.key] === false ? ' is-off' : ''}`}
+                    onClick={() => toggleSigwxFilter(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {!metVisibility.sigwx && <div className="sigwx-group-empty">Enable SIGWX to configure filters.</div>}
         </div>
       )}
     </div>

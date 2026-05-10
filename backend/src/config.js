@@ -171,6 +171,7 @@ export const storage = {
   max_files_per_category: 10,
   max_files_by_type: {
     lightning: 48,
+    sigwx_low: 12,
   },
 }
 

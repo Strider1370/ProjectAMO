@@ -14,7 +14,7 @@ import {
 import { convertWeatherToKorean } from '../../utils/visual-mapper.js'
 import { resolveWeatherVisual } from '../../utils/weather-visual-resolver.js'
 import WeatherIcon from '../WeatherIcon.jsx'
-import { MoveUp } from 'lucide-react'
+import { MoveUp, Plane } from 'lucide-react'
 import './AirportPanel.css'
 
 const TABS = [
@@ -651,14 +651,44 @@ function runwayLabelsFromAirport(airportMeta) {
   return [first || 'RWY', second || 'RWY']
 }
 
-function AmosRunwaySide({ runway, label, align = 'left' }) {
+function runwayHeadingFromLabel(label) {
+  if (!label) return null
+  const match = String(label).match(/^(\d{2})/)
+  if (!match) return null
+  const value = Number(match[1])
+  if (!Number.isFinite(value)) return null
+  return (value % 36) * 10 || 360
+}
+
+function pickActiveRunwayLabel(labels, wind) {
+  if (!Array.isArray(labels) || labels.length === 0) return null
+  if (!Number.isFinite(wind?.direction)) return labels[0] || null
+  const speed = Number.isFinite(wind?.speed) ? wind.speed : 0
+  let bestLabel = labels[0] || null
+  let bestHeadwind = -Infinity
+  for (const label of labels) {
+    const heading = runwayHeadingFromLabel(label)
+    if (!Number.isFinite(heading)) continue
+    const angleRad = ((wind.direction - heading) * Math.PI) / 180
+    const headwind = Math.cos(angleRad) * speed
+    if (headwind > bestHeadwind) {
+      bestHeadwind = headwind
+      bestLabel = label
+    }
+  }
+  return bestLabel
+}
+
+function AmosRunwaySide({ runway, label, align = 'left', showArrow = true }) {
   const rotation = Number.isFinite(runway?.wind_direction) ? (runway.wind_direction + 180) % 360 : 0
   const runwayLabel = label || runway?.runway || '-'
   return (
     <section className={`ap-amos-board-side ap-amos-board-side--${align}`}>
-      <div className="ap-amos-arrow-only">
-        <MoveUp className="ap-amos-dial-arrow" style={{ transform: `rotate(${rotation}deg)` }} />
-      </div>
+      {showArrow ? (
+        <div className="ap-amos-arrow-only">
+          <MoveUp className="ap-amos-dial-arrow" style={{ transform: `rotate(${rotation}deg)` }} />
+        </div>
+      ) : null}
 
       <div className="ap-amos-block-title">{runwayLabel} 풍향/풍속</div>
       <table className="ap-amos-runway-table">
@@ -690,13 +720,17 @@ function AmosRunwaySide({ runway, label, align = 'left' }) {
   )
 }
 
-function AmosBoardTab({ amos, airportMeta }) {
+function AmosBoardTab({ amos, metar, airportMeta }) {
   if (!amos) return <div className="ap-empty">AMOS 데이터 없음</div>
   const runways = enrichAmosRunways(amos)
   const runwayLabels = runwayLabelsFromAirport(airportMeta)
+  const runwayImageSrc = '/amos-runway-generic.png'
   const rf = amos.daily_rainfall
   const obs = amos.observation || {}
   const observedTime = rf?.observed_tm_kst || obs.observed_tm_kst
+  const activeRunwayLabel = pickActiveRunwayLabel(runwayLabels, metar?.observation?.wind)
+  const activeRunwaySide = activeRunwayLabel === runwayLabels[1] ? 'right' : 'left'
+  const activePlaneHeading = activeRunwaySide === 'right' ? -135 : 45
 
   return (
     <div className="ap-amos ap-amos-board-wrap">
@@ -707,15 +741,49 @@ function AmosBoardTab({ amos, airportMeta }) {
         <span className="ap-amos-time">{formatAmosTime(observedTime)}</span>
       </div>
 
-      <div className="ap-amos-board-grid">
-        <AmosRunwaySide runway={runways[0]} label={runwayLabels[0]} />
+      <section className="ap-amos-board-hero">
+        <div className="ap-amos-arrow-only">
+          <MoveUp className="ap-amos-dial-arrow" style={{ transform: `rotate(${Number.isFinite(runways[0]?.wind_direction) ? (runways[0].wind_direction + 180) % 360 : 0}deg)` }} />
+        </div>
 
         <section className="ap-amos-board-center">
-          <div className="ap-amos-runway-strip">
-            <span>{runwayLabels[0]}</span>
-            <div className="ap-amos-strip-body" />
-            <span>{runwayLabels[1]}</span>
-          </div>
+          {runwayImageSrc ? (
+            <div className={`ap-amos-runway-hero-wrap ap-amos-runway-hero-wrap--${activeRunwaySide}`}>
+              {activeRunwayLabel ? (
+                <>
+                  <span className={`ap-amos-active-runway-badge ap-amos-active-runway-badge--${activeRunwaySide}`} aria-hidden="true" />
+                  <Plane
+                    className={`ap-amos-active-runway-plane ap-amos-active-runway-plane--${activeRunwaySide}`}
+                    style={{ transform: `rotate(${activePlaneHeading}deg)` }}
+                  />
+                </>
+              ) : null}
+              <span className="ap-amos-runway-overlay-label ap-amos-runway-overlay-label--left">
+                {runwayLabels[0]}
+              </span>
+              <span className="ap-amos-runway-overlay-label ap-amos-runway-overlay-label--right">
+                {runwayLabels[1]}
+              </span>
+              <img className="ap-amos-runway-image" src={runwayImageSrc} alt="RKSI runway diagram" />
+            </div>
+          ) : (
+            <div className="ap-amos-runway-strip">
+              <span>{runwayLabels[0]}</span>
+              <div className="ap-amos-strip-body" />
+              <span>{runwayLabels[1]}</span>
+            </div>
+          )}
+        </section>
+
+        <div className="ap-amos-arrow-only">
+          <MoveUp className="ap-amos-dial-arrow" style={{ transform: `rotate(${Number.isFinite(runways[1]?.wind_direction) ? (runways[1].wind_direction + 180) % 360 : 0}deg)` }} />
+        </div>
+      </section>
+
+      <section className="ap-amos-board-grid">
+        <AmosRunwaySide runway={runways[0]} label={runwayLabels[0]} showArrow={false} />
+
+        <section className="ap-amos-board-center">
           <table className="ap-amos-common-table">
             <tbody>
               <tr><th>최저운고(ft)</th><td>{formatAmosValue(amos.weather?.cloud_min_m, 'ft')}</td></tr>
@@ -729,8 +797,8 @@ function AmosBoardTab({ amos, airportMeta }) {
           </table>
         </section>
 
-        <AmosRunwaySide runway={runways[1]} label={runwayLabels[1]} align="right" />
-      </div>
+        <AmosRunwaySide runway={runways[1]} label={runwayLabels[1]} align="right" showArrow={false} />
+      </section>
 
       {Array.isArray(amos.runways) && amos.runways.length > 0
         ? null
@@ -894,7 +962,7 @@ function AirportPanel({ airport, weatherData, onClose }) {
         <div className="airport-panel-body">
           {tab === 'metar' && <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} />}
           {tab === 'taf'   && <EnhancedTafTab taf={taf} icao={icao} />}
-          {tab === 'amos'  && <AmosBoardTab amos={amos} airportMeta={airport} />}
+          {tab === 'amos'  && <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} />}
           {tab === 'warn'  && <WarningTab warning={warning} />}
           {tab === 'info'  && <AirportInfoTab info={airportInfo} />}
         </div>

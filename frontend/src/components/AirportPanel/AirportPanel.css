@@ -1061,9 +1061,20 @@
   align-items: start;
 }
 
+.ap-amos-board-hero {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr) 60px;
+  gap: 14px;
+  align-items: center;
+}
+
 .ap-amos-board-side,
 .ap-amos-board-center {
   min-width: 0;
+}
+
+.ap-amos-board-side {
+  display: block;
 }
 
 .ap-amos-arrow-only {
@@ -1087,6 +1098,122 @@
   gap: 6px;
   height: 60px;
   margin: 0 0 10px;
+}
+
+.ap-amos-runway-image {
+  display: block;
+  position: relative;
+  left: 50%;
+  width: 150%;
+  max-width: none;
+  height: auto;
+  transform: translateX(-50%);
+  margin: 0 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.ap-amos-board-hero {
+  margin-bottom: 10px;
+}
+
+.ap-amos-board-hero > .ap-amos-board-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  overflow: visible;
+}
+
+.ap-amos-board-hero > .ap-amos-arrow-only {
+  align-items: center;
+  height: 72px;
+  margin-bottom: 0;
+}
+
+.ap-amos-runway-hero-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ap-amos-board-hero .ap-amos-runway-image {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.ap-amos-runway-overlay-label {
+  position: absolute;
+  top: 50%;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-shadow:
+    0 0 2px rgba(15, 23, 42, 0.95),
+    0 0 6px rgba(15, 23, 42, 0.7);
+  z-index: 2;
+}
+
+.ap-amos-runway-overlay-label--left {
+  left: 38px;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: center;
+}
+
+.ap-amos-runway-overlay-label--right {
+  right: 38px;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: center;
+}
+
+.ap-amos-active-runway-badge {
+  position: absolute;
+  top: 50%;
+  width: 17px;
+  height: calc(100% - 2px);
+  border: 2px solid #b91c1c;
+  border-radius: 3px;
+  background: #ef4444;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+.ap-amos-active-runway-badge--left {
+  left: -21px;
+}
+
+.ap-amos-active-runway-badge--right {
+  right: -21px;
+}
+
+.ap-amos-active-runway-plane {
+  position: absolute;
+  top: 7px;
+  width: 30px;
+  height: 30px;
+  color: #1d4ed8;
+  fill: currentColor;
+  stroke-width: 1.75;
+  stroke: #ffffff;
+  paint-order: stroke fill;
+  z-index: 2;
+}
+
+.ap-amos-active-runway-plane--left {
+  left: 50px;
+}
+
+.ap-amos-active-runway-plane--right {
+  right: 50px;
+}
+
+.ap-amos-board-hero .ap-amos-runway-strip {
+  margin-bottom: 0;
 }
 
 .ap-amos-runway-strip > span {
