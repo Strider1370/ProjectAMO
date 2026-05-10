@@ -233,6 +233,51 @@ curl -I http://<YOUR_DOMAIN_OR_IP>/api/health
 curl -I http://<YOUR_DOMAIN_OR_IP>/data/radar/echo_meta.json
 ```
 
+## 12. One-command Deploy
+
+Use repo scripts:
+
+- [deploy/deploy-vm.sh](</C:/Users/Jond Doe/Desktop/Project/ProjectAMO/deploy/deploy-vm.sh>) -> fast deploy
+- [deploy/deploy-vm-full.sh](</C:/Users/Jond Doe/Desktop/Project/ProjectAMO/deploy/deploy-vm-full.sh>) -> deploy with dependency install
+
+Server setup once:
+
+```bash
+chmod +x /opt/projectamo/current/deploy/deploy-vm.sh
+chmod +x /opt/projectamo/current/deploy/deploy-vm-full.sh
+echo 'deploy() { /opt/projectamo/current/deploy/deploy-vm.sh; }' >> ~/.bashrc
+echo 'deploy-full() { /opt/projectamo/current/deploy/deploy-vm-full.sh; }' >> ~/.bashrc
+source ~/.bashrc
+```
+
+After that:
+
+```bash
+deploy
+```
+
+Use `deploy-full` only when `backend/package.json`, `backend/package-lock.json`, `frontend/package.json`, or `frontend/package-lock.json` changed.
+
+`deploy` runs:
+
+1. `git pull --ff-only origin main`
+2. `npm --prefix frontend run build`
+3. `pm2 restart projectamo-backend --update-env`
+4. `sudo nginx -t`
+5. `sudo systemctl reload nginx`
+6. `curl http://127.0.0.1:3001/api/health`
+
+`deploy-full` runs:
+
+1. `git pull --ff-only origin main`
+2. `npm --prefix backend install`
+3. `npm --prefix frontend install`
+4. `npm --prefix frontend run build`
+5. `pm2 restart projectamo-backend --update-env`
+6. `sudo nginx -t`
+7. `sudo systemctl reload nginx`
+8. `curl http://127.0.0.1:3001/api/health`
+
 확인 포인트:
 
 - `/api/*` -> `Cache-Control: no-store`
