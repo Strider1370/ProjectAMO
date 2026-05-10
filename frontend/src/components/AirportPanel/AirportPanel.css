@@ -670,3 +670,600 @@
   color: #555;
   line-height: 1.5;
 }
+
+.ap-taf-header > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ap-taf-badge,
+.ap-taf-cat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 4px 6px;
+}
+
+.ap-taf-badge {
+  background: #1e40af;
+}
+
+.ap-taf-valid {
+  color: #64748b;
+  font-family: 'Consolas', 'Menlo', monospace;
+}
+
+.ap-taf-switch {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.ap-taf-switch-btn {
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 8px;
+}
+
+.ap-taf-switch-btn.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+
+.ap-taf-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ap-taf-scale,
+.ap-taf-line {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.ap-taf-scale {
+  padding-left: 64px;
+  display: grid;
+  grid-template-columns: repeat(var(--taf-hour-count), minmax(18px, 1fr));
+  color: #64748b;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 10px;
+}
+
+.ap-taf-line-label {
+  align-self: center;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.ap-taf-line-track {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.ap-taf-seg {
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 34px;
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 11px;
+  font-weight: 800;
+  overflow: hidden;
+  padding: 0 4px;
+  text-align: center;
+}
+
+.ap-taf-seg:last-child {
+  border-right: 0;
+}
+
+.ap-taf-mini-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.ap-taf-mini-arrow {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.ap-taf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.ap-taf-table th,
+.ap-taf-table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 7px 5px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.ap-taf-table th {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.ap-taf-weather-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.is-alert {
+  color: #be123c;
+}
+
+.ap-taf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ap-taf-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #fff;
+  padding: 9px;
+}
+
+.ap-taf-card-head,
+.ap-taf-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ap-taf-card-head {
+  color: #64748b;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.ap-taf-card-weather {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ap-taf-card-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.ap-taf-card-row {
+  border-top: 1px solid #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  padding-top: 6px;
+  margin-top: 6px;
+}
+
+.ap-taf-card-row strong {
+  color: #0f172a;
+  font-family: 'Consolas', 'Menlo', monospace;
+}
+
+.ap-amos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ap-amos-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  padding-bottom: 10px;
+}
+
+.ap-amos-eyebrow {
+  display: block;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  margin-bottom: 3px;
+}
+
+.ap-amos-head h3 {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+  margin: 0;
+}
+
+.ap-amos-time {
+  flex: 0 0 auto;
+  color: #475569;
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: right;
+}
+
+.ap-amos-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(240px, 0.75fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.ap-amos-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ap-amos-metrics,
+.ap-amos-clouds {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ap-amos-metrics > div,
+.ap-amos-clouds > div,
+.ap-amos-runway {
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #fff;
+  padding: 9px;
+}
+
+.ap-amos-metrics span,
+.ap-amos-clouds span,
+.ap-amos-runway span {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.ap-amos-metrics strong,
+.ap-amos-clouds strong,
+.ap-amos-runway strong {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ap-amos-section {
+  min-width: 0;
+}
+
+.ap-amos-section h3 {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  margin: 0 0 7px;
+}
+
+.ap-amos-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.ap-amos-section-head h3 {
+  margin: 0;
+}
+
+.ap-amos-section-head > span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.ap-amos-runways {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ap-amos-runway {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 9px 12px;
+}
+
+.ap-amos-runway-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid #edf2f7;
+  padding-bottom: 7px;
+}
+
+.ap-amos-runway-head strong {
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.ap-amos-runway-head span {
+  color: #94a3b8;
+  font-size: 10px;
+  margin: 0;
+}
+
+.ap-amos-primary {
+  grid-row: span 2;
+}
+
+.ap-amos-primary strong {
+  font-size: 16px;
+}
+
+@media (max-width: 720px) {
+  .ap-amos-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ap-amos-head {
+    align-items: flex-start;
+  }
+
+  .ap-amos-runway {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ap-amos-board-wrap {
+  gap: 12px;
+}
+
+.ap-amos-board-grid {
+  display: grid;
+  grid-template-columns: 180px minmax(280px, 1fr) 180px;
+  gap: 14px;
+  align-items: start;
+}
+
+.ap-amos-board-side,
+.ap-amos-board-center {
+  min-width: 0;
+}
+
+.ap-amos-arrow-only {
+  display: grid;
+  place-items: center;
+  height: 60px;
+  margin: 0 auto 10px;
+}
+
+.ap-amos-dial-arrow {
+  width: 56px;
+  height: 56px;
+  color: #ef4444;
+  transform-origin: 50% 50%;
+}
+
+.ap-amos-runway-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  height: 60px;
+  margin: 0 0 10px;
+}
+
+.ap-amos-runway-strip > span {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.ap-amos-strip-body {
+  height: 32px;
+  border-radius: 2px;
+  background: #111827;
+}
+
+.ap-amos-vis-box {
+  border-top: 2px solid #111827;
+  border-bottom: 2px solid #111827;
+  margin-top: 0;
+}
+
+.ap-amos-block-title {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  margin: 0 0 5px;
+}
+
+.ap-amos-block-title--spaced {
+  margin-top: 10px;
+}
+
+.ap-amos-center-vis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 2px solid #111827;
+  border-bottom: 2px solid #111827;
+  margin-bottom: 12px;
+}
+
+.ap-amos-vis-box > div,
+.ap-amos-center-vis > div {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  align-items: center;
+  min-height: 34px;
+  border-bottom: 1px solid #d7dde5;
+  background: #fff;
+}
+
+.ap-amos-center-vis > div {
+  border-bottom: 1px solid #d7dde5;
+}
+
+.ap-amos-vis-box span,
+.ap-amos-center-vis span {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  background: #83b62b;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.ap-amos-vis-box strong,
+.ap-amos-center-vis strong {
+  text-align: center;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.ap-amos-runway-table,
+.ap-amos-cloud-height,
+.ap-amos-common-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 2px solid #111827;
+  border-bottom: 2px solid #111827;
+  background: #fff;
+  font-size: 12px;
+}
+
+.ap-amos-source-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 12px;
+  color: #475569;
+}
+
+.ap-amos-source-label strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.ap-amos-source-label span {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ap-amos-runway-table th,
+.ap-amos-runway-table td,
+.ap-amos-cloud-height th,
+.ap-amos-cloud-height td,
+.ap-amos-common-table th,
+.ap-amos-common-table td {
+  border: 1px solid #d7dde5;
+  padding: 7px 6px;
+  text-align: center;
+}
+
+.ap-amos-runway-table thead th,
+.ap-amos-runway-table tbody th {
+  background: #356eb3;
+  color: #fff;
+  font-weight: 900;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ap-amos-runway-table td,
+.ap-amos-cloud-height td,
+.ap-amos-common-table td {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.ap-amos-cloud-height {
+  margin-bottom: 10px;
+}
+
+.ap-amos-cloud-height thead th {
+  background: #8b8b8b;
+  color: #fff;
+  font-weight: 900;
+}
+
+.ap-amos-cloud-height tbody td:first-child {
+  width: 48px;
+  background: #f8fafc;
+}
+
+.ap-amos-common-table th {
+  width: 44%;
+  background: #d9e8fb;
+  color: #1d4ed8;
+  font-weight: 900;
+}
+
+.ap-amos-note {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+}
+
+@media (max-width: 980px) {
+  .ap-amos-board-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ap-amos-board-side {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .ap-amos-arrow-only {
+    height: 56px;
+  }
+
+  .ap-amos-cloud-height,
+  .ap-amos-vis-box,
+  .ap-amos-runway-table {
+    grid-column: 1 / -1;
+  }
+}

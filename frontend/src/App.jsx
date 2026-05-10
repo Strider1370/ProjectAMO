@@ -72,7 +72,9 @@ function App() {
           sigmetData={weatherData?.sigmet || null}
           airmetData={weatherData?.airmet || null}
           lightningData={weatherData?.lightning || null}
+          sigwxLowData={weatherData?.sigwxLow || null}
           sigwxFrontMeta={weatherData?.sigwxFrontMeta || null}
+          sigwxCloudMeta={weatherData?.sigwxCloudMeta || null}
           selectedAirport={selectedAirport}
           onAirportSelect={setSelectedAirport}
         />

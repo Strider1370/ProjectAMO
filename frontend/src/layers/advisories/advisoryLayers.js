@@ -4,6 +4,7 @@ export const ADVISORY_LAYER_DEFS = {
     fillLayerId: 'kma-sigmet-advisories-fill',
     lineLayerId: 'kma-sigmet-advisories-line',
     labelLayerId: 'kma-sigmet-advisories-label',
+    iconLayerId: 'kma-sigmet-advisories-icon',
     color: '#dc2626',
     label: 'SIGMET',
   },
@@ -12,9 +13,26 @@ export const ADVISORY_LAYER_DEFS = {
     fillLayerId: 'kma-airmet-advisories-fill',
     lineLayerId: 'kma-airmet-advisories-line',
     labelLayerId: 'kma-airmet-advisories-label',
+    iconLayerId: 'kma-airmet-advisories-icon',
     color: '#f59e0b',
     label: 'AIRMET',
   },
+}
+
+function advisorySymbolUrl(kind, phenomenonCode) {
+  const code = String(phenomenonCode || '').trim().toUpperCase()
+  if (!code) return null
+  const folder = kind === 'sigmet' ? 'icon_SIGMET' : 'icon_AIRMET'
+  const file = `${code}.png`
+  return `/Symbols/Reference%20Symbols/${folder}/${encodeURIComponent(file)}`
+}
+
+function ensureMapImage(map, id, url) {
+  if (!id || !url || map.hasImage(id)) return
+  map.loadImage(url, (error, image) => {
+    if (error || !image || map.hasImage(id)) return
+    map.addImage(id, image)
+  })
 }
 
 function formatAltitude(item) {
@@ -146,10 +164,12 @@ export function advisoryItemsToLabelFeatureCollection(payload, kind) {
           id: item.id || `${kind}-label-${index}`,
           properties: {
             id: item.id || `${kind}-${index}`,
-            kind,
-            label: formatLabel(item, kind),
-            description: formatDescription(item, kind),
-          },
+          kind,
+          label: formatLabel(item, kind),
+          iconKey: item.phenomenon_code ? `${kind}-${item.phenomenon_code}` : '',
+          iconUrl: advisorySymbolUrl(kind, item.phenomenon_code) || '',
+          description: formatDescription(item, kind),
+        },
           geometry: {
             type: 'Point',
             coordinates: center,
@@ -231,6 +251,26 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
       },
     })
   }
+
+  labelData.features.forEach((feature) => {
+    ensureMapImage(map, feature.properties?.iconKey, feature.properties?.iconUrl)
+  })
+
+  if (!map.getLayer(def.iconLayerId)) {
+    map.addLayer({
+      id: def.iconLayerId,
+      type: 'symbol',
+      source: labelSourceId,
+      slot: 'top',
+      layout: {
+        'icon-image': ['get', 'iconKey'],
+        'icon-size': 0.5,
+        'icon-allow-overlap': true,
+        'icon-offset': [0, -22],
+      },
+      filter: ['!=', ['get', 'iconKey'], ''],
+    })
+  }
 }
 
 export function updateAdvisoryLayerData(map, kind, featureData, labelData) {
@@ -254,7 +294,7 @@ export function setAdvisoryVisibility(map, kind, isVisible) {
 
   const visibility = isVisible ? 'visible' : 'none'
 
-  for (const layerId of [def.fillLayerId, def.lineLayerId, def.labelLayerId]) {
+  for (const layerId of [def.fillLayerId, def.lineLayerId, def.iconLayerId, def.labelLayerId]) {
     if (map.getLayer(layerId)) {
       map.setLayoutProperty(layerId, 'visibility', visibility)
     }

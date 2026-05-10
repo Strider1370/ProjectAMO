@@ -16,6 +16,7 @@ import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapDa
 import { getProcedures, KNOWN_AIRPORTS } from '../../services/navdata/procedureData.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../../layers/aviation/addAdsbLayer.js'
+import { sigwxLowToMapboxData } from '../../utils/sigwx.js'
 import './MapView.css'
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -110,6 +111,17 @@ const RADAR_SOURCE = 'kma-radar-overlay'
 const RADAR_LAYER = 'kma-radar-overlay'
 const SIGWX_SOURCE = 'kma-sigwx-overlay'
 const SIGWX_LAYER = 'kma-sigwx-overlay'
+const SIGWX_CLOUD_SOURCE = 'kma-sigwx-cloud-overlay'
+const SIGWX_CLOUD_LAYER = 'kma-sigwx-cloud-overlay'
+const SIGWX_POLYGON_SOURCE = 'kma-sigwx-low-polygons'
+const SIGWX_POLYGON_LAYER = 'kma-sigwx-low-polygons'
+const SIGWX_LINE_SOURCE = 'kma-sigwx-low-lines'
+const SIGWX_LINE_LAYER = 'kma-sigwx-low-lines'
+const SIGWX_LABEL_SOURCE = 'kma-sigwx-low-labels'
+const SIGWX_LABEL_LAYER = 'kma-sigwx-low-labels'
+const SIGWX_ICON_SOURCE = 'kma-sigwx-low-icons'
+const SIGWX_ICON_LAYER = 'kma-sigwx-low-icons'
+const SIGWX_VECTOR_LAYERS = [SIGWX_POLYGON_LAYER, SIGWX_LINE_LAYER, SIGWX_LABEL_LAYER, SIGWX_ICON_LAYER]
 const LIGHTNING_SOURCE = 'kma-lightning'
 const LIGHTNING_GROUND_LAYER = 'kma-lightning-ground'
 const LIGHTNING_CLOUD_LAYER = 'kma-lightning-cloud'
@@ -550,6 +562,99 @@ function addOrUpdateImageOverlay(map, { sourceId, layerId, frame, opacity }) {
   return true
 }
 
+function ensureMapImage(map, { id, url }) {
+  if (!id || !url || map.hasImage(id)) return
+  map.loadImage(url, (error, image) => {
+    if (error || !image || map.hasImage(id)) return
+    map.addImage(id, image)
+  })
+}
+
+function addOrUpdateGeoJsonSource(map, sourceId, data) {
+  const source = map.getSource(sourceId)
+  if (source) {
+    source.setData(data)
+  } else {
+    map.addSource(sourceId, { type: 'geojson', data })
+  }
+}
+
+function addOrUpdateSigwxLowLayers(map, data) {
+  const empty = emptyGeoJSON
+  addOrUpdateGeoJsonSource(map, SIGWX_POLYGON_SOURCE, data?.polygons || empty)
+  addOrUpdateGeoJsonSource(map, SIGWX_LINE_SOURCE, data?.lines || empty)
+  addOrUpdateGeoJsonSource(map, SIGWX_LABEL_SOURCE, data?.labels || empty)
+  addOrUpdateGeoJsonSource(map, SIGWX_ICON_SOURCE, data?.icons || empty)
+
+  data?.iconImages?.forEach((image) => ensureMapImage(map, image))
+
+  if (!map.getLayer(SIGWX_POLYGON_LAYER)) {
+    map.addLayer({
+      id: SIGWX_POLYGON_LAYER,
+      type: 'fill',
+      source: SIGWX_POLYGON_SOURCE,
+      slot: 'top',
+      paint: {
+        'fill-color': ['coalesce', ['get', 'colorBack'], '#a78bfa'],
+        'fill-opacity': 0.12,
+      },
+    })
+  }
+
+  if (!map.getLayer(SIGWX_LINE_LAYER)) {
+    map.addLayer({
+      id: SIGWX_LINE_LAYER,
+      type: 'line',
+      source: SIGWX_LINE_SOURCE,
+      slot: 'top',
+      paint: {
+        'line-color': ['coalesce', ['get', 'colorLine'], '#7c3aed'],
+        'line-opacity': 0.95,
+        'line-width': ['coalesce', ['get', 'lineWidth'], 2],
+      },
+    })
+  }
+
+  if (!map.getLayer(SIGWX_ICON_LAYER)) {
+    map.addLayer({
+      id: SIGWX_ICON_LAYER,
+      type: 'symbol',
+      source: SIGWX_ICON_SOURCE,
+      slot: 'top',
+      layout: {
+        'icon-image': ['get', 'iconKey'],
+        'icon-size': 0.55,
+        'icon-allow-overlap': true,
+      },
+    })
+  }
+
+  if (!map.getLayer(SIGWX_LABEL_LAYER)) {
+    map.addLayer({
+      id: SIGWX_LABEL_LAYER,
+      type: 'symbol',
+      source: SIGWX_LABEL_SOURCE,
+      slot: 'top',
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
+        'text-size': 11,
+        'text-offset': [0, 1.1],
+        'text-allow-overlap': false,
+      },
+      paint: {
+        'text-color': '#2d1b69',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1.5,
+      },
+    })
+  }
+}
+
+function setSigwxLowVisibility(map, isVisible) {
+  SIGWX_VECTOR_LAYERS.forEach((layerId) => setMapLayerVisible(map, layerId, isVisible))
+}
+
 function createAirportGeoJSON(airports) {
   return {
     type: 'FeatureCollection',
@@ -854,7 +959,9 @@ function MapView({
   sigmetData = null,
   airmetData = null,
   lightningData = null,
+  sigwxLowData = null,
   sigwxFrontMeta = null,
+  sigwxCloudMeta = null,
   selectedAirport,
   onAirportSelect,
 }) {
@@ -1304,9 +1411,11 @@ function MapView({
   const sigmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(sigmetData, 'sigmet'), [sigmetData])
   const airmetFeatures = useMemo(() => advisoryItemsToFeatureCollection(airmetData, 'airmet'), [airmetData])
   const airmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(airmetData, 'airmet'), [airmetData])
+  const sigwxLowMapData = useMemo(() => sigwxLowToMapboxData(sigwxLowData), [sigwxLowData])
 
   const sigmetCount = sigmetFeatures.features.length
   const airmetCount = airmetFeatures.features.length
+  const sigwxCount = sigwxLowMapData.labels.features.length
   const lightningCount = lightningGeoJSON.features.length
 
   function toggleAviation(id) {
@@ -1400,7 +1509,11 @@ function MapView({
 
       // SIGWX overlay
       const hasSigwx = addOrUpdateImageOverlay(map, { sourceId: SIGWX_SOURCE, layerId: SIGWX_LAYER, frame: sigwxFrontMeta, opacity: 0.85 })
+      const hasSigwxCloud = addOrUpdateImageOverlay(map, { sourceId: SIGWX_CLOUD_SOURCE, layerId: SIGWX_CLOUD_LAYER, frame: sigwxCloudMeta, opacity: 0.65 })
+      addOrUpdateSigwxLowLayers(map, sigwxLowMapData)
       setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && metVisibility.sigwx)
+      setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && metVisibility.sigwx)
+      setSigwxLowVisibility(map, metVisibility.sigwx)
 
       // SIGMET / AIRMET advisories
       addAdvisoryLayers(map, 'sigmet', sigmetFeatures, sigmetLabels)
@@ -1524,11 +1637,15 @@ function MapView({
     const hasSat = addOrUpdateImageOverlay(map, { sourceId: SATELLITE_SOURCE, layerId: SATELLITE_LAYER, frame: satFrame, opacity: 0.92 })
     const hasRadar = addOrUpdateImageOverlay(map, { sourceId: RADAR_SOURCE, layerId: RADAR_LAYER, frame: radarFrame, opacity: 0.88 })
     const hasSigwx = addOrUpdateImageOverlay(map, { sourceId: SIGWX_SOURCE, layerId: SIGWX_LAYER, frame: sigwxFrontMeta, opacity: 0.85 })
+    const hasSigwxCloud = addOrUpdateImageOverlay(map, { sourceId: SIGWX_CLOUD_SOURCE, layerId: SIGWX_CLOUD_LAYER, frame: sigwxCloudMeta, opacity: 0.65 })
+    addOrUpdateSigwxLowLayers(map, sigwxLowMapData)
 
     setMapLayerVisible(map, SATELLITE_LAYER, hasSat && metVisibility.satellite)
     setMapLayerVisible(map, RADAR_LAYER, hasRadar && metVisibility.radar)
     setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && metVisibility.sigwx)
-  }, [satFrame, radarFrame, sigwxFrontMeta, metVisibility, isStyleReady])
+    setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && metVisibility.sigwx)
+    setSigwxLowVisibility(map, metVisibility.sigwx)
+  }, [satFrame, radarFrame, sigwxFrontMeta, sigwxCloudMeta, sigwxLowMapData, metVisibility, isStyleReady])
 
   // ???? Sync SIGMET / AIRMET ????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -1776,7 +1893,7 @@ function MapView({
     if (id === 'lightning') return lightningCount === 0
     if (id === 'sigmet') return sigmetCount === 0
     if (id === 'airmet') return airmetCount === 0
-    if (id === 'sigwx') return !sigwxFrontMeta
+    if (id === 'sigwx') return !sigwxFrontMeta && !sigwxCloudMeta && sigwxCount === 0
     return false
   }
 
@@ -1784,6 +1901,7 @@ function MapView({
     if (id === 'sigmet') return sigmetCount > 0 ? sigmetCount : null
     if (id === 'airmet') return airmetCount > 0 ? airmetCount : null
     if (id === 'lightning') return lightningCount > 0 ? lightningCount : null
+    if (id === 'sigwx') return sigwxCount > 0 ? sigwxCount : null
     return null
   }
 

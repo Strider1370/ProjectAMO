@@ -31,7 +31,7 @@ ProjectAMO/
         Map/MapView.css
       config/mapConfig.js      -> initial center/zoom/bounds + BASEMAP_OPTIONS
       layers/advisories/
-        advisoryLayers.js      -> SIGMET/AIRMET source/layer defs + GeoJSON conversion helpers
+        advisoryLayers.js      -> SIGMET/AIRMET source/layer defs + GeoJSON/icon conversion helpers
       layers/aviation/
         aviationWfsLayers.js   -> layer definitions (ids, colors, urls, options)
         addAviationWfsLayers.js-> Mapbox source/layer creation for aviation WFS layers
@@ -39,6 +39,7 @@ ProjectAMO/
       services/navdata/
         routePlanner.js        -> route path search + procedure/navpoint loading from public navdata JSON
       utils/
+        sigwx.js               -> SIGWX_LOW item-to-Mapbox GeoJSON/icon mapping helpers
         visual-mapper.js       -> airport weather code-to-Korean mapper used by airport/weather UI
   backend/
     server.js                  -> entry point, Express routes
@@ -65,6 +66,8 @@ ProjectAMO/
 - **Route highlight independence**: `applyRouteHighlight` adds 6 `ROUTE_HL_*` layers (waypoint icons/labels, navaid icons/labels, segment line/label) that are active whenever `routeResult` is set, regardless of aviation layer toggle state. Sourced from WFS for point layers, `ROUTE_PREVIEW_SOURCE` for segment lines.
 - **VFR waypoint interaction pattern**: `bindVfrInteractions` is registered once via `vfrInteractionsBound` guard (same pattern as `airportHandlerBound`) to survive basemap switches. During drag, `vfrWaypointsRef.current` is mutated directly and `source.setData` called per frame ??`setVfrWaypoints` is called only on mouseup to avoid per-frame re-renders. The X delete button is a DOM overlay; `hideTimerRef` bridges the 120ms hide delay between the Mapbox `mouseleave` event and the React button's `onMouseEnter`.
 - **airport_info API params**: Unlike other KMA endpoints, `AirPortService/getAirPort` uses `base_date` (YYYYMMDD), `base_time` (0600/1700 KST), `airPortCd` (ICAO). URL built in `buildAirportInfoUrl()` in `api-client.js`, not via the standard `buildUrl()`. Bulletins issued twice daily at 06:00 and 17:00 KST.
+- **SIGWX_LOW display split**: `/api/sigwx-low` feeds Mapbox vector fill/line/label/icon layers from `utils/sigwx.js`; `/api/sigwx-front-meta` and `/api/sigwx-cloud-meta` feed pre-rendered raster overlays. Keep rasters in `slot: 'middle'` and vector symbols in `slot: 'top'`.
+- **AirportPanel TAF/AMOS**: TAF tab uses hourly `taf.airports[icao].timeline` for timeline/table/grid views. AMOS displays only parsed AMOS fields; missing AMOS values stay blank/`-` and must not be filled from METAR.
 
 ## Task Patterns
 

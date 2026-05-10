@@ -52,6 +52,21 @@ function emptyDailyRainfall(targetTm, stale) {
   };
 }
 
+function emptyObservation() {
+  return {
+    observed_tm_kst: null,
+    l_vis: null,
+    r_vis: null,
+    l_rvr: null,
+    r_rvr: null,
+    cloud_min_m: null,
+    qnh: null,
+    runways: [],
+    wind_2m: null,
+    wind_10m: null,
+  };
+}
+
 async function process() {
   const result = {
     type: "AMOS",
@@ -70,6 +85,7 @@ async function process() {
         icao: airport.icao,
         amos_stn: null,
         daily_rainfall: emptyDailyRainfall(targetTm, false),
+        observation: emptyObservation(),
       };
       continue;
     }
@@ -78,6 +94,11 @@ async function process() {
       const amosUrl = buildAmosUrl(stn, targetTm);
       const amosText = await fetchAmosText(amosUrl);
       const rows = amosParser.parseAmosRows(amosText);
+      const observation = amosParser.pickObservationAtTime(
+        rows,
+        targetTm,
+        config.amos.stale_tolerance_minutes
+      ) || emptyObservation();
       result.airports[airport.icao] = {
         icao: airport.icao,
         amos_stn: stn,
@@ -86,6 +107,23 @@ async function process() {
           targetTm,
           config.amos.stale_tolerance_minutes
         ) || emptyDailyRainfall(targetTm, true),
+        observation,
+        runways: observation.runways || [],
+        weather: {
+          temperature_c: observation.temperature_c ?? null,
+          dewpoint_c: observation.dewpoint_c ?? null,
+          humidity_pct: observation.humidity_pct ?? null,
+          rainfall_mm: observation.rainfall_mm ?? null,
+          cloud_min_m: observation.cloud_min_m ?? null,
+        },
+        pressure: {
+          qnh_hpa: observation.qnh ?? observation.sea_level_pressure_hpa ?? null,
+          station_hpa: observation.station_pressure_hpa ?? null,
+        },
+        wind: {
+          two_minute: observation.wind_2m ?? null,
+          ten_minute: observation.wind_10m ?? null,
+        },
       };
     } catch (error) {
       failedAirports.push(airport.icao);

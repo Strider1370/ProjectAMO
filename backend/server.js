@@ -58,6 +58,12 @@ app.get('/api/sigwx-front-meta', (_, res) => {
   sendJsonFile(res, path.join(__dirname, 'data', 'sigwx_low', `fronts_meta_${data.tmfc}.json`))
 })
 
+app.get('/api/sigwx-cloud-meta', (_, res) => {
+  const data = store.getCached('sigwx_low')
+  if (!data?.tmfc) return res.status(503).json({ error: 'sigwx data unavailable' })
+  sendJsonFile(res, path.join(__dirname, 'data', 'sigwx_low', `clouds_meta_${data.tmfc}.json`))
+})
+
 app.get('/api/stats',  (_, res) => res.json(stats.getStats()))
 app.get('/api/health', (_, res) => res.json({ ok: true, uptime: process.uptime() }))
 

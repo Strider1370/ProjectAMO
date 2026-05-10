@@ -334,6 +334,411 @@ function AmosTab({ amos }) {
 
 // ── WARNING tab ───────────────────────────────────────────────────────────────
 
+const TAF_VIEWS = [
+  { id: 'timeline', label: '타임라인' },
+  { id: 'table', label: '테이블' },
+  { id: 'grid', label: '그리드' },
+]
+
+const TAF_CATEGORY_COLOR = { VFR: '#15803d', MVFR: '#2563eb', IFR: '#f59e0b', LIFR: '#dc2626' }
+
+function getTafCeiling(slot) {
+  return slot?.clouds
+    ?.filter((cloud) => cloud.amount === 'BKN' || cloud.amount === 'OVC')
+    .sort((a, b) => (a.base ?? Infinity) - (b.base ?? Infinity))[0]?.base ?? null
+}
+
+function formatTafCeiling(value) {
+  return Number.isFinite(value) ? `${value} ft` : 'NSC'
+}
+
+function formatTafVisibility(slot) {
+  const value = slot?.visibility?.value
+  if (Number.isFinite(value)) return `${value} m`
+  return slot?.display?.visibility || '-'
+}
+
+function formatTafWind(slot) {
+  const wind = slot?.wind
+  if (!wind) return '-'
+  if (wind.calm) return 'CALM'
+  const dir = wind.variable ? 'VRB' : Number.isFinite(wind.direction) ? String(wind.direction).padStart(3, '0') : '///'
+  const speed = Number.isFinite(wind.speed) ? String(wind.speed).padStart(2, '0') : '//'
+  return `${dir}${speed}${wind.gust ? `G${wind.gust}` : ''}${wind.unit || 'KT'}`
+}
+
+function tafSlotView(slot, icao) {
+  const visibility = slot?.visibility?.value ?? null
+  const ceiling = getTafCeiling(slot)
+  const flight = getFlightCategory(visibility, ceiling, icao)
+  const visibilityCategory = classifyVisibilityCategory(visibility, icao)
+  const ceilingCategory = classifyCeilingCategory(ceiling, icao)
+  const visual = resolveWeatherVisual(slot, slot?.time)
+  const weatherLabel = convertWeatherToKorean(slot?.display?.weather, slot?.visibility?.cavok ?? slot?.cavok, slot?.clouds || [])
+  const wind = slot?.wind
+  const windRotation = Number.isFinite(wind?.direction) ? ((wind.direction % 360) + 180) % 360 : 0
+
+  return {
+    slot,
+    time: slot?.time,
+    flight,
+    visibilityCategory,
+    ceilingCategory,
+    visual,
+    weatherLabel,
+    windText: formatTafWind(slot),
+    windRotation,
+    highWind: hasHighWindCondition(wind),
+    visibilityText: formatTafVisibility(slot),
+    ceilingText: formatTafCeiling(ceiling),
+  }
+}
+
+function groupTafSlots(slots, keyFn) {
+  const groups = []
+  slots.forEach((slot) => {
+    const key = keyFn(slot)
+    const prev = groups[groups.length - 1]
+    if (prev?.key === key) prev.items.push(slot)
+    else groups.push({ key, items: [slot] })
+  })
+  return groups.map((group) => ({ ...group, width: `${(group.items.length / Math.max(1, slots.length)) * 100}%`, first: group.items[0] }))
+}
+
+function formatTafHour(iso) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '--'
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCHours()).padStart(2, '0')}Z`
+}
+
+function EnhancedTafTab({ taf, icao }) {
+  const [view, setView] = useState('timeline')
+  if (!taf) return <div className="ap-empty">TAF 데이터 없음</div>
+
+  const rawTimeline = Array.isArray(taf.timeline) ? taf.timeline : []
+  const timeline = rawTimeline.filter((slot) => new Date(slot.time).getTime() + 3600 * 1000 > Date.now())
+  const slots = timeline.map((slot) => tafSlotView(slot, icao))
+  const hdr = taf.header
+
+  return (
+    <div className="ap-taf">
+      <div className="ap-taf-header">
+        <div>
+          <span className="ap-taf-badge">{hdr?.report_status === 'AMENDMENT' ? 'TAF AMD' : 'TAF'}</span>
+          <span className="ap-taf-valid">{fmtTime(hdr?.valid_start)} - {fmtTime(hdr?.valid_end)}</span>
+        </div>
+        <div className="ap-taf-switch" role="tablist" aria-label="TAF view">
+          {TAF_VIEWS.map((item) => (
+            <button key={item.id} type="button" className={`ap-taf-switch-btn${view === item.id ? ' is-active' : ''}`} onClick={() => setView(item.id)} aria-pressed={view === item.id}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {rawTimeline.length === 0 && <div className="ap-empty">TAF 시간대 데이터 없음</div>}
+      {rawTimeline.length > 0 && slots.length === 0 && <div className="ap-empty">TAF 유효 기간 만료</div>}
+
+      {slots.length > 0 && view === 'timeline' && (
+        <div className="ap-taf-timeline">
+          <div className="ap-taf-scale" style={{ '--taf-hour-count': slots.length }}>
+            {slots.map((item, index) => <span key={index}>{index % 3 === 0 || index === 0 ? formatTafHour(item.time) : ''}</span>)}
+          </div>
+          {[
+            ['비행조건', groupTafSlots(slots, (item) => item.flight.category), (item) => item.flight.category, (item) => ({ background: TAF_CATEGORY_COLOR[item.flight.category] || '#15803d', color: '#fff' })],
+            ['날씨', groupTafSlots(slots, (item) => item.weatherLabel), (item) => item.weatherLabel, () => ({ background: '#f8fafc', color: '#0f172a' })],
+            ['바람', groupTafSlots(slots, (item) => item.windText), (item) => item.windText, (item) => ({ background: item.highWind ? '#fff1f2' : '#f8fafc', color: item.highWind ? '#be123c' : '#0f172a' })],
+            ['시정', groupTafSlots(slots, (item) => item.visibilityText), (item) => item.visibilityText, (item) => ({ background: item.visibilityCategory.bg, color: item.visibilityCategory.valueColor })],
+            ['운고', groupTafSlots(slots, (item) => item.ceilingText), (item) => item.ceilingText, (item) => ({ background: item.ceilingCategory.bg, color: item.ceilingCategory.valueColor })],
+          ].map(([label, groups, textFn, styleFn]) => (
+            <div className="ap-taf-line" key={label}>
+              <div className="ap-taf-line-label">{label}</div>
+              <div className="ap-taf-line-track">
+                {groups.map((group, index) => (
+                  <div key={index} className="ap-taf-seg" style={{ width: group.width, ...styleFn(group.first) }} title={textFn(group.first)}>
+                    {label === '날씨' && <WeatherIcon visual={group.first.visual} className="ap-taf-mini-icon" />}
+                    {label === '바람' && <MoveUp className="ap-taf-mini-arrow" style={{ transform: `rotate(${group.first.windRotation}deg)` }} />}
+                    <span>{textFn(group.first)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {slots.length > 0 && view === 'table' && (
+        <table className="ap-taf-table">
+          <thead><tr><th>시간</th><th>비행조건</th><th>날씨</th><th>바람</th><th>시정</th><th>운고</th></tr></thead>
+          <tbody>
+            {slots.map((item, index) => (
+              <tr key={index}>
+                <td>{formatTafHour(item.time)}</td>
+                <td><span className="ap-taf-cat" style={{ background: TAF_CATEGORY_COLOR[item.flight.category] }}>{item.flight.category}</span></td>
+                <td className="ap-taf-weather-cell"><WeatherIcon visual={item.visual} className="ap-taf-mini-icon" />{item.weatherLabel}</td>
+                <td className={item.highWind ? 'is-alert' : ''}>{item.windText}</td>
+                <td style={{ color: item.visibilityCategory.valueColor }}>{item.visibilityText}</td>
+                <td style={{ color: item.ceilingCategory.valueColor }}>{item.ceilingText}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {slots.length > 0 && view === 'grid' && (
+        <div className="ap-taf-grid">
+          {slots.map((item, index) => (
+            <article key={index} className="ap-taf-card">
+              <div className="ap-taf-card-head"><span>{formatTafHour(item.time)}</span><span className="ap-taf-cat" style={{ background: TAF_CATEGORY_COLOR[item.flight.category] }}>{item.flight.category}</span></div>
+              <div className="ap-taf-card-weather"><WeatherIcon visual={item.visual} className="ap-taf-card-icon" />{item.weatherLabel}</div>
+              <div className="ap-taf-card-row"><span>바람</span><strong className={item.highWind ? 'is-alert' : ''}>{item.windText}</strong></div>
+              <div className="ap-taf-card-row"><span>시정</span><strong>{item.visibilityText}</strong></div>
+              <div className="ap-taf-card-row"><span>운고</span><strong>{item.ceilingText}</strong></div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatNumber(value, suffix = '') {
+  return Number.isFinite(value) ? `${value}${suffix}` : '-'
+}
+
+function formatQnh(display) {
+  const qnh = display?.qnh
+  if (!qnh) return '-'
+  return String(qnh).startsWith('Q') ? `${String(qnh).slice(1)} hPa` : qnh
+}
+
+function formatAmosTime(value) {
+  if (!value) return '관측시간 없음'
+  const compact = String(value).match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/)
+  if (compact) return `${compact[1]}-${compact[2]}-${compact[3]} ${compact[4]}:${compact[5]} KST`
+  return fmtKst(value)
+}
+
+function cloudRowsFromMetar(metar) {
+  const clouds = metar?.observation?.clouds || []
+  if (clouds.length === 0) return [{ layer: '1', value: metar?.observation?.display?.clouds || 'NSC' }]
+  return clouds.map((cloud, index) => ({
+    layer: String(index + 1),
+    value: `${cloud.amount || '-'} ${Number.isFinite(cloud.base) ? `${cloud.base} ft` : ''}`.trim(),
+  }))
+}
+
+function EnhancedAmosTab({ amos, metar, airportMeta }) {
+  if (!amos && !metar) return <div className="ap-empty">AMOS 데이터 없음</div>
+  const rf = amos?.daily_rainfall
+  const amosObs = amos?.observation || null
+  const obs = metar?.observation || null
+  const wind = obs?.wind || null
+  const temp = {
+    air: amos?.weather?.temperature_c ?? obs?.temperature?.air,
+    dewpoint: amos?.weather?.dewpoint_c ?? obs?.temperature?.dewpoint,
+  }
+  const rh = amos?.weather?.humidity_pct ?? computeRelativeHumidity(temp.air, temp.dewpoint)
+  const clouds = cloudRowsFromMetar(metar)
+  const runwayHdg = airportMeta?.runway_hdg
+  const runwayOpposite = Number.isFinite(runwayHdg) ? (runwayHdg + 180) % 360 : null
+  const runwayRows = Array.isArray(amos?.runways) && amos.runways.length > 0
+    ? amos.runways
+    : [
+        { runway: Number.isFinite(runwayHdg) ? String(Math.round(runwayHdg / 10)).padStart(2, '0') : 'RWY', wind_direction: amosObs?.wind_direction ?? wind?.direction, wind_speed: amosObs?.wind_speed ?? wind?.speed, wind_gust: amosObs?.wind_gust ?? wind?.gust, mor: amosObs?.mor ?? obs?.visibility?.value, rvr: amosObs?.rvr ?? obs?.rvr?.[0]?.mean },
+        { runway: Number.isFinite(runwayOpposite) ? String(Math.round(runwayOpposite / 10) || 36).padStart(2, '0') : 'RWY', wind_direction: amosObs?.wind_direction ?? wind?.direction, wind_speed: amosObs?.wind_speed ?? wind?.speed, wind_gust: amosObs?.wind_gust ?? wind?.gust, mor: amosObs?.mor ?? obs?.visibility?.value, rvr: amosObs?.rvr ?? obs?.rvr?.[1]?.mean ?? obs?.rvr?.[0]?.mean },
+      ]
+  const observedTime = rf?.observed_tm_kst || amosObs?.observed_tm_kst || metar?.header?.observation_time
+
+  return (
+    <div className="ap-amos">
+      <div className="ap-amos-head">
+        <div>
+          <span className="ap-amos-eyebrow">AMOS</span>
+          <h3>공항 관측 요약</h3>
+        </div>
+        <span className="ap-amos-time">{formatAmosTime(observedTime)}</span>
+      </div>
+
+      <div className="ap-amos-layout">
+        <section className="ap-amos-section ap-amos-runway-section">
+          <div className="ap-amos-section-head">
+            <h3>활주로 관측</h3>
+            <span>{amos?.amos_stn ? `관측소 ${amos.amos_stn}` : '관측소 미지정'}</span>
+          </div>
+          <div className="ap-amos-runways">
+            {runwayRows.map((runway, index) => (
+              <article key={index} className="ap-amos-runway">
+                <div className="ap-amos-runway-head">
+                  <strong>RWY {runway.runway || (index === 0 && Number.isFinite(runwayHdg) ? String(Math.round(runwayHdg / 10)).padStart(2, '0') : index === 1 && Number.isFinite(runwayOpposite) ? String(Math.round(runwayOpposite / 10) || 36).padStart(2, '0') : index + 1)}</strong>
+                  <span>{amos?.runways?.length ? '활주로별 관측' : '대체 관측값'}</span>
+                </div>
+                <div className="ap-amos-primary">
+                  <span>풍향/풍속</span>
+                  <strong>{formatNumber(runway.wind_direction, '°')} / {formatNumber(runway.wind_speed, ' kt')}{runway.wind_gust ? ` G${runway.wind_gust}` : ''}</strong>
+                </div>
+                <div><span>MOR</span><strong>{formatNumber(runway.mor, ' m')}</strong></div>
+                <div><span>RVR</span><strong>{formatNumber(runway.rvr, ' m')}</strong></div>
+                <div><span>평균/최소/최대</span><strong>{runway.wind_speed || runway.wind_speed_min || runway.wind_speed_max ? `${runway.wind_speed ?? '-'} / ${runway.wind_speed_min ?? '-'} / ${runway.wind_speed_max ?? '-'} kt` : '데이터 없음'}</strong></div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <div className="ap-amos-side">
+          <section className="ap-amos-section">
+            <h3>기상 요소</h3>
+            <div className="ap-amos-metrics">
+              <div><span>기온</span><strong>{formatNumber(temp.air, '°C')}</strong></div>
+              <div><span>이슬점</span><strong>{formatNumber(temp.dewpoint, '°C')}</strong></div>
+              <div><span>습도</span><strong>{Number.isFinite(rh) ? `${Math.round(rh)}%` : '-'}</strong></div>
+              <div><span>QNH</span><strong>{amos?.pressure?.qnh_hpa != null ? `${amos.pressure.qnh_hpa} hPa` : amosObs?.qnh != null ? `${amosObs.qnh} hPa` : formatQnh(obs?.display)}</strong></div>
+              <div><span>일강수량</span><strong>{rf?.mm != null ? `${rf.mm} mm` : '-'}</strong></div>
+              <div><span>적설</span><strong>{amos?.snow?.cm != null ? `${amos.snow.cm} cm` : amosObs?.snow_cm != null ? `${amosObs.snow_cm} cm` : '데이터 없음'}</strong></div>
+            </div>
+          </section>
+          <section className="ap-amos-section">
+            <h3>구름고도</h3>
+            <div className="ap-amos-clouds">
+              {clouds.map((cloud) => <div key={cloud.layer}><span>{cloud.layer}</span><strong>{cloud.value}</strong></div>)}
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function formatAmosValue(value, suffix = '') {
+  return Number.isFinite(value) ? `${value}${suffix}` : '-'
+}
+
+function formatMsToKt(value) {
+  return Number.isFinite(value) ? `${(value * 1.943844).toFixed(1)}` : '-'
+}
+
+const AMOS_REPRESENTATIVE_RUNWAYS = {
+  RKSI: ['15L', '33R'],
+  RKSS: ['14R', '32L'],
+  RKPC: ['07', '25'],
+  RKJB: ['01', '19'],
+  RKNY: ['15', '33'],
+  RKPU: ['18', '36'],
+  RKJY: ['17', '35'],
+}
+
+function enrichAmosRunways(amos) {
+  const runways = Array.isArray(amos?.runways) ? amos.runways : []
+  return [0, 1].map((index) => ({
+    ...(runways[index] || {}),
+    runway: runways[index]?.side || (index === 0 ? 'L' : 'R'),
+  }))
+}
+
+function runwayNumberFromHeading(heading) {
+  if (!Number.isFinite(heading)) return null
+  const number = Math.round((((heading % 360) + 360) % 360) / 10) || 36
+  return String(number).padStart(2, '0')
+}
+
+function runwayLabelsFromAirport(airportMeta) {
+  const mapped = AMOS_REPRESENTATIVE_RUNWAYS[airportMeta?.icao]
+  if (mapped) return mapped
+  const first = runwayNumberFromHeading(airportMeta?.runway_hdg)
+  const second = Number.isFinite(airportMeta?.runway_hdg)
+    ? runwayNumberFromHeading((airportMeta.runway_hdg + 180) % 360)
+    : null
+  return [first || 'RWY', second || 'RWY']
+}
+
+function AmosRunwaySide({ runway, label, align = 'left' }) {
+  const rotation = Number.isFinite(runway?.wind_direction) ? (runway.wind_direction + 180) % 360 : 0
+  const runwayLabel = label || runway?.runway || '-'
+  return (
+    <section className={`ap-amos-board-side ap-amos-board-side--${align}`}>
+      <div className="ap-amos-arrow-only">
+        <MoveUp className="ap-amos-dial-arrow" style={{ transform: `rotate(${rotation}deg)` }} />
+      </div>
+
+      <div className="ap-amos-block-title">{runwayLabel} 풍향/풍속</div>
+      <table className="ap-amos-runway-table">
+        <thead>
+          <tr><th>{runwayLabel}</th><th>평균</th><th>최소</th><th>최대</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>풍향(°)</th>
+            <td>{formatAmosValue(runway?.wind_direction)}</td>
+            <td>{formatAmosValue(runway?.wind_direction_min)}</td>
+            <td>{formatAmosValue(runway?.wind_direction_max)}</td>
+          </tr>
+          <tr>
+            <th>풍속(kt)</th>
+            <td>{formatMsToKt(runway?.wind_speed)}</td>
+            <td>{formatMsToKt(runway?.wind_speed_min)}</td>
+            <td>{formatMsToKt(runway?.wind_speed_max)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div className="ap-amos-block-title ap-amos-block-title--spaced">{runwayLabel} 시정</div>
+      <div className="ap-amos-vis-box">
+        <div><span>{runwayLabel} VIS</span><strong>{formatAmosValue(runway?.visibility_m, ' m')}</strong></div>
+        <div><span>{runwayLabel} RVR</span><strong>{formatAmosValue(runway?.rvr_m, ' m')}</strong></div>
+      </div>
+    </section>
+  )
+}
+
+function AmosBoardTab({ amos, airportMeta }) {
+  if (!amos) return <div className="ap-empty">AMOS 데이터 없음</div>
+  const runways = enrichAmosRunways(amos)
+  const runwayLabels = runwayLabelsFromAirport(airportMeta)
+  const rf = amos.daily_rainfall
+  const obs = amos.observation || {}
+  const observedTime = rf?.observed_tm_kst || obs.observed_tm_kst
+
+  return (
+    <div className="ap-amos ap-amos-board-wrap">
+      <div className="ap-amos-head">
+        <div>
+          <h3>공항기상관측장비(AMOS)</h3>
+        </div>
+        <span className="ap-amos-time">{formatAmosTime(observedTime)}</span>
+      </div>
+
+      <div className="ap-amos-board-grid">
+        <AmosRunwaySide runway={runways[0]} label={runwayLabels[0]} />
+
+        <section className="ap-amos-board-center">
+          <div className="ap-amos-runway-strip">
+            <span>{runwayLabels[0]}</span>
+            <div className="ap-amos-strip-body" />
+            <span>{runwayLabels[1]}</span>
+          </div>
+          <table className="ap-amos-common-table">
+            <tbody>
+              <tr><th>최저운고(ft)</th><td>{formatAmosValue(amos.weather?.cloud_min_m, 'ft')}</td></tr>
+              <tr><th>기온(°C)</th><td>{formatAmosValue(amos.weather?.temperature_c, '°C')}</td></tr>
+              <tr><th>이슬점(°C)</th><td>{formatAmosValue(amos.weather?.dewpoint_c, '°C')}</td></tr>
+              <tr><th>습도(%)</th><td>{formatAmosValue(amos.weather?.humidity_pct, '%')}</td></tr>
+              <tr><th>해면기압(hPa)</th><td>{formatAmosValue(amos.pressure?.qnh_hpa, 'hPa')}</td></tr>
+              <tr><th>현지기압(hPa)</th><td>{formatAmosValue(amos.pressure?.station_hpa, 'hPa')}</td></tr>
+              <tr><th>강수량(mm)</th><td>{formatAmosValue(amos.weather?.rainfall_mm ?? rf?.mm, 'mm')}</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <AmosRunwaySide runway={runways[1]} label={runwayLabels[1]} align="right" />
+      </div>
+
+      {Array.isArray(amos.runways) && amos.runways.length > 0
+        ? null
+        : <div className="ap-amos-note">AMOS 활주로별 직접값이 없습니다.</div>}
+    </div>
+  )
+}
+
 const WARNING_LEVEL_COLOR = {
   1: '#f59e0b', 2: '#f97316', 3: '#ef4444', 4: '#dc2626',
 }
@@ -345,18 +750,25 @@ function WarningTab({ warning }) {
 
   return (
     <div className="ap-warnings">
-      {warnings.map((w, i) => (
-        <div key={i} className="ap-warning-item" style={{ borderLeftColor: WARNING_LEVEL_COLOR[w.level] || '#94a3b8' }}>
-          <div className="ap-warning-title">
-            <span className="ap-warning-type">{w.type_label || w.type || '경보'}</span>
-            {w.level && <span className="ap-warning-level">Level {w.level}</span>}
+      {warnings.map((w, i) => {
+        const title = w.wrng_type_name || w.type_label || w.type || '경보'
+        const start = w.valid_start || w.start
+        const end = w.valid_end || w.end
+        const message = w.raw_message || w.text
+        return (
+          <div key={i} className="ap-warning-item" style={{ borderLeftColor: WARNING_LEVEL_COLOR[w.level] || '#94a3b8' }}>
+            <div className="ap-warning-title">
+              <span className="ap-warning-type">{title}</span>
+              {w.wrng_type && <span className="ap-warning-level">Code {w.wrng_type}</span>}
+              {w.level && <span className="ap-warning-level">Level {w.level}</span>}
+            </div>
+            <div className="ap-warning-time">
+              {fmtKst(start)} – {fmtKst(end)}
+            </div>
+            {message && <div className="ap-warning-text">{message}</div>}
           </div>
-          <div className="ap-warning-time">
-            {fmtKst(w.start)} – {fmtKst(w.end)}
-          </div>
-          {w.text && <div className="ap-warning-text">{w.text}</div>}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -481,8 +893,8 @@ function AirportPanel({ airport, weatherData, onClose }) {
 
         <div className="airport-panel-body">
           {tab === 'metar' && <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} />}
-          {tab === 'taf'   && <TafTab taf={taf} />}
-          {tab === 'amos'  && <AmosTab amos={amos} />}
+          {tab === 'taf'   && <EnhancedTafTab taf={taf} icao={icao} />}
+          {tab === 'amos'  && <AmosBoardTab amos={amos} airportMeta={airport} />}
           {tab === 'warn'  && <WarningTab warning={warning} />}
           {tab === 'info'  && <AirportInfoTab info={airportInfo} />}
         </div>

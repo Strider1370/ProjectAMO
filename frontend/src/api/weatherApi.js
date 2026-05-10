@@ -33,7 +33,7 @@ export async function loadWeatherData() {
   const [
     airports, metar, taf, amos, warning,
     sigmet, airmet, lightning,
-    echoMeta, satMeta, sigwxFrontMeta, airportInfo,
+    echoMeta, satMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta, airportInfo,
   ] = await Promise.all([
     fetchJson('/api/airports',        { optional: true }),
     fetchJson('/api/metar',           { optional: true }),
@@ -45,7 +45,9 @@ export async function loadWeatherData() {
     fetchJson('/api/lightning',       { optional: true }),
     fetchJson('/data/radar/echo_meta.json',     { optional: true }),
     fetchJson('/data/satellite/sat_meta.json',  { optional: true }),
+    fetchJson('/api/sigwx-low',                 { optional: true }),
     fetchJson('/api/sigwx-front-meta',          { optional: true }),
+    fetchJson('/api/sigwx-cloud-meta',          { optional: true }),
     fetchJson('/api/airport-info',              { optional: true }),
   ])
 
@@ -60,7 +62,9 @@ export async function loadWeatherData() {
     lightning,
     echoMeta,
     satMeta,
+    sigwxLow,
     sigwxFrontMeta,
+    sigwxCloudMeta,
     airportInfo,
   }
 }
