@@ -272,10 +272,18 @@
   padding: 8px;
   border-radius: 4px;
   background: #f8fafc;
-  color: #0f766e;
   font-size: 11px;
   font-weight: 800;
   line-height: 1.45;
+}
+
+.route-check-sequence-token {
+  font-weight: 800;
+}
+
+.route-check-sequence-sep {
+  color: #94a3b8;
+  font-weight: 700;
 }
 
 .route-check-total-dist {
@@ -295,6 +303,14 @@
   font-size: 10px;
 }
 
+.dist-breakdown-token {
+  font-weight: 700;
+}
+
+.dist-breakdown-sep {
+  color: #94a3b8;
+}
+
 .proc-direct-input {
   margin-top: 4px;
 }
@@ -304,6 +320,10 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.route-check-actions.is-vfr {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .route-check-form .route-check-actions button {
