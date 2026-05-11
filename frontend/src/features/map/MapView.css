@@ -194,11 +194,11 @@
   font-weight: 700;
 }
 
-.map-right-legends {
+.map-view-wrapper .map-right-legends {
   position: absolute;
-  top: 66px;
+  top: 76px;
   right: 18px;
-  z-index: 5;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -206,7 +206,7 @@
   pointer-events: none;
 }
 
-.rainrate-legend {
+.map-view-wrapper .rainrate-legend {
   display: grid;
   gap: 4px;
   width: 58px;
@@ -218,7 +218,7 @@
   backdrop-filter: blur(4px);
 }
 
-.rainrate-legend-title {
+.map-view-wrapper .rainrate-legend-title {
   color: #111827;
   text-align: right;
   font-size: 0.62rem;
@@ -227,14 +227,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-.rainrate-legend-scale,
-.lightning-time-legend-scale {
+.map-view-wrapper .rainrate-legend-scale,
+.map-view-wrapper .lightning-time-legend-scale {
   display: grid;
   gap: 0;
 }
 
-.rainrate-legend-row,
-.lightning-time-legend-row {
+.map-view-wrapper .rainrate-legend-row,
+.map-view-wrapper .lightning-time-legend-row {
   display: grid;
   grid-template-columns: 1fr 12px;
   align-items: center;
@@ -242,25 +242,25 @@
   min-height: 18px;
 }
 
-.rainrate-legend-label,
-.lightning-time-legend-title,
-.lightning-time-legend-sub,
-.lightning-time-legend-current,
-.lightning-time-legend-label {
+.map-view-wrapper .rainrate-legend-label,
+.map-view-wrapper .lightning-time-legend-title,
+.map-view-wrapper .lightning-time-legend-sub,
+.map-view-wrapper .lightning-time-legend-current,
+.map-view-wrapper .lightning-time-legend-label {
   color: #111827;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.rainrate-legend-label,
-.lightning-time-legend-label {
+.map-view-wrapper .rainrate-legend-label,
+.map-view-wrapper .lightning-time-legend-label {
   font-size: 0.62rem;
   line-height: 1;
   letter-spacing: -0.02em;
 }
 
-.rainrate-legend-swatch,
-.lightning-time-legend-swatch {
+.map-view-wrapper .rainrate-legend-swatch,
+.map-view-wrapper .lightning-time-legend-swatch {
   display: block;
   width: 12px;
   min-width: 12px;
@@ -268,7 +268,7 @@
   border: 1px solid rgba(17, 24, 39, 0.12);
 }
 
-.lightning-time-legend {
+.map-view-wrapper .lightning-time-legend {
   display: grid;
   gap: 4px;
   width: 74px;
@@ -280,20 +280,20 @@
   backdrop-filter: blur(4px);
 }
 
-.lightning-time-legend-title {
+.map-view-wrapper .lightning-time-legend-title {
   font-size: 0.62rem;
   font-weight: 900;
   line-height: 1;
   letter-spacing: 0.04em;
 }
 
-.lightning-time-legend-sub {
+.map-view-wrapper .lightning-time-legend-sub {
   font-size: 0.58rem;
   font-weight: 800;
   line-height: 1;
 }
 
-.lightning-time-legend-current {
+.map-view-wrapper .lightning-time-legend-current {
   font-size: 0.68rem;
   font-weight: 800;
   line-height: 1.1;
@@ -825,7 +825,7 @@
   position: absolute;
   top: 12px;
   right: 12px;
-  z-index: 5;
+  z-index: 7;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
