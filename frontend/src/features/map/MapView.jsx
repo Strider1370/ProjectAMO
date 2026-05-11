@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { MAP_CONFIG, BASEMAP_OPTIONS } from '../../config/mapConfig.js'
-import { addAviationWfsLayers } from '../../layers/aviation/addAviationWfsLayers.js'
-import { AVIATION_WFS_LAYERS } from '../../layers/aviation/aviationWfsLayers.js'
+import { MAP_CONFIG, BASEMAP_OPTIONS } from './mapConfig.js'
+import { addAviationWfsLayers } from '../aviation-layers/addAviationWfsLayers.js'
+import { AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
 import {
   ADVISORY_LAYER_DEFS,
   addAdvisoryLayers,
@@ -11,12 +11,19 @@ import {
   advisoryItemsToLabelFeatureCollection,
   setAdvisoryVisibility,
   updateAdvisoryLayerData,
-} from '../../layers/advisories/advisoryLayers.js'
-import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavpoints, loadRouteDirectionMetadata } from '../../services/navdata/routePlanner.js'
-import { getProcedures, KNOWN_AIRPORTS } from '../../services/navdata/procedureData.js'
+} from '../weather-overlays/lib/advisoryLayers.js'
+import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavpoints, loadRouteDirectionMetadata } from '../route-briefing/lib/routePlanner.js'
+import { getProcedures, KNOWN_AIRPORTS } from '../route-briefing/lib/procedureData.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
-import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../../layers/aviation/addAdsbLayer.js'
-import { SIGWX_FILTER_OPTIONS, SIGWX_LEGEND_ITEMS, sigwxAssetUrl, sigwxLowToMapboxData } from '../../utils/sigwx.js'
+import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../aviation-layers/addAdsbLayer.js'
+import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
+import { SIGWX_FILTER_OPTIONS, sigwxLowToMapboxData } from '../weather-overlays/lib/sigwxData.js'
+import AdvisoryBadges from '../weather-overlays/AdvisoryBadges.jsx'
+import SigwxHistoryBar from '../weather-overlays/SigwxHistoryBar.jsx'
+import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
+import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
+import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
+import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import './MapView.css'
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -2509,192 +2516,44 @@ function MapView({
 
       {error && <div className="map-view-error" role="alert">{error}</div>}
 
-      {(radarLegendVisible || lightningLegendVisible) && (
-        <div className="map-right-legends">
-          {radarLegendVisible && (
-            <div className="rainrate-legend" aria-label="Radar rain rate legend">
-              <div className="rainrate-legend-title">mm/h</div>
-              <div className="rainrate-legend-scale">
-                {RADAR_RAINRATE_LEGEND.map((entry) => (
-                  <div key={entry.label} className="rainrate-legend-row">
-                    <span className="rainrate-legend-label">{entry.label}</span>
-                    <span
-                      className="rainrate-legend-swatch"
-                      style={{ backgroundColor: entry.color }}
-                      aria-hidden="true"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {lightningLegendVisible && (
-            <div className="lightning-time-legend" aria-label="Lightning time legend">
-              <div className="lightning-time-legend-title">LIGHTNING</div>
-              <div className="lightning-time-legend-sub">10 MIN</div>
-              <div className="lightning-time-legend-current">
-                {formatReferenceTimeLabel(radarLegendVisible ? radarReferenceTimeMs : lightningReferenceTimeMs)}
-              </div>
-              <div className="lightning-time-legend-scale">
-                {lightningLegendEntries.map((entry) => (
-                  <div key={entry.iconId} className="lightning-time-legend-row">
-                    <span className="lightning-time-legend-label">{entry.label}</span>
-                    <span
-                      className="lightning-time-legend-swatch"
-                      style={{ backgroundColor: entry.color }}
-                      aria-hidden="true"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <WeatherLegends
+        radarLegendVisible={radarLegendVisible}
+        lightningLegendVisible={lightningLegendVisible}
+        radarRainrateLegend={RADAR_RAINRATE_LEGEND}
+        lightningLegendEntries={lightningLegendEntries}
+        radarReferenceTimeMs={radarReferenceTimeMs}
+        lightningReferenceTimeMs={lightningReferenceTimeMs}
+        formatReferenceTimeLabel={formatReferenceTimeLabel}
+      />
 
-      {advisoryBadgeItems.length > 0 && (
-        <div className="advisory-badge-bar" aria-label="Advisory badges">
-          {advisoryBadgeItems.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={`advisory-badge advisory-badge--${item.tone}${openAdvisoryPanel === item.key ? ' is-active' : ''}`}
-              onClick={() => toggleAdvisoryPanel(item.key)}
-            >
-              <span className="advisory-badge-label">{item.label}</span>
-              <span className="advisory-badge-count">{item.count}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <AdvisoryBadges
+        badgeItems={advisoryBadgeItems}
+        openPanel={openAdvisoryPanel}
+        panelItems={advisoryPanelItems}
+        hiddenKeys={hiddenAdvisoryKeys}
+        onTogglePanel={toggleAdvisoryPanel}
+        onClosePanel={() => setOpenAdvisoryPanel(null)}
+        onToggleVisibility={toggleAdvisoryVisibility}
+      />
 
-      {openAdvisoryPanel && (
-        <section className={`advisory-detail-panel advisory-detail-panel--${openAdvisoryPanel}`} aria-label={`${openAdvisoryPanel} detail panel`}>
-          <div className="advisory-detail-header">
-            <div className="advisory-detail-title">
-              {openAdvisoryPanel === 'sigwxLow' ? 'SIGWX_LOW' : openAdvisoryPanel === 'sigmet' ? 'SIGMET' : 'AIRMET'}
-            </div>
-            <button type="button" className="advisory-detail-close" onClick={() => setOpenAdvisoryPanel(null)}>×</button>
-          </div>
-          <div className="advisory-detail-list">
-            {advisoryPanelItems.length === 0 && <div className="advisory-detail-empty">No active items</div>}
-            {openAdvisoryPanel === 'sigwxLow' && advisoryPanelItems.map((group) => {
-              const visible = !hiddenAdvisoryKeys.sigwxLow.includes(group.mapKey)
-              return (
-                <label key={group.mapKey} className="advisory-detail-item">
-                  <input type="checkbox" checked={visible} onChange={() => toggleAdvisoryVisibility('sigwxLow', group.mapKey)} />
-                  <span className="advisory-detail-line" style={{ backgroundColor: group.lineColor || '#7c3aed' }} />
-                  <span className="advisory-detail-text">{group.label}</span>
-                </label>
-              )
-            })}
-            {openAdvisoryPanel === 'sigmet' && advisoryPanelItems.map((item) => {
-              const visible = !hiddenAdvisoryKeys.sigmet.includes(item.mapKey)
-              return (
-                <label key={item.mapKey} className="advisory-detail-item">
-                  <input type="checkbox" checked={visible} onChange={() => toggleAdvisoryVisibility('sigmet', item.mapKey)} />
-                  <span className="advisory-detail-line advisory-detail-line--sigmet" />
-                  <span className="advisory-detail-text">{item.panelLabel}</span>
-                </label>
-              )
-            })}
-            {openAdvisoryPanel === 'airmet' && advisoryPanelItems.map((item) => {
-              const visible = !hiddenAdvisoryKeys.airmet.includes(item.mapKey)
-              return (
-                <label key={item.mapKey} className="advisory-detail-item">
-                  <input type="checkbox" checked={visible} onChange={() => toggleAdvisoryVisibility('airmet', item.mapKey)} />
-                  <span className="advisory-detail-line advisory-detail-line--airmet" />
-                  <span className="advisory-detail-text">{item.panelLabel}</span>
-                </label>
-              )
-            })}
-          </div>
-        </section>
-      )}
+      <SigwxHistoryBar
+        isVisible={metVisibility.sigwx}
+        selectedEntry={selectedSigwxEntry}
+        entryCount={sigwxHistoryEntries.length}
+        historyIndex={sigwxHistoryIndex}
+        issueLabel={sigwxIssueLabel}
+        validLabel={sigwxValidLabel}
+        onHistoryIndexChange={setSigwxHistoryIndex}
+      />
 
-      {metVisibility.sigwx && selectedSigwxEntry && (
-        <div className="sigwx-history-bar" aria-label="SIGWX history controls">
-          <button
-            type="button"
-            className="sigwx-history-button"
-            onClick={() => setSigwxHistoryIndex((prev) => Math.min(sigwxHistoryEntries.length - 1, prev + 1))}
-            disabled={sigwxHistoryIndex >= sigwxHistoryEntries.length - 1}
-          >
-            Prev
-          </button>
-          <div className="sigwx-history-meta">
-            <div className="sigwx-history-title">SIGWX_LOW {sigwxHistoryEntries.length > 0 ? sigwxHistoryEntries.length : ''}</div>
-            <div className="sigwx-history-stamp">발표 {sigwxIssueLabel}</div>
-            <div className="sigwx-history-stamp">유효 {sigwxValidLabel}</div>
-          </div>
-          <button
-            type="button"
-            className="sigwx-history-button"
-            onClick={() => setSigwxHistoryIndex((prev) => Math.max(0, prev - 1))}
-            disabled={sigwxHistoryIndex <= 0}
-          >
-            Next
-          </button>
-        </div>
-      )}
+      <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />
 
-      {sigwxLegendOpen && (
-        <div className="sigwx-legend-modal" role="dialog" aria-modal="false" aria-label="SIGWX legend">
-          <div className="sigwx-legend-header">
-            <div className="sigwx-legend-title">SIGWX Legend</div>
-            <button type="button" className="sigwx-legend-close" onClick={toggleSigwxLegend}>×</button>
-          </div>
-          <div className="sigwx-legend-table">
-            {SIGWX_LEGEND_ITEMS.map((item) => (
-              <div key={item.label} className="sigwx-legend-row">
-                <span className="sigwx-legend-label">{item.label}</span>
-                <span className="sigwx-legend-sign sigwx-legend-sign--asset" aria-hidden="true">
-                  <img src={sigwxAssetUrl(item.asset)} alt="" />
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Basemap switcher */}
-      <div className="basemap-switcher">
-        {(() => {
-          const current = BASEMAP_OPTIONS.find((o) => o.id === basemapId)
-          return (
-            <button
-              className="basemap-switcher-toggle"
-              onClick={() => setBasemapMenuOpen((o) => !o)}
-              title="Change base map"
-            >
-              <img
-                className="basemap-switcher-thumb"
-                src={current?.thumbnail}
-                alt={current?.label}
-              />
-            </button>
-          )
-        })()}
-        {basemapMenuOpen && (
-          <ul className="basemap-switcher-menu">
-            {BASEMAP_OPTIONS.map((option) => (
-              <li key={option.id}>
-                <button
-                  className={`basemap-switcher-item${option.id === basemapId ? ' is-active' : ''}`}
-                  onClick={() => switchBasemap(option.id)}
-                >
-                  <img
-                    className="basemap-switcher-thumb"
-                    src={option.thumbnail}
-                    alt={option.label}
-                  />
-                  <span>{option.label}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <BasemapSwitcher
+        basemapId={basemapId}
+        isOpen={basemapMenuOpen}
+        onOpenChange={setBasemapMenuOpen}
+        onSwitchBasemap={switchBasemap}
+      />
 
       {/* Route check panel */}
       {activePanel === 'route-check' && (
@@ -2946,54 +2805,23 @@ function MapView({
 
       {/* Aviation layers panel */}
       {activePanel === 'aviation' && (
-        <div className="dev-layer-panel" aria-label="Aviation layer toggles">
-          <div className="dev-layer-panel-title">Aviation</div>
-          {AVIATION_WFS_LAYERS.map((layer) => (
-            <label key={layer.id} className="dev-layer-toggle">
-              <input
-                type="checkbox"
-                checked={aviationVisibility[layer.id]}
-                onChange={() => toggleAviation(layer.id)}
-              />
-              <span className="dev-layer-swatch" style={{ background: layer.color }} />
-              <span>{layer.nameEn}</span>
-            </label>
-          ))}
-        </div>
+        <AviationLayerPanel
+          visibility={aviationVisibility}
+          onToggle={toggleAviation}
+        />
       )}
 
       {/* MET layers panel */}
       {activePanel === 'met' && (
-        <div className="dev-layer-panel" aria-label="MET layer toggles">
-          <div className="dev-layer-panel-title">MET</div>
-          {MET_LAYERS.map((layer) => {
-            const disabled = isMetLayerDisabled(layer.id)
-            const badge = metLayerBadge(layer.id)
-            return (
-              <label key={layer.id} className={`dev-layer-toggle${disabled ? ' is-disabled' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={metVisibility[layer.id]}
-                  disabled={disabled}
-                  onChange={() => toggleMet(layer.id)}
-                />
-                <span className="dev-layer-swatch" style={{ background: layer.color }} />
-                <span>{layer.label}</span>
-                {badge != null && <span className="dev-layer-count">{badge}</span>}
-              </label>
-            )
-          })}
-          {metVisibility.lightning && !isMetLayerDisabled('lightning') && (
-            <label className="dev-layer-subtoggle">
-              <input
-                type="checkbox"
-                checked={blinkLightning}
-                onChange={() => setBlinkLightning((prev) => !prev)}
-              />
-              <span>Blink</span>
-            </label>
-          )}
-        </div>
+        <WeatherOverlayPanel
+          layers={MET_LAYERS}
+          visibility={metVisibility}
+          blinkLightning={blinkLightning}
+          onToggle={toggleMet}
+          onBlinkLightningChange={setBlinkLightning}
+          isLayerDisabled={isMetLayerDisabled}
+          getLayerBadge={metLayerBadge}
+        />
       )}
 
       {activePanel === 'settings' && (

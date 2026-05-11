@@ -68,6 +68,30 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - After any task: update if files moved, a role memo is stale, a new non-obvious rule appeared, or a task flow changed. Otherwise don't touch.
 - Before adding a line, check if a line can be removed. Both files must stay scannable in seconds.
 
+## 6. Encoding Safety
+
+**Never let shell writes corrupt UTF-8 source files.**
+
+- Do not rewrite source files with PowerShell `Set-Content`, `Out-File`, or `>` when files may contain Korean or other non-ASCII text.
+- Prefer `apply_patch` for manual edits.
+- For mechanical rewrites, use Node `fs.readFileSync(path, 'utf8')` and `fs.writeFileSync(path, text, 'utf8')`.
+- Do not trust PowerShell console output to verify Korean text; it may display mojibake even when file bytes are correct.
+- Verify non-ASCII text with Node by reading as UTF-8 and, when needed, checking code points.
+
+## 7. Code Review Graph
+
+**Use graph context for broad changes, not for trivial edits.**
+
+- For non-trivial refactors, reviews, dependency changes, or impact analysis, check `code-review-graph` before reading broad parts of the codebase.
+- Prefer graph impact queries to discover related files, then inspect only the relevant source files.
+- Do not treat graph results as a replacement for build, runtime, or browser verification.
+- If MCP tools are unavailable, use CLI fallback:
+```
+code-review-graph update
+code-review-graph detect-changes
+code-review-graph status
+```
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

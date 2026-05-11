@@ -1,6 +1,6 @@
 import React from "react";
-import { getWeatherIconSrc } from "../utils/weather-icon-registry";
-import { resolveLegacyWeatherVisual } from "../utils/weather-visual-resolver";
+import { getWeatherIconSrc } from "../weather/weather-icon-registry";
+import { resolveLegacyWeatherVisual } from "../weather/weather-visual-resolver";
 
 const OVERLAY_TEXT = {
   light: "-",

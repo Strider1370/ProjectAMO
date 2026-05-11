@@ -4,3 +4,5 @@ dist
 .env.local
 backend/data/
 reference/
+# Added by code-review-graph
+.code-review-graph/
