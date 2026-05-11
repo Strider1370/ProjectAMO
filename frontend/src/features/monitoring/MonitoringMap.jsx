@@ -20,8 +20,8 @@ function MonitoringMap({
           type="button"
           className={`monitoring-map-icon-btn ${activeMapPanel === 'aviation' ? 'active' : ''}`}
           onClick={() => toggleMapPanel('aviation')}
-          title="Aviation"
-          aria-label="Aviation"
+          title="항공"
+          aria-label="항공"
         >
           <Layers size={19} strokeWidth={2.2} />
         </button>
@@ -29,8 +29,8 @@ function MonitoringMap({
           type="button"
           className={`monitoring-map-icon-btn ${activeMapPanel === 'met' ? 'active' : ''}`}
           onClick={() => toggleMapPanel('met')}
-          title="MET"
-          aria-label="MET"
+          title="기상"
+          aria-label="기상"
         >
           <Cloud size={19} strokeWidth={2.2} />
         </button>

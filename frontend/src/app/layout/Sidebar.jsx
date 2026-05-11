@@ -1,21 +1,21 @@
 import { useState } from 'react'
-import { 
-  Cloud, Clock, FileText, Layers, Settings, TriangleAlert, 
-  Menu, Monitor, Search, User, HelpCircle, MessageCircle
+import {
+  Cloud, FileText, Layers, Settings, TriangleAlert,
+  Menu, Monitor, Search, HelpCircle
 } from 'lucide-react'
 import './Sidebar.css'
 
 const topItems = [
-  { label: 'Aviation',     icon: Layers, active: true },
-  { label: 'MET',          icon: Cloud },
-  { label: 'Alerts',       icon: TriangleAlert },
-  { label: 'Monitor',      icon: Monitor, href: '/monitoring' },
-  { label: 'pre-briefing', icon: FileText },
+  { label: '항공정보',         icon: Layers, active: true },
+  { label: '기상정보',         icon: Cloud },
+  { label: 'NOTAM',            icon: TriangleAlert },
+  { label: '상황판',           icon: Monitor, href: '/monitoring' },
+  { label: '비행 전 브리핑',   icon: FileText },
 ]
 
 const bottomItems = [
-  { label: 'Settings', icon: Settings },
-  { label: 'Help',     icon: HelpCircle },
+  { label: '설정',   icon: Settings },
+  { label: '도움말', icon: HelpCircle },
 ]
 
 function SidebarButton({ item, isExpanded, onClick }) {
@@ -39,10 +39,10 @@ function SidebarButton({ item, isExpanded, onClick }) {
 }
 
 const PANEL_MAP = {
-  Aviation:      'aviation',
-  MET:           'met',
-  'pre-briefing': 'route-check',
-  Settings:      'settings',
+  항공정보:        'aviation',
+  기상정보:        'met',
+  '비행 전 브리핑': 'route-check',
+  설정:            'settings',
 }
 
 function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle }) {
@@ -50,12 +50,15 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle }) {
     <aside className={`sidebar ${isExpanded ? 'is-expanded' : ''}`}>
       {/* 최상단: 햄버거 & 로고 */}
       <div className="sidebar-section">
+        <div className="sidebar-brand-mark" aria-hidden="true">
+          <img className="sidebar-brand-mark-image" src="/favicon.svg" alt="" />
+        </div>
         <div className="sidebar-header">
           <button 
             className="sidebar-icon-button menu-toggle" 
             onClick={() => onExpandToggle(!isExpanded)}
           >
-            <Menu size={20} />
+            <Menu size={24} strokeWidth={2.1} />
           </button>
           {isExpanded && <span className="sidebar-logo-text">ProjectAMO</span>}
         </div>
@@ -110,7 +113,7 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle }) {
         {/* 프로필 영역 */}
         <div className={`sidebar-profile ${isExpanded ? 'is-expanded' : ''}`}>
           <div className="profile-avatar">
-            <User size={20} />
+            <img className="profile-avatar-image" src="/gisang-i/clear_3_avatar.png" alt="" />
           </div>
           {isExpanded && (
             <div className="profile-info">

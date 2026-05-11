@@ -2526,48 +2526,60 @@ function MapView({
       {/* Route check panel */}
       {activePanel === 'route-check' && (
         <section className="route-check-panel" aria-label={'\uacbd\ub85c \ud655\uc778 \ud328\ub110'}>
-          <div className="route-check-title">{'\uacbd\ub85c \ud655\uc778'}</div>
+          <div className="route-check-header">
+            <div>
+              <div className="route-check-eyebrow">Flight Plan</div>
+              <div className="route-check-title">{'\uacbd\ub85c \ud655\uc778'}</div>
+            </div>
+            <span className="route-check-status">{routeForm.flightRule}</span>
+          </div>
           <form className="route-check-form" onSubmit={handleRouteSearch}>
-            {/* Row 1: Flight rule + Route Type (IFR only) */}
-            <div className={`route-check-field route-check-flight-rule-field${routeForm.flightRule === 'VFR' ? ' full-width' : ''}`}>
-              <div className="route-check-field-label">{'\ube44\ud589 \uaddc\uce59'}</div>
-              <div className="route-check-flight-rule">
-                <label className={`route-check-radio route-check-flight-option${routeForm.flightRule === 'IFR' ? ' is-active' : ''}`}>
-                  <input type="radio" name="flightRule" value="IFR" checked={routeForm.flightRule === 'IFR'} onChange={() => switchFlightRule('IFR')} />
-                  <span>IFR</span>
-                </label>
-                <span className="route-check-flight-divider">/</span>
-                <label className={`route-check-radio route-check-flight-option${routeForm.flightRule === 'VFR' ? ' is-active' : ''}`}>
-                  <input type="radio" name="flightRule" value="VFR" checked={routeForm.flightRule === 'VFR'} onChange={() => switchFlightRule('VFR')} />
-                  <span>VFR</span>
-                </label>
+            <div className="route-check-section route-check-section--conditions">
+              <div className="route-check-section-title">{'\uc6b4\ud56d \uc870\uac74'}</div>
+              <div className="route-check-section-grid">
+                <div className={`route-check-field route-check-flight-rule-field${routeForm.flightRule === 'VFR' ? ' full-width' : ''}`}>
+                  <div className="route-check-field-label">{'\ube44\ud589 \uaddc\uce59'}</div>
+                  <div className="route-check-flight-rule">
+                    <label className={`route-check-radio route-check-flight-option${routeForm.flightRule === 'IFR' ? ' is-active' : ''}`}>
+                      <input type="radio" name="flightRule" value="IFR" checked={routeForm.flightRule === 'IFR'} onChange={() => switchFlightRule('IFR')} />
+                      <span>IFR</span>
+                    </label>
+                    <span className="route-check-flight-divider">/</span>
+                    <label className={`route-check-radio route-check-flight-option${routeForm.flightRule === 'VFR' ? ' is-active' : ''}`}>
+                      <input type="radio" name="flightRule" value="VFR" checked={routeForm.flightRule === 'VFR'} onChange={() => switchFlightRule('VFR')} />
+                      <span>VFR</span>
+                    </label>
+                  </div>
+                </div>
+                {routeForm.flightRule === 'IFR' && (
+                  <label>{'\uacbd\ub85c \uc720\ud615'}
+                    <select value={routeForm.routeType} onChange={(e) => updateRouteField('routeType', e.target.value)}>
+                      <option value="ALL">{'\uc804\uccb4'}</option>
+                      <option value="RNAV">RNAV</option>
+                      <option value="ATS">ATS</option>
+                    </select>
+                  </label>
+                )}
               </div>
             </div>
-            {routeForm.flightRule === 'IFR' && (
-              <label>{'\uacbd\ub85c \uc720\ud615'}
-                <select value={routeForm.routeType} onChange={(e) => updateRouteField('routeType', e.target.value)}>
-                  <option value="ALL">{'\uc804\uccb4'}</option>
-                  <option value="RNAV">RNAV</option>
-                  <option value="ATS">ATS</option>
-                </select>
-              </label>
-            )}
-            {/* Row 2 */}
-            <label>{'\ucd9c\ubc1c \uacf5\ud56d'}
-              <select
-                value={routeForm.departureAirport === FIR_IN_AIRPORT ? FIR_IN_AIRPORT : KNOWN_AIRPORTS.includes(routeForm.departureAirport) ? routeForm.departureAirport : '__direct__'}
-                onChange={(e) => handleDepartureAirportChange(e.target.value === '__direct__' ? '' : e.target.value)}
-              >
-                {KNOWN_AIRPORTS.map((ap) => <option key={ap} value={ap}>{ap}</option>)}
-                <option value={FIR_IN_AIRPORT}>FIR IN</option>
-                <option value="__direct__">{'\uc9c1\uc811 \uc785\ub825'}</option>
-              </select>
-              {!KNOWN_AIRPORTS.includes(routeForm.departureAirport) && routeForm.departureAirport !== FIR_IN_AIRPORT && (
-                <input className="proc-direct-input" value={routeForm.departureAirport} placeholder="ICAO" onChange={(e) => updateRouteField('departureAirport', e.target.value)} />
-              )}
-            </label>
-            {routeForm.flightRule === 'IFR'
-              ? (
+
+            <div className="route-check-section">
+              <div className="route-check-section-title">{'\ucd9c\ubc1c'}</div>
+              <div className="route-check-section-grid">
+                <label>{'\ucd9c\ubc1c \uacf5\ud56d'}
+                  <select
+                    value={routeForm.departureAirport === FIR_IN_AIRPORT ? FIR_IN_AIRPORT : KNOWN_AIRPORTS.includes(routeForm.departureAirport) ? routeForm.departureAirport : '__direct__'}
+                    onChange={(e) => handleDepartureAirportChange(e.target.value === '__direct__' ? '' : e.target.value)}
+                  >
+                    {KNOWN_AIRPORTS.map((ap) => <option key={ap} value={ap}>{ap}</option>)}
+                    <option value={FIR_IN_AIRPORT}>FIR IN</option>
+                    <option value="__direct__">{'\uc9c1\uc811 \uc785\ub825'}</option>
+                  </select>
+                  {!KNOWN_AIRPORTS.includes(routeForm.departureAirport) && routeForm.departureAirport !== FIR_IN_AIRPORT && (
+                    <input className="proc-direct-input" value={routeForm.departureAirport} placeholder="ICAO" onChange={(e) => updateRouteField('departureAirport', e.target.value)} />
+                  )}
+                </label>
+                {routeForm.flightRule === 'IFR' && (
                 <label>{isFirInMode ? '\uc9c4\uc785 FIX' : visibleSidOptions.length > 0 ? 'SID' : '\uc9c4\uc785 FIX'}
                   {isFirInMode
                     ? (
@@ -2600,8 +2612,13 @@ function MapView({
                     : <input value={routeForm.entryFix} onChange={(e) => handleEntryFixChange(e.target.value)} />
                   }
                 </label>
-              )
-              : (
+                )}
+              </div>
+            </div>
+
+            <div className="route-check-section">
+              <div className="route-check-section-title">{'\ub3c4\ucc29'}</div>
+              <div className="route-check-section-grid">
                 <label>{'\ub3c4\ucc29 \uacf5\ud56d'}
                   <select
                     value={
@@ -2621,30 +2638,7 @@ function MapView({
                     <input className="proc-direct-input" value={routeForm.arrivalAirport} placeholder="ICAO" onChange={(e) => updateRouteField('arrivalAirport', e.target.value)} />
                   )}
                 </label>
-              )
-            }
-            {/* Row 3: IFR only / FIR EXIT */}
-            {routeForm.flightRule === 'IFR' && (
-              <>
-                <label>{'\ub3c4\ucc29 \uacf5\ud56d'}
-                  <select
-                    value={
-                      routeForm.arrivalAirport === FIR_EXIT_AIRPORT
-                        ? FIR_EXIT_AIRPORT
-                        : KNOWN_AIRPORTS.includes(routeForm.arrivalAirport)
-                          ? routeForm.arrivalAirport
-                          : '__direct__'
-                    }
-                    onChange={(e) => handleArrivalAirportChange(e.target.value === '__direct__' ? '' : e.target.value)}
-                  >
-                    {KNOWN_AIRPORTS.map((ap) => <option key={ap} value={ap}>{ap}</option>)}
-                    <option value={FIR_EXIT_AIRPORT}>FIR EXIT</option>
-                    <option value="__direct__">{'\uc9c1\uc811 \uc785\ub825'}</option>
-                  </select>
-                  {!KNOWN_AIRPORTS.includes(routeForm.arrivalAirport) && routeForm.arrivalAirport !== FIR_EXIT_AIRPORT && (
-                    <input className="proc-direct-input" value={routeForm.arrivalAirport} placeholder="ICAO" onChange={(e) => updateRouteField('arrivalAirport', e.target.value)} />
-                  )}
-                </label>
+                {routeForm.flightRule === 'IFR' && (
                 <label>{isFirExitMode ? '\uc774\ud0c8 FIX' : starOptions.length > 0 ? 'STAR' : '\uc774\ud0c8 FIX'}
                   {isFirExitMode
                     ? (
@@ -2677,6 +2671,7 @@ function MapView({
                     : <input value={routeForm.exitFix} onChange={(e) => handleExitFixChange(e.target.value)} />
                   }
                 </label>
+                )}
                 {!isFirExitMode && iapCandidates.length > 1 && (
                   <label>RWY
                     <select value={selectedIapKey ?? ''} onChange={(e) => {
@@ -2690,8 +2685,8 @@ function MapView({
                     </select>
                   </label>
                 )}
-              </>
-            )}
+              </div>
+            </div>
 
             <div className={`route-check-actions${routeForm.flightRule === 'VFR' ? ' is-vfr' : ''}`}>
               <button className="route-check-search-button" type="submit" disabled={routeLoading}>{routeLoading ? '\uac80\uc0c9 \uc911...' : '\uac80\uc0c9'}</button>
@@ -2771,7 +2766,6 @@ function MapView({
         </section>
       )}
 
-      {/* Aviation layers panel */}
       {activePanel === 'aviation' && (
         <AviationLayerPanel
           visibility={aviationVisibility}
@@ -2779,7 +2773,6 @@ function MapView({
         />
       )}
 
-      {/* MET layers panel */}
       {activePanel === 'met' && (
         <WeatherOverlayPanel
           layers={MET_LAYERS}

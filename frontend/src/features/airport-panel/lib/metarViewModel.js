@@ -50,13 +50,13 @@ export function buildMetarViewModel({ metar, amosData, icao, airportMeta }) {
   const obsTime = hdr?.observation_time || hdr?.issue_time
   const visValue = disp?.visibility != null ? `${disp.visibility} m` : '??'
   const ceilValue = Number.isFinite(ceilingFt) ? `${ceilingFt} ft` : 'NSC'
-  const windDir = wind?.calm ? 'CALM' : wind?.variable ? 'VRB' : Number.isFinite(wind?.direction) ? `${wind.direction}째` : '??'
+  const windDir = wind?.calm ? 'CALM' : wind?.variable ? 'VRB' : Number.isFinite(wind?.direction) ? `${wind.direction}°` : '??'
   const windSpeedText = wind?.calm ? '0' : Number.isFinite(windSpeed) ? `${windSpeed}` : '??'
   const windGustText = Number.isFinite(windGust) ? `G${windGust}` : null
   const windRotation = getWindDirectionRotation(wind)
-  const tempDisplay = Number.isFinite(tempC) ? `${Math.round(tempC)}째C` : '??'
+  const tempDisplay = Number.isFinite(tempC) ? `${Math.round(tempC)}°C` : '??'
   const rhDisplay = Number.isFinite(rh) ? `${Math.round(rh)}%` : '??'
-  const feelsLikeText = feelsLike.value != null ? `泥닿컧 ${feelsLike.value.toFixed(1)}째C` : null
+  const feelsLikeText = feelsLike.value != null ? `체감 ${feelsLike.value.toFixed(1)}°C` : null
 
   const rainMm = amosData?.daily_rainfall?.mm
   const rainText = rainMm != null && rainMm > 0 ? `${rainMm.toFixed(1)} mm` : null

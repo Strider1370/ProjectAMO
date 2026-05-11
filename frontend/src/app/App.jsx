@@ -6,11 +6,12 @@ import useWeatherPolling from './useWeatherPolling.js'
 import Sidebar from './layout/Sidebar.jsx'
 
 function formatUtcTime(date) {
-  const day   = String(date.getUTCDate()).padStart(2, '0')
+  const year  = date.getUTCFullYear()
   const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day   = String(date.getUTCDate()).padStart(2, '0')
   const hours = String(date.getUTCHours()).padStart(2, '0')
   const mins  = String(date.getUTCMinutes()).padStart(2, '0')
-  return `${day}/${month} ${hours}:${mins} UTC`
+  return `${year}/${month}/${day} ${hours}:${mins} UTC`
 }
 
 function MainAppShell() {

@@ -23,11 +23,12 @@ export function fmtKstShort(iso) {
   try {
     const d = new Date(iso)
     const kst = new Date(d.getTime() + 9 * 3600 * 1000)
+    const yyyy = kst.getUTCFullYear()
     const mo = String(kst.getUTCMonth() + 1).padStart(2, '0')
     const dd = String(kst.getUTCDate()).padStart(2, '0')
     const hh = String(kst.getUTCHours()).padStart(2, '0')
     const mm = String(kst.getUTCMinutes()).padStart(2, '0')
-    return `${mo}-${dd} ${hh}:${mm} KST`
+    return `${yyyy}-${mo}-${dd} ${hh}:${mm} KST`
   } catch { return iso }
 }
 
