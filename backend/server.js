@@ -6,6 +6,8 @@ import store from './src/store.js'
 import stats from './src/stats.js'
 import config from './src/config.js'
 import { main as startScheduler } from './src/index.js'
+import warningTypes from '../shared/warning-types.js'
+import alertDefaults from '../shared/alert-defaults.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -18,7 +20,7 @@ app.set('trust proxy', true)
 
 function readJsonFileSafe(filePath) {
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''))
   } catch {
     return null
   }
@@ -60,8 +62,26 @@ app.use('/api', (_req, res, next) => {
   next()
 })
 
+function readLatest(type) {
+  const cached = store.getCached(type)
+  const filePath = path.join(DATA_ROOT, type, 'latest.json')
+
+  if (!fs.existsSync(filePath)) return cached
+
+  const latest = readJsonFileSafe(filePath)
+  if (!latest) return cached
+
+  const diskHash = latest.content_hash || store.canonicalHash(latest)
+  const cachedHash = cached?.content_hash || (cached ? store.canonicalHash(cached) : null)
+
+  if (cached && cachedHash === diskHash) return cached
+
+  store.updateCache(type, latest, diskHash)
+  return latest
+}
+
 function sendLatest(res, type) {
-  const data = store.getCached(type)
+  const data = readLatest(type)
   if (data) return res.json(data)
   res.status(503).json({ error: `${type} data unavailable` })
 }
@@ -72,11 +92,18 @@ function sendJsonFile(res, filePath) {
   res.status(503).json({ error: 'data unavailable' })
 }
 
-function listSigwxLowHistory() {
-  const dir = path.join(DATA_ROOT, 'sigwx_low')
+function readRecent(type, limit = 10) {
+  const dir = path.join(DATA_ROOT, type)
+  if (!fs.existsSync(dir)) return []
+
   const files = fs.readdirSync(dir)
-    .filter((name) => /^SIGWX_LOW_\d{10}\.json$/i.test(name))
+    .filter((name) => {
+      if (!name.endsWith('.json') || name === 'latest.json') return false
+      if (type === 'sigwx_low') return /^SIGWX_LOW_\d{10}\.json$/i.test(name)
+      return true
+    })
     .sort((a, b) => b.localeCompare(a))
+    .slice(0, limit)
 
   return files.map((name) => ({
     ...readJsonFileSafe(path.join(dir, name)),
@@ -87,20 +114,79 @@ function listSigwxLowHistory() {
 function resolveSigwxTmfc(queryTmfc) {
   const requested = String(queryTmfc || '').trim()
   if (requested) return requested
-  const data = store.getCached('sigwx_low')
+  const data = readLatest('sigwx_low')
   return data?.tmfc || ''
 }
 
+function readSigwxOverlayMeta(kind, tmfc) {
+  const normalized = String(tmfc || '').trim()
+  if (!/^\d{10}$/.test(normalized)) return null
+  const prefix = kind === 'clouds' ? 'clouds_meta' : 'fronts_meta'
+  return readJsonFileSafe(path.join(DATA_ROOT, 'sigwx_low', `${prefix}_${normalized}.json`))
+}
+
+function sendSigwxOverlayMeta(req, res, kind) {
+  const tmfc = resolveSigwxTmfc(req.query.tmfc)
+  res.json(readSigwxOverlayMeta(kind, tmfc))
+}
+
 function buildHashEntry(type) {
-  const data = store.getCached(type)
+  const data = readLatest(type)
   if (!data) return null
-  return { hash: data.content_hash || null }
+  return { hash: data.content_hash || store.canonicalHash(data) }
 }
 
 function buildFrameEntry(filePath) {
   const payload = readJsonFileSafe(filePath)
   if (!payload?.tm) return null
   return { tm: payload.tm }
+}
+
+function buildSigwxOverlaySnapshotEntry(kind) {
+  const tmfc = resolveSigwxTmfc()
+  const meta = readSigwxOverlayMeta(kind, tmfc)
+  if (!meta) return null
+  return {
+    tmfc: meta.tmfc || tmfc || null,
+    source_hash: meta.source_hash || null,
+    updated_at: meta.updated_at || null,
+    render_version: meta.render_version || null,
+  }
+}
+
+function buildSnapshotMeta() {
+  const sigwxLow = buildHashEntry('sigwx_low')
+  const echoMeta = buildFrameEntry(path.join(DATA_ROOT, 'radar', 'echo_meta.json'))
+  const satMeta = buildFrameEntry(path.join(DATA_ROOT, 'satellite', 'sat_meta.json'))
+  const sigwxFrontMeta = buildSigwxOverlaySnapshotEntry('fronts')
+  const sigwxCloudMeta = buildSigwxOverlaySnapshotEntry('clouds')
+  const groundForecast = buildHashEntry('ground_forecast')
+  const groundOverview = buildHashEntry('ground_overview')
+
+  return {
+    metar: buildHashEntry('metar'),
+    taf: buildHashEntry('taf'),
+    warning: buildHashEntry('warning'),
+    sigmet: buildHashEntry('sigmet'),
+    airmet: buildHashEntry('airmet'),
+    sigwxLow,
+    sigwx_low: sigwxLow,
+    amos: buildHashEntry('amos'),
+    lightning: buildHashEntry('lightning'),
+    adsb: buildHashEntry('adsb'),
+    groundForecast,
+    ground_forecast: groundForecast,
+    groundOverview,
+    ground_overview: groundOverview,
+    environment: buildHashEntry('environment'),
+    airportInfo: buildHashEntry('airport_info'),
+    echoMeta,
+    echo: echoMeta,
+    satMeta,
+    satellite: satMeta,
+    sigwxFrontMeta,
+    sigwxCloudMeta,
+  }
 }
 
 app.get('/api/metar', (_, res) => sendLatest(res, 'metar'))
@@ -116,24 +202,10 @@ app.get('/api/ground-forecast', (_, res) => sendLatest(res, 'ground_forecast'))
 app.get('/api/ground-overview', (_, res) => sendLatest(res, 'ground_overview'))
 app.get('/api/environment', (_, res) => sendLatest(res, 'environment'))
 app.get('/api/airport-info', (_, res) => sendLatest(res, 'airport_info'))
-app.get('/api/snapshot-meta', (_req, res) => {
-  res.json({
-    metar: buildHashEntry('metar'),
-    taf: buildHashEntry('taf'),
-    warning: buildHashEntry('warning'),
-    sigmet: buildHashEntry('sigmet'),
-    airmet: buildHashEntry('airmet'),
-    sigwxLow: buildHashEntry('sigwx_low'),
-    amos: buildHashEntry('amos'),
-    lightning: buildHashEntry('lightning'),
-    airportInfo: buildHashEntry('airport_info'),
-    echoMeta: buildFrameEntry(path.join(DATA_ROOT, 'radar', 'echo_meta.json')),
-    satMeta: buildFrameEntry(path.join(DATA_ROOT, 'satellite', 'sat_meta.json')),
-  })
-})
+app.get('/api/snapshot-meta', (_req, res) => res.json(buildSnapshotMeta()))
 app.get('/api/sigwx-low-history', (_req, res) => {
   try {
-    res.json(listSigwxLowHistory())
+    res.json(readRecent('sigwx_low', 10))
   } catch {
     res.status(503).json({ error: 'sigwx history unavailable' })
   }
@@ -147,18 +219,13 @@ app.get('/api/satellite/meta', (_req, res) =>
 )
 
 app.get('/api/airports', (_req, res) => res.json(config.airports))
+app.get('/api/warning-types', (_req, res) => res.json(warningTypes))
+app.get('/api/alert-defaults', (_req, res) => res.json(alertDefaults))
 
-app.get('/api/sigwx-front-meta', (req, res) => {
-  const tmfc = resolveSigwxTmfc(req.query.tmfc)
-  if (!tmfc) return res.status(503).json({ error: 'sigwx data unavailable' })
-  sendJsonFile(res, path.join(DATA_ROOT, 'sigwx_low', `fronts_meta_${tmfc}.json`))
-})
-
-app.get('/api/sigwx-cloud-meta', (req, res) => {
-  const tmfc = resolveSigwxTmfc(req.query.tmfc)
-  if (!tmfc) return res.status(503).json({ error: 'sigwx data unavailable' })
-  sendJsonFile(res, path.join(DATA_ROOT, 'sigwx_low', `clouds_meta_${tmfc}.json`))
-})
+app.get('/api/sigwx-front-meta', (req, res) => sendSigwxOverlayMeta(req, res, 'fronts'))
+app.get('/api/sigwx-cloud-meta', (req, res) => sendSigwxOverlayMeta(req, res, 'clouds'))
+app.get('/api/sigwx-low-fronts', (req, res) => sendSigwxOverlayMeta(req, res, 'fronts'))
+app.get('/api/sigwx-low-clouds', (req, res) => sendSigwxOverlayMeta(req, res, 'clouds'))
 
 app.get('/api/stats', (_req, res) => res.json(stats.getStats()))
 app.get('/api/health', (_req, res) => res.json({ ok: true, uptime: process.uptime() }))

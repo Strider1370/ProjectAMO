@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import AirportPanel from '../features/airport-panel/AirportPanel.jsx'
 import MapView from '../features/map/MapView.jsx'
+import MonitoringPage from '../features/monitoring/MonitoringPage.jsx'
 import useWeatherPolling from './useWeatherPolling.js'
 import Sidebar from './layout/Sidebar.jsx'
 
@@ -12,7 +13,7 @@ function formatUtcTime(date) {
   return `${day}/${month} ${hours}:${mins} UTC`
 }
 
-function App() {
+function MainAppShell() {
   const [utcTime, setUtcTime] = useState(() => formatUtcTime(new Date()))
   const [activePanel, setActivePanel] = useState(null)
   const [selectedAirport, setSelectedAirport] = useState(null)
@@ -68,6 +69,10 @@ function App() {
       <div className="utc-bar">{utcTime}</div>
     </div>
   )
+}
+
+function App() {
+  return window.location.pathname === '/monitoring' ? <MonitoringPage /> : <MainAppShell />
 }
 
 export default App

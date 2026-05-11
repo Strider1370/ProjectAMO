@@ -44,9 +44,27 @@ export function buildSnapshotMetaFromData(data = {}) {
     sigwxLow: buildHashEntry(data.sigwxLow),
     amos: buildHashEntry(data.amos),
     lightning: buildHashEntry(data.lightning),
+    adsb: buildHashEntry(data.adsb),
+    groundForecast: buildHashEntry(data.groundForecast),
+    ground_forecast: buildHashEntry(data.groundForecast),
+    groundOverview: buildHashEntry(data.groundOverview),
+    ground_overview: buildHashEntry(data.groundOverview),
+    environment: buildHashEntry(data.environment),
     airportInfo: buildHashEntry(data.airportInfo),
     echoMeta: data.echoMeta?.tm ? { tm: data.echoMeta.tm } : null,
     satMeta: data.satMeta?.tm ? { tm: data.satMeta.tm } : null,
+    sigwxFrontMeta: buildOverlayMetaEntry(data.sigwxFrontMeta),
+    sigwxCloudMeta: buildOverlayMetaEntry(data.sigwxCloudMeta),
+  }
+}
+
+function buildOverlayMetaEntry(meta) {
+  if (!meta) return null
+  return {
+    tmfc: meta.tmfc || meta.latest?.tmfc || null,
+    source_hash: meta.source_hash || null,
+    updated_at: meta.updated_at || null,
+    render_version: meta.render_version || null,
   }
 }
 
@@ -54,7 +72,8 @@ export async function loadWeatherData() {
   const [
     airports, metar, taf, amos, warning,
     sigmet, airmet, lightning,
-    echoMeta, satMeta, sigwxLow, sigwxLowHistory, sigwxFrontMeta, sigwxCloudMeta, airportInfo,
+    echoMeta, satMeta, sigwxLow, sigwxLowHistory, sigwxFrontMeta, sigwxCloudMeta,
+    adsb, groundForecast, groundOverview, environment, airportInfo,
   ] = await Promise.all([
     fetchJson('/api/airports', { optional: true }),
     fetchJson('/api/metar', { optional: true }),
@@ -70,6 +89,10 @@ export async function loadWeatherData() {
     fetchJson('/api/sigwx-low-history', { optional: true }),
     fetchJson('/api/sigwx-front-meta', { optional: true }),
     fetchJson('/api/sigwx-cloud-meta', { optional: true }),
+    fetchJson('/api/adsb', { optional: true }),
+    fetchJson('/api/ground-forecast', { optional: true }),
+    fetchJson('/api/ground-overview', { optional: true }),
+    fetchJson('/api/environment', { optional: true }),
     fetchJson('/api/airport-info', { optional: true }),
   ])
 
@@ -88,6 +111,10 @@ export async function loadWeatherData() {
     sigwxLowHistory,
     sigwxFrontMeta,
     sigwxCloudMeta,
+    adsb,
+    groundForecast,
+    groundOverview,
+    environment,
     airportInfo,
   }
 }
@@ -115,8 +142,20 @@ export async function loadChangedWeatherData(changes) {
     fetches.push(fetchJson('/api/sigwx-cloud-meta', { optional: true }))
     keys.push('sigwxCloudMeta')
   }
+  if (!changes.sigwxLow && changes.sigwxFrontMeta) {
+    fetches.push(fetchJson('/api/sigwx-front-meta', { optional: true }))
+    keys.push('sigwxFrontMeta')
+  }
+  if (!changes.sigwxLow && changes.sigwxCloudMeta) {
+    fetches.push(fetchJson('/api/sigwx-cloud-meta', { optional: true }))
+    keys.push('sigwxCloudMeta')
+  }
   if (changes.amos) { fetches.push(fetchJson('/api/amos', { optional: true })); keys.push('amos') }
   if (changes.lightning) { fetches.push(fetchJson('/api/lightning', { optional: true })); keys.push('lightning') }
+  if (changes.adsb) { fetches.push(fetchJson('/api/adsb', { optional: true })); keys.push('adsb') }
+  if (changes.groundForecast) { fetches.push(fetchJson('/api/ground-forecast', { optional: true })); keys.push('groundForecast') }
+  if (changes.groundOverview) { fetches.push(fetchJson('/api/ground-overview', { optional: true })); keys.push('groundOverview') }
+  if (changes.environment) { fetches.push(fetchJson('/api/environment', { optional: true })); keys.push('environment') }
   if (changes.echoMeta) { fetches.push(fetchJson('/data/radar/echo_meta.json', { optional: true })); keys.push('echoMeta') }
   if (changes.satMeta) { fetches.push(fetchJson('/data/satellite/sat_meta.json', { optional: true })); keys.push('satMeta') }
   if (changes.airportInfo) { fetches.push(fetchJson('/api/airport-info', { optional: true })); keys.push('airportInfo') }

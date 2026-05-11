@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { 
   Cloud, Clock, FileText, Layers, Settings, TriangleAlert, 
-  Menu, Search, User, HelpCircle, MessageCircle
+  Menu, Monitor, Search, User, HelpCircle, MessageCircle
 } from 'lucide-react'
 import './Sidebar.css'
 
@@ -9,6 +9,7 @@ const topItems = [
   { label: 'Aviation',     icon: Layers, active: true },
   { label: 'MET',          icon: Cloud },
   { label: 'Alerts',       icon: TriangleAlert },
+  { label: 'Monitor',      icon: Monitor, href: '/monitoring' },
   { label: 'pre-briefing', icon: FileText },
 ]
 
@@ -72,12 +73,15 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle }) {
         <div className="sidebar-menu-list">
           {topItems.map((item) => {
             const panelId = PANEL_MAP[item.label]
+            const handleClick = item.href
+              ? () => window.location.assign(item.href)
+              : panelId ? () => onPanelToggle(panelId) : undefined
             return (
               <SidebarButton
                 key={item.label}
                 isExpanded={isExpanded}
                 item={{ ...item, active: panelId ? activePanel === panelId : false }}
-                onClick={panelId ? () => onPanelToggle(panelId) : undefined}
+                onClick={handleClick}
               />
             )
           })}

@@ -40,3 +40,10 @@
 4. Register cron job in `backend/src/index.js` with a per-type lock.
 5. Wire route in `backend/server.js` to expose cached data from `store.js`.
 6. Add frontend client method in `frontend/src/api/weatherApi.js`.
+
+## 6. Add a standalone app route
+
+1. Add the route component under `frontend/src/features/<feature>/`.
+2. Branch in `frontend/src/app/App.jsx` before rendering the main shell.
+3. If sidebar navigation is needed, add an item in `frontend/src/app/layout/Sidebar.jsx` that navigates by URL instead of toggling a panel.
+4. Verify direct entry, refresh, and existing main-shell route behavior.

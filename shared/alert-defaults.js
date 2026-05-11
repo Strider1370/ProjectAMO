@@ -1,4 +1,4 @@
-module.exports = {
+const alertDefaults = {
   global: {
     alerts_enabled: true,
     poll_interval_seconds: 60,
@@ -69,3 +69,5 @@ module.exports = {
     },
   },
 };
+
+export default alertDefaults;

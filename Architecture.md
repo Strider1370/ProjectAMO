@@ -17,6 +17,7 @@ ProjectAMO/
       app/                     -> app shell, layout, and weather polling
       features/
         map/                   -> Mapbox lifecycle, map panels, route interactions
+        monitoring/            -> standalone legacy-style ops/ground monitoring page with Mapbox overlay panel
         aviation-layers/       -> aviation WFS and ADS-B layers
         weather-overlays/      -> radar/satellite/lightning/SIGWX/advisory overlays
         route-briefing/        -> route search and procedure/navpoint lookup
@@ -48,7 +49,12 @@ ProjectAMO/
 - `frontend/src/features/map/MapView.jsx` -> Mapbox map creation, style reload handling, feature panel composition, route/VFR interactions.
 - `frontend/src/features/map/MapView.css` -> map, overlay panel, and route briefing style entry.
 - `frontend/src/features/map/mapConfig.js` -> map bounds, initial camera, basemap options.
+- `frontend/src/features/map/imageOverlay.js` -> shared Mapbox image overlay helpers for raster/SIGWX frames.
 - `frontend/src/features/map/basemapSwitcher/BasemapSwitcher.jsx` -> basemap switcher UI.
+- `frontend/src/features/monitoring/MonitoringPage.jsx` -> standalone `/monitoring` legacy-style ops/ground screen.
+- `frontend/src/features/monitoring/MonitoringMap.jsx` -> monitoring wrapper around the main MapView with local Aviation/MET icon toggles.
+- `frontend/src/features/monitoring/monitoringApi.js` -> monitoring data loader using current API shape.
+- `frontend/src/features/monitoring/legacy/*` -> copied previous-project dashboard components, alert utilities, CSS, and weather icon assets for the standalone monitoring screen.
 - `frontend/src/features/aviation-layers/aviationWfsLayers.js` -> aviation WFS layer definitions.
 - `frontend/src/features/aviation-layers/addAviationWfsLayers.js` -> WFS source/layer creation.
 - `frontend/src/features/aviation-layers/addAdsbLayer.js` -> ADS-B source/layer/hover wiring.

@@ -181,7 +181,7 @@ export function mergeWithPrevious(result, type, failedAirports) {
   return result
 }
 
-function updateCache(type, data, hash) {
+export function updateCache(type, data, hash) {
   cache[type].hash = hash
   cache[type].prev_data = data
 }
@@ -254,6 +254,7 @@ export default {
   loadLatest,
   canonicalHash,
   mergeWithPrevious,
+  updateCache,
   getCached,
   initFromFiles,
   save,
