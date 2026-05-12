@@ -26,6 +26,7 @@ ProjectAMO/
         ui/                    -> frontend-only reusable UI
         weather/               -> frontend-only weather display helpers
   backend/
+    data/                    -> local development data root; terrain source/tiles live here when DATA_PATH is unset
     src/
       briefing/               -> route-axis, planned altitude profile, and vertical profile composition
       terrain/                 -> terrain tile cache and DEM sampling
@@ -115,4 +116,5 @@ ProjectAMO/
 - Root `shared/` is for backend/frontend common constants; do not mix it with `frontend/src/shared/`.
 - `backend/*` must not import from `frontend/src/`.
 - Runtime browser assets must live under `frontend/public/`.
-- Raw terrain sources and generated terrain tiles stay under `backend/data/terrain/`; frontend requests vertical profile JSON instead of reading DEM files.
+- Raw terrain sources and generated terrain tiles stay under the backend data root at `terrain/`; locally this is `backend/data/terrain/`, while the GCP VM uses `DATA_PATH=/opt/projectamo/shared/data`, so runtime tiles must be under `/opt/projectamo/shared/data/terrain/tiles/`.
+- Frontend requests vertical profile JSON instead of reading DEM files.

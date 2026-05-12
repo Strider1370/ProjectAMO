@@ -5,8 +5,14 @@
 - Deployment target: `GCE VM`
 - Process manager: `PM2`
 - Reverse proxy: `nginx`
-- Data storage: VM local disk at `backend/data`
+- Data storage: VM local disk at `/opt/projectamo/shared/data`
 - Backend bind: `127.0.0.1`
+
+Terrain runtime path:
+
+- PM2 sets `DATA_PATH=/opt/projectamo/shared/data`.
+- Vertical profile terrain tiles must exist at `/opt/projectamo/shared/data/terrain/tiles/metadata.json` plus the `E###_N##.bin` tile files.
+- Local development can use `backend/data/terrain/tiles/` when `DATA_PATH` is unset.
 
 ## Retention
 
@@ -114,6 +120,7 @@ location /api/ {
 
 - `.env` exists on the VM
 - `DATA_PATH` points to the intended local disk path
+- Terrain tiles exist under `$DATA_PATH/terrain/tiles/` when vertical profiles are enabled
 - PM2 app name and start command are fixed
 - nginx reverse proxy is configured
 - nginx cache headers for frontend static assets are configured

@@ -250,7 +250,8 @@ Provided DEM source:
 
 Recommended storage location:
 
-- `backend/data/terrain/`
+- local development: `backend/data/terrain/`
+- GCP VM runtime: `/opt/projectamo/shared/data/terrain/`
 
 Do not place the DEM under `frontend/public/`.
 
@@ -259,6 +260,7 @@ Reason:
 - the full DEM is backend processing input, not browser runtime asset
 - sending it to the browser would waste bandwidth and expose unnecessary raw data
 - the current project already ignores `backend/data/`, which is appropriate for large local terrain assets
+- production PM2 sets `DATA_PATH=/opt/projectamo/shared/data`, so generated terrain tiles must be copied to `/opt/projectamo/shared/data/terrain/tiles/`
 
 ### Recommended architecture
 
@@ -266,6 +268,11 @@ Reason:
 - decompress once to `korea3sec.bin`
 - build service-oriented terrain tiles from the raw grid
 - sample tiles in backend when a route profile is requested
+
+Deployment note:
+
+- `scripts/prepare-terrain-tiles.js` writes tiles under the active project checkout by default, which is fine for local development.
+- On the GCP VM, deploy the generated `tiles/` directory to `/opt/projectamo/shared/data/terrain/tiles/` because the backend resolves terrain from `DATA_PATH`.
 
 ### Why tiles
 
