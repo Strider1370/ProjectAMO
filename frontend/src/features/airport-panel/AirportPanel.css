@@ -79,6 +79,84 @@
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08);
 }
 
+.airport-panel-head {
+  position: relative;
+  align-items: flex-end;
+  justify-content: flex-start;
+  height: 170px;
+  padding: 24px 24px 38px;
+  overflow: hidden;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.18);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.airport-panel-head-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 65%;
+}
+
+.airport-panel-head-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.48) 100%);
+}
+
+.airport-panel-info {
+  position: relative;
+  z-index: 1;
+  max-width: 320px;
+  gap: 4px;
+  padding: 12px 14px 0 0;
+}
+
+.airport-panel-title {
+  display: block;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.airport-panel-title-code {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 700;
+}
+
+.airport-panel-name {
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.24);
+}
+
+.airport-panel-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 1;
+  background: transparent;
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.airport-panel-close:hover {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  transform: none;
+  box-shadow: none;
+}
+
 /* ── Main (tabs + body side by side) ── */
 .airport-panel-main {
   display: flex;
@@ -108,8 +186,9 @@
   background: none;
   border: none;
   color: #64748b;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
   cursor: pointer;
   transition: all 160ms ease;
 }
