@@ -30,7 +30,7 @@ ProjectAMO/
       parsers/                 -> upstream raw response parsers
       processors/              -> normalized data transformers
   shared/                      -> backend/frontend common constants
-  docs/                        -> operations and deployment notes
+  docs/                        -> operations, deployment, and route briefing architecture notes
 ```
 
 ## File Roles
