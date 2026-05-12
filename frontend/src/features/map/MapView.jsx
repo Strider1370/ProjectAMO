@@ -15,8 +15,10 @@ import {
 import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavpoints, loadRouteDirectionMetadata } from '../route-briefing/lib/routePlanner.js'
 import { getProcedures, KNOWN_AIRPORTS } from '../route-briefing/lib/procedureData.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
+import { fetchVerticalProfile } from '../../api/briefingApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../aviation-layers/addAdsbLayer.js'
 import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
+import VerticalProfileChart from '../route-briefing/VerticalProfileChart.jsx'
 import { SIGWX_FILTER_OPTIONS, sigwxLowToMapboxData } from '../weather-overlays/lib/sigwxData.js'
 import AdvisoryBadges from '../weather-overlays/AdvisoryBadges.jsx'
 import SigwxHistoryBar from '../weather-overlays/SigwxHistoryBar.jsx'
@@ -224,6 +226,7 @@ const MET_LAYERS = [
 ]
 
 const emptyGeoJSON = { type: 'FeatureCollection', features: [] }
+const M_TO_FT = 3.28084
 
 // ???? VFR waypoint helpers ??????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -1275,6 +1278,7 @@ const initialRouteForm = {
   departureAirport: '', entryFix: '',
   exitFix: '', arrivalAirport: '', routeType: 'RNAV',
 }
+const DEFAULT_CRUISE_ALTITUDE_FT = 9000
 
 // ???? Component ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -1315,6 +1319,13 @@ function MapView({
   const [routeResult, setRouteResult] = useState(null)
   const [routeError, setRouteError] = useState(null)
   const [routeLoading, setRouteLoading] = useState(false)
+  const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(DEFAULT_CRUISE_ALTITUDE_FT)
+  const [verticalProfile, setVerticalProfile] = useState(null)
+  const [verticalProfileLoading, setVerticalProfileLoading] = useState(false)
+  const [verticalProfileError, setVerticalProfileError] = useState(null)
+  const [verticalProfileStale, setVerticalProfileStale] = useState(false)
+  const [verticalProfileWindowOpen, setVerticalProfileWindowOpen] = useState(false)
+  const [editingVfrAltitudeIndex, setEditingVfrAltitudeIndex] = useState(null)
   const [adsbData, setAdsbData] = useState(null)
   const [basemapId, setBasemapId] = useState('standard')
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
@@ -1336,6 +1347,28 @@ function MapView({
   const hideTimerRef = useRef(null)
   const isFirInMode = routeForm.flightRule === 'IFR' && routeForm.departureAirport === FIR_IN_AIRPORT
   const isFirExitMode = routeForm.flightRule === 'IFR' && routeForm.arrivalAirport === FIR_EXIT_AIRPORT
+
+  function getAirportElevationFt(icao) {
+    const airport = airports.find((item) => item.icao === icao || item.id === icao)
+    const elevationFt = Number(
+      airport?.elevationFt
+      ?? airport?.elevation_ft
+      ?? airport?.fieldElevationFt
+      ?? airport?.field_elevation_ft
+    )
+    if (Number.isFinite(elevationFt) && elevationFt >= 0) return Math.round(elevationFt)
+
+    const elevationM = Number(airport?.elevationM ?? airport?.elevation_m)
+    if (Number.isFinite(elevationM) && elevationM >= 0) return Math.round(elevationM * M_TO_FT)
+
+    return null
+  }
+
+  function getVfrAirportAltitudeFt(wp) {
+    const storedElevationFt = Number(wp?.airportElevationFt)
+    if (Number.isFinite(storedElevationFt) && storedElevationFt >= 0) return Math.round(storedElevationFt)
+    return getAirportElevationFt(wp?.id) ?? 0
+  }
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
   useEffect(() => { vfrWaypointsRef.current = vfrWaypoints }, [vfrWaypoints])
@@ -1515,6 +1548,10 @@ function MapView({
     setRouteResult(null)
     setRouteError(null)
     setRouteLoading(false)
+    setVerticalProfile(null)
+    setVerticalProfileError(null)
+    setVerticalProfileStale(false)
+    setVerticalProfileWindowOpen(false)
     setVfrWaypoints([])
     const map = mapRef.current
     if (map?.isStyleLoaded()) {
@@ -1522,6 +1559,12 @@ function MapView({
       map.getSource(PROC_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
     }
   }
+
+  useEffect(() => {
+    if (verticalProfile) {
+      setVerticalProfileStale(true)
+    }
+  }, [selectedSid, selectedStar, selectedIapKey, vfrWaypoints])
 
   useEffect(() => {
     let cancelled = false
@@ -2313,6 +2356,10 @@ function MapView({
     e.preventDefault()
     setRouteLoading(true)
     setRouteError(null)
+    setVerticalProfile(null)
+    setVerticalProfileError(null)
+    setVerticalProfileStale(false)
+    setVerticalProfileWindowOpen(false)
     try {
       const result = routeForm.flightRule === 'VFR'
         ? await buildVfrRoute(routeForm)
@@ -2321,9 +2368,11 @@ function MapView({
       const map = mapRef.current
       if (result.flightRule === 'VFR') {
         const pts = result.previewGeojson.features.filter((f) => f.properties.role === 'route-preview-point')
+        const departureElevationFt = getAirportElevationFt(result.departureAirport)
+        const arrivalElevationFt = getAirportElevationFt(result.arrivalAirport)
         const initialWaypoints = [
-          { id: result.departureAirport, lon: pts[0].geometry.coordinates[0], lat: pts[0].geometry.coordinates[1], fixed: true },
-          { id: result.arrivalAirport, lon: pts[1].geometry.coordinates[0], lat: pts[1].geometry.coordinates[1], fixed: true },
+          { id: result.departureAirport, lon: pts[0].geometry.coordinates[0], lat: pts[0].geometry.coordinates[1], fixed: true, airportElevationFt: departureElevationFt, altitudeFt: departureElevationFt ?? 0 },
+          { id: result.arrivalAirport, lon: pts[1].geometry.coordinates[0], lat: pts[1].geometry.coordinates[1], fixed: true, airportElevationFt: arrivalElevationFt, altitudeFt: arrivalElevationFt ?? 0 },
         ]
         setVfrWaypoints(initialWaypoints)
         if (map?.isStyleLoaded()) {
@@ -2360,6 +2409,133 @@ function MapView({
       setRouteError(err.message)
     } finally {
       setRouteLoading(false)
+    }
+  }
+
+  function updateVfrWaypointAltitude(idx, value) {
+    setVfrWaypoints((prev) => prev.map((wp, i) => (
+      i === idx ? { ...wp, altitudeFt: value } : wp
+    )))
+  }
+
+  function applyCruiseAltitudeToVfrWaypoints() {
+    const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt)
+    if (!Number.isFinite(plannedCruiseAltitudeFt) || plannedCruiseAltitudeFt <= 0) return
+    setVfrWaypoints((prev) => prev.map((wp) => {
+      if (!wp.fixed) return { ...wp, altitudeFt: Math.round(plannedCruiseAltitudeFt) }
+      const airportElevationFt = getVfrAirportAltitudeFt(wp)
+      return { ...wp, airportElevationFt, altitudeFt: airportElevationFt }
+    }))
+  }
+
+  function getCurrentRouteLineString() {
+    if (!routeResult) return null
+
+    if (routeResult.flightRule === 'VFR') {
+      if (vfrWaypoints.length < 2) return null
+      return {
+        type: 'LineString',
+        coordinates: vfrWaypoints.map((wp) => [wp.lon, wp.lat]),
+      }
+    }
+
+    const displayGeojson = augmentRouteWithProcedures(routeResult.previewGeojson, selectedSid, selectedStar, selectedIap)
+    const lineFeature = displayGeojson.features.find((feature) => feature.properties.role === 'route-preview-line')
+    return lineFeature?.geometry ?? null
+  }
+
+  function buildProcedurePayload(procedure, type) {
+    if (!procedure) return null
+    return {
+      id: procedure.id ?? procedure.name ?? null,
+      type,
+      fixes: (procedure.fixes ?? []).map((fix) => ({
+        id: fix.id,
+        lon: fix.lon ?? fix.coordinates?.lon ?? null,
+        lat: fix.lat ?? fix.coordinates?.lat ?? null,
+        legDistanceNm: fix.legDistanceNm ?? null,
+        altitude: fix.altitude ?? null,
+      })),
+    }
+  }
+
+  function buildProcedureContextPayload() {
+    if (routeResult?.flightRule !== 'IFR') return null
+    return {
+      entryFix: routeResult.entryFix ?? null,
+      exitFix: routeResult.exitFix ?? null,
+      procedures: [
+        buildProcedurePayload(selectedSid, 'SID'),
+        buildProcedurePayload(selectedStar, 'STAR'),
+        buildProcedurePayload(selectedIap, 'IAP'),
+      ].filter(Boolean),
+    }
+  }
+
+  function buildRouteProfileMarkersPayload() {
+    if (!routeResult) return []
+
+    if (routeResult.flightRule === 'VFR') {
+      return vfrWaypoints.map((wp) => ({
+        label: wp.id,
+        lon: wp.lon,
+        lat: wp.lat,
+        kind: wp.fixed ? 'AIRPORT' : 'WAYPOINT',
+      }))
+    }
+
+    const baseLine = routeResult.previewGeojson?.features?.find((feature) => feature.properties.role === 'route-preview-line')
+    const baseCoordinates = baseLine?.geometry?.coordinates ?? []
+    const routeIds = new Set(routeResult.routeIds ?? [])
+    const labels = (routeResult.displaySequence ?? []).filter((item) => !routeIds.has(item))
+
+    return labels
+      .map((label, index) => {
+        const coordinate = baseCoordinates[index]
+        if (!coordinate) return null
+        return {
+          label,
+          lon: coordinate[0],
+          lat: coordinate[1],
+          kind: index === 0 || index === labels.length - 1 ? 'AIRPORT' : 'FIX',
+        }
+      })
+      .filter(Boolean)
+  }
+
+  async function handleVerticalProfileRequest() {
+    const routeGeometry = getCurrentRouteLineString()
+    const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt)
+
+    if (!routeGeometry) {
+      setVerticalProfileError('\uc5f0\uc9c1\ub2e8\uba74\ub3c4\ub97c \uc0dd\uc131\ud560 \uacbd\ub85c\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.')
+      return
+    }
+
+    if (!Number.isFinite(plannedCruiseAltitudeFt) || plannedCruiseAltitudeFt <= 0) {
+      setVerticalProfileError('\uc21c\ud56d\uace0\ub3c4\ub97c 0\ubcf4\ub2e4 \ud070 ft \uac12\uc73c\ub85c \uc785\ub825\ud574\uc8fc\uc138\uc694.')
+      return
+    }
+
+    setVerticalProfileLoading(true)
+    setVerticalProfileError(null)
+    try {
+      const profile = await fetchVerticalProfile({
+        flightRule: routeResult?.flightRule,
+        routeGeometry,
+        plannedCruiseAltitudeFt,
+        procedureContext: buildProcedureContextPayload(),
+        vfrWaypoints: routeResult?.flightRule === 'VFR' ? vfrWaypoints : undefined,
+        routeMarkers: buildRouteProfileMarkersPayload(),
+        sampleSpacingMeters: 250,
+      })
+      setVerticalProfile(profile)
+      setVerticalProfileStale(false)
+      setVerticalProfileWindowOpen(true)
+    } catch (err) {
+      setVerticalProfileError(err.message)
+    } finally {
+      setVerticalProfileLoading(false)
     }
   }
 
@@ -2758,12 +2934,110 @@ function MapView({
                   <div className="route-check-total-dist">
                     {'\ucd1d \uac70\ub9ac'}: <strong>{calcVfrDistance(vfrWaypoints).toFixed(1)} NM</strong>
                   </div>
-                  <div className="route-check-sequence">{vfrWaypoints.map((wp) => wp.id).join(' -> ')}</div>
+                  <div className="vfr-altitude-tools">
+                    <span>{'VFR WP \uacc4\ud68d\uace0\ub3c4'}</span>
+                    <button type="button" onClick={applyCruiseAltitudeToVfrWaypoints}>
+                      {'\uc21c\ud56d\uace0\ub3c4 \uc804\uccb4 \uc801\uc6a9'}
+                    </button>
+                  </div>
+                  <div className="vfr-waypoint-altitude-list">
+                    {vfrWaypoints.map((wp, index) => {
+                      const fallbackAltitudeFt = Number(cruiseAltitudeFt)
+                      const displayAltitudeFt = wp.fixed
+                        ? getVfrAirportAltitudeFt(wp)
+                        : Number.isFinite(Number(wp.altitudeFt))
+                        ? Number(wp.altitudeFt)
+                        : fallbackAltitudeFt
+                      const isEditing = !wp.fixed && editingVfrAltitudeIndex === index
+                      return (
+                        <div className="vfr-waypoint-altitude-row" key={`${wp.id}-${index}`}>
+                          <span className="vfr-waypoint-altitude-id">{wp.id}</span>
+                          {isEditing ? (
+                            <input
+                              className="vfr-waypoint-altitude-input"
+                              type="number"
+                              min="100"
+                              step="100"
+                              autoFocus
+                              value={Number.isFinite(displayAltitudeFt) ? Math.round(displayAltitudeFt) : ''}
+                              onChange={(e) => updateVfrWaypointAltitude(index, e.target.value)}
+                              onBlur={() => setEditingVfrAltitudeIndex(null)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') e.currentTarget.blur()
+                                if (e.key === 'Escape') setEditingVfrAltitudeIndex(null)
+                              }}
+                            />
+                          ) : wp.fixed ? (
+                            <span className="vfr-waypoint-altitude-pill is-fixed" title="공항 표고">
+                              {`${Math.round(displayAltitudeFt).toLocaleString()} ft`}
+                            </span>
+                          ) : (
+                            <button
+                              className="vfr-waypoint-altitude-pill"
+                              type="button"
+                              onClick={() => setEditingVfrAltitudeIndex(index)}
+                            >
+                              {Number.isFinite(displayAltitudeFt)
+                                ? `${Math.round(displayAltitudeFt).toLocaleString()} ft`
+                                : '\uace0\ub3c4 \uc785\ub825'}
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </>
+              )}
+              <div className="vertical-profile-control">
+                <label>
+                  <span>{'\uc21c\ud56d\uace0\ub3c4(ft)'}</span>
+                  <input
+                    type="number"
+                    min="100"
+                    step="100"
+                    value={cruiseAltitudeFt}
+                    onChange={(e) => setCruiseAltitudeFt(e.target.value)}
+                  />
+                </label>
+                <button type="button" onClick={handleVerticalProfileRequest} disabled={verticalProfileLoading}>
+                  {verticalProfileLoading ? '\uc0dd\uc131 \uc911...' : '\uc5f0\uc9c1\ub2e8\uba74\ub3c4 \uc0dd\uc131'}
+                </button>
+              </div>
+              {verticalProfileStale && (
+                <div className="vertical-profile-stale">
+                  {'\uacbd\ub85c\uac00 \ubcc0\uacbd\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \uc5f0\uc9c1\ub2e8\uba74\ub3c4\ub97c \ub2e4\uc2dc \uc0dd\uc131\ud574\uc8fc\uc138\uc694.'}
+                </div>
+              )}
+              {verticalProfileError && <div className="vertical-profile-error">{verticalProfileError}</div>}
+              {verticalProfile && (
+                <button
+                  className="vertical-profile-open-button"
+                  type="button"
+                  onClick={() => setVerticalProfileWindowOpen(true)}
+                >
+                  {'\uc5f0\uc9c1\ub2e8\uba74\ub3c4 \uc5f4\uae30'}
+                </button>
               )}
             </div>
           )}
         </section>
+      )}
+
+      {verticalProfile && verticalProfileWindowOpen && (
+        <div className="vertical-profile-window-backdrop" role="presentation">
+          <section className="vertical-profile-window" role="dialog" aria-modal="true" aria-label={'\uc5f0\uc9c1\ub2e8\uba74\ub3c4'}>
+            <div className="vertical-profile-window-header">
+              <div>
+                <div className="vertical-profile-window-eyebrow">Vertical Profile</div>
+                <div className="vertical-profile-window-title">{'\uc5f0\uc9c1\ub2e8\uba74\ub3c4'}</div>
+              </div>
+              <button type="button" className="vertical-profile-window-close" onClick={() => setVerticalProfileWindowOpen(false)}>
+                {'\ub2eb\uae30'}
+              </button>
+            </div>
+            <VerticalProfileChart profile={verticalProfile} />
+          </section>
+        </div>
       )}
 
       {activePanel === 'aviation' && (

@@ -60,6 +60,7 @@ export async function getProcedures(airport, type) {
         lat: f.coordinates?.lat ?? null,
         lon: f.coordinates?.lon ?? null,
         legDistanceNm: f.legDistanceNm ?? null,
+        altitude: f.altitude ?? null,
       })),
       label: `${proc.name} (RWY ${(proc.runways ?? []).join(', ')})`,
     }))

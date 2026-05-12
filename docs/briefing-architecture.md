@@ -440,6 +440,7 @@ Input:
 
 ```json
 {
+  "flightRule": "IFR",
   "routeGeometry": {
     "type": "LineString",
     "coordinates": [
@@ -449,11 +450,20 @@ Input:
     ]
   },
   "plannedCruiseAltitudeFt": 9000,
-  "layers": {
-    "terrain": true,
-    "advisories": true,
-    "clouds": true
-  }
+  "sampleSpacingMeters": 250,
+  "procedureContext": {
+    "entryFix": "BULTI",
+    "exitFix": "DOTOL",
+    "procedures": [
+      {
+        "id": "BULTI2T",
+        "type": "SID",
+        "fixes": [{ "id": "BULTI", "lon": 126.0, "lat": 37.0, "altitude": null }]
+      }
+    ]
+  },
+  "vfrWaypoints": [],
+  "routeMarkers": [{ "label": "RKSS", "lon": 126.79, "lat": 37.55, "kind": "AIRPORT" }]
 }
 ```
 
@@ -463,29 +473,47 @@ Output shape:
 {
   "axis": {
     "totalDistanceNm": 182.4,
-    "sampleSpacingMeters": 100,
-    "samples": []
+    "sampleSpacingMeters": 250,
+    "samples": [
+      {
+        "index": 0,
+        "distanceNm": 0,
+        "lon": 126.79,
+        "lat": 37.55,
+        "bearingDeg": 180,
+        "segmentKind": "SID",
+        "legId": null,
+        "airwayId": null,
+        "procedureId": "BULTI2T",
+        "nearestFix": "RKSS"
+      }
+    ]
   },
   "terrain": {
     "unit": "m",
     "values": []
   },
   "flightPlan": {
-    "segments": []
+    "unit": "ft",
+    "plannedCruiseAltitudeFt": 9000,
+    "profile": {
+      "label": "절차 고도제한선 적용",
+      "points": [{ "distanceNm": 0, "altitudeFt": 0, "source": "AIRPORT" }],
+      "tod": null,
+      "model": { "climbGradientFtPerNm": 600, "descentGradientFtPerNm": 300 }
+    }
   },
-  "advisories": {
-    "sigmet": [],
-    "airmet": [],
-    "notam": []
-  },
-  "weather": {
-    "clouds": [],
-    "icing": [],
-    "turbulence": [],
-    "wind": []
-  }
+  "markers": [{ "label": "RKSS", "distanceNm": 0, "kind": "AIRPORT" }],
+  "layers": {},
+  "warnings": []
 }
 ```
+
+Current v1 behavior:
+
+- The frontend still builds/selects the route and procedures, then sends route geometry plus minimal context to the backend.
+- The backend owns route-axis sampling, terrain sampling, segment tagging, marker projection, TOD calculation, and planned altitude profile composition.
+- `layers` is intentionally empty in v1 so SIGMET/AIRMET, cloud, wind, and other projectors can attach to the same axis contract later.
 
 ## MVP Recommendation
 

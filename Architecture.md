@@ -27,8 +27,11 @@ ProjectAMO/
         weather/               -> frontend-only weather display helpers
   backend/
     src/
+      briefing/               -> route-axis, planned altitude profile, and vertical profile composition
+      terrain/                 -> terrain tile cache and DEM sampling
       parsers/                 -> upstream raw response parsers
       processors/              -> normalized data transformers
+  scripts/                     -> local preprocessing helpers such as terrain tile generation
   shared/                      -> backend/frontend common constants
   docs/                        -> operations, deployment, and route briefing architecture notes
 ```
@@ -46,6 +49,7 @@ ProjectAMO/
 - `frontend/src/app/layout/Sidebar.css` -> sidebar styles.
 - `frontend/src/api/weatherApi.js` -> weather bundle, changed dataset, static airport/navdata fetch helpers.
 - `frontend/src/api/adsbApi.js` -> ADS-B fetch helper.
+- `frontend/src/api/briefingApi.js` -> route briefing and vertical profile API helpers.
 - `frontend/src/features/map/MapView.jsx` -> Mapbox map creation, style reload handling, feature panel composition, route/VFR interactions.
 - `frontend/src/features/map/MapView.css` -> map, overlay panel, and route briefing style entry.
 - `frontend/src/features/map/mapConfig.js` -> map bounds, initial camera, basemap options.
@@ -68,6 +72,7 @@ ProjectAMO/
 - `frontend/src/features/weather-overlays/lib/sigwxData.js` -> SIGWX_LOW GeoJSON/icon mapping helpers.
 - `frontend/src/features/route-briefing/lib/routePlanner.js` -> route graph loading and route path search.
 - `frontend/src/features/route-briefing/lib/procedureData.js` -> procedure/navpoint loading helpers.
+- `frontend/src/features/route-briefing/VerticalProfileChart.jsx` -> SVG route vertical profile chart.
 - `frontend/src/features/airport-panel/AirportPanel.jsx` -> airport drawer shell and tab selection.
 - `frontend/src/features/airport-panel/AirportPanel.css` -> airport drawer and tab style entry.
 - `frontend/src/features/airport-panel/tabs/MetarTab.jsx` -> METAR tab rendering.
@@ -88,12 +93,18 @@ ProjectAMO/
 ### Backend
 
 - `backend/server.js` -> Express entry point, API routes, cache headers, static data serving.
+- `backend/src/briefing/route-axis.js` -> route LineString resampling, cumulative distance, and bearing helpers.
+- `backend/src/briefing/profile-composer.js` -> route-aware planned altitude profile, markers, and segment metadata composition.
+- `backend/src/briefing/vertical-profile.js` -> vertical profile response composition.
+- `backend/src/terrain/terrain-cache.js` -> terrain tile metadata lookup and lazy tile cache.
+- `backend/src/terrain/terrain-sampler.js` -> terrain sampling along route-axis samples.
 - `backend/src/index.js` -> scheduled weather collection jobs and per-type locks.
 - `backend/src/api-client.js` -> upstream KMA/weather API request construction.
 - `backend/src/store.js` -> in-memory cache and SHA-256 change detection.
 - `backend/src/parsers/*` -> per-type raw response parsers.
 - `backend/src/processors/*` -> per-type normalized data processors.
 - `backend/collect.js` -> manual one-shot collector.
+- `scripts/prepare-terrain-tiles.js` -> converts decompressed Korea 3-second DEM into 1-degree terrain tiles.
 
 ## Reference Structure
 
@@ -104,3 +115,4 @@ ProjectAMO/
 - Root `shared/` is for backend/frontend common constants; do not mix it with `frontend/src/shared/`.
 - `backend/*` must not import from `frontend/src/`.
 - Runtime browser assets must live under `frontend/public/`.
+- Raw terrain sources and generated terrain tiles stay under `backend/data/terrain/`; frontend requests vertical profile JSON instead of reading DEM files.

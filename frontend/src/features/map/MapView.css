@@ -1084,6 +1084,422 @@
   font-weight: 700;
 }
 
+.vfr-altitude-tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.vfr-altitude-tools button {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(15, 118, 110, 0.25);
+  border-radius: 999px;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.vfr-waypoint-altitude-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.vfr-waypoint-altitude-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.vfr-waypoint-altitude-id {
+  min-width: 0;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vfr-waypoint-altitude-pill {
+  height: 26px;
+  min-width: 78px;
+  padding: 0 8px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.vfr-waypoint-altitude-pill.is-fixed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-color: rgba(217, 119, 6, 0.22);
+  background: #fff7ed;
+  color: #9a3412;
+  cursor: default;
+}
+
+.vfr-waypoint-altitude-input {
+  width: 86px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1px solid rgba(15, 118, 110, 0.42);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.vertical-profile-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 7px;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.vertical-profile-control label {
+  display: grid;
+  gap: 4px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.vertical-profile-control input {
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid rgba(148, 163, 184, 0.58);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.vertical-profile-control button {
+  height: 34px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 7px;
+  background: #0f766e;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.vertical-profile-control button:disabled {
+  background: #94a3b8;
+  cursor: wait;
+}
+
+.vertical-profile-open-button {
+  width: 100%;
+  height: 34px;
+  margin-top: 8px;
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  border-radius: 7px;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.vertical-profile-error,
+.vertical-profile-stale,
+.vertical-profile-empty {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.vertical-profile-error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.vertical-profile-stale {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.vertical-profile-empty {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.vertical-profile-chart {
+  padding: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.vertical-profile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  margin-bottom: 10px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.vertical-profile-meta-item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.vertical-profile-meta-item strong {
+  min-width: 0;
+  color: #0f172a;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.vertical-profile-procedure-badge {
+  width: fit-content;
+  padding: 3px 7px;
+  border: 1px solid rgba(217, 119, 6, 0.24);
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #b45309;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.vertical-profile-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.vertical-profile-window-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.vertical-profile-window {
+  width: min(1120px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.32);
+  color: #334155;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.vertical-profile-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+  background: #f8fafc;
+}
+
+.vertical-profile-window-eyebrow {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.vertical-profile-window-title {
+  margin-top: 3px;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.vertical-profile-window-close {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.vertical-profile-window .vertical-profile-chart {
+  margin: 0;
+  padding: 16px;
+  border: none;
+  border-radius: 0;
+}
+
+.vertical-profile-plot {
+  fill: #f8fafc;
+  stroke: #e2e8f0;
+}
+
+.vertical-profile-grid {
+  stroke: #e2e8f0;
+  stroke-width: 1;
+}
+
+.vertical-profile-axis-label {
+  fill: #64748b;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.vertical-profile-cruise-tick {
+  stroke: #2563eb;
+  stroke-width: 2;
+}
+
+.vertical-profile-cruise-axis-label {
+  fill: #1d4ed8;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.vertical-profile-marker-tick {
+  stroke: rgba(100, 116, 139, 0.55);
+  stroke-width: 1;
+}
+
+.vertical-profile-marker-label {
+  fill: #0f172a;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.vertical-profile-terrain-area {
+  fill: #020617;
+}
+
+.vertical-profile-terrain-line {
+  fill: none;
+  stroke: none;
+  stroke-width: 0;
+}
+
+.vertical-profile-procedure-line {
+  fill: none;
+  stroke: #d97706;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.vertical-profile-tod-summary {
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.vertical-profile-model-info {
+  position: relative;
+}
+
+.vertical-profile-model-info summary {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid rgba(100, 116, 139, 0.32);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  list-style: none;
+  cursor: pointer;
+}
+
+.vertical-profile-model-info summary::-webkit-details-marker {
+  display: none;
+}
+
+.vertical-profile-model-info div {
+  position: absolute;
+  z-index: 2;
+  top: 26px;
+  right: 0;
+  display: grid;
+  width: min(320px, 78vw);
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.vertical-profile-model-info div strong {
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.vertical-profile-tod-label {
+  fill: #92400e;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.vertical-profile-tod-arrow {
+  fill: none;
+  stroke: #d97706;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .dist-breakdown {
   color: #94a3b8;
   font-weight: 600;

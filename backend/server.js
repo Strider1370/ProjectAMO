@@ -8,15 +8,19 @@ import config from './src/config.js'
 import { main as startScheduler } from './src/index.js'
 import warningTypes from '../shared/warning-types.js'
 import alertDefaults from '../shared/alert-defaults.js'
+import { buildVerticalProfile } from './src/briefing/vertical-profile.js'
+import { createDefaultTerrainSampler } from './src/terrain/terrain-sampler.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = process.env.BACKEND_PORT || 3001
 const HOST = process.env.BACKEND_HOST || '127.0.0.1'
 const DATA_ROOT = config.storage.base_path
+const terrainSampler = createDefaultTerrainSampler(DATA_ROOT)
 
 app.disable('x-powered-by')
 app.set('trust proxy', true)
+app.use(express.json({ limit: '1mb' }))
 
 function readJsonFileSafe(filePath) {
   try {
@@ -229,6 +233,18 @@ app.get('/api/sigwx-low-clouds', (req, res) => sendSigwxOverlayMeta(req, res, 'c
 
 app.get('/api/stats', (_req, res) => res.json(stats.getStats()))
 app.get('/api/health', (_req, res) => res.json({ ok: true, uptime: process.uptime() }))
+app.post('/api/vertical-profile', (req, res) => {
+  try {
+    res.json(buildVerticalProfile(req.body, terrainSampler))
+  } catch (error) {
+    if (error.code === 'TERRAIN_NOT_READY') {
+      res.status(503).json({ error: error.message })
+      return
+    }
+
+    res.status(400).json({ error: error.message || 'failed to build vertical profile' })
+  }
+})
 
 app.listen(PORT, HOST, () => console.log(`[server] Backend running on ${HOST}:${PORT}`))
 
