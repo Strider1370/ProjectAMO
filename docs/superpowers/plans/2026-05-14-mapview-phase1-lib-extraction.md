@@ -140,7 +140,9 @@ Expected:
 Run:
 
 ```powershell
-npm run build --prefix frontend
+Push-Location frontend
+npm.cmd run build
+Pop-Location
 ```
 
 Expected: build succeeds.
@@ -210,7 +212,9 @@ Do not change call sites unless import names conflict.
 Run:
 
 ```powershell
-npm run build --prefix frontend
+Push-Location frontend
+npm.cmd run build
+Pop-Location
 ```
 
 Expected: build succeeds.
@@ -295,7 +299,9 @@ Expected:
 Run:
 
 ```powershell
-npm run build --prefix frontend
+Push-Location frontend
+npm.cmd run build
+Pop-Location
 ```
 
 Expected: build succeeds.
@@ -476,7 +482,9 @@ Expected: all tests pass.
 Run:
 
 ```powershell
-npm run build --prefix frontend
+Push-Location frontend
+npm.cmd run build
+Pop-Location
 ```
 
 Expected: build succeeds.
@@ -713,7 +721,9 @@ Expected: all tests pass.
 Run:
 
 ```powershell
-npm run build --prefix frontend
+Push-Location frontend
+npm.cmd run build
+Pop-Location
 ```
 
 Expected: build succeeds.
@@ -748,7 +758,9 @@ Expected: all tests pass.
 Run:
 
 ```powershell
-npm run build --prefix frontend
+Push-Location frontend
+npm.cmd run build
+Pop-Location
 ```
 
 Expected: build succeeds.
