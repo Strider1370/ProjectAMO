@@ -92,6 +92,10 @@ code-review-graph detect-changes
 code-review-graph status
 ```
 
+## 8. Superpowers Subagent Orchestration
+
+When using Superpowers workflows, the main agent must act as the orchestrator and assign suitable project subagents from `.codex/agents/` whenever the task has cleanly separable planning, investigation, review, QA, security, or architecture work.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

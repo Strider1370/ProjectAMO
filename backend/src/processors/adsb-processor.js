@@ -2,23 +2,28 @@ import crypto from 'crypto'
 import fs from 'fs'
 import https from 'https'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import config from '../config.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 let tokenCache = {
   accessToken: null,
   expiresAt: 0,
 }
 
-// Point-in-polygon (ray casting) for FIR boundary filtering
 let _firPolygon = null;
 function loadFirPolygon() {
   if (_firPolygon) return _firPolygon;
   try {
-    const firPath = path.join(__dirname, "../../../frontend/public/geo/rkrr_fir.geojson");
+    const firPath = path.join(__dirname, "../../../frontend/public/data/fir.geojson");
     const geojson = JSON.parse(fs.readFileSync(firPath, "utf8"));
-    const feature = geojson.features?.[0];
+    const feature = geojson.features?.find((item) => item?.properties?.role === "incheon-fir")
+      || geojson.features?.[0];
     if (feature?.geometry?.type === "Polygon") {
-      _firPolygon = feature.geometry.coordinates[0]; // outer ring
+      _firPolygon = [feature.geometry.coordinates[0]];
+    } else if (feature?.geometry?.type === "MultiPolygon") {
+      _firPolygon = feature.geometry.coordinates.map((polygon) => polygon[0]).filter(Boolean);
     }
   } catch (_) {
     _firPolygon = null;
@@ -39,9 +44,9 @@ function pointInPolygon(lon, lat, ring) {
 }
 
 function isInFir(lon, lat) {
-  const ring = loadFirPolygon();
-  if (!ring) return true; // FIR 데이터 없으면 필터링 안 함
-  return pointInPolygon(lon, lat, ring);
+  const rings = loadFirPolygon();
+  if (!rings) return true;
+  return rings.some((ring) => pointInPolygon(lon, lat, ring));
 }
 
 function canonicalize(value) {
@@ -289,5 +294,5 @@ async function process() {
   };
 }
 
-export { process }
+export { isInFir, loadFirPolygon, process }
 export default { process }
