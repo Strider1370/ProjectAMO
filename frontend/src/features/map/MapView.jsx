@@ -37,6 +37,7 @@ import {
 } from '../weather-overlays/lib/weatherTimeline.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import { addOrUpdateImageOverlay } from './imageOverlay.js'
+import { addOrUpdateGeoJsonSource, setLayerVisibility, setMapLayerVisible } from './lib/mapLayerUtils.js'
 import './MapView.css'
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -580,33 +581,6 @@ function applyRoadVisibility(map, show) {
   map.setConfigProperty('basemap', 'colorMotorways', show ? VISIBLE_ROAD_COLORS.motorways : HIDDEN_ROAD_COLOR)
 }
 
-function setLayerVisibility(map, layer, isVisible) {
-  const v = isVisible ? 'visible' : 'none'
-  const ids = [
-    layer.fillLayerId, layer.maskLayerId, layer.hoverLayerId,
-    layer.pointMaskLayerId, layer.pointLayerId,
-    layer.lineLayerId, layer.routeLabelLayerId,
-    layer.tickLayerId, layer.externalLabelLayerId,
-    layer.internalLabelLayerId, layer.labelLayerId,
-    layer.pointLabelLayerId ? (layer.pointLabelMaskLayerId ?? `${layer.pointLabelLayerId}-mask`) : null,
-    layer.pointLabelLayerId,
-  ].filter(Boolean)
-
-  ids.forEach((id) => {
-    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v)
-  })
-
-  layer.neighborBoundaries?.forEach((b) => {
-    if (map.getLayer(b.tickLayerId)) map.setLayoutProperty(b.tickLayerId, 'visibility', v)
-  })
-}
-
-function setMapLayerVisible(map, layerId, isVisible) {
-  if (map.getLayer(layerId)) {
-    map.setLayoutProperty(layerId, 'visibility', isVisible ? 'visible' : 'none')
-  }
-}
-
 function ensureMapImage(map, { id, url }) {
   if (!id || !url || map.hasImage(id)) return
   map.loadImage(url, (error, image) => {
@@ -658,15 +632,6 @@ function ensureSigwxChipImages(map) {
     if (!data || map.hasImage(image.id)) return
     map.addImage(image.id, data, { pixelRatio: 2 })
   })
-}
-
-function addOrUpdateGeoJsonSource(map, sourceId, data) {
-  const source = map.getSource(sourceId)
-  if (source) {
-    source.setData(data)
-  } else {
-    map.addSource(sourceId, { type: 'geojson', data })
-  }
 }
 
 function buildSigwxDashArrayExpression() {
