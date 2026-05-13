@@ -2,7 +2,6 @@ export function setLayerVisibility(map, layer, isVisible) {
   if (!map || !layer) return
   const visibility = isVisible ? 'visible' : 'none'
   const ids = [
-    layer.id,
     layer.fillLayerId,
     layer.maskLayerId,
     layer.hoverLayerId,
