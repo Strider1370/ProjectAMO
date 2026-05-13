@@ -83,9 +83,8 @@ frontend/src/features/map/
   mapConfig.js
   imageOverlay.js
   lib/
-    airportLayers.js
-    geoBoundaryLayers.js
-    mapLayerVisibility.js
+    baseMapLayers.js
+    mapLayerUtils.js
 
 frontend/src/features/weather-overlays/
   WeatherOverlayPanel.jsx
@@ -100,7 +99,7 @@ frontend/src/features/weather-overlays/
     lightningLayers.js
     sigwxLayers.js
     sigwxData.js
-    weatherOverlayState.js
+    weatherOverlayModel.js
     weatherTimeline.js
 
 frontend/src/features/route-briefing/
@@ -109,22 +108,21 @@ frontend/src/features/route-briefing/
   VerticalProfileWindow.jsx
   lib/
     procedureData.js
-    procedurePreviewModel.js
     routePlanner.js
-    routePreviewLayers.js
+    routePreview.js
     verticalProfileRequest.js
-    vfrRouteModel.js
 
 frontend/src/features/aviation-layers/
   AviationLayerPanel.jsx
   addAdsbLayer.js
   addAviationWfsLayers.js
   aviationWfsLayers.js
-  lib/
-    adsbPolling.js
+  adsbPolling.js
 ```
 
-This uses the existing `features/*/lib` pattern. `lib` contains feature-local non-UI code: calculations, data shaping, Mapbox layer adapters, selectors, and API payload builders.
+This uses the existing `features/*/lib` pattern where it improves locality. `lib` contains feature-local non-UI code: calculations, data shaping, Mapbox layer adapters, selectors, and API payload builders.
+
+The file list above is a lean target, not a requirement to create every possible boundary immediately. New files should be created only when they remove meaningful complexity from `MapView.jsx` or provide a stable testable boundary. If a helper stays small, has one consumer, and has no clear independent test value, keep it grouped with related helpers instead of splitting it into a one-purpose file.
 
 ADS-B is intentionally split during the migration:
 
@@ -223,8 +221,8 @@ Move pure or nearly pure helpers out of `MapView.jsx` without changing behavior.
 
 Candidates:
 
-- airport GeoJSON creation and airport layer helpers.
-- geo boundary layer helpers.
+- airport GeoJSON creation, airport layer helpers, and geo boundary helpers into `features/map/lib/baseMapLayers.js`.
+- shared layer visibility/source utilities into `features/map/lib/mapLayerUtils.js`.
 - VFR GeoJSON helpers.
 - procedure preview GeoJSON helpers.
 - lightning GeoJSON/icon/layer helpers.
@@ -243,6 +241,7 @@ Phase acceptance:
 - Extracted helpers are imported from feature-local `lib` modules.
 - Extracted helper behavior is covered by tests when the input/output can be represented without a real Mapbox instance.
 - No panel layout or user-facing behavior changes are introduced.
+- The implementation avoids one-function files unless the function represents a stable external contract or a clearly independent domain adapter.
 
 ### Phase 2: Move weather overlay ownership
 
@@ -319,7 +318,7 @@ syncRoutePreviewLayers(map, routePreviewModel)
 const payload = buildVerticalProfileRequest(routeBriefing.state)
 ```
 
-The implementation plan can adjust names or split hooks, but route form state, procedure loading, preview model derivation, and vertical profile payload composition should be owned by `features/route-briefing`.
+The implementation plan can adjust names or avoid introducing hooks until React lifecycle ownership is clear. Route preview behavior should initially be grouped in `features/route-briefing/lib/routePreview.js` unless it grows large enough to justify splitting VFR, procedure, and Mapbox adapter logic.
 
 Verification:
 
@@ -420,3 +419,10 @@ Manual browser smoke:
 The current recommended default is to use `features/*/lib` for feature-local non-UI logic, including Mapbox adapters. This matches existing `weather-overlays/lib` and `route-briefing/lib` usage.
 
 The exact implementation plan should decide whether React hooks are introduced as separate files or whether state orchestration remains in plain feature-local modules first. The safer default is to extract pure `lib` modules first, then introduce hooks only where React lifecycle ownership is clear.
+
+File-splitting guardrails:
+
+- Prefer one cohesive feature module over several tiny files when helpers change together.
+- Split when a module owns a distinct Mapbox source/layer family, a backend request contract, or a separately testable model.
+- Avoid generic `utils.js` growth by using domain names such as `routePreview.js`, `sigwxLayers.js`, or `baseMapLayers.js`.
+- Treat the directory shape as an implementation ceiling. The first implementation plan should create fewer files than the target shape when a combined module is simpler.
