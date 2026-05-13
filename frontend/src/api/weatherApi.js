@@ -123,6 +123,16 @@ export async function fetchSnapshotMeta() {
   return fetchJson('/api/snapshot-meta', { optional: true })
 }
 
+export async function fetchSigwxFrontMeta(tmfc) {
+  if (!tmfc) return null
+  return fetchJson(`/api/sigwx-front-meta?tmfc=${encodeURIComponent(tmfc)}`, { optional: true })
+}
+
+export async function fetchSigwxCloudMeta(tmfc) {
+  if (!tmfc) return null
+  return fetchJson(`/api/sigwx-cloud-meta?tmfc=${encodeURIComponent(tmfc)}`, { optional: true })
+}
+
 export async function loadChangedWeatherData(changes) {
   const fetches = []
   const keys = []

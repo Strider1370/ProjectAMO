@@ -16,6 +16,7 @@ import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapDa
 import { getProcedures, KNOWN_AIRPORTS } from '../route-briefing/lib/procedureData.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
 import { fetchVerticalProfile } from '../../api/briefingApi.js'
+import { fetchSigwxCloudMeta, fetchSigwxFrontMeta } from '../../api/weatherApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../aviation-layers/addAdsbLayer.js'
 import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
 import VerticalProfileChart from '../route-briefing/VerticalProfileChart.jsx'
@@ -1959,14 +1960,14 @@ function MapView({
         setSelectedSigwxCloudMeta(null)
       }
 
-      const [frontResponse, cloudResponse] = await Promise.all([
-        fetch(`/api/sigwx-front-meta?tmfc=${selectedTmfc}`).then((res) => (res.ok ? res.json() : null)).catch(() => null),
-        fetch(`/api/sigwx-cloud-meta?tmfc=${selectedTmfc}`).then((res) => (res.ok ? res.json() : null)).catch(() => null),
+      const [frontMeta, cloudMeta] = await Promise.all([
+        fetchSigwxFrontMeta(selectedTmfc).catch(() => null),
+        fetchSigwxCloudMeta(selectedTmfc).catch(() => null),
       ])
 
       if (cancelled) return
-      setSelectedSigwxFrontMeta(frontResponse)
-      setSelectedSigwxCloudMeta(cloudResponse)
+      setSelectedSigwxFrontMeta(frontMeta)
+      setSelectedSigwxCloudMeta(cloudMeta)
     }
 
     loadSigwxMeta()
