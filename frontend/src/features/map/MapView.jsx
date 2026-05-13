@@ -21,10 +21,19 @@ import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
 import VerticalProfileChart from '../route-briefing/VerticalProfileChart.jsx'
 import { SIGWX_FILTER_OPTIONS, sigwxLowToMapboxData } from '../weather-overlays/lib/sigwxData.js'
 import AdvisoryBadges from '../weather-overlays/AdvisoryBadges.jsx'
+import AdsbTimestamp from '../weather-overlays/AdsbTimestamp.jsx'
 import SigwxHistoryBar from '../weather-overlays/SigwxHistoryBar.jsx'
 import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
+import WeatherTimelineBar from '../weather-overlays/WeatherTimelineBar.jsx'
 import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
+import {
+  buildTimelineTicks,
+  getPlaybackDelayMs,
+  normalizeFrame,
+  normalizeFrames,
+  pickNearestPreviousFrame,
+} from '../weather-overlays/lib/weatherTimeline.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import { addOrUpdateImageOverlay } from './imageOverlay.js'
 import './MapView.css'
@@ -932,14 +941,6 @@ function createLightningGeoJSON(lightningData, referenceTimeMs) {
   }
 }
 
-function getRadarFrame(echoMeta) {
-  return echoMeta?.nationwide || echoMeta?.frames?.[echoMeta.frames.length - 1] || null
-}
-
-function getSatFrame(satMeta) {
-  return satMeta?.latest || satMeta?.frames?.[satMeta.frames.length - 1] || null
-}
-
 function parseFrameTmToMs(tm) {
   if (!tm || !/^\d{12}$/.test(String(tm))) return null
   const raw = String(tm)
@@ -998,6 +999,13 @@ function formatAdvisoryPanelLabel(item, kind) {
   const sequence = item?.sequence_number ? ` ${item.sequence_number}` : ''
   const phenomenon = item?.phenomenon_code || item?.phenomenon_label || ''
   return `${base}${sequence}${phenomenon ? ` ${phenomenon}` : ''}`
+}
+
+function formatAdvisoryValidLabel(item) {
+  const start = Date.parse(item?.valid_from)
+  const end = Date.parse(item?.valid_to)
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null
+  return `${formatSigwxStamp(new Date(start).toISOString())} ~ ${formatSigwxStamp(new Date(end).toISOString())}`
 }
 
 // ???? Initial state factories ??????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -1308,6 +1316,9 @@ function MapView({
   const [blinkLightning, setBlinkLightning] = useState(false)
   const [lightningBlinkOff, setLightningBlinkOff] = useState(false)
   const [lightningReferenceTimeMs, setLightningReferenceTimeMs] = useState(() => Date.now())
+  const [weatherTimelineIndex, setWeatherTimelineIndex] = useState(-1)
+  const [weatherTimelinePlaying, setWeatherTimelinePlaying] = useState(false)
+  const [weatherTimelineSpeed, setWeatherTimelineSpeed] = useState(1)
   const [sigwxHistoryIndex, setSigwxHistoryIndex] = useState(0)
   const [sigwxLegendOpen, setSigwxLegendOpen] = useState(false)
   const [openAdvisoryPanel, setOpenAdvisoryPanel] = useState(null)
@@ -1807,18 +1818,37 @@ function MapView({
   }, [isFirInMode, isFirExitMode, routeForm.entryFix, routeForm.exitFix, navpointsById, isStyleReady, routeResult, selectedSid, selectedStar, selectedIap])
 
   const airportGeoJSON = useMemo(() => createAirportGeoJSON(airports), [airports])
+  const radarFrames = useMemo(() => normalizeFrames(echoMeta?.frames?.length ? echoMeta.frames : [echoMeta?.nationwide]), [echoMeta])
+  const satelliteFrames = useMemo(() => normalizeFrames(satMeta?.frames?.length ? satMeta.frames : [satMeta?.latest]), [satMeta])
+  const lightningFrames = useMemo(() => {
+    const frame = normalizeFrame({ tm: lightningData?.query?.tm })
+    return frame ? [frame] : []
+  }, [lightningData?.query?.tm])
+  const weatherTimelineTicks = useMemo(() => buildTimelineTicks([
+    metVisibility.radar ? radarFrames : [],
+    metVisibility.satellite ? satelliteFrames : [],
+    metVisibility.lightning ? lightningFrames : [],
+  ]), [metVisibility.radar, metVisibility.satellite, metVisibility.lightning, radarFrames, satelliteFrames, lightningFrames])
+  const effectiveWeatherTimelineIndex = weatherTimelineTicks.length > 0
+    ? weatherTimelineIndex >= 0
+      ? Math.min(weatherTimelineIndex, weatherTimelineTicks.length - 1)
+      : weatherTimelineTicks.length - 1
+    : 0
+  const selectedWeatherTimeMs = weatherTimelineTicks[effectiveWeatherTimelineIndex] ?? null
+  const weatherTimelineVisible = (metVisibility.radar || metVisibility.satellite || metVisibility.lightning) && weatherTimelineTicks.length > 0
+  const radarFrame = useMemo(() => pickNearestPreviousFrame(radarFrames, selectedWeatherTimeMs), [radarFrames, selectedWeatherTimeMs])
+  const satFrame = useMemo(() => pickNearestPreviousFrame(satelliteFrames, selectedWeatherTimeMs), [satelliteFrames, selectedWeatherTimeMs])
   const lightningGeoJSON = useMemo(
     () => createLightningGeoJSON(lightningData, lightningReferenceTimeMs),
     [lightningData, lightningReferenceTimeMs],
   )
   const adsbGeoJSON = useMemo(() => createAdsbGeoJSON(adsbData), [adsbData])
-  const radarFrame = useMemo(() => getRadarFrame(echoMeta), [echoMeta])
-  const satFrame = useMemo(() => getSatFrame(satMeta), [satMeta])
   const sigmetItems = useMemo(() => (
     (sigmetData?.items || []).map((item, index) => ({
       ...item,
       mapKey: item.id || `sigmet-${index}`,
       panelLabel: formatAdvisoryPanelLabel(item, 'sigmet'),
+      validLabel: formatAdvisoryValidLabel(item),
     }))
   ), [sigmetData])
   const airmetItems = useMemo(() => (
@@ -1826,6 +1856,7 @@ function MapView({
       ...item,
       mapKey: item.id || `airmet-${index}`,
       panelLabel: formatAdvisoryPanelLabel(item, 'airmet'),
+      validLabel: formatAdvisoryValidLabel(item),
     }))
   ), [airmetData])
   const visibleSigmetPayload = useMemo(() => ({
@@ -1874,6 +1905,33 @@ function MapView({
     if (openAdvisoryPanel === 'airmet') return airmetItems
     return []
   }, [openAdvisoryPanel, sigwxGroups, sigmetItems, airmetItems])
+
+  useEffect(() => {
+    const tickCount = weatherTimelineTicks.length
+    if (tickCount === 0) {
+      setWeatherTimelinePlaying(false)
+      setWeatherTimelineIndex(-1)
+      return
+    }
+
+    setWeatherTimelineIndex((prev) => {
+      if (prev >= tickCount) {
+        return tickCount - 1
+      }
+      return prev
+    })
+  }, [weatherTimelineTicks.length])
+
+  useEffect(() => {
+    if (!weatherTimelineVisible || !weatherTimelinePlaying || weatherTimelineTicks.length <= 1) return undefined
+    const timer = window.setInterval(() => {
+      setWeatherTimelineIndex((prev) => {
+        const baseIndex = prev >= 0 ? prev : weatherTimelineTicks.length - 1
+        return baseIndex >= weatherTimelineTicks.length - 1 ? 0 : baseIndex + 1
+      })
+    }, getPlaybackDelayMs(weatherTimelineSpeed))
+    return () => window.clearInterval(timer)
+  }, [weatherTimelineVisible, weatherTimelinePlaying, weatherTimelineTicks.length, weatherTimelineSpeed])
 
   useEffect(() => {
     if (sigwxHistoryIndex >= sigwxHistoryEntries.length) {
@@ -2553,8 +2611,8 @@ function MapView({
   }
 
   function isMetLayerDisabled(id) {
-    if (id === 'radar') return !radarFrame
-    if (id === 'satellite') return !satFrame
+    if (id === 'radar') return radarFrames.length === 0
+    if (id === 'satellite') return satelliteFrames.length === 0
     return false
   }
 
@@ -2600,7 +2658,6 @@ function MapView({
 
   const sigwxIssueLabel = formatSigwxStamp(selectedSigwxEntry?.fetched_at)
   const sigwxValidLabel = formatSigwxStamp(selectedSigwxEntry?.tmfc)
-
   function buildIfrSequenceTokens(result) {
     const seq = result?.displaySequence ?? []
     const airwayIds = new Set(result?.routeIds ?? [])
@@ -2687,7 +2744,33 @@ function MapView({
         historyIndex={sigwxHistoryIndex}
         issueLabel={sigwxIssueLabel}
         validLabel={sigwxValidLabel}
+        isElevated={weatherTimelineVisible}
         onHistoryIndexChange={setSigwxHistoryIndex}
+      />
+
+      <WeatherTimelineBar
+        isVisible={weatherTimelineVisible}
+        isPlaying={weatherTimelinePlaying}
+        selectedIndex={effectiveWeatherTimelineIndex}
+        tickCount={weatherTimelineTicks.length}
+        selectedTimeMs={selectedWeatherTimeMs}
+        playbackSpeed={weatherTimelineSpeed}
+        onPlayPause={() => setWeatherTimelinePlaying((prev) => !prev)}
+        onIndexChange={(value) => {
+          setWeatherTimelinePlaying(false)
+          setWeatherTimelineIndex(value)
+        }}
+        onPlaybackSpeedChange={setWeatherTimelineSpeed}
+      />
+
+      <AdsbTimestamp
+        isVisible={metVisibility.adsb && !weatherTimelineVisible}
+        updatedAt={adsbData?.updated_at}
+      />
+      <AdsbTimestamp
+        isVisible={metVisibility.adsb && weatherTimelineVisible}
+        updatedAt={adsbData?.updated_at}
+        compact
       />
 
       <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />

@@ -1,3 +1,5 @@
+import { X } from 'lucide-react'
+
 function AdvisoryBadges({
   badgeItems,
   openPanel,
@@ -31,7 +33,9 @@ function AdvisoryBadges({
             <div className="advisory-detail-title">
               {openPanel === 'sigwxLow' ? 'SIGWX_LOW' : openPanel === 'sigmet' ? 'SIGMET' : 'AIRMET'}
             </div>
-            <button type="button" className="advisory-detail-close" onClick={onClosePanel}>×</button>
+            <button type="button" className="advisory-detail-close" onClick={onClosePanel} aria-label="Close advisory detail">
+              <X size={16} />
+            </button>
           </div>
           <div className="advisory-detail-list">
             {panelItems.length === 0 && <div className="advisory-detail-empty">No active items</div>}
@@ -51,7 +55,10 @@ function AdvisoryBadges({
                 <label key={item.mapKey} className="advisory-detail-item">
                   <input type="checkbox" checked={visible} onChange={() => onToggleVisibility('sigmet', item.mapKey)} />
                   <span className="advisory-detail-line advisory-detail-line--sigmet" />
-                  <span className="advisory-detail-text">{item.panelLabel}</span>
+                  <span className="advisory-detail-text">
+                    {item.panelLabel}
+                    {item.validLabel && <span className="advisory-detail-time">{item.validLabel}</span>}
+                  </span>
                 </label>
               )
             })}
@@ -61,7 +68,10 @@ function AdvisoryBadges({
                 <label key={item.mapKey} className="advisory-detail-item">
                   <input type="checkbox" checked={visible} onChange={() => onToggleVisibility('airmet', item.mapKey)} />
                   <span className="advisory-detail-line advisory-detail-line--airmet" />
-                  <span className="advisory-detail-text">{item.panelLabel}</span>
+                  <span className="advisory-detail-text">
+                    {item.panelLabel}
+                    {item.validLabel && <span className="advisory-detail-time">{item.validLabel}</span>}
+                  </span>
                 </label>
               )
             })}

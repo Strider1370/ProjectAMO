@@ -5,12 +5,13 @@ function SigwxHistoryBar({
   historyIndex,
   issueLabel,
   validLabel,
+  isElevated = false,
   onHistoryIndexChange,
 }) {
   if (!isVisible || !selectedEntry) return null
 
   return (
-    <div className="sigwx-history-bar" aria-label="SIGWX history controls">
+    <div className={`sigwx-history-bar${isElevated ? ' sigwx-history-bar--elevated' : ''}`} aria-label="SIGWX history controls">
       <button
         type="button"
         className="sigwx-history-button"

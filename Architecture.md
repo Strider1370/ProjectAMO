@@ -65,6 +65,8 @@ ProjectAMO/
 - `frontend/src/features/aviation-layers/addAdsbLayer.js` -> ADS-B source/layer/hover wiring.
 - `frontend/src/features/aviation-layers/AviationLayerPanel.jsx` -> aviation and ADS-B layer toggle panel.
 - `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx` -> MET overlay toggle panel.
+- `frontend/src/features/weather-overlays/WeatherTimelineBar.jsx` -> shared bottom playback timeline for radar, satellite, and lightning overlay frames.
+- `frontend/src/features/weather-overlays/AdsbTimestamp.jsx` -> ADS-B reference-time display pill.
 - `frontend/src/features/weather-overlays/WeatherLegends.jsx` -> radar/satellite/weather legend UI.
 - `frontend/src/features/weather-overlays/SigwxLegendDialog.jsx` -> SIGWX legend dialog.
 - `frontend/src/features/weather-overlays/SigwxHistoryBar.jsx` -> SIGWX history controls.
