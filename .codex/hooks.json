@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$(git rev-parse --show-toplevel)/.codex/hooks/code_review_graph.py\" session-start",
+            "command": "python -c \"import pathlib, runpy, subprocess, sys; root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True, encoding='utf-8', errors='replace').strip(); script = str(pathlib.Path(root) / '.codex/hooks/code_review_graph.py'); sys.argv = [script, 'session-start']; runpy.run_path(script, run_name='__main__')\"",
             "timeout": 10,
             "statusMessage": "Checking Code Review Graph"
           }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$(git rev-parse --show-toplevel)/.codex/hooks/code_review_graph.py\" update",
+            "command": "python -c \"import pathlib, runpy, subprocess, sys; root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True, encoding='utf-8', errors='replace').strip(); script = str(pathlib.Path(root) / '.codex/hooks/code_review_graph.py'); sys.argv = [script, 'update']; runpy.run_path(script, run_name='__main__')\"",
             "timeout": 30,
             "statusMessage": "Updating Code Review Graph"
           }
@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$(git rev-parse --show-toplevel)/.codex/hooks/code_review_graph.py\" permission-request",
+            "command": "python -c \"import pathlib, runpy, subprocess, sys; root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True, encoding='utf-8', errors='replace').strip(); script = str(pathlib.Path(root) / '.codex/hooks/code_review_graph.py'); sys.argv = [script, 'permission-request']; runpy.run_path(script, run_name='__main__')\"",
             "timeout": 10,
             "statusMessage": "Checking Code Review Graph approval"
           }

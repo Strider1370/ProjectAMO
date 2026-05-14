@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
+import traceback
 from pathlib import Path
 
 
@@ -127,11 +128,6 @@ def update(payload: dict) -> int:
         return 0
 
     result = _run_crg(["update", "--skip-flows"], root, timeout=30)
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip()
-        if detail:
-            detail = detail[:500]
-            _system_message(f"[code-review-graph] update skipped or failed: {detail}")
     return 0
 
 
@@ -166,12 +162,20 @@ def main() -> int:
     action = sys.argv[1] if len(sys.argv) > 1 else "update"
     payload = _read_hook_input()
 
-    if action == "session-start":
-        return session_start(payload)
-    if action == "update":
-        return update(payload)
-    if action == "permission-request":
-        return permission_request(payload)
+    try:
+        if action == "session-start":
+            return session_start(payload)
+        if action == "update":
+            return update(payload)
+        if action == "permission-request":
+            return permission_request(payload)
+    except Exception:
+        if action == "update":
+            return 0
+        detail = traceback.format_exc(limit=3).strip()
+        if detail:
+            _system_message(f"[code-review-graph] hook skipped after error: {detail[:500]}")
+        return 0
 
     return 0
 
