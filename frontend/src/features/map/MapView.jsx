@@ -6,8 +6,6 @@ import { addAviationWfsLayers } from '../aviation-layers/addAviationWfsLayers.js
 import { AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
 import {
   ADVISORY_LAYER_DEFS,
-  advisoryItemsToFeatureCollection,
-  advisoryItemsToLabelFeatureCollection,
 } from '../weather-overlays/lib/advisoryLayers.js'
 import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavpoints, loadRouteDirectionMetadata } from '../route-briefing/lib/routePlanner.js'
 import { getProcedures, KNOWN_AIRPORTS } from '../route-briefing/lib/procedureData.js'
@@ -17,7 +15,7 @@ import { fetchSigwxCloudMeta, fetchSigwxFrontMeta } from '../../api/weatherApi.j
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../aviation-layers/addAdsbLayer.js'
 import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
 import VerticalProfileChart from '../route-briefing/VerticalProfileChart.jsx'
-import { SIGWX_FILTER_OPTIONS, sigwxLowToMapboxData } from '../weather-overlays/lib/sigwxData.js'
+import { SIGWX_FILTER_OPTIONS } from '../weather-overlays/lib/sigwxData.js'
 import AdvisoryBadges from '../weather-overlays/AdvisoryBadges.jsx'
 import AdsbTimestamp from '../weather-overlays/AdsbTimestamp.jsx'
 import SigwxHistoryBar from '../weather-overlays/SigwxHistoryBar.jsx'
@@ -26,9 +24,7 @@ import WeatherTimelineBar from '../weather-overlays/WeatherTimelineBar.jsx'
 import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
 import {
-  LIGHTNING_AGE_BANDS,
   LIGHTNING_BLINK_INTERVAL_MS,
-  createLightningGeoJSON,
 } from '../weather-overlays/lib/lightningLayers.js'
 import {
   MET_LAYERS,
@@ -39,11 +35,11 @@ import {
   syncRasterAndSigwxLayers,
 } from '../weather-overlays/lib/weatherOverlayLayers.js'
 import {
-  buildTimelineTicks,
+  buildWeatherOverlayModel,
+  formatReferenceTimeLabel,
+} from '../weather-overlays/lib/weatherOverlayModel.js'
+import {
   getPlaybackDelayMs,
-  normalizeFrame,
-  normalizeFrames,
-  pickNearestPreviousFrame,
 } from '../weather-overlays/lib/weatherTimeline.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import { setLayerVisibility } from './lib/mapLayerUtils.js'
@@ -185,73 +181,6 @@ function applyRoadVisibility(map, show) {
   map.setConfigProperty('basemap', 'colorRoads', show ? VISIBLE_ROAD_COLORS.roads : HIDDEN_ROAD_COLOR)
   map.setConfigProperty('basemap', 'colorTrunks', show ? VISIBLE_ROAD_COLORS.trunks : HIDDEN_ROAD_COLOR)
   map.setConfigProperty('basemap', 'colorMotorways', show ? VISIBLE_ROAD_COLORS.motorways : HIDDEN_ROAD_COLOR)
-}
-
-function parseFrameTmToMs(tm) {
-  if (!tm || !/^\d{12}$/.test(String(tm))) return null
-  const raw = String(tm)
-  const date = new Date(Date.UTC(
-    Number(raw.slice(0, 4)),
-    Number(raw.slice(4, 6)) - 1,
-    Number(raw.slice(6, 8)),
-    Number(raw.slice(8, 10)) - 9,
-    Number(raw.slice(10, 12)),
-    0,
-    0,
-  ))
-  const ms = date.getTime()
-  return Number.isFinite(ms) ? ms : null
-}
-
-function formatReferenceTimeLabel(timeMs) {
-  if (!Number.isFinite(timeMs)) return '--:--'
-  const kst = new Date(timeMs + 9 * 60 * 60 * 1000)
-  const hours = String(kst.getUTCHours()).padStart(2, '0')
-  const minutes = String(kst.getUTCMinutes()).padStart(2, '0')
-  return `${hours}:${minutes}`
-}
-
-function parseSigwxTmfcToMs(tmfc) {
-  if (!tmfc || !/^\d{10}$/.test(String(tmfc))) return null
-  const raw = String(tmfc)
-  const date = new Date(Date.UTC(
-    Number(raw.slice(0, 4)),
-    Number(raw.slice(4, 6)) - 1,
-    Number(raw.slice(6, 8)),
-    Number(raw.slice(8, 10)) - 9,
-    0,
-    0,
-    0,
-  ))
-  const ms = date.getTime()
-  return Number.isFinite(ms) ? ms : null
-}
-
-function formatSigwxStamp(value) {
-  const timeMs = value?.includes?.('T')
-    ? Date.parse(value)
-    : parseSigwxTmfcToMs(value)
-  if (!Number.isFinite(timeMs)) return '-'
-  const kst = new Date(timeMs + 9 * 60 * 60 * 1000)
-  const month = String(kst.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(kst.getUTCDate()).padStart(2, '0')
-  const hours = String(kst.getUTCHours()).padStart(2, '0')
-  const minutes = String(kst.getUTCMinutes()).padStart(2, '0')
-  return `${month}/${day} ${hours}:${minutes} KST`
-}
-
-function formatAdvisoryPanelLabel(item, kind) {
-  const base = kind === 'sigmet' ? 'SIGMET' : 'AIRMET'
-  const sequence = item?.sequence_number ? ` ${item.sequence_number}` : ''
-  const phenomenon = item?.phenomenon_code || item?.phenomenon_label || ''
-  return `${base}${sequence}${phenomenon ? ` ${phenomenon}` : ''}`
-}
-
-function formatAdvisoryValidLabel(item) {
-  const start = Date.parse(item?.valid_from)
-  const end = Date.parse(item?.valid_to)
-  if (!Number.isFinite(start) || !Number.isFinite(end)) return null
-  return `${formatSigwxStamp(new Date(start).toISOString())} ~ ${formatSigwxStamp(new Date(end).toISOString())}`
 }
 
 // ???? Initial state factories ??????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -929,87 +858,64 @@ function MapView({
   }, [isFirInMode, isFirExitMode, routeForm.entryFix, routeForm.exitFix, navpointsById, isStyleReady, routeResult, selectedSid, selectedStar, selectedIap])
 
   const airportGeoJSON = useMemo(() => createAirportGeoJSON(airports), [airports])
-  const radarFrames = useMemo(() => normalizeFrames(echoMeta?.frames?.length ? echoMeta.frames : [echoMeta?.nationwide]), [echoMeta])
-  const satelliteFrames = useMemo(() => normalizeFrames(satMeta?.frames?.length ? satMeta.frames : [satMeta?.latest]), [satMeta])
-  const lightningFrames = useMemo(() => {
-    const frame = normalizeFrame({ tm: lightningData?.query?.tm })
-    return frame ? [frame] : []
-  }, [lightningData?.query?.tm])
-  const weatherTimelineTicks = useMemo(() => buildTimelineTicks([
-    metVisibility.radar ? radarFrames : [],
-    metVisibility.satellite ? satelliteFrames : [],
-    metVisibility.lightning ? lightningFrames : [],
-  ]), [metVisibility.radar, metVisibility.satellite, metVisibility.lightning, radarFrames, satelliteFrames, lightningFrames])
-  const effectiveWeatherTimelineIndex = weatherTimelineTicks.length > 0
-    ? weatherTimelineIndex >= 0
-      ? Math.min(weatherTimelineIndex, weatherTimelineTicks.length - 1)
-      : weatherTimelineTicks.length - 1
-    : 0
-  const selectedWeatherTimeMs = weatherTimelineTicks[effectiveWeatherTimelineIndex] ?? null
-  const weatherTimelineVisible = (metVisibility.radar || metVisibility.satellite || metVisibility.lightning) && weatherTimelineTicks.length > 0
-  const radarFrame = useMemo(() => pickNearestPreviousFrame(radarFrames, selectedWeatherTimeMs), [radarFrames, selectedWeatherTimeMs])
-  const satFrame = useMemo(() => pickNearestPreviousFrame(satelliteFrames, selectedWeatherTimeMs), [satelliteFrames, selectedWeatherTimeMs])
-  const lightningGeoJSON = useMemo(
-    () => createLightningGeoJSON(lightningData, lightningReferenceTimeMs),
-    [lightningData, lightningReferenceTimeMs],
-  )
   const adsbGeoJSON = useMemo(() => createAdsbGeoJSON(adsbData), [adsbData])
-  const sigmetItems = useMemo(() => (
-    (sigmetData?.items || []).map((item, index) => ({
-      ...item,
-      mapKey: item.id || `sigmet-${index}`,
-      panelLabel: formatAdvisoryPanelLabel(item, 'sigmet'),
-      validLabel: formatAdvisoryValidLabel(item),
-    }))
-  ), [sigmetData])
-  const airmetItems = useMemo(() => (
-    (airmetData?.items || []).map((item, index) => ({
-      ...item,
-      mapKey: item.id || `airmet-${index}`,
-      panelLabel: formatAdvisoryPanelLabel(item, 'airmet'),
-      validLabel: formatAdvisoryValidLabel(item),
-    }))
-  ), [airmetData])
-  const visibleSigmetPayload = useMemo(() => ({
-    ...sigmetData,
-    items: sigmetItems.filter((item) => !hiddenAdvisoryKeys.sigmet.includes(item.mapKey)),
-  }), [sigmetData, sigmetItems, hiddenAdvisoryKeys.sigmet])
-  const visibleAirmetPayload = useMemo(() => ({
-    ...airmetData,
-    items: airmetItems.filter((item) => !hiddenAdvisoryKeys.airmet.includes(item.mapKey)),
-  }), [airmetData, airmetItems, hiddenAdvisoryKeys.airmet])
-  const sigmetFeatures = useMemo(() => advisoryItemsToFeatureCollection(visibleSigmetPayload, 'sigmet'), [visibleSigmetPayload])
-  const sigmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(visibleSigmetPayload, 'sigmet'), [visibleSigmetPayload])
-  const airmetFeatures = useMemo(() => advisoryItemsToFeatureCollection(visibleAirmetPayload, 'airmet'), [visibleAirmetPayload])
-  const airmetLabels = useMemo(() => advisoryItemsToLabelFeatureCollection(visibleAirmetPayload, 'airmet'), [visibleAirmetPayload])
-  const sigwxHistoryEntries = useMemo(() => {
-    const history = Array.isArray(sigwxLowHistoryData) ? sigwxLowHistoryData : []
-    if (history.length > 0) return history
-    return sigwxLowData ? [sigwxLowData] : []
-  }, [sigwxLowHistoryData, sigwxLowData])
-  const selectedSigwxEntry = sigwxHistoryEntries[sigwxHistoryIndex] || sigwxHistoryEntries[0] || sigwxLowData || null
-  const sigwxLowMapData = useMemo(() => sigwxLowToMapboxData(selectedSigwxEntry, {
-    hiddenGroupKeys: hiddenAdvisoryKeys.sigwxLow,
-    filters: sigwxFilter,
-  }), [selectedSigwxEntry, hiddenAdvisoryKeys.sigwxLow, sigwxFilter])
-  const sigwxGroups = sigwxLowMapData.groups || []
-  const visibleSigwxGroups = useMemo(
-    () => sigwxGroups.filter((group) => !group.hidden && group.enabledByFilter),
-    [sigwxGroups],
-  )
-  const showVisibleSigwxFrontOverlay = useMemo(
-    () => visibleSigwxGroups.some((group) => group.overlayRole === 'front'),
-    [visibleSigwxGroups],
-  )
-  const showVisibleSigwxCloudOverlay = useMemo(
-    () => visibleSigwxGroups.some((group) => group.overlayRole === 'cloud'),
-    [visibleSigwxGroups],
-  )
-  const advisoryBadgeItems = useMemo(() => ([
-    metVisibility.sigwx ? { key: 'sigwxLow', label: 'SIGWX_LOW', count: sigwxGroups.length, tone: 'sigwx' } : null,
-    metVisibility.sigmet ? { key: 'sigmet', label: 'SIGMET', count: sigmetItems.length, tone: 'sigmet' } : null,
-    metVisibility.airmet ? { key: 'airmet', label: 'AIRMET', count: airmetItems.length, tone: 'airmet' } : null,
-  ].filter(Boolean)), [metVisibility.sigwx, metVisibility.sigmet, metVisibility.airmet, sigwxGroups.length, sigmetItems.length, airmetItems.length])
+  const weatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
+    echoMeta,
+    satMeta,
+    lightningData,
+    sigwxLowData,
+    sigwxLowHistoryData,
+    sigmetData,
+    airmetData,
+    visibility: metVisibility,
+    weatherTimelineIndex,
+    sigwxHistoryIndex,
+    sigwxFilter,
+    hiddenAdvisoryKeys,
+    selectedSigwxFrontMeta,
+    selectedSigwxCloudMeta,
+    lightningReferenceTimeMs,
+  }), [
+    echoMeta,
+    satMeta,
+    lightningData,
+    sigwxLowData,
+    sigwxLowHistoryData,
+    sigmetData,
+    airmetData,
+    metVisibility,
+    weatherTimelineIndex,
+    sigwxHistoryIndex,
+    sigwxFilter,
+    hiddenAdvisoryKeys,
+    selectedSigwxFrontMeta,
+    selectedSigwxCloudMeta,
+    lightningReferenceTimeMs,
+  ])
+  const {
+    radarFrames,
+    satelliteFrames,
+    weatherTimelineTicks,
+    effectiveWeatherTimelineIndex,
+    selectedWeatherTimeMs,
+    weatherTimelineVisible,
+    sigwxHistoryEntries,
+    selectedSigwxEntry,
+    sigwxGroups,
+    sigmetItems,
+    airmetItems,
+    advisoryBadgeItems,
+    sigmetCount,
+    airmetCount,
+    sigwxCount,
+    lightningCount,
+    radarLegendVisible,
+    lightningLegendVisible,
+    lightningLegendEntries,
+    radarReferenceTimeMs,
+    sigwxIssueLabel,
+    sigwxValidLabel,
+  } = weatherOverlayModel
   const advisoryPanelItems = useMemo(() => {
     if (openAdvisoryPanel === 'sigwxLow') return sigwxGroups
     if (openAdvisoryPanel === 'sigmet') return sigmetItems
@@ -1091,75 +997,58 @@ function MapView({
     if (openAdvisoryPanel === 'sigmet' && !metVisibility.sigmet) setOpenAdvisoryPanel(null)
     if (openAdvisoryPanel === 'airmet' && !metVisibility.airmet) setOpenAdvisoryPanel(null)
   }, [openAdvisoryPanel, metVisibility.sigwx, metVisibility.sigmet, metVisibility.airmet])
-
-  const sigmetCount = sigmetFeatures.features.length
-  const airmetCount = airmetFeatures.features.length
-  const sigwxCount = sigwxGroups.length
-  const lightningCount = lightningGeoJSON.features.length
-  const radarLegendVisible = metVisibility.radar && !!radarFrame
-  const lightningLegendVisible = metVisibility.lightning
-  const radarReferenceTimeMs = useMemo(
-    () => parseFrameTmToMs(radarFrame?.tm) ?? Date.now(),
-    [radarFrame?.tm],
-  )
-  const lightningLegendEntries = useMemo(() => (
-    LIGHTNING_AGE_BANDS.map((band) => ({
-      ...band,
-      label: formatReferenceTimeLabel(lightningReferenceTimeMs - band.max * 60 * 1000),
-    }))
-  ), [lightningReferenceTimeMs])
   const rasterAndSigwxModel = useMemo(() => ({
-    satelliteFrame: satFrame,
-    radarFrame,
-    selectedSigwxFrontMeta,
-    selectedSigwxCloudMeta,
-    sigwxLowMapData,
+    satelliteFrame: weatherOverlayModel.satelliteFrame,
+    radarFrame: weatherOverlayModel.radarFrame,
+    selectedSigwxFrontMeta: weatherOverlayModel.selectedSigwxFrontMeta,
+    selectedSigwxCloudMeta: weatherOverlayModel.selectedSigwxCloudMeta,
+    sigwxLowMapData: weatherOverlayModel.sigwxLowMapData,
     visibility: {
-      satellite: metVisibility.satellite,
-      radar: metVisibility.radar,
-      sigwx: metVisibility.sigwx,
+      satellite: weatherOverlayModel.visibility.satellite,
+      radar: weatherOverlayModel.visibility.radar,
+      sigwx: weatherOverlayModel.visibility.sigwx,
     },
-    showVisibleSigwxFrontOverlay,
-    showVisibleSigwxCloudOverlay,
+    showVisibleSigwxFrontOverlay: weatherOverlayModel.showVisibleSigwxFrontOverlay,
+    showVisibleSigwxCloudOverlay: weatherOverlayModel.showVisibleSigwxCloudOverlay,
   }), [
-    satFrame,
-    radarFrame,
-    selectedSigwxFrontMeta,
-    selectedSigwxCloudMeta,
-    sigwxLowMapData,
-    metVisibility.satellite,
-    metVisibility.radar,
-    metVisibility.sigwx,
-    showVisibleSigwxFrontOverlay,
-    showVisibleSigwxCloudOverlay,
+    weatherOverlayModel.satelliteFrame,
+    weatherOverlayModel.radarFrame,
+    weatherOverlayModel.selectedSigwxFrontMeta,
+    weatherOverlayModel.selectedSigwxCloudMeta,
+    weatherOverlayModel.sigwxLowMapData,
+    weatherOverlayModel.visibility.satellite,
+    weatherOverlayModel.visibility.radar,
+    weatherOverlayModel.visibility.sigwx,
+    weatherOverlayModel.showVisibleSigwxFrontOverlay,
+    weatherOverlayModel.showVisibleSigwxCloudOverlay,
   ])
   const advisoryLayerModel = useMemo(() => ({
     visibility: {
-      sigmet: metVisibility.sigmet,
-      airmet: metVisibility.airmet,
+      sigmet: weatherOverlayModel.visibility.sigmet,
+      airmet: weatherOverlayModel.visibility.airmet,
     },
-    sigmetFeatures,
-    sigmetLabels,
-    airmetFeatures,
-    airmetLabels,
+    sigmetFeatures: weatherOverlayModel.sigmetFeatures,
+    sigmetLabels: weatherOverlayModel.sigmetLabels,
+    airmetFeatures: weatherOverlayModel.airmetFeatures,
+    airmetLabels: weatherOverlayModel.airmetLabels,
   }), [
-    metVisibility.sigmet,
-    metVisibility.airmet,
-    sigmetFeatures,
-    sigmetLabels,
-    airmetFeatures,
-    airmetLabels,
+    weatherOverlayModel.visibility.sigmet,
+    weatherOverlayModel.visibility.airmet,
+    weatherOverlayModel.sigmetFeatures,
+    weatherOverlayModel.sigmetLabels,
+    weatherOverlayModel.airmetFeatures,
+    weatherOverlayModel.airmetLabels,
   ])
   const lightningLayerModel = useMemo(() => ({
     visibility: {
-      lightning: metVisibility.lightning,
+      lightning: weatherOverlayModel.visibility.lightning,
     },
-    lightningGeoJSON,
+    lightningGeoJSON: weatherOverlayModel.lightningGeoJSON,
     blinkLightning,
     lightningBlinkOff,
   }), [
-    metVisibility.lightning,
-    lightningGeoJSON,
+    weatherOverlayModel.visibility.lightning,
+    weatherOverlayModel.lightningGeoJSON,
     blinkLightning,
     lightningBlinkOff,
   ])
@@ -1726,8 +1615,6 @@ function MapView({
     })
   }
 
-  const sigwxIssueLabel = formatSigwxStamp(selectedSigwxEntry?.fetched_at)
-  const sigwxValidLabel = formatSigwxStamp(selectedSigwxEntry?.tmfc)
   function buildIfrSequenceTokens(result) {
     const seq = result?.displaySequence ?? []
     const airwayIds = new Set(result?.routeIds ?? [])
