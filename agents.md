@@ -82,9 +82,17 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **Use graph context for broad changes, not for trivial edits.**
 
+- Codex hooks are configured in `.codex/hooks.json` to check graph status on session start and refresh the graph after edits or shell activity when `code-review-graph` is installed.
+- The same hook auto-allows only safe direct `code-review-graph status`, `update`, `update --skip-flows`, and `detect-changes` shell commands so subagents can use graph context without repeated approval prompts.
 - For non-trivial refactors, reviews, dependency changes, or impact analysis, check `code-review-graph` before reading broad parts of the codebase.
 - Prefer graph impact queries to discover related files, then inspect only the relevant source files.
 - Do not treat graph results as a replacement for build, runtime, or browser verification.
+- On a new computer, install and initialize the local graph before relying on hooks:
+```
+python -m pip install code-review-graph
+code-review-graph build
+code-review-graph status
+```
 - If MCP tools are unavailable, use CLI fallback:
 ```
 code-review-graph update
