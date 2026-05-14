@@ -4,6 +4,8 @@ import sigwxLowParser from '../parsers/sigwx-low-parser.js'
 import config from '../config.js'
 import { renderSigwxFrontOverlay } from '../parsers/sigwx-front-overlay.js'
 import { renderSigwxCloudOverlay } from '../parsers/sigwx-cloud-overlay.js'
+import { buildSigwxLowPhenomena } from '../sigwx-low/sigwx-low-phenomena.js'
+import { buildSigwxSpecialLineFeatures } from '../sigwx-low/sigwx-low-special-lines.js'
 
 function formatTmfc(date) {
   const y = date.getUTCFullYear();
@@ -133,6 +135,8 @@ async function process() {
     },
     items: parsed.items,
   };
+  result.phenomena = buildSigwxLowPhenomena(result);
+  result.specialLineFeatures = buildSigwxSpecialLineFeatures(result);
 
   const saveResult = store.save("sigwx_low", result);
   const sourceHash = result.content_hash || store.canonicalHash(result);

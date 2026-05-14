@@ -2,6 +2,10 @@
 import fs from 'fs'
 import path from 'path'
 import sharp from 'sharp'
+import {
+  offsetSamplesFromPolygon,
+  samplePolylineByDistance,
+} from '../sigwx-low/sigwx-low-chart-geometry.js'
 
 const DEG2RAD = Math.PI / 180;
 const OUTPUT_WIDTH = 1400;
@@ -204,7 +208,14 @@ async function renderSigwxCloudOverlay(sigwxLow, dataRoot, canonicalHash) {
     const pathD = pathFromPoints(closedPoints);
     if (!pathD) continue;
     svgParts.push(`<path d="${escapeXml(pathD)}" fill="none" stroke="${item.color}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.3" />`);
-    const samples = applyOutwardOffset(samplePolyline(closedPoints), item.smoothedPoints);
+    const samples = offsetSamplesFromPolygon(
+      samplePolylineByDistance(closedPoints, {
+        offset: SAMPLE_OFFSET,
+        repeat: SAMPLE_REPEAT,
+      }),
+      item.smoothedPoints,
+      SCALLOP_OFFSET,
+    );
     samples.forEach((sample) => {
       svgParts.push(`<g transform="translate(${sample.x.toFixed(2)} ${sample.y.toFixed(2)}) rotate(${sample.angle.toFixed(2)})">${createScallopSvg(item.color)}</g>`);
     });

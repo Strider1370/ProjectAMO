@@ -10,6 +10,11 @@ import warningTypes from '../shared/warning-types.js'
 import alertDefaults from '../shared/alert-defaults.js'
 import { buildVerticalProfile } from './src/briefing/vertical-profile.js'
 import { createDefaultTerrainSampler } from './src/terrain/terrain-sampler.js'
+import {
+  buildSigwxLowDebugSamplePayload,
+  listSigwxLowDebugSamples,
+  resolveSigwxLowDebugTargetPath,
+} from './src/sigwx-low/sigwx-low-debug-samples.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -230,6 +235,28 @@ app.get('/api/sigwx-front-meta', (req, res) => sendSigwxOverlayMeta(req, res, 'f
 app.get('/api/sigwx-cloud-meta', (req, res) => sendSigwxOverlayMeta(req, res, 'clouds'))
 app.get('/api/sigwx-low-fronts', (req, res) => sendSigwxOverlayMeta(req, res, 'fronts'))
 app.get('/api/sigwx-low-clouds', (req, res) => sendSigwxOverlayMeta(req, res, 'clouds'))
+
+app.get('/api/debug/sigwx-low-samples', (_req, res) => {
+  res.json(listSigwxLowDebugSamples())
+})
+
+app.get('/api/debug/sigwx-low-samples/:tmfc', (req, res) => {
+  try {
+    res.json(buildSigwxLowDebugSamplePayload(req.params.tmfc))
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message || 'debug sample unavailable' })
+  }
+})
+
+app.get('/api/debug/sigwx-low-samples/:tmfc/target.png', (req, res) => {
+  const targetPath = resolveSigwxLowDebugTargetPath(req.params.tmfc)
+  if (!targetPath) {
+    res.status(404).json({ error: 'debug sample target unavailable' })
+    return
+  }
+  res.setHeader('Cache-Control', 'no-cache')
+  res.sendFile(path.resolve(targetPath))
+})
 
 app.get('/api/stats', (_req, res) => res.json(stats.getStats()))
 app.get('/api/health', (_req, res) => res.json({ ok: true, uptime: process.uptime() }))

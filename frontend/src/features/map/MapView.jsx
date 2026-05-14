@@ -16,6 +16,7 @@ import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapDa
 import { getProcedures, KNOWN_AIRPORTS } from '../route-briefing/lib/procedureData.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
 import { fetchVerticalProfile } from '../../api/briefingApi.js'
+import { buildSigwxDebugSampleTargetUrl, fetchSigwxDebugSample, fetchSigwxDebugSamples } from '../../api/sigwxDebugApi.js'
 import { fetchSigwxCloudMeta, fetchSigwxFrontMeta } from '../../api/weatherApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../aviation-layers/addAdsbLayer.js'
 import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
@@ -40,6 +41,7 @@ import { addOrUpdateImageOverlay } from './imageOverlay.js'
 import { addOrUpdateGeoJsonSource, setLayerVisibility, setMapLayerVisible } from './lib/mapLayerUtils.js'
 import {
   AIRPORT_CIRCLE_LAYER,
+  AIRPORT_LABEL_LAYER,
   AIRPORT_SOURCE_ID,
   addAirportLayers,
   addGeoBoundaryLayers,
@@ -149,6 +151,14 @@ const SIGWX_LABEL_SOURCE = 'kma-sigwx-low-labels'
 const SIGWX_LABEL_LAYER = 'kma-sigwx-low-labels'
 const SIGWX_ICON_SOURCE = 'kma-sigwx-low-icons'
 const SIGWX_ICON_LAYER = 'kma-sigwx-low-icons'
+const SIGWX_WIND_DIAMOND_SOURCE = 'kma-sigwx-low-wind-diamonds'
+const SIGWX_WIND_DIAMOND_LAYER = 'kma-sigwx-low-wind-diamonds'
+const SIGWX_SPECIAL_LINE_SOURCE = 'kma-sigwx-low-special-lines'
+const SIGWX_SPECIAL_LINE_LAYER = 'kma-sigwx-low-special-lines'
+const SIGWX_SPECIAL_SYMBOL_SOURCE = 'kma-sigwx-low-special-symbols'
+const SIGWX_SPECIAL_SYMBOL_LAYER = 'kma-sigwx-low-special-symbols'
+const SIGWX_SPECIAL_LABEL_SOURCE = 'kma-sigwx-low-special-labels'
+const SIGWX_SPECIAL_LABEL_LAYER = 'kma-sigwx-low-special-labels'
 const SIGWX_ARROW_LABEL_SOURCE = 'kma-sigwx-low-arrow-labels'
 const SIGWX_ARROW_LABEL_LAYER = 'kma-sigwx-low-arrow-labels'
 const SIGWX_TEXT_CHIP_SOURCE = 'kma-sigwx-low-text-chips'
@@ -159,6 +169,10 @@ const SIGWX_VECTOR_LAYERS = [
   SIGWX_LINE_LAYER,
   SIGWX_LABEL_LAYER,
   SIGWX_ICON_LAYER,
+  SIGWX_WIND_DIAMOND_LAYER,
+  SIGWX_SPECIAL_LINE_LAYER,
+  SIGWX_SPECIAL_SYMBOL_LAYER,
+  SIGWX_SPECIAL_LABEL_LAYER,
   SIGWX_ARROW_LABEL_LAYER,
   SIGWX_TEXT_CHIP_LAYER,
 ]
@@ -276,36 +290,25 @@ function ensureMapImage(map, { id, url }) {
 }
 
 function createSigwxChipImage({ fill, stroke }) {
-  const width = 64
-  const height = 26
-  const radius = 6
+  const width = 50
+  const height = 17
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  ctx.beginPath()
-  ctx.moveTo(radius, 1)
-  ctx.lineTo(width - radius - 1, 1)
-  ctx.quadraticCurveTo(width - 1, 1, width - 1, radius)
-  ctx.lineTo(width - 1, height - radius - 1)
-  ctx.quadraticCurveTo(width - 1, height - 1, width - radius - 1, height - 1)
-  ctx.lineTo(radius, height - 1)
-  ctx.quadraticCurveTo(1, height - 1, 1, height - radius - 1)
-  ctx.lineTo(1, radius)
-  ctx.quadraticCurveTo(1, 1, radius, 1)
-  ctx.closePath()
   ctx.fillStyle = fill
-  ctx.fill()
+  ctx.fillRect(1, 1, width - 2, height - 2)
   ctx.strokeStyle = stroke
-  ctx.lineWidth = 2
-  ctx.stroke()
+  ctx.lineWidth = 1
+  ctx.strokeRect(1.5, 1.5, width - 3, height - 3)
   return ctx.getImageData(0, 0, width, height)
 }
 
 function ensureSigwxChipImages(map) {
   const images = [
+    { id: 'sigwx-chip-chart', fill: 'rgba(255,255,255,0.98)', stroke: '#111827' },
     { id: 'sigwx-chip-neutral', fill: 'rgba(255,255,255,0.96)', stroke: '#111827' },
     { id: 'sigwx-chip-green', fill: 'rgba(236, 253, 245, 0.96)', stroke: '#16a34a' },
     { id: 'sigwx-chip-blue', fill: 'rgba(239, 246, 255, 0.96)', stroke: '#2563eb' },
@@ -320,22 +323,39 @@ function ensureSigwxChipImages(map) {
   })
 }
 
+function setBasemapComparisonVisibility(map, isComparisonMode) {
+  if (!isComparisonMode) {
+    applyRoadVisibility(map, map.getZoom() >= ROAD_VISIBILITY_ZOOM)
+    return
+  }
+
+  applyRoadVisibility(map, false)
+}
+
+function applySigwxDebugCaptureMapVisibility(map, isCaptureMode, aviationVisibility) {
+  setBasemapComparisonVisibility(map, isCaptureMode)
+  AVIATION_WFS_LAYERS.forEach((layer) => setLayerVisibility(map, layer, isCaptureMode ? false : aviationVisibility[layer.id]))
+  setMapLayerVisible(map, AIRPORT_CIRCLE_LAYER, !isCaptureMode)
+  setMapLayerVisible(map, AIRPORT_LABEL_LAYER, !isCaptureMode)
+  setGeoBoundaryVisibility(map, !isCaptureMode)
+}
+
 function buildSigwxDashArrayExpression() {
   return [
     'match',
     ['get', 'lineType'],
-    '2', ['literal', [8, 6]],
-    '3', ['literal', [10, 6]],
-    '4', ['literal', [10, 4, 2, 4]],
-    '5', ['literal', [14, 8]],
-    '6', ['literal', [16, 6]],
-    '7', ['literal', [12, 4, 2, 4, 2, 4]],
-    '8', ['literal', [18, 6]],
-    '301', ['literal', [10, 6]],
-    '302', ['literal', [10, 6]],
-    '303', ['literal', [10, 6]],
-    '304', ['literal', [10, 6]],
-    '310', ['literal', [10, 6]],
+    '2', ['literal', [4, 3]],
+    '3', ['literal', [5, 3]],
+    '4', ['literal', [5, 2.5, 1.2, 2.5]],
+    '5', ['literal', [6, 3]],
+    '6', ['literal', [7, 3]],
+    '7', ['literal', [5, 2, 1.2, 2, 1.2, 2]],
+    '8', ['literal', [8, 3]],
+    '301', ['literal', [5, 3]],
+    '302', ['literal', [5, 3]],
+    '303', ['literal', [5, 3]],
+    '304', ['literal', [5, 3]],
+    '310', ['literal', [5, 3]],
     ['literal', [1, 0]],
   ]
 }
@@ -347,6 +367,10 @@ function addOrUpdateSigwxLowLayers(map, data) {
   addOrUpdateGeoJsonSource(map, SIGWX_LINE_SOURCE, data?.lines || empty)
   addOrUpdateGeoJsonSource(map, SIGWX_LABEL_SOURCE, data?.labels || empty)
   addOrUpdateGeoJsonSource(map, SIGWX_ICON_SOURCE, data?.icons || empty)
+  addOrUpdateGeoJsonSource(map, SIGWX_WIND_DIAMOND_SOURCE, data?.windDiamonds || empty)
+  addOrUpdateGeoJsonSource(map, SIGWX_SPECIAL_LINE_SOURCE, data?.specialLines || empty)
+  addOrUpdateGeoJsonSource(map, SIGWX_SPECIAL_SYMBOL_SOURCE, data?.specialLineSymbols || empty)
+  addOrUpdateGeoJsonSource(map, SIGWX_SPECIAL_LABEL_SOURCE, data?.specialLineLabels || empty)
   addOrUpdateGeoJsonSource(map, SIGWX_ARROW_LABEL_SOURCE, data?.arrowLabels || empty)
   addOrUpdateGeoJsonSource(map, SIGWX_TEXT_CHIP_SOURCE, data?.textChips || empty)
 
@@ -374,7 +398,7 @@ function addOrUpdateSigwxLowLayers(map, data) {
       paint: {
         'line-color': ['coalesce', ['get', 'colorLine'], '#7c3aed'],
         'line-opacity': 0.95,
-        'line-width': ['coalesce', ['get', 'lineWidth'], 2],
+        'line-width': ['coalesce', ['get', 'lineWidth'], 1.2],
         'line-dasharray': buildSigwxDashArrayExpression(),
       },
     })
@@ -389,7 +413,7 @@ function addOrUpdateSigwxLowLayers(map, data) {
       paint: {
         'line-color': ['coalesce', ['get', 'colorLine'], '#7c3aed'],
         'line-opacity': 0.95,
-        'line-width': ['coalesce', ['get', 'lineWidth'], 2],
+        'line-width': ['coalesce', ['get', 'lineWidth'], 1.2],
         'line-dasharray': buildSigwxDashArrayExpression(),
       },
     })
@@ -403,9 +427,9 @@ function addOrUpdateSigwxLowLayers(map, data) {
       slot: 'top',
       layout: {
         'icon-image': ['get', 'iconKey'],
-        'icon-size': ['coalesce', ['get', 'iconScale'], 0.82],
+        'icon-size': ['coalesce', ['get', 'iconScale'], 0.58],
         'icon-allow-overlap': true,
-        'icon-ignore-placement': true,
+        'icon-ignore-placement': false,
       },
     })
   }
@@ -431,6 +455,101 @@ function addOrUpdateSigwxLowLayers(map, data) {
     })
   }
 
+  if (!map.getLayer(SIGWX_WIND_DIAMOND_LAYER)) {
+    map.addLayer({
+      id: SIGWX_WIND_DIAMOND_LAYER,
+      type: 'symbol',
+      source: SIGWX_WIND_DIAMOND_SOURCE,
+      slot: 'top',
+      layout: {
+        'icon-image': 'sigwx-box-wind',
+        'icon-size': ['coalesce', ['get', 'iconScale'], 0.38],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': false,
+        'text-field': ['get', 'label'],
+        'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
+        'text-size': ['coalesce', ['get', 'textSize'], 7],
+        'text-allow-overlap': true,
+        'text-ignore-placement': false,
+      },
+      paint: {
+        'text-color': '#0000ff',
+      },
+    })
+  }
+
+  if (!map.getLayer(SIGWX_SPECIAL_LINE_LAYER)) {
+    map.addLayer({
+      id: SIGWX_SPECIAL_LINE_LAYER,
+      type: 'line',
+      source: SIGWX_SPECIAL_LINE_SOURCE,
+      slot: 'top',
+      paint: {
+        'line-color': ['coalesce', ['get', 'colorLine'], '#7c3aed'],
+        'line-opacity': 0.95,
+        'line-width': ['coalesce', ['get', 'lineWidth'], 1.1],
+      },
+    })
+  }
+
+  if (!map.getLayer(SIGWX_SPECIAL_LABEL_LAYER)) {
+    map.addLayer({
+      id: SIGWX_SPECIAL_LABEL_LAYER,
+      type: 'symbol',
+      source: SIGWX_SPECIAL_LABEL_SOURCE,
+      slot: 'top',
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
+        'text-size': 9,
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
+      },
+      paint: {
+        'text-color': '#7f1d1d',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1.5,
+      },
+    })
+  }
+
+  if (!map.getLayer(SIGWX_SPECIAL_SYMBOL_LAYER)) {
+    map.addLayer({
+      id: SIGWX_SPECIAL_SYMBOL_LAYER,
+      type: 'symbol',
+      source: SIGWX_SPECIAL_SYMBOL_SOURCE,
+      slot: 'top',
+      layout: {
+        'text-field': [
+          'match',
+          ['get', 'symbolType'],
+          'cloud-scallop', '∩',
+          'cold-front-triangle', '▲',
+          'warm-front-semicircle', '●',
+          'occluded-front-alternating', '●',
+          'stationary-front-alternating', '▲',
+          '●',
+        ],
+        'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
+        'text-size': [
+          'match',
+          ['get', 'symbolType'],
+          'cloud-scallop', ['coalesce', ['get', 'symbolSize'], 11],
+          ['coalesce', ['get', 'symbolSize'], 10],
+        ],
+        'text-rotate': ['coalesce', ['get', 'rotation'], 0],
+        'text-rotation-alignment': 'map',
+        'text-allow-overlap': true,
+        'text-ignore-placement': false,
+      },
+      paint: {
+        'text-color': ['coalesce', ['get', 'colorLine'], '#7c3aed'],
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 0.5,
+      },
+    })
+  }
+
   if (!map.getLayer(SIGWX_ARROW_LABEL_LAYER)) {
     map.addLayer({
       id: SIGWX_ARROW_LABEL_LAYER,
@@ -440,9 +559,9 @@ function addOrUpdateSigwxLowLayers(map, data) {
       layout: {
         'text-field': ['get', 'label'],
         'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
-        'text-size': 12,
-        'text-allow-overlap': true,
-        'text-ignore-placement': true,
+        'text-size': 10,
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
       },
       paint: {
         'text-color': '#111827',
@@ -465,15 +584,22 @@ function addOrUpdateSigwxLowLayers(map, data) {
           'green', 'sigwx-chip-green',
           'blue', 'sigwx-chip-blue',
           'orange', 'sigwx-chip-orange',
+          'chart', 'sigwx-chip-chart',
           'sigwx-chip-neutral',
         ],
         'icon-text-fit': 'both',
-        'icon-text-fit-padding': [5, 7, 5, 7],
+        'icon-text-fit-padding': [2, 4, 2, 4],
         'text-field': ['get', 'chipText'],
         'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
-        'text-size': 12,
-        'text-allow-overlap': true,
-        'text-ignore-placement': true,
+        'text-size': 8,
+        'text-offset': [
+          'match',
+          ['get', 'chipPlacement'],
+          'below', ['literal', [0, 1.05]],
+          ['literal', [0, 0]],
+        ],
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
       },
       paint: {
         'text-color': [
@@ -482,6 +608,7 @@ function addOrUpdateSigwxLowLayers(map, data) {
           'green', '#166534',
           'blue', '#1d4ed8',
           'orange', '#c2410c',
+          'chart', '#111827',
           '#111827',
         ],
       },
@@ -860,6 +987,7 @@ function MapView({
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const onSelectRef = useRef(onAirportSelect)
+  const isSigwxDebugCaptureModeRef = useRef(false)
   const [error, setError] = useState(null)
   const [isStyleReady, setIsStyleReady] = useState(false)
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
@@ -877,6 +1005,11 @@ function MapView({
   const [hiddenAdvisoryKeys, setHiddenAdvisoryKeys] = useState({ sigwxLow: [], sigmet: [], airmet: [] })
   const [selectedSigwxFrontMeta, setSelectedSigwxFrontMeta] = useState(sigwxFrontMeta)
   const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
+  const [sigwxDebugSamples, setSigwxDebugSamples] = useState([])
+  const [selectedSigwxDebugTmfc, setSelectedSigwxDebugTmfc] = useState('')
+  const [selectedSigwxDebugSample, setSelectedSigwxDebugSample] = useState(null)
+  const [sigwxDebugError, setSigwxDebugError] = useState('')
+  const [sigwxDebugTargetVisible, setSigwxDebugTargetVisible] = useState(false)
   const [routeForm, setRouteForm] = useState(initialRouteForm)
   const [routeResult, setRouteResult] = useState(null)
   const [routeError, setRouteError] = useState(null)
@@ -1428,10 +1561,12 @@ function MapView({
     return sigwxLowData ? [sigwxLowData] : []
   }, [sigwxLowHistoryData, sigwxLowData])
   const selectedSigwxEntry = sigwxHistoryEntries[sigwxHistoryIndex] || sigwxHistoryEntries[0] || sigwxLowData || null
-  const sigwxLowMapData = useMemo(() => sigwxLowToMapboxData(selectedSigwxEntry, {
+  const activeSigwxEntry = selectedSigwxDebugSample || selectedSigwxEntry
+  const isSigwxDebugCaptureMode = Boolean(selectedSigwxDebugSample)
+  const sigwxLowMapData = useMemo(() => sigwxLowToMapboxData(activeSigwxEntry, {
     hiddenGroupKeys: hiddenAdvisoryKeys.sigwxLow,
     filters: sigwxFilter,
-  }), [selectedSigwxEntry, hiddenAdvisoryKeys.sigwxLow, sigwxFilter])
+  }), [activeSigwxEntry, hiddenAdvisoryKeys.sigwxLow, sigwxFilter])
   const sigwxGroups = sigwxLowMapData.groups || []
   const visibleSigwxGroups = useMemo(
     () => sigwxGroups.filter((group) => !group.hidden && group.enabledByFilter),
@@ -1491,6 +1626,62 @@ function MapView({
   }, [sigwxHistoryEntries.length, sigwxHistoryIndex])
 
   useEffect(() => {
+    let cancelled = false
+    fetchSigwxDebugSamples()
+      .then((samples) => {
+        if (!cancelled) {
+          setSigwxDebugSamples(samples || [])
+          setSigwxDebugError('')
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) setSigwxDebugSamples([])
+        if (!cancelled) setSigwxDebugError(error.message || 'Debug samples unavailable')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedSigwxDebugTmfc) {
+      setSelectedSigwxDebugSample(null)
+      setSigwxDebugError('')
+      setSigwxDebugTargetVisible(false)
+      return undefined
+    }
+
+    let cancelled = false
+    setSigwxDebugError('')
+    fetchSigwxDebugSample(selectedSigwxDebugTmfc)
+      .then((sample) => {
+        if (cancelled) return
+        if (!sample) {
+          setSelectedSigwxDebugSample(null)
+          setSigwxDebugError('Sample unavailable')
+          return
+        }
+        setSelectedSigwxDebugSample(sample)
+        setSigwxDebugTargetVisible(true)
+        setMetVisibility((prev) => ({ ...prev, sigwx: true }))
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setSelectedSigwxDebugSample(null)
+        setSigwxDebugError(error.message || 'Sample unavailable')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedSigwxDebugTmfc])
+
+  useEffect(() => {
+    if (selectedSigwxDebugSample) {
+      setSelectedSigwxFrontMeta(null)
+      setSelectedSigwxCloudMeta(null)
+      return undefined
+    }
+
     const selectedTmfc = selectedSigwxEntry?.tmfc
     if (!selectedTmfc) {
       setSelectedSigwxFrontMeta(null)
@@ -1524,7 +1715,17 @@ function MapView({
     return () => {
       cancelled = true
     }
-  }, [selectedSigwxEntry?.tmfc, sigwxLowData?.tmfc, sigwxFrontMeta, sigwxCloudMeta])
+  }, [selectedSigwxDebugSample, selectedSigwxEntry?.tmfc, sigwxLowData?.tmfc, sigwxFrontMeta, sigwxCloudMeta])
+
+  useEffect(() => {
+    isSigwxDebugCaptureModeRef.current = isSigwxDebugCaptureMode
+    document.body.classList.toggle('sigwx-debug-capture-mode', isSigwxDebugCaptureMode)
+    const map = mapRef.current
+    if (map?.isStyleLoaded()) {
+      applySigwxDebugCaptureMapVisibility(map, isSigwxDebugCaptureMode, aviationVisibility)
+    }
+    return () => document.body.classList.remove('sigwx-debug-capture-mode')
+  }, [aviationVisibility, isSigwxDebugCaptureMode])
 
   useEffect(() => {
     if (openAdvisoryPanel === 'sigwxLow' && !metVisibility.sigwx) setOpenAdvisoryPanel(null)
@@ -1618,15 +1819,18 @@ function MapView({
     map.on('zoom', () => {
       if (!map.isStyleLoaded()) return
       const should = map.getZoom() >= ROAD_VISIBILITY_ZOOM
-      if (should !== roadsVisible) { roadsVisible = should; applyRoadVisibility(map, roadsVisible) }
+      if (should !== roadsVisible) {
+        roadsVisible = should
+        if (!isSigwxDebugCaptureModeRef.current) applyRoadVisibility(map, roadsVisible)
+      }
     })
 
     map.on('style.load', () => {
-      applyRoadVisibility(map, roadsVisible)
+      setBasemapComparisonVisibility(map, isSigwxDebugCaptureModeRef.current)
 
       // Aviation WFS
       addAviationWfsLayers(map, import.meta.env.VITE_VWORLD_KEY, import.meta.env.VITE_VWORLD_DOMAIN)
-      AVIATION_WFS_LAYERS.forEach((l) => setLayerVisibility(map, l, aviationVisibility[l.id]))
+      AVIATION_WFS_LAYERS.forEach((l) => setLayerVisibility(map, l, isSigwxDebugCaptureModeRef.current ? false : aviationVisibility[l.id]))
 
       // Route preview
       addRoutePreviewLayers(map)
@@ -1670,6 +1874,7 @@ function MapView({
 
       // Airport circles
       addAirportLayers(map, airportGeoJSON)
+      applySigwxDebugCaptureMapVisibility(map, isSigwxDebugCaptureModeRef.current, aviationVisibility)
 
       if (!airportHandlerBound) {
         airportHandlerBound = true
@@ -1718,8 +1923,8 @@ function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map?.isStyleLoaded()) return
-    AVIATION_WFS_LAYERS.forEach((l) => setLayerVisibility(map, l, aviationVisibility[l.id]))
-  }, [aviationVisibility])
+    applySigwxDebugCaptureMapVisibility(map, isSigwxDebugCaptureMode, aviationVisibility)
+  }, [aviationVisibility, isSigwxDebugCaptureMode])
 
   // ???? Route highlight (?롪퍔?δ빳???뚮뜆?????깅턄???띠룆踰????戮?뻣) ????????????????????????????????????????????????????
 
@@ -1846,7 +2051,11 @@ function MapView({
 
       map.setFilter(labelLayerId, filter)
     }
-  }, [airportGeoJSON, isStyleReady])
+
+    if (isSigwxDebugCaptureModeRef.current) {
+      applySigwxDebugCaptureMapVisibility(map, true, aviationVisibility)
+    }
+  }, [airportGeoJSON, aviationVisibility, isStyleReady])
 
   // ???? Sync airport selected state ??????????????????????????????????????????????????????????????????????????????????????
 
@@ -2149,7 +2358,7 @@ function MapView({
   }
 
   const sigwxIssueLabel = formatSigwxStamp(selectedSigwxEntry?.fetched_at)
-  const sigwxValidLabel = formatSigwxStamp(selectedSigwxEntry?.tmfc)
+  const sigwxValidLabel = formatSigwxStamp(activeSigwxEntry?.tmfc)
   function buildIfrSequenceTokens(result) {
     const seq = result?.displaySequence ?? []
     const airwayIds = new Set(result?.routeIds ?? [])
@@ -2194,7 +2403,7 @@ function MapView({
   // ???? Render ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
   return (
-    <div className="map-view-wrapper">
+    <div className={`map-view-wrapper${isSigwxDebugCaptureMode ? ' sigwx-debug-capture-mode' : ''}`}>
       <div ref={mapContainerRef} className="map-view" />
 
       {hoveredWpInfo && (
@@ -2209,28 +2418,32 @@ function MapView({
 
       {error && <div className="map-view-error" role="alert">{error}</div>}
 
-      <WeatherLegends
-        radarLegendVisible={radarLegendVisible}
-        lightningLegendVisible={lightningLegendVisible}
-        radarRainrateLegend={RADAR_RAINRATE_LEGEND}
-        lightningLegendEntries={lightningLegendEntries}
-        radarReferenceTimeMs={radarReferenceTimeMs}
-        lightningReferenceTimeMs={lightningReferenceTimeMs}
-        formatReferenceTimeLabel={formatReferenceTimeLabel}
-      />
+      {!isSigwxDebugCaptureMode && (
+        <WeatherLegends
+          radarLegendVisible={radarLegendVisible}
+          lightningLegendVisible={lightningLegendVisible}
+          radarRainrateLegend={RADAR_RAINRATE_LEGEND}
+          lightningLegendEntries={lightningLegendEntries}
+          radarReferenceTimeMs={radarReferenceTimeMs}
+          lightningReferenceTimeMs={lightningReferenceTimeMs}
+          formatReferenceTimeLabel={formatReferenceTimeLabel}
+        />
+      )}
 
-      <AdvisoryBadges
-        badgeItems={advisoryBadgeItems}
-        openPanel={openAdvisoryPanel}
-        panelItems={advisoryPanelItems}
-        hiddenKeys={hiddenAdvisoryKeys}
-        onTogglePanel={toggleAdvisoryPanel}
-        onClosePanel={() => setOpenAdvisoryPanel(null)}
-        onToggleVisibility={toggleAdvisoryVisibility}
-      />
+      {!isSigwxDebugCaptureMode && (
+        <AdvisoryBadges
+          badgeItems={advisoryBadgeItems}
+          openPanel={openAdvisoryPanel}
+          panelItems={advisoryPanelItems}
+          hiddenKeys={hiddenAdvisoryKeys}
+          onTogglePanel={toggleAdvisoryPanel}
+          onClosePanel={() => setOpenAdvisoryPanel(null)}
+          onToggleVisibility={toggleAdvisoryVisibility}
+        />
+      )}
 
       <SigwxHistoryBar
-        isVisible={metVisibility.sigwx}
+        isVisible={metVisibility.sigwx && !isSigwxDebugCaptureMode}
         selectedEntry={selectedSigwxEntry}
         entryCount={sigwxHistoryEntries.length}
         historyIndex={sigwxHistoryIndex}
@@ -2241,7 +2454,7 @@ function MapView({
       />
 
       <WeatherTimelineBar
-        isVisible={weatherTimelineVisible}
+        isVisible={weatherTimelineVisible && !isSigwxDebugCaptureMode}
         isPlaying={weatherTimelinePlaying}
         selectedIndex={effectiveWeatherTimelineIndex}
         tickCount={weatherTimelineTicks.length}
@@ -2256,23 +2469,38 @@ function MapView({
       />
 
       <AdsbTimestamp
-        isVisible={metVisibility.adsb && !weatherTimelineVisible}
+        isVisible={metVisibility.adsb && !weatherTimelineVisible && !isSigwxDebugCaptureMode}
         updatedAt={adsbData?.updated_at}
       />
       <AdsbTimestamp
-        isVisible={metVisibility.adsb && weatherTimelineVisible}
+        isVisible={metVisibility.adsb && weatherTimelineVisible && !isSigwxDebugCaptureMode}
         updatedAt={adsbData?.updated_at}
         compact
       />
 
-      <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />
+      {selectedSigwxDebugSample && sigwxDebugTargetVisible && !isSigwxDebugCaptureMode && (
+        <section className="sigwx-debug-target" aria-label="SIGWX target image">
+          <div className="sigwx-debug-target-header">
+            <span>{`Target ${selectedSigwxDebugSample.tmfc}`}</span>
+            <button type="button" onClick={() => setSigwxDebugTargetVisible(false)}>Close</button>
+          </div>
+          <img
+            src={selectedSigwxDebugSample.debugSample?.targetImageUrl || buildSigwxDebugSampleTargetUrl(selectedSigwxDebugSample.tmfc)}
+            alt={`SIGWX_LOW ${selectedSigwxDebugSample.tmfc} target`}
+          />
+        </section>
+      )}
 
-      <BasemapSwitcher
-        basemapId={basemapId}
-        isOpen={basemapMenuOpen}
-        onOpenChange={setBasemapMenuOpen}
-        onSwitchBasemap={switchBasemap}
-      />
+      <SigwxLegendDialog isOpen={sigwxLegendOpen && !isSigwxDebugCaptureMode} onClose={toggleSigwxLegend} />
+
+      {!isSigwxDebugCaptureMode && (
+        <BasemapSwitcher
+          basemapId={basemapId}
+          isOpen={basemapMenuOpen}
+          onOpenChange={setBasemapMenuOpen}
+          onSwitchBasemap={switchBasemap}
+        />
+      )}
 
       {/* Route check panel */}
       {activePanel === 'route-check' && (
@@ -2643,6 +2871,40 @@ function MapView({
               <div className="settings-actions">
                 <button type="button" className="dev-layer-inline-button" onClick={toggleSigwxLegend}>Legend</button>
               </div>
+              <div className="dev-layer-section-title">SIGWX Samples</div>
+              <label className="sigwx-debug-select">
+                <span>Reference sample</span>
+                <select
+                  value={selectedSigwxDebugTmfc}
+                  onChange={(event) => setSelectedSigwxDebugTmfc(event.target.value)}
+                >
+                  <option value="">Live data</option>
+                  {sigwxDebugSamples.map((sample) => (
+                    <option key={sample.tmfc} value={sample.tmfc}>
+                      {`${sample.tmfc} (${sample.itemCount})`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedSigwxDebugSample && (
+                <div className="settings-actions">
+                  <button
+                    type="button"
+                    className="dev-layer-inline-button"
+                    onClick={() => setSigwxDebugTargetVisible((prev) => !prev)}
+                  >
+                    {sigwxDebugTargetVisible ? 'Hide target' : 'Show target'}
+                  </button>
+                  <button
+                    type="button"
+                    className="dev-layer-inline-button"
+                    onClick={() => setSelectedSigwxDebugTmfc('')}
+                  >
+                    Live data
+                  </button>
+                </div>
+              )}
+              {sigwxDebugError && <div className="sigwx-group-empty">{sigwxDebugError}</div>}
               <div className="dev-layer-section-title">SIGWX Filters</div>
               <div className="dev-filter-grid">
                 {SIGWX_FILTER_OPTIONS.map((option) => (

@@ -1,0 +1,13 @@
+{
+  "tmfc": "2026051411",
+  "level": "low",
+  "imageUrl": "https://global.amo.go.kr/WEBDATA/JUN/ETC/IMG/202605/14/SIGWX_LOW_2026051411.png",
+  "targetImagePath": "target.png",
+  "parsedJsonPath": "parsed.json",
+  "sourceXmlPath": "source.xml",
+  "imageStatus": "ok",
+  "parsedStatus": "ok",
+  "xmlStatus": "ok",
+  "captureMethod": "direct-image-url",
+  "notes": "Target chart image downloaded from the KMA global AMO static image URL pattern. Source XML downloaded from the KMA SIGWX_LOW API for this tmfc and verified with the current parser."
+}

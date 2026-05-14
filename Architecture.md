@@ -31,6 +31,7 @@ ProjectAMO/
     data/                    -> local development data root; terrain source/tiles live here when DATA_PATH is unset
     src/
       briefing/               -> route-axis, planned altitude profile, and vertical profile composition
+      sigwx-low/              -> SIGWX_LOW sample, classification, phenomena, and chart geometry helpers
       terrain/                 -> terrain tile cache and DEM sampling
       parsers/                 -> upstream raw response parsers
       processors/              -> normalized data transformers
@@ -75,6 +76,7 @@ ProjectAMO/
 - `frontend/src/features/weather-overlays/AdvisoryBadges.jsx` -> SIGMET/AIRMET advisory badges.
 - `frontend/src/features/weather-overlays/lib/advisoryLayers.js` -> SIGMET/AIRMET GeoJSON and layer helpers.
 - `frontend/src/features/weather-overlays/lib/sigwxData.js` -> SIGWX_LOW GeoJSON/icon mapping helpers.
+- `frontend/src/features/weather-overlays/lib/sigwxRenderFeatures.js` -> phenomenon-based SIGWX_LOW Mapbox feature collections.
 - `frontend/src/features/route-briefing/lib/routePlanner.js` -> route graph loading and route path search.
 - `frontend/src/features/route-briefing/lib/procedureData.js` -> procedure/navpoint loading helpers.
 - `frontend/src/features/route-briefing/VerticalProfileChart.jsx` -> SVG route vertical profile chart.
@@ -101,6 +103,7 @@ ProjectAMO/
 - `backend/src/briefing/route-axis.js` -> route LineString resampling, cumulative distance, and bearing helpers.
 - `backend/src/briefing/profile-composer.js` -> route-aware planned altitude profile, markers, and segment metadata composition.
 - `backend/src/briefing/vertical-profile.js` -> vertical profile response composition.
+- `backend/src/sigwx-low/*` -> SIGWX_LOW tmfc sample URLs/storage, semantic classifier, phenomena builder, and FPV special-line feature generation.
 - `backend/src/terrain/terrain-cache.js` -> terrain tile metadata lookup and lazy tile cache.
 - `backend/src/terrain/terrain-sampler.js` -> terrain sampling along route-axis samples.
 - `backend/src/index.js` -> scheduled weather collection jobs and per-type locks.
@@ -110,6 +113,7 @@ ProjectAMO/
 - `backend/src/processors/*` -> per-type normalized data processors.
 - `backend/collect.js` -> manual one-shot collector.
 - `scripts/prepare-terrain-tiles.js` -> converts decompressed Korea 3-second DEM into 1-degree terrain tiles.
+- `scripts/capture-sigwx-pass2.mjs` -> Playwright CLI helper for SIGWX_LOW pass2 debug-sample capture artifacts.
 
 ## Reference Structure
 

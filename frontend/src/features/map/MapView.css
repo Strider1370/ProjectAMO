@@ -9,6 +9,32 @@
   height: 100%;
 }
 
+body.sigwx-debug-capture-mode .sidebar,
+body.sigwx-debug-capture-mode .utc-bar,
+.map-view-wrapper.sigwx-debug-capture-mode .dev-layer-panel,
+.map-view-wrapper.sigwx-debug-capture-mode .layer-drawer,
+.map-view-wrapper.sigwx-debug-capture-mode .settings-panel,
+.map-view-wrapper.sigwx-debug-capture-mode .sigwx-debug-target,
+.map-view-wrapper.sigwx-debug-capture-mode .advisory-badge-bar,
+.map-view-wrapper.sigwx-debug-capture-mode .advisory-detail-panel,
+.map-view-wrapper.sigwx-debug-capture-mode .map-right-legends,
+.map-view-wrapper.sigwx-debug-capture-mode .adsb-timestamp,
+.map-view-wrapper.sigwx-debug-capture-mode .weather-timeline-bar,
+.map-view-wrapper.sigwx-debug-capture-mode .sigwx-history-bar,
+.map-view-wrapper.sigwx-debug-capture-mode .basemap-switcher,
+.map-view-wrapper.sigwx-debug-capture-mode .mapboxgl-control-container,
+.map-view-wrapper.sigwx-debug-capture-mode .mapboxgl-ctrl,
+.map-view-wrapper.sigwx-debug-capture-mode .mapboxgl-ctrl-logo,
+.map-view-wrapper.sigwx-debug-capture-mode .mapboxgl-ctrl-attrib {
+  display: none !important;
+}
+
+body.sigwx-debug-capture-mode .map-shell {
+  width: 100vw;
+  height: 100vh;
+  margin-left: 0;
+}
+
 .map-view-error {
   position: absolute;
   top: 16px;
@@ -115,6 +141,71 @@
   width: 13px;
   height: 13px;
   margin: 0;
+}
+
+.sigwx-debug-select {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sigwx-debug-select select {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+.sigwx-debug-target {
+  position: absolute;
+  right: 12px;
+  top: 82px;
+  z-index: 6;
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100% - 104px);
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+}
+
+.sigwx-debug-target-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sigwx-debug-target-header button {
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sigwx-debug-target img {
+  display: block;
+  width: 100%;
+  max-height: calc(100vh - 150px);
+  object-fit: contain;
+  background: #ffffff;
 }
 
 .map-view-wrapper .layer-drawer {
@@ -1807,11 +1898,13 @@
 }
 
 .settings-panel {
-  width: 196px;
+  width: 264px;
 }
 
 .settings-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   justify-content: flex-end;
   margin: 6px 0 2px;
 }

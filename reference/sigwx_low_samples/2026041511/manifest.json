@@ -1,0 +1,14 @@
+{
+  "tmfc": "2026041511",
+  "level": "low",
+  "imageUrl": "https://global.amo.go.kr/WEBDATA/JUN/ETC/IMG/202604/15/SIGWX_LOW_2026041511.png",
+  "targetImagePath": "target.png",
+  "parsedJsonPath": "parsed.json",
+  "sourceXmlPath": "source.xml",
+  "imageStatus": "ok",
+  "parsedStatus": "ok",
+  "xmlStatus": "ok",
+  "captureMethod": "direct-image-url",
+  "capturedAt": "2026-05-14T17:11:27.400Z",
+  "notes": "Collected by scripts/collect-sigwx-low-sample.js."
+}

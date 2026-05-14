@@ -3,7 +3,15 @@ dist
 .env
 .env.local
 backend/data/
-reference/
+reference/*
+!reference/sigwx_low_samples/
+reference/sigwx_low_samples/*
+!reference/sigwx_low_samples/*/
+reference/sigwx_low_samples/*/*
+!reference/sigwx_low_samples/*/source.xml
+!reference/sigwx_low_samples/*/parsed.json
+!reference/sigwx_low_samples/*/target.png
+!reference/sigwx_low_samples/*/manifest.json
 korea3sec.bin
 korea3sec.bin.Z
 # Added by code-review-graph

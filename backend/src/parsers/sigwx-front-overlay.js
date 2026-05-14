@@ -2,6 +2,7 @@
 import fs from 'fs'
 import path from 'path'
 import sharp from 'sharp'
+import { samplePolylineByDistance } from '../sigwx-low/sigwx-low-chart-geometry.js'
 
 const DEG2RAD = Math.PI / 180;
 const OUTPUT_WIDTH = 1400;
@@ -219,7 +220,10 @@ async function renderSigwxFrontOverlay(sigwxLow, dataRoot, canonicalHash) {
     if (!pathD) continue;
     svgParts.push(`<path d="${escapeXml(pathD)}" fill="none" stroke="${item.color}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />`);
 
-    const samples = samplePolyline(item.smoothedPoints);
+    const samples = samplePolylineByDistance(item.smoothedPoints, {
+      offset: SAMPLE_OFFSET,
+      repeat: SAMPLE_REPEAT,
+    });
     samples.forEach((sample, index) => {
       const symbol = createSymbolSvg(item.frontType, item.color, index);
       if (!symbol) return;
