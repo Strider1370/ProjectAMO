@@ -7,7 +7,7 @@ Vite + React aviation weather dashboard with a Node/Express weather data backend
 ```text
 ProjectAMO/
   .codex/
-    agents/                  -> project-specific Codex subagent definitions
+    agents/                  -> Codex subagent definitions for Superpowers workflow support
   frontend/
     public/
       data/                    -> runtime GeoJSON, navdata, route graph, procedure data

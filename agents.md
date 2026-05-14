@@ -94,7 +94,13 @@ code-review-graph status
 
 ## 8. Superpowers Subagent Orchestration
 
-When using Superpowers workflows, the main agent must act as the orchestrator and assign suitable project subagents from `.codex/agents/` whenever the task has cleanly separable planning, investigation, review, QA, security, or architecture work.
+When using Superpowers workflows, the main agent must act as the orchestrator and assign suitable subagents from `.codex/agents/` whenever the task has cleanly separable planning, investigation, implementation, review, QA, security, or architecture work.
+
+- Prefer the workflow-support roles: `task-distributor`, `code-mapper`, `implementer`, `spec-reviewer`, `reviewer`, `test-gap-finder`, `debugger`, `security-auditor`, `ui-qa-reviewer`, `architect-reviewer`, and `design-reviewer`.
+- Keep review, mapping, QA, security, and architecture agents read-only. Use `implementer` for file edits.
+- Use parallel subagents primarily for read-heavy exploration, tests, triage, log analysis, QA, security review, architecture review, and summarization.
+- Keep write-heavy implementation sequential unless file ownership is clearly disjoint and integration ownership is explicit.
+- Subagents must still follow this file, `Architecture.md`, and `EntryPoints.md` when present.
 
 ---
 
