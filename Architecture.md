@@ -55,7 +55,7 @@ ProjectAMO/
 - `frontend/src/api/weatherApi.js` -> weather bundle, changed dataset, static airport/navdata fetch helpers.
 - `frontend/src/api/adsbApi.js` -> ADS-B fetch helper.
 - `frontend/src/api/briefingApi.js` -> route briefing and vertical profile API helpers.
-- `frontend/src/features/map/MapView.jsx` -> Mapbox map creation, style reload handling, feature panel composition, route/VFR interactions.
+- `frontend/src/features/map/MapView.jsx` -> Mapbox map container, style readiness, basemap switching, cross-feature panel composition, and high-level sync orchestration.
 - `frontend/src/features/map/MapView.css` -> map, overlay panel, and route briefing style entry.
 - `frontend/src/features/map/mapConfig.js` -> map bounds, initial camera, basemap options.
 - `frontend/src/features/map/imageOverlay.js` -> shared Mapbox image overlay helpers for raster/SIGWX frames.
@@ -75,6 +75,9 @@ ProjectAMO/
 - `frontend/src/features/weather-overlays/SigwxLegendDialog.jsx` -> SIGWX legend dialog.
 - `frontend/src/features/weather-overlays/SigwxHistoryBar.jsx` -> SIGWX history controls.
 - `frontend/src/features/weather-overlays/AdvisoryBadges.jsx` -> SIGMET/AIRMET advisory badges.
+- `frontend/src/features/weather-overlays/lib/weatherOverlayModel.js` -> weather overlay derived model for timeline, SIGWX history/filter state, advisory panel data, badge counts, and legend labels.
+- `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js` -> weather overlay Mapbox raster/SIGWX/advisory sync helpers and MET panel layer definitions.
+- `frontend/src/features/weather-overlays/lib/lightningLayers.js` -> lightning GeoJSON, icon, layer, visibility, and blink helpers.
 - `frontend/src/features/weather-overlays/lib/advisoryLayers.js` -> SIGMET/AIRMET GeoJSON and layer helpers.
 - `frontend/src/features/weather-overlays/lib/sigwxData.js` -> SIGWX_LOW GeoJSON/icon mapping helpers.
 - `frontend/src/features/route-briefing/lib/routePlanner.js` -> route graph loading and route path search.

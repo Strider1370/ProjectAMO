@@ -27,10 +27,12 @@
 
 ## 4. Add a new MET raster overlay
 
-1. Extend `metVisibility` state in `frontend/src/features/map/MapView.jsx` with the new key.
-2. Use `addOrUpdateImageOverlay` with `slot: 'middle'` so aviation/geo stay above.
-3. Add toggle to `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx`.
-4. If overlay needs geo boundary visibility, extend the `useEffect` watching `metVisibility` to include the new key.
+1. Add visibility/panel metadata to `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js`.
+2. Add frame selection or derived data to `frontend/src/features/weather-overlays/lib/weatherOverlayModel.js`.
+3. Add Mapbox sync behavior to `syncRasterAndSigwxLayers` or a new weather-owned sync helper in `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js`.
+4. Add toggle or legend UI under `frontend/src/features/weather-overlays/`.
+5. Keep `frontend/src/features/map/MapView.jsx` changes limited to high-level composition if a new UI slot is needed.
+6. Verify in browser: layer appears, toggle works, basemap switch preserves visibility, and aviation/geo layers remain above raster overlays.
 
 ## 5. Add a new backend data type
 
