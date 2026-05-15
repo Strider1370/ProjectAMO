@@ -7,10 +7,8 @@ import { AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
 import {
   ADVISORY_LAYER_DEFS,
 } from '../weather-overlays/lib/advisoryLayers.js'
-import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavpoints, loadRouteDirectionMetadata } from '../route-briefing/lib/routePlanner.js'
-import { getProcedures, KNOWN_AIRPORTS } from '../route-briefing/lib/procedureData.js'
+import { KNOWN_AIRPORTS } from '../route-briefing/lib/procedureData.js'
 import { fetchAdsbData } from '../../api/adsbApi.js'
-import { fetchVerticalProfile } from '../../api/briefingApi.js'
 import { fetchSigwxCloudMeta, fetchSigwxFrontMeta } from '../../api/weatherApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, setAdsbVisibility, ADSB_SOURCE_ID } from '../aviation-layers/addAdsbLayer.js'
 import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
@@ -55,7 +53,6 @@ import {
   VFR_WP_CIRCLE,
   bindVfrInteractions,
   calcVfrDistance,
-  relabeledWaypoints,
 } from '../route-briefing/lib/routePreview.js'
 import {
   clearRoutePreviewLayers,
@@ -64,25 +61,15 @@ import {
   syncRoutePreviewLayers,
   syncVfrWaypointData,
 } from '../route-briefing/lib/routePreviewSync.js'
-import { buildVerticalProfileRequest } from '../route-briefing/lib/verticalProfileRequest.js'
 import {
   FIR_EXIT_AIRPORT,
   FIR_IN_AIRPORT,
   ROUTE_SEQUENCE_COLORS,
-  buildBoundaryFixOptions,
-  buildIapCandidates,
   buildIfrDistanceBreakdown,
   buildIfrSequenceTokens,
-  buildInitialVfrWaypoints,
-  buildRoutePreviewModel,
-  buildVisibleSidOptions,
-  chooseIapKeyForRunway,
-  filterProceduresByRunway,
-  getCurrentRouteLineString,
   getVfrAirportAltitudeFt,
-  getWindDirection,
-  pickBestRunwayGroup,
 } from '../route-briefing/lib/routeBriefingModel.js'
+import { useRouteBriefing } from '../route-briefing/useRouteBriefing.js'
 import './MapView.css'
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -126,15 +113,6 @@ function bindSectorHover(map) {
 
 // ???? Lightning layers ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
-// ???? Route state ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-
-const initialRouteForm = {
-  flightRule: 'IFR',
-  departureAirport: '', entryFix: '',
-  exitFix: '', arrivalAirport: '', routeType: 'RNAV',
-}
-const DEFAULT_CRUISE_ALTITUDE_FT = 9000
-
 // ???? Component ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 function MapView({
@@ -173,41 +151,61 @@ function MapView({
   const [hiddenAdvisoryKeys, setHiddenAdvisoryKeys] = useState({ sigwxLow: [], sigmet: [], airmet: [] })
   const [selectedSigwxFrontMeta, setSelectedSigwxFrontMeta] = useState(sigwxFrontMeta)
   const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
-  const [routeForm, setRouteForm] = useState(initialRouteForm)
-  const [routeResult, setRouteResult] = useState(null)
-  const [routeError, setRouteError] = useState(null)
-  const [routeLoading, setRouteLoading] = useState(false)
-  const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(DEFAULT_CRUISE_ALTITUDE_FT)
-  const [verticalProfile, setVerticalProfile] = useState(null)
-  const [verticalProfileLoading, setVerticalProfileLoading] = useState(false)
-  const [verticalProfileError, setVerticalProfileError] = useState(null)
-  const [verticalProfileStale, setVerticalProfileStale] = useState(false)
-  const [verticalProfileWindowOpen, setVerticalProfileWindowOpen] = useState(false)
-  const [editingVfrAltitudeIndex, setEditingVfrAltitudeIndex] = useState(null)
   const [adsbData, setAdsbData] = useState(null)
   const [basemapId, setBasemapId] = useState('standard')
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
-  const [vfrWaypoints, setVfrWaypoints] = useState([])
-  const [hoveredWpInfo, setHoveredWpInfo] = useState(null)
-  const [sidOptions, setSidOptions] = useState([])
-  const [availableSidIds, setAvailableSidIds] = useState(null)
-  const [starOptions, setStarOptions] = useState([])
-  const [selectedSid, setSelectedSid] = useState(null)
-  const [selectedStar, setSelectedStar] = useState(null)
-  const [iapData, setIapData] = useState(null)
-  const [iapCandidates, setIapCandidates] = useState([])
-  const [selectedIapKey, setSelectedIapKey] = useState(null)
-  const [firInOptions, setFirInOptions] = useState([])
-  const [firExitOptions, setFirExitOptions] = useState([])
-  const [navpointsById, setNavpointsById] = useState({})
-  const [autoRecommendRequested, setAutoRecommendRequested] = useState(false)
-  const vfrWaypointsRef = useRef([])
-  const hideTimerRef = useRef(null)
-  const isFirInMode = routeForm.flightRule === 'IFR' && routeForm.departureAirport === FIR_IN_AIRPORT
-  const isFirExitMode = routeForm.flightRule === 'IFR' && routeForm.arrivalAirport === FIR_EXIT_AIRPORT
+  const routeBriefing = useRouteBriefing({ activePanel, airports, metarData })
+  const {
+    routeForm,
+    routeResult,
+    routeError,
+    routeLoading,
+    cruiseAltitudeFt,
+    verticalProfile,
+    verticalProfileLoading,
+    verticalProfileError,
+    verticalProfileStale,
+    verticalProfileWindowOpen,
+    editingVfrAltitudeIndex,
+    vfrWaypoints,
+    hoveredWpInfo,
+    starOptions,
+    selectedSid,
+    selectedStar,
+    iapCandidates,
+    selectedIapKey,
+    firInOptions,
+    firExitOptions,
+    fitBoundsRequest,
+  } = routeBriefing.state
+  const { vfrWaypointsRef, hideTimerRef } = routeBriefing.refs
+  const { isFirInMode, isFirExitMode, selectedIap, visibleSidOptions } = routeBriefing.derived
+  const {
+    updateRouteField,
+    handleDepartureAirportChange,
+    handleArrivalAirportChange,
+    handleEntryFixChange,
+    handleExitFixChange,
+    switchFlightRule,
+    handleAutoRecommend,
+    handleSidChange,
+    handleStarChange,
+    handleIapChange,
+    handleRouteReset,
+    deleteVfrWaypoint,
+    handleRouteSearch,
+    updateVfrWaypointAltitude,
+    applyCruiseAltitudeToVfrWaypoints,
+    handleVerticalProfileRequest,
+    setHoveredWpInfo,
+    setEditingVfrAltitudeIndex,
+    setVerticalProfileWindowOpen,
+    setCruiseAltitudeFt,
+    setVfrWaypoints,
+  } = routeBriefing.actions
+  const { routePreviewModel } = routeBriefing
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
-  useEffect(() => { vfrWaypointsRef.current = vfrWaypoints }, [vfrWaypoints])
 
   useEffect(() => {
     const timer = window.setInterval(() => setLightningReferenceTimeMs(Date.now()), 60_000)
@@ -231,317 +229,6 @@ function MapView({
     }
   }, [metVisibility.sigwx])
 
-  // ???? Procedure loading ??????????????????????????????????????????????????????????????????????????????????????????????????????????
-
-  useEffect(() => {
-    const airport = routeForm.departureAirport
-    if (!KNOWN_AIRPORTS.includes(airport)) { setSidOptions([]); setSelectedSid(null); return }
-    getProcedures(airport, 'SID').then((procs) => { setSidOptions(procs); setSelectedSid(null) })
-  }, [routeForm.departureAirport])
-
-  useEffect(() => {
-    let cancelled = false
-
-    if (routeForm.flightRule !== 'IFR' || !routeForm.exitFix) {
-      setAvailableSidIds(null)
-      return () => {
-        cancelled = true
-      }
-    }
-
-    Promise.all(
-      sidOptions.map(async (proc) => {
-        const allowed = await canBuildBriefingRoutePath({
-          entryFix: proc.enrouteFix,
-          exitFix: routeForm.exitFix,
-          routeType: routeForm.routeType,
-        })
-        return allowed ? proc.id : null
-      }),
-    )
-      .then((ids) => {
-        if (cancelled) return
-        const filteredIds = ids.filter(Boolean)
-        setAvailableSidIds(filteredIds.length > 0 ? filteredIds : null)
-        if (filteredIds.length > 0 && selectedSid && !filteredIds.includes(selectedSid.id)) {
-          setSelectedSid(null)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setAvailableSidIds(null)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [routeForm.flightRule, routeForm.exitFix, routeForm.routeType, sidOptions, selectedSid])
-
-  useEffect(() => {
-    const airport = routeForm.arrivalAirport
-    if (!KNOWN_AIRPORTS.includes(airport)) { setStarOptions([]); setSelectedStar(null); return }
-    getProcedures(airport, 'STAR').then((procs) => { setStarOptions(procs); setSelectedStar(null) })
-  }, [routeForm.arrivalAirport])
-
-  useEffect(() => {
-    let cancelled = false
-
-    loadRouteDirectionMetadata()
-      .then((metadata) => {
-        if (cancelled) return
-
-        const options = buildBoundaryFixOptions(metadata)
-        setFirInOptions(options.firInOptions)
-        setFirExitOptions(options.firExitOptions)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFirInOptions([])
-          setFirExitOptions([])
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-
-    loadNavpoints()
-      .then((navpoints) => {
-        if (!cancelled) setNavpointsById(navpoints ?? {})
-      })
-      .catch(() => {
-        if (!cancelled) setNavpointsById({})
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  // ???? IAP data loading ????????????????????????????????????????????????????????????????????????????????????????????????????????????
-
-  useEffect(() => {
-    const airport = routeForm.arrivalAirport
-    if (KNOWN_AIRPORTS.includes(airport)) {
-      loadIapData(airport).then(setIapData)
-    } else {
-      setIapData(null)
-      setIapCandidates([])
-      setSelectedIapKey(null)
-    }
-  }, [routeForm.arrivalAirport])
-
-  useEffect(() => {
-    if (!selectedStar || !iapData) {
-      setIapCandidates([])
-      setSelectedIapKey(null)
-      return
-    }
-    const { candidates, selectedIapKey: nextSelectedIapKey } = buildIapCandidates(selectedStar, iapData, selectedIapKey)
-    setIapCandidates(candidates)
-    setSelectedIapKey(nextSelectedIapKey)
-  }, [selectedStar, iapData, selectedIapKey])
-
-  const selectedIap = iapData?.iapRoutes?.[selectedIapKey] ?? null
-  const visibleSidOptions = useMemo(() => buildVisibleSidOptions(sidOptions, availableSidIds), [availableSidIds, sidOptions])
-  const routePreviewModel = useMemo(() => buildRoutePreviewModel({
-    routeForm,
-    routeResult,
-    vfrWaypoints,
-    selectedSid,
-    selectedStar,
-    selectedIap,
-    navpointsById,
-  }), [navpointsById, routeForm, routeResult, selectedIap, selectedSid, selectedStar, vfrWaypoints])
-
-  function clearRouteDisplay() {
-    setRouteResult(null)
-    setRouteError(null)
-    setRouteLoading(false)
-    setVerticalProfile(null)
-    setVerticalProfileError(null)
-    setVerticalProfileStale(false)
-    setVerticalProfileWindowOpen(false)
-    setVfrWaypoints([])
-    const map = mapRef.current
-    if (map?.isStyleLoaded()) {
-      clearRoutePreviewLayers(map)
-    }
-  }
-
-  useEffect(() => {
-    if (verticalProfile) {
-      setVerticalProfileStale(true)
-    }
-  }, [selectedSid, selectedStar, selectedIapKey, vfrWaypoints])
-
-  useEffect(() => {
-    let cancelled = false
-
-    if (
-      activePanel !== 'route-check' ||
-      routeForm.flightRule !== 'IFR' ||
-      !autoRecommendRequested
-    ) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    const isDomesticDeparture = KNOWN_AIRPORTS.includes(routeForm.departureAirport)
-    const isDomesticArrival = KNOWN_AIRPORTS.includes(routeForm.arrivalAirport)
-
-    if (isFirInMode && !routeForm.entryFix) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    if (isFirExitMode && !routeForm.exitFix) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    if (
-      !isFirInMode &&
-      !isFirExitMode &&
-      (!isDomesticDeparture || !isDomesticArrival || sidOptions.length === 0 || starOptions.length === 0 || !iapData)
-    ) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    if (isFirInMode && (!isDomesticArrival || starOptions.length === 0 || !iapData)) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    if (isFirExitMode && (!isDomesticDeparture || sidOptions.length === 0)) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    const departureCandidates = isFirInMode
-      ? [{ sid: null, entryFix: routeForm.entryFix }]
-      : filterProceduresByRunway(
-          sidOptions,
-          pickBestRunwayGroup(
-            sidOptions.flatMap((proc) => proc.runways ?? []),
-            getWindDirection(metarData, routeForm.departureAirport),
-          ),
-        ).map((sid) => ({ sid, entryFix: sid.enrouteFix ?? '' }))
-
-    const arrivalCandidates = isFirExitMode
-      ? [{ star: null, iapKey: null, exitFix: routeForm.exitFix }]
-      : filterProceduresByRunway(
-          starOptions
-            .map((star) => {
-              const entry = iapData.starToIapCandidates?.[star.id]
-              return { star, entry, runways: entry?.runways ?? [] }
-            })
-            .filter(({ entry }) => entry),
-          pickBestRunwayGroup(
-            starOptions
-              .map((star) => iapData?.starToIapCandidates?.[star.id]?.runways ?? [])
-              .flat(),
-            getWindDirection(metarData, routeForm.arrivalAirport),
-          ),
-        ).map(({ star, entry }) => ({
-          star,
-          iapKey: chooseIapKeyForRunway(
-            entry,
-            iapData,
-            pickBestRunwayGroup(
-              starOptions
-                .map((candidateStar) => iapData?.starToIapCandidates?.[candidateStar.id]?.runways ?? [])
-                .flat(),
-              getWindDirection(metarData, routeForm.arrivalAirport),
-            ),
-          ),
-          exitFix: star.startFix ?? '',
-        }))
-
-    Promise.all(
-      departureCandidates.flatMap(({ sid, entryFix }) =>
-        arrivalCandidates.map(async ({ star, iapKey, exitFix }) => {
-          try {
-            const result = await buildBriefingRoute({
-              departureAirport: routeForm.departureAirport,
-              arrivalAirport: routeForm.arrivalAirport,
-              entryFix,
-              exitFix,
-              routeType: routeForm.routeType,
-            })
-
-            return {
-              sid,
-              star,
-              iapKey,
-              entryFix,
-              exitFix,
-              distanceNm: Number(result?.distanceNm) || Number.POSITIVE_INFINITY,
-            }
-          } catch {
-            return null
-          }
-        }),
-      ),
-    ).then((results) => {
-      if (cancelled) return
-
-      const valid = results.filter(Boolean).sort((a, b) => a.distanceNm - b.distanceNm)
-      const fallbackSid = departureCandidates[0] ?? null
-      const fallbackArrival = arrivalCandidates[0] ?? null
-      const best = valid[0] ?? (fallbackSid && fallbackArrival
-        ? {
-            sid: fallbackSid.sid ?? null,
-            star: fallbackArrival.star,
-            iapKey: fallbackArrival.iapKey,
-            entryFix: fallbackSid.entryFix,
-            exitFix: fallbackArrival.exitFix,
-          }
-        : null)
-
-      if (!best) return
-
-      setAutoRecommendRequested(false)
-      setSelectedSid(best.sid ?? null)
-      setSelectedStar(best.star ?? null)
-      setSelectedIapKey(best.iapKey ?? null)
-      setRouteForm((prev) => ({
-        ...prev,
-        entryFix: best.entryFix ?? prev.entryFix,
-        exitFix: best.exitFix ?? prev.exitFix,
-      }))
-    }).catch(() => {})
-
-    return () => {
-      cancelled = true
-    }
-  }, [
-    activePanel,
-    iapData,
-    isFirInMode,
-    isFirExitMode,
-    metarData,
-    routeForm.arrivalAirport,
-    routeForm.departureAirport,
-    routeForm.entryFix,
-    routeForm.exitFix,
-    routeForm.flightRule,
-    routeForm.routeType,
-    sidOptions,
-    starOptions,
-    autoRecommendRequested,
-  ])
-
   // ???? Procedure preview on map ????????????????????????????????????????????????????????????????????????????????????????????
 
   useEffect(() => {
@@ -564,6 +251,14 @@ function MapView({
       map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: 500 })
     }
   }, [routePreviewModel, isStyleReady, routeResult])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const coords = fitBoundsRequest?.coordinates ?? []
+    if (!map || !isStyleReady || coords.length === 0) return
+    const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]))
+    map.fitBounds(bounds, { padding: 80, maxZoom: fitBoundsRequest.maxZoom ?? 8, duration: 500 })
+  }, [fitBoundsRequest, isStyleReady])
 
   const airportGeoJSON = useMemo(() => createAirportGeoJSON(airports), [airports])
   const adsbGeoJSON = useMemo(() => createAdsbGeoJSON(adsbData), [adsbData])
@@ -1022,210 +717,6 @@ function MapView({
     })
   }, [airportGeoJSON, selectedAirport, isStyleReady])
 
-  // ???? Route panel clear ??????????????????????????????????????????????????????????????????????????????????????????????????????????
-
-  useEffect(() => {
-    if (activePanel === 'route-check') return
-    clearRouteDisplay()
-    setSelectedSid(null)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
-  }, [activePanel])
-
-  // ???? Route search ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-
-  function updateRouteField(field, value) {
-    setRouteForm((prev) => ({ ...prev, [field]: value }))
-  }
-
-  function handleDepartureAirportChange(value) {
-    clearRouteDisplay()
-    updateRouteField('departureAirport', value)
-    setSelectedSid(null)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
-    setAutoRecommendRequested(true)
-
-    if (value === FIR_IN_AIRPORT) {
-      updateRouteField('entryFix', '')
-    }
-  }
-
-  function handleArrivalAirportChange(value) {
-    clearRouteDisplay()
-    updateRouteField('arrivalAirport', value)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
-    setAutoRecommendRequested(true)
-
-    if (value === FIR_EXIT_AIRPORT) {
-      updateRouteField('exitFix', '')
-    }
-  }
-
-  function handleEntryFixChange(value) {
-    clearRouteDisplay()
-    updateRouteField('entryFix', value)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
-    setAutoRecommendRequested(true)
-  }
-
-  function handleExitFixChange(value) {
-    clearRouteDisplay()
-    updateRouteField('exitFix', value)
-    setSelectedSid(null)
-    setAutoRecommendRequested(true)
-  }
-
-  function switchFlightRule(rule) {
-    setRouteForm((prev) => ({ ...prev, flightRule: rule }))
-    clearRouteDisplay()
-    setSelectedSid(null)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
-    setAutoRecommendRequested(true)
-  }
-
-  function handleAutoRecommend() {
-    clearRouteDisplay()
-    setSelectedSid(null)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
-    setAutoRecommendRequested(true)
-  }
-
-  function handleRouteReset() {
-    clearRouteDisplay()
-    setRouteForm((prev) => ({ ...initialRouteForm, flightRule: prev.flightRule }))
-    setSelectedSid(null)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
-    setAvailableSidIds(null)
-    setAutoRecommendRequested(false)
-  }
-
-  function deleteVfrWaypoint(idx) {
-    const next = relabeledWaypoints(vfrWaypoints.filter((_, i) => i !== idx))
-    setVfrWaypoints(next)
-    setHoveredWpInfo(null)
-    const map = mapRef.current
-    if (map?.isStyleLoaded()) {
-      syncVfrWaypointData(map, { vfrWaypoints: next })
-    }
-  }
-
-  async function handleRouteSearch(e) {
-    e.preventDefault()
-    setRouteLoading(true)
-    setRouteError(null)
-    setVerticalProfile(null)
-    setVerticalProfileError(null)
-    setVerticalProfileStale(false)
-    setVerticalProfileWindowOpen(false)
-    try {
-      const result = routeForm.flightRule === 'VFR'
-        ? await buildVfrRoute(routeForm)
-        : await buildBriefingRoute(routeForm)
-      setRouteResult(result)
-      const map = mapRef.current
-      if (result.flightRule === 'VFR') {
-        const initialWaypoints = buildInitialVfrWaypoints(result, airports)
-        setVfrWaypoints(initialWaypoints)
-        if (map?.isStyleLoaded()) {
-          syncVfrWaypointData(map, { vfrWaypoints: initialWaypoints })
-          const coords = initialWaypoints.map((wp) => [wp.lon, wp.lat])
-          const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]))
-          map.fitBounds(bounds, { padding: 80, maxZoom: 8, duration: 500 })
-        }
-      } else {
-        setVfrWaypoints([])
-        if (map?.isStyleLoaded()) {
-          const { fitCoordinates } = syncRoutePreviewLayers(map, {
-            routeResult: result,
-            selectedSid,
-            selectedStar,
-            selectedIap,
-          })
-          if (fitCoordinates.length > 0) {
-            const bounds = fitCoordinates.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(fitCoordinates[0], fitCoordinates[0]))
-            map.fitBounds(bounds, { padding: 80, maxZoom: 8, duration: 500 })
-          }
-        }
-      }
-    } catch (err) {
-      setRouteResult(null)
-      setRouteError(err.message)
-    } finally {
-      setRouteLoading(false)
-    }
-  }
-
-  function updateVfrWaypointAltitude(idx, value) {
-    setVfrWaypoints((prev) => prev.map((wp, i) => (
-      i === idx ? { ...wp, altitudeFt: value } : wp
-    )))
-  }
-
-  function applyCruiseAltitudeToVfrWaypoints() {
-    const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt)
-    if (!Number.isFinite(plannedCruiseAltitudeFt) || plannedCruiseAltitudeFt <= 0) return
-    setVfrWaypoints((prev) => prev.map((wp) => {
-      if (!wp.fixed) return { ...wp, altitudeFt: Math.round(plannedCruiseAltitudeFt) }
-      const airportElevationFt = getVfrAirportAltitudeFt(airports, wp)
-      return { ...wp, airportElevationFt, altitudeFt: airportElevationFt }
-    }))
-  }
-
-  async function handleVerticalProfileRequest() {
-    const routeGeometry = getCurrentRouteLineString({
-      routeResult,
-      vfrWaypoints,
-      selectedSid,
-      selectedStar,
-      selectedIap,
-    })
-    const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt)
-
-    if (!routeGeometry) {
-      setVerticalProfileError('\uc5f0\uc9c1\ub2e8\uba74\ub3c4\ub97c \uc0dd\uc131\ud560 \uacbd\ub85c\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.')
-      return
-    }
-
-    if (!Number.isFinite(plannedCruiseAltitudeFt) || plannedCruiseAltitudeFt <= 0) {
-      setVerticalProfileError('\uc21c\ud56d\uace0\ub3c4\ub97c 0\ubcf4\ub2e4 \ud070 ft \uac12\uc73c\ub85c \uc785\ub825\ud574\uc8fc\uc138\uc694.')
-      return
-    }
-
-    setVerticalProfileLoading(true)
-    setVerticalProfileError(null)
-    try {
-      const profile = await fetchVerticalProfile(buildVerticalProfileRequest({
-        routeGeometry,
-        routeResult,
-        selectedSid,
-        selectedStar,
-        selectedIap,
-        vfrWaypoints,
-        plannedCruiseAltitudeFt,
-      }))
-      setVerticalProfile(profile)
-      setVerticalProfileStale(false)
-      setVerticalProfileWindowOpen(true)
-    } catch (err) {
-      setVerticalProfileError(err.message)
-    } finally {
-      setVerticalProfileLoading(false)
-    }
-  }
-
   // ???? Layer panel helpers ??????????????????????????????????????????????????????????????????????????????????????????????????????
 
   function switchBasemap(id) {
@@ -1444,11 +935,8 @@ function MapView({
                     : visibleSidOptions.length > 0
                     ? (
                       <select value={selectedSid?.id ?? ''} onChange={(e) => {
-                        clearRouteDisplay()
-                        setAutoRecommendRequested(false)
                         const proc = visibleSidOptions.find((p) => p.id === e.target.value) ?? null
-                        setSelectedSid(proc)
-                        if (proc) updateRouteField('entryFix', proc.enrouteFix ?? '')
+                        handleSidChange(proc)
                       }}>
                         <option value="">{'-- \uc5c6\uc74c --'}</option>
                         {visibleSidOptions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
@@ -1503,11 +991,8 @@ function MapView({
                     : starOptions.length > 0
                     ? (
                       <select value={selectedStar?.id ?? ''} onChange={(e) => {
-                        clearRouteDisplay()
-                        setAutoRecommendRequested(false)
                         const proc = starOptions.find((p) => p.id === e.target.value) ?? null
-                        setSelectedStar(proc)
-                        if (proc) updateRouteField('exitFix', proc.startFix ?? '')
+                        handleStarChange(proc)
                       }}>
                         <option value="">{'-- \uc5c6\uc74c --'}</option>
                         {starOptions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
@@ -1520,9 +1005,7 @@ function MapView({
                 {!isFirExitMode && iapCandidates.length > 1 && (
                   <label>RWY
                     <select value={selectedIapKey ?? ''} onChange={(e) => {
-                      clearRouteDisplay()
-                      setAutoRecommendRequested(false)
-                      setSelectedIapKey(e.target.value || null)
+                      handleIapChange(e.target.value)
                     }}>
                       {iapCandidates.map(({ key, label }) => (
                         <option key={key} value={key}>{label}</option>
