@@ -55,7 +55,7 @@ ProjectAMO/
 - `frontend/src/api/weatherApi.js` -> weather bundle, changed dataset, static airport/navdata fetch helpers.
 - `frontend/src/api/adsbApi.js` -> ADS-B fetch helper.
 - `frontend/src/api/briefingApi.js` -> route briefing and vertical profile API helpers.
-- `frontend/src/features/map/MapView.jsx` -> Mapbox map container, style readiness, basemap switching, cross-feature panel composition, and high-level sync orchestration.
+- `frontend/src/features/map/MapView.jsx` -> Mapbox map container, style readiness, basemap switching, cross-feature panel composition, and high-level feature sync orchestration.
 - `frontend/src/features/map/MapView.css` -> map, overlay panel, and route briefing style entry.
 - `frontend/src/features/map/mapConfig.js` -> map bounds, initial camera, basemap options.
 - `frontend/src/features/map/imageOverlay.js` -> shared Mapbox image overlay helpers for raster/SIGWX frames.
@@ -82,7 +82,14 @@ ProjectAMO/
 - `frontend/src/features/weather-overlays/lib/sigwxData.js` -> SIGWX_LOW GeoJSON/icon mapping helpers.
 - `frontend/src/features/route-briefing/lib/routePlanner.js` -> route graph loading and route path search.
 - `frontend/src/features/route-briefing/lib/procedureData.js` -> procedure/navpoint loading helpers.
+- `frontend/src/features/route-briefing/useRouteBriefing.js` -> route briefing state, async route/procedure transitions, VFR waypoint model, route search, and vertical profile orchestration.
+- `frontend/src/features/route-briefing/RouteBriefingPanel.jsx` -> route-check panel UI for IFR/VFR form, route result, VFR altitude editing, and vertical profile controls.
+- `frontend/src/features/route-briefing/VerticalProfileWindow.jsx` -> vertical profile modal shell.
+- `frontend/src/features/route-briefing/RouteBriefing.css` -> route panel, VFR waypoint, and vertical profile styles.
 - `frontend/src/features/route-briefing/VerticalProfileChart.jsx` -> SVG route vertical profile chart.
+- `frontend/src/features/route-briefing/lib/routeBriefingModel.js` -> pure route briefing view/model helpers.
+- `frontend/src/features/route-briefing/lib/routePreviewSync.js` -> route/procedure/boundary-fix/highlight Mapbox sync helpers.
+- `frontend/src/features/route-briefing/lib/routePreview.js` -> route/procedure/VFR GeoJSON helpers, layer installation, and VFR map interaction binding.
 - `frontend/src/features/airport-panel/AirportPanel.jsx` -> airport drawer shell and tab selection.
 - `frontend/src/features/airport-panel/AirportPanel.css` -> airport drawer and tab style entry.
 - `frontend/src/features/airport-panel/tabs/MetarTab.jsx` -> METAR tab rendering.

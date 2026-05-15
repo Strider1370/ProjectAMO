@@ -49,3 +49,12 @@
 2. Branch in `frontend/src/app/App.jsx` before rendering the main shell.
 3. If sidebar navigation is needed, add an item in `frontend/src/app/layout/Sidebar.jsx` that navigates by URL instead of toggling a panel.
 4. Verify direct entry, refresh, and existing main-shell route behavior.
+
+## 7. Modify route briefing behavior
+
+1. Add pure route calculations or display model changes in `frontend/src/features/route-briefing/lib/routeBriefingModel.js`.
+2. Add route search, procedure-loading, VFR waypoint, or vertical-profile state changes in `frontend/src/features/route-briefing/useRouteBriefing.js`.
+3. Add route/procedure/boundary-fix map preview changes in `frontend/src/features/route-briefing/lib/routePreview.js` or `routePreviewSync.js`.
+4. Add route panel UI changes in `frontend/src/features/route-briefing/RouteBriefingPanel.jsx`.
+5. Keep `frontend/src/features/map/MapView.jsx` changes limited to high-level composition or a new cross-feature slot.
+6. Verify IFR, VFR, FIR IN/EXIT, VFR waypoint editing, and vertical profile generation.
