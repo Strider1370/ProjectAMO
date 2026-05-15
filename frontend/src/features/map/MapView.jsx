@@ -52,19 +52,18 @@ import {
   setGeoBoundaryVisibility,
 } from './lib/baseMapLayers.js'
 import {
-  PROC_PREVIEW_SOURCE,
-  ROUTE_PREVIEW_SOURCE,
   VFR_WP_CIRCLE,
-  addProcedurePreviewLayers,
-  addRoutePreviewLayers,
-  addVfrWaypointLayers,
-  augmentRouteWithProcedures,
   bindVfrInteractions,
-  buildProcedureGeoJSON,
-  buildVfrGeoJSON,
   calcVfrDistance,
   relabeledWaypoints,
 } from '../route-briefing/lib/routePreview.js'
+import {
+  clearRoutePreviewLayers,
+  installRoutePreviewLayers,
+  syncBoundaryFixPreview,
+  syncRoutePreviewLayers,
+  syncVfrWaypointData,
+} from '../route-briefing/lib/routePreviewSync.js'
 import { buildVerticalProfileRequest } from '../route-briefing/lib/verticalProfileRequest.js'
 import {
   FIR_EXIT_AIRPORT,
@@ -75,6 +74,7 @@ import {
   buildIfrDistanceBreakdown,
   buildIfrSequenceTokens,
   buildInitialVfrWaypoints,
+  buildRoutePreviewModel,
   buildVisibleSidOptions,
   chooseIapKeyForRunway,
   filterProceduresByRunway,
@@ -88,21 +88,8 @@ import './MapView.css'
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 const ROAD_VISIBILITY_ZOOM = 8
-const BOUNDARY_FIX_PREVIEW_SOURCE = 'boundary-fix-preview'
-const BOUNDARY_FIX_PREVIEW_POINT = 'boundary-fix-preview-point'
-const BOUNDARY_FIX_PREVIEW_LABEL = 'boundary-fix-preview-label'
-
-const ROUTE_HL_WP_ICON = 'route-hl-wp-icon'
-const ROUTE_HL_WP_LABEL = 'route-hl-wp-label'
-const ROUTE_HL_NA_ICON = 'route-hl-na-icon'
-const ROUTE_HL_NA_LABEL = 'route-hl-na-label'
-const ROUTE_HL_AW_LINE = 'route-hl-aw-line'
-const ROUTE_HL_AW_LABEL = 'route-hl-aw-label'
-const ROUTE_HL_LAYER_IDS = [ROUTE_HL_WP_ICON, ROUTE_HL_WP_LABEL, ROUTE_HL_NA_ICON, ROUTE_HL_NA_LABEL, ROUTE_HL_AW_LINE, ROUTE_HL_AW_LABEL]
 const HIDDEN_ROAD_COLOR = 'rgba(255,255,255,0)'
 const VISIBLE_ROAD_COLORS = { roads: '#d6dde6', trunks: '#c6d1dd', motorways: '#b9c7d4' }
-
-const emptyGeoJSON = { type: 'FeatureCollection', features: [] }
 
 // ???? Helpers ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -120,115 +107,6 @@ function initAviationVisibility() {
 
 function initMetVisibility() {
   return MET_LAYERS.reduce((acc, l) => { acc[l.id] = false; return acc }, {})
-}
-
-function addBoundaryFixPreviewLayers(map) {
-  if (!map.getSource(BOUNDARY_FIX_PREVIEW_SOURCE)) {
-    map.addSource(BOUNDARY_FIX_PREVIEW_SOURCE, { type: 'geojson', data: emptyGeoJSON })
-  }
-  if (!map.getLayer(BOUNDARY_FIX_PREVIEW_POINT)) {
-    map.addLayer({
-      id: BOUNDARY_FIX_PREVIEW_POINT,
-      type: 'circle',
-      source: BOUNDARY_FIX_PREVIEW_SOURCE,
-      slot: 'top',
-      paint: {
-        'circle-color': '#0f766e',
-        'circle-radius': 5,
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 1.5,
-      },
-    })
-  }
-  if (!map.getLayer(BOUNDARY_FIX_PREVIEW_LABEL)) {
-    map.addLayer({
-      id: BOUNDARY_FIX_PREVIEW_LABEL,
-      type: 'symbol',
-      source: BOUNDARY_FIX_PREVIEW_SOURCE,
-      slot: 'top',
-      layout: {
-        'text-field': ['get', 'label'],
-        'text-size': 11,
-        'text-font': ['Noto Sans CJK JP Bold'],
-        'text-anchor': 'top',
-        'text-offset': [0, 0.9],
-        'text-allow-overlap': true,
-        'text-ignore-placement': true,
-      },
-      paint: {
-        'text-color': '#0f766e',
-        'text-halo-color': '#ffffff',
-        'text-halo-width': 1.5,
-      },
-    })
-  }
-}
-
-
-function applyRouteHighlight(map, navpointIds) {
-  const ptFilter = (ids) => ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'ident'], ['literal', ids]]]
-
-  const wpCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'waypoint')
-  const naCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'navaid')
-  const awCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'ats-route')
-
-  function buildIconExpr(cfg) {
-    const { property, fallback, values } = cfg.iconImageByProperty
-    const expr = ['match', ['get', property]]
-    Object.entries(values).forEach(([v, icon]) => expr.push(v, icon.imageId))
-    expr.push(values[fallback].imageId)
-    return expr
-  }
-
-  function addOrUpdate(id, layerDef, filter) {
-    if (!map.getLayer(id)) {
-      map.addLayer({ id, ...layerDef, filter })
-    } else {
-      map.setFilter(id, filter)
-      map.setLayoutProperty(id, 'visibility', 'visible')
-    }
-  }
-
-  addOrUpdate(ROUTE_HL_WP_ICON, {
-    type: 'symbol', source: wpCfg.sourceId, slot: 'top',
-    layout: { 'icon-image': buildIconExpr(wpCfg), 'icon-size': wpCfg.iconSize ?? 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true },
-  }, ptFilter(navpointIds))
-
-  addOrUpdate(ROUTE_HL_WP_LABEL, {
-    type: 'symbol', source: wpCfg.sourceId, slot: 'top',
-    layout: { 'text-field': ['get', 'ident'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.75], 'text-allow-overlap': true, 'text-ignore-placement': true },
-    paint: { 'text-color': wpCfg.color, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
-  }, ptFilter(navpointIds))
-
-  addOrUpdate(ROUTE_HL_NA_ICON, {
-    type: 'symbol', source: naCfg.sourceId, slot: 'top',
-    layout: { 'icon-image': buildIconExpr(naCfg), 'icon-size': naCfg.iconSize ?? 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true },
-  }, ptFilter(navpointIds))
-
-  addOrUpdate(ROUTE_HL_NA_LABEL, {
-    type: 'symbol', source: naCfg.sourceId, slot: 'top',
-    layout: { 'text-field': ['get', 'ident'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.75], 'text-allow-overlap': true, 'text-ignore-placement': true },
-    paint: { 'text-color': naCfg.color, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
-  }, ptFilter(navpointIds))
-
-  const segFilter = ['==', ['get', 'role'], 'route-segment-line']
-
-  addOrUpdate(ROUTE_HL_AW_LINE, {
-    type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
-    paint: { 'line-color': awCfg.color, 'line-width': awCfg.lineWidth, 'line-opacity': awCfg.lineOpacity },
-  }, segFilter)
-
-  addOrUpdate(ROUTE_HL_AW_LABEL, {
-    type: 'symbol', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
-    layout: { 'symbol-placement': 'line', 'symbol-spacing': 200, 'text-field': ['get', 'routeId'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-rotation-alignment': 'map', 'text-pitch-alignment': 'map', 'text-keep-upright': true, 'text-allow-overlap': false, 'text-ignore-placement': false },
-    paint: { 'text-color': awCfg.color, 'text-halo-color': '#eef6ed', 'text-halo-width': 1.5 },
-  }, segFilter)
-}
-
-function clearRouteHighlight(map) {
-  ROUTE_HL_LAYER_IDS.forEach((id) => {
-    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
-  })
 }
 
 function bindSectorHover(map) {
@@ -469,6 +347,15 @@ function MapView({
 
   const selectedIap = iapData?.iapRoutes?.[selectedIapKey] ?? null
   const visibleSidOptions = useMemo(() => buildVisibleSidOptions(sidOptions, availableSidIds), [availableSidIds, sidOptions])
+  const routePreviewModel = useMemo(() => buildRoutePreviewModel({
+    routeForm,
+    routeResult,
+    vfrWaypoints,
+    selectedSid,
+    selectedStar,
+    selectedIap,
+    navpointsById,
+  }), [navpointsById, routeForm, routeResult, selectedIap, selectedSid, selectedStar, vfrWaypoints])
 
   function clearRouteDisplay() {
     setRouteResult(null)
@@ -481,8 +368,7 @@ function MapView({
     setVfrWaypoints([])
     const map = mapRef.current
     if (map?.isStyleLoaded()) {
-      map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
-      map.getSource(PROC_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
+      clearRoutePreviewLayers(map)
     }
   }
 
@@ -661,76 +547,23 @@ function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady) return
-    addProcedurePreviewLayers(map)
-
-    if (routeResult?.flightRule === 'IFR' && (selectedSid || selectedStar)) {
-      const augmented = augmentRouteWithProcedures(routeResult.previewGeojson, selectedSid, selectedStar, selectedIap)
-      map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(augmented)
-      const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap)
-      const wpOnly = { ...procGeojson, features: procGeojson.features.filter((f) => !f.properties.role.endsWith('-line')) }
-      map.getSource(PROC_PREVIEW_SOURCE)?.setData(wpOnly)
-    } else {
-      const geojson = buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap)
-      map.getSource(PROC_PREVIEW_SOURCE)?.setData(geojson)
-      if (geojson.features.length > 0 && !routeResult) {
-        const coords = geojson.features.flatMap((f) =>
-          f.geometry.type === 'Point' ? [f.geometry.coordinates] : f.geometry.coordinates
-        )
-        const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]))
-        map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: 500 })
-      }
+    const { fitCoordinates } = syncRoutePreviewLayers(map, routePreviewModel)
+    if (fitCoordinates.length > 0 && !routeResult) {
+      const bounds = fitCoordinates.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(fitCoordinates[0], fitCoordinates[0]))
+      map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: 500 })
     }
-  }, [selectedSid, selectedStar, selectedIap, routeResult, isStyleReady])
+  }, [routePreviewModel, routeResult, isStyleReady])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady) return
 
-    addBoundaryFixPreviewLayers(map)
-
-    const selectedBoundaryFix =
-      (isFirInMode && routeForm.entryFix) ||
-      (isFirExitMode && routeForm.exitFix) ||
-      null
-
-    const navpoint = selectedBoundaryFix ? navpointsById?.[selectedBoundaryFix] : null
-    const source = map.getSource(BOUNDARY_FIX_PREVIEW_SOURCE)
-
-    if (!source || !navpoint?.coordinates) {
-      source?.setData(emptyGeoJSON)
-      return
+    const { fitCoordinates } = syncBoundaryFixPreview(map, routePreviewModel)
+    if (fitCoordinates.length > 0 && !routeResult) {
+      const bounds = fitCoordinates.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(fitCoordinates[0], fitCoordinates[0]))
+      map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: 500 })
     }
-
-    source.setData({
-      type: 'FeatureCollection',
-      features: [
-        {
-          type: 'Feature',
-          properties: {
-            label: selectedBoundaryFix,
-          },
-          geometry: {
-            type: 'Point',
-            coordinates: [navpoint.coordinates.lon, navpoint.coordinates.lat],
-          },
-        },
-      ],
-    })
-
-    if (!routeResult) {
-      const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap)
-      const procCoords = procGeojson.features.flatMap((feature) =>
-        feature.geometry.type === 'Point' ? [feature.geometry.coordinates] : feature.geometry.coordinates,
-      )
-      const boundaryCoord = [navpoint.coordinates.lon, navpoint.coordinates.lat]
-      const coords = [...procCoords, boundaryCoord]
-
-      if (coords.length > 0) {
-        const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]))
-        map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: 500 })
-      }
-    }
-  }, [isFirInMode, isFirExitMode, routeForm.entryFix, routeForm.exitFix, navpointsById, isStyleReady, routeResult, selectedSid, selectedStar, selectedIap])
+  }, [routePreviewModel, isStyleReady, routeResult])
 
   const airportGeoJSON = useMemo(() => createAirportGeoJSON(airports), [airports])
   const adsbGeoJSON = useMemo(() => createAdsbGeoJSON(adsbData), [adsbData])
@@ -1008,10 +841,7 @@ function MapView({
       AVIATION_WFS_LAYERS.forEach((l) => setLayerVisibility(map, l, aviationVisibility[l.id]))
 
       // Route preview
-      addRoutePreviewLayers(map)
-      addBoundaryFixPreviewLayers(map)
-      addVfrWaypointLayers(map)
-      addProcedurePreviewLayers(map)
+      installRoutePreviewLayers(map)
       bindSectorHover(map)
       if (!vfrInteractionsBound) {
         vfrInteractionsBound = true
@@ -1081,24 +911,13 @@ function MapView({
 
   // ???? Route highlight (?롪퍔?δ빳???뚮뜆?????깅턄???띠룆踰????戮?뻣) ????????????????????????????????????????????????????
 
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !isStyleReady) return
-    if (routeResult?.flightRule === 'IFR') {
-      applyRouteHighlight(map, routeResult.navpointIds)
-    } else {
-      clearRouteHighlight(map)
-    }
-  }, [routeResult, isStyleReady])
-
   // ???? VFR waypoint sync ????????????????????????????????????????????????????????????????????????????????????????????????????????
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !isStyleReady || vfrWaypoints.length < 2) return
-    addVfrWaypointLayers(map)
-    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(buildVfrGeoJSON(vfrWaypoints))
-  }, [vfrWaypoints, isStyleReady])
+    if (!map || !isStyleReady || routeResult?.flightRule !== 'VFR') return
+    syncVfrWaypointData(map, routePreviewModel)
+  }, [routePreviewModel, routeResult, isStyleReady])
 
   // ???? VFR WP hover (X ?뺢퀗?????戮?뻣?? ????????????????????????????????????????????????????????????????????????????????
 
@@ -1299,7 +1118,7 @@ function MapView({
     setHoveredWpInfo(null)
     const map = mapRef.current
     if (map?.isStyleLoaded()) {
-      map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(next.length >= 2 ? buildVfrGeoJSON(next) : emptyGeoJSON)
+      syncVfrWaypointData(map, { vfrWaypoints: next })
     }
   }
 
@@ -1321,9 +1140,7 @@ function MapView({
         const initialWaypoints = buildInitialVfrWaypoints(result, airports)
         setVfrWaypoints(initialWaypoints)
         if (map?.isStyleLoaded()) {
-          addRoutePreviewLayers(map)
-          addVfrWaypointLayers(map)
-          map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(buildVfrGeoJSON(initialWaypoints))
+          syncVfrWaypointData(map, { vfrWaypoints: initialWaypoints })
           const coords = initialWaypoints.map((wp) => [wp.lon, wp.lat])
           const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]))
           map.fitBounds(bounds, { padding: 80, maxZoom: 8, duration: 500 })
@@ -1331,20 +1148,14 @@ function MapView({
       } else {
         setVfrWaypoints([])
         if (map?.isStyleLoaded()) {
-          addRoutePreviewLayers(map)
-          const displayGeojson = augmentRouteWithProcedures(result.previewGeojson, selectedSid, selectedStar, selectedIap)
-          map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(displayGeojson)
-          if (selectedSid || selectedStar) {
-            addProcedurePreviewLayers(map)
-            const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap)
-            const wpOnly = { ...procGeojson, features: procGeojson.features.filter((f) => !f.properties.role.endsWith('-line')) }
-            map.getSource(PROC_PREVIEW_SOURCE)?.setData(wpOnly)
-          }
-          const coords = displayGeojson.features.flatMap((f) =>
-            f.geometry.type === 'Point' ? [f.geometry.coordinates] : f.geometry.coordinates
-          )
-          if (coords.length > 0) {
-            const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]))
+          const { fitCoordinates } = syncRoutePreviewLayers(map, {
+            routeResult: result,
+            selectedSid,
+            selectedStar,
+            selectedIap,
+          })
+          if (fitCoordinates.length > 0) {
+            const bounds = fitCoordinates.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(fitCoordinates[0], fitCoordinates[0]))
             map.fitBounds(bounds, { padding: 80, maxZoom: 8, duration: 500 })
           }
         }
