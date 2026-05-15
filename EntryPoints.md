@@ -15,7 +15,7 @@
 
 ## 2. Modify ADS-B display
 
-1. Marker style, GeoJSON shaping, visibility sync, source/layer IDs, or hover popup behavior -> `frontend/src/features/aviation-layers/addAdsbLayer.js`.
+1. Marker style, GeoJSON shaping, visibility sync, `ADSB_SOURCE_IDS`/`ADSB_LAYER_IDS`, or hover popup behavior -> `frontend/src/features/aviation-layers/addAdsbLayer.js`.
 2. Backend fetch helper -> `frontend/src/api/adsbApi.js`.
 3. ADS-B toggle placement currently remains in `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx`; do not move it into the aviation panel without a separate UX decision.
 4. ADS-B polling is still orchestrated by `frontend/src/features/map/MapView.jsx`; keep changes there limited to polling/composition unless a dedicated ADS-B polling module is introduced in a separate refactor.
