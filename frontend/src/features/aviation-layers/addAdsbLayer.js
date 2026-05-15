@@ -2,6 +2,8 @@ import mapboxgl from 'mapbox-gl'
 
 export const ADSB_SOURCE_ID = 'adsb-source'
 export const ADSB_LAYER_ID = 'adsb-layer'
+export const ADSB_SOURCE_IDS = [ADSB_SOURCE_ID]
+export const ADSB_LAYER_IDS = [ADSB_LAYER_ID]
 
 export function createAdsbGeoJSON(adsbData) {
   if (!adsbData || !adsbData.aircraft) {

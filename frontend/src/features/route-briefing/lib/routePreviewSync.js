@@ -1,7 +1,16 @@
 import { AVIATION_WFS_LAYERS } from '../../aviation-layers/aviationWfsLayers.js'
 import {
+  PROC_IAP_LINE,
   PROC_PREVIEW_SOURCE,
+  PROC_SID_LINE,
+  PROC_STAR_LINE,
+  PROC_WP_CIRCLE,
+  PROC_WP_LABEL,
+  ROUTE_PREVIEW_LINE,
+  ROUTE_PREVIEW_POINT,
   ROUTE_PREVIEW_SOURCE,
+  VFR_WP_CIRCLE,
+  VFR_WP_LABEL,
   addProcedurePreviewLayers,
   addRoutePreviewLayers,
   addVfrWaypointLayers,
@@ -21,6 +30,25 @@ export const ROUTE_HL_NA_LABEL = 'route-hl-na-label'
 export const ROUTE_HL_AW_LINE = 'route-hl-aw-line'
 export const ROUTE_HL_AW_LABEL = 'route-hl-aw-label'
 export const ROUTE_HL_LAYER_IDS = [ROUTE_HL_WP_ICON, ROUTE_HL_WP_LABEL, ROUTE_HL_NA_ICON, ROUTE_HL_NA_LABEL, ROUTE_HL_AW_LINE, ROUTE_HL_AW_LABEL]
+export const ROUTE_PREVIEW_SOURCE_IDS = [
+  ROUTE_PREVIEW_SOURCE,
+  PROC_PREVIEW_SOURCE,
+  BOUNDARY_FIX_PREVIEW_SOURCE,
+]
+export const ROUTE_PREVIEW_LAYER_IDS = [
+  ROUTE_PREVIEW_LINE,
+  ROUTE_PREVIEW_POINT,
+  VFR_WP_CIRCLE,
+  VFR_WP_LABEL,
+  PROC_SID_LINE,
+  PROC_STAR_LINE,
+  PROC_IAP_LINE,
+  PROC_WP_CIRCLE,
+  PROC_WP_LABEL,
+  BOUNDARY_FIX_PREVIEW_POINT,
+  BOUNDARY_FIX_PREVIEW_LABEL,
+  ...ROUTE_HL_LAYER_IDS,
+]
 
 const emptyGeoJSON = { type: 'FeatureCollection', features: [] }
 

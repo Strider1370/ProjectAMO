@@ -12,6 +12,15 @@ export const GEO_LAYERS = [
   { sourceId: 'geo-sido', layerId: 'geo-sido-line', url: '/Geo/sido.json', minzoom: 0, maxzoom: GEO_SIGUNGU_MIN_ZOOM },
   { sourceId: 'geo-sigungu', layerId: 'geo-sigungu-line', url: '/Geo/sigungu.json', minzoom: GEO_SIGUNGU_MIN_ZOOM },
 ]
+export const BASE_MAP_SOURCE_IDS = [
+  AIRPORT_SOURCE_ID,
+  ...GEO_LAYERS.map((layer) => layer.sourceId),
+]
+export const BASE_MAP_LAYER_IDS = [
+  AIRPORT_CIRCLE_LAYER,
+  AIRPORT_LABEL_LAYER,
+  ...GEO_LAYERS.map((layer) => layer.layerId),
+]
 
 export function createAirportGeoJSON(airports) {
   return {

@@ -5,6 +5,10 @@ import {
   flattenLayerIds,
   hasStyleRevision,
 } from './mapStyleSync.js'
+import { BASE_MAP_LAYER_IDS, BASE_MAP_SOURCE_IDS } from './baseMapLayers.js'
+import { WEATHER_OVERLAY_LAYER_IDS, WEATHER_OVERLAY_SOURCE_IDS } from '../../weather-overlays/lib/weatherOverlayLayers.js'
+import { ROUTE_PREVIEW_LAYER_IDS, ROUTE_PREVIEW_SOURCE_IDS } from '../../route-briefing/lib/routePreviewSync.js'
+import { ADSB_LAYER_IDS, ADSB_SOURCE_IDS } from '../../aviation-layers/addAdsbLayer.js'
 
 function createMapMock() {
   const calls = []
@@ -48,4 +52,23 @@ test('bindLayerEvent returns cleanup that unregisters the exact handler', () => 
 test('bindLayerEvent ignores missing maps or layer ids', () => {
   assert.equal(bindLayerEvent(null, 'click', 'layer-a', () => {}), null)
   assert.equal(bindLayerEvent(createMapMock(), 'click', '', () => {}), null)
+})
+
+test('feature sync modules export non-empty source and layer ownership lists', () => {
+  const groups = [
+    BASE_MAP_SOURCE_IDS,
+    BASE_MAP_LAYER_IDS,
+    WEATHER_OVERLAY_SOURCE_IDS,
+    WEATHER_OVERLAY_LAYER_IDS,
+    ROUTE_PREVIEW_SOURCE_IDS,
+    ROUTE_PREVIEW_LAYER_IDS,
+    ADSB_SOURCE_IDS,
+    ADSB_LAYER_IDS,
+  ]
+
+  groups.forEach((ids) => {
+    assert.ok(Array.isArray(ids))
+    assert.ok(ids.length > 0)
+    ids.forEach((id) => assert.equal(typeof id, 'string'))
+  })
 })
