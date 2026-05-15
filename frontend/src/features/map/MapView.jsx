@@ -66,15 +66,28 @@ import {
   relabeledWaypoints,
 } from '../route-briefing/lib/routePreview.js'
 import { buildVerticalProfileRequest } from '../route-briefing/lib/verticalProfileRequest.js'
+import {
+  FIR_EXIT_AIRPORT,
+  FIR_IN_AIRPORT,
+  ROUTE_SEQUENCE_COLORS,
+  buildBoundaryFixOptions,
+  buildIapCandidates,
+  buildIfrDistanceBreakdown,
+  buildIfrSequenceTokens,
+  buildInitialVfrWaypoints,
+  buildVisibleSidOptions,
+  chooseIapKeyForRunway,
+  filterProceduresByRunway,
+  getCurrentRouteLineString,
+  getVfrAirportAltitudeFt,
+  getWindDirection,
+  pickBestRunwayGroup,
+} from '../route-briefing/lib/routeBriefingModel.js'
 import './MapView.css'
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 const ROAD_VISIBILITY_ZOOM = 8
-const FIR_EXIT_AIRPORT = 'FIR_EXIT'
-const FIR_IN_AIRPORT = 'FIR_IN'
-const FIR_IN_ALLOWED_FIXES = new Set(['AGAVO', 'ANDOL', 'APELA', 'ATOTI', 'BEDAR', 'INVOK', 'KALEK', 'KANSU', 'LANAT', 'RUGMA', 'SAPRA'])
-const FIR_OUT_ALLOWED_FIXES = new Set(['AGAVO', 'ANDOL', 'APELA', 'ATOTI', 'BESNA', 'IGRAS', 'INVOK', 'KALEK', 'KANSU', 'LANAT', 'MUGUS', 'RUGMA', 'SAMDO', 'SAPRA'])
 const BOUNDARY_FIX_PREVIEW_SOURCE = 'boundary-fix-preview'
 const BOUNDARY_FIX_PREVIEW_POINT = 'boundary-fix-preview-point'
 const BOUNDARY_FIX_PREVIEW_LABEL = 'boundary-fix-preview-label'
@@ -86,94 +99,10 @@ const ROUTE_HL_NA_LABEL = 'route-hl-na-label'
 const ROUTE_HL_AW_LINE = 'route-hl-aw-line'
 const ROUTE_HL_AW_LABEL = 'route-hl-aw-label'
 const ROUTE_HL_LAYER_IDS = [ROUTE_HL_WP_ICON, ROUTE_HL_WP_LABEL, ROUTE_HL_NA_ICON, ROUTE_HL_NA_LABEL, ROUTE_HL_AW_LINE, ROUTE_HL_AW_LABEL]
-
-function getWindDirection(metarData, airport) {
-  const value = metarData?.airports?.[airport]?.observation?.wind?.direction
-  return Number.isFinite(value) ? value : null
-}
-
-function getRunwayHeading(runwayGroup) {
-  const match = String(runwayGroup ?? '').match(/(\d{2})/)
-  if (!match) return null
-  const runwayNumber = Number(match[1])
-  if (!Number.isFinite(runwayNumber)) return null
-  return (runwayNumber % 36) * 10
-}
-
-function getHeadingDifference(a, b) {
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return Number.POSITIVE_INFINITY
-  return Math.abs(((a - b + 540) % 360) - 180)
-}
-
-function pickBestRunwayGroup(runwayGroups, windDirection) {
-  const unique = [...new Set((runwayGroups ?? []).filter(Boolean))]
-  if (unique.length === 0) return null
-  if (!Number.isFinite(windDirection)) return unique[0]
-  return unique
-    .map((runwayGroup) => ({
-      runwayGroup,
-      heading: getRunwayHeading(runwayGroup),
-    }))
-    .sort((a, b) => {
-      const diffA = getHeadingDifference(a.heading, windDirection)
-      const diffB = getHeadingDifference(b.heading, windDirection)
-      if (diffA !== diffB) return diffA - diffB
-      return (a.heading ?? 0) - (b.heading ?? 0)
-    })[0]?.runwayGroup ?? unique[0]
-}
-
-function filterProceduresByRunway(procedures, runwayGroup) {
-  if (!runwayGroup) return procedures
-  const filtered = procedures.filter((proc) => (proc.runways ?? []).includes(runwayGroup))
-  return filtered.length > 0 ? filtered : procedures
-}
-
-function chooseIapKeyForRunway(entry, iapData, runwayGroup) {
-  const candidateKeys = entry?.candidateIapKeys ?? []
-  if (candidateKeys.length === 0) return null
-  if (!runwayGroup) return entry?.defaultIapKey ?? candidateKeys[0]
-  return candidateKeys.find((key) =>
-    (iapData?.iapRoutes?.[key]?.representativeFor?.runwayGroup ?? []).includes(runwayGroup),
-  ) ?? entry?.defaultIapKey ?? candidateKeys[0]
-}
-
-const ROUTE_SEQUENCE_COLORS = {
-  airport: '#0f172a',
-  sid: '#2563eb',
-  star: '#7c3aed',
-  iap: '#0ea5e9',
-  airway: '#1f2933',
-  enr: '#1f2933',
-  waypoint: '#0f766e',
-}
 const HIDDEN_ROAD_COLOR = 'rgba(255,255,255,0)'
 const VISIBLE_ROAD_COLORS = { roads: '#d6dde6', trunks: '#c6d1dd', motorways: '#b9c7d4' }
 
 const emptyGeoJSON = { type: 'FeatureCollection', features: [] }
-const M_TO_FT = 3.28084
-
-const BOUNDARY_FIX_FLOW_LABELS = {
-  AGAVO: 'Westbound',
-  ANDOL: 'Boundary',
-  APELA: 'Southeastbound',
-  ATOTI: 'Southwestbound',
-  BEDAR: 'Southwestbound',
-  BESNA: 'Southeastbound',
-  IGRAS: 'Boundary',
-  INVOK: 'Boundary',
-  KALEK: 'Boundary',
-  KANSU: 'Eastbound',
-  LANAT: 'Eastbound',
-  MUGUS: 'Southbound',
-  RUGMA: 'Southwestbound',
-  SAMDO: 'Southeastbound',
-  SAPRA: 'Eastbound',
-}
-
-function formatBoundaryFixLabel(fix) {
-  const flowLabel = BOUNDARY_FIX_FLOW_LABELS[fix]
-  return flowLabel ? `${fix} (${flowLabel})` : fix
-}
 
 // ???? Helpers ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -399,28 +328,6 @@ function MapView({
   const isFirInMode = routeForm.flightRule === 'IFR' && routeForm.departureAirport === FIR_IN_AIRPORT
   const isFirExitMode = routeForm.flightRule === 'IFR' && routeForm.arrivalAirport === FIR_EXIT_AIRPORT
 
-  function getAirportElevationFt(icao) {
-    const airport = airports.find((item) => item.icao === icao || item.id === icao)
-    const elevationFt = Number(
-      airport?.elevationFt
-      ?? airport?.elevation_ft
-      ?? airport?.fieldElevationFt
-      ?? airport?.field_elevation_ft
-    )
-    if (Number.isFinite(elevationFt) && elevationFt >= 0) return Math.round(elevationFt)
-
-    const elevationM = Number(airport?.elevationM ?? airport?.elevation_m)
-    if (Number.isFinite(elevationM) && elevationM >= 0) return Math.round(elevationM * M_TO_FT)
-
-    return null
-  }
-
-  function getVfrAirportAltitudeFt(wp) {
-    const storedElevationFt = Number(wp?.airportElevationFt)
-    if (Number.isFinite(storedElevationFt) && storedElevationFt >= 0) return Math.round(storedElevationFt)
-    return getAirportElevationFt(wp?.id) ?? 0
-  }
-
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
   useEffect(() => { vfrWaypointsRef.current = vfrWaypoints }, [vfrWaypoints])
 
@@ -504,22 +411,9 @@ function MapView({
       .then((metadata) => {
         if (cancelled) return
 
-        const seen = new Set()
-        const options = Object.values(metadata?.routes ?? {})
-          .flatMap((route) => route?.boundaryFixes ?? [])
-          .map((fix) => ({
-            value: fix,
-            label: formatBoundaryFixLabel(fix),
-          }))
-          .filter((option) => {
-            if (seen.has(option.value)) return false
-            seen.add(option.value)
-            return true
-          })
-          .sort((a, b) => a.value.localeCompare(b.value))
-
-        setFirInOptions(options.filter((option) => FIR_IN_ALLOWED_FIXES.has(option.value)))
-        setFirExitOptions(options.filter((option) => FIR_OUT_ALLOWED_FIXES.has(option.value)))
+        const options = buildBoundaryFixOptions(metadata)
+        setFirInOptions(options.firInOptions)
+        setFirExitOptions(options.firExitOptions)
       })
       .catch(() => {
         if (!cancelled) {
@@ -568,32 +462,13 @@ function MapView({
       setSelectedIapKey(null)
       return
     }
-    const entry = iapData.starToIapCandidates?.[selectedStar.id]
-    if (!entry) {
-      setIapCandidates([])
-      setSelectedIapKey(null)
-      return
-    }
-    const candidates = entry.candidateIapKeys.map((key) => ({
-      key,
-      label: `RWY ${iapData.iapRoutes[key]?.representativeFor?.runwayGroup?.join(', ') ?? key}`,
-    }))
+    const { candidates, selectedIapKey: nextSelectedIapKey } = buildIapCandidates(selectedStar, iapData, selectedIapKey)
     setIapCandidates(candidates)
-    setSelectedIapKey((current) => (
-      candidates.some(({ key }) => key === current)
-        ? current
-        : entry.defaultIapKey
-    ))
-  }, [selectedStar, iapData])
+    setSelectedIapKey(nextSelectedIapKey)
+  }, [selectedStar, iapData, selectedIapKey])
 
   const selectedIap = iapData?.iapRoutes?.[selectedIapKey] ?? null
-  const visibleSidOptions = useMemo(() => {
-    if (!Array.isArray(availableSidIds)) {
-      return sidOptions
-    }
-
-    return sidOptions.filter((proc) => availableSidIds.includes(proc.id))
-  }, [availableSidIds, sidOptions])
+  const visibleSidOptions = useMemo(() => buildVisibleSidOptions(sidOptions, availableSidIds), [availableSidIds, sidOptions])
 
   function clearRouteDisplay() {
     setRouteResult(null)
@@ -1443,13 +1318,7 @@ function MapView({
       setRouteResult(result)
       const map = mapRef.current
       if (result.flightRule === 'VFR') {
-        const pts = result.previewGeojson.features.filter((f) => f.properties.role === 'route-preview-point')
-        const departureElevationFt = getAirportElevationFt(result.departureAirport)
-        const arrivalElevationFt = getAirportElevationFt(result.arrivalAirport)
-        const initialWaypoints = [
-          { id: result.departureAirport, lon: pts[0].geometry.coordinates[0], lat: pts[0].geometry.coordinates[1], fixed: true, airportElevationFt: departureElevationFt, altitudeFt: departureElevationFt ?? 0 },
-          { id: result.arrivalAirport, lon: pts[1].geometry.coordinates[0], lat: pts[1].geometry.coordinates[1], fixed: true, airportElevationFt: arrivalElevationFt, altitudeFt: arrivalElevationFt ?? 0 },
-        ]
+        const initialWaypoints = buildInitialVfrWaypoints(result, airports)
         setVfrWaypoints(initialWaypoints)
         if (map?.isStyleLoaded()) {
           addRoutePreviewLayers(map)
@@ -1499,29 +1368,19 @@ function MapView({
     if (!Number.isFinite(plannedCruiseAltitudeFt) || plannedCruiseAltitudeFt <= 0) return
     setVfrWaypoints((prev) => prev.map((wp) => {
       if (!wp.fixed) return { ...wp, altitudeFt: Math.round(plannedCruiseAltitudeFt) }
-      const airportElevationFt = getVfrAirportAltitudeFt(wp)
+      const airportElevationFt = getVfrAirportAltitudeFt(airports, wp)
       return { ...wp, airportElevationFt, altitudeFt: airportElevationFt }
     }))
   }
 
-  function getCurrentRouteLineString() {
-    if (!routeResult) return null
-
-    if (routeResult.flightRule === 'VFR') {
-      if (vfrWaypoints.length < 2) return null
-      return {
-        type: 'LineString',
-        coordinates: vfrWaypoints.map((wp) => [wp.lon, wp.lat]),
-      }
-    }
-
-    const displayGeojson = augmentRouteWithProcedures(routeResult.previewGeojson, selectedSid, selectedStar, selectedIap)
-    const lineFeature = displayGeojson.features.find((feature) => feature.properties.role === 'route-preview-line')
-    return lineFeature?.geometry ?? null
-  }
-
   async function handleVerticalProfileRequest() {
-    const routeGeometry = getCurrentRouteLineString()
+    const routeGeometry = getCurrentRouteLineString({
+      routeResult,
+      vfrWaypoints,
+      selectedSid,
+      selectedStar,
+      selectedIap,
+    })
     const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt)
 
     if (!routeGeometry) {
@@ -1613,47 +1472,6 @@ function MapView({
       else current.add(mapKey)
       return { ...prev, [kind]: [...current] }
     })
-  }
-
-  function buildIfrSequenceTokens(result) {
-    const seq = result?.displaySequence ?? []
-    const airwayIds = new Set(result?.routeIds ?? [])
-    const middleSeq = seq.slice(1, -1)
-    const tokens = []
-
-    const departureLabel = seq[0] ?? result?.departureAirport
-    if (departureLabel) {
-      tokens.push({ kind: 'airport', text: departureLabel })
-    }
-
-    if (selectedSid?.name) {
-      tokens.push({ kind: 'sid', text: `SID(${selectedSid.name})` })
-    }
-
-    middleSeq.forEach((item) => {
-      tokens.push({
-        kind: airwayIds.has(item) ? 'airway' : 'waypoint',
-        text: item,
-      })
-    })
-
-    if (selectedStar?.name) {
-      tokens.push({ kind: 'star', text: `STAR(${selectedStar.name})` })
-    }
-
-    if (selectedIap) {
-      const iapName = selectedIap.sourceProcedure || selectedIap.fullName || selectedIap.name
-      if (iapName) {
-        tokens.push({ kind: 'iap', text: `IAP(${iapName})` })
-      }
-    }
-
-    const arrivalLabel = result?.arrivalAirport || seq[seq.length - 1]
-    if (arrivalLabel) {
-      tokens.push({ kind: 'airport', text: arrivalLabel })
-    }
-
-    return tokens
   }
 
   // ???? Render ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -1916,25 +1734,18 @@ function MapView({
           {routeResult && (
             <div className="route-check-result">
               {routeResult.flightRule === 'IFR' && (() => {
-                const displayTokens = buildIfrSequenceTokens(routeResult)
-
-                // Calculate total distance
-                const airwayDist = Number(routeResult.distanceNm || 0)
-                const sidDist = Number(selectedSid?.fixes?.reduce((acc, f) => acc + (f.legDistanceNm || 0), 0) || 0)
-                const starDist = Number(selectedStar?.fixes?.reduce((acc, f) => acc + (f.legDistanceNm || 0), 0) || 0)
-                const iapDist = Number(selectedIap?.fixes?.reduce((acc, f) => acc + (f.legDistanceNm || 0), 0) || 0)
-                const totalDist = Number((airwayDist + sidDist + starDist + iapDist).toFixed(1))
-                const distanceBreakdown = [
-                  { kind: 'sid', label: 'SID', value: sidDist },
-                  { kind: 'enr', label: 'ENR', value: airwayDist },
-                  { kind: 'star', label: 'STAR', value: starDist },
-                  { kind: 'iap', label: 'IAP', value: iapDist },
-                ].filter((item) => item.value > 0)
+                const displayTokens = buildIfrSequenceTokens(routeResult, { selectedSid, selectedStar, selectedIap })
+                const { totalDistanceNm, items: distanceBreakdown } = buildIfrDistanceBreakdown({
+                  routeResult,
+                  selectedSid,
+                  selectedStar,
+                  selectedIap,
+                })
 
                 return (
                   <>
                     <div className="route-check-total-dist">
-                      {'\ucd1d \uac70\ub9ac'}: <strong>{totalDist} NM</strong>
+                      {'\ucd1d \uac70\ub9ac'}: <strong>{totalDistanceNm} NM</strong>
                       {distanceBreakdown.length > 0 && (
                         <span className="dist-breakdown">
                           {' ('}
@@ -1984,7 +1795,7 @@ function MapView({
                     {vfrWaypoints.map((wp, index) => {
                       const fallbackAltitudeFt = Number(cruiseAltitudeFt)
                       const displayAltitudeFt = wp.fixed
-                        ? getVfrAirportAltitudeFt(wp)
+                        ? getVfrAirportAltitudeFt(airports, wp)
                         : Number.isFinite(Number(wp.altitudeFt))
                         ? Number(wp.altitudeFt)
                         : fallbackAltitudeFt
