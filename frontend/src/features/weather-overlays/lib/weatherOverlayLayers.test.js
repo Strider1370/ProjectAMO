@@ -24,6 +24,7 @@ function createMockMap() {
   const paintCalls = []
 
   return {
+    layers,
     layoutCalls,
     paintCalls,
     addSource(id, source) {
@@ -126,4 +127,8 @@ test('installWeatherOverlayLayers can run with empty data', () => {
   assert.ok(map.getSource(LIGHTNING_SOURCE))
   assert.ok(map.getLayer('kma-sigmet-advisories-fill'))
   assert.ok(map.getLayer('kma-lightning-ground'))
+  assert.ok(map.getLayer('kma-lightning-cloud'))
+  for (const layerId of map.layers.keys()) {
+    assert.ok(WEATHER_OVERLAY_LAYER_IDS.includes(layerId), `${layerId} is missing from WEATHER_OVERLAY_LAYER_IDS`)
+  }
 })

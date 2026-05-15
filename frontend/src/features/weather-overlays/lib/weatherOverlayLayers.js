@@ -7,6 +7,8 @@ import {
   updateAdvisoryLayerData,
 } from './advisoryLayers.js'
 import {
+  LIGHTNING_CLOUD_LAYER,
+  LIGHTNING_GROUND_LAYER,
   LIGHTNING_SOURCE,
   addLightningLayers,
   setLightningBlinkState,
@@ -66,6 +68,8 @@ export const WEATHER_OVERLAY_LAYER_IDS = [
   SIGWX_LAYER,
   SIGWX_CLOUD_LAYER,
   ...SIGWX_VECTOR_LAYERS,
+  LIGHTNING_GROUND_LAYER,
+  LIGHTNING_CLOUD_LAYER,
   ADVISORY_LAYER_DEFS.sigmet.fillLayerId,
   ADVISORY_LAYER_DEFS.sigmet.lineLayerId,
   ADVISORY_LAYER_DEFS.sigmet.labelLayerId,
