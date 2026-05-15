@@ -27,6 +27,7 @@ import {
 import {
   MET_LAYERS,
   RADAR_RAINRATE_LEGEND,
+  installWeatherOverlayLayers,
   syncAdvisoryLayers,
   syncLightningLayers,
   syncRasterAndSigwxLayers,
@@ -487,6 +488,9 @@ function MapView({
         vfrInteractionsBound = true
         bindVfrInteractions(map, vfrWaypointsRef, setVfrWaypoints)
       }
+
+      // Weather overlays
+      installWeatherOverlayLayers(map)
 
       // Geo boundaries (coastline + admin)
       addGeoBoundaryLayers(map)

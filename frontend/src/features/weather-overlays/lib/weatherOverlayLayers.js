@@ -388,6 +388,23 @@ export function installAdvisoryLayers(map, model) {
   setAdvisoryVisibility(map, 'airmet', model.visibility.airmet)
 }
 
+export function installWeatherOverlayLayers(map) {
+  addOrUpdateSigwxLowLayers(map, null)
+  installAdvisoryLayers(map, {
+    sigmetFeatures: EMPTY_GEOJSON,
+    sigmetLabels: EMPTY_GEOJSON,
+    airmetFeatures: EMPTY_GEOJSON,
+    airmetLabels: EMPTY_GEOJSON,
+    visibility: { sigmet: false, airmet: false },
+  })
+  syncLightningLayers(map, {
+    lightningGeoJSON: EMPTY_GEOJSON,
+    visibility: { lightning: false },
+    blinkLightning: false,
+    lightningBlinkOff: false,
+  })
+}
+
 export function syncLightningLayers(map, model) {
   addLightningLayers(map, model.lightningGeoJSON)
   map.getSource(LIGHTNING_SOURCE)?.setData(model.lightningGeoJSON)

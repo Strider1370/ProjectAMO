@@ -8,6 +8,9 @@ import {
   RADAR_LAYER,
   SIGWX_LAYER,
   SIGWX_CLOUD_LAYER,
+  WEATHER_OVERLAY_LAYER_IDS,
+  WEATHER_OVERLAY_SOURCE_IDS,
+  installWeatherOverlayLayers,
   syncAdvisoryLayers,
   syncLightningLayers,
   syncRasterAndSigwxLayers,
@@ -109,4 +112,18 @@ test('syncAdvisoryLayers and syncLightningLayers update installed sources and vi
   assert.ok(map.layoutCalls.some(([id, prop, value]) => id === 'kma-sigmet-advisories-fill' && prop === 'visibility' && value === 'visible'))
   assert.ok(map.layoutCalls.some(([id, prop, value]) => id === 'kma-airmet-advisories-fill' && prop === 'visibility' && value === 'none'))
   assert.ok(map.paintCalls.some(([id, prop]) => id === 'kma-lightning-ground' && prop === 'icon-opacity'))
+})
+
+test('weather overlay ownership exports are unique', () => {
+  assert.equal(new Set(WEATHER_OVERLAY_SOURCE_IDS).size, WEATHER_OVERLAY_SOURCE_IDS.length)
+  assert.equal(new Set(WEATHER_OVERLAY_LAYER_IDS).size, WEATHER_OVERLAY_LAYER_IDS.length)
+})
+
+test('installWeatherOverlayLayers can run with empty data', () => {
+  const map = createMockMap()
+  installWeatherOverlayLayers(map)
+  assert.ok(map.getSource('kma-sigmet-advisories'))
+  assert.ok(map.getSource(LIGHTNING_SOURCE))
+  assert.ok(map.getLayer('kma-sigmet-advisories-fill'))
+  assert.ok(map.getLayer('kma-lightning-ground'))
 })
