@@ -41,6 +41,7 @@ import {
 } from '../weather-overlays/lib/weatherTimeline.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import { setLayerVisibility } from './lib/mapLayerUtils.js'
+import { bindLayerEvent, cleanupAll } from './lib/mapStyleSync.js'
 import {
   AIRPORT_CIRCLE_LAYER,
   AIRPORT_SOURCE_ID,
@@ -89,17 +90,23 @@ function initMetVisibility() {
 
 function bindSectorHover(map) {
   const sector = AVIATION_WFS_LAYERS.find((l) => l.id === 'sector')
-  if (!sector?.fillLayerId || !sector.hoverLayerId) return
+  if (!sector?.fillLayerId || !sector.hoverLayerId) return null
 
-  map.on('mousemove', sector.fillLayerId, (e) => {
+  const onMouseMove = (e) => {
     const ids = [...new Set(e.features.map((f) => f.properties.sectorId).filter(Boolean))]
     map.getCanvas().style.cursor = ids.length > 0 ? 'pointer' : ''
     map.setFilter(sector.hoverLayerId, ['in', ['get', 'sectorId'], ['literal', ids]])
-  })
-  map.on('mouseleave', sector.fillLayerId, () => {
+  }
+  const onMouseLeave = () => {
     map.getCanvas().style.cursor = ''
     map.setFilter(sector.hoverLayerId, ['in', ['get', 'sectorId'], ['literal', []]])
-  })
+  }
+
+  const cleanups = [
+    bindLayerEvent(map, 'mousemove', sector.fillLayerId, onMouseMove),
+    bindLayerEvent(map, 'mouseleave', sector.fillLayerId, onMouseLeave),
+  ]
+  return () => cleanupAll(cleanups)
 }
 
 // ???? Lightning layers ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -125,6 +132,10 @@ function MapView({
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const onSelectRef = useRef(onAirportSelect)
+  const airportEventCleanupRef = useRef([])
+  const advisoryEventCleanupRef = useRef([])
+  const adsbEventCleanupRef = useRef(null)
+  const sectorEventCleanupRef = useRef(null)
   const [error, setError] = useState(null)
   const [isStyleReady, setIsStyleReady] = useState(false)
   const [styleRevision, setStyleRevision] = useState(0)
@@ -463,8 +474,6 @@ function MapView({
 
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
-    let airportHandlerBound = false
-    let advisoryHandlerBound = false
     let vfrInteractionsBound = false
 
     // zoom handler lives outside style.load to avoid duplicate registration on style switch
@@ -483,7 +492,6 @@ function MapView({
 
       // Route preview
       installRoutePreviewLayers(map)
-      bindSectorHover(map)
       if (!vfrInteractionsBound) {
         vfrInteractionsBound = true
         bindVfrInteractions(map, vfrWaypointsRef, setVfrWaypoints)
@@ -498,39 +506,8 @@ function MapView({
       // Airport circles
       addAirportLayers(map, { type: 'FeatureCollection', features: [] })
 
-      if (!airportHandlerBound) {
-        airportHandlerBound = true
-        map.on('click', AIRPORT_CIRCLE_LAYER, (e) => {
-          const icao = e.features?.[0]?.properties?.icao
-          if (icao) onSelectRef.current?.(icao)
-        })
-        map.on('mouseenter', AIRPORT_CIRCLE_LAYER, () => { map.getCanvas().style.cursor = 'pointer' })
-        map.on('mouseleave', AIRPORT_CIRCLE_LAYER, () => { map.getCanvas().style.cursor = '' })
-      }
-
       // ADS-B
       addAdsbLayers(map)
-      bindAdsbHover(map)
-
-      if (!advisoryHandlerBound) {
-        advisoryHandlerBound = true
-        const advisoryLayerIds = [
-          ADVISORY_LAYER_DEFS.sigmet.fillLayerId, ADVISORY_LAYER_DEFS.sigmet.lineLayerId,
-          ADVISORY_LAYER_DEFS.airmet.fillLayerId, ADVISORY_LAYER_DEFS.airmet.lineLayerId,
-        ]
-        advisoryLayerIds.forEach((layerId) => {
-          map.on('click', layerId, (e) => {
-            const desc = e.features?.[0]?.properties?.description
-            if (!desc) return
-            new mapboxgl.Popup({ closeButton: true, maxWidth: '320px' })
-              .setLngLat(e.lngLat)
-              .setHTML(`<pre class="mapbox-advisory-popup">${desc.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</pre>`)
-              .addTo(map)
-          })
-          map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer' })
-          map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = '' })
-        })
-      }
 
       setStyleRevision((value) => value + 1)
       setIsStyleReady(true)
@@ -539,6 +516,58 @@ function MapView({
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return undefined
+
+    cleanupAll(airportEventCleanupRef.current)
+    cleanupAll(advisoryEventCleanupRef.current)
+    adsbEventCleanupRef.current?.()
+    sectorEventCleanupRef.current?.()
+
+    airportEventCleanupRef.current = [
+      bindLayerEvent(map, 'click', AIRPORT_CIRCLE_LAYER, (e) => {
+        const icao = e.features?.[0]?.properties?.icao
+        if (icao) onSelectRef.current?.(icao)
+      }),
+      bindLayerEvent(map, 'mouseenter', AIRPORT_CIRCLE_LAYER, () => { map.getCanvas().style.cursor = 'pointer' }),
+      bindLayerEvent(map, 'mouseleave', AIRPORT_CIRCLE_LAYER, () => { map.getCanvas().style.cursor = '' }),
+    ]
+
+    const advisoryLayerIds = [
+      ADVISORY_LAYER_DEFS.sigmet.fillLayerId,
+      ADVISORY_LAYER_DEFS.sigmet.lineLayerId,
+      ADVISORY_LAYER_DEFS.airmet.fillLayerId,
+      ADVISORY_LAYER_DEFS.airmet.lineLayerId,
+    ]
+    advisoryEventCleanupRef.current = advisoryLayerIds.flatMap((layerId) => [
+      bindLayerEvent(map, 'click', layerId, (e) => {
+        const desc = e.features?.[0]?.properties?.description
+        if (!desc) return
+        new mapboxgl.Popup({ closeButton: true, maxWidth: '320px' })
+          .setLngLat(e.lngLat)
+          .setHTML(`<pre class="mapbox-advisory-popup">${desc.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</pre>`)
+          .addTo(map)
+      }),
+      bindLayerEvent(map, 'mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer' }),
+      bindLayerEvent(map, 'mouseleave', layerId, () => { map.getCanvas().style.cursor = '' }),
+    ])
+
+    adsbEventCleanupRef.current = bindAdsbHover(map)
+    sectorEventCleanupRef.current = bindSectorHover(map)
+
+    return () => {
+      cleanupAll(airportEventCleanupRef.current)
+      cleanupAll(advisoryEventCleanupRef.current)
+      adsbEventCleanupRef.current?.()
+      sectorEventCleanupRef.current?.()
+      airportEventCleanupRef.current = []
+      advisoryEventCleanupRef.current = []
+      adsbEventCleanupRef.current = null
+      sectorEventCleanupRef.current = null
+    }
+  }, [isStyleReady, styleRevision])
 
   // ???? Sync aviation layer visibility ??????????????????????????????????????????????????????????????????????????????
 

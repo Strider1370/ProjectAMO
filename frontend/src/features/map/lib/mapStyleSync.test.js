@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   bindLayerEvent,
+  cleanupAll,
   flattenLayerIds,
   hasStyleRevision,
 } from './mapStyleSync.js'
@@ -71,4 +72,10 @@ test('feature sync modules export non-empty source and layer ownership lists', (
     assert.ok(ids.length > 0)
     ids.forEach((id) => assert.equal(typeof id, 'string'))
   })
+})
+
+test('cleanupAll runs every cleanup function', () => {
+  const calls = []
+  cleanupAll([() => calls.push(1), null, () => calls.push(2)])
+  assert.deepEqual(calls, [1, 2])
 })

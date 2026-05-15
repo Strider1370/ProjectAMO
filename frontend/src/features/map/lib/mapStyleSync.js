@@ -25,3 +25,7 @@ export function bindLayerEvent(map, type, layerId, handler) {
   map.on(type, layerId, handler)
   return () => map.off(type, layerId, handler)
 }
+
+export function cleanupAll(cleanups) {
+  cleanups.filter(Boolean).forEach((cleanup) => cleanup())
+}
