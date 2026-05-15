@@ -15,8 +15,11 @@
 
 ## 2. Modify ADS-B display
 
-- Marker style, popup, fetch interval -> `frontend/src/features/aviation-layers/addAdsbLayer.js`.
-- Backend fetch -> `frontend/src/api/adsbApi.js`.
+1. Marker style, GeoJSON shaping, visibility sync, source/layer IDs, or hover popup behavior -> `frontend/src/features/aviation-layers/addAdsbLayer.js`.
+2. Backend fetch helper -> `frontend/src/api/adsbApi.js`.
+3. ADS-B toggle placement currently remains in `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx`; do not move it into the aviation panel without a separate UX decision.
+4. ADS-B polling is still orchestrated by `frontend/src/features/map/MapView.jsx`; keep changes there limited to polling/composition unless a dedicated ADS-B polling module is introduced in a separate refactor.
+5. Verify in browser: ADS-B toggle works, hover popup appears once, and repeated basemap switches do not duplicate hover behavior.
 
 ## 3. Wire a new sidebar panel
 
@@ -30,9 +33,11 @@
 1. Add visibility/panel metadata to `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js`.
 2. Add frame selection or derived data to `frontend/src/features/weather-overlays/lib/weatherOverlayModel.js`.
 3. Add Mapbox sync behavior to `syncRasterAndSigwxLayers` or a new weather-owned sync helper in `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js`.
-4. Add toggle or legend UI under `frontend/src/features/weather-overlays/`.
-5. Keep `frontend/src/features/map/MapView.jsx` changes limited to high-level composition if a new UI slot is needed.
-6. Verify in browser: layer appears, toggle works, basemap switch preserves visibility, and aviation/geo layers remain above raster overlays.
+4. If the overlay installs persistent Mapbox sources/layers, update `WEATHER_OVERLAY_SOURCE_IDS` and `WEATHER_OVERLAY_LAYER_IDS`.
+5. If the overlay needs static source/layer installation after basemap reload, update `installWeatherOverlayLayers`.
+6. Add toggle or legend UI under `frontend/src/features/weather-overlays/`.
+7. Keep `frontend/src/features/map/MapView.jsx` changes limited to high-level composition, passing current model state into weather-owned sync helpers, or adding `styleRevision` to a sync effect dependency.
+8. Verify in browser: layer appears, toggle works, basemap switch preserves visibility/data, and aviation/geo layers remain above raster overlays.
 
 ## 5. Add a new backend data type
 
@@ -54,7 +59,21 @@
 
 1. Add pure route calculations or display model changes in `frontend/src/features/route-briefing/lib/routeBriefingModel.js`.
 2. Add route search, procedure-loading, VFR waypoint, or vertical-profile state changes in `frontend/src/features/route-briefing/useRouteBriefing.js`.
-3. Add route/procedure/boundary-fix map preview changes in `frontend/src/features/route-briefing/lib/routePreview.js` or `routePreviewSync.js`.
-4. Add route panel UI changes in `frontend/src/features/route-briefing/RouteBriefingPanel.jsx`.
-5. Keep `frontend/src/features/map/MapView.jsx` changes limited to high-level composition or a new cross-feature slot.
-6. Verify IFR, VFR, FIR IN/EXIT, VFR waypoint editing, and vertical profile generation.
+3. Add route/procedure/VFR/boundary-fix map preview changes in `frontend/src/features/route-briefing/lib/routePreview.js` or `routePreviewSync.js`.
+4. If route preview sources/layers change, update `ROUTE_PREVIEW_SOURCE_IDS` and `ROUTE_PREVIEW_LAYER_IDS` in `routePreviewSync.js`.
+5. Add route panel UI changes in `frontend/src/features/route-briefing/RouteBriefingPanel.jsx`.
+6. Keep `frontend/src/features/map/MapView.jsx` changes limited to high-level composition, route preview sync invocation, or a new cross-feature slot.
+7. Verify IFR, VFR, FIR IN/EXIT, VFR waypoint editing, vertical profile generation, and basemap switch preservation for visible route previews.
+
+## 8. Modify Mapbox style/source-layer sync
+
+1. Keep `frontend/src/features/map/MapView.jsx` responsible for Mapbox instance lifecycle, basemap switching, style readiness, and `styleRevision`.
+2. Do not apply current feature data or visibility directly inside `style.load`; install static sources/layers there, then let current-state sync effects rerun via `styleRevision`.
+3. Put feature-specific Mapbox writes in the owning feature adapter:
+   - Weather overlays -> `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js`.
+   - Route previews -> `frontend/src/features/route-briefing/lib/routePreview.js` or `routePreviewSync.js`.
+   - ADS-B -> `frontend/src/features/aviation-layers/addAdsbLayer.js`.
+   - Base airports/geo boundaries -> `frontend/src/features/map/lib/baseMapLayers.js`.
+4. Use cleanup-aware event binding from `frontend/src/features/map/lib/mapStyleSync.js` for layer handlers that must survive repeated style reloads.
+5. If a module owns persistent sources/layers, export or update its `*_SOURCE_IDS` and `*_LAYER_IDS` arrays.
+6. Verify with focused tests where Mapbox mocks are representative, then browser smoke: toggle layers, switch basemap twice, confirm visibility/data and hover/click behavior remain stable.
