@@ -69,7 +69,7 @@ export function setAdsbVisibility(map, isVisible) {
 export function bindAdsbHover(map) {
   let popup = null
 
-  map.on('mouseenter', ADSB_LAYER_ID, (e) => {
+  const onMouseEnter = (e) => {
     map.getCanvas().style.cursor = 'pointer'
     const props = e.features[0].properties
 
@@ -97,19 +97,38 @@ export function bindAdsbHover(map) {
       .setLngLat(e.lngLat)
       .setHTML(html)
       .addTo(map)
-  })
+  }
 
-  map.on('mousemove', ADSB_LAYER_ID, (e) => {
+  const onMouseMove = (e) => {
     if (popup) {
       popup.setLngLat(e.lngLat)
     }
-  })
+  }
 
-  map.on('mouseleave', ADSB_LAYER_ID, () => {
+  const onMouseLeave = () => {
     map.getCanvas().style.cursor = ''
     if (popup) {
       popup.remove()
       popup = null
     }
-  })
+  }
+
+  map.on('mouseenter', ADSB_LAYER_ID, onMouseEnter)
+  map.on('mousemove', ADSB_LAYER_ID, onMouseMove)
+  map.on('mouseleave', ADSB_LAYER_ID, onMouseLeave)
+
+  return () => {
+    map.off('mouseenter', ADSB_LAYER_ID, onMouseEnter)
+    map.off('mousemove', ADSB_LAYER_ID, onMouseMove)
+    map.off('mouseleave', ADSB_LAYER_ID, onMouseLeave)
+    if (popup) {
+      popup.remove()
+      popup = null
+    }
+  }
+}
+
+export function syncAdsbLayer(map, { geojson, isVisible }) {
+  map.getSource(ADSB_SOURCE_ID)?.setData(geojson)
+  setAdsbVisibility(map, isVisible)
 }
