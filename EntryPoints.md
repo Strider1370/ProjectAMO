@@ -6,6 +6,20 @@
 
 ---
 
+## MapView Boundary Rule
+
+For map-related work, do not default to editing `frontend/src/features/map/MapView.jsx`.
+
+Use `MapView.jsx` only for:
+- Mapbox instance lifecycle.
+- Basemap switching.
+- Style readiness and `styleRevision`.
+- High-level panel composition.
+- Calling feature-owned sync helpers.
+- Temporary polling orchestration that has not yet been moved to a feature module.
+
+Feature-specific model, source/layer, GeoJSON, popup, route, weather, or ADS-B logic belongs in the owning `features/*` module.
+
 ## 1. Add a new aviation WFS layer
 
 1. Add definition to `frontend/src/features/aviation-layers/aviationWfsLayers.js` (id, color, source url, line/fill/point options).
