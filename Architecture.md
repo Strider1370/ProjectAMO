@@ -20,7 +20,7 @@ ProjectAMO/
       api/                     -> frontend API clients
       app/                     -> app shell, layout, and weather polling
       features/
-        map/                   -> Mapbox lifecycle, map panels, route interactions
+        map/                   -> Mapbox lifecycle, basemap/style readiness, map-owned layers, and high-level feature orchestration
         monitoring/            -> standalone legacy-style ops/ground monitoring page with Mapbox overlay panel
         aviation-layers/       -> aviation WFS and ADS-B layers
         weather-overlays/      -> radar/satellite/lightning/SIGWX/advisory overlays
@@ -55,10 +55,11 @@ ProjectAMO/
 - `frontend/src/api/weatherApi.js` -> weather bundle, changed dataset, static airport/navdata fetch helpers.
 - `frontend/src/api/adsbApi.js` -> ADS-B fetch helper.
 - `frontend/src/api/briefingApi.js` -> route briefing and vertical profile API helpers.
-- `frontend/src/features/map/MapView.jsx` -> Mapbox map container, style readiness, basemap switching, cross-feature panel composition, and high-level feature sync orchestration.
+- `frontend/src/features/map/MapView.jsx` -> Mapbox instance owner, style readiness/basemap switching coordinator, `styleRevision` sync trigger, high-level feature panel composition, and current-state sync orchestration. Feature-specific data shaping and layer adapters live in their owning feature modules.
 - `frontend/src/features/map/MapView.css` -> map, overlay panel, and route briefing style entry.
 - `frontend/src/features/map/mapConfig.js` -> map bounds, initial camera, basemap options.
 - `frontend/src/features/map/imageOverlay.js` -> shared Mapbox image overlay helpers for raster/SIGWX frames.
+- `frontend/src/features/map/lib/mapStyleSync.js` -> Mapbox style-reload helpers for cleanup-aware layer event binding, cleanup collections, and source/layer ownership tests.
 - `frontend/src/features/map/basemapSwitcher/BasemapSwitcher.jsx` -> basemap switcher UI.
 - `frontend/src/features/monitoring/MonitoringPage.jsx` -> standalone `/monitoring` legacy-style ops/ground screen.
 - `frontend/src/features/monitoring/MonitoringMap.jsx` -> monitoring wrapper around the main MapView with local Aviation/MET icon toggles.
@@ -66,8 +67,8 @@ ProjectAMO/
 - `frontend/src/features/monitoring/legacy/*` -> copied previous-project dashboard components, alert utilities, CSS, and weather icon assets for the standalone monitoring screen.
 - `frontend/src/features/aviation-layers/aviationWfsLayers.js` -> aviation WFS layer definitions.
 - `frontend/src/features/aviation-layers/addAviationWfsLayers.js` -> WFS source/layer creation.
-- `frontend/src/features/aviation-layers/addAdsbLayer.js` -> ADS-B source/layer/hover wiring.
-- `frontend/src/features/aviation-layers/AviationLayerPanel.jsx` -> aviation and ADS-B layer toggle panel.
+- `frontend/src/features/aviation-layers/addAdsbLayer.js` -> ADS-B GeoJSON shaping, source/layer install, visibility sync, cleanup-aware hover popup binding, and ADS-B source/layer ownership IDs.
+- `frontend/src/features/aviation-layers/AviationLayerPanel.jsx` -> aviation WFS layer toggle panel. ADS-B remains controlled from the MET/weather overlay panel for the current UX.
 - `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx` -> MET overlay toggle panel.
 - `frontend/src/features/weather-overlays/WeatherTimelineBar.jsx` -> shared bottom playback timeline for radar, satellite, and lightning overlay frames.
 - `frontend/src/features/weather-overlays/AdsbTimestamp.jsx` -> ADS-B reference-time display pill.
@@ -76,7 +77,7 @@ ProjectAMO/
 - `frontend/src/features/weather-overlays/SigwxHistoryBar.jsx` -> SIGWX history controls.
 - `frontend/src/features/weather-overlays/AdvisoryBadges.jsx` -> SIGMET/AIRMET advisory badges.
 - `frontend/src/features/weather-overlays/lib/weatherOverlayModel.js` -> weather overlay derived model for timeline, SIGWX history/filter state, advisory panel data, badge counts, and legend labels.
-- `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js` -> weather overlay Mapbox raster/SIGWX/advisory sync helpers and MET panel layer definitions.
+- `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js` -> MET panel layer definitions, weather overlay source/layer ownership IDs, static weather overlay installation, and radar/satellite/SIGWX/advisory/lightning Mapbox sync helpers.
 - `frontend/src/features/weather-overlays/lib/lightningLayers.js` -> lightning GeoJSON, icon, layer, visibility, and blink helpers.
 - `frontend/src/features/weather-overlays/lib/advisoryLayers.js` -> SIGMET/AIRMET GeoJSON and layer helpers.
 - `frontend/src/features/weather-overlays/lib/sigwxData.js` -> SIGWX_LOW GeoJSON/icon mapping helpers.
@@ -88,7 +89,7 @@ ProjectAMO/
 - `frontend/src/features/route-briefing/RouteBriefing.css` -> route panel, VFR waypoint, and vertical profile styles.
 - `frontend/src/features/route-briefing/VerticalProfileChart.jsx` -> SVG route vertical profile chart.
 - `frontend/src/features/route-briefing/lib/routeBriefingModel.js` -> pure route briefing view/model helpers.
-- `frontend/src/features/route-briefing/lib/routePreviewSync.js` -> route/procedure/boundary-fix/highlight Mapbox sync helpers.
+- `frontend/src/features/route-briefing/lib/routePreviewSync.js` -> route/procedure/VFR/boundary-fix/highlight Mapbox install/sync helpers and route preview source/layer ownership IDs.
 - `frontend/src/features/route-briefing/lib/routePreview.js` -> route/procedure/VFR GeoJSON helpers, layer installation, and VFR map interaction binding.
 - `frontend/src/features/airport-panel/AirportPanel.jsx` -> airport drawer shell and tab selection.
 - `frontend/src/features/airport-panel/AirportPanel.css` -> airport drawer and tab style entry.
@@ -130,6 +131,9 @@ ProjectAMO/
 - `frontend/src/features/*` may import `api/`, `shared/`, and local feature siblings when a UI flow requires it.
 - `frontend/src/shared/*` must stay frontend-only and must not import from `app/` or `features/`.
 - Root `shared/` is for backend/frontend common constants; do not mix it with `frontend/src/shared/`.
+- `frontend/src/features/map/MapView.jsx` owns Mapbox instance creation, basemap switching, style readiness, and `styleRevision`; it should not apply feature data or visibility from stale `style.load` closures.
+- Feature-owned Mapbox adapters should expose or document their source/layer IDs when they own persistent Mapbox resources.
+- Weather overlay map writes belong under `frontend/src/features/weather-overlays/lib/`; route preview map writes belong under `frontend/src/features/route-briefing/lib/`; ADS-B map writes belong under `frontend/src/features/aviation-layers/`.
 - `backend/*` must not import from `frontend/src/`.
 - Runtime browser assets must live under `frontend/public/`.
 - Raw terrain sources and generated terrain tiles stay under the backend data root at `terrain/`; locally this is `backend/data/terrain/`, while the GCP VM uses `DATA_PATH=/opt/projectamo/shared/data`, so runtime tiles must be under `/opt/projectamo/shared/data/terrain/tiles/`.
