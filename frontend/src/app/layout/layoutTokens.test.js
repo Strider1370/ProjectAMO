@@ -6,6 +6,7 @@ const css = readFileSync(new URL('./layoutTokens.css', import.meta.url), 'utf8')
 const appCss = readFileSync(new URL('../App.css', import.meta.url), 'utf8')
 const sidebarCss = readFileSync(new URL('./Sidebar.css', import.meta.url), 'utf8')
 const mapCss = readFileSync(new URL('../../features/map/MapView.css', import.meta.url), 'utf8')
+const routeCss = readFileSync(new URL('../../features/route-briefing/RouteBriefing.css', import.meta.url), 'utf8')
 
 test('layout tokens define shell and panel sizing contracts', () => {
   for (const token of [
@@ -71,4 +72,11 @@ test('map overlay panels use responsive panel tokens', () => {
   assert.doesNotMatch(mapCss, /\.map-view-wrapper \.layer-drawer\s*\{[^}]*width:\s*286px/s)
   assert.doesNotMatch(mapCss, /\.dev-layer-panel\s*\{[^}]*width:\s*160px/s)
   assert.doesNotMatch(mapCss, /\.sigwx-legend-modal\s*\{[^}]*width:\s*280px/s)
+})
+
+test('route briefing panel uses responsive medium panel token', () => {
+  assert.match(routeCss, /width:\s*var\(--panel-overlay-md\)/)
+  assert.match(routeCss, /\.vertical-profile-window/)
+  assert.match(routeCss, /\.basemap-switcher/)
+  assert.doesNotMatch(routeCss, /\.route-check-panel\s*\{[^}]*width:\s*376px/s)
 })
