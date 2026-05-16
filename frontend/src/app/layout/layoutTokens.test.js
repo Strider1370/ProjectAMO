@@ -8,6 +8,7 @@ const sidebarCss = readFileSync(new URL('./Sidebar.css', import.meta.url), 'utf8
 const mapCss = readFileSync(new URL('../../features/map/MapView.css', import.meta.url), 'utf8')
 const routeCss = readFileSync(new URL('../../features/route-briefing/RouteBriefing.css', import.meta.url), 'utf8')
 const airportCss = readFileSync(new URL('../../features/airport-panel/AirportPanel.css', import.meta.url), 'utf8')
+const monitoringCss = readFileSync(new URL('../../features/monitoring/legacy/App.css', import.meta.url), 'utf8')
 
 test('layout tokens define shell and panel sizing contracts', () => {
   for (const token of [
@@ -86,4 +87,11 @@ test('airport drawer uses responsive large drawer token', () => {
   assert.match(airportCss, /width:\s*min\(var\(--panel-drawer-lg\),\s*calc\(100vw - var\(--active-sidebar-width\)\)\)/)
   assert.match(airportCss, /@media \(max-width: 719px\)\s*\{[^}]*\.airport-panel\s*\{[^}]*z-index:\s*120/s)
   assert.doesNotMatch(airportCss, /\.airport-panel\s*\{[^}]*width:\s*800px/s)
+})
+
+test('monitoring dashboard documents shared responsive breakpoints', () => {
+  assert.match(monitoringCss, /ProjectAMO responsive layout policy/)
+  assert.match(monitoringCss, /@media \(max-width: 1199px\)/)
+  assert.match(monitoringCss, /@media \(max-width: 979px\)/)
+  assert.match(monitoringCss, /@media \(max-width: 719px\)/)
 })

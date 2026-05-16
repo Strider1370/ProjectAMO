@@ -10,6 +10,11 @@
   --card-bg: #f5f3ef;
 }
 
+/* ProjectAMO responsive layout policy:
+   compact <= 1199px, tablet <= 979px, mobile <= 719px.
+   Monitoring keeps its legacy card internals, but page-level mode thresholds
+   should stay aligned with the main app layout system. */
+
 [data-theme="dark"] {
   --bg: #0f1115;
   --paper: #1a1d24;
@@ -3875,6 +3880,10 @@ label { font-size: 0.9rem; font-weight: 700; }
 [data-theme="dark"] .ground-forecast-rain-prob {
   color: #d1d5db;
 }
+/* Deferred responsive alignment:
+   The remaining 1400px, 980px, 900px, and 768px rules are component-specific
+   legacy monitoring adjustments. Keep them until a dedicated monitoring
+   component pass can validate each card/table state with screenshots. */
 @media (max-width: 1400px) {
   .ground-forecast-grid {
     grid-template-columns: 72px repeat(4, minmax(0, 1fr));
@@ -3885,8 +3894,13 @@ label { font-size: 0.9rem; font-weight: 700; }
   }
 }
 @media (max-width: 980px) {
+  .ground-forecast-panel {
+    overflow-x: auto;
+  }
   .ground-forecast-grid {
-    grid-template-columns: 64px repeat(2, minmax(0, 1fr));
+    width: max-content;
+    min-width: 100%;
+    grid-template-columns: 64px repeat(7, minmax(72px, 1fr));
   }
   .ground-forecast-label-cell {
     font-size: 0.92rem;
@@ -4617,7 +4631,7 @@ tr.row-danger td { background: #ffe9e7; }
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    RESPONSIVE
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-@media (max-width: 1024px) {
+@media (max-width: 1199px) {
   .dashboard-root {
     grid-template-columns: 1fr;
     height: auto;
@@ -4630,6 +4644,18 @@ tr.row-danger td { background: #ffe9e7; }
 
   .map-panel-wrap .interactive-map-container {
     height: 500px !important;
+  }
+}
+
+@media (max-width: 979px) {
+  .dashboard-root {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 719px) {
+  .dashboard-root {
+    padding: 12px;
   }
 }
 
