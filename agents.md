@@ -65,8 +65,13 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 **Start at `Architecture.md`. Update it when reality drifts.**
 
 - Before any task: read `Architecture.md`. If Task Patterns lists a match, follow that number in `EntryPoints.md`.
+- Before any UI, CSS, layout, or responsive task: also read `docs/ui-responsive-guidelines.md` and follow it as the operational UX standard.
 - After any task: update if files moved, a role memo is stale, a new non-obvious rule appeared, or a task flow changed. Otherwise don't touch.
 - Before adding a line, check if a line can be removed. Both files must stay scannable in seconds.
+
+For UI, CSS, layout, and responsive work:
+- Treat `docs/ui-responsive-guidelines.md` as the detailed working guide.
+- Do not implement major mobile/tablet structure changes by default; capture evidence and write proposals first unless the user explicitly approves implementation.
 
 ## 6. Encoding Safety
 

@@ -129,6 +129,7 @@ ProjectAMO/
 
 - `frontend/src/main.jsx` imports only the app entry files.
 - Frontend layout sizing should use `frontend/src/app/layout/layoutTokens.css` for shared shell, panel, and breakpoint values before adding new fixed pixel widths.
+- Frontend UI, CSS, layout, and responsive work should follow `docs/ui-responsive-guidelines.md` for operational UX priorities, review workflow, and proposal-first structural change rules.
 - `frontend/src/app/*` may import `api/`, `features/`, and `shared/`.
 - `frontend/src/features/*` may import `api/`, `shared/`, and local feature siblings when a UI flow requires it.
 - `frontend/src/shared/*` must stay frontend-only and must not import from `app/` or `features/`.
