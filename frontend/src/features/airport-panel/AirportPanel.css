@@ -1477,6 +1477,38 @@
 @media (max-width: 719px) {
   .airport-panel {
     left: 0;
+    z-index: 120;
     width: 100vw;
+  }
+
+  .airport-panel-tabs {
+    width: 72px;
+  }
+
+  .airport-panel-tab {
+    padding: 13px 2px;
+    font-size: 12px;
+  }
+
+  .airport-panel-body {
+    padding: 20px 12px;
+  }
+
+  .ap-taf-table {
+    font-size: 10px;
+  }
+
+  .ap-taf-table th,
+  .ap-taf-table td {
+    padding: 7px 3px;
+  }
+
+  .ap-taf-weather-cell {
+    gap: 3px;
+  }
+
+  .ap-taf-mini-icon {
+    width: 16px;
+    height: 16px;
   }
 }
