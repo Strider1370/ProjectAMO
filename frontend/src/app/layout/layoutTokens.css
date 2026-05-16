@@ -1,0 +1,29 @@
+:root {
+  --breakpoint-mobile-max: 719px;
+  --breakpoint-tablet: 720px;
+  --breakpoint-compact: 980px;
+  --breakpoint-desktop: 1200px;
+  --breakpoint-wide: 1600px;
+
+  --app-bottom-bar: 24px;
+  --sidebar-collapsed: 56px;
+  --sidebar-expanded: clamp(260px, 16vw, 280px);
+
+  --panel-overlay-sm: clamp(260px, 20vw, 320px);
+  --panel-overlay-md: clamp(320px, 26vw, 420px);
+  --panel-drawer-lg: clamp(560px, 42vw, 800px);
+
+  --panel-inset: 12px;
+  --panel-padding-sm: clamp(8px, 0.7vw, 12px);
+  --panel-padding-md: clamp(10px, 1vw, 18px);
+  --panel-padding-lg: clamp(16px, 1.4vw, 24px);
+  --panel-gap-sm: clamp(6px, 0.55vw, 10px);
+  --panel-gap-md: clamp(8px, 0.75vw, 14px);
+  --font-ui-xs: clamp(10px, 0.62vw, 11px);
+  --font-ui-sm: clamp(11px, 0.68vw, 13px);
+  --font-ui-md: clamp(13px, 0.78vw, 15px);
+  --media-header-sm: clamp(130px, 18dvh, 170px);
+  --panel-radius: 10px;
+  --control-target-min: 24px;
+  --touch-target-min: 44px;
+}
