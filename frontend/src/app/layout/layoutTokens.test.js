@@ -7,6 +7,7 @@ const appCss = readFileSync(new URL('../App.css', import.meta.url), 'utf8')
 const sidebarCss = readFileSync(new URL('./Sidebar.css', import.meta.url), 'utf8')
 const mapCss = readFileSync(new URL('../../features/map/MapView.css', import.meta.url), 'utf8')
 const routeCss = readFileSync(new URL('../../features/route-briefing/RouteBriefing.css', import.meta.url), 'utf8')
+const airportCss = readFileSync(new URL('../../features/airport-panel/AirportPanel.css', import.meta.url), 'utf8')
 
 test('layout tokens define shell and panel sizing contracts', () => {
   for (const token of [
@@ -79,4 +80,9 @@ test('route briefing panel uses responsive medium panel token', () => {
   assert.match(routeCss, /\.vertical-profile-window/)
   assert.match(routeCss, /\.basemap-switcher/)
   assert.doesNotMatch(routeCss, /\.route-check-panel\s*\{[^}]*width:\s*376px/s)
+})
+
+test('airport drawer uses responsive large drawer token', () => {
+  assert.match(airportCss, /width:\s*min\(var\(--panel-drawer-lg\),\s*calc\(100vw - var\(--active-sidebar-width\)\)\)/)
+  assert.doesNotMatch(airportCss, /\.airport-panel\s*\{[^}]*width:\s*800px/s)
 })

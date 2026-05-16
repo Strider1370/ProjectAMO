@@ -5,7 +5,7 @@
   z-index: 20;
   display: flex;
   flex-direction: column;
-  width: 800px;
+  width: min(var(--panel-drawer-lg), calc(100vw - var(--active-sidebar-width)));
   height: 100%;
   /* 프리미엄 글래스모피즘 그라데이션 */
   background: linear-gradient(
@@ -83,7 +83,7 @@
   position: relative;
   align-items: flex-end;
   justify-content: flex-start;
-  height: 170px;
+  height: var(--media-header-sm);
   padding: 24px 24px 38px;
   overflow: hidden;
   background: #0f172a;
@@ -1471,5 +1471,12 @@
   .ap-amos-vis-box,
   .ap-amos-runway-table {
     grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 719px) {
+  .airport-panel {
+    left: 0;
+    width: 100vw;
   }
 }
