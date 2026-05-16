@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "smoke:responsive": "node scripts/responsive-smoke.mjs",
+    "screenshots:responsive": "node scripts/responsive-screenshots.mjs",
     "test:layout": "node --test src/app/layout/layoutTokens.test.js",
     "preview": "vite preview"
   },
