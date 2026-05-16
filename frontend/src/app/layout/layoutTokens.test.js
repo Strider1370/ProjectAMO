@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 const css = readFileSync(new URL('./layoutTokens.css', import.meta.url), 'utf8')
 const appCss = readFileSync(new URL('../App.css', import.meta.url), 'utf8')
 const sidebarCss = readFileSync(new URL('./Sidebar.css', import.meta.url), 'utf8')
+const mapCss = readFileSync(new URL('../../features/map/MapView.css', import.meta.url), 'utf8')
 
 test('layout tokens define shell and panel sizing contracts', () => {
   for (const token of [
@@ -62,4 +63,12 @@ test('app shell and sidebar consume shared layout tokens', () => {
   assert.match(sidebarCss, /width:\s*var\(--sidebar-expanded\)/)
   assert.doesNotMatch(appCss, /calc\(100vw - 56px\)/)
   assert.doesNotMatch(appCss, /calc\(100vw - 260px\)/)
+})
+
+test('map overlay panels use responsive panel tokens', () => {
+  assert.match(mapCss, /width:\s*var\(--panel-overlay-sm\)/)
+  assert.match(mapCss, /width:\s*min\(196px,\s*var\(--panel-overlay-sm\)\)/)
+  assert.doesNotMatch(mapCss, /\.map-view-wrapper \.layer-drawer\s*\{[^}]*width:\s*286px/s)
+  assert.doesNotMatch(mapCss, /\.dev-layer-panel\s*\{[^}]*width:\s*160px/s)
+  assert.doesNotMatch(mapCss, /\.sigwx-legend-modal\s*\{[^}]*width:\s*280px/s)
 })
