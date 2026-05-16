@@ -10,7 +10,7 @@ body {
 
 #root {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
 }
 
 * {
@@ -18,20 +18,20 @@ body {
 }
 
 .app {
+  --active-sidebar-width: var(--sidebar-collapsed);
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
+}
+
+.app.sidebar-is-expanded {
+  --active-sidebar-width: var(--sidebar-expanded);
 }
 
 .map-shell {
-  margin-left: 56px;
-  width: calc(100vw - 56px);
-  height: calc(100vh - 24px);
+  margin-left: var(--active-sidebar-width);
+  width: calc(100vw - var(--active-sidebar-width));
+  height: calc(100dvh - var(--app-bottom-bar));
   transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1), width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.sidebar-is-expanded .map-shell {
-  margin-left: 260px;
-  width: calc(100vw - 260px);
 }
 
 .utc-bar {
@@ -40,7 +40,7 @@ body {
   right: 0;
   bottom: 0;
   z-index: 20;
-  height: 24px;
+  height: var(--app-bottom-bar);
   border-top: 1px solid #e2e8f0;
   background: #ffffff;
   color: #94a3b8;

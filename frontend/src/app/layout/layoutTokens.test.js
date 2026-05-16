@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 
 const css = readFileSync(new URL('./layoutTokens.css', import.meta.url), 'utf8')
 const appCss = readFileSync(new URL('../App.css', import.meta.url), 'utf8')
+const sidebarCss = readFileSync(new URL('./Sidebar.css', import.meta.url), 'utf8')
 
 test('layout tokens define shell and panel sizing contracts', () => {
   for (const token of [
@@ -50,4 +51,15 @@ test('app css imports layout tokens first', () => {
 
 test('layout tokens stay globally scoped under :root', () => {
   assert.match(css, /^\s*:root\s*\{/)
+})
+
+test('app shell and sidebar consume shared layout tokens', () => {
+  assert.match(appCss, /var\(--sidebar-collapsed\)/)
+  assert.match(appCss, /var\(--sidebar-expanded\)/)
+  assert.match(appCss, /--active-sidebar-width:\s*var\(--sidebar-collapsed\)/)
+  assert.match(appCss, /var\(--app-bottom-bar\)/)
+  assert.match(sidebarCss, /width:\s*var\(--sidebar-collapsed\)/)
+  assert.match(sidebarCss, /width:\s*var\(--sidebar-expanded\)/)
+  assert.doesNotMatch(appCss, /calc\(100vw - 56px\)/)
+  assert.doesNotMatch(appCss, /calc\(100vw - 260px\)/)
 })
