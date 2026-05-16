@@ -52,6 +52,7 @@ ProjectAMO/
 - `frontend/src/app/snapshotMeta.js` -> snapshot-meta comparison helpers.
 - `frontend/src/app/layout/Sidebar.jsx` -> sidebar item definitions and panel toggle UI.
 - `frontend/src/app/layout/Sidebar.css` -> sidebar styles.
+- `frontend/src/app/layout/layoutTokens.css` -> shared responsive layout tokens for shell widths, panel widths, breakpoint policy, spacing, and minimum control sizes.
 - `frontend/src/api/weatherApi.js` -> weather bundle, changed dataset, static airport/navdata fetch helpers.
 - `frontend/src/api/adsbApi.js` -> ADS-B fetch helper.
 - `frontend/src/api/briefingApi.js` -> route briefing and vertical profile API helpers.
@@ -127,6 +128,7 @@ ProjectAMO/
 ## Reference Structure
 
 - `frontend/src/main.jsx` imports only the app entry files.
+- Frontend layout sizing should use `frontend/src/app/layout/layoutTokens.css` for shared shell, panel, and breakpoint values before adding new fixed pixel widths.
 - `frontend/src/app/*` may import `api/`, `features/`, and `shared/`.
 - `frontend/src/features/*` may import `api/`, `shared/`, and local feature siblings when a UI flow requires it.
 - `frontend/src/shared/*` must stay frontend-only and must not import from `app/` or `features/`.
@@ -138,3 +140,4 @@ ProjectAMO/
 - Runtime browser assets must live under `frontend/public/`.
 - Raw terrain sources and generated terrain tiles stay under the backend data root at `terrain/`; locally this is `backend/data/terrain/`, while the GCP VM uses `DATA_PATH=/opt/projectamo/shared/data`, so runtime tiles must be under `/opt/projectamo/shared/data/terrain/tiles/`.
 - Frontend requests vertical profile JSON instead of reading DEM files.
+- Responsive layout work must include screenshot evidence for every affected panel/tab state. Store each capture pass under a timestamped folder such as `artifacts/responsive-screenshots/<phase>/<YYYY-MM-DD_HHMM_label>/`, include a short README/manifest with capture time, branch/commit, viewport matrix, capture method, and verification commands, then collect visual QA findings under that folder's `review/issues.md`. Review findings with read-only QA/design subagents before applying focused CSS fixes as a batch.

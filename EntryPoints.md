@@ -91,3 +91,13 @@ Feature-specific model, source/layer, GeoJSON, popup, route, weather, or ADS-B l
 4. Use cleanup-aware event binding from `frontend/src/features/map/lib/mapStyleSync.js` for layer handlers that must survive repeated style reloads.
 5. If a module owns persistent sources/layers, export or update its `*_SOURCE_IDS` and `*_LAYER_IDS` arrays.
 6. Verify with focused tests where Mapbox mocks are representative, then browser smoke: toggle layers, switch basemap twice, confirm visibility/data and hover/click behavior remain stable.
+
+## 9. Modify responsive layout density
+
+1. Check `frontend/src/app/layout/layoutTokens.css` before adding or changing fixed panel widths.
+2. Main shell/sidebar sizing -> `frontend/src/app/App.css` and `frontend/src/app/layout/Sidebar.css`.
+3. Map overlay panel sizing -> `frontend/src/features/map/MapView.css`.
+4. Route briefing panel sizing -> `frontend/src/features/route-briefing/RouteBriefing.css`.
+5. Airport drawer sizing -> `frontend/src/features/airport-panel/AirportPanel.css`.
+6. Monitoring dashboard density -> `frontend/src/features/monitoring/legacy/App.css`.
+7. Verify with `npm.cmd run test:layout --prefix frontend`, `npm.cmd run build --prefix frontend`, and `npm.cmd run smoke:responsive --prefix frontend` while the dev server is running.
