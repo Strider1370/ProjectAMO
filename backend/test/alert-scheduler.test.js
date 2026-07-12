@@ -43,6 +43,19 @@ test('buildBriefingRequest: payload+행 → 브리핑 요청 body, 기하 없으
   } finally { db.close() }
 })
 
+test('buildBriefingRequest: enrouteGeometry 폴백 (Phase 0.2 안전망)', () => {
+  const mk = (payload) => ({ payload: JSON.stringify(payload), etd: ETD, eta: ETA, dep: 'RKSI', dest: 'RKPC', altn: null, rules: 'IFR' })
+  const form = { flightRule: 'IFR', departureAirport: 'RKSI', arrivalAirport: 'RKPC' }
+  // routeGeometry 없이 enrouteGeometry만 있어도 요청이 만들어진다(스켈레톤만 저장 대비).
+  const onlyEnroute = buildBriefingRequest(mk({ routeForm: form, enrouteGeometry: GEOM }))
+  assert.deepEqual(onlyEnroute.routeGeometry, GEOM)
+  // 둘 다 있으면 최종선(routeGeometry) 우선(감시 기준, 스펙 §4.1).
+  const both = buildBriefingRequest(mk({ routeForm: form, routeGeometry: GEOM, enrouteGeometry: { type: 'LineString', coordinates: [[1, 1], [2, 2]] } }))
+  assert.deepEqual(both.routeGeometry, GEOM)
+  // 둘 다 없으면 null.
+  assert.equal(buildBriefingRequest(mk({ routeForm: form })), null)
+})
+
 test('buildSnapshot: 목적지 운고 수치 + 교체필요 + 경로위험 추출', () => {
   const db = createDb(':memory:')
   try {

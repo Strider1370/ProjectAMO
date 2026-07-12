@@ -6,10 +6,9 @@ import { useState } from 'react'
 
 import { useAuth } from '../auth/AuthContext.jsx'
 import useNotifications from './useNotifications.js'
-import { formatNotification, severityLevel, relTime } from './notificationFormat.js'
+import { formatNotification, severityLevel, severityTag, relTime } from './notificationFormat.js'
 
 const LEVEL_VAR = { red: 'var(--level-red)', amber: 'var(--level-amber)', gray: 'var(--level-gray)' }
-const LEVEL_KO = { red: '경고', amber: '주의', gray: '정보' }
 
 const useStyles = makeStyles({
   badge: { position: 'absolute', top: '-4px', right: '-4px' },
@@ -49,7 +48,7 @@ function NotificationItem({ n, onOpen }) {
       <span className={s.bar} style={{ background: LEVEL_VAR[level] }} aria-hidden="true" />
       <span className={s.body}>
         <span className={s.topline}>
-          <span className={s.sevTag} style={{ color: LEVEL_VAR[level], background: `var(--level-${level}-bg)` }}>{LEVEL_KO[level]}</span>
+          <span className={s.sevTag} style={{ color: LEVEL_VAR[level], background: `var(--level-${level}-bg)` }}>{severityTag(n.severity)}</span>
           <span className={s.route}>{n.routeName || '비행'}</span>
           <span className={s.time}>{relTime(n.detectedAt)}</span>
         </span>

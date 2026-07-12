@@ -5,11 +5,10 @@ import {
 
 import { useAuth } from '../auth/AuthContext.jsx'
 import useNotifications from './useNotifications.js'
-import { formatNotification, severityLevel } from './notificationFormat.js'
+import { formatNotification, severityLevel, severityTag } from './notificationFormat.js'
 import { formatZAndKst } from '../personal/lib/timeFormat.js'
 
 const LEVEL_VAR = { red: 'var(--level-red)', amber: 'var(--level-amber)', gray: 'var(--level-gray)' }
-const LEVEL_KO = { red: '경고', amber: '주의', gray: '정보' }
 
 const useStyles = makeStyles({
   surface: { width: '480px', maxWidth: '94vw' },
@@ -22,7 +21,6 @@ const useStyles = makeStyles({
   sevTag: { flex: '0 0 auto', fontSize: 'var(--fs-100)', fontWeight: 'var(--fw-semibold)', padding: '0 var(--space-xxs)', borderRadius: 'var(--radius-sm)' },
   time: { marginLeft: 'auto', fontSize: 'var(--fs-100)', color: 'var(--text-3)' },
   msg: { fontSize: 'var(--fs-200)', color: 'var(--text-1)', lineHeight: 'var(--lh-200)' },
-  delta: { fontSize: 'var(--fs-100)', color: 'var(--text-3)' },
   empty: { padding: 'var(--space-l)', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--fs-200)' },
   notice: { fontSize: 'var(--fs-100)', color: 'var(--text-3)', marginTop: 'var(--space-s)' },
   loginHint: { padding: 'var(--space-m) 0', color: 'var(--text-2)', fontSize: 'var(--fs-300)' },
@@ -70,12 +68,11 @@ export default function FlightAlertDetail({ flightId, onClose, onOpenRoute }) {
                     <div key={n.id} className={s.card}>
                       <div className={s.topline}>
                         <span className={s.sevTag} style={{ color: LEVEL_VAR[level], background: `var(--level-${level}-bg)` }}>
-                          {LEVEL_KO[level]}
+                          {severityTag(n.severity)}
                         </span>
                         <span className={s.time}>{formatZAndKst(n.detectedAt)}</span>
                       </div>
                       <div className={s.msg}>{formatNotification(n)}</div>
-                      {n.fromVal != null && <div className={s.delta}>{n.fromVal} → {n.toVal}</div>}
                     </div>
                   )
                 })}

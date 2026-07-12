@@ -127,7 +127,8 @@ export function createAlertsRouter({ db = null } = {}) {
 export function listNotifications(db, userId) {
   const notifications = db.prepare(`
     SELECT t.id, t.route_id AS routeId, t.type, t.severity, t.target, t.from_val AS fromVal, t.to_val AS toVal,
-           t.detected_at AS detectedAt, t.pushed_at AS pushedAt, t.read_at AS readAt, r.name AS routeName
+           t.detected_at AS detectedAt, t.pushed_at AS pushedAt, t.read_at AS readAt,
+           r.name AS routeName, r.dep AS routeDep, r.dest AS routeDest, r.altn AS routeAltn
     FROM triggered_alerts t LEFT JOIN routes r ON r.id = t.route_id
     WHERE t.user_id = ? ORDER BY t.detected_at DESC, t.id DESC LIMIT 200
   `).all(userId)

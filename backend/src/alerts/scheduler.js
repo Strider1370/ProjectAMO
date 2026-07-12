@@ -14,7 +14,7 @@ import { summarizeEnrouteModel } from '../briefing/enroute-model.js'
 import { loadRouteCrossSection } from '../briefing/enroute-cross-section.js'
 import { metricsAt } from '../briefing/taf-window.js'
 import { detectChanges } from './diff.js'
-import { dispatchAlert } from './sender.js'
+import { dispatchFlightAlerts } from './sender.js'
 
 const RANK = { 약: 1, 중: 2, 심: 3 }
 const DEFAULT_CRUISE_ALT_FT = 9000
@@ -27,10 +27,12 @@ const snapshotCache = new Map() // routeId → 최소 스냅샷
 const safeJson = (s) => { try { return JSON.parse(s) } catch { return null } }
 const hashOf = (obj) => crypto.createHash('sha256').update(JSON.stringify(obj)).digest('hex').slice(0, 16)
 
-// 저장 route 행(payload + 알림 컬럼) → /api/route-briefing 요청 body. routeGeometry 없으면 null(스킵).
+// 저장 route 행(payload + 알림 컬럼) → /api/route-briefing 요청 body. 경로 기하 없으면 null(스킵).
+// 감시 기준은 절차 포함 최종선(routeGeometry). 방어적으로 스켈레톤(enrouteGeometry)도 폴백 —
+// 절차 유무는 날씨 판정 불변(스펙 §7)이라 폴백해도 알림 결과 동일. (경로/브리핑 통일 플랜 Phase 0.2)
 export function buildBriefingRequest(route) {
   const p = safeJson(route.payload) ?? {}
-  const geometry = p.routeGeometry
+  const geometry = p.routeGeometry ?? p.enrouteGeometry
   if (!geometry?.coordinates?.length) return null
   const form = p.routeForm ?? {}
   return {
@@ -216,7 +218,8 @@ export async function runTick(db, now = Date.now()) {
       if (!res) continue
       evaluated++
       const { changes } = evaluateFlight({ db, route, briefing: res.briefing, tafByIcao: res.tafByIcao, now })
-      for (const alert of (changes ?? [])) { await dispatchAlert(db, alert, route, { now }); fired++ }
+      // §5B group_wait: 이 비행의 이번 변화들을 텔레그램 1건으로 묶어 발송(인앱은 이미 행 저장).
+      if (changes?.length) { await dispatchFlightAlerts(db, changes, route, { now }); fired += changes.length }
     } catch (err) {
       console.error(`[alert-scheduler] route ${route.id} 평가 실패:`, err.message)
     }
