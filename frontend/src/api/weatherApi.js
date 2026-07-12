@@ -259,8 +259,9 @@ export async function fetchKtgIndex(options = {}) {
   return fetchJson('/api/ktg/index', options)
 }
 
-export async function fetchKtgGrid({ altFt }, options = {}) {
-  return fetchJson(`/api/ktg/grid?altFt=${altFt}`, options)
+export async function fetchKtgGrid({ altFt, hf }, options = {}) {
+  const hfParam = Number.isFinite(Number(hf)) ? `&hf=${Number(hf)}` : ''
+  return fetchJson(`/api/ktg/grid?altFt=${altFt}${hfParam}`, options)
 }
 
 export async function fetchSigwxFrontMeta(tmfc) {

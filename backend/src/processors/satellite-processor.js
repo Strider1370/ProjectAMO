@@ -32,15 +32,19 @@ function formatKstTm(dateUtc) {
   return formatUtcTm(dateKst);
 }
 
+// ponytail: temp 10→20min frame spacing to halve KMA download volume (~-390MB/day).
+// Restore to 10 (and satellite_interval to */10) to revert.
+const SAT_FRAME_STEP_MIN = 20;
+
 function getCandidateTms(delayMinutes = config.satellite.delay_minutes) {
   const now = new Date();
   const delayed = new Date(now.getTime() - delayMinutes * 60 * 1000);
 
-  const minute = Math.floor(delayed.getUTCMinutes() / 10) * 10;
+  const minute = Math.floor(delayed.getUTCMinutes() / SAT_FRAME_STEP_MIN) * SAT_FRAME_STEP_MIN;
   delayed.setUTCMinutes(minute, 0, 0);
 
   return [0, 1, 2].map((i) => {
-    const t = new Date(delayed.getTime() - i * 10 * 60 * 1000);
+    const t = new Date(delayed.getTime() - i * SAT_FRAME_STEP_MIN * 60 * 1000);
     return {
       requestTm: formatUtcTm(t),
       displayTm: formatKstTm(t),
@@ -101,7 +105,7 @@ function buildFrameSpecs(latestRequestTm, frameCount) {
   ));
 
   for (let i = frameCount - 1; i >= 0; i--) {
-    const frameDate = new Date(latestDate.getTime() - i * 10 * 60 * 1000);
+    const frameDate = new Date(latestDate.getTime() - i * SAT_FRAME_STEP_MIN * 60 * 1000);
     frameSpecs.push({
       requestTm: formatUtcTm(frameDate),
       displayTm: formatKstTm(frameDate),

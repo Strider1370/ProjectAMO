@@ -330,7 +330,7 @@ const MapView = forwardRef(function MapView({
     lowPower, cloudMaxSpread,
     altLevelsFt, selectedAltFt, setSelectedAltFt,
     sliderLevels, sliderTimes, sliderAvailability, nwpSelection, setNwpSelection,
-  } = useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpacity, windFlowTrail, windFlowWidth })
+  } = useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpacity, windFlowTrail, windFlowWidth, timelineSelectedMs: weatherTimelineSelectedMs })
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
 

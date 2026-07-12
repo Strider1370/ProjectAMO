@@ -8,9 +8,11 @@ function isAbortError(error) {
   return error?.name === 'AbortError'
 }
 
-export function useKtgTurbulence(enabled) {
+export function useKtgTurbulence(enabled, selection) {
   const [altLevelsFt, setAltLevelsFt] = useState([])
   const [selectedAltFt, setSelectedAltFtState] = useState(DEFAULT_ALT_FT)
+  const [hours, setHours] = useState([])
+  const [defaultHf, setDefaultHf] = useState(null)
   const [ktgGrid, setKtgGrid] = useState(null)
   const [ktgGridKey, setKtgGridKey] = useState(null)
   const [status, setStatus] = useState('idle')
@@ -19,6 +21,12 @@ export function useKtgTurbulence(enabled) {
 
   const snapshot = useKimSnapshotMeta(enabled)
   const ktgHash = snapshot?.ktg?.hash ?? null
+
+  // 예보시간: 메인 타임라인이 세팅한 공유 selection.hf를 읽음(NWP와 시간축 공유).
+  // 그 hf가 KTG에 없거나 selection이 없으면 nearest 기본값으로.
+  const availableHfs = hours.map((h) => Number(h.hf))
+  const selHf = Number(selection?.hf)
+  const effectiveHf = Number.isFinite(selHf) && availableHfs.includes(selHf) ? selHf : defaultHf
 
   // Invalidate grid cache when backend data changes.
   useEffect(() => {
@@ -40,6 +48,8 @@ export function useKtgTurbulence(enabled) {
         if (cancelled) return
         const levels = index?.altLevelsFt ?? []
         setAltLevelsFt(levels)
+        setHours(index?.hours ?? [])
+        setDefaultHf(Number.isFinite(Number(index?.hf)) ? Number(index.hf) : (index?.hours?.[0]?.hf ?? null))
         if (levels.length === 0) {
           setStatus('unavailable')
           return
@@ -60,10 +70,10 @@ export function useKtgTurbulence(enabled) {
     return () => { cancelled = true; controller.abort() }
   }, [enabled, ktgHash])
 
-  // Fetch grid for selected altitude.
+  // Fetch grid for selected altitude + effective forecast hour.
   useEffect(() => {
-    if (!enabled || !selectedAltFt) return undefined
-    const key = `ktg:${selectedAltFt}`
+    if (!enabled || !selectedAltFt || effectiveHf == null) return undefined
+    const key = `ktg:${selectedAltFt}:${effectiveHf}`
     if (cacheRef.current.has(key)) {
       setKtgGrid(cacheRef.current.get(key))
       setKtgGridKey(key)
@@ -77,7 +87,7 @@ export function useKtgTurbulence(enabled) {
       setStatus((prev) => (prev === 'ready' ? 'refreshing' : 'loading'))
       setKtgGridKey(null)
       try {
-        const data = await fetchKtgGrid({ altFt: selectedAltFt }, { signal: controller.signal })
+        const data = await fetchKtgGrid({ altFt: selectedAltFt, hf: effectiveHf }, { signal: controller.signal })
         if (requestTokenRef.current !== token || controller.signal.aborted) return
         cacheRef.current.set(key, data)
         setKtgGrid(data)
@@ -92,7 +102,7 @@ export function useKtgTurbulence(enabled) {
     }
     loadGrid()
     return () => controller.abort()
-  }, [enabled, selectedAltFt])
+  }, [enabled, selectedAltFt, effectiveHf])
 
   function setSelectedAltFt(altFt) {
     setSelectedAltFtState(altFt)
@@ -104,6 +114,8 @@ export function useKtgTurbulence(enabled) {
     selectedAltFt,
     setSelectedAltFt,
     status,
+    // 메인 타임라인이 난류 켜졌을 때 쓸 예보시간 목록.
+    availableTimes: hours,
   }
 }
 

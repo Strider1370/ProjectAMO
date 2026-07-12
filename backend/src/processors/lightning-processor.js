@@ -245,7 +245,9 @@ async function fetchNationwideStrikes(tm) {
   );
 }
 
-const INCREMENTAL_LOOKBACK_STEPS = 12; // 12 × 5min = 60분치 window 조회
+// ponytail: 12→3. 이전 실행분(previous)은 아래에서 병합·보존되므로 옛 창을 다시 받을 필요 없음.
+// 3창(=15분)만 재조회 = 낙뢰 지연도착 보정용. 콜 -2,592/일, 신선도 손실 0. 지연도착 우려 시 4로.
+const INCREMENTAL_LOOKBACK_STEPS = 3; // 3 × 5min = 최근 15분치만 재조회
 
 async function process() {
   const baseTm = shiftKstTm(getAlignedKstTm(), -config.lightning.itv_minutes);

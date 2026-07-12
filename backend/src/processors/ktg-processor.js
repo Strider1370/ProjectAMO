@@ -8,6 +8,8 @@ import {
 } from './ktg-model.js'
 import {
   cleanupKtgRuns,
+  readKtgCoords,
+  readKtgIndex,
   readKtgLatest,
   writeKtgCoords,
   writeKtgGrid,
@@ -70,69 +72,96 @@ function parseKtgNetCdf(buffer) {
   return { lat, lon, alt, ktg, nz, ny, nx }
 }
 
+// Fetch+parse+write one forecast hour (coords + per-altitude grids).
+// Returns { hf, validTime, altLevelsFt } or throws on fetch/parse failure.
+async function collectKtgHf({ root, tmfc, hf, fetchedAt }) {
+  const buffer = await fetchKtgFile({ tmfc, ef: hf })
+  const { lat, lon, alt, ktg, nz, ny, nx } = parseKtgNetCdf(buffer)
+  const validTime = addForecastHoursKtg(tmfc, hf)
+
+  // coords.json — shared across all altitude levels for this hf
+  writeKtgCoords({ root, tmfc, hf, coords: buildKtgCoords({ ny, nx, lat, lon }) })
+
+  // one grid.json per altitude level
+  for (let zi = 0; zi < nz; zi++) {
+    const altFt = alt[zi]
+    const sliceStart = zi * ny * nx
+    const ktgSlice = ktg.slice(sliceStart, sliceStart + ny * nx)
+    writeKtgGrid({ root, grid: buildKtgGrid({ tmfc, hf, altFt, validTime, ny, nx, ktgSlice, fetchedAt }) })
+  }
+  return { hf, validTime, altLevelsFt: Array.from(alt) }
+}
+
 export async function process() {
+  const root = config.storage.base_path
   const candidates = resolveKtgCandidates()
   const forecastHours = config.ktg?.forecast_hours ?? KTG_FORECAST_HOURS
   const single = config.ktg?.single_forecast !== false
 
   for (const tmfc of candidates) {
-    const hf = single
-      ? selectNearestForecastHour({ tmfc, nowMs: Date.now(), candidateHours: forecastHours })
-      : forecastHours[0]
+    // single: 최근 1스텝만. multi: 미래예보 전체 hf.
+    const hfs = single
+      ? [selectNearestForecastHour({ tmfc, nowMs: Date.now(), candidateHours: forecastHours })]
+      : forecastHours
 
-    const latest = readKtgLatest(config.storage.base_path)
-    if (latest?.tmfc === tmfc && latest?.hf === hf) {
-      return { type: TYPE, skipped: true, reason: 'already_collected', tmfc, hf }
-    }
-
-    let buffer
-    try {
-      buffer = await fetchKtgFile({ tmfc, ef: hf })
-    } catch (err) {
-      console.warn(`[ktg] skipping tmfc=${tmfc} hf=${hf}: ${err.message}`)
-      continue
-    }
-
-    const { lat, lon, alt, ktg, nz, ny, nx } = parseKtgNetCdf(buffer)
-    const validTime = addForecastHoursKtg(tmfc, hf)
     const fetchedAt = new Date().toISOString()
+    const collected = []      // { hf, validTime } — 이번 run에 확보된 전체(기존+신규)
+    let altLevelsFt = null
+    let fetchedAny = false
 
-    // coords.json — shared across all altitude levels for this hf
-    const coords = buildKtgCoords({ ny, nx, lat, lon })
-    writeKtgCoords({ root: config.storage.base_path, tmfc, hf, coords })
-
-    // one grid.json per altitude level
-    for (let zi = 0; zi < nz; zi++) {
-      const altFt = alt[zi]
-      const sliceStart = zi * ny * nx
-      const ktgSlice = ktg.slice(sliceStart, sliceStart + ny * nx)
-      const grid = buildKtgGrid({ tmfc, hf, altFt, validTime, ny, nx, ktgSlice, fetchedAt })
-      writeKtgGrid({ root: config.storage.base_path, grid })
+    for (const hf of hfs) {
+      // 이미 디스크에 있는 hf는 재다운로드 안 함(coords.json 존재 = 수집완료). → cron 반복 시 API 낭비 0.
+      if (readKtgCoords({ root, tmfc, hf })) {
+        collected.push({ hf, validTime: addForecastHoursKtg(tmfc, hf) })
+        continue
+      }
+      try {
+        const r = await collectKtgHf({ root, tmfc, hf, fetchedAt })
+        collected.push({ hf: r.hf, validTime: r.validTime })
+        altLevelsFt = r.altLevelsFt
+        fetchedAny = true
+      } catch (err) {
+        console.warn(`[ktg] skipping tmfc=${tmfc} hf=${hf}: ${err.message}`)
+      }
     }
 
-    const index = {
+    if (collected.length === 0) continue  // 이 tmfc는 아직 자료 없음 → 더 과거 candidate로
+
+    collected.sort((a, b) => a.hf - b.hf)
+    // altLevelsFt: 신규 fetch분에서, 없으면(전부 스킵) 기존 index에서 재사용.
+    altLevelsFt = altLevelsFt ?? readKtgIndex(root)?.altLevelsFt ?? []
+
+    // 기본 "최신" 뷰 = 확보된 hf 중 nearest(현재시각에 가장 가까운 예보시각).
+    const nearestHf = selectNearestForecastHour({ tmfc, nowMs: Date.now(), candidateHours: collected.map((c) => c.hf) })
+    const nearest = collected.find((c) => c.hf === nearestHf) ?? collected[0]
+
+    // 신규 다운로드가 하나도 없고 이미 이 tmfc 전체가 있으면 스킵(idempotent).
+    if (!fetchedAny) {
+      const already = readKtgLatest(root)
+      if (already?.tmfc === tmfc && collected.length === hfs.length) {
+        return { type: TYPE, skipped: true, reason: 'already_collected', tmfc, hours: collected.length }
+      }
+    }
+
+    writeKtgIndex(root, {
       type: 'ktg_index',
       tmfc,
-      hf,
-      validTime,
-      altLevelsFt: Array.from(alt),
+      hf: nearest.hf,            // 하위호환: 단일 hf 소비자용 기본값
+      validTime: nearest.validTime,
+      hours: collected,          // NEW: 확보된 예보시간 전체 [{hf, validTime}]
+      altLevelsFt,
       fetched_at: fetchedAt,
-    }
-    writeKtgIndex(config.storage.base_path, index)
-    writeKtgLatest(config.storage.base_path, {
+    })
+    writeKtgLatest(root, {
       type: 'ktg_latest',
       tmfc,
-      hf,
-      validTime,
+      hf: nearest.hf,
+      validTime: nearest.validTime,
       updated_at: fetchedAt,
     })
-    cleanupKtgRuns({
-      root: config.storage.base_path,
-      maxRuns: config.ktg?.max_runs ?? 2,
-      latestTmfc: tmfc,
-    })
+    cleanupKtgRuns({ root, maxRuns: config.ktg?.max_runs ?? 2, latestTmfc: tmfc })
 
-    return { type: TYPE, tmfc, hf, validTime, altLevels: nz, ny, nx }
+    return { type: TYPE, tmfc, hours: collected.length, hfs: collected.map((c) => c.hf), altLevels: altLevelsFt.length }
   }
 
   throw new Error('KTG collection failed: no valid candidate found')

@@ -709,7 +709,9 @@ app.get('/api/ktg/index', (_req, res) => {
   const index = latest ? readKtgIndex(DATA_ROOT) : null
   if (latest && index) {
     setNoStore(res)
-    res.json({ tmfc: latest.tmfc, hf: latest.hf, validTime: latest.validTime, altLevelsFt: index.altLevelsFt ?? [] })
+    // hours: 확보된 예보시간 전체(슬라이더용). 구버전 index엔 없으므로 latest 단일 hf로 대체.
+    const hours = index.hours ?? [{ hf: latest.hf, validTime: latest.validTime }]
+    res.json({ tmfc: latest.tmfc, hf: latest.hf, validTime: latest.validTime, hours, altLevelsFt: index.altLevelsFt ?? [] })
     return
   }
   setNoStore(res)
@@ -724,11 +726,18 @@ app.get('/api/ktg/grid', (req, res) => {
     res.status(503).json({ error: 'ktg data unavailable' })
     return
   }
-  const coords = readKtgCoords({ root: DATA_ROOT, tmfc: latest.tmfc, hf: latest.hf })
-  const gridData = readKtgGridSafe({ root: DATA_ROOT, tmfc: latest.tmfc, hf: latest.hf, altFt })
+  // hf 지정 시 해당 예보시간, 없으면 최신(nearest). 없는 hf 요청은 최신으로 폴백.
+  const index = readKtgIndex(DATA_ROOT)
+  const hours = index?.hours ?? [{ hf: latest.hf, validTime: latest.validTime }]
+  const requestedHf = Number(req.query.hf)
+  const match = Number.isFinite(requestedHf) ? hours.find((h) => h.hf === requestedHf) : null
+  const hf = match ? match.hf : latest.hf
+  const validTime = match ? match.validTime : latest.validTime
+  const coords = readKtgCoords({ root: DATA_ROOT, tmfc: latest.tmfc, hf })
+  const gridData = readKtgGridSafe({ root: DATA_ROOT, tmfc: latest.tmfc, hf, altFt })
   if (!coords || !gridData) {
     setNoStore(res)
-    res.status(503).json({ error: `ktg grid unavailable for ${altFt}ft` })
+    res.status(503).json({ error: `ktg grid unavailable for ${altFt}ft hf=${hf}` })
     return
   }
   let latMin = Infinity; let latMax = -Infinity; let lonMin = Infinity; let lonMax = -Infinity
@@ -739,7 +748,7 @@ app.get('/api/ktg/grid', (req, res) => {
     altFt,
     grid: { ny: coords.ny, nx: coords.nx, latMin, latMax, lonMin, lonMax },
     ktg: gridData.ktg,
-    run: { tmfc: latest.tmfc, hf: latest.hf, validTime: latest.validTime },
+    run: { tmfc: latest.tmfc, hf, validTime },
   })
 })
 

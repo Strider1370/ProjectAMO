@@ -34,6 +34,9 @@ function WeatherOverlayPanel({
   showWind = true,
 }) {
   const isMobile = useIsMobile()
+  // TEMP 숨김: flight_category 백엔드 수집 중단(용량 절감)에 맞춰 패널에서도 임시로 감춤.
+  // 재개하려면 이 배열을 비우고 백엔드 수집(index.js)도 되돌릴 것.
+  const TEMP_HIDDEN_LAYER_IDS = ['flightCategory']
   const groups = [
     { id: 'weather', title: '기상', ids: showWind ? ['radar', 'satellite', 'lightning', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : ['radar', 'satellite', 'lightning', 'flightCategory'] },
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx'] },
@@ -67,6 +70,7 @@ function WeatherOverlayPanel({
           <div className="layer-tile-group-title">{group.title}</div>
           <div className="layer-tile-grid">
             {group.ids.map((id) => {
+              if (TEMP_HIDDEN_LAYER_IDS.includes(id)) return null
               if (!layerById.has(id)) return null
               const Icon = WEATHER_TILE_ICON[id]
               const active = !!visibility[id] && !isLayerDisabled(id)

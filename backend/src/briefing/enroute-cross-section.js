@@ -120,17 +120,21 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
     loadLevel,
   })
 
-  // KTG 저고도 난류
+  // KTG 저고도 난류 — 단면의 나머지(바람·기온)와 같은 예보시간(hf)으로 정합. 해당 hf 미수집이면 nearest 폴백.
   const ktgLatest = readKtgLatest(root)
   const ktgIndex = ktgLatest ? readKtgIndex(root) : null
-  const ktgCoords = ktgLatest ? readKtgCoords({ root, tmfc: ktgLatest.tmfc, hf: ktgLatest.hf }) : null
+  const ktgHours = ktgIndex?.hours ?? (ktgLatest ? [{ hf: ktgLatest.hf, validTime: ktgLatest.validTime }] : [])
+  const ktgMatch = ktgHours.find((h) => h.hf === hf)
+  const ktgHf = ktgMatch ? ktgMatch.hf : ktgLatest?.hf
+  const ktgValidTime = ktgMatch ? ktgMatch.validTime : ktgLatest?.validTime
+  const ktgCoords = ktgLatest ? readKtgCoords({ root, tmfc: ktgLatest.tmfc, hf: ktgHf }) : null
   const turbulence = buildKtgCrossSection({
     axis,
     coords: ktgCoords,
     altLevelsFt: ktgIndex?.altLevelsFt ?? [],
-    loadAltGrid: (altFt) => readKtgGridSafe({ root, tmfc: ktgLatest?.tmfc, hf: ktgLatest?.hf, altFt }),
+    loadAltGrid: (altFt) => readKtgGridSafe({ root, tmfc: ktgLatest?.tmfc, hf: ktgHf, altFt }),
   })
-  if (ktgLatest) turbulence.run = { tmfc: ktgLatest.tmfc, hf: ktgLatest.hf, validTime: ktgLatest.validTime }
+  if (ktgLatest) turbulence.run = { tmfc: ktgLatest.tmfc, hf: ktgHf, validTime: ktgValidTime }
 
   return { available: true, crossSection, turbulence, totalDistanceNm: axis.totalDistanceNm }
 }

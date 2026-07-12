@@ -104,7 +104,9 @@ function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.collect_on
   ]
   if (includeKimNwp) jobs.splice(10, 0, ["kim_surface_wind", kimSurfaceWindProcessor.process])
   if (config.ktg?.collect_on_startup !== false) jobs.push(["ktg", ktgProcessor.process])
-  if (config.flight_category?.collect_on_startup !== false) jobs.push(["flight_category", flightCategoryProcessor.process])
+  // TEMP 중단: flight_category(sfc_vis 27MB+ctps 18MB/시간 = ~1GB/일)를 KIM 30h 용량 확보 위해 임시 OFF.
+  // 재개하려면 아래 줄 주석 해제 + main()의 cron.schedule(flight_category…) 주석 해제 + 패널 숨김 되돌리기.
+  // if (config.flight_category?.collect_on_startup !== false) jobs.push(["flight_category", flightCategoryProcessor.process])
   // NOTAM 시작 크롤: 명시적으로 끄지 않았고(collect_on_startup) 캐시가 오래됐을 때만.
   // 유효한 최신 스냅샷이 이미 있으면(신선도 내) 굳이 재크롤 안 하고 그걸 그대로 씀 — 재시작해도 즉시 표시.
   if (config.notam?.collect_on_startup !== false && isNotamCacheStale()) jobs.push(["notam", notamProcessor.process])
@@ -145,7 +147,8 @@ async function main() {
   cron.schedule(config.schedule.environment_interval, () => runWithLock("environment", environmentProcessor.process));
   scheduleAirportInfoJob();
   scheduleTakeoffFcstJob();
-  cron.schedule(config.schedule.flight_category_interval, () => runWithLock('flight_category', flightCategoryProcessor.process))
+  // TEMP 중단(용량 절감): flight_category 수집 OFF. 재개 시 이 줄 주석 해제(위 시작수집 job도 함께).
+  // cron.schedule(config.schedule.flight_category_interval, () => runWithLock('flight_category', flightCategoryProcessor.process))
   cron.schedule(config.schedule.notam_interval, () => runWithLock("notam", notamProcessor.process))
 
   // 서버 시작 직후 1회 즉시 수집

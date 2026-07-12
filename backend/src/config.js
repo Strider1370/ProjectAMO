@@ -204,7 +204,8 @@ export const ktg = {
   max_runs: Number(process.env.KTG_MAX_RUNS || 2),
   timeout_ms: Number(process.env.KTG_TIMEOUT_MS || 60000),
   forecast_hours: [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30],
-  single_forecast: process.env.KTG_SINGLE_FORECAST !== '0',
+  // 미래 예보 수집 ON: 기본 전체 hf 수집. KTG_SINGLE_FORECAST=1 이면 최근 1스텝만.
+  single_forecast: process.env.KTG_SINGLE_FORECAST === '1',
   collect_on_startup: process.env.KTG_COLLECT_ON_STARTUP !== '0',
 }
 
@@ -212,8 +213,10 @@ export const kim_nwp = {
   max_runs: Number(process.env.KIM_NWP_MAX_RUNS || 2),
   keep_raw: process.env.KIM_NWP_KEEP_RAW !== '0',
   concurrency: Number(process.env.KIM_NWP_CONCURRENCY || 4),
-  forecast_hours: [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
-  single_forecast: process.env.KIM_NWP_SINGLE_FORECAST !== '0',
+  // TAF(30h) 정합: 0~30h 3시간 간격(11스텝). 33·36h는 TAF 범위 밖이라 제외.
+  forecast_hours: [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30],
+  // 미래 예보 수집 ON: 기본 전체 예보시간 수집. KIM_NWP_SINGLE_FORECAST=1 이면 최근 1스텝만.
+  single_forecast: process.env.KIM_NWP_SINGLE_FORECAST === '1',
   collect_icing: process.env.KIM_NWP_COLLECT_ICING !== '0',
   collect_on_startup: process.env.KIM_NWP_COLLECT_ON_STARTUP !== '0',
   incremental_retry: process.env.KIM_NWP_INCREMENTAL_RETRY !== '0',
@@ -257,7 +260,7 @@ export const schedule = {
   amos_interval: '*/10 * * * *',
   lightning_interval: '*/5 * * * *',
   radar_echo_interval: '*/5 * * * *',
-  satellite_interval: '*/10 * * * *',
+  satellite_interval: '*/20 * * * *', // ponytail: 10→20분(프레임 간격 20분 정합, KMA 용량 절감). 되돌리면 */10.
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
   kim_surface_wind_interval: '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *',
   ground_forecast_interval: '30 6,11,18,23 * * *',
