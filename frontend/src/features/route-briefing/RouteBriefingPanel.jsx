@@ -329,7 +329,15 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     if (name == null) return
     // #13 서버측 재브리핑용 경로 기하 저장(IFR은 프론트 플래너 산출물이라 서버 재구성 불가). saveRoute는 입력값만이나 기하는 예외.
     const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints, selectedSid, selectedStar, selectedIap })
-    await saveRoute(name.trim() || def, { routeForm, vfrWaypoints, cruiseAltitudeFt, cruiseSpeedKt, alternateAirport, etd, routeGeometry })
+    // 경로/브리핑 통일 Phase 1.1: IFR은 절차 증강 전 스켈레톤(route-preview-line)도 저장 → 로드 시 재검색 없이 조립·절차 재도출.
+    // VFR은 routeGeometry가 곧 스켈레톤이라 중복 저장 안 함(0.1 실측 결정). 스켈레톤 없으면 저장 안 함(구버전 폴백은 로드 측).
+    const enrouteGeometry = routeForm.flightRule === 'IFR'
+      ? routeResult?.previewGeojson?.features?.find((f) => f.properties.role === 'route-preview-line')?.geometry ?? null
+      : null
+    await saveRoute(name.trim() || def, {
+      routeForm, vfrWaypoints, cruiseAltitudeFt, cruiseSpeedKt, alternateAirport, etd, routeGeometry,
+      ...(enrouteGeometry ? { enrouteGeometry } : {}),
+    })
     refreshSaved()
   }
   const routeMenu = (
