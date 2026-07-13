@@ -18,19 +18,19 @@
     --mono:'Consolas','Menlo',monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Pretendard,system-ui,sans-serif;background:#dfe6ee;color:var(--text-1);
+  body{font-family:Pretendard,system-ui,sans-serif;background:#e3e6ea;color:var(--text-1);
     display:flex;justify-content:center;padding:20px 14px;line-height:1.4}
-  .panel{width:960px;max-width:100%;background:linear-gradient(180deg,#f5f9fd,#eef4fb);
-    border:1px solid rgba(255,255,255,.6);border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,.12)}
-  .head{position:relative;height:140px;background:linear-gradient(180deg,#7db4e6,#a7cdeb 45%,#8fb96b 46%,#7ba957)}
-  .head::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,23,42,.45),rgba(15,23,42,0) 60%)}
+  .panel{width:960px;max-width:100%;height:calc(100vh - 40px);display:flex;flex-direction:column;background:linear-gradient(180deg,#ffffff,#f8fafc);
+    border:1px solid rgba(15,23,42,.06);border-radius:12px;overflow:hidden;box-shadow:0 10px 34px rgba(15,23,42,.16)}
+  .head{position:relative;height:132px;background:linear-gradient(135deg,#1f3350 0%,#2d4a6b 55%,#3a6285 100%)}
+  .head::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,18,32,.5),rgba(10,18,32,0) 65%)}
   .head-txt{position:absolute;left:22px;bottom:18px;z-index:1;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.35)}
   .head-txt h1{font-size:25px;font-weight:800}
   .head-txt p{font-size:13px;font-weight:600;opacity:.92}
   .head-sel{position:absolute;top:14px;right:16px;z-index:1}
   .head-sel select{font-family:Pretendard,sans-serif;font-weight:700;font-size:13px;padding:5px 8px;border-radius:6px;border:0;background:rgba(255,255,255,.9);color:var(--text-1)}
-  .body{display:flex;align-items:flex-start}
-  .rail{width:92px;flex:0 0 auto;background:var(--bg-1);border-right:1px solid rgba(148,163,184,.3);padding:8px 6px;position:sticky;top:0;align-self:stretch}
+  .body{display:flex;align-items:stretch;flex:1;min-height:0;overflow:hidden}
+  .rail{width:92px;flex:0 0 auto;background:var(--bg-1);border-right:1px solid rgba(148,163,184,.3);padding:8px 6px;overflow-y:auto}
   .rail-item{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;padding:9px 4px;border-radius:8px;color:var(--text-3);font-size:12px;font-weight:700;cursor:pointer;text-decoration:none}
   .rail-item .ico{width:20px;height:20px}
   .rail-item.active{background:#eef2f7;color:var(--accent)}
@@ -40,10 +40,17 @@
   .b-amber{background:var(--level-amber-bg);color:var(--level-amber)}
   .b-red{background:var(--level-red-bg);color:var(--level-red)}
   .b-neutral{background:var(--bg-4);color:var(--text-3);border:1px solid var(--stroke-2)}
-  .scroll{flex:1;min-width:0;padding:14px 16px 40px;display:flex;flex-direction:column;gap:14px}
-  section{scroll-margin-top:6px}
-  .sec-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-  .sec-title{font-size:15px;font-weight:800}
+  .scroll{flex:1;min-width:0;overflow-y:auto;scroll-behavior:smooth;padding:16px 18px 48px;display:flex;flex-direction:column;gap:30px}
+  section,details.sec{scroll-margin-top:6px}
+  .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:9px;border-bottom:2px solid var(--stroke-1);cursor:pointer;list-style:none;user-select:none}
+  .sec-head::-webkit-details-marker{display:none}
+  .sec-head::marker{content:""}
+  .sec-head .ico{width:21px;height:21px;color:var(--accent);flex:0 0 auto}
+  .sec-title{font-size:17px;font-weight:800;color:var(--text-1);letter-spacing:-.01em}
+  .sec-meta{font-size:12px;font-weight:800;color:var(--text-1)}
+  .sec-fold{margin-left:auto;width:18px;height:18px;color:var(--text-3);transition:transform .2s;flex:0 0 auto}
+  details.sec:not([open]) .sec-fold{transform:rotate(-90deg)}
+  details.sec:not([open]) .sec-head{margin-bottom:0;border-bottom-color:transparent}
   .sec-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 9px;border-radius:999px;background:var(--text-1);color:#fff;font-size:12px;font-weight:900}
   .sec-time{font-size:12px;font-weight:800}
   .muted{color:var(--text-3)}
@@ -86,6 +93,61 @@
   .collapsed .full{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--stroke-2);white-space:pre-wrap;line-height:1.7;color:var(--text-2);font-size:13px}
   .collapsed.open .full{display:block}
   .info-warn{font-size:12px;font-weight:800;color:var(--level-amber);background:var(--level-amber-bg);padding:2px 8px;border-radius:999px}
+  /* METAR — 칩을 코드 박스 바깥 왼쪽에 나란히 */
+  .metar-row{display:flex;align-items:stretch;gap:10px}
+  .metar-row .cat-chip{align-self:stretch;justify-content:center;flex:0 0 auto}
+  .metar-row .tac{flex:1;min-width:0}
+  .metar-row .decode{flex:1;min-width:0;margin-top:0}
+  .metar-trend{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 14px;background:var(--bg-1);border:1px solid var(--stroke-2);border-radius:8px}
+  .metar-trend-lbl{font-size:12px;font-weight:800;color:var(--text-3);flex:0 0 auto}
+  .metar-trend-val{font-family:var(--mono);font-size:14px;color:var(--text-1);overflow-wrap:anywhere}
+  .metar-trend-val.is-empty{font-family:Pretendard,sans-serif;color:var(--text-3);font-style:italic}
+  /* 접이(원문 등) */
+  details.fold{margin-top:10px}
+  details.fold>summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--text-3);list-style:none;display:inline-block}
+  details.fold>summary::-webkit-details-marker{display:none}
+  details.fold>summary::before{content:"▸ "}
+  details.fold[open]>summary::before{content:"▾ "}
+  /* NOTAM 셀그리드 (실제 앱 룩) */
+  .notam-cellgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  @media(max-width:640px){.notam-cellgrid{grid-template-columns:1fr}}
+  .notam-cell{border:1px solid var(--stroke-2);border-radius:8px;background:var(--bg-1);overflow:hidden}
+  .notam-cell>summary{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;list-style:none}
+  .notam-cell>summary::-webkit-details-marker{display:none}
+  .notam-cell-catcol{display:flex;flex-direction:column;align-items:center;gap:2px;width:40px;color:var(--text-2)}
+  .notam-cell-catcol .ico{width:24px;height:24px}
+  .notam-cell-catlabel{font-size:10px;font-weight:800;color:var(--text-3)}
+  .notam-cell-body{min-width:0}
+  .notam-cell-title{display:block;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .notam-cell-meta{display:block;font-size:11px;color:var(--text-3);margin-top:2px}
+  .notam-cell-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap}
+  .notam-cell-alt{font-size:11px;color:var(--text-3);font-family:var(--mono)}
+  .notam-cell-alt.is-band{color:var(--text-1);font-weight:800}
+  .notam-cell-ts{font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px}
+  .ts-active{background:var(--level-red-bg);color:var(--level-red)}
+  .ts-soon{background:var(--level-amber-bg);color:var(--level-amber)}
+  .ts-upcoming{background:var(--bg-4);color:var(--text-3)}
+  .notam-cell-chev{width:16px;height:16px;color:var(--text-3);transition:transform .2s}
+  .notam-cell[open] .notam-cell-chev{transform:rotate(180deg)}
+  .notam-cell-expand{padding:0 12px 12px;border-top:1px solid var(--stroke-2)}
+  .notam-cell-valid{font-size:12px;font-weight:700;color:var(--text-2);margin:8px 0}
+  .notam-cell-valid-lbl{display:inline-block;background:var(--bg-4);border-radius:4px;padding:1px 6px;margin-right:6px;font-size:11px}
+  .notam-cell-raw{font-family:var(--mono);font-size:11px;color:var(--text-2);white-space:pre-wrap;line-height:1.5;margin:8px 0 0}
+  /* 기상정보 — 원문 공보 */
+  .info-doc{background:var(--bg-1);border:1px solid var(--stroke-2);border-radius:8px;padding:20px 22px}
+  .info-badge{display:inline-block;font-size:12px;font-weight:800;padding:3px 10px;border-radius:6px;background:var(--bg-4);color:var(--text-3);margin-bottom:10px}
+  .info-badge.warn{background:var(--level-red-bg);color:var(--level-red)}
+  .info-logo{height:50px;margin-bottom:4px}
+  .info-doc h2{text-align:center;font-size:17px;font-weight:800;margin:6px 0}
+  .info-date{text-align:center;font-size:12px;color:var(--text-3);margin-bottom:12px}
+  .info-summary{text-align:center;font-weight:800;padding:8px 0;border-top:1px solid var(--stroke-1);border-bottom:1px solid var(--stroke-1);margin-bottom:14px}
+  .info-sec{margin:12px 0}
+  .info-sec h3{font-size:14px;font-weight:800;margin-bottom:5px}
+  .info-sec p{font-size:13px;color:var(--text-2);line-height:1.7;white-space:pre-line}
+  .info-tbl{width:100%;border-collapse:collapse;margin:10px 0}
+  .info-tbl th,.info-tbl td{border:1px solid var(--stroke-1);padding:8px 10px;text-align:center;font-size:13px}
+  .info-tbl th{background:var(--bg-3);font-weight:800}
+  .info-foot{margin-top:16px;padding-top:10px;border-top:1px solid var(--stroke-2);font-size:11px;color:var(--text-3);line-height:1.6}
   .err{padding:14px;color:var(--level-red);font-weight:700}
 </style>
 </head>
@@ -116,6 +178,38 @@ function ceilFt(clouds){let c=Infinity;(clouds||[]).forEach(x=>{if((x.amount==='
 function flightCat(visM,ceil,ic){const m=MINIMA[ic];const vis=Number.isFinite(visM)?visM:99999;const ce=Number.isFinite(ceil)?ceil:99999;if(m){if((m.v&&vis<m.v)||(m.c&&ce<m.c))return 'LIFR'}if(vis<5000||ce<1500)return 'IFR';return 'VFR'}
 function visLevel(visM,ic){const m=MINIMA[ic];if(m&&m.v&&visM<m.v)return 'red';if(Number.isFinite(visM)&&visM<5000)return 'amb';return ''}
 function ceilLevel(ce,ic){const m=MINIMA[ic];if(m&&m.c&&ce!=null&&ce<m.c)return 'red';if(ce!=null&&ce<1500)return 'amb';return ''}
+
+// ---- NOTAM 뷰모델 (실제 앱 notamViewModel.js 이식) ----
+const NCAT={prohibited:'금지',firing:'사격',danger:'위험',restricted:'제한',obstacle:'장애물',facility:'시설',other:'기타'};
+const NTS={active:{key:'active',label:'발효 중'},soon:{key:'soon',label:'곧 발효'},upcoming:{key:'upcoming',label:'예정'}};
+const NRANK={active:0,soon:1,upcoming:2};
+const NIC={
+  prohibited:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+  firing:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+  danger:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 3l9 16H3z"/><path d="M12 9v5M12 17v.5"/></svg>',
+  restricted:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>',
+  obstacle:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M8 21l4-16 4 16M7 13h10M12 3v0"/></svg>',
+  facility:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="2"/><path d="M7 8a6 6 0 000 8M17 8a6 6 0 010 8M4.5 5.5a10 10 0 000 13M19.5 5.5a10 10 0 010 13"/></svg>',
+  other:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/></svg>'
+};
+function nIcon(c){return NIC[c]||NIC.other}
+function nTimeState(from,to,now){const f=Date.parse(from),t=Date.parse(to);if(!isFinite(f)||!isFinite(t))return 'upcoming';if(now>=f&&now<=t)return 'active';if(now<f&&f-now<=2*3600e3)return 'soon';return 'upcoming'}
+function ncomma(n){return Number(n).toLocaleString('en-US')}
+function nLowFt(v){return Number(v)===0?'SFC':ncomma(Number(v)*100)+'FT'}
+function nAlt(a){if(!a)return '';const{lower,upper,unit,ref}=a;if(unit==='FL'&&Number(lower)===0&&Number(upper)>=999)return '전고도';if(unit==='FL'&&Number(upper)<=30)return `${nLowFt(lower)}–${nLowFt(upper)}`;if(unit==='FL')return `FL${lower}–FL${upper}`;const lo=Number(lower)===0?'SFC':ncomma(lower);const hi=ncomma(upper)+'FT';return `${lo}–${hi}${ref?' '+ref:''}`}
+function nValid(from,to){const off=9*3600e3;const f=v=>{const ms=Date.parse(v);if(!isFinite(ms))return '—';const d=new Date(ms+off);const p=n=>String(n).padStart(2,'0');return `${p(d.getUTCMonth()+1)}/${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`};return `${f(from)} ~ ${f(to)} KST`}
+function nPurpose(t){if(/DRONE|UAV|UAS|무인/i.test(t))return '드론';if(/FIRING|SHOOT|GUNNERY|MISSILE|사격/i.test(t))return '사격';if(/AIR ?SHOW|DISPLAY|에어쇼/i.test(t))return '에어쇼';if(/PARACHUT|강하/i.test(t))return '강하';if(/TRAINING|EXERCISE|\bMIL\b|MILITARY|훈련/i.test(t))return '훈련';return ''}
+function nSummary(item){const raw=String(item?.summary||'').replace(/\s+/g,' ').trim();if(!raw)return '';
+  const area=raw.match(/(TEMPO\s+)?(DANGER|RESTRICTED|PROHIBITED)\s+AREA/i);
+  if(area){const typeKo={DANGER:'위험구역',RESTRICTED:'제한구역',PROHIBITED:'비행금지구역'}[area[2].toUpperCase()];const parts=[(area[1]?'임시 ':'')+typeKo];const rad=raw.match(/RADIUS\s*([\d.]+)\s*NM/i);if(rad)parts.push(`반경 ${rad[1]}NM`);else if(/AREA BOUNDED BY/i.test(raw))parts.push('다각형');const p=nPurpose(raw);if(p)parts.push(p);return parts.join(' · ')}
+  if(/GPS\s+RAIM/i.test(raw))return `GPS 신호 예측불가${/NPA/i.test(raw)?'(NPA)':''}`;
+  if(item?.category==='obstacle'||/\bOBST\b/i.test(raw)){const typeKo=/TOWER\s*CRANE/i.test(raw)?'타워크레인':/CRANE/i.test(raw)?'크레인':/TOWER|ANTENNA/i.test(raw)?'철탑':'장애물';const cnt=(raw.match(/\d+\s*\.?\s*(?:PSN|POSITION)\s*:/gi)||[]).length;return `임시 ${typeKo}${cnt>1?` ${cnt}기`:''}`}
+  const clsd=raw.match(/\b(RWY|TWY)\s+([A-Z0-9/]+)\s+CLSD/i);if(clsd)return `${clsd[1].toUpperCase()==='RWY'?'활주로':'유도로'} ${clsd[2]} 폐쇄${/WIP/i.test(raw)?'(공사)':''}`;
+  if(/ACFT\s+STAND.*CLSD/i.test(raw))return `주기장 폐쇄${/WIP/i.test(raw)?'(공사)':''}`;
+  const wip=raw.match(/\b(RWY|TWY)\s+([A-Z0-9/]+)\b[^]*?\bWIP\b/i);if(wip)return `${wip[1].toUpperCase()==='RWY'?'활주로':'유도로'} ${wip[2]} 공사`;
+  if(/\bWIP\b/i.test(raw))return '공사중';
+  const freq=raw.match(/FREQ\s*([\d.]+)\s*MHZ\s*NOT\s*AVBL/i);if(freq){const alt=raw.match(/ALTN\s*FREQ\s*([\d.]+)/i);return `주파수 ${freq[1]}MHz 불가${alt?` → ${alt[1]}`:''}`}
+  return raw.split(/\s+(?:ACT\s+)?AS FLW|\s+AREA BOUNDED|\s+RMK\b|\s*\d{6}N\d{7}E|\s+PSN\s*:/i)[0].trim().slice(0,70)}
 
 let DATA={},AIRPORTS=[],CUR='RKSI';
 
@@ -193,10 +287,10 @@ function secWarn(warns){
   let inner;
   if(!warns.length)inner=`<div class="warn-ok">✓ 공항경보 없음</div>`;
   else inner=warns.map(w=>`<div class="warn-bad">⚠ ${w.wrng_type_name||w.wrng_type_key||'경보'} · ${kst(w.valid_start)}~${kst(w.valid_end)}</div>`).join('');
-  return `<section id="sec-warn">${inner}</section>`;
+  return `<details class="sec" id="sec-warn" open>${secHead('warn','공항경보','')}${inner}</details>`;
 }
 function secMetar(metar){
-  if(!metar)return `<section id="sec-metar"><div class="err">METAR 없음</div></section>`;
+  if(!metar)return `<details class="sec" id="sec-metar" open>${secHead('metar','METAR','')}<div class="err muted">METAR 없음</div></details>`;
   const h=metar.header||{},o=metar.observation||{},d=o.display||{};
   const vis=o.visibility?.value,ce=ceilFt(o.clouds),cat=flightCat(vis,ce,CUR);
   const w=o.wind||{};
@@ -217,13 +311,12 @@ function secMetar(metar){
     `<span class="t-mut">${d.qnh||''}</span>`
   ].filter(Boolean).join(' ');
   const dec=[['바람',d.wind],['시정',fmtVis(vis)],['운고',ce!=null?ce+' ft':'NSC'],['현재기상',wx||'-'],['기온/이슬점',o.temperature?.air!=null?`${o.temperature.air}/${o.temperature.dewpoint}°C`:'-'],['QNH',d.qnh],['RVR',(o.rvr||[]).length?o.rvr.map(r=>r.mean||r).join(','):'-'],['체감',spread<=99?'-':'-']];
-  return `<section id="sec-metar">
-    <div class="sec-head"><span class="sec-badge">METAR</span><span class="sec-time">${kst(h.observation_time||h.issue_time)}</span><button class="toggle" style="margin-left:auto">ⓘ</button></div>
-    <div class="metar-top"><span class="cat-chip" style="background:${CATCOL[cat]}"><span class="code">${cat}</span><span class="ko">${KO[cat]}</span></span><span class="muted" style="font-size:12px">색 = 임계값 판독 · 원문이 곧 화면</span></div>
-    <div class="tac">${tac}</div>
-    <button class="toggle js-decode">▸ 디코드 상세</button>
-    <div class="decode">${dec.map(([k,v])=>`<div class="dc"><div class="k">${k}</div><div class="v">${v??'-'}</div></div>`).join('')}</div>
-  </section>`;
+  return `<details class="sec" id="sec-metar" open>
+    ${secHead('metar','METAR',kst(h.observation_time||h.issue_time))}
+    <div class="metar-row"><span class="cat-chip" style="background:${CATCOL[cat]}"><span class="code">${cat}</span><span class="ko">${KO[cat]}</span></span><div class="decode open">${dec.map(([k,v])=>`<div class="dc"><div class="k">${k}</div><div class="v">${v??'-'}</div></div>`).join('')}</div></div>
+    <div class="metar-trend"><span class="metar-trend-lbl">경향</span><span class="metar-trend-val${o.trend?'':' is-empty'}">${o.trend||'경향 정보 없음 — 백엔드 trend 파싱 연동 후 표시'}</span></div>
+    <details class="fold"><summary>원문 (TAC)</summary><div class="tac">${tac}</div></details>
+  </details>`;
 }
 function fmtVis(v){if(v==null)return '-';if(v>=9999)return '10km+';return v>=1000?(v/1000)+'km':v+'m'}
 
@@ -233,9 +326,9 @@ function tafSegments(taf){
 }
 function group(arr,keyFn){const out=[];arr.forEach(it=>{const k=keyFn(it);const last=out[out.length-1];if(last&&last.k===k)last.n++;else out.push({k,n:1,first:it})});return out}
 function secTaf(taf){
-  if(!taf)return `<section id="sec-taf"><div class="err">TAF 없음</div></section>`;
+  if(!taf)return `<details class="sec" id="sec-taf" open>${secHead('taf','TAF','')}<div class="err muted">TAF 없음</div></details>`;
   const h=taf.header||{};const segs=tafSegments(taf);
-  if(!segs.length)return `<section id="sec-taf"><div class="sec-head"><span class="sec-badge">TAF</span></div><div class="err muted">타임라인 데이터 없음</div></section>`;
+  if(!segs.length)return `<details class="sec" id="sec-taf" open>${secHead('taf','TAF','')}<div class="err muted">타임라인 데이터 없음</div></details>`;
   const total=segs.length;
   const inner=Math.max(total*44,560);
   const scale=`<div style="display:flex;padding-left:58px">${segs.map(s=>`<div style="flex:1;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text-3)">${s.time?ddhh(s.time):''}</div>`).join('')}</div>`;
@@ -250,11 +343,11 @@ function secTaf(taf){
   const rowVis=`<div class="taf-row"><div class="taf-lab">시정</div><div class="taf-track">${visG.map(g=>seg(g,lvBg(g.lv),lvFg(g.lv))).join('')}</div></div>`;
   const ceG=group(segs,s=>s.ce==null?'NSC':s.ce).map(g=>({...g,lbl:g.first.ce==null?'NSC':g.first.ce+'ft',lv:ceilLevel(g.first.ce,CUR)}));
   const rowCe=`<div class="taf-row"><div class="taf-lab">운고</div><div class="taf-track">${ceG.map(g=>seg(g,lvBg(g.lv),lvFg(g.lv))).join('')}</div></div>`;
-  return `<section id="sec-taf">
-    <div class="sec-head"><span class="sec-badge">TAF</span><span class="sec-time">${kst(h.valid_start)} → ${kst(h.valid_end)}</span></div>
+  return `<details class="sec" id="sec-taf" open>
+    ${secHead('taf','TAF',`${kst(h.valid_start)} → ${kst(h.valid_end)}`)}
     <div style="overflow-x:auto"><div style="min-width:${inner}px">${scale}${rowCond}${rowW}${rowVis}${rowCe}</div></div>
-    <div class="taf-raw">${tafTac(taf)}</div>
-  </section>`;
+    <details class="fold"><summary>원문 (TAC)</summary><div class="taf-raw">${tafTac(taf)}</div></details>
+  </details>`;
 }
 function wxStr(a){return Array.isArray(a)?a.map(w=>w.raw).filter(Boolean).join(' '):(a&&a.raw?a.raw:'')}
 function tafTac(taf){
@@ -266,7 +359,7 @@ function tafTac(taf){
 }
 
 function secAmos(amos){
-  if(!amos)return `<section id="sec-amos"><div class="sec-head"><span class="sec-title">AMOS · 실시간 활주로 센서</span></div><div class="err muted">AMOS 없음</div></section>`;
+  if(!amos)return `<details class="sec" id="sec-amos" open>${secHead('amos','AMOS · 실시간 활주로 센서','')}<div class="err muted">AMOS 없음</div></details>`;
   const o=amos.observation||{};const rw=o.runways||[];const t=o.observed_tm_kst;
   const rain=amos.daily_rainfall?.mm;
   const cells=[];
@@ -277,33 +370,62 @@ function secAmos(amos){
   cells.push(['기온/이슬점',o.temperature_c!=null?`${o.temperature_c}/${o.dewpoint_c}°C`:'-','']);
   cells.push(['일강수량',(rain!=null?rain:0)+' mm','']);
   const tmKst=t?`${t.slice(0,4)}-${t.slice(4,6)}-${t.slice(6,8)} ${t.slice(8,10)}:${t.slice(10,12)} KST`:'';
-  return `<section id="sec-amos">
-    <div class="sec-head"><span class="sec-title">AMOS · 실시간 활주로 센서</span><span class="sec-time muted" style="margin-left:auto">${tmKst}</span></div>
+  return `<details class="sec" id="sec-amos" open>
+    ${secHead('amos','AMOS · 실시간 활주로 센서',tmKst)}
     <div class="grid">${cells.map(([k,v,c])=>`<div class="cell"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join('')}</div>
-  </section>`;
+  </details>`;
 }
 
 function secNotam(notams){
-  const active=notams.filter(n=>{const now=Date.now();return (!n.valid_from||new Date(n.valid_from)<=now)&&(!n.valid_to||new Date(n.valid_to)>=now)});
-  const show=active.slice(0,4);
-  const rows=show.map(n=>{const closure=/폐쇄|CLSD|CLOSED/i.test(n.summary||'')||/QMR/.test(n.qcode||'');return `<div class="list-row"><span class="t">${(n.summary||n.id||'').split('\n')[0].slice(0,60)}</span><span class="pill ${closure?'red':''}">${n.category==='obstacle'?'장애물':n.category==='facility'?'시설':(n.category||'')}</span></div>`}).join('');
-  const more=active.length>show.length?`<div class="collapsed"><div class="row"><span class="sum">그 외 ${active.length-show.length}건</span><span>▾ 펼치기</span></div></div>`:'';
-  return `<section id="sec-notam">
-    <div class="sec-head"><span class="sec-title">NOTAM</span><span class="sec-time muted" style="margin-left:auto">활성 ${active.length}건</span></div>
-    ${rows||'<div class="muted" style="font-size:13px">활성 NOTAM 없음</div>'}${more}
-  </section>`;
+  const now=Date.now();
+  const items=notams.filter(n=>n.scope!=='fir')
+    .sort((a,b)=>NRANK[nTimeState(a.valid_from,a.valid_to,now)]-NRANK[nTimeState(b.valid_from,b.valid_to,now)]);
+  const activeCnt=items.filter(n=>nTimeState(n.valid_from,n.valid_to,now)==='active').length;
+  if(!items.length)return `<details class="sec" id="sec-notam" open>${secHead('notam','NOTAM','')}<div class="muted" style="font-size:13px">유효한 NOTAM이 없습니다.</div></details>`;
+  const cells=items.map(it=>{
+    const cat=it.category||'other';
+    const ts=NTS[nTimeState(it.valid_from,it.valid_to,now)]||NTS.upcoming;
+    const alt=nAlt(it.altitude);const isBand=alt&&alt!=='전고도';
+    const sum=nSummary(it)||it.summary||it.id;
+    return `<details class="notam-cell"><summary>
+      <span class="notam-cell-catcol">${nIcon(cat)}<span class="notam-cell-catlabel">${NCAT[cat]||'기타'}</span></span>
+      <span class="notam-cell-body"><span class="notam-cell-title">${sum}</span><span class="notam-cell-meta">${NCAT[cat]||'기타'} · ${it.id}</span></span>
+      <span class="notam-cell-right"><span class="notam-cell-alt${isBand?' is-band':''}">${alt||'—'}</span><span class="notam-cell-ts ts-${ts.key}">${ts.label}</span></span>
+      <svg class="notam-cell-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </summary><div class="notam-cell-expand">
+      <div class="notam-cell-valid"><span class="notam-cell-valid-lbl">유효</span>${nValid(it.valid_from,it.valid_to)}</div>
+      ${it.rawText||it.summary?`<pre class="notam-cell-raw">${(it.rawText||it.summary)}</pre>`:''}
+    </div></details>`;
+  }).join('');
+  return `<details class="sec" id="sec-notam" open>
+    ${secHead('notam','NOTAM','')}
+    <div class="notam-cellgrid">${cells}</div>
+  </details>`;
 }
 
+function fmtBul(tm){if(!tm)return '—';const m=String(tm).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2})/);return m?`${m[1]}년 ${m[2]}월 ${m[3]}일 ${m[4]}시`:tm}
 function secInfo(info){
-  if(!info)return `<section id="sec-info"><div class="sec-head"><span class="sec-title">기상정보</span></div><div class="muted" style="font-size:13px">기상정보 없음</div></section>`;
-  const items=(info.forecast||'').split('○').map(s=>s.trim()).filter(Boolean);
-  const hasWarn=info.warn&&!/없음/.test(info.warn);
-  const badge=items.length?`<span class="info-warn" style="margin-left:auto">위험기상 ${items.length}</span>`:(hasWarn?`<span class="info-warn" style="margin-left:auto;color:var(--level-red);background:var(--level-red-bg)">경보</span>`:'');
-  const full=[info.outlook,info.forecast&&('\n[위험 기상예보]\n'+info.forecast),info.warn&&('\n[경보현황] '+info.warn)].filter(Boolean).join('\n');
-  return `<section id="sec-info">
-    <div class="sec-head"><span class="sec-title">기상정보</span>${badge}</div>
-    <div class="collapsed"><div class="row"><span class="sum">${info.title||''} — ${info.summary||''}</span><span>▾ 펼치기</span></div><div class="full">${full}</div></div>
-  </section>`;
+  if(!info)return `<details class="sec" id="sec-info" open>${secHead('info','기상정보','')}<div class="muted" style="font-size:13px">기상정보 데이터 없음</div></details>`;
+  const hasWarn=info.warn&&info.warn.trim();
+  const hasForecast=info.forecast&&info.forecast.trim();
+  const showSel3=info.sel_val3&&info.sel_val3.trim();
+  const hasTable=info.sel_val1||info.sel_val2;
+  return `<details class="sec" id="sec-info" open>
+    ${secHead('info','기상정보','')}
+    <div class="info-doc">
+      <span class="info-badge${hasWarn?' warn':''}">${hasWarn?'경보 발효 중':hasForecast?'위험기상 예보 있음':'경보·위험기상 없음'}</span>
+      <div style="text-align:center"><img src="/logo3_01.png" alt="항공기상청" class="info-logo" onerror="this.style.display='none'"></div>
+      <h2>${info.title||'—'}</h2>
+      <p class="info-date">[ ${fmtBul(info.tm)} 발표 ]</p>
+      ${info.summary?`<p class="info-summary">${info.summary}</p>`:''}
+      <div class="info-sec"><h3>▶ 일기개황</h3><p>${info.outlook||'—'}</p></div>
+      ${hasTable?`<table class="info-tbl"><thead><tr><th>예상 최저/최고기온 (℃)</th><th>예상 강수량(mm)</th>${showSel3?'<th></th>':''}</tr></thead>
+        <tbody><tr><td>${info.sel_val1||'—'}</td><td>${info.sel_val2||'—'}</td>${showSel3?`<td>${info.sel_val3}</td>`:''}</tr></tbody></table>`:''}
+      ${hasForecast?`<div class="info-sec"><h3>▶ 위험 기상예보</h3><p>${info.forecast}</p></div>`:''}
+      ${hasWarn?`<div class="info-sec"><h3>▶ 경보현황</h3><p>${info.warn}</p></div>`:''}
+      <div class="info-foot"><p>※ 공항기상 및 경보에 대한 자세한 사항은 항공기상청 홈페이지(amo.kma.go.kr)에서 확인할 수 있습니다.</p><p>※ 수신기관의 담당자, 전화번호 및 FAX번호가 변경되었을 때는 예보과로 알려주시기 바랍니다.</p></div>
+    </div>
+  </details>`;
 }
 
 const ICON={
@@ -315,12 +437,14 @@ const ICON={
   info:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/></svg>'
 };
 
+function secHead(id,label,meta){return `<summary class="sec-head">${ICON[id]||''}<span class="sec-title">${label}</span><span class="sec-meta">${meta||''}</span><svg class="sec-fold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>`}
+
 function wire(){
   document.querySelectorAll('.js-decode').forEach(b=>b.onclick=()=>{b.nextElementSibling.classList.toggle('open');b.textContent=b.nextElementSibling.classList.contains('open')?'▾ 디코드 닫기':'▸ 디코드 상세'});
   document.querySelectorAll('.collapsed').forEach(c=>c.onclick=()=>c.classList.toggle('open'));
   const items=[...document.querySelectorAll('.rail-item')];
-  const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const id=e.target.id.replace('sec-','');items.forEach(it=>it.classList.toggle('active',it.getAttribute('href')==='#sec-'+id))}})},{rootMargin:'-10% 0px -70% 0px'});
-  document.querySelectorAll('.scroll section').forEach(s=>io.observe(s));
+  const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const id=e.target.id.replace('sec-','');items.forEach(it=>it.classList.toggle('active',it.getAttribute('href')==='#sec-'+id))}})},{root:document.querySelector('.scroll'),rootMargin:'-10% 0px -70% 0px'});
+  document.querySelectorAll('.scroll [id^="sec-"]').forEach(s=>io.observe(s));
 }
 boot().catch(e=>{$('#scroll').innerHTML='<div class="err">로드 실패: '+e.message+'</div>'});
 </script>
