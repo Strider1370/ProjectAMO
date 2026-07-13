@@ -42,7 +42,7 @@
 ## 4. 색 사용 3버킷
 | 버킷 | 규칙 | 예 |
 |---|---|---|
-| **표준 따름** | 도메인 표준 — 바꾸면 사용성↓ | 항공 카테고리색(VFR녹/MVFR청/IFR적/LIFR자홍), 착빙=파랑, wind barb |
+| **표준 따름** | 도메인 표준 — 바꾸면 사용성↓ | 항공 카테고리=심각도(VFR·MVFR녹/IFR앰버/LIFR적), 착빙=파랑, wind barb |
 | **관습 차용** | 보호 대상 아님, 가져와도 됨 | 타임슬라이더·범례·picker·접이식 패널·정상=투명 |
 | **직접 제작** | 우리 정체성 | 패널 chrome·관제 밀도·전체 룩 |
 
@@ -73,7 +73,7 @@
 
 ### 시맨틱 의미색 (자체 — Fluent에 없음)
 - **레벨:** green `#166534`/bg `#dcefe2` · amber `#92400e`/`#fdecc8` · red `#c0291f`/`#f7dcd9` · gray `#475569`/`#eef2f7`
-- **항공 카테고리(표준):** VFR `#166534` · MVFR `#1d4ed8` · IFR `#c0291f` · LIFR `#9d2c9d`
+- **항공 카테고리 = 심각도 레벨(고정색 폐기, 코드 정본):** VFR·MVFR → **green** · IFR → **amber** · LIFR → **red** (위 시맨틱 레벨색 재사용). 카테고리별 고정색(구 IFR=적·LIFR=자홍)은 **폐기**. 데이터가 "MVFR"을 내려주면 표시 시 VFR(green)로 접음(fold). MVFR/LIFR은 미 NWS 분류일 뿐 ICAO 규정 아님. 근거: `shared/weather/helpers.js`(FLIGHT_CATEGORY_META), `route-briefing/BriefingView.jsx`("카테고리 고정색 폐기"). ⚠️ 잔여 정리: 코드 `theme/tokens.*`의 `--cat-*` 고정 hex는 레거시 → 레벨색으로 수렴 필요.
 - **기상 램프(지도=단면도=범례 공유):** icing `투명 / #ACC7FF / #6B88CD / #383D6F` · turbulence `none / #64D264 / #FFC300 / #FF3737` · moisture·temp·wind은 기존 정본 유지
 
 ### CSS 토큰 블록 (1단계 시작점)
@@ -91,7 +91,7 @@
   --stroke-1:#d1d1d1;--stroke-2:#e0e0e0;--stroke-strong:#616161;--accent:#334155;
   --level-green:#166534;--level-green-bg:#dcefe2;--level-amber:#92400e;--level-amber-bg:#fdecc8;
   --level-red:#c0291f;--level-red-bg:#f7dcd9;--level-gray:#475569;--level-gray-bg:#eef2f7;
-  --cat-vfr:#166534;--cat-mvfr:#1d4ed8;--cat-ifr:#c0291f;--cat-lifr:#9d2c9d;
+  --cat-vfr:var(--level-green);--cat-ifr:var(--level-amber);--cat-lifr:var(--level-red);
   --icing-1:#ACC7FF;--icing-2:#6B88CD;--icing-3:#383D6F;
   --turb-light:#64D264;--turb-mod:#FFC300;--turb-sev:#FF3737;
 }

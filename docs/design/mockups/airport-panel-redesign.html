@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공항 패널 개편 목업 · RKJB</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{
+    --accent:#334155;
+    --text-1:#242424;--text-2:#424242;--text-3:#616161;--text-disabled:#bdbdbd;
+    --bg-1:#fff;--bg-2:#fafafa;--bg-3:#f5f5f5;--bg-4:#f0f0f0;
+    --stroke-1:#d1d1d1;--stroke-2:#e0e0e0;
+    --level-green:#166534;--level-green-bg:#dcefe2;
+    --level-amber:#92400e;--level-amber-bg:#fdecc8;
+    --level-red:#c0291f;--level-red-bg:#f7dcd9;
+    --cat-vfr:#15803d;--cat-ifr:#f59e0b;--cat-lifr:#dc2626;
+    --mono:'Consolas','Menlo',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Pretendard,system-ui,sans-serif;background:#dfe6ee;color:var(--text-1);
+    display:flex;justify-content:center;padding:24px 16px;line-height:1.4}
+
+  .panel{width:960px;max-width:100%;background:linear-gradient(180deg,#f5f9fd,#eef4fb);
+    border:1px solid rgba(255,255,255,.6);border-radius:10px;overflow:hidden;
+    box-shadow:0 8px 30px rgba(15,23,42,.12)}
+
+  /* 헤더 사진 배너 */
+  .head{position:relative;height:150px;
+    background:linear-gradient(180deg,#7db4e6 0%,#a7cdeb 45%,#8fb96b 46%,#7ba957 100%)}
+  .head::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,23,42,.45),rgba(15,23,42,0) 60%)}
+  .head-txt{position:absolute;left:22px;bottom:20px;z-index:1;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.35)}
+  .head-txt h1{font-size:26px;font-weight:800;letter-spacing:-.01em}
+  .head-txt p{font-size:13px;font-weight:600;opacity:.92}
+  .close{position:absolute;top:14px;right:16px;z-index:1;color:#fff;font-size:22px;cursor:pointer;opacity:.9}
+
+  .body{display:flex;align-items:flex-start}
+
+  /* 레일 */
+  .rail{width:92px;flex:0 0 auto;background:var(--bg-1);border-right:1px solid rgba(148,163,184,.3);
+    padding:8px 6px;align-self:stretch}
+  .rail-item{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;
+    padding:9px 4px;border-radius:8px;color:var(--text-3);font-size:12px;font-weight:700;cursor:pointer}
+  .rail-item .ico{width:20px;height:20px}
+  .rail-item.active{background:#eef2f7;color:var(--accent)}
+  .rail-item.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--accent)}
+  .badge{position:absolute;top:4px;right:10px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;
+    display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-family:var(--mono)}
+  .b-amber{background:var(--level-amber-bg);color:var(--level-amber)}
+  .b-red{background:var(--level-red-bg);color:var(--level-red)}
+  .b-neutral{background:var(--bg-4);color:var(--text-3);border:1px solid var(--stroke-2)}
+
+  /* 스크롤 본문 */
+  .scroll{flex:1;min-width:0;padding:14px 16px 28px;display:flex;flex-direction:column;gap:14px}
+  .section{scroll-margin-top:8px}
+  .sec-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .sec-title{font-size:15px;font-weight:800;color:var(--text-1)}
+  .sec-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 9px;
+    border-radius:999px;background:var(--text-1);color:#fff;font-size:12px;font-weight:900;letter-spacing:.02em}
+  .sec-time{font-size:12px;font-weight:800;color:var(--text-1)}
+  .i-btn{margin-left:auto;width:22px;height:22px;border-radius:999px;border:0;background:transparent;color:var(--text-3);
+    display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+  .i-btn:hover{background:var(--bg-4);color:var(--text-1)}
+  .divider{height:1px;background:var(--stroke-2)}
+
+  /* 공항경보 OK */
+  .warn-ok{display:flex;align-items:center;gap:8px;padding:14px 16px;border-radius:6px;
+    background:var(--level-green-bg);color:var(--level-green);font-weight:800;font-size:14px;
+    border:1px solid color-mix(in srgb,var(--level-green) 30%,var(--level-green-bg))}
+
+  /* 비행규칙 + TAC 히어로 */
+  .cat-chip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:6px 16px;border-radius:6px;color:#fff;text-align:center;background:var(--cat-vfr)}
+  .cat-chip .code{font-size:20px;font-weight:900;line-height:1}
+  .cat-chip .ko{font-size:11px;font-weight:800;margin-top:2px}
+  .metar-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .metar-note{font-size:12px;color:var(--text-3)}
+
+  .tac{background:var(--bg-1);border:1px solid var(--stroke-2);border-radius:6px;padding:14px 14px;
+    font-family:var(--mono);font-size:19px;line-height:1.9;word-spacing:3px;letter-spacing:.01em;overflow-wrap:anywhere}
+  .t-mut{color:var(--text-3)} .t-nrm{color:var(--text-1)}
+  .t-grn{color:var(--level-green);font-weight:700}
+  .t-amb{color:var(--level-amber);font-weight:800;background:var(--level-amber-bg);border-radius:3px;padding:0 3px}
+  .t-red{color:var(--level-red);font-weight:800;background:var(--level-red-bg);border-radius:3px;padding:0 3px}
+  .decode-toggle{margin-top:8px;font-size:12px;color:var(--text-3);background:transparent;border:0;cursor:pointer;
+    display:inline-flex;align-items:center;gap:4px;font-weight:700}
+
+  /* TAF 타임라인 */
+  .taf-scale{display:grid;grid-template-columns:52px repeat(6,1fr);gap:5px;padding-left:0;
+    font-family:var(--mono);font-size:12px;color:var(--text-3);margin-bottom:5px}
+  .taf-scale span:first-child{visibility:hidden}
+  .taf-row{display:grid;grid-template-columns:52px 1fr;gap:6px;align-items:center;margin-bottom:5px}
+  .taf-lab{font-size:12px;font-weight:800;color:var(--text-3);text-align:right}
+  .taf-track{display:flex;height:34px;border:1px solid var(--stroke-2);border-radius:6px;overflow:hidden}
+  .taf-seg{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;
+    border-right:1px solid rgba(15,23,42,.08)}
+  .taf-row.cond .taf-track{height:40px}
+  .taf-row.cond .taf-seg{font-size:14px;font-weight:900;color:#fff}
+  .taf-raw{margin-top:10px;background:var(--bg-1);border:1px solid var(--stroke-2);border-radius:6px;
+    padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text-2);line-height:1.7}
+
+  /* AMOS */
+  .amos-rwy{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--stroke-2);margin-bottom:10px}
+  .amos-rwy div{flex:1;text-align:center;padding:8px;font-weight:900;font-size:15px}
+  .amos-rwy .use{background:var(--level-red);color:#fff}
+  .amos-rwy .idle{background:var(--bg-1);color:var(--text-3)}
+  .amos-grid{display:grid;grid-template-columns:120px repeat(3,1fr);gap:8px;align-items:center}
+  .dial{grid-row:span 2;display:flex;align-items:center;justify-content:center}
+  .amos-cell{background:var(--bg-1);border:1px solid var(--stroke-2);border-radius:6px;padding:10px 12px;min-height:56px;
+    display:flex;flex-direction:column;justify-content:center}
+  .amos-cell .k{font-size:11px;font-weight:800;color:var(--text-3)}
+  .amos-cell .v{font-size:16px;font-weight:900;font-family:var(--mono);color:var(--text-1)}
+  .amos-cell .v.amber{color:var(--level-amber)}
+
+  /* NOTAM / 기상정보 */
+  .list-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--stroke-2);
+    border-radius:6px;background:var(--bg-1);margin-bottom:6px;font-size:13px}
+  .list-row .ico{width:18px;height:18px;color:var(--text-3);flex:0 0 auto}
+  .list-row .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+  .pill{font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--level-red-bg);color:var(--level-red)}
+  .pill.n{background:var(--bg-4);color:var(--text-3)}
+  .collapsed{display:flex;align-items:center;gap:8px;padding:12px 14px;border:1px solid var(--stroke-2);
+    border-radius:6px;background:var(--bg-1);font-size:13px;color:var(--text-2);cursor:pointer}
+  .collapsed .sum{flex:1;font-weight:700;color:var(--text-1)}
+  .info-warn{font-size:12px;font-weight:800;color:var(--level-amber);background:var(--level-amber-bg);
+    padding:2px 8px;border-radius:999px}
+  svg{display:block}
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="head">
+    <div class="head-txt"><h1>무안국제공항 · RKJB</h1><p>Muan International Airport</p></div>
+    <div class="close">✕</div>
+  </div>
+
+  <div class="body">
+    <!-- 레일 = 스크롤 네비 + 심각도 배지 -->
+    <nav class="rail">
+      <div class="rail-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>공항경보
+      </div>
+      <div class="rail-item active">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 16a4 4 0 010-8 5 5 0 019.6-1.6A3.5 3.5 0 0118 16z"/></svg>현재
+        <span class="badge b-amber">1</span>
+      </div>
+      <div class="rail-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>예보
+        <span class="badge b-amber">2</span>
+      </div>
+      <div class="rail-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 12l4-3"/><circle cx="12" cy="12" r="9"/></svg>AMOS
+      </div>
+      <div class="rail-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>NOTAM
+        <span class="badge b-neutral">4</span>
+      </div>
+      <div class="rail-item">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/></svg>기상정보
+        <span class="badge b-amber">2</span>
+      </div>
+    </nav>
+
+    <div class="scroll">
+
+      <!-- 공항경보 -->
+      <section class="section">
+        <div class="warn-ok">✓ 공항경보 없음</div>
+      </section>
+
+      <!-- 현재 (METAR) -->
+      <section class="section">
+        <div class="sec-head">
+          <span class="sec-badge">METAR</span>
+          <span class="sec-time">2026-07-13 13:00 KST</span>
+          <button class="i-btn" title="출처">ⓘ</button>
+        </div>
+        <div class="metar-top">
+          <span class="cat-chip"><span class="code">VFR</span><span class="ko">시계비행규칙</span></span>
+          <span class="metar-note">색 = 임계값 판독 · 원문이 곧 화면</span>
+        </div>
+        <div class="tac">
+          <span class="t-mut">METAR RKJB 130400Z</span>
+          <span class="t-amb">21012G24KT</span>
+          <span class="t-grn">9999</span>
+          <span class="t-grn">FEW030 BKN120</span>
+          <span class="t-nrm">29/24</span>
+          <span class="t-mut">Q1010</span>
+        </div>
+        <button class="decode-toggle">▸ 디코드 상세 (바람·시정·운고·기온…)</button>
+      </section>
+
+      <!-- 예보 (TAF) -->
+      <section class="section">
+        <div class="sec-head">
+          <span class="sec-badge">TAF</span>
+          <span class="sec-time">13 15:00 → 14 21:00 KST</span>
+          <button class="i-btn" title="출처">ⓘ</button>
+        </div>
+        <div class="taf-scale"><span>x</span><span>13/15</span><span>13/18</span><span>13/21</span><span>14/00</span><span>14/03</span><span>14/06</span></div>
+        <div class="taf-row cond">
+          <div class="taf-lab">비행조건</div>
+          <div class="taf-track">
+            <div class="taf-seg" style="flex:3;background:var(--cat-vfr)">VFR</div>
+            <div class="taf-seg" style="flex:3;background:var(--cat-ifr)">IFR</div>
+          </div>
+        </div>
+        <div class="taf-row">
+          <div class="taf-lab">날씨</div>
+          <div class="taf-track">
+            <div class="taf-seg" style="flex:3;background:var(--bg-1)">구름 조금</div>
+            <div class="taf-seg" style="flex:3;background:#bae6fd;color:#0c4a6e">약한 비</div>
+          </div>
+        </div>
+        <div class="taf-row">
+          <div class="taf-lab">바람</div>
+          <div class="taf-track">
+            <div class="taf-seg" style="flex:3;background:var(--bg-1)">22010KT</div>
+            <div class="taf-seg" style="flex:3;background:var(--level-amber-bg);color:var(--level-amber)">18015G28KT</div>
+          </div>
+        </div>
+        <div class="taf-row">
+          <div class="taf-lab">시정</div>
+          <div class="taf-track">
+            <div class="taf-seg" style="flex:3;background:var(--level-green-bg);color:var(--level-green)">9999 m</div>
+            <div class="taf-seg" style="flex:3;background:var(--level-amber-bg);color:var(--level-amber)">3000 m</div>
+          </div>
+        </div>
+        <div class="taf-row">
+          <div class="taf-lab">운고</div>
+          <div class="taf-track">
+            <div class="taf-seg" style="flex:3;background:var(--bg-1)">NSC</div>
+            <div class="taf-seg" style="flex:3;background:var(--level-amber-bg);color:var(--level-amber)">900 ft</div>
+          </div>
+        </div>
+        <div class="taf-raw">TAF RKJB 130600Z 1315/1421 22010KT 9999 FEW030<br>&nbsp;&nbsp;BECMG 1400/1402 18015G28KT 3000 -RA BKN009</div>
+      </section>
+
+      <!-- AMOS -->
+      <section class="section">
+        <div class="sec-head"><span class="sec-title">AMOS · 실시간 활주로 센서</span><span class="sec-time" style="margin-left:auto">14:48 KST</span></div>
+        <div class="amos-rwy"><div class="use">01 IN USE</div><div class="idle">19</div></div>
+        <div class="amos-grid">
+          <div class="dial">
+            <svg width="108" height="108" viewBox="0 0 108 108">
+              <circle cx="54" cy="54" r="46" fill="none" stroke="var(--stroke-1)" stroke-width="2"/>
+              <g stroke="var(--text-disabled)" stroke-width="2">
+                <line x1="54" y1="8" x2="54" y2="16"/><line x1="54" y1="92" x2="54" y2="100"/>
+                <line x1="8" y1="54" x2="16" y2="54"/><line x1="92" y1="54" x2="100" y2="54"/></g>
+              <line x1="54" y1="54" x2="54" y2="18" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/>
+              <polygon points="54,14 49,24 59,24" fill="var(--accent)"/>
+              <circle cx="54" cy="54" r="4" fill="var(--accent)"/>
+            </svg>
+          </div>
+          <div class="amos-cell"><span class="k">평균풍속</span><span class="v">09 kt</span></div>
+          <div class="amos-cell"><span class="k">H/T-WS</span><span class="v">H 02</span></div>
+          <div class="amos-cell"><span class="k">CROSS-WS (측풍)</span><span class="v amber">R 09</span></div>
+          <div class="amos-cell"><span class="k">RVR</span><span class="v">2000+</span></div>
+          <div class="amos-cell"><span class="k">일강수량</span><span class="v">0.0 mm</span></div>
+          <div class="amos-cell"><span class="k">QNH</span><span class="v">1010</span></div>
+        </div>
+      </section>
+
+      <!-- NOTAM -->
+      <section class="section">
+        <div class="sec-head"><span class="sec-title">NOTAM</span><span class="sec-time" style="margin-left:auto;color:var(--text-3)">활성 4건</span></div>
+        <div class="list-row">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 018-8M12 20a8 8 0 008-8"/></svg>
+          <span class="t">TRIGGER NOTAM — AIRAC AIP AMDT 6/26</span><span class="pill n">시설</span>
+        </div>
+        <div class="list-row">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/></svg>
+          <span class="t">임시 타워크레인 SFC–500FT</span><span class="pill n">장애물</span>
+        </div>
+        <div class="collapsed"><span class="sum">TXL R23·주기장 폐쇄 외 2건</span><span>▾ 펼치기</span></div>
+      </section>
+
+      <!-- 기상정보 -->
+      <section class="section">
+        <div class="sec-head"><span class="sec-title">기상정보</span><span class="info-warn" style="margin-left:auto">위험기상 2</span></div>
+        <div class="collapsed">
+          <span class="sum">무안공항 기상정보(제07-25호) — 폭염(주의), 활주로표면온도 50℃</span><span>▾ 펼치기</span>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>
