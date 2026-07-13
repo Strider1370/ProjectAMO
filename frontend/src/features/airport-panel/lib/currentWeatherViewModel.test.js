@@ -18,12 +18,12 @@ describe('current weather tab view model', () => {
     assert.deepEqual(model.items, [])
   })
 
-  it('uses existing warning payload fields without warningTypes lookup', () => {
+  it('maps warning key to Korean name and formats time as fmtKstShort', () => {
     const model = buildCurrentWarningModel({
       warnings: [
         {
           wrng_type_key: 'LOW_VISIBILITY',
-          wrng_type_name: '\uc800\uc2dc\uc815',
+          wrng_type_name: 'Low Visibility Warning',
           valid_start: '2026-06-06T01:00:00Z',
           valid_end: '2026-06-06T04:30:00Z',
         },
@@ -32,8 +32,8 @@ describe('current weather tab view model', () => {
 
     assert.equal(model.active, true)
     assert.equal(model.count, 1)
-    assert.equal(model.items[0].name, '\uc800\uc2dc\uc815')
-    assert.equal(model.items[0].timeText, '06 0100 - 06 0430')
+    assert.equal(model.items[0].name, '\uc800\uc2dc\uc815\uacbd\ubcf4') // \uc800\uc2dc\uc815\uacbd\ubcf4 (\ud0a4 \ub9e4\ud551)
+    assert.equal(model.items[0].timeText, '2026-06-06 01:00 UTC \u2013 2026-06-06 04:30 UTC')
   })
 
   it('falls back through warning type fields in priority order', () => {

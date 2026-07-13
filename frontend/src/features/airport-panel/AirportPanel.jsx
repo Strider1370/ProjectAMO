@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { AlertTriangle, Cloud, Clock, Gauge, FileText, Info, ChevronDown } from 'lucide-react'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
-import CurrentWeatherTab from './tabs/CurrentWeatherTab.jsx'
+import { fmtKstShort } from './lib/formatters.js'
+import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import MetarTab from './tabs/MetarTab.jsx'
 import EnhancedTafTab from './tabs/TafTab.jsx'
 import AmosBoardTab from './tabs/AmosTab.jsx'
-import WarningTab from './tabs/WarningTab.jsx'
 import AirportInfoTab from './tabs/AirportInfoTab.jsx'
 import NotamTab from './tabs/NotamTab.jsx'
+import WarningCarousel from './WarningCarousel.jsx'
 import './AirportPanel.css'
 
 const AIRPORT_HEADER_NAME_KO = {
@@ -22,45 +24,68 @@ const AIRPORT_HEADER_NAME_KO = {
 
 const FULL_FEATURE_AIRPORTS = new Set(['RKSI', 'RKSS', 'RKPC', 'RKPU', 'RKJY', 'RKJB', 'RKNY', 'RKPK'])
 
-const TABS_FULL = [
-  { id: 'current', label: '현재날씨' },
-  { id: 'metar',   label: 'METAR' },
-  { id: 'taf',     label: 'TAF' },
-  { id: 'amos',    label: 'AMOS' },
-  { id: 'warn',    label: '공항경보' },
-  { id: 'notam',   label: 'NOTAM' },
-  { id: 'info',    label: '기상정보' },
-]
+// 섹션·레일 공용 아이콘(§12 — 레일과 제목바가 같은 아이콘으로 묶임)
+const SECTION_ICON = { warn: AlertTriangle, metar: Cloud, taf: Clock, amos: Gauge, notam: FileText, info: Info }
 
-const TABS_LIMITED = [
-  { id: 'current', label: '현재날씨' },
-  { id: 'metar',   label: 'METAR' },
-  { id: 'taf',     label: 'TAF' },
-  { id: 'warn',    label: '공항경보' },
-  { id: 'notam',   label: 'NOTAM' },
-]
-
+// Phase 1: 탭 → 단일 스크롤 + 스크롤스파이 레일. 섹션 순서 = 위험도/시급성(스펙 §4).
+// 각 섹션은 기존 탭 컴포넌트를 그대로 감쌈(§12 세부 표시는 Phase 2~4에서). 현재날씨는 해체(렌더 제외).
 function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherData }) {
-  const [tab, setTab] = useState('current')
+  const { tz } = useTimeZone()
   const icao = airport?.icao
   const isFullFeature = FULL_FEATURE_AIRPORTS.has(icao)
   const airportInfo = weatherData?.airportInfo?.airports?.[icao] || null
+  const bodyRef = useRef(null)
+  const [activeSection, setActiveSection] = useState('warn')
+  const [infoRequested, setInfoRequested] = useState(false)
 
+  // 공항 전환 시 스크롤 상단 리셋
   useEffect(() => {
-    if (!isFullFeature && (tab === 'amos' || tab === 'info')) {
-      setTab('current')
-    }
-  }, [isFullFeature, tab])
+    bodyRef.current?.scrollTo?.(0, 0)
+    setActiveSection('warn')
+    setInfoRequested(false)
+  }, [icao])
 
+  // Escape → 드로어 닫기 (외장 키보드 iPad·데스크톱)
   useEffect(() => {
-    if (airport && tab === 'info' && !airportInfo) {
-      onRequestDeferredWeatherData?.(['airportInfo'])
-    }
-  }, [airport, tab, airportInfo, onRequestDeferredWeatherData])
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  // 스크롤스파이: 현재 섹션 레일 하이라이트 + 기상정보 섹션 진입 시 지연 로드
+  useEffect(() => {
+    const root = bodyRef.current
+    if (!root) return undefined
+    const secEls = Array.from(root.querySelectorAll('.ap-sec'))
+    if (!secEls.length) return undefined
+    const order = secEls.map((el) => el.id.replace('sec-', ''))
+    const visible = new Set()
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          const id = e.target.id.replace('sec-', '')
+          if (e.isIntersecting) {
+            visible.add(id)
+            if (id === 'info' && !airportInfo) {
+              setInfoRequested(true)
+              onRequestDeferredWeatherData?.(['airportInfo'])
+            }
+          } else {
+            visible.delete(id)
+          }
+        })
+        // 섹션 순서상 가장 위쪽(먼저 나오는) 보이는 섹션을 활성으로
+        const first = order.find((id) => visible.has(id))
+        if (first) setActiveSection(first)
+      },
+      { root, rootMargin: '0px 0px -75% 0px' },
+    )
+    secEls.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [icao, isFullFeature, airportInfo, onRequestDeferredWeatherData])
 
   if (!airport) return null
 
-  const tabs = isFullFeature ? TABS_FULL : TABS_LIMITED
   const headerNameKo = AIRPORT_HEADER_NAME_KO[icao] || airport.nameKo || airport.name || icao
   const headerNameEn = airport.name || AIRPORT_NAME_KO[icao] || icao
   const headerImageSrc = `/images/${String(icao || 'RKSI').toLowerCase()}_banner.webp`
@@ -68,23 +93,40 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const airportWeatherSource = airport?.overseas ? 'overseas' : 'domestic'
   const metarPayload = airportWeatherSource === 'overseas' ? weatherData?.metarOverseas : weatherData?.metar
   const tafPayload = airportWeatherSource === 'overseas' ? weatherData?.tafOverseas : weatherData?.taf
-  const metar      = metarPayload?.airports?.[icao] || null
-  const taf        = tafPayload?.airports?.[icao] || null
-  const amos       = weatherData?.amos?.airports?.[icao] || null
-  const warning    = weatherData?.warning?.airports?.[icao] || null
-  const warnCount  = warning?.warnings?.length || 0
+  const metar = metarPayload?.airports?.[icao] || null
+  const taf = tafPayload?.airports?.[icao] || null
+  const amos = weatherData?.amos?.airports?.[icao] || null
+  const warning = weatherData?.warning?.airports?.[icao] || null
+  const warnCount = warning?.warnings?.length || 0
+
+  const metarTime = metar?.header?.observation_time || metar?.header?.issue_time
+  const tafValid = taf?.header?.valid_start
+    ? `${fmtKstShort(taf.header.valid_start, tz)} – ${fmtKstShort(taf.header.valid_end, tz)}`
+    : ''
+  const metarSpeci = metar?.header?.report_type === 'SPECI' // 특별관측 → 제목을 SPECI로
+  const tafAmd = taf?.header?.report_status === 'AMENDMENT' // 정정 → 제목을 TAF AMD로
+
+  // 기상정보 지연 로딩 상태: 요청은 했으나 airportInfo 페이로드가 아직 안 온 상태
+  const infoLoading = infoRequested && !weatherData?.airportInfo
+
+  const sections = [
+    { id: 'warn', label: '공항경보', badge: warnCount, node: <WarningCarousel warning={warning} /> },
+    { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', node: <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} /> },
+    { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, node: <EnhancedTafTab taf={taf} icao={icao} /> },
+    isFullFeature && { id: 'amos', label: 'AMOS', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
+    { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} /> },
+    isFullFeature && { id: 'info', label: '기상정보', node: <AirportInfoTab info={airportInfo} loading={infoLoading} /> },
+  ].filter(Boolean)
+
+  const goTo = (id) =>
+    bodyRef.current?.querySelector(`#sec-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   return (
     <aside className="airport-panel">
       <header className={`airport-panel-head${isFullFeature ? '' : ' airport-panel-head--no-image'}`}>
         {isFullFeature && (
           <>
-            <img
-              className="airport-panel-head-image"
-              src={headerImageSrc}
-              alt=""
-              aria-hidden="true"
-            />
+            <img className="airport-panel-head-image" src={headerImageSrc} alt="" aria-hidden="true" />
             <div className="airport-panel-head-overlay" aria-hidden="true" />
           </>
         )}
@@ -99,38 +141,44 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
       </header>
 
       <div className="airport-panel-main">
-        <nav className="airport-panel-tabs">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              className={`airport-panel-tab${tab === t.id ? ' is-active' : ''}`}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-              {t.id === 'warn' && warnCount > 0 && (
-                <span className="ap-tab-badge">{warnCount}</span>
-              )}
-            </button>
-          ))}
+        <nav className="airport-panel-tabs" aria-label="섹션 이동">
+          {sections.map((s) => {
+            const Icon = SECTION_ICON[s.id]
+            return (
+              <button
+                key={s.id}
+                className={`airport-panel-tab${activeSection === s.id ? ' is-active' : ''}`}
+                onClick={() => goTo(s.id)}
+                aria-current={activeSection === s.id ? 'true' : undefined}
+              >
+                {Icon && <Icon size={18} strokeWidth={2} aria-hidden="true" />}
+                <span>{s.label}</span>
+                {s.id === 'warn' && s.badge > 0 && (
+                  <span className="ap-tab-badge" aria-label={`공항경보 ${s.badge}건`}>{s.badge}</span>
+                )}
+              </button>
+            )
+          })}
         </nav>
 
-        <div className="airport-panel-body">
-          {tab === 'current' && (
-            <CurrentWeatherTab
-              icao={icao}
-              airportMeta={airport}
-              warning={warning}
-              metar={metar}
-              taf={taf}
-              amosData={amos}
-            />
-          )}
-          {tab === 'metar' && <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} />}
-          {tab === 'taf'   && <EnhancedTafTab taf={taf} icao={icao} />}
-          {tab === 'amos'  && <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} />}
-          {tab === 'warn'  && <WarningTab warning={warning} />}
-          {tab === 'notam' && <NotamTab notam={weatherData?.notam || null} icao={icao} />}
-          {tab === 'info'  && <AirportInfoTab info={airportInfo} />}
+        <div className="airport-panel-body" ref={bodyRef}>
+          {sections.map((s) => {
+            const Icon = SECTION_ICON[s.id]
+            return (
+              <details key={s.id} id={`sec-${s.id}`} className="ap-sec" open>
+                <summary className="ap-sec-head">
+                  {Icon && <Icon className="ap-sec-icon" size={20} strokeWidth={2} aria-hidden="true" />}
+                  <span className={`ap-sec-title${s.special ? ' ap-sec-title--special' : ''}`}>{s.titleText || s.label}</span>
+                  {s.meta && <span className="ap-sec-meta">{s.meta}</span>}
+                  {s.id === 'warn' && s.badge > 0 && (
+                    <span className="ap-tab-badge ap-sec-badge" aria-label={`공항경보 ${s.badge}건`}>{s.badge}</span>
+                  )}
+                  <ChevronDown className="ap-sec-fold" size={18} aria-hidden="true" />
+                </summary>
+                <div className="ap-sec-body">{s.node}</div>
+              </details>
+            )
+          })}
         </div>
       </div>
     </aside>

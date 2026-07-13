@@ -8,11 +8,12 @@ function fmtBulletinTime(tm) {
   return `${m[1]}년 ${m[2]}월 ${m[3]}일 ${m[4]}시`
 }
 
-export default function AirportInfoTab({ info }) {
-  if (!info) return <div className="ap-empty">기상정보 데이터 없음</div>
+export default function AirportInfoTab({ info, loading = false }) {
+  if (!info) return <div className="ap-empty">{loading ? '기상정보 불러오는 중…' : '기상정보 데이터 없음'}</div>
 
   const showSel3 = info.sel_val3 && info.sel_val3.trim()
-  const hasWarn = info.warn && info.warn.trim()
+  const hasWarn = info.warn && info.warn.trim() // ▶경보현황 섹션 표시용(원문 "○ 없음"도 표시)
+  const warnActive = hasWarn && !/없음/.test(info.warn) // 배지용 — "없음"은 발효로 보지 않음
   const hasForecast = info.forecast && info.forecast.trim()
   const [defaultOpen] = useState(() =>
     typeof window === 'undefined' || !window.matchMedia('(max-width: 719px)').matches,
@@ -20,8 +21,8 @@ export default function AirportInfoTab({ info }) {
 
   return (
     <div className="ap-info-doc">
-      <div className={`ap-info-hazard-badge${hasWarn ? ' ap-info-hazard-badge--warn' : ''}`}>
-        {hasWarn ? '경보 발효 중' : hasForecast ? '위험기상 예보 있음' : '경보·위험기상 없음'}
+      <div className={`ap-info-hazard-badge${warnActive ? ' ap-info-hazard-badge--warn' : ''}`}>
+        {warnActive ? '경보 발효 중' : hasForecast ? '위험기상 예보 있음' : '경보·위험기상 없음'}
       </div>
 
       {/* 모바일 접힘 기본 상태에서 빈 화면 대신 핵심 요약(발표시각·개황) 선두 노출 (§6-B) */}

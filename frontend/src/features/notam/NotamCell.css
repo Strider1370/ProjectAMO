@@ -1,5 +1,5 @@
-/* 밀도형 NOTAM 셀 — 고정 2열 그리드. 공항탭·브리핑 공용. */
-.notam-cellgrid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--stroke-2); border-left: 1px solid var(--stroke-2); }
+/* 밀도형 NOTAM 셀 — 컨테이너 폭에 반응. 넓으면 2열, 좁으면(모바일·좁은 드로어) 1열로 접혀 본문 뭉개짐 방지. 공항탭·브리핑 공용. */
+.notam-cellgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); border-top: 1px solid var(--stroke-2); border-left: 1px solid var(--stroke-2); }
 
 .notam-cell { min-width: 0; border-right: 1px solid var(--stroke-2); border-bottom: 1px solid var(--stroke-2); }
 .notam-cell[data-conflict='true'] > .notam-cell-summary { box-shadow: inset 3px 0 0 var(--level-red); }
@@ -39,3 +39,7 @@
 .notam-cell-valid { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-1); font-weight: 600; font-family: Consolas, monospace; margin-bottom: 6px; }
 .notam-cell-valid-lbl { font-family: var(--font-base, sans-serif); font-size: 10px; font-weight: 800; color: #fff; background: var(--accent); padding: 1px 5px; border-radius: 3px; }
 .notam-cell-raw { margin: 0; padding: 8px 10px; background: var(--bg-2); border: 0.5px solid var(--stroke-2); border-radius: 4px; font-size: 13px; color: var(--text-2); white-space: pre-wrap; word-break: break-word; font-family: Consolas, monospace; }
+
+/* 더보기/접기 — 6건 초과분 토글 */
+.notam-more { width: 100%; margin-top: 10px; min-height: 44px; padding: 12px; background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--text-2); cursor: pointer; transition: background 0.15s; }
+.notam-more:hover { background: var(--bg-2); }

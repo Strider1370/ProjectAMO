@@ -230,7 +230,7 @@ function MainAppShell() {
           hasUpdate={hasUpdate}
         />
       )}
-      {isMobile && (
+      {isMobile && !selectedAirport && (
         <MobileTaskBar activeTask={mobileTask} onSelect={selectMobileTask} hasUpdate={hasUpdate} />
       )}
 

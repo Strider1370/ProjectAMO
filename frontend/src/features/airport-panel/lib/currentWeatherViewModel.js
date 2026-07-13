@@ -5,22 +5,25 @@ import {
   groupTafSlots,
   TAF_CATEGORY_COLOR,
 } from './tafViewModel.js'
+import { fmtKstShort } from './formatters.js'
 
 const HOUR_MS = 60 * 60 * 1000
 
-function formatWarningTime(value, tz = 'UTC') {
-  if (!value) return '-- ----'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-- ----'
-  const d = tz === 'KST' ? new Date(date.getTime() + 9 * 3600 * 1000) : date
-  const day = String(d.getUTCDate()).padStart(2, '0')
-  const hour = String(d.getUTCHours()).padStart(2, '0')
-  const minute = String(d.getUTCMinutes()).padStart(2, '0')
-  return `${day} ${hour}${minute}`
+// 경보 종류 키(shared/warning-types.js) → 한국어 표기
+const WARNING_NAME_KO = {
+  WIND_SHEAR: '급변풍경보',
+  LOW_VISIBILITY: '저시정경보',
+  STRONG_WIND: '강풍경보',
+  HEAVY_RAIN: '호우경보',
+  LOW_CEILING: '저운고경보',
+  THUNDERSTORM: '뇌우경보',
+  TYPHOON: '태풍경보',
+  HEAVY_SNOW: '대설경보',
+  YELLOW_DUST: '황사경보',
 }
 
 function pickWarningName(item) {
-  return item?.wrng_type_name || item?.type_label || item?.wrng_type_key || item?.type || '미확인 경보'
+  return WARNING_NAME_KO[item?.wrng_type_key] || item?.wrng_type_name || item?.type_label || item?.type || '미확인 경보'
 }
 
 function formatCompactWind(obs) {
@@ -41,7 +44,7 @@ export function buildCurrentWarningModel(warning, tz = 'UTC') {
   const items = warnings.map((item) => ({
     key: item?.wrng_type_key || item?.type || item?.wrng_type_name || 'UNKNOWN',
     name: pickWarningName(item),
-    timeText: `${formatWarningTime(item?.valid_start, tz)} - ${formatWarningTime(item?.valid_end, tz)}`,
+    timeText: `${fmtKstShort(item?.valid_start, tz)} – ${fmtKstShort(item?.valid_end, tz)}`,
     raw: item,
   }))
 

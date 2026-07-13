@@ -9,8 +9,8 @@
   height: 100%;
   /* 프리미엄 글래스모피즘 그라데이션 */
   background: linear-gradient(
-    165deg, 
-    rgba(255, 255, 255, 0.88) 0%, 
+    165deg,
+    rgba(255, 255, 255, 0.88) 0%,
     rgba(230, 238, 250, 0.92) 100%
   );
   backdrop-filter: blur(32px) saturate(120%);
@@ -62,8 +62,8 @@
   background: var(--bg-3);
   border: none;
   border-radius: 8px;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -181,6 +181,7 @@
 }
 
 .airport-panel-tab {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -217,20 +218,82 @@
 }
 
 .ap-tab-badge {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--level-red);
   color: #fff;
   font-size: 10px;
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1;
+  border-radius: 8px;
 }
 
-/* ── Body ── */
+/* ── Body (단일 스크롤 컨테이너) ── */
 .airport-panel-body {
   flex: 1;
   overflow-y: auto;
+  scroll-behavior: smooth;
   padding: 24px;
   background: transparent; /* 투명하게 변경하여 본체 색상 노출 */
+}
+
+/* ── 스크롤 섹션 (Phase 2: 접이식 + 통일 제목바) ── */
+.ap-sec {
+  scroll-margin-top: 8px;
+}
+.ap-sec + .ap-sec {
+  margin-top: 26px;
+}
+.ap-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 2px 9px; /* 상단 패딩으로 터치 높이 확보 */
+  margin-bottom: 14px;
+  border-bottom: 2px solid var(--stroke-2);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.ap-sec-head::-webkit-details-marker { display: none; }
+.ap-sec-head::marker { content: ""; }
+.ap-sec-icon {
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.ap-sec-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+}
+/* SPECI(METAR 특별관측)·TAF AMD(정정)일 때 제목을 앰버로 강조 */
+.ap-sec-title--special {
+  color: var(--level-amber);
+}
+.ap-sec-meta {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-1);
+}
+.ap-sec-badge { margin-left: 4px; }
+.ap-sec-fold {
+  margin-left: auto;
+  color: var(--text-3);
+  transition: transform 0.2s ease;
+  flex: 0 0 auto;
+}
+.ap-sec:not([open]) .ap-sec-fold { transform: rotate(-90deg); }
+.ap-sec:not([open]) .ap-sec-head {
+  margin-bottom: 0;
+  border-bottom-color: transparent;
 }
 
 .ap-empty {
@@ -336,7 +399,7 @@
 
 .ap-current-warning {
   display: grid;
-  grid-template-columns: 118px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: stretch;
   min-height: 64px;
   border-radius: 6px;
@@ -431,6 +494,12 @@
   gap: 3px;
   padding-left: 10px;
   border-left: 1px solid rgba(255, 247, 237, 0.45);
+}
+
+/* 첫 항목엔 구분선 없음(선행 선 제거) + 약간의 좌측 여백. 여러 경보일 때 항목 사이 구분선만 유지 */
+.ap-current-warning-item:first-child .ap-current-warning-entry {
+  border-left: none;
+  padding-left: 10px;
 }
 
 .ap-current-warning-name {
@@ -766,12 +835,90 @@
   color: #ffffff !important;
 }
 
-/* ── 지표 그리드 ── */
-.ap-mv2-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+/* ── 비행규칙 세로 배너(좌) + 지표 그리드(우) ── */
+.ap-mv2-body {
+  display: flex;
+  align-items: stretch;
   gap: 8px;
 }
+.ap-mv2-body .ap-mv2-cat-banner {
+  flex: 0 0 96px;
+  width: 96px;
+  align-self: stretch;
+  padding: 12px 8px;
+}
+.ap-mv2-body .ap-mv2-grid {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 지표 그리드 (반응형: 넓으면 4열, 좁으면 자동으로 줄임 — 드로어 폭 편차 대응) ── */
+.ap-mv2-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 8px;
+}
+
+/* 모바일: VFR 배너를 최상단 전폭(가로)으로 + 카드 2열 고정 */
+@media (max-width: 719px) {
+  .ap-mv2-body { flex-direction: column; }
+  .ap-mv2-body .ap-mv2-cat-banner {
+    width: auto;
+    flex: 0 0 auto;
+    flex-direction: row !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+  .ap-mv2-body .ap-mv2-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── 경향(Trend) 슬롯 ── */
+.ap-mv2-trend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--stroke-2);
+  border-radius: 6px;
+}
+.ap-mv2-trend-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-3);
+}
+.ap-mv2-trend-value {
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-1);
+  overflow-wrap: anywhere;
+}
+.ap-mv2-trend-value.is-empty {
+  font-family: inherit;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* ── 원문(TAC) 접이 ── */
+.ap-raw-fold {
+  border: 1px solid var(--stroke-2);
+  border-radius: 6px;
+  background: var(--bg-1);
+  padding: 8px 12px;
+}
+.ap-raw-fold-summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  list-style: none;
+}
+.ap-raw-fold-summary::-webkit-details-marker { display: none; }
+.ap-raw-fold-summary::before { content: "▸ "; }
+.ap-raw-fold[open] .ap-raw-fold-summary::before { content: "▾ "; }
+.ap-raw-fold > code { display: block; margin-top: 8px; }
 
 .ap-mv2-card {
   min-width: 0;
@@ -1342,7 +1489,8 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
-  padding: 6px 10px;
+  min-height: 40px; /* iPad 터치 타깃 */
+  padding: 8px 14px;
 }
 
 .ap-taf-switch-btn.is-active {
@@ -1452,6 +1600,51 @@
 .ap-taf-table th {
   color: var(--text-3);
   font-weight: 800;
+}
+
+/* 시간 + 비행조건 합친 첫 열 (좌측 색 바 = 비행규칙) */
+.ap-taf-tcol {
+  padding-left: 8px !important;
+  white-space: nowrap;
+}
+.ap-taf-trange {
+  display: block;
+  font-family: 'Consolas', 'Menlo', monospace;
+  color: var(--text-1);
+}
+.ap-taf-tcat {
+  display: block;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+/* 테이블 날씨 칸 — 전용 클래스(알약/precip/큰아이콘 안 물림). 아이콘 inline·소형 */
+.ap-taf-wx {
+  white-space: nowrap;
+  color: var(--text-1);
+}
+.ap-taf-wx-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.ap-taf-wx-icon img {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+/* 강수(비·눈·소나기)엔 배경 highlight, 특이기상(뇌우 등)엔 적색 점선 */
+.ap-taf-wx--precip {
+  background: rgba(186, 230, 253, 0.6);
+  color: #0c4a6e;
+}
+.ap-taf-wx--special {
+  outline: 2px dashed var(--level-red);
+  outline-offset: -2px;
+}
+/* 시간 셀이 2줄(시간+조건)이라 전 열 top 정렬로 각 열 첫 줄 높이 맞춤 */
+.ap-taf-table td {
+  vertical-align: top;
 }
 
 .ap-taf-weather-cell {
@@ -2120,11 +2313,16 @@
   }
 
   .airport-panel-tabs {
+    order: 2; /* 하단으로 — 앱 taskbar(지도/브리핑/더보기) 자리를 섹션 탭이 대체 */
+    flex: 0 0 auto;
     width: 100%;
     flex-direction: row;
     overflow-x: auto;
     border-right: 0;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+    border-top: 1px solid rgba(148, 163, 184, 0.28);
+    /* 본문과 구분되는 불투명 바 */
+    background: var(--bg-1);
+    box-shadow: 0 -3px 14px rgba(15, 23, 42, 0.08);
   }
 
   .airport-panel-tab {
@@ -2138,20 +2336,71 @@
   }
 
   .airport-panel-body {
+    order: 1; /* 레일이 하단으로 이동 → 본문이 위 */
     min-width: 0;
     overflow-x: hidden;
-    /* extra bottom space clears the persistent mobile task bar */
-    padding: 20px 12px calc(var(--mobile-task-bar-h, 60px) + 16px);
+    padding: 20px 12px 24px;
+  }
+
+  /* 모바일: 뷰 토글 숨김 → 테이블 고정(타임라인/그리드 미노출) */
+  .ap-taf-header {
+    display: none;
+  }
+
+  /* 모바일: 슬라이드 없이 6열 다 보이게 압축 */
+  .ap-taf-grid {
+    grid-template-columns: 1fr; /* 1줄 1칸 */
+  }
+
+  /* 카드 압축 — 바람·시정·운고를 한 줄 가로로(라벨-값 붙임), 헐렁한 공간 제거 */
+  .ap-taf-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 16px;
+    row-gap: 6px;
+    padding: 10px 12px;
+  }
+  .ap-taf-card-head {
+    width: 100%;
+    margin-bottom: 0;
+  }
+  .ap-taf-card-weather {
+    width: 100%;
+    min-height: 0;
+    padding: 2px 0;
+  }
+  .ap-taf-card-row {
+    width: auto;
+    justify-content: flex-start;
+    gap: 4px;
+    border-top: 0;
+    margin-top: 0;
+    padding-top: 0;
   }
 
   .ap-taf-table {
-    font-size: 12px;
+    min-width: 0; /* 540px 강제폭 해제 → 가로 스크롤 제거 */
+    font-size: 13px; /* 가독성 위해 키움 (열 하나 줄여서 여유 확보) */
   }
 
   .ap-taf-table th,
   .ap-taf-table td {
-    padding: 8px 6px;
+    padding: 7px 5px;
   }
+
+  .ap-taf-weather-cell {
+    padding: 3px 4px;
+  }
+  .ap-taf-tcat { font-size: 12px; }
+
+  /* 그리드 카드 — 요소 크기 균형(날씨 혼자 크지 않게) */
+  .ap-taf-card-head { font-size: 14px; }
+  .ap-taf-card-weather { font-size: 14px; font-weight: 700; }
+  .ap-taf-card-icon { width: 22px; height: 22px; }
+  .ap-taf-card-row { font-size: 14px; }
+  .ap-taf-card-row span { font-size: 13px; } /* 라벨 */
+  .ap-taf-card-row strong { font-size: 14px; } /* 값 */
 
   .ap-taf-weather-cell {
     gap: 3px;

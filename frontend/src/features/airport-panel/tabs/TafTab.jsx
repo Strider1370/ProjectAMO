@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { MoveUp } from 'lucide-react'
 import WeatherIcon from '../../../shared/ui/WeatherIcon.jsx'
-import { fmtKstShort } from '../lib/formatters.js'
 import { buildTafViewModel, formatTafHour, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
@@ -18,8 +17,6 @@ function tafWeatherClass(item, baseClass, { includeSpecial = true } = {}) {
     includeSpecial && item?.isSpecialWeather ? `${baseClass}--special` : '',
   ].filter(Boolean).join(' ')
 }
-
-const CATEGORY_RANK = { LIFR: 0, IFR: 1, MVFR: 2, VFR: 3 }
 
 // 원문(TAC) 블록 스타일 — Vite dev CSS HMR(대소문자 파일명) 이슈 회피용 인라인.
 export const RAW_TAC_STYLE = {
@@ -42,44 +39,43 @@ function formatTafTac(raw) {
     .trim()
 }
 
-function worstCategory(slots) {
-  return slots.reduce((worst, item) => {
-    const cat = item.flight?.category
-    if (!cat) return worst
-    if (!worst || (CATEGORY_RANK[cat] ?? 9) < (CATEGORY_RANK[worst] ?? 9)) return cat
-    return worst
-  }, null)
+// 연속으로 조건이 같은 시간 슬롯을 하나의 변화구간으로 묶음 (시간별 반복 제거)
+function groupTafPeriods(slots) {
+  const periods = []
+  for (const s of slots) {
+    const key = [s.flight?.category, s.weatherLabel, s.windText, s.visibilityText, s.ceilingText].join('|')
+    const last = periods[periods.length - 1]
+    if (last && last.key === key) last.slots.push(s)
+    else periods.push({ key, slots: [s], first: s })
+  }
+  return periods
+}
+
+// 구간 시간범위 라벨 (첫 슬롯 시작 ~ 마지막 슬롯+1h)
+function periodRange(period, tz) {
+  const first = period.slots[0]
+  const lastSlot = period.slots[period.slots.length - 1]
+  const endIso = new Date(new Date(lastSlot.time).getTime() + 3600 * 1000).toISOString()
+  return `${formatTafHour(first.time, tz)}–${formatTafHour(endIso, tz)}`
 }
 
 export default function EnhancedTafTab({ taf, icao }) {
-  // Mobile lands on the per-period card view (readable reading blocks);
-  // desktop keeps the timeline. User can still switch.
+  // 모바일: 테이블 고정(토글 숨김). 데스크톱·태블릿: 타임라인 기본(토글로 전환 가능).
   const [view, setView] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 719px)').matches
-      ? 'grid'
+      ? 'table'
       : 'timeline',
   )
   const { tz } = useTimeZone()
   if (!taf) return <div className="ap-empty">TAF 데이터 없음</div>
 
-  const { rawTimeline, slots, hdr } = buildTafViewModel(taf, icao)
-  const worstCat = worstCategory(slots)
+  const { rawTimeline, slots } = buildTafViewModel(taf, icao)
+  const periods = groupTafPeriods(slots) // 테이블·그리드용 변화구간 묶음
 
   return (
     <div className="ap-taf">
-      <div className="ap-taf-summary-bar">
-        <span className={`ap-taf-summary-cat${worstCat ? ` ap-taf-summary-cat--${worstCat}` : ''}`}>{worstCat || '—'}</span>
-        <span className="ap-taf-summary-text">
-          유효 {fmtKstShort(hdr?.valid_start, tz)} – {fmtKstShort(hdr?.valid_end, tz)}
-          {slots.length === 0 && rawTimeline.length > 0 ? ' · 만료됨' : ''}
-        </span>
-      </div>
-
+      {/* 유효기간·시각·AMD는 섹션 제목바로 이관. 여기는 뷰 토글만 */}
       <div className="ap-taf-header">
-        <div>
-          <span className="ap-taf-badge">{hdr?.report_status === 'AMENDMENT' ? 'TAF AMD' : 'TAF'}</span>
-          <span className="ap-taf-valid">{fmtKstShort(hdr?.valid_start, tz)} – {fmtKstShort(hdr?.valid_end, tz)}</span>
-        </div>
         <div className="ap-taf-switch" role="group" aria-label="TAF view">
           {TAF_VIEWS.map((item) => (
             <button key={item.id} type="button" className={`ap-taf-switch-btn${view === item.id ? ' is-active' : ''}`} onClick={() => setView(item.id)} aria-pressed={view === item.id}>
@@ -123,18 +119,24 @@ export default function EnhancedTafTab({ taf, icao }) {
       {slots.length > 0 && view === 'table' && (
         <div className="ap-taf-table-wrap">
           <table className="ap-taf-table">
-          <thead><tr><th>시간</th><th>비행조건</th><th>날씨</th><th>바람</th><th>시정</th><th>운고</th></tr></thead>
+          <thead><tr><th>시간 · 조건</th><th>시정</th><th>운고</th><th>바람</th><th>날씨</th></tr></thead>
           <tbody>
-            {slots.map((item, index) => (
-              <tr key={index}>
-                <td>{formatTafHour(item.time, tz)}</td>
-                <td><span className="ap-taf-cat" style={{ background: TAF_CATEGORY_COLOR[item.flight.category] }}>{item.flight.category}</span></td>
-                <td className={tafWeatherClass(item, 'ap-taf-weather-cell')}><WeatherIcon visual={item.visual} className="ap-taf-mini-icon" />{item.weatherLabel}</td>
-                <td className={item.highWind ? 'is-alert' : ''}>{item.windText}</td>
-                <td style={{ color: item.visibilityCategory.valueColor }}>{item.visibilityText}</td>
-                <td style={{ color: item.ceilingCategory.valueColor }}>{item.ceilingText}</td>
-              </tr>
-            ))}
+            {periods.map((p, index) => {
+              const item = p.first
+              const catColor = TAF_CATEGORY_COLOR[item.flight.category]
+              return (
+                <tr key={index}>
+                  <td className="ap-taf-tcol" style={{ borderLeft: `4px solid ${catColor}` }}>
+                    <span className="ap-taf-trange">{periodRange(p, tz)}</span>
+                    <span className="ap-taf-tcat" style={{ color: catColor }}>{item.flight.category}</span>
+                  </td>
+                  <td style={{ color: item.visibilityCategory.valueColor }}>{item.visibilityText}</td>
+                  <td style={{ color: item.ceilingCategory.valueColor }}>{item.ceilingText}</td>
+                  <td className={item.highWind ? 'is-alert' : ''}>{item.windText}</td>
+                  <td className={`ap-taf-wx${item.hasPrecipitation ? ' ap-taf-wx--precip' : ''}${item.isSpecialWeather ? ' ap-taf-wx--special' : ''}`}><WeatherIcon visual={item.visual} className="ap-taf-wx-icon" />{item.weatherLabel}</td>
+                </tr>
+              )
+            })}
           </tbody>
           </table>
         </div>
@@ -142,24 +144,27 @@ export default function EnhancedTafTab({ taf, icao }) {
 
       {slots.length > 0 && view === 'grid' && (
         <div className="ap-taf-grid">
-          {slots.map((item, index) => (
-            <article key={index} className="ap-taf-card">
-              <div className="ap-taf-card-head"><span>{formatTafHour(item.time, tz)}</span><span className="ap-taf-cat" style={{ background: TAF_CATEGORY_COLOR[item.flight.category] }}>{item.flight.category}</span></div>
-              <div className={tafWeatherClass(item, 'ap-taf-card-weather')}><WeatherIcon visual={item.visual} className="ap-taf-card-icon" />{item.weatherLabel}</div>
-              <div className="ap-taf-card-row"><span>바람</span><strong className={item.highWind ? 'is-alert' : ''}>{item.windText}</strong></div>
-              <div className="ap-taf-card-row"><span>시정</span><strong>{item.visibilityText}</strong></div>
-              <div className="ap-taf-card-row"><span>운고</span><strong>{item.ceilingText}</strong></div>
-            </article>
-          ))}
+          {periods.map((p, index) => {
+            const item = p.first
+            return (
+              <article key={index} className="ap-taf-card">
+                <div className="ap-taf-card-head"><span>{periodRange(p, tz)}</span><span className="ap-taf-cat" style={{ background: TAF_CATEGORY_COLOR[item.flight.category] }}>{item.flight.category}</span></div>
+                <div className={tafWeatherClass(item, 'ap-taf-card-weather')}><WeatherIcon visual={item.visual} className="ap-taf-card-icon" />{item.weatherLabel}</div>
+                <div className="ap-taf-card-row"><span>바람</span><strong className={item.highWind ? 'is-alert' : ''}>{item.windText}</strong></div>
+                <div className="ap-taf-card-row"><span>시정</span><strong>{item.visibilityText}</strong></div>
+                <div className="ap-taf-card-row"><span>운고</span><strong>{item.ceilingText}</strong></div>
+              </article>
+            )
+          })}
         </div>
       )}
 
-      {/* ── 원문(TAC) — 타임라인 아래. NOAA 해외 공항 등 원문 제공 시 ── */}
+      {/* ── 원문(TAC) — 접이식(기본 접힘). 국내는 재구성본 ── */}
       {taf?.header?.raw_text && (
-        <div className="ap-raw-tac" style={RAW_TAC_STYLE.wrap}>
-          <span style={RAW_TAC_STYLE.label}>원문 (TAC)</span>
+        <details className="ap-raw-fold">
+          <summary className="ap-raw-fold-summary">원문 (TAC)</summary>
           <code style={RAW_TAC_STYLE.text}>{formatTafTac(taf.header.raw_text)}</code>
-        </div>
+        </details>
       )}
     </div>
   )
