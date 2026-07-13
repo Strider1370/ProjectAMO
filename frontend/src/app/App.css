@@ -147,7 +147,8 @@ optgroup {
   /* A full-detent mobile sheet owns the whole surface — hide the map chrome
      (layer chips, basemap switcher) that would otherwise sit on top. */
   .amo-sheet-full .mobile-map-layer-btns,
-  .amo-sheet-full .basemap-switcher {
+  .amo-sheet-full .basemap-switcher,
+  .amo-sheet-full .map-tools-launcher {
     display: none;
   }
 

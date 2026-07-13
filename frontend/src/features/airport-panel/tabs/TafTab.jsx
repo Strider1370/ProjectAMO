@@ -4,12 +4,6 @@ import WeatherIcon from '../../../shared/ui/WeatherIcon.jsx'
 import { buildTafViewModel, formatTafHour, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
-const TAF_VIEWS = [
-  { id: 'timeline', label: '타임라인' },
-  { id: 'table', label: '테이블' },
-  { id: 'grid', label: '그리드' },
-]
-
 function tafWeatherClass(item, baseClass, { includeSpecial = true } = {}) {
   return [
     baseClass,
@@ -25,8 +19,7 @@ export const RAW_TAC_STYLE = {
   text: {
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
     fontSize: 12, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-    padding: '8px 10px', borderRadius: 6, background: 'rgba(15,23,42,0.05)',
-    border: '1px solid rgba(15,23,42,0.08)', color: '#0f172a',
+    padding: 0, color: '#0f172a',
   },
 }
 
@@ -60,8 +53,8 @@ function periodRange(period, tz) {
 }
 
 export default function EnhancedTafTab({ taf, icao }) {
-  // 모바일: 테이블 고정(토글 숨김). 데스크톱·태블릿: 타임라인 기본(토글로 전환 가능).
-  const [view, setView] = useState(() =>
+  // 모바일: 테이블 고정. 데스크톱·태블릿: 타임라인 고정. 뷰 토글 없음.
+  const [view] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 719px)').matches
       ? 'table'
       : 'timeline',
@@ -74,17 +67,6 @@ export default function EnhancedTafTab({ taf, icao }) {
 
   return (
     <div className="ap-taf">
-      {/* 유효기간·시각·AMD는 섹션 제목바로 이관. 여기는 뷰 토글만 */}
-      <div className="ap-taf-header">
-        <div className="ap-taf-switch" role="group" aria-label="TAF view">
-          {TAF_VIEWS.map((item) => (
-            <button key={item.id} type="button" className={`ap-taf-switch-btn${view === item.id ? ' is-active' : ''}`} onClick={() => setView(item.id)} aria-pressed={view === item.id}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {rawTimeline.length === 0 && <div className="ap-empty">TAF 시간대 데이터 없음</div>}
       {rawTimeline.length > 0 && slots.length === 0 && <div className="ap-empty">TAF 유효 기간 만료</div>}
 
@@ -139,23 +121,6 @@ export default function EnhancedTafTab({ taf, icao }) {
             })}
           </tbody>
           </table>
-        </div>
-      )}
-
-      {slots.length > 0 && view === 'grid' && (
-        <div className="ap-taf-grid">
-          {periods.map((p, index) => {
-            const item = p.first
-            return (
-              <article key={index} className="ap-taf-card">
-                <div className="ap-taf-card-head"><span>{periodRange(p, tz)}</span><span className="ap-taf-cat" style={{ background: TAF_CATEGORY_COLOR[item.flight.category] }}>{item.flight.category}</span></div>
-                <div className={tafWeatherClass(item, 'ap-taf-card-weather')}><WeatherIcon visual={item.visual} className="ap-taf-card-icon" />{item.weatherLabel}</div>
-                <div className="ap-taf-card-row"><span>바람</span><strong className={item.highWind ? 'is-alert' : ''}>{item.windText}</strong></div>
-                <div className="ap-taf-card-row"><span>시정</span><strong>{item.visibilityText}</strong></div>
-                <div className="ap-taf-card-row"><span>운고</span><strong>{item.ceilingText}</strong></div>
-              </article>
-            )
-          })}
         </div>
       )}
 

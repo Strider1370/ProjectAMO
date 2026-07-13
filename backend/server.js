@@ -757,6 +757,17 @@ app.get('/api/ground-overview', (_, res) => sendLatest(res, 'ground_overview'))
 app.get('/api/environment', (_, res) => sendLatest(res, 'environment'))
 app.get('/api/airport-info', (_, res) => sendLatest(res, 'airport_info'))
 
+// 지도 도구 '고도 확인' — 단일 점 표고(m). 기존 terrainSampler(브리핑용) 재사용.
+app.get('/api/terrain/elevation', (req, res) => {
+  const lat = parseFloat(req.query.lat)
+  const lng = parseFloat(req.query.lng)
+  if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    return res.status(400).json({ error: 'invalid lat/lng' })
+  }
+  const result = terrainSampler.sampleAxis({ samples: [{ index: 0, lon: lng, lat }] })
+  res.json({ elevationM: result.terrain.values[0]?.elevationM ?? null })
+})
+
 app.get('/api/weather/flight-category-overlay/point', (req, res) => {
   const lat = parseFloat(req.query.lat)
   const lon = parseFloat(req.query.lon)

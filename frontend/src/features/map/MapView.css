@@ -65,6 +65,52 @@
   }
 }
 
+/* 지도 도구 런처 — 베이스맵 스위처(right:12) 바로 왼쪽. 베이스맵 버튼 폭 ≈46px(썸네일36+패딩3*2+테두리2*2) + 8px 간격. */
+.map-tools-launcher {
+  position: absolute;
+  top: 12px;
+  right: 66px;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+.map-tools-launcher:hover {
+  border-color: var(--text-3);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.28);
+}
+
+.map-tools-launcher.is-open {
+  border-color: var(--accent, #2563eb);
+  color: var(--accent, #2563eb);
+}
+
+/* 측정 도구 지도 위 라벨(거리/방위/반경). DOM 마커라 폰트 의존 없음. */
+.mt-label {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--accent, #2563eb);
+  color: var(--accent, #2563eb);
+  font-family: var(--font-base, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+}
+
 .basemap-switcher-thumb {
   display: block;
   width: 36px;

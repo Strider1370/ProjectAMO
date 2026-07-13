@@ -203,6 +203,7 @@ function MainAppShell() {
           onClosePanel={() => { setActivePanel(null); setMobileTask('map') }}
           onOpenNotamPanel={() => setActivePanel('notam')}
           onOpenRoutePanel={() => setActivePanel('route-check')}
+          onOpenCustomAreaPanel={() => setActivePanel('custom-area')}
         />
       </main>
       <AirportPanel

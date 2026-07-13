@@ -903,10 +903,7 @@
 
 /* ── 원문(TAC) 접이 ── */
 .ap-raw-fold {
-  border: 1px solid var(--stroke-2);
-  border-radius: 6px;
-  background: var(--bg-1);
-  padding: 8px 12px;
+  padding: 0;
 }
 .ap-raw-fold-summary {
   cursor: pointer;

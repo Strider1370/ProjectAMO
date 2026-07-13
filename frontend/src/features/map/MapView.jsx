@@ -16,6 +16,8 @@ import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, createAdsbTrailGeoJSON
 import { registerAircraftImages } from '../aviation-layers/aircraftIconImages.js'
 import { registerAirlineLogos } from '../aviation-layers/airlineLogoImages.js'
 import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
+import MapToolsPanel from '../map-tools/MapToolsPanel.jsx'
+import { useMapTools } from '../map-tools/useMapTools.js'
 import NotamPanel from '../notam/NotamPanel.jsx'
 import { updateNotamLayerData, setNotamVisibility, setNotamCategoryFilter as applyNotamCategoryFilter, notamPopupHtml, notamsAtPoint, addNotamHighlight, setNotamHighlight, geometryBounds } from '../notam/lib/notamLayers.js'
 import { notamToFeatureCollection, displayGeometry } from '../notam/lib/notamGeoJson.js'
@@ -68,6 +70,7 @@ import {
   syncFlightCategoryLayer,
 } from '../weather-overlays/lib/flightCategoryLayers.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
+import MapToolsLauncher from '../map-tools/MapToolsLauncher.jsx'
 import { setLayerVisibility } from './lib/mapLayerUtils.js'
 import { bindLayerEvent, cleanupAll } from './lib/mapStyleSync.js'
 import {
@@ -214,6 +217,7 @@ const MapView = forwardRef(function MapView({
   onClosePanel,
   onOpenNotamPanel,
   onOpenRoutePanel,
+  onOpenCustomAreaPanel,
   enableWindOverlay = true,
 }, ref) {
   const isMobile = useIsMobile()
@@ -1024,6 +1028,14 @@ const MapView = forwardRef(function MapView({
   // FIR 경계 틱(지오메트리 렌더 + moveend 재생성) — 스크롤 후 틱 이탈 방지.
   useFirTickOverlay(mapRef, isStyleReady, styleRevision)
 
+  // 패널 표시 여부와 무관하게 항상 호출 — activePanel이 'custom-area'가 아닐 때도 draw
+  // 컨트롤/완성된 폴리곤이 지도에 남아있어야 하고(패널 닫기/탭 전환에 폴리곤이 사라지면 안 됨),
+  // 다른 탭을 보는 중에도 지도 위 폴리곤 클릭으로 패널을 자동으로 열 수 있어야 한다.
+  const mapTools = useMapTools(mapRef, isStyleReady, {
+    panelOpen: activePanel === 'custom-area',
+    onFeatureSelect: onOpenCustomAreaPanel,
+  })
+
   useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
     if (!enableWindOverlay) return
     syncWindOverlay(map, {
@@ -1386,6 +1398,11 @@ const MapView = forwardRef(function MapView({
 
       <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />
 
+      <MapToolsLauncher
+        isOpen={activePanel === 'custom-area'}
+        onToggle={() => (activePanel === 'custom-area' ? onClosePanel?.() : onOpenCustomAreaPanel?.())}
+      />
+
       <BasemapSwitcher
         basemapId={basemapId}
         isOpen={basemapMenuOpen}
@@ -1470,6 +1487,16 @@ const MapView = forwardRef(function MapView({
           onToggle={toggleAviation}
           onClose={onClosePanel}
           onClearAll={clearAviationLayers}
+        />
+      )}
+
+      {activePanel === 'custom-area' && (
+        <MapToolsPanel
+          activeTool={mapTools.activeTool}
+          setActiveTool={mapTools.setActiveTool}
+          polygon={mapTools.polygon}
+          measure={mapTools.measure}
+          onClose={onClosePanel}
         />
       )}
 

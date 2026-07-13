@@ -98,13 +98,6 @@ export default function AmosBoardTab({ amos, metar, airportMeta }) {
 
   return (
     <div className="ap-amos ap-amos-console-wrap">
-      <div className="ap-amos-head">
-        <div>
-          <h3>공항기상관측장비(AMOS)</h3>
-        </div>
-        <span className="ap-amos-time">{model.observedTimeLabel}</span>
-      </div>
-
       <PrioritySummary items={model.prioritySummary} />
 
       <section className="ap-amos-console-board" tabIndex={0} aria-label="AMOS layout, 가로 스크롤 가능">

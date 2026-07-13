@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Cloud, Clock, Gauge, FileText, Info, ChevronDown } from 'lucide-react'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
 import { fmtKstShort } from './lib/formatters.js'
+import { formatAmosTime } from '../../shared/weather/amosViewModel.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import MetarTab from './tabs/MetarTab.jsx'
 import EnhancedTafTab from './tabs/TafTab.jsx'
@@ -113,7 +114,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
     { id: 'warn', label: '공항경보', badge: warnCount, node: <WarningCarousel warning={warning} /> },
     { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', node: <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} /> },
     { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, node: <EnhancedTafTab taf={taf} icao={icao} /> },
-    isFullFeature && { id: 'amos', label: 'AMOS', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
+    isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
     { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} /> },
     isFullFeature && { id: 'info', label: '기상정보', node: <AirportInfoTab info={airportInfo} loading={infoLoading} /> },
   ].filter(Boolean)
