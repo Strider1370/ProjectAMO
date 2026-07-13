@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Check, MoveUp } from 'lucide-react'
+import { AlertTriangle, Check, Info, MoveUp } from 'lucide-react'
 import WeatherIcon from '../../../shared/ui/WeatherIcon.jsx'
 import DataProvenance from '../../../shared/ui/DataProvenance.jsx'
 import {
@@ -174,6 +174,48 @@ function WarningSummary({ warning }) {
   )
 }
 
+function ProvenanceInfo({ source }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+    const onDocClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  if (!source) return null
+
+  return (
+    <span className="ap-prov-info" ref={ref}>
+      <button
+        type="button"
+        className="ap-prov-info-btn"
+        aria-label="자료 출처 정보"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Info aria-hidden="true" />
+      </button>
+      {open ? (
+        <div className="ap-prov-info-pop" role="dialog">
+          <DataProvenance source={source} />
+        </div>
+      ) : null}
+    </span>
+  )
+}
+
 function MetarSummary({ metar, amosData, icao, airportMeta }) {
   const { tz } = useTimeZone()
   const model = buildCompactMetarModel({ metar, amosData, icao, airportMeta })
@@ -186,14 +228,16 @@ function MetarSummary({ metar, amosData, icao, airportMeta }) {
     )
   }
 
+  // ICAO Annex 3 / 조종사 스캔 순서: 바람 → 시정 → RVR → 현재기상 → 운고 → 기온 → QNH
+  // (비행규칙 VFR은 아래 flight 카드로 별도 표시)
   const cardList = [
+    model.cards.wind,
     model.cards.visibility,
     model.cards.rvr,
     model.cards.weather,
-    model.cards.wind,
     model.cards.ceiling,
-    model.cards.qnh,
     model.cards.temperature,
+    model.cards.qnh,
   ].filter(Boolean)
 
   function renderCardLabel(card) {
@@ -249,9 +293,9 @@ function MetarSummary({ metar, amosData, icao, airportMeta }) {
       <div className="ap-current-section-header">
         <span className="ap-current-section-badge">METAR</span>
         <span className="ap-current-section-time">{fmtKstShort(metar?.header?.observation_time || metar?.header?.issue_time, tz)}</span>
+        <ProvenanceInfo source={metar?.header?.source} />
       </div>
-      <DataProvenance source={metar?.header?.source} className="ap-current-provenance" />
-      <div className="ap-current-metar-layout">
+      <div className="ap-current-metar-grid">
         <article
           className="ap-current-flight-card"
           style={{
@@ -262,8 +306,7 @@ function MetarSummary({ metar, amosData, icao, airportMeta }) {
           <strong className="ap-current-flight-code">{model.flight.category}</strong>
           <span className="ap-current-flight-label">{model.flight.labelKo}</span>
         </article>
-        <div className="ap-current-metar-grid">
-          {cardList.map((card) => (
+        {cardList.map((card) => (
             <article
               key={card.id}
               className={`ap-current-card ap-current-card--${card.id}${card.highWind ? ' is-alert' : ''}`}
@@ -277,8 +320,7 @@ function MetarSummary({ metar, amosData, icao, airportMeta }) {
               </div>
               {card.secondary ? <span className="ap-current-card-secondary">{card.secondary}</span> : null}
             </article>
-          ))}
-        </div>
+        ))}
       </div>
     </section>
   )
@@ -325,8 +367,8 @@ function TafSummary({ taf, icao }) {
       <div className="ap-current-section-header">
         <span className="ap-current-section-badge">{model.hdr?.report_status === 'AMENDMENT' ? 'TAF AMD' : 'TAF'}</span>
         <span className="ap-current-section-time">{fmtKstShort(model.slots[0]?.time, tz)} – {fmtKstShort(new Date(new Date(model.slots.at(-1)?.time).getTime() + 3600000).toISOString(), tz)}</span>
+        <ProvenanceInfo source={taf?.header?.source} />
       </div>
-      <DataProvenance source={taf?.header?.source} className="ap-current-provenance" />
       <div className="ap-taf-timeline">
         <div className="ap-taf-scale" style={{ '--taf-hour-count': model.slots.length }}>
           {model.slots.map((item, index) => (
