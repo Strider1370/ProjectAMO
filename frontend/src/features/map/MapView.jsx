@@ -799,8 +799,12 @@ const MapView = forwardRef(function MapView({
       logoPosition: 'bottom-right',
       language: 'ko',
       localIdeographFontFamily: '"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif',
+      // 기본 첨부는 넓은 화면에서 펼쳐진 채라 하단 타임라인 재생 버튼과 겹친다.
+      // 아래에서 compact(‘i’ 버튼 → 클릭 시 펼침) 첨부를 직접 추가한다.
+      attributionControl: false,
     })
 
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
     let resizeFrame = null

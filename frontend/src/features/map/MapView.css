@@ -65,34 +65,40 @@
   }
 }
 
-/* 지도 도구 런처 — 베이스맵 스위처(right:12) 바로 왼쪽. 베이스맵 버튼 폭 ≈46px(썸네일36+패딩3*2+테두리2*2) + 8px 간격. */
+/* 지도 도구 런처 — 베이스맵 스위처 왼쪽. 항공/기상 레이어 버튼과 같은 형식(아이콘 + '그리기' 라벨, 흰 채움). */
 .map-tools-launcher {
   position: absolute;
   top: 12px;
   right: 66px;
   z-index: 7;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
+  /* 데스크톱: 베이스맵 버튼(46px, radius 6)과 같은 크기·모서리로 나란히 정렬. */
   width: 46px;
   height: 46px;
   padding: 0;
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.5);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
-  color: var(--text-1);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  color: var(--accent);
+  font-family: var(--font-base, system-ui, sans-serif);
+  font-size: var(--fs-200);
+  font-weight: 800;
   cursor: pointer;
 }
 
 .map-tools-launcher:hover {
-  border-color: var(--text-3);
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.28);
+  border-color: var(--accent);
 }
 
 .map-tools-launcher.is-open {
   border-color: var(--accent, #2563eb);
-  color: var(--accent, #2563eb);
+  background: var(--accent, #2563eb);
+  color: #ffffff;
 }
 
 /* 측정 도구 지도 위 라벨(거리/방위/반경). DOM 마커라 폰트 의존 없음. */

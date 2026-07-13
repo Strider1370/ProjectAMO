@@ -10,9 +10,11 @@ export function useMapTools(mapRef, isStyleReady, { panelOpen, onFeatureSelect }
   const map = isStyleReady ? mapRef.current : null
   const [activeTool, setActiveTool] = useState('polygon')
 
-  // 폴리곤은 activeTool이 polygon이 아니면 panelOpen을 내려 진행 중 작도를 취소시킨다(도구 배타성).
+  // 폴리곤 도구가 실제 활성일 때만 MapboxDraw를 마운트한다. 상주시키면 지도 터치/클릭을 가로채
+  // 모바일에서 공항 마커 탭 등 다른 레이어 클릭이 막힌다(회귀 버그 원인). 비활성 시 완성 폴리곤은
+  // usePolygonDraw 내부에서 저장→재활성 시 복원.
   const polygon = usePolygonDraw(map, {
-    panelOpen: panelOpen && activeTool === 'polygon',
+    enabled: panelOpen && activeTool === 'polygon',
     onFeatureSelect,
   })
   const measure = useMeasureOverlay(map, activeTool, panelOpen)

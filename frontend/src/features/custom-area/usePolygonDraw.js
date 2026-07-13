@@ -76,7 +76,7 @@ function setPreview(map, verts, mousePos, color) {
  * Reusable polygon-drawing controller for an existing Mapbox map instance.
  * Does not create or own the map; the caller is responsible for the map lifecycle.
  */
-export function usePolygonDraw(map, { panelOpen, onFeatureSelect } = {}) {
+export function usePolygonDraw(map, { enabled = false, onFeatureSelect } = {}) {
   const drawRef = useRef(null)
   const isDrawingRef = useRef(false)
   const vertsRef = useRef([])
@@ -104,8 +104,11 @@ export function usePolygonDraw(map, { panelOpen, onFeatureSelect } = {}) {
     onFeatureSelectRef.current = onFeatureSelect
   }, [onFeatureSelect])
 
+  // draw 컨트롤은 폴리곤 도구가 실제 활성일 때만 마운트한다. MapboxDraw는 마운트되어 있으면
+  // 지도 터치/클릭을 가로채(특히 모바일) 공항 마커 탭 등 다른 레이어 클릭을 막으므로, 상주시키지 않는다.
+  // enabled=false로 내려가면 cleanup이 완성 폴리곤을 savedFeaturesRef에 저장 → 다시 활성화될 때 복원.
   useEffect(() => {
-    if (!map) return undefined
+    if (!map || !enabled) return undefined
 
     const draw = new MapboxDraw({ displayControlsDefault: false, styles: DRAW_STYLES, userProperties: true })
     map.addControl(draw)
@@ -246,14 +249,9 @@ export function usePolygonDraw(map, { panelOpen, onFeatureSelect } = {}) {
       }
       drawRef.current = null
     }
-  }, [map])
+  }, [map, enabled])
 
-  // 패널이 닫히거나(X버튼) 다른 탭으로 이동해도 완성된 폴리곤은 지도에 남아야 하지만,
-  // 아직 마감(더블클릭)하지 않은 미완성 점들은 패널 없이는 이어 그릴 수 없으므로 취소한다.
-  useEffect(() => {
-    if (!panelOpen && isDrawingRef.current) handleCancel()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panelOpen])
+  // (미완성 작도 취소는 enabled=false 시 위 마운트 이펙트 cleanup에서 처리됨.)
 
   function handleStart() {
     if (!map) return

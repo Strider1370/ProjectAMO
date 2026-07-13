@@ -12,7 +12,8 @@ function MapToolsLauncher({ isOpen, onToggle }) {
       aria-label="지도 도구"
       aria-pressed={isOpen}
     >
-      <PencilRuler size={22} strokeWidth={2} />
+      <PencilRuler size={20} strokeWidth={2} />
+      <span className="map-tools-launcher-label">그리기</span>
     </button>
   )
 }
