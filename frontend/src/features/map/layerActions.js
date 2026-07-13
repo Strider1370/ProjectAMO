@@ -13,6 +13,7 @@ export const PANEL_ACTIONS = [
   { id: 'route-check', type: 'panel', label: '비행 전 브리핑', aliases: ['브리핑', '경로', 'route'], panelId: 'route-check' },
   { id: 'monitoring', type: 'panel', label: '상황판', aliases: ['모니터링', 'monitoring'], href: '/monitoring' },
   { id: 'settings', type: 'panel', label: '설정', aliases: ['환경설정', 'settings'], panelId: 'settings' },
+  { id: 'custom-area', type: 'panel', label: '임의 구역 설정', aliases: ['구역설정', '폴리곤', 'custom area'], panelId: 'custom-area' },
 ]
 
 // B. 기상 레이어 — 패널('met') 열고 해당 레이어 ON

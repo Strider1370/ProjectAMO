@@ -16,6 +16,8 @@ import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, createAdsbTrailGeoJSON
 import { registerAircraftImages } from '../aviation-layers/aircraftIconImages.js'
 import { registerAirlineLogos } from '../aviation-layers/airlineLogoImages.js'
 import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
+import CustomAreaOverlay from '../custom-area/CustomAreaOverlay.jsx'
+import { useCustomAreaOverlay } from '../custom-area/useCustomAreaOverlay.js'
 import NotamPanel from '../notam/NotamPanel.jsx'
 import { updateNotamLayerData, setNotamVisibility, setNotamCategoryFilter as applyNotamCategoryFilter, notamPopupHtml, notamsAtPoint, addNotamHighlight, setNotamHighlight, geometryBounds } from '../notam/lib/notamLayers.js'
 import { notamToFeatureCollection, displayGeometry } from '../notam/lib/notamGeoJson.js'
@@ -214,6 +216,7 @@ const MapView = forwardRef(function MapView({
   onClosePanel,
   onOpenNotamPanel,
   onOpenRoutePanel,
+  onOpenCustomAreaPanel,
   enableWindOverlay = true,
 }, ref) {
   const isMobile = useIsMobile()
@@ -1024,6 +1027,14 @@ const MapView = forwardRef(function MapView({
   // FIR 경계 틱(지오메트리 렌더 + moveend 재생성) — 스크롤 후 틱 이탈 방지.
   useFirTickOverlay(mapRef, isStyleReady, styleRevision)
 
+  // 패널 표시 여부와 무관하게 항상 호출 — activePanel이 'custom-area'가 아닐 때도 draw
+  // 컨트롤/완성된 폴리곤이 지도에 남아있어야 하고(패널 닫기/탭 전환에 폴리곤이 사라지면 안 됨),
+  // 다른 탭을 보는 중에도 지도 위 폴리곤 클릭으로 패널을 자동으로 열 수 있어야 한다.
+  const customArea = useCustomAreaOverlay(mapRef, isStyleReady, {
+    panelOpen: activePanel === 'custom-area',
+    onFeatureSelect: onOpenCustomAreaPanel,
+  })
+
   useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
     if (!enableWindOverlay) return
     syncWindOverlay(map, {
@@ -1470,6 +1481,27 @@ const MapView = forwardRef(function MapView({
           onToggle={toggleAviation}
           onClose={onClosePanel}
           onClearAll={clearAviationLayers}
+          onOpenCustomArea={onOpenCustomAreaPanel}
+        />
+      )}
+
+      {activePanel === 'custom-area' && (
+        <CustomAreaOverlay
+          drawing={customArea.drawing}
+          vertCount={customArea.vertCount}
+          polyCount={customArea.polyCount}
+          hasSelection={customArea.hasSelection}
+          selectedColor={customArea.selectedColor}
+          selectedFeatureColor={customArea.selectedFeatureColor}
+          handleStart={customArea.handleStart}
+          handleCancel={customArea.handleCancel}
+          handleUndo={customArea.handleUndo}
+          handleDeleteSelected={customArea.handleDeleteSelected}
+          handleDeleteAll={customArea.handleDeleteAll}
+          handleChangeSelectedColor={customArea.handleChangeSelectedColor}
+          addVertex={customArea.addVertex}
+          setColor={customArea.setColor}
+          onClose={onClosePanel}
         />
       )}
 

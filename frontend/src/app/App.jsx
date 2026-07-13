@@ -20,6 +20,7 @@ import useIsMobile from '../shared/ui/useIsMobile.js'
 import { TimeZoneProvider, useTimeZone } from '../shared/timezone/TimeZoneContext.jsx'
 
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
+const SandboxPage = lazy(() => import('../features/sandbox/SandboxPage.jsx'))
 const DesignTestPage = lazy(() => import('../features/design-test/DesignTestPage.jsx'))
 const AdminPage = lazy(() => import('../features/admin/AdminPage.jsx'))
 const DeveloperPage = lazy(() => import('../features/developer/DeveloperPage.jsx'))
@@ -203,6 +204,7 @@ function MainAppShell() {
           onClosePanel={() => { setActivePanel(null); setMobileTask('map') }}
           onOpenNotamPanel={() => setActivePanel('notam')}
           onOpenRoutePanel={() => setActivePanel('route-check')}
+          onOpenCustomAreaPanel={() => setActivePanel('custom-area')}
         />
       </main>
       <AirportPanel
@@ -269,17 +271,21 @@ function MainAppShell() {
 }
 
 function App() {
-  if (window.location.pathname === '/monitoring') {
+  const path = window.location.pathname
+  if (path === '/monitoring') {
     return <Suspense fallback={null}><MonitoringPage /></Suspense>
   }
-  if (window.location.pathname === '/test' && import.meta.env.DEV) {
+  if (path === '/sandbox') {
+    return <Suspense fallback={null}><SandboxPage /></Suspense>
+  }
+  if (path === '/test' && import.meta.env.DEV) {
     // 디자인 테스트 페이지 — 개발 빌드에서만. 운영 빌드(npm run build)에선 이 코드가 제거되어 접근 불가.
     return <Suspense fallback={null}><DesignTestPage /></Suspense>
   }
-  if (window.location.pathname === '/admin') {
+  if (path === '/admin') {
     return <Suspense fallback={null}><AuthProvider><AdminPage /></AuthProvider></Suspense>
   }
-  if (window.location.pathname === '/dev' && import.meta.env.DEV) {
+  if (path === '/dev' && import.meta.env.DEV) {
     // 개발자 콘솔 — 개발 빌드에서만. 운영 빌드(npm run build)에선 이 코드가 제거되어 접근 불가.
     return <Suspense fallback={null}><TimeZoneProvider><AuthProvider><DeveloperPage /></AuthProvider></TimeZoneProvider></Suspense>
   }

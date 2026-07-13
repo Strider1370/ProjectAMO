@@ -17,6 +17,7 @@
     "@fluentui/react-components": "^9.74.2",
     "@fluentui/react-datepicker-compat": "^0.6.33",
     "@fluentui/react-timepicker-compat": "^0.4.36",
+    "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@tmcw/togeojson": "^7.1.2",
     "@xmldom/xmldom": "^0.9.10",
     "lucide-react": "^0.468.0",

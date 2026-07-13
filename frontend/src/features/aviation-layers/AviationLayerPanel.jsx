@@ -1,3 +1,4 @@
+import { Pencil } from 'lucide-react'
 import { AVIATION_WFS_LAYERS } from './aviationWfsLayers.js'
 import { AVIATION_TILE_META } from './lib/aviationLayerTiles.js'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
@@ -57,7 +58,7 @@ function AviationTileVisual({ id }) {
   )
 }
 
-function AviationLayerPanel({ visibility, onToggle, onClose, onClearAll }) {
+function AviationLayerPanel({ visibility, onToggle, onClose, onClearAll, onOpenCustomArea }) {
   const isMobile = useIsMobile()
   const layerById = new Map(AVIATION_WFS_LAYERS.map((layer) => [layer.id, layer]))
   const activeCount = AVIATION_WFS_LAYERS.filter((layer) => visibility[layer.id]).length
@@ -97,6 +98,20 @@ function AviationLayerPanel({ visibility, onToggle, onClose, onClearAll }) {
           </div>
         </section>
       ))}
+      {/* 공역 섹션(최하단) 바로 아래 — 토글 레이어가 아니라 그리기 모드를 여는 독립 액션 섹션. */}
+      <section className="layer-tile-group">
+        <div className="layer-tile-group-title">임의 구역 설정</div>
+        <div className="layer-tile-grid">
+          <button
+            type="button"
+            className="layer-tile"
+            onClick={onOpenCustomArea}
+          >
+            <span className="layer-tile-visual"><Pencil size={22} /></span>
+            <span className="layer-tile-label">임의 구역 설정하기</span>
+          </button>
+        </div>
+      </section>
     </div>
   )
 
