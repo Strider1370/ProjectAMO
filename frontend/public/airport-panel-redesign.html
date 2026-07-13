@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공항 패널 개편 프로토타입 (실데이터)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{
+    --accent:#334155;
+    --text-1:#242424;--text-2:#424242;--text-3:#616161;--text-disabled:#bdbdbd;
+    --bg-1:#fff;--bg-2:#fafafa;--bg-3:#f5f5f5;--bg-4:#f0f0f0;
+    --stroke-1:#d1d1d1;--stroke-2:#e0e0e0;
+    --level-green:#166534;--level-green-bg:#dcefe2;
+    --level-amber:#92400e;--level-amber-bg:#fdecc8;
+    --level-red:#c0291f;--level-red-bg:#f7dcd9;
+    --cat-vfr:#15803d;--cat-ifr:#f59e0b;--cat-lifr:#dc2626;
+    --mono:'Consolas','Menlo',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Pretendard,system-ui,sans-serif;background:#dfe6ee;color:var(--text-1);
+    display:flex;justify-content:center;padding:20px 14px;line-height:1.4}
+  .panel{width:960px;max-width:100%;background:linear-gradient(180deg,#f5f9fd,#eef4fb);
+    border:1px solid rgba(255,255,255,.6);border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,.12)}
+  .head{position:relative;height:140px;background:linear-gradient(180deg,#7db4e6,#a7cdeb 45%,#8fb96b 46%,#7ba957)}
+  .head::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,23,42,.45),rgba(15,23,42,0) 60%)}
+  .head-txt{position:absolute;left:22px;bottom:18px;z-index:1;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.35)}
+  .head-txt h1{font-size:25px;font-weight:800}
+  .head-txt p{font-size:13px;font-weight:600;opacity:.92}
+  .head-sel{position:absolute;top:14px;right:16px;z-index:1}
+  .head-sel select{font-family:Pretendard,sans-serif;font-weight:700;font-size:13px;padding:5px 8px;border-radius:6px;border:0;background:rgba(255,255,255,.9);color:var(--text-1)}
+  .body{display:flex;align-items:flex-start}
+  .rail{width:92px;flex:0 0 auto;background:var(--bg-1);border-right:1px solid rgba(148,163,184,.3);padding:8px 6px;position:sticky;top:0;align-self:stretch}
+  .rail-item{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;padding:9px 4px;border-radius:8px;color:var(--text-3);font-size:12px;font-weight:700;cursor:pointer;text-decoration:none}
+  .rail-item .ico{width:20px;height:20px}
+  .rail-item.active{background:#eef2f7;color:var(--accent)}
+  .rail-item.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--accent)}
+  .badge{position:absolute;top:4px;right:8px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;display:none;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-family:var(--mono)}
+  .badge.show{display:inline-flex}
+  .b-amber{background:var(--level-amber-bg);color:var(--level-amber)}
+  .b-red{background:var(--level-red-bg);color:var(--level-red)}
+  .b-neutral{background:var(--bg-4);color:var(--text-3);border:1px solid var(--stroke-2)}
+  .scroll{flex:1;min-width:0;padding:14px 16px 40px;display:flex;flex-direction:column;gap:14px}
+  section{scroll-margin-top:6px}
+  .sec-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .sec-title{font-size:15px;font-weight:800}
+  .sec-badge{display:inline-flex;align-items:center;justify-content:center;min-height:22px;padding:0 9px;border-radius:999px;background:var(--text-1);color:#fff;font-size:12px;font-weight:900}
+  .sec-time{font-size:12px;font-weight:800}
+  .muted{color:var(--text-3)}
+  .warn-ok{display:flex;align-items:center;gap:8px;padding:13px 16px;border-radius:6px;background:var(--level-green-bg);color:var(--level-green);font-weight:800;font-size:14px;border:1px solid color-mix(in srgb,var(--level-green) 30%,var(--level-green-bg))}
+  .warn-bad{padding:13px 16px;border-radius:6px;background:var(--level-red);color:#fff;font-weight:800;font-size:14px;margin-bottom:6px}
+  .cat-chip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 16px;border-radius:6px;color:#fff;text-align:center}
+  .cat-chip .code{font-size:20px;font-weight:900;line-height:1}
+  .cat-chip .ko{font-size:11px;font-weight:800;margin-top:2px}
+  .metar-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .tac{background:var(--bg-1);border:1px solid var(--stroke-2);border-radius:6px;padding:14px;font-family:var(--mono);font-size:18px;line-height:1.9;word-spacing:3px;overflow-wrap:anywhere}
+  .t-mut{color:var(--text-3)} .t-nrm{color:var(--text-1)}
+  .t-amb{color:var(--level-amber);font-weight:800;background:var(--level-amber-bg);border-radius:3px;padding:0 3px}
+  .t-red{color:var(--level-red);font-weight:800;background:var(--level-red-bg);border-radius:3px;padding:0 3px}
+  .toggle{margin-top:8px;font-size:12px;color:var(--text-3);background:transparent;border:0;cursor:pointer;font-weight:700}
+  .decode{margin-top:8px;display:none;grid-template-columns:repeat(4,1fr);gap:7px}
+  .decode.open{display:grid}
+  .dc{background:var(--bg-1);border:1px solid var(--stroke-2);border-radius:6px;padding:9px 11px}
+  .dc .k{font-size:11px;font-weight:800;color:var(--text-3)} .dc .v{font-size:15px;font-weight:900}
+  .taf-scale{display:grid;gap:5px;font-family:var(--mono);font-size:11px;color:var(--text-3);margin-bottom:5px}
+  .taf-row{display:grid;grid-template-columns:52px 1fr;gap:6px;align-items:center;margin-bottom:5px}
+  .taf-lab{font-size:12px;font-weight:800;color:var(--text-3);text-align:right}
+  .taf-track{display:flex;height:34px;border:1px solid var(--stroke-2);border-radius:6px;overflow:hidden}
+  .taf-seg{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border-right:1px solid rgba(15,23,42,.08);overflow:hidden;white-space:nowrap}
+  .taf-row.cond .taf-track{height:40px} .taf-row.cond .taf-seg{font-size:14px;font-weight:900;color:#fff}
+  .taf-raw{margin-top:10px;background:var(--bg-1);border:1px solid var(--stroke-2);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text-2);line-height:1.7;white-space:pre-wrap}
+  .amos-rwy{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--stroke-2);margin-bottom:10px}
+  .amos-rwy div{flex:1;text-align:center;padding:8px;font-weight:900;font-size:15px}
+  .amos-rwy .use{background:var(--level-red);color:#fff} .amos-rwy .idle{background:var(--bg-1);color:var(--text-3)}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .cell{background:var(--bg-1);border:1px solid var(--stroke-2);border-radius:6px;padding:10px 12px;min-height:54px;display:flex;flex-direction:column;justify-content:center}
+  .cell .k{font-size:11px;font-weight:800;color:var(--text-3)} .cell .v{font-size:16px;font-weight:900;font-family:var(--mono)}
+  .cell .v.amber{color:var(--level-amber)} .cell .v.red{color:var(--level-red)}
+  .list-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--stroke-2);border-radius:6px;background:var(--bg-1);margin-bottom:6px;font-size:13px}
+  .list-row .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+  .pill{font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--bg-4);color:var(--text-3)}
+  .pill.red{background:var(--level-red-bg);color:var(--level-red)}
+  .collapsed{padding:12px 14px;border:1px solid var(--stroke-2);border-radius:6px;background:var(--bg-1);font-size:13px;cursor:pointer}
+  .collapsed .row{display:flex;align-items:center;gap:8px}
+  .collapsed .sum{flex:1;font-weight:700}
+  .collapsed .full{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--stroke-2);white-space:pre-wrap;line-height:1.7;color:var(--text-2);font-size:13px}
+  .collapsed.open .full{display:block}
+  .info-warn{font-size:12px;font-weight:800;color:var(--level-amber);background:var(--level-amber-bg);padding:2px 8px;border-radius:999px}
+  .err{padding:14px;color:var(--level-red);font-weight:700}
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="head">
+    <div class="head-txt"><h1 id="apName">공항</h1><p id="apEn"></p></div>
+    <div class="head-sel"><select id="apSel"></select></div>
+  </div>
+  <div class="body">
+    <nav class="rail" id="rail"></nav>
+    <div class="scroll" id="scroll"><div class="muted" style="padding:20px">불러오는 중…</div></div>
+  </div>
+</div>
+<script>
+const MINIMA={RKSI:{v:175,c:null},RKSS:{v:175,c:null},RKPC:{v:300,c:100},RKPK:{v:300,c:100},RKTU:{v:550,c:200},RKTN:{v:550,c:200},RKTH:{v:550,c:200},RKJB:{v:550,c:200},RKJJ:{v:550,c:200},RKJK:{v:550,c:200},RKJY:{v:550,c:200},RKNW:{v:550,c:200},RKPS:{v:550,c:200},RKPU:{v:550,c:200},RKNY:{v:550,c:200}};
+const CATCOL={VFR:'var(--cat-vfr)',IFR:'var(--cat-ifr)',LIFR:'var(--cat-lifr)'};
+const KO={VFR:'시계비행규칙',IFR:'계기비행규칙',LIFR:'최저기상제한치 미만'};
+const RAIL=[['warn','공항경보'],['metar','현재'],['taf','예보'],['amos','AMOS'],['notam','NOTAM'],['info','기상정보']];
+const $=s=>document.querySelector(s);
+const j=(o)=>{try{return o}catch(e){return null}};
+function get(o,ic){return o&&(o.airports?.[ic]||o[ic]||o.data?.[ic])||null}
+function z2(n){return String(n).padStart(2,'0')}
+function ddhhmm(iso){if(!iso)return '';const d=new Date(iso);return z2(d.getUTCDate())+z2(d.getUTCHours())+z2(d.getUTCMinutes())+'Z'}
+function ddhh(iso){const d=new Date(iso);return z2(d.getUTCDate())+z2(d.getUTCHours())}
+function kst(iso){if(!iso)return '';const d=new Date(new Date(iso).getTime()+9*3600e3);return `${d.getUTCFullYear()}-${z2(d.getUTCMonth()+1)}-${z2(d.getUTCDate())} ${z2(d.getUTCHours())}:${z2(d.getUTCMinutes())} KST`}
+function ceilFt(clouds){let c=Infinity;(clouds||[]).forEach(x=>{if((x.amount==='BKN'||x.amount==='OVC')&&Number.isFinite(x.base))c=Math.min(c,x.base)});return c===Infinity?null:c}
+function flightCat(visM,ceil,ic){const m=MINIMA[ic];const vis=Number.isFinite(visM)?visM:99999;const ce=Number.isFinite(ceil)?ceil:99999;if(m){if((m.v&&vis<m.v)||(m.c&&ce<m.c))return 'LIFR'}if(vis<5000||ce<1500)return 'IFR';return 'VFR'}
+function visLevel(visM,ic){const m=MINIMA[ic];if(m&&m.v&&visM<m.v)return 'red';if(Number.isFinite(visM)&&visM<5000)return 'amb';return ''}
+function ceilLevel(ce,ic){const m=MINIMA[ic];if(m&&m.c&&ce!=null&&ce<m.c)return 'red';if(ce!=null&&ce<1500)return 'amb';return ''}
+
+let DATA={},AIRPORTS=[],CUR='RKSI';
+
+async function boot(){
+  const [airports,metar,taf,amos,warning,notam,info]=await Promise.all(
+    ['/api/airports','/api/metar','/api/taf','/api/amos','/api/warning','/api/notam','/api/airport-info']
+    .map(u=>fetch(u).then(r=>r.ok?r.json():null).catch(()=>null)));
+  DATA={metar,taf,amos,warning,notam,info};
+  AIRPORTS=(Array.isArray(airports)?airports:[]).filter(a=>a.icao&&!a.overseas&&MINIMA[a.icao]);
+  if(!AIRPORTS.length)AIRPORTS=Object.keys(MINIMA).map(ic=>({icao:ic,nameKo:ic}));
+  const sel=$('#apSel');sel.innerHTML=AIRPORTS.map(a=>`<option value="${a.icao}">${a.nameKo||a.name||a.icao} · ${a.icao}</option>`).join('');
+  if(!AIRPORTS.find(a=>a.icao===CUR))CUR=AIRPORTS[0].icao;
+  sel.value=CUR;sel.onchange=()=>{CUR=sel.value;render()};
+  render();
+}
+
+function render(){
+  const ap=AIRPORTS.find(a=>a.icao===CUR)||{icao:CUR};
+  $('#apName').textContent=(ap.nameKo||ap.name||CUR)+' · '+CUR;
+  $('#apEn').textContent=ap.name&&ap.name!==ap.nameKo?ap.name:'';
+  const metar=get(DATA.metar,CUR),taf=get(DATA.taf,CUR),amos=get(DATA.amos,CUR),
+        warns=get(DATA.warning,CUR)?.warnings||[],
+        notams=(DATA.notam?.items||[]).filter(n=>n.location===CUR),
+        info=get(DATA.info,CUR);
+  const b=badges({metar,taf,amos,warns,notams,info});
+  $('#rail').innerHTML=RAIL.map(([id,label],i)=>{
+    const bd=b[id];const cls=bd?('b-'+bd.color):'';
+    return `<a class="rail-item ${i===1?'active':''}" href="#sec-${id}">
+      ${ICON[id]}${label}
+      <span class="badge ${cls} ${bd?'show':''}">${bd?bd.n:''}</span></a>`;
+  }).join('');
+  $('#scroll').innerHTML=[
+    secWarn(warns),secMetar(metar),secTaf(taf),secAmos(amos),secNotam(notams),secInfo(info)
+  ].join('');
+  wire();
+}
+
+// ---- 배지 ----
+function badges({metar,taf,amos,warns,notams,info}){
+  const out={};
+  if(warns.length)out.warn={n:warns.length,color:'red'};
+  // METAR
+  if(metar){const o=metar.observation||{};let n=0,worst=0;
+    const vis=o.visibility?.value,ce=ceilFt(o.clouds);
+    const vl=visLevel(vis,CUR),cl=ceilLevel(ce,CUR);
+    if(vl){n++;worst=Math.max(worst,vl==='red'?2:1)}
+    if(cl){n++;worst=Math.max(worst,cl==='red'?2:1)}
+    const w=o.wind||{};if(w.gust&&w.gust-w.speed>=10){n++;worst=Math.max(worst,1)}
+    if(w.speed>=20){n++;worst=Math.max(worst,w.speed>=30?2:1)}
+    if((o.weather||[]).length){n++;worst=Math.max(worst,1)}
+    if(o.wind_shear){n++;worst=2}
+    if(n)out.metar={n,color:worst>=2?'red':'amber'};
+  }
+  // TAF sub-VFR 시간창
+  if(taf){const segs=tafSegments(taf);let n=0,worst=0;let prev=null;
+    segs.forEach(s=>{if(s.cat!=='VFR'){if(prev!=='bad')n++;worst=Math.max(worst,s.cat==='LIFR'?2:1);prev='bad'}else prev='ok'});
+    if(n)out.taf={n,color:worst>=2?'red':'amber'};
+  }
+  // AMOS: 풍속/ RVR
+  if(amos){const o=amos.observation||{};let n=0,worst=0;
+    (o.runways||[]).forEach(r=>{const kt=(r.wind_speed||0)*1.94;if(kt>=20){n++;worst=Math.max(worst,kt>=30?2:1)}
+      if(r.rvr_m!=null&&r.rvr_m<800){n++;worst=Math.max(worst,r.rvr_m<550?2:1)}});
+    if(n)out.amos={n,color:worst>=2?'red':'amber'};
+  }
+  if(notams.length){const closure=notams.some(nt=>/QMR..LC|LC$|CLSD|CLOSED/i.test(nt.qcode||'')||/폐쇄|CLSD|CLOSED/i.test(nt.summary||''));
+    out.notam={n:Math.min(notams.length,99),color:closure?'red':'neutral'};}
+  if(info){const items=(info.forecast||'').split('○').map(s=>s.trim()).filter(Boolean);
+    const hasWarn=info.warn&&!/없음|^○?\s*없음/.test(info.warn.replace('○','').trim());
+    const n=items.length+(hasWarn?1:0);if(n)out.info={n,color:hasWarn?'red':'amber'};}
+  return out;
+}
+
+// ---- 섹션 ----
+function secWarn(warns){
+  let inner;
+  if(!warns.length)inner=`<div class="warn-ok">✓ 공항경보 없음</div>`;
+  else inner=warns.map(w=>`<div class="warn-bad">⚠ ${w.wrng_type_name||w.wrng_type_key||'경보'} · ${kst(w.valid_start)}~${kst(w.valid_end)}</div>`).join('');
+  return `<section id="sec-warn">${inner}</section>`;
+}
+function secMetar(metar){
+  if(!metar)return `<section id="sec-metar"><div class="err">METAR 없음</div></section>`;
+  const h=metar.header||{},o=metar.observation||{},d=o.display||{};
+  const vis=o.visibility?.value,ce=ceilFt(o.clouds),cat=flightCat(vis,ce,CUR);
+  const w=o.wind||{};
+  let wc='t-nrm';if(w.gust&&w.gust-w.speed>=10)wc='t-amb';if(w.speed>=30)wc='t-red';else if(w.speed>=20)wc='t-amb';
+  const visTok=d.visibility||(o.visibility?.cavok?'CAVOK':'////');
+  const vc=visLevel(vis,CUR);const cc=ceilLevel(ce,CUR);
+  const clTok=d.clouds||'NSC';
+  const spread=(o.temperature?.air!=null&&o.temperature?.dewpoint!=null)?o.temperature.air-o.temperature.dewpoint:99;
+  const tc=spread<=2?'t-amb':'t-nrm';
+  const wx=d.weather||'';let wxc='t-amb';if(/TS/.test(wx))wxc='t-red';
+  const tac=[
+    `<span class="t-mut">${h.report_type||'METAR'} ${CUR} ${ddhhmm(h.observation_time||h.issue_time)}</span>`,
+    `<span class="${wc}">${d.wind||''}</span>`,
+    `<span class="${vc==='red'?'t-red':vc==='amb'?'t-amb':'t-nrm'}">${visTok}</span>`,
+    wx?`<span class="${wxc}">${wx}</span>`:'',
+    `<span class="${cc==='red'?'t-red':cc==='amb'?'t-amb':'t-nrm'}">${clTok}</span>`,
+    `<span class="${tc}">${d.temperature||''}</span>`,
+    `<span class="t-mut">${d.qnh||''}</span>`
+  ].filter(Boolean).join(' ');
+  const dec=[['바람',d.wind],['시정',fmtVis(vis)],['운고',ce!=null?ce+' ft':'NSC'],['현재기상',wx||'-'],['기온/이슬점',o.temperature?.air!=null?`${o.temperature.air}/${o.temperature.dewpoint}°C`:'-'],['QNH',d.qnh],['RVR',(o.rvr||[]).length?o.rvr.map(r=>r.mean||r).join(','):'-'],['체감',spread<=99?'-':'-']];
+  return `<section id="sec-metar">
+    <div class="sec-head"><span class="sec-badge">METAR</span><span class="sec-time">${kst(h.observation_time||h.issue_time)}</span><button class="toggle" style="margin-left:auto">ⓘ</button></div>
+    <div class="metar-top"><span class="cat-chip" style="background:${CATCOL[cat]}"><span class="code">${cat}</span><span class="ko">${KO[cat]}</span></span><span class="muted" style="font-size:12px">색 = 임계값 판독 · 원문이 곧 화면</span></div>
+    <div class="tac">${tac}</div>
+    <button class="toggle js-decode">▸ 디코드 상세</button>
+    <div class="decode">${dec.map(([k,v])=>`<div class="dc"><div class="k">${k}</div><div class="v">${v??'-'}</div></div>`).join('')}</div>
+  </section>`;
+}
+function fmtVis(v){if(v==null)return '-';if(v>=9999)return '10km+';return v>=1000?(v/1000)+'km':v+'m'}
+
+function tafSegments(taf){
+  const slots=taf.timeline||taf.slots||[];
+  return slots.map(s=>{const vis=s.visibility?.value??s.visibility;const ce=ceilFt(s.clouds);return {time:s.time,cat:flightCat(vis,ce,CUR),vis,ce,wind:s.display?.wind||s.wind?.raw||'',clouds:s.display?.clouds||'',visTok:s.display?.visibility||(vis!=null?String(vis):'')}});
+}
+function group(arr,keyFn){const out=[];arr.forEach(it=>{const k=keyFn(it);const last=out[out.length-1];if(last&&last.k===k)last.n++;else out.push({k,n:1,first:it})});return out}
+function secTaf(taf){
+  if(!taf)return `<section id="sec-taf"><div class="err">TAF 없음</div></section>`;
+  const h=taf.header||{};const segs=tafSegments(taf);
+  if(!segs.length)return `<section id="sec-taf"><div class="sec-head"><span class="sec-badge">TAF</span></div><div class="err muted">타임라인 데이터 없음</div></section>`;
+  const total=segs.length;
+  const inner=Math.max(total*44,560);
+  const scale=`<div style="display:flex;padding-left:58px">${segs.map(s=>`<div style="flex:1;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text-3)">${s.time?ddhh(s.time):''}</div>`).join('')}</div>`;
+  const seg=(g,bg,c)=>`<div class="taf-seg" style="flex:${g.n};background:${bg};color:${c||'inherit'}">${g.lbl}</div>`;
+  const lvBg=lv=>lv==='red'?'var(--level-red-bg)':lv==='amb'?'var(--level-amber-bg)':'var(--bg-1)';
+  const lvFg=lv=>lv==='red'?'var(--level-red)':lv==='amb'?'var(--level-amber)':'var(--text-1)';
+  const condG=group(segs,s=>s.cat).map(g=>({...g,lbl:g.k}));
+  const rowCond=`<div class="taf-row cond"><div class="taf-lab">비행조건</div><div class="taf-track">${condG.map(g=>seg(g,CATCOL[g.k],'#fff')).join('')}</div></div>`;
+  const wG=group(segs,s=>s.wind).map(g=>({...g,lbl:g.first.wind||'-'}));
+  const rowW=`<div class="taf-row"><div class="taf-lab">바람</div><div class="taf-track">${wG.map(g=>seg(g,'var(--bg-1)')).join('')}</div></div>`;
+  const visG=group(segs,s=>s.visTok).map(g=>({...g,lbl:fmtVis(g.first.vis),lv:visLevel(g.first.vis,CUR)}));
+  const rowVis=`<div class="taf-row"><div class="taf-lab">시정</div><div class="taf-track">${visG.map(g=>seg(g,lvBg(g.lv),lvFg(g.lv))).join('')}</div></div>`;
+  const ceG=group(segs,s=>s.ce==null?'NSC':s.ce).map(g=>({...g,lbl:g.first.ce==null?'NSC':g.first.ce+'ft',lv:ceilLevel(g.first.ce,CUR)}));
+  const rowCe=`<div class="taf-row"><div class="taf-lab">운고</div><div class="taf-track">${ceG.map(g=>seg(g,lvBg(g.lv),lvFg(g.lv))).join('')}</div></div>`;
+  return `<section id="sec-taf">
+    <div class="sec-head"><span class="sec-badge">TAF</span><span class="sec-time">${kst(h.valid_start)} → ${kst(h.valid_end)}</span></div>
+    <div style="overflow-x:auto"><div style="min-width:${inner}px">${scale}${rowCond}${rowW}${rowVis}${rowCe}</div></div>
+    <div class="taf-raw">${tafTac(taf)}</div>
+  </section>`;
+}
+function wxStr(a){return Array.isArray(a)?a.map(w=>w.raw).filter(Boolean).join(' '):(a&&a.raw?a.raw:'')}
+function tafTac(taf){
+  const h=taf.header||{},b=taf.base||{};
+  const head=`TAF ${CUR} ${ddhhmm(h.issued)} ${ddhh(h.valid_start)}/${ddhh(h.valid_end)}`;
+  const bstr=[b.wind?.raw,b.cavok_flag?'CAVOK':(b.vis!=null?b.vis:''),wxStr(b.wx),(b.nsc_flag?'NSC':(b.clouds||[]).map(c=>c.raw).join(' '))].filter(Boolean).join(' ');
+  const groups=(taf.change_groups||[]).map(g=>{const t=g.type&&g.type.startsWith('PROB')?g.type.replace('_',' '):g.type;const when=`${ddhh(g.start)}/${ddhh(g.end)}`;const body=[g.wind?.raw,(g.vis!=null?g.vis:''),wxStr(g.wx),(g.clouds||[]).map(c=>c.raw).join(' ')].filter(Boolean).join(' ');return `  ${t} ${when} ${body}`});
+  return [head+' '+bstr,...groups].join('\n');
+}
+
+function secAmos(amos){
+  if(!amos)return `<section id="sec-amos"><div class="sec-head"><span class="sec-title">AMOS · 실시간 활주로 센서</span></div><div class="err muted">AMOS 없음</div></section>`;
+  const o=amos.observation||{};const rw=o.runways||[];const t=o.observed_tm_kst;
+  const rain=amos.daily_rainfall?.mm;
+  const cells=[];
+  rw.forEach(r=>{const kt=Math.round((r.wind_speed||0)*1.94);const cls=kt>=30?'red':kt>=20?'amber':'';cells.push(['풍향/풍속 '+r.side,`${r.wind_direction||'-'}° / ${kt}kt`,cls])});
+  rw.forEach(r=>{if(r.rvr_m!=null){const cls=r.rvr_m<550?'red':r.rvr_m<800?'amber':'';cells.push(['RVR '+r.side,r.rvr_m+'m',cls])}});
+  cells.push(['운고',o.cloud_min_m!=null?Math.round(o.cloud_min_m*3.281)+'ft':'-','']);
+  cells.push(['QNH',(o.qnh||amos.pressure?.qnh_hpa||'-')+'','']);
+  cells.push(['기온/이슬점',o.temperature_c!=null?`${o.temperature_c}/${o.dewpoint_c}°C`:'-','']);
+  cells.push(['일강수량',(rain!=null?rain:0)+' mm','']);
+  const tmKst=t?`${t.slice(0,4)}-${t.slice(4,6)}-${t.slice(6,8)} ${t.slice(8,10)}:${t.slice(10,12)} KST`:'';
+  return `<section id="sec-amos">
+    <div class="sec-head"><span class="sec-title">AMOS · 실시간 활주로 센서</span><span class="sec-time muted" style="margin-left:auto">${tmKst}</span></div>
+    <div class="grid">${cells.map(([k,v,c])=>`<div class="cell"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join('')}</div>
+  </section>`;
+}
+
+function secNotam(notams){
+  const active=notams.filter(n=>{const now=Date.now();return (!n.valid_from||new Date(n.valid_from)<=now)&&(!n.valid_to||new Date(n.valid_to)>=now)});
+  const show=active.slice(0,4);
+  const rows=show.map(n=>{const closure=/폐쇄|CLSD|CLOSED/i.test(n.summary||'')||/QMR/.test(n.qcode||'');return `<div class="list-row"><span class="t">${(n.summary||n.id||'').split('\n')[0].slice(0,60)}</span><span class="pill ${closure?'red':''}">${n.category==='obstacle'?'장애물':n.category==='facility'?'시설':(n.category||'')}</span></div>`}).join('');
+  const more=active.length>show.length?`<div class="collapsed"><div class="row"><span class="sum">그 외 ${active.length-show.length}건</span><span>▾ 펼치기</span></div></div>`:'';
+  return `<section id="sec-notam">
+    <div class="sec-head"><span class="sec-title">NOTAM</span><span class="sec-time muted" style="margin-left:auto">활성 ${active.length}건</span></div>
+    ${rows||'<div class="muted" style="font-size:13px">활성 NOTAM 없음</div>'}${more}
+  </section>`;
+}
+
+function secInfo(info){
+  if(!info)return `<section id="sec-info"><div class="sec-head"><span class="sec-title">기상정보</span></div><div class="muted" style="font-size:13px">기상정보 없음</div></section>`;
+  const items=(info.forecast||'').split('○').map(s=>s.trim()).filter(Boolean);
+  const hasWarn=info.warn&&!/없음/.test(info.warn);
+  const badge=items.length?`<span class="info-warn" style="margin-left:auto">위험기상 ${items.length}</span>`:(hasWarn?`<span class="info-warn" style="margin-left:auto;color:var(--level-red);background:var(--level-red-bg)">경보</span>`:'');
+  const full=[info.outlook,info.forecast&&('\n[위험 기상예보]\n'+info.forecast),info.warn&&('\n[경보현황] '+info.warn)].filter(Boolean).join('\n');
+  return `<section id="sec-info">
+    <div class="sec-head"><span class="sec-title">기상정보</span>${badge}</div>
+    <div class="collapsed"><div class="row"><span class="sum">${info.title||''} — ${info.summary||''}</span><span>▾ 펼치기</span></div><div class="full">${full}</div></div>
+  </section>`;
+}
+
+const ICON={
+  warn:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>',
+  metar:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 16a4 4 0 010-8 5 5 0 019.6-1.6A3.5 3.5 0 0118 16z"/></svg>',
+  taf:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  amos:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v4l3-2"/></svg>',
+  notam:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+  info:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/></svg>'
+};
+
+function wire(){
+  document.querySelectorAll('.js-decode').forEach(b=>b.onclick=()=>{b.nextElementSibling.classList.toggle('open');b.textContent=b.nextElementSibling.classList.contains('open')?'▾ 디코드 닫기':'▸ 디코드 상세'});
+  document.querySelectorAll('.collapsed').forEach(c=>c.onclick=()=>c.classList.toggle('open'));
+  const items=[...document.querySelectorAll('.rail-item')];
+  const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const id=e.target.id.replace('sec-','');items.forEach(it=>it.classList.toggle('active',it.getAttribute('href')==='#sec-'+id))}})},{rootMargin:'-10% 0px -70% 0px'});
+  document.querySelectorAll('.scroll section').forEach(s=>io.observe(s));
+}
+boot().catch(e=>{$('#scroll').innerHTML='<div class="err">로드 실패: '+e.message+'</div>'});
+</script>
+</body>
+</html>
