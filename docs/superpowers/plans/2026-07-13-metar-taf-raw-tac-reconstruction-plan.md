@@ -66,3 +66,22 @@
 - 외국 파서(참고 모델): `backend/src/parsers/noaa-metar-parser.js:156`, `noaa-taf-parser.js`
 - 프로세서(직렬화 삽입 지점): `backend/src/processors/metar-processor.js:18-22`
 - 신규: `backend/src/serializers/metar-tac.js`, `taf-tac.js` (+ 테스트)
+
+## 7. ⚠ 핵심 개념 — "IWXXM을 TAC으로 전환" ≠ XML 직접 변환
+
+원본 IWXXM(XML)을 직접 파싱해 TAC으로 바꾸는 게 **아님**. 흐름:
+**IWXXM XML → (기존 파서가 이미 구조화 해체: `observation.display`·`change_groups` 등) → 그 구조를 TAC 문자열로 재조립(신규 직렬화기)**.
+즉 "이미 분해된 부품을 도로 코드 문장으로 짜맞추기". `metar-tac.js`/`taf-tac.js`는 **파싱 결과 객체**를 입력받음(원본 XML 아님). 프로세서에서 parse 직후 `parsed.header.raw_text = buildMetarTac(parsed)`.
+- 단, **경향(trendForecast)·비고(remarks)만 예외** — 현재 파서가 안 읽으므로 재조립 전에 **파서 확장 필요**(원본 XML에서 새로 추출). 이게 Phase B.
+
+## 8. 진행 상태 (2026-07-13)
+
+- **프론트 경향 슬롯 = 완료(프로토타입).** `frontend/public/airport-panel-redesign.html` METAR 하단 전폭 한 줄. `observation.trend` 있으면 표시, 없으면 안내 문구. → 백엔드가 `trend` 채우면 자동. (스펙 §13)
+- **Phase A(본문 TAC 재조립) = ✅ 구현 완료(2026-07-13).**
+  - 신규: `backend/src/serializers/metar-tac.js`(`buildMetarTac`) · `taf-tac.js`(`buildTafTac`). 입력 = 파싱 결과 객체.
+  - 배선: `metar-processor.js`·`taf-processor.js` parse 직후 `header.raw_text` 없으면 채움(외국은 이미 보유).
+  - 테스트: `backend/test/metar-tac.test.js`·`taf-tac.test.js` 7 pass(RKSI 실데이터 + SPECI·RVR·음수기온·AMD·PROB30 TEMPO·NSC 엣지).
+  - 검증: 캐시된 실데이터 **국내 15공항 METAR+TAF 전수** 재구성 성공, 예외 0. CAVOK/저시정/다중구름/change group 정상.
+  - ⚠ **화면 표시는 다음 프로세서 실행(KMA fetch) 시 `raw_text`가 채워진 뒤부터** — 현재 캐시분은 개편 전 처리라 비어 있음. 프론트(`MetarTab`/`TafTab`)는 이미 `raw_text` 렌더 준비됨.
+  - 미결(스펙 §5): 국내 라벨 "원문 (TAC · 재구성)" vs 외국 "원문 (TAC)" 구분 — 프론트에서 결정.
+- **Phase B(경향·비고) = 보류.** 선행 조건인 **원본 IWXXM 한 건 덤프**가 **KMA API 일일 호출량 소진으로 불가**(2026-07-13). → **호출량 리셋 후** `apiClient.fetch('metar','RKSI')` 덤프 → `iwxxm:trendForecast`/`iwxxm:remarks` 실제 존재 확인 → 파서 확장. (덤프 스크립트: `backend`에서 `apiClient.fetch` import 후 XML 저장.)
