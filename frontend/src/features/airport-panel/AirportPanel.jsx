@@ -53,6 +53,13 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // 기상정보는 지연 로드 대상인데, info 섹션이 맨 아래라 스크롤 감지(IntersectionObserver)
+  // 트리거가 안 걸려 fetch가 영영 안 불리는 문제가 있었다. 풀피처 공항 패널이 열리면(공항 변경 포함)
+  // 곧바로 요청한다. requestDeferredWeatherData가 이미 로드된 키는 걸러내므로 중복 호출은 안전.
+  useEffect(() => {
+    if (isFullFeature && !airportInfo) onRequestDeferredWeatherData?.(['airportInfo'])
+  }, [icao, isFullFeature, airportInfo, onRequestDeferredWeatherData])
+
   // 스크롤스파이: 현재 섹션 레일 하이라이트 + 기상정보 섹션 진입 시 지연 로드
   useEffect(() => {
     const root = bodyRef.current
