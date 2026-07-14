@@ -26,6 +26,7 @@ ProjectAMO/
         airport-panel/         -> airport detail drawer, tabs, and view models
         search/                -> 공항+기능 통합 검색 팔레트 + 공유 레이어 액션 레지스트리
         developer/             -> `/dev` 개발자 콘솔(조작+관찰), 테스트 인스턴스(dev:test) 전용 — EntryPoints §11
+        onboarding/            -> 첫 사용자 코치마크 투어(스포트라이트+툴팁, 의존성 0). 데스크톱 자동 1회 + 도움말 재실행
       shared/
         ui/                    -> frontend-only reusable UI
         weather/               -> frontend-only weather display helpers
@@ -135,6 +136,10 @@ ProjectAMO/
 - `frontend/src/features/map/layerActions.js` -> 공유 레이어 레지스트리(공항+패널+기상/항공 레이어+베이스맵). label/aliases 단일 출처, `buildSearchCatalog`/`matchSearch`·`metLabel`/`aviationLabel` 제공. 지도 레이어 메타데이터라 `features/map`에 둔다(검색·브리핑·경로가 공유). 레이어 토글은 MapView ref(`setLayerOn`)·베이스맵은 `switchBasemap` 재사용.
 - `frontend/src/features/map/LayerToggleChips.jsx` -> 지도 레이어 토글칩 묶음(상태 표시+토글). 브리핑(MET)·VFR 입력(항공)이 공유. items=[{key,label,on,onToggle}].
 - `frontend/src/features/search/SearchPalette.jsx` -> 공항+기능 통합 검색 팔레트(Cmd/Ctrl+K·사이드바 검색 아이콘·모바일 더보기로 진입). Fluent `SearchBox` + 토큰 기반 결과 행, 키보드 내비/포커스 트랩/복귀.
+- `frontend/src/features/onboarding/useTour.js` -> 온보딩 투어 상태머신 훅. 진행은 **전부 수동([다음])** — 열린 패널을 볼 시간을 주려고(자동진행 없음). localStorage `amo.tour.v1.done`·optional 스텝 auto-skip. `willAutoStart`로 App의 업데이트 모달 자동표시와 우선순위 조율(첫 방문자만 투어 우선, 완료 시 `markSeen`).
+- `frontend/src/features/onboarding/tourMachine.js` + `tourSteps.js` + `targetRect.js` -> 순수 상태 로직(node --test)과 5스텝 정의, 스텝→rect 리졸버. target은 기존 셀렉터 재사용(`.map-shell`·사이드바 `[aria-label]`·`[data-tour=advisory]`) 또는 `mapAirport:'RKSI'`(지도 마커). mapAirport rect는 MapView ref `getAirportPoint`(공항 좌표→`map.project`+**캔버스 뷰포트 오프셋**)로 계산 — 오프셋 안 더하면 마커 왼쪽으로 어긋남.
+- `frontend/src/features/onboarding/TourOverlay.jsx` + `Tour.css` -> box-shadow 스포트라이트(가벼운 0.28 스크림 — 열린 패널이 묻히지 않게) + 툴팁. 사이드바/지도 스텝 구멍은 `pointer-events:none`(대상 클릭 통과), mapAirport 구멍은 원형·클릭형(클릭=공항 선택, canvas 히트테스트 우회). **revealSelector**: 클릭으로 패널이 열리면 스포트라이트가 열린 패널로 이동 + 툴팁을 패널 반대편으로 재배치(가림 방지). rAF로 이동 대상(지도 pan/zoom·flyTo·사이드바 트랜지션) 재측정. z-index 1100.
+- `frontend/src/features/map/MapView.jsx` ref -> 온보딩용 `getAirportPoint(icao)`(공항→뷰포트 픽셀), `flyToAirport(icao)`(선택 없이 카메라 이동, 첫 호출 시 홈 뷰 저장), `resetView()`(저장한 홈 뷰로 복귀) 추가. App이 온보딩 스텝 전환 시 패널 닫기+공항 스텝 이탈 시 resetView 호출.
 - `frontend/src/features/airport-panel/AirportPanel.jsx` -> airport drawer shell and tab selection.
 - `frontend/src/features/airport-panel/AirportPanel.css` -> airport drawer and tab style entry.
 - `frontend/src/features/airport-panel/tabs/CurrentWeatherTab.jsx` -> compact default airport drawer weather summary for warning, METAR, and next-6-hour TAF.

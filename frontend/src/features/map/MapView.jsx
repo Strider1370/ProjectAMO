@@ -223,6 +223,7 @@ const MapView = forwardRef(function MapView({
   const isMobile = useIsMobile()
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
+  const tourHomeRef = useRef(null) // 온보딩: 공항 확대 전 홈 뷰 저장(resetView 복귀용)
   const onSelectRef = useRef(onAirportSelect)
   const tooltipTimerRef = useRef(null)
   const tooltipIcaoRef = useRef(null)
@@ -321,6 +322,34 @@ const MapView = forwardRef(function MapView({
   useImperativeHandle(ref, () => ({
     setLayerOn, switchBasemap,
     loadRouteBriefing: (saved) => routeBriefing.actions.loadSavedRoute(saved, { autoBriefing: true }),
+    // 온보딩 투어용: 실제 공항 좌표를 써야 스포트라이트가 마커 위에 정확히 얹혀 클릭이 마커에 맞는다.
+    // 공항 → 화면 픽셀(스포트라이트 위치). 데이터/지도 준비 전엔 null(오버레이가 대기).
+    getAirportPoint: (icao) => {
+      const map = mapRef.current
+      const ap = airports.find((a) => a.icao === icao)
+      if (!map || !ap) return null
+      // project()는 캔버스(컨테이너) 기준 픽셀 — 사이드바만큼 오른쪽으로 밀린 캔버스의 뷰포트 오프셋을 더해야
+      // position:fixed 스포트라이트와 맞는다(안 더하면 마커 왼쪽으로 어긋남).
+      const p = map.project([ap.lon, ap.lat])
+      const canvas = map.getCanvas().getBoundingClientRect()
+      return { x: p.x + canvas.left, y: p.y + canvas.top }
+    },
+    // 공항으로 부드럽게 이동(선택은 안 함 — 선택하면 watch가 즉시 진행되어 클릭 유도가 무의미).
+    // 처음 날아가기 직전의 실제 뷰를 저장 → resetView가 "사이트 진입 시 보던 그 줌"으로 정확히 복귀.
+    flyToAirport: (icao) => {
+      const map = mapRef.current
+      const ap = airports.find((a) => a.icao === icao)
+      if (!map || !ap) return
+      if (!tourHomeRef.current) tourHomeRef.current = { center: map.getCenter(), zoom: map.getZoom() }
+      map.flyTo({ center: [ap.lon, ap.lat], zoom: 7.5, duration: 800 })
+    },
+    // 온보딩 스텝 전환 때 지도 리셋 — 저장한 초기 뷰(없으면 MAP_CONFIG)로 복귀.
+    resetView: () => {
+      const map = mapRef.current
+      if (!map) return
+      const home = tourHomeRef.current
+      map.flyTo(home ? { ...home, duration: 600 } : { center: MAP_CONFIG.center, zoom: MAP_CONFIG.zoom, duration: 600 })
+    },
   }))
   const { routeResult, fitBoundsRequest } = routeBriefing.state
   const { vfrWaypointsRef, hideTimerRef } = routeBriefing.refs

@@ -25,5 +25,6 @@ export function useLastSeenVersion() {
     setLastSeen(CURRENT_VERSION)
   }, [])
 
-  return { hasUpdate: lastSeen !== CURRENT_VERSION, markSeen }
+  // isFirstVisit: 이 앱을 한 번도 연 적 없는 사용자(저장된 버전 없음). 온보딩 투어 자동발동 게이트용.
+  return { hasUpdate: lastSeen !== CURRENT_VERSION, markSeen, isFirstVisit: lastSeen == null }
 }

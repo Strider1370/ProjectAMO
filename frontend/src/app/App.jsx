@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AirportPanel from '../features/airport-panel/AirportPanel.jsx'
 import MapView from '../features/map/MapView.jsx'
 import useWeatherPolling from './useWeatherPolling.js'
@@ -11,6 +11,8 @@ import AuthModal from '../features/auth/AuthModal.jsx'
 import { AuthProvider } from '../features/auth/AuthContext.jsx'
 import UpdatesModal from '../features/about/UpdatesModal.jsx'
 import SearchPalette from '../features/search/SearchPalette.jsx'
+import useTour from '../features/onboarding/useTour.js'
+import TourOverlay from '../features/onboarding/TourOverlay.jsx'
 import FlightAlertDetail from '../features/notifications/FlightAlertDetail.jsx'
 import { listSavedRoutes } from '../features/route-briefing/lib/routeStore.js'
 import { buildSearchCatalog } from '../features/map/layerActions.js'
@@ -56,7 +58,26 @@ function MainAppShell() {
   const mapRef = useRef(null)
   const isMobile = useIsMobile()
   const { weatherData, requestDeferredWeatherData } = useWeatherPolling()
-  const { hasUpdate, markSeen } = useLastSeenVersion()
+  const { hasUpdate, markSeen, isFirstVisit } = useLastSeenVersion()
+  const tourAirportPoint = useCallback((icao) => mapRef.current?.getAirportPoint(icao) ?? null, [])
+  const tourFocusAirport = useCallback((icao) => mapRef.current?.flyToAirport(icao), [])
+  const tour = useTour({ isMobile, isFirstVisit, markSeen, getAirportPoint: tourAirportPoint })
+
+  // 온보딩 스텝 전환 시 이전 스텝이 연 것 정리 — 패널 닫아 다음 스텝이 깨끗한 상태에서 하이라이트되게
+  // (기상·항공 패널은 같은 클래스라 안 닫으면 다음 스텝 reveal이 잔여 패널을 잡아 버림). 지도를 확대했던
+  // 공항 스텝에서 나올 때만 초기 뷰로 복귀. 첫 진입(prev=null)엔 아무것도 안 함.
+  const tourStepId = tour.step?.id
+  const prevTourStepRef = useRef(null)
+  useEffect(() => {
+    if (!tour.active) { prevTourStepRef.current = null; return }
+    const prev = prevTourStepRef.current
+    prevTourStepRef.current = tourStepId
+    if (prev == null) return
+    setSelectedAirport(null)
+    setActivePanel(null)
+    if (prev === 'airport') mapRef.current?.resetView?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour.active, tourStepId])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
@@ -68,8 +89,9 @@ function MainAppShell() {
   }, [activePanel, markSeen])
 
   // Auto-open the update board on first visit after a new release (once, on mount).
+  // 단, 온보딩 투어가 자동 발동할 참이면 양보한다(첫 방문자는 changelog보다 투어 우선).
   useEffect(() => {
-    if (hasUpdate) setActivePanel('updates')
+    if (hasUpdate && !tour.willAutoStart) setActivePanel('updates')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -177,6 +199,7 @@ function MainAppShell() {
         layerCounts={layerCounts}
         onSearchOpen={() => setSearchOpen(true)}
         onProfileClick={() => setAuthOpen(true)}
+        onHelp={tour.restart}
       />
       <main className="map-shell">
         <MapView
@@ -265,6 +288,14 @@ function MainAppShell() {
         catalog={searchCatalog}
         onRun={runAction}
       />
+      {tour.active && (
+        <TourOverlay
+          tour={tour}
+          getAirportPoint={tourAirportPoint}
+          onFocusAirport={tourFocusAirport}
+          onSelectAirport={setSelectedAirport}
+        />
+      )}
     </div>
   )
 }

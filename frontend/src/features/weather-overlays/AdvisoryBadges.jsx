@@ -121,7 +121,7 @@ function AdvisoryBadges({
   const openItem = isMobile ? chips.find((item) => item.key === openPanel) : null
 
   return (
-    <div className="advisory-badge-bar" aria-label="위험 요약">
+    <div className="advisory-badge-bar" aria-label="위험 요약" data-tour="advisory">
       {chips.map((item) => {
         const isOpen = openPanel === item.key
         if (isMobile) {

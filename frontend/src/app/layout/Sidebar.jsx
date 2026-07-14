@@ -20,7 +20,7 @@ const topItems = [
 const bottomItems = [
   { label: '업데이트', icon: Bell },
   { label: '설정',   icon: Settings },
-  { label: '도움말', icon: HelpCircle, disabled: true }, // 본 기능 전까지 비활성
+  { label: '도움말', icon: HelpCircle }, // 클릭 시 온보딩 투어 재실행
 ]
 
 function SidebarButton({ item, isExpanded, onClick }) {
@@ -53,7 +53,7 @@ const PANEL_MAP = {
   설정:            'settings',
 }
 
-function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick }) {
+function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick, onHelp }) {
   const { user } = useAuth()
   // 관리자 콘솔은 사이드바 노출 없이 /admin 직접 진입(서버 requireRole로 차단). UI에 진입점 안 둠.
   // 켜진 레이어 수 배지(모바일과 동일 정보). ponytail: 축소 시 점만, 확장 시 숫자 — 36px 레일에 숫자 욱여넣지 않음.
@@ -116,6 +116,9 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
         <DeveloperConsoleButton isExpanded={isExpanded} />
         {bottomItems.map((item) => {
           const panelId = PANEL_MAP[item.label]
+          const handleClick = panelId ? () => onPanelToggle(panelId)
+            : item.label === '도움말' ? onHelp
+            : undefined
           return (
             <SidebarButton
               key={item.label}
@@ -125,7 +128,7 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
                 dot: item.label === '업데이트' ? hasUpdate : item.dot,
               }}
               isExpanded={isExpanded}
-              onClick={panelId ? () => onPanelToggle(panelId) : undefined}
+              onClick={handleClick}
             />
           )
         })}
