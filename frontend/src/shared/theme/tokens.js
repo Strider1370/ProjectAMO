@@ -74,6 +74,8 @@ export const CSS_VARS = {
   '--turb-light': '#64D264',
   '--turb-mod': '#FFC300',
   '--turb-sev': '#FF3737',
+  '--surface-night': '#1C2530',
+  '--moon-lit': '#E8B54B',
 }
 
 const C = CSS_VARS

@@ -1,0 +1,293 @@
+<meta charset="utf-8">
+<title>달빛 탭 — ProjectAMO</title>
+<style>
+:root{--s-xs:4px;--s-s:8px;--s-m:12px;--s-l:16px;--s-xl:20px;
+  --text-1:#242424;--text-2:#424242;--text-3:#616161;
+  --bg-1:#fff;--bg-2:#fafafa;--bg-3:#f5f5f5;--bg-4:#f0f0f0;
+  --stroke-1:#d1d1d1;--stroke-2:#e0e0e0;--accent:#334155;--r-md:4px;--r-lg:6px;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Pretendard,system-ui,sans-serif;background:#e6e9ee;padding:24px;color:var(--text-1);-webkit-font-smoothing:antialiased}
+.panel{width:720px;background:var(--bg-1);border:1px solid var(--stroke-1);border-radius:var(--r-lg);overflow:hidden}
+.ph{display:flex;align-items:baseline;gap:var(--s-s);padding:var(--s-m) var(--s-l);border-bottom:1px solid var(--stroke-2)}
+.ph b{font-size:20px;font-weight:600}.ph span{font-size:14px;color:var(--text-3)}
+.tabs{display:flex;padding:0 var(--s-l);border-bottom:1px solid var(--stroke-2);background:var(--bg-2)}
+.tab{padding:9px 12px;font-size:14px;color:var(--text-3);border-bottom:2px solid transparent}
+.tab.on{color:var(--text-1);font-weight:600;border-bottom-color:var(--accent);background:var(--bg-1)}
+.body{padding:var(--s-l)}
+.hero{display:flex;align-items:center;gap:var(--s-l);padding:var(--s-m) var(--s-l);border:1px solid var(--stroke-2);
+  border-radius:var(--r-md);background:var(--bg-2);margin-bottom:var(--s-l)}
+.hero-m{flex:0 0 auto;line-height:0;background:#1c2530;border-radius:var(--r-md);width:44px;height:44px;
+  display:flex;align-items:center;justify-content:center}
+.hero-i{flex:1;min-width:0}
+.hero-g{font-size:16px;font-weight:600;line-height:22px}
+.hero-s{font-size:12px;line-height:16px;color:var(--text-3);margin-top:1px;font-variant-numeric:tabular-nums}
+.hero-n{text-align:right;display:flex;align-items:baseline;gap:4px}
+.hero-n b{font-size:28px;font-weight:600;line-height:32px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.hero-n u{text-decoration:none;font-size:12px;color:var(--text-3)}
+.hd{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 var(--s-s)}
+.hd b{font-size:12px;font-weight:600;color:var(--text-2);letter-spacing:.03em}
+.hd span{font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.card{border:1px solid var(--stroke-2);border-radius:var(--r-md);padding:var(--s-s);margin-bottom:var(--s-xl)}
+.sub{font-size:11px;line-height:16px;color:#9aa0a6;padding:var(--s-s) 2px 0}
+.k{display:inline-flex;align-items:center;gap:4px;margin-right:10px;color:var(--text-3)}
+.k i{width:14px;height:2.5px;border-radius:2px;display:inline-block}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px}
+.dow div{text-align:center;font-size:11px;color:var(--text-3);padding:0 0 2px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.c{border-radius:var(--r-md);padding:6px 8px 7px;min-height:58px;display:flex;flex-direction:column;gap:3px;
+  background:var(--bg-1);box-shadow:inset 0 0 0 1px var(--stroke-2)}
+.c-x{background:transparent!important;box-shadow:none}
+.c-dk{background:#1c2530;color:#fff;box-shadow:none}
+.c-sel{box-shadow:inset 0 0 0 2px var(--accent)}
+.c-dk.c-sel{box-shadow:inset 0 0 0 2px #93a3b8}
+.c-t{display:flex;align-items:center;justify-content:space-between;line-height:0}
+.c-d{font-size:12px;font-weight:600;line-height:14px;color:var(--text-3)}
+.c-dk .c-d{color:rgba(255,255,255,.72)}
+.c-v{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;line-height:20px;margin-top:auto}
+.c-v em{font-style:normal;font-size:10px;font-weight:400;color:var(--text-3);margin-left:3px}
+.c-dk .c-v em{color:rgba(255,255,255,.6)}
+.c-b{height:3px;border-radius:2px;background:var(--bg-4);overflow:hidden}
+.c-dk .c-b{background:rgba(255,255,255,.14)}
+.c-b i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.c-dk .c-b i{background:rgba(255,255,255,.5)}
+.lg{display:flex;gap:var(--s-l);margin-top:var(--s-m);align-items:center;flex-wrap:wrap}
+.lg span{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-3)}
+.lg b{font-weight:400;color:#9aa0a6}
+.lg-dk i{width:12px;height:12px;border-radius:2px;background:#1c2530;display:inline-block}
+.lg-b i{width:26px;height:3px;border-radius:2px;background:#f0f0f0;display:inline-block}
+.lg-b u{display:block;height:100%;background:var(--accent);border-radius:2px}
+.cap{font-size:11px;line-height:16px;color:#9aa0a6;margin-top:var(--s-m);padding-top:var(--s-m);border-top:1px solid var(--bg-3)}
+</style>
+<div class="panel">
+  <div class="ph"><b>RKSI</b><span>인천국제공항</span></div>
+  <div class="tabs"><div class="tab">현재날씨</div><div class="tab">METAR</div><div class="tab">TAF</div>
+    <div class="tab">AMOS</div><div class="tab">NOTAM</div><div class="tab">기상정보</div><div class="tab on">달빛</div></div>
+  <div class="body">
+    <div class="hero">
+      <div class="hero-m"><svg width="34" height="34" viewBox="-17 -17 34 34" aria-hidden="true">
+    <circle r="16" fill="transparent" stroke="rgba(232,181,75,.40)" stroke-width="1"/>
+    <path d="M 0,-16 A 16,16 0 0,1 0,16 A 16.00,16 0 0,1 0,-16 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="hero-i">
+        <div class="hero-g">밝음 · 조명률 100%</div>
+        <div class="hero-s">월출 19:45 · 월몰 05:50 · 최대 00:45</div>
+      </div>
+      <div class="hero-n"><b>135</b><u>mlx</u></div>
+    </div>
+
+    <div class="hd"><b>7월 29일 밤 — 지면 조도</b><span>일몰 19:45 → 일출 05:36</span></div>
+    <div class="card"><svg viewBox="0 0 656 210" width="100%" role="img" aria-label="총 지면 조도와 달빛 기여분">
+    <rect x="46.0" y="24" width="29.5" height="154" fill="#f1f3f6"/><rect x="75.5" y="24" width="36.1" height="154" fill="#e5e9ee"/><rect x="111.6" y="24" width="39.2" height="154" fill="#d9dee5"/><rect x="150.8" y="24" width="388.4" height="154" fill="#ccd3dc"/><rect x="539.2" y="24" width="39.2" height="154" fill="#d9dee5"/><rect x="578.4" y="24" width="36.1" height="154" fill="#e5e9ee"/><rect x="614.5" y="24" width="29.5" height="154" fill="#f1f3f6"/><line x1="46" y1="165.65524702855544" x2="644" y2="165.65524702855544" stroke="#fff" stroke-width="1" opacity=".5"/><text x="38" y="169.15524702855544" text-anchor="end" font-size="10" fill="#9aa0a6">1</text><line x1="46" y1="142.04603919046286" x2="644" y2="142.04603919046286" stroke="#fff" stroke-width="1" opacity=".5"/><line x1="46" y1="118.43683135237029" x2="644" y2="118.43683135237029" stroke="#fff" stroke-width="1" opacity=".5"/><text x="38" y="121.93683135237029" text-anchor="end" font-size="10" fill="#9aa0a6">100</text><line x1="46" y1="94.82762351427772" x2="644" y2="94.82762351427772" stroke="#fff" stroke-width="1" opacity=".5"/><line x1="46" y1="71.21841567618515" x2="644" y2="71.21841567618515" stroke="#fff" stroke-width="1" opacity=".5"/><text x="38" y="74.71841567618515" text-anchor="end" font-size="10" fill="#9aa0a6">1만</text><line x1="46" y1="47.60920783809257" x2="644" y2="47.60920783809257" stroke="#fff" stroke-width="1" opacity=".5"/><line x1="46" y1="24" x2="644" y2="24" stroke="#fff" stroke-width="1" opacity=".5"/><text x="38" y="27.5" text-anchor="end" font-size="10" fill="#9aa0a6">100만</text><text x="345.0" y="16" text-anchor="middle" font-size="10" fill="#616161">완전한 어둠 21:28–03:52</text><line x1="46" y1="172.76232676168647" x2="644" y2="172.76232676168647" stroke="#8c96a3" stroke-width="1" stroke-dasharray="4 3"/>
+    <text x="642" y="168.8" text-anchor="end" font-size="10" fill="#6f7883">별빛 배경 0.5</text>
+    <polyline points="46.0,178.0 66.2,147.8 86.5,139.6 106.7,133.3 127.0,128.8 147.2,125.5 167.4,123.0 187.7,121.1 207.9,119.5 228.1,118.3 248.4,117.4 268.6,116.6 288.9,116.1 309.1,115.7 329.3,115.4 349.6,115.4 369.8,115.4 390.1,115.7 410.3,116.0 430.5,116.6 450.8,117.3 471.0,118.2 491.2,119.4 511.5,120.9 531.7,122.7 552.0,125.0 572.2,128.1 592.4,132.2 612.7,137.9 632.9,145.6" fill="none" stroke="#E8B54B" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="46.0,25.7 66.2,61.2 86.5,98.6 106.7,127.4 127.0,128.5 147.2,125.4 167.4,122.9 187.7,121.0 207.9,119.5 228.1,118.3 248.4,117.3 268.6,116.6 288.9,116.0 309.1,115.6 329.3,115.4 349.6,115.3 369.8,115.4 390.1,115.6 410.3,116.0 430.5,116.5 450.8,117.3 471.0,118.2 491.2,119.3 511.5,120.8 531.7,122.6 552.0,124.9 572.2,127.3 592.4,116.8 612.7,81.6 632.9,45.1" fill="none" stroke="#243040" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <text x="62.0" y="36.3" font-size="10" font-weight="600" fill="#6f7883">태양</text><text x="156.8" y="131.4" font-size="10" font-weight="600" fill="#9a7a2e">달빛</text><circle cx="349.6" cy="115.4" r="3" fill="#fff" stroke="#243040" stroke-width="1.6"/>
+    <text x="349.6" y="106.4" text-anchor="middle" font-size="11" font-weight="600" fill="#243040">135 mlx</text>
+    <line x1="46" y1="178" x2="644" y2="178" stroke="#b9c0c9"/>
+    <text x="60.8" y="197" text-anchor="middle" font-size="10" fill="#9aa0a6">20:00</text><text x="182.2" y="197" text-anchor="middle" font-size="10" fill="#9aa0a6">22:00</text><text x="303.6" y="197" text-anchor="middle" font-size="10" fill="#9aa0a6">00:00</text><text x="425.1" y="197" text-anchor="middle" font-size="10" fill="#9aa0a6">02:00</text><text x="546.5" y="197" text-anchor="middle" font-size="10" fill="#9aa0a6">04:00</text><line x1="46.3" y1="178" x2="46.3" y2="182" stroke="#8c96a3"/>
+       <text x="46.3" y="209" text-anchor="middle" font-size="10" fill="#6f7883">월출 19:45</text></svg>
+      <div class="sub">
+        <span class="k"><i style="background:#243040"></i>총 조도 (태양+달+별빛)</span>
+        <span class="k"><i style="background:#E8B54B"></i>달빛 기여분</span><br>
+        배경 음영 = 박명 단계. 해가 지고도 한동안은 <b>태양빛이 달빛보다 수천 배 밝습니다.</b>
+        달빛이 지면을 지배하는 건 두 선이 겹치는 구간부터입니다.
+      </div>
+    </div>
+
+    <div class="hd"><b>‹ 2026년 7월 ›</b><span>칸을 누르면 그 밤의 곡선이 위에 표시됩니다</span></div>
+    <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+    <div class="cal"><div class="c c-x"></div><div class="c c-x"></div><div class="c c-x"></div><div class="c">
+      <div class="c-t"><span class="c-d">1</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 6.17,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">62<em>98%</em></div>
+      <div class="c-b"><i style="width:78%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">2</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 5.67,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">54<em>94%</em></div>
+      <div class="c-b"><i style="width:75%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">3</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 4.94,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">48<em>88%</em></div>
+      <div class="c-b"><i style="width:74%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">4</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 4.00,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">43<em>81%</em></div>
+      <div class="c-b"><i style="width:72%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">5</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 2.89,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">36<em>72%</em></div>
+      <div class="c-b"><i style="width:69%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">6</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 1.63,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">29<em>63%</em></div>
+      <div class="c-b"><i style="width:65%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">7</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 0.25,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">21<em>52%</em></div>
+      <div class="c-b"><i style="width:60%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">8</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 1.18,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">13<em>41%</em></div>
+      <div class="c-b"><i style="width:53%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">9</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 2.60,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">7<em>30%</em></div>
+      <div class="c-b"><i style="width:42%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">10</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 3.91,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">3<em>20%</em></div>
+      <div class="c-b"><i style="width:27%"></i></div>
+    </div><div class="c c-dk">
+      <div class="c-t"><span class="c-d">11</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="transparent" stroke="rgba(232,181,75,.40)" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 5.03,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">1<em>11%</em></div>
+      <div class="c-b"><i style="width:4%"></i></div>
+    </div><div class="c c-dk">
+      <div class="c-t"><span class="c-d">12</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="transparent" stroke="rgba(232,181,75,.40)" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 5.88,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">–<em>5%</em></div>
+      <div class="c-b"><i style="width:0%"></i></div>
+    </div><div class="c c-dk">
+      <div class="c-t"><span class="c-d">13</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="transparent" stroke="rgba(232,181,75,.40)" stroke-width="1"/>
+    </svg></div>
+      <div class="c-v">–<em>1%</em></div>
+      <div class="c-b"><i style="width:0%"></i></div>
+    </div><div class="c c-dk">
+      <div class="c-t"><span class="c-d">14</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="transparent" stroke="rgba(232,181,75,.40)" stroke-width="1"/>
+    </svg></div>
+      <div class="c-v">–<em>0%</em></div>
+      <div class="c-b"><i style="width:0%"></i></div>
+    </div><div class="c c-dk">
+      <div class="c-t"><span class="c-d">15</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="transparent" stroke="rgba(232,181,75,.40)" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 6.20,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">–<em>2%</em></div>
+      <div class="c-b"><i style="width:0%"></i></div>
+    </div><div class="c c-dk">
+      <div class="c-t"><span class="c-d">16</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="transparent" stroke="rgba(232,181,75,.40)" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 5.58,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">–<em>7%</em></div>
+      <div class="c-b"><i style="width:0%"></i></div>
+    </div><div class="c c-dk">
+      <div class="c-t"><span class="c-d">17</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="transparent" stroke="rgba(232,181,75,.40)" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 4.67,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">1<em>14%</em></div>
+      <div class="c-b"><i style="width:5%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">18</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 3.56,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">2<em>23%</em></div>
+      <div class="c-b"><i style="width:23%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">19</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 2.33,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">4<em>32%</em></div>
+      <div class="c-b"><i style="width:35%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">20</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 1.04,6.5 0 0,0 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">8<em>42%</em></div>
+      <div class="c-b"><i style="width:44%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">21</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 0.26,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">12<em>52%</em></div>
+      <div class="c-b"><i style="width:51%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">22</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 1.52,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">16<em>62%</em></div>
+      <div class="c-b"><i style="width:55%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">23</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 2.70,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">19<em>71%</em></div>
+      <div class="c-b"><i style="width:58%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">24</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 3.77,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">22<em>79%</em></div>
+      <div class="c-b"><i style="width:61%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">25</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 4.69,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">26<em>86%</em></div>
+      <div class="c-b"><i style="width:64%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">26</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 5.46,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">33<em>92%</em></div>
+      <div class="c-b"><i style="width:68%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">27</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 6.03,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">47<em>96%</em></div>
+      <div class="c-b"><i style="width:73%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">28</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 6.38,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0)"/></svg></div>
+      <div class="c-v">75<em>99%</em></div>
+      <div class="c-b"><i style="width:81%"></i></div>
+    </div><div class="c c-sel">
+      <div class="c-t"><span class="c-d">29</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 6.50,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">135<em>100%</em></div>
+      <div class="c-b"><i style="width:90%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">30</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 6.36,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">101<em>99%</em></div>
+      <div class="c-b"><i style="width:85%"></i></div>
+    </div><div class="c">
+      <div class="c-t"><span class="c-d">31</span><svg width="15" height="15" viewBox="-7.5 -7.5 15 15" aria-hidden="true">
+    <circle r="6.5" fill="#f2f3f5" stroke="#d8dce1" stroke-width="1"/>
+    <path d="M 0,-6.5 A 6.5,6.5 0 0,1 0,6.5 A 5.97,6.5 0 0,1 0,-6.5 Z" fill="#E8B54B" transform="translate(0,0) scale(-1,1)"/></svg></div>
+      <div class="c-v">83<em>96%</em></div>
+      <div class="c-b"><i style="width:82%"></i></div>
+    </div></div>
+    <div class="lg">
+      <span class="lg-dk"><i></i>무월광 <b>&lt; 2 mlx</b></span>
+      <span class="lg-b"><i><u style="width:42%"></u></i>막대 = 달빛 밝기 (로그)</span>
+      <span><b>숫자 = 달빛 최대 mlx · 옆의 작은 값 = 조명률</b></span>
+    </div>
+    <div class="cap">대기·태양·배경광: USNO Circular 171 (Janiczek &amp; DeYoung, 1987) · 달: 동 문헌.
+    맑은 하늘 기준이며 구름은 반영되지 않습니다. 한 칸 = 그날 저녁 일몰부터 다음날 일출까지의 한 밤.</div>
+  </div>
+</div>

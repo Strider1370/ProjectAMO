@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Cloud, Clock, Gauge, FileText, Info, ChevronDown } from 'lucide-react'
+import { AlertTriangle, Cloud, Clock, Gauge, FileText, Info, Moon, ChevronDown } from 'lucide-react'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
 import { fmtKstShort } from './lib/formatters.js'
 import { formatAmosTime } from '../../shared/weather/amosViewModel.js'
@@ -9,6 +9,7 @@ import EnhancedTafTab from './tabs/TafTab.jsx'
 import AmosBoardTab from './tabs/AmosTab.jsx'
 import AirportInfoTab from './tabs/AirportInfoTab.jsx'
 import NotamTab from './tabs/NotamTab.jsx'
+import MoonSection from './tabs/MoonSection.jsx'
 import WarningCarousel from './WarningCarousel.jsx'
 import './AirportPanel.css'
 
@@ -26,7 +27,7 @@ const AIRPORT_HEADER_NAME_KO = {
 const FULL_FEATURE_AIRPORTS = new Set(['RKSI', 'RKSS', 'RKPC', 'RKPU', 'RKJY', 'RKJB', 'RKNY', 'RKPK'])
 
 // 섹션·레일 공용 아이콘(§12 — 레일과 제목바가 같은 아이콘으로 묶임)
-const SECTION_ICON = { warn: AlertTriangle, metar: Cloud, taf: Clock, amos: Gauge, notam: FileText, info: Info }
+const SECTION_ICON = { warn: AlertTriangle, metar: Cloud, taf: Clock, amos: Gauge, notam: FileText, info: Info, moon: Moon }
 
 // Phase 1: 탭 → 단일 스크롤 + 스크롤스파이 레일. 섹션 순서 = 위험도/시급성(스펙 §4).
 // 각 섹션은 기존 탭 컴포넌트를 그대로 감쌈(§12 세부 표시는 Phase 2~4에서). 현재날씨는 해체(렌더 제외).
@@ -124,6 +125,10 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
     isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
     { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} /> },
     isFullFeature && { id: 'info', label: '기상정보', node: <AirportInfoTab info={airportInfo} loading={infoLoading} /> },
+    // 달빛은 위험이 아니라 계획용 참고값 → 위험도 순서상 맨 끝.
+    // 국내 공항만(해외는 KST 앵커·고위도 가드가 검증되지 않음). 상류 데이터는 불필요 — 좌표만 쓴다.
+    !airport?.overseas && Number.isFinite(airport?.lat) && Number.isFinite(airport?.lon)
+      && { id: 'moon', label: '달빛', node: <MoonSection airport={airport} /> },
   ].filter(Boolean)
 
   const goTo = (id) =>

@@ -1,0 +1,343 @@
+/* 야간 지면 조도 섹션.
+   색 규칙: 등급에 유채색을 쓰지 않는다(달빛은 위험도가 아니다 — design-language §2-2).
+   유일한 유채색은 --moon-lit(달 원반·달빛 곡선)이며 "관습 차용"(§4)이다. */
+
+.moon-sec {
+  display: flex;
+  flex-direction: column;
+}
+
+.moon-empty {
+  font-size: var(--fs-200);
+  color: var(--text-3);
+}
+
+/* 요약 줄 */
+.moon-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-l);
+  padding: var(--space-m) var(--space-l);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  margin-bottom: var(--space-l);
+}
+.moon-hero-chip {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-night);
+  border-radius: var(--radius-md);
+}
+.moon-hero-main { flex: 1; min-width: 0; }
+.moon-hero-grade {
+  font-size: var(--fs-400);
+  line-height: var(--lh-400);
+  font-weight: var(--fw-semibold);
+}
+.moon-hero-sub {
+  font-size: var(--fs-200);
+  line-height: var(--lh-200);
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.moon-hero-num {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+}
+.moon-hero-num b {
+  font-size: var(--fs-600);
+  line-height: var(--lh-600);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.moon-hero-num span { font-size: var(--fs-200); color: var(--text-3); }
+
+/* 제목 줄 */
+.moon-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-s);
+  margin-bottom: var(--space-s);
+}
+.moon-head b {
+  font-size: var(--fs-200);
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.moon-head span {
+  font-size: var(--fs-100);
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.moon-nav {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-s);
+  border: none;
+  background: none;
+  color: var(--text-3);
+  font-size: var(--fs-400);
+  cursor: pointer;
+}
+.moon-nav:hover { color: var(--text-1); }
+
+/* 차트 */
+.moon-card {
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-s);
+  margin-bottom: var(--space-xl);
+}
+.moon-chart { width: 100%; height: auto; display: block; }
+
+.moon-band--civil { fill: #f1f3f6; }
+.moon-band--nautical { fill: #e5e9ee; }
+.moon-band--astro { fill: #d9dee5; }
+.moon-band--dark { fill: #ccd3dc; }
+
+.moon-grid { stroke: #fff; stroke-width: 1; opacity: 0.5; }
+.moon-axis-line { stroke: #b9c0c9; }
+.moon-axis { font-size: 10px; fill: #9aa0a6; }
+.moon-dark-label { font-size: 10px; fill: var(--text-3); }
+
+.moon-line-total {
+  fill: none;
+  stroke: #243040;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.moon-line-moon {
+  fill: none;
+  stroke: var(--moon-lit);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.moon-floor { stroke: #8c96a3; stroke-width: 1; stroke-dasharray: 4 3; }
+.moon-floor-label { font-size: 10px; fill: #6f7883; }
+.moon-peak { fill: #fff; stroke: #243040; stroke-width: 1.6; }
+.moon-peak-label { font-size: 11px; font-weight: var(--fw-semibold); fill: #243040; }
+.moon-tick { stroke: #8c96a3; }
+.moon-tick-label { font-size: 10px; fill: #6f7883; }
+
+.moon-sub {
+  font-size: var(--fs-100);
+  line-height: var(--lh-100);
+  color: #9aa0a6;
+  padding: var(--space-s) 2px 0;
+}
+.moon-sub b { color: var(--text-2); font-weight: var(--fw-semibold); }
+.moon-key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-right: var(--space-mnudge);
+  color: var(--text-3);
+}
+.moon-key i { width: 14px; height: 2.5px; border-radius: 2px; display: inline-block; }
+.moon-key-total { background: #243040; }
+.moon-key-moon { background: var(--moon-lit); }
+
+/* 달 원반 — 옛 천문력 관례: 채워진 원 = 보름 */
+.moon-disc-edge { fill: #f2f3f5; stroke: #d8dce1; stroke-width: 1; }
+.moon-disc-lit { fill: var(--moon-lit); }
+.moon-disc--on-dark .moon-disc-edge { fill: none; stroke: rgb(232 181 75 / 40%); }
+
+/* 달력 — 기본 접힘 */
+.moon-cal-fold {
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-s) var(--space-m) var(--space-m);
+}
+.moon-cal-fold:not([open]) { padding-bottom: var(--space-s); }
+.moon-cal-summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-s);
+  min-height: var(--touch-min);
+  padding: var(--space-xs) 0;
+  cursor: pointer;
+  list-style: none;
+}
+.moon-cal-summary::-webkit-details-marker { display: none; }
+.moon-cal-summary::before {
+  content: '›';
+  display: inline-block;
+  color: var(--text-3);
+  transition: transform 0.12s;
+  align-self: center;
+}
+.moon-cal-fold[open] > .moon-cal-summary::before { transform: rotate(90deg); }
+.moon-cal-summary-title {
+  font-size: var(--fs-200);
+  font-weight: var(--fw-semibold);
+  color: var(--text-2);
+}
+.moon-cal-summary-hint {
+  font-size: var(--fs-100);
+  color: var(--text-3);
+}
+.moon-head--cal { margin-top: var(--space-s); }
+
+.moon-dow {
+  display: grid;
+  /* minmax(0,1fr): 칸의 min-content 폭이 1fr을 밀어내 그리드가 가로로 터지는 것을 막는다 */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: 2px;
+}
+.moon-dow div {
+  text-align: center;
+  font-size: var(--fs-100);
+  color: var(--text-3);
+  padding-bottom: 2px;
+}
+.moon-cal {
+  display: grid;
+  /* minmax(0,1fr): 칸의 min-content 폭이 1fr을 밀어내 그리드가 가로로 터지는 것을 막는다 */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.moon-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  min-height: 58px;
+  padding: var(--space-snudge) var(--space-s) 7px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  box-shadow: inset 0 0 0 1px var(--stroke-2);
+  color: var(--text-1);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.moon-cell:hover { box-shadow: inset 0 0 0 1px var(--stroke-strong); }
+.moon-cell--pad {
+  background: transparent;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+.moon-cell--dark { background: var(--surface-night); color: #fff; box-shadow: none; }
+.moon-cell.is-selected { box-shadow: inset 0 0 0 2px var(--accent); }
+.moon-cell--dark.is-selected { box-shadow: inset 0 0 0 2px #93a3b8; }
+
+.moon-cell-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  line-height: 0;
+}
+.moon-cell-day {
+  font-size: var(--fs-200);
+  line-height: 14px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.moon-cell--dark .moon-cell-day { color: rgb(255 255 255 / 72%); }
+.moon-cell-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: var(--radius-circular);
+  background: currentcolor;
+  display: inline-block;
+}
+.moon-cell-val {
+  margin-top: auto;
+  font-size: var(--fs-400);
+  line-height: var(--lh-300);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.moon-cell-val em {
+  font-style: normal;
+  font-size: var(--fs-100);
+  font-weight: var(--fw-regular);
+  color: var(--text-3);
+  margin-left: 3px;
+}
+.moon-cell--dark .moon-cell-val em { color: rgb(255 255 255 / 60%); }
+.moon-cell-bar {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bg-4);
+  overflow: hidden;
+}
+.moon-cell--dark .moon-cell-bar { background: rgb(255 255 255 / 14%); }
+.moon-cell-bar i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.moon-cell--dark .moon-cell-bar i { background: rgb(255 255 255 / 50%); }
+
+/* 범례 */
+.moon-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-l);
+  margin-top: var(--space-m);
+}
+.moon-legend span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-snudge);
+  font-size: var(--fs-100);
+  color: var(--text-3);
+}
+.moon-legend b { font-weight: var(--fw-regular); color: #9aa0a6; }
+.moon-legend-dark i {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--surface-night);
+  display: inline-block;
+}
+.moon-legend-bar i {
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bg-4);
+  display: inline-block;
+}
+.moon-legend-bar u { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.moon-legend-note { color: #9aa0a6; }
+
+.moon-cap {
+  font-size: var(--fs-100);
+  line-height: var(--lh-100);
+  color: #9aa0a6;
+  margin-top: var(--space-m);
+  padding-top: var(--space-m);
+  border-top: 1px solid var(--bg-3);
+}
+
+/* 모바일: 7열을 유지하되 칸 내용을 줄여 폭에 맞춘다. 조명률은 탭하면 위 요약에서 보인다. */
+@media (width <= 480px) {
+  .moon-sec { overflow-x: hidden; } /* 가로 스크롤 금지 (design-language §6) */
+  .moon-cal, .moon-dow { gap: 1px; }
+  .moon-cell { min-height: 52px; padding: var(--space-xs) var(--space-xs) var(--space-snudge); }
+  .moon-cell-val { font-size: var(--fs-300); }
+  .moon-cell-val em { display: none; }
+  .moon-hero { gap: var(--space-m); padding: var(--space-s) var(--space-m); }
+  .moon-head { flex-wrap: wrap; }
+  .moon-head span { flex: 1 1 100%; }
+  .moon-legend { gap: var(--space-s); }
+}
