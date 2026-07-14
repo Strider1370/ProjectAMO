@@ -57,9 +57,10 @@ export default function AirportInfoTab({ info, loading = false }) {
           <table className="ap-info-table">
             <thead>
               <tr>
+                {/* 상류(sel_val1~3)는 값만 주고 라벨이 없다. 실제 순서: 기온 → 체감온도 → 강수량 */}
                 <th>예상 최저/최고기온 (℃)</th>
-                <th>예상 강수량(mm)</th>
-                {showSel3 && <th></th>}
+                <th>예상 최고체감온도 (℃)</th>
+                {showSel3 && <th>예상 강수량(mm)</th>}
               </tr>
             </thead>
             <tbody>
