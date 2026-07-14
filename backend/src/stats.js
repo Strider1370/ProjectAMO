@@ -1,7 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 
-const TYPES = ['metar', 'taf', 'warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'radar', 'amos', 'adsb', 'metar_overseas', 'taf_overseas', 'sigmet_overseas']
+// 여기 없는 type은 recordSuccess/Failure가 조용히 버린다(아래 `if (!entry) return`). 새 수집기는 반드시 등록할 것.
+const TYPES = ['metar', 'taf', 'warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'radar', 'rainviewer', 'amos', 'adsb', 'metar_overseas', 'taf_overseas', 'sigmet_overseas']
 const MAX_RECENT_RUNS = 50
 
 const METAR_LIMIT_MIN = { RKSI: 40 }

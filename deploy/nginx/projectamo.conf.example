@@ -37,7 +37,7 @@ server {
     add_header Cache-Control "public, max-age=10800, immutable";
   }
 
-  location ~* "^/data/(radar/echo_meta\.json|satellite/sat_meta\.json|sigwx_low/(fronts_meta|clouds_meta)_\d{10}\.json)$" {
+  location ~* "^/data/(radar/echo_meta\.json|radar/rainviewer_meta\.json|satellite/sat_meta\.json|sigwx_low/(fronts_meta|clouds_meta)_\d{10}\.json)$" {
     alias /opt/projectamo/shared/data/$1;
     add_header Cache-Control "no-cache";
   }

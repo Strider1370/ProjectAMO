@@ -393,6 +393,7 @@ const SNAPSHOT_SOURCES = [
   { keys: ['notam'], files: [snapshotMetaLatest('notam')], build: () => buildHashEntry('notam') },
   { keys: ['echoMeta', 'echo'], files: [snapshotMetaFile('radar', 'echo_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'echo_meta.json')) },
   { keys: ['satMeta', 'satellite'], files: [snapshotMetaFile('satellite', 'sat_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('satellite', 'sat_meta.json')) },
+  { keys: ['rainviewerMeta', 'rainviewer'], files: [snapshotMetaFile('radar', 'rainviewer_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'rainviewer_meta.json')) },
   // ponytail: sigwx 오버레이는 파일 경로가 tmfc 동적 → 정적 files 없음(5s TTL로 커버). 정적화는 필요할 때.
   { keys: ['sigwxFrontMeta'], files: [], build: () => buildSigwxOverlaySnapshotEntry('fronts') },
   { keys: ['sigwxCloudMeta'], files: [], build: () => buildSigwxOverlaySnapshotEntry('clouds') },

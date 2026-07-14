@@ -14,6 +14,13 @@ import {
   setLightningBlinkState,
   setLightningVisibility,
 } from './lightningLayers.js'
+import {
+  RAINVIEWER_COVERAGE_LAYER,
+  RAINVIEWER_COVERAGE_SOURCE,
+  RAINVIEWER_LAYER,
+  RAINVIEWER_SOURCE,
+  syncRainviewerLayers,
+} from './rainviewerLayers.js'
 
 export const SATELLITE_SOURCE = 'kma-satellite-overlay'
 export const SATELLITE_LAYER = 'kma-satellite-overlay'
@@ -48,6 +55,8 @@ export const SIGWX_VECTOR_LAYERS = [
 export const WEATHER_OVERLAY_SOURCE_IDS = [
   SATELLITE_SOURCE,
   RADAR_SOURCE,
+  RAINVIEWER_SOURCE,
+  RAINVIEWER_COVERAGE_SOURCE,
   SIGWX_SOURCE,
   SIGWX_CLOUD_SOURCE,
   SIGWX_POLYGON_SOURCE,
@@ -67,6 +76,8 @@ export const WEATHER_OVERLAY_SOURCE_IDS = [
 export const WEATHER_OVERLAY_LAYER_IDS = [
   SATELLITE_LAYER,
   RADAR_LAYER,
+  RAINVIEWER_LAYER,
+  RAINVIEWER_COVERAGE_LAYER,
   SIGWX_LAYER,
   SIGWX_CLOUD_LAYER,
   ...SIGWX_VECTOR_LAYERS,
@@ -114,6 +125,7 @@ export const RADAR_RAINRATE_LEGEND = [
 // id 추가/삭제 시 layerActions.test.js 커버리지 테스트가 동기화를 강제한다.
 export const MET_LAYERS = [
   { id: 'radar', label: 'Radar', color: '#38bdf8' },
+  { id: 'radarOverseas', label: 'Radar(해외)', color: '#38bdf8' },
   { id: 'satellite', label: 'Satellite', color: '#64748b' },
   { id: 'lightning', label: 'Lightning', color: '#facc15' },
   { id: 'wind', label: 'Wind', color: '#22c55e' },
@@ -427,6 +439,12 @@ export function syncRasterAndSigwxLayers(map, model) {
     layerId: RADAR_LAYER,
     frame: model.radarFrame,
     opacity: 0.88,
+  })
+  // 해외 레이더 — 국내와 상호배타라 z-order 다툼이 없다. 프레임이 없으면(커버 시간 밖) 스스로 숨는다.
+  syncRainviewerLayers(map, {
+    meta: model.rainviewerMeta,
+    frame: model.rainviewerFrame,
+    visible: !!model.visibility.radarOverseas,
   })
   const hasSigwx = addOrUpdateImageOverlay(map, {
     sourceId: SIGWX_SOURCE,

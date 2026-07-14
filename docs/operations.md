@@ -21,6 +21,7 @@ Terrain runtime path:
 - `sigwx_low`: `12` history files minimum
 - `radar`: `36` loop frames
 - `satellite`: `18` loop frames
+- `rainviewer` (해외 레이더): 단일 메타 파일 1개만 덮어씀. 보존 대상 없음 — 타일 이미지는 서버에 저장하지 않고 브라우저가 RainViewer CDN에서 직접 받는다.
 
 Current behavior:
 
@@ -47,6 +48,7 @@ Current incremental keys:
 - `lightning`
 - `airportInfo`
 - `echoMeta`
+- `rainviewerMeta`
 - `satMeta`
 
 ## Cache Policy
@@ -65,6 +67,7 @@ Current incremental keys:
 ### Generated metadata
 
 - `/data/radar/echo_meta.json`: `no-cache`
+- `/data/radar/rainviewer_meta.json`: `no-cache`
 - `/data/satellite/sat_meta.json`: `no-cache`
 - `/data/sigwx_low/fronts_meta_<tmfc>.json`: `no-cache`
 - `/data/sigwx_low/clouds_meta_<tmfc>.json`: `no-cache`

@@ -121,6 +121,7 @@ export function buildSnapshotMetaFromData(data = {}) {
     environment: buildHashEntry(data.environment),
     airportInfo: buildHashEntry(data.airportInfo),
     echoMeta: data.echoMeta?.tm ? { tm: data.echoMeta.tm } : null,
+    rainviewerMeta: data.rainviewerMeta?.tm ? { tm: data.rainviewerMeta.tm } : null,
     satMeta: data.satMeta?.tm ? { tm: data.satMeta.tm } : null,
     sigwxFrontMeta: buildOverlayMetaEntry(data.sigwxFrontMeta),
     sigwxCloudMeta: buildOverlayMetaEntry(data.sigwxCloudMeta),
@@ -141,7 +142,7 @@ export async function loadWeatherData() {
   const [
     airports, metar, taf, amos, warning,
     sigmet, airmet, lightning,
-    echoMeta, satMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
+    echoMeta, rainviewerMeta, satMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
     groundForecast, notam, overseasAirports,
     metarOverseas, tafOverseas, sigmetOverseas,
   ] = await Promise.all([
@@ -154,6 +155,7 @@ export async function loadWeatherData() {
     fetchJson('/api/airmet', { optional: true }),
     fetchJson('/api/lightning', { optional: true }),
     fetchJson('/data/radar/echo_meta.json', { optional: true }),
+    fetchJson('/data/radar/rainviewer_meta.json', { optional: true }),
     fetchJson('/data/satellite/sat_meta.json', { optional: true }),
     fetchJson('/api/sigwx-low', { optional: true }),
     fetchJson('/api/sigwx-front-meta', { optional: true }),
@@ -179,6 +181,7 @@ export async function loadWeatherData() {
     airmet,
     lightning,
     echoMeta,
+    rainviewerMeta,
     satMeta,
     sigwxLow,
     sigwxLowHistory: null,
@@ -320,6 +323,7 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all' } =
   if (changes.groundOverview && includesDeferredKey(deferredKeys, 'groundOverview')) { fetches.push(fetchJson('/api/ground-overview', { optional: true })); keys.push('groundOverview') }
   if (changes.environment && includesDeferredKey(deferredKeys, 'environment')) { fetches.push(fetchJson('/api/environment', { optional: true })); keys.push('environment') }
   if (changes.echoMeta) { fetches.push(fetchJson('/data/radar/echo_meta.json', { optional: true })); keys.push('echoMeta') }
+  if (changes.rainviewerMeta) { fetches.push(fetchJson('/data/radar/rainviewer_meta.json', { optional: true })); keys.push('rainviewerMeta') }
   if (changes.satMeta) { fetches.push(fetchJson('/data/satellite/sat_meta.json', { optional: true })); keys.push('satMeta') }
   if (changes.airportInfo && includesDeferredKey(deferredKeys, 'airportInfo')) { fetches.push(fetchJson('/api/airport-info', { optional: true })); keys.push('airportInfo') }
 

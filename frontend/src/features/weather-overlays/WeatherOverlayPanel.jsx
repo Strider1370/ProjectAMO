@@ -8,6 +8,7 @@ import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 // Representative icon per weather layer for the tile grid (legend-like).
 const WEATHER_TILE_ICON = {
   radar: Radar,
+  radarOverseas: Globe, // 해외 = Globe (SIGMET(해외)와 동일 규칙)
   satellite: Satellite,
   lightning: Zap,
   wind: Wind,
@@ -38,12 +39,13 @@ function WeatherOverlayPanel({
   // 재개하려면 이 배열을 비우고 백엔드 수집(index.js)도 되돌릴 것.
   const TEMP_HIDDEN_LAYER_IDS = ['flightCategory']
   const groups = [
-    { id: 'weather', title: '기상', ids: showWind ? ['radar', 'satellite', 'lightning', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : ['radar', 'satellite', 'lightning', 'flightCategory'] },
+    { id: 'weather', title: '기상', ids: showWind ? ['radar', 'radarOverseas', 'satellite', 'lightning', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : ['radar', 'radarOverseas', 'satellite', 'lightning', 'flightCategory'] },
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx'] },
     { id: 'traffic', title: '항적', ids: ['adsb'] },
   ]
   const layerLabels = {
     radar: '레이더',
+    radarOverseas: '해외 레이더',
     satellite: '위성',
     lightning: '낙뢰',
     wind: '바람',

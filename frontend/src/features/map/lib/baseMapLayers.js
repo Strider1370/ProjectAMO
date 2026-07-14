@@ -222,7 +222,7 @@ export function setGeoBoundaryVisibility(map, show) {
 }
 
 export function shouldShowGeoBoundaries({ basemapId, metVisibility = {}, enableWindOverlay = true } = {}) {
-  const hasRasterWeather = !!(metVisibility.radar || metVisibility.satellite)
+  const hasRasterWeather = !!(metVisibility.radar || metVisibility.radarOverseas || metVisibility.satellite)
   const hasNwpOverlay = !!(
     enableWindOverlay
     && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)

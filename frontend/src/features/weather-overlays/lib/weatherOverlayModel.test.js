@@ -55,6 +55,48 @@ test('buildWeatherOverlayModel selects latest visible timeline frame by default'
   assert.equal(model.lightningLegendEntries[0].iconId, 'lightning-0-10')
 })
 
+// 해외 레이더(RainViewer)는 최근 2시간치뿐. 위성(6시간) 등이 타임라인을 더 과거로 늘리면,
+// pickNearestPreviousFrame의 `|| frames[0]` 폴백 때문에 "3시간 전을 보는데 2시간 전 강수를 그리는"
+// 시간 어긋남이 생긴다. 커버 밖에서는 프레임을 주지 말고(null) 안내를 띄워야 한다.
+test('해외 레이더: 커버(2시간) 밖 시각을 고르면 프레임 없음 + out-of-range 신호', () => {
+  const base = Date.UTC(2026, 4, 14, 2, 0)
+  const rainviewerMeta = {
+    host: 'https://h',
+    frames: [
+      { timeMs: base - 60 * 60 * 1000, path: '/v2/radar/old' }, // 1시간 전
+      { timeMs: base, path: '/v2/radar/new' },
+    ],
+  }
+  const common = {
+    echoMeta: null,
+    rainviewerMeta,
+    // 위성이 타임라인을 3시간 전까지 늘린다 → RainViewer 커버 밖 구간이 생김
+    satMeta: { frames: [{ tm: '202605140800' }, { tm: '202605141100' }] },
+    lightningData: null,
+    sigwxLowData: null,
+    sigwxLowHistoryData: [],
+    sigmetData: { items: [] },
+    airmetData: { items: [] },
+    visibility: { radarOverseas: true, satellite: true },
+    sigwxHistoryIndex: 0,
+    sigwxFilter,
+    hiddenAdvisoryKeys,
+    selectedSigwxFrontMeta: null,
+    selectedSigwxCloudMeta: null,
+    lightningReferenceTimeMs: base,
+    blinkLightning: false,
+    lightningBlinkOff: false,
+  }
+
+  const inRange = buildWeatherOverlayModel({ ...common, selectedWeatherTimeMs: base })
+  assert.equal(inRange.rainviewerFrame.path, '/v2/radar/new')
+  assert.equal(inRange.rainviewerOutOfRange, false)
+
+  const tooOld = buildWeatherOverlayModel({ ...common, selectedWeatherTimeMs: base - 3 * 60 * 60 * 1000 })
+  assert.equal(tooOld.rainviewerFrame, null, 'must not fall back to the oldest frame')
+  assert.equal(tooOld.rainviewerOutOfRange, true)
+})
+
 test('buildWeatherOverlayModel preserves advisory counts while filtering hidden map keys from map layers', () => {
   const model = buildWeatherOverlayModel({
     echoMeta: null,

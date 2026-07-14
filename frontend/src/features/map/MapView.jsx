@@ -199,6 +199,7 @@ const MapView = forwardRef(function MapView({
   airports = [],
   metarData = null,
   echoMeta = null,
+  rainviewerMeta = null,
   satMeta = null,
   sigmetData = null,
   airmetData = null,
@@ -521,6 +522,7 @@ const MapView = forwardRef(function MapView({
   const adsbTrailGeoJSON = useMemo(() => createAdsbTrailGeoJSON(adsbData), [adsbData])
   const weatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
     echoMeta,
+    rainviewerMeta,
     satMeta,
     lightningData,
     sigwxLowData,
@@ -541,6 +543,7 @@ const MapView = forwardRef(function MapView({
     tz,
   }), [
     echoMeta,
+    rainviewerMeta,
     satMeta,
     lightningData,
     sigwxLowData,
@@ -575,6 +578,8 @@ const MapView = forwardRef(function MapView({
     sigwxCount,
     lightningCount,
     radarLegendVisible,
+    radarOverseasLegendVisible,
+    rainviewerOutOfRange,
     lightningLegendVisible,
     lightningLegendEntries,
     radarReferenceTimeMs,
@@ -682,12 +687,15 @@ const MapView = forwardRef(function MapView({
   const rasterAndSigwxModel = useMemo(() => ({
     satelliteFrame: weatherOverlayModel.satelliteFrame,
     radarFrame: weatherOverlayModel.radarFrame,
+    rainviewerMeta: weatherOverlayModel.rainviewerMeta,
+    rainviewerFrame: weatherOverlayModel.rainviewerFrame,
     selectedSigwxFrontMeta: weatherOverlayModel.selectedSigwxFrontMeta,
     selectedSigwxCloudMeta: weatherOverlayModel.selectedSigwxCloudMeta,
     sigwxLowMapData: weatherOverlayModel.sigwxLowMapData,
     visibility: {
       satellite: weatherOverlayModel.visibility.satellite,
       radar: weatherOverlayModel.visibility.radar,
+      radarOverseas: weatherOverlayModel.visibility.radarOverseas,
       sigwx: weatherOverlayModel.visibility.sigwx,
     },
     showVisibleSigwxFrontOverlay: weatherOverlayModel.showVisibleSigwxFrontOverlay,
@@ -695,11 +703,14 @@ const MapView = forwardRef(function MapView({
   }), [
     weatherOverlayModel.satelliteFrame,
     weatherOverlayModel.radarFrame,
+    weatherOverlayModel.rainviewerMeta,
+    weatherOverlayModel.rainviewerFrame,
     weatherOverlayModel.selectedSigwxFrontMeta,
     weatherOverlayModel.selectedSigwxCloudMeta,
     weatherOverlayModel.sigwxLowMapData,
     weatherOverlayModel.visibility.satellite,
     weatherOverlayModel.visibility.radar,
+    weatherOverlayModel.visibility.radarOverseas,
     weatherOverlayModel.visibility.sigwx,
     weatherOverlayModel.showVisibleSigwxFrontOverlay,
     weatherOverlayModel.showVisibleSigwxCloudOverlay,
@@ -1314,6 +1325,8 @@ const MapView = forwardRef(function MapView({
 
       <WeatherLegends
         radarLegendVisible={radarLegendVisible}
+        radarOverseasLegendVisible={radarOverseasLegendVisible}
+        rainviewerOutOfRange={rainviewerOutOfRange}
         lightningLegendVisible={lightningLegendVisible}
         blinkLightning={blinkLightning}
         onBlinkLightningChange={setBlinkLightning}

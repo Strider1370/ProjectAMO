@@ -148,6 +148,12 @@ export const radar_echo = {
   timeout_ms: 30000,
 }
 
+// 해외 레이더 — RainViewer 메타(목차) JSON만 수집. 타일은 브라우저가 CDN에서 직접 받는다(프록시 금지).
+export const rainviewer = {
+  url: process.env.RAINVIEWER_API_URL || 'https://api.rainviewer.com/public/weather-maps.json',
+  timeout_ms: 10000,
+}
+
 export const satellite = {
   url: process.env.SATELLITE_API_URL || 'https://apihub.kma.go.kr/api/typ05/api/GK2A/LE1B',
   fog_url: process.env.SATELLITE_FOG_API_URL || 'https://apihub.kma.go.kr/api/typ05/api/GK2A/LE2',
@@ -260,6 +266,8 @@ export const schedule = {
   amos_interval: '*/10 * * * *',
   lightning_interval: '*/5 * * * *',
   radar_echo_interval: '*/5 * * * *',
+  // ponytail: 10분 — RainViewer 원본 갱신 주기가 10분이라 5분 cron은 같은 데이터를 두 번 받는 낭비.
+  rainviewer_interval: '*/10 * * * *',
   satellite_interval: '*/20 * * * *', // ponytail: 10→20분(프레임 간격 20분 정합, KMA 용량 절감). 되돌리면 */10.
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
   kim_surface_wind_interval: '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *',
@@ -291,6 +299,7 @@ export default {
   lightning,
   amos,
   radar_echo,
+  rainviewer,
   satellite,
   adsb,
   kim_surface_wind,

@@ -7,6 +7,8 @@ test('geo boundaries show on dark basemap and raster weather overlays', () => {
   assert.equal(shouldShowGeoBoundaries({ basemapId: 'dark', metVisibility: {} }), true)
   assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { radar: true } }), true)
   assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { satellite: true } }), true)
+  // 해외 레이더도 래스터 오버레이 — 국경선이 있어야 대비가 산다
+  assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { radarOverseas: true } }), true)
   assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: {} }), false)
 })
 

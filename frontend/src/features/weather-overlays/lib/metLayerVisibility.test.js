@@ -3,6 +3,24 @@ import test from 'node:test'
 
 import { getNextMetVisibility } from './metLayerVisibility.js'
 
+// 국내/해외 레이더는 상호배타. toggleMet과 setLayerOn(검색·브리핑 딥링크)이 모두 이 함수를 지나므로
+// 여기서만 막으면 우회 경로가 없다.
+test('국내 레이더와 해외 레이더는 상호배타', () => {
+  assert.deepEqual(
+    getNextMetVisibility({ radar: true, radarOverseas: false }, 'radarOverseas'),
+    { radar: false, radarOverseas: true },
+  )
+  assert.deepEqual(
+    getNextMetVisibility({ radar: false, radarOverseas: true }, 'radar'),
+    { radar: true, radarOverseas: false },
+  )
+  // 끄는 건 상대를 켜지 않는다(둘 다 꺼진 상태 허용)
+  assert.deepEqual(
+    getNextMetVisibility({ radar: false, radarOverseas: true }, 'radarOverseas'),
+    { radar: false, radarOverseas: false },
+  )
+})
+
 test('getNextMetVisibility makes wind and temp mutually exclusive', () => {
   assert.deepEqual(
     getNextMetVisibility(

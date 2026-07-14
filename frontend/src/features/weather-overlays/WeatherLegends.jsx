@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
+import { RAINVIEWER_LEGEND } from './lib/rainviewerLayers.js'
 
 // 모바일 가로 범례: 세로 컬러바를 가로 그라데이션 바 + 성긴 눈금 라벨로. entries는 높음→낮음
 // 순서라 좌→우 오름차순으로 뒤집는다.
@@ -25,6 +26,8 @@ function HLegend({ title, entries = [] }) {
 
 function WeatherLegends({
   radarLegendVisible,
+  radarOverseasLegendVisible,
+  rainviewerOutOfRange = false,
   lightningLegendVisible,
   blinkLightning = false,
   onBlinkLightningChange,
@@ -46,7 +49,7 @@ function WeatherLegends({
 }) {
   const isMobile = useIsMobile()
   const [open, setOpen] = useState(false)
-  if (!radarLegendVisible && !lightningLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible) return null
+  if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible) return null
 
   const panel = (
     <div className="map-right-legends">
@@ -65,6 +68,50 @@ function WeatherLegends({
               </div>
             ))}
           </div>
+        </div>
+      )}
+      {/* 해외 레이더(RainViewer): 우리는 픽셀만 받고 숫자가 없다 → mm/h 눈금을 붙이면 오독을 부른다.
+          국내 레이더와 색 기준이 다르므로 정량 해석 불가임을 명시하고, 질적 강약만 보여준다. */}
+      {radarOverseasLegendVisible && (
+        <div className="rainviewer-legend" aria-label="Overseas radar legend">
+          <div className="rainviewer-legend-title">해외 레이더 · dBZ</div>
+          {rainviewerOutOfRange ? (
+            <div className="rainviewer-legend-empty">
+              해외 레이더 없음
+              <span className="rainviewer-legend-note">최근 2시간만 제공</span>
+            </div>
+          ) : (
+            <>
+              {/* RainViewer 공식 색상표(스킴 2)에서 뽑은 실제 색. 단위는 dBZ(반사도) — 국내 범례(mm/h)와 다른 척도다. */}
+              <div className="rainrate-legend-scale">
+                {RAINVIEWER_LEGEND.map((entry) => (
+                  <div key={entry.label} className="rainrate-legend-row">
+                    <span className="rainrate-legend-label">{entry.label}</span>
+                    <span
+                      className="rainrate-legend-swatch"
+                      style={{ backgroundColor: entry.color }}
+                      aria-hidden="true"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="rainviewer-legend-coverage">
+                <span className="rainviewer-legend-swatch" aria-hidden="true" />
+                레이더 미수신 지역
+              </div>
+            </>
+          )}
+          <div className="rainviewer-legend-note">
+            반사도(dBZ) — 국내 레이더의 강수량(mm/h)과 다른 척도
+          </div>
+          <a
+            className="rainviewer-legend-credit"
+            href="https://www.rainviewer.com"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            RainViewer
+          </a>
         </div>
       )}
       {lightningLegendVisible && (

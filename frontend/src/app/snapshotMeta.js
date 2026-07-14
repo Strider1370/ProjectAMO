@@ -32,6 +32,7 @@ export function detectSnapshotChanges(prev, next) {
     environment: hashesDiffer(prev?.environment, next?.environment),
     airportInfo: hashesDiffer(prev?.airportInfo, next?.airportInfo),
     echoMeta: framesDiffer(prev?.echoMeta, next?.echoMeta),
+    rainviewerMeta: framesDiffer(prev?.rainviewerMeta || prev?.rainviewer, next?.rainviewerMeta || next?.rainviewer),
     satMeta: framesDiffer(prev?.satMeta, next?.satMeta),
     sigwxFrontMeta: overlayMetaDiffer(prev?.sigwxFrontMeta, next?.sigwxFrontMeta),
     sigwxCloudMeta: overlayMetaDiffer(prev?.sigwxCloudMeta, next?.sigwxCloudMeta),

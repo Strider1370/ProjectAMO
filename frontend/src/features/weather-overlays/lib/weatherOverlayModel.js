@@ -87,8 +87,28 @@ function advisoryItemsWithPanelData(data, kind, tz = 'KST') {
   }))
 }
 
+// 해외 레이더(RainViewer) 프레임은 KMA와 형식이 다르다: tm(KST 12자리)이 아니라 timeMs(epoch)가 이미 들어있다.
+// normalizeFrames는 tm 파싱 전용이라 재사용 불가 — 여기서 검증+정렬만 한다.
+function normalizeRainviewerFrames(meta) {
+  return (Array.isArray(meta?.frames) ? meta.frames : [])
+    .filter((f) => Number.isFinite(f?.timeMs) && typeof f?.path === 'string' && f.path)
+    .map((f) => ({ ...f }))
+    .sort((a, b) => a.timeMs - b.timeMs)
+}
+
+// pickNearestPreviousFrame은 선택 시각이 모든 프레임보다 과거여도 null이 아니라 frames[0]을 준다
+// (weatherTimeline.js: `return selected || frames[0]`). RainViewer는 2시간치뿐이라, 위성(6시간) 등이
+// 타임라인을 더 과거로 늘리면 "3시간 전을 보는데 2시간 전 강수를 그리는" 시간 어긋남이 생긴다.
+// → 커버 범위 밖이면 명시적으로 null. 프레임 없음 = 레이어 숨김 + 안내 문구.
+function pickRainviewerFrame(frames, selectedTimeMs) {
+  if (!frames.length || !Number.isFinite(selectedTimeMs)) return null
+  if (selectedTimeMs < frames[0].timeMs) return null
+  return pickNearestPreviousFrame(frames, selectedTimeMs)
+}
+
 export function buildWeatherOverlayModel({
   echoMeta,
+  rainviewerMeta,
   satMeta,
   lightningData,
   sigwxLowData,
@@ -111,11 +131,14 @@ export function buildWeatherOverlayModel({
   tz = 'KST',
 }) {
   const radarFrames = normalizeFrames(echoMeta?.frames?.length ? echoMeta.frames : [echoMeta?.nationwide])
+  const rainviewerFrames = normalizeRainviewerFrames(rainviewerMeta)
   const satelliteFrames = normalizeFrames(satMeta?.frames?.length ? satMeta.frames : [satMeta?.latest])
   const lightningFrame = normalizeFrame({ tm: lightningData?.query?.tm })
   const lightningFrames = lightningFrame ? [lightningFrame] : []
   const weatherTimelineTicks = buildTimelineTicks([
     visibility.radar ? radarFrames : [],
+    // 해외 레이더도 국내와 대등하게 자기 눈금을 낸다(상호배타라 둘이 동시에 눈금을 내지 않는다).
+    visibility.radarOverseas ? rainviewerFrames : [],
     visibility.satellite ? satelliteFrames : [],
     visibility.lightning ? lightningFrames : [],
   ])
@@ -128,8 +151,9 @@ export function buildWeatherOverlayModel({
       ? Math.min(Math.max(selectedWeatherTimeMs, firstTickMs), latestTickMs)
       : latestTickMs)
     : null
-  const weatherTimelineVisible = (visibility.radar || visibility.satellite || visibility.lightning) && weatherTimelineTicks.length > 0
+  const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.satellite || visibility.lightning) && weatherTimelineTicks.length > 0
   const radarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
+  const rainviewerFrame = pickRainviewerFrame(rainviewerFrames, resolvedWeatherTimeMs)
   const satelliteFrame = pickNearestPreviousFrame(satelliteFrames, resolvedWeatherTimeMs)
   const lightningGeoJSON = createLightningGeoJSON(lightningData, lightningReferenceTimeMs)
 
@@ -181,12 +205,15 @@ export function buildWeatherOverlayModel({
   return {
     visibility,
     radarFrames,
+    rainviewerMeta: rainviewerMeta || null,
+    rainviewerFrames,
     satelliteFrames,
     lightningFrames,
     weatherTimelineTicks,
     selectedWeatherTimeMs: resolvedWeatherTimeMs,
     weatherTimelineVisible,
     radarFrame,
+    rainviewerFrame,
     satelliteFrame,
     lightningGeoJSON,
     sigwxHistoryEntries,
@@ -213,6 +240,9 @@ export function buildWeatherOverlayModel({
     sigwxCount: sigwxGroups.length,
     lightningCount: lightningGeoJSON.features.length,
     radarLegendVisible: visibility.radar && !!radarFrame,
+    radarOverseasLegendVisible: !!visibility.radarOverseas,
+    // 레이어는 켰는데 선택 시각이 RainViewer 커버(최근 2시간) 밖 — 조용히 사라지면 고장으로 보인다.
+    rainviewerOutOfRange: !!visibility.radarOverseas && rainviewerFrames.length > 0 && !rainviewerFrame,
     lightningLegendVisible: visibility.lightning,
     lightningLegendEntries: LIGHTNING_AGE_BANDS.map((band) => ({
       ...band,
