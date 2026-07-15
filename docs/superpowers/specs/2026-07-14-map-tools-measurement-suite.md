@@ -1,7 +1,7 @@
 # Map Tools — Measurement & Drawing Suite
 
 **Date:** 2026-07-14
-**Status:** Spec (what/why). Plan(how)는 별도 문서.
+**Status:** 구현 완료. (원 스펙은 what/why, Plan(how)는 별도 문서.)
 
 ## Goal
 
