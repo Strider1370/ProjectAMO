@@ -10,8 +10,6 @@ import { storage } from '../config.js'
 import { getDb } from '../db/index.js'
 import { pickActiveFlight } from '../me/alerts.js'
 import { composeBriefing } from '../briefing/briefing-composer.js'
-import { summarizeEnrouteModel } from '../briefing/enroute-model.js'
-import { loadRouteCrossSection } from '../briefing/enroute-cross-section.js'
 import { metricsAt } from '../briefing/taf-window.js'
 import { detectChanges } from './diff.js'
 import { dispatchFlightAlerts } from './sender.js'
@@ -192,17 +190,9 @@ export function recompute(route) {
     sigmet: store.getCached('sigmet'), sigmetOverseas: store.getCached('sigmet_overseas'),
     airmet: store.getCached('airmet'), warning: store.getCached('warning'),
     amos: store.getCached('amos'), takeoff_fcst: store.getCached('takeoff_fcst'), notam: store.getCached('notam'),
+    dataRoot: storage.base_path, // composeBriefing이 enroute 단면 모델을 직접 로드(이전엔 여기서 사후 mutate)
   }
   const briefing = composeBriefing(request, data)
-  try {
-    const model = loadRouteCrossSection({ root: storage.base_path, routeGeometry: request.routeGeometry, body: request })
-    if (model.available && briefing.sections?.enroute) {
-      briefing.sections.enroute.model = summarizeEnrouteModel({
-        crossSection: model.crossSection, turbulence: model.turbulence,
-        totalDistanceNm: model.totalDistanceNm, cruiseAltitudeFt: request.plannedCruiseAltitudeFt,
-      })
-    }
-  } catch { /* 엔루트 모델 optional */ }
   const tafByIcao = mergeAirports(data.taf, data.tafOverseas)
   return { briefing, tafByIcao }
 }

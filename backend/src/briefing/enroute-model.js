@@ -1,5 +1,6 @@
 import { altitudeAtDistanceFt } from './planned-altitude.js'
 import { ktgIntensity } from '../processors/ktg-model.js'
+import { loadRouteCrossSection } from './enroute-cross-section.js'
 
 const LEVEL_RANK = { '약': 1, '중': 2, '심': 3 }
 
@@ -96,4 +97,22 @@ export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceN
   return { totalDistanceNm: Math.round(totalDistanceNm) || null, elements }
 }
 
-export default { summarizeEnrouteModel }
+// 경로 단면 로드 + 요약을 한 곳에서 소유한다(이전엔 라우트·경보 스케줄러에 복붙돼 있었다).
+// root 없으면(=단면 불요, 예: dev 시나리오) null. 로드 실패해도 null(브리핑은 유지 — best-effort).
+export function buildEnrouteModel({ root, routeGeometry, body = {}, cruiseAltitudeFt } = {}) {
+  if (!root) return null
+  try {
+    const loaded = loadRouteCrossSection({ root, routeGeometry, body })
+    if (!loaded.available) return null
+    return summarizeEnrouteModel({
+      crossSection: loaded.crossSection,
+      turbulence: loaded.turbulence,
+      totalDistanceNm: loaded.totalDistanceNm,
+      cruiseAltitudeFt,
+    })
+  } catch {
+    return null
+  }
+}
+
+export default { summarizeEnrouteModel, buildEnrouteModel }

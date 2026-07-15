@@ -32,7 +32,6 @@ import alertDefaults from '../shared/alert-defaults.js'
 import { buildVerticalProfile } from './src/briefing/vertical-profile.js'
 import { composeBriefing } from './src/briefing/briefing-composer.js'
 import { loadAirspaceZoneItems } from './src/briefing/airspace-zones.js'
-import { summarizeEnrouteModel } from './src/briefing/enroute-model.js'
 import { createDefaultTerrainSampler } from './src/terrain/terrain-sampler.js'
 import {
   buildKimCloudPotentialFieldFromGrid,
@@ -216,10 +215,12 @@ function etagOf(seed) {
 }
 
 // 공통: ETag/Vary 헤더 + if-none-match 304 + json. Cache-Control만 호출자가 정한다.
-function sendWithEtag(res, payload, etag, cacheControl) {
+// lastModified(optional): 있으면 Last-Modified 헤더도 세운다(304에도 포함). computed_at 등 ms/ISO/Date 허용.
+function sendWithEtag(res, payload, etag, cacheControl, { lastModified } = {}) {
   res.setHeader('Cache-Control', cacheControl)
   res.setHeader('ETag', etag)
   res.setHeader('Vary', 'Accept-Encoding')
+  if (lastModified != null) res.setHeader('Last-Modified', new Date(lastModified).toUTCString())
   if (requestHasMatchingEtag(res.req, etag)) {
     res.status(304).end()
     return
@@ -815,11 +816,8 @@ app.get('/api/weather/flight-category-overlay', (req, res) => {
     return res.json({ type: 'FeatureCollection', features: [] })
   }
   const etag = `"${data.content_hash || store.canonicalHash(data.geojson)}"`
-  res.setHeader('Last-Modified', new Date(data.computed_at).toUTCString())
-  res.setHeader('ETag', etag)
-  res.setHeader('Cache-Control', 'no-cache')
-  if (req.headers['if-none-match'] === etag) return res.status(304).end()
-  res.json({ ...data.geojson, fetched_at: data.amos_fetched_at ?? data.fetched_at })
+  const payload = { ...data.geojson, fetched_at: data.amos_fetched_at ?? data.fetched_at }
+  sendWithEtag(res, payload, etag, 'no-cache', { lastModified: data.computed_at })
 })
 app.get('/api/snapshot-meta', (_req, res) => {
   res.setHeader('Cache-Control', 'no-cache')
@@ -888,21 +886,9 @@ app.post('/api/route-briefing', (req, res) => {
       takeoff_fcst: store.getCached('takeoff_fcst'),
       notam: store.getCached('notam'),
       airspaceZones: loadAirspaceZoneItems(),
+      dataRoot: DATA_ROOT, // composeBriefing이 enroute 단면 모델을 직접 로드(이전엔 여기서 사후 mutate)
     }
     const briefing = composeBriefing(body, data)
-
-    // Phase 2b: best-effort enroute model summary (KIM/KTG at planned altitude). 실패해도 브리핑 유지.
-    try {
-      const model = loadRouteCrossSection({ root: DATA_ROOT, routeGeometry: body.routeGeometry, body })
-      if (model.available && briefing.sections?.enroute) {
-        briefing.sections.enroute.model = summarizeEnrouteModel({
-          crossSection: model.crossSection,
-          turbulence: model.turbulence,
-          totalDistanceNm: model.totalDistanceNm,
-          cruiseAltitudeFt: Number(body.plannedCruiseAltitudeFt) || 0,
-        })
-      }
-    } catch { /* model optional */ }
 
     res.set('Cache-Control', 'no-store')
     res.json(briefing)

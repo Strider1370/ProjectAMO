@@ -1,7 +1,9 @@
 import { summarizeAirport } from './airport-summary.js'
 import { levelForCategory, to3Level } from './flight-category.js'
 import { buildDestination } from './taf-window.js'
+import { buildConfidenceWarnings } from './confidence.js'
 import { buildHazardSection } from './hazard-section.js'
+import { buildEnrouteModel } from './enroute-model.js'
 import { buildRouteAxis } from './route-axis.js'
 import { timeWindowsOverlap } from './geo-time-match.js'
 import { matchRouteNotams } from './notam-briefing.js'
@@ -128,6 +130,8 @@ export function composeBriefing(request, data) {
     plannedCruiseAltitudeFt: cruiseAltitudeFt,
     encounters,
     crossSectionAvailable: true,
+    // enroute 단면 모델을 여기서 소유(이전엔 라우트·경보 스케줄러가 사후 mutate). root 없으면 null.
+    model: buildEnrouteModel({ root: data?.dataRoot, routeGeometry: request.routeGeometry, body: request, cruiseAltitudeFt }),
   }
 
   const summary = [
@@ -151,7 +155,15 @@ export function composeBriefing(request, data) {
     routeNotams,
     routeConflicts,
     sections: { adverse, enroute, current: { airports }, destination },
-    warnings: [],
+    // 신뢰도 경고 — 심각도(배너 색)와 분리된 "판정을 얼마나 믿을 수 있는가" 축. 판정 로직 불변.
+    warnings: buildConfidenceWarnings({
+      airports,
+      destination,
+      arrivalTaf,
+      request,
+      now: data?.now != null ? new Date(data.now).getTime() : Date.now(),
+      kimRun: data?.kimRun ?? null,
+    }),
   }
 }
 
