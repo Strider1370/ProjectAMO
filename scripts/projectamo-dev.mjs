@@ -183,8 +183,13 @@ try {
     await withServers(async () => {
       console.log('[projectamo-dev] press Ctrl+C to stop')
       await new Promise((resolve) => {
-        process.once('SIGINT', resolve)
-        process.once('SIGTERM', resolve)
+        const keepAlive = setInterval(() => {}, 2 ** 31 - 1)
+        const stop = () => {
+          clearInterval(keepAlive)
+          resolve()
+        }
+        process.once('SIGINT', stop)
+        process.once('SIGTERM', stop)
       })
     })
   }
