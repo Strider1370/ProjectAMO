@@ -26,8 +26,8 @@ test('firstVisibleFrom: 역방향은 이전 존재 스텝, 없으면 -1', () => 
   assert.equal(firstVisibleFrom(S, none, 2, -1), -1)
 })
 
-test('shouldAutoStart: 미완료·데스크톱·앱최초방문일 때만 true', () => {
-  assert.equal(shouldAutoStart({ done: false, isMobile: false, isFirstVisit: true }), true)
+test('shouldAutoStart: 첫 방문에도 자동으로 시작하지 않음', () => {
+  assert.equal(shouldAutoStart({ done: false, isMobile: false, isFirstVisit: true }), false)
   assert.equal(shouldAutoStart({ done: true, isMobile: false, isFirstVisit: true }), false)
   assert.equal(shouldAutoStart({ done: false, isMobile: true, isFirstVisit: true }), false)
   // 기존 사용자(재방문)는 자동발동 안 함 — 업데이트 내역 유지, 투어는 도움말로.

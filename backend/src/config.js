@@ -216,6 +216,7 @@ export const ktg = {
 }
 
 export const kim_nwp = {
+  enabled: process.env.KIM_NWP_DISABLED !== '1',
   max_runs: Number(process.env.KIM_NWP_MAX_RUNS || 2),
   keep_raw: process.env.KIM_NWP_KEEP_RAW !== '0',
   concurrency: Number(process.env.KIM_NWP_CONCURRENCY || 4),

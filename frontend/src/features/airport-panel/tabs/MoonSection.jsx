@@ -185,10 +185,10 @@ function MoonSection({ airport }) {
         <div className="moon-hero-chip">
           <MoonDisc fraction={night.fraction} phase={night.phase} r={16} onDark />
         </div>
-        <div className="moon-hero-main">
-          <div className="moon-hero-grade">
-            {GRADE_LABEL[night.grade]} · 조명률 {Math.round(night.fraction * 100)}%
-          </div>
+          <div className="moon-hero-main">
+            <div className="moon-hero-grade">
+            {cursor.month + 1}월 {night.day}일 · {GRADE_LABEL[night.grade]} · 조명률 {Math.round(night.fraction * 100)}%
+            </div>
           <div className="moon-hero-sub">
             월출 {hhmm(night.moonrise, tz)} · 월몰 {hhmm(night.moonset, tz)} · 최대 {hhmm(night.peakAt, tz)}
           </div>
@@ -199,20 +199,20 @@ function MoonSection({ airport }) {
         </div>
       </div>
 
-      <div className="moon-head">
-        <b>{cursor.month + 1}월 {night.day}일 밤 — 지면 조도</b>
-        <span>일몰 {hhmm(night.sunset, tz)} → 일출 {hhmm(night.sunrise, tz)}</span>
-      </div>
-      <div className="moon-card">
-        <NightChart night={night} tz={tz} />
-        <p className="moon-sub">
-          <span className="moon-key"><i className="moon-key-total" />총 조도 (태양+달+별빛)</span>
-          <span className="moon-key"><i className="moon-key-moon" />달빛 기여분</span>
-          <br />
-          배경 음영 = 박명 단계. 해가 지고도 한동안은 <b>태양빛이 달빛보다 수천 배 밝습니다.</b>{' '}
-          달빛이 지면을 지배하는 건 두 선이 겹치는 구간부터입니다.
-        </p>
-      </div>
+      <details className="moon-chart-fold">
+        <summary className="moon-chart-summary">시간별 조도 그래프</summary>
+        <div className="moon-head">
+          <b>{cursor.month + 1}월 {night.day}일 밤 — 지면 조도</b>
+          <span>일몰 {hhmm(night.sunset, tz)} → 일출 {hhmm(night.sunrise, tz)}</span>
+        </div>
+        <div className="moon-card">
+          <NightChart night={night} tz={tz} />
+          <p className="moon-sub">
+            <span className="moon-key"><i className="moon-key-total" />총 조도 (태양+달+별빛)</span>
+            <span className="moon-key"><i className="moon-key-moon" />달빛 기여분</span>
+          </p>
+        </div>
+      </details>
 
       {/* 기본 접힘. 펼칠 때까지 한 달치(≈1,900회)를 계산하지 않는다. */}
       <details className="moon-cal-fold" onToggle={(e) => setCalOpen(e.currentTarget.open)}>
@@ -272,10 +272,6 @@ function MoonSection({ airport }) {
         </div>
       </details>
 
-      <p className="moon-cap">
-        USNO Circular 171 (Janiczek &amp; DeYoung, 1987) 모델. 맑은 하늘 기준이며 구름은 반영되지 않습니다.
-        한 칸 = 그날 저녁 일몰부터 다음날 일출까지의 한 밤.
-      </p>
     </div>
   )
 }

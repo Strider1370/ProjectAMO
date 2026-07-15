@@ -22,6 +22,8 @@ Re-check the policy index when exploration changes the affected boundary, a new 
 - Repository hooks reinforce this policy but are not the only routing source. Document each hook's trigger, reinforced rule, and verification here when it is registered.
 - Registered `PreToolUse` checks reinforce graphify-first exploration. `SessionStart` is unverified in this environment: the Codex manual fetch could not reach the official source and no current docs provider exposed a hook schema, so no `SessionStart` registration is present. Use the `AGENTS.md`/`claude.md` → policy-index fallback; revisit only with an authoritative current-environment schema and fresh-session injection evidence.
 
+The repository `pre-commit` hook is registered through `core.hooksPath=.githooks` and runs `graphify update .`; failures are visible and stop the commit.
+
 ## Recurring entry sequences
 
 - Standalone route: place the feature route under `frontend/src/features/`, branch in `frontend/src/app/App.jsx` before the shell, use URL navigation when sidebar access is needed, then verify direct entry, refresh, and shell routes.

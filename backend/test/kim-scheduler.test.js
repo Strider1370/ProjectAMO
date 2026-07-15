@@ -28,6 +28,14 @@ test('KIM NWP scheduler uses UTC for synoptic release retry windows', () => {
   assert.deepEqual(KIM_NWP_CRON_OPTIONS, { timezone: 'Etc/UTC' })
 })
 
+test('KIM NWP scheduler can be disabled without affecting other schedulers', () => {
+  const calls = []
+  const fakeScheduler = { schedule: (...args) => calls.push(args) }
+
+  assert.equal(scheduleKimNwpJob(fakeScheduler, false), null)
+  assert.equal(calls.length, 0)
+})
+
 test('initial collection can omit KIM NWP for low-resource startup', () => {
   assert.equal(
     buildInitialCollectionJobs({ includeKimNwp: false }).some(([type]) => type === 'kim_surface_wind'),

@@ -22,9 +22,9 @@ Korean aviation weather and operational-awareness dashboard. It combines airport
 Install dependencies from the repository root:
 
 ```bash
-npm install
-npm --prefix frontend install
-npm --prefix backend install
+npm.cmd install
+npm.cmd --prefix frontend install
+npm.cmd --prefix backend install
 ```
 
 Create a root `.env` as needed. Use [`backend/.env.example`](backend/.env.example) for backend/session settings and set `VITE_MAPBOX_TOKEN` for the map. Do not commit secrets.
@@ -32,13 +32,13 @@ Create a root `.env` as needed. Use [`backend/.env.example`](backend/.env.exampl
 Start both services and verify readiness:
 
 ```bash
-npm run dev:verify
+npm.cmd run dev:verify
 ```
 
 Keep the development services running:
 
 ```bash
-npm run dev:serve
+npm.cmd run dev:serve
 ```
 
 - Frontend: `http://127.0.0.1:5173`
@@ -49,10 +49,10 @@ Use `npm run dev:test` for fixed-data test-instance work. For all server, browse
 ## Verification
 
 ```bash
-npm --prefix backend test
-npm --prefix frontend test
-npm run build
-npm run dev:smoke
+npm.cmd --prefix backend test
+npm.cmd --prefix frontend test
+npm.cmd run build
+npm.cmd run dev:smoke
 ```
 
 Run baseline responsive screenshots with the managed launcher:

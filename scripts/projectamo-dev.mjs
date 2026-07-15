@@ -166,8 +166,8 @@ async function withServers(task) {
   }
 }
 
-if (!['serve', 'serve:test', 'verify', 'smoke', 'screenshots'].includes(command)) {
-  console.error('Usage: node scripts/projectamo-dev.mjs [serve|serve:test|verify|smoke|screenshots]')
+if (!['serve', 'serve:test', 'serve:no-nwp', 'verify', 'smoke', 'screenshots'].includes(command)) {
+  console.error('Usage: node scripts/projectamo-dev.mjs [serve|serve:test|serve:no-nwp|verify|smoke|screenshots]')
   process.exit(2)
 }
 
@@ -178,8 +178,13 @@ if (command === 'serve:test') {
   console.log('[projectamo-dev] TEST MODE — 자동수집 비활성(DISABLE_COLLECTION=1). 데이터 고정, 자유 조작 가능.')
 }
 
+if (command === 'serve:no-nwp') {
+  process.env.KIM_NWP_DISABLED = '1'
+  console.log('[projectamo-dev] KIM NWP disabled — other collection jobs remain enabled.')
+}
+
 try {
-  if (command === 'serve' || command === 'serve:test') {
+  if (command === 'serve' || command === 'serve:test' || command === 'serve:no-nwp') {
     await withServers(async () => {
       console.log('[projectamo-dev] press Ctrl+C to stop')
       await new Promise((resolve) => {

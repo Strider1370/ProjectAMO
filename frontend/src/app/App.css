@@ -164,6 +164,11 @@ optgroup {
     display: none;
   }
 
+  /* 항공/기상 레이어 시트가 열린 동안에는 지도 도구가 시트와 겹치지 않도록 숨긴다. */
+  .map-view-wrapper[data-mobile-layer-panel='true'] .map-tools-launcher {
+    display: none;
+  }
+
   /* "더보기" task surface. */
   .mobile-more {
     position: fixed;

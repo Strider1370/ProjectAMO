@@ -1,4 +1,4 @@
-import { AVIATION_WFS_LAYERS } from './aviationWfsLayers.js'
+import { AVIATION_PANEL_MERGE_GROUPS, AVIATION_WFS_LAYERS } from './aviationWfsLayers.js'
 import { AVIATION_TILE_META } from './lib/aviationLayerTiles.js'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -9,10 +9,6 @@ const GROUPS = [
   { title: '공역', ids: ['fir', 'sector', 'ctr', 'tma', 'restricted', 'prohibited', 'danger'] },
 ]
 // 국내/해외 타일을 하나로 합쳐 보여줌 — 클릭 한 번으로 둘 다 같은 상태로 맞춘다.
-const MERGE_GROUPS = {
-  airport: ['airport', 'overseas-airport'],
-  fir: ['fir', 'overseas-fir'],
-}
 const LAYER_LABELS = {
   fir: '비행정보구역',
   sector: '관제섹터',
@@ -62,14 +58,14 @@ function AviationLayerPanel({ visibility, onToggle, onClose, onClearAll }) {
   const layerById = new Map(AVIATION_WFS_LAYERS.map((layer) => [layer.id, layer]))
   // 타일 켜짐 판정: 공항/FIR은 국내+해외가 한 타일이므로 묶음 중 하나라도 켜지면 켜짐.
   const isTileActive = (id) => {
-    const mergeIds = MERGE_GROUPS[id]
+    const mergeIds = AVIATION_PANEL_MERGE_GROUPS[id]
     return mergeIds ? mergeIds.some((gid) => visibility[gid]) : !!visibility[id]
   }
   // 켜짐 개수는 '타일' 기준으로 센다(내부 레이어가 아니라). 공항/FIR 묶음 타일은 1개로.
   const activeCount = GROUPS.flatMap((g) => g.ids).filter((id) => layerById.has(id) && isTileActive(id)).length
 
   function handleToggle(id) {
-    const group = MERGE_GROUPS[id]
+    const group = AVIATION_PANEL_MERGE_GROUPS[id]
     if (!group) { onToggle(id); return }
     const next = !group.some((gid) => visibility[gid])
     group.forEach((gid) => { if (!!visibility[gid] !== next) onToggle(gid) })

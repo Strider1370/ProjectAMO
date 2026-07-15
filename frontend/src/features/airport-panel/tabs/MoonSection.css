@@ -59,6 +59,34 @@
 }
 .moon-hero-num span { font-size: var(--fs-200); color: var(--text-3); }
 
+.moon-chart-fold {
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-s) var(--space-m) var(--space-m);
+}
+.moon-chart-fold:not([open]) { padding-bottom: var(--space-s); }
+.moon-chart-summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-min);
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: var(--fs-400);
+  font-weight: var(--fw-semibold);
+  list-style: none;
+}
+.moon-chart-summary::-webkit-details-marker { display: none; }
+.moon-chart-summary::before {
+  content: '›';
+  display: inline-block;
+  margin-right: var(--space-s);
+  color: var(--text-3);
+  font-size: var(--fs-500);
+  line-height: 1;
+  transition: transform 0.12s;
+}
+.moon-chart-fold[open] > .moon-chart-summary::before { transform: rotate(90deg); }
+
 /* 제목 줄 */
 .moon-head {
   display: flex;
@@ -68,7 +96,7 @@
   margin-bottom: var(--space-s);
 }
 .moon-head b {
-  font-size: var(--fs-200);
+  font-size: var(--fs-300);
   font-weight: var(--fw-semibold);
   color: var(--text-2);
   display: inline-flex;
@@ -76,7 +104,7 @@
   gap: var(--space-xs);
 }
 .moon-head span {
-  font-size: var(--fs-100);
+  font-size: var(--fs-200);
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -108,8 +136,8 @@
 
 .moon-grid { stroke: #fff; stroke-width: 1; opacity: 0.5; }
 .moon-axis-line { stroke: #b9c0c9; }
-.moon-axis { font-size: 10px; fill: #9aa0a6; }
-.moon-dark-label { font-size: 10px; fill: var(--text-3); }
+.moon-axis { font-size: 12px; fill: #9aa0a6; }
+.moon-dark-label { font-size: 12px; fill: var(--text-3); }
 
 .moon-line-total {
   fill: none;
@@ -127,15 +155,15 @@
 }
 
 .moon-floor { stroke: #8c96a3; stroke-width: 1; stroke-dasharray: 4 3; }
-.moon-floor-label { font-size: 10px; fill: #6f7883; }
+.moon-floor-label { font-size: 12px; fill: #6f7883; }
 .moon-peak { fill: #fff; stroke: #243040; stroke-width: 1.6; }
-.moon-peak-label { font-size: 11px; font-weight: var(--fw-semibold); fill: #243040; }
+.moon-peak-label { font-size: 12px; font-weight: var(--fw-semibold); fill: #243040; }
 .moon-tick { stroke: #8c96a3; }
-.moon-tick-label { font-size: 10px; fill: #6f7883; }
+.moon-tick-label { font-size: 12px; fill: #6f7883; }
 
 .moon-sub {
-  font-size: var(--fs-100);
-  line-height: var(--lh-100);
+  font-size: var(--fs-200);
+  line-height: var(--lh-200);
   color: #9aa0a6;
   padding: var(--space-s) 2px 0;
 }
@@ -177,17 +205,19 @@
   content: '›';
   display: inline-block;
   color: var(--text-3);
+  font-size: var(--fs-500);
+  line-height: 1;
   transition: transform 0.12s;
   align-self: center;
 }
 .moon-cal-fold[open] > .moon-cal-summary::before { transform: rotate(90deg); }
 .moon-cal-summary-title {
-  font-size: var(--fs-200);
+  font-size: var(--fs-400);
   font-weight: var(--fw-semibold);
   color: var(--text-2);
 }
 .moon-cal-summary-hint {
-  font-size: var(--fs-100);
+  font-size: var(--fs-200);
   color: var(--text-3);
 }
 .moon-head--cal { margin-top: var(--space-s); }
@@ -201,7 +231,7 @@
 }
 .moon-dow div {
   text-align: center;
-  font-size: var(--fs-100);
+  font-size: var(--fs-200);
   color: var(--text-3);
   padding-bottom: 2px;
 }
@@ -216,7 +246,7 @@
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  min-height: 58px;
+  min-height: 64px;
   padding: var(--space-snudge) var(--space-s) 7px;
   border: none;
   border-radius: var(--radius-md);
@@ -245,8 +275,8 @@
   line-height: 0;
 }
 .moon-cell-day {
-  font-size: var(--fs-200);
-  line-height: 14px;
+  font-size: var(--fs-300);
+  line-height: var(--lh-300);
   font-weight: var(--fw-semibold);
   color: var(--text-3);
   display: inline-flex;
@@ -270,7 +300,7 @@
 }
 .moon-cell-val em {
   font-style: normal;
-  font-size: var(--fs-100);
+  font-size: var(--fs-200);
   font-weight: var(--fw-regular);
   color: var(--text-3);
   margin-left: 3px;
@@ -299,7 +329,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-snudge);
-  font-size: var(--fs-100);
+  font-size: var(--fs-200);
   color: var(--text-3);
 }
 .moon-legend b { font-weight: var(--fw-regular); color: #9aa0a6; }
@@ -321,8 +351,8 @@
 .moon-legend-note { color: #9aa0a6; }
 
 .moon-cap {
-  font-size: var(--fs-100);
-  line-height: var(--lh-100);
+  font-size: var(--fs-200);
+  line-height: var(--lh-200);
   color: #9aa0a6;
   margin-top: var(--space-m);
   padding-top: var(--space-m);
@@ -333,7 +363,7 @@
 @media (width <= 480px) {
   .moon-sec { overflow-x: hidden; } /* 가로 스크롤 금지 (design-language §6) */
   .moon-cal, .moon-dow { gap: 1px; }
-  .moon-cell { min-height: 52px; padding: var(--space-xs) var(--space-xs) var(--space-snudge); }
+  .moon-cell { min-height: 58px; padding: var(--space-xs) var(--space-xs) var(--space-snudge); }
   .moon-cell-val { font-size: var(--fs-300); }
   .moon-cell-val em { display: none; }
   .moon-hero { gap: var(--space-m); padding: var(--space-s) var(--space-m); }

@@ -72,7 +72,7 @@ export function addAirportLayers(map, data) {
   }
   if (!map.getLayer(AIRPORT_CIRCLE_LAYER)) {
     map.addLayer({
-      id: AIRPORT_CIRCLE_LAYER, type: 'circle', source: AIRPORT_SOURCE_ID, slot: 'top',
+      id: AIRPORT_CIRCLE_LAYER, type: 'circle', source: AIRPORT_SOURCE_ID, slot: 'top', minzoom: 0,
       paint: {
         'circle-radius': ['case', ['boolean', ['feature-state', 'selected'], false], 12, 10],
         'circle-color': '#ffffff',
@@ -85,7 +85,7 @@ export function addAirportLayers(map, data) {
   }
   if (!map.getLayer(AIRPORT_STATION_CENTER_LAYER)) {
     map.addLayer({
-      id: AIRPORT_STATION_CENTER_LAYER, type: 'symbol', source: AIRPORT_SOURCE_ID, slot: 'top',
+      id: AIRPORT_STATION_CENTER_LAYER, type: 'symbol', source: AIRPORT_SOURCE_ID, slot: 'top', minzoom: 0,
       layout: {
         'icon-image': ['get', 'stationIconId'],
         'icon-size': [
@@ -147,7 +147,7 @@ export function addAirportLayers(map, data) {
   // }
   if (!map.getLayer(AIRPORT_LABEL_LAYER)) {
     map.addLayer({
-      id: AIRPORT_LABEL_LAYER, type: 'symbol', source: AIRPORT_SOURCE_ID, slot: 'top',
+      id: AIRPORT_LABEL_LAYER, type: 'symbol', source: AIRPORT_SOURCE_ID, slot: 'top', minzoom: 6,
       layout: {
         'text-field': ['get', 'icao'],
         'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
@@ -164,15 +164,15 @@ export function addAirportLayers(map, data) {
           'bottom',
           'top',
         ],
-        'text-allow-overlap': true,
-        'text-ignore-placement': true,
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
       },
       paint: { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
     })
   }
   if (!map.getLayer(AIRPORT_WIND_LAYER)) {
     map.addLayer({
-      id: AIRPORT_WIND_LAYER, type: 'symbol', source: AIRPORT_SOURCE_ID, slot: 'top', minzoom: 6,
+      id: AIRPORT_WIND_LAYER, type: 'symbol', source: AIRPORT_SOURCE_ID, slot: 'top', minzoom: 4,
       filter: ['!=', ['get', 'windIconId'], ''],
       layout: {
         'icon-image': ['get', 'windIconId'],

@@ -422,3 +422,9 @@ export const AVIATION_WFS_LAYERS = [
     lineWidth: 2,
   },
 ]
+
+// A single mobile panel tile controls each domestic/overseas pair.
+export const AVIATION_PANEL_MERGE_GROUPS = {
+  airport: ['airport', 'overseas-airport'],
+  fir: ['fir', 'overseas-fir'],
+}

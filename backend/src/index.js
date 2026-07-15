@@ -50,7 +50,8 @@ async function runWithLock(type, job) {
   }
 }
 
-function scheduleKimNwpJob(scheduler = cron) {
+function scheduleKimNwpJob(scheduler = cron, enabled = config.kim_nwp?.enabled !== false) {
+  if (!enabled) return null
   return scheduler.schedule(
     config.schedule.kim_surface_wind_interval,
     () => runWithLock("kim_surface_wind", kimSurfaceWindProcessor.process),
@@ -83,7 +84,7 @@ function isNotamCacheStale() {
   return Date.now() - fetchedMs >= maxAgeMs
 }
 
-function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.collect_on_startup !== false } = {}) {
+function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.enabled !== false && config.kim_nwp?.collect_on_startup !== false } = {}) {
   const jobs = [
     ["metar", metarProcessor.processAll],
     ["taf", tafProcessor.processAll],

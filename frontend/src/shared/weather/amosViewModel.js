@@ -253,6 +253,7 @@ export function buildAmosConsoleModel(amos, metar, airportMeta, tz = 'KST') {
       { label: 'QNH(inHg)', value: formatInHgFromHpa(amos?.pressure?.qnh_hpa) },
       { label: '기온(°C)', value: formatOneDecimal(amos?.weather?.temperature_c) },
       { label: '이슬점(°C)', value: formatOneDecimal(amos?.weather?.dewpoint_c) },
+      { label: '일강수량(mm)', value: formatOneDecimal(amos?.daily_rainfall?.mm) },
     ],
   }
 }

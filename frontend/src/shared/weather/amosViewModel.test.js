@@ -9,6 +9,7 @@ import {
 } from './amosViewModel.js'
 
 const baseAmos = {
+  daily_rainfall: { mm: 4.6 },
   observation: { observed_tm_kst: '202605181230' },
   runways: [
     {
@@ -90,13 +91,14 @@ describe('amosViewModel console model', () => {
       { key: 'tenMinuteWind', label: '10분 평균풍', value: '330° / 3.3kt' },
     ])
 
-    assert.deepEqual(model.commonCells, [
+    assert.deepEqual(model.commonCells.slice(0, 5), [
       { label: '운고(ft)', value: 'NCD' },
       { label: 'QNH(hPa)', value: '1017' },
       { label: 'QNH(inHg)', value: '30.03' },
       { label: '기온(°C)', value: '18.2' },
       { label: '이슬점(°C)', value: '12.8' },
     ])
+    assert.deepEqual(model.commonCells[5], { label: '일강수량(mm)', value: '4.6' })
   })
 
   it('marks wind variation arcs that wrap across north', () => {

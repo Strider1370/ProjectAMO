@@ -5,7 +5,7 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from './mapConfig.js'
 import { addAviationWfsLayers } from '../aviation-layers/addAviationWfsLayers.js'
-import { AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
+import { AVIATION_PANEL_MERGE_GROUPS, AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
 import { useFirTickOverlay } from '../aviation-layers/useFirTickOverlay.js'
 import {
   ADVISORY_LAYER_DEFS,
@@ -1297,7 +1297,11 @@ const MapView = forwardRef(function MapView({
 
   // Active-layer counts (mirror the panel "N개 켜짐" logic) reported up for the
   // mobile on-map entry buttons.
-  const aviationActiveCount = AVIATION_WFS_LAYERS.filter((l) => aviationVisibility[l.id]).length
+  const aviationActiveCount = AVIATION_WFS_LAYERS.filter((layer) => {
+    const merged = AVIATION_PANEL_MERGE_GROUPS[layer.id]
+    if (merged) return merged.some((id) => aviationVisibility[id])
+    return !Object.values(AVIATION_PANEL_MERGE_GROUPS).some((ids) => ids.includes(layer.id)) && aviationVisibility[layer.id]
+  }).length
   const metActiveCount = MET_LAYERS.filter((l) => metVisibility[l.id] && !isMetLayerDisabled(l.id)).length
   useEffect(() => {
     onLayerCountsChange?.({ aviation: aviationActiveCount, met: metActiveCount })
@@ -1308,6 +1312,7 @@ const MapView = forwardRef(function MapView({
   return (
     <div
       className="map-view-wrapper"
+      data-mobile-layer-panel={activePanel === 'aviation' || activePanel === 'met' ? 'true' : undefined}
       data-route-briefing-map-mode={activePanel === 'route-check' && routeBriefingMapMode ? 'true' : 'false'}
     >
       <div ref={mapContainerRef} className="map-view" />

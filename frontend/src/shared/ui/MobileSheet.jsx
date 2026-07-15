@@ -40,6 +40,8 @@ export default function MobileSheet({
   const [dragH, setDragH] = useState(null)
   const dragRef = useRef(null)
   const rootRef = useRef(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   // Measure the positioned parent (map wrapper) so the full detent sits flush to
   // its top edge — no sliver of map peeking above the sheet. A ResizeObserver
@@ -70,13 +72,13 @@ export default function MobileSheet({
     if (!open) return undefined
     const prevFocus = document.activeElement
     rootRef.current?.focus()
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
+    const onKey = (e) => { if (e.key === 'Escape') onCloseRef.current?.() }
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
       if (prevFocus instanceof HTMLElement) prevFocus.focus()
     }
-  }, [open, onClose])
+  }, [open])
 
   function onPointerDown(event) {
     if (!hasPointer) return

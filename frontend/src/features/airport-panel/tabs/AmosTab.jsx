@@ -77,15 +77,88 @@ function WindDial({ dial, activeRunwayIndex }) {
   )
 }
 
-function PrioritySummary({ items }) {
+function CompactSummary({ model }) {
+  const tenMinute = model.prioritySummary.find((item) => item.key === 'tenMinuteWind')
+  const headTail = model.prioritySummary.find((item) => item.key === 'headTail')
+  const crosswind = model.prioritySummary.find((item) => item.key === 'crosswind')
+  const activeRvr = model.visibilityRows[model.activeRunwayIndex] || model.visibilityRows[0]
+  const windRows = model.windGroups[1]?.rows || []
+  const average = windRows[0]
+  const maximum = windRows[2]
+
   return (
-    <section className="ap-amos-priority-summary" aria-label="AMOS 핵심 상태">
-      {items.map((item) => (
-        <div className={`ap-amos-priority-card ap-amos-priority-card--${item.key}`} key={item.key}>
-          <span>{item.label}</span>
-          <strong>{item.value}</strong>
+    <section className="ap-amos-compact-summary" aria-label="AMOS 핵심 상태">
+      <div className="ap-amos-compact-card ap-amos-compact-card--runway">
+        <span>사용 활주로</span>
+        <strong>{model.activeRunwayLabel || '-'} IN USE</strong>
+      </div>
+      <div className="ap-amos-compact-card">
+        <span>현재 바람</span>
+        <strong>{tenMinute?.value || '-'}</strong>
+      </div>
+      <div className="ap-amos-compact-card">
+        <span>맞바람 / 횡풍</span>
+        <strong>{headTail?.value || '-'} / {crosswind?.value || '-'}</strong>
+      </div>
+      <div className="ap-amos-compact-card">
+        <span>RVR / MOR</span>
+        <strong>{activeRvr ? `${activeRvr.rvrValue} / ${activeRvr.morValue} m` : '-'}</strong>
+      </div>
+      <div className="ap-amos-compact-wind" hidden>
+        <span>평균 {average ? `${average.directionValue}° / ${average.speedValue}kt` : '-'}</span>
+        <span>최대 {maximum ? `${maximum.directionValue}° / ${maximum.speedValue}kt` : '-'}</span>
+      </div>
+    </section>
+  )
+}
+
+function MobileDetail({ model }) {
+  const windRowLabels = ['평균', '최소', '최대']
+  const twoMinute = model.windGroups[0]?.rows || []
+  const tenMinute = model.windGroups[1]?.rows || []
+  const formatWind = (row) => row?.directionValue === '-' ? '-' : `${row?.directionValue ?? '-'}° / ${row?.speedValue ?? '-'}kt`
+
+  return (
+    <section className="ap-amos-mobile-detail" aria-label="AMOS 상세 관측값">
+      <section className="ap-amos-mobile-block">
+        <h3>시정 / RVR</h3>
+        <div className="ap-amos-mobile-rvr">
+          {model.visibilityRows.map((row, index) => (
+            <div key={row.label}>
+              <span>RWY {model.runwayLabels[index] || index + 1}</span>
+              <strong><b className={row.isRvrGood ? 'is-good' : undefined}>{row.rvrValue}</b> / {row.morValue} m</strong>
+            </div>
+          ))}
         </div>
-      ))}
+      </section>
+
+      <section className="ap-amos-mobile-block">
+        <h3>바람 관측</h3>
+        <div className="ap-amos-mobile-wind-table">
+          <div className="ap-amos-mobile-wind-head"><span>측정값</span><span>2분</span><span>10분</span></div>
+          {windRowLabels.map((label, index) => (
+            <div className="ap-amos-mobile-wind-row" key={label}>
+              <span>{label}</span>
+              <strong>{formatWind(twoMinute[index])}</strong>
+              <strong>{formatWind(tenMinute[index])}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="ap-amos-mobile-block">
+        <h3>기본 기상</h3>
+        <div className="ap-amos-mobile-common">
+          {model.commonCells.map((cell) => (
+            <div key={cell.label}><span>{cell.label}</span><strong>{cell.value}</strong></div>
+          ))}
+        </div>
+      </section>
+
+      <details className="ap-amos-mobile-dial">
+        <summary>활주로·풍향 도식 보기</summary>
+        <WindDial dial={model.dial} activeRunwayIndex={model.activeRunwayIndex} />
+      </details>
     </section>
   )
 }
@@ -98,9 +171,12 @@ export default function AmosBoardTab({ amos, metar, airportMeta }) {
 
   return (
     <div className="ap-amos ap-amos-console-wrap">
-      <PrioritySummary items={model.prioritySummary} />
+      <CompactSummary model={model} />
+      <MobileDetail model={model} />
 
-      <section className="ap-amos-console-board" tabIndex={0} aria-label="AMOS layout, 가로 스크롤 가능">
+      <details className="ap-amos-details">
+        <summary>상세 AMOS 자료</summary>
+        <section className="ap-amos-console-board" tabIndex={0} aria-label="AMOS layout, 가로 스크롤 가능">
         <header className="ap-amos-console-top">
           {model.runwayLabels.map((label) => (
             <div className={`ap-amos-console-runway-id${label === model.activeRunwayLabel ? ' is-active' : ''}`} key={label}>
@@ -134,7 +210,8 @@ export default function AmosBoardTab({ amos, metar, airportMeta }) {
             </div>
           ))}
         </section>
-      </section>
+        </section>
+      </details>
     </div>
   )
 }
