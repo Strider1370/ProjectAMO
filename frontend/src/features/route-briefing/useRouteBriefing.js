@@ -7,6 +7,7 @@ import { computeEtaIso } from './lib/etaCalc.js'
 import { getLastUsed } from './lib/aircraftProfiles.js'
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude, minVfrCruiseAltitude } from './lib/altitude.js'
 import { buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
+import { recommendProcedures } from './lib/recommendProcedures.js'
 import { parseRouteFile, extractRoutePaths, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './lib/routeImport.js'
 import {
   FIR_EXIT_AIRPORT,
@@ -18,12 +19,8 @@ import {
   buildRoutePreviewModel,
   buildVfrRouteFromWaypoints,
   buildVisibleSidOptions,
-  chooseIapKeyForRunway,
-  filterProceduresByRunway,
   getCurrentRouteLineString,
   getVfrAirportAltitudeFt,
-  getWindDirection,
-  pickBestRunwayGroup,
 } from './lib/routeBriefingModel.js'
 
 export const initialRouteForm = {
@@ -271,134 +268,19 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       }
     }
 
-    const isDomesticDeparture = KNOWN_AIRPORTS.includes(routeForm.departureAirport)
-    const isDomesticArrival = KNOWN_AIRPORTS.includes(routeForm.arrivalAirport)
-    const isOverseasArrival = !isDomesticArrival && !isFirExitMode && routeForm.arrivalAirport
-    const isOverseasDeparture = !isDomesticDeparture && !isFirInMode && routeForm.departureAirport
-
-    if (isFirInMode && !routeForm.entryFix) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    if (isFirExitMode && !routeForm.exitFix) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    // 출발/도착이 각각 준비됐는지 통합 체크.
-    // 출발: FIR진입(수동 entryFix) / 해외(최근접지점) / 국내(SID) 중 하나.
-    // 도착: FIR이탈(수동 exitFix) / 해외(최근접지점) / 국내(STAR+IAP) 중 하나.
-    const departureReady = isFirInMode || isOverseasDeparture || (isDomesticDeparture && sidOptions.length > 0)
-    const arrivalReady = isFirExitMode || isOverseasArrival || (isDomesticArrival && starOptions.length > 0 && !!iapData)
-    if (!departureReady || !arrivalReady) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    // 출발 후보: FIR진입(수동 entryFix) / 해외(최근접지점) / 국내(SID).
-    const buildDepartureCandidates = async () => {
-      if (isFirInMode) return [{ sid: null, entryFix: routeForm.entryFix }]
-      if (isOverseasDeparture) {
-        const links = await loadOverseasLinks()
-        const link = links[routeForm.departureAirport]
-        // 최근접 1개만 쓰면 목적지 반대편 fix로 진입해 되돌아가는 경로가 될 수 있음.
-        // 근접 후보 전부를 넘겨 아래 총거리 순위가 방향까지 고려해 진입 fix를 고르게 한다.
-        if (!link?.nearbyFixes?.length) return []
-        return link.nearbyFixes.map((nf) => ({ sid: null, entryFix: nf.fix }))
-      }
-      return filterProceduresByRunway(
-        sidOptions,
-        pickBestRunwayGroup(
-          sidOptions.flatMap((proc) => proc.runways ?? []),
-          getWindDirection(metarData, routeForm.departureAirport),
-        ),
-      ).map((sid) => ({ sid, entryFix: sid.enrouteFix ?? '' }))
-    }
-
-    // Handle arrival: domestic with STAR/IAP, FIR exit with manual fix, or overseas with nearestFix
-    const buildArrivalCandidates = async () => {
-      if (isFirExitMode) {
-        return [{ star: null, iapKey: null, exitFix: routeForm.exitFix }]
-      }
-      if (isOverseasArrival) {
-        const links = await loadOverseasLinks()
-        const link = links[routeForm.arrivalAirport]
-        // 이탈도 마찬가지 — 근접 후보 전부를 넘겨 총거리 최소인 이탈 fix를 고르게 한다.
-        if (!link?.nearbyFixes?.length) return []
-        return link.nearbyFixes.map((nf) => ({ star: null, iapKey: null, exitFix: nf.fix }))
-      }
-      // Domestic arrival
-      const arrivalRunwayGroup = pickBestRunwayGroup(
-        starOptions
-          .map((star) => iapData?.starToIapCandidates?.[star.id]?.runways ?? [])
-          .flat(),
-        getWindDirection(metarData, routeForm.arrivalAirport),
-      )
-      return filterProceduresByRunway(
-        starOptions
-          .map((star) => {
-            const entry = iapData.starToIapCandidates?.[star.id]
-            return { star, entry, runways: entry?.runways ?? [] }
-          })
-          .filter(({ entry }) => entry),
-        arrivalRunwayGroup,
-      ).map(({ star, entry }) => ({
-        star,
-        iapKey: chooseIapKeyForRunway(entry, iapData, arrivalRunwayGroup),
-        exitFix: star.startFix ?? '',
-      }))
-    }
-
-    Promise.all([buildDepartureCandidates(), buildArrivalCandidates()]).then(([departureCandidates, arrivalCandidates]) => {
-      if (cancelled) return
-
-      Promise.all(
-        departureCandidates.flatMap(({ sid, entryFix }) =>
-          arrivalCandidates.map(async ({ star, iapKey, exitFix }) => {
-          try {
-            const result = await buildBriefingRoute({
-              departureAirport: routeForm.departureAirport,
-              arrivalAirport: routeForm.arrivalAirport,
-              entryFix,
-              exitFix,
-              routeType: effectiveRouteType,
-            })
-
-            return {
-              sid,
-              star,
-              iapKey,
-              entryFix,
-              exitFix,
-              // SID 구간까지 포함한 총거리로 순위(항로 구간만 보면 서쪽 진입지점 등 엉뚱한 SID 선택됨)
-              distanceNm: Number(result?.totalDistanceNm ?? result?.distanceNm) || Number.POSITIVE_INFINITY,
-            }
-          } catch {
-            return null
-          }
-        }),
-      ),
-    ).then((results) => {
-      if (cancelled) return
-
-      const valid = results.filter(Boolean).sort((a, b) => a.distanceNm - b.distanceNm)
-      const fallbackSid = departureCandidates[0] ?? null
-      const fallbackArrival = arrivalCandidates[0] ?? null
-      const best = valid[0] ?? (fallbackSid && fallbackArrival
-        ? {
-            sid: fallbackSid.sid ?? null,
-            star: fallbackArrival.star,
-            iapKey: fallbackArrival.iapKey,
-            entryFix: fallbackSid.entryFix,
-            exitFix: fallbackArrival.exitFix,
-          }
-        : null)
-
-      if (!best) return
+    recommendProcedures({
+      routeForm,
+      sidOptions,
+      starOptions,
+      iapData,
+      metarData,
+      isFirInMode,
+      isFirExitMode,
+      effectiveRouteType,
+      loadOverseasLinks,
+      buildBriefingRoute,
+    }).then((best) => {
+      if (cancelled || !best) return
 
       setAutoRecommendRequested(false)
       setSelectedSid(best.sid ?? null)
@@ -409,7 +291,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         entryFix: best.entryFix ?? prev.entryFix,
         exitFix: best.exitFix ?? prev.exitFix,
       }))
-    }).catch(() => {})
     }).catch(() => {})
 
     return () => {
