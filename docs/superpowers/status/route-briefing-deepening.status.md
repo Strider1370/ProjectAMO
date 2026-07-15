@@ -27,5 +27,8 @@
 ## 리포트
 후보 전체 상세: 임시 HTML `architecture-review.html`(+ `-ko`). 레포 밖 temp. 필요 시 docs로 정식 보관.
 
-## 다음 액션
-#6 grilling — useRouteBriefing.js:261-433 auto-recommend 클로저를 순수 함수로 추출. 먼저 그 클로저 정독.
+## 다음 액션 (2026-07-15 세션 종료 시점 — 나중에 재개)
+백엔드 #1~3 · #6 · #7 완료·커밋, main에 머지됨. **남은 작업은 다음 세션에서 재개.**
+권장 재개점: **#8**(VerticalProfileChart 지오메트리 → buildProfileGeometry). altitude-advisor 스펙과
+함께 하면 리팩토링+기능이 한 작업이 됨. 단 SVG 좌표수학이라 **Playwright 시각검증 필수**(build·단위테스트로는 회귀 안 잡힘).
+이후 #11(useNotamOverlay) → #5(훅 분해, 특성화 테스트 선행) → #9(패널 분리). #10·#12는 ADR상 기능 작업에 얹어야 함.
