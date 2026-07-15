@@ -119,7 +119,9 @@ ProjectAMO/
 - `frontend/src/features/notam/lib/notamLayers.js` -> Mapbox NOTAM source/fill/line/marker install+sync, time-state color (`--level-*`) + colorblind shape, category `filter`, zoom split (marker<->polygon), overlap-popup HTML; owns `NOTAM_SOURCE_IDS`/`NOTAM_LAYER_IDS`.
 - `frontend/src/features/airport-panel/tabs/NotamTab.jsx` -> (surface B) airport NOTAM list (A-field match) + nationwide `scope:'fir'` 전역 공지 section; reads `weatherData.notam`.
 - `frontend/src/features/route-briefing/lib/procedureData.js` -> procedure/navpoint loading helpers.
-- `frontend/src/features/route-briefing/useRouteBriefing.js` -> route briefing state, async route/procedure transitions, VFR waypoint model, route search, and vertical profile orchestration.
+- `frontend/src/features/route-briefing/useRouteBriefing.js` -> route briefing state, async transitions/lifecycle cancellation, route search, vertical profile orchestration, and delegation of IFR procedure selection to `recommendProcedures`.
+- `frontend/src/features/route-briefing/lib/recommendProcedures.js` -> injected-I/O IFR procedure recommendation owner.
+- `frontend/src/features/route-briefing/lib/briefingViewModel.js` -> pure briefing display-transform owner.
 - `frontend/src/features/route-briefing/RouteBriefingPanel.jsx` -> route-check panel UI for IFR/VFR form, route result, VFR altitude editing, and vertical profile controls.
 - `frontend/src/features/route-briefing/VerticalProfileWindow.jsx` -> vertical profile modal shell.
 - `frontend/src/features/route-briefing/RouteBriefing.css` -> route panel, VFR waypoint, and vertical profile styles.
@@ -143,14 +145,13 @@ ProjectAMO/
 - `frontend/src/features/map/MapView.jsx` ref -> 온보딩용 `getAirportPoint(icao)`(공항→뷰포트 픽셀), `flyToAirport(icao)`(선택 없이 카메라 이동, 첫 호출 시 홈 뷰 저장), `resetView()`(저장한 홈 뷰로 복귀) 추가. App이 온보딩 스텝 전환 시 패널 닫기+공항 스텝 이탈 시 resetView 호출.
 - `frontend/src/features/airport-panel/AirportPanel.jsx` -> airport drawer shell and tab selection.
 - `frontend/src/features/airport-panel/AirportPanel.css` -> airport drawer and tab style entry.
-- `frontend/src/features/airport-panel/tabs/CurrentWeatherTab.jsx` -> compact default airport drawer weather summary for warning, METAR, and next-6-hour TAF.
 - `frontend/src/features/airport-panel/tabs/MetarTab.jsx` -> METAR tab rendering.
 - `frontend/src/features/airport-panel/tabs/TafTab.jsx` -> TAF tab rendering.
 - `frontend/src/features/airport-panel/tabs/AmosTab.jsx` -> AMOS tab rendering.
-- `frontend/src/features/airport-panel/tabs/WarningTab.jsx` -> airport warning tab rendering.
+- `frontend/src/features/airport-panel/WarningCarousel.jsx` -> live airport warning surface.
 - `frontend/src/features/airport-panel/tabs/AirportInfoTab.jsx` -> airport information bulletin rendering.
 - `frontend/src/features/airport-panel/lib/formatters.js` -> airport panel time/wind formatting helpers.
-- `frontend/src/features/airport-panel/lib/currentWeatherViewModel.js` -> current-weather tab warning, compact METAR, RVR, and next-6-hour TAF view-model helpers.
+- `frontend/src/features/airport-panel/lib/currentWeatherViewModel.js` -> warning-carousel model helpers only.
 - `frontend/src/features/airport-panel/lib/metarViewModel.js` -> METAR display model builder.
 - `frontend/src/features/airport-panel/lib/tafViewModel.js` -> TAF display model builder.
 - `frontend/src/shared/weather/amosViewModel.js` -> AMOS display model helpers (`buildAmosConsoleModel`: 사용활주로·정풍/측풍 성분·RVR·운고·QNH·기온). `airport-panel` AmosTab과 route-briefing ② 확장이 공유(그래서 `shared/`; fmtKst 인라인).

@@ -1237,56 +1237,6 @@
 }
 
 /* ── WARNING ── */
-.ap-warnings {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ap-warning-item {
-  padding: 10px 12px;
-  border-radius: 6px;
-  border-left: 3px solid var(--text-3);
-  background: var(--bg-2);
-  border: 1px solid var(--stroke-2);
-  border-left-width: 3px;
-}
-
-.ap-warning-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.ap-warning-type {
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--text-1);
-}
-
-.ap-warning-level {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-3);
-  background: var(--stroke-2);
-  padding: 1px 5px;
-  border-radius: 3px;
-}
-
-.ap-warning-time {
-  font-size: 11px;
-  color: var(--text-3);
-  font-family: 'Consolas', 'Menlo', monospace;
-  margin-bottom: 4px;
-}
-
-.ap-warning-text {
-  font-size: 11px;
-  color: var(--text-2);
-  line-height: 1.45;
-}
-
 /* ── 기상정보 document ── */
 .ap-info-doc {
   background: var(--bg-1);

@@ -3,8 +3,6 @@ import { Check } from 'lucide-react'
 import { buildCurrentWarningModel } from './lib/currentWeatherViewModel.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 
-// 공항경보 요약 캐러셀 — 발효 경보를 이름+시각으로 회전 표시(여러 건이면 페이지 자동 순환).
-// (구 CurrentWeatherTab.WarningSummary에서 이관. 상세는 WarningTab, 요약은 이 컴포넌트.)
 export default function WarningCarousel({ warning }) {
   const { tz } = useTimeZone()
   const model = useMemo(() => buildCurrentWarningModel(warning, tz), [warning, tz])
