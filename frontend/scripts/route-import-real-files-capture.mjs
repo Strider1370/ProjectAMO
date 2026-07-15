@@ -8,7 +8,7 @@ import { chromium } from 'playwright'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const appUrl = process.env.PROJECTAMO_URL || 'http://localhost:5173'
 const outDir = process.env.PROJECTAMO_CAPTURE_DIR || path.join(__dirname, '../../artifacts/route-import-real')
-const fixturesDir = path.join(__dirname, '../../docs/superpowers/plans/fixtures/real-world')
+const fixturesDir = path.join(__dirname, '../test/fixtures/route-import/real-world')
 
 async function openVfrPanel(page) {
   await page.goto(appUrl, { waitUntil: 'domcontentloaded' })

@@ -991,7 +991,7 @@ import RouteImportChooser from './RouteImportChooser.jsx'
 프로젝트 §8 규칙에 따라 dev 서버를 띄우고([docs/dev-server-and-capture.md](../../dev-server-and-capture.md) 절차) 다음을 확인:
 
 1. VFR 탭에서 "경로 불러오기" 버튼 클릭 → 파일 선택창이 뜸.
-2. 샘플 GeoJSON 파일(`C:\Users\Jond Doe\Desktop\Project\ProjectAMO\docs\superpowers\plans\fixtures\rkss-rkpk.geojson` — Task 9에서 생성) 선택 → 경유점 3개(RKSS·WP1·RKPK)가 목록에 표시되고 지도가 경로에 맞춰 확대됨.
+2. 샘플 GeoJSON 파일(`frontend/test/fixtures/route-import/rkss-rkpk.geojson` — Task 9에서 생성) 선택 → 경유점 3개(RKSS·WP1·RKPK)가 목록에 표시되고 지도가 경로에 맞춰 확대됨.
 3. `④ 경로 결과`에 총거리가 0이 아닌 값으로 표시됨.
 4. "브리핑 생성" 클릭 → 에러 없이 브리핑이 생성됨(배너에 RKSS·RKPK 카테고리가 보임).
 5. GPX 파일(`rkss-rkpk.gpx`) 선택 → 동일하게 동작.
@@ -1012,15 +1012,15 @@ git commit -m "feat(briefing): 경로 불러오기 버튼 — 데스크톱·모�
 ## Task 9: 샘플 픽스처 승격 + 회귀 스윕
 
 **Files:**
-- Create: `docs/superpowers/plans/fixtures/rkss-rkpk.geojson`
-- Create: `docs/superpowers/plans/fixtures/rkss-rkpk.gpx`
-- Create: `docs/superpowers/plans/fixtures/rkss-rkpk.kml`
+- Create: `frontend/test/fixtures/route-import/rkss-rkpk.geojson`
+- Create: `frontend/test/fixtures/route-import/rkss-rkpk.gpx`
+- Create: `frontend/test/fixtures/route-import/rkss-rkpk.kml`
 
 (스펙 §7 열린 항목 — 스크래치패드 샘플을 리포에 픽스처로 승격해, 이후 세션에서도 Task 8 Step 6 브라우저 검증을 재현 가능하게 한다. 단위테스트는 이미 Task 1-4에서 인라인 문자열로 자기완결적이라 이 픽스처는 **수동/Playwright 검증 전용**이다.)
 
 - [ ] **Step 1: 픽스처 파일 생성**
 
-`docs/superpowers/plans/fixtures/rkss-rkpk.geojson`:
+`frontend/test/fixtures/route-import/rkss-rkpk.geojson`:
 
 ```json
 {
@@ -1044,7 +1044,7 @@ git commit -m "feat(briefing): 경로 불러오기 버튼 — 데스크톱·모�
 }
 ```
 
-`docs/superpowers/plans/fixtures/rkss-rkpk.gpx`:
+`frontend/test/fixtures/route-import/rkss-rkpk.gpx`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1060,7 +1060,7 @@ git commit -m "feat(briefing): 경로 불러오기 버튼 — 데스크톱·모�
 </gpx>
 ```
 
-`docs/superpowers/plans/fixtures/rkss-rkpk.kml`:
+`frontend/test/fixtures/route-import/rkss-rkpk.kml`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1100,7 +1100,7 @@ Expected: 모든 `node --test` PASS, `vite build` exit code 0.
 
 ```bash
 cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
-git add docs/superpowers/plans/fixtures/
+git add frontend/test/fixtures/route-import/
 git commit -m "test(briefing): 경로 임포트 수동 검증용 샘플 픽스처(RKSS-RKPK) 추가"
 ```
 

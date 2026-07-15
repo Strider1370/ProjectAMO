@@ -2,7 +2,7 @@
 
 상태: 조사 완료(실측 근거) · 2026-07-05 · 다음 트랙(해외 기상) 착수 전 준비
 
-관련: `overseas-noaa-integration.md`(1차 결정), `overseas-data-research.md`(소스 조사).
+관련: `overseas-noaa-integration.md`(1차 결정), `docs/research/2026-07-05-overseas-data-research.md`(소스 조사).
 이 문서는 **① FIR 경계 데이터**와 **② NOAA에서 METAR/TAF/SIGMET 가져오는 구현 설계**를 실측 기반으로 정리한다.
 
 ---

@@ -5,7 +5,7 @@
 ## 배경 / 결정
 
 국내(RK…) 서비스를 대한민국 인근 해외 공항으로 확장한다. 근거 조사(5갈래 리서치 + 실측)는
-`docs/superpowers/status/overseas-data-research.md` 참조. 확정된 결정:
+`docs/research/2026-07-05-overseas-data-research.md` 참조. 확정된 결정:
 
 - **국내 = KMA 유지 / 해외 = NOAA 추가** (국내 파이프라인 무변경, 리스크 최소)
 - **1차(MVP) 범위 = METAR / TAF / SIGMET** (경로 GFS 상층기상은 2차로 분리)
