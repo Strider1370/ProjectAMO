@@ -22,17 +22,12 @@ import { phenomenonKo } from '../../shared/weather/phenomenonKo.js'
 import { buildAmosConsoleModel } from '../../shared/weather/amosViewModel.js'
 import { useCrossSectionLayers, CrossSectionToggles } from './crossSectionLayers.jsx'
 import { buildRawWindsTable } from './lib/rawWindsModel.js'
+import { LEVEL_COLOR, catColorOf, catDisplay, worstAirport, worstInterval, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
 import { deriveTimeState, formatAltitude, formatValidPeriod, notamSummary, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
 import NotamCell from '../notam/NotamCell.jsx'
 import './BriefingView.css'
 
 const LEVEL_BADGE = { green: 'success', amber: 'warning', red: 'danger', gray: 'subtle' }
-// 색 = 심각도(level): VFR/MVFR=green(양호) / IFR=amber(주의) / LIFR=red(경고). 카테고리 고정색 폐기.
-const LEVEL_COLOR = { green: 'var(--level-green)', amber: 'var(--level-amber)', red: 'var(--level-red)', gray: '#94a3b8' }
-const catLevel = (c) => (c === 'VFR' || c === 'MVFR' ? 'green' : c === 'IFR' ? 'amber' : c === 'LIFR' ? 'red' : 'gray')
-const catColorOf = (c) => LEVEL_COLOR[catLevel(c)]
-const CAT_RANK = { VFR: 0, MVFR: 1, IFR: 2, LIFR: 3 }
-const SEG_RANK = { '약': 1, '중': 2, '심': 3 }
 const FIELDS = [['바람', 'wind'], ['시정', 'visibility'], ['RVR', 'rvr'], ['운고', 'ceiling'], ['기온/노점', 'temp'], ['현상', 'weather'], ['QNH', 'qnh']]
 const NOTAM_CAT_LABEL = Object.fromEntries(NOTAM_CATEGORIES.map((c) => [c.id, c.label]))
 const NOTAM_GROUP_LIMIT = 6 // 공항 그룹당 기본 표시 수(나머지는 "더 보기"로 접음 — 브리핑 볼륨 통제)
@@ -48,28 +43,6 @@ function hazardIcon(code) {
 }
 
 const roleLabel = (r) => (r === 'departure' ? '출발' : r === 'arrival' ? '도착' : '교체')
-const worstAirport = (a) => (a ?? []).reduce((acc, x) => (!acc || (CAT_RANK[x.category] ?? -1) > (CAT_RANK[acc.category] ?? -1) ? x : acc), null)
-const worstInterval = (iv) => (iv ?? []).reduce((acc, x) => (!acc || SEG_RANK[x.level] > SEG_RANK[acc.level] ? x : acc), null)
-
-// ⑥ 목적지 카테고리 타임라인 막대 — 시간대별 최악 범주(결정론 단일 막대).
-const pctOf = (iso, s, span) => ((Date.parse(iso) - s) / span) * 100
-function tafBarSegments(timeline, validity) {
-  const s = Date.parse(validity?.start)
-  const e = Date.parse(validity?.end)
-  if (!timeline?.length || !Number.isFinite(s) || !Number.isFinite(e) || e <= s) return []
-  const span = e - s
-  const segs = []
-  for (const entry of timeline) {
-    const color = catColorOf(entry.category)
-    const left = Math.max(0, Math.min(100, pctOf(entry.time, s, span)))
-    if (segs.length && segs[segs.length - 1].color === color) continue
-    segs.push({ color, left, time: entry.time }) // time = 이 색(범주)이 시작되는 시각 = 전환점
-  }
-  return segs.map((sg, i) => ({ ...sg, width: (i < segs.length - 1 ? segs[i + 1].left : 100) - sg.left }))
-}
-
-// 표시용 3레벨 fold (배너·②·⑥ 일관): MVFR→VFR(마진 VFR은 VFR로).
-const catDisplay = (c) => (c === 'MVFR' ? 'VFR' : c)
 
 // 카테고리 배지 — 라벨은 3단계 fold, 색은 심각도(level). MVFR="VFR"(green), IFR=amber, LIFR=red.
 function CatBadge({ category }) {
