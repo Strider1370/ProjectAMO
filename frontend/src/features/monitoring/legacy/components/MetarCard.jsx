@@ -24,9 +24,9 @@ function catColors(cat) {
   }
   return { bg: cat.bg, borderSoft: cat.borderSoft, valueColor: cat.valueColor };
 }
-import WeatherIcon from "./WeatherIcon";
+import WeatherIcon from "../../../../shared/ui/WeatherIcon.jsx";
 import { convertWeatherToKorean } from "../utils/visual-mapper";
-import { resolveWeatherVisual } from "../utils/weather-visual-resolver";
+import { resolveWeatherVisual } from "../../../../shared/weather/weather-visual-resolver.js";
 
 const CROSSWIND_ALERT_THRESHOLD_KT = 15;
 const CLEAR_TITLE_IMAGES = [

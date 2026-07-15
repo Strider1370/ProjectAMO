@@ -3,7 +3,7 @@ import {
   computeRelativeHumidity,
 } from "../utils/helpers";
 import { convertWeatherToKorean } from "../utils/visual-mapper";
-import WeatherIcon from "./WeatherIcon";
+import WeatherIcon from "../../../../shared/ui/WeatherIcon.jsx";
 
 function formatGroundNow(date, tz) {
   try {

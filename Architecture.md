@@ -72,7 +72,7 @@ ProjectAMO/
 - `frontend/src/features/monitoring/MonitoringPage.jsx` -> standalone `/monitoring` legacy-style ops/ground screen.
 - `frontend/src/features/monitoring/MonitoringMap.jsx` -> monitoring wrapper around the main MapView with local Aviation/MET icon toggles.
 - `frontend/src/features/monitoring/monitoringApi.js` -> monitoring data loader using current API shape.
-- `frontend/src/features/monitoring/legacy/*` -> copied previous-project dashboard components, alert utilities, CSS, and weather icon assets for the standalone monitoring screen.
+- `frontend/src/features/monitoring/legacy/*` -> copied previous-project dashboard components, alert utilities, and CSS for the standalone monitoring screen; weather rendering reuses shared `WeatherIcon`, resolver, registry, and BasMilius assets.
 - `frontend/src/features/aviation-layers/aviationWfsLayers.js` -> aviation static GeoJSON layer definitions.
 - `frontend/src/features/aviation-layers/addAviationWfsLayers.js` -> aviation GeoJSON source/layer creation.
 - `frontend/src/features/aviation-layers/addAdsbLayer.js` -> ADS-B GeoJSON shaping, source/layer install, visibility sync, cleanup-aware hover popup binding, and `ADSB_SOURCE_IDS`/`ADSB_LAYER_IDS` ownership exports.

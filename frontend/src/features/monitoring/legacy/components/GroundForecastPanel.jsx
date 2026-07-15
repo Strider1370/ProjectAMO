@@ -1,4 +1,4 @@
-import WeatherIcon from "./WeatherIcon";
+import WeatherIcon from "../../../../shared/ui/WeatherIcon.jsx";
 
 export function mapGroundForecastIcon(icon) {
   switch (icon) {

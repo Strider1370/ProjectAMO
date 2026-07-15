@@ -1,4 +1,4 @@
-import { getWeatherIconSrc } from "../utils/weather-icon-registry";
+import { getWeatherIconSrc } from "../../../../shared/weather/weather-icon-registry.js";
 import { mapGroundForecastIcon } from "./GroundForecastPanel";
 
 const W = 720;

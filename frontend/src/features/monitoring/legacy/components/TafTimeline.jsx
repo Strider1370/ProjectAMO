@@ -13,12 +13,12 @@ import {
   hasHighWindCondition,
   hasSpecialWeather,
 } from "../utils/helpers";
-import WeatherIcon from "./WeatherIcon";
+import WeatherIcon from "../../../../shared/ui/WeatherIcon.jsx";
 import {
   groupElementsByValue,
   convertWeatherToKorean,
 } from "../utils/visual-mapper";
-import { resolveWeatherVisual } from "../utils/weather-visual-resolver";
+import { resolveWeatherVisual } from "../../../../shared/weather/weather-visual-resolver.js";
 import { getCurrentRouteContext } from "../utils/route-mode";
 
 const FC_COLORS = { VFR: "#15803d", IFR: "#f59e0b", LIFR: "#dc2626" };
