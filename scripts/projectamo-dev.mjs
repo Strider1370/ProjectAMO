@@ -180,13 +180,13 @@ if (command === 'serve:test') {
 
 try {
   if (command === 'serve' || command === 'serve:test') {
-    await startServers()
-    await waitForUrl(backendHealthUrl, 'backend')
-    await waitForUrl(appUrl, 'frontend')
-    console.log(`[projectamo-dev] backend ready: ${backendHealthUrl}`)
-    console.log(`[projectamo-dev] frontend ready: ${appUrl}`)
-    console.log('[projectamo-dev] press Ctrl+C to stop')
-    await new Promise(() => {})
+    await withServers(async () => {
+      console.log('[projectamo-dev] press Ctrl+C to stop')
+      await new Promise((resolve) => {
+        process.once('SIGINT', resolve)
+        process.once('SIGTERM', resolve)
+      })
+    })
   }
 
   if (command === 'verify') {

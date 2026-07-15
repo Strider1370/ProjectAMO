@@ -9,7 +9,7 @@ Use this guide whenever a task requires opening the local backend, opening the f
 - Frontend: `http://127.0.0.1:5173`
 - Frontend app URL for Playwright: `PROJECTAMO_URL=http://127.0.0.1:5173`
 
-Do not use the checked-in `Launch-ProjectAMO-Dev.bat` or `Open-ProjectAMO-Dev.bat` as the default launch path unless their hard-coded paths have first been updated for the current workspace.
+Use `npm run dev:serve` for persistent development and `npm run dev:test` for fixed-data verification.
 
 ## Preflight
 
