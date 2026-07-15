@@ -91,12 +91,10 @@ pm2 startup
 Recommended update flow:
 
 ```bash
-git pull --ff-only origin main
-npm install
-npm --prefix frontend install
-npm --prefix frontend run build
-pm2 restart projectamo-backend
+deploy/deploy-vm-full.sh # use when package manifests or lockfiles changed
 ```
+
+`deploy/deploy-vm.sh` is the fast path and is valid only when backend and frontend package manifests and lockfiles have not changed. Dependency changes require `deploy/deploy-vm-full.sh`; the fast path intentionally performs no dependency installation.
 
 ## nginx Notes
 

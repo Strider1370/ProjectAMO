@@ -8,19 +8,14 @@ cd "${REPO_ROOT}"
 
 echo "[deploy-full] repo: ${REPO_ROOT}"
 
-# 이전 배포의 npm install이 남긴 lockfile 변경이 ff-only pull을 막지 않도록 먼저 되돌린다.
-# 커밋된 lockfile이 정본이며, 필요한 설치는 커밋본 기준으로 다시 이뤄진다.
-echo "[deploy-full] discarding local lockfile churn..."
-git checkout -- frontend/package-lock.json backend/package-lock.json 2>/dev/null || true
-
 echo "[deploy-full] pulling latest main..."
 git pull --ff-only origin main
 
 echo "[deploy-full] installing backend dependencies..."
-npm --prefix backend install
+npm --prefix backend ci
 
 echo "[deploy-full] installing frontend dependencies..."
-npm --prefix frontend install
+npm --prefix frontend ci
 
 echo "[deploy-full] building frontend..."
 npm --prefix frontend run build
