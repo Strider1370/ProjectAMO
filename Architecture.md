@@ -21,6 +21,7 @@ ProjectAMO/
         map/                   -> Mapbox lifecycle, basemap/style readiness, map-owned layers, and high-level feature orchestration
         monitoring/            -> standalone legacy-style ops/ground monitoring page with Mapbox overlay panel
         aviation-layers/       -> aviation WFS and ADS-B layers
+        notam/                 -> NOTAM panel, GeoJSON adapter, map layers, filters, and popups
         weather-overlays/      -> radar/satellite/lightning/SIGWX/advisory overlays
         route-briefing/        -> route search and procedure/navpoint lookup
         airport-panel/         -> airport detail drawer, tabs, and view models
@@ -34,6 +35,13 @@ ProjectAMO/
     data/                    -> local development data root; terrain source/tiles live here when DATA_PATH is unset
     src/
       briefing/               -> route-axis, planned altitude profile, and vertical profile composition
+      auth/                   -> authentication and session routes
+      db/                     -> database access and schema helpers
+      admin/                  -> administration routes and services
+      alerts/                 -> flight-alert evaluation, change detection, and delivery
+      me/                     -> personal settings, minima, and notification routes
+      forecaster/             -> forecaster tools and routes
+      dev/                    -> test-instance development scenarios and instrumentation
       terrain/                 -> terrain tile cache and DEM sampling
       parsers/                 -> upstream raw response parsers
       processors/              -> normalized data transformers
@@ -62,7 +70,7 @@ ProjectAMO/
 - `frontend/src/api/weatherApi.js` -> initial weather bundle, deferred weather dataset, changed dataset, static airport/navdata fetch helpers.
 - `frontend/src/api/adsbApi.js` -> ADS-B fetch helper.
 - `frontend/src/api/briefingApi.js` -> route briefing and vertical profile API helpers.
-- `frontend/src/features/map/MapView.jsx` -> Mapbox instance owner, style readiness/basemap switching coordinator, `styleRevision` sync trigger, high-level feature panel composition, and current-state sync orchestration, including base geo-boundary visibility for dark/raster/NWP overlay contrast. Feature-specific data shaping and layer adapters live in their owning feature modules. `forwardRef`로 imperative `setLayerOn(id, kind)`/`switchBasemap(id)`를 노출 — 검색 팔레트 등 외부 소비자가 MapView 내부 레이어/베이스맵 상태를 직접 끌어올리지 않고 켜도록 한다.
+- `frontend/src/features/map/MapView.jsx` -> Mapbox instance owner, style readiness/basemap switching coordinator, `styleRevision` sync trigger, high-level feature panel composition, and current-state sync orchestration, including base geo-boundary visibility for dark/raster/NWP overlay contrast. Feature-specific data shaping and layer adapters live in their owning feature modules. Current transitional exceptions are NOTAM installation/filter/popup, route-preview composition, and ADS-B polling/composition; new feature map logic does not use these as templates. `forwardRef`로 imperative `setLayerOn(id, kind)`/`switchBasemap(id)`를 노출 — 검색 팔레트 등 외부 소비자가 MapView 내부 레이어/베이스맵 상태를 직접 끌어올리지 않고 켜도록 한다.
 - `frontend/src/features/map/MapView.css` -> map, overlay panel, and route briefing style entry.
 - `frontend/src/features/map/mapConfig.js` -> map bounds, initial camera, basemap options.
 - `frontend/src/features/map/imageOverlay.js` -> shared Mapbox image overlay helpers for raster/SIGWX frames.
@@ -210,7 +218,7 @@ ProjectAMO/
 
 - `frontend/src/main.jsx` imports only the app entry files.
 - Frontend layout sizing should use `frontend/src/app/layout/layoutTokens.css` for shared shell, panel, and breakpoint values before adding new fixed pixel widths.
-- Frontend UI, CSS, layout, and responsive work should follow `docs/design/design-language.md` (the design constitution, single source of truth) for tokens, color, typography, operational UX priorities, review workflow, and proposal-first structural change rules.
+- Frontend UI, CSS, layout, and responsive work should follow `docs/policies/design/design-language.md` (the design constitution, single source of truth) for tokens, color, typography, operational UX priorities, review workflow, and proposal-first structural change rules.
 - `frontend/src/app/*` may import `api/`, `features/`, and `shared/`.
 - `frontend/src/features/*` may import `api/`, `shared/`, and local feature siblings when a UI flow requires it.
 - `frontend/src/shared/*` must stay frontend-only and must not import from `app/` or `features/`.
@@ -218,7 +226,7 @@ ProjectAMO/
 - `frontend/src/features/map/MapView.jsx` owns Mapbox instance creation, basemap switching, style readiness, and `styleRevision`; it should not apply feature data or visibility from stale `style.load` closures.
 - Feature-owned Mapbox adapters should expose or document their source/layer IDs when they own persistent Mapbox resources.
 - Weather overlay map writes belong under `frontend/src/features/weather-overlays/lib/`; route preview map writes belong under `frontend/src/features/route-briefing/lib/`; ADS-B map writes belong under `frontend/src/features/aviation-layers/`.
-- Adding a map overlay/layer or its visibility sync? Put it in the owning feature module as a `useXOverlay` hook (see `useWeatherFieldOverlay`/`useStyleSyncedEffect`), not as a new `useEffect` in `MapView.jsx` — MapView regrows by accretion otherwise (see `docs/adr/0001-mapview-layer-gravity.md`).
+- Adding a map overlay/layer or its visibility sync? Put it in the owning feature module as a `useXOverlay` hook (see `useWeatherFieldOverlay`/`useStyleSyncedEffect`), not as a new `useEffect` in `MapView.jsx`; see [the map and layers policy](docs/policies/engineering/map-and-layers.md).
 - 레이어를 켜는 공유 경로는 `features/map/layerActions.js` 레지스트리를 통한다(검색·브리핑·경로가 공유, MapView 토글 재사용). 새 토글 레이어 추가 시 `layerActions.test.js` 커버리지 테스트가 레지스트리 등록을 강제하므로, 레이어 정의에 id를 더하면 레지스트리에도 등록해야 한다.
 - `backend/*` must not import from `frontend/src/`.
 - Runtime browser assets must live under `frontend/public/`.

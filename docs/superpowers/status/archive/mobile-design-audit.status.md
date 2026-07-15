@@ -2,7 +2,7 @@
 
 Updated: 2026-07-01 (KST)
 Spec: docs/superpowers/specs/2026-07-01-mobile-design-audit-design.md
-Plan: docs/superpowers/plans/2026-07-01-mobile-design-audit.md
+Plan: docs/superpowers/archive/plans/2026-07-01-mobile-design-audit.md
 Branch: feat/mobile-design-audit
 
 ## 상태: 완료 (2026-07-01)

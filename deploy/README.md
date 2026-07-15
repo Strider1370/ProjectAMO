@@ -38,4 +38,4 @@ bash deploy/deploy-vm-full.sh
 
 상세 절차는 아래 문서를 봅니다.
 
-- [`docs/aws-ec2-manual-deploy.md`](../docs/aws-ec2-manual-deploy.md)
+- [`docs/operations/aws-ec2-manual-deploy.md`](../docs/operations/aws-ec2-manual-deploy.md)

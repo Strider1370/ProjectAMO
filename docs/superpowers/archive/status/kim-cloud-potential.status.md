@@ -2,7 +2,7 @@
 
 Updated: 2026-05-20 12:45 KST
 Spec: docs/superpowers/specs/2026-05-20-kim-cloud-potential-layer.md
-Plan: docs/superpowers/plans/2026-05-20-kim-cloud-potential-layer.md
+Plan: docs/superpowers/archive/plans/2026-05-20-kim-cloud-potential-layer.md
 
 ## Resume Point
 - Last completed: Task 6 final verification, browser smoke, Architecture.md update, final spec/test/UI/code reviews.

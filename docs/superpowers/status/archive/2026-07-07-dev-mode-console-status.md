@@ -1,6 +1,6 @@
 # 개발자 모드 콘솔 — 작업 상태 / 세션 핸드오프
 
-> **새 세션 안내:** 이 파일 먼저 읽어라. 계획서 = [plans/2026-07-07-dev-mode-console.md](../../plans/2026-07-07-dev-mode-console.md). 이 문서는 "지금까지 뭐가 됐고, 왜 이렇게 됐고, 무엇이 검증됐고, 함정이 뭐고, 다음에 뭘 할지"의 전체 맥락.
+> **새 세션 안내:** 이 파일 먼저 읽어라. 계획서 = [plans/2026-07-07-dev-mode-console.md](../../archive/plans/2026-07-07-dev-mode-console.md). 이 문서는 "지금까지 뭐가 됐고, 왜 이렇게 됐고, 무엇이 검증됐고, 함정이 뭐고, 다음에 뭘 할지"의 전체 맥락.
 
 최종 갱신: 2026-07-07 · 상태: **Phase 1·2·3 전 구현·e2e 검증 완료 + 콘솔을 모달로 전환.** 계획서 Task 1~13 소진. 남은 건 커밋뿐.
 
@@ -159,7 +159,7 @@
 
 ## 7. 다음 할 일 (계획서 Phase 1부터)
 
-계획서 [plans/2026-07-07-dev-mode-console.md](../../plans/2026-07-07-dev-mode-console.md) 의 **Phase 1 (Task 1~5)** 부터:
+계획서 [plans/2026-07-07-dev-mode-console.md](../../archive/plans/2026-07-07-dev-mode-console.md) 의 **Phase 1 (Task 1~5)** 부터:
 1. `/dev` 라우트+페이지 골격(테스트모드 게이트) 2. 조작 탭(현 DevTab 이관) 3. 스케줄러 즉시발화+알림삭제 엔드포인트 4. 관찰 탭 기본3(triggered_alerts 피드·snapshot-meta·CPU/메모리) 5. 마무리(graphify·Architecture).
 
 **착수 전 확인:** `npm run dev:test`로 띄우고 `testpilot/testpass123` 로그인, route #1 존재 확인.

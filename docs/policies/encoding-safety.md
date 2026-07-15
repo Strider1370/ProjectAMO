@@ -1,5 +1,19 @@
 # Encoding Safety
 
+Back to the [policy index](index.md).
+
+## Applies when
+
+Editing or generating text that can contain non-ASCII characters, including Korean, or performing a mechanical rewrite.
+
+## Does not apply when
+
+Read-only inspection of ASCII-only output that cannot alter file bytes.
+
+## Re-check trigger
+
+Re-check this policy before changing the edit method, moving a text file, or accepting console output as encoding evidence.
+
 Prevent shell redirection from corrupting UTF-8 source files.
 
 ## Rules

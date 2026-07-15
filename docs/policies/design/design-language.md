@@ -5,6 +5,22 @@
 > 구(舊) `docs/ui-responsive-guidelines.md`는 이 문서로 **통합되어 삭제**되었다(§6·§7이 그 내용).
 > `docs/research/*`, `docs/superpowers/specs/refs/*`는 **참고자료이며 규칙이 아니다.** 날짜별 `docs/superpowers/specs|plans/*`는 **과거 기록**이다.
 
+## Policy routing
+
+Back to the [policy index](../index.md).
+
+## Applies when
+
+Creating or changing UI, CSS, layout, responsive behavior, or browser-visible interaction.
+
+## Does not apply when
+
+Use the engineering policies for data/collector or Mapbox ownership that has no UI or layout boundary.
+
+## Re-check trigger
+
+Re-check the policy index when a task changes responsive structure, a feature boundary, or requires browser verification.
+
 ---
 
 ## 0. 확정된 기반 결정 (locked)
@@ -80,7 +96,7 @@
 ```css
 :root{
   --space-none:0;--space-xxs:2px;--space-xs:4px;--space-snudge:6px;--space-s:8px;--space-mnudge:10px;--space-m:12px;--space-l:16px;--space-xl:20px;--space-xxl:24px;--space-xxxl:32px;
-  --font-base:Pretendard, system-ui, sans-serif;
+  --font-base:'Pretendard GOV', system-ui, sans-serif;
   --fs-100:10px;--fs-200:12px;--fs-300:14px;--fs-400:16px;--fs-500:20px;--fs-600:24px;--fs-700:28px;--fs-800:32px;--fs-900:40px;
   --lh-100:14px;--lh-200:16px;--lh-300:20px;--lh-400:22px;--lh-500:28px;--lh-600:32px;--lh-700:36px;--lh-800:40px;--lh-900:52px;
   --fw-regular:400;--fw-medium:500;--fw-semibold:600;--fw-bold:700;
@@ -91,7 +107,7 @@
   --stroke-1:#d1d1d1;--stroke-2:#e0e0e0;--stroke-strong:#616161;--accent:#334155;
   --level-green:#166534;--level-green-bg:#dcefe2;--level-amber:#92400e;--level-amber-bg:#fdecc8;
   --level-red:#c0291f;--level-red-bg:#f7dcd9;--level-gray:#475569;--level-gray-bg:#eef2f7;
-  --cat-vfr:var(--level-green);--cat-ifr:var(--level-amber);--cat-lifr:var(--level-red);
+  --cat-vfr:#166534;--cat-mvfr:#1d4ed8;--cat-ifr:#c0291f;--cat-lifr:#9d2c9d;
   --icing-1:#ACC7FF;--icing-2:#6B88CD;--icing-3:#383D6F;
   --turb-light:#64D264;--turb-mod:#FFC300;--turb-sev:#FF3737;
 }

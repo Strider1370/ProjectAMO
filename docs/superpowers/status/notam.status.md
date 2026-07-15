@@ -2,7 +2,7 @@
 
 Updated: 2026-07-03 16:30 KST
 Spec: docs/superpowers/specs/2026-07-03-notam-integration-design.md
-Plan (Phase A): docs/superpowers/plans/2026-07-03-notam-phase-a-backend.md
+Plan (Phase A): docs/superpowers/archive/plans/2026-07-03-notam-phase-a-backend.md
 Mockup: docs/superpowers/specs/refs/2026-07-03-notam-ui-mockup.html
 Branch: **feat/notam-backend** (do NOT work on main)
 

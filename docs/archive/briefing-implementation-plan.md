@@ -1,6 +1,6 @@
 # 비행 전 브리핑 개편 — 구현 계획
 
-> **근거:** [briefing-page-redesign.md](briefing-page-redesign.md)(설계·결정) · [briefing-redesign-mockup.html](briefing-redesign-mockup.html)(시각 시안) · [design/design-language.md](design/design-language.md)(UI 헌법)
+> **근거:** [archived briefing-page-redesign.md](archive/briefing-page-redesign.md)(historical design decision) · [briefing-redesign-mockup.html](briefing-redesign-mockup.html)(시각 시안) · [design language](policies/design/design-language.md)(UI 헌법)
 > **성격:** 실제 코드(`frontend/src/features/route-briefing/`, `backend/src/briefing/`)에 얹기 위한 단계별 작업 계획. 파일·데이터는 세션에서 확인된 실제 경로 기준.
 
 ---

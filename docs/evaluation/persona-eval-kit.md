@@ -124,9 +124,9 @@
 ## E. 도메인 근거 (동봉 필수 — 환각 방지)
 
 새로 만들지 않고 **기존 리서치 재사용**:
-- 브리핑 표준·조종사 실무·한국/ICAO: [briefing-page-redesign.md §2](briefing-page-redesign.md)
+- 브리핑 표준·조종사 실무·한국/ICAO: [archived briefing-page-redesign.md §2](archive/briefing-page-redesign.md)
 - 데이터 소스·제약: [briefing-implementation-plan.md](briefing-implementation-plan.md)
-- 설계 헌법(색·타이포·판독성·§P6): [design/design-language.md](design/design-language.md)
+- 설계 헌법(색·타이포·판독성·§P6): [design language](policies/design/design-language.md)
 - (표면별로 관련 ADR·아키텍처 링크 추가)
 
 평가 시 "이 근거 범위 밖 항공 사실은 지어내지 말고 '확인 필요'로 표시" 지시.

@@ -1,8 +1,22 @@
 # Long Context Handoff Policy
 
+Back to the [policy index](index.md).
+
+## Applies when
+
+Two or more lifecycle trigger criteria below apply, or work needs a cross-session handoff.
+
+## Does not apply when
+
+Short, single-boundary work that meets zero or one trigger criterion.
+
+## Re-check trigger
+
+Re-check when scope reaches another boundary, context use reaches 40%, or work changes from design to implementation.
+
 Procedure for tasks that span multiple sessions or risk context compaction. Do not apply to short tasks.
 
-This policy covers **when** to invoke the heavy workflow and **how** to carry work across sessions. The actual spec/plan authoring and subagent execution details are delegated to the `superpowers` skill set (`writing-specs`, `writing-plans`, `subagent-driven-development`, `executing-plans`).
+This policy covers **when** to invoke the heavy workflow and **how** to carry work across sessions. Use the supported project workflow to approve a design/spec, write an implementation plan, then execute it with the applicable execution skill.
 
 ---
 
@@ -29,7 +43,7 @@ If none or only one applies, treat the work as **light** and proceed with a shor
 | Plan | `docs/superpowers/plans/<date>-<topic>.md` | Immutable. Task 1..N with TDD steps. |
 | Status | `docs/superpowers/status/<topic>.status.md` | **Mutable. Under one page. Cross-session handoff only.** |
 
-Spec and plan authoring use `superpowers:writing-specs` and `superpowers:writing-plans`. This policy adds the **status file**.
+The approved design/spec and implementation plan define the work; this policy adds the **status file**.
 
 ## 3. Status File Standard
 
@@ -161,8 +175,7 @@ When new files or non-obvious structural changes ship under this policy, end the
 
 ## 10. Status File Lifetime
 
-- On task completion: delete the status file or move it to `docs/superpowers/status/archive/`.
-- On task abandonment: delete immediately.
+- On completion or explicit abandonment: move the status file to `docs/superpowers/status/archive/`; never delete it as routine cleanup.
 - More than five active status files is a cleanup signal. Audit them.
 
 ---

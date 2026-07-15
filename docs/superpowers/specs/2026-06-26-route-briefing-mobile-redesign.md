@@ -1,7 +1,7 @@
 # Route Briefing — Mobile Redesign Spec (approved layout)
 
 - **Date:** 2026-06-26
-- **Status:** IMPLEMENTED (2026-06-26). Layout approved over interactive mockups; built per the plan and verified with Playwright (IFR/VFR/peek + desktop regression). See `docs/superpowers/plans/2026-06-26-route-briefing-mobile-redesign-plan.md`.
+- **Status:** IMPLEMENTED (2026-06-26). Layout approved over interactive mockups; built per the plan and verified with Playwright (IFR/VFR/peek + desktop regression). See `docs/superpowers/archive/plans/2026-06-26-route-briefing-mobile-redesign-plan.md`.
 - **Scope:** Mobile (≤719px) **route-briefing** form only. Builds on the existing shared `MobileSheet`. **Desktop unchanged** (keeps `.route-check-panel` + floating 지도 보기 toggle).
 - **Why:** The first pass put airport chips above raw native `<select>` fields — the controls felt disjointed and the form wasn't structured as a from→to route. Research (EFB apps + consumer from→to apps + Material/HIG/NN-g) converged on the design below.
 

@@ -2,7 +2,7 @@
 
 Updated: 2026-06-28 KST
 Spec: docs/superpowers/specs/2026-06-28-workflow-constitution-redesign-design.md
-Plan: docs/superpowers/plans/2026-06-28-workflow-constitution-redesign.md
+Plan: docs/superpowers/archive/plans/2026-06-28-workflow-constitution-redesign.md
 
 ## Resume Point
 - Last completed: Phase 1 전체 완료 (Task 1~11 + ponytail 설치/강도 설정).

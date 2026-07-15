@@ -1,4 +1,6 @@
-# Route Briefing Architecture Draft
+# Route Briefing Architecture Draft (historical, non-normative)
+
+> Historical design context only. The live request contract is `POST /api/route-briefing` in `backend/server.js`: it requires `departureAirport`, `arrivalAirport`, `routeGeometry`, `etd`, and `eta`, then composes the response from cached operational datasets. Do not use the API examples below as the current contract.
 
 ## Goal
 

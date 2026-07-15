@@ -988,7 +988,7 @@ import RouteImportChooser from './RouteImportChooser.jsx'
 
 - [ ] **Step 6: 브라우저 검증 (Playwright)**
 
-프로젝트 §8 규칙에 따라 dev 서버를 띄우고([docs/dev-server-and-capture.md](../../dev-server-and-capture.md) 절차) 다음을 확인:
+프로젝트 §8 규칙에 따라 dev 서버를 띄우고([docs/dev-server-and-capture.md](../../../dev-server-and-capture.md) 절차) 다음을 확인:
 
 1. VFR 탭에서 "경로 불러오기" 버튼 클릭 → 파일 선택창이 뜸.
 2. 샘플 GeoJSON 파일(`frontend/test/fixtures/route-import/rkss-rkpk.geojson` — Task 9에서 생성) 선택 → 경유점 3개(RKSS·WP1·RKPK)가 목록에 표시되고 지도가 경로에 맞춰 확대됨.
