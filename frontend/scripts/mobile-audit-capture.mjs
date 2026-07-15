@@ -102,4 +102,5 @@ try {
   await writeFile(fileURLToPath(new URL('manifest.json', OUT)), JSON.stringify(manifest, null, 2), 'utf8')
   const okc = manifest.states.filter((s) => s.ok).length
   console.log(`\n${okc}/${manifest.states.length} captured · manifest.json written`)
+  if (manifest.states.some((state) => state.ok === false)) process.exitCode = 1
 }

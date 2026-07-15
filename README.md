@@ -158,7 +158,7 @@ npm.cmd run dev:screenshots
 스크린샷은 아래 경로에 저장됩니다.
 
 ```text
-artifacts/responsive-screenshots/<phase>/
+artifacts/responsive-screenshots/<phase>/<YYYY-MM-DD_HHMMSS>_<label>/
 ```
 
 ## 백엔드 API 개요

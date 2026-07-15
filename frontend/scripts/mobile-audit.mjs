@@ -130,3 +130,4 @@ await writeFile(new URL('results.json', OUT_DIR), JSON.stringify(results, null, 
 await browser.close()
 console.log(`\nDONE. ${results.filter(r => r.status === 'ok').length} ok, ${results.filter(r => r.status === 'FAIL').length} failed.`)
 console.log(fileURLToPath(OUT_DIR))
+if (results.some((result) => result.status === 'FAIL')) process.exitCode = 1
