@@ -11,6 +11,8 @@
     "dev:smoke": "node scripts/projectamo-dev.mjs smoke",
     "dev:screenshots": "node scripts/projectamo-dev.mjs screenshots",
     "build": "npm run build --prefix frontend",
+    "test": "npm --prefix backend test && npm --prefix frontend test",
+    "check": "npm test && npm run build",
     "preview": "npm run preview --prefix frontend"
   },
   "devDependencies": {
