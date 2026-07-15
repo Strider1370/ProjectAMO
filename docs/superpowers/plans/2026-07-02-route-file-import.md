@@ -24,7 +24,7 @@
 
 - [ ] **Step 1: 의존성 설치**
 
-Run: `npm install @tmcw/togeojson simplify-js @xmldom/xmldom --prefix "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend"`
+Run: `npm install @tmcw/togeojson simplify-js @xmldom/xmldom --prefix "frontend"`
 
 Expected: `frontend/package.json`의 `dependencies`에 `@tmcw/togeojson`, `simplify-js`, `@xmldom/xmldom`가 추가됨.
 
@@ -72,7 +72,7 @@ test('parseRouteFile: 깨진 GeoJSON은 에러', () => {
 
 - [ ] **Step 2b: 테스트 실행 → 실패 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeImport.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeImport.test.js"`
 Expected: FAIL — `Cannot find module './routeImport.js'`
 
 - [ ] **Step 3: `routeImport.js` 최소 구현 — GeoJSON 경로만**
@@ -180,13 +180,13 @@ export function snapEndpointsToAirports(coords, airports, thresholdNm = 5) {
 
 - [ ] **Step 4: 테스트 실행 → 통과 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeImport.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeImport.test.js"`
 Expected: PASS (3 tests)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
+cd "."
 git add frontend/package.json frontend/package-lock.json frontend/src/features/route-briefing/lib/routeImport.js frontend/src/features/route-briefing/lib/routeImport.test.js
 git commit -m "feat(briefing): 경로 파일 파싱 — GeoJSON 후보 경로 추출
 
@@ -261,7 +261,7 @@ test('extractRoutePaths: rte와 trk가 둘 다 있으면 후보 2개', () => {
 
 - [ ] **Step 2: 테스트 실행 → 실패 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeImport.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeImport.test.js"`
 Expected: FAIL — 새 3개 테스트가 `candidates.length, 0`으로 실패 (extractRoutePaths가 gpx면 `[]` 반환 중)
 
 - [ ] **Step 3: GPX 후보 추출 구현**
@@ -310,13 +310,13 @@ export function extractRoutePaths(parsed) {
 
 - [ ] **Step 4: 테스트 실행 → 통과 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeImport.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeImport.test.js"`
 Expected: PASS (6 tests)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
+cd "."
 git add frontend/src/features/route-briefing/lib/routeImport.js frontend/src/features/route-briefing/lib/routeImport.test.js
 git commit -m "feat(briefing): GPX rte/trk 후보 구분 — DOM 직접 파싱
 
@@ -368,7 +368,7 @@ test('extractRoutePaths: KML LineString은 kind=route', () => {
 
 - [ ] **Step 2: 테스트 실행 → 실패 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeImport.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeImport.test.js"`
 Expected: FAIL — `extractGeoJsonPaths`가 `parsed.geojson`을 그대로 쓰는데, `parseRouteFile`이 kml에 대해 `kmlToGeoJSON(doc)`을 이미 geojson으로 넣고 있으므로 실제로는 **통과할 수도 있음**. 통과하면 이 스텝은 "이미 구현됨 확인"으로 취급하고 다음 스텝(회귀 테스트 전체 실행)으로 진행.
 
 - [ ] **Step 3: (필요 시) KML 처리 보정**
@@ -382,13 +382,13 @@ const label = feature.properties?.name || feature.properties?.title || `경로 $
 
 - [ ] **Step 4: 테스트 실행 → 통과 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeImport.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeImport.test.js"`
 Expected: PASS (7 tests)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
+cd "."
 git add frontend/src/features/route-briefing/lib/routeImport.js frontend/src/features/route-briefing/lib/routeImport.test.js
 git commit -m "test(briefing): KML LineString 경로 추출 검증"
 ```
@@ -450,7 +450,7 @@ test('isWithinKoreaFir: 경계 안/밖 판정', () => {
 
 - [ ] **Step 2: 테스트 실행 → 실패 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeImport.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeImport.test.js"`
 Expected: FAIL — `simplifyRoute`는 항상 원본 그대로 반환(500개), `snapEndpointsToAirports`는 항상 `null, null` 반환 중이라 스냅 성공 케이스가 실패.
 
 - [ ] **Step 3: 구현**
@@ -506,13 +506,13 @@ export function snapEndpointsToAirports(coords, airports, thresholdNm = 5) {
 
 - [ ] **Step 4: 테스트 실행 → 통과 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeImport.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeImport.test.js"`
 Expected: PASS (12 tests)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
+cd "."
 git add frontend/src/features/route-briefing/lib/routeImport.js frontend/src/features/route-briefing/lib/routeImport.test.js
 git commit -m "feat(briefing): 경로 임포트 — RDP 점 솎기(N=20) + 공항 스냅(5NM)"
 ```
@@ -595,7 +595,7 @@ test('buildVfrRouteFromWaypoints: 점이 2개 미만이면 에러', () => {
 
 - [ ] **Step 2: 테스트 실행 → 실패 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeBriefingModel.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeBriefingModel.test.js"`
 Expected: FAIL — `buildVfrRouteFromWaypoints is not a function` (또는 undefined import)
 
 - [ ] **Step 3: 구현**
@@ -658,13 +658,13 @@ export function buildVfrRouteFromWaypoints(coords, { departureAirport = null, ar
 
 - [ ] **Step 4: 테스트 실행 → 통과 확인**
 
-Run: `node --test "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\features\route-briefing\lib\routeBriefingModel.test.js"`
+Run: `node --test "frontend\src\features\route-briefing\lib\routeBriefingModel.test.js"`
 Expected: PASS (기존 테스트 전부 + 신규 3개)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
+cd "."
 git add frontend/src/features/route-briefing/lib/routeBriefingModel.js frontend/src/features/route-briefing/lib/routeBriefingModel.test.js
 git commit -m "feat(briefing): buildVfrRouteFromWaypoints — 임포트 좌표를 VFR routeResult로"
 ```
@@ -780,13 +780,13 @@ import { buildVfrRouteFromWaypoints } from './lib/routeBriefingModel.js'
 
 - [ ] **Step 4: 수동 회귀 확인 (단위테스트 없이 — 브라우저에서 배선 확인)**
 
-Run: `npx vite build --logLevel warn --prefix "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend"` 또는 `cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend" && npx vite build --logLevel warn`
+Run: `npx vite build --logLevel warn --prefix "frontend"` 또는 `cd "frontend" && npx vite build --logLevel warn`
 Expected: exit code 0, 새 import·미사용 변수 에러 없음. (버튼 UI는 Task 8에서 붙이므로 이 시점엔 액션이 아직 어디서도 안 불림 — 컴파일 클린만 확인.)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
+cd "."
 git add frontend/src/features/route-briefing/useRouteBriefing.js
 git commit -m "feat(briefing): importRouteFromFile 액션 — loadSavedRoute 패턴으로 경유점 주입
 
@@ -858,18 +858,18 @@ export default function RouteImportChooser({ candidates, onSelect, onCancel }) {
 
 - [ ] **Step 3: 컴포넌트 파일이 fluent.js의 named export를 실제로 갖는지 확인**
 
-Run: `grep -n "export.*MessageBar" "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend\src\shared\ui\fluent.js"`
+Run: `grep -n "export.*MessageBar" "frontend\src\shared\ui\fluent.js"`
 Expected: `MessageBar`, `MessageBarBody`, `Button`이 export 목록에 있음(RouteBriefingPanel.jsx가 이미 이 모듈에서 같은 이름들을 가져다 쓰고 있으므로 존재 확인용 — 이미 확인됨, 별도 수정 불필요).
 
 - [ ] **Step 4: 빌드 확인**
 
-Run: `cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend" && npx vite build --logLevel warn`
+Run: `cd "frontend" && npx vite build --logLevel warn`
 Expected: exit code 0
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
+cd "."
 git add frontend/src/features/route-briefing/RouteImportChooser.jsx frontend/src/features/route-briefing/useRouteBriefing.js
 git commit -m "feat(briefing): 다중 경로 파일용 선택 UI(RouteImportChooser)"
 ```
@@ -1002,7 +1002,7 @@ Expected: 위 6개 항목 모두 에러 없이 통과. 스크린샷으로 경유
 - [ ] **Step 7: 커밋**
 
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
+cd "."
 git add frontend/src/features/route-briefing/RouteBriefingPanel.jsx
 git commit -m "feat(briefing): 경로 불러오기 버튼 — 데스크톱·모바일 배선 + 브라우저 검증"
 ```
@@ -1087,7 +1087,7 @@ git commit -m "feat(briefing): 경로 불러오기 버튼 — 데스크톱·모�
 
 Run:
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO\frontend"
+cd "frontend"
 node --test src/features/route-briefing/lib/routeImport.test.js
 node --test src/features/route-briefing/lib/routeBriefingModel.test.js
 node --test src/features/route-briefing/lib/routePreview.test.js
@@ -1099,7 +1099,7 @@ Expected: 모든 `node --test` PASS, `vite build` exit code 0.
 - [ ] **Step 3: 커밋**
 
 ```bash
-cd "C:\Users\Jond Doe\Desktop\Project\ProjectAMO"
+cd "."
 git add frontend/test/fixtures/route-import/
 git commit -m "test(briefing): 경로 임포트 수동 검증용 샘플 픽스처(RKSS-RKPK) 추가"
 ```
