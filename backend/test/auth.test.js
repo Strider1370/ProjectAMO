@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import express from 'express'
+import session from 'express-session'
 
 import { createDb } from '../src/db/index.js'
 import { createUser, listPending, setUserStatus } from '../src/db/users.js'
@@ -11,7 +12,7 @@ function makeServer() {
   const db = createDb(':memory:')
   const app = express()
   app.use(express.json())
-  app.use(sessionMiddleware({ db, secret: 'test-secret-000000000000000000000000000000' }))
+  app.use(sessionMiddleware({ db, secret: 'test-secret-000000000000000000000000000000', store: new session.MemoryStore() }))
   app.use('/api/auth', createAuthRouter({ db }))
   return { db, app }
 }

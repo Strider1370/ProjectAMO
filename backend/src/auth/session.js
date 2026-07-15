@@ -20,10 +20,17 @@ function resolveSecret() {
 }
 
 // express-session 미들웨어. db 주입 가능(테스트용). 세션 테이블은 스토어가 생성·정리.
-// 주의: 스토어의 만료정리 setInterval은 unref 안 됨(라이브러리) → 테스트는 --test-force-exit로 종료.
-export function sessionMiddleware({ db = getDb(), secret = resolveSecret() } = {}) {
+// 주의: SQLite 스토어의 만료정리 setInterval은 unref 안 됨(라이브러리) → 테스트는 MemoryStore 주입.
+export function sessionMiddleware({
+  db = getDb(),
+  secret = resolveSecret(),
+  store = new SqliteStore({
+    client: db,
+    expired: { clear: true, intervalMs: 15 * 60 * 1000 },
+  }),
+} = {}) {
   return session({
-    store: new SqliteStore({ client: db, expired: { clear: true, intervalMs: 15 * 60 * 1000 } }),
+    store,
     name: 'amo.sid',
     secret,
     resave: false,

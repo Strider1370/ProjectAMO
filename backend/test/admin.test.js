@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import express from 'express'
 import cookieParser from 'cookie-parser'
+import session from 'express-session'
 
 import { createDb } from '../src/db/index.js'
 import { createUser } from '../src/db/users.js'
@@ -14,7 +15,7 @@ function makeServer() {
   const app = express()
   app.use(express.json())
   app.use(cookieParser())
-  app.use(sessionMiddleware({ db, secret: 'test-secret-000000000000000000000000000000' }))
+  app.use(sessionMiddleware({ db, secret: 'test-secret-000000000000000000000000000000', store: new session.MemoryStore() }))
   app.use('/api/auth', createAuthRouter({ db }))
   app.use('/api/admin', createAdminRouter({ db }))
   return { db, app }
