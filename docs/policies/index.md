@@ -7,7 +7,7 @@ Read the relevant `Architecture.md` section and this index before editing. For r
 
 | Work | Minimum Architecture.md read | Read next |
 | --- | --- | --- |
-| General implementation, tools, delegation, temporary files | `Directory Structure`, `Reference Structure` | [workflow and tools](engineering/workflow-and-tools.md) |
+| General implementation, tools, delegation, temporary files | `Directory Structure`, `Reference Structure` | [workflow and tools](engineering/workflow-and-tools.md) (Ponytail required for coding tasks) |
 | Timestamps, KMA/KIM data, data contracts, collectors | `File Roles` — `Backend`, `Reference Structure` | [data and time](engineering/data-and-time.md) |
 | MapView, Mapbox, overlay, visibility, timeline | `File Roles` — `Frontend` map entries, `Reference Structure` | [map and layers](engineering/map-and-layers.md) |
 | UI, CSS, responsive layout | `File Roles` — affected frontend feature, `Reference Structure` | [design language](design/design-language.md) |

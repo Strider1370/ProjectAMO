@@ -15,6 +15,7 @@ Re-check the policy index when exploration changes the affected boundary, a new 
 ## Working rules
 
 - State material assumptions, make the smallest approved change, and leave a result that can be verified. Update architecture or policy documents only when they no longer describe reality.
+- Use the Ponytail skill for every coding task, including implementation, fixes, refactors, reviews, and technical design. Apply its minimum-safe-change discipline after understanding the relevant flow. It does not waive required investigation, tests, security, accessibility, or this project's consent gate.
 - Before broad code reading, use `graphify query` when `graphify-out/graph.json` exists; use path/explain to narrow relationships. Graph results guide exploration and never replace tests or browser verification. Update the graph after code changes.
 - Use the applicable skill, plugin, and environment capability; do not copy their tool-owned procedures into project policy. Approval and sandbox limits still apply.
 - Delegate only bounded, independently verifiable work with explicit scope, constraints, evidence, and a concise handoff. The main agent retains requirements, integration, rapid debugging, browser capture, and final verification.

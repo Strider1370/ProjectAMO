@@ -5,6 +5,7 @@ Read [the policy index](docs/policies/index.md) and the relevant `Architecture.m
 Fallback when policy routing or a hook is unavailable: use this file, `Architecture.md`, and [the policy index](docs/policies/index.md); hooks never replace these documents.
 
 - State material assumptions, make the smallest approved change, and verify the result.
+- Use the Ponytail skill for every coding task. It enforces the smallest safe implementation; it never replaces required investigation, validation, security, accessibility, or the project consent gate.
 - Read [encoding safety](docs/policies/encoding-safety.md) before encoding-sensitive edits; use `apply_patch` for manual text changes.
 - Before broad code reading, use graphify when the repository graph exists. Graph results guide exploration only; run `graphify update .` after code changes.
 - Browser-visible work requires Playwright verification and [the dev-server procedure](docs/operations/dev-server-and-capture.md).

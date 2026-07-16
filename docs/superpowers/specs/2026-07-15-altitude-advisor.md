@@ -1,147 +1,278 @@
-# 고도 비교표 (Altitude Advisor) — 설계 스펙
+# 고도별 기상 비교 (Altitude Weather Comparison) 설계 스펙
 
-- 상태: **설계 초안.** 미구현
+- 상태: **설계 초안. 미구현.**
 - 작성일: 2026-07-15
-- 목적: **순항고도를 "입력하는 칸"에서 "고르는 목록"으로 바꾼다.**
-  후보 고도마다 바람·기온·착빙·난류·위험현상을 한 표에 늘어놓고, 사용자가 결과를 보고 고른다.
-- 벤치마크 출처: ForeFlight Mobile v10.0 Performance Guide **p.18(Altitude Advisor), p.28(Navlog 고도 비교표)**
+- 개정: 2026-07-16
+- 목적: 조종사가 입력하거나 비행계획에서 가져온 계획 순항고도를 중심으로, 동일 경로에서 공표 제약을 만족하는 인접 고도의 기상 조건을 비교한다.
+- 범위 원칙: ProjectAMO는 기상 의사결정 지원 플랫폼이다. 항공기 성능, 연료, 실제 예상비행시간, 운항 가능성 또는 최적 고도를 계산·보증하지 않는다.
 
 ## 1. 문제
 
-지금 사용자는 순항고도를 **하나만** 찍는다(`useRouteBriefing.js` `cruiseAltitudeFt`, 기본 9,000ft).
-브리핑은 그 하나의 고도로만 판정한다(`planned-altitude.js` → `enroute-model.js`).
+현재 사용자는 `useRouteBriefing.js`의 `cruiseAltitudeFt`에 하나의 순항 고도를 입력하고, 그 고도 기준의 브리핑만 본다. 다른 고도에서 만날 바람·착빙·난기류·SIGMET/AIRMET의 차이를 비교하려면 고도를 바꿔 여러 번 다시 조회해야 한다.
 
-**다른 고도가 더 나은지 알려면 고도를 바꿔 다시 조회하는 수밖에 없다.** 사용자가 손으로 이진탐색을 한다.
+이 기능은 고도를 추천하거나 장거리·단거리 경로에 맞는 시작 고도를 추정하지 않는다. 항공기 성능·중량·운항 정책 없이 앱이 시작 고도를 정하면 기상 정보 제공 범위를 넘어선다. 계획고도는 조종사 또는 가져온 비행계획이 제공하고, ProjectAMO는 그 주변의 공표상 비교 가능한 고도에 대한 기상 결과를 보여 준다.
 
-그런데 우리는 이미 **모든 고도의 답을 갖고 있다.** 아래 §2가 그 근거다.
+## 2. 기존 데이터와 선행 데이터
 
-## 2. 핵심 근거 — 단면은 이미 고도 독립적이다
+`loadRouteCrossSection`(`backend/src/briefing/enroute-cross-section.js`)은 KIM pressure level의 `u`/`v`/`T`/`icingGrade`와 KTG 난기류 고도층을 경로 축을 따라 반환한다. 고도별 기상 요약은 이 단면을 재사용한다.
 
-`loadRouteCrossSection`(`backend/src/briefing/enroute-cross-section.js:74`)은
-**계획고도를 입력으로 받지 않는다.** KIM 전 기압면(`KIM_NWP_LEVELS` 중 `kind==='pressure'`)의
-`u`/`v`/`T`/`icingGrade`와 KTG 난류 고도층을 **경로 축을 따라 통째로** 반환한다.
+SIGMET/AIRMET은 기존 `hazard-section.js`와 `hazard-matcher.js`의 수평·수직·시간 매칭을 고도별로 적용한다. 기존 NOTAM 수집·저장 파이프라인은 새로 만들지 않고, 생성된 후보와 경로·고도·시간을 교차하는 단계에 연결한다.
 
-계획고도가 개입하는 곳은 그 **다음 단계** 하나뿐이다 —
-`summarizeEnrouteModel`(`enroute-model.js:78`)이 `seriesAtAltitude()`로 `alt(d)` 위치의 값을 뽑을 때.
+후보 고도를 공표 제약으로 생성하려면 다음 대한민국 AIP 데이터를 먼저 구간 단위로 정규화해 저장해야 한다. 이 스펙의 기상 비교 API는 그 정규화된 데이터를 소비하며, AIP HTML/PDF 파서·갱신 작업 자체의 상세 구현은 별도 데이터 수집 작업으로 다룬다.
 
+| AIP 자료 | 필요한 내용 | 사용처 |
+| --- | --- | --- |
+| ENR 3.1 ATS Routes | 항공로 구간, `Minimum flight altitude`, 상·하한, 방향별 `FL series`, 주석 | IFR ATS 항공로 후보 생성 |
+| ENR 3.3 RNAV Routes | 위와 같은 구간별 제약 | RNAV 항공로 후보 생성 |
+| ENR 1.7 | 전환고도/전환레벨, 고도 표기 규칙 | ft/FL 표기와 제약 해석 |
+| ENR 4.4 | significant point 식별자와 좌표 | 현재 경로와 AIP 구간 매칭 |
+| AIP Amendment/AIRAC Amendment/Supplement | 발효·폐기 변경분 | AIP 제약의 최신성 유지 |
+
+정규화 레코드는 항공로 전체가 아니라 `fromFix → toFix` 구간 단위여야 하며, 원본 AIP cycle, 발효 시각, 원본 링크/페이지, 원문 값을 함께 보존한다.
+
+```text
+route: Y711
+fromFix: ABC
+toFix: DEF
+direction: forward
+minimumFlightAltitudeFt: 21000
+lowerLimitFt: 20000
+upperLimitFt: 46000
+cruisingLevelSeriesFt: [21000, 23000, 25000, ...]
+effectiveFrom: ...
+airacCycle: ...
+source: AIP ENR 3.1 ...
 ```
-loadRouteCrossSection(경로)          ← 1회. 무겁다(격자 디코딩)
-  └→ summarizeEnrouteModel(단면, 고도 A)   ← 순수 산술. 싸다
-  └→ summarizeEnrouteModel(단면, 고도 B)   ← 〃
-  └→ ... N개 고도
+
+### 제외 범위
+
+- 최적/권장 고도, 점수·순위, 순풍 최대화
+- ETE/ETA, 연료, TAS/GS, 상승·하강·step climb 계산
+- 항공기 성능·중량·산소·운항규정 검증
+- 지형 DEM 또는 e-TOD 장애물 자료로 IFR 항공로 순항 하한을 재산정하는 기능
+- 자동 우회 경로 생성
+- SID/STAR/IAP 제한으로 순항 후보 간격을 생성하는 기능
+
+SID/STAR/IAP의 고도·속도 제한은 출발·도착 절차의 별도 제약이다. 순항 후보의 상·하한 또는 간격에 섞지 않고, 선택 고도와 함께 `절차 제약 확인 필요`로 표시할 수 있다.
+
+## 3. 사용자 흐름
+
+```text
+출발지·도착지·항로·절차 확정
+→ ETD/ETA 입력 또는 확인
+→ 계획 순항고도 입력 또는 비행계획에서 가져오기
+→ [고도별 기상 비교] 열기
+→ 입력 고도 주변의 공표상 유효 고도와 기상 조건 비교
+→ 사용자가 계획 고도를 유지·변경
+→ 선택 고도 기준으로 상세 기상 브리핑 생성
 ```
 
-**따라서 N개 고도 비교의 추가 비용 ≈ N × (샘플수 × 층수) 회의 보간뿐이다. 새 데이터 수집도, 새 upstream 호출도 없다.**
-이것이 이 기능을 1순위로 두는 유일한 이유다. 데이터가 없어서 못 하는 게 아니라, **이미 있는 걸 안 보여주고 있었다.**
+계획고도가 없으면 앱은 경로 길이·출발지·도착지로 중심 고도를 추정하거나 후보를 추천하지 않는다. 사용자는 계획 순항고도 하나 또는 비교할 고도 범위를 입력해야 한다.
 
-## 3. 결정
+고도 행을 선택하는 것은 `cruiseAltitudeFt`를 갱신하고 "이 고도로 기상 브리핑 보기"를 실행하는 동작이다. `권장 고도 적용`이나 운항 가능 판정으로 표현하지 않는다.
 
-| 항목 | 결정 | 이유 |
-|---|---|---|
-| 연료·소요시간 컬럼 | **넣지 않는다** | 기체 성능 데이터가 없다(`aircraftProfiles.js`는 `tasKt`·`altitudeFt` 2개 필드뿐). 연료를 지어내면 위험한 가짜 숫자가 된다 |
-| 비용 지표 | **정풍/배풍 성분(kt)** | 연료·시간의 물리적 대리값. u/v를 경로 방위에 투영하면 나온다. **우리 데이터만으로 정직하게 계산 가능** |
-| 후보 고도 집합 | **KIM 압력면 고도(`level.altFt`)** 그대로 | 자료가 실제로 있는 고도 = 답을 낼 수 있는 고도. 임의 1,000ft 간격을 만들면 층 사이를 보간해 "없는 정밀도"를 꾸미게 된다 |
-| 반원식 고도규칙 필터(동편/서편) | **v1 제외** | ICAO 반원식은 **자침로(magnetic track)** 기준인데 우리 축은 진방위다. 편각(한국 ~8°W) 처리를 결정하지 않은 채 필터를 걸면 경계 고도에서 틀린다. **틀린 필터는 필터 없음보다 나쁘다.** v2로 미룬다 |
-| 자료 없는 고도 | **`——` 명시** | ForeFlight의 `-----`와 같은 원칙(p.18). 침묵하면 "안전함"으로 오독된다 |
-| 권장 고도 | **1줄 제시 + 이유 병기** | 순위 알고리즘은 §4-C. 이유 없는 추천은 신뢰받지 못한다 |
-| 계산 위치 | **백엔드 신규 라우트** | 단면 디코딩은 백엔드 전용(격자 파일 접근). 프론트로 raw 격자를 내보내지 않는다 |
+## 4. 후보 고도 모델
 
-## 4. 모듈 설계
+### 4-A. AIP 제약으로 유효 범위 산정
 
-### 4-A. 백엔드 — `POST /api/briefing/altitudes` (신규)
+경로에서 실제 순항으로 사용하는 AIP 항공로 구간을 식별한다. 경로 전체의 비교 하한과 상한은 다음과 같이 계산한다.
 
-`server.js`에 라우트 추가. 기존 `POST /api/briefing/cross-section`과 **같은 로더를 재사용**한다.
-
+```text
+routeFloorFt = max(각 구간의 공표 Minimum Flight Altitude)
+routeCeilingFt = min(각 구간의 공표 Upper limit)
 ```
-요청:  { routeGeometry, etd, eta, tmfc?, hf? }        // 계획고도를 받지 않는다
-응답:  {
+
+- 값이 없는 구간은 값을 추정해 넣지 않는다. 필요한 제약 데이터가 없으면 `AIP 고도 제약 데이터 없음`으로 표시한다.
+- 모든 구간의 `cruisingLevelSeries`와 진행 방향이 일치할 때만 자동 후보를 생성한다.
+- 구간별 계열이 충돌하거나 방향/주석을 기계적으로 해석할 수 없으면 자동 후보 생성은 중단하고, 사용자가 입력한 고도만 기상 비교 대상으로 유지한다. `경로 구간별 고도 계열 확인 필요`를 표시한다.
+- 후보의 유효성은 하한·상한뿐 아니라 경로를 이루는 모든 구간의 공표 계열에 대해 검사한다. 어느 한 구간에서라도 유효하지 않으면 후보에서 제외한다.
+- KIM이 해당 고도 또는 필요한 인접 압력면을 제공하지 않으면 후보를 유효 기상 비교 행으로 만들지 않고 데이터 상태를 표시한다.
+
+`Lower limit`의 의미와 `Minimum Flight Altitude`의 관계는 AIP 원문별로 보존한다. 자동 필터에는 검증된 `Minimum Flight Altitude`를 우선 사용하고, `Lower limit`은 항공로 데이터 모델에서 별도 보존한다. 의미 검증 전에는 두 값을 임의로 합산하거나 대체하지 않는다.
+
+### 4-B. 입력 고도 주변 후보
+
+기준은 사용자가 입력했거나 비행계획에서 가져온 `plannedCruiseAltitudeFt`다. 기준 고도와 동일한 경로 제약·방향 계열에서 가장 가까운 유효 고도를 아래 최대 2개, 위 최대 2개까지 가져온다. 기본 비교 목록은 최대 5개다.
+
+```text
+입력: FL250
+경로 전체 유효 계열: FL210 · FL230 · FL250 · FL270 · FL290 · ...
+표시: FL210 · FL230 · [FL250] · FL270 · FL290
+```
+
+입력 고도가 하한 미만·상한 초과·계열 불일치이면 입력값을 조용히 삭제하지 않는다. 입력 행에는 제외 사유를 표시하고, 대체 비교 후보만 유효 범위에서 제시한다.
+
+```text
+입력 FL190 — 경로 공표 하한 FL210 미만
+비교 가능: FL210 · FL230 · FL250 · FL270 · FL290
+```
+
+후보 간격은 임의의 1,000 ft 또는 2,000 ft가 아니다. 해당 AIP 항공로 구간과 진행 방향에 공표된 `FL series`를 사용한다. SID/STAR/IAP나 일반적인 VFR/IFR 반원고도 규칙으로 간격을 보완하거나 추정하지 않는다.
+
+### 4-C. NOTAM 교차
+
+기존 NOTAM 데이터로 각 AIP 후보와 경로·수직 범위·유효 시간을 교차한다.
+
+- 고도·경로·시간에서 명확히 운항을 불가하게 만드는 NOTAM만 후보 제외 사유가 될 수 있다.
+- 그 밖의 관련 NOTAM은 후보를 제거하지 않고 `NOTAM 영향 있음`과 근거를 표시한다.
+- NOTAM의 유효 시간이나 수직 범위를 판정할 수 없으면 `NOTAM 판정 불가`로 표시하며, 영향 없음으로 취급하지 않는다.
+
+## 5. 고도별 기상 비교 모델
+
+### 5-A. API: `POST /api/briefing/altitudes`
+
+기존 cross-section 로더와 정규화된 AIP 항공로 제약을 재사용하는 고도별 기상 비교 API다.
+
+```js
+// 요청
+{
+  routeGeometry,
+  routeSegments,             // 식별된 순항 AIP 구간
+  plannedCruiseAltitudeFt,
+  etd,
+  eta,
+  tmfc?,
+  hf?
+}
+
+// 응답
+{
   available: true,
   totalDistanceNm,
-  run: { tmfc, hf, validTime },                        // 표에 "예보 시각" 표기용
+  run: { tmfc, hf, validTime },
+  constraints: {
+    status: 'matched' | 'unavailable' | 'conflicting',
+    routeFloorFt,
+    routeCeilingFt,
+    sourceCycles: [],
+    reasons: []
+  },
   rows: [{
-    altFt, fl,                                         // 4200 → "FL140" 형식은 프론트에서
-    windComponentKt,                                   // +뒷바람 / −맞바람. null 가능
-    windDir, windSpeedKt,                              // 경로 평균 벡터풍
-    tempC,                                             // 경로 평균
-    icing:      { level: '중'|'심'|null, intervals: [...] },
-    turbulence: { level: '중'|'심'|null, intervals: [...] },
-    hazards:    [{ code, label, encounter: 'on'|'nearby' }],   // §4-D
-    available: true|false                              // false면 프론트가 `——` 행으로
-  }],
-  recommended: { altFt, reason: string } | null
+    altFt,
+    fl,
+    candidateStatus: 'valid' | 'input_invalid' | 'weather_unavailable',
+    reasons: [],
+    weatherLevel: {
+      mode: 'exact' | 'interpolated' | 'unavailable',
+      lowerAltFt,
+      upperAltFt
+    },
+    wind: {
+      meanComponentKt,
+      minComponentKt,
+      maxComponentKt
+    } | null,
+    tempC,
+    icing: { peakLevel, exposures: [{ level, distanceNm }] },
+    turbulence: { peakLevel, exposures: [{ level, distanceNm }] },
+    hazards: [{ code, label, encounter: 'on' | 'nearby', routeDistanceNm }],
+    notams: [{ id, summary, effect: 'exclude' | 'warn' | 'undetermined' }],
+    timeStatus: 'matched' | 'not_provided' | 'unavailable',
+    available: true | false
+  }]
 }
 ```
 
-### 4-B. 신규 순수 모듈 — `backend/src/briefing/altitude-options.js`
+`recommended` 필드와 추천 알고리즘은 반환하지 않는다.
 
-```
-buildAltitudeOptions({ crossSection, turbulence, totalDistanceNm, axis, hazards }) -> rows[]
-```
+### 5-B. KIM 고도 매핑과 바람 집계
 
-- 후보 고도 = `crossSection.levels`의 `altFt` (오름차순).
-- 각 고도에 대해 **`summarizeEnrouteModel`을 그대로 재호출**한다.
-  `cruiseAltitudeFt = 후보고도`를 넣으면 상승·하강 곡선까지 반영된 값이 나온다.
-  ⚠️ **주의:** 그 결과는 "그 고도로 갔을 때 경로 전체"의 위험이지, "그 고도층만"의 위험이 아니다.
-  이게 맞다 — 사용자가 알고 싶은 건 "이 고도를 선택하면 어떻게 되는가"다.
-- **바람 성분** — 신규 계산:
-  ```
-  각 거리 샘플 i:
-    trackDeg  = axis.samples[i].bearing            (진방위, route-axis.js)
-    u, v      = seriesAtAltitude(levels, ..., 'interp')  (m/s)
-    // u=동향, v=북향 성분 → 진행방향 투영
-    tailwindKt = (u·sin(track) + v·cos(track)) · 1.94384
-  windComponentKt = mean(tailwindKt)               // 경로 전체 평균 (ForeFlight p.18과 동일 정의)
-  ```
-  ⚠️ `rawWindsModel.js:8`의 `uvToWind`는 **불어오는 방향(기상풍향)**을 만든다. 여기서 필요한 건
-  **불어가는 방향의 성분**이다. 부호를 뒤집어 쓰지 말고 위 식을 직접 쓴다.
+후보의 운영 고도는 AIP `FL series`로 정한다. 해당 고도에 정확한 KIM pressure level이 있으면 그 값을 쓰고, 그렇지 않으면 인접한 실제 KIM pressure level 두 개 사이를 수직 보간한다. 보간한 행은 `KIM FLxxx–FLyyy 보간`으로 명시하며, 양쪽 레벨이 없으면 `weather_unavailable`로 표시한다.
 
-### 4-C. 권장 고도 — 규칙 (알고리즘 아님, 사다리)
+각 route-axis 표본에서 해당 고도의 `u`/`v`를 표본 진행방위에 투영해 순풍 성분을 구한다.
 
-```
-1. 위험 조우(hazards encounter='on')가 있는 고도 제외
-2. 착빙·난류 '심' 있는 고도 제외
-3. 남은 고도 중 windComponentKt 최대
-4. 남은 게 없으면 recommended = null  ("모든 고도에 위험이 있습니다")
+```text
+tailwindKt = (u × sin(track) + v × cos(track)) × 1.94384
 ```
 
-- **가중합 점수를 만들지 않는다.** 위험과 바람은 단위가 다르고, 가중치는 근거 없는 숫자가 된다.
-  위험을 먼저 걸러내고 그 안에서 바람만 비교하는 **사전식 순서(lexicographic)** 가 정직하다.
-- `reason`은 그 고도가 왜 뽑혔는지 한 줄: `"뒷바람 +12kt · 위험현상 없음"`.
+`meanComponentKt`는 표본 간 경로 거리로 가중한 평균이다. 풍향·풍속을 단순 평균하지 않는다. 표본 사이의 국지적인 강한 맞바람 또는 순풍을 숨기지 않도록 `minComponentKt`와 `maxComponentKt`도 함께 제공한다.
 
-### 4-D. 위험현상(SIGMET/AIRMET) 고도별 매칭
+```text
+평균 순풍 +12kt
+범위: 맞바람 7kt ~ 순풍 28kt
+```
 
-`hazard-section.js`의 `buildHazardSection`은 이미 `cruiseAltitudeFt`를 받아 `on`/`nearby`를 태그한다.
-**고도별로 다시 호출한다.** 시간·수평 매칭 결과는 고도와 무관하므로,
-성능이 문제되면 수평·시간 매칭을 한 번만 하고 수직 판정(`hazard-matcher.js`)만 N회 도는 형태로 쪼갠다.
-**v1은 그냥 N회 호출한다** — 후보 고도가 10개 내외라 측정 없이 최적화하지 않는다.
+### 5-C. 착빙·난기류 집계
 
-### 4-E. 프론트 — `frontend/src/features/route-briefing/AltitudeOptionsTable.jsx` (신규)
+착빙과 난기류는 최고 등급 하나로만 표시하지 않는다. 각 고도에서 인접 표본을 연속 구간으로 묶고, 등급별 경로 노출 거리를 합산한다. 행 요약은 `최고 등급 + 등급별 노출 거리`다.
 
-- 진입: `RouteBriefingPanel`의 순항고도 입력 옆 **"고도 비교"** 버튼.
-- 목업: 이 대화의 `foreflight_benchmark_mockups_1_to_4` 위젯 1번.
-- 색: 배풍 = `--level-green`, 맞바람 = `--level-red`(강함) / `--level-amber`(약함), 자료없음 = `--text-disabled`.
-  ⚠️ 디자인 헌법 §3 "색만으로 등급 구분 금지" → **부호(+/−)와 "맞바람"/"뒷바람" 라벨을 반드시 병기**한다.
-- 행 클릭 → `cruiseAltitudeFt` 갱신 → 기존 브리핑 재조회. **표는 브리핑을 대체하지 않고 고도 선택기다.**
-- 임계값(맞바람 몇 kt부터 red인가): **−15kt**. 근거 없는 값이므로 상수 한 곳(`ALTITUDE_TABLE`)에 두고 조정 가능하게 둔다.
+```text
+착빙 보통 18NM · 강함 2NM
+난기류 없음
+```
 
-## 5. 검증 (`backend/test/altitude-options.test.js`)
+결측 구간은 `없음`으로 합산하지 않으며, 행의 `available: false` 또는 데이터 상태로 드러낸다.
+
+### 5-D. SIGMET/AIRMET 매칭
+
+행의 `hazards`에는 다음 세 조건이 모두 맞는 위험만 `encounter: 'on'`으로 넣는다.
+
+1. 경로 축과 위험 도형이 수평으로 교차한다.
+2. 비교 고도가 위험의 고도/FL 범위와 수직으로 겹친다.
+3. 계획 시간축이 위험 유효 시간과 겹친다.
+
+ETD/ETA가 없으면 수평·수직 교차는 계산하되 `timeStatus: 'not_provided'`으로 표기한다. 이 상태에서 위험을 `없음`으로 표현하지 않는다. 공항 범위 경보처럼 `routeIntervalNm`이 없는 항목은 고도별 경로 교차 목록에 넣지 않고 기존 공항 경보 표면에서 다룬다.
+
+### 5-E. 백엔드 순수 모듈
+
+`backend/src/briefing/altitude-weather-comparison.js`를 추가한다.
+
+```text
+buildAltitudeCandidates({ routeSegments, plannedCruiseAltitudeFt, crossSection }) -> constraints, candidates
+buildAltitudeWeatherComparison({ candidates, crossSection, axis, hazards, notams, etd, eta }) -> rows
+```
+
+- 후보 생성은 AIP 제약을 담당하고, 기상 비교는 후보에 대해서만 수행한다.
+- SIGMET/AIRMET의 수평·시간 매칭 결과는 고도별로 재사용하고, 수직 매칭만 후보 고도마다 적용한다.
+- 점수화, 추천, ETE/연료 계산을 추가하지 않는다.
+
+## 6. 프런트엔드
+
+`frontend/src/features/route-briefing/AltitudeWeatherComparison.jsx`를 `RouteBriefingPanel`의 계획 고도 입력 옆에서 연다.
+
+계획 고도 입력과 후보 행에는 다음 정보를 표시한다.
+
+```text
+계획고도: FL250
+공표 비교 범위: FL210–FL390 (AIP 2026-08)
+
+FL230
+평균 순풍 +8kt · 범위 맞바람 4kt ~ 순풍 19kt
+착빙 보통 18NM · 난기류 없음
+SIGMET 1건 경로 교차
+```
+
+- 순풍/맞바람은 색상뿐 아니라 `순풍`/`맞바람` 텍스트와 부호를 함께 보인다.
+- 착빙·난기류는 최고 등급과 노출 거리를 함께 보인다.
+- `시간 판정 불가`, `자료 없음`, `AIP 제약 데이터 없음`, `NOTAM 판정 불가`는 위험 없음과 시각적으로 구분한다.
+- 입력 고도와 후보 제외 사유를 명확히 보여 준다. 유효 후보 행 선택은 해당 `cruiseAltitudeFt`를 적용하고 기존 브리핑을 갱신한다.
+- 표 하단에는 다음 한 줄을 항상 표시한다: `공표 항공로 제약을 기준으로 한 기상 비교 정보이며, 관제 허가·항공기 성능·연료·운항 제한을 결정하지 않습니다.`
+
+## 7. 검증
+
+`backend/test/altitude-weather-comparison.test.js`에 다음을 둔다.
 
 | 입력 | 기대 |
-|---|---|
-| 단면 levels 3개 + 균일 서풍(u>0, v=0), 경로 진방위 090° | 모든 고도 `windComponentKt > 0` (뒷바람) |
-| 같은 단면, 경로 진방위 270° | 모든 고도 `windComponentKt < 0` (맞바람), 절댓값 동일 |
-| 한 고도에만 icing grade 3 | 그 고도 `icing.level === '심'`, `recommended.altFt !== 그 고도` |
-| 모든 고도에 SIGMET `on` | `recommended === null` |
-| 특정 고도 층 데이터 결측(NaN) | 그 행 `available: false`, 다른 행은 정상 |
-| 후보 고도 = 단면 층 수 | `rows.length === crossSection.levels.length` |
-| 같은 고도로 `summarizeEnrouteModel` 직접 호출한 결과와 대조 | 위험 구간이 **완전 일치** (회귀 방지 — 표와 브리핑이 다른 답을 내면 신뢰가 무너진다) |
+| --- | --- |
+| 구간 하한 FL180, FL210 | `routeFloorFt === FL210` |
+| 구간 상한 FL460, FL390 | `routeCeilingFt === FL390` |
+| 기준 FL250, 유효 계열 FL210·230·250·270·290 | 아래·위 최대 2개씩 포함한 5개 후보 |
+| 기준 FL190, 경로 하한 FL210 | 입력 행은 `input_invalid`, 대체 후보는 FL210 이상 |
+| 한 구간에서 후보 FL270 불허 | FL270은 후보에서 제외 |
+| 구간별 계열 또는 방향이 충돌 | 자동 후보 생성 중단, `constraints.status === 'conflicting'` |
+| KIM 인접 두 압력면만 존재 | `weatherLevel.mode === 'interpolated'`와 양쪽 레벨 표기 |
+| 동풍(`u>0`, `v=0`), 경로 진행방위 090° | `meanComponentKt > 0`, 화면은 순풍으로 표시 |
+| 거리가 다른 표본의 순풍 성분 | 단순 산술 평균이 아닌 거리 가중 평균 |
+| 짧은 강한 착빙 2NM와 보통 착빙 18NM | 최고 등급과 두 노출 거리가 모두 반환 |
+| 위험 도형·고도 범위·유효 시간이 모두 겹침 | `hazards`에 `encounter: 'on'`으로 반환 |
+| 고도·경로·시간에서 명확히 금지하는 NOTAM | 후보 제외 사유로 반환 |
+| 수평·수직은 겹치나 ETD/ETA 없음 | 교차 후보는 남기고 `timeStatus: 'not_provided'` |
+| 고도 행 선택 | `cruiseAltitudeFt` 갱신 후 기존 브리핑의 위험구간이 선택 고도 기준으로 변경 |
 
-마지막 항목이 이 스펙의 핵심 안전장치다. **고도 비교표와 실제 브리핑은 같은 함수를 써야 하고, 그것을 테스트가 강제한다.**
+## 8. 완료 기준
 
-## 6. 범위 밖 (명시적으로 안 함)
-
-- 연료·소요시간 컬럼 (기체 성능 데이터 없음)
-- 반원식 고도규칙 필터 (§3 — 편각 결정 후 v2)
-- VFR 고도 필터
-- Step climb (단계 상승)
-- 지상풍/저고도(KTG 커버리지 밖) 고도 후보
+- 조종사는 계획 순항고도를 중심으로, 경로 전체에 유효한 공표 항공로 고도 계열의 기상 차이를 한 화면에서 비교할 수 있다.
+- 하한 미만·상한 초과·구간 불일치·명확한 NOTAM 제한 후보는 근거와 함께 제외된다.
+- AIP 제약 데이터, KIM 고도 보간, 위험·NOTAM·시간 판정 불가 상태가 `없음`과 혼동되지 않는다.
+- 어떤 행도 최적/권장 고도, 예상비행시간, 연료 또는 운항 가능성을 주장하지 않는다.
+- 선택한 고도는 기존 상세 브리핑의 고도 기준으로만 사용된다.
