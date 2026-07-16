@@ -7,6 +7,7 @@ import { computeEtaIso } from './lib/etaCalc.js'
 import { getLastUsed } from './lib/aircraftProfiles.js'
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude, minVfrCruiseAltitude } from './lib/altitude.js'
 import { buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
+import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
 import { parseRouteFile, extractRoutePaths, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './lib/routeImport.js'
 import {
@@ -834,6 +835,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints, selectedSid, selectedStar, selectedIap })
     if (!routeGeometry) { setBriefingError('먼저 경로를 검색하세요.'); return }
     const distanceNm = plannedDistanceNm
+    const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
     const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
     const etaIso = computeEtaIso(etdIso, distanceNm, cruiseSpeedKt) || etdIso
     setBriefingLoading(true); setBriefingError(null)
@@ -844,6 +846,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         arrivalAirport: routeForm.arrivalAirport,
         alternateAirport: alternateAirport || null,
         routeGeometry,
+        routeModel,
         etd: etdIso,
         eta: etaIso,
         plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
@@ -854,7 +857,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT
         const [profile, cs] = await Promise.all([
           fetchVerticalProfile(buildVerticalProfileRequest({
-            routeGeometry, routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints, plannedCruiseAltitudeFt,
+            routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints, plannedCruiseAltitudeFt,
           })),
           fetchCrossSection({ routeGeometry }).catch(() => null),
         ])

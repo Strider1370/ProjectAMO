@@ -72,6 +72,7 @@ test('buildVerticalProfileRequest includes VFR waypoints only for VFR routes', (
     kind: 'WAYPOINT',
   })
   assert.equal(result.sampleSpacingMeters, 250)
+  assert.equal(result.routeModel.graphConnectionStatus, 'not_applicable')
 })
 
 test('buildVerticalProfileRequest preserves IFR route marker payload shape', () => {
@@ -105,4 +106,5 @@ test('buildVerticalProfileRequest preserves IFR route marker payload shape', () 
     { label: 'AGAVO', lon: 127, lat: 38, kind: 'FIX' },
     { label: 'RKSS', lon: 128, lat: 39, kind: 'AIRPORT' },
   ])
+  assert.equal(result.routeModel.graphConnectionStatus, 'unavailable')
 })

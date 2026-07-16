@@ -59,6 +59,7 @@ export function buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints }) {
 
 export function buildVerticalProfileRequest({
   routeGeometry,
+  routeModel = null,
   routeResult,
   selectedSid,
   selectedStar,
@@ -69,6 +70,7 @@ export function buildVerticalProfileRequest({
   return {
     flightRule: routeResult?.flightRule,
     routeGeometry,
+    routeModel: routeModel ?? buildCommonRouteModel({ routeGeometry, routeResult }),
     plannedCruiseAltitudeFt,
     procedureContext: buildProcedureContextPayload({ routeResult, selectedSid, selectedStar, selectedIap }),
     vfrWaypoints: routeResult?.flightRule === 'VFR' ? vfrWaypoints : undefined,
@@ -76,3 +78,4 @@ export function buildVerticalProfileRequest({
     sampleSpacingMeters: 250,
   }
 }
+import { buildCommonRouteModel } from '../../../../../shared/route-model.js'

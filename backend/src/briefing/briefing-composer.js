@@ -7,6 +7,7 @@ import { buildEnrouteModel } from './enroute-model.js'
 import { buildRouteAxis } from './route-axis.js'
 import { timeWindowsOverlap } from './geo-time-match.js'
 import { matchRouteNotams } from './notam-briefing.js'
+import { attachActiveAipConstraints } from './aip-airway-constraints.js'
 
 function airportRoles(request) {
   const roles = [
@@ -91,8 +92,10 @@ export function composeBriefing(request, data) {
     etd: request.etd,
     eta: request.eta,
     cruiseAltitudeFt,
+    enRouteRange: request.routeModel?.enRouteRange ?? null,
     airportWarnings: buildAirportWarningHazards(data?.warning, airportRoles(request), request.etd, request.eta),
   })
+  const aipConstraints = attachActiveAipConstraints({ dataRoot: data?.dataRoot, routeModel: request.routeModel })
 
   // 경로상 NOTAM(사실 나열) + 경로 저촉(공역제한 계열 ∩ 발효중 ∩ 계획고도 통과). scope:'fir' 제외.
   const { routeNotams, routeConflicts: notamConflicts } = matchRouteNotams(data?.notam?.items ?? [], {
@@ -132,6 +135,7 @@ export function composeBriefing(request, data) {
     crossSectionAvailable: true,
     // enroute 단면 모델을 여기서 소유(이전엔 라우트·경보 스케줄러가 사후 mutate). root 없으면 null.
     model: buildEnrouteModel({ root: data?.dataRoot, routeGeometry: request.routeGeometry, body: request, cruiseAltitudeFt }),
+    aipConstraints,
   }
 
   const summary = [

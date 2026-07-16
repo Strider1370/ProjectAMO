@@ -22,6 +22,9 @@ test('on-route + planned altitude in band -> encounter on, red', () => {
   const sec = buildHazardSection({ sigmet:[icingOnAlt], airmet:[], axis, ...ctxBase })
   assert.equal(sec.hazards.length, 1)
   assert.equal(sec.hazards[0].encounter, 'on')
+  assert.equal(sec.hazards[0].horizontalExposure.status, 'intersects')
+  assert.equal(sec.hazards[0].altitudeExposure.status, 'intersects')
+  assert.equal(sec.hazards[0].timeStatus, 'matched')
   assert.equal(sec.hazards[0].verticalKnown, true)
   assert.deepEqual(sec.hazards[0].bandFt, { lowFt: 8000, highFt: 14000 })
   assert.equal(sec.hazards[0].routeIntervalNm.startNm, 80)
@@ -58,4 +61,11 @@ test('off-route dropped', () => {
   const sec = buildHazardSection({ sigmet:[off], airmet:[], axis, ...ctxBase })
   assert.equal(sec.hazards.length, 0)
   assert.equal(sec.level, 'green')
+})
+
+test('missing ETD/ETA keeps the horizontal and altitude result with time not_provided', () => {
+  const sec = buildHazardSection({ sigmet: [icingOnAlt], airmet: [], axis, cruiseAltitudeFt: 9000 })
+  assert.equal(sec.hazards.length, 1)
+  assert.equal(sec.hazards[0].timeStatus, 'not_provided')
+  assert.equal(sec.hazards[0].encounter, 'on')
 })
