@@ -31,20 +31,27 @@ def parse_height(text: str) -> dict | None:
     return None
 
 
+def parse_limit_pairs(text: str) -> list[tuple[dict | None, dict | None]]:
+    raw = " ".join(text.upper().split())
+    values = [parse_height(value) or {"value": None, "unit": None, "reference": value, "raw": value} for value in re.findall(r"\([^)]*\)|UNL|FL\s*\d+|[\d ]+\s*FT(?:\s+(?:AMSL|AGL))?", raw)]
+    return [tuple((values + [None])[index:index + 2]) for index in range(0, len(values), 2)] or [(None, None)]
+
+
 def parse_limits(text: str) -> tuple[dict | None, dict | None]:
-    values = [parse_height(value) or {"value": None, "unit": None, "reference": value, "raw": value} for value in re.findall(r"UNL|FL\s*\d+|[\d ]+\s*FT(?:\s+(?:AMSL|AGL))?", text.upper())]
-    return (values + [None, None])[:2]
+    return parse_limit_pairs(text)[0]
 
 
 def point_ident(label: str) -> str | None:
     label = " ".join(label.upper().split())
     if label.startswith("UNKNOWN REFERENCE"):
         return None
+    paren = re.search(r"\(([A-Z0-9]{3,5})\)", label)
+    if paren:
+        return paren.group(1)
     first = re.match(r"([A-Z0-9]{3,5})(?:\(|\s|$)", label)
     if first:
         return first.group(1)
-    paren = re.search(r"\(([A-Z0-9]{3,5})\)", label)
-    return paren.group(1) if paren else None
+    return None
 
 
 def dms_coordinate(text: str) -> dict | None:
@@ -89,9 +96,14 @@ def parse_table(table: list[dict], publication: dict) -> tuple[list[dict], list[
             # upper/lower, minimum altitude, lateral limit, FL↓, FL↑, remark.
             current = points[-1]
             upper, lower = parse_limits(cells[4])
+            change_over_point = cells[3] or None
+            if not change_over_point and upper and re.fullmatch(r"\([^)]*\)", upper["raw"]) and lower:
+                change_over_point = upper["raw"]
+                upper = {"value": None, "unit": None, "reference": "UNL", "raw": "UNL"}
             current["constraint"] = {
                 "trackMagDeg": [int(value) for value in re.findall(r"\d{1,3}", cells[1])],
                 "distanceNm": float(cells[2]) if re.fullmatch(r"\d+(?:\.\d+)?", cells[2]) else None,
+                "changeOverPoint": change_over_point,
                 "upperLimit": upper,
                 "lowerLimit": lower,
                 "minimumFlightAltitude": parse_height(cells[5]),
@@ -113,6 +125,7 @@ def parse_table(table: list[dict], publication: dict) -> tuple[list[dict], list[
             "toCoordinates": end["coordinates"],
             "sequence": sequence,
             "distanceNm": constraint.get("distanceNm"),
+            "changeOverPoint": constraint.get("changeOverPoint"),
             "minimumFlightAltitude": constraint.get("minimumFlightAltitude"),
             "upperLimit": constraint.get("upperLimit"),
             "lowerLimit": constraint.get("lowerLimit"),
