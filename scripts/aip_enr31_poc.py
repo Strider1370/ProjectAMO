@@ -154,7 +154,7 @@ def parse_enr31(html: str, publication: dict) -> tuple[list[dict], list[dict]]:
 
 
 def graph_validation(segments: list[dict]) -> dict:
-    graph_segments = json.loads((NAVDATA / "route-segments.json").read_text(encoding="utf-8"))
+    graph_segments = json.loads((NAVDATA / "enroute.json").read_text(encoding="utf-8"))["segments"]
     known = {(item["routeId"], item["from"], item["to"]) for item in graph_segments}
     routes = {item["routeId"] for item in graph_segments}
     status = {"matched": 0, "route_changed": 0, "route_not_in_graph": 0}

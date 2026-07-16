@@ -8,6 +8,7 @@ Read the relevant `Architecture.md` section and this index before editing. For r
 | Work | Minimum Architecture.md read | Read next |
 | --- | --- | --- |
 | General implementation, tools, delegation, temporary files | `Directory Structure`, `Reference Structure` | [workflow and tools](engineering/workflow-and-tools.md) (Ponytail required for coding tasks) |
+| Add or change an en-route briefing data layer | `File Roles` -> `Backend`, `Reference Structure` | [route briefing source contract](engineering/route-briefing-source-contract.md) |
 | Timestamps, KMA/KIM data, data contracts, collectors | `File Roles` — `Backend`, `Reference Structure` | [data and time](engineering/data-and-time.md) |
 | MapView, Mapbox, overlay, visibility, timeline | `File Roles` — `Frontend` map entries, `Reference Structure` | [map and layers](engineering/map-and-layers.md) |
 | UI, CSS, responsive layout | `File Roles` — affected frontend feature, `Reference Structure` | [design language](design/design-language.md) |
@@ -19,7 +20,7 @@ Read [encoding safety](encoding-safety.md) before encoding-sensitive edits.
 
 ## Policy directory
 
-- Engineering: [workflow and tools](engineering/workflow-and-tools.md), [data and time](engineering/data-and-time.md), and [map and layers](engineering/map-and-layers.md).
+- Engineering: [workflow and tools](engineering/workflow-and-tools.md), [route briefing source contract](engineering/route-briefing-source-contract.md), [data and time](engineering/data-and-time.md), and [map and layers](engineering/map-and-layers.md).
 - Design: [design language](design/design-language.md).
 - Verification and lifecycle: [delivery and completion](verification/delivery-and-completion.md) and [long context](long-context.md).
 - File integrity: [encoding safety](encoding-safety.md).

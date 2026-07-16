@@ -44,15 +44,27 @@ function mergeRouteGraph(base, overseas) {
   return merged
 }
 
+function buildRouteGraph(segments) {
+  const graph = {}
+  for (const segment of segments) {
+    for (const [from, to] of [[segment.from, segment.to], [segment.to, segment.from]]) {
+      ;(graph[from] ??= []).push({
+        to,
+        routeId: segment.routeId,
+        routeType: segment.routeType,
+        segmentId: segment.id,
+        distanceNm: segment.distanceNm,
+      })
+    }
+  }
+  return graph
+}
+
 export async function loadNavdata() {
   if (!navdataCache) {
-    const [airports, navpoints, routeGraph, routeSegments, routes, routeDirectionMetadata] = await Promise.all([
+    const [airports, enroute] = await Promise.all([
       fetchJson('airports.json'),
-      fetchJson('navpoints.json'),
-      fetchJson('route-graph.json'),
-      fetchJson('route-segments.json'),
-      fetchJson('routes.json'),
-      fetchJson('route-direction-metadata.json'),
+      fetchJson('enroute.json'),
     ])
 
     // 해외(선택) — 해외 확장 데이터가 있으면 국내와 병합.
@@ -64,17 +76,17 @@ export async function loadNavdata() {
       fetchJsonOptional('routes-overseas.json'),
     ])
 
-    const allSegments = [...routeSegments, ...(routeSegmentsO || [])]
+    const allSegments = [...enroute.segments, ...(routeSegmentsO || [])]
 
     navdataCache = {
       // 공항: 겹침 없음(국내 RK / 해외 그 외)
       airports: { ...airports, ...(airportsO || {}) },
       // 지점·항로: 공유 ident/routeId는 국내 정의 우선(방향 메타데이터 보존)
-      navpoints: { ...(navpointsO || {}), ...navpoints },
-      routeGraph: mergeRouteGraph(routeGraph, routeGraphO),
+      navpoints: { ...(navpointsO || {}), ...enroute.points },
+      routeGraph: mergeRouteGraph(buildRouteGraph(enroute.segments), routeGraphO),
       routeSegmentsById: Object.fromEntries(allSegments.map((segment) => [segment.id, segment])),
-      routes: { ...(routesO || {}), ...routes },
-      routeDirectionMetadata,
+      routes: { ...(routesO || {}), ...enroute.routes },
+      routeDirectionMetadata: { routes: enroute.routes },
     }
   }
 

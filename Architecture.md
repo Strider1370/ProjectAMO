@@ -10,7 +10,7 @@ ProjectAMO/
     agents/                  -> Claude subagent roster (researcher/implementer/reviewer, model-tiered)
   frontend/
     public/
-      data/                    -> runtime GeoJSON, navdata, route graph, procedure data
+      data/                    -> runtime GeoJSON, NAVDATA, and procedure data
       Symbols/                 -> Mapbox aviation SVG symbols
       basemap-thumbs/          -> basemap switcher thumbnails
       Geo/                     -> Korean boundary GeoJSON
@@ -127,6 +127,9 @@ ProjectAMO/
 - `frontend/src/features/notam/lib/notamLayers.js` -> Mapbox NOTAM source/fill/line/marker install+sync, time-state color (`--level-*`) + colorblind shape, category `filter`, zoom split (marker<->polygon), overlap-popup HTML; owns `NOTAM_SOURCE_IDS`/`NOTAM_LAYER_IDS`.
 - `frontend/src/features/airport-panel/tabs/NotamTab.jsx` -> (surface B) airport NOTAM list (A-field match) + nationwide `scope:'fir'` 전역 공지 section; reads `weatherData.notam`.
 - `frontend/src/features/route-briefing/lib/procedureData.js` -> procedure/navpoint loading helpers.
+- `frontend/public/data/navdata/enroute.json` -> one generated domestic en-route NAVDATA view: active AIP publication/effective time, combined points, route direction metadata, and full reviewed airway segments. `routePlanner` derives its in-memory graph from these segments; airports, procedures, and overseas NAVDATA remain separate.
+- `scripts/build_enroute_navdata.py` -> converts the active reviewed AIP snapshot into `enroute.json` and the matching domestic airway GeoJSON; `run_aip_airway_operations.py --activate` runs it after activation and restores the prior manifest if generation fails.
+- `frontend/src/features/route-briefing/lib/routePlanner.js` -> loads domestic `enroute.json`, derives the route graph in memory, merges optional overseas route data, and keeps the route-confirmation result contract stable.
 - `frontend/src/features/route-briefing/useRouteBriefing.js` -> route briefing state, async transitions/lifecycle cancellation, route search, vertical profile orchestration, and delegation of IFR procedure selection to `recommendProcedures`.
 - `frontend/src/features/route-briefing/lib/recommendProcedures.js` -> injected-I/O IFR procedure recommendation owner.
 - `frontend/src/features/route-briefing/lib/briefingViewModel.js` -> pure briefing display-transform owner.
@@ -187,6 +190,7 @@ ProjectAMO/
 - `backend/src/briefing/taf-window.js` -> destination TAF selection at ETA, 1-2-3 alternate-required eval, and `buildDestination` rich model (카테고리 타임라인 + base/변화군 기간표 + 교체 병렬 + 원문 재구성). Needs `taf.base`/`taf.change_groups` from `taf-parser`.
 - `backend/src/briefing/hazard-section.js` -> SIGMET/AIRMET adverse-hazard section with 3D matching (route∩time∩altitude); tags each hazard encounter `on`/`nearby`, attaches per-hazard `level` (SIGMET red unless confirmed off-altitude; AIRMET amber), merges caller-supplied `airportWarnings`(공항경보), and sorts severity-first (조우>주변, red>amber). Also feeds the briefing ③ enroute section.
 - `backend/src/briefing/aip-airway-constraints.js` -> loads only the locally active, reviewed AIP airway snapshot; matches its segment IDs and endpoints to the common route model, preserves original AIP limits and direction-specific FL series, and reports unavailable/conflicting data without inventing a constraint.
+- `backend/src/briefing/briefing-provenance.js` -> builds the compact route, AIP, hazard, and KIM/KTG run trace included with each briefing response for partial-data diagnosis and regression fixtures.
 - `backend/server.js` -> exposes `POST /api/route-briefing` (composes briefing from `store.getCached` METAR/TAF/SIGMET/AIRMET).
 - 해외 기상(NOAA) 갈래 — **국내와 완전 분리**: `config.noaa`(공항 목록은 `frontend/public/data/navdata/airports-overseas.json`에서 파생, 20 FIR·VDPP→VDPF), `api-client`(`fetchNoaaMetar/Taf/Sigmet` — JSON·무인증·EUC-KR/resultCode 없음), `parsers/noaa-{metar,taf,sigmet}-parser.js`(→ KMA 정규화 shape, 시정 SM→**미터**, wdir "VRB", TAF base/change_groups/timeline·`header.raw_text`, SIGMET firId 필터·RKRR 제외·자기교차 링만 중심각 복구). `processors/overseas-weather-processor.js`(`processMetar/Taf/Sigmet`)가 **별도 store 타입**(`metar_overseas`/`taf_overseas`/`sigmet_overseas`)에 저장 — 국내 파일과 안 섞음. index.js가 국내와 **같은 cron 주기**로 별도 job 등록. server.js `/api/{metar,taf,sigmet}-overseas` 라우트와 snapshot-meta의 `metarOverseas`/`tafOverseas`/`sigmetOverseas` hash를 제공. 프론트 상태는 `metar`/`metarOverseas`, `taf`/`tafOverseas`, `sigmet`/`sigmetOverseas`로 분리하고, 지도·브리핑처럼 함께 보여야 하는 경로에서만 표시/판정용 병합을 수행. 국내 {metar,taf,sigmet}-processor·IWXXM 파이프라인은 **불변**. 지도 마커는 `airports-overseas.json`을 `weatherData.airports`에 병합해 렌더.
 - `backend/src/terrain/terrain-cache.js` -> terrain tile metadata lookup and lazy tile cache.

@@ -9,6 +9,15 @@
   - `docs/superpowers/specs/2026-07-15-navlog-leg-table.md`
   - `docs/superpowers/specs/2026-07-16-aip-airway-data-pipeline.md`
 
+## Approved domestic en-route NAVDATA consolidation (2026-07-17)
+
+- Keep `frontend/public/data/navdata/` as the existing NAVDATA location. Consolidate only its domestic en-route route files into `enroute.json`; keep airports, procedures, and overseas data in their existing roles.
+- `enroute.json` is generated from the validated active AIP snapshot. It contains the active publication/effective time, the combined point index, route records with their reviewed direction metadata, and the full reviewed segment constraints.
+- The route graph is derived in memory from `enroute.json.segments`; do not persist a duplicate `route-graph.json`. `waypoints.json`, `navaids.json`, `navpoints.json`, `routes.json`, `route-segments.json`, `route-graph.json`, and `route-direction-metadata.json` cease to be domestic runtime inputs after cutover.
+- Preserve existing direction metadata only when its route sequence still matches the active AIP segments. A route without reviewed direction metadata remains explicitly `conditional`/`unavailable`; track values must not be treated as a direction authorization.
+- Generate the domestic airway map GeoJSON from the same `enroute.json` source so route search, briefing constraints, and the displayed airway layer use one active AIRAC cycle.
+- Done when the existing route-confirmation flow produces its current route result shape from `enroute.json`, representative routes still resolve, AIP constraints match the same publication, and obsolete domestic route files have no runtime consumers.
+
 ## 1. 목표와 완료 모습
 
 세 기능은 독립된 화면 세 개가 아니라, 조종사가 수평 경로를 정하고 계획 순항고도를 확인한 뒤 그 결과를 구간별 기상 브리핑으로 읽는 하나의 흐름이다. AIP 원표에서 검수된 항로 제약 JSON은 이 흐름의 공통 근거이며, 활성화된 AIRAC cycle만 고도 비교에 사용한다.

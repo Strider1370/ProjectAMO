@@ -18,6 +18,7 @@ function matchItems(items, source, ctx) {
     const routeIntervalNm = horizontalExposure.intervals[0]
     out.push({
       source,
+      sourceId: it.id ?? null,
       overseas: it.source === 'NOAA', // 해외(NOAA) SIGMET 여부 — 지도 레이어 칩(SIGMET 국내/해외) 선택용
       code: it.phenomenon_code,
       label: it.phenomenon_label || it.phenomenon_code,

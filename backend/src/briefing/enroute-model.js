@@ -94,7 +94,11 @@ export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceN
     )
     if (turb.length) elements.push({ kind: 'turbulence', label: '난류', intervals: turb })
   }
-  return { totalDistanceNm: Math.round(totalDistanceNm) || null, elements }
+  return {
+    totalDistanceNm: Math.round(totalDistanceNm) || null,
+    elements,
+    runs: { kim: crossSection?.run ?? null, ktg: turbulence?.run ?? null },
+  }
 }
 
 // 경로 단면 로드 + 요약을 한 곳에서 소유한다(이전엔 라우트·경보 스케줄러에 복붙돼 있었다).

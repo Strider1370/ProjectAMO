@@ -1,11 +1,11 @@
 # Preflight Weather Briefing Flow Status
 
-Updated: 2026-07-17 00:00 KST
+Updated: 2026-07-17 02:10 KST
 Workflow spec: `docs/superpowers/specs/2026-07-16-preflight-weather-briefing-flow.md`
 AIP data spec: `docs/superpowers/specs/2026-07-16-aip-airway-data-pipeline.md`
 Execution plan: `docs/superpowers/plans/2026-07-16-aip-airway-validation.md`
 Operations plan: `docs/superpowers/plans/2026-07-16-aip-airway-operations.md`
-Last committed baseline: `b47528e Define preflight weather briefing workflow`
+Last committed baseline: `77bd825 feat: link AIP constraints to route briefing`
 
 ## New-Computer Start
 
@@ -45,7 +45,12 @@ Last committed baseline: `b47528e Define preflight weather briefing workflow`
 - Last completed: workflow Task 1 common route model. `shared/route-model.js` creates a versioned `routeGeometry`, one NM distance axis, aligned `enRouteSegments`, and terminal ranges. The normal IFR route carries segment IDs and NM positions through both briefing and vertical-profile requests; SID/STAR/IAP portions remain outside the en-route comparison range. A segment whose endpoints are absent from the displayed geometry is marked `unavailable`, never assigned an invented distance. `node --test shared/route-model.test.js frontend/src/features/route-briefing/lib/verticalProfileRequest.test.js` and `npm.cmd run build --prefix frontend` passed.
 - Last completed: workflow Task 2 exposure separation. `backend/src/briefing/hazard-exposure.js` now independently reports horizontal exposure, selected-altitude exposure, time status, and confidence for SIGMET/AIRMET hazards. `briefing-composer` limits the result to the aligned en-route range from the common route model. A known non-overlapping time window is omitted; absent ETD/ETA stays in the response as `not_provided`, and absent altitude stays `unknown`. Existing `encounter` remains as a compatibility field. `npm.cmd --prefix backend test` passed (352 tests).
 - Last completed: workflow Task 3 active AIP constraint linking. `backend/src/briefing/aip-airway-constraints.js` reads only `backend/data/aip/current/manifest.json` and its active, reviewed, zero-error snapshot. It connects exact segment IDs only after endpoint/direction confirmation, preserves ENR 3.1 minimum flight altitude separately from ENR 3.3 MEA/MOCA, retains limit pairs and direction-specific FL series, and returns `unavailable` or `conflicting` without an inferred constraint. `A582-001` was verified against the active 2026-06-25 snapshot. `Architecture.md` records the new module, and `npm.cmd --prefix backend test` passed (354 tests).
-- Next: begin workflow Task 4: shared fixtures and provenance/partial-data observability across the route, exposure, and AIP constraint stages.
+- Last completed: workflow Task 4 fixtures and provenance. `backend/test/fixtures/briefing-trace.js` names the normal, horizontal/altitude/time, multiple-polygon, AIP-conflict, and unresolved-NOTAM review situations. Every composed briefing now includes compact provenance for route segment IDs, AIP publication/effective time/validation and unresolved segments, hazard advisory IDs/validity/status, and KIM/KTG run identities. Missing cross-section weather is explicitly marked `cross_section_unavailable`. `Architecture.md` records the provenance module; focused tests passed (12 tests) and the complete backend suite passed (357 tests).
+- Decision: every future en-route briefing source follows `docs/policies/engineering/route-briefing-source-contract.md`. It fixes the common route-model/range, separated horizontal-altitude-time status, provenance, no-recommendation, and fixture rules; the policy index routes new layers to it.
+- Decision: consolidate only domestic en-route runtime NAVDATA into one AIP-derived `frontend/public/data/navdata/enroute.json`. Keep airports, procedures, and overseas NAVDATA separate; derive the graph in memory and regenerate the airway map GeoJSON from the same active source. The approved implementation plan is `docs/superpowers/plans/2026-07-17-enroute-navdata-consolidation.md`.
+- Last completed: domestic en-route NAVDATA consolidation. The active `2026-06-25` AIP snapshot now generates `frontend/public/data/navdata/enroute.json` (158 points, 54 routes, 298 reviewed segments) and `airways.geojson`; the route planner derives its graph in memory. The AIP activation command generates the same files and restores the former manifest if generation fails. Obsolete domestic route JSON files and their legacy generator were removed; airports, procedures, and overseas NAVDATA remain separate. `python scripts/run_aip_airway_operations.py --activate --confirm-aip-rights --publication-id 2026-06-25`, the AIP POC tests, the en-route route-planner test, frontend build/tests (365), backend tests (357), responsive Playwright smoke, and `git diff --check` passed.
+- Follow-up: the old focused `frontend/scripts/briefing-smoke.mjs` still targets retired `<select>` controls, so its full IFR search path needs a separate UI-test maintenance pass. It is not part of the new NAVDATA runtime path.
+- Next: start phase 1 presentation work using the consolidated current en-route data.
 - Only after those pilots fix the shared transcription rules may the remaining routes be divided into route-level parallel transcription and independent-review batches.
 
 ## Non-Negotiable AIP Rules

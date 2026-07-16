@@ -42,9 +42,17 @@ def activate(publication: str) -> None:
         shutil.copy2(normalized / name, version_dir / name)
     shutil.copy2(validation, version_dir / "route-graph-diff.json")
     manifest = {"status": "active", "publicationId": snapshot["publicationId"], "effectiveAt": snapshot["effectiveAt"], "snapshot": f"{snapshot['publicationId']}/reviewed-airway-segments.json", "navaids": f"{snapshot['publicationId']}/enroute-navaids.json", "validation": f"{snapshot['publicationId']}/route-graph-diff.json"}
+    current_manifest = CURRENT / "manifest.json"
+    previous_manifest = current_manifest.read_text(encoding="utf-8") if current_manifest.exists() else None
     pending = CURRENT / "manifest.next.json"
     pending.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    pending.replace(CURRENT / "manifest.json")
+    pending.replace(current_manifest)
+    try:
+        subprocess.check_call([sys.executable, str(ROOT / "scripts" / "build_enroute_navdata.py")])
+    except Exception:
+        if previous_manifest is not None:
+            current_manifest.write_text(previous_manifest, encoding="utf-8")
+        raise
 
 
 def main() -> None:

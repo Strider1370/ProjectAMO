@@ -8,6 +8,7 @@ import { buildRouteAxis } from './route-axis.js'
 import { timeWindowsOverlap } from './geo-time-match.js'
 import { matchRouteNotams } from './notam-briefing.js'
 import { attachActiveAipConstraints } from './aip-airway-constraints.js'
+import { buildBriefingProvenance } from './briefing-provenance.js'
 
 function airportRoles(request) {
   const roles = [
@@ -127,6 +128,7 @@ export function composeBriefing(request, data) {
 
   // 경로 조우만(공항경보는 경로 지오 없음 → enroute encounters 제외).
   const encounters = adverse.hazards.filter((h) => h.encounter === 'on' && !h.airportScope)
+  const enrouteModel = buildEnrouteModel({ root: data?.dataRoot, routeGeometry: request.routeGeometry, body: request, cruiseAltitudeFt })
   const enroute = {
     // adverse와 동일한 보수 레벨을 따른다(밴드 미상 SIGMET이 ④에서만 amber로 새지 않도록).
     level: adverse.level,
@@ -134,7 +136,7 @@ export function composeBriefing(request, data) {
     encounters,
     crossSectionAvailable: true,
     // enroute 단면 모델을 여기서 소유(이전엔 라우트·경보 스케줄러가 사후 mutate). root 없으면 null.
-    model: buildEnrouteModel({ root: data?.dataRoot, routeGeometry: request.routeGeometry, body: request, cruiseAltitudeFt }),
+    model: enrouteModel,
     aipConstraints,
   }
 
@@ -158,6 +160,7 @@ export function composeBriefing(request, data) {
     banner,
     routeNotams,
     routeConflicts,
+    provenance: buildBriefingProvenance({ routeModel: request.routeModel, aipConstraints, hazards: adverse.hazards, enrouteModel }),
     sections: { adverse, enroute, current: { airports }, destination },
     // 신뢰도 경고 — 심각도(배너 색)와 분리된 "판정을 얼마나 믿을 수 있는가" 축. 판정 로직 불변.
     warnings: buildConfidenceWarnings({

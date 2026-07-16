@@ -14,7 +14,7 @@ from aip_enr31_poc import dms_coordinate, point_ident
 ROOT = Path(__file__).resolve().parents[1]
 PUBLICATION_ID = os.getenv("AIP_PUBLICATION_ID", "2026-06-25")
 SNAPSHOT = ROOT / "backend" / "data" / "aip" / "normalized" / PUBLICATION_ID / "reviewed-airway-segments.json"
-OLD_GRAPH = ROOT / "frontend" / "public" / "data" / "navdata" / "route-segments.json"
+OLD_GRAPH = ROOT / "frontend" / "public" / "data" / "navdata" / "enroute.json"
 REPORT = ROOT / "backend" / "data" / "aip" / "validation" / PUBLICATION_ID / "route-graph-diff.json"
 ENR44_URL = f"https://aim.koca.go.kr/eaipPub/Package/{PUBLICATION_ID}/html/eAIP/KR-ENR-4.4-en-GB.html"
 NAVAIDS = ROOT / "backend" / "data" / "aip" / "normalized" / PUBLICATION_ID / "enroute-navaids.json"
@@ -41,7 +41,7 @@ def enr44_points() -> dict[str, set[tuple[float, float]]]:
 
 def main() -> None:
     snapshot = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
-    old_segments = json.loads(OLD_GRAPH.read_text(encoding="utf-8"))
+    old_segments = json.loads(OLD_GRAPH.read_text(encoding="utf-8"))["segments"]
     errors, seen = [], set()
     for segment in snapshot["segments"]:
         segment_key = key(segment)
