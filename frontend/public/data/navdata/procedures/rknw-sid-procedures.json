@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "airport": "RKNW",
+    "sourceUrl": "https://aim.koca.go.kr/eaipPub/Package/2025-11-26-AIRAC/pdf/AD/RKNW/%282-3%29%20SID.pdf",
+    "sourceLocator": "RKNW AD CHART 2-6-1 and 2-7-1 Aeronautical Data Tabulation",
+    "sourceEdition": "AIRAC AIP AMDT 13/23 (14 DEC 2023) and AIRAC AIP AMDT 2/26 (5 FEB 2026)",
+    "recordUnit": "procedure + runway + transition"
+  },
+  "sidProcedures": {
+    "RKNW-SID-IKILA1-KARBU": {
+      "id": "RKNW-SID-IKILA1-KARBU", "name": "IKILA1-KARBU", "runways": ["03"], "startFix": "RWY21", "endFix": "KARBU", "source": "2-6-1 Coding Table",
+      "fixes": [
+        {"id":"RWY21","coordinates":{"lat":37.426873,"lon":127.953542},"role":"THR","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKNW AD CHART 2-1"},
+        {"id":"IKILA","coordinates":{"lat":37.613239,"lon":128.069133},"pathTerminator":"CF","legDistanceNm":11,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":null},
+        {"id":"AROKU","coordinates":{"lat":37.665,"lon":127.937469},"pathTerminator":"TF","legDistanceNm":7,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":null},
+        {"id":"KARBU","coordinates":{"lat":37.533056,"lon":127.664444},"pathTerminator":"TF","legDistanceNm":15.2,"altitude":{"raw":"+6 500","minFt":6500,"maxFt":null},"speedKt":null}
+      ]
+    },
+    "RKNW-SID-IKILA1-BIKSI": {
+      "id": "RKNW-SID-IKILA1-BIKSI", "name": "IKILA1-BIKSI", "runways": ["03"], "startFix": "RWY21", "endFix": "BIKSI", "source": "2-6-1 Coding Table",
+      "fixes": [
+        {"id":"RWY21","coordinates":{"lat":37.426873,"lon":127.953542},"role":"THR","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKNW AD CHART 2-1"},
+        {"id":"IKILA","coordinates":{"lat":37.613239,"lon":128.069133},"pathTerminator":"CF","legDistanceNm":11,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":null},
+        {"id":"BIKSI","coordinates":{"lat":37.675556,"lon":128.584444},"pathTerminator":"TF","legDistanceNm":24.8,"altitude":{"raw":"+6 500","minFt":6500,"maxFt":null},"speedKt":null}
+      ]
+    },
+    "RKNW-SID-SANUV2-KARBU": {
+      "id": "RKNW-SID-SANUV2-KARBU", "name": "SANUV2-KARBU", "runways": ["21"], "startFix": "RWY03", "endFix": "KARBU", "source": "2-7-1 Coding Table",
+      "fixes": [
+        {"id":"RWY03","coordinates":{"lat":37.449094,"lon":127.967286},"role":"THR","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKNW AD CHART 2-1"},
+        {"id":"SANUV","coordinates":{"lat":37.343461,"lon":127.901919},"pathTerminator":"CF","legDistanceNm":5.6,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":230},
+        {"id":"ARUNA","coordinates":{"lat":37.395019,"lon":127.770606},"pathTerminator":"TF","legDistanceNm":7,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":230},
+        {"id":"KARBU","coordinates":{"lat":37.533056,"lon":127.664444},"pathTerminator":"TF","legDistanceNm":9.7,"altitude":{"raw":"+6 500","minFt":6500,"maxFt":null},"speedKt":null}
+      ]
+    },
+    "RKNW-SID-SANUV2-BIKSI": {
+      "id": "RKNW-SID-SANUV2-BIKSI", "name": "SANUV2-BIKSI", "runways": ["21"], "startFix": "RWY03", "endFix": "BIKSI", "source": "2-7-1 Coding Table",
+      "fixes": [
+        {"id":"RWY03","coordinates":{"lat":37.449094,"lon":127.967286},"role":"THR","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKNW AD CHART 2-1"},
+        {"id":"SANUV","coordinates":{"lat":37.343461,"lon":127.901919},"pathTerminator":"CF","legDistanceNm":5.6,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":230},
+        {"id":"ARUNA","coordinates":{"lat":37.395019,"lon":127.770606},"pathTerminator":"TF","legDistanceNm":7,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":230},
+        {"id":"AROKU","coordinates":{"lat":37.665,"lon":127.937469},"pathTerminator":"TF","legDistanceNm":18,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":null},
+        {"id":"BIKSI","coordinates":{"lat":37.675556,"lon":128.584444},"pathTerminator":"TF","legDistanceNm":30.8,"altitude":{"raw":"+6 500","minFt":6500,"maxFt":null},"speedKt":null}
+      ]
+    },
+    "RKNW-SID-SANUV2-GUKDO": {
+      "id": "RKNW-SID-SANUV2-GUKDO", "name": "SANUV2-GUKDO", "runways": ["21"], "startFix": "RWY03", "endFix": "GUKDO", "source": "2-7-1 Coding Table",
+      "fixes": [
+        {"id":"RWY03","coordinates":{"lat":37.449094,"lon":127.967286},"role":"THR","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKNW AD CHART 2-1"},
+        {"id":"SANUV","coordinates":{"lat":37.343461,"lon":127.901919},"pathTerminator":"CF","legDistanceNm":5.6,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":230},
+        {"id":"RULRU","coordinates":{"lat":37.193889,"lon":127.686928},"pathTerminator":"TF","legDistanceNm":13.7,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":null},
+        {"id":"GANAM","coordinates":{"lat":37.111125,"lon":127.664469},"pathTerminator":"TF","legDistanceNm":5.1,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":null},
+        {"id":"GUKDO","coordinates":{"lat":37.019703,"lon":127.639683},"pathTerminator":"TF","legDistanceNm":5.6,"altitude":{"raw":"+6 500","minFt":6500,"maxFt":null},"speedKt":null}
+      ]
+    }
+  }
+}

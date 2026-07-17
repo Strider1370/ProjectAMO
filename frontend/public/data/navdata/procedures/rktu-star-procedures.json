@@ -1,0 +1,157 @@
+{
+  "metadata": {
+    "airport": "RKTU",
+    "sourceUrl": "http://aim.koca.go.kr/eaipPub/Package/2025-05-29/pdf/AD/RKTU/(2-15-2)%20STAR.pdf",
+    "sourceEdition": "AIP AMDT 6/25, 29 MAY 2025",
+    "sourceLocator": "RKTU AD CHART 2-15-3 Aeronautical Data Tabulation / Coding Table",
+    "recordUnit": "procedure + runway + transition"
+  },
+  "starProcedures": {
+    "RKTU-STAR-MATIZ1-OSPOT": {
+      "id": "RKTU-STAR-MATIZ1-OSPOT",
+      "name": "MATIZ1-OSPOT",
+      "runways": [
+        "06L"
+      ],
+      "startFix": "OSPOT",
+      "endFix": "JIKJI",
+      "source": "2-15-3 Coding Table",
+      "fixes": [
+        {
+          "id": "OSPOT",
+          "coordinates": {
+            "lat": 36.838361,
+            "lon": 127.348583
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "MATIZ",
+          "coordinates": {
+            "lat": 36.843028,
+            "lon": 127.429472
+          },
+          "legDistanceNm": 3.9,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@7 000",
+            "minFt": 7000,
+            "maxFt": 7000
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "IKAPO",
+          "coordinates": {
+            "lat": 36.779083,
+            "lon": 127.787278
+          },
+          "legDistanceNm": 17.66,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@7 000",
+            "minFt": 7000,
+            "maxFt": 7000
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "ESBOS",
+          "coordinates": {
+            "lat": 36.852306,
+            "lon": 127.717167
+          },
+          "legDistanceNm": 6.6,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "JIKJI",
+          "coordinates": {
+            "lat": 36.689361,
+            "lon": 127.656139
+          },
+          "legDistanceNm": 11.84,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@7 000",
+            "minFt": 7000,
+            "maxFt": 7000
+          },
+          "speedKt": 210,
+          "role": "IAF"
+        }
+      ]
+    },
+    "RKTU-STAR-MATIZ1-OSPOT-24R": {
+      "id": "RKTU-STAR-MATIZ1-OSPOT-24R",
+      "name": "MATIZ1-OSPOT",
+      "runways": [
+        "24R"
+      ],
+      "startFix": "OSPOT",
+      "endFix": "HYEIN",
+      "source": "2-15-3 Coding Table",
+      "fixes": [
+        {
+          "id": "OSPOT",
+          "coordinates": {
+            "lat": 36.838361,
+            "lon": 127.348583
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "MATIZ",
+          "coordinates": {
+            "lat": 36.843028,
+            "lon": 127.429472
+          },
+          "legDistanceNm": 3.9,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@7 000",
+            "minFt": 7000,
+            "maxFt": 7000
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "HYEIN",
+          "coordinates": {
+            "lat": 36.963083,
+            "lon": 127.624917
+          },
+          "legDistanceNm": 5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@7 000",
+            "minFt": 7000,
+            "maxFt": 7000
+          },
+          "speedKt": 210,
+          "role": "IAF"
+        }
+      ]
+    }
+  }
+}

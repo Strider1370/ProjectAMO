@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "airport": "RKJK",
+    "purpose": "STAR-connected representative approach geometry",
+    "sources": [
+      "https://aim.koca.go.kr/eaipPub/Package/2025-06-26/pdf/AD/RKJK/%282-5%29%20INSTR%20APCH%20CHART.pdf",
+      "https://aim.koca.go.kr/eaipPub/Package/2026-08-05-AIRAC/html/eAIP/KR-AD-2.RKJK-en-GB.html"
+    ],
+    "sourceEdition": "AIP AMDT 7/25, 26 JUN 2025; runway thresholds from eAIP AD 2.12"
+  },
+  "iapRoutes": {
+    "RKJK-RNP-RWY18-EKIVA": {
+      "id": "RKJK-RNP-RWY18-EKIVA",
+      "name": "RNP RWY 18 — EKIVA",
+      "runways": ["18"],
+      "representativeFor": { "runwayGroup": ["18"], "starTerminalIaf": "EKIVA" },
+      "source": "RKJK AD CHART 2-9-1 Instrument Approach Procedure Coding Tables, 26 JUN 2025; threshold connection: chart-derived runway connection, RKJK AD 2.12",
+      "fixes": [
+        { "id": "EKIVA", "coordinates": { "lat": 36.238611, "lon": 126.536944 }, "role": "IAF", "pathTerminator": null, "legDistanceNm": null, "altitude": { "raw": "+4 000", "minFt": 4000, "maxFt": null } },
+        { "id": "UPMAN", "coordinates": { "lat": 36.155833, "lon": 126.555833 }, "role": "IF", "pathTerminator": "TF", "legDistanceNm": 5.1, "altitude": { "raw": "+3 000", "minFt": 3000, "maxFt": null } },
+        { "id": "LUKKI", "coordinates": { "lat": 35.994722, "lon": 126.594167 }, "role": "FAF", "pathTerminator": "TF", "legDistanceNm": 9.8, "altitude": { "raw": "+1 600", "minFt": 1600, "maxFt": null } },
+        { "id": "RW180", "coordinates": { "lat": 35.915917, "lon": 126.612972 }, "role": "MAPt / THR", "pathTerminator": "TF", "legDistanceNm": 4.8, "altitude": { "raw": null, "minFt": null, "maxFt": null }, "source": "chart-derived runway connection; threshold coordinate from RKJK AD 2.12" }
+      ],
+      "geometry": { "type": "LineString", "coordinates": [[126.536944,36.238611],[126.555833,36.155833],[126.594167,35.994722],[126.612972,35.915917]] }
+    },
+    "RKJK-RNP-RWY36-WAROB": {
+      "id": "RKJK-RNP-RWY36-WAROB",
+      "name": "RNP RWY 36 — WAROB",
+      "runways": ["36"],
+      "representativeFor": { "runwayGroup": ["36"], "starTerminalIaf": "WAROB" },
+      "source": "RKJK AD CHART 2-10-1 Instrument Approach Procedure Coding Tables, 26 JUN 2025; threshold connection: chart-derived runway connection, RKJK AD 2.12",
+      "fixes": [
+        { "id": "WAROB", "coordinates": { "lat": 35.755833, "lon": 126.928889 }, "role": "IAF", "pathTerminator": null, "legDistanceNm": null, "altitude": { "raw": "+4 000", "minFt": 4000, "maxFt": null } },
+        { "id": "HEDOD", "coordinates": { "lat": 35.681389, "lon": 126.743611 }, "role": "IF", "pathTerminator": "TF", "legDistanceNm": 10.1, "altitude": { "raw": "+3 000", "minFt": 3000, "maxFt": null } },
+        { "id": "CIKRA", "coordinates": { "lat": 35.800833, "lon": 126.670833 }, "role": "FAF", "pathTerminator": "TF", "legDistanceNm": 8, "altitude": { "raw": "+2 000", "minFt": 2000, "maxFt": null } },
+        { "id": "ZUDUX", "coordinates": { "lat": 35.883611, "lon": 126.620833 }, "role": "MAPt", "pathTerminator": "TF", "legDistanceNm": 5.5, "altitude": { "raw": null, "minFt": null, "maxFt": null } },
+        { "id": "RW360", "coordinates": { "lat": 35.891619, "lon": 126.618786 }, "role": "THR", "pathTerminator": null, "legDistanceNm": 0.5, "altitude": { "raw": null, "minFt": null, "maxFt": null }, "source": "chart-derived runway connection; threshold coordinate from RKJK AD 2.12" }
+      ],
+      "geometry": { "type": "LineString", "coordinates": [[126.928889,35.755833],[126.743611,35.681389],[126.670833,35.800833],[126.620833,35.883611],[126.618786,35.891619]] }
+    }
+  },
+  "starToIapCandidates": {}
+}

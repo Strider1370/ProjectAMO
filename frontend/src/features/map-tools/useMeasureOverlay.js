@@ -211,7 +211,9 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
     }
     return () => {
       if (!map) return
-      map.getCanvas().style.cursor = ''
+      const canvas = map.getCanvas?.()
+      if (!canvas) return
+      canvas.style.cursor = ''
       if (MEASURE_SET.has(activeTool)) { map.doubleClickZoom.enable(); map.dragPan.enable() }
     }
   }, [map, activeTool, panelOpen])

@@ -1,0 +1,846 @@
+{
+  "metadata": {
+    "airport": "RKTH",
+    "sourceUrl": "https://aim.koca.go.kr/eaipPub/Package/2026-06-10-AIRAC/pdf/AD/RKTH/%282-3%29%20SID.pdf",
+    "sourceLocator": "RKTH AD CHART 2-5-1 and 2-7-1 Aeronautical Data Tabulation",
+    "sourceEdition": "AIRAC AIP AMDT 6/22 table pages retained in 2026-06-10 package",
+    "recordUnit": "procedure + runway + transition"
+  },
+  "sidProcedures": {
+    "RKTH-SID-DORTI1-ELAPI": {
+      "id": "RKTH-SID-DORTI1-ELAPI",
+      "name": "DORTI1-ELAPI",
+      "runways": [
+        "10"
+      ],
+      "startFix": "RWY28",
+      "endFix": "ELAPI",
+      "source": "2-5-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY28",
+          "coordinates": {
+            "lat": 35.988067,
+            "lon": 129.432197
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "DORTI",
+          "coordinates": {
+            "lat": 35.989417,
+            "lon": 129.565722
+          },
+          "legDistanceNm": 6.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH801",
+          "coordinates": {
+            "lat": 36.106306,
+            "lon": 129.564028
+          },
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+4 800",
+            "minFt": 4800,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH802",
+          "coordinates": {
+            "lat": 36.128056,
+            "lon": 129.4225
+          },
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "TH803",
+          "coordinates": {
+            "lat": 36.171222,
+            "lon": 129.138056
+          },
+          "legDistanceNm": 14.1,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "ELAPI",
+          "coordinates": {
+            "lat": 36.33725,
+            "lon": 128.847472
+          },
+          "legDistanceNm": 17.3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+8 000",
+            "minFt": 8000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTH-SID-DORTI1-LOSTO": {
+      "id": "RKTH-SID-DORTI1-LOSTO",
+      "name": "DORTI1-LOSTO",
+      "runways": [
+        "10"
+      ],
+      "startFix": "RWY28",
+      "endFix": "LOSTO",
+      "source": "2-5-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY28",
+          "coordinates": {
+            "lat": 35.988067,
+            "lon": 129.432197
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "DORTI",
+          "coordinates": {
+            "lat": 35.989417,
+            "lon": 129.565722
+          },
+          "legDistanceNm": 6.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH801",
+          "coordinates": {
+            "lat": 36.106306,
+            "lon": 129.564028
+          },
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+4 800",
+            "minFt": 4800,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "LOSTO",
+          "coordinates": {
+            "lat": 36.337722,
+            "lon": 129.430083
+          },
+          "legDistanceNm": 15.3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+9 000",
+            "minFt": 9000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTH-SID-DORTI1-BULGA": {
+      "id": "RKTH-SID-DORTI1-BULGA",
+      "name": "DORTI1-BULGA",
+      "runways": [
+        "10"
+      ],
+      "startFix": "RWY28",
+      "endFix": "BULGA",
+      "source": "2-5-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY28",
+          "coordinates": {
+            "lat": 35.988067,
+            "lon": 129.432197
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "DORTI",
+          "coordinates": {
+            "lat": 35.989417,
+            "lon": 129.565722
+          },
+          "legDistanceNm": 6.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH804",
+          "coordinates": {
+            "lat": 35.954306,
+            "lon": 129.67025
+          },
+          "legDistanceNm": 5.5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+4 800",
+            "minFt": 4800,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "BULGA",
+          "coordinates": {
+            "lat": 35.935722,
+            "lon": 129.823444
+          },
+          "legDistanceNm": 7.6,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+8 000",
+            "minFt": 8000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTH-SID-DORTI1-APARU": {
+      "id": "RKTH-SID-DORTI1-APARU",
+      "name": "DORTI1-APARU",
+      "runways": [
+        "10"
+      ],
+      "startFix": "RWY28",
+      "endFix": "APARU",
+      "source": "2-5-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY28",
+          "coordinates": {
+            "lat": 35.988067,
+            "lon": 129.432197
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "DORTI",
+          "coordinates": {
+            "lat": 35.989417,
+            "lon": 129.565722
+          },
+          "legDistanceNm": 6.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH805",
+          "coordinates": {
+            "lat": 35.872556,
+            "lon": 129.567417
+          },
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+4 800",
+            "minFt": 4800,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "MAKUN",
+          "coordinates": {
+            "lat": 35.781389,
+            "lon": 129.364667
+          },
+          "legDistanceNm": 11.3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "APARU",
+          "coordinates": {
+            "lat": 35.411694,
+            "lon": 129.158917
+          },
+          "legDistanceNm": 24.3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+9 000",
+            "minFt": 9000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTH-SID-DORTI1-LAPAL": {
+      "id": "RKTH-SID-DORTI1-LAPAL",
+      "name": "DORTI1-LAPAL",
+      "runways": [
+        "10"
+      ],
+      "startFix": "RWY28",
+      "endFix": "LAPAL",
+      "source": "2-5-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY28",
+          "coordinates": {
+            "lat": 35.988067,
+            "lon": 129.432197
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "DORTI",
+          "coordinates": {
+            "lat": 35.989417,
+            "lon": 129.565722
+          },
+          "legDistanceNm": 6.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH805",
+          "coordinates": {
+            "lat": 35.872556,
+            "lon": 129.567417
+          },
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+4 800",
+            "minFt": 4800,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH806",
+          "coordinates": {
+            "lat": 35.870333,
+            "lon": 129.379889
+          },
+          "legDistanceNm": 9.2,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "LAPAL",
+          "coordinates": {
+            "lat": 35.9035,
+            "lon": 129.081194
+          },
+          "legDistanceNm": 14.7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTH-SID-MARMI1-LOSTO": {
+      "id": "RKTH-SID-MARMI1-LOSTO",
+      "name": "MARMI1-LOSTO",
+      "runways": [
+        "28"
+      ],
+      "startFix": "RWY10",
+      "endFix": "LOSTO",
+      "source": "2-7-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY10",
+          "coordinates": {
+            "lat": 35.987811,
+            "lon": 129.408547
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "MARMI",
+          "coordinates": {
+            "lat": 35.986528,
+            "lon": 129.295556
+          },
+          "legDistanceNm": 5.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH901",
+          "coordinates": {
+            "lat": 36.103389,
+            "lon": 129.293472
+          },
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH902",
+          "coordinates": {
+            "lat": 36.247306,
+            "lon": 129.441278
+          },
+          "legDistanceNm": 11.2,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "LOSTO",
+          "coordinates": {
+            "lat": 36.337722,
+            "lon": 129.430083
+          },
+          "legDistanceNm": 5.4,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+9 000",
+            "minFt": 9000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTH-SID-MARMI1-ELAPI": {
+      "id": "RKTH-SID-MARMI1-ELAPI",
+      "name": "MARMI1-ELAPI",
+      "runways": [
+        "28"
+      ],
+      "startFix": "RWY10",
+      "endFix": "ELAPI",
+      "source": "2-7-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY10",
+          "coordinates": {
+            "lat": 35.987811,
+            "lon": 129.408547
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "MARMI",
+          "coordinates": {
+            "lat": 35.986528,
+            "lon": 129.295556
+          },
+          "legDistanceNm": 5.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH903",
+          "coordinates": {
+            "lat": 36.129389,
+            "lon": 129.210889
+          },
+          "legDistanceNm": 9.5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "ELAPI",
+          "coordinates": {
+            "lat": 36.33725,
+            "lon": 128.847472
+          },
+          "legDistanceNm": 21.6,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+8 000",
+            "minFt": 8000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTH-SID-MARMI1-LAPAL": {
+      "id": "RKTH-SID-MARMI1-LAPAL",
+      "name": "MARMI1-LAPAL",
+      "runways": [
+        "28"
+      ],
+      "startFix": "RWY10",
+      "endFix": "LAPAL",
+      "source": "2-7-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY10",
+          "coordinates": {
+            "lat": 35.987811,
+            "lon": 129.408547
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "MARMI",
+          "coordinates": {
+            "lat": 35.986528,
+            "lon": 129.295556
+          },
+          "legDistanceNm": 5.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "LAPAL",
+          "coordinates": {
+            "lat": 35.9035,
+            "lon": 129.081194
+          },
+          "legDistanceNm": 11.6,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTH-SID-MARMI1-APARU": {
+      "id": "RKTH-SID-MARMI1-APARU",
+      "name": "MARMI1-APARU",
+      "runways": [
+        "28"
+      ],
+      "startFix": "RWY10",
+      "endFix": "APARU",
+      "source": "2-7-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY10",
+          "coordinates": {
+            "lat": 35.987811,
+            "lon": 129.408547
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "MARMI",
+          "coordinates": {
+            "lat": 35.986528,
+            "lon": 129.295556
+          },
+          "legDistanceNm": 5.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH904",
+          "coordinates": {
+            "lat": 35.869667,
+            "lon": 129.297667
+          },
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+4 800",
+            "minFt": 4800,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "MAKUN",
+          "coordinates": {
+            "lat": 35.781389,
+            "lon": 129.364667
+          },
+          "legDistanceNm": 6.2,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "APARU",
+          "coordinates": {
+            "lat": 35.411694,
+            "lon": 129.158917
+          },
+          "legDistanceNm": 24.3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+9 000",
+            "minFt": 9000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTH-SID-MARMI1-BULGA": {
+      "id": "RKTH-SID-MARMI1-BULGA",
+      "name": "MARMI1-BULGA",
+      "runways": [
+        "28"
+      ],
+      "startFix": "RWY10",
+      "endFix": "BULGA",
+      "source": "2-7-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY10",
+          "coordinates": {
+            "lat": 35.987811,
+            "lon": 129.408547
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RNP Z RWY 10/28 (AR) Coding Table"
+        },
+        {
+          "id": "MARMI",
+          "coordinates": {
+            "lat": 35.986528,
+            "lon": 129.295556
+          },
+          "legDistanceNm": 5.5,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH904",
+          "coordinates": {
+            "lat": 35.869667,
+            "lon": 129.297667
+          },
+          "legDistanceNm": 7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+4 800",
+            "minFt": 4800,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH905",
+          "coordinates": {
+            "lat": 35.871167,
+            "lon": 129.397667
+          },
+          "legDistanceNm": 6.5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "TH906",
+          "coordinates": {
+            "lat": 35.964917,
+            "lon": 129.578833
+          },
+          "legDistanceNm": 9.1,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+8 000",
+            "minFt": 8000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "BULGA",
+          "coordinates": {
+            "lat": 35.935722,
+            "lon": 129.823444
+          },
+          "legDistanceNm": 12,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+8 000",
+            "minFt": 8000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    }
+  }
+}

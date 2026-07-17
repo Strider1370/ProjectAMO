@@ -1,0 +1,455 @@
+{
+  "metadata": {
+    "airport": "RKTU",
+    "sourceUrl": "http://aim.koca.go.kr/eaipPub/Package/2025-09-03-AIRAC/pdf/AD/RKTU/(2-11)%20SID.pdf",
+    "sourceEdition": "AIP AMDT 6/25, 29 MAY 2025",
+    "sourceLocator": "RKTU AD CHART 2-11-1 and 2-12-1 Aeronautical Data Tabulation / Coding Tables",
+    "recordUnit": "procedure + runway + transition"
+  },
+  "sidProcedures": {
+    "RKTU-SID-BUKIL2-GUKDO": {
+      "id": "RKTU-SID-BUKIL2-GUKDO",
+      "name": "BUKIL2-GUKDO",
+      "runways": [
+        "06L"
+      ],
+      "startFix": "RWY24R",
+      "endFix": "GUKDO",
+      "source": "2-11-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY24R",
+          "coordinates": {
+            "lat": 36.725106,
+            "lon": 127.511125
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null,
+          "role": "THR",
+          "source": "chart-derived runway connection; threshold coordinate from RKTU AD 2.12, 10 JUN 2026"
+        },
+        {
+          "id": "BUKIL",
+          "coordinates": {
+            "lat": 36.806444,
+            "lon": 127.642694
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 220
+        },
+        {
+          "id": "GUKDO",
+          "coordinates": {
+            "lat": 37.019694,
+            "lon": 127.639694
+          },
+          "legDistanceNm": 12.7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTU-SID-BUKIL2-OLMEN": {
+      "id": "RKTU-SID-BUKIL2-OLMEN",
+      "name": "BUKIL2-OLMEN",
+      "runways": [
+        "06L"
+      ],
+      "startFix": "RWY24R",
+      "endFix": "OLMEN",
+      "source": "2-11-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY24R",
+          "coordinates": {
+            "lat": 36.725106,
+            "lon": 127.511125
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null,
+          "role": "THR",
+          "source": "chart-derived runway connection; threshold coordinate from RKTU AD 2.12, 10 JUN 2026"
+        },
+        {
+          "id": "BUKIL",
+          "coordinates": {
+            "lat": 36.806444,
+            "lon": 127.642694
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 220
+        },
+        {
+          "id": "TUTAE",
+          "coordinates": {
+            "lat": 36.912333,
+            "lon": 127.5415
+          },
+          "legDistanceNm": 8,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "OLMEN",
+          "coordinates": {
+            "lat": 36.737056,
+            "lon": 126.991
+          },
+          "legDistanceNm": 18,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@6 000",
+            "minFt": 6000,
+            "maxFt": 6000
+          },
+          "speedKt": null
+        },
+        {
+          "id": "OWING",
+          "coordinates": {
+            "lat": 36.728833,
+            "lon": 127.245667
+          },
+          "legDistanceNm": 12.29,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTU-SID-BUKIL2-BULTI": {
+      "id": "RKTU-SID-BUKIL2-BULTI",
+      "name": "BUKIL2-BULTI",
+      "runways": [
+        "06L"
+      ],
+      "startFix": "RWY24R",
+      "endFix": "BULTI",
+      "source": "2-11-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY24R",
+          "coordinates": {
+            "lat": 36.725106,
+            "lon": 127.511125
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null,
+          "role": "THR",
+          "source": "chart-derived runway connection; threshold coordinate from RKTU AD 2.12, 10 JUN 2026"
+        },
+        {
+          "id": "BUKIL",
+          "coordinates": {
+            "lat": 36.806444,
+            "lon": 127.642694
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 220
+        },
+        {
+          "id": "TUTAE",
+          "coordinates": {
+            "lat": 36.912333,
+            "lon": 127.5415
+          },
+          "legDistanceNm": 8,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "BULTI",
+          "coordinates": {
+            "lat": 36.722861,
+            "lon": 126.824917
+          },
+          "legDistanceNm": 20.3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@6 000",
+            "minFt": 6000,
+            "maxFt": 6000
+          },
+          "speedKt": null
+        },
+        {
+          "id": "OWING",
+          "coordinates": {
+            "lat": 36.728833,
+            "lon": 127.245667
+          },
+          "legDistanceNm": 12.29,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTU-SID-UPTIL1-GUKDO": {
+      "id": "RKTU-SID-UPTIL1-GUKDO",
+      "name": "UPTIL1-GUKDO",
+      "runways": [
+        "24R"
+      ],
+      "startFix": "RWY06L",
+      "endFix": "GUKDO",
+      "source": "2-12-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY06L",
+          "coordinates": {
+            "lat": 36.710028,
+            "lon": 127.486794
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null,
+          "role": "THR",
+          "source": "chart-derived runway connection; threshold coordinate from RKTU AD 2.12, 10 JUN 2026"
+        },
+        {
+          "id": "UPTIL",
+          "coordinates": {
+            "lat": 36.649917,
+            "lon": 127.389944
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 220
+        },
+        {
+          "id": "TU521",
+          "coordinates": {
+            "lat": 36.7555,
+            "lon": 127.288639
+          },
+          "legDistanceNm": 8,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "TUTAE",
+          "coordinates": {
+            "lat": 36.912333,
+            "lon": 127.5415
+          },
+          "legDistanceNm": 15.38,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@6 000",
+            "minFt": 6000,
+            "maxFt": 6000
+          },
+          "speedKt": null
+        },
+        {
+          "id": "GUKDO",
+          "coordinates": {
+            "lat": 37.019694,
+            "lon": 127.639694
+          },
+          "legDistanceNm": 7.98,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTU-SID-UPTIL1-OLMEN": {
+      "id": "RKTU-SID-UPTIL1-OLMEN",
+      "name": "UPTIL1-OLMEN",
+      "runways": [
+        "24R"
+      ],
+      "startFix": "RWY06L",
+      "endFix": "OLMEN",
+      "source": "2-12-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY06L",
+          "coordinates": {
+            "lat": 36.710028,
+            "lon": 127.486794
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null,
+          "role": "THR",
+          "source": "chart-derived runway connection; threshold coordinate from RKTU AD 2.12, 10 JUN 2026"
+        },
+        {
+          "id": "UPTIL",
+          "coordinates": {
+            "lat": 36.649917,
+            "lon": 127.389944
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 220
+        },
+        {
+          "id": "OLMEN",
+          "coordinates": {
+            "lat": 36.737056,
+            "lon": 126.991
+          },
+          "legDistanceNm": 19.95,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKTU-SID-UPTIL1-BULTI": {
+      "id": "RKTU-SID-UPTIL1-BULTI",
+      "name": "UPTIL1-BULTI",
+      "runways": [
+        "24R"
+      ],
+      "startFix": "RWY06L",
+      "endFix": "BULTI",
+      "source": "2-12-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY06L",
+          "coordinates": {
+            "lat": 36.710028,
+            "lon": 127.486794
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null,
+          "role": "THR",
+          "source": "chart-derived runway connection; threshold coordinate from RKTU AD 2.12, 10 JUN 2026"
+        },
+        {
+          "id": "UPTIL",
+          "coordinates": {
+            "lat": 36.649917,
+            "lon": 127.389944
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "CF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 220
+        },
+        {
+          "id": "BULTI",
+          "coordinates": {
+            "lat": 36.722861,
+            "lon": 126.824917
+          },
+          "legDistanceNm": 27.62,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@6 000",
+            "minFt": 6000,
+            "maxFt": 6000
+          },
+          "speedKt": null
+        }
+      ]
+    }
+  }
+}

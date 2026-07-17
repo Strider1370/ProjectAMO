@@ -1,0 +1,442 @@
+{
+  "metadata": {
+    "airport": "RKTU",
+    "purpose": "STAR-connected representative approach geometry",
+    "sources": [
+      "http://aim.koca.go.kr/eaipPub/Package/2025-07-24/pdf/AD/RKTU/(2-17)%20INSTR%20APCH%20CHART.pdf"
+    ],
+    "sourceEdition": "AIP AMDT 7/25, 26 JUN 2025",
+    "sourceLocator": "RKTU AD CHART 2-17-1 and 2-25-1 Coding Tables; chart-derived final runway connections"
+  },
+  "iapRoutes": {
+    "RKTU-RNP-RWY06L-JIKJI": {
+      "id": "RKTU-RNP-RWY06L-JIKJI",
+      "name": "RNP RWY 06L — JIKJI",
+      "runways": [
+        "06L"
+      ],
+      "representativeFor": {
+        "runwayGroup": [
+          "06L"
+        ],
+        "starTerminalIaf": "JIKJI"
+      },
+      "source": "2-17-1 Coding Table, 26 JUN 2025",
+      "fixes": [
+        {
+          "id": "JIKJI",
+          "coordinates": {
+            "lat": 36.689361,
+            "lon": 127.656139
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": "@7 000",
+            "minFt": 7000,
+            "maxFt": 7000
+          },
+          "speedKt": 230,
+          "role": "IAF"
+        },
+        {
+          "id": "ASORA",
+          "coordinates": {
+            "lat": 36.711222,
+            "lon": 127.472111
+          },
+          "legDistanceNm": 9,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "OSIVI",
+          "coordinates": {
+            "lat": 36.723278,
+            "lon": 127.369528
+          },
+          "legDistanceNm": 5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "SURSO",
+          "coordinates": {
+            "lat": 36.735222,
+            "lon": 127.266944
+          },
+          "legDistanceNm": 5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "TU761",
+          "coordinates": {
+            "lat": 36.656944,
+            "lon": 127.141389
+          },
+          "legDistanceNm": 7.7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+5 000",
+            "minFt": 5000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "BAKJO",
+          "coordinates": {
+            "lat": 36.555583,
+            "lon": 127.23875
+          },
+          "legDistanceNm": 7.7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+4 400",
+            "minFt": 4400,
+            "maxFt": null
+          },
+          "speedKt": "230",
+          "role": "IF"
+        },
+        {
+          "id": "TU762",
+          "coordinates": {
+            "lat": 36.589417,
+            "lon": 127.292667
+          },
+          "legDistanceNm": 3.3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+3 900",
+            "minFt": 3900,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "TU763",
+          "coordinates": {
+            "lat": 36.620028,
+            "lon": 127.341806
+          },
+          "legDistanceNm": 3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+3 000",
+            "minFt": 3000,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "SAPUX",
+          "coordinates": {
+            "lat": 36.649806,
+            "lon": 127.389694
+          },
+          "legDistanceNm": 2.9,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+2 100",
+            "minFt": 2100,
+            "maxFt": null
+          },
+          "speedKt": "230",
+          "role": "FAF"
+        },
+        {
+          "id": "TU766",
+          "coordinates": {
+            "lat": 36.678583,
+            "lon": 127.436083
+          },
+          "legDistanceNm": 2.8,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+1 200",
+            "minFt": 1200,
+            "maxFt": null
+          },
+          "speedKt": "230"
+        },
+        {
+          "id": "YEJEE",
+          "coordinates": {
+            "lat": 36.6965,
+            "lon": 127.464944
+          },
+          "legDistanceNm": 1.8,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+620",
+            "minFt": 620,
+            "maxFt": null
+          },
+          "speedKt": "230",
+          "role": "MAPt (LNAV only)"
+        },
+        {
+          "id": "RWY06L",
+          "coordinates": {
+            "lat": 36.710028,
+            "lon": 127.486794
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null,
+          "role": "THR",
+          "source": "chart-derived runway connection; threshold coordinate from RKTU AD 2.12, 10 JUN 2026"
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            127.656139,
+            36.689361
+          ],
+          [
+            127.472111,
+            36.711222
+          ],
+          [
+            127.369528,
+            36.723278
+          ],
+          [
+            127.266944,
+            36.735222
+          ],
+          [
+            127.141389,
+            36.656944
+          ],
+          [
+            127.23875,
+            36.555583
+          ],
+          [
+            127.292667,
+            36.589417
+          ],
+          [
+            127.341806,
+            36.620028
+          ],
+          [
+            127.389694,
+            36.649806
+          ],
+          [
+            127.436083,
+            36.678583
+          ],
+          [
+            127.464944,
+            36.6965
+          ],
+          [
+            127.486794,
+            36.710028
+          ]
+        ]
+      }
+    },
+    "RKTU-RNP-RWY24R-HYEIN": {
+      "id": "RKTU-RNP-RWY24R-HYEIN",
+      "name": "RNP RWY 24R — HYEIN",
+      "runways": [
+        "24R"
+      ],
+      "representativeFor": {
+        "runwayGroup": [
+          "24R"
+        ],
+        "starTerminalIaf": "HYEIN"
+      },
+      "source": "2-25-1 Coding Table, 26 JUN 2025",
+      "fixes": [
+        {
+          "id": "HYEIN",
+          "coordinates": {
+            "lat": 36.963083,
+            "lon": 127.624917
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": "+6 000",
+            "minFt": 6000,
+            "maxFt": null
+          },
+          "speedKt": 230,
+          "role": "IAF"
+        },
+        {
+          "id": "TURTU",
+          "coordinates": {
+            "lat": 36.8575,
+            "lon": 127.725639
+          },
+          "legDistanceNm": 8,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+3 700",
+            "minFt": 3700,
+            "maxFt": null
+          },
+          "speedKt": 230,
+          "role": "IF"
+        },
+        {
+          "id": "TU743",
+          "coordinates": {
+            "lat": 36.801472,
+            "lon": 127.634694
+          },
+          "legDistanceNm": 5.5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+2 500",
+            "minFt": 2500,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "APAKI",
+          "coordinates": {
+            "lat": 36.784361,
+            "lon": 127.606944
+          },
+          "legDistanceNm": 1.7,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+2 100",
+            "minFt": 2100,
+            "maxFt": null
+          },
+          "speedKt": "230",
+          "role": "FAF"
+        },
+        {
+          "id": "TU746",
+          "coordinates": {
+            "lat": 36.755611,
+            "lon": 127.560444
+          },
+          "legDistanceNm": 2.8,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+1 200",
+            "minFt": 1200,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "SURAX",
+          "coordinates": {
+            "lat": 36.733472,
+            "lon": 127.524611
+          },
+          "legDistanceNm": 2.2,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+620",
+            "minFt": 620,
+            "maxFt": null
+          },
+          "speedKt": null,
+          "role": "MAPt (LNAV only)"
+        },
+        {
+          "id": "RWY24R",
+          "coordinates": {
+            "lat": 36.725106,
+            "lon": 127.511125
+          },
+          "legDistanceNm": null,
+          "pathTerminator": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null,
+          "role": "THR",
+          "source": "chart-derived runway connection; threshold coordinate from RKTU AD 2.12, 10 JUN 2026"
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            127.624917,
+            36.963083
+          ],
+          [
+            127.725639,
+            36.8575
+          ],
+          [
+            127.634694,
+            36.801472
+          ],
+          [
+            127.606944,
+            36.784361
+          ],
+          [
+            127.560444,
+            36.755611
+          ],
+          [
+            127.524611,
+            36.733472
+          ],
+          [
+            127.511125,
+            36.725106
+          ]
+        ]
+      }
+    }
+  },
+  "starToIapCandidates": {
+    "RKTU-STAR-MATIZ1-OSPOT": {
+      "candidateIapKeys": [
+        "RKTU-RNP-RWY06L-JIKJI"
+      ],
+      "defaultIapKey": "RKTU-RNP-RWY06L-JIKJI"
+    },
+    "RKTU-STAR-MATIZ1-OSPOT-24R": {
+      "candidateIapKeys": [
+        "RKTU-RNP-RWY24R-HYEIN"
+      ],
+      "defaultIapKey": "RKTU-RNP-RWY24R-HYEIN"
+    }
+  }
+}

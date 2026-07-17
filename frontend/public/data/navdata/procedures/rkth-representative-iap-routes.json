@@ -1,0 +1,348 @@
+{
+  "metadata": {
+    "airport": "RKTH",
+    "purpose": "STAR-connected representative approach geometry",
+    "sources": [
+      "https://aim.koca.go.kr/eaipPub/Package/2025-09-18/pdf/AD/RKTH/%282-11%29%20INSTR%20APCH%20CHART.pdf"
+    ]
+  },
+  "iapRoutes": {
+    "RKTH-RNPY-RWY10-IGASA": {
+      "id": "RKTH-RNPY-RWY10-IGASA",
+      "name": "RNP Y RWY 10 — IGASA",
+      "runways": [
+        "10"
+      ],
+      "representativeFor": {
+        "runwayGroup": [
+          "10"
+        ],
+        "starTerminalIaf": "IGASA"
+      },
+      "source": "RKTH AD CHART 2-13-1 Coding Table, 18 SEP 2025",
+      "fixes": [
+        {
+          "id": "IGASA",
+          "coordinates": {
+            "lat": 36.136222,
+            "lon": 129.271278
+          },
+          "role": "IAF",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": "+5 000",
+            "minFt": 5000,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH501",
+          "coordinates": {
+            "lat": 36.077222,
+            "lon": 129.182111
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 5.5,
+          "altitude": {
+            "raw": "+4 300",
+            "minFt": 4300,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "RUNSA",
+          "coordinates": {
+            "lat": 35.985139,
+            "lon": 129.183889
+          },
+          "role": "IF",
+          "pathTerminator": "TF",
+          "legDistanceNm": 5.5,
+          "altitude": {
+            "raw": "+3 600",
+            "minFt": 3600,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH503",
+          "coordinates": {
+            "lat": 35.985972,
+            "lon": 129.249611
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 3.2,
+          "altitude": {
+            "raw": "+2 600",
+            "minFt": 2600,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "KADIL",
+          "coordinates": {
+            "lat": 35.986639,
+            "lon": 129.304417
+          },
+          "role": "FAF",
+          "pathTerminator": "TF",
+          "legDistanceNm": 2.7,
+          "altitude": {
+            "raw": "+1 800",
+            "minFt": 1800,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH505",
+          "coordinates": {
+            "lat": 35.987083,
+            "lon": 129.343111
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 1.9,
+          "altitude": {
+            "raw": "+1 180",
+            "minFt": 1180,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "VISET",
+          "coordinates": {
+            "lat": 35.9875,
+            "lon": 129.3795
+          },
+          "role": "MAPt (LNAV only)",
+          "pathTerminator": "TF",
+          "legDistanceNm": 1.8,
+          "altitude": {
+            "raw": "+620",
+            "minFt": 620,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "RWY10",
+          "coordinates": {
+            "lat": 35.987811,
+            "lon": 129.408547
+          },
+          "role": "THR / visual continuation end",
+          "pathTerminator": null,
+          "legDistanceNm": 1.41,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived VISET to RWY 10; threshold coordinate from RNP Z RWY 10 (AR) Coding Table"
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.271278,
+            36.136222
+          ],
+          [
+            129.182111,
+            36.077222
+          ],
+          [
+            129.183889,
+            35.985139
+          ],
+          [
+            129.249611,
+            35.985972
+          ],
+          [
+            129.304417,
+            35.986639
+          ],
+          [
+            129.343111,
+            35.987083
+          ],
+          [
+            129.3795,
+            35.9875
+          ],
+          [
+            129.408547,
+            35.987811
+          ]
+        ]
+      }
+    },
+    "RKTH-RNPZ-AR-RWY28-RUTON": {
+      "id": "RKTH-RNPZ-AR-RWY28-RUTON",
+      "name": "RNP Z RWY 28 (AR) — RUTON",
+      "runways": [
+        "28"
+      ],
+      "representativeFor": {
+        "runwayGroup": [
+          "28"
+        ],
+        "starTerminalIaf": "RUTON"
+      },
+      "fallbackReason": "RNP Y RWY 28 coding table has no final-segment coordinates; this is the published RNP AR geometry fallback, not RNP Y.",
+      "source": "RUTON to SABUM: RKTH AD CHART 2-16-1 Coding Table; SABUM to RW280: RNP Z RWY 28 (AR) Coding Table, 18 SEP 2025",
+      "fixes": [
+        {
+          "id": "RUTON",
+          "coordinates": {
+            "lat": 36.140556,
+            "lon": 129.531944
+          },
+          "role": "IAF",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": "@6 000",
+            "minFt": 6000,
+            "maxFt": 6000
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "TH701",
+          "coordinates": {
+            "lat": 36.088833,
+            "lon": 129.633417
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 5.8,
+          "altitude": {
+            "raw": "+4 500",
+            "minFt": 4500,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "SABUM",
+          "coordinates": {
+            "lat": 35.990056,
+            "lon": 129.634778
+          },
+          "role": "IF",
+          "pathTerminator": "TF",
+          "legDistanceNm": 5.9,
+          "altitude": {
+            "raw": "+3 000",
+            "minFt": 3000,
+            "maxFt": null
+          },
+          "speedKt": 230
+        },
+        {
+          "id": "GOVLI",
+          "coordinates": {
+            "lat": 35.989056,
+            "lon": 129.527722
+          },
+          "role": "FAF",
+          "pathTerminator": "TF",
+          "legDistanceNm": 5.2,
+          "altitude": {
+            "raw": "+1 800",
+            "minFt": 1800,
+            "maxFt": null
+          },
+          "speedKt": null
+        },
+        {
+          "id": "RW280",
+          "coordinates": {
+            "lat": 35.988067,
+            "lon": 129.432197
+          },
+          "role": "THR",
+          "pathTerminator": "TF",
+          "legDistanceNm": 4.7,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ],
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            129.531944,
+            36.140556
+          ],
+          [
+            129.633417,
+            36.088833
+          ],
+          [
+            129.634778,
+            35.990056
+          ],
+          [
+            129.527722,
+            35.989056
+          ],
+          [
+            129.432197,
+            35.988067
+          ]
+        ]
+      }
+    }
+  },
+  "starToIapCandidates": {
+    "RKTH-STAR-EMTIK1-LAPAL": {
+      "candidateIapKeys": [
+        "RKTH-RNPY-RWY10-IGASA"
+      ],
+      "defaultIapKey": "RKTH-RNPY-RWY10-IGASA"
+    },
+    "RKTH-STAR-EMTIK1-APARU": {
+      "candidateIapKeys": [
+        "RKTH-RNPY-RWY10-IGASA"
+      ],
+      "defaultIapKey": "RKTH-RNPY-RWY10-IGASA"
+    },
+    "RKTH-STAR-EMTIK1-BULGA": {
+      "candidateIapKeys": [
+        "RKTH-RNPY-RWY10-IGASA"
+      ],
+      "defaultIapKey": "RKTH-RNPY-RWY10-IGASA"
+    },
+    "RKTH-STAR-PUDEN1-ELAPI": {
+      "candidateIapKeys": [
+        "RKTH-RNPZ-AR-RWY28-RUTON"
+      ],
+      "defaultIapKey": "RKTH-RNPZ-AR-RWY28-RUTON"
+    },
+    "RKTH-STAR-PUDEN1-LAPAL": {
+      "candidateIapKeys": [
+        "RKTH-RNPZ-AR-RWY28-RUTON"
+      ],
+      "defaultIapKey": "RKTH-RNPZ-AR-RWY28-RUTON"
+    },
+    "RKTH-STAR-PUDEN1-APARU": {
+      "candidateIapKeys": [
+        "RKTH-RNPZ-AR-RWY28-RUTON"
+      ],
+      "defaultIapKey": "RKTH-RNPZ-AR-RWY28-RUTON"
+    }
+  }
+}

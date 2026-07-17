@@ -1,0 +1,414 @@
+{
+  "metadata": {
+    "airport": "RKJJ",
+    "sourceUrl": "https://aim.koca.go.kr/eaipPub/Package/2026-06-10-AIRAC/pdf/AD/RKJJ/%282-11%29%20SID.pdf",
+    "sourceEdition": "AIP AMDT 3/26, 5 MAR 2026",
+    "sourceLocator": "RKJJ AD CHART 2-11-1 and 2-13-1 Standard Instrument Departure Procedure Coding Tables",
+    "recordUnit": "procedure + runway + transition",
+    "runwayThresholdSource": "https://aim.koca.go.kr/eaipPub/Package/2026-01-08/html/eAIP/KR-AD-2.RKJJ-en-GB.html?ver=20250728, RKJJ AD 2.12"
+  },
+  "sidProcedures": {
+    "RKJJ-SID-LILVI1-MAKSA": {
+      "id": "RKJJ-SID-LILVI1-MAKSA",
+      "name": "LILVI1-MAKSA",
+      "runways": [
+        "04L"
+      ],
+      "startFix": "RWY22R",
+      "endFix": "MAKSA",
+      "source": "2-11-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY22R",
+          "coordinates": {
+            "lat": 35.137761,
+            "lon": 126.815733
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RKJJ AD 2.12"
+        },
+        {
+          "id": "LILVI",
+          "coordinates": {
+            "lat": 35.218778,
+            "lon": 126.875028
+          },
+          "pathTerminator": "CF",
+          "legDistanceNm": 5.7,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "MAKSA",
+          "coordinates": {
+            "lat": 35.503139,
+            "lon": 126.906111
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 17.1,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": null
+        }
+      ]
+    },
+    "RKJJ-SID-LILVI1-IGDOK": {
+      "id": "RKJJ-SID-LILVI1-IGDOK",
+      "name": "LILVI1-IGDOK",
+      "runways": [
+        "04L"
+      ],
+      "startFix": "RWY22R",
+      "endFix": "IGDOK",
+      "source": "2-11-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY22R",
+          "coordinates": {
+            "lat": 35.137761,
+            "lon": 126.815733
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RKJJ AD 2.12"
+        },
+        {
+          "id": "LILVI",
+          "coordinates": {
+            "lat": 35.218778,
+            "lon": 126.875028
+          },
+          "pathTerminator": "CF",
+          "legDistanceNm": 5.7,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "JJ401",
+          "coordinates": {
+            "lat": 35.222528,
+            "lon": 126.976639
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 5,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "PUMEG",
+          "coordinates": {
+            "lat": 35.225889,
+            "lon": 127.065139
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 4.4,
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "GUMAM",
+          "coordinates": {
+            "lat": 35.366417,
+            "lon": 127.426028
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 19.6,
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "IGDOK",
+          "coordinates": {
+            "lat": 35.517667,
+            "lon": 127.8185
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 21.3,
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        }
+      ]
+    },
+    "RKJJ-SID-LILVI1-TEDAN": {
+      "id": "RKJJ-SID-LILVI1-TEDAN",
+      "name": "LILVI1-TEDAN",
+      "runways": [
+        "04L"
+      ],
+      "startFix": "RWY22R",
+      "endFix": "TEDAN",
+      "source": "2-11-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY22R",
+          "coordinates": {
+            "lat": 35.137761,
+            "lon": 126.815733
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RKJJ AD 2.12"
+        },
+        {
+          "id": "LILVI",
+          "coordinates": {
+            "lat": 35.218778,
+            "lon": 126.875028
+          },
+          "pathTerminator": "CF",
+          "legDistanceNm": 5.7,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "JJ401",
+          "coordinates": {
+            "lat": 35.222528,
+            "lon": 126.976639
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 5,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "JJ402",
+          "coordinates": {
+            "lat": 35.267861,
+            "lon": 127.086917
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 6,
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "IGBEM",
+          "coordinates": {
+            "lat": 35.128611,
+            "lon": 127.212861
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 6.9,
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "TEDAN",
+          "coordinates": {
+            "lat": 35.128833,
+            "lon": 127.314472
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 5,
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        }
+      ]
+    },
+    "RKJJ-SID-LILVI1-DOTOL": {
+      "id": "RKJJ-SID-LILVI1-DOTOL",
+      "name": "LILVI1-DOTOL",
+      "runways": [
+        "04L"
+      ],
+      "startFix": "RWY22R",
+      "endFix": "DOTOL",
+      "source": "2-11-1 Coding Table",
+      "fixes": [
+        {
+          "id": "RWY22R",
+          "coordinates": {
+            "lat": 35.137761,
+            "lon": 126.815733
+          },
+          "role": "THR",
+          "pathTerminator": null,
+          "legDistanceNm": null,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "source": "chart-derived runway connection; threshold coordinate from RKJJ AD 2.12"
+        },
+        {
+          "id": "LILVI",
+          "coordinates": {
+            "lat": 35.218778,
+            "lon": 126.875028
+          },
+          "pathTerminator": "CF",
+          "legDistanceNm": 5.7,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "JJ401",
+          "coordinates": {
+            "lat": 35.222528,
+            "lon": 126.976639
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 5,
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          },
+          "speedKt": 210
+        },
+        {
+          "id": "JISUN",
+          "coordinates": {
+            "lat": 35.127556,
+            "lon": 127.015389
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 6,
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "JJ403",
+          "coordinates": {
+            "lat": 34.824028,
+            "lon": 126.669833
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 24.9,
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "DOTOL",
+          "coordinates": {
+            "lat": 34.254278,
+            "lon": 126.610167
+          },
+          "pathTerminator": "TF",
+          "legDistanceNm": 34.3,
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        }
+      ]
+    },
+    "RKJJ-SID-MARYO1-DOTOL": {
+  "id": "RKJJ-SID-MARYO1-DOTOL",
+  "name": "MARYO1-DOTOL",
+  "runways": [
+    "22L"
+  ],
+  "startFix": "RWY04R",
+  "endFix": "DOTOL",
+  "source": "2-13-1 Coding Table",
+      "fixes": [{"id":"RWY04R","coordinates":{"lat":35.114744,"lon":126.802058},"role":"THR","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKJJ AD 2.12"},{"id":"MARYO","coordinates":{"lat":35.035167,"lon":126.746389},"pathTerminator":"CF","legDistanceNm":5.5,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":210},{"id":"JJ224","coordinates":{"lat":34.938583,"lon":126.681917},"pathTerminator":"TF","legDistanceNm":6.6,"altitude":{"raw":null,"minFt":null,"maxFt":null}},{"id":"DOTOL","coordinates":{"lat":34.254278,"lon":126.610167},"pathTerminator":"TF","legDistanceNm":41.1,"altitude":{"raw":null,"minFt":null,"maxFt":null}}]
+},
+"RKJJ-SID-MARYO1-TEDAN": {
+  "id": "RKJJ-SID-MARYO1-TEDAN",
+  "name": "MARYO1-TEDAN",
+  "runways": [
+    "22L"
+  ],
+  "startFix": "RWY04R",
+  "endFix": "TEDAN",
+  "source": "2-13-1 Coding Table",
+      "fixes": [{"id":"RWY04R","coordinates":{"lat":35.114744,"lon":126.802058},"role":"THR","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKJJ AD 2.12"},{"id":"MARYO","coordinates":{"lat":35.035167,"lon":126.746389},"pathTerminator":"CF","legDistanceNm":5.5,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":210},{"id":"JJ221","coordinates":{"lat":34.985222,"lon":126.851889},"pathTerminator":"TF","legDistanceNm":6,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":210},{"id":"JISUN","coordinates":{"lat":35.127556,"lon":127.015389},"pathTerminator":"TF","legDistanceNm":11.7,"altitude":{"raw":"+8 000","minFt":8000,"maxFt":null},"speedKt":250},{"id":"TEDAN","coordinates":{"lat":35.128833,"lon":127.314472},"pathTerminator":"TF","legDistanceNm":14.7,"altitude":{"raw":"+8 000","minFt":8000,"maxFt":null}}]
+},
+"RKJJ-SID-MARYO1-MAKSA": {
+  "id": "RKJJ-SID-MARYO1-MAKSA",
+  "name": "MARYO1-MAKSA",
+  "runways": [
+    "22L"
+  ],
+  "startFix": "RWY04R",
+  "endFix": "MAKSA",
+  "source": "2-13-1 Coding Table",
+      "fixes": [{"id":"RWY04R","coordinates":{"lat":35.114744,"lon":126.802058},"role":"THR","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKJJ AD 2.12"},{"id":"MARYO","coordinates":{"lat":35.035167,"lon":126.746389},"pathTerminator":"CF","legDistanceNm":5.5,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":210},{"id":"JJ221","coordinates":{"lat":34.985222,"lon":126.851889},"pathTerminator":"TF","legDistanceNm":6,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":210},{"id":"JISUN","coordinates":{"lat":35.127556,"lon":127.015389},"pathTerminator":"TF","legDistanceNm":11.7,"altitude":{"raw":"+8 000","minFt":8000,"maxFt":null},"speedKt":250},{"id":"JJ222","coordinates":{"lat":35.267944,"lon":126.880389},"pathTerminator":"TF","legDistanceNm":10.7,"altitude":{"raw":"+8 000","minFt":8000,"maxFt":null}},{"id":"MAKSA","coordinates":{"lat":35.503139,"lon":126.906111},"pathTerminator":"TF","legDistanceNm":14.2,"altitude":{"raw":"+9 000","minFt":9000,"maxFt":null}}]
+},
+"RKJJ-SID-MARYO1-IGDOK": {
+  "id": "RKJJ-SID-MARYO1-IGDOK",
+  "name": "MARYO1-IGDOK",
+  "runways": [
+    "22L"
+  ],
+  "startFix": "RWY04R",
+  "endFix": "IGDOK",
+  "source": "2-13-1 Coding Table",
+      "fixes": [{"id":"RWY04R","coordinates":{"lat":35.114744,"lon":126.802058},"role":"THR","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKJJ AD 2.12"},{"id":"MARYO","coordinates":{"lat":35.035167,"lon":126.746389},"pathTerminator":"CF","legDistanceNm":5.5,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":210},{"id":"JJ221","coordinates":{"lat":34.985222,"lon":126.851889},"pathTerminator":"TF","legDistanceNm":6,"altitude":{"raw":null,"minFt":null,"maxFt":null},"speedKt":210},{"id":"JISUN","coordinates":{"lat":35.127556,"lon":127.015389},"pathTerminator":"TF","legDistanceNm":11.7,"altitude":{"raw":"+8 000","minFt":8000,"maxFt":null},"speedKt":250},{"id":"JJ223","coordinates":{"lat":35.214889,"lon":127.037528},"pathTerminator":"TF","legDistanceNm":5.3,"altitude":{"raw":"+8 000","minFt":8000,"maxFt":null}},{"id":"GUMAM","coordinates":{"lat":35.366417,"lon":127.426028},"pathTerminator":"TF","legDistanceNm":21.1,"altitude":{"raw":"+9 000","minFt":9000,"maxFt":null}},{"id":"IGDOK","coordinates":{"lat":35.517667,"lon":127.8185},"pathTerminator":"TF","legDistanceNm":21.3,"altitude":{"raw":"+9 000","minFt":9000,"maxFt":null}}]
+    }
+  }
+}

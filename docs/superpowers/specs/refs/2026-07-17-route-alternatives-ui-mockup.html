@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ProjectAMO — 대안 경로 비교 시안</title>
+  <style>
+    :root { color-scheme: light; font-family: "Pretendard GOV", "Segoe UI", sans-serif; color: #1c2434; background: #eaf2f5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 1060px; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 58px 1fr; }
+    .rail { background: #f8fafb; border-right: 1px solid #dfe5eb; display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 18px 0; color: #526172; }
+    .mark, .rail button { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; border: 0; background: transparent; color: inherit; font-weight: 800; }
+    .mark { background: #fff; color: #1a59a8; border: 1px solid #d9e2ea; font-size: 17px; }
+    .rail button.active { color: #183b67; background: #e8f1fb; box-shadow: inset 0 0 0 1px #a9c9eb; }
+    .canvas { position: relative; overflow: hidden; background: #72b7d1; }
+    .map-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: .82; filter: saturate(.8) contrast(.95); }
+    .map-wash { position: absolute; inset: 0; background: linear-gradient(110deg, rgba(241,248,247,.30), transparent 45%, rgba(185,225,242,.22)); }
+    .chips { position: absolute; top: 16px; left: 470px; display: flex; gap: 8px; }
+    .chip { border-radius: 999px; background: rgba(255,255,255,.94); padding: 9px 13px; box-shadow: 0 2px 10px #1d35421a; font-size: 13px; font-weight: 750; }
+    .chip.warn { color: #a13a16; background: #fff0e9; } .chip.airmet { color: #935d00; background: #fff7e4; }
+    .panel { position: relative; width: 448px; min-height: calc(100vh - 28px); margin: 14px; border: 1px solid #d8e0e6; border-radius: 15px; background: rgba(251,253,254,.98); box-shadow: 0 14px 38px #22384b2e; overflow: hidden; }
+    .panel-head { height: 68px; border-bottom: 1px solid #e3e8ec; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; }
+    .eyebrow { font-size: 12px; font-weight: 700; color: #637083; } h1 { margin: 1px 0 0; font-size: 19px; letter-spacing: -.5px; }
+    .phase { border-radius: 999px; padding: 5px 9px; background: #eaf1fa; color: #315984; font-size: 12px; font-weight: 800; }
+    .progress { padding: 13px 18px; display: flex; gap: 6px; border-bottom: 1px solid #e8edf0; }
+    .step { flex: 1; color: #728093; font-size: 11px; font-weight: 750; text-align: center; white-space: nowrap; }
+    .step::before { content: ""; display: block; height: 4px; border-radius: 4px; margin-bottom: 5px; background: #dfe6ec; }
+    .step.done::before, .step.current::before { background: #2e5f94; }.step.done { color: #385979; }.step.current { color: #173d68; }
+    .context { margin: 14px 18px 10px; padding: 12px; border-radius: 10px; background: #f1f5f8; font-size: 12px; color: #4c5969; line-height: 1.55; }
+    .context strong { color: #26384c; }.alert { margin: 0 18px 12px; padding: 11px 12px; background: #fff3eb; color: #8b3619; border: 1px solid #f6d2bd; border-radius: 10px; font-size: 13px; line-height: 1.45; }
+    .alert b { display: block; margin-bottom: 2px; font-size: 13px; }.compare-label { padding: 1px 18px 9px; color: #566577; font-size: 12px; font-weight: 700; }
+    .routes { padding: 0 18px 14px; display: grid; gap: 9px; }.route { width: 100%; text-align: left; appearance: none; font: inherit; border: 1px solid #dce4e9; border-left: 5px solid var(--route); border-radius: 10px; padding: 12px 12px 11px; background: #fff; cursor: pointer; transition: .15s ease; }.route:hover { background: #f7fafc; }.route.selected { border-color: var(--route); box-shadow: 0 0 0 2px color-mix(in srgb, var(--route) 20%, white); }
+    .route-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }.name { font-size: 14px; font-weight: 800; color: #1d2e40; }.status { padding: 3px 7px; border-radius: 999px; font-size: 11px; font-weight: 800; background: #edf3f8; color: #3a5876; }.meta { margin-top: 5px; font-size: 12px; color: #586778; }.change { margin-top: 9px; font-size: 12px; line-height: 1.45; color: #344353; }.change b { color: #96411e; }.route-a b { color: #126b59; }.route-b b { color: #6543a1; }.card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 9px; color: #647284; font-size: 11px; }.selected .card-foot strong { color: var(--route); }
+    .alternate { margin: 0 18px 18px; padding: 11px 12px; border-top: 1px solid #e3e9ed; color: #596879; font-size: 12px; }.alternate strong { color: #26384c; }.alternate button { float: right; border: 0; background: transparent; color: #265a92; font: inherit; font-weight: 750; cursor: pointer; }
+    .legend { position: absolute; right: 25px; bottom: 32px; min-width: 184px; padding: 12px 14px; border: 1px solid #dce5e7; border-radius: 11px; background: rgba(255,255,255,.93); box-shadow: 0 5px 18px #1b34431d; font-size: 12px; color: #3f4f60; }.legend b { display: block; margin-bottom: 8px; color: #27394c; }.key { display: flex; align-items: center; gap: 7px; margin-top: 5px; }.line { width: 22px; height: 4px; border-radius: 4px; background: var(--c); }.dash { background: repeating-linear-gradient(90deg, var(--c) 0 7px, transparent 7px 11px); }
+    .hazard { position: absolute; left: 58%; top: 38%; width: 235px; height: 150px; background: rgba(225,88,47,.35); border: 2px solid rgba(174,57,26,.65); border-radius: 48% 42% 55% 38%; transform: rotate(-14deg); box-shadow: 0 0 0 12px rgba(236,126,58,.11); }.hazard::after { content: "TS SIGMET · FL200–FL400"; position: absolute; top: 51px; left: 39px; padding: 6px 8px; border-radius: 7px; background: #8c331c; color: white; font-size: 11px; font-weight: 800; transform: rotate(14deg); white-space: nowrap; }
+    .route-map { position: absolute; inset: 0; pointer-events: none; }.seg { position: absolute; height: 5px; border-radius: 99px; background: var(--c); transform-origin: left center; box-shadow: 0 0 0 2px rgba(255,255,255,.58); transition: .18s ease; opacity: .52; }.seg.shared { --c: #667789; opacity: .72; height: 5px; }.seg.base { --c: #697789; }.seg.a { --c: #16816d; }.seg.b { --c: #7a55af; }.route-map[data-selected="base"] .seg.base, .route-map[data-selected="a"] .seg.a, .route-map[data-selected="b"] .seg.b { height: 8px; opacity: 1; z-index: 5; }.tag { position: absolute; border-radius: 999px; padding: 4px 8px; color: #fff; background: var(--c); font-size: 11px; font-weight: 800; box-shadow: 0 2px 8px #1e344533; }.tag.base { --c: #697789; }.tag.a { --c: #16816d; }.tag.b { --c: #7a55af; }.airport { position: absolute; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 3px solid #264f7d; color: #264f7d; font-size: 9px; font-weight: 900; box-shadow: 0 2px 8px #1c344340; }.airport-label { position: absolute; font-size: 12px; font-weight: 850; color: #1f3a58; text-shadow: 0 1px #fff; }
+    .map-note { position: absolute; top: 64px; right: 25px; padding: 9px 11px; border-radius: 9px; background: rgba(255,255,255,.9); font-size: 12px; color: #485c70; }.map-note b { color: #143e69; }
+    @media (max-width: 800px) { body { min-width: 0; }.app { display: block; }.rail { display: none; }.panel { width: calc(100% - 24px); min-height: auto; margin: 12px; }.chips { left: 20px; top: auto; bottom: 18px; }.canvas { min-height: 100vh; }.legend, .map-note { display: none; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <nav class="rail" aria-label="주요 메뉴"><div class="mark">◉</div><button>☰</button><button>⌕</button><button>◈</button><button class="active" aria-label="비행 전 브리핑">▤</button><button>⚙</button></nav>
+    <section class="canvas" aria-label="대안 경로 비교 지도">
+      <img class="map-photo" src="../../../../artifacts/responsive-screenshots/route-alternatives-review/2026-07-17_1310_current/route-check-with-map.png" alt="현재 ProjectAMO 지도 화면">
+      <div class="map-wash"></div>
+      <div class="chips"><span class="chip warn">△ SIGMET 1</span><span class="chip airmet">△ AIRMET 1</span><span class="chip">기상 13:10 KST</span></div>
+      <div class="map-note"><b>경로 비교 지도</b><br>카드 또는 경로 선을 선택하세요.</div>
+      <div class="hazard" aria-label="뇌우 SIGMET 영역"></div>
+      <div class="route-map" data-selected="base" aria-hidden="true">
+        <i class="seg shared" style="left:36%;top:67%;width:15%;transform:rotate(-30deg)"></i>
+        <i class="seg base" style="left:48%;top:59%;width:18%;transform:rotate(-10deg)"></i><i class="seg base" style="left:65%;top:56%;width:15%;transform:rotate(30deg)"></i>
+        <i class="seg a" style="left:48%;top:59%;width:14%;transform:rotate(-47deg)"></i><i class="seg a" style="left:57%;top:48%;width:18%;transform:rotate(20deg)"></i><i class="seg a" style="left:73%;top:54%;width:9%;transform:rotate(43deg)"></i>
+        <i class="seg b" style="left:48%;top:59%;width:12%;transform:rotate(48deg)"></i><i class="seg b" style="left:56%;top:69%;width:20%;transform:rotate(-45deg)"></i><i class="seg b" style="left:71%;top:55%;width:11%;transform:rotate(26deg)"></i>
+        <span class="tag base" style="left:61%;top:57%">기본</span><span class="tag a" style="left:66%;top:47%">A</span><span class="tag b" style="left:64%;top:68%">B</span>
+        <span class="airport" style="left:34%;top:65%">RKJJ</span><span class="airport-label" style="left:32%;top:69%">광주</span><span class="airport" style="left:81%;top:57%">RKPS</span><span class="airport-label" style="left:80%;top:61%">사천</span>
+      </div>
+      <div class="legend"><b>지도 범례</b><div class="key"><i class="line" style="--c:#667789"></i>공통 항로 구간</div><div class="key"><i class="line dash" style="--c:#697789"></i>기본 경로</div><div class="key"><i class="line" style="--c:#16816d"></i>대안 A</div><div class="key"><i class="line" style="--c:#7a55af"></i>대안 B</div></div>
+      <aside class="panel" aria-label="경로 비교 패널">
+        <header class="panel-head"><div><div class="eyebrow">Flight Plan</div><h1>경로 비교</h1></div><span class="phase">② 경로 비교</span></header>
+        <div class="progress"><div class="step done">경로 설정</div><div class="step current">경로 비교</div><div class="step">고도 비교</div><div class="step">브리핑</div></div>
+        <div class="context"><strong>광주 RKJJ → 사천 RKPS</strong><br>MARYO1-TEDAN · SOLYI1-ANUBA · AIP 2026-06-25</div>
+        <div class="alert"><b>기본 경로의 TS SIGMET 수평 교차 24 NM</b>유효 10:00–16:00Z · 공표 고도 FL200–FL400</div>
+        <div class="compare-label">기본 경로와 대안 2개를 비교합니다. 거리순이며 추천 순위가 아닙니다.</div>
+        <div class="routes">
+          <button class="route selected" style="--route:#697789" data-route="base"><span class="route-top"><span class="name">기본 경로</span><span class="status">현재 선택</span></span><span class="meta">82 NM · RNAV · AIP 검증됨</span><span class="change"><b>TS SIGMET 수평 교차 24 NM</b><br>새로 생긴 노출 없음</span><span class="card-foot"><span>기상 13:10 KST</span><strong>지도 강조</strong></span></button>
+          <button class="route route-a" style="--route:#16816d" data-route="a"><span class="route-top"><span class="name">대안 A</span><span class="status">+18 NM</span></span><span class="meta">100 NM · RNAV · AIP 검증됨</span><span class="change"><b>TS SIGMET 수평 교차 없음</b><br>새 노출: 최근 낙뢰 3건, 경로 20 NM 이내</span><span class="card-foot"><span>고도 확인 필요</span><strong>이 경로 선택</strong></span></button>
+          <button class="route route-b" style="--route:#7a55af" data-route="b"><span class="route-top"><span class="name">대안 B</span><span class="status">+31 NM</span></span><span class="meta">113 NM · ATS · AIP 검증됨</span><span class="change"><b>TS SIGMET 수평 교차 7 NM</b><br>새 노출: 난류 AIRMET — 고도 확인 필요</span><span class="card-foot"><span>기상 13:10 KST</span><strong>이 경로 선택</strong></span></button>
+        </div>
+        <div class="alternate"><strong>교체공항</strong> — 아직 선택하지 않음 <button type="button">설정</button></div>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const cards = document.querySelectorAll('[data-route]')
+    const routes = document.querySelector('.route-map')
+    cards.forEach((card) => card.addEventListener('click', () => {
+      cards.forEach((item) => item.classList.toggle('selected', item === card))
+      card.querySelector('.status').textContent = card.dataset.route === 'base' ? '현재 선택' : '선택됨'
+      cards.forEach((item) => { if (item !== card && item.querySelector('.status').textContent === '현재 선택') item.querySelector('.status').textContent = item.dataset.route === 'a' ? '+18 NM' : item.dataset.route === 'b' ? '+31 NM' : '82 NM' })
+      routes.dataset.selected = card.dataset.route
+    }))
+  </script>
+</body>
+</html>

@@ -846,6 +846,7 @@ const MapView = forwardRef(function MapView({
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
+    map.addControl(new mapboxgl.GeolocateControl({ trackUserLocation: true, showUserHeading: true }), 'bottom-right')
 
     let resizeFrame = null
     const resizeMap = () => {

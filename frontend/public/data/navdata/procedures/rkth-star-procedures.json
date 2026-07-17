@@ -1,0 +1,374 @@
+{
+  "metadata": {
+    "airport": "RKTH",
+    "sourceUrl": "https://aim.koca.go.kr/eaipPub/Package/2025-06-26/pdf/AD/RKTH/%282-8%29%20STAR.pdf",
+    "sourceEdition": "AIP AMDT 7/25, 26 JUN 2025",
+    "recordUnit": "procedure + runway + transition"
+  },
+  "starProcedures": {
+    "RKTH-STAR-EMTIK1-LAPAL": {
+      "id": "RKTH-STAR-EMTIK1-LAPAL",
+      "name": "EMTIK1-LAPAL",
+      "runways": [
+        "10"
+      ],
+      "startFix": "LAPAL",
+      "endFix": "IGASA",
+      "source": "2-8-1 Coding Table",
+      "fixes": [
+        {
+          "id": "LAPAL",
+          "coordinates": {
+            "lat": 35.9035,
+            "lon": 129.081222
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "EMTIK",
+          "coordinates": {
+            "lat": 35.948306,
+            "lon": 129.319389
+          },
+          "legDistanceNm": 11.9,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+8 000",
+            "minFt": 8000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "IGASA",
+          "coordinates": {
+            "lat": 36.136222,
+            "lon": 129.271278
+          },
+          "legDistanceNm": 11.5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+5 000",
+            "minFt": 5000,
+            "maxFt": null
+          },
+          "role": "IAF",
+          "speedKt": 230
+        }
+      ]
+    },
+    "RKTH-STAR-EMTIK1-APARU": {
+      "id": "RKTH-STAR-EMTIK1-APARU",
+      "name": "EMTIK1-APARU",
+      "runways": [
+        "10"
+      ],
+      "startFix": "APARU",
+      "endFix": "IGASA",
+      "source": "2-8-1 Coding Table",
+      "fixes": [
+        {
+          "id": "APARU",
+          "coordinates": {
+            "lat": 35.411694,
+            "lon": 129.158917
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "MAKUN",
+          "coordinates": {
+            "lat": 35.781389,
+            "lon": 129.364667
+          },
+          "legDistanceNm": 24.3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+9 000",
+            "minFt": 9000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "EMTIK",
+          "coordinates": {
+            "lat": 35.948306,
+            "lon": 129.319389
+          },
+          "legDistanceNm": 10.2,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+8 000",
+            "minFt": 8000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "IGASA",
+          "coordinates": {
+            "lat": 36.136222,
+            "lon": 129.271278
+          },
+          "legDistanceNm": 11.5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+5 000",
+            "minFt": 5000,
+            "maxFt": null
+          },
+          "role": "IAF",
+          "speedKt": 230
+        }
+      ]
+    },
+    "RKTH-STAR-EMTIK1-BULGA": {
+      "id": "RKTH-STAR-EMTIK1-BULGA",
+      "name": "EMTIK1-BULGA",
+      "runways": [
+        "10"
+      ],
+      "startFix": "BULGA",
+      "endFix": "IGASA",
+      "source": "2-8-1 Coding Table",
+      "fixes": [
+        {
+          "id": "BULGA",
+          "coordinates": {
+            "lat": 35.935722,
+            "lon": 129.823444
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "EMTIK",
+          "coordinates": {
+            "lat": 35.948306,
+            "lon": 129.319389
+          },
+          "legDistanceNm": 24.6,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+8 000",
+            "minFt": 8000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "IGASA",
+          "coordinates": {
+            "lat": 36.136222,
+            "lon": 129.271278
+          },
+          "legDistanceNm": 11.5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+5 000",
+            "minFt": 5000,
+            "maxFt": null
+          },
+          "role": "IAF",
+          "speedKt": 230
+        }
+      ]
+    },
+    "RKTH-STAR-PUDEN1-ELAPI": {
+      "id": "RKTH-STAR-PUDEN1-ELAPI",
+      "name": "PUDEN1-ELAPI",
+      "runways": [
+        "28"
+      ],
+      "startFix": "ELAPI",
+      "endFix": "RUTON",
+      "source": "2-9-1 Coding Table",
+      "fixes": [
+        {
+          "id": "ELAPI",
+          "coordinates": {
+            "lat": 36.33725,
+            "lon": 128.847472
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "PUDEN",
+          "coordinates": {
+            "lat": 36.076667,
+            "lon": 129.409861
+          },
+          "legDistanceNm": 31.5,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "RUTON",
+          "coordinates": {
+            "lat": 36.140556,
+            "lon": 129.531944
+          },
+          "legDistanceNm": 7.1,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@6 000",
+            "minFt": 6000,
+            "maxFt": 6000
+          },
+          "role": "IAF",
+          "speedKt": 230
+        }
+      ]
+    },
+    "RKTH-STAR-PUDEN1-LAPAL": {
+      "id": "RKTH-STAR-PUDEN1-LAPAL",
+      "name": "PUDEN1-LAPAL",
+      "runways": [
+        "28"
+      ],
+      "startFix": "LAPAL",
+      "endFix": "RUTON",
+      "source": "2-9-1 Coding Table",
+      "fixes": [
+        {
+          "id": "LAPAL",
+          "coordinates": {
+            "lat": 35.9035,
+            "lon": 129.081222
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "PUDEN",
+          "coordinates": {
+            "lat": 36.076667,
+            "lon": 129.409861
+          },
+          "legDistanceNm": 19.1,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "RUTON",
+          "coordinates": {
+            "lat": 36.140556,
+            "lon": 129.531944
+          },
+          "legDistanceNm": 7.1,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@6 000",
+            "minFt": 6000,
+            "maxFt": 6000
+          },
+          "role": "IAF",
+          "speedKt": 230
+        }
+      ]
+    },
+    "RKTH-STAR-PUDEN1-APARU": {
+      "id": "RKTH-STAR-PUDEN1-APARU",
+      "name": "PUDEN1-APARU",
+      "runways": [
+        "28"
+      ],
+      "startFix": "APARU",
+      "endFix": "RUTON",
+      "source": "2-9-1 Coding Table",
+      "fixes": [
+        {
+          "id": "APARU",
+          "coordinates": {
+            "lat": 35.411694,
+            "lon": 129.158917
+          },
+          "legDistanceNm": null,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": null,
+            "minFt": null,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "MAKUN",
+          "coordinates": {
+            "lat": 35.781389,
+            "lon": 129.364667
+          },
+          "legDistanceNm": 24.3,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+9 000",
+            "minFt": 9000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "PUDEN",
+          "coordinates": {
+            "lat": 36.076667,
+            "lon": 129.409861
+          },
+          "legDistanceNm": 17.8,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "+7 000",
+            "minFt": 7000,
+            "maxFt": null
+          }
+        },
+        {
+          "id": "RUTON",
+          "coordinates": {
+            "lat": 36.140556,
+            "lon": 129.531944
+          },
+          "legDistanceNm": 7.1,
+          "pathTerminator": "TF",
+          "altitude": {
+            "raw": "@6 000",
+            "minFt": 6000,
+            "maxFt": 6000
+          },
+          "role": "IAF",
+          "speedKt": 230
+        }
+      ]
+    }
+  }
+}

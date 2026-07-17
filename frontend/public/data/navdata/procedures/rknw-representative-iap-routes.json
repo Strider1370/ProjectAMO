@@ -1,0 +1,58 @@
+{
+  "metadata": {
+    "airport": "RKNW",
+    "purpose": "STAR-connected representative approach geometry",
+    "sources": ["https://aim.koca.go.kr/eaipPub/Package/2025-06-26/pdf/AD/RKNW/%282-10%29%20INSTR%20APCH%20CHART.pdf"],
+    "sourceEdition": "AIP AMDT 7/25, 26 JUN 2025"
+  },
+  "iapRoutes": {
+    "RKNW-RNP-RWY21-ANOTI": {
+      "id":"RKNW-RNP-RWY21-ANOTI", "name":"RNP RWY 21 — ANOTI", "runways":["21"],
+      "representativeFor":{"runwayGroup":["21"],"starTerminalIaf":"JOOKA"},
+      "source":"RKNW AD CHART 2-10-1 Coding Table, 26 JUN 2025",
+      "fixes":[
+        {"id":"ANOTI","coordinates":{"lat":37.568219,"lon":128.041353},"role":"IAF","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":"+5 600","minFt":5600,"maxFt":null},"speedKt":230},
+        {"id":"CASTO","coordinates":{"lat":37.538031,"lon":128.02255},"role":"IAF/IF","pathTerminator":"TF","legDistanceNm":5,"altitude":{"raw":"+4 400","minFt":4400,"maxFt":null},"speedKt":230},
+        {"id":"OLTOV","coordinates":{"lat":37.493761,"lon":127.995025},"pathTerminator":"TF","legDistanceNm":4,"altitude":{"raw":"+4 400","minFt":4400,"maxFt":null},"speedKt":230},
+        {"id":"POLLU","coordinates":{"lat":37.468542,"lon":127.979358},"pathTerminator":"TF","legDistanceNm":2,"altitude":{"raw":"+3 200","minFt":3200,"maxFt":null},"speedKt":230},
+        {"id":"ANKEG","coordinates":{"lat":37.371167,"lon":127.918981},"role":"FAF","pathTerminator":"TF","legDistanceNm":3,"altitude":{"raw":"+2 600","minFt":2600,"maxFt":null},"speedKt":230},
+        {"id":"RWY21","coordinates":{"lat":37.426873,"lon":127.953542},"role":"THR / visual continuation end","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKNW AD CHART 2-1"}
+      ],
+      "geometry":{"type":"LineString","coordinates":[[128.041353,37.568219],[128.02255,37.538031],[127.995025,37.493761],[127.979358,37.468542],[127.918981,37.371167],[127.953542,37.426873]]}
+    },
+    "RKNW-RNP-RWY21-JOOKA": {
+      "id":"RKNW-RNP-RWY21-JOOKA", "name":"RNP RWY 21 — JOOKA", "runways":["21"],
+      "representativeFor":{"runwayGroup":["21"],"starTerminalIaf":"JOOKA"},
+      "source":"RKNW AD CHART 2-10-1 Coding Table, RNP RWY 21 via JOOKA to CASTO, 26 JUN 2025",
+      "fixes":[
+        {"id":"JOOKA","coordinates":{"lat":37.569122,"lon":128.229242},"role":"IAF","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":"+5 600","minFt":5600,"maxFt":null},"speedKt":230},
+        {"id":"CASTO","coordinates":{"lat":37.538031,"lon":128.02255},"role":"IF","pathTerminator":"TF","legDistanceNm":8,"altitude":{"raw":"+4 400","minFt":4400,"maxFt":null},"speedKt":230},
+        {"id":"OLTOV","coordinates":{"lat":37.493761,"lon":127.995025},"pathTerminator":"TF","legDistanceNm":4,"altitude":{"raw":"+4 400","minFt":4400,"maxFt":null},"speedKt":230},
+        {"id":"POLLU","coordinates":{"lat":37.468542,"lon":127.979358},"pathTerminator":"TF","legDistanceNm":2,"altitude":{"raw":"+3 200","minFt":3200,"maxFt":null},"speedKt":230},
+        {"id":"ANKEG","coordinates":{"lat":37.371167,"lon":127.918981},"role":"FAF","pathTerminator":"TF","legDistanceNm":3,"altitude":{"raw":"+2 600","minFt":2600,"maxFt":null},"speedKt":230},
+        {"id":"RWY21","coordinates":{"lat":37.426873,"lon":127.953542},"role":"THR / visual continuation end","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKNW AD CHART 2-1"}
+      ],
+      "geometry":{"type":"LineString","coordinates":[[128.229242,37.569122],[128.02255,37.538031],[127.995025,37.493761],[127.979358,37.468542],[127.918981,37.371167],[127.953542,37.426873]]}
+    },
+    "RKNW-RNP-RWY03-IKOSU": {
+      "id":"RKNW-RNP-RWY03-IKOSU", "name":"RNP RWY 03 — IKOSU", "runways":["03"],
+      "representativeFor":{"runwayGroup":["03"],"starTerminalIaf":"IKOSU"},
+      "source":"RKNW AD CHART 2-11-1 Coding Table, 26 JUN 2025",
+      "fixes":[
+        {"id":"IKOSU","coordinates":{"lat":37.247347,"lon":127.842456},"role":"IAF","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":"+4 400","minFt":4400,"maxFt":null},"speedKt":220},
+        {"id":"DOXEL","coordinates":{"lat":37.284225,"lon":127.748781},"role":"IAF/IF","pathTerminator":"TF","legDistanceNm":5,"altitude":{"raw":"+4 400","minFt":4400,"maxFt":null},"speedKt":220},
+        {"id":"KORHA","coordinates":{"lat":37.317642,"lon":127.885872},"pathTerminator":"TF","legDistanceNm":4.7,"altitude":{"raw":"+5 000","minFt":5000,"maxFt":null},"speedKt":220},
+        {"id":"OLSAX","coordinates":{"lat":37.337744,"lon":127.898297},"pathTerminator":"TF","legDistanceNm":1.3,"altitude":{"raw":"+4 400","minFt":4400,"maxFt":null},"speedKt":220},
+        {"id":"DUBAL","coordinates":{"lat":37.381,"lon":127.925711},"role":"FAF","pathTerminator":"TF","legDistanceNm":3,"altitude":{"raw":"+2 600","minFt":2600,"maxFt":null},"speedKt":220},
+        {"id":"RWY03","coordinates":{"lat":37.449094,"lon":127.967286},"role":"THR / visual continuation end","pathTerminator":null,"legDistanceNm":null,"altitude":{"raw":null,"minFt":null,"maxFt":null},"source":"chart-derived runway connection; threshold coordinate from RKNW AD CHART 2-1"}
+      ],
+      "geometry":{"type":"LineString","coordinates":[[127.842456,37.247347],[127.748781,37.284225],[127.885872,37.317642],[127.898297,37.337744],[127.925711,37.381],[127.967286,37.449094]]}
+    }
+  },
+  "starToIapCandidates": {
+    "RKNW-STAR-GANAM1-KAKSO":{"candidateIapKeys":["RKNW-RNP-RWY03-IKOSU"],"defaultIapKey":"RKNW-RNP-RWY03-IKOSU"},
+    "RKNW-STAR-GANAM1-GUKDO":{"candidateIapKeys":["RKNW-RNP-RWY03-IKOSU"],"defaultIapKey":"RKNW-RNP-RWY03-IKOSU"},
+    "RKNW-STAR-GANAM2-KAKSO":{"candidateIapKeys":["RKNW-RNP-RWY21-JOOKA"],"defaultIapKey":"RKNW-RNP-RWY21-JOOKA"},
+    "RKNW-STAR-GANAM2-GUKDO":{"candidateIapKeys":["RKNW-RNP-RWY21-JOOKA"],"defaultIapKey":"RKNW-RNP-RWY21-JOOKA"}
+  }
+}

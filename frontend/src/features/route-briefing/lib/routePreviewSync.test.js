@@ -85,6 +85,25 @@ test('syncRoutePreviewLayers clears stale route line when route result is remove
   assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.length, 0)
 })
 
+test('syncRoutePreviewLayers accepts an IAP with fixes but no precomputed geometry', () => {
+  const map = createMockMap()
+
+  const { fitCoordinates } = syncRoutePreviewLayers(map, {
+    routeResult: null,
+    selectedSid: null,
+    selectedStar: null,
+    selectedIap: {
+      fixes: [
+        { id: 'IAF', coordinates: { lon: 127.739333, lat: 35.035944 } },
+        { id: 'RW06L', coordinates: { lon: 128.056806, lat: 35.082194 } },
+      ],
+    },
+  })
+
+  assert.deepEqual(fitCoordinates, [[127.739333, 35.035944], [128.056806, 35.082194], [127.739333, 35.035944], [128.056806, 35.082194]])
+  assert.equal(map.sourceData.get(PROC_PREVIEW_SOURCE).features[0].geometry.type, 'LineString')
+})
+
 test('syncVfrWaypointData writes VFR waypoint GeoJSON and clears when fewer than two waypoints exist', () => {
   const map = createMockMap()
 

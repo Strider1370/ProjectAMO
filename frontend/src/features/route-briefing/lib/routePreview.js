@@ -108,9 +108,14 @@ export function buildProcedureGeoJSON(sid, star, iap) {
   addProc(sid, 'sid')
   addProc(star, 'star')
   if (iap) {
-    const iapFixes = (iap.fixes ?? []).filter((f) => f.coordinates?.lat != null)
+    const iapFixes = (iap.fixes ?? []).filter((f) => f.coordinates?.lat != null && f.coordinates?.lon != null)
     if (iapFixes.length >= 2) {
-      features.push({ type: 'Feature', properties: { role: 'iap-line' }, geometry: iap.geometry })
+      const iapCoordinates = iapFixes.map((f) => [f.coordinates.lon, f.coordinates.lat])
+      features.push({
+        type: 'Feature',
+        properties: { role: 'iap-line' },
+        geometry: iap.geometry ?? { type: 'LineString', coordinates: iapCoordinates },
+      })
       iapFixes.forEach((f) => features.push({
         type: 'Feature',
         properties: { role: 'iap-wp', label: f.id },
@@ -138,7 +143,10 @@ export function augmentRouteWithProcedures(previewGeojson, sid, star, iap) {
 
   // 2. Process STAR & IAP: replace [exitFix, arr] with [...starCoords, ...iapTail]
   const starCoords = getProcedureLineCoordinates(star)
-  const iapCoords = iap?.geometry?.coordinates ?? []
+  const iapCoords = iap?.geometry?.coordinates
+    ?? (iap?.fixes ?? [])
+      .filter((fix) => fix.coordinates?.lat != null && fix.coordinates?.lon != null)
+      .map((fix) => [fix.coordinates.lon, fix.coordinates.lat])
   const iapTail = iapCoords.length > 1 ? iapCoords.slice(1) : []
 
   if (starCoords.length > 0) {

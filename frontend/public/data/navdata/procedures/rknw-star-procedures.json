@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "airport": "RKNW",
+    "sourceUrl": "https://aim.koca.go.kr/eaipPub/Package/2025-05-29/pdf/AD/RKNW/%282-8%29_STAR%5B1%5D.pdf",
+    "sourceLocator": "RKNW AD CHART 2-8-1 and 2-9-1 Aeronautical Data Tabulation",
+    "sourceEdition": "AIP AMDT 6/25, 29 MAY 2025",
+    "recordUnit": "procedure + runway + transition"
+  },
+  "starProcedures": {
+    "RKNW-STAR-GANAM1-KAKSO": {"id":"RKNW-STAR-GANAM1-KAKSO","name":"GANAM1-KAKSO","runways":["03"],"startFix":"KAKSO","endFix":"IKOSU","source":"2-8-1 Coding Table","fixes":[
+      {"id":"KAKSO","coordinates":{"lat":37.129056,"lon":127.443722},"pathTerminator":"TF","legDistanceNm":10.6,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"GANAM","coordinates":{"lat":37.111125,"lon":127.664469},"pathTerminator":"TF","legDistanceNm":19.6,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"ESLOL","coordinates":{"lat":37.4095,"lon":127.832158},"pathTerminator":"TF","legDistanceNm":19.6,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"OPUPI","coordinates":{"lat":37.315417,"lon":128.071011},"pathTerminator":"TF","legDistanceNm":12.7,"altitude":{"raw":"+10 000","minFt":10000,"maxFt":null},"speedKt":220},
+      {"id":"OGEBU","coordinates":{"lat":37.240642,"lon":128.024717},"pathTerminator":"TF","legDistanceNm":5,"altitude":{"raw":"+6 000","minFt":6000,"maxFt":null},"speedKt":220},
+      {"id":"OLGOD","coordinates":{"lat":37.210394,"lon":127.936042},"pathTerminator":"TF","legDistanceNm":4.6,"altitude":{"raw":"+5 000","minFt":5000,"maxFt":null},"speedKt":220},
+      {"id":"IKOSU","coordinates":{"lat":37.247347,"lon":127.842456},"role":"IAF","pathTerminator":"TF","legDistanceNm":5,"altitude":{"raw":"4 400","minFt":4400,"maxFt":4400},"speedKt":220}
+    ]},
+    "RKNW-STAR-GANAM1-GUKDO": {"id":"RKNW-STAR-GANAM1-GUKDO","name":"GANAM1-GUKDO","runways":["03"],"startFix":"GUKDO","endFix":"IKOSU","source":"2-8-1 Coding Table","fixes":[
+      {"id":"GUKDO","coordinates":{"lat":37.019703,"lon":127.639683},"pathTerminator":"TF","legDistanceNm":5.6,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"GANAM","coordinates":{"lat":37.111125,"lon":127.664469},"pathTerminator":"TF","legDistanceNm":null,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"ESLOL","coordinates":{"lat":37.4095,"lon":127.832158},"pathTerminator":"TF","legDistanceNm":19.6,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"OPUPI","coordinates":{"lat":37.315417,"lon":128.071011},"pathTerminator":"TF","legDistanceNm":12.7,"altitude":{"raw":"+10 000","minFt":10000,"maxFt":null},"speedKt":220},
+      {"id":"OGEBU","coordinates":{"lat":37.240642,"lon":128.024717},"pathTerminator":"TF","legDistanceNm":5,"altitude":{"raw":"+6 000","minFt":6000,"maxFt":null},"speedKt":220},
+      {"id":"OLGOD","coordinates":{"lat":37.210394,"lon":127.936042},"pathTerminator":"TF","legDistanceNm":4.6,"altitude":{"raw":"+5 000","minFt":5000,"maxFt":null},"speedKt":220},
+      {"id":"IKOSU","coordinates":{"lat":37.247347,"lon":127.842456},"role":"IAF","pathTerminator":"TF","legDistanceNm":5,"altitude":{"raw":"4 400","minFt":4400,"maxFt":4400},"speedKt":220}
+    ]},
+    "RKNW-STAR-GANAM2-KAKSO": {"id":"RKNW-STAR-GANAM2-KAKSO","name":"GANAM2-KAKSO","runways":["21"],"startFix":"KAKSO","endFix":"JOOKA","source":"2-9-1 Coding Table","fixes":[
+      {"id":"KAKSO","coordinates":{"lat":37.129056,"lon":127.443722},"pathTerminator":"TF","legDistanceNm":10.6,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"GANAM","coordinates":{"lat":37.111125,"lon":127.664469},"pathTerminator":"TF","legDistanceNm":17,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"ENLAR","coordinates":{"lat":37.37005,"lon":127.807844},"pathTerminator":"TF","legDistanceNm":16.6,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"MAJIF","coordinates":{"lat":37.436056,"lon":128.145919},"pathTerminator":"TF","legDistanceNm":8.9,"altitude":{"raw":"+9 000","minFt":9000,"maxFt":null}},
+      {"id":"JOOKA","coordinates":{"lat":37.569122,"lon":128.229242},"role":"IAF","pathTerminator":"TF","legDistanceNm":8.9,"altitude":{"raw":"5 600","minFt":5600,"maxFt":5600}}
+    ]},
+    "RKNW-STAR-GANAM2-GUKDO": {"id":"RKNW-STAR-GANAM2-GUKDO","name":"GANAM2-GUKDO","runways":["21"],"startFix":"GUKDO","endFix":"JOOKA","source":"2-9-1 Coding Table","fixes":[
+      {"id":"GUKDO","coordinates":{"lat":37.019703,"lon":127.639683},"pathTerminator":"TF","legDistanceNm":5.6,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"GANAM","coordinates":{"lat":37.111125,"lon":127.664469},"pathTerminator":"TF","legDistanceNm":17,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"ENLAR","coordinates":{"lat":37.37005,"lon":127.807844},"pathTerminator":"TF","legDistanceNm":16.6,"altitude":{"raw":"+12 000","minFt":12000,"maxFt":null}},
+      {"id":"MAJIF","coordinates":{"lat":37.436056,"lon":128.145919},"pathTerminator":"TF","legDistanceNm":8.9,"altitude":{"raw":"+9 000","minFt":9000,"maxFt":null}},
+      {"id":"JOOKA","coordinates":{"lat":37.569122,"lon":128.229242},"role":"IAF","pathTerminator":"TF","legDistanceNm":8.9,"altitude":{"raw":"5 600","minFt":5600,"maxFt":5600}}
+    ]}
+  }
+}

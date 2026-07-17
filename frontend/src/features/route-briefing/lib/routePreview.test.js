@@ -65,6 +65,21 @@ test('buildProcedureGeoJSON includes line and waypoint features for SID, STAR, a
   assert.ok(roles.includes('iap-wp'))
 })
 
+test('buildProcedureGeoJSON derives an IAP line from fixes when geometry is omitted', () => {
+  const result = buildProcedureGeoJSON(null, null, {
+    fixes: [
+      { id: 'IAF', coordinates: { lon: 127.739333, lat: 35.035944 } },
+      { id: 'RW06L', coordinates: { lon: 128.056806, lat: 35.082194 } },
+    ],
+  })
+
+  const line = result.features.find((feature) => feature.properties.role === 'iap-line')
+  assert.deepEqual(line.geometry, {
+    type: 'LineString',
+    coordinates: [[127.739333, 35.035944], [128.056806, 35.082194]],
+  })
+})
+
 test('augmentRouteWithProcedures leaves route unchanged when no procedures exist', () => {
   const preview = buildVfrGeoJSON([
     { id: 'A', lon: 126, lat: 37 },

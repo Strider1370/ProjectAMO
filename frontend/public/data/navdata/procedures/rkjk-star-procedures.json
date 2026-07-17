@@ -1,0 +1,10 @@
+{
+  "metadata": {
+    "airport": "RKJK",
+    "sourceUrl": "https://aim.koca.go.kr/eaipPub/Package/2026-08-05-AIRAC/html/eAIP/KR-AD-2.RKJK-en-GB.html",
+    "sourceEdition": "eAIP package 5 AUG 2026",
+    "recordUnit": "procedure + runway + transition",
+    "sourceLocator": "RKJK AD 2.24 chart index lists no STAR chart or Coding Table."
+  },
+  "starProcedures": {}
+}

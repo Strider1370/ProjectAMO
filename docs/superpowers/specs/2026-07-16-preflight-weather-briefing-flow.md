@@ -1,6 +1,6 @@
 # 사전비행 경로 기상 브리핑 워크플로우 명세
 
-- 상태: **상위 기능 명세 초안. 미구현.**
+- 상태: **상위 기능 명세. 공통 기반과 AIP 항공로 제약 데이터는 구현 완료, 단계별 화면·통합 작업 진행 전.**
 - 작성일: 2026-07-16
 - 대상: 국내 IFR 사전비행계획의 en-route 기상 의사결정 지원
 - 연계 스펙:
@@ -8,6 +8,13 @@
   - `docs/superpowers/specs/2026-07-15-altitude-advisor.md`
   - `docs/superpowers/specs/2026-07-15-navlog-leg-table.md`
   - `docs/superpowers/specs/2026-07-16-aip-airway-data-pipeline.md`
+
+## 구현 현황 정정 (2026-07-17)
+
+- 완료: 공용 상태 코드와 문구 계약, `routeGeometry`·`enRouteSegments` 공통 경로 모델, 단일 route-axis, 위험기상 수평·수직·시간 노출 모델 및 회귀 테스트.
+- 완료: 활성 AIP 항공로 제약 발행본(`2026-06-25`)과 검수된 구간 데이터, `enroute.json` 기반 경로 그래프, 활성 제약 연결 및 고도 제약 상태 처리.
+- 남은 범위: 이 기반을 사용하는 경로 대안 비교 화면, 고도별 기상 비교 화면, leg별 경로 기상 브리핑, 세 단계의 통합·운영 검증.
+- 아래의 세부 체크박스는 처음 작성된 장기 운영·검수 요구도 포함하므로, 구현 완료 여부를 단순히 체크 표시로 바꾸지 않는다.
 
 ## Approved domestic en-route NAVDATA consolidation (2026-07-17)
 
@@ -17,6 +24,12 @@
 - Preserve existing direction metadata only when its route sequence still matches the active AIP segments. A route without reviewed direction metadata remains explicitly `conditional`/`unavailable`; track values must not be treated as a direction authorization.
 - Generate the domestic airway map GeoJSON from the same `enroute.json` source so route search, briefing constraints, and the displayed airway layer use one active AIRAC cycle.
 - Done when the existing route-confirmation flow produces its current route result shape from `enroute.json`, representative routes still resolve, AIP constraints match the same publication, and obsolete domestic route files have no runtime consumers.
+
+## Terminal-procedure pilot completion (2026-07-17)
+
+- The existing airport procedure-data contract now contains reviewed SID/STAR/representative-IAP data for RKTH, RKTU, RKNW, RKPS, RKJJ, and RKJK; RKTN remains deliberately excluded because it has no Coding Table.
+- The delivered counts are RKTH 10/6/2, RKTU 6/2/2, RKNW 5/4/3, RKPS 11/12/4, RKJJ 8/7/3, and RKJK 0/0/2 (SID/STAR/IAP). Each JSON retains its official PDF URL, issue date, and chart/table locator.
+- This delivers terminal geometry and route-preview continuity only. It does not complete this document's future work on published procedure constraints, performance evaluation, altitude alternatives, or operational recommendations.
 
 ## 1. 목표와 완료 모습
 

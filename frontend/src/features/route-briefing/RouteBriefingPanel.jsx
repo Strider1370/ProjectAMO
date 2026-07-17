@@ -28,7 +28,8 @@ import './RouteBriefing.css'
 
 const AIRPORT_KO = {
   RKSI: '인천', RKSS: '김포', RKPC: '제주', RKPK: '김해',
-  RKJB: '무안', RKNY: '양양', RKJY: '여수', RKPU: '울산',
+  RKJB: '무안', RKNY: '양양', RKJY: '여수', RKPU: '울산', RKTH: '포항경주',
+  RKTU: '청주', RKNW: '원주', RKPS: '사천', RKJJ: '광주', RKJK: '군산',
 }
 // ponytail: static for domestic only; overseas loaded dynamically via useEffect in component.
 const DOMESTIC_AIRPORT_OPTIONS = KNOWN_AIRPORTS.map((icao) => ({ value: icao, ko: AIRPORT_KO[icao] ?? icao, region: '대한민국' }))
