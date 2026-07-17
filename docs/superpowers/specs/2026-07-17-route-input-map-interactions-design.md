@@ -1,15 +1,16 @@
 # 경로 입력 — 지도 인터랙션(클릭/그리기/구간우회) + 문자열 붙여넣기 디자인
 
-> 작성: 2026-07-17. 상태: **승인됨(브레인스토밍 완료), 구현 전.**
+> 작성: 2026-07-17. 상태: **승인됨(브레인스토밍 완료) → 리뷰 반영 완료, 구현 전.**
 > 배경: 사용자가 "지금 방식(검색해서 하나씩 추가)이 불편할 것 같다"고 지적 → EFB(ForeFlight·Garmin Pilot 등) 4개 병렬 리서치로 가능한 입력 방식 11개 카탈로그 작성 → 이 중 지도 인터랙션 계열(클릭 추가, 자유곡선 그리기, 구간 드래그 우회)과 경로 문자열 붙여넣기를 이번 라운드에서 구현하기로 결정.
+> **리뷰 반영(2026-07-17)**: 초안이 실제 코드와 다른 부분 2곳을 리뷰어가 발견 → §0·§2·§3·§5·§8 수정. (1) VFR 지도 클릭 추가는 이미 구현돼 있었음(`bindVfrInteractions`). (2) `buildBriefingRoute`는 경유 조건(via) 매개변수가 없어 "재호출"이 아니라 진입→경유·경유→이탈 두 번 계산해 잇는 새 로직이 필요함.
 
 ## 0. 배경 · 현재 상태 (조사 결과)
 
 `frontend/src/features/route-briefing/`의 경로 입력은 VFR과 IFR이 완전히 다른 방식이다.
 
-- **VFR**: `useRouteBriefing.js`의 `vfrWaypoints` 배열을 사람이 직접 편집. 추가는 `VfrFixSearch`(검색 콤보박스, `RouteBriefingPanel.jsx:532`) → `addVfrWaypointByFix`(`useRouteBriefing.js:451`)만 존재. 순서 변경(드래그), 웨이포인트별 고도 편집, 되돌리기(`vfrUndoStack`), 저장/불러오기, 파일 임포트(`routeImport.js`)는 이미 있음.
-- **IFR**: 사람이 웨이포인트를 직접 안 만진다. 출발/도착 공항 + 진입·이탈 지점(entry/exit fix) + routeType만 정하면 `routePlanner.js`의 `buildBriefingRoute()`(L393)가 **항로망(ENR 3.1/3.3 기반)을 따라 경로를 자동 계산**하고, `buildRouteAlternatives()`(L496)가 대안 경로 후보(`routeCandidates`/`selectedCandidateId`)까지 만들어준다. SID/STAR도 `recommendProcedures.js`가 자동 추천.
-- **지도(`MapView.jsx`)**: 경로 입력용 클릭 핸들러가 **전혀 없음**(NOTAM 마커 클릭 하나뿐, L301). 지도를 눌러서 경로를 만드는 방법이 지금은 아예 없다.
+- **VFR**: `useRouteBriefing.js`의 `vfrWaypoints` 배열을 사람이 직접 편집. 검색으로 추가(`VfrFixSearch` → `addVfrWaypointByFix`, `useRouteBriefing.js:451`)뿐 아니라, **지도 위 경로선을 클릭해서 그 자리에 경유점을 끼워넣거나, 기존 경유점을 드래그해서 옮기는 기능도 이미 있다** (`routePreview.js`의 `bindVfrInteractions()`, L327-385 — `mousedown`으로 `ROUTE_PREVIEW_LINE_HIT`/`VFR_WP_CIRCLE` 레이어를 감지, `findInsertIndex`로 삽입 위치 계산). `MapView.jsx`가 이 함수를 실제로 호출해서 연결한다. 순서 변경, 웨이포인트별 고도 편집, 되돌리기(`vfrUndoStack`), 저장/불러오기, 파일 임포트(`routeImport.js`)도 있음.
+- **IFR**: 사람이 웨이포인트를 직접 안 만진다. 출발/도착 공항 + 진입·이탈 지점(entry/exit fix) + routeType만 정하면 `routePlanner.js`의 `buildBriefingRoute()`(L393)가 **항로망(ENR 3.1/3.3 기반)을 따라 경로를 자동 계산**하고, `buildRouteAlternatives()`(L496)가 대안 경로 후보(`routeCandidates`/`selectedCandidateId`)까지 만들어준다. SID/STAR도 `recommendProcedures.js`가 자동 추천. **단, `buildBriefingRoute`는 진입점→이탈점 한 구간만 계산한다 — 경유 지점을 추가로 넣는 매개변수가 없다** (내부적으로 `findShortestPath(graph, ..., entryId, exitId, routeType)`를 한 번만 호출).
+- **지도(`MapView.jsx`)**: **VFR용 클릭/드래그 핸들러(위 `bindVfrInteractions`)는 이미 연결돼 있다.** 없는 건 IFR용 지도 인터랙션과, NOTAM 마커 클릭(L301) 외의 다른 지도 상호작용이다.
 
 ## 1. 결정 사항
 
@@ -34,8 +35,9 @@ resolveMapInteraction(coord, { flightRule, navdata })   ← 신규 공통 함수
         ▼
 applyRouteConstraint(point, { flightRule, mode })        ← 신규 공통 함수
         │
-        ├─ VFR: 기존 findInsertIndex(routePreview.js)로 vfrWaypoints에 끼워넣기 — 로직 재사용, 신규 없음
-        └─ IFR: 그 지점을 경유 조건(viaFix)으로 buildBriefingRoute 재호출 → routeResult 갱신
+        ├─ VFR: 기존 findInsertIndex(routePreview.js)로 vfrWaypoints에 끼워넣기 — 로직 재사용, 신규 없음(이미 지도에서 동작 중)
+        └─ IFR: findShortestPath(entry→viaFix) + findShortestPath(viaFix→exit) 두 번 호출해 경로를 이어붙임
+                (buildBriefingRoute는 viaFix 매개변수가 없어 "재호출"이 아니라 이 조합 로직을 새로 만들어야 함 — §0 참고)
         │
         ▼
 적용 전 스냅샷을 undo 스택에 push (VFR: 기존 vfrUndoStack 재사용 / IFR: 동일 패턴으로 신설)
@@ -48,10 +50,10 @@ applyRouteConstraint(point, { flightRule, mode })        ← 신규 공통 함�
 
 ## 3. 컴포넌트 변경
 
-- **모드 전환 버튼 그룹**(신규): `RouteBriefingPanel.jsx`에 검색/클릭추가/그리기/구간우회/붙여넣기 버튼. 기존 `VfrFixSearch` 자리 근처, 헌법 §5 토큰(버튼 스타일은 기존 Fluent 컴포넌트 재사용, 새 하드코딩 색 금지).
-- **지도 이벤트 핸들러**(신규): `MapView.jsx`에 모드별 `click`/`mousedown`+`mousemove`+`mouseup`(드래그·그리기용) 핸들러 추가. 지금 있는 `onNotamClick`(L301) 패턴을 참고하되 별도 핸들러로 분리(NOTAM 클릭과 충돌 안 나게 모드가 켜져 있을 때만 활성화).
-- **`resolveMapInteraction`, `applyRouteConstraint`, `parseRouteString`**(신규): `routePlanner.js`에 추가(기존 `buildBriefingRoute`/`buildVfrRoute`와 같은 파일 — 항로망 데이터를 이미 이 파일이 로드하고 있어서 재사용하기 쉬움).
-- **경로 문자열 붙여넣기 입력창**(신규): 작은 텍스트 입력 + "적용" 버튼. IFR은 파싱 결과를 경유 조건으로 `buildBriefingRoute`에 전달, VFR은 `vfrWaypoints`로 직접 변환.
+- **모드 전환 버튼 그룹**(신규): `RouteBriefingPanel.jsx`에 검색/클릭추가/그리기/구간우회/붙여넣기 버튼. 기존 `VfrFixSearch` 자리 근처, 헌법 §5 토큰(버튼 스타일은 기존 Fluent 컴포넌트 재사용, 새 하드코딩 색 금지). VFR은 지금 `bindVfrInteractions`가 항상 켜져 있는데, 모드 버튼이 생기면 "클릭추가" 모드일 때만 활성화되도록 게이팅을 추가한다(다른 모드에서 실수로 경유점이 끼워지지 않게).
+- **지도 이벤트 핸들러(IFR, 신규)**: `MapView.jsx`에 IFR용 `mousedown`/`mousemove`/`mouseup` 핸들러를 `bindVfrInteractions`와 같은 패턴으로 새로 추가. VFR용은 이미 있으니 모드 게이팅만 씌운다.
+- **`resolveMapInteraction`, `applyRouteConstraint`, `parseRouteString`**(신규): `routePlanner.js`에 추가(기존 `buildBriefingRoute`/`buildVfrRoute`와 같은 파일 — 항로망 데이터를 이미 이 파일이 로드하고 있어서 재사용하기 쉬움). IFR용 "가장 가까운 유효 fix 찾기"는 `loadNavdata()`가 주는 navpoints를 순회하는 O(n) 선형 탐색으로 시작한다(공간 인덱스 없음) — `// ponytail: O(n) 선형 탐색, 체감 느려지면 KD-tree 등 공간 인덱스로 승격` 주석을 남긴다. 국내 FIR 규모(navpoints 약 1천~2천 개)면 1단계에서는 충분할 것으로 보되, Playwright 검증 때 실측한다.
+- **경로 문자열 붙여넣기 입력창**(신규): 작은 텍스트 입력 + "적용" 버튼. IFR은 파싱된 지점들을 §2의 `applyRouteConstraint` 경유-조합 로직에 순서대로 전달, VFR은 `vfrWaypoints`로 직접 변환.
 - **구간 드래그 우회용 UI**(신규): 기존 경로 라인 위에서 특정 구간을 선택 가능하게(지도 위 경로 렌더링에 선택 가능한 hit-area 추가) — 4단계 중 마지막이라 세부는 해당 단계 착수 시 재확인.
 
 ## 4. 에러 처리
@@ -62,7 +64,7 @@ applyRouteConstraint(point, { flightRule, mode })        ← 신규 공통 함�
 
 ## 5. 구현 순서 (4단계, 각자 독립적으로 검증 가능)
 
-1. **지도 클릭 추가** — `resolveMapInteraction`/`applyRouteConstraint` 기반을 여기서 확립. VFR·IFR 둘 다 커버.
+1. **지도 클릭 추가** — VFR은 이미 되는 기능(`bindVfrInteractions`)에 모드 게이팅만 씌우고, IFR용은 `resolveMapInteraction`/`applyRouteConstraint`(경유-조합 로직 포함)를 여기서 새로 만든다. 이 단계가 두 함수의 기반을 확립.
 2. **경로 문자열 붙여넣기** — 1단계 기반 위에 `parseRouteString`만 추가.
 3. **자유곡선 그리기** — 1단계 기반 위에 "연속 좌표 처리" 추가.
 4. **구간 드래그 우회** — 기존 경로의 특정 구간만 재계산하는 부분이 제일 까다로워서 마지막.
@@ -83,8 +85,13 @@ applyRouteConstraint(point, { flightRule, mode })        ← 신규 공통 함�
 
 ## 8. 영향받는 파일 (전체 4단계 기준, 단계별로 나눠서 실제 구현)
 
-- `frontend/src/features/route-briefing/lib/routePlanner.js` (수정 — `resolveMapInteraction`/`applyRouteConstraint`/`parseRouteString` 추가)
-- `frontend/src/features/route-briefing/useRouteBriefing.js` (수정 — 모드 상태, IFR용 undo 스택 추가)
+- `frontend/src/features/route-briefing/lib/routePlanner.js` (수정 — `resolveMapInteraction`/`applyRouteConstraint`(IFR 경유-조합 포함)/`parseRouteString` 추가)
+- `frontend/src/features/route-briefing/lib/routePreview.js` (수정 — `bindVfrInteractions`에 모드 게이팅 추가; 새로 만들 IFR 인터랙션 바인더도 이 파일에 추가하는 게 기존 구조와 일관적)
+- `frontend/src/features/route-briefing/useRouteBriefing.js` (수정 — 모드 상태(`routeInteractionMode`), IFR용 undo 스택(`ifrUndoStack`) 신설)
 - `frontend/src/features/route-briefing/RouteBriefingPanel.jsx` (수정 — 모드 전환 버튼, 붙여넣기 입력창)
-- `frontend/src/features/map/MapView.jsx` (수정 — 모드별 지도 이벤트 핸들러)
+- `frontend/src/features/map/MapView.jsx` (수정 — IFR용 지도 이벤트 핸들러 연결. VFR용 `bindVfrInteractions` 연결부는 이미 있음)
 - 각 신규 함수의 테스트 파일 (`routePlanner.test.js` 등, 단계별로 추가)
+
+## 9. 리뷰에서 나왔지만 이번엔 반영 안 한 것
+
+- **Codex와의 충돌 가능성**: 같은 브랜치(`feat/route-alternatives-flow`)에서 Codex가 `useRouteBriefing.js`/`RouteBriefingPanel.jsx`/`routePlanner.js`를 활발히 수정 중. 리뷰어는 "이 스펙의 신규 함수들이 기존 파일에 새 함수를 추가하는 형태라 구조적 충돌 위험은 낮다"고 평가함 — 실제 착수 시점(1단계 계획 작성 전)에 그 파일들의 최신 상태를 다시 확인하는 걸 전제로 한다.
