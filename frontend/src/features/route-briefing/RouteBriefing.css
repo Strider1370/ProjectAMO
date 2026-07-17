@@ -1532,3 +1532,44 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 .rb-import-dropzone.is-drag-over .rb-import-dropzone-text {
   color: var(--accent);
 }
+
+.rb-briefing-preparation {
+  border: 1px solid var(--stroke-2);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--bg-2);
+}
+
+.rb-briefing-preparation h3 {
+  margin: 0 0 12px;
+  color: var(--text-1);
+  font-size: 15px;
+}
+
+.rb-briefing-preparation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rb-briefing-preparation-grid > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rb-briefing-preparation-grid span,
+.rb-briefing-preparation-grid small {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.rb-briefing-preparation-grid strong {
+  color: var(--text-1);
+  font-size: 14px;
+}
+
+@media (max-width: 560px) {
+  .rb-briefing-preparation-grid { grid-template-columns: 1fr; }
+}

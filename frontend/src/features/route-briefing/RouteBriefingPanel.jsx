@@ -453,6 +453,21 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       <span style={{ fontWeight: tokens.fontWeightSemibold }}>ETD → ETA {formatBriefingTime(etd, tz)} → {routeResult && etaIso ? formatBriefingTime(etaIso, tz) : '—'}</span>
     </div>
   )
+  const selectedRouteCandidate = routeCandidates.find((candidate) => candidate.id === selectedCandidateId)
+  const selectedAltitudeRow = altitudeComparison?.rows?.find((row) => Number(row.altFt ?? row.altitudeFt) === Number(cruiseAltitudeFt))
+  const selectedHazards = selectedAltitudeRow?.hazards ?? []
+  const procedureSummary = [selectedSid?.label, selectedStar?.label, selectedIap?.label].filter(Boolean).join(' · ')
+  const briefingPreparation = (
+    <section className="rb-briefing-preparation" aria-label="브리핑 준비 요약">
+      <h3>브리핑 준비</h3>
+      <div className="rb-briefing-preparation-grid">
+        <div><span>비행</span><strong>{`${routeForm.departureAirport} → ${routeForm.arrivalAirport}`}</strong><small>{`ETD ${formatBriefingTime(etd, tz)} · ETA ${etaIso ? formatBriefingTime(etaIso, tz) : '—'} · TAS ${tasKt} kt`}</small></div>
+        <div><span>선택 경로</span><strong>{selectedRouteCandidate?.label ?? '기본 경로'}</strong><small>{`${Math.round(derived.plannedDistanceNm)} NM${procedureSummary ? ` · ${procedureSummary}` : ''}`}</small></div>
+        <div><span>선택 고도</span><strong>{Number(cruiseAltitudeFt) >= 18000 ? `FL${Math.round(Number(cruiseAltitudeFt) / 100)}` : `${Math.round(Number(cruiseAltitudeFt))} ft`}</strong><small>{selectedAltitudeRow?.wind?.meanComponentKt != null ? `평균 ${selectedAltitudeRow.wind.meanComponentKt >= 0 ? '순풍 +' : '맞바람 '}${Math.round(selectedAltitudeRow.wind.meanComponentKt)} kt` : '고도 기상 비교 자료 없음'}</small></div>
+        <div><span>교체공항</span><strong>{alternateAirport || '선택 안 함'}</strong><small>{selectedHazards.length ? `주의 기상 ${selectedHazards.map((hazard) => hazard.label).join(' · ')}` : '선택 고도에서 추가 위험기상 없음'}</small></div>
+      </div>
+    </section>
+  )
   const setEtdFromNow = (mins) => setEtd(new Date(Date.now() + mins * 60000).toISOString())
   // ETD(ISO/UTC) ↔ tz 벽시계 변환 — DatePicker/TimePicker는 Date의 로컬 필드를 쓰므로 tz 보정.
   const tzOffsetMs = tz === 'KST' ? 9 * 3600 * 1000 : 0
@@ -818,7 +833,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     <>
       <div className="rb-workflow-tabs" role="tablist" aria-label="비행 브리핑 단계">
         {[
-          ['settings', '비행 설정'], ['compare', '경로 비교'], ['altitude', '고도 비교'], ['briefing', '브리핑'],
+          ['settings', '비행 설정'], ['compare', '경로 비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비'],
         ].map(([step, label]) => <button key={step} type="button" role="tab" aria-selected={workflowStep === step} disabled={!workflowAvailability[step]} className={workflowStep === step ? 'is-active' : (!workflowAvailability[step] ? 'is-disabled' : '')} onClick={() => goToWorkflowStep(step)}>{label}</button>)}
       </div>
       {workflowStep === 'settings' && <form className={s.form} onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
@@ -911,7 +926,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       )}
       {workflowStep === 'briefing' && (
         <div className={s.form}>
-          <div className={s.summary}><span>{`${routeForm.departureAirport} → ${routeForm.arrivalAirport}`}</span><span>{`${Math.round(Number(cruiseAltitudeFt) || 0)} ft · ETD ${formatBriefingTime(etd, tz)} · ETA ${eta ? formatBriefingTime(eta, tz) : '—'}`}</span></div>
+          {briefingPreparation}
           {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
           <div className="rb-step-actions"><Button appearance="secondary" type="button" onClick={goBackWorkflow}>이전 단계</Button><Button appearance="primary" type="button" onClick={handleGenerateBriefing} disabled={briefingLoading}>{briefingLoading ? '브리핑 생성 중...' : '브리핑 생성'}</Button></div>
         </div>
@@ -926,12 +941,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
 
   const stepNav = (
     <div className="rb-steps">
-      {[['settings', '비행 설정'], ['compare', '경로 비교'], ['altitude', '고도 비교'], ['briefing', '브리핑']].map(([step, label]) => (
+      {[['settings', '비행 설정'], ['compare', '경로 비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비']].map(([step, label]) => (
         <button key={step} type="button" className={`rb-step${workflowStep === step ? ' is-active' : ''}${!workflowAvailability[step] ? ' is-disabled' : ''}`} disabled={!workflowAvailability[step]} onClick={() => goToWorkflowStep(step)}>{label}</button>
       ))}
     </div>
   )
-
   const mobileBody = (
     <form id="rb-mobile-form" className="route-check-form rb-mobile" onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
       {workflowStep === 'settings' && (
@@ -1003,7 +1017,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} profileOpen={verticalProfileWindowOpen} onShowProfile={() => setVerticalProfileWindowOpen(true)} /> : <div className="rb-step-actions"><button type="button" className="route-check-secondary-button" onClick={goBackWorkflow}>이전 단계</button><p className="rb-alternatives-status">계획 순항고도를 입력한 뒤 고도 비교를 선택하세요.</p></div>}
         </>
       )}
-      {workflowStep === 'briefing' && <>{summaryStrip}{briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}</>}
+      {workflowStep === 'briefing' && <>{briefingPreparation}{briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}</>}
     </form>
   )
 

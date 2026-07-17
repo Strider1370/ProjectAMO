@@ -716,6 +716,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
 
   function continueToBriefing() {
     if (!selectedCandidateId || !Number.isFinite(Date.parse(eta))) return
+    setVerticalProfileWindowOpen(false)
     setWorkflowStep('briefing')
   }
 

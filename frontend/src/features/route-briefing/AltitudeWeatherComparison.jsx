@@ -109,7 +109,7 @@ export default function AltitudeWeatherComparison({
       <p className="rb-alternatives-note">공표 항공로 제약을 기준으로 한 기상 비교 정보이며, 관제 허가·항공기 성능·연료·운항 제한을 결정하지 않습니다.</p>
       <div className="rb-step-actions">
         <button type="button" className="route-check-secondary-button" onClick={onBack}>이전 단계</button>
-        <button type="button" className="route-check-search-button" onClick={onContinue}>브리핑으로</button>
+        <button type="button" className="route-check-search-button" onClick={onContinue}>브리핑 준비로</button>
       </div>
     </div>
   )

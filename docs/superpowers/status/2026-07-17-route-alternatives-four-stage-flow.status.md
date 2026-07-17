@@ -7,7 +7,9 @@ Plan: `docs/superpowers/plans/2026-07-17-route-alternatives-four-stage-flow.md`
 
 ## Resume point
 
-Phases 0–3 are implemented and verified. The next product decision is the later manual route-editing flow; do not restore automatic safety/recommendation rerouting.
+Phases 0–3 are implemented and verified. The next work is a new manual route-design-and-comparison plan. The current automatic candidate generation is transitional: do not extend it, and replace it with user-created route designs before further route-alternatives work. See `docs/superpowers/specs/2026-07-17-route-input-map-interactions-design.md` §1.0 and `2026-07-17-manual-route-weather-aids.md`.
+
+The manual route-design specs are user-approved and independently spec-reviewed. The approved direction includes a bidirectional external-compatible en-route string: `FIX → airway → FIX` plus `DCT`. SID/STAR/IAP remain per-design structured selections and appear only in AMO's human-readable full-plan display, not in the exchange string. Next: write a new implementation plan; do not extend the old automatic-alternatives plan.
 
 Phase 0 added:
 
