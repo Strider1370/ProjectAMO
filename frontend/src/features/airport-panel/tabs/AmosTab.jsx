@@ -78,13 +78,15 @@ function WindDial({ dial, activeRunwayIndex }) {
 }
 
 function CompactSummary({ model }) {
-  const tenMinute = model.prioritySummary.find((item) => item.key === 'tenMinuteWind')
   const headTail = model.prioritySummary.find((item) => item.key === 'headTail')
   const crosswind = model.prioritySummary.find((item) => item.key === 'crosswind')
-  const activeRvr = model.visibilityRows[model.activeRunwayIndex] || model.visibilityRows[0]
-  const windRows = model.windGroups[1]?.rows || []
-  const average = windRows[0]
-  const maximum = windRows[2]
+  const activeRvr = model.visibilityRows.find((row) => row.rvrValue !== '-' || row.morValue !== '-')
+    || model.visibilityRows[model.activeRunwayIndex] || model.visibilityRows[0]
+  const cloudCeiling = model.commonCells.find((cell) => cell.label.startsWith('운고'))
+  const twoMinuteAvg = model.windGroups[0]?.rows?.[0]
+  const twoMinuteWind = twoMinuteAvg && twoMinuteAvg.directionValue !== '-'
+    ? `${twoMinuteAvg.directionValue}° / ${twoMinuteAvg.speedValue}kt`
+    : '-'
 
   return (
     <section className="ap-amos-compact-summary" aria-label="AMOS 핵심 상태">
@@ -93,20 +95,20 @@ function CompactSummary({ model }) {
         <strong>{model.activeRunwayLabel || '-'} IN USE</strong>
       </div>
       <div className="ap-amos-compact-card">
-        <span>현재 바람</span>
-        <strong>{tenMinute?.value || '-'}</strong>
+        <span>바람(2분평균)</span>
+        <strong>{twoMinuteWind}</strong>
       </div>
       <div className="ap-amos-compact-card">
-        <span>맞바람 / 횡풍</span>
+        <span>정풍/측풍</span>
         <strong>{headTail?.value || '-'} / {crosswind?.value || '-'}</strong>
+      </div>
+      <div className="ap-amos-compact-card">
+        <span>운고</span>
+        <strong>{cloudCeiling?.value && cloudCeiling.value !== 'NCD' ? `${cloudCeiling.value}ft` : cloudCeiling?.value || '-'}</strong>
       </div>
       <div className="ap-amos-compact-card">
         <span>RVR / MOR</span>
         <strong>{activeRvr ? `${activeRvr.rvrValue} / ${activeRvr.morValue} m` : '-'}</strong>
-      </div>
-      <div className="ap-amos-compact-wind" hidden>
-        <span>평균 {average ? `${average.directionValue}° / ${average.speedValue}kt` : '-'}</span>
-        <span>최대 {maximum ? `${maximum.directionValue}° / ${maximum.speedValue}kt` : '-'}</span>
       </div>
     </section>
   )
@@ -119,47 +121,50 @@ function MobileDetail({ model }) {
   const formatWind = (row) => row?.directionValue === '-' ? '-' : `${row?.directionValue ?? '-'}° / ${row?.speedValue ?? '-'}kt`
 
   return (
-    <section className="ap-amos-mobile-detail" aria-label="AMOS 상세 관측값">
-      <section className="ap-amos-mobile-block">
-        <h3>시정 / RVR</h3>
-        <div className="ap-amos-mobile-rvr">
-          {model.visibilityRows.map((row, index) => (
-            <div key={row.label}>
-              <span>RWY {model.runwayLabels[index] || index + 1}</span>
-              <strong><b className={row.isRvrGood ? 'is-good' : undefined}>{row.rvrValue}</b> / {row.morValue} m</strong>
-            </div>
-          ))}
-        </div>
-      </section>
+    <details className="ap-amos-mobile-detail" aria-label="AMOS 상세 관측값">
+      <summary>상세 AMOS 자료</summary>
+      <div className="ap-amos-mobile-detail-body">
+        <section className="ap-amos-mobile-block">
+          <h3>시정 / RVR</h3>
+          <div className="ap-amos-mobile-rvr">
+            {model.visibilityRows.map((row, index) => (
+              <div key={row.label}>
+                <span>RWY {model.runwayLabels[index] || index + 1}</span>
+                <strong><b className={row.isRvrGood ? 'is-good' : undefined}>{row.rvrValue}</b> / {row.morValue} m</strong>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      <section className="ap-amos-mobile-block">
-        <h3>바람 관측</h3>
-        <div className="ap-amos-mobile-wind-table">
-          <div className="ap-amos-mobile-wind-head"><span>측정값</span><span>2분</span><span>10분</span></div>
-          {windRowLabels.map((label, index) => (
-            <div className="ap-amos-mobile-wind-row" key={label}>
-              <span>{label}</span>
-              <strong>{formatWind(twoMinute[index])}</strong>
-              <strong>{formatWind(tenMinute[index])}</strong>
-            </div>
-          ))}
-        </div>
-      </section>
+        <section className="ap-amos-mobile-block">
+          <h3>바람 관측</h3>
+          <div className="ap-amos-mobile-wind-table">
+            <div className="ap-amos-mobile-wind-head"><span>측정값</span><span>2분</span><span>10분</span></div>
+            {windRowLabels.map((label, index) => (
+              <div className="ap-amos-mobile-wind-row" key={label}>
+                <span>{label}</span>
+                <strong>{formatWind(twoMinute[index])}</strong>
+                <strong>{formatWind(tenMinute[index])}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      <section className="ap-amos-mobile-block">
-        <h3>기본 기상</h3>
-        <div className="ap-amos-mobile-common">
-          {model.commonCells.map((cell) => (
-            <div key={cell.label}><span>{cell.label}</span><strong>{cell.value}</strong></div>
-          ))}
-        </div>
-      </section>
+        <section className="ap-amos-mobile-block">
+          <h3>기본 기상</h3>
+          <div className="ap-amos-mobile-common">
+            {model.commonCells.map((cell) => (
+              <div key={cell.label}><span>{cell.label}</span><strong>{cell.value}</strong></div>
+            ))}
+          </div>
+        </section>
 
-      <details className="ap-amos-mobile-dial">
-        <summary>활주로·풍향 도식 보기</summary>
-        <WindDial dial={model.dial} activeRunwayIndex={model.activeRunwayIndex} />
-      </details>
-    </section>
+        <details className="ap-amos-mobile-dial">
+          <summary>활주로·풍향 도식 보기</summary>
+          <WindDial dial={model.dial} activeRunwayIndex={model.activeRunwayIndex} />
+        </details>
+      </div>
+    </details>
   )
 }
 

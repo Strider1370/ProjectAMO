@@ -2366,7 +2366,7 @@
 
 .ap-amos-compact-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
   border: 1px solid var(--stroke-2);
   border-radius: var(--radius-lg);
@@ -2379,12 +2379,11 @@
   border-right: 1px solid var(--stroke-2);
 }
 
-.ap-amos-compact-card:nth-child(4) {
+.ap-amos-compact-card:nth-child(5) {
   border-right: 0;
 }
 
-.ap-amos-compact-card span,
-.ap-amos-compact-wind span {
+.ap-amos-compact-card span {
   display: block;
   color: var(--text-3);
   font-size: var(--fs-200);
@@ -2414,16 +2413,6 @@
   border-right: 0;
   border-bottom: 1px solid var(--stroke-2);
   background: var(--level-red-bg);
-}
-
-.ap-amos-compact-wind {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-m);
-  padding: var(--space-s) var(--space-m);
-  border-top: 1px solid var(--stroke-2);
-  background: var(--bg-2);
 }
 
 .ap-amos-details {
@@ -2817,7 +2806,7 @@
 
 .ap-amos-console-common-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   min-width: 720px;
 }
 
@@ -2858,9 +2847,13 @@
   }
 
   .ap-amos-compact-card:nth-child(4) {
-    grid-column: 1 / -1;
+    border-right: 1px solid var(--stroke-2);
     border-top: 1px solid var(--stroke-2);
+  }
+
+  .ap-amos-compact-card:nth-child(5) {
     border-right: 0;
+    border-top: 1px solid var(--stroke-2);
   }
 
   .ap-amos-compact-card strong {
@@ -2878,8 +2871,32 @@
   }
 
   .ap-amos-mobile-detail {
+    display: block;
+    border: 1px solid var(--stroke-2);
+    border-radius: var(--radius-lg);
+    background: var(--bg-1);
+  }
+
+  .ap-amos-mobile-detail > summary {
+    padding: var(--space-s) var(--space-m);
+    color: var(--accent);
+    cursor: pointer;
+    font-size: var(--fs-300);
+    font-weight: var(--fw-semibold);
+  }
+
+  .ap-amos-mobile-detail[open] > summary {
+    border-bottom: 1px solid var(--stroke-2);
+  }
+
+  .ap-amos-mobile-detail:not([open]) > .ap-amos-mobile-detail-body {
+    display: none;
+  }
+
+  .ap-amos-mobile-detail[open] > .ap-amos-mobile-detail-body {
     display: grid;
     gap: var(--space-m);
+    padding: var(--space-m);
   }
 
   .ap-amos-mobile-block,
