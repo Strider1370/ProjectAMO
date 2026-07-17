@@ -21,6 +21,8 @@ import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import AirportPickerField from '../../shared/ui/AirportPickerField.jsx'
 import PickerField from '../../shared/ui/PickerField.jsx'
+import RouteAlternativesStep from './RouteAlternativesStep.jsx'
+import AltitudeWeatherComparison from './AltitudeWeatherComparison.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { computeEtaIso } from './lib/etaCalc.js'
 import { formatBriefingTime } from './lib/briefingTime.js'
@@ -186,7 +188,7 @@ function VfrFixSearch({ airports, navpointsById, onAdd }) {
   )
 }
 
-export default function RouteBriefingPanel({ state, refs = {}, derived, actions, airports = [], aviationVisibility = {}, onToggleAviation }) {
+export default function RouteBriefingPanel({ state, refs = {}, derived, actions, airports = [], aviationVisibility = {}, onToggleAviation, metVisibility = {}, onToggleMet }) {
   const isMobile = useIsMobile()
   const s = useStyles()
   const { tz } = useTimeZone()
@@ -211,7 +213,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // instead of closing (use the bottom task bar to leave 브리핑).
   const [sheetDetent, setSheetDetent] = useState('half')
   const [detentTouched, setDetentTouched] = useState(false)
-  const [mobileStep, setMobileStep] = useState(1)
   const [showDetailRoute, setShowDetailRoute] = useState(false)
   // S7: 모바일 ① 스텝은 출발/도착까지만 먼저 보여주고, 교체공항·경로유형·SID/STAR/RWY는
   // 접어둔다(P3 점진 노출) — 사용자가 펼치거나, 출발+도착을 다 고르면(다음에 필요해질
@@ -244,7 +245,18 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     firExitOptions,
     alternateAirport,
     etd,
-    cruiseSpeedKt,
+    tasKt,
+    eta,
+    routeCandidates,
+    selectedCandidateId,
+    routeExposure,
+    altitudeComparison,
+    altitudeComparisonLoading,
+    altitudeComparisonError,
+    verticalProfileWindowOpen,
+    altitudeDraftFt,
+    workflowStep,
+    workflowAvailability,
     briefingLoading,
     briefingError,
   } = state
@@ -281,7 +293,16 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     setCruiseAltitudeFt,
     setAlternateAirport,
     setEtd,
-    setCruiseSpeedKt,
+    setTasKt,
+    setEta,
+    selectRouteCandidate,
+    continueToAltitudeComparison,
+    setAltitudeDraft,
+    startAltitudeComparison,
+    selectCruiseAltitude,
+    continueToBriefing,
+    goToWorkflowStep,
+    goBackWorkflow,
     handleGenerateBriefing,
   } = actions
 
@@ -291,10 +312,10 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // 자동 전환을 멈춘다(스텝/규칙 전환마다 되돌리면 성가심).
   useEffect(() => {
     if (detentTouched) return
-    const wantsFull = isIfr || mobileStep === 2
+    const wantsFull = isIfr || workflowStep !== 'settings'
     setSheetDetent(wantsFull ? 'full' : 'half')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isIfr, mobileStep, detentTouched])
+  }, [isIfr, workflowStep, detentTouched])
   // 출발·도착이 모두 있어야 검색 가능(빈 입력으로 검색→서버 오류를 사전 차단).
   const canSearch = !!routeForm.departureAirport && !!routeForm.arrivalAirport
   // 초기화 오클릭 방지: 잃을 입력이 있으면 한 번 더 눌러 확인(3초 후 자동 해제).
@@ -336,7 +357,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       ? routeResult?.previewGeojson?.features?.find((f) => f.properties.role === 'route-preview-line')?.geometry ?? null
       : null
     await saveRoute(name.trim() || def, {
-      routeForm, vfrWaypoints, cruiseAltitudeFt, cruiseSpeedKt, alternateAirport, etd, routeGeometry,
+      routeForm, vfrWaypoints, cruiseAltitudeFt, tasKt, alternateAirport, etd, routeGeometry,
       ...(enrouteGeometry ? { enrouteGeometry } : {}),
     })
     refreshSaved()
@@ -425,8 +446,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     </>
   )
 
-  // ETA is auto-computed read-only from ETD + planned distance + TAS.
-  const etaIso = computeEtaIso(etd, derived.plannedDistanceNm, cruiseSpeedKt)
+  const etaIso = eta || computeEtaIso(etd, derived.plannedDistanceNm, tasKt)
   const summaryStrip = (
     <div className={s.summary}>
       <span style={{ color: tokens.colorNeutralForeground3 }}>거리 {routeResult ? `${Math.round(derived.plannedDistanceNm)} NM` : '—'}</span>
@@ -440,19 +460,9 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const w0 = new Date(etdBaseMs + tzOffsetMs)
   const etdWall = new Date(w0.getUTCFullYear(), w0.getUTCMonth(), w0.getUTCDate(), w0.getUTCHours(), w0.getUTCMinutes())
   const setEtdWall = (y, mo, d, h, mi) => setEtd(new Date(Date.UTC(y, mo, d, h, mi) - tzOffsetMs).toISOString())
-  // 속도·고도·ETD 입력(Fluent). 요약(summaryStrip)은 분리해 ④ 경로 결과에서 재사용.
+  // ETD·TAS·ETA 입력. 고도는 고도 비교 단계에서만 선택한다.
   const perfFields = (
     <>
-      <div className={s.grid}>
-        <Field label="순항속도 (TAS, kt)">
-          <SpinButton className={s.ctrl} value={Number(cruiseSpeedKt) || 0} min={60} max={600} step={5}
-            onChange={(_, d) => { const v = d.value ?? Number(d.displayValue); if (Number.isFinite(v)) setCruiseSpeedKt(v) }} />
-        </Field>
-        <Field label="순항고도 (ft)">
-          <SpinButton className={s.ctrl} value={Number(cruiseAltitudeFt) || 0} min={500} max={60000} step={500}
-            onChange={(_, d) => { const v = d.value ?? Number(d.displayValue); if (Number.isFinite(v)) setCruiseAltitudeFt(v) }} />
-        </Field>
-      </div>
       <Field label={`ETD (${tz})`}>
         <div className={s.etdRow}>
           <DatePicker className={s.picker} value={etdWall}
@@ -462,6 +472,13 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
             defaultValue={`${String(etdWall.getHours()).padStart(2, '0')}:${String(etdWall.getMinutes()).padStart(2, '0')}`}
             onTimeChange={(_, data) => data.selectedTime && setEtdWall(etdWall.getFullYear(), etdWall.getMonth(), etdWall.getDate(), data.selectedTime.getHours(), data.selectedTime.getMinutes())} />
         </div>
+      </Field>
+      <Field label="순항속도 (TAS, kt)">
+        <SpinButton className={s.ctrl} value={Number(tasKt) || 0} min={60} max={600} step={5}
+          onChange={(_, d) => { const v = d.value ?? Number(d.displayValue); if (Number.isFinite(v)) setTasKt(v) }} />
+      </Field>
+      <Field label="예상 ETA (UTC)">
+        <Input className={s.ctrl} value={eta ?? ''} placeholder="경로 검색 후 TAS 기준으로 계산" onChange={(_, d) => setEta(d.value || null)} />
       </Field>
       <div className={s.etdQuick}>
         {[['지금', 0], ['+30분', 30], ['+1시간', 60], ['+2시간', 120]].map(([lbl, m]) => (
@@ -799,7 +816,12 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
 
   const desktopBody = (
     <>
-      <form className={s.form} onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
+      <div className="rb-workflow-tabs" role="tablist" aria-label="비행 브리핑 단계">
+        {[
+          ['settings', '비행 설정'], ['compare', '경로 비교'], ['altitude', '고도 비교'], ['briefing', '브리핑'],
+        ].map(([step, label]) => <button key={step} type="button" role="tab" aria-selected={workflowStep === step} disabled={!workflowAvailability[step]} className={workflowStep === step ? 'is-active' : (!workflowAvailability[step] ? 'is-disabled' : '')} onClick={() => goToWorkflowStep(step)}>{label}</button>)}
+      </div>
+      {workflowStep === 'settings' && <form className={s.form} onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
         <div className={s.section}>
           <h3 className={s.sectionTitle}>{'① 비행 규칙'}</h3>
           <TabList selectedValue={routeForm.flightRule} onTabSelect={(_, d) => switchFlightRule(d.value)}>
@@ -823,6 +845,15 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               onClick={swapAirports}>⇄</Button>
             {renderDesktopAirportSelect('도착 공항', routeForm.arrivalAirport, handleArrivalAirportChange, FIR_EXIT_AIRPORT, 'FIR 이탈', routeForm.departureAirport, 'right')}
           </div>
+          {isIfr && (
+            <>
+              <Field label="교체 공항">
+                <FDropdown className={s.ctrl} value={alternateAirport} onChange={setAlternateAirport} placeholder="-- 없음 --"
+                  options={[{ value: '', label: '-- 없음 --' }, ...allAirportOptions.filter((airport) => airport.value !== routeForm.departureAirport && airport.value !== routeForm.arrivalAirport).map((airport) => ({ value: airport.value, label: airport.value }))]} />
+              </Field>
+              {perfFields}
+            </>
+          )}
           {isIfr && (
             <Field label="경로 유형">
               <TabList selectedValue={routeForm.routeType} onTabSelect={(_, d) => updateRouteField('routeType', d.value)}>
@@ -858,17 +889,33 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
 
         {/* IFR: 브리핑 조건 → (검색 후)결과. VFR: (검색 후)경유점 → 브리핑 조건 → 결과(껍데기라도 항상). */}
         {isIfr ? (
-          <>{briefingCondSection}{routeResult && resultSummarySection}</>
+          <>{routeResult && resultSummarySection}</>
         ) : (
           <>{vfrWaypointSection}{briefingCondSection}{resultSummarySection}</>
         )}
 
         {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
         {crossSectionBlock}
-        <Button appearance="primary" type="button" className={s.full} onClick={handleGenerateBriefing} disabled={!routeResult || briefingLoading}>
-          {briefingLoading ? '브리핑 생성 중...' : '브리핑 생성'}
-        </Button>
-      </form>
+      </form>}
+      {workflowStep === 'compare' && (
+        <div className={s.form}>
+          <RouteAlternativesStep candidates={routeCandidates} selectedCandidateId={selectedCandidateId} routeExposure={routeExposure} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteCandidate} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} />
+        </div>
+      )}
+      {workflowStep === 'altitude' && (
+        <div className={s.form}>
+          <Field label="계획 순항고도 (ft)"><Input className={s.ctrl} type="number" min="500" max="60000" step="500" value={altitudeDraftFt} placeholder="예: 9,000" onChange={(_, d) => setAltitudeDraft(d.value)} /></Field>
+          <Button appearance="primary" type="button" className={s.full} onClick={startAltitudeComparison} disabled={altitudeComparisonLoading}>고도 비교</Button>
+          {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} profileOpen={verticalProfileWindowOpen} onShowProfile={() => setVerticalProfileWindowOpen(true)} /> : <div className="rb-step-actions"><button type="button" className="route-check-secondary-button" onClick={goBackWorkflow}>이전 단계</button><p className="rb-alternatives-status">계획 순항고도를 입력한 뒤 고도 비교를 선택하세요.</p></div>}
+        </div>
+      )}
+      {workflowStep === 'briefing' && (
+        <div className={s.form}>
+          <div className={s.summary}><span>{`${routeForm.departureAirport} → ${routeForm.arrivalAirport}`}</span><span>{`${Math.round(Number(cruiseAltitudeFt) || 0)} ft · ETD ${formatBriefingTime(etd, tz)} · ETA ${eta ? formatBriefingTime(eta, tz) : '—'}`}</span></div>
+          {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
+          <div className="rb-step-actions"><Button appearance="secondary" type="button" onClick={goBackWorkflow}>이전 단계</Button><Button appearance="primary" type="button" onClick={handleGenerateBriefing} disabled={briefingLoading}>{briefingLoading ? '브리핑 생성 중...' : '브리핑 생성'}</Button></div>
+        </div>
+      )}
     </>
   )
 
@@ -879,15 +926,15 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
 
   const stepNav = (
     <div className="rb-steps">
-      {[[1, '경로'], [2, '성능·시간']].map(([n, label]) => (
-        <button key={n} type="button" className={`rb-step${mobileStep === n ? ' is-active' : ''}`} onClick={() => setMobileStep(n)}>{label}</button>
+      {[['settings', '비행 설정'], ['compare', '경로 비교'], ['altitude', '고도 비교'], ['briefing', '브리핑']].map(([step, label]) => (
+        <button key={step} type="button" className={`rb-step${workflowStep === step ? ' is-active' : ''}${!workflowAvailability[step] ? ' is-disabled' : ''}`} disabled={!workflowAvailability[step]} onClick={() => goToWorkflowStep(step)}>{label}</button>
       ))}
     </div>
   )
 
   const mobileBody = (
     <form id="rb-mobile-form" className="route-check-form rb-mobile" onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
-      {mobileStep === 1 && (
+      {workflowStep === 'settings' && (
         <>
           <div className="route-type-segmented">
             <button type="button" className={`route-type-seg${isIfr ? ' is-active' : ''}`} onClick={() => switchFlightRule('IFR')}>IFR</button>
@@ -906,9 +953,10 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               <label className="rb-altn">{'교체 공항'}
                 <select value={alternateAirport} onChange={(e) => setAlternateAirport(e.target.value)}>
                   <option value="">{'-- 없음 --'}</option>
-                  {KNOWN_AIRPORTS.filter((ap) => ap !== routeForm.departureAirport && ap !== routeForm.arrivalAirport).map((ap) => <option key={ap} value={ap}>{ap}</option>)}
+                  {allAirportOptions.filter((airport) => airport.value !== routeForm.departureAirport && airport.value !== routeForm.arrivalAirport).map((airport) => <option key={airport.value} value={airport.value}>{airport.value}</option>)}
                 </select>
               </label>
+              {isIfr && perfFields}
               {isIfr && (
                 <div className="route-type-segmented">
                   {[['ALL', '전체'], ['RNAV', 'RNAV'], ['ATS', 'ATS']].map(([val, lbl]) => (
@@ -944,12 +992,18 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           {routePreview}
         </>
       )}
-      {mobileStep === 2 && (
+      {workflowStep === 'compare' && (
+        <RouteAlternativesStep candidates={routeCandidates} selectedCandidateId={selectedCandidateId} routeExposure={routeExposure} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteCandidate} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} />
+      )}
+      {workflowStep === 'altitude' && (
         <>
-          {perfTimeBlock}
-          {crossSectionBlock}
+          <Field label="계획 순항고도 (ft)"><Input className={s.ctrl} type="number" min="500" max="60000" step="500" value={altitudeDraftFt} placeholder="예: 9,000" onChange={(_, d) => setAltitudeDraft(d.value)} /></Field>
+          <Button appearance="primary" type="button" className={s.full} onClick={startAltitudeComparison} disabled={altitudeComparisonLoading}>고도 비교</Button>
+          {summaryStrip}
+          {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} profileOpen={verticalProfileWindowOpen} onShowProfile={() => setVerticalProfileWindowOpen(true)} /> : <div className="rb-step-actions"><button type="button" className="route-check-secondary-button" onClick={goBackWorkflow}>이전 단계</button><p className="rb-alternatives-status">계획 순항고도를 입력한 뒤 고도 비교를 선택하세요.</p></div>}
         </>
       )}
+      {workflowStep === 'briefing' && <>{summaryStrip}{briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}</>}
     </form>
   )
 
@@ -958,23 +1012,20 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // Progressive footer: before a route exists, the primary action is 검색
   // (+자동검색/초기화). Once a route is found, the footer's primary action
   // advances to 브리핑 생성 (the final deliverable) with 초기화 alongside.
-  const mobileFooter = mobileStep === 1 ? (
+  const mobileFooter = workflowStep === 'settings' ? (
     <div className="route-check-actions is-step">
       {(depChosen || arrChosen || routeResult) && (
         <button type="button" className="route-check-secondary-button" onClick={armOrReset} disabled={routeLoading}>{resetArmed ? '초기화 확인' : '초기화'}</button>
       )}
-      {routeResult ? (
-        <button type="button" className="route-check-search-button" onClick={() => setMobileStep(2)}>{'다음'}</button>
-      ) : isIfr ? (
+      {isIfr ? (
         <button type="button" className="route-check-search-button" onClick={() => handleRouteSearch({ preventDefault() {} })} disabled={routeLoading || !canSearch}>{routeLoading ? '검색 중...' : '경로 검색'}</button>
       ) : null}
     </div>
-  ) : (
+  ) : workflowStep === 'briefing' ? (
     <div className="route-check-actions is-step">
-      <button type="button" className="route-check-secondary-button" onClick={() => setMobileStep(1)}>{'이전'}</button>
       <button type="button" className="route-check-search-button" onClick={handleGenerateBriefing} disabled={!routeResult || briefingLoading}>{briefingLoading ? '브리핑 생성 중...' : '브리핑 생성'}</button>
     </div>
-  )
+  ) : null
 
   // Centered peek summary shown when the sheet is collapsed (map revealed).
   const depLabel = routeForm.departureAirport === FIR_IN_AIRPORT

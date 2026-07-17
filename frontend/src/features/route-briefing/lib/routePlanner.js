@@ -218,7 +218,7 @@ function isAllowedRouteDirection(segment, routes, routeDirectionMetadata, fromId
   return actualDirection === allowedDirection
 }
 
-function findShortestPath(routeGraph, routeSegmentsById, routes, routeDirectionMetadata, startId, endId, routeType) {
+function findShortestPath(routeGraph, routeSegmentsById, routes, routeDirectionMetadata, startId, endId, routeType, blockedSegmentIds = new Set()) {
   const distances = new Map([[startId, 0]])
   const previous = new Map()
   const visited = new Set()
@@ -242,6 +242,7 @@ function findShortestPath(routeGraph, routeSegmentsById, routes, routeDirectionM
       const segment = routeSegmentsById[link.segmentId]
 
       if (
+        blockedSegmentIds.has(link.segmentId) ||
         !segment ||
         !isAllowedRouteType(segment, routeType) ||
         !isAllowedRouteDirection(segment, routes, routeDirectionMetadata, current.id, link.to)
@@ -434,13 +435,30 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
     throw new Error(`No ${selectedRouteType} route path found from ${entryId} to ${exitId}`)
   }
 
+  return buildIfrRouteResult({
+    navdata,
+    departureAirport: departureId,
+    entryFix: entryId,
+    exitFix: exitId,
+    arrivalAirport: arrivalId,
+    routeType: selectedRouteType,
+    path,
+  })
+}
+
+function buildIfrRouteResult({ navdata, departureAirport, entryFix, exitFix, arrivalAirport, routeType, path }) {
+  const isFirExitRoute = arrivalAirport === FIR_EXIT_AIRPORT
+  const isFirInRoute = departureAirport === FIR_IN_AIRPORT
+  const departure = isFirInRoute ? null : navdata.airports[departureAirport]
+  const arrival = isFirExitRoute ? null : navdata.airports[arrivalAirport]
   const segments = path.segmentIds.map((id) => navdata.routeSegmentsById[id])
+  const terminalPoint = isFirExitRoute ? navdata.navpoints[exitFix] : arrival
+  const departurePoint = isFirInRoute ? navdata.navpoints[entryFix] : departure
+  const terminalId = isFirExitRoute ? exitFix : arrivalAirport
+  const departureLabel = isFirInRoute ? entryFix : departureAirport
+
   const routeIds = [...new Set(segments.map((segment) => segment.routeId))]
   const routeTypes = [...new Set(segments.map((segment) => segment.routeType))]
-  const terminalPoint = isFirExitRoute ? exit : arrival
-  const terminalId = isFirExitRoute ? exitId : arrivalId
-  const departurePoint = isFirInRoute ? entry : departure
-  const departureLabel = isFirInRoute ? entryId : departureId
 
   // 총거리 = 출발지→진입지점(SID 구간) + 항로 구간 + 이탈지점→도착지(STAR 구간, 직선 근사).
   // SID 최적 선택은 항로 구간만 보면 엉뚱한 방향(예: 서쪽 진입지점)을 고를 수 있어 총거리로 순위.
@@ -454,9 +472,9 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
     flightRule: 'IFR',
     departureAirport: departureLabel,
     arrivalAirport: terminalId,
-    entryFix: entryId,
-    exitFix: exitId,
-    routeType: selectedRouteType,
+    entryFix,
+    exitFix,
+    routeType,
     distanceNm: path.distanceNm,
     totalDistanceNm,
     navpointIds: path.navpointIds,
@@ -466,6 +484,67 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
     displaySequence: buildRouteDisplaySequence(departureLabel, terminalId, path, segments),
     previewGeojson: buildPreviewGeometry(departurePoint, terminalPoint, navdata.navpoints, path, segments),
   }
+}
+
+function overlapsInterval(segment, interval) {
+  return Number.isFinite(segment?.startNm) && Number.isFinite(segment?.endNm)
+    && Number.isFinite(interval?.startNm) && Number.isFinite(interval?.endNm)
+    && segment.startNm <= interval.endNm && interval.startNm <= segment.endNm
+}
+
+// ponytail: one blocked segment per rerun, not a k-shortest-path engine; replace here if route diversity needs to grow.
+export async function buildRouteAlternatives({ departureAirport, entryFix, exitFix, arrivalAirport, routeType, triggerIntervals, baselineRoute, routeModel, navdata: injectedNavdata = null }) {
+  const navdata = injectedNavdata ?? await loadNavdata()
+  const rangesBySegmentId = new Map((routeModel?.enRouteSegments ?? []).map((segment) => [segment.id, segment]))
+  const blockedIds = new Set(
+    (baselineRoute?.segments ?? [])
+      .filter((segment) => (triggerIntervals ?? []).some((interval) => overlapsInterval(rangesBySegmentId.get(segment.id), interval)))
+      .map((segment) => segment.id),
+  )
+  const base = { id: 'base', routeResult: baselineRoute, addedDistanceNm: 0, changedDistanceNm: 0 }
+  if (blockedIds.size === 0) return [base]
+
+  const baselineSegmentIds = new Set((baselineRoute?.segments ?? []).map((segment) => segment.id))
+  // ponytail: test-only detour ceiling (2,000 NM / 2,000%); restore 50 NM / 25% after candidate validation.
+  const maxAddedDistanceNm = Math.min(2000, Math.max(30, Number(baselineRoute?.distanceNm || 0) * 20))
+  const minChangedDistanceNm = Math.max(15, Number(baselineRoute?.distanceNm || 0) * 0.20)
+  const candidates = []
+  const seen = new Set([Array.from(baselineSegmentIds).join('|')])
+
+  for (const segmentId of blockedIds) {
+    const path = findShortestPath(
+      navdata.routeGraph,
+      navdata.routeSegmentsById,
+      navdata.routes,
+      navdata.routeDirectionMetadata,
+      normalizeIdent(entryFix),
+      normalizeIdent(exitFix),
+      routeType ?? 'ALL',
+      new Set([segmentId]),
+    )
+    if (!path) continue
+    const routeResult = buildIfrRouteResult({
+      navdata,
+      departureAirport: normalizeIdent(departureAirport),
+      entryFix: normalizeIdent(entryFix),
+      exitFix: normalizeIdent(exitFix),
+      arrivalAirport: normalizeIdent(arrivalAirport),
+      routeType: routeType ?? 'ALL',
+      path,
+    })
+    const key = path.segmentIds.join('|')
+    const changedDistanceNm = Number(routeResult.segments
+      .filter((segment) => !baselineSegmentIds.has(segment.id))
+      .reduce((total, segment) => total + Number(segment.distanceNm || 0), 0)
+      .toFixed(2))
+    const addedDistanceNm = Number((routeResult.distanceNm - Number(baselineRoute?.distanceNm || 0)).toFixed(2))
+    if (seen.has(key) || addedDistanceNm > maxAddedDistanceNm || changedDistanceNm < minChangedDistanceNm) continue
+    seen.add(key)
+    candidates.push({ routeResult, addedDistanceNm, changedDistanceNm })
+  }
+
+  candidates.sort((a, b) => a.addedDistanceNm - b.addedDistanceNm)
+  return [base, ...candidates.slice(0, 3).map((candidate, index) => ({ ...candidate, id: `alt-${index + 1}` }))]
 }
 
 export async function canBuildBriefingRoutePath({ entryFix, exitFix, routeType }) {

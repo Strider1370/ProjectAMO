@@ -320,6 +320,8 @@ export function buildRoutePreviewModel(routeState) {
   const {
     routeForm,
     routeResult,
+    routeCandidates,
+    selectedCandidateId,
     vfrWaypoints,
     selectedSid,
     selectedStar,
@@ -335,6 +337,8 @@ export function buildRoutePreviewModel(routeState) {
 
   return {
     routeResult,
+    routeCandidates,
+    selectedCandidateId,
     vfrWaypoints,
     selectedSid,
     selectedStar,

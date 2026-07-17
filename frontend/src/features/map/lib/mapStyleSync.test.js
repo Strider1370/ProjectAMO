@@ -9,6 +9,7 @@ import {
 import { BASE_MAP_LAYER_IDS, BASE_MAP_SOURCE_IDS } from './baseMapLayers.js'
 import { WEATHER_OVERLAY_LAYER_IDS, WEATHER_OVERLAY_SOURCE_IDS } from '../../weather-overlays/lib/weatherOverlayLayers.js'
 import { ROUTE_PREVIEW_LAYER_IDS, ROUTE_PREVIEW_SOURCE_IDS } from '../../route-briefing/lib/routePreviewSync.js'
+import { ROUTE_CANDIDATE_LINE, ROUTE_CANDIDATE_LINE_HIT } from '../../route-briefing/lib/routePreview.js'
 import { ADSB_LAYER_IDS, ADSB_SOURCE_IDS } from '../../aviation-layers/addAdsbLayer.js'
 
 function createMapMock() {
@@ -72,6 +73,11 @@ test('feature sync modules export non-empty source and layer ownership lists', (
     assert.ok(ids.length > 0)
     ids.forEach((id) => assert.equal(typeof id, 'string'))
   })
+})
+
+test('route candidate layers are cleaned up on style reload', () => {
+  assert.ok(ROUTE_PREVIEW_LAYER_IDS.includes(ROUTE_CANDIDATE_LINE))
+  assert.ok(ROUTE_PREVIEW_LAYER_IDS.includes(ROUTE_CANDIDATE_LINE_HIT))
 })
 
 test('cleanupAll runs every cleanup function', () => {

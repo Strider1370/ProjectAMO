@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { composeBriefing } from '../src/briefing/briefing-composer.js'
+import http from 'node:http'
 
 const poly = { type:'Polygon', coordinates: [[[125,32],[128,32],[128,35],[125,35],[125,32]]] }
 const request = {
@@ -31,4 +32,26 @@ test('integration: 3D briefing payload is internally consistent', () => {
   assert.equal(b.sections.enroute.encounters[0].code, 'SEV_ICE')
   assert.equal(b.sections.enroute.plannedCruiseAltitudeFt, 9000)
   assert.equal(b.sections.current.airports.length, 3)
+})
+
+test('route exposure endpoint validates geometry and returns its model', async () => {
+  process.env.NODE_ENV = 'test'
+  const { app } = await import(`../server.js?route-exposure-test=${Date.now()}`)
+  const server = await new Promise((resolve) => {
+    const instance = http.createServer(app)
+    instance.listen(0, '127.0.0.1', () => resolve(instance))
+  })
+  try {
+    const baseUrl = `http://127.0.0.1:${server.address().port}`
+    const missing = await fetch(`${baseUrl}/api/briefing/route-exposure`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    assert.equal(missing.status, 400)
+    const valid = await fetch(`${baseUrl}/api/briefing/route-exposure`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routeGeometry: { type: 'LineString', coordinates: [[126, 37], [127, 38]] } }),
+    })
+    assert.equal(valid.status, 200)
+    assert.equal(typeof (await valid.json()).trigger, 'string')
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
+  }
 })

@@ -1,6 +1,8 @@
 export const ROUTE_PREVIEW_SOURCE = 'briefing-route-preview'
 export const ROUTE_PREVIEW_LINE = 'briefing-route-preview-line'
 export const ROUTE_PREVIEW_LINE_HIT = 'briefing-route-preview-line-hit'
+export const ROUTE_CANDIDATE_LINE = 'briefing-route-candidate-line'
+export const ROUTE_CANDIDATE_LINE_HIT = 'briefing-route-candidate-line-hit'
 export const ROUTE_PREVIEW_POINT = 'briefing-route-preview-point'
 export const VFR_WP_CIRCLE = 'vfr-wp-circle'
 export const VFR_WP_LABEL = 'vfr-wp-label'
@@ -188,6 +190,26 @@ export function addRoutePreviewLayers(map) {
       id: ROUTE_PREVIEW_LINE, type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
       filter: ['==', ['get', 'role'], 'route-preview-line'],
       paint: { 'line-color': '#f97316', 'line-width': 4, 'line-opacity': 0.9 },
+    })
+  }
+  if (!map.getLayer(ROUTE_CANDIDATE_LINE_HIT)) {
+    map.addLayer({
+      id: ROUTE_CANDIDATE_LINE_HIT, type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'route-candidate-line'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#000', 'line-opacity': 0, 'line-width': 20 },
+    })
+  }
+  if (!map.getLayer(ROUTE_CANDIDATE_LINE)) {
+    map.addLayer({
+      id: ROUTE_CANDIDATE_LINE, type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'route-candidate-line'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['case', ['boolean', ['get', 'selected'], false], '#334155', '#64748b'],
+        'line-width': ['case', ['boolean', ['get', 'selected'], false], 5, 3],
+        'line-opacity': ['case', ['boolean', ['get', 'selected'], false], 1, 0.6],
+      },
     })
   }
   if (!map.getLayer(ROUTE_PREVIEW_POINT)) {

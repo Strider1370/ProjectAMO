@@ -10,11 +10,19 @@ export function buildVerticalProfile(payload, terrainSampler) {
   )
   const terrainResult = terrainSampler.sampleAxis(axis)
   const flightPlan = buildFlightPlanProfile(payload, axis, terrainResult)
+  const candidateProfiles = [...new Set(payload.candidateCruiseAltitudesFt ?? [])]
+    .map(Number)
+    .filter((altitudeFt) => Number.isFinite(altitudeFt) && altitudeFt > 0)
+    .map((altitudeFt) => buildFlightPlanProfile({
+      ...payload,
+      plannedCruiseAltitudeFt: altitudeFt,
+    }, axis, terrainResult))
 
   return {
     axis,
     terrain: terrainResult.terrain,
     flightPlan,
+    candidateProfiles,
     markers: buildProfileMarkers(payload),
     layers: {},
     warnings: terrainResult.warnings,

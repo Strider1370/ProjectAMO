@@ -25,3 +25,11 @@ export function fetchRouteBriefing(payload) {
   return postJson('/api/route-briefing', payload)
 }
 
+export function fetchRouteExposure(payload) {
+  return postJson('/api/briefing/route-exposure', payload)
+}
+
+export function fetchAltitudeComparison(payload) {
+  return postJson('/api/briefing/altitudes', payload)
+}
+

@@ -42,6 +42,20 @@ test('routeIntersectsGeometry: MultiPolygon supported', () => {
   const route = { type:'LineString', coordinates: [[5,5],[5,6]] }
   assert.equal(routeIntersectsGeometry(route, multi), true)
 })
+
+test('routeIntervalInGeometry: documents the sample-only limits used by route exposure', () => {
+  const betweenSamples = { samples: [{ distanceNm: 0, lon: 0, lat: 0 }, { distanceNm: 2, lon: 2, lat: 0 }] }
+  const thinBetween = { type: 'Polygon', coordinates: [[[0.9, -1], [1.1, -1], [1.1, 1], [0.9, 1], [0.9, -1]]] }
+  const hole = { type: 'Polygon', coordinates: [[[0, -1], [2, -1], [2, 1], [0, 1], [0, -1]], [[0.5, -0.5], [1.5, -0.5], [1.5, 0.5], [0.5, 0.5], [0.5, -0.5]]] }
+  const multi = { type: 'MultiPolygon', coordinates: [thinBetween.coordinates, [[[1.9, -1], [2.1, -1], [2.1, 1], [1.9, 1], [1.9, -1]]] ] }
+  const narrowAtSample = { type: 'Polygon', coordinates: [[[0.99, -0.011], [1.01, -0.011], [1.01, 0.011], [0.99, 0.011], [0.99, -0.011]]] }
+  const withMiddleSample = { samples: [...betweenSamples.samples, { distanceNm: 1, lon: 1, lat: 0 }] }
+
+  assert.equal(routeIntervalInGeometry(betweenSamples, thinBetween).entered, false)
+  assert.equal(routeIntervalInGeometry(withMiddleSample, hole).entered, true)
+  assert.equal(routeIntervalInGeometry(betweenSamples, multi).endNm, 2)
+  assert.equal(routeIntervalInGeometry(withMiddleSample, narrowAtSample).entered, true)
+})
 test('timeWindowsOverlap: overlapping', () => {
   assert.equal(timeWindowsOverlap(
     '2026-06-26T09:00:00Z','2026-06-26T10:30:00Z',

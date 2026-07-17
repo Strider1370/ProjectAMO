@@ -66,12 +66,14 @@ export function buildVerticalProfileRequest({
   selectedIap,
   vfrWaypoints,
   plannedCruiseAltitudeFt,
+  candidateCruiseAltitudesFt = [],
 }) {
   return {
     flightRule: routeResult?.flightRule,
     routeGeometry,
     routeModel: routeModel ?? buildCommonRouteModel({ routeGeometry, routeResult }),
     plannedCruiseAltitudeFt,
+    candidateCruiseAltitudesFt,
     procedureContext: buildProcedureContextPayload({ routeResult, selectedSid, selectedStar, selectedIap }),
     vfrWaypoints: routeResult?.flightRule === 'VFR' ? vfrWaypoints : undefined,
     routeMarkers: buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints }),

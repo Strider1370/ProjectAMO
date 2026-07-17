@@ -1475,6 +1475,8 @@ const MapView = forwardRef(function MapView({
                   airports={airports}
                   aviationVisibility={aviationVisibility}
                   onToggleAviation={toggleAviation}
+                  metVisibility={metVisibility}
+                  onToggleMet={toggleMet}
                   onClose={onClosePanel}
                 />
               </Suspense>
@@ -1529,6 +1531,8 @@ const MapView = forwardRef(function MapView({
               ...sigmetItems.map((item) => ({ ...item, kind: 'sigmet' })),
               ...airmetItems.map((item) => ({ ...item, kind: 'airmet' })),
             ]}
+            selectedCandidateAltitudeFt={routeBriefing.state.cruiseAltitudeFt}
+            placement={routeBriefing.state.workflowStep === 'altitude' && !isMobile ? 'side' : 'bottom'}
           />
         </Suspense>
       )}

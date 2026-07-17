@@ -50,6 +50,10 @@ import {
 } from './src/processors/kim-nwp-store.js'
 import { readKtgLatest, readKtgIndex, readKtgCoords, readKtgGridSafe } from './src/processors/ktg-store.js'
 import { loadRouteCrossSection } from './src/briefing/enroute-cross-section.js'
+import { buildRouteExposure } from './src/briefing/route-exposure.js'
+import { attachActiveAipConstraints } from './src/briefing/aip-airway-constraints.js'
+import { buildAltitudeCandidates, buildAltitudeWeatherComparison } from './src/briefing/altitude-weather-comparison.js'
+import { buildRouteAxis } from './src/briefing/route-axis.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // libvips(sharp) 연산 캐시 끔 — 레이더/위성/오버레이 PNG 생성 시 네이티브 메모리가 안 줄고 쌓이는 것 방지. #메모리
@@ -894,6 +898,65 @@ app.post('/api/route-briefing', (req, res) => {
     res.json(briefing)
   } catch (err) {
     res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/briefing/route-exposure', (req, res) => {
+  const body = req.body || {}
+  if (!body.routeGeometry?.coordinates?.length) {
+    return res.status(400).json({ error: 'routeGeometry required' })
+  }
+  try {
+    setNoStore(res)
+    res.json(buildRouteExposure({
+      ...body,
+      sigmet: store.getCached('sigmet'),
+      sigmetOverseas: store.getCached('sigmet_overseas'),
+      airmet: store.getCached('airmet'),
+      lightning: store.getCached('lightning'),
+    }))
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'route exposure failed' })
+  }
+})
+
+app.post('/api/briefing/altitudes', (req, res) => {
+  const body = req.body || {}
+  if (!body.routeGeometry?.coordinates?.length || !body.routeModel) {
+    return res.status(400).json({ error: 'routeGeometry and routeModel required' })
+  }
+  try {
+    const axis = buildRouteAxis(body.routeGeometry)
+    const aip = attachActiveAipConstraints({ dataRoot: DATA_ROOT, routeModel: body.routeModel })
+    const crossSectionResult = loadRouteCrossSection({ root: DATA_ROOT, routeGeometry: body.routeGeometry, body })
+    const candidateResult = buildAltitudeCandidates({
+      routeSegments: aip.segments,
+      plannedCruiseAltitudeFt: body.plannedCruiseAltitudeFt,
+      crossSection: crossSectionResult.crossSection,
+    })
+    const hazards = [
+      ...(store.getCached('sigmet')?.items ?? []).map((item) => ({ source: 'SIGMET', item })),
+      ...(store.getCached('sigmet_overseas')?.items ?? []).map((item) => ({ source: 'SIGMET', item })),
+      ...(store.getCached('airmet')?.items ?? []).map((item) => ({ source: 'AIRMET', item })),
+    ]
+    const rows = buildAltitudeWeatherComparison({
+      candidates: candidateResult.candidates,
+      crossSection: crossSectionResult.crossSection,
+      turbulence: crossSectionResult.turbulence,
+      axis,
+      hazards,
+      notams: store.getCached('notam')?.items ?? [],
+      etd: body.etd,
+      eta: body.eta,
+    })
+    setNoStore(res)
+    res.json({
+      constraints: { ...candidateResult.constraints, provenance: aip.provenance },
+      rows,
+      crossSectionRun: crossSectionResult.crossSection?.run ?? null,
+    })
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'altitude comparison failed' })
   }
 })
 

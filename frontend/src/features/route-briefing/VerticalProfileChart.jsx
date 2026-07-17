@@ -185,7 +185,13 @@ function WindBarb({ cx, cy, u, v }) {
   )
 }
 
-export default function VerticalProfileChart({ profile, crossSection = null, layers = {}, advisories = [] }) {
+export default function VerticalProfileChart({
+  profile,
+  crossSection = null,
+  layers = {},
+  advisories = [],
+  selectedCandidateAltitudeFt = null,
+}) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
   const [containerWidth, setContainerWidth] = useState(0)
@@ -204,6 +210,7 @@ export default function VerticalProfileChart({ profile, crossSection = null, lay
   const cruiseAltitudeFt = profile?.flightPlan?.plannedCruiseAltitudeFt
   const markers = profile?.markers ?? []
   const flightProfile = profile?.flightPlan?.profile ?? null
+  const candidateProfiles = profile?.candidateProfiles ?? []
 
   if (samples.length < 2) {
     return (
@@ -244,8 +251,21 @@ export default function VerticalProfileChart({ profile, crossSection = null, lay
   const terrainMaxFt = Math.max(...terrainPoints.map((point) => point.elevationFt), 0)
   const procedurePoints = (flightProfile?.points ?? [])
     .filter((point) => Number.isFinite(point.distanceNm) && Number.isFinite(point.altitudeFt))
-  const procedureMaxFt = procedurePoints.length > 0 ? Math.max(...procedurePoints.map((point) => point.altitudeFt)) : 0
-  const profileCeilingFt = Math.max(terrainMaxFt, cruiseAltitudeFt || 0, procedureMaxFt)
+  const candidateProfileLines = candidateProfiles
+    .map((candidate) => ({
+      altitudeFt: candidate?.plannedCruiseAltitudeFt,
+      points: (candidate?.profile?.points ?? [])
+        .filter((point) => Number.isFinite(point.distanceNm) && Number.isFinite(point.altitudeFt)),
+    }))
+    .filter((candidate) => candidate.points.length > 1)
+  const allFlightProfiles = candidateProfileLines.length > 0
+    ? candidateProfileLines
+    : [{ altitudeFt: cruiseAltitudeFt, points: procedurePoints }]
+  const profileCeilingFt = Math.max(
+    terrainMaxFt,
+    ...allFlightProfiles.flatMap((candidate) => candidate.points.map((point) => point.altitudeFt)),
+    0,
+  )
   const headroomFt = Number.isFinite(cruiseAltitudeFt) ? getAltitudeHeadroomFt(cruiseAltitudeFt) : 5000
   const yMax = Math.max(1000, Math.ceil((profileCeilingFt + headroomFt) / 1000) * 1000)
   const xFor = (distanceNm) => padding.left + (distanceNm / maxDistance) * plotWidth
@@ -253,24 +273,27 @@ export default function VerticalProfileChart({ profile, crossSection = null, lay
   const terrainSvgPoints = terrainPoints.map((point) => ({ x: xFor(point.distanceNm), y: yFor(point.elevationFt) }))
   const terrainLine = buildPath(terrainSvgPoints)
   const terrainArea = `${terrainLine} L ${xFor(terrainPoints[terrainPoints.length - 1].distanceNm).toFixed(1)} ${yFor(0).toFixed(1)} L ${xFor(terrainPoints[0].distanceNm).toFixed(1)} ${yFor(0).toFixed(1)} Z`
-  const procedureLine = buildPath(procedurePoints.map((point) => ({ x: xFor(point.distanceNm), y: yFor(point.altitudeFt) })))
-  const tod = flightProfile?.tod
+  const selectedProfile = candidateProfiles.find((candidate) => candidate.plannedCruiseAltitudeFt === selectedCandidateAltitudeFt)
+    ?? profile.flightPlan
+  const selectedProcedure = selectedProfile?.profile ?? flightProfile
+  const selectedCruiseAltitudeFt = selectedProfile?.plannedCruiseAltitudeFt ?? cruiseAltitudeFt
+  const tod = selectedProcedure?.tod
   const todMarker = tod && Number.isFinite(tod.distanceNm) && tod.distanceNm >= 0 && tod.distanceNm <= maxDistance
-    ? { ...tod, x: xFor(tod.distanceNm), y: yFor(cruiseAltitudeFt) }
+    ? { ...tod, x: xFor(tod.distanceNm), y: yFor(selectedCruiseAltitudeFt) }
     : null
   const todOffsetText = todMarker && Number.isFinite(todMarker.distanceFromEnrouteEndNm)
     ? `TOD: ${todMarker.referenceFixLabel ?? 'ENROUTE'} ${formatNm(todMarker.distanceFromEnrouteEndNm)} ${todMarker.distanceFromEnrouteEndNm >= 0 ? '\uc804' : '\ud6c4'}`
     : null
-  const climbGradient = flightProfile?.model?.climbGradientFtPerNm
-  const descentGradient = flightProfile?.model?.descentGradientFtPerNm
+  const climbGradient = selectedProcedure?.model?.climbGradientFtPerNm
+  const descentGradient = selectedProcedure?.model?.descentGradientFtPerNm
   const todLabelY = todMarker ? Math.max(padding.top + 14, todMarker.y - 30) : 0
   const todArrowTopY = todMarker ? Math.max(todLabelY + 7, todMarker.y - 21) : 0
   const todArrowTipY = todMarker ? Math.min(todMarker.y - 7, todArrowTopY + 10) : 0
   const yTickInterval = yMax <= 10000 ? 2000 : yMax <= 20000 ? 3000 : yMax <= 40000 ? 5000 : 10000
   const yTicks = Array.from({ length: Math.floor(yMax / yTickInterval) + 1 }, (_, i) => i * yTickInterval)
-    .filter(v => v <= yMax && (!Number.isFinite(cruiseAltitudeFt) || Math.abs(v - cruiseAltitudeFt) > yTickInterval * 0.4))
-  const cruiseTick = Number.isFinite(cruiseAltitudeFt) && cruiseAltitudeFt > 0 && cruiseAltitudeFt < yMax
-    ? cruiseAltitudeFt
+    .filter(v => v <= yMax && (!Number.isFinite(selectedCruiseAltitudeFt) || Math.abs(v - selectedCruiseAltitudeFt) > yTickInterval * 0.4))
+  const cruiseTick = Number.isFinite(selectedCruiseAltitudeFt) && selectedCruiseAltitudeFt > 0 && selectedCruiseAltitudeFt < yMax
+    ? selectedCruiseAltitudeFt
     : null
   const visibleMarkers = markers
     .filter((marker) => Number.isFinite(marker.distanceNm) && marker.distanceNm >= 0 && marker.distanceNm <= maxDistance)
@@ -446,10 +469,13 @@ export default function VerticalProfileChart({ profile, crossSection = null, lay
           <strong>{formatFt(terrainMaxFt)}</strong>
         </span>
         <span className="vertical-profile-meta-item">
-          <span>{'\uc21c\ud56d\uace0\ub3c4'}</span>
-          <strong>{formatFt(cruiseAltitudeFt)}</strong>
+          <span>{'\uc120\ud0dd \uc21c\ud56d\uace0\ub3c4'}</span>
+          <strong>{formatFt(selectedCruiseAltitudeFt)}</strong>
         </span>
-        {procedurePoints.length > 1 && (
+        {allFlightProfiles.length > 1 && (
+          <span className="vertical-profile-procedure-badge">{'각 후보 고도의 상승·하강 계획선'}</span>
+        )}
+        {allFlightProfiles.length === 1 && procedurePoints.length > 1 && (
           <span className="vertical-profile-procedure-badge">{flightProfile.label}</span>
         )}
         {todOffsetText && (
@@ -559,7 +585,17 @@ export default function VerticalProfileChart({ profile, crossSection = null, lay
         ))}
         <path className="vertical-profile-terrain-area" d={terrainArea} />
         <path className="vertical-profile-terrain-line" d={terrainLine} />
-        {procedureLine && <path className="vertical-profile-procedure-line" d={procedureLine} />}
+        {allFlightProfiles.map((candidate) => {
+          const selected = candidate.altitudeFt === selectedCandidateAltitudeFt
+          const line = buildPath(candidate.points.map((point) => ({ x: xFor(point.distanceNm), y: yFor(point.altitudeFt) })))
+          return line ? (
+            <path
+              key={candidate.altitudeFt}
+              className={`vertical-profile-procedure-line${allFlightProfiles.length > 1 ? ' is-candidate' : ''}${selected ? ' is-selected' : ''}`}
+              d={line}
+            />
+          ) : null
+        })}
         {todMarker && (
           <g>
             <text

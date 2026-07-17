@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fetchVerticalProfile, fetchCrossSection, fetchRouteBriefing } from '../../api/briefingApi.js'
+import { fetchVerticalProfile, fetchCrossSection, fetchRouteBriefing, fetchRouteExposure, fetchAltitudeComparison } from '../../api/briefingApi.js'
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
-import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata } from './lib/routePlanner.js'
+import { buildBriefingRoute, buildRouteAlternatives, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata } from './lib/routePlanner.js'
 import { relabeledWaypoints, calcVfrDistance, findInsertIndex } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
 import { getLastUsed } from './lib/aircraftProfiles.js'
@@ -38,6 +38,14 @@ const IMPORT_TERRAIN_MARGIN_FT = 1000
 export function useRouteBriefing({ activePanel, airports = [], metarData = null }) {
   const [routeForm, setRouteForm] = useState(initialRouteForm)
   const [routeResult, setRouteResult] = useState(null)
+  const [routeCandidates, setRouteCandidates] = useState([])
+  const [selectedCandidateId, setSelectedCandidateId] = useState(null)
+  const [routeExposure, setRouteExposure] = useState(null)
+  const [altitudeComparison, setAltitudeComparison] = useState(null)
+  const [altitudeComparisonLoading, setAltitudeComparisonLoading] = useState(false)
+  const [altitudeComparisonError, setAltitudeComparisonError] = useState(null)
+  const [altitudeDraftFt, setAltitudeDraftFt] = useState('')
+  const [workflowStep, setWorkflowStep] = useState('settings')
   const [routeError, setRouteError] = useState(null)
   const [routeLoading, setRouteLoading] = useState(false)
   const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(() => getLastUsed()?.altitudeFt ?? DEFAULT_CRUISE_ALTITUDE_FT)
@@ -79,6 +87,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const iapRequestRef = useRef(0)
   const sidFilterRequestRef = useRef(0)
   const routeSearchRequestRef = useRef(0)
+  const routeExposureRequestRef = useRef(0)
+  const altitudeComparisonRequestRef = useRef(0)
   const verticalProfileRequestRef = useRef(0)
   const fitBoundsRequestRef = useRef(0)
 
@@ -99,7 +109,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     d.setUTCSeconds(0, 0)
     return d.toISOString().replace('.000Z', 'Z')
   })
-  const [cruiseSpeedKt, setCruiseSpeedKt] = useState(() => getLastUsed()?.tasKt ?? 120)
+  const [tasKt, setTasKt] = useState(() => getLastUsed()?.tasKt ?? 120)
+  const [eta, setEta] = useState(null)
   const [briefing, setBriefing] = useState(null)
   const [briefingLoading, setBriefingLoading] = useState(false)
   const [briefingError, setBriefingError] = useState(null)
@@ -107,19 +118,32 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const routePreviewModel = useMemo(() => buildRoutePreviewModel({
     routeForm,
     routeResult,
+    routeCandidates,
+    selectedCandidateId,
     vfrWaypoints,
     selectedSid,
     selectedStar,
     selectedIap,
     navpointsById,
-  }), [navpointsById, routeForm, routeResult, selectedIap, selectedSid, selectedStar, vfrWaypoints])
+  }), [navpointsById, routeCandidates, routeForm, routeResult, selectedCandidateId, selectedIap, selectedSid, selectedStar, vfrWaypoints])
 
   useEffect(() => { vfrWaypointsRef.current = vfrWaypoints }, [vfrWaypoints])
 
   function clearRouteDisplay() {
     routeSearchRequestRef.current += 1
+    routeExposureRequestRef.current += 1
+    altitudeComparisonRequestRef.current += 1
     verticalProfileRequestRef.current += 1
     setRouteResult(null)
+    setRouteCandidates([])
+    setSelectedCandidateId(null)
+    setRouteExposure(null)
+    setAltitudeComparison(null)
+    setAltitudeComparisonLoading(false)
+    setAltitudeComparisonError(null)
+    setAltitudeDraftFt('')
+    setWorkflowStep('settings')
+    setEta(null)
     setRouteError(null)
     setRouteLoading(false)
     setVerticalProfile(null)
@@ -465,7 +489,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
 
   // Core search by explicit form (so 불러오기 can search the saved form without
   // waiting for a setRouteForm state flush). Returns the result or null.
-  async function runRouteSearch(form) {
+  async function runRouteSearch(form, { deferIfrCommit = false } = {}) {
     const requestId = ++routeSearchRequestRef.current
     setRouteLoading(true)
     setRouteError(null)
@@ -482,7 +506,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         ? await buildVfrRoute(form)
         : await buildBriefingRoute({ ...form, routeType: effectiveRouteType })
       if (requestId !== routeSearchRequestRef.current) return null
-      setRouteResult(result)
+      if (!deferIfrCommit || result.flightRule === 'VFR') setRouteResult(result)
       if (result.flightRule === 'VFR') {
         const initialWaypoints = buildInitialVfrWaypoints(result, airports)
         setVfrWaypoints(initialWaypoints)
@@ -517,7 +541,194 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
 
   async function handleRouteSearch(e) {
     e.preventDefault()
-    return runRouteSearch(routeForm)
+    const result = await runRouteSearch(routeForm, { deferIfrCommit: true })
+    if (!result || result.flightRule !== 'IFR') return result
+
+    const requestId = ++routeExposureRequestRef.current
+    const routeGeometry = result.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry
+    if (!routeGeometry) {
+      setRouteCandidates([{ id: 'base', routeResult: result, routeExposure: { trigger: 'unavailable', hazards: [] }, addedDistanceNm: 0 }])
+      setSelectedCandidateId('base')
+      setRouteResult(result)
+      setRouteExposure({ trigger: 'unavailable', hazards: [] })
+      setWorkflowStep('compare')
+      return result
+    }
+
+    const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: result })
+    const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
+    const searchEta = eta || computeEtaIso(etdIso, result.totalDistanceNm ?? result.distanceNm, tasKt) || null
+    setEta(searchEta)
+
+    try {
+      const baseExposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: searchEta })
+      if (requestId !== routeExposureRequestRef.current) return result
+
+      const baseProcedures = { sid: selectedSid, star: selectedStar, iapKey: selectedIapKey }
+      let candidates = [{ id: 'base', routeResult: result, routeModel, routeExposure: baseExposure, addedDistanceNm: 0, procedures: baseProcedures }]
+      if (baseExposure.trigger === 'ready') {
+        const generated = (await buildRouteAlternatives({
+          departureAirport: routeForm.departureAirport,
+          entryFix: routeForm.entryFix,
+          exitFix: routeForm.exitFix,
+          arrivalAirport: routeForm.arrivalAirport,
+          routeType: effectiveRouteType,
+          triggerIntervals: baseExposure.hazards.flatMap((hazard) => hazard.horizontalExposure?.intervals ?? []),
+          baselineRoute: result,
+          routeModel,
+        })).map((candidate) => ({ ...candidate, procedures: baseProcedures }))
+        const procedureRoutes = KNOWN_AIRPORTS.includes(routeForm.departureAirport) && KNOWN_AIRPORTS.includes(routeForm.arrivalAirport)
+          ? await recommendProcedures({
+            routeForm, sidOptions, starOptions, iapData, metarData, isFirInMode, isFirExitMode, effectiveRouteType,
+            loadOverseasLinks, buildBriefingRoute, includeAll: true,
+          })
+          : []
+        const seen = new Set(generated.map((candidate) => [
+          candidate.routeResult.segments.map((segment) => segment.id).join('|'),
+          baseProcedures.sid?.id ?? '', baseProcedures.star?.id ?? '',
+        ].join('|')))
+        const procedureCandidates = (procedureRoutes ?? [])
+          .filter((candidate) => candidate.entryFix !== result.entryFix || candidate.exitFix !== result.exitFix)
+          .map((candidate) => ({
+            id: `procedure-${candidate.sid?.id ?? 'none'}-${candidate.star?.id ?? 'none'}`,
+            routeResult: candidate.routeResult,
+            addedDistanceNm: Number((candidate.routeResult.distanceNm - result.distanceNm).toFixed(2)),
+            changedDistanceNm: 0,
+            procedures: { sid: candidate.sid, star: candidate.star, iapKey: candidate.iapKey },
+          }))
+          .filter((candidate) => {
+            const key = [
+              candidate.routeResult.segments.map((segment) => segment.id).join('|'),
+              candidate.procedures.sid?.id ?? '', candidate.procedures.star?.id ?? '',
+            ].join('|')
+            if (seen.has(key)) return false
+            seen.add(key)
+            return true
+          })
+        const allCandidates = [generated[0], ...generated.slice(1).concat(procedureCandidates)
+          .sort((a, b) => a.addedDistanceNm - b.addedDistanceNm)]
+        const exposed = await Promise.all(allCandidates.slice(0, 4).map(async (candidate) => {
+          if (candidate.id === 'base') return candidates[0]
+          const candidateGeometry = candidate.routeResult.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry
+          const candidateModel = buildCommonRouteModel({ routeGeometry: candidateGeometry, routeResult: candidate.routeResult })
+          const candidateExposure = await fetchRouteExposure({ routeGeometry: candidateGeometry, routeModel: candidateModel, etd: etdIso, eta: searchEta })
+          return { ...candidate, routeModel: candidateModel, routeExposure: candidateExposure }
+        }))
+        // ponytail: test-only, keep all graph candidates for comparison; restore exposure-based filtering when convection criteria are defined.
+        candidates = exposed
+      }
+      if (requestId !== routeExposureRequestRef.current) return result
+      setRouteCandidates(candidates)
+      setSelectedCandidateId('base')
+      setRouteResult(candidates[0].routeResult)
+      setRouteExposure(baseExposure)
+      setWorkflowStep('compare')
+    } catch (err) {
+      if (requestId !== routeExposureRequestRef.current) return result
+      setRouteCandidates([{ id: 'base', routeResult: result, routeModel, routeExposure: { trigger: 'unavailable', hazards: [] }, addedDistanceNm: 0 }])
+      setSelectedCandidateId('base')
+      setRouteExposure({ trigger: 'unavailable', hazards: [], error: err.message })
+      setWorkflowStep('compare')
+    }
+    return result
+  }
+
+  function selectRouteCandidate(id) {
+    const candidate = routeCandidates.find((item) => item.id === id)
+    if (!candidate) return
+    setSelectedCandidateId(id)
+    setRouteResult(candidate.routeResult)
+    setRouteExposure(candidate.routeExposure)
+    altitudeComparisonRequestRef.current += 1
+    setAltitudeComparison(null)
+    setAltitudeComparisonLoading(false)
+    setAltitudeComparisonError(null)
+    if (candidate.procedures) {
+      setSelectedSid(candidate.procedures.sid ?? null)
+      setSelectedStar(candidate.procedures.star ?? null)
+      setSelectedIapKey(candidate.procedures.iapKey ?? null)
+    }
+    setBriefing(null)
+    setBriefingError(null)
+    setVerticalProfile(null)
+    setCrossSection(null)
+  }
+
+  async function requestAltitudeComparison(plannedAltitudeFt = cruiseAltitudeFt) {
+    const candidate = routeCandidates.find((item) => item.id === selectedCandidateId)
+    const candidateResult = candidate?.routeResult ?? routeResult
+    const routeGeometry = candidateResult?.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry
+    if (!routeGeometry || !candidateResult) return null
+    const requestId = ++altitudeComparisonRequestRef.current
+    const routeModel = candidate?.routeModel ?? buildCommonRouteModel({ routeGeometry, routeResult: candidateResult })
+    const etdIso = Number.isFinite(Date.parse(etd)) ? new Date(etd).toISOString().replace('.000Z', 'Z') : null
+    setAltitudeComparisonLoading(true)
+    setAltitudeComparisonError(null)
+    try {
+      const result = await fetchAltitudeComparison({ routeGeometry, routeModel, plannedCruiseAltitudeFt: plannedAltitudeFt, etd: etdIso, eta: eta || null })
+      if (requestId === altitudeComparisonRequestRef.current) setAltitudeComparison(result)
+      return result
+    } catch (error) {
+      if (requestId === altitudeComparisonRequestRef.current) setAltitudeComparisonError(error.message)
+      return null
+    } finally {
+      if (requestId === altitudeComparisonRequestRef.current) setAltitudeComparisonLoading(false)
+    }
+  }
+
+  async function continueToAltitudeComparison() {
+    if (!selectedCandidateId) return
+    setWorkflowStep('altitude')
+  }
+
+  function setAltitudeDraft(value) {
+    setAltitudeDraftFt(value)
+    altitudeComparisonRequestRef.current += 1
+    setAltitudeComparison(null)
+    setAltitudeComparisonLoading(false)
+    setAltitudeComparisonError(null)
+  }
+
+  async function startAltitudeComparison() {
+    const value = Number(altitudeDraftFt)
+    if (!Number.isFinite(value) || value <= 0) {
+      setAltitudeComparisonError('계획 순항고도를 입력하세요.')
+      return
+    }
+    setCruiseAltitudeFt(value)
+    const comparison = await requestAltitudeComparison(value)
+    const candidateCruiseAltitudesFt = (comparison?.rows ?? [])
+      .map((row) => Number(row.altFt ?? row.altitudeFt))
+      .filter((altitudeFt) => Number.isFinite(altitudeFt) && altitudeFt > 0)
+    await handleVerticalProfileRequest({
+      plannedCruiseAltitudeFt: value,
+      candidateCruiseAltitudesFt,
+      openWindow: true,
+    })
+  }
+
+  function selectCruiseAltitude(value) {
+    setCruiseAltitudeFt(value)
+    setAltitudeDraftFt(value)
+    setBriefing(null)
+    setBriefingError(null)
+  }
+
+  function continueToBriefing() {
+    if (!selectedCandidateId || !Number.isFinite(Date.parse(eta))) return
+    setWorkflowStep('briefing')
+  }
+
+  function goToWorkflowStep(step) {
+    if (!workflowAvailability[step]) return
+    if (step !== 'altitude') setVerticalProfileWindowOpen(false)
+    setWorkflowStep(step)
+  }
+
+  function goBackWorkflow() {
+    const steps = ['settings', 'compare', 'altitude', 'briefing']
+    const previous = steps[steps.indexOf(workflowStep) - 1]
+    if (previous) goToWorkflowStep(previous)
   }
 
   // VFR: 출발·도착이 모두 정해지거나 바뀌면 경로를 자동 생성한다(직선 dep→arr이라 명시적 "검색" 불필요).
@@ -709,7 +920,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     }))
   }
 
-  async function handleVerticalProfileRequest() {
+  async function handleVerticalProfileRequest({
+    plannedCruiseAltitudeFt: requestedAltitudeFt = cruiseAltitudeFt,
+    candidateCruiseAltitudesFt = [],
+    openWindow = true,
+  } = {}) {
     const routeGeometry = getCurrentRouteLineString({
       routeResult,
       vfrWaypoints,
@@ -717,7 +932,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       selectedStar,
       selectedIap,
     })
-    const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt)
+    const plannedCruiseAltitudeFt = Number(requestedAltitudeFt)
 
     if (!routeGeometry) {
       setVerticalProfileError('\uc5f0\uc9c1\ub2e8\uba74\ub3c4\ub97c \uc0dd\uc131\ud560 \uacbd\ub85c\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.')
@@ -742,6 +957,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
           selectedIap,
           vfrWaypoints,
           plannedCruiseAltitudeFt,
+          candidateCruiseAltitudesFt,
         })),
         fetchCrossSection({ routeGeometry }).catch(() => null),
       ])
@@ -749,7 +965,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       setVerticalProfile(profile)
       setCrossSection(cs)
       setVerticalProfileStale(false)
-      setVerticalProfileWindowOpen(true)
+      setVerticalProfileWindowOpen(openWindow)
     } catch (err) {
       if (requestId === verticalProfileRequestRef.current) setVerticalProfileError(err.message)
     } finally {
@@ -834,10 +1050,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   async function handleGenerateBriefing() {
     const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints, selectedSid, selectedStar, selectedIap })
     if (!routeGeometry) { setBriefingError('먼저 경로를 검색하세요.'); return }
-    const distanceNm = plannedDistanceNm
     const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
     const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
-    const etaIso = computeEtaIso(etdIso, distanceNm, cruiseSpeedKt) || etdIso
+    const briefingEta = routeForm.flightRule === 'IFR' ? eta : (eta || computeEtaIso(etdIso, plannedDistanceNm, tasKt) || etdIso)
+    if (!briefingEta || !Number.isFinite(Date.parse(briefingEta))) { setBriefingError('예상 ETA를 입력하세요.'); return }
     setBriefingLoading(true); setBriefingError(null)
     try {
       const result = await fetchRouteBriefing({
@@ -848,7 +1064,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         routeGeometry,
         routeModel,
         etd: etdIso,
-        eta: etaIso,
+        eta: briefingEta,
         plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
       })
       setBriefing(result)
@@ -866,6 +1082,13 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       } catch { /* inline 단면도 optional */ }
     } catch (err) { setBriefingError(err.message) }
     finally { setBriefingLoading(false) }
+  }
+
+  const workflowAvailability = {
+    settings: true,
+    compare: !!routeResult,
+    altitude: !!selectedCandidateId,
+    briefing: !!altitudeComparison && !!selectedCandidateId && Number.isFinite(Date.parse(eta)),
   }
 
   return {
@@ -903,7 +1126,17 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       fitBoundsRequest,
       alternateAirport,
       etd,
-      cruiseSpeedKt,
+      tasKt,
+      eta,
+      routeCandidates,
+      selectedCandidateId,
+      routeExposure,
+      altitudeComparison,
+      altitudeComparisonLoading,
+      altitudeComparisonError,
+      altitudeDraftFt,
+      workflowStep,
+      workflowAvailability,
       briefing,
       briefingLoading,
       briefingError,
@@ -953,7 +1186,16 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       setVfrWaypoints,
       setAlternateAirport,
       setEtd,
-      setCruiseSpeedKt,
+      setTasKt,
+      setEta,
+      selectRouteCandidate,
+      continueToAltitudeComparison,
+      setAltitudeDraft,
+      startAltitudeComparison,
+      selectCruiseAltitude,
+      continueToBriefing,
+      goToWorkflowStep,
+      goBackWorkflow,
       handleGenerateBriefing,
       setBriefing,
     },

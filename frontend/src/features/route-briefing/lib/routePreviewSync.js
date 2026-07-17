@@ -8,6 +8,8 @@ import {
   PROC_WP_LABEL,
   ROUTE_PREVIEW_LINE,
   ROUTE_PREVIEW_LINE_HIT,
+  ROUTE_CANDIDATE_LINE,
+  ROUTE_CANDIDATE_LINE_HIT,
   ROUTE_PREVIEW_POINT,
   ROUTE_PREVIEW_SOURCE,
   VFR_WP_CIRCLE,
@@ -41,6 +43,8 @@ export const ROUTE_PREVIEW_SOURCE_IDS = [
 export const ROUTE_PREVIEW_LAYER_IDS = [
   ROUTE_PREVIEW_LINE,
   ROUTE_PREVIEW_LINE_HIT,
+  ROUTE_CANDIDATE_LINE,
+  ROUTE_CANDIDATE_LINE_HIT,
   ROUTE_PREVIEW_POINT,
   VFR_WP_CIRCLE,
   VFR_WP_LABEL,
@@ -191,9 +195,25 @@ export function clearRouteHighlight(map) {
 export function syncRoutePreviewLayers(map, model) {
   installRoutePreviewLayers(map)
 
-  const { routeResult, selectedSid, selectedStar, selectedIap } = model
+  const { routeResult, routeCandidates = [], selectedCandidateId, selectedSid, selectedStar, selectedIap } = model
   let fitCoordinates = []
-  if (routeResult?.flightRule === 'IFR' && (selectedSid || selectedStar || selectedIap)) {
+  if (routeCandidates.length > 1) {
+    const selectedPreview = routeResult?.previewGeojson?.features?.filter((feature) => feature.properties?.role !== 'route-preview-line') ?? []
+    const candidateFeatures = routeCandidates.flatMap((candidate, index) => {
+      const line = candidate.routeResult?.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')
+      const coordinates = candidate.procedures && line?.geometry?.coordinates?.length > 2
+        ? line.geometry.coordinates.slice(1, -1)
+        : line?.geometry?.coordinates
+      return coordinates?.length > 1 ? [{
+        ...line,
+        geometry: { ...line.geometry, coordinates },
+        properties: { role: 'route-candidate-line', candidateId: candidate.id, selected: candidate.id === selectedCandidateId, kind: index === 0 ? 'base' : 'alternative' },
+      }] : []
+    })
+    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData({ type: 'FeatureCollection', features: [...selectedPreview, ...candidateFeatures] })
+    fitCoordinates = candidateFeatures.flatMap((feature) => feature.geometry.coordinates)
+    map.getSource(PROC_PREVIEW_SOURCE)?.setData(buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap))
+  } else if (routeResult?.flightRule === 'IFR' && (selectedSid || selectedStar || selectedIap)) {
     const augmented = augmentRouteWithProcedures(routeResult.previewGeojson, selectedSid, selectedStar, selectedIap)
     map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(augmented)
     fitCoordinates = augmented.features.flatMap((feature) =>

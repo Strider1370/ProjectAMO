@@ -30,6 +30,16 @@ test('핵심: 총거리가 짧은 진입점을 고른다 (해외 반대편 fix �
   assert.equal(best.exitFix, 'FIXB')
 })
 
+test('includeAll은 각 절차 조합의 경로 결과를 보존한다', async () => {
+  const candidates = await recommendProcedures({
+    ...base,
+    includeAll: true,
+    buildBriefingRoute: async ({ exitFix }) => ({ totalDistanceNm: 300, marker: exitFix }),
+  })
+  assert.equal(candidates.length, 2)
+  assert.equal(candidates[0].routeResult.marker, 'FIXA')
+})
+
 test('모든 경로 구축 실패 → 첫 후보로 폴백(빈 화면 방지)', async () => {
   const best = await recommendProcedures({
     ...base,

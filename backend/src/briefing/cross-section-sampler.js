@@ -48,6 +48,7 @@ export function buildCrossSection({ axis, run, levelIds, loadLevel }) {
 
     const values = samples.map((s) => ({
       distanceNm: s.distanceNm,
+      altFt: field.hgt ? nullableFt(sampleGridAt(grid, field.hgt, s.lon, s.lat)) : null,
       t: field.T ? nullableC(sampleGridAt(grid, field.T, s.lon, s.lat)) : null,
       moistureSpread: null,
       spread: field.spread ? sampleGridAt(grid, field.spread, s.lon, s.lat) : null,
@@ -123,6 +124,10 @@ export function buildKtgCrossSection({ axis, coords, altLevelsFt, loadAltGrid })
 
 function nullableC(kelvin) {
   return Number.isFinite(kelvin) ? Math.round((kelvin - 273.15) * 100) / 100 : null
+}
+
+function nullableFt(meters) {
+  return Number.isFinite(meters) ? Math.round(meters * M_TO_FT) : null
 }
 
 function trackTop(prev, pressure) {

@@ -139,6 +139,18 @@
 
 /* 데스크톱 운항조건 섹션 레이아웃 → Fluent griffel(RouteBriefingPanel.jsx)로 이전, 규칙 삭제 */
 
+.rb-alternatives { display: grid; gap: 8px; }
+.rb-altitude-comparison { display: grid; gap: 8px; }
+.rb-step-actions { display: flex; gap: 8px; }
+.rb-step-actions > * { flex: 1 1 0; }
+.rb-alternatives-status, .rb-alternatives-reason, .rb-alternatives-note { margin: 0; font-size: 13px; color: var(--text-secondary, #475569); }
+.rb-alternative-card { display: grid; gap: 4px; width: 100%; padding: 12px; text-align: left; color: inherit; background: var(--surface, #fff); border: 1px solid var(--border, #cbd5e1); border-radius: 8px; cursor: pointer; }
+.rb-alternative-card.is-selected { border-left: 4px solid #334155; border-color: #334155; }
+.rb-workflow-tabs { display: flex; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border, #cbd5e1); font-size: 13px; color: var(--text-secondary, #475569); }
+.rb-workflow-tabs button { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.rb-workflow-tabs .is-active { color: #334155; font-weight: 700; border-bottom: 2px solid #334155; }
+.rb-workflow-tabs .is-disabled, .rb-step.is-disabled { color: #94a3b8; cursor: not-allowed; }
+
 .route-check-field {
   display: flex;
   flex-direction: column;
@@ -879,6 +891,37 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   font-weight: 700;
 }
 
+@media (min-width: 1280px) {
+  .vertical-profile-window-backdrop.is-side {
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px 0 640px;
+  }
+  .vertical-profile-window.is-side {
+    width: min(1080px, 100%);
+    max-height: min(620px, calc(100vh - 120px));
+    border: 1px solid var(--stroke-1);
+    border-radius: 12px;
+  }
+}
+
+.rb-altitude-profile {
+  margin-top: 16px;
+  border: 1px solid var(--stroke-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rb-altitude-profile h3,
+.rb-altitude-profile > p {
+  margin: 12px 16px 0;
+}
+
+.rb-altitude-profile > p {
+  color: var(--text-2);
+  font-size: 12px;
+}
+
 .vertical-profile-marker-tick {
   stroke: rgba(100, 116, 139, 0.55);
   stroke-width: 1;
@@ -906,6 +949,19 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   stroke-width: 2.5;
   stroke-linejoin: round;
   stroke-linecap: round;
+}
+
+.vertical-profile-procedure-line.is-candidate {
+  opacity: 0.42;
+  stroke: var(--accent);
+  stroke-dasharray: 7 5;
+}
+
+.vertical-profile-procedure-line.is-candidate.is-selected {
+  opacity: 1;
+  stroke: #d97706;
+  stroke-width: 3;
+  stroke-dasharray: none;
 }
 
 .vertical-profile-tod-summary {

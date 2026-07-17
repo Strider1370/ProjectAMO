@@ -84,6 +84,31 @@ test('buildVerticalProfile returns null terrain samples without crashing', () =>
   assert.deepEqual(profile.warnings, ['No terrain elevation for sample 0'])
 })
 
+test('buildVerticalProfile returns a climb and descent profile for each requested candidate altitude', () => {
+  const profile = buildVerticalProfile({
+    flightRule: 'IFR',
+    routeGeometry: { type: 'LineString', coordinates: [[126, 37], [127, 37]] },
+    plannedCruiseAltitudeFt: 9000,
+    candidateCruiseAltitudesFt: [7000, 9000, 11000, 11000],
+    sampleSpacingMeters: 5000,
+  }, {
+    sampleAxis(axis) {
+      return {
+        terrain: { unit: 'm', values: axis.samples.map((sample) => ({ index: sample.index, elevationM: 0 })) },
+        warnings: [],
+      }
+    },
+  })
+
+  assert.deepEqual(profile.candidateProfiles.map((candidate) => candidate.plannedCruiseAltitudeFt), [7000, 9000, 11000])
+  profile.candidateProfiles.forEach((candidate) => {
+    const points = candidate.profile.points
+    assert.equal(points[0].altitudeFt, 0)
+    assert.equal(points.at(-1).altitudeFt, 0)
+    assert.equal(Math.max(...points.map((point) => point.altitudeFt)), candidate.plannedCruiseAltitudeFt)
+  })
+})
+
 test('buildVerticalProfile returns briefing-ready VFR profile and markers', () => {
   const profile = buildVerticalProfile({
     flightRule: 'VFR',

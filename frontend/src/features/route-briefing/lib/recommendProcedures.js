@@ -24,6 +24,7 @@ export async function recommendProcedures({
   effectiveRouteType,
   loadOverseasLinks,
   buildBriefingRoute,
+  includeAll = false,
 }) {
   const isDomesticDeparture = KNOWN_AIRPORTS.includes(routeForm.departureAirport)
   const isDomesticArrival = KNOWN_AIRPORTS.includes(routeForm.arrivalAirport)
@@ -116,6 +117,7 @@ export async function recommendProcedures({
             iapKey,
             entryFix,
             exitFix,
+            routeResult: result,
             // SID 구간까지 포함한 총거리로 순위(항로 구간만 보면 서쪽 진입지점 등 엉뚱한 SID 선택됨)
             distanceNm: Number(result?.totalDistanceNm ?? result?.distanceNm) || Number.POSITIVE_INFINITY,
           }
@@ -127,6 +129,7 @@ export async function recommendProcedures({
   )
 
   const valid = results.filter(Boolean).sort((a, b) => a.distanceNm - b.distanceNm)
+  if (includeAll) return valid
   const fallbackSid = departureCandidates[0] ?? null
   const fallbackArrival = arrivalCandidates[0] ?? null
   const best = valid[0] ?? (fallbackSid && fallbackArrival
