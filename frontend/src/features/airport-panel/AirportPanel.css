@@ -917,6 +917,71 @@
 .ap-raw-fold[open] .ap-raw-fold-summary::before { content: "▾ "; }
 .ap-raw-fold > code { display: block; margin-top: 8px; }
 
+/* ── METAR TAC 원문 — 배지 + 임계값 색칠 (해독 카드보다 먼저 보이는 메인 뷰) ── */
+.ap-metar-tac-block {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ap-metar-tac {
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 17px;
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+  color: var(--text-1);
+}
+
+.ap-metar-tac-chip {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 3px 9px 4px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  flex: 0 0 auto;
+}
+
+.ap-metar-tac-chip--VFR { background: var(--level-green); }
+.ap-metar-tac-chip--IFR { background: var(--level-amber); }
+.ap-metar-tac-chip--LIFR { background: var(--level-red); }
+
+.ap-metar-tac-hl {
+  border-radius: 4px;
+  padding: 0 3px;
+  font-weight: 800;
+}
+.ap-metar-tac-hl--level-ifr { background: var(--level-amber-bg); color: var(--level-amber); }
+.ap-metar-tac-hl--level-lifr { background: var(--level-red-bg); color: var(--level-red); }
+.ap-metar-tac-hl--wind { background: var(--level-red-bg); color: var(--level-red); }
+.ap-metar-tac-hl--precip { background: rgba(186, 230, 253, 0.72); color: #0c4a6e; }
+.ap-metar-tac-hl--special {
+  background: var(--level-red-bg);
+  color: var(--level-red);
+  outline: 2px dashed var(--level-red);
+  outline-offset: -1px;
+}
+
+/* ── 해독 카드 접기 (원문이 메인이 된 뒤, 카드는 보조 상세) ── */
+.ap-metar-detail {
+  margin-top: 4px;
+}
+.ap-metar-detail > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  list-style: none;
+}
+.ap-metar-detail > summary::-webkit-details-marker { display: none; }
+.ap-metar-detail > summary::before { content: "▸ "; }
+.ap-metar-detail[open] > summary::before { content: "▾ "; }
+.ap-metar-detail > .ap-mv2-body { margin-top: 10px; }
+
 .ap-mv2-card {
   min-width: 0;
   background: var(--bg-1);
