@@ -4,6 +4,7 @@ export function buildBriefingProvenance({ routeModel, aipConstraints, hazards, e
       schemaVersion: routeModel?.schemaVersion ?? null,
       graphConnectionStatus: routeModel?.graphConnectionStatus ?? 'unavailable',
       enRouteSegmentIds: (routeModel?.enRouteSegments ?? []).map((segment) => segment.id),
+      enRouteLegs: (routeModel?.enRouteSegments ?? []).map((segment) => ({ id: segment.id, kind: segment.kind ?? 'airway' })),
     },
     aip: {
       status: aipConstraints?.status ?? 'unavailable',

@@ -1,4 +1,4 @@
-import { setMapLayerVisible } from './mapLayerUtils.js'
+import { setMapLayerVisible, addLazyGeoJsonSource, ensureGeoJsonSourceLoaded } from './mapLayerUtils.js'
 import { buildAirportStationMarkerModel } from './airportStationModel.js'
 
 export const AIRPORT_SOURCE_ID = 'kma-weather-airports'
@@ -193,10 +193,10 @@ export function addAirportLayers(map, data) {
 }
 
 export function addGeoBoundaryLayers(map) {
-  GEO_LAYERS.forEach(({ sourceId, layerId, url, minzoom, maxzoom }) => {
-    if (!map.getSource(sourceId)) {
-      map.addSource(sourceId, { type: 'geojson', data: url })
-    }
+  GEO_LAYERS.forEach(({ sourceId, layerId, minzoom, maxzoom }) => {
+    // 처음엔 항상 숨김(visibility:'none') 상태로 시작하는 레이어라 데이터도 지연 로딩 —
+    // setGeoBoundaryVisibility가 실제로 보여줄 때 dataUrl로 소스를 채운다.
+    addLazyGeoJsonSource(map, sourceId, undefined, { eager: false })
     if (!map.getLayer(layerId)) {
       const layerDef = {
         id: layerId,
@@ -218,6 +218,9 @@ export function addGeoBoundaryLayers(map) {
 }
 
 export function setGeoBoundaryVisibility(map, show) {
+  if (show) {
+    GEO_LAYERS.forEach(({ sourceId, url }) => ensureGeoJsonSourceLoaded(map, sourceId, url))
+  }
   GEO_LAYERS.forEach(({ layerId }) => setMapLayerVisible(map, layerId, show))
 }
 

@@ -6,11 +6,18 @@ import {
   PROC_STAR_LINE,
   PROC_WP_CIRCLE,
   PROC_WP_LABEL,
+  ROUTE_BASELINE_SOURCE,
+  ROUTE_PENDING_SOURCE,
+  ROUTE_BASELINE_LINE,
+  ROUTE_PENDING_LINE,
   ROUTE_PREVIEW_LINE,
   ROUTE_PREVIEW_LINE_HIT,
-  ROUTE_CANDIDATE_LINE,
-  ROUTE_CANDIDATE_LINE_HIT,
+  ROUTE_DESIGN_LINE,
+  ROUTE_DESIGN_LINE_HIT,
   ROUTE_PREVIEW_POINT,
+  ROUTE_PREVIEW_LABEL,
+  ROUTE_PENDING_POINT,
+  ROUTE_PENDING_LABEL,
   ROUTE_PREVIEW_SOURCE,
   VFR_WP_CIRCLE,
   VFR_WP_LABEL,
@@ -36,16 +43,23 @@ export const ROUTE_HL_OVW_ICON = 'route-hl-ovw-icon'
 export const ROUTE_HL_OVW_LABEL = 'route-hl-ovw-label'
 export const ROUTE_HL_LAYER_IDS = [ROUTE_HL_WP_ICON, ROUTE_HL_WP_LABEL, ROUTE_HL_NA_ICON, ROUTE_HL_NA_LABEL, ROUTE_HL_AW_LINE, ROUTE_HL_AW_LABEL, ROUTE_HL_OVW_ICON, ROUTE_HL_OVW_LABEL]
 export const ROUTE_PREVIEW_SOURCE_IDS = [
+  ROUTE_BASELINE_SOURCE,
   ROUTE_PREVIEW_SOURCE,
+  ROUTE_PENDING_SOURCE,
   PROC_PREVIEW_SOURCE,
   BOUNDARY_FIX_PREVIEW_SOURCE,
 ]
 export const ROUTE_PREVIEW_LAYER_IDS = [
+  ROUTE_BASELINE_LINE,
+  ROUTE_PENDING_LINE,
   ROUTE_PREVIEW_LINE,
   ROUTE_PREVIEW_LINE_HIT,
-  ROUTE_CANDIDATE_LINE,
-  ROUTE_CANDIDATE_LINE_HIT,
+  ROUTE_DESIGN_LINE,
+  ROUTE_DESIGN_LINE_HIT,
   ROUTE_PREVIEW_POINT,
+  ROUTE_PREVIEW_LABEL,
+  ROUTE_PENDING_POINT,
+  ROUTE_PENDING_LABEL,
   VFR_WP_CIRCLE,
   VFR_WP_LABEL,
   PROC_SID_LINE,
@@ -111,11 +125,16 @@ export function installRoutePreviewLayers(map) {
 
 export function applyRouteHighlight(map, navpointIds = []) {
   const ptFilter = (ids) => ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'ident'], ['literal', ids]]]
+  const baseLabelFilter = (ids) => ['all', ['==', ['geometry-type'], 'Point'], ['!', ['in', ['get', 'ident'], ['literal', ids]]]]
 
   const wpCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'waypoint')
   const naCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'navaid')
   const awCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'ats-route')
   if (!wpCfg || !naCfg || !awCfg) return
+
+  ;[wpCfg, naCfg, AVIATION_WFS_LAYERS.find((l) => l.id === 'overseas-waypoint'), AVIATION_WFS_LAYERS.find((l) => l.id === 'overseas-navaid')]
+    .filter((cfg) => cfg?.pointLabelLayerId && map.getLayer(cfg.pointLabelLayerId))
+    .forEach((cfg) => map.setFilter(cfg.pointLabelLayerId, baseLabelFilter(navpointIds)))
 
   function buildIconExpr(cfg) {
     const { property, fallback, values } = cfg.iconImageByProperty
@@ -190,28 +209,58 @@ export function clearRouteHighlight(map) {
   ROUTE_HL_LAYER_IDS.forEach((id) => {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
   })
+  AVIATION_WFS_LAYERS
+    .filter((cfg) => cfg.pointLabelLayerId && map.getLayer(cfg.pointLabelLayerId))
+    .forEach((cfg) => map.setFilter(cfg.pointLabelLayerId, ['==', ['geometry-type'], 'Point']))
 }
 
 export function syncRoutePreviewLayers(map, model) {
   installRoutePreviewLayers(map)
 
-  const { routeResult, routeCandidates = [], selectedCandidateId, selectedSid, selectedStar, selectedIap } = model
+  const {
+    routeResult,
+    routeDesigns = [],
+    selectedRouteDesignId,
+    vfrWaypoints = [],
+    appliedVfrWaypoints = vfrWaypoints,
+    draftVfrWaypoints = [],
+    selectedSid,
+    selectedStar,
+    selectedIap,
+    baselinePreview,
+    pendingRouteResult,
+    pendingSid,
+    pendingStar,
+    pendingIap,
+  } = model
+  map.getSource('briefing-route-baseline')?.setData(baselinePreview ?? emptyGeoJSON)
+  const pendingPreview = pendingRouteResult?.previewGeojson
+    ? augmentRouteWithProcedures(pendingRouteResult.previewGeojson, pendingSid, pendingStar, pendingIap)
+    : emptyGeoJSON
+  map.getSource('briefing-route-pending')?.setData(pendingPreview)
   let fitCoordinates = []
-  if (routeCandidates.length > 1) {
+  if (routeResult?.flightRule === 'VFR') {
+    const appliedPreview = appliedVfrWaypoints.length >= 2 ? buildVfrGeoJSON(appliedVfrWaypoints) : routeResult.previewGeojson ?? emptyGeoJSON
+    const draftPreview = draftVfrWaypoints.length >= 2 ? buildVfrGeoJSON(draftVfrWaypoints) : null
+    map.getSource('briefing-route-baseline')?.setData(appliedPreview)
+    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(draftPreview ?? appliedPreview)
+    map.getSource(PROC_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
+    fitCoordinates = (draftPreview ?? appliedPreview).features.flatMap((feature) =>
+      feature.geometry.type === 'Point' ? [feature.geometry.coordinates] : feature.geometry.coordinates,
+    )
+  } else if (routeDesigns.length > 1) {
     const selectedPreview = routeResult?.previewGeojson?.features?.filter((feature) => feature.properties?.role !== 'route-preview-line') ?? []
-    const candidateFeatures = routeCandidates.flatMap((candidate, index) => {
-      const line = candidate.routeResult?.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')
-      const coordinates = candidate.procedures && line?.geometry?.coordinates?.length > 2
-        ? line.geometry.coordinates.slice(1, -1)
-        : line?.geometry?.coordinates
+    const designFeatures = routeDesigns.flatMap((design) => {
+      const line = design.routeResult?.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')
+      const coordinates = line?.geometry?.coordinates
       return coordinates?.length > 1 ? [{
         ...line,
         geometry: { ...line.geometry, coordinates },
-        properties: { role: 'route-candidate-line', candidateId: candidate.id, selected: candidate.id === selectedCandidateId, kind: index === 0 ? 'base' : 'alternative' },
+        properties: { role: 'route-design-line', designId: design.id, selected: design.id === selectedRouteDesignId, kind: 'design' },
       }] : []
     })
-    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData({ type: 'FeatureCollection', features: [...selectedPreview, ...candidateFeatures] })
-    fitCoordinates = candidateFeatures.flatMap((feature) => feature.geometry.coordinates)
+    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData({ type: 'FeatureCollection', features: [...selectedPreview, ...designFeatures] })
+    fitCoordinates = designFeatures.flatMap((feature) => feature.geometry.coordinates)
     map.getSource(PROC_PREVIEW_SOURCE)?.setData(buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap))
   } else if (routeResult?.flightRule === 'IFR' && (selectedSid || selectedStar || selectedIap)) {
     const augmented = augmentRouteWithProcedures(routeResult.previewGeojson, selectedSid, selectedStar, selectedIap)
@@ -250,9 +299,10 @@ export function syncRoutePreviewLayers(map, model) {
 }
 
 export function syncVfrWaypointData(map, model) {
-  installRoutePreviewLayers(map)
-  const { vfrWaypoints = [] } = model
-  map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(vfrWaypoints.length >= 2 ? buildVfrGeoJSON(vfrWaypoints) : emptyGeoJSON)
+  return syncRoutePreviewLayers(map, {
+    ...model,
+    routeResult: model.routeResult ?? model.pendingRouteResult ?? { flightRule: 'VFR', previewGeojson: emptyGeoJSON },
+  })
 }
 
 export function syncBoundaryFixPreview(map, model) {

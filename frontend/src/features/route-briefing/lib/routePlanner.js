@@ -1,6 +1,7 @@
 const NAVDATA_BASE_URL = '/data/navdata'
 const FIR_EXIT_AIRPORT = 'FIR_EXIT'
 const FIR_IN_AIRPORT = 'FIR_IN'
+import { parseManualRouteString } from './manualRouteInput.js'
 
 let navdataCache = null
 
@@ -218,7 +219,7 @@ function isAllowedRouteDirection(segment, routes, routeDirectionMetadata, fromId
   return actualDirection === allowedDirection
 }
 
-function findShortestPath(routeGraph, routeSegmentsById, routes, routeDirectionMetadata, startId, endId, routeType, blockedSegmentIds = new Set()) {
+function findShortestPath(routeGraph, routeSegmentsById, routes, routeDirectionMetadata, startId, endId, routeType, blockedSegmentIds = new Set(), routeId = null) {
   const distances = new Map([[startId, 0]])
   const previous = new Map()
   const visited = new Set()
@@ -243,6 +244,7 @@ function findShortestPath(routeGraph, routeSegmentsById, routes, routeDirectionM
 
       if (
         blockedSegmentIds.has(link.segmentId) ||
+        (routeId && link.routeId !== routeId) ||
         !segment ||
         !isAllowedRouteType(segment, routeType) ||
         !isAllowedRouteDirection(segment, routes, routeDirectionMetadata, current.id, link.to)
@@ -291,7 +293,7 @@ function findShortestPath(routeGraph, routeSegmentsById, routes, routeDirectionM
   }
 }
 
-function buildPreviewGeometry(departurePoint, terminalPoint, navpoints, path, segments) {
+function buildPreviewGeometry(departurePoint, terminalPoint, navpoints, path, segments, departureLabel, terminalLabel) {
   const departureCoords = coordinatesOf(departurePoint)
   const pathCoords = path.navpointIds.map((id) => coordinatesOf(navpoints[id]))
   const firstPathCoord = pathCoords[0]
@@ -299,6 +301,7 @@ function buildPreviewGeometry(departurePoint, terminalPoint, navpoints, path, se
     firstPathCoord?.[0] === departureCoords[0] &&
     firstPathCoord?.[1] === departureCoords[1]
   const coordinates = hasDuplicateStart ? pathCoords : [departureCoords, ...pathCoords]
+  const labels = hasDuplicateStart ? [...path.navpointIds] : [departureLabel, ...path.navpointIds]
 
   if (terminalPoint) {
     const terminalCoords = coordinatesOf(terminalPoint)
@@ -307,6 +310,7 @@ function buildPreviewGeometry(departurePoint, terminalPoint, navpoints, path, se
 
     if (!isDuplicateTerminal) {
       coordinates.push(terminalCoords)
+      labels.push(terminalLabel)
     }
   }
 
@@ -320,7 +324,7 @@ function buildPreviewGeometry(departurePoint, terminalPoint, navpoints, path, se
       },
       ...coordinates.map((coordinate, index) => ({
         type: 'Feature',
-        properties: { role: 'route-preview-point', sequence: index + 1 },
+        properties: { role: 'route-preview-point', label: labels[index] ?? '', sequence: index + 1 },
         geometry: { type: 'Point', coordinates: coordinate },
       })),
       ...segments.map((segment, index) => ({
@@ -390,7 +394,7 @@ export async function buildVfrRoute({ departureAirport, arrivalAirport }) {
   }
 }
 
-export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, arrivalAirport, routeType }) {
+export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, arrivalAirport, routeType, viaFixes = [] }) {
   const navdata = await loadNavdata()
   const departureId = normalizeIdent(departureAirport)
   const arrivalId = normalizeIdent(arrivalAirport)
@@ -421,19 +425,21 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
     throw new Error(`${exitId} navpoint not found`)
   }
 
-  const path = findShortestPath(
-    navdata.routeGraph,
-    navdata.routeSegmentsById,
-    navdata.routes,
-    navdata.routeDirectionMetadata,
-    entryId,
-    exitId,
-    selectedRouteType,
-  )
-
-  if (!path) {
-    throw new Error(`No ${selectedRouteType} route path found from ${entryId} to ${exitId}`)
+  const stops = [entryId, ...viaFixes.map(normalizeIdent).filter(Boolean), exitId]
+  const path = { distanceNm: 0, navpointIds: [], segmentIds: [] }
+  for (let index = 0; index < stops.length - 1; index += 1) {
+    const from = stops[index]
+    const to = stops[index + 1]
+    if (!navdata.navpoints[from] || !navdata.navpoints[to]) {
+      throw new Error(`${!navdata.navpoints[from] ? from : to} navpoint not found`)
+    }
+    const leg = findShortestPath(navdata.routeGraph, navdata.routeSegmentsById, navdata.routes, navdata.routeDirectionMetadata, from, to, selectedRouteType)
+    if (!leg) throw new Error(`No ${selectedRouteType} route path found from ${from} to ${to}`)
+    path.distanceNm += leg.distanceNm
+    path.navpointIds.push(...(index ? leg.navpointIds.slice(1) : leg.navpointIds))
+    path.segmentIds.push(...leg.segmentIds)
   }
+  path.distanceNm = Number(path.distanceNm.toFixed(2))
 
   return buildIfrRouteResult({
     navdata,
@@ -444,6 +450,194 @@ export async function buildBriefingRoute({ departureAirport, entryFix, exitFix, 
     routeType: selectedRouteType,
     path,
   })
+}
+
+function manualPoint(navdata, term, index, userWaypoints) {
+  if (term.kind === 'coordinate') {
+    return { id: `coordinate-${index}`, label: `WP${index + 1}`, kind: 'user-waypoint', coordinates: [term.coordinate.lon, term.coordinate.lat], editable: true }
+  }
+  if (term.kind === 'user-waypoint') {
+    const waypoint = userWaypoints.find((item) => item.id === term.id)
+    if (!waypoint || !Number.isFinite(waypoint.lon) || !Number.isFinite(waypoint.lat)) throw new Error('사용자 waypoint 좌표를 확인하세요.')
+    return { id: waypoint.id, label: waypoint.name, kind: 'user-waypoint', coordinates: [waypoint.lon, waypoint.lat], editable: true }
+  }
+  const navpoint = navdata.navpoints[term.id]
+  if (!navpoint) throw new Error(`${term.id} FIX를 찾을 수 없습니다.`)
+  return { id: term.id, label: term.id, kind: 'published-fix', coordinates: coordinatesOf(navpoint), editable: true }
+}
+
+function manualPreviewGeojson(points, legs, departure, arrival) {
+  const enrouteCoordinates = legs.length > 0
+    ? legs.flatMap((leg, index) => index === 0 ? leg.geometry : leg.geometry.slice(1))
+    : points.map((point) => point.coordinates)
+  const routeCoordinates = [coordinatesOf(departure), ...enrouteCoordinates, coordinatesOf(arrival)]
+  return {
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates: routeCoordinates } },
+      ...points.map((point, index) => ({ type: 'Feature', properties: { role: 'route-preview-point', pointId: point.id, label: point.label, editable: point.editable ? 1 : 0, sequence: index + 1 }, geometry: { type: 'Point', coordinates: point.coordinates } })),
+      ...legs.map((leg) => ({ type: 'Feature', properties: { role: 'route-segment-line', id: leg.id, routeId: leg.routeId, kind: leg.kind }, geometry: { type: 'LineString', coordinates: leg.geometry } })),
+    ],
+  }
+}
+
+function findUniqueAirwayPath(navdata, fromId, toId, routeType) {
+  const candidates = Object.keys(navdata.routes)
+    .filter((routeId) => {
+      const sequence = navdata.routes[routeId]?.sequence ?? []
+      return sequence.includes(fromId) && sequence.includes(toId)
+    })
+    .map((routeId) => findShortestPath(navdata.routeGraph, navdata.routeSegmentsById, navdata.routes, navdata.routeDirectionMetadata, fromId, toId, routeType, new Set(), routeId))
+    .filter(Boolean)
+  return candidates.length === 1 ? candidates[0] : null
+}
+
+function routeLegIntents(parsed) {
+  if (Array.isArray(parsed?.legIntents)) return parsed.legIntents
+  return (parsed?.connectors ?? []).map((connector) => connector === 'DCT'
+    ? { kind: 'dct' }
+    : { kind: 'airway', routeId: connector })
+}
+
+function resolvedPublishedPoint(navdata, id) {
+  const navpoint = navdata.navpoints[id]
+  return { id, label: id, kind: 'published-fix', coordinates: coordinatesOf(navpoint), editable: true }
+}
+
+export async function buildManualIfrRoute({ departureAirport, arrivalAirport, enroute, userWaypoints = [], routeType = 'ALL' }) {
+  const navdata = await loadNavdata()
+  const departureId = normalizeIdent(departureAirport)
+  const arrivalId = normalizeIdent(arrivalAirport)
+  const departure = navdata.airports[departureId]
+  const arrival = navdata.airports[arrivalId]
+  if (!departure || !arrival) throw new Error('출발·도착 공항을 확인하세요.')
+  const parsed = typeof enroute === 'string' ? parseManualRouteString(enroute) : enroute
+  const terms = parsed?.terms ?? []
+  const intents = routeLegIntents(parsed)
+  if (terms.length < 1 || intents.length !== terms.length - 1) throw new Error('en-route 문자열을 확인하세요.')
+  const inputPoints = terms.map((term, index) => manualPoint(navdata, term, index, userWaypoints))
+  const points = [inputPoints[0]]
+  const resolvedTerms = [terms[0]]
+  const resolvedLegIntents = []
+  const legs = []
+  for (let index = 0; index < intents.length; index += 1) {
+    const from = inputPoints[index]
+    const to = inputPoints[index + 1]
+    const intent = intents[index]
+    const path = intent.kind !== 'dct' && from.kind === 'published-fix' && to.kind === 'published-fix'
+      ? intent.kind === 'airway'
+        ? findShortestPath(navdata.routeGraph, navdata.routeSegmentsById, navdata.routes, navdata.routeDirectionMetadata, from.id, to.id, routeType, new Set(), intent.routeId)
+        : findUniqueAirwayPath(navdata, from.id, to.id, routeType)
+      : null
+    if (intent.kind === 'airway' && !path) throw new Error(`${intent.routeId} 항공로가 ${from.id}와 ${to.id}를 연결하지 않습니다.`)
+    if (path) {
+      for (let segmentIndex = 0; segmentIndex < path.segmentIds.length; segmentIndex += 1) {
+        const segment = navdata.routeSegmentsById[path.segmentIds[segmentIndex]]
+        const fromFix = path.navpointIds[segmentIndex]
+        const toFix = path.navpointIds[segmentIndex + 1]
+        legs.push({ id: segment.id, kind: 'airway', routeId: segment.routeId, routeType: segment.routeType, fromFix, toFix, geometry: [coordinatesOf(navdata.navpoints[fromFix]), coordinatesOf(navdata.navpoints[toFix])], distanceNm: segment.distanceNm })
+        points.push(resolvedPublishedPoint(navdata, toFix))
+        resolvedTerms.push({ kind: 'fix', id: toFix })
+        resolvedLegIntents.push({ kind: 'airway', routeId: segment.routeId })
+      }
+      continue
+    }
+    const previous = points.at(-1)
+    legs.push({ id: `dct:${previous.id}:${to.id}`, kind: 'dct', routeId: null, routeType: null, fromFix: previous.id, toFix: to.id, geometry: [previous.coordinates, to.coordinates], distanceNm: haversineNm(...previous.coordinates, ...to.coordinates) })
+    points.push(to)
+    resolvedTerms.push(terms[index + 1])
+    resolvedLegIntents.push({ kind: 'dct' })
+  }
+  const enrouteDistanceNm = Number(legs.reduce((sum, leg) => sum + leg.distanceNm, 0).toFixed(2))
+  const totalDistanceNm = Number((enrouteDistanceNm + haversineNm(...coordinatesOf(departure), ...points[0].coordinates) + haversineNm(...points.at(-1).coordinates, ...coordinatesOf(arrival))).toFixed(2))
+  const previewGeojson = manualPreviewGeojson(points, legs, departure, arrival)
+  return {
+    flightRule: 'IFR', departureAirport: departureId, arrivalAirport: arrivalId, routeType,
+    distanceNm: enrouteDistanceNm, totalDistanceNm,
+    navpointIds: points.map((point) => point.label), segments: legs.filter((leg) => leg.kind === 'airway'),
+    manualLegs: legs, manualRoute: { points, legs, enrouteGeometry: { type: 'LineString', coordinates: points.map((point) => point.coordinates) } },
+    resolvedEnroute: { terms: resolvedTerms, legIntents: resolvedLegIntents, userWaypoints, nextWaypointNumber: parsed?.nextWaypointNumber },
+    displaySequence: [departureId, ...points.map((point) => point.label), arrivalId], previewGeojson,
+  }
+}
+
+export async function buildManualVfrRoute({ departureAirport, arrivalAirport, enroute, userWaypoints = [] }) {
+  const navdata = await loadNavdata()
+  const departureId = normalizeIdent(departureAirport)
+  const arrivalId = normalizeIdent(arrivalAirport)
+  const departure = navdata.airports[departureId]
+  const arrival = navdata.airports[arrivalId]
+  if (!departure || !arrival) throw new Error('출발·도착 공항을 확인하세요.')
+  const parsed = typeof enroute === 'string' ? parseManualRouteString(enroute, { flightRule: 'VFR', userWaypoints }) : enroute
+  if ((parsed?.connectors ?? []).some((connector) => connector !== 'DCT')) throw new Error('VFR 문자열에는 항공로를 사용할 수 없습니다.')
+  const points = (parsed?.terms ?? []).map((term, index) => manualPoint(navdata, term, index, userWaypoints))
+  if (points.length < 1) throw new Error('en-route 문자열을 확인하세요.')
+  const legs = points.slice(0, -1).map((point, index) => ({
+    id: `dct:${point.id}:${points[index + 1].id}`, kind: 'dct', routeId: null, routeType: null,
+    fromFix: point.id, toFix: points[index + 1].id, geometry: [point.coordinates, points[index + 1].coordinates], distanceNm: haversineNm(...point.coordinates, ...points[index + 1].coordinates),
+  }))
+  const enrouteDistanceNm = Number(legs.reduce((sum, leg) => sum + leg.distanceNm, 0).toFixed(2))
+  const totalDistanceNm = Number((enrouteDistanceNm + haversineNm(...coordinatesOf(departure), ...points[0].coordinates) + haversineNm(...points.at(-1).coordinates, ...coordinatesOf(arrival))).toFixed(2))
+  const previewGeojson = manualPreviewGeojson(points, legs, departure, arrival)
+  return { flightRule: 'VFR', departureAirport: departureId, arrivalAirport: arrivalId, distanceNm: totalDistanceNm, totalDistanceNm, navpointIds: points.map((point) => point.label), segments: [], manualLegs: legs, manualRoute: { points, legs, enrouteGeometry: { type: 'LineString', coordinates: points.map((point) => point.coordinates) } }, displaySequence: [departureId, ...points.map((point) => point.label), arrivalId], previewGeojson }
+}
+
+// ponytail: O(n) navpoint scan; replace with a spatial index if map-click latency becomes measurable.
+export async function resolveNearestNavpoint(coordinates) {
+  const [lon, lat] = coordinates ?? []
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) throw new Error('지도 좌표를 확인할 수 없습니다.')
+  const navdata = await loadNavdata()
+  let nearest = null
+  for (const [id, point] of Object.entries(navdata.navpoints)) {
+    const distanceNm = haversineNm(lon, lat, ...coordinatesOf(point))
+    if (!nearest || distanceNm < nearest.distanceNm) nearest = { id, distanceNm }
+  }
+  if (!nearest || nearest.distanceNm > 5) throw new Error('5 NM 이내의 항로 FIX를 찾을 수 없습니다.')
+  return nearest
+}
+
+export async function resolveMapInteraction({ coordinates, departureAirport, entryFix, exitFix, arrivalAirport, routeType, viaFixes = [] }) {
+  const nearest = await resolveNearestNavpoint(coordinates)
+  const nextViaFixes = [...viaFixes, nearest.id]
+  const routeResult = await buildBriefingRoute({ departureAirport, entryFix, exitFix, arrivalAirport, routeType, viaFixes: nextViaFixes })
+  return { fixId: nearest.id, routeResult, viaFixes: nextViaFixes }
+}
+
+export async function parseRouteString(text, { departureAirport, entryFix, exitFix, arrivalAirport, routeType }) {
+  const tokens = String(text ?? '').trim().toUpperCase().split(/\s+/).filter(Boolean)
+  if (tokens.length < 2 || tokens.length % 2 === 0) throw new Error('FIX와 항로 토큰의 순서를 확인하세요.')
+  const fixes = tokens.filter((_, index) => index % 2 === 0)
+  const connectors = tokens.filter((_, index) => index % 2 === 1)
+  const compactFixes = fixes.filter((fix, index) => index === 0 || fix !== fixes[index - 1])
+  if (compactFixes[0] !== normalizeIdent(entryFix) || compactFixes.at(-1) !== normalizeIdent(exitFix)) {
+    throw new Error('호환 경로 문자열은 현재 진입 FIX와 이탈 FIX로 시작하고 끝나야 합니다.')
+  }
+  const navdata = await loadNavdata()
+  for (const fix of compactFixes) if (!navdata.navpoints[fix]) throw new Error(`${fix} FIX를 찾을 수 없습니다.`)
+  for (let index = 0; index < connectors.length; index += 1) {
+    const connector = connectors[index]
+    if (connector === 'DCT') continue
+    const from = fixes[index]
+    const to = fixes[index + 1]
+    const allowed = Object.values(navdata.routeSegmentsById).some((segment) => segment.routeId === connector && (
+      (segment.from === from && segment.to === to) || (segment.from === to && segment.to === from)
+    ))
+    if (!allowed) throw new Error(`${connector} 항로가 ${from}와 ${to}를 직접 연결하지 않습니다.`)
+  }
+  const viaFixes = compactFixes.slice(1, -1)
+  const routeResult = await buildBriefingRoute({ departureAirport, entryFix, exitFix, arrivalAirport, routeType, viaFixes })
+  return { viaFixes, routeResult, normalized: compactFixes.length !== fixes.length }
+}
+
+export function formatRouteString(routeResult) {
+  const fixes = routeResult?.navpointIds ?? []
+  const segments = routeResult?.segments ?? []
+  if (fixes.length === 0) return ''
+  const tokens = [fixes[0]]
+  for (let index = 0; index < segments.length; index += 1) {
+    tokens.push(segments[index]?.routeId || 'DCT', fixes[index + 1])
+  }
+  return tokens.join(' ')
 }
 
 function buildIfrRouteResult({ navdata, departureAirport, entryFix, exitFix, arrivalAirport, routeType, path }) {
@@ -482,69 +676,8 @@ function buildIfrRouteResult({ navdata, departureAirport, entryFix, exitFix, arr
     routeTypes,
     segments,
     displaySequence: buildRouteDisplaySequence(departureLabel, terminalId, path, segments),
-    previewGeojson: buildPreviewGeometry(departurePoint, terminalPoint, navdata.navpoints, path, segments),
+    previewGeojson: buildPreviewGeometry(departurePoint, terminalPoint, navdata.navpoints, path, segments, departureLabel, terminalId),
   }
-}
-
-function overlapsInterval(segment, interval) {
-  return Number.isFinite(segment?.startNm) && Number.isFinite(segment?.endNm)
-    && Number.isFinite(interval?.startNm) && Number.isFinite(interval?.endNm)
-    && segment.startNm <= interval.endNm && interval.startNm <= segment.endNm
-}
-
-// ponytail: one blocked segment per rerun, not a k-shortest-path engine; replace here if route diversity needs to grow.
-export async function buildRouteAlternatives({ departureAirport, entryFix, exitFix, arrivalAirport, routeType, triggerIntervals, baselineRoute, routeModel, navdata: injectedNavdata = null }) {
-  const navdata = injectedNavdata ?? await loadNavdata()
-  const rangesBySegmentId = new Map((routeModel?.enRouteSegments ?? []).map((segment) => [segment.id, segment]))
-  const blockedIds = new Set(
-    (baselineRoute?.segments ?? [])
-      .filter((segment) => (triggerIntervals ?? []).some((interval) => overlapsInterval(rangesBySegmentId.get(segment.id), interval)))
-      .map((segment) => segment.id),
-  )
-  const base = { id: 'base', routeResult: baselineRoute, addedDistanceNm: 0, changedDistanceNm: 0 }
-  if (blockedIds.size === 0) return [base]
-
-  const baselineSegmentIds = new Set((baselineRoute?.segments ?? []).map((segment) => segment.id))
-  // ponytail: test-only detour ceiling (2,000 NM / 2,000%); restore 50 NM / 25% after candidate validation.
-  const maxAddedDistanceNm = Math.min(2000, Math.max(30, Number(baselineRoute?.distanceNm || 0) * 20))
-  const minChangedDistanceNm = Math.max(15, Number(baselineRoute?.distanceNm || 0) * 0.20)
-  const candidates = []
-  const seen = new Set([Array.from(baselineSegmentIds).join('|')])
-
-  for (const segmentId of blockedIds) {
-    const path = findShortestPath(
-      navdata.routeGraph,
-      navdata.routeSegmentsById,
-      navdata.routes,
-      navdata.routeDirectionMetadata,
-      normalizeIdent(entryFix),
-      normalizeIdent(exitFix),
-      routeType ?? 'ALL',
-      new Set([segmentId]),
-    )
-    if (!path) continue
-    const routeResult = buildIfrRouteResult({
-      navdata,
-      departureAirport: normalizeIdent(departureAirport),
-      entryFix: normalizeIdent(entryFix),
-      exitFix: normalizeIdent(exitFix),
-      arrivalAirport: normalizeIdent(arrivalAirport),
-      routeType: routeType ?? 'ALL',
-      path,
-    })
-    const key = path.segmentIds.join('|')
-    const changedDistanceNm = Number(routeResult.segments
-      .filter((segment) => !baselineSegmentIds.has(segment.id))
-      .reduce((total, segment) => total + Number(segment.distanceNm || 0), 0)
-      .toFixed(2))
-    const addedDistanceNm = Number((routeResult.distanceNm - Number(baselineRoute?.distanceNm || 0)).toFixed(2))
-    if (seen.has(key) || addedDistanceNm > maxAddedDistanceNm || changedDistanceNm < minChangedDistanceNm) continue
-    seen.add(key)
-    candidates.push({ routeResult, addedDistanceNm, changedDistanceNm })
-  }
-
-  candidates.sort((a, b) => a.addedDistanceNm - b.addedDistanceNm)
-  return [base, ...candidates.slice(0, 3).map((candidate, index) => ({ ...candidate, id: `alt-${index + 1}` }))]
 }
 
 export async function canBuildBriefingRoutePath({ entryFix, exitFix, routeType }) {

@@ -44,11 +44,12 @@ export function buildCommonRouteModel({ routeGeometry, routeResult } = {}) {
   }
 
   const routeAxis = buildRouteAxis(coordinates)
-  const segments = routeResult?.segments ?? []
+  const manualLegs = routeResult?.manualLegs ?? []
+  const segments = manualLegs.length > 0 ? manualLegs : routeResult?.segments ?? []
   const geometries = directedSegmentGeometries(routeResult)
   let nextCoordinateIndex = 0
   const enRouteSegments = segments.map((segment, index) => {
-    const geometry = geometries[index] ?? segment.geometry?.coordinates ?? []
+    const geometry = geometries[index] ?? (Array.isArray(segment.geometry) ? segment.geometry : segment.geometry?.coordinates) ?? []
     const fromCoordinate = geometry[0]
     const toCoordinate = geometry.at(-1)
     const startIndex = fromCoordinate ? findCoordinateIndex(coordinates, fromCoordinate, nextCoordinateIndex) : -1
@@ -58,9 +59,10 @@ export function buildCommonRouteModel({ routeGeometry, routeResult } = {}) {
 
     return {
       id: segment.id,
+      kind: segment.kind ?? 'airway',
       routeId: segment.routeId,
-      fromFix: routeResult?.navpointIds?.[index] ?? segment.from ?? null,
-      toFix: routeResult?.navpointIds?.[index + 1] ?? segment.to ?? null,
+      fromFix: segment.fromFix ?? routeResult?.navpointIds?.[index] ?? segment.from ?? null,
+      toFix: segment.toFix ?? routeResult?.navpointIds?.[index + 1] ?? segment.to ?? null,
       routeType: segment.routeType ?? null,
       sourceCycle: segment.cycle ?? null,
       source: segment.source ?? null,
@@ -87,7 +89,7 @@ export function buildCommonRouteModel({ routeGeometry, routeResult } = {}) {
         }
       : null,
     graphConnectionStatus: routeResult?.flightRule === 'IFR'
-      ? (enRouteRange.status === 'aligned' ? 'connected' : 'unavailable')
+      ? (enRouteRange.status === 'aligned' ? (manualLegs.length > 0 ? 'manual' : 'connected') : 'unavailable')
       : 'not_applicable',
   }
 }

@@ -143,13 +143,30 @@
 .rb-altitude-comparison { display: grid; gap: 8px; }
 .rb-step-actions { display: flex; gap: 8px; }
 .rb-step-actions > * { flex: 1 1 0; }
-.rb-alternatives-status, .rb-alternatives-reason, .rb-alternatives-note { margin: 0; font-size: 13px; color: var(--text-secondary, #475569); }
-.rb-alternative-card { display: grid; gap: 4px; width: 100%; padding: 12px; text-align: left; color: inherit; background: var(--surface, #fff); border: 1px solid var(--border, #cbd5e1); border-radius: 8px; cursor: pointer; }
-.rb-alternative-card.is-selected { border-left: 4px solid #334155; border-color: #334155; }
-.rb-workflow-tabs { display: flex; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border, #cbd5e1); font-size: 13px; color: var(--text-secondary, #475569); }
+.rb-alternatives-status, .rb-alternatives-note { margin: 0; font-size: 13px; color: var(--text-3); }
+.rb-alternatives-reason, .rb-alert-banner { margin: 0; font-size: 13px; font-weight: 600; color: var(--level-amber); background: var(--level-amber-bg); border-radius: var(--radius-md); padding: 6px 10px; }
+.rb-alternative-card { display: grid; gap: 4px; width: 100%; padding: 12px; text-align: left; color: inherit; background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-xl); cursor: pointer; }
+.rb-alternative-card.is-selected { border-left: 4px solid var(--accent); border-color: var(--accent); }
+.rb-alternative-card:disabled { cursor: not-allowed; opacity: .55; }
+.rb-card-hazard { color: var(--level-amber); font-weight: 600; }
+.rb-card-warning { color: var(--level-red); font-weight: 600; }
+.rb-design-actions, .rb-design-rename { display: flex; flex-wrap: wrap; gap: var(--space-s); align-items: center; }
+.rb-design-actions > *, .rb-design-rename > * { min-height: var(--touch-min); }
+.rb-design-route-string { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-s); align-items: center; }
+.rb-design-route-string > * { min-width: 0; }
+.rb-design-route-string input { min-height: var(--touch-min); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.rb-route-string-change { margin: 0; padding: 6px 8px; border-radius: var(--radius-md); background: var(--bg-2); color: var(--text-3); font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+.rb-route-string-change .is-changed { background: var(--level-amber-bg); color: var(--level-amber); font-weight: 700; }
+
+@media (max-width: 560px) {
+  .rb-design-actions > * { flex: 1 1 120px; }
+  .rb-design-route-string { grid-template-columns: 1fr; }
+}
+.rb-design-rename > :first-child { flex: 1 1 auto; min-width: 0; }
+.rb-workflow-tabs { display: flex; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--stroke-1); font-size: 13px; color: var(--text-3); }
 .rb-workflow-tabs button { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
-.rb-workflow-tabs .is-active { color: #334155; font-weight: 700; border-bottom: 2px solid #334155; }
-.rb-workflow-tabs .is-disabled, .rb-step.is-disabled { color: #94a3b8; cursor: not-allowed; }
+.rb-workflow-tabs .is-active { color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent); }
+.rb-workflow-tabs .is-disabled, .rb-step.is-disabled { color: var(--text-disabled); cursor: not-allowed; }
 
 .route-check-field {
   display: flex;
@@ -1382,6 +1399,12 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 .route-check-form .rb-step { flex: 1; border: 0; border-radius: 8px; background: transparent; padding: 8px 4px; font-size: 12px; font-weight: 600; color: var(--text-2); cursor: pointer; }
 .route-check-form .rb-step.is-active { background: var(--bg-1); color: var(--accent); box-shadow: 0 1px 2px rgba(15,23,42,.12); }
 .rb-procedures { display: grid; gap: 8px; }
+.rb-route-string { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.rb-route-string textarea { width: 100%; min-height: 132px; box-sizing: border-box; resize: vertical; font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.rb-route-string span { font-size: 12px; font-weight: 400; color: var(--text-3); }
+.rb-route-edit-confirm { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border: 1px solid var(--level-amber); border-radius: var(--radius-md); background: var(--level-amber-bg); font-size: 13px; }
+.rb-route-edit-confirm > div { display: flex; gap: 6px; flex: none; }
+.rb-route-plan { margin-top: 6px; padding: 7px 9px; border-radius: var(--radius-md); background: var(--bg-2); color: var(--text-2); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
 .rb-vfr-note { font-size: 12px; font-weight: 700; color: var(--text-3); padding: 8px; }
 /* Step ② auto-recommend: same handleAutoRecommend as desktop, surfaced as a
    full-width primary suggestion (light-accent, own style below) ahead

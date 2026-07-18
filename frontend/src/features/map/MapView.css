@@ -95,6 +95,34 @@
   border-color: var(--accent);
 }
 
+/* 고도 비교 단계에서 연직단면도 창을 닫은 뒤 다시 여는 버튼. 지도 좌하단 —
+   우하단 줌·나침반·정보 컨트롤, 하단 타임라인(bottom:140px 기준)과 안 겹치는 자리. */
+.vertical-profile-reopen-button {
+  position: absolute;
+  left: 12px;
+  bottom: 150px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--stroke-1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.14);
+  color: var(--accent);
+  font-family: var(--font-base, system-ui, sans-serif);
+  font-size: var(--fs-200);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vertical-profile-reopen-button:hover {
+  border-color: var(--accent);
+}
+
 .map-tools-launcher.is-open {
   border-color: var(--accent, #2563eb);
   background: var(--accent, #2563eb);
@@ -2069,4 +2097,50 @@
   width: 26px;
   height: 26px;
   object-fit: contain;
+}
+/* Route editing mode is owned by routePreview.js; MapView keeps no route state. */
+.route-map-interaction-status {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 4;
+  max-width: min(420px, calc(100% - 32px));
+  padding: 9px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  transform: translateX(-50%);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+}
+.route-map-interaction-confirm {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(420px, calc(100% - 24px));
+  padding: 8px 10px;
+  border: 1px solid var(--level-amber);
+  border-radius: var(--radius-md);
+  background: var(--level-amber-bg);
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  transform: translate(-50%, calc(-100% - 12px));
+}
+.route-map-interaction-confirm[hidden] { display: none; }
+.route-map-interaction-confirm button {
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 4px 9px;
+  background: var(--bg-1);
+  color: var(--text-1);
+  font: inherit;
+  cursor: pointer;
 }

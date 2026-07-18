@@ -8,6 +8,8 @@ import {
   syncVfrWaypointData,
 } from './routePreviewSync.js'
 import {
+  ROUTE_BASELINE_SOURCE,
+  ROUTE_PENDING_SOURCE,
   PROC_PREVIEW_SOURCE,
   ROUTE_PREVIEW_SOURCE,
 } from './routePreview.js'
@@ -15,9 +17,11 @@ import {
 function createMockMap() {
   const sourceData = new Map()
   const layout = []
+  const filters = []
   return {
     sourceData,
     layout,
+    filters,
     getSource(id) {
       if (!sourceData.has(id)) sourceData.set(id, null)
       return {
@@ -29,7 +33,7 @@ function createMockMap() {
     getLayer() {
       return true
     },
-    setFilter() {},
+    setFilter(id, value) { filters.push({ id, value }) },
     setLayoutProperty(id, prop, value) {
       layout.push({ id, prop, value })
     },
@@ -57,6 +61,7 @@ test('syncRoutePreviewLayers writes IFR route and full procedure preview data (l
 
   assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features[0].geometry.coordinates[1][0], 126.5)
   assert.ok(map.sourceData.get(PROC_PREVIEW_SOURCE).features.some((feature) => feature.properties.role === 'sid-line'))
+  assert.ok(map.filters.some(({ id, value }) => id === 'aviation-waypoints-label' && value.at(-1)[0] === '!'))
 })
 
 test('syncRoutePreviewLayers clears stale route line when route result is removed', () => {
@@ -85,42 +90,47 @@ test('syncRoutePreviewLayers clears stale route line when route result is remove
   assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.length, 0)
 })
 
-test('syncRoutePreviewLayers writes candidate lines and selects only the active candidate', () => {
+test('syncRoutePreviewLayers writes manual design lines and selects only the active design', () => {
   const map = createMockMap()
-  const candidate = (id, coordinates) => ({ id, routeResult: { previewGeojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } }] } } })
+  const design = (id, coordinates) => ({ id, routeResult: { previewGeojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } }] } } })
 
   syncRoutePreviewLayers(map, {
     routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [] }, navpointIds: [] },
-    routeCandidates: [candidate('base', [[126, 37], [127, 36]]), candidate('alt-1', [[126, 37], [128, 36]]), candidate('alt-2', [[126, 37], [129, 36]])],
-    selectedCandidateId: 'alt-1', selectedSid: null, selectedStar: null, selectedIap: null,
+    routeDesigns: [design('base', [[126, 37], [127, 37], [128, 37], [129, 37]]), design('route-a', [[126, 37], [128, 36]])],
+    selectedRouteDesignId: 'route-a', selectedSid: null, selectedStar: null, selectedIap: null,
   })
 
   const features = map.sourceData.get(ROUTE_PREVIEW_SOURCE).features
-  assert.equal(features.length, 3)
-  assert.deepEqual(features.map((feature) => feature.properties.selected), [false, true, false])
+  assert.equal(features.length, 2)
+  assert.deepEqual(features.map((feature) => feature.properties.selected), [false, true])
+  assert.deepEqual(features[0].geometry.coordinates, [[126, 37], [127, 37], [128, 37], [129, 37]])
 })
 
-test('syncRoutePreviewLayers removes airport connector legs from procedure candidates', () => {
+test('syncRoutePreviewLayers keeps baseline, applied route, and pending route in separate sources', () => {
   const map = createMockMap()
-  const routeResult = { previewGeojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates: [[126, 37], [127, 37], [128, 37], [129, 37]] } }] } }
+  const feature = (coordinates) => ({ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } })
 
   syncRoutePreviewLayers(map, {
-    routeResult,
-    routeCandidates: [{ id: 'base', routeResult, procedures: { sid: {}, star: {}, iapKey: null } }, { id: 'alt-1', routeResult, procedures: { sid: {}, star: {}, iapKey: null } }],
-    selectedCandidateId: 'base', selectedSid: null, selectedStar: null, selectedIap: null,
+    routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [feature([[126, 37], [127, 37]])] }, navpointIds: [] },
+    baselinePreview: { type: 'FeatureCollection', features: [feature([[125, 37], [128, 37]])] },
+    pendingRouteResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [feature([[126, 38], [127, 38]])] } },
+    selectedSid: null, selectedStar: null, selectedIap: null,
+    pendingSid: null, pendingStar: null, pendingIap: null,
   })
 
-  assert.deepEqual(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features[0].geometry.coordinates, [[127, 37], [128, 37]])
+  assert.deepEqual(map.sourceData.get(ROUTE_BASELINE_SOURCE).features[0].geometry.coordinates, [[125, 37], [128, 37]])
+  assert.deepEqual(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features[0].geometry.coordinates, [[126, 37], [127, 37]])
+  assert.deepEqual(map.sourceData.get(ROUTE_PENDING_SOURCE).features[0].geometry.coordinates, [[126, 38], [127, 38]])
 })
 
-test('syncRoutePreviewLayers keeps the legacy route and procedures when only the base candidate exists', () => {
+test('syncRoutePreviewLayers keeps the legacy route and procedures when only the base design exists', () => {
   const map = createMockMap()
   const routeLine = { type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates: [[126, 37], [127, 36]] } }
   const routeResult = { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [routeLine] }, navpointIds: [] }
 
   syncRoutePreviewLayers(map, {
     routeResult,
-    routeCandidates: [{ id: 'base', routeResult }], selectedCandidateId: 'base',
+    routeDesigns: [{ id: 'base', routeResult }], selectedRouteDesignId: 'base',
     selectedSid: { fixes: [{ id: 'A', lon: 126, lat: 37 }, { id: 'B', lon: 126.5, lat: 36.5 }] },
     selectedStar: null, selectedIap: null,
   })
@@ -152,12 +162,24 @@ test('syncVfrWaypointData writes VFR waypoint GeoJSON and clears when fewer than
   const map = createMockMap()
 
   syncVfrWaypointData(map, {
+    routeResult: { flightRule: 'VFR' },
     vfrWaypoints: [{ id: 'RKSI', lon: 126, lat: 37 }, { id: 'RKPC', lon: 127, lat: 36 }],
   })
   assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.length, 3)
 
-  syncVfrWaypointData(map, { vfrWaypoints: [{ id: 'RKSI', lon: 126, lat: 37 }] })
+  syncVfrWaypointData(map, { routeResult: { flightRule: 'VFR' }, vfrWaypoints: [{ id: 'RKSI', lon: 126, lat: 37 }] })
   assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.length, 0)
+})
+
+test('syncVfrWaypointData keeps an applied VFR base in baseline while draft stays draggable in preview', () => {
+  const map = createMockMap()
+  const applied = [{ id: 'RKSI', lon: 126, lat: 37 }, { id: 'RKPK', lon: 129, lat: 35 }]
+  const draft = [{ id: 'RKSI', lon: 126, lat: 37 }, { id: 'GONAX', lon: 127, lat: 36 }, { id: 'RKPK', lon: 129, lat: 35 }]
+
+  syncVfrWaypointData(map, { routeResult: { flightRule: 'VFR' }, appliedVfrWaypoints: applied, draftVfrWaypoints: draft })
+
+  assert.equal(map.sourceData.get('briefing-route-baseline').features.length, 3)
+  assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.length, 4)
 })
 
 test('syncBoundaryFixPreview writes selected boundary fix and returns fit coordinates', () => {

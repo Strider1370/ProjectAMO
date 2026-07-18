@@ -21,7 +21,7 @@ function pickCeilingCloud(clouds) {
     .sort((a, b) => (a.base ?? Infinity) - (b.base ?? Infinity))[0] || null
 }
 
-function buildWindToken(wind) {
+export function buildWindToken(wind) {
   if (!wind || wind.calm) return null
   const dir = wind.variable ? 'VRB' : (Number.isFinite(wind.direction) ? String(wind.direction).padStart(3, '0') : null)
   const speed = Number.isFinite(wind.speed) ? String(wind.speed).padStart(2, '0') : null
@@ -30,29 +30,29 @@ function buildWindToken(wind) {
   return `${dir}${speed}${gust}${wind.unit || 'KT'}`
 }
 
-function buildVisibilityToken(obs) {
+export function buildVisibilityToken(obs) {
   const value = obs?.visibility?.value
   return Number.isFinite(value) ? String(value) : null
 }
 
-function buildCeilingToken(obs) {
+export function buildCeilingToken(obs) {
   const ceilingCloud = pickCeilingCloud(obs?.clouds)
   if (!ceilingCloud || !Number.isFinite(ceilingCloud.base)) return null
   const hundreds = String(Math.round(ceilingCloud.base / 100)).padStart(3, '0')
   return `${ceilingCloud.amount}${hundreds}`
 }
 
-function weatherTokens(obs) {
+export function weatherTokens(obs) {
   const raw = obs?.display?.weather
   return raw ? String(raw).split(/\s+/).filter(Boolean) : []
 }
 
-function levelHighlightClass(cat) {
+export function levelHighlightClass(cat) {
   if (!cat || cat.category === 'VFR') return null
   return `ap-metar-tac-hl ap-metar-tac-hl--level-${cat.category.toLowerCase()}`
 }
 
-function splitSegmentsOn(segments, token, className) {
+export function splitSegmentsOn(segments, token, className) {
   if (!token) return segments
   return segments.flatMap((seg) => {
     if (seg.className || !seg.text.includes(token)) return [seg]

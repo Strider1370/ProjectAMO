@@ -1,4 +1,5 @@
 import { AVIATION_WFS_LAYERS } from './aviationWfsLayers.js'
+import { addLazyGeoJsonSource } from '../map/lib/mapLayerUtils.js'
 
 const POLYGON_FILTER = ['any', ['==', ['geometry-type'], 'Polygon'], ['==', ['geometry-type'], 'MultiPolygon']]
 const LINE_FILTER = ['any', ['==', ['geometry-type'], 'LineString'], ['==', ['geometry-type'], 'MultiLineString']]
@@ -359,14 +360,13 @@ export function addAviationWfsLayers(map) {
   AVIATION_WFS_LAYERS.forEach((layer) => {
     ensureIconImages(map, layer)
 
-    if (!map.getSource(layer.sourceId)) {
-      map.addSource(layer.sourceId, {
-        type: 'geojson',
-        data: layer.dataUrl,
-        // 데이터 출처 표기(레이어 켜졌을 때만 Mapbox attribution에 노출). VAT-Spy FIR = CC-BY-SA-4.0.
-        ...(layer.attribution ? { attribution: layer.attribution } : {}),
-      })
-    }
+    // 기본으로 꺼진 레이어는 데이터를 바로 받지 않는다 — 사용자가 실제로 켤 때
+    // setLayerVisibility(mapLayerUtils.js)가 그때서야 dataUrl로 소스를 채운다.
+    addLazyGeoJsonSource(map, layer.sourceId, layer.dataUrl, {
+      eager: layer.defaultVisible,
+      // 데이터 출처 표기(레이어 켜졌을 때만 Mapbox attribution에 노출). VAT-Spy FIR = CC-BY-SA-4.0.
+      ...(layer.attribution ? { attribution: layer.attribution } : {}),
+    })
 
     const visibility = layer.defaultVisible ? 'visible' : 'none'
 

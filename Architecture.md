@@ -146,7 +146,7 @@ ProjectAMO/
 - `frontend/src/features/route-briefing/lib/routeBriefingModel.js` -> pure route briefing view/model helpers.
 - `frontend/src/features/route-briefing/lib/routePreviewSync.js` -> route/procedure/VFR/boundary-fix/highlight Mapbox install/sync helpers and route preview source/layer ownership IDs.
 - `frontend/src/features/route-briefing/lib/routePreview.js` -> route/procedure/VFR GeoJSON helpers, layer installation, and VFR map interaction binding.
-- `frontend/src/features/route-briefing/lib/routeStore.js` -> localStorage CRUD for saved routes (inputs only; reloaded by re-search).
+- `frontend/src/features/route-briefing/lib/routeStore.js` -> localStorage CRUD for saved-route snapshot v2 (applied base inputs, procedure keys, en-route tokens, and VFR points); IFR v2 reload restores the saved base without auto-generation.
 - `frontend/src/features/map/layerActions.js` -> 공유 레이어 레지스트리(공항+패널+기상/항공 레이어+베이스맵). label/aliases 단일 출처, `buildSearchCatalog`/`matchSearch`·`metLabel`/`aviationLabel` 제공. 지도 레이어 메타데이터라 `features/map`에 둔다(검색·브리핑·경로가 공유). 레이어 토글은 MapView ref(`setLayerOn`)·베이스맵은 `switchBasemap` 재사용.
 - `frontend/src/features/map/LayerToggleChips.jsx` -> 지도 레이어 토글칩 묶음(상태 표시+토글). 브리핑(MET)·VFR 입력(항공)이 공유. items=[{key,label,on,onToggle}].
 - `frontend/src/features/search/SearchPalette.jsx` -> 공항+기능 통합 검색 팔레트(Cmd/Ctrl+K·사이드바 검색 아이콘·모바일 더보기로 진입). Fluent `SearchBox` + 토큰 기반 결과 행, 키보드 내비/포커스 트랩/복귀.

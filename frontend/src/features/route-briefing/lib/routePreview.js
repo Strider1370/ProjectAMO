@@ -1,9 +1,18 @@
-export const ROUTE_PREVIEW_SOURCE = 'briefing-route-preview'
+export const ROUTE_PREVIEW_SOURCE = 'briefing-route-applied'
+export const ROUTE_BASELINE_SOURCE = 'briefing-route-baseline'
+export const ROUTE_PENDING_SOURCE = 'briefing-route-pending'
+export const ROUTE_BASELINE_LINE = 'briefing-route-baseline-line'
+export const ROUTE_PENDING_LINE = 'briefing-route-pending-line'
+export const ROUTE_DRAW_SOURCE = 'briefing-route-draw'
+export const ROUTE_DRAW_LINE = 'briefing-route-draw-line'
 export const ROUTE_PREVIEW_LINE = 'briefing-route-preview-line'
 export const ROUTE_PREVIEW_LINE_HIT = 'briefing-route-preview-line-hit'
-export const ROUTE_CANDIDATE_LINE = 'briefing-route-candidate-line'
-export const ROUTE_CANDIDATE_LINE_HIT = 'briefing-route-candidate-line-hit'
+export const ROUTE_DESIGN_LINE = 'briefing-route-design-line'
+export const ROUTE_DESIGN_LINE_HIT = 'briefing-route-design-line-hit'
 export const ROUTE_PREVIEW_POINT = 'briefing-route-preview-point'
+export const ROUTE_PREVIEW_LABEL = 'briefing-route-preview-label'
+export const ROUTE_PENDING_POINT = 'briefing-route-pending-point'
+export const ROUTE_PENDING_LABEL = 'briefing-route-pending-label'
 export const VFR_WP_CIRCLE = 'vfr-wp-circle'
 export const VFR_WP_LABEL = 'vfr-wp-label'
 export const PROC_PREVIEW_SOURCE = 'procedure-preview'
@@ -136,11 +145,14 @@ export function augmentRouteWithProcedures(previewGeojson, sid, star, iap) {
   // baseCoords = [depAirport, entryFix, ...airways..., exitFix, arrAirport]
   let combined = [...lineFeature.geometry.coordinates]
   const arrCoord = combined[combined.length - 1]
+  const sameCoordinate = (a, b) => Array.isArray(a) && Array.isArray(b) && Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6
 
   // 1. Process SID: replace [dep, entryFix] with the full SID geometry
   const sidCoords = getProcedureLineCoordinates(sid)
   if (sidCoords.length > 0) {
-    combined = [...sidCoords, ...combined.slice(2)]
+    combined = sameCoordinate(sidCoords.at(-1), combined[1])
+      ? [...sidCoords, ...combined.slice(2)]
+      : [...sidCoords, ...combined.slice(1)]
   }
 
   // 2. Process STAR & IAP: replace [exitFix, arr] with [...starCoords, ...iapTail]
@@ -153,8 +165,10 @@ export function augmentRouteWithProcedures(previewGeojson, sid, star, iap) {
 
   if (starCoords.length > 0) {
     // starCoords starts at exitFix
-    const tail = iapTail.length > 0 ? iapTail : [arrCoord]
-    combined = [...combined.slice(0, -2), ...starCoords, ...tail]
+    const tail = iapTail.length > 0 ? iapTail : (sameCoordinate(starCoords.at(-1), arrCoord) ? [] : [arrCoord])
+    combined = sameCoordinate(starCoords[0], combined.at(-2))
+      ? [...combined.slice(0, -2), ...starCoords, ...tail]
+      : [...combined.slice(0, -1), ...starCoords, ...tail]
   } else if (iapTail.length > 0) {
     // No STAR but have IAP (starts at exitFix)
     combined = [...combined.slice(0, -1), ...iapTail]
@@ -172,8 +186,38 @@ export function augmentRouteWithProcedures(previewGeojson, sid, star, iap) {
 }
 
 export function addRoutePreviewLayers(map) {
+  if (!map.getSource(ROUTE_BASELINE_SOURCE)) {
+    map.addSource(ROUTE_BASELINE_SOURCE, { type: 'geojson', data: emptyGeoJSON })
+  }
   if (!map.getSource(ROUTE_PREVIEW_SOURCE)) {
     map.addSource(ROUTE_PREVIEW_SOURCE, { type: 'geojson', data: emptyGeoJSON })
+  }
+  if (!map.getSource(ROUTE_PENDING_SOURCE)) {
+    map.addSource(ROUTE_PENDING_SOURCE, { type: 'geojson', data: emptyGeoJSON })
+  }
+  if (!map.getLayer(ROUTE_BASELINE_LINE)) {
+    map.addLayer({
+      id: ROUTE_BASELINE_LINE, type: 'line', source: ROUTE_BASELINE_SOURCE, slot: 'top',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#f97316', 'line-width': 3, 'line-opacity': 0.9 },
+    })
+  }
+  if (!map.getLayer(ROUTE_PENDING_LINE)) {
+    map.addLayer({
+      id: ROUTE_PENDING_LINE, type: 'line', source: ROUTE_PENDING_SOURCE, slot: 'top',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#d946ef', 'line-width': 4, 'line-opacity': 0.95, 'line-dasharray': [2, 1] },
+    })
+  }
+  if (!map.getSource(ROUTE_DRAW_SOURCE)) {
+    map.addSource(ROUTE_DRAW_SOURCE, { type: 'geojson', data: emptyGeoJSON })
+  }
+  if (!map.getLayer(ROUTE_DRAW_LINE)) {
+    map.addLayer({
+      id: ROUTE_DRAW_LINE, type: 'line', source: ROUTE_DRAW_SOURCE, slot: 'top',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#0f766e', 'line-width': 3, 'line-dasharray': [2, 1] },
+    })
   }
   // 투명 굵은 "히트 라인" — VFR 경로선 클릭/드래그(WP 추가) 충돌판정 확대용.
   // opacity 0이어도 Mapbox 이벤트/queryRenderedFeatures는 잡힘. 보이는 선 아래에 깐다.
@@ -192,18 +236,18 @@ export function addRoutePreviewLayers(map) {
       paint: { 'line-color': '#f97316', 'line-width': 4, 'line-opacity': 0.9 },
     })
   }
-  if (!map.getLayer(ROUTE_CANDIDATE_LINE_HIT)) {
+  if (!map.getLayer(ROUTE_DESIGN_LINE_HIT)) {
     map.addLayer({
-      id: ROUTE_CANDIDATE_LINE_HIT, type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
-      filter: ['==', ['get', 'role'], 'route-candidate-line'],
+      id: ROUTE_DESIGN_LINE_HIT, type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'route-design-line'],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': '#000', 'line-opacity': 0, 'line-width': 20 },
     })
   }
-  if (!map.getLayer(ROUTE_CANDIDATE_LINE)) {
+  if (!map.getLayer(ROUTE_DESIGN_LINE)) {
     map.addLayer({
-      id: ROUTE_CANDIDATE_LINE, type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
-      filter: ['==', ['get', 'role'], 'route-candidate-line'],
+      id: ROUTE_DESIGN_LINE, type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'route-design-line'],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': ['case', ['boolean', ['get', 'selected'], false], '#334155', '#64748b'],
@@ -217,6 +261,29 @@ export function addRoutePreviewLayers(map) {
       id: ROUTE_PREVIEW_POINT, type: 'circle', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
       filter: ['==', ['get', 'role'], 'route-preview-point'],
       paint: { 'circle-color': '#f97316', 'circle-radius': 4, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 },
+    })
+  }
+  if (!map.getLayer(ROUTE_PREVIEW_LABEL)) {
+    map.addLayer({
+      id: ROUTE_PREVIEW_LABEL, type: 'symbol', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'route-preview-point'],
+      layout: { 'text-field': ['get', 'label'], 'text-size': 11, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.8], 'text-allow-overlap': true },
+      paint: { 'text-color': '#c2410c', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
+    })
+  }
+  if (!map.getLayer(ROUTE_PENDING_POINT)) {
+    map.addLayer({
+      id: ROUTE_PENDING_POINT, type: 'circle', source: ROUTE_PENDING_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'route-preview-point'],
+      paint: { 'circle-color': '#d946ef', 'circle-radius': 4, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 },
+    })
+  }
+  if (!map.getLayer(ROUTE_PENDING_LABEL)) {
+    map.addLayer({
+      id: ROUTE_PENDING_LABEL, type: 'symbol', source: ROUTE_PENDING_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'route-preview-point'],
+      layout: { 'text-field': ['get', 'label'], 'text-size': 11, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.8], 'text-allow-overlap': true },
+      paint: { 'text-color': '#d946ef', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
     })
   }
 }
@@ -324,13 +391,15 @@ export function addVfrWaypointLayers(map) {
   }
 }
 
-export function bindVfrInteractions(map, vfrWaypointsRef, setVfrWaypoints) {
+export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop) {
   let draggingIdx = -1
+  let beforeDrag = null
 
   map.on('mousedown', VFR_WP_CIRCLE, (e) => {
     e.preventDefault()
     const wpIdx = e.features[0].properties.wpIndex
     if (vfrWaypointsRef.current[wpIdx]?.fixed) return
+    beforeDrag = vfrWaypointsRef.current
     draggingIdx = wpIdx
     map.dragPan.disable()
     map.getCanvas().style.cursor = 'grabbing'
@@ -342,6 +411,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, setVfrWaypoints) {
     if (wpHit.length > 0) return
     e.preventDefault()
     const wps = vfrWaypointsRef.current
+    beforeDrag = wps
     const insertIdx = findInsertIndex(wps, e.lngLat)
     const wpCount = wps.filter((wp) => !wp.fixed).length
     const newWp = { id: `WP${wpCount + 1}`, uid: crypto.randomUUID(), lon: e.lngLat.lng, lat: e.lngLat.lat }
@@ -377,9 +447,101 @@ export function bindVfrInteractions(map, vfrWaypointsRef, setVfrWaypoints) {
 
   map.on('mouseup', () => {
     if (draggingIdx < 0) return
-    setVfrWaypoints([...vfrWaypointsRef.current])
+    onWaypointDrop.current?.({
+      waypoints: [...vfrWaypointsRef.current],
+      previousWaypoints: beforeDrag,
+      waypointIndex: draggingIdx,
+    })
     draggingIdx = -1
+    beforeDrag = null
     map.dragPan.enable()
     map.getCanvas().style.cursor = ''
+  })
+}
+
+export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
+  const status = document.createElement('div')
+  status.className = 'route-map-interaction-status'
+  status.hidden = true
+  map.getContainer().append(status)
+  statusRef.current = (message) => {
+    status.textContent = message
+    status.hidden = !message
+  }
+  const confirmation = document.createElement('div')
+  confirmation.className = 'route-map-interaction-confirm'
+  confirmation.hidden = true
+  // The card lives inside the map container; its controls must not be treated as another map click.
+  confirmation.addEventListener('mousedown', (event) => event.stopPropagation())
+  confirmation.addEventListener('click', (event) => event.stopPropagation())
+  map.getContainer().append(confirmation)
+  statusRef.current.showConfirmation = ({ message, coordinates, onApply, onCancel } = {}) => {
+    if (!message || !Array.isArray(coordinates)) { confirmation.hidden = true; return }
+    const point = map.project(coordinates)
+    confirmation.replaceChildren()
+    const text = document.createElement('span')
+    text.textContent = message
+    const apply = document.createElement('button')
+    apply.type = 'button'; apply.textContent = '적용'; apply.onclick = (event) => { event.stopPropagation(); confirmation.hidden = true; onApply?.() }
+    const cancel = document.createElement('button')
+    cancel.type = 'button'; cancel.textContent = '취소'; cancel.onclick = (event) => { event.stopPropagation(); confirmation.hidden = true; onCancel?.() }
+    confirmation.append(text, apply, cancel)
+    confirmation.style.left = `${point.x}px`
+    confirmation.style.top = `${point.y}px`
+    confirmation.hidden = false
+  }
+
+  map.on('click', (event) => {
+    if (modeRef.current === 'click-add') addPointRef.current?.([event.lngLat.lng, event.lngLat.lat])
+  })
+
+  let drawing = null
+  map.on('mousedown', (event) => {
+    if (modeRef.current !== 'draw') return
+    drawing = [[event.lngLat.lng, event.lngLat.lat]]
+    map.getSource(ROUTE_DRAW_SOURCE)?.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: drawing } }] })
+    map.dragPan.disable()
+    statusRef.current?.('그리는 중… FIX를 지나는 선을 그리세요')
+  })
+  map.on('mousemove', (event) => {
+    if (drawing) {
+      drawing.push([event.lngLat.lng, event.lngLat.lat])
+      map.getSource(ROUTE_DRAW_SOURCE)?.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: drawing } }] })
+    }
+  })
+  map.on('mouseup', (event) => {
+    if (!drawing) return
+    drawing.push([event.lngLat.lng, event.lngLat.lat])
+    const coordinates = drawing
+    drawing = null
+    map.dragPan.enable()
+    if (coordinates.length > 1) {
+      statusRef.current?.('선에서 항로 FIX를 찾는 중…')
+      addPointRef.current?.({ type: 'draw', coordinates })
+    }
+  })
+
+  let detourStart = null
+  const beginDetour = (event) => {
+    if (modeRef.current !== 'segment-detour') return
+    event.preventDefault()
+    detourStart = event.point
+    map.dragPan.disable()
+    statusRef.current?.('새 중간 지점까지 끌어 놓으세요')
+  }
+  map.on('mousedown', ROUTE_DESIGN_LINE_HIT, beginDetour)
+  map.on('mousedown', ROUTE_PREVIEW_LINE_HIT, beginDetour)
+  map.on('mouseup', (event) => {
+    if (!detourStart) return
+    detourStart = null
+    map.dragPan.enable()
+    statusRef.current?.('우회 지점을 항로 FIX로 확인하는 중…')
+    addPointRef.current?.({ type: 'segment-detour', coordinates: [event.lngLat.lng, event.lngLat.lat] })
+  })
+
+  map.on('mousemove', () => {
+    if (drawing || detourStart) return
+    const cursor = modeRef.current === 'draw' || modeRef.current === 'click-add' ? 'crosshair' : modeRef.current === 'segment-detour' ? 'copy' : ''
+    if (cursor) map.getCanvas().style.cursor = cursor
   })
 }

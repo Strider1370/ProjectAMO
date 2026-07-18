@@ -5,12 +5,31 @@ import {
   buildIfrDistanceBreakdown,
   buildIfrSequenceTokens,
   buildInitialVfrWaypoints,
+  buildVfrWaypointsFromRouteResult,
   buildIapCandidates,
   buildVfrRouteFromWaypoints,
   chooseIapKeyForRunway,
   getCurrentRouteLineString,
   pickBestRunwayGroup,
 } from './routeBriefingModel.js'
+
+test('buildVfrWaypointsFromRouteResult keeps airport endpoints around manual VFR fixes', () => {
+  const waypoints = buildVfrWaypointsFromRouteResult({
+    flightRule: 'VFR',
+    departureAirport: 'RKSS',
+    arrivalAirport: 'RKPC',
+    previewGeojson: { type: 'FeatureCollection', features: [{
+      type: 'Feature', properties: { role: 'route-preview-line' },
+      geometry: { type: 'LineString', coordinates: [[126.8, 37.6], [127.2, 37.1], [126.5, 33.5]] },
+    }] },
+    manualRoute: { points: [{ label: 'GONAX', kind: 'published-fix', coordinates: [127.2, 37.1] }] },
+  }, [{ icao: 'RKSS', elevationFt: 18 }, { icao: 'RKPC', elevationFt: 118 }])
+
+  assert.deepEqual(waypoints.map((waypoint) => waypoint.id), ['RKSS', 'GONAX', 'RKPC'])
+  assert.equal(waypoints[1].named, true)
+  assert.equal(waypoints[0].fixed, true)
+  assert.equal(waypoints[2].fixed, true)
+})
 
 test('pickBestRunwayGroup chooses the runway group closest to wind direction', () => {
   assert.equal(pickBestRunwayGroup(['15', '33', '04'], 160), '15')

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { MoveUp } from 'lucide-react'
 import WeatherIcon from '../../../shared/ui/WeatherIcon.jsx'
-import { buildTafViewModel, formatTafHour, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
+import { buildTafViewModel, buildTafTacLines, formatTafHour, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
 function tafWeatherClass(item, baseClass, { includeSpecial = true } = {}) {
@@ -10,26 +10,6 @@ function tafWeatherClass(item, baseClass, { includeSpecial = true } = {}) {
     item?.hasPrecipitation ? `${baseClass}--precip` : '',
     includeSpecial && item?.isSpecialWeather ? `${baseClass}--special` : '',
   ].filter(Boolean).join(' ')
-}
-
-// 원문(TAC) 블록 스타일 — Vite dev CSS HMR(대소문자 파일명) 이슈 회피용 인라인.
-export const RAW_TAC_STYLE = {
-  wrap: { display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 },
-  label: { fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#64748b' },
-  text: {
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-    fontSize: 12, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-    padding: 0, color: '#0f172a',
-  },
-}
-
-// NOAA rawTAF는 한 줄로 옴 → 우리가 읽는 TAF 형태로 변화군마다 줄바꿈·들여쓰기.
-// FM(DDHHMM)·BECMG·TEMPO·PROBxx(·TEMPO)·RMK 앞에서 개행. PROBxx TEMPO는 한 줄 유지.
-function formatTafTac(raw) {
-  if (!raw) return raw
-  return String(raw)
-    .replace(/\s+(FM\d{6}|PROB\d{2}\s+TEMPO|PROB\d{2}|BECMG|TEMPO|RMK)\b/g, '\n  $1')
-    .trim()
 }
 
 // 연속으로 조건이 같은 시간 슬롯을 하나의 변화구간으로 묶음 (시간별 반복 제거)
@@ -64,6 +44,7 @@ export default function EnhancedTafTab({ taf, icao }) {
 
   const { rawTimeline, slots } = buildTafViewModel(taf, icao)
   const periods = groupTafPeriods(slots) // 테이블·그리드용 변화구간 묶음
+  const tacLines = buildTafTacLines(taf, icao)
 
   return (
     <div className="ap-taf">
@@ -124,11 +105,23 @@ export default function EnhancedTafTab({ taf, icao }) {
         </div>
       )}
 
-      {/* ── 원문(TAC) — 접이식(기본 접힘). 국내는 재구성본 ── */}
-      {taf?.header?.raw_text && (
+      {/* ── 원문(TAC) — 접이식(기본 접힘). METAR TAC과 동일하게 큰 글자 + 임계값 색칠,
+          줄(기본/TEMPO/BECMG/FM/PROB)마다 그 시점의 비행조건 배지를 앞에 붙인다. ── */}
+      {tacLines.length > 0 && (
         <details className="ap-raw-fold">
           <summary className="ap-raw-fold-summary">원문 (TAC)</summary>
-          <code style={RAW_TAC_STYLE.text}>{formatTafTac(taf.header.raw_text)}</code>
+          <div className="ap-taf-tac-block">
+            {tacLines.map((line, i) => (
+              <div className="ap-taf-tac-row" key={i}>
+                {line.category
+                  ? <span className={`ap-metar-tac-chip ap-metar-tac-chip--${line.category}`}>{line.category}</span>
+                  : <span className="ap-taf-tac-chip-spacer" />}
+                <code className="ap-metar-tac">
+                  {line.segments.map((seg, j) => <span key={j} className={seg.className}>{seg.text}</span>)}
+                </code>
+              </div>
+            ))}
+          </div>
         </details>
       )}
     </div>

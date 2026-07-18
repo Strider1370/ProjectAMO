@@ -52,3 +52,11 @@ test('rejects an ID match whose endpoints contradict the planned direction', () 
     fs.rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('ignores manual DCT legs and reports not applicable without an airway', () => {
+  const result = attachActiveAipConstraints({
+    routeModel: { enRouteSegments: [{ id: 'dct:A:WP1', kind: 'dct', routeId: null, alignmentStatus: 'aligned' }] },
+  })
+  assert.equal(result.status, 'not_applicable')
+  assert.deepEqual(result.segments, [])
+})

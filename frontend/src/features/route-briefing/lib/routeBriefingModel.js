@@ -243,6 +243,21 @@ export function buildInitialVfrWaypoints(routeResult, airports) {
   ]
 }
 
+export function buildVfrWaypointsFromRouteResult(routeResult, airports) {
+  const coordinates = routeResult?.previewGeojson?.features
+    ?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry?.coordinates ?? []
+  if (coordinates.length < 2) return []
+
+  const departureElevationFt = getAirportElevationFt(airports, routeResult.departureAirport)
+  const arrivalElevationFt = getAirportElevationFt(airports, routeResult.arrivalAirport)
+  const manualPoints = routeResult.manualRoute?.points ?? []
+  return [
+    { id: routeResult.departureAirport, uid: crypto.randomUUID(), lon: coordinates[0][0], lat: coordinates[0][1], fixed: true, airportElevationFt: departureElevationFt, altitudeFt: departureElevationFt ?? 0 },
+    ...manualPoints.map((point) => ({ id: point.label, uid: crypto.randomUUID(), lon: point.coordinates[0], lat: point.coordinates[1], fixed: false, named: point.kind === 'published-fix' })),
+    { id: routeResult.arrivalAirport, uid: crypto.randomUUID(), lon: coordinates.at(-1)[0], lat: coordinates.at(-1)[1], fixed: true, airportElevationFt: arrivalElevationFt, altitudeFt: arrivalElevationFt ?? 0 },
+  ]
+}
+
 export function buildIfrSequenceTokens(result, { selectedSid = null, selectedStar = null, selectedIap = null } = {}) {
   const seq = result?.displaySequence ?? []
   const airwayIds = new Set(result?.routeIds ?? [])
@@ -320,13 +335,20 @@ export function buildRoutePreviewModel(routeState) {
   const {
     routeForm,
     routeResult,
-    routeCandidates,
-    selectedCandidateId,
-    vfrWaypoints,
+    routeDesigns,
+    selectedRouteDesignId,
+    vfrWaypoints = [],
+    appliedVfrWaypoints = vfrWaypoints,
+    draftVfrWaypoints = [],
     selectedSid,
     selectedStar,
     selectedIap,
     navpointsById,
+    baselinePreview,
+    pendingRouteResult,
+    pendingSid,
+    pendingStar,
+    pendingIap,
   } = routeState
   const isFirInMode = routeForm?.flightRule === 'IFR' && routeForm?.departureAirport === FIR_IN_AIRPORT
   const isFirExitMode = routeForm?.flightRule === 'IFR' && routeForm?.arrivalAirport === FIR_EXIT_AIRPORT
@@ -337,12 +359,18 @@ export function buildRoutePreviewModel(routeState) {
 
   return {
     routeResult,
-    routeCandidates,
-    selectedCandidateId,
-    vfrWaypoints,
+    routeDesigns,
+    selectedRouteDesignId,
+    appliedVfrWaypoints,
+    draftVfrWaypoints,
     selectedSid,
     selectedStar,
     selectedIap,
+    baselinePreview,
+    pendingRouteResult,
+    pendingSid,
+    pendingStar,
+    pendingIap,
     selectedBoundaryFix,
     selectedBoundaryNavpoint: selectedBoundaryFix ? navpointsById?.[selectedBoundaryFix] : null,
   }

@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchVerticalProfile, fetchCrossSection, fetchRouteBriefing, fetchRouteExposure, fetchAltitudeComparison } from '../../api/briefingApi.js'
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
-import { buildBriefingRoute, buildRouteAlternatives, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata } from './lib/routePlanner.js'
-import { relabeledWaypoints, calcVfrDistance, findInsertIndex } from './lib/routePreview.js'
+import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, parseRouteString, resolveMapInteraction, resolveNearestNavpoint } from './lib/routePlanner.js'
+import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString, parseVfrDraftText } from './lib/manualRouteInput.js'
+import { calcVfrDistance } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
 import { getLastUsed } from './lib/aircraftProfiles.js'
-import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude, minVfrCruiseAltitude } from './lib/altitude.js'
+import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './lib/altitude.js'
 import { buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
 import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
+import { createRouteDesign, duplicateRouteDesign, renameRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
+import { normalizeRouteSnapshot } from './lib/routeStore.js'
+import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
 import { parseRouteFile, extractRoutePaths, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './lib/routeImport.js'
 import {
   FIR_EXIT_AIRPORT,
@@ -17,29 +21,41 @@ import {
   buildIapCandidates,
   buildIfrDistanceBreakdown,
   buildInitialVfrWaypoints,
+  buildVfrWaypointsFromRouteResult,
   buildRoutePreviewModel,
-  buildVfrRouteFromWaypoints,
   buildVisibleSidOptions,
   getCurrentRouteLineString,
-  getVfrAirportAltitudeFt,
 } from './lib/routeBriefingModel.js'
 
 export const initialRouteForm = {
   flightRule: 'IFR',
   departureAirport: '', entryFix: '',
-  exitFix: '', arrivalAirport: '', routeType: 'RNAV',
+  exitFix: '', arrivalAirport: '', routeType: 'ALL',
 }
 export const DEFAULT_CRUISE_ALTITUDE_FT = 9000
 // 경로 임포트 시 초기고도 자동설정용 지형 여유 마진. 항공안전법 시행규칙 §199(최저비행고도):
 // 밀집지역 300m(1,000ft)/일반지역 150m(500ft) — 혼잡 여부를 지형데이터만으로 판단 못 하므로
 // 보수적으로 밀집지역 기준(1,000ft)을 항상 적용한다.
-const IMPORT_TERRAIN_MARGIN_FT = 1000
 
 export function useRouteBriefing({ activePanel, airports = [], metarData = null }) {
-  const [routeForm, setRouteForm] = useState(initialRouteForm)
+  const [routeEditor, setRouteEditor] = useState(() => emptyEditorForContext(initialRouteForm))
+  const routeForm = routeEditor.routeForm
+  const selectedSid = routeEditor.procedures.sid
+  const selectedStar = routeEditor.procedures.star
+  const selectedIapKey = routeEditor.procedures.iapKey
+  const routeDraftText = routeEditor.rawText
+  const routeDraftResult = routeEditor.preview
+  const pendingRouteEdit = routeEditor.pendingIntent
+  const setRouteForm = (next) => setRouteEditor((editor) => ({ ...editor, routeForm: typeof next === 'function' ? next(editor.routeForm) : next }))
+  const setSelectedSid = (next) => setRouteEditor((editor) => replaceEditorProcedures(editor, { sid: typeof next === 'function' ? next(editor.procedures.sid) : next }))
+  const setSelectedStar = (next) => setRouteEditor((editor) => replaceEditorProcedures(editor, { star: typeof next === 'function' ? next(editor.procedures.star) : next }))
+  const setSelectedIapKey = (next) => setRouteEditor((editor) => replaceEditorProcedures(editor, { iapKey: typeof next === 'function' ? next(editor.procedures.iapKey) : next }))
+  const setRouteDraftText = (rawText) => setRouteEditor((editor) => ({ ...editor, rawText }))
+  const setRouteDraftResult = (preview) => setRouteEditor((editor) => ({ ...editor, preview }))
+  const setPendingRouteEdit = (pendingIntent) => setRouteEditor((editor) => ({ ...editor, pendingIntent }))
   const [routeResult, setRouteResult] = useState(null)
-  const [routeCandidates, setRouteCandidates] = useState([])
-  const [selectedCandidateId, setSelectedCandidateId] = useState(null)
+  const [routeDesigns, setRouteDesigns] = useState([])
+  const [selectedRouteDesignId, setSelectedRouteDesignId] = useState(null)
   const [routeExposure, setRouteExposure] = useState(null)
   const [altitudeComparison, setAltitudeComparison] = useState(null)
   const [altitudeComparisonLoading, setAltitudeComparisonLoading] = useState(false)
@@ -55,29 +71,25 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const [verticalProfileError, setVerticalProfileError] = useState(null)
   const [verticalProfileStale, setVerticalProfileStale] = useState(false)
   const [verticalProfileWindowOpen, setVerticalProfileWindowOpen] = useState(false)
-  const [editingVfrAltitudeIndex, setEditingVfrAltitudeIndex] = useState(null)
-  const [vfrWaypoints, setVfrWaypoints] = useState([])
   // leg(경유점 i→i+1)별 최고 지형고도(ft), 키 = `from→to`. 가벼운 /vertical-profile로 미리 채움.
   const [vfrLegTerrain, setVfrLegTerrain] = useState({})
   const [importCandidates, setImportCandidates] = useState([]) // 다중 경로 파일일 때 사용자 선택 대기 목록
   const [importWarning, setImportWarning] = useState(null)
   const [importError, setImportError] = useState(null)
   // 되돌리기: 패널에서의 경유점 편집(추가/삭제/순서/전체고도) 직전 스냅샷 스택.
-  const [vfrUndoStack, setVfrUndoStack] = useState([])
   const [hoveredWpInfo, setHoveredWpInfo] = useState(null)
   const [sidOptions, setSidOptions] = useState([])
   const [availableSidIds, setAvailableSidIds] = useState(null)
   const [starOptions, setStarOptions] = useState([])
-  const [selectedSid, setSelectedSid] = useState(null)
-  const [selectedStar, setSelectedStar] = useState(null)
   const [iapData, setIapData] = useState(null)
   const [iapCandidates, setIapCandidates] = useState([])
-  const [selectedIapKey, setSelectedIapKey] = useState(null)
   const [firInOptions, setFirInOptions] = useState([])
   const [firExitOptions, setFirExitOptions] = useState([])
   const [navpointsById, setNavpointsById] = useState({})
   const [autoRecommendRequested, setAutoRecommendRequested] = useState(false)
   const [fitBoundsRequest, setFitBoundsRequest] = useState(null)
+  const [mapInteractionMode, setMapInteractionMode] = useState(null)
+  const [pendingContextChange, setPendingContextChange] = useState(null)
 
   const vfrWaypointsRef = useRef([])
   const lastVfrKeyRef = useRef('') // 자동 VFR 경로생성: 마지막으로 생성한 출발>도착 (중복 생성·경유점 리셋 방지)
@@ -87,10 +99,16 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const iapRequestRef = useRef(0)
   const sidFilterRequestRef = useRef(0)
   const routeSearchRequestRef = useRef(0)
+  const vfrPreviewRequestRef = useRef(0)
   const routeExposureRequestRef = useRef(0)
   const altitudeComparisonRequestRef = useRef(0)
   const verticalProfileRequestRef = useRef(0)
   const fitBoundsRequestRef = useRef(0)
+  const mapInteractionModeRef = useRef(null)
+  const mapInteractionActionRef = useRef(null)
+  const mapInteractionStatusRef = useRef(null)
+  const vfrWaypointDropRef = useRef(null)
+  mapInteractionModeRef.current = mapInteractionMode
 
   const isFirInMode = routeForm.flightRule === 'IFR' && routeForm.departureAirport === FIR_IN_AIRPORT
   const isFirExitMode = routeForm.flightRule === 'IFR' && routeForm.arrivalAirport === FIR_EXIT_AIRPORT
@@ -115,19 +133,50 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const [briefingLoading, setBriefingLoading] = useState(false)
   const [briefingError, setBriefingError] = useState(null)
   const visibleSidOptions = useMemo(() => buildVisibleSidOptions(sidOptions, availableSidIds), [availableSidIds, sidOptions])
+  const selectedAppliedDesign = routeDesigns.find((design) => design.id === selectedRouteDesignId) ?? null
+  const appliedProcedures = selectedAppliedDesign?.procedures ?? { sid: selectedSid, star: selectedStar, iapKey: selectedIapKey }
+  const appliedIap = iapData?.iapRoutes?.[appliedProcedures.iapKey] ?? null
+  const baselinePreview = useMemo(() => {
+    if (routeResult) return null
+    const departure = airports.find((airport) => airport.icao === routeForm.departureAirport)
+    const arrival = airports.find((airport) => airport.icao === routeForm.arrivalAirport)
+    if (!Number.isFinite(departure?.lon) || !Number.isFinite(departure?.lat) || !Number.isFinite(arrival?.lon) || !Number.isFinite(arrival?.lat)) return null
+    return {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: { role: 'route-baseline' },
+        geometry: { type: 'LineString', coordinates: [[departure.lon, departure.lat], [arrival.lon, arrival.lat]] },
+      }],
+    }
+  }, [airports, routeDraftResult, routeForm.arrivalAirport, routeForm.departureAirport, routeResult])
+  const appliedVfrWaypoints = useMemo(() => routeResult?.flightRule === 'VFR'
+    ? buildVfrWaypointsFromRouteResult(routeResult, airports)
+    : [], [airports, routeResult])
+  const draftVfrWaypoints = useMemo(() => routeDraftResult?.flightRule === 'VFR'
+    ? buildVfrWaypointsFromRouteResult(routeDraftResult, airports)
+    : [], [airports, routeDraftResult])
   const routePreviewModel = useMemo(() => buildRoutePreviewModel({
     routeForm,
     routeResult,
-    routeCandidates,
-    selectedCandidateId,
-    vfrWaypoints,
-    selectedSid,
-    selectedStar,
-    selectedIap,
+    routeDesigns,
+    selectedRouteDesignId,
+    appliedVfrWaypoints,
+    draftVfrWaypoints,
+    selectedSid: appliedProcedures.sid,
+    selectedStar: appliedProcedures.star,
+    selectedIap: appliedIap,
     navpointsById,
-  }), [navpointsById, routeCandidates, routeForm, routeResult, selectedCandidateId, selectedIap, selectedSid, selectedStar, vfrWaypoints])
+    baselinePreview,
+    pendingRouteResult: routeDraftResult,
+    pendingSid: selectedSid,
+    pendingStar: selectedStar,
+    pendingIap: selectedIap,
+  }), [appliedIap, appliedProcedures.sid, appliedProcedures.star, appliedVfrWaypoints, baselinePreview, draftVfrWaypoints, navpointsById, routeDesigns, routeDraftResult, routeForm, routeResult, selectedIap, selectedRouteDesignId, selectedSid, selectedStar])
 
-  useEffect(() => { vfrWaypointsRef.current = vfrWaypoints }, [vfrWaypoints])
+  useEffect(() => {
+    vfrWaypointsRef.current = draftVfrWaypoints.length >= 2 ? draftVfrWaypoints : appliedVfrWaypoints
+  }, [appliedVfrWaypoints, draftVfrWaypoints])
 
   function clearRouteDisplay() {
     routeSearchRequestRef.current += 1
@@ -135,8 +184,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     altitudeComparisonRequestRef.current += 1
     verticalProfileRequestRef.current += 1
     setRouteResult(null)
-    setRouteCandidates([])
-    setSelectedCandidateId(null)
+    setRouteDesigns([])
+    setSelectedRouteDesignId(null)
     setRouteExposure(null)
     setAltitudeComparison(null)
     setAltitudeComparisonLoading(false)
@@ -151,11 +200,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setVerticalProfileError(null)
     setVerticalProfileStale(false)
     setVerticalProfileWindowOpen(false)
-    setVfrWaypoints([])
     setVfrUndoStack([])
     setFitBoundsRequest(null)
     setBriefing(null)
     setBriefingError(null)
+    setRouteEditor((editor) => ({ ...editor, rawText: '', preview: null, pendingIntent: null }))
   }
 
   useEffect(() => {
@@ -278,7 +327,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     if (verticalProfile) {
       setVerticalProfileStale(true)
     }
-  }, [selectedSid, selectedStar, selectedIapKey, vfrWaypoints])
+  }, [selectedSid, selectedStar, selectedIapKey, appliedVfrWaypoints])
 
   useEffect(() => {
     let cancelled = false
@@ -304,18 +353,37 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       effectiveRouteType,
       loadOverseasLinks,
       buildBriefingRoute,
-    }).then((best) => {
+    }).then(async (best) => {
       if (cancelled || !best) return
 
-      setAutoRecommendRequested(false)
-      setSelectedSid(best.sid ?? null)
-      setSelectedStar(best.star ?? null)
-      setSelectedIapKey(best.iapKey ?? null)
-      setRouteForm((prev) => ({
-        ...prev,
-        entryFix: best.entryFix ?? prev.entryFix,
-        exitFix: best.exitFix ?? prev.exitFix,
-      }))
+      const nextForm = {
+        ...routeForm,
+        entryFix: best.entryFix ?? routeForm.entryFix,
+        exitFix: best.exitFix ?? routeForm.exitFix,
+      }
+      try {
+        const result = await buildBriefingRoute({
+          ...nextForm,
+          routeType: effectiveRouteType,
+        })
+        if (cancelled) return
+        const generatedEditor = await buildEditorPreview(
+          createRouteEditor({
+            routeForm: { ...nextForm, routeType: effectiveRouteType },
+            procedures: { sid: best.sid ?? null, star: best.star ?? null, iapKey: best.iapKey ?? null },
+          }),
+          formatRouteString(result),
+        )
+        if (cancelled) return
+        setRouteEditor(generatedEditor.editor)
+        setRouteError(null)
+        setAutoRecommendRequested(false)
+      } catch (error) {
+        if (!cancelled) {
+          setAutoRecommendRequested(false)
+          setRouteError(error.message)
+        }
+      }
     }).catch(() => {})
 
     return () => {
@@ -342,150 +410,147 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setRouteForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  function handleDepartureAirportChange(value) {
-    clearRouteDisplay()
-    updateRouteField('departureAirport', value)
-    setSelectedSid(null)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
-    setAutoRecommendRequested(true)
+  function updateEditorContext(changes, options) {
+    vfrPreviewRequestRef.current += 1
+    setRouteEditor((editor) => updateEditor(editor, { ...options, routeForm: { ...changes, ...(options?.routeForm ?? {}) } }))
+    setRouteError(null)
+    setAutoRecommendRequested(false)
+  }
 
-    if (value === FIR_IN_AIRPORT) {
-      updateRouteField('entryFix', '')
+  function requestContextChange(changes, label) {
+    if (routeDesigns.length > 0) {
+      setPendingContextChange({ changes, label })
+      return true
     }
+    return false
+  }
+
+  function handleDepartureAirportChange(value) {
+    const changes = { departureAirport: value, ...(value === FIR_IN_AIRPORT ? { entryFix: '' } : {}) }
+    if (requestContextChange(changes, '출발 공항')) return
+    setIapCandidates([])
+    updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
 
   function handleArrivalAirportChange(value) {
-    clearRouteDisplay()
-    updateRouteField('arrivalAirport', value)
-    setSelectedStar(null)
+    const changes = { arrivalAirport: value, ...(value === FIR_EXIT_AIRPORT ? { exitFix: '' } : {}) }
+    if (requestContextChange(changes, '도착 공항')) return
     setIapCandidates([])
-    setSelectedIapKey(null)
-    setAutoRecommendRequested(true)
+    updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
+  }
 
-    if (value === FIR_EXIT_AIRPORT) {
-      updateRouteField('exitFix', '')
-    }
+  function swapRouteAirports() {
+    const changes = { departureAirport: routeForm.arrivalAirport, arrivalAirport: routeForm.departureAirport }
+    if (requestContextChange(changes, '출발·도착 공항')) return
+    setIapCandidates([])
+    updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
 
   function handleEntryFixChange(value) {
-    clearRouteDisplay()
-    updateRouteField('entryFix', value)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
-    setAutoRecommendRequested(true)
+    updateEditorContext({ entryFix: value }, { procedures: { sid: null } })
   }
 
   function handleExitFixChange(value) {
-    clearRouteDisplay()
-    updateRouteField('exitFix', value)
-    setSelectedSid(null)
-    setAutoRecommendRequested(true)
+    updateEditorContext({ exitFix: value }, { procedures: { star: null } })
   }
 
   function switchFlightRule(rule) {
-    setRouteForm((prev) => ({ ...prev, flightRule: rule }))
-    clearRouteDisplay()
-    setSelectedSid(null)
-    setSelectedStar(null)
+    if (requestContextChange({ flightRule: rule }, '비행 규칙')) return
     setIapCandidates([])
-    setSelectedIapKey(null)
-    setAutoRecommendRequested(true)
+    setRouteInteractionMode(null)
+    updateEditorContext({ flightRule: rule }, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
 
   function handleAutoRecommend() {
-    clearRouteDisplay()
-    setSelectedSid(null)
-    setSelectedStar(null)
-    setIapCandidates([])
-    setSelectedIapKey(null)
+    setRouteError(null)
     setAutoRecommendRequested(true)
   }
 
-  function handleSidChange(proc) {
+  function updateRouteDraftText(value) {
+    const editor = routeEditor
+    const requestId = ++vfrPreviewRequestRef.current
+    setRouteEditor((current) => ({ ...current, rawText: value, pendingIntent: null }))
+    setRouteError(null)
+    if (editor.routeForm.flightRule !== 'VFR' || !editor.routeForm.departureAirport || !editor.routeForm.arrivalAirport) return
+    setTimeout(async () => {
+      try {
+        const preview = await buildEditorPreview(editor, value)
+        if (requestId === vfrPreviewRequestRef.current) setRouteEditor(preview.editor)
+      } catch (error) {
+        if (requestId === vfrPreviewRequestRef.current) setRouteError(error.message)
+      }
+    }, 250)
+  }
+
+  function confirmContextChange() {
+    const change = pendingContextChange
+    if (!change) return
     clearRouteDisplay()
-    setAutoRecommendRequested(false)
-    setSelectedSid(proc)
-    if (proc) updateRouteField('entryFix', proc.enrouteFix ?? '')
+    setIapCandidates([])
+    setRouteEditor(emptyEditorForContext({ ...routeForm, ...change.changes }))
+    setPendingContextChange(null)
+  }
+
+  function handleSidChange(proc) {
+    updateEditorContext(proc ? { entryFix: proc.enrouteFix ?? '' } : {}, { procedures: { sid: proc } })
+    if (routeResult) setRouteDraftResult(routeResult)
   }
 
   function handleStarChange(proc) {
-    clearRouteDisplay()
-    setAutoRecommendRequested(false)
-    setSelectedStar(proc)
-    if (proc) updateRouteField('exitFix', proc.startFix ?? '')
+    updateEditorContext(proc ? { exitFix: proc.startFix ?? '' } : {}, { procedures: { star: proc } })
+    if (routeResult) setRouteDraftResult(routeResult)
   }
 
   function handleIapChange(key) {
-    clearRouteDisplay()
-    setAutoRecommendRequested(false)
-    setSelectedIapKey(key || null)
+    updateEditorContext({}, { procedures: { iapKey: key || null } })
+    if (routeResult) setRouteDraftResult(routeResult)
   }
 
   function handleRouteReset() {
     clearRouteDisplay()
-    setRouteForm((prev) => ({ ...initialRouteForm, flightRule: prev.flightRule }))
-    setSelectedSid(null)
-    setSelectedStar(null)
     setIapCandidates([])
-    setSelectedIapKey(null)
+    setRouteEditor(emptyEditorForContext({ ...initialRouteForm, flightRule: routeForm.flightRule }))
     setAvailableSidIds(null)
     setAutoRecommendRequested(false)
   }
 
-  // Snapshot the committed waypoints before a panel edit so 되돌리기 can restore.
-  function snapshotVfr() {
-    setVfrUndoStack((s) => [...s.slice(-19), vfrWaypointsRef.current])
-  }
+  async function handleVfrWaypointDrop({ waypoints, previousWaypoints, waypointIndex }) {
+    const previousEditor = routeEditor
+    const dropped = waypoints?.[waypointIndex]
+    const commit = async (next) => {
+      const terms = next.slice(1, -1).map((waypoint) => waypoint.named
+        ? { kind: 'fix', id: waypoint.id }
+        : { kind: 'coordinate', coordinate: { lat: waypoint.lat, lon: waypoint.lon } })
+      const text = formatVfrDraftText({
+        departureAirport: routeForm.departureAirport,
+        arrivalAirport: routeForm.arrivalAirport,
+        enroute: { terms, legIntents: Array.from({ length: Math.max(0, terms.length - 1) }, () => ({ kind: 'dct' })) },
+      })
+      await previewEditorRoute(text)
+    }
+    if (!dropped || dropped.fixed) return
 
-  function deleteVfrWaypoint(idx) {
-    snapshotVfr()
-    const next = relabeledWaypoints(vfrWaypoints.filter((_, i) => i !== idx))
-    setVfrWaypoints(next)
-    setHoveredWpInfo(null)
+    try {
+      const nearest = await resolveNearestNavpoint([dropped.lon, dropped.lat])
+      const navpoint = (await loadNavpoints())[nearest.id]
+      const coordinates = navpoint?.coordinates
+      if (!Number.isFinite(coordinates?.lon) || !Number.isFinite(coordinates?.lat)) throw new Error('FIX 좌표 없음')
+      mapInteractionStatusRef.current?.showConfirmation?.({
+        message: `${nearest.id} FIX를 경유점으로 넣을까요?`,
+        coordinates: [dropped.lon, dropped.lat],
+        onApply: () => commit(waypoints.map((waypoint, index) => index === waypointIndex
+          ? { ...waypoint, id: nearest.id, lon: coordinates.lon, lat: coordinates.lat, named: true }
+          : waypoint)),
+        onCancel: () => {
+          setRouteEditor(previousEditor)
+          mapInteractionStatusRef.current?.showConfirmation?.()
+        },
+      })
+    } catch (error) {
+      await commit(waypoints).catch((previewError) => setRouteError(previewError.message || error.message))
+    }
   }
-
-  // 검색-추가: insert a named fix (airport/navaid) at its best segment position.
-  function addVfrWaypointByFix(cand) {
-    if (!cand || !Number.isFinite(cand.lon) || !Number.isFinite(cand.lat)) return
-    snapshotVfr()
-    setVfrWaypoints((prev) => {
-      if (prev.length < 2) return prev
-      const idx = findInsertIndex(prev, { lng: cand.lon, lat: cand.lat })
-      const wp = { id: cand.id, uid: crypto.randomUUID(), lon: cand.lon, lat: cand.lat, named: true }
-      return relabeledWaypoints([...prev.slice(0, idx), wp, ...prev.slice(idx)])
-    })
-  }
-
-  // 드래그 시작 시 1회 스냅샷(되돌리기용). 드래그 중 매 단계 reorder는 스냅샷하지 않음.
-  function beginVfrReorder() {
-    snapshotVfr()
-  }
-
-  // 순서 변경: 비고정 경유점만(고정 출/도착은 양끝 유지). to는 [1, len-2]로 클램프.
-  // 드래그 중 라이브로 여러 번 호출되므로 스냅샷은 beginVfrReorder에서 1회만.
-  function reorderVfrWaypoint(from, to) {
-    setVfrWaypoints((prev) => {
-      if (from < 0 || from >= prev.length || prev[from]?.fixed) return prev
-      const lastMid = prev.length - 2
-      const target = Math.max(1, Math.min(lastMid, to))
-      if (target === from) return prev
-      const arr = [...prev]
-      const [moved] = arr.splice(from, 1)
-      arr.splice(target, 0, moved)
-      return relabeledWaypoints(arr)
-    })
-  }
-
-  function undoVfrWaypoints() {
-    if (vfrUndoStack.length === 0) return
-    const prev = vfrUndoStack[vfrUndoStack.length - 1]
-    setVfrUndoStack((s) => s.slice(0, -1))
-    setVfrWaypoints(prev)
-    setHoveredWpInfo(null)
-  }
+  vfrWaypointDropRef.current = handleVfrWaypointDrop
 
   // Core search by explicit form (so 불러오기 can search the saved form without
   // waiting for a setRouteForm state flush). Returns the result or null.
@@ -493,7 +558,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     const requestId = ++routeSearchRequestRef.current
     setRouteLoading(true)
     setRouteError(null)
-    setVfrUndoStack([])
     setVerticalProfile(null)
     setCrossSection(null)
     setVerticalProfileError(null)
@@ -509,13 +573,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       if (!deferIfrCommit || result.flightRule === 'VFR') setRouteResult(result)
       if (result.flightRule === 'VFR') {
         const initialWaypoints = buildInitialVfrWaypoints(result, airports)
-        setVfrWaypoints(initialWaypoints)
         const coords = initialWaypoints.map((wp) => [wp.lon, wp.lat])
         if (coords.length > 0) {
           setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: coords, maxZoom: 8 })
         }
       } else {
-        setVfrWaypoints([])
         const routeGeometry = getCurrentRouteLineString({
           routeResult: result,
           vfrWaypoints: [],
@@ -541,16 +603,24 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
 
   async function handleRouteSearch(e) {
     e.preventDefault()
+    setRouteDesigns([])
+    setSelectedRouteDesignId(null)
     const result = await runRouteSearch(routeForm, { deferIfrCommit: true })
     if (!result || result.flightRule !== 'IFR') return result
 
     const requestId = ++routeExposureRequestRef.current
     const routeGeometry = result.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry
     if (!routeGeometry) {
-      setRouteCandidates([{ id: 'base', routeResult: result, routeExposure: { trigger: 'unavailable', hazards: [] }, addedDistanceNm: 0 }])
-      setSelectedCandidateId('base')
-      setRouteResult(result)
-      setRouteExposure({ trigger: 'unavailable', hazards: [] })
+      const base = createRouteDesign({
+        routeForm: { ...routeForm, routeType: effectiveRouteType },
+        procedures: { sid: selectedSid, star: selectedStar, iapKey: selectedIapKey },
+        routeResult: result,
+        routeExposure: { trigger: 'unavailable', hazards: [] },
+      })
+      setRouteDesigns([base])
+      setSelectedRouteDesignId(base.id)
+      setRouteResult(base.routeResult)
+      setRouteExposure(base.routeExposure)
       setWorkflowStep('compare')
       return result
     }
@@ -564,89 +634,49 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       const baseExposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: searchEta })
       if (requestId !== routeExposureRequestRef.current) return result
 
-      const baseProcedures = { sid: selectedSid, star: selectedStar, iapKey: selectedIapKey }
-      let candidates = [{ id: 'base', routeResult: result, routeModel, routeExposure: baseExposure, addedDistanceNm: 0, procedures: baseProcedures }]
-      if (baseExposure.trigger === 'ready') {
-        const generated = (await buildRouteAlternatives({
-          departureAirport: routeForm.departureAirport,
-          entryFix: routeForm.entryFix,
-          exitFix: routeForm.exitFix,
-          arrivalAirport: routeForm.arrivalAirport,
-          routeType: effectiveRouteType,
-          triggerIntervals: baseExposure.hazards.flatMap((hazard) => hazard.horizontalExposure?.intervals ?? []),
-          baselineRoute: result,
-          routeModel,
-        })).map((candidate) => ({ ...candidate, procedures: baseProcedures }))
-        const procedureRoutes = KNOWN_AIRPORTS.includes(routeForm.departureAirport) && KNOWN_AIRPORTS.includes(routeForm.arrivalAirport)
-          ? await recommendProcedures({
-            routeForm, sidOptions, starOptions, iapData, metarData, isFirInMode, isFirExitMode, effectiveRouteType,
-            loadOverseasLinks, buildBriefingRoute, includeAll: true,
-          })
-          : []
-        const seen = new Set(generated.map((candidate) => [
-          candidate.routeResult.segments.map((segment) => segment.id).join('|'),
-          baseProcedures.sid?.id ?? '', baseProcedures.star?.id ?? '',
-        ].join('|')))
-        const procedureCandidates = (procedureRoutes ?? [])
-          .filter((candidate) => candidate.entryFix !== result.entryFix || candidate.exitFix !== result.exitFix)
-          .map((candidate) => ({
-            id: `procedure-${candidate.sid?.id ?? 'none'}-${candidate.star?.id ?? 'none'}`,
-            routeResult: candidate.routeResult,
-            addedDistanceNm: Number((candidate.routeResult.distanceNm - result.distanceNm).toFixed(2)),
-            changedDistanceNm: 0,
-            procedures: { sid: candidate.sid, star: candidate.star, iapKey: candidate.iapKey },
-          }))
-          .filter((candidate) => {
-            const key = [
-              candidate.routeResult.segments.map((segment) => segment.id).join('|'),
-              candidate.procedures.sid?.id ?? '', candidate.procedures.star?.id ?? '',
-            ].join('|')
-            if (seen.has(key)) return false
-            seen.add(key)
-            return true
-          })
-        const allCandidates = [generated[0], ...generated.slice(1).concat(procedureCandidates)
-          .sort((a, b) => a.addedDistanceNm - b.addedDistanceNm)]
-        const exposed = await Promise.all(allCandidates.slice(0, 4).map(async (candidate) => {
-          if (candidate.id === 'base') return candidates[0]
-          const candidateGeometry = candidate.routeResult.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry
-          const candidateModel = buildCommonRouteModel({ routeGeometry: candidateGeometry, routeResult: candidate.routeResult })
-          const candidateExposure = await fetchRouteExposure({ routeGeometry: candidateGeometry, routeModel: candidateModel, etd: etdIso, eta: searchEta })
-          return { ...candidate, routeModel: candidateModel, routeExposure: candidateExposure }
-        }))
-        // ponytail: test-only, keep all graph candidates for comparison; restore exposure-based filtering when convection criteria are defined.
-        candidates = exposed
-      }
       if (requestId !== routeExposureRequestRef.current) return result
-      setRouteCandidates(candidates)
-      setSelectedCandidateId('base')
-      setRouteResult(candidates[0].routeResult)
-      setRouteExposure(baseExposure)
+      const base = createRouteDesign({
+        routeForm: { ...routeForm, routeType: effectiveRouteType },
+        procedures: { sid: selectedSid, star: selectedStar, iapKey: selectedIapKey },
+        routeResult: result,
+        routeModel,
+        routeExposure: baseExposure,
+      })
+      setRouteDesigns([base])
+      setSelectedRouteDesignId(base.id)
+      setRouteResult(base.routeResult)
+      setRouteExposure(base.routeExposure)
       setWorkflowStep('compare')
     } catch (err) {
       if (requestId !== routeExposureRequestRef.current) return result
-      setRouteCandidates([{ id: 'base', routeResult: result, routeModel, routeExposure: { trigger: 'unavailable', hazards: [] }, addedDistanceNm: 0 }])
-      setSelectedCandidateId('base')
-      setRouteExposure({ trigger: 'unavailable', hazards: [], error: err.message })
+      const base = createRouteDesign({
+        routeForm: { ...routeForm, routeType: effectiveRouteType },
+        procedures: { sid: selectedSid, star: selectedStar, iapKey: selectedIapKey },
+        routeResult: result,
+        routeModel,
+        routeExposure: { trigger: 'unavailable', hazards: [], error: err.message },
+      })
+      setRouteDesigns([base])
+      setSelectedRouteDesignId(base.id)
+      setRouteResult(base.routeResult)
+      setRouteExposure(base.routeExposure)
       setWorkflowStep('compare')
     }
     return result
   }
 
-  function selectRouteCandidate(id) {
-    const candidate = routeCandidates.find((item) => item.id === id)
-    if (!candidate) return
-    setSelectedCandidateId(id)
-    setRouteResult(candidate.routeResult)
-    setRouteExposure(candidate.routeExposure)
+  function synchronizeSelectedRouteDesign(design) {
+    if (!design) return
+    setRouteResult(design.routeResult)
+    setRouteExposure(design.routeExposure)
     altitudeComparisonRequestRef.current += 1
     setAltitudeComparison(null)
     setAltitudeComparisonLoading(false)
     setAltitudeComparisonError(null)
-    if (candidate.procedures) {
-      setSelectedSid(candidate.procedures.sid ?? null)
-      setSelectedStar(candidate.procedures.star ?? null)
-      setSelectedIapKey(candidate.procedures.iapKey ?? null)
+    if (design.procedures) {
+      setSelectedSid(design.procedures.sid ?? null)
+      setSelectedStar(design.procedures.star ?? null)
+      setSelectedIapKey(design.procedures.iapKey ?? null)
     }
     setBriefing(null)
     setBriefingError(null)
@@ -654,13 +684,350 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setCrossSection(null)
   }
 
+  async function buildEditorPreview(editor, text, pendingIntent = null) {
+    const currentEnroute = editor.enroute
+    const userWaypoints = [...(currentEnroute?.userWaypoints ?? [])]
+    const parsed = editor.routeForm.flightRule === 'VFR'
+      ? parseVfrDraftText(text, { departureAirport: editor.routeForm.departureAirport, arrivalAirport: editor.routeForm.arrivalAirport, userWaypoints }).enroute
+      : parseManualRouteString(text, { flightRule: editor.routeForm.flightRule, userWaypoints })
+    let nextWaypointNumber = currentEnroute?.nextWaypointNumber ?? 1
+    const terms = parsed.terms.map((term) => {
+      if (term.kind !== 'coordinate') return term
+      const waypoint = { id: `user-wp-${nextWaypointNumber}`, name: `WP${nextWaypointNumber}`, lon: term.coordinate.lon, lat: term.coordinate.lat }
+      nextWaypointNumber += 1
+      userWaypoints.push(waypoint)
+      return { kind: 'user-waypoint', id: waypoint.id, name: waypoint.name }
+    })
+    const enroute = { terms, legIntents: parsed.legIntents, userWaypoints, nextWaypointNumber }
+    const result = editor.routeForm.flightRule === 'VFR'
+      ? (enroute.terms.length === 0
+          ? await buildVfrRoute(editor.routeForm)
+          : await buildManualVfrRoute({ departureAirport: editor.routeForm.departureAirport, arrivalAirport: editor.routeForm.arrivalAirport, enroute, userWaypoints }))
+      : await buildManualIfrRoute({ departureAirport: editor.routeForm.departureAirport, arrivalAirport: editor.routeForm.arrivalAirport, routeType: editor.routeForm.routeType || effectiveRouteType, enroute, userWaypoints })
+    const appliedEnroute = result.resolvedEnroute ? { ...result.resolvedEnroute, userWaypoints, nextWaypointNumber } : enroute
+    return {
+      editor: createRouteEditor({ ...editor, enroute: appliedEnroute, rawText: editor.routeForm.flightRule === 'VFR'
+        ? formatVfrDraftText({ departureAirport: editor.routeForm.departureAirport, arrivalAirport: editor.routeForm.arrivalAirport, enroute: appliedEnroute })
+        : formatManualRouteString(appliedEnroute), preview: result, pendingIntent }),
+      result,
+    }
+  }
+
+  async function previewEditorRoute(text, pendingIntent = null) {
+    const preview = await buildEditorPreview(routeEditor, text, pendingIntent)
+    setRouteEditor(preview.editor)
+    return preview.result
+  }
+
+  function cancelPendingRouteEdit() {
+    setRouteEditor((editor) => editor.pendingIntent?.previousEditor ?? { ...editor, pendingIntent: null, preview: null })
+    mapInteractionStatusRef.current?.showConfirmation?.()
+  }
+
+  function acceptPendingRouteEdit() {
+    setRouteEditor((editor) => editor.pendingIntent ? { ...editor, pendingIntent: null } : editor)
+    mapInteractionStatusRef.current?.showConfirmation?.()
+  }
+
+  async function applyRouteDraft(text = routeDraftText) {
+    const routeText = typeof text === 'string' ? text : routeDraftText
+    setRouteLoading(true)
+    setRouteError(null)
+    try {
+      const usePreview = routeText === routeEditor.rawText && routeEditor.preview
+      const currentEnroute = routeEditor.enroute
+      let result = usePreview ? routeEditor.preview : null
+      let appliedEnroute = currentEnroute
+      if (!result) {
+        const userWaypoints = [...(currentEnroute?.userWaypoints ?? [])]
+        const parsed = routeForm.flightRule === 'VFR'
+          ? parseVfrDraftText(routeText, { departureAirport: routeForm.departureAirport, arrivalAirport: routeForm.arrivalAirport, userWaypoints }).enroute
+          : parseManualRouteString(routeText, { flightRule: routeForm.flightRule, userWaypoints })
+        let nextWaypointNumber = currentEnroute?.nextWaypointNumber ?? 1
+        const terms = parsed.terms.map((term) => {
+          if (term.kind !== 'coordinate') return term
+          const waypoint = { id: `user-wp-${nextWaypointNumber}`, name: `WP${nextWaypointNumber}`, lon: term.coordinate.lon, lat: term.coordinate.lat }
+          nextWaypointNumber += 1
+          userWaypoints.push(waypoint)
+          return { kind: 'user-waypoint', id: waypoint.id, name: waypoint.name }
+        })
+        const enroute = { terms, legIntents: parsed.legIntents, userWaypoints, nextWaypointNumber }
+        result = routeForm.flightRule === 'VFR'
+          ? (enroute.terms.length === 0
+              ? await buildVfrRoute(routeForm)
+              : await buildManualVfrRoute({ departureAirport: routeForm.departureAirport, arrivalAirport: routeForm.arrivalAirport, enroute, userWaypoints }))
+          : await buildManualIfrRoute({ departureAirport: routeForm.departureAirport, arrivalAirport: routeForm.arrivalAirport, routeType: effectiveRouteType, enroute, userWaypoints })
+        appliedEnroute = result.resolvedEnroute ? { ...result.resolvedEnroute, userWaypoints, nextWaypointNumber } : enroute
+      }
+      const appliedVfrWaypoints = result.flightRule === 'VFR'
+        ? buildVfrWaypointsFromRouteResult(result, airports)
+        : []
+      const routeGeometry = getCurrentRouteLineString({ routeResult: result, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
+      const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: result })
+      const etdIso = Number.isFinite(Date.parse(etd)) ? new Date(etd).toISOString().replace('.000Z', 'Z') : null
+      const nextEta = eta || computeEtaIso(etdIso, result.totalDistanceNm, tasKt) || null
+      const exposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: nextEta }).catch((error) => ({ trigger: 'unavailable', hazards: [], error: error.message }))
+      const previousBase = routeDesigns.find((design) => design.id === 'base') ?? null
+      const base = createRouteDesign({
+        routeForm: { ...routeForm, routeType: effectiveRouteType },
+        procedures: { sid: selectedSid, star: selectedStar, iapKey: selectedIapKey },
+        routeResult: result, routeModel, routeExposure: exposure,
+        enroute: appliedEnroute, routeString: result.flightRule === 'VFR'
+          ? formatVfrDraftText({ departureAirport: routeForm.departureAirport, arrivalAirport: routeForm.arrivalAirport, enroute: appliedEnroute })
+          : formatManualRouteString(appliedEnroute),
+        undoStack: previousBase
+          ? [...previousBase.undoStack.slice(-19), snapshotRouteDesign(previousBase)]
+          : [],
+      })
+      applyBaseRoute(base)
+      setEta(nextEta)
+      return true
+    } catch (error) {
+      setRouteError(error.message)
+      return false
+    } finally {
+      setRouteLoading(false)
+    }
+  }
+
+  function applyBaseRoute(base) {
+    setRouteDesigns([base])
+    setSelectedRouteDesignId(base.id)
+    setRouteEditor(editorFromBase(base))
+    mapInteractionStatusRef.current?.showConfirmation?.()
+    synchronizeSelectedRouteDesign(base)
+    setWorkflowStep('settings')
+  }
+
+  async function proposeMapPoint(input) {
+    if (workflowStep !== 'settings' || routeForm.flightRule !== 'IFR') return
+    try {
+      const drawn = input?.type === 'draw' ? input.coordinates ?? [] : null
+      if (drawn?.length > 1) {
+        const stride = Math.max(1, Math.ceil(drawn.length / 24))
+        const fixes = []
+        for (let index = 0; index < drawn.length; index += stride) {
+          try {
+            const nearest = await resolveNearestNavpoint(drawn[index])
+            if (fixes.at(-1) !== nearest.id) fixes.push(nearest.id)
+          } catch { /* a freehand stroke may pass empty map space */ }
+        }
+        if (fixes.length < 2) throw new Error('그린 선에서 서로 다른 항로 FIX를 두 개 이상 찾지 못했습니다.')
+        const text = fixes.join(' ')
+        const message = `그린 선을 ${fixes.join(' → ')} 경로 초안으로 바꿀까요?`
+        const coordinates = drawn.at(-1)
+        const pendingIntent = { text, message, mapCoordinates: coordinates, previousEditor: routeEditor }
+        await previewEditorRoute(text, pendingIntent)
+        mapInteractionStatusRef.current?.showConfirmation?.({
+          message,
+          coordinates,
+          onApply: acceptPendingRouteEdit,
+          onCancel: cancelPendingRouteEdit,
+        })
+        return
+      }
+      const coordinates = Array.isArray(input) ? input : input?.coordinates?.at(-1)
+      if (!Array.isArray(coordinates)) throw new Error('지도 좌표를 확인할 수 없습니다.')
+      let token
+      let label
+      let publishedFix = false
+      try {
+        const nearest = await resolveNearestNavpoint(coordinates)
+        token = nearest.id
+        label = nearest.id
+        publishedFix = true
+      } catch {
+        token = formatCoordinateToken({ lon: coordinates[0], lat: coordinates[1] })
+        label = token
+      }
+      const currentEnroute = routeEditor.enroute
+      const parsedDraft = routeDraftText.trim()
+        ? parseManualRouteString(routeDraftText, { flightRule: routeForm.flightRule, userWaypoints: currentEnroute?.userWaypoints ?? [] })
+        : { terms: [], legIntents: [], userWaypoints: currentEnroute?.userWaypoints ?? [] }
+      if (parsedDraft.terms.some((term) => term.kind === 'fix' && term.id === token)) {
+        throw new Error(`${label}은(는) 이미 경로에 있습니다.`)
+      }
+      const insertedTerm = publishedFix
+        ? { kind: 'fix', id: token }
+        : parseManualRouteString(token, { userWaypoints: currentEnroute?.userWaypoints ?? [] }).terms[0]
+      const insertedIntent = publishedFix ? { kind: 'auto' } : { kind: 'dct' }
+      const candidates = []
+      for (let index = 0; index <= parsedDraft.terms.length; index += 1) {
+        const terms = [...parsedDraft.terms]
+        const legIntents = [...parsedDraft.legIntents]
+        terms.splice(index, 0, insertedTerm)
+        if (parsedDraft.terms.length > 0) {
+          if (index === 0) legIntents.unshift(insertedIntent)
+          else if (index === parsedDraft.terms.length) legIntents.push(insertedIntent)
+          else legIntents.splice(index - 1, 1, insertedIntent, insertedIntent)
+        }
+        const text = formatManualRouteString({ terms, legIntents, userWaypoints: currentEnroute?.userWaypoints ?? [] })
+        try {
+          const preview = await buildEditorPreview(routeEditor, text)
+          if (Number.isFinite(preview.result.totalDistanceNm)) candidates.push({ index, preview })
+        } catch { /* An invalid insertion position is not a route candidate. */ }
+      }
+      const selected = candidates.reduce((best, candidate) => !best || candidate.preview.result.totalDistanceNm < best.preview.result.totalDistanceNm ? candidate : best, null)
+      if (!selected) throw new Error(`${label}을(를) 포함하는 유효한 경로를 만들지 못했습니다.`)
+      const termLabel = (term) => term.kind === 'fix' ? term.id : term.kind === 'coordinate' ? formatCoordinateToken(term.coordinate) : currentEnroute?.userWaypoints?.find((waypoint) => waypoint.id === term.id)?.name ?? term.id
+      const before = selected.index === 0 ? routeForm.departureAirport : termLabel(parsedDraft.terms[selected.index - 1])
+      const after = selected.index === parsedDraft.terms.length ? routeForm.arrivalAirport : termLabel(parsedDraft.terms[selected.index])
+      const message = `${before} → ${label} → ${after}로 바꿀까요?`
+      const pendingIntent = { text: selected.preview.editor.rawText, message, mapCoordinates: coordinates, previousEditor: routeEditor }
+      setRouteEditor({ ...selected.preview.editor, pendingIntent })
+      mapInteractionStatusRef.current?.showConfirmation?.({
+        message,
+        coordinates,
+        onApply: acceptPendingRouteEdit,
+        onCancel: cancelPendingRouteEdit,
+      })
+    } catch (error) {
+      setRouteError(error.message)
+      mapInteractionStatusRef.current?.(error.message)
+    }
+  }
+
+  async function commitIfrDesign(design, viaFixes, routeResult) {
+    const requestId = ++routeExposureRequestRef.current
+    const routeGeometry = routeResult.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry
+    const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
+    let exposure
+    try {
+      exposure = await fetchRouteExposure({ routeGeometry, routeModel, etd, eta })
+    } catch (error) {
+      exposure = { trigger: 'unavailable', hazards: [], error: error.message }
+    }
+    if (requestId !== routeExposureRequestRef.current) return
+    const updated = createRouteDesign({
+      ...design,
+      viaFixes,
+      routeResult,
+      routeModel,
+      routeExposure: exposure,
+      routeString: formatRouteString(routeResult),
+      undoStack: [...design.undoStack.slice(-19), { viaFixes: design.viaFixes, routeResult: design.routeResult, routeModel: design.routeModel, routeExposure: design.routeExposure, routeString: design.routeString }],
+    })
+    setRouteDesigns((designs) => designs.map((item) => item.id === updated.id ? updated : item))
+    synchronizeSelectedRouteDesign(updated)
+    setRouteError(null)
+  }
+
+  function selectRouteDesign(id) {
+    const design = routeDesigns.find((item) => item.id === id)
+    if (!design) return
+    setSelectedRouteDesignId(id)
+    synchronizeSelectedRouteDesign(design)
+  }
+
+  function duplicateSelectedRouteDesign() {
+    const next = duplicateRouteDesign(routeDesigns, selectedRouteDesignId)
+    if (next.designs === routeDesigns) return
+    setRouteDesigns(next.designs)
+    setSelectedRouteDesignId(next.selectedId)
+    synchronizeSelectedRouteDesign(next.designs.find((design) => design.id === next.selectedId))
+  }
+
+  function renameSelectedRouteDesign(name) {
+    setRouteDesigns((designs) => renameRouteDesign(designs, selectedRouteDesignId, name))
+  }
+
+  function removeSelectedRouteDesign() {
+    const next = removeRouteDesign(routeDesigns, selectedRouteDesignId, selectedRouteDesignId)
+    if (next.designs === routeDesigns) return
+    setRouteDesigns(next.designs)
+    setSelectedRouteDesignId(next.selectedId)
+    synchronizeSelectedRouteDesign(next.designs.find((design) => design.id === next.selectedId))
+  }
+
+  async function addMapPointToSelectedDesign(interaction) {
+    const design = routeDesigns.find((item) => item.id === selectedRouteDesignId)
+    if (!design || design.routeForm.flightRule !== 'IFR') return
+    try {
+      const input = Array.isArray(interaction) ? { type: 'click-add', coordinates: [interaction] } : interaction
+      let viaFixes = [...design.viaFixes]
+      for (const coordinates of input.coordinates ?? []) {
+        try {
+          const resolved = await resolveMapInteraction({ ...design.routeForm, coordinates, viaFixes })
+          viaFixes = resolved.viaFixes
+        } catch (error) {
+          if (input.type !== 'draw') throw error
+        }
+      }
+      if (viaFixes.length === design.viaFixes.length) throw new Error('그린 선이 5 NM 이내의 항로 FIX와 만나지 않았습니다.')
+      if (input.type === 'segment-detour' && viaFixes.length > 1) {
+        const added = viaFixes.pop()
+        const ids = design.routeResult?.navpointIds ?? []
+        const line = design.routeResult?.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry?.coordinates ?? []
+        const point = input.coordinates?.at(-1) ?? []
+        let segmentIndex = 0
+        let closest = Number.POSITIVE_INFINITY
+        for (let index = 0; index < line.length - 1; index += 1) {
+          const distance = (line[index][0] - point[0]) ** 2 + (line[index][1] - point[1]) ** 2
+          if (distance < closest) { closest = distance; segmentIndex = index }
+        }
+        const insertAt = design.viaFixes.findIndex((fix) => ids.indexOf(fix) > segmentIndex)
+        viaFixes.splice(insertAt < 0 ? design.viaFixes.length : insertAt, 0, added)
+      }
+      const routeResult = await buildBriefingRoute({ ...design.routeForm, viaFixes })
+      await commitIfrDesign(design, viaFixes, routeResult)
+      mapInteractionStatusRef.current?.('경로를 다시 계산했습니다.')
+    } catch (error) {
+      setRouteError(error.message)
+      mapInteractionStatusRef.current?.(error.message)
+    }
+  }
+  mapInteractionActionRef.current = workflowStep === 'settings'
+    ? proposeMapPoint
+    : addMapPointToSelectedDesign
+
+  async function applyRouteStringToSelectedDesign(text) {
+    const design = routeDesigns.find((item) => item.id === selectedRouteDesignId)
+    if (!design || design.routeForm.flightRule !== 'IFR') return
+    try {
+      const parsed = await parseRouteString(text, design.routeForm)
+      await commitIfrDesign(design, parsed.viaFixes, parsed.routeResult)
+      if (parsed.normalized) setRouteError('연속 중복 FIX를 하나로 정리했습니다.')
+    } catch (error) {
+      setRouteError(error.message)
+    }
+  }
+
+  function undoSelectedRouteDesign() {
+    const design = routeDesigns.find((item) => item.id === selectedRouteDesignId)
+    const previous = design?.undoStack?.at(-1)
+    if (!design || !previous) return
+    const updated = createRouteDesign({ ...design, ...previous, undoStack: design.undoStack.slice(0, -1) })
+    setRouteDesigns((designs) => designs.map((item) => item.id === updated.id ? updated : item))
+    synchronizeSelectedRouteDesign(updated)
+    setRouteError(null)
+  }
+
+  function undoBaseRoute() {
+    const base = routeDesigns.find((design) => design.id === 'base')
+    const previous = base?.undoStack?.at(-1)
+    if (!base || !previous) return
+    const updated = createRouteDesign({ ...base, ...previous, undoStack: base.undoStack.slice(0, -1) })
+    applyBaseRoute(updated)
+    setRouteError(null)
+  }
+
+  function setRouteInteractionMode(mode) {
+    setMapInteractionMode(mode)
+    mapInteractionModeRef.current = mode
+    mapInteractionStatusRef.current?.({
+      'click-add': '지도 클릭 추가 모드 — 항로 FIX를 클릭하세요',
+      draw: '그리기 모드 — 항로 FIX를 지나는 선을 그리세요',
+      'segment-detour': '구간 우회 모드 — 경로선을 새 위치까지 끌어 놓으세요',
+    }[mode] ?? '')
+  }
+
   async function requestAltitudeComparison(plannedAltitudeFt = cruiseAltitudeFt) {
-    const candidate = routeCandidates.find((item) => item.id === selectedCandidateId)
-    const candidateResult = candidate?.routeResult ?? routeResult
-    const routeGeometry = candidateResult?.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry
-    if (!routeGeometry || !candidateResult) return null
+    const design = routeDesigns.find((item) => item.id === selectedRouteDesignId)
+    const designResult = design?.routeResult ?? routeResult
+    const routeGeometry = designResult?.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry
+    if (!routeGeometry || !designResult) return null
     const requestId = ++altitudeComparisonRequestRef.current
-    const routeModel = candidate?.routeModel ?? buildCommonRouteModel({ routeGeometry, routeResult: candidateResult })
+    const routeModel = design?.routeModel ?? buildCommonRouteModel({ routeGeometry, routeResult: designResult })
     const etdIso = Number.isFinite(Date.parse(etd)) ? new Date(etd).toISOString().replace('.000Z', 'Z') : null
     setAltitudeComparisonLoading(true)
     setAltitudeComparisonError(null)
@@ -677,7 +1044,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   }
 
   async function continueToAltitudeComparison() {
-    if (!selectedCandidateId) return
+    if (!selectedRouteDesignId) return
     setWorkflowStep('altitude')
   }
 
@@ -715,13 +1082,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   }
 
   function continueToBriefing() {
-    if (!selectedCandidateId || !Number.isFinite(Date.parse(eta))) return
+    if (!selectedRouteDesignId || !Number.isFinite(Date.parse(eta))) return
     setVerticalProfileWindowOpen(false)
     setWorkflowStep('briefing')
   }
 
   function goToWorkflowStep(step) {
     if (!workflowAvailability[step]) return
+    if (step === 'settings') projectBaseForSettings()
     if (step !== 'altitude') setVerticalProfileWindowOpen(false)
     setWorkflowStep(step)
   }
@@ -732,9 +1100,16 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     if (previous) goToWorkflowStep(previous)
   }
 
-  // VFR: 출발·도착이 모두 정해지거나 바뀌면 경로를 자동 생성한다(직선 dep→arr이라 명시적 "검색" 불필요).
-  // 같은 dep/arr면 재생성하지 않아 경유점이 보존됨 — 무심코 검색해 경유점이 날아가는 footgun 제거.
-  // 불러오기(loadSavedRoute)는 자체 re-search+overlay를 하므로 키를 선점해 이 effect를 건너뛴다.
+  function projectBaseForSettings() {
+    const base = routeDesigns.find((design) => design.id === 'base')
+    if (!base) return
+    setSelectedRouteDesignId('base')
+    setRouteEditor(editorFromBase(base))
+    synchronizeSelectedRouteDesign(base)
+  }
+
+  // VFR starts with an editable direct route. Changing only the airports is
+  // the one case that resets it; map and list edits keep the same waypoints.
   useEffect(() => {
     if (routeForm.flightRule !== 'VFR') { lastVfrKeyRef.current = ''; return }
     const dep = routeForm.departureAirport
@@ -743,7 +1118,13 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     const key = `${dep}>${arr}`
     if (key === lastVfrKeyRef.current) return
     lastVfrKeyRef.current = key
-    runRouteSearch(routeForm)
+    const requestId = ++vfrPreviewRequestRef.current
+    const text = formatVfrDraftText({ departureAirport: dep, arrivalAirport: arr })
+    const editor = createRouteEditor({ routeForm: { ...routeForm, departureAirport: dep, arrivalAirport: arr }, rawText: text })
+    setRouteEditor(editor)
+    buildEditorPreview(editor, text)
+      .then((preview) => { if (requestId === vfrPreviewRequestRef.current) setRouteEditor(preview.editor) })
+      .catch((error) => { if (requestId === vfrPreviewRequestRef.current) setRouteError(error.message) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeForm.flightRule, routeForm.departureAirport, routeForm.arrivalAirport])
 
@@ -755,7 +1136,48 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   // opts.autoBriefing=true → 경로검색 완료(routeResult) 후 아래 effect가 브리핑을 자동 생성.
   async function loadSavedRoute(saved, opts = {}) {
     if (!saved?.routeForm) return
+    saved = normalizeRouteSnapshot(saved)
     if (opts.autoBriefing) { setAutoBriefingPending(true); autoSearchRef.current = false }
+    if (saved.base?.routeString && saved.base?.enroute) {
+      const savedForm = saved.base.routeForm ?? saved.routeForm
+      const procedureIds = saved.base.procedureIds ?? {}
+      const [savedSids, savedStars, savedIapData] = await Promise.all([
+        procedureIds.sid ? getProcedures(savedForm.departureAirport, 'SID') : Promise.resolve([]),
+        procedureIds.star ? getProcedures(savedForm.arrivalAirport, 'STAR') : Promise.resolve([]),
+        procedureIds.iapKey ? loadIapData(savedForm.arrivalAirport) : Promise.resolve(null),
+      ])
+      const procedures = {
+        sid: savedSids.find((procedure) => procedure.id === procedureIds.sid) ?? null,
+        star: savedStars.find((procedure) => procedure.id === procedureIds.star) ?? null,
+        iapKey: savedIapData?.iapRoutes?.[procedureIds.iapKey] ? procedureIds.iapKey : null,
+      }
+      const preview = await buildEditorPreview(createRouteEditor({
+        routeForm: savedForm,
+        procedures,
+        enroute: saved.base.enroute,
+        rawText: saved.base.routeString,
+      }), saved.base.routeString)
+      const selectedIap = savedIapData?.iapRoutes?.[procedures.iapKey] ?? null
+      const routeGeometry = getCurrentRouteLineString({ routeResult: preview.result, selectedSid: procedures.sid, selectedStar: procedures.star, selectedIap })
+      const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: preview.result })
+      const etdIso = Number.isFinite(Date.parse(saved.etd)) ? new Date(saved.etd).toISOString().replace('.000Z', 'Z') : null
+      const savedEta = saved.eta || computeEtaIso(etdIso, preview.result.totalDistanceNm, saved.tasKt) || null
+      const exposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: savedEta }).catch((error) => ({ trigger: 'unavailable', hazards: [], error: error.message }))
+      clearRouteDisplay()
+      setEtd(saved.etd ?? etd)
+      setTasKt(saved.tasKt ?? tasKt)
+      setEta(savedEta)
+      applyBaseRoute(createRouteDesign({
+        routeForm: savedForm,
+        procedures,
+        routeResult: preview.result,
+        routeModel,
+        routeExposure: exposure,
+        enroute: preview.editor.enroute,
+        routeString: preview.editor.rawText,
+      }))
+      return
+    }
     // 자동 VFR 생성 effect가 이 dep/arr에 또 발동해 overlay를 덮지 않도록 키 선점.
     lastVfrKeyRef.current = `${saved.routeForm.departureAirport}>${saved.routeForm.arrivalAirport}`
     clearRouteDisplay()
@@ -770,10 +1192,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setAlternateAirport(saved.alternateAirport || '')
     if (saved.etd) setEtd(saved.etd)
     const result = await runRouteSearch(saved.routeForm)
-    if (result?.flightRule === 'VFR' && Array.isArray(saved.vfrWaypoints) && saved.vfrWaypoints.length >= 2) {
-      // Backfill uid for routes saved before uids existed (stable React keys).
-      setVfrWaypoints(saved.vfrWaypoints.map((wp) => (wp.uid ? wp : { ...wp, uid: crypto.randomUUID() })))
-    } else if (saved.routeForm.flightRule === 'IFR') {
+    if (saved.routeForm.flightRule === 'IFR') {
       // IFR: 로드 후 절차 자동추천 자동 발화(수동 '자동검색' 클릭과 동일) — SID/STAR 매칭·해외 경로 확보.
       // 스냅샷에 selectedSid/Star가 없어 존중할 값이 없으므로 자동추천이 안전. runRouteSearch await 뒤라 순차(수동 흐름 재현).
       setAutoRecommendRequested(true)
@@ -798,43 +1217,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoBriefingPending, routeResult, briefing, routeForm.entryFix, routeForm.exitFix, routeLoading])
 
-  // 임포트한 경유점의 중간(비고정) 지점들 초기고도를, 그 지점과 맞닿은 leg의 최고
-  // 지형고도 + IMPORT_TERRAIN_MARGIN_FT 이상이 되는 가장 낮은 반원고도로 채운다.
-  // vfrLegTerrain effect(아래)와 동일한 /vertical-profile 조회·leg 키 규칙을 재사용 —
-  // 새 데이터 없음. 조회 실패 시 조용히 원래 고도 유지(치명적이지 않은 향상 기능).
-  async function computeTerrainSafeAltitudes(waypoints, routeCoords) {
-    try {
-      const profile = await fetchVerticalProfile(buildVerticalProfileRequest({
-        routeGeometry: { type: 'LineString', coordinates: routeCoords },
-        routeResult: { flightRule: 'VFR' },
-        vfrWaypoints: waypoints,
-        plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
-      }))
-      const terrainByLegKey = {}
-      for (const leg of profile?.flightPlan?.profile?.legs ?? []) {
-        terrainByLegKey[`${leg.fromLabel}→${leg.toLabel}`] = leg.maxTerrainFt
-      }
-      return waypoints.map((wp, index) => {
-        if (wp.fixed) return wp
-        const prevWp = waypoints[index - 1]
-        const nextWp = waypoints[index + 1]
-        const prevTerrainFt = prevWp ? terrainByLegKey[`${prevWp.id}→${wp.id}`] : null
-        const nextTerrainFt = nextWp ? terrainByLegKey[`${wp.id}→${nextWp.id}`] : null
-        const candidates = [prevTerrainFt, nextTerrainFt].filter(Number.isFinite)
-        if (candidates.length === 0) return wp
-        const maxTerrainFt = Math.max(...candidates)
-        // 방향 기준 = 이 경유점으로 들어오는 leg(기존 vfrLegs 힌트와 동일 관례: "구간이
-        // 향하는 경유점"에 적용).
-        const from = prevWp ?? nextWp
-        if (!Number.isFinite(from?.lat) || !Number.isFinite(wp.lat)) return wp
-        const magCourseDeg = magneticCourse(initialBearingDeg(from.lat, from.lon, wp.lat, wp.lon))
-        return { ...wp, altitudeFt: minVfrCruiseAltitude(maxTerrainFt + IMPORT_TERRAIN_MARGIN_FT, magCourseDeg) }
-      })
-    } catch {
-      return waypoints
-    }
-  }
-
   // 선택된 후보 경로 1개를 실제로 적용 — loadSavedRoute와 동일한 순서로 상태를
   // 세팅해야 VFR 자동 경로생성 effect(위 611-621줄)가 이 경유점을 직선으로
   // 덮어쓰지 않는다: lastVfrKeyRef 선점 → clearRouteDisplay → routeForm → 결과 세팅.
@@ -847,21 +1229,28 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       // 좌표와 맞지 않는다 — 원본 개수 그대로 유지된 경우(실제 EFB route가 보통 이 경우)
       // 에만 이름을 전달한다.
       const waypointNames = candidate.names && simplified.length === candidate.coords.length ? candidate.names : null
-      const { routeResult: importedResult, vfrWaypoints: importedWaypoints } = buildVfrRouteFromWaypoints(simplified, {
-        departureAirport, arrivalAirport, airports, waypointNames,
+      if (!departureAirport || !arrivalAirport) throw new Error('가져온 경로의 양끝 공항을 확인하세요.')
+      const terms = simplified.slice(1, -1).map(([lon, lat], index) => {
+        const name = waypointNames?.[index + 1]
+        return name ? { kind: 'fix', id: name } : { kind: 'coordinate', coordinate: { lon, lat } }
       })
-      const safeWaypoints = await computeTerrainSafeAltitudes(importedWaypoints, simplified)
+      const importedForm = { ...routeForm, flightRule: 'VFR', departureAirport, arrivalAirport }
+      const importedText = formatVfrDraftText({ departureAirport, arrivalAirport, enroute: { terms, legIntents: Array.from({ length: Math.max(0, terms.length - 1) }, () => ({ kind: 'dct' })) } })
+      const preview = await buildEditorPreview(createRouteEditor({ routeForm: importedForm, rawText: importedText }), importedText)
+      const routeGeometry = getCurrentRouteLineString({ routeResult: preview.result, vfrWaypoints: buildVfrWaypointsFromRouteResult(preview.result, airports) })
+      const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: preview.result })
 
       lastVfrKeyRef.current = `${departureAirport ?? ''}>${arrivalAirport ?? ''}`
       clearRouteDisplay()
-      setRouteForm((prev) => ({
-        ...prev,
-        flightRule: 'VFR',
-        departureAirport: departureAirport ?? '',
-        arrivalAirport: arrivalAirport ?? '',
+      applyBaseRoute(createRouteDesign({
+        routeForm: importedForm,
+        procedures: { sid: null, star: null, iapKey: null },
+        routeResult: preview.result,
+        routeModel,
+        routeExposure: { trigger: 'unavailable', hazards: [] },
+        enroute: preview.editor.enroute,
+        routeString: preview.editor.rawText,
       }))
-      setRouteResult(importedResult)
-      setVfrWaypoints(safeWaypoints)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: simplified, maxZoom: 8 })
 
       const warnings = []
@@ -904,23 +1293,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setImportCandidates([])
   }
 
-  function updateVfrWaypointAltitude(idx, value) {
-    setVfrWaypoints((prev) => prev.map((wp, i) => (
-      i === idx ? { ...wp, altitudeFt: value } : wp
-    )))
-  }
-
-  function applyCruiseAltitudeToVfrWaypoints() {
-    const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt)
-    if (!Number.isFinite(plannedCruiseAltitudeFt) || plannedCruiseAltitudeFt <= 0) return
-    snapshotVfr()
-    setVfrWaypoints((prev) => prev.map((wp) => {
-      if (!wp.fixed) return { ...wp, altitudeFt: Math.round(plannedCruiseAltitudeFt) }
-      const airportElevationFt = getVfrAirportAltitudeFt(airports, wp)
-      return { ...wp, airportElevationFt, altitudeFt: airportElevationFt }
-    }))
-  }
-
   async function handleVerticalProfileRequest({
     plannedCruiseAltitudeFt: requestedAltitudeFt = cruiseAltitudeFt,
     candidateCruiseAltitudesFt = [],
@@ -928,7 +1300,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   } = {}) {
     const routeGeometry = getCurrentRouteLineString({
       routeResult,
-      vfrWaypoints,
+      vfrWaypoints: appliedVfrWaypoints,
       selectedSid,
       selectedStar,
       selectedIap,
@@ -956,7 +1328,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
           selectedSid,
           selectedStar,
           selectedIap,
-          vfrWaypoints,
+          vfrWaypoints: appliedVfrWaypoints,
           plannedCruiseAltitudeFt,
           candidateCruiseAltitudesFt,
         })),
@@ -979,10 +1351,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const plannedDistanceNm = useMemo(() => {
     if (!routeResult) return 0
     return routeForm.flightRule === 'VFR'
-      ? calcVfrDistance(vfrWaypoints)
+      ? calcVfrDistance(appliedVfrWaypoints)
       : (buildIfrDistanceBreakdown({ routeResult, selectedSid, selectedStar, selectedIap })?.totalDistanceNm
           || Number(routeResult?.distanceNm) || 0)
-  }, [routeResult, routeForm.flightRule, vfrWaypoints, selectedSid, selectedStar, selectedIap])
+  }, [routeResult, routeForm.flightRule, appliedVfrWaypoints, selectedSid, selectedStar, selectedIap])
 
   // dep→arr magnetic course (for the VFR cruising-altitude hint). Hint only.
   const magCourseDeg = useMemo(() => {
@@ -996,9 +1368,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const vfrLegs = useMemo(() => {
     if (routeForm.flightRule !== 'VFR') return []
     const legs = []
-    for (let i = 0; i < vfrWaypoints.length - 1; i += 1) {
-      const a = vfrWaypoints[i]
-      const b = vfrWaypoints[i + 1] // 권장 고도 적용 대상 = 이 구간이 향하는(순항하는) 경유점
+    for (let i = 0; i < appliedVfrWaypoints.length - 1; i += 1) {
+      const a = appliedVfrWaypoints[i]
+      const b = appliedVfrWaypoints[i + 1]
       const valid = Number.isFinite(a?.lat) && Number.isFinite(b?.lat)
       const mc = valid ? magneticCourse(initialBearingDeg(a.lat, a.lon, b.lat, b.lon)) : null
       const key = `${a?.id}→${b?.id}`
@@ -1015,17 +1387,17 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       })
     }
     return legs
-  }, [routeForm.flightRule, vfrWaypoints, vfrLegTerrain, cruiseAltitudeFt])
+  }, [routeForm.flightRule, appliedVfrWaypoints, vfrLegTerrain, cruiseAltitudeFt])
 
   // 경로 지오메트리가 바뀌면 leg별 최고 지형고도를 가볍게(기상 제외) 미리 가져온다.
   // 연직단면도 "생성"과 무관 — 고도를 정하는 그 자리에서 지형 여유를 보게 한다.
   const legTerrainRequestRef = useRef(0)
   useEffect(() => {
-    if (routeResult?.flightRule !== 'VFR' || vfrWaypoints.length < 2) {
+    if (routeResult?.flightRule !== 'VFR' || appliedVfrWaypoints.length < 2) {
       setVfrLegTerrain({})
       return undefined
     }
-    const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints, selectedSid, selectedStar, selectedIap })
+    const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
     if (!routeGeometry) return undefined
     const requestId = ++legTerrainRequestRef.current
     const timer = setTimeout(async () => {
@@ -1033,7 +1405,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         const profile = await fetchVerticalProfile(buildVerticalProfileRequest({
           routeGeometry,
           routeResult,
-          vfrWaypoints,
+          vfrWaypoints: appliedVfrWaypoints,
           plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
         }))
         if (requestId !== legTerrainRequestRef.current) return
@@ -1046,10 +1418,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     }, 400)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vfrWaypoints, routeResult?.flightRule])
+  }, [appliedVfrWaypoints, routeResult?.flightRule])
 
   async function handleGenerateBriefing() {
-    const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints, selectedSid, selectedStar, selectedIap })
+    const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
     if (!routeGeometry) { setBriefingError('먼저 경로를 검색하세요.'); return }
     const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
     const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
@@ -1074,7 +1446,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT
         const [profile, cs] = await Promise.all([
           fetchVerticalProfile(buildVerticalProfileRequest({
-            routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints, plannedCruiseAltitudeFt,
+            routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints: appliedVfrWaypoints, plannedCruiseAltitudeFt,
           })),
           fetchCrossSection({ routeGeometry }).catch(() => null),
         ])
@@ -1088,8 +1460,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const workflowAvailability = {
     settings: true,
     compare: !!routeResult,
-    altitude: !!selectedCandidateId,
-    briefing: !!altitudeComparison && !!selectedCandidateId && Number.isFinite(Date.parse(eta)),
+    altitude: !!selectedRouteDesignId,
+    briefing: !!altitudeComparison && !!selectedRouteDesignId && Number.isFinite(Date.parse(eta)),
   }
 
   return {
@@ -1105,8 +1477,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       verticalProfileError,
       verticalProfileStale,
       verticalProfileWindowOpen,
-      editingVfrAltitudeIndex,
-      vfrWaypoints,
+      vfrWaypoints: appliedVfrWaypoints,
       vfrLegs,
       importCandidates,
       importWarning,
@@ -1125,12 +1496,18 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       navpointsById,
       autoRecommendRequested,
       fitBoundsRequest,
+      mapInteractionMode,
+      routeDraftText,
+      hasRouteDraftPreview: !!routeDraftResult,
+      canUndoBase: !!routeDesigns.find((design) => design.id === 'base')?.undoStack?.length,
+      pendingRouteEdit,
+      pendingContextChange,
       alternateAirport,
       etd,
       tasKt,
       eta,
-      routeCandidates,
-      selectedCandidateId,
+      routeDesigns,
+      selectedRouteDesignId,
       routeExposure,
       altitudeComparison,
       altitudeComparisonLoading,
@@ -1145,6 +1522,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     refs: {
       vfrWaypointsRef,
       hideTimerRef,
+      mapInteractionModeRef,
+      mapInteractionActionRef,
+      mapInteractionStatusRef,
+      vfrWaypointDropRef,
     },
     derived: {
       isFirInMode,
@@ -1153,12 +1534,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       visibleSidOptions,
       plannedDistanceNm,
       magCourseDeg,
-      canUndoVfr: vfrUndoStack.length > 0,
     },
     actions: {
       updateRouteField,
       handleDepartureAirportChange,
       handleArrivalAirportChange,
+      swapRouteAirports,
       handleEntryFixChange,
       handleExitFixChange,
       switchFlightRule,
@@ -1167,29 +1548,34 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       handleStarChange,
       handleIapChange,
       handleRouteReset,
-      deleteVfrWaypoint,
-      addVfrWaypointByFix,
-      beginVfrReorder,
-      reorderVfrWaypoint,
-      undoVfrWaypoints,
       handleRouteSearch,
       loadSavedRoute,
       importRouteFromFile,
       applyImportedPath,
       cancelImportChoice,
-      updateVfrWaypointAltitude,
-      applyCruiseAltitudeToVfrWaypoints,
       handleVerticalProfileRequest,
       setHoveredWpInfo,
-      setEditingVfrAltitudeIndex,
       setVerticalProfileWindowOpen,
       setCruiseAltitudeFt,
-      setVfrWaypoints,
       setAlternateAirport,
       setEtd,
       setTasKt,
       setEta,
-      selectRouteCandidate,
+      setRouteDraftText: updateRouteDraftText,
+      applyRouteDraft,
+      cancelPendingRouteEdit,
+      undoBaseRoute,
+      setPendingRouteEdit,
+      confirmContextChange,
+      setPendingContextChange,
+      selectRouteDesign,
+      duplicateSelectedRouteDesign,
+      renameSelectedRouteDesign,
+      removeSelectedRouteDesign,
+      addMapPointToSelectedDesign,
+      applyRouteStringToSelectedDesign,
+      undoSelectedRouteDesign,
+      setMapInteractionMode: setRouteInteractionMode,
       continueToAltitudeComparison,
       setAltitudeDraft,
       startAltitudeComparison,

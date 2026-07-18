@@ -42,3 +42,20 @@ test('does not invent an en-route distance when a segment is absent from the rou
   assert.equal(model.enRouteSegments[0].alignmentStatus, 'unavailable')
   assert.equal(model.enRouteRange.status, 'unavailable')
 })
+
+test('manual DCT legs align on the final route axis without pretending to be airways', () => {
+  const model = buildCommonRouteModel({
+    routeGeometry: { type: 'LineString', coordinates: [[126, 37], [127, 37], [128, 37], [129, 37]] },
+    routeResult: {
+      flightRule: 'IFR',
+      manualLegs: [
+        { id: 'A582-001', kind: 'airway', routeId: 'A582', fromFix: 'SEL', toFix: 'APELA', routeType: 'ATS', geometry: [[127, 37], [128, 37]] },
+        { id: 'dct:APELA:wp-1', kind: 'dct', routeId: null, fromFix: 'APELA', toFix: 'wp-1', routeType: null, geometry: [[128, 37], [129, 37]] },
+      ],
+    },
+  })
+  assert.equal(model.graphConnectionStatus, 'manual')
+  assert.equal(model.enRouteRange.status, 'aligned')
+  assert.equal(model.enRouteSegments[1].kind, 'dct')
+  assert.equal(model.enRouteSegments[1].routeId, null)
+})

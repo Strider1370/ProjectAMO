@@ -86,12 +86,18 @@ export const WEATHER_OVERLAY_LAYER_IDS = [
   ADVISORY_LAYER_DEFS.sigmet.fillLayerId,
   ADVISORY_LAYER_DEFS.sigmet.lineLayerId,
   ADVISORY_LAYER_DEFS.sigmet.iconLayerId,
+  ADVISORY_LAYER_DEFS.sigmet.arrowLayerId,
+  ADVISORY_LAYER_DEFS.sigmet.textLayerId,
   ADVISORY_LAYER_DEFS.sigmet_intl.fillLayerId,
   ADVISORY_LAYER_DEFS.sigmet_intl.lineLayerId,
   ADVISORY_LAYER_DEFS.sigmet_intl.iconLayerId,
+  ADVISORY_LAYER_DEFS.sigmet_intl.arrowLayerId,
+  ADVISORY_LAYER_DEFS.sigmet_intl.textLayerId,
   ADVISORY_LAYER_DEFS.airmet.fillLayerId,
   ADVISORY_LAYER_DEFS.airmet.lineLayerId,
   ADVISORY_LAYER_DEFS.airmet.iconLayerId,
+  ADVISORY_LAYER_DEFS.airmet.arrowLayerId,
+  ADVISORY_LAYER_DEFS.airmet.textLayerId,
 ]
 
 export const RADAR_RAINRATE_LEGEND = [

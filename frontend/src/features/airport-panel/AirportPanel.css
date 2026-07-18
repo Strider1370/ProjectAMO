@@ -966,6 +966,26 @@
   outline-offset: -1px;
 }
 
+/* ── TAF TAC 원문 — METAR TAC과 동일한 큰 글자·임계값 색칠 + 줄마다 그 시점의
+   비행조건 배지(기본/TEMPO/BECMG/FM/PROB). 시각을 못 찾은 줄(RMK 등)은 배지 폭만큼
+   빈 칸을 둬 정렬을 맞춘다. ── */
+.ap-taf-tac-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ap-taf-tac-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ap-taf-tac-chip-spacer {
+  flex: 0 0 auto;
+  width: 40px;
+}
+
 /* ── 해독 카드 접기 (원문이 메인이 된 뒤, 카드는 보조 상세) ── */
 .ap-metar-detail {
   margin-top: 4px;

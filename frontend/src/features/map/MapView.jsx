@@ -1,4 +1,5 @@
 import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { ChartSpline } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import mapboxgl from 'mapbox-gl'
@@ -71,7 +72,7 @@ import {
 } from '../weather-overlays/lib/flightCategoryLayers.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import MapToolsLauncher from '../map-tools/MapToolsLauncher.jsx'
-import { setLayerVisibility } from './lib/mapLayerUtils.js'
+import { setLayerVisibility, resetLazyGeoJsonSources } from './lib/mapLayerUtils.js'
 import { bindLayerEvent, cleanupAll } from './lib/mapStyleSync.js'
 import {
   AIRPORT_CIRCLE_LAYER,
@@ -94,6 +95,7 @@ import {
   PROC_WP_LABEL,
   VFR_WP_CIRCLE,
   bindVfrInteractions,
+  bindIfrClickInteraction,
 } from '../route-briefing/lib/routePreview.js'
 import {
   clearRoutePreviewLayers,
@@ -353,8 +355,8 @@ const MapView = forwardRef(function MapView({
     },
   }))
   const { routeResult, fitBoundsRequest } = routeBriefing.state
-  const { vfrWaypointsRef, hideTimerRef } = routeBriefing.refs
-  const { setHoveredWpInfo, setVfrWaypoints } = routeBriefing.actions
+  const { vfrWaypointsRef, hideTimerRef, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, vfrWaypointDropRef } = routeBriefing.refs
+  const { setHoveredWpInfo } = routeBriefing.actions
   const { routePreviewModel } = routeBriefing
   const { geojson: flightCategoryGeojson } = useFlightCategory()
   const fcPopupRef = useRef(null)
@@ -873,6 +875,9 @@ const MapView = forwardRef(function MapView({
     map.on('style.load', () => {
       applyRoadVisibility(map, roadsVisible)
 
+      // 새 스타일은 소스를 전부 새로 만드므로 지연 로딩 여부 추적도 초기화.
+      resetLazyGeoJsonSources(map)
+
       // Aviation GeoJSON
       addAviationWfsLayers(map)
 
@@ -880,7 +885,8 @@ const MapView = forwardRef(function MapView({
       installRoutePreviewLayers(map)
       if (!vfrInteractionsBound) {
         vfrInteractionsBound = true
-        bindVfrInteractions(map, vfrWaypointsRef, setVfrWaypoints)
+        bindVfrInteractions(map, vfrWaypointsRef, vfrWaypointDropRef)
+        bindIfrClickInteraction(map, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef)
         // Procedure waypoint name on hover, in the original label style (small
         // colored text beside the dot) — reveal only the hovered fix's label.
         const procWpRoleFilter = ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp'], ['==', ['get', 'role'], 'iap-wp']]
@@ -1022,7 +1028,7 @@ const MapView = forwardRef(function MapView({
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !isStyleReady || routeResult?.flightRule !== 'VFR') return
+    if (!map || !isStyleReady || (routeResult?.flightRule !== 'VFR' && routePreviewModel?.pendingRouteResult?.flightRule !== 'VFR')) return
     syncVfrWaypointData(map, routePreviewModel)
   }, [routePreviewModel, routeResult, isStyleReady, styleRevision])
 
@@ -1518,6 +1524,18 @@ const MapView = forwardRef(function MapView({
             </Suspense>
           )}
         </>
+      )}
+
+      {routeBriefing.state.workflowStep === 'altitude' && routeBriefing.state.verticalProfile && !routeBriefing.state.verticalProfileWindowOpen && (
+        <button
+          type="button"
+          className="vertical-profile-reopen-button"
+          onClick={() => routeBriefing.actions.setVerticalProfileWindowOpen(true)}
+          aria-label="연직단면도 다시 보기"
+        >
+          <ChartSpline size={18} strokeWidth={2} />
+          <span>연직단면도</span>
+        </button>
       )}
 
       {routeBriefing.state.verticalProfileWindowOpen && (

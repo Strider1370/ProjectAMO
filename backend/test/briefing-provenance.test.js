@@ -17,6 +17,7 @@ test('common trace fixture retains route, AIP, hazard, and run identities', () =
   })
 
   assert.deepEqual(provenance.route.enRouteSegmentIds, ['A582-003', 'A582-004'])
+  assert.deepEqual(provenance.route.enRouteLegs, [{ id: 'A582-003', kind: 'airway' }, { id: 'A582-004', kind: 'airway' }])
   assert.equal(provenance.aip.publicationId, '2026-06-25')
   assert.equal(provenance.hazards[0].id, 'SIGMET-RKRR-1')
   assert.equal(provenance.hazards[0].timeStatus, 'not_provided')

@@ -1,4 +1,43 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Browser__read_page",
+      "mcp__Claude_Browser__navigate",
+      "mcp__claude-in-chrome__navigate",
+      "mcp__claude-in-chrome__get_page_text",
+      "mcp__Claude_Browser__get_page_text",
+      "mcp__claude-in-chrome__read_page",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "Bash(curl -s *)",
+      "Agent",
+      "WebSearch",
+      "WebFetch",
+      "ToolSearch",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "TaskCreate",
+      "TaskUpdate",
+      "TaskList",
+      "TaskGet",
+      "Bash(npm test)",
+      "Bash(npm run build)",
+      "Bash(npm run check)",
+      "Bash(npm run dev:smoke)",
+      "Bash(npm run dev:verify)",
+      "Bash(npm --prefix backend test)",
+      "Bash(npm --prefix frontend test)",
+      "Bash(node --test *)",
+      "Bash(git commit *)",
+      "Bash(git add *)",
+      "Skill",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Test-NetConnection *)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

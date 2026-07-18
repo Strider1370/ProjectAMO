@@ -1,3 +1,5 @@
+import area from '@turf/area'
+import polylabel from 'polylabel'
 import { phenomenonKo } from '../../../shared/weather/phenomenonKo.js'
 
 export const ADVISORY_LAYER_DEFS = {
@@ -6,6 +8,8 @@ export const ADVISORY_LAYER_DEFS = {
     fillLayerId: 'kma-sigmet-advisories-fill',
     lineLayerId: 'kma-sigmet-advisories-line',
     iconLayerId: 'kma-sigmet-advisories-icon',
+    arrowLayerId: 'kma-sigmet-advisories-arrow',
+    textLayerId: 'kma-sigmet-advisories-text',
     color: '#dc2626',
     label: 'SIGMET',
   },
@@ -15,6 +19,8 @@ export const ADVISORY_LAYER_DEFS = {
     fillLayerId: 'noaa-sigmet-advisories-fill',
     lineLayerId: 'noaa-sigmet-advisories-line',
     iconLayerId: 'noaa-sigmet-advisories-icon',
+    arrowLayerId: 'noaa-sigmet-advisories-arrow',
+    textLayerId: 'noaa-sigmet-advisories-text',
     color: '#dc2626',
     label: 'SIGMET(해외)',
   },
@@ -23,9 +29,45 @@ export const ADVISORY_LAYER_DEFS = {
     fillLayerId: 'kma-airmet-advisories-fill',
     lineLayerId: 'kma-airmet-advisories-line',
     iconLayerId: 'kma-airmet-advisories-icon',
+    arrowLayerId: 'kma-airmet-advisories-arrow',
+    textLayerId: 'kma-airmet-advisories-text',
     color: '#f59e0b',
     label: 'AIRMET',
   },
+}
+
+const MOTION_ARROW_ICON_ID = 'advisory-motion-arrow'
+
+// airportStationImages.js의 캔버스 아이콘 패턴과 동일 — 회전은 icon-rotate로 런타임에 적용하니
+// 방향별 이미지를 미리 만들 필요 없이 위(0도, 북쪽)를 가리키는 화살표 하나만 등록하면 된다.
+function createMotionArrowImage() {
+  const size = 28
+  const pixelRatio = Math.max(1, Math.round(window.devicePixelRatio || 1))
+  const canvas = document.createElement('canvas')
+  canvas.width = size * pixelRatio
+  canvas.height = size * pixelRatio
+  const context = canvas.getContext('2d', { alpha: true })
+  context.scale(pixelRatio, pixelRatio)
+  context.translate(size / 2, size / 2)
+  context.strokeStyle = '#0f172a'
+  context.lineWidth = 2
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.beginPath()
+  context.moveTo(0, 12)
+  context.lineTo(0, -12)
+  context.moveTo(-5, -6)
+  context.lineTo(0, -12)
+  context.lineTo(5, -6)
+  context.stroke()
+  const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height)
+  return { data, width, height, pixelRatio }
+}
+
+function ensureMotionArrowImage(map) {
+  if (map.hasImage(MOTION_ARROW_ICON_ID) || typeof document === 'undefined') return
+  const image = createMotionArrowImage()
+  map.addImage(MOTION_ARROW_ICON_ID, image, { pixelRatio: image.pixelRatio })
 }
 
 export function advisorySymbolUrl(kind, phenomenonCode) {
@@ -73,6 +115,40 @@ function formatMotion(item) {
     : `${Math.round(motion.speed_kt)}KT`
 }
 
+// 표준 SIGMET 차트 표기("TOP FL350", 상한만 있을 때) — formatAltitude(팝업용, "FL240-FL350")와는 별도.
+function formatAltitudeChart(item) {
+  const lower = item?.altitude?.lower_fl
+  const upper = item?.altitude?.upper_fl
+  if (Number.isFinite(upper) && !Number.isFinite(lower)) return `TOP FL ${upper}`
+  if (Number.isFinite(lower) && Number.isFinite(upper)) return `FL ${lower}-${upper}`
+  if (Number.isFinite(lower)) return `FL ${lower}+`
+  return ''
+}
+
+function formatSpeedChart(item) {
+  const speed = item?.motion?.speed_kt
+  return Number.isFinite(speed) && speed > 0 ? `${Math.round(speed)}KT` : ''
+}
+
+// 고도·이동속도가 없는 지상시정(SFC_VIS) 계열은 이게 본론 — "VIS 5000M RA/FG/BR" 식으로.
+function formatVisibilityChart(item) {
+  const vis = item?.surface_visibility_m
+  if (!Number.isFinite(vis)) return ''
+  const causes = (item?.surface_visibility_causes || []).join('/')
+  return `VIS ${vis}M${causes ? ` ${causes}` : ''}`
+}
+
+// 백엔드가 소스마다 스펠링이 제각각(NO_CHANGE/INTENSIFY/INTENSIFYING/NC/INTSF...) —
+// 정확히 일치하는 값만 잡으면 놓치는 게 생겨서 접두어로 느슨하게 매칭.
+function formatIntensityChart(item) {
+  const raw = String(item?.intensity_change || '').toUpperCase()
+  if (!raw) return ''
+  if (raw === 'NC' || raw.startsWith('NO_CHANGE') || raw.startsWith('NOCHANGE')) return 'NC'
+  if (raw.startsWith('INTSF') || raw.startsWith('INTENSIF')) return 'INTSF'
+  if (raw.startsWith('WKN') || raw.startsWith('WEAK')) return 'WKN'
+  return raw
+}
+
 // 지도 라벨은 공간이 좁아 한글명만(코드 생략). 없으면 영문 라벨→코드.
 function formatLabel(item, kind) {
   const base = kind.startsWith('sigmet') ? 'SIGMET' : 'AIRMET'
@@ -102,40 +178,31 @@ function formatDescription(item, kind, tz = 'KST') {
   return parts.join('\n')
 }
 
-function bboxCenter(item) {
-  const bbox = item?.bbox
-
-  if (!bbox) {
-    return null
-  }
-
-  const lon = (bbox.min_lon + bbox.max_lon) / 2
-  const lat = (bbox.min_lat + bbox.max_lat) / 2
-
-  if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
-    return null
-  }
-
-  return [lon, lat]
+// bbox/vertex-average 중심, turf point-on-feature(경계 스냅) 전부 대각선으로 길쭉한
+// SIGMET 구역에서 도형 가장자리에 걸침 — polylabel(pole of inaccessibility, mapbox가
+// 라벨 배치용으로 만든 알고리즘)은 도형 안에서 가장자리로부터 가장 먼 점을 찾아 진짜 "안쪽 중앙"을 보장한다.
+function largestPolygonRing(geometry) {
+  if (geometry?.type === 'Polygon') return geometry.coordinates
+  if (geometry?.type !== 'MultiPolygon' || !geometry.coordinates?.length) return null
+  return geometry.coordinates.reduce((largest, coords) => (
+    area({ type: 'Polygon', coordinates: coords }) > area({ type: 'Polygon', coordinates: largest })
+      ? coords
+      : largest
+  ))
 }
 
 function geometryCenter(geometry) {
-  const coordinates = geometry?.coordinates?.[0]
-
-  if (!Array.isArray(coordinates) || coordinates.length === 0) {
+  const rings = largestPolygonRing(geometry)
+  if (!rings?.length) {
     return null
   }
 
-  const points = coordinates.filter((point) => Number.isFinite(point?.[0]) && Number.isFinite(point?.[1]))
-
-  if (points.length === 0) {
+  try {
+    const [lon, lat] = polylabel(rings, 0.001)
+    return Number.isFinite(lon) && Number.isFinite(lat) ? [lon, lat] : null
+  } catch {
     return null
   }
-
-  return [
-    points.reduce((sum, point) => sum + point[0], 0) / points.length,
-    points.reduce((sum, point) => sum + point[1], 0) / points.length,
-  ]
 }
 
 export function advisoryItemsToFeatureCollection(payload, kind, tz = 'KST') {
@@ -173,7 +240,7 @@ export function advisoryItemsToLabelFeatureCollection(payload, kind, tz = 'KST')
     type: 'FeatureCollection',
     features: items
       .map((item, index) => {
-        const center = bboxCenter(item) || geometryCenter(item.geometry)
+        const center = geometryCenter(item.geometry)
 
         if (!center) {
           return null
@@ -189,6 +256,9 @@ export function advisoryItemsToLabelFeatureCollection(payload, kind, tz = 'KST')
           iconKey: item.phenomenon_code ? `${kind}-${item.phenomenon_code}` : '',
           iconUrl: advisorySymbolUrl(kind, item.phenomenon_code) || '',
           description: formatDescription(item, kind, tz),
+          chartLine1: [formatAltitudeChart(item), formatSpeedChart(item)].filter(Boolean).join('   ') || formatVisibilityChart(item),
+          chartLine2: formatIntensityChart(item),
+          motionDirection: Number.isFinite(item?.motion?.direction_deg) ? item.motion.direction_deg : null,
         },
           geometry: {
             type: 'Point',
@@ -255,6 +325,7 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
   labelData.features.forEach((feature) => {
     ensureMapImage(map, feature.properties?.iconKey, feature.properties?.iconUrl)
   })
+  ensureMotionArrowImage(map)
 
   if (!map.getLayer(def.iconLayerId)) {
     map.addLayer({
@@ -272,8 +343,69 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
       filter: ['!=', ['get', 'iconKey'], ''],
     })
   }
+
+  // 이동방향 화살표 — 아이콘 옆에, 실제 나침반 방위로 회전.
+  if (!map.getLayer(def.arrowLayerId)) {
+    map.addLayer({
+      id: def.arrowLayerId,
+      type: 'symbol',
+      source: labelSourceId,
+      slot: 'top',
+      layout: {
+        'icon-image': MOTION_ARROW_ICON_ID,
+        'icon-size': 1.6,
+        'icon-rotate': ['get', 'motionDirection'],
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      // icon-offset은 icon-rotate와 같이 회전해버려서 방향에 따라 텍스트 쪽으로 튐 —
+      // icon-translate(paint)는 회전과 무관한 화면 기준 고정 이동이라 위치가 안정적.
+      paint: {
+        'icon-translate': [42, -26],
+      },
+      filter: ['!=', ['get', 'motionDirection'], null],
+    })
+  }
+
+  // 고도/속도 한 줄 + 강화·약화 추세 한 줄 — 표준 SIGMET 차트 표기.
+  if (!map.getLayer(def.textLayerId)) {
+    map.addLayer({
+      id: def.textLayerId,
+      type: 'symbol',
+      source: labelSourceId,
+      slot: 'top',
+      layout: {
+        'text-field': [
+          'case',
+          ['==', ['get', 'chartLine1'], ''],
+          ['get', 'chartLine2'],
+          ['==', ['get', 'chartLine2'], ''],
+          ['get', 'chartLine1'],
+          ['concat', ['get', 'chartLine1'], '\n', ['get', 'chartLine2']],
+        ],
+        'text-font': ['Noto Sans CJK JP Bold'],
+        'text-size': 12,
+        'text-anchor': 'top-left',
+        'text-offset': [-1.4, 0.6],
+        'text-justify': 'left',
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': '#1d4ed8',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1.5,
+      },
+      // 고도/속도/시정 줄, 강화·약화 추세 줄 — 둘 중 하나라도 있으면 표시.
+      filter: ['any', ['!=', ['get', 'chartLine1'], ''], ['!=', ['get', 'chartLine2'], '']],
+    })
+  }
+
   // 공항 기호·이름 레이어 위로 올려 가려지지 않게(데이터 갱신마다 최상단 재확정).
-  if (map.getLayer(def.iconLayerId) && typeof map.moveLayer === 'function') map.moveLayer(def.iconLayerId)
+  for (const layerId of [def.iconLayerId, def.arrowLayerId, def.textLayerId]) {
+    if (map.getLayer(layerId) && typeof map.moveLayer === 'function') map.moveLayer(layerId)
+  }
 }
 
 export function updateAdvisoryLayerData(map, kind, featureData, labelData) {
@@ -297,7 +429,7 @@ export function setAdvisoryVisibility(map, kind, isVisible) {
 
   const visibility = isVisible ? 'visible' : 'none'
 
-  for (const layerId of [def.fillLayerId, def.lineLayerId, def.iconLayerId]) {
+  for (const layerId of [def.fillLayerId, def.lineLayerId, def.iconLayerId, def.arrowLayerId, def.textLayerId]) {
     if (map.getLayer(layerId)) {
       map.setLayoutProperty(layerId, 'visibility', visibility)
     }

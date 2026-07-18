@@ -45,7 +45,7 @@ function constraintFields(aipSegment, direction) {
 }
 
 export function attachActiveAipConstraints({ dataRoot, routeModel } = {}) {
-  const routeSegments = routeModel?.enRouteSegments
+  const routeSegments = (routeModel?.enRouteSegments ?? []).filter((segment) => segment.kind !== 'dct' && segment.routeId !== null)
   if (!Array.isArray(routeSegments)) return { status: 'unavailable', provenance: null, segments: [] }
   if (routeSegments.length === 0) return { status: 'not_applicable', provenance: null, segments: [] }
 
