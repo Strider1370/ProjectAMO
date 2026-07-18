@@ -10,6 +10,7 @@ import {
   pickPrimaryWeatherIcon,
   toMetarTempToken,
 } from './parse-utils.js'
+import { annotateMetarTac } from './tac-annotation.js'
 
 const SM_TO_M = 1609.34
 
@@ -154,6 +155,7 @@ export function parse(entry) {
       automated: /\bAUTO\b/.test(rawOb || ''),
       // NOAA는 원문 TAC 제공(KMA=IWXXM은 원문 없음). 공항패널 METAR 탭에서 전문 표시용.
       raw_text: rawOb,
+      tac: annotateMetarTac(rawOb),
       // #1 출처·시각 배지용. 해외는 NOAA. METAR는 관측 스냅샷이라 유효기간 없음.
       source: {
         identifier: 'NOAA',

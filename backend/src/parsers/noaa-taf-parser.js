@@ -9,6 +9,7 @@ import {
   pickPrimaryWeatherIcon,
 } from './parse-utils.js'
 import { convertSmToMeters } from './noaa-metar-parser.js'
+import { annotateTafTac } from './tac-annotation.js'
 
 const CLEAR_COVERS = new Set(['SKC', 'CLR', 'NSC', 'NCD'])
 
@@ -215,6 +216,7 @@ export function parse(entry) {
       report_status: /CANCEL/i.test(entry.rawTAF || '') ? 'CANCELLATION' : (entry.prior ? 'CORRECTION' : 'NORMAL'),
       // NOAA는 원문 TAC 제공. 공항패널 TAF 탭에서 전문 표시용.
       raw_text: entry.rawTAF || null,
+      tac: annotateTafTac(entry.rawTAF, timeline),
       temperatures: { max: { value: null, time: null }, min: { value: null, time: null } },
       source: {
         identifier: 'NOAA',

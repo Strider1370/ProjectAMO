@@ -2,7 +2,7 @@ import config from '../config.js'
 import apiClient from '../api-client.js'
 import store from '../store.js'
 import metarParser from '../parsers/metar-parser.js'
-import { buildMetarTac } from '../serializers/metar-tac.js'
+import { buildMetarTacPresentation } from '../serializers/metar-tac.js'
 
 async function processAll() {
   const result = {
@@ -21,7 +21,7 @@ async function processAll() {
       if (parsed) {
         if (parsed.header?.source) parsed.header.source.fetch_time = result.fetched_at;
         // 국내 IWXXM은 원문 TAC가 없음 → 파싱 결과로 재구성해 채움(외국은 이미 raw_text 보유)
-        if (parsed.header && !parsed.header.raw_text) parsed.header.raw_text = buildMetarTac(parsed);
+        if (parsed.header) { const tac = buildMetarTacPresentation(parsed); parsed.header.raw_text = tac?.text ?? null; parsed.header.tac = tac }
         result.airports[airport.icao] = parsed;
       }
     } catch (error) {

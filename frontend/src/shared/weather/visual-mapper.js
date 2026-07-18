@@ -7,7 +7,7 @@ export function convertWeatherToKorean(weatherStr, cavok, clouds = []) {
     'SN': '눈', '-SN': '약한 눈', '+SN': '강한 눈',
     'DZ': '이슬비', '-DZ': '약한 이슬비', '+DZ': '강한 이슬비',
     'FG': '안개', 'BR': '박무', 'HZ': '연무',
-    'TS': '뇌전', 'TSRA': '뇌우', 'SHRA': '소나기',
+    'TS': '뇌전', 'TSRA': '뇌우', '+TSRA': '강한 뇌우', '-TSRA': '약한 뇌우', 'SHRA': '소나기',
     'SCT': '구름 조금', 'BKN': '구름 많음', 'OVC': '흐림', 'FEW': '구름 약간',
   };
 

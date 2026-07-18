@@ -1,4 +1,4 @@
-// 파싱된 METAR 구조 → 원문 TAC 문자열 재구성.
+// 파싱된 METAR 구조 → 원문 TAC + 역할 토큰 재구성.
 // 국내(KMA IWXXM)는 원문 TAC가 없어 파싱 결과(observation.display 등)로 재조립한다.
 // 입력 = metar-parser.parse() 결과 객체(원본 XML 아님).
 
@@ -11,6 +11,8 @@ function ddhhmmZ(iso) {
 
 // RVR 토큰. operator/tendency 코드 대표값만 매핑.
 // ponytail: KMA 국내 METAR엔 RVR이 거의 안 실림 — 실제로 나오면 코드 매핑 확장.
+import { tacDisplayLine, tacPresentation, tacToken, weatherTokenRole } from './tac-presentation.js'
+
 function rvrToken(r) {
   if (!r || !r.runway || r.mean == null) return null
   const op = r.operator === 'ABOVE' ? 'P' : r.operator === 'BELOW' ? 'M' : ''
@@ -27,7 +29,7 @@ function windShearToken(ws) {
   return ''
 }
 
-export function buildMetarTac(parsed) {
+export function buildMetarTacPresentation(parsed) {
   if (!parsed?.header || !parsed?.observation) return null
   const h = parsed.header
   const o = parsed.observation
@@ -37,18 +39,26 @@ export function buildMetarTac(parsed) {
   const time = ddhhmmZ(h.observation_time || h.issue_time)
   const wind = d.wind || o.wind?.raw || '/////KT'
 
-  let body
-  if (parsed.cavok_flag) {
-    body = 'CAVOK'
-  } else {
-    const rvr = (o.rvr || []).map(rvrToken).filter(Boolean)
-    // d.clouds 는 nsc/cavok 시 이미 'NSC'
-    body = [d.visibility, ...rvr, d.weather, d.clouds].filter(Boolean).join(' ')
-  }
-
   // 순서(Annex 3): 바람 · 본문(시정/RVR/기상/구름) · 기온/노점 · QNH · 윈드시어(보충)
-  const tokens = [type, h.icao, time, wind, body, d.temperature, d.qnh, windShearToken(o.wind_shear)]
-  return tokens.filter(Boolean).join(' ')
+  const parts = [
+    tacToken(type, 'report'), tacToken(h.icao, 'station'), tacToken(time, 'time'), tacToken(wind, 'wind'),
+  ]
+  if (parsed.cavok_flag) parts.push(tacToken('CAVOK'))
+  else {
+    if (d.visibility) parts.push(tacToken(d.visibility, 'visibility'))
+    for (const rvr of (o.rvr || []).map(rvrToken).filter(Boolean)) parts.push(tacToken(rvr, 'rvr'))
+    for (const weather of (o.weather || []).filter((weather) => weather?.descriptor || weather?.phenomena?.length)) {
+      parts.push(tacToken(weather.raw, weatherTokenRole(weather)))
+    }
+    for (const cloud of String(d.clouds || '').split(/\s+/).filter(Boolean)) parts.push(tacToken(cloud, /CB$/.test(cloud) ? 'cloud-cb' : /^(BKN|OVC)/.test(cloud) ? 'ceiling' : 'plain'))
+  }
+  if (d.temperature) parts.push(tacToken(d.temperature, 'temperature'))
+  if (d.qnh) parts.push(tacToken(d.qnh, 'qnh'))
+  const shear = windShearToken(o.wind_shear)
+  if (shear) parts.push(tacToken(shear, 'supplementary'))
+  return tacPresentation([tacDisplayLine(parts)])
 }
+
+export function buildMetarTac(parsed) { return buildMetarTacPresentation(parsed)?.text ?? null }
 
 export default { buildMetarTac }

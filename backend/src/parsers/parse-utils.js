@@ -65,6 +65,7 @@ export function parseWeatherCode(rawCode) {
     if (chunk.length === 2 && validPhenomena.has(chunk)) phenomena.push(chunk)
   }
 
+  if (!descriptor && phenomena.length === 0) return null
   return { raw, intensity, descriptor, phenomena }
 }
 

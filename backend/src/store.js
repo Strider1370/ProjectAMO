@@ -2,6 +2,10 @@ import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import config from './config.js'
+import { buildMetarTacPresentation } from './serializers/metar-tac.js'
+import { buildTafTacPresentation } from './serializers/taf-tac.js'
+import { annotateMetarTac, annotateTafTac } from './parsers/tac-annotation.js'
+import { pickPrimaryWeatherIcon } from './parsers/parse-utils.js'
 
 const TYPES = ['metar', 'taf', 'warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'kim_surface_wind', 'ground_forecast', 'ground_overview', 'environment', 'airport_info', 'takeoff_fcst', 'flight_category_overlay', 'notam', 'metar_overseas', 'taf_overseas', 'sigmet_overseas']
 const FILE_PREFIX = {
@@ -47,6 +51,46 @@ const cache = {
   metar_overseas: { hash: null, prev_data: null },
   taf_overseas: { hash: null, prev_data: null },
   sigmet_overseas: { hash: null, prev_data: null },
+}
+
+// 이전 스냅샷은 파일을 고치지 않고 메모리에 올릴 때만 최신 TAC 표현 계약을 보강한다.
+// 화면은 항상 같은 구조화 토큰을 받고, 프런트엔드는 원문 문자열을 다시 해석하지 않는다.
+export function hydrateTacPresentation(type, data) {
+  if (!['metar', 'taf', 'metar_overseas', 'taf_overseas'].includes(type) || !data?.airports) return data
+  for (const report of Object.values(data.airports)) {
+    if (!report?.header || report.header.tac) continue
+    normalizeLegacyWeather(report)
+    if (type === 'metar') {
+      const tac = buildMetarTacPresentation(report)
+      if (tac) { report.header.raw_text = tac.text; report.header.tac = tac }
+    } else if (type === 'taf') {
+      const tac = buildTafTacPresentation(report)
+      if (tac) { report.header.raw_text = tac.text; report.header.tac = tac }
+    } else if (type === 'metar_overseas') {
+      report.header.tac = annotateMetarTac(report.header.raw_text)
+    } else {
+      report.header.tac = annotateTafTac(report.header.raw_text, report.timeline)
+    }
+  }
+  return data
+}
+
+function normalizeLegacyWeather(report) {
+  const normalizeState = (state) => {
+    if (!state) return
+    const weather = (state.weather || state.wx || []).filter((entry) => entry?.descriptor || entry?.phenomena?.length)
+    if ('weather' in state) state.weather = weather
+    if ('wx' in state) state.wx = weather
+    if (state.display) {
+      state.display.weather = weather.map((entry) => entry.raw).join(' ')
+      state.display.weather_icon = pickPrimaryWeatherIcon(weather)
+      state.display.weather_intensity = weather[0]?.intensity || null
+    }
+  }
+  normalizeState(report.observation)
+  normalizeState(report.base)
+  for (const group of report.change_groups || []) normalizeState(group)
+  for (const slot of report.timeline || []) normalizeState(slot)
 }
 
 export function ensureDirectories(basePath) {
@@ -196,6 +240,7 @@ export function mergeWithPrevious(result, type, failedAirports) {
 }
 
 export function updateCache(type, data, hash) {
+  hydrateTacPresentation(type, data)
   cache[type].hash = hash
   cache[type].prev_data = data
 }

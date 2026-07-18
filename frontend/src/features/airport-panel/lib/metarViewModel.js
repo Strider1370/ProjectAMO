@@ -21,83 +21,27 @@ function pickCeilingCloud(clouds) {
     .sort((a, b) => (a.base ?? Infinity) - (b.base ?? Infinity))[0] || null
 }
 
-export function buildWindToken(wind) {
-  if (!wind || wind.calm) return null
-  const dir = wind.variable ? 'VRB' : (Number.isFinite(wind.direction) ? String(wind.direction).padStart(3, '0') : null)
-  const speed = Number.isFinite(wind.speed) ? String(wind.speed).padStart(2, '0') : null
-  if (!dir || !speed) return null
-  const gust = Number.isFinite(wind.gust) ? `G${String(wind.gust).padStart(2, '0')}` : ''
-  return `${dir}${speed}${gust}${wind.unit || 'KT'}`
-}
-
-export function buildVisibilityToken(obs) {
-  const value = obs?.visibility?.value
-  return Number.isFinite(value) ? String(value) : null
-}
-
-export function buildCeilingToken(obs) {
-  const ceilingCloud = pickCeilingCloud(obs?.clouds)
-  if (!ceilingCloud || !Number.isFinite(ceilingCloud.base)) return null
-  const hundreds = String(Math.round(ceilingCloud.base / 100)).padStart(3, '0')
-  return `${ceilingCloud.amount}${hundreds}`
-}
-
-export function weatherTokens(obs) {
-  const raw = obs?.display?.weather
-  return raw ? String(raw).split(/\s+/).filter(Boolean) : []
-}
-
 export function levelHighlightClass(cat) {
   if (!cat || cat.category === 'VFR') return null
   return `ap-metar-tac-hl ap-metar-tac-hl--level-${cat.category.toLowerCase()}`
 }
 
-export function splitSegmentsOn(segments, token, className) {
-  if (!token) return segments
-  return segments.flatMap((seg) => {
-    if (seg.className || !seg.text.includes(token)) return [seg]
-    const idx = seg.text.indexOf(token)
-    const before = seg.text.slice(0, idx)
-    const match = seg.text.slice(idx, idx + token.length)
-    const after = seg.text.slice(idx + token.length)
-    return [
-      ...(before ? [{ text: before }] : []),
-      { text: match, className },
-      ...(after ? [{ text: after }] : []),
-    ]
-  })
+export function tacRoleClass(role, { highWind, visCat, ceilCat }) {
+  if (role === 'wind' && highWind) return 'ap-metar-tac-hl ap-metar-tac-hl--wind'
+  if (role === 'visibility') return levelHighlightClass(visCat)
+  if (role === 'weather-special') return 'ap-metar-tac-hl ap-metar-tac-hl--special'
+  if (role === 'weather-precip') return 'ap-metar-tac-hl ap-metar-tac-hl--precip'
+  if (role === 'cloud-cb') return 'ap-metar-tac-hl ap-metar-tac-hl--special'
+  if (role === 'ceiling') return levelHighlightClass(ceilCat)
+  return undefined
 }
 
-// 원문(rawText)은 절대 바꾸지 않는다 — 이미 계산된 값(vm)이 원문 안에서 발견되는 구간만
-// className을 붙여 쪼갠다. 못 찾으면 그 항목만 건너뛴다(원문 전체는 항상 그대로 보존).
+// 역할은 서버의 구조화 토큰에서만 받는다. 원문 문자열 검색은 하지 않는다.
 export function buildMetarTacSegments(rawText, vm) {
   if (!rawText) return []
-  let segments = [{ text: rawText }]
-
-  if (vm.highWind) {
-    segments = splitSegmentsOn(segments, buildWindToken(vm.obs?.wind), 'ap-metar-tac-hl ap-metar-tac-hl--wind')
-  }
-
-  const visClass = levelHighlightClass(vm.visCat)
-  if (visClass) {
-    segments = splitSegmentsOn(segments, buildVisibilityToken(vm.obs), visClass)
-  }
-
-  if (vm.precipitationWeather || vm.specialWeather) {
-    const wxClass = vm.specialWeather
-      ? 'ap-metar-tac-hl ap-metar-tac-hl--special'
-      : 'ap-metar-tac-hl ap-metar-tac-hl--precip'
-    for (const token of weatherTokens(vm.obs)) {
-      segments = splitSegmentsOn(segments, token, wxClass)
-    }
-  }
-
-  const ceilClass = levelHighlightClass(vm.ceilCat)
-  if (ceilClass) {
-    segments = splitSegmentsOn(segments, buildCeilingToken(vm.obs), ceilClass)
-  }
-
-  return segments
+  const tokens = vm.hdr?.tac?.display_lines?.[0]?.tokens
+  if (!tokens) return [{ text: rawText }]
+  return tokens.map((token) => ({ text: token.text, className: tacRoleClass(token.role, vm) }))
 }
 
 export function buildMetarViewModel({ metar, amosData, icao, airportMeta }) {

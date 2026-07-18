@@ -28,8 +28,8 @@ test('AMD + TEMPO + PROB30_TEMPO + 저시정/기상/NSC', () => {
     header: { icao: 'RKPC', report_status: 'AMENDMENT', issued: '2026-01-05T05:00:00Z', valid_start: '2026-01-05T06:00:00Z', valid_end: '2026-01-06T06:00:00Z' },
     base: { wind: { raw: '30015G25KT' }, vis: 9999, wx: [], clouds: [{ raw: 'SCT030' }], cavok_flag: false, nsc_flag: false },
     change_groups: [
-      { type: 'TEMPO', start: '2026-01-05T06:00:00Z', end: '2026-01-05T12:00:00Z', wind: null, vis: 3000, wx: [{ raw: 'SHSN' }], clouds: [{ raw: 'BKN015' }], cavok_flag: false, nsc_flag: false },
-      { type: 'PROB30_TEMPO', start: '2026-01-05T12:00:00Z', end: '2026-01-05T18:00:00Z', wind: null, vis: 800, wx: [{ raw: '+SHSN' }], clouds: null, cavok_flag: false, nsc_flag: false },
+      { type: 'TEMPO', start: '2026-01-05T06:00:00Z', end: '2026-01-05T12:00:00Z', wind: null, vis: 3000, wx: [{ raw: 'SHSN', descriptor: 'SH', phenomena: ['SN'] }], clouds: [{ raw: 'BKN015' }], cavok_flag: false, nsc_flag: false },
+      { type: 'PROB30_TEMPO', start: '2026-01-05T12:00:00Z', end: '2026-01-05T18:00:00Z', wind: null, vis: 800, wx: [{ raw: '+SHSN', descriptor: 'SH', phenomena: ['SN'] }], clouds: null, cavok_flag: false, nsc_flag: false },
       { type: 'BECMG', start: '2026-01-06T00:00:00Z', end: '2026-01-06T02:00:00Z', wind: { raw: '27010KT' }, vis: 9999, wx: null, clouds: null, cavok_flag: false, nsc_flag: true },
     ],
   }

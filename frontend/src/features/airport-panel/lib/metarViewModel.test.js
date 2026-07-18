@@ -3,6 +3,13 @@ import { describe, it } from 'node:test'
 
 import { buildMetarViewModel, buildMetarTacSegments } from './metarViewModel.js'
 
+function attachTac(vm, rawText) {
+  const role = (text) => (/KT$/.test(text) ? 'wind' : /^(?:\d{3,4}|\dSM|M\d\/\dSM)$/.test(text) ? 'visibility' : /CB$/.test(text) ? 'cloud-cb' : /^(?:\+|-)?TSRA$|^(?:FG|SN)$/.test(text) ? 'weather-special' : /^(?:\+|-)?RA$/.test(text) ? 'weather-precip' : /^(?:BKN|OVC)/.test(text) ? 'ceiling' : 'plain')
+  const tokens = String(rawText).split(/(\s+)/).filter(Boolean).map((text) => ({ text, role: /^\s+$/.test(text) ? 'separator' : role(text) }))
+  vm.hdr.tac = { display_lines: [{ text: rawText, slot_time: null, tokens }] }
+  return vm
+}
+
 const baseMetar = {
   header: { observation_time: '2026-05-21T10:00:00Z' },
   observation: {
@@ -50,9 +57,35 @@ describe('airport METAR view model weather highlighting', () => {
     assert.equal(model.precipitationWeather, false)
     assert.equal(model.specialWeather, false)
   })
+
+  it('keeps thunderstorm rain ahead of mist in the weather card', () => {
+    const model = buildMetarViewModel({
+      metar: { ...baseMetar, observation: { ...baseMetar.observation, display: { ...baseMetar.observation.display, weather: '+TSRA BR' } } },
+      amosData: null, icao: 'RKJJ', airportMeta: {},
+    })
+    assert.equal(model.weatherKorean, '강한 뇌우')
+  })
 })
 
 describe('buildMetarTacSegments — TAC 원문 하이라이트', () => {
+  it('highlights only the typed visibility token when wind and RVR contain the same digits', () => {
+    const metar = {
+      header: { observation_time: '2026-07-18T14:20:00Z' },
+      observation: {
+        cavok: false, display: { weather: 'RA', visibility: '800', qnh: 'Q1002' },
+        visibility: { value: 800 }, wind: { direction: 280, speed: 3, unit: 'KT' }, clouds: [], temperature: { air: 25, dewpoint: 25 }, weather: [{ raw: 'RA' }],
+      },
+    }
+    const vm = buildMetarViewModel({ metar, amosData: null, icao: 'RKJB', airportMeta: {} })
+    vm.visCat = { category: 'IFR' }
+    const rawText = 'SPECI RKJB 181420Z 28003KT 800 R19/0300N RA 25/25 Q1002'
+    const segments = buildMetarTacSegments(rawText, attachTac(vm, rawText))
+    const highlighted = segments.filter((segment) => segment.className).map((segment) => segment.text)
+    assert.deepEqual(highlighted, ['800', 'RA'])
+    assert.equal(segments.find((segment) => segment.text === '28003KT')?.className, undefined)
+    assert.equal(segments.find((segment) => segment.text === 'R19/0300N')?.className, undefined)
+  })
+
   it('highlights visibility below the IFR threshold', () => {
     const metar = {
       header: { observation_time: '2026-05-21T10:00:00Z' },
@@ -67,7 +100,7 @@ describe('buildMetarTacSegments — TAC 원문 하이라이트', () => {
     }
     const vm = buildMetarViewModel({ metar, amosData: null, icao: 'RKSI', airportMeta: { runway_hdg: 150 } })
     const rawText = 'RKSI 171200Z 09008KT 4800 22/21 Q1008 NOSIG'
-    const segments = buildMetarTacSegments(rawText, vm)
+    const segments = buildMetarTacSegments(rawText, attachTac(vm, rawText))
 
     assert.equal(segments.map((s) => s.text).join(''), rawText)
     const highlighted = segments.filter((s) => s.className)
@@ -90,7 +123,7 @@ describe('buildMetarTacSegments — TAC 원문 하이라이트', () => {
     }
     const vm = buildMetarViewModel({ metar, amosData: null, icao: 'RKSS', airportMeta: { runway_hdg: 140 } })
     const rawText = 'RKSS 171200Z 32028G40KT 9999 19/18 Q0998'
-    const segments = buildMetarTacSegments(rawText, vm)
+    const segments = buildMetarTacSegments(rawText, attachTac(vm, rawText))
 
     assert.equal(segments.map((s) => s.text).join(''), rawText)
     const highlighted = segments.filter((s) => s.className)
@@ -113,13 +146,29 @@ describe('buildMetarTacSegments — TAC 원문 하이라이트', () => {
     }
     const vm = buildMetarViewModel({ metar, amosData: null, icao: 'RKSI', airportMeta: { runway_hdg: 150 } })
     const rawText = 'RKSI 171200Z 09008KT 4800 -RA BR OVC012 22/21 Q1008 NOSIG'
-    const segments = buildMetarTacSegments(rawText, vm)
+    const segments = buildMetarTacSegments(rawText, attachTac(vm, rawText))
 
     assert.equal(segments.map((s) => s.text).join(''), rawText)
     const wxSegments = segments.filter((s) => s.className?.includes('ap-metar-tac-hl--precip'))
-    assert.deepEqual(wxSegments.map((s) => s.text), ['-RA', 'BR'])
+    assert.deepEqual(wxSegments.map((s) => s.text), ['-RA'])
     const ceilSegment = segments.find((s) => s.className?.includes('ap-metar-tac-hl--level-ifr') && s.text === 'OVC012')
     assert.ok(ceilSegment, 'expected OVC012 to be highlighted as IFR ceiling')
+  })
+
+  it('highlights +TSRA but leaves the accompanying mist token plain', () => {
+    const metar = { ...baseMetar, observation: { ...baseMetar.observation, display: { ...baseMetar.observation.display, weather: '+TSRA BR' } } }
+    const vm = buildMetarViewModel({ metar, amosData: null, icao: 'RKJJ', airportMeta: {} })
+    const rawText = 'METAR RKJJ 181500Z 01006KT 1600 +TSRA BR BKN015 26/26 Q1002'
+    const segments = buildMetarTacSegments(rawText, attachTac(vm, rawText))
+    assert.match(segments.find((segment) => segment.text === '+TSRA')?.className, /--special/)
+    assert.equal(segments.find((segment) => segment.text === 'BR')?.className, undefined)
+  })
+
+  it('highlights cumulonimbus cloud tokens even when their ceiling is not restrictive', () => {
+    const vm = buildMetarViewModel({ metar: baseMetar, amosData: null, icao: 'RKJJ', airportMeta: {} })
+    const rawText = 'METAR RKJJ 181500Z 01006KT 9999 FEW030CB 26/26 Q1002'
+    const segments = buildMetarTacSegments(rawText, attachTac(vm, rawText))
+    assert.match(segments.find((segment) => segment.text === 'FEW030CB')?.className, /--special/)
   })
 
   it('adds no highlights for a calm VFR observation', () => {
@@ -136,11 +185,10 @@ describe('buildMetarTacSegments — TAC 원문 하이라이트', () => {
     }
     const vm = buildMetarViewModel({ metar, amosData: null, icao: 'RKPC', airportMeta: { runway_hdg: 70 } })
     const rawText = 'RKPC 171200Z 27006KT 9999 FEW030 26/18 Q1012 NOSIG'
-    const segments = buildMetarTacSegments(rawText, vm)
+    const segments = buildMetarTacSegments(rawText, attachTac(vm, rawText))
 
-    assert.equal(segments.length, 1)
-    assert.equal(segments[0].text, rawText)
-    assert.equal(segments[0].className, undefined)
+    assert.equal(segments.map((segment) => segment.text).join(''), rawText)
+    assert.equal(segments.filter((segment) => segment.className).length, 0)
   })
 
   it('leaves text intact and uncolored when the parsed token cannot be found verbatim', () => {

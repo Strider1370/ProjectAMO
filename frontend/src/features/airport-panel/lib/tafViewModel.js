@@ -8,14 +8,7 @@ import {
 } from '../../../shared/weather/helpers.js'
 import { convertWeatherToKorean } from '../../../shared/weather/visual-mapper.js'
 import { resolveWeatherVisual } from '../../../shared/weather/weather-visual-resolver.js'
-import {
-  buildWindToken,
-  buildVisibilityToken,
-  buildCeilingToken,
-  weatherTokens,
-  levelHighlightClass,
-  splitSegmentsOn,
-} from './metarViewModel.js'
+import { tacRoleClass } from './metarViewModel.js'
 
 // 비행 카테고리 3단계(초록/주황/빨강) — 헌법 §5 레벨 토큰 값 미러(단일 출처). JS 인라인 스타일이라 hex로 보관.
 export const TAF_CATEGORY_COLOR = { VFR: '#166534', IFR: '#92400e', LIFR: '#c0291f' }
@@ -92,40 +85,16 @@ export function formatTafHour(iso, tz = 'UTC') {
   return `${String(display.getUTCDate()).padStart(2, '0')}/${String(display.getUTCHours()).padStart(2, '0')}${tz === 'UTC' ? 'Z' : ''}`
 }
 
-// TAF 원문 줄바꿈 — NOAA rawTAF는 한 줄로 옴 → FM/BECMG/TEMPO/PROBxx/RMK 앞에서 개행해 줄 단위로 쪼갠다.
-function splitTafLines(raw) {
-  if (!raw) return []
-  return String(raw)
-    .replace(/\s+(FM\d{6}|PROB\d{2}\s+TEMPO|PROB\d{2}|BECMG|TEMPO|RMK)\b/g, '\n$1')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-}
-
-// 줄 맨 앞의 변화시각(DDHH/DDHH 또는 FMDDHHmm)에서 시작 day+hour만 뽑는다 — 시간대별
-// 해상도로 이미 계산된 timeline과 맞춰보기 위한 키. RMK 등 시각이 없는 줄은 null.
-function lineStartKey(line) {
-  const fm = line.match(/^FM(\d{2})(\d{2})/)
-  if (fm) return `${fm[1]}${fm[2]}`
-  const range = line.match(/(\d{2})(\d{2})\/(\d{2})(\d{2})/)
-  return range ? `${range[1]}${range[2]}` : null
-}
-
 function buildTafLineSegments(line, slot, icao) {
-  let segments = [{ text: line }]
-  if (!slot) return segments
-  if (hasHighWindCondition(slot.wind)) {
-    segments = splitSegmentsOn(segments, buildWindToken(slot.wind), 'ap-metar-tac-hl ap-metar-tac-hl--wind')
+  if (!line.tokens || !slot) return [{ text: line.text || line }]
+  const context = {
+    highWind: hasHighWindCondition(slot.wind),
+    visCat: classifyVisibilityCategory(slot.visibility?.value, icao),
+    ceilCat: classifyCeilingCategory(getTafCeiling(slot), icao),
+    precipitationWeather: hasPrecipitationWeather(slot),
+    specialWeather: hasSpecialWeather(slot),
   }
-  const visClass = levelHighlightClass(classifyVisibilityCategory(slot?.visibility?.value, icao))
-  if (visClass) segments = splitSegmentsOn(segments, buildVisibilityToken(slot), visClass)
-  if (hasPrecipitationWeather(slot) || hasSpecialWeather(slot)) {
-    const wxClass = hasSpecialWeather(slot) ? 'ap-metar-tac-hl ap-metar-tac-hl--special' : 'ap-metar-tac-hl ap-metar-tac-hl--precip'
-    for (const token of weatherTokens(slot)) segments = splitSegmentsOn(segments, token, wxClass)
-  }
-  const ceilClass = levelHighlightClass(classifyCeilingCategory(getTafCeiling(slot), icao))
-  if (ceilClass) segments = splitSegmentsOn(segments, buildCeilingToken(slot), ceilClass)
-  return segments
+  return line.tokens.map((token) => ({ text: token.text, className: tacRoleClass(token.role, context) }))
 }
 
 // TAC 원문을 줄 단위로 나누고, 각 줄(기본/TEMPO/BECMG/FM/PROB)의 변화시각을 이미 계산된
@@ -134,16 +103,13 @@ export function buildTafTacLines(taf, icao) {
   const rawText = taf?.header?.raw_text
   if (!rawText) return []
   const rawTimeline = Array.isArray(taf.timeline) ? taf.timeline : []
-  const hourMap = new Map()
-  for (const slot of rawTimeline) {
-    const d = new Date(slot.time)
-    if (Number.isNaN(d.getTime())) continue
-    hourMap.set(`${String(d.getUTCDate()).padStart(2, '0')}${String(d.getUTCHours()).padStart(2, '0')}`, slot)
-  }
-  return splitTafLines(rawText).map((line) => {
-    const slot = hourMap.get(lineStartKey(line))
+  const lines = taf?.header?.tac?.display_lines
+  if (!lines) return [{ text: rawText, category: null, segments: [{ text: rawText }] }]
+  const slotMap = new Map(rawTimeline.map((slot) => [slot.time, slot]))
+  return lines.map((line) => {
+    const slot = slotMap.get(line.slot_time)
     const category = slot ? getFlightCategory(slot?.visibility?.value, getTafCeiling(slot), icao).category : null
-    return { text: line, category, segments: buildTafLineSegments(line, slot, icao) }
+    return { text: line.text, category, segments: buildTafLineSegments(line, slot, icao) }
   })
 }
 
