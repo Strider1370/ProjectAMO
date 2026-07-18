@@ -78,11 +78,32 @@ export function advisorySymbolUrl(kind, phenomenonCode) {
   return `/Symbols/Reference%20Symbols/${folder}/${encodeURIComponent(file)}`
 }
 
+// SIGMET/AIRMET 참조기호 PNG 원본 크기가 파일마다 제각각(21x12 ~ 243x48)이라 그대로 쓰면
+// 아이콘마다 화면에 보이는 크기가 들쭉날쭉하다 — 고정 캔버스에 종횡비 유지한 채(contain)
+// 다시 그려서 등록하면 전부 같은 시각적 크기로 통일된다.
+const PHENOMENON_ICON_SIZE = 40
+
 function ensureMapImage(map, id, url) {
   if (!id || !url || map.hasImage(id)) return
   map.loadImage(url, (error, image) => {
     if (error || !image || map.hasImage(id)) return
-    map.addImage(id, image)
+    if (typeof document === 'undefined') { map.addImage(id, image); return }
+
+    const canvas = document.createElement('canvas')
+    canvas.width = PHENOMENON_ICON_SIZE
+    canvas.height = PHENOMENON_ICON_SIZE
+    const context = canvas.getContext('2d', { alpha: true })
+    const scale = Math.min(PHENOMENON_ICON_SIZE / image.width, PHENOMENON_ICON_SIZE / image.height)
+    const drawWidth = image.width * scale
+    const drawHeight = image.height * scale
+    context.drawImage(
+      image,
+      (PHENOMENON_ICON_SIZE - drawWidth) / 2,
+      (PHENOMENON_ICON_SIZE - drawHeight) / 2,
+      drawWidth,
+      drawHeight,
+    )
+    map.addImage(id, context.getImageData(0, 0, PHENOMENON_ICON_SIZE, PHENOMENON_ICON_SIZE))
   })
 }
 
@@ -268,6 +289,67 @@ export function advisoryItemsToLabelFeatureCollection(payload, kind, tz = 'KST')
       })
       .filter(Boolean),
   }
+}
+
+// 아이콘·화살표·텍스트는 전부 같은 지점(anchor)에서 그려지므로, 이 지점 자체를 화면
+// 픽셀 기준으로 밀어내면 세트 전체(아이콘+화살표+글자)가 한 덩어리로 같이 벌어진다.
+// SIGMET(국내/해외)·AIRMET처럼 서로 다른 소스라도 화면에서 겹치면 같이 밀어내야 해서,
+// 세 종류를 한 번에 모아 계산한다. 지도를 움직이면(zoom/pan) 화면상 겹침이 달라지므로
+// 매번 다시 계산해야 한다 — 원본(raw, 실제 지리좌표) 데이터는 그대로 두고 화면에 낼 좌표만 조정.
+const LABEL_MIN_SEPARATION_PX = 100
+const LABEL_COLLISION_PASSES = 6
+
+export function resolveAdvisoryLabelCollisions(map, groups) {
+  if (!map || typeof map.project !== 'function' || typeof map.unproject !== 'function') {
+    return groups
+  }
+
+  const points = []
+  groups.forEach((group, groupIndex) => {
+    group.labelData.features.forEach((feature, featureIndex) => {
+      const projected = map.project(feature.geometry.coordinates)
+      points.push({ groupIndex, featureIndex, x: projected.x, y: projected.y })
+    })
+  })
+
+  for (let pass = 0; pass < LABEL_COLLISION_PASSES; pass += 1) {
+    let moved = false
+    for (let i = 0; i < points.length; i += 1) {
+      for (let j = i + 1; j < points.length; j += 1) {
+        const a = points[i]
+        const b = points[j]
+        let dx = b.x - a.x
+        let dy = b.y - a.y
+        let dist = Math.hypot(dx, dy)
+        if (dist >= LABEL_MIN_SEPARATION_PX) continue
+        if (dist < 0.01) { dx = 1; dy = 0; dist = 1 } // 완전히 같은 지점 — 임의 방향으로 갈라놓기
+        const push = (LABEL_MIN_SEPARATION_PX - dist) / 2
+        const ux = dx / dist
+        const uy = dy / dist
+        a.x -= ux * push
+        a.y -= uy * push
+        b.x += ux * push
+        b.y += uy * push
+        moved = true
+      }
+    }
+    if (!moved) break
+  }
+
+  const byKey = new Map(points.map((p) => [`${p.groupIndex}:${p.featureIndex}`, p]))
+
+  return groups.map((group, groupIndex) => ({
+    kind: group.kind,
+    labelData: {
+      type: 'FeatureCollection',
+      features: group.labelData.features.map((feature, featureIndex) => {
+        const point = byKey.get(`${groupIndex}:${featureIndex}`)
+        if (!point) return feature
+        const { lng, lat } = map.unproject([point.x, point.y])
+        return { ...feature, geometry: { ...feature.geometry, coordinates: [lng, lat] } }
+      }),
+    },
+  }))
 }
 
 export function addAdvisoryLayers(map, kind, featureData, labelData) {

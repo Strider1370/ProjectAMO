@@ -4,6 +4,7 @@ import {
   augmentRouteWithProcedures,
   buildProcedureGeoJSON,
   buildVfrGeoJSON,
+  bindVfrInteractions,
   calcVfrDistance,
   relabeledWaypoints,
 } from './routePreview.js'
@@ -63,6 +64,69 @@ test('buildProcedureGeoJSON includes line and waypoint features for SID, STAR, a
   assert.ok(roles.includes('sid-wp'))
   assert.ok(roles.includes('star-wp'))
   assert.ok(roles.includes('iap-wp'))
+})
+
+test('comparison drag only forwards the selected waypoint or plus handle', () => {
+  const events = new Map()
+  const map = {
+    on(event, layer, handler) {
+      const callback = handler ?? layer
+      events.set(`${event}:${handler ? layer : '*'}`, callback)
+    },
+    dragPan: { disable() {}, enable() {} },
+    getCanvas: () => ({ style: {} }),
+    getSource: () => null,
+    queryRenderedFeatures: () => [],
+  }
+  const drops = []
+  bindVfrInteractions(map, { current: [] }, { current: null }, { current: true }, { current: (drop) => drops.push(drop) })
+  events.get('mousedown:briefing-route-preview-point')({
+    preventDefault() {},
+    lngLat: { lng: 127, lat: 37 },
+    features: [{ properties: { designId: 'route-design-1', selected: true, editable: true, waypointIndex: 1 } }],
+  })
+  events.get('mousemove:*')({ lngLat: { lng: 128, lat: 36 } })
+  events.get('mouseup:*')()
+  assert.deepEqual(drops, [{ designId: 'route-design-1', kind: 'move', index: 1, coordinates: [128, 36] }])
+})
+
+test('comparison line drag inserts and redraws a temporary waypoint before confirmation', () => {
+  const events = new Map()
+  const source = {
+    data: {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { role: 'route-design-hit', designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[126, 37], [127, 37], [128, 37], [129, 37]] } },
+        { type: 'Feature', properties: { role: 'route-design-line', designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[126, 37], [127, 37], [128, 37], [129, 37]] } },
+        { type: 'Feature', properties: { role: 'route-design-line', designId: 'route-design-2', selected: false }, geometry: { type: 'LineString', coordinates: [[126, 36], [128, 36]] } },
+      ],
+    },
+    serialize() { return { data: this.data } },
+    setData(data) { this.data = data },
+  }
+  const map = {
+    on(event, layer, handler) {
+      const callback = handler ?? layer
+      events.set(`${event}:${handler ? layer : '*'}`, callback)
+    },
+    dragPan: { disable() {}, enable() {} },
+    getCanvas: () => ({ style: {} }),
+    getSource: () => source,
+    queryRenderedFeatures: () => [],
+  }
+  const drops = []
+  bindVfrInteractions(map, { current: [] }, { current: null }, { current: true }, { current: (drop) => drops.push(drop) })
+  events.get('mousedown:briefing-route-design-line-hit')({
+    preventDefault() {}, point: {}, lngLat: { lng: 128.5, lat: 37 },
+    features: [{ properties: { designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[126, 37], [128, 37]] } }],
+  })
+  events.get('mousemove:*')({ lngLat: { lng: 128.5, lat: 38 } })
+  assert.deepEqual(source.data.features[0].geometry.coordinates, [[126, 37], [127, 37], [128, 37], [129, 37]])
+  assert.deepEqual(source.data.features[1].geometry.coordinates, [[126, 37], [127, 37], [128, 37], [128.5, 38], [129, 37]])
+  assert.deepEqual(source.data.features[2].geometry.coordinates, [[126, 36], [128, 36]])
+  assert.deepEqual(source.data.features[3].geometry.coordinates, [128.5, 38])
+  events.get('mouseup:*')()
+  assert.deepEqual(drops, [{ designId: 'route-design-1', kind: 'insert', index: 2, coordinates: [128.5, 38] }])
 })
 
 test('buildProcedureGeoJSON derives an IAP line from fixes when geometry is omitted', () => {

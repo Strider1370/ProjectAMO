@@ -29,6 +29,10 @@ export function fetchRouteExposure(payload) {
   return postJson('/api/briefing/route-exposure', payload)
 }
 
+export function fetchRouteExposureBatch(payload) {
+  return postJson('/api/briefing/route-exposure/batch', payload)
+}
+
 export function fetchAltitudeComparison(payload) {
   return postJson('/api/briefing/altitudes', payload)
 }

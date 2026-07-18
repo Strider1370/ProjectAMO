@@ -8,7 +8,6 @@ import {
   ROUTE_SEQUENCE_COLORS,
   buildIfrDistanceBreakdown,
   buildIfrSequenceTokens,
-  getCurrentRouteLineString,
 } from './lib/routeBriefingModel.js'
 import { Button, Field, Dropdown, Combobox, Option, Input, SpinButton, TabList, Tab, Badge, MessageBar, MessageBarBody, DatePicker, TimePicker, Menu, MenuTrigger, MenuButton, MenuPopover, MenuList, MenuItem, Divider, Dialog, DialogSurface, DialogTitle, DialogBody, DialogContent, makeStyles, tokens } from '../../shared/ui/fluent.js'
 import { listSavedRoutes, saveRoute, deleteSavedRoute } from './lib/routeStore.js'
@@ -226,7 +225,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     duplicateSelectedRouteDesign,
     renameSelectedRouteDesign,
     removeSelectedRouteDesign,
-    applyRouteStringToSelectedDesign,
+    startAlternativeFrom,
+    updateSelectedDesignDraftText,
+    previewSelectedDesignDraft,
+    cancelSelectedDesignDraft,
+    applySelectedDesignDraft,
     undoSelectedRouteDesign,
     setMapInteractionMode,
     continueToAltitudeComparison,
@@ -280,23 +283,25 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     const def = `${routeForm.departureAirport || '?'} → ${routeForm.arrivalAirport || '?'}`
     const name = window.prompt('경로 이름', def)
     if (name == null) return
-    // #13 서버측 재브리핑용 경로 기하 저장(IFR은 프론트 플래너 산출물이라 서버 재구성 불가). saveRoute는 입력값만이나 기하는 예외.
-    const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints, selectedSid, selectedStar, selectedIap })
-    // 경로/브리핑 통일 Phase 1.1: IFR은 절차 증강 전 스켈레톤(route-preview-line)도 저장 → 로드 시 재검색 없이 조립·절차 재도출.
-    // VFR은 routeGeometry가 곧 스켈레톤이라 중복 저장 안 함(0.1 실측 결정). 스켈레톤 없으면 저장 안 함(구버전 폴백은 로드 측).
-    const enrouteGeometry = routeForm.flightRule === 'IFR'
-      ? routeResult?.previewGeojson?.features?.find((f) => f.properties.role === 'route-preview-line')?.geometry ?? null
-      : null
     const base = routeDesigns.find((design) => design.id === 'base')
     await saveRoute(name.trim() || def, {
-      routeForm: base?.routeForm ?? routeForm, vfrWaypoints, cruiseAltitudeFt, tasKt, alternateAirport, etd, eta, routeGeometry,
+      version: 3,
+      cruiseAltitudeFt, tasKt, etd,
+      selectedAlternativeId: selectedRouteDesignId === 'base' ? null : selectedRouteDesignId,
       base: base && {
+        id: 'base', kind: 'base', name: base.name,
         routeForm: base.routeForm,
         procedureIds: { sid: base.procedures?.sid?.id ?? null, star: base.procedures?.star?.id ?? null, iapKey: base.procedures?.iapKey ?? null },
         enroute: base.enroute,
         routeString: base.routeString,
       },
-      ...(enrouteGeometry ? { enrouteGeometry } : {}),
+      alternatives: routeDesigns.filter((design) => design.kind === 'alternative').map((design) => ({
+        id: design.id, kind: 'alternative', name: design.name,
+        routeForm: design.routeForm,
+        procedureIds: { sid: design.procedures?.sid?.id ?? null, star: design.procedures?.star?.id ?? null, iapKey: design.procedures?.iapKey ?? null },
+        enroute: design.enroute,
+        routeString: design.routeString,
+      })),
     })
     refreshSaved()
   }
@@ -568,7 +573,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     <>
       <div className="rb-workflow-tabs" role="tablist" aria-label="비행 브리핑 단계">
         {[
-          ['settings', '비행 설정'], ['compare', '경로 설계·비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비'],
+          ['settings', '비행 설정'], ['compare', '경로비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비'],
         ].map(([step, label]) => <button key={step} type="button" role="tab" aria-selected={workflowStep === step} disabled={!workflowAvailability[step]} className={workflowStep === step ? 'is-active' : (!workflowAvailability[step] ? 'is-disabled' : '')} onClick={() => goToWorkflowStep(step)}>{label}</button>)}
       </div>
       {workflowStep === 'settings' && <form className={s.form} onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
@@ -644,11 +649,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         {!isIfr && <>{vfrWaypointSection}{briefingCondSection}</>}
 
         {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
-        <Button appearance="primary" type="button" className={s.full} onClick={() => goToWorkflowStep('compare')} disabled={!routeResult}>경로 설계·비교로</Button>
+        <Button appearance="primary" type="button" className={s.full} onClick={() => goToWorkflowStep('compare')} disabled={!routeResult}>경로비교로</Button>
       </form>}
       {workflowStep === 'compare' && (
         <div className={s.form}>
-          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} mapInteractionMode={mapInteractionMode} onSetMapInteractionMode={setMapInteractionMode} onApplyRouteString={applyRouteStringToSelectedDesign} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} />
+          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onCancelDraft={cancelSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} />
         </div>
       )}
       {workflowStep === 'altitude' && (
@@ -675,7 +680,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
 
   const stepNav = (
     <div className="rb-steps">
-      {[['settings', '비행 설정'], ['compare', '경로 설계·비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비']].map(([step, label]) => (
+      {[['settings', '비행 설정'], ['compare', '경로비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비']].map(([step, label]) => (
         <button key={step} type="button" className={`rb-step${workflowStep === step ? ' is-active' : ''}${!workflowAvailability[step] ? ' is-disabled' : ''}`} disabled={!workflowAvailability[step]} onClick={() => goToWorkflowStep(step)}>{label}</button>
       ))}
     </div>
@@ -731,11 +736,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           )}
           {importFeedback}
           {errorBlock}
-          <button type="button" className="route-check-search-button" onClick={() => goToWorkflowStep('compare')} disabled={!routeResult}>경로 설계·비교로</button>
+          <button type="button" className="route-check-search-button" onClick={() => goToWorkflowStep('compare')} disabled={!routeResult}>경로비교로</button>
         </>
       )}
       {workflowStep === 'compare' && (
-        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} mapInteractionMode={mapInteractionMode} onSetMapInteractionMode={setMapInteractionMode} onApplyRouteString={applyRouteStringToSelectedDesign} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} />
+        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onCancelDraft={cancelSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} />
       )}
       {workflowStep === 'altitude' && (
         <>
@@ -760,7 +765,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         <button type="button" className="route-check-secondary-button" onClick={armOrReset} disabled={routeLoading}>{resetArmed ? '초기화 확인' : '초기화'}</button>
       )}
       {routeResult ? (
-        <button type="button" className="route-check-search-button" onClick={() => goToWorkflowStep('compare')}>경로 설계·비교로</button>
+        <button type="button" className="route-check-search-button" onClick={() => goToWorkflowStep('compare')}>경로비교로</button>
       ) : isIfr ? (
         <button type="button" className="route-check-search-button" onClick={() => handleRouteSearch({ preventDefault() {} })} disabled={routeLoading || !canSearch}>{routeLoading ? '검색 중...' : '경로 검색'}</button>
       ) : null}

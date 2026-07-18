@@ -5,7 +5,20 @@ import {
   ADVISORY_LAYER_DEFS,
   addAdvisoryLayers,
   advisoryItemsToLabelFeatureCollection,
+  resolveAdvisoryLabelCollisions,
 } from './advisoryLayers.js'
+
+// 실제 mapbox 투영이 아니라 단순 선형 스케일 — 밀어내기 로직 자체만 검증하면 되므로 충분.
+function createProjectionMap(scale = 100) {
+  return {
+    project: ([lng, lat]) => ({ x: lng * scale, y: -lat * scale }),
+    unproject: ([x, y]) => ({ lng: x / scale, lat: -y / scale }),
+  }
+}
+
+function pointFeature(coordinates) {
+  return { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates } }
+}
 
 function createMap() {
   const sources = new Map()
@@ -115,4 +128,38 @@ test('surface-visibility AIRMETs without altitude/motion still show visibility +
   const textLayer = map.getLayer(ADVISORY_LAYER_DEFS.airmet.textLayerId)
   // both lines present and non-empty -> layer's filter must not exclude this feature
   assert.deepEqual(textLayer.filter, ['any', ['!=', ['get', 'chartLine1'], ''], ['!=', ['get', 'chartLine2'], '']])
+})
+
+test('resolveAdvisoryLabelCollisions pushes coincident points from different kinds apart', () => {
+  const map = createProjectionMap()
+  const samePoint = [126, 37]
+  const groups = [
+    { kind: 'sigmet', labelData: { type: 'FeatureCollection', features: [pointFeature(samePoint)] } },
+    { kind: 'airmet', labelData: { type: 'FeatureCollection', features: [pointFeature(samePoint)] } },
+  ]
+
+  const [sigmetGroup, airmetGroup] = resolveAdvisoryLabelCollisions(map, groups)
+  const a = map.project(sigmetGroup.labelData.features[0].geometry.coordinates)
+  const b = map.project(airmetGroup.labelData.features[0].geometry.coordinates)
+  const distancePx = Math.hypot(a.x - b.x, a.y - b.y)
+
+  assert.ok(distancePx >= 99, `expected pushed-apart points ~100px apart, got ${distancePx}`)
+})
+
+test('resolveAdvisoryLabelCollisions leaves well-separated points untouched', () => {
+  const map = createProjectionMap()
+  const groups = [
+    { kind: 'sigmet', labelData: { type: 'FeatureCollection', features: [pointFeature([120, 30])] } },
+    { kind: 'airmet', labelData: { type: 'FeatureCollection', features: [pointFeature([135, 40])] } },
+  ]
+
+  const [sigmetGroup, airmetGroup] = resolveAdvisoryLabelCollisions(map, groups)
+
+  assert.deepEqual(sigmetGroup.labelData.features[0].geometry.coordinates, [120, 30])
+  assert.deepEqual(airmetGroup.labelData.features[0].geometry.coordinates, [135, 40])
+})
+
+test('resolveAdvisoryLabelCollisions is a no-op when the map has no project/unproject (e.g. test mocks)', () => {
+  const groups = [{ kind: 'sigmet', labelData: { type: 'FeatureCollection', features: [] } }]
+  assert.equal(resolveAdvisoryLabelCollisions({}, groups), groups)
 })

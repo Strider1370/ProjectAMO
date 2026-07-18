@@ -313,7 +313,7 @@ function featureProperties(item, index) {
     isFill: Boolean(item?.is_fill || item?.is_close),
     iconKey: fileName ? `sigwx-${fileName}` : '',
     iconUrl: fileName ? sigwxAssetUrl(fileName) : '',
-    iconScale: String(item?.contour_name || '').toLowerCase() === 'freezing_level' ? 0.92 : 0.82,
+    iconScale: String(item?.contour_name || '').toLowerCase() === 'freezing_level' ? 0.6 : 0.52,
     filterKey: getSigwxFilterKey(item?.contour_name, item),
     overlayRole: overlayRoleForItem(item),
     chipText: contourChipText(item),

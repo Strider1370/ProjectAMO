@@ -92,7 +92,7 @@ test('syncRoutePreviewLayers clears stale route line when route result is remove
 
 test('syncRoutePreviewLayers writes manual design lines and selects only the active design', () => {
   const map = createMockMap()
-  const design = (id, coordinates) => ({ id, routeResult: { previewGeojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } }] } } })
+  const design = (id, coordinates) => ({ id, kind: id === 'base' ? 'base' : 'alternative', routeResult: { previewGeojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } }] } } })
 
   syncRoutePreviewLayers(map, {
     routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [] }, navpointIds: [] },
@@ -101,9 +101,10 @@ test('syncRoutePreviewLayers writes manual design lines and selects only the act
   })
 
   const features = map.sourceData.get(ROUTE_PREVIEW_SOURCE).features
-  assert.equal(features.length, 2)
-  assert.deepEqual(features.map((feature) => feature.properties.selected), [false, true])
-  assert.deepEqual(features[0].geometry.coordinates, [[126, 37], [127, 37], [128, 37], [129, 37]])
+  assert.equal(features.filter((feature) => feature.properties.role === 'route-design-line').length, 1)
+  assert.equal(features.filter((feature) => feature.properties.role === 'route-design-hit').length, 1)
+  assert.equal(features.find((feature) => feature.properties.role === 'route-design-line').properties.selected, true)
+  assert.deepEqual(map.sourceData.get(ROUTE_BASELINE_SOURCE).features[0].geometry.coordinates, [[126, 37], [127, 37], [128, 37], [129, 37]])
 })
 
 test('syncRoutePreviewLayers keeps baseline, applied route, and pending route in separate sources', () => {
@@ -121,6 +122,35 @@ test('syncRoutePreviewLayers keeps baseline, applied route, and pending route in
   assert.deepEqual(map.sourceData.get(ROUTE_BASELINE_SOURCE).features[0].geometry.coordinates, [[125, 37], [128, 37]])
   assert.deepEqual(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features[0].geometry.coordinates, [[126, 37], [127, 37]])
   assert.deepEqual(map.sourceData.get(ROUTE_PENDING_SOURCE).features[0].geometry.coordinates, [[126, 38], [127, 38]])
+})
+
+test('comparison VFR draft exposes no plus handles because line drag inserts waypoints', () => {
+  const map = createMockMap()
+  const line = { type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates: [[126, 37], [127, 36], [128, 35]] } }
+  syncRoutePreviewLayers(map, {
+    routeDesigns: [
+      { id: 'base', kind: 'base', routeResult: { previewGeojson: { type: 'FeatureCollection', features: [line] } } },
+      { id: 'a', kind: 'alternative', routeResult: { previewGeojson: { type: 'FeatureCollection', features: [line] } }, draftEditor: { preview: { flightRule: 'VFR', previewGeojson: { type: 'FeatureCollection', features: [line] } } } },
+    ], selectedRouteDesignId: 'a', selectedIap: null,
+  })
+  const handles = map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.filter((feature) => feature.properties.handleKind === 'insert')
+  assert.equal(handles.length, 0)
+  assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.filter((feature) => feature.properties.role === 'route-design-line' && feature.properties.selected).length, 1)
+  assert.equal(map.sourceData.get(ROUTE_PENDING_SOURCE).features.length, 0)
+})
+
+test('comparison IFR exposes only selected manual points as draggable', () => {
+  const map = createMockMap()
+  const line = { type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates: [[126, 37], [127, 36], [128, 35]] } }
+  const point = { type: 'Feature', properties: { role: 'route-preview-point', sequence: 1, editable: 1, label: 'GONAX' }, geometry: { type: 'Point', coordinates: [127, 36] } }
+  syncRoutePreviewLayers(map, {
+    routeDesigns: [
+      { id: 'base', kind: 'base', routeResult: { previewGeojson: { type: 'FeatureCollection', features: [line] } } },
+      { id: 'a', kind: 'alternative', routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [line, point] } } },
+    ], selectedRouteDesignId: 'a', selectedIap: null,
+  })
+  const points = map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.filter((feature) => feature.properties.role === 'route-preview-point')
+  assert.deepEqual(points.map((feature) => [feature.properties.designId, feature.properties.editable, feature.properties.waypointIndex]), [['a', true, 0]])
 })
 
 test('syncRoutePreviewLayers keeps the legacy route and procedures when only the base design exists', () => {

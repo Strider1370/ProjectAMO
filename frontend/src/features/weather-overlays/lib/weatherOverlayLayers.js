@@ -3,6 +3,7 @@ import { addOrUpdateGeoJsonSource, setMapLayerVisible } from '../../map/lib/mapL
 import {
   ADVISORY_LAYER_DEFS,
   addAdvisoryLayers,
+  resolveAdvisoryLabelCollisions,
   setAdvisoryVisibility,
   updateAdvisoryLayerData,
 } from './advisoryLayers.js'
@@ -474,9 +475,17 @@ export function syncRasterAndSigwxLayers(map, model) {
 }
 
 export function syncAdvisoryLayers(map, model) {
-  updateAdvisoryLayerData(map, 'sigmet', model.sigmetFeatures, model.sigmetLabels)
-  updateAdvisoryLayerData(map, 'sigmet_intl', model.sigmetIntlFeatures, model.sigmetIntlLabels)
-  updateAdvisoryLayerData(map, 'airmet', model.airmetFeatures, model.airmetLabels)
+  // 세 종류(국내/해외 SIGMET, AIRMET)가 화면에서 겹칠 수 있어 한 번에 모아 충돌을 계산.
+  const resolved = resolveAdvisoryLabelCollisions(map, [
+    { kind: 'sigmet', labelData: model.sigmetLabels },
+    { kind: 'sigmet_intl', labelData: model.sigmetIntlLabels },
+    { kind: 'airmet', labelData: model.airmetLabels },
+  ])
+  const labelsByKind = Object.fromEntries(resolved.map((group) => [group.kind, group.labelData]))
+
+  updateAdvisoryLayerData(map, 'sigmet', model.sigmetFeatures, labelsByKind.sigmet)
+  updateAdvisoryLayerData(map, 'sigmet_intl', model.sigmetIntlFeatures, labelsByKind.sigmet_intl)
+  updateAdvisoryLayerData(map, 'airmet', model.airmetFeatures, labelsByKind.airmet)
   setAdvisoryVisibility(map, 'sigmet', model.visibility.sigmet)
   setAdvisoryVisibility(map, 'sigmet_intl', model.visibility.sigmet_intl)
   setAdvisoryVisibility(map, 'airmet', model.visibility.airmet)

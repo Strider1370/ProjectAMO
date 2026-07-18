@@ -55,3 +55,28 @@ test('route exposure endpoint validates geometry and returns its model', async (
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
   }
 })
+
+test('route exposure batch fixes one cache snapshot for every route', async () => {
+  process.env.NODE_ENV = 'test'
+  const { app } = await import(`../server.js?route-exposure-batch-test=${Date.now()}`)
+  const server = await new Promise((resolve) => {
+    const instance = http.createServer(app)
+    instance.listen(0, '127.0.0.1', () => resolve(instance))
+  })
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/briefing/route-exposure/batch`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routes: [
+        { id: 'base', routeGeometry: { type: 'LineString', coordinates: [[126, 37], [127, 38]] } },
+        { id: 'alternative', routeGeometry: { type: 'LineString', coordinates: [[126, 37], [128, 38]] } },
+      ] }),
+    })
+    const payload = await response.json()
+    assert.equal(response.status, 200)
+    assert.equal(payload.results.length, 2)
+    assert.equal(payload.results[0].snapshot.version, payload.snapshot.version)
+    assert.equal(payload.results[1].snapshot.version, payload.snapshot.version)
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
+  }
+})

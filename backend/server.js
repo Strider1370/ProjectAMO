@@ -920,6 +920,42 @@ app.post('/api/briefing/route-exposure', (req, res) => {
   }
 })
 
+function readRouteExposureSnapshot() {
+  const cached = {
+    sigmet: store.getCached('sigmet'),
+    sigmetOverseas: store.getCached('sigmet_overseas'),
+    airmet: store.getCached('airmet'),
+    lightning: store.getCached('lightning'),
+  }
+  const sources = Object.fromEntries(Object.entries(cached).map(([name, data]) => [name, data ? {
+    hash: data.content_hash || store.canonicalHash(data),
+    observedAt: data.observed_at ?? data.observedAt ?? null,
+    fetchedAt: data.fetched_at ?? data.fetchedAt ?? null,
+  } : null]))
+  return { cached, snapshot: { version: store.canonicalHash(sources), sources } }
+}
+
+app.post('/api/briefing/route-exposure/batch', (req, res) => {
+  const routes = req.body?.routes
+  if (!Array.isArray(routes) || routes.length === 0 || routes.some((route) => !route?.routeGeometry?.coordinates?.length)) {
+    return res.status(400).json({ error: 'routes with routeGeometry required' })
+  }
+  try {
+    const { cached, snapshot } = readRouteExposureSnapshot()
+    setNoStore(res)
+    res.json({
+      snapshot,
+      results: routes.map(({ id, ...route }) => ({
+        id: id ?? null,
+        ...buildRouteExposure({ ...route, ...cached }),
+        snapshot,
+      })),
+    })
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'route exposure batch failed' })
+  }
+})
+
 app.post('/api/briefing/altitudes', (req, res) => {
   const body = req.body || {}
   if (!body.routeGeometry?.coordinates?.length || !body.routeModel) {

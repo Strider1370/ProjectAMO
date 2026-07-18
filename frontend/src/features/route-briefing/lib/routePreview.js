@@ -199,14 +199,17 @@ export function addRoutePreviewLayers(map) {
     map.addLayer({
       id: ROUTE_BASELINE_LINE, type: 'line', source: ROUTE_BASELINE_SOURCE, slot: 'top',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#f97316', 'line-width': 3, 'line-opacity': 0.9 },
+      paint: {
+        'line-color': ['case', ['boolean', ['get', 'selected'], false], '#f97316', ['boolean', ['get', 'comparison'], false], '#64748b', '#f97316'],
+        'line-width': 3, 'line-opacity': 0.9,
+      },
     })
   }
   if (!map.getLayer(ROUTE_PENDING_LINE)) {
     map.addLayer({
       id: ROUTE_PENDING_LINE, type: 'line', source: ROUTE_PENDING_SOURCE, slot: 'top',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#d946ef', 'line-width': 4, 'line-opacity': 0.95, 'line-dasharray': [2, 1] },
+      paint: { 'line-color': '#f97316', 'line-width': 5, 'line-opacity': 1 },
     })
   }
   if (!map.getSource(ROUTE_DRAW_SOURCE)) {
@@ -239,7 +242,7 @@ export function addRoutePreviewLayers(map) {
   if (!map.getLayer(ROUTE_DESIGN_LINE_HIT)) {
     map.addLayer({
       id: ROUTE_DESIGN_LINE_HIT, type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
-      filter: ['==', ['get', 'role'], 'route-design-line'],
+      filter: ['==', ['get', 'role'], 'route-design-hit'],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': '#000', 'line-opacity': 0, 'line-width': 20 },
     })
@@ -250,7 +253,7 @@ export function addRoutePreviewLayers(map) {
       filter: ['==', ['get', 'role'], 'route-design-line'],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['case', ['boolean', ['get', 'selected'], false], '#334155', '#64748b'],
+        'line-color': ['case', ['boolean', ['get', 'selected'], false], '#f97316', '#64748b'],
         'line-width': ['case', ['boolean', ['get', 'selected'], false], 5, 3],
         'line-opacity': ['case', ['boolean', ['get', 'selected'], false], 1, 0.6],
       },
@@ -260,7 +263,11 @@ export function addRoutePreviewLayers(map) {
     map.addLayer({
       id: ROUTE_PREVIEW_POINT, type: 'circle', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
       filter: ['==', ['get', 'role'], 'route-preview-point'],
-      paint: { 'circle-color': '#f97316', 'circle-radius': 4, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 },
+      paint: {
+        'circle-color': '#f97316',
+        'circle-radius': ['case', ['boolean', ['get', 'editable'], false], 7, 4],
+        'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5,
+      },
     })
   }
   if (!map.getLayer(ROUTE_PREVIEW_LABEL)) {
@@ -391,9 +398,80 @@ export function addVfrWaypointLayers(map) {
   }
 }
 
-export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop) {
+export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComparisonRef = { current: false }, onDesignWaypointDrop = { current: null }) {
   let draggingIdx = -1
   let beforeDrag = null
+  let designDrag = null
+  let designCoordinates = null
+  let designSourceData = null
+
+  const redrawDesignDrag = () => {
+    if (!designDrag || !designSourceData || !designCoordinates) return
+    const source = map.getSource(ROUTE_PREVIEW_SOURCE)
+    if (!source) return
+    const data = structuredClone(designSourceData)
+    const hitLine = designSourceData.features.find((feature) => feature.properties?.role === 'route-design-hit' && feature.properties?.designId === designDrag.designId)
+    const reference = hitLine?.geometry?.coordinates?.[designDrag.sourceIndex]
+    data.features = data.features.map((feature) => {
+      if (feature.properties?.role !== 'route-design-line' || feature.properties?.designId !== designDrag.designId) return feature
+      const coordinates = [...feature.geometry.coordinates]
+      const displayIndex = reference ? coordinates.findIndex((coordinate) => coordinate[0] === reference[0] && coordinate[1] === reference[1]) : -1
+      if (displayIndex < 0) return feature
+      if (designDrag.kind === 'insert') coordinates.splice(displayIndex, 0, designCoordinates)
+      else coordinates[displayIndex] = designCoordinates
+      return { ...feature, geometry: { ...feature.geometry, coordinates } }
+    })
+    if (designDrag.kind === 'insert') {
+      data.features.push({
+        type: 'Feature',
+        properties: { role: 'route-preview-point', designId: designDrag.designId, selected: true, editable: true, waypointIndex: designDrag.sourceIndex, label: 'WP' },
+        geometry: { type: 'Point', coordinates: designCoordinates },
+      })
+    }
+    source.setData(data)
+  }
+
+  const beginDesignLineDrag = (e) => {
+    if (!isComparisonRef.current || designDrag) return
+    const feature = e.features?.[0]
+    const properties = feature?.properties ?? {}
+    const coordinates = feature?.geometry?.coordinates ?? []
+    if (!properties.designId || !properties.selected || coordinates.length < 2) return
+    const sourceData = map.getSource(ROUTE_PREVIEW_SOURCE)?.serialize?.().data
+    if (!sourceData || !Array.isArray(sourceData.features)) return
+    const sourceLine = sourceData.features.find((item) => item.properties?.role === 'route-design-hit' && item.properties?.designId === properties.designId)
+    if (!Array.isArray(sourceLine?.geometry?.coordinates) || sourceLine.geometry.coordinates.length < 2) return
+    e.preventDefault()
+    const sourceIndex = findInsertIndex(sourceLine.geometry.coordinates.map(([lon, lat]) => ({ lon, lat })), e.lngLat)
+    designDrag = { designId: properties.designId, kind: 'insert', index: sourceIndex - 1, sourceIndex }
+    designCoordinates = [e.lngLat.lng, e.lngLat.lat]
+    designSourceData = sourceData
+    redrawDesignDrag()
+    map.dragPan.disable()
+    map.getCanvas().style.cursor = 'grabbing'
+  }
+
+  const beginDesignDrag = (e) => {
+    if (!isComparisonRef.current) return
+    if (designDrag) return
+    const feature = e.features?.[0]
+    const properties = feature?.properties ?? {}
+    if (!properties.designId || !properties.selected || !properties.editable) return
+    e.preventDefault()
+    designDrag = {
+      designId: properties.designId,
+      kind: 'move',
+      index: Number(properties.waypointIndex),
+      sourceIndex: Number(properties.sourceIndex ?? properties.waypointIndex),
+      startCoordinates: [e.lngLat.lng, e.lngLat.lat],
+    }
+    designCoordinates = [e.lngLat.lng, e.lngLat.lat]
+    map.dragPan.disable()
+    map.getCanvas().style.cursor = 'grabbing'
+  }
+  map.on('mousedown', ROUTE_PREVIEW_POINT, beginDesignDrag)
+  map.on('mousedown', ROUTE_PREVIEW_LABEL, beginDesignDrag)
+  map.on('mousedown', ROUTE_DESIGN_LINE_HIT, beginDesignLineDrag)
 
   map.on('mousedown', VFR_WP_CIRCLE, (e) => {
     e.preventDefault()
@@ -406,6 +484,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop) {
   })
 
   map.on('mousedown', ROUTE_PREVIEW_LINE_HIT, (e) => {
+    if (isComparisonRef.current) return
     if (vfrWaypointsRef.current.length < 2) return
     const wpHit = map.queryRenderedFeatures(e.point, { layers: [VFR_WP_CIRCLE] })
     if (wpHit.length > 0) return
@@ -429,6 +508,12 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop) {
   map.on('mouseleave', ROUTE_PREVIEW_LINE_HIT, () => {
     if (draggingIdx < 0) map.getCanvas().style.cursor = ''
   })
+  map.on('mousemove', ROUTE_DESIGN_LINE_HIT, () => {
+    if (!designDrag) map.getCanvas().style.cursor = 'crosshair'
+  })
+  map.on('mouseleave', ROUTE_DESIGN_LINE_HIT, () => {
+    if (!designDrag) map.getCanvas().style.cursor = ''
+  })
   map.on('mousemove', VFR_WP_CIRCLE, () => {
     if (draggingIdx < 0) map.getCanvas().style.cursor = 'grab'
   })
@@ -437,6 +522,11 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop) {
   })
 
   map.on('mousemove', (e) => {
+    if (designDrag) {
+      designCoordinates = [e.lngLat.lng, e.lngLat.lat]
+      redrawDesignDrag()
+      return
+    }
     if (draggingIdx < 0) return
     const updated = vfrWaypointsRef.current.map((wp, i) =>
       i === draggingIdx ? { ...wp, lon: e.lngLat.lng, lat: e.lngLat.lat } : wp
@@ -446,6 +536,19 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop) {
   })
 
   map.on('mouseup', () => {
+    if (designDrag) {
+      const isClick = designDrag.kind === 'move'
+        && Math.abs(designCoordinates[0] - designDrag.startCoordinates[0]) < 1e-8
+        && Math.abs(designCoordinates[1] - designDrag.startCoordinates[1]) < 1e-8
+      const { startCoordinates, sourceIndex, ...drop } = designDrag
+      onDesignWaypointDrop.current?.({ ...drop, kind: isClick ? 'delete' : drop.kind, coordinates: designCoordinates })
+      designDrag = null
+      designCoordinates = null
+      designSourceData = null
+      map.dragPan.enable()
+      map.getCanvas().style.cursor = ''
+      return
+    }
     if (draggingIdx < 0) return
     onWaypointDrop.current?.({
       waypoints: [...vfrWaypointsRef.current],
@@ -480,12 +583,16 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
     const point = map.project(coordinates)
     confirmation.replaceChildren()
     const text = document.createElement('span')
+    text.className = 'route-map-interaction-confirm-text'
     text.textContent = message
+    const actions = document.createElement('div')
+    actions.className = 'route-map-interaction-confirm-actions'
     const apply = document.createElement('button')
-    apply.type = 'button'; apply.textContent = '적용'; apply.onclick = (event) => { event.stopPropagation(); confirmation.hidden = true; onApply?.() }
+    apply.type = 'button'; apply.className = 'route-map-interaction-confirm-apply'; apply.textContent = '적용'; apply.onclick = (event) => { event.stopPropagation(); confirmation.hidden = true; onApply?.() }
     const cancel = document.createElement('button')
-    cancel.type = 'button'; cancel.textContent = '취소'; cancel.onclick = (event) => { event.stopPropagation(); confirmation.hidden = true; onCancel?.() }
-    confirmation.append(text, apply, cancel)
+    cancel.type = 'button'; cancel.className = 'route-map-interaction-confirm-cancel'; cancel.textContent = '취소'; cancel.onclick = (event) => { event.stopPropagation(); confirmation.hidden = true; onCancel?.() }
+    actions.append(apply, cancel)
+    confirmation.append(text, actions)
     confirmation.style.left = `${point.x}px`
     confirmation.style.top = `${point.y}px`
     confirmation.hidden = false

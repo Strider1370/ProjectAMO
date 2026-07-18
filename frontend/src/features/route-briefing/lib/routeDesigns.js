@@ -20,6 +20,7 @@ function nextDesignId(designs) {
 export function createRouteDesign({
   id = 'base',
   name = '기본 경로',
+  kind = id === 'base' ? 'base' : 'alternative',
   routeForm,
   procedures,
   routeResult,
@@ -29,10 +30,13 @@ export function createRouteDesign({
   enroute = null,
   routeString = '',
   undoStack = [],
+  draftEditor = null,
+  pendingEdit = null,
 }) {
   return {
     id,
     name,
+    kind,
     routeForm: copyEditable(routeForm),
     procedures: copyEditable(procedures),
     routeResult,
@@ -42,6 +46,8 @@ export function createRouteDesign({
     enroute: copyEditable(enroute),
     routeString,
     undoStack: [...undoStack],
+    draftEditor: draftEditor ? copyEditable(draftEditor) : null,
+    pendingEdit: pendingEdit ? copyEditable(pendingEdit) : null,
   }
 }
 
@@ -63,9 +69,11 @@ export function duplicateRouteDesign(designs, selectedId) {
   if (!selected || designs.length >= MAX_ROUTE_DESIGNS) return { designs, selectedId }
 
   const copy = createRouteDesign({
-    ...selected,
+    ...snapshotRouteDesign(selected),
     id: nextDesignId(designs),
     name: `경로 ${String.fromCharCode(64 + designs.length)}`,
+    kind: 'alternative',
+    undoStack: [],
   })
   const nextDesigns = [...designs, copy]
 
@@ -74,14 +82,14 @@ export function duplicateRouteDesign(designs, selectedId) {
 
 export function renameRouteDesign(designs, id, name) {
   const trimmedName = String(name ?? '').trim()
-  if (!trimmedName) return designs
+  if (!trimmedName || designs.find((design) => design.id === id)?.kind === 'base') return designs
 
   return designs.map((design) => (design.id === id ? { ...design, name: trimmedName } : design))
 }
 
 export function removeRouteDesign(designs, id, selectedId) {
   const index = designs.findIndex((design) => design.id === id)
-  if (designs.length <= 1 || index < 0) return { designs, selectedId }
+  if (designs.length <= 1 || index < 0 || designs[index].kind === 'base') return { designs, selectedId }
 
   const nextDesigns = designs.filter((design) => design.id !== id)
   if (id !== selectedId) return { designs: nextDesigns, selectedId }

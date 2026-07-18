@@ -11,6 +11,7 @@ import AirportInfoTab from './tabs/AirportInfoTab.jsx'
 import NotamTab from './tabs/NotamTab.jsx'
 import MoonSection from './tabs/MoonSection.jsx'
 import WarningCarousel from './WarningCarousel.jsx'
+import { resolveAirportBanner } from './lib/airportBanner.js'
 import './AirportPanel.css'
 
 const AIRPORT_HEADER_NAME_KO = {
@@ -39,12 +40,14 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const bodyRef = useRef(null)
   const [activeSection, setActiveSection] = useState('warn')
   const [infoRequested, setInfoRequested] = useState(false)
+  const [headerUsesWeather, setHeaderUsesWeather] = useState(false)
 
   // 공항 전환 시 스크롤 상단 리셋
   useEffect(() => {
     bodyRef.current?.scrollTo?.(0, 0)
     setActiveSection('warn')
     setInfoRequested(false)
+    setHeaderUsesWeather(false)
   }, [icao])
 
   // Escape → 드로어 닫기 (외장 키보드 iPad·데스크톱)
@@ -97,13 +100,16 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
 
   const headerNameKo = AIRPORT_HEADER_NAME_KO[icao] || airport.nameKo || airport.name || icao
   const headerNameEn = airport.name || AIRPORT_NAME_KO[icao] || icao
-  const headerImageSrc = `/images/${String(icao || 'RKSI').toLowerCase()}_banner.webp`
 
   const airportWeatherSource = airport?.overseas ? 'overseas' : 'domestic'
   const metarPayload = airportWeatherSource === 'overseas' ? weatherData?.metarOverseas : weatherData?.metar
   const tafPayload = airportWeatherSource === 'overseas' ? weatherData?.tafOverseas : weatherData?.taf
   const metar = metarPayload?.airports?.[icao] || null
   const taf = tafPayload?.airports?.[icao] || null
+  const weatherBanner = resolveAirportBanner(metar, airport)
+  const headerImageSrc = headerUsesWeather
+    ? `/images/weather-${weatherBanner}.png`
+    : `/images/${String(icao || 'RKSI').toLowerCase()}_banner.webp`
   const amos = weatherData?.amos?.airports?.[icao] || null
   const warning = weatherData?.warning?.airports?.[icao] || null
   const warnCount = warning?.warnings?.length || 0
@@ -136,13 +142,15 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
 
   return (
     <aside className="airport-panel">
-      <header className={`airport-panel-head${isFullFeature ? '' : ' airport-panel-head--no-image'}`}>
-        {isFullFeature && (
-          <>
-            <img className="airport-panel-head-image" src={headerImageSrc} alt="" aria-hidden="true" />
-            <div className="airport-panel-head-overlay" aria-hidden="true" />
-          </>
-        )}
+      <header className="airport-panel-head">
+        <img
+          className="airport-panel-head-image"
+          src={headerImageSrc}
+          alt=""
+          aria-hidden="true"
+          onError={headerUsesWeather ? undefined : () => setHeaderUsesWeather(true)}
+        />
+        <div className="airport-panel-head-overlay" aria-hidden="true" />
         <div className="airport-panel-info">
           <span className="airport-panel-title">
             {headerNameKo}

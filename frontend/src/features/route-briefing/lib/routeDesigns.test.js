@@ -23,6 +23,17 @@ test('duplicateRouteDesign gives the copy independent editable inputs', () => {
   assert.deepEqual(designs[0].viaFixes, ['SEL'])
   assert.equal(designs[0].enroute.tokens.length, 1)
   assert.equal(designs[1].name, '경로 A')
+  assert.equal(designs[0].kind, 'base')
+  assert.equal(designs[1].kind, 'alternative')
+})
+
+test('duplicateRouteDesign does not copy draft, pending edit, or undo history', () => {
+  const base = createRouteDesign({ routeForm: {}, procedures: {}, undoStack: [{ routeString: 'OLD' }], draftEditor: { rawText: 'DRAFT' }, pendingEdit: { kind: 'drag' } })
+  const { designs } = duplicateRouteDesign([base], base.id)
+
+  assert.equal(designs[1].undoStack.length, 0)
+  assert.equal(designs[1].draftEditor, null)
+  assert.equal(designs[1].pendingEdit, null)
 })
 
 test('duplicateRouteDesign stops at four designs', () => {
@@ -39,9 +50,11 @@ test('duplicateRouteDesign stops at four designs', () => {
 
 test('renameRouteDesign trims names and keeps the old name when empty', () => {
   const base = createRouteDesign({ routeForm: {}, procedures: {} })
+  const { designs, selectedId } = duplicateRouteDesign([base], base.id)
 
-  assert.equal(renameRouteDesign([base], base.id, '  새 경로  ')[0].name, '새 경로')
-  assert.equal(renameRouteDesign([base], base.id, '   ')[0].name, '기본 경로')
+  assert.equal(renameRouteDesign(designs, selectedId, '  새 경로  ')[1].name, '새 경로')
+  assert.equal(renameRouteDesign(designs, selectedId, '   ')[1].name, '경로 A')
+  assert.equal(renameRouteDesign([base], base.id, '바꾸면 안 됨')[0].name, '기본 경로')
 })
 
 test('removeRouteDesign retains one design and selects the preceding design', () => {
@@ -52,4 +65,13 @@ test('removeRouteDesign retains one design and selects the preceding design', ()
 
   assert.deepEqual(removed, { designs: [base], selectedId: base.id })
   assert.deepEqual(retained, { designs: [base], selectedId: base.id })
+})
+
+test('removeRouteDesign selects the preceding alternative after confirmation', () => {
+  const base = createRouteDesign({ routeForm: {}, procedures: {} })
+  const first = duplicateRouteDesign([base], base.id)
+  const second = duplicateRouteDesign(first.designs, first.selectedId)
+  const removed = removeRouteDesign(second.designs, second.selectedId, second.selectedId)
+
+  assert.equal(removed.selectedId, first.selectedId)
 })

@@ -355,7 +355,7 @@ const MapView = forwardRef(function MapView({
     },
   }))
   const { routeResult, fitBoundsRequest } = routeBriefing.state
-  const { vfrWaypointsRef, hideTimerRef, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, vfrWaypointDropRef } = routeBriefing.refs
+  const { vfrWaypointsRef, hideTimerRef, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, vfrWaypointDropRef, designWaypointDropRef, isComparisonRef } = routeBriefing.refs
   const { setHoveredWpInfo } = routeBriefing.actions
   const { routePreviewModel } = routeBriefing
   const { geojson: flightCategoryGeojson } = useFlightCategory()
@@ -885,7 +885,7 @@ const MapView = forwardRef(function MapView({
       installRoutePreviewLayers(map)
       if (!vfrInteractionsBound) {
         vfrInteractionsBound = true
-        bindVfrInteractions(map, vfrWaypointsRef, vfrWaypointDropRef)
+        bindVfrInteractions(map, vfrWaypointsRef, vfrWaypointDropRef, isComparisonRef, designWaypointDropRef)
         bindIfrClickInteraction(map, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef)
         // Procedure waypoint name on hover, in the original label style (small
         // colored text beside the dot) — reveal only the hovered fix's label.
@@ -983,18 +983,46 @@ const MapView = forwardRef(function MapView({
     const advisoryLayerIds = [
       ADVISORY_LAYER_DEFS.sigmet.fillLayerId,
       ADVISORY_LAYER_DEFS.sigmet.lineLayerId,
+      ADVISORY_LAYER_DEFS.sigmet_intl.fillLayerId,
+      ADVISORY_LAYER_DEFS.sigmet_intl.lineLayerId,
       ADVISORY_LAYER_DEFS.airmet.fillLayerId,
       ADVISORY_LAYER_DEFS.airmet.lineLayerId,
     ]
+    const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    // 클릭 하나가 여러 레이어(국내/해외 SIGMET, AIRMET)에서 동시에 걸릴 수 있어 레이어별
+    // 핸들러가 각자 팝업을 띄우면 중복이 뜬다 — 같은 물리 클릭(원본 DOM 이벤트)당 한 번만
+    // 처리하고, 그 지점의 모든 항목을 모아 겹친 것 전부를 한 팝업에 같이 보여준다.
+    const handledAdvisoryClicks = new WeakSet()
+    const showAdvisoryPopup = (e) => {
+      const domEvent = e.originalEvent
+      if (domEvent) {
+        if (handledAdvisoryClicks.has(domEvent)) return
+        handledAdvisoryClicks.add(domEvent)
+      }
+
+      const features = map.queryRenderedFeatures(e.point, { layers: advisoryLayerIds })
+      const seenIds = new Set()
+      const descriptions = []
+      for (const feature of features) {
+        const id = feature.properties?.id
+        const desc = feature.properties?.description
+        if (!desc || (id && seenIds.has(id))) continue
+        if (id) seenIds.add(id)
+        descriptions.push(desc)
+      }
+      if (!descriptions.length) return
+
+      const html = descriptions
+        .map((desc) => `<pre class="mapbox-advisory-popup">${escapeHtml(desc)}</pre>`)
+        .join('<hr class="mapbox-advisory-popup-divider" />')
+
+      new mapboxgl.Popup({ closeButton: true, maxWidth: '320px' })
+        .setLngLat(e.lngLat)
+        .setHTML(html)
+        .addTo(map)
+    }
     advisoryEventCleanupRef.current = advisoryLayerIds.flatMap((layerId) => [
-      bindLayerEvent(map, 'click', layerId, (e) => {
-        const desc = e.features?.[0]?.properties?.description
-        if (!desc) return
-        new mapboxgl.Popup({ closeButton: true, maxWidth: '320px' })
-          .setLngLat(e.lngLat)
-          .setHTML(`<pre class="mapbox-advisory-popup">${desc.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</pre>`)
-          .addTo(map)
-      }),
+      bindLayerEvent(map, 'click', layerId, showAdvisoryPopup),
       bindLayerEvent(map, 'mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer' }),
       bindLayerEvent(map, 'mouseleave', layerId, () => { map.getCanvas().style.cursor = '' }),
     ])
@@ -1068,6 +1096,14 @@ const MapView = forwardRef(function MapView({
 
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     syncAdvisoryLayers(map, advisoryLayerModel)
+    // 화면상 겹침은 확대/이동할 때마다 달라지므로 그때마다 라벨 충돌을 다시 계산.
+    const resync = () => syncAdvisoryLayers(map, advisoryLayerModel)
+    map.on('zoomend', resync)
+    map.on('moveend', resync)
+    return () => {
+      map.off('zoomend', resync)
+      map.off('moveend', resync)
+    }
   }, [advisoryLayerModel])
 
   // ???? Sync lightning ????????????????????????????????????????????????????????????????????????????????????????????????????????????????

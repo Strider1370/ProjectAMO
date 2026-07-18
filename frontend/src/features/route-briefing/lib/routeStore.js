@@ -15,7 +15,29 @@ function write(routes) {
 }
 const bySavedDesc = (a, b) => (b.savedAt || 0) - (a.savedAt || 0)
 
+function persistedDesign(design = {}) {
+  return {
+    id: design.id,
+    name: design.name,
+    kind: design.kind,
+    routeForm: design.routeForm ?? {},
+    procedureIds: design.procedureIds ?? { sid: design.procedures?.sid?.id ?? null, star: design.procedures?.star?.id ?? null, iapKey: design.procedures?.iapKey ?? null },
+    enroute: design.enroute ?? { terms: [], legIntents: [], userWaypoints: [], nextWaypointNumber: 1 },
+    routeString: design.routeString ?? '',
+  }
+}
+
 export function normalizeRouteSnapshot(snapshot = {}) {
+  if (snapshot.version === 3 && snapshot.base) return {
+    version: 3,
+    base: persistedDesign(snapshot.base),
+    alternatives: (snapshot.alternatives ?? []).map(persistedDesign),
+    selectedAlternativeId: snapshot.selectedAlternativeId ?? null,
+    cruiseAltitudeFt: snapshot.cruiseAltitudeFt,
+    etd: snapshot.etd,
+    tasKt: snapshot.tasKt,
+    etaPolicy: snapshot.etaPolicy,
+  }
   const routeForm = snapshot.base?.routeForm ?? snapshot.routeForm ?? {}
   const legacyVfrWaypoints = snapshot.vfrWaypoints
   if (routeForm.flightRule === 'VFR' && Array.isArray(legacyVfrWaypoints) && legacyVfrWaypoints.length >= 2) {
@@ -30,20 +52,21 @@ export function normalizeRouteSnapshot(snapshot = {}) {
     }
     return {
       ...snapshot,
-      version: 2,
+      version: 3,
       base: {
         ...(snapshot.base ?? {}),
         routeForm,
         enroute,
         routeString: formatVfrDraftText({ departureAirport: routeForm.departureAirport, arrivalAirport: routeForm.arrivalAirport, enroute }),
       },
+      alternatives: snapshot.alternatives ?? [],
     }
   }
-  if (snapshot.version === 2 && snapshot.base) return snapshot
+  if (snapshot.version === 2 && snapshot.base) return { ...snapshot, version: 3, alternatives: snapshot.alternatives ?? [] }
   const enroute = snapshot.enroute ?? { terms: [], legIntents: [], userWaypoints: [], nextWaypointNumber: 1 }
   return {
     ...snapshot,
-    version: 2,
+    version: 3,
     base: {
       routeForm: snapshot.routeForm ?? {},
       procedureIds: snapshot.procedureIds ?? {
@@ -54,6 +77,7 @@ export function normalizeRouteSnapshot(snapshot = {}) {
       enroute,
       routeString: snapshot.routeString ?? '',
     },
+    alternatives: snapshot.alternatives ?? [],
   }
 }
 

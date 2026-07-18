@@ -1687,6 +1687,12 @@
   white-space: pre-wrap;
 }
 
+.mapbox-advisory-popup-divider {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px dashed #cbd5e1;
+}
+
 .airport-metar-marker { /* color-lint-ignore: 공항 마커 식별색 */
   width: 14px;
   height: 14px;
@@ -2120,27 +2126,46 @@
 .route-map-interaction-confirm {
   position: absolute;
   z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: min(420px, calc(100% - 24px));
-  padding: 8px 10px;
+  display: grid;
+  gap: 12px;
+  min-width: 260px;
+  max-width: min(360px, calc(100% - 24px));
+  padding: 16px;
   border: 1px solid var(--level-amber);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   background: var(--level-amber-bg);
   color: var(--text-1);
-  font-size: 13px;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
   transform: translate(-50%, calc(-100% - 12px));
 }
 .route-map-interaction-confirm[hidden] { display: none; }
+.route-map-interaction-confirm-text { overflow-wrap: anywhere; }
+.route-map-interaction-confirm-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .route-map-interaction-confirm button {
   border: 1px solid var(--border-strong);
   border-radius: 4px;
-  padding: 4px 9px;
+  min-height: 32px;
+  padding: 5px 12px;
   background: var(--bg-1);
   color: var(--text-1);
   font: inherit;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
 }
+.route-map-interaction-confirm-apply {
+  border-color: var(--accent) !important;
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+.route-map-interaction-confirm button:hover { background: var(--bg-2); }
+.route-map-interaction-confirm-apply:hover { filter: brightness(0.94); }
+.route-map-interaction-confirm-cancel { background: color-mix(in srgb, var(--bg-1) 82%, var(--level-amber-bg)) !important; }
