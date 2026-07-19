@@ -81,8 +81,9 @@ test('evaluateFlight: 첫 tick=baseline(무발화)·스냅샷 저장, 목적지 
     const r1 = evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(3000) }, cache })
     assert.equal(r1.baseline, true)
     assert.equal(r1.changes.length, 0)
-    const stored = db.prepare('SELECT last_briefing_snapshot_id FROM routes WHERE id=?').get(route.id)
+    const stored = db.prepare('SELECT last_briefing_snapshot_id, last_briefing_snapshot_json FROM routes WHERE id=?').get(route.id)
     assert.ok(stored.last_briefing_snapshot_id, 'baseline 스냅샷 해시 저장됨')
+    assert.ok(stored.last_briefing_snapshot_json, 'baseline 스냅샷 JSON 저장됨')
 
     // 2) 목적지 운고 400 (< IFR 미니마 500) → CEIL CRITICAL 1건
     const r2 = evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache })
@@ -96,16 +97,57 @@ test('evaluateFlight: 첫 tick=baseline(무발화)·스냅샷 저장, 목적지 
   } finally { db.close() }
 })
 
-test('evaluateFlight: 같은 조건 재발화 dedup — cache 리셋해도 triggered_alerts 중복 없음', () => {
+test('evaluateFlight: 재시작 뒤 DB baseline으로 악화를 감지한다', () => {
   const db = createDb(':memory:')
   try {
     const route = seed(db)
     const cache = new Map()
     evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(3000) }, cache }) // baseline
-    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache })  // CEIL 발화
-    cache.set(route.id, buildSnapshot(briefingWith(), { RKPC: tafFor(3000) }, buildBriefingRequest(route))) // prev=정상으로 강제
-    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache })  // 같은 크로싱 재현
+    const reloaded = db.prepare('SELECT * FROM routes WHERE id=?').get(route.id)
+    const result = evaluateFlight({ db, route: reloaded, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache: new Map() })
+    assert.equal(result.baseline, false)
+    assert.equal(result.changes.length, 1)
     assert.equal(db.prepare('SELECT COUNT(*) n FROM triggered_alerts WHERE route_id=?').get(route.id).n, 1)
+  } finally { db.close() }
+})
+
+test('evaluateFlight: 같은 악화는 한 번만, 회복 뒤 재악화는 다시 알린다', () => {
+  const db = createDb(':memory:')
+  try {
+    const route = seed(db)
+    const cache = new Map()
+    const normal = { RKPC: tafFor(3000) }
+    const bad = { RKPC: tafFor(400) }
+    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: normal, cache })
+    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: bad, cache })
+    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: bad, cache })
+    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: normal, cache })
+    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: bad, cache })
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM triggered_alerts WHERE route_id=?').get(route.id).n, 2)
+  } finally { db.close() }
+})
+
+test('evaluateFlight: legacy route without JSON baseline establishes one baseline', () => {
+  const db = createDb(':memory:')
+  try {
+    const route = seed(db)
+    const result = evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache: new Map() })
+    assert.equal(result.baseline, true)
+    assert.equal(result.changes.length, 0)
+  } finally { db.close() }
+})
+
+test('evaluateFlight: alert insert failure rolls back snapshot persistence', () => {
+  const db = createDb(':memory:')
+  try {
+    const route = seed(db)
+    const cache = new Map()
+    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(3000) }, cache })
+    db.exec("CREATE TRIGGER fail_alert_insert BEFORE INSERT ON triggered_alerts BEGIN SELECT RAISE(ABORT, 'forced'); END")
+    assert.throws(() => evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache }), /forced/)
+    const stored = db.prepare('SELECT last_briefing_snapshot_json FROM routes WHERE id=?').get(route.id)
+    assert.equal(JSON.parse(stored.last_briefing_snapshot_json).dest.ceilingFt, 3000)
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM triggered_alerts WHERE route_id=?').get(route.id).n, 0)
   } finally { db.close() }
 })
 

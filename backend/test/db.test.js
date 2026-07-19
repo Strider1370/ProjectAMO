@@ -82,7 +82,7 @@ test('metrics and visits tables exist', () => {
 test('#13: routes has alert columns with safe defaults', () => {
   const db = freshDb()
   const cols = db.prepare('PRAGMA table_info(routes)').all().map((c) => c.name)
-  for (const c of ['eta', 'alert_enabled', 'alert_start_min_before_etd', 'altitude_filter_ft', 'send_no_change_confirm', 'confirm_min_before_etd', 'last_briefing_snapshot_id', 'expires_at']) {
+  for (const c of ['eta', 'alert_enabled', 'alert_start_min_before_etd', 'altitude_filter_ft', 'send_no_change_confirm', 'confirm_min_before_etd', 'last_briefing_snapshot_id', 'last_briefing_snapshot_json', 'expires_at']) {
     assert.ok(cols.includes(c), `missing routes.${c}`)
   }
   const u = createUser(db, { username: 'alert_user', password: 'password1' })

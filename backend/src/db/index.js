@@ -25,8 +25,11 @@ function ensureColumns(database) {
     if (!routeCols.includes('send_no_change_confirm')) database.exec('ALTER TABLE routes ADD COLUMN send_no_change_confirm INTEGER NOT NULL DEFAULT 0')
     if (!routeCols.includes('confirm_min_before_etd')) database.exec('ALTER TABLE routes ADD COLUMN confirm_min_before_etd INTEGER NOT NULL DEFAULT 60')
     if (!routeCols.includes('last_briefing_snapshot_id')) database.exec('ALTER TABLE routes ADD COLUMN last_briefing_snapshot_id TEXT')
+    if (!routeCols.includes('last_briefing_snapshot_json')) database.exec('ALTER TABLE routes ADD COLUMN last_briefing_snapshot_json TEXT')
     if (!routeCols.includes('expires_at')) database.exec('ALTER TABLE routes ADD COLUMN expires_at TEXT')
   }
+
+  database.exec('DROP INDEX IF EXISTS idx_alerts_dedup')
 
   if (tableExists('users')) {
     const userCols = database.prepare('PRAGMA table_info(users)').all().map((c) => c.name)

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS routes (         -- 저장 경로(= 문의·#13 감�
   send_no_change_confirm     INTEGER NOT NULL DEFAULT 0,
   confirm_min_before_etd     INTEGER NOT NULL DEFAULT 60,
   last_briefing_snapshot_id  TEXT,                         -- diff 기준 스냅샷
+  last_briefing_snapshot_json TEXT,                        -- 재시작 뒤 diff 기준 복원용
   expires_at                 TEXT,                         -- 감시 종료(ETD+유예)
   created_at   TEXT NOT NULL,
   updated_at   TEXT NOT NULL
@@ -106,5 +107,4 @@ CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status, target_airpor
 CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics(ts);
 CREATE INDEX IF NOT EXISTS idx_visits_last ON visits(last_seen);
 CREATE INDEX IF NOT EXISTS idx_alerts_user ON triggered_alerts(user_id, detected_at);
-CREATE INDEX IF NOT EXISTS idx_alerts_dedup ON triggered_alerts(route_id, dedup_key);
 CREATE INDEX IF NOT EXISTS idx_pushsub_user ON push_subscriptions(user_id);

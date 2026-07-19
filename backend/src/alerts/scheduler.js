@@ -18,8 +18,7 @@ const RANK = { 약: 1, 중: 2, 심: 3 }
 const DEFAULT_CRUISE_ALT_FT = 9000
 const TICK_MS = 15 * 60 * 1000 // 15분(§5B: 5~15분 갱신 규모). 무거운 KIM/KTG는 소스 주기 캐시에 의존.
 
-// 인메모리 prev 스냅샷 캐시(§5B: 수백 KB, 인메모리로 충분).
-// ponytail: 재시작 생존이 필요하면 routes에 last_snapshot_json 컬럼 추가. 데모/단일 프로세스엔 불필요.
+// 인메모리 캐시는 빠른 경로이고, DB 스냅샷이 재시작 뒤의 기준선이다.
 const snapshotCache = new Map() // routeId → 최소 스냅샷
 
 const safeJson = (s) => { try { return JSON.parse(s) } catch { return null } }
@@ -114,11 +113,6 @@ function userMinima(db, userId) {
   return { ceilingFt: u.min_ceiling_ft ?? null, visibilityM: u.min_visibility_m ?? null }
 }
 
-// 이미 발화된 동일 조건(route+dedupKey)이면 재발송 안 함(§5-2 dedup fingerprint).
-function alreadyFired(db, routeId, dedupKey) {
-  return !!db.prepare('SELECT 1 FROM triggered_alerts WHERE route_id=? AND dedup_key=? LIMIT 1').get(routeId, dedupKey)
-}
-
 function insertAlert(db, route, c, nowIso) {
   return db.prepare(`
     INSERT INTO triggered_alerts (user_id, route_id, type, severity, target, from_val, to_val, source_id, dedup_key, detected_at)
@@ -134,21 +128,25 @@ export function evaluateFlight({ db, route, briefing, tafByIcao, now = Date.now(
   const request = buildBriefingRequest(route)
   if (!request) return { skipped: 'no_geometry' }
   const curr = buildSnapshot(briefing, tafByIcao, request)
-  const prev = cache.get(route.id) ?? null
+  const persisted = safeJson(route.last_briefing_snapshot_json)
+  const prev = cache.get(route.id) ?? (persisted && typeof persisted === 'object' ? persisted : null)
   const nowIso = new Date(now).toISOString()
 
   const inserted = []
-  if (prev) {
-    const changes = detectChanges(prev, curr, { minima: userMinima(db, route.user_id) })
+  const changes = prev
+    ? detectChanges(prev, curr, { minima: userMinima(db, route.user_id) })
+    : []
+  const writeEvaluation = db.transaction(() => {
     for (const c of changes) {
-      if (alreadyFired(db, route.id, c.dedupKey)) continue
       const id = insertAlert(db, route, c, nowIso)
       inserted.push({ ...c, id, to_val: c.to == null ? null : String(c.to) })
     }
-  }
+    db.prepare('UPDATE routes SET last_briefing_snapshot_id=?, last_briefing_snapshot_json=?, updated_at=? WHERE id=?')
+      .run(hashOf(curr), JSON.stringify(curr), nowIso, route.id)
+  })
 
+  writeEvaluation()
   cache.set(route.id, curr)
-  db.prepare('UPDATE routes SET last_briefing_snapshot_id=?, updated_at=? WHERE id=?').run(hashOf(curr), nowIso, route.id)
   return { baseline: !prev, changes: inserted, snapshot: curr }
 }
 
