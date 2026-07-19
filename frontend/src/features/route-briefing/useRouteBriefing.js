@@ -74,6 +74,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const [verticalProfileWindowOpen, setVerticalProfileWindowOpen] = useState(false)
   // leg(경유점 i→i+1)별 최고 지형고도(ft), 키 = `from→to`. 가벼운 /vertical-profile로 미리 채움.
   const [vfrLegTerrain, setVfrLegTerrain] = useState({})
+  const [, setVfrUndoStack] = useState([])
   const [importCandidates, setImportCandidates] = useState([]) // 다중 경로 파일일 때 사용자 선택 대기 목록
   const [importWarning, setImportWarning] = useState(null)
   const [importError, setImportError] = useState(null)
@@ -978,7 +979,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       const routeGeometry = getCurrentRouteLineString({ routeResult: result, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
       const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: result })
       const etdIso = Number.isFinite(Date.parse(etd)) ? new Date(etd).toISOString().replace('.000Z', 'Z') : null
-      const nextEta = eta || computeEtaIso(etdIso, result.totalDistanceNm, tasKt) || null
+      const nextEta = eta || computeEtaIso(etdIso, result.totalDistanceNm ?? result.distanceNm, tasKt) || null
       const exposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: nextEta }).catch((error) => ({ trigger: 'unavailable', hazards: [], error: error.message }))
       const previousBase = routeDesigns.find((design) => design.id === 'base') ?? null
       const base = createRouteDesign({

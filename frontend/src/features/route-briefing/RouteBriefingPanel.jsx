@@ -346,6 +346,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         ref={importFileInputRef}
         type="file"
         accept=".geojson,.json,.gpx,.kml"
+        data-testid="route-import-file"
         style={{ display: 'none' }}
         onChange={handleImportFileChange}
       />
@@ -735,7 +736,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       {workflowStep === 'altitude' && (
         <>
           <Field label="계획 순항고도 (ft)"><Input className={s.ctrl} type="number" min="500" max="60000" step="500" value={altitudeDraftFt} placeholder="예: 9,000" onChange={(_, d) => setAltitudeDraft(d.value)} /></Field>
-          <Button appearance="primary" type="button" className={s.full} onClick={() => startAltitudeComparison({ openWindow: false })} disabled={altitudeComparisonLoading}>고도 비교</Button>
+          <Button appearance="primary" type="button" className={s.full} aria-label="고도 비교 실행" onClick={() => startAltitudeComparison({ openWindow: false })} disabled={altitudeComparisonLoading}>고도 비교</Button>
           {summaryStrip}
           {verticalProfile && <Button appearance="secondary" type="button" className="vertical-profile-open-button" onClick={() => setVerticalProfileWindowOpen(true)}>연직단면도 보기</Button>}
           {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} hideStepActions /> : <p className="rb-alternatives-status">고도 비교는 선택 사항입니다. 순항고도를 입력하면 바로 브리핑 준비로 갈 수 있습니다.</p>}

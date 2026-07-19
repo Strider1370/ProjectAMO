@@ -10,11 +10,12 @@
 
 ### 할 일
 
-- `frontend/scripts/`의 capture 16개, smoke/audit 4개, 공유 helper를 조사한다.
+- `frontend/scripts/`의 현재 browser-capable 스크립트 20개(캡처 17개, smoke/audit 3개)와 공유 helper를 조사한다. `lint-colors.mjs`는 브라우저 검증 자산이 아니므로 별도 기록한다.
 - 각 스크립트의 역할, 실행 명령, 마지막 사용자 흐름, assertion, viewport, fixture, artifact 위치, 실제 실행 결과를 inventory에 기록한다.
 - `package.json`, CI, README, Architecture, policy, dev-server 절차에서 inbound reference를 찾는다.
 - desktop/iPad/mobile의 실제 진입 경로와 `getByRole`/`getByLabel`로 지목할 수 없는 control을 기록한다.
 - `projectamo-dev.mjs`, readiness URL, 고정 데이터 모드, cleanup, 기존 artifact 위치를 확인한다.
+- `dev:test`는 자동 수집만 멈추고 route/기상 fixture를 만들지 않는다는 점을 계약별 사전 조건에 기록한다. 경로·브리핑 계약은 필요한 로컬 데이터와 route fixture를 명시하기 전에는 활성화하지 않는다.
 
 ### 산출물·완료 조건
 
@@ -92,9 +93,9 @@ frontend/verification/self-test/
 
 1. `responsive-baseline`
 2. `map-base`
-3. `airport-panel`
-4. `briefing-ifr`
-5. `route-editor-vfr`
+3. `route-workflow` — IFR/VFR 비행 설정, 경로비교, 고도 비교, 브리핑 준비, 모바일 시트, 연직단면도 전체 화면을 하나의 사용자 흐름으로 검증한다.
+4. `briefing-view` — 생성된 브리핑, 전체 보기/지도와 함께 보기, 경로 맞춤 카메라를 검증한다.
+5. `airport-panel`
 6. `route-import`
 7. `monitoring`
 8. `notam-and-settings`
@@ -105,13 +106,14 @@ frontend/verification/self-test/
 - 재사용할 진입 경로는 `navigation.js`에 넣는다.
 - `shell-anchor`, 필요한 `data-anchor`, 필요한 모든 `target-anchor`를 선언한다.
 - 실제 사용자 성공 흐름 하나 이상을 assertion으로 증명한다.
+- 경로·브리핑 계약은 fixture가 보장하는 데이터와 그렇지 않은 외부·캐시 데이터를 분리해 선언한다. 보장되지 않은 데이터를 원인으로 한 실패는 selector 문제로 추측하지 않는다.
 - 적용 viewport를 실행한다. 화면/레이아웃 변경이면 기존 screenshot·manifest·review 절차도 따른다.
 - inventory에서 대체 범위를 갱신한다.
 
 ### Phase 기준
 
 - Phase A: Task 1~3과 `responsive-baseline` 하나만 완료한다. 이 계약 이전에 2시간을 넘기면 중단하고 Playwright 채택 결정을 재검토한다.
-- Phase B: `map-base`, `route-editor-vfr`를 추가한다. 성격이 다른 세 계약이 안정적으로 통과해야 한다.
+- Phase B: `map-base`, `route-workflow`를 추가한다. 성격이 다른 세 계약이 안정적으로 통과해야 한다.
 - Phase C: 나머지 활성 surface를 매핑표 순서로 이전한다.
 
 ## Task 5 — 과거 자산 제거

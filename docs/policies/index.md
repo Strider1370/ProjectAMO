@@ -12,8 +12,8 @@ Read the relevant `Architecture.md` section and this index before editing. For r
 | Timestamps, KMA/KIM data, data contracts, collectors | `File Roles` — `Backend`, `Reference Structure` | [data and time](engineering/data-and-time.md) |
 | MapView, Mapbox, overlay, visibility, timeline | `File Roles` — `Frontend` map entries, `Reference Structure` | [map and layers](engineering/map-and-layers.md) |
 | UI, CSS, responsive layout | `File Roles` — affected frontend feature, `Reference Structure` | [design language](design/design-language.md) |
-| Browser verification, deploy, finish/commit/push/PR | `Directory Structure` — `scripts` and the affected feature's `File Roles` entry | [delivery and completion](verification/delivery-and-completion.md) |
-| Long or multi-domain work | every affected boundary's `File Roles` entry | [long context](long-context.md) |
+| Browser verification, deploy, finish/commit/push/PR | `Directory Structure` — `scripts` and the affected feature's `File Roles` entry | [browser verification](verification/browser-verification.md), [contract registry](verification/contracts.md), [delivery and completion](verification/delivery-and-completion.md) |
+| Writing or updating a spec, plan, or status file | every affected boundary's `File Roles` entry | [spec/plan/status format](spec-plan-status-format.md) |
 
 Read [encoding safety](encoding-safety.md) before encoding-sensitive edits.
 <!-- SESSION-ROUTING:END -->
@@ -22,7 +22,7 @@ Read [encoding safety](encoding-safety.md) before encoding-sensitive edits.
 
 - Engineering: [workflow and tools](engineering/workflow-and-tools.md), [route briefing source contract](engineering/route-briefing-source-contract.md), [data and time](engineering/data-and-time.md), and [map and layers](engineering/map-and-layers.md).
 - Design: [design language](design/design-language.md).
-- Verification and lifecycle: [delivery and completion](verification/delivery-and-completion.md) and [long context](long-context.md).
+- Verification and lifecycle: [delivery and completion](verification/delivery-and-completion.md) and [spec/plan/status format](spec-plan-status-format.md).
 - File integrity: [encoding safety](encoding-safety.md).
 
 ## Admission and routing

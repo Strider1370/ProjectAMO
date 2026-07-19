@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "node --test",
+    "dev:contract": "node verification/port-guard.mjs && playwright test",
     "smoke:responsive": "node scripts/responsive-smoke.mjs",
     "screenshots:responsive": "node scripts/responsive-screenshots.mjs",
     "test:layout": "node --test src/app/layout/layoutTokens.test.js",
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1",
     "@vitejs/plugin-react": "^5.0.0",
     "playwright": "^1.61.1",
     "vite": "^7.0.0"

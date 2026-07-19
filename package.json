@@ -8,6 +8,7 @@
     "dev:serve": "node scripts/projectamo-dev.mjs serve",
     "dev:test": "node scripts/projectamo-dev.mjs serve:test",
     "dev:no-nwp": "node scripts/projectamo-dev.mjs serve:no-nwp",
+    "dev:contract": "npm --prefix frontend run dev:contract --",
     "dev:verify": "node scripts/projectamo-dev.mjs verify",
     "dev:smoke": "node scripts/projectamo-dev.mjs smoke",
     "dev:screenshots": "node scripts/projectamo-dev.mjs screenshots",

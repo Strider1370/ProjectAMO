@@ -69,7 +69,9 @@
       "Bash(powershell -Command \"Get-Date -Format 'yyyy-MM-dd HH:mm:ss'\")",
       "Bash(cp *)",
       "Bash(xargs -I{} echo {})",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(gh api *)",
+      "Bash(git rm *)"
     ]
   }
 }

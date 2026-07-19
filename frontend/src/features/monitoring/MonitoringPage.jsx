@@ -589,6 +589,8 @@ export default function MonitoringPage() {
             <div className="panel-switch dashboard-mode-switch" role="tablist" aria-label="대시보드 모드">
               <button
                 type="button"
+                role="tab"
+                aria-selected={dashboardMode === 'ops'}
                 className={`panel-switch-btn ${dashboardMode === 'ops' ? 'active' : ''}`}
                 onClick={() => setMode('ops')}
               >
@@ -596,6 +598,8 @@ export default function MonitoringPage() {
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={dashboardMode === 'ground'}
                 className={`panel-switch-btn ${dashboardMode === 'ground' ? 'active' : ''}`}
                 onClick={() => setMode('ground')}
               >

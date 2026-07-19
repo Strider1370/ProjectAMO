@@ -11,6 +11,8 @@ Use this guide whenever a task requires opening the local backend, opening the f
 
 Use `npm run dev:serve` for persistent development and `npm run dev:test` for fixed-data verification.
 
+Playwright contracts use a separate managed path. `npm.cmd run dev:contract -- --grep <contract-id>` checks that 3001 and 5173 are free, then Playwright owns the verification backend and frontend. It does not reuse or stop a human-run server.
+
 ## Preflight
 
 From the repository root:

@@ -6,7 +6,7 @@ General implementation, repository exploration, tools, hooks, delegation, tempor
 
 ## Does not apply when
 
-Use the more specific data/time, map/layers, design, delivery, long-context, or encoding policy for its boundary; pair this policy only when general workflow still applies.
+Use the more specific data/time, map/layers, design, delivery, spec/plan/status format, or encoding policy for its boundary; pair this policy only when general workflow still applies.
 
 ## Re-check trigger
 

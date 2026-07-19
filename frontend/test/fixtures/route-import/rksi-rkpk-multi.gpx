@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="ProjectAMO contract fixture" xmlns="http://www.topografix.com/GPX/1/1">
+  <rte>
+    <name>계획 경로</name>
+    <rtept lat="37.4602" lon="126.4407"><name>RKSI</name></rtept>
+    <rtept lat="36.3000" lon="127.7000"></rtept>
+    <rtept lat="35.1795" lon="128.9382"><name>RKPK</name></rtept>
+  </rte>
+  <trk>
+    <name>실제 비행 궤적</name>
+    <trkseg>
+      <trkpt lat="37.4602" lon="126.4407"></trkpt>
+      <trkpt lat="36.3000" lon="127.7000"></trkpt>
+      <trkpt lat="35.1795" lon="128.9382"></trkpt>
+    </trkseg>
+  </trk>
+</gpx>
