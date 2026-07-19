@@ -1,0 +1,11 @@
+{
+  "name": "ProjectAMO",
+  "short_name": "ProjectAMO",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "/gisang-i/clear_3_avatar.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
