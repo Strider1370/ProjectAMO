@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Dropdown, Option, Checkbox, Button, Input, Badge, MessageBar, MessageBarBody, makeStyles, tokens } from '../../../shared/ui/fluent.js'
 import { useAuth } from '../../auth/AuthContext.jsx'
-import { getRoutes, inject, reset, tick, clearAlerts, setRole } from '../developerApi.js'
+import { getRoutes, inject, reset, tick, clearAlerts, setRole, getVapidPublicKey, subscribePush, sendTestPush } from '../developerApi.js'
+
+// VAPID 공개키(base64url) → PushManager.subscribe가 요구하는 Uint8Array.
+function urlBase64ToUint8Array(base64) {
+  const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(padded)
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)))
+}
 
 const useStyles = makeStyles({
   body: { display: 'flex', flexDirection: 'column', gap: '16px' },
@@ -39,6 +46,21 @@ export default function TriggerTab() {
     try { setMsg({ intent: 'success', text: ok(await fn()) }) }
     catch (e) { setMsg({ intent: 'error', text: e.message }) }
     finally { setBusy(false) }
+  }
+
+  // 앱을 꺼도 오는 Web Push 구독. 권한 요청 → sw.js 등록 대기 → VAPID 키로 subscribe → 서버 저장.
+  async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('이 브라우저는 푸시를 지원하지 않습니다.')
+    const permission = await Notification.requestPermission()
+    if (permission !== 'granted') throw new Error('알림 권한이 거부되었습니다.')
+    const registration = await navigator.serviceWorker.ready
+    const { key } = await getVapidPublicKey()
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key),
+    })
+    await subscribePush(subscription.toJSON())
+    return '구독 완료. 이제 테스트 알림을 보내보세요.'
   }
 
   const selected = routes.find((r) => String(r.id) === routeId)
@@ -115,6 +137,18 @@ export default function TriggerTab() {
               {ROLE_KO[r]}
             </Button>
           ))}
+        </div>
+      </div>
+
+      {/* Web Push 테스트 — 앱을 완전히 꺼도 오는지 확인용 */}
+      <div className={s.block}>
+        <span className={s.h}>푸시 알림 테스트</span>
+        <span className={s.hint}>구독 후 앱을 완전히 종료한 상태에서 테스트 알림을 보내 실제로 도착하는지 확인합니다.</span>
+        <div className={s.row}>
+          <Button disabled={busy} onClick={() => run(subscribeToPush, (t) => t)}>🔔 푸시 구독하기</Button>
+          <Button disabled={busy} onClick={() => run(sendTestPush, (d) => `테스트 알림 발송: ${d.sent}건 성공${d.pruned ? `, 만료 구독 ${d.pruned}건 정리` : ''}.`)}>
+            📨 테스트 알림 보내기
+          </Button>
         </div>
       </div>
 

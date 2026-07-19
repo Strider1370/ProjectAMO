@@ -22,3 +22,7 @@ export const reset = () => fetch('/api/dev/reset', post()).then(j)
 export const tick = () => fetch('/api/dev/tick', post()).then(j)
 export const clearAlerts = () => fetch('/api/dev/clear-alerts', post()).then(j)
 export const setRole = (role) => fetch('/api/dev/role', post({ role })).then(j)
+
+export const getVapidPublicKey = () => get('/api/me/push/vapid-public-key')
+export const subscribePush = (subscription) => fetch('/api/me/push/subscribe', post(subscription)).then(j)
+export const sendTestPush = () => fetch('/api/me/push/test', post()).then(j)

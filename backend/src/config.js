@@ -288,6 +288,13 @@ export const storage = {
   },
 }
 
+// Web Push(VAPID) — 키 없으면 발송 라우터가 503으로 응답(미설정 안내), 크래시하지 않음.
+export const push = {
+  vapid_public_key: process.env.VAPID_PUBLIC_KEY || '',
+  vapid_private_key: process.env.VAPID_PRIVATE_KEY || '',
+  vapid_subject: process.env.VAPID_SUBJECT || 'mailto:admin@projectamo.co.kr',
+}
+
 export default {
   api,
   airports,
@@ -307,4 +314,5 @@ export default {
   kim_nwp,
   schedule,
   storage,
+  push,
 }

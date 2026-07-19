@@ -4,11 +4,11 @@ import { Wrench } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { getHealth } from './developerApi.js'
 
-// 개발자 콘솔 모달 — 개발 빌드에서만 로드(운영 빌드 결과물엔 없음).
-const DeveloperConsole = import.meta.env.DEV ? lazy(() => import('./DeveloperConsole.jsx')) : null
+// 개발자 콘솔 모달 — 운영 빌드에도 번들됨(admin 노출 경로 때문). lazy라 admin이 실제로 열기 전엔 안 받아짐.
+const DeveloperConsole = lazy(() => import('./DeveloperConsole.jsx'))
 
-// 개발자 콘솔 진입 — 사이드바 전용 아이콘. 테스트 인스턴스(npm run dev:test → testMode)에서만 렌더(로그인 불필요).
-// 일반 서버(testMode=false)·운영 빌드(import.meta.env.DEV=false)에선 null → 아이콘 자체가 안 뜬다.
+// 개발자 콘솔 진입 — 사이드바 전용 아이콘.
+// 노출 조건: (테스트 인스턴스 dev 빌드, 로그인 불필요) 또는 (운영 포함 어디서든 admin으로 로그인).
 // 테스트 인스턴스는 1인 개발용이라 test 계정으로 자동 로그인해 로그인 절차를 없앤다(주입·경로·역할이 세션을 요구하므로).
 export default function DeveloperConsoleButton({ isExpanded = false }) {
   const { user, loading, login } = useAuth()
@@ -28,7 +28,8 @@ export default function DeveloperConsoleButton({ isExpanded = false }) {
     login('test', '1234').catch(() => {})
   }, [testMode, loading, user, login])
 
-  if (!DeveloperConsole || !testMode) return null
+  const visible = (import.meta.env.DEV && testMode) || user?.role === 'admin'
+  if (!visible) return null
 
   return (
     <>
