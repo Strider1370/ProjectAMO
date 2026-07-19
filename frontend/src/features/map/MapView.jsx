@@ -1,5 +1,5 @@
 import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { ChartSpline } from 'lucide-react'
+import { ChartSpline, House } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import mapboxgl from 'mapbox-gl'
@@ -227,6 +227,7 @@ const MapView = forwardRef(function MapView({
   const isMobile = useIsMobile()
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
+  const [showKoreaHome, setShowKoreaHome] = useState(false)
   const tourHomeRef = useRef(null) // 온보딩: 공항 확대 전 홈 뷰 저장(resetView 복귀용)
   const onSelectRef = useRef(onAirportSelect)
   const tooltipTimerRef = useRef(null)
@@ -356,6 +357,10 @@ const MapView = forwardRef(function MapView({
     },
   }))
   const { routeResult, fitBoundsRequest } = routeBriefing.state
+  const flyToKorea = () => {
+    mapRef.current?.flyTo({ center: MAP_CONFIG.center, zoom: MAP_CONFIG.zoom, bearing: 0, pitch: 0, duration: 600 })
+    setShowKoreaHome(false)
+  }
   const { vfrWaypointsRef, hideTimerRef, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, vfrWaypointDropRef, designWaypointDropRef, isComparisonRef } = routeBriefing.refs
   const { setHoveredWpInfo } = routeBriefing.actions
   const { routePreviewModel } = routeBriefing
@@ -432,6 +437,7 @@ const MapView = forwardRef(function MapView({
     const { fitCoordinates } = syncRoutePreviewLayers(map, routePreviewModel)
     if (fitCoordinates.length > 0 && !routeResult) {
       const bounds = boundsFromCoords(fitCoordinates)
+      setShowKoreaHome(true)
       map.fitBounds(bounds, { padding: fitPaddingFor(80), maxZoom: 9, duration: 500 })
     }
   }, [routePreviewModel, routeResult, isStyleReady, styleRevision])
@@ -443,6 +449,7 @@ const MapView = forwardRef(function MapView({
     const { fitCoordinates } = syncBoundaryFixPreview(map, routePreviewModel)
     if (fitCoordinates.length > 0 && !routeResult) {
       const bounds = boundsFromCoords(fitCoordinates)
+      setShowKoreaHome(true)
       map.fitBounds(bounds, { padding: fitPaddingFor(80), maxZoom: 9, duration: 500 })
     }
   }, [routePreviewModel, isStyleReady, routeResult, styleRevision])
@@ -452,6 +459,7 @@ const MapView = forwardRef(function MapView({
     const coords = fitBoundsRequest?.coordinates ?? []
     if (!map || !isStyleReady || coords.length === 0) return
     const bounds = boundsFromCoords(coords)
+    setShowKoreaHome(true)
     map.fitBounds(bounds, { padding: fitPaddingFor(80), maxZoom: fitBoundsRequest.maxZoom ?? 8, duration: 500 })
   }, [fitBoundsRequest, isStyleReady, styleRevision])
 
@@ -478,11 +486,15 @@ const MapView = forwardRef(function MapView({
     const fitPts = (pts) => {
       if (pts.length < 1) return
       const bounds = boundsFromCoords(pts)
+      setShowKoreaHome(true)
       map.fitBounds(bounds, { padding: pad, maxZoom: 8, duration: 600 })
     }
     if (id === 'destination') {
       const ap = byIcao(meta?.arrivalAirport)
-      if (ap) map.flyTo({ center: [ap.lon, ap.lat], zoom: 8.5, padding: pad, duration: 600 })
+      if (ap) {
+        setShowKoreaHome(true)
+        map.flyTo({ center: [ap.lon, ap.lat], zoom: 8.5, padding: pad, duration: 600 })
+      }
     } else if (id === 'current') {
       fitPts([meta?.departureAirport, meta?.arrivalAirport, meta?.alternateAirport]
         .map(byIcao).filter(Boolean).map((a) => [a.lon, a.lat]))
@@ -507,6 +519,7 @@ const MapView = forwardRef(function MapView({
     ).filter((c) => Number.isFinite(c?.[0]) && Number.isFinite(c?.[1]))
     if (coords.length === 0) return undefined
     const t = setTimeout(() => {
+      setShowKoreaHome(true)
       map.fitBounds(boundsFromCoords(coords), { padding: fitPaddingFor(60), maxZoom: 8, duration: 600 })
     }, 350)
     return () => clearTimeout(t)
@@ -1437,6 +1450,13 @@ const MapView = forwardRef(function MapView({
         onScrub={scrubWeatherTimeline}
         onPlayPause={toggleWeatherTimelinePlay}
       />
+
+      {showKoreaHome && (
+        <button type="button" className="map-home-control" onClick={flyToKorea} aria-label="기본 지도 보기" title="기본 지도 보기">
+          <House size={18} aria-hidden="true" />
+          <span>기본 지도</span>
+        </button>
+      )}
 
       {/* 브리핑 패널을 닫아도 경로는 지도에 남는다 — 패널을 다시 열지 않고도 지울 수
           있도록 하단 중앙(타임라인 스크럽 스택 위, 겹침 확인됨)에 요약+지우기 칩 표시. */}

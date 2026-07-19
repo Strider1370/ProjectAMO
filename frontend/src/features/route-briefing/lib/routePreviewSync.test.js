@@ -62,7 +62,7 @@ test('syncRoutePreviewLayers writes IFR route and full procedure preview data (l
 
   assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features[0].geometry.coordinates[1][0], 126.5)
   assert.ok(map.sourceData.get(PROC_PREVIEW_SOURCE).features.some((feature) => feature.properties.role === 'sid-line'))
-  assert.ok(map.filters.some(({ id, value }) => id === 'aviation-waypoints-label' && value.at(-1)[0] === '!'))
+  assert.ok(map.layout.some(({ id, prop, value }) => id === 'route-hl-wp-icon' && prop === 'visibility' && value === 'none'))
 })
 
 test('syncRoutePreviewLayers clears stale route line when route result is removed', () => {

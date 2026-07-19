@@ -6,6 +6,7 @@
 }
 /* 접기: 패널을 자기 폭만큼(100%) 오른쪽으로 슬라이드 — translateX(100%)라서 폭이 반응형이어도 항상 화면 밖으로 정확히 나감 */
 .briefing-view.is-collapsed { transform: translateX(100%); }
+.briefing-view.is-expanded { left: 0; width: auto; border-left: none; }
 @media (max-width: 719px) { .briefing-view { width: 100%; border-left: none; } }
 
 /* 스크롤은 여기서만 — 접기 탭은 .briefing-view의 직계 자식이라 내용 스크롤에 안 딸려가고 항상 같은 자리 */

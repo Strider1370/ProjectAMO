@@ -274,7 +274,7 @@ export function addRoutePreviewLayers(map) {
     map.addLayer({
       id: ROUTE_PREVIEW_LABEL, type: 'symbol', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
       filter: ['==', ['get', 'role'], 'route-preview-point'],
-      layout: { 'text-field': ['get', 'label'], 'text-size': 11, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.8], 'text-allow-overlap': true },
+      layout: { 'text-field': ['get', 'label'], 'text-size': 11, 'text-font': ['Noto Sans CJK JP Bold'], 'text-variable-anchor': ['top', 'bottom', 'right', 'left', 'top-right', 'top-left', 'bottom-right', 'bottom-left'], 'text-radial-offset': 0.9, 'text-justify': 'auto', 'text-allow-overlap': false, 'text-ignore-placement': false },
       paint: { 'text-color': '#c2410c', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
     })
   }
@@ -289,7 +289,7 @@ export function addRoutePreviewLayers(map) {
     map.addLayer({
       id: ROUTE_PENDING_LABEL, type: 'symbol', source: ROUTE_PENDING_SOURCE, slot: 'top',
       filter: ['==', ['get', 'role'], 'route-preview-point'],
-      layout: { 'text-field': ['get', 'label'], 'text-size': 11, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.8], 'text-allow-overlap': true },
+      layout: { 'text-field': ['get', 'label'], 'text-size': 11, 'text-font': ['Noto Sans CJK JP Bold'], 'text-variable-anchor': ['top', 'bottom', 'right', 'left', 'top-right', 'top-left', 'bottom-right', 'bottom-left'], 'text-radial-offset': 0.9, 'text-justify': 'auto', 'text-allow-overlap': false, 'text-ignore-placement': false },
       paint: { 'text-color': '#d946ef', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
     })
   }
@@ -348,10 +348,11 @@ export function addProcedurePreviewLayers(map) {
         'text-field': ['get', 'label'],
         'text-font': ['Noto Sans CJK JP Bold'],
         'text-size': 10,
-        'text-anchor': 'top',
-        'text-offset': [0, 0.8],
-        'text-allow-overlap': true,
-        'text-ignore-placement': true,
+        'text-variable-anchor': ['top', 'bottom', 'right', 'left', 'top-right', 'top-left', 'bottom-right', 'bottom-left'],
+        'text-radial-offset': 0.9,
+        'text-justify': 'auto',
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
       },
       paint: {
         'text-color': ['case',
@@ -388,10 +389,11 @@ export function addVfrWaypointLayers(map) {
         'text-field': ['get', 'label'],
         'text-font': ['Noto Sans CJK JP Bold'],
         'text-size': 10,
-        'text-anchor': 'top',
-        'text-offset': [0, 0.8],
-        'text-allow-overlap': true,
-        'text-ignore-placement': true,
+        'text-variable-anchor': ['top', 'bottom', 'right', 'left', 'top-right', 'top-left', 'bottom-right', 'bottom-left'],
+        'text-radial-offset': 0.9,
+        'text-justify': 'auto',
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
       },
       paint: { 'text-color': '#2563eb', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
     })

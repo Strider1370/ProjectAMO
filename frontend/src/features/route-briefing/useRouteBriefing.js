@@ -5,7 +5,7 @@ import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrR
 import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString, parseVfrDraftText } from './lib/manualRouteInput.js'
 import { calcVfrDistance } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
-import { getLastUsed } from './lib/aircraftProfiles.js'
+import { getPerformanceForRule, setPerformanceForRule } from './lib/aircraftProfiles.js'
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './lib/altitude.js'
 import { buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
 import { buildCommonRouteModel } from '../../../../shared/route-model.js'
@@ -32,7 +32,7 @@ export const initialRouteForm = {
   departureAirport: '', entryFix: '',
   exitFix: '', arrivalAirport: '', routeType: 'ALL',
 }
-export const DEFAULT_CRUISE_ALTITUDE_FT = 9000
+export const DEFAULT_CRUISE_ALTITUDE_FT = 31000
 // 경로 임포트 시 초기고도 자동설정용 지형 여유 마진. 항공안전법 시행규칙 §199(최저비행고도):
 // 밀집지역 300m(1,000ft)/일반지역 150m(500ft) — 혼잡 여부를 지형데이터만으로 판단 못 하므로
 // 보수적으로 밀집지역 기준(1,000ft)을 항상 적용한다.
@@ -65,7 +65,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const [workflowStep, setWorkflowStep] = useState('settings')
   const [routeError, setRouteError] = useState(null)
   const [routeLoading, setRouteLoading] = useState(false)
-  const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(() => getLastUsed()?.altitudeFt ?? DEFAULT_CRUISE_ALTITUDE_FT)
+  const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(() => getPerformanceForRule(initialRouteForm.flightRule).altitudeFt)
   const [verticalProfile, setVerticalProfile] = useState(null)
   const [crossSection, setCrossSection] = useState(null)
   const [verticalProfileLoading, setVerticalProfileLoading] = useState(false)
@@ -133,11 +133,26 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     d.setUTCSeconds(0, 0)
     return d.toISOString().replace('.000Z', 'Z')
   })
-  const [tasKt, setTasKt] = useState(() => getLastUsed()?.tasKt ?? 120)
+  const [tasKt, setTasKt] = useState(() => getPerformanceForRule(initialRouteForm.flightRule).tasKt)
   const [eta, setEta] = useState(null)
   const [briefing, setBriefing] = useState(null)
   const [briefingLoading, setBriefingLoading] = useState(false)
   const [briefingError, setBriefingError] = useState(null)
+
+  function updateTasKt(value) {
+    const next = Number(value)
+    if (!Number.isFinite(next)) return
+    setTasKt(next)
+    setPerformanceForRule(routeForm.flightRule, { tasKt: next })
+  }
+
+  function updateCruiseAltitudeFt(value) {
+    const next = Number(value)
+    if (!Number.isFinite(next)) return
+    setCruiseAltitudeFt(next)
+    setPerformanceForRule(routeForm.flightRule, { altitudeFt: next })
+  }
+
   const visibleSidOptions = useMemo(() => buildVisibleSidOptions(sidOptions, availableSidIds), [availableSidIds, sidOptions])
   const selectedAppliedDesign = routeDesigns.find((design) => design.id === activeAppliedDesignId) ?? null
   const appliedProcedures = selectedAppliedDesign?.procedures ?? { sid: selectedSid, star: selectedStar, iapKey: selectedIapKey }
@@ -464,6 +479,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
 
   function switchFlightRule(rule) {
     if (requestContextChange({ flightRule: rule }, '비행 규칙')) return
+    const performance = getPerformanceForRule(rule)
+    setTasKt(performance.tasKt)
+    setCruiseAltitudeFt(performance.altitudeFt)
+    setAltitudeDraftFt(performance.altitudeFt)
     setIapCandidates([])
     setRouteInteractionMode(null)
     updateEditorContext({ flightRule: rule }, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
@@ -1191,7 +1210,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       setAltitudeComparisonError('계획 순항고도를 입력하세요.')
       return
     }
-    setCruiseAltitudeFt(value)
+    updateCruiseAltitudeFt(value)
     const comparison = await requestAltitudeComparison(value)
     const candidateCruiseAltitudesFt = (comparison?.rows ?? [])
       .map((row) => Number(row.altFt ?? row.altitudeFt))
@@ -1204,7 +1223,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   }
 
   function selectCruiseAltitude(value) {
-    setCruiseAltitudeFt(value)
+    updateCruiseAltitudeFt(value)
     setAltitudeDraftFt(value)
     setBriefing(null)
     setBriefingError(null)
@@ -1217,7 +1236,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       setAltitudeComparisonError('계획 순항고도를 입력하세요.')
       return
     }
-    setCruiseAltitudeFt(altitudeFt)
+    updateCruiseAltitudeFt(altitudeFt)
     if (fitRoute) {
       const routeGeometry = selectedAppliedDesign?.routeModel?.routeGeometry ?? getCurrentRouteLineString({
         routeResult,
@@ -1319,7 +1338,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       if (resetVersion !== routeResetVersionRef.current) return
       clearRouteDisplay()
       setEtd(saved.etd ?? etd)
-      setTasKt(saved.tasKt ?? tasKt)
+      updateTasKt(saved.tasKt ?? tasKt)
       setEta(savedEta)
       const baseDesign = createRouteDesign({
         routeForm: savedForm,
@@ -1384,7 +1403,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setSelectedIapKey(null)
     setAvailableSidIds(null)
     setAutoRecommendRequested(false)
-    if (Number.isFinite(Number(saved.cruiseAltitudeFt))) setCruiseAltitudeFt(Number(saved.cruiseAltitudeFt))
+    if (Number.isFinite(Number(saved.cruiseAltitudeFt))) updateCruiseAltitudeFt(Number(saved.cruiseAltitudeFt))
     setAlternateAirport(saved.alternateAirport || '')
     if (saved.etd) setEtd(saved.etd)
     const result = await runRouteSearch(saved.routeForm)
@@ -1757,10 +1776,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       handleVerticalProfileRequest,
       setHoveredWpInfo,
       setVerticalProfileWindowOpen,
-      setCruiseAltitudeFt,
+      setCruiseAltitudeFt: updateCruiseAltitudeFt,
       setAlternateAirport,
       setEtd,
-      setTasKt,
+      setTasKt: updateTasKt,
       setEta,
       setRouteDraftText: updateRouteDraftText,
       applyRouteDraft,

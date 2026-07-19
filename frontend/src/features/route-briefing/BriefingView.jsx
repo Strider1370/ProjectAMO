@@ -62,6 +62,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   const [expandedRoles, setExpandedRoles] = useState({}) // ② 현재 행 펼침(도착=AMOS, 출발=이륙예보)
   const [notamGroupOpen, setNotamGroupOpen] = useState({}) // ⑤ 공항별 NOTAM "더 보기" 펼침(role별)
   const [collapsed, setCollapsed] = useState(false) // 패널 접기 — 지도를 보려고 오른쪽으로 슬라이드아웃(닫기와 달리 브리핑 유지)
+  const [expanded, setExpanded] = useState(false)
   const headerRef = useRef(null)
   const [headerHidden, setHeaderHidden] = useState(false) // 헤더 스크롤아웃 시에만 sticky nav의 닫기 노출(중복 버튼 방지)
   const toggleRole = (role) => setExpandedRoles((m) => ({ ...m, [role]: !m[role] }))
@@ -680,11 +681,11 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   }
 
   return (
-    <div className={`briefing-view${collapsed ? ' is-collapsed' : ''}`}>
-      <button type="button" className="bv-collapse-tab" onClick={() => setCollapsed((v) => !v)}
+    <div className={`briefing-view${collapsed ? ' is-collapsed' : ''}${expanded ? ' is-expanded' : ''}`}>
+      {!expanded && <button type="button" className="bv-collapse-tab" onClick={() => setCollapsed((v) => !v)}
         aria-label={collapsed ? '브리핑 펼치기' : '브리핑 접기'} aria-expanded={!collapsed}>
         <ChevronRight size={22} strokeWidth={2.5} className={collapsed ? 'is-collapsed' : ''} aria-hidden="true" />
-      </button>
+      </button>}
       <div className="bv-scroll" ref={containerRef}>
         <div className="bv-header" ref={headerRef}>
           <div>
@@ -697,6 +698,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             {etdEtaLine && <Caption1 style={{ color: 'var(--accent)', display: 'block', fontVariantNumeric: 'tabular-nums' }}>{etdEtaLine}</Caption1>}
           </div>
           <div className="bv-head-side">
+            <Button appearance="secondary" size="small" onClick={() => setExpanded((value) => !value)}>{expanded ? '지도와 함께 보기' : '전체 보기'}</Button>
             <Button appearance="secondary" size="small" onClick={onClose}>닫기</Button>
           </div>
         </div>

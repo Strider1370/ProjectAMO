@@ -1198,6 +1198,34 @@
   color: var(--text-1);
 }
 
+/* 지도 자동 포커스 뒤에도 기본 한국 뷰로 즉시 돌아가는 하단 중앙 홈 버튼. */
+.map-home-control {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  z-index: 6;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid var(--stroke-2, rgba(51, 65, 85, 0.16));
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+  color: var(--text-1);
+  font: 700 12px/1 var(--app-font, system-ui, sans-serif);
+  cursor: pointer;
+}
+
+.map-home-control:hover {
+  border-color: var(--accent, #2563eb);
+  color: var(--accent, #2563eb);
+}
+
 .active-route-chip:hover {
   border-color: var(--accent, #2563eb);
 }

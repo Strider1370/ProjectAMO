@@ -1624,6 +1624,10 @@
   height: 20px;
   flex: 0 0 auto;
 }
+.ap-taf-mini-icon img {
+  /* 아이콘 실루엣 기준 그림자 — 옅은 배경(구름 등)에서도 형태가 구분되게 함 */
+  filter: drop-shadow(0 1px 1.5px rgba(15, 23, 42, 0.35));
+}
 
 .ap-taf-mini-arrow {
   width: 14px;

@@ -1,4 +1,3 @@
-import { AVIATION_WFS_LAYERS } from '../../aviation-layers/aviationWfsLayers.js'
 import {
   PROC_IAP_LINE,
   PROC_PREVIEW_SOURCE,
@@ -125,95 +124,10 @@ export function installRoutePreviewLayers(map) {
   addProcedurePreviewLayers(map)
 }
 
-export function applyRouteHighlight(map, navpointIds = []) {
-  const ptFilter = (ids) => ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'ident'], ['literal', ids]]]
-  const baseLabelFilter = (ids) => ['all', ['==', ['geometry-type'], 'Point'], ['!', ['in', ['get', 'ident'], ['literal', ids]]]]
-
-  const wpCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'waypoint')
-  const naCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'navaid')
-  const awCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'ats-route')
-  if (!wpCfg || !naCfg || !awCfg) return
-
-  ;[wpCfg, naCfg, AVIATION_WFS_LAYERS.find((l) => l.id === 'overseas-waypoint'), AVIATION_WFS_LAYERS.find((l) => l.id === 'overseas-navaid')]
-    .filter((cfg) => cfg?.pointLabelLayerId && map.getLayer(cfg.pointLabelLayerId))
-    .forEach((cfg) => map.setFilter(cfg.pointLabelLayerId, baseLabelFilter(navpointIds)))
-
-  function buildIconExpr(cfg) {
-    const { property, fallback, values } = cfg.iconImageByProperty
-    const expr = ['match', ['get', property]]
-    Object.entries(values).forEach(([v, icon]) => expr.push(v, icon.imageId))
-    expr.push(values[fallback].imageId)
-    return expr
-  }
-
-  function addOrUpdate(id, layerDef, filter) {
-    if (!map.getLayer(id)) {
-      map.addLayer({ id, ...layerDef, filter })
-    } else {
-      map.setFilter(id, filter)
-      map.setLayoutProperty(id, 'visibility', 'visible')
-    }
-  }
-
-  addOrUpdate(ROUTE_HL_WP_ICON, {
-    type: 'symbol', source: wpCfg.sourceId, slot: 'top',
-    layout: { 'icon-image': buildIconExpr(wpCfg), 'icon-size': wpCfg.iconSize ?? 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true },
-  }, ptFilter(navpointIds))
-
-  addOrUpdate(ROUTE_HL_WP_LABEL, {
-    type: 'symbol', source: wpCfg.sourceId, slot: 'top',
-    layout: { 'text-field': ['get', 'ident'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.75], 'text-allow-overlap': true, 'text-ignore-placement': true },
-    paint: { 'text-color': wpCfg.color, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
-  }, ptFilter(navpointIds))
-
-  addOrUpdate(ROUTE_HL_NA_ICON, {
-    type: 'symbol', source: naCfg.sourceId, slot: 'top',
-    layout: { 'icon-image': buildIconExpr(naCfg), 'icon-size': naCfg.iconSize ?? 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true },
-  }, ptFilter(navpointIds))
-
-  addOrUpdate(ROUTE_HL_NA_LABEL, {
-    type: 'symbol', source: naCfg.sourceId, slot: 'top',
-    layout: { 'text-field': ['get', 'ident'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.75], 'text-allow-overlap': true, 'text-ignore-placement': true },
-    paint: { 'text-color': naCfg.color, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
-  }, ptFilter(navpointIds))
-
-  // 해외 웨이포인트: 경로 위 해외 지점(B576 등의 ATOTI/BOISO 등)에 세모 아이콘+이름 표시.
-  // 국내 waypoint/navaid 소스에는 없고 해외 소스(aviation-overseas-waypoint)에 있으므로 별도 하이라이트.
-  const ovwCfg = AVIATION_WFS_LAYERS.find((l) => l.id === 'overseas-waypoint')
-  if (ovwCfg?.iconImageByProperty && map.getSource(ovwCfg.sourceId)) {
-    addOrUpdate(ROUTE_HL_OVW_ICON, {
-      type: 'symbol', source: ovwCfg.sourceId, slot: 'top',
-      layout: { 'icon-image': buildIconExpr(ovwCfg), 'icon-size': ovwCfg.iconSize ?? 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true },
-    }, ptFilter(navpointIds))
-
-    addOrUpdate(ROUTE_HL_OVW_LABEL, {
-      type: 'symbol', source: ovwCfg.sourceId, slot: 'top',
-      layout: { 'text-field': ['get', 'ident'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-anchor': 'top', 'text-offset': [0, 0.75], 'text-allow-overlap': true, 'text-ignore-placement': true },
-      paint: { 'text-color': ovwCfg.color, 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
-    }, ptFilter(navpointIds))
-  }
-
-  const segFilter = ['==', ['get', 'role'], 'route-segment-line']
-
-  addOrUpdate(ROUTE_HL_AW_LINE, {
-    type: 'line', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
-    paint: { 'line-color': awCfg.color, 'line-width': awCfg.lineWidth, 'line-opacity': awCfg.lineOpacity },
-  }, segFilter)
-
-  addOrUpdate(ROUTE_HL_AW_LABEL, {
-    type: 'symbol', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
-    layout: { 'symbol-placement': 'line', 'symbol-spacing': 200, 'text-field': ['get', 'routeId'], 'text-size': 10, 'text-font': ['Noto Sans CJK JP Bold'], 'text-rotation-alignment': 'map', 'text-pitch-alignment': 'map', 'text-keep-upright': true, 'text-allow-overlap': false, 'text-ignore-placement': false },
-    paint: { 'text-color': awCfg.color, 'text-halo-color': '#eef6ed', 'text-halo-width': 1.5 },
-  }, segFilter)
-}
-
 export function clearRouteHighlight(map) {
   ROUTE_HL_LAYER_IDS.forEach((id) => {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none')
   })
-  AVIATION_WFS_LAYERS
-    .filter((cfg) => cfg.pointLabelLayerId && map.getLayer(cfg.pointLabelLayerId))
-    .forEach((cfg) => map.setFilter(cfg.pointLabelLayerId, ['==', ['geometry-type'], 'Point']))
 }
 
 export function syncRoutePreviewLayers(map, model) {
@@ -355,11 +269,7 @@ export function syncRoutePreviewLayers(map, model) {
     )
   }
 
-  if (routeResult?.flightRule === 'IFR') {
-    applyRouteHighlight(map, routeResult.navpointIds)
-  } else {
-    clearRouteHighlight(map)
-  }
+  clearRouteHighlight(map)
 
   return { fitCoordinates }
 }
