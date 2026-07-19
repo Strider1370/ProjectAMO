@@ -67,12 +67,14 @@ export default function AltitudeWeatherComparison({
   onContinue,
   profileLoading,
   profileError,
+  hideStepActions = false,
 }) {
   if (loading) return <p className="rb-alternatives-status">고도별 기상 비교를 불러오는 중…</p>
   if (error) return <p className="rb-alternatives-status">고도별 기상 비교를 확인할 수 없습니다: {error}</p>
   if (!comparison) return <p className="rb-alternatives-status">고도별 기상 비교 자료 없음</p>
 
   const rows = comparison.rows ?? []
+  const selectedRow = rows.find((row) => (row.altFt ?? row.altitudeFt) === selectedAltitudeFt)
   const validAltitudeLabels = rows
     .filter((row) => (row.candidateStatus ?? row.status) === 'valid')
     .map((row) => row.label ?? row.fl ?? `FL${Math.round((row.altFt ?? row.altitudeFt) / 100)}`)
@@ -80,6 +82,7 @@ export default function AltitudeWeatherComparison({
   return (
     <div className="rb-altitude-comparison">
       <p className="rb-alternatives-status">{constraintLabel(comparison.constraints)}</p>
+      {!selectedRow && Number.isFinite(selectedAltitudeFt) && <p className="rb-altitude-selection">선택 고도 {formatAltitude(selectedAltitudeFt)} · 비교 후보에 없음</p>}
       {excludedInput && validAltitudeLabels.length > 0 && (
         <p className="rb-alert-banner">
           {`${excludedInput.label ?? `FL${Math.round((excludedInput.altFt ?? excludedInput.altitudeFt) / 100)}`}은 이 항로의 공표 고도 방향 규칙에 맞지 않습니다. 비교 가능한 고도: ${validAltitudeLabels.join(', ')}`}
@@ -94,7 +97,7 @@ export default function AltitudeWeatherComparison({
         return (
           <button key={`${altitudeFt}-${status}`} type="button" disabled={!selectable} className={`rb-alternative-card${selected ? ' is-selected' : ''}`} onClick={() => onSelect(altitudeFt)}>
             <strong>{row.label ?? row.fl ?? `FL${Math.round(altitudeFt / 100)}`}{selected ? ' · 현재 선택' : ''}</strong>
-            {details.map((detail) => <span key={detail.text} className={detail.kind !== 'info' ? `rb-card-${detail.kind}` : undefined}>{detail.text}</span>)}
+            {details.filter((detail) => !selected || detail.kind !== 'hazard').map((detail) => <span key={detail.text} className={detail.kind !== 'info' ? `rb-card-${detail.kind}` : undefined}>{detail.text}</span>)}
             {selected && row.hazards?.map((hazard) => <span key={`${hazard.source}-${hazard.sourceId}`} className="rb-card-hazard">{`${hazard.source} · ${hazard.label} · ${altitudeLabel(hazard.altitude)} · ${hazard.timeStatus === 'matched' ? '비행 시간과 겹침' : '시간 확인 필요'}`}</span>)}
             {!details.length && <span>{row.reasons?.[0] ?? 'KIM 고도 기상 자료가 없어 비교할 수 없음'}</span>}
             {row.weatherLevel?.mode === 'interpolated' && <span>{`KIM FL${Math.round(row.weatherLevel.lowerAltFt / 100)}–FL${Math.round(row.weatherLevel.upperAltFt / 100)} 보간`}</span>}
@@ -105,10 +108,10 @@ export default function AltitudeWeatherComparison({
       {profileLoading && <p className="rb-alternatives-status">오른쪽 연직단면도를 불러오는 중…</p>}
       {profileError && <p className="rb-alternatives-status">연직단면도를 확인할 수 없습니다: {profileError}</p>}
       <p className="rb-alternatives-note">공표 항공로 제약을 기준으로 한 기상 비교 정보이며, 관제 허가·항공기 성능·연료·운항 제한을 결정하지 않습니다.</p>
-      <div className="rb-step-actions">
+      {!hideStepActions && <div className="rb-step-actions">
         <Button appearance="secondary" type="button" onClick={onBack}>이전 단계</Button>
         <Button appearance="primary" type="button" onClick={onContinue}>브리핑 준비로</Button>
-      </div>
+      </div>}
     </div>
   )
 }

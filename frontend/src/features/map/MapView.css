@@ -1196,7 +1196,6 @@
   font-family: var(--app-font, system-ui, sans-serif);
   font-size: 12px;
   color: var(--text-1);
-  cursor: pointer;
 }
 
 .active-route-chip:hover {
@@ -1206,6 +1205,19 @@
 .active-route-chip-route {
   font-weight: 600;
   white-space: nowrap;
+}
+
+.active-route-chip-open {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 
 .active-route-chip-dist {

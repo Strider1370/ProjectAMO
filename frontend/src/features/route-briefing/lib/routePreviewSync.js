@@ -7,6 +7,7 @@ import {
   PROC_WP_CIRCLE,
   PROC_WP_LABEL,
   ROUTE_BASELINE_SOURCE,
+  ROUTE_DRAW_SOURCE,
   ROUTE_PENDING_SOURCE,
   ROUTE_BASELINE_LINE,
   ROUTE_PENDING_LINE,
@@ -44,6 +45,7 @@ export const ROUTE_HL_OVW_LABEL = 'route-hl-ovw-label'
 export const ROUTE_HL_LAYER_IDS = [ROUTE_HL_WP_ICON, ROUTE_HL_WP_LABEL, ROUTE_HL_NA_ICON, ROUTE_HL_NA_LABEL, ROUTE_HL_AW_LINE, ROUTE_HL_AW_LABEL, ROUTE_HL_OVW_ICON, ROUTE_HL_OVW_LABEL]
 export const ROUTE_PREVIEW_SOURCE_IDS = [
   ROUTE_BASELINE_SOURCE,
+  ROUTE_DRAW_SOURCE,
   ROUTE_PREVIEW_SOURCE,
   ROUTE_PENDING_SOURCE,
   PROC_PREVIEW_SOURCE,
@@ -257,7 +259,7 @@ export function syncRoutePreviewLayers(map, model) {
         const selected = design.id === selectedRouteDesignId
         const points = selected ? rawPreview.features.filter((feature) => feature.properties?.role === 'route-preview-point').map((feature) => ({
           ...feature,
-          properties: { ...feature.properties, designId: design.id, selected, waypointIndex: Number(feature.properties?.sequence) - 1, sourceIndex: Number(feature.properties?.sequence), editable: design.routeResult?.flightRule === 'VFR' && feature.properties?.sequence > 1 && feature.properties?.sequence < rawPreview.features.filter((item) => item.properties?.role === 'route-preview-point').length },
+          properties: { ...feature.properties, designId: design.id, selected, waypointIndex: Number(feature.properties?.sequence) - 1, sourceIndex: Number(feature.properties?.sequence), editable: Boolean(feature.properties?.editable) || (design.routeResult?.flightRule === 'VFR' && feature.properties?.sequence > 1 && feature.properties?.sequence < rawPreview.features.filter((item) => item.properties?.role === 'route-preview-point').length) },
         })) : []
         return [
           ...(rawLine ? [{ ...rawLine, properties: { ...rawLine.properties, designId: design.id, selected, role: 'route-design-hit' } }] : []),
@@ -286,9 +288,12 @@ export function syncRoutePreviewLayers(map, model) {
           ...feature,
           properties: { ...feature.properties, designId: selectedDesign?.id, selected: true, waypointIndex: Number(feature.properties.sequence) - 1, sourceIndex: Number(feature.properties.sequence), editable: true },
         }))
+    const selectedAppliedPoints = selectedDesign?.routeResult?.flightRule !== 'VFR'
+      ? appliedFeatures.filter((feature) => feature.properties?.role === 'route-preview-point' && !feature.properties?.editable)
+      : []
     map.getSource(ROUTE_BASELINE_SOURCE)?.setData(basePreview)
     const draftDisplayFeature = selectedDraftDisplayLine ? { ...selectedDraftDisplayLine, properties: { ...selectedDraftDisplayLine.properties, designId: selectedDesign.id, selected: true, role: 'route-design-line' } } : null
-    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData({ type: 'FeatureCollection', features: [...appliedFeatures.filter((feature) => feature.properties?.role !== 'route-preview-point'), ...(selectedDraftLine ? [selectedDraftLine] : []), ...(draftDisplayFeature ? [draftDisplayFeature] : []), ...interactivePoints] })
+    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData({ type: 'FeatureCollection', features: [...appliedFeatures.filter((feature) => feature.properties?.role !== 'route-preview-point'), ...(selectedDraftLine ? [selectedDraftLine] : []), ...(draftDisplayFeature ? [draftDisplayFeature] : []), ...selectedAppliedPoints, ...interactivePoints] })
     map.getSource(ROUTE_PENDING_SOURCE)?.setData(emptyGeoJSON)
     map.getSource(PROC_PREVIEW_SOURCE)?.setData(buildProcedureGeoJSON(selectedDesign?.procedures?.sid ?? null, selectedDesign?.procedures?.star ?? null, pendingIap ?? selectedIap ?? null))
     return { fitCoordinates: appliedFeatures.flatMap((feature) => feature.geometry.type === 'Point' ? [feature.geometry.coordinates] : feature.geometry.coordinates) }
@@ -342,6 +347,7 @@ export function syncRoutePreviewLayers(map, model) {
     )
   } else if (!routeResult) {
     map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
+    map.getSource(ROUTE_DRAW_SOURCE)?.setData(emptyGeoJSON)
     const procGeojson = buildProcedureGeoJSON(selectedSid, selectedStar, selectedIap)
     map.getSource(PROC_PREVIEW_SOURCE)?.setData(procGeojson)
     fitCoordinates = procGeojson.features.flatMap((feature) =>
@@ -410,7 +416,10 @@ export function syncBoundaryFixPreview(map, model) {
 }
 
 export function clearRoutePreviewLayers(map) {
+  map.getSource(ROUTE_BASELINE_SOURCE)?.setData(emptyGeoJSON)
   map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
+  map.getSource(ROUTE_PENDING_SOURCE)?.setData(emptyGeoJSON)
+  map.getSource(ROUTE_DRAW_SOURCE)?.setData(emptyGeoJSON)
   map.getSource(PROC_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
   map.getSource(BOUNDARY_FIX_PREVIEW_SOURCE)?.setData(emptyGeoJSON)
   clearRouteHighlight(map)

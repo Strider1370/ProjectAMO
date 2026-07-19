@@ -141,18 +141,23 @@
 
 .rb-alternatives { display: grid; gap: 8px; }
 .rb-altitude-comparison { display: grid; gap: 8px; }
+.rb-comparison-summary { display: grid; gap: 2px; padding: var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-xl); background: var(--level-gray-bg); }
+.rb-comparison-summary strong { color: var(--text-1); }
+.rb-comparison-summary span { color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-semibold); }
 .rb-step-actions { display: flex; gap: 8px; }
 .rb-step-actions > * { flex: 1 1 0; }
 .rb-alternatives-status, .rb-alternatives-note { margin: 0; font-size: 13px; color: var(--text-3); }
 .rb-alternatives-reason, .rb-alert-banner { margin: 0; font-size: 13px; font-weight: 600; color: var(--level-amber); background: var(--level-amber-bg); border-radius: var(--radius-md); padding: 6px 10px; }
 .rb-alternative-card { display: grid; gap: 4px; width: 100%; padding: 12px; text-align: left; color: inherit; background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-xl); cursor: pointer; }
-.rb-alternative-card.is-selected { border-left: 4px solid var(--accent); border-color: var(--accent); }
+.rb-alternative-card.is-selected { border-color: var(--accent); background: var(--level-gray-bg); }
 .rb-alternative-card:disabled { cursor: not-allowed; opacity: .55; }
 .rb-card-hazard { color: var(--level-amber); font-weight: 600; }
 .rb-card-warning { color: var(--level-red); font-weight: 600; }
-.rb-design-actions, .rb-design-rename { display: flex; flex-wrap: wrap; gap: var(--space-s); align-items: center; }
+.rb-design-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-s); }
+.rb-design-actions > button:first-child { grid-column: 1 / -1; }
+.rb-design-actions:has(> button:nth-child(5)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.rb-design-rename { display: flex; flex-wrap: wrap; gap: var(--space-s); align-items: center; }
 .rb-design-actions > *, .rb-design-rename > * { min-height: var(--touch-min); }
-.rb-design-actions > button:first-child { flex: 1 1 100%; }
 .rb-design-route-string { display: grid; gap: var(--space-s); padding: var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: var(--bg-2); }
 .rb-design-route-string > * { min-width: 0; }
 .rb-design-route-string label { font-size: 13px; font-weight: 700; color: var(--text-2); }
@@ -165,6 +170,49 @@
 @media (max-width: 560px) {
   .rb-design-actions > * { flex: 1 1 120px; }
   .rb-design-actions > button:first-child { flex-basis: 100%; }
+}
+
+.route-check-desktop-body {
+  min-width: 0;
+}
+
+.route-check-desktop-footer {
+  padding: var(--space-m);
+  border-top: 1px solid var(--stroke-2);
+  background: var(--bg-1);
+}
+
+.route-check-desktop-footer .route-check-actions {
+  display: flex;
+  gap: var(--space-s);
+  padding: 0;
+}
+
+.route-check-desktop-footer .route-check-actions button {
+  flex: 1 1 0;
+  min-height: var(--touch-min);
+  border-radius: var(--radius-lg);
+  font: inherit;
+  font-weight: var(--fw-bold);
+}
+
+.route-check-desktop-footer .route-check-search-button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg-1);
+}
+
+.route-check-desktop-footer .route-check-secondary-button {
+  border: 1px solid var(--stroke-1);
+  background: var(--bg-1);
+  color: var(--text-2);
+}
+
+.route-check-desktop-footer button:disabled {
+  border-color: var(--stroke-2);
+  background: var(--bg-4);
+  color: var(--text-3);
+  cursor: not-allowed;
 }
 .rb-design-rename > :first-child { flex: 1 1 auto; min-width: 0; }
 .rb-workflow-tabs { display: flex; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--stroke-1); font-size: 13px; color: var(--text-3); }
@@ -220,6 +268,8 @@
 .route-check-form .fui-SpinButton,
 .route-check-form .fui-Input,
 .route-check-form .fui-Combobox {
+  box-sizing: border-box;
+  min-height: 46px;
   border: 1px solid var(--stroke-1);
   border-radius: 7px;
   background: var(--bg-1);
@@ -817,10 +867,13 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 
 .cross-section-toggles {
   display: flex;
+  align-items: center;
   gap: 6px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--stroke-2);
 }
+.cross-section-toggle-group, .vertical-profile-toolbar-group, .vertical-profile-toolbar-actions { display: inline-flex; gap: 4px; align-items: center; }
+.vertical-profile-toolbar-actions { gap: 25px; margin-left: auto; }
 
 .cs-toggle {
   padding: 4px 10px;
@@ -926,6 +979,84 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   }
 }
 
+.vertical-profile-inline-close { height: 28px; padding: 0 10px; border: 1px solid var(--stroke-1); border-radius: 6px; background: var(--bg-1); color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; }
+.vertical-profile-toolbar-terrain { color: var(--text-2); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.cross-section-toggles .vertical-profile-altitude-nav { margin-left: 0; }
+
+.vertical-profile-altitude-nav { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; color: var(--text-1); }
+.vertical-profile-altitude-nav button { width: 28px; height: 28px; border: 1px solid var(--stroke-1); border-radius: 6px; background: var(--bg-1); color: var(--accent); font-size: 20px; line-height: 1; cursor: pointer; }
+.vertical-profile-altitude-nav button:disabled { color: var(--text-3); cursor: default; opacity: .5; }
+
+/* 휴대폰을 가로로 돌리면 단면도만 전체 화면에 표시한다. 차트 자체를 회전하지 않아 축과 글자는 정방향을 유지한다. */
+@media (max-width: 900px) {
+  .vertical-profile-window-backdrop.is-mobile-full {
+    position: fixed;
+    z-index: 1000;
+    align-items: stretch;
+    background: var(--bg-1);
+    pointer-events: auto;
+  }
+  .vertical-profile-window.is-mobile-full {
+    max-height: none;
+    height: 100dvh;
+    border: none;
+    border-radius: 0;
+  }
+  .vertical-profile-window-header { padding: 8px 12px; }
+  .vertical-profile-window .cross-section-toggles { padding: 6px 12px; }
+  .vertical-profile-window .vertical-profile-chart { padding: 6px 12px; }
+  .vertical-profile-window .vertical-profile-meta { margin-bottom: 4px; }
+  .vertical-profile-window .vertical-profile-plot-svg { height: calc(100dvh - 146px) !important; }
+}
+
+/* 자동 회전이 꺼진 기기에서도 세로 화면에서 가로 단면도를 전체 크기로 볼 수 있게 한다. */
+@media (max-width: 900px) and (orientation: portrait) {
+  .vertical-profile-window.is-mobile-full {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100dvh;
+    height: 100dvw;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .vertical-profile-window.is-mobile-full .cross-section-toggles {
+    gap: 10px;
+    padding: 4px 10px;
+  }
+  .vertical-profile-window.is-mobile-full .cs-toggle {
+    padding: 3px 8px;
+  }
+  .vertical-profile-window.is-mobile-full .vertical-profile-chart {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    height: 0;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+  .vertical-profile-window.is-mobile-full .vertical-profile-meta {
+    gap: 2px 8px;
+    margin-bottom: 2px;
+    font-size: 11px;
+  }
+  .vertical-profile-window.is-mobile-full .vertical-profile-chart-body,
+  .vertical-profile-window.is-mobile-full .vertical-profile-plot-scroll {
+    min-height: 0;
+    overflow-y: hidden;
+  }
+  .vertical-profile-window.is-mobile-full .vertical-profile-plot-scroll { touch-action: none; }
+  .vertical-profile-window.is-mobile-full .vertical-profile-chart-body {
+    flex: 1 1 auto;
+  }
+  .vertical-profile-window.is-mobile-full .vertical-profile-plot-svg {
+    height: 100% !important;
+  }
+}
+
 .rb-altitude-profile {
   margin-top: 16px;
   border: 1px solid var(--stroke-2);
@@ -987,7 +1118,7 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 
 .vertical-profile-tod-summary {
   color: var(--level-amber);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1111,7 +1242,8 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 }
 
 .route-check-form .route-check-search-button:disabled {
-  background: var(--text-3);
+  background: var(--bg-4);
+  color: var(--text-3);
   cursor: not-allowed;
 }
 
@@ -1301,7 +1433,7 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 
 .mobile-sheet-footer .route-check-actions button:disabled {
   background: var(--bg-4);
-  color: var(--text-disabled);
+  color: var(--text-3);
   cursor: not-allowed;
 }
 
@@ -1406,6 +1538,7 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 .rb-route-string { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
 .rb-route-string textarea { width: 100%; min-height: 132px; box-sizing: border-box; resize: vertical; font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .rb-route-string span { font-size: 12px; font-weight: 400; color: var(--text-3); }
+.route-check-form .rb-route-string .route-check-search-button { min-height: 44px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: #fff; }
 .rb-route-edit-confirm { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border: 1px solid var(--level-amber); border-radius: var(--radius-md); background: var(--level-amber-bg); font-size: 13px; }
 .rb-route-edit-confirm > div { display: flex; gap: 6px; flex: none; }
 .rb-route-plan { margin-top: 6px; padding: 7px 9px; border-radius: var(--radius-md); background: var(--bg-2); color: var(--text-2); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
@@ -1413,17 +1546,25 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 /* Step ② auto-recommend: same handleAutoRecommend as desktop, surfaced as a
    full-width primary suggestion (light-accent, own style below) ahead
    of the manual SID/STAR pickers. */
-.rb-mobile .rb-auto-search {
+.route-check-form.rb-mobile .rb-auto-search {
   width: 100%;
   min-height: 44px;
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--bg-1));
+  border: 1px solid var(--accent);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-1));
-  color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
   font-size: 13px;
   font-weight: 600;
 }
-.rb-mobile .rb-auto-search:disabled { opacity: 0.6; cursor: default; }
+.route-check-form.rb-mobile .rb-auto-search:disabled { opacity: 0.6; cursor: default; }
+
+.rb-mobile .vfr-layer-toggles .ltc-chip {
+  min-height: 36px;
+  padding: 0 var(--space-m);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+}
 
 /* Mobile touch targets ≥ 44px (WCAG 2.5.5). Scoped to the mobile wizard /
    sheet footer so desktop density is unchanged. */
@@ -1446,6 +1587,22 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 .rb-mobile .vertical-profile-open-button {
   height: 44px;
   min-height: 44px;
+}
+  .route-check-form.rb-mobile .rb-alternative-card {
+    height: auto;
+    min-height: var(--touch-min);
+  }
+.rb-mobile .rb-alternative-card.is-selected {
+  background: var(--level-gray-bg);
+}
+.rb-altitude-selection {
+  margin: 0;
+  padding: var(--space-s);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  font-size: var(--fs-200);
+  font-weight: var(--fw-semibold);
 }
 
 /* B05: waypoint 조작 버튼(핸들·삭제·고도 알약·전체적용) 44px 터치 타깃. */

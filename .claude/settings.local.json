@@ -66,7 +66,10 @@
       "Bash(node -e \"console.log\\(Object.keys\\(require\\('C:/ProjectAMO/frontend/node_modules/lucide-react'\\)\\).filter\\(k=>/chart/i.test\\(k\\)\\)\\)\")",
       "Bash(node *)",
       "Workflow(deep-research)",
-      "Bash(powershell -Command \"Get-Date -Format 'yyyy-MM-dd HH:mm:ss'\")"
+      "Bash(powershell -Command \"Get-Date -Format 'yyyy-MM-dd HH:mm:ss'\")",
+      "Bash(cp *)",
+      "Bash(xargs -I{} echo {})",
+      "Bash(git log *)"
     ]
   }
 }

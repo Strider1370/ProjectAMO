@@ -100,6 +100,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const iapRequestRef = useRef(0)
   const sidFilterRequestRef = useRef(0)
   const routeSearchRequestRef = useRef(0)
+  const routeResetVersionRef = useRef(0)
   const vfrPreviewRequestRef = useRef(0)
   const draftPreviewRequestRef = useRef(0)
   const routeExposureRequestRef = useRef(0)
@@ -183,7 +184,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     vfrWaypointsRef.current = draftVfrWaypoints.length >= 2 ? draftVfrWaypoints : appliedVfrWaypoints
   }, [appliedVfrWaypoints, draftVfrWaypoints])
 
-  function clearRouteDisplay() {
+  function clearRouteDisplay({ clearEditor = true } = {}) {
     routeSearchRequestRef.current += 1
     routeExposureRequestRef.current += 1
     altitudeComparisonRequestRef.current += 1
@@ -210,7 +211,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setFitBoundsRequest(null)
     setBriefing(null)
     setBriefingError(null)
-    setRouteEditor((editor) => ({ ...editor, rawText: '', preview: null, pendingIntent: null }))
+    if (clearEditor) setRouteEditor((editor) => ({ ...editor, rawText: '', preview: null, pendingIntent: null }))
   }
 
   useEffect(() => {
@@ -337,6 +338,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
 
   useEffect(() => {
     let cancelled = false
+    const resetVersion = routeResetVersionRef.current
 
     if (
       activePanel !== 'route-check' ||
@@ -360,7 +362,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       loadOverseasLinks,
       buildBriefingRoute,
     }).then(async (best) => {
-      if (cancelled || !best) return
+      if (cancelled || resetVersion !== routeResetVersionRef.current || !best) return
 
       const nextForm = {
         ...routeForm,
@@ -372,7 +374,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
           ...nextForm,
           routeType: effectiveRouteType,
         })
-        if (cancelled) return
+        if (cancelled || resetVersion !== routeResetVersionRef.current) return
         const generatedEditor = await buildEditorPreview(
           createRouteEditor({
             routeForm: { ...nextForm, routeType: effectiveRouteType },
@@ -380,12 +382,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
           }),
           formatRouteString(result),
         )
-        if (cancelled) return
+        if (cancelled || resetVersion !== routeResetVersionRef.current) return
         setRouteEditor(generatedEditor.editor)
         setRouteError(null)
         setAutoRecommendRequested(false)
       } catch (error) {
-        if (!cancelled) {
+        if (!cancelled && resetVersion === routeResetVersionRef.current) {
           setAutoRecommendRequested(false)
           setRouteError(error.message)
         }
@@ -491,7 +493,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   function confirmContextChange() {
     const change = pendingContextChange
     if (!change) return
-    clearRouteDisplay()
+    clearRouteDisplay({ clearEditor: false })
     setIapCandidates([])
     setRouteEditor(emptyEditorForContext({ ...routeForm, ...change.changes }))
     setPendingContextChange(null)
@@ -513,11 +515,25 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   }
 
   function handleRouteReset() {
+    // A saved-route load can still be awaiting procedure/exposure data when the
+    // user resets. Mark it stale before clearing so it cannot restore the old
+    // route after this fresh-start transition.
+    routeResetVersionRef.current += 1
+    setRouteEditor(emptyEditorForContext(initialRouteForm))
     clearRouteDisplay()
+    setMapInteractionMode(null)
+    mapInteractionModeRef.current = null
+    lastVfrKeyRef.current = ''
     setIapCandidates([])
-    setRouteEditor(emptyEditorForContext({ ...initialRouteForm, flightRule: routeForm.flightRule }))
     setAvailableSidIds(null)
     setAutoRecommendRequested(false)
+    setPendingContextChange(null)
+    setHoveredWpInfo(null)
+    setImportCandidates([])
+    setImportWarning(null)
+    setImportError(null)
+    setAutoBriefingPending(false)
+    autoSearchRef.current = false
   }
 
   async function handleVfrWaypointDrop({ waypoints, previousWaypoints, waypointIndex }) {
@@ -1169,7 +1185,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setAltitudeComparisonError(null)
   }
 
-  async function startAltitudeComparison() {
+  async function startAltitudeComparison({ openWindow = true } = {}) {
     const value = Number(altitudeDraftFt)
     if (!Number.isFinite(value) || value <= 0) {
       setAltitudeComparisonError('계획 순항고도를 입력하세요.')
@@ -1183,7 +1199,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     await handleVerticalProfileRequest({
       plannedCruiseAltitudeFt: value,
       candidateCruiseAltitudesFt,
-      openWindow: true,
+      openWindow,
     })
   }
 
@@ -1194,13 +1210,34 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setBriefingError(null)
   }
 
-  function continueToBriefing() {
+  function continueToBriefing({ fitRoute = false } = {}) {
+    const altitudeFt = Number(altitudeDraftFt)
     if (!selectedRouteDesignId || !Number.isFinite(Date.parse(eta))) return
+    if (!Number.isFinite(altitudeFt) || altitudeFt <= 0) {
+      setAltitudeComparisonError('계획 순항고도를 입력하세요.')
+      return
+    }
+    setCruiseAltitudeFt(altitudeFt)
+    if (fitRoute) {
+      const routeGeometry = selectedAppliedDesign?.routeModel?.routeGeometry ?? getCurrentRouteLineString({
+        routeResult,
+        vfrWaypoints: appliedVfrWaypoints,
+        selectedSid,
+        selectedStar,
+        selectedIap,
+      })
+      const coordinates = routeGeometry?.coordinates ?? []
+      if (coordinates.length > 0) setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates, maxZoom: 8 })
+    }
     setVerticalProfileWindowOpen(false)
     setWorkflowStep('briefing')
   }
 
   function goToWorkflowStep(step) {
+    if (step === 'briefing') {
+      continueToBriefing()
+      return
+    }
     if (!workflowAvailability[step]) return
     if (step === 'settings') projectBaseForSettings()
     if (step !== 'altitude') setVerticalProfileWindowOpen(false)
@@ -1248,6 +1285,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   // 불러오기: restore saved inputs, re-search, then overlay saved VFR waypoints.
   // opts.autoBriefing=true → 경로검색 완료(routeResult) 후 아래 effect가 브리핑을 자동 생성.
   async function loadSavedRoute(saved, opts = {}) {
+    const resetVersion = routeResetVersionRef.current
     saved = normalizeRouteSnapshot(saved)
     if (!saved?.base?.routeForm && !saved?.routeForm) return
     if (opts.autoBriefing) { setAutoBriefingPending(true); autoSearchRef.current = false }
@@ -1259,6 +1297,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         procedureIds.star ? getProcedures(savedForm.arrivalAirport, 'STAR') : Promise.resolve([]),
         procedureIds.iapKey ? loadIapData(savedForm.arrivalAirport) : Promise.resolve(null),
       ])
+      if (resetVersion !== routeResetVersionRef.current) return
       const procedures = {
         sid: savedSids.find((procedure) => procedure.id === procedureIds.sid) ?? null,
         star: savedStars.find((procedure) => procedure.id === procedureIds.star) ?? null,
@@ -1270,12 +1309,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         enroute: saved.base.enroute,
         rawText: saved.base.routeString,
       }), saved.base.routeString)
+      if (resetVersion !== routeResetVersionRef.current) return
       const selectedIap = savedIapData?.iapRoutes?.[procedures.iapKey] ?? null
       const routeGeometry = getCurrentRouteLineString({ routeResult: preview.result, selectedSid: procedures.sid, selectedStar: procedures.star, selectedIap })
       const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: preview.result })
       const etdIso = Number.isFinite(Date.parse(saved.etd)) ? new Date(saved.etd).toISOString().replace('.000Z', 'Z') : null
       const savedEta = saved.eta || computeEtaIso(etdIso, preview.result.totalDistanceNm, saved.tasKt) || null
       const exposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: savedEta }).catch((error) => ({ trigger: 'unavailable', hazards: [], error: error.message }))
+      if (resetVersion !== routeResetVersionRef.current) return
       clearRouteDisplay()
       setEtd(saved.etd ?? etd)
       setTasKt(saved.tasKt ?? tasKt)
@@ -1312,6 +1353,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
           return createRouteDesign({ ...alternative, kind: 'alternative', routeForm: alternativeForm, procedures: alternativeProcedures, routeResult: alternativePreview.result, routeModel: model, routeExposure: alternativeExposure, enroute: alternativePreview.editor.enroute, routeString: alternativePreview.editor.rawText })
         } catch { return null }
       }))
+      if (resetVersion !== routeResetVersionRef.current) return
       let designs = [baseDesign, ...alternatives.filter(Boolean)]
       try {
         const batch = await fetchRouteExposureBatch({ routes: designs.map((design) => ({ id: design.id, routeGeometry: design.routeModel.routeGeometry, routeModel: design.routeModel, etd: etdIso, eta: computeEtaIso(etdIso, design.routeResult.totalDistanceNm ?? design.routeResult.distanceNm, saved.tasKt) })) })
@@ -1320,6 +1362,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
           return exposureResult ? { ...design, routeExposure: { ...exposureResult, snapshot: batch.snapshot } } : design
         })
       } catch { /* A saved route remains usable when fresh comparison data is unavailable. */ }
+      if (resetVersion !== routeResetVersionRef.current) return
       setRouteDesigns(designs)
       const loadedBase = designs.find((design) => design.id === baseDesign.id) ?? baseDesign
       const selectedId = designs.some((design) => design.id === saved.selectedAlternativeId) ? saved.selectedAlternativeId : loadedBase.id
@@ -1345,6 +1388,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setAlternateAirport(saved.alternateAirport || '')
     if (saved.etd) setEtd(saved.etd)
     const result = await runRouteSearch(saved.routeForm)
+    if (resetVersion !== routeResetVersionRef.current) return
     if (saved.routeForm.flightRule === 'IFR') {
       // IFR: 로드 후 절차 자동추천 자동 발화(수동 '자동검색' 클릭과 동일) — SID/STAR 매칭·해외 경로 확보.
       // 스냅샷에 selectedSid/Star가 없어 존중할 값이 없으므로 자동추천이 안전. runRouteSearch await 뒤라 순차(수동 흐름 재현).
@@ -1594,6 +1638,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
         plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
       })
       setBriefing(result)
+      setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: routeGeometry.coordinates, maxZoom: 8 })
       // also load profile + cross-section so ④ can render the inline 단면도 (best-effort)
       try {
         const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT
@@ -1614,7 +1659,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     settings: true,
     compare: !!routeResult,
     altitude: !!selectedRouteDesignId,
-    briefing: !!altitudeComparison && !!selectedRouteDesignId && Number.isFinite(Date.parse(eta)),
+    briefing: Number.isFinite(Number(altitudeDraftFt)) && Number(altitudeDraftFt) > 0 && !!selectedRouteDesignId && Number.isFinite(Date.parse(eta)),
   }
 
   return {

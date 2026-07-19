@@ -113,6 +113,24 @@ export function buildTafTacLines(taf, icao) {
   })
 }
 
+// 탭 배지: §10 정본 = 작동 프로토타입 badges()의 TAF 분기 이식. 예보 기간 중 VFR을 벗어나는
+// 연속 시간창 수를 세고, 그중 LIFR이 하나라도 있으면 적, 없으면(IFR만) 앰버.
+export function countTafHazardPeriods(slots) {
+  let count = 0
+  let worst = 0
+  let prevHazard = false
+  for (const s of slots || []) {
+    const cat = s.flight?.category
+    const hazard = cat && cat !== 'VFR'
+    if (hazard) {
+      if (!prevHazard) count++
+      worst = Math.max(worst, cat === 'LIFR' ? 2 : 1)
+    }
+    prevHazard = hazard
+  }
+  return count ? { count, severity: worst >= 2 ? 'red' : 'amber' } : null
+}
+
 export function buildTafViewModel(taf, icao) {
   const rawTimeline = Array.isArray(taf.timeline) ? taf.timeline : []
   const timeline = rawTimeline.filter((slot) => new Date(slot.time).getTime() + 3600 * 1000 > Date.now())

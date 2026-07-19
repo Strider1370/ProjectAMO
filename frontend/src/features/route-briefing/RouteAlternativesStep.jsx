@@ -6,6 +6,7 @@ import { metLabel } from '../map/layerActions.js'
 import { hazardMapLayers } from './lib/hazardLayers.js'
 import { formatRouteString } from './lib/routePlanner.js'
 import { buildRouteComparison } from './lib/routeComparison.js'
+import { computeEtaIso } from './lib/etaCalc.js'
 
 function exposureLabel(hazard) {
   const distance = hazard?.horizontalExposure?.intervals?.reduce((total, interval) => total + Math.max(0, interval.endNm - interval.startNm), 0)
@@ -16,7 +17,7 @@ function relatedLayerIds(routeExposure) {
   return hazardMapLayers({ sections: { adverse: { hazards: (routeExposure?.hazards ?? []).map((hazard) => ({ code: hazard.phenomenon, source: hazard.source })) } } })
 }
 
-export default function RouteDesignStep({ designs = [], selectedDesignId, routeExposure, etd, tasKt, metVisibility = {}, onToggleMet, onSelect, onDuplicate, onRename, onRemove, onStartDraft, onUpdateDraft, onPreviewDraft, onCancelDraft, onApplyDraft, onUndo, routeError, onBack, onContinue }) {
+export default function RouteDesignStep({ designs = [], selectedDesignId, routeExposure, etd, tasKt, metVisibility = {}, onToggleMet, onSelect, onDuplicate, onRename, onRemove, onStartDraft, onUpdateDraft, onPreviewDraft, onCancelDraft, onApplyDraft, onUndo, routeError, onBack, onContinue, hideStepActions = false }) {
   const [renaming, setRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [routeString, setRouteString] = useState('')
@@ -25,6 +26,8 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
   const previousRouteStringRef = useRef('')
   const selectedDesign = designs.find((design) => design.id === selectedDesignId)
   const baseDesign = designs.find((design) => design.kind === 'base' || design.id === 'base')
+  const baseDistance = Number(baseDesign?.routeResult?.totalDistanceNm ?? baseDesign?.routeResult?.distanceNm)
+  const baseEta = computeEtaIso(etd, baseDistance, tasKt)
   const comparisonById = new Map(buildRouteComparison(baseDesign, designs.filter((design) => design.kind === 'alternative'), { etd, tasKt, weatherSnapshot: baseDesign?.routeExposure?.snapshot }).map((row) => [row.id, row]))
   useEffect(() => {
     const next = (selectedDesign?.draftEditor?.rawText ?? selectedDesign?.routeString) || formatRouteString(selectedDesign?.routeResult)
@@ -53,10 +56,16 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
 
   return (
     <div className="rb-alternatives">
+      {baseDesign && <div className="rb-comparison-summary">
+        <strong>{baseDesign.name}</strong>
+        <span>{Number.isFinite(baseDistance) ? `${Math.round(baseDistance)} NM` : '거리 자료 없음'}</span>
+        {baseEta && <span>ETA {baseEta.slice(11, 16)} UTC</span>}
+        <Button appearance="primary" type="button" onClick={onDuplicate} disabled={designs.length >= 4}>이 경로에서 우회안 만들기</Button>
+      </div>}
       {message && <p className="rb-alternatives-status">{message}</p>}
       {routeExposure?.hazards?.map((hazard) => <p key={hazard.sourceId} className="rb-alternatives-reason">{exposureLabel(hazard)}</p>)}
       {layerIds.length > 0 && onToggleMet && <details className="rb-hazard-disclosure"><summary>위험 표시</summary><LayerToggleChips ariaLabel="경로 관련 기상 레이어" items={layerIds.map((id) => ({ key: id, label: metLabel(id), on: !!metVisibility[id], onToggle: () => onToggleMet(id) }))} /></details>}
-      {designs.map((design) => {
+      {designs.filter((design) => design.kind === 'alternative').map((design) => {
         const selected = design.id === selectedDesignId
         const distance = design.routeResult?.totalDistanceNm ?? design.routeResult?.distanceNm
         const comparison = comparisonById.get(design.id)
@@ -64,6 +73,7 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
           <button key={design.id} type="button" aria-selected={selected} className={`rb-alternative-card${selected ? ' is-selected' : ''}`} onClick={() => onSelect(design.id)}>
             <strong>{design.name}</strong>
             <span>{Number.isFinite(distance) ? `${Math.round(distance)} NM` : '거리 자료 없음'}</span>
+            {comparison?.eta && <span>ETA {comparison.eta.slice(11, 16)} UTC</span>}
             {comparison?.distanceDeltaNm != null && <span>기준 대비 {comparison.distanceDeltaNm > 0 ? '+' : ''}{comparison.distanceDeltaNm} NM · {comparison.etaDeltaMinutes > 0 ? '+' : ''}{comparison.etaDeltaMinutes}분</span>}
             {comparison?.comparisonUnavailable && <span>위험 노출 비교 자료 없음</span>}
             {design.routeExposure?.hazards?.slice(0, 2).map((hazard) => <span key={hazard.sourceId} className="rb-card-hazard">{exposureLabel(hazard)}</span>)}
@@ -71,7 +81,7 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
           </button>
         )
       })}
-      {selectedDesign && (
+      {selectedDesign?.kind === 'alternative' && (
         renaming ? (
           <div className="rb-design-rename">
             <Input aria-label="설계안 이름" value={nameDraft} onChange={(_, data) => setNameDraft(data.value)} onKeyDown={(event) => {
@@ -83,23 +93,16 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
           </div>
         ) : (
           <div className="rb-design-actions">
-            {selectedDesign.kind === 'base'
-              ? <Button appearance="primary" type="button" onClick={onDuplicate} disabled={designs.length >= 4}>이 경로에서 우회안 만들기</Button>
-              : <>
-                  <Button appearance="secondary" type="button" onClick={() => onStartDraft?.(selectedDesign.id)}>항로 문자열 직접 편집</Button>
-                  {selectedDesign.undoStack?.length > 0 && <Button appearance="secondary" type="button" onClick={onUndo}>되돌리기</Button>}
-                  <Button appearance="secondary" type="button" onClick={onDuplicate} disabled={designs.length >= 4}>우회안 복제</Button>
-                  <Button appearance="secondary" type="button" onClick={beginRename}>이름 변경</Button>
-                  <Button appearance="secondary" type="button" onClick={() => setDeleteArmed(true)}>삭제</Button>
-                </>}
+            <Button appearance="secondary" type="button" onClick={() => onStartDraft?.(selectedDesign.id)}>항로 문자열 직접 편집</Button>
+            {selectedDesign.undoStack?.length > 0 && <Button appearance="secondary" type="button" onClick={onUndo}>되돌리기</Button>}
+            <Button appearance="secondary" type="button" onClick={onDuplicate} disabled={designs.length >= 4}>우회안 복제</Button>
+            <Button appearance="secondary" type="button" onClick={beginRename}>이름 변경</Button>
+            <Button appearance="secondary" type="button" onClick={() => {
+              if (deleteArmed) { onRemove(); setDeleteArmed(false) } else setDeleteArmed(true)
+            }}>{deleteArmed ? `${selectedDesign.name} 삭제` : '삭제'}</Button>
           </div>
         )
       )}
-      {selectedDesign?.kind === 'alternative' && deleteArmed && <div className="rb-delete-confirm" role="alert">
-        <p>{selectedDesign.name}을 삭제할까요?</p>
-        <Button appearance="secondary" type="button" onClick={() => setDeleteArmed(false)}>취소</Button>
-        <Button appearance="primary" type="button" onClick={() => { onRemove(); setDeleteArmed(false) }}>삭제</Button>
-      </div>}
       {selectedDesign?.kind === 'alternative' && selectedDesign.draftEditor && <div className="rb-design-route-string">
         <label htmlFor="rb-compatible-route">항로 문자열 직접 편집</label>
         <textarea id="rb-compatible-route" value={routeString} onChange={(event) => { setRouteString(event.target.value); onUpdateDraft?.(event.target.value) }} onKeyDown={(event) => { if (event.ctrlKey && event.key === 'Enter') onApplyDraft?.() }} />
@@ -116,10 +119,10 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
       {changedTokens.length > 0 && <p className="rb-route-string-change">지도 수정 반영: {routeString.split(' ').map((token, index) => <span key={`${token}-${index}`} className={changedTokens.includes(token) ? 'is-changed' : ''}>{token} </span>)}</p>}
       {routeError && <p className="rb-alternatives-status" role="alert">{routeError}</p>}
       <p className="rb-alternatives-note">지도: 기준 점선 · 선택 우회안 실선 · 다른 우회안 보조선 · 초안 점선 · 위험 영역</p>
-      <div className="rb-step-actions">
+      {!hideStepActions && <div className="rb-step-actions">
         <Button appearance="secondary" type="button" onClick={onBack}>이전 단계</Button>
         <Button appearance="primary" type="button" disabled={!selectedDesignId} onClick={onContinue}>{selectedDesign?.kind === 'alternative' ? '이 우회안으로 고도 비교' : '고도 비교로'}</Button>
-      </div>
+      </div>}
     </div>
   )
 }

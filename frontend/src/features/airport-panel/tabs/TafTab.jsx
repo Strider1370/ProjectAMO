@@ -32,6 +32,21 @@ function periodRange(period, tz) {
   return `${formatTafHour(first.time, tz)}–${formatTafHour(endIso, tz)}`
 }
 
+// 컬럼 값이 연속으로 같은 행들을 rowSpan으로 세로 병합하기 위한 행별 span 계산.
+// span > 0 인 행만 <td>를 그리고, 0인 행은 위 셀의 rowSpan에 덮이므로 렌더링 생략.
+function computeColumnSpans(periods, textFn) {
+  const spans = new Array(periods.length).fill(0)
+  let i = 0
+  while (i < periods.length) {
+    const text = textFn(periods[i].first)
+    let j = i + 1
+    while (j < periods.length && textFn(periods[j].first) === text) j++
+    spans[i] = j - i
+    i = j
+  }
+  return spans
+}
+
 export default function EnhancedTafTab({ taf, icao }) {
   // 모바일: 테이블 고정. 데스크톱·태블릿: 타임라인 고정. 뷰 토글 없음.
   const [view] = useState(() =>
@@ -79,31 +94,37 @@ export default function EnhancedTafTab({ taf, icao }) {
         </div>
       )}
 
-      {slots.length > 0 && view === 'table' && (
-        <div className="ap-taf-table-wrap">
-          <table className="ap-taf-table">
-          <thead><tr><th>시간 · 조건</th><th>시정</th><th>운고</th><th>바람</th><th>날씨</th></tr></thead>
-          <tbody>
-            {periods.map((p, index) => {
-              const item = p.first
-              const catColor = TAF_CATEGORY_COLOR[item.flight.category]
-              return (
-                <tr key={index}>
-                  <td className="ap-taf-tcol" style={{ borderLeft: `4px solid ${catColor}` }}>
-                    <span className="ap-taf-trange">{periodRange(p, tz)}</span>
-                    <span className="ap-taf-tcat" style={{ color: catColor }}>{item.flight.category}</span>
-                  </td>
-                  <td style={{ color: item.visibilityCategory.valueColor }}>{item.visibilityText}</td>
-                  <td style={{ color: item.ceilingCategory.valueColor }}>{item.ceilingText}</td>
-                  <td className={item.highWind ? 'is-alert' : ''}>{item.windText}</td>
-                  <td className={`ap-taf-wx${item.hasPrecipitation ? ' ap-taf-wx--precip' : ''}${item.isSpecialWeather ? ' ap-taf-wx--special' : ''}`}><WeatherIcon visual={item.visual} className="ap-taf-wx-icon" />{item.weatherLabel}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-          </table>
-        </div>
-      )}
+      {slots.length > 0 && view === 'table' && (() => {
+        const visSpans = computeColumnSpans(periods, (item) => item.visibilityText)
+        const ceilSpans = computeColumnSpans(periods, (item) => item.ceilingText)
+        const windSpans = computeColumnSpans(periods, (item) => item.windText)
+        const wxSpans = computeColumnSpans(periods, (item) => item.weatherLabel)
+        return (
+          <div className="ap-taf-table-wrap">
+            <table className="ap-taf-table">
+            <thead><tr><th>시간 · 조건</th><th>시정</th><th>운고</th><th>바람</th><th>날씨</th></tr></thead>
+            <tbody>
+              {periods.map((p, index) => {
+                const item = p.first
+                const catColor = TAF_CATEGORY_COLOR[item.flight.category]
+                return (
+                  <tr key={index}>
+                    <td className="ap-taf-tcol" style={{ borderLeft: `4px solid ${catColor}` }}>
+                      <span className="ap-taf-trange">{periodRange(p, tz)}</span>
+                      <span className="ap-taf-tcat" style={{ color: catColor }}>{item.flight.category}</span>
+                    </td>
+                    {visSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={visSpans[index]} style={{ color: item.visibilityCategory.valueColor }}>{item.visibilityText}</td>}
+                    {ceilSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={ceilSpans[index]} style={{ color: item.ceilingCategory.valueColor }}>{item.ceilingText}</td>}
+                    {windSpans[index] > 0 && <td className={`ap-taf-merged${item.highWind ? ' is-alert' : ''}`} rowSpan={windSpans[index]}>{item.windText}</td>}
+                    {wxSpans[index] > 0 && <td className={`ap-taf-merged ap-taf-wx${item.hasPrecipitation ? ' ap-taf-wx--precip' : ''}${item.isSpecialWeather ? ' ap-taf-wx--special' : ''}`} rowSpan={wxSpans[index]}><WeatherIcon visual={item.visual} className="ap-taf-wx-icon" />{item.weatherLabel}</td>}
+                  </tr>
+                )
+              })}
+            </tbody>
+            </table>
+          </div>
+        )
+      })()}
 
       {/* ── 원문(TAC) — 접이식(기본 접힘). METAR TAC과 동일하게 큰 글자 + 임계값 색칠,
           줄(기본/TEMPO/BECMG/FM/PROB)마다 그 시점의 비행조건 배지를 앞에 붙인다. ── */}

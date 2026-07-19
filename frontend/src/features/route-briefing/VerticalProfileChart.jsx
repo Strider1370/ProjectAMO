@@ -11,6 +11,10 @@ function formatFt(value) {
   return `${Math.round(value).toLocaleString()} ft`
 }
 
+function formatFlightLevel(value) {
+  return value >= 10000 ? `FL${Math.round(value / 100)}` : `${Math.round(value).toLocaleString()} ft`
+}
+
 function formatNm(value) {
   if (!Number.isFinite(value)) return '--'
   return `${Math.abs(value).toFixed(1)}NM`
@@ -31,9 +35,14 @@ function getAltitudeHeadroomFt(cruiseAltitudeFt) {
 }
 
 function assignMarkerLanes(markers, xFor) {
-  return markers.map((marker, index) => {
+  const laneEnds = []
+  return [...markers].sort((a, b) => a.distanceNm - b.distanceNm).map((marker) => {
     const x = xFor(marker.distanceNm)
-    return { ...marker, x, lane: index % 2 }
+    const halfWidth = Math.max(16, fitMarkerLabel(marker.label).length * 3.5 + 6)
+    const lane = laneEnds.findIndex((end) => end <= x - halfWidth)
+    const laneIndex = lane < 0 ? laneEnds.length : lane
+    laneEnds[laneIndex] = x + halfWidth
+    return { ...marker, x, lane: laneIndex }
   })
 }
 
@@ -191,9 +200,14 @@ export default function VerticalProfileChart({
   layers = {},
   advisories = [],
   selectedCandidateAltitudeFt = null,
+  candidateAltitudes = [],
+  onSelectCandidateAltitude,
+  enableDragScroll = false,
+  hideMeta = false,
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
+  const dragRef = useRef(null)
   const [containerWidth, setContainerWidth] = useState(0)
   useEffect(() => {
     const el = containerRef.current
@@ -211,6 +225,10 @@ export default function VerticalProfileChart({
   const markers = profile?.markers ?? []
   const flightProfile = profile?.flightPlan?.profile ?? null
   const candidateProfiles = profile?.candidateProfiles ?? []
+  const selectableAltitudes = [...new Set(candidateAltitudes.filter(Number.isFinite))].sort((a, b) => a - b)
+  const selectedAltitudeIndex = selectableAltitudes.indexOf(selectedCandidateAltitudeFt)
+  const previousAltitude = selectableAltitudes[selectedAltitudeIndex - 1]
+  const nextAltitude = selectableAltitudes[selectedAltitudeIndex + 1]
 
   if (samples.length < 2) {
     return (
@@ -237,15 +255,21 @@ export default function VerticalProfileChart({
   }
 
   const height = 380
-  const padding = { top: 26, right: 26, bottom: 96, left: 58 }
+  const basePadding = { top: 26, right: 58, left: 80 }
   const maxDistance = Math.max(profile.axis.totalDistanceNm || 0, samples[samples.length - 1].distanceNm || 0.1)
-  // 컨테이너(하단 바) 폭을 채운다. 측정 전엔 960 폴백. 항로가 길면 그 이상으로 넓혀 가로 스크롤(고정축),
-  // 단 상한(≈컨테이너 3폭)에서 멈춰 스크롤이 과하지 않게 한다. 단거리는 컨테이너에 꽉 참(스크롤 없음).
+  // 컨테이너 폭을 채우되 항로가 길면 전체 거리를 유지한다. 장거리 항로는 차트 안에서 가로 이동한다.
   const availWidth = Math.max(320, Math.round(containerWidth) || 960)
-  const MAX_WIDTH = availWidth * 3
   const PX_PER_NM = 1.2
-  const width = Math.min(MAX_WIDTH, Math.max(availWidth, Math.round(padding.left + padding.right + maxDistance * PX_PER_NM)))
+  const width = Math.max(availWidth, Math.round(basePadding.left + basePadding.right + maxDistance * PX_PER_NM))
   const scrollable = width > availWidth + 1
+  const provisionalPlotWidth = width - basePadding.left - basePadding.right
+  const provisionalX = (distanceNm) => basePadding.left + (distanceNm / maxDistance) * provisionalPlotWidth
+  const visibleMarkers = markers
+    .filter((marker) => Number.isFinite(marker.distanceNm) && marker.distanceNm >= 0 && marker.distanceNm <= maxDistance)
+    .map((marker, index) => ({ ...marker, key: `${marker.label}-${index}` }))
+  const markerLabels = assignMarkerLanes(visibleMarkers, provisionalX)
+  const markerLaneCount = Math.max(1, ...markerLabels.map((marker) => marker.lane + 1))
+  const padding = { ...basePadding, bottom: 36 + markerLaneCount * 16 }
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
   const terrainMaxFt = Math.max(...terrainPoints.map((point) => point.elevationFt), 0)
@@ -295,11 +319,6 @@ export default function VerticalProfileChart({
   const cruiseTick = Number.isFinite(selectedCruiseAltitudeFt) && selectedCruiseAltitudeFt > 0 && selectedCruiseAltitudeFt < yMax
     ? selectedCruiseAltitudeFt
     : null
-  const visibleMarkers = markers
-    .filter((marker) => Number.isFinite(marker.distanceNm) && marker.distanceNm >= 0 && marker.distanceNm <= maxDistance)
-    .map((marker, index) => ({ ...marker, key: `${marker.label}-${index}` }))
-  const markerLabels = assignMarkerLanes(visibleMarkers, xFor)
-
   const csLevels = crossSection?.levels ?? []
   const altFor = (lvl) => Number.isFinite(lvl.altFt) ? lvl.altFt : pressureToFallbackFt(lvl.pressure)
   const turbulenceCells = (() => {
@@ -353,7 +372,7 @@ export default function VerticalProfileChart({
     return cells
   })()
   const tempIsotherms = (() => {
-    if (!crossSection || !layers.temp || csLevels.length < 2) return []
+    if (!crossSection || csLevels.length < 2) return []
     const sampleCount = csLevels[0]?.values?.length ?? 0
     if (sampleCount < 2) return []
     const xs = csLevels[0].values.map((v) => xFor(v.distanceNm))
@@ -366,12 +385,13 @@ export default function VerticalProfileChart({
     const maxT = Math.max(...finiteTs)
     const result = []
     for (let t = Math.ceil(minT / 10) * 10; t <= maxT; t += 10) {
+      if (!layers.temp && t !== 0) continue
       result.push({ level: t, bold: t === 0, chains: chainSegments(isothermSegments(cells, t)) })
     }
     return result
   })()
   const isothermlabels = (() => {
-    if (!crossSection || !layers.temp) return []
+    if (!crossSection) return []
     const seen = new Set()
     return tempIsotherms.flatMap(({ level, bold, chains }) => {
       const labels = []
@@ -389,6 +409,22 @@ export default function VerticalProfileChart({
       return labels
     })
   })()
+
+  function startDrag(event) {
+    if (!enableDragScroll || event.currentTarget.scrollWidth <= event.currentTarget.clientWidth) return
+    dragRef.current = { pointerId: event.pointerId, startX: event.clientX, scrollLeft: event.currentTarget.scrollLeft }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function drag(event) {
+    const state = dragRef.current
+    if (!state || state.pointerId !== event.pointerId) return
+    event.currentTarget.scrollLeft = state.scrollLeft - (event.clientX - state.startX)
+  }
+
+  function endDrag(event) {
+    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null
+  }
   const windBarbs = (() => {
     if (!crossSection || !layers.wind || csLevels.length < 2) return []
     const MIN_PX = 13
@@ -463,21 +499,15 @@ export default function VerticalProfileChart({
 
   return (
     <div className="vertical-profile-chart">
-      <div className="vertical-profile-meta">
+      {!hideMeta && <div className="vertical-profile-meta">
         <span className="vertical-profile-meta-item">
           <span>{'\uc9c0\ud615\uace0\ub3c4'}</span>
           <strong>{formatFt(terrainMaxFt)}</strong>
         </span>
-        <span className="vertical-profile-meta-item">
+        {!onSelectCandidateAltitude && <span className="vertical-profile-meta-item">
           <span>{'\uc120\ud0dd \uc21c\ud56d\uace0\ub3c4'}</span>
           <strong>{formatFt(selectedCruiseAltitudeFt)}</strong>
-        </span>
-        {allFlightProfiles.length > 1 && (
-          <span className="vertical-profile-procedure-badge">{'각 후보 고도의 상승·하강 계획선'}</span>
-        )}
-        {allFlightProfiles.length === 1 && procedurePoints.length > 1 && (
-          <span className="vertical-profile-procedure-badge">{flightProfile.label}</span>
-        )}
+        </span>}
         {todOffsetText && (
           <span className="vertical-profile-tod-summary">{todOffsetText}</span>
         )}
@@ -492,9 +522,16 @@ export default function VerticalProfileChart({
             </div>
           </details>
         )}
-      </div>
+        {onSelectCandidateAltitude && selectableAltitudes.length > 1 && (
+          <span className="vertical-profile-altitude-nav" aria-label="비교 고도 선택">
+            <button type="button" onClick={() => onSelectCandidateAltitude(previousAltitude)} disabled={!Number.isFinite(previousAltitude)} aria-label="이전 비교 고도">‹</button>
+            <strong>{formatFlightLevel(selectedCandidateAltitudeFt)}</strong>
+            <button type="button" onClick={() => onSelectCandidateAltitude(nextAltitude)} disabled={!Number.isFinite(nextAltitude)} aria-label="다음 비교 고도">›</button>
+          </span>
+        )}
+      </div>}
       <div className="vertical-profile-chart-body" ref={containerRef}>
-      <div className="vertical-profile-plot-scroll">
+      <div className="vertical-profile-plot-scroll" onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>
       <svg
         className="vertical-profile-plot-svg"
         viewBox={`0 0 ${width} ${height}`}
@@ -571,13 +608,13 @@ export default function VerticalProfileChart({
               x1={marker.x}
               x2={marker.x}
               y1={padding.top + plotHeight}
-              y2={padding.top + plotHeight + 10 + marker.lane * 18}
+              y2={padding.top + plotHeight + 6 + marker.lane * 10}
             />
             <text
               className="vertical-profile-marker-label"
               x={marker.x}
-              y={height - 34 + marker.lane * 22}
-              textAnchor={index === 0 ? 'start' : index === visibleMarkers.length - 1 ? 'end' : 'middle'}
+              y={padding.top + plotHeight + 18 + marker.lane * 16}
+              textAnchor={index === 0 ? 'end' : index === markerLabels.length - 1 ? 'start' : 'middle'}
             >
               {fitMarkerLabel(marker.label)}
             </text>

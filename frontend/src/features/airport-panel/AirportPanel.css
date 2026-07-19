@@ -230,6 +230,7 @@
   line-height: 1;
   border-radius: 8px;
 }
+.ap-tab-badge--amber { background: var(--level-amber); }
 
 /* ── Body (단일 스크롤 컨테이너) ── */
 .airport-panel-body {
@@ -1355,17 +1356,42 @@
   border-radius: var(--radius-lg);
   background: var(--bg-1);
 }
+.ap-info-peek-head {
+  margin: 0 0 var(--space-s);
+  padding-bottom: var(--space-s);
+  border-bottom: 1px solid var(--stroke-2);
+}
+.ap-info-peek-title {
+  margin: 0;
+  color: var(--text-1);
+  font-size: var(--fs-400);
+  font-weight: var(--fw-bold);
+  text-align: center;
+}
 .ap-info-peek-time {
-  margin: 0 0 var(--space-xs);
+  margin: 2px 0 0;
   color: var(--text-3);
-  font-size: var(--fs-200);
+  font-size: var(--fs-100);
   font-weight: var(--fw-semibold);
+  text-align: right;
+}
+.ap-info-peek-precip {
+  margin: var(--space-s) 0 0;
+  color: var(--accent);
+  font-size: var(--fs-300);
+  text-align: right;
 }
 .ap-info-peek-outlook {
   margin: 0;
   color: var(--text-2);
   font-size: var(--fs-300);
   line-height: var(--lh-300);
+}
+.ap-bullet-line {
+  display: block;
+}
+.ap-bullet-line + .ap-bullet-line {
+  margin-top: 0.75em;
 }
 
 .ap-info-raw-summary {
@@ -1620,9 +1646,17 @@
 .ap-taf-table th,
 .ap-taf-table td {
   border-bottom: 1px solid var(--stroke-2);
+  /* border-right 대신 box-shadow 사용: rowSpan으로 병합된 셀이 섞인 열에서는
+     border-collapse가 인접 셀 경계선을 셀 높이별로 잘못 병합해 세로선이 끊기는
+     브라우저 버그가 있어, 셀 자체 박스에 그려지는 box-shadow로 대체 */
+  box-shadow: inset -1px 0 0 var(--stroke-2);
   padding: 8px 6px;
   text-align: left;
   vertical-align: middle;
+}
+.ap-taf-table th:last-child,
+.ap-taf-table td:last-child {
+  box-shadow: none;
 }
 
 .ap-taf-table th {
@@ -1660,6 +1694,8 @@
   width: 22px;
   height: 22px;
   display: block;
+  /* 아이콘 실루엣 기준으로 그림자를 둬서 옅은 배경(구름 등)에서도 형태가 구분되게 함 */
+  filter: drop-shadow(0 1px 1.5px rgba(15, 23, 42, 0.35));
 }
 /* 강수(비·눈·소나기)엔 배경 highlight, 특이기상(뇌우 등)엔 적색 점선 */
 .ap-taf-wx--precip {
@@ -1673,6 +1709,10 @@
 /* 시간 셀이 2줄(시간+조건)이라 전 열 top 정렬로 각 열 첫 줄 높이 맞춤 */
 .ap-taf-table td {
   vertical-align: top;
+}
+/* rowSpan으로 병합된 셀은 세로로 길어지므로 내용을 중앙 정렬 */
+.ap-taf-table td.ap-taf-merged {
+  vertical-align: middle;
 }
 
 .ap-taf-weather-cell {

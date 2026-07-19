@@ -111,6 +111,7 @@
 }
 
 .apf-region--fir {
+  display: none;
   margin-top: auto;
   border-top: 1px solid var(--stroke-1);
   color: var(--text-3);

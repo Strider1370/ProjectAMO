@@ -58,11 +58,8 @@ const useStyles = makeStyles({
   draftApply: { flexGrow: 1 },
   toolSection: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
   toolLabel: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
-  performance: { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, alignItems: 'end' },
-  performanceFull: { gridColumn: '1 / -1' },
-  etdQuick: { display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalXS },
+  performance: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, alignItems: 'end' },
   detailToggleRow: { display: 'flex', justifyContent: 'flex-end' },
-  etdRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: tokens.spacingHorizontalM },
   // DatePicker/TimePicker 내부 Combobox 기본 min-width(250px)를 눌러 좁은 패널에서 한 줄에 맞춤
   picker: {
     width: '100%', minWidth: 0,
@@ -153,6 +150,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     cruiseAltitudeFt,
     verticalProfileLoading,
     verticalProfileError,
+    verticalProfile,
     vfrWaypoints,
     vfrLegs = [],
     importCandidates,
@@ -214,7 +212,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     setAlternateAirport,
     setEtd,
     setTasKt,
-    setEta,
     setRouteDraftText,
     applyRouteDraft,
     cancelPendingRouteEdit,
@@ -235,6 +232,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     continueToAltitudeComparison,
     setAltitudeDraft,
     startAltitudeComparison,
+    setVerticalProfileWindowOpen,
     selectCruiseAltitude,
     continueToBriefing,
     goToWorkflowStep,
@@ -243,6 +241,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   } = actions
 
   const isIfr = routeForm.flightRule === 'IFR'
+  const etaDisplay = eta ? formatBriefingTime(eta, tz, { withDate: true }).replace('-', '/').replace('Z', ' UTC') : ''
   const appliedBase = routeDesigns.find((design) => design.id === 'base')
   // S8: IFR은 지도 볼 일 없는 순수 입력 폼이라 시트를 기본 full로 — VFR ①은 지도에서
   // 경유점을 찍어야 하니 half 유지. 사용자가 손수 드래그(detentTouched)했으면 존중하고
@@ -435,7 +434,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       {routeResult && !isIfr && summaryStrip}
     </section>
   )
-  const setEtdFromNow = (mins) => setEtd(new Date(Date.now() + mins * 60000).toISOString())
   // ETD(ISO/UTC) ↔ tz 벽시계 변환 — DatePicker/TimePicker는 Date의 로컬 필드를 쓰므로 tz 보정.
   const tzOffsetMs = tz === 'KST' ? 9 * 3600 * 1000 : 0
   const etdBaseMs = Number.isFinite(Date.parse(etd)) ? Date.parse(etd) : Date.now()
@@ -445,28 +443,23 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // ETD·TAS·ETA 입력. 고도는 고도 비교 단계에서만 선택한다.
   const perfFields = (
     <div className={s.performance}>
-      <Field className={s.performanceFull} label={`ETD (${tz})`}>
-        <div className={s.etdRow}>
-          <DatePicker className={s.picker} value={etdWall}
-            formatDate={(d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`}
-            onSelectDate={(date) => date && setEtdWall(date.getFullYear(), date.getMonth(), date.getDate(), etdWall.getHours(), etdWall.getMinutes())} />
-          <TimePicker key={etd} className={s.picker} freeform hourCycle="h23" increment={5} dateAnchor={etdWall} defaultSelectedTime={etdWall}
-            defaultValue={`${String(etdWall.getHours()).padStart(2, '0')}:${String(etdWall.getMinutes()).padStart(2, '0')}`}
-            onTimeChange={(_, data) => data.selectedTime && setEtdWall(etdWall.getFullYear(), etdWall.getMonth(), etdWall.getDate(), data.selectedTime.getHours(), data.selectedTime.getMinutes())} />
-        </div>
+      <Field label={`출발일 (${tz})`}>
+        <DatePicker className={s.picker} value={etdWall}
+          formatDate={(d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`}
+          onSelectDate={(date) => date && setEtdWall(date.getFullYear(), date.getMonth(), date.getDate(), etdWall.getHours(), etdWall.getMinutes())} />
+      </Field>
+      <Field label={`출발시간 (${tz})`}>
+        <TimePicker key={etd} className={s.picker} freeform hourCycle="h23" increment={5} dateAnchor={etdWall} defaultSelectedTime={etdWall}
+          defaultValue={`${String(etdWall.getHours()).padStart(2, '0')}:${String(etdWall.getMinutes()).padStart(2, '0')}`}
+          onTimeChange={(_, data) => data.selectedTime && setEtdWall(etdWall.getFullYear(), etdWall.getMonth(), etdWall.getDate(), data.selectedTime.getHours(), data.selectedTime.getMinutes())} />
       </Field>
       <Field label="순항속도 (TAS, kt)">
         <SpinButton className={s.ctrl} value={Number(tasKt) || 0} min={60} max={600} step={5}
           onChange={(_, d) => { const v = d.value ?? Number(d.displayValue); if (Number.isFinite(v)) setTasKt(v) }} />
       </Field>
-      <Field label="예상 ETA (UTC)">
-        <Input className={s.ctrl} value={eta ?? ''} placeholder="경로 검색 후 TAS 기준으로 계산" onChange={(_, d) => setEta(d.value || null)} />
+      <Field label={`예상 ETA (${tz})`}>
+        <Input className={s.ctrl} value={etaDisplay} placeholder="경로 검색 후 TAS 기준으로 계산" readOnly />
       </Field>
-      <div className={`${s.etdQuick} ${s.performanceFull}`}>
-        {[['지금', 0], ['+30분', 30], ['+1시간', 60], ['+2시간', 120]].map(([lbl, m]) => (
-          <Button key={lbl} size="small" appearance="secondary" onClick={() => setEtdFromNow(m)}>{lbl}</Button>
-        ))}
-      </div>
     </div>
   )
 
@@ -649,25 +642,23 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         {!isIfr && <>{vfrWaypointSection}{briefingCondSection}</>}
 
         {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
-        <Button appearance="primary" type="button" className={s.full} onClick={() => goToWorkflowStep('compare')} disabled={!routeResult}>경로비교로</Button>
       </form>}
       {workflowStep === 'compare' && (
         <div className={s.form}>
-          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onCancelDraft={cancelSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} />
+          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onCancelDraft={cancelSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
         </div>
       )}
       {workflowStep === 'altitude' && (
         <div className={s.form}>
           <Field label="계획 순항고도 (ft)"><Input className={s.ctrl} type="number" min="500" max="60000" step="500" value={altitudeDraftFt} placeholder="예: 9,000" onChange={(_, d) => setAltitudeDraft(d.value)} /></Field>
           <Button appearance="primary" type="button" className={s.full} onClick={startAltitudeComparison} disabled={altitudeComparisonLoading}>고도 비교</Button>
-          {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} /> : <div className="rb-step-actions"><Button appearance="secondary" type="button" onClick={goBackWorkflow}>이전 단계</Button><p className="rb-alternatives-status">계획 순항고도를 입력한 뒤 고도 비교를 선택하세요.</p></div>}
+          {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} hideStepActions /> : <p className="rb-alternatives-status">고도 비교는 선택 사항입니다. 순항고도를 입력하면 바로 브리핑 준비로 갈 수 있습니다.</p>}
         </div>
       )}
       {workflowStep === 'briefing' && (
         <div className={s.form}>
           {briefingPreparation}
           {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
-          <div className="rb-step-actions"><Button appearance="secondary" type="button" onClick={goBackWorkflow}>이전 단계</Button><Button appearance="primary" type="button" onClick={handleGenerateBriefing} disabled={briefingLoading}>{briefingLoading ? '브리핑 생성 중...' : '브리핑 생성'}</Button></div>
         </div>
       )}
     </>
@@ -699,13 +690,13 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           <div className="rb-route">
             <AirportPickerField label="출발" value={routeForm.departureAirport} options={allAirportOptions} firOption={{ value: FIR_IN_AIRPORT, label: 'FIR 진입' }} onChange={handleDepartureAirportChange} disabledValue={routeForm.arrivalAirport} />
             <div className="rb-swap"><button type="button" className="rb-swap-btn" onClick={swapAirports} disabled={firOnEitherSide} aria-label="출발 도착 교환">⇅</button></div>
-            <AirportPickerField label="도착" value={routeForm.arrivalAirport} options={allAirportOptions} firOption={{ value: FIR_EXIT_AIRPORT, label: 'FIR 이탈' }} onChange={handleArrivalAirportChange} disabledValue={routeForm.departureAirport} />
+            <AirportPickerField label="도착" value={routeForm.arrivalAirport} options={allAirportOptions} firOption={{ value: FIR_EXIT_AIRPORT, label: 'FIR 이탈' }} onChange={handleArrivalAirportChange} disabledValue={routeForm.departureAirport} align="right" />
           </div>
           {(!isIfr || step1MoreOpen || (depChosen && arrChosen)) ? (
             <>
               {isIfr && perfFields}
               {isIfr && (depChosen || arrChosen) && (
-                <button type="button" className="route-check-secondary-button rb-auto-search" onClick={handleAutoRecommend} disabled={routeLoading}>
+                <button type="button" className="route-check-search-button rb-auto-search" onClick={handleAutoRecommend} disabled={routeLoading}>
                   {routeLoading ? '생성 중...' : '자동 생성'}
                 </button>
               )}
@@ -736,43 +727,54 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           )}
           {importFeedback}
           {errorBlock}
-          <button type="button" className="route-check-search-button" onClick={() => goToWorkflowStep('compare')} disabled={!routeResult}>경로비교로</button>
         </>
       )}
       {workflowStep === 'compare' && (
-        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onCancelDraft={cancelSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} />
+        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onCancelDraft={cancelSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
       )}
       {workflowStep === 'altitude' && (
         <>
           <Field label="계획 순항고도 (ft)"><Input className={s.ctrl} type="number" min="500" max="60000" step="500" value={altitudeDraftFt} placeholder="예: 9,000" onChange={(_, d) => setAltitudeDraft(d.value)} /></Field>
-          <Button appearance="primary" type="button" className={s.full} onClick={startAltitudeComparison} disabled={altitudeComparisonLoading}>고도 비교</Button>
+          <Button appearance="primary" type="button" className={s.full} onClick={() => startAltitudeComparison({ openWindow: false })} disabled={altitudeComparisonLoading}>고도 비교</Button>
           {summaryStrip}
-          {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} /> : <div className="rb-step-actions"><Button appearance="secondary" type="button" onClick={goBackWorkflow}>이전 단계</Button><p className="rb-alternatives-status">계획 순항고도를 입력한 뒤 고도 비교를 선택하세요.</p></div>}
+          {verticalProfile && <Button appearance="secondary" type="button" className="vertical-profile-open-button" onClick={() => setVerticalProfileWindowOpen(true)}>연직단면도 보기</Button>}
+          {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} hideStepActions /> : <p className="rb-alternatives-status">고도 비교는 선택 사항입니다. 순항고도를 입력하면 바로 브리핑 준비로 갈 수 있습니다.</p>}
         </>
       )}
       {workflowStep === 'briefing' && <>{briefingPreparation}{briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}</>}
     </form>
   )
 
-  // Action bar lives in the sheet footer (outside the scroll area) so it stays
-  // flush to the bottom task bar regardless of form height.
-  // Progressive footer: before a route exists, the primary action is 검색
-  // (+자동검색/초기화). Once a route is found, the footer's primary action
-  // advances to 브리핑 생성 (the final deliverable) with 초기화 alongside.
-  const mobileFooter = workflowStep === 'settings' ? (
+  // Route creation belongs to the form's "경로 적용" action. Keep one shared
+  // workflow footer for desktop and mobile, enabling each next step only when ready.
+  const workflowFooter = workflowStep === 'settings' ? (
     <div className="route-check-actions is-step">
       {(depChosen || arrChosen || routeResult) && (
         <button type="button" className="route-check-secondary-button" onClick={armOrReset} disabled={routeLoading}>{resetArmed ? '초기화 확인' : '초기화'}</button>
       )}
-      {routeResult ? (
-        <button type="button" className="route-check-search-button" onClick={() => goToWorkflowStep('compare')}>경로비교로</button>
-      ) : isIfr ? (
-        <button type="button" className="route-check-search-button" onClick={() => handleRouteSearch({ preventDefault() {} })} disabled={routeLoading || !canSearch}>{routeLoading ? '검색 중...' : '경로 검색'}</button>
-      ) : null}
+      <button
+        type="button"
+        className="route-check-search-button"
+        onClick={() => goToWorkflowStep('compare')}
+        disabled={!routeResult}
+      >
+        경로비교로
+      </button>
     </div>
   ) : workflowStep === 'briefing' ? (
     <div className="route-check-actions is-step">
+      <button type="button" className="route-check-secondary-button" onClick={goBackWorkflow}>이전 단계</button>
       <button type="button" className="route-check-search-button" onClick={handleGenerateBriefing} disabled={!routeResult || briefingLoading}>{briefingLoading ? '브리핑 생성 중...' : '브리핑 생성'}</button>
+    </div>
+  ) : workflowStep === 'compare' ? (
+    <div className="route-check-actions is-step">
+      <button type="button" className="route-check-secondary-button" onClick={goBackWorkflow}>이전 단계</button>
+      <button type="button" className="route-check-search-button" onClick={continueToAltitudeComparison} disabled={!selectedRouteDesignId}>{selectedRouteDesign?.kind === 'alternative' ? '이 우회안으로 고도 비교' : '기본 경로로 고도 비교'}</button>
+    </div>
+  ) : workflowStep === 'altitude' ? (
+    <div className="route-check-actions is-step">
+      <button type="button" className="route-check-secondary-button" onClick={goBackWorkflow}>이전 단계</button>
+      <button type="button" className="route-check-search-button" onClick={() => continueToBriefing({ fitRoute: true })} disabled={!workflowAvailability.briefing}>브리핑 준비로</button>
     </div>
   ) : null
 
@@ -824,7 +826,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           onDetentChange={(d) => { setDetentTouched(true); setSheetDetent(d) }}
           headerExtra={stepNav}
           peekContent={peekSummary}
-          footer={mobileFooter}
+          footer={workflowFooter}
         >
           {mobileBody}
         </MobileSheet>
@@ -840,7 +842,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               {routeMenu}
             </div>
           </div>
-          {desktopBody}
+          <div className="route-check-desktop-body">{desktopBody}</div>
+          <footer className="route-check-desktop-footer">{workflowFooter}</footer>
         </section>
       )}
     </>

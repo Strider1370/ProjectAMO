@@ -256,7 +256,7 @@ function MoonSection({ airport }) {
                 <MoonDisc fraction={m.fraction} phase={m.phase} r={6.5} onDark={dark} />
               </span>
               <span className="moon-cell-val">
-                {mlx >= 0.5 ? Math.round(mlx) : '–'}
+                {mlx >= 0.5 ? <>{Math.round(mlx)}<b className="moon-cell-unit">mlx</b></> : '–'}
                 <em>{Math.round(m.fraction * 100)}%</em>
               </span>
               <span className="moon-cell-bar"><i style={{ width: `${(bar * 100).toFixed(0)}%` }} /></span>

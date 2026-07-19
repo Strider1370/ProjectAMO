@@ -306,6 +306,13 @@
   margin-left: 3px;
 }
 .moon-cell--dark .moon-cell-val em { color: rgb(255 255 255 / 60%); }
+.moon-cell-unit {
+  font-size: var(--fs-100);
+  font-weight: var(--fw-regular);
+  color: var(--text-3);
+  margin-left: 2px;
+}
+.moon-cell--dark .moon-cell-unit { color: rgb(255 255 255 / 60%); }
 .moon-cell-bar {
   display: block;
   height: 3px;

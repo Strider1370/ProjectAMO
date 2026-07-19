@@ -5,7 +5,9 @@ import { fmtKstShort } from './lib/formatters.js'
 import { formatAmosTime } from '../../shared/weather/amosViewModel.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import MetarTab from './tabs/MetarTab.jsx'
+import { buildMetarViewModel, countMetarHazards } from './lib/metarViewModel.js'
 import EnhancedTafTab from './tabs/TafTab.jsx'
+import { buildTafViewModel, countTafHazardPeriods } from './lib/tafViewModel.js'
 import AmosBoardTab from './tabs/AmosTab.jsx'
 import AirportInfoTab from './tabs/AirportInfoTab.jsx'
 import NotamTab from './tabs/NotamTab.jsx'
@@ -121,13 +123,18 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const metarSpeci = metar?.header?.report_type === 'SPECI' // 특별관측 → 제목을 SPECI로
   const tafAmd = taf?.header?.report_status === 'AMENDMENT' // 정정 → 제목을 TAF AMD로
 
+  // 탭 배지(스펙 §10 / 프로토타입 badges() 이식): 숫자 = 주의 필요 항목 수, 색 = 최악 심각도. 0/null이면 배지 없음.
+  const warnBadge = warnCount ? { count: warnCount, severity: 'red' } : null // 공항경보=무조건 적
+  const metarBadge = metar ? countMetarHazards(buildMetarViewModel({ metar, amosData: amos, icao, airportMeta: airport })) : null
+  const tafBadge = taf ? countTafHazardPeriods(buildTafViewModel(taf, icao).slots) : null
+
   // 기상정보 지연 로딩 상태: 요청은 했으나 airportInfo 페이로드가 아직 안 온 상태
   const infoLoading = infoRequested && !weatherData?.airportInfo
 
   const sections = [
-    { id: 'warn', label: '공항경보', badge: warnCount, node: <WarningCarousel warning={warning} /> },
-    { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', node: <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} /> },
-    { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, node: <EnhancedTafTab taf={taf} icao={icao} /> },
+    { id: 'warn', label: '공항경보', badge: warnBadge, node: <WarningCarousel warning={warning} /> },
+    { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', badge: metarBadge, node: <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} /> },
+    { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, badge: tafBadge, node: <EnhancedTafTab taf={taf} icao={icao} /> },
     isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
     { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} /> },
     isFullFeature && { id: 'info', label: '기상정보', node: <AirportInfoTab info={airportInfo} loading={infoLoading} /> },
@@ -174,8 +181,8 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
               >
                 {Icon && <Icon size={18} strokeWidth={2} aria-hidden="true" />}
                 <span>{s.label}</span>
-                {s.id === 'warn' && s.badge > 0 && (
-                  <span className="ap-tab-badge" aria-label={`공항경보 ${s.badge}건`}>{s.badge}</span>
+                {s.badge && (
+                  <span className={`ap-tab-badge ap-tab-badge--${s.badge.severity}`} aria-label={`${s.label} ${s.badge.count}건`}>{s.badge.count}</span>
                 )}
               </button>
             )
@@ -191,8 +198,8 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
                   {Icon && <Icon className="ap-sec-icon" size={20} strokeWidth={2} aria-hidden="true" />}
                   <span className={`ap-sec-title${s.special ? ' ap-sec-title--special' : ''}`}>{s.titleText || s.label}</span>
                   {s.meta && <span className="ap-sec-meta">{s.meta}</span>}
-                  {s.id === 'warn' && s.badge > 0 && (
-                    <span className="ap-tab-badge ap-sec-badge" aria-label={`공항경보 ${s.badge}건`}>{s.badge}</span>
+                  {s.badge && (
+                    <span className={`ap-tab-badge ap-sec-badge ap-tab-badge--${s.badge.severity}`} aria-label={`${s.label} ${s.badge.count}건`}>{s.badge.count}</span>
                   )}
                   <ChevronDown className="ap-sec-fold" size={18} aria-hidden="true" />
                 </summary>

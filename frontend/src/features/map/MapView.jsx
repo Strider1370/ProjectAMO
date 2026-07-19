@@ -198,6 +198,7 @@ function useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, run, destro
 
 const MapView = forwardRef(function MapView({
   activePanel,
+  mobileTask = 'map',
   airports = [],
   metarData = null,
   echoMeta = null,
@@ -1442,25 +1443,22 @@ const MapView = forwardRef(function MapView({
       {routeBriefing.state.routeResult && activePanel !== 'route-check' && (
         <div
           className="active-route-chip"
-          role="button"
-          tabIndex={0}
-          onClick={onOpenRoutePanel}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenRoutePanel?.() } }}
-          aria-label="경로 확인 패널 열기"
         >
-          <span className="active-route-chip-route">
-            {routeBriefing.state.routeForm.departureAirport || '출발'}
-            <span aria-hidden="true">{' → '}</span>
-            {routeBriefing.state.routeForm.arrivalAirport || '도착'}
-          </span>
-          {routeBriefing.derived.plannedDistanceNm > 0 && (
-            <span className="active-route-chip-dist">{Math.round(routeBriefing.derived.plannedDistanceNm)} NM</span>
-          )}
+          <button type="button" className="active-route-chip-open" onClick={onOpenRoutePanel} aria-label="경로 확인 패널 열기">
+            <span className="active-route-chip-route">
+              {routeBriefing.state.routeForm.departureAirport || '출발'}
+              <span aria-hidden="true">{' → '}</span>
+              {routeBriefing.state.routeForm.arrivalAirport || '도착'}
+            </span>
+            {routeBriefing.derived.plannedDistanceNm > 0 && (
+              <span className="active-route-chip-dist">{Math.round(routeBriefing.derived.plannedDistanceNm)} NM</span>
+            )}
+          </button>
           <button
             type="button"
             className="active-route-chip-clear"
             aria-label="경로 지우기"
-            onClick={(e) => { e.stopPropagation(); routeBriefing.actions.handleRouteReset() }}
+            onClick={routeBriefing.actions.handleRouteReset}
           >×</button>
         </div>
       )}
@@ -1492,10 +1490,10 @@ const MapView = forwardRef(function MapView({
 
       <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />
 
-      <MapToolsLauncher
+      {(!isMobile || mobileTask === 'map') && <MapToolsLauncher
         isOpen={activePanel === 'custom-area'}
         onToggle={() => (activePanel === 'custom-area' ? onClosePanel?.() : onOpenCustomAreaPanel?.())}
-      />
+      />}
 
       <BasemapSwitcher
         basemapId={basemapId}
@@ -1586,7 +1584,11 @@ const MapView = forwardRef(function MapView({
               ...airmetItems.map((item) => ({ ...item, kind: 'airmet' })),
             ]}
             selectedCandidateAltitudeFt={routeBriefing.state.cruiseAltitudeFt}
-            placement={routeBriefing.state.workflowStep === 'altitude' && !isMobile ? 'side' : 'bottom'}
+            candidateAltitudes={(routeBriefing.state.altitudeComparison?.rows ?? [])
+              .filter((row) => (row.candidateStatus ?? row.status) === 'valid' && row.weatherStatus !== 'weather_unavailable')
+              .map((row) => Number(row.altFt ?? row.altitudeFt))}
+            onSelectCandidateAltitude={isMobile ? routeBriefing.actions.selectCruiseAltitude : undefined}
+            placement={isMobile ? 'mobile-full' : routeBriefing.state.workflowStep === 'altitude' ? 'side' : 'bottom'}
           />
         </Suspense>
       )}

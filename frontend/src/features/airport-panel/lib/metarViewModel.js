@@ -26,6 +26,26 @@ export function levelHighlightClass(cat) {
   return `ap-metar-tac-hl ap-metar-tac-hl--level-${cat.category.toLowerCase()}`
 }
 
+// 탭 배지: docs/superpowers/specs/2026-07-13-airport-panel-single-scroll-tac-hero-design.md §10 정본 =
+// 작동 프로토타입 frontend/public/airport-panel-redesign.html badges()의 METAR 분기를 그대로 이식.
+// 항목: 시정·운고(각각 공항 최저치 미만=적/5000m·1500ft 미만=앰버) · 돌풍편차≥10kt(앰버) ·
+// 지속풍속≥20kt(앰버, ≥30kt 적) · 유의기상 존재(앰버) · 윈드시어(적)
+export function countMetarHazards({ visCat, ceilCat, obs } = {}) {
+  const wind = obs?.wind || {}
+  let count = 0
+  let worst = 0
+  const bump = (severity) => { count++; worst = Math.max(worst, severity) }
+
+  if (visCat && visCat.category !== 'VFR') bump(visCat.category === 'LIFR' ? 2 : 1)
+  if (ceilCat && ceilCat.category !== 'VFR') bump(ceilCat.category === 'LIFR' ? 2 : 1)
+  if (wind.gust && Number.isFinite(wind.speed) && wind.gust - wind.speed >= 10) bump(1)
+  if (Number.isFinite(wind.speed) && wind.speed >= 20) bump(wind.speed >= 30 ? 2 : 1)
+  if ((obs?.weather || []).length) bump(1)
+  if (obs?.wind_shear) bump(2)
+
+  return count ? { count, severity: worst >= 2 ? 'red' : 'amber' } : null
+}
+
 export function tacRoleClass(role, { highWind, visCat, ceilCat }) {
   if (role === 'wind' && highWind) return 'ap-metar-tac-hl ap-metar-tac-hl--wind'
   if (role === 'visibility') return levelHighlightClass(visCat)

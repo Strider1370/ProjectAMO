@@ -8,6 +8,27 @@ function fmtBulletinTime(tm) {
   return `${m[1]}년 ${m[2]}월 ${m[3]}일 ${m[4]}시`
 }
 
+// 원문이 "○ ... ○ ..."를 줄바꿈 없이 이어 붙여 보내는 경우가 있어, ○ 항목 단위로 줄을 분리하고
+// "○ (주제어)" 형식의 괄호 부분(항상 같은 형식)을 굵게 강조한다.
+function BulletText({ text, className }) {
+  if (!text) return null
+  if (!text.includes('○')) return <p className={className}>{text}</p>
+  const bullets = text.trim().split(/\s*○\s*/).filter(Boolean).map((s) => s.trim())
+  return (
+    <p className={className}>
+      {bullets.map((bullet, i) => {
+        const m = bullet.match(/^(\([^)]*\))\s*(.*)$/s)
+        return (
+          <span className="ap-bullet-line" key={i}>
+            {'○ '}
+            {m ? <><strong>{m[1]}</strong> {m[2]}</> : bullet}
+          </span>
+        )
+      })}
+    </p>
+  )
+}
+
 export default function AirportInfoTab({ info, loading = false }) {
   if (!info) return <div className="ap-empty">{loading ? '기상정보 불러오는 중…' : '기상정보 데이터 없음'}</div>
 
@@ -15,6 +36,8 @@ export default function AirportInfoTab({ info, loading = false }) {
   const hasWarn = info.warn && info.warn.trim() // ▶경보현황 섹션 표시용(원문 "○ 없음"도 표시)
   const warnActive = hasWarn && !/없음/.test(info.warn) // 배지용 — "없음"은 발효로 보지 않음
   const hasForecast = info.forecast && info.forecast.trim()
+  // 배지가 "위험기상 예보 있음"이면 요약도 위험 기상예보 내용을 보여줘야 함(일기개황 아님)
+  const peekText = hasForecast ? info.forecast : info.outlook
   const [defaultOpen] = useState(() =>
     typeof window === 'undefined' || !window.matchMedia('(max-width: 719px)').matches,
   )
@@ -26,10 +49,14 @@ export default function AirportInfoTab({ info, loading = false }) {
       </div>
 
       {/* 모바일 접힘 기본 상태에서 빈 화면 대신 핵심 요약(발표시각·개황) 선두 노출 (§6-B) */}
-      {!defaultOpen && (info.tm || info.outlook) && (
+      {!defaultOpen && (info.tm || peekText) && (
         <div className="ap-info-peek">
-          <p className="ap-info-peek-time">[ {fmtBulletinTime(info.tm)} 발표 ]</p>
-          {info.outlook && <p className="ap-info-peek-outlook">{info.outlook}</p>}
+          <div className="ap-info-peek-head">
+            {info.summary && <p className="ap-info-peek-title">{info.summary}</p>}
+            <p className="ap-info-peek-time">[ {fmtBulletinTime(info.tm)} 발표 ]</p>
+          </div>
+          <BulletText text={peekText} className="ap-info-peek-outlook" />
+          {showSel3 && <p className="ap-info-peek-precip">예상 강수량 <strong>{info.sel_val3}</strong></p>}
         </div>
       )}
 
@@ -50,7 +77,7 @@ export default function AirportInfoTab({ info, loading = false }) {
 
         <div className="ap-info-section">
           <h3 className="ap-info-section-head">▶ 일기개황</h3>
-          <p className="ap-info-body-text">{info.outlook || '—'}</p>
+          {info.outlook ? <BulletText text={info.outlook} className="ap-info-body-text" /> : <p className="ap-info-body-text">—</p>}
         </div>
 
         {(info.sel_val1 || info.sel_val2) && (
@@ -76,7 +103,7 @@ export default function AirportInfoTab({ info, loading = false }) {
         {hasForecast && (
           <div className="ap-info-section">
             <h3 className="ap-info-section-head">▶ 위험 기상예보</h3>
-            <p className="ap-info-body-text">{info.forecast}</p>
+            <BulletText text={info.forecast} className="ap-info-body-text" />
           </div>
         )}
 

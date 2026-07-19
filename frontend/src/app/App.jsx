@@ -205,6 +205,7 @@ function MainAppShell() {
         <MapView
           ref={mapRef}
           activePanel={activePanel}
+          mobileTask={mobileTask}
           airports={weatherData?.airports || []}
           metarData={mapMetarData}
           echoMeta={weatherData?.echoMeta || null}

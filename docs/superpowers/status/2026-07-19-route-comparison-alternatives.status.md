@@ -55,6 +55,7 @@
 - 적용 뒤 이전 applied snapshot이 undo stack에 들어가므로 `되돌리기`는 실제 되돌릴 내용이 있을 때만 표시된다.
 - `더보기`를 제거하고 직접 편집·되돌리기·복제·이름 변경·삭제를 바로 노출했다.
 - 최신 focused tests(route store/design/preview/sync)와 frontend build, `git diff --check` 통과 (2026-07-19).
+- 운영 서버의 `DATA_PATH/aip/current`에 AIP 활성 스냅샷이 없던 배포 누락을 확인했다. 기존 AIP 자동화·권한 정책을 확인한 결과, Git 추적 복제본을 정본으로 만들지 않고 검증·권한 확인 뒤 활성화된 local `backend/data/aip/current`만 운영 런타임으로 명시적으로 반영해야 한다.
 
 ## 다음 시작점
 

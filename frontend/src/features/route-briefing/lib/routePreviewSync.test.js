@@ -9,6 +9,7 @@ import {
 } from './routePreviewSync.js'
 import {
   ROUTE_BASELINE_SOURCE,
+  ROUTE_DRAW_SOURCE,
   ROUTE_PENDING_SOURCE,
   PROC_PREVIEW_SOURCE,
   ROUTE_PREVIEW_SOURCE,
@@ -90,9 +91,12 @@ test('syncRoutePreviewLayers clears stale route line when route result is remove
   assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.length, 0)
 })
 
-test('syncRoutePreviewLayers writes manual design lines and selects only the active design', () => {
+test('syncRoutePreviewLayers keeps selected IFR design waypoints with its line', () => {
   const map = createMockMap()
-  const design = (id, coordinates) => ({ id, kind: id === 'base' ? 'base' : 'alternative', routeResult: { previewGeojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } }] } } })
+  const design = (id, coordinates) => ({ id, kind: id === 'base' ? 'base' : 'alternative', routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } },
+    { type: 'Feature', properties: { role: 'route-preview-point', sequence: 1, label: 'GONAX' }, geometry: { type: 'Point', coordinates: coordinates[0] } },
+  ] } } })
 
   syncRoutePreviewLayers(map, {
     routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [] }, navpointIds: [] },
@@ -103,6 +107,8 @@ test('syncRoutePreviewLayers writes manual design lines and selects only the act
   const features = map.sourceData.get(ROUTE_PREVIEW_SOURCE).features
   assert.equal(features.filter((feature) => feature.properties.role === 'route-design-line').length, 1)
   assert.equal(features.filter((feature) => feature.properties.role === 'route-design-hit').length, 1)
+  assert.equal(features.filter((feature) => feature.properties.role === 'route-preview-point').length, 1)
+  assert.equal(features.find((feature) => feature.properties.role === 'route-preview-point').properties.label, 'GONAX')
   assert.equal(features.find((feature) => feature.properties.role === 'route-design-line').properties.selected, true)
   assert.deepEqual(map.sourceData.get(ROUTE_BASELINE_SOURCE).features[0].geometry.coordinates, [[126, 37], [127, 37], [128, 37], [129, 37]])
 })
@@ -228,12 +234,15 @@ test('syncBoundaryFixPreview writes selected boundary fix and returns fit coordi
   assert.deepEqual(result.fitCoordinates.at(-1), [126.1, 37.2])
 })
 
-test('clearRoutePreviewLayers clears route, procedure, boundary, and highlight presentation', () => {
+test('clearRoutePreviewLayers clears every route presentation source and highlight', () => {
   const map = createMockMap()
 
   clearRoutePreviewLayers(map)
 
+  assert.equal(map.sourceData.get(ROUTE_BASELINE_SOURCE).features.length, 0)
   assert.equal(map.sourceData.get(ROUTE_PREVIEW_SOURCE).features.length, 0)
+  assert.equal(map.sourceData.get(ROUTE_PENDING_SOURCE).features.length, 0)
+  assert.equal(map.sourceData.get(ROUTE_DRAW_SOURCE).features.length, 0)
   assert.equal(map.sourceData.get(PROC_PREVIEW_SOURCE).features.length, 0)
   assert.equal(map.sourceData.get(BOUNDARY_FIX_PREVIEW_SOURCE).features.length, 0)
   assert.ok(map.layout.every((entry) => entry.prop === 'visibility' && entry.value === 'none'))
