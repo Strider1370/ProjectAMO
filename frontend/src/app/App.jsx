@@ -273,7 +273,7 @@ function MainAppShell() {
             try {
               const routes = await listSavedRoutes()
               const route = routes.find((r) => r.id === id)
-              if (route) mapRef.current?.loadRouteBriefing?.(route)
+              if (route && !route.invalidPayload) mapRef.current?.loadRouteBriefing?.(route)
             } catch { /* best-effort: 경로 로드 실패해도 패널은 열림 */ }
           }}
         />

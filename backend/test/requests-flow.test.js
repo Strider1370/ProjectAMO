@@ -27,6 +27,17 @@ const at = (s, p) => `http://127.0.0.1:${s.address().port}${p}`
 const CLOSE = { connection: 'close' }
 const JSONH = { 'content-type': 'application/json', ...CLOSE }
 const login = async (s, u) => (await fetch(at(s, '/api/auth/login'), { method: 'POST', headers: JSONH, body: JSON.stringify({ username: u, password: 'password1' }) })).headers.get('set-cookie').split(';')[0]
+const SNAP = {
+  version: 3,
+  base: {
+    routeForm: { dep: 'RKPC' },
+    procedureIds: { sid: null, star: null, iapKey: null },
+    enroute: {},
+    routeString: 'RKPC',
+  },
+  alternatives: [],
+  selectedAlternativeId: null,
+}
 
 test('요청 흐름: 조종사 문의 → RKSI 예보관 큐·claim·상세·close, 타공항 격리, 권한', async () => {
   const { db, app } = makeServer()
@@ -41,7 +52,7 @@ test('요청 흐름: 조종사 문의 → RKSI 예보관 큐·claim·상세·clo
     const pilot = await login(s, 'pilot1')
 
     // 경로 저장 → 문의 생성(RKSI)
-    const route = await (await fetch(at(s, '/api/me/routes'), { method: 'POST', headers: { ...JSONH, cookie: pilot }, body: JSON.stringify({ name: 'r', snapshot: { routeForm: { dep: 'RKPC' } } }) })).json()
+    const route = await (await fetch(at(s, '/api/me/routes'), { method: 'POST', headers: { ...JSONH, cookie: pilot }, body: JSON.stringify({ name: 'r', snapshot: SNAP }) })).json()
     let r = await fetch(at(s, '/api/me/requests'), { method: 'POST', headers: { ...JSONH, cookie: pilot }, body: JSON.stringify({ route_id: route.id, target_airport: 'RKSI', message: '경로 확인 부탁' }) })
     assert.equal(r.status, 201)
     const reqId = (await r.json()).id
@@ -69,7 +80,7 @@ test('요청 흐름: 조종사 문의 → RKSI 예보관 큐·claim·상세·clo
     // 상세: 경로 payload 포함
     r = await fetch(at(s, `/api/forecaster/requests/${reqId}`), { headers: { ...CLOSE, cookie: wxRksi } })
     body = await r.json()
-    assert.equal(body.route.routeForm.dep, 'RKPC', '경로 스냅샷 전달')
+    assert.equal(body.route.base.routeForm.dep, 'RKPC', '경로 스냅샷 전달')
 
     // claim → viewed, close → closed
     r = await fetch(at(s, `/api/forecaster/requests/${reqId}/claim`), { method: 'POST', headers: { ...CLOSE, cookie: wxRksi } })
@@ -86,7 +97,7 @@ test('문의 생성: 예보관 없는 공항 → 400, 남의 경로 → 404', as
     await fetch(at(s, '/api/auth/register'), { method: 'POST', headers: JSONH, body: JSON.stringify({ username: 'pilotA', password: 'password1' }) })
     db.prepare("UPDATE users SET status='active' WHERE username='pilotA'").run() // 가입=대기 → 승인
     const pilot = await login(s, 'pilotA')
-    const route = await (await fetch(at(s, '/api/me/routes'), { method: 'POST', headers: { ...JSONH, cookie: pilot }, body: JSON.stringify({ name: 'r', snapshot: {} }) })).json()
+    const route = await (await fetch(at(s, '/api/me/routes'), { method: 'POST', headers: { ...JSONH, cookie: pilot }, body: JSON.stringify({ name: 'r', snapshot: SNAP }) })).json()
 
     // RKTN은 예보관 공항 아님
     let r = await fetch(at(s, '/api/me/requests'), { method: 'POST', headers: { ...JSONH, cookie: pilot }, body: JSON.stringify({ route_id: route.id, target_airport: 'RKTN' }) })

@@ -7,17 +7,44 @@ import { requireAuth } from '../auth/middleware.js'
 const MAX_ROUTES = 100
 const MAX_PAYLOAD = 20000 // snapshot JSON 상한(웨이포인트 폭주 방지)
 
-// snapshot = 프론트 저장 스냅샷(routeForm/vfrWaypoints/cruiseAltitudeFt/alternateAirport/etd 등). 유연 통과.
+const jsonObject = z.record(z.string(), z.unknown())
+const procedureIdsSchema = z.object({
+  sid: z.string().nullable(),
+  star: z.string().nullable(),
+  iapKey: z.string().nullable(),
+}).strict()
+const persistedDesignSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  kind: z.enum(['base', 'alternative']).optional(),
+  routeForm: jsonObject,
+  procedureIds: procedureIdsSchema,
+  enroute: jsonObject,
+  routeString: z.string(),
+}).strict()
+
+// 새 서버 저장은 프런트 normalizeRouteSnapshot()이 만드는 v3만 허용한다.
 const createSchema = z.object({
   name: z.string().max(200).optional(),
-  snapshot: z.record(z.string(), z.unknown()), // 유연 통과(프론트 폼 임의 필드)
+  snapshot: z.object({
+    version: z.literal(3),
+    base: persistedDesignSchema,
+    alternatives: z.array(persistedDesignSchema),
+    selectedAlternativeId: z.string().nullable(),
+    cruiseAltitudeFt: z.number().finite().optional(),
+    etd: z.string().optional(),
+    tasKt: z.number().finite().optional(),
+    etaPolicy: jsonObject.optional(),
+  }).strict(),
 })
 
 // DB 행 → 프론트 엔트리({id,name,savedAt,...snapshot}) 복원.
 function toEntry(row) {
-  let snapshot = {}
-  try { snapshot = JSON.parse(row.payload || '{}') } catch { /* 손상 시 빈 스냅샷 */ }
-  return { id: row.id, name: row.name, savedAt: Date.parse(row.created_at) || 0, ...snapshot }
+  const entry = { id: row.id, name: row.name, savedAt: Date.parse(row.created_at) || 0 }
+  let snapshot
+  try { snapshot = JSON.parse(row.payload) } catch { return { ...entry, invalidPayload: true } }
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return { ...entry, invalidPayload: true }
+  return { ...entry, ...snapshot }
 }
 
 // 내 저장 경로 CRUD. 모든 쿼리 session.userId로만 필터(클라 id 불신). requireAuth 필수.

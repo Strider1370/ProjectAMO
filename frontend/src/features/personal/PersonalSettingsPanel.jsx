@@ -108,7 +108,7 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
 
   // ETD/템플릿 변경 시 ETA 자동계산(geometry+속도 있을 때만). 사용자가 손댄 값은 덮지 않음.
   useEffect(() => {
-    const tpl = templates.find((t) => String(t.id) === String(templateId))
+    const tpl = templates.find((t) => !t.invalidPayload && String(t.id) === String(templateId))
     if (!tpl || !etdLocal) return
     const distanceNm = routeDistanceNm(tpl.routeGeometry?.coordinates)
     if (!distanceNm || !tpl.cruiseSpeedKt) return
@@ -150,7 +150,7 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
           <span className={s.label}>경로 템플릿</span>
           <select className={s.input} value={templateId} onChange={(e) => setTemplateId(e.target.value)} aria-label="경로 템플릿 선택">
             <option value="">선택하세요</option>
-            {templates.map((t) => <option key={t.id} value={t.id}>{templateLabel(t)}</option>)}
+            {templates.filter((t) => !t.invalidPayload).map((t) => <option key={t.id} value={t.id}>{templateLabel(t)}</option>)}
           </select>
         </label>
         <label className={s.field}>

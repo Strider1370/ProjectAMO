@@ -29,7 +29,18 @@ async function login(s, db, username) {
   return r.headers.get('set-cookie').split(';')[0]
 }
 
-const SNAP = { routeForm: { dep: 'RKSI', dest: 'RKPC', flightRule: 'IFR' }, vfrWaypoints: [{ id: 'w1' }], cruiseAltitudeFt: 35000, alternateAirport: 'RKPK', etd: '2026-07-05T09:00:00Z' }
+const SNAP = {
+  version: 3,
+  base: {
+    id: 'base', kind: 'base', name: '서울-제주',
+    routeForm: { departureAirport: 'RKSI', arrivalAirport: 'RKPC', flightRule: 'IFR' },
+    procedureIds: { sid: null, star: null, iapKey: null },
+    enroute: { terms: [], legIntents: [], userWaypoints: [], nextWaypointNumber: 1 },
+    routeString: 'RKSI DCT RKPC',
+  },
+  alternatives: [], selectedAlternativeId: null,
+  cruiseAltitudeFt: 35000, etd: '2026-07-05T09:00:00Z', tasKt: 130,
+}
 
 test('routes: POST → GET round-trips snapshot; DELETE removes', async () => {
   const { db, app } = makeServer()
@@ -41,12 +52,12 @@ test('routes: POST → GET round-trips snapshot; DELETE removes', async () => {
     const created = await r.json()
     assert.equal(created.name, '서울-제주')
     assert.equal(created.cruiseAltitudeFt, 35000)
-    assert.deepEqual(created.routeForm, SNAP.routeForm)
+    assert.deepEqual(created.base.routeForm, SNAP.base.routeForm)
 
     r = await fetch(at(s, '/api/me/routes'), { headers: { ...CLOSE, cookie } })
     const { routes } = await r.json()
     assert.equal(routes.length, 1)
-    assert.equal(routes[0].alternateAirport, 'RKPK')
+    assert.equal(routes[0].base.routeString, 'RKSI DCT RKPC')
     assert.equal(routes[0].etd, SNAP.etd)
 
     r = await fetch(at(s, `/api/me/routes/${created.id}`), { method: 'DELETE', headers: { ...CLOSE, cookie } })
@@ -82,8 +93,45 @@ test('routes: oversized payload → 400', async () => {
   const s = await listen(app)
   try {
     const cookie = await login(s, db, 'pilotbig')
-    const huge = { routeForm: {}, blob: 'x'.repeat(21000) }
+    const huge = { ...SNAP, etaPolicy: 'x'.repeat(21000) }
     const r = await fetch(at(s, '/api/me/routes'), { method: 'POST', headers: { ...JSONH, cookie }, body: JSON.stringify({ name: 'big', snapshot: huge }) })
     assert.equal(r.status, 400)
+  } finally { s.close(); db.close() }
+})
+
+test('routes: rejects a legacy or structurally incomplete new snapshot', async () => {
+  const { db, app } = makeServer()
+  const s = await listen(app)
+  try {
+    const cookie = await login(s, db, 'pilotinvalid')
+    for (const snapshot of [
+      { routeForm: { departureAirport: 'RKSI' } },
+      { version: 3, base: { routeForm: {}, enroute: {} }, alternatives: [], selectedAlternativeId: null },
+      { ...SNAP, etaPolicy: 'fast' },
+    ]) {
+      const r = await fetch(at(s, '/api/me/routes'), { method: 'POST', headers: { ...JSONH, cookie }, body: JSON.stringify({ name: 'bad', snapshot }) })
+      assert.equal(r.status, 400)
+      assert.equal((await r.json()).error, 'invalid_input')
+    }
+  } finally { s.close(); db.close() }
+})
+
+test('routes: legacy JSON stays readable and malformed JSON is marked without hiding other routes', async () => {
+  const { db, app } = makeServer()
+  const s = await listen(app)
+  try {
+    const cookie = await login(s, db, 'pilotlegacy')
+    const userId = db.prepare('SELECT id FROM users WHERE username=?').get('pilotlegacy').id
+    const legacy = JSON.stringify({ routeForm: { departureAirport: 'RKSI', arrivalAirport: 'RKPC', flightRule: 'IFR' }, vfrWaypoints: [] })
+    db.prepare("INSERT INTO routes (user_id, name, payload, created_at, updated_at) VALUES (?,?,?,?,?)").run(userId, 'legacy', legacy, 't', 't')
+    db.prepare("INSERT INTO routes (user_id, name, payload, created_at, updated_at) VALUES (?,?,?,?,?)").run(userId, 'broken', '{', 't', 't')
+
+    const r = await fetch(at(s, '/api/me/routes'), { headers: { ...CLOSE, cookie } })
+    const { routes } = await r.json()
+    const legacyRoute = routes.find((route) => route.name === 'legacy')
+    const brokenRoute = routes.find((route) => route.name === 'broken')
+    assert.deepEqual(legacyRoute.routeForm, { departureAirport: 'RKSI', arrivalAirport: 'RKPC', flightRule: 'IFR' })
+    assert.equal(brokenRoute.invalidPayload, true)
+    assert.equal(db.prepare('SELECT payload FROM routes WHERE name=?').get('legacy').payload, legacy)
   } finally { s.close(); db.close() }
 })
