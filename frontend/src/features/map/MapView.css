@@ -95,13 +95,19 @@
   border-color: var(--accent);
 }
 
-/* 고도 비교 단계에서 연직단면도 창을 닫은 뒤 다시 여는 버튼. 지도 좌하단 —
-   우하단 줌·나침반·정보 컨트롤, 하단 타임라인(bottom:140px 기준)과 안 겹치는 자리. */
-.vertical-profile-reopen-button {
+.map-bottom-controls {
   position: absolute;
-  left: 12px;
-  bottom: 150px;
+  left: 50%;
+  bottom: 96px;
   z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+}
+
+/* 고도 비교 단계에서 연직단면도 창을 닫은 뒤 다시 여는 지도 컨트롤. */
+.vertical-profile-reopen-button {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -123,6 +129,7 @@
   border-color: var(--accent);
 }
 
+/* 열린 경로 확인 패널 바로 오른쪽의 지도 영역에 둔다. */
 .map-tools-launcher.is-open {
   border-color: var(--accent, #2563eb);
   background: var(--accent, #2563eb);
@@ -1159,6 +1166,11 @@
   color: var(--text-1);
   font: 700 12px/1 var(--app-font, system-ui, sans-serif);
   cursor: pointer;
+}
+
+.map-bottom-controls .map-home-control {
+  position: static;
+  transform: none;
 }
 
 .map-home-control:hover {

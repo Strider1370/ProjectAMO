@@ -1453,13 +1453,6 @@ const MapView = forwardRef(function MapView({
         onPlayPause={toggleWeatherTimelinePlay}
       />
 
-      {showKoreaHome && (
-        <button type="button" className="map-home-control" onClick={flyToKorea} aria-label="기본 지도 보기" title="기본 지도 보기">
-          <House size={18} aria-hidden="true" />
-          <span>기본 지도</span>
-        </button>
-      )}
-
       {/* 브리핑 패널을 닫아도 경로는 지도에 남는다 — 패널을 다시 열지 않고도 지울 수
           있도록 하단 중앙(타임라인 스크럽 스택 위, 겹침 확인됨)에 요약+지우기 칩 표시. */}
       {routeBriefing.state.routeResult && activePanel !== 'route-check' && (
@@ -1582,15 +1575,32 @@ const MapView = forwardRef(function MapView({
         </>
       )}
 
-      {routeBriefing.state.workflowStep === 'altitude' && routeBriefing.state.verticalProfile && !routeBriefing.state.verticalProfileWindowOpen && (
-        <button
-          type="button"
-          className="vertical-profile-reopen-button"
-          onClick={() => routeBriefing.actions.setVerticalProfileWindowOpen(true)}
-          aria-label="연직단면도 다시 보기"
-        >
-          <ChartSpline size={18} strokeWidth={2} />
-          <span>연직단면도</span>
+      {!isMobile && (showKoreaHome || (routeBriefing.state.workflowStep === 'altitude' && routeBriefing.state.verticalProfile && !routeBriefing.state.verticalProfileWindowOpen)) && (
+        <div className="map-bottom-controls">
+          {showKoreaHome && (
+            <button type="button" className="map-home-control" onClick={flyToKorea} aria-label="기본 지도 보기" title="기본 지도 보기">
+              <House size={18} aria-hidden="true" />
+              <span>기본 지도</span>
+            </button>
+          )}
+          {routeBriefing.state.workflowStep === 'altitude' && routeBriefing.state.verticalProfile && !routeBriefing.state.verticalProfileWindowOpen && (
+            <button
+              type="button"
+              className="vertical-profile-reopen-button"
+              onClick={() => routeBriefing.actions.setVerticalProfileWindowOpen(true)}
+              aria-label="연직단면도 다시 보기"
+            >
+              <ChartSpline size={18} strokeWidth={2} />
+              <span>연직단면도</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {isMobile && showKoreaHome && (
+        <button type="button" className="map-home-control" onClick={flyToKorea} aria-label="기본 지도 보기" title="기본 지도 보기">
+          <House size={18} aria-hidden="true" />
+          <span>기본 지도</span>
         </button>
       )}
 
