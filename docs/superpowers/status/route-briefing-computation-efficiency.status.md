@@ -1,13 +1,13 @@
 # Route Briefing Computation Efficiency Status
 
-Updated: 2026-07-20 21:36 KST
+Updated: 2026-07-20 22:04 KST
 Spec: docs/superpowers/specs/2026-07-20-route-briefing-computation-efficiency.md
 Plan: docs/superpowers/plans/2026-07-20-route-briefing-computation-efficiency.md
 
 ## Resume Point
 
 - Last completed: Task 0 production measurement and Task 1 raw-grid cache. `enroute-cross-section` keeps one KIM and one KTG revision-aware bundle keyed by root/tmfc/hf/revision; it retains at most 32 grids (21 KIM pressure levels, 10 KTG levels, and KTG coordinates), reuses same-revision reads, and drops each family map before a changed revision is read.
-- Next: Commit and deploy only after the user explicitly requests it. No deployment has been performed.
+- Last deployed: `6f8e968` to the AWS EC2 production server on 2026-07-20. PM2, health, snapshot metadata, and public HTTPS all returned normally.
 
 ## Verified
 
@@ -29,6 +29,8 @@ Plan: docs/superpowers/plans/2026-07-20-route-briefing-computation-efficiency.md
 - `npx depcruise --no-config --output-type err-long backend/src frontend/src` passed (3,209 modules; no dependency violations). The repository has no dependency-cruiser config, so the default whole-repository command was not applicable.
 - Final rerun after the raw-grid cache: `npm --prefix backend test` passed (376 tests); `npm --prefix frontend run build` passed; `npx depcruise --no-config --output-type err-long backend/src frontend/src` passed (3,209 modules / 8,690 dependencies); `npm.cmd run dev:contract -- --grep route-workflow` passed (8 passed, 4 viewport-conditional skips).
 - `git diff --check` passed.
+- Production comparison for `POST /api/briefing/cross-section` over the same `[[126.8,37.5],[129.0,35.2]]` route: old revision `ebf0701` measured 1.287443 s then 0.755198 s; deployed revision `6f8e968` measured 1.079436 s cold, then 0.221333 s and 0.216568 s warm. The representative repeated-request time improved by 70.7% (`0.755198 → 0.221333 s`); the new warm request was 79.5% faster than its own cold request. Response size stayed effectively unchanged (3,914,787 vs. 3,914,144 bytes). This is a single production sample, not a percentile benchmark.
+- Post-deploy: PM2 `projectamo-backend` online (286.2 MB reported); `/api/health` 200; `/api/snapshot-meta` 200; `https://www.projectamo.co.kr/` 200.
 
 ## Unverified / Skipped
 
