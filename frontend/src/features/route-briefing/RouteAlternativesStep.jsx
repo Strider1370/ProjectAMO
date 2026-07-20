@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import './RouteBriefing.css'
 import { Button, Input } from '../../shared/ui/fluent.js'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 import LayerToggleChips from '../map/LayerToggleChips.jsx'
 import { metLabel } from '../map/layerActions.js'
 import { hazardMapLayers } from './lib/hazardLayers.js'
 import { formatRouteString } from './lib/routePlanner.js'
-import { buildRouteComparison } from './lib/routeComparison.js'
+import { buildRouteComparison, exposureNm } from './lib/routeComparison.js'
 import { computeEtaIso } from './lib/etaCalc.js'
 
 function exposureLabel(hazard) {
@@ -23,6 +24,7 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
   const [routeString, setRouteString] = useState('')
   const [changedTokens, setChangedTokens] = useState([])
   const [deleteArmed, setDeleteArmed] = useState(false)
+  const [expandedHazardIds, setExpandedHazardIds] = useState(() => new Set())
   const previousRouteStringRef = useRef('')
   const selectedDesign = designs.find((design) => design.id === selectedDesignId)
   const baseDesign = designs.find((design) => design.kind === 'base' || design.id === 'base')
@@ -69,6 +71,11 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
         const selected = design.id === selectedDesignId
         const distance = design.routeResult?.totalDistanceNm ?? design.routeResult?.distanceNm
         const comparison = comparisonById.get(design.id)
+        const hazards = [...(design.routeExposure?.hazards ?? [])].sort((a, b) => exposureNm(b) - exposureNm(a))
+        const expanded = expandedHazardIds.has(design.id)
+        const visibleHazards = expanded ? hazards : hazards.slice(0, 3)
+        const hiddenCount = hazards.length - visibleHazards.length
+        const totalHazardExposureNm = Math.round(hazards.reduce((sum, hazard) => sum + exposureNm(hazard), 0))
         return (
           <button key={design.id} type="button" aria-selected={selected} className={`rb-alternative-card${selected ? ' is-selected' : ''}`} onClick={() => onSelect(design.id)}>
             <strong>{design.name}</strong>
@@ -76,7 +83,19 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
             {comparison?.eta && <span>ETA {comparison.eta.slice(11, 16)} UTC</span>}
             {comparison?.distanceDeltaNm != null && <span>기준 대비 {comparison.distanceDeltaNm > 0 ? '+' : ''}{comparison.distanceDeltaNm} NM · {comparison.etaDeltaMinutes > 0 ? '+' : ''}{comparison.etaDeltaMinutes}분</span>}
             {comparison?.comparisonUnavailable && <span>위험 노출 비교 자료 없음</span>}
-            {design.routeExposure?.hazards?.slice(0, 2).map((hazard) => <span key={hazard.sourceId} className="rb-card-hazard">{exposureLabel(hazard)}</span>)}
+            {hazards.length > 0 && <span className="rb-card-total-exposure">위험기상 노출 합계 {totalHazardExposureNm} NM</span>}
+            {visibleHazards.map((hazard) => <span key={hazard.sourceId} className="rb-card-hazard">{exposureLabel(hazard)}</span>)}
+            {hiddenCount > 0 && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="rb-card-more"
+                onClick={(event) => { event.stopPropagation(); setExpandedHazardIds((prev) => new Set(prev).add(design.id)) }}
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); setExpandedHazardIds((prev) => new Set(prev).add(design.id)) } }}
+              >
+                {hiddenCount}건 더 보기
+              </span>
+            )}
             {selected && <span>선택됨</span>}
           </button>
         )
@@ -114,7 +133,17 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
       </div>}
       {selectedDesign?.kind === 'alternative' && comparisonById.get(selectedDesign.id)?.exposures?.length > 0 && <div className="rb-comparison-detail">
         <p>기준 대비 위험 노출</p>
-        {comparisonById.get(selectedDesign.id).exposures.map((exposure) => <p key={exposure.key}>{exposure.key}: {exposure.unavailable ? '비교 자료 없음' : `${exposure.baseNm} NM → ${exposure.alternativeNm} NM (${exposure.deltaNm > 0 ? '+' : ''}${exposure.deltaNm} NM)`}</p>)}
+        {comparisonById.get(selectedDesign.id).exposures.map((exposure) => (
+          <p key={exposure.key}>
+            {exposure.label}: {exposure.unavailable ? '비교 자료 없음' : (
+              <>
+                {exposure.baseNm} NM → {exposure.alternativeNm} NM
+                {exposure.deltaNm !== 0 && (exposure.deltaNm > 0 ? <ChevronUp size={14} style={{ verticalAlign: 'middle', opacity: 0.6 }} /> : <ChevronDown size={14} style={{ verticalAlign: 'middle', opacity: 0.6 }} />)}
+                {' '}({exposure.deltaNm > 0 ? '+' : ''}{exposure.deltaNm} NM)
+              </>
+            )}
+          </p>
+        ))}
       </div>}
       {changedTokens.length > 0 && <p className="rb-route-string-change">지도 수정 반영: {routeString.split(' ').map((token, index) => <span key={`${token}-${index}`} className={changedTokens.includes(token) ? 'is-changed' : ''}>{token} </span>)}</p>}
       {routeError && <p className="rb-alternatives-status" role="alert">{routeError}</p>}

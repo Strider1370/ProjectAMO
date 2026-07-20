@@ -13,7 +13,7 @@ test('comparison keeps base inputs untouched and calculates distance and ETA del
 
   assert.equal(result.distanceDeltaNm, 30)
   assert.equal(result.etaDeltaMinutes, 15)
-  assert.deepEqual(result.exposures[0], { key: 'SIGMET:TS', baseNm: 10, alternativeNm: 3, deltaNm: -7, unavailable: false })
+  assert.deepEqual(result.exposures[0], { key: 'SIGMET:TS', label: 'TS', baseNm: 10, alternativeNm: 3, deltaNm: -7, unavailable: false })
   assert.equal(base.routeResult.totalDistanceNm, 120)
 })
 
@@ -24,9 +24,25 @@ test('comparison gives zero to a phenomenon absent on one route and hides mismat
   const alternative = design('a', 100, exposure('other', [hazard('SIGMET', 'TS', 1, 2)]))
   const result = buildRouteComparison(base, [alternative], { weatherSnapshot: { version: 'same' } })[0]
 
-  assert.deepEqual(zeroResult.exposures.find((row) => row.key === 'AIRMET:TURB'), { key: 'AIRMET:TURB', baseNm: 3, alternativeNm: 0, deltaNm: -3, unavailable: false })
+  assert.deepEqual(zeroResult.exposures.find((row) => row.key === 'AIRMET:TURB'), { key: 'AIRMET:TURB', label: 'TURB', baseNm: 3, alternativeNm: 0, deltaNm: -3, unavailable: false })
   assert.equal(result.comparisonUnavailable, true)
   assert.ok(result.exposures.every((row) => row.unavailable && row.deltaNm === null))
+})
+
+test('comparison keeps all hazards without truncation and exposes a human-readable label', () => {
+  const manyHazards = [
+    hazard('SIGMET', 'TS', 0, 5),
+    hazard('SIGMET', 'ICE', 0, 5),
+    hazard('AIRMET', 'TURB', 0, 5),
+    hazard('AIRMET', 'MTW', 0, 5),
+  ]
+  const base = design('base', 100, exposure('same', manyHazards))
+  const alternative = design('a', 100, exposure('same', manyHazards))
+  const result = buildRouteComparison(base, [alternative], { weatherSnapshot: { version: 'same' } })[0]
+
+  assert.equal(base.routeExposure.hazards.length, 4)
+  assert.equal(result.exposures.length, 4)
+  assert.ok(result.exposures.every((row) => row.label !== row.key))
 })
 
 test('final geometry uses each design procedure selection', () => {

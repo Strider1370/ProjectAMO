@@ -19,7 +19,8 @@ function exposureRows(exposure) {
   if (!exposure || exposure.trigger === 'unavailable') return null
   return (exposure.hazards ?? []).reduce((rows, hazard) => {
     const key = `${hazard.source ?? 'unknown'}:${hazard.phenomenon ?? 'unknown'}`
-    rows.set(key, (rows.get(key) ?? 0) + exposureNm(hazard))
+    const prev = rows.get(key) ?? { nm: 0, label: hazard.label ?? hazard.phenomenon ?? key, source: hazard.source }
+    rows.set(key, { ...prev, nm: prev.nm + exposureNm(hazard) })
     return rows
   }, new Map())
 }
@@ -66,9 +67,10 @@ export function buildRouteComparison(base, alternatives, { etd, tasKt, weatherSn
       etaDeltaMinutes: eta && baseEta ? round((Date.parse(eta) - Date.parse(baseEta)) / 60_000) : null,
       exposures: [...keys].map((key) => ({
         key,
-        baseNm: comparable ? round(baseExposure.get(key) ?? 0) : null,
-        alternativeNm: comparable ? round(exposure.get(key) ?? 0) : null,
-        deltaNm: comparable ? round((exposure.get(key) ?? 0) - (baseExposure.get(key) ?? 0)) : null,
+        label: baseExposure?.get(key)?.label ?? exposure?.get(key)?.label ?? key,
+        baseNm: comparable ? round(baseExposure.get(key)?.nm ?? 0) : null,
+        alternativeNm: comparable ? round(exposure.get(key)?.nm ?? 0) : null,
+        deltaNm: comparable ? round((exposure.get(key)?.nm ?? 0) - (baseExposure.get(key)?.nm ?? 0)) : null,
         unavailable: !comparable,
       })),
       comparisonUnavailable: !comparable,

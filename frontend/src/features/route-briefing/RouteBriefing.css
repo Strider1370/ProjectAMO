@@ -176,6 +176,7 @@
 .rb-card-warning { color: var(--level-red); font-weight: 600; }
 .rb-card-total-exposure { color: var(--text-2); font-weight: 600; }
 .rb-card-total-exposure.is-zero { color: var(--text-3); font-weight: 500; }
+.rb-card-more { display: inline-block; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; }
 .rb-design-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-s); }
 .rb-design-actions > button:first-child { grid-column: 1 / -1; }
 .rb-design-actions:has(> button:nth-child(5)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
