@@ -1,13 +1,19 @@
 # 경로비교·고도비교 위험기상 표시 개편 Status
 
-Updated: 2026-07-21 02:00 KST
+Updated: 2026-07-21 09:00 KST
 Spec: docs/superpowers/specs/2026-07-21-hazard-comparison-display.md
 Plan: docs/superpowers/plans/2026-07-21-hazard-comparison-display.md
 
 ## Resume Point
 
-- Last completed: Task 5 (전체 검증) — 계획의 5개 태스크 전부 완료.
+- Last completed: `d07d246` — 고도 비교 열 정렬(FR-004) 후속 수정 + LGT 색상 수정. 계획의 5개 태스크 + 이 후속 수정까지 완료.
 - Next: 없음. 후속 작업이 필요하면 새 스펙/플랜으로 시작.
+
+## Deviations from Plan
+
+- Task 1 완료 시점(`2cdbd08`)에는 착빙·난류·위험기상이 카드 안에서 세로로 쌓이기만 하고 실제 CSS 격자(`grid-template-columns`)가 없어 FR-004("모든 행에서 동일한 가로 위치")를 충족하지 못했음 — 사용자가 목업과 대조해 지적함. `d07d246`에서 `.rb-altitude-row`에 실제 6열 격자를 추가하고 헤더 행을 넣어 해결.
+- 목업(v3)은 1180px 데모 페이지 기준으로 설계됐으나 실제 Flight Plan 사이드바는 ~440px임. 목업 그대로(배지+NM 수치+등급별 분해를 접힌 행에 전부 표시)를 이식하니 착빙/난류 배지 텍스트가 글자 단위로 줄바꿈되어 읽을 수 없었음(스크린샷으로 확인). 접힌 행은 등급 코드(NIL/LGT/MOD/SVR)와 위험기상 출처만 표시하도록 축소하고, 정확한 NM·등급별 분해·위험기상 전체 정보는 선택 시 펼치는 상세 패널로 옮김 — 정보 자체는 하나도 빠지지 않았고 위치만 바뀜.
+- `.sev-lgt`가 `--level-green`을 썼는데, 이 앱에서 초록은 "양호/안전"을 뜻해(`BriefingView.css`의 VFR 배너 등) 측정값에 판단을 슬쩍 얹는 셈이었음. MOD/SVR과 같은 호박색 계열의 옅은 톤으로 교체.
 
 ## Completed
 
@@ -31,3 +37,5 @@ Plan: docs/superpowers/plans/2026-07-21-hazard-comparison-display.md
 
 - 대안 경로 카드의 "N건 더 보기" 펼침 상호작용은 스크린샷으로 캡처하지 않음(위 사유). 필요하면 `tabcapture.spec.mjs`에 대안 경로 설계안을 추가하는 후속 작업으로 캡처 가능.
 - `ipad-landscape`/`mobile` 프로젝트에서의 tabcapture는 desktop-only 스킵 조건(`test.skip`)으로 실행하지 않음 — 계획에 명시된 대로 desktop만 캡처.
+- 모바일 2열 격자 폴백(`RouteBriefing.css`의 `.rb-mobile .rb-altitude-row`)은 로직상 작성만 하고 스크린샷으로 확인하지 않음.
+- `docs/design/mockups/briefing-preparation-summary.html`은 이 작업과 무관한 미추적 파일로 저장소에 남아있음(세션 시작 시점부터 존재) — 이번 커밋에 포함하지 않음, 별도 확인 필요.
