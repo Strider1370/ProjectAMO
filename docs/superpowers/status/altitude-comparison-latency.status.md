@@ -1,10 +1,10 @@
 # Automatic-route altitude comparison latency status
 
-Updated: 2026-07-20 22:40 KST
+Updated: 2026-07-20 23:05 KST
 
 ## Resume point
 
-- Implementation complete locally; awaiting commit, deployment, and production timing.
+- Deployed commit `438e351` to production. PM2, health, snapshot metadata, nginx configuration, and deployed revision all passed.
 
 ## Implemented
 
@@ -23,4 +23,4 @@ Updated: 2026-07-20 22:40 KST
 
 ## Next
 
-- Commit only the listed latency changes, push, deploy, and measure RKSS→RKPC automatic route at 29,000 ft.
+- Manual production timing remains needed: the headless browser was blocked twice by the release-notes overlay before it could begin the route workflow, so no post-deploy UI duration is claimed.
