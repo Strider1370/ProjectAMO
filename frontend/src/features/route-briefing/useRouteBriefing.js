@@ -1217,6 +1217,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     await handleVerticalProfileRequest({
       plannedCruiseAltitudeFt: value,
       candidateCruiseAltitudesFt,
+      crossSection: comparison?.crossSection ?? null,
       openWindow,
     })
   }
@@ -1511,6 +1512,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   async function handleVerticalProfileRequest({
     plannedCruiseAltitudeFt: requestedAltitudeFt = cruiseAltitudeFt,
     candidateCruiseAltitudesFt = [],
+    crossSection: existingCrossSection = null,
     openWindow = true,
   } = {}) {
     const routeGeometry = getCurrentRouteLineString({
@@ -1547,7 +1549,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
           plannedCruiseAltitudeFt,
           candidateCruiseAltitudesFt,
         })),
-        fetchCrossSection({ routeGeometry }).catch(() => null),
+        existingCrossSection ?? fetchCrossSection({ routeGeometry }).catch(() => null),
       ])
       if (requestId !== verticalProfileRequestRef.current) return
       setVerticalProfile(profile)

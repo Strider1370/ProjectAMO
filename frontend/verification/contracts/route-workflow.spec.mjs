@@ -56,8 +56,9 @@ async function completeWorkflow(page, rule, isMobile, { stopAtCompare = false, s
 
 test.describe('route-workflow', () => {
   test('IFR flight setup progresses through route and altitude comparison to briefing preparation', async ({ page }, testInfo) => {
-    await openRouteBriefing(page, testInfo.project.name === 'mobile')
+    const requests = await openRouteBriefing(page, testInfo.project.name === 'mobile')
     await completeWorkflow(page, 'IFR', testInfo.project.name === 'mobile')
+    expect(requests.crossSection.count).toBe(0)
   })
 
   test('VFR flight setup progresses through the same preparation workflow', async ({ page }, testInfo) => {

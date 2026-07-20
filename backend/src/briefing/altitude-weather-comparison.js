@@ -68,8 +68,11 @@ export function buildAltitudeCandidates({ routeSegments = [], plannedCruiseAltit
   }
 }
 
-function interpolate(levels, altitudeFt, distanceNm, field) {
-  const points = levels.map((level) => ({ altFt: level.values?.find((value) => value.distanceNm === distanceNm)?.altFt, value: level.values?.find((value) => value.distanceNm === distanceNm)?.[field] }))
+function interpolate(levels, altitudeFt, sampleIndex, field) {
+  const points = levels.map((level) => {
+    const sample = level.values?.[sampleIndex]
+    return { altFt: sample?.altFt, value: sample?.[field] }
+  })
     .filter((point) => Number.isFinite(point.altFt) && Number.isFinite(point.value)).sort((a, b) => a.altFt - b.altFt)
   const exact = points.find((point) => point.altFt === altitudeFt)
   if (exact) return { value: exact.value, source: 'exact' }
@@ -79,13 +82,12 @@ function interpolate(levels, altitudeFt, distanceNm, field) {
   return { value: lower.value + (upper.value - lower.value) * ((altitudeFt - lower.altFt) / (upper.altFt - lower.altFt)), source: 'interpolated' }
 }
 
-function weightedWind(levels, axis, altitudeFt) {
+function weightedWind(levels, axis, altitudeFt, weights) {
   const values = []
   const samples = axis.samples ?? []
-  const weights = sampleWeights(samples)
   for (const [index, sample] of samples.entries()) {
-    const u = interpolate(levels, altitudeFt, sample.distanceNm, 'u')
-    const v = interpolate(levels, altitudeFt, sample.distanceNm, 'v')
+    const u = interpolate(levels, altitudeFt, index, 'u')
+    const v = interpolate(levels, altitudeFt, index, 'v')
     if (!u || !v) continue
     const rad = sample.bearingDeg * Math.PI / 180
     values.push({ value: (u.value * Math.sin(rad) + v.value * Math.cos(rad)) * 1.94384, weight: weights[index] })
@@ -110,26 +112,27 @@ function gradeRank(value) {
   return ({ none: 0, light: 1, moderate: 2, severe: 3 }[String(value).toLowerCase()] ?? 0)
 }
 
-function categoricalAt(levels, altitudeFt, distanceNm, field) {
+function categoricalAt(levels, altitudeFt, sampleIndex, field) {
   const choices = levels.map((level) => {
-    const value = level.values?.find((sample) => sample.distanceNm === distanceNm)?.[field]
-    const sampleAltitude = level.values?.find((sample) => sample.distanceNm === distanceNm)?.altFt ?? level.altFt
+    const sample = level.values?.[sampleIndex]
+    const value = sample?.[field]
+    const sampleAltitude = sample?.altFt ?? level.altFt
     return { value, altitudeFt: sampleAltitude }
   }).filter((choice) => choice.value != null && Number.isFinite(choice.altitudeFt))
   if (!choices.length) return null
   return choices.sort((a, b) => Math.abs(a.altitudeFt - altitudeFt) - Math.abs(b.altitudeFt - altitudeFt))[0].value
 }
 
-function exposureSummary(levels, axis, altitudeFt, field, transform = (value) => value) {
+function exposureSummary(levels, axis, altitudeFt, field, weights, transform = (value) => value) {
   if (!Array.isArray(levels) || !levels.length || !axis?.samples?.length) return { status: 'unavailable', highestGrade: null, exposureNmByGrade: {} }
   const byGrade = {}
   let highest = null
   for (const [index, sample] of axis.samples.entries()) {
-    const rawGrade = categoricalAt(levels, altitudeFt, sample.distanceNm, field)
+    const rawGrade = categoricalAt(levels, altitudeFt, index, field)
     const grade = rawGrade == null ? null : transform(rawGrade)
     if (grade == null) continue
     const key = String(grade)
-    byGrade[key] = Number(((byGrade[key] ?? 0) + sampleWeights(axis.samples)[index]).toFixed(2))
+    byGrade[key] = Number(((byGrade[key] ?? 0) + weights[index]).toFixed(2))
     if (highest == null || gradeRank(grade) > gradeRank(highest)) highest = grade
   }
   return highest == null
@@ -174,16 +177,17 @@ function matchNotams(notams, axis, altitudeFt, etd, eta) {
 }
 
 export function buildAltitudeWeatherComparison({ candidates = [], crossSection, turbulence, axis, hazards = [], notams = [], etd, eta } = {}) {
+  const weights = sampleWeights(axis?.samples ?? [])
   return candidates.map((candidate) => {
     if (candidate.status !== 'valid') return { ...candidate, weatherStatus: 'unavailable' }
-    const wind = weightedWind(crossSection?.levels ?? [], axis, candidate.altitudeFt)
+    const wind = weightedWind(crossSection?.levels ?? [], axis, candidate.altitudeFt, weights)
     const weatherStatus = wind ? 'available' : 'weather_unavailable'
     return {
       ...candidate,
       weatherStatus,
       wind,
-      icing: { summary: exposureSummary(crossSection?.levels, axis, candidate.altitudeFt, 'icing') },
-      turbulence: { summary: exposureSummary(turbulence?.levels, axis, candidate.altitudeFt, 'ktg', ktgIntensity) },
+      icing: { summary: exposureSummary(crossSection?.levels, axis, candidate.altitudeFt, 'icing', weights) },
+      turbulence: { summary: exposureSummary(turbulence?.levels, axis, candidate.altitudeFt, 'ktg', weights, ktgIntensity) },
       hazards: matchHazards(hazards, axis, candidate.altitudeFt, etd, eta),
       notams: matchNotams(notams, axis, candidate.altitudeFt, etd, eta),
     }

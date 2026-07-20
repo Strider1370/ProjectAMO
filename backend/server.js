@@ -992,6 +992,9 @@ app.post('/api/briefing/altitudes', (req, res) => {
       constraints: { ...candidateResult.constraints, provenance: aip.provenance },
       rows,
       crossSectionRun: crossSectionResult.crossSection?.run ?? null,
+      crossSection: crossSectionResult.available
+        ? { ...crossSectionResult.crossSection, turbulence: crossSectionResult.turbulence }
+        : null,
     })
   } catch (error) {
     res.status(400).json({ error: error.message || 'altitude comparison failed' })

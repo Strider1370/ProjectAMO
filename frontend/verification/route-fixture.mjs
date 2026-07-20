@@ -61,6 +61,7 @@ function profileFor(request) {
   })
 }
 
+const crossSection = { run: { id: 'contract-fixture', model: 'fixture' }, levels: [], coverage: { byVariable: {} }, turbulence: { available: false, levels: [] } }
 const altitudeComparison = {
   constraints: { status: 'matched', routeFloorFt: 7000, routeCeilingFt: 11000 },
   rows: [7000, 9000, 11000].map((altFt) => ({
@@ -73,15 +74,16 @@ const altitudeComparison = {
     turbulence: { summary: { status: 'available', highestGrade: 0 } },
     hazards: [],
   })),
+  crossSection,
 }
 
 const exposure = { trigger: 'none', hazards: [], comparisonOnly: { lightning: { status: 'unavailable', observedAt: null, within20NmCount: null } } }
-const crossSection = { run: { id: 'contract-fixture', model: 'fixture' }, levels: [], coverage: { byVariable: {} }, turbulence: { available: false, levels: [] } }
 
 // Contract precondition: the route is built from committed navdata; weather and terrain
 // requests below are deterministic so dev:test collection state cannot affect assertions.
 export async function installRouteBriefingFixtures(page) {
   const exposureRequests = { single: new Map(), batch: new Map() }
+  const crossSectionRequests = { count: 0 }
   await page.route('**/api/briefing/route-exposure', (route) => {
     const key = stableRoutePayload(route)
     exposureRequests.single.set(key, (exposureRequests.single.get(key) || 0) + 1)
@@ -97,7 +99,10 @@ export async function installRouteBriefingFixtures(page) {
   })
   await page.route('**/api/briefing/altitudes', (route) => fulfill(route, altitudeComparison))
   await page.route('**/api/vertical-profile', (route) => fulfill(route, profileFor(requestJson(route))))
-  await page.route('**/api/briefing/cross-section', (route) => fulfill(route, crossSection))
+  await page.route('**/api/briefing/cross-section', (route) => {
+    crossSectionRequests.count += 1
+    return fulfill(route, crossSection)
+  })
   await page.route('**/api/route-briefing', (route) => fulfill(route, briefingFor(requestJson(route))))
-  return exposureRequests
+  return { ...exposureRequests, crossSection: crossSectionRequests }
 }
