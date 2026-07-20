@@ -64,7 +64,20 @@ function profileFor(request) {
 const crossSection = { run: { id: 'contract-fixture', model: 'fixture' }, levels: [], coverage: { byVariable: {} }, turbulence: { available: false, levels: [] } }
 const altitudeComparison = {
   constraints: { status: 'matched', routeFloorFt: 7000, routeCeilingFt: 11000 },
-  rows: [7000, 9000, 11000].map((altFt) => ({
+  rows: [7000, 9000, 11000].map((altFt) => altFt === 9000 ? {
+    altFt,
+    label: `FL${altFt / 100}`,
+    candidateStatus: 'valid',
+    weatherStatus: 'available',
+    wind: { meanComponentKt: 12 },
+    icing: { summary: { status: 'available', highestGrade: 2, highestGradeExposureNm: 18 } },
+    turbulence: { summary: { status: 'available', highestGrade: 1, highestGradeExposureNm: 6 } },
+    hazards: [{
+      source: 'SIGMET', sourceId: 'fixture-sigmet-1', label: 'Embedded Thunderstorm',
+      altitude: { lower_fl: 60, upper_fl: 180 }, encounter: 'on', timeStatus: 'matched', verticalStatus: 'intersects',
+      horizontalExposure: { status: 'intersects', intervals: [{ startNm: 5, endNm: 27 }] },
+    }],
+  } : {
     altFt,
     label: `FL${altFt / 100}`,
     candidateStatus: 'valid',
@@ -73,11 +86,18 @@ const altitudeComparison = {
     icing: { summary: { status: 'available', highestGrade: 0 } },
     turbulence: { summary: { status: 'available', highestGrade: 0 } },
     hazards: [],
-  })),
+  }),
   crossSection,
 }
 
-const exposure = { trigger: 'none', hazards: [], comparisonOnly: { lightning: { status: 'unavailable', observedAt: null, within20NmCount: null } } }
+const exposure = {
+  trigger: 'intersects',
+  hazards: [{
+    source: 'SIGMET', phenomenon: 'TS', sourceId: 'fixture-sigmet-1', label: 'Embedded Thunderstorm',
+    horizontalExposure: { status: 'intersects', intervals: [{ startNm: 5, endNm: 27 }] },
+  }],
+  comparisonOnly: { lightning: { status: 'unavailable', observedAt: null, within20NmCount: null } },
+}
 
 // Contract precondition: the route is built from committed navdata; weather and terrain
 // requests below are deterministic so dev:test collection state cannot affect assertions.
