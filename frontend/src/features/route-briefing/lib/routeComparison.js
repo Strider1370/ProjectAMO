@@ -7,7 +7,7 @@ function routeDistance(design) {
   return Number(design?.routeResult?.totalDistanceNm ?? design?.routeResult?.distanceNm)
 }
 
-function exposureNm(hazard) {
+export function exposureNm(hazard) {
   return (hazard?.horizontalExposure?.intervals ?? []).reduce((total, interval) => {
     const start = Number(interval?.startNm)
     const end = Number(interval?.endNm)

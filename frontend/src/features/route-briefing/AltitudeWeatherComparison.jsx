@@ -1,6 +1,7 @@
 import './RouteBriefing.css'
 import { Button } from '../../shared/ui/fluent.js'
 import { Snowflake, Waves, Wind, CloudLightning, Mountain, Minus } from 'lucide-react'
+import { exposureNm } from './lib/routeComparison.js'
 
 function constraintLabel(constraints) {
   if (constraints?.status === 'matched') {
@@ -106,6 +107,9 @@ export default function AltitudeWeatherComparison({
         const icingItem = details.find(d => d.kind === 'severity' && d.type === 'icing')
         const turbulenceItem = details.find(d => d.kind === 'severity' && d.type === 'turbulence')
         const warningItems = details.filter(d => d.kind === 'warning')
+        const totalExposureNm = Math.round(
+          (icingItem?.exposureNm ?? 0) + (turbulenceItem?.exposureNm ?? 0) + (row.hazards ?? []).reduce((sum, h) => sum + exposureNm(h), 0)
+        )
 
         return (
           <button key={`${altitudeFt}-${status}`} type="button" disabled={!selectable} className={`rb-alternative-card${selected ? ' is-selected' : ''}`} onClick={() => onSelect(altitudeFt)}>
@@ -151,6 +155,11 @@ export default function AltitudeWeatherComparison({
                 </div>
               </span>
             })}
+
+            {/* Total exposure */}
+            <span className={`rb-card-column rb-card-total-exposure${totalExposureNm === 0 ? ' is-zero' : ''}`}>
+              총 {totalExposureNm} NM
+            </span>
 
             {/* Warnings and other status messages */}
             {warningItems.map((w) => <span key={w.text} className="rb-card-warning">{w.text}</span>)}
