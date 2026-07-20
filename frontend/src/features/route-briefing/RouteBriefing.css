@@ -169,9 +169,9 @@
 .rb-card-hazard { color: var(--level-amber); font-weight: 600; display: flex; gap: 8px; }
 .rb-card-hazard > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .rb-card-hazard > div > span { display: block; overflow-wrap: break-word; }
-.hz.on { color: var(--level-red); }
-.hz.on > div > span:first-child { color: var(--level-red); font-weight: 700; }
-.hz.near { color: var(--level-amber); }
+.hz-on { color: var(--level-red); }
+.hz-on > div > span:first-child { color: var(--level-red); font-weight: 700; }
+.hz-near { color: var(--level-amber); }
 
 .rb-card-warning { color: var(--level-red); font-weight: 600; }
 .rb-design-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-s); }

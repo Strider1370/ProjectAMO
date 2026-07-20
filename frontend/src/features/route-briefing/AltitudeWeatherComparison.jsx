@@ -50,13 +50,6 @@ function severityBadge(grade) {
   return entry ?? { code: '?', ko: '자료 없음' }
 }
 
-function gradeLabel(grade) {
-  return ({ 0: '없음', 1: '약', 2: '중', 3: '심' }[Number(grade)] ?? '판정 불가')
-}
-
-function exposureLabel(distanceNm) {
-  return Number.isFinite(distanceNm) && distanceNm > 0 ? ` ${Math.round(distanceNm)} NM` : ''
-}
 
 function hazardSummary(hazards) {
   return [...new Set(hazards.map((hazard) => `${hazard.source} ${hazard.label}`))].join(' · ')
@@ -150,7 +143,7 @@ export default function AltitudeWeatherComparison({
             {selected && row.hazards?.map((hazard) => {
               const isOn = hazard.encounter === 'on'
               const encounterText = isOn ? '실제 조우' : '인근'
-              return <span key={`${hazard.source}-${hazard.sourceId}`} className={`rb-card-column rb-card-hazard hz${isOn ? ' hz.on' : ' hz.near'}`}>
+              return <span key={`${hazard.source}-${hazard.sourceId}`} className={`rb-card-column rb-card-hazard ${isOn ? 'hz-on' : 'hz-near'}`}>
                 {hazard.source.includes('SIGMET') || hazard.source.includes('AIRMET') ? <CloudLightning size={16} style={{ flex: '0 0 auto' }} /> : <Mountain size={16} style={{ flex: '0 0 auto' }} />}
                 <div>
                   <span>{hazard.source} · {hazard.label}</span>
