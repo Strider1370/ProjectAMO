@@ -1,5 +1,6 @@
 import './RouteBriefing.css'
 import { Button } from '../../shared/ui/fluent.js'
+import { Snowflake, Waves, Wind, CloudLightning, Mountain, Minus } from 'lucide-react'
 
 function constraintLabel(constraints) {
   if (constraints?.status === 'matched') {
@@ -23,8 +24,8 @@ function rowDetails(row) {
   const items = []
   const windKt = row.wind?.meanComponentKt ?? row.wind?.averageKt
   if (Number.isFinite(windKt)) items.push({ text: `평균 ${windKt >= 0 ? '순풍 +' : '맞바람 '}${Math.round(windKt)}kt`, kind: 'info' })
-  if (row.icing?.summary?.status === 'available') items.push({ text: `착빙 ${gradeLabel(row.icing.summary.highestGrade)}${exposureLabel(row.icing.summary.highestGradeExposureNm)}`, kind: 'info' })
-  if (row.turbulence?.summary?.status === 'available') items.push({ text: `난류 ${gradeLabel(row.turbulence.summary.highestGrade)}${exposureLabel(row.turbulence.summary.highestGradeExposureNm)}`, kind: 'info' })
+  if (row.icing?.summary?.status === 'available') items.push({ kind: 'severity', type: 'icing', grade: row.icing.summary.highestGrade, exposureNm: row.icing.summary.highestGradeExposureNm })
+  if (row.turbulence?.summary?.status === 'available') items.push({ kind: 'severity', type: 'turbulence', grade: row.turbulence.summary.highestGrade, exposureNm: row.turbulence.summary.highestGradeExposureNm })
   if (row.hazards?.length) items.push({ text: hazardSummary(row.hazards), kind: 'hazard' })
   if (row.notams?.some((notam) => (notam.effect ?? notam.status) === 'undetermined')) items.push({ text: 'NOTAM 판정 불가', kind: 'warning' })
   if (row.timeStatus === 'not_provided') items.push({ text: '시간 판단 불가', kind: 'warning' })
@@ -34,6 +35,19 @@ function rowDetails(row) {
     items.push({ text: 'KIM 고도 기상 자료가 없어 비교할 수 없음', kind: 'warning' })
   }
   return items
+}
+
+const SEVERITY_LABEL = {
+  0: { code: 'NIL', ko: '없음' },
+  1: { code: 'LGT', ko: '약함' },
+  2: { code: 'MOD', ko: '보통' },
+  3: { code: 'SVR', ko: '심함' },
+}
+
+function severityBadge(grade) {
+  if (grade == null) return { code: '?', ko: '자료 없음' }
+  const entry = SEVERITY_LABEL[Number(grade)]
+  return entry ?? { code: '?', ko: '자료 없음' }
 }
 
 function gradeLabel(grade) {
@@ -94,11 +108,59 @@ export default function AltitudeWeatherComparison({
         const selected = altitudeFt === selectedAltitudeFt
         const selectable = status === 'valid' && row.weatherStatus !== 'weather_unavailable'
         const details = rowDetails(row)
+
+        const windKt = row.wind?.meanComponentKt ?? row.wind?.averageKt
+        const icingItem = details.find(d => d.kind === 'severity' && d.type === 'icing')
+        const turbulenceItem = details.find(d => d.kind === 'severity' && d.type === 'turbulence')
+        const warningItems = details.filter(d => d.kind === 'warning')
+
         return (
           <button key={`${altitudeFt}-${status}`} type="button" disabled={!selectable} className={`rb-alternative-card${selected ? ' is-selected' : ''}`} onClick={() => onSelect(altitudeFt)}>
             <strong>{row.label ?? row.fl ?? `FL${Math.round(altitudeFt / 100)}`}{selected ? ' · 현재 선택' : ''}</strong>
-            {details.filter((detail) => !selected || detail.kind !== 'hazard').map((detail) => <span key={detail.text} className={detail.kind !== 'info' ? `rb-card-${detail.kind}` : undefined}>{detail.text}</span>)}
-            {selected && row.hazards?.map((hazard) => <span key={`${hazard.source}-${hazard.sourceId}`} className="rb-card-hazard">{`${hazard.source} · ${hazard.label} · ${altitudeLabel(hazard.altitude)} · ${hazard.timeStatus === 'matched' ? '비행 시간과 겹침' : '시간 확인 필요'}`}</span>)}
+
+            {/* Wind column */}
+            <span className="rb-card-column rb-card-wind">
+              <Wind size={16} style={{ flex: '0 0 auto' }} />
+              {Number.isFinite(windKt) ? `${Math.round(windKt)}kt ${windKt >= 0 ? '순' : '맞'}` : <Minus size={16} style={{ opacity: 0.5 }} />}
+            </span>
+
+            {/* Icing column */}
+            <span className="rb-card-column rb-card-icing">
+              <Snowflake size={16} style={{ flex: '0 0 auto' }} />
+              {icingItem ? (
+                <>
+                  <span className={`sev-${severityBadge(icingItem.grade).code.toLowerCase()}`}>{severityBadge(icingItem.grade).ko}</span>
+                  {icingItem.exposureNm != null && icingItem.exposureNm > 0 ? `${Math.round(icingItem.exposureNm)} NM` : ''}
+                </>
+              ) : <Minus size={16} style={{ opacity: 0.5 }} />}
+            </span>
+
+            {/* Turbulence column */}
+            <span className="rb-card-column rb-card-turbulence">
+              <Waves size={16} style={{ flex: '0 0 auto' }} />
+              {turbulenceItem ? (
+                <>
+                  <span className={`sev-${severityBadge(turbulenceItem.grade).code.toLowerCase()}`}>{severityBadge(turbulenceItem.grade).ko}</span>
+                  {turbulenceItem.exposureNm != null && turbulenceItem.exposureNm > 0 ? `${Math.round(turbulenceItem.exposureNm)} NM` : ''}
+                </>
+              ) : <Minus size={16} style={{ opacity: 0.5 }} />}
+            </span>
+
+            {/* Hazards */}
+            {selected && row.hazards?.map((hazard) => {
+              const isOn = hazard.encounter === 'on'
+              const encounterText = isOn ? '실제 조우' : '인근'
+              return <span key={`${hazard.source}-${hazard.sourceId}`} className={`rb-card-column rb-card-hazard hz${isOn ? ' hz.on' : ' hz.near'}`}>
+                {hazard.source.includes('SIGMET') || hazard.source.includes('AIRMET') ? <CloudLightning size={16} style={{ flex: '0 0 auto' }} /> : <Mountain size={16} style={{ flex: '0 0 auto' }} />}
+                <div>
+                  <span>{hazard.source} · {hazard.label}</span>
+                  <span style={{ fontSize: '0.9em', opacity: 0.7 }}>{altitudeLabel(hazard.altitude)} · {encounterText}</span>
+                </div>
+              </span>
+            })}
+
+            {/* Warnings and other status messages */}
+            {warningItems.map((w) => <span key={w.text} className="rb-card-warning">{w.text}</span>)}
             {!details.length && <span>{row.reasons?.[0] ?? 'KIM 고도 기상 자료가 없어 비교할 수 없음'}</span>}
             {row.weatherLevel?.mode === 'interpolated' && <span>{`KIM FL${Math.round(row.weatherLevel.lowerAltFt / 100)}–FL${Math.round(row.weatherLevel.upperAltFt / 100)} 보간`}</span>}
           </button>

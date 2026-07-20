@@ -151,7 +151,28 @@
 .rb-alternative-card { display: grid; gap: 4px; width: 100%; padding: 12px; text-align: left; color: inherit; background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-xl); cursor: pointer; }
 .rb-alternative-card.is-selected { border-color: var(--accent); background: var(--level-gray-bg); }
 .rb-alternative-card:disabled { cursor: not-allowed; opacity: .55; }
-.rb-card-hazard { color: var(--level-amber); font-weight: 600; }
+
+/* Column layout for weather data */
+.rb-card-column { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.rb-card-wind { color: var(--text-2); }
+.rb-card-icing { color: var(--text-2); }
+.rb-card-turbulence { color: var(--text-2); }
+
+/* Severity badges */
+.sev-nil { padding: 2px 6px; border-radius: 4px; background: var(--level-gray-bg); color: var(--text-3); font-weight: 600; font-size: 11px; }
+.sev-lgt { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--level-green) 12%, transparent); color: var(--level-green); font-weight: 600; font-size: 11px; }
+.sev-mod { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--level-amber) 12%, transparent); color: var(--level-amber); font-weight: 600; font-size: 11px; }
+.sev-svr { padding: 2px 6px; border-radius: 4px; background: var(--level-red-bg); color: var(--level-red); font-weight: 600; font-size: 11px; }
+.sev-na { padding: 2px 6px; border-radius: 4px; background: var(--level-gray-bg); color: var(--text-3); font-weight: 600; font-size: 11px; }
+
+/* Hazard encounter distinction */
+.rb-card-hazard { color: var(--level-amber); font-weight: 600; display: flex; gap: 8px; }
+.rb-card-hazard > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rb-card-hazard > div > span { display: block; overflow-wrap: break-word; }
+.hz.on { color: var(--level-red); }
+.hz.on > div > span:first-child { color: var(--level-red); font-weight: 700; }
+.hz.near { color: var(--level-amber); }
+
 .rb-card-warning { color: var(--level-red); font-weight: 600; }
 .rb-design-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-s); }
 .rb-design-actions > button:first-child { grid-column: 1 / -1; }
