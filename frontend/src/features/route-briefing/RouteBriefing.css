@@ -152,28 +152,63 @@
 .rb-alternative-card.is-selected { border-color: var(--accent); background: var(--level-gray-bg); }
 .rb-alternative-card:disabled { cursor: not-allowed; opacity: .55; }
 
+/* 고도 비교 행 — 착빙·난류·위험기상·노출이 모든 행에서 같은 가로 위치에 오도록
+   고정 열 격자로 정렬(표처럼 훑어볼 수 있게). 경로비교 카드(.rb-alternative-card만
+   쓰고 .rb-altitude-row는 안 씀)에는 영향 없음. */
+.rb-altitude-row { grid-template-columns: 48px 56px 42px 42px 1fr 52px; align-items: center; column-gap: 8px; row-gap: 6px; }
+.rb-altitude-row .rb-card-fl { grid-column: 1; }
+.rb-altitude-row .rb-card-wind { grid-column: 2; }
+.rb-altitude-row .rb-card-icing { grid-column: 3; }
+.rb-altitude-row .rb-card-turbulence { grid-column: 4; }
+.rb-altitude-row .rb-card-hazard { grid-column: 5; }
+.rb-altitude-row .rb-card-total-exposure { grid-column: 6; justify-self: end; }
+.rb-altitude-row .rb-card-hazard-detail,
+.rb-altitude-row .rb-card-warning,
+.rb-altitude-row .rb-card-note { grid-column: 1 / -1; }
+
+.rb-card-fl { font-size: 15px; font-weight: 700; }
+.rb-card-fl small { display: block; font-size: 11px; font-weight: 500; color: var(--text-3); }
+
+.rb-altitude-row-head { padding: 0 12px 6px; }
+.rb-altitude-row-head .rb-card-fl,
+.rb-altitude-row-head .rb-card-column,
+.rb-altitude-row-head .rb-card-hazard,
+.rb-altitude-row-head .rb-card-total-exposure {
+  font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .02em;
+}
+
 /* Column layout for weather data */
 .rb-card-column { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
 .rb-card-wind { color: var(--text-2); }
 .rb-card-icing { color: var(--text-2); }
 .rb-card-turbulence { color: var(--text-2); }
 
-/* Severity badges */
+/* Severity badges — LGT는 MOD/SVR과 같은 색 계열(호박색)의 옅은 톤만 쓴다.
+   초록은 이 앱에서 "양호/안전"을 뜻하므로 강도 배지에 쓰지 않는다(판단처럼 읽힘). */
 .sev-nil { padding: 2px 6px; border-radius: 4px; background: var(--level-gray-bg); color: var(--text-3); font-weight: 600; font-size: 11px; }
-.sev-lgt { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--level-green) 12%, transparent); color: var(--level-green); font-weight: 600; font-size: 11px; }
+.sev-lgt { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--level-amber) 6%, transparent); color: color-mix(in srgb, var(--level-amber) 60%, var(--text-2)); font-weight: 600; font-size: 11px; }
 .sev-mod { padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--level-amber) 12%, transparent); color: var(--level-amber); font-weight: 600; font-size: 11px; }
 .sev-svr { padding: 2px 6px; border-radius: 4px; background: var(--level-red-bg); color: var(--level-red); font-weight: 600; font-size: 11px; }
 .sev-na { padding: 2px 6px; border-radius: 4px; background: var(--level-gray-bg); color: var(--text-3); font-weight: 600; font-size: 11px; }
 
-/* Hazard encounter distinction */
-.rb-card-hazard { color: var(--level-amber); font-weight: 600; display: flex; gap: 8px; }
-.rb-card-hazard > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.rb-card-hazard > div > span { display: block; overflow-wrap: break-word; }
-.hz-on { color: var(--level-red); }
-.hz-on > div > span:first-child { color: var(--level-red); font-weight: 700; }
-.hz-near { color: var(--level-amber); }
+.rb-card-subgrade { font-size: 11px; color: var(--text-3); margin-left: 4px; }
 
-.rb-card-warning { color: var(--level-red); font-weight: 600; }
+/* Hazard chips — fixed column, always visible; encounter distinction */
+.rb-card-hazard { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hz-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px;
+  font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--bg-3); color: var(--text-2); border: 1px solid var(--stroke-2); }
+.hz-chip.hz-on { border-color: var(--level-red); background: var(--level-red-bg); color: var(--level-red); }
+.hz-chip.hz-near { border-style: dashed; }
+
+/* 선택 시 상세 — 착빙·난류 등급별 노출 + 위험기상 개별 정보. 좁은 사이드바 폭에서
+   접힌 행에는 배지만 두고, 정확한 수치는 여기서만 보여준다. */
+.rb-card-hazard-detail { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-2); }
+.rb-card-detail-line { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.enc-on { color: var(--level-red); font-weight: 700; }
+.enc-near { color: var(--text-3); font-weight: 600; }
+
+.rb-card-warning, .rb-card-note { color: var(--level-red); font-weight: 600; }
+.rb-altitude-row .rb-card-note { color: var(--text-3); font-weight: 500; }
 .rb-card-total-exposure { color: var(--text-2); font-weight: 600; }
 .rb-card-total-exposure.is-zero { color: var(--text-3); font-weight: 500; }
 .rb-card-more { display: inline-block; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -1618,6 +1653,21 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   }
 .rb-mobile .rb-alternative-card.is-selected {
   background: var(--level-gray-bg);
+}
+/* 6열 격자는 모바일 폭에서 너무 좁아지므로 2열(값 | 값)로 접는다.
+   고도(rb-card-fl)와 노출 합계만 전체 폭을 쓰고 나머지 4개는 2x2로 배치. */
+.rb-mobile .rb-altitude-row {
+  grid-template-columns: 1fr 1fr;
+}
+.rb-mobile .rb-altitude-row .rb-card-fl,
+.rb-mobile .rb-altitude-row .rb-card-total-exposure {
+  grid-column: 1 / -1;
+}
+.rb-mobile .rb-altitude-row .rb-card-total-exposure {
+  justify-self: start;
+}
+.rb-mobile .rb-altitude-row-head {
+  display: none;
 }
 .rb-altitude-selection {
   margin: 0;

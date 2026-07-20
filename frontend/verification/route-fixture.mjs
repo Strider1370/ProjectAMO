@@ -70,7 +70,7 @@ const altitudeComparison = {
     candidateStatus: 'valid',
     weatherStatus: 'available',
     wind: { meanComponentKt: 12 },
-    icing: { summary: { status: 'available', highestGrade: 2, highestGradeExposureNm: 18 } },
+    icing: { summary: { status: 'available', highestGrade: 2, highestGradeExposureNm: 18, exposureNmByGrade: { 1: 12, 2: 18 } } },
     turbulence: { summary: { status: 'available', highestGrade: 1, highestGradeExposureNm: 6 } },
     hazards: [{
       source: 'SIGMET', sourceId: 'fixture-sigmet-1', label: 'Embedded Thunderstorm',

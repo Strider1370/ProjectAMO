@@ -83,8 +83,12 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
             {comparison?.eta && <span>ETA {comparison.eta.slice(11, 16)} UTC</span>}
             {comparison?.distanceDeltaNm != null && <span>기준 대비 {comparison.distanceDeltaNm > 0 ? '+' : ''}{comparison.distanceDeltaNm} NM · {comparison.etaDeltaMinutes > 0 ? '+' : ''}{comparison.etaDeltaMinutes}분</span>}
             {comparison?.comparisonUnavailable && <span>위험 노출 비교 자료 없음</span>}
-            {hazards.length > 0 && <span className="rb-card-total-exposure">위험기상 노출 합계 {totalHazardExposureNm} NM</span>}
-            {visibleHazards.map((hazard) => <span key={hazard.sourceId} className="rb-card-hazard">{exposureLabel(hazard)}</span>)}
+            <span className={`rb-card-total-exposure${hazards.length === 0 ? ' is-zero' : ''}`}>위험기상 노출 합계 {totalHazardExposureNm} NM · {hazards.length}건</span>
+            <span className="rb-card-hazard">
+              {hazards.length > 0
+                ? visibleHazards.map((hazard) => <span key={hazard.sourceId} className="hz-chip">{exposureLabel(hazard)}</span>)
+                : <span className="hz-chip">그 외 보고 없음</span>}
+            </span>
             {hiddenCount > 0 && (
               <span
                 role="button"
