@@ -9,6 +9,7 @@ import {
   KIM_NWP_LEVELS,
   KIM_NWP_MODEL,
   buildKimNwpGrid,
+  buildKimNwpIndexEntry,
   buildKimNwpIndex,
 } from '../src/processors/kim-nwp-model.js'
 import {
@@ -60,17 +61,16 @@ test('JSON API responses can be compressed with gzip', async () => {
   writeKimNwpIndex(root, buildKimNwpIndex({
     model: KIM_NWP_MODEL,
     tmfc,
-    grids: [grid],
-    pathForGrid: (selectedGrid) => path.relative(
+    entries: [buildKimNwpIndexEntry(grid, path.relative(
       root,
       resolveKimNwpGridPath({
         root,
-        model: selectedGrid.model,
-        tmfc: selectedGrid.tmfc,
-        hf: selectedGrid.hf,
-        levelId: selectedGrid.level.id,
+        model: grid.model,
+        tmfc: grid.tmfc,
+        hf: grid.hf,
+        levelId: grid.level.id,
       }),
-    ).replace(/\\/g, '/'),
+    ).replace(/\\/g, '/'))],
   }))
 
   const { app } = await import(`../server.js?compression-test=${Date.now()}`)

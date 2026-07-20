@@ -243,12 +243,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const isIfr = routeForm.flightRule === 'IFR'
   const etaDisplay = eta ? formatBriefingTime(eta, tz, { withDate: true }).replace('-', '/').replace('Z', ' UTC') : ''
   const appliedBase = routeDesigns.find((design) => design.id === 'base')
-  // S8: IFR은 지도 볼 일 없는 순수 입력 폼이라 시트를 기본 full로 — VFR ①은 지도에서
-  // 경유점을 찍어야 하니 half 유지. 사용자가 손수 드래그(detentTouched)했으면 존중하고
+  // S8: 첫 경로 입력은 지도 맥락을 남기기 위해 항상 half로 시작한다. 사용자가 손수 드래그(detentTouched)했으면 존중하고
   // 자동 전환을 멈춘다(스텝/규칙 전환마다 되돌리면 성가심).
   useEffect(() => {
     if (detentTouched) return
-    const wantsFull = isIfr || workflowStep !== 'settings'
+    const wantsFull = workflowStep !== 'settings'
     setSheetDetent(wantsFull ? 'full' : 'half')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isIfr, workflowStep, detentTouched])

@@ -34,33 +34,32 @@ export function buildCrossSection({ axis, run, levelIds, loadLevel }) {
   for (const levelId of levelIds) {
     const field = loadLevel(levelId)
     if (!field) continue
-    const { pressure, grid } = field
+    const { pressure, values: sampledValues = [] } = field
     const altFt = (() => {
-      if (!Array.isArray(field.hgt)) return null
       let sum = 0
       let n = 0
-      for (const s of samples) {
-        const h = sampleGridAt(grid, field.hgt, s.lon, s.lat)
+      for (const value of sampledValues) {
+        const h = value.hgt
         if (Number.isFinite(h)) { sum += h; n += 1 }
       }
       return n > 0 ? (sum / n) * M_TO_FT : null
     })()
 
-    const values = samples.map((s) => ({
-      distanceNm: s.distanceNm,
-      altFt: field.hgt ? nullableFt(sampleGridAt(grid, field.hgt, s.lon, s.lat)) : null,
-      t: field.T ? nullableC(sampleGridAt(grid, field.T, s.lon, s.lat)) : null,
+    const values = sampledValues.map((value) => ({
+      distanceNm: value.distanceNm,
+      altFt: nullableFt(value.hgt),
+      t: nullableC(value.T),
       moistureSpread: null,
-      spread: field.spread ? sampleGridAt(grid, field.spread, s.lon, s.lat) : null,
-      icing: field.icingGrade ? sampleGridAt(grid, field.icingGrade, s.lon, s.lat) : null,
-      u: field.u ? sampleGridAt(grid, field.u, s.lon, s.lat) : null,
-      v: field.v ? sampleGridAt(grid, field.v, s.lon, s.lat) : null,
+      spread: Number.isFinite(value.spread) ? value.spread : null,
+      icing: Number.isFinite(value.icing) ? value.icing : null,
+      u: Number.isFinite(value.u) ? value.u : null,
+      v: Number.isFinite(value.v) ? value.v : null,
     }))
 
-    if (field.T) { has.T = true; coverageTop.T = trackTop(coverageTop.T, pressure) }
-    if (field.spread) { has.moisture = true; coverageTop.moisture = trackTop(coverageTop.moisture, pressure) }
-    if (field.icingGrade) { has.icing = true; coverageTop.icing = trackTop(coverageTop.icing, pressure) }
-    if (field.u && field.v) { has.wind = true; coverageTop.wind = trackTop(coverageTop.wind, pressure) }
+    if (sampledValues.some((value) => Number.isFinite(value.T))) { has.T = true; coverageTop.T = trackTop(coverageTop.T, pressure) }
+    if (sampledValues.some((value) => Number.isFinite(value.spread))) { has.moisture = true; coverageTop.moisture = trackTop(coverageTop.moisture, pressure) }
+    if (sampledValues.some((value) => Number.isFinite(value.icing))) { has.icing = true; coverageTop.icing = trackTop(coverageTop.icing, pressure) }
+    if (sampledValues.some((value) => Number.isFinite(value.u) && Number.isFinite(value.v))) { has.wind = true; coverageTop.wind = trackTop(coverageTop.wind, pressure) }
 
     levels.push({ pressure, altFt, values })
   }

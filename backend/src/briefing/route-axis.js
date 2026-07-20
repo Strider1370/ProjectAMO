@@ -64,6 +64,12 @@ function validateLineString(routeGeometry) {
 
 export function buildRouteAxis(routeGeometry, sampleSpacingMeters = DEFAULT_SAMPLE_SPACING_METERS) {
   const coordinates = validateLineString(routeGeometry)
+  const bounds = coordinates.reduce((result, [lon, lat]) => ({
+    minLon: Math.min(result.minLon, lon),
+    minLat: Math.min(result.minLat, lat),
+    maxLon: Math.max(result.maxLon, lon),
+    maxLat: Math.max(result.maxLat, lat),
+  }), { minLon: Infinity, minLat: Infinity, maxLon: -Infinity, maxLat: -Infinity })
   const requestedSpacing = normalizeSpacing(sampleSpacingMeters)
   const segments = []
   let totalMeters = 0
@@ -131,6 +137,7 @@ export function buildRouteAxis(routeGeometry, sampleSpacingMeters = DEFAULT_SAMP
   }
 
   return {
+    bounds,
     totalDistanceNm: lastDistanceNm,
     sampleSpacingMeters: Math.round(effectiveSpacing),
     samples,

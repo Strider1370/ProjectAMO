@@ -11,6 +11,7 @@ import {
   KIM_NWP_MODEL,
   buildKimNwpGrid,
   buildKimNwpIndex,
+  buildKimNwpIndexEntry,
   buildKimWindGrid,
   buildKimSurfaceWindFieldFromWindGrid,
   isKimNwpIcingLevel,
@@ -444,24 +445,20 @@ export async function collectKimNwpTask({
   }
 
   const windGrid = await fetchWind(task)
-  writeGrid(windGrid)
   let grid = windGrid
   let lastError = null
   try {
     grid = await addTemperature({ grid: windGrid, ...task })
-    writeGrid(grid)
   } catch (error) {
     lastError = error
   }
   try {
     grid = await addHgt({ grid, ...task })
-    writeGrid(grid)
   } catch (error) {
     lastError = error
   }
   try {
     grid = await addHumidity({ grid, ...task })
-    writeGrid(grid)
   } catch (error) {
     lastError = error
   }
@@ -470,11 +467,11 @@ export async function collectKimNwpTask({
       const result = await addIcing({ grid, ...task })
       grid = result.grid
       if (result.lastError) lastError = result.lastError
-      writeGrid(grid)
     } catch (error) {
       lastError = error
     }
   }
+  writeGrid(grid)
   return { grid, lastError }
 }
 
@@ -499,9 +496,9 @@ export async function mapKimNwpTasksWithConcurrency(items, concurrency, worker) 
   return results
 }
 
-export function shouldPublishKimNwpRun({ grids, expectedGridCount }) {
-  if (!Array.isArray(grids) || grids.length === 0) return false
-  return grids.every((grid) => grid?.variables?.u && grid?.variables?.v)
+export function shouldPublishKimNwpRun({ entries, expectedGridCount }) {
+  if (!Array.isArray(entries) || entries.length === 0) return false
+  return entries.every((entry) => entry.variables?.includes('u') && entry.variables?.includes('v'))
 }
 
 export function hasCompleteKimNwpRun({
@@ -562,7 +559,8 @@ export async function process() {
         tmfc: candidate.tmfc,
       }
     }
-    const grids = []
+    const entries = []
+    let surfaceGrid = null
     const tasks = []
     for (const hf of forecastHours) {
       for (const level of KIM_NWP_LEVELS) tasks.push({ level, tmfc: candidate.tmfc, hf })
@@ -579,7 +577,17 @@ export async function process() {
           incrementalRetry: config.kim_nwp?.incremental_retry !== false,
         })
         if (taskError) lastError = taskError
-        grids.push(grid)
+        entries.push(buildKimNwpIndexEntry(grid, path.relative(
+          config.storage.base_path,
+          resolveKimNwpGridPath({
+            root: config.storage.base_path,
+            model: grid.model,
+            tmfc: grid.tmfc,
+            hf: grid.hf,
+            levelId: grid.level.id,
+          }),
+        ).replace(/\\/g, '/')))
+        if (grid.level?.id === '10m' && Number(grid.hf) === 0) surfaceGrid = grid
       } catch (error) {
         lastError = error
         throw error
@@ -588,14 +596,14 @@ export async function process() {
       lastError = error
     })
 
-    if (!shouldPublishKimNwpRun({ grids, expectedGridCount })) {
+    if (!shouldPublishKimNwpRun({ entries, expectedGridCount })) {
       writeKimNwpManifest(config.storage.base_path, {
         type: 'kim_nwp_manifest',
         model: KIM_NWP_MODEL,
         tmfc: candidate.tmfc,
         runId: latestRunId,
         usable: false,
-        gridCount: grids.length,
+        gridCount: entries.length,
         expectedGridCount,
         updated_at: new Date().toISOString(),
       })
@@ -604,17 +612,7 @@ export async function process() {
     const index = buildKimNwpIndex({
       model: KIM_NWP_MODEL,
       tmfc: candidate.tmfc,
-      grids,
-      pathForGrid: (grid) => path.relative(
-        config.storage.base_path,
-        resolveKimNwpGridPath({
-          root: config.storage.base_path,
-          model: grid.model,
-          tmfc: grid.tmfc,
-          hf: grid.hf,
-          levelId: grid.level.id,
-        }),
-      ).replace(/\\/g, '/'),
+      entries,
     })
     const complete = hasCompleteKimNwpRun({
       latest: { latestRun: candidate.tmfc },
@@ -631,7 +629,7 @@ export async function process() {
       runId: latestRunId,
       usable: true,
       complete,
-      gridCount: grids.length,
+      gridCount: entries.length,
       expectedGridCount,
       updated_at: new Date().toISOString(),
     })
@@ -647,7 +645,6 @@ export async function process() {
     })
     cleanupKimNwpRuns({ root: config.storage.base_path, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId })
 
-    const surfaceGrid = selectLegacySurfaceWindGrid(grids)
     if (!surfaceGrid) {
       return {
         type: TYPE,

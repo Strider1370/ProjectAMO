@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry } from '../src/briefing/geo-time-match.js'
+import { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry, geometryBounds, boundsOverlap } from '../src/briefing/geo-time-match.js'
 
 const square = { type: 'Polygon', coordinates: [[[0,0],[10,0],[10,10],[0,10],[0,0]]] }
 
@@ -21,6 +21,14 @@ test('routeIntervalInGeometry: returns entered interval by distance', () => {
 test('routeIntervalInGeometry: no entry', () => {
   const out = { samples: [{ distanceNm: 0, lon: 20, lat: 20 }, { distanceNm: 5, lon: 30, lat: 30 }] }
   assert.equal(routeIntervalInGeometry(out, square).entered, false)
+})
+test('routeIntervalInGeometry: skips disjoint Polygon and MultiPolygon bounds', () => {
+  const axis = { ...intervalAxis, bounds: { minLon: -5, minLat: -5, maxLon: 20, maxLat: 20 } }
+  const far = { type: 'Polygon', coordinates: [[[30, 30], [31, 30], [31, 31], [30, 31], [30, 30]]] }
+  const multi = { type: 'MultiPolygon', coordinates: [far.coordinates] }
+  assert.equal(boundsOverlap(axis.bounds, geometryBounds(far)), false)
+  assert.deepEqual(routeIntervalInGeometry(axis, far), { entered: false, startNm: null, endNm: null })
+  assert.deepEqual(routeIntervalInGeometry(axis, multi), { entered: false, startNm: null, endNm: null })
 })
 
 test('pointInPolygon: inside', () => {

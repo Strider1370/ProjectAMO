@@ -10,6 +10,7 @@ import {
   buildKimIcingFieldFromGrid,
   buildKimTemperatureFieldFromGrid,
   buildKimNwpGrid,
+  buildKimNwpIndexEntry,
   buildKimNwpIndex,
   buildKimSurfaceWindFieldFromWindGrid,
   calcFreezingBonus,
@@ -25,6 +26,7 @@ import {
 
 const BOUNDS = { lonMin: 119, latMin: 30, lonMax: 119.083333, latMax: 30.083333, dx: 0.083333, dy: 0.083333 }
 const levelById = (id) => KIM_NWP_LEVELS.find((level) => level.id === id)
+const indexEntries = (grids, pathForGrid) => grids.map((grid) => buildKimNwpIndexEntry(grid, pathForGrid(grid)))
 
 function component(variable, values, level = 0) {
   return { variable, unit: 'm/s', level, nx: 2, ny: 2, bounds: BOUNDS, values }
@@ -316,8 +318,7 @@ test('filterKimNwpIndexForVariables exposes icing grids only when all required v
   const index = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc: '2026051900',
-    grids: [fullIcingGrid, partialIcingGrid],
-    pathForGrid: (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`,
+    entries: indexEntries([fullIcingGrid, partialIcingGrid], (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`),
   })
 
   const icingIndex = filterKimNwpIndexForVariables(index, ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld'])
@@ -341,8 +342,7 @@ test('buildKimNwpIndex omits encoded values', () => {
   const index = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc: '2026051900',
-    grids: [grid],
-    pathForGrid: () => 'kim_nwp/runs/KIMG_NE57_2026051900/normalized/hf000/10m/grid.json',
+    entries: indexEntries([grid], () => 'kim_nwp/runs/KIMG_NE57_2026051900/normalized/hf000/10m/grid.json'),
   })
 
   assert.equal(index.type, 'kim_nwp_index')
@@ -375,14 +375,12 @@ test('buildKimNwpIndex hashes variable content without exposing values', () => {
   const firstIndex = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc: '2026051900',
-    grids: [firstGrid],
-    pathForGrid: (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`,
+    entries: indexEntries([firstGrid], (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`),
   })
   const changedIndex = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc: '2026051900',
-    grids: [changedGrid],
-    pathForGrid: (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`,
+    entries: indexEntries([changedGrid], (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`),
   })
 
   assert.notEqual(firstIndex.availability['925hPa']['0'].hashes.u, changedIndex.availability['925hPa']['0'].hashes.u)
@@ -414,8 +412,7 @@ test('filterKimNwpIndexForVariables separates wind and temp availability', () =>
   const index = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc: '2026051900',
-    grids: [windGrid, tempGrid],
-    pathForGrid: (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`,
+    entries: indexEntries([windGrid, tempGrid], (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`),
   })
 
   const windIndex = filterKimNwpIndexForVariables(index, ['u', 'v'])
@@ -433,7 +430,7 @@ test('filterKimNwpIndexForVariables exposes cloud grids only when T and rh exist
   const index = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc: '2026051900',
-    grids: [
+    entries: indexEntries([
       buildKimNwpGrid({
         model: 'KIMG/NE57',
         tmfc: '2026051900',
@@ -451,8 +448,7 @@ test('filterKimNwpIndexForVariables exposes cloud grids only when T and rh exist
           { variable: 'rh', unit: '%', level: 850, nx: 2, ny: 2, bounds: BOUNDS, values: [90, 80, 70, 60] },
         ],
       }),
-    ],
-    pathForGrid: (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`,
+    ], (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`),
   })
 
   const cloudIndex = filterKimNwpIndexForVariables(index, ['T', 'rh'])

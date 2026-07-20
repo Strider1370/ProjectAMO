@@ -911,9 +911,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     }
     const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: draft.preview })
     const nextEta = computeEtaIso(etd, draft.preview.totalDistanceNm ?? draft.preview.distanceNm, tasKt)
-    let exposure
-    try { exposure = await fetchRouteExposure({ routeGeometry, routeModel, etd, eta: nextEta }) } catch (error) { exposure = { trigger: 'unavailable', hazards: [], error: error.message } }
-    const updated = createRouteDesign({ ...design, routeResult: draft.preview, routeModel, routeExposure: exposure, enroute: draft.enroute, routeString: draft.rawText, undoStack: [...design.undoStack.slice(-19), snapshotRouteDesign(design)], draftEditor: null, pendingEdit: null })
+    const updated = createRouteDesign({ ...design, routeResult: draft.preview, routeModel, routeExposure: { trigger: 'unavailable', hazards: [] }, enroute: draft.enroute, routeString: draft.rawText, undoStack: [...design.undoStack.slice(-19), snapshotRouteDesign(design)], draftEditor: null, pendingEdit: null })
     const nextDesigns = routeDesigns.map((item) => item.id === updated.id ? updated : item)
     setRouteDesigns(nextDesigns)
     try {

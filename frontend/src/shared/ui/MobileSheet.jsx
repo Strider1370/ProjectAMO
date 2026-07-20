@@ -37,7 +37,6 @@ export default function MobileSheet({
     else setInternalDetent(next)
   }
 
-  const [dragH, setDragH] = useState(null)
   const dragRef = useRef(null)
   const rootRef = useRef(null)
   const onCloseRef = useRef(onClose)
@@ -83,35 +82,49 @@ export default function MobileSheet({
   function onPointerDown(event) {
     if (!hasPointer) return
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    dragRef.current = { startY: event.clientY, startH: detentHeight(detent, fullPx), moved: false }
-    setDragH(detentHeight(detent, fullPx))
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startH: detentHeight(detent, fullPx),
+      currentH: detentHeight(detent, fullPx),
+      lastY: event.clientY,
+      lastAt: event.timeStamp,
+      velocityY: 0,
+      moved: false,
+    }
+    rootRef.current?.classList.add('is-dragging')
   }
 
   function onPointerMove(event) {
     const drag = dragRef.current
-    if (!drag) return
+    if (!drag || drag.pointerId !== event.pointerId) return
     const delta = event.clientY - drag.startY
     if (Math.abs(delta) > 5) drag.moved = true
+    const elapsed = event.timeStamp - drag.lastAt
+    if (elapsed > 0) drag.velocityY = (event.clientY - drag.lastY) / elapsed
+    drag.lastY = event.clientY
+    drag.lastAt = event.timeStamp
     // 아래로는 peek 밑(닫기 존)까지 끌 수 있게 최소를 0으로 — 스와이프-다운-투-디스미스.
     const next = Math.min(detentHeight('full', fullPx), Math.max(0, drag.startH - delta))
-    setDragH(next)
+    drag.currentH = next
+    // Pointer move마다 React를 다시 렌더하지 않고, 현재 시트 DOM만 갱신한다.
+    rootRef.current?.style.setProperty('height', `${next}px`)
   }
 
-  function onPointerUp() {
+  function onPointerUp(event) {
     const drag = dragRef.current
-    if (!drag) return
+    if (!drag || (event && drag.pointerId !== event.pointerId)) return
     dragRef.current = null
+    rootRef.current?.classList.remove('is-dragging')
     if (!drag.moved) {
       // Tap on the grabber cycles detents (discoverability fallback).
       const idx = DETENTS.indexOf(detent)
       setDetent(DETENTS[(idx + 1) % DETENTS.length])
-      setDragH(null)
       return
     }
-    const current = dragH ?? detentHeight(detent, fullPx)
+    const current = drag.currentH
     // peek 아래로 충분히 끌어내리면 닫기(그래버가 × 역할까지 일괄).
     if (current < detentHeight('peek', fullPx) * 0.6) {
-      setDragH(null)
       onClose?.()
       return
     }
@@ -121,28 +134,45 @@ export default function MobileSheet({
       const diff = Math.abs(detentHeight(candidate, fullPx) - current)
       if (diff < best) { best = diff; nearest = candidate }
     }
+    if (drag.velocityY <= -0.5 && nearest !== 'full') nearest = DETENTS[DETENTS.indexOf(nearest) + 1]
+    if (drag.velocityY >= 0.5 && nearest !== 'peek') nearest = DETENTS[DETENTS.indexOf(nearest) - 1]
+    rootRef.current?.style.setProperty('height', `${detentHeight(nearest, fullPx)}px`)
     setDetent(nearest)
-    setDragH(null)
+  }
+
+  function onPointerCancel(event) {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    dragRef.current = null
+    rootRef.current?.classList.remove('is-dragging')
+    rootRef.current?.style.setProperty('height', `${detentHeight(detent, fullPx)}px`)
   }
 
   if (!open) return null
 
-  const height = dragH ?? detentHeight(detent, fullPx)
+  const height = detentHeight(detent, fullPx)
   const dragHandlers = hasPointer
-    ? { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp }
+    ? { onPointerDown, onPointerMove, onPointerUp, onPointerCancel }
     : {}
   const showPeek = detent === 'peek' && peekContent != null
 
   return (
     <div
       ref={rootRef}
-      className={`mobile-sheet${dragRef.current ? ' is-dragging' : ''}${detent === 'full' ? ' is-full' : ''}`}
+      className={`mobile-sheet${detent === 'full' ? ' is-full' : ''}`}
       style={{ height: `${height}px` }}
       role="dialog"
       aria-label={title}
       tabIndex={-1}
     >
-      <div className="mobile-sheet-grab" {...dragHandlers}>
+      <div className="mobile-sheet-grab" role="button" tabIndex={0} aria-label="시트 크기 변경"
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return
+          event.preventDefault()
+          const idx = DETENTS.indexOf(detent)
+          setDetent(DETENTS[(idx + 1) % DETENTS.length])
+        }}
+        {...dragHandlers}>
         <span className="mobile-sheet-grab-handle" aria-hidden="true" />
       </div>
       {showPeek ? (

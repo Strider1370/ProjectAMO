@@ -176,6 +176,7 @@ ProjectAMO/
 
 - `backend/server.js` -> Express entry point, API routes, cache headers, static data serving, and KIM NWP map index filtering.
 - `backend/src/briefing/route-axis.js` -> route LineString resampling, cumulative distance, and bearing helpers.
+- `backend/src/briefing/enroute-cross-section.js` -> KIM/KTG route cross-section loader; reuses one revision-aware, level-keyed raw-grid bundle (32-grid / 64 MiB measured ceiling) and keeps request intermediates sample-only.
 - `backend/src/briefing/profile-composer.js` -> route-aware planned altitude profile, markers, and segment metadata composition.
 - `backend/src/briefing/vertical-profile.js` -> vertical profile response composition.
 - `backend/src/briefing/briefing-composer.js` -> assembles the AIM-ordered route-briefing payload (Go/No-go `banner` + adverse/current/enroute/destination) from injected METAR/TAF/SIGMET/AIRMET/warning cache; folds airport warnings (`AIRPORT_WARNINGS`) into adverse as airport-scope hazards.

@@ -20,6 +20,26 @@ function polygonsOf(geometry) {
   return []
 }
 
+const geometryBoundsCache = new WeakMap()
+
+export function geometryBounds(geometry) {
+  if (!geometry || typeof geometry !== 'object') return null
+  const cached = geometryBoundsCache.get(geometry)
+  if (cached) return cached
+  const points = polygonsOf(geometry).flatMap((polygon) => polygon.flat())
+  if (points.length === 0) return null
+  const bounds = points.reduce((result, [lon, lat]) => ({
+    minLon: Math.min(result.minLon, lon), minLat: Math.min(result.minLat, lat),
+    maxLon: Math.max(result.maxLon, lon), maxLat: Math.max(result.maxLat, lat),
+  }), { minLon: Infinity, minLat: Infinity, maxLon: -Infinity, maxLat: -Infinity })
+  geometryBoundsCache.set(geometry, bounds)
+  return bounds
+}
+
+export function boundsOverlap(a, b) {
+  return Boolean(a && b && a.minLon <= b.maxLon && a.maxLon >= b.minLon && a.minLat <= b.maxLat && a.maxLat >= b.minLat)
+}
+
 // 경로 LineString의 어떤 정점이라도 어떤 외곽 ring 안에 들면 교차로 간주(Phase 1 근사).
 export function routeIntersectsGeometry(routeGeometry, geometry) {
   const coords = routeGeometry?.coordinates ?? []
@@ -42,6 +62,9 @@ export function timeWindowsOverlap(aStart, aEnd, bStart, bEnd) {
 
 // route axis(샘플 배열)가 폴리곤 안에 드는 distanceNm 구간을 반환(Phase 2 수직 매칭용).
 export function routeIntervalInGeometry(axis, geometry) {
+  if (axis?.bounds && !boundsOverlap(axis.bounds, geometryBounds(geometry))) {
+    return { entered: false, startNm: null, endNm: null }
+  }
   const samples = axis?.samples ?? []
   const polygons = polygonsOf(geometry)
   let startNm = null, endNm = null
@@ -59,4 +82,4 @@ export function routeIntervalInGeometry(axis, geometry) {
   return { entered: startNm != null, startNm, endNm }
 }
 
-export default { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry }
+export default { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry, geometryBounds, boundsOverlap }

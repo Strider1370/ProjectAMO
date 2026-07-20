@@ -238,8 +238,7 @@ function MainAppShell() {
         onRequestDeferredWeatherData={requestDeferredWeatherData}
       />
 
-      {isMobile && mobileTask === 'map' && !selectedAirport
-        && activePanel !== 'aviation' && activePanel !== 'met' && (
+      {isMobile && mobileTask === 'map' && !selectedAirport && (
         <MobileMapOverlay
           activePanel={activePanel}
           onToggle={togglePanel}

@@ -942,66 +942,6 @@
   color: #ffffff;
 }
 
-.sigwx-history-bar {
-  position: absolute;
-  left: 50%;
-  bottom: 18px;
-  z-index: 5;
-  transform: translateX(-50%);
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 8px;
-  min-width: 300px;
-  padding: 6px 8px;
-  border: 1px solid rgba(124, 58, 237, 0.16);
-  border-radius: 8px;
-  background: rgba(250, 245, 255, 0.92);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
-  backdrop-filter: blur(6px);
-}
-
-.sigwx-history-bar--elevated {
-  bottom: 82px;
-}
-
-.sigwx-history-button {
-  min-width: 46px;
-  height: 24px;
-  border: 1px solid rgba(124, 58, 237, 0.22);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #5b21b6;
-  font-size: 10px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.sigwx-history-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.sigwx-history-meta {
-  display: grid;
-  justify-items: center;
-  gap: 1px;
-}
-
-.sigwx-history-title {
-  color: #4c1d95;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.03em;
-}
-
-.sigwx-history-stamp {
-  color: #6b21a8;
-  font-size: 10px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Unified always-on time scrubber: full-width scrolling tape with a fixed playhead. */
 /* Past observations (solid baseline) -> 지금 -> future forecast (dashed). Drag the tape to scrub. */
 .timeline-rail {
@@ -1898,10 +1838,6 @@
     display: none;
   }
 
-  .sigwx-history-bar--elevated {
-    bottom: 78px;
-  }
-
   .adsb-timestamp--compact {
     left: 50%;
     bottom: 116px;
@@ -1943,31 +1879,37 @@
 .layer-timestamp-header {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-bottom: 6px;
+  gap: 2px;
+  margin-bottom: 2px;
+  padding-right: 18px;
   color: var(--text-3);
   font-size: 11px;
   font-weight: 500;
 }
 
-.layer-timestamp-header svg {
-  display: block;
-}
-
-.layer-timestamp-grid {
-  display: grid;
-  grid-template-columns: auto auto auto;
-  gap: 3px 14px;
+.layer-timestamp-content {
   font-variant-numeric: tabular-nums;
 }
 
-.layer-timestamp-name {
-  color: var(--text-1);
-  font-size: 12px;
-  font-weight: 500;
+.layer-timestamp-toggle {
+  position: absolute;
+  left: 12px;
+  bottom: calc(38px + var(--space-s));
+  z-index: 5;
+}
+
+.map-view-wrapper:has(.map-legend-mobile-dock) .layer-timestamp-toggle {
+  left: 78px;
+}
+
+.layer-timestamp-times {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .layer-timestamp-cell {
+  display: block;
   color: var(--text-2);
   font-size: 12px;
   white-space: nowrap;
@@ -2180,6 +2122,55 @@
   line-height: 20px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
   transform: translate(-50%, calc(-100% - 12px));
+}
+
+.layer-timestamp-controls {
+  display: inline-flex;
+  gap: 2px;
+  pointer-events: auto;
+}
+
+.layer-timestamp-history-arrow,
+.layer-timestamp-layer-arrow {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-circular);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.layer-timestamp-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.layer-timestamp-close:hover {
+  color: var(--accent);
+}
+
+.layer-timestamp-history-arrow:disabled,
+.layer-timestamp-layer-arrow:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .route-map-interaction-confirm[hidden] { display: none; }
 .route-map-interaction-confirm-text { overflow-wrap: anywhere; }

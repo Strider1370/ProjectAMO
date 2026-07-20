@@ -15,6 +15,11 @@ import {
   writeKimNwpGrid,
   writeKimNwpLatest,
 } from '../src/processors/kim-nwp-store.js'
+import {
+  clearRouteCrossSectionCache,
+  loadRouteCrossSection,
+  routeCrossSectionCacheMetrics,
+} from '../src/briefing/enroute-cross-section.js'
 
 const ROUTE_GEOMETRY = {
   type: 'LineString',
@@ -93,5 +98,45 @@ test('cross-section route validates fields and returns cross-section structure',
     await close(server)
     await rm(root, { recursive: true, force: true })
     delete process.env.DATA_PATH
+  }
+})
+
+test('cross-section reuses same-revision grids and clears them on latest revision', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'kim-cross-section-cache-'))
+  const level = KIM_NWP_LEVELS.find((l) => l.id === '850hPa')
+  const tmfc = '2099010100'
+  const hf = 0
+  const grid = buildKimNwpGrid({
+    model: KIM_NWP_MODEL, tmfc, hf, level,
+    components: [
+      { variable: 'u', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(5) },
+      { variable: 'v', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(0) },
+    ],
+    fetchedAt: '2099-01-01T00:00:00.000Z',
+  })
+  writeKimNwpGrid({ root, grid })
+  const writeLatest = (content_hash) => writeKimNwpLatest(root, {
+    type: 'kim_nwp_latest', model: KIM_NWP_MODEL, latestRun: tmfc,
+    latestRunId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc }),
+    indexPath: 'kim_nwp/index.json', updated_at: '2099-01-01T00:00:00.000Z', content_hash,
+  })
+
+  clearRouteCrossSectionCache()
+  try {
+    writeLatest('revision-a')
+    const first = loadRouteCrossSection({ root, routeGeometry: ROUTE_GEOMETRY, body: { tmfc, hf } })
+    const afterFirst = routeCrossSectionCacheMetrics()
+    const second = loadRouteCrossSection({ root, routeGeometry: ROUTE_GEOMETRY, body: { tmfc, hf } })
+    const afterSecond = routeCrossSectionCacheMetrics()
+    assert.deepEqual(second.crossSection, first.crossSection)
+    assert.ok(afterSecond.kim.hits > afterFirst.kim.hits)
+
+    writeLatest('revision-b')
+    loadRouteCrossSection({ root, routeGeometry: ROUTE_GEOMETRY, body: { tmfc, hf } })
+    const afterRevision = routeCrossSectionCacheMetrics()
+    assert.ok(afterRevision.kim.misses > afterSecond.kim.misses)
+  } finally {
+    clearRouteCrossSectionCache()
+    await rm(root, { recursive: true, force: true })
   }
 })

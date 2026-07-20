@@ -8,6 +8,7 @@ import {
   KIM_NWP_ICING_LEVEL_IDS,
   KIM_NWP_LEVELS,
   buildKimNwpGrid,
+  buildKimNwpIndexEntry,
   buildKimNwpIndex,
   buildKimWindGrid,
 } from '../src/processors/kim-nwp-model.js'
@@ -43,6 +44,8 @@ const BOUNDS_2X2 = {
   dx: 0.083333,
   dy: 0.083333,
 }
+
+const indexEntries = (grids) => grids.map((grid) => buildKimNwpIndexEntry(grid, `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`))
 
 test('parseKimGridText parses KIM ASCII j blocks and keeps zero-byte payloads with numeric rows', () => {
   const text = [
@@ -227,27 +230,27 @@ test('resolveKimIcingComponentRequests gates to icing levels', () => {
 test('shouldPublishKimNwpRun allows partial wind grid runs but rejects empty or wind-missing runs', () => {
   const expectedGridCount = 2
   const completeWindOnlyRun = [
-    { variables: { u: {}, v: {} } },
-    { variables: { u: {}, v: {} } },
+    { variables: ['u', 'v'] },
+    { variables: ['u', 'v'] },
   ]
   const incompleteWindRun = [
-    { variables: { u: {}, v: {} } },
+    { variables: ['u', 'v'] },
   ]
   const tempOnlyRun = [
-    { variables: { T: {} } },
-    { variables: { T: {} } },
+    { variables: ['T'] },
+    { variables: ['T'] },
   ]
 
-  assert.equal(shouldPublishKimNwpRun({ grids: completeWindOnlyRun, expectedGridCount }), true)
-  assert.equal(shouldPublishKimNwpRun({ grids: incompleteWindRun, expectedGridCount }), true)
-  assert.equal(shouldPublishKimNwpRun({ grids: [], expectedGridCount }), false)
-  assert.equal(shouldPublishKimNwpRun({ grids: tempOnlyRun, expectedGridCount }), false)
+  assert.equal(shouldPublishKimNwpRun({ entries: completeWindOnlyRun, expectedGridCount }), true)
+  assert.equal(shouldPublishKimNwpRun({ entries: incompleteWindRun, expectedGridCount }), true)
+  assert.equal(shouldPublishKimNwpRun({ entries: [], expectedGridCount }), false)
+  assert.equal(shouldPublishKimNwpRun({ entries: tempOnlyRun, expectedGridCount }), false)
 })
 
 test('shouldPublishKimNwpRun allows rh-missing wind/temp grids', () => {
   assert.equal(shouldPublishKimNwpRun({
     expectedGridCount: 1,
-    grids: [{ variables: { u: {}, v: {}, T: {} } }],
+    entries: [{ variables: ['u', 'v', 'T'] }],
   }), true)
 })
 
@@ -274,18 +277,16 @@ test('hasCompleteKimNwpRun skips only when latest run has wind temp and moisture
   const completeIndex = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc,
-    grids,
-    pathForGrid: (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`,
+    entries: indexEntries(grids),
   })
   const missingRhIndex = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc,
-    grids: grids.map((grid) => (
+    entries: indexEntries(grids.map((grid) => (
         grid.level.id === '850hPa'
         ? { ...grid, variables: { u: grid.variables.u, v: grid.variables.v, T: grid.variables.T } }
         : grid
-    )),
-    pathForGrid: (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`,
+    ))),
   })
 
   assert.equal(hasCompleteKimNwpRun({
@@ -348,14 +349,12 @@ test('hasCompleteKimNwpRun requires icing variables when collect_icing is enable
   const indexWithoutIcing = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc,
-    grids: gridsWithoutIcing,
-    pathForGrid: (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`,
+    entries: indexEntries(gridsWithoutIcing),
   })
   const indexWithIcing = buildKimNwpIndex({
     model: 'KIMG/NE57',
     tmfc,
-    grids: gridsWithIcing,
-    pathForGrid: (grid) => `kim_nwp/${grid.level.id}/${grid.hf}/grid.json`,
+    entries: indexEntries(gridsWithIcing),
   })
 
   assert.equal(hasCompleteKimNwpRun({
@@ -494,7 +493,7 @@ test('collectKimNwpTask refetches existing grid when required variables are miss
   assert.equal(result.grid, freshGrid)
   assert.equal(result.reused, undefined)
   assert.equal(fetchedWind, true)
-  assert.equal(writes.length, 4)
+  assert.equal(writes.length, 1)
 })
 
 test('collectKimNwpTask keeps wind/temp grid publishable when rh merge fails', async () => {
@@ -538,8 +537,8 @@ test('collectKimNwpTask keeps wind/temp grid publishable when rh merge fails', a
   assert.equal(grid.variables.v != null, true)
   assert.equal(grid.variables.T != null, true)
   assert.equal(grid.variables.rh, undefined)
-  assert.equal(shouldPublishKimNwpRun({ grids: [grid], expectedGridCount: 1 }), true)
-  assert.equal(writes.length, 3)
+  assert.equal(shouldPublishKimNwpRun({ entries: indexEntries([grid]), expectedGridCount: 1 }), true)
+  assert.equal(writes.length, 1)
 })
 
 test('collectKimNwpTask keeps wind/temp grid publishable when icing merge fails', async () => {
@@ -584,8 +583,8 @@ test('collectKimNwpTask keeps wind/temp grid publishable when icing merge fails'
   assert.equal(grid.variables.v != null, true)
   assert.equal(grid.variables.T != null, true)
   assert.equal(grid.variables.w, undefined)
-  assert.equal(shouldPublishKimNwpRun({ grids: [grid], expectedGridCount: 1 }), true)
-  assert.equal(writes.length, 4)
+  assert.equal(shouldPublishKimNwpRun({ entries: indexEntries([grid]), expectedGridCount: 1 }), true)
+  assert.equal(writes.length, 1)
 })
 
 test('collectKimNwpTask merges successful icing variables without dropping wind/temp', async () => {
@@ -636,7 +635,7 @@ test('collectKimNwpTask merges successful icing variables without dropping wind/
   assert.deepEqual(Object.keys(grid.variables), ['u', 'v', 'T', 'w', 'tqc'])
   assert.equal(grid.variables.w.scale, 0.001)
   assert.equal(grid.variables.tqc.scale, 2e-7)
-  assert.equal(writes.length, 5)
+  assert.equal(writes.length, 1)
 })
 
 test('selectLegacySurfaceWindGrid prefers 10m hf0 regardless of collection order', () => {

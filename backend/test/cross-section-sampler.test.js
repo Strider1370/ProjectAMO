@@ -15,10 +15,11 @@ test('buildCrossSection assembles levels with altFt from hgt and per-variable co
   const axis = { samples: [{ lon: 0, lat: 0, distanceNm: 0 }, { lon: 1, lat: 1, distanceNm: 10 }] }
   const loadLevel = (levelId) => {
     if (levelId === '500hPa') return {
-      pressure: 500, grid: grid2x2,
-      T: [253, 254, 255, 256], rh: [80, 82, 84, 86], hgt: [5500, 5500, 5500, 5500],
-      u: [10, 10, 10, 10], v: [0, 0, 0, 0],
-      icingGrade: [1, 1, 2, 2], cloudPotential: [50, 50, 60, 60],
+      pressure: 500,
+      values: [
+        { distanceNm: 0, T: 253, hgt: 5500, u: 10, v: 0, spread: 5, icing: 1 },
+        { distanceNm: 10, T: 256, hgt: 5500, u: 10, v: 0, spread: 6, icing: 2 },
+      ],
     }
     return null
   }

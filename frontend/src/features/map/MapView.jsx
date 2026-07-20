@@ -27,7 +27,6 @@ import { NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
 import { SIGWX_FILTER_OPTIONS } from '../weather-overlays/lib/sigwxData.js'
 import AdvisoryBadges from '../weather-overlays/AdvisoryBadges.jsx'
 import AdsbTimestamp from '../weather-overlays/AdsbTimestamp.jsx'
-import SigwxHistoryBar from '../weather-overlays/SigwxHistoryBar.jsx'
 import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
 import TimelineRail from '../weather-overlays/TimelineRail.jsx'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
@@ -628,15 +627,28 @@ const MapView = forwardRef(function MapView({
       entries.push({ key: 'turbulence', label: '난류', issueLabel: ktgIssueLabel, validLabel: ktgValidLabel })
     if (metVisibility.flightCategory)
       entries.push({ key: 'flightCategory', label: '비행기상구역', issueLabel: flightCategoryIssueLabel })
-    if (metVisibility.sigwx)
-      entries.push({ key: 'sigwx', label: 'SIGWX', issueLabel: sigwxIssueLabel, validLabel: sigwxValidLabel })
+    if (metVisibility.sigwx) {
+      const entryCount = sigwxHistoryEntries.length
+      entries.push({
+        key: 'sigwx',
+        label: `SIGWX-L · ${entryCount ? sigwxHistoryIndex + 1 : 0}/${entryCount}`,
+        issueLabel: sigwxIssueLabel,
+        validLabel: sigwxValidLabel,
+        history: entryCount > 1 ? {
+          atOldest: sigwxHistoryIndex >= entryCount - 1,
+          atLatest: sigwxHistoryIndex <= 0,
+          onPrevious: () => setSigwxHistoryIndex((prev) => Math.min(entryCount - 1, prev + 1)),
+          onNext: () => setSigwxHistoryIndex((prev) => Math.max(0, prev - 1)),
+        } : null,
+      })
+    }
     return entries
   }, [
     enableWindOverlay,
     metVisibility.wind, metVisibility.temp, metVisibility.cloud,
     metVisibility.icing, metVisibility.turbulence, metVisibility.flightCategory, metVisibility.sigwx,
     nwpIssueLabel, nwpValidLabel, ktgIssueLabel, ktgValidLabel, flightCategoryIssueLabel,
-    sigwxIssueLabel, sigwxValidLabel,
+    sigwxIssueLabel, sigwxValidLabel, sigwxHistoryEntries.length, sigwxHistoryIndex,
   ])
 
   useTimelinePlayback({
@@ -1370,6 +1382,7 @@ const MapView = forwardRef(function MapView({
     <div
       className="map-view-wrapper"
       data-mobile-layer-panel={activePanel === 'aviation' || activePanel === 'met' ? 'true' : undefined}
+      data-mobile-task={mobileTask}
       data-route-briefing-map-mode={activePanel === 'route-check' && routeBriefingMapMode ? 'true' : 'false'}
     >
       <div ref={mapContainerRef} className="map-view" />
@@ -1429,17 +1442,6 @@ const MapView = forwardRef(function MapView({
         }}
         onToggleVisibility={toggleAdvisoryVisibility}
         onSelectAirport={onAirportSelect}
-      />
-
-      <SigwxHistoryBar
-        isVisible={metVisibility.sigwx}
-        selectedEntry={selectedSigwxEntry}
-        entryCount={sigwxHistoryEntries.length}
-        historyIndex={sigwxHistoryIndex}
-        issueLabel={sigwxIssueLabel}
-        validLabel={sigwxValidLabel}
-        isElevated
-        onHistoryIndexChange={setSigwxHistoryIndex}
       />
 
       <TimelineRail
@@ -1510,7 +1512,7 @@ const MapView = forwardRef(function MapView({
 
       <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />
 
-      {(!isMobile || mobileTask === 'map') && <MapToolsLauncher
+      {(!isMobile || mobileTask === 'map' || mobileTask === 'route') && <MapToolsLauncher
         isOpen={activePanel === 'custom-area'}
         onToggle={() => (activePanel === 'custom-area' ? onClosePanel?.() : onOpenCustomAreaPanel?.())}
       />}

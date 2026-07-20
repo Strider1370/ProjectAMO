@@ -156,6 +156,10 @@ optgroup {
     z-index: 60;
   }
 
+  .map-view-wrapper[data-mobile-task='route'] .map-tools-launcher {
+    top: 10px;
+  }
+
   /* A full-detent mobile sheet owns the whole surface — hide the map chrome
      (layer chips, basemap switcher) that would otherwise sit on top. */
   .amo-sheet-full .mobile-map-layer-btns,

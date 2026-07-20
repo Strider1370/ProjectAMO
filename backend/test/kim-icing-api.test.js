@@ -9,6 +9,7 @@ import {
   KIM_NWP_LEVELS,
   KIM_NWP_MODEL,
   buildKimNwpGrid,
+  buildKimNwpIndexEntry,
   buildKimNwpIndex,
 } from '../src/processors/kim-nwp-model.js'
 import {
@@ -38,6 +39,12 @@ function listen(app) {
 
 function close(server) {
   return new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())))
+}
+
+function indexEntries(grids, root) {
+  return grids.map((grid) => buildKimNwpIndexEntry(grid, path.relative(root, resolveKimNwpGridPath({
+    root, model: grid.model, tmfc: grid.tmfc, hf: grid.hf, levelId: grid.level.id,
+  })).replace(/\\/g, '/')))
 }
 
 test('icing API exposes filtered index, field payload, invalid selection, and snapshot hash', async () => {
@@ -82,17 +89,7 @@ test('icing API exposes filtered index, field payload, invalid selection, and sn
   const index = buildKimNwpIndex({
     model: KIM_NWP_MODEL,
     tmfc,
-    grids: [grid, partialGrid],
-    pathForGrid: (selectedGrid) => path.relative(
-      root,
-      resolveKimNwpGridPath({
-        root,
-        model: selectedGrid.model,
-        tmfc: selectedGrid.tmfc,
-        hf: selectedGrid.hf,
-        levelId: selectedGrid.level.id,
-      }),
-    ).replace(/\\/g, '/'),
+    entries: indexEntries([grid, partialGrid], root),
   })
   writeKimNwpIndex(root, index)
   writeKimNwpLatest(root, {

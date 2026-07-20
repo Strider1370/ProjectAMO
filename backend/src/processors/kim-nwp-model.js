@@ -561,24 +561,36 @@ function computeKimResolution(grid) {
   }
 }
 
-export function buildKimNwpIndex({ model = KIM_NWP_MODEL, tmfc, grids, pathForGrid }) {
-  const levels = KIM_NWP_LEVELS
-    .filter((level) => grids.some((grid) => grid.level?.id === level.id))
-    .map(({ id, label, kind, value, unit }) => ({ id, label, kind, value, unit }))
-  const times = [...new Map(grids.map((grid) => [grid.hf, {
+export function buildKimNwpIndexEntry(grid, path) {
+  return {
+    levelId: grid.level?.id,
     hf: grid.hf,
     validTime: grid.validTime,
+    variables: Object.keys(grid.variables || {}),
+    hashes: Object.fromEntries(Object.entries(grid.variables || {}).map(([name, variable]) => [name, variableContentHash(variable)])),
+    path,
+    grid: grid.grid,
+  }
+}
+
+export function buildKimNwpIndex({ model = KIM_NWP_MODEL, tmfc, entries }) {
+  const levels = KIM_NWP_LEVELS
+    .filter((level) => entries.some((entry) => entry.levelId === level.id))
+    .map(({ id, label, kind, value, unit }) => ({ id, label, kind, value, unit }))
+  const times = [...new Map(entries.map((entry) => [entry.hf, {
+    hf: entry.hf,
+    validTime: entry.validTime,
   }])).values()].sort((a, b) => a.hf - b.hf)
   const availability = {}
 
-  for (const grid of grids) {
-    const levelId = grid.level?.id
+  for (const entry of entries) {
+    const { levelId } = entry
     if (!levelId) continue
     availability[levelId] ||= {}
-    availability[levelId][String(grid.hf)] = {
-      variables: Object.keys(grid.variables || {}),
-      hashes: Object.fromEntries(Object.entries(grid.variables || {}).map(([name, variable]) => [name, variableContentHash(variable)])),
-      path: pathForGrid(grid),
+    availability[levelId][String(entry.hf)] = {
+      variables: entry.variables,
+      hashes: entry.hashes,
+      path: entry.path,
     }
   }
 
@@ -587,7 +599,7 @@ export function buildKimNwpIndex({ model = KIM_NWP_MODEL, tmfc, grids, pathForGr
     model,
     latestRun: tmfc,
     initial_time: addForecastHours(tmfc, 0), // tmfc(초기장) ISO 형태. #4 메타.
-    resolution: computeKimResolution(grids[0]?.grid), // {nx,ny,dx_km,dy_km} 위도보정. #4 메타.
+    resolution: computeKimResolution(entries[0]?.grid), // {nx,ny,dx_km,dy_km} 위도보정. #4 메타.
     levels,
     times,
     availability,
@@ -631,6 +643,7 @@ export default {
   KIM_NWP_MODEL,
   addForecastHours,
   buildKimNwpGrid,
+  buildKimNwpIndexEntry,
   buildKimNwpIndex,
   buildKimCloudPotentialFieldFromGrid,
   buildKimIcingFieldFromGrid,

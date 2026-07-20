@@ -8,9 +8,10 @@ async function openRouteBriefing(page, isMobile) {
   })
   // Precondition: route geometry is committed navdata; this installs deterministic
   // weather, terrain, altitude, and briefing responses because dev:test has none.
-  await installRouteBriefingFixtures(page)
+  const exposureRequests = await installRouteBriefingFixtures(page)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: isMobile ? '브리핑' : '비행 전 브리핑', exact: true }).click()
+  return exposureRequests
 }
 
 async function selectAirport(page, field, airport, isMobile) {
@@ -25,7 +26,7 @@ async function setFlightRule(page, rule, isMobile) {
   await control.click()
 }
 
-async function completeWorkflow(page, rule, isMobile, { stopAtAltitude = false } = {}) {
+async function completeWorkflow(page, rule, isMobile, { stopAtCompare = false, stopAtAltitude = false } = {}) {
   await setFlightRule(page, rule, isMobile)
   await selectAirport(page, '출발', 'RKSS', isMobile)
   await selectAirport(page, '도착', 'RKPK', isMobile)
@@ -39,6 +40,7 @@ async function completeWorkflow(page, rule, isMobile, { stopAtAltitude = false }
 
   await page.getByRole('button', { name: '경로비교로', exact: true }).click()
   await expect(page.getByText('기본 경로', { exact: true })).toBeVisible()
+  if (stopAtCompare) return
   await page.getByRole('button', { name: '기본 경로로 고도 비교', exact: true }).click()
 
   await page.getByRole('spinbutton', { name: '계획 순항고도 (ft)', exact: true }).fill('9000')
@@ -69,5 +71,18 @@ test.describe('route-workflow', () => {
     await completeWorkflow(page, 'VFR', true, { stopAtAltitude: true })
     await page.getByRole('button', { name: '연직단면도 보기', exact: true }).click()
     await expect(page.getByRole('dialog', { name: '연직단면도', exact: true })).toBeVisible()
+  })
+
+  test('alternative route edits issue one batch exposure request without another single request', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the edit request-count contract runs once on desktop')
+    const exposureRequests = await openRouteBriefing(page, false)
+    await completeWorkflow(page, 'IFR', false, { stopAtCompare: true })
+    const singleBefore = [...exposureRequests.single.values()].reduce((sum, count) => sum + count, 0)
+    const batchBefore = [...exposureRequests.batch.values()].reduce((sum, count) => sum + count, 0)
+    await page.getByRole('button', { name: '이 경로에서 우회안 만들기', exact: true }).click()
+    await page.getByRole('button', { name: '항로 문자열 직접 편집', exact: true }).click()
+    await page.getByRole('button', { name: '적용', exact: true }).click()
+    await expect.poll(() => [...exposureRequests.batch.values()].reduce((sum, count) => sum + count, 0)).toBeGreaterThan(batchBefore)
+    expect([...exposureRequests.single.values()].reduce((sum, count) => sum + count, 0)).toBe(singleBefore)
   })
 })

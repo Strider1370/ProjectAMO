@@ -11,6 +11,11 @@ function requestJson(route) {
   return route.request().postDataJSON() || {}
 }
 
+function stableRoutePayload(route) {
+  const body = requestJson(route)
+  return JSON.stringify({ routeGeometry: body.routeGeometry, routeModel: body.routeModel, etd: body.etd, eta: body.eta })
+}
+
 function observation() {
   return {
     observation: {
@@ -76,9 +81,23 @@ const crossSection = { run: { id: 'contract-fixture', model: 'fixture' }, levels
 // Contract precondition: the route is built from committed navdata; weather and terrain
 // requests below are deterministic so dev:test collection state cannot affect assertions.
 export async function installRouteBriefingFixtures(page) {
-  await page.route('**/api/briefing/route-exposure', (route) => fulfill(route, exposure))
+  const exposureRequests = { single: new Map(), batch: new Map() }
+  await page.route('**/api/briefing/route-exposure', (route) => {
+    const key = stableRoutePayload(route)
+    exposureRequests.single.set(key, (exposureRequests.single.get(key) || 0) + 1)
+    return fulfill(route, exposure)
+  })
+  await page.route('**/api/briefing/route-exposure/batch', (route) => {
+    const routes = requestJson(route).routes || []
+    for (const entry of routes) {
+      const key = JSON.stringify({ routeGeometry: entry.routeGeometry, routeModel: entry.routeModel, etd: entry.etd, eta: entry.eta })
+      exposureRequests.batch.set(key, (exposureRequests.batch.get(key) || 0) + 1)
+    }
+    return fulfill(route, { results: routes.map(({ id }) => ({ id, ...exposure })), snapshot: { id: 'route-fixture' } })
+  })
   await page.route('**/api/briefing/altitudes', (route) => fulfill(route, altitudeComparison))
   await page.route('**/api/vertical-profile', (route) => fulfill(route, profileFor(requestJson(route))))
   await page.route('**/api/briefing/cross-section', (route) => fulfill(route, crossSection))
   await page.route('**/api/route-briefing', (route) => fulfill(route, briefingFor(requestJson(route))))
+  return exposureRequests
 }
