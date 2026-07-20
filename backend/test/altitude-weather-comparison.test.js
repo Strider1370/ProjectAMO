@@ -67,6 +67,8 @@ test('comparison interpolates sample-level KIM heights and keeps unknown-time NO
   assert.deepEqual(rows[0].hazards[0], {
     source: 'SIGMET', sourceId: 'S1', label: 'Embedded Thunderstorm', altitude: { lower_fl: null, upper_fl: 450 },
     validFrom: '2026-07-17T00:00:00Z', validTo: '2026-07-17T12:00:00Z', encounter: 'on', timeStatus: 'matched', verticalStatus: 'intersects',
+    horizontalExposure: { status: 'intersects', intervals: [{ startNm: 0, endNm: 2 }] },
   })
+  assert.ok(rows[0].hazards[0].horizontalExposure.intervals.length >= 1)
   assert.deepEqual(rows[0].notams, [{ id: 'N1', status: 'undetermined' }])
 })

@@ -156,6 +156,7 @@ function matchHazards(hazards, axis, altitudeFt, etd, eta) {
       encounter: altitudeExposure.status === 'intersects' && timeStatus === 'matched' ? 'on' : 'nearby',
       timeStatus,
       verticalStatus: altitudeExposure.status,
+      horizontalExposure,
     }]
   })
 }
