@@ -141,9 +141,8 @@
 
 .rb-alternatives { display: grid; gap: 8px; }
 .rb-altitude-comparison { display: grid; gap: 8px; }
-.rb-comparison-summary { display: grid; gap: 2px; padding: var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-xl); background: var(--level-gray-bg); }
+.rb-comparison-summary { display: grid; gap: 4px; padding: var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-xl); background: var(--level-gray-bg); }
 .rb-comparison-summary strong { color: var(--text-1); }
-.rb-comparison-summary span { color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-semibold); }
 .rb-step-actions { display: flex; gap: 8px; }
 .rb-step-actions > * { flex: 1 1 0; }
 .rb-alternatives-status, .rb-alternatives-note { margin: 0; font-size: 13px; color: var(--text-3); }
@@ -159,7 +158,6 @@
    고정 열 격자라 카드 폭이 같으면 우회안 A/B/C가 항상 같은 x 위치에서 맞물려
    위아래로 훑어보며 비교할 수 있다. */
 .rb-route-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 8px; padding: 2px 0; }
-.rb-comparison-summary .rb-route-stats { grid-template-columns: repeat(2, 1fr); max-width: 220px; }
 .rb-route-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--text-3); }
 .rb-route-stat svg { flex: none; }
 .rb-route-stat-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-3); }

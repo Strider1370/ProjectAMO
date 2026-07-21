@@ -30,6 +30,8 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
   const baseDesign = designs.find((design) => design.kind === 'base' || design.id === 'base')
   const baseDistance = Number(baseDesign?.routeResult?.totalDistanceNm ?? baseDesign?.routeResult?.distanceNm)
   const baseEta = computeEtaIso(etd, baseDistance, tasKt)
+  const baseHazards = routeExposure?.hazards ?? []
+  const baseTotalHazardExposureNm = Math.round(baseHazards.reduce((sum, hazard) => sum + exposureNm(hazard), 0))
   const comparisonById = new Map(buildRouteComparison(baseDesign, designs.filter((design) => design.kind === 'alternative'), { etd, tasKt, weatherSnapshot: baseDesign?.routeExposure?.snapshot }).map((row) => [row.id, row]))
   useEffect(() => {
     const next = (selectedDesign?.draftEditor?.rawText ?? selectedDesign?.routeString) || formatRouteString(selectedDesign?.routeResult)
@@ -71,6 +73,10 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
               <span className="rb-route-stat-value">{baseEta.slice(11, 16)} UTC</span>
             </span>
           )}
+          <span className={`rb-route-stat rb-card-total-exposure${baseHazards.length === 0 ? ' is-zero' : ''}`}>
+            <span className="rb-route-stat-label"><CloudLightning size={16} />위험기상</span>
+            <span className="rb-route-stat-value">{baseTotalHazardExposureNm} NM · {baseHazards.length}건</span>
+          </span>
         </span>
         <Button appearance="primary" type="button" onClick={onDuplicate} disabled={designs.length >= 4}>이 경로에서 우회안 만들기</Button>
       </div>}
