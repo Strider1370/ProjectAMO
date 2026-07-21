@@ -200,7 +200,7 @@ export function addRoutePreviewLayers(map) {
       id: ROUTE_BASELINE_LINE, type: 'line', source: ROUTE_BASELINE_SOURCE, slot: 'top',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['case', ['boolean', ['get', 'selected'], false], '#f97316', ['boolean', ['get', 'comparison'], false], '#64748b', '#f97316'],
+        'line-color': ['case', ['boolean', ['get', 'selected'], false], ['coalesce', ['get', 'color'], '#f97316'], ['boolean', ['get', 'comparison'], false], '#475569', '#f97316'],
         'line-width': 3, 'line-opacity': 0.9,
       },
     })
@@ -253,7 +253,7 @@ export function addRoutePreviewLayers(map) {
       filter: ['==', ['get', 'role'], 'route-design-line'],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': ['case', ['boolean', ['get', 'selected'], false], '#f97316', '#64748b'],
+        'line-color': ['case', ['boolean', ['get', 'selected'], false], ['coalesce', ['get', 'color'], '#f97316'], '#475569'],
         'line-width': ['case', ['boolean', ['get', 'selected'], false], 5, 3],
         'line-opacity': ['case', ['boolean', ['get', 'selected'], false], 1, 0.6],
       },

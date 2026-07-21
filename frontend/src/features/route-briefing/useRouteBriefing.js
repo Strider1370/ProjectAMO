@@ -1742,6 +1742,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       eta,
       routeDesigns,
       selectedRouteDesignId,
+      hiddenRouteDesignIds,
       activeAppliedDesignId,
       routeExposure,
       altitudeComparison,

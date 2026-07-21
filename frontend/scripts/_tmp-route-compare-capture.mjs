@@ -11,6 +11,8 @@ const OUT = 'artifacts/tab-capture'
 const browser = await chromium.launch()
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
 const page = await context.newPage()
+page.on('console', (msg) => { if (msg.type() === 'error') console.log('[console.error]', msg.text()) })
+page.on('pageerror', (err) => console.log('[pageerror]', err.message))
 
 await page.addInitScript(() => {
   localStorage.setItem('amo.tour.v1.done', 'true')
@@ -35,9 +37,7 @@ await page.getByRole('button', { name: '이 경로에서 우회안 만들기', e
 await page.getByRole('button', { name: '이 경로에서 우회안 만들기', exact: true }).click()
 await page.locator('.rb-alternative-card').nth(1).waitFor()
 
-// 기본 경로 선택 버튼 확인 — 클릭 후 is-selected가 기본 경로로 옮겨가는지.
-await page.locator('.rb-comparison-summary-select').click()
-await page.screenshot({ path: `${OUT}/2d-base-route-selectable.png`, fullPage: true })
+await page.screenshot({ path: `${OUT}/2e-route-colors.png`, fullPage: true })
 
 await browser.close()
-console.log('saved', `${OUT}/2c-base-vs-alt-alignment.png`)
+console.log('saved', `${OUT}/2e-route-colors.png`)

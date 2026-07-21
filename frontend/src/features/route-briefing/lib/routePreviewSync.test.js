@@ -113,6 +113,53 @@ test('syncRoutePreviewLayers keeps selected IFR design waypoints with its line',
   assert.deepEqual(map.sourceData.get(ROUTE_BASELINE_SOURCE).features[0].geometry.coordinates, [[126, 37], [127, 37], [128, 37], [129, 37]])
 })
 
+test('syncRoutePreviewLayers colors each design line by identity, base and alternatives distinct', () => {
+  const map = createMockMap()
+  const design = (id, coordinates) => ({ id, kind: id === 'base' ? 'base' : 'alternative', routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } },
+  ] } } })
+
+  syncRoutePreviewLayers(map, {
+    routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [] }, navpointIds: [] },
+    routeDesigns: [
+      design('base', [[126, 37], [127, 37]]),
+      design('route-a', [[126, 37], [128, 36]]),
+      design('route-b', [[126, 37], [129, 35]]),
+    ],
+    selectedRouteDesignId: 'route-a', selectedSid: null, selectedStar: null, selectedIap: null,
+  })
+
+  const features = map.sourceData.get(ROUTE_PREVIEW_SOURCE).features
+  const lineFor = (id) => features.find((feature) => feature.properties.role === 'route-design-line' && feature.properties.designId === id)
+  const baseColor = map.sourceData.get(ROUTE_BASELINE_SOURCE).features[0].properties.color
+  assert.equal(baseColor, '#f97316')
+  assert.notEqual(lineFor('route-a').properties.color, baseColor)
+  assert.notEqual(lineFor('route-a').properties.color, lineFor('route-b').properties.color)
+})
+
+test('syncRoutePreviewLayers excludes hidden designs entirely, even the selected one', () => {
+  const map = createMockMap()
+  const design = (id, coordinates) => ({ id, kind: id === 'base' ? 'base' : 'alternative', routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } },
+  ] } } })
+
+  syncRoutePreviewLayers(map, {
+    routeResult: { flightRule: 'IFR', previewGeojson: { type: 'FeatureCollection', features: [] }, navpointIds: [] },
+    routeDesigns: [
+      design('base', [[126, 37], [127, 37]]),
+      design('route-a', [[126, 37], [128, 36]]),
+      design('route-b', [[126, 37], [129, 35]]),
+    ],
+    selectedRouteDesignId: 'route-a', selectedSid: null, selectedStar: null, selectedIap: null,
+    hiddenRouteDesignIds: new Set(['route-a', 'base']),
+  })
+
+  const features = map.sourceData.get(ROUTE_PREVIEW_SOURCE).features
+  assert.equal(features.some((feature) => feature.properties.designId === 'route-a'), false)
+  assert.equal(features.some((feature) => feature.properties.designId === 'route-b' && feature.properties.role === 'route-design-line'), true)
+  assert.deepEqual(map.sourceData.get(ROUTE_BASELINE_SOURCE), { type: 'FeatureCollection', features: [] })
+})
+
 test('syncRoutePreviewLayers keeps baseline, applied route, and pending route in separate sources', () => {
   const map = createMockMap()
   const feature = (coordinates) => ({ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: { type: 'LineString', coordinates } })

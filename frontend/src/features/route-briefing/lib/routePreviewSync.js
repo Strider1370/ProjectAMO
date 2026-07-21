@@ -28,6 +28,7 @@ import {
   buildProcedureGeoJSON,
   buildVfrGeoJSON,
 } from './routePreview.js'
+import { routeDesignColor } from './routeDesignColors.js'
 
 export const BOUNDARY_FIX_PREVIEW_SOURCE = 'boundary-fix-preview'
 export const BOUNDARY_FIX_PREVIEW_POINT = 'boundary-fix-preview-point'
@@ -74,6 +75,7 @@ export const ROUTE_PREVIEW_LAYER_IDS = [
 ]
 
 const emptyGeoJSON = { type: 'FeatureCollection', features: [] }
+const EMPTY_HIDDEN_SET = new Set()
 
 export function addBoundaryFixPreviewLayers(map) {
   if (!map.getSource(BOUNDARY_FIX_PREVIEW_SOURCE)) {
@@ -137,6 +139,7 @@ export function syncRoutePreviewLayers(map, model) {
     routeResult,
     routeDesigns = [],
     selectedRouteDesignId,
+    hiddenRouteDesignIds = EMPTY_HIDDEN_SET,
     vfrWaypoints = [],
     appliedVfrWaypoints = vfrWaypoints,
     draftVfrWaypoints = [],
@@ -152,61 +155,71 @@ export function syncRoutePreviewLayers(map, model) {
   const baseDesign = routeDesigns.find((design) => design.kind === 'base' || design.id === 'base')
   const selectedDesign = routeDesigns.find((design) => design.id === selectedRouteDesignId)
   if (baseDesign && routeDesigns.length > 1) {
-    const displayPreview = (design, preview) => augmentRouteWithProcedures(preview, design.procedures?.sid ?? null, design.procedures?.star ?? null, design.procedures?.iapKey ? selectedIap : null)
-    const baseDisplayPreview = displayPreview(baseDesign, baseDesign.routeResult?.previewGeojson ?? emptyGeoJSON)
-    const basePreview = {
-      ...baseDisplayPreview,
-      features: (baseDisplayPreview.features ?? []).map((feature) => ({
+    // 색 구분·숨김은 en-route 구간에만 적용한다 — "우회안 만들기"는 SID/STAR/IAP를
+    // 그대로 복사하고 이후 어떤 편집도 절차를 바꾸지 않으므로, 절차 구간은 모든
+    // 설계안이 완전히 같은 좌표다. 그 구간까지 경로별로 칠하면 같은 자리에 여러
+    // 색이 겹쳐 그려지는 착시만 생긴다. 그래서 route-design-line은 절차 병합
+    // 전의 원본 선(rawLine/draftLine)을 그대로 쓴다 — 절차 자체는 기존대로
+    // PROC_PREVIEW_SOURCE가 공통 스타일로 그린다.
+    const baseHidden = hiddenRouteDesignIds.has(baseDesign.id)
+    const baseRawPreview = baseDesign.routeResult?.previewGeojson ?? emptyGeoJSON
+    const basePreview = baseHidden ? emptyGeoJSON : {
+      ...baseRawPreview,
+      features: (baseRawPreview.features ?? []).map((feature) => ({
         ...feature,
-        properties: { ...feature.properties, comparison: true, selected: baseDesign.id === selectedRouteDesignId },
+        properties: { ...feature.properties, comparison: true, selected: baseDesign.id === selectedRouteDesignId, color: routeDesignColor(baseDesign, routeDesigns) },
       })),
     }
+    const selectedHidden = selectedDesign && hiddenRouteDesignIds.has(selectedDesign.id)
     const rawDraftPreview = selectedDesign?.draftEditor?.preview?.previewGeojson ?? emptyGeoJSON
     const hasDraftPreview = rawDraftPreview.features?.some((feature) => feature.properties?.role === 'route-preview-line')
     const appliedFeatures = routeDesigns
-      .filter((design) => design.kind === 'alternative')
+      .filter((design) => design.kind === 'alternative' && !hiddenRouteDesignIds.has(design.id))
       .flatMap((design) => {
         if (hasDraftPreview && design.id === selectedRouteDesignId) return []
         const rawPreview = design.routeResult?.previewGeojson ?? emptyGeoJSON
         const rawLine = rawPreview.features?.find((feature) => feature.properties?.role === 'route-preview-line')
-        const displayLine = displayPreview(design, rawPreview).features?.find((feature) => feature.properties?.role === 'route-preview-line')
         const selected = design.id === selectedRouteDesignId
+        const color = routeDesignColor(design, routeDesigns)
         const points = selected ? rawPreview.features.filter((feature) => feature.properties?.role === 'route-preview-point').map((feature) => ({
           ...feature,
           properties: { ...feature.properties, designId: design.id, selected, waypointIndex: Number(feature.properties?.sequence) - 1, sourceIndex: Number(feature.properties?.sequence), editable: Boolean(feature.properties?.editable) || (design.routeResult?.flightRule === 'VFR' && feature.properties?.sequence > 1 && feature.properties?.sequence < rawPreview.features.filter((item) => item.properties?.role === 'route-preview-point').length) },
         })) : []
         return [
-          ...(rawLine ? [{ ...rawLine, properties: { ...rawLine.properties, designId: design.id, selected, role: 'route-design-hit' } }] : []),
-          ...(displayLine ? [{ ...displayLine, properties: { ...displayLine.properties, designId: design.id, selected, role: 'route-design-line' } }] : []),
+          ...(rawLine ? [{ ...rawLine, properties: { ...rawLine.properties, designId: design.id, selected, color, role: 'route-design-hit' } }] : []),
+          ...(rawLine ? [{ ...rawLine, properties: { ...rawLine.properties, designId: design.id, selected, color, role: 'route-design-line' } }] : []),
           ...points,
         ]
       })
-    const draftLine = rawDraftPreview.features?.find((feature) => feature.properties?.role === 'route-preview-line')
+    const draftLine = (!selectedHidden && rawDraftPreview.features?.find((feature) => feature.properties?.role === 'route-preview-line')) || null
+    const selectedColor = selectedDesign ? routeDesignColor(selectedDesign, routeDesigns) : undefined
     const selectedDraftLine = draftLine ? {
       ...draftLine,
-      properties: { ...draftLine.properties, designId: selectedDesign.id, selected: true, role: 'route-design-hit' },
+      properties: { ...draftLine.properties, designId: selectedDesign.id, selected: true, color: selectedColor, role: 'route-design-hit' },
     } : null
-    const selectedDraftDisplayLine = draftLine ? displayPreview(selectedDesign, rawDraftPreview).features?.find((feature) => feature.properties?.role === 'route-preview-line') : null
+    const draftDisplayFeature = draftLine ? {
+      ...draftLine,
+      properties: { ...draftLine.properties, designId: selectedDesign.id, selected: true, color: selectedColor, role: 'route-design-line' },
+    } : null
     const interactivePreview = selectedDesign?.draftEditor?.preview ?? selectedDesign?.routeResult
     const interactiveLine = interactivePreview?.previewGeojson?.features?.find((feature) => feature.properties?.role === 'route-preview-line')
-    const interactiveCoordinates = interactiveLine?.geometry?.coordinates ?? []
-    const interactivePoints = selectedDesign && interactivePreview?.flightRule === 'VFR'
+    const interactiveCoordinates = !selectedHidden ? (interactiveLine?.geometry?.coordinates ?? []) : []
+    const interactivePoints = selectedDesign && !selectedHidden && interactivePreview?.flightRule === 'VFR'
       ? interactiveCoordinates.map((coordinates, index) => ({
           type: 'Feature',
           properties: { role: 'route-preview-point', designId: selectedDesign.id, selected: true, waypointIndex: index, sourceIndex: index, editable: index > 0 && index < interactiveCoordinates.length - 1, label: '' },
           geometry: { type: 'Point', coordinates },
         }))
-      : (interactivePreview?.previewGeojson?.features ?? [])
+      : (!selectedHidden ? (interactivePreview?.previewGeojson?.features ?? []) : [])
         .filter((feature) => feature.properties?.role === 'route-preview-point' && feature.properties?.editable)
         .map((feature) => ({
           ...feature,
           properties: { ...feature.properties, designId: selectedDesign?.id, selected: true, waypointIndex: Number(feature.properties.sequence) - 1, sourceIndex: Number(feature.properties.sequence), editable: true },
         }))
-    const selectedAppliedPoints = selectedDesign?.routeResult?.flightRule !== 'VFR'
+    const selectedAppliedPoints = !selectedHidden && selectedDesign?.routeResult?.flightRule !== 'VFR'
       ? appliedFeatures.filter((feature) => feature.properties?.role === 'route-preview-point' && !feature.properties?.editable)
       : []
     map.getSource(ROUTE_BASELINE_SOURCE)?.setData(basePreview)
-    const draftDisplayFeature = selectedDraftDisplayLine ? { ...selectedDraftDisplayLine, properties: { ...selectedDraftDisplayLine.properties, designId: selectedDesign.id, selected: true, role: 'route-design-line' } } : null
     map.getSource(ROUTE_PREVIEW_SOURCE)?.setData({ type: 'FeatureCollection', features: [...appliedFeatures.filter((feature) => feature.properties?.role !== 'route-preview-point'), ...(selectedDraftLine ? [selectedDraftLine] : []), ...(draftDisplayFeature ? [draftDisplayFeature] : []), ...selectedAppliedPoints, ...interactivePoints] })
     map.getSource(ROUTE_PENDING_SOURCE)?.setData(emptyGeoJSON)
     map.getSource(PROC_PREVIEW_SOURCE)?.setData(buildProcedureGeoJSON(selectedDesign?.procedures?.sid ?? null, selectedDesign?.procedures?.star ?? null, pendingIap ?? selectedIap ?? null))
