@@ -75,10 +75,11 @@
 
 - [ ] Step 1: `grep -n "syncRoutePreview\|routePreviewSync" frontend/src/features/map/MapView.jsx`로 호출부를 찾아 `hiddenRouteDesignIds`를 어디서 받아 전달할지 확인한다. 이 태스크의 다른 줄번호(154, 176, 179, 180, 187, 196, 203, 209, 238행)도 Task 1·이전 커밋 이후 밀렸을 수 있으니 grep으로 내용 기준 재확인 후 수정할 것 — 줄번호를 맹신하지 않는다.
 - [ ] Step 2: `routePreviewSync.js`의 sync 함수 시그니처에 `hiddenRouteDesignIds = new Set()` 매개변수를 추가한다(154행 부근, 기존 매개변수 목록에 추가).
-- [ ] Step 3: 154-241행에서 `routeDesigns`를 순회해 feature를 만드는 지점마다:
+- [ ] Step 3: **색 구분 범위를 en-route로 한정** — 대화에서 확정: "우회안 만들기"는 SID/STAR/IAP를 그대로 복사하고 이후 어떤 편집도 절차를 바꾸지 않으므로(코드 확인 완료), 대안 간 실제로 달라지는 건 en-route 구간뿐이다. 지금 `role: 'route-design-line'`으로 태그되는 `displayLine`은 `displayPreview(design, rawPreview)`(≈176행 부근, `augmentRouteWithProcedures` 호출)로 SID/STAR 곡선까지 이어붙인 선이라, 이 선 전체를 색칠하면 모든 경로의 SID/STAR 구간이 같은 좌표에 다른 색으로 겹쳐 그려진다. `role: 'route-design-line'` feature는 `displayLine` 대신 **절차 병합 전의 `rawLine`**(≈179행에서 이미 `role: 'route-design-hit'`용으로 만들고 있는 바로 그 원본 라인)을 사용하도록 바꾼다 — `displayLine`/`displayPreview` 호출 자체를 이 경로에서 제거해도 된다(SID/STAR는 기존처럼 `PROC_PREVIEW_SOURCE`가 별도로 그린다). 마찬가지로 base 라인(`baseDisplayPreview`, 156행 부근)도 `displayPreview(baseDesign, ...)` 대신 `baseDesign.routeResult?.previewGeojson`(원본, 미가공)을 그대로 쓰도록 바꾼다.
+- [ ] Step 4: 154-241행에서 `routeDesigns`를 순회해 feature를 만드는 지점마다:
   - `hiddenRouteDesignIds.has(design.id)`이면 그 설계안의 feature를 건너뛴다(배열에 아예 안 넣음 — opacity 0이 아니라 완전 제외해서 hit-layer 클릭도 안 잡히게).
-  - 살아남은 feature의 `properties`에 `color: routeDesignColor(design, routeDesigns)`를 추가한다(176, 179, 180, 187, 196, 203, 209, 238행 각각의 `properties: { ... }` 객체에 추가).
-- [ ] Step 4: `routePreview.js`의 `ROUTE_DESIGN_LINE` paint(255-259행)를 다음으로 교체. `['get','color']`는 Step 3에서 `color`를 못 받은 feature가 하나라도 있으면 `null`이 되어 Mapbox paint 표현식 전체가 깨질 수 있으므로 `['coalesce', ['get','color'], '#f97316']`로 방어한다:
+  - 살아남은 `route-design-line`/`route-design-hit`/`route-baseline-line` feature의 `properties`에 `color: routeDesignColor(design, routeDesigns)`를 추가한다(176, 179, 180, 187, 196, 203, 209, 238행 각각의 `properties: { ... }` 객체에 추가 — Step 3에서 `displayLine`을 없앴다면 해당 줄은 삭제되고 `rawLine` 쪽에 role만 `route-design-line`으로 바뀐다).
+- [ ] Step 5: `routePreview.js`의 `ROUTE_DESIGN_LINE` paint(255-259행)를 다음으로 교체. `['get','color']`는 Step 4에서 `color`를 못 받은 feature가 하나라도 있으면 `null`이 되어 Mapbox paint 표현식 전체가 깨질 수 있으므로 `['coalesce', ['get','color'], '#f97316']`로 방어한다:
   ```js
   paint: {
     'line-color': ['case', ['boolean', ['get', 'selected'], false], ['coalesce', ['get', 'color'], '#f97316'], '#475569'],
@@ -86,9 +87,10 @@
     'line-opacity': ['case', ['boolean', ['get', 'selected'], false], 1, 0.6],
   },
   ```
-- [ ] Step 5: `ROUTE_BASELINE_LINE` paint(202-205행)도 동일한 패턴으로 교체(현재 `'#64748b'`로 하드코딩된 부분을 `#475569`로, 선택 시 색은 `['coalesce', ['get','color'], '#f97316']`로).
-- [ ] Step 6: Verify — `npm --prefix frontend run build`; 성공 기대. 유닛 테스트로 GeoJSON feature 생성 로직을 검증하는 기존 테스트가 있으면(`routePreviewSync.test.js` 존재 여부 확인) 통과 확인, 없으면 스킵.
-- [ ] Step 7: Commit.
+- [ ] Step 6: `ROUTE_BASELINE_LINE` paint(202-205행)도 동일한 패턴으로 교체(현재 `'#64748b'`로 하드코딩된 부분을 `#475569`로, 선택 시 색은 `['coalesce', ['get','color'], '#f97316']`로).
+- [ ] Step 7: SID/STAR/접근절차가 여전히 `PROC_PREVIEW_SOURCE`를 통해 공통 스타일로(색 구분 없이) 그려지는지 지도에서 육안 확인 — Step 3에서 `route-design-line`을 원본 라인으로 바꿨다고 절차 자체가 안 그려지면 안 된다.
+- [ ] Step 8: Verify — `npm --prefix frontend run build`; 성공 기대. 유닛 테스트로 GeoJSON feature 생성 로직을 검증하는 기존 테스트가 있으면(`routePreviewSync.test.js` 존재 여부 확인) 통과 확인, 없으면 스킵.
+- [ ] Step 9: Commit.
 
 ## Task 3: 패널 — 색 표시 + 눈 아이콘 토글
 

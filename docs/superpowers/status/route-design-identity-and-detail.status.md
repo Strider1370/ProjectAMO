@@ -1,6 +1,6 @@
 # 경로 설계안 색상 구분·표시 토글·위험기상 상세 Status
 
-Updated: 2026-07-21 10:20 KST
+Updated: 2026-07-21 10:45 KST
 Spec: docs/superpowers/specs/2026-07-21-route-design-identity-and-detail.md
 Plan: docs/superpowers/plans/2026-07-21-route-design-identity-and-detail.md
 
@@ -23,6 +23,11 @@ Plan: docs/superpowers/plans/2026-07-21-route-design-identity-and-detail.md
 - 독립 리뷰어가 스펙·계획을 코드와 대조 검증함. 블로킹 이슈 1건(대안 카드가 `<button>` 전체라 눈 아이콘용 중첩 `<button>`을 넣을 수 없음) 발견 → 계획 Task 3 Step 4를 대안 카드를 `<div role="button" tabIndex={0}>`로 바꾸는 방식으로 확정 수정함(기본 경로에서 이미 쓴 형제-버튼 패턴과 동일 원리).
 - `bandFt`/`timeStatus` 필드 형태, CSS 클래스(`.rb-card-hazard-detail`/`.rb-card-detail-line`) 기존 존재 여부, FR-001~007 전부 태스크 매핑됨을 리뷰어가 재확인함.
 - Mapbox paint 표현식에 `['coalesce', ['get','color'], '#f97316']` 방어 코드 추가(일부 feature에 `color`가 안 붙으면 표현식 전체가 깨지는 것 방지) — 리뷰 권고 반영.
+
+## Deviations from Plan
+
+- 사용자 지적으로 색 구분 범위를 en-route 구간만으로 좁힘(원래 계획은 SID/STAR까지 포함한 전체 선을 색칠). 코드 확인 결과 "우회안 만들기"는 SID/STAR/IAP를 그대로 복사하고 이후 어떤 편집 경로도 절차를 바꾸지 않아, 절차 구간은 모든 설계안이 완전히 같은 좌표 — 색을 칠하면 같은 자리에 여러 색이 겹쳐 그려지는 착시만 생겨서 제외함. 스펙 FR-002·Non-Goals, 계획 Task 2 Step 3에 반영. `route-design-line`은 이제 `displayPreview()`(절차 병합) 대신 원본 `rawLine`을 쓰고, 절차 자체는 기존 `PROC_PREVIEW_SOURCE`가 그대로 그린다.
+- 색 점 위치를 카드 이름(`<strong>`) 바로 옆으로 사용자가 직접 지정함(브라우저 요소 선택으로 확인) — 계획 Task 3과 일치, 변경 없음.
 
 ## Unverified / Skipped
 
