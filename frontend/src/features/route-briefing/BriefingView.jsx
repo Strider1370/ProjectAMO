@@ -23,14 +23,13 @@ import { buildAmosConsoleModel } from '../../shared/weather/amosViewModel.js'
 import { useCrossSectionLayers, CrossSectionToggles } from './crossSectionLayers.jsx'
 import { buildRawWindsTable } from './lib/rawWindsModel.js'
 import { LEVEL_COLOR, catColorOf, catDisplay, worstAirport, worstInterval, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
-import { deriveTimeState, formatAltitude, formatValidPeriod, notamSummary, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
+import { deriveTimeState, formatAltitude, formatValidPeriod, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
 import NotamCell from '../notam/NotamCell.jsx'
 import './BriefingView.css'
 
 const LEVEL_BADGE = { green: 'success', amber: 'warning', red: 'danger', gray: 'subtle' }
 const FIELDS = [['바람', 'wind'], ['시정', 'visibility'], ['RVR', 'rvr'], ['운고', 'ceiling'], ['기온/노점', 'temp'], ['현상', 'weather'], ['QNH', 'qnh']]
 const NOTAM_CAT_LABEL = Object.fromEntries(NOTAM_CATEGORIES.map((c) => [c.id, c.label]))
-const NOTAM_GROUP_LIMIT = 6 // 공항 그룹당 기본 표시 수(나머지는 "더 보기"로 접음 — 브리핑 볼륨 통제)
 
 // 위험현상 code → 아이콘 (substring 매칭, 코드 변종에 견고).
 function hazardIcon(code) {
@@ -455,17 +454,18 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
     })
     .filter(Boolean)
   const notamRouteGroup = routeNotams.filter((n) => n.onRoute && !n.airportRole) // 어느 공항에도 안 속한 순수 경로 통과
-  const notamCell = (n) => (
+  const notamCell = (n, showPriority = false) => (
     <NotamCell
       key={n.id}
       category={n.category}
       timeState={deriveTimeState(n.validFrom, n.validTo, Date.now())}
-      summary={notamSummary(n) || n.summary || n.id}
+      summary={n.summary || n.id}
       metaText={`${NOTAM_CAT_LABEL[n.category] || n.category} · ${n.id}${n.routeIntervalNm ? ` · ${n.routeIntervalNm.startNm}–${n.routeIntervalNm.endNm}NM` : ''}`}
       altitude={formatAltitude(n.altitude)}
       rawText={n.rawText}
       validText={formatValidPeriod(n.validFrom, n.validTo, tz)}
       conflict={n.conflict}
+      priority={showPriority ? n.operational?.priority : undefined}
     />
   )
   const notamSection = routeNotams.length > 0 && (
@@ -487,25 +487,27 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
         {notamRouteGroup.length > 0 && (
           <>
             <div className="bv-notam-grouphead">경로상 <span className="dim">{notamRouteGroup.length}</span></div>
-            <div className="notam-cellgrid">{notamRouteGroup.map(notamCell)}</div>
+            <div className="notam-cellgrid">{notamRouteGroup.map((n) => notamCell(n))}</div>
           </>
         )}
         {notamAirportGroups.map((g) => {
           const open = !!notamGroupOpen[g.role]
-          const shown = open ? g.items : g.items.slice(0, NOTAM_GROUP_LIMIT) // 발효중·저촉 우선 정렬돼 있어 앞쪽이 중요
-          const restCount = g.items.length - shown.length
+          const criticalItems = g.items.filter((n) => n.operational?.priority === 'critical')
+          const otherItems = g.items.filter((n) => n.operational?.priority !== 'critical')
+          const initialItems = criticalItems.length > 0 ? criticalItems : g.items
           return (
-            <Fragment key={g.role}>
-              <div className="bv-notam-grouphead">{roleLabel(g.role)} 공항 {g.icao} <span className="dim">{g.items.length}</span></div>
-              <div className="notam-cellgrid">{shown.map(notamCell)}</div>
-              {g.items.length > NOTAM_GROUP_LIMIT && (
+            <div key={g.role} className="bv-airport-notam">
+              <div className="bv-notam-grouphead">{roleLabel(g.role)} 공항 {g.icao} <span className="dim">{criticalItems.length > 0 ? '필수 확인 ' + criticalItems.length : g.items.length}</span></div>
+              <div className="notam-cellgrid">{initialItems.map((n) => notamCell(n, true))}</div>
+              {open && otherItems.length > 0 && <><div className="bv-notam-grouphead">기타 직접 해당 <span className="dim">{otherItems.length}</span></div><div className="notam-cellgrid">{otherItems.map((n) => notamCell(n, true))}</div></>}
+              {criticalItems.length > 0 && otherItems.length > 0 && (
                 <button type="button" className="bv-notam-more"
                   onClick={() => setNotamGroupOpen((m) => ({ ...m, [g.role]: !m[g.role] }))}>
-                  {open ? '접기' : `${restCount}건 더 보기`}
+                  {open ? '필수 항목만 보기' : '기타 직접 해당 ' + otherItems.length + '건 보기'}
                   <ChevronDown size={13} className={open ? 'notam-more-chev is-open' : 'notam-more-chev'} aria-hidden="true" />
                 </button>
               )}
-            </Fragment>
+            </div>
           )
         })}
       </Card>

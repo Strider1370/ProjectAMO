@@ -4,7 +4,11 @@ import {
   HORIZONTAL_EXPOSURE,
   TIME_STATUS,
 } from '../../../shared/briefing-status.js'
-import { routeIntervalInGeometry, timeWindowsOverlap } from './geo-time-match.js'
+import { routeCorridorInGeometry, timeWindowsOverlap } from './geo-time-match.js'
+
+// 항로 브리핑에 포함되는 위험기상 범위 — 항로 양쪽 30NM. 실제 EFB(ForeFlight)가 항로
+// 브리핑 커버리지로 쓰는 값과 같다(FAA 표준 flight plan briefing corridor).
+const HAZARD_CORRIDOR_NM = 30
 
 function alignedRange(range, totalDistanceNm) {
   if (range?.status !== 'aligned') return null
@@ -18,7 +22,7 @@ export function evaluateHorizontalExposure({ axis, geometry, enRouteRange = null
   if (!geometry || !Array.isArray(axis?.samples) || axis.samples.length === 0) {
     return { status: HORIZONTAL_EXPOSURE.UNAVAILABLE, intervals: [] }
   }
-  const interval = routeIntervalInGeometry(axis, geometry)
+  const interval = routeCorridorInGeometry(axis, geometry, HAZARD_CORRIDOR_NM)
   if (!interval.entered) return { status: HORIZONTAL_EXPOSURE.CLEAR, intervals: [] }
 
   const range = alignedRange(enRouteRange, axis.totalDistanceNm)

@@ -1,57 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NOTAM_CATEGORIES, deriveTimeState, formatAltitude, formatValidPeriod, notamSummary, sortActiveFirst } from '../../notam/lib/notamViewModel.js'
+import { NOTAM_CATEGORIES, deriveNotamTime, formatAltitude, formatValidPeriod, sortOperationalFirst } from '../../notam/lib/notamViewModel.js'
 import NotamCell from '../../notam/NotamCell.jsx'
 
 const catLabelOf = (id) => (NOTAM_CATEGORIES.find((c) => c.id === id) || { label: '기타' }).label
 
-const NOTAM_LIMIT = 6 // 기본 표시 개수. 초과분은 "더보기"로 접어둠
-
 function NotamTab({ notam, icao, nowMs = Date.now() }) {
   const [expanded, setExpanded] = useState(false)
-  const items = useMemo(() => (Array.isArray(notam?.items) ? notam.items : []), [notam])
-  const airportItems = useMemo(
-    () => sortActiveFirst(items.filter((it) => it.scope !== 'fir' && it.location === icao), nowMs),
-    [items, icao, nowMs],
-  )
-
-  // 공항 바뀌면 접힘 상태 초기화
+  const items = useMemo(() => Array.isArray(notam?.items) ? notam.items : [], [notam])
+  const airportItems = useMemo(() => sortOperationalFirst(items.filter((it) => it.scope !== 'fir' && it.location === icao), nowMs), [items, icao, nowMs])
   useEffect(() => { setExpanded(false) }, [icao])
+  if (airportItems.length === 0) return <div className="ap-empty">유효한 NOTAM이 없습니다.</div>
 
-  if (airportItems.length === 0) {
-    return <div className="ap-empty">유효한 NOTAM이 없습니다.</div>
+  const criticalItems = airportItems.filter((it) => it.operational?.priority === 'critical')
+  const otherItems = airportItems.filter((it) => it.operational?.priority !== 'critical')
+  const initialItems = criticalItems.length > 0 ? criticalItems : airportItems
+  const cell = (it) => {
+    const time = deriveNotamTime(it, nowMs)
+    const metaText = [catLabelOf(it.category), it.id, it.operational?.confidence === 'review' && '검토 필요'].filter(Boolean).join(' · ')
+    return <NotamCell key={it.id} category={it.category} timeState={time.state} summary={it.summary || it.id} metaText={metaText} altitude={formatAltitude(it.altitude)} rawText={it.rawText || it.summary} validText={formatValidPeriod(it.valid_from, it.valid_to)} priority={it.operational?.priority} />
   }
 
-  const overflow = airportItems.length - NOTAM_LIMIT
-  const shown = expanded ? airportItems : airportItems.slice(0, NOTAM_LIMIT)
-
-  return (
-    <>
-      <div className="notam-cellgrid">
-        {shown.map((it) => (
-          <NotamCell
-            key={it.id}
-            category={it.category}
-            timeState={deriveTimeState(it.valid_from, it.valid_to, nowMs)}
-            summary={notamSummary(it) || it.summary || it.id}
-            metaText={`${catLabelOf(it.category)} · ${it.id}`}
-            altitude={formatAltitude(it.altitude)}
-            rawText={it.rawText || it.summary}
-            validText={formatValidPeriod(it.valid_from, it.valid_to)}
-          />
-        ))}
-      </div>
-      {overflow > 0 && (
-        <button
-          type="button"
-          className="notam-more"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-        >
-          {expanded ? '접기' : `더보기 ${overflow}건`}
-        </button>
-      )}
-    </>
-  )
+  return <div className="ap-notam-tab">
+    <div className="ap-notam-group-title">{criticalItems.length > 0 ? '필수 확인' : icao + ' 직접 해당'} · {initialItems.length}건</div>
+    <div className="notam-cellgrid">{initialItems.map(cell)}</div>
+    {expanded && otherItems.length > 0 && <><div className="ap-notam-group-title">기타 직접 해당 · {otherItems.length}건</div><div className="notam-cellgrid">{otherItems.map(cell)}</div></>}
+    {criticalItems.length > 0 && otherItems.length > 0 && <button type="button" className="notam-more" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>{expanded ? '필수 항목만 보기' : '기타 ' + otherItems.length + '건 보기'}</button>}
+  </div>
 }
-
 export default NotamTab

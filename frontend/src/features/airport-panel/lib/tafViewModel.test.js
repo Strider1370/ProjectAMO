@@ -41,6 +41,14 @@ describe('airport TAF view model weather highlighting', () => {
     assert.deepEqual(model.slots.map((slot) => slot.isSpecialWeather), [false, true, false])
   })
 
+  it('keeps raw TAF weather and moves visibility and ceiling units to labels', () => {
+    const model = buildTafViewModel({ timeline: [futureSlot(2, '-RA BR', { visibility: { value: 4000 }, clouds: [{ amount: 'FEW', base: 700, raw: 'FEW007' }, { amount: 'SCT', base: 1500, raw: 'SCT015CB', type: 'CB' }, { amount: 'BKN', base: 2000, raw: 'BKN020' }] })] }, 'RKSI')
+
+    assert.equal(model.slots[0].weatherText, '-RA BR')
+    assert.equal(model.slots[0].visibilityText, '4000')
+    assert.equal(model.slots[0].cloudText, 'FEW007 SCT015CB BKN020')
+  })
+
   it('keeps contiguous group width calculation unchanged', () => {
     const groups = groupTafSlots(
       [{ key: 'A' }, { key: 'A' }, { key: 'B' }, { key: 'A' }],

@@ -1,7 +1,7 @@
 import { fmtKstShort } from './formatters.js'
 
 const WARNING_NAME_KO = {
-  WIND_SHEAR: '\uae09\uaca9\ud55c \ubc14\ub78c\ubcc0\uacbd\uacbd\ubcf4',
+  WIND_SHEAR: '\uae09\ubcc0\ud48d\uacbd\ubcf4',
   LOW_VISIBILITY: '\uc800\uc2dc\uc815\uacbd\ubcf4',
   STRONG_WIND: '\uac15\ud48d\uacbd\ubcf4',
   HEAVY_RAIN: '\ud638\uc6b0\uacbd\ubcf4',

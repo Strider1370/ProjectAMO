@@ -27,6 +27,7 @@ import {
   augmentRouteWithProcedures,
   buildProcedureGeoJSON,
   buildVfrGeoJSON,
+  trimRouteLineForProcedures,
 } from './routePreview.js'
 import { routeDesignColor } from './routeDesignColors.js'
 
@@ -162,7 +163,7 @@ export function syncRoutePreviewLayers(map, model) {
     // 전의 원본 선(rawLine/draftLine)을 그대로 쓴다 — 절차 자체는 기존대로
     // PROC_PREVIEW_SOURCE가 공통 스타일로 그린다.
     const baseHidden = hiddenRouteDesignIds.has(baseDesign.id)
-    const baseRawPreview = baseDesign.routeResult?.previewGeojson ?? emptyGeoJSON
+    const baseRawPreview = trimRouteLineForProcedures(baseDesign.routeResult?.previewGeojson ?? emptyGeoJSON, baseDesign.procedures?.sid, baseDesign.procedures?.star)
     const basePreview = baseHidden ? emptyGeoJSON : {
       ...baseRawPreview,
       features: (baseRawPreview.features ?? []).map((feature) => ({
@@ -171,13 +172,13 @@ export function syncRoutePreviewLayers(map, model) {
       })),
     }
     const selectedHidden = selectedDesign && hiddenRouteDesignIds.has(selectedDesign.id)
-    const rawDraftPreview = selectedDesign?.draftEditor?.preview?.previewGeojson ?? emptyGeoJSON
+    const rawDraftPreview = trimRouteLineForProcedures(selectedDesign?.draftEditor?.preview?.previewGeojson ?? emptyGeoJSON, selectedDesign?.procedures?.sid, selectedDesign?.procedures?.star)
     const hasDraftPreview = rawDraftPreview.features?.some((feature) => feature.properties?.role === 'route-preview-line')
     const appliedFeatures = routeDesigns
       .filter((design) => design.kind === 'alternative' && !hiddenRouteDesignIds.has(design.id))
       .flatMap((design) => {
         if (hasDraftPreview && design.id === selectedRouteDesignId) return []
-        const rawPreview = design.routeResult?.previewGeojson ?? emptyGeoJSON
+        const rawPreview = trimRouteLineForProcedures(design.routeResult?.previewGeojson ?? emptyGeoJSON, design.procedures?.sid, design.procedures?.star)
         const rawLine = rawPreview.features?.find((feature) => feature.properties?.role === 'route-preview-line')
         const selected = design.id === selectedRouteDesignId
         const color = routeDesignColor(design, routeDesigns)

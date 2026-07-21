@@ -7,6 +7,7 @@ import {
   bindVfrInteractions,
   calcVfrDistance,
   relabeledWaypoints,
+  trimRouteLineForProcedures,
 } from './routePreview.js'
 
 test('relabeledWaypoints preserves fixed points and labels editable points in order', () => {
@@ -165,4 +166,44 @@ test('augmentRouteWithProcedures bridges procedures to independent manual en-rou
   const line = augmentRouteWithProcedures(preview, sid, star, null).features[0].geometry.coordinates
 
   assert.deepEqual(line, [[126, 37], [126.5, 37.2], [127, 37], [128, 36], [128.5, 35.8], [129, 36]])
+})
+
+test('trimRouteLineForProcedures leaves the line unchanged when there is no SID or STAR', () => {
+  const preview = buildVfrGeoJSON([{ id: 'DEP', lon: 126, lat: 37 }, { id: 'ARR', lon: 129, lat: 36 }])
+  assert.deepEqual(trimRouteLineForProcedures(preview, null, null), preview)
+})
+
+test('trimRouteLineForProcedures drops the straight departure-to-entry-fix segment when a SID exists', () => {
+  const preview = buildVfrGeoJSON([
+    { id: 'DEP', lon: 126, lat: 37 },
+    { id: 'MEKIL', lon: 127, lat: 37 },
+    { id: 'ARR', lon: 129, lat: 36 },
+  ])
+  const sid = { fixes: [{ id: 'DEP', lon: 126, lat: 37 }, { id: 'OSPAT', lon: 126.5, lat: 37.2 }] }
+  const line = trimRouteLineForProcedures(preview, sid, null).features.find((f) => f.properties.role === 'route-preview-line').geometry.coordinates
+  assert.deepEqual(line, [[127, 37], [129, 36]])
+})
+
+test('trimRouteLineForProcedures drops the straight exit-fix-to-arrival segment when a STAR exists', () => {
+  const preview = buildVfrGeoJSON([
+    { id: 'DEP', lon: 126, lat: 37 },
+    { id: 'MEKIL', lon: 127, lat: 37 },
+    { id: 'ARR', lon: 129, lat: 36 },
+  ])
+  const star = { fixes: [{ id: 'UPGOS', lon: 128.5, lat: 35.8 }, { id: 'ARR', lon: 129, lat: 36 }] }
+  const line = trimRouteLineForProcedures(preview, null, star).features.find((f) => f.properties.role === 'route-preview-line').geometry.coordinates
+  assert.deepEqual(line, [[126, 37], [127, 37]])
+})
+
+test('trimRouteLineForProcedures trims both ends when SID and STAR both exist', () => {
+  const preview = buildVfrGeoJSON([
+    { id: 'DEP', lon: 126, lat: 37 },
+    { id: 'MEKIL', lon: 127, lat: 37 },
+    { id: 'DOTOL', lon: 128, lat: 36 },
+    { id: 'ARR', lon: 129, lat: 36 },
+  ])
+  const sid = { fixes: [{ id: 'DEP', lon: 126, lat: 37 }, { id: 'OSPAT', lon: 126.5, lat: 37.2 }] }
+  const star = { fixes: [{ id: 'UPGOS', lon: 128.5, lat: 35.8 }, { id: 'ARR', lon: 129, lat: 36 }] }
+  const line = trimRouteLineForProcedures(preview, sid, star).features.find((f) => f.properties.role === 'route-preview-line').geometry.coordinates
+  assert.deepEqual(line, [[127, 37], [128, 36]])
 })

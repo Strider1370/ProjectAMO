@@ -1,3 +1,5 @@
+import { classifyCeilingCategory, classifyVisibilityCategory, getSeverityLevel } from './helpers.js'
+
 // shared/*는 features/*를 import 못 하므로(§Architecture), airport-panel formatters의
 // fmtKst를 여기 인라인한다. AMOS 관측시각은 대개 compact(YYYYMMDDHHMM)라 이 fallback은 드물게만 탄다.
 function fmtKst(iso, tz = 'KST') {
@@ -132,6 +134,24 @@ function isRvrGood(value) {
   return isFiniteNumber(value) && value >= 2000
 }
 
+function severityFromCategory(category) {
+  return category === 'LIFR' ? 'danger' : category === 'IFR' ? 'warn' : 'ok'
+}
+
+function classifyRvrLevel(value) {
+  if (!isFiniteNumber(value)) return null
+  if (value < 75) return 'danger'
+  if (value < 550) return 'warn'
+  return 'ok'
+}
+
+function classifyCrosswindLevel(value) {
+  if (!isFiniteNumber(value)) return null
+  if (value >= 20) return 'danger'
+  if (value >= 15) return 'warn'
+  return 'ok'
+}
+
 function buildWindRows(source) {
   return [
     {
@@ -139,18 +159,21 @@ function buildWindRows(source) {
       speedValue: formatMsToKt(source?.wind_speed),
       directionLabel: '평균풍향(°)',
       directionValue: formatInteger(source?.wind_direction),
+      level: getSeverityLevel({ wind: isFiniteNumber(source?.wind_speed) ? source.wind_speed * KT_PER_MS : null }),
     },
     {
       speedLabel: '최소풍속(kt)',
       speedValue: formatMsToKt(source?.wind_speed_min),
       directionLabel: '최소풍향(°)',
       directionValue: formatInteger(source?.wind_direction_min),
+      level: 'ok',
     },
     {
       speedLabel: '최대풍속(kt)',
       speedValue: formatMsToKt(source?.wind_speed_max),
       directionLabel: '최대풍향(°)',
       directionValue: formatInteger(source?.wind_direction_max),
+      level: getSeverityLevel({ gust: isFiniteNumber(source?.wind_speed_max) ? source.wind_speed_max * KT_PER_MS : null }),
     },
   ]
 }
@@ -209,6 +232,7 @@ export function buildAmosConsoleModel(amos, metar, airportMeta, tz = 'KST') {
   const rf = amos?.daily_rainfall
   const obs = amos?.observation || {}
   const observedTime = rf?.observed_tm_kst || obs.observed_tm_kst
+  const ceilingLevel = severityFromCategory(classifyCeilingCategory(amos?.weather?.cloud_min_m, airportMeta?.icao).category)
 
   return {
     observedTimeLabel: formatAmosTime(observedTime, tz),
@@ -227,12 +251,13 @@ export function buildAmosConsoleModel(amos, metar, airportMeta, tz = 'KST') {
       headTailValue: formatComponentValue(component.headTailKt),
       crossLabel: component.crossLabel,
       crossValue: formatComponentValue(component.crossKt),
+      crossLevel: classifyCrosswindLevel(component.crossKt),
     },
     prioritySummary: [
       { key: 'activeRunway', label: '사용 활주로', value: `${activeRunwayLabel || '-'} IN USE` },
       { key: 'headTail', label: 'H/T-WS(kt)', value: `${component.headTailLabel} ${formatComponentValue(component.headTailKt)}` },
-      { key: 'crosswind', label: 'CROSS-WS(kt)', value: `${component.crossLabel} ${formatComponentValue(component.crossKt)}` },
-      { key: 'tenMinuteWind', label: '10분 평균풍', value: formatWindSummary(windDirection, windSpeedKt) },
+      { key: 'crosswind', label: 'CROSS-WS(kt)', value: `${component.crossLabel} ${formatComponentValue(component.crossKt)}`, level: classifyCrosswindLevel(component.crossKt) },
+      { key: 'tenMinuteWind', label: '10분 평균풍', value: formatWindSummary(windDirection, windSpeedKt), level: getSeverityLevel({ wind: windSpeedKt }) },
     ],
     windGroups: [
       { key: 'twoMinute', label: '2분', rows: buildWindRows(twoMinute) },
@@ -245,10 +270,12 @@ export function buildAmosConsoleModel(amos, metar, airportMeta, tz = 'KST') {
         rvrValue: formatRvrValue(runway.rvr_m),
         morValue: formatMorValue(runway.visibility_m),
         isRvrGood: isRvrGood(runway.rvr_m),
+        rvrLevel: classifyRvrLevel(runway.rvr_m),
+        morLevel: severityFromCategory(classifyVisibilityCategory(runway.visibility_m, airportMeta?.icao).category),
       }
     }),
     commonCells: [
-      { label: '운고(ft)', value: amos?.weather?.cloud_min_m == null ? 'NCD' : formatInteger(amos.weather.cloud_min_m) },
+      { label: '운고(ft)', value: amos?.weather?.cloud_min_m == null ? 'NCD' : formatInteger(amos.weather.cloud_min_m), level: ceilingLevel },
       { label: 'QNH(hPa)', value: formatInteger(amos?.pressure?.qnh_hpa) },
       { label: 'QNH(inHg)', value: formatInHgFromHpa(amos?.pressure?.qnh_hpa) },
       { label: '기온(°C)', value: formatOneDecimal(amos?.weather?.temperature_c) },

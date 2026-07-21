@@ -52,6 +52,7 @@ export function matchRouteNotams(items, ctx) {
       id: it.id,
       category: it.category,
       summary: it.summary,
+      operational: it.operational || null,
       rawText: it.rawText || it.summary || '', // 브리핑 행에서 '원문 보기' 펼침용
       altitude: it.altitude,
       validFrom: it.valid_from,

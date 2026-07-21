@@ -53,7 +53,14 @@ test('comparison interpolates sample-level KIM heights and keeps unknown-time NO
   const rows = buildAltitudeWeatherComparison({
     candidates: [{ altitudeFt: 22000, status: 'valid' }], crossSection,
     turbulence: { levels: [{ altFt: 22000, values: [{ distanceNm: 0, ktg: 2 }, { distanceNm: 2, ktg: 3 }, { distanceNm: 10, ktg: 3 }] }] }, axis,
-    hazards: [{ source: 'SIGMET', item: { id: 'S1', phenomenon_label: 'Embedded Thunderstorm', geometry: polygon, altitude: { lower_fl: null, upper_fl: 450 }, valid_from: '2026-07-17T00:00:00Z', valid_to: '2026-07-17T12:00:00Z' } }],
+    hazards: [
+      { source: 'SIGMET', item: { id: 'S1', phenomenon_label: 'Embedded Thunderstorm', geometry: polygon, altitude: { lower_fl: null, upper_fl: 450 }, valid_from: '2026-07-17T00:00:00Z', valid_to: '2026-07-17T12:00:00Z' } },
+      // SFC-FL100 AIRMET가 22,000ft 후보 고도와 확실히 겹치지 않으면 "인근"이 아니라 목록에서 빠져야 한다.
+      { source: 'AIRMET', item: { id: 'A1', phenomenon_label: 'Surface Visibility', geometry: polygon, altitude: { lower_fl: 0, upper_fl: 100 }, valid_from: '2026-07-17T00:00:00Z', valid_to: '2026-07-17T12:00:00Z' } },
+      // 실제 KMA 데이터: Surface Visibility AIRMET은 고도(FL) 필드 자체가 없다(지상 현상이라 원문에 없음).
+      // 없다고 모든 순항고도에서 "인근"으로 남으면 안 되고, 지표~FL100로 가정해 22,000ft에서는 빠져야 한다.
+      { source: 'AIRMET', item: { id: 'A2', phenomenon_code: 'SFC_VIS', phenomenon_label: 'Surface Visibility', geometry: polygon, altitude: { lower_fl: null, upper_fl: null }, valid_from: '2026-07-17T00:00:00Z', valid_to: '2026-07-17T12:00:00Z' } },
+    ],
     notams: [{ id: 'N1', category: 'danger', geometry: polygon, altitude: { lower: 200, upper: 240, unit: 'FL' } }],
     etd: '2026-07-17T01:00:00Z', eta: '2026-07-17T02:00:00Z',
   })
@@ -70,5 +77,8 @@ test('comparison interpolates sample-level KIM heights and keeps unknown-time NO
     horizontalExposure: { status: 'intersects', intervals: [{ startNm: 0, endNm: 2 }] },
   })
   assert.ok(rows[0].hazards[0].horizontalExposure.intervals.length >= 1)
+  assert.equal(rows[0].hazards.length, 1)
+  assert.ok(!rows[0].hazards.some((hazard) => hazard.source === 'AIRMET'))
+  assert.ok(!rows[0].hazards.some((hazard) => hazard.sourceId === 'A2'))
   assert.deepEqual(rows[0].notams, [{ id: 'N1', status: 'undetermined' }])
 })

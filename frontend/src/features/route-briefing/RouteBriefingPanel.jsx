@@ -2,6 +2,7 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { loadOverseasAirports } from './lib/routePlanner.js'
 import { calcVfrDistance } from './lib/routePreview.js'
+import { windLabel, phenomenonLabelKo } from './lib/routeComparison.js'
 import {
   FIR_EXIT_AIRPORT,
   FIR_IN_AIRPORT,
@@ -13,7 +14,7 @@ import { Button, Field, Dropdown, Combobox, Option, Input, SpinButton, TabList, 
 import { listSavedRoutes, saveRoute, deleteSavedRoute } from './lib/routeStore.js'
 import LayerToggleChips from '../map/LayerToggleChips.jsx'
 import RouteImportChooser from './RouteImportChooser.jsx'
-import { aviationLabel } from '../map/layerActions.js'
+import { buildRouteAviationLayerChips } from '../map/layerActions.js'
 import { Folder, Undo2, X, RotateCcw } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -220,12 +221,10 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     setPendingContextChange,
     selectRouteDesign,
     duplicateSelectedRouteDesign,
-    renameSelectedRouteDesign,
     removeSelectedRouteDesign,
     startAlternativeFrom,
     updateSelectedDesignDraftText,
     previewSelectedDesignDraft,
-    cancelSelectedDesignDraft,
     applySelectedDesignDraft,
     undoSelectedRouteDesign,
     setMapInteractionMode,
@@ -405,8 +404,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       <div className="rb-briefing-preparation-grid">
         <div><span>비행</span><strong>{`${routeForm.departureAirport} → ${routeForm.arrivalAirport}`}</strong><small>{`ETD ${formatBriefingTime(etd, tz)} · ETA ${etaIso ? formatBriefingTime(etaIso, tz) : '—'} · TAS ${tasKt} kt`}</small></div>
         <div><span>선택 경로</span><strong>{selectedRouteDesign?.name ?? '기본 경로'}</strong><small>{`${Math.round(derived.plannedDistanceNm)} NM${procedureSummary ? ` · ${procedureSummary}` : ''}`}</small></div>
-        <div><span>선택 고도</span><strong>{Number(cruiseAltitudeFt) >= 18000 ? `FL${Math.round(Number(cruiseAltitudeFt) / 100)}` : `${Math.round(Number(cruiseAltitudeFt))} ft`}</strong><small>{selectedAltitudeRow?.wind?.meanComponentKt != null ? `평균 ${selectedAltitudeRow.wind.meanComponentKt >= 0 ? '순풍 +' : '맞바람 '}${Math.round(selectedAltitudeRow.wind.meanComponentKt)} kt` : '고도 기상 비교 자료 없음'}</small></div>
-        <div><span>교체공항</span><strong>{alternateAirport || '선택 안 함'}</strong><small>{selectedHazards.length ? `주의 기상 ${selectedHazards.map((hazard) => hazard.label).join(' · ')}` : '선택 고도에서 추가 위험기상 없음'}</small></div>
+        <div><span>선택 고도</span><strong>{Number(cruiseAltitudeFt) >= 18000 ? `FL${Math.round(Number(cruiseAltitudeFt) / 100)}` : `${Math.round(Number(cruiseAltitudeFt))} ft`}</strong><small>{selectedAltitudeRow?.wind?.meanComponentKt != null ? `평균 ${windLabel(selectedAltitudeRow.wind.meanComponentKt)}` : '고도 기상 비교 자료 없음'}</small></div>
+        <div><span>교체공항</span><strong>{alternateAirport || '선택 안 함'}</strong><small>{selectedHazards.length ? `주의 기상 ${selectedHazards.map((hazard) => phenomenonLabelKo(hazard.label)).join(' · ')}` : '선택 고도에서 추가 위험기상 없음'}</small></div>
       </div>
       {routeResult && isIfr && (
         <div className="route-check-result">
@@ -480,19 +479,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     </div>
   )
   // 지도 레이어 토글칩 — VFR 경로 구성 시 웨이포인트/항행시설/항공로를 지도에서 보며 작업.
-  const aviationLayerChips = [
-    { key: 'waypoint', label: aviationLabel('waypoint'), on: !!aviationVisibility.waypoint, onToggle: () => onToggleAviation?.('waypoint') },
-    { key: 'navaid', label: aviationLabel('navaid'), on: !!aviationVisibility.navaid, onToggle: () => onToggleAviation?.('navaid') },
-    {
-      key: 'airways', label: '항공로',
-      on: !!(aviationVisibility['ats-route'] && aviationVisibility['rnav-route']),
-      onToggle: () => {
-        const target = !(aviationVisibility['ats-route'] && aviationVisibility['rnav-route'])
-        if (!!aviationVisibility['ats-route'] !== target) onToggleAviation?.('ats-route')
-        if (!!aviationVisibility['rnav-route'] !== target) onToggleAviation?.('rnav-route')
-      },
-    },
-  ]
+  // NAVAID+WAYPOINT, RNAV+ATS 항공로는 각각 한 버튼으로 묶여 있다(buildRouteAviationLayerChips).
+  const aviationLayerChips = buildRouteAviationLayerChips(aviationVisibility, onToggleAviation)
   const vfrRouteBuilder = isVfrResult && (
     <>
       <p className="rb-vfr-note">지도에서 선을 끌어 지점을 넣으면 이 문자열이 갱신됩니다. 경로 적용 전에는 초안선만 바뀝니다.</p>
@@ -645,7 +633,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       </form>}
       {workflowStep === 'compare' && (
         <div className={s.form}>
-          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onCancelDraft={cancelSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
+          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
         </div>
       )}
       {workflowStep === 'altitude' && (
@@ -730,7 +718,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         </>
       )}
       {workflowStep === 'compare' && (
-        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRename={(_, name) => renameSelectedRouteDesign(name)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onCancelDraft={cancelSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
+        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
       )}
       {workflowStep === 'altitude' && (
         <>

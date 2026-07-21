@@ -25,6 +25,11 @@ function parseHeightToken(tok) {
   return null
 }
 
+export function parseNotamSchedule(scheduleText) {
+  const m = String(scheduleText || '').trim().match(/^(?:DLY\s+)?(\d{2})(\d{2})-(\d{2})(\d{2})$/i)
+  return m ? { kind: 'daily', start_utc_min: Number(m[1]) * 60 + Number(m[2]), end_utc_min: Number(m[3]) * 60 + Number(m[4]) } : null
+}
+
 export function parseQcodeBand(qLine, fLine, gLine) {
   const f = parseHeightToken(fLine)
   const g = parseHeightToken(gLine)
@@ -69,6 +74,7 @@ function parseOnePlacemark(xml) {
   const location = (text.match(/A\)\s*([A-Z]{4})/) || [])[1] || null
   const bField = (text.match(/B\)\s*(\d{10})/) || [])[1] || null
   const cField = (text.match(/C\)\s*(\d{10})/) || [])[1] || null
+  const scheduleText = (text.match(/D\)\s*([\s\S]*?)(?=\n\s*E\)|\)?\s*$)/) || [])[1]?.trim() || null
   const validFrom = dmsToIso(bField)
   const validTo = dmsToIso(cField)
   if (!id || !location || !validFrom || !validTo) return null // required fields
@@ -83,6 +89,7 @@ function parseOnePlacemark(xml) {
     qcode,
     validFrom,
     validTo,
+    scheduleText,
     altitude: parseQcodeBand(qLine, fField, gField),
     summary,
     rawText: text.trim(),

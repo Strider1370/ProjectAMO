@@ -1,4 +1,7 @@
 // Phase 1: 수평(평면) + 시간만. 고도(FL밴드)는 Phase 2.
+import { distanceMeters } from './route-axis.js'
+
+const METERS_PER_NM = 1852
 
 // ray casting. ring = [[lon,lat], ...] (닫힌 ring 가정)
 export function pointInPolygon([x, y], ring) {
@@ -82,4 +85,39 @@ export function routeIntervalInGeometry(axis, geometry) {
   return { entered: startNm != null, startNm, endNm }
 }
 
-export default { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry, geometryBounds, boundsOverlap }
+function minDistanceNmToRing([lon, lat], ring) {
+  let min = Infinity
+  for (const vertex of ring) {
+    const meters = distanceMeters([lon, lat], vertex)
+    if (meters < min) min = meters
+  }
+  return min / METERS_PER_NM
+}
+
+// 위험기상(SIGMET/AIRMET) 전용 — 실제 폴리곤을 관통하지 않아도 항로가 bufferNm 이내로
+// 지나가면 "관련 있음"으로 본다. 실제 EFB(ForeFlight)가 항로 브리핑에 포함하는 위험기상
+// 범위(항로 양쪽 30NM)를 따른다. NOTAM은 실제 침범 여부가 중요하므로 routeIntervalInGeometry를
+// 그대로 쓰고, 이 함수는 위험기상 쪽에서만 쓴다.
+// 정점까지의 최소거리로 근사한다 — 위험기상 폴리곤은 보통 정점이 촘촘해 충분히 정확하다.
+export function routeCorridorInGeometry(axis, geometry, bufferNm) {
+  const samples = axis?.samples ?? []
+  const polygons = polygonsOf(geometry)
+  let startNm = null, endNm = null
+  for (const s of samples) {
+    let within = false
+    for (const polygon of polygons) {
+      const outer = polygon[0]
+      if (outer && (pointInPolygon([s.lon, s.lat], outer) || minDistanceNmToRing([s.lon, s.lat], outer) <= bufferNm)) {
+        within = true
+        break
+      }
+    }
+    if (within) {
+      if (startNm == null) startNm = s.distanceNm
+      endNm = s.distanceNm
+    }
+  }
+  return { entered: startNm != null, startNm, endNm }
+}
+
+export default { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry, routeCorridorInGeometry, geometryBounds, boundsOverlap }

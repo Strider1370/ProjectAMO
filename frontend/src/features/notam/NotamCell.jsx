@@ -10,12 +10,12 @@ const CAT_ICON = {
 }
 const catLabelOf = (id) => (NOTAM_CATEGORIES.find((c) => c.id === id) || { label: '기타' }).label
 
-export default function NotamCell({ category, timeState, summary, metaText, altitude, rawText, validText, conflict = false }) {
+export default function NotamCell({ category, timeState, summary, metaText, altitude, rawText, validText, conflict = false, priority }) {
   const t = TIME_STATE[timeState] || TIME_STATE.upcoming
   const Icon = CAT_ICON[category] || MoreHorizontal
   const isBand = altitude && altitude !== '전고도' // 실제 밴드만 진하게, "전고도"는 흐리게
   return (
-    <details className="notam-cell" data-conflict={conflict ? 'true' : undefined}>
+    <details className="notam-cell" data-priority={priority} data-conflict={conflict ? 'true' : undefined}>
       <summary className="notam-cell-summary">
         <span className="notam-cell-catcol">
           <Icon size={26} strokeWidth={1.75} className="notam-cell-ic" aria-hidden="true" />

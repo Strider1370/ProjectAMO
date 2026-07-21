@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>브리핑 준비 요약 시안</title>
+  <style>
+    :root {
+      --text-1: #242424; --text-2: #424242; --text-3: #616161;
+      --bg-1: #fff; --bg-2: #fafafa; --bg-3: #f5f5f5;
+      --stroke-1: #d1d1d1; --stroke-2: #e0e0e0; --accent: #334155;
+      --green: #166534; --green-bg: #dcefe2;
+      --amber: #92400e; --amber-bg: #fdecc8;
+      --red: #c0291f; --red-bg: #f7dcd9;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #e9eef3; color: var(--text-1); font: 14px/1.45 Pretendard, system-ui, sans-serif; }
+    .panel { width: min(100%, 540px); overflow: hidden; border: 1px solid var(--stroke-1); border-radius: 10px; background: var(--bg-1); box-shadow: 0 18px 42px rgba(15,23,42,.18); }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--stroke-2); }
+    h1 { margin: 0; font-size: 18px; }
+    .eyebrow, .label { color: var(--text-3); font-size: 12px; font-weight: 700; }
+    .primary { min-height: 36px; padding: 0 14px; border: 0; border-radius: 5px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; }
+    main { padding: 16px; display: grid; gap: 18px; }
+    .airport-flow { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
+    .airport strong { display: block; font-size: 19px; line-height: 1.15; }
+    .airport:last-child { text-align: right; }
+    .route-line { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 5px; color: var(--accent); }
+    .route-line::before, .route-line::after { height: 2px; background: currentColor; content: ''; }
+    .trip-meta { margin: 8px 0 0; color: var(--text-2); font-size: 13px; }
+    .alternate { display: inline-flex; gap: 6px; margin-top: 10px; padding: 4px 8px; border-radius: 4px; background: var(--bg-3); color: var(--text-2); font-size: 12px; }
+    .section-title { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 9px; font-size: 14px; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .metric { min-width: 0; padding: 10px; border: 1px solid var(--stroke-2); border-radius: 6px; background: var(--bg-2); }
+    .metric strong { display: block; margin-top: 2px; color: var(--accent); font-size: 20px; line-height: 1.15; }
+    .metric small { display: block; color: var(--text-3); font-size: 11px; }
+    .route-string { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; padding: 10px; border: 1px solid var(--stroke-2); border-radius: 6px; background: var(--bg-2); color: var(--text-2); font-size: 12px; font-weight: 700; line-height: 1.65; }
+    .route-token { padding: 1px 4px; border-radius: 3px; background: var(--bg-1); }
+    .route-token.procedure { color: var(--accent); background: #e8eef6; }
+    .arrow { color: var(--text-3); font-weight: 400; }
+    .status-list { display: grid; gap: 7px; }
+    .status { display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-left: 4px solid var(--stroke-1); border-radius: 4px; background: var(--bg-2); }
+    .status-tag { font-size: 12px; font-weight: 800; }
+    .status small { color: var(--text-3); }
+    .status.good { border-color: var(--green); } .status.good .status-tag { color: var(--green); }
+    .status.warn { border-color: var(--amber); background: #fffaf0; } .status.warn .status-tag { color: var(--amber); }
+    .status.danger { border-color: var(--red); background: #fff7f6; } .status.danger .status-tag { color: var(--red); }
+    .compare { border-top: 1px solid var(--stroke-2); padding-top: 16px; }
+    .compare-grid { display: grid; grid-template-columns: 1fr auto; gap: 7px 16px; align-items: baseline; font-variant-numeric: tabular-nums; }
+    .compare-grid span { color: var(--text-2); } .compare-grid strong { text-align: right; }
+    .improved { color: var(--green); } .neutral { color: var(--text-2); }
+    .data-status { display: flex; gap: 8px; padding: 10px; border-radius: 5px; background: var(--amber-bg); color: var(--amber); font-size: 12px; }
+    .data-status b { white-space: nowrap; }
+    @media (max-width: 430px) { body { padding: 0; place-items: start; } .panel { border-radius: 0; } .metrics { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <section class="panel" aria-labelledby="title">
+    <header>
+      <div><div class="eyebrow">Flight Plan · 최종 확인</div><h1 id="title">브리핑 준비</h1></div>
+      <button class="primary" type="button">브리핑 생성</button>
+    </header>
+    <main>
+      <section aria-label="공항 구성">
+        <div class="airport-flow">
+          <div class="airport"><span class="label">출발</span><strong>RKSS</strong><span>김포</span></div>
+          <div class="route-line" aria-hidden="true"><span></span><b>→</b><span></span></div>
+          <div class="airport"><span class="label">목적지</span><strong>RKPC</strong><span>제주</span></div>
+        </div>
+        <p class="trip-meta">23:48 KST 출발 · 00:20 KST 도착 · TAS 450 kt</p>
+        <div class="alternate"><b>교체공항</b><span>선택 안 함</span></div>
+      </section>
+
+      <section aria-label="선택 운항안">
+        <h2 class="section-title">선택 운항안 <span class="label">경로 A</span></h2>
+        <div class="metrics">
+          <div class="metric"><small>총 거리</small><strong>358 NM</strong></div>
+          <div class="metric"><small>선택 고도</small><strong>FL280</strong></div>
+          <div class="metric"><small>평균 바람</small><strong>← 13 kt</strong><small>맞바람</small></div>
+        </div>
+        <div class="route-string" aria-label="세부 항로 전체">
+          <span class="route-token">RKSS</span><span class="arrow">→</span>
+          <span class="route-token procedure">RWY 14L/R · BULTI2U</span><span class="arrow">→</span>
+          <span class="route-token">BULTI</span><span class="arrow">→</span>
+          <span class="route-token procedure">Y782</span><span class="arrow">→</span>
+          <span class="route-token">GUKDO</span><span class="arrow">→</span>
+          <span class="route-token">DOTOL</span><span class="arrow">→</span>
+          <span class="route-token procedure">DOTOL2P · RWY 07</span><span class="arrow">→</span>
+          <span class="route-token">RKPC</span>
+        </div>
+      </section>
+
+      <section aria-label="항로 위험기상">
+        <h2 class="section-title">항로 위험기상 <span class="label">선택 고도 기준</span></h2>
+        <div class="status-list">
+          <div class="status warn"><b class="status-tag">주의</b><span>착빙 가능 구간</span><strong>약 55 NM</strong></div>
+          <div class="status good"><b class="status-tag">정상</b><span>난류</span><strong>없음</strong></div>
+          <div class="status good"><b class="status-tag">정상</b><span>SIGMET / AIRMET 조우</span><strong>없음</strong></div>
+        </div>
+      </section>
+
+      <section class="compare" aria-label="기본 운항안 대비">
+        <h2 class="section-title">기본안 대비 <span class="label">선택안이 다를 때만 표시</span></h2>
+        <div class="compare-grid">
+          <span>거리</span><strong class="neutral">+18 NM</strong>
+          <span>예상 비행시간</span><strong class="neutral">+3분</strong>
+          <span>착빙 구간</span><strong class="improved">55 NM → 없음 · 개선</strong>
+          <span>난류 구간</span><strong class="improved">316 NM → 80 NM · 개선</strong>
+        </div>
+      </section>
+
+      <div class="data-status" role="status"><b>자료 상태</b><span>KIM 23:00 KST 기준 · 고도 비교 자료 일부 없음</span></div>
+    </main>
+  </section>
+</body>
+</html>

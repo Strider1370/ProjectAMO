@@ -226,6 +226,7 @@ const MapView = forwardRef(function MapView({
   const isMobile = useIsMobile()
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
+  const initialHomeRef = useRef(null)
   const [showKoreaHome, setShowKoreaHome] = useState(false)
   const tourHomeRef = useRef(null) // 온보딩: 공항 확대 전 홈 뷰 저장(resetView 복귀용)
   const onSelectRef = useRef(onAirportSelect)
@@ -357,7 +358,9 @@ const MapView = forwardRef(function MapView({
   }))
   const { routeResult, fitBoundsRequest } = routeBriefing.state
   const flyToKorea = () => {
-    mapRef.current?.flyTo({ center: MAP_CONFIG.center, zoom: MAP_CONFIG.zoom, bearing: 0, pitch: 0, duration: 600 })
+    const map = mapRef.current
+    const home = initialHomeRef.current
+    if (map) map.flyTo(home ? { ...home, duration: 600 } : { center: MAP_CONFIG.center, zoom: MAP_CONFIG.zoom, bearing: 0, pitch: 0, duration: 600 })
     setShowKoreaHome(false)
   }
   const { vfrWaypointsRef, hideTimerRef, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, vfrWaypointDropRef, designWaypointDropRef, isComparisonRef } = routeBriefing.refs

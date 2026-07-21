@@ -39,10 +39,9 @@ export default function MetarTab({ metar, amosData, icao, airportMeta }) {
 
   return (
     <div className="ap-metar-v2">
-      {/* ── TAC 원문 — 배지 + 임계값 색칠, 조종사가 짧은 시간에 스캔하는 기본 화면 ── */}
+      {/* ── TAC 원문 — 임계값 색칠, 비행조건 배지는 섹션 헤더에 표시 ── */}
       {rawText && (
         <div className="ap-metar-tac-block">
-          <span className={`ap-metar-tac-chip ap-metar-tac-chip--${flightCat.category}`}>{flightCat.category}</span>
           <code className="ap-metar-tac">
             {tacSegments.map((seg, i) => (
               <span key={i} className={seg.className}>{seg.text}</span>

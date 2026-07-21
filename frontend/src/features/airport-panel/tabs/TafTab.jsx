@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { MoveUp } from 'lucide-react'
-import WeatherIcon from '../../../shared/ui/WeatherIcon.jsx'
 import { buildTafViewModel, buildTafTacLines, formatTafHour, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
@@ -12,11 +11,15 @@ function tafWeatherClass(item, baseClass, { includeSpecial = true } = {}) {
   ].filter(Boolean).join(' ')
 }
 
+function CloudText({ value }) {
+  return <span className="ap-taf-clouds">{String(value).split(/\s+/).filter(Boolean).map((cloud, index) => <span className={/CB$/.test(cloud) ? 'ap-taf-cloud--cb' : /^(BKN|OVC|VV)/.test(cloud) ? 'ap-taf-cloud--ceiling' : undefined} key={`${cloud}-${index}`}>{cloud}{' '}</span>)}</span>
+}
+
 // 연속으로 조건이 같은 시간 슬롯을 하나의 변화구간으로 묶음 (시간별 반복 제거)
 function groupTafPeriods(slots) {
   const periods = []
   for (const s of slots) {
-    const key = [s.flight?.category, s.weatherLabel, s.windText, s.visibilityText, s.ceilingText].join('|')
+    const key = [s.flight?.category, s.weatherText, s.windText, s.visibilityText, s.cloudText].join('|')
     const last = periods[periods.length - 1]
     if (last && last.key === key) last.slots.push(s)
     else periods.push({ key, slots: [s], first: s })
@@ -73,19 +76,18 @@ export default function EnhancedTafTab({ taf, icao }) {
           </div>
           {[
             ['비행조건', groupTafSlots(slots, (item) => item.flight.category), (item) => item.flight.category, (item) => ({ background: TAF_CATEGORY_COLOR[item.flight.category] || '#15803d', color: '#fff' })],
-            ['날씨', groupTafSlots(slots, (item) => item.weatherLabel), (item) => item.weatherLabel, (item) => ({ background: item.hasPrecipitation ? '#bae6fd' : '#f8fafc', color: item.hasPrecipitation ? '#0c4a6e' : '#0f172a' })],
+            ['날씨', groupTafSlots(slots, (item) => item.weatherText), (item) => item.weatherText, (item) => ({ background: item.hasPrecipitation ? '#bae6fd' : '#f8fafc', color: item.hasPrecipitation ? '#0c4a6e' : '#0f172a' })],
             ['바람', groupTafSlots(slots, (item) => item.windText), (item) => item.windText, (item) => ({ background: item.highWind ? '#fff1f2' : '#f8fafc', color: item.highWind ? '#be123c' : '#0f172a' })],
-            ['시정', groupTafSlots(slots, (item) => item.visibilityText), (item) => item.visibilityText, (item) => ({ background: item.visibilityCategory.bg, color: item.visibilityCategory.valueColor })],
-            ['운고', groupTafSlots(slots, (item) => item.ceilingText), (item) => item.ceilingText, (item) => ({ background: item.ceilingCategory.bg, color: item.ceilingCategory.valueColor })],
+            ['시정(m)', groupTafSlots(slots, (item) => item.visibilityText), (item) => item.visibilityText, (item) => ({ background: item.visibilityCategory.bg, color: item.visibilityCategory.valueColor })],
+            ['구름(ft)', groupTafSlots(slots, (item) => item.cloudText), (item) => item.cloudText, (item) => ({ background: item.ceilingCategory.bg, color: item.ceilingCategory.valueColor })],
           ].map(([label, groups, textFn, styleFn], rowIndex) => (
             <div className="ap-taf-line" key={label}>
               <div className="ap-taf-line-label">{label}</div>
               <div className="ap-taf-line-track">
                 {groups.map((group, index) => (
-                  <div key={index} className={rowIndex === 1 ? tafWeatherClass(group.first, 'ap-taf-seg', { includeSpecial: false }) : 'ap-taf-seg'} style={{ width: group.width, ...styleFn(group.first) }} title={textFn(group.first)}>
-                    {label === '날씨' && <WeatherIcon visual={group.first.visual} className="ap-taf-mini-icon" />}
+                  <div key={index} className={`${rowIndex === 1 ? tafWeatherClass(group.first, 'ap-taf-seg', { includeSpecial: false }) : 'ap-taf-seg'}${label === '구름(ft)' ? ' ap-taf-seg--clouds' : ''}${group.items.length === 1 && ['바람', '시정(m)'].includes(label) ? ' ap-taf-seg--hour' : ''}`} style={{ width: group.width, ...styleFn(group.first) }} title={textFn(group.first)}>
                     {label === '바람' && <MoveUp className="ap-taf-mini-arrow" style={{ transform: `rotate(${group.first.windRotation}deg)` }} />}
-                    <span>{textFn(group.first)}</span>
+                    {label === '구름(ft)' ? <CloudText value={textFn(group.first)} /> : <span>{textFn(group.first)}</span>}
                   </div>
                 ))}
               </div>
@@ -96,13 +98,13 @@ export default function EnhancedTafTab({ taf, icao }) {
 
       {slots.length > 0 && view === 'table' && (() => {
         const visSpans = computeColumnSpans(periods, (item) => item.visibilityText)
-        const ceilSpans = computeColumnSpans(periods, (item) => item.ceilingText)
+        const cloudSpans = computeColumnSpans(periods, (item) => item.cloudText)
         const windSpans = computeColumnSpans(periods, (item) => item.windText)
-        const wxSpans = computeColumnSpans(periods, (item) => item.weatherLabel)
+        const wxSpans = computeColumnSpans(periods, (item) => item.weatherText)
         return (
           <div className="ap-taf-table-wrap">
             <table className="ap-taf-table">
-            <thead><tr><th>시간 · 조건</th><th>시정</th><th>운고</th><th>바람</th><th>날씨</th></tr></thead>
+            <thead><tr><th>시간 · 조건</th><th>시정(m)</th><th>구름(ft)</th><th>바람</th><th>날씨</th></tr></thead>
             <tbody>
               {periods.map((p, index) => {
                 const item = p.first
@@ -114,9 +116,9 @@ export default function EnhancedTafTab({ taf, icao }) {
                       <span className="ap-taf-tcat" style={{ color: catColor }}>{item.flight.category}</span>
                     </td>
                     {visSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={visSpans[index]} style={{ color: item.visibilityCategory.valueColor }}>{item.visibilityText}</td>}
-                    {ceilSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={ceilSpans[index]} style={{ color: item.ceilingCategory.valueColor }}>{item.ceilingText}</td>}
+                    {cloudSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={cloudSpans[index]} style={{ color: item.ceilingCategory.valueColor }}><CloudText value={item.cloudText} /></td>}
                     {windSpans[index] > 0 && <td className={`ap-taf-merged${item.highWind ? ' is-alert' : ''}`} rowSpan={windSpans[index]}>{item.windText}</td>}
-                    {wxSpans[index] > 0 && <td className={`ap-taf-merged ap-taf-wx${item.hasPrecipitation ? ' ap-taf-wx--precip' : ''}${item.isSpecialWeather ? ' ap-taf-wx--special' : ''}`} rowSpan={wxSpans[index]}><WeatherIcon visual={item.visual} className="ap-taf-wx-icon" />{item.weatherLabel}</td>}
+                    {wxSpans[index] > 0 && <td className={`ap-taf-merged ap-taf-wx${item.hasPrecipitation ? ' ap-taf-wx--precip' : ''}${item.isSpecialWeather ? ' ap-taf-wx--special' : ''}`} rowSpan={wxSpans[index]}>{item.weatherText}</td>}
                   </tr>
                 )
               })}
@@ -134,12 +136,10 @@ export default function EnhancedTafTab({ taf, icao }) {
           <div className="ap-taf-tac-block">
             {tacLines.map((line, i) => (
               <div className="ap-taf-tac-row" key={i}>
-                {line.category
-                  ? <span className={`ap-metar-tac-chip ap-metar-tac-chip--${line.category}`}>{line.category}</span>
-                  : <span className="ap-taf-tac-chip-spacer" />}
                 <code className="ap-metar-tac">
                   {line.segments.map((seg, j) => <span key={j} className={seg.className}>{seg.text}</span>)}
                 </code>
+                {line.category ? <span className={`ap-metar-tac-chip ap-metar-tac-chip--${line.category}`}>{line.category}</span> : null}
               </div>
             ))}
           </div>

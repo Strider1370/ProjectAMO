@@ -6,6 +6,17 @@ import { ktgIntensity } from '../processors/ktg-model.js'
 
 const RESTRICTION_CATEGORIES = new Set(['prohibited', 'restricted', 'danger', 'firing'])
 
+// AIRMET Sierra 계열(지상 시정 저하·산악 흐림·IFR·저고도 윈드시어)은 정의상 지표 부근 현상이라
+// 원문 IWXXM에 고도(FL) 자체가 없다(ICAO Annex 3 Appendix 6). 고도 정보가 없다고 모든 순항고도에서
+// "인근"으로 보이면 안 되므로, 이 현상들만 지표~FL100로 가정한다. 착빙/난류/뇌우 등은 원문에
+// 고도가 항상 있으므로 이 가정을 적용하지 않는다.
+const SURFACE_PHENOMENON_CODES = new Set(['SFC_VIS', 'MT_OBSC', 'IFR', 'LLWS'])
+const SURFACE_BAND_FT = { lowFt: 0, highFt: 10000 }
+
+function hazardBandFt(item) {
+  return bandToFt(item.altitude) ?? (SURFACE_PHENOMENON_CODES.has(item.phenomenon_code) ? SURFACE_BAND_FT : null)
+}
+
 function ft(value) {
   if (value?.value == null || value.value === '' || !Number.isFinite(Number(value.value))) return null
   return String(value.unit ?? '').toUpperCase() === 'FL' ? Number(value.value) * 100 : Number(value.value)
@@ -144,8 +155,11 @@ function matchHazards(hazards, axis, altitudeFt, etd, eta) {
   return hazards.flatMap(({ source, item }) => {
     const horizontalExposure = evaluateHorizontalExposure({ axis, geometry: item.geometry })
     if (horizontalExposure.status !== 'intersects') return []
+    const altitudeExposure = evaluateAltitudeExposure({ horizontalExposure, bandFt: hazardBandFt(item), plannedCruiseAltitudeFt: altitudeFt })
+    // bandFt가 있고(SIGMET/AIRMET 원문에 명시된 고도대) 이 후보 고도가 확실히 그 밖이면
+    // "인근"이 아니라 이 고도와 무관한 것이다 — 목록에서 아예 뺀다.
+    if (altitudeExposure.status === 'clear') return []
     const timeStatus = evaluateTimeStatus({ etd, eta, validFrom: item.valid_from, validTo: item.valid_to })
-    const altitudeExposure = evaluateAltitudeExposure({ horizontalExposure, bandFt: bandToFt(item.altitude), plannedCruiseAltitudeFt: altitudeFt })
     return [{
       source,
       sourceId: item.id ?? null,

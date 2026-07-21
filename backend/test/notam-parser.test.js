@@ -33,6 +33,7 @@ test('parseNotamKml: 4 real records with correct fields', () => {
   assert.equal(g.qcode, 'QGAXX')
   assert.equal(g.validFrom, '2026-07-03T09:28:00.000Z')
   assert.equal(g.validTo, '2026-07-05T10:57:00.000Z')
+  assert.match(g.scheduleText, /03 0928-0931/)
   assert.equal(g.geometry.type, 'Polygon')          // NOT 'Point' — MultiGeometry always has a Point anchor
   assert.deepEqual(g.altitude, { lower: 0, upper: 999, unit: 'FL', ref: null })
   assert.match(g.summary, /GPS RAIM OUTAGES PREDICTED FOR NPA/)

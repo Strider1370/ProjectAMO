@@ -10,7 +10,7 @@ import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './l
 import { buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
 import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
-import { createRouteDesign, duplicateRouteDesign, renameRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
+import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
 import { normalizeRouteSnapshot } from './lib/routeStore.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
 import { parseRouteFile, extractRoutePaths, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './lib/routeImport.js'
@@ -62,7 +62,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const [altitudeComparison, setAltitudeComparison] = useState(null)
   const [altitudeComparisonLoading, setAltitudeComparisonLoading] = useState(false)
   const [altitudeComparisonError, setAltitudeComparisonError] = useState(null)
-  const [altitudeDraftFt, setAltitudeDraftFt] = useState('')
+  const [altitudeDraftFt, setAltitudeDraftFt] = useState(() => getPerformanceForRule(initialRouteForm.flightRule).altitudeFt)
   const [workflowStep, setWorkflowStep] = useState('settings')
   const [routeError, setRouteError] = useState(null)
   const [routeLoading, setRouteLoading] = useState(false)
@@ -215,7 +215,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setAltitudeComparison(null)
     setAltitudeComparisonLoading(false)
     setAltitudeComparisonError(null)
-    setAltitudeDraftFt('')
+    setAltitudeDraftFt(getPerformanceForRule(routeForm.flightRule).altitudeFt)
     setWorkflowStep('settings')
     setEta(null)
     setRouteError(null)
@@ -768,7 +768,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
 
   function startAlternativeFrom(id = selectedRouteDesignId) {
     const design = routeDesigns.find((item) => item.id === id)
-    if (!design || design.kind !== 'alternative') return
+    if (!design || design.kind !== 'alternative' || design.draftEditor) return
     const editor = editorFromBase(design)
     setRouteDesigns((designs) => designs.map((item) => item.id !== id ? item : {
       ...item,
@@ -1119,10 +1119,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setSelectedRouteDesignId(next.selectedId)
   }
 
-  function renameSelectedRouteDesign(name) {
-    setRouteDesigns((designs) => renameRouteDesign(designs, selectedRouteDesignId, name))
-  }
-
   function removeSelectedRouteDesign() {
     const next = removeRouteDesign(routeDesigns, selectedRouteDesignId, selectedRouteDesignId)
     if (next.designs === routeDesigns) return
@@ -1211,12 +1207,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setWorkflowStep('altitude')
   }
 
+  // 입력칸은 그냥 값만 담아둔다 — 이미 만들어진 고도 비교는 "고도 비교" 버튼을 다시 눌러야만
+  // (startAltitudeComparison) 바뀐다. 타이핑/삭제만으로 기존 결과가 사라지면 안 된다.
   function setAltitudeDraft(value) {
     setAltitudeDraftFt(value)
-    altitudeComparisonRequestRef.current += 1
-    setAltitudeComparison(null)
-    setAltitudeComparisonLoading(false)
-    setAltitudeComparisonError(null)
   }
 
   async function startAltitudeComparison({ openWindow = true } = {}) {
@@ -1813,7 +1807,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       setPendingContextChange,
       selectRouteDesign,
       duplicateSelectedRouteDesign,
-      renameSelectedRouteDesign,
       removeSelectedRouteDesign,
       toggleRouteDesignVisibility,
       undoSelectedRouteDesign,

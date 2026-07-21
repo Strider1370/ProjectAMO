@@ -31,3 +31,12 @@ test('terminal-only overlap is excluded from en-route exposure', () => {
   const exposure = evaluateHorizontalExposure({ axis, geometry, enRouteRange: { status: 'aligned', startNm: 70, endNm: 100 } })
   assert.deepEqual(exposure, { status: 'clear', intervals: [] })
 })
+
+test('a hazard within the 30NM route corridor counts as intersecting even if the route never crosses it', () => {
+  const tiny = { type: 'Polygon', coordinates: [[[0, 0], [0.1, 0], [0.1, 0.1], [0, 0.1], [0, 0]]] }
+  const nearAxis = { totalDistanceNm: 50, samples: [{ distanceNm: 10, lon: 0.2, lat: 0 }] } // ~6NM from the polygon
+  const farAxis = { totalDistanceNm: 50, samples: [{ distanceNm: 10, lon: 0.7, lat: 0 }] } // ~36NM from the polygon
+
+  assert.equal(evaluateHorizontalExposure({ axis: nearAxis, geometry: tiny }).status, 'intersects')
+  assert.equal(evaluateHorizontalExposure({ axis: farAxis, geometry: tiny }).status, 'clear')
+})

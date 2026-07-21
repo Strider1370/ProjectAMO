@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildRouteComparison, getFinalRouteGeometry } from './routeComparison.js'
+import { buildRouteComparison, getFinalRouteGeometry, mergeExposureNm, phenomenonLabelKo } from './routeComparison.js'
 
 const exposure = (version, hazards) => ({ snapshot: { version }, hazards })
 const hazard = (source, phenomenon, startNm, endNm) => ({ source, phenomenon, horizontalExposure: { intervals: [{ startNm, endNm }] } })
@@ -43,6 +43,26 @@ test('comparison keeps all hazards without truncation and exposes a human-readab
   assert.equal(base.routeExposure.hazards.length, 4)
   assert.equal(result.exposures.length, 4)
   assert.ok(result.exposures.every((row) => row.label !== row.key))
+})
+
+test('mergeExposureNm counts an overlapping stretch once instead of summing per-hazard', () => {
+  const overlapping = [hazard('SIGMET', 'TS', 0, 10), hazard('AIRMET', 'ICE', 5, 15)]
+  assert.equal(mergeExposureNm(overlapping), 15)
+
+  const disjoint = [hazard('SIGMET', 'TS', 0, 10), hazard('AIRMET', 'ICE', 20, 25)]
+  assert.equal(mergeExposureNm(disjoint), 15)
+
+  assert.equal(mergeExposureNm([]), 0)
+})
+
+test('phenomenonLabelKo translates the hazard name but keeps SIGMET qualifier abbreviations (EMBD/OBSC/FRQ/SQL) untranslated, falls back to the original text', () => {
+  assert.equal(phenomenonLabelKo('Embedded Thunderstorm'), 'EMBD 뇌우')
+  assert.equal(phenomenonLabelKo('Severe Icing'), '심한 착빙')
+  assert.equal(phenomenonLabelKo('Squall Line Thunderstorm'), 'SQL 뇌우')
+  assert.equal(phenomenonLabelKo('Surface Visibility'), '지상 시정')
+  assert.equal(phenomenonLabelKo('Duststorm'), '황사')
+  assert.equal(phenomenonLabelKo('Some Unmapped Phenomenon'), 'Some Unmapped Phenomenon')
+  assert.equal(phenomenonLabelKo(null), null)
 })
 
 test('final geometry uses each design procedure selection', () => {

@@ -80,25 +80,45 @@ describe('amosViewModel console model', () => {
     assert.equal(model.dial.crossLabel, 'L')
 
     assert.deepEqual(model.visibilityRows, [
-      { label: 'RWY 01 RVR(m) / MOR(m)', rvrValue: 'P2000', morValue: '10000', isRvrGood: true },
-      { label: 'RWY 19 RVR(m) / MOR(m)', rvrValue: 'P2000', morValue: '10000', isRvrGood: true },
+      { label: 'RWY 01 RVR(m) / MOR(m)', rvrValue: 'P2000', morValue: '10000', isRvrGood: true, rvrLevel: 'ok', morLevel: 'ok' },
+      { label: 'RWY 19 RVR(m) / MOR(m)', rvrValue: 'P2000', morValue: '10000', isRvrGood: true, rvrLevel: 'ok', morLevel: 'ok' },
     ])
 
     assert.deepEqual(model.prioritySummary, [
       { key: 'activeRunway', label: '사용 활주로', value: '01 IN USE' },
       { key: 'headTail', label: 'H/T-WS(kt)', value: 'H 03' },
-      { key: 'crosswind', label: 'CROSS-WS(kt)', value: 'L 02' },
-      { key: 'tenMinuteWind', label: '10분 평균풍', value: '330° / 3.3kt' },
+      { key: 'crosswind', label: 'CROSS-WS(kt)', value: 'L 02', level: 'ok' },
+      { key: 'tenMinuteWind', label: '10분 평균풍', value: '330° / 3.3kt', level: 'ok' },
     ])
 
     assert.deepEqual(model.commonCells.slice(0, 5), [
-      { label: '운고(ft)', value: 'NCD' },
+      { label: '운고(ft)', value: 'NCD', level: 'ok' },
       { label: 'QNH(hPa)', value: '1017' },
       { label: 'QNH(inHg)', value: '30.03' },
       { label: '기온(°C)', value: '18.2' },
       { label: '이슬점(°C)', value: '12.8' },
     ])
     assert.deepEqual(model.commonCells[5], { label: '일강수량(mm)', value: '4.6' })
+  })
+
+  it('applies AMOS wind, crosswind, RVR, MOR, and ceiling thresholds', () => {
+    const model = buildAmosConsoleModel({
+      ...baseAmos,
+      runways: [
+        { ...baseAmos.runways[0], wind_speed: 8, wind_speed_max: 19, rvr_m: 549, visibility_m: 4999 },
+        { ...baseAmos.runways[1], wind_speed: 11, wind_direction: 100, rvr_m: 74, visibility_m: 100 },
+      ],
+      weather: { ...baseAmos.weather, cloud_min_m: 1400 },
+    }, null, { icao: 'RKJB' })
+
+    assert.equal(model.windGroups[0].rows[0].level, 'warn')
+    assert.equal(model.windGroups[0].rows[2].level, 'danger')
+    assert.equal(model.dial.crossLevel, 'danger')
+    assert.equal(model.visibilityRows[0].rvrLevel, 'warn')
+    assert.equal(model.visibilityRows[1].rvrLevel, 'danger')
+    assert.equal(model.visibilityRows[0].morLevel, 'warn')
+    assert.equal(model.visibilityRows[1].morLevel, 'danger')
+    assert.equal(model.commonCells[0].level, 'warn')
   })
 
   it('marks wind variation arcs that wrap across north', () => {

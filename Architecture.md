@@ -125,7 +125,7 @@ ProjectAMO/
 - `frontend/src/features/notam/lib/notamViewModel.js` -> pure NOTAM helpers: `deriveTimeState` (active/soon/upcoming = color axis), `formatAltitude` (AGL/AMSL preserved, 전고도 shortening), `sortActiveFirst`, `NOTAM_CATEGORIES`, `TIME_STATE`.
 - `frontend/src/features/notam/lib/notamGeoJson.js` -> payload -> GeoJSON with category+timeState properties; excludes `scope:'fir'` and null geometry (keeps LineString for map/tab).
 - `frontend/src/features/notam/lib/notamLayers.js` -> Mapbox NOTAM source/fill/line/marker install+sync, time-state color (`--level-*`) + colorblind shape, category `filter`, zoom split (marker<->polygon), overlap-popup HTML; owns `NOTAM_SOURCE_IDS`/`NOTAM_LAYER_IDS`.
-- `frontend/src/features/airport-panel/tabs/NotamTab.jsx` -> (surface B) airport NOTAM list (A-field match) + nationwide `scope:'fir'` 전역 공지 section; reads `weatherData.notam`.
+- `frontend/src/features/airport-panel/tabs/NotamTab.jsx` -> (surface B) selected-airport NOTAM list (A-field match); reads `weatherData.notam`.
 - `frontend/src/features/route-briefing/lib/procedureData.js` -> procedure/navpoint loading helpers.
 - `frontend/public/data/navdata/enroute.json` -> one generated domestic en-route NAVDATA view: active AIP publication/effective time, combined points, route direction metadata, and full reviewed airway segments. `routePlanner` derives its in-memory graph from these segments; airports, procedures, and overseas NAVDATA remain separate.
 - `scripts/build_enroute_navdata.py` -> converts the active reviewed AIP snapshot into `enroute.json` and the matching domestic airway GeoJSON; `run_aip_airway_operations.py --activate` runs it after activation and restores the prior manifest if generation fails.
@@ -200,8 +200,8 @@ ProjectAMO/
 - `backend/src/api-client.js` -> upstream KMA/weather API request construction.
 - `backend/src/store.js` -> in-memory cache and SHA-256 change detection.
 - `backend/src/notam/notam-crawler.js` -> headless Playwright crawler for KOCA 유효 NOTAM KML (site-default 24h window; no date manipulation).
-- `backend/src/parsers/notam-parser.js` -> KML -> structured NOTAM records (Q-code, B/C times, F)/G) altitude with AGL/AMSL, geometry).
-- `backend/src/processors/notam-processor.js` -> Q-code -> category/scope, crawl+parse orchestration, `store.save('notam')`; no severity judgment.
+- `backend/src/parsers/notam-parser.js` -> KML -> structured NOTAM records (Q-code, B/C UTC times, D) schedule text, F)/G) altitude with AGL/AMSL, geometry).
+- `backend/src/processors/notam-processor.js` -> Q-code -> category/scope plus conservative `operational` priority hint (target/action/reason; not an official safety grade), crawl+parse orchestration, `store.save('notam')`.
 - `backend/server.js` -> exposes `GET /api/notam` (latest NOTAM snapshot from `store.getCached('notam')`).
 - `backend/src/parsers/*` -> per-type raw response parsers.
 - `backend/src/processors/*` -> per-type normalized data processors.

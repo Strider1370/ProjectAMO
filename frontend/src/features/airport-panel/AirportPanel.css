@@ -1615,6 +1615,17 @@
   line-height: 1.15;
 }
 
+.ap-taf-seg--hour {
+  min-width: 0;
+  padding: 0 2px;
+  gap: 2px;
+  font-size: clamp(10px, 1.8vw, 13px);
+}
+
+.ap-taf-seg--clouds { flex-wrap: wrap; padding: 2px 4px; }
+.ap-taf-cloud--ceiling { font-weight: 900; text-decoration: underline; }
+.ap-taf-cloud--cb { color: var(--level-red); font-weight: 900; }
+
 .ap-taf-seg:last-child {
   border-right: 0;
 }
@@ -2928,6 +2939,10 @@
 .ap-amos-console-rvr-value .is-good {
   color: var(--ap-amos-console-green);
 }
+
+.ap-amos-level--ok { color: var(--level-green) !important; }
+.ap-amos-level--warn { color: var(--level-amber) !important; }
+.ap-amos-level--danger { color: var(--level-red) !important; }
 
 .ap-amos-console-common-grid {
   display: grid;

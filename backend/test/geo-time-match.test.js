@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry, geometryBounds, boundsOverlap } from '../src/briefing/geo-time-match.js'
+import { pointInPolygon, routeIntersectsGeometry, timeWindowsOverlap, routeIntervalInGeometry, routeCorridorInGeometry, geometryBounds, boundsOverlap } from '../src/briefing/geo-time-match.js'
 
 const square = { type: 'Polygon', coordinates: [[[0,0],[10,0],[10,10],[0,10],[0,0]]] }
 
@@ -64,6 +64,16 @@ test('routeIntervalInGeometry: documents the sample-only limits used by route ex
   assert.equal(routeIntervalInGeometry(betweenSamples, multi).endNm, 2)
   assert.equal(routeIntervalInGeometry(withMiddleSample, narrowAtSample).entered, true)
 })
+test('routeCorridorInGeometry: includes a sample within the buffer even when routeIntervalInGeometry (exact containment) excludes it', () => {
+  const tiny = { type: 'Polygon', coordinates: [[[0, 0], [0.1, 0], [0.1, 0.1], [0, 0.1], [0, 0]]] }
+  const near = { samples: [{ distanceNm: 0, lon: 0.2, lat: 0 }] } // ~6NM from the nearest vertex
+  const far = { samples: [{ distanceNm: 0, lon: 0.7, lat: 0 }] } // ~36NM from the nearest vertex
+
+  assert.equal(routeIntervalInGeometry(near, tiny).entered, false)
+  assert.equal(routeCorridorInGeometry(near, tiny, 30).entered, true)
+  assert.equal(routeCorridorInGeometry(far, tiny, 30).entered, false)
+})
+
 test('timeWindowsOverlap: overlapping', () => {
   assert.equal(timeWindowsOverlap(
     '2026-06-26T09:00:00Z','2026-06-26T10:30:00Z',

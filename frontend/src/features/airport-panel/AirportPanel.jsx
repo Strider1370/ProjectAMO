@@ -125,7 +125,8 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
 
   // 탭 배지(스펙 §10 / 프로토타입 badges() 이식): 숫자 = 주의 필요 항목 수, 색 = 최악 심각도. 0/null이면 배지 없음.
   const warnBadge = warnCount ? { count: warnCount, severity: 'red' } : null // 공항경보=무조건 적
-  const metarBadge = metar ? countMetarHazards(buildMetarViewModel({ metar, amosData: amos, icao, airportMeta: airport })) : null
+  const metarViewModel = metar ? buildMetarViewModel({ metar, amosData: amos, icao, airportMeta: airport }) : null
+  const metarBadge = metarViewModel ? countMetarHazards(metarViewModel) : null
   const tafBadge = taf ? countTafHazardPeriods(buildTafViewModel(taf, icao).slots) : null
 
   // 기상정보 지연 로딩 상태: 요청은 했으나 airportInfo 페이로드가 아직 안 온 상태
@@ -133,7 +134,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
 
   const sections = [
     { id: 'warn', label: '공항경보', badge: warnBadge, node: <WarningCarousel warning={warning} /> },
-    { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', badge: metarBadge, node: <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} /> },
+    { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', flightCategory: metarViewModel?.flightCat?.category, badge: metarBadge, node: <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} /> },
     { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, badge: tafBadge, node: <EnhancedTafTab taf={taf} icao={icao} /> },
     isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
     { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} /> },
@@ -198,6 +199,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
                   {Icon && <Icon className="ap-sec-icon" size={20} strokeWidth={2} aria-hidden="true" />}
                   <span className={`ap-sec-title${s.special ? ' ap-sec-title--special' : ''}`}>{s.titleText || s.label}</span>
                   {s.meta && <span className="ap-sec-meta">{s.meta}</span>}
+                  {s.flightCategory && <span className={`ap-metar-tac-chip ap-metar-tac-chip--${s.flightCategory}`}>{s.flightCategory}</span>}
                   {s.badge && (
                     <span className={`ap-tab-badge ap-sec-badge ap-tab-badge--${s.badge.severity}`} aria-label={`${s.label} ${s.badge.count}건`}>{s.badge.count}</span>
                   )}

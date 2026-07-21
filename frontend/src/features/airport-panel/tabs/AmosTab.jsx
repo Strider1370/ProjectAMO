@@ -24,7 +24,7 @@ function WindMetricColumn({ group, side }) {
         <div className="ap-amos-console-metric-band" key={`${group.key}-${row.speedLabel}`}>
           <div className="ap-amos-console-metric">
             <div className="ap-amos-console-label">{row.speedLabel}</div>
-            <div className="ap-amos-console-value">{row.speedValue}</div>
+            <div className={`ap-amos-console-value ap-amos-level--${row.level}`}>{row.speedValue}</div>
           </div>
           <div className="ap-amos-console-metric">
             <div className="ap-amos-console-label">{row.directionLabel}</div>
@@ -65,11 +65,11 @@ function WindDial({ dial, activeRunwayIndex }) {
         <div className="ap-amos-console-components">
           <div className="ap-amos-console-component">
             <span>H/T-WS(kt)</span>
-            <strong>{dial.headTailLabel} {dial.headTailValue}</strong>
+            <strong className="ap-amos-level--ok">{dial.headTailLabel} {dial.headTailValue}</strong>
           </div>
           <div className="ap-amos-console-component">
             <span>CROSS-WS(kt)</span>
-            <strong>{dial.crossLabel} {dial.crossValue}</strong>
+            <strong className={dial.crossLevel ? `ap-amos-level--${dial.crossLevel}` : undefined}>{dial.crossLabel} {dial.crossValue}</strong>
           </div>
         </div>
       </div>
@@ -96,19 +96,19 @@ function CompactSummary({ model }) {
       </div>
       <div className="ap-amos-compact-card">
         <span>바람(2분평균)</span>
-        <strong>{twoMinuteWind}</strong>
+        <strong className={`ap-amos-level--${twoMinuteAvg?.level || 'ok'}`}>{twoMinuteWind}</strong>
       </div>
       <div className="ap-amos-compact-card">
         <span>정풍/측풍</span>
-        <strong>{headTail?.value || '-'} / {crosswind?.value || '-'}</strong>
+        <strong><b className="ap-amos-level--ok">{headTail?.value || '-'}</b> / <b className={crosswind?.level ? `ap-amos-level--${crosswind.level}` : undefined}>{crosswind?.value || '-'}</b></strong>
       </div>
       <div className="ap-amos-compact-card">
         <span>운고</span>
-        <strong>{cloudCeiling?.value && cloudCeiling.value !== 'NCD' ? `${cloudCeiling.value}ft` : cloudCeiling?.value || '-'}</strong>
+        <strong className={`ap-amos-level--${cloudCeiling?.level || 'ok'}`}>{cloudCeiling?.value && cloudCeiling.value !== 'NCD' ? `${cloudCeiling.value}ft` : cloudCeiling?.value || '-'}</strong>
       </div>
       <div className="ap-amos-compact-card">
         <span>RVR / MOR</span>
-        <strong>{activeRvr ? `${activeRvr.rvrValue} / ${activeRvr.morValue} m` : '-'}</strong>
+        <strong>{activeRvr ? <><b className={activeRvr.rvrLevel ? `ap-amos-level--${activeRvr.rvrLevel}` : undefined}>{activeRvr.rvrValue}</b> / <b className={activeRvr.morLevel ? `ap-amos-level--${activeRvr.morLevel}` : undefined}>{activeRvr.morValue}</b> m</> : '-'}</strong>
       </div>
     </section>
   )
@@ -130,7 +130,7 @@ function MobileDetail({ model }) {
             {model.visibilityRows.map((row, index) => (
               <div key={row.label}>
                 <span>RWY {model.runwayLabels[index] || index + 1}</span>
-                <strong><b className={row.isRvrGood ? 'is-good' : undefined}>{row.rvrValue}</b> / {row.morValue} m</strong>
+                <strong><b className={row.rvrLevel ? `ap-amos-level--${row.rvrLevel}` : undefined}>{row.rvrValue}</b> / <b className={`ap-amos-level--${row.morLevel}`}>{row.morValue}</b> m</strong>
               </div>
             ))}
           </div>
@@ -143,8 +143,8 @@ function MobileDetail({ model }) {
             {windRowLabels.map((label, index) => (
               <div className="ap-amos-mobile-wind-row" key={label}>
                 <span>{label}</span>
-                <strong>{formatWind(twoMinute[index])}</strong>
-                <strong>{formatWind(tenMinute[index])}</strong>
+                <strong className={`ap-amos-level--${twoMinute[index]?.level || 'ok'}`}>{formatWind(twoMinute[index])}</strong>
+                <strong className={`ap-amos-level--${tenMinute[index]?.level || 'ok'}`}>{formatWind(tenMinute[index])}</strong>
               </div>
             ))}
           </div>
@@ -154,7 +154,7 @@ function MobileDetail({ model }) {
           <h3>기본 기상</h3>
           <div className="ap-amos-mobile-common">
             {model.commonCells.map((cell) => (
-              <div key={cell.label}><span>{cell.label}</span><strong>{cell.value}</strong></div>
+              <div key={cell.label}><span>{cell.label}</span><strong className={cell.level ? `ap-amos-level--${cell.level}` : undefined}>{cell.value}</strong></div>
             ))}
           </div>
         </section>
@@ -201,7 +201,7 @@ export default function AmosBoardTab({ amos, metar, airportMeta }) {
             <div className="ap-amos-console-rvr-cell" key={row.label}>
               <div className="ap-amos-console-label">{row.label}</div>
               <div className="ap-amos-console-rvr-value">
-                <span className={row.isRvrGood ? 'is-good' : undefined}>{row.rvrValue}</span>/{row.morValue}
+                <span className={row.rvrLevel ? `ap-amos-level--${row.rvrLevel}` : undefined}>{row.rvrValue}</span>/<span className={`ap-amos-level--${row.morLevel}`}>{row.morValue}</span>
               </div>
             </div>
           ))}
@@ -211,7 +211,7 @@ export default function AmosBoardTab({ amos, metar, airportMeta }) {
           {model.commonCells.map((cell) => (
             <div className="ap-amos-console-bottom-cell" key={cell.label}>
               <div className="ap-amos-console-label">{cell.label}</div>
-              <div className="ap-amos-console-bottom-value">{cell.value}</div>
+              <div className={`ap-amos-console-bottom-value${cell.level ? ` ap-amos-level--${cell.level}` : ''}`}>{cell.value}</div>
             </div>
           ))}
         </section>

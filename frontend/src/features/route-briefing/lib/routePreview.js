@@ -185,6 +185,27 @@ export function augmentRouteWithProcedures(previewGeojson, sid, star, iap) {
   }
 }
 
+// 여러 설계안을 비교할 때 route-design-line은 절차 병합 없이 원본 선을 쓴다(routePreviewSync.js).
+// 하지만 원본 선은 "출발공항→진입fix"/"이탈fix→도착공항" 구간을 직선으로 잇고 있어서,
+// SID/STAR가 있으면 그 구간만 PROC_PREVIEW_SOURCE가 곡선으로 따로 그리는데도 이 직선이
+// 위에 겹쳐 그려져 "SID/STAR를 무시하고 직선으로 간다"처럼 보인다. 그 구간을 잘라낸다 —
+// 절차 좌표를 새로 넣는 게 아니라 원본 선 양끝만 자르므로 augmentRouteWithProcedures와 다르다.
+export function trimRouteLineForProcedures(previewGeojson, sid, star) {
+  if (!sid && !star) return previewGeojson
+  const lineFeature = previewGeojson?.features?.find((f) => f.properties?.role === 'route-preview-line')
+  if (!lineFeature) return previewGeojson
+  let coords = lineFeature.geometry.coordinates
+  if (sid && coords.length > 2) coords = coords.slice(1)
+  if (star && coords.length > 2) coords = coords.slice(0, -1)
+  if (coords.length < 2 || coords.length === lineFeature.geometry.coordinates.length) return previewGeojson
+  return {
+    ...previewGeojson,
+    features: previewGeojson.features.map((f) =>
+      f.properties?.role === 'route-preview-line' ? { ...f, geometry: { ...f.geometry, coordinates: coords } } : f
+    ),
+  }
+}
+
 export function addRoutePreviewLayers(map) {
   if (!map.getSource(ROUTE_BASELINE_SOURCE)) {
     map.addSource(ROUTE_BASELINE_SOURCE, { type: 'geojson', data: emptyGeoJSON })

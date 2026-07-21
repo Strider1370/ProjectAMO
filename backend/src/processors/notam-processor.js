@@ -28,6 +28,44 @@ export function deriveScope(location) {
   return KOREA_FIR_CODES.includes(location) ? 'fir' : 'airport'
 }
 
+// Operational hint only: a conservative sorting aid, never an official safety grade.
+export function classifyOperationalNotam(qcode, summary) {
+  const text = String(summary || '').replace(/\s+/g, ' ').toUpperCase()
+  const subject = /^Q[A-Z]{4}$/.test(qcode || '') ? qcode.slice(1, 3) : ''
+  const information = /^(TRIGGER NOTAM|REF\s+AIP|AD OPS HR CHG)/.test(text)
+  const target = information ? 'information'
+    : subject === 'MR' ? 'runway'
+      : subject === 'MX' ? 'taxiway'
+        : ['PI', 'PF'].includes(subject) ? 'procedure'
+          : ['GA', 'GW', 'IC', 'IL', 'IN', 'IG', 'ID', 'NT'].includes(subject) ? 'navigation'
+            : subject === 'LX' ? 'lighting'
+              : subject === 'MP' ? 'stand'
+                : subject === 'CP' && /\bPAR\b/.test(text) ? 'navigation'
+                  : ['CT', 'CP', 'CA'].includes(subject) ? 'communication'
+                  : ['prohibited', 'firing', 'danger', 'restricted'].includes(categorize(qcode)) || /\b(DRONE|CONDITIONAL ROUTE)\b/.test(text) ? 'airspace'
+                    : categorize(qcode) === 'obstacle' ? 'obstacle'
+                      : /\b(SID|STAR|IAP|APPROACH|PROCEDURE|FLOW CTL)\b/.test(text) ? 'procedure'
+                        : /\b(ILS|LOC|GLIDE PATH|GP|VOR|DME|NDB|GNSS|GPS|PAR)\b/.test(text) ? 'navigation'
+                          : /\b(TORA|TODA|ASDA|LDA|DECLARED DISTANCE|RWY)\b/.test(text) ? 'runway'
+                            : /\bTWY\b/.test(text) ? 'taxiway'
+                              : /\b(LGT|LIGHTING|PAPI|RCLL|CLL)\b/.test(text) ? 'lighting'
+                                : /\b(APRON|ACFT STAND|STAND|GATE|RAMP)\b/.test(text) ? 'stand'
+                                  : /\b(FREQ|TWR|ATIS|RADIO|COMM)\b/.test(text) ? 'communication' : 'unknown'
+  const action = /\b(CLSD|CLOSED)\b/.test(text) ? 'closure'
+    : /\b(NOT AVBL|U\/S|UNSERVICEABLE|SUSPENDED|WITHDRAWN)\b/.test(text) ? 'unavailable'
+      : /\b(PROHIBITED|RESTRICTED|LIMITED|AVBL FOR|\bACT\b|FLOW CTL|CONDITIONAL ROUTE)\b/.test(text) ? 'restricted'
+        : /\bWIP\b/.test(text) ? 'work'
+          : /\b(TORA|TODA|ASDA|LDA|DECLARED DISTANCE)\b/.test(text) ? 'degraded'
+            : information ? 'information' : 'unknown'
+  const priority = (target === 'runway' && ['closure', 'unavailable', 'restricted'].includes(action)) ||
+    (target === 'procedure' && ['unavailable', 'restricted'].includes(action)) ||
+    (target === 'navigation' && ['unavailable', 'restricted'].includes(action) && /\b(ILS|LOC|GLIDE PATH|GP|PAR)\b/.test(text)) ? 'critical'
+      : ['taxiway', 'stand', 'lighting', 'obstacle', 'communication', 'airspace'].includes(target) || action === 'work' || action === 'degraded' || target === 'navigation' ? 'warning'
+        : target === 'information' || action === 'information' ? 'info' : 'unclassified'
+  const confidence = target === 'unknown' ? 'review' : (information || subject ? 'high' : 'medium')
+  return { target, action, priority, confidence, reason: `${target}:${action}` }
+}
+
 export async function process() {
   let crawled
   try {
@@ -45,7 +83,9 @@ export async function process() {
     scope: deriveScope(r.location),
     valid_from: r.validFrom,
     valid_to: r.validTo,
+    schedule_text: r.scheduleText,
     altitude: r.altitude,
+    operational: classifyOperationalNotam(r.qcode, r.summary),
     summary: r.summary,
     rawText: r.rawText,
     geometry: r.geometry,

@@ -80,8 +80,9 @@ test.describe('route-workflow', () => {
     await completeWorkflow(page, 'IFR', false, { stopAtCompare: true })
     const singleBefore = [...exposureRequests.single.values()].reduce((sum, count) => sum + count, 0)
     const batchBefore = [...exposureRequests.batch.values()].reduce((sum, count) => sum + count, 0)
-    await page.getByRole('button', { name: '이 경로에서 우회안 만들기', exact: true }).click()
-    await page.getByRole('button', { name: '항로 문자열 직접 편집', exact: true }).click()
+    // 우회안 생성 → 자동 선택 → 항로 문자열 편집칸 자동 표시(버튼 없이 선택 자체가 진입점).
+    await page.getByRole('button', { name: '우회안 만들기', exact: true }).click()
+    await expect(page.getByRole('button', { name: '적용', exact: true })).toBeEnabled()
     await page.getByRole('button', { name: '적용', exact: true }).click()
     await expect.poll(() => [...exposureRequests.batch.values()].reduce((sum, count) => sum + count, 0)).toBeGreaterThan(batchBefore)
     expect([...exposureRequests.single.values()].reduce((sum, count) => sum + count, 0)).toBe(singleBefore)

@@ -5,6 +5,7 @@ export const TIME_STATE = {
   active:   { key: 'active',   glyph: '●', label: '발효 중' },
   soon:     { key: 'soon',     glyph: '◐', label: '곧 발효' },
   upcoming: { key: 'upcoming', glyph: '○', label: '예정' },
+  conditional: { key: 'conditional', glyph: '◌', label: '시간 확인' },
 }
 
 // 카테고리는 아이콘 + 라벨로만 구분(색과 무관). icon 키는 NotamPanel/Tab에서 tabler로 매핑.
@@ -25,6 +26,22 @@ export function deriveTimeState(validFrom, validTo, nowMs, soonWindowMs = SOON_W
   if (nowMs >= from && nowMs <= to) return 'active'
   if (nowMs < from && from - nowMs <= soonWindowMs) return 'soon'
   return 'upcoming'
+}
+
+export function deriveNotamTime(item, nowMs) {
+  const base = deriveTimeState(item.valid_from, item.valid_to, nowMs)
+  const schedule = item.schedule
+  if (!schedule && item.schedule_text && base === 'active') return { state: 'conditional', note: 'D) 시간 조건 확인' }
+  if (schedule?.kind !== 'daily' || base !== 'active') return { state: base, note: '' }
+  const d = new Date(nowMs); const minute = d.getUTCHours() * 60 + d.getUTCMinutes()
+  const { start_utc_min: start, end_utc_min: end } = schedule
+  const active = start <= end ? minute >= start && minute < end : minute >= start || minute < end
+  return active ? { state: 'active', note: '' } : { state: 'upcoming', note: 'D) 시간대 외' }
+}
+
+export function sortOperationalFirst(items, nowMs) {
+  const rank = { critical: 0, warning: 1, info: 2, unclassified: 3 }
+  return [...items].sort((a, b) => (rank[a.operational?.priority] ?? 3) - (rank[b.operational?.priority] ?? 3) || RANK[deriveNotamTime(a, nowMs).state] - RANK[deriveNotamTime(b, nowMs).state])
 }
 
 function comma(n) {
@@ -136,4 +153,4 @@ export function sortActiveFirst(items, nowMs) {
     RANK[deriveTimeState(b.valid_from, b.valid_to, nowMs)])
 }
 
-export default { deriveTimeState, formatAltitude, formatAltitudeBand, formatValidPeriod, notamSummary, sortActiveFirst, NOTAM_CATEGORIES, TIME_STATE, SOON_WINDOW_MS }
+export default { deriveTimeState, deriveNotamTime, sortOperationalFirst, formatAltitude, formatAltitudeBand, formatValidPeriod, notamSummary, sortActiveFirst, NOTAM_CATEGORIES, TIME_STATE, SOON_WINDOW_MS }

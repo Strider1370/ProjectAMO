@@ -43,3 +43,12 @@
 /* 더보기/접기 — 6건 초과분 토글 */
 .notam-more { width: 100%; margin-top: 10px; min-height: 44px; padding: 12px; background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--text-2); cursor: pointer; transition: background 0.15s; }
 .notam-more:hover { background: var(--bg-2); }
+
+.notam-cell[data-priority='critical'] > .notam-cell-summary { box-shadow: inset 3px 0 0 var(--level-red); }
+.notam-cell-ts.ts-conditional { background: var(--level-amber-bg); color: var(--level-amber); }
+.ap-notam-group-title { font-size: 12px; font-weight: 800; color: var(--accent); margin: 8px 0 6px; }
+.ap-notam-tab .notam-cell-title, .bv-airport-notam .notam-cell-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.35; white-space: normal; }
+.ap-notam-tab .notam-cell-ts, .bv-airport-notam .notam-cell-ts { padding: 0; border-radius: 0; background: transparent; color: var(--text-3); }
+.ap-notam-tab .notam-cell-raw, .bv-airport-notam .notam-cell-raw { background: var(--bg-1); border-color: var(--stroke-strong); color: var(--text-1); font-size: 14px; font-weight: 600; }
+.ap-notam-fir { margin-top: 12px; }
+.ap-notam-fir > summary { cursor: pointer; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }

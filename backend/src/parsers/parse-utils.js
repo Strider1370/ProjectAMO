@@ -131,6 +131,7 @@ export function parseCloudLayer(layerNode) {
     cloud['aixm:cloudAmount']?.['@_xlink:href']
 
   const amount = lastToken(amountHref).toUpperCase() || null
+  const typeSuffix = lastToken(cloud['iwxxm:cloudType']?.['@_xlink:href']).toUpperCase() === 'CB' ? 'CB' : ''
 
   const baseNode =
     cloud['iwxxm:base'] ||
@@ -147,7 +148,7 @@ export function parseCloudLayer(layerNode) {
   return {
     amount,
     base,
-    raw: amount && Number.isFinite(base) ? `${amount}${formatCloudBase(base)}` : amount || null,
+    raw: amount && Number.isFinite(base) ? `${amount}${formatCloudBase(base)}${typeSuffix}` : amount || null,
   }
 }
 

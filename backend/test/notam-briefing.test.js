@@ -81,10 +81,11 @@ test('matchRouteNotams: off-route restriction excluded', () => {
 const offRoutePoly = { type: 'Polygon', coordinates: [[[120, 20], [121, 20], [121, 21], [120, 21], [120, 20]]] }
 
 test('matchRouteNotams: NOTAM at arrival airport off the route line is still included (destination crane)', () => {
-  const crane = notam({ id: 'CRANE/26', category: 'obstacle', location: 'RKPC', geometry: offRoutePoly, altitude: { lower: 0, upper: 5, unit: 'FL', ref: null } })
+  const crane = notam({ id: 'CRANE/26', category: 'obstacle', location: 'RKPC', geometry: offRoutePoly, altitude: { lower: 0, upper: 5, unit: 'FL', ref: null }, operational: { priority: 'critical' } })
   const { routeNotams } = matchRouteNotams([crane], { ...ctx, airports: [{ role: 'arrival', icao: 'RKPC' }] })
   assert.equal(routeNotams.length, 1)
   assert.equal(routeNotams[0].airportRole, 'arrival')
+  assert.deepEqual(routeNotams[0].operational, { priority: 'critical' })
   assert.equal(routeNotams[0].routeIntervalNm, null) // 경로 미교차 → 진입거리 없음
 })
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Ban, Crosshair, AlertTriangle, ShieldHalf, RadioTower, Radio, MoreHorizontal, ChevronDown, MapPin } from 'lucide-react'
-import { NOTAM_CATEGORIES, TIME_STATE, deriveTimeState, formatAltitude, formatValidPeriod, notamSummary, sortActiveFirst } from './lib/notamViewModel.js'
+import { NOTAM_CATEGORIES, TIME_STATE, deriveTimeState, formatAltitude, formatValidPeriod, sortOperationalFirst } from './lib/notamViewModel.js'
 import './NotamPanel.css'
 
 const CAT_ICON = {
@@ -69,7 +69,7 @@ function NotamRow({ item, nowMs, tz, expanded, onToggle, onLocate }) {
           )}
         </td>
         <td className="notam-td-sum">
-          <div className="notam-sum-text">{notamSummary(item)}</div>
+          <div className="notam-sum-text">{item.summary || item.id}</div>
           <div className="notam-sum-valid">{formatValidPeriod(item.valid_from, item.valid_to, tz)}</div>
         </td>
         <td className="notam-td-alt">{formatAltitude(item.altitude) || '—'}</td>
@@ -81,9 +81,9 @@ function NotamRow({ item, nowMs, tz, expanded, onToggle, onLocate }) {
       {expanded && (
         <tr className="notam-raw-row">
           <td colSpan={5}>
-            <div className="notam-full-sum">{notamSummary(item)}</div>
+            <div className="notam-full-sum"><b>E)</b> {item.summary || item.id}</div>
             <details className="notam-raw-details">
-              <summary>원문 보기</summary>
+              <summary>TAC 원문 보기</summary>
               <pre className="notam-raw">{item.rawText || item.summary}</pre>
             </details>
           </td>
@@ -106,7 +106,7 @@ function NotamPanel({ payload, selectedAirport, categoryFilter, onCategoryToggle
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
   }, [items])
   const filtered = useMemo(
-    () => sortActiveFirst(items.filter((it) =>
+    () => sortOperationalFirst(items.filter((it) =>
       activeFilter.includes(it.category) && (locationFilter === 'all' || it.location === locationFilter),
     ), nowMs),
     [items, activeFilter, locationFilter, nowMs],
@@ -193,7 +193,7 @@ function NotamPanel({ payload, selectedAirport, categoryFilter, onCategoryToggle
               <div key={`p-${it.id}`} className="notam-priority-row">
                 <CatIcon id={it.category} />
                 <span className="notam-priority-cat">{catLabelOf(it.category)}</span>
-                <span className="notam-priority-sum">{notamSummary(it)}</span>
+                <span className="notam-priority-sum">{it.summary || it.id}</span>
                 <TimeBadge state={deriveTimeState(it.valid_from, it.valid_to, nowMs)} />
               </div>
             ))}
@@ -207,7 +207,7 @@ function NotamPanel({ payload, selectedAirport, categoryFilter, onCategoryToggle
             <table className="notam-table">
               <thead>
                 <tr>
-                  <th>구분</th><th>공항</th><th>요약</th><th>고도</th><th className="notam-th-state">상태</th>
+                  <th>구분</th><th>공항</th><th>원문(E)</th><th>고도</th><th className="notam-th-state">상태</th>
                 </tr>
               </thead>
               <tbody>

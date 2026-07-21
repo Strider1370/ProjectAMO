@@ -6,8 +6,6 @@ import {
   hasPrecipitationWeather,
   hasSpecialWeather,
 } from '../../../shared/weather/helpers.js'
-import { convertWeatherToKorean } from '../../../shared/weather/visual-mapper.js'
-import { resolveWeatherVisual } from '../../../shared/weather/weather-visual-resolver.js'
 import { tacRoleClass } from './metarViewModel.js'
 
 // 비행 카테고리 3단계(초록/주황/빨강) — 헌법 §5 레벨 토큰 값 미러(단일 출처). JS 인라인 스타일이라 hex로 보관.
@@ -19,13 +17,16 @@ function getTafCeiling(slot) {
     .sort((a, b) => (a.base ?? Infinity) - (b.base ?? Infinity))[0]?.base ?? null
 }
 
-function formatTafCeiling(value) {
-  return Number.isFinite(value) ? `${value} ft` : 'NSC'
+function formatTafClouds(slot) {
+  if (slot?.visibility?.cavok ?? slot?.cavok) return 'CAVOK'
+  const clouds = Array.isArray(slot?.clouds) ? slot.clouds : []
+  if (clouds.length === 0) return 'NSC'
+  return clouds.map((cloud) => cloud.raw || `${cloud.amount || ''}${Number.isFinite(cloud.base) ? String(Math.round(cloud.base / 100)).padStart(3, '0') : ''}${cloud.type === 'CB' ? 'CB' : ''}`).filter(Boolean).join(' ')
 }
 
 function formatTafVisibility(slot) {
   const value = slot?.visibility?.value
-  if (Number.isFinite(value)) return `${value} m`
+  if (Number.isFinite(value)) return String(value)
   return slot?.display?.visibility || '-'
 }
 
@@ -44,8 +45,7 @@ function tafSlotView(slot, icao) {
   const flight = getFlightCategory(visibility, ceiling, icao)
   const visibilityCategory = classifyVisibilityCategory(visibility, icao)
   const ceilingCategory = classifyCeilingCategory(ceiling, icao)
-  const visual = resolveWeatherVisual(slot, slot?.time)
-  const weatherLabel = convertWeatherToKorean(slot?.display?.weather, slot?.visibility?.cavok ?? slot?.cavok, slot?.clouds || [])
+  const weatherText = slot?.display?.weather || ((slot?.visibility?.cavok ?? slot?.cavok) ? 'CAVOK' : 'NSW')
   const wind = slot?.wind
   const windRotation = Number.isFinite(wind?.direction) ? ((wind.direction % 360) + 180) % 360 : 0
 
@@ -55,15 +55,14 @@ function tafSlotView(slot, icao) {
     flight,
     visibilityCategory,
     ceilingCategory,
-    visual,
-    weatherLabel,
+    weatherText,
     windText: formatTafWind(slot),
     windRotation,
     highWind: hasHighWindCondition(wind),
     hasPrecipitation: hasPrecipitationWeather(slot),
     isSpecialWeather: hasSpecialWeather(slot),
     visibilityText: formatTafVisibility(slot),
-    ceilingText: formatTafCeiling(ceiling),
+    cloudText: formatTafClouds(slot),
   }
 }
 

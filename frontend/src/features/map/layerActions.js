@@ -83,6 +83,28 @@ export const ALL_ACTIONS = [...PANEL_ACTIONS, ...MET_ACTIONS, ...AVIATION_ACTION
 export const metLabel = (id) => MET_ACTIONS.find((a) => a.id === id)?.label ?? id
 export const aviationLabel = (id) => AVIATION_ACTIONS.find((a) => a.id === id)?.label ?? id
 
+// 경로 설정/비교 화면에서 재사용하는 항법 레이어 토글칩 — NAVAID+WAYPOINT를 한 버튼으로,
+// RNAV+ATS 항공로를 한 버튼으로 묶는다. 두 레이어 다 켜져 있어야 "켜짐"으로 보이고,
+// 누르면 묶인 레이어들이 같이 바뀐다(따로 켜고 끄는 조합을 만들지 않는다).
+function combinedAviationToggle(ids, label, aviationVisibility, onToggleAviation) {
+  const on = ids.every((id) => !!aviationVisibility[id])
+  return {
+    key: ids.join('+'),
+    label,
+    on,
+    onToggle: () => {
+      const target = !on
+      ids.forEach((id) => { if (!!aviationVisibility[id] !== target) onToggleAviation?.(id) })
+    },
+  }
+}
+export function buildRouteAviationLayerChips(aviationVisibility = {}, onToggleAviation) {
+  return [
+    combinedAviationToggle(['navaid', 'waypoint'], 'NAVAID/WAYPOINT', aviationVisibility, onToggleAviation),
+    combinedAviationToggle(['ats-route', 'rnav-route'], '항공로', aviationVisibility, onToggleAviation),
+  ]
+}
+
 // 공항 + 전체 action 카탈로그. airports = weatherData.airports.
 export function buildSearchCatalog(airports = []) {
   const airportEntries = airports

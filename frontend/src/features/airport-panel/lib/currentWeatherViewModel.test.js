@@ -29,6 +29,14 @@ describe('current warning model', () => {
     assert.equal(model.items[0].timeText, '2026-06-06 01:00 UTC \u2013 2026-06-06 04:30 UTC')
   })
 
+  it('uses the standard Korean name for wind-shear warnings', () => {
+    const model = buildCurrentWarningModel({
+      warnings: [{ wrng_type_key: 'WIND_SHEAR' }],
+    })
+
+    assert.equal(model.items[0].name, '\uae09\ubcc0\ud48d\uacbd\ubcf4')
+  })
+
   it('falls back through warning type fields in priority order', () => {
     const model = buildCurrentWarningModel({
       warnings: [
