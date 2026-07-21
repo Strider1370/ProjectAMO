@@ -56,6 +56,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const [routeResult, setRouteResult] = useState(null)
   const [routeDesigns, setRouteDesigns] = useState([])
   const [selectedRouteDesignId, setSelectedRouteDesignId] = useState(null)
+  const [hiddenRouteDesignIds, setHiddenRouteDesignIds] = useState(() => new Set())
   const [activeAppliedDesignId, setActiveAppliedDesignId] = useState('base')
   const [routeExposure, setRouteExposure] = useState(null)
   const [altitudeComparison, setAltitudeComparison] = useState(null)
@@ -183,6 +184,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     routeResult,
     routeDesigns,
     selectedRouteDesignId,
+    hiddenRouteDesignIds,
     appliedVfrWaypoints,
     draftVfrWaypoints,
     selectedSid: appliedProcedures.sid,
@@ -1126,11 +1128,25 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     if (next.designs === routeDesigns) return
     setRouteDesigns(next.designs)
     setSelectedRouteDesignId(next.selectedId)
+    setHiddenRouteDesignIds((prev) => {
+      if (!prev.has(selectedRouteDesignId)) return prev
+      const nextHidden = new Set(prev)
+      nextHidden.delete(selectedRouteDesignId)
+      return nextHidden
+    })
     if (activeAppliedDesignId === selectedRouteDesignId) {
       const fallback = next.designs.find((design) => design.id === next.selectedId) ?? next.designs.find((design) => design.id === 'base')
       setActiveAppliedDesignId(fallback?.id ?? 'base')
       synchronizeSelectedRouteDesign(fallback)
     }
+  }
+
+  function toggleRouteDesignVisibility(id) {
+    setHiddenRouteDesignIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
   }
 
   mapInteractionActionRef.current = workflowStep === 'settings' ? proposeMapPoint : null
@@ -1798,6 +1814,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       duplicateSelectedRouteDesign,
       renameSelectedRouteDesign,
       removeSelectedRouteDesign,
+      toggleRouteDesignVisibility,
       undoSelectedRouteDesign,
       setMapInteractionMode: setRouteInteractionMode,
       continueToAltitudeComparison,
