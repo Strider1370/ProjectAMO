@@ -60,24 +60,26 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
 
   return (
     <div className="rb-alternatives">
-      {baseDesign && <div className="rb-comparison-summary">
-        <strong>{baseDesign.name}</strong>
-        <span className="rb-route-stats">
-          <span className="rb-route-stat">
-            <span className="rb-route-stat-label"><Route size={16} />총 거리</span>
-            <span className="rb-route-stat-value">{Number.isFinite(baseDistance) ? `${Math.round(baseDistance)} NM` : '거리 자료 없음'}</span>
-          </span>
-          {baseEta && (
+      {baseDesign && <div className={`rb-comparison-summary${selectedDesignId === baseDesign.id ? ' is-selected' : ''}`}>
+        <button type="button" className="rb-comparison-summary-select" aria-selected={selectedDesignId === baseDesign.id} onClick={() => onSelect(baseDesign.id)}>
+          <strong>{baseDesign.name}</strong>
+          <span className="rb-route-stats">
             <span className="rb-route-stat">
-              <span className="rb-route-stat-label"><Clock size={16} />시간</span>
-              <span className="rb-route-stat-value">{baseEta.slice(11, 16)} UTC</span>
+              <span className="rb-route-stat-label"><Route size={16} />총 거리</span>
+              <span className="rb-route-stat-value">{Number.isFinite(baseDistance) ? `${Math.round(baseDistance)} NM` : '거리 자료 없음'}</span>
             </span>
-          )}
-          <span className={`rb-route-stat rb-card-total-exposure${baseHazards.length === 0 ? ' is-zero' : ''}`}>
-            <span className="rb-route-stat-label"><CloudLightning size={16} />위험기상</span>
-            <span className="rb-route-stat-value">{baseTotalHazardExposureNm} NM · {baseHazards.length}건</span>
+            {baseEta && (
+              <span className="rb-route-stat">
+                <span className="rb-route-stat-label"><Clock size={16} />시간</span>
+                <span className="rb-route-stat-value">{baseEta.slice(11, 16)} UTC</span>
+              </span>
+            )}
+            <span className={`rb-route-stat rb-card-total-exposure${baseHazards.length === 0 ? ' is-zero' : ''}`}>
+              <span className="rb-route-stat-label"><CloudLightning size={16} />위험기상</span>
+              <span className="rb-route-stat-value">{baseTotalHazardExposureNm} NM · {baseHazards.length}건</span>
+            </span>
           </span>
-        </span>
+        </button>
         <Button appearance="primary" type="button" onClick={onDuplicate} disabled={designs.length >= 4}>이 경로에서 우회안 만들기</Button>
       </div>}
       {message && <p className="rb-alternatives-status">{message}</p>}

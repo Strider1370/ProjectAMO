@@ -142,7 +142,14 @@
 .rb-alternatives { display: grid; gap: 8px; }
 .rb-altitude-comparison { display: grid; gap: 8px; }
 .rb-comparison-summary { display: grid; gap: 4px; padding: var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-xl); background: var(--level-gray-bg); }
+.rb-comparison-summary.is-selected { border-color: var(--accent); border-width: 2px; padding: 11px; }
 .rb-comparison-summary strong { color: var(--text-1); }
+/* 기본 경로도 대안 카드처럼 클릭으로 선택 가능 — 진짜 <button> 박스를 유지해
+   접근성 트리를 보존한다(display:contents 금지). "우회안 만들기" 버튼과는
+   형제 관계라 중첩 button 문제 없음. */
+.rb-comparison-summary-select { all: unset; display: grid; gap: 4px; cursor: pointer; border-radius: var(--radius-md); }
+.rb-comparison-summary-select:hover { background: rgba(15, 23, 42, .04); }
+.rb-comparison-summary-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .rb-step-actions { display: flex; gap: 8px; }
 .rb-step-actions > * { flex: 1 1 0; }
 .rb-alternatives-status, .rb-alternatives-note { margin: 0; font-size: 13px; color: var(--text-3); }
