@@ -2,7 +2,7 @@
 .briefing-view {
   position: absolute; top: 0; right: 0; bottom: 0; width: clamp(480px, 52%, 1040px);
   z-index: 20; background: var(--bg-2); border-left: 1px solid var(--stroke-2);
-  transition: transform 0.25s ease;
+  transition: transform 0.25s ease; container: briefing / inline-size;
 }
 /* 접기: 패널을 자기 폭만큼(100%) 오른쪽으로 슬라이드 — translateX(100%)라서 폭이 반응형이어도 항상 화면 밖으로 정확히 나감 */
 .briefing-view.is-collapsed { transform: translateX(100%); }
@@ -145,6 +145,23 @@
 .bv-current-matrix .mut { color: var(--text-3); }
 .bv-current-matrix .red { color: var(--level-red); font-weight: var(--fw-semibold); }
 
+/* 공항 패널과 같은 TAC 우선 표시: 비교표는 좁은 패널에서 읽을 수 없어 대체하지 않는다. */
+.bv-current-matrix { display: none; }
+.bv-current-tac { display: grid; gap: var(--space-s); margin-top: var(--space-s); }
+.bv-current-tac-card { display: grid; gap: var(--space-xs); padding: var(--space-m); background: var(--bg-1); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); }
+.bv-current-tac-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-s); }
+.bv-current-tac-head > span { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.bv-current-tac-meta { margin-left: auto; white-space: nowrap; }
+.bv-current-tac-raw { display: block; padding: var(--space-mnudge) var(--space-m); overflow-wrap: anywhere; color: var(--text-1); background: var(--bg-3); border-radius: var(--radius-md); font-family: Consolas, Menlo, monospace; font-size: var(--fs-500); line-height: 1.5; letter-spacing: .01em; white-space: pre-wrap; }
+.bv-current-tac-raw .ap-metar-tac-hl { border-radius: var(--radius-md); padding: 0 3px; font-weight: var(--fw-bold); }
+.bv-current-tac-raw .ap-metar-tac-hl--level-ifr { background: var(--level-amber-bg); color: var(--level-amber); }
+.bv-current-tac-raw .ap-metar-tac-hl--level-lifr,
+.bv-current-tac-raw .ap-metar-tac-hl--wind { background: var(--level-red-bg); color: var(--level-red); }
+.bv-current-tac-raw .ap-metar-tac-hl--precip { background: rgba(186, 230, 253, .72); color: #0c4a6e; }
+.bv-current-tac-raw .ap-metar-tac-hl--special { background: var(--level-red-bg); color: var(--level-red); outline: 2px dashed var(--level-red); outline-offset: -1px; }
+.bv-current-tac-detail > summary { cursor: pointer; color: var(--accent); font-size: var(--fs-200); font-weight: var(--fw-semibold); }
+.bv-current-tac-detail[open] { display: grid; gap: var(--space-s); }
+
 .bv-section { scroll-margin-top: 56px; margin-bottom: var(--space-m); }
 .bv-section:last-child { margin-bottom: 0; }
 
@@ -163,6 +180,12 @@
 .bv-seg.sev { background: var(--level-red); }
 
 /* ③ 개황 — 일기도 뷰어 */
+.bv-syn-fold { margin: 0; }
+.bv-syn-fold-summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); cursor: pointer; list-style: none; }
+.bv-syn-fold-summary::-webkit-details-marker { display: none; }
+.bv-syn-fold-summary::after { content: '⌄'; color: var(--text-3); font-size: var(--fs-400); transition: transform 160ms ease; }
+.bv-syn-fold[open] .bv-syn-fold-summary::after { transform: rotate(180deg); }
+.bv-syn-fold-body { margin-top: var(--space-m); }
 .bv-syn-types, .bv-syn-levels { display: flex; align-items: center; gap: var(--space-snudge); flex-wrap: wrap; margin-top: var(--space-s); }
 .bv-chip { font-size: var(--fs-300); padding: var(--space-xs) var(--space-m); border-radius: var(--radius-lg); background: var(--bg-3); color: var(--text-2); border: none; cursor: pointer; font-family: inherit; }
 .bv-chip:hover:not(.bv-chip-on):not(.bv-chip-dis) { background: var(--bg-4); }
@@ -215,6 +238,29 @@
 .bv-dest-raw { border-top: none; }
 .bv-dest-raw-pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-200); line-height: 1.6; color: var(--text-2); background: var(--bg-3); padding: var(--space-s) var(--space-mnudge); border-radius: var(--radius-md); white-space: pre-wrap; margin: var(--space-s) 0 0; }
 .bv-dest-alt { border-top: 0.5px solid var(--stroke-2); margin-top: var(--space-m); padding-top: var(--space-s); }
+.bv-dest-legacy { display: none; }
+
+/* ETA 우선: 표가 패널보다 넓어지면 기간별 세로 카드로 바꾼다. */
+@container briefing (max-width: 719px) {
+  .bv-dest-periods { display: block; }
+  .bv-dest-periods thead { display: none; }
+  .bv-dest-periods tbody { display: grid; gap: var(--space-s); }
+  .bv-dest-periods tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-m); padding: var(--space-m); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); }
+  .bv-dest-periods tr.bv-dest-row-hl { order: -1; border-color: var(--accent); }
+  .bv-dest-periods td { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--space-xs); padding: 0; }
+  .bv-dest-periods td::before { content: attr(data-label); color: var(--text-3); font-size: var(--fs-200); }
+  .bv-dest-periods td:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 719px) {
+  .bv-dest-periods { display: block; }
+  .bv-dest-periods thead { display: none; }
+  .bv-dest-periods tbody { display: grid; gap: var(--space-s); }
+  .bv-dest-periods tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-m); padding: var(--space-m); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); }
+  .bv-dest-periods tr.bv-dest-row-hl { order: -1; border-color: var(--accent); }
+  .bv-dest-periods td { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--space-xs); padding: 0; }
+  .bv-dest-periods td::before { content: attr(data-label); color: var(--text-3); font-size: var(--fs-200); }
+  .bv-dest-periods td:first-child { grid-column: 1 / -1; }
+}
 
 .bv-xsection { margin: var(--space-s) 0 var(--space-xs); }
 .bv-xsection svg { width: 100%; height: auto; }
@@ -222,6 +268,10 @@
 .bv-xsection-scroll svg { min-width: 680px; }
 
 .bv-mobile { display: flex; flex-direction: column; gap: var(--space-m); }
+.bv-mobile .bv-banner { flex-wrap: nowrap; }
+.bv-mobile .bv-banner-cat { min-width: 96px; padding: var(--space-m) var(--space-s); }
+.bv-mobile .bv-banner-body { min-width: 0; gap: var(--space-s); padding: var(--space-s) var(--space-m); }
+.bv-mobile .bv-banner-chain { gap: var(--space-m); }
 .bv-peek { display: inline-flex; align-items: center; gap: var(--space-s); font-weight: 700; }
 
 /* 단면도 "크게 열기" — landscape 풀스크린 (폰 세로 화면 90° 회전) */

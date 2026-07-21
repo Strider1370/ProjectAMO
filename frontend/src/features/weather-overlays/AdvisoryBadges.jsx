@@ -3,8 +3,6 @@ import {
   Popover, PopoverTrigger, PopoverSurface,
   Button, CounterBadge, Text, Tooltip,
 } from '../../shared/ui/fluent.js'
-import useIsMobile from '../../shared/ui/useIsMobile.js'
-import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import './AdvisoryBadges.css'
 
 const PANEL_TITLE = { sigwxLow: 'SIGWX_LOW', sigmet: 'SIGMET', airmet: 'AIRMET', warning: '공항경보' }
@@ -26,7 +24,6 @@ function AdvisoryBadges({
   onToggleVisibility,
   onSelectAirport,
 }) {
-  const isMobile = useIsMobile()
   const chips = [
     ...badgeItems,
     warnedAirports.length > 0
@@ -107,7 +104,6 @@ function AdvisoryBadges({
         size="medium"
         shape="circular"
         className={`advisory-chip advisory-chip--${item.tone}${isOpen ? ' is-open' : ''}`}
-        onClick={isMobile ? () => onOpenPanel(item.key, !isOpen) : undefined}
       >
         <AlertTriangle size={15} aria-hidden="true" />
         {item.label}
@@ -117,16 +113,10 @@ function AdvisoryBadges({
     )
   }
 
-  // 모바일은 지도 위 고정 팝오버 대신 기존 MobileSheet 재사용(P1) — 레이어 시트와 동일 패턴.
-  const openItem = isMobile ? chips.find((item) => item.key === openPanel) : null
-
   return (
     <div className="advisory-badge-bar" aria-label="위험 요약" data-tour="advisory">
       {chips.map((item) => {
         const isOpen = openPanel === item.key
-        if (isMobile) {
-          return <span key={item.key}>{chipButton(item, isOpen)}</span>
-        }
         return (
           <Popover
             key={item.key}
@@ -152,18 +142,6 @@ function AdvisoryBadges({
           </Popover>
         )
       })}
-      {isMobile && openItem && (
-        <MobileSheet
-          open
-          eyebrow="위험 요약"
-          title={PANEL_TITLE[openItem.key]}
-          onClose={() => onOpenPanel(openItem.key, false)}
-        >
-          <div className={`advisory-pop advisory-pop--${openItem.tone}`}>
-            {panelList(openItem)}
-          </div>
-        </MobileSheet>
-      )}
     </div>
   )
 }

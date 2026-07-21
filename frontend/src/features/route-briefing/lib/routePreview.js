@@ -201,7 +201,9 @@ export function trimRouteLineForProcedures(previewGeojson, sid, star) {
   return {
     ...previewGeojson,
     features: previewGeojson.features.map((f) =>
-      f.properties?.role === 'route-preview-line' ? { ...f, geometry: { ...f.geometry, coordinates: coords } } : f
+      f.properties?.role === 'route-preview-line'
+        ? { ...f, properties: { ...f.properties, sourceIndexOffset: sid ? 1 : 0 }, geometry: { ...f.geometry, coordinates: coords } }
+        : f
     ),
   }
 }
@@ -466,7 +468,8 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
     if (!Array.isArray(sourceLine?.geometry?.coordinates) || sourceLine.geometry.coordinates.length < 2) return
     e.preventDefault()
     const sourceIndex = findInsertIndex(sourceLine.geometry.coordinates.map(([lon, lat]) => ({ lon, lat })), e.lngLat)
-    designDrag = { designId: properties.designId, kind: 'insert', index: sourceIndex - 1, sourceIndex }
+    const modelIndex = sourceIndex + (Number(properties.sourceIndexOffset) || 0)
+    designDrag = { designId: properties.designId, kind: 'insert', index: modelIndex - 1, sourceIndex }
     designCoordinates = [e.lngLat.lng, e.lngLat.lat]
     designSourceData = sourceData
     redrawDesignDrag()

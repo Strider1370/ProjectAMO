@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { MoveUp } from 'lucide-react'
-import { buildTafViewModel, buildTafTacLines, formatTafHour, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
+import { buildTafViewModel, buildTafTacLines, formatTafHour, formatTafPeriodRange, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
+import '../AirportPanel.css'
 
 function tafWeatherClass(item, baseClass, { includeSpecial = true } = {}) {
   return [
@@ -32,7 +33,7 @@ function periodRange(period, tz) {
   const first = period.slots[0]
   const lastSlot = period.slots[period.slots.length - 1]
   const endIso = new Date(new Date(lastSlot.time).getTime() + 3600 * 1000).toISOString()
-  return `${formatTafHour(first.time, tz)}–${formatTafHour(endIso, tz)}`
+  return formatTafPeriodRange(first.time, endIso, tz)
 }
 
 // 컬럼 값이 연속으로 같은 행들을 rowSpan으로 세로 병합하기 위한 행별 span 계산.
@@ -50,10 +51,10 @@ function computeColumnSpans(periods, textFn) {
   return spans
 }
 
-export default function EnhancedTafTab({ taf, icao }) {
+export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = false }) {
   // 모바일: 테이블 고정. 데스크톱·태블릿: 타임라인 고정. 뷰 토글 없음.
   const [view] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia('(max-width: 719px)').matches
+    forceCompact || (typeof window !== 'undefined' && window.matchMedia('(max-width: 719px)').matches)
       ? 'table'
       : 'timeline',
   )
@@ -65,7 +66,7 @@ export default function EnhancedTafTab({ taf, icao }) {
   const tacLines = buildTafTacLines(taf, icao)
 
   return (
-    <div className="ap-taf">
+    <div className={`ap-taf${forceCompact ? ' ap-taf--compact' : ''}`}>
       {rawTimeline.length === 0 && <div className="ap-empty">TAF 시간대 데이터 없음</div>}
       {rawTimeline.length > 0 && slots.length === 0 && <div className="ap-empty">TAF 유효 기간 만료</div>}
 
@@ -104,16 +105,24 @@ export default function EnhancedTafTab({ taf, icao }) {
         return (
           <div className="ap-taf-table-wrap">
             <table className="ap-taf-table">
-            <thead><tr><th>시간 · 조건</th><th>시정(m)</th><th>구름(ft)</th><th>바람</th><th>날씨</th></tr></thead>
+            <thead><tr><th>시간 ({tz})</th><th>시정(m)</th><th>구름(ft)</th><th>바람</th><th>날씨</th></tr></thead>
             <tbody>
               {periods.map((p, index) => {
                 const item = p.first
                 const catColor = TAF_CATEGORY_COLOR[item.flight.category]
+                const etaMs = Date.parse(eta)
+                const isEtaPeriod = Number.isFinite(etaMs) && p.slots.some((slot) => {
+                  const slotMs = Date.parse(slot.time)
+                  return slotMs <= etaMs && etaMs < slotMs + 3600000
+                })
                 return (
-                  <tr key={index}>
+                  <tr key={index} className={isEtaPeriod ? 'ap-taf-eta-period' : undefined}>
                     <td className="ap-taf-tcol" style={{ borderLeft: `4px solid ${catColor}` }}>
                       <span className="ap-taf-trange">{periodRange(p, tz)}</span>
-                      <span className="ap-taf-tcat" style={{ color: catColor }}>{item.flight.category}</span>
+                      <span className="ap-taf-tcat" style={{ color: catColor }}>
+                        {item.flight.category}
+                        {isEtaPeriod && <span className="ap-taf-eta-badge">ETA</span>}
+                      </span>
                     </td>
                     {visSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={visSpans[index]} style={{ color: item.visibilityCategory.valueColor }}>{item.visibilityText}</td>}
                     {cloudSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={cloudSpans[index]} style={{ color: item.ceilingCategory.valueColor }}><CloudText value={item.cloudText} /></td>}

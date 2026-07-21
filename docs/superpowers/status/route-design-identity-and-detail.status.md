@@ -1,6 +1,6 @@
 # 경로 설계안 색상 구분·표시 토글·위험기상 상세 Status
 
-Updated: 2026-07-21 11:15 KST
+Updated: 2026-07-21 21:30 KST
 Spec: docs/superpowers/specs/2026-07-21-route-design-identity-and-detail.md
 Plan: docs/superpowers/plans/2026-07-21-route-design-identity-and-detail.md
 
@@ -8,6 +8,12 @@ Plan: docs/superpowers/plans/2026-07-21-route-design-identity-and-detail.md
 
 - Last completed: Task 2(`521e5d5`) — 지도 색상·숨김 필터 적용. Task 1(`6d89b0c`)도 완료.
 - Next: Task 3 — 패널 색 점·눈 아이콘. 시작 전 사용자에게 지도 색상이 실제로 잘 보이는지 확인 요청함(내 스크립트는 로그인 세션이 없어 시각 확인 못 함).
+
+## Regression Guard (2026-07-21)
+
+- `trimRouteLineForProcedures()` is display-only. When it removes the departure coordinate for a SID, it carries `sourceIndexOffset: 1` on the rendered route line.
+- `bindVfrInteractions()` keeps the displayed index for the temporary drag line, then restores the offset only for the route-editor insertion index. The model index must always refer to the untrimmed route model.
+- Cause: `d57b5b2` trimmed the visible line but left the drag index unadjusted, shifting a waypoint one segment earlier. Covered by `routePreview.test.js` with a SID-trim drag regression test.
 
 ## Verified
 

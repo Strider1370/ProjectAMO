@@ -31,6 +31,19 @@ test('비CAVOK: 시정+기상+구름 + 음수기온', () => {
   assert.equal(buildMetarTac(m), 'METAR RKSS 052130Z 32012G22KT 3000 BR BKN008 OVC015 M03/M05 Q1027')
 })
 
+test('normalizes a 10 km visibility value to the ICAO 9999 token', () => {
+  const metar = {
+    header: { icao: 'RKTU', report_type: 'METAR', observation_time: '2026-07-21T11:00:00Z' },
+    observation: {
+      wind: { raw: '25007KT' }, rvr: [], wind_shear: null, weather: [],
+      display: { wind: '25007KT', visibility: '10000', weather: '', clouds: 'BKN025', temperature: '27/24', qnh: 'Q1007' },
+    },
+    cavok_flag: false,
+  }
+
+  assert.equal(buildMetarTac(metar), 'METAR RKTU 211100Z 25007KT 9999 BKN025 27/24 Q1007')
+})
+
 test('SPECI + RVR + windshear', () => {
   const m = {
     header: { icao: 'RKPC', report_type: 'SPECI', observation_time: '2026-03-03T05:00:00Z' },

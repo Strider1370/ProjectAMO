@@ -91,6 +91,18 @@ export function summarizeAirport(role, metar) {
     reportType: metar.header?.report_type ?? null, // 'METAR' | 'SPECI'
     source: metar.header?.source ?? null, // #1 출처·시각 배지(KMA·발표·수신)
     raw: reconstructMetarRaw(metar), // 원문 METAR 재구성(IWXXM라 원본 없음 → 파싱데이터 재조립)
+    metar: {
+      header: {
+        icao: metar.header?.icao,
+        report_type: metar.header?.report_type,
+        issue_time: metar.header?.issue_time,
+        observation_time: metar.header?.observation_time,
+        source: metar.header?.source,
+        raw_text: metar.header?.raw_text,
+        tac: metar.header?.tac,
+      },
+      observation: metar.observation,
+    },
   }
 }
 

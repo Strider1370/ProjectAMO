@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { buildTafTacLines, buildTafViewModel, formatTafHour, groupTafSlots } from './tafViewModel.js'
+import { buildTafTacLines, buildTafViewModel, formatTafHour, formatTafPeriodRange, groupTafSlots } from './tafViewModel.js'
 
 function futureSlot(offsetHours, weather, overrides = {}) {
   return {
@@ -61,5 +61,10 @@ describe('airport TAF view model weather highlighting', () => {
 
   it('formats invalid TAF hour safely', () => {
     assert.equal(formatTafHour('bad-date'), '--')
+  })
+
+  it('omits the repeated date from a same-day TAF period end', () => {
+    assert.equal(formatTafPeriodRange('2026-07-21T16:00:00Z', '2026-07-21T21:00:00Z', 'KST'), '22/01–06')
+    assert.equal(formatTafPeriodRange('2026-07-21T14:00:00Z', '2026-07-21T16:00:00Z', 'KST'), '21/23–22/01')
   })
 })

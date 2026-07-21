@@ -508,7 +508,7 @@ const MapView = forwardRef(function MapView({
 
   // When a briefing is shown, center the route in the visible LEFT map (panel on right).
   // Use the route coordinates directly — don't wait for the on-demand vertical profile.
-  // Small delay so the lazy briefing panel mounts + lays out before fitPaddingFor reads its width.
+  // Wait for the lazy briefing panel to mount before reading its width for map padding.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady || !routeBriefing.state.briefing) return undefined
@@ -520,11 +520,18 @@ const MapView = forwardRef(function MapView({
       : (fitBoundsRequest?.coordinates ?? [])
     ).filter((c) => Number.isFinite(c?.[0]) && Number.isFinite(c?.[1]))
     if (coords.length === 0) return undefined
-    const t = setTimeout(() => {
+    const fitForBriefingPanel = () => {
+      if (!map.getContainer().ownerDocument.querySelector('.briefing-view')) return false
       setShowKoreaHome(true)
       map.fitBounds(boundsFromCoords(coords), { padding: fitPaddingFor(60), maxZoom: 8, duration: 600 })
-    }, 350)
-    return () => clearTimeout(t)
+      return true
+    }
+    if (fitForBriefingPanel()) return undefined
+    const observer = new MutationObserver(() => {
+      if (fitForBriefingPanel()) observer.disconnect()
+    })
+    observer.observe(map.getContainer().ownerDocument.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeBriefing.state.briefing, isStyleReady])
 

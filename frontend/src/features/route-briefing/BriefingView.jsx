@@ -20,6 +20,8 @@ import LayerToggleChips from '../map/LayerToggleChips.jsx'
 import { metLabel } from '../map/layerActions.js'
 import { phenomenonKo } from '../../shared/weather/phenomenonKo.js'
 import { buildAmosConsoleModel } from '../../shared/weather/amosViewModel.js'
+import { buildMetarTacSegments, buildMetarViewModel } from '../airport-panel/lib/metarViewModel.js'
+import EnhancedTafTab from '../airport-panel/tabs/TafTab.jsx'
 import { useCrossSectionLayers, CrossSectionToggles } from './crossSectionLayers.jsx'
 import { buildRawWindsTable } from './lib/rawWindsModel.js'
 import { LEVEL_COLOR, catColorOf, catDisplay, worstAirport, worstInterval, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
@@ -58,7 +60,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   const [activeAirport, setActiveAirport] = useState(null)
   const [xsectionFull, setXsectionFull] = useState(false)
   const [showLayerChips, setShowLayerChips] = useState(false)
-  const [expandedRoles, setExpandedRoles] = useState({}) // ② 현재 행 펼침(도착=AMOS, 출발=이륙예보)
+  const [expandedRoles, setExpandedRoles] = useState({})
   const [notamGroupOpen, setNotamGroupOpen] = useState({}) // ⑤ 공항별 NOTAM "더 보기" 펼침(role별)
   const [collapsed, setCollapsed] = useState(false) // 패널 접기 — 지도를 보려고 오른쪽으로 슬라이드아웃(닫기와 달리 브리핑 유지)
   const [expanded, setExpanded] = useState(false)
@@ -126,6 +128,12 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   const rawWinds = buildRawWindsTable(crossSection, verticalProfile) // ④ 상층바람 원자료 표
   const airports = sections.current.airports
   const activeAirportObj = airports.find((a) => a.role === activeAirport) ?? airports[0]
+  const metarTacSegments = (a) => {
+    const raw = a.metar?.header?.raw_text ?? a.raw
+    if (!raw || !a.metar) return [{ text: raw || 'METAR 원문 없음' }]
+    const vm = buildMetarViewModel({ metar: a.metar, amosData: null, icao: a.icao, airportMeta: {} })
+    return buildMetarTacSegments(raw, vm)
+  }
 
   const etdEtaLine = (meta.etd || meta.eta)
     ? `ETD ${formatBriefingTime(meta.etd, tz)} → ETA ${formatBriefingTime(meta.eta, tz, { withDate: (meta.eta || '').slice(0, 10) !== (meta.etd || '').slice(0, 10) })}`
@@ -216,11 +224,9 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
     </section>
   )
 
-  const MATRIX_COLS =[['현상', 'weather'], ['바람', 'wind'], ['시정', 'visibility'], ['RVR', 'rvr'], ['운고', 'ceiling'], ['기온/이슬점', 'temp'], ['QNH', 'qnh']]
+  const MATRIX_COLS = [['현상', 'weather'], ['바람', 'wind'], ['시정', 'visibility'], ['RVR', 'rvr'], ['운고', 'ceiling'], ['기온/이슬점', 'temp'], ['QNH', 'qnh']]
   const cellStyle = (f) => ({ fontVariantNumeric: 'tabular-nums', color: f?.flag ? 'var(--level-red)' : undefined, fontWeight: f?.flag ? 700 : undefined })
-  const windCell = (f) => (
-    <span style={cellStyle(f)}>{f?.text ?? '-'}{f?.gust ? <span className="bv-gust"> G{f.gust}</span> : null}</span>
-  )
+  const windCell = (f) => <span style={cellStyle(f)}>{f?.text ?? '-'}{f?.gust ? <span className="bv-gust"> G{f.gust}</span> : null}</span>
 
   // ② 행 확장 = 이륙예보(출발) + AMOS 지상실황(있으면 전부) + 원문 METAR.
   const takeoffBlock = (a) => {
@@ -275,10 +281,9 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   const amosExpansion = (a) => {
     const takeoff = a.role === 'departure' ? takeoffBlock(a) : null
     const amos = amosBlock(a)
-    const raw = a.raw ? <div className="bv-amos-raw">{a.raw}</div> : null
     const prov = a.source ? <DataProvenance source={a.source} /> : null
-    if (!takeoff && !amos && !raw && !prov) return <Caption1 style={{ color: 'var(--text-3)' }}>추가 정보 없음</Caption1>
-    return <div className="bv-expand-stack">{takeoff}{amos}{prov}{raw}</div>
+    if (!takeoff && !amos && !prov) return <Caption1 style={{ color: 'var(--text-3)' }}>추가 정보 없음</Caption1>
+    return <div className="bv-expand-stack">{takeoff}{amos}{prov}</div>
   }
 
   // ② 현재 실황 — 공항=행 비교 매트릭스 (범주 리딩 열, 관측시각+SPECI, 행 펼치기).
@@ -286,6 +291,23 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
     <section data-bvid="current" className="bv-section">
       <Card>
         <Subtitle2 as="h3">② 현재 실황</Subtitle2>
+        <div className="bv-current-tac">
+          {airports.map((a) => (
+            <article className="bv-current-tac-card" key={a.role}>
+              <div className="bv-current-tac-head">
+                <span><Badge appearance="tint" color="informative">{roleLabel(a.role)}</Badge> <b>{a.icao} {a.reportType === 'SPECI' ? 'SPECI' : 'METAR'}</b></span>
+                <span className="bv-current-tac-meta">{a.observationTime && <Caption1 style={{ color: 'var(--text-3)' }}>{formatBriefingTime(a.observationTime, tz)}</Caption1>}<CatBadge category={a.category} /></span>
+              </div>
+              <code className="bv-current-tac-raw">{metarTacSegments(a).map((segment, i) => <span key={i} className={segment.className}>{segment.text}</span>)}</code>
+              {(a.role === 'departure' || a.amos || a.source) && (
+                <details className="bv-current-tac-detail">
+                  <summary>상세 관측·예보</summary>
+                  {amosExpansion(a)}
+                </details>
+              )}
+            </article>
+          ))}
+        </div>
         <table className="bv-current-matrix">
           <thead><tr>
             <th>공항</th><th>범주</th>
@@ -570,8 +592,10 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
     <section data-bvid="destination" className="bv-section">
       <Card>
         <Subtitle2 as="h3">{destNum} 목적지 예보</Subtitle2>
-        {!dest.taf ? <Body1 style={{ color: 'var(--text-3)' }}>TAF 없음</Body1> : (
+        {!dest.sourceTaf ? <Body1 style={{ color: 'var(--text-3)' }}>TAF 없음</Body1> : (
           <>
+            <EnhancedTafTab taf={dest.sourceTaf} icao={dest.icao} eta={meta.eta} forceCompact />
+            <div className="bv-dest-legacy">
             <div className="bv-dest-head">
               <CatBadge category={dest.category} />
               <b style={{ fontSize: 'var(--fs-400)' }}>{dest.icao}</b>
@@ -598,16 +622,16 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
                     const L = p.levels || {}
                     return (
                       <TableRow key={i} className={hl ? 'bv-dest-row-hl' : undefined}>
-                        <TableCell style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        <TableCell data-label="기간" style={{ fontVariantNumeric: 'tabular-nums' }}>
                           <span style={{ color: 'var(--text-2)' }}>{fmtPeriod(p.start, p.end)}</span>{' '}
                           <span className="bv-dest-ptype" data-type={p.type}>{p.type === 'base' ? 'base' : periodTypeLabel(p.type)}</span>
                           {hl ? <span className="bv-dest-eta-tag">ETA</span> : null}
                         </TableCell>
-                        <TableCell><CatBadge category={p.category} /></TableCell>
-                        <TableCell style={destCellStyle(L.wxLevel)}>{p.wx}</TableCell>
-                        <TableCell className="tnum" style={destCellStyle(L.windLevel)}>{p.wind}</TableCell>
-                        <TableCell className="tnum" style={destCellStyle(L.visLevel)}>{p.vis}</TableCell>
-                        <TableCell className="tnum" style={destCellStyle(L.ceilLevel)}>{p.clouds}</TableCell>
+                        <TableCell data-label="범주"><CatBadge category={p.category} /></TableCell>
+                        <TableCell data-label="현상" style={destCellStyle(L.wxLevel)}>{p.wx}</TableCell>
+                        <TableCell data-label="바람" className="tnum" style={destCellStyle(L.windLevel)}>{p.wind}</TableCell>
+                        <TableCell data-label="시정" className="tnum" style={destCellStyle(L.visLevel)}>{p.vis}</TableCell>
+                        <TableCell data-label="운고" className="tnum" style={destCellStyle(L.ceilLevel)}>{p.clouds}</TableCell>
                       </TableRow>
                     )
                   })}
@@ -628,6 +652,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
                 </pre>
               </details>
             )}
+            </div>
           </>
         )}
         {dest.alternateRequired === true && (
@@ -666,7 +691,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
           <div className="bv-mobile" ref={containerRef}>
             {etdEtaLine && <Caption1 style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>{etdEtaLine}</Caption1>}
             <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} />
-            {nav}{board}{layerAction}{adverse}{currentMobile}<BriefingSynopsis />{enroute}{notamSection}{destination}
+            {nav}{board}{layerAction}{adverse}{currentDesktop}<BriefingSynopsis />{enroute}{notamSection}{destination}
             <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />
           </div>
         </MobileSheet>

@@ -184,6 +184,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     routeResult,
     routeDesigns,
     selectedRouteDesignId,
+    activeAppliedDesignId,
+    workflowStep,
     hiddenRouteDesignIds,
     appliedVfrWaypoints,
     draftVfrWaypoints,
@@ -196,7 +198,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     pendingSid: selectedSid,
     pendingStar: selectedStar,
     pendingIap: selectedIap,
-  }), [appliedIap, appliedProcedures.sid, appliedProcedures.star, appliedVfrWaypoints, baselinePreview, draftVfrWaypoints, hiddenRouteDesignIds, navpointsById, routeDesigns, routeDraftResult, routeForm, routeResult, selectedIap, selectedRouteDesignId, selectedSid, selectedStar])
+  }), [activeAppliedDesignId, appliedIap, appliedProcedures.sid, appliedProcedures.star, appliedVfrWaypoints, baselinePreview, draftVfrWaypoints, hiddenRouteDesignIds, navpointsById, routeDesigns, routeDraftResult, routeForm, routeResult, selectedIap, selectedRouteDesignId, selectedSid, selectedStar, workflowStep])
 
   useEffect(() => {
     vfrWaypointsRef.current = draftVfrWaypoints.length >= 2 ? draftVfrWaypoints : appliedVfrWaypoints
@@ -1106,7 +1108,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     const design = routeDesigns.find((item) => item.id === id)
     if (!design) return
     if (id !== selectedRouteDesignId) {
-      setRouteDesigns((designs) => designs.map((item) => item.id === selectedRouteDesignId ? { ...item, draftEditor: null, pendingEdit: null } : item))
+      setRouteDesigns((designs) => designs.map((item) => item.id === selectedRouteDesignId ? { ...item, pendingEdit: null } : item))
       mapInteractionStatusRef.current?.showConfirmation?.()
     }
     setSelectedRouteDesignId(id)

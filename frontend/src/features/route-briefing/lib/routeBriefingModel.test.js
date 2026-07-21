@@ -7,11 +7,28 @@ import {
   buildInitialVfrWaypoints,
   buildVfrWaypointsFromRouteResult,
   buildIapCandidates,
+  buildRoutePreviewModel,
   buildVfrRouteFromWaypoints,
   chooseIapKeyForRunway,
   getCurrentRouteLineString,
   pickBestRunwayGroup,
 } from './routeBriefingModel.js'
+
+test('buildRoutePreviewModel keeps only the applied design after route comparison', () => {
+  const base = { id: 'base', routeResult: { id: 'base-route' } }
+  const alternative = { id: 'alternative-a', routeResult: { id: 'alternative-route' } }
+  const model = buildRoutePreviewModel({
+    routeForm: { flightRule: 'VFR' },
+    routeResult: alternative.routeResult,
+    routeDesigns: [base, alternative],
+    selectedRouteDesignId: 'alternative-a',
+    activeAppliedDesignId: 'alternative-a',
+    workflowStep: 'altitude',
+  })
+
+  assert.deepEqual(model.routeDesigns, [alternative])
+  assert.equal(model.selectedRouteDesignId, 'alternative-a')
+})
 
 test('buildVfrWaypointsFromRouteResult keeps airport endpoints around manual VFR fixes', () => {
   const waypoints = buildVfrWaypointsFromRouteResult({

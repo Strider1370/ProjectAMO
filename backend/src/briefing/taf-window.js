@@ -202,6 +202,7 @@ export function buildDestination(taf, etaIso, { alternateTaf = null, alternateIc
     icao: taf?.header?.icao ?? null,
     category: tafAtEta?.category ?? null,
     taf: tafAtEta,
+    sourceTaf: taf,
     validity,
     eta: etaIso,
     etaOutOfRange,

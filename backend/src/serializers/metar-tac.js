@@ -38,6 +38,7 @@ export function buildMetarTacPresentation(parsed) {
   const type = h.report_type === 'SPECI' ? 'SPECI' : 'METAR'
   const time = ddhhmmZ(h.observation_time || h.issue_time)
   const wind = d.wind || o.wind?.raw || '/////KT'
+  const visibility = String(d.visibility) === '10000' ? '9999' : d.visibility
 
   // 순서(Annex 3): 바람 · 본문(시정/RVR/기상/구름) · 기온/노점 · QNH · 윈드시어(보충)
   const parts = [
@@ -45,7 +46,7 @@ export function buildMetarTacPresentation(parsed) {
   ]
   if (parsed.cavok_flag) parts.push(tacToken('CAVOK'))
   else {
-    if (d.visibility) parts.push(tacToken(d.visibility, 'visibility'))
+    if (visibility) parts.push(tacToken(visibility, 'visibility'))
     for (const rvr of (o.rvr || []).map(rvrToken).filter(Boolean)) parts.push(tacToken(rvr, 'rvr'))
     for (const weather of (o.weather || []).filter((weather) => weather?.descriptor || weather?.phenomena?.length)) {
       parts.push(tacToken(weather.raw, weatherTokenRole(weather)))

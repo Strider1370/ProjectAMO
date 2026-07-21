@@ -130,6 +130,41 @@ test('comparison line drag inserts and redraws a temporary waypoint before confi
   assert.deepEqual(drops, [{ designId: 'route-design-1', kind: 'insert', index: 2, coordinates: [128.5, 38] }])
 })
 
+test('comparison line drag preserves the original insertion index after a SID trims the displayed line', () => {
+  const events = new Map()
+  const source = {
+    data: {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { role: 'route-design-hit', designId: 'route-design-1', selected: true, sourceIndexOffset: 1 }, geometry: { type: 'LineString', coordinates: [[127, 37], [128, 37], [129, 37]] } },
+        { type: 'Feature', properties: { role: 'route-design-line', designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[127, 37], [128, 37], [129, 37]] } },
+      ],
+    },
+    serialize() { return { data: this.data } },
+    setData(data) { this.data = data },
+  }
+  const map = {
+    on(event, layer, handler) {
+      const callback = handler ?? layer
+      events.set(`${event}:${handler ? layer : '*'}`, callback)
+    },
+    dragPan: { disable() {}, enable() {} },
+    getCanvas: () => ({ style: {} }),
+    getSource: () => source,
+    queryRenderedFeatures: () => [],
+  }
+  const drops = []
+  bindVfrInteractions(map, { current: [] }, { current: null }, { current: true }, { current: (drop) => drops.push(drop) })
+  events.get('mousedown:briefing-route-design-line-hit')({
+    preventDefault() {}, point: {}, lngLat: { lng: 127.5, lat: 37 },
+    features: [{ properties: { designId: 'route-design-1', selected: true, sourceIndexOffset: 1 }, geometry: { type: 'LineString', coordinates: [[127, 37], [128, 37], [129, 37]] } }],
+  })
+  events.get('mousemove:*')({ lngLat: { lng: 127.5, lat: 38 } })
+  assert.deepEqual(source.data.features[1].geometry.coordinates, [[127, 37], [127.5, 38], [128, 37], [129, 37]])
+  events.get('mouseup:*')()
+  assert.deepEqual(drops, [{ designId: 'route-design-1', kind: 'insert', index: 1, coordinates: [127.5, 38] }])
+})
+
 test('buildProcedureGeoJSON derives an IAP line from fixes when geometry is omitted', () => {
   const result = buildProcedureGeoJSON(null, null, {
     fixes: [
@@ -180,8 +215,9 @@ test('trimRouteLineForProcedures drops the straight departure-to-entry-fix segme
     { id: 'ARR', lon: 129, lat: 36 },
   ])
   const sid = { fixes: [{ id: 'DEP', lon: 126, lat: 37 }, { id: 'OSPAT', lon: 126.5, lat: 37.2 }] }
-  const line = trimRouteLineForProcedures(preview, sid, null).features.find((f) => f.properties.role === 'route-preview-line').geometry.coordinates
-  assert.deepEqual(line, [[127, 37], [129, 36]])
+  const line = trimRouteLineForProcedures(preview, sid, null).features.find((f) => f.properties.role === 'route-preview-line')
+  assert.deepEqual(line.geometry.coordinates, [[127, 37], [129, 36]])
+  assert.equal(line.properties.sourceIndexOffset, 1)
 })
 
 test('trimRouteLineForProcedures drops the straight exit-fix-to-arrival segment when a STAR exists', () => {

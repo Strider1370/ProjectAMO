@@ -337,6 +337,8 @@ export function buildRoutePreviewModel(routeState) {
     routeResult,
     routeDesigns,
     selectedRouteDesignId,
+    activeAppliedDesignId,
+    workflowStep,
     hiddenRouteDesignIds,
     vfrWaypoints = [],
     appliedVfrWaypoints = vfrWaypoints,
@@ -357,11 +359,15 @@ export function buildRoutePreviewModel(routeState) {
     (isFirInMode && routeForm?.entryFix) ||
     (isFirExitMode && routeForm?.exitFix) ||
     null
+  const activeAppliedDesign = routeDesigns?.find((design) => design.id === activeAppliedDesignId)
+  const showsRouteComparison = workflowStep === 'compare'
+  const displayedRouteDesigns = !showsRouteComparison && activeAppliedDesign ? [activeAppliedDesign] : routeDesigns
+  const displayedRouteDesignId = !showsRouteComparison && activeAppliedDesign ? activeAppliedDesign.id : selectedRouteDesignId
 
   return {
     routeResult,
-    routeDesigns,
-    selectedRouteDesignId,
+    routeDesigns: displayedRouteDesigns,
+    selectedRouteDesignId: displayedRouteDesignId,
     hiddenRouteDesignIds,
     appliedVfrWaypoints,
     draftVfrWaypoints,

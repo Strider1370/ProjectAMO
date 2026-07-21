@@ -84,6 +84,12 @@ export function formatTafHour(iso, tz = 'UTC') {
   return `${String(display.getUTCDate()).padStart(2, '0')}/${String(display.getUTCHours()).padStart(2, '0')}${tz === 'UTC' ? 'Z' : ''}`
 }
 
+export function formatTafPeriodRange(startIso, endIso, tz = 'UTC') {
+  const start = formatTafHour(startIso, tz)
+  const end = formatTafHour(endIso, tz)
+  return start.slice(0, 2) === end.slice(0, 2) ? `${start}–${end.slice(3)}` : `${start}–${end}`
+}
+
 function buildTafLineSegments(line, slot, icao) {
   if (!line.tokens || !slot) return [{ text: line.text || line }]
   const context = {

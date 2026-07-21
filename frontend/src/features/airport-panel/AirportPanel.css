@@ -931,6 +931,8 @@
   color: var(--text-1);
 }
 
+.ap-taf-tac-block .ap-metar-tac { font-size: var(--fs-400); line-height: var(--lh-400); }
+
 .ap-metar-tac-chip {
   display: inline-flex;
   align-items: baseline;
@@ -1312,6 +1314,9 @@
   padding: 2px 6px;
   border-radius: 3px;
 }
+.ap-taf-table tr.ap-taf-eta-period { background: var(--level-gray-bg); outline: 1px solid var(--accent); outline-offset: -1px; }
+.ap-taf-eta-period .ap-taf-trange { font-weight: var(--fw-bold); }
+.ap-taf-eta-badge { display: inline-block; margin-left: var(--space-xs); padding: 0 var(--space-xs); border-radius: var(--radius-sm); background: var(--accent); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 1.4; vertical-align: 1px; }
 
 /* ── AMOS ── */
 .ap-amos .ap-dl dd {
@@ -1658,6 +1663,17 @@
   font-size: 12px;
 }
 
+/* The briefing side panel is narrow even on desktop, so it uses the mobile table geometry. */
+.ap-taf--compact .ap-taf-table-wrap { overflow-x: visible; }
+.ap-taf--compact .ap-taf-table { min-width: 0; table-layout: fixed; font-size: var(--fs-200); }
+.ap-taf--compact .ap-taf-table th,
+.ap-taf--compact .ap-taf-table td { padding: var(--space-xs); overflow-wrap: anywhere; }
+.ap-taf--compact .ap-taf-table th:first-child,
+.ap-taf--compact .ap-taf-table td:first-child { width: 32%; }
+.ap-taf--compact .ap-taf-tcol { padding-left: var(--space-s) !important; }
+.ap-taf--compact .ap-taf-trange { font-size: var(--fs-100); }
+.ap-taf--compact .ap-taf-tcat { font-size: var(--fs-200); }
+
 .ap-taf-table th,
 .ap-taf-table td {
   border-bottom: 1px solid var(--stroke-2);
@@ -1669,8 +1685,7 @@
   text-align: left;
   vertical-align: middle;
 }
-.ap-taf-table th:last-child,
-.ap-taf-table td:last-child {
+.ap-taf-table th:last-child {
   box-shadow: none;
 }
 
@@ -2464,8 +2479,16 @@
 
   .ap-taf-table {
     min-width: 0; /* 540px 강제폭 해제 → 가로 스크롤 제거 */
+    table-layout: fixed;
     font-size: 13px; /* 가독성 위해 키움 (열 하나 줄여서 여유 확보) */
   }
+
+  .ap-taf-table th:nth-child(1) { width: 31%; }
+  .ap-taf-table th:nth-child(2) { width: 13%; }
+  .ap-taf-table th:nth-child(3) { width: 19%; }
+  .ap-taf-table th:nth-child(4) { width: 24%; }
+  .ap-taf-table th:nth-child(5) { width: 13%; }
+  .ap-taf-table th { font-size: var(--fs-200); }
 
   .ap-taf-table th,
   .ap-taf-table td {

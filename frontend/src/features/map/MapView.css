@@ -2185,6 +2185,20 @@
   cursor: not-allowed;
 }
 .route-map-interaction-confirm[hidden] { display: none; }
+
+@media (max-width: 719px) {
+  .route-map-interaction-confirm {
+    left: 12px !important;
+    right: 12px;
+    top: 12px !important;
+    bottom: auto;
+    min-width: 0;
+    max-width: none;
+    padding: 12px;
+    transform: none;
+  }
+}
+
 .route-map-interaction-confirm-text { overflow-wrap: anywhere; }
 .route-map-interaction-confirm-actions {
   display: flex;

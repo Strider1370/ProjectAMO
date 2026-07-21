@@ -39,7 +39,12 @@ export default function BriefingSynopsis() {
   return (
     <section data-bvid="synopsis" className="bv-section">
       <Card className="bv-syn">
-        <Subtitle2 as="h3">③ 일기도</Subtitle2>
+        <details className="bv-syn-fold">
+          <summary className="bv-syn-fold-summary">
+            <Subtitle2 as="h3">③ 일기도</Subtitle2>
+            <Caption1 style={{ color: 'var(--text-3)' }}>샘플 데이터</Caption1>
+          </summary>
+          <div className="bv-syn-fold-body">
 
         <div className="bv-syn-types">
           {TYPES.map(([id, label]) => (
@@ -86,6 +91,8 @@ export default function BriefingSynopsis() {
             <Button appearance="secondary" size="small" style={{ marginTop: 'var(--space-s)' }}>지도에서 전선·기압 보기</Button>
           </>
         )}
+          </div>
+        </details>
       </Card>
 
       {lightbox && (
