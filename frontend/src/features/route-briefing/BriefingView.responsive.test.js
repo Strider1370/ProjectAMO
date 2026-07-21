@@ -27,3 +27,10 @@ test('keeps the mobile go/no-go banner in two columns', () => {
   assert.match(css, /\.bv-mobile \.bv-banner \{ flex-wrap: nowrap; \}/)
   assert.match(css, /\.bv-mobile \.bv-banner-body \{ min-width: 0;/)
 })
+
+test('places route weather legs after ribbons and before raw winds', () => {
+  const ribbons = jsx.indexOf('className="bv-ribbons"')
+  const legs = jsx.indexOf('<RouteWeatherLegTable')
+  const rawWinds = jsx.indexOf('className="bv-rawwinds"')
+  assert.ok(ribbons >= 0 && legs > ribbons && rawWinds > legs)
+})

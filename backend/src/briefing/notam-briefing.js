@@ -30,8 +30,10 @@ export function matchRouteNotams(items, ctx) {
   const routeNotams = []
   for (const it of (items ?? [])) {
     if (it?.scope === 'fir') continue // 전국 스코프는 경로 매칭에서 제외(무의미한 전량 매칭)
-    if (!it.valid_from || !it.valid_to) continue
-    if (!timeWindowsOverlap(ctx.etd, ctx.eta, it.valid_from, it.valid_to)) continue // 발효중(비행 시간창 겹침)
+    const flightTimeKnown = Number.isFinite(Date.parse(ctx.etd)) && Number.isFinite(Date.parse(ctx.eta))
+    const validityKnown = Number.isFinite(Date.parse(it.valid_from)) && Number.isFinite(Date.parse(it.valid_to))
+    const timeStatus = !flightTimeKnown ? 'not_provided' : !validityKnown ? 'unavailable' : 'matched'
+    if (timeStatus === 'matched' && !timeWindowsOverlap(ctx.etd, ctx.eta, it.valid_from, it.valid_to)) continue
     const interval = it.geometry ? routeIntervalInGeometry(ctx.axis, it.geometry) : { entered: false }
     const airportRole = roleByIcao.get(it.location) || null // 출/도착/교체 공항의 NOTAM인가
     if (!interval.entered && !airportRole) continue // 경로도 안 걸리고 대상 공항도 아니면 제외
@@ -47,7 +49,8 @@ export function matchRouteNotams(items, ctx) {
     // 고도 통과: 밴드 미상이면 보수적으로 통과 간주(under-alarm 금지, spec 안전 규칙).
     const passesAltitude = !verticalKnown || encounter === 'on'
     // 저촉 = 공역제한 계열 ∩ 발효중 ∩ 경로가 폴리곤을 계획고도에서 통과(경로 교차가 있어야 함).
-    const conflict = RESTRICTION_CATEGORIES.has(it.category) && interval.entered && passesAltitude
+    const comparisonStatus = timeStatus === 'matched' && verticalKnown ? 'warn' : 'undetermined'
+    const conflict = comparisonStatus === 'warn' && RESTRICTION_CATEGORIES.has(it.category) && interval.entered && passesAltitude
     routeNotams.push({
       id: it.id,
       category: it.category,
@@ -63,14 +66,17 @@ export function matchRouteNotams(items, ctx) {
       routeIntervalNm: interval.entered ? { startNm: interval.startNm, endNm: interval.endNm } : null,
       bandFt,
       verticalKnown,
-      activeAtEtd: Date.parse(it.valid_from) <= Date.parse(ctx.etd),
+      activeAtEtd: timeStatus === 'matched' && Date.parse(it.valid_from) <= Date.parse(ctx.etd),
+      timeStatus,
+      comparisonStatus,
       conflict,
     })
   }
   // 정렬: 발효중 먼저 → 경로교차(진입거리순) → 공항매칭(진입거리 없음, 뒤로).
   const entryNm = (n) => (n.routeIntervalNm ? n.routeIntervalNm.startNm : Number.POSITIVE_INFINITY)
+  const sortRank = (n) => n.activeAtEtd ? 0 : n.comparisonStatus === 'warn' ? 1 : 2
   routeNotams.sort((a, b) =>
-    (a.activeAtEtd === b.activeAtEtd ? 0 : a.activeAtEtd ? -1 : 1) ||
+    (sortRank(a) - sortRank(b)) ||
     (entryNm(a) - entryNm(b)))
   const routeConflicts = routeNotams.filter((n) => n.conflict)
   return { routeNotams, routeConflicts }

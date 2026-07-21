@@ -137,7 +137,8 @@ ProjectAMO/
 - `frontend/src/features/route-briefing/VerticalProfileWindow.jsx` -> vertical profile modal shell.
 - `frontend/src/features/route-briefing/RouteBriefing.css` -> route panel, VFR waypoint, and vertical profile styles.
 - `frontend/src/features/route-briefing/VerticalProfileChart.jsx` -> SVG route vertical profile chart.
-- `frontend/src/features/route-briefing/BriefingView.jsx` -> pre-flight briefing view: Go/No-go 배너(`BriefingBanner`) + ① 위험 다이제스트(2줄·색바·아이콘·정렬·공항경보 통합) + ② 현재 비교 매트릭스(공항=행, 범주 앞, 바람kt/시정km, 관측시각+SPECI) + ③ 노선(hazard ribbon + `VerticalProfileChart` 단면도 + 상층바람 원자료 접기 `buildRawWindsTable`) + ④ 목적지(카테고리 타임라인 막대 + 기간표 + 교체 병렬 + 원문 재구성 접기); 범주 표시는 3레벨 fold(MVFR→IFR). 지도를 route-check 패널 위에 오버레이.
+- `frontend/src/features/route-briefing/BriefingView.jsx` -> pre-flight briefing view: Go/No-go 배너(`BriefingBanner`) + ① 위험 다이제스트(2줄·색바·아이콘·정렬·공항경보 통합) + ② 현재 비교 매트릭스(공항=행, 범주 앞, 바람kt/시정km, 관측시각+SPECI) + ③ 노선(hazard ribbon 아래 `RouteWeatherLegTable` + `VerticalProfileChart` 단면도 + 상층바람 원자료 접기 `buildRawWindsTable`) + ④ 목적지(카테고리 타임라인 막대 + 기간표 + 교체 병렬 + 원문 재구성 접기); 범주 표시는 3레벨 fold(MVFR→IFR). 지도를 route-check 패널 위에 오버레이.
+- `frontend/src/features/route-briefing/RouteWeatherLegTable.jsx` -> display-only desktop table/mobile-card renderer for `sections.enroute.legs`; reports per-leg weather and source status without route matching or performance calculations.
 - `frontend/src/features/route-briefing/BriefingBanner.jsx` -> Go/No-go 배너 — 최악 카테고리(3레벨)+공항+이유(운고/시정)+역할 체인. 정상=무채/연녹, 위험만 솔리드(§2.2). 데이터는 `briefing.banner`.
 - `frontend/src/features/route-briefing/BriefingSynopsis.jsx` -> ③ 개황 일기도 뷰어 — 종류 칩(지상/상층/상세바람/단열선도/연직시계열)→기압면 칩→시간 슬라이더→차트+라이트박스+자동요약+지도토글. ⚠ 이미지는 `public/briefing-charts/` KMA **샘플**(실시간 fetch·아카이빙 백엔드 파이프라인 미구현 — "샘플·실시간 연동 예정" 라벨). 내부망 종류(상세바람 등 기압면)는 "준비중" 비활성.
 - `frontend/src/features/route-briefing/lib/rawWindsModel.js` -> ④ 상층바람·기온 원자료 표 순수 모델: `crossSection.levels`(T+u/v, m/s)×`verticalProfile.markers`(웨이포인트) → dir/speed·기온 셀 + 계획고도 최근접 층 하이라이트(`altitudeAtDistance`).
@@ -185,6 +186,7 @@ ProjectAMO/
 - `backend/src/briefing/planned-altitude.js` -> planned climb/cruise/descent altitude-by-distance model and advisory FL band -> ft conversion.
 - `backend/src/briefing/hazard-matcher.js` -> classifies a hazard as encounter `on`/`nearby` from planned altitude vs FL band (3D vertical match).
 - `backend/src/briefing/enroute-model.js` -> samples KIM/KTG cross-section at the planned altitude and emits moderate+ icing/turbulence intervals (the ④ enroute model summary).
+- `backend/src/briefing/route-weather-legs.js` -> aggregates selected-altitude weather, hazards, route NOTAM state, and original AIP constraints for each common en-route segment; returns facts and data state only.
 - `backend/src/briefing/enroute-cross-section.js` -> shared KIM pressure-level + KTG low-altitude cross-section loader (`loadRouteCrossSection`); used by both `POST /api/briefing/cross-section` and the route-briefing enroute model.
 - `backend/src/briefing/airport-summary.js` -> single-airport METAR -> flight category + threshold-flagged display fields + 원문 METAR 재구성(IWXXM라 원본 없음 → display 토큰으로 TAC 재조립, CAVOK 처리).
 - `backend/src/processors/takeoff-forecast-processor.js` + `parsers/takeoff-forecast-parser.js` -> KMA 이륙예보(`AirInfoService/getAirInfo`, fctm=KST 정시) 매시 수집(airport-info 패턴 복제, 같은 apihub·authKey). store 타입 `takeoff_fcst`(index 스케줄·초기수집·snapshot-meta 등록), 브리핑 `data`에 주입 → composer가 공항별 `takeoffFcst`로 실어 ② 출발 행 확장. 파서가 tmFc(KST)→UTC ISO, qnh(inHg×100)→hPa 변환.

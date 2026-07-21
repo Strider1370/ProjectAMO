@@ -59,6 +59,15 @@ test('matchRouteNotams: outside ETD~ETA time window excluded', () => {
   assert.equal(routeNotams.length, 0)
 })
 
+test('matchRouteNotams: on-route NOTAM with missing validity remains undetermined', () => {
+  const { routeNotams, routeConflicts } = matchRouteNotams([notam({ valid_from: null, valid_to: null })], ctx)
+  assert.equal(routeNotams.length, 1)
+  assert.equal(routeNotams[0].comparisonStatus, 'undetermined')
+  assert.equal(routeNotams[0].timeStatus, 'unavailable')
+  assert.equal(routeNotams[0].conflict, false)
+  assert.equal(routeConflicts.length, 0)
+})
+
 test('matchRouteNotams: obstacle on route is listed but NOT a conflict', () => {
   const { routeNotams, routeConflicts } = matchRouteNotams([notam({ category: 'obstacle' })], ctx)
   assert.equal(routeNotams.length, 1)

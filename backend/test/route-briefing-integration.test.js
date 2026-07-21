@@ -34,6 +34,32 @@ test('integration: 3D briefing payload is internally consistent', () => {
   assert.equal(b.sections.current.airports.length, 3)
 })
 
+test('integration: briefing includes route weather legs from one injected cross-section', () => {
+  const weatherAxis = {
+    totalDistanceNm: 20,
+    samples: [{ distanceNm: 0, bearingDeg: 90 }, { distanceNm: 10, bearingDeg: 90 }, { distanceNm: 20, bearingDeg: 90 }],
+  }
+  const crossSection = {
+    levels: [
+      { altFt: 9000, values: [{ altFt: 9000, u: 10, v: 0, T: 273.15, icing: 0 }, { altFt: 9000, u: 20, v: 0, T: 274.15, icing: 1 }, { altFt: 9000, u: 30, v: 0, T: 275.15, icing: 1 }] },
+    ],
+  }
+  const briefing = composeBriefing({
+    ...request,
+    routeModel: {
+      enRouteRange: { startNm: 0, endNm: 20, status: 'aligned' },
+      enRouteSegments: [{ id: 'FIXA-FIXB', fromFix: 'FIXA', toFix: 'FIXB', startNm: 0, endNm: 20, alignmentStatus: 'aligned' }],
+    },
+  }, {
+    ...data,
+    enrouteCrossSection: { available: true, axis: weatherAxis, crossSection, turbulence: { levels: [] }, totalDistanceNm: 20 },
+  })
+  assert.equal(briefing.sections.enroute.legs.length, 1)
+  assert.deepEqual(Object.keys(briefing.sections.enroute.legs[0].wind), ['meanComponentKt', 'minComponentKt', 'maxComponentKt'])
+  assert.equal(briefing.sections.enroute.legs[0].from, 'FIXA')
+  assert.equal(briefing.sections.enroute.legs[0].to, 'FIXB')
+})
+
 test('route exposure endpoint validates geometry and returns its model', async () => {
   process.env.NODE_ENV = 'test'
   const { app } = await import(`../server.js?route-exposure-test=${Date.now()}`)

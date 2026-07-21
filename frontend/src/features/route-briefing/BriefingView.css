@@ -179,6 +179,32 @@
 .bv-seg.mod { background: var(--turb-mod); }
 .bv-seg.sev { background: var(--level-red); }
 
+.bv-leg-briefing { margin-top: var(--space-m); border-top: 1px solid var(--stroke-2); padding-top: var(--space-m); }
+.bv-leg-head { display: flex; justify-content: space-between; gap: var(--space-m); align-items: start; }
+.bv-leg-head h4 { margin: 0; color: var(--text-1); font-weight: var(--fw-semibold); }
+.bv-leg-sub, .bv-leg-disclaimer { display: block; color: var(--text-3); margin-top: var(--space-xxs); }
+.bv-leg-disclaimer { max-width: 280px; text-align: right; }
+.bv-leg-scroll { overflow-x: auto; margin-top: var(--space-s); }
+.bv-leg-table { min-width: 880px; font-variant-numeric: tabular-nums; }
+.bv-leg-table th { color: var(--text-3); font-size: var(--fs-200); font-weight: var(--fw-regular); white-space: nowrap; }
+.bv-leg-table td { font-size: var(--fs-200); vertical-align: top; }
+.bv-leg-hazards { display: grid; gap: var(--space-xxs); min-width: 190px; }
+.bv-leg-tailwind { color: var(--level-green); }
+.bv-leg-headwind { color: var(--level-amber); }
+
+@container briefing (max-width: 719px) {
+  .bv-leg-scroll { overflow: visible; }
+  .bv-leg-table { display: block; min-width: 0; }
+  .bv-leg-table thead { display: none; }
+  .bv-leg-table tbody { display: grid; gap: var(--space-s); }
+  .bv-leg-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-m); padding: var(--space-m); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); }
+  .bv-leg-row td { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: var(--space-xs); padding: 0; overflow-wrap: anywhere; }
+  .bv-leg-row td::before { content: attr(data-label); color: var(--text-3); font-size: var(--fs-200); }
+  .bv-leg-row td:first-child, .bv-leg-row td:last-child { grid-column: 1 / -1; }
+  .bv-leg-head { display: grid; }
+  .bv-leg-disclaimer { max-width: none; text-align: left; }
+}
+
 /* ③ 개황 — 일기도 뷰어 */
 .bv-syn-fold { margin: 0; }
 .bv-syn-fold-summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); cursor: pointer; list-style: none; }

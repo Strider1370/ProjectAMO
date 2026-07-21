@@ -144,5 +144,5 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
   })
   if (ktgLatest) turbulence.run = { tmfc: ktgLatest.tmfc, hf: ktgHf, validTime: ktgValidTime }
 
-  return { available: true, crossSection, turbulence, totalDistanceNm: axis.totalDistanceNm }
+  return { available: true, axis, crossSection, turbulence, totalDistanceNm: axis.totalDistanceNm }
 }

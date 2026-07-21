@@ -27,6 +27,7 @@ import { buildRawWindsTable } from './lib/rawWindsModel.js'
 import { LEVEL_COLOR, catColorOf, catDisplay, worstAirport, worstInterval, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
 import { deriveTimeState, formatAltitude, formatValidPeriod, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
 import NotamCell from '../notam/NotamCell.jsx'
+import RouteWeatherLegTable from './RouteWeatherLegTable.jsx'
 import './BriefingView.css'
 
 const LEVEL_BADGE = { green: 'success', amber: 'warning', red: 'danger', gray: 'subtle' }
@@ -381,6 +382,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
     </section>
   )
 
+  const legs = sections.enroute?.legs ?? []
   const enroute = sections.enroute && (
     <section data-bvid="enroute" className="bv-section">
       <Card>
@@ -424,6 +426,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             })}
           </div>
         )}
+        {legs.length > 0 && <RouteWeatherLegTable legs={legs} selectedAltitudeFt={sections.enroute.plannedCruiseAltitudeFt} />}
         {verticalProfile && (
           <>
             <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} />

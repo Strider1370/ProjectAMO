@@ -42,7 +42,30 @@ function briefingFor(request) {
     eta: request.eta || '2026-07-18T10:30:00Z',
     plannedCruiseAltitudeFt: Number(request.plannedCruiseAltitudeFt) || 9000,
   }, { metar: { airports }, taf: { airports: {} }, sigmet: { items: [] }, airmet: { items: [] } })
-  return { ...briefing, meta: { ...briefing.meta, generatedAt: FIXTURE_TIME } }
+  return {
+    ...briefing,
+    meta: { ...briefing.meta, generatedAt: FIXTURE_TIME },
+    sections: {
+      ...briefing.sections,
+      enroute: {
+        ...briefing.sections.enroute,
+        legs: [
+          {
+            from: 'FIXA', to: 'FIXB', startNm: 0, endNm: 24, distanceNm: 24, courseTrueDeg: 128, selectedAltitudeFt: 9000, alignmentStatus: 'aligned',
+            wind: { meanComponentKt: 12, minComponentKt: 8, maxComponentKt: 15 }, temp: { meanC: -6, minC: -8, maxC: -4 },
+            icing: { peakLevel: 2, exposures: [{ level: 2, distanceNm: 12 }] }, turbulence: { peakLevel: 'moderate', exposures: [{ level: 'moderate', distanceNm: 10 }] },
+            hazards: [], notams: [], timeStatus: 'matched', altitudeConstraint: { status: 'matched', applicability: 'applicable' },
+          },
+          {
+            from: 'FIXB', to: 'FIXC', startNm: 24, endNm: 51, distanceNm: 27, courseTrueDeg: 141, selectedAltitudeFt: 9000, alignmentStatus: 'aligned',
+            wind: null, temp: null, icing: null, turbulence: null,
+            hazards: [{ code: 'SEV_TURB', label: 'Severe turbulence', verticalStatus: 'unknown', timeStatus: 'unavailable' }],
+            notams: [{ id: 'FIXTURE-NOTAM', summary: 'Restricted area', effect: 'undetermined' }], timeStatus: 'unavailable', altitudeConstraint: { status: 'unavailable', applicability: 'applicable' },
+          },
+        ],
+      },
+    },
+  }
 }
 
 function profileFor(request) {

@@ -1,4 +1,3 @@
-import { altitudeAtDistanceFt } from './planned-altitude.js'
 import { ktgIntensity } from '../processors/ktg-model.js'
 import { loadRouteCrossSection } from './enroute-cross-section.js'
 
@@ -22,7 +21,7 @@ function seriesAtAltitude(levels, totalDistanceNm, cruiseAltitudeFt, pick, { mod
   const out = []
   for (let i = 0; i < n; i += 1) {
     const d = sorted[0].values[i]?.distanceNm
-    const alt = altitudeAtDistanceFt(d, totalDistanceNm, cruiseAltitudeFt)
+    const alt = cruiseAltitudeFt
     if (nullOutside && (alt < minAlt || alt > maxAlt)) { out.push({ distanceNm: d, value: null }); continue }
     let lo = sorted[0]
     let hi = sorted[sorted.length - 1]

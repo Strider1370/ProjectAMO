@@ -3,7 +3,9 @@ import { levelForCategory, to3Level } from './flight-category.js'
 import { buildDestination } from './taf-window.js'
 import { buildConfidenceWarnings } from './confidence.js'
 import { buildHazardSection } from './hazard-section.js'
-import { buildEnrouteModel } from './enroute-model.js'
+import { summarizeEnrouteModel } from './enroute-model.js'
+import { loadRouteCrossSection } from './enroute-cross-section.js'
+import { buildRouteWeatherLegs } from './route-weather-legs.js'
 import { buildRouteAxis } from './route-axis.js'
 import { timeWindowsOverlap } from './geo-time-match.js'
 import { matchRouteNotams } from './notam-briefing.js'
@@ -128,15 +130,31 @@ export function composeBriefing(request, data) {
 
   // 경로 조우만(공항경보는 경로 지오 없음 → enroute encounters 제외).
   const encounters = adverse.hazards.filter((h) => h.encounter === 'on' && !h.airportScope)
-  const enrouteModel = buildEnrouteModel({ root: data?.dataRoot, routeGeometry: request.routeGeometry, body: request, cruiseAltitudeFt })
+  let loaded = data?.enrouteCrossSection ?? null
+  if (!loaded && data?.dataRoot) {
+    try { loaded = loadRouteCrossSection({ root: data.dataRoot, routeGeometry: request.routeGeometry, body: request }) } catch { loaded = null }
+  }
+  const enrouteModel = loaded?.available
+    ? summarizeEnrouteModel({ crossSection: loaded.crossSection, turbulence: loaded.turbulence, totalDistanceNm: loaded.totalDistanceNm, cruiseAltitudeFt })
+    : null
   const enroute = {
     // adverse와 동일한 보수 레벨을 따른다(밴드 미상 SIGMET이 ④에서만 amber로 새지 않도록).
     level: adverse.level,
     plannedCruiseAltitudeFt: cruiseAltitudeFt,
     encounters,
-    crossSectionAvailable: true,
+    crossSectionAvailable: loaded ? Boolean(loaded.available) : true,
     // enroute 단면 모델을 여기서 소유(이전엔 라우트·경보 스케줄러가 사후 mutate). root 없으면 null.
     model: enrouteModel,
+    legs: buildRouteWeatherLegs({
+      routeModel: request.routeModel,
+      weatherAxis: loaded?.axis,
+      selectedCruiseAltitudeFt: cruiseAltitudeFt,
+      crossSection: loaded?.crossSection,
+      turbulence: loaded?.turbulence,
+      hazards: adverse.hazards,
+      routeNotams,
+      aipConstraints,
+    }).legs,
     aipConstraints,
   }
 

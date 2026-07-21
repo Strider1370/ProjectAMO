@@ -93,10 +93,11 @@ function interpolate(levels, altitudeFt, sampleIndex, field) {
   return { value: lower.value + (upper.value - lower.value) * ((altitudeFt - lower.altFt) / (upper.altFt - lower.altFt)), source: 'interpolated' }
 }
 
-function weightedWind(levels, axis, altitudeFt, weights) {
+export function weightedWind(levels, axis, altitudeFt, weights, includeZeroWeight = true) {
   const values = []
   const samples = axis.samples ?? []
   for (const [index, sample] of samples.entries()) {
+    if (!includeZeroWeight && !(weights[index] > 0)) continue
     const u = interpolate(levels, altitudeFt, index, 'u')
     const v = interpolate(levels, altitudeFt, index, 'v')
     if (!u || !v) continue
@@ -111,7 +112,7 @@ function weightedWind(levels, axis, altitudeFt, weights) {
   return { averageKt: Math.round(average), minKt: Math.round(Math.min(...values.map((item) => item.value))), maxKt: Math.round(Math.max(...values.map((item) => item.value))) }
 }
 
-function sampleWeights(samples) {
+export function sampleWeights(samples) {
   return samples.map((sample, index) => {
     const next = samples[index + 1]?.distanceNm
     return Number.isFinite(next) ? Math.max(0, next - sample.distanceNm) : 0
@@ -134,11 +135,12 @@ function categoricalAt(levels, altitudeFt, sampleIndex, field) {
   return choices.sort((a, b) => Math.abs(a.altitudeFt - altitudeFt) - Math.abs(b.altitudeFt - altitudeFt))[0].value
 }
 
-function exposureSummary(levels, axis, altitudeFt, field, weights, transform = (value) => value) {
+export function exposureSummary(levels, axis, altitudeFt, field, weights, transform = (value) => value, includeZeroWeight = true) {
   if (!Array.isArray(levels) || !levels.length || !axis?.samples?.length) return { status: 'unavailable', highestGrade: null, exposureNmByGrade: {} }
   const byGrade = {}
   let highest = null
   for (const [index, sample] of axis.samples.entries()) {
+    if (!includeZeroWeight && !(weights[index] > 0)) continue
     const rawGrade = categoricalAt(levels, altitudeFt, index, field)
     const grade = rawGrade == null ? null : transform(rawGrade)
     if (grade == null) continue
@@ -149,6 +151,21 @@ function exposureSummary(levels, axis, altitudeFt, field, weights, transform = (
   return highest == null
     ? { status: 'unavailable', highestGrade: null, highestGradeExposureNm: 0, exposureNmByGrade: {} }
     : { status: 'available', highestGrade: highest, highestGradeExposureNm: byGrade[String(highest)] ?? 0, exposureNmByGrade: byGrade }
+}
+
+export function weightedTemperature(levels, axis, altitudeFt, weights, includeZeroWeight = true) {
+  const values = []
+  for (const [index] of (axis?.samples ?? []).entries()) {
+    if (!includeZeroWeight && !(weights[index] > 0)) continue
+    const value = interpolate(levels, altitudeFt, index, 'T')
+    if (value) values.push({ value: value.value - 273.15, weight: weights[index] })
+  }
+  if (!values.length) return null
+  const totalWeight = values.reduce((sum, item) => sum + item.weight, 0)
+  const average = totalWeight > 0
+    ? values.reduce((sum, item) => sum + item.value * item.weight, 0) / totalWeight
+    : values.reduce((sum, item) => sum + item.value, 0) / values.length
+  return { meanC: Math.round(average), minC: Math.round(Math.min(...values.map((item) => item.value))), maxC: Math.round(Math.max(...values.map((item) => item.value))) }
 }
 
 function matchHazards(hazards, axis, altitudeFt, etd, eta) {

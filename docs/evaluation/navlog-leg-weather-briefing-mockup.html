@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>경로 구간 기상 브리핑 목업</title>
+  <style>
+    :root { --bg:#f7f8fa; --panel:#fff; --line:#d9dee7; --text:#19202b; --muted:#667085; --accent:#365d82; --blue:#eaf2f9; --amber:#9b6500; --amber-bg:#fff5df; --red:#b42318; --red-bg:#fff0ef; --green:#147a54; --green-bg:#e9f7ef; --gray-bg:#f1f3f6; }
+    * { box-sizing: border-box; } body { margin:0; font:14px/1.45 Inter, Pretendard, Arial, sans-serif; color:var(--text); background:var(--bg); }
+    .shell { min-height:100vh; display:grid; grid-template-columns:1fr minmax(500px,52vw); background:linear-gradient(125deg,#dbe5eb,#ecf0f2 48%,#c7d5df); }
+    .map { position:relative; overflow:hidden; } .map::before,.map::after { content:""; position:absolute; border:1px solid rgba(76,105,126,.18); border-radius:48%; transform:rotate(-23deg); }
+    .map::before { width:900px; height:470px; left:-140px; top:13%; } .map::after { width:720px; height:380px; right:-210px; bottom:2%; }
+    .route { position:absolute; width:78%; height:4px; left:8%; top:49%; background:#344a60; transform:rotate(14deg); box-shadow:0 0 0 7px rgba(255,255,255,.55); }
+    .pin { position:absolute; width:14px; height:14px; border-radius:50%; background:#344a60; border:3px solid white; box-shadow:0 1px 5px #65727d; } .pin.a { left:14%; top:59%; } .pin.b { left:78%; top:35%; }
+    .map-note { position:absolute; left:28px; bottom:26px; color:#526573; font-weight:700; letter-spacing:.02em; }
+    .briefing { background:var(--panel); border-left:1px solid var(--line); padding:24px; overflow:auto; }
+    header { display:flex; justify-content:space-between; gap:12px; padding-bottom:16px; border-bottom:1px solid var(--line); } h1 { font-size:20px; margin:0 0 3px; } .sub { color:var(--muted); font-size:12px; } .close { width:34px; height:34px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:20px; color:var(--muted); }
+    .banner { margin:16px 0; display:flex; overflow:hidden; border:1px solid #f0c36a; border-radius:12px; background:#fffdf8; } .banner strong { display:grid; place-items:center; min-width:112px; padding:12px; color:var(--amber); background:var(--amber-bg); font-size:18px; } .banner div { padding:10px 14px; } .banner small { display:block; color:var(--muted); margin-top:2px; }
+    .tabs { display:flex; gap:7px; border-bottom:1px solid var(--line); margin-bottom:18px; } .tabs span { padding:9px 7px; color:var(--muted); font-weight:700; } .tabs .active { color:var(--accent); border-bottom:3px solid var(--accent); }
+    .section { margin:22px 0; } .section-head { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:9px; } h2 { font-size:16px; margin:0; } .hint { color:var(--muted); font-size:12px; }
+    .ribbon { display:grid; grid-template-columns:72px 1fr; gap:9px; align-items:center; margin:7px 0; font-size:12px; } .track { height:12px; border-radius:9px; background:#edf0f3; position:relative; overflow:hidden; } .seg { position:absolute; top:0; height:100%; border-radius:9px; } .ice { left:23%; width:24%; background:#6b7ea8; } .turb { left:52%; width:15%; background:#d38a22; }
+    .leg-note { padding:11px 12px; border:1px solid #cbdbe9; border-radius:9px; background:#f7fbff; color:#385673; font-size:12px; }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:10px; } table { width:100%; border-collapse:collapse; min-width:720px; } th { background:#f7f8fa; color:var(--muted); font-size:12px; text-align:left; white-space:nowrap; } th,td { padding:11px 10px; border-bottom:1px solid #e9edf2; vertical-align:top; } tr:last-child td { border-bottom:0; } td { font-variant-numeric:tabular-nums; } .leg { font-weight:800; white-space:nowrap; } .minor { display:block; color:var(--muted); font-size:11px; margin-top:2px; }
+    .chip { display:inline-block; margin:0 4px 4px 0; padding:3px 6px; border-radius:5px; font-size:11px; font-weight:700; } .amber { color:var(--amber); background:var(--amber-bg); } .red { color:var(--red); background:var(--red-bg); } .neutral { color:#556070; background:var(--gray-bg); } .green { color:var(--green); background:var(--green-bg); }
+    .raw { padding:12px; border:1px dashed var(--line); border-radius:10px; color:var(--muted); background:#fcfcfd; } .raw b { color:var(--text); }
+    .mobile-cards { display:none; } .card { border:1px solid var(--line); border-radius:10px; padding:13px; margin-bottom:10px; } .card-head { display:flex; justify-content:space-between; gap:10px; align-items:baseline; } .card-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:12px 0; } .card-grid div { color:var(--muted); font-size:11px; } .card-grid b { display:block; color:var(--text); font-size:13px; margin-top:2px; }
+    @media (max-width:719px) { .shell { display:block; background:var(--bg); } .map { height:164px; } .briefing { border:0; padding:16px; } .banner strong { min-width:88px; font-size:16px; } .desktop-table { display:none; } .mobile-cards { display:block; } .tabs { overflow:auto; white-space:nowrap; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <aside class="map" aria-label="지도 목업">
+      <span class="route"></span><span class="pin a"></span><span class="pin b"></span>
+      <span class="map-note">선택 경로 · RKJJ → RKPS</span>
+    </aside>
+    <section class="briefing" aria-label="비행 전 브리핑">
+      <header><div><h1>RKJJ → RKPS</h1><div class="sub">IFR · FL090 · ETD 10:00Z · 예상 ETA 10:42Z</div></div><button class="close" aria-label="닫기">×</button></header>
+      <div class="banner"><strong>주의</strong><div><b>경로상 기상과 NOTAM을 확인하세요</b><small>기상 정보 브리핑이며 운항 가능 여부를 판단하지 않습니다.</small></div></div>
+      <nav class="tabs" aria-label="브리핑 구간"><span>① 위험</span><span>② 현재</span><span class="active">③ 노선·공역</span><span>④ 목적지</span></nav>
+      <section class="section"><div class="section-head"><h2>③ 노선·공역</h2><span class="hint">계획고도 9,000 ft</span></div>
+        <div class="ribbon"><b>착빙</b><div class="track"><i class="seg ice"></i></div></div>
+        <div class="ribbon"><b>난류</b><div class="track"><i class="seg turb"></i></div></div>
+      </section>
+      <section class="section">
+        <div class="section-head"><h2>경로 구간 기상 브리핑</h2><span class="hint">3개 en-route 구간</span></div>
+        <p class="leg-note">선택 고도 FL090 기준 · 기상 정보 브리핑이며 운항 NavLog, ETA 또는 연료 계산을 포함하지 않습니다.</p>
+        <div class="desktop-table table-wrap"><table><thead><tr><th>구간</th><th>거리</th><th>Course</th><th>선택고도</th><th>바람</th><th>기온</th><th>위험기상</th></tr></thead><tbody>
+          <tr><td class="leg">RKJJ → KALOD<span class="minor">정렬됨</span></td><td>28 NM</td><td>061°T</td><td>9,000 ft</td><td>평균 순풍 +12 kt<span class="minor">범위 +8~+18 kt</span></td><td>-4°C<span class="minor">범위 -5~-3°C</span></td><td><span class="chip green">해당 없음</span></td></tr>
+          <tr><td class="leg">KALOD → GUKDO<span class="minor">정렬됨</span></td><td>46 NM</td><td>073°T</td><td>9,000 ft</td><td>평균 맞바람 6 kt<span class="minor">범위 2~11 kt</span></td><td>-6°C<span class="minor">범위 -8~-5°C</span></td><td><span class="chip amber">난류 보통 12 NM</span><span class="chip red">SIGMET TS</span><span class="chip neutral">고도 판정 불가</span></td></tr>
+          <tr><td class="leg">GUKDO → RKPS<span class="minor">AIP 제약 미확인</span></td><td>31 NM</td><td>089°T</td><td>9,000 ft</td><td><span class="chip neutral">자료 없음</span></td><td>-5°C</td><td><span class="chip neutral">NOTAM 판정 불가</span><span class="chip neutral">AIP 제약 확인 불가</span></td></tr>
+        </tbody></table></div>
+        <div class="mobile-cards">
+          <article class="card"><div class="card-head"><b>RKJJ → KALOD</b><span>28 NM · 061°T</span></div><div class="card-grid"><div>선택고도<b>9,000 ft</b></div><div>바람<b>순풍 +12 kt</b></div><div>기온<b>-4°C</b></div><div>위험기상<b>해당 없음</b></div></div><span class="chip green">해당 없음</span></article>
+          <article class="card"><div class="card-head"><b>KALOD → GUKDO</b><span>46 NM · 073°T</span></div><div class="card-grid"><div>선택고도<b>9,000 ft</b></div><div>바람<b>맞바람 6 kt</b></div><div>기온<b>-6°C</b></div><div>난류<b>보통 12 NM</b></div></div><span class="chip red">SIGMET TS</span><span class="chip neutral">고도 판정 불가</span></article>
+          <article class="card"><div class="card-head"><b>GUKDO → RKPS</b><span>31 NM · 089°T</span></div><div class="card-grid"><div>선택고도<b>9,000 ft</b></div><div>바람<b>자료 없음</b></div><div>기온<b>-5°C</b></div><div>AIP<b>제약 확인 불가</b></div></div><span class="chip neutral">NOTAM 판정 불가</span></article>
+        </div>
+      </section>
+      <section class="section raw"><b>상층바람·기온 원자료</b><br>기존 단면도와 원자료 표는 이 leg 브리핑 아래에 이어서 표시됩니다.</section>
+    </section>
+  </main>
+</body>
+</html>

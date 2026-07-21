@@ -26,6 +26,21 @@ async function createBriefing(page) {
 }
 
 test.describe('briefing-view', () => {
+  test('renders route weather legs as a table or mobile cards', async ({ page }, testInfo) => {
+    await createBriefing(page)
+
+    await expect(page.getByText('경로 구간 기상 브리핑', { exact: true })).toBeVisible()
+    await expect(page.getByText('FIXA → FIXB', { exact: true })).toBeVisible()
+    await expect(page.getByText('FIXB → FIXC', { exact: true })).toBeVisible()
+    await expect(page.getByText(/NOTAM 판정 불가/)).toBeVisible()
+    await expect(page.getByText('ETA 또는 연료 계산은 포함하지 않습니다.', { exact: true })).toBeVisible()
+    if (testInfo.project.name === 'mobile') {
+      await expect(page.getByTestId('route-weather-leg-card')).toHaveCount(2)
+    } else {
+      await expect(page.getByRole('columnheader', { name: '위험기상', exact: true })).toBeVisible()
+    }
+  })
+
   test('switches between full briefing and map-together views for a local navdata route', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'the mobile briefing sheet has no full/map-together view control')
     await createBriefing(page)
