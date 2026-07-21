@@ -45,10 +45,17 @@ function WeatherLegends({
   turbulenceLegendEntries = [],
   radarReferenceTimeMs,
   lightningReferenceTimeMs,
+  radarMotionAvailable = false,
+  radarMotionStale = false,
+  radarMotionRequested = false,
+  radarMotionObservedAtMs,
+  radarMotionComparedFromMs,
+  onRadarMotionRequestedChange,
   formatReferenceTimeLabel,
 }) {
   const isMobile = useIsMobile()
   const [open, setOpen] = useState(false)
+  const radarMotionEnabled = false
   if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible) return null
 
   const panel = (
@@ -68,6 +75,24 @@ function WeatherLegends({
               </div>
             ))}
           </div>
+          {radarMotionEnabled && radarLegendVisible && <div className="radar-motion-control">
+            <button
+              type="button"
+              className="radar-motion-toggle"
+              onClick={() => onRadarMotionRequestedChange?.((visible) => !visible)}
+              aria-pressed={radarMotionRequested}
+              disabled={!radarMotionAvailable || radarMotionStale}
+            >
+              이동 화살표 표시
+            </button>
+            <span className="radar-motion-note">
+              {radarMotionStale
+                ? '레이더 자료 지연'
+                : radarMotionAvailable
+                  ? `관측 ${formatReferenceTimeLabel(radarMotionObservedAtMs)} · 비교 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} · 예측 아님`
+                  : '표시 중인 레이더 프레임의 이동 자료 없음'}
+            </span>
+          </div>}
         </div>
       )}
       {/* 해외 레이더(RainViewer): 우리는 픽셀만 받고 숫자가 없다 → mm/h 눈금을 붙이면 오독을 부른다.
@@ -252,6 +277,26 @@ function WeatherLegends({
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} />
         ))}
+        {radarMotionEnabled && radarLegendVisible && (
+          <div className="radar-motion-control radar-motion-control--mobile">
+            <button
+              type="button"
+              className="radar-motion-toggle"
+              onClick={() => onRadarMotionRequestedChange?.((visible) => !visible)}
+              aria-pressed={radarMotionRequested}
+              disabled={!radarMotionAvailable || radarMotionStale}
+            >
+              {'\uC774\uB3D9 \uD654\uC0B4\uD45C \uD45C\uC2DC'}
+            </button>
+            <span className="radar-motion-note">
+              {radarMotionStale
+                ? '\uB808\uC774\uB354 \uC790\uB8CC \uC9C0\uC5F0'
+                : radarMotionAvailable
+                  ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9`
+                  : '\uC774\uB3D9 \uC790\uB8CC \uC5C6\uC74C'}
+            </span>
+          </div>
+        )}
       </div>
       <button
         type="button"

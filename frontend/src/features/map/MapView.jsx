@@ -30,6 +30,7 @@ import AdsbTimestamp from '../weather-overlays/AdsbTimestamp.jsx'
 import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
 import TimelineRail from '../weather-overlays/TimelineRail.jsx'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
+import useRadarMotionOverlay from '../weather-overlays/lib/useRadarMotionOverlay.js'
 import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
 import NwpSliderBar from '../weather-overlays/NwpSliderBar.jsx'
@@ -588,6 +589,11 @@ const MapView = forwardRef(function MapView({
     flightCategoryGeojson,
     tz,
   ])
+  const radarMotionOverlay = useRadarMotionOverlay({
+    radarEnabled: weatherOverlayModel.visibility.radar,
+    hasExactMotionFrame: Boolean(weatherOverlayModel.radarMotion.dataUrl),
+    stale: weatherOverlayModel.radarMotion.stale,
+  })
   const {
     radarFrames,
     satelliteFrames,
@@ -608,6 +614,7 @@ const MapView = forwardRef(function MapView({
     lightningLegendVisible,
     lightningLegendEntries,
     radarReferenceTimeMs,
+    radarMotion,
     sigwxIssueLabel,
     sigwxValidLabel,
     nwpIssueLabel,
@@ -725,6 +732,10 @@ const MapView = forwardRef(function MapView({
   const rasterAndSigwxModel = useMemo(() => ({
     satelliteFrame: weatherOverlayModel.satelliteFrame,
     radarFrame: weatherOverlayModel.radarFrame,
+    radarMotion: {
+      ...weatherOverlayModel.radarMotion,
+      visible: radarMotionOverlay.effectiveVisible,
+    },
     rainviewerMeta: weatherOverlayModel.rainviewerMeta,
     rainviewerFrame: weatherOverlayModel.rainviewerFrame,
     selectedSigwxFrontMeta: weatherOverlayModel.selectedSigwxFrontMeta,
@@ -741,6 +752,8 @@ const MapView = forwardRef(function MapView({
   }), [
     weatherOverlayModel.satelliteFrame,
     weatherOverlayModel.radarFrame,
+    weatherOverlayModel.radarMotion,
+    radarMotionOverlay.effectiveVisible,
     weatherOverlayModel.rainviewerMeta,
     weatherOverlayModel.rainviewerFrame,
     weatherOverlayModel.selectedSigwxFrontMeta,
@@ -1429,6 +1442,12 @@ const MapView = forwardRef(function MapView({
         turbulenceLegendEntries={KTG_COLOR_RAMP}
         radarReferenceTimeMs={radarReferenceTimeMs}
         lightningReferenceTimeMs={lightningReferenceTimeMs}
+        radarMotionAvailable={Boolean(radarMotion.dataUrl)}
+        radarMotionStale={radarMotion.stale}
+        radarMotionRequested={radarMotionOverlay.requestedVisible}
+        radarMotionObservedAtMs={radarMotion.observedAtMs}
+        radarMotionComparedFromMs={radarMotion.comparedFromMs}
+        onRadarMotionRequestedChange={radarMotionOverlay.setRequestedVisible}
         formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
       />
 

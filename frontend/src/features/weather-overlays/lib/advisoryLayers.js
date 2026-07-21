@@ -36,7 +36,7 @@ export const ADVISORY_LAYER_DEFS = {
   },
 }
 
-const MOTION_ARROW_ICON_ID = 'advisory-motion-arrow'
+export const MOTION_ARROW_ICON_ID = 'advisory-motion-arrow'
 
 // airportStationImages.js의 캔버스 아이콘 패턴과 동일 — 회전은 icon-rotate로 런타임에 적용하니
 // 방향별 이미지를 미리 만들 필요 없이 위(0도, 북쪽)를 가리키는 화살표 하나만 등록하면 된다.
@@ -64,7 +64,7 @@ function createMotionArrowImage() {
   return { data, width, height, pixelRatio }
 }
 
-function ensureMotionArrowImage(map) {
+export function ensureMotionArrowImage(map) {
   if (map.hasImage(MOTION_ARROW_ICON_ID) || typeof document === 'undefined') return
   const image = createMotionArrowImage()
   map.addImage(MOTION_ARROW_ICON_ID, image, { pixelRatio: image.pixelRatio })

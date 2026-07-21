@@ -9,6 +9,8 @@ import { phenomenonText } from '../../../shared/weather/phenomenonKo.js'
 import { sigwxLowToMapboxData } from './sigwxData.js'
 import { LIGHTNING_AGE_BANDS, createLightningGeoJSON } from './lightningLayers.js'
 
+export const RADAR_MOTION_ENABLED = false
+
 export function parseFrameTmToMs(tm) {
   if (!tm || !/^\d{12}$/.test(String(tm))) return null
   const raw = String(tm)
@@ -155,7 +157,28 @@ export function buildWeatherOverlayModel({
   const radarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
   const rainviewerFrame = pickRainviewerFrame(rainviewerFrames, resolvedWeatherTimeMs)
   const satelliteFrame = pickNearestPreviousFrame(satelliteFrames, resolvedWeatherTimeMs)
-  const lightningGeoJSON = createLightningGeoJSON(lightningData, lightningReferenceTimeMs)
+  const radarReferenceTimeMs = parseFrameTmToMs(radarFrame?.tm)
+  const latestRadarFrame = radarFrames.at(-1) || null
+  const latestRadarTimeMs = latestRadarFrame?.timeMs ?? null
+  const motion = radarFrame?.motion || null
+  const hasExactMotion = Number.isFinite(radarReferenceTimeMs)
+    && Number(motion?.observedAtMs) === radarReferenceTimeMs
+    && Boolean(motion?.path)
+  const motionStale = hasExactMotion
+    && Number.isFinite(latestRadarTimeMs)
+    && latestRadarTimeMs - radarReferenceTimeMs > 20 * 60 * 1000
+  const radarMotion = {
+    visible: Boolean(RADAR_MOTION_ENABLED && visibility.radar && hasExactMotion && !motionStale),
+    stale: Boolean(motionStale),
+    frameTm: radarFrame?.tm ?? null,
+    dataUrl: RADAR_MOTION_ENABLED && hasExactMotion ? motion.path : null,
+    observedAtMs: RADAR_MOTION_ENABLED && hasExactMotion ? motion.observedAtMs : null,
+    comparedFromMs: RADAR_MOTION_ENABLED && hasExactMotion ? motion.comparedFromMs ?? null : null,
+  }
+  const resolvedLightningReferenceTimeMs = visibility.radar && Number.isFinite(radarReferenceTimeMs)
+    ? radarReferenceTimeMs
+    : lightningReferenceTimeMs
+  const lightningGeoJSON = createLightningGeoJSON(lightningData, resolvedLightningReferenceTimeMs)
 
   const sigmetItems = advisoryItemsWithPanelData(sigmetData, 'sigmet', tz)
   const airmetItems = advisoryItemsWithPanelData(airmetData, 'airmet', tz)
@@ -213,6 +236,7 @@ export function buildWeatherOverlayModel({
     selectedWeatherTimeMs: resolvedWeatherTimeMs,
     weatherTimelineVisible,
     radarFrame,
+    radarMotion,
     rainviewerFrame,
     satelliteFrame,
     lightningGeoJSON,
@@ -247,9 +271,9 @@ export function buildWeatherOverlayModel({
     lightningLegendEntries: LIGHTNING_AGE_BANDS.map((band) => ({
       ...band,
       color: band.color,
-      label: formatReferenceTimeLabel(lightningReferenceTimeMs - band.max * 60 * 1000, tz),
+      label: formatReferenceTimeLabel(resolvedLightningReferenceTimeMs - band.max * 60 * 1000, tz),
     })),
-    radarReferenceTimeMs: parseFrameTmToMs(radarFrame?.tm) ?? Date.now(),
+    radarReferenceTimeMs: radarReferenceTimeMs ?? Date.now(),
     sigwxIssueLabel: formatSigwxStamp(selectedSigwxEntry?.fetched_at, tz),
     sigwxValidLabel: formatSigwxStamp(selectedSigwxEntry?.tmfc, tz),
     nwpIssueLabel: formatSigwxStamp(nwpSelection?.tmfc ?? null, tz),
@@ -264,6 +288,6 @@ export function buildWeatherOverlayModel({
     flightCategoryIssueLabel: formatSigwxStamp(flightCategoryGeojson?.fetched_at ?? null, tz),
     blinkLightning,
     lightningBlinkOff,
-    lightningReferenceTimeMs,
+    lightningReferenceTimeMs: resolvedLightningReferenceTimeMs,
   }
 }
