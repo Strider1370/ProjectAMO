@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './RouteBriefing.css'
 import { Button, Input } from '../../shared/ui/fluent.js'
-import { ChevronUp, ChevronDown } from 'lucide-react'
+import { ChevronUp, ChevronDown, Route, Clock, CloudLightning } from 'lucide-react'
 import LayerToggleChips from '../map/LayerToggleChips.jsx'
 import { metLabel } from '../map/layerActions.js'
 import { hazardMapLayers } from './lib/hazardLayers.js'
@@ -60,8 +60,10 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
     <div className="rb-alternatives">
       {baseDesign && <div className="rb-comparison-summary">
         <strong>{baseDesign.name}</strong>
-        <span>{Number.isFinite(baseDistance) ? `${Math.round(baseDistance)} NM` : '거리 자료 없음'}</span>
-        {baseEta && <span>ETA {baseEta.slice(11, 16)} UTC</span>}
+        <span className="rb-card-stats">
+          <span className="rb-card-stat"><Route size={14} />{Number.isFinite(baseDistance) ? `${Math.round(baseDistance)} NM` : '거리 자료 없음'}</span>
+          {baseEta && <span className="rb-card-stat"><Clock size={14} />{baseEta.slice(11, 16)} UTC</span>}
+        </span>
         <Button appearance="primary" type="button" onClick={onDuplicate} disabled={designs.length >= 4}>이 경로에서 우회안 만들기</Button>
       </div>}
       {message && <p className="rb-alternatives-status">{message}</p>}
@@ -79,16 +81,25 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
         return (
           <button key={design.id} type="button" aria-selected={selected} className={`rb-alternative-card${selected ? ' is-selected' : ''}`} onClick={() => onSelect(design.id)}>
             <strong>{design.name}</strong>
-            <span>{Number.isFinite(distance) ? `${Math.round(distance)} NM` : '거리 자료 없음'}</span>
-            {comparison?.eta && <span>ETA {comparison.eta.slice(11, 16)} UTC</span>}
-            {comparison?.distanceDeltaNm != null && <span>기준 대비 {comparison.distanceDeltaNm > 0 ? '+' : ''}{comparison.distanceDeltaNm} NM · {comparison.etaDeltaMinutes > 0 ? '+' : ''}{comparison.etaDeltaMinutes}분</span>}
-            {comparison?.comparisonUnavailable && <span>위험 노출 비교 자료 없음</span>}
-            <span className={`rb-card-total-exposure${hazards.length === 0 ? ' is-zero' : ''}`}>위험기상 노출 합계 {totalHazardExposureNm} NM · {hazards.length}건</span>
-            <span className="rb-card-hazard">
-              {hazards.length > 0
-                ? visibleHazards.map((hazard) => <span key={hazard.sourceId} className="hz-chip">{exposureLabel(hazard)}</span>)
-                : <span className="hz-chip">그 외 보고 없음</span>}
+            <span className="rb-card-stats">
+              <span className="rb-card-stat"><Route size={14} />{Number.isFinite(distance) ? `${Math.round(distance)} NM` : '거리 자료 없음'}</span>
+              {comparison?.eta && <span className="rb-card-stat"><Clock size={14} />{comparison.eta.slice(11, 16)} UTC</span>}
+              {comparison?.distanceDeltaNm != null && (
+                <span className="rb-card-stat rb-card-delta">
+                  {comparison.distanceDeltaNm !== 0 && (comparison.distanceDeltaNm > 0 ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                  기준 대비 {comparison.distanceDeltaNm > 0 ? '+' : ''}{comparison.distanceDeltaNm} NM · {comparison.etaDeltaMinutes > 0 ? '+' : ''}{comparison.etaDeltaMinutes}분
+                </span>
+              )}
+              {comparison?.comparisonUnavailable && <span className="rb-card-stat">위험 노출 비교 자료 없음</span>}
             </span>
+            <span className={`rb-card-stat rb-card-total-exposure${hazards.length === 0 ? ' is-zero' : ''}`}>
+              <CloudLightning size={14} />위험기상 노출 {totalHazardExposureNm} NM · {hazards.length}건
+            </span>
+            {hazards.length > 0 && (
+              <span className="rb-card-hazard">
+                {visibleHazards.map((hazard) => <span key={hazard.sourceId} className="hz-chip">{exposureLabel(hazard)}</span>)}
+              </span>
+            )}
             {hiddenCount > 0 && (
               <span
                 role="button"
@@ -100,7 +111,6 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
                 {hiddenCount}건 더 보기
               </span>
             )}
-            {selected && <span>선택됨</span>}
           </button>
         )
       })}

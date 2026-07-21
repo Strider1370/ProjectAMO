@@ -32,8 +32,14 @@ test.describe('tabcapture', () => {
     await expect(page.getByText('기본 경로', { exact: true })).toBeVisible()
     await page.screenshot({ path: `${OUT}/2-alternate-routes.png`, fullPage: true })
 
-    // Tab 3 — 대안고도
-    await page.getByRole('button', { name: '기본 경로로 고도 비교', exact: true }).click()
+    // 대안 경로 카드 실제 렌더 확인용 — "우회안 만들기"로 경로 A/B 생성.
+    await page.getByRole('button', { name: '이 경로에서 우회안 만들기', exact: true }).click()
+    await page.getByRole('button', { name: '이 경로에서 우회안 만들기', exact: true }).click()
+    await expect(page.locator('.rb-alternative-card').nth(1)).toBeVisible()
+    await page.screenshot({ path: `${OUT}/2b-alternate-route-cards.png`, fullPage: true })
+
+    // Tab 3 — 대안고도 (우회안 생성 시 대안이 선택 상태라 버튼 라벨이 달라짐)
+    await page.getByRole('button', { name: /경로로 고도 비교|우회안으로 고도 비교/ }).click()
     await page.getByRole('spinbutton', { name: '계획 순항고도 (ft)', exact: true }).fill('9000')
     await page.getByRole('button', { name: '고도 비교', exact: true }).click()
     await expect(page.getByRole('button', { name: /^FL90/ })).toBeVisible()

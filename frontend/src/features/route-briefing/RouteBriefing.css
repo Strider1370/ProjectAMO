@@ -149,8 +149,15 @@
 .rb-alternatives-status, .rb-alternatives-note { margin: 0; font-size: 13px; color: var(--text-3); }
 .rb-alternatives-reason, .rb-alert-banner { margin: 0; font-size: 13px; font-weight: 600; color: var(--level-amber); background: var(--level-amber-bg); border-radius: var(--radius-md); padding: 6px 10px; }
 .rb-alternative-card { display: grid; gap: 4px; width: 100%; padding: 12px; text-align: left; color: inherit; background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-xl); cursor: pointer; }
-.rb-alternative-card.is-selected { border-color: var(--accent); background: var(--level-gray-bg); }
+/* 선택 표시는 텍스트("선택됨") 대신 이 테두리·배경만으로 전달한다 — border-width를 늘려
+   1px 대비 확실히 구분되게 한다. aria-selected는 스크린리더용으로 별도 유지. */
+.rb-alternative-card.is-selected { border-color: var(--accent); border-width: 2px; padding: 11px; background: var(--level-gray-bg); }
 .rb-alternative-card:disabled { cursor: not-allowed; opacity: .55; }
+
+/* 카드 내부 통계를 세로 나열 대신 가로로 배치(거리·ETA·기준대비 등을 한 줄에서 훑어보게). */
+.rb-card-stats { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.rb-card-stat { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-2); }
+.rb-card-delta { color: var(--text-3); }
 
 /* 고도 비교 행 — 착빙·난류·위험기상·노출이 모든 행에서 같은 가로 위치에 오도록
    고정 열 격자로 정렬(표처럼 훑어볼 수 있게). 경로비교 카드(.rb-alternative-card만
