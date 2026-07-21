@@ -155,9 +155,16 @@
 .rb-alternative-card:disabled { cursor: not-allowed; opacity: .55; }
 
 /* 카드 내부 통계를 세로 나열 대신 가로로 배치(거리·ETA·기준대비 등을 한 줄에서 훑어보게). */
-.rb-card-stats { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-.rb-card-stat { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-2); }
-.rb-card-delta { color: var(--text-3); }
+/* 경로 카드 통계 타일 — 아이콘(위) + 값(아래, 기준 대비 델타는 괄호로 같은 줄에).
+   고정 열 격자라 카드 폭이 같으면 우회안 A/B/C가 항상 같은 x 위치에서 맞물려
+   위아래로 훑어보며 비교할 수 있다. */
+.rb-route-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 8px; padding: 2px 0; }
+.rb-comparison-summary .rb-route-stats { grid-template-columns: repeat(2, 1fr); max-width: 220px; }
+.rb-route-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--text-3); }
+.rb-route-stat svg { flex: none; }
+.rb-route-stat-value { font-size: 13px; font-weight: 600; color: var(--text-1); }
+.rb-route-stat-delta { font-size: 11px; font-weight: 500; color: var(--text-3); }
+.rb-card-total-exposure.is-zero .rb-route-stat-value { color: var(--text-3); font-weight: 500; }
 
 /* 고도 비교 행 — 착빙·난류·위험기상·노출이 모든 행에서 같은 가로 위치에 오도록
    고정 열 격자로 정렬(표처럼 훑어볼 수 있게). 경로비교 카드(.rb-alternative-card만
