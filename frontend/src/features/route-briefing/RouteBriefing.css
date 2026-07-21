@@ -162,6 +162,7 @@
 .rb-comparison-summary .rb-route-stats { grid-template-columns: repeat(2, 1fr); max-width: 220px; }
 .rb-route-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; color: var(--text-3); }
 .rb-route-stat svg { flex: none; }
+.rb-route-stat-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-3); }
 .rb-route-stat-value { font-size: 13px; font-weight: 600; color: var(--text-1); }
 .rb-route-stat-delta { font-size: 11px; font-weight: 500; color: var(--text-3); }
 .rb-card-total-exposure.is-zero .rb-route-stat-value { color: var(--text-3); font-weight: 500; }

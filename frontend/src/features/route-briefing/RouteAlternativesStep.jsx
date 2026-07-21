@@ -62,12 +62,12 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
         <strong>{baseDesign.name}</strong>
         <span className="rb-route-stats">
           <span className="rb-route-stat">
-            <Route size={20} />
+            <span className="rb-route-stat-label"><Route size={16} />총 거리</span>
             <span className="rb-route-stat-value">{Number.isFinite(baseDistance) ? `${Math.round(baseDistance)} NM` : '거리 자료 없음'}</span>
           </span>
           {baseEta && (
             <span className="rb-route-stat">
-              <Clock size={20} />
+              <span className="rb-route-stat-label"><Clock size={16} />시간</span>
               <span className="rb-route-stat-value">{baseEta.slice(11, 16)} UTC</span>
             </span>
           )}
@@ -91,21 +91,21 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
             <strong>{design.name}</strong>
             <span className="rb-route-stats">
               <span className="rb-route-stat">
-                <Route size={20} />
+                <span className="rb-route-stat-label"><Route size={16} />총 거리</span>
                 <span className="rb-route-stat-value">
                   {Number.isFinite(distance) ? `${Math.round(distance)} NM` : '거리 자료 없음'}
                   {comparison?.distanceDeltaNm ? <span className="rb-route-stat-delta"> ({comparison.distanceDeltaNm > 0 ? '+' : ''}{comparison.distanceDeltaNm})</span> : null}
                 </span>
               </span>
               <span className="rb-route-stat">
-                <Clock size={20} />
+                <span className="rb-route-stat-label"><Clock size={16} />시간</span>
                 <span className="rb-route-stat-value">
                   {comparison?.eta ? `${comparison.eta.slice(11, 16)} UTC` : '시간 자료 없음'}
                   {comparison?.etaDeltaMinutes ? <span className="rb-route-stat-delta"> ({comparison.etaDeltaMinutes > 0 ? '+' : ''}{comparison.etaDeltaMinutes}분)</span> : null}
                 </span>
               </span>
               <span className={`rb-route-stat rb-card-total-exposure${hazards.length === 0 ? ' is-zero' : ''}`}>
-                <CloudLightning size={20} />
+                <span className="rb-route-stat-label"><CloudLightning size={16} />위험기상</span>
                 <span className="rb-route-stat-value">{totalHazardExposureNm} NM · {hazards.length}건</span>
               </span>
             </span>
