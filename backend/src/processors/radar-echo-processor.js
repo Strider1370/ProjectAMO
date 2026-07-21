@@ -1,12 +1,16 @@
 import fs from 'fs'
 import path from 'path'
 import config from '../config.js'
-import { parseRadarBinary, renderFullCoverageEcho } from '../parsers/radar-echo-parser.js'
+import { gridToLatLon, parseRadarBinary, renderFullCoverageEcho } from '../parsers/radar-echo-parser.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
+import { createMotionInput, deserializeMotionInput, deriveObservedMotion, serializeMotionInput } from './radar-motion.js'
 
 let backgroundFillRunning = false;
-const RENDER_VERSION = "rainrate-reproject-full-v2";
+const RENDER_VERSION = "rainrate-reproject-full-v5-motion-dense";
 const IMMEDIATE_FRAME_COUNT = 4;
+const MOTION_INPUT_FILENAME = 'motion_input_latest.bin';
+const MOTION_MAX_CALCULATION_MS = 30 * 1000;
+const MOTION_ENABLED = false;
 
 function ensureRadarDir() {
   const radarDir = path.join(config.storage.base_path, "radar");
@@ -101,26 +105,97 @@ function buildFrameTms(latestTm, frameCount) {
   return frameTms;
 }
 
+function frameTmToMs(tm) {
+  if (!/^\d{12}$/.test(String(tm))) return null;
+  return Date.UTC(
+    Number(tm.slice(0, 4)), Number(tm.slice(4, 6)) - 1, Number(tm.slice(6, 8)),
+    Number(tm.slice(8, 10)) - 9, Number(tm.slice(10, 12)), 0, 0,
+  );
+}
+
+function isAdjacentFrame(previousTm, currentTm) {
+  const previousMs = frameTmToMs(previousTm);
+  const currentMs = frameTmToMs(currentTm);
+  return Number.isFinite(previousMs) && Number.isFinite(currentMs) && currentMs - previousMs === 5 * 60 * 1000;
+}
+
+function writeAtomic(filePath, contents) {
+  const tempPath = `${filePath}.${globalThis.process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tempPath, contents);
+  fs.renameSync(tempPath, filePath);
+}
+
+function loadLatestMotionInput(radarDir) {
+  const inputPath = path.join(radarDir, MOTION_INPUT_FILENAME);
+  if (!fs.existsSync(inputPath)) return null;
+  try {
+    return deserializeMotionInput(fs.readFileSync(inputPath));
+  } catch {
+    return null;
+  }
+}
+
+function saveLatestMotionInput(radarDir, input) {
+  writeAtomic(path.join(radarDir, MOTION_INPUT_FILENAME), serializeMotionInput(input));
+}
+
+function attachMotionFrame(radarDir, frame, previousInput, currentInput) {
+  if (!previousInput?.tm || !isAdjacentFrame(previousInput.tm, currentInput.tm)) return frame;
+  try {
+    const startedAt = Date.now();
+    const observedAtMs = frameTmToMs(currentInput.tm);
+    const comparedFromMs = frameTmToMs(previousInput.tm);
+    const geojson = deriveObservedMotion(previousInput, currentInput, {
+      observedAtMs,
+      comparedFromMs,
+      gridToLatLon,
+      deadlineAtMs: startedAt + MOTION_MAX_CALCULATION_MS,
+    });
+    if (Date.now() - startedAt > MOTION_MAX_CALCULATION_MS || !geojson.features.length) {
+      console.warn(`radar_echo: motion unavailable for ${currentInput.tm}`);
+      return frame;
+    }
+    const filename = `motion_korea_${currentInput.tm}.geojson`;
+    writeAtomic(path.join(radarDir, filename), `${JSON.stringify(geojson)}\n`);
+    return {
+      ...frame,
+      motion: {
+        tm: currentInput.tm,
+        observedAtMs,
+        comparedFromMs,
+        path: `/data/radar/${filename}`,
+      },
+    };
+  } catch (error) {
+    console.warn(`radar_echo: motion publication failed for ${currentInput.tm}:`, error.message);
+    return frame;
+  }
+}
+
 async function renderFrame(radarDir, tm) {
   const filename = `echo_korea_${tm}.png`;
   const filePath = path.join(radarDir, filename);
   const gzBuffer = await fetchRadarBinary(tm);
   if (!gzBuffer) return null;
 
-  const { refl } = parseRadarBinary(gzBuffer);
+  const { refl, nx, ny } = parseRadarBinary(gzBuffer);
+  const motionInput = MOTION_ENABLED ? createMotionInput(refl, { nx, ny }, { tm }) : null;
   const nationwide = await renderFullCoverageEcho(refl);
   fs.writeFileSync(filePath, nationwide.pngBuffer);
 
   return {
-    tm,
-    cmp: config.radar_echo.cmp,
-    render_version: RENDER_VERSION,
-    path: `/data/radar/${filename}`,
-    bounds: nationwide.bounds,
-    width: nationwide.width,
-    height: nationwide.height,
-    echoCount: nationwide.echoCount,
-    scale: nationwide.scale,
+    frame: {
+      tm,
+      cmp: config.radar_echo.cmp,
+      render_version: RENDER_VERSION,
+      path: `/data/radar/${filename}`,
+      bounds: nationwide.bounds,
+      width: nationwide.width,
+      height: nationwide.height,
+      echoCount: nationwide.echoCount,
+      scale: nationwide.scale,
+    },
+    motionInput,
   };
 }
 
@@ -145,6 +220,7 @@ function writeMeta(radarDir, latestTm, frameTms, existingFrames) {
   }
 
   const validNames = new Set(frames.map((frame) => path.basename(frame.path)));
+  const validMotionNames = new Set(frames.map((frame) => frame.motion?.path && path.basename(frame.motion.path)).filter(Boolean));
 
   for (const filename of fs.readdirSync(radarDir)) {
     if (filename === "echo_korea.png") {
@@ -154,10 +230,13 @@ function writeMeta(radarDir, latestTm, frameTms, existingFrames) {
     if (/^echo_korea_\d{12}\.png$/.test(filename) && !validNames.has(filename)) {
       fs.unlinkSync(path.join(radarDir, filename));
     }
+    if (/^motion_korea_\d{12}\.geojson$/.test(filename) && !validMotionNames.has(filename)) {
+      fs.unlinkSync(path.join(radarDir, filename));
+    }
   }
 
   const metaPath = path.join(radarDir, "echo_meta.json");
-  fs.writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`, "utf8");
+  writeAtomic(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
   return meta;
 }
 
@@ -167,15 +246,18 @@ function scheduleBackgroundFill(radarDir, pendingTms, existingFrames, latestTm, 
   backgroundFillRunning = true;
   setTimeout(async () => {
     try {
+      let previousInput = null;
       for (const tm of pendingTms) {
         const filename = `echo_korea_${tm}.png`;
         const filePath = path.join(radarDir, filename);
         if (fs.existsSync(filePath) && existingFrames.get(tm)) continue;
 
         try {
-          const frameInfo = await renderFrame(radarDir, tm);
-          if (frameInfo) {
-            existingFrames.set(tm, frameInfo);
+          const rendered = await renderFrame(radarDir, tm);
+          if (rendered) {
+            const frame = attachMotionFrame(radarDir, rendered.frame, previousInput, rendered.motionInput);
+            previousInput = rendered.motionInput;
+            existingFrames.set(tm, frame);
             writeMeta(radarDir, latestTm, frameTms, existingFrames);
           }
         } catch (err) {
@@ -222,11 +304,17 @@ async function process() {
 
   const immediateTms = missingTms.slice(-IMMEDIATE_FRAME_COUNT);
   const deferredTms = missingTms.slice(0, -IMMEDIATE_FRAME_COUNT);
+  let previousInput = MOTION_ENABLED ? loadLatestMotionInput(radarDir) : null;
 
   for (const tm of immediateTms) {
     try {
-      const frameInfo = await renderFrame(radarDir, tm);
-      if (frameInfo) existingFrames.set(tm, frameInfo);
+      const rendered = await renderFrame(radarDir, tm);
+      if (rendered) {
+        const frame = attachMotionFrame(radarDir, rendered.frame, previousInput, rendered.motionInput);
+        previousInput = rendered.motionInput;
+        existingFrames.set(tm, frame);
+        if (MOTION_ENABLED && tm === latestTm) saveLatestMotionInput(radarDir, rendered.motionInput);
+      }
     } catch (err) {
       console.warn(`radar_echo: failed to render nationwide frame ${tm}:`, err.message);
     }
@@ -245,5 +333,5 @@ async function process() {
   };
 }
 
-export { process }
+export { attachMotionFrame, isAdjacentFrame, process, writeMeta }
 export default { process }

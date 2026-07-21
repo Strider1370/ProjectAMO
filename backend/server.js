@@ -97,7 +97,7 @@ function readJsonFileSafe(filePath) {
 function setGeneratedDataCacheHeaders(res, filePath) {
   const relPath = path.relative(DATA_ROOT, filePath).replace(/\\/g, '/')
 
-  if (/^radar\/echo_korea_\d{12}\.png$/i.test(relPath)) {
+  if (/^radar\/(?:echo_korea_\d{12}\.png|motion_korea_\d{12}\.geojson)$/i.test(relPath)) {
     res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
     return
   }

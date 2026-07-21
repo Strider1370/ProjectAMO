@@ -55,6 +55,44 @@ test('buildWeatherOverlayModel selects latest visible timeline frame by default'
   assert.equal(model.lightningLegendEntries[0].iconId, 'lightning-0-10')
 })
 
+test('temporarily suppresses motion metadata for the actually rendered radar frame', () => {
+  const selectedMs = Date.UTC(2026, 4, 14, 3, 7)
+  const model = buildWeatherOverlayModel({
+    echoMeta: { frames: [
+      { tm: '202605141200', path: '/r1.png', motion: { observedAtMs: Date.UTC(2026, 4, 14, 3, 0), path: '/stale.geojson' } },
+      { tm: '202605141205', path: '/r2.png', motion: { observedAtMs: Date.UTC(2026, 4, 14, 3, 5), comparedFromMs: Date.UTC(2026, 4, 14, 3, 0), path: '/exact.geojson' } },
+    ] },
+    satMeta: null,
+    lightningData: { nationwide: { strikes: [] } },
+    sigwxLowData: null, sigwxLowHistoryData: [], sigmetData: { items: [] }, airmetData: { items: [] },
+    visibility: { radar: true, lightning: true }, selectedWeatherTimeMs: selectedMs,
+    sigwxHistoryIndex: 0, sigwxFilter, hiddenAdvisoryKeys, selectedSigwxFrontMeta: null, selectedSigwxCloudMeta: null,
+    lightningReferenceTimeMs: Date.UTC(2026, 4, 14, 4, 0), blinkLightning: false, lightningBlinkOff: false,
+  })
+
+  assert.equal(model.radarFrame.tm, '202605141205')
+  assert.equal(model.radarMotion.dataUrl, null)
+  assert.equal(model.radarMotion.observedAtMs, null)
+  assert.equal(model.lightningReferenceTimeMs, model.radarFrame.timeMs)
+})
+
+test('hides stale radar motion and preserves the live lightning reference when radar is off', () => {
+  const nowMs = Date.UTC(2026, 4, 14, 4, 0)
+  const model = buildWeatherOverlayModel({
+    echoMeta: { frames: [
+      { tm: '202605141200', path: '/r1.png', motion: { observedAtMs: Date.UTC(2026, 4, 14, 3, 0), path: '/old.geojson' } },
+      { tm: '202605141230', path: '/r2.png' },
+    ] },
+    satMeta: null, lightningData: { nationwide: { strikes: [] } }, sigwxLowData: null, sigwxLowHistoryData: [], sigmetData: { items: [] }, airmetData: { items: [] },
+    visibility: { radar: false, lightning: true }, selectedWeatherTimeMs: Date.UTC(2026, 4, 14, 3, 0),
+    sigwxHistoryIndex: 0, sigwxFilter, hiddenAdvisoryKeys, selectedSigwxFrontMeta: null, selectedSigwxCloudMeta: null,
+    lightningReferenceTimeMs: nowMs, blinkLightning: false, lightningBlinkOff: false,
+  })
+
+  assert.equal(model.radarMotion.visible, false)
+  assert.equal(model.lightningReferenceTimeMs, nowMs)
+})
+
 // 해외 레이더(RainViewer)는 최근 2시간치뿐. 위성(6시간) 등이 타임라인을 더 과거로 늘리면,
 // pickNearestPreviousFrame의 `|| frames[0]` 폴백 때문에 "3시간 전을 보는데 2시간 전 강수를 그리는"
 // 시간 어긋남이 생긴다. 커버 밖에서는 프레임을 주지 말고(null) 안내를 띄워야 한다.

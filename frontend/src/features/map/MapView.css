@@ -669,6 +669,11 @@
   pointer-events: none;
 }
 
+/* The stack itself stays click-through, while controls inside a legend remain operable. */
+.map-view-wrapper .map-right-legends > * {
+  pointer-events: auto;
+}
+
 /* When the far-right level rail is shown, shift the legends left (with a gap) and align their top
    to the level rail's chip box (which sits below the "고도" title). */
 .map-view-wrapper:has(.level-rail) .map-right-legends {
@@ -778,7 +783,7 @@
 .map-view-wrapper .rainrate-legend {
   display: grid;
   gap: 4px;
-  width: 58px;
+  width: 164px;
   padding: 7px 5px 7px 7px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.9);
@@ -854,6 +859,48 @@
   font-weight: 900;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+.map-legends-bottom .radar-motion-control--mobile {
+  min-width: 0;
+}
+
+.map-legends-bottom .radar-motion-control--mobile .radar-motion-toggle {
+  width: 100%;
+}
+
+.map-view-wrapper .radar-motion-control {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.map-view-wrapper .radar-motion-toggle {
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.map-view-wrapper .radar-motion-toggle[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+
+.map-view-wrapper .radar-motion-toggle:disabled {
+  border-color: var(--border-2);
+  color: var(--text-3);
+}
+
+.map-view-wrapper .radar-motion-note {
+  color: var(--text-2);
+  font-size: 0.58rem;
+  line-height: 1.25;
 }
 
 .map-view-wrapper .rainrate-legend-scale,
