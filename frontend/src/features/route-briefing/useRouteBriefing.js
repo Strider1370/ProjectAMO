@@ -196,7 +196,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     pendingSid: selectedSid,
     pendingStar: selectedStar,
     pendingIap: selectedIap,
-  }), [appliedIap, appliedProcedures.sid, appliedProcedures.star, appliedVfrWaypoints, baselinePreview, draftVfrWaypoints, navpointsById, routeDesigns, routeDraftResult, routeForm, routeResult, selectedIap, selectedRouteDesignId, selectedSid, selectedStar])
+  }), [appliedIap, appliedProcedures.sid, appliedProcedures.star, appliedVfrWaypoints, baselinePreview, draftVfrWaypoints, hiddenRouteDesignIds, navpointsById, routeDesigns, routeDraftResult, routeForm, routeResult, selectedIap, selectedRouteDesignId, selectedSid, selectedStar])
 
   useEffect(() => {
     vfrWaypointsRef.current = draftVfrWaypoints.length >= 2 ? draftVfrWaypoints : appliedVfrWaypoints

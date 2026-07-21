@@ -48,4 +48,45 @@ test.describe('tabcapture', () => {
     await page.getByRole('button', { name: /^FL90/ }).click()
     await page.screenshot({ path: `${OUT}/4-altitude-selected.png`, fullPage: true })
   })
+
+  test('diagnose route-design-line colors on the map for base/A/B', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'debug-only, desktop')
+
+    await page.addInitScript(() => {
+      localStorage.setItem('amo.tour.v1.done', 'true')
+      localStorage.setItem('projectamo:lastSeenVersion', '0.2.5')
+    })
+    await installRouteBriefingFixtures(page)
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: '비행 전 브리핑', exact: true }).click()
+    await page.getByRole('tab', { name: 'IFR', exact: true }).click()
+    await page.getByRole('button', { name: '출발 공항 선택', exact: true }).click()
+    await page.getByRole('button', { name: /RKSS$/ }).click()
+    await page.getByRole('button', { name: '도착 공항 선택', exact: true }).click()
+    await page.getByRole('button', { name: /RKPC$/ }).click()
+    await page.getByRole('textbox', { name: /en-route 경로|예: OSPAT/ }).fill('SEL')
+    await page.getByRole('button', { name: '경로 적용', exact: true }).click()
+    await page.getByRole('button', { name: '경로비교로', exact: true }).click()
+    await page.getByText('기본 경로', { exact: true }).waitFor()
+
+    await page.getByRole('button', { name: '이 경로에서 우회안 만들기', exact: true }).click()
+    await page.getByRole('button', { name: '이 경로에서 우회안 만들기', exact: true }).click()
+    await page.locator('.rb-alternative-card').nth(1).waitFor()
+
+    // 경로 B(두 번째 대안) 선택
+    await page.locator('.rb-alternative-card').nth(1).click()
+    await page.waitForTimeout(300)
+
+    const dump = await page.evaluate(() => {
+      const map = window.__map
+      if (!map) return { error: 'window.__map not found' }
+      const applied = map.getSource('briefing-route-applied')?._data
+      const baseline = map.getSource('briefing-route-baseline')?._data
+      const summarize = (fc) => (fc?.features ?? []).map((f) => ({ role: f.properties?.role, designId: f.properties?.designId, selected: f.properties?.selected, color: f.properties?.color }))
+      return { applied: summarize(applied), baseline: summarize(baseline) }
+    })
+    console.log('MAP SOURCE DUMP:', JSON.stringify(dump, null, 2))
+
+    await page.screenshot({ path: `${OUT}/color-diagnosis.png`, fullPage: true })
+  })
 })
