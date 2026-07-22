@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getDemoMode, revertDemoMode, listSnapshots, saveSnapshot, loadSnapshot, getDemoModeLog } from './adminApi.js'
 import './AdminPage.css'
 
@@ -17,8 +17,11 @@ export default function DemoModePanel() {
   const [demoStatus, setDemoStatus] = useState({ on: false, now: null, hasLiveBackup: false })
   const [snapshots, setSnapshots] = useState([])
   const [events, setEvents] = useState([])
-  const [busy, setBusy] = useState(false)
+  const [busyLabel, setBusyLabel] = useState(null) // null이면 안 바쁨, 문자열이면 그 설명으로 로딩 표시
+  const [elapsedSec, setElapsedSec] = useState(0)
   const [msg, setMsg] = useState(null)
+  const busy = busyLabel != null
+  const elapsedTimerRef = useRef(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -33,8 +36,9 @@ export default function DemoModePanel() {
     return () => clearInterval(t)
   }, [refresh])
 
-  async function run(fn, okText) {
-    setBusy(true); setMsg(null)
+  async function run(label, fn, okText) {
+    setBusyLabel(label); setMsg(null); setElapsedSec(0)
+    elapsedTimerRef.current = setInterval(() => setElapsedSec((s) => s + 1), 1000)
     try {
       const d = await fn()
       setMsg({ ok: true, text: typeof okText === 'function' ? okText(d) : okText })
@@ -42,7 +46,8 @@ export default function DemoModePanel() {
     } catch (err) {
       setMsg({ ok: false, text: err.message })
     } finally {
-      setBusy(false)
+      clearInterval(elapsedTimerRef.current)
+      setBusyLabel(null)
     }
   }
 
@@ -52,6 +57,12 @@ export default function DemoModePanel() {
         <h2>시연 모드 {demoStatus.on && <span className="admin-badge">진행 중</span>}</h2>
       </div>
 
+      {busy && (
+        <p className="admin-empty" style={{ color: 'var(--level-amber, #b45309)', fontWeight: 700 }}>
+          ⏳ {busyLabel}… ({elapsedSec}초 경과 — 레이더·위성·수치예보 포함 스냅샷은 수십 초 걸릴 수 있습니다. 완료될 때까지 기다려주세요.)
+        </p>
+      )}
+
       {demoStatus.on ? (
         <>
           <p className="admin-empty">
@@ -59,8 +70,8 @@ export default function DemoModePanel() {
             브리핑 기준 "지금" 시각은 <b>{fmtDateTime(demoStatus.now)}</b>로 고정.
           </p>
           <button type="button" className="admin-btn-reject" disabled={busy} style={{ marginBottom: 12 }}
-            onClick={() => run(revertDemoMode, (d) => d.note)}>
-            ■ 시연 종료 (실황으로 복원 + 자동수집 재개)
+            onClick={() => run('시연 종료 처리 중', revertDemoMode, (d) => d.note)}>
+            {busy ? '⏳ 처리 중…' : '■ 시연 종료 (실황으로 복원 + 자동수집 재개)'}
           </button>
           {snapshots.length > 1 && (
             <div>
@@ -69,7 +80,7 @@ export default function DemoModePanel() {
                 {snapshots.map((snap) => (
                   <button key={snap.name} type="button" className="admin-btn-approve" disabled={busy}
                     style={{ marginRight: 6, marginBottom: 6 }}
-                    onClick={() => run(() => loadSnapshot(snap.name), (d) => `전환됨: ${d.name} (기준시각 ${fmtDateTime(d.now)})`)}>
+                    onClick={() => run(`${snap.name}로 전환 중`, () => loadSnapshot(snap.name), (d) => `전환됨: ${d.name} (기준시각 ${fmtDateTime(d.now)})`)}>
                     {snap.name} — {fmtDateTime(snap.referenceTime)}
                   </button>
                 ))}
@@ -91,8 +102,8 @@ export default function DemoModePanel() {
                 {snapshots.map((snap, i) => (
                   <li key={snap.name} style={{ marginBottom: 6 }}>
                     <button type="button" className="admin-btn-approve" disabled={busy}
-                      onClick={() => run(() => loadSnapshot(snap.name), (d) => `시연 시작: ${d.name} (기준시각 ${fmtDateTime(d.now)})`)}>
-                      {i + 1}. ▶ 시연 시작 — 기준시각 {fmtDateTime(snap.referenceTime)}
+                      onClick={() => run(`${snap.name} 시연 시작 중`, () => loadSnapshot(snap.name), (d) => `시연 시작: ${d.name} (기준시각 ${fmtDateTime(d.now)})`)}>
+                      {busy ? '⏳ 처리 중…' : `${i + 1}. ▶ 시연 시작 — 기준시각 ${fmtDateTime(snap.referenceTime)}`}
                     </button>
                   </li>
                 ))}
@@ -100,8 +111,8 @@ export default function DemoModePanel() {
             )}
           </div>
           <button type="button" className="admin-btn-approve" disabled={busy}
-            onClick={() => run(() => saveSnapshot(), (d) => `저장됨: ${d.name} (${d.saved.length}개 항목)`)}>
-            💾 지금 상태를 새 스냅샷으로 저장
+            onClick={() => run('지금 상태 저장 중', () => saveSnapshot(), (d) => `저장됨: ${d.name} (${d.saved.length}개 항목)`)}>
+            {busy ? '⏳ 처리 중…' : '💾 지금 상태를 새 스냅샷으로 저장'}
           </button>
         </>
       )}
