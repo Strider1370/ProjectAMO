@@ -34,3 +34,17 @@ export function getDemoNow() {
 export function getEffectiveNow() {
   return demoNow ? new Date(demoNow) : new Date()
 }
+
+// 시연 모드 조작(토글/저장/복원/되돌리기) 이벤트 로그 — "버튼 눌렀는데 실제로 뭐가 어떻게 됐는지" 콘솔에서
+// 바로 확인하기 위함(SSH로 pm2 로그 뒤질 필요 없이). DISABLE_COLLECTION과 무관하게 항상 기록됨.
+const MAX_LOG = 50
+const log = []
+
+export function recordDemoEvent(action, detail) {
+  log.unshift({ at: new Date().toISOString(), action, detail })
+  if (log.length > MAX_LOG) log.length = MAX_LOG
+}
+
+export function getDemoEvents() {
+  return log
+}
