@@ -106,7 +106,8 @@
       "PowerShell(npm.cmd run *)",
       "PowerShell(npm run *)",
       "PowerShell(npm.cmd --prefix *)",
-      "PowerShell(node --test *)"
+      "PowerShell(node --test *)",
+      "Bash(graphify explain *)"
     ]
   }
 }

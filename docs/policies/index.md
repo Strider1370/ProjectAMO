@@ -14,6 +14,7 @@ Read the relevant `Architecture.md` section and this index before editing. For r
 | UI, CSS, responsive layout | `File Roles` — affected frontend feature, `Reference Structure` | [design language](design/design-language.md) |
 | Browser verification, deploy, finish/commit/push/PR | `Directory Structure` — `scripts` and the affected feature's `File Roles` entry | [browser verification](verification/browser-verification.md), [contract registry](verification/contracts.md), [delivery and completion](verification/delivery-and-completion.md) |
 | Writing or updating a spec, plan, or status file | every affected boundary's `File Roles` entry | [spec/plan/status format](spec-plan-status-format.md) |
+| Begin implementation from an approved plan | every affected boundary's `File Roles` entry | [spec/plan/status format](spec-plan-status-format.md) — pass Decision completeness review first |
 
 Read [encoding safety](encoding-safety.md) before encoding-sensitive edits.
 <!-- SESSION-ROUTING:END -->

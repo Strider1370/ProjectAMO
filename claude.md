@@ -26,6 +26,8 @@ Otherwise, follow it if **two or more** of these apply:
 
 If none or only one applies, treat the work as light: proceed with a short prompt, no spec/plan/status. When it does apply, get the design approved in conversation first, then write the spec, plan, and status file.
 
+Before executing an approved implementation plan, run the **Decision completeness review** in [spec/plan/status format](docs/policies/spec-plan-status-format.md). Code changes may begin only on **PASS**; a **DECISION GAP** returns to the user for a specification change and approval.
+
 ## Delegation: main agent vs. subagent
 
 Do directly in the main agent:

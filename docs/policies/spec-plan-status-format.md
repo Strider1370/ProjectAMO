@@ -88,6 +88,19 @@ Immutable once approved. Breaks the spec into ordered, file-level tasks. Assume 
 
 **Self-review before showing the user:** every spec requirement maps to a task (list gaps if not), no placeholder scan hits, and types/names used in later tasks match what earlier tasks actually produced.
 
+### Decision completeness review — before implementation
+
+Run this review after the implementation plan is written and before code changes begin. Use a fresh, read-only review pass; the plan author must not approve its own plan.
+
+The reviewer determines whether the plan introduces a user-affecting decision that is absent from the approved specification. A decision is user-affecting when changing it changes visible or interactive behaviour; defaults, limits, allowed/rejected input, or error behaviour; storage, sharing, transmission, privacy, or security; time, state transitions, recovery, accessibility, or completion criteria.
+
+For every planned user-affecting behaviour, confirm that the approved specification defines the outcome and that a verification step can distinguish it. The review result is exactly one of:
+
+- **PASS:** the plan only translates approved decisions into implementation work.
+- **DECISION GAP:** list each missing decision and its impact. Do not choose a default, repair the plan with an invented decision, or begin implementation.
+
+On **DECISION GAP**, return to the user for a specification change and approval. Regenerate the affected plan, then run this review again. Record a PASS in the feature status file under **Verified** before implementation starts.
+
 **Bake in an Architecture.md update.** If the plan creates new files or makes a non-obvious structural change, make updating `Architecture.md`'s File Roles the final task — don't leave it implicit.
 
 **Execution:** once the plan is approved, implement it task-by-task via `superpowers:subagent-driven-development` (fresh subagent per task, two-stage review — recommended) or `superpowers:executing-plans` (inline, batch execution with checkpoints).
