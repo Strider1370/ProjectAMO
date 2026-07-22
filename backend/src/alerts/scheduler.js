@@ -13,6 +13,7 @@ import { composeBriefing } from '../briefing/briefing-composer.js'
 import { metricsAt } from '../briefing/taf-window.js'
 import { detectChanges } from './diff.js'
 import { dispatchFlightAlerts } from './sender.js'
+import { isDemoMode, getEffectiveNow } from '../dev/demo-mode.js'
 
 const RANK = { 약: 1, 중: 2, 심: 3 }
 const DEFAULT_CRUISE_ALT_FT = 9000
@@ -191,6 +192,7 @@ export function recompute(route) {
     airmet: store.getCached('airmet'), warning: store.getCached('warning'),
     amos: store.getCached('amos'), takeoff_fcst: store.getCached('takeoff_fcst'), notam: store.getCached('notam'),
     dataRoot: storage.base_path, // composeBriefing이 enroute 단면 모델을 직접 로드(이전엔 여기서 사후 mutate)
+    now: getEffectiveNow().getTime(), // 시연 모드면 스냅샷 기준시각으로 고정(실제 현재시각 아님)
   }
   const briefing = composeBriefing(request, data)
   const tafByIcao = mergeAirports(data.taf, data.tafOverseas)
@@ -218,8 +220,13 @@ export async function runTick(db, now = Date.now()) {
 }
 
 // 등록 직후 baseline 1회(diff 기준 확보). 이후 인터벌.
+// 시연 모드: cron(runWithLock)과 달리 이건 독립 setInterval이라 그 가드를 안 거친다 — 얼려둔 데이터가
+// "그대로"여야 하는데 15분마다 재평가해서 엉뚱한 변화 알림이 뜨거나 에러가 나는 걸 막기 위해 직접 skip.
 export function startAlertScheduler(db = getDb(), { intervalMs = TICK_MS } = {}) {
-  const tick = () => runTick(db).catch((err) => console.error('[alert-scheduler] tick 실패:', err.message))
+  const tick = () => {
+    if (isDemoMode()) return
+    return runTick(db).catch((err) => console.error('[alert-scheduler] tick 실패:', err.message))
+  }
   tick()
   return setInterval(tick, intervalMs)
 }

@@ -14,6 +14,7 @@ import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import DataProvenance from '../../shared/ui/DataProvenance.jsx'
 import ForecasterInquiry from './ForecasterInquiry.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
+import useDemoMode from '../../shared/demoMode/useDemoMode.js'
 import { formatBriefingTime } from './lib/briefingTime.js'
 import { hazardMapLayers } from './lib/hazardLayers.js'
 import LayerToggleChips from '../map/LayerToggleChips.jsx'
@@ -55,6 +56,7 @@ function CatBadge({ category }) {
 export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, routeSnapshot = null }) {
   const isMobile = useIsMobile()
   const { tz } = useTimeZone()
+  const { nowMs } = useDemoMode()
   const containerRef = useRef(null)
   const [activeId, setActiveId] = useState(null)
   const [detent, setDetent] = useState('half')
@@ -483,7 +485,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
     <NotamCell
       key={n.id}
       category={n.category}
-      timeState={deriveTimeState(n.validFrom, n.validTo, Date.now())}
+      timeState={deriveTimeState(n.validFrom, n.validTo, nowMs)}
       summary={n.summary || n.id}
       metaText={`${NOTAM_CAT_LABEL[n.category] || n.category} · ${n.id}${n.routeIntervalNm ? ` · ${n.routeIntervalNm.startNm}–${n.routeIntervalNm.endNm}NM` : ''}`}
       altitude={formatAltitude(n.altitude)}
