@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 function fmtBulletinTime(tm) {
   if (!tm) return '—'
   // "2026-05-07 06:00:00.0" → "2026년 05월 07일 06시"
@@ -38,9 +36,7 @@ export default function AirportInfoTab({ info, loading = false }) {
   const hasForecast = info.forecast && info.forecast.trim()
   // 배지가 "위험기상 예보 있음"이면 요약도 위험 기상예보 내용을 보여줘야 함(일기개황 아님)
   const peekText = hasForecast ? info.forecast : info.outlook
-  const [defaultOpen] = useState(() =>
-    typeof window === 'undefined' || !window.matchMedia('(max-width: 719px)').matches,
-  )
+  const defaultOpen = false
 
   return (
     <div className="ap-info-doc">
@@ -55,6 +51,7 @@ export default function AirportInfoTab({ info, loading = false }) {
             {info.summary && <p className="ap-info-peek-title">{info.summary}</p>}
             <p className="ap-info-peek-time">[ {fmtBulletinTime(info.tm)} 발표 ]</p>
           </div>
+          {hasForecast && <h3 className="ap-info-section-head">▶ 위험 기상예보</h3>}
           <BulletText text={peekText} className="ap-info-peek-outlook" />
           {showSel3 && <p className="ap-info-peek-precip">예상 강수량 <strong>{info.sel_val3}</strong></p>}
         </div>

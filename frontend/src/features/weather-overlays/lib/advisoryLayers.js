@@ -36,74 +36,65 @@ export const ADVISORY_LAYER_DEFS = {
   },
 }
 
-export const MOTION_ARROW_ICON_ID = 'advisory-motion-arrow'
-
-// airportStationImages.js의 캔버스 아이콘 패턴과 동일 — 회전은 icon-rotate로 런타임에 적용하니
-// 방향별 이미지를 미리 만들 필요 없이 위(0도, 북쪽)를 가리키는 화살표 하나만 등록하면 된다.
-function createMotionArrowImage() {
-  const size = 28
-  const pixelRatio = Math.max(1, Math.round(window.devicePixelRatio || 1))
-  const canvas = document.createElement('canvas')
-  canvas.width = size * pixelRatio
-  canvas.height = size * pixelRatio
-  const context = canvas.getContext('2d', { alpha: true })
-  context.scale(pixelRatio, pixelRatio)
-  context.translate(size / 2, size / 2)
-  context.strokeStyle = '#0f172a'
-  context.lineWidth = 2
-  context.lineCap = 'round'
-  context.lineJoin = 'round'
-  context.beginPath()
-  context.moveTo(0, 12)
-  context.lineTo(0, -12)
-  context.moveTo(-5, -6)
-  context.lineTo(0, -12)
-  context.lineTo(5, -6)
-  context.stroke()
-  const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height)
-  return { data, width, height, pixelRatio }
-}
-
-export function ensureMotionArrowImage(map) {
-  if (map.hasImage(MOTION_ARROW_ICON_ID) || typeof document === 'undefined') return
-  const image = createMotionArrowImage()
-  map.addImage(MOTION_ARROW_ICON_ID, image, { pixelRatio: image.pixelRatio })
-}
-
 export function advisorySymbolUrl(kind, phenomenonCode) {
   const code = String(phenomenonCode || '').trim().toUpperCase()
   if (!code) return null
   const folder = kind.startsWith('sigmet') ? 'icon_SIGMET' : 'icon_AIRMET'
-  const file = `${code}.png`
-  return `/Symbols/Reference%20Symbols/${folder}/${encodeURIComponent(file)}`
+  // FRQ는 뇌우의 발생 빈도 수식어이며 별도 ICAO 기호 파일이 없다.
+  const symbolCode = code === 'FRQ_TS' ? 'TS' : code
+  return `/Symbols/Reference%20Symbols/${folder}/${encodeURIComponent(`${symbolCode}.png`)}`
 }
-
-// SIGMET/AIRMET 참조기호 PNG 원본 크기가 파일마다 제각각(21x12 ~ 243x48)이라 그대로 쓰면
-// 아이콘마다 화면에 보이는 크기가 들쭉날쭉하다 — 고정 캔버스에 종횡비 유지한 채(contain)
-// 다시 그려서 등록하면 전부 같은 시각적 크기로 통일된다.
 const PHENOMENON_ICON_SIZE = 40
+const ADVISORY_MARKER_WIDTH = 176
+const ADVISORY_MARKER_HEIGHT = 52
+const ADVISORY_ICON_CENTER_X = ADVISORY_MARKER_WIDTH / 2
 
-function ensureMapImage(map, id, url) {
-  if (!id || !url || map.hasImage(id)) return
-  map.loadImage(url, (error, image) => {
-    if (error || !image || map.hasImage(id)) return
-    if (typeof document === 'undefined') { map.addImage(id, image); return }
+function ensureAdvisoryMarkerImage(map, feature) {
+  const props = feature.properties || {}
+  const direction = Number.isFinite(props.motionDirection) ? props.motionDirection : null
+  const speed = props.motionLabel || ''
+  const markerKey = `${props.iconKey || 'advisory'}-${direction ?? 'none'}-${speed || 'none'}`
+  props.markerKey = markerKey
+  if (!props.iconUrl || map.hasImage(markerKey)) return
+
+  map.loadImage(props.iconUrl, (error, image) => {
+    if (error || !image || map.hasImage(markerKey) || typeof document === 'undefined') return
 
     const canvas = document.createElement('canvas')
-    canvas.width = PHENOMENON_ICON_SIZE
-    canvas.height = PHENOMENON_ICON_SIZE
+    canvas.width = ADVISORY_MARKER_WIDTH
+    canvas.height = ADVISORY_MARKER_HEIGHT
     const context = canvas.getContext('2d', { alpha: true })
     const scale = Math.min(PHENOMENON_ICON_SIZE / image.width, PHENOMENON_ICON_SIZE / image.height)
     const drawWidth = image.width * scale
     const drawHeight = image.height * scale
-    context.drawImage(
-      image,
-      (PHENOMENON_ICON_SIZE - drawWidth) / 2,
-      (PHENOMENON_ICON_SIZE - drawHeight) / 2,
-      drawWidth,
-      drawHeight,
-    )
-    map.addImage(id, context.getImageData(0, 0, PHENOMENON_ICON_SIZE, PHENOMENON_ICON_SIZE))
+    context.drawImage(image, ADVISORY_ICON_CENTER_X - drawWidth / 2, 6 + (PHENOMENON_ICON_SIZE - drawHeight) / 2, drawWidth, drawHeight)
+
+    if (direction != null) {
+      context.save()
+      context.translate(ADVISORY_ICON_CENTER_X + 34, 22)
+      context.rotate((direction * Math.PI) / 180)
+      context.strokeStyle = '#0f172a'
+      context.lineWidth = 2
+      context.lineCap = 'round'
+      context.lineJoin = 'round'
+      context.beginPath()
+      context.moveTo(0, 12)
+      context.lineTo(0, -12)
+      context.moveTo(-5, -6)
+      context.lineTo(0, -12)
+      context.lineTo(5, -6)
+      context.stroke()
+      context.restore()
+    }
+
+    if (speed) {
+      context.fillStyle = '#1d4ed8'
+      context.font = '700 13px sans-serif'
+      context.textBaseline = 'middle'
+      context.fillText(speed, ADVISORY_ICON_CENTER_X + 52, 35)
+    }
+
+    map.addImage(markerKey, context.getImageData(0, 0, ADVISORY_MARKER_WIDTH, ADVISORY_MARKER_HEIGHT))
   })
 }
 
@@ -114,14 +105,18 @@ function formatAltitude(item) {
     return ''
   }
 
-  const lower = altitude.lower_fl ? `FL${altitude.lower_fl}` : ''
-  const upper = altitude.upper_fl ? `FL${altitude.upper_fl}` : ''
+  const lower = altitude.lower_ref === 'SFC' || altitude.lower_fl === 0
+    ? 'SFC'
+    : Number.isFinite(altitude.lower_fl) ? `FL${altitude.lower_fl}` : ''
+  const upper = Number.isFinite(altitude.upper_fl) ? `FL${altitude.upper_fl}` : ''
 
   if (lower && upper) {
     return `${lower}-${upper}`
   }
 
-  return upper || lower
+  if (upper) return `상한 ${upper} · 하한 미제공`
+  if (lower) return `하한 ${lower} · 상한 미제공`
+  return ''
 }
 
 function formatMotion(item) {
@@ -131,8 +126,9 @@ function formatMotion(item) {
     return ''
   }
 
+  if (motion.direction_text) return `${motion.direction_text} ${Math.round(motion.speed_kt)}KT`
   return Number.isFinite(motion.direction_deg)
-    ? `${Math.round(motion.direction_deg)}deg ${Math.round(motion.speed_kt)}KT`
+    ? `${motion.direction_deg}deg ${Math.round(motion.speed_kt)}KT`
     : `${Math.round(motion.speed_kt)}KT`
 }
 
@@ -171,12 +167,33 @@ function formatIntensityChart(item) {
 }
 
 // 지도 라벨은 공간이 좁아 한글명만(코드 생략). 없으면 영문 라벨→코드.
+const FIR_KO_NAMES = {
+  RJJJ: '후쿠오카', RCAA: '타이베이', VHHK: '홍콩', ZMUB: '울란바토르', ZBPE: '베이징',
+  ZSHA: '상하이', ZGZU: '광저우', ZYSH: '선양', ZHWH: '우한', ZJSA: '싼야', ZLHW: '란저우',
+  VVHN: '하노이', VVHM: '호찌민', VDPF: '프놈펜', VTBB: '방콕', WMFC: '쿠알라룸푸르',
+  WSJC: '싱가포르', WIIF: '자카르타', WAAF: '우중판당', RPHI: '마닐라', ZPKM: '쿤밍',
+  VLVT: '비엔티안', WBFC: '코타키나발루',
+}
+
+export function formatAdvisoryFir(item) {
+  if (item?.source !== 'NOAA' || !item?.fir) return ''
+  const code = item.fir.toUpperCase()
+  const name = FIR_KO_NAMES[code] || item.fir_name?.replace(new RegExp('^' + code + '\\s*', 'i'))
+  return name ? `${code} (${name} FIR)` : code
+}
+
+function formatPhenomenon(item) {
+  return phenomenonKo(item?.phenomenon_code)
+    || item?.phenomenon_label || item?.phenomenon_code || ''
+}
+
 function formatLabel(item, kind) {
   const base = kind.startsWith('sigmet') ? 'SIGMET' : 'AIRMET'
-  const phenomenon = phenomenonKo(item?.phenomenon_code)
-    || item?.phenomenon_label || item?.phenomenon_code || ''
+  const phenomenon = formatPhenomenon(item)
   const sequence = item?.sequence_number ? ` ${item.sequence_number}` : ''
-  return `${base}${sequence}${phenomenon ? ` ${phenomenon}` : ''}`
+  const fir = formatAdvisoryFir(item)
+  const firLabel = fir ? ` · ${fir}` : ''
+  return `${base}${sequence}${firLabel}${phenomenon ? ` ${phenomenon}` : ''}`
 }
 
 // ponytail: weatherOverlayModel.formatSigwxStamp와 동일한 분단위 포맷. 순환참조 피하려 로컬.
@@ -188,10 +205,16 @@ function fmtMinute(iso, tz = 'KST') {
   return `${p(d.getUTCMonth() + 1)}/${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} ${tz}`
 }
 
+function formatValidity(item, tz = 'KST') {
+  return item?.valid_from && item?.valid_to
+    ? `${fmtMinute(item.valid_from, tz)} ~ ${fmtMinute(item.valid_to, tz)}`
+    : ''
+}
+
 function formatDescription(item, kind, tz = 'KST') {
   const parts = [
     formatLabel(item, kind),
-    item?.valid_from && item?.valid_to ? `${fmtMinute(item.valid_from, tz)} ~ ${fmtMinute(item.valid_to, tz)}` : '',
+    formatValidity(item, tz),
     formatAltitude(item),
     formatMotion(item),
   ].filter(Boolean)
@@ -241,12 +264,14 @@ export function advisoryItemsToFeatureCollection(payload, kind, tz = 'KST') {
           kind,
           label: formatLabel(item, kind),
           phenomenon: item.phenomenon_code || '',
-          phenomenonLabel: item.phenomenon_label || '',
+          phenomenonLabel: formatPhenomenon(item),
           sequence: item.sequence_number || '',
+          fir: formatAdvisoryFir(item),
           validFrom: item.valid_from || '',
           validTo: item.valid_to || '',
           altitude: formatAltitude(item),
           motion: formatMotion(item),
+          validity: formatValidity(item, tz),
           description: formatDescription(item, kind, tz),
         },
         geometry: item.geometry,
@@ -277,8 +302,9 @@ export function advisoryItemsToLabelFeatureCollection(payload, kind, tz = 'KST')
           iconKey: item.phenomenon_code ? `${kind}-${item.phenomenon_code}` : '',
           iconUrl: advisorySymbolUrl(kind, item.phenomenon_code) || '',
           description: formatDescription(item, kind, tz),
-          chartLine1: [formatAltitudeChart(item), formatSpeedChart(item)].filter(Boolean).join('   ') || formatVisibilityChart(item),
+          chartLine1: formatAltitudeChart(item) || formatVisibilityChart(item),
           chartLine2: formatIntensityChart(item),
+          motionLabel: formatSpeedChart(item),
           motionDirection: Number.isFinite(item?.motion?.direction_deg) ? item.motion.direction_deg : null,
         },
           geometry: {
@@ -289,67 +315,6 @@ export function advisoryItemsToLabelFeatureCollection(payload, kind, tz = 'KST')
       })
       .filter(Boolean),
   }
-}
-
-// 아이콘·화살표·텍스트는 전부 같은 지점(anchor)에서 그려지므로, 이 지점 자체를 화면
-// 픽셀 기준으로 밀어내면 세트 전체(아이콘+화살표+글자)가 한 덩어리로 같이 벌어진다.
-// SIGMET(국내/해외)·AIRMET처럼 서로 다른 소스라도 화면에서 겹치면 같이 밀어내야 해서,
-// 세 종류를 한 번에 모아 계산한다. 지도를 움직이면(zoom/pan) 화면상 겹침이 달라지므로
-// 매번 다시 계산해야 한다 — 원본(raw, 실제 지리좌표) 데이터는 그대로 두고 화면에 낼 좌표만 조정.
-const LABEL_MIN_SEPARATION_PX = 100
-const LABEL_COLLISION_PASSES = 6
-
-export function resolveAdvisoryLabelCollisions(map, groups) {
-  if (!map || typeof map.project !== 'function' || typeof map.unproject !== 'function') {
-    return groups
-  }
-
-  const points = []
-  groups.forEach((group, groupIndex) => {
-    group.labelData.features.forEach((feature, featureIndex) => {
-      const projected = map.project(feature.geometry.coordinates)
-      points.push({ groupIndex, featureIndex, x: projected.x, y: projected.y })
-    })
-  })
-
-  for (let pass = 0; pass < LABEL_COLLISION_PASSES; pass += 1) {
-    let moved = false
-    for (let i = 0; i < points.length; i += 1) {
-      for (let j = i + 1; j < points.length; j += 1) {
-        const a = points[i]
-        const b = points[j]
-        let dx = b.x - a.x
-        let dy = b.y - a.y
-        let dist = Math.hypot(dx, dy)
-        if (dist >= LABEL_MIN_SEPARATION_PX) continue
-        if (dist < 0.01) { dx = 1; dy = 0; dist = 1 } // 완전히 같은 지점 — 임의 방향으로 갈라놓기
-        const push = (LABEL_MIN_SEPARATION_PX - dist) / 2
-        const ux = dx / dist
-        const uy = dy / dist
-        a.x -= ux * push
-        a.y -= uy * push
-        b.x += ux * push
-        b.y += uy * push
-        moved = true
-      }
-    }
-    if (!moved) break
-  }
-
-  const byKey = new Map(points.map((p) => [`${p.groupIndex}:${p.featureIndex}`, p]))
-
-  return groups.map((group, groupIndex) => ({
-    kind: group.kind,
-    labelData: {
-      type: 'FeatureCollection',
-      features: group.labelData.features.map((feature, featureIndex) => {
-        const point = byKey.get(`${groupIndex}:${featureIndex}`)
-        if (!point) return feature
-        const { lng, lat } = map.unproject([point.x, point.y])
-        return { ...feature, geometry: { ...feature.geometry, coordinates: [lng, lat] } }
-      }),
-    },
-  }))
 }
 
 export function addAdvisoryLayers(map, kind, featureData, labelData) {
@@ -404,10 +369,9 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
     })
   }
 
-  labelData.features.forEach((feature) => {
-    ensureMapImage(map, feature.properties?.iconKey, feature.properties?.iconUrl)
-  })
-  ensureMotionArrowImage(map)
+  labelData.features.forEach((feature) => ensureAdvisoryMarkerImage(map, feature))
+
+  if (map.getLayer(def.arrowLayerId)) map.removeLayer(def.arrowLayerId)
 
   if (!map.getLayer(def.iconLayerId)) {
     map.addLayer({
@@ -416,39 +380,16 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
       source: labelSourceId,
       slot: 'top',
       layout: {
-        'icon-image': ['get', 'iconKey'],
+        'icon-image': ['get', 'markerKey'],
         'icon-size': 1.0,
+        'icon-anchor': 'center',
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
-        'icon-offset': [0, -22],
       },
-      filter: ['!=', ['get', 'iconKey'], ''],
+      filter: ['!=', ['get', 'markerKey'], ''],
     })
   }
 
-  // 이동방향 화살표 — 아이콘 옆에, 실제 나침반 방위로 회전.
-  if (!map.getLayer(def.arrowLayerId)) {
-    map.addLayer({
-      id: def.arrowLayerId,
-      type: 'symbol',
-      source: labelSourceId,
-      slot: 'top',
-      layout: {
-        'icon-image': MOTION_ARROW_ICON_ID,
-        'icon-size': 1.6,
-        'icon-rotate': ['get', 'motionDirection'],
-        'icon-rotation-alignment': 'map',
-        'icon-allow-overlap': true,
-        'icon-ignore-placement': true,
-      },
-      // icon-offset은 icon-rotate와 같이 회전해버려서 방향에 따라 텍스트 쪽으로 튐 —
-      // icon-translate(paint)는 회전과 무관한 화면 기준 고정 이동이라 위치가 안정적.
-      paint: {
-        'icon-translate': [42, -26],
-      },
-      filter: ['!=', ['get', 'motionDirection'], null],
-    })
-  }
 
   // 고도/속도 한 줄 + 강화·약화 추세 한 줄 — 표준 SIGMET 차트 표기.
   if (!map.getLayer(def.textLayerId)) {
@@ -468,9 +409,9 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
         ],
         'text-font': ['Noto Sans CJK JP Bold'],
         'text-size': 12,
-        'text-anchor': 'top-left',
-        'text-offset': [-1.4, 0.6],
-        'text-justify': 'left',
+        'text-anchor': 'top',
+        'text-offset': [0, 2.3],
+        'text-justify': 'center',
         'text-allow-overlap': true,
         'text-ignore-placement': true,
       },
@@ -485,7 +426,7 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
   }
 
   // 공항 기호·이름 레이어 위로 올려 가려지지 않게(데이터 갱신마다 최상단 재확정).
-  for (const layerId of [def.iconLayerId, def.arrowLayerId, def.textLayerId]) {
+  for (const layerId of [def.iconLayerId, def.textLayerId]) {
     if (map.getLayer(layerId) && typeof map.moveLayer === 'function') map.moveLayer(layerId)
   }
 }

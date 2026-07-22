@@ -174,6 +174,8 @@ export function createDevRouter({ db = null } = {}) {
     res.json({ ok: true, restored, deletedAlerts, note: '실황(고정 원본) 복구 + 발생 알림 삭제.' })
   })
 
+  // 시연용 스냅샷 저장/복원은 /api/admin/snapshot/*로 이전됨(배포 서버에서도 써야 해서 admin 라우터로 이동).
+
   // POST /api/dev/tick → 실제 스케줄러 1회 즉시 평가(15분 대기 제거). 첫 tick=baseline, 주입 후 tick=변경 발화.
   router.post('/tick', async (req, res) => {
     const summary = await runTick(database())

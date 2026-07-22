@@ -30,6 +30,22 @@
   display: none;
 }
 
+.demo-mode-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 7;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--level-amber, #f59e0b);
+  color: #1c1000;
+  font-family: var(--app-font, system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
 .basemap-switcher {
   position: absolute;
   top: 12px;
@@ -783,7 +799,7 @@
 .map-view-wrapper .rainrate-legend {
   display: grid;
   gap: 4px;
-  width: 164px;
+  width: 58px;
   padding: 7px 5px 7px 7px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.9);
@@ -1718,19 +1734,39 @@
   border-top: 3px solid #7c3aed;
 }
 
-.mapbox-advisory-popup {
-  margin: 0;
-  font-family: 'Consolas', 'Menlo', monospace;
-  font-size: 11px;
-  line-height: 1.5;
-  white-space: pre-wrap;
+.mapboxgl-popup-content:has(.mapbox-advisory-popup) {
+  padding: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
 }
 
-.mapbox-advisory-popup-divider {
-  margin: 8px 0;
-  border: none;
-  border-top: 1px dashed #cbd5e1;
+.mapbox-advisory-popup {
+  width: 284px;
+  margin: 0;
+  font-family: var(--font-base);
 }
+
+.mapbox-advisory-popup-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  padding: var(--space-m) 34px var(--space-s) var(--space-m);
+  border-bottom: 1px solid var(--stroke-2);
+  color: var(--text-1);
+  font-size: var(--fs-300);
+}
+.mapbox-advisory-popup-icon { color: var(--level-red); font-size: var(--fs-400); line-height: 1; }
+.mapbox-advisory-popup--airmet .mapbox-advisory-popup-icon { color: var(--level-amber); }
+.mapbox-advisory-popup-body { display: flex; gap: var(--space-s); padding: var(--space-m); }
+.mapbox-advisory-popup-acc { width: 4px; flex: 0 0 4px; border-radius: var(--radius-circular); background: var(--level-red); }
+.mapbox-advisory-popup--airmet .mapbox-advisory-popup-acc { background: var(--level-amber); }
+.mapbox-advisory-popup-title { margin: 0; color: var(--text-1); font-size: var(--fs-400); font-weight: var(--fw-bold); line-height: var(--lh-400); }
+.mapbox-advisory-popup-time { margin: var(--space-xxs) 0 0; color: var(--text-2); font-size: var(--fs-200); line-height: var(--lh-200); }
+.mapbox-advisory-popup-details { display: flex; gap: var(--space-l); margin-top: var(--space-s); }
+.mapbox-advisory-popup-detail { display: grid; gap: var(--space-xxs); color: var(--text-3); font-size: var(--fs-100); }
+.mapbox-advisory-popup-detail strong { color: var(--text-1); font-size: var(--fs-200); font-weight: var(--fw-semibold); line-height: var(--lh-200); }
+
+.mapbox-advisory-popup-divider { margin: 0; border: none; border-top: 1px solid var(--stroke-2); }
 
 .airport-metar-marker { /* color-lint-ignore: 공항 마커 식별색 */
   width: 14px;

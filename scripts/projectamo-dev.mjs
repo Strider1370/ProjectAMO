@@ -171,11 +171,12 @@ if (!['serve', 'serve:test', 'serve:no-nwp', 'verify', 'smoke', 'screenshots'].i
   process.exit(2)
 }
 
-// serve:test = 테스트 인스턴스: 자동수집(cron)을 꺼서 데이터를 고정. 나머지는 serve와 동일(같은 포트).
+// serve:test = 테스트 인스턴스: 자동수집(cron) 끄고, 로그인 없이 admin(local_admin) 세션으로 바로 시작.
 // startProcess가 process.env를 상속하므로 여기서 세팅하면 백엔드에 전달됨.
 if (command === 'serve:test') {
   process.env.DISABLE_COLLECTION = '1'
-  console.log('[projectamo-dev] TEST MODE — 자동수집 비활성(DISABLE_COLLECTION=1). 데이터 고정, 자유 조작 가능.')
+  process.env.AUTO_ADMIN_LOGIN = '1'
+  console.log('[projectamo-dev] TEST MODE — 자동수집 비활성 + admin(local_admin) 자동 로그인. 데이터 고정, 자유 조작 가능.')
 }
 
 if (command === 'serve:no-nwp') {

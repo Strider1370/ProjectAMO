@@ -8,7 +8,7 @@ const start = Math.floor(Date.now() / 1000) - 600
 
 const entries = [
   { icaoId: 'RJAA', firId: 'RJJJ', firName: 'FUKUOKA FIR', validTimeFrom: start, validTimeTo: future,
-    seriesId: 'A01', hazard: 'TURB', qualifier: 'SEV', base: 10000, top: 24000, geom: 'AREA', dir: 90, spd: 15,
+    seriesId: 'A01', hazard: 'TURB', qualifier: 'SEV', base: 10000, top: 24000, geom: 'AREA', dir: 'NE', spd: '15',
     coords: [{ lon: 139, lat: 35 }, { lon: 141, lat: 35 }, { lon: 141, lat: 37 }, { lon: 139, lat: 37 }],
     rawSigmet: 'RJJJ SIGMET A01 ...' },
   { icaoId: 'FAOR', firId: 'FAJO', firName: 'JOHANNESBURG', validTimeFrom: start, validTimeTo: future,
@@ -44,7 +44,9 @@ describe('noaa-sigmet parse', () => {
     assert.equal(it0.altitude.lower_fl, 100) // 10000ft → FL100
     assert.equal(it0.altitude.upper_fl, 240)
     assert.equal(it0.phenomenon_code, 'SEV_TURB')
-    assert.equal(it0.motion.direction_deg, 90)
+    assert.equal(it0.motion.direction_deg, 45)
+    assert.equal(it0.motion.direction_text, 'NE')
+    assert.equal(it0.motion.speed_kt, 15)
   })
 
   it('geometry: 닫힌 Polygon + bbox', () => {

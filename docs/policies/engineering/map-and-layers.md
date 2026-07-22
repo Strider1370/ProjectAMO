@@ -27,3 +27,14 @@ NOTAM installation/filter/popup, route-preview composition, and ADS-B polling/co
 - Route preview: keep route calculations/state, preview GeoJSON, source/layer IDs, and map interaction in route-briefing; MapView only provides the cross-feature composition slot and sync invocation.
 - Style sync: install static resources after style replacement, rerun current-state feature sync through `styleRevision`, bind handlers with cleanup-aware helpers, and test toggles plus two basemap switches.
 - NOTAM map sync: own fetch-to-GeoJSON adaptation, installation, filtering, and popup handlers in the NOTAM feature; verify the feature panel and style-reload preservation in the browser.
+
+## Coupled symbols and runtime images
+
+When one map feature has visual parts that must remain together (for example an advisory icon, motion arrow, speed, and nearby label), treat it as one anchored marker.
+
+- Keep the geographic anchor immutable. For area advisories, use the interior point selected from the polygon and never move it in screen pixels then convert it back to longitude/latitude to avoid label collisions. Use Mapbox placement, zoom rules, clustering, or a deliberate grouped representation instead.
+- Do not split mutually dependent icon, arrow, and speed into independently offset symbol layers. Their offsets, rotation alignment, collision rules, and reload timing can differ. Compose the coupled graphic into one runtime image when it must stay rigid; place explanatory text from the same source and anchor.
+- Runtime images are removed when the map style is replaced. The owning adapter must recreate them after style sync, and an existing layer must have its layout updated when its image-property key changes.
+- Do not bypass a feature's layer visibility with unmanaged DOM markers. A master toggle must control every visible part of that feature.
+
+Before changing a coupled marker, diagnose the live map rather than infer from source code: inspect the layer layout, the GeoJSON feature properties, and map.hasImage(imageKey) through the development map handle. Then check image-load callback errors and verify at two zoom levels plus a style/basemap reload.

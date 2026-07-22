@@ -19,3 +19,16 @@ export const reject = (id) => fetch(`${base}/users/${id}/reject`, { method: 'POS
 export const createForecaster = (body) => fetch(`${base}/forecasters`, {
   method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 }).then(j)
+export const getDemoMode = () => fetch(`${base}/demo-mode`, { credentials: 'include' }).then(j)
+export const setDemoMode = (on) => fetch(`${base}/demo-mode`, {
+  method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on }),
+}).then(j)
+export const revertDemoMode = () => fetch(`${base}/demo-mode/revert`, { method: 'POST', credentials: 'include' }).then(j)
+
+export const listSnapshots = () => fetch(`${base}/snapshot/list`, { credentials: 'include' }).then(j)
+export const saveSnapshot = (name) => fetch(`${base}/snapshot/save`, {
+  method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+}).then(j)
+export const loadSnapshot = (name) => fetch(`${base}/snapshot/load`, {
+  method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+}).then(j)

@@ -4,7 +4,7 @@ import {
   normalizeFrames,
   pickNearestPreviousFrame,
 } from './weatherTimeline.js'
-import { advisoryItemsToFeatureCollection, advisoryItemsToLabelFeatureCollection } from './advisoryLayers.js'
+import { advisoryItemsToFeatureCollection, advisoryItemsToLabelFeatureCollection, formatAdvisoryFir } from './advisoryLayers.js'
 import { phenomenonText } from '../../../shared/weather/phenomenonKo.js'
 import { sigwxLowToMapboxData } from './sigwxData.js'
 import { LIGHTNING_AGE_BANDS, createLightningGeoJSON } from './lightningLayers.js'
@@ -69,8 +69,10 @@ export function formatSigwxStamp(value, tz = 'KST') {
 export function formatAdvisoryPanelLabel(item, kind) {
   const base = kind === 'sigmet' ? 'SIGMET' : 'AIRMET'
   const sequence = item?.sequence_number ? ` ${item.sequence_number}` : ''
+  const fir = formatAdvisoryFir(item)
+  const firLabel = fir ? ` · ${fir}` : ''
   const phenomenon = phenomenonText(item?.phenomenon_code, item?.phenomenon_label || '')
-  return `${base}${sequence}${phenomenon ? ` ${phenomenon}` : ''}`
+  return `${base}${sequence}${firLabel}${phenomenon ? ` ${phenomenon}` : ''}`
 }
 
 export function formatAdvisoryValidLabel(item, tz = 'KST') {

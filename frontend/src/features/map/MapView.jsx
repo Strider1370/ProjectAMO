@@ -2,6 +2,7 @@ import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, us
 import { ChartSpline, House } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
+import useDemoMode from '../../shared/demoMode/useDemoMode.js'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from './mapConfig.js'
@@ -241,6 +242,7 @@ const MapView = forwardRef(function MapView({
   const adsbEventCleanupRef = useRef(null)
   const sectorEventCleanupRef = useRef(null)
   const [error, setError] = useState(null)
+  const { on: demoMode } = useDemoMode()
   const [isStyleReady, setIsStyleReady] = useState(false)
   const [styleRevision, setStyleRevision] = useState(0)
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
@@ -1051,18 +1053,34 @@ const MapView = forwardRef(function MapView({
 
       const features = map.queryRenderedFeatures(e.point, { layers: advisoryLayerIds })
       const seenIds = new Set()
-      const descriptions = []
+      const advisories = []
       for (const feature of features) {
         const id = feature.properties?.id
         const desc = feature.properties?.description
         if (!desc || (id && seenIds.has(id))) continue
         if (id) seenIds.add(id)
-        descriptions.push(desc)
+        advisories.push(feature.properties)
       }
-      if (!descriptions.length) return
+      if (!advisories.length) return
 
-      const html = descriptions
-        .map((desc) => `<pre class="mapbox-advisory-popup">${escapeHtml(desc)}</pre>`)
+      const html = advisories
+        .map((advisory) => {
+          const type = advisory.kind?.startsWith('sigmet') ? 'SIGMET' : 'AIRMET'
+          const tone = type.toLowerCase()
+          const name = `${type}${advisory.sequence ? ` ${advisory.sequence}` : ''}${advisory.fir ? ` · ${advisory.fir}` : ''}`
+          const details = [
+            ['고도', advisory.altitude],
+            ['이동', advisory.motion],
+          ].filter(([, value]) => value)
+          return `<section class="mapbox-advisory-popup mapbox-advisory-popup--${tone}">
+            <div class="mapbox-advisory-popup-head"><span class="mapbox-advisory-popup-icon" aria-hidden="true">⚠</span><strong>${escapeHtml(name)}</strong></div>
+            <div class="mapbox-advisory-popup-body"><span class="mapbox-advisory-popup-acc" aria-hidden="true"></span><div>
+              <p class="mapbox-advisory-popup-title">${escapeHtml(advisory.phenomenonLabel || advisory.label || '')}</p>
+              ${advisory.validity ? `<p class="mapbox-advisory-popup-time">${escapeHtml(advisory.validity)}</p>` : ''}
+              ${details.length ? `<div class="mapbox-advisory-popup-details">${details.map(([label, value]) => `<div class="mapbox-advisory-popup-detail"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`).join('')}</div>` : ''}
+            </div></div>
+          </section>`
+        })
         .join('<hr class="mapbox-advisory-popup-divider" />')
 
       new mapboxgl.Popup({ closeButton: true, maxWidth: '320px' })
@@ -1145,14 +1163,6 @@ const MapView = forwardRef(function MapView({
 
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     syncAdvisoryLayers(map, advisoryLayerModel)
-    // 화면상 겹침은 확대/이동할 때마다 달라지므로 그때마다 라벨 충돌을 다시 계산.
-    const resync = () => syncAdvisoryLayers(map, advisoryLayerModel)
-    map.on('zoomend', resync)
-    map.on('moveend', resync)
-    return () => {
-      map.off('zoomend', resync)
-      map.off('moveend', resync)
-    }
   }, [advisoryLayerModel])
 
   // ???? Sync lightning ????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -1409,6 +1419,8 @@ const MapView = forwardRef(function MapView({
       data-route-briefing-map-mode={activePanel === 'route-check' && routeBriefingMapMode ? 'true' : 'false'}
     >
       <div ref={mapContainerRef} className="map-view" />
+
+      {demoMode && <div className="demo-mode-badge">시연용 모드</div>}
 
       {adsbLoading && (
         <div className="adsb-loading" role="status" aria-live="polite">

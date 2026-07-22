@@ -115,6 +115,18 @@ function toFl(ft) {
   return Number.isFinite(ft) ? Math.round(ft / 100) : null
 }
 
+const COMPASS_DEGREES = { N: 0, NNE: 22.5, NE: 45, ENE: 67.5, E: 90, ESE: 112.5, SE: 135, SSE: 157.5, S: 180, SSW: 202.5, SW: 225, WSW: 247.5, W: 270, WNW: 292.5, NW: 315, NNW: 337.5 }
+
+function parseMotion(direction, speed) {
+  const text = typeof direction === 'string' && direction.trim() !== '-' ? direction.trim().toUpperCase() : null
+  const numericDirection = Number(direction)
+  const numericSpeed = Number(speed)
+  return {
+    direction_deg: text ? COMPASS_DEGREES[text] ?? null : (Number.isFinite(numericDirection) ? numericDirection : null),
+    direction_text: text,
+    speed_kt: Number.isFinite(numericSpeed) && numericSpeed > 0 ? numericSpeed : null,
+  }
+}
 function mapIntensityChange(chng) {
   const c = String(chng || '').toUpperCase()
   if (c === 'WKN') return 'WEAKENING'
@@ -166,10 +178,7 @@ export function parse(entries, firSet) {
           lower_uom: 'FL',
           upper_uom: 'FL',
         },
-        motion: {
-          direction_deg: Number.isFinite(e.dir) ? e.dir : null,
-          speed_kt: Number.isFinite(e.spd) ? e.spd : null,
-        },
+        motion: parseMotion(e.dir, e.spd),
         surface_visibility_m: null,
         surface_visibility_causes: [],
         surface_visibility_cause_labels: [],

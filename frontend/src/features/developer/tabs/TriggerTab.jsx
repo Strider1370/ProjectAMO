@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Dropdown, Option, Checkbox, Button, Input, Badge, MessageBar, MessageBarBody, makeStyles, tokens } from '../../../shared/ui/fluent.js'
 import { useAuth } from '../../auth/AuthContext.jsx'
 import { getRoutes, inject, reset, tick, clearAlerts, setRole, getVapidPublicKey, subscribePush, sendTestPush } from '../developerApi.js'
+import DemoModePanel from '../../admin/DemoModePanel.jsx'
 
 // VAPID 공개키(base64url) → PushManager.subscribe가 요구하는 Uint8Array.
 function urlBase64ToUint8Array(base64) {
@@ -113,6 +114,11 @@ export default function TriggerTab() {
       <div className={s.hint}>
         <b>즉시 발화 흐름:</b> ① [스케줄러 즉시 발화]로 baseline → ② [악기상 주입] → ③ 다시 [스케줄러 즉시 발화]하면
         실제 스케줄러가 변경을 감지해 발화(15분 대기 없이). 주입 버튼은 별도로도 알림을 바로 발화합니다.
+      </div>
+
+      {/* 시연 모드 + 데이터 스냅샷 — 관리자 콘솔(/admin)과 같은 컴포넌트 재사용(배포 서버에서도 써야 해서 백엔드는 /api/admin/*). */}
+      <div className={s.block}>
+        <DemoModePanel />
       </div>
 
       {/* 딥링크 생성기 (Task 11) */}

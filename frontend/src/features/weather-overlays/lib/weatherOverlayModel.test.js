@@ -216,3 +216,9 @@ test('buildWeatherOverlayModel tolerates omitted hidden advisory keys', () => {
   assert.equal(model.sigwxGroups.length, 0)
   assert.equal(model.lightningCount, 0)
 })
+
+test('formatAdvisoryPanelLabel adds FIR only for overseas SIGMETs', () => {
+  assert.equal(formatAdvisoryPanelLabel({
+    source: 'NOAA', fir: 'VHHK', sequence_number: '1', phenomenon_code: 'TS',
+  }, 'sigmet'), 'SIGMET 1 · VHHK (홍콩 FIR) 뇌우 (TS)')
+})

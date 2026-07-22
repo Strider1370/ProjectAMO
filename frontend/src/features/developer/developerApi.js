@@ -23,6 +23,8 @@ export const tick = () => fetch('/api/dev/tick', post()).then(j)
 export const clearAlerts = () => fetch('/api/dev/clear-alerts', post()).then(j)
 export const setRole = (role) => fetch('/api/dev/role', post({ role })).then(j)
 
+// 시연용 스냅샷 저장/복원은 관리자 콘솔(/admin, adminApi.js)로 이전됨 — 배포 서버에서도 써야 해서.
+
 export const getVapidPublicKey = () => get('/api/me/push/vapid-public-key')
 export const subscribePush = (subscription) => fetch('/api/me/push/subscribe', post(subscription)).then(j)
 export const sendTestPush = () => fetch('/api/me/push/test', post()).then(j)

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MoveUp } from 'lucide-react'
 import { buildTafViewModel, buildTafTacLines, formatTafHour, formatTafPeriodRange, groupTafSlots, TAF_CATEGORY_COLOR } from '../lib/tafViewModel.js'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
+import useDemoMode from '../../../shared/demoMode/useDemoMode.js'
 import '../AirportPanel.css'
 
 function tafWeatherClass(item, baseClass, { includeSpecial = true } = {}) {
@@ -59,9 +60,10 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
       : 'timeline',
   )
   const { tz } = useTimeZone()
+  const { nowMs } = useDemoMode()
   if (!taf) return <div className="ap-empty">TAF 데이터 없음</div>
 
-  const { rawTimeline, slots } = buildTafViewModel(taf, icao)
+  const { rawTimeline, slots } = buildTafViewModel(taf, icao, nowMs)
   const periods = groupTafPeriods(slots) // 테이블·그리드용 변화구간 묶음
   const tacLines = buildTafTacLines(taf, icao)
 
@@ -76,17 +78,17 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
             {slots.map((item, index) => <span key={index}>{index % 3 === 0 || index === 0 ? formatTafHour(item.time, tz) : ''}</span>)}
           </div>
           {[
-            ['비행조건', groupTafSlots(slots, (item) => item.flight.category), (item) => item.flight.category, (item) => ({ background: TAF_CATEGORY_COLOR[item.flight.category] || '#15803d', color: '#fff' })],
-            ['날씨', groupTafSlots(slots, (item) => item.weatherText), (item) => item.weatherText, (item) => ({ background: item.hasPrecipitation ? '#bae6fd' : '#f8fafc', color: item.hasPrecipitation ? '#0c4a6e' : '#0f172a' })],
-            ['바람', groupTafSlots(slots, (item) => item.windText), (item) => item.windText, (item) => ({ background: item.highWind ? '#fff1f2' : '#f8fafc', color: item.highWind ? '#be123c' : '#0f172a' })],
-            ['시정(m)', groupTafSlots(slots, (item) => item.visibilityText), (item) => item.visibilityText, (item) => ({ background: item.visibilityCategory.bg, color: item.visibilityCategory.valueColor })],
-            ['구름(ft)', groupTafSlots(slots, (item) => item.cloudText), (item) => item.cloudText, (item) => ({ background: item.ceilingCategory.bg, color: item.ceilingCategory.valueColor })],
-          ].map(([label, groups, textFn, styleFn], rowIndex) => (
+            ['비행조건', groupTafSlots(slots, (item) => item.flight.category), (item) => item.flight.category, (item) => ({ background: TAF_CATEGORY_COLOR[item.flight.category] || '#15803d', color: '#fff' }), ''],
+            ['날씨', groupTafSlots(slots, (item) => item.weatherText), (item) => item.weatherText, (item) => ({ background: item.hasPrecipitation ? '#bae6fd' : '#f8fafc', color: item.hasPrecipitation ? '#0c4a6e' : '#0f172a' }), 'ap-taf-seg--weather'],
+            ['바람', groupTafSlots(slots, (item) => item.windText), (item) => item.windText, (item) => ({ background: item.highWind ? '#fff1f2' : '#f8fafc', color: item.highWind ? '#be123c' : '#0f172a' }), 'ap-taf-seg--wind'],
+            ['시정(m)', groupTafSlots(slots, (item) => item.visibilityText), (item) => item.visibilityText, (item) => ({ background: item.visibilityCategory.bg, color: item.visibilityCategory.valueColor }), 'ap-taf-seg--visibility'],
+            ['구름(ft)', groupTafSlots(slots, (item) => item.cloudText), (item) => item.cloudText, (item) => ({ background: item.ceilingCategory.bg, color: item.ceilingCategory.valueColor }), 'ap-taf-seg--clouds'],
+          ].map(([label, groups, textFn, styleFn, rowClass], rowIndex) => (
             <div className="ap-taf-line" key={label}>
               <div className="ap-taf-line-label">{label}</div>
               <div className="ap-taf-line-track">
                 {groups.map((group, index) => (
-                  <div key={index} className={`${rowIndex === 1 ? tafWeatherClass(group.first, 'ap-taf-seg', { includeSpecial: false }) : 'ap-taf-seg'}${label === '구름(ft)' ? ' ap-taf-seg--clouds' : ''}${group.items.length === 1 && ['바람', '시정(m)'].includes(label) ? ' ap-taf-seg--hour' : ''}`} style={{ width: group.width, ...styleFn(group.first) }} title={textFn(group.first)}>
+                  <div key={index} className={`${rowIndex === 1 ? tafWeatherClass(group.first, 'ap-taf-seg', { includeSpecial: false }) : 'ap-taf-seg'}${rowClass ? ` ${rowClass}` : ''}`} style={{ width: group.width, ...styleFn(group.first) }} title={textFn(group.first)}>
                     {label === '바람' && <MoveUp className="ap-taf-mini-arrow" style={{ transform: `rotate(${group.first.windRotation}deg)` }} />}
                     {label === '구름(ft)' ? <CloudText value={textFn(group.first)} /> : <span>{textFn(group.first)}</span>}
                   </div>

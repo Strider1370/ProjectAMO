@@ -213,6 +213,8 @@
   font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--bg-3); color: var(--text-2); border: 1px solid var(--stroke-2); }
 .hz-chip.hz-on { border-color: var(--level-red); background: var(--level-red-bg); color: var(--level-red); }
 .hz-chip.hz-near { border-style: dashed; }
+.hz-chip.hz-sigmet { border-color: var(--level-red); background: var(--level-red-bg); color: var(--level-red); }
+.hz-chip.hz-airmet { border-color: var(--level-amber); background: var(--level-amber-bg); color: var(--level-amber); }
 
 .rb-card-warning { color: var(--level-red); font-weight: 600; }
 .rb-card-note { color: var(--text-3); font-weight: 500; }

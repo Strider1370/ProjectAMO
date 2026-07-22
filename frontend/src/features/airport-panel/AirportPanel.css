@@ -1400,23 +1400,17 @@
 }
 
 .ap-info-raw-summary {
-  display: none;
+  display: block;
+  margin-bottom: var(--space-s);
+  padding: var(--space-s) 0;
+  color: var(--accent);
+  font-size: var(--fs-300);
+  font-weight: 700;
+  cursor: pointer;
 }
 
-@media (max-width: 719px) {
-  .ap-info-raw-summary {
-    display: block;
-    margin-bottom: var(--space-s);
-    padding: var(--space-s) 0;
-    color: var(--accent);
-    font-size: var(--fs-300);
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .ap-info-raw:not([open]) .ap-info-raw-summary {
-    margin-bottom: 0;
-  }
+.ap-info-raw:not([open]) .ap-info-raw-summary {
+  margin-bottom: 0;
 }
 
 .ap-info-logo-row {
@@ -1605,7 +1599,8 @@
 }
 
 .ap-taf-seg {
-  min-width: 24px;
+  container-type: inline-size;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1620,11 +1615,45 @@
   line-height: 1.15;
 }
 
-.ap-taf-seg--hour {
+.ap-taf-seg--weather,
+.ap-taf-seg--visibility {
+  padding: 0 3px;
+}
+
+/* 칸 실제 렌더링 폭(컨테이너 쿼리) 기준 — TAF 기간이 길어 2시간 칸도 좁아지는 경우까지 자동 대응.
+   컨테이너 쿼리는 컨테이너 자기 자신이 아니라 자손 요소만 스타일링할 수 있어서,
+   font-size·word-break는 전부 자손(span)에 건다 — .ap-taf-seg에 직접 걸면 적용 안 됨.
+   플렉스 아이템의 기본 min-width:auto는 내용 그대로의 폭을 지켜서 줄바꿈 대신 흘러넘치므로,
+   좁은 칸에서 줄바꿈하려는 텍스트는 span에 min-width:0을 같이 줘야 한다. */
+.ap-taf-seg--weather span,
+.ap-taf-seg--clouds span {
   min-width: 0;
-  padding: 0 2px;
-  gap: 2px;
-  font-size: clamp(10px, 1.8vw, 13px);
+  overflow-wrap: break-word;
+}
+
+@container (max-width: 40px) {
+  .ap-taf-seg--weather span {
+    font-size: 10px;
+  }
+}
+
+/* 구름 칸은 패딩이 더 크고("SCT008","OVC060" 등 6~7자) 실측(getBoundingClientRect)해보니
+   10px로는 "OVC060 "(42.4px)이 2칸 실제 폭(~41.4px)에 딱 못 들어가서, 9px까지 내려야
+   대부분의 구름 토큰이 한 줄에 온전히 표시된다. 임계값도 40→46px로 올려 이 폭을 잡아낸다. */
+@container (max-width: 46px) {
+  .ap-taf-seg--clouds span {
+    font-size: 9px;
+    word-break: break-all;
+  }
+}
+
+@container (max-width: 32px) {
+  .ap-taf-seg--visibility span { font-size: 9px; }
+  .ap-taf-seg--wind span { display: none; }
+}
+
+@container (min-width: 32.01px) and (max-width: 72px) {
+  .ap-taf-seg--wind .ap-taf-mini-arrow { display: none; }
 }
 
 .ap-taf-seg--clouds { flex-wrap: wrap; padding: 2px 4px; }

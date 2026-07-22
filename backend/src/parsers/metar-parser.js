@@ -9,7 +9,7 @@ const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
   removeNSPrefix: false,
-  isArray: (name) => ['iwxxm:presentWeather', 'iwxxm:weather', 'iwxxm:layer', 'item'].includes(name),
+  isArray: (name) => ['iwxxm:presentWeather', 'iwxxm:weather', 'iwxxm:layer', 'iwxxm:trendForecast', 'item'].includes(name),
 })
 
 function decodeXmlEntities(value) {
@@ -61,6 +61,66 @@ function parseWindShear(obs) {
 
   const runways = toArray(ws?.['iwxxm:runway']).map((r) => text(r)).filter(Boolean)
   return { all_runways: false, runways: runways.length > 0 ? runways : null }
+}
+
+// 경향예보(BECMG/TEMPO) 시간지시자 → TAC 시간군. WMO IWXXM 2023-1 TrendForecastTimeIndicatorType 4종.
+// KMA 응답엔 실제로 실린 사례를 아직 못 봤음(전 공항 조회로 확인) — WMO 공식 예제(metar-A3-1.xml) 구조 기반 방어적 파싱.
+function trendHhmm(timePosition) {
+  const d = new Date(text(timePosition))
+  if (Number.isNaN(d.getTime())) return null
+  return `${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}`
+}
+
+function trendTimeToken(indicator, phenomenonTime) {
+  const instant = phenomenonTime?.['gml:TimeInstant']?.['gml:timePosition']
+  const period = phenomenonTime?.['gml:TimePeriod']
+  if (indicator === 'AT' && instant) { const t = trendHhmm(instant); return t ? `AT${t}` : '' }
+  if (indicator === 'UNTIL' && period) { const t = trendHhmm(period['gml:endPosition']); return t ? `TL${t}` : '' }
+  if (indicator === 'FROM' && (instant || period)) { const t = trendHhmm(instant || period['gml:beginPosition']); return t ? `FM${t}` : '' }
+  if (indicator === 'FROM_UNTIL' && period) {
+    const fm = trendHhmm(period['gml:beginPosition'])
+    const tl = trendHhmm(period['gml:endPosition'])
+    return fm && tl ? `FM${fm}TL${tl}` : ''
+  }
+  return ''
+}
+
+const TREND_CHANGE_TOKEN = { BECOMING: 'BECMG', TEMPORARY_FLUCTUATIONS: 'TEMPO' }
+
+// NOSIG(변화없음)는 IWXXM 스키마에 별도 코드가 없음 — trendForecast 요소 자체가 없는 것으로 표현됨(스키마 minOccurs=0).
+function parseTrendForecast(metar) {
+  return toArray(metar['iwxxm:trendForecast'])
+    .map((tf) => tf?.['iwxxm:MeteorologicalAerodromeTrendForecast'])
+    .filter(Boolean)
+    .map((node) => {
+      const changeToken = TREND_CHANGE_TOKEN[node['@_changeIndicator']]
+      if (!changeToken) return null
+
+      const parts = [changeToken]
+      const timeToken = trendTimeToken(text(node['iwxxm:timeIndicator']), node['iwxxm:phenomenonTime'])
+      if (timeToken) parts.push(timeToken)
+
+      if (String(node['@_cloudAndVisibilityOK'] || 'false').toLowerCase() === 'true') {
+        parts.push('CAVOK')
+      } else {
+        const visValue = number(node['iwxxm:prevailingVisibility'])
+        if (Number.isFinite(visValue)) parts.push(visValue === 10000 ? '9999' : String(visValue))
+
+        for (const w of toArray(node['iwxxm:weather'])) {
+          const nilReason = String(w?.['@_nilReason'] || '').toLowerCase()
+          if (nilReason.includes('nothingofoperationalsignificance')) continue
+          const href = w?.['@_xlink:href']
+          const parsedWeather = href ? parseWeatherCode(lastToken(href)) : null
+          if (parsedWeather) parts.push(parsedWeather.raw)
+        }
+
+        const cloudLayers = toArray(node['iwxxm:cloud']?.['iwxxm:AerodromeCloud']?.['iwxxm:layer'])
+        for (const layer of cloudLayers.map(parseCloudLayer).filter(Boolean)) parts.push(layer.raw)
+      }
+
+      return parts.join(' ')
+    })
+    .filter(Boolean)
 }
 
 function pickCodeFromHref(value) {
@@ -168,7 +228,7 @@ function parseRunwayVisualRanges(obs) {
 function buildDisplay(observation, flags) {
   return {
     wind: observation.wind.raw,
-    visibility: String(observation.visibility.value ?? '//'),
+    visibility: observation.visibility.value === 10000 ? '9999' : String(observation.visibility.value ?? '//'),
     minimum_visibility: observation.visibility.minimum_value != null ? String(observation.visibility.minimum_value) : null,
     weather: observation.weather.map((w) => w.raw).join(' '),
     clouds: (flags.cavok || flags.nsc) ? 'NSC' : observation.clouds.map((c) => c.raw).join(' '),
@@ -292,6 +352,7 @@ export function parse(xmlString) {
     observation,
     cavok_flag: cavok,
     nsc_flag: nscFlag,
+    trend: parseTrendForecast(metar),
   }
 
   if (!parsed.header.icao) return null

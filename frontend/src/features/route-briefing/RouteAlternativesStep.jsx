@@ -16,6 +16,12 @@ function exposureLabel(hazard) {
   return Number.isFinite(distance) ? `${label} 수평 교차 ${Math.round(distance)} NM` : `${label} 수평 교차`
 }
 
+function hazardChipClassName(source) {
+  if (source?.includes('SIGMET')) return 'hz-chip hz-sigmet'
+  if (source?.includes('AIRMET')) return 'hz-chip hz-airmet'
+  return 'hz-chip'
+}
+
 function relatedLayerIds(routeExposure) {
   return hazardMapLayers({ sections: { adverse: { hazards: (routeExposure?.hazards ?? []).map((hazard) => ({ code: hazard.phenomenon, source: hazard.source })) } } })
 }
@@ -88,7 +94,7 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
           {baseHazards.length > 0 && (
             <span className="rb-card-hazard">
               {baseHazards.map((hazard) => (
-                <span key={hazard.sourceId} className="hz-chip"><HazardIcon source={hazard.source} />{exposureLabel(hazard)}</span>
+                <span key={hazard.sourceId} className={hazardChipClassName(hazard.source)}><HazardIcon source={hazard.source} />{exposureLabel(hazard)}</span>
               ))}
             </span>
           )}
@@ -154,7 +160,7 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
             {comparison?.comparisonUnavailable && <span className="rb-alternatives-status">위험 노출 비교 자료 없음</span>}
             {hazards.length > 0 && (
               <span className="rb-card-hazard">
-                {visibleHazards.map((hazard) => <span key={hazard.sourceId} className="hz-chip"><HazardIcon source={hazard.source} />{exposureLabel(hazard)}</span>)}
+                {visibleHazards.map((hazard) => <span key={hazard.sourceId} className={hazardChipClassName(hazard.source)}><HazardIcon source={hazard.source} />{exposureLabel(hazard)}</span>)}
               </span>
             )}
             {hazards.length > 3 && (

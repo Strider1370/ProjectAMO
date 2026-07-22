@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx'
 import { getMetrics, getTraffic, getUsers, getPending, approve, reject } from './adminApi.js'
 import ResourceTimeline from './ResourceTimeline.jsx'
 import CreateForecasterDialog from './CreateForecasterDialog.jsx'
+import DemoModePanel from './DemoModePanel.jsx'
 import './AdminPage.css'
 
 const ROLE_KO = { pilot: '조종사', forecaster: '예보관', admin: '관리자' }
@@ -22,7 +23,6 @@ function fmtDate(iso) {
   const d = new Date(iso)
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 }
-
 function ResourceGauge({ label, pct, sub }) {
   return (
     <div className="admin-gauge">
@@ -83,6 +83,9 @@ export default function AdminPage() {
         <a className="admin-back" href="/" aria-label="메인으로"><ArrowLeft size={18} /></a>
         <h1>관리자 콘솔</h1>
       </header>
+
+      {/* 0) 시연 모드 — 자동수집(cron) 정지/재개 + 데이터 스냅샷 + "지금" 시각 오버라이드. 개발자 콘솔(/dev)에도 같은 패널이 있음. */}
+      <DemoModePanel />
 
       {/* 1) 시스템 리소스 */}
       <section className="admin-card admin-resources">

@@ -57,6 +57,7 @@ export function buildMetarTacPresentation(parsed) {
   if (d.qnh) parts.push(tacToken(d.qnh, 'qnh'))
   const shear = windShearToken(o.wind_shear)
   if (shear) parts.push(tacToken(shear, 'supplementary'))
+  for (const trend of (parsed.trend || [])) parts.push(tacToken(trend, 'supplementary'))
   return tacPresentation([tacDisplayLine(parts)])
 }
 

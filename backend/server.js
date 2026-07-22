@@ -13,8 +13,10 @@ import cors from 'cors'
 import helmet from 'helmet'
 import sharp from 'sharp'
 import cookieParser from 'cookie-parser'
-import { sessionMiddleware } from './src/auth/session.js'
+import { sessionMiddleware, ABSOLUTE_TTL_MS } from './src/auth/session.js'
 import { createAuthRouter } from './src/auth/router.js'
+import { createUser } from './src/db/users.js'
+import { isDemoMode, getEffectiveNow } from './src/dev/demo-mode.js'
 import { createAdminRouter } from './src/admin/router.js'
 import { visitTracker } from './src/admin/visits.js'
 import { startSampler } from './src/admin/metrics.js'
@@ -84,6 +86,23 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(cookieParser()) // 익명 방문자 쿠키(amo.vid) 파싱 — sessionMiddleware 앞. 관리자 콘솔
   app.use(sessionMiddleware())
   app.use(visitTracker(getDb)) // 방문 추적(비로그인 포함). /api·/data 제외.
+
+  // AUTO_ADMIN_LOGIN=1(로컬 전용): 매 요청을 로컬 admin 계정으로 자동 인증.
+  // 서버엔 이미 admin 계정이 있지만 로컬 DB엔 없어서, 매번 로그인하지 않도록 최초 1회 생성 후 세션에 주입.
+  // production에서는 절대 켜지지 않게 이중 차단(위 NODE_ENV!=='test' 블록 + 아래 조건).
+  if (process.env.AUTO_ADMIN_LOGIN && process.env.NODE_ENV !== 'production') {
+    app.use((req, res, next) => {
+      if (!req.session.userId) {
+        const db = getDb()
+        let admin = db.prepare('SELECT id, role FROM users WHERE username = ?').get('local_admin')
+        if (!admin) admin = createUser(db, { username: 'local_admin', password: 'local-admin-dev-only', role: 'admin', status: 'active' })
+        req.session.userId = admin.id
+        req.session.role = admin.role
+        req.session.absoluteExpiry = Date.now() + ABSOLUTE_TTL_MS
+      }
+      next()
+    })
+  }
 }
 
 function readJsonFileSafe(filePath) {
@@ -857,6 +876,9 @@ app.get('/api/sigwx-low-clouds', (req, res) => sendSigwxOverlayMeta(req, res, 'c
 
 app.get('/api/stats', (_req, res) => res.json(stats.getStats()))
 app.get('/api/health', (_req, res) => res.json({ ok: true, uptime: process.uptime(), testMode: !!process.env.DISABLE_COLLECTION }))
+// 지도의 "시연용 모드" 배지 + 프런트의 "지금" 기준용 — 누구나 조회 가능(로그인 불필요).
+// 켜고 끄기·스냅샷 선택은 /api/admin/*(관리자 전용).
+app.get('/api/demo-mode', (_req, res) => res.json({ on: isDemoMode(), now: getEffectiveNow().toISOString() }))
 app.post('/api/vertical-profile', (req, res) => {
   try {
     res.json(buildVerticalProfile(req.body, terrainSampler))
@@ -893,6 +915,7 @@ app.post('/api/route-briefing', (req, res) => {
       notam: store.getCached('notam'),
       airspaceZones: loadAirspaceZoneItems(),
       dataRoot: DATA_ROOT, // composeBriefing이 enroute 단면 모델을 직접 로드(이전엔 여기서 사후 mutate)
+      now: getEffectiveNow().getTime(), // 시연 모드면 스냅샷 기준시각으로 고정(실제 현재시각 아님)
     }
     const briefing = composeBriefing(body, data)
 

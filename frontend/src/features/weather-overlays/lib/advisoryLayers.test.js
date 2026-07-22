@@ -4,21 +4,10 @@ import assert from 'node:assert/strict'
 import {
   ADVISORY_LAYER_DEFS,
   addAdvisoryLayers,
+  advisorySymbolUrl,
+  advisoryItemsToFeatureCollection,
   advisoryItemsToLabelFeatureCollection,
-  resolveAdvisoryLabelCollisions,
 } from './advisoryLayers.js'
-
-// 실제 mapbox 투영이 아니라 단순 선형 스케일 — 밀어내기 로직 자체만 검증하면 되므로 충분.
-function createProjectionMap(scale = 100) {
-  return {
-    project: ([lng, lat]) => ({ x: lng * scale, y: -lat * scale }),
-    unproject: ([x, y]) => ({ lng: x / scale, lat: -y / scale }),
-  }
-}
-
-function pointFeature(coordinates) {
-  return { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates } }
-}
 
 function createMap() {
   const sources = new Map()
@@ -45,7 +34,7 @@ function createMap() {
   }
 }
 
-test('advisory map markers render icon layer plus a chart-style text/arrow layer', () => {
+test('advisory marker layers retain their shared interior point data', () => {
   const map = createMap()
   const featureData = { type: 'FeatureCollection', features: [] }
   const labelData = advisoryItemsToLabelFeatureCollection({
@@ -66,21 +55,22 @@ test('advisory map markers render icon layer plus a chart-style text/arrow layer
 
   addAdvisoryLayers(map, 'sigmet', featureData, labelData)
 
+  assert.ok(map.getLayer(ADVISORY_LAYER_DEFS.sigmet.fillLayerId))
+  assert.ok(map.getLayer(ADVISORY_LAYER_DEFS.sigmet.lineLayerId))
   assert.ok(map.getLayer(ADVISORY_LAYER_DEFS.sigmet.iconLayerId))
-  assert.ok(map.getLayer(ADVISORY_LAYER_DEFS.sigmet.arrowLayerId))
-  const textLayer = map.getLayer(ADVISORY_LAYER_DEFS.sigmet.textLayerId)
-  assert.ok(textLayer?.layout?.['text-field'])
+  assert.equal(map.getLayer(ADVISORY_LAYER_DEFS.sigmet.arrowLayerId), null)
 
   const [feature] = labelData.features
-  assert.equal(feature.properties.chartLine1, 'TOP FL 350   15KT')
+  assert.equal(feature.properties.chartLine1, 'TOP FL 350')
   assert.equal(feature.properties.chartLine2, 'NC')
+  assert.equal(feature.properties.motionLabel, '15KT')
   assert.equal(feature.properties.motionDirection, 90)
+  assert.equal(feature.properties.markerKey, 'sigmet-TURB-90-15KT')
 
-  const arrowLayer = map.getLayer(ADVISORY_LAYER_DEFS.sigmet.arrowLayerId)
-  // icon-offset would rotate together with icon-rotate and drift into the text —
-  // position must come from icon-translate (paint), which stays fixed regardless of rotation.
-  assert.equal(arrowLayer.layout?.['icon-offset'], undefined)
-  assert.deepEqual(arrowLayer.paint?.['icon-translate'], [42, -26])
+})
+
+test('frequent thunderstorm uses the shared thunderstorm symbol', () => {
+  assert.match(advisorySymbolUrl('sigmet_intl', 'FRQ_TS'), /icon_SIGMET\/TS\.png$/)
 })
 
 test('spelled-out intensity codes are abbreviated to match the standard chart format', () => {
@@ -124,42 +114,43 @@ test('surface-visibility AIRMETs without altitude/motion still show visibility +
   assert.equal(feature.properties.chartLine2, 'INTSF')
   assert.equal(feature.properties.motionDirection, null)
 
-  addAdvisoryLayers(map, 'airmet', featureData, labelData)
-  const textLayer = map.getLayer(ADVISORY_LAYER_DEFS.airmet.textLayerId)
-  // both lines present and non-empty -> layer's filter must not exclude this feature
-  assert.deepEqual(textLayer.filter, ['any', ['!=', ['get', 'chartLine1'], ''], ['!=', ['get', 'chartLine2'], '']])
 })
 
-test('resolveAdvisoryLabelCollisions pushes coincident points from different kinds apart', () => {
-  const map = createProjectionMap()
-  const samePoint = [126, 37]
-  const groups = [
-    { kind: 'sigmet', labelData: { type: 'FeatureCollection', features: [pointFeature(samePoint)] } },
-    { kind: 'airmet', labelData: { type: 'FeatureCollection', features: [pointFeature(samePoint)] } },
-  ]
 
-  const [sigmetGroup, airmetGroup] = resolveAdvisoryLabelCollisions(map, groups)
-  const a = map.project(sigmetGroup.labelData.features[0].geometry.coordinates)
-  const b = map.project(airmetGroup.labelData.features[0].geometry.coordinates)
-  const distancePx = Math.hypot(a.x - b.x, a.y - b.y)
 
-  assert.ok(distancePx >= 99, `expected pushed-apart points ~100px apart, got ${distancePx}`)
+test('advisory popup fields keep the pilot-facing label, validity, altitude, and motion', () => {
+  const data = advisoryItemsToFeatureCollection({
+    items: [{ id: 'sigmet-popup', phenomenon_code: 'OBSC_TS', sequence_number: 'J02', valid_from: '2026-07-22T05:00:00.000Z', valid_to: '2026-07-22T09:00:00.000Z', altitude: { lower_fl: null, upper_fl: 350 }, motion: { direction_deg: 68, speed_kt: 25 }, geometry: { type: 'Polygon', coordinates: [[[126, 36], [128, 36], [128, 38], [126, 38], [126, 36]]] } }],
+  }, 'sigmet')
+  const { properties } = data.features[0]
+  assert.equal(properties.label, 'SIGMET J02 가림뇌우')
+  assert.equal(properties.phenomenonLabel, '가림뇌우')
+  assert.equal(properties.validity, '07/22 14:00 KST ~ 07/22 18:00 KST')
+  assert.equal(properties.altitude, '상한 FL350 · 하한 미제공')
+  assert.equal(properties.motion, '68deg 25KT')
+  const overseas = advisoryItemsToFeatureCollection({
+    items: [{ id: 'sigmet-motion', source: 'NOAA', fir: 'WAAF', phenomenon_code: 'VA', motion: { direction_text: 'NE', direction_deg: 45, speed_kt: 15 }, geometry: { type: 'Polygon', coordinates: [[[126, 36], [128, 36], [128, 38], [126, 38], [126, 36]]] } }],
+  }, 'sigmet_intl')
+  assert.equal(overseas.features[0].properties.motion, 'NE 15KT')
 })
 
-test('resolveAdvisoryLabelCollisions leaves well-separated points untouched', () => {
-  const map = createProjectionMap()
-  const groups = [
-    { kind: 'sigmet', labelData: { type: 'FeatureCollection', features: [pointFeature([120, 30])] } },
-    { kind: 'airmet', labelData: { type: 'FeatureCollection', features: [pointFeature([135, 40])] } },
-  ]
+test('advisory popup altitude distinguishes an explicit surface base from an unspecified base', () => {
+  const data = advisoryItemsToFeatureCollection({
+    items: [
+      { id: 'surface-base', altitude: { lower_fl: 0, upper_fl: 100, lower_ref: 'SFC' }, geometry: { type: 'Polygon', coordinates: [[[126, 36], [128, 36], [128, 38], [126, 38], [126, 36]]] } },
+      { id: 'top-only', altitude: { lower_fl: null, upper_fl: 320 }, geometry: { type: 'Polygon', coordinates: [[[126, 36], [128, 36], [128, 38], [126, 38], [126, 36]]] } },
+    ],
+  }, 'sigmet')
 
-  const [sigmetGroup, airmetGroup] = resolveAdvisoryLabelCollisions(map, groups)
-
-  assert.deepEqual(sigmetGroup.labelData.features[0].geometry.coordinates, [120, 30])
-  assert.deepEqual(airmetGroup.labelData.features[0].geometry.coordinates, [135, 40])
+  assert.equal(data.features[0].properties.altitude, 'SFC-FL100')
+  assert.equal(data.features[1].properties.altitude, '상한 FL320 · 하한 미제공')
 })
 
-test('resolveAdvisoryLabelCollisions is a no-op when the map has no project/unproject (e.g. test mocks)', () => {
-  const groups = [{ kind: 'sigmet', labelData: { type: 'FeatureCollection', features: [] } }]
-  assert.equal(resolveAdvisoryLabelCollisions({}, groups), groups)
+test('overseas SIGMET labels retain the FIR that scopes its sequence number', () => {
+  const data = advisoryItemsToFeatureCollection({
+    items: [{ id: 'sigmet-overseas', source: 'NOAA', fir: 'ZBPE', sequence_number: '1', phenomenon_code: 'EMBD_TS', geometry: { type: 'Polygon', coordinates: [[[126, 36], [128, 36], [128, 38], [126, 38], [126, 36]]] } }],
+  }, 'sigmet_intl')
+  const { properties } = data.features[0]
+  assert.equal(properties.label, 'SIGMET 1 · ZBPE (베이징 FIR) 차폐뇌우')
+  assert.equal(properties.fir, 'ZBPE (베이징 FIR)')
 })

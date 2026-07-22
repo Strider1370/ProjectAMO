@@ -136,9 +136,9 @@ export function countTafHazardPeriods(slots) {
   return count ? { count, severity: worst >= 2 ? 'red' : 'amber' } : null
 }
 
-export function buildTafViewModel(taf, icao) {
+export function buildTafViewModel(taf, icao, nowMs = Date.now()) {
   const rawTimeline = Array.isArray(taf.timeline) ? taf.timeline : []
-  const timeline = rawTimeline.filter((slot) => new Date(slot.time).getTime() + 3600 * 1000 > Date.now())
+  const timeline = rawTimeline.filter((slot) => new Date(slot.time).getTime() + 3600 * 1000 > nowMs)
   return {
     rawTimeline,
     slots: timeline.map((slot) => tafSlotView(slot, icao)),

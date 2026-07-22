@@ -22,6 +22,7 @@ import ktgProcessor from './processors/ktg-processor.js'
 import flightCategoryProcessor from './processors/flight-category-processor.js'
 import notamProcessor from './processors/notam-processor.js'
 import overseasProcessor from './processors/overseas-weather-processor.js'
+import { isDemoMode } from './dev/demo-mode.js'
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
@@ -30,6 +31,10 @@ const KIM_NWP_CRON_OPTIONS = { timezone: 'Etc/UTC' }
 const AIRPORT_INFO_CRON_OPTIONS = { timezone: 'Asia/Seoul' }
 
 async function runWithLock(type, job) {
+  if (isDemoMode()) {
+    stats.recordSkip(type); // 시연 모드: 자동수집 전면 정지(실황 덮어쓰기 방지)
+    return;
+  }
   if (locks[type]) {
     console.warn(`${type}: skipped (already running)`);
     stats.recordSkip(type); // 수집 주기 < 처리시간 신호(관찰 탭)
