@@ -8,7 +8,11 @@ const SNAPSHOT_EXCLUDE = new Set(['snapshots', 'stats']) // 캡처 대상에서 
 const NAME_RE = /^[a-zA-Z0-9_-]+$/ // 경로 이탈(../) 방지 — 영문/숫자/-/_ 만 허용
 // kim_nwp·ktg는 실제 단면(수직 프로파일) 격자 데이터가 latest.json이 아니라 runs/<runId>/ 밑에 있고,
 // 자동 정리(maxRuns=2)로 6시간 주기로 지워진다 — latest.json만 복사하면 단면 브리핑이 깨지므로 폴더째 복사.
-const FULL_DIR_TYPES = new Set(['kim_nwp', 'ktg'])
+// radar·satellite도 "latest" 포인터가 latest.json이 아니라 echo_meta.json/sat_meta.json(+rainviewer_meta.json)
+// 이고, 실제 이미지(PNG/WebP) 여러 장이 그 옆에 같이 있어서 마찬가지로 폴더째 복사해야 함(용량은 각각 수백KB~수MB로 작음).
+const FULL_DIR_TYPES = new Set(['kim_nwp', 'ktg', 'radar', 'satellite'])
+// latest.json이 없어서 일반 스캔(listCapturableTypes)에 안 걸리지만 캡처해야 하는 디렉터리.
+const EXTRA_CAPTURE_TYPES = new Set(['radar', 'satellite'])
 // 스냅샷 로드 직전 실황을 자동 백업해두는 예약 이름 — 목록에 노출 안 함, "되돌리기" 전용.
 export const RESERVED_LIVE_BACKUP = '_live_backup'
 
@@ -16,12 +20,14 @@ export function isValidSnapshotName(name) {
   return typeof name === 'string' && NAME_RE.test(name)
 }
 
-// data/ 아래 latest.json이 있는 디렉터리만 캡처 대상(레이더/지형 등 원본 정적 파일은 자동 제외됨).
+// data/ 아래 latest.json이 있는 디렉터리 + EXTRA_CAPTURE_TYPES(다른 이름의 meta 파일을 쓰는 곳)가 캡처 대상.
 function listCapturableTypes(basePath) {
-  return fs.readdirSync(basePath, { withFileTypes: true })
+  const withLatestJson = fs.readdirSync(basePath, { withFileTypes: true })
     .filter((e) => e.isDirectory() && !SNAPSHOT_EXCLUDE.has(e.name))
     .map((e) => e.name)
     .filter((type) => fs.existsSync(path.join(basePath, type, 'latest.json')))
+  const extra = [...EXTRA_CAPTURE_TYPES].filter((type) => fs.existsSync(path.join(basePath, type)))
+  return [...new Set([...withLatestJson, ...extra])]
 }
 
 function copyTypeInto(basePath, type, destDir) {
