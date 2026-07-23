@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   buildAlertKey,
   clearResolvedAlerts,
@@ -28,12 +28,15 @@ import AlertSound from './legacy/components/alerts/AlertSound'
 import AlertMarquee from './legacy/components/alerts/AlertMarquee'
 import Settings from './legacy/components/alerts/Settings'
 import MonitoringMap from './MonitoringMap.jsx'
+import { useSnapshotPolling } from '../../app/useWeatherPolling.js'
 import {
+  buildMonitoringSnapshot,
+  detectMonitoringSnapshotChanges,
   fetchMonitoringSnapshotMeta,
   loadChangedMonitoringData,
   loadMonitoringAlertDefaults,
-  loadMonitoringData,
-  loadMonitoringStaticData,
+  loadMonitoringInitialData,
+  nextMonitoringSnapshot,
 } from './monitoringApi.js'
 import './legacy/App.css'
 import './MonitoringPage.css'
@@ -52,117 +55,6 @@ const AIRPORT_NAME_KO = {
 const DEFAULT_AIRPORT = 'RKSI'
 const ALL_ALTITUDE_BANDS = ['0-10000', '10000-20000', '20000-30000', '30000-40000', '40000-50000']
 
-function hashOf(entry) {
-  return entry?.hash ?? null
-}
-
-function tmOf(entry) {
-  return entry?.tm ?? null
-}
-
-function overlayKey(entry) {
-  if (!entry) return null
-  return [
-    entry.tmfc || '',
-    entry.source_hash || '',
-    entry.updated_at || '',
-    entry.render_version || '',
-  ].join('|')
-}
-
-function buildSnapshotStateFromData(data) {
-  return {
-    metar: data.metar?.content_hash || null,
-    metarOverseas: data.metarOverseas?.content_hash || null,
-    taf: data.taf?.content_hash || null,
-    tafOverseas: data.tafOverseas?.content_hash || null,
-    warning: data.warning?.content_hash || null,
-    sigmet: data.sigmet?.content_hash || null,
-    sigmetOverseas: data.sigmetOverseas?.content_hash || null,
-    airmet: data.airmet?.content_hash || null,
-    sigwxLow: data.sigwxLow?.content_hash || null,
-    amos: data.amos?.content_hash || null,
-    lightning: data.lightning?.content_hash || null,
-    adsb: data.adsb?.content_hash || null,
-    groundForecast: data.groundForecast?.content_hash || null,
-    groundOverview: data.groundOverview?.content_hash || null,
-    environment: data.environment?.content_hash || null,
-    airportInfo: data.airportInfo?.content_hash || null,
-    echo: data.echoMeta?.tm || null,
-    satellite: data.satMeta?.tm || null,
-    sigwxFrontMeta: overlayKey(data.sigwxFrontMeta),
-    sigwxCloudMeta: overlayKey(data.sigwxCloudMeta),
-  }
-}
-
-function detectChanges(snapshot, saved) {
-  const sigwxLow = snapshot?.sigwxLow || snapshot?.sigwx_low
-  const metarOverseas = snapshot?.metarOverseas || snapshot?.metar_overseas
-  const tafOverseas = snapshot?.tafOverseas || snapshot?.taf_overseas
-  const sigmetOverseas = snapshot?.sigmetOverseas || snapshot?.sigmet_overseas
-  const groundForecast = snapshot?.groundForecast || snapshot?.ground_forecast
-  const groundOverview = snapshot?.groundOverview || snapshot?.ground_overview
-  const echo = snapshot?.echoMeta || snapshot?.echo
-  const satellite = snapshot?.satMeta || snapshot?.satellite
-
-  return {
-    metar: hashOf(snapshot?.metar) !== saved.metar,
-    metarOverseas: hashOf(metarOverseas) !== saved.metarOverseas,
-    taf: hashOf(snapshot?.taf) !== saved.taf,
-    tafOverseas: hashOf(tafOverseas) !== saved.tafOverseas,
-    warning: hashOf(snapshot?.warning) !== saved.warning,
-    sigmet: hashOf(snapshot?.sigmet) !== saved.sigmet,
-    sigmetOverseas: hashOf(sigmetOverseas) !== saved.sigmetOverseas,
-    airmet: hashOf(snapshot?.airmet) !== saved.airmet,
-    sigwxLow: hashOf(sigwxLow) !== saved.sigwxLow,
-    amos: hashOf(snapshot?.amos) !== saved.amos,
-    lightning: hashOf(snapshot?.lightning) !== saved.lightning,
-    adsb: hashOf(snapshot?.adsb) !== saved.adsb,
-    groundForecast: hashOf(groundForecast) !== saved.groundForecast,
-    groundOverview: hashOf(groundOverview) !== saved.groundOverview,
-    environment: hashOf(snapshot?.environment) !== saved.environment,
-    airportInfo: hashOf(snapshot?.airportInfo) !== saved.airportInfo,
-    echoMeta: tmOf(echo) !== saved.echo,
-    satMeta: tmOf(satellite) !== saved.satellite,
-    sigwxFrontMeta: overlayKey(snapshot?.sigwxFrontMeta) !== saved.sigwxFrontMeta,
-    sigwxCloudMeta: overlayKey(snapshot?.sigwxCloudMeta) !== saved.sigwxCloudMeta,
-  }
-}
-
-function nextSnapshotState(snapshot, changedData, saved) {
-  const sigwxLow = snapshot?.sigwxLow || snapshot?.sigwx_low
-  const metarOverseas = snapshot?.metarOverseas || snapshot?.metar_overseas
-  const tafOverseas = snapshot?.tafOverseas || snapshot?.taf_overseas
-  const sigmetOverseas = snapshot?.sigmetOverseas || snapshot?.sigmet_overseas
-  const groundForecast = snapshot?.groundForecast || snapshot?.ground_forecast
-  const groundOverview = snapshot?.groundOverview || snapshot?.ground_overview
-  const echo = snapshot?.echoMeta || snapshot?.echo
-  const satellite = snapshot?.satMeta || snapshot?.satellite
-
-  return {
-    metar: changedData.metar?.content_hash ?? hashOf(snapshot?.metar) ?? saved.metar,
-    metarOverseas: changedData.metarOverseas?.content_hash ?? hashOf(metarOverseas) ?? saved.metarOverseas,
-    taf: changedData.taf?.content_hash ?? hashOf(snapshot?.taf) ?? saved.taf,
-    tafOverseas: changedData.tafOverseas?.content_hash ?? hashOf(tafOverseas) ?? saved.tafOverseas,
-    warning: changedData.warning?.content_hash ?? hashOf(snapshot?.warning) ?? saved.warning,
-    sigmet: changedData.sigmet?.content_hash ?? hashOf(snapshot?.sigmet) ?? saved.sigmet,
-    sigmetOverseas: changedData.sigmetOverseas?.content_hash ?? hashOf(sigmetOverseas) ?? saved.sigmetOverseas,
-    airmet: changedData.airmet?.content_hash ?? hashOf(snapshot?.airmet) ?? saved.airmet,
-    sigwxLow: changedData.sigwxLow?.content_hash ?? hashOf(sigwxLow) ?? saved.sigwxLow,
-    amos: changedData.amos?.content_hash ?? hashOf(snapshot?.amos) ?? saved.amos,
-    lightning: changedData.lightning?.content_hash ?? hashOf(snapshot?.lightning) ?? saved.lightning,
-    adsb: changedData.adsb?.content_hash ?? hashOf(snapshot?.adsb) ?? saved.adsb,
-    groundForecast: changedData.groundForecast?.content_hash ?? hashOf(groundForecast) ?? saved.groundForecast,
-    groundOverview: changedData.groundOverview?.content_hash ?? hashOf(groundOverview) ?? saved.groundOverview,
-    environment: changedData.environment?.content_hash ?? hashOf(snapshot?.environment) ?? saved.environment,
-    airportInfo: changedData.airportInfo?.content_hash ?? hashOf(snapshot?.airportInfo) ?? saved.airportInfo,
-    echo: changedData.echoMeta?.tm ?? tmOf(echo) ?? saved.echo,
-    satellite: changedData.satMeta?.tm ?? tmOf(satellite) ?? saved.satellite,
-    sigwxFrontMeta: overlayKey(changedData.sigwxFrontMeta) ?? overlayKey(snapshot?.sigwxFrontMeta) ?? saved.sigwxFrontMeta,
-    sigwxCloudMeta: overlayKey(changedData.sigwxCloudMeta) ?? overlayKey(snapshot?.sigwxCloudMeta) ?? saved.sigwxCloudMeta,
-  }
-}
-
 function readJsonLocalStorage(key, fallback) {
   const raw = localStorage.getItem(key)
   if (!raw) return fallback
@@ -177,12 +69,9 @@ export default function MonitoringPage() {
   const [dashboardMode, setDashboardMode] = useState(() => (
     new URLSearchParams(window.location.search).get('mode') === 'ground' ? 'ground' : 'ops'
   ))
-  const [data, setData] = useState({})
   const [selectedAirport, setSelectedAirport] = useState(() => (
     localStorage.getItem('selected_airport_monitoring') || DEFAULT_AIRPORT
   ))
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [alertDefaults, setAlertDefaults] = useState(null)
   const [activeAlerts, setActiveAlerts] = useState([])
   const [previewAlerts, setPreviewAlerts] = useState([])
@@ -198,9 +87,6 @@ export default function MonitoringPage() {
   const [advisoryFilter, setAdvisoryFilter] = useState(() => loadAdvisoryFilterSettings())
 
   const prevDataRef = useRef(null)
-  const pollingRef = useRef(null)
-  const pollingInFlightRef = useRef(false)
-  const snapshotRef = useRef(buildSnapshotStateFromData({}))
 
   useEffect(() => {
     localStorage.setItem('selected_airport_monitoring', selectedAirport || '')
@@ -240,23 +126,19 @@ export default function MonitoringPage() {
     return () => setAlertCallback(null)
   }, [])
 
-  const initialLoad = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const [{ airports, warningTypes, alertDefaults: defaults }, result] = await Promise.all([
-        loadMonitoringStaticData(),
-        loadMonitoringData(),
-      ])
-      const merged = {
-        ...result,
-        airports: result.airports?.length ? result.airports : airports,
-        warningTypes: result.warningTypes || warningTypes,
-      }
+  const intervalMs = alertDefaults
+    ? (resolveSettings(alertDefaults).global.poll_interval_seconds || 30) * 1000
+    : null
 
+  const {
+    data: rawData,
+    loading,
+    initialError: error,
+  } = useSnapshotPolling({
+    loadInitialData: loadMonitoringInitialData,
+    selectInitialData: ({ data: initialData }) => initialData,
+    onInitialData: ({ data: merged, alertDefaults: defaults }) => {
       setAlertDefaults(defaults)
-      setData(merged)
-
       setSelectedAirport((prev) => {
         const available = new Set([
           ...Object.keys(merged.metar?.airports || {}),
@@ -270,37 +152,20 @@ export default function MonitoringPage() {
         if (available.has(DEFAULT_AIRPORT)) return DEFAULT_AIRPORT
         return Array.from(available)[0] || null
       })
-
-      snapshotRef.current = buildSnapshotStateFromData(merged)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const pollOnce = useCallback(async () => {
-    if (pollingInFlightRef.current) return
-    pollingInFlightRef.current = true
-
-    try {
-      const snapshot = await fetchMonitoringSnapshotMeta()
-      if (!snapshot) return
-
-      const changes = detectChanges(snapshot, snapshotRef.current)
-      if (!Object.values(changes).some(Boolean)) return
-
-      const changedData = await loadChangedMonitoringData(changes)
-      setData((prev) => ({ ...prev, ...changedData }))
-      snapshotRef.current = nextSnapshotState(snapshot, changedData, snapshotRef.current)
-    } finally {
-      pollingInFlightRef.current = false
-    }
-  }, [])
-
-  useEffect(() => {
-    initialLoad()
-  }, [initialLoad])
+    },
+    fetchSnapshot: fetchMonitoringSnapshotMeta,
+    buildSnapshot: buildMonitoringSnapshot,
+    detectChanges: detectMonitoringSnapshotChanges,
+    hasChanges: (changes) => Object.values(changes).some(Boolean),
+    loadChangedData: loadChangedMonitoringData,
+    advanceSnapshot: ({ latestSnapshot, changedData, previousSnapshot }) => (
+      nextMonitoringSnapshot(latestSnapshot, changedData, previousSnapshot)
+    ),
+    intervalMs,
+    initialErrorMode: 'state',
+    logPrefix: '[Monitoring]',
+  })
+  const data = rawData || {}
 
   useEffect(() => {
     if (!selectedAirport || !alertDefaults) return
@@ -334,17 +199,6 @@ export default function MonitoringPage() {
     clearResolvedAlerts(firedKeys)
     prevDataRef.current = data
   }, [data, selectedAirport, alertDefaults])
-
-  useEffect(() => {
-    if (!alertDefaults) return undefined
-    const settings = resolveSettings(alertDefaults)
-    const intervalSec = settings.global.poll_interval_seconds || 30
-    if (pollingRef.current) clearInterval(pollingRef.current)
-    pollingRef.current = setInterval(() => pollOnce(), intervalSec * 1000)
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current)
-    }
-  }, [alertDefaults, pollOnce])
 
   function handleDismissAlert(id) {
     setActiveAlerts((prev) => prev.filter((alert) => alert.id !== id))
