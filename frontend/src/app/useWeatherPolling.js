@@ -7,65 +7,119 @@ import {
   loadWeatherData,
 } from '../api/weatherApi.js'
 import { detectSnapshotChanges, hasSnapshotChanges } from './snapshotMeta.js'
+import { hasIncompletePollingData, mergePollingData } from './pollingData.js'
 
 const REFRESH_INTERVAL_MS = 60_000
 
-function useWeatherPolling() {
-  const [weatherData, setWeatherData] = useState(null)
-  const snapshotMetaRef = useRef(null)
-  const loadedDeferredKeysRef = useRef(new Set())
+export function useSnapshotPolling(options) {
+  const optionsRef = useRef(options)
+  optionsRef.current = options
+
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [initialError, setInitialError] = useState(null)
+  const snapshotRef = useRef(null)
+  const pollingRef = useRef(false)
+  const mountedRef = useRef(false)
+
+  const fetchInitialData = useCallback(async () => {
+    const {
+      loadInitialData, selectInitialData, onInitialData, buildSnapshot,
+      initialErrorMode = 'silent', logPrefix = '[App]',
+    } = optionsRef.current
+    try {
+      const result = await loadInitialData()
+      if (!mountedRef.current) return
+      const initialData = selectInitialData(result)
+      setData(initialData)
+      snapshotRef.current = buildSnapshot(initialData)
+      onInitialData?.(result)
+    } catch (err) {
+      if (!mountedRef.current) return
+      if (initialErrorMode === 'state') {
+        setInitialError(err.message)
+      } else {
+        console.warn(`${logPrefix} Initial data fetch failed:`, err.message)
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false)
+    }
+  }, [])
+
+  const pollChangedData = useCallback(async () => {
+    if (pollingRef.current) return
+    if (!snapshotRef.current) {
+      await fetchInitialData()
+      return
+    }
+    const { fetchSnapshot, detectChanges, hasChanges, loadChangedData, advanceSnapshot, logPrefix = '[App]' } = optionsRef.current
+    pollingRef.current = true
+    try {
+      const latestSnapshot = await fetchSnapshot()
+      if (!mountedRef.current || !latestSnapshot) return
+
+      const changes = detectChanges(latestSnapshot, snapshotRef.current)
+      if (!hasChanges(changes)) return
+
+      const changedData = await loadChangedData(changes)
+      if (!mountedRef.current) return
+
+      setData((prev) => {
+        const mergedData = mergePollingData(prev, changedData)
+        if (!hasIncompletePollingData(changedData)) {
+          snapshotRef.current = advanceSnapshot({
+            latestSnapshot, changedData, previousSnapshot: snapshotRef.current, mergedData,
+          })
+        }
+        return mergedData
+      })
+    } catch (err) {
+      console.warn(`${logPrefix} Incremental fetch failed:`, err.message)
+    } finally {
+      pollingRef.current = false
+    }
+  }, [fetchInitialData])
 
   useEffect(() => {
-    let mounted = true
-    let polling = false
-
-    async function fetchInitialData() {
-      try {
-        const data = await loadWeatherData()
-        if (!mounted) return
-        setWeatherData(data)
-        snapshotMetaRef.current = buildSnapshotMetaFromData(data)
-      } catch (err) {
-        console.warn('[App] Weather data fetch failed:', err.message)
-      }
-    }
-
-    async function pollChangedData() {
-      if (polling) return
-      if (!snapshotMetaRef.current) {
-        await fetchInitialData()
-        return
-      }
-      polling = true
-
-      try {
-        const latestMeta = await fetchSnapshotMeta()
-        if (!mounted || !latestMeta) return
-
-        const changes = detectSnapshotChanges(snapshotMetaRef.current, latestMeta)
-        if (!hasSnapshotChanges(changes)) return
-
-        const changedData = await loadChangedWeatherData(changes, {
-          deferredKeys: loadedDeferredKeysRef.current,
-        })
-        if (!mounted) return
-
-        setWeatherData((prev) => {
-          const nextData = { ...(prev || {}), ...changedData }
-          snapshotMetaRef.current = buildSnapshotMetaFromData(nextData)
-          return nextData
-        })
-      } catch (err) {
-        console.warn('[App] Weather incremental fetch failed:', err.message)
-      } finally {
-        polling = false
-      }
-    }
-
+    mountedRef.current = true
     fetchInitialData()
-    const timer = window.setInterval(pollChangedData, REFRESH_INTERVAL_MS)
-    return () => { mounted = false; window.clearInterval(timer) }
+    return () => { mountedRef.current = false }
+  }, [fetchInitialData])
+
+  useEffect(() => {
+    const { intervalMs } = optionsRef.current
+    if (intervalMs === null || intervalMs === undefined) return undefined
+    const timer = window.setInterval(pollChangedData, intervalMs)
+    return () => window.clearInterval(timer)
+  }, [options.intervalMs, pollChangedData])
+
+  const applyData = useCallback((updater, computeSnapshot) => {
+    setData((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      if (computeSnapshot) snapshotRef.current = computeSnapshot(next)
+      return next
+    })
   }, [])
+
+  return { data, loading, initialError, applyData }
+}
+
+function useWeatherPolling() {
+  const loadedDeferredKeysRef = useRef(new Set())
+
+  const { data: weatherData, applyData } = useSnapshotPolling({
+    loadInitialData: loadWeatherData,
+    selectInitialData: (data) => data,
+    fetchSnapshot: fetchSnapshotMeta,
+    buildSnapshot: buildSnapshotMetaFromData,
+    detectChanges: (latest, saved) => detectSnapshotChanges(saved, latest),
+    hasChanges: hasSnapshotChanges,
+    loadChangedData: (changes) => loadChangedWeatherData(changes, { deferredKeys: loadedDeferredKeysRef.current }),
+    advanceSnapshot: ({ mergedData }) => buildSnapshotMetaFromData(mergedData),
+    intervalMs: REFRESH_INTERVAL_MS,
+    initialErrorMode: 'silent',
+    logPrefix: '[App]',
+  })
 
   const requestDeferredWeatherData = useCallback(async (keys = []) => {
     const missingKeys = keys.filter((key) => !loadedDeferredKeysRef.current.has(key))
@@ -74,16 +128,12 @@ function useWeatherPolling() {
 
     try {
       const deferredData = await loadDeferredWeatherData(missingKeys)
-      setWeatherData((prev) => {
-        const nextData = { ...(prev || {}), ...deferredData }
-        snapshotMetaRef.current = buildSnapshotMetaFromData(nextData)
-        return nextData
-      })
+      applyData((prev) => ({ ...(prev || {}), ...deferredData }), buildSnapshotMetaFromData)
     } catch (err) {
       missingKeys.forEach((key) => loadedDeferredKeysRef.current.delete(key))
       console.warn('[App] Weather deferred fetch failed:', err.message)
     }
-  }, [])
+  }, [applyData])
 
   return { weatherData, requestDeferredWeatherData }
 }

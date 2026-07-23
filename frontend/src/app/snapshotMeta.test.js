@@ -27,3 +27,14 @@ test('detectSnapshotChanges tracks domestic and overseas weather separately', ()
   assert.equal(changes.sigmet, false)
   assert.equal(changes.sigmetOverseas, true)
 })
+
+test('main profile still detects RainViewer changes', () => {
+  const prev = { rainviewerMeta: { tm: 't1' } }
+  const next = { rainviewerMeta: { tm: 't2' } }
+  assert.equal(detectSnapshotChanges(prev, next).rainviewerMeta, true)
+})
+
+test('main profile change set does not gain a notam key (NOTAM stays initial-load-only, per spec)', () => {
+  const changes = detectSnapshotChanges({}, {})
+  assert.ok(!('notam' in changes))
+})
