@@ -57,8 +57,9 @@ ProjectAMO/
 - `frontend/src/main.jsx` -> React root bootstrap; imports app entry CSS.
 - `frontend/src/app/App.jsx` -> app shell state, sidebar/panel composition, selected airport state, and route-level lazy loading for non-main app routes.
 - `frontend/src/app/App.css` -> app shell and layout CSS entry.
-- `frontend/src/app/useWeatherPolling.js` -> initial weather load, deferred panel-data loading, plus snapshot-meta incremental polling.
-- `frontend/src/app/snapshotMeta.js` -> snapshot-meta comparison helpers.
+- `frontend/src/app/useWeatherPolling.js` -> exports `useSnapshotPolling`, the shared initial-load + in-flight-guarded snapshot-meta polling lifecycle (used by both the main app and `/monitoring`), plus the default `useWeatherPolling()` main-app profile wrapper (deferred panel-data loading, 60s interval).
+- `frontend/src/app/snapshotMeta.js` -> snapshot-meta comparison helpers (main-app profile).
+- `frontend/src/app/pollingData.js` -> `mergePollingData`/`hasIncompletePollingData`: periodic-refresh merge that keeps the last known value for a key on fetch failure (`undefined`) while accepting HTTP 200 JSON `null` as a real empty value.
 - `frontend/src/app/layout/Sidebar.jsx` -> sidebar item definitions and panel toggle UI (desktop/tablet; hidden at <=719px in favor of the mobile task bar).
 - `frontend/src/app/layout/Sidebar.css` -> sidebar styles.
 - `frontend/src/app/layout/MobileTaskBar.jsx` -> mobile (<=719px) bottom task switcher (지도/브리핑/더보기) that replaces the sidebar; drives `mobileTask` in `App.jsx`.
@@ -79,7 +80,7 @@ ProjectAMO/
 - `frontend/src/features/map/basemapSwitcher/BasemapSwitcher.jsx` -> basemap switcher UI.
 - `frontend/src/features/monitoring/MonitoringPage.jsx` -> standalone `/monitoring` legacy-style ops/ground screen.
 - `frontend/src/features/monitoring/MonitoringMap.jsx` -> monitoring wrapper around the main MapView with local Aviation/MET icon toggles.
-- `frontend/src/features/monitoring/monitoringApi.js` -> monitoring data loader using current API shape.
+- `frontend/src/features/monitoring/monitoringApi.js` -> monitoring data loader using current API shape, plus the monitoring `useSnapshotPolling` profile (`loadMonitoringInitialData`, `buildMonitoringSnapshot`, `detectMonitoringSnapshotChanges`, `nextMonitoringSnapshot`).
 - `frontend/src/features/monitoring/legacy/*` -> copied previous-project dashboard components, alert utilities, and CSS for the standalone monitoring screen; weather rendering reuses shared `WeatherIcon`, resolver, registry, and BasMilius assets.
 - `frontend/src/features/aviation-layers/aviationWfsLayers.js` -> aviation static GeoJSON layer definitions.
 - `frontend/src/features/aviation-layers/addAviationWfsLayers.js` -> aviation GeoJSON source/layer creation.
