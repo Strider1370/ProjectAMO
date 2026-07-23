@@ -79,6 +79,9 @@ export function createAdsbGeoJSON(adsbData) {
           type_code: a.type_code || '',
           registration: a.registration || '',
           vertical_rate: a.vertical_rate,
+          wind_direction: a.wind_direction,
+          wind_speed: a.wind_speed,
+          outside_air_temperature: a.outside_air_temperature,
           squawk: a.squawk || ''
         }
       }))
@@ -172,6 +175,9 @@ export function bindAdsbHover(map) {
     const spdKt = Number.isFinite(props.velocity) ? Math.round(props.velocity * 1.94384) : null
     const hdg = Number.isFinite(props.true_track) ? Math.round(props.true_track) : null
     const vsFpm = Number.isFinite(props.vertical_rate) ? Math.round(props.vertical_rate * 196.85) : null
+    const windDirection = Number.isFinite(props.wind_direction) ? Math.round(props.wind_direction) : null
+    const windSpeedKt = Number.isFinite(props.wind_speed) ? Math.round(props.wind_speed) : null
+    const outsideAirTemperature = Number.isFinite(props.outside_air_temperature) ? Math.round(props.outside_air_temperature) : null
 
     const classKo = CLASS_LABELS_KO[props.aircraft_class] || ''
     const typeText = [typeNameKo(props.type_code), classKo ? `· ${classKo}` : ''].filter(Boolean).join(' ')
@@ -198,7 +204,9 @@ export function bindAdsbHover(map) {
       typeText ? row('기종', typeText) : '',
       routeText ? row('경로', routeText) : '',
       row('고도', altFt !== null ? `${altFt.toLocaleString()} ft` : '—'),
-      row('속도', spdKt !== null ? `${spdKt} kt` : '—'),
+      windDirection !== null || windSpeedKt !== null ? row('바람', `${windDirection ?? '—'}° / ${windSpeedKt ?? '—'} kt`) : '',
+      outsideAirTemperature !== null ? row('외기온도(OAT)', `${outsideAirTemperature} °C`) : '',
+      row('지상속도(GS)', spdKt !== null ? `${spdKt} kt` : '—'),
       row('방향', hdg !== null ? `${hdg}°` : '—'),
       row('상승률', vsText),
       emergency ? row('비상', `${props.squawk} ${emergency}`, '#dc2626') : '',
@@ -208,7 +216,7 @@ export function bindAdsbHover(map) {
       ? `<span style="font-weight: 400; color: #94a3b8; font-size: 10px;">${props.registration}</span>` : ''
 
     return `
-      <div style="font-family: 'Pretendard', sans-serif; font-size: 12px; line-height: 1.45; padding: 2px; min-width: 180px;">
+      <div style="font-family: 'Pretendard', sans-serif; font-size: 12px; line-height: 1.45; padding: 2px; min-width: 240px;">
         <div style="display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #10b981; padding-bottom: 6px; margin-bottom: 6px;">
           ${logo}
           <div style="min-width: 0;">
@@ -227,7 +235,7 @@ export function bindAdsbHover(map) {
     const key = props.callsign
     hoveredKey = key
 
-    popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 15 })
+    popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 15, maxWidth: '320px' })
       .setLngLat(e.lngLat)
       .setHTML(buildHtml(props, null))
       .addTo(map)

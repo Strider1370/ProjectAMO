@@ -38,3 +38,9 @@ test('main profile change set does not gain a notam key (NOTAM stays initial-loa
   const changes = detectSnapshotChanges({}, {})
   assert.ok(!('notam' in changes))
 })
+
+test('detectSnapshotChanges detects a same-time convective partial update by hash', () => {
+  const prev = { convectiveMeta: { tm: '202607231200', hash: 'ci-only' } }
+  const next = { convectiveMeta: { tm: '202607231200', hash: 'ci-and-ctps' } }
+  assert.equal(detectSnapshotChanges(prev, next).convectiveMeta, true)
+})

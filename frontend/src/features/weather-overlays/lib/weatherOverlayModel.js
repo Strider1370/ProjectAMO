@@ -114,6 +114,7 @@ export function buildWeatherOverlayModel({
   echoMeta,
   rainviewerMeta,
   satMeta,
+  convectiveMeta,
   lightningData,
   sigwxLowData,
   sigwxLowHistoryData,
@@ -137,13 +138,14 @@ export function buildWeatherOverlayModel({
   const radarFrames = normalizeFrames(echoMeta?.frames?.length ? echoMeta.frames : [echoMeta?.nationwide])
   const rainviewerFrames = normalizeRainviewerFrames(rainviewerMeta)
   const satelliteFrames = normalizeFrames(satMeta?.frames?.length ? satMeta.frames : [satMeta?.latest])
+  const convectiveFrames = normalizeFrames(convectiveMeta?.frames?.length ? convectiveMeta.frames : [convectiveMeta?.latest])
   const lightningFrame = normalizeFrame({ tm: lightningData?.query?.tm })
   const lightningFrames = lightningFrame ? [lightningFrame] : []
   const weatherTimelineTicks = buildTimelineTicks([
     visibility.radar ? radarFrames : [],
     // 해외 레이더도 국내와 대등하게 자기 눈금을 낸다(상호배타라 둘이 동시에 눈금을 내지 않는다).
     visibility.radarOverseas ? rainviewerFrames : [],
-    visibility.satellite ? satelliteFrames : [],
+    (visibility.satellite || visibility.ci || visibility.ctps) ? satelliteFrames : [],
     visibility.lightning ? lightningFrames : [],
   ])
   // selectedWeatherTimeMs is the unified absolute-time axis; null = live (newest frame).
@@ -155,10 +157,18 @@ export function buildWeatherOverlayModel({
       ? Math.min(Math.max(selectedWeatherTimeMs, firstTickMs), latestTickMs)
       : latestTickMs)
     : null
-  const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.satellite || visibility.lightning) && weatherTimelineTicks.length > 0
+  const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && weatherTimelineTicks.length > 0
   const radarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
   const rainviewerFrame = pickRainviewerFrame(rainviewerFrames, resolvedWeatherTimeMs)
   const satelliteFrame = pickNearestPreviousFrame(satelliteFrames, resolvedWeatherTimeMs)
+  const rawFutureSatelliteSelection = Number.isFinite(selectedWeatherTimeMs)
+    && Number.isFinite(satelliteFrames.at(-1)?.timeMs)
+    && selectedWeatherTimeMs > satelliteFrames.at(-1).timeMs
+  const convectiveFrame = rawFutureSatelliteSelection
+    ? null
+    : convectiveFrames.find((frame) => frame.tm === satelliteFrame?.tm) || null
+  const ciFrame = convectiveFrame?.ci ? { ...convectiveFrame, ...convectiveFrame.ci } : null
+  const ctpsFrame = convectiveFrame?.ctps ? { ...convectiveFrame, ...convectiveFrame.ctps } : null
   const radarReferenceTimeMs = parseFrameTmToMs(radarFrame?.tm)
   const latestRadarFrame = radarFrames.at(-1) || null
   const latestRadarTimeMs = latestRadarFrame?.timeMs ?? null
@@ -233,6 +243,7 @@ export function buildWeatherOverlayModel({
     rainviewerMeta: rainviewerMeta || null,
     rainviewerFrames,
     satelliteFrames,
+    convectiveFrames,
     lightningFrames,
     weatherTimelineTicks,
     selectedWeatherTimeMs: resolvedWeatherTimeMs,
@@ -241,6 +252,8 @@ export function buildWeatherOverlayModel({
     radarMotion,
     rainviewerFrame,
     satelliteFrame,
+    ciFrame,
+    ctpsFrame,
     lightningGeoJSON,
     sigwxHistoryEntries,
     selectedSigwxEntry,

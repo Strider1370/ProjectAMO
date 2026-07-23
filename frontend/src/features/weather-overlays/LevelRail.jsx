@@ -3,7 +3,7 @@ import { useRef } from 'react'
 // Vertical level (altitude) selector at the far-right map edge: a compact chip stack, highest on top.
 // Shared by NWP pressure levels and turbulence altitude. Replaces the old range-slider level rail.
 // Radiogroup with roving tabindex + arrow-key navigation (Up = higher level).
-function LevelRail({ title, items = [], activeValue, onSelect }) {
+function LevelRail({ title, items = [], activeValue, onSelect, embedded = false }) {
   const btnRefs = useRef([])
   if (items.length <= 1) return null
 
@@ -24,7 +24,7 @@ function LevelRail({ title, items = [], activeValue, onSelect }) {
   }
 
   return (
-    <div className="level-rail">
+    <div className={`level-rail${embedded ? ' level-rail--embedded' : ''}`}>
       {title && <span className="level-rail__title">{title}</span>}
       <div className="level-rail__chips" role="radiogroup" aria-label={title || 'level'} onKeyDown={handleKeyDown}>
         {ordered.map((item, index) => {

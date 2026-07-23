@@ -211,6 +211,7 @@ function MainAppShell() {
           echoMeta={weatherData?.echoMeta || null}
           rainviewerMeta={weatherData?.rainviewerMeta || null}
           satMeta={weatherData?.satMeta || null}
+          convectiveMeta={weatherData?.convectiveMeta || null}
           sigmetData={mapSigmetData}
           airmetData={weatherData?.airmet || null}
           lightningData={weatherData?.lightning || null}

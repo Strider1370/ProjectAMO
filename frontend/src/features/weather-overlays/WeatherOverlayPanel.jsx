@@ -1,6 +1,6 @@
 import {
   Radar, Satellite, Zap, Wind, Thermometer, Droplets,
-  Snowflake, Activity, Plane, AlertTriangle, AlertOctagon, CloudFog, Radio, Globe,
+  Snowflake, Activity, Plane, AlertTriangle, AlertOctagon, CloudFog, Radio, Globe, Cloud, CloudLightning,
 } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -10,6 +10,8 @@ const WEATHER_TILE_ICON = {
   radar: Radar,
   radarOverseas: Globe, // 해외 = Globe (SIGMET(해외)와 동일 규칙)
   satellite: Satellite,
+  ci: CloudLightning,
+  ctps: Cloud,
   lightning: Zap,
   wind: Wind,
   temp: Thermometer,
@@ -39,7 +41,9 @@ function WeatherOverlayPanel({
   // 재개하려면 이 배열을 비우고 백엔드 수집(index.js)도 되돌릴 것.
   const TEMP_HIDDEN_LAYER_IDS = ['flightCategory']
   const groups = [
-    { id: 'weather', title: '기상', ids: showWind ? ['radar', 'radarOverseas', 'satellite', 'lightning', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : ['radar', 'radarOverseas', 'satellite', 'lightning', 'flightCategory'] },
+    { id: 'radar', title: '레이더', ids: ['radar', 'radarOverseas', 'lightning'] },
+    { id: 'satellite', title: '위성', ids: ['satellite', 'ci', 'ctps'] },
+    { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : [] },
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx'] },
     { id: 'traffic', title: '항적', ids: ['adsb'] },
   ]
@@ -47,6 +51,8 @@ function WeatherOverlayPanel({
     radar: '레이더',
     radarOverseas: '해외 레이더',
     satellite: '위성',
+    ci: '대류 가능성',
+    ctps: '운정고도',
     lightning: '낙뢰',
     wind: '바람',
     temp: '기온',
@@ -67,7 +73,7 @@ function WeatherOverlayPanel({
   // 데스크톱·모바일 공통 타일 그리드 (버튼식 토글).
   const tileGroups = (
     <div className="layer-tile-groups">
-      {groups.map((group) => (
+      {groups.filter((group) => group.ids.some((id) => layerById.has(id) && !TEMP_HIDDEN_LAYER_IDS.includes(id))).map((group) => (
         <section key={group.title} className="layer-tile-group">
           <div className="layer-tile-group-title">{group.title}</div>
           <div className="layer-tile-grid">

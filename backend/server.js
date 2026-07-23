@@ -57,6 +57,8 @@ import { buildRouteExposure } from './src/briefing/route-exposure.js'
 import { attachActiveAipConstraints } from './src/briefing/aip-airway-constraints.js'
 import { buildAltitudeCandidates, buildAltitudeWeatherComparison } from './src/briefing/altitude-weather-comparison.js'
 import { buildRouteAxis } from './src/briefing/route-axis.js'
+import { ctpsIndexForLatLon } from './src/lib/ctps-grid.js'
+import { decodeCtpsRecord } from './src/processors/convective-satellite-model.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // libvips(sharp) 연산 캐시 끔 — 레이더/위성/오버레이 PNG 생성 시 네이티브 메모리가 안 줄고 쌓이는 것 방지. #메모리
@@ -121,6 +123,11 @@ function setGeneratedDataCacheHeaders(res, filePath) {
     return
   }
 
+  if (/^satellite\/convective\/(?:ci_\d{12}\.geojson|ctps_\d{12}_(?:all|fl\d{3})\.webp)$/i.test(relPath)) {
+    res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
+    return
+  }
+
   if (/^satellite\/sat_korea_\d{12}\.(?:png|webp)$/i.test(relPath)) {
     res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
     return
@@ -134,6 +141,7 @@ function setGeneratedDataCacheHeaders(res, filePath) {
   if (
     relPath === 'radar/echo_meta.json'
     || relPath === 'satellite/sat_meta.json'
+    || relPath === 'satellite/convective/convective_meta.json'
     || /^sigwx_low\/(?:fronts_meta|clouds_meta)_\d{10}\.json$/i.test(relPath)
   ) {
     res.setHeader('Cache-Control', 'no-cache')
@@ -143,6 +151,10 @@ function setGeneratedDataCacheHeaders(res, filePath) {
   res.setHeader('Cache-Control', 'no-cache')
 }
 
+app.use('/data', (req, res, next) => {
+  if (/^\/satellite\/convective\/ctps_\d{12}\.bin$/i.test(req.path)) return res.status(404).end()
+  next()
+})
 app.use('/data', express.static(DATA_ROOT, { setHeaders: setGeneratedDataCacheHeaders }))
 function isImmutableKimFieldRequest(req) {
   return /^\/kim\/(?:wind|temp|cloud|icing)\/field$/i.test(req.path)
@@ -389,6 +401,11 @@ function buildKimSurfaceWindEntry() {
   }
 }
 
+function buildConvectiveSnapshotEntry() {
+  const meta = readJsonFileSafe(snapshotMetaFile('satellite', 'convective', 'convective_meta.json'))
+  return meta ? { hash: store.canonicalHash(meta), tm: meta.tm || null } : null
+}
+
 function buildKtgSnapshotEntry() {
   const ktgLatest = readKtgLatest(DATA_ROOT)
   return ktgLatest ? { hash: store.canonicalHash(ktgLatest), tmfc: ktgLatest.tmfc || null } : null
@@ -419,6 +436,7 @@ const SNAPSHOT_SOURCES = [
   { keys: ['notam'], files: [snapshotMetaLatest('notam')], build: () => buildHashEntry('notam') },
   { keys: ['echoMeta', 'echo'], files: [snapshotMetaFile('radar', 'echo_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'echo_meta.json')) },
   { keys: ['satMeta', 'satellite'], files: [snapshotMetaFile('satellite', 'sat_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('satellite', 'sat_meta.json')) },
+  { keys: ['convectiveMeta'], files: [snapshotMetaFile('satellite', 'convective', 'convective_meta.json')], build: buildConvectiveSnapshotEntry },
   { keys: ['rainviewerMeta', 'rainviewer'], files: [snapshotMetaFile('radar', 'rainviewer_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'rainviewer_meta.json')) },
   // ponytail: sigwx 오버레이는 파일 경로가 tmfc 동적 → 정적 files 없음(5s TTL로 커버). 정적화는 필요할 때.
   { keys: ['sigwxFrontMeta'], files: [], build: () => buildSigwxOverlaySnapshotEntry('fronts') },
@@ -864,6 +882,28 @@ app.get('/api/radar/echo-meta', (_req, res) =>
 app.get('/api/satellite/meta', (_req, res) =>
   sendJsonFile(res, path.join(DATA_ROOT, 'satellite', 'sat_meta.json')),
 )
+
+app.get('/api/satellite/convective/ctps-point', (req, res) => {
+  const { tm, lat, lon, minFl } = req.query
+  const allowed = new Set(['all', '50', '100', '150', '200', '250', '300', '350', '400', '450', '500', '550'])
+  const latitude = Number(lat), longitude = Number(lon)
+  if (typeof tm !== 'string' || !/^\d{12}$/.test(tm) || !Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180 || !allowed.has(String(minFl))) return res.status(400).json({ error: 'invalid_query' })
+  const meta = readJsonFileSafe(path.join(DATA_ROOT, 'satellite', 'convective', 'convective_meta.json'))
+  const frame = meta?.frames?.find((item) => item.tm === tm)
+  if (!frame?.ctps) return res.status(404).json({ error: 'frame_not_found' })
+  const index = ctpsIndexForLatLon(latitude, longitude)
+  if (index === null) return res.status(404).json({ error: 'point_unavailable' })
+  try {
+    const binary = fs.readFileSync(path.join(DATA_ROOT, 'satellite', 'convective', `ctps_${tm}.bin`))
+    const point = decodeCtpsRecord(binary, index)
+    if (!point || (minFl !== 'all' && point.heightFt < Number(minFl) * 100)) return res.status(404).json({ error: 'point_unavailable' })
+    const request = frame.request_tm_utc
+    const observedAt = request ? new Date(Date.UTC(Number(request.slice(0, 4)), Number(request.slice(4, 6)) - 1, Number(request.slice(6, 8)), Number(request.slice(8, 10)), Number(request.slice(10, 12)))).toISOString() : null
+    sendImmutableJson(res, { tm, observedAt, heightFt: point.heightFt, fl: Math.round(point.heightFt / 100), temperatureC: point.temperatureC, qualityCode: 0, quality: 'normal' }, `ctps-point:${tm}:${latitude}:${longitude}:${minFl}`)
+  } catch {
+    res.status(503).json({ error: 'data_unavailable' })
+  }
+})
 
 app.get('/api/airports', (_req, res) => sendStaticConfigJson(res, config.airports, 'airports'))
 app.get('/api/warning-types', (_req, res) => sendStaticConfigJson(res, warningTypes, 'warning-types'))

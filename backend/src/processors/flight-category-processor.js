@@ -2,21 +2,12 @@ import config from '../config.js'
 import store from '../store.js'
 import { idwInterpolate } from '../lib/idw.js'
 import { parseSfcAscii, sfcPixelToLatLon, SFC_W, SFC_H } from '../parsers/sfc-grid-parser.js'
-import { latLonToEN } from '../lib/lcc-projection.js'
+import { ctpsIndexForLatLon } from '../lib/ctps-grid.js'
+import { parseCtpsNC } from '../parsers/satellite-parser.js'
 import { contours } from 'd3-contour'
 import { simplify } from '@turf/simplify'
 
-// ─── CTH 격자 상수 ────────────────────────────────────────────
-const CTH_W = 900, CTH_H = 900
-const CTH_PIXEL_SIZE = 2000   // m per pixel
-// Upper-left pixel CENTER in LCC easting/northing.
-// 900×900 grid at 2000 m/pixel, LCC origin = PHI0=38°N LAM0=126°E.
-// Pixel-center convention: UL = -(450 - 0.5) × 2000 = -899,000 m
-// Consistent with satellite-parser.js KO_DEFAULTS: ulEasting: -899000, ulNorthing: 899000
-const CTH_UL_E = -899000
-const CTH_UL_N = 899000
 const CTH_FILL = 65535
-// CTH_SCALE = 0.01 (raw uint16 → km) not needed for masking; fill/0 check only
 
 // ─── 분류 상수 ────────────────────────────────────────────────
 export const CATEGORY_COLORS = { VFR: '#15803d', IFR: '#f97316', LIFR: '#dc2626' }
@@ -39,16 +30,7 @@ export function classifyFlightCategory(vis_m, ceil_ft) {
   return worstCategory(vc, cc)
 }
 
-/**
- * 위경도 → CTH 격자 선형 인덱스. 도메인 외 → null.
- */
-export function cthIndexToPixel(lat, lon) {
-  const [e, n] = latLonToEN(lat, lon)
-  const col = Math.round((e - CTH_UL_E) / CTH_PIXEL_SIZE)
-  const row = Math.round((CTH_UL_N - n) / CTH_PIXEL_SIZE)
-  if (col < 0 || col >= CTH_W || row < 0 || row >= CTH_H) return null
-  return row * CTH_W + col
-}
+export const cthIndexToPixel = ctpsIndexForLatLon
 
 // ─── CTH lookup table ─────────────────────────────────────────
 // Maps each SFC pixel index → CTH flat index (-1 = outside CTH domain).
@@ -67,22 +49,6 @@ function getCthLookup() {
     _cthLookup[i] = idx !== null ? idx : -1
   }
   return _cthLookup
-}
-
-// ─── h5wasm lazy singleton ────────────────────────────────────
-// Initialise once at first use. h5wasm.ready is a Promise that resolves after
-// the WASM binary is compiled; calling it on every CTPS fetch adds ~100 ms/call.
-// Note: h5wasm WASM I/O is synchronous within the runtime, so AbortSignal from
-// withTimeout cannot interrupt an in-progress file parse.
-
-let _h5wasm = null
-
-async function getH5wasm() {
-  if (!_h5wasm) {
-    _h5wasm = await import('h5wasm')
-    await _h5wasm.ready
-  }
-  return _h5wasm
 }
 
 // ─── 파이프라인 내부 함수 ─────────────────────────────────────
@@ -137,14 +103,7 @@ async function fetchCtps() {
 }
 
 async function parseCthBuffer(buf) {
-  const h5 = await getH5wasm()
-  const fname = `cth_${Date.now()}.nc`
-  h5.FS.writeFile(fname, new Uint8Array(buf))
-  const f = new h5.File(fname, 'r')
-  const raw = f.get('CTH').value  // Uint16Array 900×900
-  f.close()
-  try { h5.FS.unlink(fname) } catch {}
-  return raw
+  return (await parseCtpsNC(buf)).cth
 }
 
 function getAmosCeilingPoints() {

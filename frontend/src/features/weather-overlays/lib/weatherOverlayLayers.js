@@ -140,6 +140,8 @@ export const MET_LAYERS = [
   { id: 'radar', label: 'Radar', color: '#38bdf8' },
   { id: 'radarOverseas', label: 'Radar(해외)', color: '#38bdf8' },
   { id: 'satellite', label: 'Satellite', color: '#64748b' },
+  { id: 'ci', label: '대류 가능성', color: '#F6C945' },
+  { id: 'ctps', label: '구름 꼭대기', color: '#7E22CE' },
   { id: 'lightning', label: 'Lightning', color: '#facc15' },
   { id: 'wind', label: 'Wind', color: '#22c55e' },
   { id: 'temp', label: 'Temp', color: '#ef4444' },

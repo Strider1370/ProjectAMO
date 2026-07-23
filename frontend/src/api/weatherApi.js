@@ -143,7 +143,7 @@ export async function loadWeatherData() {
   const [
     airports, metar, taf, amos, warning,
     sigmet, airmet, lightning,
-    echoMeta, rainviewerMeta, satMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
+    echoMeta, rainviewerMeta, satMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
     groundForecast, notam, overseasAirports,
     metarOverseas, tafOverseas, sigmetOverseas,
   ] = await Promise.all([
@@ -158,6 +158,7 @@ export async function loadWeatherData() {
     fetchJson('/data/radar/echo_meta.json', { optional: true }),
     fetchJson('/data/radar/rainviewer_meta.json', { optional: true }),
     fetchJson('/data/satellite/sat_meta.json', { optional: true }),
+    fetchJson('/data/satellite/convective/convective_meta.json', { optional: true }),
     fetchJson('/api/sigwx-low', { optional: true }),
     fetchJson('/api/sigwx-front-meta', { optional: true }),
     fetchJson('/api/sigwx-cloud-meta', { optional: true }),
@@ -184,6 +185,7 @@ export async function loadWeatherData() {
     echoMeta,
     rainviewerMeta,
     satMeta,
+    convectiveMeta,
     sigwxLow,
     sigwxLowHistory: null,
     sigwxFrontMeta,
@@ -213,6 +215,11 @@ export async function loadDeferredWeatherData(keys = []) {
 
 export async function fetchNotam() {
   return fetchJson('/api/notam', { optional: true })
+}
+
+export async function fetchConvectiveCtpsPoint({ tm, lat, lon, minFl }, { signal } = {}) {
+  const params = new URLSearchParams({ tm, lat: String(lat), lon: String(lon), minFl: String(minFl) })
+  return fetchJson(`/api/satellite/convective/ctps-point?${params.toString()}`, { signal })
 }
 
 export async function fetchSnapshotMeta() {
@@ -326,6 +333,7 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all' } =
   if (changes.echoMeta) { fetches.push(fetchJson('/data/radar/echo_meta.json', { optional: 'preserve' })); keys.push('echoMeta') }
   if (changes.rainviewerMeta) { fetches.push(fetchJson('/data/radar/rainviewer_meta.json', { optional: 'preserve' })); keys.push('rainviewerMeta') }
   if (changes.satMeta) { fetches.push(fetchJson('/data/satellite/sat_meta.json', { optional: 'preserve' })); keys.push('satMeta') }
+  if (changes.convectiveMeta) { fetches.push(fetchJson('/data/satellite/convective/convective_meta.json', { optional: 'preserve' })); keys.push('convectiveMeta') }
   if (changes.airportInfo && includesDeferredKey(deferredKeys, 'airportInfo')) { fetches.push(fetchJson('/api/airport-info', { optional: 'preserve' })); keys.push('airportInfo') }
 
   const results = await Promise.all(fetches)

@@ -186,6 +186,9 @@ function normalizeState(ac) {
     velocity: gsKt !== null ? gsKt * KNOTS_TO_MPS : null,
     true_track: typeof ac.track === "number" ? ac.track : null,
     vertical_rate: rateFpm !== null ? rateFpm * FPM_TO_MPS : null,
+    wind_direction: typeof ac.wd === "number" ? ac.wd : null,
+    wind_speed: typeof ac.ws === "number" ? ac.ws : null,
+    outside_air_temperature: typeof ac.oat === "number" ? ac.oat : null,
     squawk: ac.squawk || null,
     spi: false,
     position_source: null,
@@ -233,5 +236,5 @@ async function process() {
   };
 }
 
-export { isInFir, loadFirPolygon, process }
+export { isInFir, loadFirPolygon, normalizeState, process }
 export default { process }

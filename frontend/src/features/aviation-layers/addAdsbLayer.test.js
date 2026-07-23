@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { bindAdsbHover, syncAdsbLayer } from './addAdsbLayer.js'
+import { bindAdsbHover, createAdsbGeoJSON, syncAdsbLayer } from './addAdsbLayer.js'
 
 function createMapMock() {
   const calls = []
@@ -49,4 +49,10 @@ test('syncAdsbLayer applies data to point and trail sources, and visibility to a
     ['layout', 'adsb-layer', 'visibility', 'visible'],
     ['layout', 'adsb-logo-layer', 'visibility', 'visible'],
   ])
+})
+
+test('ADS-B GeoJSON keeps reported wind and temperatures for the hover popup', () => {
+  const geojson = createAdsbGeoJSON({ aircraft: [{ icao24: 'abc123', lat: 37, lon: 127, wind_direction: 216, wind_speed: 34, outside_air_temperature: -18 }] })
+  const properties = geojson.features[0].properties
+  assert.deepEqual([properties.wind_direction, properties.wind_speed, properties.outside_air_temperature], [216, 34, -18])
 })

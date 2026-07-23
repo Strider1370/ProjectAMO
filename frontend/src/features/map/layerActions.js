@@ -20,6 +20,8 @@ const MET_META = {
   radar: { label: '레이더', aliases: ['radar', '강수', '에코'] },
   radarOverseas: { label: '해외 레이더', aliases: ['해외레이더', '해외 레이더', 'overseas radar', 'rainviewer'] },
   satellite: { label: '위성영상', aliases: ['위성영상', 'satellite', '적외', 'ir'] },
+  ci: { label: '대류 가능성', aliases: ['대류', '대류 가능성', 'ci', 'convective'] },
+  ctps: { label: '구름 꼭대기', aliases: ['구름 꼭대기', 'ctps', 'cloud top'] },
   lightning: { label: '낙뢰', aliases: ['번개', 'lightning'] },
   wind: { label: '바람', aliases: ['wind', '풍속'] },
   temp: { label: '기온', aliases: ['온도', 'temp'] },

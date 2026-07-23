@@ -82,7 +82,7 @@ const lowVisibility = {
     return {
       triggerId: "low_visibility",
       severity: vis < 500 ? "critical" : "warning",
-      title: `저시정: ${vis}m`,
+      title: `METAR 저시정: ${vis}m`,
       message: `현재 시정이 ${vis}m으로 임계값(${params.threshold}m) 이하입니다.`,
       data: { value: vis, threshold: params.threshold },
     };
@@ -187,7 +187,7 @@ const tafAdverseWeather = {
       if (slotTime < now || slotTime > limit) continue;
 
       if (slot.visibility?.value < params.vis_threshold) {
-        alerts.push({ time: slot.time, type: "vis", detail: `시정 ${slot.visibility.value}m` });
+        alerts.push({ time: slot.time, type: "vis", value: slot.visibility.value, detail: `시정 ${slot.visibility.value}m` });
       }
 
       for (const wx of slot.weather || []) {
@@ -199,11 +199,16 @@ const tafAdverseWeather = {
     }
 
     if (alerts.length === 0) return null;
+    // 제목엔 실제로 위험한 값(시정/기상현상)을 담는다 — "TAF"라는 분류명은 본문으로 내리고,
+    // METAR 기반 저시정("관측 저시정")과 헷갈리지 않게 "예보"를 명시한다.
+    const worst = alerts.find((a) => a.type === "wx" && /TS|FC/.test(a.detail)) || alerts[0];
+    const title = worst.type === "vis" ? `TAF 저시정: ${worst.value}m` : `TAF 특이기상: ${worst.detail}`;
     return {
       triggerId: "taf_adverse_weather",
       severity: alerts.some((a) => a.detail.includes("TS")) ? "critical" : "warning",
-      title: `악기상 예보 (${params.lookahead_hours}시간 내)`,
-      message: alerts.map((a) => `${formatUtc(a.time)}: ${a.detail}`).join("\n"),
+      title,
+      message: `TAF ${params.lookahead_hours}시간 내 예보\n`
+        + alerts.map((a) => `[${formatUtc(a.time)}] ${a.detail}`).join("\n"),
       data: alerts,
     };
   },

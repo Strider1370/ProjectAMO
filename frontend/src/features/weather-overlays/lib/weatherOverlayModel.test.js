@@ -222,3 +222,26 @@ test('formatAdvisoryPanelLabel adds FIR only for overseas SIGMETs', () => {
     source: 'NOAA', fir: 'VHHK', sequence_number: '1', phenomenon_code: 'TS',
   }, 'sigmet'), 'SIGMET 1 · VHHK (홍콩 FIR) 뇌우 (TS)')
 })
+
+test('convective layers use an exact satellite frame without satellite visibility', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: null, satMeta: { frames: [{ tm: '202607231200' }] },
+    convectiveMeta: { frames: [{ tm: '202607231200', ci: { path: '/ci.geojson' }, ctps: { images: { all: '/ctps.webp' } } }] },
+    lightningData: null, sigwxLowData: null, sigwxLowHistoryData: [], sigmetData: { items: [] }, airmetData: { items: [] },
+    visibility: { ci: true, satellite: false }, sigwxHistoryIndex: 0, sigwxFilter: {}, hiddenAdvisoryKeys: {}, lightningReferenceTimeMs: 0,
+  })
+  assert.equal(model.weatherTimelineVisible, true)
+  assert.equal(model.ciFrame.path, '/ci.geojson')
+  assert.equal(model.ctpsFrame.images.all, '/ctps.webp')
+})
+
+test('convective layers hide for raw future selection and never use an older frame', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: null, satMeta: { frames: [{ tm: '202607231200' }] },
+    convectiveMeta: { frames: [{ tm: '202607231150', ci: { path: '/old.geojson' } }] },
+    lightningData: null, sigwxLowData: null, sigwxLowHistoryData: [], sigmetData: { items: [] }, airmetData: { items: [] },
+    visibility: { ci: true }, selectedWeatherTimeMs: Date.UTC(2026, 6, 23, 4, 0), sigwxHistoryIndex: 0, sigwxFilter: {}, hiddenAdvisoryKeys: {}, lightningReferenceTimeMs: 0,
+  })
+  assert.equal(model.ciFrame, null)
+  assert.equal(model.ctpsFrame, null)
+})

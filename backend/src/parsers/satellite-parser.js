@@ -1,15 +1,9 @@
 
 import sharp from 'sharp'
-import { latLonToEN } from '../lib/lcc-projection.js'
+import { randomUUID } from 'node:crypto'
+import { KO_DISPLAY_GRID, displayPixelToSourceIndex } from '../lib/satellite-ko-grid.js'
 
-const DEG2RAD = Math.PI / 180;
-const BASE_OUTPUT_WIDTH = 1200;
-
-// Output geographic bounds (covers KO domain)
-const WEST = 114.0;
-const EAST = 138.0;
-const SOUTH = 29.3;
-const NORTH = 45.8;
+const { width: BASE_OUTPUT_WIDTH } = KO_DISPLAY_GRID
 
 // KO-domain defaults (shared by all KO-region NC files)
 const KO_DEFAULTS = { width: 900, height: 900, pixelSize: 2000, ulEasting: -899000, ulNorthing: 899000 };
@@ -18,14 +12,6 @@ const IR_BT_WARM_K = 310;
 const IR_DISPLAY_GAMMA = 1.15;
 
 
-function latToMercatorY(lat) {
-  const clamped = Math.max(-85.05112878, Math.min(85.05112878, lat));
-  return Math.log(Math.tan(Math.PI / 4 + clamped * DEG2RAD / 2));
-}
-
-function mercatorYToLat(y) {
-  return Math.atan(Math.sinh(y)) / DEG2RAD;
-}
 
 /**
  * Resolve h5wasm attribute to a usable JS value.
@@ -80,20 +66,12 @@ function readProjection(f) {
  * Parse a GK2A LE1B (raw imagery) NetCDF buffer.
  */
 async function parseSatelliteNC(buffer) {
-  const h5wasm = await import("h5wasm");
-  await h5wasm.ready;
-
-  const filename = `sat_${Date.now()}.nc`;
-  h5wasm.FS.writeFile(filename, new Uint8Array(buffer));
-  const f = new h5wasm.File(filename, "r");
-
-  const data = f.get("image_pixel_values").value;
-  const proj = readProjection(f);
-
-  f.close();
-  try { h5wasm.FS.unlink(filename); } catch { /* ignore */ }
-
-  return { data, attrs: proj };
+  return withNcFile(buffer, 'sat', async (file) => {
+    const data = requiredDataset(file, 'image_pixel_values').value
+    const attrs = readProjection(file)
+    assertArrayLength(data, attrs, 'image_pixel_values')
+    return { data, attrs }
+  })
 }
 
 /**
@@ -101,23 +79,87 @@ async function parseSatelliteNC(buffer) {
  * Returns FOG category, Del_Fta temperature difference, and projection.
  */
 async function parseFogNC(buffer) {
-  const h5wasm = await import("h5wasm");
-  await h5wasm.ready;
-
-  const filename = `fog_${Date.now()}.nc`;
-  h5wasm.FS.writeFile(filename, new Uint8Array(buffer));
-  const f = new h5wasm.File(filename, "r");
-
-  const fogData = f.get("FOG").value;       // Uint16Array: 1=Clear,5=Fog,...
-  const delFta = f.get("Del_Fta").value;    // Int16Array: temp diff, -32768=fill
-  const proj = readProjection(f);
-
-  f.close();
-  try { h5wasm.FS.unlink(filename); } catch { /* ignore */ }
-
-  return { fogData, delFta, attrs: proj };
+  return withNcFile(buffer, 'fog', async (file) => {
+    const fogData = requiredDataset(file, 'FOG').value
+    const delFta = requiredDataset(file, 'Del_Fta').value
+    const attrs = readProjection(file)
+    assertArrayLength(fogData, attrs, 'FOG')
+    assertArrayLength(delFta, attrs, 'Del_Fta')
+    return { fogData, delFta, attrs }
+  })
 }
 
+
+function assertHdf5(buffer) {
+  const bytes = new Uint8Array(buffer)
+  if (bytes.length < 8 || bytes[0] !== 0x89 || bytes[1] !== 0x48 || bytes[2] !== 0x44 || bytes[3] !== 0x46) throw new Error('Invalid HDF5 magic')
+}
+
+async function getH5wasm(runtime) {
+  if (runtime) return runtime
+  const h5wasm = await import('h5wasm')
+  await h5wasm.ready
+  return h5wasm
+}
+
+async function withNcFile(buffer, prefix, read, runtime) {
+  assertHdf5(buffer)
+  const h5wasm = await getH5wasm(runtime)
+  const filename = `${prefix}_${randomUUID()}.nc`
+  let file
+  try {
+    h5wasm.FS.writeFile(filename, new Uint8Array(buffer))
+    file = new h5wasm.File(filename, 'r')
+    return await read(file)
+  } finally {
+    try { file?.close() } catch { /* best effort close */ }
+    try { h5wasm.FS.unlink(filename) } catch { /* best effort cleanup */ }
+  }
+}
+
+function requiredDataset(file, name) {
+  try {
+    const dataset = file.get(name)
+    if (!dataset?.value) throw new Error('missing value')
+    return dataset
+  } catch {
+    throw new Error(`Missing required dataset: ${name}`)
+  }
+}
+
+function requiredNumberAttr(attrs, key, datasetName) {
+  const value = getNumAttr(attrs, key)
+  if (!Number.isFinite(value)) throw new Error(`Missing required attribute ${key} on ${datasetName}`)
+  return value
+}
+
+function fillValue(dataset, name) { return requiredNumberAttr(dataset.attrs || {}, '_FillValue', name) }
+
+function assertArrayLength(values, attrs, datasetName) {
+  if (!ArrayBuffer.isView(values) || values.length !== attrs.width * attrs.height) throw new Error(`Invalid ${datasetName} array length`)
+}
+
+async function parseCiNC(buffer, runtime) {
+  return withNcFile(buffer, 'ci', async (file) => {
+    const signalDs = requiredDataset(file, 'CI1_prob')
+    const dqfDs = requiredDataset(file, 'DQF_CI1')
+    const attrs = readProjection(file)
+    assertArrayLength(signalDs.value, attrs, 'CI1_prob')
+    assertArrayLength(dqfDs.value, attrs, 'DQF_CI1')
+    return { signal: signalDs.value, dqf: dqfDs.value, attrs: { ...attrs, signalFill: fillValue(signalDs, 'CI1_prob'), dqfFill: fillValue(dqfDs, 'DQF_CI1') } }
+  }, runtime)
+}
+
+async function parseCtpsNC(buffer, runtime) {
+  return withNcFile(buffer, 'ctps', async (file) => {
+    const cthDs = requiredDataset(file, 'CTH')
+    const cttDs = requiredDataset(file, 'CTT')
+    const flagDs = requiredDataset(file, 'CTPS_flag')
+    const attrs = readProjection(file)
+    for (const [name, dataset] of [['CTH', cthDs], ['CTT', cttDs], ['CTPS_flag', flagDs]]) assertArrayLength(dataset.value, attrs, name)
+    return { cth: cthDs.value, ctt: cttDs.value, flag: flagDs.value, attrs: { ...attrs, cthScale: requiredNumberAttr(cthDs.attrs || {}, 'scale_factor', 'CTH'), cthOffset: requiredNumberAttr(cthDs.attrs || {}, 'add_offset', 'CTH'), cthFill: fillValue(cthDs, 'CTH'), cttScale: requiredNumberAttr(cttDs.attrs || {}, 'scale_factor', 'CTT'), cttOffset: requiredNumberAttr(cttDs.attrs || {}, 'add_offset', 'CTT'), cttFill: fillValue(cttDs, 'CTT'), flagFill: fillValue(flagDs, 'CTPS_flag') } }
+  }, runtime)
+}
 /**
  * Del_Fta temperature difference → fog overlay color.
  * Matches KMA official fog image color scale:
@@ -206,10 +248,8 @@ async function renderFogImage(irParsed, fogParsed) {
   const { fogData, delFta } = fogParsed;
   const { width: srcW, height: srcH, pixelSize, ulEasting, ulNorthing } = attrs;
 
-  const minMY = latToMercatorY(SOUTH);
-  const maxMY = latToMercatorY(NORTH);
   const outW = BASE_OUTPUT_WIDTH;
-  const outH = Math.max(1, Math.round(outW * (maxMY - minMY) / ((EAST - WEST) * DEG2RAD)));
+  const outH = KO_DISPLAY_GRID.height;
 
   const irDisplayRange = resolveIrDisplayRange(irData);
 
@@ -217,19 +257,9 @@ async function renderFogImage(irParsed, fogParsed) {
   let fogPixelCount = 0;
 
   for (let py = 0; py < outH; py++) {
-    const mercY = maxMY - (py + 0.5) / outH * (maxMY - minMY);
-    const lat = mercatorYToLat(mercY);
-
     for (let px = 0; px < outW; px++) {
-      const lon = WEST + (px + 0.5) / outW * (EAST - WEST);
-
-      const [e, nn] = latLonToEN(lat, lon);
-      const col = Math.round((e - ulEasting) / pixelSize);
-      const row = Math.round((ulNorthing - nn) / pixelSize);
-
-      if (col < 0 || col >= srcW || row < 0 || row >= srcH) continue;
-
-      const idx = row * srcW + col;
+      const idx = displayPixelToSourceIndex(px, py, { width: srcW, height: srcH, pixelSize, ulEasting, ulNorthing });
+      if (idx === null) continue;
       const o = (py * outW + px) * 4;
 
       const fogVal = fogData ? fogData[idx] : 0;
@@ -254,7 +284,7 @@ async function renderFogImage(irParsed, fogParsed) {
     }
   }
 
-  const bounds = [[SOUTH, WEST], [NORTH, EAST]];
+  const bounds = KO_DISPLAY_GRID.bounds;
 
   const pngBuffer = await sharp(buf, {
     raw: { width: outW, height: outH, channels: 4 },
@@ -263,5 +293,5 @@ async function renderFogImage(irParsed, fogParsed) {
   return { pngBuffer, bounds, width: outW, height: outH, fogPixelCount };
 }
 
-export { parseSatelliteNC, parseFogNC, renderFogImage }
-export default { parseSatelliteNC, parseFogNC, renderFogImage }
+export { parseSatelliteNC, parseFogNC, parseCiNC, parseCtpsNC, renderFogImage }
+export default { parseSatelliteNC, parseFogNC, parseCiNC, parseCtpsNC, renderFogImage }

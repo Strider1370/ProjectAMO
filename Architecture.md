@@ -99,6 +99,8 @@ ProjectAMO/
 - `frontend/src/features/weather-overlays/AdvisoryBadges.jsx` -> 상시 위험 요약 칩 바: SIGMET/AIRMET은 레이어 토글과 무관하게 활성(count>0) 시 상시 표시 + 공항경보 칩(`warnedAirports`). 칩 클릭 → 해당 레이어 ON + 상세 리스트(SIGMET/AIRMET) 또는 경보 공항 리스트(클릭 시 공항 선택).
 - `frontend/src/features/weather-overlays/lib/weatherOverlayModel.js` -> weather overlay derived model for timeline, SIGWX history/filter state, advisory panel data, badge counts, legend labels, and exact-frame radar motion selection. Motion and lightning use the actual rendered `radarFrame.tm` when radar is active; motion is hidden when no exact metadata or the rendered frame is more than 20 minutes behind the latest radar frame.
 - `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js` -> MET panel layer definitions, weather overlay source/layer ownership IDs, static weather overlay installation, and radar/satellite/SIGWX/advisory/lightning/radar-motion Mapbox sync helpers.
+- `frontend/src/features/weather-overlays/lib/convectiveLayers.js` + `useConvectiveOverlay.js` -> GK2A CI GeoJSON·CTPS image source/layer lifecycle, style restoration, independent visibility, CTPS point selection cancellation; `MapView` only composes the hook.
+- `frontend/src/features/weather-overlays/ConvectiveOverlayControls.jsx` + `ConvectiveOverlayCard.jsx` -> CTPS FL rail and one combined, accessible CI/CTPS selection card.
 - `frontend/src/features/weather-overlays/lib/radarMotionLayers.js` -> owns the KMA radar-motion GeoJSON source and shaft/arrowhead layers. It fetches only frame-matched GeoJSON, hides below zoom 5, and reselects at most one highest-confidence vector in each 6×10 viewport cell on map movement.
 - `frontend/src/features/weather-overlays/lib/useRadarMotionOverlay.js` -> radar-motion UI intent (default off) and effective visibility guard; radar off, missing exact motion, or stale data always hides vectors.
 - `frontend/src/features/weather-overlays/lib/rainviewerLayers.js` -> 해외 레이더(RainViewer) XYZ 래스터 타일 + 커버리지(회색=레이더 미수신) 레이어. 국내(KMA)와 **상호배타**(`metLayerVisibility.js`)라 z-order 다툼 없음 → `slot:'middle'`, `beforeId` 미사용. 프레임 교체는 `setTiles`. 백엔드는 목차 JSON(`radar/rainviewer_meta.json`)만 수집하고 타일은 브라우저가 CDN에서 직접 받는다(프록시 금지 — 서버 IP 차단 위험). 라이선스: personal/educational only.
@@ -177,6 +179,10 @@ ProjectAMO/
 - `frontend/src/shared/weather/weather-icon-registry.js` -> weather icon asset registry.
 
 ### Backend
+
+- `backend/src/parsers/satellite-parser.js` + `lib/{ctps-grid,satellite-ko-grid}.js` -> shared GK2A NetCDF validation, CTPS geographic lookup, and KO display resampling contract.
+- `backend/src/processors/convective-satellite-{model,store,processor}.js` -> CI/CTPS conversion, atomic independent satellite/convective asset publication, retention, and last-good preservation.
+- `backend/server.js` -> serves convective metadata and an exact-frame CTPS point API while blocking the server-only CTPS binary.
 
 - `backend/server.js` -> Express entry point, API routes, cache headers, static data serving, and KIM NWP map index filtering.
 - `backend/src/briefing/route-axis.js` -> route LineString resampling, cumulative distance, and bearing helpers.

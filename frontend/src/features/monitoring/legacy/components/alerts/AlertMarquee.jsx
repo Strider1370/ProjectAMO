@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { AlertOctagon, AlertTriangle, Info } from "lucide-react";
+
+const SEVERITY_ICON = { critical: AlertOctagon, warning: AlertTriangle, info: Info };
 
 const SPEED_MAP = { slow: 80, normal: 50, fast: 30 };
 const SEVERITY_ORDER = { critical: 0, warning: 1, info: 2 };
@@ -47,14 +50,21 @@ export default function AlertMarquee({ alerts, settings }) {
   );
 
   const barClass = `alert-marquee alert-marquee--${highestSeverity}`;
+  const Icon = SEVERITY_ICON[highestSeverity] || AlertTriangle;
 
   return (
     <div className={barClass}>
-      <div
-        className="alert-marquee-text"
-        style={{ animationDuration: `${duration}s` }}
-      >
-        {text}
+      <div className="alert-marquee-label">
+        <Icon size={20} strokeWidth={2.4} />
+        <span>알림</span>
+      </div>
+      <div className="alert-marquee-scroll">
+        <div
+          className="alert-marquee-text"
+          style={{ animationDuration: `${duration}s` }}
+        >
+          {text}
+        </div>
       </div>
     </div>
   );

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useCallback } from "react";
 
+// 낮은 주파수가 각성 효과가 크고(연구상 500~600Hz대), 사인파보다 배음 있는 파형이 덜 거슬리면서
+// 잘 들린다. 심각도는 음높이뿐 아니라 반복 리듬(gap)으로도 구분한다 — critical은 짧게 끊어치고,
+// warning은 느긋하게, info는 한 번만 울리고 끝.
 const BEEP_FREQ = {
-  critical: { freq: 880, duration: 300 },
-  warning: { freq: 660, duration: 200 },
-  info: { freq: 440, duration: 150 },
+  critical: { freq: 550, duration: 220, gap: 150, type: "square" },
+  warning: { freq: 350, duration: 220, gap: 300, type: "triangle" },
+  info: { freq: 440, duration: 180, gap: 0, type: "sine" },
 };
 
 export default function AlertSound({ alerts, settings }) {
@@ -26,7 +29,7 @@ export default function AlertSound({ alerts, settings }) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
-      osc.type = severity === "critical" ? "square" : "sine";
+      osc.type = config.type;
       osc.frequency.value = config.freq;
       gain.gain.value = vol * 0.3;
 
@@ -51,9 +54,11 @@ export default function AlertSound({ alerts, settings }) {
       if (playedRef.current.has(alert.id)) continue;
       playedRef.current.add(alert.id);
 
+      const config = BEEP_FREQ[alert.severity] || BEEP_FREQ.info;
       const count = repeatCount[alert.severity] || 1;
+      const step = config.duration + config.gap;
       for (let i = 0; i < count; i++) {
-        setTimeout(() => playBeep(alert.severity, volume), i * 500);
+        setTimeout(() => playBeep(alert.severity, volume), i * step);
       }
     }
 

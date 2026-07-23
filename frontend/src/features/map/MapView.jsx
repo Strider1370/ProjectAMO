@@ -5,6 +5,8 @@ import useIsMobile from '../../shared/ui/useIsMobile.js'
 import useDemoMode from '../../shared/demoMode/useDemoMode.js'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import circle from '@turf/circle'
+import { point } from '@turf/helpers'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from './mapConfig.js'
 import { addAviationWfsLayers } from '../aviation-layers/addAviationWfsLayers.js'
 import { AVIATION_PANEL_MERGE_GROUPS, AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
@@ -13,7 +15,7 @@ import {
   ADVISORY_LAYER_DEFS,
 } from '../weather-overlays/lib/advisoryLayers.js'
 import { ADSB_FETCH_DISABLED, fetchAdsbData } from '../../api/adsbApi.js'
-import { fetchSigwxCloudMeta, fetchSigwxFrontMeta } from '../../api/weatherApi.js'
+import { fetchConvectiveCtpsPoint, fetchSigwxCloudMeta, fetchSigwxFrontMeta } from '../../api/weatherApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, createAdsbTrailGeoJSON, syncAdsbLayer } from '../aviation-layers/addAdsbLayer.js'
 import { registerAircraftImages } from '../aviation-layers/aircraftIconImages.js'
 import { registerAirlineLogos } from '../aviation-layers/airlineLogoImages.js'
@@ -36,6 +38,9 @@ import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
 import NwpSliderBar from '../weather-overlays/NwpSliderBar.jsx'
 import LevelRail from '../weather-overlays/LevelRail.jsx'
+import ConvectiveOverlayControls from '../weather-overlays/ConvectiveOverlayControls.jsx'
+import ConvectiveOverlayCard from '../weather-overlays/ConvectiveOverlayCard.jsx'
+import { useConvectiveOverlay } from '../weather-overlays/lib/useConvectiveOverlay.js'
 import WeatherLayerTimestampBar from '../weather-overlays/WeatherLayerTimestampBar.jsx'
 import { useNwpOverlays } from '../weather-overlays/lib/useNwpOverlays.js'
 import { destroyWindOverlay, syncWindOverlay } from '../weather-overlays/lib/windOverlaySync.js'
@@ -197,6 +202,84 @@ function useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, run, destro
   }, [])
 }
 
+const RANGE_RING_SOURCE_ID = 'range-rings'
+const RANGE_RING_LABEL_SOURCE_ID = 'range-rings-labels'
+const RANGE_RING_LINE_LAYER = 'range-rings-line'
+const RANGE_RING_LABEL_LAYER = 'range-rings-label'
+
+// 가까운 링일수록 위험도 높음: 빨강(가까움) → 주황 → 노랑(멂). 원색 톤으로 눈에 띄게.
+const RANGE_RING_COLORS = ['#ff0000', '#ff8800', '#ffd500']
+
+// 선택 공항 중심 낙뢰 접근 확인용 거리(km) 점선 원. ponytail: km 라벨 텍스트만, 회전/자북 보정 없음.
+// circle()의 0번 꼭짓점은 반경과 무관하게 같은 중심·steps에서 항상 같은 방위 → 라벨 1개씩 한 줄로 정렬.
+function buildRangeRingGeoJSON(center, radiiKm) {
+  const rings = []
+  const labels = []
+  radiiKm.forEach((radiusKm, index) => {
+    const color = RANGE_RING_COLORS[index % RANGE_RING_COLORS.length]
+    const ring = circle(point(center), radiusKm, { units: 'kilometers', steps: 64 })
+    ring.properties = { radiusKm, color }
+    rings.push(ring)
+    labels.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: ring.geometry.coordinates[0][0] },
+      properties: { radiusKm, color },
+    })
+  })
+  return {
+    rings: { type: 'FeatureCollection', features: rings },
+    labels: { type: 'FeatureCollection', features: labels },
+  }
+}
+
+function syncRangeRings(map, { rings, labels }) {
+  const ringSource = map.getSource(RANGE_RING_SOURCE_ID)
+  const labelSource = map.getSource(RANGE_RING_LABEL_SOURCE_ID)
+  if (ringSource && labelSource) {
+    ringSource.setData(rings)
+    labelSource.setData(labels)
+    return
+  }
+  map.addSource(RANGE_RING_SOURCE_ID, { type: 'geojson', data: rings })
+  map.addSource(RANGE_RING_LABEL_SOURCE_ID, { type: 'geojson', data: labels })
+  const beforeId = map.getLayer(AIRPORT_CIRCLE_LAYER) ? AIRPORT_CIRCLE_LAYER : undefined
+  map.addLayer({
+    id: RANGE_RING_LINE_LAYER,
+    type: 'line',
+    source: RANGE_RING_SOURCE_ID,
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': 1.5,
+      'line-dasharray': [2, 2],
+      'line-opacity': 1,
+    },
+  }, beforeId)
+  map.addLayer({
+    id: RANGE_RING_LABEL_LAYER,
+    type: 'symbol',
+    source: RANGE_RING_LABEL_SOURCE_ID,
+    layout: {
+      'text-field': ['concat', ['to-string', ['get', 'radiusKm']], 'km'],
+      'text-size': 11,
+      'text-anchor': 'bottom',
+      'text-offset': [0, -0.3],
+      'text-allow-overlap': true,
+    },
+    paint: {
+      'text-color': ['get', 'color'],
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 1.5,
+    },
+  }, beforeId)
+}
+
+function removeRangeRings(map) {
+  if (map.getLayer(RANGE_RING_LABEL_LAYER)) map.removeLayer(RANGE_RING_LABEL_LAYER)
+  if (map.getLayer(RANGE_RING_LINE_LAYER)) map.removeLayer(RANGE_RING_LINE_LAYER)
+  if (map.getSource(RANGE_RING_LABEL_SOURCE_ID)) map.removeSource(RANGE_RING_LABEL_SOURCE_ID)
+  if (map.getSource(RANGE_RING_SOURCE_ID)) map.removeSource(RANGE_RING_SOURCE_ID)
+}
+
 const MapView = forwardRef(function MapView({
   activePanel,
   mobileTask = 'map',
@@ -205,6 +288,7 @@ const MapView = forwardRef(function MapView({
   echoMeta = null,
   rainviewerMeta = null,
   satMeta = null,
+  convectiveMeta = null,
   sigmetData = null,
   airmetData = null,
   lightningData = null,
@@ -226,6 +310,10 @@ const MapView = forwardRef(function MapView({
   enableWindOverlay = true,
   showMapTools = true,
   showBasemapSwitcher = true,
+  showAdvisoryBadges = true,
+  showGeolocateControl = true,
+  showWeatherLegends = true,
+  rangeRingRadiiKm = null,
 }, ref) {
   const isMobile = useIsMobile()
   const mapContainerRef = useRef(null)
@@ -346,11 +434,17 @@ const MapView = forwardRef(function MapView({
     },
     // 공항으로 부드럽게 이동(선택은 안 함 — 선택하면 watch가 즉시 진행되어 클릭 유도가 무의미).
     // 처음 날아가기 직전의 실제 뷰를 저장 → resetView가 "사이트 진입 시 보던 그 줌"으로 정확히 복귀.
-    flyToAirport: (icao) => {
+    // fitRadiusKm을 주면 고정 줌 대신 그 반경 원이 화면에 꽉 차도록 fitBounds(모니터링 range ring용).
+    flyToAirport: (icao, { fitRadiusKm } = {}) => {
       const map = mapRef.current
       const ap = airports.find((a) => a.icao === icao)
       if (!map || !ap) return
       if (!tourHomeRef.current) tourHomeRef.current = { center: map.getCenter(), zoom: map.getZoom() }
+      if (fitRadiusKm) {
+        const ring = circle(point([ap.lon, ap.lat]), fitRadiusKm, { units: 'kilometers', steps: 32 })
+        map.fitBounds(boundsFromCoords(ring.geometry.coordinates[0]), { padding: 32, duration: 800 })
+        return
+      }
       map.flyTo({ center: [ap.lon, ap.lat], zoom: 7.5, duration: 800 })
     },
     // 온보딩 스텝 전환 때 지도 리셋 — 저장한 초기 뷰(없으면 MAP_CONFIG)로 복귀.
@@ -554,6 +648,7 @@ const MapView = forwardRef(function MapView({
     echoMeta,
     rainviewerMeta,
     satMeta,
+    convectiveMeta,
     lightningData,
     sigwxLowData,
     sigwxLowHistoryData,
@@ -575,6 +670,7 @@ const MapView = forwardRef(function MapView({
     echoMeta,
     rainviewerMeta,
     satMeta,
+    convectiveMeta,
     lightningData,
     sigwxLowData,
     sigwxLowHistoryData,
@@ -593,6 +689,12 @@ const MapView = forwardRef(function MapView({
     flightCategoryGeojson,
     tz,
   ])
+  const convectiveOverlay = useConvectiveOverlay({
+    mapRef, isStyleReady, styleRevision,
+    ciVisible: metVisibility.ci, ctpsVisible: metVisibility.ctps,
+    ciFrame: weatherOverlayModel.ciFrame, ctpsFrame: weatherOverlayModel.ctpsFrame,
+    fetchCtpsPoint: fetchConvectiveCtpsPoint, timeZone: tz,
+  })
   const radarMotionOverlay = useRadarMotionOverlay({
     radarEnabled: weatherOverlayModel.visibility.radar,
     hasExactMotionFrame: Boolean(weatherOverlayModel.radarMotion.dataUrl),
@@ -901,7 +1003,9 @@ const MapView = forwardRef(function MapView({
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
-    map.addControl(new mapboxgl.GeolocateControl({ trackUserLocation: true, showUserHeading: true }), 'bottom-right')
+    if (showGeolocateControl) {
+      map.addControl(new mapboxgl.GeolocateControl({ trackUserLocation: true, showUserHeading: true }), 'bottom-right')
+    }
 
     let resizeFrame = null
     const resizeMap = () => {
@@ -1285,6 +1389,23 @@ const MapView = forwardRef(function MapView({
     })
   }, removeFlightCategoryLayer, [flightCategoryGeojson, metVisibility.flightCategory])
 
+  // ???? Sync selected-airport range rings (monitoring only) ??????????????????????????????????????????????????????????????????????????
+
+  const rangeRingCenter = useMemo(() => {
+    if (!rangeRingRadiiKm?.length || !selectedAirport) return null
+    const airport = airports.find((a) => a.icao === selectedAirport)
+    if (!airport || !Number.isFinite(airport.lon) || !Number.isFinite(airport.lat)) return null
+    return [airport.lon, airport.lat]
+  }, [airports, selectedAirport, rangeRingRadiiKm])
+
+  useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
+    if (!rangeRingCenter || !rangeRingRadiiKm?.length) {
+      removeRangeRings(map)
+      return
+    }
+    syncRangeRings(map, buildRangeRingGeoJSON(rangeRingCenter, rangeRingRadiiKm))
+  }, removeRangeRings, [rangeRingCenter, rangeRingRadiiKm])
+
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady) return
@@ -1435,57 +1556,63 @@ const MapView = forwardRef(function MapView({
 
       <WeatherLayerTimestampBar entries={timestampEntries} tz={tz} />
 
-      <WeatherLegends
-        radarLegendVisible={radarLegendVisible}
-        radarOverseasLegendVisible={radarOverseasLegendVisible}
-        rainviewerOutOfRange={rainviewerOutOfRange}
-        lightningLegendVisible={lightningLegendVisible}
-        blinkLightning={blinkLightning}
-        onBlinkLightningChange={setBlinkLightning}
-        radarRainrateLegend={RADAR_RAINRATE_LEGEND}
-        lightningLegendEntries={lightningLegendEntries}
-        windSpeedLegendVisible={!!(enableWindOverlay && metVisibility.wind && metVisibility.windSpeed && windField)}
-        windSpeedLegendEntries={WIND_SPEED_COLOR_RAMP}
-        temperatureLegendVisible={!!(enableWindOverlay && metVisibility.temp && temperatureField)}
-        temperatureLegendEntries={CELSIUS_TEMPERATURE_COLOR_RAMP}
-        cloudLegendVisible={!!(enableWindOverlay && metVisibility.cloud && cloudField)}
-        cloudLegendEntries={CLOUD_POTENTIAL_COLOR_RAMP.filter((entry) => entry.max <= cloudMaxSpread)}
-        icingLegendVisible={!!(enableWindOverlay && metVisibility.icing && icingField)}
-        icingLegendEntries={ICING_COLOR_RAMP}
-        turbulenceLegendVisible={!!(enableWindOverlay && metVisibility.turbulence && ktgGrid)}
-        turbulenceLegendEntries={KTG_COLOR_RAMP}
-        radarReferenceTimeMs={radarReferenceTimeMs}
-        lightningReferenceTimeMs={lightningReferenceTimeMs}
-        radarMotionAvailable={Boolean(radarMotion.dataUrl)}
-        radarMotionStale={radarMotion.stale}
-        radarMotionRequested={radarMotionOverlay.requestedVisible}
-        radarMotionObservedAtMs={radarMotion.observedAtMs}
-        radarMotionComparedFromMs={radarMotion.comparedFromMs}
-        onRadarMotionRequestedChange={radarMotionOverlay.setRequestedVisible}
-        formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
-      />
+      {showWeatherLegends && (
+        <WeatherLegends
+          radarLegendVisible={radarLegendVisible}
+          radarOverseasLegendVisible={radarOverseasLegendVisible}
+          rainviewerOutOfRange={rainviewerOutOfRange}
+          lightningLegendVisible={lightningLegendVisible}
+          blinkLightning={blinkLightning}
+          onBlinkLightningChange={setBlinkLightning}
+          radarRainrateLegend={RADAR_RAINRATE_LEGEND}
+          lightningLegendEntries={lightningLegendEntries}
+          windSpeedLegendVisible={!!(enableWindOverlay && metVisibility.wind && metVisibility.windSpeed && windField)}
+          windSpeedLegendEntries={WIND_SPEED_COLOR_RAMP}
+          temperatureLegendVisible={!!(enableWindOverlay && metVisibility.temp && temperatureField)}
+          temperatureLegendEntries={CELSIUS_TEMPERATURE_COLOR_RAMP}
+          cloudLegendVisible={!!(enableWindOverlay && metVisibility.cloud && cloudField)}
+          cloudLegendEntries={CLOUD_POTENTIAL_COLOR_RAMP.filter((entry) => entry.max <= cloudMaxSpread)}
+          icingLegendVisible={!!(enableWindOverlay && metVisibility.icing && icingField)}
+          icingLegendEntries={ICING_COLOR_RAMP}
+          turbulenceLegendVisible={!!(enableWindOverlay && metVisibility.turbulence && ktgGrid)}
+          turbulenceLegendEntries={KTG_COLOR_RAMP}
+          ciLegendVisible={!!metVisibility.ci}
+          ctpsLegendVisible={!!metVisibility.ctps}
+          radarReferenceTimeMs={radarReferenceTimeMs}
+          lightningReferenceTimeMs={lightningReferenceTimeMs}
+          radarMotionAvailable={Boolean(radarMotion.dataUrl)}
+          radarMotionStale={radarMotion.stale}
+          radarMotionRequested={radarMotionOverlay.requestedVisible}
+          radarMotionObservedAtMs={radarMotion.observedAtMs}
+          radarMotionComparedFromMs={radarMotion.comparedFromMs}
+          onRadarMotionRequestedChange={radarMotionOverlay.setRequestedVisible}
+          formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
+        />
+      )}
 
-      <AdvisoryBadges
-        badgeItems={advisoryBadgeItems}
-        warnedAirports={warnedAirports}
-        warningLabels={warningLabels}
-        openPanel={openAdvisoryPanel}
-        panelItems={advisoryPanelItems}
-        hiddenKeys={hiddenAdvisoryKeys}
-        onOpenPanel={(key, open) => {
-          // Fluent Popover open/close. 열 때 해당 레이어 켜기(꺼져 있으면). warning은 레이어 없음.
-          if (open) {
-            if (key === 'sigmet' && !metVisibility.sigmet) toggleMet('sigmet')
-            else if (key === 'airmet' && !metVisibility.airmet) toggleMet('airmet')
-            else if (key === 'sigwxLow' && !metVisibility.sigwx) toggleMet('sigwx')
-            setOpenAdvisoryPanel(key)
-          } else {
-            setOpenAdvisoryPanel((cur) => (cur === key ? null : cur))
-          }
-        }}
-        onToggleVisibility={toggleAdvisoryVisibility}
-        onSelectAirport={onAirportSelect}
-      />
+      {showAdvisoryBadges && (
+        <AdvisoryBadges
+          badgeItems={advisoryBadgeItems}
+          warnedAirports={warnedAirports}
+          warningLabels={warningLabels}
+          openPanel={openAdvisoryPanel}
+          panelItems={advisoryPanelItems}
+          hiddenKeys={hiddenAdvisoryKeys}
+          onOpenPanel={(key, open) => {
+            // Fluent Popover open/close. 열 때 해당 레이어 켜기(꺼져 있으면). warning은 레이어 없음.
+            if (open) {
+              if (key === 'sigmet' && !metVisibility.sigmet) toggleMet('sigmet')
+              else if (key === 'airmet' && !metVisibility.airmet) toggleMet('airmet')
+              else if (key === 'sigwxLow' && !metVisibility.sigwx) toggleMet('sigwx')
+              setOpenAdvisoryPanel(key)
+            } else {
+              setOpenAdvisoryPanel((cur) => (cur === key ? null : cur))
+            }
+          }}
+          onToggleVisibility={toggleAdvisoryVisibility}
+          onSelectAirport={onAirportSelect}
+        />
+      )}
 
       <TimelineRail
         pastTicksMs={weatherTimelineTicks}
@@ -1521,24 +1648,30 @@ const MapView = forwardRef(function MapView({
         </div>
       )}
 
-      <NwpSliderBar
-        isVisible={enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)}
-        levels={sliderLevels}
-        times={sliderTimes}
-        selection={nwpSelection}
-        availability={sliderAvailability}
-        isElevated
-        timeSliderEnabled={false}
-        onSelectionChange={setNwpSelection}
-      />
-      {enableWindOverlay && metVisibility.turbulence && altLevelsFt.length > 1 && (
-        <LevelRail
-          title="고도"
-          items={altLevelsFt.map((ft) => ({ value: ft, label: `${ft / 1000}K` }))}
-          activeValue={altLevelsFt.indexOf(selectedAltFt) >= 0 ? selectedAltFt : altLevelsFt[0]}
-          onSelect={setSelectedAltFt}
+      <div className="vertical-level-rail-stack">
+        <NwpSliderBar
+          isVisible={enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)}
+          levels={sliderLevels}
+          times={sliderTimes}
+          selection={nwpSelection}
+          availability={sliderAvailability}
+          isElevated
+          timeSliderEnabled={false}
+          levelRailEmbedded
+          onSelectionChange={setNwpSelection}
         />
-      )}
+        {enableWindOverlay && metVisibility.turbulence && altLevelsFt.length > 1 && (
+          <LevelRail
+            title="고도"
+            items={altLevelsFt.map((ft) => ({ value: ft, label: String(ft / 1000) + 'K' }))}
+            activeValue={altLevelsFt.indexOf(selectedAltFt) >= 0 ? selectedAltFt : altLevelsFt[0]}
+            onSelect={setSelectedAltFt}
+            embedded
+          />
+        )}
+        <ConvectiveOverlayControls ctpsVisible={metVisibility.ctps} minFl={convectiveOverlay.minFl} onMinFlChange={convectiveOverlay.setMinFl} />
+      </div>
+      <ConvectiveOverlayCard selection={convectiveOverlay.selection} tz={tz} />
 
       <AdsbTimestamp
         isVisible={metVisibility.adsb}

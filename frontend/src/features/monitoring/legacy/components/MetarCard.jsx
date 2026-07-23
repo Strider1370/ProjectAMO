@@ -681,14 +681,16 @@ export default function MetarCard({
         </div>
 
         <div className="metar-section">
-          <div className="metar-section-head" />
-          <div className="metar-section-body metar-section-body--weather">
+          <div className="metar-section-head metar-section-head--end">
+            <span className="metar-section-suntime">☀ 일출 {sunTimes.sunrise} · 일몰 {sunTimes.sunset}</span>
             {rainText ? (
               <div className="metar-panel-rain-badge">
                 <span className="metar-panel-rain-label">일강수량 </span>
                 <span className="metar-panel-rain-value">{`${dailyRain.mm.toFixed(1)} mm`}</span>
               </div>
             ) : null}
+          </div>
+          <div className="metar-section-body metar-section-body--weather">
             <div className="metar-weather-grid">
               <article className={`metar-surface-card metar-surface-card--wind${highWind ? " metar-card--alert-outline" : ""}`}>
                 <div className="metar-side-label metar-side-label--icon">

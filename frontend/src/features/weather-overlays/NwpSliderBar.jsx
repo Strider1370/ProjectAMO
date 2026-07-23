@@ -12,6 +12,7 @@ function NwpSliderBar({
   availability = null,
   isElevated = false,
   timeSliderEnabled = true,
+  levelRailEmbedded = false,
   onSelectionChange,
 }) {
   const { tz } = useTimeZone()
@@ -115,6 +116,7 @@ function NwpSliderBar({
           items={availableLevels.map((level) => ({ value: level.id, label: level.label }))}
           activeValue={activeSelection.level}
           onSelect={selectLevel}
+          embedded={levelRailEmbedded}
         />
       )}
     </>

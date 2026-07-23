@@ -23,7 +23,7 @@ import TafTimeline from './legacy/components/TafTimeline'
 import GroundForecastPanel from './legacy/components/GroundForecastPanel'
 import GroundHourlyStrip from './legacy/components/GroundHourlyStrip'
 import GroundCurrentWeatherCard from './legacy/components/GroundCurrentWeatherCard'
-import AlertPopup from './legacy/components/alerts/AlertPopup'
+import AlertPanel from './legacy/components/alerts/AlertPanel'
 import AlertSound from './legacy/components/alerts/AlertSound'
 import AlertMarquee from './legacy/components/alerts/AlertMarquee'
 import Settings from './legacy/components/alerts/Settings'
@@ -75,6 +75,7 @@ export default function MonitoringPage() {
   const [alertDefaults, setAlertDefaults] = useState(null)
   const [activeAlerts, setActiveAlerts] = useState([])
   const [previewAlerts, setPreviewAlerts] = useState([])
+  const [validAlertKeys, setValidAlertKeys] = useState(() => new Set())
   const [showSettings, setShowSettings] = useState(false)
   const [phoneTask, setPhoneTask] = useState('weather')
   const [tafVersion, setTafVersion] = useState(() => localStorage.getItem('taf_view_mode') || 'v2')
@@ -147,12 +148,10 @@ export default function MonitoringPage() {
       setSelectedAirport((prev) => {
         const available = new Set([
           ...Object.keys(merged.metar?.airports || {}),
-          ...Object.keys(merged.metarOverseas?.airports || {}),
           ...Object.keys(merged.taf?.airports || {}),
-          ...Object.keys(merged.tafOverseas?.airports || {}),
           ...Object.keys(merged.warning?.airports || {}),
-          ...(merged.airports || []).filter((airport) => airport.icao !== 'TST1').map((airport) => airport.icao),
-        ])
+          ...(merged.airports || []).filter((airport) => airport.icao !== 'TST1' && !airport.overseas).map((airport) => airport.icao),
+        ].filter((icao) => icao.startsWith('RK')))
         if (prev && available.has(prev)) return prev
         if (available.has(DEFAULT_AIRPORT)) return DEFAULT_AIRPORT
         return Array.from(available)[0] || null
@@ -198,8 +197,13 @@ export default function MonitoringPage() {
       firedKeys.add(key)
       if (isInCooldown(key, settings.global.cooldown_seconds)) continue
       recordAlert(key)
-      dispatch(result, settings.dispatchers, selectedAirport)
+      dispatch(result, settings.dispatchers, selectedAirport, key)
     }
+
+    // 이력과 무관하게 "지금 데이터만으로도 여전히 조건이 성립하는지" 다시 확인한다.
+    // previous를 비워서 재평가하면 값이 임계값을 계속 넘긴 상태인 알림만 유효로 잡힌다.
+    const liveResults = evaluate(currentData, null, settings)
+    setValidAlertKeys(new Set(liveResults.map((result) => buildAlertKey(result, selectedAirport))))
 
     clearResolvedAlerts(firedKeys)
     prevDataRef.current = data
@@ -210,24 +214,52 @@ export default function MonitoringPage() {
     setPreviewAlerts((prev) => prev.filter((alert) => alert.id !== id))
   }
 
+  // 실제 트리거가 낼 법한 문구를 흉내 낸 예시 3종. 패널에 순서대로 쌓이는 모습을 보여주기 위한 것이라
+  // alertKey가 없다 — 그래서 항상 "유효"로 표시된다 (진짜 유효/해제 구분은 실제 데이터로만 확인 가능).
+  const PANEL_PREVIEW_SEQUENCE = [
+    { severity: 'critical', title: '경보 발령: 강풍', message: '강풍 (23일 21:00 ~ 24일 03:00)' },
+    { severity: 'warning', title: 'METAR 저시정: 3000m', message: '현재 시정이 3000m으로 임계값(5000m) 이하입니다.' },
+    { severity: 'warning', title: 'TAF 저시정: 2500m', message: 'TAF 6시간 내 예보\n[24일 02:00] 시정 2500m' },
+  ]
+
+  function firePopupPreviewSequence() {
+    PANEL_PREVIEW_SEQUENCE.forEach((example, index) => {
+      window.setTimeout(() => {
+        const previewAlert = {
+          id: `preview-popup-${Date.now()}-${index}`,
+          ...example,
+          icao: selectedAirport || DEFAULT_AIRPORT,
+          triggerId: 'preview_popup',
+          timestamp: new Date().toISOString(),
+          previewChannels: { popup: true, sound: false, marquee: false },
+        }
+        setPreviewAlerts((prev) => [previewAlert, ...prev].slice(0, 10))
+      }, index * 600)
+    })
+  }
+
   function handlePreviewAlert(channel, previewDispatchers = null) {
     const settings = alertDefaults ? resolveSettings(alertDefaults) : null
     if (!settings) return
     const dispatchers = previewDispatchers || settings.dispatchers
+
+    if (channel === 'popup') {
+      firePopupPreviewSequence()
+      return
+    }
+
     const previewChannels = {
-      popup: channel === 'popup',
+      popup: false,
       sound: channel === 'sound',
       marquee: channel === 'marquee',
     }
     const previewAlert = {
       id: `preview-${channel}-${Date.now()}`,
       severity: channel === 'sound' ? 'critical' : 'warning',
-      title: channel === 'popup' ? '팝업 알림 예시' : channel === 'sound' ? '소리 알림 예시' : '하단 알림 바 예시',
-      message: channel === 'popup'
-        ? '실제 알림이 뜨면 이런 팝업이 표시됩니다.'
-        : channel === 'sound'
-          ? '현재 설정된 사운드 크기와 패턴으로 재생됩니다.'
-          : '하단 알림 바에는 이런 식으로 메시지가 표시됩니다.',
+      title: channel === 'sound' ? '소리 알림 예시' : '하단 알림 바 예시',
+      message: channel === 'sound'
+        ? '현재 설정된 사운드 크기와 패턴으로 재생됩니다.'
+        : '하단 알림 바에는 이런 식으로 메시지가 표시됩니다.',
       icao: selectedAirport || DEFAULT_AIRPORT,
       triggerId: `preview_${channel}`,
       timestamp: new Date().toISOString(),
@@ -235,15 +267,12 @@ export default function MonitoringPage() {
     }
     setPreviewAlerts((prev) => [previewAlert, ...prev].slice(0, 10))
 
-    const popupLifetimeMs = previewChannels.popup
-      ? Math.max((dispatchers.popup?.auto_dismiss_seconds ?? 10) * 1000, 3000)
-      : 0
     const marqueeLifetimeMs = previewChannels.marquee
       ? Math.max((dispatchers.marquee?.show_duration_seconds ?? 30) * 1000, 5000)
       : 0
     const soundRepeat = dispatchers.sound?.repeat_count?.critical ?? 3
     const soundLifetimeMs = previewChannels.sound ? Math.max(soundRepeat * 500 + 1000, 2500) : 0
-    const lifetimeMs = Math.max(popupLifetimeMs, marqueeLifetimeMs, soundLifetimeMs, 4000)
+    const lifetimeMs = Math.max(marqueeLifetimeMs, soundLifetimeMs, 4000)
 
     window.setTimeout(() => {
       setPreviewAlerts((prev) => prev.filter((alert) => alert.id !== previewAlert.id))
@@ -303,15 +332,16 @@ export default function MonitoringPage() {
   const popupAlerts = [...previewAlerts.filter((alert) => alert.previewChannels?.popup), ...activeAlerts]
   const soundAlerts = [...previewAlerts.filter((alert) => alert.previewChannels?.sound), ...activeAlerts]
   const marqueeAlerts = [...previewAlerts.filter((alert) => alert.previewChannels?.marquee), ...activeAlerts]
+  const isDomesticIcao = (icao) => typeof icao === 'string' && icao.startsWith('RK')
   const airportSet = new Set([
     ...Object.keys(data.metar?.airports || {}),
     ...Object.keys(data.lightning?.airports || {}),
-  ])
+  ].filter(isDomesticIcao))
   ;(data.airports || [])
-    .filter((airport) => airport.icao !== 'TST1')
+    .filter((airport) => airport.icao !== 'TST1' && !airport.overseas)
     .forEach((airport) => airportSet.add(airport.icao))
   const orderedAirports = (data.airports || [])
-    .filter((airport) => airport.icao !== 'TST1')
+    .filter((airport) => airport.icao !== 'TST1' && !airport.overseas)
     .map((airport) => airport.icao)
     .filter((icao) => airportSet.has(icao))
   const airportList = [...orderedAirports, ...Array.from(airportSet).filter((icao) => !orderedAirports.includes(icao)).sort()]
@@ -391,7 +421,7 @@ export default function MonitoringPage() {
     <>
       {settings && (
         <>
-          <AlertPopup alerts={popupAlerts} onDismiss={handleDismissAlert} settings={settings.dispatchers.popup} />
+          <AlertPanel alerts={popupAlerts} validKeys={validAlertKeys} onDismiss={handleDismissAlert} settings={settings.dispatchers.popup} />
           <AlertSound alerts={soundAlerts} settings={settings.dispatchers.sound} />
           <AlertMarquee alerts={marqueeAlerts} settings={settings.dispatchers.marquee} />
         </>

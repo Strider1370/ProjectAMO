@@ -33,6 +33,7 @@ test('loadWeatherData skips deferred panel-only datasets on first entry', async 
     assert.equal(recorder.calls.includes('/api/environment'), false)
     assert.equal(recorder.calls.includes('/api/airport-info'), false)
     assert.equal(recorder.calls.includes('/api/adsb'), false)
+    assert.equal(recorder.calls.includes('/data/satellite/convective/convective_meta.json'), true)
   } finally {
     recorder.restore()
   }
@@ -102,6 +103,17 @@ test('loadChangedWeatherData fetches overseas datasets independently from domest
       recorder.calls,
       ['/api/metar-overseas', '/api/taf-overseas', '/api/sigmet-overseas'],
     )
+  } finally {
+    recorder.restore()
+  }
+})
+
+test('loadChangedWeatherData refreshes convective metadata independently', async () => {
+  const recorder = installFetchRecorder()
+  try {
+    const data = await loadChangedWeatherData({ convectiveMeta: true })
+    assert.ok(data.convectiveMeta)
+    assert.deepEqual(recorder.calls, ['/data/satellite/convective/convective_meta.json'])
   } finally {
     recorder.restore()
   }

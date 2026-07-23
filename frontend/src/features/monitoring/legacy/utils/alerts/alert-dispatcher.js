@@ -24,7 +24,7 @@ export function setAlertCallback(cb) {
  * 트리거 결과를 디스패치한다.
  * 콘솔 로그 + React 콜백 호출.
  */
-export function dispatch(result, dispatchers, icao) {
+export function dispatch(result, dispatchers, icao, alertKey) {
   const { severity, title, message } = result;
   const label = SEVERITY_LABELS[severity] || "UNKNOWN";
   const style = SEVERITY_STYLES[severity] || "";
@@ -49,6 +49,7 @@ export function dispatch(result, dispatchers, icao) {
       message,
       icao,
       triggerId: result.triggerId,
+      alertKey,
       timestamp: Date.now(),
     });
   }

@@ -18,6 +18,20 @@ async function installRadarMotionFixture(page) {
   }))
 }
 
+async function installConvectiveFixture(page) {
+  const webp = Buffer.from('UklGRiIAAABXRUJQVlA4IBYAAADQAQCdASoBAAEAAUAmJaQAA3AA/vuUAAA=', 'base64')
+  await page.route('**/data/satellite/sat_meta.json', (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ type: 'SATELLITE', tm: '202607231200', frames: [{ tm: '202607231200', path: '/data/satellite/sat_korea_202607231200.webp', bounds: [[29.3, 114], [45.8, 138]] }] }),
+  }))
+  await page.route('**/data/satellite/convective/convective_meta.json', (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ type: 'SATELLITE_CONVECTIVE', tm: '202607231200', frames: [{ tm: '202607231200', request_tm_utc: '202607230300', observedAt: '2026-07-23T03:00:00.000Z', bounds: [[29.3, 114], [45.8, 138]], ci: { path: '/data/satellite/convective/ci_202607231200.geojson' }, ctps: { images: { all: '/data/satellite/convective/ctps_202607231200_all.webp', '100': '/data/satellite/convective/ctps_202607231200_fl100.webp' } } }] }),
+  }))
+  await page.route('**/data/satellite/convective/ci_202607231200.geojson', (route) => route.fulfill({ contentType: 'application/geo+json', body: JSON.stringify({ type: 'FeatureCollection', features: [] }) }))
+  await page.route('**/data/satellite/convective/ctps_202607231200_*.webp', (route) => route.fulfill({ contentType: 'image/webp', body: webp }))
+}
+
 test.describe('map-base', () => {
   test('changes the selected base map', async ({ page }) => {
     await page.addInitScript(() => {
@@ -58,4 +72,24 @@ test.describe('map-base', () => {
       await expect(motion).toHaveAttribute('aria-pressed', 'true')
     }
   })
+
+  test('keeps CI and CTPS independent through a basemap replacement', async ({ page }, testInfo) => {
+    await page.addInitScript(() => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', '0.2.5') })
+    await installConvectiveFixture(page)
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    const weatherEntry = testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
+    await page.getByRole('button', { name: weatherEntry }).click()
+    const ci = page.getByRole('button', { name: '대류 가능성', exact: true })
+    const ctps = page.getByRole('button', { name: '구름 꼭대기', exact: true })
+    await ci.click(); await ctps.click()
+    await expect(ci).toHaveAttribute('aria-pressed', 'true')
+    await expect(ctps).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByText('구름 꼭대기', { exact: true }).last()).toBeVisible()
+    const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
+    await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^지형/ }).click()
+    await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^기본/ }).click()
+    await expect(ci).toHaveAttribute('aria-pressed', 'true')
+    await expect(ctps).toHaveAttribute('aria-pressed', 'true')
+  })
+
 })

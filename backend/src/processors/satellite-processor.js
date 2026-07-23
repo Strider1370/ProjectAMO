@@ -3,6 +3,7 @@ import path from 'path'
 import sharp from 'sharp'
 import config from '../config.js'
 import { parseSatelliteNC, parseFogNC, renderFogImage } from '../parsers/satellite-parser.js'
+import { collectConvectiveSatelliteFrame } from './convective-satellite-processor.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 import { isDemoMode } from '../dev/demo-mode.js'
 
@@ -318,6 +319,13 @@ async function process() {
   }
 
   const meta = writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames);
+  if (meta.latest?.tm === latestFrameSpec.displayTm) {
+    try {
+      await collectConvectiveSatelliteFrame({ tm: latestFrameSpec.displayTm, request_tm_utc: latestFrameSpec.requestTm })
+    } catch (error) {
+      console.warn(`satellite: convective collection failed ${latestFrameSpec.requestTm}:`, error.message)
+    }
+  }
   scheduleBackgroundFill(satDir, deferredFrameSpecs, existingFrames, latestFrameSpec, frameSpecs);
 
   const latestFrame = existingFrames.get(latestFrameSpec.displayTm);

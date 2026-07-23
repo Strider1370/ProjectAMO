@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Cloud, Layers } from 'lucide-react'
+import { Cloud, Layers, Palette } from 'lucide-react'
 import MapView from '../map/MapView.jsx'
 import { mergeAdvisoryPayloads, mergeAirportPayloads } from '../../api/weatherApi.js'
 
@@ -10,11 +10,16 @@ function MonitoringMap({
   basemapId,
 }) {
   const [activeMapPanel, setActiveMapPanel] = useState(null)
+  const [legendsOpen, setLegendsOpen] = useState(false)
   const mapViewRef = useRef(null)
 
   useEffect(() => {
     if (basemapId) mapViewRef.current?.switchBasemap(basemapId)
   }, [basemapId])
+
+  useEffect(() => {
+    if (selectedAirport) mapViewRef.current?.flyToAirport(selectedAirport, { fitRadiusKm: 32 })
+  }, [selectedAirport])
   const mapMetarData = mergeAirportPayloads(weather?.metar || null, weather?.metarOverseas || null)
   const mapSigmetData = mergeAdvisoryPayloads(weather?.sigmet || null, weather?.sigmetOverseas || null)
 
@@ -43,16 +48,30 @@ function MonitoringMap({
         >
           <Cloud size={19} strokeWidth={2.2} />
         </button>
+        <button
+          type="button"
+          className={`monitoring-map-icon-btn ${legendsOpen ? 'active' : ''}`}
+          onClick={() => setLegendsOpen((open) => !open)}
+          title="범례"
+          aria-label="범례"
+        >
+          <Palette size={19} strokeWidth={2.2} />
+        </button>
       </div>
       <MapView
         ref={mapViewRef}
         activePanel={activeMapPanel}
         showMapTools={false}
         showBasemapSwitcher={false}
+        showAdvisoryBadges={false}
+        showGeolocateControl={false}
+        showWeatherLegends={legendsOpen}
+        rangeRingRadiiKm={[8, 16, 32]}
         airports={weather?.airports || []}
         metarData={mapMetarData}
         echoMeta={weather?.echoMeta}
         satMeta={weather?.satMeta}
+        convectiveMeta={weather?.convectiveMeta || null}
         sigmetData={mapSigmetData}
         airmetData={weather?.airmet}
         lightningData={weather?.lightning}
