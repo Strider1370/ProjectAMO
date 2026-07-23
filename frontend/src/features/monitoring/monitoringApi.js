@@ -11,6 +11,7 @@ async function fetchJson(url, { optional = false } = {}) {
     if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`)
     return res.json()
   } catch (error) {
+    if (optional === 'preserve') return undefined
     if (optional) return null
     throw error
   }
@@ -55,10 +56,10 @@ export async function loadChangedMonitoringData(changes) {
   const changed = await loadChangedWeatherData(changes)
 
   if (changes.sigwxLow || changes.sigwxFrontMeta) {
-    changed.sigwxLowFronts = await fetchJson('/api/sigwx-low-fronts', { optional: true })
+    changed.sigwxLowFronts = await fetchJson('/api/sigwx-low-fronts', { optional: 'preserve' })
   }
   if (changes.sigwxLow || changes.sigwxCloudMeta) {
-    changed.sigwxLowClouds = await fetchJson('/api/sigwx-low-clouds', { optional: true })
+    changed.sigwxLowClouds = await fetchJson('/api/sigwx-low-clouds', { optional: 'preserve' })
   }
 
   return changed
