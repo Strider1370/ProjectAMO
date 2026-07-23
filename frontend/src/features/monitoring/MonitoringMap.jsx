@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Cloud, Layers } from 'lucide-react'
 import MapView from '../map/MapView.jsx'
 import { mergeAdvisoryPayloads, mergeAirportPayloads } from '../../api/weatherApi.js'
@@ -7,8 +7,14 @@ function MonitoringMap({
   weather,
   selectedAirport,
   onAirportSelect,
+  basemapId,
 }) {
   const [activeMapPanel, setActiveMapPanel] = useState(null)
+  const mapViewRef = useRef(null)
+
+  useEffect(() => {
+    if (basemapId) mapViewRef.current?.switchBasemap(basemapId)
+  }, [basemapId])
   const mapMetarData = mergeAirportPayloads(weather?.metar || null, weather?.metarOverseas || null)
   const mapSigmetData = mergeAdvisoryPayloads(weather?.sigmet || null, weather?.sigmetOverseas || null)
 
@@ -39,7 +45,10 @@ function MonitoringMap({
         </button>
       </div>
       <MapView
+        ref={mapViewRef}
         activePanel={activeMapPanel}
+        showMapTools={false}
+        showBasemapSwitcher={false}
         airports={weather?.airports || []}
         metarData={mapMetarData}
         echoMeta={weather?.echoMeta}

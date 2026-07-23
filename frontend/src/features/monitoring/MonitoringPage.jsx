@@ -80,6 +80,7 @@ export default function MonitoringPage() {
   const [tafVersion, setTafVersion] = useState(() => localStorage.getItem('taf_view_mode') || 'v2')
   const [timeZone, setTimeZone] = useState(() => localStorage.getItem('time_zone') || 'KST')
   const [mapTheme, setMapTheme] = useState(() => localStorage.getItem('map_theme') || 'light')
+  const [basemapId, setBasemapId] = useState(() => localStorage.getItem('map_basemap_monitoring') || 'standard')
   const [trafficCallsignFilter, setTrafficCallsignFilter] = useState(() => localStorage.getItem('traffic_callsign_filter') || '')
   const [trafficAltitudeBands, setTrafficAltitudeBands] = useState(() => (
     readJsonLocalStorage('traffic_altitude_bands', ALL_ALTITUDE_BANDS)
@@ -101,6 +102,10 @@ export default function MonitoringPage() {
     localStorage.setItem('map_theme', mapTheme)
     document.documentElement.setAttribute('data-theme', mapTheme)
   }, [mapTheme])
+
+  useEffect(() => {
+    localStorage.setItem('map_basemap_monitoring', basemapId)
+  }, [basemapId])
 
   useEffect(() => {
     localStorage.setItem('taf_view_mode', tafVersion)
@@ -249,6 +254,7 @@ export default function MonitoringPage() {
     loadMonitoringAlertDefaults().then((defaults) => setAlertDefaults({ ...defaults }))
     setTimeZone(localStorage.getItem('time_zone') || 'KST')
     setMapTheme(localStorage.getItem('map_theme') || 'light')
+    setBasemapId(localStorage.getItem('map_basemap_monitoring') || 'standard')
     setAdvisoryFilter(loadAdvisoryFilterSettings())
   }
 
@@ -276,6 +282,8 @@ export default function MonitoringPage() {
         setTimeZone={setTimeZone}
         mapTheme={mapTheme}
         setMapTheme={setMapTheme}
+        basemapId={basemapId}
+        setBasemapId={setBasemapId}
         trafficCallsignFilter={trafficCallsignFilter}
         setTrafficCallsignFilter={setTrafficCallsignFilter}
         trafficAltitudeBands={trafficAltitudeBands}
@@ -374,6 +382,7 @@ export default function MonitoringPage() {
         weather={data}
         selectedAirport={selectedAirport}
         onAirportSelect={setSelectedAirport}
+        basemapId={basemapId}
       />
     </>
   )

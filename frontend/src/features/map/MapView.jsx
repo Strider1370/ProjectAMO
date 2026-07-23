@@ -224,6 +224,8 @@ const MapView = forwardRef(function MapView({
   onOpenRoutePanel,
   onOpenCustomAreaPanel,
   enableWindOverlay = true,
+  showMapTools = true,
+  showBasemapSwitcher = true,
 }, ref) {
   const isMobile = useIsMobile()
   const mapContainerRef = useRef(null)
@@ -1546,17 +1548,19 @@ const MapView = forwardRef(function MapView({
 
       <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />
 
-      {(!isMobile || mobileTask === 'map' || mobileTask === 'route') && <MapToolsLauncher
+      {showMapTools && (!isMobile || mobileTask === 'map' || mobileTask === 'route') && <MapToolsLauncher
         isOpen={activePanel === 'custom-area'}
         onToggle={() => (activePanel === 'custom-area' ? onClosePanel?.() : onOpenCustomAreaPanel?.())}
       />}
 
-      <BasemapSwitcher
-        basemapId={basemapId}
-        isOpen={basemapMenuOpen}
-        onOpenChange={setBasemapMenuOpen}
-        onSwitchBasemap={switchBasemap}
-      />
+      {showBasemapSwitcher && (
+        <BasemapSwitcher
+          basemapId={basemapId}
+          isOpen={basemapMenuOpen}
+          onOpenChange={setBasemapMenuOpen}
+          onSwitchBasemap={switchBasemap}
+        />
+      )}
 
       {activePanel === 'route-check' && (
         <>

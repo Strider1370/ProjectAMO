@@ -4,6 +4,7 @@ import {
   savePersonalSettings,
   clearPersonalSettings,
 } from "../../utils/alerts";
+import { BASEMAP_OPTIONS } from "../../../../map/mapConfig.js";
 import {
   SIGMET_FILTER_GROUPS,
   AIRMET_FILTER_GROUPS,
@@ -97,6 +98,8 @@ export default function Settings({
   setTimeZone,
   mapTheme,
   setMapTheme,
+  basemapId,
+  setBasemapId,
   trafficCallsignFilter,
   setTrafficCallsignFilter,
   trafficAltitudeBands,
@@ -122,6 +125,7 @@ export default function Settings({
 
   const [localTimeZone, setLocalTimeZone] = useState(timeZone || "KST");
   const [localMapTheme, setLocalMapTheme] = useState(mapTheme || localStorage.getItem("map_theme") || "light");
+  const [localBasemapId, setLocalBasemapId] = useState(basemapId || localStorage.getItem("map_basemap_monitoring") || "standard");
   const [localTrafficCallsignFilter, setLocalTrafficCallsignFilter] = useState(trafficCallsignFilter || "");
   const [localTrafficAltitudeBands, setLocalTrafficAltitudeBands] = useState(trafficAltitudeBands || []);
   const [localAdvisoryFilter, setLocalAdvisoryFilter] = useState(
@@ -196,12 +200,14 @@ export default function Settings({
     savePersonalSettings(overrides);
     localStorage.setItem("time_zone", localTimeZone);
     localStorage.setItem("map_theme", localMapTheme);
+    localStorage.setItem("map_basemap_monitoring", localBasemapId);
     localStorage.setItem("traffic_callsign_filter", localTrafficCallsignFilter);
     localStorage.setItem("traffic_altitude_bands", JSON.stringify(localTrafficAltitudeBands));
     saveAdvisoryFilterSettings(localAdvisoryFilter);
 
     setTimeZone?.(localTimeZone);
     setMapTheme?.(localMapTheme);
+    setBasemapId?.(localBasemapId);
     setTrafficCallsignFilter?.(localTrafficCallsignFilter);
     setTrafficAltitudeBands?.(localTrafficAltitudeBands);
     setAdvisoryFilter?.(localAdvisoryFilter);
@@ -222,12 +228,14 @@ export default function Settings({
     clearPersonalSettings();
     localStorage.removeItem("time_zone");
     localStorage.removeItem("map_theme");
+    localStorage.removeItem("map_basemap_monitoring");
     localStorage.removeItem("traffic_callsign_filter");
     localStorage.removeItem("traffic_altitude_bands");
     localStorage.removeItem("advisory_filter_settings");
 
     setTimeZone?.("KST");
     setMapTheme?.("light");
+    setBasemapId?.("standard");
     setTrafficCallsignFilter?.("");
     setTrafficAltitudeBands?.([]);
     setAdvisoryFilter?.(getDefaultAdvisoryFilterSettings());
@@ -430,6 +438,14 @@ export default function Settings({
                   <select value={localMapTheme} onChange={(e) => setLocalMapTheme(e.target.value)}>
                     <option value="light">라이트</option>
                     <option value="dark">다크</option>
+                  </select>
+                </label>
+                <label className="alert-settings-row">
+                  <span>지도 배경</span>
+                  <select value={localBasemapId} onChange={(e) => setLocalBasemapId(e.target.value)}>
+                    {BASEMAP_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
                   </select>
                 </label>
               </fieldset>
