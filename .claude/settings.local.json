@@ -107,7 +107,8 @@
       "PowerShell(npm run *)",
       "PowerShell(npm.cmd --prefix *)",
       "PowerShell(node --test *)",
-      "Bash(graphify explain *)"
+      "Bash(graphify explain *)",
+      "Bash(powershell -NoProfile -Command \"netstat -ano | Select-String ':3001|:5173' | Select-String 'LISTENING'\")"
     ]
   }
 }

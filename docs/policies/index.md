@@ -13,8 +13,8 @@ Read the relevant `Architecture.md` section and this index before editing. For r
 | MapView, Mapbox, overlay, visibility, timeline | `File Roles` — `Frontend` map entries, `Reference Structure` | [map and layers](engineering/map-and-layers.md) |
 | UI, CSS, responsive layout | `File Roles` — affected frontend feature, `Reference Structure` | [design language](design/design-language.md) |
 | Browser verification, deploy, finish/commit/push/PR | `Directory Structure` — `scripts` and the affected feature's `File Roles` entry | [browser verification](verification/browser-verification.md), [contract registry](verification/contracts.md), [delivery and completion](verification/delivery-and-completion.md) |
-| Writing or updating a spec, plan, or status file | every affected boundary's `File Roles` entry | [spec/plan/status format](spec-plan-status-format.md) |
-| Begin implementation from an approved plan | every affected boundary's `File Roles` entry | [spec/plan/status format](spec-plan-status-format.md) — pass Decision completeness review first |
+| Writing or updating a spec, plan, status, or review-evidence file | every affected boundary's `File Roles` entry | [spec/plan/status format](spec-plan-status-format.md) — enter Plan/read-only mode when available; run exhaustive spec and plan reviews without stopping at the first gap |
+| Begin implementation from an approved plan | every affected boundary's `File Roles` entry | [spec/plan/status format](spec-plan-status-format.md) — require approval evidence, current exhaustive PASS, matching policy/spec/plan hashes and relevant-path fingerprint, and valid status gate `Approved — ready to implement` |
 
 Read [encoding safety](encoding-safety.md) before encoding-sensitive edits.
 <!-- SESSION-ROUTING:END -->
@@ -31,6 +31,8 @@ Read [encoding safety](encoding-safety.md) before encoding-sensitive edits.
 Put a rule here only when it protects a central boundary or is cross-cutting, changes implementation behavior, and has repeated code evidence or an explicit project decision. Keep local details with their module, test, or operational reference.
 
 Route twice: select candidate policies from the request, then re-check this index before editing if exploration exposes another boundary. Read at most two plausible detailed policies; ask only when the remaining choice changes scope, cost, or behavior.
+
+Spec/plan completeness review is the exception to the two-policy limit. Each domain reviewer reads this policy plus up to two policies routed for that domain. The integration reviewer reads the common task packet, every domain review file, and cross-cutting policies needed to reconcile their findings; it need not re-read every domain policy body when preserved evidence identifies the exact rule and source. The integration evidence records every input review path/hash and recomputes the current relevant-path manifest from the union of all domain manifests.
 
 ## Maintenance
 

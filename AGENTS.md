@@ -15,6 +15,12 @@ Fallback when policy routing or a hook is unavailable: use this file, `Architect
 
 Always follow the [spec/plan/status format](docs/policies/spec-plan-status-format.md) when the user explicitly asks for a spec, design doc, or implementation plan — regardless of the criteria below.
 
+When this workflow applies, use the host's explicit Plan/read-only mode before repository investigation and planning when available. Otherwise enforce the same read-only boundary manually. Immediately after entering it, re-read the task packet, policy index, [spec/plan/status format](docs/policies/spec-plan-status-format.md), and relevant `Architecture.md` sections; inspect existing reusable code before choosing files or interfaces; and record the policy-manifest hashes defined by that policy, available spec/plan hashes, repository HEAD, relevant-path fingerprint, relevant dirty paths, and review time in status (`not yet created` for a document that does not exist, then update it when created). Plan mode is a write boundary, not evidence of completeness.
+
+The specification owns product decisions: user-visible behaviour, defaults, limits, states, failures, time/unit meaning, accessibility, scope, and acceptance criteria. The plan owns technical execution: reuse, files, functions/types, schemas, algorithms, concurrency, atomicity, and verification. A plan may not invent a user-affecting decision absent from the approved spec or its explicitly bounded implementation freedoms.
+
+Do not change source, tests, configuration, or generated files until the current spec is approved, the current plan is approved, an independent exhaustive completeness review records **PASS**, and status says **Approved — ready to implement**.
+
 Otherwise, follow it if **two or more** of these apply:
 - Estimated time 1 hour+
 - 10+ files to touch or explore
@@ -25,9 +31,9 @@ Otherwise, follow it if **two or more** of these apply:
 - Security, auth, payments, or migrations
 - Context utilization already at 40%+
 
-If none or only one applies, treat the work as light: proceed with a short prompt, no spec/plan/status. When it does apply, get the design approved in conversation first, then write the spec, plan, and status file.
+If none or only one applies, treat the work as light: proceed with a short prompt, no spec/plan/status. When it does apply, align the design direction in conversation, write and exhaustively review the Draft spec, obtain explicit spec approval, then draft and exhaustively review the plan, obtain explicit plan approval, and maintain status throughout.
 
-Before executing an approved implementation plan, run the **Decision completeness review** in [spec/plan/status format](docs/policies/spec-plan-status-format.md). Code changes may begin only on **PASS**; a **DECISION GAP** returns to the user for a specification change and approval.
+Before executing an implementation plan, run the specification and plan reviews defined in [spec/plan/status format](docs/policies/spec-plan-status-format.md). Reviewers must finish every review dimension and return one consolidated finding set rather than stopping at the first failure. A **PLAN GAP** requires a corrected plan and complete re-review; a **DECISION GAP** returns to the spec and user approval. After two consecutive PLAN GAP results, use a fresh review context and full matrix before a third review. If the third review still returns PLAN GAP, stop the automatic loop and record one recovery path—user-approved reduced/repartitioned scope with a new task packet, or independent architecture review—before starting a new review cycle.
 
 ## Delegation: main agent vs. subagent
 
@@ -52,4 +58,4 @@ Cost awareness: each subagent pays roughly 20k tokens of cold-start overhead. Do
 
 Do not: split sequentially-dependent work across subagents where each step needs the previous step's full output; run concurrent edits to the same file from multiple subagents; delegate integration points; quote a subagent's body output verbatim into the main reply.
 
-Integrating subagent results: specify a result-summary limit in the brief (e.g. "report in under 500 chars"); verify with diffs and test results only, not by re-reading the body; confirm "done" claims against actual code/test evidence, not the summary; state the write set explicitly (e.g. "edits only under `backend/src/processors/`").
+Integrating subagent results: for ordinary research or execution, specify a concise result-summary limit; verify with diffs and test results only, not by re-reading the body; confirm "done" claims against actual code/test evidence, not the summary; state the write set explicitly (e.g. "edits only under `backend/src/processors/`"). Do not impose an arbitrary length limit on specification or plan completeness reviews; they must report every presently discoverable gap after completing the full matrix.
