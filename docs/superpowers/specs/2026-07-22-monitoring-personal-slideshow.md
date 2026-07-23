@@ -18,10 +18,11 @@ A user viewing the monitoring page needs a personal, time-limited display mode f
 - FR-007: A user MUST be able to preview the configured transition immediately, disable it immediately, and see whether the feature is off, waiting, or active and when it will stop. The image slide MUST retain an always-visible control that exits the slideshow immediately.
 - FR-008: Images MUST be chosen from the current device only, limited to PNG, JPEG, and WebP, and stored only in that browser profile. No image bytes, image URL, schedule, or settings may be sent to the application server.
 - FR-009: The settings UI MUST allow the user to replace or remove the local image. It MUST explain that the image and schedule do not appear on another device or browser profile. If browser-local persistence fails, the UI MUST explain that the current session can continue but the configuration will not survive a reload.
-- FR-010: Each transition MUST use a short fade. The feature MUST respect the user's reduced-motion preference by switching without animation.
+- FR-010: The settings UI MUST let the user choose the transition effect between a short fade and a short slide, and adjust the transition animation duration within a 100-2,000 millisecond range. The feature MUST respect the user's reduced-motion preference by switching without animation regardless of the chosen effect or duration.
 - FR-011: Existing monitoring data polling, alert evaluation, alert popups, and manual mode controls MUST continue to work while the slideshow is active. Active alert popups and marquees MUST render above the image slide and must not be delayed or hidden by a transition.
 - FR-012: Map-panel-only rotation MUST keep the live map mounted behind the image slide so its camera, loaded data, and open layer-panel state survive every transition.
 - FR-013: The inline and modal monitoring settings surfaces MUST read and write one shared slideshow configuration in MonitoringPage; opening both surfaces must not create divergent local configurations.
+- FR-014: The slideshow feature (settings controls, preview, and rotation) MUST be unavailable on the mobile phone-task layout (viewport ≤719px, the same breakpoint that switches the dashboard to the weather/map/settings tab layout). Any active rotation MUST stop and restore the live view if the viewport crosses into that width while running.
 
 ## Non-Goals (out of scope)
 
@@ -44,6 +45,7 @@ A user viewing the monitoring page needs a personal, time-limited display mode f
 - SC-009: Map-panel rotation preserves the map camera and an already open map layer panel after multiple image/map transitions.
 - SC-010: Changes saved from either the inline or modal settings surface appear in the other surface without conflicting values.
 - SC-011: Invalid intervals and equal start/end times are rejected before activation, and a browser-local persistence failure explains that reload persistence is unavailable.
+- SC-012: At a viewport of 719px or narrower, the slideshow settings controls are unavailable and no rotation runs; resizing an active desktop session below that width stops rotation and restores the live view.
 
 ## Alternatives Considered
 

@@ -28,6 +28,16 @@ import AlertSound from './legacy/components/alerts/AlertSound'
 import AlertMarquee from './legacy/components/alerts/AlertMarquee'
 import Settings from './legacy/components/alerts/Settings'
 import MonitoringMap from './MonitoringMap.jsx'
+import MonitoringSlideOverlay from './MonitoringSlideOverlay.jsx'
+import { useMonitoringSlideshow } from './useMonitoringSlideshow.js'
+import {
+  normalizeMonitoringSlideshowConfig,
+  loadMonitoringSlideshowConfig,
+  saveMonitoringSlideshowConfig,
+  loadMonitoringSlideImage,
+  saveMonitoringSlideImage,
+  clearMonitoringSlideImage,
+} from './lib/monitoringSlideshow.js'
 import { useSnapshotPolling } from '../../app/useWeatherPolling.js'
 import {
   buildMonitoringSnapshot,
@@ -40,6 +50,9 @@ import {
 } from './monitoringApi.js'
 import './legacy/App.css'
 import './MonitoringPage.css'
+
+const MOBILE_LAYOUT_QUERY = '(max-width: 719px)'
+const SLIDESHOW_STATUS_LABELS = { off: '꺼짐', waiting: '대기 중', active: '전환 중', ended: '오늘 종료' }
 
 const AIRPORT_NAME_KO = {
   RKSI: '인천국제공항',
@@ -88,6 +101,16 @@ export default function MonitoringPage() {
   ))
   const [advisoryFilter, setAdvisoryFilter] = useState(() => loadAdvisoryFilterSettings())
 
+  const [slideshowConfig, setSlideshowConfig] = useState(() => loadMonitoringSlideshowConfig().config)
+  const [slideImageBlob, setSlideImageBlob] = useState(null)
+  const [slideImageRevision, setSlideImageRevision] = useState(0)
+  const [slideshowPersistenceError, setSlideshowPersistenceError] = useState(null)
+  const [isMobileLayout, setIsMobileLayout] = useState(() => (
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(MOBILE_LAYOUT_QUERY).matches
+      : false
+  ))
+
   const prevDataRef = useRef(null)
 
   useEffect(() => {
@@ -123,6 +146,26 @@ export default function MonitoringPage() {
   useEffect(() => {
     document.body.classList.add('monitoring-legacy-body')
     return () => document.body.classList.remove('monitoring-legacy-body')
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    loadMonitoringSlideImage().then((result) => {
+      if (cancelled || !result.ok || !result.blob) return
+      setSlideImageBlob(result.blob)
+      setSlideImageRevision((rev) => rev + 1)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined
+    const mql = window.matchMedia(MOBILE_LAYOUT_QUERY)
+    const onChange = (event) => setIsMobileLayout(event.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
   }, [])
 
   useEffect(() => {
@@ -279,6 +322,47 @@ export default function MonitoringPage() {
     }, lifetimeMs)
   }
 
+  const effectiveSlideshowConfig = isMobileLayout
+    ? { ...slideshowConfig, enabled: false }
+    : slideshowConfig
+  const slideshow = useMonitoringSlideshow(effectiveSlideshowConfig, slideImageBlob, slideImageRevision)
+  const slideshowStatusLabel = SLIDESHOW_STATUS_LABELS[slideshow.status] || null
+  const slideshowPersistenceNotice = slideshowPersistenceError || slideshow.persistenceError
+    ? '이 세션에서는 계속 사용할 수 있지만, 새로고침하면 설정이 저장되지 않습니다.'
+    : null
+
+  function handleSlideshowConfigChange(partial) {
+    const next = normalizeMonitoringSlideshowConfig({ ...slideshowConfig, ...partial })
+    setSlideshowConfig(next)
+    const result = saveMonitoringSlideshowConfig(next)
+    setSlideshowPersistenceError(result.ok ? null : result.error || new Error('설정 저장 실패'))
+  }
+
+  function handleSlideImageChoose(file) {
+    if (!file) return
+    setSlideImageBlob(file)
+    setSlideImageRevision((rev) => rev + 1)
+    saveMonitoringSlideImage(file).then((result) => {
+      if (!result.ok) setSlideshowPersistenceError(result.error || new Error('이미지 저장 실패'))
+    })
+  }
+
+  function handleSlideImageRemove() {
+    setSlideImageBlob(null)
+    setSlideImageRevision((rev) => rev + 1)
+    clearMonitoringSlideImage().then((result) => {
+      if (!result.ok) setSlideshowPersistenceError(result.error || new Error('이미지 삭제 실패'))
+    })
+  }
+
+  function handleSlideshowStop() {
+    const next = { ...slideshowConfig, enabled: false }
+    setSlideshowConfig(next)
+    const result = saveMonitoringSlideshowConfig(next)
+    setSlideshowPersistenceError(result.ok ? null : result.error || new Error('설정 저장 실패'))
+    slideshow.stop()
+  }
+
   function handleSettingsChange() {
     loadMonitoringAlertDefaults().then((defaults) => setAlertDefaults({ ...defaults }))
     setTimeZone(localStorage.getItem('time_zone') || 'KST')
@@ -324,6 +408,16 @@ export default function MonitoringPage() {
         }}
         onPreviewAlert={handlePreviewAlert}
         variant={variant}
+        slideshowConfig={slideshowConfig}
+        slideshowStatusLabel={slideshowStatusLabel}
+        slideshowImageInfo={slideImageBlob ? { name: slideImageBlob.name || '선택한 이미지' } : null}
+        slideshowPersistenceNotice={slideshowPersistenceNotice}
+        slideshowDisabled={isMobileLayout}
+        onSlideshowConfigChange={handleSlideshowConfigChange}
+        onSlideImageChoose={handleSlideImageChoose}
+        onSlideImageRemove={handleSlideImageRemove}
+        onSlideshowPreview={slideshow.preview}
+        onSlideshowStop={handleSlideshowStop}
       />
     )
   }
@@ -413,6 +507,12 @@ export default function MonitoringPage() {
         selectedAirport={selectedAirport}
         onAirportSelect={setSelectedAirport}
         basemapId={basemapId}
+        slideshowVisible={slideshowConfig.target === 'map-panel' && slideshow.visibleSlide === 'image'}
+        slideshowImageUrl={slideshow.imageUrl}
+        onStopSlideshow={handleSlideshowStop}
+        slideshowStatusLabel={slideshowStatusLabel}
+        slideshowEffect={slideshowConfig.transitionEffect}
+        slideshowDurationMs={slideshowConfig.transitionDurationMs}
       />
     </>
   )
@@ -531,6 +631,18 @@ export default function MonitoringPage() {
             {mapPanel}
           </div>
         </div>
+      )}
+
+      {data.metar && slideshowConfig.target === 'whole-screen' && (
+        <MonitoringSlideOverlay
+          visible={slideshow.visibleSlide === 'image'}
+          imageUrl={slideshow.imageUrl}
+          scope="whole-screen"
+          onStop={handleSlideshowStop}
+          statusLabel={slideshowStatusLabel}
+          effect={slideshowConfig.transitionEffect}
+          durationMs={slideshowConfig.transitionDurationMs}
+        />
       )}
 
       {showSettings && renderSettingsPanel()}

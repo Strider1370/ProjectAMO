@@ -17,3 +17,11 @@ export function latLonToEN(latDeg, lonDeg) {
   const theta = _n * (lon - LAM0)
   return [rho * Math.sin(theta), _rho0 - rho * Math.cos(theta)]
 }
+
+export function enToLatLon(easting, northing) {
+  const rho = Math.hypot(easting, _rho0 - northing)
+  const theta = Math.atan2(easting, _rho0 - northing)
+  const lat = 2 * Math.atan(Math.pow(R * _F / rho, 1 / _n)) - Math.PI / 2
+  const lon = LAM0 + theta / _n
+  return [lat / DEG2RAD, lon / DEG2RAD]
+}

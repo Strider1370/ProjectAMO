@@ -2313,5 +2313,5 @@
 .vertical-level-rail-stack { position:absolute; right:14px; top:76px; z-index:6; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; }
 .vertical-level-rail-stack > * { pointer-events:auto; }
 .level-rail--embedded { position:static; }
-.convective-overlay-card { position:absolute; left:14px; bottom:56px; z-index:6; display:grid; gap:4px; max-width:280px; padding:10px 12px; border:1px solid var(--stroke-1); border-radius:var(--radius-lg); background:rgba(255,255,255,.94); color:var(--text-1); font-size:var(--fs-200); box-shadow:0 2px 8px rgba(15,23,42,.16); }
-.convective-overlay-card__time,.convective-legend__note { color:var(--text-3); font-size:var(--fs-100); line-height:var(--lh-100); }
+.convective-overlay-card { position:absolute; left:calc(var(--convective-card-x) + var(--space-m)); top:calc(var(--convective-card-y) - var(--space-m)); z-index:6; display:grid; gap:var(--space-s); min-width:260px; max-width:320px; padding:var(--space-l); border:3px solid var(--stroke-1); border-radius:var(--radius-lg); background:rgba(255,255,255,.94); color:var(--text-1); font-size:var(--fs-300); line-height:var(--lh-300); box-shadow:0 2px 8px rgba(15,23,42,.16); transform:translateY(-100%); }
+.convective-overlay-card__time,.convective-legend__note { color:var(--text-3); font-size:var(--fs-200); line-height:var(--lh-200); }

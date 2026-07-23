@@ -1,5 +1,5 @@
 import { getWeatherIconSrc } from "../../../../shared/weather/weather-icon-registry.js";
-import { mapGroundForecastIcon } from "./GroundForecastPanel";
+import { mapGroundForecastIcon, isPrecipitationIcon } from "./GroundForecastPanel";
 
 const W = 720;
 const H = 172;
@@ -21,10 +21,9 @@ function hourLabel(time) {
 
 function dateChip(date) {
   if (!date) return null;
-  const m = Number(String(date).slice(4, 6));
   const d = Number(String(date).slice(6, 8));
-  if (!Number.isFinite(m) || !Number.isFinite(d)) return null;
-  return `${m}/${d}`;
+  if (!Number.isFinite(d)) return null;
+  return `${d}일`;
 }
 
 export default function GroundHourlyStrip({ groundForecastData, icao }) {
@@ -49,6 +48,21 @@ export default function GroundHourlyStrip({ groundForecastData, icao }) {
   const bandX = xs[0] - 22;
   const bandW = xs[n - 1] - xs[0] + 44;
 
+  // Per-slot cell boundaries (midpoints between neighboring icons, band edges at the ends),
+  // so consecutive rainy slots merge into one continuous rect instead of being cut per-icon.
+  const cellBounds = [bandX, ...slots.slice(1).map((_, i) => (xs[i] + xs[i + 1]) / 2), bandX + bandW];
+  const rainRuns = [];
+  let runStart = null;
+  slots.forEach((s, i) => {
+    const rainy = isPrecipitationIcon(s.icon);
+    if (rainy && runStart === null) runStart = i;
+    if (!rainy && runStart !== null) {
+      rainRuns.push([runStart, i - 1]);
+      runStart = null;
+    }
+  });
+  if (runStart !== null) rainRuns.push([runStart, n - 1]);
+
   return (
     <section className="ground-hourly-strip panel" aria-label="시간별 예보">
       <div className="ground-hourly-header">시간별 예보</div>
@@ -60,6 +74,17 @@ export default function GroundHourlyStrip({ groundForecastData, icao }) {
         aria-label="향후 24시간 3시간 간격 기온 곡선과 강수확률 그래프"
       >
         <rect className="ghs-iconband" x={bandX} y={ICON_Y - 6} width={bandW} height={ICON_SIZE + 12} rx="10" />
+        {rainRuns.map(([start, end]) => (
+          <rect
+            key={`rain-${start}-${end}`}
+            className="ghs-iconband-rain"
+            x={cellBounds[start]}
+            y={ICON_Y - 6}
+            width={cellBounds[end + 1] - cellBounds[start]}
+            height={ICON_SIZE + 12}
+            rx="10"
+          />
+        ))}
 
         {slots.map((s, i) =>
           Number.isFinite(s.rainProb) ? (
@@ -88,8 +113,18 @@ export default function GroundHourlyStrip({ groundForecastData, icao }) {
               <image className="ghs-icon" href={src} x={xs[i] - ICON_SIZE / 2} y={ICON_Y} width={ICON_SIZE} height={ICON_SIZE} />
               {Number.isFinite(s.temp) && (
                 <>
-                  <circle className="ghs-dot" cx={xs[i]} cy={tempY(s.temp)} r="3.5" />
-                  <text className="ghs-temp" x={xs[i]} y={tempY(s.temp) - 9} textAnchor="middle">
+                  <circle
+                    className={`ghs-dot${s.temp === tMax ? " is-max" : ""}${s.temp === tMin ? " is-min" : ""}`}
+                    cx={xs[i]}
+                    cy={tempY(s.temp)}
+                    r="3.5"
+                  />
+                  <text
+                    className={`ghs-temp${s.temp === tMax ? " is-max" : ""}${s.temp === tMin ? " is-min" : ""}`}
+                    x={xs[i]}
+                    y={tempY(s.temp) - 9}
+                    textAnchor="middle"
+                  >
                     {Math.round(s.temp)}°
                   </text>
                 </>
@@ -101,8 +136,8 @@ export default function GroundHourlyStrip({ groundForecastData, icao }) {
         {slots.map((s, i) => {
           const prev = slots[i - 1];
           const changed = prev && s.date && s.date !== prev.date;
-          const hh = String(Number(String(s.time || "").slice(0, 2))).padStart(2, "0");
-          const label = changed ? `${dateChip(s.date)} ${hh}시` : hourLabel(s.time);
+          const dc = dateChip(s.date);
+          const label = (i === 0 || changed) && dc ? `${dc} ${hourLabel(s.time)}` : hourLabel(s.time);
           return (
             <text
               key={`ax-${i}`}

@@ -34,9 +34,8 @@ function formatKstTm(dateUtc) {
   return formatUtcTm(dateKst);
 }
 
-// ponytail: temp 10→20min frame spacing to halve KMA download volume (~-390MB/day).
-// Restore to 10 (and satellite_interval to */10) to revert.
-const SAT_FRAME_STEP_MIN = 20;
+// GK2A CI·CTPS의 10분 관측 간격에 맞춰 위성 프레임도 10분으로 유지한다.
+const SAT_FRAME_STEP_MIN = 10;
 
 function getCandidateTms(delayMinutes = config.satellite.delay_minutes) {
   const now = new Date();

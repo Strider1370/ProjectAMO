@@ -2,7 +2,7 @@ import sharp from 'sharp'
 import config from '../config.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 import { parseCiNC, parseCtpsNC } from '../parsers/satellite-parser.js'
-import { CTPS_MIN_FL_OPTIONS, buildCiFeatureCollection, encodeCtpsBinary, normalizeCtps, renderCtpsRgba } from './convective-satellite-model.js'
+import { CI_RENDER_VERSION, CTPS_MIN_FL_OPTIONS, buildCiFeatureCollection, encodeCtpsBinary, normalizeCtps, renderCtpsRgba } from './convective-satellite-model.js'
 import { publishCi, publishCtps, readConvectiveMeta } from './convective-satellite-store.js'
 
 function buildCiUrl(requestTm) { return `${config.satellite.fog_url}/${config.satellite.ci_product}/${config.satellite.region}/data?date=${requestTm}&authKey=${config.api.auth_key}` }
@@ -17,7 +17,7 @@ export async function collectConvectiveSatelliteFrame(frame, dependencies = {}) 
   const readMeta = dependencies.readMeta || readConvectiveMeta
   const existing = readMeta(root)?.frames?.find((item) => item.tm === frame.tm)
   const tasks = []
-  if (!existing?.ci) tasks.push(['ci', (async () => { const parsed = await (dependencies.parseCi || parseCiNC)(await (dependencies.fetchNc || fetchNc)(buildCiUrl(frame.request_tm_utc))); return (dependencies.publishCi || publishCi)({ root, frame, geojson: buildCiFeatureCollection(parsed), maxFrames: activeConfig.satellite.convective_max_frames }) })()])
+  if (existing?.ci?.renderVersion !== CI_RENDER_VERSION) tasks.push(['ci', (async () => { const parsed = await (dependencies.parseCi || parseCiNC)(await (dependencies.fetchNc || fetchNc)(buildCiUrl(frame.request_tm_utc))); return (dependencies.publishCi || publishCi)({ root, frame, geojson: buildCiFeatureCollection(parsed), renderVersion: CI_RENDER_VERSION, maxFrames: activeConfig.satellite.convective_max_frames }) })()])
   if (!existing?.ctps) tasks.push(['ctps', (async () => { const parsed = await (dependencies.parseCtps || parseCtpsNC)(await (dependencies.fetchNc || fetchNc)(buildCtpsUrl(frame.request_tm_utc))); const normalized = normalizeCtps(parsed), images = {}; for (const minFl of CTPS_MIN_FL_OPTIONS) images[minFl] = await (dependencies.renderWebp || renderWebp)(normalized, minFl); return (dependencies.publishCtps || publishCtps)({ root, frame, binary: encodeCtpsBinary(normalized), images, maxFrames: activeConfig.satellite.convective_max_frames }) })()])
   if (!tasks.length) return { saved: false, reason: 'already_complete' }
   const results = await Promise.allSettled(tasks.map(([, task]) => task))

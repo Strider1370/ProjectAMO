@@ -1,29 +1,27 @@
 import { contours } from 'd3-contour'
-import { simplify } from '@turf/simplify'
-import { KO_DISPLAY_GRID, displayPixelToSourceIndex, displayPointToLonLat } from '../lib/satellite-ko-grid.js'
+import { KO_DISPLAY_GRID, displayPixelToSourceIndex } from '../lib/satellite-ko-grid.js'
+import { enToLatLon } from '../lib/lcc-projection.js'
 
 export const CTPS_MIN_FL_OPTIONS = Object.freeze(['all', 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550])
 export const CTPS_INVALID_HEIGHT = 0xffffffff
 export const CTPS_INVALID_TEMPERATURE = -32768
 export const CTPS_INVALID_QUALITY = 255
 const CI_PROPERTIES = { 3: { signal: 3, level: 'medium', label: '중간 상승기류 신호', color: '#F6C945' }, 4: { signal: 4, level: 'strong', label: '강한 상승기류 신호', color: '#E8751A' } }
+export const CI_RENDER_VERSION = 'ci-native-lcc-v2'
 
 function validRings(coordinates) { return coordinates.map((polygon) => polygon.filter((ring) => ring.length >= 4)).filter((polygon) => polygon.length) }
 export function buildCiFeatureCollection(parsedCi) {
-  const generator = contours().size([KO_DISPLAY_GRID.width, KO_DISPLAY_GRID.height]).thresholds([0.5])
+  const generator = contours().size([parsedCi.attrs.width, parsedCi.attrs.height]).thresholds([0.5])
   const features = []
   for (const signal of [3, 4]) {
-    const mask = new Uint8Array(KO_DISPLAY_GRID.width * KO_DISPLAY_GRID.height)
-    for (let y = 0; y < KO_DISPLAY_GRID.height; y += 1) for (let x = 0; x < KO_DISPLAY_GRID.width; x += 1) {
-      const index = displayPixelToSourceIndex(x, y, parsedCi.attrs)
-      if (index !== null && (parsedCi.dqf[index] === 0 || parsedCi.dqf[index] === 1) && parsedCi.dqf[index] !== parsedCi.attrs.dqfFill && parsedCi.signal[index] !== parsedCi.attrs.signalFill && parsedCi.signal[index] === signal) mask[y * KO_DISPLAY_GRID.width + x] = 1
-    }
+    const mask = new Uint8Array(parsedCi.attrs.width * parsedCi.attrs.height)
+    for (let index = 0; index < mask.length; index += 1) if ((parsedCi.dqf[index] === 0 || parsedCi.dqf[index] === 1) && parsedCi.dqf[index] !== parsedCi.attrs.dqfFill && parsedCi.signal[index] !== parsedCi.attrs.signalFill && parsedCi.signal[index] === signal) mask[index] = 1
     const [contour] = generator(mask)
     if (!contour?.coordinates?.length) continue
-    const geometry = { type: 'MultiPolygon', coordinates: validRings(contour.coordinates.map((polygon) => polygon.map((ring) => ring.map(([x, y]) => displayPointToLonLat(x, y))))) }
+    const geometry = { type: 'MultiPolygon', coordinates: validRings(contour.coordinates.map((polygon) => polygon.map((ring) => ring.map(([x, y]) => { const [lat, lon] = enToLatLon(parsedCi.attrs.ulEasting + (x - 0.5) * parsedCi.attrs.pixelSize, parsedCi.attrs.ulNorthing - (y - 0.5) * parsedCi.attrs.pixelSize); return [lon, lat] })))) }
     if (!geometry.coordinates.length) continue
     const feature = { type: 'Feature', properties: CI_PROPERTIES[signal], geometry }
-    try { const simplified = simplify(feature, { tolerance: 0.01, highQuality: false, mutate: false }); if (simplified?.geometry?.coordinates?.length) features.push(simplified) } catch { features.push(feature) }
+    features.push(feature)
   }
   return { type: 'FeatureCollection', features }
 }

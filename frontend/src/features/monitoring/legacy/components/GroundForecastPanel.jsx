@@ -36,7 +36,7 @@ function getWeekdayTone(day) {
   return "default";
 }
 
-function isPrecipitationIcon(icon) {
+export function isPrecipitationIcon(icon) {
   return ["rain", "shower", "snow", "sleet"].includes(icon);
 }
 

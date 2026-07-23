@@ -272,7 +272,7 @@ export const schedule = {
   radar_echo_interval: '*/5 * * * *',
   // ponytail: 10분 — RainViewer 원본 갱신 주기가 10분이라 5분 cron은 같은 데이터를 두 번 받는 낭비.
   rainviewer_interval: '*/10 * * * *',
-  satellite_interval: '*/20 * * * *', // ponytail: 10→20분(프레임 간격 20분 정합, KMA 용량 절감). 되돌리면 */10.
+  satellite_interval: '*/10 * * * *', // GK2A CI·CTPS 관측 간격과 동일하게 수집.
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
   kim_surface_wind_interval: '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *',
   ground_forecast_interval: '30 6,11,18,23 * * *',

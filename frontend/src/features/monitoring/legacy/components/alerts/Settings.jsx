@@ -12,6 +12,10 @@ import {
   getDefaultAdvisoryFilterSettings,
   saveAdvisoryFilterSettings,
 } from "../../utils/advisory-filter";
+import {
+  MONITORING_SLIDE_IMAGE_TYPES,
+  validateMonitoringSlideshowConfig,
+} from "../../../lib/monitoringSlideshow.js";
 
 const TRIGGER_LABELS = {
   warning_issued: "공항경보가 발령되면 알림",
@@ -106,6 +110,16 @@ export default function Settings({
   setTrafficAltitudeBands,
   advisoryFilter,
   setAdvisoryFilter,
+  slideshowConfig,
+  slideshowStatusLabel,
+  slideshowImageInfo,
+  slideshowPersistenceNotice,
+  slideshowDisabled,
+  onSlideshowConfigChange,
+  onSlideImageChoose,
+  onSlideImageRemove,
+  onSlideshowPreview,
+  onSlideshowStop,
   variant = "modal",
 }) {
   const isInline = variant === "inline";
@@ -420,6 +434,12 @@ export default function Settings({
             >
               공역예보
             </button>
+            <button
+              className={`alert-settings-tab-btn${activeTab === "slideshow" ? " active" : ""}`}
+              onClick={() => setActiveTab("slideshow")}
+            >
+              화면 전환
+            </button>
           </div>
 
           <div className="alert-settings-body">
@@ -603,6 +623,132 @@ export default function Settings({
                   );
                 })}
               </div>
+            )}
+            {activeTab === "slideshow" && (
+              <fieldset className="alert-settings-section" disabled={slideshowDisabled}>
+                <legend>개인 화면 전환</legend>
+                {slideshowDisabled && (
+                  <p className="alert-settings-help">
+                    모바일 화면에서는 화면 전환 기능을 사용할 수 없습니다.
+                  </p>
+                )}
+                <p className="alert-settings-help">
+                  선택한 이미지는 이 기기의 이 브라우저에만 저장되며, 다른 기기나 브라우저에는 표시되지 않습니다.
+                </p>
+
+                <label className="alert-settings-row">
+                  <span>화면 전환 사용</span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(slideshowConfig?.enabled)}
+                    onChange={(e) => onSlideshowConfigChange?.({ enabled: e.target.checked })}
+                  />
+                </label>
+
+                <label className="alert-settings-row">
+                  <span>전환 대상</span>
+                  <select
+                    value={slideshowConfig?.target || "whole-screen"}
+                    onChange={(e) => onSlideshowConfigChange?.({ target: e.target.value })}
+                  >
+                    <option value="whole-screen">전체 화면 (운항/지상 ↔ 이미지)</option>
+                    <option value="map-panel">지도 패널만</option>
+                  </select>
+                </label>
+
+                <label className="alert-settings-row">
+                  <span>전환 효과</span>
+                  <select
+                    value={slideshowConfig?.transitionEffect || "fade"}
+                    onChange={(e) => onSlideshowConfigChange?.({ transitionEffect: e.target.value })}
+                  >
+                    <option value="fade">페이드 (부드럽게 전환)</option>
+                    <option value="slide">슬라이드 (밀려서 전환)</option>
+                  </select>
+                </label>
+
+                <label className="alert-settings-row">
+                  <span>전환 애니메이션 속도(ms)</span>
+                  <input
+                    type="number"
+                    min={100}
+                    max={2000}
+                    step={50}
+                    value={slideshowConfig?.transitionDurationMs ?? 350}
+                    onChange={(e) => onSlideshowConfigChange?.({ transitionDurationMs: Number(e.target.value) })}
+                  />
+                </label>
+
+                <label className="alert-settings-row">
+                  <span>전환 간격(초)</span>
+                  <input
+                    type="number"
+                    min={5}
+                    max={3600}
+                    value={slideshowConfig?.intervalSeconds ?? 30}
+                    onChange={(e) => onSlideshowConfigChange?.({ intervalSeconds: Number(e.target.value) })}
+                  />
+                </label>
+
+                <label className="alert-settings-row">
+                  <span>시작 시각</span>
+                  <input
+                    type="time"
+                    value={slideshowConfig?.startTime || "00:00"}
+                    onChange={(e) => onSlideshowConfigChange?.({ startTime: e.target.value })}
+                  />
+                </label>
+                <label className="alert-settings-row">
+                  <span>종료 시각</span>
+                  <input
+                    type="time"
+                    value={slideshowConfig?.endTime || "23:59"}
+                    onChange={(e) => onSlideshowConfigChange?.({ endTime: e.target.value })}
+                  />
+                </label>
+                {!validateMonitoringSlideshowConfig(slideshowConfig || {}).valid && (
+                  <p className="alert-settings-help">
+                    {Object.values(validateMonitoringSlideshowConfig(slideshowConfig || {}).errors).join(" ")}
+                  </p>
+                )}
+
+                <label className="alert-settings-row">
+                  <span>표시할 이미지 (PNG/JPEG/WebP)</span>
+                  <input
+                    type="file"
+                    accept={MONITORING_SLIDE_IMAGE_TYPES.join(",")}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) onSlideImageChoose?.(file)
+                      e.target.value = ""
+                    }}
+                  />
+                </label>
+                {slideshowImageInfo && (
+                  <label className="alert-settings-row">
+                    <span>선택한 이미지: {slideshowImageInfo.name}</span>
+                    <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideImageRemove?.()}>
+                      제거
+                    </button>
+                  </label>
+                )}
+
+                <label className="alert-settings-row">
+                  <span>상태: {slideshowStatusLabel || "꺼짐"}</span>
+                  <span className="alert-settings-inline-actions">
+                    <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideshowPreview?.()}>
+                      미리보기
+                    </button>
+                    <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideshowStop?.()}>
+                      중지
+                    </button>
+                  </span>
+                </label>
+
+                {slideshowPersistenceNotice && (
+                  <p className="alert-settings-help">{slideshowPersistenceNotice}</p>
+                )}
+              </fieldset>
             )}
           </div>
         </div>

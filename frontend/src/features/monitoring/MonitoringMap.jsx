@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Cloud, Layers, Palette } from 'lucide-react'
 import MapView from '../map/MapView.jsx'
+import MonitoringSlideOverlay from './MonitoringSlideOverlay.jsx'
 import { mergeAdvisoryPayloads, mergeAirportPayloads } from '../../api/weatherApi.js'
 
 function MonitoringMap({
@@ -8,6 +9,12 @@ function MonitoringMap({
   selectedAirport,
   onAirportSelect,
   basemapId,
+  slideshowVisible = false,
+  slideshowImageUrl = null,
+  onStopSlideshow,
+  slideshowStatusLabel = null,
+  slideshowEffect = 'fade',
+  slideshowDurationMs = 350,
 }) {
   const [activeMapPanel, setActiveMapPanel] = useState(null)
   const [legendsOpen, setLegendsOpen] = useState(false)
@@ -82,6 +89,15 @@ function MonitoringMap({
         selectedAirport={selectedAirport}
         onAirportSelect={onAirportSelect}
         enableWindOverlay={false}
+      />
+      <MonitoringSlideOverlay
+        visible={slideshowVisible}
+        imageUrl={slideshowImageUrl}
+        scope="map-panel"
+        onStop={onStopSlideshow}
+        statusLabel={slideshowStatusLabel}
+        effect={slideshowEffect}
+        durationMs={slideshowDurationMs}
       />
     </section>
   )

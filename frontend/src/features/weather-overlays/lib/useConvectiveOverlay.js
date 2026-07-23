@@ -35,22 +35,22 @@ export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, ciVi
     const ci = ciVisible && ciFrame ? queryCiAtPoint(map, point.mapPoint) : null
     const ciSelection = ci && { ...ci, observedAt: ciFrame?.observedAt ?? null }
     if (!ctpsVisible || !ctpsFrame || !fetchCtpsPoint) {
-      setSelection(ciSelection ? { lng: point.lng, lat: point.lat, ci: ciSelection, ctps: null } : null)
+      setSelection(ciSelection ? { lng: point.lng, lat: point.lat, point: point.mapPoint, ci: ciSelection, ctps: null } : null)
       return undefined
     }
     const key = makeConvectiveRequestKey({ tm: ctpsFrame.tm, lat: point.lat, lon: point.lng, minFl })
     const token = ++requestTokenRef.current
     currentKeyRef.current = key
     const controller = new AbortController()
-    setSelection(ciSelection ? { lng: point.lng, lat: point.lat, ci: ciSelection, ctps: null } : null)
+    setSelection(ciSelection ? { lng: point.lng, lat: point.lat, point: point.mapPoint, ci: ciSelection, ctps: null } : null)
     fetchCtpsPoint({ tm: ctpsFrame.tm, lat: point.lat, lon: point.lng, minFl }, { signal: controller.signal })
       .then((ctps) => {
         if (!canApplyConvectiveResponse({ requestToken: token, currentToken: requestTokenRef.current, requestKey: key, currentKey: currentKeyRef.current, aborted: controller.signal.aborted })) return
-        setSelection({ lng: point.lng, lat: point.lat, ci: ciSelection, ctps })
+        setSelection({ lng: point.lng, lat: point.lat, point: point.mapPoint, ci: ciSelection, ctps })
       })
       .catch(() => {
         if (!canApplyConvectiveResponse({ requestToken: token, currentToken: requestTokenRef.current, requestKey: key, currentKey: currentKeyRef.current, aborted: controller.signal.aborted })) return
-        setSelection(ciSelection ? { lng: point.lng, lat: point.lat, ci: ciSelection, ctps: null } : null)
+        setSelection(ciSelection ? { lng: point.lng, lat: point.lat, point: point.mapPoint, ci: ciSelection, ctps: null } : null)
       })
     return () => controller.abort()
   }, [mapRef, point, minFl, ciVisible, ctpsVisible, ciFrame, ctpsFrame, fetchCtpsPoint, timeZone])
