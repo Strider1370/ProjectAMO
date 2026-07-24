@@ -24,7 +24,7 @@ export const ADSB_RANGE_LAYER_ID = 'adsb-range-layer'
 export const ADSB_SOURCE_IDS = [ADSB_SOURCE_ID, ADSB_TRAIL_SOURCE_ID, ADSB_RANGE_SOURCE_ID]
 export const ADSB_LAYER_IDS = [ADSB_RANGE_LAYER_ID, ADSB_TRAIL_LAYER_ID, ADSB_LAYER_ID, ADSB_LOGO_LAYER_ID]
 
-const ADSB_COVERAGE_CENTERS = [[124.7, 34.0], [131.0, 37.3]]
+const ADSB_COVERAGE_CENTERS = [[127.5, 36.5]]
 const ADSB_COVERAGE_RADIUS_NM = 250
 
 export function createAdsbCoverageGeoJSON() {
@@ -38,7 +38,7 @@ export function createAdsbCoverageGeoJSON() {
 }
 
 const CLASS_LABELS_KO = {
-  heavy: '대형기', jet: '협동체', regional: '리저널', turboprop: '터보프롭',
+  heavy: '광동체', jet: '협동체', regional: '리저널', turboprop: '터보프롭',
   piston: '경항공기', helicopter: '헬기', unknown: '',
 }
 

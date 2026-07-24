@@ -183,10 +183,10 @@ export const adsb = {
   url: process.env.ADSB_API_URL || 'https://api.adsb.lol/v2',
   timeout_ms: 20000,
   max_history_frames: 36,
-  centers: [
-    { lat: Number(process.env.ADSB_LAT_1 || 34.0), lon: Number(process.env.ADSB_LON_1 || 124.7) },
-    { lat: Number(process.env.ADSB_LAT_2 || 37.3), lon: Number(process.env.ADSB_LON_2 || 131.0) },
-  ],
+  center: {
+    lat: Number(process.env.ADSB_LAT || 36.5),
+    lon: Number(process.env.ADSB_LON || 127.5),
+  },
   dist_nm: Number(process.env.ADSB_DIST_NM || 250),
   bounds: {
     lamin: Number(process.env.ADSB_LAMIN || 30),

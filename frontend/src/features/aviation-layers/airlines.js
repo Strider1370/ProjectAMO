@@ -31,5 +31,5 @@ export function airlineLogoId(callsign) {
 }
 
 export function airlineLogoFile(icao) {
-  return `${icao}.${icao === 'AIH' ? 'png' : 'svg'}`
+  return `${icao}.svg`
 }

@@ -42,6 +42,14 @@ server {
     add_header Cache-Control "no-cache";
   }
 
+  # Convective satellite assets live in the shared runtime data root. Keep
+  # them out of the generic frontend GeoJSON location below, which resolves
+  # against /opt/projectamo/current/frontend/dist and would return 404.
+  location ~* "^/data/satellite/convective/(ci_\d{12}\.geojson|ctps_\d{12}_.*\.webp)$" {
+    alias /opt/projectamo/shared/data/satellite/convective/$1;
+    add_header Cache-Control "public, max-age=10800, immutable";
+  }
+
   location ~* "^/(data/navdata/|data/.*\.(geojson|topojson)|Symbols/|assets/)" {
     try_files $uri =404;
     add_header Cache-Control "public, max-age=31536000, immutable";
