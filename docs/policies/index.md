@@ -5,7 +5,7 @@
 
 Read the relevant `Architecture.md` section and this index before editing. For routine work, read one matching detailed policy; if two boundaries plausibly apply, read both and no unrelated policy.
 
-Process (planning, TDD, debugging, review, branch closeout) is owned by the superpowers skills — see [the entrypoint](../../claude.md). This index routes project-specific boundaries only.
+Process (planning, TDD, debugging, review, branch closeout) is owned by the superpowers skills — see [the entrypoint](../../CLAUDE.md). This index routes project-specific boundaries only.
 
 | Work | Minimum Architecture.md read | Read next |
 | --- | --- | --- |

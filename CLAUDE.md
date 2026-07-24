@@ -1,6 +1,6 @@
 # ProjectAMO agent entrypoint
 
-`AGENTS.md` (Codex) and `claude.md` (Claude) are the same document. Change both together.
+`AGENTS.md` (Codex) and `CLAUDE.md` (Claude) are the same document. Change both together. Both names are case-sensitive on Linux — keep `CLAUDE.md` uppercase or Claude Code will not load it.
 
 Read [the policy index](docs/policies/index.md) and the relevant `Architecture.md` section before editing. Follow the index's matching detailed policy; for ambiguous work, read up to two and re-check routing if exploration crosses a boundary.
 
