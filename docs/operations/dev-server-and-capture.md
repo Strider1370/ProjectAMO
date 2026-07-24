@@ -2,17 +2,13 @@
 
 Use this guide whenever a task requires opening the local backend, opening the frontend, or running Playwright screenshots against the local app.
 
-This project is developed on both Windows and WSL Ubuntu. Every `npm` command below is identical on both; only port inspection and HTTP probing differ, and those are given side by side.
-
-## Platform switching
-
-`node_modules` is built for one platform at a time. After moving between Windows and WSL, reinstall before running anything:
+This is a Linux-only project (WSL Ubuntu or any Linux host). After a fresh clone or a Node version change, reinstall before running anything:
 
 ```
-npm install && npm --prefix backend install && npm --prefix frontend install
+npm ci && npm --prefix backend ci && npm --prefix frontend ci
 ```
 
-Symptoms of a stale install: `Cannot find module`, an `@esbuild/*` or `@rollup/*` platform mismatch error, or `sharp` failing to load.
+Symptoms of a stale install: `Cannot find module`, an `@esbuild/*` or `@rollup/*` mismatch error, or `sharp` failing to load.
 
 ## Standard Ports
 
@@ -27,18 +23,17 @@ Playwright contracts use a separate managed path. `npm run dev:contract -- --gre
 
 ## Preflight
 
-Check whether the ports are already taken.
+Check whether the ports are already taken:
 
-| | Command |
-| --- | --- |
-| Windows | `Get-NetTCPConnection -LocalPort 3001,5173 -State Listen -ErrorAction SilentlyContinue` |
-| WSL / Linux | `ss -ltnp \| grep -E ':3001\|:5173'` |
+```
+ss -ltnp | grep -E ':3001|:5173'
+```
 
 If either port is already in use, identify whether it is an existing ProjectAMO server before starting another copy. Keep Vite on `5173` with `--strictPort` so it does not silently move to another port.
 
 ## Start Servers for Verification
 
-Prefer the repo-local Node launcher (`scripts/projectamo-dev.mjs`) on both platforms. It starts both servers from repository-relative paths, waits for readiness, runs the selected check, and cleans up child processes. It selects `npm.cmd` through `cmd.exe` on Windows and `npm` on macOS/Linux, so the npm scripts below are the same everywhere.
+Prefer the repo-local Node launcher (`scripts/projectamo-dev.mjs`). It starts both servers from repository-relative paths, waits for readiness, runs the selected check, and cleans up child processes.
 
 Start both servers and verify readiness:
 
@@ -62,10 +57,9 @@ npm run dev:smoke
 
 Run baseline responsive screenshots with managed servers:
 
-| | Command |
-| --- | --- |
-| Windows | `$env:PROJECTAMO_SCREENSHOT_PHASE='<phase>'; $env:PROJECTAMO_SCREENSHOT_LABEL='<label>'; npm run dev:screenshots` |
-| WSL / Linux | `PROJECTAMO_SCREENSHOT_PHASE=<phase> PROJECTAMO_SCREENSHOT_LABEL=<label> npm run dev:screenshots` |
+```
+PROJECTAMO_SCREENSHOT_PHASE=<phase> PROJECTAMO_SCREENSHOT_LABEL=<label> npm run dev:screenshots
+```
 
 The launcher starts `backend/server.js` and Vite directly with Node instead of keeping long-running servers behind npm wrapper processes. It writes server logs under `artifacts/runtime-logs/`.
 
@@ -88,10 +82,10 @@ The launcher is preferred because it keeps the startup, readiness checks, and cl
 
 ## Manual Readiness Checks
 
-| | Backend | Frontend |
-| --- | --- | --- |
-| Windows | `Invoke-WebRequest -Uri 'http://127.0.0.1:3001/api/health' -UseBasicParsing -TimeoutSec 2` | `Invoke-WebRequest -Uri 'http://127.0.0.1:5173/' -UseBasicParsing -TimeoutSec 2` |
-| WSL / Linux | `curl -s http://127.0.0.1:3001/api/health` | `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:5173/` |
+```
+curl -s http://127.0.0.1:3001/api/health
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:5173/
+```
 
 Expected backend health content includes:
 
@@ -105,7 +99,7 @@ Use the managed launcher before creating one-off screenshot scripts: `npm run de
 
 If servers are already running and verified, the lower-level frontend scripts can still be used directly with `PROJECTAMO_URL=http://127.0.0.1:5173` set, calling `npm run smoke:responsive --prefix frontend` or `npm run screenshots:responsive --prefix frontend`.
 
-Visual snapshot baselines are per-platform: Playwright writes `*-win32.png` on Windows and `*-linux.png` on WSL. A baseline captured on one platform will not match the other because font rasterization differs. Regenerate rather than porting them across.
+Playwright writes `*-linux.png` baselines. A baseline captured on a different OS will not match because font rasterization differs; regenerate on Linux rather than porting one in.
 
 For UI states that the baseline script does not cover, write or run focused Playwright steps that open the relevant panel, tab, dialog, or route before capturing. Store responsive evidence under:
 
@@ -117,13 +111,7 @@ Include a short README or manifest with the capture time, branch/commit, viewpor
 
 ## Known Failure Modes
 
-- **Windows only** — `Start-Process` fails with `An item with the same key has already been added. Key being added: PATH`, caused by both `Path` and `PATH` existing in the process environment. Use the Node launcher, or normalize first:
-  ```powershell
-  $pathValue = (cmd.exe /c echo %PATH%)
-  [Environment]::SetEnvironmentVariable('PATH', $null, 'Process')
-  [Environment]::SetEnvironmentVariable('Path', $pathValue, 'Process')
-  ```
-- **WSL only** — `node: command not found` in a script, hook, or any non-interactive shell. nvm loads from `~/.bashrc` below its non-interactive guard, so only interactive shells see it. `node`, `npm`, `npx`, `graphify`, and `graphify-mcp` are symlinked into `/usr/local/bin` to cover every shell; if a new tool is missing, symlink it the same way. Re-run the symlinks after `nvm use` switches versions.
+- `node: command not found` in a script, hook, or any non-interactive shell. nvm loads from `~/.bashrc` below its non-interactive guard, so only interactive shells see it. `node`, `npm`, `npx`, `graphify`, and `graphify-mcp` are symlinked into `/usr/local/bin` to cover every shell; if a new tool is missing, symlink it the same way. Re-run the symlinks after `nvm use` switches versions.
 - `5173` is already in use: because `--strictPort` is required, the frontend will fail instead of moving ports. Find and stop the existing ProjectAMO frontend or reuse it after verifying it serves the current workspace.
 - Backend starts but upstream data collection logs `fetch failed`: this is not a readiness blocker by itself. The server is considered ready when `/api/health` returns success; live external API refresh may still fail because of network/API availability.
 - Stopping only the parent process may leave child node processes behind. Clean up by checking the listening ports above and stopping the owning process for `3001` and `5173`.

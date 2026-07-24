@@ -41,7 +41,7 @@ const manifest = {
   label: LABEL,
   appUrl: APP_URL,
   method: 'frontend/scripts/responsive-screenshots.mjs',
-  verificationCommands: ['npm.cmd run dev:screenshots'],
+  verificationCommands: ['npm run dev:screenshots'],
   viewports,
   routes,
   files: [],

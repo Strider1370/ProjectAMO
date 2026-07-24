@@ -1,6 +1,6 @@
 # Browser verification contracts
 
-Run a focused contract with `npm run dev:contract -- --grep <id>` (same on Windows and WSL). The command checks ports, then Playwright owns the fixed-data backend and frontend lifecycle. `dev:test` only stops automatic collection; it does not provide route or weather fixtures.
+Run a focused contract with `npm run dev:contract -- --grep <id>`. The command checks ports, then Playwright owns the fixed-data backend and frontend lifecycle. `dev:test` only stops automatic collection; it does not provide route or weather fixtures.
 
 ## Active
 

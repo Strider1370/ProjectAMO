@@ -30,13 +30,11 @@ Task packet documents live under `docs/superpowers/{specs,plans,status}/`.
 
 ## Environment
 
-The repository lives in WSL Ubuntu at `~/ProjectAMO`; Claude Code and Codex run on the Windows host. Work on both platforms is supported, so keep commands and docs platform-neutral where possible.
+This is a Linux-only project. The repository lives in Linux at `~/ProjectAMO` (WSL Ubuntu today, any Linux host tomorrow). Run `git`, `npm`, `node`, and `graphify` from a Linux shell only — never from `cmd.exe`, PowerShell, or a Windows-side tool.
 
-- **Run `git`, `npm`, `node`, and `graphify` inside WSL**, not from the Windows shell: `wsl -d Ubuntu -- bash -c '<command>'`. The Windows-side Bash tool cannot reach `/home/...`.
-- Windows `git` refuses this path with `dubious ownership`. **That is deliberate — do not add `safe.directory`.** Letting Windows git write here mangles line endings and permission bits.
-- `node_modules` is valid for one platform at a time. Reinstall after switching between Windows and WSL; see [the dev-server procedure](docs/operations/dev-server-and-capture.md).
-- Executable bits do not survive a trip through Windows. If a hook or script stops running, check `chmod +x` before anything else.
-- Playwright snapshot baselines are per-platform (`*-win32.png` / `*-linux.png`). Regenerate, never port across.
+- After a fresh clone, run `bash scripts/bootstrap-linux.sh` once before anything else — it pins the Node version, installs dependencies with `npm ci`, fetches the Playwright browser, and sets `core.hooksPath` / line-ending git config.
+- Commands and docs use `npm`, `bash`, `curl`, `ss`, and `~/.ssh/...` — no PowerShell, no `.cmd`/`.exe` binaries, no `C:\` paths.
+- Playwright snapshot baselines are Linux-only (`*-linux.png`).
 
 ## Always
 

@@ -19,12 +19,18 @@ Korean aviation weather and operational-awareness dashboard. It combines airport
 
 ## Quick start
 
-Install dependencies from the repository root:
+This is a Linux-only project (WSL Ubuntu or any Linux host). After cloning, run the bootstrap script once:
 
 ```bash
-npm.cmd install
-npm.cmd --prefix frontend install
-npm.cmd --prefix backend install
+bash scripts/bootstrap-linux.sh
+```
+
+It installs dependencies at the pinned Node version (see `.nvmrc`), fetches the Playwright browser, and sets the local git line-ending and hooks config. To install dependencies manually instead:
+
+```bash
+npm ci
+npm --prefix frontend ci
+npm --prefix backend ci
 ```
 
 Create a root `.env` as needed. Use [`backend/.env.example`](backend/.env.example) for backend/session settings and set `VITE_MAPBOX_TOKEN` for the map. Do not commit secrets.
@@ -32,13 +38,13 @@ Create a root `.env` as needed. Use [`backend/.env.example`](backend/.env.exampl
 Start both services and verify readiness:
 
 ```bash
-npm.cmd run dev:verify
+npm run dev:verify
 ```
 
 Keep the development services running:
 
 ```bash
-npm.cmd run dev:serve
+npm run dev:serve
 ```
 
 - Frontend: `http://127.0.0.1:5173`
@@ -49,18 +55,16 @@ Use `npm run dev:test` for fixed-data test-instance work. For all server, browse
 ## Verification
 
 ```bash
-npm.cmd --prefix backend test
-npm.cmd --prefix frontend test
-npm.cmd run build
-npm.cmd run dev:smoke
+npm --prefix backend test
+npm --prefix frontend test
+npm run build
+npm run dev:smoke
 ```
 
 Run baseline responsive screenshots with the managed launcher:
 
-```powershell
-$env:PROJECTAMO_SCREENSHOT_PHASE = 'manual'
-$env:PROJECTAMO_SCREENSHOT_LABEL = 'after'
-npm.cmd run dev:screenshots
+```bash
+PROJECTAMO_SCREENSHOT_PHASE=manual PROJECTAMO_SCREENSHOT_LABEL=after npm run dev:screenshots
 ```
 
 ## Repository map

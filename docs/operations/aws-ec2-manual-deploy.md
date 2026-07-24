@@ -17,8 +17,8 @@
 
 로컬 키 파일 예시:
 
-```powershell
-ssh -i "C:\Users\Jond Doe\.ssh\key.pem" ec2-user@3.34.113.37
+```bash
+ssh -i ~/.ssh/key.pem ec2-user@3.34.113.37
 ```
 
 `ubuntu` 계정이 아니라 `ec2-user` 계정을 사용합니다.

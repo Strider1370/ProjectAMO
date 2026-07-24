@@ -9,27 +9,19 @@ const ports = [3001, 5173]
 
 function commandOutput(command, args) {
   try {
-    return execFileSync(command, args, { encoding: 'utf8', windowsHide: true })
+    return { output: execFileSync(command, args, { encoding: 'utf8' }), missing: false }
   } catch (error) {
-    return error.stdout || ''
+    return { output: error.stdout || '', missing: error.code === 'ENOENT' }
   }
 }
 
-function listenersOnWindows(port) {
-  const rows = commandOutput('netstat.exe', ['-ano', '-p', 'tcp'])
-    .split(/\r?\n/)
-    .filter((row) => row.includes('LISTENING') && new RegExp(`:${port}\\s`).test(row))
+function listenersViaLsof(port) {
+  const { output, missing } = commandOutput('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'])
+  if (missing) {
+    return null
+  }
 
-  return rows.map((row) => {
-    const pid = row.trim().split(/\s+/).at(-1)
-    const task = commandOutput('tasklist.exe', ['/fi', `PID eq ${pid}`, '/fo', 'csv', '/nh'])
-      .split(/\r?\n/)[0] || ''
-    return { pid: Number(pid), process: task.replace(/^"|"$/g, '').split('","')[0] || 'unknown' }
-  })
-}
-
-function listenersOnPosix(port) {
-  return commandOutput('lsof', ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'])
+  return output
     .split(/\r?\n/)
     .slice(1)
     .filter(Boolean)
@@ -39,9 +31,22 @@ function listenersOnPosix(port) {
     })
 }
 
-const conflicts = ports.flatMap((port) => (process.platform === 'win32'
-  ? listenersOnWindows(port)
-  : listenersOnPosix(port)).map((listener) => ({ port, ...listener })))
+function listenersViaSs(port) {
+  const { output } = commandOutput('ss', ['-ltnp'])
+  return output
+    .split(/\r?\n/)
+    .filter((row) => new RegExp(`:${port}\\s`).test(row))
+    .map((row) => ({
+      pid: Number(row.match(/pid=(\d+)/)?.[1]) || null,
+      process: row.match(/users:\(\("([^"]+)"/)?.[1] || 'unknown',
+    }))
+}
+
+function listeners(port) {
+  return listenersViaLsof(port) ?? listenersViaSs(port)
+}
+
+const conflicts = ports.flatMap((port) => listeners(port).map((listener) => ({ port, ...listener })))
 
 await mkdir(path.dirname(artifactPath), { recursive: true })
 await writeFile(artifactPath, JSON.stringify({ checkedAt: new Date().toISOString(), conflicts }, null, 2))

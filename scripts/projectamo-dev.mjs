@@ -2,7 +2,7 @@ import { createWriteStream } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { spawn, spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const logDir = path.join(rootDir, 'artifacts', 'runtime-logs')
@@ -10,51 +10,14 @@ const appUrl = process.env.PROJECTAMO_URL || 'http://127.0.0.1:5173'
 const backendHealthUrl = process.env.PROJECTAMO_BACKEND_HEALTH_URL || 'http://127.0.0.1:3001/api/health'
 const command = process.argv[2] || 'verify'
 
-function normalizedEnv(extra = {}) {
-  const env = { ...process.env, ...extra }
-  const pathEntry = Object.entries(env).find(([key]) => key.toLowerCase() === 'path')
-  const pathValue = pathEntry?.[1]
-
-  for (const key of Object.keys(env)) {
-    if (key.toLowerCase() === 'path') {
-      delete env[key]
-    }
-  }
-
-  if (pathValue) {
-    env[process.platform === 'win32' ? 'Path' : 'PATH'] = pathValue
-  }
-
-  return env
-}
-
-function npmInvocation(args) {
-  if (process.platform === 'win32') {
-    return {
-      cmd: 'cmd.exe',
-      args: ['/d', '/s', '/c', ['npm.cmd', ...args].map(quoteCmdArg).join(' ')],
-    }
-  }
-
-  return { cmd: 'npm', args }
-}
-
-function quoteCmdArg(value) {
-  if (/^[A-Za-z0-9_./:=@-]+$/.test(value)) {
-    return value
-  }
-  return `"${String(value).replace(/"/g, '\\"')}"`
-}
-
 async function startProcess(name, cmd, args, cwd = rootDir) {
   const out = createWriteStream(path.join(logDir, `${name}.out.log`), { flags: 'w' })
   const err = createWriteStream(path.join(logDir, `${name}.err.log`), { flags: 'w' })
   const child = spawn(cmd, args, {
     cwd,
-    env: normalizedEnv(),
-    detached: process.platform !== 'win32',
+    env: process.env,
+    detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
-    windowsHide: true,
   })
 
   child.stdout.pipe(out)
@@ -72,14 +35,6 @@ async function startProcess(name, cmd, args, cwd = rootDir) {
 
 function stopProcess(entry) {
   if (!entry?.child?.pid || entry.child.exitCode !== null) {
-    return
-  }
-
-  if (process.platform === 'win32') {
-    spawnSync('taskkill.exe', ['/pid', String(entry.child.pid), '/t', '/f'], {
-      stdio: 'ignore',
-      windowsHide: true,
-    })
     return
   }
 
@@ -113,12 +68,10 @@ async function waitForUrl(url, label, timeoutMs = 60000) {
 }
 
 async function runNpm(name, args, extraEnv = {}) {
-  const invocation = npmInvocation(args)
-  const child = spawn(invocation.cmd, invocation.args, {
+  const child = spawn('npm', args, {
     cwd: rootDir,
-    env: normalizedEnv(extraEnv),
+    env: { ...process.env, ...extraEnv },
     stdio: 'inherit',
-    windowsHide: true,
   })
 
   const code = await new Promise((resolve) => child.on('exit', resolve))
