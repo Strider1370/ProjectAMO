@@ -2,6 +2,18 @@
 
 Use this guide whenever a task requires opening the local backend, opening the frontend, or running Playwright screenshots against the local app.
 
+This project is developed on both Windows and WSL Ubuntu. Every `npm` command below is identical on both; only port inspection and HTTP probing differ, and those are given side by side.
+
+## Platform switching
+
+`node_modules` is built for one platform at a time. After moving between Windows and WSL, reinstall before running anything:
+
+```
+npm install && npm --prefix backend install && npm --prefix frontend install
+```
+
+Symptoms of a stale install: `Cannot find module`, an `@esbuild/*` or `@rollup/*` platform mismatch error, or `sharp` failing to load.
+
 ## Standard Ports
 
 - Backend: `http://127.0.0.1:3001`
@@ -11,97 +23,75 @@ Use this guide whenever a task requires opening the local backend, opening the f
 
 Use `npm run dev:serve` for persistent development and `npm run dev:test` for fixed-data verification.
 
-Playwright contracts use a separate managed path. `npm.cmd run dev:contract -- --grep <contract-id>` checks that 3001 and 5173 are free, then Playwright owns the verification backend and frontend. It does not reuse or stop a human-run server.
+Playwright contracts use a separate managed path. `npm run dev:contract -- --grep <contract-id>` checks that 3001 and 5173 are free, then Playwright owns the verification backend and frontend. It does not reuse or stop a human-run server.
 
 ## Preflight
 
-From the repository root:
+Check whether the ports are already taken.
 
-```powershell
-Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue
-Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue
-```
+| | Command |
+| --- | --- |
+| Windows | `Get-NetTCPConnection -LocalPort 3001,5173 -State Listen -ErrorAction SilentlyContinue` |
+| WSL / Linux | `ss -ltnp \| grep -E ':3001\|:5173'` |
 
 If either port is already in use, identify whether it is an existing ProjectAMO server before starting another copy. Keep Vite on `5173` with `--strictPort` so it does not silently move to another port.
 
-## PowerShell PATH Normalization
-
-On Windows, `Path` and `PATH` can both exist in the process environment. This can make `Start-Process` fail with:
-
-```text
-An item with the same key has already been added. Key being added: PATH
-```
-
-Before using `Start-Process`, normalize the process environment:
-
-```powershell
-$pathValue = (cmd.exe /c echo %PATH%)
-[Environment]::SetEnvironmentVariable('PATH', $null, 'Process')
-[Environment]::SetEnvironmentVariable('Path', $pathValue, 'Process')
-```
-
 ## Start Servers for Verification
 
-For automated verification, prefer the repo-local Node launcher. It normalizes duplicate Windows `Path`/`PATH` process variables, starts both servers from repository-relative paths, waits for readiness, runs the selected check, and cleans up child processes.
+Prefer the repo-local Node launcher (`scripts/projectamo-dev.mjs`) on both platforms. It starts both servers from repository-relative paths, waits for readiness, runs the selected check, and cleans up child processes. It selects `npm.cmd` through `cmd.exe` on Windows and `npm` on macOS/Linux, so the npm scripts below are the same everywhere.
 
 Start both servers and verify readiness:
 
-```powershell
-npm.cmd run dev:verify
+```
+npm run dev:verify
 ```
 
 Start both servers and keep them running:
 
-```powershell
-npm.cmd run dev:serve
+```
+npm run dev:serve
 ```
 
 Use `dev:serve` only when the user explicitly wants the app left running for manual/browser work. For automated screenshots or smoke checks, use `dev:smoke` or `dev:screenshots` so the launcher starts, verifies, runs the task, and cleans up in one bounded command.
 
 Run responsive smoke with managed servers:
 
-```powershell
-npm.cmd run dev:smoke
+```
+npm run dev:smoke
 ```
 
 Run baseline responsive screenshots with managed servers:
 
-```powershell
-$env:PROJECTAMO_SCREENSHOT_PHASE = '<phase-name>'
-$env:PROJECTAMO_SCREENSHOT_LABEL = '<before-or-after-label>'
-npm.cmd run dev:screenshots
-```
+| | Command |
+| --- | --- |
+| Windows | `$env:PROJECTAMO_SCREENSHOT_PHASE='<phase>'; $env:PROJECTAMO_SCREENSHOT_LABEL='<label>'; npm run dev:screenshots` |
+| WSL / Linux | `PROJECTAMO_SCREENSHOT_PHASE=<phase> PROJECTAMO_SCREENSHOT_LABEL=<label> npm run dev:screenshots` |
 
 The launcher starts `backend/server.js` and Vite directly with Node instead of keeping long-running servers behind npm wrapper processes. It writes server logs under `artifacts/runtime-logs/`.
 
 Expected timing:
 
-- `npm.cmd run dev:verify`: usually a few seconds.
-- `npm.cmd run dev:smoke`: usually under 15 seconds.
-- `npm.cmd run dev:screenshots`: usually about 20-30 seconds for the 18-image baseline matrix.
+- `npm run dev:verify`: usually a few seconds.
+- `npm run dev:smoke`: usually under 15 seconds.
+- `npm run dev:screenshots`: usually about 20-30 seconds for the 18-image baseline matrix.
 
 If a single screenshot is needed, do not run the full 18-image baseline matrix. Write/run a focused Playwright capture for the exact route, viewport, and UI state requested.
 
-Manual backend command:
+Manual commands, when the launcher is not appropriate:
 
-```powershell
-npm.cmd run dev --prefix backend
+```
+npm run dev --prefix backend
+npm run dev --prefix frontend -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-Manual frontend command:
-
-```powershell
-npm.cmd run dev --prefix frontend -- --host 127.0.0.1 --port 5173 --strictPort
-```
-
-The launcher is preferred over manual commands because it keeps the startup, readiness checks, and cleanup behavior consistent.
+The launcher is preferred because it keeps the startup, readiness checks, and cleanup behavior consistent.
 
 ## Manual Readiness Checks
 
-```powershell
-Invoke-WebRequest -Uri 'http://127.0.0.1:3001/api/health' -UseBasicParsing -TimeoutSec 2
-Invoke-WebRequest -Uri 'http://127.0.0.1:5173/' -UseBasicParsing -TimeoutSec 2
-```
+| | Backend | Frontend |
+| --- | --- | --- |
+| Windows | `Invoke-WebRequest -Uri 'http://127.0.0.1:3001/api/health' -UseBasicParsing -TimeoutSec 2` | `Invoke-WebRequest -Uri 'http://127.0.0.1:5173/' -UseBasicParsing -TimeoutSec 2` |
+| WSL / Linux | `curl -s http://127.0.0.1:3001/api/health` | `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:5173/` |
 
 Expected backend health content includes:
 
@@ -111,37 +101,11 @@ Expected backend health content includes:
 
 ## Playwright Capture
 
-Use the managed launcher before creating one-off screenshot scripts.
+Use the managed launcher before creating one-off screenshot scripts: `npm run dev:smoke`, or `npm run dev:screenshots` with the phase/label variables set as shown above.
 
-Responsive smoke:
+If servers are already running and verified, the lower-level frontend scripts can still be used directly with `PROJECTAMO_URL=http://127.0.0.1:5173` set, calling `npm run smoke:responsive --prefix frontend` or `npm run screenshots:responsive --prefix frontend`.
 
-```powershell
-npm.cmd run dev:smoke
-```
-
-Baseline responsive screenshots:
-
-```powershell
-$env:PROJECTAMO_SCREENSHOT_PHASE = '<phase-name>'
-$env:PROJECTAMO_SCREENSHOT_LABEL = '<before-or-after-label>'
-npm.cmd run dev:screenshots
-```
-
-If servers are already running and verified, the lower-level frontend scripts can still be used directly:
-
-```powershell
-$env:PROJECTAMO_URL = 'http://127.0.0.1:5173'
-npm.cmd run smoke:responsive --prefix frontend
-```
-
-```powershell
-$env:PROJECTAMO_URL = 'http://127.0.0.1:5173'
-$env:PROJECTAMO_SCREENSHOT_PHASE = '<phase-name>'
-$env:PROJECTAMO_SCREENSHOT_LABEL = '<before-or-after-label>'
-npm.cmd run screenshots:responsive --prefix frontend
-```
-
-The managed launcher is cross-platform in intent: it uses Node and chooses `npm.cmd` through `cmd.exe` on Windows and `npm` on macOS/Linux. It still assumes Node/npm dependencies are installed and that ports `3001` and `5173` are available.
+Visual snapshot baselines are per-platform: Playwright writes `*-win32.png` on Windows and `*-linux.png` on WSL. A baseline captured on one platform will not match the other because font rasterization differs. Regenerate rather than porting them across.
 
 For UI states that the baseline script does not cover, write or run focused Playwright steps that open the relevant panel, tab, dialog, or route before capturing. Store responsive evidence under:
 
@@ -153,8 +117,14 @@ Include a short README or manifest with the capture time, branch/commit, viewpor
 
 ## Known Failure Modes
 
-- `Start-Process` fails with duplicate `PATH`: use the Node launcher, or run the PATH normalization snippet before manual `Start-Process` commands.
+- **Windows only** — `Start-Process` fails with `An item with the same key has already been added. Key being added: PATH`, caused by both `Path` and `PATH` existing in the process environment. Use the Node launcher, or normalize first:
+  ```powershell
+  $pathValue = (cmd.exe /c echo %PATH%)
+  [Environment]::SetEnvironmentVariable('PATH', $null, 'Process')
+  [Environment]::SetEnvironmentVariable('Path', $pathValue, 'Process')
+  ```
+- **WSL only** — `node: command not found` in a script, hook, or any non-interactive shell. nvm loads from `~/.bashrc` below its non-interactive guard, so only interactive shells see it. `node`, `npm`, `npx`, `graphify`, and `graphify-mcp` are symlinked into `/usr/local/bin` to cover every shell; if a new tool is missing, symlink it the same way. Re-run the symlinks after `nvm use` switches versions.
 - `5173` is already in use: because `--strictPort` is required, the frontend will fail instead of moving ports. Find and stop the existing ProjectAMO frontend or reuse it after verifying it serves the current workspace.
 - Backend starts but upstream data collection logs `fetch failed`: this is not a readiness blocker by itself. The server is considered ready when `/api/health` returns success; live external API refresh may still fail because of network/API availability.
-- Stopping only the parent `cmd.exe` may leave child `node.exe` processes behind. Clean up by checking listening ports and, when needed, stopping the owning process for `3001` and `5173`.
+- Stopping only the parent process may leave child node processes behind. Clean up by checking the listening ports above and stopping the owning process for `3001` and `5173`.
 - Avoid `networkidle` as the default screenshot wait condition for this app. Mapbox tiles and polling can keep the network busy; prefer route-specific DOM readiness selectors.

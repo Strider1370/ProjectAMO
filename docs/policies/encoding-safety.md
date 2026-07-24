@@ -18,8 +18,8 @@ Prevent shell redirection from corrupting UTF-8 source files.
 
 ## Rules
 
-- Do not overwrite UTF-8 source files with PowerShell `Set-Content`, `Out-File`, or `>` redirection.
-- Use `apply_patch` for manual edits.
+- Do not overwrite UTF-8 source files with PowerShell `Set-Content`, `Out-File`, or `>` redirection. This host runs Claude Code on Windows PowerShell against WSL-hosted files, so the risk is live even though the repository lives on Linux.
+- Use the `Edit` / `Write` tools for manual edits; they are UTF-8 safe.
 - For mechanical rewrites, use Node:
   ```js
   const text = fs.readFileSync(path, 'utf8')

@@ -66,7 +66,7 @@ bash deploy/deploy-vm.sh
 이 스크립트는 다음을 수행합니다.
 
 1. `git pull --ff-only origin main`
-2. `npm.cmd --prefix frontend run build`
+2. `npm --prefix frontend run build`
 3. `pm2 restart projectamo-backend --update-env`
 4. `sudo nginx -t`
 5. `sudo systemctl reload nginx`
@@ -96,9 +96,9 @@ bash deploy/deploy-vm-full.sh
 이 스크립트는 다음을 수행합니다.
 
 1. `git pull --ff-only origin main`
-2. `npm.cmd --prefix backend install`
-3. `npm.cmd --prefix frontend install`
-4. `npm.cmd --prefix frontend run build`
+2. `npm --prefix backend ci`
+3. `npm --prefix frontend ci`
+4. `npm --prefix frontend run build`
 5. `pm2 restart projectamo-backend --update-env`
 6. `sudo nginx -t`
 7. `sudo systemctl reload nginx`
