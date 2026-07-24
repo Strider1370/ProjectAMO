@@ -1507,9 +1507,9 @@
 }
 
 .adsb-timestamp--compact {
-  left: calc(50% + 332px);
-  bottom: 30px;
-  transform: none;
+  left: 50%;
+  bottom: 116px;
+  transform: translateX(-50%);
   z-index: 6;
 }
 

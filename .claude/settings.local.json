@@ -108,7 +108,9 @@
       "PowerShell(npm.cmd --prefix *)",
       "PowerShell(node --test *)",
       "Bash(graphify explain *)",
-      "Bash(powershell -NoProfile -Command \"netstat -ano | Select-String ':3001|:5173' | Select-String 'LISTENING'\")"
+      "Bash(powershell -NoProfile -Command \"netstat -ano | Select-String ':3001|:5173' | Select-String 'LISTENING'\")",
+      "Bash(python -c \"import openpyxl; print\\('openpyxl ok'\\)\")",
+      "Bash(python -c \"import pandas; print\\('pandas ok'\\)\")"
     ]
   }
 }

@@ -149,9 +149,10 @@ function fetchViaHttpsRequest(url, timeoutMs, headers) {
   });
 }
 
-function buildUrl() {
-  const { lat, lon } = config.adsb.center;
-  return `${config.adsb.url}/lat/${lat}/lon/${lon}/dist/${config.adsb.dist_nm}`;
+function buildUrls() {
+  return config.adsb.centers.map(({ lat, lon }) =>
+    `${config.adsb.url}/lat/${lat}/lon/${lon}/dist/${config.adsb.dist_nm}`
+  );
 }
 
 // adsb.lol returns feet / knots / fpm; convert to OpenSky-compatible meters / m·s⁻¹
@@ -203,12 +204,17 @@ async function process() {
   const dir = getAdsbDir();
   fs.mkdirSync(dir, { recursive: true });
 
-  const raw = await fetchWithTimeout(buildUrl());
-  const aircraft = (raw.ac || [])
+  const responses = await Promise.all(buildUrls().map((url) => fetchWithTimeout(url)));
+  const aircraftByHex = new Map();
+  for (const raw of responses) {
+    for (const ac of raw.ac || []) {
+      if (ac.hex && !aircraftByHex.has(ac.hex)) aircraftByHex.set(ac.hex, ac);
+    }
+  }
+  const aircraft = [...aircraftByHex.values()]
     .map(normalizeState)
     .filter(Boolean)
     .filter((a) => !a.on_ground)
-    .filter((a) => isInFir(a.lon, a.lat))
     .sort((a, b) => {
       const left = `${a.callsign || ""}-${a.icao24 || ""}`;
       const right = `${b.callsign || ""}-${b.icao24 || ""}`;
@@ -219,7 +225,9 @@ async function process() {
     type: "adsb",
     source: "adsb.lol",
     fetched_at: new Date().toISOString(),
-    updated_at: new Date(typeof raw.now === "number" ? raw.now : Date.now()).toISOString(),
+    updated_at: new Date(Math.max(...responses.map((raw) =>
+      typeof raw.now === "number" ? raw.now : Date.now()
+    ))).toISOString(),
     bounds: { ...config.adsb.bounds },
     total_aircraft: aircraft.length,
     aircraft
@@ -236,5 +244,5 @@ async function process() {
   };
 }
 
-export { isInFir, loadFirPolygon, normalizeState, process }
+export { buildUrls, isInFir, loadFirPolygon, normalizeState, process }
 export default { process }

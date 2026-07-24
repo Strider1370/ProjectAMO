@@ -1,15 +1,41 @@
 import mapboxgl from 'mapbox-gl'
+import circle from '@turf/circle'
+import { point } from '@turf/helpers'
 import { aircraftClass, aircraftSize } from './aircraftClass.js'
-import { airlineLogoId, airlineCode, isKoreanAirline, AIRLINE_NAMES } from './airlines.js'
+import { airlineLogoId, airlineCode, airlineLogoFile, isKoreanAirline, AIRLINE_NAMES, AIRLINE_LOGOS } from './airlines.js'
+import { operatorLogoId, operatorCode, operatorLogoFile, OPERATOR_LOGOS, OPERATOR_NAMES } from './operators.js'
 import { typeNameKo, routeLabel, fetchRoute } from './flightInfo.js'
+
+// Logo image path for a map/popup operator id — airline ICAO (svg) or non-airline
+// operator code (png), whichever set actually contains it.
+function logoSrc(id) {
+  if (AIRLINE_LOGOS.has(id)) return `/Symbols/airlines/${airlineLogoFile(id)}`
+  if (OPERATOR_LOGOS.has(id)) return `/Symbols/operators/${operatorLogoFile(id)}`
+  return ''
+}
 
 export const ADSB_SOURCE_ID = 'adsb-source'
 export const ADSB_TRAIL_SOURCE_ID = 'adsb-trail-source'
 export const ADSB_LAYER_ID = 'adsb-layer'
 export const ADSB_LOGO_LAYER_ID = 'adsb-logo-layer'
 export const ADSB_TRAIL_LAYER_ID = 'adsb-trail-layer'
-export const ADSB_SOURCE_IDS = [ADSB_SOURCE_ID, ADSB_TRAIL_SOURCE_ID]
-export const ADSB_LAYER_IDS = [ADSB_TRAIL_LAYER_ID, ADSB_LAYER_ID, ADSB_LOGO_LAYER_ID]
+export const ADSB_RANGE_SOURCE_ID = 'adsb-range-source'
+export const ADSB_RANGE_LAYER_ID = 'adsb-range-layer'
+export const ADSB_SOURCE_IDS = [ADSB_SOURCE_ID, ADSB_TRAIL_SOURCE_ID, ADSB_RANGE_SOURCE_ID]
+export const ADSB_LAYER_IDS = [ADSB_RANGE_LAYER_ID, ADSB_TRAIL_LAYER_ID, ADSB_LAYER_ID, ADSB_LOGO_LAYER_ID]
+
+const ADSB_COVERAGE_CENTERS = [[124.7, 34.0], [131.0, 37.3]]
+const ADSB_COVERAGE_RADIUS_NM = 250
+
+export function createAdsbCoverageGeoJSON() {
+  return {
+    type: 'FeatureCollection',
+    features: ADSB_COVERAGE_CENTERS.map((center) => circle(point(center), ADSB_COVERAGE_RADIUS_NM, {
+      units: 'nauticalmiles',
+      steps: 96,
+    })),
+  }
+}
 
 const CLASS_LABELS_KO = {
   heavy: '대형기', jet: '협동체', regional: '리저널', turboprop: '터보프롭',
@@ -62,7 +88,8 @@ export function createAdsbGeoJSON(adsbData) {
   return {
     type: 'FeatureCollection',
     features: adsbData.aircraft
-      .filter(a => Number.isFinite(a.lon) && Number.isFinite(a.lat))
+      .filter(a => Number.isFinite(a.lon) && Number.isFinite(a.lat)
+        && Number.isFinite(a.true_track) && Number.isFinite(a.velocity))
       .map(a => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [a.lon, a.lat] },
@@ -74,8 +101,8 @@ export function createAdsbGeoJSON(adsbData) {
           true_track: a.true_track || 0,
           aircraft_class: aircraftClass(a.type_code, a.category),
           icon_scale: aircraftSize(a.type_code, aircraftClass(a.type_code, a.category)),
-          operator: airlineLogoId(a.callsign),
-          airline_name: AIRLINE_NAMES[airlineCode(a.callsign)] || '',
+          operator: airlineLogoId(a.callsign) || operatorLogoId(a.registration),
+          airline_name: AIRLINE_NAMES[airlineCode(a.callsign)] || OPERATOR_NAMES[operatorCode(a.registration)] || '',
           type_code: a.type_code || '',
           registration: a.registration || '',
           vertical_rate: a.vertical_rate,
@@ -101,6 +128,28 @@ export function addAdsbLayers(map) {
       type: 'geojson',
       lineMetrics: true,
       data: { type: 'FeatureCollection', features: [] }
+    })
+  }
+
+  if (!map.getSource(ADSB_RANGE_SOURCE_ID)) {
+    map.addSource(ADSB_RANGE_SOURCE_ID, {
+      type: 'geojson',
+      data: createAdsbCoverageGeoJSON(),
+    })
+  }
+
+  if (!map.getLayer(ADSB_RANGE_LAYER_ID)) {
+    map.addLayer({
+      id: ADSB_RANGE_LAYER_ID,
+      type: 'line',
+      source: ADSB_RANGE_SOURCE_ID,
+      slot: 'top',
+      paint: {
+        'line-color': '#38bdf8',
+        'line-width': 1.5,
+        'line-dasharray': [3, 3],
+        'line-opacity': 0.8,
+      },
     })
   }
 
@@ -184,15 +233,15 @@ export function bindAdsbHover(map) {
 
     let vsText = '—'
     if (vsFpm !== null) {
-      if (vsFpm > 100) vsText = `▲ ${vsFpm.toLocaleString()} fpm`
-      else if (vsFpm < -100) vsText = `▼ ${Math.abs(vsFpm).toLocaleString()} fpm`
-      else vsText = '수평'
+      if (vsFpm > 100) vsText = `상승(▲ ${vsFpm.toLocaleString()} fpm)`
+      else if (vsFpm < -100) vsText = `하강(▼ ${Math.abs(vsFpm).toLocaleString()} fpm)`
+      else vsText = '순항'
     }
 
     const emergency = { 7500: '납치', 7600: '통신두절', 7700: '비상' }[props.squawk]
 
     const logo = props.operator
-      ? `<img src="/Symbols/airlines/${props.operator}.svg" alt="" style="height: 22px; max-width: 76px; object-fit: contain;" />`
+      ? `<img src="${logoSrc(props.operator)}" alt="" style="height: 22px; max-width: 76px; object-fit: contain;" />`
       : ''
 
     const row = (label, value, accent) => `<tr>
@@ -204,8 +253,8 @@ export function bindAdsbHover(map) {
       typeText ? row('기종', typeText) : '',
       routeText ? row('경로', routeText) : '',
       row('고도', altFt !== null ? `${altFt.toLocaleString()} ft` : '—'),
-      windDirection !== null || windSpeedKt !== null ? row('바람', `${windDirection ?? '—'}° / ${windSpeedKt ?? '—'} kt`) : '',
       outsideAirTemperature !== null ? row('외기온도(OAT)', `${outsideAirTemperature} °C`) : '',
+      windDirection !== null || windSpeedKt !== null ? row('바람', `${windDirection ?? '—'}° / ${windSpeedKt ?? '—'} kt`) : '',
       row('지상속도(GS)', spdKt !== null ? `${spdKt} kt` : '—'),
       row('방향', hdg !== null ? `${hdg}°` : '—'),
       row('상승률', vsText),
@@ -282,5 +331,6 @@ export function bindAdsbHover(map) {
 export function syncAdsbLayer(map, { geojson, trailGeojson, isVisible }) {
   map.getSource(ADSB_SOURCE_ID)?.setData(geojson)
   if (trailGeojson) map.getSource(ADSB_TRAIL_SOURCE_ID)?.setData(trailGeojson)
+  map.getSource(ADSB_RANGE_SOURCE_ID)?.setData(createAdsbCoverageGeoJSON())
   setAdsbVisibility(map, isVisible)
 }

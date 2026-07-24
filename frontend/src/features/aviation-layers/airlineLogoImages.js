@@ -1,8 +1,9 @@
-import { AIRLINE_LOGOS } from './airlines.js'
+import { AIRLINE_LOGOS, airlineLogoFile } from './airlines.js'
+import { OPERATOR_LOGOS, operatorLogoFile } from './operators.js'
 
-// Register each airline logo as a transparent cut-out Mapbox image (airline-{ICAO}).
-// No background plate — just the logo, with a soft white halo so it stays legible
-// over varied terrain.
+// Register each operator logo (airline or non-airline) as a transparent cut-out Mapbox
+// image (airline-{id}). No background plate — just the logo, with a soft white halo so
+// it stays legible over varied terrain.
 const LOGO_H = 13
 const MAX_W = 50
 const PAD = 3
@@ -16,8 +17,8 @@ function loadSvg(src) {
   })
 }
 
-async function buildLogo(icao) {
-  const img = await loadSvg(`/Symbols/airlines/${icao}.svg`)
+async function buildLogo(relativePath) {
+  const img = await loadSvg(`/Symbols/${relativePath}`)
   const pixelRatio = Math.max(1, Math.round(window.devicePixelRatio || 1))
   const ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 3
   let drawH = LOGO_H
@@ -50,11 +51,15 @@ async function buildLogo(icao) {
 }
 
 export async function registerAirlineLogos(map) {
-  await Promise.all([...AIRLINE_LOGOS].map(async (icao) => {
-    const imageId = `airline-${icao}`
+  const items = [
+    ...[...AIRLINE_LOGOS].map((icao) => [icao, `airlines/${airlineLogoFile(icao)}`]),
+    ...[...OPERATOR_LOGOS].map((code) => [code, `operators/${operatorLogoFile(code)}`]),
+  ]
+  await Promise.all(items.map(async ([id, path]) => {
+    const imageId = `airline-${id}`
     if (map.hasImage(imageId)) return
     try {
-      const image = await buildLogo(icao)
+      const image = await buildLogo(path)
       if (!map.hasImage(imageId)) map.addImage(imageId, image, { pixelRatio: image.pixelRatio })
     } catch {
       // skip logos that fail to load

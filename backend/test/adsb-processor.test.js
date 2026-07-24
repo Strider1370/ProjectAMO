@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isInFir, loadFirPolygon, normalizeState } from '../src/processors/adsb-processor.js'
+import { buildUrls, isInFir, loadFirPolygon, normalizeState } from '../src/processors/adsb-processor.js'
+
+test('ADS-B uses two 250NM coverage requests', () => {
+  assert.equal(buildUrls().length, 2)
+  assert.ok(buildUrls().every((url) => url.endsWith('/dist/250')))
+})
 
 test('ADS-B FIR filter loads the local FIR polygon', () => {
   const polygon = loadFirPolygon()
