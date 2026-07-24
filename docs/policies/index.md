@@ -5,25 +5,26 @@
 
 Read the relevant `Architecture.md` section and this index before editing. For routine work, read one matching detailed policy; if two boundaries plausibly apply, read both and no unrelated policy.
 
+Process (planning, TDD, debugging, review, branch closeout) is owned by the superpowers skills — see [the entrypoint](../../claude.md). This index routes project-specific boundaries only.
+
 | Work | Minimum Architecture.md read | Read next |
 | --- | --- | --- |
-| General implementation, tools, delegation, temporary files | `Directory Structure`, `Reference Structure` | [workflow and tools](engineering/workflow-and-tools.md) (Ponytail required for coding tasks) |
+| Standalone route, route-briefing payload, developer console | `Directory Structure`, `Reference Structure` | [recurring entry sequences](engineering/entry-sequences.md) |
 | Add or change an en-route briefing data layer | `File Roles` -> `Backend`, `Reference Structure` | [route briefing source contract](engineering/route-briefing-source-contract.md) |
 | Timestamps, KMA/KIM data, data contracts, collectors | `File Roles` — `Backend`, `Reference Structure` | [data and time](engineering/data-and-time.md) |
 | MapView, Mapbox, overlay, visibility, timeline | `File Roles` — `Frontend` map entries, `Reference Structure` | [map and layers](engineering/map-and-layers.md) |
 | UI, CSS, responsive layout | `File Roles` — affected frontend feature, `Reference Structure` | [design language](design/design-language.md) |
-| Browser verification, deploy, finish/commit/push/PR | `Directory Structure` — `scripts` and the affected feature's `File Roles` entry | [browser verification](verification/browser-verification.md), [contract registry](verification/contracts.md), [delivery and completion](verification/delivery-and-completion.md) |
-| Writing or updating a spec, plan, status, or review-evidence file | every affected boundary's `File Roles` entry | [spec/plan/status format](spec-plan-status-format.md) — enter Plan/read-only mode when available; run exhaustive spec and plan reviews without stopping at the first gap |
-| Begin implementation from an approved plan | every affected boundary's `File Roles` entry | [spec/plan/status format](spec-plan-status-format.md) — require approval evidence, current exhaustive PASS, matching policy/spec/plan hashes and relevant-path fingerprint, and valid status gate `Approved — ready to implement` |
+| Browser verification | `Directory Structure` — `scripts` and the affected feature's `File Roles` entry | [browser verification](verification/browser-verification.md), [contract registry](verification/contracts.md) |
+| Deploy, finish, commit, push, PR | `Directory Structure` — `scripts` | [operations](../operations/operations.md); use the `finishing-a-development-branch` skill |
 
 Read [encoding safety](encoding-safety.md) before encoding-sensitive edits.
 <!-- SESSION-ROUTING:END -->
 
 ## Policy directory
 
-- Engineering: [workflow and tools](engineering/workflow-and-tools.md), [route briefing source contract](engineering/route-briefing-source-contract.md), [data and time](engineering/data-and-time.md), and [map and layers](engineering/map-and-layers.md).
+- Engineering: [recurring entry sequences](engineering/entry-sequences.md), [route briefing source contract](engineering/route-briefing-source-contract.md), [data and time](engineering/data-and-time.md), and [map and layers](engineering/map-and-layers.md).
 - Design: [design language](design/design-language.md).
-- Verification and lifecycle: [delivery and completion](verification/delivery-and-completion.md) and [spec/plan/status format](spec-plan-status-format.md).
+- Verification: [browser verification](verification/browser-verification.md) and [the contract registry](verification/contracts.md).
 - File integrity: [encoding safety](encoding-safety.md).
 
 ## Admission and routing
@@ -31,8 +32,6 @@ Read [encoding safety](encoding-safety.md) before encoding-sensitive edits.
 Put a rule here only when it protects a central boundary or is cross-cutting, changes implementation behavior, and has repeated code evidence or an explicit project decision. Keep local details with their module, test, or operational reference.
 
 Route twice: select candidate policies from the request, then re-check this index before editing if exploration exposes another boundary. Read at most two plausible detailed policies; ask only when the remaining choice changes scope, cost, or behavior.
-
-Spec/plan completeness review is the exception to the two-policy limit. Each domain reviewer reads this policy plus up to two policies routed for that domain. The integration reviewer reads the common task packet, every domain review file, and cross-cutting policies needed to reconcile their findings; it need not re-read every domain policy body when preserved evidence identifies the exact rule and source. The integration evidence records every input review path/hash and recomputes the current relevant-path manifest from the union of all domain manifests.
 
 ## Maintenance
 

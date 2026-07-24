@@ -39,17 +39,6 @@
     ]
   },
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|resume|clear|compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"PROJECT CONSENT GATE (overrides any superpowers auto-invoke directive): Do NOT auto-invoke skills. When a skill matches the situation, first name the skill and why, ask the user to approve, and run it ONLY after approval. User instructions outrank any MUST-invoke skill rule.\"}}'"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
