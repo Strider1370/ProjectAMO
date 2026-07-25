@@ -1245,7 +1245,7 @@ test('one failing site does not discard the healthy sites', async () => {
     fetchFile: async (stn) => (stn === 'BBB' ? null : Buffer.from('x')),
     parseVolume: async () => goodVolume,
     publish: (payload) => { published.push(payload); return { tm: payload.tm } },
-    now: () => new Date(Date.UTC(2026, 6, 25, 11, 55)),
+    now: () => new Date(Date.UTC(2026, 6, 25, 11, 50)),
   })
   assert.equal(result.saved, true)
   assert.equal(published.length, 1)
@@ -1259,7 +1259,7 @@ test('when no site produces a valid frame nothing is published', async () => {
     fetchFile: async () => null,
     parseVolume: async () => goodVolume,
     publish: (payload) => { published.push(payload); return { tm: payload.tm } },
-    now: () => new Date(Date.UTC(2026, 6, 25, 11, 55)),
+    now: () => new Date(Date.UTC(2026, 6, 25, 11, 50)),
   })
   assert.equal(result.saved, false)
   assert.equal(published.length, 0)
@@ -1268,7 +1268,7 @@ test('when no site produces a valid frame nothing is published', async () => {
 test('an empty site list fails loudly instead of publishing an empty frame', async () => {
   const result = await runEchoTop({
     config: { radar_echo_top: { enabled: true, sites: [], concurrency: 1, timeout_ms: 1, retry: 0, delay_minutes: 15, max_frames: 3, stride: 4 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
-    now: () => new Date(Date.UTC(2026, 6, 25, 11, 55)),
+    now: () => new Date(Date.UTC(2026, 6, 25, 11, 50)),
   })
   assert.equal(result.saved, false)
   assert.equal(result.reason, 'no sites configured')
