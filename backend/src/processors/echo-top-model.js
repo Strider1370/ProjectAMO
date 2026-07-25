@@ -1,6 +1,7 @@
 // 18 dBZ Echo Top 재산출 — 순수 계산만. 파일 I/O·네트워크 없음.
 // 표준 4/3 지구반경 빔 기하를 쓰며, 유효한 상부 bracket이 없으면 절대 외삽하지 않는다.
 import { ECHO_TOP_GRID, echoTopIndexForLatLon } from '../lib/echo-top-grid.js'
+import { latLonToGrid } from '../parsers/radar-echo-parser.js'
 
 const DEG2RAD = Math.PI / 180
 
@@ -147,4 +148,96 @@ export function mergeSiteEchoTops(siteResults, { grid = ECHO_TOP_GRID } = {}) {
     }
   }
   return { heightM, quality, siteIndex }
+}
+
+const MAGIC = 'AMOETOP1'
+const HEADER_BYTES = 32
+const RECORD_BYTES = 4
+const INVALID_HEIGHT = 0xffff
+export const M_TO_FT = 3.280839895
+
+// FL 밴드 — 위성 운정고도(CTPS)와 같은 색 규칙. 같은 물리량(높이)에 같은 색을 쓴다.
+// 색은 높이를 뜻할 뿐이며 위험도나 회피 권고가 아니다.
+export const ECHO_TOP_FL_BANDS = Object.freeze([
+  { maxFl: 100, color: [22, 163, 74] },
+  { maxFl: 200, color: [234, 179, 8] },
+  { maxFl: 300, color: [249, 115, 22] },
+  { maxFl: 400, color: [220, 38, 38] },
+  { maxFl: Infinity, color: [126, 34, 206] },
+])
+
+export function echoTopColor(heightM) {
+  const fl = (heightM * M_TO_FT) / 100
+  return (ECHO_TOP_FL_BANDS.find((band) => fl < band.maxFl) || ECHO_TOP_FL_BANDS.at(-1)).color
+}
+
+export function encodeEchoTopBinary({ heightM, quality, siteIndex }, { grid = ECHO_TOP_GRID } = {}) {
+  const count = grid.nx * grid.ny
+  const buffer = Buffer.alloc(HEADER_BYTES + count * RECORD_BYTES)
+  buffer.write(MAGIC, 0, 'ascii')
+  buffer.writeUInt16LE(grid.nx, 8)
+  buffer.writeUInt16LE(grid.ny, 10)
+  buffer.writeUInt16LE(grid.stride, 12)
+  buffer.writeUInt8(RECORD_BYTES, 14)
+  buffer.writeUInt32LE(count, 16)
+  for (let i = 0; i < count; i += 1) {
+    const offset = HEADER_BYTES + i * RECORD_BYTES
+    const valid = quality[i] !== ECHO_TOP_QUALITY.INVALID && Number.isFinite(heightM[i]) && heightM[i] > 0
+    buffer.writeUInt16LE(valid ? Math.min(INVALID_HEIGHT - 1, Math.round(heightM[i])) : INVALID_HEIGHT, offset)
+    buffer.writeUInt8(valid ? quality[i] : ECHO_TOP_QUALITY.INVALID, offset + 2)
+    buffer.writeUInt8(valid ? (siteIndex?.[i] ?? 255) : 255, offset + 3)
+  }
+  return buffer
+}
+
+export function decodeEchoTopRecord(buffer, index) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < HEADER_BYTES || buffer.toString('ascii', 0, 8) !== MAGIC) {
+    throw new Error('Invalid Echo Top binary header')
+  }
+  const count = buffer.readUInt32LE(16)
+  if (buffer.length !== HEADER_BYTES + count * RECORD_BYTES) throw new Error('Invalid Echo Top binary length')
+  if (!Number.isInteger(index) || index < 0 || index >= count) return null
+
+  const offset = HEADER_BYTES + index * RECORD_BYTES
+  const raw = buffer.readUInt16LE(offset)
+  const qualityCode = buffer.readUInt8(offset + 2)
+  if (raw === INVALID_HEIGHT || qualityCode === ECHO_TOP_QUALITY.INVALID) return null
+
+  const ft = Math.round(raw * M_TO_FT)
+  return {
+    heightM: raw,
+    ft,
+    fl: Math.round(ft / 100),
+    qualityCode,
+    quality: qualityCode === ECHO_TOP_QUALITY.INTERPOLATED ? 'interpolated' : 'beam_center_floor',
+    siteIndex: buffer.readUInt8(offset + 3),
+  }
+}
+
+// 출력 이미지는 기존 레이더 PNG와 같은 Web Mercator 범위를 쓴다(호출자가 bounds를 넘긴다).
+export function renderEchoTopRgba({ heightM, quality }, { grid = ECHO_TOP_GRID, width, height, bounds } = {}) {
+  const rgba = Buffer.alloc(width * height * 4)
+  if (!bounds) return rgba
+  const [[south, west], [north, east]] = bounds
+  const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360))
+  const minY = mercY(south)
+  const maxY = mercY(north)
+
+  for (let py = 0; py < height; py += 1) {
+    const y = maxY - ((py + 0.5) / height) * (maxY - minY)
+    const lat = (Math.atan(Math.sinh(y)) * 180) / Math.PI
+    for (let px = 0; px < width; px += 1) {
+      const lon = west + ((px + 0.5) / width) * (east - west)
+      const g = latLonToGrid(lat, lon)
+      const ix = Math.round(g.x / grid.stride)
+      const iy = Math.round(g.y / grid.stride)
+      if (ix < 0 || ix >= grid.nx || iy < 0 || iy >= grid.ny) continue
+      const index = iy * grid.nx + ix
+      if (quality[index] === ECHO_TOP_QUALITY.INVALID) continue
+      const [r, gr, b] = echoTopColor(heightM[index])
+      const offset = (py * width + px) * 4
+      rgba[offset] = r; rgba[offset + 1] = gr; rgba[offset + 2] = b; rgba[offset + 3] = 210
+    }
+  }
+  return rgba
 }

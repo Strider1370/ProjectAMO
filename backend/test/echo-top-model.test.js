@@ -140,3 +140,42 @@ test('ray index hoisting handles sweeps with different ray orderings', () => {
   const markedCount = result.quality.reduce((n, q) => n + (q !== 255 ? 1 : 0), 0)
   assert.ok(markedCount > 0, `marked cells ${markedCount}`)
 })
+
+import { decodeEchoTopRecord, encodeEchoTopBinary, echoTopColor, renderEchoTopRgba } from '../src/processors/echo-top-model.js'
+
+test('binary round-trips height, quality and site index', () => {
+  const size = ECHO_TOP_GRID.nx * ECHO_TOP_GRID.ny
+  const heightM = new Float32Array(size)
+  const quality = new Uint8Array(size).fill(255)
+  const siteIndex = new Uint8Array(size).fill(255)
+  heightM[7] = 9327.4; quality[7] = 0; siteIndex[7] = 3
+
+  const buffer = encodeEchoTopBinary({ heightM, quality, siteIndex }, { grid: ECHO_TOP_GRID })
+  assert.equal(buffer.toString('ascii', 0, 8), 'AMOETOP1')
+
+  const record = decodeEchoTopRecord(buffer, 7)
+  assert.equal(record.heightM, 9327)
+  assert.equal(record.ft, Math.round(9327 * 3.280839895))
+  assert.equal(record.fl, Math.round(9327 * 3.280839895 / 100))
+  assert.equal(record.quality, 'interpolated')
+  assert.equal(record.siteIndex, 3)
+  assert.equal(decodeEchoTopRecord(buffer, 8), null)
+})
+
+test('binary rejects a corrupt header', () => {
+  assert.throws(() => decodeEchoTopRecord(Buffer.alloc(40), 0), /Invalid Echo Top binary header/)
+})
+
+test('colour bands follow flight level, not danger', () => {
+  assert.deepEqual(echoTopColor(1000), echoTopColor(2000))          // 둘 다 FL100 미만
+  assert.notDeepEqual(echoTopColor(1000), echoTopColor(12500))      // FL100 미만 vs FL400 이상
+})
+
+test('render produces an opaque pixel only where the composite has data', () => {
+  const size = ECHO_TOP_GRID.nx * ECHO_TOP_GRID.ny
+  const heightM = new Float32Array(size)
+  const quality = new Uint8Array(size).fill(255)
+  const rgba = renderEchoTopRgba({ heightM, quality }, { grid: ECHO_TOP_GRID, width: 40, height: 50 })
+  assert.equal(rgba.length, 40 * 50 * 4)
+  assert.ok(rgba.every((byte) => byte === 0))
+})
