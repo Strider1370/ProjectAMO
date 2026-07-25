@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Ban, Crosshair, AlertTriangle, ShieldHalf, RadioTower, Radio, MoreHorizontal, ChevronDown, MapPin } from 'lucide-react'
+import { Ban, Crosshair, AlertTriangle, ShieldHalf, Swords, RadioTower, Radio, MoreHorizontal, ChevronDown, MapPin } from 'lucide-react'
 import { NOTAM_CATEGORIES, TIME_STATE, deriveTimeState, formatAltitude, formatValidPeriod, sortOperationalFirst } from './lib/notamViewModel.js'
 import './NotamPanel.css'
 
@@ -8,6 +8,7 @@ const CAT_ICON = {
   firing: Crosshair,
   danger: AlertTriangle,
   restricted: ShieldHalf,
+  moa: Swords,
   obstacle: RadioTower,
   facility: Radio,
   other: MoreHorizontal,

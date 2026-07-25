@@ -3,6 +3,8 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+// 고도 라벨 파싱은 프론트(MOA 활성화 매칭)와 공유 — FL 환산 규칙이 두 곳에서 갈리면 안 된다.
+import { parseCeilingFt, parseFloorFt, zoneAltitude } from '../../../shared/airspace-altitude.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DATA_DIR = path.join(__dirname, '../../../frontend/public/data')
@@ -10,32 +12,16 @@ const DATA_DIR = path.join(__dirname, '../../../frontend/public/data')
 const PERMANENT_FROM = '2000-01-01T00:00:00Z'
 const PERMANENT_TO = '2100-01-01T00:00:00Z'
 
-// 원본 라벨 텍스트("6 000 AMSL", "UNL", "GND", "SFC")를 파싱 — unit은 FL 표기가 없어 항상 FT.
-export function parseCeilingFt(text) {
-  const t = String(text || '').trim().toUpperCase()
-  if (!t || t === 'UNL') return { value: null, ref: null }
-  const ref = t.includes('AMSL') ? 'AMSL' : t.includes('AGL') ? 'AGL' : null
-  const digits = t.replace(/[^\d]/g, '')
-  return { value: digits ? Number(digits) : null, ref }
-}
-
-export function parseFloorFt(text) {
-  const t = String(text || '').trim().toUpperCase()
-  if (!t || t === 'GND' || t === 'SFC') return 0
-  const digits = t.replace(/[^\d]/g, '')
-  return digits ? Number(digits) : 0
-}
-
-export function zoneAltitude(ceilingText, floorText) {
-  const ceiling = parseCeilingFt(ceilingText)
-  return { lower: parseFloorFt(floorText), upper: ceiling.value, unit: 'FT', ref: ceiling.ref }
-}
+export { parseCeilingFt, parseFloorFt, zoneAltitude }
 
 // category는 NOTAM_CATEGORIES(frontend)와 동일 id를 써서 기존 한글 라벨·UI를 그대로 재사용.
 const ZONE_CONFIGS = [
   { file: 'restricted.geojson', category: 'restricted', codeField: 'res_lbl_1', ceilingField: 'res_lbl_2', floorField: 'res_lbl_3', koLabel: () => '제한구역' },
   { file: 'danger.geojson', category: 'danger', codeField: 'dng_lbl_1', ceilingField: 'dng_lbl_2', floorField: 'dng_lbl_3', koLabel: () => '위험구역' },
   { file: 'prohibited.geojson', category: 'prohibited', codeField: 'prh_lbl_1', ceilingField: 'prh_lbl_2', floorField: 'prh_lbl_3', koLabel: (p) => p.prh_lbl_4 || '비행금지구역' },
+  // MOA는 진입 금지가 아니라 "군 훈련 중이니 주의" 구역이라 RESTRICTION_CATEGORIES(notam-briefing.js)에
+  // 넣지 않는다 — 경로에 걸리면 사실로 나열되지만 저촉 경보로는 올리지 않는다.
+  { file: 'moa.geojson', category: 'moa', codeField: 'moa_lbl_1', ceilingField: 'moa_lbl_2', floorField: 'moa_lbl_3', koLabel: () => '군작전구역' },
 ]
 
 // 고도(상한·하한) 둘 다 원본에 없는 구역(예: 제한구역 R14) — 실제 NOTAM의 "미상 밴드"와 달리
@@ -46,16 +32,26 @@ function hasAltitudeData(p, cfg) {
 }
 
 function zoneItemsFromGeoJson(geojson, cfg) {
-  return (geojson?.features ?? [])
+  const features = (geojson?.features ?? [])
     .filter((f) => f.geometry)
     .filter((f) => hasAltitudeData(f.properties ?? {}, cfg))
+  // 코드가 카테고리 내에서 유일하지 않은 경우가 있다 — MOA는 같은 이름이 고도층별로 두 번 나온다
+  // (MOA 5 = 저층 9 000 AMSL/3 000 AGL + 고층 FL 400/12 000 AMSL). id는 브리핑 배너의 React key이자
+  // 화면 라벨이라 중복되면 안 되므로, 겹치는 코드에만 밴드를 덧붙여 구분한다.
+  const codeCount = new Map()
+  for (const f of features) {
+    const code = (f.properties ?? {})[cfg.codeField]
+    if (code) codeCount.set(code, (codeCount.get(code) ?? 0) + 1)
+  }
+  return features
     .map((f, i) => {
       const p = f.properties ?? {}
-      // 코드(R14, D14, P73 등)는 카테고리 내에서 유일 — 브리핑 배너에 원문 그대로 뜨므로
+      // 코드(R14, D14, P73 등)는 브리핑 배너에 원문 그대로 뜨므로
       // "zone-restricted-R14-54" 같은 내부 id 말고 코드 자체를 노출한다(실제 NOTAM 일련번호처럼).
       const code = p[cfg.codeField] || `${cfg.category}-${i}`
+      const tiered = codeCount.get(code) > 1
       return {
-        id: code,
+        id: tiered ? `${code} (${p[cfg.ceilingField]}/${p[cfg.floorField]})` : code,
         category: cfg.category,
         summary: `${cfg.koLabel(p)} ${code}`,
         altitude: zoneAltitude(p[cfg.ceilingField], p[cfg.floorField]),

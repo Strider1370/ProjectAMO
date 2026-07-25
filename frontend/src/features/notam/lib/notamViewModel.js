@@ -14,6 +14,7 @@ export const NOTAM_CATEGORIES = [
   { id: 'firing',     label: '사격',   icon: 'target-arrow' },
   { id: 'danger',     label: '위험',   icon: 'alert-triangle' },
   { id: 'restricted', label: '제한',   icon: 'shield-half' },
+  { id: 'moa',        label: '군작전', icon: 'swords' },
   { id: 'obstacle',   label: '장애물', icon: 'antenna' },
   { id: 'facility',   label: '시설',   icon: 'broadcast' },
   { id: 'other',      label: '기타',   icon: 'dots' },

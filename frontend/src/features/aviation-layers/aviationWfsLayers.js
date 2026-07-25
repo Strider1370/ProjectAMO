@@ -283,6 +283,31 @@ export const AVIATION_WFS_LAYERS = [
     lineWidth: 1.5,
   },
   {
+    // 군작전구역 — 원본 lt_c_aismoac에는 MOA 외에 CATA(훈련구역)·HTA(헬기훈련구역) 코드도 함께 들어있다.
+    // 진입 금지가 아니라 "훈련 중일 수 있으니 주의"라 제한/금지/위험구역(빨강)과 다른 색을 쓴다.
+    id: 'moa',
+    nameKo: 'MOA',
+    nameEn: 'MOA',
+    sourceId: 'wfs-moa',
+    fillLayerId: 'wfs-moa-fill',
+    lineLayerId: 'wfs-moa-line',
+    labelLayerId: 'wfs-moa-labels',
+    // 활성화 표시(빗금)는 useMoaActivation이 NOTAM 매칭 결과로 렌더한다.
+    // setLayerVisibility(mapLayerUtils)가 이 id들로 MOA와 함께 토글한다.
+    activeFillLayerId: 'wfs-moa-active-fill',
+    activeLineLayerId: 'wfs-moa-active-line',
+    labelTextField: areaLabelField('군작전구역', 'moa_lbl_1', 'moa_lbl_2', 'moa_lbl_3'),
+    labelMinzoom: 7,
+    labelAllowOverlap: false,
+    typeName: 'lt_c_aismoac',
+    dataUrl: '/data/moa.geojson',
+    color: '#a16207',
+    defaultVisible: false,
+    fillOpacity: 0.05,
+    lineOpacity: 0.9,
+    lineWidth: 1.5,
+  },
+  {
     id: 'ats-route',
     nameKo: 'ATS Route',
     nameEn: 'ATS Route',

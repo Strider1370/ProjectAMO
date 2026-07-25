@@ -77,9 +77,10 @@ test('notamSummary: 실제 NOTAM 유형별 한글 요약', () => {
   assert.equal(notamSummary({ summary: '' }), '')
 })
 
-test('NOTAM_CATEGORIES: 7 categories in mockup order', () => {
+// 'moa'는 정적 공역 데이터(airspace-zones.js)에서만 오는 카테고리 — 제한 계열 바로 뒤, 정보성 앞에 둔다.
+test('NOTAM_CATEGORIES: 8 categories in mockup order', () => {
   assert.deepEqual(NOTAM_CATEGORIES.map((c) => c.id),
-    ['prohibited', 'firing', 'danger', 'restricted', 'obstacle', 'facility', 'other'])
+    ['prohibited', 'firing', 'danger', 'restricted', 'moa', 'obstacle', 'facility', 'other'])
 })
 
 test('sortActiveFirst: active before soon before upcoming', () => {
