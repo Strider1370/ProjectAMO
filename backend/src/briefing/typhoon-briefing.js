@@ -4,7 +4,7 @@
 import * as turf from '@turf/turf'
 import { judgementPolygon } from './typhoon-geometry.js'
 import { isSameRow } from '../parsers/typhoon-parser.js'
-import { evaluateHorizontalExposure, evaluateTimeStatus, exposureConfidence } from './hazard-exposure.js'
+import { evaluateHorizontalExposure, evaluateTimeStatus } from './hazard-exposure.js'
 import { HORIZONTAL_EXPOSURE, TIME_STATUS, CONFIDENCE } from '../../../shared/briefing-status.js'
 
 const HOUR_MS = 60 * 60 * 1000
