@@ -34,6 +34,56 @@
 
 참조 설계는 스펙의 "참조 설계 — MTREC 2단계 (보류)" 절에 남아 있다.
 
+## ⏸ 2026-07-26 중단 — Task 5까지 완료, Task 6부터 재개
+
+사용자 요청으로 Task 5에서 멈췄다. 나머지는 나중에 이어서 한다.
+
+> ### ⚠️ 이 브랜치는 "중간에 깨진 상태"다 — 배포하지 말 것
+>
+> Task 5가 기능을 켰고 백엔드는 이제 **Point** GeoJSON을 발행한다. 그런데 프론트 레이어
+> `radarMotionLayers.js`는 아직 **LineString**을 기대하는 옛 코드다. `:37`의
+> `const [lon, lat] = feature?.geometry?.coordinates?.[0] || []`가 Point를 만나면
+> `TypeError: number 126 is not iterable`로 **터진다**(리뷰어가 실행으로 확인).
+>
+> **`frontend/verification/contracts/map-base.spec.mjs`는 현재 커밋에서 실패한다.**
+> 단위 테스트가 백엔드 478 / 프론트 536 전부 초록인 것은 `radarMotionLayers.test.js`가
+> 아직 옛 LineString 픽스처를 쓰기 때문이며, **검증됐다는 뜻이 아니다.**
+>
+> Task 6이 그 파일을 통째로 교체하면 해소된다. 그 전까지 이 브랜치를 머지하거나
+> 배포하지 말 것.
+
+**브랜치:** `agent/radar-echo-motion-arrows` (미푸시). `main`은 `5658a2a`에 그대로 있다.
+**SDD 원장:** `.superpowers/sdd/2026-07-26-radar-echo-motion-arrows/progress.md` — 태스크별 리뷰 지적과 판정이 전부 기록돼 있다. 재개 전에 먼저 읽을 것.
+
+### 완료된 것
+
+| Task | 커밋 | 결과 |
+|---|---|---|
+| 1 no-data 클램프 + 게이트 A | `05df2c2` `2c76e02` | 개별 화살표 정확도 **86.6%** 실측 확정 |
+| 2 설정 절 | `245c275` | `config.radar_echo_motion` 9개 키 |
+| 3 벡터장 + 이웃 일치도 | `af04e21` `2176ea6` `e52df00` | 측정 스크립트와 **비트 단위 동일** 확인 |
+| 4 앞면 판정 + Point GeoJSON | `956d800` `96bfbd5` `6d99846` | |
+| 5 발행 배선 + 죽은 플래그 3개 제거 | `e993a58` | **기능이 켜졌다** |
+
+계획·스펙 교정 커밋: `91820ea`(표시 우선 재계획), `6df1ac6` `2d74b1e`(좌표 규약 오류).
+
+### 남은 것
+
+- **Task 5 리뷰 미완료.** 중단 시점에 리뷰가 돌고 있었다. 재개 시 `review-6d99846..e993a58.diff`로 리뷰를 다시 돌리고, 특히 아래 두 가지를 확인할 것 — 구현자가 **기존 테스트 두 개를 고쳐서** 통과시켰다.
+  - `weatherOverlayModel.test.js`: `dataUrl === null` 단언을 실제 URL 기대로 뒤집었다. 원래 테스트가 지키던 "오래된 프레임의 이동 정보를 재사용하지 않는다"를 아직 누가 지키는지 확인 필요.
+  - `radar-echo-motion-publication.test.js`: 32×32 픽스처를 320×320으로 교체했다. **"이동 계산 실패가 PNG·메타 발행을 막지 않는다"는 원래 단언이 살아남았는지** 확인 필요.
+- **Task 6** 프론트 레이어(화살대 선 + 화살촉 심볼)
+- **Task 7** 범례 문구
+- **Task 8** 브라우저 계약 + 실화면 확인 — 여기서 **사용자가 화살표 밀도를 눈으로 보고 `spacing_km`을 정한다.**
+
+### 재개 시 주의
+
+1. **좌표 규약은 `+x` 동쪽, `+y` 북쪽이다**(실측). Task 1~4 시점의 브리프 파일들은 "남쪽"으로 잘못 적혀 있다 — 본문은 교정됐으니 본문을 믿을 것. 이 부호를 잘못 고치면 **모든 화살표가 180° 돌아간다.**
+2. **`matchScore`는 평균 절대차로 낮을수록 좋다.** 0~1 신뢰도가 아니다.
+3. **품질 필터를 넣지 말 것.** `matchScore`·`neighbourAgreement`는 기록만 한다. 거를지는 실화면을 보고 정한다.
+4. **아직 검증되지 않은 것:** 방위 공식이 합성 스텁으로만 확인됐다. 실제 람베르트 투영 + 실제 이동장으로 끝단 검증이 없다. Task 8 실화면 확인에서 실제 벡터의 방위가 관측된 에코 진행 방향과 맞는지 볼 것. 86.6%는 벡터 **선택**을 잰 값이지 내보내는 **방위**를 잰 값이 아니다.
+5. 저장소를 다른 세션과 공유 중이면 워크트리를 쓸 것. git 인덱스는 저장소당 하나여서, 구현 에이전트가 도는 동안 `git add`를 하면 남의 커밋에 딸려 들어간다(이번에 실제로 발생).
+
 ## Global Constraints
 
 - 스펙: `docs/superpowers/specs/2026-07-26-radar-echo-motion-arrows-design.md`. 충돌 시 스펙이 우선한다.
@@ -588,7 +638,7 @@ const SETTINGS = {
   maxSpeedKmh: 100, frameIntervalMs: 300000, minReflectivity: 500,
   edgeLookaheadKm: 2, minSpeedKt: 3,
 }
-const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.01, lat: 38 - y * 0.01 })
+const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.01, lat: 38 + y * 0.01 }) // +x 동쪽, +y 북쪽 (실제 규약)
 
 function shifted(offsetX, offsetY) {
   const width = 80, height = 80
