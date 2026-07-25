@@ -404,7 +404,7 @@ git commit -m "feat(motion): port the measured tracking loop into a pure model"
 - Produces:
   - `selectLeadingEdge(vectors, current, settings) -> Array<same shape>`
   - `motionVectorsToGeoJSON(vectors, options) -> FeatureCollection` — `options`는 `{ gridToLatLon, workStride, frameIntervalMs }` **뿐이다.** 시각값은 메타 프레임이 갖고 있으므로 Feature에 싣지 않는다.
-  - `gridToLatLon(x, y)`는 **원본 0.5 km 격자 좌표**를 받는다. `radar-echo-parser.js:40`의 동명 함수와 같은 규약이며, `+y`는 남쪽이다.
+  - `gridToLatLon(x, y)`는 **원본 0.5 km 격자 좌표**를 받는다. `radar-echo-parser.js:40`의 동명 함수와 같은 규약이며, **`+x`는 동쪽, `+y`는 북쪽**이다(실측 확인: y 1640/1680/1720 → lat 37.8154/38.0000/38.1847, x 1100/1120/1140 → lon 125.8828/126.0000/126.1172).
   - Feature 속성: `bearingDeg`(0–360 정수), `speedKt`(정수), `matchScore`, `neighbourAgreement`(각 소수 2자리).
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
