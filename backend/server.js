@@ -59,6 +59,8 @@ import { buildAltitudeCandidates, buildAltitudeWeatherComparison } from './src/b
 import { buildRouteAxis } from './src/briefing/route-axis.js'
 import { ctpsIndexForLatLon } from './src/lib/ctps-grid.js'
 import { decodeCtpsRecord } from './src/processors/convective-satellite-model.js'
+import { echoTopIndexForLatLon } from './src/lib/echo-top-grid.js'
+import { decodeEchoTopRecord } from './src/processors/echo-top-model.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // libvips(sharp) 연산 캐시 끔 — 레이더/위성/오버레이 PNG 생성 시 네이티브 메모리가 안 줄고 쌓이는 것 방지. #메모리
@@ -123,6 +125,11 @@ function setGeneratedDataCacheHeaders(res, filePath) {
     return
   }
 
+  if (/^radar\/echotop\/echotop_\d{12}\.webp$/i.test(relPath)) {
+    res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
+    return
+  }
+
   if (/^satellite\/convective\/(?:ci_\d{12}\.geojson|ctps_\d{12}_(?:all|fl\d{3})\.webp)$/i.test(relPath)) {
     res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
     return
@@ -140,6 +147,7 @@ function setGeneratedDataCacheHeaders(res, filePath) {
 
   if (
     relPath === 'radar/echo_meta.json'
+    || relPath === 'radar/echotop/echotop_meta.json'
     || relPath === 'satellite/sat_meta.json'
     || relPath === 'satellite/convective/convective_meta.json'
     || /^sigwx_low\/(?:fronts_meta|clouds_meta)_\d{10}\.json$/i.test(relPath)
@@ -153,6 +161,8 @@ function setGeneratedDataCacheHeaders(res, filePath) {
 
 app.use('/data', (req, res, next) => {
   if (/^\/satellite\/convective\/ctps_\d{12}\.bin$/i.test(req.path)) return res.status(404).end()
+  // 사이트별 원시 gate 배열이 담긴 합성 바이너리는 브라우저에 절대 노출하지 않는다(FR-009).
+  if (/^\/radar\/echotop\/echotop_\d{12}\.bin$/i.test(req.path)) return res.status(404).end()
   next()
 })
 app.use('/data', express.static(DATA_ROOT, { setHeaders: setGeneratedDataCacheHeaders }))
@@ -879,6 +889,11 @@ app.get('/api/sigwx-low-history', (_req, res) => {
 app.get('/api/radar/echo-meta', (_req, res) =>
   sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'echo_meta.json')),
 )
+
+app.get('/api/radar/echo-top-meta', (_req, res) =>
+  sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'echotop', 'echotop_meta.json')),
+)
+
 app.get('/api/satellite/meta', (_req, res) =>
   sendJsonFile(res, path.join(DATA_ROOT, 'satellite', 'sat_meta.json')),
 )
@@ -900,6 +915,44 @@ app.get('/api/satellite/convective/ctps-point', (req, res) => {
     const request = frame.request_tm_utc
     const observedAt = request ? new Date(Date.UTC(Number(request.slice(0, 4)), Number(request.slice(4, 6)) - 1, Number(request.slice(6, 8)), Number(request.slice(8, 10)), Number(request.slice(10, 12)))).toISOString() : null
     sendImmutableJson(res, { tm, observedAt, heightFt: point.heightFt, fl: Math.round(point.heightFt / 100), temperatureC: point.temperatureC, qualityCode: 0, quality: 'normal' }, `ctps-point:${tm}:${latitude}:${longitude}:${minFl}`)
+  } catch {
+    res.status(503).json({ error: 'data_unavailable' })
+  }
+})
+
+app.get('/api/radar/echo-top-point', (req, res) => {
+  const { tm, lat, lon } = req.query
+  const latitude = Number(lat)
+  const longitude = Number(lon)
+  if (typeof tm !== 'string' || !/^\d{12}$/.test(tm)
+    || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+    || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    return res.status(400).json({ error: 'invalid_query' })
+  }
+
+  const meta = readJsonFileSafe(path.join(DATA_ROOT, 'radar', 'echotop', 'echotop_meta.json'))
+  const frame = meta?.frames?.find((item) => item.tm === tm)
+  if (!frame) return res.status(404).json({ error: 'frame_not_found' })
+
+  const index = echoTopIndexForLatLon(latitude, longitude)
+  if (index === null) return res.status(404).json({ error: 'point_unavailable' })
+
+  try {
+    const binary = fs.readFileSync(path.join(DATA_ROOT, 'radar', 'echotop', `echotop_${tm}.bin`))
+    const point = decodeEchoTopRecord(binary, index)
+    if (!point) return res.status(404).json({ error: 'point_unavailable' })
+    sendImmutableJson(res, {
+      tm,
+      observedAt: frame.observedAt ?? null,
+      heightM: point.heightM,
+      ft: point.ft,
+      fl: point.fl,
+      quality: point.quality,
+      qualityCode: point.qualityCode,
+      threshold_dbz: 18,
+      reference: 'MSL',
+      site: frame.sites?.[point.siteIndex]?.stn ?? null,
+    }, `echo-top-point:${tm}:${latitude}:${longitude}`)
   } catch {
     res.status(503).json({ error: 'data_unavailable' })
   }
