@@ -19,7 +19,7 @@ export default function EchoTopCard({ selection, tz = 'KST' }) {
   return (
     <section className="convective-overlay-card" aria-label="선택 지점의 재산출 에코탑 상세" style={style}>
       <strong>{formatCoordinate(selection.lat, 'N', 'S')}, {formatCoordinate(selection.lng, 'E', 'W')}</strong>
-      <span className="convective-overlay-card__time">관측 {formatObservedAt(value.observedAt, tz)} {tz}</span>
+      {value.observedAt && <span className="convective-overlay-card__time">관측 {formatObservedAt(value.observedAt, tz)} {tz}</span>}
       <div>에코탑: FL{value.fl} · {value.ft.toLocaleString('en-US')} ft MSL</div>
       <div className="convective-legend__note">
         재산출 · 18 dBZ · MSL · {value.quality === 'interpolated' ? '보간값' : '보수적 하한(빔 중심)'}

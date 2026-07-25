@@ -28,3 +28,14 @@ test('horizontal legends preserve ascending ramps and reverse only descending so
   assert.deepEqual(entriesLeftToRight(ascending).map((entry) => entry.label), ['weak', 'strong'])
   assert.deepEqual(entriesLeftToRight(descending, true).map((entry) => entry.label), ['weak', 'strong'])
 })
+
+test('echo top legend conditionally shows data or no-data message based on echoTopOutOfRange', () => {
+  assert.ok(source.includes('echoTopLegendVisible && (echoTopOutOfRange ?'))
+  assert.ok(source.includes('이 시각 에코탑 자료 없음'))
+  assert.ok(source.includes('<ConvectiveLegend title="에코탑(재산출)"'))
+  assert.ok(source.includes('재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님'))
+})
+
+test('echo top mobile dock legend excludes no-data state (only shows with data)', () => {
+  assert.ok(source.includes('echoTopLegendVisible && !echoTopOutOfRange && { key: \'echoTop\''))
+})

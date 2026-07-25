@@ -322,7 +322,7 @@ function WeatherLegends({
     turbulenceLegendVisible && { key: 'turb', title: '난류 · 강도', entries: turbulenceLegendEntries },
     ciLegendVisible && { key: 'ci', title: '대류 가능성 · 위성', entries: CI_LEGEND },
     ctpsLegendVisible && { key: 'ctps', title: '구름 꼭대기 · FL', entries: CTPS_LEGEND },
-    echoTopLegendVisible && { key: 'echoTop', title: '에코탑(재산출) · FL', entries: ECHO_TOP_LEGEND },
+    echoTopLegendVisible && !echoTopOutOfRange && { key: 'echoTop', title: '에코탑(재산출) · FL', entries: ECHO_TOP_LEGEND },
   ].filter(Boolean)
 
   return (
