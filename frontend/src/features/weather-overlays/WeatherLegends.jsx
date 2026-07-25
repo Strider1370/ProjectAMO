@@ -3,7 +3,7 @@ import useIsMobile from '../../shared/ui/useIsMobile.js'
 import { RAINVIEWER_LEGEND } from './lib/rainviewerLayers.js'
 import { entriesLeftToRight } from './lib/legendOrder.js'
 
-function HLegend({ title, entries = [], reverse = false }) {
+function HLegend({ title, entries = [], reverse = false, note = null }) {
   const cells = entriesLeftToRight(entries, reverse)
   const step = Math.max(1, Math.ceil(cells.length / 7))
   return (
@@ -19,6 +19,7 @@ function HLegend({ title, entries = [], reverse = false }) {
           <span key={i} className="hlegend-label">{i % step === 0 ? e.label : ''}</span>
         ))}
       </div>
+      {note && <div className="hlegend-note">{note}</div>}
     </div>
   )
 }
@@ -322,14 +323,18 @@ function WeatherLegends({
     turbulenceLegendVisible && { key: 'turb', title: '난류 · 강도', entries: turbulenceLegendEntries },
     ciLegendVisible && { key: 'ci', title: '대류 가능성 · 위성', entries: CI_LEGEND },
     ctpsLegendVisible && { key: 'ctps', title: '구름 꼭대기 · FL', entries: CTPS_LEGEND },
-    echoTopLegendVisible && !echoTopOutOfRange && { key: 'echoTop', title: '에코탑(재산출) · FL', entries: ECHO_TOP_LEGEND },
+    // 이 하단 독이 데스크톱·모바일 모두에서 실제로 렌더되는 범례다(MapView가 bottomDock={!isMobile}).
+    // FR-006이 요구하는 `재산출 · 18 dBZ · MSL` 표기와 자료 없음 안내가 여기 있어야 화면에 나온다.
+    echoTopLegendVisible && (echoTopOutOfRange
+      ? { key: 'echoTop', title: '에코탑(재산출)', entries: [], note: '이 시각 에코탑 자료 없음' }
+      : { key: 'echoTop', title: '에코탑(재산출) · FL', entries: ECHO_TOP_LEGEND, note: '재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님' }),
   ].filter(Boolean)
 
   return (
     <div className={`map-legend-mobile-dock${bottomDock ? ' map-legend-desktop-dock' : ''}`}>
       <div ref={bottomPanelRef} className={`map-legends-bottom${open ? ' is-open' : ''}`} aria-hidden={!open}>
         {mobileLegends.map((l) => (
-          <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} />
+          <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
         ))}
         {radarMotionEnabled && radarLegendVisible && (
           <div className="radar-motion-control radar-motion-control--mobile">

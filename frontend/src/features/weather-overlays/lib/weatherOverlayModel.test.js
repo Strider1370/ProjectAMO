@@ -338,3 +338,13 @@ test('partial site coverage is carried on the frame so the UI can flag it', () =
   assert.equal(model.echoTopFrame.partial, true)
   assert.deepEqual(model.echoTopFrame.siteCount, { ok: 12, total: 13 })
 })
+
+test('a time earlier than every echo top frame shows nothing, not the newest frame', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta,
+    echoTopMeta: { tm: '202607252035', frames: [echoTopMeta.frames[1]] },
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 30),
+  })
+  assert.equal(model.echoTopFrame, null, 'a frame observed later must not stand in for an earlier time')
+})

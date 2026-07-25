@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures.mjs'
+import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 // 1x1 투명 WebP — 레이어가 이미지 소스를 붙일 수 있으면 충분하다.
 const WEBP_STUB = Buffer.from('UklGRiIAAABXRUJQVlA4IBYAAADQAQCdASoBAAEAAUAmJaQAA3AA/vuUAAA=', 'base64')
@@ -99,26 +100,42 @@ async function installFixture(page, { coverage = 'full', nullObservedAt = false 
 }
 
 async function openWeatherPanel(page, testInfo) {
-  await page.addInitScript(() => {
+  // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
+  // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
+  // 소스의 상수를 그대로 쓴다.
+  await page.addInitScript((version) => {
     localStorage.setItem('amo.tour.v1.done', 'true')
-    localStorage.setItem('projectamo:lastSeenVersion', '999.999.999')
-  })
+    localStorage.setItem('projectamo:lastSeenVersion', version)
+  }, CURRENT_VERSION)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   const weatherEntry = testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
   // exact — 릴리스 노트 패널에도 '기상정보'가 들어가 이름이 겹친다.
-  await page.getByRole('button', { name: weatherEntry, exact: true }).click()
+  await page.locator(`[aria-label="${weatherEntry}"]`).first().click()
   return page.getByRole('button', { name: '에코탑(재산출)', exact: true })
 }
 
-// 모바일은 범례가 하단 독에 숨어 있어 '범례' 버튼을 눌러야 보인다.
-async function revealLegends(page, testInfo) {
-  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: '범례' }).click()
+// 기상 패널이 열려 있으면 지도와 범례 버튼을 덮는다 — 사이드바 아이콘을 다시 눌러 닫는다.
+function panelToggle(page, testInfo) {
+  const weatherEntry = testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
+  // 지도를 클릭하면 공항 패널이 열리고 같은 이름의 탭 버튼이 생겨 이름만으로는 두 개가 잡힌다.
+  // 사이드바 버튼만 aria-label을 갖고 있으므로 그걸로 좁힌다.
+  return page.locator(`[aria-label="${weatherEntry}"]`).first()
 }
 
-async function clickMapCentre(page) {
+// 범례는 데스크톱·모바일 모두 하단 독에 있고 '범례' 버튼으로 연다
+// (MapView가 bottomDock={!isMobile}을 넘겨 어느 쪽이든 독 경로로 렌더된다).
+async function revealLegends(page, testInfo) {
+  await panelToggle(page, testInfo).click()
+  await page.getByRole('button', { name: '범례', exact: true }).click()
+}
+
+async function closePanelAndClickMap(page, testInfo) {
+  await panelToggle(page, testInfo).click()
   const canvas = page.locator('.mapboxgl-canvas').first()
   await expect(canvas).toBeVisible()
-  await canvas.click({ position: { x: 200, y: 200 } })
+  // 모바일 뷰포트에서는 고정 좌표가 캔버스 밖으로 나간다 — 실제 크기의 가운데를 누른다.
+  const box = await canvas.boundingBox()
+  await canvas.click({ position: { x: Math.round(box.width / 2), y: Math.round(box.height / 2) }, force: true })
 }
 
 test.describe('echo-top', () => {
@@ -128,11 +145,9 @@ test.describe('echo-top', () => {
 
     await expect(tile).toHaveAttribute('aria-pressed', 'false')
     await revealLegends(page, testInfo)
-    await expect(page.getByText('에코탑(재산출)', { exact: false }).first()).toBeHidden({ timeout: 2000 }).catch(async () => {
-      // 패널 안의 타일 라벨은 보이는 게 정상 — 범례가 없다는 것만 확인한다.
-      await expect(page.getByLabel('에코탑(재산출) 범례')).toHaveCount(0)
-    })
+    // 패널 안의 타일 라벨은 보이는 게 정상이므로, 범례 문구가 없다는 것으로 판정한다.
     await expect(page.getByText('재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님')).toHaveCount(0)
+    await expect(page.getByText('에코탑(재산출) · FL')).toHaveCount(0)
   })
 
   test('turning it on shows the legend carrying 재산출 · 18 dBZ · MSL', async ({ page }, testInfo) => {
@@ -143,14 +158,9 @@ test.describe('echo-top', () => {
     await expect(tile).toHaveAttribute('aria-pressed', 'true')
 
     await revealLegends(page, testInfo)
-    if (testInfo.project.name === 'mobile') {
-      // 모바일 독은 제목만 싣는다.
-      await expect(page.getByText('에코탑(재산출) · FL')).toBeVisible()
-    } else {
-      const note = page.getByText('재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님')
-      await expect(note).toBeVisible()
-      await expect(page.getByText('이 시각 에코탑 자료 없음')).toHaveCount(0)
-    }
+    await expect(page.getByText('에코탑(재산출) · FL')).toBeVisible()
+    await expect(page.getByText('재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님')).toBeVisible()
+    await expect(page.getByText('이 시각 에코탑 자료 없음')).toHaveCount(0)
   })
 
   test('a selected time with no matching frame hides the layer and says so', async ({ page }, testInfo) => {
@@ -164,13 +174,10 @@ test.describe('echo-top', () => {
     await slider.press('ArrowLeft')
 
     await revealLegends(page, testInfo)
-    if (testInfo.project.name === 'mobile') {
-      // 모바일은 오해를 부르는 색상표를 아예 내리는 것이 계약이다.
-      await expect(page.getByText('에코탑(재산출) · FL')).toHaveCount(0)
-    } else {
-      await expect(page.getByText('이 시각 에코탑 자료 없음')).toBeVisible()
-      await expect(page.getByText('재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님')).toHaveCount(0)
-    }
+    // 자료가 없는 시각에 색상표만 뜨면 읽을 게 있는 것처럼 오해된다 — 안내로 바뀌어야 한다.
+    await expect(page.getByText('이 시각 에코탑 자료 없음')).toBeVisible()
+    await expect(page.getByText('에코탑(재산출) · FL')).toHaveCount(0)
+    await expect(page.getByText('재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님')).toHaveCount(0)
   })
 
   test('clicking the map reports FL, ft MSL and the interpolation state', async ({ page }, testInfo) => {
@@ -178,7 +185,7 @@ test.describe('echo-top', () => {
     const tile = await openWeatherPanel(page, testInfo)
     await tile.click()
 
-    await clickMapCentre(page)
+    await closePanelAndClickMap(page, testInfo)
 
     const card = page.getByLabel('선택 지점의 재산출 에코탑 상세')
     await expect(card).toBeVisible()
@@ -194,7 +201,7 @@ test.describe('echo-top', () => {
     const tile = await openWeatherPanel(page, testInfo)
     await tile.click()
 
-    await clickMapCentre(page)
+    await closePanelAndClickMap(page, testInfo)
 
     const card = page.getByLabel('선택 지점의 재산출 에코탑 상세')
     await expect(card).toBeVisible()
@@ -208,7 +215,7 @@ test.describe('echo-top', () => {
     const tile = await openWeatherPanel(page, testInfo)
     await tile.click()
 
-    await clickMapCentre(page)
+    await closePanelAndClickMap(page, testInfo)
 
     const card = page.getByLabel('선택 지점의 재산출 에코탑 상세')
     await expect(card).toBeVisible()
@@ -219,9 +226,15 @@ test.describe('echo-top', () => {
     await installFixture(page)
     const tile = await openWeatherPanel(page, testInfo)
     await tile.click()
-    await clickMapCentre(page)
+    await closePanelAndClickMap(page, testInfo)
     await expect(page.getByLabel('선택 지점의 재산출 에코탑 상세')).toBeVisible()
 
+    // 지도 클릭은 공항도 선택한다. 모바일에서는 그 공항 패널이 사이드바를 덮으므로 먼저 닫는다.
+    const closeAirportPanel = page.getByRole('button', { name: '닫기', exact: true })
+    if (await closeAirportPanel.count()) await closeAirportPanel.first().click()
+
+    // 패널을 다시 열어 토글을 끈다.
+    await panelToggle(page, testInfo).click()
     await tile.click()
     await expect(tile).toHaveAttribute('aria-pressed', 'false')
 

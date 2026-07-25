@@ -186,7 +186,13 @@ export function buildWeatherOverlayModel({
   // 한 주기를 놓쳤을 때만 직전 프레임이 대신 나온다.
   // 그 경우를 감추지 않기 위해 stale(선택 시각보다 과거)임을 표시로 남긴다 — 범례·상세정보가
   // 프레임의 실제 관측시각을 그대로 보여주므로, 5분 전 자료가 현재 시각으로 위장되지는 않는다.
+  // pickNearestPreviousFrame은 선택 시각이 모든 프레임보다 과거여도 null이 아니라 frames[0]을 준다
+  // (weatherTimeline.js: `return selected || frames[0]`). 그대로 두면 아직 관측되지도 않은
+  // 미래 프레임이 현재 시각의 자료처럼 표시된다 — RainViewer가 같은 이유로 두는 가드다.
   const echoTopSelected = visibility.echoTop
+    && echoTopFrames.length
+    && Number.isFinite(resolvedWeatherTimeMs)
+    && resolvedWeatherTimeMs >= echoTopFrames[0].timeMs
     ? pickNearestPreviousFrame(echoTopFrames, resolvedWeatherTimeMs)
     : null
   const echoTopFrame = echoTopSelected

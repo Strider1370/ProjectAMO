@@ -13,13 +13,13 @@ Run a focused contract with `npm run dev:contract -- --grep <id>`. The command c
 | `notam-and-settings` | `NotamPanel.jsx`, `SettingsModal.jsx` | desktop, iPad landscape, mobile | local app state only; mobile has settings but no NOTAM entry | `frontend/verification/contracts/notam-and-settings.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `route-import` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed `rksi-rkpk-multi.gpx` fixture; local airport/navdata | `frontend/verification/contracts/route-import.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `route-workflow` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed navdata; `route-fixture.mjs` intercepts exposure, altitude, profile, cross-section, briefing APIs | `frontend/verification/contracts/route-workflow.spec.mjs` | frontend | active — passed 2026-07-19 |
+| `echo-top` | `echoTopLayers.js`, `useEchoTopOverlay.js`, `EchoTopCard.jsx`, `WeatherLegends.jsx` | desktop, iPad landscape, mobile | fixture intercepts `echotop_meta.json`, the overlay WebP and `/api/radar/echo-top-point`; radar `echo_meta.json` supplies the 5-minute axis | `frontend/verification/contracts/echo-top.spec.mjs` | frontend | active — passed 2026-07-26 (21/21) |
 | `briefing-view` | `BriefingView.jsx`, `MapView.jsx` | desktop, iPad landscape | committed navdata; `route-fixture.mjs`; mobile has no full/map-together control | `frontend/verification/contracts/briefing-view.spec.mjs` | frontend | active — passed 2026-07-19 |
 
 ## Registered next
 
 | Contract | Preconditions | Status |
 | --- | --- | --- |
-| `echo-top` | `echo-top.spec.mjs` intercepts `/data/radar/echotop/echotop_meta.json`, the overlay WebP, and `/api/radar/echo-top-point`; radar `echo_meta.json` supplies the 5-minute axis | **not passing** — spec written 2026-07-26, selector alignment unfinished, so it currently fails and would break a full contract run. Covers: default OFF, legend carrying `재산출 · 18 dBZ · MSL`, no-data note when the selected time has no frame, partial coverage, click detail (FL / ft MSL / interpolated vs conservative floor), null `observedAt` producing no dangling `관측` label, and toggle-off clearing layer and detail. The last two exist because both were real defects found in review. See `docs/superpowers/status/radar-derived-echo-top.status.md` Gate 5. |
 
 ## Phase A coverage and legacy mapping
 
