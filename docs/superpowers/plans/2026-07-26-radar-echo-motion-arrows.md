@@ -446,7 +446,7 @@ test('격자 밖을 내다보는 벡터는 앞면으로 치지 않는다', () =>
 })
 
 test('GeoJSON은 Point와 방위·속도를 낸다', () => {
-  const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 - y * 0.001 })
+  const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 + y * 0.001 }) // +x 동쪽, +y 북쪽 (실제 규약)
   const geojson = motionVectorsToGeoJSON(
     [{ col: 10, row: 10, dx: 3, dy: 0, matchScore: 0.812, neighbourAgreement: 0.875 }],
     { gridToLatLon, workStride: 4, frameIntervalMs: 300000 },
@@ -460,13 +460,14 @@ test('GeoJSON은 Point와 방위·속도를 낸다', () => {
   assert.equal(f.properties.neighbourAgreement, 0.88)
 })
 
-test('남쪽으로 가는 벡터는 방위 180 근처를 낸다', () => {
-  const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 - y * 0.001 })
+test('북쪽으로 가는 벡터는 방위 0/360 근처를 낸다', () => {
+  const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 + y * 0.001 }) // +x 동쪽, +y 북쪽 (실제 규약)
   const geojson = motionVectorsToGeoJSON(
     [{ col: 10, row: 10, dx: 0, dy: 3, matchScore: 0.8, neighbourAgreement: 0.8 }],
     { gridToLatLon, workStride: 4, frameIntervalMs: 300000 },
   )
-  assert.ok(Math.abs(geojson.features[0].properties.bearingDeg - 180) < 2)
+  const b = geojson.features[0].properties.bearingDeg
+  assert.ok(Math.min(b, 360 - b) < 2, `북쪽이어야 하는데 ${b}`) // 0/360 경계 안전
 })
 
 test('좌표를 못 구하는 벡터는 조용히 버린다', () => {
