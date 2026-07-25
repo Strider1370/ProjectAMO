@@ -24,14 +24,6 @@ export function readEchoTopMeta(root) {
   try { return JSON.parse(fs.readFileSync(filePath, 'utf8')) } catch { return null }
 }
 
-function tmToIso(tm) {
-  // tm은 KST 12자리. 실제 관측시각은 사이트 메타의 observedAt이 우선한다.
-  return new Date(Date.UTC(
-    Number(tm.slice(0, 4)), Number(tm.slice(4, 6)) - 1, Number(tm.slice(6, 8)),
-    Number(tm.slice(8, 10)) - 9, Number(tm.slice(10, 12)),
-  )).toISOString()
-}
-
 function cleanup(root, meta) {
   const keep = new Set()
   for (const frame of meta.frames) { keep.add(`echotop_${frame.tm}.webp`); keep.add(`echotop_${frame.tm}.bin`) }
