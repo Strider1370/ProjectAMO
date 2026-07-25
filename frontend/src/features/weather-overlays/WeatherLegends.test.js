@@ -35,6 +35,6 @@ test('horizontal legends preserve ascending ramps and reverse only descending so
 // 않는데, 그 경로의 문구만 확인하고 있었다. 계약이 실제 화면에서 문구와 자료 없음 상태를 확인한다.
 
 test('motion note explains what the arrow length means', () => {
-  assert.match(source, /길이 = 5분 이동거리/)
+  assert.match(source, /길이 = 10분 이동거리/)
   assert.match(source, /예측 아님/)
 })

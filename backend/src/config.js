@@ -162,7 +162,7 @@ export const radar_echo_motion = {
   enabled: process.env.RADAR_MOTION_ENABLED !== '0',
   work_stride: 4,          // HSR 0.5 km를 4칸씩 솎아 2 km 작업 격자를 만든다.
   patch_radius_km: 12,     // 정합 패치 반경. 실측값 6칸 × 2 km.
-  spacing_km: 8,           // 화살표 간격. 실측값 4칸 × 2 km.
+  spacing_km: 6,           // 화살표 간격. 게이트 A 실측값은 8이었고, 2026-07-26 실화면을 보고 사용자가 6으로 올렸다.
   max_speed_kmh: 100,      // 탐색 반경 R = v_max × Δt. 품질 필터가 아니라 계산의 정의역이다.
   min_speed_kt: 3,         // 이보다 느리면 방위가 무의미하므로 앞면 판정에서 제외한다.
   edge_lookahead_km: 6,    // 이 거리 앞에 에코가 없으면 앞면으로 본다.

@@ -246,3 +246,18 @@ Wang et al. (2013), *Application of Multi-Scale Tracking Radar Echoes Scheme in 
 - Peura, M., H. Hohti. *Motion Vectors in Weather Radar Images*. 핀란드 기상청. — 1 km 픽셀 16×16 격자, 8 km 간격 운영값의 출처.
 - MAPLE/VET applied to the South Korean radar network — KMA가 2 km, 512×512로 운영한다는 근거.
 - NEXRAD SCIT / Storm Track Information — 세포 기반 표시 방식. **본 구현이 채택하지 않은** 대안으로 기록.
+
+
+## 2026-07-26 개정 — 실화면 확인으로 바뀐 표시값
+
+스펙 본문은 착수 시점의 결정을 그대로 남긴다. 아래 세 가지는 실제 KMA 자료로 실화면을 본 뒤 사용자가 확정한 값이며,
+**본문과 충돌하면 아래가 현재 값이다.**
+
+| 항목 | 본문 | 확정 |
+|---|---|---|
+| 화살대 길이 | 5분 이동거리 | **10분 이동거리** (범례 문구도 "길이 = 10분 이동거리") |
+| 화살촉 크기 | 규정 없음 | `icon-size` 0.45~0.7 |
+| 화살표 간격 | 8 km | **6 km** (`config.radar_echo_motion.spacing_km`) |
+
+길이를 늘릴 때 임의 배율을 곱하지 않고 정의 자체를 10분으로 바꾼 이유는, 배율을 곱하면 화살대 길이가
+어떤 물리량도 뜻하지 않게 되기 때문이다. 증거: `artifacts/responsive-screenshots/radar-motion/20260726-0705/`.

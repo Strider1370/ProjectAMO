@@ -7,7 +7,9 @@ export const RADAR_MOTION_ARROW_LAYER = 'kma-radar-motion-arrow'
 
 const ARROW_ICON_ID = 'radar-motion-arrowhead'
 const EMPTY = { type: 'FeatureCollection', features: [] }
-const FRAME_MINUTES = 5
+// 화살대 길이 = 이 시간만큼의 이동거리. 5분치는 화면에서 너무 짧아 10분치로 그린다.
+// 범례 문구('길이 = 10분 이동거리')와 반드시 같이 움직여야 한다.
+const ARROW_MINUTES = 10
 const EARTH_KM = 6371.0088
 const ARROW_RED = '#e11d2e'
 
@@ -31,7 +33,7 @@ export function arrowTip(feature) {
   if (!Number.isFinite(bearingDeg) || !Array.isArray(start)) return null
 
   const toRad = Math.PI / 180
-  const d = (speedKt * 1.852 * (FRAME_MINUTES / 60)) / EARTH_KM
+  const d = (speedKt * 1.852 * (ARROW_MINUTES / 60)) / EARTH_KM
   const brg = bearingDeg * toRad
   const lat1 = start[1] * toRad, lon1 = start[0] * toRad
   const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brg))
@@ -111,7 +113,7 @@ function ensureLayers(map) {
         // symbol-placement를 지정하지 않는다(기본 point). 선 위 배치는 아이콘을 선
         // 방향으로 한 번 더 돌려 방위가 이중 적용된다.
         'icon-image': ARROW_ICON_ID,
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.7, 10, 1.1],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.45, 10, 0.7],
         'icon-rotate': ['get', 'bearingDeg'],
         'icon-rotation-alignment': 'map',
         'icon-allow-overlap': true,
