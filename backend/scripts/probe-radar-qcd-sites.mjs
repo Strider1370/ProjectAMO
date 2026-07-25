@@ -19,6 +19,7 @@ async function probe(stn, tm) {
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(60000) })
     const buffer = Buffer.from(await response.arrayBuffer())
+    // HDF5 매직 바이트 0x89 0x48 0x44 0x46. 39바이트 응답은 API의 무효 지점코드 오류메시지 이므로 실패로 처리.
     const isHdf5 = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x48 && buffer[2] === 0x44 && buffer[3] === 0x46
     return { stn, ok: response.ok && isHdf5, status: response.status, bytes: buffer.length, ms: Date.now() - startedAt, buffer: isHdf5 ? buffer : null }
   } catch (error) {
