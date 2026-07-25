@@ -2,6 +2,25 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { MOTION_DEFAULTS, createMotionInput, deriveObservedMotion } from '../src/processors/radar-motion.js'
 
+test('no-data(-25000)는 0으로 클램프된다', () => {
+  // 4x4 블록 하나는 전부 no-data, 하나는 에코.
+  const nx = 8, ny = 4
+  const refl = new Int16Array(nx * ny).fill(-25000)
+  for (let y = 0; y < 4; y += 1) for (let x = 4; x < 8; x += 1) refl[y * nx + x] = 3000
+
+  const input = createMotionInput(refl, { nx, ny }, { stride: 4 })
+  assert.equal(input.values[0], 0, 'no-data 블록은 0이어야 한다')
+  assert.equal(input.values[1], 3000, '에코 블록은 그대로여야 한다')
+})
+
+test('no-data와 약한 에코가 섞인 블록은 에코 값을 쓴다', () => {
+  const nx = 4, ny = 4
+  const refl = new Int16Array(nx * ny).fill(-25000)
+  refl[0] = 800
+  const input = createMotionInput(refl, { nx, ny }, { stride: 4 })
+  assert.equal(input.values[0], 800)
+})
+
 const geometry = {
   nx: 32,
   ny: 32,

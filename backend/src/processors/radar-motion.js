@@ -1,5 +1,9 @@
 const FIVE_MINUTES_MS = 5 * 60 * 1000
 
+// KMA HSR 합성 격자의 no-data. 실측상 작업 격자의 89~91%가 이 값이고 프레임 간
+// 98.8% 동일한 고정 무늬라, 클램프하지 않으면 정합이 에코가 아니라 무늬에 끌려간다.
+const NO_DATA = -25000
+
 export const MOTION_DEFAULTS = Object.freeze({
   stride: 4,
   candidateStride: 4,
@@ -28,7 +32,7 @@ export function createMotionInput(refl, geometry, options = {}) {
           max = Math.max(max, refl[y * geometry.nx + x])
         }
       }
-      values[row * width + col] = max
+      values[row * width + col] = max <= NO_DATA ? 0 : max
     }
   }
 
