@@ -284,7 +284,7 @@ const echoTopMeta = {
 }
 const radarMeta = { tm: '202607252035', frames: [{ tm: '202607252030', path: '/a.png' }, { tm: '202607252035', path: '/b.png' }] }
 
-test('echo top frame is exposed only when its tm matches the selected time exactly', () => {
+test('an exactly matching echo top frame is used and is not marked stale', () => {
   const model = buildWeatherOverlayModel({
     echoMeta: radarMeta, echoTopMeta,
     visibility: { radar: true, echoTop: true },
@@ -292,12 +292,28 @@ test('echo top frame is exposed only when its tm matches the selected time exact
   })
   assert.equal(model.echoTopFrame.tm, '202607252035')
   assert.equal(model.echoTopFrame.observedAt, '2026-07-25T11:35:00.000Z')
+  assert.equal(model.echoTopFrame.stale, false)
 })
 
-test('a selected time with no matching echo top frame yields null, never the previous frame', () => {
+// 레이더와 같은 선택 규칙 — 같이 켜면 같이 보인다. 대신 대체된 프레임은 stale로 드러난다.
+test('a missed cycle falls back to the previous frame, flagged stale, like radar does', () => {
   const model = buildWeatherOverlayModel({
     echoMeta: radarMeta,
     echoTopMeta: { tm: '202607252030', frames: [echoTopMeta.frames[0]] },
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
+  })
+  assert.equal(model.echoTopFrame.tm, '202607252030')
+  assert.equal(model.echoTopFrame.stale, true)
+  // 표시되는 시각은 어디까지나 그 프레임의 실제 관측시각이다.
+  assert.equal(model.echoTopFrame.observedAt, '2026-07-25T11:30:00.000Z')
+  assert.equal(model.radarFrame.tm, '202607252035', 'radar still shows its own newest frame')
+})
+
+test('with no echo top frames at all the layer stays hidden', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta,
+    echoTopMeta: { tm: null, frames: [] },
     visibility: { radar: true, echoTop: true },
     selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
   })

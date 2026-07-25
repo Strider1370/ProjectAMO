@@ -151,6 +151,8 @@ async function main() {
   cron.schedule(config.schedule.lightning_interval, () => runWithLock("lightning", lightningProcessor.process));
   cron.schedule(config.schedule.radar_echo_interval, () => runWithLock("radar_echo", radarEchoProcessor.process));
   cron.schedule(config.schedule.echo_top_interval, () => runWithLock("echo_top", echoTopProcessor.process));
+  // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.
+  runWithLock("echo_top", echoTopProcessor.backfill);
   cron.schedule(config.schedule.rainviewer_interval, () => runWithLock("rainviewer", rainviewerProcessor.process));
   scheduleKimNwpJob();
   cron.schedule(config.schedule.ktg_interval, () => runWithLock('ktg', ktgProcessor.process), KIM_NWP_CRON_OPTIONS);

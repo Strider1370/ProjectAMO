@@ -34,7 +34,7 @@ export function useEchoTopOverlay({ mapRef, isStyleReady, styleRevision, visible
     fetchPoint({ tm: frame.tm, lat: point.lat, lon: point.lng }, { signal: controller.signal })
       .then((value) => {
         if (token !== requestTokenRef.current || controller.signal.aborted) return
-        setSelection({ lng: point.lng, lat: point.lat, point: point.mapPoint, echoTop: value, partial: Boolean(frame.partial) })
+        setSelection({ lng: point.lng, lat: point.lat, point: point.mapPoint, echoTop: value, partial: Boolean(frame.partial), stale: Boolean(frame.stale) })
       })
       .catch(() => {
         if (token !== requestTokenRef.current || controller.signal.aborted) return

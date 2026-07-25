@@ -181,17 +181,21 @@ export function buildWeatherOverlayModel({
     : null
   const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && weatherTimelineTicks.length > 0
   const radarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
-  // Echo Top은 재산출 산출물이라 "가장 가까운 과거 프레임" 대체가 금지된다(FR-002/FR-005).
-  // 선택 시각과 tm이 정확히 같은 프레임만 쓰고, 없으면 레이어를 숨긴다.
-  const echoTopExact = visibility.echoTop
-    ? echoTopFrames.find((frame) => frame.timeMs === resolvedWeatherTimeMs) || null
+  // Echo Top은 레이더와 같은 선택 규칙을 쓴다 — 같이 켜면 같이 보이고 같이 사라진다.
+  // 수집 지연도 레이더와 같게 맞춰(config.radar_echo_top.delay_minutes) 평상시엔 시각이 일치하고,
+  // 한 주기를 놓쳤을 때만 직전 프레임이 대신 나온다.
+  // 그 경우를 감추지 않기 위해 stale(선택 시각보다 과거)임을 표시로 남긴다 — 범례·상세정보가
+  // 프레임의 실제 관측시각을 그대로 보여주므로, 5분 전 자료가 현재 시각으로 위장되지는 않는다.
+  const echoTopSelected = visibility.echoTop
+    ? pickNearestPreviousFrame(echoTopFrames, resolvedWeatherTimeMs)
     : null
-  const echoTopFrame = echoTopExact
+  const echoTopFrame = echoTopSelected
     ? {
-      ...echoTopExact,
-      partial: Number.isFinite(echoTopExact.siteCount?.ok)
-        && Number.isFinite(echoTopExact.siteCount?.total)
-        && echoTopExact.siteCount.ok < echoTopExact.siteCount.total,
+      ...echoTopSelected,
+      partial: Number.isFinite(echoTopSelected.siteCount?.ok)
+        && Number.isFinite(echoTopSelected.siteCount?.total)
+        && echoTopSelected.siteCount.ok < echoTopSelected.siteCount.total,
+      stale: Number.isFinite(resolvedWeatherTimeMs) && echoTopSelected.timeMs < resolvedWeatherTimeMs,
     }
     : null
   const rainviewerFrame = pickRainviewerFrame(rainviewerFrames, resolvedWeatherTimeMs)

@@ -166,8 +166,11 @@ export const radar_echo_top = {
   concurrency: 4,     // 한 프레임에서 동시에 받는 사이트 수.
   timeout_ms: 45000,
   retry: 1,
-  delay_minutes: 15,  // QCD 파일 게시 지연. HSR(10분)보다 여유를 둔다.
-  max_frames: 12,     // 1시간 보존.
+  // 레이더(radar_echo)와 반드시 같아야 한다. 에코탑은 선택 시각과 tm이 정확히 일치할 때만
+  // 표시하므로(FR-002/FR-005), 지연이 다르면 실시간 보기에서 레이더 최신 시각에 에코탑
+  // 프레임이 없어 레이어가 늘 숨는다. 실측 결과 QCD는 5분 지연으로도 전부 내려온다(여유 5분).
+  delay_minutes: 10,
+  max_frames: 36,     // 3시간 보존 — 레이더(radar_echo.max_images)와 같은 시간 범위.
   enabled: process.env.RADAR_ECHO_TOP_ENABLED !== '0',
 }
 

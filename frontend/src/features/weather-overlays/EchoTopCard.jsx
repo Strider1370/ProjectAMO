@@ -24,6 +24,7 @@ export default function EchoTopCard({ selection, tz = 'KST' }) {
       <div className="convective-legend__note">
         재산출 · 18 dBZ · MSL · {value.quality === 'interpolated' ? '보간값' : '보수적 하한(빔 중심)'}
         {selection.partial ? ' · 일부 사이트 결측' : ''}
+        {selection.stale ? ' · 선택 시각보다 이전 자료' : ''}
       </div>
     </section>
   )
