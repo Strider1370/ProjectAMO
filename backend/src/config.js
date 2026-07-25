@@ -62,6 +62,8 @@ export const api = {
   airkorea_pm_url: process.env.AIRKOREA_PM_URL || 'https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty',
   kma_uv_url: process.env.KMA_UV_URL || 'https://apihub.kma.go.kr/api/typ01/url/kma_sfctm_uv.php',
   kim_grid_url: process.env.KIM_GRID_API_URL || 'https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph-kim_nc_xy_txt2',
+  typhoon_now_url: process.env.TYPHOON_NOW_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_now.php',
+  typhoon_list_url: process.env.TYPHOON_LIST_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_lst.php',
   endpoints: {
     metar: '/AmmIwxxmService/getMetar',
     taf: '/AmmIwxxmService/getTaf',
@@ -294,6 +296,9 @@ export const schedule = {
   sigmet_interval: '*/5 * * * *',
   airmet_interval: '*/5 * * * *',
   sigwx_low_interval: '5 5,11,17,23 * * *',
+  // 30분 — 발표는 최단 3시간 간격(실측: 2022년 11호, 2020년 9호). 발표시각 대비 게시 지연은
+  // 미측정이므로 창을 노리지 않고 고정 주기로 둔다. 실제 태풍 발생 시 로그로 지연을 재고 조정한다.
+  typhoon_interval: '*/30 * * * *',
   amos_interval: '*/5 * * * *',
   lightning_interval: '*/5 * * * *',
   radar_echo_interval: '*/5 * * * *',

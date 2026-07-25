@@ -23,6 +23,7 @@ import ktgProcessor from './processors/ktg-processor.js'
 import flightCategoryProcessor from './processors/flight-category-processor.js'
 import notamProcessor from './processors/notam-processor.js'
 import overseasProcessor from './processors/overseas-weather-processor.js'
+import typhoonProcessor from "./processors/typhoon-processor.js";
 import { isDemoMode } from './dev/demo-mode.js'
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
@@ -111,6 +112,7 @@ function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.enabled !=
     ["environment", environmentProcessor.process],
     ["airport_info", airportInfoProcessor.process],
     ["takeoff_fcst", takeoffForecastProcessor.process],
+    ['typhoon', typhoonProcessor.process],
   ]
   if (includeKimNwp) jobs.splice(10, 0, ["kim_surface_wind", kimSurfaceWindProcessor.process])
   if (config.ktg?.collect_on_startup !== false) jobs.push(["ktg", ktgProcessor.process])
@@ -149,6 +151,7 @@ async function main() {
   cron.schedule(config.schedule.sigwx_low_interval, () => runWithLock("sigwx_low", sigwxLowProcessor.process));
   cron.schedule(config.schedule.amos_interval, () => runWithLock("amos", amosProcessor.process));
   cron.schedule(config.schedule.lightning_interval, () => runWithLock("lightning", lightningProcessor.process));
+  cron.schedule(config.schedule.typhoon_interval, () => runWithLock("typhoon", typhoonProcessor.process));
   cron.schedule(config.schedule.radar_echo_interval, () => runWithLock("radar_echo", radarEchoProcessor.process));
   cron.schedule(config.schedule.echo_top_interval, () => runWithLock("echo_top", echoTopProcessor.process));
   // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.

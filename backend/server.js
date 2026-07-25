@@ -174,7 +174,7 @@ function isRevalidatedApiRequest(req) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return false
   return (
     /^\/(?:airports|warning-types|alert-defaults)$/i.test(req.path)
-    || /^\/(?:metar|taf|warning|sigmet|airmet|sigwx-low|lightning|amos|adsb|ground-forecast|ground-overview|environment|airport-info)$/i.test(req.path)
+    || /^\/(?:metar|taf|warning|sigmet|airmet|sigwx-low|lightning|amos|adsb|ground-forecast|ground-overview|environment|airport-info|typhoon)$/i.test(req.path)
     || /^\/(?:metar|taf|sigmet)-overseas$/i.test(req.path)
     || /^\/sigwx-low-history$/i.test(req.path)
     || /^\/radar\/echo-meta$/i.test(req.path)
@@ -435,6 +435,7 @@ const SNAPSHOT_SOURCES = [
   { keys: ['sigwxLow', 'sigwx_low'], files: [snapshotMetaLatest('sigwx_low')], build: () => buildHashEntry('sigwx_low') },
   { keys: ['amos'], files: [snapshotMetaLatest('amos')], build: () => buildHashEntry('amos') },
   { keys: ['lightning'], files: [snapshotMetaLatest('lightning')], build: () => buildHashEntry('lightning') },
+  { keys: ['typhoon'], files: [snapshotMetaLatest('typhoon')], build: () => buildHashEntry('typhoon') },
   { keys: ['adsb'], files: [snapshotMetaLatest('adsb')], build: () => buildHashEntry('adsb') },
   { keys: ['kimNwp', 'kim_nwp'], files: [snapshotMetaFile('kim_nwp', 'index.json'), snapshotMetaFile('kim_nwp', 'latest.json')], build: buildKimNwpSnapshotEntry },
   { keys: ['kimSurfaceWind', 'kim_surface_wind'], files: [snapshotMetaLatest('kim_surface_wind')], build: buildKimSurfaceWindEntry },
@@ -650,6 +651,7 @@ app.get('/api/sigmet-overseas', (_, res) => sendLatest(res, 'sigmet_overseas'))
 app.get('/api/airmet', (_, res) => sendLatest(res, 'airmet'))
 app.get('/api/sigwx-low', (_, res) => sendLatest(res, 'sigwx_low'))
 app.get('/api/lightning', (_, res) => sendLatest(res, 'lightning'))
+app.get('/api/typhoon', (_, res) => sendLatest(res, 'typhoon'))
 app.get('/api/amos', (_, res) => sendLatest(res, 'amos'))
 app.get('/api/takeoff-fcst', (_, res) => sendLatest(res, 'takeoff_fcst'))
 app.get('/api/notam', (_, res) => sendLatest(res, 'notam'))

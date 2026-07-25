@@ -7,7 +7,7 @@ import { buildTafTacPresentation } from './serializers/taf-tac.js'
 import { annotateMetarTac, annotateTafTac } from './parsers/tac-annotation.js'
 import { pickPrimaryWeatherIcon } from './parsers/parse-utils.js'
 
-const TYPES = ['metar', 'taf', 'warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'kim_surface_wind', 'ground_forecast', 'ground_overview', 'environment', 'airport_info', 'takeoff_fcst', 'flight_category_overlay', 'notam', 'metar_overseas', 'taf_overseas', 'sigmet_overseas']
+const TYPES = ['metar', 'taf', 'warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'kim_surface_wind', 'ground_forecast', 'ground_overview', 'environment', 'airport_info', 'takeoff_fcst', 'flight_category_overlay', 'notam', 'metar_overseas', 'taf_overseas', 'sigmet_overseas', 'typhoon']
 const FILE_PREFIX = {
   metar: 'METAR',
   taf: 'TAF',
@@ -51,6 +51,7 @@ const cache = {
   metar_overseas: { hash: null, prev_data: null },
   taf_overseas: { hash: null, prev_data: null },
   sigmet_overseas: { hash: null, prev_data: null },
+  typhoon: { hash: null, prev_data: null },
 }
 
 // 이전 스냅샷은 파일을 고치지 않고 메모리에 올릴 때만 최신 TAC 표현 계약을 보강한다.
