@@ -1,5 +1,16 @@
 # KIM Icing Potential Layer Spec (K-FIP-inspired, NE57)
 
+> **Revision 2026-07-25 — icing level set widened to match the temperature cross-section.**
+> Phase-1 shipped icing on `925/850/700/600/500/400/300hPa`, so the route vertical section showed
+> icing over a much shorter span than temperature (21 pressure levels). `KIM_NWP_ICING_LEVEL_IDS` is now
+> derived as every pressure level `>= 300hPa` (1000 → 300, 18 levels). `250/200/150hPa` stay uncollected:
+> they are structurally below the `-35 C` hard gate, so they would always encode class 0, which the
+> renderer draws as fully transparent — collecting them costs ~924 KMA calls/day for zero pixels.
+> Added collector load: 11 new levels x 7 icing variables x 11 forecast hours x 4 runs/day = **+3,388 calls/day**.
+> The `300hPa` exclusion in "Scope" below is superseded (300hPa has been collected since a prior revision).
+> Companion frontend fix: with the Icing layer on, levels lacking icing data no longer fall back to
+> moisture shading in `VerticalProfileChart.jsx` — "no icing" and "moist" must not share a color.
+
 ## Purpose
 
 Add a KIM NWP in-flight icing-potential overlay that reconstructs the SFIP/K-FIP family of icing guidance using only the KIM 8 km global model (KIMG/NE57) pressure-level products this project already ingests.

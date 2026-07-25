@@ -220,7 +220,9 @@ test('resolveKimHumidityComponentRequest uses moisture-analysis pressure rh para
 
 test('resolveKimIcingComponentRequests gates to icing levels', () => {
   assert.equal(resolveKimIcingComponentRequests({ level: { id: '10m', kind: 'height', level: 0 } }).length, 0)
+  assert.equal(resolveKimIcingComponentRequests({ level: { id: '250hPa', kind: 'pressure', level: 250 } }).length, 0)
   assert.equal(resolveKimIcingComponentRequests({ level: { id: '300hPa', kind: 'pressure', level: 300 } }).length, 7)
+  assert.equal(resolveKimIcingComponentRequests({ level: { id: '950hPa', kind: 'pressure', level: 950 } }).length, 7)
 
   const requests = resolveKimIcingComponentRequests({ level: { id: '600hPa', kind: 'pressure', level: 600 } })
 

@@ -42,11 +42,13 @@ test('KIM wind levels and forecast hours match this phase scope', () => {
   assert.deepEqual(KIM_NWP_FORECAST_HOURS, [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36])
 })
 
-test('icing levels include 300hPa but exclude 10m', () => {
-  assert.deepEqual(KIM_NWP_ICING_LEVEL_IDS, ['925hPa', '850hPa', '700hPa', '600hPa', '500hPa', '400hPa', '300hPa'])
+test('icing levels span 1000-300hPa (matches temp section) but exclude 10m and the always-gated top', () => {
+  assert.deepEqual(KIM_NWP_ICING_LEVEL_IDS, ['1000hPa', '975hPa', '950hPa', '925hPa', '900hPa', '875hPa', '850hPa', '800hPa', '750hPa', '700hPa', '650hPa', '600hPa', '550hPa', '500hPa', '450hPa', '400hPa', '350hPa', '300hPa'])
   assert.equal(isKimNwpIcingLevel({ id: '300hPa' }), true)
   assert.equal(isKimNwpIcingLevel({ id: '10m' }), false)
   assert.equal(isKimNwpIcingLevel({ id: '600hPa' }), true)
+  // 250/200/150hPa은 항상 -35C 아래라 하드게이트로 class 0 → 수집하지 않는다.
+  for (const id of ['250hPa', '200hPa', '150hPa']) assert.equal(isKimNwpIcingLevel({ id }), false, `${id} must stay uncollected`)
 })
 
 test('moisture levels extended to 150hPa (matches wind/temp cruise-altitude ceiling)', () => {

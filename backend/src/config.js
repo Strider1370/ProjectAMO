@@ -268,21 +268,24 @@ export const noaa = {
 
 export const schedule = {
   notam_interval: '0 */6 * * *', // 6시간 주기(00,06,12,18 UTC)
-  metar_interval: '*/10 * * * *',
+  metar_interval: '*/5 * * * *',
   taf_interval: '*/30 * * * *',
   warning_interval: '*/5 * * * *',
   sigmet_interval: '*/5 * * * *',
   airmet_interval: '*/5 * * * *',
   sigwx_low_interval: '5 5,11,17,23 * * *',
-  amos_interval: '*/10 * * * *',
+  amos_interval: '*/5 * * * *',
   lightning_interval: '*/5 * * * *',
   radar_echo_interval: '*/5 * * * *',
   // ponytail: 10분 — RainViewer 원본 갱신 주기가 10분이라 5분 cron은 같은 데이터를 두 번 받는 낭비.
   rainviewer_interval: '*/10 * * * *',
-  satellite_interval: '*/10 * * * *', // GK2A CI·CTPS 관측 간격과 동일하게 수집.
+  // 5분 — 관측 간격은 10분 그대로지만, 늦게 올라온 프레임을 다음 10분까지 기다리지 않고 줍는다.
+  // 이미 받은 프레임은 파일 존재 검사로 건너뛰므로 정상 상황의 추가 다운로드는 0.
+  satellite_interval: '*/5 * * * *',
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
   kim_surface_wind_interval: '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *',
-  ground_forecast_interval: '30 6,11,18,23 * * *',
+  // 동네예보 발표 8회(02,05,08,11,14,17,20,23 KST) + 30분 여유. 중기예보(06/18 발표)는 08:30·20:30 슬롯이 받는다.
+  ground_forecast_interval: '30 2,5,8,11,14,17,20,23 * * *',
   environment_interval: '10 * * * *',
   airport_info_interval: '0,30 6,17 * * *',
   takeoff_fcst_interval: '8 * * * *', // 매시(KST) — 이륙예보는 정시 발표

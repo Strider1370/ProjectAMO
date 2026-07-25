@@ -152,7 +152,8 @@ async function main() {
   scheduleKimNwpJob();
   cron.schedule(config.schedule.ktg_interval, () => runWithLock('ktg', ktgProcessor.process), KIM_NWP_CRON_OPTIONS);
   cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite", satelliteProcessor.process));
-  cron.schedule(config.schedule.ground_forecast_interval, () => runWithLock("ground_forecast", groundForecastProcessor.process));
+  // 발표 시각이 KST 기준이라 서버 TZ와 무관하게 Asia/Seoul로 고정.
+  cron.schedule(config.schedule.ground_forecast_interval, () => runWithLock("ground_forecast", groundForecastProcessor.process), { timezone: 'Asia/Seoul' });
   cron.schedule(config.schedule.environment_interval, () => runWithLock("environment", environmentProcessor.process));
   scheduleAirportInfoJob();
   scheduleTakeoffFcstJob();
