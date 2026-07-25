@@ -37,10 +37,7 @@ export function buildTyphoonGeoJson(typhoons = []) {
     const forecast = rows.filter((row) => row.forecast)
     const coord = (row) => [row.lon, row.lat]
 
-    // 관측 초반에는 분석 행이 1개뿐일 수 있다(관측 시작 직후). 그래도 지나온 경로로 표시한다.
-    // ponytail: 좌표 1개짜리 LineString은 RFC 7946상 완전히 유효하진 않다.
-    // Mapbox GL은 이를 관대하게 받아들이지만(렌더 안 함), 문제가 되면 좌표 1개일 때 Point로 바꾼다.
-    if (analysis.length >= 1) {
+    if (analysis.length >= 2) {
       result.track.features.push({ type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: analysis.map(coord) } })
     }
     // 예보선은 분석 마지막 점에서 이어 붙여야 선이 끊기지 않는다.
