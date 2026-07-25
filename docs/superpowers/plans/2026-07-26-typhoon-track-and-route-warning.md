@@ -1750,7 +1750,7 @@ git commit -m "feat(typhoon): draw tracks, cone and wind rings as one toggled la
 - Create: `frontend/src/features/weather-overlays/lib/typhoonListModel.js`
 - Create: `frontend/src/features/weather-overlays/lib/typhoonListModel.test.js`
 - Create: `frontend/src/features/weather-overlays/TyphoonPanel.jsx`
-- Create: `frontend/src/features/weather-overlays/TyphoonPanel.css`
+- Create: `frontend/src/features/weather-overlays/TyphoonPanel.css` (데스크톱·태블릿 전용 — 모바일은 `MobileSheet`)
 - Modify: `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js` — `MET_LAYERS`에 `typhoon` 추가
 - Modify: `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx` — `layerLabels`, `groups.hazards`, `WEATHER_TILE_ICON`
 - Modify: `frontend/src/features/map/layerActions.js` — `MET_META`에 `typhoon`
@@ -1854,6 +1854,8 @@ Expected: PASS — 5 tests
 `frontend/src/features/weather-overlays/TyphoonPanel.jsx`:
 
 ```jsx
+import useIsMobile from '../../shared/ui/useIsMobile.js'
+import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import { buildTyphoonListItems } from './lib/typhoonListModel.js'
 import './TyphoonPanel.css'
 
@@ -1864,18 +1866,13 @@ function formatAnalyzedAt(iso) {
   }).format(new Date(iso))
 }
 
-export default function TyphoonPanel({ typhoons = [], status = 'ok', onFocus }) {
+export default function TyphoonPanel({ typhoons = [], status = 'ok', onFocus, onClose }) {
+  const isMobile = useIsMobile()
   const items = buildTyphoonListItems(typhoons)
-  return (
-    <div className="dev-layer-panel layer-drawer typhoon-panel" aria-label="활성 태풍 목록">
-      <div className="layer-drawer-header">
-        <div>
-          <div className="layer-drawer-eyebrow">기상정보</div>
-          <div className="layer-drawer-title">태풍</div>
-        </div>
-        <span className="layer-drawer-status">{items.length}개</span>
-      </div>
-      <div className="layer-drawer-body">
+
+  // 목록 본문은 데스크톱·모바일이 같다. 껍데기만 갈린다.
+  const body = (
+    <>
         {status === 'unavailable' && (
           <p className="typhoon-panel__empty">자료 없음 — 수집에 실패했습니다. 태풍이 없다는 뜻이 아닙니다.</p>
         )}
@@ -1898,8 +1895,36 @@ export default function TyphoonPanel({ typhoons = [], status = 'ok', onFocus }) 
               바로가기
             </button>
           </section>
-        ))}
+      ))}
+    </>
+  )
+
+  // 데스크톱 패널은 레이어 드로어 오른쪽에 폭 300px로 붙는다. Pixel 5(393px)에서는
+  // 화면 밖으로 나가므로 WeatherOverlayPanel과 같은 방식으로 시트로 전환한다.
+  if (isMobile) {
+    return (
+      <MobileSheet
+        open
+        eyebrow="기상정보"
+        title="태풍"
+        onClose={onClose}
+        headerExtra={<span className="layer-drawer-status">{items.length}개</span>}
+      >
+        <div aria-label="활성 태풍 목록">{body}</div>
+      </MobileSheet>
+    )
+  }
+
+  return (
+    <div className="dev-layer-panel layer-drawer typhoon-panel" aria-label="활성 태풍 목록">
+      <div className="layer-drawer-header">
+        <div>
+          <div className="layer-drawer-eyebrow">기상정보</div>
+          <div className="layer-drawer-title">태풍</div>
+        </div>
+        <span className="layer-drawer-status">{items.length}개</span>
       </div>
+      <div className="layer-drawer-body">{body}</div>
     </div>
   )
 }
@@ -1908,7 +1933,8 @@ export default function TyphoonPanel({ typhoons = [], status = 'ok', onFocus }) 
 `frontend/src/features/weather-overlays/TyphoonPanel.css`:
 
 ```css
-/* 레이어 드로어 오른쪽에 나란히 배치. layer-drawer 셸을 재사용하되 위치만 민다.
+/* 데스크톱·태블릿 전용. 모바일은 MobileSheet로 갈라지므로 이 규칙을 타지 않는다.
+   레이어 드로어 오른쪽에 나란히 배치. layer-drawer 셸을 재사용하되 위치만 민다.
    .map-view-wrapper .layer-drawer 규칙을 이기려 동일 접두 + .typhoon-panel 로 특이도 확보. */
 .map-view-wrapper .layer-drawer.typhoon-panel {
   left: calc(12px + var(--panel-overlay-sm) + 8px);
@@ -2000,6 +2026,7 @@ import { useTyphoonOverlay } from '../weather-overlays/lib/typhoonOverlaySync.js
           typhoons={typhoonOverlay.typhoons}
           status={typhoonOverlay.status}
           onFocus={(item) => mapRef.current?.flyTo({ center: [item.center.lon, item.center.lat], zoom: 5 })}
+          onClose={() => toggleMet('typhoon')}
         />
       )}
 ```
@@ -2188,12 +2215,9 @@ test('베이스맵을 두 번 바꿔도 레이어가 남는다', async ({ page }
 })
 ```
 
-**모바일 레이아웃을 먼저 정해야 한다.** `TyphoonPanel.css`는 레이어 드로어 오른쪽에 폭 300px로 붙는데, Pixel 5(393px)에서는 화면 밖으로 나간다. 계약은 desktop / ipad-landscape / mobile 3개 프로젝트에서 모두 돌므로 mobile은 이대로 통과하지 못한다. 둘 중 하나를 택한다.
+**모바일은 시트로 전환한다**(Task 7). 계약은 desktop / ipad-landscape / mobile 3개 프로젝트 모두에서 통과해야 한다. `aria-label="활성 태풍 목록"`은 두 형태 모두에 붙어 있으므로 위 테스트가 그대로 돈다.
 
-1. `WeatherOverlayPanel`처럼 모바일에서 `MobileSheet`로 전환한다 (Task 7에 단계 추가)
-2. 이 계약을 desktop 프로젝트로 한정한다 — 파일 상단에 `test.skip(({ }, testInfo) => testInfo.project.name !== 'desktop', '모바일 레이아웃 미대응')`
-
-2번을 택하면 모바일 미대응이 남는다는 사실을 상태 문서에 적는다.
+모바일 시트에서는 `.typhoon-panel__focus`가 시트 안에 있다. 바로가기 테스트는 시트가 지도를 덮은 상태에서도 `getCenter()`가 바뀌는지만 보므로 문제없다.
 
 - [ ] **Step 4: 개발 서버를 띄우고 계약을 돌린다**
 
@@ -2203,7 +2227,7 @@ test('베이스맵을 두 번 바꿔도 레이어가 남는다', async ({ page }
 
 Run: `npm --prefix frontend run dev:contract -- contracts/typhoon.spec.mjs --reporter=list`
 
-Expected: desktop 프로젝트 7 passed. 3개 프로젝트 전체로 돌리면 21이지만 모바일 대응 여부에 따라 달라진다.
+Expected: 21 passed (7 tests × desktop / ipad-landscape / mobile)
 
 실패하면 `superpowers:systematic-debugging`으로 근본 원인을 찾는다. 계약을 느슨하게 고쳐 통과시키지 않는다.
 
