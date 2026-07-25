@@ -15,6 +15,7 @@ Run a focused contract with `npm run dev:contract -- --grep <id>`. The command c
 | `route-workflow` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed navdata; `route-fixture.mjs` intercepts exposure, altitude, profile, cross-section, briefing APIs | `frontend/verification/contracts/route-workflow.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `echo-top` | `echoTopLayers.js`, `useEchoTopOverlay.js`, `EchoTopCard.jsx`, `WeatherLegends.jsx` | desktop, iPad landscape, mobile | fixture intercepts `echotop_meta.json`, the overlay WebP and `/api/radar/echo-top-point`; radar `echo_meta.json` supplies the 5-minute axis | `frontend/verification/contracts/echo-top.spec.mjs` | frontend | active — passed 2026-07-26 (21/21) |
 | `briefing-view` | `BriefingView.jsx`, `MapView.jsx` | desktop, iPad landscape | committed navdata; `route-fixture.mjs`; mobile has no full/map-together control | `frontend/verification/contracts/briefing-view.spec.mjs` | frontend | active — passed 2026-07-19 |
+| `typhoon` | `typhoonLayers.js`, `typhoonOverlaySync.js`, `TyphoonPanel.jsx`, `typhoonColors.js`, `WeatherOverlayPanel.jsx` | desktop, iPad landscape, mobile | `typhoon-snapshot.json`(2018년 19호·20호 실제 응답 기반)이 `/api/typhoon`을 가로챔; 활성 태풍 없음·수집 실패 상태도 함께 검증 | `frontend/verification/contracts/typhoon.spec.mjs` | frontend | active — passed 2026-07-26 (21/21) |
 
 ## Registered next
 
