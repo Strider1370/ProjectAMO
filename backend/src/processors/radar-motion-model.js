@@ -98,3 +98,59 @@ export function annotateNeighbourAgreement(vectors, settings) {
     return { ...v, neighbourAgreement: total ? agree / total : 0 }
   })
 }
+
+// 자기 이동 방향으로 edge_lookahead_km 앞에 에코가 없으면 앞면이다.
+// 덩어리 분할이나 윤곽선 추출을 하지 않는다 — 규모를 가리지 않는 것이 목적이다.
+export function selectLeadingEdge(vectors, current, settings) {
+  const km = cellKm(settings)
+  const lookahead = settings.edgeLookaheadKm / km
+  const hours = settings.frameIntervalMs / 3600000
+  const minCells = settings.minSpeedKt * 1.852 * hours / km
+
+  return vectors.filter((v) => {
+    const mag = Math.hypot(v.dx, v.dy)
+    if (mag < minCells) return false
+    const col = Math.round(v.col + (v.dx / mag) * lookahead)
+    const row = Math.round(v.row + (v.dy / mag) * lookahead)
+    const ahead = valueAt(current, col, row)
+    // 격자 밖(null)은 '에코 없음'이 아니라 '모름'이다. 앞면으로 치지 않는다.
+    if (ahead === null) return false
+    return ahead < settings.minReflectivity
+  })
+}
+
+function bearingDegrees(start, end) {
+  const toRad = Math.PI / 180
+  const lat1 = start.lat * toRad, lat2 = end.lat * toRad
+  const dLon = (end.lon - start.lon) * toRad
+  const deg = Math.atan2(
+    Math.sin(dLon) * Math.cos(lat2),
+    Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon),
+  ) / toRad
+  return (deg + 360) % 360
+}
+
+export function motionVectorsToGeoJSON(vectors, options) {
+  const { gridToLatLon, workStride, frameIntervalMs } = options
+  const km = workStride * HSR_CELL_KM
+  const hours = frameIntervalMs / 3600000
+  const features = []
+
+  for (const v of vectors) {
+    const start = gridToLatLon(v.col * workStride, v.row * workStride)
+    const end = gridToLatLon((v.col + v.dx) * workStride, (v.row + v.dy) * workStride)
+    if (!start || !end) continue
+    if (![start.lon, start.lat, end.lon, end.lat].every(Number.isFinite)) continue
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [start.lon, start.lat] },
+      properties: {
+        bearingDeg: Math.round(bearingDegrees(start, end)),
+        speedKt: Math.round(Math.hypot(v.dx, v.dy) * km / hours / 1.852),
+        matchScore: Number(v.matchScore.toFixed(2)),
+        neighbourAgreement: Number((v.neighbourAgreement ?? 0).toFixed(2)),
+      },
+    })
+  }
+  return { type: 'FeatureCollection', features }
+}

@@ -455,7 +455,7 @@ test('GeoJSON은 Point와 방위·속도를 낸다', () => {
   const f = geojson.features[0]
   assert.equal(f.geometry.type, 'Point')
   assert.ok(Math.abs(f.properties.bearingDeg - 90) < 2, `동쪽이어야 하는데 ${f.properties.bearingDeg}`)
-  assert.equal(f.properties.speedKt, 19) // 3칸 × 2km ÷ (5/60)h ÷ 1.852
+  assert.equal(f.properties.speedKt, 39) // 3칸 × 2km ÷ (5/60)h ÷ 1.852 = 38.9
   assert.equal(f.properties.matchScore, 0.81)
   assert.equal(f.properties.neighbourAgreement, 0.88)
 })

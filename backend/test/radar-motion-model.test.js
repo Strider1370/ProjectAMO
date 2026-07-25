@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  MOTION_MODEL_DEFAULTS, annotateNeighbourAgreement, cellKm, deriveMotionField, searchRadiusCells,
+  MOTION_MODEL_DEFAULTS, annotateNeighbourAgreement, cellKm, deriveMotionField, motionVectorsToGeoJSON,
+  searchRadiusCells, selectLeadingEdge,
 } from '../src/processors/radar-motion-model.js'
 
 // 매끈한 덩어리 몇 개를 놓고 통째로 옮긴 장을 만든다.
@@ -104,4 +105,69 @@ test('이웃 일치도는 튀는 벡터를 낮게 매기고 값은 바꾸지 않
   assert.ok(odd.neighbourAgreement < 0.5, `튀는 벡터 일치도 ${odd.neighbourAgreement}`)
   assert.ok(normal.neighbourAgreement > 0.8, `정상 벡터 일치도 ${normal.neighbourAgreement}`)
   assert.ok(annotated.every((v) => v.neighbourAgreement >= 0 && v.neighbourAgreement <= 1))
+})
+
+const EDGE = { ...BASE, edgeLookaheadKm: 6, minReflectivity: 2000, minSpeedKt: 3, spacingKm: 8, patchRadiusKm: 12 }
+
+// 왼쪽 절반만 에코인 장. 동쪽(+x)으로 움직이면 오른쪽 경계가 앞면이다.
+function halfField() {
+  const width = 40, height = 20
+  const values = new Int16Array(width * height)
+  for (let row = 0; row < height; row += 1) {
+    for (let col = 0; col < 20; col += 1) values[row * width + col] = 5000
+  }
+  return { width, height, stride: 4, values }
+}
+
+test('앞면만 남기고 에코 내부와 후면은 버린다', () => {
+  const current = halfField()
+  const mk = (col) => ({ col, row: 10, dx: 2, dy: 0, matchScore: 0.9, neighbourAgreement: 1 })
+  const kept = selectLeadingEdge([mk(5), mk(19), mk(10)], current, EDGE)
+  assert.deepEqual(kept.map((v) => v.col), [19])
+})
+
+test('최소 속도 미만은 앞면 판정에서 제외한다', () => {
+  const current = halfField()
+  // 2km 칸, 5분 → 1칸이 약 12.9 kt. 0.2칸은 약 2.6 kt로 3 kt 미만이다.
+  const slow = { col: 19, row: 10, dx: 0.2, dy: 0, matchScore: 0.9, neighbourAgreement: 1 }
+  assert.deepEqual(selectLeadingEdge([slow], current, EDGE), [])
+})
+
+test('격자 밖을 내다보는 벡터는 앞면으로 치지 않는다', () => {
+  const current = halfField()
+  // col 39는 오른쪽 끝. 3칸 앞은 격자 밖이다 — 에코 없음으로 오인하면 안 된다.
+  const atEdge = { col: 39, row: 10, dx: 2, dy: 0, matchScore: 0.9, neighbourAgreement: 1 }
+  assert.deepEqual(selectLeadingEdge([atEdge], current, EDGE), [])
+})
+
+test('GeoJSON은 Point와 방위·속도를 낸다', () => {
+  const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 - y * 0.001 })
+  const geojson = motionVectorsToGeoJSON(
+    [{ col: 10, row: 10, dx: 3, dy: 0, matchScore: 0.812, neighbourAgreement: 0.875 }],
+    { gridToLatLon, workStride: 4, frameIntervalMs: 300000 },
+  )
+  assert.equal(geojson.type, 'FeatureCollection')
+  const f = geojson.features[0]
+  assert.equal(f.geometry.type, 'Point')
+  assert.ok(Math.abs(f.properties.bearingDeg - 90) < 2, `동쪽이어야 하는데 ${f.properties.bearingDeg}`)
+  assert.equal(f.properties.speedKt, 39) // 3칸 × 2km ÷ (5/60)h ÷ 1.852 = 38.9
+  assert.equal(f.properties.matchScore, 0.81)
+  assert.equal(f.properties.neighbourAgreement, 0.88)
+})
+
+test('남쪽으로 가는 벡터는 방위 180 근처를 낸다', () => {
+  const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 - y * 0.001 })
+  const geojson = motionVectorsToGeoJSON(
+    [{ col: 10, row: 10, dx: 0, dy: 3, matchScore: 0.8, neighbourAgreement: 0.8 }],
+    { gridToLatLon, workStride: 4, frameIntervalMs: 300000 },
+  )
+  assert.ok(Math.abs(geojson.features[0].properties.bearingDeg - 180) < 2)
+})
+
+test('좌표를 못 구하는 벡터는 조용히 버린다', () => {
+  const geojson = motionVectorsToGeoJSON(
+    [{ col: 10, row: 10, dx: 3, dy: 0, matchScore: 0.5, neighbourAgreement: 0.5 }],
+    { gridToLatLon: () => ({ lon: NaN, lat: NaN }), workStride: 4, frameIntervalMs: 300000 },
+  )
+  assert.deepEqual(geojson.features, [])
 })
