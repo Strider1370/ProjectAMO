@@ -44,7 +44,7 @@ test('a parse failure is reported as failed with its reason', async () => {
 test('one failing site does not discard the healthy sites', async () => {
   const published = []
   const result = await runEchoTop({
-    config: { radar_echo_top: { enabled: true, sites: ['AAA', 'BBB'], threshold_dbz: 18, concurrency: 2, timeout_ms: 1000, retry: 0, delay_minutes: 15, max_frames: 3, stride: 4 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
+    config: { radar_echo_top: { enabled: true, sites: ['AAA', 'BBB'], threshold_dbz: 18, concurrency: 2, timeout_ms: 1000, retry: 0, delay_minutes: 15, max_frames: 3 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
     fetchFile: async (stn) => (stn === 'BBB' ? null : Buffer.from('x')),
     parseVolume: async () => goodVolume,
     publish: (payload) => { published.push(payload); return { tm: payload.tm } },
@@ -58,7 +58,7 @@ test('one failing site does not discard the healthy sites', async () => {
 test('when no site produces a valid frame nothing is published', async () => {
   const published = []
   const result = await runEchoTop({
-    config: { radar_echo_top: { enabled: true, sites: ['AAA'], threshold_dbz: 18, concurrency: 1, timeout_ms: 1000, retry: 0, delay_minutes: 15, max_frames: 3, stride: 4 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
+    config: { radar_echo_top: { enabled: true, sites: ['AAA'], threshold_dbz: 18, concurrency: 1, timeout_ms: 1000, retry: 0, delay_minutes: 15, max_frames: 3 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
     fetchFile: async () => null,
     parseVolume: async () => goodVolume,
     publish: (payload) => { published.push(payload); return { tm: payload.tm } },
@@ -70,7 +70,7 @@ test('when no site produces a valid frame nothing is published', async () => {
 
 test('an empty site list fails loudly instead of publishing an empty frame', async () => {
   const result = await runEchoTop({
-    config: { radar_echo_top: { enabled: true, sites: [], concurrency: 1, timeout_ms: 1, retry: 0, delay_minutes: 15, max_frames: 3, stride: 4 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
+    config: { radar_echo_top: { enabled: true, sites: [], concurrency: 1, timeout_ms: 1, retry: 0, delay_minutes: 15, max_frames: 3 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
     now: () => new Date(Date.UTC(2026, 6, 25, 11, 50)),
   })
   assert.equal(result.saved, false)
@@ -80,7 +80,7 @@ test('an empty site list fails loudly instead of publishing an empty frame', asy
 test('published frame bounds match radar bounds exactly', async () => {
   const published = []
   await runEchoTop({
-    config: { radar_echo_top: { enabled: true, sites: ['AAA'], threshold_dbz: 18, concurrency: 1, timeout_ms: 1000, retry: 0, delay_minutes: 15, max_frames: 3, stride: 4 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
+    config: { radar_echo_top: { enabled: true, sites: ['AAA'], threshold_dbz: 18, concurrency: 1, timeout_ms: 1000, retry: 0, delay_minutes: 15, max_frames: 3 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
     fetchFile: async () => Buffer.from('x'),
     parseVolume: async () => goodVolume,
     publish: (payload) => { published.push(payload); return { tm: payload.tm } },
@@ -117,7 +117,7 @@ test('only unpublished frames are backfilled', () => {
 test('backfill collects the gaps oldest-first and never re-fetches what exists', async () => {
   const published = []
   const result = await backfill({
-    config: { radar_echo_top: { enabled: true, sites: ['AAA'], threshold_dbz: 18, concurrency: 1, timeout_ms: 1000, retry: 0, delay_minutes: 10, max_frames: 4, stride: 4 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
+    config: { radar_echo_top: { enabled: true, sites: ['AAA'], threshold_dbz: 18, concurrency: 1, timeout_ms: 1000, retry: 0, delay_minutes: 10, max_frames: 4 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
     readMeta: () => ({ frames: [{ tm: '202607260005' }] }),
     // 파일에 요청 tm을 실어 보내고, 파서가 그 시각을 관측시각으로 되돌려준다.
     // 이러면 각 프레임이 자기 시각의 자료로만 발행되는지 실제로 검증된다.
@@ -139,7 +139,7 @@ test('backfill collects the gaps oldest-first and never re-fetches what exists',
 
 test('backfill reports already complete when every frame exists', async () => {
   const result = await backfill({
-    config: { radar_echo_top: { enabled: true, sites: ['AAA'], threshold_dbz: 18, concurrency: 1, timeout_ms: 1000, retry: 0, delay_minutes: 10, max_frames: 2, stride: 4 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
+    config: { radar_echo_top: { enabled: true, sites: ['AAA'], threshold_dbz: 18, concurrency: 1, timeout_ms: 1000, retry: 0, delay_minutes: 10, max_frames: 2 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
     readMeta: () => ({ frames: [{ tm: '202607260020' }, { tm: '202607260015' }] }),
     now: () => new Date(Date.UTC(2026, 6, 25, 15, 30)),
   })

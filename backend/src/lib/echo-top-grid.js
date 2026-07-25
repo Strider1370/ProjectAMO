@@ -1,5 +1,5 @@
 // Echo Top 합성 격자 — 기존 HSR 레이더 합성 격자(2305×2881, 0.5 km LCC)를
-// stride 4로 솎은 2 km 격자. 같은 투영을 쓰므로 Echo Top 이미지가
+// stride 2로 솎은 1 km 격자. 같은 투영을 쓰므로 Echo Top 이미지가
 // 레이더 이미지와 경계·픽셀 정렬이 정확히 일치한다.
 import { gridToLatLon, latLonToGrid } from '../parsers/radar-echo-parser.js'
 

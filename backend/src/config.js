@@ -162,7 +162,7 @@ export const radar_echo_top = {
   // Task 1 실측으로 확정한 목록. 빈 값이면 프로세서가 명시적으로 실패한다.
   sites: (process.env.RADAR_QCD_SITES || '').split(',').map((s) => s.trim()).filter(Boolean),
   threshold_dbz: 18,
-  stride: 4,          // HSR 0.5 km 격자를 4칸씩 솎아 2 km 합성 격자를 만든다.
+  // 합성 격자 해상도는 lib/echo-top-grid.js의 ECHO_TOP_GRID가 정한다(설정값 아님).
   concurrency: 4,     // 한 프레임에서 동시에 받는 사이트 수.
   timeout_ms: 45000,
   retry: 1,
