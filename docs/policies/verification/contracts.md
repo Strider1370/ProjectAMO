@@ -19,6 +19,7 @@ Run a focused contract with `npm run dev:contract -- --grep <id>`. The command c
 
 | Contract | Preconditions | Status |
 | --- | --- | --- |
+| `echo-top` | `echo-top.spec.mjs` intercepts `/data/radar/echotop/echotop_meta.json`, the overlay WebP, and `/api/radar/echo-top-point`; radar `echo_meta.json` supplies the 5-minute axis | **not passing** — spec written 2026-07-26, selector alignment unfinished, so it currently fails and would break a full contract run. Covers: default OFF, legend carrying `재산출 · 18 dBZ · MSL`, no-data note when the selected time has no frame, partial coverage, click detail (FL / ft MSL / interpolated vs conservative floor), null `observedAt` producing no dangling `관측` label, and toggle-off clearing layer and detail. The last two exist because both were real defects found in review. See `docs/superpowers/status/radar-derived-echo-top.status.md` Gate 5. |
 
 ## Phase A coverage and legacy mapping
 
