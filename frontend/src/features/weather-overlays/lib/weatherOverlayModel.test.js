@@ -84,7 +84,7 @@ test('buildWeatherOverlayModel selects latest visible timeline frame by default'
   assert.equal(model.lightningLegendEntries[0].iconId, 'lightning-0-10')
 })
 
-test('temporarily suppresses motion metadata for the actually rendered radar frame', () => {
+test('uses the actually rendered radar frame\'s own motion, not an earlier stale one', () => {
   const selectedMs = Date.UTC(2026, 4, 14, 3, 7)
   const model = buildWeatherOverlayModel({
     echoMeta: { frames: [
@@ -100,8 +100,8 @@ test('temporarily suppresses motion metadata for the actually rendered radar fra
   })
 
   assert.equal(model.radarFrame.tm, '202605141205')
-  assert.equal(model.radarMotion.dataUrl, null)
-  assert.equal(model.radarMotion.observedAtMs, null)
+  assert.equal(model.radarMotion.dataUrl, '/exact.geojson')
+  assert.equal(model.radarMotion.observedAtMs, Date.UTC(2026, 4, 14, 3, 5))
   assert.equal(model.lightningReferenceTimeMs, model.radarFrame.timeMs)
 })
 
@@ -120,6 +120,24 @@ test('hides stale radar motion and preserves the live lightning reference when r
 
   assert.equal(model.radarMotion.visible, false)
   assert.equal(model.lightningReferenceTimeMs, nowMs)
+})
+
+test('시각이 정확히 맞으면 이동 화살표 자료를 노출한다', () => {
+  const observedAtMs = Date.UTC(2026, 4, 14, 3, 5)
+  const model = buildWeatherOverlayModel({
+    echoMeta: { frames: [
+      { tm: '202605141205', path: '/r.png', motion: { observedAtMs, comparedFromMs: observedAtMs - 300000, path: '/data/radar/motion_korea_202605141205.geojson' } },
+    ] },
+    satMeta: null, lightningData: { nationwide: { strikes: [] } }, sigwxLowData: null, sigwxLowHistoryData: [],
+    sigmetData: { items: [] }, airmetData: { items: [] },
+    visibility: { radar: true }, selectedWeatherTimeMs: observedAtMs,
+    sigwxHistoryIndex: 0, sigwxFilter, hiddenAdvisoryKeys, selectedSigwxFrontMeta: null, selectedSigwxCloudMeta: null,
+    lightningReferenceTimeMs: observedAtMs, blinkLightning: false, lightningBlinkOff: false,
+  })
+
+  assert.equal(model.radarMotion.dataUrl, '/data/radar/motion_korea_202605141205.geojson')
+  assert.equal(model.radarMotion.observedAtMs, observedAtMs)
+  assert.equal(model.radarMotion.visible, true)
 })
 
 // 해외 레이더(RainViewer)는 최근 2시간치뿐. 위성(6시간) 등이 타임라인을 더 과거로 늘리면,

@@ -9,9 +9,9 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const source = fs.readFileSync(path.join(here, 'WeatherLegends.jsx'), 'utf8')
 const css = fs.readFileSync(path.join(here, '../map/MapView.css'), 'utf8')
 
-test('radar legend temporarily hides the motion toggle', () => {
-  assert.match(source, /const radarMotionEnabled = false/)
-  assert.match(source, /radarMotionEnabled && radarLegendVisible/)
+test('radar legend shows the motion toggle', () => {
+  assert.doesNotMatch(source, /const radarMotionEnabled/)
+  assert.match(source, /이동 화살표 표시/)
   assert.match(css, /\.map-view-wrapper \.map-right-legends > \* \{[\s\S]*?pointer-events:\s*auto/)
 })
 

@@ -3,15 +3,13 @@ import path from 'path'
 import config from '../config.js'
 import { gridToLatLon, parseRadarBinary, renderFullCoverageEcho } from '../parsers/radar-echo-parser.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
-import { createMotionInput, deserializeMotionInput, deriveObservedMotion, serializeMotionInput } from './radar-motion.js'
+import { createMotionInput, deriveMotionGeoJSON, deserializeMotionInput, serializeMotionInput } from './radar-motion.js'
 import { isDemoMode } from '../dev/demo-mode.js'
 
 let backgroundFillRunning = false;
 const RENDER_VERSION = "rainrate-reproject-full-v5-motion-dense";
 const IMMEDIATE_FRAME_COUNT = 4;
 const MOTION_INPUT_FILENAME = 'motion_input_latest.bin';
-const MOTION_MAX_CALCULATION_MS = 30 * 1000;
-const MOTION_ENABLED = false;
 
 function ensureRadarDir() {
   const radarDir = path.join(config.storage.base_path, "radar");
@@ -146,13 +144,22 @@ function attachMotionFrame(radarDir, frame, previousInput, currentInput) {
     const startedAt = Date.now();
     const observedAtMs = frameTmToMs(currentInput.tm);
     const comparedFromMs = frameTmToMs(previousInput.tm);
-    const geojson = deriveObservedMotion(previousInput, currentInput, {
-      observedAtMs,
-      comparedFromMs,
+    const settings = {
+      workStride: config.radar_echo_motion.work_stride,
+      patchRadiusKm: config.radar_echo_motion.patch_radius_km,
+      spacingKm: config.radar_echo_motion.spacing_km,
+      maxSpeedKmh: config.radar_echo_motion.max_speed_kmh,
+      minSpeedKt: config.radar_echo_motion.min_speed_kt,
+      edgeLookaheadKm: config.radar_echo_motion.edge_lookahead_km,
+      minReflectivity: config.radar_echo_motion.min_reflectivity,
+      frameIntervalMs: 5 * 60 * 1000,
+    };
+    const geojson = deriveMotionGeoJSON(previousInput, currentInput, {
+      settings,
       gridToLatLon,
-      deadlineAtMs: startedAt + MOTION_MAX_CALCULATION_MS,
+      deadlineAtMs: startedAt + config.radar_echo_motion.max_calculation_ms,
     });
-    if (Date.now() - startedAt > MOTION_MAX_CALCULATION_MS || !geojson.features.length) {
+    if (!geojson.features.length) {
       console.warn(`radar_echo: motion unavailable for ${currentInput.tm}`);
       return frame;
     }
@@ -180,7 +187,9 @@ async function renderFrame(radarDir, tm) {
   if (!gzBuffer) return null;
 
   const { refl, nx, ny } = parseRadarBinary(gzBuffer);
-  const motionInput = MOTION_ENABLED ? createMotionInput(refl, { nx, ny }, { tm }) : null;
+  const motionInput = config.radar_echo_motion.enabled
+    ? createMotionInput(refl, { nx, ny }, { tm, stride: config.radar_echo_motion.work_stride })
+    : null;
   const nationwide = await renderFullCoverageEcho(refl);
   fs.writeFileSync(filePath, nationwide.pngBuffer);
 
@@ -308,7 +317,7 @@ async function process() {
 
   const immediateTms = missingTms.slice(-IMMEDIATE_FRAME_COUNT);
   const deferredTms = missingTms.slice(0, -IMMEDIATE_FRAME_COUNT);
-  let previousInput = MOTION_ENABLED ? loadLatestMotionInput(radarDir) : null;
+  let previousInput = config.radar_echo_motion.enabled ? loadLatestMotionInput(radarDir) : null;
 
   for (const tm of immediateTms) {
     try {
@@ -317,7 +326,7 @@ async function process() {
         const frame = attachMotionFrame(radarDir, rendered.frame, previousInput, rendered.motionInput);
         previousInput = rendered.motionInput;
         existingFrames.set(tm, frame);
-        if (MOTION_ENABLED && tm === latestTm) saveLatestMotionInput(radarDir, rendered.motionInput);
+        if (config.radar_echo_motion.enabled && tm === latestTm) saveLatestMotionInput(radarDir, rendered.motionInput);
       }
     } catch (err) {
       console.warn(`radar_echo: failed to render nationwide frame ${tm}:`, err.message);

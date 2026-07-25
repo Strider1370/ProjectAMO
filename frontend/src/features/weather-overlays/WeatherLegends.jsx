@@ -80,8 +80,6 @@ function WeatherLegends({
     if (controlledOpen === undefined) setUncontrolledOpen(resolved)
     onOpenChange?.(resolved)
   }
-  const radarMotionEnabled = false
-
   const panel = (
     <div className="map-right-legends">
       {radarLegendVisible && (
@@ -99,7 +97,7 @@ function WeatherLegends({
               </div>
             ))}
           </div>
-          {radarMotionEnabled && radarLegendVisible && <div className="radar-motion-control">
+          {radarLegendVisible && <div className="radar-motion-control">
             <button
               type="button"
               className="radar-motion-toggle"
@@ -336,7 +334,7 @@ function WeatherLegends({
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
         ))}
-        {radarMotionEnabled && radarLegendVisible && (
+        {radarLegendVisible && (
           <div className="radar-motion-control radar-motion-control--mobile">
             <button
               type="button"

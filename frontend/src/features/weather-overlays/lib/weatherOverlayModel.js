@@ -9,8 +9,6 @@ import { phenomenonText } from '../../../shared/weather/phenomenonKo.js'
 import { sigwxLowToMapboxData } from './sigwxData.js'
 import { LIGHTNING_AGE_BANDS, createLightningGeoJSON } from './lightningLayers.js'
 
-export const RADAR_MOTION_ENABLED = false
-
 export function parseFrameTmToMs(tm) {
   if (!tm || !/^\d{12}$/.test(String(tm))) return null
   const raw = String(tm)
@@ -225,12 +223,12 @@ export function buildWeatherOverlayModel({
     && Number.isFinite(latestRadarTimeMs)
     && latestRadarTimeMs - radarReferenceTimeMs > 20 * 60 * 1000
   const radarMotion = {
-    visible: Boolean(RADAR_MOTION_ENABLED && visibility.radar && hasExactMotion && !motionStale),
+    visible: Boolean(visibility.radar && hasExactMotion && !motionStale),
     stale: Boolean(motionStale),
     frameTm: radarFrame?.tm ?? null,
-    dataUrl: RADAR_MOTION_ENABLED && hasExactMotion ? motion.path : null,
-    observedAtMs: RADAR_MOTION_ENABLED && hasExactMotion ? motion.observedAtMs : null,
-    comparedFromMs: RADAR_MOTION_ENABLED && hasExactMotion ? motion.comparedFromMs ?? null : null,
+    dataUrl: hasExactMotion ? motion.path : null,
+    observedAtMs: hasExactMotion ? motion.observedAtMs : null,
+    comparedFromMs: hasExactMotion ? motion.comparedFromMs ?? null : null,
   }
   const resolvedLightningReferenceTimeMs = visibility.radar && Number.isFinite(radarReferenceTimeMs)
     ? radarReferenceTimeMs
