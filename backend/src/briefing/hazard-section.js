@@ -53,12 +53,13 @@ function severityScore(h) {
 }
 
 // airportWarnings: 이미 hazard 유사 shape로 변환된 공항경보(경로 지오 없음, level 포함).
-export function buildHazardSection({ sigmet, airmet, axis, etd, eta, cruiseAltitudeFt, enRouteRange = null, airportWarnings = [] }) {
+export function buildHazardSection({ sigmet, airmet, axis, etd, eta, cruiseAltitudeFt, enRouteRange = null, airportWarnings = [], typhoons = [] }) {
   const ctx = { axis, etd, eta, cruiseAltitudeFt, enRouteRange }
   const hazards = [
     ...matchItems(sigmet, 'SIGMET', ctx).map((h) => ({ ...h, level: hazardLevel(h) })),
     ...matchItems(airmet, 'AIRMET', ctx).map((h) => ({ ...h, level: hazardLevel(h) })),
     ...airportWarnings,
+    ...typhoons.map((h) => ({ ...h, level: hazardLevel(h) })),
   ]
   hazards.sort((a, b) => severityScore(b) - severityScore(a))
   const level = hazards.reduce((acc, h) => (LEVEL_RANK[h.level] > LEVEL_RANK[acc] ? h.level : acc), 'green')

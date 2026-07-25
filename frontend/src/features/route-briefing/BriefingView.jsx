@@ -184,7 +184,10 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
     // 경로위험 = NM 구간, 공항경보 = "RKPC 도착"(scope 있고 NM 없음).
     const locText = h.airportScope
       ? `${h.airportScope} ${roleLabel(h.role) || ''}`.trim()
-      : nm ? `${nm.startNm}–${nm.endNm}NM` : null
+      : nm ? `${nm.startNm}–${nm.endNm}NM`
+      : h.airports?.length ? `공항 ${h.airports.join(', ')}`
+      : h.airportsUnknown?.length ? `공항 좌표 없음 ${h.airportsUnknown.join(', ')}`
+      : null
     const timeText = `${formatBriefingTime(h.validFrom, tz, { withDate: true })}~${formatBriefingTime(h.validTo, tz, { withDate: true })}`
     return (
       <div key={i} className="bv-haz-row" style={{ borderLeftColor: h.level === 'red' ? 'var(--level-red)' : 'var(--level-amber)' }}>

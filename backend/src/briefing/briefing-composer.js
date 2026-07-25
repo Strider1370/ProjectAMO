@@ -3,6 +3,7 @@ import { levelForCategory, to3Level } from './flight-category.js'
 import { buildDestination } from './taf-window.js'
 import { buildConfidenceWarnings } from './confidence.js'
 import { buildHazardSection } from './hazard-section.js'
+import { matchTyphoonHazards } from './typhoon-briefing.js'
 import { summarizeEnrouteModel } from './enroute-model.js'
 import { loadRouteCrossSection } from './enroute-cross-section.js'
 import { buildRouteWeatherLegs } from './route-weather-legs.js'
@@ -11,6 +12,9 @@ import { timeWindowsOverlap } from './geo-time-match.js'
 import { matchRouteNotams } from './notam-briefing.js'
 import { attachActiveAipConstraints } from './aip-airway-constraints.js'
 import { buildBriefingProvenance } from './briefing-provenance.js'
+import { airports as AIRPORT_LIST } from '../config.js'
+
+const AIRPORT_BY_ICAO = new Map(AIRPORT_LIST.map((a) => [a.icao, a]))
 
 function airportRoles(request) {
   const roles = [
@@ -97,6 +101,19 @@ export function composeBriefing(request, data) {
     cruiseAltitudeFt,
     enRouteRange: request.routeModel?.enRouteRange ?? null,
     airportWarnings: buildAirportWarningHazards(data?.warning, airportRoles(request), request.etd, request.eta),
+    typhoons: matchTyphoonHazards({
+      typhoons: data?.typhoon?.typhoons ?? [],
+      axis,
+      etd: request.etd,
+      eta: request.eta,
+      enRouteRange: request.routeModel?.enRouteRange ?? null,
+      airports: airportRoles(request).map(({ role, icao }) => ({
+        role,
+        icao,
+        lat: AIRPORT_BY_ICAO.get(icao)?.lat,
+        lon: AIRPORT_BY_ICAO.get(icao)?.lon,
+      })),
+    }),
   })
   const aipConstraints = attachActiveAipConstraints({ dataRoot: data?.dataRoot, routeModel: request.routeModel })
 
