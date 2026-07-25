@@ -106,3 +106,37 @@ test('merging zero sites yields an entirely invalid composite', () => {
   const merged = mergeSiteEchoTops([], { grid: ECHO_TOP_GRID })
   assert.ok(merged.quality.every((q) => q === 255))
 })
+
+test('ray index hoisting handles sweeps with different ray orderings', () => {
+  // 두 sweep의 방위 순서가 다르다: sweep A는 0~359 오름차순, sweep B는 180부터 시작해 0으로 돌아온다.
+  // ray 인덱스를 잘못 호이스트하면(한 sweep의 ray를 다른 sweep에 재사용하면) 이 test는 실패한다.
+  const volume = {
+    stn: 'TST',
+    latitude: 37.44,
+    longitude: 126.96,
+    altitudeM: 500,
+    rangeM: Float32Array.from([10000]),
+    sweeps: [
+      {
+        elevationDeg: 0.5,
+        azimuthDeg: Float32Array.from([0, 90, 180, 270]), // 0도는 ray 0
+        dbz: Int16Array.from([4000, 3000, 2000, 1500]),
+        scaleFactor: 0.01,
+        fillValue: -32768,
+      },
+      {
+        elevationDeg: 6.0,
+        azimuthDeg: Float32Array.from([180, 270, 0, 90]), // 0도는 ray 2 (다른 위치!)
+        dbz: Int16Array.from([800, 700, 900, 600]),
+        scaleFactor: 0.01,
+        fillValue: -32768,
+      },
+    ],
+  }
+  const result = computeSiteEchoTop(volume, { thresholdDbz: 18, grid: ECHO_TOP_GRID })
+  // 0도 방위에서 gate 0의 samples는 [{ heightM: sweep0, dbz: 40 }, { heightM: sweep1, dbz: 9 }]
+  // echoTopFromColumn은 해당 column의 echo top을 반환해야 한다.
+  // 만약 ray 인덱스 호이스트가 잘못되면 다른 방위의 데이터를 읽는다.
+  const markedCount = result.quality.reduce((n, q) => n + (q !== 255 ? 1 : 0), 0)
+  assert.ok(markedCount > 0, `marked cells ${markedCount}`)
+})

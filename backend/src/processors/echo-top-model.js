@@ -67,32 +67,55 @@ export function computeSiteEchoTop(volume, { thresholdDbz = 18, grid = ECHO_TOP_
   // 방위 인덱스는 sweep마다 ray 수가 다를 수 있으므로 1도 단위로 정규화해 column을 맞춘다.
   const azimuthBins = 360
 
+  // 빔 높이와 지면 거리는 bin과 무관하므로 미리 계산한다.
+  // beamHeightMsl[gate][sweep] = beamHeightMsl(rangeM[gate], sweep.elevationDeg, radarAltitudeM)
+  // groundRangeM[gate] = rangeM[gate] * cos(sweeps[0].elevationDeg)
+  const beamHeightCache = new Float32Array(gateCount * sweeps.length)
+  const groundRangeCache = new Float32Array(gateCount)
+  for (let gate = 0; gate < gateCount; gate += 1) {
+    const r = volume.rangeM[gate]
+    if (Number.isFinite(r) && r > 0) {
+      groundRangeCache[gate] = r * Math.cos(sweeps[0].elevationDeg * DEG2RAD)
+      for (let s = 0; s < sweeps.length; s += 1) {
+        beamHeightCache[gate * sweeps.length + s] = beamHeightMsl(r, sweeps[s].elevationDeg, volume.altitudeM)
+      }
+    }
+  }
+
   for (let bin = 0; bin < azimuthBins; bin += 1) {
+    // ray 인덱스는 gate와 무관하다 — bin마다 한 번만 찾는다.
+    const rayIndexBySweep = new Int16Array(sweeps.length).fill(-1)
+    for (let s = 0; s < sweeps.length; s += 1) {
+      const sweep = sweeps[s]
+      const rayCount = sweep.azimuthDeg.length
+      if (!rayCount) continue
+      for (let ray = 0; ray < rayCount; ray += 1) {
+        if (Math.round(sweep.azimuthDeg[ray]) % 360 === bin) { rayIndexBySweep[s] = ray; break }
+      }
+    }
+
     for (let gate = 0; gate < gateCount; gate += 1) {
       const r = volume.rangeM[gate]
       if (!Number.isFinite(r) || r <= 0) continue
 
       const samples = []
-      for (const sweep of sweeps) {
-        const rayCount = sweep.azimuthDeg.length
-        if (!rayCount) continue
-        let rayIndex = -1
-        for (let ray = 0; ray < rayCount; ray += 1) {
-          if (Math.round(sweep.azimuthDeg[ray]) % 360 === bin) { rayIndex = ray; break }
-        }
+      for (let s = 0; s < sweeps.length; s += 1) {
+        const rayIndex = rayIndexBySweep[s]
         if (rayIndex === -1) continue
+        const sweep = sweeps[s]
         const raw = sweep.dbz[rayIndex * gateCount + gate]
         if (raw === undefined || raw === sweep.fillValue) continue
         const dbz = raw * (sweep.scaleFactor ?? 1)
         if (!Number.isFinite(dbz)) continue
-        samples.push({ heightM: beamHeightMsl(r, sweep.elevationDeg, volume.altitudeM), dbz })
+        const heightMsl = beamHeightCache[gate * sweeps.length + s]
+        samples.push({ heightM: heightMsl, dbz })
       }
       if (!samples.length) continue
 
       const solved = echoTopFromColumn(samples, { thresholdDbz })
       if (!solved) continue
 
-      const groundRange = r * Math.cos(sweeps[0].elevationDeg * DEG2RAD)
+      const groundRange = groundRangeCache[gate]
       const { lat, lon } = offsetLatLon(volume.latitude, volume.longitude, bin, groundRange)
       const index = echoTopIndexForLatLon(lat, lon, grid)
       if (index === null) continue
