@@ -54,3 +54,55 @@ test('a sample exactly at the threshold counts as an echo', () => {
   assert.equal(result.quality, ECHO_TOP_QUALITY.BEAM_CENTER_FLOOR)
   assert.equal(result.heightM, 1500)
 })
+
+import { ECHO_TOP_GRID, echoTopIndexForLatLon } from '../src/lib/echo-top-grid.js'
+import { computeSiteEchoTop, mergeSiteEchoTops } from '../src/processors/echo-top-model.js'
+
+// 관악산 부근에 가상 레이더 하나. 2개 sweep, 1개 방위, 2개 range gate.
+function fakeVolume({ stn = 'TST', dbzHigh = 4000, dbzLow = 800 } = {}) {
+  return {
+    stn,
+    latitude: 37.44,
+    longitude: 126.96,
+    altitudeM: 500,
+    rangeM: Float32Array.from([10000, 20000]),
+    sweeps: [
+      { elevationDeg: 0.5, azimuthDeg: Float32Array.from([0]), dbz: Int16Array.from([dbzHigh, dbzHigh]), scaleFactor: 0.01, fillValue: -32768 },
+      { elevationDeg: 6.0, azimuthDeg: Float32Array.from([0]), dbz: Int16Array.from([dbzLow, dbzLow]), scaleFactor: 0.01, fillValue: -32768 },
+    ],
+  }
+}
+
+test('site echo top marks cells along the observed ray and leaves the rest invalid', () => {
+  const result = computeSiteEchoTop(fakeVolume(), { thresholdDbz: 18, grid: ECHO_TOP_GRID })
+  assert.equal(result.heightM.length, ECHO_TOP_GRID.nx * ECHO_TOP_GRID.ny)
+  const marked = result.quality.reduce((n, q) => n + (q !== 255 ? 1 : 0), 0)
+  assert.ok(marked > 0 && marked < 50, `marked ${marked}`)
+})
+
+test('fill values are excluded from the echo top', () => {
+  const volume = fakeVolume()
+  volume.sweeps[0].dbz = Int16Array.from([-32768, -32768])
+  volume.sweeps[1].dbz = Int16Array.from([-32768, -32768])
+  const result = computeSiteEchoTop(volume, { thresholdDbz: 18, grid: ECHO_TOP_GRID })
+  assert.equal(result.quality.reduce((n, q) => n + (q !== 255 ? 1 : 0), 0), 0)
+})
+
+test('merge keeps the higher echo top and records which site produced it', () => {
+  const size = ECHO_TOP_GRID.nx * ECHO_TOP_GRID.ny
+  const low = { stn: 'AAA', heightM: new Float32Array(size), quality: new Uint8Array(size).fill(255) }
+  const high = { stn: 'BBB', heightM: new Float32Array(size), quality: new Uint8Array(size).fill(255) }
+  const index = echoTopIndexForLatLon(37.5, 127.0)
+  low.heightM[index] = 5000; low.quality[index] = 1
+  high.heightM[index] = 9000; high.quality[index] = 0
+
+  const merged = mergeSiteEchoTops([low, high], { grid: ECHO_TOP_GRID })
+  assert.equal(merged.heightM[index], 9000)
+  assert.equal(merged.quality[index], 0)
+  assert.equal(merged.siteIndex[index], 1)
+})
+
+test('merging zero sites yields an entirely invalid composite', () => {
+  const merged = mergeSiteEchoTops([], { grid: ECHO_TOP_GRID })
+  assert.ok(merged.quality.every((q) => q === 255))
+})
