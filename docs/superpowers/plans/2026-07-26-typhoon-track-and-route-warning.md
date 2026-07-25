@@ -24,6 +24,11 @@
 - 태풍 이름은 경로 응답에 없다. `typ_lst.php?disp=1`에서 받아 태풍번호로 잇는다. 이름을 못 받으면 번호만 표시하고 태풍을 빠뜨리지 않는다.
 - 예보 간격은 태풍마다 다르다(6시간 또는 12시간). 유효구간 반폭을 상수로 고정하지 않는다.
 - `EFF`(한반도영향)는 진행 중 갱신 여부가 미확인이다. 판정에도 표시에도 쓰지 않는다.
+- **결측 센티널은 `-999`만이 아니다.** 실측상 `RAD`가 `-9`인 행이 2018 픽스처 50행 중 40행이다. 이 21개 컬럼에 정당한 음수는 없으므로 **음수는 전부 결측**으로 처리한다.
+- 저장 타입 `typhoon`을 `backend/src/store.js`의 `TYPES`와 `cache`에 **등록해야 한다.** 등록 없이 `store.save('typhoon', …)`를 부르면 `Unsupported type` 예외가 난다.
+- 스냅샷 최상위 시각 필드명은 **`fetched_at`(스네이크)** 이다. `store.js`의 `canonicalize`가 해시에서 제외하는 키가 `fetched_at`이라, 카멜로 쓰면 내용이 그대로여도 매 주기 새 파일이 쌓인다.
+- 색은 `docs/policies/design/design-language.md`를 따른다. **`#2563eb`/`#1d4ed8`/`#1e40af`는 금지색**이다(`frontend/scripts/lint-colors.mjs:32`). CSS 색은 토큰(`--text-2`, `--text-3` 등)을 쓴다.
+- Playwright 프로젝트는 desktop / ipad-landscape / mobile 3개다(`frontend/playwright.config.js:24-26`). 테스트 수를 셀 때 3배를 감안한다.
 - `MapView.jsx`에는 컴포넌트 합성만 추가한다. 새 상태나 `useEffect`를 넣지 않는다.
 - 인증키는 `config.api.auth_key`(기존 `KMA_AVIATION_AUTH_KEY`)를 쓴다. 새 환경변수를 만들지 않는다.
 - 커밋 메시지는 한국어 본문 + 영어 제목의 기존 관례를 따른다.
@@ -61,6 +66,7 @@
   - `parseTyphoonList(text: string): TyphoonListEntry[]`
   - `TyphoonListEntry = { year: number, number: number, active: boolean, name: string|null, nameEn: string|null }`
   - `groupByTyphoonNumber(rows: TyphoonRow[]): Map<number, TyphoonRow[]>`
+  - `isSameRow(a, b): boolean` — `validAt`+`seq`+`forecast` 값 비교. JSON 왕복 후에는 참조 비교가 무의미하므로 필요하다
   - `TyphoonRow = { forecast: boolean, year: number, number: number, seq: number, leadHours: number, analyzedAt: string, validAt: string, lat: number, lon: number, dir: string|null, speedKmh: number|null, pressureHpa: number|null, maxWindMs: number|null, errorRadiusKm: number|null, gale: Ring|null, storm: Ring|null, location: string }`
   - `Ring = { radiusKm: number, exceptionDir: string|null, exceptionRadiusKm: number|null }`
 
@@ -166,6 +172,18 @@ test('-999와 -는 결측이므로 null이 된다', () => {
   assert.equal(last.errorRadiusKm, 160)
 })
 
+test('-9도 결측이다 — 음수는 전부 null', () => {
+  const rows = parseTyphoonText(read('typhoon-multi-2018.txt'))
+  // 이 픽스처는 RAD가 -9인 행이 대부분이다. -999만 걸러내면 판정 반경이 9 km 줄어든다.
+  assert.ok(rows.some((r) => r.errorRadiusKm === null), '-9인 오차반경이 null이어야 한다')
+  for (const row of rows) {
+    assert.ok(row.errorRadiusKm === null || row.errorRadiusKm >= 0, '음수가 남으면 안 된다')
+    assert.ok(row.gale === null || row.gale.radiusKm >= 0)
+    assert.ok(row.gale === null || row.gale.exceptionRadiusKm === null || row.gale.exceptionRadiusKm >= 0)
+    assert.ok(row.storm === null || row.storm.radiusKm >= 0)
+  }
+})
+
 test('복수 태풍을 번호로 나눈다', () => {
   const rows = parseTyphoonText(read('typhoon-multi-2018.txt'))
   const grouped = groupByTyphoonNumber(rows)
@@ -224,11 +242,13 @@ Expected: FAIL — `Cannot find module '../src/parsers/typhoon-parser.js'`
 
 const HEAD_FIELDS = 18
 const TAIL_PATTERN = /^[A-Z-]+,-?\d+,?$/
-const MISSING_NUMBER = -999
 
+// 결측 센티널이 -999 하나가 아니다. 실측상 RAD가 -9인 행이 흔하다(2018 픽스처 50행 중 40행).
+// 이 21개 컬럼 중 정당하게 음수인 필드는 없으므로 음수는 전부 결측으로 본다.
+// -9를 숫자로 받으면 판정 반경이 9 km 조용히 줄어든다 — 스펙 §11의 금지사항(결측을 값으로 바꾸기)이다.
 function num(token) {
   const value = Number(token)
-  if (!Number.isFinite(value) || value === MISSING_NUMBER) return null
+  if (!Number.isFinite(value) || value < 0) return null
   return value
 }
 
@@ -290,6 +310,15 @@ export function parseTyphoonText(text) {
   return rows
 }
 
+// 스냅샷은 JSON으로 저장·전송되므로 current와 rows 안의 같은 행은 서로 다른 객체가 된다.
+// 참조 비교(===)는 언제나 false다. 값으로 비교해야 한다.
+export function isSameRow(a, b) {
+  return Boolean(a && b)
+    && a.validAt === b.validAt
+    && a.seq === b.seq
+    && Boolean(a.forecast) === Boolean(b.forecast)
+}
+
 export function groupByTyphoonNumber(rows) {
   const grouped = new Map()
   for (const row of rows) {
@@ -322,13 +351,13 @@ export function parseTyphoonList(text) {
   return list
 }
 
-export default { parseTyphoonText, parseTyphoonList, groupByTyphoonNumber }
+export default { parseTyphoonText, parseTyphoonList, groupByTyphoonNumber, isSameRow }
 ```
 
 - [ ] **Step 5: 통과를 확인한다**
 
 Run: `node --test backend/test/typhoon-parser.test.js`
-Expected: PASS — 10 tests
+Expected: PASS — 11 tests
 
 - [ ] **Step 6: 커밋**
 
@@ -556,10 +585,23 @@ export default { BEARING_BY_POINT, asymmetricPolygon, galePolygon, stormPolygon,
 Run: `node --test backend/test/typhoon-geometry.test.js`
 Expected: PASS — 10 tests
 
-- [ ] **Step 5: 커밋**
+- [ ] **Step 5: `@turf/turf`를 backend 의존성에 선언한다**
+
+`backend/package.json`은 `@turf/simplify`만 선언한다. 지금 `@turf/turf`가 해석되는 이유는 Node가 루트 `node_modules`까지 올라가기 때문이고, `npm --prefix backend ci`만 돌리는 환경에서 깨진다.
+
+`backend/package.json`의 `dependencies`에 추가:
+
+```json
+    "@turf/turf": "^7.3.5",
+```
+
+Run: `npm --prefix backend install && node --test backend/test/typhoon-geometry.test.js`
+Expected: PASS
+
+- [ ] **Step 6: 커밋**
 
 ```bash
-git add backend/src/briefing/typhoon-geometry.js backend/test/typhoon-geometry.test.js
+git add backend/src/briefing/typhoon-geometry.js backend/test/typhoon-geometry.test.js backend/package.json backend/package-lock.json
 git commit -m "feat(typhoon): build asymmetric wind rings from the bureau's own exception values"
 ```
 
@@ -569,6 +611,7 @@ git commit -m "feat(typhoon): build asymmetric wind rings from the bureau's own 
 
 **Files:**
 - Modify: `backend/src/config.js` — `api` 블록에 `typhoon_now_url`/`typhoon_list_url`, `schedule` 블록에 `typhoon_interval`
+- Modify: `backend/src/store.js:10,33` — `TYPES`와 `cache`에 `typhoon` 등록 (없으면 저장이 예외로 죽는다)
 - Create: `backend/src/processors/typhoon-processor.js`
 - Modify: `backend/src/index.js` — cron 등록
 - Modify: `backend/server.js` — `/api/typhoon` 라우트
@@ -578,14 +621,34 @@ git commit -m "feat(typhoon): build asymmetric wind rings from the bureau's own 
 - Consumes: Task 1의 `parseTyphoonText`, `groupByTyphoonNumber`, Task 2의 `errorConePolygon`/`galePolygon`/`stormPolygon`
 - Produces:
   - `process(): Promise<TyphoonSnapshot>`
-  - `buildSnapshot({ activeRows, names, fetchedAt }): TyphoonSnapshot`
+  - `buildSnapshot({ activeRows, names, fetched_at }): TyphoonSnapshot`
   - `currentTm(now?): string` — `YYYYMMDDHH00` (UTC 정시)
-  - `TyphoonSnapshot = { fetchedAt: string, status: 'ok'|'unavailable', typhoons: Typhoon[] }`
+  - `TyphoonSnapshot = { fetched_at: string, status: 'ok'|'unavailable', typhoons: Typhoon[] }`
+
+**필드명은 `fetched_at`(스네이크)이다.** `store.js`의 `canonicalize`가 해시 계산에서 제외하는 키가 `fetched_at`이라, 카멜로 쓰면 태풍 정보가 그대로여도 매 30분 해시가 달라져 새 파일이 쌓이고 회전한다.
   - `Typhoon = { number: number, year: number, seq: number, analyzedAt: string, current: TyphoonRow, rows: TyphoonRow[], geometry: { cone: Polygon|MultiPolygon|null, gale: Polygon|null, storm: Polygon|null } }`
 
 **도형은 백엔드가 만들어 스냅샷에 담는다.** 지도와 브리핑이 같은 폴리곤을 쓰고, 프론트가 좌표 계산을 다시 하지 않는다.
 
-- [ ] **Step 1: 설정을 추가한다**
+- [ ] **Step 1: 저장 타입을 등록한다**
+
+`backend/src/store.js:260`의 `save(type, data)`는 첫 줄에서 `if (!TYPES.includes(type)) throw new Error(...)`를 한다. 등록하지 않으면 30분마다 cron이 조용히 예외를 던지고 `/api/typhoon`은 영구히 503이다.
+
+`store.js:10`의 `TYPES` 배열 끝에 추가:
+
+```js
+'sigmet_overseas', 'typhoon']
+```
+
+`store.js:33`의 `cache` 객체에 추가:
+
+```js
+  typhoon: { hash: null, prev_data: null },
+```
+
+`FILE_PREFIX`는 `type.toUpperCase()` 폴백이 있어 추가하지 않아도 된다.
+
+- [ ] **Step 2: 설정을 추가한다**
 
 `backend/src/config.js`의 `api` 객체에 `kim_grid_url` 다음 줄로 추가:
 
@@ -602,7 +665,7 @@ git commit -m "feat(typhoon): build asymmetric wind rings from the bureau's own 
   typhoon_interval: '*/30 * * * *',
 ```
 
-- [ ] **Step 2: 실패하는 테스트를 쓴다**
+- [ ] **Step 3: 실패하는 테스트를 쓴다**
 
 `backend/test/typhoon-processor.test.js`:
 
@@ -620,15 +683,15 @@ const read = (name) => fs.readFileSync(path.join(dir, 'fixtures', name), 'utf8')
 const FETCHED = '2022-09-05T00:30:00.000Z'
 
 test('활성 태풍이 없으면 빈 목록이지만 상태는 정상이다', () => {
-  const snapshot = buildSnapshot({ activeRows: [], names: [], fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows: [], names: [], fetched_at: FETCHED })
   assert.equal(snapshot.status, 'ok')
   assert.deepEqual(snapshot.typhoons, [])
-  assert.equal(snapshot.fetchedAt, FETCHED)
+  assert.equal(snapshot.fetched_at, FETCHED)
 })
 
 test('한 응답의 복수 태풍을 번호별로 나눠 담는다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names: [], fetched_at: FETCHED })
   assert.deepEqual(snapshot.typhoons.map((t) => t.number), [19, 20])
   // mode=1이므로 태풍마다 과거 경로와 예보가 함께 들어 있어야 한다.
   for (const typhoon of snapshot.typhoons) {
@@ -639,7 +702,7 @@ test('한 응답의 복수 태풍을 번호별로 나눠 담는다', () => {
 
 test('현재 위치는 분석 행 중 가장 최근이다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names: [], fetched_at: FETCHED })
   const soulik = snapshot.typhoons.find((t) => t.number === 19)
   assert.equal(soulik.current.analyzedAt, '2018-08-22T00:00:00.000Z')
   assert.equal(soulik.current.forecast, false)
@@ -648,28 +711,28 @@ test('현재 위치는 분석 행 중 가장 최근이다', () => {
 test('이름을 태풍번호로 이어 붙인다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
   const names = parseTyphoonList(read('typhoon-list-2018.csv'))
-  const snapshot = buildSnapshot({ activeRows, names, fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names, fetched_at: FETCHED })
   assert.equal(snapshot.typhoons.find((t) => t.number === 19).name, '솔릭')
   assert.equal(snapshot.typhoons.find((t) => t.number === 20).name, '시마론')
 })
 
 test('이름을 못 받아도 태풍을 빠뜨리지 않는다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names: [], fetched_at: FETCHED })
   assert.equal(snapshot.typhoons.length, 2)
   assert.equal(snapshot.typhoons[0].name, null)
 })
 
 test('발표번호는 그 태풍의 최대 SEQ다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names: [], fetched_at: FETCHED })
   const soulik = snapshot.typhoons.find((t) => t.number === 19)
   assert.equal(soulik.seq, Math.max(...activeRows.filter((r) => r.number === 19).map((r) => r.seq)))
 })
 
 test('스냅샷에 현재 시점 도형과 부채꼴이 담긴다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names: [], fetched_at: FETCHED })
   const soulik = snapshot.typhoons.find((t) => t.number === 19)
   assert.equal(soulik.geometry.gale.type, 'Polygon')
   assert.ok(soulik.geometry.cone, '예보 오차원 합집합이 있어야 한다')
@@ -680,12 +743,12 @@ test('tm은 현재 UTC 정시 12자리다', () => {
 })
 ```
 
-- [ ] **Step 3: 실패를 확인한다**
+- [ ] **Step 4: 실패를 확인한다**
 
 Run: `node --test backend/test/typhoon-processor.test.js`
 Expected: FAIL — `Cannot find module '../src/processors/typhoon-processor.js'`
 
-- [ ] **Step 4: 프로세서를 구현한다**
+- [ ] **Step 5: 프로세서를 구현한다**
 
 `backend/src/processors/typhoon-processor.js`:
 
@@ -745,7 +808,7 @@ function latestAnalysis(rows) {
   return pool.reduce((latest, row) => (latest === null || row.analyzedAt > latest.analyzedAt ? row : latest), null)
 }
 
-export function buildSnapshot({ activeRows, names = [], fetchedAt }) {
+export function buildSnapshot({ activeRows, names = [], fetched_at }) {
   const nameByNumber = new Map(names.map((entry) => [entry.number, entry]))
   const grouped = groupByTyphoonNumber(activeRows)
   const typhoons = []
@@ -773,20 +836,20 @@ export function buildSnapshot({ activeRows, names = [], fetchedAt }) {
       },
     })
   }
-  return { fetchedAt, status: 'ok', typhoons }
+  return { fetched_at, status: 'ok', typhoons }
 }
 
 export async function process() {
   const dir = path.join(config.storage.base_path, TYPE)
-  const fetchedAt = new Date().toISOString()
+  const fetched_at = new Date().toISOString()
   let activeRows
   try {
     activeRows = parseTyphoonText(await fetchText(tracksUrl(currentTm())))
   } catch (error) {
     // 수집 실패는 "태풍 없음"이 아니다. 직전 스냅샷을 유지하고 상태만 바꾼다.
     const previous = store.loadLatest(dir)
-    const snapshot = { ...(previous ?? { typhoons: [] }), fetchedAt, status: 'unavailable', reason: error.message }
-    store.saveSnapshot(TYPE, snapshot)
+    const snapshot = { ...(previous ?? { typhoons: [] }), fetched_at, status: 'unavailable', reason: error.message }
+    store.save(TYPE, snapshot)
     return snapshot
   }
 
@@ -800,28 +863,34 @@ export async function process() {
     }
   }
 
-  const snapshot = buildSnapshot({ activeRows, names, fetchedAt })
-  store.saveSnapshot(TYPE, snapshot)
+  const snapshot = buildSnapshot({ activeRows, names, fetched_at })
+  store.save(TYPE, snapshot)
   return snapshot
 }
 
 export default { process, buildSnapshot, currentTm }
 ```
 
-- [ ] **Step 5: `store.saveSnapshot`이 있는지 확인하고 없으면 기존 저장 함수로 맞춘다**
+- [ ] **Step 6: 저장이 실제로 되는지 확인한다**
 
-Run: `grep -n "^export" backend/src/store.js`
+`store.save`는 `TYPES` 등록이 없으면 예외를 던지므로, Step 1을 빠뜨렸는지 여기서 잡는다.
 
-`saveSnapshot`이 없으면 `backend/src/processors/lightning-processor.js`가 저장에 쓰는 함수와 인자를 그대로 확인해 같은 호출로 바꾼다.
+```bash
+node -e "
+import('./backend/src/store.js').then(async (m) => {
+  const r = m.default.save('typhoon', { fetched_at: new Date().toISOString(), status: 'ok', typhoons: [] })
+  console.log('save 결과:', r)
+})"
+```
 
-Run: `grep -n "store\." backend/src/processors/lightning-processor.js | tail -5`
+Expected: 예외 없이 결과 객체. `Unsupported type: typhoon`이 나오면 Step 1이 안 된 것이다.
 
-- [ ] **Step 6: 통과를 확인한다**
+- [ ] **Step 7: 통과를 확인한다**
 
 Run: `node --test backend/test/typhoon-processor.test.js`
 Expected: PASS — 8 tests
 
-- [ ] **Step 7: cron과 라우트를 붙인다**
+- [ ] **Step 8: cron·초기수집·라우트를 붙인다**
 
 `backend/src/index.js` — 다른 프로세서 import 옆에:
 
@@ -833,6 +902,12 @@ import typhoonProcessor from "./processors/typhoon-processor.js";
 
 ```js
   cron.schedule(config.schedule.typhoon_interval, () => runWithLock("typhoon", typhoonProcessor.process));
+```
+
+`backend/src/index.js:93`의 `buildInitialCollectionJobs()`가 반환하는 목록에도 태풍을 넣는다. 넣지 않으면 서버 재시작 후 최대 30분간 자료가 없다.
+
+```js
+    ['typhoon', typhoonProcessor.process],
 ```
 
 `backend/server.js` — `app.get('/api/lightning', ...)` 옆에:
@@ -847,7 +922,7 @@ app.get('/api/typhoon', (_, res) => sendLatest(res, 'typhoon'))
   { keys: ['typhoon'], files: [snapshotMetaLatest('typhoon')], build: () => buildHashEntry('typhoon') },
 ```
 
-- [ ] **Step 8: 실제로 한 번 수집해 본다**
+- [ ] **Step 9: 실제로 한 번 수집해 본다**
 
 ```bash
 node -e "import('./backend/src/processors/typhoon-processor.js').then(async (m) => {
@@ -856,9 +931,11 @@ node -e "import('./backend/src/processors/typhoon-processor.js').then(async (m) 
 })"
 ```
 
-Expected: `status = ok / 태풍 수 = 0` — 현재 활동 중인 태풍이 없으므로 0이 정상이다. `unavailable`이 나오면 네트워크나 인증키를 확인한다.
+Expected: `status = ok / 태풍 수 = 1` — 2026-07-26 현재 **12호 태풍 노을**이 진행 중이다. `unavailable`이면 네트워크나 인증키를, `태풍 수 = 0`이면 `tm` 인자가 빠졌는지 확인한다(스펙 §2).
 
-- [ ] **Step 9: 전체 테스트와 커밋**
+태풍이 소멸한 뒤에 이 단계를 밟는다면 0도 정상이다. `typ_lst.php?disp=1`로 `NOW=1`인 태풍이 있는지 먼저 확인하고 기대값을 정한다.
+
+- [ ] **Step 10: 전체 테스트와 커밋**
 
 ```bash
 npm test
@@ -875,6 +952,7 @@ git commit -m "feat(typhoon): collect active storms every 30 minutes and skip un
 - Modify: `backend/src/briefing/hazard-section.js:56` — `typhoons` 인자 추가
 - Modify: `backend/src/briefing/briefing-composer.js:91-100` — 태풍 전달
 - Create: `backend/test/typhoon-briefing.test.js`
+- Modify: `frontend/src/features/route-briefing/BriefingView.jsx:184-186` — 공항 노출 표시
 
 **Interfaces:**
 - Consumes: Task 2의 `judgementPolygon`, Task 3의 `Typhoon`, 기존 `evaluateHorizontalExposure`/`evaluateTimeStatus`/`exposureConfidence`, 기존 `buildRouteAxis`
@@ -1027,6 +1105,7 @@ Expected: FAIL — `Cannot find module '../src/briefing/typhoon-briefing.js'`
 // 고도는 판정하지 않는다: 기상청 반경은 지상풍 기준이라 순항고도에 적용하면 틀린다(스펙 §3).
 import * as turf from '@turf/turf'
 import { judgementPolygon } from './typhoon-geometry.js'
+import { isSameRow } from '../parsers/typhoon-parser.js'
 import { evaluateHorizontalExposure, evaluateTimeStatus, exposureConfidence } from './hazard-exposure.js'
 import { HORIZONTAL_EXPOSURE, TIME_STATUS, CONFIDENCE } from '../../../shared/briefing-status.js'
 
@@ -1049,13 +1128,19 @@ function windowOf(validAt, stepHours) {
   return { from: new Date(ms - half).toISOString(), to: new Date(ms + half).toISOString() }
 }
 
+// 좌표가 없는 공항은 "안 걸림"이 아니라 "모름"이다. shared/airports.js는 국내 15개뿐이라
+// 해외 도착지(VHHH 등)는 좌표가 없다. 조용히 clear로 바꾸는 것은 스펙 §11 금지사항이다.
 function airportsInside(geometry, airports) {
   const hit = []
+  const unknown = []
   for (const airport of airports ?? []) {
-    if (!Number.isFinite(airport?.lat) || !Number.isFinite(airport?.lon)) continue
+    if (!Number.isFinite(airport?.lat) || !Number.isFinite(airport?.lon)) {
+      unknown.push(airport?.icao)
+      continue
+    }
     if (turf.booleanPointInPolygon(turf.point([airport.lon, airport.lat]), geometry)) hit.push(airport.icao)
   }
-  return hit
+  return { hit, unknown }
 }
 
 export function matchTyphoonHazards({ typhoons = [], axis, etd, eta, enRouteRange = null, airports = [] }) {
@@ -1067,17 +1152,23 @@ export function matchTyphoonHazards({ typhoons = [], axis, etd, eta, enRouteRang
     let to = null
     let timeStatus = null
     let horizontalExposure = null
+    let missingGeometry = false
     const airportHits = new Set()
+    const unknownAirports = new Set()
     const stepHours = stepHoursOf(typhoon.rows)
 
     for (const row of typhoon.rows ?? []) {
+      // 스펙 §10은 "예보 시점마다"다. 지나온 분석 행까지 돌면 이미 지나간 위치를 보고하게 되고,
+      // 힌남노 기준 태풍당 39번 회랑 스캔이 돈다. 현재 위치와 예보만 본다.
+      if (!row.forecast && !isSameRow(row, typhoon.current)) continue
       const geometry = judgementPolygon(row)
-      if (!geometry) continue
+      if (!geometry) { missingGeometry = true; continue }
       const window = windowOf(row.validAt, stepHours)
       if (!window) continue
 
       const exposure = evaluateHorizontalExposure({ axis, geometry, enRouteRange })
-      const hitAirports = airportsInside(geometry, airports)
+      const { hit: hitAirports, unknown } = airportsInside(geometry, airports)
+      unknown.forEach((icao) => { if (icao) unknownAirports.add(icao) })
       const routeHit = exposure.status === HORIZONTAL_EXPOSURE.INTERSECTS
       if (!routeHit && hitAirports.length === 0) continue
 
@@ -1096,7 +1187,23 @@ export function matchTyphoonHazards({ typhoons = [], axis, etd, eta, enRouteRang
       timeStatus = status === TIME_STATUS.MATCHED ? TIME_STATUS.MATCHED : (timeStatus ?? status)
     }
 
-    if (from === null) continue
+    // 반경 자료가 전부 결측이라 판정 자체를 못 한 태풍은 조용히 사라지면 안 된다(스펙 §11).
+    if (from === null) {
+      if (missingGeometry) {
+        hazards.push({
+          source: 'TYPHOON', sourceId: `${typhoon.year}-${typhoon.number}-${typhoon.seq}`, code: 'TC',
+          label: typhoon.name ? `${typhoon.number}호 태풍 ${typhoon.name}` : `${typhoon.number}호 태풍`,
+          typhoonNumber: typhoon.number, seq: typhoon.seq, analyzedAt: typhoon.analyzedAt,
+          validFrom: null, validTo: null, onRoute: false, encounter: 'nearby',
+          verticalKnown: false, bandFt: null, routeIntervalNm: null,
+          airports: [], airportsUnknown: [...unknownAirports],
+          horizontalExposure: { status: HORIZONTAL_EXPOSURE.UNAVAILABLE, intervals: [] },
+          timeStatus: TIME_STATUS.UNAVAILABLE,
+          confidence: CONFIDENCE.UNAVAILABLE,
+        })
+      }
+      continue
+    }
 
     const onRoute = Number.isFinite(startNm) && Number.isFinite(endNm) && endNm >= startNm
     hazards.push({
@@ -1117,6 +1224,8 @@ export function matchTyphoonHazards({ typhoons = [], axis, etd, eta, enRouteRang
       bandFt: null,
       routeIntervalNm: onRoute ? { startNm, endNm } : null,
       airports: [...airportHits],
+      // 좌표를 못 찾아 판정하지 못한 공항. 빈 배열이 아니면 화면이 "확인 불가"로 표시한다.
+      airportsUnknown: [...unknownAirports],
       horizontalExposure: horizontalExposure ?? { status: HORIZONTAL_EXPOSURE.CLEAR, intervals: [] },
       timeStatus,
       // 고도를 모르므로 확신도는 항상 부분 확인이다.
@@ -1148,7 +1257,15 @@ Expected: PASS — 10 tests
 export function buildHazardSection({ sigmet, airmet, axis, etd, eta, cruiseAltitudeFt, enRouteRange = null, airportWarnings = [], typhoons = [] }) {
 ```
 
-`hazardLevel(h)`에 태풍 분기를 추가한다. 등급을 만들지 않는다는 원칙에 따라 SIGMET과 같은 red/amber 체계에 억지로 끼우지 말고, 태풍은 `amber` 고정으로 둔다(기본 분기가 이미 `amber`를 반환하므로 별도 코드가 필요 없다 — `h.source === 'SIGMET'`이 아니면 `amber`).
+**`level`을 반드시 붙여서 넣는다.** `hazardLevel`은 `.map()` 안에서만 호출되므로, 태풍을 `...typhoons`로 그냥 펼치면 `h.level`이 `undefined`가 된다. 그러면 `severityScore`가 `NaN`을 반환해 정렬이 무너지고, 섹션 레벨 `reduce`가 `undefined > 0 === false`라 **태풍이 항로에 걸려도 섹션이 `green`으로 남는다.**
+
+`hazards` 배열에 다음 형태로 넣는다(`sigmet`/`airmet` 줄과 같은 방식):
+
+```js
+    ...typhoons.map((h) => ({ ...h, level: hazardLevel(h) })),
+```
+
+`hazardLevel`은 손대지 않는다. `h.source === 'SIGMET'`이 아니면 `amber`를 반환하므로 태풍은 자동으로 `amber`가 된다.
 
 `briefing-composer.js:91` 호출에 다음 줄을 추가한다.
 
@@ -1163,15 +1280,51 @@ export function buildHazardSection({ sigmet, airmet, axis, etd, eta, cruiseAltit
     }),
 ```
 
-`airportRoles(request)`가 `{ icao, lat, lon, role }` 형태를 반환하는지 확인하고, 아니라면 좌표를 붙여 넘긴다.
+**`airportRoles`는 좌표를 주지 않는다.** `briefing-composer.js:15-22`가 반환하는 것은 `{ role, icao }`뿐이다. 그대로 넘기면 `airportsInside`가 전부 건너뛰어 **공항 판정이 영구히 빈 배열**이 된다 — 스펙 §4·§10의 출발·도착·교체공항 판정이 통째로 죽는다.
 
-Run: `grep -n -A10 "function airportRoles" backend/src/briefing/briefing-composer.js`
+좌표는 `backend/src/config.js:31`이 재노출하는 `airports`(원천 `shared/airports.js`)에서 온다. `briefing-composer.js` 상단에 추가:
 
-- [ ] **Step 7: 전체 테스트와 커밋**
+```js
+import { airports as AIRPORT_LIST } from '../config.js'
+
+const AIRPORT_BY_ICAO = new Map(AIRPORT_LIST.map((a) => [a.icao, a]))
+```
+
+그리고 `matchTyphoonHazards` 호출의 `airports`를 다음으로 바꾼다:
+
+```js
+      airports: airportRoles(request).map(({ role, icao }) => ({
+        role,
+        icao,
+        lat: AIRPORT_BY_ICAO.get(icao)?.lat,
+        lon: AIRPORT_BY_ICAO.get(icao)?.lon,
+      })),
+```
+
+**알려진 한계:** `shared/airports.js`는 국내 공항만 담는다. `config.js:33-38`의 해외공항(RJTT, VHHH, ZGGG …)은 ICAO 문자열만 있고 좌표가 없다. 홍콩 부근 태풍에서 도착지가 VHHH면 좌표를 못 찾는다. 이 경우 `airportsUnknown`에 담겨 "확인 불가"로 보고되며, **"영향 없음"으로 바뀌지 않는다.** 해외공항 좌표 확보는 이 작업 범위 밖이다.
+
+- [ ] **Step 7: 공항 노출이 화면에 나오게 한다**
+
+`BriefingView.jsx:184-186`의 `locText`는 `airportScope`(공항경보) 아니면 `routeIntervalNm`(경로)만 본다. 공항만 걸린 태풍은 둘 다 없어 **위치가 아무것도 표시되지 않는다.** 스펙 §10은 `공항 RKPC(도착) 영향권`을 요구한다.
+
+`locText` 분기에 태풍의 `airports`/`airportsUnknown`을 추가한다.
+
+```js
+    const locText = h.airportScope
+      ? `${h.airportScope} ${roleLabel(h.role) || ''}`.trim()
+      : nm ? `${nm.startNm}–${nm.endNm}NM`
+      : h.airports?.length ? `공항 ${h.airports.join(', ')}`
+      : h.airportsUnknown?.length ? `공항 좌표 없음 ${h.airportsUnknown.join(', ')}`
+      : null
+```
+
+경로와 공항이 함께 걸리면 NM 구간이 우선한다(기존 동작 유지). 좌표를 못 찾은 공항은 "좌표 없음"으로 드러나고 "영향 없음"으로 바뀌지 않는다.
+
+- [ ] **Step 8: 전체 테스트와 커밋**
 
 ```bash
 npm test
-git add backend/src/briefing/typhoon-briefing.js backend/src/briefing/hazard-section.js backend/src/briefing/briefing-composer.js backend/test/typhoon-briefing.test.js
+git add backend/src/briefing/typhoon-briefing.js backend/src/briefing/hazard-section.js backend/src/briefing/briefing-composer.js backend/test/typhoon-briefing.test.js frontend/src/features/route-briefing/BriefingView.jsx
 git commit -m "feat(typhoon): report route and airport exposure without inventing an altitude band"
 ```
 
@@ -1245,13 +1398,15 @@ Expected: FAIL — 모듈 없음
 // 태풍 색은 목록 순서가 아니라 태풍번호로 정한다.
 // 순서 기준이면 태풍 하나가 소멸했을 때 남은 태풍의 색이 바뀌어 사용자가 헷갈린다.
 // 색은 유일한 구분 수단이 아니다 — 지도 라벨과 패널에 태풍번호가 함께 표시된다.
+// design-language의 색만 쓴다. #2563eb/#1d4ed8/#1e40af는 금지색이다
+// (frontend/scripts/lint-colors.mjs:32 — "forbidden MS blue").
 export const TYPHOON_PALETTE = [
   '#dc2626', // red
-  '#2563eb', // blue
+  '#0891b2', // cyan
   '#d97706', // amber
   '#7c3aed', // violet
-  '#0891b2', // cyan
   '#65a30d', // lime
+  '#be185d', // pink
 ]
 
 export function assignTyphoonColors(numbers = []) {
@@ -1316,7 +1471,8 @@ import assert from 'node:assert/strict'
 import { buildTyphoonGeoJson, TYPHOON_LAYER_IDS, TYPHOON_SOURCE_IDS } from './typhoonLayers.js'
 
 const row = (leadHours, forecast, lat, lon) => ({
-  forecast, leadHours, lat, lon, validAt: `2022-09-05T${String(leadHours).padStart(2, '0')}:00:00.000Z`,
+  forecast, leadHours, lat, lon, seq: 32,
+  validAt: `2022-09-05T${String(leadHours).padStart(2, '0')}:00:00.000Z`,
   pressureHpa: 930, maxWindMs: 50, location: '서귀포 남남서쪽 약 410 km 부근 해상',
 })
 
@@ -1336,6 +1492,14 @@ test('분석 구간과 예보 구간을 서로 다른 선으로 만든다', () =
   assert.equal(track.features.length, 1)
   assert.equal(forecastTrack.features.length, 1)
   assert.equal(forecastTrack.features[0].geometry.coordinates.length, 3, '예보선은 분석 마지막 점에서 이어져야 한다')
+})
+
+test('현재 위치는 정확히 한 곳만 표시된다', () => {
+  const { points } = buildTyphoonGeoJson(TYPHOONS)
+  // 분석 행은 leadHours가 전부 0이라 그것으로는 현재 위치를 고를 수 없다.
+  assert.equal(points.features.filter((f) => f.properties.isCurrent).length, 1)
+  const current = points.features.find((f) => f.properties.isCurrent)
+  assert.deepEqual(current.geometry.coordinates, [124.9, 29.8])
 })
 
 test('모든 지점에 태풍번호와 색이 붙는다', () => {
@@ -1390,6 +1554,11 @@ Expected: FAIL — 모듈 없음
 // 색만으로 구분하지 않는다: 각 지점에 태풍번호 라벨이 함께 붙는다.
 import { assignTyphoonColors } from './typhoonColors.js'
 
+// JSON 왕복 후에는 참조 비교가 무의미하다. 값으로 현재 행을 가린다.
+function isSameRow(a, b) {
+  return Boolean(a && b) && a.validAt === b.validAt && a.seq === b.seq && Boolean(a.forecast) === Boolean(b.forecast)
+}
+
 export const TYPHOON_SOURCE_IDS = [
   'typhoon-cone', 'typhoon-gale', 'typhoon-storm', 'typhoon-track', 'typhoon-forecast-track', 'typhoon-points',
 ]
@@ -1432,7 +1601,15 @@ export function buildTyphoonGeoJson(typhoons = []) {
     for (const row of rows) {
       result.points.features.push({
         type: 'Feature',
-        properties: { ...props, forecast: Boolean(row.forecast), leadHours: row.leadHours, pressureHpa: row.pressureHpa, validAt: row.validAt },
+        properties: {
+          ...props,
+          forecast: Boolean(row.forecast),
+          // leadHours로 현재 위치를 고를 수 없다 — 모든 분석 행이 0이다(힌남노 39행 중 32행).
+          isCurrent: isSameRow(row, typhoon.current),
+          leadHours: row.leadHours,
+          pressureHpa: row.pressureHpa,
+          validAt: row.validAt,
+        },
         geometry: { type: 'Point', coordinates: coord(row) },
       })
     }
@@ -1465,7 +1642,8 @@ export function addTyphoonLayers(map) {
   add({ id: 'typhoon-points-circle', type: 'circle', source: 'typhoon-points', paint: { 'circle-color': ['get', 'color'], 'circle-radius': ['case', ['get', 'forecast'], 4, 6], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 } })
   add({
     id: 'typhoon-points-label', type: 'symbol', source: 'typhoon-points',
-    filter: ['==', ['get', 'leadHours'], 0],
+    // 현재 위치 한 곳에만 라벨을 찍는다. leadHours==0으로 거르면 지나온 경로 전체에 라벨이 쌓인다.
+    filter: ['==', ['get', 'isCurrent'], true],
     // 스펙 §9: 라벨은 태풍번호와 중심기압. 색만으로 구분하지 않기 위한 것이므로 번호는 반드시 남는다.
     layout: {
       'text-field': ['case',
@@ -1507,7 +1685,7 @@ export default { TYPHOON_SOURCE_IDS, TYPHOON_LAYER_IDS, buildTyphoonGeoJson, add
 - [ ] **Step 4: 통과를 확인한다**
 
 Run: `cd frontend && node --test src/features/weather-overlays/lib/typhoonLayers.test.js`
-Expected: PASS — 6 tests
+Expected: PASS — 7 tests
 
 - [ ] **Step 5: 동기화 훅을 만든다**
 
@@ -1515,15 +1693,17 @@ Expected: PASS — 6 tests
 
 ```js
 // MET 오버레이 규약: 데이터 fetch와 sync는 weather-overlays가 소유한다.
-// MapView는 styleRevision 변화 때 이 훅의 sync를 다시 부르기만 한다.
+// 기존 오버레이 훅과 같은 인자를 받는다 — { mapRef, isStyleReady, styleRevision }.
+// map 인스턴스를 값으로 받으면 안 된다: mapRef.current는 첫 렌더에서 null이고
+// ref 변경은 리렌더를 일으키지 않아 훅이 잡은 map이 계속 null로 남는다.
 import { useCallback, useEffect, useState } from 'react'
 import { syncTyphoonLayers } from './typhoonLayers.js'
 
-export function useTyphoonOverlay({ map, visible, styleRevision }) {
+export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible }) {
   const [snapshot, setSnapshot] = useState(null)
 
+  // 레이어를 켜기 전에도 받아둔다. 타일 배지가 활성 태풍 수를 보여줘야 하기 때문이다(스펙 §9.2).
   useEffect(() => {
-    if (!visible) return undefined
     let cancelled = false
     const load = async () => {
       try {
@@ -1538,19 +1718,22 @@ export function useTyphoonOverlay({ map, visible, styleRevision }) {
     }
     load()
     return () => { cancelled = true }
-  }, [visible])
+  }, [])
 
-  const sync = useCallback(() => {
+  const sync = useCallback((map) => {
     syncTyphoonLayers(map, { typhoons: snapshot?.typhoons ?? [], visible })
-  }, [map, snapshot, visible])
+  }, [snapshot, visible])
 
-  useEffect(() => { sync() }, [sync, styleRevision])
+  // MapView.jsx:190의 헬퍼가 map/isStyleReady 가드와 styleRevision 의존성을 이미 통합한다.
+  useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, sync, [sync])
 
-  return { snapshot, typhoons: snapshot?.typhoons ?? [], status: snapshot?.status ?? 'unknown', sync }
+  return { snapshot, typhoons: snapshot?.typhoons ?? [], status: snapshot?.status ?? 'unknown' }
 }
 
 export default { useTyphoonOverlay }
 ```
+
+`useStyleSyncedEffect`는 현재 `MapView.jsx:190`에 지역 함수로 있다. 재사용하려면 공용 위치로 옮기고 양쪽에서 import한다. 옮길 때 `MapView.jsx`의 기존 호출부(`375`, `703` 등)가 그대로 동작하는지 확인한다.
 
 - [ ] **Step 6: 커밋**
 
@@ -1736,7 +1919,7 @@ export default function TyphoonPanel({ typhoons = [], status = 'ok', onFocus }) 
   margin: 0;
   padding: 12px;
   font-size: 13px;
-  color: rgba(71, 85, 105, 0.9);
+  color: var(--text-2);
 }
 
 .typhoon-panel__item {
@@ -1744,7 +1927,7 @@ export default function TyphoonPanel({ typhoons = [], status = 'ok', onFocus }) 
   gap: 8px;
   align-items: flex-start;
   padding: 10px 12px;
-  border-top: 1px solid rgba(148, 163, 184, 0.28);
+  border-top: 1px solid var(--border-1, rgba(148, 163, 184, 0.28));
 }
 
 .typhoon-panel__swatch {
@@ -1760,13 +1943,13 @@ export default function TyphoonPanel({ typhoons = [], status = 'ok', onFocus }) 
 .typhoon-panel__metrics { display: flex; gap: 8px; font-size: 12px; }
 
 .typhoon-panel__location,
-.typhoon-panel__time { font-size: 12px; color: rgba(71, 85, 105, 0.9); }
+.typhoon-panel__time { font-size: 12px; color: var(--text-3); }
 
 .typhoon-panel__focus {
   flex: 0 0 auto;
   padding: 4px 8px;
   font-size: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.5);
+  border: 1px solid var(--border-1, rgba(148, 163, 184, 0.5));
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
@@ -1778,7 +1961,7 @@ export default function TyphoonPanel({ typhoons = [], status = 'ok', onFocus }) 
 `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js`의 `MET_LAYERS` 배열에서 `{ id: 'sigwx', ... }` 다음 줄에 추가:
 
 ```js
-  { id: 'typhoon', label: '태풍', color: '#dc2626' },
+  { id: 'typhoon', label: '태풍', color: '#dc2626' },   // TYPHOON_PALETTE[0]과 같은 값
 ```
 
 `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx`:
@@ -1804,7 +1987,9 @@ import { useTyphoonOverlay } from '../weather-overlays/lib/typhoonOverlaySync.js
 다른 오버레이 훅 호출부 근처(`useNwpOverlays({...})` 부근)에 추가:
 
 ```js
-  const typhoonOverlay = useTyphoonOverlay({ map: mapRef.current, visible: metVisibility.typhoon, styleRevision })
+  const typhoonOverlay = useTyphoonOverlay({
+    mapRef, isStyleReady, styleRevision, visible: metVisibility.typhoon,
+  })
 ```
 
 `<EchoTopCard ... />` 합성 지점(1728행 근처) 옆에 추가:
@@ -1825,9 +2010,15 @@ Run: `grep -n "styleRevision\|const mapRef" frontend/src/features/map/MapView.js
 
 - [ ] **Step 8: 배지를 붙인다**
 
-`metLayerBadge` 함수를 찾아 `typhoon`일 때 활성 태풍 수를 반환하게 한다.
+`MapView.jsx`의 `metLayerBadge`는 하드코딩 분기 목록이고 모르는 id에는 `null`을 반환한다. 다음 줄을 추가한다.
 
-Run: `grep -n -A8 "metLayerBadge" frontend/src/features/map/MapView.jsx | head -15`
+```js
+    if (id === 'typhoon') return typhoonOverlay.typhoons.length
+```
+
+Run: `grep -n -A10 "metLayerBadge" frontend/src/features/map/MapView.jsx | head -16`
+
+배지가 레이어를 켜기 전에도 숫자를 보여주려면 Step 5의 훅이 `visible`과 무관하게 fetch해야 한다(위에서 그렇게 만들었다).
 
 - [ ] **Step 9: 빌드와 커밋**
 
@@ -1846,11 +2037,12 @@ git commit -m "feat(typhoon): add the layer tile and the active storm list panel
 - Create: `frontend/verification/contracts/typhoon.spec.mjs`
 - Create: `frontend/verification/contracts/fixtures/typhoon-snapshot.json`
 - Modify: `docs/policies/verification/contracts.md` — 계약 등록
+- Reference: `frontend/verification/fixtures.mjs`, `frontend/verification/contracts/echo-top.spec.mjs`(진입 규약), `frontend/verification/contracts/map-base.spec.mjs`(베이스맵 전환)
 
 **Interfaces:**
 - Consumes: Task 3의 `/api/typhoon` 응답 형태, Task 7의 패널 DOM
 
-**현재 활동 중인 태풍이 없다.** 계약은 `/api/typhoon`을 픽스처로 가로채 검증한다.
+계약은 재현 가능해야 하므로 `/api/typhoon`을 **픽스처로 가로채** 검증한다. 실제 태풍 유무와 무관하게 같은 결과가 나와야 한다.
 
 - [ ] **Step 1: 기존 계약의 서버 기동·라우트 가로채기 방식을 읽는다**
 
@@ -1869,7 +2061,7 @@ const {parseTyphoonText,parseTyphoonList}=await import('./backend/src/parsers/ty
 const {buildSnapshot}=await import('./backend/src/processors/typhoon-processor.js');
 const active=parseTyphoonText(fs.readFileSync('backend/test/fixtures/typhoon-multi-2018.txt','utf8'));
 const names=parseTyphoonList(fs.readFileSync('backend/test/fixtures/typhoon-list-2018.csv','utf8'));
-const snap=buildSnapshot({activeRows:active,names,fetchedAt:'2018-08-22T00:30:00.000Z'});
+const snap=buildSnapshot({activeRows:active,names,fetched_at:'2018-08-22T00:30:00.000Z'});
 fs.writeFileSync('frontend/verification/contracts/fixtures/typhoon-snapshot.json',JSON.stringify(snap,null,2));
 console.log('태풍 수 =',snap.typhoons.length);
 " --input-type=module
@@ -1882,93 +2074,136 @@ Expected: `태풍 수 = 2`
 `frontend/verification/contracts/typhoon.spec.mjs`:
 
 ```js
-import { test, expect } from '@playwright/test'
+// 기존 계약과 같은 진입 규약을 따른다: fixtures.mjs(콘솔 수집 auto fixture),
+// addInitScript로 투어·릴리스 노트 억제, aria-label로 사이드바 진입, aria-pressed로 토글 단언.
+import { test, expect } from '../fixtures.mjs'
+import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const dir = path.dirname(fileURLToPath(import.meta.url))
 const snapshot = JSON.parse(fs.readFileSync(path.join(dir, 'fixtures', 'typhoon-snapshot.json'), 'utf8'))
-const empty = { fetchedAt: '2026-07-26T00:00:00.000Z', status: 'ok', typhoons: [] }
+const empty = { fetched_at: '2026-07-26T00:00:00.000Z', status: 'ok', typhoons: [] }
 
-async function openTyphoon(page, payload) {
-  await page.route('**/api/typhoon', (route) => route.fulfill({ json: payload }))
-  await page.goto('/')
-  await page.getByRole('button', { name: '기상 레이어' }).click()
-  await page.getByRole('button', { name: '태풍' }).click()
+function weatherEntry(testInfo) {
+  return testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
 }
 
-test('태풍 타일이 지도 레이어와 목록 패널을 함께 켠다', async ({ page }) => {
-  await openTyphoon(page, snapshot)
+async function openTyphoon(page, testInfo, payload) {
+  await page.route('**/api/typhoon', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify(payload),
+  }))
+  // 투어와 릴리스 노트 패널이 지도를 덮는다. lastSeenVersion은 CURRENT_VERSION과 같아야 안 뜬다.
+  await page.addInitScript((version) => {
+    localStorage.setItem('amo.tour.v1.done', 'true')
+    localStorage.setItem('projectamo:lastSeenVersion', version)
+  }, CURRENT_VERSION)
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.locator(`[aria-label="${weatherEntry(testInfo)}"]`).first().click()
+  // 배지·체크가 붙으면 접근명이 "태풍 2 ✓"가 되어 이름 매칭이 깨진다 — aria-pressed로 단언한다.
+  const tile = page.getByRole('button', { name: /^태풍/ })
+  await expect(tile).toBeVisible()
+  await tile.click()
+  await expect(tile).toHaveAttribute('aria-pressed', 'true')
+  return tile
+}
+
+const typhoonLayerIds = () => (
+  window.__map?.getStyle().layers.filter((l) => l.id.startsWith('typhoon-')).map((l) => l.id) ?? []
+)
+
+test('태풍 타일이 지도 레이어와 목록 패널을 함께 켠다', async ({ page }, testInfo) => {
+  const tile = await openTyphoon(page, testInfo, snapshot)
   const panel = page.getByLabel('활성 태풍 목록')
   await expect(panel).toBeVisible()
-  await expect(panel.getByText('19호 태풍')).toBeVisible()
-  await expect(panel.getByText('20호 태풍')).toBeVisible()
+  await expect(panel.getByText(/19호 태풍/)).toBeVisible()
+  await expect(panel.getByText(/20호 태풍/)).toBeVisible()
 
-  const layers = await page.evaluate(() => window.__mapHandle?.getStyle().layers.filter((l) => l.id.startsWith('typhoon-')).map((l) => l.id) ?? [])
+  const layers = await page.evaluate(typhoonLayerIds)
   expect(layers).toContain('typhoon-track-line')
   expect(layers).toContain('typhoon-forecast-track-line')
   expect(layers).toContain('typhoon-cone-fill')
   expect(layers).toContain('typhoon-gale-fill')
 
-  await page.getByRole('button', { name: '태풍' }).click()
+  await tile.click()
+  await expect(tile).toHaveAttribute('aria-pressed', 'false')
   await expect(panel).toBeHidden()
 })
 
-test('복수 태풍의 패널 색과 지도 색이 일치한다', async ({ page }) => {
-  await openTyphoon(page, snapshot)
+test('타일 배지가 활성 태풍 수를 보여준다', async ({ page }, testInfo) => {
+  await page.route('**/api/typhoon', (route) => route.fulfill({
+    contentType: 'application/json', body: JSON.stringify(snapshot),
+  }))
+  await page.addInitScript((version) => {
+    localStorage.setItem('amo.tour.v1.done', 'true')
+    localStorage.setItem('projectamo:lastSeenVersion', version)
+  }, CURRENT_VERSION)
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.locator(`[aria-label="${weatherEntry(testInfo)}"]`).first().click()
+  // 레이어를 켜기 전에도 개수가 보여야 한다(스펙 §9.2).
+  await expect(page.getByRole('button', { name: /^태풍/ })).toContainText('2')
+})
+
+test('복수 태풍의 패널 색과 지도 색이 일치한다', async ({ page }, testInfo) => {
+  await openTyphoon(page, testInfo, snapshot)
   const swatches = await page.getByLabel('활성 태풍 목록').locator('.typhoon-panel__swatch').evaluateAll(
     (nodes) => nodes.map((n) => getComputedStyle(n).backgroundColor),
   )
   expect(new Set(swatches).size).toBe(2)
 
-  const mapColors = await page.evaluate(() => {
-    const source = window.__mapHandle?.getSource('typhoon-points')
-    return [...new Set((source?._data?.features ?? []).map((f) => f.properties.color))]
-  })
+  // _data는 Mapbox 공개 API가 아니다. 렌더된 피처를 조회한다.
+  const mapColors = await page.evaluate(() => [...new Set(
+    (window.__map?.querySourceFeatures('typhoon-points') ?? []).map((f) => f.properties.color),
+  )])
   expect(mapColors.length).toBe(2)
 })
 
-test('바로가기 버튼이 지도를 해당 태풍으로 옮긴다', async ({ page }) => {
-  await openTyphoon(page, snapshot)
-  const before = await page.evaluate(() => window.__mapHandle?.getCenter())
+test('바로가기 버튼이 지도를 해당 태풍으로 옮긴다', async ({ page }, testInfo) => {
+  await openTyphoon(page, testInfo, snapshot)
+  const before = await page.evaluate(() => window.__map?.getCenter())
   await page.getByLabel('활성 태풍 목록').locator('.typhoon-panel__focus').first().click()
-  await page.waitForTimeout(1200)
-  const after = await page.evaluate(() => window.__mapHandle?.getCenter())
-  expect(after.lng).not.toBeCloseTo(before.lng, 1)
+  await expect.poll(async () => {
+    const after = await page.evaluate(() => window.__map?.getCenter())
+    return Math.abs(after.lng - before.lng) > 1
+  }).toBe(true)
 })
 
-test('활성 태풍이 없으면 그렇게 표시한다', async ({ page }) => {
-  await openTyphoon(page, empty)
+test('활성 태풍이 없으면 그렇게 표시한다', async ({ page }, testInfo) => {
+  await openTyphoon(page, testInfo, empty)
   await expect(page.getByText('현재 활동 중인 태풍 없음')).toBeVisible()
 })
 
-test('수집 실패는 태풍 없음과 구분해 표시한다', async ({ page }) => {
-  await openTyphoon(page, { ...empty, status: 'unavailable' })
+test('수집 실패는 태풍 없음과 구분해 표시한다', async ({ page }, testInfo) => {
+  await openTyphoon(page, testInfo, { ...empty, status: 'unavailable' })
   await expect(page.getByText(/자료 없음/)).toBeVisible()
 })
 
-test('베이스맵을 두 번 바꿔도 레이어가 남는다', async ({ page }) => {
-  await openTyphoon(page, snapshot)
-  for (let i = 0; i < 2; i++) {
-    await page.getByRole('button', { name: /베이스맵|지도 스타일/ }).click()
-    await page.waitForTimeout(1500)
-  }
-  const layers = await page.evaluate(() => window.__mapHandle?.getStyle().layers.filter((l) => l.id.startsWith('typhoon-')).map((l) => l.id) ?? [])
-  expect(layers).toContain('typhoon-track-line')
+test('베이스맵을 두 번 바꿔도 레이어가 남는다', async ({ page }, testInfo) => {
+  await openTyphoon(page, testInfo, snapshot)
+  const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
+  await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^지형/ }).click()
+  await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^기본/ }).click()
+  await expect.poll(async () => (await page.evaluate(typhoonLayerIds)).includes('typhoon-track-line')).toBe(true)
 })
 ```
 
-`window.__mapHandle`과 버튼 접근 이름은 기존 계약에서 쓰는 실제 값으로 맞춘다.
+**모바일 레이아웃을 먼저 정해야 한다.** `TyphoonPanel.css`는 레이어 드로어 오른쪽에 폭 300px로 붙는데, Pixel 5(393px)에서는 화면 밖으로 나간다. 계약은 desktop / ipad-landscape / mobile 3개 프로젝트에서 모두 돌므로 mobile은 이대로 통과하지 못한다. 둘 중 하나를 택한다.
 
-Run: `grep -n "__mapHandle\|getByRole" frontend/verification/contracts/echo-top.spec.mjs | head -10`
+1. `WeatherOverlayPanel`처럼 모바일에서 `MobileSheet`로 전환한다 (Task 7에 단계 추가)
+2. 이 계약을 desktop 프로젝트로 한정한다 — 파일 상단에 `test.skip(({ }, testInfo) => testInfo.project.name !== 'desktop', '모바일 레이아웃 미대응')`
+
+2번을 택하면 모바일 미대응이 남는다는 사실을 상태 문서에 적는다.
 
 - [ ] **Step 4: 개발 서버를 띄우고 계약을 돌린다**
 
 [dev-server 절차](../../operations/dev-server-and-capture.md)를 따른다.
 
-Run: `npx playwright test frontend/verification/contracts/typhoon.spec.mjs --reporter=list`
-Expected: 6 passed
+설정은 `frontend/playwright.config.js`에 있고 `testDir: './verification/contracts'`이다. 루트에서 경로를 넘기면 설정을 못 찾는다.
+
+Run: `npm --prefix frontend run dev:contract -- contracts/typhoon.spec.mjs --reporter=list`
+
+Expected: desktop 프로젝트 7 passed. 3개 프로젝트 전체로 돌리면 21이지만 모바일 대응 여부에 따라 달라진다.
 
 실패하면 `superpowers:systematic-debugging`으로 근본 원인을 찾는다. 계약을 느슨하게 고쳐 통과시키지 않는다.
 
