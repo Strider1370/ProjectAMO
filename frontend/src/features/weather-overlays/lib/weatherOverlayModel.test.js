@@ -274,3 +274,51 @@ test('convective layers hide for raw future selection and never use an older fra
   assert.equal(model.ciFrame, null)
   assert.equal(model.ctpsFrame, null)
 })
+
+const echoTopMeta = {
+  tm: '202607252035',
+  frames: [
+    { tm: '202607252030', path: '/data/radar/echotop/echotop_202607252030.webp', observedAt: '2026-07-25T11:30:00.000Z', bounds: [[30, 120], [44, 136]], siteCount: { ok: 12, total: 13 } },
+    { tm: '202607252035', path: '/data/radar/echotop/echotop_202607252035.webp', observedAt: '2026-07-25T11:35:00.000Z', bounds: [[30, 120], [44, 136]], siteCount: { ok: 13, total: 13 } },
+  ],
+}
+const radarMeta = { tm: '202607252035', frames: [{ tm: '202607252030', path: '/a.png' }, { tm: '202607252035', path: '/b.png' }] }
+
+test('echo top frame is exposed only when its tm matches the selected time exactly', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta, echoTopMeta,
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
+  })
+  assert.equal(model.echoTopFrame.tm, '202607252035')
+  assert.equal(model.echoTopFrame.observedAt, '2026-07-25T11:35:00.000Z')
+})
+
+test('a selected time with no matching echo top frame yields null, never the previous frame', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta,
+    echoTopMeta: { tm: '202607252030', frames: [echoTopMeta.frames[0]] },
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
+  })
+  assert.equal(model.echoTopFrame, null)
+})
+
+test('the echo top frame is hidden while the layer is off', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta, echoTopMeta,
+    visibility: { radar: true, echoTop: false },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
+  })
+  assert.equal(model.echoTopFrame, null)
+})
+
+test('partial site coverage is carried on the frame so the UI can flag it', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta, echoTopMeta,
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 30),
+  })
+  assert.equal(model.echoTopFrame.partial, true)
+  assert.deepEqual(model.echoTopFrame.siteCount, { ok: 12, total: 13 })
+})

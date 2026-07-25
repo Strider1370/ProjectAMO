@@ -122,6 +122,7 @@ export function buildSnapshotMetaFromData(data = {}) {
     environment: buildHashEntry(data.environment),
     airportInfo: buildHashEntry(data.airportInfo),
     echoMeta: data.echoMeta?.tm ? { tm: data.echoMeta.tm } : null,
+    echoTopMeta: data.echoTopMeta?.tm ? { tm: data.echoTopMeta.tm } : null,
     rainviewerMeta: data.rainviewerMeta?.tm ? { tm: data.rainviewerMeta.tm } : null,
     satMeta: data.satMeta?.tm ? { tm: data.satMeta.tm } : null,
     sigwxFrontMeta: buildOverlayMetaEntry(data.sigwxFrontMeta),
@@ -143,7 +144,7 @@ export async function loadWeatherData() {
   const [
     airports, metar, taf, amos, warning,
     sigmet, airmet, lightning,
-    echoMeta, rainviewerMeta, satMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
+    echoMeta, echoTopMeta, rainviewerMeta, satMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
     groundForecast, notam, overseasAirports,
     metarOverseas, tafOverseas, sigmetOverseas,
   ] = await Promise.all([
@@ -156,6 +157,7 @@ export async function loadWeatherData() {
     fetchJson('/api/airmet', { optional: true }),
     fetchJson('/api/lightning', { optional: true }),
     fetchJson('/data/radar/echo_meta.json', { optional: true }),
+    fetchJson('/data/radar/echotop/echotop_meta.json', { optional: true }),
     fetchJson('/data/radar/rainviewer_meta.json', { optional: true }),
     fetchJson('/data/satellite/sat_meta.json', { optional: true }),
     fetchJson('/data/satellite/convective/convective_meta.json', { optional: true }),
@@ -183,6 +185,7 @@ export async function loadWeatherData() {
     airmet,
     lightning,
     echoMeta,
+    echoTopMeta,
     rainviewerMeta,
     satMeta,
     convectiveMeta,
@@ -220,6 +223,11 @@ export async function fetchNotam() {
 export async function fetchConvectiveCtpsPoint({ tm, lat, lon, minFl }, { signal } = {}) {
   const params = new URLSearchParams({ tm, lat: String(lat), lon: String(lon), minFl: String(minFl) })
   return fetchJson(`/api/satellite/convective/ctps-point?${params.toString()}`, { signal })
+}
+
+export async function fetchEchoTopPoint({ tm, lat, lon }, { signal } = {}) {
+  const params = new URLSearchParams({ tm, lat: String(lat), lon: String(lon) })
+  return fetchJson(`/api/radar/echo-top-point?${params.toString()}`, { signal })
 }
 
 export async function fetchSnapshotMeta() {
@@ -331,6 +339,7 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all' } =
   if (changes.groundOverview && includesDeferredKey(deferredKeys, 'groundOverview')) { fetches.push(fetchJson('/api/ground-overview', { optional: 'preserve' })); keys.push('groundOverview') }
   if (changes.environment && includesDeferredKey(deferredKeys, 'environment')) { fetches.push(fetchJson('/api/environment', { optional: 'preserve' })); keys.push('environment') }
   if (changes.echoMeta) { fetches.push(fetchJson('/data/radar/echo_meta.json', { optional: 'preserve' })); keys.push('echoMeta') }
+  if (changes.echoTopMeta) { fetches.push(fetchJson('/data/radar/echotop/echotop_meta.json', { optional: 'preserve' })); keys.push('echoTopMeta') }
   if (changes.rainviewerMeta) { fetches.push(fetchJson('/data/radar/rainviewer_meta.json', { optional: 'preserve' })); keys.push('rainviewerMeta') }
   if (changes.satMeta) { fetches.push(fetchJson('/data/satellite/sat_meta.json', { optional: 'preserve' })); keys.push('satMeta') }
   if (changes.convectiveMeta) { fetches.push(fetchJson('/data/satellite/convective/convective_meta.json', { optional: 'preserve' })); keys.push('convectiveMeta') }

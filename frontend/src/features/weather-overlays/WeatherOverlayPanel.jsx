@@ -1,6 +1,6 @@
 import {
   Radar, Satellite, Zap, Wind, Thermometer, Droplets,
-  Snowflake, Activity, Plane, AlertTriangle, AlertOctagon, CloudFog, Radio, Globe, Cloud, CloudLightning,
+  Snowflake, Activity, Plane, AlertTriangle, AlertOctagon, CloudFog, Radio, Globe, Cloud, CloudLightning, Mountain,
 } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -9,6 +9,7 @@ import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 const WEATHER_TILE_ICON = {
   radar: Radar,
   radarOverseas: Globe, // 해외 = Globe (SIGMET(해외)와 동일 규칙)
+  echoTop: Mountain,
   satellite: Satellite,
   ci: CloudLightning,
   ctps: Cloud,
@@ -41,7 +42,7 @@ function WeatherOverlayPanel({
   // 재개하려면 이 배열을 비우고 백엔드 수집(index.js)도 되돌릴 것.
   const TEMP_HIDDEN_LAYER_IDS = ['flightCategory']
   const groups = [
-    { id: 'radar', title: '레이더', ids: ['radar', 'radarOverseas', 'lightning'] },
+    { id: 'radar', title: '레이더', ids: ['radar', 'radarOverseas', 'echoTop', 'lightning'] },
     { id: 'satellite', title: '위성', ids: ['satellite', 'ci', 'ctps'] },
     { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : [] },
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx'] },
@@ -50,6 +51,7 @@ function WeatherOverlayPanel({
   const layerLabels = {
     radar: '레이더',
     radarOverseas: '해외 레이더',
+    echoTop: '에코탑(재산출)',
     satellite: '위성',
     ci: '대류 가능성',
     ctps: '운정고도',

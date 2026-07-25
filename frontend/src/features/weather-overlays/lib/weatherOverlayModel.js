@@ -131,6 +131,7 @@ function pickRainviewerFrame(frames, selectedTimeMs) {
 
 export function buildWeatherOverlayModel({
   echoMeta,
+  echoTopMeta,
   rainviewerMeta,
   satMeta,
   convectiveMeta,
@@ -155,6 +156,7 @@ export function buildWeatherOverlayModel({
   tz = 'KST',
 }) {
   const radarFrames = normalizeFrames(echoMeta?.frames?.length ? echoMeta.frames : [echoMeta?.nationwide])
+  const echoTopFrames = normalizeFrames(echoTopMeta?.frames?.length ? echoTopMeta.frames : [echoTopMeta?.latest])
   const rainviewerFrames = normalizeRainviewerFrames(rainviewerMeta)
   const satelliteFrames = normalizeFrames(satMeta?.frames?.length ? satMeta.frames : [satMeta?.latest])
   const convectiveFrames = normalizeFrames(convectiveMeta?.frames?.length ? convectiveMeta.frames : [convectiveMeta?.latest])
@@ -164,6 +166,7 @@ export function buildWeatherOverlayModel({
     visibility.radar ? radarFrames : [],
     // 해외 레이더도 국내와 대등하게 자기 눈금을 낸다(상호배타라 둘이 동시에 눈금을 내지 않는다).
     visibility.radarOverseas ? rainviewerFrames : [],
+    visibility.echoTop ? echoTopFrames : [],
     (visibility.satellite || visibility.ci || visibility.ctps) ? satelliteFrames : [],
     visibility.lightning ? lightningFrames : [],
   ])
@@ -176,8 +179,21 @@ export function buildWeatherOverlayModel({
       ? Math.min(Math.max(selectedWeatherTimeMs, firstTickMs), latestTickMs)
       : latestTickMs)
     : null
-  const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && weatherTimelineTicks.length > 0
+  const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && weatherTimelineTicks.length > 0
   const radarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
+  // Echo Top은 재산출 산출물이라 "가장 가까운 과거 프레임" 대체가 금지된다(FR-002/FR-005).
+  // 선택 시각과 tm이 정확히 같은 프레임만 쓰고, 없으면 레이어를 숨긴다.
+  const echoTopExact = visibility.echoTop
+    ? echoTopFrames.find((frame) => frame.timeMs === resolvedWeatherTimeMs) || null
+    : null
+  const echoTopFrame = echoTopExact
+    ? {
+      ...echoTopExact,
+      partial: Number.isFinite(echoTopExact.siteCount?.ok)
+        && Number.isFinite(echoTopExact.siteCount?.total)
+        && echoTopExact.siteCount.ok < echoTopExact.siteCount.total,
+    }
+    : null
   const rainviewerFrame = pickRainviewerFrame(rainviewerFrames, resolvedWeatherTimeMs)
   const satelliteFrame = pickNearestPreviousFrame(satelliteFrames, resolvedWeatherTimeMs)
   const rawFutureSatelliteSelection = Number.isFinite(selectedWeatherTimeMs)
@@ -259,6 +275,7 @@ export function buildWeatherOverlayModel({
   return {
     visibility,
     radarFrames,
+    echoTopFrames,
     rainviewerMeta: rainviewerMeta || null,
     rainviewerFrames,
     satelliteFrames,
@@ -268,6 +285,7 @@ export function buildWeatherOverlayModel({
     selectedWeatherTimeMs: resolvedWeatherTimeMs,
     weatherTimelineVisible,
     radarFrame,
+    echoTopFrame,
     radarMotion,
     rainviewerFrame,
     satelliteFrame,
