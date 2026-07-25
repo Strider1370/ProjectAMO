@@ -15,7 +15,7 @@
 - 리눅스 전용. `npm`/`node`/`bash`만 사용한다. Playwright 스냅샷 기준선은 `*-linux.png`.
 - 루트·`backend`·`frontend` 각각 `package.json`이 있다. 테스트 전 셋 다 `npm ci` 되어 있어야 한다.
 - 응답은 EUC-KR이다. `backend/src/api-client.js:17`의 기존 디코딩 경로를 쓴다. 새 디코더를 만들지 않는다.
-- `-999`(숫자) 및 `-`(방위)는 결측이다. `null`로 바꾸고, 결측 값에 의존하는 도형은 생성하지 않는다.
+- 결측은 `null`로 바꾸고, 결측 값에 의존하는 도형은 생성하지 않는다. 결측 판정 규칙은 아래 "음수는 전부 결측" 항을 따른다.
 - 결측·실패·만료를 `clear`/`matched`로 바꾸지 않는다. 해당 상태와 사유를 그대로 반환한다.
 - 브리핑은 노출 사실과 자료 상태만 반환한다. 안전점수·경로추천·고도추천을 만들지 않는다.
 - 고도는 판정하지 않는다. 태풍 항목은 항상 `verticalKnown: false`, `bandFt: null`.
@@ -1696,7 +1696,7 @@ Expected: PASS — 7 tests
 // 기존 오버레이 훅과 같은 인자를 받는다 — { mapRef, isStyleReady, styleRevision }.
 // map 인스턴스를 값으로 받으면 안 된다: mapRef.current는 첫 렌더에서 null이고
 // ref 변경은 리렌더를 일으키지 않아 훅이 잡은 map이 계속 null로 남는다.
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { syncTyphoonLayers } from './typhoonLayers.js'
 
 export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible }) {
@@ -1720,12 +1720,12 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
     return () => { cancelled = true }
   }, [])
 
-  const sync = useCallback((map) => {
-    syncTyphoonLayers(map, { typhoons: snapshot?.typhoons ?? [], visible })
-  }, [snapshot, visible])
-
-  // MapView.jsx:190의 헬퍼가 map/isStyleReady 가드와 styleRevision 의존성을 이미 통합한다.
-  useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, sync, [sync])
+  // useEchoTopOverlay.js:9-12와 같은 형태다. MapView 지역 헬퍼(useStyleSyncedEffect)를
+  // 끌어다 쓰지 않는다 — 기존 오버레이 훅은 전부 이렇게 직접 가드한다.
+  useEffect(() => {
+    const map = mapRef.current
+    if (map && isStyleReady) syncTyphoonLayers(map, { typhoons: snapshot?.typhoons ?? [], visible })
+  }, [mapRef, isStyleReady, styleRevision, snapshot, visible])
 
   return { snapshot, typhoons: snapshot?.typhoons ?? [], status: snapshot?.status ?? 'unknown' }
 }
@@ -1733,7 +1733,7 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
 export default { useTyphoonOverlay }
 ```
 
-`useStyleSyncedEffect`는 현재 `MapView.jsx:190`에 지역 함수로 있다. 재사용하려면 공용 위치로 옮기고 양쪽에서 import한다. 옮길 때 `MapView.jsx`의 기존 호출부(`375`, `703` 등)가 그대로 동작하는지 확인한다.
+**`MapView.jsx`는 손대지 않는다**(합성 추가 제외). 참고 구현은 `frontend/src/features/weather-overlays/lib/useEchoTopOverlay.js:9-12`.
 
 - [ ] **Step 6: 커밋**
 
