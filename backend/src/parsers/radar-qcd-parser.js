@@ -57,18 +57,55 @@ export async function parseQcdVolume(buffer, { stn } = {}) {
 
     const gateCount = rangeM.length
     const sweeps = []
+
+    // CF-Radial ragged arrays: ray_n_gates and ray_start_index allow variable gates per ray
+    const rayNGatesDataset = file.get('ray_n_gates')
+    const rayStartIndexDataset = file.get('ray_start_index')
+    const hasRagged = rayNGatesDataset && rayStartIndexDataset
+
     for (let s = 0; s < sweepStart.length; s += 1) {
       const start = sweepStart[s]
       const end = sweepEnd[s]
       if (!Number.isInteger(start) || !Number.isInteger(end) || end < start) continue
-      // Skip sweeps that would read beyond the available DBZH data
-      const endIndex = (end + 1) * gateCount
-      if (endIndex > dbz.length) continue
+
       const rays = end - start + 1
+      let sweepDbz
+
+      if (hasRagged) {
+        // Ragged layout: each ray has variable gate count, pad to uniform gateCount for Task 4
+        const rayNGates = Uint32Array.from(rayNGatesDataset.value)
+        const rayStartIndex = Uint32Array.from(rayStartIndexDataset.value)
+
+        sweepDbz = new Int16Array(rays * gateCount).fill(fillValue)
+
+        for (let r = 0; r < rays; r++) {
+          const rayIdx = start + r
+          const nGates = rayNGates[rayIdx]
+          const srcIdx = rayStartIndex[rayIdx]
+
+          if (srcIdx + nGates > dbz.length) {
+            throw new Error(`Ragged index out of bounds: ray ${rayIdx} exceeds DBZH length`)
+          }
+
+          const destOffset = r * gateCount
+          for (let g = 0; g < nGates; g++) {
+            sweepDbz[destOffset + g] = dbz[srcIdx + g]
+          }
+        }
+      } else {
+        // Uniform layout: all rays have gateCount gates
+        const startIdx = start * gateCount
+        const endIdx = (end + 1) * gateCount
+        if (endIdx > dbz.length) {
+          throw new Error(`Uniform index out of bounds: sweep ${s} exceeds DBZH length`)
+        }
+        sweepDbz = dbz.slice(startIdx, endIdx)
+      }
+
       sweeps.push({
         elevationDeg: elevation[start],
         azimuthDeg: azimuth.slice(start, end + 1),
-        dbz: dbz.slice(start * gateCount, endIndex),
+        dbz: sweepDbz,
         scaleFactor,
         fillValue,
         rayCount: rays,
