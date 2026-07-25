@@ -288,7 +288,8 @@ export const noaa = {
 export const schedule = {
   notam_interval: '0 */6 * * *', // 6시간 주기(00,06,12,18 UTC)
   metar_interval: '*/5 * * * *',
-  taf_interval: '*/30 * * * *',
+  // 10분 — 정시 TAF는 6시간 주기지만 AMD(수시 정정)가 예고 없이 나오므로 발표 주기가 아니라 정정 반영 지연으로 정한다.
+  taf_interval: '*/10 * * * *',
   warning_interval: '*/5 * * * *',
   sigmet_interval: '*/5 * * * *',
   airmet_interval: '*/5 * * * *',
