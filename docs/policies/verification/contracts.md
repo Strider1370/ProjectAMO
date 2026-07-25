@@ -16,6 +16,7 @@ Run a focused contract with `npm run dev:contract -- --grep <id>`. The command c
 | `echo-top` | `echoTopLayers.js`, `useEchoTopOverlay.js`, `EchoTopCard.jsx`, `WeatherLegends.jsx` | desktop, iPad landscape, mobile | fixture intercepts `echotop_meta.json`, the overlay WebP and `/api/radar/echo-top-point`; radar `echo_meta.json` supplies the 5-minute axis | `frontend/verification/contracts/echo-top.spec.mjs` | frontend | active — passed 2026-07-26 (21/21) |
 | `radar-motion` | `radarMotionLayers.js`, `useRadarMotionOverlay.js`, `WeatherLegends.jsx` 토글 | desktop, iPad landscape, mobile | fixture intercepts `echo_meta.json` and `motion_korea_*.geojson` | `frontend/verification/contracts/radar-motion.spec.mjs` | frontend | active — passed 2026-07-26 (18/18) |
 | `briefing-view` | `BriefingView.jsx`, `MapView.jsx` | desktop, iPad landscape | committed navdata; `route-fixture.mjs`; mobile has no full/map-together control | `frontend/verification/contracts/briefing-view.spec.mjs` | frontend | active — passed 2026-07-19 |
+| `moa-activation` | `useMoaActivation.js`, `moaActivation.js`, `aviationWfsLayers.js` MOA 레이어 | desktop | `moa-activation-notam.mjs`가 `/api/notam`을 가로챔(2026-07-25 라이브 NOTAM 캡처, 유효시각만 상대값); 커밋된 `moa.geojson` | `frontend/verification/contracts/moa-activation.spec.mjs` | frontend | active — passed 2026-07-26 (3/3, desktop) |
 
 ## Registered next
 
