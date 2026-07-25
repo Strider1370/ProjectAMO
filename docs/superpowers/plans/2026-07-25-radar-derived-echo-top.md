@@ -325,9 +325,11 @@ import test from 'node:test'
 import { ECHO_TOP_QUALITY, beamHeightMsl, echoTopFromColumn } from '../src/processors/echo-top-model.js'
 
 test('beam height uses the 4/3 earth radius and adds radar altitude', () => {
-  // 0도 앙각, 100 km: 4/3 지구반경에서 약 736 m 상승 + 레이더 해발고도.
+  // 0도 앙각, 100 km: 4/3 지구반경(8,494,678 m)에서 빔은 588.6 m 상승한다(r²/2Rₑ).
+  // 레이더 해발고도 100 m를 더해 688.6 m. 실제 지구반경을 쓰면 884.8 m가 나오므로
+  // 이 단언은 4/3 보정이 빠진 구현을 잡아낸다.
   const height = beamHeightMsl(100000, 0, 100)
-  assert.ok(Math.abs(height - (736 + 100)) < 15, `height ${height}`)
+  assert.ok(Math.abs(height - 688.6) < 1, `height ${height}`)
 })
 
 test('beam height grows with elevation angle', () => {
