@@ -36,3 +36,25 @@ export function pickCloudPotentialColor(value, field = null) {
   return CLOUD_POTENTIAL_COLOR_RAMP.find((entry) => spread >= entry.min && spread <= entry.max && entry.max <= maxSpread)
     || TRANSPARENT_CLOUD_POTENTIAL
 }
+
+function gridStep(min, max, count, fallback) {
+  if (Number.isFinite(min) && Number.isFinite(max) && count > 1) return (max - min) / (count - 1)
+  return fallback
+}
+
+export function createCloudPotentialSampler(field) {
+  const grid = field?.grid
+  if (!field || !grid || !Array.isArray(field.spread)) return { sample: () => null }
+  const dx = gridStep(grid.lonMin, grid.lonMax, grid.nx, grid.dx)
+  const dy = gridStep(grid.latMin, grid.latMax, grid.ny, grid.dy)
+
+  function sample(lon, lat) {
+    const x = Math.round((lon - grid.lonMin) / dx)
+    const y = Math.round((lat - grid.latMin) / dy)
+    if (x < 0 || y < 0 || x >= grid.nx || y >= grid.ny) return null
+    const value = decodeCloudPotentialValue(field.spread[y * grid.nx + x], field)
+    return value == null ? null : value
+  }
+
+  return { sample }
+}

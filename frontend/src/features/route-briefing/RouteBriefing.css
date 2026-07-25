@@ -1049,9 +1049,11 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 .vertical-profile-toolbar-terrain { color: var(--text-2); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .cross-section-toggles .vertical-profile-altitude-nav { margin-left: 0; }
 
-.vertical-profile-altitude-nav { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; color: var(--text-1); }
-.vertical-profile-altitude-nav button { width: 28px; height: 28px; border: 1px solid var(--stroke-1); border-radius: 6px; background: var(--bg-1); color: var(--accent); font-size: 20px; line-height: 1; cursor: pointer; }
-.vertical-profile-altitude-nav button:disabled { color: var(--text-3); cursor: default; opacity: .5; }
+.vertical-profile-altitude-nav, .vertical-profile-hour-nav { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; color: var(--text-1); }
+.vertical-profile-altitude-nav button, .vertical-profile-hour-nav button { width: 28px; height: 28px; border: 1px solid var(--stroke-1); border-radius: 6px; background: var(--bg-1); color: var(--accent); font-size: 20px; line-height: 1; cursor: pointer; }
+.vertical-profile-altitude-nav button:disabled, .vertical-profile-hour-nav button:disabled { color: var(--text-3); cursor: default; opacity: .5; }
+.vertical-profile-hour-nav strong { font-size: 12px; font-weight: 700; white-space: nowrap; min-width: 5.5em; text-align: center; }
+.vertical-profile-window-header .vertical-profile-hour-nav { margin-left: 0; margin-right: 12px; }
 
 /* 휴대폰을 가로로 돌리면 단면도만 전체 화면에 표시한다. 차트 자체를 회전하지 않아 축과 글자는 정방향을 유지한다. */
 @media (max-width: 900px) {

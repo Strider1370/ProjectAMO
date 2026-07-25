@@ -27,7 +27,11 @@ export const KIM_NWP_LEVELS = [
 ]
 export const KIM_NWP_MOISTURE_LEVEL_IDS = ['1000hPa', '975hPa', '950hPa', '925hPa', '900hPa', '875hPa', '850hPa', '800hPa', '750hPa', '700hPa', '650hPa', '600hPa', '550hPa', '500hPa', '450hPa', '400hPa', '350hPa', '300hPa', '250hPa', '200hPa', '150hPa']
 export const KIM_NWP_MOISTURE_LEVELS = KIM_NWP_LEVELS.filter((level) => KIM_NWP_MOISTURE_LEVEL_IDS.includes(level.id))
-export const KIM_NWP_ICING_LEVEL_IDS = ['925hPa', '850hPa', '700hPa', '600hPa', '500hPa', '400hPa', '300hPa']
+// 기온 단면과 같은 압력면 집합을 쓰되, 착빙 하드게이트(-35C <= T)를 구조적으로 못 넘는
+// 250/200/150hPa은 제외한다(항상 class 0 → 렌더링상 완전 투명, 수집해도 화면이 같다).
+export const KIM_NWP_ICING_LEVEL_IDS = KIM_NWP_LEVELS
+  .filter((level) => level.kind === 'pressure' && level.value >= 300)
+  .map((level) => level.id)
 export const KIM_NWP_ICING_LEVELS = KIM_NWP_LEVELS.filter((level) => KIM_NWP_ICING_LEVEL_IDS.includes(level.id))
 
 const SCALE_BY_VARIABLE = {
@@ -444,7 +448,23 @@ export function buildKimIcingFieldFromGrid(grid) {
     },
     icingScore,
     icingGrade,
+    ...geopotentialHeightPayload(grid),
     fetched_at: grid.fetched_at,
+  }
+}
+
+function geopotentialHeightPayload(grid) {
+  const variable = grid?.variables?.hgt
+  if (!variable) return {}
+  return {
+    geopotentialHeight: variable.values || [],
+    geopotentialHeightEncoding: {
+      encoding: variable.encoding,
+      scale: variable.scale,
+      offset: variable.offset,
+      missing: MISSING_ENCODED,
+      unit: variable.unit || 'm',
+    },
   }
 }
 
@@ -472,6 +492,7 @@ export function buildKimSurfaceWindFieldFromWindGrid(grid) {
     offset: uVariable.offset,
     u: uVariable.values || [],
     v: vVariable.values || [],
+    ...geopotentialHeightPayload(grid),
     fetched_at: grid.fetched_at,
   }
 }
@@ -504,6 +525,7 @@ export function buildKimTemperatureFieldFromGrid(grid) {
     scale: variable.scale,
     offset: variable.offset,
     T: variable.values || [],
+    ...geopotentialHeightPayload(grid),
     fetched_at: grid.fetched_at,
   }
 }
@@ -543,6 +565,7 @@ export function buildKimCloudPotentialFieldFromGrid(grid, { thresholdC = cloudPo
     offset: OFFSET,
     spread: encodeComponent(spread),
     cloudPotential: encodeComponent(cloudPotential),
+    ...geopotentialHeightPayload(grid),
     fetched_at: grid.fetched_at,
   }
 }

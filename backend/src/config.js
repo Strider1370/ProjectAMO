@@ -49,6 +49,10 @@ function loadOverseasAirportIds() {
   }
 }
 
+const aviationAuthKey = process.env.KMA_AVIATION_AUTH_KEY || process.env.KMA_AUTH_KEY || process.env.API_AUTH_KEY || ''
+const radarSatelliteAuthKey = process.env.KMA_RADAR_SATELLITE_AUTH_KEY || aviationAuthKey
+const kimNwpAuthKey = process.env.KMA_KIM_NWP_AUTH_KEY || aviationAuthKey
+
 export const api = {
   base_url: process.env.API_BASE_URL || 'https://apihub.kma.go.kr/api/typ02/openApi',
   lightning_url: process.env.LIGHTNING_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/lgt_pnt.php',
@@ -67,9 +71,12 @@ export const api = {
     airport_info: '/AirPortService/getAirPort',
     takeoff_fcst: '/AirInfoService/getAirInfo',
   },
-  auth_key: process.env.KMA_AUTH_KEY || process.env.API_AUTH_KEY || '',
+  // 기존 항공·일반 KMA 수집기 기본 키. 새 역할별 키가 비어 있으면 이 값으로 안전하게 폴백한다.
+  auth_key: aviationAuthKey,
+  radar_satellite_auth_key: radarSatelliteAuthKey,
+  kim_nwp_auth_key: kimNwpAuthKey,
   airkorea_key: process.env.AIRKOREA_API_KEY || '',
-  kma_uv_key: process.env.KMA_UV_API_KEY || process.env.API_AUTH_KEY || '',
+  kma_uv_key: process.env.KMA_UV_API_KEY || aviationAuthKey,
   default_params: { pageNo: 1, numOfRows: 10, dataType: 'XML' },
   timeout_ms: 10000,
   max_retries: 3,
@@ -146,6 +153,25 @@ export const radar_echo = {
   range_km: 100,
   crop_size: 200,
   timeout_ms: 30000,
+}
+
+// 레이더 사이트 QCD 원자료 기반 재산출 Echo Top(18 dBZ, MSL).
+// KMA 공식 ETOP이 아니라 ProjectAMO가 원자료로 계산한 참고 산출물이다.
+export const radar_echo_top = {
+  url: process.env.RADAR_QCD_API_URL || 'https://apihub.kma.go.kr/api/typ04/url/rdr_site_file.php',
+  // Task 1 실측으로 확정한 목록. 빈 값이면 프로세서가 명시적으로 실패한다.
+  sites: (process.env.RADAR_QCD_SITES || '').split(',').map((s) => s.trim()).filter(Boolean),
+  threshold_dbz: 18,
+  // 합성 격자 해상도는 lib/echo-top-grid.js의 ECHO_TOP_GRID가 정한다(설정값 아님).
+  concurrency: 4,     // 한 프레임에서 동시에 받는 사이트 수.
+  timeout_ms: 45000,
+  retry: 1,
+  // 레이더(radar_echo)와 반드시 같아야 한다. 에코탑은 선택 시각과 tm이 정확히 일치할 때만
+  // 표시하므로(FR-002/FR-005), 지연이 다르면 실시간 보기에서 레이더 최신 시각에 에코탑
+  // 프레임이 없어 레이어가 늘 숨는다. 실측 결과 QCD는 5분 지연으로도 전부 내려온다(여유 5분).
+  delay_minutes: 10,
+  max_frames: 36,     // 3시간 보존 — 레이더(radar_echo.max_images)와 같은 시간 범위.
+  enabled: process.env.RADAR_ECHO_TOP_ENABLED !== '0',
 }
 
 // 해외 레이더 — RainViewer 메타(목차) JSON만 수집. 타일은 브라우저가 CDN에서 직접 받는다(프록시 금지).
@@ -261,21 +287,25 @@ export const noaa = {
 
 export const schedule = {
   notam_interval: '0 */6 * * *', // 6시간 주기(00,06,12,18 UTC)
-  metar_interval: '*/10 * * * *',
+  metar_interval: '*/5 * * * *',
   taf_interval: '*/30 * * * *',
   warning_interval: '*/5 * * * *',
   sigmet_interval: '*/5 * * * *',
   airmet_interval: '*/5 * * * *',
   sigwx_low_interval: '5 5,11,17,23 * * *',
-  amos_interval: '*/10 * * * *',
+  amos_interval: '*/5 * * * *',
   lightning_interval: '*/5 * * * *',
   radar_echo_interval: '*/5 * * * *',
+  echo_top_interval: '*/5 * * * *',
   // ponytail: 10분 — RainViewer 원본 갱신 주기가 10분이라 5분 cron은 같은 데이터를 두 번 받는 낭비.
   rainviewer_interval: '*/10 * * * *',
-  satellite_interval: '*/10 * * * *', // GK2A CI·CTPS 관측 간격과 동일하게 수집.
+  // 5분 — 관측 간격은 10분 그대로지만, 늦게 올라온 프레임을 다음 10분까지 기다리지 않고 줍는다.
+  // 이미 받은 프레임은 파일 존재 검사로 건너뛰므로 정상 상황의 추가 다운로드는 0.
+  satellite_interval: '*/5 * * * *',
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
   kim_surface_wind_interval: '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *',
-  ground_forecast_interval: '30 6,11,18,23 * * *',
+  // 동네예보 발표 8회(02,05,08,11,14,17,20,23 KST) + 30분 여유. 중기예보(06/18 발표)는 08:30·20:30 슬롯이 받는다.
+  ground_forecast_interval: '30 2,5,8,11,14,17,20,23 * * *',
   environment_interval: '10 * * * *',
   airport_info_interval: '0,30 6,17 * * *',
   takeoff_fcst_interval: '8 * * * *', // 매시(KST) — 이륙예보는 정시 발표
@@ -310,6 +340,7 @@ export default {
   lightning,
   amos,
   radar_echo,
+  radar_echo_top,
   rainviewer,
   satellite,
   adsb,

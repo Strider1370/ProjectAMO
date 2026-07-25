@@ -211,26 +211,33 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
   )
 }
 
-// #13 개인설정 패널 — 로그인 사용자 전용. 탭A 기상 미니마 / 탭B 비행 알림.
-// (개발자 콘솔은 사이드바 전용 아이콘 DeveloperConsoleButton으로 분리 — 여기 없음.)
-export default function PersonalSettingsPanel({ open, onOpenChange }) {
+// #13 개인설정 콘텐츠 — 설정 모달의 개인설정 탭에서 렌더링.
+export function PersonalSettingsContent() {
   const s = useStyles()
   const [tab, setTab] = useState('minima')
   const { minima, templates, flights, saveMinima, registerAlert, deleteAlert } = usePersonalSettings()
 
   return (
+    <>
+      <TabList selectedValue={tab} onTabSelect={(_, d) => setTab(d.value)}>
+        <Tab value="minima">기상 미니마</Tab>
+        <Tab value="alerts">비행 알림</Tab>
+      </TabList>
+      {tab === 'minima' && <MinimaTab s={s} minima={minima} saveMinima={saveMinima} />}
+      {tab === 'alerts' && <AlertsTab s={s} templates={templates} flights={flights} registerAlert={registerAlert} deleteAlert={deleteAlert} />}
+    </>
+  )
+}
+
+// 기존 단독 진입 호환용. 새 UI에서는 SettingsModal의 개인설정 탭을 사용한다.
+export default function PersonalSettingsPanel({ open, onOpenChange }) {
+  const s = useStyles()
+  return (
     <Dialog open={open} onOpenChange={(_, d) => onOpenChange(d.open)}>
       <DialogSurface className={s.surface}>
         <DialogBody>
           <DialogTitle>개인설정</DialogTitle>
-          <DialogContent>
-            <TabList selectedValue={tab} onTabSelect={(_, d) => setTab(d.value)}>
-              <Tab value="minima">기상 미니마</Tab>
-              <Tab value="alerts">비행 알림</Tab>
-            </TabList>
-            {tab === 'minima' && <MinimaTab s={s} minima={minima} saveMinima={saveMinima} />}
-            {tab === 'alerts' && <AlertsTab s={s} templates={templates} flights={flights} registerAlert={registerAlert} deleteAlert={deleteAlert} />}
-          </DialogContent>
+          <DialogContent><PersonalSettingsContent /></DialogContent>
         </DialogBody>
       </DialogSurface>
     </Dialog>

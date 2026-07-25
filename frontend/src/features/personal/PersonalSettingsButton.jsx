@@ -17,6 +17,7 @@ export default function PersonalSettingsButton({ isExpanded = false }) {
         type="button"
         className={`sidebar-icon-button ${isExpanded ? 'is-expanded' : ''}`}
         aria-label="개인설정"
+        title="개인설정"
         onClick={() => setOpen(true)}
       >
         <div className="sidebar-icon-wrapper">

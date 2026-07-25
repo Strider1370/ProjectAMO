@@ -11,6 +11,7 @@ import sigwxLowProcessor from './processors/sigwx-low-processor.js'
 import amosProcessor from './processors/amos-processor.js'
 import lightningProcessor from './processors/lightning-processor.js'
 import radarEchoProcessor from './processors/radar-echo-processor.js'
+import echoTopProcessor from './processors/echo-top-processor.js'
 import rainviewerProcessor from './processors/rainviewer-processor.js'
 import kimSurfaceWindProcessor from './processors/kim-surface-wind-processor.js'
 import satelliteProcessor from './processors/satellite-processor.js'
@@ -26,7 +27,7 @@ import { isDemoMode } from './dev/demo-mode.js'
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
-const locks = { metar: false, taf: false, warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false };
+const locks = { metar: false, taf: false, warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false };
 const KIM_NWP_CRON_OPTIONS = { timezone: 'Etc/UTC' }
 const AIRPORT_INFO_CRON_OPTIONS = { timezone: 'Asia/Seoul' }
 
@@ -103,6 +104,7 @@ function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.enabled !=
     ["amos", amosProcessor.process],
     ["lightning", lightningProcessor.process],
     ["radar_echo", radarEchoProcessor.process],
+    ["echo_top", echoTopProcessor.process],
     ["rainviewer", rainviewerProcessor.process],
     ["satellite", satelliteProcessor.process],
     ["ground_forecast", groundForecastProcessor.process],
@@ -148,11 +150,15 @@ async function main() {
   cron.schedule(config.schedule.amos_interval, () => runWithLock("amos", amosProcessor.process));
   cron.schedule(config.schedule.lightning_interval, () => runWithLock("lightning", lightningProcessor.process));
   cron.schedule(config.schedule.radar_echo_interval, () => runWithLock("radar_echo", radarEchoProcessor.process));
+  cron.schedule(config.schedule.echo_top_interval, () => runWithLock("echo_top", echoTopProcessor.process));
+  // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.
+  runWithLock("echo_top", echoTopProcessor.backfill);
   cron.schedule(config.schedule.rainviewer_interval, () => runWithLock("rainviewer", rainviewerProcessor.process));
   scheduleKimNwpJob();
   cron.schedule(config.schedule.ktg_interval, () => runWithLock('ktg', ktgProcessor.process), KIM_NWP_CRON_OPTIONS);
   cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite", satelliteProcessor.process));
-  cron.schedule(config.schedule.ground_forecast_interval, () => runWithLock("ground_forecast", groundForecastProcessor.process));
+  // 발표 시각이 KST 기준이라 서버 TZ와 무관하게 Asia/Seoul로 고정.
+  cron.schedule(config.schedule.ground_forecast_interval, () => runWithLock("ground_forecast", groundForecastProcessor.process), { timezone: 'Asia/Seoul' });
   cron.schedule(config.schedule.environment_interval, () => runWithLock("environment", environmentProcessor.process));
   scheduleAirportInfoJob();
   scheduleTakeoffFcstJob();

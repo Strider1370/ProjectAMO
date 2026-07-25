@@ -180,6 +180,7 @@ test('buildKimGridUrl uses the KMA APIHub KIM cgi endpoint', () => {
   assert.ok(url.includes('nwp=NE57'))
   assert.ok(url.includes('name=u10m'))
   assert.ok(url.includes('map=S'))
+  assert.equal(new URL(url).searchParams.get('authKey'), config.api.kim_nwp_auth_key)
 })
 
 test('resolveKimTemperatureComponentRequest uses pressure T and verified single-level t2m params', () => {
@@ -219,7 +220,9 @@ test('resolveKimHumidityComponentRequest uses moisture-analysis pressure rh para
 
 test('resolveKimIcingComponentRequests gates to icing levels', () => {
   assert.equal(resolveKimIcingComponentRequests({ level: { id: '10m', kind: 'height', level: 0 } }).length, 0)
+  assert.equal(resolveKimIcingComponentRequests({ level: { id: '250hPa', kind: 'pressure', level: 250 } }).length, 0)
   assert.equal(resolveKimIcingComponentRequests({ level: { id: '300hPa', kind: 'pressure', level: 300 } }).length, 7)
+  assert.equal(resolveKimIcingComponentRequests({ level: { id: '950hPa', kind: 'pressure', level: 950 } }).length, 7)
 
   const requests = resolveKimIcingComponentRequests({ level: { id: '600hPa', kind: 'pressure', level: 600 } })
 

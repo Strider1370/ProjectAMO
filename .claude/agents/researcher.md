@@ -2,7 +2,10 @@
 name: researcher
 description: Read-only exploration — codebase surveys, research, file reading, grep, log analysis. Returns a tight summary, never raw dumps. Use for broad, read-once exploration the orchestrator wants kept out of main context.
 tools: Glob, Grep, Read, Bash, WebSearch, WebFetch
+disallowedTools: Edit, Write, NotebookEdit
 model: haiku
+maxTurns: 20
+color: green
 ---
 You are a read-only research subagent. Do NOT edit files.
 

@@ -181,7 +181,7 @@ export function buildKimGridUrl({
     map,
     sub,
     disp,
-    authKey: api.auth_key,
+    authKey: api.kim_nwp_auth_key,
   })
   return `${api.kim_grid_url}?${params.toString()}`
 }

@@ -5,6 +5,7 @@ import {
   buildWeatherOverlayModel,
   formatAdvisoryPanelLabel,
   formatSigwxStamp,
+  formatUtcTmfcStamp,
 } from './weatherOverlayModel.js'
 
 const hiddenAdvisoryKeys = { sigwxLow: [], sigmet: [], airmet: [] }
@@ -12,6 +13,34 @@ const sigwxFilter = {}
 
 test('formatSigwxStamp formats tmfc values as KST labels', () => {
   assert.equal(formatSigwxStamp('202605140300'), '05/14 03:00 KST')
+})
+
+test('formatUtcTmfcStamp converts KIM/KTG UTC tmfc values to the display timezone', () => {
+  assert.equal(formatUtcTmfcStamp('202605140300', 'UTC'), '05/14 03:00 UTC')
+  assert.equal(formatUtcTmfcStamp('202605140300', 'KST'), '05/14 12:00 KST')
+})
+
+test('buildWeatherOverlayModel formats KIM/KTG tmfc values as UTC source times', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: null,
+    satMeta: null,
+    lightningData: null,
+    sigwxLowData: null,
+    sigwxLowHistoryData: [],
+    sigmetData: { items: [] },
+    airmetData: { items: [] },
+    visibility: {},
+    nwpSelection: { tmfc: '202605140300', hf: 3 },
+    ktgGrid: {
+      run: { tmfc: '202605140300', validTime: '2026-05-14T06:00:00.000Z' },
+    },
+    tz: 'KST',
+  })
+
+  assert.equal(model.nwpIssueLabel, '05/14 12:00 KST')
+  assert.equal(model.nwpValidLabel, '05/14 15:00 KST')
+  assert.equal(model.ktgIssueLabel, '05/14 12:00 KST')
+  assert.equal(model.ktgValidLabel, '05/14 15:00 KST')
 })
 
 test('formatAdvisoryPanelLabel includes kind, sequence, and 한글 phenomenon (+code)', () => {
@@ -244,4 +273,78 @@ test('convective layers hide for raw future selection and never use an older fra
   })
   assert.equal(model.ciFrame, null)
   assert.equal(model.ctpsFrame, null)
+})
+
+const echoTopMeta = {
+  tm: '202607252035',
+  frames: [
+    { tm: '202607252030', path: '/data/radar/echotop/echotop_202607252030.webp', observedAt: '2026-07-25T11:30:00.000Z', bounds: [[30, 120], [44, 136]], siteCount: { ok: 12, total: 13 } },
+    { tm: '202607252035', path: '/data/radar/echotop/echotop_202607252035.webp', observedAt: '2026-07-25T11:35:00.000Z', bounds: [[30, 120], [44, 136]], siteCount: { ok: 13, total: 13 } },
+  ],
+}
+const radarMeta = { tm: '202607252035', frames: [{ tm: '202607252030', path: '/a.png' }, { tm: '202607252035', path: '/b.png' }] }
+
+test('an exactly matching echo top frame is used and is not marked stale', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta, echoTopMeta,
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
+  })
+  assert.equal(model.echoTopFrame.tm, '202607252035')
+  assert.equal(model.echoTopFrame.observedAt, '2026-07-25T11:35:00.000Z')
+  assert.equal(model.echoTopFrame.stale, false)
+})
+
+// 레이더와 같은 선택 규칙 — 같이 켜면 같이 보인다. 대신 대체된 프레임은 stale로 드러난다.
+test('a missed cycle falls back to the previous frame, flagged stale, like radar does', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta,
+    echoTopMeta: { tm: '202607252030', frames: [echoTopMeta.frames[0]] },
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
+  })
+  assert.equal(model.echoTopFrame.tm, '202607252030')
+  assert.equal(model.echoTopFrame.stale, true)
+  // 표시되는 시각은 어디까지나 그 프레임의 실제 관측시각이다.
+  assert.equal(model.echoTopFrame.observedAt, '2026-07-25T11:30:00.000Z')
+  assert.equal(model.radarFrame.tm, '202607252035', 'radar still shows its own newest frame')
+})
+
+test('with no echo top frames at all the layer stays hidden', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta,
+    echoTopMeta: { tm: null, frames: [] },
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
+  })
+  assert.equal(model.echoTopFrame, null)
+})
+
+test('the echo top frame is hidden while the layer is off', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta, echoTopMeta,
+    visibility: { radar: true, echoTop: false },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 35),
+  })
+  assert.equal(model.echoTopFrame, null)
+})
+
+test('partial site coverage is carried on the frame so the UI can flag it', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta, echoTopMeta,
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 30),
+  })
+  assert.equal(model.echoTopFrame.partial, true)
+  assert.deepEqual(model.echoTopFrame.siteCount, { ok: 12, total: 13 })
+})
+
+test('a time earlier than every echo top frame shows nothing, not the newest frame', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: radarMeta,
+    echoTopMeta: { tm: '202607252035', frames: [echoTopMeta.frames[1]] },
+    visibility: { radar: true, echoTop: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 6, 25, 11, 30),
+  })
+  assert.equal(model.echoTopFrame, null, 'a frame observed later must not stand in for an earlier time')
 })

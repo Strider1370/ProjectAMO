@@ -36,14 +36,14 @@ export function formatReferenceTimeLabel(timeMs, tz = 'KST') {
   return `${hours}:${minutes}`
 }
 
-export function parseSigwxTmfcToMs(tmfc) {
+function parseCompactTmfcToMs(tmfc, sourceOffsetHours) {
   if (!tmfc || !/^\d{10}(\d{2})?$/.test(String(tmfc))) return null
   const raw = String(tmfc)
   const date = new Date(Date.UTC(
     Number(raw.slice(0, 4)),
     Number(raw.slice(4, 6)) - 1,
     Number(raw.slice(6, 8)),
-    Number(raw.slice(8, 10)) - 9,
+    Number(raw.slice(8, 10)) - sourceOffsetHours,
     raw.length >= 12 ? Number(raw.slice(10, 12)) : 0,
     0,
     0,
@@ -52,10 +52,18 @@ export function parseSigwxTmfcToMs(tmfc) {
   return Number.isFinite(ms) ? ms : null
 }
 
-export function formatSigwxStamp(value, tz = 'KST') {
-  const timeMs = value?.includes?.('T')
-    ? Date.parse(value)
-    : parseSigwxTmfcToMs(value)
+// SIGWX compact times are published in KST.
+export function parseSigwxTmfcToMs(tmfc) {
+  return parseCompactTmfcToMs(tmfc, 9)
+}
+
+// KIM/KTG compact times are published in UTC; their ISO validTime fields are
+// already UTC and do not need this conversion.
+export function parseUtcTmfcToMs(tmfc) {
+  return parseCompactTmfcToMs(tmfc, 0)
+}
+
+function formatEpochStamp(timeMs, tz) {
   if (!Number.isFinite(timeMs)) return '-'
   const offset = tz === 'KST' ? 9 * 60 * 60 * 1000 : 0
   const d = new Date(timeMs + offset)
@@ -64,6 +72,17 @@ export function formatSigwxStamp(value, tz = 'KST') {
   const hours = String(d.getUTCHours()).padStart(2, '0')
   const minutes = String(d.getUTCMinutes()).padStart(2, '0')
   return `${month}/${day} ${hours}:${minutes} ${tz}`
+}
+
+export function formatSigwxStamp(value, tz = 'KST') {
+  const timeMs = value?.includes?.('T')
+    ? Date.parse(value)
+    : parseSigwxTmfcToMs(value)
+  return formatEpochStamp(timeMs, tz)
+}
+
+export function formatUtcTmfcStamp(value, tz = 'KST') {
+  return formatEpochStamp(parseUtcTmfcToMs(value), tz)
 }
 
 export function formatAdvisoryPanelLabel(item, kind) {
@@ -112,6 +131,7 @@ function pickRainviewerFrame(frames, selectedTimeMs) {
 
 export function buildWeatherOverlayModel({
   echoMeta,
+  echoTopMeta,
   rainviewerMeta,
   satMeta,
   convectiveMeta,
@@ -136,6 +156,7 @@ export function buildWeatherOverlayModel({
   tz = 'KST',
 }) {
   const radarFrames = normalizeFrames(echoMeta?.frames?.length ? echoMeta.frames : [echoMeta?.nationwide])
+  const echoTopFrames = normalizeFrames(echoTopMeta?.frames?.length ? echoTopMeta.frames : [echoTopMeta?.latest])
   const rainviewerFrames = normalizeRainviewerFrames(rainviewerMeta)
   const satelliteFrames = normalizeFrames(satMeta?.frames?.length ? satMeta.frames : [satMeta?.latest])
   const convectiveFrames = normalizeFrames(convectiveMeta?.frames?.length ? convectiveMeta.frames : [convectiveMeta?.latest])
@@ -145,6 +166,7 @@ export function buildWeatherOverlayModel({
     visibility.radar ? radarFrames : [],
     // 해외 레이더도 국내와 대등하게 자기 눈금을 낸다(상호배타라 둘이 동시에 눈금을 내지 않는다).
     visibility.radarOverseas ? rainviewerFrames : [],
+    visibility.echoTop ? echoTopFrames : [],
     (visibility.satellite || visibility.ci || visibility.ctps) ? satelliteFrames : [],
     visibility.lightning ? lightningFrames : [],
   ])
@@ -157,8 +179,31 @@ export function buildWeatherOverlayModel({
       ? Math.min(Math.max(selectedWeatherTimeMs, firstTickMs), latestTickMs)
       : latestTickMs)
     : null
-  const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && weatherTimelineTicks.length > 0
+  const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && weatherTimelineTicks.length > 0
   const radarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
+  // Echo Top은 레이더와 같은 선택 규칙을 쓴다 — 같이 켜면 같이 보이고 같이 사라진다.
+  // 수집 지연도 레이더와 같게 맞춰(config.radar_echo_top.delay_minutes) 평상시엔 시각이 일치하고,
+  // 한 주기를 놓쳤을 때만 직전 프레임이 대신 나온다.
+  // 그 경우를 감추지 않기 위해 stale(선택 시각보다 과거)임을 표시로 남긴다 — 범례·상세정보가
+  // 프레임의 실제 관측시각을 그대로 보여주므로, 5분 전 자료가 현재 시각으로 위장되지는 않는다.
+  // pickNearestPreviousFrame은 선택 시각이 모든 프레임보다 과거여도 null이 아니라 frames[0]을 준다
+  // (weatherTimeline.js: `return selected || frames[0]`). 그대로 두면 아직 관측되지도 않은
+  // 미래 프레임이 현재 시각의 자료처럼 표시된다 — RainViewer가 같은 이유로 두는 가드다.
+  const echoTopSelected = visibility.echoTop
+    && echoTopFrames.length
+    && Number.isFinite(resolvedWeatherTimeMs)
+    && resolvedWeatherTimeMs >= echoTopFrames[0].timeMs
+    ? pickNearestPreviousFrame(echoTopFrames, resolvedWeatherTimeMs)
+    : null
+  const echoTopFrame = echoTopSelected
+    ? {
+      ...echoTopSelected,
+      partial: Number.isFinite(echoTopSelected.siteCount?.ok)
+        && Number.isFinite(echoTopSelected.siteCount?.total)
+        && echoTopSelected.siteCount.ok < echoTopSelected.siteCount.total,
+      stale: Number.isFinite(resolvedWeatherTimeMs) && echoTopSelected.timeMs < resolvedWeatherTimeMs,
+    }
+    : null
   const rainviewerFrame = pickRainviewerFrame(rainviewerFrames, resolvedWeatherTimeMs)
   const satelliteFrame = pickNearestPreviousFrame(satelliteFrames, resolvedWeatherTimeMs)
   const rawFutureSatelliteSelection = Number.isFinite(selectedWeatherTimeMs)
@@ -240,6 +285,7 @@ export function buildWeatherOverlayModel({
   return {
     visibility,
     radarFrames,
+    echoTopFrames,
     rainviewerMeta: rainviewerMeta || null,
     rainviewerFrames,
     satelliteFrames,
@@ -249,6 +295,7 @@ export function buildWeatherOverlayModel({
     selectedWeatherTimeMs: resolvedWeatherTimeMs,
     weatherTimelineVisible,
     radarFrame,
+    echoTopFrame,
     radarMotion,
     rainviewerFrame,
     satelliteFrame,
@@ -291,14 +338,14 @@ export function buildWeatherOverlayModel({
     radarReferenceTimeMs: radarReferenceTimeMs ?? Date.now(),
     sigwxIssueLabel: formatSigwxStamp(selectedSigwxEntry?.fetched_at, tz),
     sigwxValidLabel: formatSigwxStamp(selectedSigwxEntry?.tmfc, tz),
-    nwpIssueLabel: formatSigwxStamp(nwpSelection?.tmfc ?? null, tz),
+    nwpIssueLabel: formatUtcTmfcStamp(nwpSelection?.tmfc ?? null, tz),
     nwpValidLabel: (() => {
-      const base = parseSigwxTmfcToMs(nwpSelection?.tmfc)
+      const base = parseUtcTmfcToMs(nwpSelection?.tmfc)
       const hf = Number(nwpSelection?.hf)
       if (!Number.isFinite(base) || !Number.isFinite(hf)) return '-'
       return formatSigwxStamp(new Date(base + hf * 3600000).toISOString(), tz)
     })(),
-    ktgIssueLabel: formatSigwxStamp(ktgGrid?.run?.tmfc ?? null, tz),
+    ktgIssueLabel: formatUtcTmfcStamp(ktgGrid?.run?.tmfc ?? null, tz),
     ktgValidLabel: formatSigwxStamp(ktgGrid?.run?.validTime ?? null, tz),
     flightCategoryIssueLabel: formatSigwxStamp(flightCategoryGeojson?.fetched_at ?? null, tz),
     blinkLightning,

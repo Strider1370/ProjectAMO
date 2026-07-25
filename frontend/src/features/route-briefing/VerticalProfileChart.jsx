@@ -359,8 +359,10 @@ export default function VerticalProfileChart({
         const xLeft = xFor(v.distanceNm)
         const xRight = xFor(vNext.distanceNm)
         const maxSpread = lvl.pressure === 500 ? 6 : 4
-        const fill = layers.icing && v.icing != null
-          ? icingColor(v.icing)
+        // 착빙을 켠 구간은 착빙만 칠한다. 착빙 값이 없는 면을 습수 색으로 메우면
+        // 착빙 없음과 습윤이 같은 색으로 보여 단면을 오독하게 된다.
+        const fill = layers.icing
+          ? (v.icing != null ? icingColor(v.icing) : null)
           : layers.moisture && v.spread != null
             ? moistureColor(v.spread, maxSpread)
             : null

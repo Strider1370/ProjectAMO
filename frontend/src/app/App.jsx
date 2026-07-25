@@ -209,6 +209,7 @@ function MainAppShell() {
           airports={weatherData?.airports || []}
           metarData={mapMetarData}
           echoMeta={weatherData?.echoMeta || null}
+          echoTopMeta={weatherData?.echoTopMeta || null}
           rainviewerMeta={weatherData?.rainviewerMeta || null}
           satMeta={weatherData?.satMeta || null}
           convectiveMeta={weatherData?.convectiveMeta || null}

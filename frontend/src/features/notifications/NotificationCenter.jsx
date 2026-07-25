@@ -86,6 +86,7 @@ export default function NotificationCenter({ isExpanded = false }) {
           type="button"
           className={`sidebar-icon-button ${isExpanded ? 'is-expanded' : ''}`}
           aria-label={`알림${unreadCount ? ` · 안 읽음 ${unreadCount}` : ''}`}
+          title="알림"
         >
           <div className="sidebar-icon-wrapper">
             <BellRing size={20} strokeWidth={2} />

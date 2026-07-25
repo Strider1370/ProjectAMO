@@ -69,6 +69,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(() => getPerformanceForRule(initialRouteForm.flightRule).altitudeFt)
   const [verticalProfile, setVerticalProfile] = useState(null)
   const [crossSection, setCrossSection] = useState(null)
+  const [crossSectionHourLoading, setCrossSectionHourLoading] = useState(false)
   const [verticalProfileLoading, setVerticalProfileLoading] = useState(false)
   const [verticalProfileError, setVerticalProfileError] = useState(null)
   const [verticalProfileStale, setVerticalProfileStale] = useState(false)
@@ -1575,6 +1576,28 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     }
   }
 
+  // 연직단면도에서 다른 예보시간(hf)을 선택했을 때 그 시간만 다시 불러온다.
+  // 고도 프로파일은 hf와 무관하므로 다시 계산하지 않는다.
+  async function handleSelectForecastHour(hf) {
+    const routeGeometry = getCurrentRouteLineString({
+      routeResult,
+      vfrWaypoints: appliedVfrWaypoints,
+      selectedSid,
+      selectedStar,
+      selectedIap,
+    })
+    if (!routeGeometry || !Number.isFinite(Number(hf))) return
+    const requestId = ++verticalProfileRequestRef.current
+    setCrossSectionHourLoading(true)
+    try {
+      const cs = await fetchCrossSection({ routeGeometry, tmfc: crossSection?.run?.tmfc, hf }).catch(() => null)
+      if (requestId !== verticalProfileRequestRef.current) return
+      if (cs) setCrossSection(cs)
+    } finally {
+      if (requestId === verticalProfileRequestRef.current) setCrossSectionHourLoading(false)
+    }
+  }
+
   // Planned total distance (IFR total incl SID/STAR/IAP; VFR waypoint-summed).
   // Shared by 브리핑 생성 and the live ETA readout in the form.
   const plannedDistanceNm = useMemo(() => {
@@ -1703,6 +1726,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       cruiseAltitudeFt,
       verticalProfile,
       crossSection,
+      crossSectionHourLoading,
       verticalProfileLoading,
       verticalProfileError,
       verticalProfileStale,
@@ -1788,6 +1812,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       applyImportedPath,
       cancelImportChoice,
       handleVerticalProfileRequest,
+      handleSelectForecastHour,
       setHoveredWpInfo,
       setVerticalProfileWindowOpen,
       setCruiseAltitudeFt: updateCruiseAltitudeFt,
