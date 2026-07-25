@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 import { isSameFiveMinuteBucket, observedBucketMs, parseQcdVolume } from '../src/parsers/radar-qcd-parser.js'
 
 test('observation time is floored to its 5-minute bucket', () => {
@@ -22,7 +23,8 @@ test('bucket comparison accepts the same bucket and rejects the neighbour', () =
 })
 
 // 실제 HDF5 표본은 Task 1이 artifacts/radar-qcd/ 에 받아 둔다(비커밋). 없으면 건너뛴다.
-const fixtureDir = path.join(process.cwd(), '..', 'artifacts', 'radar-qcd')
+// Resolve fixture dir relative to this test file, not process.cwd(), so test runs consistently from any cwd
+const fixtureDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'artifacts', 'radar-qcd')
 const fixture = fs.existsSync(fixtureDir) ? fs.readdirSync(fixtureDir).find((f) => f.endsWith('.h5')) : null
 
 test('parses a real QCD volume with all 9 sweeps (ragged format)', { skip: fixture ? false : 'no artifacts/radar-qcd/*.h5 fixture' }, async () => {
