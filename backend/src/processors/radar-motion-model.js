@@ -132,7 +132,7 @@ function bearingDegrees(start, end) {
 
 export function motionVectorsToGeoJSON(vectors, options) {
   const { gridToLatLon, workStride, frameIntervalMs } = options
-  const km = workStride * HSR_CELL_KM
+  const km = cellKm({ workStride })
   const hours = frameIntervalMs / 3600000
   const features = []
 

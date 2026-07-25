@@ -133,6 +133,23 @@ test('최소 속도 미만은 앞면 판정에서 제외한다', () => {
   assert.deepEqual(selectLeadingEdge([slow], current, EDGE), [])
 })
 
+// 위쪽 절반만 에코인 장. dx만 쓰는 구현(row = v.row)이면 셋 다 안쪽으로 남아 걸러진다.
+function halfFieldVertical() {
+  const width = 20, height = 40
+  const values = new Int16Array(width * height)
+  for (let row = 0; row < 20; row += 1) {
+    for (let col = 0; col < width; col += 1) values[row * width + col] = 5000
+  }
+  return { width, height, stride: 4, values }
+}
+
+test('dy로 움직이는 벡터도 앞면 판정에 dy를 쓴다', () => {
+  const current = halfFieldVertical()
+  const mk = (row) => ({ col: 10, row, dx: 0, dy: 2, matchScore: 0.9, neighbourAgreement: 1 })
+  const kept = selectLeadingEdge([mk(5), mk(19), mk(10)], current, EDGE)
+  assert.deepEqual(kept.map((v) => v.row), [19])
+})
+
 test('격자 밖을 내다보는 벡터는 앞면으로 치지 않는다', () => {
   const current = halfField()
   // col 39는 오른쪽 끝. 3칸 앞은 격자 밖이다 — 에코 없음으로 오인하면 안 된다.
@@ -140,11 +157,14 @@ test('격자 밖을 내다보는 벡터는 앞면으로 치지 않는다', () =>
   assert.deepEqual(selectLeadingEdge([atEdge], current, EDGE), [])
 })
 
+// gridToLatLon 실측(radar-echo-parser.js): +x 동쪽, +y 북쪽. 남쪽이 아니다 —
+// 이 스텁을 뒤집으면 화살표가 전부 180도 돌아간다.
+const stubGridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 + y * 0.001 })
+
 test('GeoJSON은 Point와 방위·속도를 낸다', () => {
-  const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 - y * 0.001 })
   const geojson = motionVectorsToGeoJSON(
     [{ col: 10, row: 10, dx: 3, dy: 0, matchScore: 0.812, neighbourAgreement: 0.875 }],
-    { gridToLatLon, workStride: 4, frameIntervalMs: 300000 },
+    { gridToLatLon: stubGridToLatLon, workStride: 4, frameIntervalMs: 300000 },
   )
   assert.equal(geojson.type, 'FeatureCollection')
   const f = geojson.features[0]
@@ -155,13 +175,13 @@ test('GeoJSON은 Point와 방위·속도를 낸다', () => {
   assert.equal(f.properties.neighbourAgreement, 0.88)
 })
 
-test('남쪽으로 가는 벡터는 방위 180 근처를 낸다', () => {
-  const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 - y * 0.001 })
+test('북쪽으로 가는 벡터는 방위 0/360 근처를 낸다', () => {
   const geojson = motionVectorsToGeoJSON(
     [{ col: 10, row: 10, dx: 0, dy: 3, matchScore: 0.8, neighbourAgreement: 0.8 }],
-    { gridToLatLon, workStride: 4, frameIntervalMs: 300000 },
+    { gridToLatLon: stubGridToLatLon, workStride: 4, frameIntervalMs: 300000 },
   )
-  assert.ok(Math.abs(geojson.features[0].properties.bearingDeg - 180) < 2)
+  const bearing = geojson.features[0].properties.bearingDeg
+  assert.ok(Math.min(bearing, 360 - bearing) < 2, `북쪽이어야 하는데 ${bearing}`)
 })
 
 test('좌표를 못 구하는 벡터는 조용히 버린다', () => {
