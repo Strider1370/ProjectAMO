@@ -33,6 +33,7 @@ const MET_META = {
   sigmet_intl: { label: 'SIGMET(해외)', aliases: ['해외시그멧', '국제시그멧', 'overseas sigmet'] },
   airmet: { label: 'AIRMET', aliases: ['에어멧'] },
   sigwx: { label: 'SIGWX', aliases: ['시그윅스', '악기상'] },
+  typhoon: { label: '태풍', aliases: ['태풍', 'typhoon', '타이푼'] },
   adsb: { label: 'ADS-B', aliases: ['항공기', '실시간항공기', 'adsb'] },
   flightCategory: { label: '비행기상구역', aliases: ['비행구역', '카테고리'] },
 }

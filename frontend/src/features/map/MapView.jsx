@@ -41,6 +41,8 @@ import LevelRail from '../weather-overlays/LevelRail.jsx'
 import ConvectiveOverlayControls from '../weather-overlays/ConvectiveOverlayControls.jsx'
 import ConvectiveOverlayCard from '../weather-overlays/ConvectiveOverlayCard.jsx'
 import EchoTopCard from '../weather-overlays/EchoTopCard.jsx'
+import TyphoonPanel from '../weather-overlays/TyphoonPanel.jsx'
+import { useTyphoonOverlay } from '../weather-overlays/lib/typhoonOverlaySync.js'
 import WeatherPointInspector from '../weather-overlays/WeatherPointInspector.jsx'
 import { useConvectiveOverlay } from '../weather-overlays/lib/useConvectiveOverlay.js'
 import { useEchoTopOverlay } from '../weather-overlays/lib/useEchoTopOverlay.js'
@@ -710,6 +712,9 @@ const MapView = forwardRef(function MapView({
     visible: metVisibility.echoTop,
     frame: weatherOverlayModel.echoTopFrame,
     fetchPoint: fetchEchoTopPoint,
+  })
+  const typhoonOverlay = useTyphoonOverlay({
+    mapRef, isStyleReady, styleRevision, visible: metVisibility.typhoon,
   })
   const radarMotionOverlay = useRadarMotionOverlay({
     radarEnabled: weatherOverlayModel.visibility.radar,
@@ -1527,6 +1532,7 @@ const MapView = forwardRef(function MapView({
     if (id === 'airmet') return airmetCount
     if (id === 'lightning') return lightningCount
     if (id === 'sigwx') return sigwxCount
+    if (id === 'typhoon') return typhoonOverlay.typhoons.length
     return null
   }
 
@@ -1726,6 +1732,14 @@ const MapView = forwardRef(function MapView({
       </div>
       <ConvectiveOverlayCard selection={convectiveOverlay.selection} tz={tz} />
       <EchoTopCard selection={echoTopOverlay.selection} tz={tz} />
+      {metVisibility.typhoon && (
+        <TyphoonPanel
+          typhoons={typhoonOverlay.typhoons}
+          status={typhoonOverlay.status}
+          onFocus={(item) => mapRef.current?.flyTo({ center: [item.center.lon, item.center.lat], zoom: 5 })}
+          onClose={() => toggleMet('typhoon')}
+        />
+      )}
       <WeatherPointInspector selection={weatherPointInspector.selection} onClose={weatherPointInspector.clearSelection} />
 
       <AdsbTimestamp

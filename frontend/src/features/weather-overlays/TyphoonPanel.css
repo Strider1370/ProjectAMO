@@ -1,0 +1,47 @@
+/* 데스크톱·태블릿 전용. 모바일은 MobileSheet로 갈라지므로 이 규칙을 타지 않는다.
+   레이어 드로어 오른쪽에 나란히 배치. layer-drawer 셸을 재사용하되 위치만 민다.
+   .map-view-wrapper .layer-drawer 규칙을 이기려 동일 접두 + .typhoon-panel 로 특이도 확보. */
+.map-view-wrapper .layer-drawer.typhoon-panel {
+  left: calc(12px + var(--panel-overlay-sm) + 8px);
+  width: min(300px, 92vw);
+}
+
+.typhoon-panel__empty {
+  margin: 0;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.typhoon-panel__item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-1, rgba(148, 163, 184, 0.28));
+}
+
+.typhoon-panel__swatch {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+
+.typhoon-panel__body { flex: 1 1 auto; min-width: 0; }
+
+.typhoon-panel__metrics { display: flex; gap: 8px; font-size: 12px; }
+
+.typhoon-panel__location,
+.typhoon-panel__time { font-size: 12px; color: var(--text-3); }
+
+.typhoon-panel__focus {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid var(--border-1, rgba(148, 163, 184, 0.5));
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}

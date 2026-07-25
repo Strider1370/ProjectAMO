@@ -1,6 +1,7 @@
 import {
   Radar, Satellite, Zap, Wind, Thermometer, Droplets,
   Snowflake, Activity, Plane, AlertTriangle, AlertOctagon, CloudFog, Radio, Globe, Cloud, CloudLightning, Mountain,
+  Tornado,
 } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -24,6 +25,7 @@ const WEATHER_TILE_ICON = {
   sigmet_intl: Globe,
   airmet: AlertOctagon,
   sigwx: CloudFog,
+  typhoon: Tornado,
   adsb: Radio,
 }
 
@@ -45,7 +47,7 @@ function WeatherOverlayPanel({
     { id: 'radar', title: '레이더', ids: ['radar', 'radarOverseas', 'echoTop', 'lightning'] },
     { id: 'satellite', title: '위성', ids: ['satellite', 'ci', 'ctps'] },
     { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : [] },
-    { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx'] },
+    { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'typhoon'] },
     { id: 'traffic', title: '항적', ids: ['adsb'] },
   ]
   const layerLabels = {
@@ -65,6 +67,7 @@ function WeatherOverlayPanel({
     sigmet_intl: 'SIGMET(해외)',
     airmet: 'AIRMET',
     sigwx: 'SIGWX',
+    typhoon: '태풍',
     adsb: 'ADS-B',
     flightCategory: '비행기상구역',
   }
