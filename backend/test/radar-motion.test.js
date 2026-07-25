@@ -13,12 +13,15 @@ test('no-data(-25000)는 0으로 클램프된다', () => {
   assert.equal(input.values[1], 3000, '에코 블록은 그대로여야 한다')
 })
 
-test('no-data와 약한 에코가 섞인 블록은 에코 값을 쓴다', () => {
-  const nx = 4, ny = 4
+test('경계값: 블록 최댓값이 정확히 -25000이면 0, 약한 에코가 섞이면 에코 값을 쓴다', () => {
+  // 블록 0(0~3열)은 전부 no-data라 최댓값이 정확히 -25000 — 클램프가 없으면 -25000이 그대로 나온다.
+  // 블록 1(4~7열)은 no-data 사이에 약한 에코 하나 — 최댓값이 -25000보다 크므로 클램프와 무관하게 800이어야 한다.
+  const nx = 8, ny = 4
   const refl = new Int16Array(nx * ny).fill(-25000)
-  refl[0] = 800
+  refl[4] = 800
   const input = createMotionInput(refl, { nx, ny }, { stride: 4 })
-  assert.equal(input.values[0], 800)
+  assert.equal(input.values[0], 0, '전부 no-data인 블록은 0이어야 한다')
+  assert.equal(input.values[1], 800, '약한 에코가 섞인 블록은 에코 값을 그대로 써야 한다')
 })
 
 const geometry = {

@@ -102,6 +102,9 @@ for (const tm of CASES) {
   const pct = (r) => `${(r.correct / r.total * 100).toFixed(1)}%`
   const c = scoreCase(...clamped, false)
   const cSub = scoreCase(...clamped, true)
-  const r = scoreCase(...raw, false)
+  // 정답(T+5 관측)은 세 열 모두 클램프된 g3로 고정한다. no-data 무늬가 ~89-91%를
+  // 차지하고 프레임 간 98.8% 고정이라, g3까지 raw로 두면 무늬-대-무늬 자기정합으로
+  // 점수가 부풀려진다. g1/g2만 클램프 여부로 바꿔 화살표 산출 방식만 비교한다.
+  const r = scoreCase(raw[0], raw[1], clamped[2], false)
   console.log(`${tm}  화살표 ${c.total}개 | 클램프+정수 ${pct(c)} | 클램프+소수점 ${pct(cSub)} | 클램프없음 ${pct(r)}`)
 }
