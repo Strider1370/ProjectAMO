@@ -43,6 +43,18 @@ test('the frame records per-site status so partial coverage is identifiable', ()
   assert.equal(meta.frames[0].sites.find((s) => s.stn === 'BBB').status, 'stale')
 })
 
+test('observedAt is null when no sites succeeded', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'echotop-'))
+  const meta = publish(root, '202607252035', {
+    sites: [
+      { stn: 'AAA', status: 'failed', observedAt: null, reason: 'timeout' },
+      { stn: 'BBB', status: 'missing', observedAt: null },
+    ],
+  })
+  assert.equal(meta.frames[0].observedAt, null)
+  assert.deepEqual(meta.frames[0].siteCount, { ok: 0, total: 2 })
+})
+
 test('retention keeps only maxFrames and deletes the orphaned assets', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'echotop-'))
   for (const tm of ['202607252015', '202607252020', '202607252025', '202607252030']) publish(root, tm)

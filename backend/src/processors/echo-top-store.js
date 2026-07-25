@@ -51,8 +51,8 @@ export function publishEchoTopFrame({ root, tm, composite, image, bounds, width,
   const okSites = sites.filter((site) => site.status === 'ok')
   const record = {
     tm,
-    // 실제 관측시각: 정상 사이트들의 최신 관측시각. 없으면 프레임 시각으로 대체.
-    observedAt: okSites.map((site) => site.observedAt).filter(Boolean).sort().at(-1) || tmToIso(tm),
+    // 실제 관측시각: 정상 사이트들의 최신 관측시각. 없으면 null — 관측하지 않은 프레임은 시간을 만들어내지 않음.
+    observedAt: okSites.map((site) => site.observedAt).filter(Boolean).sort().at(-1) || null,
     bounds, width, height,
     path: `/data/radar/echotop/echotop_${tm}.webp`,
     threshold_dbz: 18,
