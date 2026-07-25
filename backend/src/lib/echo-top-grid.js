@@ -6,10 +6,12 @@ import { gridToLatLon, latLonToGrid } from '../parsers/radar-echo-parser.js'
 const HSR_NX = 2305
 const HSR_NY = 2881
 
+// stride 2 = 1 km. 발행 이미지가 1600px 폭에 약 1300 km를 담아 픽셀당 0.81 km라,
+// 2 km 격자는 출력보다 거칠어 계단이 보였다. 1 km면 출력 해상도와 맞는다.
 export const ECHO_TOP_GRID = Object.freeze({
-  stride: 4,
-  nx: Math.ceil(HSR_NX / 4), // 577
-  ny: Math.ceil(HSR_NY / 4), // 721
+  stride: 2,
+  nx: Math.ceil(HSR_NX / 2), // 1153
+  ny: Math.ceil(HSR_NY / 2), // 1441
 })
 
 export function echoTopIndexForLatLon(lat, lon, grid = ECHO_TOP_GRID) {

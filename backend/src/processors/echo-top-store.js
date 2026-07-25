@@ -2,7 +2,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const META_NAME = 'echotop_meta.json'
-const RENDER_VERSION = 'echotop-18dbz-msl-v1'
+// 격자 해상도나 산출 방식이 바뀌면 반드시 올릴 것. 지점 조회는 현재 격자로 색인을 계산해
+// 예전 .bin을 읽으므로, 버전이 다른 프레임을 남겨두면 조용히 엉뚱한 칸 값을 돌려준다.
+// v2: 격자 2 km -> 1 km(stride 2), 방위 세분 칠하기.
+const RENDER_VERSION = 'echotop-18dbz-msl-v2'
 
 export function echoTopDir(root) { return path.join(root, 'radar', 'echotop') }
 
@@ -21,7 +24,12 @@ function writeAtomic(filePath, data) {
 export function readEchoTopMeta(root) {
   const filePath = path.join(echoTopDir(root), META_NAME)
   if (!fs.existsSync(filePath)) return null
-  try { return JSON.parse(fs.readFileSync(filePath, 'utf8')) } catch { return null }
+  try {
+    const meta = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    // 다른 산출 버전의 프레임은 현재 격자로 해석할 수 없다 — 없는 것으로 취급해 다시 만들게 한다.
+    if (meta?.render_version !== RENDER_VERSION) return null
+    return meta
+  } catch { return null }
 }
 
 function cleanup(root, meta) {

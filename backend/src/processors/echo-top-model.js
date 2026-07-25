@@ -67,6 +67,8 @@ export function computeSiteEchoTop(volume, { thresholdDbz = 18, grid = ECHO_TOP_
   const gateCount = volume.rangeM.length
   // 방위 인덱스는 sweep마다 ray 수가 다를 수 있으므로 1도 단위로 정규화해 column을 맞춘다.
   const azimuthBins = 360
+  // HSR 원격자가 0.5 km라 격자 한 칸의 실제 크기는 stride × 500 m다.
+  const cellSizeM = grid.stride * 500
 
   // 빔 높이와 지면 거리는 bin과 무관하므로 미리 계산한다.
   // beamHeightMsl[gate][sweep] = beamHeightMsl(rangeM[gate], sweep.elevationDeg, radarAltitudeM)
@@ -117,12 +119,20 @@ export function computeSiteEchoTop(volume, { thresholdDbz = 18, grid = ECHO_TOP_
       if (!solved) continue
 
       const groundRange = groundRangeCache[gate]
-      const { lat, lon } = offsetLatLon(volume.latitude, volume.longitude, bin, groundRange)
-      const index = echoTopIndexForLatLon(lat, lon, grid)
-      if (index === null) continue
-      if (quality[index] === ECHO_TOP_QUALITY.INVALID || solved.heightM > heightM[index]) {
-        heightM[index] = solved.heightM
-        quality[index] = solved.quality
+      // 빔은 1도 간격이라 멀어질수록 부챗살 사이가 격자보다 넓게 벌어진다(100 km에서 1.75 km).
+      // 한 점만 찍으면 그 사이가 빈 칸으로 남아 얼룩덜룩해지므로, 이 gate가 실제로 쓸고 간
+      // 1도 폭을 격자 간격에 맞춰 나눠 칠한다. 관측값은 그대로고 같은 값을 그 부채꼴에 넣을 뿐이다.
+      const arcM = groundRange * DEG2RAD
+      const steps = Math.max(1, Math.min(8, Math.ceil(arcM / cellSizeM)))
+      for (let sub = 0; sub < steps; sub += 1) {
+        const azimuth = bin + (sub + 0.5) / steps - 0.5
+        const { lat, lon } = offsetLatLon(volume.latitude, volume.longitude, azimuth, groundRange)
+        const index = echoTopIndexForLatLon(lat, lon, grid)
+        if (index === null) continue
+        if (quality[index] === ECHO_TOP_QUALITY.INVALID || solved.heightM > heightM[index]) {
+          heightM[index] = solved.heightM
+          quality[index] = solved.quality
+        }
       }
     }
   }

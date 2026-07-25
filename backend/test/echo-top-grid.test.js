@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { ECHO_TOP_GRID, echoTopCellToLatLon, echoTopIndexForLatLon } from '../src/lib/echo-top-grid.js'
 
-test('grid covers the HSR composite at 2 km spacing', () => {
-  assert.equal(ECHO_TOP_GRID.stride, 4)
-  assert.equal(ECHO_TOP_GRID.nx, 577)
-  assert.equal(ECHO_TOP_GRID.ny, 721)
+test('grid covers the HSR composite at 1 km spacing', () => {
+  assert.equal(ECHO_TOP_GRID.stride, 2)
+  assert.equal(ECHO_TOP_GRID.nx, 1153)
+  assert.equal(ECHO_TOP_GRID.ny, 1441)
 })
 
 test('index round-trips through lat/lon near Seoul', () => {
