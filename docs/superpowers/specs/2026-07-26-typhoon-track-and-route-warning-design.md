@@ -87,6 +87,8 @@
 
 - 태풍 수집기 (30분 주기)
 - 지도 오버레이: 경로선, 예보 지점, 오차 부채꼴, 강풍/폭풍 영역
+- 기상 레이어 패널의 태풍 타일 (활성 개수 배지)
+- 활성 태풍 목록 패널 (태풍별 색 구분, 바로가기 버튼)
 - 경로 노출 판정
 - 출발·도착·교체공항 노출 판정
 - 복수 태풍 동시 표시
@@ -110,6 +112,9 @@
 | `backend/src/briefing/typhoon-briefing.js` | 경로·공항 노출 판정 어댑터 |
 | `frontend/src/features/weather-overlays/lib/typhoonLayers.js` | 소스·레이어 설치 |
 | `frontend/src/features/weather-overlays/lib/typhoonOverlaySync.js` | 가시성·데이터 동기화 |
+| `frontend/src/features/weather-overlays/lib/typhoonColors.js` | 태풍번호 → 색 배정 |
+| `frontend/src/features/weather-overlays/TyphoonPanel.jsx` | 활성 태풍 목록 패널 |
+| `frontend/src/features/weather-overlays/TyphoonPanel.css` | 패널 배치·스타일 |
 
 ### 수정 파일
 
@@ -118,9 +123,10 @@
 | `backend/src/config.js` | 엔드포인트, `typhoon_interval: '*/30 * * * *'` |
 | `backend/src/index.js` | cron 등록 |
 | `backend/src/briefing/hazard-section.js` | 태풍 항목 편입 |
-| `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx` | 토글 |
+| `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx` | 태풍 타일 추가 |
+| `frontend/src/features/map/MapView.jsx` | `TyphoonPanel` 합성 (합성 슬롯만) |
 
-`MapView.jsx`에 새 기능 상태나 `useEffect`를 추가하지 않는다. [map and layers](../../policies/engineering/map-and-layers.md) 소유권 규칙에 따라 MET 오버레이 규약(metadata/model, 설치, ID 배열, sync, controls는 weather-overlays 소유, MapView는 합성과 `styleRevision` 재실행만)을 따른다.
+`MapView.jsx`에는 `ConvectiveOverlayCard`·`EchoTopCard`와 같은 방식으로 컴포넌트 합성만 추가한다. 새 기능 상태나 `useEffect`를 추가하지 않는다. [map and layers](../../policies/engineering/map-and-layers.md) 소유권 규칙에 따라 MET 오버레이 규약(metadata/model, 설치, ID 배열, sync, controls는 weather-overlays 소유, MapView는 합성과 `styleRevision` 재실행만)을 따른다.
 
 ## 6. 수집 흐름
 
@@ -155,6 +161,10 @@
 | `RAD` | 70% 확률 중심 오차반경 (km) |
 | `ED15` / `ER15` | 강풍 축소 방향(16방위) / 그 방향 반경 (km) |
 | `ED25` / `ER25` | 폭풍 축소 방향 / 반경 |
+
+**태풍 이름은 이 API에 없다.** 21개 필드 어디에도 이름 칸이 없고, `mode=0~4`와 `disp=1`을 모두 확인했으나 나오지 않았다. 화면에는 태풍번호만 표시한다("힌남노" 같은 이름을 쓰지 않는다).
+
+`mode=3`은 12시간 간격 예보를 반환한다. 본 설계는 6시간 간격인 `mode=2`를 쓴다.
 
 ## 8. 도형 생성
 
@@ -192,9 +202,45 @@
 
 위험반원/안전반원을 **진행방향으로부터 유도하여 별도 음영으로 칠하지 않는다.** §2에서 확인했듯 그 규칙은 표본에서 항상 성립하지 않았다. 비대칭 폴리곤 자체가 어느 쪽 영향권이 좁은지를 이미 나타내므로, 유도된 반원 음영을 덧그리면 데이터가 뒷받침하지 않는 구분을 추가하게 된다.
 
-복수 태풍은 태풍번호별로 색을 달리한다. 토글 하나가 이 기능의 모든 시각 요소를 제어한다(정책: 마스터 토글이 모든 표시 요소를 제어할 것).
+복수 태풍은 태풍번호별로 색을 달리한다(§9.1). 경로선 옆에 태풍번호를 글자로 붙인다 — 색만으로 구분하지 않는다.
+
+태풍 타일 하나가 지도 요소와 목록 패널을 함께 제어한다. 타일을 끄면 둘 다 사라진다(정책: 마스터 토글이 모든 표시 요소를 제어할 것).
 
 레이어 설치·런타임 이미지는 스타일 교체 후 재생성한다.
+
+## 9.1 색 배정
+
+색은 **태풍번호로 결정한다**. 목록 순서로 배정하면 태풍 하나가 소멸했을 때 남은 태풍의 색이 바뀐다. 번호 기준이면 갱신·소멸과 무관하게 같은 태풍이 같은 색을 유지한다.
+
+```
+색 = 팔레트[태풍번호 mod 팔레트길이]
+같은 색이 이미 활성 태풍에 배정되어 있으면 다음 빈 색으로 밀어낸다
+```
+
+팔레트는 [design language](../../policies/design/design-language.md)의 색을 쓴다. 목록 패널의 색 표식과 지도의 경로·영역 색은 같은 함수에서 나온다.
+
+**색은 유일한 구분 수단이 아니다.** 지도의 경로 라벨과 패널의 태풍번호가 항상 함께 표시된다. 색각 이상 사용자와 색 충돌 상황 모두를 위한 것이다.
+
+## 9.2 태풍 목록 패널
+
+기상 레이어 패널 오른쪽에 나란히 배치한다. 레이어 드로어는 화면 왼쪽 위에 `--panel-overlay-sm` 고정 폭으로 붙어 있으므로 그 폭만큼 오른쪽으로 민다. `layer-drawer` 셸을 재사용한다(`NotamPanel`의 선례와 동일).
+
+**태풍 타일**은 기존 `layer-tile` 격자에 추가하고, 활성 태풍 수를 `layer-tile-badge`로 표시한다. 패널을 열지 않아도 활성 개수가 보인다.
+
+**목록 항목**
+
+| 요소 | 값 |
+| --- | --- |
+| 색 표식 | §9.1의 배정 색 |
+| 제목 | 태풍번호 (예: `11호 태풍`) |
+| 강도 | 중심기압(`PS`) · 최대풍속(`WS`) |
+| 위치 | `LOC` 원문 (기상청 한글 위치설명) |
+| 시각 | 분석시각(`TYP_TM`) |
+| 바로가기 | 지도를 해당 태풍 현재 위치로 이동시키는 버튼 |
+
+**바로가기 버튼**은 지도 카메라만 움직인다. 레이어 가시성이나 선택 상태를 바꾸지 않는다.
+
+**활성 태풍이 없으면** "현재 활동 중인 태풍 없음"을 표시한다. 빈 패널을 두지 않는다. 수집 실패로 자료가 없는 경우는 §11에 따라 "자료 없음"으로 구분해 표시한다 — 태풍이 없는 것과 모르는 것은 다르다.
 
 ## 10. 브리핑 판정
 
@@ -219,7 +265,7 @@
 **보고 형태**
 
 ```
-11호 태풍 힌남노  935 hPa
+11호 태풍  935 hPa
   경로   120~380 NM 구간 해당
   시간   09:00~14:00Z
   공항   RKPC(도착) 영향권
@@ -254,9 +300,12 @@
 Playwright 계약으로 지도 렌더를 검증한다. 현재 활성 태풍이 없으므로 힌남노 픽스처를 주입하여 확인한다.
 
 - 경로선(실선/점선), 부채꼴, 강풍/폭풍 영역이 렌더될 것
-- 토글이 모든 시각 요소를 함께 끌 것
+- 태풍 타일이 지도 요소와 목록 패널을 함께 켜고 끌 것
+- 타일 배지의 숫자가 활성 태풍 수와 일치할 것
 - 베이스맵 2회 전환 후에도 유지될 것
-- 복수 태풍(2018년 19호·20호 픽스처)이 구분되어 표시될 것
+- 복수 태풍(2018년 19호·20호 픽스처)이 구분되어 표시될 것. 패널의 색 표식과 지도 경로 색이 태풍별로 일치할 것
+- 바로가기 버튼이 지도를 해당 태풍 위치로 이동시킬 것
+- 활성 태풍 없음 픽스처에서 "현재 활동 중인 태풍 없음"이 표시될 것
 
 계약은 [contract registry](../../policies/verification/contracts.md)에 등록한다.
 
