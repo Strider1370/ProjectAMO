@@ -60,6 +60,13 @@ test('matchScore는 낮을수록 좋다 — 동일 장은 0에 가깝다', () =>
   const field = deriveMotionField(same, same, BASE)
   assert.ok(field.length > 0)
   assert.ok(field.every((v) => v.matchScore < 1), `최대 ${Math.max(...field.map((v) => v.matchScore))}`)
+
+  // 정수 칸 이동은 최적 오프셋에서 항상 matchScore 0을 내어(라운딩 잔차가 없어)
+  // 정규화 누락(sum/n 대신 sum)을 못 잡는다. 소수점 이동으로 잔차를 남겨 규모를 고정한다.
+  // 실측: half=6(패치 13x13=169칸)에서 최대 약 111. sum만 반환하면 169배(약 18700)로 뛴다.
+  const noisy = deriveMotionField(fieldShifted(120, 120, 0, 0), fieldShifted(120, 120, 3.4, -2.4), BASE)
+  assert.ok(noisy.length > 0)
+  assert.ok(noisy.every((v) => v.matchScore < 200), `최대 ${Math.max(...noisy.map((v) => v.matchScore))}`)
 })
 
 test('에코가 없는 곳에는 벡터를 만들지 않는다', () => {
@@ -71,7 +78,9 @@ test('마감시한이 지났으면 루프 안에서 포기하고 빈 배열을 �
   const started = Date.now()
   const field = deriveMotionField(fieldShifted(120, 120, 0, 0), fieldShifted(120, 120, 3, -2), BASE, Date.now() - 1)
   assert.deepEqual(field, [])
-  assert.ok(Date.now() - started < 100, '전부 계산한 뒤 버리면 안 된다')
+  // 20ms: 정상 조기 포기 경로는 약 2ms, 다 계산한 뒤 버리는 경로는 약 35~56ms로
+  // 갈린다. 100ms는 두 경로를 구분하지 못해 이 테스트를 무력화시켰다.
+  assert.ok(Date.now() - started < 20, '전부 계산한 뒤 버리면 안 된다')
 })
 
 test('이웃 일치도는 튀는 벡터를 낮게 매기고 값은 바꾸지 않는다', () => {
