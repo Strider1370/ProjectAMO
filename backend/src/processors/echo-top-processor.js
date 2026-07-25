@@ -3,6 +3,7 @@ import defaultConfig from '../config.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 import { ECHO_TOP_GRID } from '../lib/echo-top-grid.js'
 import { isSameFiveMinuteBucket, observedBucketMs, parseQcdVolume } from '../parsers/radar-qcd-parser.js'
+import { loadRadarBounds } from '../parsers/radar-echo-parser.js'
 import { computeSiteEchoTop, encodeEchoTopBinary, mergeSiteEchoTops, renderEchoTopRgba } from './echo-top-model.js'
 import { publishEchoTopFrame } from './echo-top-store.js'
 
@@ -87,10 +88,9 @@ export async function process(deps = {}) {
   const siteResults = usable.map((site) => ({ stn: site.stn, ...computeSiteEchoTop(site.volume, { thresholdDbz: settings.threshold_dbz, grid: ECHO_TOP_GRID }) }))
   const composite = mergeSiteEchoTops(siteResults, { grid: ECHO_TOP_GRID })
 
-  // 기존 레이더 PNG와 같은 경계를 쓴다 — 두 레이어가 픽셀 단위로 겹치게 하기 위해서다.
-  const echoMeta = deps.readEchoMeta ? deps.readEchoMeta() : null
-  const bounds = echoMeta?.nationwide?.bounds || deps.bounds || [[30.0, 120.0], [44.0, 136.0]]
-  const [[south, west], [north, east]] = bounds
+  // 기존 레이더와 같은 경계를 쓴다 — 두 레이어가 픽셀 단위로 겹치게 하기 위해서다.
+  const { west, south, east, north } = loadRadarBounds()
+  const bounds = [[south, west], [north, east]]
   const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360))
   const width = OUTPUT_WIDTH
   const height = Math.max(1, Math.round(((mercY(north) - mercY(south)) / ((east - west) * Math.PI / 180)) * width))

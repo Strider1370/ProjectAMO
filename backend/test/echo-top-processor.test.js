@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { collectSite, process as runEchoTop } from '../src/processors/echo-top-processor.js'
+import { loadRadarBounds } from '../src/parsers/radar-echo-parser.js'
 
 const requestedMs = Date.UTC(2026, 6, 25, 11, 35)
 const goodVolume = { latitude: 37.44, longitude: 126.96, altitudeM: 500, rangeM: Float32Array.from([10000]), sweeps: [], timeCoverageStart: '2026-07-25T11:36:10Z' }
@@ -74,4 +75,19 @@ test('an empty site list fails loudly instead of publishing an empty frame', asy
   })
   assert.equal(result.saved, false)
   assert.equal(result.reason, 'no sites configured')
+})
+
+test('published frame bounds match radar bounds exactly', async () => {
+  const published = []
+  await runEchoTop({
+    config: { radar_echo_top: { enabled: true, sites: ['AAA'], threshold_dbz: 18, concurrency: 1, timeout_ms: 1000, retry: 0, delay_minutes: 15, max_frames: 3, stride: 4 }, api: { radar_satellite_auth_key: 'k' }, storage: { base_path: '/tmp/none' } },
+    fetchFile: async () => Buffer.from('x'),
+    parseVolume: async () => goodVolume,
+    publish: (payload) => { published.push(payload); return { tm: payload.tm } },
+    now: () => new Date(Date.UTC(2026, 6, 25, 11, 50)),
+  })
+  assert.equal(published.length, 1)
+  const { west, south, east, north } = loadRadarBounds()
+  const expectedBounds = [[south, west], [north, east]]
+  assert.deepEqual(published[0].bounds, expectedBounds)
 })

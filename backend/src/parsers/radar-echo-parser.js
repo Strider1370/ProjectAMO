@@ -300,5 +300,5 @@ async function renderFullCoverageEcho(refl, scale = 1) {
 }
 
 export const renderNationwideEcho = renderFullCoverageEcho
-export { parseRadarBinary, cropAirportEcho, renderFullCoverageEcho, latLonToGrid, gridToLatLon, dBZtoRGBA, dBZToRainRate, rainRateToRGBA }
+export { parseRadarBinary, cropAirportEcho, renderFullCoverageEcho, latLonToGrid, gridToLatLon, dBZtoRGBA, dBZToRainRate, rainRateToRGBA, loadRadarBounds }
 export default { parseRadarBinary, cropAirportEcho, renderFullCoverageEcho, renderNationwideEcho: renderFullCoverageEcho, latLonToGrid, gridToLatLon, dBZtoRGBA, dBZToRainRate, rainRateToRGBA }
