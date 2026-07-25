@@ -179,3 +179,56 @@ test('render produces an opaque pixel only where the composite has data', () => 
   assert.equal(rgba.length, 40 * 50 * 4)
   assert.ok(rgba.every((byte) => byte === 0))
 })
+
+test('render colours valid cells by flight level and leaves invalid cells transparent', () => {
+  const size = ECHO_TOP_GRID.nx * ECHO_TOP_GRID.ny
+  const heightM = new Float32Array(size)
+  const quality = new Uint8Array(size).fill(ECHO_TOP_QUALITY.INVALID)
+
+  // Set a region of valid cells with known height
+  // Using lat/lon near Seoul to pick a cell that will be hit by pixels
+  const validHeight = 5000
+  const validIndex = echoTopIndexForLatLon(37.5, 127.0)
+  if (validIndex !== null) {
+    // Set a 3×3 region around the center to ensure pixel coverage
+    const iy = Math.floor(validIndex / ECHO_TOP_GRID.nx)
+    const ix = validIndex % ECHO_TOP_GRID.nx
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        const nix = ix + dx
+        const niy = iy + dy
+        if (nix >= 0 && nix < ECHO_TOP_GRID.nx && niy >= 0 && niy < ECHO_TOP_GRID.ny) {
+          const idx = niy * ECHO_TOP_GRID.nx + nix
+          heightM[idx] = validHeight
+          quality[idx] = ECHO_TOP_QUALITY.INTERPOLATED
+        }
+      }
+    }
+  }
+
+  // Render at higher resolution to ensure coverage
+  const bounds = [[33, 125], [43, 131]]
+  const rgba = renderEchoTopRgba({ heightM, quality }, { grid: ECHO_TOP_GRID, width: 200, height: 250, bounds })
+
+  // Verify at least one pixel is opaque and correctly coloured
+  const expectedColour = echoTopColor(validHeight)
+  let foundValidPixel = false
+  for (let i = 0; i < rgba.length; i += 4) {
+    if (rgba[i + 3] === 210) { // alpha
+      assert.deepEqual([rgba[i], rgba[i + 1], rgba[i + 2]], expectedColour, 'opaque pixel should match expected colour')
+      foundValidPixel = true
+      break
+    }
+  }
+  assert.ok(foundValidPixel, 'expected at least one opaque pixel from valid cell')
+
+  // Verify at least one pixel is fully transparent
+  let foundTransparent = false
+  for (let i = 0; i < rgba.length; i += 4) {
+    if (rgba[i + 3] === 0) {
+      foundTransparent = true
+      break
+    }
+  }
+  assert.ok(foundTransparent, 'expected at least one transparent pixel from invalid cells')
+})
