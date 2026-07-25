@@ -155,6 +155,22 @@ export const radar_echo = {
   timeout_ms: 30000,
 }
 
+// 레이더 사이트 QCD 원자료 기반 재산출 Echo Top(18 dBZ, MSL).
+// KMA 공식 ETOP이 아니라 ProjectAMO가 원자료로 계산한 참고 산출물이다.
+export const radar_echo_top = {
+  url: process.env.RADAR_QCD_API_URL || 'https://apihub.kma.go.kr/api/typ04/url/rdr_site_file.php',
+  // Task 1 실측으로 확정한 목록. 빈 값이면 프로세서가 명시적으로 실패한다.
+  sites: (process.env.RADAR_QCD_SITES || '').split(',').map((s) => s.trim()).filter(Boolean),
+  threshold_dbz: 18,
+  stride: 4,          // HSR 0.5 km 격자를 4칸씩 솎아 2 km 합성 격자를 만든다.
+  concurrency: 4,     // 한 프레임에서 동시에 받는 사이트 수.
+  timeout_ms: 45000,
+  retry: 1,
+  delay_minutes: 15,  // QCD 파일 게시 지연. HSR(10분)보다 여유를 둔다.
+  max_frames: 12,     // 1시간 보존.
+  enabled: process.env.RADAR_ECHO_TOP_ENABLED !== '0',
+}
+
 // 해외 레이더 — RainViewer 메타(목차) JSON만 수집. 타일은 브라우저가 CDN에서 직접 받는다(프록시 금지).
 export const rainviewer = {
   url: process.env.RAINVIEWER_API_URL || 'https://api.rainviewer.com/public/weather-maps.json',
@@ -277,6 +293,7 @@ export const schedule = {
   amos_interval: '*/5 * * * *',
   lightning_interval: '*/5 * * * *',
   radar_echo_interval: '*/5 * * * *',
+  echo_top_interval: '*/5 * * * *',
   // ponytail: 10분 — RainViewer 원본 갱신 주기가 10분이라 5분 cron은 같은 데이터를 두 번 받는 낭비.
   rainviewer_interval: '*/10 * * * *',
   // 5분 — 관측 간격은 10분 그대로지만, 늦게 올라온 프레임을 다음 10분까지 기다리지 않고 줍는다.
@@ -320,6 +337,7 @@ export default {
   lightning,
   amos,
   radar_echo,
+  radar_echo_top,
   rainviewer,
   satellite,
   adsb,
