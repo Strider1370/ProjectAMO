@@ -111,7 +111,7 @@ function WeatherLegends({
               {radarMotionStale
                 ? '레이더 자료 지연'
                 : radarMotionAvailable
-                  ? `관측 ${formatReferenceTimeLabel(radarMotionObservedAtMs)} · 비교 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} · 예측 아님`
+                  ? `관측 ${formatReferenceTimeLabel(radarMotionObservedAtMs)} · 비교 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} · 길이 = 5분 이동거리 · 예측 아님`
                   : '표시 중인 레이더 프레임의 이동 자료 없음'}
             </span>
           </div>}
@@ -349,7 +349,7 @@ function WeatherLegends({
               {radarMotionStale
                 ? '\uB808\uC774\uB354 \uC790\uB8CC \uC9C0\uC5F0'
                 : radarMotionAvailable
-                  ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9`
+                  ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9 \u00B7 \uAE38\uC774 = 5\uBD84 \uC774\uB3D9\uAC70\uB9AC`
                   : '\uC774\uB3D9 \uC790\uB8CC \uC5C6\uC74C'}
             </span>
           </div>
