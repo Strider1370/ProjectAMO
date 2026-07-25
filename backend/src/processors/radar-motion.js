@@ -37,10 +37,12 @@ export function deriveMotionGeoJSON(previous, current, options) {
   if (!previous || !current) return EMPTY
   if (previous.width !== current.width || previous.height !== current.height || previous.stride !== current.stride) return EMPTY
 
-  const field = deriveMotionField(previous, current, settings, deadlineAtMs)
+  // workStride의 단일 출처는 격자다 — settings의 값이 오래된 motion_input_latest.bin 등과
+  // 어긋나도 실제 셀 크기(current.stride)로 계산하도록 여기서 한 번에 맞춘다.
+  const s = { ...settings, workStride: current.stride }
+  const field = deriveMotionField(previous, current, s, deadlineAtMs)
   if (!field.length) return EMPTY
-  const edge = selectLeadingEdge(annotateNeighbourAgreement(field, settings), current, settings)
-  // workStride의 단일 출처는 격자다. settings와 어긋나면 속도가 조용히 틀어진다.
+  const edge = selectLeadingEdge(annotateNeighbourAgreement(field, s), current, s)
   return motionVectorsToGeoJSON(edge, {
     gridToLatLon,
     workStride: current.stride,

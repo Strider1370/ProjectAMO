@@ -6,7 +6,9 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import test from 'node:test'
 
 import { attachMotionFrame, isAdjacentFrame, writeMeta } from '../src/processors/radar-echo-processor.js'
-import { createMotionInput } from '../src/processors/radar-motion.js'
+import { createMotionInput, deriveMotionGeoJSON } from '../src/processors/radar-motion.js'
+import { gridToLatLon } from '../src/parsers/radar-echo-parser.js'
+import config from '../src/config.js'
 
 const geometry = { nx: 32, ny: 32 }
 
@@ -14,6 +16,24 @@ function input(tm, cells) {
   const refl = new Int16Array(geometry.nx * geometry.ny)
   for (const [x, y] of cells) refl[y * geometry.nx + x] = 4200
   return createMotionInput(refl, geometry, { tm, stride: 1 })
+}
+
+// attachMotionFrame이 config.radar_echo_motion으로 만드는 settings와 동일 — 벡터가 실제로
+// 나오는지 배선 밖에서 미리 확인할 때만 쓴다.
+function motionSettings() {
+  return {
+    settings: {
+      workStride: config.radar_echo_motion.work_stride,
+      patchRadiusKm: config.radar_echo_motion.patch_radius_km,
+      spacingKm: config.radar_echo_motion.spacing_km,
+      maxSpeedKmh: config.radar_echo_motion.max_speed_kmh,
+      minSpeedKt: config.radar_echo_motion.min_speed_kt,
+      edgeLookaheadKm: config.radar_echo_motion.edge_lookahead_km,
+      minReflectivity: config.radar_echo_motion.min_reflectivity,
+      frameIntervalMs: 5 * 60 * 1000,
+    },
+    gridToLatLon,
+  }
 }
 
 // 실제 배선(attachMotionFrame)은 config.radar_echo_motion의 실측 값(work_stride 4 등)으로
@@ -62,7 +82,12 @@ test('does not attach motion for a gap or a motion-file write failure', () => {
   assert.equal(isAdjacentFrame(previous.tm, current.tm), false)
   assert.deepEqual(attachMotionFrame(os.tmpdir(), frame, previous, current), frame)
 
-  const adjacent = input('202607221155', [[13, 12], [14, 12], [13, 13], [14, 13]])
+  const missingPrevious = blobInput('202607221150', 0, 0)
+  const missingCurrent = blobInput('202607221155', 12, 0)
   const missingDir = path.join(os.tmpdir(), `missing-motion-${process.pid}-${Date.now()}`)
-  assert.deepEqual(attachMotionFrame(missingDir, { ...frame, tm: adjacent.tm }, previous, adjacent), { ...frame, tm: adjacent.tm })
+  const missingFrame = { tm: missingCurrent.tm, path: `/data/radar/echo_korea_${missingCurrent.tm}.png` }
+  // writeAtomic이 정말 실패하는지(디렉터리 부재) 확인하려면 벡터가 먼저 나와야 한다 —
+  // features가 0이면 attachMotionFrame이 그 전에 조기 반환해 catch 경로를 지나지 않는다.
+  assert.ok(deriveMotionGeoJSON(missingPrevious, missingCurrent, motionSettings()).features.length > 0)
+  assert.deepEqual(attachMotionFrame(missingDir, missingFrame, missingPrevious, missingCurrent), missingFrame)
 })

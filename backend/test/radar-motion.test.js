@@ -31,7 +31,8 @@ const SETTINGS = {
   maxSpeedKmh: 100, frameIntervalMs: 300000, minReflectivity: 500,
   edgeLookaheadKm: 2, minSpeedKt: 3,
 }
-const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.01, lat: 38 - y * 0.01 })
+// +x 동쪽, +y 북쪽 (실제 규약)
+const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.01, lat: 38 + y * 0.01 })
 
 function shifted(offsetX, offsetY) {
   const width = 80, height = 80
