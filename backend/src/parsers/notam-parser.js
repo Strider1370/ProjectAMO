@@ -33,6 +33,13 @@ export function parseNotamSchedule(scheduleText) {
 export function parseQcodeBand(qLine, fLine, gLine) {
   const f = parseHeightToken(fLine)
   const g = parseHeightToken(gLine)
+  // F)와 G)의 단위가 다르게 오는 NOTAM이 있다(F)SFC G)FL360, F)7000FT AMSL G)FL430).
+  // unit은 밴드당 하나뿐이라 f.unit만 취하면 FL360이 360ft로 남아 밴드가 100배 좁아지거나
+  // 아예 뒤집힌다. 섞였을 때만 둘 다 ft로 펴고, 같은 단위면 원래 표기를 유지한다.
+  if (f && g && f.unit !== g.unit) {
+    const toFt = (h) => (h.unit === 'FL' ? h.value * 100 : h.value)
+    return { lower: toFt(f), upper: toFt(g), unit: 'FT', ref: f.ref || g.ref || null }
+  }
   if (f && g) return { lower: f.value, upper: g.value, unit: f.unit, ref: f.ref || g.ref || null }
   // Q-line: .../lower/upper/coord — e.g. /000/999/3459N12623E005
   const m = String(qLine || '').match(/\/(\d{3})\/(\d{3})\/\d/)
