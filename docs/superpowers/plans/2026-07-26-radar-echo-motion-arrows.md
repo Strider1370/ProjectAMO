@@ -4,18 +4,44 @@
 
 **Goal:** 레이더 에코의 다가오는 앞면을 따라 일정 간격으로 빨간 이동 화살표를 지도에 표시한다.
 
-**Architecture:** 백엔드가 5분마다 두 프레임을 MTREC 2단계(150 km 지향류 → 20 km 국지 움직임 → 합성 → 평활화)로 추적하고, 앞면 벡터만 골라 Point GeoJSON으로 발행한다. 프론트엔드는 그 점에서 화살대 LineString을 만들어 선 레이어로, 화살촉은 끝점 심볼 레이어로 그린다. 토글 UI·상태 훅·계약은 이미 트리에 있으므로 되살려 쓴다.
+**Architecture:** 백엔드가 5분마다 두 프레임을 SAD 블록 정합으로 추적하고, 앞면 벡터만 골라 Point GeoJSON으로 발행한다. 프론트엔드는 그 점에서 화살대 LineString을 만들어 선 레이어로, 화살촉은 끝점 심볼 레이어로 그린다. 토글 UI·상태 훅·계약은 이미 트리에 있으므로 되살려 쓴다.
 
 **Tech Stack:** Node 22 (ESM, `node:test`), Express, Mapbox GL JS v3, React 19, Playwright.
+
+## 2026-07-26 재계획 — 측정 결과로 순서를 바꿨다
+
+게이트 A(Task 1) 실측이 착수 시 전제를 뒤집었다. 실제 강수 4개 사례·화살표 7,795개:
+
+| | 정확도 |
+|---|---|
+| 단일 단계 SAD + no-data 클램프 | **86.6%** (사례별 81.6~90.9%) |
+| 위 + 소수점 변위 보정 | 86.4% — **개선 없음** |
+| 클램프 없음 | 82.2% |
+
+기존 계산이 이미 86.6%다. 반면 표시 결함(180개 상한, 화살촉만 찍기, 회전 이중 적용 의심)은 계산과 무관하게 확정적이다.
+
+**따라서 1차는 게이트 A에서 실측한 구성을 그대로 발행하고, 표시를 먼저 완성한다.** 실화면을 본 뒤에도 화살표가 못 미더우면 그때 MTREC을 만든다.
+
+**보류 — 측정으로 이득이 확인되지 않았거나 미측정:**
+
+| 항목 | 사유 |
+|---|---|
+| MTREC 150 km 지향류 + 20 km 국지 2단계 | 미측정 |
+| 소수점 변위 보정 | **측정 결과 효과 없음**(-0.2%p, 4개 사례 일관) |
+| 이웃 중앙값 평활화 | 미측정 |
+| 피어슨 상관계수로의 척도 변경 | 미측정. 현행 SAD로 86.6%가 나왔다 |
+| 게이트 B | 표시 완료 후 판단 |
+
+참조 설계는 스펙의 "참조 설계 — MTREC 2단계 (보류)" 절에 남아 있다.
 
 ## Global Constraints
 
 - 스펙: `docs/superpowers/specs/2026-07-26-radar-echo-motion-arrows-design.md`. 충돌 시 스펙이 우선한다.
 - Linux 전용. `git`/`npm`/`node`를 Linux 셸에서만 실행한다.
-- 작업 격자 2 km(`work_stride: 4`), 큰 덩어리 150 km, 작은 덩어리 20 km, 벡터 간격 8 km, 최대속도 100 km/h, 앞면 판정 6 km, 최소 표시 속도 3 kt.
-- 유사도는 **피어슨 상관계수**. 절대차이 합(SAD)을 쓰지 않는다.
-- **no-data(`-25000`)는 계산 전에 0으로 클램프한다.** 작업 격자의 89~91%가 no-data이고 그 무늬는 프레임 간 98.8% 동일하다. 클램프 없이는 정합이 고정 무늬에 끌려간다.
-- 1차에서는 품질 필터를 걸지 않는다. `correlation`·`neighbourAgreement`는 속성으로 싣기만 한다.
+- 작업 격자 2 km(`work_stride: 4`), 패치 반경 12 km, 벡터 간격 8 km, 최대속도 100 km/h, 최소 표시 속도 3 kt, 앞면 판정 6 km. **전부 게이트 A에서 실측한 값이다 — 임의로 바꾸지 않는다.**
+- 유사도는 **SAD(평균 절대차)**. 낮을수록 좋다. 피어슨 상관계수로 바꾸지 않는다.
+- no-data(`-25000`) 클램프는 Task 1에서 `createMotionInput`에 이미 들어갔다. 제거하지 않는다.
+- 1차에서는 품질 필터를 걸지 않는다. `matchScore`·`neighbourAgreement`는 속성으로 싣기만 한다.
 - 화살촉 심볼에 `symbol-placement`를 지정하지 않는다(기본 `point`).
 - 화살표 색 `#e11d2e`. 두 레이어 모두 `slot: 'top'`.
 - 계산 시간 초과는 **루프 안에서** 확인해 즉시 중도 포기한다. 이동 계산 실패가 레이더 PNG·메타 발행을 막지 않는다.
@@ -35,259 +61,39 @@
 | 모델의 `radarMotion` 블록 | `weatherOverlayModel.js:220-234` | `RADAR_MOTION_ENABLED`만 제거하면 됨 |
 | 토글 계약 | `map-base.spec.mjs:62-74` | 존재. 단 GeoJSON 픽스처가 옛 LineString이라 갱신 필요 |
 | 테스트용 지도 핸들 | `MapView.jsx:1126` `window.__map` (DEV 전용) | `__mapForTests`가 **아님** |
+| no-data 클램프 | `radar-motion.js` `createMotionInput` | **Task 1에서 완료** |
 
 **죽은 플래그는 3개다:** `radar-echo-processor.js:14` `MOTION_ENABLED`, `weatherOverlayModel.js:12` `RADAR_MOTION_ENABLED`, `WeatherLegends.jsx:83` `radarMotionEnabled`.
 
 ## File Structure
 
 **Create**
-- `backend/src/processors/radar-motion-model.js` — 순수 계산. 상관계수, 지향류, 국지 벡터장, 평활화, 앞면 판정, GeoJSON 변환.
+- `backend/src/processors/radar-motion-model.js` — 순수 계산. 벡터장, 이웃 일치도, 앞면 판정, GeoJSON 변환.
 - `backend/test/radar-motion-model.test.js`
-- `backend/scripts/measure-motion-accuracy.mjs` — 게이트 A·B 공용 측정 스크립트.
 - `frontend/verification/contracts/radar-motion.spec.mjs`
 
 **Modify**
 - `backend/src/config.js` — `radar_echo_motion` 절.
-- `backend/src/processors/radar-motion.js` — 클램프, 오케스트레이션. `deriveObservedMotion` 제거.
+- `backend/src/processors/radar-motion.js` — 오케스트레이션. `deriveObservedMotion` 제거.
 - `backend/src/processors/radar-echo-processor.js` — 플래그 제거, `attachMotionFrame` 갱신.
 - `backend/test/radar-motion.test.js`, `backend/test/radar-echo-motion-publication.test.js`
 - `frontend/src/features/weather-overlays/lib/radarMotionLayers.js` + `.test.js` — 전면 교체.
-- `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js` — 소스·레이어 ID 등록.
+- `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js`
 - `frontend/src/features/weather-overlays/lib/weatherOverlayModel.js` + `.test.js`
 - `frontend/src/features/weather-overlays/WeatherLegends.jsx` + `.test.js`
-- `frontend/verification/contracts/map-base.spec.mjs` — 픽스처를 Point로.
-- `docs/policies/verification/contracts.md` — 계약 등록.
+- `frontend/verification/contracts/map-base.spec.mjs`
+- `docs/policies/verification/contracts.md`
+
+**이미 완료 (Task 1, commits 05df2c2·2c76e02)**
+- `backend/src/processors/radar-motion.js` — no-data 클램프
+- `backend/scripts/measure-motion-accuracy.mjs` — 게이트 A·B 측정
+- `docs/superpowers/status/radar-echo-motion-arrows.status.md` — 게이트 A 결과
 
 ---
 
-### Task 1: no-data 클램프와 게이트 A 측정
+### Task 1: no-data 클램프와 게이트 A 측정 — ✅ 완료
 
-스펙의 게이트 A다. **이 태스크의 status 문서 없이 Task 3을 시작하지 않는다.** Task 3 Step 1이 그 존재를 강제한다.
-
-클램프를 먼저 넣는다. 클램프 없이 잰 수치는 고정 무늬에 오염되어 방식을 구분하지 못한다.
-
-**Files:**
-- Modify: `backend/src/processors/radar-motion.js` (`createMotionInput`)
-- Create: `backend/scripts/measure-motion-accuracy.mjs`
-- Create: `docs/superpowers/status/radar-echo-motion-arrows.status.md`
-- Test: `backend/test/radar-motion.test.js`
-
-**Interfaces:**
-- Produces: `createMotionInput(refl, geometry, options)` — 기존 시그니처 유지, no-data를 0으로 클램프. `{ width, height, stride, values: Int16Array, tm }`.
-
-- [ ] **Step 1: 클램프 테스트를 쓴다**
-
-`backend/test/radar-motion.test.js` 맨 위에 덧붙인다(기존 테스트는 Task 7에서 교체한다).
-
-```js
-import assert from 'node:assert/strict'
-import test from 'node:test'
-import { createMotionInput } from '../src/processors/radar-motion.js'
-
-test('no-data(-25000)는 0으로 클램프된다', () => {
-  // 4x4 블록 하나는 전부 no-data, 하나는 에코.
-  const nx = 8, ny = 4
-  const refl = new Int16Array(nx * ny).fill(-25000)
-  for (let y = 0; y < 4; y += 1) for (let x = 4; x < 8; x += 1) refl[y * nx + x] = 3000
-
-  const input = createMotionInput(refl, { nx, ny }, { stride: 4 })
-  assert.equal(input.values[0], 0, 'no-data 블록은 0이어야 한다')
-  assert.equal(input.values[1], 3000, '에코 블록은 그대로여야 한다')
-})
-
-test('no-data와 약한 에코가 섞인 블록은 에코 값을 쓴다', () => {
-  const nx = 4, ny = 4
-  const refl = new Int16Array(nx * ny).fill(-25000)
-  refl[0] = 800
-  const input = createMotionInput(refl, { nx, ny }, { stride: 4 })
-  assert.equal(input.values[0], 800)
-})
-```
-
-- [ ] **Step 2: 테스트가 실패하는지 확인**
-
-Run: `cd backend && node --test test/radar-motion.test.js`
-Expected: FAIL — `input.values[0]`이 `-25000`.
-
-- [ ] **Step 3: 클램프를 넣는다**
-
-`backend/src/processors/radar-motion.js`의 `createMotionInput` 안, `values[row * width + col] = max` 줄을 바꾼다. 파일 상단에 상수를 둔다.
-
-```js
-// KMA HSR 합성 격자의 no-data. 실측상 작업 격자의 89~91%가 이 값이고 프레임 간
-// 98.8% 동일한 고정 무늬라, 클램프하지 않으면 정합이 에코가 아니라 무늬에 끌려간다.
-const NO_DATA = -25000
-```
-
-```js
-      values[row * width + col] = max <= NO_DATA ? 0 : max
-```
-
-`MOTION_DEFAULTS`는 Task 7에서 제거하므로 여기서는 손대지 않는다.
-
-- [ ] **Step 4: 테스트가 통과하는지 확인**
-
-Run: `cd backend && node --test test/radar-motion.test.js`
-Expected: PASS.
-
-- [ ] **Step 5: 측정 스크립트를 만든다**
-
-`backend/scripts/measure-motion-accuracy.mjs`. `backend/scripts/probe-radar-qcd-sites.mjs`의 형식(최상단 ESM, `config` 직접 import, 표준출력)을 따른다.
-
-정답 정의: 프레임 T-5·T로 구한 화살표를 프레임 T에 적용해 T+5를 예측하고, 그 국소 패치가 실제 T+5 관측과 **"안 움직인다고 가정"보다 잘 맞으면 그 화살표는 옳다.** 정답이 실제 관측이므로 조작 여지가 없다.
-
-```js
-// 실제 강수 사례에서 개별 화살표의 정오답을 실측한다. 합성 데이터를 쓰지 않는다.
-// 게이트 A: --mode=baseline (기본). 게이트 B: --mode=mtrec.
-import config from '../src/config.js'
-import { parseRadarBinary } from '../src/parsers/radar-echo-parser.js'
-import { fetchWithTimeout } from '../src/lib/fetchWithTimeout.js'
-import { createMotionInput } from '../src/processors/radar-motion.js'
-
-const CASES = ['202607180635', '202607180035', '202607210335', '202607200935']
-const STRIDE = 4
-const CELL_KM = STRIDE * 0.5
-const MIN_REFL = 2000
-const PATCH = 6
-const NO_DATA = -25000
-
-const mode = (process.argv.find((a) => a.startsWith('--mode=')) || '--mode=baseline').split('=')[1]
-
-const pad = (n) => String(n).padStart(2, '0')
-const tmAt = (ms) => { const d = new Date(ms); return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}` }
-const tmToMs = (tm) => Date.UTC(+tm.slice(0, 4), +tm.slice(4, 6) - 1, +tm.slice(6, 8), +tm.slice(8, 10), +tm.slice(10, 12))
-
-async function fetchGrid(tm, { clamp }) {
-  const url = `${config.api.radar_url}?${new URLSearchParams({
-    tm, data: 'bin', cmp: config.radar_echo.cmp, authKey: config.api.radar_satellite_auth_key,
-  })}`
-  const res = await fetchWithTimeout(url, config.radar_echo.timeout_ms)
-  if (!res.ok) return null
-  const buf = Buffer.from(await res.arrayBuffer())
-  if (buf.length < 10000 || buf[0] !== 0x1f || buf[1] !== 0x8b) return null
-  const { refl, nx, ny } = parseRadarBinary(buf)
-  const grid = createMotionInput(refl, { nx, ny }, { stride: STRIDE, tm })
-  if (clamp) return grid
-  // 클램프 효과를 재기 위해 원본 no-data를 되살린 사본도 만든다.
-  const values = Int16Array.from(grid.values)
-  const width = Math.ceil(nx / STRIDE)
-  for (let row = 0; row < grid.height; row += 1) {
-    for (let col = 0; col < grid.width; col += 1) {
-      let max = -32768
-      for (let y = row * STRIDE; y < Math.min((row + 1) * STRIDE, ny); y += 1) {
-        for (let x = col * STRIDE; x < Math.min((col + 1) * STRIDE, nx); x += 1) max = Math.max(max, refl[y * nx + x])
-      }
-      values[row * width + col] = max
-    }
-  }
-  return { ...grid, values }
-}
-
-const at = (g, x, y) => (x < 0 || y < 0 || x >= g.width || y >= g.height) ? 0 : g.values[y * g.width + x]
-
-function sad(a, b, ax, ay, bx, by, half) {
-  let sum = 0, n = 0
-  for (let dy = -half; dy <= half; dy += 1) {
-    for (let dx = -half; dx <= half; dx += 1) { sum += Math.abs(at(a, ax + dx, ay + dy) - at(b, bx + dx, by + dy)); n += 1 }
-  }
-  return sum / n
-}
-
-const parab = (m, c, p) => { const d = m - 2 * c + p; return d <= 0 ? 0 : Math.max(-0.5, Math.min(0.5, 0.5 * (m - p) / d)) }
-
-function bestOffset(prev, curr, x, y, search, half) {
-  let best = null
-  const score = new Map()
-  for (let dy = -search; dy <= search; dy += 1) {
-    for (let dx = -search; dx <= search; dx += 1) {
-      const s = sad(prev, curr, x - dx, y - dy, x, y, half)
-      score.set(`${dx}:${dy}`, s)
-      if (!best || s < best.s) best = { dx, dy, s }
-    }
-  }
-  const get = (dx, dy) => score.get(`${dx}:${dy}`) ?? best.s
-  return {
-    ...best,
-    subDx: best.dx + parab(get(best.dx - 1, best.dy), best.s, get(best.dx + 1, best.dy)),
-    subDy: best.dy + parab(get(best.dx, best.dy - 1), best.s, get(best.dx, best.dy + 1)),
-  }
-}
-
-function scoreCase(g1, g2, g3, useSub) {
-  const search = Math.ceil(100 * (5 / 60) / CELL_KM)
-  let total = 0, correct = 0
-  for (let y = PATCH; y < g2.height - PATCH; y += 4) {
-    for (let x = PATCH; x < g2.width - PATCH; x += 4) {
-      if (at(g2, x, y) < MIN_REFL) continue
-      const v = bestOffset(g1, g2, x, y, search, PATCH)
-      const dx = Math.round(useSub ? v.subDx : v.dx)
-      const dy = Math.round(useSub ? v.subDy : v.dy)
-      total += 1
-      if (sad(g2, g3, x - dx, y - dy, x, y, PATCH) < sad(g2, g3, x, y, x, y, PATCH)) correct += 1
-    }
-  }
-  return { total, correct }
-}
-
-console.log(`모드: ${mode}`)
-for (const tm of CASES) {
-  const base = tmToMs(tm)
-  const clamped = [], raw = []
-  for (const step of [-10, -5, 0]) {
-    clamped.push(await fetchGrid(tmAt(base + step * 60000), { clamp: true }))
-    raw.push(await fetchGrid(tmAt(base + step * 60000), { clamp: false }))
-  }
-  if (clamped.some((g) => !g)) { console.log(`${tm}: 프레임 수신 실패, 건너뜀`); continue }
-  const pct = (r) => `${(r.correct / r.total * 100).toFixed(1)}%`
-  const c = scoreCase(...clamped, false)
-  const cSub = scoreCase(...clamped, true)
-  const r = scoreCase(...raw, false)
-  console.log(`${tm}  화살표 ${c.total}개 | 클램프+정수 ${pct(c)} | 클램프+소수점 ${pct(cSub)} | 클램프없음 ${pct(r)}`)
-}
-```
-
-- [ ] **Step 6: 실행하고 수치를 기록**
-
-Run: `cd backend && node --env-file=../.env scripts/measure-motion-accuracy.mjs`
-Expected: 4개 사례에 대해 화살표 개수와 정확도 세 열. 네트워크 필요.
-
-- [ ] **Step 7: status 문서를 만든다**
-
-`docs/superpowers/status/radar-echo-motion-arrows.status.md`를 만들고 출력을 그대로 붙인 뒤 해석을 적는다. **Task 3이 이 파일의 존재와 `## 게이트 A 결과` 제목을 확인하므로 제목을 정확히 쓴다.**
-
-```markdown
-# 레이더 에코 이동 화살표 — 상태
-
-## 게이트 A 결과
-
-측정일: <YYYY-MM-DD>
-명령: `node --env-file=../.env scripts/measure-motion-accuracy.mjs`
-
-<출력 붙여넣기>
-
-### 해석
-- 기존 1단계 방식 개별 정확도: <값>
-- 소수점 보정 효과: <값>
-- no-data 클램프 효과: <값>
-
-## 게이트 B 결과
-
-아직 측정하지 않음.
-```
-
-- [ ] **Step 8: 사용자에게 보고하고 진행 여부를 확인받는다**
-
-스펙이 요구하는 판단 지점이다. 정확도가 이미 충분히 높으면 MTREC 채택을 재검토한다.
-
-- [ ] **Step 9: 전체 테스트와 커밋**
-
-Run: `cd backend && npm test`
-Expected: 실패 0건.
-
-```bash
-git add backend/src/processors/radar-motion.js backend/test/radar-motion.test.js backend/scripts/measure-motion-accuracy.mjs docs/superpowers/status/radar-echo-motion-arrows.status.md
-git commit -m "fix(motion): clamp radar no-data and measure per-arrow accuracy"
-```
+commits `05df2c2`, `2c76e02`. 결과는 위 재계획 절과 status 문서 참조. 재실행 불필요.
 
 ---
 
@@ -297,25 +103,25 @@ git commit -m "fix(motion): clamp radar no-data and measure per-arrow accuracy"
 - Modify: `backend/src/config.js` (`radar_echo` 절 뒤, 약 157행)
 
 **Interfaces:**
-- Produces: `config.radar_echo_motion`. Task 3–7이 사용한다.
+- Produces: `config.radar_echo_motion`. Task 3–5가 사용한다.
 
 - [ ] **Step 1: 설정 절을 추가**
 
-`export const radar_echo = { ... }` 다음에 넣는다.
+`export const radar_echo = { ... }` 다음에 넣는다. **값은 게이트 A 실측 구성이다 — 임의로 바꾸지 않는다.**
 
 ```js
-// 레이더 에코 이동벡터 — MTREC 2단계 추적(Wang et al. 2013)의 추적 부분만 사용한다.
-// 예측 영상은 만들지 않는다. 산출물은 앞면 화살표 GeoJSON이다.
+// 레이더 에코 이동벡터 — 5분 간격 두 프레임의 SAD 블록 정합으로 앞면 화살표를 만든다.
+// 아래 수치는 2026-07-26 게이트 A 실측 구성(개별 화살표 정확도 86.6%)이다.
+// MTREC 2단계·소수점 보정·평활화는 보류 상태다(스펙의 보류 표 참조).
 export const radar_echo_motion = {
   enabled: process.env.RADAR_MOTION_ENABLED !== '0',
-  work_stride: 4,         // HSR 0.5 km를 4칸씩 솎아 2 km 작업 격자를 만든다.
-  large_box_km: 150,      // 지향류(종관규모). 논문이 100/150/200 중 150을 채택했다.
-  small_box_km: 20,       // 국지 움직임(중규모).
-  spacing_km: 8,          // 화살표 간격. 핀란드 기상청 운영값.
-  max_speed_kmh: 100,     // 탐색 반경 R = v_max × Δt. 품질 필터가 아니라 계산의 정의역이다.
-  min_speed_kt: 3,        // 이보다 느리면 방위가 무의미하므로 앞면 판정에서 제외한다.
-  edge_lookahead_km: 6,   // 이 거리 앞에 에코가 없으면 앞면으로 본다.
-  min_reflectivity: 2000, // 스케일 dBZ(×100).
+  work_stride: 4,          // HSR 0.5 km를 4칸씩 솎아 2 km 작업 격자를 만든다.
+  patch_radius_km: 12,     // 정합 패치 반경. 실측값 6칸 × 2 km.
+  spacing_km: 8,           // 화살표 간격. 실측값 4칸 × 2 km.
+  max_speed_kmh: 100,      // 탐색 반경 R = v_max × Δt. 품질 필터가 아니라 계산의 정의역이다.
+  min_speed_kt: 3,         // 이보다 느리면 방위가 무의미하므로 앞면 판정에서 제외한다.
+  edge_lookahead_km: 6,    // 이 거리 앞에 에코가 없으면 앞면으로 본다.
+  min_reflectivity: 2000,  // 스케일 dBZ(×100).
   max_calculation_ms: 30000,
 }
 ```
@@ -333,38 +139,31 @@ Expected: 위 키가 모두 담긴 객체.
 
 ```bash
 git add backend/src/config.js
-git commit -m "feat(motion): add the MTREC tracking config section"
+git commit -m "feat(motion): add the measured tracking config section"
 ```
 
 ---
 
-### Task 3: 상관계수와 지향류 (MTREC 1단계)
+### Task 3: 벡터장과 이웃 일치도
+
+게이트 A에서 86.6%를 낸 구성을 그대로 순수 함수로 옮긴다. **새 알고리즘을 만드는 게 아니다** — `backend/scripts/measure-motion-accuracy.mjs`의 `sad`/`bestOffset`/`scoreCase` 루프가 참조 구현이며, 그 파일을 먼저 읽을 것.
 
 **Files:**
 - Create: `backend/src/processors/radar-motion-model.js`
 - Test: `backend/test/radar-motion-model.test.js`
 
 **Interfaces:**
-- Consumes: 없음(순수 함수). **단 Task 1의 status 문서가 있어야 한다 — Step 1이 확인한다.**
+- Consumes: 없음(순수 함수). 격자 입력은 `createMotionInput` 산출물과 같은 `{ width, height, stride, values: Int16Array }`.
 - Produces:
-  - `MOTION_MODEL_DEFAULTS` — `{ workStride, largeBoxKm, smallBoxKm, spacingKm, maxSpeedKmh, minSpeedKt, edgeLookaheadKm, minReflectivity, frameIntervalMs }`
+  - `MOTION_MODEL_DEFAULTS` — `{ workStride, patchRadiusKm, spacingKm, maxSpeedKmh, minSpeedKt, edgeLookaheadKm, minReflectivity, frameIntervalMs }`
   - `cellKm(settings) -> number`
   - `searchRadiusCells(settings) -> number`
-  - `boxCorrelation(previous, current, prevCol, prevRow, currCol, currRow, halfBox, step) -> number|null`
-  - `deriveSteeringFlow(previous, current, settings) -> { boxCells, cols, rows, dx: Int16Array, dy: Int16Array, correlation: Float32Array }`
-  - `steeringAt(steering, col, row) -> { dx, dy }`
+  - `deriveMotionField(previous, current, settings, deadlineAtMs) -> Array<{ col, row, dx, dy, matchScore }>` — `dx`/`dy`는 정수 칸. `matchScore`는 평균 절대차(**낮을수록 좋음**). 마감시한 초과 시 루프 안에서 중도 포기하고 빈 배열.
+  - `annotateNeighbourAgreement(vectors, settings) -> Array<{ ...v, neighbourAgreement }>` — 이웃과 사잇각 45° 이내인 비율. **벡터값을 바꾸지 않는다**(평활화는 보류 항목이다).
 
-  격자 입력은 `createMotionInput` 산출물과 같은 `{ width, height, stride, values: Int16Array }`.
+- [ ] **Step 1: 참조 구현을 읽는다**
 
-- [ ] **Step 1: 게이트 A를 확인한다 — 통과 못 하면 여기서 멈춘다**
-
-Run:
-```bash
-cd /home/john_doe/ProjectAMO && grep -q '^## 게이트 A 결과' docs/superpowers/status/radar-echo-motion-arrows.status.md \
-  && grep -q '기존 1단계 방식 개별 정확도: [0-9]' docs/superpowers/status/radar-echo-motion-arrows.status.md \
-  && echo 'GATE A OK' || echo 'GATE A MISSING — STOP'
-```
-Expected: `GATE A OK`. `GATE A MISSING — STOP`이 나오면 **Task 1로 돌아간다.** 게이트 없이 진행하지 않는다.
+Read `backend/scripts/measure-motion-accuracy.mjs`. `sad()`, `bestOffset()`, `scoreCase()`의 상수(PATCH=6, 후보 간격 4, 탐색 반경 유도식)를 확인한다. 이 태스크는 그 로직을 설정값 기반으로 옮기는 작업이다.
 
 - [ ] **Step 2: 실패하는 테스트를 쓴다**
 
@@ -374,7 +173,7 @@ Expected: `GATE A OK`. `GATE A MISSING — STOP`이 나오면 **Task 1로 돌아
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  MOTION_MODEL_DEFAULTS, boxCorrelation, cellKm, deriveSteeringFlow, searchRadiusCells, steeringAt,
+  MOTION_MODEL_DEFAULTS, annotateNeighbourAgreement, cellKm, deriveMotionField, searchRadiusCells,
 } from '../src/processors/radar-motion-model.js'
 
 // 매끈한 덩어리 몇 개를 놓고 통째로 옮긴 장을 만든다.
@@ -399,7 +198,11 @@ function fieldShifted(width, height, offsetX, offsetY) {
   return { width, height, stride: 4, values }
 }
 
-const BASE = { ...MOTION_MODEL_DEFAULTS, workStride: 4, frameIntervalMs: 300000, maxSpeedKmh: 100 }
+const BASE = {
+  ...MOTION_MODEL_DEFAULTS,
+  workStride: 4, patchRadiusKm: 12, spacingKm: 8,
+  maxSpeedKmh: 100, frameIntervalMs: 300000, minReflectivity: 500,
+}
 
 test('cellKm은 작업 격자 한 칸의 km를 준다', () => {
   assert.equal(cellKm({ ...BASE, workStride: 4 }), 2)
@@ -411,44 +214,56 @@ test('탐색 반경은 최대속도와 프레임 간격에서 나온다', () => 
   assert.equal(searchRadiusCells(BASE), 5)
 })
 
-test('같은 패턴의 상관계수는 1', () => {
-  const a = fieldShifted(120, 120, 0, 0)
-  assert.ok(boxCorrelation(a, a, 45, 45, 45, 45, 10, 1) > 0.999)
+test('벡터장은 과반이 참 변위를 되찾는다', () => {
+  const field = deriveMotionField(fieldShifted(120, 120, 0, 0), fieldShifted(120, 120, 3, -2), BASE)
+  assert.ok(field.length > 0, '벡터가 하나도 없으면 안 된다')
+  // 하나라도 맞으면 통과하는 약한 단언을 쓰지 않는다.
+  const close = field.filter((v) => v.dx === 3 && v.dy === -2)
+  assert.ok(close.length / field.length > 0.7, `참 변위 일치 ${close.length}/${field.length}`)
 })
 
-test('분산이 없는 상자는 null을 준다', () => {
-  const flat = { width: 60, height: 60, stride: 4, values: new Int16Array(3600) }
-  assert.equal(boxCorrelation(flat, flat, 30, 30, 30, 30, 10, 1), null)
+test('변위는 정수 칸이다 — 소수점 보정은 보류 항목이다', () => {
+  const field = deriveMotionField(fieldShifted(120, 120, 0, 0), fieldShifted(120, 120, 3, -2), BASE)
+  assert.ok(field.every((v) => Number.isInteger(v.dx) && Number.isInteger(v.dy)))
 })
 
-test('표본이 너무 적게 남는 상자는 null을 준다', () => {
-  const a = fieldShifted(120, 120, 0, 0)
-  // 상자 대부분이 격자 밖으로 나가면 유효 표본이 절반 미만이 된다.
-  assert.equal(boxCorrelation(a, a, -9, -9, -9, -9, 10, 1), null)
+test('matchScore는 낮을수록 좋다 — 동일 장은 0에 가깝다', () => {
+  const same = fieldShifted(120, 120, 0, 0)
+  const field = deriveMotionField(same, same, BASE)
+  assert.ok(field.length > 0)
+  assert.ok(field.every((v) => v.matchScore < 1), `최대 ${Math.max(...field.map((v) => v.matchScore))}`)
 })
 
-test('지향류는 내부 상자에서 참 변위를 되찾는다', () => {
-  const previous = fieldShifted(120, 120, 0, 0)
-  const current = fieldShifted(120, 120, 3, -2)
-  // 120칸 격자에 60칸(=120km) 상자 → 2x2. (0,0) 상자는 온전히 격자 안에 있다.
-  const settings = { ...BASE, largeBoxKm: 120 }
-  const steering = deriveSteeringFlow(previous, current, settings)
-  const { dx, dy } = steeringAt(steering, 20, 20)
-  assert.ok(Math.abs(dx - 3) <= 1, `dx=${dx}, 기대 3±1`)
-  assert.ok(Math.abs(dy - (-2)) <= 1, `dy=${dy}, 기대 -2±1`)
-})
-
-test('에코가 없으면 지향류는 0 벡터를 준다', () => {
+test('에코가 없는 곳에는 벡터를 만들지 않는다', () => {
   const empty = { width: 120, height: 120, stride: 4, values: new Int16Array(14400) }
-  const steering = deriveSteeringFlow(empty, empty, { ...BASE, largeBoxKm: 120 })
-  assert.deepEqual(steeringAt(steering, 20, 20), { dx: 0, dy: 0 })
+  assert.deepEqual(deriveMotionField(empty, empty, BASE), [])
 })
 
-test('steeringAt은 격자 밖 좌표를 가장자리 상자로 잘라낸다', () => {
-  const a = fieldShifted(120, 120, 0, 0)
-  const steering = deriveSteeringFlow(a, a, { ...BASE, largeBoxKm: 120 })
-  assert.deepEqual(steeringAt(steering, -50, -50), steeringAt(steering, 0, 0))
-  assert.deepEqual(steeringAt(steering, 9999, 9999), steeringAt(steering, 119, 119))
+test('마감시한이 지났으면 루프 안에서 포기하고 빈 배열을 준다', () => {
+  const started = Date.now()
+  const field = deriveMotionField(fieldShifted(120, 120, 0, 0), fieldShifted(120, 120, 3, -2), BASE, Date.now() - 1)
+  assert.deepEqual(field, [])
+  assert.ok(Date.now() - started < 100, '전부 계산한 뒤 버리면 안 된다')
+})
+
+test('이웃 일치도는 튀는 벡터를 낮게 매기고 값은 바꾸지 않는다', () => {
+  const vectors = []
+  for (let row = 0; row < 5; row += 1) {
+    for (let col = 0; col < 5; col += 1) vectors.push({ col: col * 4, row: row * 4, dx: 3, dy: -2, matchScore: 100 })
+  }
+  const rogue = vectors.find((v) => v.col === 8 && v.row === 8)
+  rogue.dx = -7
+  rogue.dy = 6
+
+  const annotated = annotateNeighbourAgreement(vectors, { ...BASE, spacingKm: 8 })
+  const odd = annotated.find((v) => v.col === 8 && v.row === 8)
+  const normal = annotated.find((v) => v.col === 4 && v.row === 4)
+
+  assert.equal(odd.dx, -7, '평활화는 보류 항목 — 값을 바꾸면 안 된다')
+  assert.equal(odd.dy, 6)
+  assert.ok(odd.neighbourAgreement < 0.5, `튀는 벡터 일치도 ${odd.neighbourAgreement}`)
+  assert.ok(normal.neighbourAgreement > 0.8, `정상 벡터 일치도 ${normal.neighbourAgreement}`)
+  assert.ok(annotated.every((v) => v.neighbourAgreement >= 0 && v.neighbourAgreement <= 1))
 })
 ```
 
@@ -462,8 +277,9 @@ Expected: FAIL — `Cannot find module '../src/processors/radar-motion-model.js'
 `backend/src/processors/radar-motion-model.js`:
 
 ```js
-// MTREC(Wang et al. 2013, Adv. Atmos. Sci. 30(2):448-460) 추적 부분의 순수 계산.
-// 논문의 이류·강수예측 부분은 채택하지 않는다 — 산출물은 벡터이지 예측 영상이 아니다.
+// 레이더 에코 이동벡터의 순수 계산.
+// 2026-07-26 게이트 A에서 개별 화살표 정확도 86.6%를 낸 구성을 그대로 옮긴 것이다.
+// 참조 구현: backend/scripts/measure-motion-accuracy.mjs
 // 격자는 { width, height, stride, values: Int16Array } 형태를 받는다.
 // no-data는 이 파일에 오기 전에 createMotionInput이 0으로 클램프한다.
 
@@ -471,8 +287,7 @@ const HSR_CELL_KM = 0.5
 
 export const MOTION_MODEL_DEFAULTS = Object.freeze({
   workStride: 4,
-  largeBoxKm: 150,
-  smallBoxKm: 20,
+  patchRadiusKm: 12,
   spacingKm: 8,
   maxSpeedKmh: 100,
   minSpeedKt: 3,
@@ -495,69 +310,72 @@ function valueAt(grid, col, row) {
   return grid.values[row * grid.width + col]
 }
 
-// 피어슨 상관계수. 배열을 만들지 않고 한 번에 누적한다 — 호출 횟수가 10^7 규모라
-// 표본마다 push하면 할당이 계산보다 비싸진다.
-// step으로 큰 덩어리 내부를 솎아 본다.
-export function boxCorrelation(previous, current, prevCol, prevRow, currCol, currRow, halfBox, step = 1) {
-  let n = 0, sumA = 0, sumB = 0, sumAA = 0, sumBB = 0, sumAB = 0, considered = 0
-  for (let dy = -halfBox; dy <= halfBox; dy += step) {
-    for (let dx = -halfBox; dx <= halfBox; dx += step) {
-      considered += 1
-      const va = valueAt(previous, prevCol + dx, prevRow + dy)
-      const vb = valueAt(current, currCol + dx, currRow + dy)
-      if (va === null || vb === null) continue
-      n += 1
-      sumA += va; sumB += vb
-      sumAA += va * va; sumBB += vb * vb; sumAB += va * vb
-    }
-  }
-  // 잘린 상자는 표본이 적어 상관계수 분산이 커지고, 정규화 때문에 참 변위를 이길 수 있다.
-  // 절반 미만이면 후보에서 제외한다.
-  if (n < 9 || n * 2 < considered) return null
-  const varA = sumAA - sumA * sumA / n
-  const varB = sumBB - sumB * sumB / n
-  if (varA <= 0 || varB <= 0) return null
-  return (sumAB - sumA * sumB / n) / Math.sqrt(varA * varB)
+function sampleAt(grid, col, row) {
+  const v = valueAt(grid, col, row)
+  return v === null ? 0 : v
 }
 
-// MTREC 1단계 — 큰 덩어리로 종관규모 지향류를 구한다.
-export function deriveSteeringFlow(previous, current, settings) {
-  const boxCells = Math.max(1, Math.round(settings.largeBoxKm / cellKm(settings)))
-  const half = Math.floor(boxCells / 2)
-  const step = Math.max(1, Math.floor(boxCells / 25)) // 덩어리당 약 25x25 표본
-  const search = searchRadiusCells(settings)
-  const cols = Math.max(1, Math.ceil(current.width / boxCells))
-  const rows = Math.max(1, Math.ceil(current.height / boxCells))
-  const dx = new Int16Array(cols * rows)
-  const dy = new Int16Array(cols * rows)
-  const correlation = new Float32Array(cols * rows)
+// 평균 절대차. 낮을수록 잘 맞은 것이다.
+function patchMismatch(previous, current, prevCol, prevRow, currCol, currRow, half) {
+  let sum = 0, n = 0
+  for (let dy = -half; dy <= half; dy += 1) {
+    for (let dx = -half; dx <= half; dx += 1) {
+      sum += Math.abs(sampleAt(previous, prevCol + dx, prevRow + dy) - sampleAt(current, currCol + dx, currRow + dy))
+      n += 1
+    }
+  }
+  return sum / n
+}
 
-  for (let row = 0; row < rows; row += 1) {
-    for (let col = 0; col < cols; col += 1) {
-      const cx = Math.min(current.width - 1, col * boxCells + half)
-      const cy = Math.min(current.height - 1, row * boxCells + half)
+// 두 프레임에서 각 지점의 변위를 구한다. 정수 칸 단위다.
+// 소수점 보정은 게이트 A에서 이득이 없어(-0.2%p) 넣지 않는다.
+export function deriveMotionField(previous, current, settings, deadlineAtMs = Infinity) {
+  const km = cellKm(settings)
+  const half = Math.max(1, Math.round(settings.patchRadiusKm / km))
+  const spacing = Math.max(1, Math.round(settings.spacingKm / km))
+  const search = searchRadiusCells(settings)
+  const vectors = []
+
+  for (let row = half; row < current.height - half; row += spacing) {
+    // 마감시한은 바깥 루프마다 확인한다. 다 만든 뒤 버리면 5분 주기 수집이 밀린다.
+    if (Date.now() >= deadlineAtMs) return []
+    for (let col = half; col < current.width - half; col += spacing) {
+      if (current.values[row * current.width + col] < settings.minReflectivity) continue
       let best = null
-      for (let oy = -search; oy <= search; oy += 1) {
-        for (let ox = -search; ox <= search; ox += 1) {
-          const cc = boxCorrelation(previous, current, cx - ox, cy - oy, cx, cy, half, step)
-          if (cc === null) continue
-          if (!best || cc > best.cc) best = { ox, oy, cc }
+      for (let dy = -search; dy <= search; dy += 1) {
+        for (let dx = -search; dx <= search; dx += 1) {
+          const score = patchMismatch(previous, current, col - dx, row - dy, col, row, half)
+          if (!best || score < best.score) best = { dx, dy, score }
         }
       }
-      const index = row * cols + col
-      dx[index] = best ? best.ox : 0
-      dy[index] = best ? best.oy : 0
-      correlation[index] = best ? best.cc : 0
+      if (best) vectors.push({ col, row, dx: best.dx, dy: best.dy, matchScore: best.score })
     }
   }
-  return { boxCells, cols, rows, dx, dy, correlation }
+  return vectors
 }
 
-export function steeringAt(steering, col, row) {
-  const bc = Math.min(steering.cols - 1, Math.max(0, Math.floor(col / steering.boxCells)))
-  const br = Math.min(steering.rows - 1, Math.max(0, Math.floor(row / steering.boxCells)))
-  const index = br * steering.cols + bc
-  return { dx: steering.dx[index], dy: steering.dy[index] }
+// 이웃과 방향이 얼마나 맞는지 기록만 한다. 값은 바꾸지 않는다 —
+// 중앙값 평활화는 아직 측정되지 않아 보류 항목이다.
+export function annotateNeighbourAgreement(vectors, settings) {
+  const spacing = Math.max(1, Math.round(settings.spacingKm / cellKm(settings)))
+  const key = (col, row) => `${col}:${row}`
+  const byKey = new Map(vectors.map((v) => [key(v.col, v.row), v]))
+
+  return vectors.map((v) => {
+    let agree = 0, total = 0
+    for (let oy = -1; oy <= 1; oy += 1) {
+      for (let ox = -1; ox <= 1; ox += 1) {
+        if (ox === 0 && oy === 0) continue
+        const n = byKey.get(key(v.col + ox * spacing, v.row + oy * spacing))
+        if (!n) continue
+        total += 1
+        const m1 = Math.hypot(v.dx, v.dy), m2 = Math.hypot(n.dx, n.dy)
+        if (m1 < 0.25 || m2 < 0.25) { if (Math.abs(m1 - m2) < 0.5) agree += 1; continue }
+        if ((v.dx * n.dx + v.dy * n.dy) / (m1 * m2) > 0.7) agree += 1 // 사잇각 약 45도 이내
+      }
+    }
+    return { ...v, neighbourAgreement: total ? agree / total : 0 }
+  })
 }
 ```
 
@@ -570,212 +388,31 @@ Expected: PASS, 8개 테스트 전부.
 
 ```bash
 git add backend/src/processors/radar-motion-model.js backend/test/radar-motion-model.test.js
-git commit -m "feat(motion): add Pearson correlation and the 150 km steering flow"
+git commit -m "feat(motion): port the measured tracking loop into a pure model"
 ```
 
 ---
 
-### Task 4: 국지 벡터장과 평활화 (MTREC 2·3·4단계)
+### Task 4: 앞면 판정과 GeoJSON 변환
 
 **Files:**
 - Modify: `backend/src/processors/radar-motion-model.js`
 - Test: `backend/test/radar-motion-model.test.js`
 
 **Interfaces:**
-- Consumes: Task 3의 `deriveSteeringFlow`, `steeringAt`, `boxCorrelation`, `searchRadiusCells`, `cellKm`.
-- Produces:
-  - `deriveMotionField(previous, current, steering, settings, deadlineAtMs) -> Array<{ col, row, dx, dy, correlation }>` — `dx`/`dy`는 소수점 보정이 들어간 실수, 작업 격자 칸 단위. `deadlineAtMs`를 넘기면 초과 시 **루프 안에서 중도 포기하고 빈 배열**을 반환한다.
-  - `smoothMotionField(vectors, settings) -> Array<{ col, row, dx, dy, correlation, neighbourAgreement }>`
-
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
-
-`backend/test/radar-motion-model.test.js`에 덧붙인다. `fieldShifted`와 `BASE`를 재사용한다.
-
-```js
-import { deriveMotionField, smoothMotionField } from '../src/processors/radar-motion-model.js'
-
-const FIELD = { ...BASE, largeBoxKm: 120, smallBoxKm: 20, spacingKm: 8, minReflectivity: 500 }
-
-test('국지 벡터장은 과반이 참 변위 근처를 가리킨다', () => {
-  const previous = fieldShifted(120, 120, 0, 0)
-  const current = fieldShifted(120, 120, 3, -2)
-  const steering = deriveSteeringFlow(previous, current, FIELD)
-  const field = deriveMotionField(previous, current, steering, FIELD)
-
-  assert.ok(field.length > 0, '벡터가 하나도 없으면 안 된다')
-  // 하나라도 맞으면 통과하는 약한 단언을 쓰지 않는다.
-  const close = field.filter((v) => Math.abs(v.dx - 3) <= 1 && Math.abs(v.dy - (-2)) <= 1)
-  assert.ok(close.length / field.length > 0.7, `참 변위 근처 ${close.length}/${field.length}`)
-})
-
-test('소수점 보정이 들어가 정수가 아닌 변위가 나온다', () => {
-  const steering = deriveSteeringFlow(fieldShifted(120, 120, 0, 0), fieldShifted(120, 120, 3, -2), FIELD)
-  const field = deriveMotionField(fieldShifted(120, 120, 0, 0), fieldShifted(120, 120, 3, -2), steering, FIELD)
-  assert.ok(field.some((v) => !Number.isInteger(v.dx) || !Number.isInteger(v.dy)))
-})
-
-test('에코가 없는 곳에는 벡터를 만들지 않는다', () => {
-  const empty = { width: 120, height: 120, stride: 4, values: new Int16Array(14400) }
-  const steering = deriveSteeringFlow(empty, empty, FIELD)
-  assert.deepEqual(deriveMotionField(empty, empty, steering, FIELD), [])
-})
-
-test('마감시한이 지났으면 루프 안에서 포기하고 빈 배열을 준다', () => {
-  const previous = fieldShifted(120, 120, 0, 0)
-  const current = fieldShifted(120, 120, 3, -2)
-  const steering = deriveSteeringFlow(previous, current, FIELD)
-  const started = Date.now()
-  const field = deriveMotionField(previous, current, steering, FIELD, Date.now() - 1)
-  assert.deepEqual(field, [])
-  assert.ok(Date.now() - started < 100, '전부 계산한 뒤 버리면 안 된다')
-})
-
-test('평활화는 튀는 벡터를 이웃 중앙값으로 끌어오고 일치도를 매긴다', () => {
-  const vectors = []
-  for (let row = 0; row < 5; row += 1) {
-    for (let col = 0; col < 5; col += 1) vectors.push({ col: col * 4, row: row * 4, dx: 3, dy: -2, correlation: 0.9 })
-  }
-  const rogue = vectors.find((v) => v.col === 8 && v.row === 8)
-  rogue.dx = -7
-  rogue.dy = 6
-
-  const smoothed = smoothMotionField(vectors, { ...FIELD, spacingKm: 8 })
-  const fixed = smoothed.find((v) => v.col === 8 && v.row === 8)
-  assert.equal(fixed.dx, 3)
-  assert.equal(fixed.dy, -2)
-  assert.ok(smoothed.every((v) => v.neighbourAgreement >= 0 && v.neighbourAgreement <= 1))
-  // 튀던 벡터는 이웃 일치도가 낮게 기록되어야 한다 — 평활화 이전 값 기준.
-  assert.ok(fixed.neighbourAgreement < 0.5, `일치도 ${fixed.neighbourAgreement}`)
-})
-```
-
-- [ ] **Step 2: 테스트가 실패하는지 확인**
-
-Run: `cd backend && node --test test/radar-motion-model.test.js`
-Expected: FAIL — `deriveMotionField is not a function`
-
-- [ ] **Step 3: 최소 구현**
-
-`radar-motion-model.js`에 덧붙인다.
-
-```js
-// 정합 점수 세 점에 포물선을 맞춰 소수점 변위를 얻는다.
-// 정수 칸만 쓰면 변위가 1~2칸일 때 방위가 8방향으로 양자화되어 방향이 튄다.
-// 입력은 최소점 기준이다(상관계수는 부호를 뒤집어 넘긴다).
-function subCellPeak(minus, center, plus) {
-  const denom = minus - 2 * center + plus
-  // denom <= 0이면 볼록하지 않다 — 정점이 없거나 탐색 경계에 걸린 경우다. 보정하지 않는다.
-  if (denom <= 0) return 0
-  return Math.max(-0.5, Math.min(0.5, 0.5 * (minus - plus) / denom))
-}
-
-// MTREC 2·3단계 — 지향류에서 출발해 작은 덩어리로 국지 움직임을 구한다.
-//
-// ponytail: 논문은 이 단계 전에 준-라그랑주 이류로 영상 전체를 지향류만큼 밀어놓고
-// 잔차에 대해 작은 덩어리를 적용한다. 여기서는 영상을 밀지 않고 탐색 시작점만
-// 지향류로 옮긴다(수학적 근사, 훨씬 싸다). 정확도가 부족하면 정식 이류로 승격한다.
-export function deriveMotionField(previous, current, steering, settings, deadlineAtMs = Infinity) {
-  const km = cellKm(settings)
-  const spacing = Math.max(1, Math.round(settings.spacingKm / km))
-  const half = Math.max(1, Math.round(settings.smallBoxKm / km / 2))
-  const local = Math.max(1, Math.ceil(searchRadiusCells(settings) / 2))
-  const vectors = []
-
-  for (let row = half; row < current.height - half; row += spacing) {
-    // 마감시한은 바깥 루프마다 확인한다. 다 만든 뒤 버리면 5분 주기 수집이 밀린다.
-    if (Date.now() >= deadlineAtMs) return []
-    for (let col = half; col < current.width - half; col += spacing) {
-      if (current.values[row * current.width + col] < settings.minReflectivity) continue
-      const base = steeringAt(steering, col, row)
-      const scores = new Map()
-      let best = null
-      for (let oy = base.dy - local; oy <= base.dy + local; oy += 1) {
-        for (let ox = base.dx - local; ox <= base.dx + local; ox += 1) {
-          const cc = boxCorrelation(previous, current, col - ox, row - oy, col, row, half, 1)
-          if (cc === null) continue
-          scores.set(`${ox}:${oy}`, cc)
-          if (!best || cc > best.cc) best = { ox, oy, cc }
-        }
-      }
-      if (!best) continue
-      const read = (ox, oy) => scores.get(`${ox}:${oy}`) ?? best.cc
-      // 상관계수는 클수록 좋으므로 부호를 뒤집어 최소점 보정 공식을 쓴다.
-      const sx = subCellPeak(-read(best.ox - 1, best.oy), -best.cc, -read(best.ox + 1, best.oy))
-      const sy = subCellPeak(-read(best.ox, best.oy - 1), -best.cc, -read(best.ox, best.oy + 1))
-      vectors.push({ col, row, dx: best.ox + sx, dy: best.oy + sy, correlation: best.cc })
-    }
-  }
-  return vectors
-}
-
-// MTREC 4단계 — 이웃 중앙값으로 다듬고, 이웃과의 일치도를 품질 지표로 남긴다.
-// 일치도는 평활화 '이전' 값끼리 비교해야 튀던 벡터가 낮게 기록된다.
-export function smoothMotionField(vectors, settings) {
-  const km = cellKm(settings)
-  const spacing = Math.max(1, Math.round(settings.spacingKm / km))
-  const key = (col, row) => `${col}:${row}`
-  const byKey = new Map(vectors.map((v) => [key(v.col, v.row), v]))
-
-  return vectors.map((v) => {
-    const dxs = [], dys = []
-    let agree = 0, total = 0
-    for (let oy = -1; oy <= 1; oy += 1) {
-      for (let ox = -1; ox <= 1; ox += 1) {
-        const n = byKey.get(key(v.col + ox * spacing, v.row + oy * spacing))
-        if (!n) continue
-        dxs.push(n.dx); dys.push(n.dy) // 중앙값에는 자기 자신도 포함한다(표준 중앙값 필터).
-        if (ox === 0 && oy === 0) continue
-        total += 1
-        const m1 = Math.hypot(v.dx, v.dy), m2 = Math.hypot(n.dx, n.dy)
-        if (m1 < 0.25 || m2 < 0.25) { if (Math.abs(m1 - m2) < 0.5) agree += 1; continue }
-        if ((v.dx * n.dx + v.dy * n.dy) / (m1 * m2) > 0.7) agree += 1 // 사잇각 약 45도 이내
-      }
-    }
-    const neighbourAgreement = total ? agree / total : 0
-    if (dxs.length < 3) return { ...v, neighbourAgreement }
-    // 성분별 중앙값이다(벡터 중앙값이 아니다). 이웃에 없던 (dx,dy) 조합이 나올 수 있으나
-    // 이 용도에서는 문제되지 않는다.
-    dxs.sort((a, b) => a - b); dys.sort((a, b) => a - b)
-    const mid = dxs.length >> 1
-    return { ...v, dx: dxs[mid], dy: dys[mid], neighbourAgreement }
-  })
-}
-```
-
-- [ ] **Step 4: 테스트가 통과하는지 확인**
-
-Run: `cd backend && node --test test/radar-motion-model.test.js`
-Expected: PASS, 13개 테스트 전부.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add backend/src/processors/radar-motion-model.js backend/test/radar-motion-model.test.js
-git commit -m "feat(motion): add the 20 km local pass with sub-cell peak, smoothing and a deadline"
-```
-
----
-
-### Task 5: 앞면 판정과 GeoJSON 변환
-
-**Files:**
-- Modify: `backend/src/processors/radar-motion-model.js`
-- Test: `backend/test/radar-motion-model.test.js`
-
-**Interfaces:**
-- Consumes: Task 4의 벡터 배열.
+- Consumes: Task 3의 벡터 배열(`annotateNeighbourAgreement` 산출물).
 - Produces:
   - `selectLeadingEdge(vectors, current, settings) -> Array<same shape>`
   - `motionVectorsToGeoJSON(vectors, options) -> FeatureCollection` — `options`는 `{ gridToLatLon, workStride, frameIntervalMs }` **뿐이다.** 시각값은 메타 프레임이 갖고 있으므로 Feature에 싣지 않는다.
   - `gridToLatLon(x, y)`는 **원본 0.5 km 격자 좌표**를 받는다. `radar-echo-parser.js:40`의 동명 함수와 같은 규약이며, `+y`는 남쪽이다.
-  - Feature 속성: `bearingDeg`(0–360 정수), `speedKt`(정수), `correlation`, `neighbourAgreement`(각 소수 2자리).
+  - Feature 속성: `bearingDeg`(0–360 정수), `speedKt`(정수), `matchScore`, `neighbourAgreement`(각 소수 2자리).
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
 ```js
 import { motionVectorsToGeoJSON, selectLeadingEdge } from '../src/processors/radar-motion-model.js'
 
-const EDGE = { ...BASE, edgeLookaheadKm: 6, minReflectivity: 2000, minSpeedKt: 3, spacingKm: 8, smallBoxKm: 20 }
+const EDGE = { ...BASE, edgeLookaheadKm: 6, minReflectivity: 2000, minSpeedKt: 3, spacingKm: 8, patchRadiusKm: 12 }
 
 // 왼쪽 절반만 에코인 장. 동쪽(+x)으로 움직이면 오른쪽 경계가 앞면이다.
 function halfField() {
@@ -789,7 +426,7 @@ function halfField() {
 
 test('앞면만 남기고 에코 내부와 후면은 버린다', () => {
   const current = halfField()
-  const mk = (col) => ({ col, row: 10, dx: 2, dy: 0, correlation: 0.9, neighbourAgreement: 1 })
+  const mk = (col) => ({ col, row: 10, dx: 2, dy: 0, matchScore: 0.9, neighbourAgreement: 1 })
   const kept = selectLeadingEdge([mk(5), mk(19), mk(10)], current, EDGE)
   assert.deepEqual(kept.map((v) => v.col), [19])
 })
@@ -797,21 +434,21 @@ test('앞면만 남기고 에코 내부와 후면은 버린다', () => {
 test('최소 속도 미만은 앞면 판정에서 제외한다', () => {
   const current = halfField()
   // 2km 칸, 5분 → 1칸이 약 12.9 kt. 0.2칸은 약 2.6 kt로 3 kt 미만이다.
-  const slow = { col: 19, row: 10, dx: 0.2, dy: 0, correlation: 0.9, neighbourAgreement: 1 }
+  const slow = { col: 19, row: 10, dx: 0.2, dy: 0, matchScore: 0.9, neighbourAgreement: 1 }
   assert.deepEqual(selectLeadingEdge([slow], current, EDGE), [])
 })
 
 test('격자 밖을 내다보는 벡터는 앞면으로 치지 않는다', () => {
   const current = halfField()
   // col 39는 오른쪽 끝. 3칸 앞은 격자 밖이다 — 에코 없음으로 오인하면 안 된다.
-  const atEdge = { col: 39, row: 10, dx: 2, dy: 0, correlation: 0.9, neighbourAgreement: 1 }
+  const atEdge = { col: 39, row: 10, dx: 2, dy: 0, matchScore: 0.9, neighbourAgreement: 1 }
   assert.deepEqual(selectLeadingEdge([atEdge], current, EDGE), [])
 })
 
 test('GeoJSON은 Point와 방위·속도를 낸다', () => {
   const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 - y * 0.001 })
   const geojson = motionVectorsToGeoJSON(
-    [{ col: 10, row: 10, dx: 3, dy: 0, correlation: 0.812, neighbourAgreement: 0.875 }],
+    [{ col: 10, row: 10, dx: 3, dy: 0, matchScore: 0.812, neighbourAgreement: 0.875 }],
     { gridToLatLon, workStride: 4, frameIntervalMs: 300000 },
   )
   assert.equal(geojson.type, 'FeatureCollection')
@@ -819,14 +456,14 @@ test('GeoJSON은 Point와 방위·속도를 낸다', () => {
   assert.equal(f.geometry.type, 'Point')
   assert.ok(Math.abs(f.properties.bearingDeg - 90) < 2, `동쪽이어야 하는데 ${f.properties.bearingDeg}`)
   assert.equal(f.properties.speedKt, 19) // 3칸 × 2km ÷ (5/60)h ÷ 1.852
-  assert.equal(f.properties.correlation, 0.81)
+  assert.equal(f.properties.matchScore, 0.81)
   assert.equal(f.properties.neighbourAgreement, 0.88)
 })
 
 test('남쪽으로 가는 벡터는 방위 180 근처를 낸다', () => {
   const gridToLatLon = (x, y) => ({ lon: 126 + x * 0.001, lat: 38 - y * 0.001 })
   const geojson = motionVectorsToGeoJSON(
-    [{ col: 10, row: 10, dx: 0, dy: 3, correlation: 0.8, neighbourAgreement: 0.8 }],
+    [{ col: 10, row: 10, dx: 0, dy: 3, matchScore: 0.8, neighbourAgreement: 0.8 }],
     { gridToLatLon, workStride: 4, frameIntervalMs: 300000 },
   )
   assert.ok(Math.abs(geojson.features[0].properties.bearingDeg - 180) < 2)
@@ -834,7 +471,7 @@ test('남쪽으로 가는 벡터는 방위 180 근처를 낸다', () => {
 
 test('좌표를 못 구하는 벡터는 조용히 버린다', () => {
   const geojson = motionVectorsToGeoJSON(
-    [{ col: 10, row: 10, dx: 3, dy: 0, correlation: 0.5, neighbourAgreement: 0.5 }],
+    [{ col: 10, row: 10, dx: 3, dy: 0, matchScore: 0.5, neighbourAgreement: 0.5 }],
     { gridToLatLon: () => ({ lon: NaN, lat: NaN }), workStride: 4, frameIntervalMs: 300000 },
   )
   assert.deepEqual(geojson.features, [])
@@ -897,7 +534,7 @@ export function motionVectorsToGeoJSON(vectors, options) {
       properties: {
         bearingDeg: Math.round(bearingDegrees(start, end)),
         speedKt: Math.round(Math.hypot(v.dx, v.dy) * km / hours / 1.852),
-        correlation: Number(v.correlation.toFixed(2)),
+        matchScore: Number(v.matchScore.toFixed(2)),
         neighbourAgreement: Number((v.neighbourAgreement ?? 0).toFixed(2)),
       },
     })
@@ -909,7 +546,7 @@ export function motionVectorsToGeoJSON(vectors, options) {
 - [ ] **Step 4: 테스트가 통과하는지 확인**
 
 Run: `cd backend && node --test test/radar-motion-model.test.js`
-Expected: PASS, 19개 테스트 전부.
+Expected: PASS, 14개 테스트 전부.
 
 - [ ] **Step 5: Commit**
 
@@ -920,98 +557,7 @@ git commit -m "feat(motion): select the leading edge and emit point GeoJSON"
 
 ---
 
-### Task 6: 게이트 B — MTREC 정확도 측정
-
-스펙의 게이트 B다. **발행 배선(Task 7) 전에 잰다.** 개선이 없으면 채택을 재검토한다.
-
-**Files:**
-- Modify: `backend/scripts/measure-motion-accuracy.mjs` (`--mode=mtrec` 분기 추가)
-- Modify: `docs/superpowers/status/radar-echo-motion-arrows.status.md`
-
-**Interfaces:**
-- Consumes: Task 3–5의 model 함수.
-
-- [ ] **Step 1: mtrec 모드를 추가한다**
-
-`measure-motion-accuracy.mjs`에 import와 분기를 넣는다. 정오답 판정(`sad(...) < sad(...)`)은 게이트 A와 **동일하게 유지한다** — 그래야 두 수치를 비교할 수 있다.
-
-```js
-import {
-  MOTION_MODEL_DEFAULTS, deriveMotionField, deriveSteeringFlow, smoothMotionField,
-} from '../src/processors/radar-motion-model.js'
-
-const MTREC_SETTINGS = {
-  ...MOTION_MODEL_DEFAULTS,
-  workStride: STRIDE, largeBoxKm: 150, smallBoxKm: 20, spacingKm: 8,
-  maxSpeedKmh: 100, minReflectivity: MIN_REFL, frameIntervalMs: 300000,
-}
-
-function scoreMtrec(g1, g2, g3) {
-  const steering = deriveSteeringFlow(g1, g2, MTREC_SETTINGS)
-  const field = smoothMotionField(deriveMotionField(g1, g2, steering, MTREC_SETTINGS), MTREC_SETTINGS)
-  let correct = 0
-  for (const v of field) {
-    const dx = Math.round(v.dx), dy = Math.round(v.dy)
-    if (sad(g2, g3, v.col - dx, v.row - dy, v.col, v.row, PATCH) < sad(g2, g3, v.col, v.row, v.col, v.row, PATCH)) correct += 1
-  }
-  return { total: field.length, correct }
-}
-```
-
-각 사례 루프에서 `mode === 'mtrec'`이면 `scoreMtrec(...clamped)`를, 아니면 기존 세 열을 출력하도록 분기한다. mtrec 모드에서는 계산 시간도 함께 찍는다.
-
-```js
-  if (mode === 'mtrec') {
-    const started = Date.now()
-    const m = scoreMtrec(...clamped)
-    console.log(`${tm}  화살표 ${m.total}개 | MTREC 2단계 ${pct(m)} | 계산 ${((Date.now() - started) / 1000).toFixed(1)}초`)
-    continue
-  }
-```
-
-- [ ] **Step 2: 품질 지표 판별력을 함께 낸다**
-
-`scoreMtrec`을 확장해, 정답표를 기준으로 `correlation`과 `neighbourAgreement` 상·하위 25%의 정답률을 출력한다. 스펙 게이트 B의 5번 항목이다.
-
-```js
-function reportDiscrimination(field, judged) {
-  for (const key of ['correlation', 'neighbourAgreement']) {
-    const sorted = [...judged].sort((a, b) => b.v[key] - a.v[key])
-    const q = Math.max(1, Math.floor(sorted.length / 4))
-    const rate = (arr) => `${(arr.filter((r) => r.ok).length / arr.length * 100).toFixed(0)}%`
-    console.log(`    ${key}: 상위25% ${rate(sorted.slice(0, q))} / 하위25% ${rate(sorted.slice(-q))}`)
-  }
-}
-```
-
-`scoreMtrec`이 `{ total, correct, judged }`를 반환하도록 고치고(`judged`는 `{ v, ok }` 배열), 출력 뒤에 `reportDiscrimination`을 호출한다.
-
-- [ ] **Step 3: 두 모드를 모두 돌린다**
-
-Run:
-```bash
-cd backend
-node --env-file=../.env scripts/measure-motion-accuracy.mjs
-node --env-file=../.env scripts/measure-motion-accuracy.mjs --mode=mtrec
-```
-Expected: 게이트 A 세 열, 게이트 B 정확도·시간·판별력.
-
-**계산 시간이 `max_calculation_ms`(30초)를 넘으면 Task 7 전에 보고한다.** 그 경우 `spacing_km`을 키우거나 `large_box_km` 표본 간격을 늘려 조정한다.
-
-- [ ] **Step 4: status를 갱신하고 사용자에게 보고**
-
-`## 게이트 B 결과` 절에 출력을 붙이고, 게이트 A 대비 개선 폭을 적는다. **개선이 없으면 MTREC 채택을 재검토하고 사용자 판단을 받는다.**
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add backend/scripts/measure-motion-accuracy.mjs docs/superpowers/status/radar-echo-motion-arrows.status.md
-git commit -m "test(motion): measure MTREC accuracy and quality-metric discrimination"
-```
-
----
-
-### Task 7: 발행 배선과 죽은 플래그 3개 제거
+### Task 5: 발행 배선과 죽은 플래그 3개 제거
 
 **Files:**
 - Modify: `backend/src/processors/radar-motion.js`
@@ -1022,13 +568,14 @@ git commit -m "test(motion): measure MTREC accuracy and quality-metric discrimin
 - Modify: `frontend/verification/contracts/map-base.spec.mjs:15-19`
 
 **Interfaces:**
+- Consumes: Task 3의 `deriveMotionField`·`annotateNeighbourAgreement`, Task 4의 `selectLeadingEdge`·`motionVectorsToGeoJSON`.
 - Produces: `deriveMotionGeoJSON(previous, current, options) -> FeatureCollection`. `options`는 `{ settings, gridToLatLon, deadlineAtMs }`.
 - 발행: `{DATA_PATH}/radar/motion_korea_{tm}.geojson`, 메타 프레임에 `motion: { tm, observedAtMs, comparedFromMs, path }`.
 - 모델의 `radarMotion.visible`은 `visibility.radar && hasExactMotion && !stale`만 본다. **훅이 최종 소유자다.**
 
 - [ ] **Step 1: 백엔드 실패 테스트를 쓴다**
 
-`backend/test/radar-motion.test.js`의 **클램프 테스트 두 개는 남기고**, 나머지를 아래로 교체한다. 기존의 "동쪽 화살표가 하나라도 있으면 통과" 단언은 남기지 않는다.
+`backend/test/radar-motion.test.js`의 **클램프 테스트 두 개(Task 1에서 추가)는 그대로 남기고**, 나머지를 아래로 교체한다. 기존의 "동쪽 화살표가 하나라도 있으면 통과" 단언은 남기지 않는다.
 
 ```js
 import { deriveMotionGeoJSON, deserializeMotionInput, serializeMotionInput } from '../src/processors/radar-motion.js'
@@ -1036,7 +583,7 @@ import { MOTION_MODEL_DEFAULTS } from '../src/processors/radar-motion-model.js'
 
 const SETTINGS = {
   ...MOTION_MODEL_DEFAULTS,
-  workStride: 1, largeBoxKm: 30, smallBoxKm: 6, spacingKm: 2,
+  workStride: 1, patchRadiusKm: 3, spacingKm: 2,
   maxSpeedKmh: 100, frameIntervalMs: 300000, minReflectivity: 500,
   edgeLookaheadKm: 2, minSpeedKt: 3,
 }
@@ -1068,7 +615,7 @@ test('모든 Feature는 Point이고 필수 속성을 갖는다', () => {
     assert.ok(Number.isInteger(f.properties.bearingDeg))
     assert.ok(f.properties.bearingDeg >= 0 && f.properties.bearingDeg < 360)
     assert.ok(Number.isInteger(f.properties.speedKt))
-    assert.equal(typeof f.properties.correlation, 'number')
+    assert.equal(typeof f.properties.matchScore, 'number')
     assert.equal(typeof f.properties.neighbourAgreement, 'number')
   }
 })
@@ -1107,7 +654,7 @@ Expected: FAIL — `deriveMotionGeoJSON is not a function`
 
 - [ ] **Step 3: `radar-motion.js`를 오케스트레이션으로 바꾼다**
 
-`deriveObservedMotion`, `MOTION_DEFAULTS`, `valueAt`, `patchDifference`, `bearingDegrees`, `distanceKm`, `FIVE_MINUTES_MS`를 지운다. `createMotionInput`(클램프 포함), `serializeMotionInput`, `deserializeMotionInput`은 남긴다.
+`deriveObservedMotion`, `MOTION_DEFAULTS`, `valueAt`, `patchDifference`, `bearingDegrees`, `distanceKm`, `FIVE_MINUTES_MS`를 지운다. `createMotionInput`(**Task 1의 no-data 클램프 포함 — 건드리지 말 것**), `serializeMotionInput`, `deserializeMotionInput`은 남긴다.
 
 **`MOTION_DEFAULTS`를 지우면 `createMotionInput`의 `options.stride ?? MOTION_DEFAULTS.stride`가 깨진다.** 기본값을 인라인한다.
 
@@ -1119,21 +666,20 @@ const stride = options.stride ?? 4
 
 ```js
 import {
-  deriveMotionField, deriveSteeringFlow, motionVectorsToGeoJSON, selectLeadingEdge, smoothMotionField,
+  annotateNeighbourAgreement, deriveMotionField, motionVectorsToGeoJSON, selectLeadingEdge,
 } from './radar-motion-model.js'
 
 const EMPTY = { type: 'FeatureCollection', features: [] }
 
-// MTREC 추적 4단계를 순서대로 돌려 앞면 화살표 GeoJSON을 만든다.
+// 두 프레임 -> 벡터장 -> 이웃 일치도 기록 -> 앞면만 선별 -> Point GeoJSON.
 export function deriveMotionGeoJSON(previous, current, options) {
   const { settings, gridToLatLon, deadlineAtMs = Infinity } = options
   if (!previous || !current) return EMPTY
   if (previous.width !== current.width || previous.height !== current.height || previous.stride !== current.stride) return EMPTY
 
-  const steering = deriveSteeringFlow(previous, current, settings)
-  const field = deriveMotionField(previous, current, steering, settings, deadlineAtMs)
+  const field = deriveMotionField(previous, current, settings, deadlineAtMs)
   if (!field.length) return EMPTY
-  const edge = selectLeadingEdge(smoothMotionField(field, settings), current, settings)
+  const edge = selectLeadingEdge(annotateNeighbourAgreement(field, settings), current, settings)
   // workStride의 단일 출처는 격자다. settings와 어긋나면 속도가 조용히 틀어진다.
   return motionVectorsToGeoJSON(edge, {
     gridToLatLon,
@@ -1155,8 +701,7 @@ export function deriveMotionGeoJSON(previous, current, options) {
 ```js
     const settings = {
       workStride: config.radar_echo_motion.work_stride,
-      largeBoxKm: config.radar_echo_motion.large_box_km,
-      smallBoxKm: config.radar_echo_motion.small_box_km,
+      patchRadiusKm: config.radar_echo_motion.patch_radius_km,
       spacingKm: config.radar_echo_motion.spacing_km,
       maxSpeedKmh: config.radar_echo_motion.max_speed_kmh,
       minSpeedKt: config.radar_echo_motion.min_speed_kt,
@@ -1248,7 +793,7 @@ test('radar legend shows the motion toggle', () => {
     contentType: 'application/geo+json',
     body: JSON.stringify({
       type: 'FeatureCollection',
-      features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [126, 37] }, properties: { bearingDeg: 90, speedKt: 30, correlation: 0.8, neighbourAgreement: 0.9 } }],
+      features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [126, 37] }, properties: { bearingDeg: 90, speedKt: 30, matchScore: 120, neighbourAgreement: 0.9 } }],
     }),
   }))
 ```
@@ -1265,7 +810,7 @@ git commit -m "feat(motion): publish leading-edge arrows and remove all three de
 
 ---
 
-### Task 8: 프론트엔드 레이어 — 화살대 선 + 화살촉 심볼
+### Task 6: 프론트엔드 레이어 — 화살대 선 + 화살촉 심볼
 
 **Files:**
 - Modify (전면 교체): `frontend/src/features/weather-overlays/lib/radarMotionLayers.js`
@@ -1312,7 +857,7 @@ function fakeMap() {
 
 const point = (lon, lat, bearingDeg, speedKt) => ({
   type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] },
-  properties: { bearingDeg, speedKt, correlation: 0.8, neighbourAgreement: 0.9 },
+  properties: { bearingDeg, speedKt, matchScore: 120, neighbourAgreement: 0.9 },
 })
 const fc = (...features) => ({ type: 'FeatureCollection', features })
 
@@ -1575,7 +1120,7 @@ git commit -m "feat(motion): draw red arrows as a scaled shaft plus a point-anch
 
 ---
 
-### Task 9: 범례 문구에 길이의 뜻 추가
+### Task 7: 범례 문구에 길이의 뜻 추가
 
 **Files:**
 - Modify: `frontend/src/features/weather-overlays/WeatherLegends.jsx` (설명줄 2곳)
@@ -1622,14 +1167,14 @@ git commit -m "feat(motion): say what the arrow length means in the legend note"
 
 ---
 
-### Task 10: 브라우저 계약, 접근성, 실화면 확인
+### Task 8: 브라우저 계약, 접근성, 실화면 확인
 
 **Files:**
 - Create: `frontend/verification/contracts/radar-motion.spec.mjs`
 - Modify: `docs/policies/verification/contracts.md` (등록 표에 행 추가)
 
 **Interfaces:**
-- Consumes: Task 7의 GeoJSON 계약, Task 8의 레이어 ID.
+- Consumes: Task 5의 GeoJSON 계약, Task 6의 레이어 ID.
 - 지도 핸들은 `window.__map`이다(`MapView.jsx:1126`, DEV 전용). `__mapForTests`는 존재하지 않는다.
 - Playwright 프로젝트는 `desktop`(1440×900), `ipad-landscape`(iPad Pro 11), `mobile`(Pixel 5) 3개다. **테스트는 세 프로젝트 모두에서 돌아야 한다.**
 
@@ -1662,8 +1207,8 @@ async function installMotionFixture(page) {
     body: JSON.stringify({
       type: 'FeatureCollection',
       features: [
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [127.0, 37.4] }, properties: { bearingDeg: 90, speedKt: 30, correlation: 0.8, neighbourAgreement: 0.9 } },
-        { type: 'Feature', geometry: { type: 'Point', coordinates: [127.4, 37.6] }, properties: { bearingDeg: 45, speedKt: 18, correlation: 0.6, neighbourAgreement: 0.7 } },
+        { type: 'Feature', geometry: { type: 'Point', coordinates: [127.0, 37.4] }, properties: { bearingDeg: 90, speedKt: 30, matchScore: 120, neighbourAgreement: 0.9 } },
+        { type: 'Feature', geometry: { type: 'Point', coordinates: [127.4, 37.6] }, properties: { bearingDeg: 45, speedKt: 18, matchScore: 260, neighbourAgreement: 0.7 } },
       ],
     }),
   }))
@@ -1789,35 +1334,31 @@ Run: `graphify update .`
 
 ## Self-Review
 
-**스펙 커버리지**
+**스펙 커버리지 (1차 범위)**
 
 | 스펙 요구 | 담당 |
 |---|---|
-| no-data 클램프 | Task 1 |
-| 게이트 A(기존 정확도·소수점 보정·클램프 효과) | Task 1 |
-| 게이트 B(MTREC 정확도·품질 지표 판별력) | Task 6 |
-| MTREC 150 km 지향류 | Task 3 |
-| MTREC 20 km 국지 + 합성 + 평활화 | Task 4 |
-| 상관계수 척도 | Task 3 `boxCorrelation` |
+| no-data 클램프 | Task 1 ✅ |
+| 게이트 A | Task 1 ✅ |
+| 측정된 단일 단계 구성 그대로 발행 | Task 3 |
 | 최대속도 100 km/h | Task 3 `searchRadiusCells` |
-| 최소 표시 속도 3 kt | Task 5 `selectLeadingEdge` |
-| 소수점 변위 보정 | Task 4 `subCellPeak` |
-| 앞면 판정 6 km | Task 5 |
-| 품질 지표를 싣되 거르지 않음 | Task 5 |
-| Point + 방위 계약 | Task 5, 7, 8 |
-| 설정값 10개 | Task 2 |
-| 죽은 플래그 3개 제거 | Task 7 |
-| 화살대 실제 축척 비례 | Task 8 `arrowTip` |
-| `symbol-placement` 미지정 | Task 8 구현 + Task 8·10 단언 |
-| 시각 정확 일치 시에만 표시 | Task 7, Task 10 |
-| 계산 시간 초과를 루프 안에서 중도 포기 | Task 4 `deadlineAtMs`, Task 7 |
-| 실패 시 레이더 발행 무영향 | Task 7 Step 5 |
-| 범례 문구에 길이 설명 | Task 9 |
-| 계약 등록·3개 프로젝트·접근성 | Task 10 |
-| 밀도 육안 확인 | Task 10 Step 5 |
+| 최소 표시 속도 3 kt | Task 4 `selectLeadingEdge` |
+| 앞면 판정 6 km | Task 4 |
+| 품질 지표를 싣되 거르지 않음 | Task 3 `annotateNeighbourAgreement`, Task 4 GeoJSON 속성 |
+| Point + 방위 계약 | Task 4, 5, 6 |
+| 설정값 9개 | Task 2 |
+| 죽은 플래그 3개 제거 | Task 5 |
+| 화살대 실제 축척 비례 | Task 6 `arrowTip` |
+| `symbol-placement` 미지정 | Task 6 구현 + Task 6·8 단언 |
+| 시각 정확 일치 시에만 표시 | Task 5, Task 8 |
+| 계산 시간 초과를 루프 안에서 중도 포기 | Task 3 `deadlineAtMs`, Task 5 |
+| 실패 시 레이더 발행 무영향 | Task 5 Step 5 |
+| 범례 문구에 길이 설명 | Task 7 |
+| 계약 등록·3개 프로젝트·접근성 | Task 8 |
+| 밀도 육안 확인 | Task 8 Step 5 |
 
-**게이트 강제:** Task 3 Step 1이 status 문서의 `## 게이트 A 결과` 제목과 기록된 수치를 `grep`으로 확인하고, 없으면 중단하라고 지시한다. 산문 약속이 아니라 실행 가능한 검사다.
+**보류 항목 (스펙의 보류 표와 일치)**: MTREC 2단계, 소수점 보정, 중앙값 평활화, 상관계수 척도, 게이트 B. 실화면 확인 후 판단한다.
 
-**타입 일관성:** 벡터는 전 구간 `{ col, row, dx, dy, correlation, neighbourAgreement? }`. 격자는 `{ width, height, stride, values }`. `gridToLatLon`은 항상 원본 0.5 km 좌표를 받는다. `workStride`의 단일 출처는 격자의 `stride`다(`deriveMotionGeoJSON`이 `current.stride`를 넘긴다). 화살대 끝점은 `arrowTip` 한 곳에서만 계산한다.
+**타입 일관성:** 벡터는 전 구간 `{ col, row, dx, dy, matchScore, neighbourAgreement? }`. `matchScore`는 평균 절대차로 **낮을수록 좋다** — 0~1 신뢰도가 아니다. 격자는 `{ width, height, stride, values }`. `gridToLatLon`은 항상 원본 0.5 km 좌표를 받는다. `workStride`의 단일 출처는 격자의 `stride`다. 화살대 끝점은 `arrowTip` 한 곳에서만 계산한다.
 
-**약한 단언 제거:** Task 7의 모델 테스트는 `echoMeta.frames` 형태로 호출해 실제로 자료가 흐르는 경로를 검사한다. Task 8은 `fetch`를 스텁해 **보이는 상태에서 점이 소스에 들어가는지**를 확인한다. Task 3의 지향류 단언은 격자 안쪽 상자를 질의하고 ±1 허용오차를 쓴다.
+**약한 단언 제거:** Task 3의 벡터장 단언은 과반(70%)이 참 변위와 정확히 일치할 것을 요구한다. Task 5의 모델 테스트는 `echoMeta.frames` 형태로 호출해 실제 자료 경로를 검사한다. Task 6은 `fetch`를 스텁해 보이는 상태에서 점이 소스에 들어가는지 확인한다.
