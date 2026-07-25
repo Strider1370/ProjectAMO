@@ -143,11 +143,14 @@ function halfFieldVertical() {
   return { width, height, stride: 4, values }
 }
 
-test('dy로 움직이는 벡터도 앞면 판정에 dy를 쓴다', () => {
+test('dy로 움직이는 벡터도 앞면 판정에 dy를 쓰고, edgeLookaheadKm만큼 정규화한다', () => {
   const current = halfFieldVertical()
   const mk = (row) => ({ col: 10, row, dx: 0, dy: 2, matchScore: 0.9, neighbourAgreement: 1 })
-  const kept = selectLeadingEdge([mk(5), mk(19), mk(10)], current, EDGE)
-  assert.deepEqual(kept.map((v) => v.row), [19])
+  // row 17: mag=1, lookahead=3칸 → 정규화하면 row 20(격자 밖, 앞면). dy를 그대로 쓰면
+  // row 18(에코 안, 앞면 아님)이 되어 edgeLookaheadKm이 빠진 구현을 걸러낸다.
+  const pin = { col: 10, row: 17, dx: 0, dy: 1, matchScore: 100, neighbourAgreement: 1 }
+  const kept = selectLeadingEdge([mk(5), mk(19), mk(10), pin], current, EDGE)
+  assert.deepEqual(kept.map((v) => v.row), [19, 17])
 })
 
 test('격자 밖을 내다보는 벡터는 앞면으로 치지 않는다', () => {
