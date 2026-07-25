@@ -75,11 +75,14 @@ test('에코가 없는 곳에는 벡터를 만들지 않는다', () => {
 })
 
 test('마감시한이 지났으면 루프 안에서 포기하고 빈 배열을 준다', () => {
+  // 픽스처 생성은 측정 구간 밖에서 한다 — 안에 두면 기기 속도를 재는 셈이 된다.
+  const prev = fieldShifted(120, 120, 0, 0)
+  const curr = fieldShifted(120, 120, 3, -2)
   const started = Date.now()
-  const field = deriveMotionField(fieldShifted(120, 120, 0, 0), fieldShifted(120, 120, 3, -2), BASE, Date.now() - 1)
+  const field = deriveMotionField(prev, curr, BASE, Date.now() - 1)
   assert.deepEqual(field, [])
-  // 20ms: 정상 조기 포기 경로는 약 2ms, 다 계산한 뒤 버리는 경로는 약 35~56ms로
-  // 갈린다. 100ms는 두 경로를 구분하지 못해 이 테스트를 무력화시켰다.
+  // 20ms: 조기 포기 경로는 이 구간에 호출 한 번만 있어 0ms에 가깝고, 다 계산한
+  // 뒤 버리는 경로는 약 35~56ms다. 100ms는 둘을 구분하지 못해 무력화됐었다.
   assert.ok(Date.now() - started < 20, '전부 계산한 뒤 버리면 안 된다')
 })
 
