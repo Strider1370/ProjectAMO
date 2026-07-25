@@ -444,7 +444,23 @@ export function buildKimIcingFieldFromGrid(grid) {
     },
     icingScore,
     icingGrade,
+    ...geopotentialHeightPayload(grid),
     fetched_at: grid.fetched_at,
+  }
+}
+
+function geopotentialHeightPayload(grid) {
+  const variable = grid?.variables?.hgt
+  if (!variable) return {}
+  return {
+    geopotentialHeight: variable.values || [],
+    geopotentialHeightEncoding: {
+      encoding: variable.encoding,
+      scale: variable.scale,
+      offset: variable.offset,
+      missing: MISSING_ENCODED,
+      unit: variable.unit || 'm',
+    },
   }
 }
 
@@ -472,6 +488,7 @@ export function buildKimSurfaceWindFieldFromWindGrid(grid) {
     offset: uVariable.offset,
     u: uVariable.values || [],
     v: vVariable.values || [],
+    ...geopotentialHeightPayload(grid),
     fetched_at: grid.fetched_at,
   }
 }
@@ -504,6 +521,7 @@ export function buildKimTemperatureFieldFromGrid(grid) {
     scale: variable.scale,
     offset: variable.offset,
     T: variable.values || [],
+    ...geopotentialHeightPayload(grid),
     fetched_at: grid.fetched_at,
   }
 }
@@ -543,6 +561,7 @@ export function buildKimCloudPotentialFieldFromGrid(grid, { thresholdC = cloudPo
     offset: OFFSET,
     spread: encodeComponent(spread),
     cloudPotential: encodeComponent(cloudPotential),
+    ...geopotentialHeightPayload(grid),
     fetched_at: grid.fetched_at,
   }
 }

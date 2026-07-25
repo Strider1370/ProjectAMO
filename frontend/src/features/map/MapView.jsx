@@ -40,7 +40,9 @@ import NwpSliderBar from '../weather-overlays/NwpSliderBar.jsx'
 import LevelRail from '../weather-overlays/LevelRail.jsx'
 import ConvectiveOverlayControls from '../weather-overlays/ConvectiveOverlayControls.jsx'
 import ConvectiveOverlayCard from '../weather-overlays/ConvectiveOverlayCard.jsx'
+import WeatherPointInspector from '../weather-overlays/WeatherPointInspector.jsx'
 import { useConvectiveOverlay } from '../weather-overlays/lib/useConvectiveOverlay.js'
+import { useWeatherPointInspector } from '../weather-overlays/lib/useWeatherPointInspector.js'
 import WeatherLayerTimestampBar from '../weather-overlays/WeatherLayerTimestampBar.jsx'
 import { useNwpOverlays } from '../weather-overlays/lib/useNwpOverlays.js'
 import { destroyWindOverlay, syncWindOverlay } from '../weather-overlays/lib/windOverlaySync.js'
@@ -337,6 +339,9 @@ const MapView = forwardRef(function MapView({
   const [styleRevision, setStyleRevision] = useState(0)
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
   const [metVisibility, setMetVisibility] = useState(initMetVisibility)
+  const [timestampOpen, setTimestampOpen] = useState(true)
+  const [weatherLegendOpen, setWeatherLegendOpen] = useState(false)
+  const [weatherLegendPanelHeight, setWeatherLegendPanelHeight] = useState(0)
   const [blinkLightning, setBlinkLightning] = useState(false)
   const [lightningBlinkOff, setLightningBlinkOff] = useState(false)
   const [lightningReferenceTimeMs, setLightningReferenceTimeMs] = useState(() => Date.now())
@@ -773,6 +778,32 @@ const MapView = forwardRef(function MapView({
     nwpIssueLabel, nwpValidLabel, ktgIssueLabel, ktgValidLabel, flightCategoryIssueLabel,
     sigwxIssueLabel, sigwxValidLabel, sigwxHistoryEntries.length, sigwxHistoryIndex,
   ])
+
+  const weatherPointFields = useMemo(() => ({
+    windField,
+    temperatureField,
+    cloudField,
+    icingField,
+    ktgGrid,
+  }), [cloudField, icingField, ktgGrid, temperatureField, windField])
+  const weatherPointVisibility = useMemo(() => ({
+    wind: enableWindOverlay && metVisibility.wind,
+    temp: enableWindOverlay && metVisibility.temp,
+    cloud: enableWindOverlay && metVisibility.cloud,
+    icing: enableWindOverlay && metVisibility.icing,
+    turbulence: enableWindOverlay && metVisibility.turbulence,
+  }), [enableWindOverlay, metVisibility.cloud, metVisibility.icing, metVisibility.temp, metVisibility.turbulence, metVisibility.wind])
+  const weatherPointInspector = useWeatherPointInspector({
+    mapRef,
+    isStyleReady,
+    enabled: Object.values(weatherPointVisibility).some(Boolean),
+    visibility: weatherPointVisibility,
+    fields: weatherPointFields,
+    issueLabel: nwpIssueLabel,
+    validLabel: nwpValidLabel,
+    turbulenceIssueLabel: ktgIssueLabel,
+    turbulenceValidLabel: ktgValidLabel,
+  })
 
   useTimelinePlayback({
     isPlaying: weatherTimelinePlaying,
@@ -1554,10 +1585,14 @@ const MapView = forwardRef(function MapView({
 
       {error && <div className="map-view-error" role="alert">{error}</div>}
 
-      <WeatherLayerTimestampBar entries={timestampEntries} tz={tz} />
+      <div
+        className={`map-bottom-control-dock${timestampOpen ? ' is-timestamp-open' : ''}${weatherLegendOpen ? ' is-legend-open' : ''}`}
+        style={{ '--legend-popover-height': `${weatherLegendPanelHeight}px` }}
+      >
+        <WeatherLayerTimestampBar entries={timestampEntries} tz={tz} isOpen={timestampOpen} onOpenChange={setTimestampOpen} />
 
-      {showWeatherLegends && (
-        <WeatherLegends
+        {showWeatherLegends && (
+          <WeatherLegends
           radarLegendVisible={radarLegendVisible}
           radarOverseasLegendVisible={radarOverseasLegendVisible}
           rainviewerOutOfRange={rainviewerOutOfRange}
@@ -1586,9 +1621,14 @@ const MapView = forwardRef(function MapView({
           radarMotionObservedAtMs={radarMotion.observedAtMs}
           radarMotionComparedFromMs={radarMotion.comparedFromMs}
           onRadarMotionRequestedChange={radarMotionOverlay.setRequestedVisible}
-          formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
-        />
-      )}
+            formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
+            bottomDock={!isMobile}
+            open={weatherLegendOpen}
+            onOpenChange={setWeatherLegendOpen}
+            onOpenPanelHeightChange={setWeatherLegendPanelHeight}
+          />
+        )}
+      </div>
 
       {showAdvisoryBadges && (
         <AdvisoryBadges
@@ -1672,6 +1712,7 @@ const MapView = forwardRef(function MapView({
         <ConvectiveOverlayControls ctpsVisible={metVisibility.ctps} minFl={convectiveOverlay.minFl} onMinFlChange={convectiveOverlay.setMinFl} />
       </div>
       <ConvectiveOverlayCard selection={convectiveOverlay.selection} tz={tz} />
+      <WeatherPointInspector selection={weatherPointInspector.selection} onClose={weatherPointInspector.clearSelection} />
 
       <AdsbTimestamp
         isVisible={metVisibility.adsb}
@@ -1798,6 +1839,8 @@ const MapView = forwardRef(function MapView({
               .filter((row) => (row.candidateStatus ?? row.status) === 'valid' && row.weatherStatus !== 'weather_unavailable')
               .map((row) => Number(row.altFt ?? row.altitudeFt))}
             onSelectCandidateAltitude={isMobile ? routeBriefing.actions.selectCruiseAltitude : undefined}
+            onSelectForecastHour={routeBriefing.actions.handleSelectForecastHour}
+            crossSectionHourLoading={routeBriefing.state.crossSectionHourLoading}
             placement={isMobile ? 'mobile-full' : routeBriefing.state.workflowStep === 'altitude' ? 'side' : 'bottom'}
           />
         </Suspense>
@@ -1889,5 +1932,3 @@ const MapView = forwardRef(function MapView({
 })
 
 export default MapView
-
-

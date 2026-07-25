@@ -49,6 +49,10 @@ function loadOverseasAirportIds() {
   }
 }
 
+const aviationAuthKey = process.env.KMA_AVIATION_AUTH_KEY || process.env.KMA_AUTH_KEY || process.env.API_AUTH_KEY || ''
+const radarSatelliteAuthKey = process.env.KMA_RADAR_SATELLITE_AUTH_KEY || aviationAuthKey
+const kimNwpAuthKey = process.env.KMA_KIM_NWP_AUTH_KEY || aviationAuthKey
+
 export const api = {
   base_url: process.env.API_BASE_URL || 'https://apihub.kma.go.kr/api/typ02/openApi',
   lightning_url: process.env.LIGHTNING_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/lgt_pnt.php',
@@ -67,9 +71,12 @@ export const api = {
     airport_info: '/AirPortService/getAirPort',
     takeoff_fcst: '/AirInfoService/getAirInfo',
   },
-  auth_key: process.env.KMA_AUTH_KEY || process.env.API_AUTH_KEY || '',
+  // 기존 항공·일반 KMA 수집기 기본 키. 새 역할별 키가 비어 있으면 이 값으로 안전하게 폴백한다.
+  auth_key: aviationAuthKey,
+  radar_satellite_auth_key: radarSatelliteAuthKey,
+  kim_nwp_auth_key: kimNwpAuthKey,
   airkorea_key: process.env.AIRKOREA_API_KEY || '',
-  kma_uv_key: process.env.KMA_UV_API_KEY || process.env.API_AUTH_KEY || '',
+  kma_uv_key: process.env.KMA_UV_API_KEY || aviationAuthKey,
   default_params: { pageNo: 1, numOfRows: 10, dataType: 'XML' },
   timeout_ms: 10000,
   max_retries: 3,

@@ -37,6 +37,7 @@ export default function DeveloperConsoleButton({ isExpanded = false }) {
         type="button"
         className={`sidebar-icon-button ${isExpanded ? 'is-expanded' : ''}`}
         aria-label="개발자 콘솔"
+        title="개발자 콘솔"
         onClick={() => setOpen(true)}
       >
         <div className="sidebar-icon-wrapper">

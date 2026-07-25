@@ -5,6 +5,7 @@ import {
   buildWeatherOverlayModel,
   formatAdvisoryPanelLabel,
   formatSigwxStamp,
+  formatUtcTmfcStamp,
 } from './weatherOverlayModel.js'
 
 const hiddenAdvisoryKeys = { sigwxLow: [], sigmet: [], airmet: [] }
@@ -12,6 +13,34 @@ const sigwxFilter = {}
 
 test('formatSigwxStamp formats tmfc values as KST labels', () => {
   assert.equal(formatSigwxStamp('202605140300'), '05/14 03:00 KST')
+})
+
+test('formatUtcTmfcStamp converts KIM/KTG UTC tmfc values to the display timezone', () => {
+  assert.equal(formatUtcTmfcStamp('202605140300', 'UTC'), '05/14 03:00 UTC')
+  assert.equal(formatUtcTmfcStamp('202605140300', 'KST'), '05/14 12:00 KST')
+})
+
+test('buildWeatherOverlayModel formats KIM/KTG tmfc values as UTC source times', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: null,
+    satMeta: null,
+    lightningData: null,
+    sigwxLowData: null,
+    sigwxLowHistoryData: [],
+    sigmetData: { items: [] },
+    airmetData: { items: [] },
+    visibility: {},
+    nwpSelection: { tmfc: '202605140300', hf: 3 },
+    ktgGrid: {
+      run: { tmfc: '202605140300', validTime: '2026-05-14T06:00:00.000Z' },
+    },
+    tz: 'KST',
+  })
+
+  assert.equal(model.nwpIssueLabel, '05/14 12:00 KST')
+  assert.equal(model.nwpValidLabel, '05/14 15:00 KST')
+  assert.equal(model.ktgIssueLabel, '05/14 12:00 KST')
+  assert.equal(model.ktgValidLabel, '05/14 15:00 KST')
 })
 
 test('formatAdvisoryPanelLabel includes kind, sequence, and 한글 phenomenon (+code)', () => {

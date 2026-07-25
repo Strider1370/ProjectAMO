@@ -5,8 +5,8 @@ import { parseCiNC, parseCtpsNC } from '../parsers/satellite-parser.js'
 import { CI_RENDER_VERSION, CTPS_MIN_FL_OPTIONS, buildCiFeatureCollection, encodeCtpsBinary, normalizeCtps, renderCtpsRgba } from './convective-satellite-model.js'
 import { publishCi, publishCtps, readConvectiveMeta } from './convective-satellite-store.js'
 
-function buildCiUrl(requestTm) { return `${config.satellite.fog_url}/${config.satellite.ci_product}/${config.satellite.region}/data?date=${requestTm}&authKey=${config.api.auth_key}` }
-function buildCtpsUrl(requestTm) { return `${config.flight_category.ctps_url}?date=${requestTm}&authKey=${config.api.auth_key}` }
+function buildCiUrl(requestTm) { return `${config.satellite.fog_url}/${config.satellite.ci_product}/${config.satellite.region}/data?date=${requestTm}&authKey=${config.api.radar_satellite_auth_key}` }
+function buildCtpsUrl(requestTm) { return `${config.flight_category.ctps_url}?date=${requestTm}&authKey=${config.api.radar_satellite_auth_key}` }
 async function fetchNc(url) { const response = await fetchWithTimeout(url, config.satellite.timeout_ms); if (!response.ok) throw new Error(`HTTP ${response.status}`); const buffer = Buffer.from(await response.arrayBuffer()); if (buffer.length < 8 || buffer[0] !== 0x89 || buffer[1] !== 0x48 || buffer[2] !== 0x44 || buffer[3] !== 0x46) throw new Error('Invalid HDF5 response'); return buffer }
 async function renderWebp(normalized, minFl) { return sharp(renderCtpsRgba(normalized, minFl), { raw: { width: 1200, height: 1049, channels: 4 } }).webp({ lossless: true }).toBuffer() }
 

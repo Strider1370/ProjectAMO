@@ -146,6 +146,7 @@ test('buildKimSurfaceWindFieldFromWindGrid derives renderer field', () => {
     components: [
       component('u', [3, 0, 0, 8]),
       component('v', [4, 0, 12, 15]),
+      { variable: 'hgt', unit: 'm', level: 1000, nx: 2, ny: 2, bounds: BOUNDS, values: [130, 140, 150, 160] },
     ],
   })
 
@@ -156,6 +157,14 @@ test('buildKimSurfaceWindFieldFromWindGrid derives renderer field', () => {
   assert.equal(field.stats.maxSpeed, 17)
   assert.deepEqual(field.u, grid.variables.u.values)
   assert.deepEqual(field.v, grid.variables.v.values)
+  assert.deepEqual(field.geopotentialHeight, grid.variables.hgt.values)
+  assert.deepEqual(field.geopotentialHeightEncoding, {
+    encoding: 'int16-scaled-json-v1',
+    scale: 1,
+    offset: 0,
+    missing: -32768,
+    unit: 'm',
+  })
 })
 
 test('buildKimSurfaceWindFieldFromWindGrid still rejects grids without u/v pairs', () => {

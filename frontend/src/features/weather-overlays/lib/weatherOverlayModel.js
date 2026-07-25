@@ -36,14 +36,14 @@ export function formatReferenceTimeLabel(timeMs, tz = 'KST') {
   return `${hours}:${minutes}`
 }
 
-export function parseSigwxTmfcToMs(tmfc) {
+function parseCompactTmfcToMs(tmfc, sourceOffsetHours) {
   if (!tmfc || !/^\d{10}(\d{2})?$/.test(String(tmfc))) return null
   const raw = String(tmfc)
   const date = new Date(Date.UTC(
     Number(raw.slice(0, 4)),
     Number(raw.slice(4, 6)) - 1,
     Number(raw.slice(6, 8)),
-    Number(raw.slice(8, 10)) - 9,
+    Number(raw.slice(8, 10)) - sourceOffsetHours,
     raw.length >= 12 ? Number(raw.slice(10, 12)) : 0,
     0,
     0,
@@ -52,10 +52,18 @@ export function parseSigwxTmfcToMs(tmfc) {
   return Number.isFinite(ms) ? ms : null
 }
 
-export function formatSigwxStamp(value, tz = 'KST') {
-  const timeMs = value?.includes?.('T')
-    ? Date.parse(value)
-    : parseSigwxTmfcToMs(value)
+// SIGWX compact times are published in KST.
+export function parseSigwxTmfcToMs(tmfc) {
+  return parseCompactTmfcToMs(tmfc, 9)
+}
+
+// KIM/KTG compact times are published in UTC; their ISO validTime fields are
+// already UTC and do not need this conversion.
+export function parseUtcTmfcToMs(tmfc) {
+  return parseCompactTmfcToMs(tmfc, 0)
+}
+
+function formatEpochStamp(timeMs, tz) {
   if (!Number.isFinite(timeMs)) return '-'
   const offset = tz === 'KST' ? 9 * 60 * 60 * 1000 : 0
   const d = new Date(timeMs + offset)
@@ -64,6 +72,17 @@ export function formatSigwxStamp(value, tz = 'KST') {
   const hours = String(d.getUTCHours()).padStart(2, '0')
   const minutes = String(d.getUTCMinutes()).padStart(2, '0')
   return `${month}/${day} ${hours}:${minutes} ${tz}`
+}
+
+export function formatSigwxStamp(value, tz = 'KST') {
+  const timeMs = value?.includes?.('T')
+    ? Date.parse(value)
+    : parseSigwxTmfcToMs(value)
+  return formatEpochStamp(timeMs, tz)
+}
+
+export function formatUtcTmfcStamp(value, tz = 'KST') {
+  return formatEpochStamp(parseUtcTmfcToMs(value), tz)
 }
 
 export function formatAdvisoryPanelLabel(item, kind) {
@@ -291,14 +310,14 @@ export function buildWeatherOverlayModel({
     radarReferenceTimeMs: radarReferenceTimeMs ?? Date.now(),
     sigwxIssueLabel: formatSigwxStamp(selectedSigwxEntry?.fetched_at, tz),
     sigwxValidLabel: formatSigwxStamp(selectedSigwxEntry?.tmfc, tz),
-    nwpIssueLabel: formatSigwxStamp(nwpSelection?.tmfc ?? null, tz),
+    nwpIssueLabel: formatUtcTmfcStamp(nwpSelection?.tmfc ?? null, tz),
     nwpValidLabel: (() => {
-      const base = parseSigwxTmfcToMs(nwpSelection?.tmfc)
+      const base = parseUtcTmfcToMs(nwpSelection?.tmfc)
       const hf = Number(nwpSelection?.hf)
       if (!Number.isFinite(base) || !Number.isFinite(hf)) return '-'
       return formatSigwxStamp(new Date(base + hf * 3600000).toISOString(), tz)
     })(),
-    ktgIssueLabel: formatSigwxStamp(ktgGrid?.run?.tmfc ?? null, tz),
+    ktgIssueLabel: formatUtcTmfcStamp(ktgGrid?.run?.tmfc ?? null, tz),
     ktgValidLabel: formatSigwxStamp(ktgGrid?.run?.validTime ?? null, tz),
     flightCategoryIssueLabel: formatSigwxStamp(flightCategoryGeojson?.fetched_at ?? null, tz),
     blinkLightning,

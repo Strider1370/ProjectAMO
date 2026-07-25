@@ -93,7 +93,7 @@ async function fetchSfcVis() {
 
 async function fetchCtps() {
   const tm = formatUtcTm(20 * 60 * 1000)
-  const url = `${config.flight_category.ctps_url}?date=${tm}&authKey=${config.api.auth_key}`
+  const url = `${config.flight_category.ctps_url}?date=${tm}&authKey=${config.api.radar_satellite_auth_key}`
   return withTimeout(async (signal) => {
     const res = await fetch(url, { signal })
     if (!res.ok) throw new Error(`CTPS HTTP ${res.status}`)

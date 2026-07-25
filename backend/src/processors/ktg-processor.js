@@ -45,7 +45,7 @@ export function resolveKtgCandidates(now = new Date()) {
 
 async function fetchKtgFile({ tmfc, ef }) {
   const efStr = String(Number(ef)).padStart(2, '0')
-  const url = `https://apihub.kma.go.kr/api/typ01/url/amo_nwp_file_down.php?tmfc=${tmfc}&ef=${efStr}&authKey=${config.api.auth_key}`
+  const url = `https://apihub.kma.go.kr/api/typ01/url/amo_nwp_file_down.php?tmfc=${tmfc}&ef=${efStr}&authKey=${config.api.kim_nwp_auth_key}`
   const timeoutMs = config.ktg?.timeout_ms ?? 60000
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)

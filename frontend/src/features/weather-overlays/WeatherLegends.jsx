@@ -1,11 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import { RAINVIEWER_LEGEND } from './lib/rainviewerLayers.js'
+import { entriesLeftToRight } from './lib/legendOrder.js'
 
-// 모바일 가로 범례: 세로 컬러바를 가로 그라데이션 바 + 성긴 눈금 라벨로. entries는 높음→낮음
-// 순서라 좌→우 오름차순으로 뒤집는다.
-function HLegend({ title, entries = [] }) {
-  const cells = [...entries].reverse()
+function HLegend({ title, entries = [], reverse = false }) {
+  const cells = entriesLeftToRight(entries, reverse)
   const step = Math.max(1, Math.ceil(cells.length / 7))
   return (
     <div className="hlegend">
@@ -61,11 +60,21 @@ function WeatherLegends({
   radarMotionComparedFromMs,
   onRadarMotionRequestedChange,
   formatReferenceTimeLabel,
+  bottomDock = false,
+  open: controlledOpen,
+  onOpenChange,
+  onOpenPanelHeightChange,
 }) {
   const isMobile = useIsMobile()
-  const [open, setOpen] = useState(false)
+  const bottomPanelRef = useRef(null)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  function setOpen(next) {
+    const resolved = typeof next === 'function' ? next(open) : next
+    if (controlledOpen === undefined) setUncontrolledOpen(resolved)
+    onOpenChange?.(resolved)
+  }
   const radarMotionEnabled = false
-  if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible) return null
 
   const panel = (
     <div className="map-right-legends">
@@ -269,26 +278,42 @@ function WeatherLegends({
     </div>
   )
 
-  // 모바일: 세로 컬러바 대신 하단(타임라인 위) 가로 범례 바 + '범례' 칩 토글(슬라이드업).
-  if (!isMobile) return panel
+  useEffect(() => {
+    if (!onOpenPanelHeightChange) return undefined
+    const panel = bottomPanelRef.current
+    const publish = () => onOpenPanelHeightChange(open ? Math.ceil(panel?.getBoundingClientRect().height ?? 0) : 0)
+    publish()
+    if (!open || !panel || typeof ResizeObserver === 'undefined') return () => onOpenPanelHeightChange(0)
+    const observer = new ResizeObserver(publish)
+    observer.observe(panel)
+    return () => {
+      observer.disconnect()
+      onOpenPanelHeightChange(0)
+    }
+  }, [onOpenPanelHeightChange, open])
+
+  if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible) return null
+
+  // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
+  if (!isMobile && !bottomDock) return panel
 
   const mobileLegends = [
-    radarLegendVisible && { key: 'radar', title: 'mm/h', entries: radarRainrateLegend },
-    lightningLegendVisible && { key: 'ltg', title: 'LIGHTNING · 10 MIN', entries: lightningLegendEntries },
-    windSpeedLegendVisible && { key: 'wind', title: 'kt', entries: windSpeedLegendEntries },
-    temperatureLegendVisible && { key: 'temp', title: '°C', entries: temperatureLegendEntries },
-    cloudLegendVisible && { key: 'cloud', title: 'T-Td °C', entries: cloudLegendEntries },
-    icingLegendVisible && { key: 'icing', title: 'Icing', entries: icingLegendEntries },
-    turbulenceLegendVisible && { key: 'turb', title: 'Turbulence', entries: turbulenceLegendEntries },
-    ciLegendVisible && { key: 'ci', title: '대류 가능성', entries: CI_LEGEND },
-    ctpsLegendVisible && { key: 'ctps', title: '구름 꼭대기', entries: CTPS_LEGEND },
+    radarLegendVisible && { key: 'radar', title: '레이더 · mm/h', entries: radarRainrateLegend, reverse: true },
+    lightningLegendVisible && { key: 'ltg', title: '낙뢰 · 10분', entries: lightningLegendEntries },
+    windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
+    temperatureLegendVisible && { key: 'temp', title: '기온 · °C', entries: temperatureLegendEntries },
+    cloudLegendVisible && { key: 'cloud', title: '습도 · T-Td °C', entries: cloudLegendEntries },
+    icingLegendVisible && { key: 'icing', title: '착빙 · 잠재성', entries: icingLegendEntries },
+    turbulenceLegendVisible && { key: 'turb', title: '난류 · 강도', entries: turbulenceLegendEntries },
+    ciLegendVisible && { key: 'ci', title: '대류 가능성 · 위성', entries: CI_LEGEND },
+    ctpsLegendVisible && { key: 'ctps', title: '구름 꼭대기 · FL', entries: CTPS_LEGEND },
   ].filter(Boolean)
 
   return (
-    <div className="map-legend-mobile-dock">
-      <div className={`map-legends-bottom${open ? ' is-open' : ''}`} aria-hidden={!open}>
+    <div className={`map-legend-mobile-dock${bottomDock ? ' map-legend-desktop-dock' : ''}`}>
+      <div ref={bottomPanelRef} className={`map-legends-bottom${open ? ' is-open' : ''}`} aria-hidden={!open}>
         {mobileLegends.map((l) => (
-          <HLegend key={l.key} title={l.title} entries={l.entries} />
+          <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} />
         ))}
         {radarMotionEnabled && radarLegendVisible && (
           <div className="radar-motion-control radar-motion-control--mobile">

@@ -54,7 +54,7 @@ export function createIcingPotentialSampler(field) {
     const index = y * grid.nx + x
     const score = decodeIcingScore(field.icingScore[index], field)
     const grade = decodeIcingGrade(field.icingGrade[index], field)
-    if (score == null || grade == null || grade === 0) return null
+    if (score == null || grade == null) return null
     return { score, grade, color: pickIcingColor(grade) }
   }
 

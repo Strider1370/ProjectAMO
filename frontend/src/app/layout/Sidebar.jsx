@@ -1,11 +1,11 @@
 import {
   Cloud, FileText, Layers, Settings,
-  Menu, Monitor, HelpCircle, Bell, Search, FileWarning
+  Menu, Monitor, HelpCircle, History, Search, FileWarning
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { CURRENT_VERSION } from '../../features/about/changelog.js'
 import { useAuth, ROLE_LABEL_KO } from '../../features/auth/AuthContext.jsx'
 import NotificationCenter from '../../features/notifications/NotificationCenter.jsx'
-import PersonalSettingsButton from '../../features/personal/PersonalSettingsButton.jsx'
 import DeveloperConsoleButton from '../../features/developer/DeveloperConsoleButton.jsx'
 import './Sidebar.css'
 
@@ -18,9 +18,9 @@ const topItems = [
 ]
 
 const bottomItems = [
-  { label: '업데이트', icon: Bell },
-  { label: '설정',   icon: Settings },
   { label: '도움말', icon: HelpCircle }, // 클릭 시 온보딩 투어 재실행
+  { label: '업데이트', icon: History },
+  { label: '설정', icon: Settings },
 ]
 
 function SidebarButton({ item, isExpanded, onClick }) {
@@ -31,6 +31,7 @@ function SidebarButton({ item, isExpanded, onClick }) {
       className={`sidebar-icon-button${item.active ? ' is-active' : ''} ${isExpanded ? 'is-expanded' : ''}`}
       type="button"
       aria-label={item.label}
+      title={item.label}
       onClick={onClick}
       disabled={item.disabled}
     >
@@ -55,6 +56,11 @@ const PANEL_MAP = {
 
 function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick, onHelp }) {
   const { user } = useAuth()
+  const [isUtilityOpen, setIsUtilityOpen] = useState(false)
+
+  useEffect(() => {
+    if (isExpanded) setIsUtilityOpen(false)
+  }, [isExpanded])
   // 관리자 콘솔은 사이드바 노출 없이 /admin 직접 진입(서버 requireRole로 차단). UI에 진입점 안 둠.
   // 켜진 레이어 수 배지(모바일과 동일 정보). ponytail: 축소 시 점만, 확장 시 숫자 — 36px 레일에 숫자 욱여넣지 않음.
   const counts = layerCounts || { aviation: 0, met: 0 }
@@ -62,6 +68,24 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
     label === '항공정보' ? counts.aviation || undefined
     : label === '기상정보' ? counts.met || undefined
     : undefined
+  const renderBottomItem = (item) => {
+    const panelId = PANEL_MAP[item.label]
+    const handleClick = panelId ? () => onPanelToggle(panelId)
+      : item.label === '도움말' ? onHelp
+      : undefined
+    return (
+      <SidebarButton
+        key={item.label}
+        item={{
+          ...item,
+          active: panelId ? activePanel === panelId : false,
+          dot: item.label === '업데이트' ? hasUpdate : item.dot,
+        }}
+        isExpanded={false}
+        onClick={handleClick}
+      />
+    )
+  }
   return (
     <aside className={`sidebar ${isExpanded ? 'is-expanded' : ''}`}>
       {/* 최상단: 햄버거 & 로고 */}
@@ -72,6 +96,9 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
         <div className="sidebar-header">
           <button 
             className="sidebar-icon-button menu-toggle" 
+            type="button"
+            aria-label={isExpanded ? '사이드바 접기' : '사이드바 펼치기'}
+            title={isExpanded ? '사이드바 접기' : '사이드바 펼치기'}
             onClick={() => onExpandToggle(!isExpanded)}
           >
             <Menu size={24} strokeWidth={2.1} />
@@ -108,33 +135,34 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
 
       {/* 하단 섹션 */}
       <div className="sidebar-section">
-        {/* #13 알림센터 — 로그인 사용자만(컴포넌트 자체 게이트). 벨 + 안읽음 배지 + Popover 피드. */}
-        <NotificationCenter isExpanded={isExpanded} />
-        {/* #13 개인설정 — 로그인 사용자만(컴포넌트 자체 게이트). 미니마·비행알림 2탭 패널. */}
-        <PersonalSettingsButton isExpanded={isExpanded} />
-        {/* 개발자 콘솔 — 테스트 인스턴스(dev:test)에서만 렌더(컴포넌트 자체 게이트). 운영 빌드엔 코드 없음. */}
-        <DeveloperConsoleButton isExpanded={isExpanded} />
-        {bottomItems.map((item) => {
-          const panelId = PANEL_MAP[item.label]
-          const handleClick = panelId ? () => onPanelToggle(panelId)
-            : item.label === '도움말' ? onHelp
-            : undefined
-          return (
+        {isExpanded ? (
+          <>
+            {/* 개발자 콘솔 — 테스트 인스턴스(dev:test) 또는 관리자에게만 렌더. */}
+            <div className="sidebar-developer-action">
+              <DeveloperConsoleButton isExpanded={false} />
+            </div>
+            <div className="sidebar-version" title={`ProjectAMO v${CURRENT_VERSION}`}>v{CURRENT_VERSION}</div>
+            <div className="sidebar-utility-actions" role="group" aria-label="알림, 도움말 및 앱 설정">
+              <NotificationCenter isExpanded={false} />
+              {bottomItems.map(renderBottomItem)}
+            </div>
+          </>
+        ) : (
+          <div className="sidebar-collapsed-utility">
             <SidebarButton
-              key={item.label}
-              item={{
-                ...item,
-                active: panelId ? activePanel === panelId : false,
-                dot: item.label === '업데이트' ? hasUpdate : item.dot,
-              }}
-              isExpanded={isExpanded}
-              onClick={handleClick}
+              item={{ label: '설정', icon: Settings }}
+              isExpanded={false}
+              onClick={() => setIsUtilityOpen((open) => !open)}
             />
-          )
-        })}
-
-        {/* 버전 */}
-        <div className="sidebar-version">{isExpanded ? `버전 v${CURRENT_VERSION}` : `v${CURRENT_VERSION}`}</div>
+            {isUtilityOpen && (
+              <div className="sidebar-utility-popover" role="group" aria-label="알림, 도움말 및 앱 설정">
+                <NotificationCenter isExpanded={false} />
+                {bottomItems.map(renderBottomItem)}
+                <DeveloperConsoleButton isExpanded={false} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 구분선 */}
         <div className="sidebar-divider" />

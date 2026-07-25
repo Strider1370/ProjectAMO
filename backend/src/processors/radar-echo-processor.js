@@ -47,7 +47,7 @@ function buildEchoUrl(tm) {
     tm,
     data: "bin",
     cmp: config.radar_echo.cmp,
-    authKey: config.api.auth_key,
+    authKey: config.api.radar_satellite_auth_key,
   });
   return `${config.api.radar_url}?${params.toString()}`;
 }
@@ -275,8 +275,8 @@ function scheduleBackgroundFill(radarDir, pendingTms, existingFrames, latestTm, 
 }
 
 async function process() {
-  if (!config.api.auth_key) {
-    throw new Error("Radar echo auth key missing (set API_AUTH_KEY)");
+  if (!config.api.radar_satellite_auth_key) {
+    throw new Error("Radar echo auth key missing (set KMA_RADAR_SATELLITE_AUTH_KEY)");
   }
 
   const radarDir = ensureRadarDir();

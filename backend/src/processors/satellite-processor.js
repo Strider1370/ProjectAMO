@@ -56,13 +56,13 @@ function getCandidateTms(delayMinutes = config.satellite.delay_minutes) {
 function buildIrUrl(tm) {
   const channel = config.satellite.channel;
   const region = config.satellite.region;
-  return `${config.satellite.url}/${channel}/${region}/data?date=${tm}&authKey=${config.api.auth_key}`;
+  return `${config.satellite.url}/${channel}/${region}/data?date=${tm}&authKey=${config.api.radar_satellite_auth_key}`;
 }
 
 function buildFogUrl(tm) {
   const product = config.satellite.fog_product;
   const region = config.satellite.region;
-  return `${config.satellite.fog_url}/${product}/${region}/data?date=${tm}&authKey=${config.api.auth_key}`;
+  return `${config.satellite.fog_url}/${product}/${region}/data?date=${tm}&authKey=${config.api.radar_satellite_auth_key}`;
 }
 
 
@@ -271,8 +271,8 @@ function scheduleBackgroundFill(satDir, pendingFrameSpecs, existingFrames, lates
 }
 
 async function process() {
-  if (!config.api.auth_key) {
-    throw new Error("Satellite auth key missing (set API_AUTH_KEY)");
+  if (!config.api.radar_satellite_auth_key) {
+    throw new Error("Satellite auth key missing (set KMA_RADAR_SATELLITE_AUTH_KEY)");
   }
 
   const satDir = ensureSatelliteDir();

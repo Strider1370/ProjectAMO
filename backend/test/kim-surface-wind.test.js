@@ -180,6 +180,7 @@ test('buildKimGridUrl uses the KMA APIHub KIM cgi endpoint', () => {
   assert.ok(url.includes('nwp=NE57'))
   assert.ok(url.includes('name=u10m'))
   assert.ok(url.includes('map=S'))
+  assert.equal(new URL(url).searchParams.get('authKey'), config.api.kim_nwp_auth_key)
 })
 
 test('resolveKimTemperatureComponentRequest uses pressure T and verified single-level t2m params', () => {

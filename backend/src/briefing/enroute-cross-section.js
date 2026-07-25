@@ -98,10 +98,11 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
   const tmfc = String(body.tmfc || latest.latestRun)
   // 압력면 바람(u/v) 데이터가 실제로 있는 시각만 후보로 삼는다.
   const pressureWindIndex = filterKimNwpIndexForVariables(index, ['u', 'v'])
-  const availableHours = pressureWindIndex?.times?.filter((t) => {
+  const availableTimes = pressureWindIndex?.times?.filter((t) => {
     const pressureLevels = (pressureWindIndex?.levels ?? []).filter((l) => l.kind === 'pressure')
     return pressureLevels.some((l) => pressureWindIndex.availability?.[l.id]?.[String(t.hf)])
-  }).map((t) => t.hf) ?? []
+  }) ?? []
+  const availableHours = availableTimes.map((t) => t.hf)
   const candidateHours = availableHours.length > 0 ? availableHours : (config.kim_nwp?.forecast_hours || [0, 3, 6, 9, 12])
   const hf = Number.isFinite(Number(body.hf)) ? Number(body.hf) : selectNearestForecastHour({ tmfc, candidateHours })
   const kimBundleKey = `${root}|${tmfc}|${hf}|${latest.content_hash ?? latest.updated_at ?? ''}`
@@ -144,5 +145,9 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
   })
   if (ktgLatest) turbulence.run = { tmfc: ktgLatest.tmfc, hf: ktgHf, validTime: ktgValidTime }
 
-  return { available: true, axis, crossSection, turbulence, totalDistanceNm: axis.totalDistanceNm }
+  // 사용자가 단면도에서 다른 예보시간(hf)을 골라볼 수 있도록, 바람 자료가 실제로 있는 시각 목록을 함께 내려준다.
+  return {
+    available: true, axis, crossSection, turbulence, totalDistanceNm: axis.totalDistanceNm,
+    availableTimes: availableTimes.length > 0 ? availableTimes : candidateHours.map((candidateHf) => ({ hf: candidateHf, validTime: null })),
+  }
 }

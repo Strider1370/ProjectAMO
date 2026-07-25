@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { formatNwpTimeTick, getNwpSliderOptions, shouldCommitNwpSelection } from './NwpSliderBarModel.js'
 import LevelRail from './LevelRail.jsx'
+import PressureLevelSlider from './PressureLevelSlider.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 
 function NwpSliderBar({
@@ -110,7 +111,9 @@ function NwpSliderBar({
           </div>
         </div>
       )}
-      {showLevelSlider && selectedLevel && (
+      {showLevelSlider && selectedLevel && (selectedLevel.kind === 'pressure' ? (
+        <PressureLevelSlider levels={availableLevels} activeValue={activeSelection.level} onSelect={selectLevel} />
+      ) : (
         <LevelRail
           title="고도"
           items={availableLevels.map((level) => ({ value: level.id, label: level.label }))}
@@ -118,7 +121,7 @@ function NwpSliderBar({
           onSelect={selectLevel}
           embedded={levelRailEmbedded}
         />
-      )}
+      ))}
     </>
   )
 }
