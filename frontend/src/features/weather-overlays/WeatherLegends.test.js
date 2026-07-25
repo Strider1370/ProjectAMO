@@ -17,7 +17,7 @@ test('radar legend temporarily hides the motion toggle', () => {
 
 test('all hooks run before the no-visible-legend return', () => {
   const effect = source.indexOf('useEffect(() =>')
-  const emptyReturn = source.indexOf('&& !ctpsLegendVisible) return null')
+  const emptyReturn = source.indexOf('&& !echoTopLegendVisible) return null')
   assert.ok(effect >= 0)
   assert.ok(emptyReturn > effect)
 })

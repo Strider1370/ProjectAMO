@@ -15,7 +15,7 @@ import {
   ADVISORY_LAYER_DEFS,
 } from '../weather-overlays/lib/advisoryLayers.js'
 import { ADSB_FETCH_DISABLED, fetchAdsbData } from '../../api/adsbApi.js'
-import { fetchConvectiveCtpsPoint, fetchSigwxCloudMeta, fetchSigwxFrontMeta } from '../../api/weatherApi.js'
+import { fetchConvectiveCtpsPoint, fetchEchoTopPoint, fetchSigwxCloudMeta, fetchSigwxFrontMeta } from '../../api/weatherApi.js'
 import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, createAdsbTrailGeoJSON, syncAdsbLayer } from '../aviation-layers/addAdsbLayer.js'
 import { registerAircraftImages } from '../aviation-layers/aircraftIconImages.js'
 import { registerAirlineLogos } from '../aviation-layers/airlineLogoImages.js'
@@ -40,8 +40,10 @@ import NwpSliderBar from '../weather-overlays/NwpSliderBar.jsx'
 import LevelRail from '../weather-overlays/LevelRail.jsx'
 import ConvectiveOverlayControls from '../weather-overlays/ConvectiveOverlayControls.jsx'
 import ConvectiveOverlayCard from '../weather-overlays/ConvectiveOverlayCard.jsx'
+import EchoTopCard from '../weather-overlays/EchoTopCard.jsx'
 import WeatherPointInspector from '../weather-overlays/WeatherPointInspector.jsx'
 import { useConvectiveOverlay } from '../weather-overlays/lib/useConvectiveOverlay.js'
+import { useEchoTopOverlay } from '../weather-overlays/lib/useEchoTopOverlay.js'
 import { useWeatherPointInspector } from '../weather-overlays/lib/useWeatherPointInspector.js'
 import WeatherLayerTimestampBar from '../weather-overlays/WeatherLayerTimestampBar.jsx'
 import { useNwpOverlays } from '../weather-overlays/lib/useNwpOverlays.js'
@@ -291,6 +293,7 @@ const MapView = forwardRef(function MapView({
   rainviewerMeta = null,
   satMeta = null,
   convectiveMeta = null,
+  echoTopMeta = null,
   sigmetData = null,
   airmetData = null,
   lightningData = null,
@@ -654,6 +657,7 @@ const MapView = forwardRef(function MapView({
     rainviewerMeta,
     satMeta,
     convectiveMeta,
+    echoTopMeta,
     lightningData,
     sigwxLowData,
     sigwxLowHistoryData,
@@ -676,6 +680,7 @@ const MapView = forwardRef(function MapView({
     rainviewerMeta,
     satMeta,
     convectiveMeta,
+    echoTopMeta,
     lightningData,
     sigwxLowData,
     sigwxLowHistoryData,
@@ -699,6 +704,12 @@ const MapView = forwardRef(function MapView({
     ciVisible: metVisibility.ci, ctpsVisible: metVisibility.ctps,
     ciFrame: weatherOverlayModel.ciFrame, ctpsFrame: weatherOverlayModel.ctpsFrame,
     fetchCtpsPoint: fetchConvectiveCtpsPoint, timeZone: tz,
+  })
+  const echoTopOverlay = useEchoTopOverlay({
+    mapRef, isStyleReady, styleRevision,
+    visible: metVisibility.echoTop,
+    frame: weatherOverlayModel.echoTopFrame,
+    fetchPoint: fetchEchoTopPoint,
   })
   const radarMotionOverlay = useRadarMotionOverlay({
     radarEnabled: weatherOverlayModel.visibility.radar,
@@ -1596,6 +1607,7 @@ const MapView = forwardRef(function MapView({
           radarLegendVisible={radarLegendVisible}
           radarOverseasLegendVisible={radarOverseasLegendVisible}
           rainviewerOutOfRange={rainviewerOutOfRange}
+          echoTopOutOfRange={metVisibility.echoTop && !weatherOverlayModel.echoTopFrame}
           lightningLegendVisible={lightningLegendVisible}
           blinkLightning={blinkLightning}
           onBlinkLightningChange={setBlinkLightning}
@@ -1613,6 +1625,7 @@ const MapView = forwardRef(function MapView({
           turbulenceLegendEntries={KTG_COLOR_RAMP}
           ciLegendVisible={!!metVisibility.ci}
           ctpsLegendVisible={!!metVisibility.ctps}
+          echoTopLegendVisible={!!metVisibility.echoTop && !!weatherOverlayModel.echoTopFrame}
           radarReferenceTimeMs={radarReferenceTimeMs}
           lightningReferenceTimeMs={lightningReferenceTimeMs}
           radarMotionAvailable={Boolean(radarMotion.dataUrl)}
@@ -1712,6 +1725,7 @@ const MapView = forwardRef(function MapView({
         <ConvectiveOverlayControls ctpsVisible={metVisibility.ctps} minFl={convectiveOverlay.minFl} onMinFlChange={convectiveOverlay.setMinFl} />
       </div>
       <ConvectiveOverlayCard selection={convectiveOverlay.selection} tz={tz} />
+      <EchoTopCard selection={echoTopOverlay.selection} tz={tz} />
       <WeatherPointInspector selection={weatherPointInspector.selection} onClose={weatherPointInspector.clearSelection} />
 
       <AdsbTimestamp

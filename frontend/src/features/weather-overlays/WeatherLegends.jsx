@@ -25,6 +25,9 @@ function HLegend({ title, entries = [], reverse = false }) {
 
 const CI_LEGEND = [{ label: '중간 상승기류 신호', color: '#F6C945' }, { label: '강한 상승기류 신호', color: '#E8751A' }]
 const CTPS_LEGEND = [{ label: '< FL100', color: '#16A34A' }, { label: 'FL100–199', color: '#EAB308' }, { label: 'FL200–299', color: '#F97316' }, { label: 'FL300–399', color: '#DC2626' }, { label: '≥ FL400', color: '#7E22CE' }]
+// Echo Top(재산출)은 위성 운정고도와 같은 물리량(높이)이라 같은 FL 밴드 색을 쓴다.
+// 색은 높이만 뜻하며 위험등급·회피 권고가 아니다.
+const ECHO_TOP_LEGEND = CTPS_LEGEND
 
 function ConvectiveLegend({ title, entries, note }) {
   return <div className="temperature-legend convective-legend" aria-label={title + ' 범례'}><div className="temperature-legend-title">{title}</div><div className="temperature-legend-scale">{entries.map((entry) => <div key={entry.label} className="temperature-legend-row"><span className="temperature-legend-label">{entry.label}</span><span className="temperature-legend-swatch" style={{ backgroundColor: entry.color }} aria-hidden="true" /></div>)}</div><div className="convective-legend__note">{note}</div></div>
@@ -34,6 +37,7 @@ function WeatherLegends({
   radarLegendVisible,
   radarOverseasLegendVisible,
   rainviewerOutOfRange = false,
+  echoTopOutOfRange = false,
   lightningLegendVisible,
   blinkLightning = false,
   onBlinkLightningChange,
@@ -51,6 +55,7 @@ function WeatherLegends({
   turbulenceLegendEntries = [],
   ciLegendVisible = false,
   ctpsLegendVisible = false,
+  echoTopLegendVisible = false,
   radarReferenceTimeMs,
   lightningReferenceTimeMs,
   radarMotionAvailable = false,
@@ -258,6 +263,16 @@ function WeatherLegends({
       )}
       {ciLegendVisible && <ConvectiveLegend title="대류 가능성" entries={CI_LEGEND} note="위성 기반 대류 발생 가능성 참고 — 레이더 실황·위험등급 아님" />}
       {ctpsLegendVisible && <ConvectiveLegend title="구름 꼭대기" entries={CTPS_LEGEND} note="CTH 기반 높이 — 위험등급 아님" />}
+      {echoTopLegendVisible && (echoTopOutOfRange ? (
+        <div className="rainviewer-legend" aria-label="Echo top legend">
+          <div className="rainviewer-legend-title">에코탑(재산출) · FL</div>
+          <div className="rainviewer-legend-empty">
+            이 시각 에코탑 자료 없음
+          </div>
+        </div>
+      ) : (
+        <ConvectiveLegend title="에코탑(재산출)" entries={ECHO_TOP_LEGEND} note="재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님" />
+      ))}
       {turbulenceLegendVisible && (
         <div className="temperature-legend" aria-label="Turbulence legend">
           <div className="temperature-legend-title">Turbulence</div>
@@ -292,7 +307,7 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible) return null
+  if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
 
   // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
   if (!isMobile && !bottomDock) return panel
@@ -307,6 +322,7 @@ function WeatherLegends({
     turbulenceLegendVisible && { key: 'turb', title: '난류 · 강도', entries: turbulenceLegendEntries },
     ciLegendVisible && { key: 'ci', title: '대류 가능성 · 위성', entries: CI_LEGEND },
     ctpsLegendVisible && { key: 'ctps', title: '구름 꼭대기 · FL', entries: CTPS_LEGEND },
+    echoTopLegendVisible && { key: 'echoTop', title: '에코탑(재산출) · FL', entries: ECHO_TOP_LEGEND },
   ].filter(Boolean)
 
   return (
