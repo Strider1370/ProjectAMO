@@ -19,7 +19,11 @@
 - 결측·실패·만료를 `clear`/`matched`로 바꾸지 않는다. 해당 상태와 사유를 그대로 반환한다.
 - 브리핑은 노출 사실과 자료 상태만 반환한다. 안전점수·경로추천·고도추천을 만들지 않는다.
 - 고도는 판정하지 않는다. 태풍 항목은 항상 `verticalKnown: false`, `bandFt: null`.
-- 태풍 이름은 API에 없다. 화면 표기는 `N호 태풍`.
+- `typ_now.php`에는 `tm`을 반드시 넣는다. 없으면 태풍이 있어도 빈 응답이 온다.
+- `mode=1`을 쓴다. `mode=2`는 과거 경로 없이 최신 분석 1개만 준다.
+- 태풍 이름은 경로 응답에 없다. `typ_lst.php?disp=1`에서 받아 태풍번호로 잇는다. 이름을 못 받으면 번호만 표시하고 태풍을 빠뜨리지 않는다.
+- 예보 간격은 태풍마다 다르다(6시간 또는 12시간). 유효구간 반폭을 상수로 고정하지 않는다.
+- `EFF`(한반도영향)는 진행 중 갱신 여부가 미확인이다. 판정에도 표시에도 쓰지 않는다.
 - `MapView.jsx`에는 컴포넌트 합성만 추가한다. 새 상태나 `useEffect`를 넣지 않는다.
 - 인증키는 `config.api.auth_key`(기존 `KMA_AVIATION_AUTH_KEY`)를 쓴다. 새 환경변수를 만들지 않는다.
 - 커밋 메시지는 한국어 본문 + 영어 제목의 기존 관례를 따른다.
@@ -46,13 +50,16 @@
 **Files:**
 - Create: `backend/src/parsers/typhoon-parser.js`
 - Create: `backend/test/typhoon-parser.test.js`
-- Create: `backend/test/fixtures/typhoon-hinnamnor-mode2.txt`
+- Create: `backend/test/fixtures/typhoon-hinnamnor.txt`
 - Create: `backend/test/fixtures/typhoon-multi-2018.txt`
+- Create: `backend/test/fixtures/typhoon-list-2018.csv`
 
 **Interfaces:**
 - Consumes: 없음
 - Produces:
   - `parseTyphoonText(text: string): TyphoonRow[]`
+  - `parseTyphoonList(text: string): TyphoonListEntry[]`
+  - `TyphoonListEntry = { year: number, number: number, active: boolean, name: string|null, nameEn: string|null }`
   - `groupByTyphoonNumber(rows: TyphoonRow[]): Map<number, TyphoonRow[]>`
   - `TyphoonRow = { forecast: boolean, year: number, number: number, seq: number, leadHours: number, analyzedAt: string, validAt: string, lat: number, lon: number, dir: string|null, speedKmh: number|null, pressureHpa: number|null, maxWindMs: number|null, errorRadiusKm: number|null, gale: Ring|null, storm: Ring|null, location: string }`
   - `Ring = { radiusKm: number, exceptionDir: string|null, exceptionRadiusKm: number|null }`
@@ -64,18 +71,26 @@
 ```bash
 K=$(grep -m1 '^KMA_AVIATION_AUTH_KEY=' .env | cut -d= -f2 | tr -d '\r')
 mkdir -p backend/test/fixtures
-curl -s -m 25 "https://apihub.kma.go.kr/api/typ01/url/typ_data.php?YY=2022&typ=11&seq=32&mode=2&disp=0&help=0&authKey=$K" \
-  | iconv -f EUC-KR -t UTF-8 > backend/test/fixtures/typhoon-hinnamnor-mode2.txt
-curl -s -m 25 "https://apihub.kma.go.kr/api/typ01/url/typ_now.php?tm=201808220000&disp=0&help=0&authKey=$K" \
+# 단일 태풍 — 6시간 간격 예보
+curl -s -m 25 "https://apihub.kma.go.kr/api/typ01/url/typ_data.php?YY=2022&typ=11&seq=32&mode=1&disp=0&help=0&authKey=$K" \
+  | iconv -f EUC-KR -t UTF-8 > backend/test/fixtures/typhoon-hinnamnor.txt
+# 복수 태풍 동시 활성 — 수집기가 실제로 부르는 형태(tm + mode=1)
+curl -s -m 25 "https://apihub.kma.go.kr/api/typ01/url/typ_now.php?tm=201808220000&mode=1&disp=0&help=0&authKey=$K" \
   | iconv -f EUC-KR -t UTF-8 > backend/test/fixtures/typhoon-multi-2018.txt
+# 태풍 목록 — 이름
+curl -s -m 25 "https://apihub.kma.go.kr/api/typ01/url/typ_lst.php?YY=2018&disp=1&help=0&authKey=$K" \
+  | iconv -f EUC-KR -t UTF-8 > backend/test/fixtures/typhoon-list-2018.csv
 ```
 
-확인: 힌남노 파일은 `#`이 아닌 줄이 8줄(분석 1 + 예보 7), 2018 파일은 40줄이고 태풍번호 19와 20이 모두 있어야 한다.
+확인:
 
 ```bash
-grep -vc '^#' backend/test/fixtures/typhoon-hinnamnor-mode2.txt   # 8
-grep -vc '^#' backend/test/fixtures/typhoon-multi-2018.txt        # 40
+grep -vc '^#' backend/test/fixtures/typhoon-hinnamnor.txt   # 39 (11호: 분석 32 + 예보 7)
+grep -vc '^#' backend/test/fixtures/typhoon-multi-2018.txt  # 50 (19호: 25+6, 20호: 15+4)
+grep -c '솔릭\|시마론' backend/test/fixtures/typhoon-list-2018.csv  # 2
 ```
+
+숫자가 다르면 그대로 쓰고 테스트 기대값을 실제 값에 맞춘다. 기상청이 과거 자료를 보정할 수 있다. **픽스처를 기대값에 맞추지 말고 기대값을 픽스처에 맞춘다.**
 
 - [ ] **Step 2: 실패하는 테스트를 쓴다**
 
@@ -87,41 +102,53 @@ import assert from 'node:assert/strict'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { parseTyphoonText, groupByTyphoonNumber } from '../src/parsers/typhoon-parser.js'
+import { parseTyphoonText, parseTyphoonList, groupByTyphoonNumber } from '../src/parsers/typhoon-parser.js'
 
 const dir = path.dirname(fileURLToPath(import.meta.url))
 const read = (name) => fs.readFileSync(path.join(dir, 'fixtures', name), 'utf8')
 
-test('분석 행과 예보 행을 모두 읽는다', () => {
-  const rows = parseTyphoonText(read('typhoon-hinnamnor-mode2.txt'))
-  assert.equal(rows.length, 8)
-  assert.equal(rows.filter((r) => !r.forecast).length, 1)
+test('mode=1은 과거 분석 경로와 최신 예보를 모두 준다', () => {
+  const rows = parseTyphoonText(read('typhoon-hinnamnor.txt'))
+  assert.equal(rows.length, 39)
+  assert.equal(rows.filter((r) => !r.forecast).length, 32)
   assert.equal(rows.filter((r) => r.forecast).length, 7)
 })
 
-test('첫 분석 행의 값을 정확히 읽는다', () => {
-  const [row] = parseTyphoonText(read('typhoon-hinnamnor-mode2.txt'))
+test('첫 분석 행은 경로의 시작이다', () => {
+  const [row] = parseTyphoonText(read('typhoon-hinnamnor.txt'))
   assert.equal(row.year, 2022)
   assert.equal(row.number, 11)
-  assert.equal(row.seq, 32)
-  assert.equal(row.leadHours, 0)
-  assert.equal(row.analyzedAt, '2022-09-05T00:00:00.000Z')
-  assert.equal(row.validAt, '2022-09-05T00:00:00.000Z')
-  assert.equal(row.lat, 29.8)
-  assert.equal(row.lon, 124.9)
-  assert.equal(row.dir, 'N')
-  assert.equal(row.pressureHpa, 930)
-  assert.equal(row.maxWindMs, 50)
-  assert.equal(row.gale.radiusKm, 430)
-  assert.equal(row.gale.exceptionDir, 'SW')
-  assert.equal(row.gale.exceptionRadiusKm, 340)
-  assert.equal(row.storm.radiusKm, 180)
-  assert.equal(row.errorRadiusKm, 0)
+  assert.equal(row.seq, 1)
+  assert.equal(row.forecast, false)
+  assert.equal(row.analyzedAt, '2022-08-28T12:00:00.000Z')
+  assert.equal(row.lat, 26.9)
+  assert.equal(row.lon, 148.5)
+  assert.equal(row.pressureHpa, 998)
+  assert.equal(row.gale.radiusKm, 220)
+  // RAD25 = -999 → 폭풍 링이 통째로 없다
+  assert.equal(row.storm, null)
+})
+
+test('마지막 분석 행이 현재 위치다', () => {
+  const rows = parseTyphoonText(read('typhoon-hinnamnor.txt'))
+  const current = rows.filter((r) => !r.forecast).at(-1)
+  assert.equal(current.seq, 32)
+  assert.equal(current.analyzedAt, '2022-09-05T00:00:00.000Z')
+  assert.equal(current.lat, 29.8)
+  assert.equal(current.lon, 124.9)
+  assert.equal(current.dir, 'N')
+  assert.equal(current.pressureHpa, 930)
+  assert.equal(current.maxWindMs, 50)
+  assert.equal(current.gale.radiusKm, 430)
+  assert.equal(current.gale.exceptionDir, 'SW')
+  assert.equal(current.gale.exceptionRadiusKm, 340)
+  assert.equal(current.storm.radiusKm, 180)
+  assert.equal(current.errorRadiusKm, 0)
+  assert.equal(current.location, '서귀포 남남서쪽 약 410 km 부근 해상')
 })
 
 test('공백이 든 위치설명이 컬럼을 밀지 않는다', () => {
-  const rows = parseTyphoonText(read('typhoon-hinnamnor-mode2.txt'))
-  assert.equal(rows[0].location, '서귀포 남남서쪽 약 410 km 부근 해상')
+  const rows = parseTyphoonText(read('typhoon-hinnamnor.txt'))
   for (const row of rows) {
     assert.ok(Number.isFinite(row.lat), '위도가 숫자여야 한다')
     assert.ok(!/^[A-Z-]+,/.test(row.location), '위치설명에 ED25 토큰이 섞이면 안 된다')
@@ -129,9 +156,11 @@ test('공백이 든 위치설명이 컬럼을 밀지 않는다', () => {
 })
 
 test('-999와 -는 결측이므로 null이 된다', () => {
-  const rows = parseTyphoonText(read('typhoon-hinnamnor-mode2.txt'))
-  const last = rows[rows.length - 1]
+  const rows = parseTyphoonText(read('typhoon-hinnamnor.txt'))
+  const last = rows.at(-1)
+  assert.equal(last.forecast, true)
   assert.equal(last.leadHours, 42)
+  assert.equal(last.validAt, '2022-09-06T18:00:00.000Z')
   assert.equal(last.gale, null)
   assert.equal(last.storm, null)
   assert.equal(last.errorRadiusKm, 160)
@@ -141,8 +170,36 @@ test('복수 태풍을 번호로 나눈다', () => {
   const rows = parseTyphoonText(read('typhoon-multi-2018.txt'))
   const grouped = groupByTyphoonNumber(rows)
   assert.deepEqual([...grouped.keys()].sort((a, b) => a - b), [19, 20])
-  assert.ok(grouped.get(19).length > 0)
-  assert.ok(grouped.get(20).length > 0)
+  assert.equal(grouped.get(19).length, 31)  // 분석 25 + 예보 6
+  assert.equal(grouped.get(20).length, 19)  // 분석 15 + 예보 4
+  for (const [number, group] of grouped) {
+    assert.ok(group.some((r) => r.forecast), `${number}호에 예보가 있어야 한다`)
+  }
+})
+
+test('태풍 목록에서 이름을 읽는다', () => {
+  const list = parseTyphoonList(read('typhoon-list-2018.csv'))
+  const soulik = list.find((t) => t.number === 19)
+  assert.equal(soulik.name, '솔릭')
+  assert.equal(soulik.nameEn, 'SOULIK')
+  assert.equal(soulik.year, 2018)
+  assert.equal(soulik.active, false)   // NOW=2(종료)
+  const cimaron = list.find((t) => t.number === 20)
+  assert.equal(cimaron.name, '시마론')
+})
+
+test('목록의 REM에 쉼표가 있어도 앞 8개 필드만 취해 안전하다', () => {
+  const list = parseTyphoonList('2026,12,1,4,202607231800,210012310000,노을,NOUL,설명에,쉼표가,있다,=\n')
+  assert.equal(list.length, 1)
+  assert.equal(list[0].number, 12)
+  assert.equal(list[0].name, '노을')
+  assert.equal(list[0].nameEn, 'NOUL')
+  assert.equal(list[0].active, true)   // NOW=1(진행중)
+})
+
+test('목록 머리글과 빈 줄은 무시한다', () => {
+  assert.deepEqual(parseTyphoonList('#START7777\n# YY SEQ\n#7777END\n'), [])
+  assert.deepEqual(parseTyphoonList(''), [])
 })
 
 test('머리글과 빈 줄은 무시한다', () => {
@@ -242,18 +299,41 @@ export function groupByTyphoonNumber(rows) {
   return grouped
 }
 
-export default { parseTyphoonText, groupByTyphoonNumber }
+// typ_lst.php?disp=1 — 쉼표 구분. 이름과 진행여부만 쓴다.
+// 9번째 REM(설명문)에 쉼표가 들어갈 수 있으므로 앞 8개만 취하고 나머지는 버린다.
+// 목록의 SEQ는 발표번호가 아니라 태풍번호다 — 경로 응답의 TYP와 잇는 열쇠.
+export function parseTyphoonList(text) {
+  const list = []
+  for (const raw of String(text ?? '').split('\n')) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) continue
+    const f = line.split(',')
+    if (f.length < 8) continue
+    const number = Number(f[1])
+    if (!Number.isFinite(number)) continue
+    list.push({
+      year: Number(f[0]),
+      number,
+      active: f[2] === '1',       // NOW: 1(진행중), 2(종료)
+      name: f[6] || null,
+      nameEn: f[7] || null,
+    })
+  }
+  return list
+}
+
+export default { parseTyphoonText, parseTyphoonList, groupByTyphoonNumber }
 ```
 
 - [ ] **Step 5: 통과를 확인한다**
 
 Run: `node --test backend/test/typhoon-parser.test.js`
-Expected: PASS — 6 tests
+Expected: PASS — 10 tests
 
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add backend/src/parsers/typhoon-parser.js backend/test/typhoon-parser.test.js backend/test/fixtures/typhoon-hinnamnor-mode2.txt backend/test/fixtures/typhoon-multi-2018.txt
+git add backend/src/parsers/typhoon-parser.js backend/test/typhoon-parser.test.js backend/test/fixtures/
 git commit -m "feat(typhoon): parse the fixed-width bulletin without column drift"
 ```
 
@@ -488,7 +568,7 @@ git commit -m "feat(typhoon): build asymmetric wind rings from the bureau's own 
 ## Task 3: 수집기와 서빙
 
 **Files:**
-- Modify: `backend/src/config.js` — `api` 블록에 URL 2개, `schedule` 블록에 `typhoon_interval`
+- Modify: `backend/src/config.js` — `api` 블록에 `typhoon_now_url`/`typhoon_list_url`, `schedule` 블록에 `typhoon_interval`
 - Create: `backend/src/processors/typhoon-processor.js`
 - Modify: `backend/src/index.js` — cron 등록
 - Modify: `backend/server.js` — `/api/typhoon` 라우트
@@ -498,7 +578,8 @@ git commit -m "feat(typhoon): build asymmetric wind rings from the bureau's own 
 - Consumes: Task 1의 `parseTyphoonText`, `groupByTyphoonNumber`, Task 2의 `errorConePolygon`/`galePolygon`/`stormPolygon`
 - Produces:
   - `process(): Promise<TyphoonSnapshot>`
-  - `buildSnapshot({ activeRows, detailByNumber, fetchedAt }): TyphoonSnapshot`
+  - `buildSnapshot({ activeRows, names, fetchedAt }): TyphoonSnapshot`
+  - `currentTm(now?): string` — `YYYYMMDDHH00` (UTC 정시)
   - `TyphoonSnapshot = { fetchedAt: string, status: 'ok'|'unavailable', typhoons: Typhoon[] }`
   - `Typhoon = { number: number, year: number, seq: number, analyzedAt: string, current: TyphoonRow, rows: TyphoonRow[], geometry: { cone: Polygon|MultiPolygon|null, gale: Polygon|null, storm: Polygon|null } }`
 
@@ -510,7 +591,7 @@ git commit -m "feat(typhoon): build asymmetric wind rings from the bureau's own 
 
 ```js
   typhoon_now_url: process.env.TYPHOON_NOW_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_now.php',
-  typhoon_data_url: process.env.TYPHOON_DATA_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_data.php',
+  typhoon_list_url: process.env.TYPHOON_LIST_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_lst.php',
 ```
 
 `schedule` 객체에 `sigwx_low_interval` 다음 줄로 추가:
@@ -531,64 +612,71 @@ import assert from 'node:assert/strict'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { parseTyphoonText } from '../src/parsers/typhoon-parser.js'
-import { buildSnapshot } from '../src/processors/typhoon-processor.js'
+import { parseTyphoonText, parseTyphoonList } from '../src/parsers/typhoon-parser.js'
+import { buildSnapshot, currentTm } from '../src/processors/typhoon-processor.js'
 
 const dir = path.dirname(fileURLToPath(import.meta.url))
 const read = (name) => fs.readFileSync(path.join(dir, 'fixtures', name), 'utf8')
 const FETCHED = '2022-09-05T00:30:00.000Z'
 
 test('활성 태풍이 없으면 빈 목록이지만 상태는 정상이다', () => {
-  const snapshot = buildSnapshot({ activeRows: [], detailByNumber: new Map(), fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows: [], names: [], fetchedAt: FETCHED })
   assert.equal(snapshot.status, 'ok')
   assert.deepEqual(snapshot.typhoons, [])
   assert.equal(snapshot.fetchedAt, FETCHED)
 })
 
-test('복수 태풍을 번호별로 나눠 담는다', () => {
+test('한 응답의 복수 태풍을 번호별로 나눠 담는다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const snapshot = buildSnapshot({ activeRows, detailByNumber: new Map(), fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
   assert.deepEqual(snapshot.typhoons.map((t) => t.number), [19, 20])
+  // mode=1이므로 태풍마다 과거 경로와 예보가 함께 들어 있어야 한다.
+  for (const typhoon of snapshot.typhoons) {
+    assert.ok(typhoon.rows.some((r) => !r.forecast), '과거 경로가 있어야 한다')
+    assert.ok(typhoon.rows.some((r) => r.forecast), '예보가 있어야 한다')
+  }
 })
 
 test('현재 위치는 분석 행 중 가장 최근이다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const snapshot = buildSnapshot({ activeRows, detailByNumber: new Map(), fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
   const soulik = snapshot.typhoons.find((t) => t.number === 19)
   assert.equal(soulik.current.analyzedAt, '2018-08-22T00:00:00.000Z')
   assert.equal(soulik.current.forecast, false)
 })
 
-test('상세 예보가 있으면 그 행들을 rows로 쓴다', () => {
+test('이름을 태풍번호로 이어 붙인다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const detail = parseTyphoonText(read('typhoon-hinnamnor-mode2.txt'))
-  const snapshot = buildSnapshot({ activeRows, detailByNumber: new Map([[19, detail]]), fetchedAt: FETCHED })
-  const soulik = snapshot.typhoons.find((t) => t.number === 19)
-  assert.equal(soulik.rows.length, detail.length)
-  assert.ok(soulik.rows.some((r) => r.forecast), '예보 행이 포함되어야 한다')
+  const names = parseTyphoonList(read('typhoon-list-2018.csv'))
+  const snapshot = buildSnapshot({ activeRows, names, fetchedAt: FETCHED })
+  assert.equal(snapshot.typhoons.find((t) => t.number === 19).name, '솔릭')
+  assert.equal(snapshot.typhoons.find((t) => t.number === 20).name, '시마론')
 })
 
-test('상세가 없으면 분석 행만 남고 예보는 비어 있다', () => {
+test('이름을 못 받아도 태풍을 빠뜨리지 않는다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const snapshot = buildSnapshot({ activeRows, detailByNumber: new Map(), fetchedAt: FETCHED })
-  const soulik = snapshot.typhoons.find((t) => t.number === 19)
-  assert.ok(soulik.rows.every((r) => !r.forecast))
+  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
+  assert.equal(snapshot.typhoons.length, 2)
+  assert.equal(snapshot.typhoons[0].name, null)
 })
 
 test('발표번호는 그 태풍의 최대 SEQ다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const snapshot = buildSnapshot({ activeRows, detailByNumber: new Map(), fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
   const soulik = snapshot.typhoons.find((t) => t.number === 19)
   assert.equal(soulik.seq, Math.max(...activeRows.filter((r) => r.number === 19).map((r) => r.seq)))
 })
 
 test('스냅샷에 현재 시점 도형과 부채꼴이 담긴다', () => {
   const activeRows = parseTyphoonText(read('typhoon-multi-2018.txt'))
-  const detail = parseTyphoonText(read('typhoon-hinnamnor-mode2.txt'))
-  const snapshot = buildSnapshot({ activeRows, detailByNumber: new Map([[19, detail]]), fetchedAt: FETCHED })
+  const snapshot = buildSnapshot({ activeRows, names: [], fetchedAt: FETCHED })
   const soulik = snapshot.typhoons.find((t) => t.number === 19)
   assert.equal(soulik.geometry.gale.type, 'Polygon')
   assert.ok(soulik.geometry.cone, '예보 오차원 합집합이 있어야 한다')
+})
+
+test('tm은 현재 UTC 정시 12자리다', () => {
+  assert.equal(currentTm(new Date('2026-07-25T18:42:13.000Z')), '202607251800')
 })
 ```
 
@@ -602,12 +690,15 @@ Expected: FAIL — `Cannot find module '../src/processors/typhoon-processor.js'`
 `backend/src/processors/typhoon-processor.js`:
 
 ```js
-// KMA 태풍정보 수집. typ_now로 활성 태풍을 찾고, 발표번호가 바뀐 태풍만 상세 예보를 받는다.
-// 활성 태풍이 없으면 빈 응답이 온다 — 정상이며 실패가 아니다.
+// KMA 태풍정보 수집.
+//  ① typ_now?tm=<현재 UTC 정시>&mode=1 — 활성 태풍 전부의 과거 경로 + 최신 예보를 한 번에.
+//  ② typ_lst?disp=1 — 이름을 태풍번호로 이어 붙인다.
+// tm을 빼면 태풍이 있어도 빈 응답이 온다. mode=2를 쓰면 과거 경로가 빠진다. 둘 다 조용히 망가진다.
+// 활성 태풍이 없으면 ①이 빈 응답이다 — 정상이며 실패가 아니다.
 import path from 'path'
 import config from '../config.js'
 import store from '../store.js'
-import { parseTyphoonText, groupByTyphoonNumber } from '../parsers/typhoon-parser.js'
+import { parseTyphoonText, parseTyphoonList, groupByTyphoonNumber } from '../parsers/typhoon-parser.js'
 import { errorConePolygon, galePolygon, stormPolygon } from '../briefing/typhoon-geometry.js'
 
 const TIMEOUT_MS = 15000
@@ -633,12 +724,18 @@ async function fetchText(url) {
   }
 }
 
-function nowUrl() {
-  return `${config.api.typhoon_now_url}?disp=0&help=0&authKey=${config.api.auth_key}`
+// tm은 현재 UTC 정시. 빠지면 활동 중인 태풍이 있어도 빈 응답이 온다.
+export function currentTm(now = new Date()) {
+  const p = (n) => String(n).padStart(2, '0')
+  return `${now.getUTCFullYear()}${p(now.getUTCMonth() + 1)}${p(now.getUTCDate())}${p(now.getUTCHours())}00`
 }
 
-function detailUrl({ year, number, seq }) {
-  return `${config.api.typhoon_data_url}?YY=${year}&typ=${number}&seq=${seq}&mode=2&disp=0&help=0&authKey=${config.api.auth_key}`
+function tracksUrl(tm) {
+  return `${config.api.typhoon_now_url}?tm=${tm}&mode=1&disp=0&help=0&authKey=${config.api.auth_key}`
+}
+
+function listUrl() {
+  return `${config.api.typhoon_list_url}?disp=1&help=0&authKey=${config.api.auth_key}`
 }
 
 // 분석 행 중 분석시각이 가장 늦은 것이 현재 위치다.
@@ -648,24 +745,29 @@ function latestAnalysis(rows) {
   return pool.reduce((latest, row) => (latest === null || row.analyzedAt > latest.analyzedAt ? row : latest), null)
 }
 
-export function buildSnapshot({ activeRows, detailByNumber, fetchedAt }) {
+export function buildSnapshot({ activeRows, names = [], fetchedAt }) {
+  const nameByNumber = new Map(names.map((entry) => [entry.number, entry]))
   const grouped = groupByTyphoonNumber(activeRows)
   const typhoons = []
   for (const [number, rows] of [...grouped.entries()].sort((a, b) => a[0] - b[0])) {
     const current = latestAnalysis(rows)
     if (!current) continue
-    const detail = detailByNumber.get(number)
-    const timeline = detail && detail.length > 0 ? detail : rows
+    const named = nameByNumber.get(number)
+    // 부채꼴은 예보 시점만 감싼다. 분석 시점의 오차반경은 0이라 어차피 원이 없다.
+    const forecast = rows.filter((row) => row.forecast)
     typhoons.push({
       number,
       year: current.year,
       seq: Math.max(...rows.map((row) => row.seq)),
       analyzedAt: current.analyzedAt,
+      // 이름을 못 받아도 태풍을 빠뜨리지 않는다. 화면이 번호만으로 표시한다.
+      name: named?.name ?? null,
+      nameEn: named?.nameEn ?? null,
       current,
-      rows: timeline,
-      // 강풍/폭풍은 현재 시점만, 부채꼴은 예보 전 구간의 오차원 합집합(스펙 §9).
+      rows,
+      // 강풍/폭풍은 현재 시점만(스펙 §9).
       geometry: {
-        cone: errorConePolygon(timeline),
+        cone: errorConePolygon(forecast),
         gale: galePolygon(current),
         storm: stormPolygon(current),
       },
@@ -679,7 +781,7 @@ export async function process() {
   const fetchedAt = new Date().toISOString()
   let activeRows
   try {
-    activeRows = parseTyphoonText(await fetchText(nowUrl()))
+    activeRows = parseTyphoonText(await fetchText(tracksUrl(currentTm())))
   } catch (error) {
     // 수집 실패는 "태풍 없음"이 아니다. 직전 스냅샷을 유지하고 상태만 바꾼다.
     const previous = store.loadLatest(dir)
@@ -688,31 +790,22 @@ export async function process() {
     return snapshot
   }
 
-  const previous = store.loadLatest(dir)
-  const previousSeq = new Map((previous?.typhoons ?? []).map((t) => [t.number, t.seq]))
-  const previousRows = new Map((previous?.typhoons ?? []).map((t) => [t.number, t.rows]))
-
-  const detailByNumber = new Map()
-  for (const [number, rows] of groupByTyphoonNumber(activeRows)) {
-    const seq = Math.max(...rows.map((row) => row.seq))
-    // 같은 발표번호면 상세를 다시 받지 않는다. 정상 상황의 상세 호출은 발표 횟수와 같아진다.
-    if (previousSeq.get(number) === seq && previousRows.has(number)) {
-      detailByNumber.set(number, previousRows.get(number))
-      continue
-    }
+  // 이름은 있으면 좋은 것이다. 목록 조회가 실패해도 경로 표시는 계속된다.
+  let names = []
+  if (activeRows.length > 0) {
     try {
-      detailByNumber.set(number, parseTyphoonText(await fetchText(detailUrl({ year: rows[0].year, number, seq }))))
+      names = parseTyphoonList(await fetchText(listUrl()))
     } catch {
-      // 상세 실패는 해당 태풍만 예보 없이 간다. 전체 수집을 실패로 만들지 않는다.
+      names = []
     }
   }
 
-  const snapshot = buildSnapshot({ activeRows, detailByNumber, fetchedAt })
+  const snapshot = buildSnapshot({ activeRows, names, fetchedAt })
   store.saveSnapshot(TYPE, snapshot)
   return snapshot
 }
 
-export default { process, buildSnapshot }
+export default { process, buildSnapshot, currentTm }
 ```
 
 - [ ] **Step 5: `store.saveSnapshot`이 있는지 확인하고 없으면 기존 저장 함수로 맞춘다**
@@ -726,7 +819,7 @@ Run: `grep -n "store\." backend/src/processors/lightning-processor.js | tail -5`
 - [ ] **Step 6: 통과를 확인한다**
 
 Run: `node --test backend/test/typhoon-processor.test.js`
-Expected: PASS — 7 tests
+Expected: PASS — 8 tests
 
 - [ ] **Step 7: cron과 라우트를 붙인다**
 
@@ -787,9 +880,12 @@ git commit -m "feat(typhoon): collect active storms every 30 minutes and skip un
 - Consumes: Task 2의 `judgementPolygon`, Task 3의 `Typhoon`, 기존 `evaluateHorizontalExposure`/`evaluateTimeStatus`/`exposureConfidence`, 기존 `buildRouteAxis`
 - Produces:
   - `matchTyphoonHazards({ typhoons, axis, etd, eta, enRouteRange, airports }): TyphoonHazard[]`
+  - `stepHoursOf(rows): number` — 그 태풍의 예보 간격(시간). 예보가 1개 이하면 6
   - `TyphoonHazard = { source: 'TYPHOON', sourceId: string, code: string, label: string, typhoonNumber: number, seq: number, analyzedAt: string, validFrom: string, validTo: string, onRoute: boolean, encounter: 'on'|'nearby', verticalKnown: false, bandFt: null, routeIntervalNm: {startNm,endNm}|null, airports: string[], horizontalExposure, timeStatus, confidence }`
 
-**유효구간:** 예보 시점마다 `validAt ± 3시간`(6시간 간격의 절반).
+**유효구간:** 예보 시점마다 `validAt ± (그 태풍의 예보 간격)/2`. 간격을 상수로 고정하지 않는다 — 힌남노는 6시간, 2026년 12호 노을은 12시간이다.
+
+`label`은 이름이 있으면 `12호 태풍 노을`, 없으면 `12호 태풍`.
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -799,7 +895,7 @@ git commit -m "feat(typhoon): collect active storms every 30 minutes and skip un
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildRouteAxis } from '../src/briefing/route-axis.js'
-import { matchTyphoonHazards } from '../src/briefing/typhoon-briefing.js'
+import { matchTyphoonHazards, stepHoursOf } from '../src/briefing/typhoon-briefing.js'
 
 // 제주(126.5E, 33.5N) → 부산(129.0E, 35.2N) 근처를 지나는 단순 항로.
 const ROUTE = { type: 'LineString', coordinates: [[126.5, 33.5], [129.0, 35.2]] }
@@ -815,8 +911,41 @@ function typhoonAt({ lat, lon, validAt, radiusKm = 400, errorKm = 100 }) {
     storm: { radiusKm: 150, exceptionDir: null, exceptionRadiusKm: null },
     location: '서귀포 남남서쪽 약 410 km 부근 해상',
   }
-  return { number: 11, year: 2022, seq: 32, analyzedAt: row.analyzedAt, current: row, rows: [row] }
+  return { number: 11, year: 2022, seq: 32, name: '힌남노', analyzedAt: row.analyzedAt, current: row, rows: [row] }
 }
+
+test('예보 간격을 데이터에서 계산한다', () => {
+  const rows6 = [0, 6, 12, 18].map((leadHours) => ({ forecast: true, leadHours }))
+  const rows12 = [0, 12, 24, 36].map((leadHours) => ({ forecast: true, leadHours }))
+  assert.equal(stepHoursOf(rows6), 6)
+  assert.equal(stepHoursOf(rows12), 12)
+  // 예보가 하나뿐이면 간격을 알 수 없다 — 6시간으로 둔다.
+  assert.equal(stepHoursOf([{ forecast: true, leadHours: 0 }]), 6)
+  assert.equal(stepHoursOf([]), 6)
+})
+
+test('12시간 간격 태풍은 유효구간도 12시간 폭이다', () => {
+  const base = typhoonAt({ lat: 34.3, lon: 127.7, validAt: '2022-09-05T00:00:00.000Z' })
+  base.rows = [0, 12, 24].map((leadHours) => ({
+    ...base.rows[0], leadHours,
+    validAt: new Date(Date.parse('2022-09-05T00:00:00.000Z') + leadHours * 3600e3).toISOString(),
+  }))
+  // 6시간으로 고정했다면 00:00 시점의 창은 21:00~03:00이라 04:00 출발이 안 걸린다.
+  const hazards = matchTyphoonHazards({
+    typhoons: [base], axis, etd: '2022-09-05T04:00:00.000Z', eta: '2022-09-05T05:00:00.000Z', airports: [],
+  })
+  assert.equal(hazards.length, 1)
+  assert.equal(hazards[0].validFrom, '2022-09-04T18:00:00.000Z')
+})
+
+test('이름이 있으면 라벨에 붙고 없으면 번호만 쓴다', () => {
+  const named = typhoonAt({ lat: 34.3, lon: 127.7, validAt: '2022-09-05T03:00:00.000Z' })
+  const call = (typhoon) => matchTyphoonHazards({
+    typhoons: [typhoon], axis, etd: '2022-09-05T02:00:00.000Z', eta: '2022-09-05T03:30:00.000Z', airports: [],
+  })[0]
+  assert.equal(call(named).label, '11호 태풍 힌남노')
+  assert.equal(call({ ...named, name: null }).label, '11호 태풍')
+})
 
 test('항로 위에 있으면 걸린다', () => {
   const typhoon = typhoonAt({ lat: 34.3, lon: 127.7, validAt: '2022-09-05T03:00:00.000Z' })
@@ -901,13 +1030,23 @@ import { judgementPolygon } from './typhoon-geometry.js'
 import { evaluateHorizontalExposure, evaluateTimeStatus, exposureConfidence } from './hazard-exposure.js'
 import { HORIZONTAL_EXPOSURE, TIME_STATUS, CONFIDENCE } from '../../../shared/briefing-status.js'
 
-// 예보 간격 6시간의 절반. 각 예보 시점이 대표하는 시간 폭.
-const HALF_STEP_MS = 3 * 60 * 60 * 1000
+const HOUR_MS = 60 * 60 * 1000
+const DEFAULT_STEP_HOURS = 6
 
-function windowOf(validAt) {
+// 예보 간격은 태풍마다 다르다 — 힌남노 6시간, 2026년 12호 노을 12시간(스펙 §2).
+// 상수로 박으면 12시간 간격 태풍에서 시점 사이에 구멍이 생겨 그 시간대 항공기가 안 걸린다.
+export function stepHoursOf(rows = []) {
+  const leads = [...new Set(rows.filter((r) => r.forecast).map((r) => r.leadHours))].sort((a, b) => a - b)
+  let step = Infinity
+  for (let i = 1; i < leads.length; i++) step = Math.min(step, leads[i] - leads[i - 1])
+  return Number.isFinite(step) && step > 0 ? step : DEFAULT_STEP_HOURS
+}
+
+function windowOf(validAt, stepHours) {
   const ms = Date.parse(validAt)
   if (!Number.isFinite(ms)) return null
-  return { from: new Date(ms - HALF_STEP_MS).toISOString(), to: new Date(ms + HALF_STEP_MS).toISOString() }
+  const half = (stepHours / 2) * HOUR_MS
+  return { from: new Date(ms - half).toISOString(), to: new Date(ms + half).toISOString() }
 }
 
 function airportsInside(geometry, airports) {
@@ -929,11 +1068,12 @@ export function matchTyphoonHazards({ typhoons = [], axis, etd, eta, enRouteRang
     let timeStatus = null
     let horizontalExposure = null
     const airportHits = new Set()
+    const stepHours = stepHoursOf(typhoon.rows)
 
     for (const row of typhoon.rows ?? []) {
       const geometry = judgementPolygon(row)
       if (!geometry) continue
-      const window = windowOf(row.validAt)
+      const window = windowOf(row.validAt, stepHours)
       if (!window) continue
 
       const exposure = evaluateHorizontalExposure({ axis, geometry, enRouteRange })
@@ -963,7 +1103,8 @@ export function matchTyphoonHazards({ typhoons = [], axis, etd, eta, enRouteRang
       source: 'TYPHOON',
       sourceId: `${typhoon.year}-${typhoon.number}-${typhoon.seq}`,
       code: 'TC',
-      label: `${typhoon.number}호 태풍`,
+      // 이름은 typ_lst에서 온다. 못 받았으면 번호만으로 표시한다.
+      label: typhoon.name ? `${typhoon.number}호 태풍 ${typhoon.name}` : `${typhoon.number}호 태풍`,
       typhoonNumber: typhoon.number,
       seq: typhoon.seq,
       analyzedAt: typhoon.analyzedAt,
@@ -997,7 +1138,7 @@ Run: `grep -n "HORIZONTAL_EXPOSURE\|TIME_STATUS\|CONFIDENCE" shared/briefing-sta
 - [ ] **Step 5: 통과를 확인한다**
 
 Run: `node --test backend/test/typhoon-briefing.test.js`
-Expected: PASS — 7 tests
+Expected: PASS — 10 tests
 
 - [ ] **Step 6: hazard-section에 편입한다**
 
@@ -1451,22 +1592,23 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildTyphoonListItems } from './typhoonListModel.js'
 
-const typhoon = (number) => ({
-  number, year: 2022, seq: 32, analyzedAt: '2022-09-05T00:00:00.000Z',
+const typhoon = (number, name = '힌남노') => ({
+  number, name, year: 2022, seq: 32, analyzedAt: '2022-09-05T00:00:00.000Z',
   current: { lat: 29.8, lon: 124.9, pressureHpa: 930, maxWindMs: 50, location: '서귀포 남남서쪽 약 410 km 부근 해상' },
   rows: [],
 })
 
-test('항목마다 번호 제목과 색이 붙는다', () => {
+test('항목마다 번호와 이름이 붙은 제목과 색이 생긴다', () => {
   const items = buildTyphoonListItems([typhoon(11)])
   assert.equal(items.length, 1)
-  assert.equal(items[0].title, '11호 태풍')
+  assert.equal(items[0].title, '11호 태풍 힌남노')
   assert.match(items[0].color, /^#[0-9a-f]{6}$/i)
 })
 
-test('태풍 이름은 쓰지 않는다', () => {
-  const [item] = buildTyphoonListItems([typhoon(11)])
-  assert.ok(!/힌남노|무이파/.test(item.title))
+test('이름을 못 받았으면 번호만 쓰고 태풍을 빠뜨리지 않는다', () => {
+  const [item] = buildTyphoonListItems([typhoon(11, null)])
+  assert.equal(item.title, '11호 태풍')
+  assert.equal(item.name, null)
 })
 
 test('강도와 위치를 그대로 전달한다', () => {
@@ -1505,8 +1647,9 @@ export function buildTyphoonListItems(typhoons = []) {
   return typhoons.map((typhoon) => ({
     number: typhoon.number,
     color: colors[typhoon.number],
-    // 태풍 이름은 KMA 태풍 API가 주지 않는다. 번호만 쓴다.
-    title: `${typhoon.number}호 태풍`,
+    // 이름은 typ_lst에서 온다. 못 받았으면 번호만 쓴다.
+    title: typhoon.name ? `${typhoon.number}호 태풍 ${typhoon.name}` : `${typhoon.number}호 태풍`,
+    name: typhoon.name ?? null,
     pressureHpa: typhoon.current?.pressureHpa ?? null,
     maxWindMs: typhoon.current?.maxWindMs ?? null,
     location: typhoon.current?.location ?? '',
@@ -1722,11 +1865,11 @@ Run: `sed -n '1,60p' frontend/verification/contracts/echo-top.spec.mjs`
 ```bash
 node -e "
 const fs=require('fs');
-const {parseTyphoonText}=await import('./backend/src/parsers/typhoon-parser.js');
+const {parseTyphoonText,parseTyphoonList}=await import('./backend/src/parsers/typhoon-parser.js');
 const {buildSnapshot}=await import('./backend/src/processors/typhoon-processor.js');
 const active=parseTyphoonText(fs.readFileSync('backend/test/fixtures/typhoon-multi-2018.txt','utf8'));
-const detail=parseTyphoonText(fs.readFileSync('backend/test/fixtures/typhoon-hinnamnor-mode2.txt','utf8'));
-const snap=buildSnapshot({activeRows:active,detailByNumber:new Map([[19,detail]]),fetchedAt:'2018-08-22T00:30:00.000Z'});
+const names=parseTyphoonList(fs.readFileSync('backend/test/fixtures/typhoon-list-2018.csv','utf8'));
+const snap=buildSnapshot({activeRows:active,names,fetchedAt:'2018-08-22T00:30:00.000Z'});
 fs.writeFileSync('frontend/verification/contracts/fixtures/typhoon-snapshot.json',JSON.stringify(snap,null,2));
 console.log('태풍 수 =',snap.typhoons.length);
 " --input-type=module
@@ -1882,8 +2025,8 @@ git commit -m "docs(typhoon): record what stayed unmeasured until a real storm a
 이 계획의 모든 검증은 2018·2022년 과거 태풍 픽스처로 이루어진다. 다음은 실제 태풍이 발생해야 확인된다.
 
 - 발표시각 대비 게시 지연 — 30분 주기가 적절한지
-- 발표번호 증가에 따른 상세 조회 생략이 실제로 동작하는지
-- 태풍 발생·소멸 시점에 `typ_now`의 목록이 실제로 바뀌는지
+- 소멸 시점에 `typ_now`에서 해당 태풍이 실제로 빠지는지
+- `EFF`(한반도영향)가 진행 중에도 갱신되는지 — 확인 전까지 판정·표시 어디에도 쓰지 않는다
 - 비대칭 축소 방향이 안전반원과 어긋나는 빈도
 
 상태 문서에 기록하고, 실제 태풍 발생 시 로그로 확인한다.
