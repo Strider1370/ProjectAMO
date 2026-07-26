@@ -231,6 +231,7 @@ function MainAppShell() {
           onOpenNotamPanel={() => setActivePanel('notam')}
           onOpenRoutePanel={() => setActivePanel('route-check')}
           onOpenCustomAreaPanel={() => setActivePanel('custom-area')}
+          onOpenMetPanel={() => setActivePanel('met')}
         />
       </main>
       <AirportPanel

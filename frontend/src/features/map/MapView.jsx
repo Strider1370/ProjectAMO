@@ -315,6 +315,7 @@ const MapView = forwardRef(function MapView({
   onOpenNotamPanel,
   onOpenRoutePanel,
   onOpenCustomAreaPanel,
+  onOpenMetPanel,
   enableWindOverlay = true,
   showMapTools = true,
   showBasemapSwitcher = true,
@@ -1749,7 +1750,7 @@ const MapView = forwardRef(function MapView({
           selected={typhoonOverlay.selected}
           onSelect={typhoonOverlay.select}
           onFocus={(item) => mapRef.current?.flyTo({ center: [item.center.lon, item.center.lat], zoom: 5 })}
-          onClose={() => toggleMet('typhoon')}
+          onClose={() => { toggleMet('typhoon'); onOpenMetPanel?.() }}
         />
       )}
       <WeatherPointInspector selection={weatherPointInspector.selection} onClose={weatherPointInspector.clearSelection} />

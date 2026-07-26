@@ -1,10 +1,11 @@
-import { X } from 'lucide-react'
+import { Fragment, useState } from 'react'
+import { ChevronDown, X } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
-import { buildTyphoonListItems } from './lib/typhoonListModel.js'
+import { buildTyphoonListItems, formatTrackTime } from './lib/typhoonListModel.js'
 import './TyphoonPanel.css'
 
-function TrackTable({ item, rows, selected, onSelect }) {
+function TrackTable({ item, rows, selected, pinned, onSelect, onPin }) {
   return (
     <table className="typhoon-track">
       <thead>
@@ -14,30 +15,46 @@ function TrackTable({ item, rows, selected, onSelect }) {
           <th>풍속</th>
           <th>기압</th>
           <th className="typhoon-track__where">위치</th>
+          <th className="typhoon-track__toggle" aria-hidden="true" />
         </tr>
       </thead>
       <tbody>
         {rows.map((row) => {
           const isSelected = selected?.number === item.number && selected?.validAt === row.validAt
+          const isPinned = pinned?.number === item.number && pinned?.validAt === row.validAt
+          const payload = { number: item.number, validAt: row.validAt, row }
           return (
-            <tr
-              key={row.key}
-              className={`typhoon-track__row is-${row.forecast ? 'forecast' : 'past'}${row.isCurrent ? ' is-current' : ''}${isSelected ? ' is-selected' : ''}`}
-              onMouseEnter={() => onSelect?.({ number: item.number, validAt: row.validAt, row })}
-              onFocus={() => onSelect?.({ number: item.number, validAt: row.validAt, row })}
-              onClick={() => onSelect?.({ number: item.number, validAt: row.validAt, row, pinned: true })}
-              tabIndex={0}
-            >
-              <td className="typhoon-track__time">
-                {row.timeLabel}
-                {row.isCurrent && <span className="typhoon-track__now">현재</span>}
-                {!row.isCurrent && <span className="typhoon-track__kind">{row.kindLabel}</span>}
-              </td>
-              <td>{row.intensity ?? '—'}</td>
-              <td>{row.maxWindMs !== null ? `${row.maxWindMs} m/s` : '—'}</td>
-              <td>{row.pressureHpa !== null ? `${row.pressureHpa} hPa` : '—'}</td>
-              <td className="typhoon-track__where">{row.location}</td>
-            </tr>
+            <Fragment key={row.key}>
+              <tr
+                className={`typhoon-track__row is-${row.forecast ? 'forecast' : 'past'}${row.isCurrent ? ' is-current' : ''}${isSelected ? ' is-selected' : ''}${isPinned ? ' is-pinned' : ''}`}
+                onMouseEnter={() => onSelect?.(payload)}
+                onFocus={() => onSelect?.(payload)}
+                onClick={() => {
+                  onSelect?.({ ...payload, pinned: true })
+                  onPin?.(payload)
+                }}
+                tabIndex={0}
+                aria-expanded={isPinned}
+              >
+                <td className="typhoon-track__time">
+                  {row.timeLabel}
+                  {row.isCurrent && <span className="typhoon-track__now">현재</span>}
+                  {!row.isCurrent && <span className="typhoon-track__kind">{row.kindLabel}</span>}
+                </td>
+                <td>{row.intensity ?? '—'}</td>
+                <td>{row.maxWindMs !== null ? `${row.maxWindMs} m/s` : '—'}</td>
+                <td>{row.pressureHpa !== null ? `${row.pressureHpa} hPa` : '—'}</td>
+                <td className="typhoon-track__where">{row.location}</td>
+                <td className="typhoon-track__toggle">
+                  <ChevronDown size={14} className={`typhoon-track__chevron${isPinned ? ' is-open' : ''}`} aria-hidden="true" />
+                </td>
+              </tr>
+              {isPinned && (
+                <tr className="typhoon-track__detail-row">
+                  <td colSpan={6}><SelectedDetail row={row} /></td>
+                </tr>
+              )}
+            </Fragment>
           )
         })}
       </tbody>
@@ -65,12 +82,15 @@ export default function TyphoonPanel({
 }) {
   const isMobile = useIsMobile()
   const items = buildTyphoonListItems(typhoons)
-  const selectedRow = selected?.row ?? null
+  const [pinned, setPinned] = useState(null)
+  const togglePin = (payload) => {
+    setPinned((prev) => (prev?.number === payload.number && prev?.validAt === payload.validAt ? null : payload))
+  }
 
   // 목록 본문은 데스크톱·모바일이 같다. 껍데기만 갈린다.
   const body = (
     <>
-      {status === 'unavailable' && (
+      {status === 'unavailable' && items.length === 0 && (
         <p className="typhoon-panel__empty">자료 없음 — 수집에 실패했습니다. 태풍이 없다는 뜻이 아닙니다.</p>
       )}
       {status !== 'unavailable' && items.length === 0 && (
@@ -85,6 +105,9 @@ export default function TyphoonPanel({
           <div className="typhoon-panel__head">
             <span className="typhoon-panel__swatch" style={{ background: item.color }} aria-hidden="true" />
             <strong className="typhoon-panel__name">{item.title}</strong>
+            {item.analyzedAt && (
+              <span className="typhoon-panel__issued">{formatTrackTime(item.analyzedAt)} 발표</span>
+            )}
             <button type="button" className="typhoon-panel__focus" onClick={() => onFocus?.(item)}>
               바로가기
             </button>
@@ -95,13 +118,14 @@ export default function TyphoonPanel({
             item={item}
             rows={item.trackRows.filter((row) => row.isCurrent || row.forecast)}
             selected={selected}
+            pinned={pinned}
             onSelect={onSelect}
+            onPin={togglePin}
           />
-          {selected?.number === item.number && <SelectedDetail row={selectedRow} />}
           {item.pastRows.length > 0 && (
             <details className="typhoon-panel__past">
               <summary>지난 관측 {item.pastRows.length}개</summary>
-              <TrackTable item={item} rows={item.pastRows} selected={selected} onSelect={onSelect} />
+              <TrackTable item={item} rows={item.pastRows} selected={selected} pinned={pinned} onSelect={onSelect} onPin={togglePin} />
             </details>
           )}
         </section>
@@ -121,8 +145,7 @@ export default function TyphoonPanel({
     return (
       <MobileSheet
         open
-        eyebrow="기상정보"
-        title="태풍"
+        title="태풍정보"
         onClose={onClose}
         headerExtra={<><span className="layer-drawer-status">{items.length}개</span>{closeButton}</>}
       >
@@ -135,11 +158,12 @@ export default function TyphoonPanel({
     <div className="dev-layer-panel layer-drawer typhoon-panel" aria-label="활성 태풍 목록">
       <div className="layer-drawer-header">
         <div>
-          <div className="layer-drawer-eyebrow">기상정보</div>
-          <div className="layer-drawer-title">태풍</div>
+          <div className="layer-drawer-title">태풍정보</div>
         </div>
-        <span className="layer-drawer-status">{items.length}개</span>
-        {closeButton}
+        <div className="typhoon-panel__header-actions">
+          <span className="layer-drawer-status">{items.length}개</span>
+          {closeButton}
+        </div>
       </div>
       <div className="layer-drawer-body">{body}</div>
     </div>
