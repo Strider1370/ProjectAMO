@@ -104,6 +104,14 @@ test('알려진 어려운 건은 안전한 쪽으로 간다', () => {
   }
 })
 
+test('E3260/26: 도형 서술부의 EXC A CIRCLE은 실제로 근사 건이다', () => {
+  // arcOrExclusion 루프는 파서가 보고하는 approximated로 두 그룹을 가르는데, approximated가
+  // true인 쪽은 아무것도 단정하지 않고 넘어간다(continue). RMK 컷을 너무 넓게 고쳐서
+  // 이 실제 반원+호+제외구역 건까지 approximated: false로 뒤집혀도 그 루프는 잡지 못한다 —
+  // 그래서 실제 KML 원문을 직접 걸어 이 한 건을 고정한다.
+  assert.equal(parsePositionText(rawById.get('E3260/26')).approximated, true)
+})
+
 test('결함·근사 건은 Q줄 원으로 넓게 덮이고, RMK의 EXC는 도형을 근사로 몰지 않는다', () => {
   // arcOrExclusion 9건은 키워드(ARC|SEMICIRCLE|EXC) 스윕으로 묶인 목록이라 그 중 일부(EXC가
   // RMK 예외 조항에만 있는 건)는 실제로는 정확한 도형이다(원 1건 D1768/26 포함, 다각형 6건).
