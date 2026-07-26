@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import fs from 'node:fs'
+import fs, { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseNotamKml, parseQcodeBand, dmsToIso } from '../src/parsers/notam-parser.js'
@@ -40,7 +40,7 @@ test('parseQcodeBand: falls back to Q-line FL band', () => {
 })
 
 test('parseNotamKml: 4 real records with correct fields', () => {
-  const recs = parseNotamKml(KML)
+  const { items: recs } = parseNotamKml(KML)
   assert.equal(recs.length, 4)
   const byId = Object.fromEntries(recs.map((r) => [r.id, r]))
 
@@ -70,13 +70,47 @@ test('parseNotamKml: 4 real records with correct fields', () => {
 
   // QRDCA LineString (corridor danger area)
   const l = byId['D1181/26']
-  assert.equal(l.geometry.type, 'LineString')
-  assert.ok(l.geometry.coordinates.length >= 2)
+  // 본문 좌표로 면을 만든다. 이전에는 KML LineString을 그대로 실어 경로 판정에서 빠졌다.
+  assert.equal(l.geometry.type, 'Polygon')
+  assert.equal(l.geometrySource, 'text')
+  assert.ok(l.geometry.coordinates[0].length >= 2) // ring point count, not ring count
   assert.deepEqual(l.altitude, { lower: 0, upper: 6561, unit: 'FT', ref: 'AGL' })
 })
 
 test('parseNotamKml: broken placemark skipped, others survive', () => {
   const broken = KML.replace('A)RKJB B)2607030928 C)2607051057', 'A)RKJB') // strip B)/C) from G3301
-  const recs = parseNotamKml(broken)
+  const { items: recs } = parseNotamKml(broken)
   assert.equal(recs.length, 3) // 4 minus the broken one
+})
+
+const kml = readFileSync(fileURLToPath(new URL('./fixtures/notam-2026-07-26.kml', import.meta.url)), 'utf8')
+
+test('C)PERM NOTAM이 살아남는다', () => {
+  const { items } = parseNotamKml(kml)
+  for (const id of ['A0876/26', 'A0686/26', 'A0800/26', 'C1040/26']) {
+    assert.ok(items.find((i) => i.id === id), `${id}가 없다`)
+  }
+})
+
+test('415개 Placemark가 전부 레코드가 된다', () => {
+  const r = parseNotamKml(kml)
+  assert.equal(r.placemarks, 415)
+  assert.equal(r.items.length, 415)
+  assert.equal(r.dropped, 0)
+})
+
+test('유실이 생기면 집계에 잡힌다', () => {
+  const broken = '<Placemark id=\'X0001/26_1\'><description><![CDATA[<h3>X0001/26</h3>(X0001/26 NOTAMN]]></description></Placemark>'
+  const r = parseNotamKml(broken)
+  assert.equal(r.placemarks, 1)
+  assert.equal(r.dropped, 1)
+})
+
+test('불꽃놀이 도형이 본문 좌표에서 나온다', () => {
+  const { items } = parseNotamKml(kml)
+  const z = items.find((i) => i.id === 'Z0535/26')
+  assert.equal(z.geometrySource, 'text')
+  const lats = z.geometry.coordinates[0].map((p) => p[1])
+  const mid = (Math.min(...lats) + Math.max(...lats)) / 2
+  assert.ok(mid > 37.59 && mid < 37.60, `중심 위도 ${mid} — 활주로(37.56)면 안 된다`)
 })

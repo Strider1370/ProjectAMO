@@ -1,6 +1,8 @@
 // KML (KOCA xNotam) → structured NOTAM records. No XML lib: KML fields are regex-extractable.
 // CR line terminators in source; normalize to LF first.
 
+import { resolveNotamGeometry } from '../notam/notam-geometry.js'
+
 export function dmsToIso(field) {
   if (!/^\d{10}$/.test(String(field || ''))) return null
   const s = String(field)
@@ -80,14 +82,18 @@ function parseOnePlacemark(xml) {
   const location = (text.match(/A\)\s*([A-Z]{4})/) || [])[1] || null
   const bField = (text.match(/B\)\s*(\d{10})/) || [])[1] || null
   const cField = (text.match(/C\)\s*(\d{10})/) || [])[1] || null
+  // C)PERM(영구)은 종료시각이 숫자가 아니다. 통째로 버리지 않고 먼 미래로 둔다.
+  const permanent = !cField && /C\)\s*PERM\b/i.test(text)
   const scheduleText = (text.match(/D\)\s*([\s\S]*?)(?=\n\s*E\)|\)?\s*$)/) || [])[1]?.trim() || null
   const validFrom = dmsToIso(bField)
-  const validTo = dmsToIso(cField)
+  const validTo = permanent ? '2099-12-31T23:59:00.000Z' : dmsToIso(cField)
   if (!id || !location || !validFrom || !validTo) return null // required fields
   // F)SFC / F)4000FT AMSL — allow SFC/GND word or a number+unit token; stop before space or ')'
   const fField = (text.match(/F\)\s*(SFC|GND|[^\n G)]+)/) || [])[1] || null
   const gField = (text.match(/G\)\s*([^\n)]+)/) || [])[1] || null
   const summary = (text.match(/E\)\s*([\s\S]*?)(?:\n[FG]\)|\)?\s*$)/) || [])[1]?.trim().replace(/\)\s*$/, '') || ''
+  const kmlGeometry = extractGeometry(xml)
+  const resolved = resolveNotamGeometry({ rawText: text, kmlGeometry })
   return {
     id,
     series: id[0],
@@ -99,21 +105,26 @@ function parseOnePlacemark(xml) {
     altitude: parseQcodeBand(qLine, fField, gField),
     summary,
     rawText: text.trim(),
-    geometry: extractGeometry(xml),
+    geometry: resolved.geometry,
+    bufferNm: resolved.bufferNm,
+    geometrySource: resolved.source,       // 'text' | 'q' | 'kml' | 'none'
+    geometryReason: resolved.reason,
+    approximated: resolved.approximated,
   }
 }
 
 export function parseNotamKml(kml) {
   const lf = String(kml || '').replace(/\r/g, '\n')
   const placemarks = lf.split('<Placemark').slice(1).map((chunk) => '<Placemark' + chunk.split('</Placemark>')[0] + '</Placemark>')
-  const out = []
+  const items = []
   for (const pm of placemarks) {
     try {
       const rec = parseOnePlacemark(pm)
-      if (rec) out.push(rec)
+      if (rec) items.push(rec)
     } catch { /* skip broken placemark */ }
   }
-  return out
+  // 조용한 유실을 없앤다 — 이전에는 몇 건이 사라졌는지 알 방법이 없었다.
+  return { items, placemarks: placemarks.length, dropped: placemarks.length - items.length }
 }
 
 export default { parseNotamKml, parseQcodeBand, dmsToIso }

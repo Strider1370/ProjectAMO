@@ -73,8 +73,10 @@ export async function process() {
   } catch (err) {
     return { type: 'notam', saved: false, reason: `crawl_failed: ${err.message}`, items: 0 }
   }
-  const raw = parseNotamKml(crawled.kml)
-  const items = raw.map((r) => ({
+  const { items: parsed, placemarks, dropped } = parseNotamKml(crawled.kml)
+  // 조용한 유실을 없앤다 — 이전에는 몇 건이 사라졌는지 알 방법이 없었다.
+  if (dropped > 0) console.warn(`[notam] Placemark ${placemarks}건 중 ${dropped}건이 레코드가 되지 못했습니다`)
+  const items = parsed.map((r) => ({
     id: r.id,
     series: r.series,
     location: r.location,
@@ -89,6 +91,9 @@ export async function process() {
     summary: r.summary,
     rawText: r.rawText,
     geometry: r.geometry,
+    bufferNm: r.bufferNm,
+    geometrySource: r.geometrySource,
+    approximated: r.approximated,
   }))
   if (items.length === 0) {
     return { type: 'notam', saved: false, reason: 'empty', items: 0 }
