@@ -40,6 +40,12 @@ Task 6~8을 이어서 마쳤다. **Task 5가 만들었던 "깨진 중간 상태(
 Task 6이 `radarMotionLayers.js`를 통째로 교체하면서 해소됐다.** 실제 KMA 자료로 실화면을 확인했고,
 계약 18개(3개 뷰포트)가 통과했다.
 
+**전체 계약 스위트(114개)는 초록으로 확인하지 못했다.** 두 번은 Playwright가 띄운 테스트 서버가 중간에 죽어
+(`ERR_CONNECTION_REFUSED`) 결과 자체가 무효였고, 작업 트리에 다른 세션의 미완성 변경(`MapView.jsx`,
+`mapLayerUtils.js`, notam·aviation 파일, 미커밋 `shared/airspace-altitude.js`)이 섞여 있어 그쪽 계약들이 원래 깨져 있다.
+**이 브랜치 범위의 증거는 `radar-motion` 계약 18/18, 프론트 단위 541개, 백엔드 486개, 그리고 실자료 실화면 캡처다.**
+전체 스위트는 다른 세션 변경이 정리된 뒤에 돌릴 것.
+
 **브랜치:** `agent/radar-echo-motion-arrows` (미푸시). `main`은 `5658a2a`에 그대로 있다.
 **SDD 원장:** `.superpowers/sdd/2026-07-26-radar-echo-motion-arrows/progress.md`
 
