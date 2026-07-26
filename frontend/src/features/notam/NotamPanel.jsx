@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Ban, Crosshair, AlertTriangle, ShieldHalf, Swords, RadioTower, Radio, MoreHorizontal, ChevronDown, MapPin } from 'lucide-react'
-import { NOTAM_CATEGORIES, TIME_STATE, deriveTimeState, formatAltitude, formatValidPeriod, sortOperationalFirst } from './lib/notamViewModel.js'
+import { NOTAM_CATEGORIES, TIME_STATE, deriveNotamTime, formatAltitude, formatValidPeriod, sortOperationalFirst } from './lib/notamViewModel.js'
 import './NotamPanel.css'
 
 const CAT_ICON = {
@@ -42,7 +42,8 @@ function fmtCollected(iso, tz = 'KST') {
 }
 
 function NotamRow({ item, nowMs, tz, expanded, onToggle, onLocate }) {
-  const state = deriveTimeState(item.valid_from, item.valid_to, nowMs)
+  // deriveTimeState는 B~C(공지 유효기간)만 본다 — D)의 시간대까지 반영하려면 deriveNotamTime.
+  const { state } = deriveNotamTime(item, nowMs)
   const where = item.scope === 'fir' ? '전역' : item.location
   return (
     <>
@@ -195,7 +196,7 @@ function NotamPanel({ payload, selectedAirport, categoryFilter, onCategoryToggle
                 <CatIcon id={it.category} />
                 <span className="notam-priority-cat">{catLabelOf(it.category)}</span>
                 <span className="notam-priority-sum">{it.summary || it.id}</span>
-                <TimeBadge state={deriveTimeState(it.valid_from, it.valid_to, nowMs)} />
+                <TimeBadge state={deriveNotamTime(it, nowMs).state} />
               </div>
             ))}
           </div>

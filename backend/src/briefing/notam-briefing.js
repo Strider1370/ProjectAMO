@@ -60,6 +60,8 @@ export function matchRouteNotams(items, ctx) {
       altitude: it.altitude,
       validFrom: it.valid_from,
       validTo: it.valid_to,
+      scheduleText: it.schedule_text || null, // D) 시간대 — 브리핑 목록도 발효 중/시간대 밖을 가르려면 필요
+
       onRoute: interval.entered,
       airportRole,                                  // 'departure'|'arrival'|'alternate'|null
       airportIcao: airportRole ? it.location : null,
