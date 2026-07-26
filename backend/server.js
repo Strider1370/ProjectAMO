@@ -1008,6 +1008,7 @@ app.post('/api/route-briefing', (req, res) => {
       amos: store.getCached('amos'),
       takeoff_fcst: store.getCached('takeoff_fcst'),
       notam: store.getCached('notam'),
+      typhoon: store.getCached('typhoon'),
       airspaceZones: loadAirspaceZoneItems(),
       dataRoot: DATA_ROOT, // composeBriefing이 enroute 단면 모델을 직접 로드(이전엔 여기서 사후 mutate)
       now: getEffectiveNow().getTime(), // 시연 모드면 스냅샷 기준시각으로 고정(실제 현재시각 아님)

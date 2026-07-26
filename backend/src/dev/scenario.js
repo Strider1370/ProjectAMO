@@ -113,6 +113,7 @@ function currentData() {
     sigmet: getCached('sigmet'), sigmetOverseas: getCached('sigmet_overseas'),
     airmet: getCached('airmet'), warning: getCached('warning'),
     amos: getCached('amos'), takeoff_fcst: getCached('takeoff_fcst'), notam: getCached('notam'),
+    typhoon: getCached('typhoon'),
   }
 }
 
