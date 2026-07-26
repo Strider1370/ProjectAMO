@@ -42,9 +42,30 @@ function briefingFor(request) {
     eta: request.eta || '2026-07-18T10:30:00Z',
     plannedCruiseAltitudeFt: Number(request.plannedCruiseAltitudeFt) || 9000,
   }, { metar: { airports }, taf: { airports: {} }, sigmet: { items: [] }, airmet: { items: [] } })
+  // 배너 계약용 고정 NOTAM 2건 — 경로 지오메트리 교차를 픽스처에서 만들기 어려워 결과를 직접 주입한다.
+  const conflictNotam = {
+    id: 'Z0533/26', category: 'firing', summary: '불꽃놀이 실시 — 해당 공역 진입 금지',
+    rawText: 'FIREWORKS DISPLAY WILL TAKE PLACE', altitude: { lower: 0, upper: 200, unit: 'FT', ref: 'AGL' },
+    validFrom: '2026-07-18T00:00:00Z', validTo: '2026-07-18T23:59:00Z', scheduleText: null,
+    onRoute: true, airportRole: null, airportIcao: null,
+    routeIntervalNm: { startNm: 12, endNm: 18 }, bandFt: { lowFt: 0, highFt: 200 },
+    verticalKnown: true, activeAtEtd: true, timeStatus: 'matched', comparisonStatus: 'warn',
+    positionStatus: 'resolved', scheduleState: 'active', approximated: false, conflict: true,
+  }
+  const unresolvedNotam = {
+    id: 'D2054/26', category: 'restricted', summary: 'RESTRICTED AREA RK R97E ACT',
+    rawText: 'RESTRICTED AREA RK R97E ACT', altitude: null,
+    validFrom: '2026-07-18T00:00:00Z', validTo: '2026-07-18T23:59:00Z', scheduleText: null,
+    onRoute: false, airportRole: 'departure', airportIcao: 'RKSS',
+    routeIntervalNm: null, bandFt: null, verticalKnown: false, activeAtEtd: true,
+    timeStatus: 'matched', comparisonStatus: 'undetermined',
+    positionStatus: 'unresolved', scheduleState: 'active', approximated: false, conflict: false,
+  }
   return {
     ...briefing,
     meta: { ...briefing.meta, generatedAt: FIXTURE_TIME },
+    routeNotams: [conflictNotam, unresolvedNotam],
+    routeConflicts: [conflictNotam],
     sections: {
       ...briefing.sections,
       enroute: {
