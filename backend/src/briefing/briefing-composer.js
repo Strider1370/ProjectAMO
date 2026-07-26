@@ -12,9 +12,11 @@ import { timeWindowsOverlap } from './geo-time-match.js'
 import { matchRouteNotams } from './notam-briefing.js'
 import { attachActiveAipConstraints } from './aip-airway-constraints.js'
 import { buildBriefingProvenance } from './briefing-provenance.js'
-import { airports as AIRPORT_LIST } from '../config.js'
+import { airports as AIRPORT_LIST, overseasAirports as OVERSEAS_AIRPORTS } from '../config.js'
 
-const AIRPORT_BY_ICAO = new Map(AIRPORT_LIST.map((a) => [a.icao, a]))
+// 국내(shared/airports.js) + 해외(airports-overseas.json). 해외가 빠지면 도착지가
+// VHHH 같은 곳일 때 좌표를 못 찾아 태풍·공항 판정이 "확인 불가"로만 나온다.
+const AIRPORT_BY_ICAO = new Map([...AIRPORT_LIST, ...OVERSEAS_AIRPORTS].map((a) => [a.icao, a]))
 
 function airportRoles(request) {
   const roles = [

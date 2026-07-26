@@ -101,3 +101,40 @@ test('buildRouteExposure가 태풍을 노출 항목으로 낸다', async () => {
   // 고도는 판정하지 않는다.
   assert.equal(typhoons[0].bandFt, null)
 })
+
+test('해외공항도 좌표를 갖는다 — 없으면 태풍 판정이 "확인 불가"로만 나온다', async () => {
+  const config = await import('../src/config.js')
+  const byIcao = new Map([...config.airports, ...config.overseasAirports].map((a) => [a.icao, a]))
+  // 국내와 해외가 같은 모양이어야 한다. 해외는 원본 파일에서 coordinates 안에 중첩돼 있다.
+  for (const icao of ['RKSI', 'RKPC', 'VHHH', 'RJTT', 'ZGGG']) {
+    const airport = byIcao.get(icao)
+    assert.ok(airport, `${icao} 좌표를 찾을 수 있어야 한다`)
+    assert.ok(Number.isFinite(airport.lat) && Number.isFinite(airport.lon), `${icao} 좌표가 숫자여야 한다`)
+  }
+  assert.ok(config.overseasAirports.length >= 40, '해외공항 목록이 비면 안 된다')
+})
+
+test('해외 도착지도 태풍 영향권으로 판정된다', async () => {
+  const { matchTyphoonHazards } = await import('../src/briefing/typhoon-briefing.js')
+  const { buildRouteAxis } = await import('../src/briefing/route-axis.js')
+  const config = await import('../src/config.js')
+  const vhhh = config.overseasAirports.find((a) => a.icao === 'VHHH')
+  const validAt = '2026-07-25T18:00:00.000Z'
+  // 홍콩 바로 위에 놓인 태풍.
+  const row = {
+    forecast: false, seq: 1, leadHours: 0, analyzedAt: validAt, validAt,
+    lat: vhhh.lat, lon: vhhh.lon, dir: 'NW', speedKmh: 18,
+    pressureHpa: 960, maxWindMs: 39, errorRadiusKm: 0,
+    gale: { radiusKm: 280, exceptionDir: null, exceptionRadiusKm: null },
+    storm: null, location: '중국 홍콩 부근',
+  }
+  const [hazard] = matchTyphoonHazards({
+    typhoons: [{ number: 12, year: 2026, seq: 1, name: '노을', analyzedAt: validAt, current: row, rows: [row] }],
+    axis: buildRouteAxis({ type: 'LineString', coordinates: [[vhhh.lon - 1, vhhh.lat - 1], [vhhh.lon + 1, vhhh.lat + 1]] }, 2000),
+    etd: validAt,
+    eta: new Date(Date.parse(validAt) + 2 * 3600e3).toISOString(),
+    airports: [{ role: 'arrival', icao: 'VHHH', lat: vhhh.lat, lon: vhhh.lon }],
+  })
+  assert.deepEqual(hazard.airports, ['VHHH'])
+  assert.deepEqual(hazard.airportsUnknown, [], '좌표가 있으므로 확인 불가가 아니어야 한다')
+})

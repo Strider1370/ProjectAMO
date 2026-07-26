@@ -38,16 +38,37 @@ const DEFAULT_OVERSEAS_AIRPORTS = [
   'ZGSZ', 'ZMCK', 'ZSHC', 'ZSPD', 'ZSQD', 'ZSSS', 'ZYTL', 'ZYTX',
 ]
 
-function loadOverseasAirportIds() {
+function readOverseasAirportFile() {
   const filePath = path.join(projectRoot, 'frontend', 'public', 'data', 'navdata', 'airports-overseas.json')
   try {
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'))
-    const ids = Object.keys(data || {}).filter((id) => /^[A-Z0-9]{4}$/.test(id)).sort()
-    return ids.length > 0 ? ids : DEFAULT_OVERSEAS_AIRPORTS
+    return JSON.parse(fs.readFileSync(filePath, 'utf8')) || {}
   } catch {
-    return DEFAULT_OVERSEAS_AIRPORTS
+    return {}
   }
 }
+
+function loadOverseasAirportIds() {
+  const ids = Object.keys(readOverseasAirportFile()).filter((id) => /^[A-Z0-9]{4}$/.test(id)).sort()
+  return ids.length > 0 ? ids : DEFAULT_OVERSEAS_AIRPORTS
+}
+
+// 해외공항 좌표. 같은 파일에 이미 들어 있으나 좌표가 coordinates 안에 중첩되어 있어,
+// 국내(shared/airports.js)와 같은 { icao, lat, lon } 모양으로 펴서 내보낸다.
+// 이것이 없으면 도착지가 VHHH일 때 태풍 영향권 판정을 아예 못 한다.
+function loadOverseasAirports() {
+  return Object.entries(readOverseasAirportFile())
+    .filter(([icao, entry]) => /^[A-Z0-9]{4}$/.test(icao)
+      && Number.isFinite(entry?.coordinates?.lat) && Number.isFinite(entry?.coordinates?.lon))
+    .map(([icao, entry]) => ({
+      icao,
+      name: entry.name ?? null,
+      nameKo: entry.nameKo ?? null,
+      lat: entry.coordinates.lat,
+      lon: entry.coordinates.lon,
+    }))
+}
+
+export const overseasAirports = loadOverseasAirports()
 
 const aviationAuthKey = process.env.KMA_AVIATION_AUTH_KEY || process.env.KMA_AUTH_KEY || process.env.API_AUTH_KEY || ''
 const radarSatelliteAuthKey = process.env.KMA_RADAR_SATELLITE_AUTH_KEY || aviationAuthKey
