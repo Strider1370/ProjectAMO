@@ -73,7 +73,10 @@ test('parseNotamKml: 4 real records with correct fields', () => {
   // 본문 좌표로 면을 만든다. 이전에는 KML LineString을 그대로 실어 경로 판정에서 빠졌다.
   assert.equal(l.geometry.type, 'Polygon')
   assert.equal(l.geometrySource, 'text')
-  assert.ok(l.geometry.coordinates[0].length >= 2) // ring point count, not ring count
+  // 5 = notam-sample.kml의 D1181/26 본문 "AREA BOUNDED BY" 좌표 토큰 개수:
+  // 372333N1291339E-372318N1291408E-373951N1300407E-374150N1300200E-372333N1291339E
+  // (여는 좌표를 닫는 좌표로 반복 — 4개의 서로 다른 꼭짓점 + 닫는 반복 1개)
+  assert.equal(l.geometry.coordinates[0].length, 5)
   assert.deepEqual(l.altitude, { lower: 0, upper: 6561, unit: 'FT', ref: 'AGL' })
 })
 
