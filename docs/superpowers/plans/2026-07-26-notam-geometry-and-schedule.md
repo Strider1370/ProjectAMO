@@ -126,10 +126,27 @@ test('문형에 안 걸리면 좌표가 있어도 위치로 쓰지 않는다', (
   assert.equal(r.kind, null)
 })
 
-test('꼭짓점이 3개 미만인 다각형은 버린다', () => {
-  // E3296/26: 원본에서 꼭짓점이 중복되어 사각형이 3점으로 온다
-  const r = parsePositionText('E)AREA BOUNDED BY THE FOLLOWING 355434N1292856E-355434N1292856E-355500N1292900E')
+test('꼭짓점이 중복된 다각형은 원본 결함으로 본다', () => {
+  // E3296/26 실제 본문 그대로. 사각형이어야 하는데 3번째 꼭짓점이 연달아 두 번 나온다.
+  // 지어낸 문자열을 쓰지 말 것 — 실제 데이터는 중복 제거 후에도 점이 3개다.
+  const r = parsePositionText('E)TEMPO RESTRICTED AREA ACT AS FLW AREA BOUNDED BY THE FOLLOWING 355540N1292941E-355539N1293055E-355434N1292856E-355434N1292856E-355540N1292941E')
   assert.equal(r.kind, null)
+  assert.equal(r.defective, true)
+})
+
+test('정당한 삼각형 구역은 그대로 쓴다', () => {
+  // 개수가 아니라 중복이 신호다. 중복 없는 3점은 정상 다각형.
+  const r = parsePositionText('E)AREA BOUNDED BY THE FOLLOWING 372333N1291339E-372500N1291500E-372600N1291200E')
+  assert.equal(r.kind, 'polygon')
+  assert.equal(r.defective, false)
+})
+
+test('중심이 여러 개면 전부 담는다', () => {
+  // A0798/26: 크레인 2기. 첫 번째만 쓰면 나머지를 통째로 놓친다.
+  const r = parsePositionText('E)TEMP OBST(CRANES) ERECTED AS FLW : 1.PSN:345817.12N1262254.71E RADIUS:40M HGT:22.60M 2.PSN:345817.31N1262254.76E RADIUS:40M HGT:23.35M')
+  assert.equal(r.kind, 'circle')
+  assert.equal(r.coords.length, 2)
+  assert.equal(r.radiusM, 40)
 })
 
 test('호·반원·제외구역은 근사 표시', () => {
@@ -179,32 +196,42 @@ function toMeters(value, unit) {
   return u === 'NM' ? v * M_PER_NM : u === 'KM' ? v * 1000 : v
 }
 
-const none = () => ({ kind: null, coords: [], radiusM: null, bufferNm: null, approximated: false })
+const none = (defective = false) => ({ kind: null, coords: [], radiusM: null, bufferNm: null, approximated: false, defective })
 
 export function parsePositionText(rawText) {
   const tight = extractEBody(rawText).replace(/\s+/g, '').toUpperCase()
   const coords = (tight.match(COORD) || []).map(dmsToDecimal).filter(Boolean)
   // 호·반원·제외구역이 섞이면 형상을 그대로 못 그린다 — 넓게 덮되 근사임을 알린다.
-  const approximated = /\bARC|SEMICIRCLE|EXC/.test(tight) && coords.length > 0
+  // `\b`를 쓰지 않는다: 교대(|)는 가장 느슨하게 묶여 `\b`가 ARC에만 걸리는데,
+  // 공백을 모두 지운 뒤에는 단어 경계가 사실상 없어 죽은 조건이 된다(실측: 9건 모두 false).
+  const approximated = /ARC|SEMICIRCLE|EXC/.test(tight) && coords.length > 0
 
   // 순서가 중요하다. 넓은 개념부터 걸러야 안쪽에 박힌 단어(EXC A CIRCLE 등)에 낚이지 않는다.
   if (/EITHERSIDE/.test(tight) && coords.length >= 2) {
     const m = tight.match(/(\d+(?:\.\d+)?)(NM|KM|M)EITHERSIDE/)
-    return { kind: 'corridor', coords, radiusM: null, bufferNm: m ? toMeters(m[1], m[2]) / M_PER_NM : null, approximated }
+    const width = m ? toMeters(m[1], m[2]) : null
+    return { kind: 'corridor', coords, radiusM: null, bufferNm: width == null ? null : width / M_PER_NM, approximated, defective: false }
   }
   if (/BOUNDEDBY/.test(tight)) {
-    // 중복 제거 후 3점 미만이면 면을 이루지 못한다(원본 결함 — 우리가 메울 수 없다).
-    const uniq = coords.filter((p, i) => coords.findIndex((q) => q.lat === p.lat && q.lon === p.lon) === i)
-    if (uniq.length < 3) return none()
-    return { kind: 'polygon', coords: uniq, radiusM: null, bufferNm: null, approximated }
+    const key = (p) => `${p.lat},${p.lon}`
+    // 닫는 점(마지막 == 첫째)은 정상이므로 빼고 본다.
+    const body = coords.length > 1 && key(coords[0]) === key(coords[coords.length - 1]) ? coords.slice(0, -1) : coords
+    const uniq = body.filter((p, i) => body.findIndex((q) => key(q) === key(p)) === i)
+    // 중복이 남아 있으면 발행 과정에서 꼭짓점이 소실된 것이다(E3296/26). KML도 같은 결함이라
+    // 내려갈 곳이 없다 — resolveNotamGeometry가 Q줄 원으로 넓게 덮는다.
+    // 개수가 아니라 중복을 신호로 쓴다: 정당한 삼각형과 꼭짓점 잃은 사각형은 개수로 구별되지 않는다.
+    if (uniq.length !== body.length) return none(true)
+    if (uniq.length < 3) return none(true)
+    return { kind: 'polygon', coords: uniq, radiusM: null, bufferNm: null, approximated, defective: false }
   }
   if (/CIRCLE|RADOF/.test(tight) && coords.length >= 1) {
     const m = tight.match(/RADIUS[:：]?(\d+(?:\.\d+)?)(NM|KM|M)/) || tight.match(/(\d+(?:\.\d+)?)(NM|KM|M)RAD(?:IUS)?OF/)
-    return { kind: 'circle', coords, radiusM: m ? toMeters(m[1], m[2]) : null, bufferNm: null, approximated }
+    return { kind: 'circle', coords, radiusM: m ? toMeters(m[1], m[2]) : null, bufferNm: null, approximated, defective: false }
   }
+  // PSN이 여러 번 나오면 중심이 여럿이다(크레인 2기 등). coords를 전부 넘겨 MultiPolygon으로 만든다.
   if (/PSN[:：]/.test(tight) && /RADIUS[:：]?\d/.test(tight) && coords.length >= 1) {
     const m = tight.match(/RADIUS[:：]?(\d+(?:\.\d+)?)(NM|KM|M)/)
-    return { kind: 'circle', coords, radiusM: m ? toMeters(m[1], m[2]) : null, bufferNm: null, approximated }
+    return { kind: 'circle', coords, radiusM: m ? toMeters(m[1], m[2]) : null, bufferNm: null, approximated, defective: false }
   }
   // 좌표가 있어도 위 문형에 안 걸리면 쓰지 않는다.
   // Z0479/26의 좌표는 대체 웨이포인트지 이 NOTAM의 위치가 아니다.
@@ -277,28 +304,40 @@ test('정답표: 스냅샷과 정답표 건수가 맞는다', () => {
   assert.equal(rawById.size, 415)
 })
 
-test('정답표 전수: 문형 판정이 415건 전부 일치한다', () => {
+// 정답표는 "본문이 무엇이라고 말하는가"를 기록한다. 파서는 거기에 더해 "그 말을 믿을 수 있는가"를
+// 판단한다. 두 곳에서만 갈리며, 그 목록은 정답표의 knownHard에 근거와 함께 박혀 있다.
+const DEFECT = new Set(truth.knownHard.sourceDefect.ids)   // 본문은 polygon이라 하나 원본이 깨졌다
+const MULTI = new Set(truth.knownHard.psnRadius.ids)        // 정답표는 중심 1개만 기록, 파서는 전부
+
+test('정답표 전수: 문형 판정이 일치한다 (원본 결함 건 제외)', () => {
   const wrong = []
   for (const t of truth.items) {
+    if (DEFECT.has(t.id)) continue
     const got = parsePositionText(rawById.get(t.id) || '').kind
     if (got !== expectedKind(t.shape)) wrong.push(`${t.id}: 정답 ${t.shape} → ${expectedKind(t.shape)}, 파서 ${got}`)
   }
   assert.deepEqual(wrong, [], `문형 불일치 ${wrong.length}건\n${wrong.join('\n')}`)
 })
 
-test('정답표 전수: 좌표 개수가 일치한다 (호·반원·제외구역 9건 제외)', () => {
-  const skip = new Set(truth.knownHard.arcOrExclusion.ids)
+test('정답표 전수: 좌표 개수가 일치한다 (호·반원 9건, 다중 중심 3건 제외)', () => {
+  const skip = new Set([...truth.knownHard.arcOrExclusion.ids, ...MULTI, ...DEFECT])
   const wrong = []
   for (const t of truth.items) {
     if (skip.has(t.id) || !expectedKind(t.shape)) continue
     const got = parsePositionText(rawById.get(t.id) || '')
-    // 다각형은 중복 꼭짓점을 제거하므로 정답표보다 적을 수 있다. 그 외는 정확히 같아야 한다.
-    if (t.shape === 'polygon') assert.ok(got.coords.length <= t.coordTokens.length, `${t.id}`)
-    else if (got.coords.length !== t.coordTokens.length) {
+    if (got.coords.length !== t.coordTokens.length) {
       wrong.push(`${t.id} (${t.shape}): 정답 ${t.coordTokens.length}개, 파서 ${got.coords.length}개`)
     }
   }
   assert.deepEqual(wrong, [], `좌표 개수 불일치 ${wrong.length}건\n${wrong.join('\n')}`)
+})
+
+test('다중 중심 NOTAM은 정답표보다 많이 잡는다 — 적으면 구역을 놓친 것이다', () => {
+  for (const id of MULTI) {
+    const got = parsePositionText(rawById.get(id) || '')
+    assert.ok(got.coords.length >= t_count(id), `${id}: 파서 ${got.coords.length}개`)
+  }
+  function t_count(id) { return (truth.items.find((x) => x.id === id).coordTokens || []).length }
 })
 
 test('정답표 전수: 반경·폭이 일치한다 (호·반원·제외구역 9건 제외)', () => {
@@ -324,13 +363,31 @@ test('알려진 어려운 건은 안전한 쪽으로 간다', () => {
   for (const id of truth.knownHard.coordinateIsNotPosition.ids) {
     assert.equal(parsePositionText(rawById.get(id)).kind, null, id)
   }
-  // 원본 결함(꼭짓점 부족) — 본문에서 도형을 만들지 않는다
-  for (const id of truth.knownHard.sourceDefect.ids) {
-    assert.equal(parsePositionText(rawById.get(id)).kind, null, id)
+  // 원본 결함(꼭짓점 중복) — 도형을 만들지 않고 결함으로 표시한다
+  for (const id of DEFECT) {
+    const got = parsePositionText(rawById.get(id))
+    assert.equal(got.kind, null, id)
+    assert.equal(got.defective, true, id)
   }
   // 호·반원·제외구역 — 근사 표시가 붙는다
   for (const id of truth.knownHard.arcOrExclusion.ids) {
     assert.equal(parsePositionText(rawById.get(id)).approximated, true, id)
+  }
+})
+
+```
+
+**아래 테스트는 Task 3이 끝난 뒤 같은 파일에 덧붙인다.** `resolveNotamGeometry`가 아직 없어서 지금 넣으면 파일 전체가 import 오류로 죽는다.
+
+```js
+// Task 3 완료 후 추가. 상단 import에 resolveNotamGeometry를 더한다.
+test('결함·근사 건은 Q줄 원으로 넓게 덮인다', () => {
+  // 삼각형(일부만 덮음)이나 잘못된 반경을 내보내지 않는다는 확인.
+  for (const id of [...DEFECT, ...truth.knownHard.arcOrExclusion.ids]) {
+    const r = resolveNotamGeometry({ rawText: rawById.get(id), kmlGeometry: null })
+    if (r.source === 'none') continue // Q줄이 없으면 위치 확인 불가 — 그것도 안전한 결말
+    assert.equal(r.source, 'q', `${id}: source가 ${r.source}`)
+    assert.equal(r.approximated, true, id)
   }
 })
 ```
@@ -525,17 +582,25 @@ function closeIfRing(geometry) {
 export function resolveNotamGeometry({ rawText, kmlGeometry }) {
   const q = qCircleFromRawText(rawText)
   const text = parsePositionText(rawText)
+  const qGeometry = () => (q ? circleRing(q, q.radiusNm * M_PER_NM) : null)
 
   let fromText = null
-  if (text.kind === 'circle' && text.coords.length && text.radiusM != null) fromText = circleRing(text.coords[0], text.radiusM)
-  else if (text.kind === 'polygon') fromText = polygonFrom(text.coords)
+  if (text.kind === 'circle' && text.coords.length && text.radiusM != null) {
+    // 중심이 여럿이면 전부 담는다(크레인 2기 등). polygonsOf()가 MultiPolygon을 이미 처리한다.
+    const rings = text.coords.map((c) => circleRing(c, text.radiusM).coordinates)
+    fromText = rings.length === 1 ? { type: 'Polygon', coordinates: rings[0] } : { type: 'MultiPolygon', coordinates: rings }
+  } else if (text.kind === 'polygon') fromText = polygonFrom(text.coords)
   else if (text.kind === 'corridor') fromText = { type: 'LineString', coordinates: text.coords.map((p) => [p.lon, p.lat]) }
 
-  // 바깥 형상 자체가 호·반원이면 본문 해석을 버리고 Q줄 원을 쓴다(안전한 상한).
-  if (fromText && text.approximated && text.kind === 'circle' && q) {
-    return { geometry: circleRing(q, q.radiusNm * M_PER_NM), bufferNm: null, source: 'text', reason: null, approximated: true }
-  }
-  if (fromText && withinQCircle(fromText, q)) {
+  // 정확히 못 그리는 두 경우는 Q줄 원으로 넓게 덮는다.
+  //  (1) 바깥 형상 자체가 호·반원 — 본문 해석이 엉뚱한 반경을 집는다(E3260/26은 제외구역의 1.5NM을 집는다)
+  //  (2) 원본 결함으로 꼭짓점을 잃은 다각형 — KML도 같은 결함이라 내려갈 곳이 없다
+  const needsQ = (fromText && text.approximated && text.kind === 'circle') || text.defective
+  if (needsQ) {
+    const qGeo = qGeometry()
+    // Q줄이 없으면 억지로 그리지 않는다. 아래 KML → unresolved 경로로 내려간다.
+    if (qGeo) return { geometry: qGeo, bufferNm: null, source: 'q', reason: null, approximated: true }
+  } else if (fromText && withinQCircle(fromText, q)) {
     return { geometry: fromText, bufferNm: text.bufferNm ?? null, source: 'text', reason: null, approximated: text.approximated }
   }
 
@@ -546,7 +611,7 @@ export function resolveNotamGeometry({ rawText, kmlGeometry }) {
     geometry: null,
     bufferNm: null,
     source: 'none',
-    reason: fromText ? 'text_outside_q_circle' : 'no_position_stated',
+    reason: text.defective ? 'source_defect_no_q' : fromText ? 'text_outside_q_circle' : 'no_position_stated',
     approximated: false,
   }
 }
@@ -576,7 +641,30 @@ git commit -m "feat(notam): 본문·Q줄·KML 순으로 위치를 결정한다"
 **Files:**
 - Modify: `backend/src/parsers/notam-parser.js`
 - Modify: `backend/src/processors/notam-processor.js`
-- Test: `backend/test/notam-parser.test.js` (없으면 생성)
+- Modify: `backend/test/notam-parser.test.js` (**이미 존재한다 — 185줄. 덮어쓰지 말고 append**)
+
+**기존 테스트 처리 (먼저 읽을 것):**
+
+`backend/test/notam-parser.test.js`는 `parseNotamKml`을 **배열로** 쓰는 곳이 두 군데 있다(`:43`, `:80`). 반환 형태를 객체로 바꾸므로 둘 다 고쳐야 한다:
+
+```js
+const recs = parseNotamKml(KML)          // → const { items: recs } = parseNotamKml(KML)
+const recs = parseNotamKml(broken)       // → const { items: recs } = parseNotamKml(broken)
+```
+
+그리고 `:73`의 이 단언은 **우리 변경이 성공하면 반드시 깨진다**:
+
+```js
+assert.equal(l.geometry.type, 'LineString')   // D1181/26
+```
+
+`D1181/26`은 본문에 `AREA BOUNDED BY` 다각형이 있어 이제 `Polygon`이 된다. **코드가 틀린 게 아니라 단언이 낡았다.** 이렇게 바꾼다:
+
+```js
+// 본문 좌표로 면을 만든다. 이전에는 KML LineString을 그대로 실어 경로 판정에서 빠졌다.
+assert.equal(l.geometry.type, 'Polygon')
+assert.equal(l.geometrySource, 'text')
+```
 
 **Interfaces:**
 - Consumes: Task 3의 `resolveNotamGeometry`.
@@ -586,17 +674,11 @@ git commit -m "feat(notam): 본문·Q줄·KML 순으로 위치를 결정한다"
 
 **주의:** `parseNotamKml`의 반환 형태가 바뀐다. 호출부는 `notam-processor.js` 한 곳이다. 먼저 `grep -rn "parseNotamKml" backend/` 로 확인하고 전부 고친다.
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [ ] **Step 1: 기존 테스트 파일 끝에 덧붙인다 (덮어쓰지 말 것)**
 
-`backend/test/notam-parser.test.js`:
+`backend/test/notam-parser.test.js` 맨 아래에 추가한다. 상단 import에 `readFileSync`/`fileURLToPath`가 없으면 함께 추가한다.
 
 ```js
-import { test } from 'node:test'
-import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { parseNotamKml } from '../src/parsers/notam-parser.js'
-
 const kml = readFileSync(fileURLToPath(new URL('./fixtures/notam-2026-07-26.kml', import.meta.url)), 'utf8')
 
 test('C)PERM NOTAM이 살아남는다', () => {
@@ -765,14 +847,22 @@ git commit -m "fix(notam): C)PERM을 살리고 유실을 집계하며 위치 결
 ```js
 import { routeIntervalInGeometry } from '../src/briefing/geo-time-match.js'
 
-// 닫힌 고리로 들어온 위험구역을 관통하면 걸려야 한다(이전에는 LineString이라 통째로 빠졌다)
-test('닫힌 구역을 관통하면 저촉이 잡힌다', () => {
+// KML이 LineString으로 주는 구역이 판정에 들어오는지 — 완성된 Polygon을 먹이면
+// 이미 통과하므로 과녁이 되지 않는다. 반드시 resolveNotamGeometry를 거쳐야 한다.
+test('KML LineString으로 온 구역을 관통하면 저촉이 잡힌다', () => {
+  const ring = [[127.0, 36.9], [127.2, 36.9], [127.2, 37.1], [127.0, 37.1], [127.0, 36.9]]
+  const resolved = resolveNotamGeometry({
+    rawText: 'Q)RKRR/QRDCA/IV/BO/W/000/999/3700N12710E020\nE)TEMPO DANGER AREA ACT',
+    kmlGeometry: { type: 'LineString', coordinates: ring },
+  })
+  assert.equal(resolved.geometry.type, 'Polygon', '닫힌 고리가 면이 되어야 한다')
+
   const axis = buildRouteAxis({ type: 'LineString', coordinates: [[126.9, 37.0], [127.3, 37.0]] })
   const zone = {
     id: 'D9999/26', category: 'danger', summary: 'TEMPO DANGER AREA ACT',
     valid_from: '2026-07-18T00:00:00Z', valid_to: '2026-07-19T00:00:00Z',
     altitude: { lower: 0, upper: 999, unit: 'FL' },
-    geometry: { type: 'Polygon', coordinates: [[[127.0, 36.9], [127.2, 36.9], [127.2, 37.1], [127.0, 37.1], [127.0, 36.9]]] },
+    geometry: resolved.geometry,
   }
   const { routeConflicts } = matchRouteNotams([zone], {
     axis, etd: '2026-07-18T09:00:00Z', eta: '2026-07-18T10:00:00Z', cruiseAltitudeFt: 9000, airports: [],
@@ -802,14 +892,16 @@ test('위치를 못 정한 건은 목록에서 사라지지 않는다', () => {
     valid_from: '2026-07-18T00:00:00Z', valid_to: '2026-07-19T00:00:00Z',
     altitude: { lower: 0, upper: 999, unit: 'FL' },
     geometry: null, geometrySource: 'none',
-    location: 'RKSS',
+    // 출·도착·교체 어디에도 속하지 않는 공항이어야 한다. 속하면 airportRole 때문에
+    // 지금 코드로도 이미 살아남아, 바꾸려는 continue 줄을 지나가지 않는다.
+    location: 'RKPU',
   }
   const { routeNotams, routeConflicts } = matchRouteNotams([unknown], {
     axis, etd: '2026-07-18T09:00:00Z', eta: '2026-07-18T10:00:00Z', cruiseAltitudeFt: 9000,
-    airports: [{ role: 'departure', icao: 'RKSS' }],
+    airports: [{ role: 'departure', icao: 'RKSS' }, { role: 'arrival', icao: 'RKPK' }],
   })
   const row = routeNotams.find((n) => n.id === 'D8888/26')
-  assert.ok(row, '목록에서 사라졌다')
+  assert.ok(row, '목록에서 사라졌다 — 조용한 누락은 정책 위반이다')
   assert.equal(row.positionStatus, 'unresolved')
   assert.equal(routeConflicts.length, 0, '위치 불명을 저촉으로 치면 안 된다')
 })
@@ -881,7 +973,7 @@ import { routeIntervalInGeometry, routeCorridorInGeometry, timeWindowsOverlap } 
         : routeIntervalInGeometry(ctx.axis, it.geometry)
 ```
 
-레코드에 위치 상태를 붙인다(`conflict` 계산 바로 위):
+레코드에 위치 상태를 붙인다. **위치는 `const interval = …` 바로 다음, `airportRole` 계산 앞에 둔다** — 아래 `continue` 줄에서 써야 하므로 그보다 먼저 선언되어야 한다(`const`는 선언 전 참조 시 ReferenceError):
 
 ```js
     // 위치를 못 정했으면 저촉으로 단정하지 않되 목록에서 빼지도 않는다(정책: 상태와 이유를 반환).
@@ -903,13 +995,21 @@ import { routeIntervalInGeometry, routeCorridorInGeometry, timeWindowsOverlap } 
       approximated: it.approximated ?? false,
 ```
 
-그리고 제외 조건(현재 39행)을 고친다. 위치 불명이면서 대상 공항이면 남겨야 한다:
+그리고 제외 조건(현재 39행)을 고친다. 위치를 못 정한 건은 걸러내지 않는다:
 
 ```js
     if (!interval.entered && !airportRole && positionStatus === 'resolved') continue
 ```
 
-**주의:** `positionStatus`를 이 줄보다 먼저 계산하도록 순서를 맞춘다.
+- [ ] **Step 3b: `briefing-composer.js`의 두 번째 호출을 확인한다**
+
+`matchRouteNotams`는 `backend/src/briefing/briefing-composer.js`에서 **두 번** 불린다 — NOTAM용(약 122행)과 상시 공역용(약 130행). `conflict`가 이제 `positionStatus === 'resolved'`를 요구하므로, 상시 공역 자료에 `geometry`가 없으면 저촉이 안 나온다.
+
+```bash
+grep -n "matchRouteNotams" -A 4 backend/src/briefing/briefing-composer.js
+```
+
+`airspaceZones`가 항상 `geometry`를 싣는지 확인한다. 안 싣는 경로가 있으면 `airspace-zones.js`에서 그 필드를 채우거나, 이 계획의 범위 밖으로 빼고 사용자에게 알린다. **조용히 저촉이 사라지게 두지 않는다.**
 
 - [ ] **Step 4: 위험기상 회귀를 확인한다**
 
@@ -1332,13 +1432,16 @@ git commit -m "feat(notam): 저촉 배너가 내용·구간·고도를 보여주
   test('저촉 배너가 내용·구간·고도를 보여주고 위치 미확인을 분리한다', async ({ page }) => {
     await createBriefing(page)
 
-    // 무엇인지가 배너에서 바로 보인다
-    await expect(page.getByText('불꽃놀이 실시 — 해당 공역 진입 금지', { exact: true })).toBeVisible()
-    await expect(page.getByText('출발 후 12–18NM · SFC–200FT AGL', { exact: true })).toBeVisible()
+    // 같은 요약문이 ⑤ 섹션의 NotamCell에도 렌더된다 — 범위를 좁히지 않으면
+    // Playwright가 strict mode 위반으로 죽는다(실패가 아니라 오류로 끝나 원인이 안 보인다).
+    const banner = page.locator('.bv-banner-notam')
+    await expect(banner.getByText('불꽃놀이 실시 — 해당 공역 진입 금지', { exact: true })).toBeVisible()
+    await expect(banner.getByText('출발 후 12–18NM · SFC–200FT AGL', { exact: true })).toBeVisible()
 
     // 위치 미확인은 빨간 저촉과 섞이지 않는다
-    await expect(page.getByText('위치를 확인하지 못한 제한 — 직접 확인 필요', { exact: true })).toBeVisible()
-    await expect(page.getByText('구역 좌표 없음', { exact: true })).toBeVisible()
+    const grey = page.locator('.bv-banner-unresolved')
+    await expect(grey.getByText('위치를 확인하지 못한 제한 — 직접 확인 필요', { exact: true })).toBeVisible()
+    await expect(grey.getByText('구역 좌표 없음', { exact: true })).toBeVisible()
 
     // 누르면 ⑤ 섹션으로 이동한다
     await page.getByRole('button', { name: /불꽃놀이 실시/ }).click()
@@ -1401,6 +1504,18 @@ git commit -m "test(notam): 저촉 배너와 위치 미확인 분리를 브라�
 | §8 화면 표시 | Task 7 |
 | §10.1 정답표 전수 대조 | Task 2 |
 | §10.4 브라우저 계약 | Task 8 |
+
+**계획 검토(reviewer)에서 고친 것**
+
+- `backend/test/notam-parser.test.js`는 **이미 존재하며**(185줄) `parseNotamKml`을 배열로 쓰는 곳이 `:43`, `:80` 두 군데다. 계획대로 파일을 새로 썼으면 기존 테스트가 지워졌을 것이다. Task 4를 append로 바꾸고 두 호출부와 `:73`의 `D1181/26` 단언(이제 `Polygon`이 된다)을 명시했다.
+- Task 1의 `E3296/26` 테스트가 **지어낸 문자열**이었다. 실제 데이터는 중복 제거 후에도 점이 3개라 `< 3` 규칙에 안 걸린다. 실제 본문으로 교체하고, 판정 기준을 개수에서 **중복 여부**로 바꿨다(415건 실측 오탐 0).
+- Task 5의 테스트 3개 중 2개가 **고치기 전에 이미 통과**했다. 완성된 Polygon을 먹이는 테스트는 `resolveNotamGeometry`를 거치게 바꿨고, 위치불명 테스트는 경로 공항이 아닌 `RKPU`로 바꿔 실제로 `continue` 줄을 지나가게 했다.
+- `positionStatus` 위치가 두 곳으로 모순돼 있었다(`conflict` 위 vs `continue` 앞). `const interval` 바로 뒤 한 곳으로 고정했다.
+- `/\bARC|SEMICIRCLE|EXC/`의 `\b`는 죽은 조건이다 — 교대가 느슨하게 묶여 `ARC`에만 걸리는데 공백을 지운 뒤엔 단어 경계가 없다(9건 전부 false). 제거했다.
+- 호·반원 대체 경로가 Q줄이 없을 때 **엉뚱한 반경의 원**을 `source:'text'`로 내보냈다(`E3260/26`은 제외구역의 1.5NM을 집는다). Q줄이 없으면 KML로 내려가게 고치고, 출처를 `'q'`로 분리했다.
+- 다중 중심(`A0798/26` 크레인 2기)에서 `coords[0]`만 써 나머지를 버렸다. `MultiPolygon`으로 전부 담는다.
+- Task 8의 Playwright 선택자가 ⑤ 섹션의 같은 문구와 중복 매칭돼 strict mode 오류로 죽는다. 배너로 범위를 좁혔다.
+- `matchRouteNotams`는 `briefing-composer.js`에서 **두 번** 불린다(상시 공역용). `conflict`에 `positionStatus` 조건을 넣었으므로 확인 단계를 추가했다.
 
 **계획 작성 중 확인해서 고친 것**
 
