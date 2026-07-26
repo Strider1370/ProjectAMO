@@ -1,6 +1,7 @@
 // 경로상 NOTAM 매칭(사실 계산). geo-time-match 코어 재사용 — hazardLevel() 심각도 그라데이션은 쓰지 않음.
 import { routeIntervalInGeometry, routeCorridorInGeometry, timeWindowsOverlap } from './geo-time-match.js'
 import { classifyEncounter } from './hazard-matcher.js'
+import { scheduleStateOverWindow } from './schedule-window.js'
 
 const HIGH_FT = 99999
 
@@ -34,6 +35,11 @@ export function matchRouteNotams(items, ctx) {
     const validityKnown = Number.isFinite(Date.parse(it.valid_from)) && Number.isFinite(Date.parse(it.valid_to))
     const timeStatus = !flightTimeKnown ? 'not_provided' : !validityKnown ? 'unavailable' : 'matched'
     if (timeStatus === 'matched' && !timeWindowsOverlap(ctx.etd, ctx.eta, it.valid_from, it.valid_to)) continue
+    // B)~C)는 공지가 살아있는 기간, D)는 그 안에서 실제로 켜지는 시간대다.
+    // D)를 안 보면 몇 달 내내 발효 중이 된다(실측 319건).
+    const scheduleState = timeStatus === 'matched'
+      ? scheduleStateOverWindow({ scheduleText: it.schedule_text, validFrom: it.valid_from, validTo: it.valid_to, etd: ctx.etd, eta: ctx.eta })
+      : 'unknown'
     // 회랑(선+폭)은 버퍼 판정으로, 면은 기존 판정으로.
     const interval = !it.geometry ? { entered: false }
       : it.bufferNm != null && it.geometry.type === 'LineString'
@@ -56,8 +62,9 @@ export function matchRouteNotams(items, ctx) {
     const passesAltitude = !verticalKnown || encounter === 'on'
     // 저촉 = 공역제한 계열 ∩ 발효중 ∩ 경로가 폴리곤을 계획고도에서 통과(경로 교차가 있어야 함).
     const comparisonStatus = timeStatus === 'matched' && verticalKnown ? 'warn' : 'undetermined'
-    const conflict = positionStatus === 'resolved' && comparisonStatus === 'warn'
-      && RESTRICTION_CATEGORIES.has(it.category) && interval.entered && passesAltitude
+    const conflict = positionStatus === 'resolved' && scheduleState !== 'outside'
+      && comparisonStatus === 'warn' && RESTRICTION_CATEGORIES.has(it.category)
+      && interval.entered && passesAltitude
     routeNotams.push({
       id: it.id,
       category: it.category,
@@ -77,6 +84,7 @@ export function matchRouteNotams(items, ctx) {
       verticalKnown,
       activeAtEtd: timeStatus === 'matched' && Date.parse(it.valid_from) <= Date.parse(ctx.etd),
       timeStatus,
+      scheduleState, // 'active' | 'outside' | 'unknown'
       comparisonStatus,
       conflict,
       positionStatus,

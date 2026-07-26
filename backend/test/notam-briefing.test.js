@@ -178,3 +178,24 @@ test('위치를 못 정한 건은 목록에서 사라지지 않는다', () => {
   assert.equal(row.positionStatus, 'unresolved')
   assert.equal(routeConflicts.length, 0, '위치 불명을 저촉으로 치면 안 된다')
 })
+
+test('D) 시간대 밖 비행이면 저촉이 아니다', () => {
+  const axis = buildRouteAxis({ type: 'LineString', coordinates: [[126.9, 37.0], [127.3, 37.0]] })
+  const zone = {
+    id: 'Z9999/26', category: 'firing', summary: 'FIREWORKS WILL TAKE PLACE',
+    valid_from: '2026-07-25T10:00:00Z', valid_to: '2026-08-29T12:00:00Z',
+    schedule_text: 'AUG 01-02 1000-1200',
+    altitude: { lower: 0, upper: 999, unit: 'FL' },
+    geometry: { type: 'Polygon', coordinates: [[[127.0, 36.9], [127.2, 36.9], [127.2, 37.1], [127.0, 37.1], [127.0, 36.9]]] },
+  }
+  const inside = matchRouteNotams([zone], {
+    axis, etd: '2026-08-01T10:10:00Z', eta: '2026-08-01T11:10:00Z', cruiseAltitudeFt: 9000, airports: [],
+  })
+  assert.equal(inside.routeConflicts.length, 1, '시간대 안이면 저촉이어야 한다')
+
+  const outside = matchRouteNotams([zone], {
+    axis, etd: '2026-08-05T02:00:00Z', eta: '2026-08-05T03:00:00Z', cruiseAltitudeFt: 9000, airports: [],
+  })
+  assert.equal(outside.routeConflicts.length, 0, '시간대 밖이면 저촉이 아니어야 한다')
+  assert.equal(outside.routeNotams[0].scheduleState, 'outside')
+})
