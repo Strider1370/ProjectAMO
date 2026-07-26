@@ -1,0 +1,6428 @@
+{
+ "_about": "NOTAM 위치 서술 정답표. 파서를 보지 않고 원문만 읽어 작성했다. 이 스냅샷 전용이며 자료가 바뀌면 다시 만들어야 한다.",
+ "snapshot": {
+  "source": "KOCA xNotam KML",
+  "fetchedAt": "2026-07-26T04:31:25Z",
+  "kml": "notam-2026-07-26.kml",
+  "placemarks": 415
+ },
+ "method": {
+  "input": "KML CDATA의 NOTAM 원문만. 파싱 결과(latest.json)는 쓰지 않았다.",
+  "rule": "좌표는 글자 그대로 복사. 도분초→소수 변환은 코드가 한다.",
+  "crossCheck": {
+   "sampled": 60,
+   "exactAgreement": 59,
+   "rate": "98.3%",
+   "disagreed": [
+    "A0831/26"
+   ],
+   "note": "A0831/26은 장애물 PSN+RADIUS 표기 — point인지 circle인지 판단이 갈렸다."
+  }
+ },
+ "knownHard": {
+  "psnRadius": {
+   "ids": [
+    "A0798/26",
+    "A0831/26",
+    "A0907/26"
+   ],
+   "note": "CIRCLE 단어 없이 PSN+RADIUS로 원을 서술한다."
+  },
+  "arcOrExclusion": {
+   "ids": [
+    "E3260/26",
+    "D1768/26",
+    "D1842/26",
+    "E3357/26",
+    "E3358/26",
+    "E3512/26",
+    "E3513/26",
+    "E3514/26",
+    "E3515/26"
+   ],
+   "note": "호·반원·제외구역(EXC)을 포함한다. 정확히 그릴 수 없으므로 넓게 덮는 쪽으로 처리한다."
+  },
+  "coordinateIsNotPosition": {
+   "ids": [
+    "Z0479/26"
+   ],
+   "note": "VORTAC 사용불가 NOTAM. 본문의 유일한 좌표 3705N12701E는 대체 웨이포인트이지 이 NOTAM의 위치가 아니다. 좌표가 있다고 위치로 삼으면 안 되는 반례."
+  },
+  "sourceDefect": {
+   "ids": [
+    "E3296/26"
+   ],
+   "note": "꼭짓점 하나가 중복되어 4각형이 3개 점으로 온다. 거의 동일한 E3284/26에는 네 번째 점(355433N1293008E)이 있다. 원본 자료의 결함이다."
+  },
+  "duplicateAreas": {
+   "ids": [
+    "E3312/26",
+    "E3313/26",
+    "E3314/26"
+   ],
+   "note": "같은 다각형에 시간창만 다른 세 건. 정상이다."
+  }
+ },
+ "items": [
+  {
+   "id": "A0559/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3511N12856E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0686/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3331N12630E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0720/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3511N12856E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0740/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3733N12648E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0746/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3643N12730E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0756/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3643N12730E060",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0798/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345817.12N1262254.71E"
+   ],
+   "radius": {
+    "value": 40,
+    "unit": "M"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "1.PSN:345817.12N1262254.71E\n\n  RADIUS:40M",
+   "note": "multiple areas: 2 (two cranes each with own PSN+RADIUS+HGT); recorded the first"
+  },
+  {
+   "id": "A0800/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3331N12630E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0831/26",
+   "shape": "circle",
+   "coordTokens": [
+    "333013N1262923E"
+   ],
+   "radius": {
+    "value": 30,
+    "unit": "M"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3330N12629E005",
+   "evidence": "PSN : 333013N1262923E\n\n  2. RADIUS : 30M",
+   "note": ""
+  },
+  {
+   "id": "A0858/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0876/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0894/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0905/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "345839.64N 1262251.89E",
+    "345839.64N 1262300.25E",
+    "345833.09N 1262300.25E",
+    "345833.09N 1262252.99E",
+    "345833.51N 1262252.24E",
+    "345833.93N 1262251.89E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "WIP IN AREA BOUNDED BY 1. 345839.64N 1262251.89E 2. 345839.64N 1262300.25E 3. 345833.09N 1262300.25E 4. 345833.09N 1262252.99E 5. 345833.51N 1262252.24E 6. 345833.93N 1262251.89E",
+   "note": ""
+  },
+  {
+   "id": "A0906/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0907/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345941.05N1262312.70E",
+    "345940.38N1262314.33E"
+   ],
+   "radius": {
+    "value": 20,
+    "unit": "M"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "1. PSN:345941.05N1262312.70E, 345940.38N1262314.33E\n\n2. HGT: 28M AGL\n\n3. RADIUS : 20M AGL",
+   "note": "PSN field lists two coordinate points sharing a single HGT/RADIUS; unclear if one crane or two, both centre tokens recorded"
+  },
+  {
+   "id": "A0908/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3733N12648E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0909/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3733N12648E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A0956/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3728N12626E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A1003/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "372850.8N1262507.5E",
+    "372851.6N1262509.1E",
+    "372848.9N1262512.6E",
+    "372847.8N1262510.6E",
+    "372847.9N1262510.0E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3728N12626E005",
+   "evidence": "BOUNDED BY 372850.8N1262507.5E-372851.6N1262509.1E-372848.9N1262512.6E-372847.8N1262510.6E-372847.9N1262510.0E",
+   "note": "E) also states MAX RADIUS 20.0M in addition to the bounded area; polygon taken as the defining shape since an explicit bounded area is given"
+  },
+  {
+   "id": "A1019/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3804N12840E005",
+   "evidence": "",
+   "note": "mentions a building north of the airport but states no position/coordinates for it"
+  },
+  {
+   "id": "A1024/26",
+   "shape": "point",
+   "coordTokens": [
+    "364254.07N 1273014.94E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3643N12730E005",
+   "evidence": "PSN : 364254.07N 1273014.94E",
+   "note": "obstacle position only, no radius stated"
+  },
+  {
+   "id": "A1026/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350011.20N1262256.34E",
+    "350014.89N1262256.31E",
+    "350014.90N1262259.23E",
+    "350011.22N1262259.26E",
+    "350011.20N1262256.34E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "IN AREA BOUNDED BY 350011.20N1262256.34E-350014.89N1262256.31E-350014.90N1262259.23E-350011.22N1262259.26E-350011.20N1262256.34E",
+   "note": ""
+  },
+  {
+   "id": "A1027/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "A1044/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3511N12856E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C0783/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3726N12758E060",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C0812/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3647N12928E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C0813/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3647N12928E025",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C0950/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3727N12707E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1039/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12921E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1040/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12921E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1085/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3559N12925E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1116/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12921E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1149/26",
+   "shape": "circle",
+   "coordTokens": [
+    "332143N1264336E"
+   ],
+   "radius": {
+    "value": 0.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3322N12644E001",
+   "evidence": "A CIRCLE RADIUS 0.7NM CENTERED ON 332143N1264336E",
+   "note": ""
+  },
+  {
+   "id": "C1186/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3559N12925E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1187/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3324N12643E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1188/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3324N12643E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1204/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3508N12649E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1296/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3324N12643E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1317/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3324N12643E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1367/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3505N12804E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1376/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3505N12804E060",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "C1388/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3324N12643E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "D1032/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370905N1271906E"
+   ],
+   "radius": {
+    "value": 1.07,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3709N12719E002",
+   "evidence": "A CIRCLE RADIUS 1.07NM CENTERED ON 370905N1271906E",
+   "note": ""
+  },
+  {
+   "id": "D1136/26",
+   "shape": "circle",
+   "coordTokens": [
+    "361209N1282134E"
+   ],
+   "radius": {
+    "value": 0.27,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3612N12822E001",
+   "evidence": "A CIRCLE RADIUS 0.27NM CENTERED ON 361209N1282134E",
+   "note": ""
+  },
+  {
+   "id": "D1140/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371012N1270738E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3710N12708E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 371012N1270738E",
+   "note": ""
+  },
+  {
+   "id": "D1141/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370956N1270741E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3710N12708E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 370956N1270741E",
+   "note": ""
+  },
+  {
+   "id": "D1142/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371003N1270725E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3710N12707E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 371003N1270725E",
+   "note": ""
+  },
+  {
+   "id": "D1181/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "372333N1291339E",
+    "372318N1291408E",
+    "373951N1300407E",
+    "374150N1300200E",
+    "372333N1291339E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3732N12939E023",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 372333N1291339E-372318N1291408E-373951N1300407E-374150N1300200E-372333N1291339E",
+   "note": "last coordinate wraps across a line break in the raw text ('37233' + newline + '3N1291339E'); reconstructed as 372333N1291339E, which closes the loop matching the first point"
+  },
+  {
+   "id": "D1182/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353108N1292225E"
+   ],
+   "radius": {
+    "value": 1.6,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3531N12922E002",
+   "evidence": "A CIRCLE RADIUS 1.6NM CENTERED ON 353108N1292225E",
+   "note": ""
+  },
+  {
+   "id": "D1183/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353017N1292258E"
+   ],
+   "radius": {
+    "value": 1.6,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3530N12923E002",
+   "evidence": "A CIRCLE RADIUS 1.6NM CENTERED ON 353017N1292258E",
+   "note": ""
+  },
+  {
+   "id": "D1184/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352731N1292153E"
+   ],
+   "radius": {
+    "value": 1.6,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3528N12922E002",
+   "evidence": "A CIRCLE RADIUS 1.6NM CENTERED ON 352731N1292153E",
+   "note": ""
+  },
+  {
+   "id": "D1185/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352327N1273349E"
+   ],
+   "radius": {
+    "value": 3.3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3523N12734E004",
+   "evidence": "A CIRCLE RADIUS 3.3NM CENTERED ON 352327N1273349E",
+   "note": ""
+  },
+  {
+   "id": "D1186/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351905N1273148E"
+   ],
+   "radius": {
+    "value": 3.3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3519N12732E004",
+   "evidence": "A CIRCLE RADIUS 3.3NM CENTERED ON 351905N1273148E",
+   "note": ""
+  },
+  {
+   "id": "D1187/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351559N1273418E"
+   ],
+   "radius": {
+    "value": 3.3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3516N12734E004",
+   "evidence": "A CIRCLE RADIUS 3.3NM CENTERED ON 351559N1273418E",
+   "note": ""
+  },
+  {
+   "id": "D1188/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352043N1273851E"
+   ],
+   "radius": {
+    "value": 3.3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3521N12739E004",
+   "evidence": "A CIRCLE RADIUS 3.3NM CENTERED ON 352043N1273851E",
+   "note": ""
+  },
+  {
+   "id": "D1189/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352114N1274416E"
+   ],
+   "radius": {
+    "value": 3.3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3521N12744E004",
+   "evidence": "A CIRCLE RADIUS 3.3NM CENTERED ON 352114N1274416E",
+   "note": ""
+  },
+  {
+   "id": "D1190/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351607N1274215E"
+   ],
+   "radius": {
+    "value": 3.3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3516N12742E004",
+   "evidence": "A CIRCLE RADIUS 3.3NM CENTERED ON 351607N1274215E",
+   "note": ""
+  },
+  {
+   "id": "D1191/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350622N1273717E"
+   ],
+   "radius": {
+    "value": 1.1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3506N12737E002",
+   "evidence": "A CIRCLE RADIUS 1.1NM CENTERED ON 350622N1273717E",
+   "note": ""
+  },
+  {
+   "id": "D1212/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353548N1290510E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12905E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353548N1290510E",
+   "note": ""
+  },
+  {
+   "id": "D1213/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353540N1290552E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12906E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353540N1290552E",
+   "note": ""
+  },
+  {
+   "id": "D1214/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353555N1290625E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12906E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353555N1290625E",
+   "note": ""
+  },
+  {
+   "id": "D1215/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353631N1290653E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3537N12907E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353631N1290653E",
+   "note": ""
+  },
+  {
+   "id": "D1216/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353710N1290655E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3537N12907E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353710N1290655E",
+   "note": ""
+  },
+  {
+   "id": "D1217/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353719N1290736E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3537N12908E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353719N1290736E",
+   "note": ""
+  },
+  {
+   "id": "D1218/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353558N1290743E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12908E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353558N1290743E",
+   "note": ""
+  },
+  {
+   "id": "D1219/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353531N1290724E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12907E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353531N1290724E",
+   "note": ""
+  },
+  {
+   "id": "D1220/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353512N1290633E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12907E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353512N1290633E",
+   "note": ""
+  },
+  {
+   "id": "D1221/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353446N1290611E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12906E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353446N1290611E",
+   "note": ""
+  },
+  {
+   "id": "D1222/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353421N1290610E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3534N12906E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353421N1290610E",
+   "note": ""
+  },
+  {
+   "id": "D1223/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353355N1290551E"
+   ],
+   "radius": {
+    "value": 0.8,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3534N12906E001",
+   "evidence": "A CIRCLE RADIUS 0.8NM CENTERED ON 353355N1290551E",
+   "note": ""
+  },
+  {
+   "id": "D1224/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353402N1290440E"
+   ],
+   "radius": {
+    "value": 0.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3534N12905E001",
+   "evidence": "A CIRCLE RADIUS 0.7NM CENTERED ON 353402N1290440E",
+   "note": ""
+  },
+  {
+   "id": "D1225/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353436N1290524E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12905E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353436N1290524E",
+   "note": ""
+  },
+  {
+   "id": "D1226/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353455N1290526E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12905E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353455N1290526E",
+   "note": ""
+  },
+  {
+   "id": "D1227/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353507N1290516E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12905E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353507N1290516E",
+   "note": ""
+  },
+  {
+   "id": "D1228/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353517N1290453E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12905E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353517N1290453E",
+   "note": ""
+  },
+  {
+   "id": "D1229/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353519N1290409E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12904E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353519N1290409E",
+   "note": ""
+  },
+  {
+   "id": "D1230/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353535N1290400E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12904E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353535N1290400E",
+   "note": ""
+  },
+  {
+   "id": "D1231/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353558N1290421E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12904E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353558N1290421E",
+   "note": ""
+  },
+  {
+   "id": "D1232/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353611N1290421E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12904E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353611N1290421E",
+   "note": ""
+  },
+  {
+   "id": "D1233/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353650N1290347E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3537N12904E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353650N1290347E",
+   "note": ""
+  },
+  {
+   "id": "D1234/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353701N1290330E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3537N12904E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353701N1290330E",
+   "note": ""
+  },
+  {
+   "id": "D1235/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353707N1290304E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3537N12903E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353707N1290304E",
+   "note": ""
+  },
+  {
+   "id": "D1236/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353730N1290313E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3538N12903E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353730N1290313E",
+   "note": ""
+  },
+  {
+   "id": "D1237/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353723N1290340E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3537N12904E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353723N1290340E",
+   "note": ""
+  },
+  {
+   "id": "D1238/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353714N1290357E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3537N12904E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353714N1290357E",
+   "note": ""
+  },
+  {
+   "id": "D1239/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353712N1290709E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3537N12907E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353712N1290709E",
+   "note": ""
+  },
+  {
+   "id": "D1240/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353404N1290624E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3534N12906E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353404N1290624E",
+   "note": ""
+  },
+  {
+   "id": "D1241/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353531N1290431E"
+   ],
+   "radius": {
+    "value": 1.08,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12905E002",
+   "evidence": "A CIRCLE RADIUS 1.08NM CENTERED ON 353531N1290431E",
+   "note": ""
+  },
+  {
+   "id": "D1255/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352038N1284021E"
+   ],
+   "radius": {
+    "value": 0.44,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3521N12840E001",
+   "evidence": "A CIRCLE RADIUS 0.44NM CENTERED ON 352038N1284021E",
+   "note": ""
+  },
+  {
+   "id": "D1256/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352003N1284019E"
+   ],
+   "radius": {
+    "value": 0.33,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3520N12840E001",
+   "evidence": "A CIRCLE RADIUS 0.33NM CENTERED ON 352003N1284019E",
+   "note": ""
+  },
+  {
+   "id": "D1257/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351932N1284021E"
+   ],
+   "radius": {
+    "value": 0.33,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3520N12840E001",
+   "evidence": "A CIRCLE RADIUS 0.33NM CENTERED ON 351932N1284021E",
+   "note": ""
+  },
+  {
+   "id": "D1258/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351854N1284033E"
+   ],
+   "radius": {
+    "value": 0.54,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3519N12841E001",
+   "evidence": "A CIRCLE RADIUS 0.54NM CENTERED ON 351854N1284033E",
+   "note": ""
+  },
+  {
+   "id": "D1259/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351838N1284000E"
+   ],
+   "radius": {
+    "value": 0.33,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3519N12840E001",
+   "evidence": "A CIRCLE RADIUS 0.33NM CENTERED ON 351838N1284000E",
+   "note": ""
+  },
+  {
+   "id": "D1260/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351834N1283947E"
+   ],
+   "radius": {
+    "value": 0.38,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3519N12840E001",
+   "evidence": "A CIRCLE RADIUS 0.38NM CENTERED ON 351834N1283947E",
+   "note": ""
+  },
+  {
+   "id": "D1261/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351759N1284044E"
+   ],
+   "radius": {
+    "value": 0.44,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3518N12841E001",
+   "evidence": "A CIRCLE RADIUS 0.44NM CENTERED ON 351759N1284044E",
+   "note": ""
+  },
+  {
+   "id": "D1262/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351753N1284126E"
+   ],
+   "radius": {
+    "value": 0.38,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3518N12841E001",
+   "evidence": "A CIRCLE RADIUS 0.38NM CENTERED ON 351753N1284126E",
+   "note": ""
+  },
+  {
+   "id": "D1263/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351824N1284132E"
+   ],
+   "radius": {
+    "value": 0.27,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3518N12842E001",
+   "evidence": "A CIRCLE RADIUS 0.27NM CENTERED ON 351824N1284132E",
+   "note": ""
+  },
+  {
+   "id": "D1324/26",
+   "shape": "circle",
+   "coordTokens": [
+    "354249N1292832E"
+   ],
+   "radius": {
+    "value": 2.8,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3543N12929E003",
+   "evidence": "A CIRCLE RADIUS 2.8NM CENTERED ON 354249N1292832E",
+   "note": ""
+  },
+  {
+   "id": "D1325/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353620N1290439E"
+   ],
+   "radius": {
+    "value": 0.27,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12905E001",
+   "evidence": "A CIRCLE RADIUS 0.27NM CENTERED ON 353620N1290439E",
+   "note": ""
+  },
+  {
+   "id": "D1326/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353542N1290428E"
+   ],
+   "radius": {
+    "value": 0.27,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12904E001",
+   "evidence": "A CIRCLE RADIUS 0.27NM CENTERED ON 353542N1290428E",
+   "note": ""
+  },
+  {
+   "id": "D1327/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353438N1290457E"
+   ],
+   "radius": {
+    "value": 0.27,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12905E001",
+   "evidence": "A CIRCLE RADIUS 0.27NM CENTERED ON 353438N1290457E",
+   "note": ""
+  },
+  {
+   "id": "D1349/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370221N1292453E"
+   ],
+   "radius": {
+    "value": 0.37,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3702N12925E001",
+   "evidence": "A CIRCLE RADIUS 0.37NM CENTERED ON 370221N1292453E",
+   "note": ""
+  },
+  {
+   "id": "D1379/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372225N1285930E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3722N12900E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 372225N1285930E",
+   "note": ""
+  },
+  {
+   "id": "D1380/26",
+   "shape": "circle",
+   "coordTokens": [
+    "373210N1285320E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3732N12853E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 373210N1285320E",
+   "note": ""
+  },
+  {
+   "id": "D1381/26",
+   "shape": "circle",
+   "coordTokens": [
+    "373500N1283914E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3735N12839E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 373500N1283914E",
+   "note": ""
+  },
+  {
+   "id": "D1382/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372009N1284622E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3720N12846E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 372009N1284622E",
+   "note": ""
+  },
+  {
+   "id": "D1383/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372302N1284251E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3723N12843E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 372302N1284251E",
+   "note": ""
+  },
+  {
+   "id": "D1384/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372145N1284107E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3722N12841E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 372145N1284107E",
+   "note": ""
+  },
+  {
+   "id": "D1385/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372145N1283552E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3722N12836E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 372145N1283552E",
+   "note": ""
+  },
+  {
+   "id": "D1386/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372012N1283637E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3720N12837E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 372012N1283637E",
+   "note": ""
+  },
+  {
+   "id": "D1387/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371559N1284417E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3716N12844E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 371559N1284417E",
+   "note": ""
+  },
+  {
+   "id": "D1388/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371317N1283813E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3713N12838E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 371317N1283813E",
+   "note": ""
+  },
+  {
+   "id": "D1389/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371429N1284055E"
+   ],
+   "radius": {
+    "value": 1.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3714N12841E002",
+   "evidence": "A CIRCLE RADIUS 1.5NM CENTERED ON 371429N1284055E",
+   "note": ""
+  },
+  {
+   "id": "D1390/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371537N1283958E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3716N12840E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 371537N1283958E",
+   "note": ""
+  },
+  {
+   "id": "D1391/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372246N1285342E"
+   ],
+   "radius": {
+    "value": 1.62,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3723N12854E002",
+   "evidence": "A CIRCLE RADIUS 1.62NM CENTERED ON 372246N1285342E",
+   "note": ""
+  },
+  {
+   "id": "D1416/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345135N1282746E"
+   ],
+   "radius": {
+    "value": 0.54,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3452N12828E001",
+   "evidence": "A CIRCLE RADIUS 0.54NM CENTERED ON 345135N1282746E",
+   "note": ""
+  },
+  {
+   "id": "D1417/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345242N1282534E"
+   ],
+   "radius": {
+    "value": 0.54,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3453N12826E001",
+   "evidence": "A CIRCLE RADIUS 0.54NM CENTERED ON 345242N1282534E",
+   "note": ""
+  },
+  {
+   "id": "D1418/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343030N1270509E"
+   ],
+   "radius": {
+    "value": 9,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3431N12705E010",
+   "evidence": "A CIRCLE RADIUS 9NM CENTERED ON 343030N1270509E",
+   "note": ""
+  },
+  {
+   "id": "D1419/26",
+   "shape": "circle",
+   "coordTokens": [
+    "374038N1284307E"
+   ],
+   "radius": {
+    "value": 0.6,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3741N12843E001",
+   "evidence": "A CIRCLE RADIUS 0.6NM CENTERED ON 374038N1284307E",
+   "note": ""
+  },
+  {
+   "id": "D1471/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370903N1271855E"
+   ],
+   "radius": {
+    "value": 1.2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3709N12719E002",
+   "evidence": "A CIRCLE RADIUS 1.2NM CENTERED ON 370903N1271855E",
+   "note": ""
+  },
+  {
+   "id": "D1473/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350750N1281700E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3508N12817E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 350750N1281700E",
+   "note": ""
+  },
+  {
+   "id": "D1477/26",
+   "shape": "circle",
+   "coordTokens": [
+    "364315N1270451E"
+   ],
+   "radius": {
+    "value": 1.35,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3643N12705E002",
+   "evidence": "A CIRCLE RADIUS 1.35NM CENTERED ON 364315N1270451E",
+   "note": ""
+  },
+  {
+   "id": "D1480/26",
+   "shape": "circle",
+   "coordTokens": [
+    "365928N1262409E"
+   ],
+   "radius": {
+    "value": 0.2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3659N12624E001",
+   "evidence": "A CIRCLE RADIUS 0.2NM CENTERED ON 365928N1262409E",
+   "note": ""
+  },
+  {
+   "id": "D1482/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "361329N1284126E",
+    "361532N1284639E",
+    "361417N1284722E",
+    "361336N1284533E",
+    "361308N1284550E",
+    "361149N1284226E",
+    "361329N1284126E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3614N12845E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n361329N1284126E-361532N1284639E-361417N1284722E-361336N1284533E-361308N1284550E-361149N1284226E-361329N1284126E",
+   "note": ""
+  },
+  {
+   "id": "D1585/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345347N1283650E"
+   ],
+   "radius": {
+    "value": 0.1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3454N12837E001",
+   "evidence": "A CIRCLE RADIUS 0.1NM CENTERED ON 345347N1283650E",
+   "note": ""
+  },
+  {
+   "id": "D1586/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350204N1282902E"
+   ],
+   "radius": {
+    "value": 0.65,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3502N12829E001",
+   "evidence": "A CIRCLE RADIUS 0.65NM CENTERED ON 350204N1282902E",
+   "note": ""
+  },
+  {
+   "id": "D1587/26",
+   "shape": "circle",
+   "coordTokens": [
+    "361520N1265520E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3615N12655E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 361520N1265520E",
+   "note": ""
+  },
+  {
+   "id": "D1626/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343405N1270242E"
+   ],
+   "radius": {
+    "value": 2.9,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3434N12703E003",
+   "evidence": "A CIRCLE RADIUS 2.9NM CENTERED ON 343405N1270242E",
+   "note": ""
+  },
+  {
+   "id": "D1635/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352438N1291415E"
+   ],
+   "radius": {
+    "value": 0.4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3525N12914E001",
+   "evidence": "A CIRCLE RADIUS 0.4NM CENTERED ON 352438N1291415E",
+   "note": ""
+  },
+  {
+   "id": "D1636/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352512N1290638E"
+   ],
+   "radius": {
+    "value": 0.4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3525N12907E001",
+   "evidence": "A CIRCLE RADIUS 0.4NM CENTERED ON 352512N1290638E",
+   "note": ""
+  },
+  {
+   "id": "D1664/26",
+   "shape": "circle",
+   "coordTokens": [
+    "375207N1274506E"
+   ],
+   "radius": {
+    "value": 0.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3752N12745E001",
+   "evidence": "A CIRCLE RADIUS 0.7NM CENTERED ON 375207N1274506E",
+   "note": ""
+  },
+  {
+   "id": "D1698/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "314314N1253948E",
+    "324700N1243300E",
+    "335000N1241000E",
+    "353200N1241000E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3338N12455E123",
+   "evidence": "5NM EITHER SIDE OF CENTER LINE\n314314N1253948E-324700N1243300E-335000N1241000E-353200N1241000E",
+   "note": ""
+  },
+  {
+   "id": "D1703/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370912N1271848E"
+   ],
+   "radius": {
+    "value": 1.1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3709N12719E002",
+   "evidence": "A CIRCLE RADIUS 1.1NM CENTERED ON 370912N1271848E",
+   "note": ""
+  },
+  {
+   "id": "D1752/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350634N1290610E"
+   ],
+   "radius": {
+    "value": 1.6,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3507N12906E002",
+   "evidence": "A CIRCLE RADIUS 1.6NM CENTERED ON 350634N1290610E",
+   "note": ""
+  },
+  {
+   "id": "D1753/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350625N1290456E"
+   ],
+   "radius": {
+    "value": 1.6,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3506N12905E002",
+   "evidence": "A CIRCLE RADIUS 1.6NM CENTERED ON 350625N1290456E",
+   "note": ""
+  },
+  {
+   "id": "D1754/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343858N1271148E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3439N12712E006",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 343858N1271148E",
+   "note": ""
+  },
+  {
+   "id": "D1755/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343655N1271231E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3437N12713E006",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 343655N1271231E",
+   "note": ""
+  },
+  {
+   "id": "D1756/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344146N1271114E"
+   ],
+   "radius": {
+    "value": 2.8,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3442N12711E003",
+   "evidence": "A CIRCLE RADIUS 2.8NM CENTERED ON 344146N1271114E",
+   "note": ""
+  },
+  {
+   "id": "D1757/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343645N1271758E"
+   ],
+   "radius": {
+    "value": 1.4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3437N12718E002",
+   "evidence": "A CIRCLE RADIUS 1.4NM CENTERED ON 343645N1271758E",
+   "note": ""
+  },
+  {
+   "id": "D1759/26",
+   "shape": "circle",
+   "coordTokens": [
+    "373712N1271041E"
+   ],
+   "radius": {
+    "value": 0.09,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3737N12711E001",
+   "evidence": "A CIRCLE RADIUS 0.09NM CENTERED ON 373712N1271041E",
+   "note": ""
+  },
+  {
+   "id": "D1763/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351006N1290810E"
+   ],
+   "radius": {
+    "value": 0.3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3510N12908E001",
+   "evidence": "A CIRCLE RADIUS 0.3NM CENTERED ON 351006N1290810E",
+   "note": ""
+  },
+  {
+   "id": "D1768/26",
+   "shape": "circle",
+   "coordTokens": [
+    "373523N1265832E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3735N12659E003",
+   "evidence": "1. AREA : A CIRCLE RADIUS 2NM CENTERED ON 373523N1265832E",
+   "note": ""
+  },
+  {
+   "id": "D1771/26",
+   "shape": "circle",
+   "coordTokens": [
+    "362004N1271938E"
+   ],
+   "radius": {
+    "value": 0.27,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3620N12720E001",
+   "evidence": "A CIRCLE RADIUS 0.27NM CENTERED ON 362004N1271938E",
+   "note": ""
+  },
+  {
+   "id": "D1772/26",
+   "shape": "circle",
+   "coordTokens": [
+    "362005N1271920E"
+   ],
+   "radius": {
+    "value": 0.43,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3620N12719E001",
+   "evidence": "A CIRCLE RADIUS 0.43NM CENTERED ON 362005N1271920E",
+   "note": ""
+  },
+  {
+   "id": "D1792/26",
+   "shape": "circle",
+   "coordTokens": [
+    "355655N1263053E"
+   ],
+   "radius": {
+    "value": 0.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3557N12631E001",
+   "evidence": "A CIRCLE RADIUS 0.5NM CENTERED ON 355655N1263053E",
+   "note": ""
+  },
+  {
+   "id": "D1793/26",
+   "shape": "circle",
+   "coordTokens": [
+    "355836N1263129E"
+   ],
+   "radius": {
+    "value": 0.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3559N12631E001",
+   "evidence": "A CIRCLE RADIUS 0.5NM CENTERED ON 355836N1263129E",
+   "note": ""
+  },
+  {
+   "id": "D1842/26",
+   "shape": "circle",
+   "coordTokens": [
+    "360243N1281333E"
+   ],
+   "radius": {
+    "value": 1.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3603N12814E002",
+   "evidence": "AREA : A CIRCLE RADIUS 1.5NM CENTERED ON 360243N1281333E",
+   "note": ""
+  },
+  {
+   "id": "D1871/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "351206N1283548E",
+    "351154N1283559E",
+    "351203N1283611E",
+    "351212N1283600E",
+    "351206N1283548E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3512N12836E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 351206N1283548E-351154N1283559E-351203N1283611E-351212N1283600E-351206N1283548E",
+   "note": ""
+  },
+  {
+   "id": "D1875/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370913N1272302E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3709N12723E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 370913N1272302E",
+   "note": ""
+  },
+  {
+   "id": "D1877/26",
+   "shape": "circle",
+   "coordTokens": [
+    "364539N1280521E"
+   ],
+   "radius": {
+    "value": 0.8,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3646N12805E001",
+   "evidence": "A CIRCLE RADIUS 0.8NM CENTERED ON 364539N1280521E",
+   "note": ""
+  },
+  {
+   "id": "D1878/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353623N1290438E"
+   ],
+   "radius": {
+    "value": 1.1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12905E002",
+   "evidence": "A CIRCLE RADIUS 1.1NM CENTERED ON 353623N1290438E",
+   "note": ""
+  },
+  {
+   "id": "D1880/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351507N1283818E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3515N12838E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 351507N1283818E",
+   "note": ""
+  },
+  {
+   "id": "D1881/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351854N1283557E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3519N12836E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 351854N1283557E",
+   "note": ""
+  },
+  {
+   "id": "D1882/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351950N1284234E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3520N12843E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 351950N1284234E",
+   "note": ""
+  },
+  {
+   "id": "D1883/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351242N1283721E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3513N12837E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 351242N1283721E",
+   "note": ""
+  },
+  {
+   "id": "D1884/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351342N1283429E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3514N12834E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 351342N1283429E",
+   "note": ""
+  },
+  {
+   "id": "D1885/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351042N1283401E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3511N12834E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 351042N1283401E",
+   "note": ""
+  },
+  {
+   "id": "D1886/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351504N1283056E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3515N12831E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 351504N1283056E",
+   "note": ""
+  },
+  {
+   "id": "D1887/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350451N1283335E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3505N12834E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 350451N1283335E",
+   "note": ""
+  },
+  {
+   "id": "D1888/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350735N1282910E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3508N12829E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 350735N1282910E",
+   "note": ""
+  },
+  {
+   "id": "D1889/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350630N1284823E"
+   ],
+   "radius": {
+    "value": 0.05,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3507N12848E001",
+   "evidence": "A CIRCLE RADIUS 0.05NM CENTERED ON 350630N1284823E",
+   "note": ""
+  },
+  {
+   "id": "D1909/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372712N1290942E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3727N12910E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 372712N1290942E",
+   "note": ""
+  },
+  {
+   "id": "D1980/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D99",
+   "qToken": "3428N12848E024",
+   "evidence": "DANGER AREA RK D99 ACT",
+   "note": ""
+  },
+  {
+   "id": "D1984/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D119",
+   "qToken": "3536N12956E019",
+   "evidence": "DANGER AREA RK D119 ACT",
+   "note": ""
+  },
+  {
+   "id": "D1987/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D123",
+   "qToken": "3548N12515E022",
+   "evidence": "DANGER AREA RK D123 ACT",
+   "note": ""
+  },
+  {
+   "id": "D1991/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D153",
+   "qToken": "3738N12421E018",
+   "evidence": "DANGER AREA RK D153 ACT",
+   "note": ""
+  },
+  {
+   "id": "D1995/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R100",
+   "qToken": "3453N12857E004",
+   "evidence": "RESTRICTED AREA RK R100 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2015/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D140",
+   "qToken": "3809N12851E004",
+   "evidence": "DANGER AREA RK D140 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2016/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D141",
+   "qToken": "3735N13119E010",
+   "evidence": "DANGER AREA RK D141 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2017/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D142B",
+   "qToken": "3620N12950E005",
+   "evidence": "DANGER AREA RK D142B ACT",
+   "note": ""
+  },
+  {
+   "id": "D2019/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D143",
+   "qToken": "3503N12916E007",
+   "evidence": "DANGER AREA RK D143 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2021/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D150",
+   "qToken": "3304N12625E008",
+   "evidence": "DANGER AREA RK D150 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2034/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371848N1275517E"
+   ],
+   "radius": {
+    "value": 0.1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3719N12755E001",
+   "evidence": "A CIRCLE RADIUS 0.1NM CENTERED ON 371848N1275517E",
+   "note": ""
+  },
+  {
+   "id": "D2053/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D72",
+   "qToken": "3405N12822E023",
+   "evidence": "DANGER AREA RK D72 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2054/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R97E",
+   "qToken": "3613N12633E009",
+   "evidence": "RESTRICTED AREA RK R97E ACT",
+   "note": ""
+  },
+  {
+   "id": "D2055/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D99",
+   "qToken": "3428N12848E024",
+   "evidence": "DANGER AREA RK D99 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2057/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R100",
+   "qToken": "3453N12857E004",
+   "evidence": "RESTRICTED AREA RK R100 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2058/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R104",
+   "qToken": "3533N12626E006",
+   "evidence": "RESTRICTED AREA RK R104 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2059/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R105",
+   "qToken": "3553N12605E011",
+   "evidence": "RESTRICTED AREA RK R105 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2060/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R108B",
+   "qToken": "3634N12610E009",
+   "evidence": "RESTRICTED AREA RK R108B ACT",
+   "note": ""
+  },
+  {
+   "id": "D2061/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R108D",
+   "qToken": "3632N12606E013",
+   "evidence": "RESTRICTED AREA RK R108D ACT",
+   "note": ""
+  },
+  {
+   "id": "D2062/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R108E",
+   "qToken": "3637N12613E006",
+   "evidence": "RESTRICTED AREA RK R108E ACT",
+   "note": ""
+  },
+  {
+   "id": "D2063/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R108F",
+   "qToken": "3629N12604E016",
+   "evidence": "RESTRICTED AREA RK R108F ACT",
+   "note": ""
+  },
+  {
+   "id": "D2064/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D115",
+   "qToken": "3709N13035E044",
+   "evidence": "DANGER AREA RK D115 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2069/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D119",
+   "qToken": "3536N12956E019",
+   "evidence": "DANGER AREA RK D119 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2070/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D120",
+   "qToken": "3623N13027E026",
+   "evidence": "DANGER AREA RK D120 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2072/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D123",
+   "qToken": "3548N12515E022",
+   "evidence": "DANGER AREA RK D123 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2073/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R124",
+   "qToken": "3700N12556E016",
+   "evidence": "RESTRICTED AREA RK R124 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2077/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R133",
+   "qToken": "3722N12612E003",
+   "evidence": "RESTRICTED AREA RK R133 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2078/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D135",
+   "qToken": "3752N12914E024",
+   "evidence": "DANGER AREA RK D135 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2079/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D136",
+   "qToken": "3716N12938E015",
+   "evidence": "DANGER AREA RK D136 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2083/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D156",
+   "qToken": "3801N12923E027",
+   "evidence": "DANGER AREA RK D156 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2084/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352010N1264643E"
+   ],
+   "radius": {
+    "value": 1.85,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3520N12647E002",
+   "evidence": "A CIRCLE RADIUS 1.85NM CENTERED ON 352010N1264643E",
+   "note": ""
+  },
+  {
+   "id": "D2088/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "363421N1261537E",
+    "363316N1262124E",
+    "361638N1262650E",
+    "361316N1262034E",
+    "363421N1261537E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3624N12618E012",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 363421N1261537E-363316N1262124E-361638N1262650E-361316N1262034E-363421N1261537E",
+   "note": ""
+  },
+  {
+   "id": "D2089/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351210N1290725E"
+   ],
+   "radius": {
+    "value": 0.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3512N12907E001",
+   "evidence": "A CIRCLE RADIUS 0.5NM CENTERED ON 351210N1290725E",
+   "note": ""
+  },
+  {
+   "id": "D2092/26",
+   "shape": "circle",
+   "coordTokens": [
+    "354733N1291340E"
+   ],
+   "radius": {
+    "value": 2.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3548N12914E003",
+   "evidence": "A CIRCLE RADIUS 2.7NM CENTERED ON 354733N1291340E",
+   "note": ""
+  },
+  {
+   "id": "D2093/26",
+   "shape": "circle",
+   "coordTokens": [
+    "355040N1290316E"
+   ],
+   "radius": {
+    "value": 1.07,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3551N12903E002",
+   "evidence": "A CIRCLE RADIUS 1.07NM CENTERED ON 355040N1290316E",
+   "note": ""
+  },
+  {
+   "id": "D2097/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343405N1270242E"
+   ],
+   "radius": {
+    "value": 3.8,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3434N12703E004",
+   "evidence": "A CIRCLE RADIUS 3.8NM CENTERED ON 343405N1270242E",
+   "note": ""
+  },
+  {
+   "id": "D2098/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342921N1270052E"
+   ],
+   "radius": {
+    "value": 3.8,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3429N12701E004",
+   "evidence": "A CIRCLE RADIUS 3.8NM CENTERED ON 342921N1270052E",
+   "note": ""
+  },
+  {
+   "id": "D2102/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D140",
+   "qToken": "3809N12851E004",
+   "evidence": "DANGER AREA RK D140 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2103/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D141",
+   "qToken": "3735N13119E010",
+   "evidence": "DANGER AREA RK D141 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2106/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D143",
+   "qToken": "3503N12916E007",
+   "evidence": "DANGER AREA RK D143 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2107/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK D150",
+   "qToken": "3304N12625E008",
+   "evidence": "DANGER AREA RK D150 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2108/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R142A",
+   "qToken": "3708N12934E002",
+   "evidence": "RESTRICTED AREA RK R142A ACT",
+   "note": ""
+  },
+  {
+   "id": "D2109/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R144",
+   "qToken": "3439N12826E004",
+   "evidence": "RESTRICTED AREA RK R144 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2112/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R148A",
+   "qToken": "3446N12613E004",
+   "evidence": "RESTRICTED AREA RK R148A ACT",
+   "note": ""
+  },
+  {
+   "id": "D2114/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "RK R149",
+   "qToken": "3345N12613E006",
+   "evidence": "RESTRICTED AREA RK R149 ACT",
+   "note": ""
+  },
+  {
+   "id": "D2117/26",
+   "shape": "named_area",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": "CATA 7H",
+   "qToken": "3640N12938E016",
+   "evidence": "CATA 7H ACT",
+   "note": ""
+  },
+  {
+   "id": "D2118/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "363910N1272105E",
+    "363909N1272110E",
+    "363902N1272111E",
+    "363904N1272103E",
+    "363910N1272105E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3639N12721E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 363910N1272105E-363909N1272110E-363902N1272111E-363904N1272103E-363910N1272105E",
+   "note": ""
+  },
+  {
+   "id": "D2119/26",
+   "shape": "circle",
+   "coordTokens": [
+    "333325N1264543E"
+   ],
+   "radius": {
+    "value": 0.02,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3333N12646E001",
+   "evidence": "A CIRCLE RADIUS 0.02NM CENTERED ON 333325N1264543E",
+   "note": ""
+  },
+  {
+   "id": "D2121/26",
+   "shape": "circle",
+   "coordTokens": [
+    "333123N1265351E"
+   ],
+   "radius": {
+    "value": 0.02,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3331N12654E001",
+   "evidence": "A CIRCLE RADIUS 0.02NM CENTERED ON 333123N1265351E",
+   "note": ""
+  },
+  {
+   "id": "D2123/26",
+   "shape": "circle",
+   "coordTokens": [
+    "355259N1264740E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3553N12648E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 355259N1264740E",
+   "note": ""
+  },
+  {
+   "id": "E2632/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "331000N1243005E",
+    "331002N1254558E",
+    "321844N1254548E",
+    "320640N1254044E",
+    "320625N1243034E",
+    "331000N1243005E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3238N12508E046",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n331000N1243005E-331002N1254558E-321844N1254548E-320640N1254044E-320625N1243034E-331000N1243005E",
+   "note": ""
+  },
+  {
+   "id": "E2884/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "360938N1292322E",
+    "360935N1292523E",
+    "360648N1292521E",
+    "360736N1292320E",
+    "360938N1292322E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3608N12924E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n360938N1292322E-360935N1292523E-360648N1292521E-360736N1292320E-360938N1292322E",
+   "note": ""
+  },
+  {
+   "id": "E3082/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351137N1265427E"
+   ],
+   "radius": {
+    "value": 0.27,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3512N12654E001",
+   "evidence": "A CIRCLE RADIUS 0.27NM CENTERED ON 351137N1265427E",
+   "note": ""
+  },
+  {
+   "id": "E3083/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342350N1261636E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3424N12617E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 342350N1261636E",
+   "note": ""
+  },
+  {
+   "id": "E3084/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343200N1261406E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3432N12614E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 343200N1261406E",
+   "note": ""
+  },
+  {
+   "id": "E3085/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342609N1262817E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3426N12628E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 342609N1262817E",
+   "note": ""
+  },
+  {
+   "id": "E3086/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342609N1262116E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3426N12621E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 342609N1262116E",
+   "note": ""
+  },
+  {
+   "id": "E3087/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342116N1262848E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3421N12629E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 342116N1262848E",
+   "note": ""
+  },
+  {
+   "id": "E3088/26",
+   "shape": "circle",
+   "coordTokens": [
+    "341853N1263109E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3419N12631E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 341853N1263109E",
+   "note": ""
+  },
+  {
+   "id": "E3089/26",
+   "shape": "circle",
+   "coordTokens": [
+    "341911N1263511E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3419N12635E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 341911N1263511E",
+   "note": ""
+  },
+  {
+   "id": "E3090/26",
+   "shape": "circle",
+   "coordTokens": [
+    "341945N1264732E"
+   ],
+   "radius": {
+    "value": 1.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3420N12648E002",
+   "evidence": "A CIRCLE RADIUS 1.7NM CENTERED ON 341945N1264732E",
+   "note": ""
+  },
+  {
+   "id": "E3091/26",
+   "shape": "circle",
+   "coordTokens": [
+    "341819N1264158E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3418N12642E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 341819N1264158E",
+   "note": ""
+  },
+  {
+   "id": "E3092/26",
+   "shape": "circle",
+   "coordTokens": [
+    "341954N1265210E"
+   ],
+   "radius": {
+    "value": 2.2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3420N12652E003",
+   "evidence": "A CIRCLE RADIUS 2.2NM CENTERED ON 341954N1265210E",
+   "note": ""
+  },
+  {
+   "id": "E3093/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342844N1265624E"
+   ],
+   "radius": {
+    "value": 4.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3429N12656E005",
+   "evidence": "A CIRCLE RADIUS 4.5NM CENTERED ON 342844N1265624E",
+   "note": ""
+  },
+  {
+   "id": "E3094/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342239N1265442E"
+   ],
+   "radius": {
+    "value": 2.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3423N12655E003",
+   "evidence": "A CIRCLE RADIUS 2.7NM CENTERED ON 342239N1265442E",
+   "note": ""
+  },
+  {
+   "id": "E3095/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342451N1271226E"
+   ],
+   "radius": {
+    "value": 4.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3425N12712E005",
+   "evidence": "A CIRCLE RADIUS 4.5NM CENTERED ON 342451N1271226E",
+   "note": ""
+  },
+  {
+   "id": "E3096/26",
+   "shape": "circle",
+   "coordTokens": [
+    "362535N1271553E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3626N12716E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 362535N1271553E",
+   "note": ""
+  },
+  {
+   "id": "E3097/26",
+   "shape": "circle",
+   "coordTokens": [
+    "362535N1271553E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3626N12716E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 362535N1271553E",
+   "note": ""
+  },
+  {
+   "id": "E3098/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "361212N1263219E",
+    "360955N1262915E",
+    "360726N1262920E",
+    "360847N1263227E",
+    "361212N1263219E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3610N12631E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n361212N1263219E-360955N1262915E-360726N1262920E-360847N1263227E-361212N1263219E",
+   "note": ""
+  },
+  {
+   "id": "E3099/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "360820N1263131E",
+    "360914N1263333E",
+    "360529N1263922E",
+    "360414N1263624E",
+    "360820N1263131E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3607N12635E005",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n360820N1263131E-360914N1263333E-360529N1263922E-360414N1263624E-360820N1263131E",
+   "note": ""
+  },
+  {
+   "id": "E3100/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "362005N1262937E",
+    "361907N1263008E",
+    "362016N1263312E",
+    "362115N1263346E",
+    "362005N1262937E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3620N12632E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n362005N1262937E-361907N1263008E-362016N1263312E-362115N1263346E-362005N1262937E",
+   "note": ""
+  },
+  {
+   "id": "E3101/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "361907N1263008E",
+    "361420N1263055E",
+    "361450N1263313E",
+    "361951N1263206E",
+    "361907N1263008E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3617N12632E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n361907N1263008E-361420N1263055E-361450N1263313E-361951N1263206E-361907N1263008E",
+   "note": ""
+  },
+  {
+   "id": "E3102/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "363125N1262832E",
+    "362843N1262838E",
+    "362843N1262959E",
+    "363126N1262953E",
+    "363125N1262832E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3630N12629E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n363125N1262832E-362843N1262838E-362843N1262959E-363126N1262953E-363125N1262832E",
+   "note": ""
+  },
+  {
+   "id": "E3103/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "362843N1262838E",
+    "362428N1262849E",
+    "362428N1263207E",
+    "362637N1263203E",
+    "362843N1262838E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3627N12630E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n362843N1262838E-362428N1262849E-362428N1263207E-362637N1263203E-362843N1262838E",
+   "note": ""
+  },
+  {
+   "id": "E3104/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "362424N1262847E",
+    "362247N1262831E",
+    "362100N1263256E",
+    "362115N1263346E",
+    "362424N1262847E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3623N12631E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n362424N1262847E-362247N1262831E-362100N1263256E-362115N1263346E-362424N1262847E",
+   "note": ""
+  },
+  {
+   "id": "E3105/26",
+   "shape": "circle",
+   "coordTokens": [
+    "362243N1262533E"
+   ],
+   "radius": {
+    "value": 4.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3623N12626E005",
+   "evidence": "A CIRCLE RADIUS 4.5NM CENTERED ON 362243N1262533E",
+   "note": ""
+  },
+  {
+   "id": "E3106/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "362443N1261924E",
+    "362201N1261929E",
+    "362140N1262811E",
+    "362455N1262807E",
+    "362443N1261924E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3623N12624E005",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n362443N1261924E-362201N1261929E-362140N1262811E-362455N1262807E-362443N1261924E",
+   "note": ""
+  },
+  {
+   "id": "E3146/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372631N1275757E"
+   ],
+   "radius": {
+    "value": 7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3727N12758E008",
+   "evidence": "A CIRCLE RADIUS 7NM CENTERED ON 372631N1275757E",
+   "note": ""
+  },
+  {
+   "id": "E3147/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372631N1275757E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3727N12758E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 372631N1275757E",
+   "note": ""
+  },
+  {
+   "id": "E3188/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "365143N1260825E",
+    "365459N1261156E",
+    "364901N1261414E",
+    "364628N1261006E",
+    "365143N1260825E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3651N12611E006",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n365143N1260825E-365459N1261156E-364901N1261414E-364628N1261006E-365143N1260825E",
+   "note": ""
+  },
+  {
+   "id": "E3189/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "365039N1260935E",
+    "364558N1260807E",
+    "364614N1260619E",
+    "365035N1260845E",
+    "365039N1260935E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3648N12608E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n365039N1260935E-364558N1260807E-364614N1260619E-365035N1260845E-365039N1260935E",
+   "note": ""
+  },
+  {
+   "id": "E3190/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "363130N1261959E",
+    "362614N1262029E",
+    "362606N1261929E",
+    "363130N1261931E",
+    "363130N1261959E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3629N12620E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n363130N1261959E-362614N1262029E-362606N1261929E-363130N1261931E-363130N1261959E",
+   "note": ""
+  },
+  {
+   "id": "E3191/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "370050N1261446E",
+    "365407N1261433E",
+    "365232N1261728E",
+    "365324N1262509E",
+    "370157N1262323E",
+    "370050N1261446E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3657N12620E007",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n370050N1261446E-365407N1261433E-365232N1261728E-365324N1262509E-370157N1262323E-370050N1261446E",
+   "note": ""
+  },
+  {
+   "id": "E3192/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "365841N1264111E",
+    "370259N1262935E",
+    "370300N1263102E",
+    "370331N1263117E",
+    "365951N1264109E",
+    "365841N1264111E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3701N12635E007",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n365841N1264111E-370259N1262935E-370300N1263102E-370331N1263117E-365951N1264109E-365841N1264111E",
+   "note": ""
+  },
+  {
+   "id": "E3193/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "365814N1264708E",
+    "365911N1264736E",
+    "370107N1264139E",
+    "365951N1264131E",
+    "365814N1264708E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3700N12644E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n365814N1264708E-365911N1264736E-370107N1264139E-365951N1264131E-365814N1264708E",
+   "note": ""
+  },
+  {
+   "id": "E3194/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "365947N1264553E",
+    "365904N1264434E",
+    "364738N1265020E",
+    "364802N1265142E",
+    "365601N1265025E",
+    "365947N1264553E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3654N12648E008",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING\n365947N1264553E-365904N1264434E-364738N1265020E-364802N1265142E-365601N1265025E-365947N1264553E",
+   "note": ""
+  },
+  {
+   "id": "E3195/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345410N1281200E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3454N12812E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 345410N1281200E",
+   "note": ""
+  },
+  {
+   "id": "E3196/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "365454N1265648E",
+    "365114N1265021E",
+    "365433N1265045E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3654N12653E006",
+   "evidence": "1NM EITHER SIDE OF LINE\n365454N1265648E-365114N1265021E-365433N1265045E",
+   "note": ""
+  },
+  {
+   "id": "E3197/26",
+   "shape": "circle",
+   "coordTokens": [
+    "364844N1264748E"
+   ],
+   "radius": {
+    "value": 3.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3649N12648E004",
+   "evidence": "A CIRCLE RADIUS 3.5NM CENTERED ON 364844N1264748E",
+   "note": ""
+  },
+  {
+   "id": "E3198/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "365433N1265045E",
+    "365725N1264450E",
+    "370300N1262430E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3658N12640E016",
+   "evidence": "1NM EITHER SIDE OF LINE\n365433N1265045E-365725N1264450E-370300N1262430E",
+   "note": ""
+  },
+  {
+   "id": "E3199/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "370300N1262430E",
+    "370402N1261000E",
+    "370348N1254811E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3704N12608E018",
+   "evidence": "1NM EITHER SIDE OF LINE\n370300N1262430E-370402N1261000E-370348N1254811E",
+   "note": ""
+  },
+  {
+   "id": "E3200/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "370348N1254811E",
+    "370317N1244744E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3704N12518E027",
+   "evidence": "1NM EITHER SIDE OF LINE 370348N1254811E-370317N1244744E",
+   "note": ""
+  },
+  {
+   "id": "E3201/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "370714N1244748E",
+    "365221N1244748E",
+    "365221N1243440E",
+    "370714N1243440E",
+    "370714N1244748E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3700N12441E011",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 370714N1244748E-365221N1244748E-365221N1243440E-370714N1243440E-370714N1244748E",
+   "note": ""
+  },
+  {
+   "id": "E3202/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "365221N1243440E",
+    "363600N1241600E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3644N12425E014",
+   "evidence": "1NM EITHER SIDE OF LINE 365221N1243440E-363600N1241600E",
+   "note": ""
+  },
+  {
+   "id": "E3203/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "363600N1241600E",
+    "350000N1241600E",
+    "350000N1240100E",
+    "372400N1240100E",
+    "372400N1241600E",
+    "363600N1241600E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3612N12408E074",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 363600N1241600E-350000N1241600E-350000N1240100E-372400N1240100E-372400N1241600E-363600N1241600E",
+   "note": ""
+  },
+  {
+   "id": "E3204/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "380836N1283554E",
+    "381033N1283630E",
+    "381330N1283313E",
+    "381758N1283114E",
+    "382526N1282619E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3817N12831E012",
+   "evidence": "1NM EITHER SIDE OF LINE 380836N1283554E-381033N1283630E-381330N1283313E-381758N1283114E-382526N1282619E",
+   "note": ""
+  },
+  {
+   "id": "E3205/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345441N1281846E"
+   ],
+   "radius": {
+    "value": 3.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3455N12819E004",
+   "evidence": "A CIRCLE RADIUS 3.5NM CENTERED ON 345441N1281846E",
+   "note": ""
+  },
+  {
+   "id": "E3206/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345409N1281116E"
+   ],
+   "radius": {
+    "value": 0.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3454N12811E001",
+   "evidence": "A CIRCLE RADIUS 0.5NM CENTERED ON 345409N1281116E",
+   "note": ""
+  },
+  {
+   "id": "E3207/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345502N1280539E"
+   ],
+   "radius": {
+    "value": 0.6,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3455N12806E001",
+   "evidence": "A CIRCLE RADIUS 0.6NM CENTERED ON 345502N1280539E",
+   "note": ""
+  },
+  {
+   "id": "E3209/26",
+   "shape": "circle",
+   "coordTokens": [
+    "355912N1285856E"
+   ],
+   "radius": {
+    "value": 0.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3559N12859E001",
+   "evidence": "A CIRCLE RADIUS 0.5NM CENTERED ON 355912N1285856E",
+   "note": ""
+  },
+  {
+   "id": "E3210/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370930N1273441E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3710N12735E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 370930N1273441E",
+   "note": ""
+  },
+  {
+   "id": "E3211/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370618N1273805E"
+   ],
+   "radius": {
+    "value": 0.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3706N12738E001",
+   "evidence": "A CIRCLE RADIUS 0.7NM CENTERED ON 370618N1273805E",
+   "note": ""
+  },
+  {
+   "id": "E3212/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370839N1273745E"
+   ],
+   "radius": {
+    "value": 0.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3709N12738E001",
+   "evidence": "A CIRCLE RADIUS 0.7NM CENTERED ON 370839N1273745E",
+   "note": ""
+  },
+  {
+   "id": "E3213/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "355654N1293220E",
+    "355715N1293255E",
+    "355701N1293326E",
+    "355638N1293301E",
+    "355654N1293220E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3557N12933E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 355654N1293220E-355715N1293255E-355701N1293326E-355638N1293301E-355654N1293220E",
+   "note": ""
+  },
+  {
+   "id": "E3214/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "360006N1293413E",
+    "360025N1293420E",
+    "360019N1293455E",
+    "360002N1293442E",
+    "360006N1293413E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3600N12935E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 360006N1293413E-360025N1293420E-360019N1293455E-360002N1293442E-360006N1293413E",
+   "note": ""
+  },
+  {
+   "id": "E3215/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "360504N1292501E",
+    "360524N1292528E",
+    "360507N1292546E",
+    "360446N1292542E",
+    "360504N1292501E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3605N12926E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 360504N1292501E-360524N1292528E-360507N1292546E-360446N1292542E-360504N1292501E",
+   "note": ""
+  },
+  {
+   "id": "E3216/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "380836N1283554E",
+    "381033N1283630E",
+    "381330N1283313E",
+    "381758N1283114E",
+    "382740N1283001E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3818N12833E012",
+   "evidence": "1NM EITHER SIDE OF LINE 380836N1283554E-381033N1283630E-381330N1283313E-381758N1283114E-382740N1283001E",
+   "note": ""
+  },
+  {
+   "id": "E3217/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "380836N1283554E",
+    "381033N1283630E",
+    "381544N1283803E",
+    "381240N1284202E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3812N12837E006",
+   "evidence": "2NM EITHER SIDE OF LINE 380836N1283554E-381033N1283630E-381544N1283803E-381240N1284202E",
+   "note": ""
+  },
+  {
+   "id": "E3218/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "381330N1284218E",
+    "372442N1291854E",
+    "372443N1290307E",
+    "380711N1283342E",
+    "381330N1284218E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3749N12901E030",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 381330N1284218E-372442N1291854E-372443N1290307E-380711N1283342E-381330N1284218E",
+   "note": ""
+  },
+  {
+   "id": "E3219/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "374244N1263700E",
+    "374412N1263701E",
+    "374356N1263053E",
+    "374310N1263050E",
+    "374221N1263327E",
+    "374244N1263700E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3744N12634E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 374244N1263700E-374412N1263701E-374356N1263053E-374310N1263050E-374221N1263327E-374244N1263700E",
+   "note": ""
+  },
+  {
+   "id": "E3220/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "374332N1263823E",
+    "374437N1263821E",
+    "374417N1263336E",
+    "374457N1262808E",
+    "374352N1262810E",
+    "374310N1263339E",
+    "374332N1263823E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3744N12633E006",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 374332N1263823E-374437N1263821E-374417N1263336E-374457N1262808E-374352N1262810E-374310N1263339E-374332N1263823E",
+   "note": ""
+  },
+  {
+   "id": "E3221/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372317N1265320E"
+   ],
+   "radius": {
+    "value": 0.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3723N12653E001",
+   "evidence": "A CIRCLE RADIUS 0.5NM CENTERED ON 372317N1265320E",
+   "note": ""
+  },
+  {
+   "id": "E3222/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371511N1263136E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3715N12632E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 371511N1263136E",
+   "note": ""
+  },
+  {
+   "id": "E3223/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372223N1264004E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3722N12640E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 372223N1264004E",
+   "note": ""
+  },
+  {
+   "id": "E3224/26",
+   "shape": "circle",
+   "coordTokens": [
+    "372124N1263917E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3721N12639E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 372124N1263917E",
+   "note": ""
+  },
+  {
+   "id": "E3225/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "373345N1263611E",
+    "373330N1263417E",
+    "373737N1263207E",
+    "373801N1263247E",
+    "373345N1263611E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3736N12634E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 373345N1263611E-373330N1263417E-373737N1263207E-373801N1263247E-373345N1263611E",
+   "note": ""
+  },
+  {
+   "id": "E3226/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "373359N1263631E",
+    "373409N1263412E",
+    "372921N1263446E",
+    "372926N1263643E",
+    "373359N1263631E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3732N12635E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 373359N1263631E-373409N1263412E-372921N1263446E-372926N1263643E-373359N1263631E",
+   "note": ""
+  },
+  {
+   "id": "E3227/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370936N1263706E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3710N12637E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 370936N1263706E",
+   "note": ""
+  },
+  {
+   "id": "E3228/26",
+   "shape": "circle",
+   "coordTokens": [
+    "370658N1264111E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3707N12641E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 370658N1264111E",
+   "note": ""
+  },
+  {
+   "id": "E3229/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "355043N1262153E",
+    "355210N1263023E",
+    "354700N1262952E",
+    "354642N1262158E",
+    "355043N1262153E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3549N12626E006",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 355043N1262153E-355210N1263023E-354700N1262952E-354642N1262158E-355043N1262153E",
+   "note": ""
+  },
+  {
+   "id": "E3230/26",
+   "shape": "circle",
+   "coordTokens": [
+    "374443N1262030E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3745N12621E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 374443N1262030E",
+   "note": ""
+  },
+  {
+   "id": "E3231/26",
+   "shape": "circle",
+   "coordTokens": [
+    "374426N1262118E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3744N12621E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 374426N1262118E",
+   "note": ""
+  },
+  {
+   "id": "E3234/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "380837N1283326E",
+    "380655N1283438E",
+    "380959N1283738E",
+    "381032N1283543E",
+    "380837N1283326E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3808N12836E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 380837N1283326E-380655N1283438E-380959N1283738E-381032N1283543E-380837N1283326E",
+   "note": ""
+  },
+  {
+   "id": "E3235/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "380836N1283554E",
+    "381033N1283630E",
+    "381544N1283803E",
+    "382740N1283001E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3817N12835E013",
+   "evidence": "2NM EITHER SIDE OF CENTER LINE 380836N1283554E-381033N1283630E-381544N1283803E-382740N1283001E",
+   "note": ""
+  },
+  {
+   "id": "E3236/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "360938N1292322E",
+    "360935N1292523E",
+    "360648N1292521E",
+    "360736N1292320E",
+    "360938N1292322E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3608N12924E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 360938N1292322E-360935N1292523E-360648N1292521E-360736N1292320E-360938N1292322E",
+   "note": ""
+  },
+  {
+   "id": "E3239/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "360504N1292501E",
+    "360524N1292528E",
+    "360507N1292546E",
+    "360446N1292542E",
+    "360504N1292501E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3605N12926E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 360504N1292501E-360524N1292528E-360507N1292546E-360446N1292542E-360504N1292501E",
+   "note": ""
+  },
+  {
+   "id": "E3242/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "360006N1293413E",
+    "360025N1293420E",
+    "360019N1293455E",
+    "360002N1293442E",
+    "360006N1293413E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3600N12935E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 360006N1293413E-360025N1293420E-360019N1293455E-360002N1293442E-360006N1293413E",
+   "note": ""
+  },
+  {
+   "id": "E3245/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "355654N1293220E",
+    "355715N1293255E",
+    "355701N1293326E",
+    "355638N1293301E",
+    "355654N1293220E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3557N12933E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 355654N1293220E-355715N1293255E-355701N1293326E-355638N1293301E-355654N1293220E",
+   "note": ""
+  },
+  {
+   "id": "E3249/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "364844N1264748E",
+    "364945N1265248E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3649N12650E005",
+   "evidence": "1NM EITHER SIDE OF LINE 364844N1264748E-364945N1265248E",
+   "note": ""
+  },
+  {
+   "id": "E3250/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "365118N1265223E",
+    "365117N1270760E",
+    "364501N1270757E",
+    "364447N1265407E",
+    "365118N1265223E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3648N12700E008",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 365118N1265223E-365117N1270760E-364501N1270757E-364447N1265407E-365118N1265223E",
+   "note": ""
+  },
+  {
+   "id": "E3251/26",
+   "shape": "circle",
+   "coordTokens": [
+    "374212N1275421E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3742N12754E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 374212N1275421E",
+   "note": ""
+  },
+  {
+   "id": "E3252/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "370650N1264214E",
+    "370331N1264623E",
+    "370137N1264626E",
+    "370024N1264427E",
+    "370127N1264304E",
+    "370409N1264259E",
+    "370650N1264054E",
+    "370650N1264214E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3704N12643E005",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 370650N1264214E-370331N1264623E-370137N1264626E-370024N1264427E-370127N1264304E-370409N1264259E-370650N1264054E-370650N1264214E",
+   "note": ""
+  },
+  {
+   "id": "E3260/26",
+   "shape": "circle",
+   "coordTokens": [
+    "360118N1281017E",
+    "360243N1281333E",
+    "360408N1281649E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3603N12814E004",
+   "evidence": "A SEMICIRCLE, 360118N1281017E - A CLOCKWISE 3NM ARC CENTERED ON 360243N1281333E-360408N1281649E TO THE BEGINNING EXC A CIRCLE RADIUS 1.5NM CENTERED ON 360243N1281333E FM SFC TO 9500FT MSL",
+   "note": "not a plain circle: a semicircle bounded by a start point (360118N1281017E), a clockwise 3NM arc centered on 360243N1281333E, ending at 360408N1281649E, then a straight line back to start. Also carves out a smaller EXC circle (radius 1.5NM, same center, up to 9500FT MSL) matching D1842/26. Recorded shape=circle/radius=3NM for the dominant arc; treat with care."
+  },
+  {
+   "id": "E3261/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "354735N1292922E",
+    "354735N1293032E",
+    "354504N1293031E",
+    "354504N1292921E",
+    "354735N1292922E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3546N12930E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 354735N1292922E-354735N1293032E-354504N1293031E-354504N1292921E-354735N1292922E",
+   "note": ""
+  },
+  {
+   "id": "E3262/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "355117N1293129E",
+    "355143N1293140E",
+    "355140N1293209E",
+    "355113N1293202E",
+    "355117N1293129E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3551N12932E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 355117N1293129E-355143N1293140E-355140N1293209E-355113N1293202E-355117N1293129E",
+   "note": ""
+  },
+  {
+   "id": "E3263/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "354435N1292901E",
+    "354452N1292937E",
+    "354435N1292950E",
+    "354415N1292925E",
+    "354435N1292901E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3545N12929E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 354435N1292901E-354452N1292937E-354435N1292950E-354415N1292925E-354435N1292901E",
+   "note": ""
+  },
+  {
+   "id": "E3264/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "354044N1292800E",
+    "354059N1292912E",
+    "353956N1292843E",
+    "354036N1292751E",
+    "354044N1292800E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3541N12929E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 354044N1292800E-354059N1292912E-353956N1292843E-354036N1292751E-354044N1292800E",
+   "note": ""
+  },
+  {
+   "id": "E3266/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342526N1273210E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3425N12732E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 342526N1273210E",
+   "note": ""
+  },
+  {
+   "id": "E3267/26",
+   "shape": "circle",
+   "coordTokens": [
+    "342931N1272125E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3430N12721E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 342931N1272125E",
+   "note": ""
+  },
+  {
+   "id": "E3268/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343520N1273130E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3435N12732E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 343520N1273130E",
+   "note": ""
+  },
+  {
+   "id": "E3269/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343506N1274407E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3435N12744E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 343506N1274407E",
+   "note": ""
+  },
+  {
+   "id": "E3270/26",
+   "shape": "circle",
+   "coordTokens": [
+    "343622N1271234E"
+   ],
+   "radius": {
+    "value": 4.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3436N12713E005",
+   "evidence": "A CIRCLE RADIUS 4.5NM CENTERED ON 343622N1271234E",
+   "note": ""
+  },
+  {
+   "id": "E3271/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345217N1255854E"
+   ],
+   "radius": {
+    "value": 10,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3452N12559E011",
+   "evidence": "A CIRCLE RADIUS 10NM CENTERED ON 345217N1255854E",
+   "note": ""
+  },
+  {
+   "id": "E3272/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350626N1260446E"
+   ],
+   "radius": {
+    "value": 8,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3506N12605E009",
+   "evidence": "A CIRCLE RADIUS 8NM CENTERED ON 350626N1260446E",
+   "note": ""
+  },
+  {
+   "id": "E3273/26",
+   "shape": "circle",
+   "coordTokens": [
+    "350929N1262228E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3509N12622E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 350929N1262228E",
+   "note": ""
+  },
+  {
+   "id": "E3274/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351209N1262114E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3512N12621E006",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 351209N1262114E",
+   "note": ""
+  },
+  {
+   "id": "E3275/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352339N1262416E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3524N12624E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 352339N1262416E",
+   "note": ""
+  },
+  {
+   "id": "E3276/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351547N1262046E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3516N12621E006",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 351547N1262046E",
+   "note": ""
+  },
+  {
+   "id": "E3277/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344820N1284213E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3448N12842E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 344820N1284213E",
+   "note": ""
+  },
+  {
+   "id": "E3278/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344323N1283725E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3443N12837E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 344323N1283725E",
+   "note": ""
+  },
+  {
+   "id": "E3279/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345447N1284248E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3455N12843E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 345447N1284248E",
+   "note": ""
+  },
+  {
+   "id": "E3280/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345001N1283013E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3450N12830E006",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 345001N1283013E",
+   "note": ""
+  },
+  {
+   "id": "E3281/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344128N1280002E"
+   ],
+   "radius": {
+    "value": 1.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3441N12800E002",
+   "evidence": "A CIRCLE RADIUS 1.7NM CENTERED ON 344128N1280002E",
+   "note": ""
+  },
+  {
+   "id": "E3282/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344432N1275121E"
+   ],
+   "radius": {
+    "value": 2.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3445N12751E003",
+   "evidence": "A CIRCLE RADIUS 2.5NM CENTERED ON 344432N1275121E",
+   "note": ""
+  },
+  {
+   "id": "E3283/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344924N1274951E"
+   ],
+   "radius": {
+    "value": 2.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3449N12750E003",
+   "evidence": "A CIRCLE RADIUS 2.5NM CENTERED ON 344924N1274951E",
+   "note": ""
+  },
+  {
+   "id": "E3284/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "355540N1292941E",
+    "355539N1293055E",
+    "355433N1293008E",
+    "355434N1292856E",
+    "355540N1292941E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3555N12930E002",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 355540N1292941E-355539N1293055E-355433N1293008E-355434N1292856E-355540N1292941E",
+   "note": ""
+  },
+  {
+   "id": "E3285/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344553N1280254E"
+   ],
+   "radius": {
+    "value": 2.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3446N12803E003",
+   "evidence": "A CIRCLE RADIUS 2.5NM CENTERED ON 344553N1280254E",
+   "note": ""
+  },
+  {
+   "id": "E3286/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344149N1280408E"
+   ],
+   "radius": {
+    "value": 1.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3442N12804E002",
+   "evidence": "A CIRCLE RADIUS 1.7NM CENTERED ON 344149N1280408E",
+   "note": ""
+  },
+  {
+   "id": "E3287/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344217N1275642E"
+   ],
+   "radius": {
+    "value": 1.2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3442N12757E002",
+   "evidence": "A CIRCLE RADIUS 1.2NM CENTERED ON 344217N1275642E",
+   "note": ""
+  },
+  {
+   "id": "E3288/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350616N1290539E",
+    "350500N1290615E",
+    "350621N1291038E",
+    "350910N1290810E",
+    "350616N1290539E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3507N12907E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350616N1290539E-350500N1290615E-350621N1291038E-350910N1290810E-350616N1290539E",
+   "note": ""
+  },
+  {
+   "id": "E3289/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352507N1292838E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3525N12929E006",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 352507N1292838E",
+   "note": ""
+  },
+  {
+   "id": "E3290/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350237N1290009E",
+    "350040N1290024E",
+    "350140N1290604E",
+    "350506N1290155E",
+    "350237N1290009E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3502N12903E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350237N1290009E-350040N1290024E-350140N1290604E-350506N1290155E-350237N1290009E",
+   "note": ""
+  },
+  {
+   "id": "E3291/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350426N1290116E",
+    "350443N1290248E",
+    "350119N1290645E",
+    "350005N1290201E",
+    "350426N1290116E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3503N12904E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350426N1290116E-350443N1290248E-350119N1290645E-350005N1290201E-350426N1290116E",
+   "note": ""
+  },
+  {
+   "id": "E3292/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351113N1291056E"
+   ],
+   "radius": {
+    "value": 0.7,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3511N12911E001",
+   "evidence": "A CIRCLE RADIUS 0.7NM CENTERED ON 351113N1291056E",
+   "note": ""
+  },
+  {
+   "id": "E3293/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351119N1291311E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3511N12913E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 351119N1291311E",
+   "note": ""
+  },
+  {
+   "id": "E3294/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351512N1291509E"
+   ],
+   "radius": {
+    "value": 2.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3515N12915E003",
+   "evidence": "A CIRCLE RADIUS 2.5NM CENTERED ON 351512N1291509E",
+   "note": ""
+  },
+  {
+   "id": "E3295/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350758N1290901E",
+    "350709N1290948E",
+    "350926N1291242E",
+    "351005N1291159E",
+    "350758N1290901E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3509N12911E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350758N1290901E-350709N1290948E-350926N1291242E-351005N1291159E-350758N1290901E",
+   "note": ""
+  },
+  {
+   "id": "E3296/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "355540N1292941E",
+    "355539N1293055E",
+    "355434N1292856E",
+    "355434N1292856E",
+    "355540N1292941E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3555N12930E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 355540N1292941E-355539N1293055E-355434N1292856E-355434N1292856E-355540N1292941E",
+   "note": "vertex 355434N1292856E is repeated back-to-back in the source text (only 3 distinct points for a 4-cornered area); compare to the near-identical E3284/26 which has a 4th distinct vertex 355433N1293008E in that slot - likely a typo/dropped vertex in this NOTAM as issued."
+  },
+  {
+   "id": "E3297/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "353643N1292709E",
+    "353642N1292948E",
+    "353350N1292948E",
+    "353351N1292709E",
+    "353643N1292709E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12928E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 353643N1292709E-353642N1292948E-353350N1292948E-353351N1292709E-353643N1292709E",
+   "note": ""
+  },
+  {
+   "id": "E3298/26",
+   "shape": "circle",
+   "coordTokens": [
+    "374007N1263625E"
+   ],
+   "radius": {
+    "value": 1.3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3740N12636E002",
+   "evidence": "A CIRCLE RADIUS 1.3NM CENTERED ON 374007N1263625E",
+   "note": ""
+  },
+  {
+   "id": "E3299/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "374355N1263012E",
+    "374325N1263256E",
+    "373823N1263307E",
+    "373811N1263024E",
+    "374355N1263012E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3741N12632E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 374355N1263012E-374325N1263256E-373823N1263307E-373811N1263024E-374355N1263012E",
+   "note": ""
+  },
+  {
+   "id": "E3300/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "352112N1291959E",
+    "352407N1292112E",
+    "352358N1292220E",
+    "351935N1292155E",
+    "352112N1291959E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3522N12922E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 352112N1291959E-352407N1292112E-352358N1292220E-351935N1292155E-352112N1291959E",
+   "note": ""
+  },
+  {
+   "id": "E3301/26",
+   "shape": "circle",
+   "coordTokens": [
+    "373941N1262256E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3740N12623E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 373941N1262256E",
+   "note": ""
+  },
+  {
+   "id": "E3302/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "374341N1263834E",
+    "374414N1264134E",
+    "374102N1264127E",
+    "374059N1263840E",
+    "374341N1263834E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3743N12640E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 374341N1263834E-374414N1264134E-374102N1264127E-374059N1263840E-374341N1263834E",
+   "note": ""
+  },
+  {
+   "id": "E3305/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "353925N1292631E",
+    "353925N1292910E",
+    "353642N1292910E",
+    "353643N1292630E",
+    "353925N1292631E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3538N12928E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 353925N1292631E-353925N1292910E-353642N1292910E-353643N1292630E-353925N1292631E",
+   "note": ""
+  },
+  {
+   "id": "E3310/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "354735N1292922E",
+    "354735N1293032E",
+    "354504N1293031E",
+    "354504N1293021E",
+    "354735N1292922E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3546N12930E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 354735N1292922E-354735N1293032E-354504N1293031E-354504N1293021E-354735N1292922E",
+   "note": ""
+  },
+  {
+   "id": "E3312/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350531N1284958E",
+    "350456N1290023E",
+    "345911N1290118E",
+    "345848N1285044E",
+    "350531N1284958E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3502N12856E007",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350531N1284958E-350456N1290023E-345911N1290118E-345848N1285044E-350531N1284958E",
+   "note": ""
+  },
+  {
+   "id": "E3313/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350531N1284958E",
+    "350456N1290023E",
+    "345911N1290118E",
+    "345848N1285044E",
+    "350531N1284958E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3502N12856E007",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350531N1284958E-350456N1290023E-345911N1290118E-345848N1285044E-350531N1284958E",
+   "note": "same polygon as E3312/26 and E3314/26, different time window (D-schedule)"
+  },
+  {
+   "id": "E3314/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350531N1284958E",
+    "350456N1290023E",
+    "345911N1290118E",
+    "345848N1285044E",
+    "350531N1284958E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3502N12856E007",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350531N1284958E-350456N1290023E-345911N1290118E-345848N1285044E-350531N1284958E",
+   "note": "same polygon as E3312/26 and E3313/26, different time window (D-schedule)"
+  },
+  {
+   "id": "E3315/26",
+   "shape": "circle",
+   "coordTokens": [
+    "344830N1282313E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3449N12823E006",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 344830N1282313E",
+   "note": ""
+  },
+  {
+   "id": "E3318/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "374028N1275201E",
+    "374000N1274500E",
+    "375310N1274144E",
+    "375621N1273601E",
+    "380140N1272742E",
+    "381237N1272725E",
+    "381347N1272922E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3757N12741E021",
+   "evidence": "1NM EITHER SIDE OF LINE 374028N1275201E-374000N1274500E-375310N1274144E-375621N1273601E-380140N1272742E-381237N1272725E-381347N1272922E",
+   "note": ""
+  },
+  {
+   "id": "E3319/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "374028N1275201E",
+    "374000N1274500E",
+    "375310N1274144E",
+    "375621N1273601E",
+    "380140N1272742E",
+    "381237N1272725E",
+    "381347N1272922E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3757N12741E021",
+   "evidence": "1NM EITHER SIDE OF LINE 374028N1275201E-374000N1274500E-375310N1274144E-375621N1273601E-380140N1272742E-381237N1272725E-381347N1272922E",
+   "note": ""
+  },
+  {
+   "id": "E3320/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "374028N1275201E",
+    "374000N1274500E",
+    "375310N1274144E",
+    "375621N1273601E",
+    "381000N1273905E",
+    "381427N1274008E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3757N12746E020",
+   "evidence": "1NM EITHER SIDE OF LINE 374028N1275201E-374000N1274500E-375310N1274144E-375621N1273601E-381000N1273905E-381427N1274008E",
+   "note": ""
+  },
+  {
+   "id": "E3321/26",
+   "shape": "corridor",
+   "coordTokens": [
+    "374028N1275201E",
+    "374000N1274500E",
+    "375310N1274144E",
+    "375621N1273601E",
+    "381000N1273905E",
+    "381427N1274008E"
+   ],
+   "radius": null,
+   "corridorWidth": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "namedArea": null,
+   "qToken": "3757N12746E020",
+   "evidence": "1NM EITHER SIDE OF LINE 374028N1275201E-374000N1274500E-375310N1274144E-375621N1273601E-381000N1273905E-381427N1274008E",
+   "note": ""
+  },
+  {
+   "id": "E3325/26",
+   "shape": "circle",
+   "coordTokens": [
+    "352912N1282521E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3529N12825E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 352912N1282521E",
+   "note": ""
+  },
+  {
+   "id": "E3344/26",
+   "shape": "circle",
+   "coordTokens": [
+    "351703N1265157E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3517N12652E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 351703N1265157E",
+   "note": ""
+  },
+  {
+   "id": "E3357/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350000N1271814E",
+    "350000N1282230E",
+    "344930N1282130E",
+    "340847N1271813E",
+    "350000N1271814E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3434N12750E038",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350000N1271814E-350000N1282230E-344930N1282130E-340847N1271813E-350000N1271814E",
+   "note": ""
+  },
+  {
+   "id": "E3358/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "353810N1272850E",
+    "353940N1282410E",
+    "353745N1282550E",
+    "351515N1282350E",
+    "351400N1272400E",
+    "353810N1272850E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3526N12755E029",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 353810N1272850E-353940N1282410E-353745N1282550E-351515N1282350E-351400N1272400E-353810N1272850E",
+   "note": ""
+  },
+  {
+   "id": "E3386/26",
+   "shape": "circle",
+   "coordTokens": [
+    "374255N1263335E"
+   ],
+   "radius": {
+    "value": 1.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3743N12634E002",
+   "evidence": "A CIRCLE RADIUS 1.5NM CENTERED ON 374255N1263335E",
+   "note": ""
+  },
+  {
+   "id": "E3387/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "374321N1263152E",
+    "374320N1263521E",
+    "374236N1263526E",
+    "374220N1263518E",
+    "374220N1263343E",
+    "374256N1263152E",
+    "374321N1263152E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3743N12634E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 374321N1263152E-374320N1263521E-374236N1263526E-374220N1263518E-374220N1263343E-374256N1263152E-374321N1263152E",
+   "note": ""
+  },
+  {
+   "id": "E3392/26",
+   "shape": "circle",
+   "coordTokens": [
+    "361404N1292242E"
+   ],
+   "radius": {
+    "value": 5.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3614N12923E006",
+   "evidence": "A CIRCLE RADIUS 5.5NM CENTERED ON 361404N1292242E",
+   "note": ""
+  },
+  {
+   "id": "E3393/26",
+   "shape": "circle",
+   "coordTokens": [
+    "362148N1292335E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3622N12924E006",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 362148N1292335E",
+   "note": ""
+  },
+  {
+   "id": "E3394/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "370559N1292055E",
+    "370558N1292337E",
+    "370913N1292338E",
+    "370913N1292056E",
+    "370559N1292055E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3708N12922E003",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 370559N1292055E-370558N1292337E-370913N1292338E-370913N1292056E-370559N1292055E",
+   "note": ""
+  },
+  {
+   "id": "E3395/26",
+   "shape": "circle",
+   "coordTokens": [
+    "363549N1292437E"
+   ],
+   "radius": {
+    "value": 6,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3636N12925E007",
+   "evidence": "A CIRCLE RADIUS 6NM CENTERED ON 363549N1292437E",
+   "note": ""
+  },
+  {
+   "id": "E3396/26",
+   "shape": "circle",
+   "coordTokens": [
+    "362824N1292601E"
+   ],
+   "radius": {
+    "value": 4,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3628N12926E005",
+   "evidence": "A CIRCLE RADIUS 4NM CENTERED ON 362824N1292601E",
+   "note": ""
+  },
+  {
+   "id": "E3397/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "370437N1292337E",
+    "370436N1292740E",
+    "365331N1292736E",
+    "365332N1292334E",
+    "370437N1292337E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3659N12926E007",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 370437N1292337E-370436N1292740E-365331N1292736E-365332N1292334E-370437N1292337E",
+   "note": ""
+  },
+  {
+   "id": "E3398/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "365332N1292334E",
+    "365331N1292937E",
+    "364032N1293113E",
+    "364033N1292330E",
+    "365332N1292334E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3647N12927E009",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 365332N1292334E-365331N1292937E-364032N1293113E-364033N1292330E-365332N1292334E",
+   "note": ""
+  },
+  {
+   "id": "E3399/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "364033N1292410E",
+    "364032N1293013E",
+    "363718N1293011E",
+    "363717N1292411E",
+    "364033N1292410E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3639N12927E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 364033N1292410E-364032N1293013E-363718N1293011E-363717N1292411E-364033N1292410E",
+   "note": ""
+  },
+  {
+   "id": "E3400/26",
+   "shape": "circle",
+   "coordTokens": [
+    "345913N1265314E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12653E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 345913N1265314E",
+   "note": ""
+  },
+  {
+   "id": "E3402/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "363839N1261734E",
+    "363839N1261741E",
+    "363837N1261824E",
+    "363828N1261905E",
+    "363814N1261943E",
+    "363754N1262018E",
+    "363729N1262047E",
+    "363700N1262109E",
+    "363628N1262125E",
+    "363555N1262132E",
+    "363520N1262132E",
+    "363447N1262123E",
+    "363431N1262116E",
+    "363520N1261949E",
+    "363717N1261807E",
+    "363839N1261734E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3637N12619E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 363839N1261734E-363839N1261741E-363837N1261824E-363828N1261905E-363814N1261943E-363754N1262018E-363729N1262047E-363700N1262109E-363628N1262125E-363555N1262132E-363520N1262132E-363447N1262123E-363431N1262116E-363520N1261949E-363717N1261807E-363839N1261734E",
+   "note": ""
+  },
+  {
+   "id": "E3405/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "363746N1261510E",
+    "363657N1261555E",
+    "363552N1261555E",
+    "363410N1261753E",
+    "363239N1261738E",
+    "363239N1261742E",
+    "363243N1261834E",
+    "363256N1261923E",
+    "363317N1262007E",
+    "363346N1262044E",
+    "363421N1262111E",
+    "363431N1262116E",
+    "363520N1261949E",
+    "363717N1261807E",
+    "363839N1261734E",
+    "363838N1261732E",
+    "363835N1261702E",
+    "363828N1261632E",
+    "363818N1261605E",
+    "363806N1261539E",
+    "363750N1261516E",
+    "363746N1261510E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3636N12618E005",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 363746N1261510E-363657N1261555E-363552N1261555E-363410N1261753E-363239N1261738E-363239N1261742E-363243N1261834E-363256N1261923E-363317N1262007E-363346N1262044E-363421N1262111E-363431N1262116E-363520N1261949E-363717N1261807E-363839N1261734E-363838N1261732E-363835N1261702E-363828N1261632E-363818N1261605E-363806N1261539E-363750N1261516E-363746N1261510E",
+   "note": ""
+  },
+  {
+   "id": "E3417/26",
+   "shape": "circle",
+   "coordTokens": [
+    "361319N1292242E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3613N12923E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 361319N1292242E",
+   "note": ""
+  },
+  {
+   "id": "E3432/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "352027N1274805E",
+    "352027N1281626E",
+    "345118N1281626E",
+    "345118N1274805E",
+    "352027N1274805E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3506N12802E020",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 352027N1274805E-352027N1281626E-345118N1281626E-345118N1274805E-352027N1274805E",
+   "note": ""
+  },
+  {
+   "id": "E3447/26",
+   "shape": "circle",
+   "coordTokens": [
+    "365001N1273210E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3650N12732E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 365001N1273210E",
+   "note": ""
+  },
+  {
+   "id": "E3456/26",
+   "shape": "circle",
+   "coordTokens": [
+    "365534N1270940E"
+   ],
+   "radius": {
+    "value": 0.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3656N12710E001",
+   "evidence": "A CIRCLE RADIUS 0.5NM CENTERED ON 365534N1270940E",
+   "note": ""
+  },
+  {
+   "id": "E3457/26",
+   "shape": "circle",
+   "coordTokens": [
+    "363931N1270953E"
+   ],
+   "radius": {
+    "value": 0.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3640N12710E001",
+   "evidence": "A CIRCLE RADIUS 0.5NM CENTERED ON 363931N1270953E",
+   "note": ""
+  },
+  {
+   "id": "E3465/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "354604N1262900E",
+    "354604N1263400E",
+    "354317N1263356E",
+    "354317N1262858E",
+    "354604N1262900E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3545N12631E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 354604N1262900E-354604N1263400E-354317N1263356E-354317N1262858E-354604N1262900E",
+   "note": ""
+  },
+  {
+   "id": "E3497/26",
+   "shape": "circle",
+   "coordTokens": [
+    "361717N1263215E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3617N12632E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 361717N1263215E",
+   "note": ""
+  },
+  {
+   "id": "E3498/26",
+   "shape": "circle",
+   "coordTokens": [
+    "325900N1254900E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3259N12549E005",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 325900N1254900E",
+   "note": ""
+  },
+  {
+   "id": "E3502/26",
+   "shape": "circle",
+   "coordTokens": [
+    "361319N1292242E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3613N12923E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 361319N1292242E",
+   "note": ""
+  },
+  {
+   "id": "E3512/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350000N1271814E",
+    "350000N1282230E",
+    "344930N1282130E",
+    "340847N1271813E",
+    "350000N1271814E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3434N12750E038",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350000N1271814E-350000N1282230E-344930N1282130E-340847N1271813E-350000N1271814E",
+   "note": ""
+  },
+  {
+   "id": "E3513/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "353810N1272850E",
+    "353940N1282410E",
+    "353745N1282550E",
+    "351515N1282350E",
+    "351400N1272400E",
+    "353810N1272850E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3526N12755E029",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 353810N1272850E-353940N1282410E-353745N1282550E-351515N1282350E-351400N1272400E-353810N1272850E",
+   "note": ""
+  },
+  {
+   "id": "E3514/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "350000N1271814E",
+    "350000N1282230E",
+    "344930N1282130E",
+    "340847N1271813E",
+    "350000N1271814E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3434N12750E038",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 350000N1271814E-350000N1282230E-344930N1282130E-340847N1271813E-350000N1271814E",
+   "note": ""
+  },
+  {
+   "id": "E3515/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "353810N1272850E",
+    "353940N1282410E",
+    "353745N1282550E",
+    "351515N1282350E",
+    "351400N1272400E",
+    "353810N1272850E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3526N12755E029",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 353810N1272850E-353940N1282410E-353745N1282550E-351515N1282350E-351400N1272400E-353810N1272850E",
+   "note": ""
+  },
+  {
+   "id": "E3523/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371204N1274439E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3712N12745E002",
+   "evidence": "A CIRCLE RADIUS 1NM CENTERED ON 371204N1274439E",
+   "note": ""
+  },
+  {
+   "id": "E3524/26",
+   "shape": "circle",
+   "coordTokens": [
+    "360017N1270050E"
+   ],
+   "radius": {
+    "value": 2,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3600N12701E003",
+   "evidence": "A CIRCLE RADIUS 2NM CENTERED ON 360017N1270050E",
+   "note": ""
+  },
+  {
+   "id": "E3535/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353949N1263215E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3540N12632E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 353949N1263215E",
+   "note": ""
+  },
+  {
+   "id": "E3536/26",
+   "shape": "circle",
+   "coordTokens": [
+    "353949N1263215E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3540N12632E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 353949N1263215E",
+   "note": ""
+  },
+  {
+   "id": "E3538/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "381100N1294600E",
+    "381100N1304200E",
+    "375100N1304200E",
+    "375100N1294600E",
+    "381100N1294600E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3801N13014E026",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 381100N1294600E-381100N1304200E-375100N1304200E-375100N1294600E-381100N1294600E",
+   "note": ""
+  },
+  {
+   "id": "E3551/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "342000N1243000E",
+    "342000N1254953E",
+    "334500N1254953E",
+    "334500N1243000E",
+    "342000N1243000E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3403N12510E039",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 342000N1243000E-342000N1254953E-334500N1254953E-334500N1243000E-342000N1243000E",
+   "note": ""
+  },
+  {
+   "id": "E3553/26",
+   "shape": "circle",
+   "coordTokens": [
+    "373300N1271317E"
+   ],
+   "radius": {
+    "value": 1.5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3733N12713E002",
+   "evidence": "A CIRCLE RADIUS 1.5NM CENTERED ON 373300N1271317E",
+   "note": ""
+  },
+  {
+   "id": "E3573/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371210N1274442E"
+   ],
+   "radius": {
+    "value": 3,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3712N12745E004",
+   "evidence": "A CIRCLE RADIUS 3NM CENTERED ON 371210N1274442E",
+   "note": ""
+  },
+  {
+   "id": "E3574/26",
+   "shape": "circle",
+   "coordTokens": [
+    "371210N1274442E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3712N12745E006",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 371210N1274442E",
+   "note": ""
+  },
+  {
+   "id": "E3582/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "370800N1261000E",
+    "370800N1261500E",
+    "370550N1261400E",
+    "370500N1261000E",
+    "370800N1261000E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3707N12613E004",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 370800N1261000E-370800N1261500E-370550N1261400E-370500N1261000E-370800N1261000E",
+   "note": ""
+  },
+  {
+   "id": "E3583/26",
+   "shape": "circle",
+   "coordTokens": [
+    "325900N1254900E"
+   ],
+   "radius": {
+    "value": 5,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3259N12549E005",
+   "evidence": "A CIRCLE RADIUS 5NM CENTERED ON 325900N1254900E",
+   "note": ""
+  },
+  {
+   "id": "E3595/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "343957N1273311E",
+    "343954N1270004E",
+    "342345N1270012E",
+    "342349N1273341E",
+    "343957N1273311E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3432N12717E018",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 343957N1273311E-343954N1270004E-342345N1270012E-342349N1273341E-343957N1273311E",
+   "note": ""
+  },
+  {
+   "id": "E3597/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "342602N1270009E",
+    "342603N1271700E",
+    "342338N1271700E",
+    "342345N1270012E",
+    "342602N1270009E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3425N12709E009",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 342602N1270009E-342603N1271700E-342338N1271700E-342345N1270012E-342602N1270009E",
+   "note": ""
+  },
+  {
+   "id": "E3598/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "372500N1241616E",
+    "372500N1252732E",
+    "370726N1252732E",
+    "370726N1241616E",
+    "372500N1241616E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3716N12452E031",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 372500N1241616E-372500N1252732E-370726N1252732E-370726N1241616E-372500N1241616E",
+   "note": ""
+  },
+  {
+   "id": "E3599/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "363700N1241000E",
+    "363700N1241500E",
+    "361500N1241500E",
+    "361500N1241000E",
+    "363700N1241000E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3626N12413E013",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 363700N1241000E-363700N1241500E-361500N1241500E-361500N1241000E-363700N1241000E",
+   "note": ""
+  },
+  {
+   "id": "E3600/26",
+   "shape": "polygon",
+   "coordTokens": [
+    "361500N1241000E",
+    "361500N1241500E",
+    "353300N1241500E",
+    "353300N1241000E",
+    "361500N1241000E"
+   ],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3554N12413E023",
+   "evidence": "AREA BOUNDED BY THE FOLLOWING 361500N1241000E-361500N1241500E-353300N1241500E-353300N1241000E-361500N1241000E",
+   "note": ""
+  },
+  {
+   "id": "G3991/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3459N12623E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G3992/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3508N12649E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G3993/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3554N12637E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G3994/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3451N12737E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G3995/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3733N12648E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G3996/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3331N12630E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G3997/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3726N12758E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G3998/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3804N12840E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G3999/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3511N12856E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G4000/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3505N12804E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G4001/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3536N12921E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G4002/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3559N12925E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G4003/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3554N12840E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G4004/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3643N12730E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "G4005/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3728N12626E005",
+   "evidence": "",
+   "note": ""
+  },
+  {
+   "id": "Z0390/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12700E999",
+   "evidence": "",
+   "note": "FLOW CTL notice restricting a route (Y722/B576 via ATOTI); no area coordinates in E), applies to route/aerodrome operations not a bounded area"
+  },
+  {
+   "id": "Z0391/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12700E999",
+   "evidence": "",
+   "note": "FLOW CTL notice restricting a route (A593 via SADLI); no area coordinates in E)"
+  },
+  {
+   "id": "Z0443/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12700E999",
+   "evidence": "",
+   "note": "GPS unreliable/lost intermittently caution for whole Incheon FIR; no specific coordinates given in E)"
+  },
+  {
+   "id": "Z0479/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3706N12702E025",
+   "evidence": "",
+   "note": "E) is a VORTAC (navaid) unserviceability, not a self-contained area - closest to the 'none/belongs to facility' category. Text does give a coordinate, '3705N12701E', but it is offered as a substitute waypoint to use INSTEAD OF the out-of-service SOT VORTAC, not a stated position of the affected area itself, so it was not recorded as a coordTokens/evidence position per the 'do not guess' rule."
+  },
+  {
+   "id": "Z0507/26",
+   "shape": "circle",
+   "coordTokens": [
+    "373547N1264720E"
+   ],
+   "radius": {
+    "value": 100,
+    "unit": "M"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3736N12647E001",
+   "evidence": "A CIRCLE RADIUS 100M CENTERED ON 373547N1264720E",
+   "note": ""
+  },
+  {
+   "id": "Z0533/26",
+   "shape": "circle",
+   "coordTokens": [
+    "355336N 1283754E"
+   ],
+   "radius": {
+    "value": 1,
+    "unit": "NM"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3554N12840E005",
+   "evidence": "A CIRCLE RADIUS 1NM RAD OF 355336N 1283754E",
+   "note": ""
+  },
+  {
+   "id": "Z0535/26",
+   "shape": "circle",
+   "coordTokens": [
+    "373547N1264720E"
+   ],
+   "radius": {
+    "value": 100,
+    "unit": "M"
+   },
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3736N12647E001",
+   "evidence": "A CIRCLE RADIUS 100M CENTERED ON 373547N1264720E",
+   "note": ""
+  },
+  {
+   "id": "Z0548/26",
+   "shape": "none",
+   "coordTokens": [],
+   "radius": null,
+   "corridorWidth": null,
+   "namedArea": null,
+   "qToken": "3535N12700E999",
+   "evidence": "",
+   "note": "E) describes a conditional route (CDR2) as a table of named waypoint pairs and altitudes; no coordinates or named restricted/danger area given, so no area-shape can be assigned from the text. Marked 'none' as closest fit though it is not aerodrome-bound like typical 'none' cases."
+  }
+ ]
+}
