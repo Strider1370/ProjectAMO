@@ -25,10 +25,9 @@ function parseHeightToken(tok) {
   return null
 }
 
-export function parseNotamSchedule(scheduleText) {
-  const m = String(scheduleText || '').trim().match(/^(?:DLY\s+)?(\d{2})(\d{2})-(\d{2})(\d{2})$/i)
-  return m ? { kind: 'daily', start_utc_min: Number(m[1]) * 60 + Number(m[2]), end_utc_min: Number(m[3]) * 60 + Number(m[4]) } : null
-}
+// D)필드 해석은 shared/notam-schedule.js가 담당한다(단순 HHMM-HHMM만 알던 옛 파서는 호출부가
+// 없어 삭제). 여기서는 원문 문자열만 scheduleText로 넘긴다 — 월·연도 복원에 B)/C)가 필요해서
+// 파싱 시점이 아니라 판정 시점에 푼다.
 
 export function parseQcodeBand(qLine, fLine, gLine) {
   const f = parseHeightToken(fLine)

@@ -1,8 +1,9 @@
-// MOA 활성화 계약 픽스처. 2026-07-25 라이브 NOTAM(aim.koca.go.kr)에서 그대로 캡처한
-// 좌표·코드·고도를 쓴다 — 매칭 로직이 검증하는 값이 실제 데이터여야 의미가 있다.
+// MOA 활성화 계약 픽스처. 2026-07-25 라이브 NOTAM(aim.koca.go.kr)에서 캡처한 좌표·코드·고도를 쓴다.
 //   D2117/26 'CATA 7H ACT'          → 본문 코드로 매칭(쌍둥이 층 CATA 7L이 아니라 7H를 골라야 함)
 //   E3513/26 'TEMPO RESTRICTED ...' → 본문에 구역명이 없어 좌표로만 매칭(MOA 27S)
-// 유효시각만 실행 시점 기준 상대값으로 바꾼다 — 원본 유효기간이 지나면 계약이 시간 때문에 깨지므로.
+//
+// 시각은 전부 실행 시점 기준으로 만든다 — 절대 날짜를 박으면 그 날짜가 지나는 순간 계약이 깨진다.
+// D)는 날짜 없는 반복 창(HHMM-HHMM)으로 넣어 어느 시각에 돌려도 결과가 같게 한다.
 const CAPTURED = [
   {
     "id": "D2117/26",
@@ -16,7 +17,6 @@ const CAPTURED = [
       "unit": "FT",
       "ref": "AMSL"
     },
-    "schedule_text": "JUL 24 0600-1100, 26 2300-2359, 27-30 0000-0100 2300-2359, 31  0000-0100, AUG 01 0000-0900",
     "geometry": {
       "type": "LineString",
       "coordinates": [
@@ -59,7 +59,6 @@ const CAPTURED = [
       "unit": "FT",
       "ref": null
     },
-    "schedule_text": "26 2050-2130, 27 0800-0930, 28 2150-2230, 30 0000-0130",
     "geometry": {
       "type": "LineString",
       "coordinates": [
@@ -96,23 +95,42 @@ const CAPTURED = [
   }
 ]
 
-export function moaActivationNotam(nowMs = Date.now()) {
+const HHMM = (ms) => {
+  const d = new Date(ms)
+  return String(d.getUTCHours()).padStart(2, '0') + String(d.getUTCMinutes()).padStart(2, '0')
+}
+const HOUR = 60 * 60 * 1000
+
+function base(nowMs) {
   const iso = (ms) => new Date(ms).toISOString()
+  return CAPTURED.map((it) => ({
+    ...it,
+    category: 'restricted',
+    scope: 'airport',
+    valid_from: iso(nowMs - HOUR),
+    valid_to: iso(nowMs + 24 * HOUR),
+  }))
+}
+
+// CATA 7H는 지금이 D) 창 안(활성), MOA 27S는 창 밖(발효 예정) — 빗금은 앞의 것만 나와야 한다.
+export function moaActivationNotam(nowMs = Date.now()) {
+  const items = base(nowMs)
+  const inWindow = HHMM(nowMs - HOUR) + '-' + HHMM(nowMs + HOUR)
+  const outOfWindow = HHMM(nowMs + 2 * HOUR) + '-' + HHMM(nowMs + 3 * HOUR)
   return {
-    fetched_at: iso(nowMs),
+    fetched_at: new Date(nowMs).toISOString(),
     horizon_hours: 24,
-    items: CAPTURED.map((it) => ({
-      ...it,
-      category: 'restricted',
-      scope: 'airport',
-      valid_from: iso(nowMs - 60 * 60 * 1000),
-      valid_to: iso(nowMs + 24 * 60 * 60 * 1000),
-    })),
+    items: items.map((it) => ({ ...it, schedule_text: it.id === 'D2117/26' ? inWindow : outOfWindow })),
   }
 }
 
-// D)(시간 조건)를 지운 판 — 조건 없이 '발효 중'으로 판정되는 활성 표시를 확인하기 위한 변형.
+// D) 자체가 없는 판 — 유효기간 안이면 조건 없이 발효 중이다.
 export function moaActivationNotamDefinite(nowMs = Date.now()) {
-  const payload = moaActivationNotam(nowMs)
-  return { ...payload, items: payload.items.map(({ schedule_text, ...rest }) => rest) }
+  return { fetched_at: new Date(nowMs).toISOString(), horizon_hours: 24, items: base(nowMs) }
+}
+
+// 문법에 없는 D) — 해석 불가라 '조건 확인'으로 남고 옅은 빗금이 된다.
+export function moaActivationNotamUnreadable(nowMs = Date.now()) {
+  const payload = moaActivationNotamDefinite(nowMs)
+  return { ...payload, items: payload.items.map((it) => ({ ...it, schedule_text: 'MON-FRI SR-SS' })) }
 }
