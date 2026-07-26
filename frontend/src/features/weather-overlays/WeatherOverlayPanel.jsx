@@ -43,11 +43,18 @@ function WeatherOverlayPanel({
   // TEMP 숨김: flight_category 백엔드 수집 중단(용량 절감)에 맞춰 패널에서도 임시로 감춤.
   // 재개하려면 이 배열을 비우고 백엔드 수집(index.js)도 되돌릴 것.
   const TEMP_HIDDEN_LAYER_IDS = ['flightCategory']
+  // 순서는 조종사가 보는 급한 순서 — 발효 중인 위험기상이 먼저, 그다음 실제 관측(레이더·위성),
+  // 그다음 예보(수치모델), 마지막이 참고용 항적.
+  // 레이더와 위성은 같은 "지금 무엇이 보이는가"라 한 묶음으로 두고, 그 안에서 레이더 산출물 →
+  // 위성 산출물 순으로 늘어놓는다.
   const groups = [
-    { id: 'radar', title: '레이더', ids: ['radar', 'radarOverseas', 'echoTop', 'lightning'] },
-    { id: 'satellite', title: '위성', ids: ['satellite', 'ci', 'ctps'] },
-    { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : [] },
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'typhoon'] },
+    {
+      id: 'observation',
+      title: '레이더/위성',
+      ids: ['radar', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'ci', 'ctps'],
+    },
+    { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : [] },
     { id: 'traffic', title: '항적', ids: ['adsb'] },
   ]
   const layerLabels = {
