@@ -2,6 +2,22 @@
 
 Run a focused contract with `npm run dev:contract -- --grep <id>`. The command checks ports, then Playwright owns the fixed-data backend and frontend lifecycle. `dev:test` only stops automatic collection; it does not provide route or weather fixtures.
 
+## 반복 실행 (개발 중)
+
+`npm --prefix frontend run dev:contract:fast -- contracts/<id>.spec.mjs -g "<테스트 이름>"`
+
+desktop 한 종, 재시도 없음, 이미 떠 있는 서버 재사용(`CONTRACT_REUSE_SERVER=1`). 실측상 태풍 계약 12개가 재시도 포함 5.9분 → 재시도 없이 2.2분이고, 서버 재사용까지 하면 한 건은 30초 안쪽이다.
+
+**병합 전 검증은 `dev:contract`를 쓴다.** 세 뷰포트 전부, 매번 새 서버에서 시작한다.
+
+### 계약을 쓸 때 지킬 것
+
+기능이 늘수록 화면 글자로 요소를 찾는 방식은 반드시 깨진다. 실제로 `/자료 없음/`이 레이더 이동의 "이동 자료 없음"과, `/^태풍/`이 태풍 패널의 "태풍 목록 닫기" 버튼과 겹쳐 계약이 실패했다.
+
+- 이름만으로 찾지 말고 소유 패널·클래스로 범위를 좁힌다.
+- 같은 종류가 여러 개일 수 있으면(태풍 2개, 패널 2개) 반드시 대상을 지정한다.
+- 지도 소스의 데이터를 단언할 때 `querySourceFeatures`를 쓰지 않는다. 그것은 이미 그려진 타일을 읽어 `setData` 직후를 반영하지 못한다. `getSource(id).serialize().data`를 본다.
+
 ## Active
 
 | Contract | Features / owners | Viewports | Preconditions | Spec | Owner | Status |
@@ -17,7 +33,7 @@ Run a focused contract with `npm run dev:contract -- --grep <id>`. The command c
 | `radar-motion` | `radarMotionLayers.js`, `useRadarMotionOverlay.js`, `WeatherLegends.jsx` 토글 | desktop, iPad landscape, mobile | fixture intercepts `echo_meta.json` and `motion_korea_*.geojson` | `frontend/verification/contracts/radar-motion.spec.mjs` | frontend | active — passed 2026-07-26 (18/18) |
 | `briefing-view` | `BriefingView.jsx`, `MapView.jsx` | desktop, iPad landscape | committed navdata; `route-fixture.mjs`; mobile has no full/map-together control | `frontend/verification/contracts/briefing-view.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `moa-activation` | `useMoaActivation.js`, `moaActivation.js`, `aviationWfsLayers.js` MOA 레이어 | desktop | `moa-activation-notam.mjs`가 `/api/notam`을 가로챔(2026-07-25 라이브 NOTAM 캡처, 유효시각만 상대값); 커밋된 `moa.geojson` | `frontend/verification/contracts/moa-activation.spec.mjs` | frontend | active — passed 2026-07-26 (3/3, desktop) |
-| `typhoon` | `typhoonLayers.js`, `typhoonOverlaySync.js`, `TyphoonPanel.jsx`, `typhoonColors.js`, `WeatherOverlayPanel.jsx` | desktop, iPad landscape, mobile | `typhoon-snapshot.json`(2018년 19호·20호 실제 응답 기반)이 `/api/typhoon`을 가로챔; 활성 태풍 없음·수집 실패 상태도 함께 검증 | `frontend/verification/contracts/typhoon.spec.mjs` | frontend | active — passed 2026-07-26 (21/21) |
+| `typhoon` | `typhoonLayers.js`, `typhoonOverlaySync.js`, `TyphoonPanel.jsx`, `typhoonColors.js`, `WeatherOverlayPanel.jsx` | desktop, iPad landscape, mobile | `typhoon-snapshot.json`(2018년 19호·20호 실제 응답 기반)이 `/api/typhoon`을 가로챔; 활성 태풍 없음·수집 실패 상태도 함께 검증 | `frontend/verification/contracts/typhoon.spec.mjs` | frontend | active — passed 2026-07-26 (36/36) |
 
 ## Registered next
 

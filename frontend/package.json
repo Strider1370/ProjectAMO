@@ -12,6 +12,7 @@
     "build": "vite build",
     "test": "node --test",
     "dev:contract": "node verification/port-guard.mjs && playwright test",
+    "dev:contract:fast": "CONTRACT_REUSE_SERVER=1 playwright test --project=desktop --retries=0",
     "smoke:responsive": "node scripts/responsive-smoke.mjs",
     "screenshots:responsive": "node scripts/responsive-screenshots.mjs",
     "test:layout": "node --test src/app/layout/layoutTokens.test.js",

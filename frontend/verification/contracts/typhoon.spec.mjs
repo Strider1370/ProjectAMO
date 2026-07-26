@@ -18,7 +18,8 @@ function weatherEntry(testInfo) {
 // 되므로 이름 완전일치 대신 접두 일치로 찾는다.
 async function openWeatherPanel(page, testInfo) {
   await page.locator(`[aria-label="${weatherEntry(testInfo)}"]`).first().click()
-  const tile = page.getByRole('button', { name: /^태풍/ })
+  // 이름만으로 찾으면 태풍 패널의 "태풍 목록 닫기" 버튼과 겹친다 — 레이어 타일로 한정한다.
+  const tile = page.locator('button.layer-tile').filter({ hasText: '태풍' })
   await expect(tile).toBeVisible()
   return tile
 }
@@ -79,7 +80,7 @@ test('타일 배지가 활성 태풍 수를 보여준다', async ({ page }, test
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   await page.locator(`[aria-label="${weatherEntry(testInfo)}"]`).first().click()
   // 레이어를 켜기 전에도 개수가 보여야 한다(스펙 §9.2).
-  await expect(page.getByRole('button', { name: /^태풍/ })).toContainText('2')
+  await expect(page.locator('button.layer-tile').filter({ hasText: '태풍' })).toContainText('2')
 })
 
 test('복수 태풍의 패널 색과 지도 색이 일치한다', async ({ page }, testInfo) => {
@@ -90,9 +91,10 @@ test('복수 태풍의 패널 색과 지도 색이 일치한다', async ({ page 
   expect(new Set(swatches).size).toBe(2)
 
   // _data는 Mapbox 공개 API가 아니다. 렌더된 피처를 조회한다.
-  const mapColors = await page.evaluate(() => [...new Set(
-    (window.__map?.querySourceFeatures('typhoon-points') ?? []).map((f) => f.properties.color),
-  )])
+  const mapColors = await page.evaluate(() => {
+    const data = window.__map?.getSource('typhoon-points')?.serialize?.()?.data
+    return [...new Set((data?.features ?? []).map((f) => f.properties.color))]
+  })
   expect(mapColors.length).toBe(2)
 })
 
@@ -115,7 +117,8 @@ test('활성 태풍이 없으면 그렇게 표시한다', async ({ page }, testI
 
 test('수집 실패는 태풍 없음과 구분해 표시한다', async ({ page }, testInfo) => {
   await openTyphoon(page, testInfo, { ...empty, status: 'unavailable' })
-  await expect(page.getByText(/자료 없음/)).toBeVisible()
+  // 레이더 이동 레이어도 "이동 자료 없음"을 쓴다 — 태풍 패널 안으로 범위를 좁힌다.
+  await expect(page.getByLabel('활성 태풍 목록').getByText(/자료 없음/)).toBeVisible()
 })
 
 test('베이스맵을 두 번 바꿔도 레이어가 남는다', async ({ page }, testInfo) => {
@@ -138,27 +141,43 @@ test('패널의 시각 표에 현재와 예보 시각이 나온다', async ({ pa
 
 test('표의 시각 행에 올리면 지도의 그 지점이 선택된다', async ({ page }, testInfo) => {
   await openTyphoon(page, testInfo, snapshot)
-  const selectedCount = () => page.evaluate(() => (window.__map?.querySourceFeatures('typhoon-points') ?? [])
-    .filter((f) => f.properties.isSelected === true || f.properties.isSelected === 'true').length)
-  expect(await selectedCount()).toBe(0)
+  // querySourceFeatures는 이미 그려진 타일을 읽어 setData 직후를 반영하지 못한다.
+  // 소스에 넣은 데이터를 직접 본다.
+  const selectedValidAt = () => page.evaluate(() => {
+    const data = window.__map?.getSource('typhoon-points')?.serialize?.()?.data
+    const hit = (data?.features ?? []).filter((f) => f.properties.isSelected === true)
+    return hit.length === 1 ? hit[0].properties.validAt : null
+  })
 
-  await page.getByLabel('활성 태풍 목록').locator('.typhoon-track__row').first().hover()
-  await expect.poll(selectedCount, { timeout: 8000 }).toBeGreaterThan(0)
+  // "0에서 늘었나"로 재지 않는다 — 모바일에서는 타일을 누른 직후 손가락이 첫 행에 걸려
+  // 이미 선택된 상태일 수 있다. 고른 그 시각이 선택되는지를 본다.
+  const target = snapshot.typhoons[0].rows.filter((r) => r.forecast)[0].validAt
+  const rows = page.getByLabel('활성 태풍 목록').locator('.typhoon-panel__item').first().locator('.typhoon-track__row')
+  const row = rows.nth(1)   // 0 = 현재, 1 = 첫 예보
+  // 터치 기기에는 마우스 올리기가 없다. 모바일에서는 탭이 같은 선택을 해야 한다.
+  if (testInfo.project.name === 'mobile') await row.click()
+  else await row.hover()
+  await expect.poll(selectedValidAt, { timeout: 8000 }).toBe(target)
 })
 
 test('예보 시각을 고르면 강풍 영역이 그 시점 것으로 바뀐다', async ({ page }, testInfo) => {
   await openTyphoon(page, testInfo, snapshot)
-  const galeExtent = () => page.evaluate(() => {
-    const f = (window.__map?.querySourceFeatures('typhoon-gale') ?? [])[0]
+  // 태풍이 둘이다. 첫 태풍의 행만 누르고 그 태풍의 영역만 본다 — 섞으면 안 바뀐 것처럼 보인다.
+  const number = snapshot.typhoons[0].number
+  const galeExtent = () => page.evaluate((num) => {
+    const data = window.__map?.getSource('typhoon-gale')?.serialize?.()?.data
+    const f = (data?.features ?? []).find((x) => x.properties.number === num)
     if (!f) return null
     const ring = f.geometry.coordinates[0]
     return Math.round(Math.max(...ring.map((c) => c[1])) * 100)
-  })
+  }, number)
   const before = await galeExtent()
   expect(before).not.toBeNull()
 
-  // 마지막 예보 행 = 현재에서 가장 먼 시점. 위치가 확실히 달라진다.
-  await page.getByLabel('활성 태풍 목록').locator('.typhoon-track__row').last().click()
+  // 첫 예보 행(표에서 두 번째 줄)을 고른다. 먼 시점은 강풍 자료가 없어 영역이 사라지므로
+  // "바뀌었나"를 재기에 부적절하다 — 자료가 확실히 있는 시점으로 위치 이동을 본다.
+  const firstTyphoon = page.getByLabel('활성 태풍 목록').locator('.typhoon-panel__item').first()
+  await firstTyphoon.locator('.typhoon-track__row').nth(1).click()
   await expect.poll(galeExtent, { timeout: 8000 }).not.toBe(before)
 })
 
@@ -166,7 +185,8 @@ test('닫기 버튼이 목록만 접고 지도 레이어는 남긴다', async ({
   await openTyphoon(page, testInfo, snapshot)
   const panel = page.getByLabel('활성 태풍 목록')
   await expect(panel).toBeVisible()
-  await panel.getByRole('button', { name: '태풍 목록 닫기' }).click()
+  // 모바일은 닫기 버튼이 시트 헤더에 있고 aria-label은 본문만 감싼다 — 페이지에서 찾는다.
+  await page.getByRole('button', { name: '태풍 목록 닫기' }).click()
   await expect(panel).toBeHidden()
 })
 
