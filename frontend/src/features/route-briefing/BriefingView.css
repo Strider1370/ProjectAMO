@@ -54,6 +54,25 @@
 .bv-banner-chain { display: flex; align-items: center; gap: var(--space-l); flex-wrap: wrap; font-size: var(--fs-400); font-variant-numeric: tabular-nums; }
 .bv-banner-chain-item { display: inline-flex; align-items: center; gap: var(--space-xs); }
 .bv-banner-chain-role { font-size: var(--fs-200); color: var(--text-3); }
+/* 경로 저촉 항목: 분류·번호 / 무슨 내용 / 어디·고도·시간 3단. 누르면 ⑤ NOTAM 섹션으로 이동. */
+.bv-banner-conflicts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
+.bv-banner-conflict {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  background: none; border: none; border-left: 3px solid var(--level-red);
+  padding: var(--space-snudge) var(--space-s); border-radius: var(--radius-md);
+  font: inherit; color: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.bv-banner-conflict:disabled { cursor: default; }
+.bv-banner-conflict:not(:disabled):hover { background: var(--level-red-bg); }
+.bv-banner-conflict-head { display: flex; align-items: baseline; gap: var(--space-xs); font-size: var(--fs-300); }
+.bv-banner-conflict-sum { font-size: var(--fs-400); font-weight: var(--fw-semibold); }
+.bv-banner-conflict-meta { font-size: var(--fs-200); color: var(--text-3); }
+.bv-banner-approx { font-size: var(--fs-100); color: var(--text-3); border: 0.5px solid var(--stroke-2); border-radius: 3px; padding: 0 4px; }
+/* 위치 미확인은 저촉이 아니다 — 무채색으로 분리 */
+.bv-banner-unresolved { margin-top: var(--space-snudge); border-color: var(--stroke-2); }
+.bv-banner-cat-muted { background: var(--bg-3); color: var(--text-2); }
+.bv-banner-unresolved .bv-banner-conflict { border-left-color: var(--stroke-2); }
+.bv-banner-unresolved .bv-banner-conflict:not(:disabled):hover { background: var(--level-gray-bg); }
 
 .bv-navwrap { position: sticky; top: 0; z-index: 5; background: var(--bg-2); padding-top: var(--space-xs); margin-bottom: var(--space-m); display: flex; align-items: center; gap: var(--space-s); }
 .bv-navwrap .fui-TabList { flex: 1 1 auto; min-width: 0; }

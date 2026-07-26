@@ -475,6 +475,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
 
   const routeNotams = briefing.routeNotams ?? []
   const routeConflicts = briefing.routeConflicts ?? []
+  const unresolvedNotams = routeNotams.filter((n) => n.positionStatus === 'unresolved')
   // 분류: 공항 소속(출/도착/교체) 우선 → 나머지 순수 경로상. 도착공항 NOTAM이 경로 끝과 겹쳐도
   // "경로상"이 아니라 "도착 공항"으로 가야 보는 사람이 헷갈리지 않는다(공항 매칭 우선).
   const notamAirportGroups = ['departure', 'arrival', 'alternate']
@@ -699,7 +700,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
           onClose={onClose} detent={detent} onDetentChange={setDetent} peekContent={peek}>
           <div className="bv-mobile" ref={containerRef}>
             {etdEtaLine && <Caption1 style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>{etdEtaLine}</Caption1>}
-            <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} />
+            <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
             {nav}{board}{layerAction}{adverse}{currentDesktop}<BriefingSynopsis />{enroute}{notamSection}{destination}
             <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />
           </div>
@@ -738,7 +739,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             <Button appearance="secondary" size="small" onClick={onClose}>닫기</Button>
           </div>
         </div>
-        <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} />
+        <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
         {nav}{board}{layerAction}{adverse}{currentDesktop}<BriefingSynopsis />{enroute}{notamSection}{destination}
         <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />
       </div>
