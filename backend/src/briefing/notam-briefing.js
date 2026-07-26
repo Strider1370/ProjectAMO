@@ -1,5 +1,5 @@
 // 경로상 NOTAM 매칭(사실 계산). geo-time-match 코어 재사용 — hazardLevel() 심각도 그라데이션은 쓰지 않음.
-import { routeIntervalInGeometry, timeWindowsOverlap } from './geo-time-match.js'
+import { routeIntervalInGeometry, routeCorridorInGeometry, timeWindowsOverlap } from './geo-time-match.js'
 import { classifyEncounter } from './hazard-matcher.js'
 
 const HIGH_FT = 99999
@@ -34,9 +34,15 @@ export function matchRouteNotams(items, ctx) {
     const validityKnown = Number.isFinite(Date.parse(it.valid_from)) && Number.isFinite(Date.parse(it.valid_to))
     const timeStatus = !flightTimeKnown ? 'not_provided' : !validityKnown ? 'unavailable' : 'matched'
     if (timeStatus === 'matched' && !timeWindowsOverlap(ctx.etd, ctx.eta, it.valid_from, it.valid_to)) continue
-    const interval = it.geometry ? routeIntervalInGeometry(ctx.axis, it.geometry) : { entered: false }
+    // 회랑(선+폭)은 버퍼 판정으로, 면은 기존 판정으로.
+    const interval = !it.geometry ? { entered: false }
+      : it.bufferNm != null && it.geometry.type === 'LineString'
+        ? routeCorridorInGeometry(ctx.axis, it.geometry, it.bufferNm)
+        : routeIntervalInGeometry(ctx.axis, it.geometry)
+    // 위치를 못 정했으면 저촉으로 단정하지 않되 목록에서 빼지도 않는다(정책: 상태와 이유를 반환).
+    const positionStatus = it.geometry ? 'resolved' : 'unresolved'
     const airportRole = roleByIcao.get(it.location) || null // 출/도착/교체 공항의 NOTAM인가
-    if (!interval.entered && !airportRole) continue // 경로도 안 걸리고 대상 공항도 아니면 제외
+    if (!interval.entered && !airportRole && positionStatus === 'resolved') continue // 경로도 안 걸리고 대상 공항도 아니면 제외(위치 불명은 예외)
     const bandFt = notamBandToFt(it.altitude)
     let encounter = 'nearby'
     let verticalKnown = false
@@ -50,7 +56,8 @@ export function matchRouteNotams(items, ctx) {
     const passesAltitude = !verticalKnown || encounter === 'on'
     // 저촉 = 공역제한 계열 ∩ 발효중 ∩ 경로가 폴리곤을 계획고도에서 통과(경로 교차가 있어야 함).
     const comparisonStatus = timeStatus === 'matched' && verticalKnown ? 'warn' : 'undetermined'
-    const conflict = comparisonStatus === 'warn' && RESTRICTION_CATEGORIES.has(it.category) && interval.entered && passesAltitude
+    const conflict = positionStatus === 'resolved' && comparisonStatus === 'warn'
+      && RESTRICTION_CATEGORIES.has(it.category) && interval.entered && passesAltitude
     routeNotams.push({
       id: it.id,
       category: it.category,
@@ -72,6 +79,9 @@ export function matchRouteNotams(items, ctx) {
       timeStatus,
       comparisonStatus,
       conflict,
+      positionStatus,
+      geometrySource: it.geometrySource ?? null,
+      approximated: it.approximated ?? false,
     })
   }
   // 정렬: 발효중 먼저 → 경로교차(진입거리순) → 공항매칭(진입거리 없음, 뒤로).

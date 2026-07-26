@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { notamBandToFt, matchRouteNotams } from '../src/briefing/notam-briefing.js'
 import { buildRouteAxis } from '../src/briefing/route-axis.js'
+import { resolveNotamGeometry } from '../src/notam/notam-geometry.js'
 
 test('notamBandToFt: FT band passes through', () => {
   assert.deepEqual(notamBandToFt({ lower: 0, upper: 4000, unit: 'FT', ref: 'AGL' }), { lowFt: 0, highFt: 4000 })
@@ -109,4 +110,71 @@ test('matchRouteNotams: sorted in-effect-at-ETD first, then entry distance', () 
   const now = notam({ id: 'NOW/26', valid_from: '2026-06-26T08:00:00Z' })     // ETD 이전 발효 → activeAtEtd=true
   const { routeNotams } = matchRouteNotams([later, now], ctx)
   assert.equal(routeNotams[0].id, 'NOW/26')
+})
+
+import { routeIntervalInGeometry } from '../src/briefing/geo-time-match.js'
+
+// 시임(seam) 가드: Task 3의 resolveNotamGeometry(ring-closing)가 Task 5의 matchRouteNotams가
+// 실제로 소비할 수 있는 결과를 내는지 확인한다. TDD RED 과녁이 아니다 — 지우지 말 것.
+// 미해결(raw LineString) 쪽은 오늘도 0건이고, resolveNotamGeometry가 닫아준 뒤에만 1건 잡혀야
+// closeIfRing이 훗날 회귀해도(닫지 않게 되면) 이 테스트가 빨갛게 된다.
+test('KML이 열린 선으로 준 구역은 위치 결정을 거쳐야 경로 판정에 걸린다', () => {
+  const ring = [[127.0, 36.9], [127.2, 36.9], [127.2, 37.1], [127.0, 37.1], [127.0, 36.9]]
+  const axis = buildRouteAxis({ type: 'LineString', coordinates: [[126.9, 37.0], [127.3, 37.0]] })
+  const zoneOf = (geometry) => ({
+    id: 'D9999/26', category: 'danger', summary: 'TEMPO DANGER AREA ACT',
+    valid_from: '2026-07-18T00:00:00Z', valid_to: '2026-07-19T00:00:00Z',
+    altitude: { lower: 0, upper: 999, unit: 'FL' },
+    geometry,
+  })
+  const ctx = { axis, etd: '2026-07-18T09:00:00Z', eta: '2026-07-18T10:00:00Z', cruiseAltitudeFt: 9000, airports: [] }
+
+  // 미해결: KML이 원래 주는 열린 LineString 그대로 — 오늘도 안 잡힌다(이게 이 태스크가 고치는 버그).
+  const unresolved = matchRouteNotams([zoneOf({ type: 'LineString', coordinates: ring })], ctx)
+  assert.equal(unresolved.routeConflicts.length, 0, '열린 선은 경로 판정에 걸리지 않는다(현재도 마찬가지)')
+
+  // 해결: resolveNotamGeometry가 닫힌 고리를 Polygon으로 만들어준 뒤에는 잡힌다.
+  const resolved = resolveNotamGeometry({
+    rawText: 'Q)RKRR/QRDCA/IV/BO/W/000/999/3700N12710E020\nE)TEMPO DANGER AREA ACT',
+    kmlGeometry: { type: 'LineString', coordinates: ring },
+  })
+  assert.equal(resolved.geometry.type, 'Polygon', '닫힌 고리가 면이 되어야 한다')
+  const afterResolve = matchRouteNotams([zoneOf(resolved.geometry)], ctx)
+  assert.equal(afterResolve.routeConflicts.length, 1, '닫힌 뒤에는 저촉이 잡혀야 한다')
+})
+
+test('회랑은 폭 안쪽을 지나면 저촉이 잡힌다', () => {
+  const axis = buildRouteAxis({ type: 'LineString', coordinates: [[127.0, 36.99], [127.2, 36.99]] })
+  const corridor = {
+    id: 'E9999/26', category: 'restricted', summary: 'TEMPO RESTRICTED AREA ACT',
+    valid_from: '2026-07-18T00:00:00Z', valid_to: '2026-07-19T00:00:00Z',
+    altitude: { lower: 0, upper: 999, unit: 'FL' },
+    geometry: { type: 'LineString', coordinates: [[127.0, 37.0], [127.2, 37.0]] },
+    bufferNm: 5,
+  }
+  const { routeConflicts } = matchRouteNotams([corridor], {
+    axis, etd: '2026-07-18T09:00:00Z', eta: '2026-07-18T10:00:00Z', cruiseAltitudeFt: 9000, airports: [],
+  })
+  assert.equal(routeConflicts.length, 1)
+})
+
+test('위치를 못 정한 건은 목록에서 사라지지 않는다', () => {
+  const axis = buildRouteAxis({ type: 'LineString', coordinates: [[126.9, 37.0], [127.3, 37.0]] })
+  const unknown = {
+    id: 'D8888/26', category: 'restricted', summary: 'RESTRICTED AREA RK R97E ACT',
+    valid_from: '2026-07-18T00:00:00Z', valid_to: '2026-07-19T00:00:00Z',
+    altitude: { lower: 0, upper: 999, unit: 'FL' },
+    geometry: null, geometrySource: 'none',
+    // 출·도착·교체 어디에도 속하지 않는 공항이어야 한다. 속하면 airportRole 때문에
+    // 지금 코드로도 이미 살아남아, 바꾸려는 continue 줄을 지나가지 않는다.
+    location: 'RKPU',
+  }
+  const { routeNotams, routeConflicts } = matchRouteNotams([unknown], {
+    axis, etd: '2026-07-18T09:00:00Z', eta: '2026-07-18T10:00:00Z', cruiseAltitudeFt: 9000,
+    airports: [{ role: 'departure', icao: 'RKSS' }, { role: 'arrival', icao: 'RKPK' }],
+  })
+  const row = routeNotams.find((n) => n.id === 'D8888/26')
+  assert.ok(row, '목록에서 사라졌다 — 조용한 누락은 정책 위반이다')
+  assert.equal(row.positionStatus, 'unresolved')
+  assert.equal(routeConflicts.length, 0, '위치 불명을 저촉으로 치면 안 된다')
 })
