@@ -77,11 +77,9 @@ export function resolveNotamGeometry({ rawText, kmlGeometry }) {
   else if (text.kind === 'corridor') fromText = { type: 'LineString', coordinates: text.coords.map((p) => [p.lon, p.lat]) }
 
   // 정확히 못 그리는 두 경우는 Q줄 원으로 넓게 덮는다.
-  //  (1) 호·반원·제외구역이 섞인 건(원이든 다각형이든) — 본문이 그린 도형을 믿을 수 없다
-  //      (E3260/26은 제외구역의 1.5NM을 집고, E3357/26 등은 다각형 좌표는 멀쩡해도 RMK의
-  //      EXC가 실제 제외 구간을 표현 못 한다는 신호다 — approximated는 kind를 가리지 않는다)
+  //  (1) 바깥 형상 자체가 호·반원 — 본문 해석이 엉뚱한 반경을 집는다(E3260/26은 제외구역의 1.5NM을 집는다)
   //  (2) 원본 결함으로 꼭짓점을 잃은 다각형 — KML도 같은 결함이라 내려갈 곳이 없다
-  const needsQ = text.approximated || text.defective
+  const needsQ = (fromText && text.approximated && text.kind === 'circle') || text.defective
   if (needsQ) {
     const qGeo = qGeometry()
     // Q줄이 없으면 억지로 그리지 않는다. 아래 KML → unresolved 경로로 내려간다.

@@ -93,18 +93,40 @@ test('알려진 어려운 건은 안전한 쪽으로 간다', () => {
     assert.equal(got.kind, null, id)
     assert.equal(got.defective, true, id)
   }
-  // 호·반원·제외구역 — 근사 표시가 붙는다
+  // 호·반원·제외구역 — 도형 서술부에 있으면 근사 표시가 붙는다. RMK의 EXC(운용 예외, 예:
+  // "EXC SKED CIV ACFT…")는 도형이 아니라서 근사로 잡히지 않는다(D1768/26, E3357/26 등) —
+  // 그 대신 좌표 개수가 정답표와 정확히 맞아야 정밀하게 읽었다고 볼 수 있다.
   for (const id of truth.knownHard.arcOrExclusion.ids) {
-    assert.equal(parsePositionText(rawById.get(id)).approximated, true, id)
+    const got = parsePositionText(rawById.get(id))
+    if (got.approximated) continue
+    const t = truth.items.find((x) => x.id === id)
+    assert.equal(got.coords.length, t.coordTokens.length, id)
   }
 })
 
-test('결함·근사 건은 Q줄 원으로 넓게 덮인다', () => {
-  // 삼각형(일부만 덮음)이나 잘못된 반경을 내보내지 않는다는 확인.
+test('결함·근사 건은 Q줄 원으로 넓게 덮이고, RMK의 EXC는 도형을 근사로 몰지 않는다', () => {
+  // arcOrExclusion 9건은 키워드(ARC|SEMICIRCLE|EXC) 스윕으로 묶인 목록이라 그 중 일부(EXC가
+  // RMK 예외 조항에만 있는 건)는 실제로는 정확한 도형이다(원 1건 D1768/26 포함, 다각형 6건).
+  // 어느 쪽인지는 파서가 보고하는 approximated/defective로 가른다 — id를 하드코딩해 나누면
+  // 건별 예외 분기가 된다.
   for (const id of [...DEFECT, ...truth.knownHard.arcOrExclusion.ids]) {
-    const r = resolveNotamGeometry({ rawText: rawById.get(id), kmlGeometry: null })
-    if (r.source === 'none') continue // Q줄이 없으면 위치 확인 불가 — 그것도 안전한 결말
-    assert.equal(r.source, 'q', `${id}: source가 ${r.source}`)
-    assert.equal(r.approximated, true, id)
+    const raw = rawById.get(id)
+    const parsed = parsePositionText(raw)
+    const r = resolveNotamGeometry({ rawText: raw, kmlGeometry: null })
+    if (parsed.approximated || parsed.defective) {
+      // 도형 서술부 자체가 호·반원이거나 원본이 결함이면 정확히 못 그린다 — Q줄로 넓게 덮는다.
+      if (r.source === 'none') continue // Q줄이 없으면 위치 확인 불가 — 그것도 안전한 결말
+      assert.equal(r.source, 'q', `${id}: source가 ${r.source}`)
+      assert.equal(r.approximated, true, id)
+    } else {
+      // RMK의 EXC는 운용상의 예외(예: "EXC SKED CIV ACFT…")지 도형의 제외 구역이 아니다 —
+      // 본문의 정확한 도형을 그대로 쓴다. 다각형은 꼭짓점 개수까지 확인해 Q줄 원으로의 회귀를
+      // 잡는다(원은 Q줄 원과 좌표 개수가 같아 그 신호가 없으니 source만 본다).
+      const truthItem = truth.items.find((t) => t.id === id)
+      assert.equal(r.source, 'text', id)
+      if (parsed.kind === 'polygon') {
+        assert.equal(r.geometry.coordinates[0].length, truthItem.coordTokens.length, id)
+      }
+    }
   }
 })

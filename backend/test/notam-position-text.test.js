@@ -91,3 +91,19 @@ test('호·반원·제외구역은 근사 표시', () => {
   const r = parsePositionText('E)A SEMICIRCLE, 360118N1281017E - A CLOCKWISE 3NM ARC CENTERED ON 360243N1281333E EXC A CIRCLE RADIUS 1.5NM CENTERED ON 360243N1281333E')
   assert.equal(r.approximated, true)
 })
+
+test('RMK 안의 EXC는 근사 표시를 만들지 않는다 — 도형이 아니라 운용 예외다', () => {
+  // E3357/26 실제 본문 그대로. RMK: EXC SKED CIV ACFT...는 "이 항공기는 제외"라는 뜻이지
+  // 도형에 제외 구간이 있다는 뜻이 아니다. 다각형은 4점 그대로 정확하다.
+  const r = parsePositionText('E)TEMPO RESTRICTED AREA ACT AS FLW AREA BOUNDED BY THE FOLLOWING '
+    + '350000N1271814E-350000N1282230E-344930N1282130E-340847N1271813E-350000N1271814E '
+    + 'RMK: EXC SKED CIV ACFT INBOUND TO/OUTBOUND FM RKJY AND RKPS')
+  assert.equal(r.kind, 'polygon')
+  assert.equal(r.approximated, false)
+})
+
+test('도형 서술부의 EXC는 그대로 근사 표시된다', () => {
+  // E3260/26 유형: EXC가 CIRCLE 서술 안에 있으면 여전히 근사여야 한다 — RMK 컷이 이 경우를 죽이면 안 된다.
+  const r = parsePositionText('E)A CIRCLE RADIUS 3NM CENTERED ON 360243N1281333E EXC A CIRCLE RADIUS 1.5NM CENTERED ON 360243N1281333E')
+  assert.equal(r.approximated, true)
+})

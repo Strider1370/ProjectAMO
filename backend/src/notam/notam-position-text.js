@@ -32,9 +32,12 @@ export function parsePositionText(rawText) {
   const tight = extractEBody(rawText).replace(/\s+/g, '').toUpperCase()
   const coords = (tight.match(COORD) || []).map(dmsToDecimal).filter(Boolean)
   // 호·반원·제외구역이 섞이면 형상을 그대로 못 그린다 — 넓게 덮되 근사임을 알린다.
+  // RMK: 이하는 도형 서술이 아니라 운용상의 예외(예: "EXC SKED CIV ACFT…")다 — 거기 낀 EXC까지
+  // 주우면 멀쩡한 4각형(E3357/26 등)까지 근사로 몰린다. 도형 서술부만 본다.
   // `\b`를 쓰지 않는다: 교대(|)는 가장 느슨하게 묶여 `\b`가 ARC에만 걸리는데,
   // 공백을 모두 지운 뒤에는 단어 경계가 사실상 없어 죽은 조건이 된다(실측: 9건 모두 false).
-  const approximated = /ARC|SEMICIRCLE|EXC/.test(tight) && coords.length > 0
+  const shapeText = tight.split(/RMK[:：]?/)[0]
+  const approximated = /ARC|SEMICIRCLE|EXC/.test(shapeText) && coords.length > 0
 
   // 순서가 중요하다. 넓은 개념부터 걸러야 안쪽에 박힌 단어(EXC A CIRCLE 등)에 낚이지 않는다.
   if (/EITHERSIDE/.test(tight) && coords.length >= 2) {
