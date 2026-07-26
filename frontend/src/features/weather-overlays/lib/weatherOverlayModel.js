@@ -230,9 +230,14 @@ export function buildWeatherOverlayModel({
     observedAtMs: hasExactMotion ? motion.observedAtMs : null,
     comparedFromMs: hasExactMotion ? motion.comparedFromMs ?? null : null,
   }
+  // 낙뢰 나이의 기준시각. 벽시계를 쓰면 수집이 늦어질수록 방금 친 번개가 밴드를 넘겨
+  // 60분 창 밖으로 사라진다 — 낙뢰 자료 자신의 수집시각을 기준으로 재고, 그 시각이
+  // 없을 때만 벽시계로 물러난다. (범례는 이 기준시각을 실제 시계 시각으로 찍어 주므로
+  // 자료가 오래됐다는 사실이 감춰지지는 않는다.)
+  const lightningCollectedAtMs = new Date(lightningData?.fetched_at ?? NaN).getTime()
   const resolvedLightningReferenceTimeMs = visibility.radar && Number.isFinite(radarReferenceTimeMs)
     ? radarReferenceTimeMs
-    : lightningReferenceTimeMs
+    : (Number.isFinite(lightningCollectedAtMs) ? lightningCollectedAtMs : lightningReferenceTimeMs)
   const lightningGeoJSON = createLightningGeoJSON(lightningData, resolvedLightningReferenceTimeMs)
 
   const sigmetItems = advisoryItemsWithPanelData(sigmetData, 'sigmet', tz)

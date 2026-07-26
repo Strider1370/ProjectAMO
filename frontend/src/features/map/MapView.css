@@ -57,6 +57,13 @@
 /* 그리기 버튼이 없을 때(모바일 대부분)는 그 자리를 비워둘 이유가 없다. */
 .basemap-switcher.is-right-edge { right: 12px; }
 
+/* 모바일에서는 그리기 런처가 존재하더라도 좌측 레이어 열 아래로 내려가므로(app/App.css의
+   같은 719px 중단점) 우측 상단이 비어 있다. atRightEdge는 런처의 존재만 보고 위치는 보지
+   않아 66px을 계속 비워두고 있었다. 12px은 아래 줌·현위치 컨트롤과 같은 여백. */
+@media (max-width: 719px) {
+  .basemap-switcher { right: 12px; }
+}
+
 .basemap-switcher-toggle {
   display: block;
   padding: 3px;
@@ -2598,11 +2605,17 @@
     position: fixed;
     top: var(--pressure-mobile-top);
     right: var(--space-m);
-    width: 44px;
+    width: 56px;
     height: var(--pressure-mobile-height);
     visibility: visible;
   }
-  .pressure-level-slider__track { width: 44px; height: 100%; min-height: 0; margin: 0; }
+  /* 화면 오른쪽 끝 12px은 OS 뒤로가기 스와이프 구역이라 손가락이 자주 먹힌다.
+     44px 폭이면 그 구역을 뺀 실사용 폭이 32px밖에 남지 않아 폭을 조금 넓혔다. */
+  .pressure-level-slider__track { width: 56px; height: 100%; min-height: 0; margin: 0; }
+  /* 모바일에서 등압면 슬라이더는 position:fixed로 열에서 빠져나가므로, 같은 오른쪽 가장자리에
+     남아 있는 고도 칩 열(난류 등)이 슬라이더 위를 덮어 터치를 통째로 가져갔다.
+     슬라이더가 떠 있는 동안에는 칩 열을 슬라이더와 그 FL 라벨 왼쪽으로 비켜 세운다. */
+  .vertical-level-rail-stack:has(.pressure-level-slider.is-mobile-measured) { right: 128px; }
   .pressure-level-slider__tick span { display: none; }
   .pressure-level-slider__value { right: calc(50% + 14px); font-size: var(--fs-200); }
   .pressure-level-slider__value small { font-size: var(--fs-100); }

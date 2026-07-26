@@ -122,6 +122,41 @@ test('hides stale radar motion and preserves the live lightning reference when r
   assert.equal(model.lightningReferenceTimeMs, nowMs)
 })
 
+// 낙뢰만 켜면 벽시계를 기준으로 나이를 재던 탓에, 낙뢰 수집이 벽시계보다 뒤처지면
+// 실제로는 방금 친 번개가 50~60분 밴드로 밀리다가 60분 창을 넘겨 통째로 사라졌다.
+// 레이더를 켜면 기준이 레이더 관측시각으로 바뀌어 멀쩡히 보이던 것이 그 증거다.
+test('레이더가 꺼져 있어도 낙뢰 나이는 낙뢰 자료 자신의 수집시각을 기준으로 잰다', () => {
+  const collectedAtMs = Date.UTC(2026, 4, 14, 3, 0)
+  const nowMs = collectedAtMs + 50 * 60 * 1000
+  const model = buildWeatherOverlayModel({
+    echoMeta: null,
+    satMeta: null,
+    lightningData: {
+      fetched_at: new Date(collectedAtMs).toISOString(),
+      query: { tm: '202605141200' },
+      nationwide: { strikes: [{ lon: 127, lat: 37, type: 'G', type_name: 'ground', time: new Date(collectedAtMs - 5 * 60 * 1000).toISOString() }] },
+    },
+    sigwxLowData: null,
+    sigwxLowHistoryData: [],
+    sigmetData: { items: [] },
+    airmetData: { items: [] },
+    visibility: { radar: false, lightning: true },
+    selectedWeatherTimeMs: null,
+    sigwxHistoryIndex: 0,
+    sigwxFilter,
+    hiddenAdvisoryKeys,
+    selectedSigwxFrontMeta: null,
+    selectedSigwxCloudMeta: null,
+    lightningReferenceTimeMs: nowMs,
+    blinkLightning: false,
+    lightningBlinkOff: false,
+  })
+
+  assert.equal(model.lightningReferenceTimeMs, collectedAtMs)
+  assert.equal(model.lightningCount, 1)
+  assert.equal(model.lightningGeoJSON.features[0].properties.iconId, 'lightning-0-10')
+})
+
 test('시각이 정확히 맞으면 이동 화살표 자료를 노출한다', () => {
   const observedAtMs = Date.UTC(2026, 4, 14, 3, 5)
   const model = buildWeatherOverlayModel({
