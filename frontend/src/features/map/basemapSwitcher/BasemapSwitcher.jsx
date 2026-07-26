@@ -5,11 +5,12 @@ function BasemapSwitcher({
   isOpen,
   onOpenChange,
   onSwitchBasemap,
+  atRightEdge = false,
 }) {
   const current = BASEMAP_OPTIONS.find((option) => option.id === basemapId)
 
   return (
-    <div className="basemap-switcher">
+    <div className={`basemap-switcher${atRightEdge ? ' is-right-edge' : ''}`}>
       <button
         type="button"
         className="basemap-switcher-toggle"

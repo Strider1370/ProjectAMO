@@ -961,6 +961,9 @@ const MapView = forwardRef(function MapView({
   }
 
   function toggleMet(id) {
+    // 태풍을 켜면 목록 패널이 뜬다. 레이어 패널을 열어둔 채로 두면 모바일에서 두 시트가
+    // 완전히 겹쳐 목록에 손이 닿지 않는다 — 레이어 패널을 닫아 목록을 드러낸다.
+    if (id === 'typhoon' && !metVisibility.typhoon) onClosePanel?.()
     setMetVisibility((prev) => {
       return getNextMetVisibility(prev, id, { lowPower })
     })
@@ -1527,6 +1530,9 @@ const MapView = forwardRef(function MapView({
     return false
   }
 
+  // 그리기 런처 표시 여부 — 베이스맵 버튼 위치가 여기에 따라 갈린다.
+  const mapToolsVisible = showMapTools && (!isMobile || mobileTask === 'map' || mobileTask === 'route')
+
   function metLayerBadge(id) {
     if (id === 'sigmet') return sigmetCount
     if (id === 'airmet') return airmetCount
@@ -1736,6 +1742,8 @@ const MapView = forwardRef(function MapView({
         <TyphoonPanel
           typhoons={typhoonOverlay.typhoons}
           status={typhoonOverlay.status}
+          selected={typhoonOverlay.selected}
+          onSelect={typhoonOverlay.select}
           onFocus={(item) => mapRef.current?.flyTo({ center: [item.center.lon, item.center.lat], zoom: 5 })}
           onClose={() => toggleMet('typhoon')}
         />
@@ -1750,7 +1758,7 @@ const MapView = forwardRef(function MapView({
 
       <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />
 
-      {showMapTools && (!isMobile || mobileTask === 'map' || mobileTask === 'route') && <MapToolsLauncher
+      {mapToolsVisible && <MapToolsLauncher
         isOpen={activePanel === 'custom-area'}
         onToggle={() => (activePanel === 'custom-area' ? onClosePanel?.() : onOpenCustomAreaPanel?.())}
       />}
@@ -1761,6 +1769,9 @@ const MapView = forwardRef(function MapView({
           isOpen={basemapMenuOpen}
           onOpenChange={setBasemapMenuOpen}
           onSwitchBasemap={switchBasemap}
+          /* 그리기 버튼은 모바일에서 지도·경로 작업 중에만 뜬다. 없을 때는 그 자리를
+             비워둘 이유가 없으므로 베이스맵을 오른쪽 끝으로 붙인다. */
+          atRightEdge={!mapToolsVisible}
         />
       )}
 
