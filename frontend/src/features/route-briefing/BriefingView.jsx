@@ -26,7 +26,7 @@ import EnhancedTafTab from '../airport-panel/tabs/TafTab.jsx'
 import { useCrossSectionLayers, CrossSectionToggles } from './crossSectionLayers.jsx'
 import { buildRawWindsTable } from './lib/rawWindsModel.js'
 import { LEVEL_COLOR, catColorOf, catDisplay, worstAirport, worstInterval, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
-import { deriveTimeState, formatAltitude, formatValidPeriod, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
+import { deriveNotamTime, formatAltitude, formatValidPeriod, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
 import NotamCell from '../notam/NotamCell.jsx'
 import RouteWeatherLegTable from './RouteWeatherLegTable.jsx'
 import './BriefingView.css'
@@ -484,11 +484,12 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
     })
     .filter(Boolean)
   const notamRouteGroup = routeNotams.filter((n) => n.onRoute && !n.airportRole) // 어느 공항에도 안 속한 순수 경로 통과
+  // 경로 NOTAM은 camelCase 형태라 뷰모델 필드명으로 맞춰 넘긴다. D)까지 봐야 목록·지도와 일치한다.
   const notamCell = (n, showPriority = false) => (
     <NotamCell
       key={n.id}
       category={n.category}
-      timeState={deriveTimeState(n.validFrom, n.validTo, nowMs)}
+      timeState={deriveNotamTime({ valid_from: n.validFrom, valid_to: n.validTo, schedule_text: n.scheduleText }, nowMs).state}
       summary={n.summary || n.id}
       metaText={`${NOTAM_CAT_LABEL[n.category] || n.category} · ${n.id}${n.routeIntervalNm ? ` · ${n.routeIntervalNm.startNm}–${n.routeIntervalNm.endNm}NM` : ''}`}
       altitude={formatAltitude(n.altitude)}

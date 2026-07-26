@@ -15,6 +15,7 @@ export const AVIATION_TILE_META = {
   restricted: { kind: 'area', color: colorById.restricted },
   prohibited: { kind: 'area', color: colorById.prohibited },
   danger: { kind: 'area', color: colorById.danger },
+  moa: { kind: 'area', color: colorById.moa, dashed: true },
   waypoint: { kind: 'symbol', symbolUrl: '/Symbols/waypoint-rnav-flyby.svg' },
   navaid: { kind: 'symbol', symbolUrl: '/Symbols/navaid-vor-dme.svg' },
   airport: { kind: 'symbol', symbolUrl: '/Symbols/airport-civil.svg' },

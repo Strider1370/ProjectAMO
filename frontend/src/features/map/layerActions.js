@@ -52,6 +52,7 @@ const AVIATION_META = {
   restricted: { label: '제한구역', aliases: ['restricted'] },
   prohibited: { label: '금지구역', aliases: ['prohibited'] },
   danger: { label: '위험구역', aliases: ['danger'] },
+  moa: { label: '군작전구역(MOA)', aliases: ['moa', '군작전', '훈련구역', 'cata', 'hta'] },
   waypoint: { label: '웨이포인트', aliases: ['픽스', 'fix', 'waypoint'] },
   navaid: { label: '항행안전시설', aliases: ['navaid', 'vor'] },
   airport: { label: '공항', aliases: ['airport'] },

@@ -1,19 +1,15 @@
-const FIVE_MINUTES_MS = 5 * 60 * 1000
+import {
+  annotateNeighbourAgreement, deriveMotionField, motionVectorsToGeoJSON, selectLeadingEdge,
+} from './radar-motion-model.js'
 
-export const MOTION_DEFAULTS = Object.freeze({
-  stride: 4,
-  candidateStride: 4,
-  maxSearchCells: 8,
-  patchRadius: 6,
-  minScoreSeparation: 30,
-  minReflectivity: 2000,
-  minSpeedKt: 3,
-  maxSpeedKt: 150,
-  maxCandidates: 900,
-})
+// KMA HSR 합성 격자의 no-data. 실측상 작업 격자의 89~91%가 이 값이고 프레임 간
+// 98.8% 동일한 고정 무늬라, 클램프하지 않으면 정합이 에코가 아니라 무늬에 끌려간다.
+const NO_DATA = -25000
+
+const EMPTY = { type: 'FeatureCollection', features: [] }
 
 export function createMotionInput(refl, geometry, options = {}) {
-  const stride = options.stride ?? MOTION_DEFAULTS.stride
+  const stride = options.stride ?? 4
   const width = Math.ceil(geometry.nx / stride)
   const height = Math.ceil(geometry.ny / stride)
   const values = new Int16Array(width * height)
@@ -28,107 +24,30 @@ export function createMotionInput(refl, geometry, options = {}) {
           max = Math.max(max, refl[y * geometry.nx + x])
         }
       }
-      values[row * width + col] = max
+      values[row * width + col] = max <= NO_DATA ? 0 : max
     }
   }
 
   return { width, height, stride, values, tm: options.tm ?? null }
 }
 
-function valueAt(input, col, row) {
-  if (col < 0 || row < 0 || col >= input.width || row >= input.height) return -32768
-  return input.values[row * input.width + col]
-}
+// 두 프레임 -> 벡터장 -> 이웃 일치도 기록 -> 앞면만 선별 -> Point GeoJSON.
+export function deriveMotionGeoJSON(previous, current, options) {
+  const { settings, gridToLatLon, deadlineAtMs = Infinity } = options
+  if (!previous || !current) return EMPTY
+  if (previous.width !== current.width || previous.height !== current.height || previous.stride !== current.stride) return EMPTY
 
-function patchDifference(previous, current, prevCol, prevRow, currentCol, currentRow, radius) {
-  let difference = 0
-  let samples = 0
-  for (let y = -radius; y <= radius; y += 1) {
-    for (let x = -radius; x <= radius; x += 1) {
-      difference += Math.abs(valueAt(previous, prevCol + x, prevRow + y) - valueAt(current, currentCol + x, currentRow + y))
-      samples += 1
-    }
-  }
-  return difference / samples
-}
-
-function bearingDegrees(start, end) {
-  const lat1 = start.lat * Math.PI / 180
-  const lat2 = end.lat * Math.PI / 180
-  const deltaLon = (end.lon - start.lon) * Math.PI / 180
-  return (Math.atan2(
-    Math.sin(deltaLon) * Math.cos(lat2),
-    Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon),
-  ) * 180 / Math.PI + 360) % 360
-}
-
-function distanceKm(dxCells, dyCells, stride) {
-  return Math.hypot(dxCells, dyCells) * stride * 0.5
-}
-
-export function deriveObservedMotion(previous, current, options = {}) {
-  if (!previous || !current || previous.width !== current.width || previous.height !== current.height || previous.stride !== current.stride) {
-    return { type: 'FeatureCollection', features: [] }
-  }
-
-  const settings = { ...MOTION_DEFAULTS, ...options }
-  const deadlineAtMs = Number.isFinite(settings.deadlineAtMs) ? settings.deadlineAtMs : Infinity
-  const timedOut = () => Date.now() >= deadlineAtMs
-  const candidates = []
-  for (let row = 1; row < current.height - 1; row += settings.candidateStride) {
-    for (let col = 1; col < current.width - 1; col += settings.candidateStride) {
-      if (timedOut()) return { type: 'FeatureCollection', features: [] }
-      if (valueAt(current, col, row) < settings.minReflectivity) continue
-
-      let best = null
-      let runnerUp = null
-      for (let dy = -settings.maxSearchCells; dy <= settings.maxSearchCells; dy += 1) {
-        for (let dx = -settings.maxSearchCells; dx <= settings.maxSearchCells; dx += 1) {
-          if (timedOut()) return { type: 'FeatureCollection', features: [] }
-          if (dx === 0 && dy === 0) continue
-          const prevCol = col - dx
-          const prevRow = row - dy
-          if (valueAt(previous, prevCol, prevRow) < settings.minReflectivity) continue
-          const score = patchDifference(previous, current, prevCol, prevRow, col, row, settings.patchRadius)
-          if (!best || score < best.score) {
-            runnerUp = best
-            best = { dx, dy, score }
-          } else if (!runnerUp || score < runnerUp.score) {
-            runnerUp = { dx, dy, score }
-          }
-        }
-      }
-
-      if (!best || !runnerUp || runnerUp.score - best.score < settings.minScoreSeparation) continue
-      const speedKt = distanceKm(best.dx, best.dy, current.stride) / (FIVE_MINUTES_MS / 3600000) / 1.852
-      if (speedKt < settings.minSpeedKt || speedKt > settings.maxSpeedKt) continue
-      const confidence = Math.max(0, Math.min(1, 1 - best.score / 10000))
-      if (confidence < 0.35) continue
-
-      const sourceX = col * current.stride
-      const sourceY = row * current.stride
-      const endX = sourceX + best.dx * current.stride
-      const endY = sourceY + best.dy * current.stride
-      const start = options.gridToLatLon?.(sourceX, sourceY)
-      const end = options.gridToLatLon?.(endX, endY)
-      if (!start || !end || !Number.isFinite(start.lon) || !Number.isFinite(start.lat) || !Number.isFinite(end.lon) || !Number.isFinite(end.lat)) continue
-
-      candidates.push({
-        type: 'Feature',
-        properties: {
-          observedAtMs: options.observedAtMs ?? null,
-          comparedFromMs: options.comparedFromMs ?? null,
-          speedKt: Math.round(speedKt),
-          bearingDeg: Math.round(bearingDegrees(start, end)),
-          confidence: Number(confidence.toFixed(2)),
-        },
-        geometry: { type: 'LineString', coordinates: [[start.lon, start.lat], [end.lon, end.lat]] },
-      })
-    }
-  }
-
-  candidates.sort((a, b) => b.properties.confidence - a.properties.confidence)
-  return { type: 'FeatureCollection', features: candidates.slice(0, settings.maxCandidates) }
+  // workStride의 단일 출처는 격자다 — settings의 값이 오래된 motion_input_latest.bin 등과
+  // 어긋나도 실제 셀 크기(current.stride)로 계산하도록 여기서 한 번에 맞춘다.
+  const s = { ...settings, workStride: current.stride }
+  const field = deriveMotionField(previous, current, s, deadlineAtMs)
+  if (!field.length) return EMPTY
+  const edge = selectLeadingEdge(annotateNeighbourAgreement(field, s), current, s)
+  return motionVectorsToGeoJSON(edge, {
+    gridToLatLon,
+    workStride: current.stride,
+    frameIntervalMs: settings.frameIntervalMs,
+  })
 }
 
 export function serializeMotionInput(input) {

@@ -80,8 +80,6 @@ function WeatherLegends({
     if (controlledOpen === undefined) setUncontrolledOpen(resolved)
     onOpenChange?.(resolved)
   }
-  const radarMotionEnabled = false
-
   const panel = (
     <div className="map-right-legends">
       {radarLegendVisible && (
@@ -99,7 +97,7 @@ function WeatherLegends({
               </div>
             ))}
           </div>
-          {radarMotionEnabled && radarLegendVisible && <div className="radar-motion-control">
+          {radarLegendVisible && <div className="radar-motion-control">
             <button
               type="button"
               className="radar-motion-toggle"
@@ -113,7 +111,7 @@ function WeatherLegends({
               {radarMotionStale
                 ? '레이더 자료 지연'
                 : radarMotionAvailable
-                  ? `관측 ${formatReferenceTimeLabel(radarMotionObservedAtMs)} · 비교 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} · 예측 아님`
+                  ? `관측 ${formatReferenceTimeLabel(radarMotionObservedAtMs)} · 비교 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} · 길이 = 10분 이동거리 · 예측 아님`
                   : '표시 중인 레이더 프레임의 이동 자료 없음'}
             </span>
           </div>}
@@ -336,7 +334,7 @@ function WeatherLegends({
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
         ))}
-        {radarMotionEnabled && radarLegendVisible && (
+        {radarLegendVisible && (
           <div className="radar-motion-control radar-motion-control--mobile">
             <button
               type="button"
@@ -351,7 +349,7 @@ function WeatherLegends({
               {radarMotionStale
                 ? '\uB808\uC774\uB354 \uC790\uB8CC \uC9C0\uC5F0'
                 : radarMotionAvailable
-                  ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9`
+                  ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9 \u00B7 \uAE38\uC774 = 10\uBD84 \uC774\uB3D9\uAC70\uB9AC`
                   : '\uC774\uB3D9 \uC790\uB8CC \uC5C6\uC74C'}
             </span>
           </div>

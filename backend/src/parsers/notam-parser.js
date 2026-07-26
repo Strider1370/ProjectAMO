@@ -25,14 +25,20 @@ function parseHeightToken(tok) {
   return null
 }
 
-export function parseNotamSchedule(scheduleText) {
-  const m = String(scheduleText || '').trim().match(/^(?:DLY\s+)?(\d{2})(\d{2})-(\d{2})(\d{2})$/i)
-  return m ? { kind: 'daily', start_utc_min: Number(m[1]) * 60 + Number(m[2]), end_utc_min: Number(m[3]) * 60 + Number(m[4]) } : null
-}
+// D)필드 해석은 shared/notam-schedule.js가 담당한다(단순 HHMM-HHMM만 알던 옛 파서는 호출부가
+// 없어 삭제). 여기서는 원문 문자열만 scheduleText로 넘긴다 — 월·연도 복원에 B)/C)가 필요해서
+// 파싱 시점이 아니라 판정 시점에 푼다.
 
 export function parseQcodeBand(qLine, fLine, gLine) {
   const f = parseHeightToken(fLine)
   const g = parseHeightToken(gLine)
+  // F)와 G)의 단위가 다르게 오는 NOTAM이 있다(F)SFC G)FL360, F)7000FT AMSL G)FL430).
+  // unit은 밴드당 하나뿐이라 f.unit만 취하면 FL360이 360ft로 남아 밴드가 100배 좁아지거나
+  // 아예 뒤집힌다. 섞였을 때만 둘 다 ft로 펴고, 같은 단위면 원래 표기를 유지한다.
+  if (f && g && f.unit !== g.unit) {
+    const toFt = (h) => (h.unit === 'FL' ? h.value * 100 : h.value)
+    return { lower: toFt(f), upper: toFt(g), unit: 'FT', ref: f.ref || g.ref || null }
+  }
   if (f && g) return { lower: f.value, upper: g.value, unit: f.unit, ref: f.ref || g.ref || null }
   // Q-line: .../lower/upper/coord — e.g. /000/999/3459N12623E005
   const m = String(qLine || '').match(/\/(\d{3})\/(\d{3})\/\d/)

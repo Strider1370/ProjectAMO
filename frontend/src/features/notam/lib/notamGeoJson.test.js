@@ -82,3 +82,23 @@ test('displayGeometry: 구역 계열(위험/제한)은 폴리곤 유지', () => 
   const item = { category: 'danger', geometry: { type: 'Polygon', coordinates: [[[126, 36], [127, 36], [127, 37], [126, 36]]] } }
   assert.equal(displayGeometry(item).type, 'Polygon')
 })
+
+// 지도 도형 색(timeState)은 목록·공항탭과 같은 판정을 써야 한다. 예전엔 deriveTimeState를 직접 불러
+// B~C만 보는 바람에, D) 시간대 밖인 NOTAM이 지도에서만 '발효 중'으로 칠해졌다.
+test('map features honour the D) schedule, not just B)~C)', () => {
+  const zone = {
+    id: 'D1/26', category: 'restricted', scope: 'airport', location: 'RKRR',
+    valid_from: '2026-07-03T00:00:00Z', valid_to: '2026-07-03T23:59:00Z',
+    summary: 'TEMPO RESTRICTED AREA ACT',
+    geometry: { type: 'Polygon', coordinates: [[[126, 37], [127, 37], [127, 38], [126, 38], [126, 37]]] },
+  }
+  const at = Date.parse('2026-07-03T06:00:00Z')
+  const stateOf = (schedule_text) => notamToFeatureCollection(
+    { items: [{ ...zone, schedule_text }] }, at,
+  ).features[0].properties.timeState
+
+  assert.equal(stateOf('0500-0700'), 'active')        // 06:00Z는 창 안
+  assert.equal(stateOf('0800-0900'), 'upcoming')      // 창 밖 — B~C 안이어도 꺼져 있다
+  assert.equal(stateOf('MON-FRI SR-SS'), 'conditional') // 해석 불가는 단정하지 않는다
+  assert.equal(stateOf(undefined), 'active')          // D)가 없으면 유효기간만으로 판정
+})

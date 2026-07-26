@@ -1,4 +1,6 @@
 // 시간상태(색의 유일한 축) + 고도 포맷(AGL/AMSL 기준면 보존). 순수 함수, 렌더 시점 계산.
+import { isScheduleActiveAt } from '../../../../../shared/notam-schedule.js'
+
 export const SOON_WINDOW_MS = 2 * 60 * 60 * 1000 // "곧 발효" 판정 임계값(config 상수)
 
 export const TIME_STATE = {
@@ -14,6 +16,7 @@ export const NOTAM_CATEGORIES = [
   { id: 'firing',     label: '사격',   icon: 'target-arrow' },
   { id: 'danger',     label: '위험',   icon: 'alert-triangle' },
   { id: 'restricted', label: '제한',   icon: 'shield-half' },
+  { id: 'moa',        label: '군작전', icon: 'swords' },
   { id: 'obstacle',   label: '장애물', icon: 'antenna' },
   { id: 'facility',   label: '시설',   icon: 'broadcast' },
   { id: 'other',      label: '기타',   icon: 'dots' },
@@ -28,15 +31,14 @@ export function deriveTimeState(validFrom, validTo, nowMs, soonWindowMs = SOON_W
   return 'upcoming'
 }
 
+// B~C(공지 유효기간) 안이어도 D)에 적힌 시간대 밖이면 실제로는 꺼져 있다.
+// D)를 해석 못 하면 'conditional'로 남긴다 — 모르는 걸 꺼짐으로 단정하면 켜진 구역에 들어가게 된다.
 export function deriveNotamTime(item, nowMs) {
   const base = deriveTimeState(item.valid_from, item.valid_to, nowMs)
-  const schedule = item.schedule
-  if (!schedule && item.schedule_text && base === 'active') return { state: 'conditional', note: 'D) 시간 조건 확인' }
-  if (schedule?.kind !== 'daily' || base !== 'active') return { state: base, note: '' }
-  const d = new Date(nowMs); const minute = d.getUTCHours() * 60 + d.getUTCMinutes()
-  const { start_utc_min: start, end_utc_min: end } = schedule
-  const active = start <= end ? minute >= start && minute < end : minute >= start || minute < end
-  return active ? { state: 'active', note: '' } : { state: 'upcoming', note: 'D) 시간대 외' }
+  if (base !== 'active' || !item.schedule_text) return { state: base, note: '' }
+  const withinSchedule = isScheduleActiveAt(item.schedule_text, item.valid_from, item.valid_to, nowMs)
+  if (withinSchedule === null) return { state: 'conditional', note: 'D) 시간 조건 확인' }
+  return withinSchedule ? { state: 'active', note: '' } : { state: 'upcoming', note: 'D) 시간대 외' }
 }
 
 export function sortOperationalFirst(items, nowMs) {

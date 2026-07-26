@@ -11,6 +11,7 @@ import { MAP_CONFIG, BASEMAP_OPTIONS } from './mapConfig.js'
 import { addAviationWfsLayers } from '../aviation-layers/addAviationWfsLayers.js'
 import { AVIATION_PANEL_MERGE_GROUPS, AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
 import { useFirTickOverlay } from '../aviation-layers/useFirTickOverlay.js'
+import { useMoaActivation } from '../aviation-layers/useMoaActivation.js'
 import {
   ADVISORY_LAYER_DEFS,
 } from '../weather-overlays/lib/advisoryLayers.js'
@@ -1329,6 +1330,9 @@ const MapView = forwardRef(function MapView({
 
   // FIR 경계 틱(지오메트리 렌더 + moveend 재생성) — 스크롤 후 틱 이탈 방지.
   useFirTickOverlay(mapRef, isStyleReady, styleRevision)
+
+  // 활성화 NOTAM과 매칭된 군작전구역에 빗금 — 켜진 구역과 평상시 구역을 구분한다.
+  useMoaActivation(mapRef, isStyleReady, styleRevision, notamData)
 
   // 패널 표시 여부와 무관하게 항상 호출 — activePanel이 'custom-area'가 아닐 때도 draw
   // 컨트롤/완성된 폴리곤이 지도에 남아있어야 하고(패널 닫기/탭 전환에 폴리곤이 사라지면 안 됨),

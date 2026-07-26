@@ -1,4 +1,4 @@
-import { deriveTimeState, formatAltitude, formatAltitudeBand, formatValidPeriod, NOTAM_CATEGORIES } from './notamViewModel.js'
+import { deriveNotamTime, formatAltitude, formatAltitudeBand, formatValidPeriod, NOTAM_CATEGORIES } from './notamViewModel.js'
 import { obstacleType, parseObstacleHeight } from './notamObstacleIcons.js'
 
 // 지도 라벨용 카테고리명: 구역 계열은 정식 명칭, 그 외는 짧은 라벨(notam-label은 구역만 렌더).
@@ -52,7 +52,8 @@ export function notamToFeatureCollection(payload, nowMs = Date.now()) {
           id: it.id,
           category: it.category || 'other',
           scope: it.scope || 'airport',
-          timeState: deriveTimeState(it.valid_from, it.valid_to, nowMs),
+          // B~C만 보는 deriveTimeState가 아니라 D)까지 반영 — 지도 색이 목록과 어긋나면 안 된다.
+          timeState: deriveNotamTime(it, nowMs).state,
           summary: it.summary || it.id,
           validPeriod: formatValidPeriod(it.valid_from, it.valid_to),
           altitude: formatAltitude(it.altitude),
