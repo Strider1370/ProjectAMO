@@ -1,11 +1,15 @@
 import { test, expect } from '../fixtures.mjs'
 import { installRouteBriefingFixtures } from '../route-fixture.mjs'
+import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 async function openRouteBriefing(page, isMobile) {
-  await page.addInitScript(() => {
+  // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
+  // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
+  // 소스의 상수를 그대로 쓴다.
+  await page.addInitScript((version) => {
     localStorage.setItem('amo.tour.v1.done', 'true')
-    localStorage.setItem('projectamo:lastSeenVersion', '0.2.5')
-  })
+    localStorage.setItem('projectamo:lastSeenVersion', version)
+  }, CURRENT_VERSION)
   // Precondition: route geometry is committed navdata; this installs deterministic
   // weather, terrain, altitude, and briefing responses because dev:test has none.
   const exposureRequests = await installRouteBriefingFixtures(page)

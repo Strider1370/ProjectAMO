@@ -4,6 +4,7 @@ import {
   moaActivationNotamDefinite,
   moaActivationNotamUnreadable,
 } from './fixtures/moa-activation-notam.mjs'
+import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 // 활성화 NOTAM과 매칭된 군작전구역만 빗금으로 덧칠되는지 확인한다.
 // 핵심 위험은 필터 표현식이 조용히 어긋나는 것 — 아무것도 안 칠해지거나 전부 칠해져도
@@ -57,10 +58,13 @@ async function openWith(page, testInfo, payload) {
 
 test.describe('moa-activation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
+    // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
+    // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
+    // 소스의 상수를 그대로 쓴다.
+    await page.addInitScript((version) => {
       localStorage.setItem('amo.tour.v1.done', 'true')
-      localStorage.setItem('projectamo:lastSeenVersion', '0.2.6')
-    })
+      localStorage.setItem('projectamo:lastSeenVersion', version)
+    }, CURRENT_VERSION)
   })
 
   test('hatches the zone whose D) window covers now, not the one outside it', async ({ page }, testInfo) => {

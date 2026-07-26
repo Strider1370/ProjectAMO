@@ -1,6 +1,7 @@
 // ponytail: throwaway capture spec for RKSS→RKPC tab screenshots. Delete after review.
 import { test, expect } from '../fixtures.mjs'
 import { installRouteBriefingFixtures } from '../route-fixture.mjs'
+import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 const OUT = '../artifacts/tab-capture'
 
@@ -8,10 +9,13 @@ test.describe('tabcapture', () => {
   test('captures alternate-route and alternate-altitude tabs for RKSS-RKPC', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'capture is desktop-only')
 
-    await page.addInitScript(() => {
+    // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
+    // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
+    // 소스의 상수를 그대로 쓴다.
+    await page.addInitScript((version) => {
       localStorage.setItem('amo.tour.v1.done', 'true')
-      localStorage.setItem('projectamo:lastSeenVersion', '0.2.5')
-    })
+      localStorage.setItem('projectamo:lastSeenVersion', version)
+    }, CURRENT_VERSION)
     await installRouteBriefingFixtures(page)
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await page.getByRole('button', { name: '비행 전 브리핑', exact: true }).click()
@@ -52,10 +56,13 @@ test.describe('tabcapture', () => {
   test('diagnose route-design-line colors on the map for base/A/B', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'debug-only, desktop')
 
-    await page.addInitScript(() => {
+    // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
+    // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
+    // 소스의 상수를 그대로 쓴다.
+    await page.addInitScript((version) => {
       localStorage.setItem('amo.tour.v1.done', 'true')
-      localStorage.setItem('projectamo:lastSeenVersion', '0.2.5')
-    })
+      localStorage.setItem('projectamo:lastSeenVersion', version)
+    }, CURRENT_VERSION)
     await installRouteBriefingFixtures(page)
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await page.getByRole('button', { name: '비행 전 브리핑', exact: true }).click()

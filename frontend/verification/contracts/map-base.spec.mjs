@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures.mjs'
+import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 async function installRadarMotionFixture(page) {
   const observedAtMs = Date.UTC(2026, 4, 14, 3, 5)
@@ -37,10 +38,13 @@ async function installConvectiveFixture(page) {
 
 test.describe('map-base', () => {
   test('changes the selected base map', async ({ page }) => {
-    await page.addInitScript(() => {
+    // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
+    // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
+    // 소스의 상수를 그대로 쓴다.
+    await page.addInitScript((version) => {
       localStorage.setItem('amo.tour.v1.done', 'true')
-      localStorage.setItem('projectamo:lastSeenVersion', '0.2.5')
-    })
+      localStorage.setItem('projectamo:lastSeenVersion', version)
+    }, CURRENT_VERSION)
     await page.goto('/', { waitUntil: 'domcontentloaded' })
 
     const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
@@ -51,10 +55,13 @@ test.describe('map-base', () => {
   })
 
   test('opens the weather layer panel and toggles radar', async ({ page }, testInfo) => {
-    await page.addInitScript(() => {
+    // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
+    // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
+    // 소스의 상수를 그대로 쓴다.
+    await page.addInitScript((version) => {
       localStorage.setItem('amo.tour.v1.done', 'true')
-      localStorage.setItem('projectamo:lastSeenVersion', '0.2.5')
-    })
+      localStorage.setItem('projectamo:lastSeenVersion', version)
+    }, CURRENT_VERSION)
     await installRadarMotionFixture(page)
     await page.goto('/', { waitUntil: 'domcontentloaded' })
 
@@ -77,7 +84,8 @@ test.describe('map-base', () => {
   })
 
   test('keeps CI and CTPS independent through a basemap replacement', async ({ page }, testInfo) => {
-    await page.addInitScript(() => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', '0.2.5') })
+    // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
+    await page.addInitScript((version) => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
     await installConvectiveFixture(page)
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     const weatherEntry = testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
