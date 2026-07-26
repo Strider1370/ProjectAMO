@@ -44,15 +44,17 @@ export function parsePositionText(rawText) {
   }
   if (/BOUNDEDBY/.test(tight)) {
     const key = (p) => `${p.lat},${p.lon}`
-    // 닫는 점(마지막 == 첫째)은 정상이므로 빼고 본다.
-    const body = coords.length > 1 && key(coords[0]) === key(coords[coords.length - 1]) ? coords.slice(0, -1) : coords
-    const uniq = body.filter((p, i) => body.findIndex((q) => key(q) === key(p)) === i)
+    // 닫는 점(마지막 == 첫째)은 정상이니 좌표 목록에는 그대로 남긴다 — 원문 토큰 수와 맞춰야
+    // 정답표(닫는 점을 포함해서 센다)와 좌표 개수가 일치한다. 결함 검사에만 빼고 본다.
+    const closed = coords.length > 1 && key(coords[0]) === key(coords[coords.length - 1])
+    const inner = closed ? coords.slice(0, -1) : coords
+    const uniqInner = inner.filter((p, i) => inner.findIndex((q) => key(q) === key(p)) === i)
     // 중복이 남아 있으면 발행 과정에서 꼭짓점이 소실된 것이다(E3296/26). KML도 같은 결함이라
     // 내려갈 곳이 없다 — resolveNotamGeometry가 Q줄 원으로 넓게 덮는다.
     // 개수가 아니라 중복을 신호로 쓴다: 정당한 삼각형과 꼭짓점 잃은 사각형은 개수로 구별되지 않는다.
-    if (uniq.length !== body.length) return none(true)
-    if (uniq.length < 3) return none(true)
-    return { kind: 'polygon', coords: uniq, radiusM: null, bufferNm: null, approximated, defective: false }
+    if (uniqInner.length !== inner.length) return none(true)
+    if (uniqInner.length < 3) return none(true)
+    return { kind: 'polygon', coords, radiusM: null, bufferNm: null, approximated, defective: false }
   }
   if (/CIRCLE|RADOF/.test(tight) && coords.length >= 1) {
     const m = tight.match(/RADIUS[:：]?(\d+(?:\.\d+)?)(NM|KM|M)/) || tight.match(/(\d+(?:\.\d+)?)(NM|KM|M)RAD(?:IUS)?OF/)
