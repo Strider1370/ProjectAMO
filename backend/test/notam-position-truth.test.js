@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { parsePositionText } from '../src/notam/notam-position-text.js'
+import { resolveNotamGeometry } from '../src/notam/notam-geometry.js'
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url))
 const truth = JSON.parse(readFileSync(here('./fixtures/notam-geometry-truth-2026-07-26.json'), 'utf8'))
@@ -95,5 +96,15 @@ test('알려진 어려운 건은 안전한 쪽으로 간다', () => {
   // 호·반원·제외구역 — 근사 표시가 붙는다
   for (const id of truth.knownHard.arcOrExclusion.ids) {
     assert.equal(parsePositionText(rawById.get(id)).approximated, true, id)
+  }
+})
+
+test('결함·근사 건은 Q줄 원으로 넓게 덮인다', () => {
+  // 삼각형(일부만 덮음)이나 잘못된 반경을 내보내지 않는다는 확인.
+  for (const id of [...DEFECT, ...truth.knownHard.arcOrExclusion.ids]) {
+    const r = resolveNotamGeometry({ rawText: rawById.get(id), kmlGeometry: null })
+    if (r.source === 'none') continue // Q줄이 없으면 위치 확인 불가 — 그것도 안전한 결말
+    assert.equal(r.source, 'q', `${id}: source가 ${r.source}`)
+    assert.equal(r.approximated, true, id)
   }
 })
