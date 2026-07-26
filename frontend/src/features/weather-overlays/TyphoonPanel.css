@@ -2,8 +2,10 @@
    레이어 드로어 오른쪽에 나란히 배치. layer-drawer 셸을 재사용하되 위치만 민다.
    .map-view-wrapper .layer-drawer 규칙을 이기려 동일 접두 + .typhoon-panel 로 특이도 확보. */
 .map-view-wrapper .layer-drawer.typhoon-panel {
-  left: calc(12px + var(--panel-overlay-sm) + 8px);
-  width: min(300px, 92vw);
+  /* 태풍을 켜면 레이어 패널이 닫히므로 그 자리를 그대로 쓴다.
+     시각 표가 들어가 좁으면 글자가 세로로 쪼개진다 — 넉넉히 준다. */
+  left: 12px;
+  width: min(560px, 94vw);
 }
 
 .typhoon-panel__empty {
@@ -14,9 +16,6 @@
 }
 
 .typhoon-panel__item {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
   padding: 10px 12px;
   border-top: 1px solid var(--border-1, rgba(148, 163, 184, 0.28));
 }
@@ -45,3 +44,108 @@
   background: transparent;
   cursor: pointer;
 }
+
+.typhoon-panel__head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.typhoon-panel__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.typhoon-panel__close:hover { background: var(--border-1, rgba(148, 163, 184, 0.28)); }
+
+.typhoon-track {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.typhoon-track th {
+  padding: 3px 4px;
+  color: var(--text-3);
+  font-weight: 500;
+  text-align: left;
+  border-bottom: 1px solid var(--border-1, rgba(148, 163, 184, 0.28));
+}
+
+.typhoon-track td { padding: 3px 4px; }
+
+.typhoon-track__row { cursor: pointer; }
+.typhoon-track__row:hover { background: rgba(148, 163, 184, 0.16); }
+.typhoon-track__row.is-current { font-weight: 600; }
+.typhoon-track__row.is-selected { background: rgba(148, 163, 184, 0.28); }
+
+.typhoon-track__kind { color: var(--text-3); font-size: 11px; }
+
+.typhoon-detail {
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.12);
+  font-size: 12px;
+}
+
+.typhoon-detail > div { display: flex; gap: 8px; }
+.typhoon-detail dt { flex: 0 0 76px; color: var(--text-3); }
+.typhoon-detail dd { margin: 0; }
+
+
+.typhoon-panel__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.typhoon-panel__name { flex: 1 1 auto; min-width: 0; }
+
+.typhoon-track { table-layout: auto; }
+
+/* 시각 칸이 좁으면 "24일 03시"가 한 글자씩 세로로 쪼개진다. */
+.typhoon-track__time { white-space: nowrap; }
+
+.typhoon-track th,
+.typhoon-track td { white-space: nowrap; }
+
+.typhoon-track__where {
+  white-space: normal;
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.typhoon-track__now {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--level-red, #dc2626);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.typhoon-track__row.is-forecast { color: var(--text-2); }
+.typhoon-track__row.is-past td { opacity: 0.72; }
+.typhoon-track__row.is-current td { opacity: 1; font-weight: 600; }
+
+.typhoon-panel__past { margin-top: 6px; }
+.typhoon-panel__past > summary {
+  cursor: pointer;
+  padding: 4px 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.typhoon-track__kind { margin-left: 5px; }

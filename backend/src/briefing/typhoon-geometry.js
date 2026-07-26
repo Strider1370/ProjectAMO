@@ -11,6 +11,22 @@ export const BEARING_BY_POINT = {
 }
 
 const DEFAULT_STEPS = 72
+// 소수점 4자리 ≈ 11 m. 태풍 반경(수십~수백 km)에 그 이상은 의미가 없고,
+// 원본 배정밀도를 그대로 실으면 스냅샷이 몇 배로 불어난다.
+const COORD_DECIMALS = 4
+
+function roundCoord([lon, lat]) {
+  const f = 10 ** COORD_DECIMALS
+  return [Math.round(lon * f) / f, Math.round(lat * f) / f]
+}
+
+function roundGeometry(geometry) {
+  if (!geometry) return null
+  const ring = (r) => r.map(roundCoord)
+  if (geometry.type === 'Polygon') return { ...geometry, coordinates: geometry.coordinates.map(ring) }
+  if (geometry.type === 'MultiPolygon') return { ...geometry, coordinates: geometry.coordinates.map((p) => p.map(ring)) }
+  return geometry
+}
 
 // 두 방위 사이의 최소 각차(0~180).
 function angularDelta(a, b) {
@@ -39,7 +55,7 @@ export function asymmetricPolygon({ lat, lon, radiusKm, exceptionDir = null, exc
     coordinates.push(turf.destination([lon, lat], distance, bearing, { units: 'kilometers' }).geometry.coordinates)
   }
   coordinates.push(coordinates[0])
-  return { type: 'Polygon', coordinates: [coordinates] }
+  return roundGeometry({ type: 'Polygon', coordinates: [coordinates] })
 }
 
 function ringPolygon(row, ring, extraKm = 0) {
@@ -75,7 +91,7 @@ export function errorConePolygon(rows = []) {
     const circle = turf.circle([row.lon, row.lat], row.errorRadiusKm, { steps: DEFAULT_STEPS, units: 'kilometers' })
     cone = cone ? turf.union(turf.featureCollection([cone, circle])) : circle
   }
-  return cone ? cone.geometry : null
+  return cone ? roundGeometry(cone.geometry) : null
 }
 
 export default { BEARING_BY_POINT, asymmetricPolygon, galePolygon, stormPolygon, judgementPolygon, errorConePolygon }

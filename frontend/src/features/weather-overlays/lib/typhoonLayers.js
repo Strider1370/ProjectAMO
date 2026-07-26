@@ -23,7 +23,16 @@ export const TYPHOON_LAYER_IDS = [
 
 const empty = () => ({ type: 'FeatureCollection', features: [] })
 
-export function buildTyphoonGeoJson(typhoons = []) {
+// selected = { number, validAt } 이면 그 태풍의 강풍/폭풍 영역을 그 시점 것으로 바꾼다.
+// 나머지 태풍은 현재 시점 그대로 둔다.
+function ringsFor(typhoon, selected) {
+  if (selected?.number !== typhoon.number) return typhoon.geometry ?? {}
+  const row = (typhoon.rows ?? []).find((r) => r.validAt === selected.validAt)
+  if (!row?.geometry) return typhoon.geometry ?? {}
+  return { ...typhoon.geometry, gale: row.geometry.gale, storm: row.geometry.storm }
+}
+
+export function buildTyphoonGeoJson(typhoons = [], selected = null) {
   const colors = assignTyphoonColors(typhoons.map((t) => t.number))
   const result = {
     track: empty(), forecastTrack: empty(), points: empty(), cone: empty(), gale: empty(), storm: empty(),
@@ -57,12 +66,14 @@ export function buildTyphoonGeoJson(typhoons = []) {
           leadHours: row.leadHours,
           pressureHpa: row.pressureHpa,
           validAt: row.validAt,
+          isSelected: Boolean(selected) && selected.number === typhoon.number && selected.validAt === row.validAt,
         },
         geometry: { type: 'Point', coordinates: coord(row) },
       })
     }
 
-    for (const [key, geometry] of [['cone', typhoon.geometry?.cone], ['gale', typhoon.geometry?.gale], ['storm', typhoon.geometry?.storm]]) {
+    const rings = ringsFor(typhoon, selected)
+    for (const [key, geometry] of [['cone', rings.cone], ['gale', rings.gale], ['storm', rings.storm]]) {
       if (!geometry) continue
       result[key].features.push({ type: 'Feature', properties: props, geometry })
     }
@@ -87,7 +98,16 @@ export function addTyphoonLayers(map) {
   add({ id: 'typhoon-storm-fill', type: 'fill', source: 'typhoon-storm', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.38 } })
   add({ id: 'typhoon-track-line', type: 'line', source: 'typhoon-track', paint: { 'line-color': ['get', 'color'], 'line-width': 2.5 } })
   add({ id: 'typhoon-forecast-track-line', type: 'line', source: 'typhoon-forecast-track', paint: { 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-dasharray': [2, 2] } })
-  add({ id: 'typhoon-points-circle', type: 'circle', source: 'typhoon-points', paint: { 'circle-color': ['get', 'color'], 'circle-radius': ['case', ['get', 'forecast'], 4, 6], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 } })
+    // 선택된 지점을 굵게. 패널의 시각 행과 지도 지점이 양방향으로 연결되는 시각 신호다.
+  add({
+    id: 'typhoon-points-circle', type: 'circle', source: 'typhoon-points',
+    paint: {
+      'circle-color': ['get', 'color'],
+      'circle-radius': ['case', ['get', 'isSelected'], 10, ['get', 'forecast'], 4, 6],
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': ['case', ['get', 'isSelected'], 3, 1.5],
+    },
+  })
   add({
     id: 'typhoon-points-label', type: 'symbol', source: 'typhoon-points',
     // 현재 위치 한 곳에만 라벨을 찍는다. leadHours==0으로 거르면 지나온 경로 전체에 라벨이 쌓인다.
@@ -117,10 +137,10 @@ export function setTyphoonVisibility(map, visible) {
   }
 }
 
-export function syncTyphoonLayers(map, { typhoons = [], visible = false } = {}) {
+export function syncTyphoonLayers(map, { typhoons = [], visible = false, selected = null } = {}) {
   if (!map?.getSource) return
   addTyphoonLayers(map)
-  const data = buildTyphoonGeoJson(typhoons)
+  const data = buildTyphoonGeoJson(typhoons, selected)
   for (const [key, sourceId] of Object.entries(SOURCE_BY_KEY)) {
     map.getSource(sourceId)?.setData(data[key])
   }

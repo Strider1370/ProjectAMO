@@ -14,6 +14,17 @@ function weatherEntry(testInfo) {
   return testInfo.project.name === 'mobile' ? '기상정보 레이어' : '기상정보'
 }
 
+// 레이어 패널을 열고 태풍 타일을 반환한다. 배지·체크가 붙으면 접근명이 "태풍 2 ✓"가
+// 되므로 이름 완전일치 대신 접두 일치로 찾는다.
+async function openWeatherPanel(page, testInfo) {
+  await page.locator(`[aria-label="${weatherEntry(testInfo)}"]`).first().click()
+  const tile = page.getByRole('button', { name: /^태풍/ })
+  await expect(tile).toBeVisible()
+  return tile
+}
+
+// 태풍 타일을 켠다. 타일을 누르면 레이어 패널이 자동으로 닫히므로(모바일에서 두 시트가
+// 겹치는 것을 막기 위해) 타일 자체가 사라진다 — 타일 상태가 아니라 결과인 목록 패널로 단언한다.
 async function openTyphoon(page, testInfo, payload) {
   await page.route('**/api/typhoon', (route) => route.fulfill({
     contentType: 'application/json', body: JSON.stringify(payload),
@@ -24,20 +35,9 @@ async function openTyphoon(page, testInfo, payload) {
     localStorage.setItem('projectamo:lastSeenVersion', version)
   }, CURRENT_VERSION)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
-  await page.locator(`[aria-label="${weatherEntry(testInfo)}"]`).first().click()
-  // 배지·체크가 붙으면 접근명이 "태풍 2 ✓"가 되어 이름 매칭이 깨진다 — aria-pressed로 단언한다.
-  const tile = page.getByRole('button', { name: /^태풍/ })
-  await expect(tile).toBeVisible()
+  const tile = await openWeatherPanel(page, testInfo)
   await tile.click()
-  await expect(tile).toHaveAttribute('aria-pressed', 'true')
-  return tile
-}
-
-// 기상 레이어 패널은 열린 채로 남아 다른 패널 위를 덮는다(모바일에서는 시트끼리 겹쳐
-// 클릭이 가로막힌다). echo-top.spec.mjs의 panelToggle과 같은 이유로 사이드바 아이콘을
-// 다시 눌러 닫는다. 태풍 패널은 metVisibility.typhoon이 따로 제어하므로 닫혀도 남는다.
-async function closeWeatherPanel(page, testInfo) {
-  await page.locator(`[aria-label="${weatherEntry(testInfo)}"]`).first().click()
+  await expect(page.getByLabel('활성 태풍 목록')).toBeVisible()
 }
 
 const typhoonLayerIds = () => {
@@ -48,7 +48,7 @@ const typhoonLayerIds = () => {
 }
 
 test('태풍 타일이 지도 레이어와 목록 패널을 함께 켠다', async ({ page }, testInfo) => {
-  const tile = await openTyphoon(page, testInfo, snapshot)
+  await openTyphoon(page, testInfo, snapshot)
   const panel = page.getByLabel('활성 태풍 목록')
   await expect(panel).toBeVisible()
   await expect(panel.getByText(/19호 태풍/)).toBeVisible()
@@ -60,6 +60,9 @@ test('태풍 타일이 지도 레이어와 목록 패널을 함께 켠다', asyn
   expect(layers).toContain('typhoon-cone-fill')
   expect(layers).toContain('typhoon-gale-fill')
 
+  // 끄려면 레이어 패널을 다시 열어 타일을 누른다(켤 때 자동으로 닫혔다).
+  const tile = await openWeatherPanel(page, testInfo)
+  await expect(tile).toHaveAttribute('aria-pressed', 'true')
   await tile.click()
   await expect(tile).toHaveAttribute('aria-pressed', 'false')
   await expect(panel).toBeHidden()
@@ -98,7 +101,6 @@ test('바로가기 버튼이 지도를 해당 태풍으로 옮긴다', async ({ 
   // 첫 항목(19호 솔릭)의 경도는 픽스처의 current 좌표에서 읽는다.
   // 한국 기본 지도 중심과 경도가 가까워 "많이 움직였나"로는 판정할 수 없다 — 목적지 도착 여부를 본다.
   const target = snapshot.typhoons[0].current
-  await closeWeatherPanel(page, testInfo)
   await page.getByLabel('활성 태풍 목록').locator('.typhoon-panel__focus').first().click()
   await expect.poll(async () => {
     const c = await page.evaluate(() => window.__map?.getCenter())
@@ -122,4 +124,55 @@ test('베이스맵을 두 번 바꿔도 레이어가 남는다', async ({ page }
   await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^지형/ }).click()
   await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^기본/ }).click()
   await expect.poll(async () => (await page.evaluate(typhoonLayerIds)).includes('typhoon-track-line')).toBe(true)
+})
+
+test('패널의 시각 표에 현재와 예보 시각이 나온다', async ({ page }, testInfo) => {
+  await openTyphoon(page, testInfo, snapshot)
+  const panel = page.getByLabel('활성 태풍 목록')
+  const rows = panel.locator('.typhoon-track__row')
+  await expect(rows.first()).toBeVisible()
+  // 통보문처럼 "현재"가 한 줄, 나머지는 "예상"이다.
+  await expect(panel.locator('.typhoon-track__row.is-current').first()).toBeVisible()
+  expect(await rows.count()).toBeGreaterThan(1)
+})
+
+test('표의 시각 행에 올리면 지도의 그 지점이 선택된다', async ({ page }, testInfo) => {
+  await openTyphoon(page, testInfo, snapshot)
+  const selectedCount = () => page.evaluate(() => (window.__map?.querySourceFeatures('typhoon-points') ?? [])
+    .filter((f) => f.properties.isSelected === true || f.properties.isSelected === 'true').length)
+  expect(await selectedCount()).toBe(0)
+
+  await page.getByLabel('활성 태풍 목록').locator('.typhoon-track__row').first().hover()
+  await expect.poll(selectedCount, { timeout: 8000 }).toBeGreaterThan(0)
+})
+
+test('예보 시각을 고르면 강풍 영역이 그 시점 것으로 바뀐다', async ({ page }, testInfo) => {
+  await openTyphoon(page, testInfo, snapshot)
+  const galeExtent = () => page.evaluate(() => {
+    const f = (window.__map?.querySourceFeatures('typhoon-gale') ?? [])[0]
+    if (!f) return null
+    const ring = f.geometry.coordinates[0]
+    return Math.round(Math.max(...ring.map((c) => c[1])) * 100)
+  })
+  const before = await galeExtent()
+  expect(before).not.toBeNull()
+
+  // 마지막 예보 행 = 현재에서 가장 먼 시점. 위치가 확실히 달라진다.
+  await page.getByLabel('활성 태풍 목록').locator('.typhoon-track__row').last().click()
+  await expect.poll(galeExtent, { timeout: 8000 }).not.toBe(before)
+})
+
+test('닫기 버튼이 목록만 접고 지도 레이어는 남긴다', async ({ page }, testInfo) => {
+  await openTyphoon(page, testInfo, snapshot)
+  const panel = page.getByLabel('활성 태풍 목록')
+  await expect(panel).toBeVisible()
+  await panel.getByRole('button', { name: '태풍 목록 닫기' }).click()
+  await expect(panel).toBeHidden()
+})
+
+test('태풍을 켜면 기상 레이어 패널이 자동으로 닫힌다', async ({ page }, testInfo) => {
+  // 모바일에서 두 시트가 완전히 겹쳐 목록에 손이 닿지 않던 문제를 막는다.
+  await openTyphoon(page, testInfo, snapshot)
+  await expect(page.getByLabel('활성 태풍 목록')).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '기상 레이어' })).toBeHidden()
 })

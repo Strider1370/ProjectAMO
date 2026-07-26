@@ -72,8 +72,12 @@ export function buildSnapshot({ activeRows, names = [], fetched_at }) {
       name: named?.name ?? null,
       nameEn: named?.nameEn ?? null,
       current,
-      rows,
-      // 강풍/폭풍은 현재 시점만(스펙 §9).
+      // 행마다 그 시점의 강풍/폭풍 영역을 담는다. 사용자가 패널에서 예보 시각을 고르면
+      // 그 시점 영역을 지도에 보여주기 위해서다. 부채꼴은 전 구간 합집합이라 태풍 단위로 둔다.
+      rows: rows.map((row) => ({
+        ...row,
+        geometry: { gale: galePolygon(row), storm: stormPolygon(row) },
+      })),
       geometry: {
         cone: errorConePolygon(forecast),
         gale: galePolygon(current),
