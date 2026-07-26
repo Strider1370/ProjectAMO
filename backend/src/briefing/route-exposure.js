@@ -5,6 +5,7 @@ import {
   evaluateTimeStatus,
   exposureConfidence,
 } from './hazard-exposure.js'
+import { matchTyphoonHazards } from './typhoon-briefing.js'
 
 const LIGHTNING_DISTANCE_METERS = 20 * 1852
 
@@ -44,7 +45,7 @@ function lightningComparison(lightning, axis, referenceTime) {
   return { status: 'available', observedAt, within20NmCount }
 }
 
-export function buildRouteExposure({ routeGeometry, routeModel, etd, eta, sigmet, sigmetOverseas, airmet, lightning, referenceTime } = {}) {
+export function buildRouteExposure({ routeGeometry, routeModel, etd, eta, sigmet, sigmetOverseas, airmet, lightning, typhoon, referenceTime } = {}) {
   const axis = buildRouteAxis(routeGeometry, 2000)
   const triggerStates = []
   const hazards = []
@@ -74,6 +75,26 @@ export function buildRouteExposure({ routeGeometry, routeModel, etd, eta, sigmet
       horizontalExposure,
       timeStatus,
       confidence: exposureConfidence({ horizontalExposure, timeStatus }),
+    })
+  }
+
+  // 태풍은 SIGMET과 판정 방식이 달라(반경 도형 + 시점별 유효구간) 전용 어댑터를 쓰고,
+  // 결과만 이 화면의 hazard 모양으로 맞춘다. 고도는 판정하지 않으므로 bandFt는 null이다.
+  for (const hazard of matchTyphoonHazards({
+    typhoons: typhoon?.typhoons ?? [], axis, etd, eta, enRouteRange: routeModel?.enRouteRange,
+  })) {
+    if (hazard.horizontalExposure?.status !== 'intersects') continue
+    hazards.push({
+      source: 'TYPHOON',
+      sourceId: hazard.sourceId,
+      phenomenon: hazard.code,
+      label: hazard.label,
+      validFrom: hazard.validFrom,
+      validTo: hazard.validTo,
+      bandFt: null,
+      horizontalExposure: hazard.horizontalExposure,
+      timeStatus: hazard.timeStatus,
+      confidence: hazard.confidence,
     })
   }
 

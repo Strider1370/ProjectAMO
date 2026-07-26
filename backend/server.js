@@ -1035,6 +1035,7 @@ app.post('/api/briefing/route-exposure', (req, res) => {
       sigmetOverseas: store.getCached('sigmet_overseas'),
       airmet: store.getCached('airmet'),
       lightning: store.getCached('lightning'),
+      typhoon: store.getCached('typhoon'),
     }))
   } catch (error) {
     res.status(400).json({ error: error.message || 'route exposure failed' })
@@ -1047,6 +1048,7 @@ function readRouteExposureSnapshot() {
     sigmetOverseas: store.getCached('sigmet_overseas'),
     airmet: store.getCached('airmet'),
     lightning: store.getCached('lightning'),
+    typhoon: store.getCached('typhoon'),
   }
   const sources = Object.fromEntries(Object.entries(cached).map(([name, data]) => [name, data ? {
     hash: data.content_hash || store.canonicalHash(data),

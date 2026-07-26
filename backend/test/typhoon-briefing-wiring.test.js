@@ -69,3 +69,35 @@ test('태풍 자료가 없어도 브리핑이 깨지지 않는다', () => {
   const typhoons = (briefing?.sections?.adverse?.hazards ?? []).filter((h) => h.source === 'TYPHOON')
   assert.deepEqual(typhoons, [])
 })
+
+test('경로 비교(route-exposure)도 태풍 스냅샷을 받는다', () => {
+  const source = readSource('server.js')
+  // 두 진입점: 단건 조회와 배치 조회.
+  const matches = source.match(/typhoon:\s*store\.getCached\('typhoon'\)/g) ?? []
+  assert.ok(matches.length >= 3,
+    `브리핑·경로노출·배치 세 곳에 typhoon이 들어가야 한다 (현재 ${matches.length}곳)`)
+})
+
+test('buildRouteExposure가 태풍을 노출 항목으로 낸다', async () => {
+  const { buildRouteExposure } = await import('../src/briefing/route-exposure.js')
+  const validAt = '2026-07-25T18:00:00.000Z'
+  const center = { lat: 22.5, lon: 115.1 }
+  const row = {
+    forecast: false, seq: 9, leadHours: 0, analyzedAt: validAt, validAt,
+    lat: center.lat, lon: center.lon, dir: 'NW', speedKmh: 18,
+    pressureHpa: 960, maxWindMs: 39, errorRadiusKm: 0,
+    gale: { radiusKm: 280, exceptionDir: null, exceptionRadiusKm: null },
+    storm: null, location: '중국 홍콩 동북동쪽 약 120 km 부근 해상',
+  }
+  const out = buildRouteExposure({
+    routeGeometry: { type: 'LineString', coordinates: [[center.lon - 2, center.lat - 2], [center.lon + 2, center.lat + 2]] },
+    etd: validAt,
+    eta: new Date(Date.parse(validAt) + 2 * 3600e3).toISOString(),
+    typhoon: { typhoons: [{ number: 12, year: 2026, seq: 9, name: '노을', analyzedAt: validAt, current: row, rows: [row] }] },
+  })
+  const typhoons = out.hazards.filter((h) => h.source === 'TYPHOON')
+  assert.equal(typhoons.length, 1, '경로 비교 화면의 위험기상 칩에도 태풍이 나와야 한다')
+  assert.equal(typhoons[0].label, '12호 태풍 노을')
+  // 고도는 판정하지 않는다.
+  assert.equal(typhoons[0].bandFt, null)
+})

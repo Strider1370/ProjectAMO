@@ -19,6 +19,7 @@ function exposureLabel(hazard) {
 function hazardChipClassName(source) {
   if (source?.includes('SIGMET')) return 'hz-chip hz-sigmet'
   if (source?.includes('AIRMET')) return 'hz-chip hz-airmet'
+  if (source?.includes('TYPHOON')) return 'hz-chip hz-typhoon'
   return 'hz-chip'
 }
 
