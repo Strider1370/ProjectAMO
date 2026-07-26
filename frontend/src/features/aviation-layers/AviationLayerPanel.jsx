@@ -6,7 +6,7 @@ import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 const GROUPS = [
   { title: '항공로', ids: ['ats-route', 'rnav-route', 'overseas-route'] },
   { title: '항행시설', ids: ['waypoint', 'overseas-waypoint', 'navaid', 'overseas-navaid', 'airport'] },
-  { title: '공역', ids: ['fir', 'sector', 'ctr', 'tma', 'restricted', 'prohibited', 'danger'] },
+  { title: '공역', ids: ['fir', 'sector', 'ctr', 'tma', 'restricted', 'prohibited', 'danger', 'moa'] },
 ]
 // 국내/해외 타일을 하나로 합쳐 보여줌 — 클릭 한 번으로 둘 다 같은 상태로 맞춘다.
 const LAYER_LABELS = {
@@ -17,6 +17,7 @@ const LAYER_LABELS = {
   restricted: '제한구역',
   prohibited: '금지구역',
   danger: '위험구역',
+  moa: '군작전구역',
   waypoint: '웨이포인트',
   navaid: '항행안전시설',
   airport: '공항',

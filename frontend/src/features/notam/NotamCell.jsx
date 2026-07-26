@@ -1,11 +1,11 @@
-import { Ban, Crosshair, AlertTriangle, ShieldHalf, RadioTower, Radio, MoreHorizontal, ChevronDown } from 'lucide-react'
+import { Ban, Crosshair, AlertTriangle, ShieldHalf, Swords, RadioTower, Radio, MoreHorizontal, ChevronDown } from 'lucide-react'
 import { NOTAM_CATEGORIES, TIME_STATE } from './lib/notamViewModel.js'
 import './NotamCell.css'
 
 // 밀도형 NOTAM 셀 — 공항탭·브리핑 공용(동일 룩). 좌: 카테고리 아이콘+라벨, 중: 요약, 우: 고도+시간상태 배지, 끝: 펼침.
 // 펼치면(네이티브 details, 키보드 접근) 유효기간 + 원문.
 const CAT_ICON = {
-  prohibited: Ban, firing: Crosshair, danger: AlertTriangle, restricted: ShieldHalf,
+  prohibited: Ban, firing: Crosshair, danger: AlertTriangle, restricted: ShieldHalf, moa: Swords,
   obstacle: RadioTower, facility: Radio, other: MoreHorizontal,
 }
 const catLabelOf = (id) => (NOTAM_CATEGORIES.find((c) => c.id === id) || { label: '기타' }).label

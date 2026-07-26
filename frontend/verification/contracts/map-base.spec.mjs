@@ -14,7 +14,10 @@ async function installRadarMotionFixture(page) {
   }))
   await page.route('**/data/radar/motion_korea_202605141205.geojson', (route) => route.fulfill({
     contentType: 'application/geo+json',
-    body: JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { confidence: 0.9, bearingDeg: 90 }, geometry: { type: 'LineString', coordinates: [[126, 37], [126.3, 37]] } }] }),
+    body: JSON.stringify({
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [126, 37] }, properties: { bearingDeg: 90, speedKt: 30, matchScore: 120, neighbourAgreement: 0.9 } }],
+    }),
   }))
 }
 

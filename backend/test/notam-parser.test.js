@@ -17,6 +17,24 @@ test('parseQcodeBand: F)/G) with AGL preserved', () => {
   assert.deepEqual(parseQcodeBand('x', 'SFC', '4920FT AGL'), { lower: 0, upper: 4920, unit: 'FT', ref: 'AGL' })
 })
 
+// 실제 NOTAM 376건 중 13건이 F)/G) 단위가 섞여 나온다(F)SFC G)FL360 등). unit 필드는 밴드당
+// 하나뿐이라 한쪽 단위만 취하면 FL360이 360ft로 남는다 — 3만6천ft 구역이 360ft 조각이 되어
+// 순항 중인 항공기가 구역 위에 있다고 오판한다(경보 누락 방향). 둘 다 ft로 정규화한다.
+test('parseQcodeBand: mixed FT floor and FL ceiling normalizes to feet', () => {
+  assert.deepEqual(parseQcodeBand('x', 'SFC', 'FL360'), { lower: 0, upper: 36000, unit: 'FT', ref: 'AGL' })
+  assert.deepEqual(parseQcodeBand('x', '7000FT AMSL', 'FL430'), { lower: 7000, upper: 43000, unit: 'FT', ref: 'AMSL' })
+})
+
+test('parseQcodeBand: band never comes out inverted for mixed units', () => {
+  const b = parseQcodeBand('x', '5000FT AMSL', 'FL150')
+  assert.ok(b.lower < b.upper, `상한이 하한보다 낮음: ${JSON.stringify(b)}`)
+})
+
+// 단위가 같으면 기존 표기를 유지한다 — FL 밴드는 UI가 'FL200-FL300' 형태로 그대로 보여준다.
+test('parseQcodeBand: matching units keep their original unit', () => {
+  assert.deepEqual(parseQcodeBand('x', 'FL200', 'FL300'), { lower: 200, upper: 300, unit: 'FL', ref: null })
+})
+
 test('parseQcodeBand: falls back to Q-line FL band', () => {
   assert.deepEqual(parseQcodeBand('Q)RKRR/QGAXX/I/NBO/A/000/999/3459N12623E005', null, null), { lower: 0, upper: 999, unit: 'FL', ref: null })
 })
