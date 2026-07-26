@@ -23,6 +23,37 @@ const META_SAT_TM = '2026-07-23T11:20:00Z'
 const META_SIGWX_FRONT = 'hash-001'
 const META_SIGWX_CLOUD = 'hash-002'
 
+// Real 항공기상청 bulletins captured 2026-07-26 06:00 UTC. RKSI is near the short end (~370 chars)
+// and RKSS near the long end (~680), which is the range the slideshow's auto-fit has to cover.
+const AIRPORT_INFO_BULLETINS = {
+  airports: {
+    RKSI: {
+      icao: 'RKSI',
+      tm: '2026-07-26 06:00:00.0',
+      title: '인천공항 기상정보(제07-51호)',
+      summary: '- 오늘 내일 가끔 구름 많음 -',
+      outlook: '○ (오늘) 현재(06시) 인천공항은 구름많은 가운데 남서풍이 6kt로 불고 있으며, 시정은 5km입니다. 오늘(26일)은 북태평양고기압의 가장자리에 들겠으며 가끔 구름 많겠습니다.\n\n○ (내일) 계속해서 북태평양고기압의 가장자리에 들겠으며 가끔 구름 많겠습니다.',
+      sel_val1: '(오늘) - / 30, (내일) 25 / 30',
+      sel_val2: '(오늘) 32 / (내일) 33',
+      sel_val3: '-',
+      forecast: '○ (폭염) 오늘, 내일은 관심수준의 폭염이 예상됩니다. 최고체감온도가 32도 내외로 올라 온열질환 발생 가능성이 높겠으니, 무더위 시간대(14~17시)에는 야외작업을 중지하고 충분한 수분섭취 및 휴식 등 건강관리에 유의하시기 바랍니다.\n※ 일반/산업 폭염 위험수준: (오늘, 내일) 관심 ■□□□ (위험>경고>주의>관심)',
+      warn: '○ 없음',
+    },
+    RKSS: {
+      icao: 'RKSS',
+      tm: '2026-07-26 06:00:00.0',
+      title: '김포공항 기상정보(제07-51호)',
+      summary: '- 내일까지 구름많음, 내일 소나기와 뇌우/급변풍 가능성 유의 -',
+      outlook: '○ (오늘) 현재(06시) 김포공항은 구름많은 가운데 남서풍이 6kt로 불고, 시정은 10km입니다. 오늘(26일) 북태평양고기압의 가장자리에 들겠고, 구름많겠습니다.\n\n○ (내일) 계속해서 북태평양고기압의 가장자리에 들어 구름많겠고, 아침부터 저녁 사이 소나기 가능성이 있습니다.',
+      sel_val1: '(오늘) - / 32, (내일) 25 / 33',
+      sel_val2: '(오늘) 34 / (내일) 34',
+      sel_val3: '(내일) 5~40',
+      forecast: '○ (폭염) 오늘과 내일은 주의수준의 폭염이 예상됩니다. 최고체감온도가 34도 내외로 올라 온열질환 발생 가능성이 높겠으니, 무더위 시간대(14~17시)에는 야외작업을 중지하고 충분한 수분섭취 및 휴식 등 건강관리에 유의하시기 바랍니다.\n※ 일반/산업 폭염 위험수준: (오늘) 주의 ■■□□ (내일) 주의 ■■□□ (위험>경고>주의>관심)\n\n○ (활주로표면온도) 오늘 아침~저녁(10~18시) 동안 활주로 표면온도가 50℃ 이상 높을 것으로 예상되니, 공항시설 운영 및 야외작업 등에 유의하시기 바랍니다.\n\n○ (강수, 구름고도, 시정, 뇌우) 내일 아침부터 저녁 사이 소나기 가능성이 있으며, 강수 시 구름고도 1,000ft 내외, 순간 시정 4km 미만이 될 것으로 예상됩니다. 또한, 강수 구름 발달 시 공항 또는 주변 지역으로 뇌우와 급변풍 가능성이 있으니, 지상조업자 안전 관리와 항공기 운항에 유의하기 바랍니다.',
+      warn: '○ 없음',
+    },
+  },
+}
+
 function fulfill(route, json) {
   return route.fulfill({ contentType: 'application/json', body: JSON.stringify(json) })
 }
@@ -166,7 +197,9 @@ export async function installMonitoringFixture(page) {
   })
 
   await page.route('**/api/airport-info', (route) => {
-    fulfill(route, { content_hash: HASH_AIRPORT_INFO, data: {} })
+    // /api/airport-info serves the stored snapshot as-is, so `airports` sits at the top level
+    // next to content_hash — not nested under `data`.
+    fulfill(route, { content_hash: HASH_AIRPORT_INFO, ...AIRPORT_INFO_BULLETINS })
   })
 
   await page.route('**/api/warning-types', (route) => {

@@ -9,8 +9,8 @@ function MonitoringMap({
   selectedAirport,
   onAirportSelect,
   basemapId,
-  slideshowVisible = false,
-  slideshowImageUrl = null,
+  slideshowSlideId = 'live',
+  slideshowContent = null,
   onStopSlideshow,
   slideshowStatusLabel = null,
   slideshowEffect = 'fade',
@@ -91,8 +91,8 @@ function MonitoringMap({
         enableWindOverlay={false}
       />
       <MonitoringSlideOverlay
-        visible={slideshowVisible}
-        imageUrl={slideshowImageUrl}
+        slideId={slideshowSlideId}
+        content={slideshowContent}
         scope="map-panel"
         onStop={onStopSlideshow}
         statusLabel={slideshowStatusLabel}

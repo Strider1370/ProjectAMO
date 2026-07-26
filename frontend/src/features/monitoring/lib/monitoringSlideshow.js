@@ -7,12 +7,31 @@ export const MONITORING_SLIDESHOW_TARGETS = ['whole-screen', 'map-panel']
 export const MONITORING_SLIDESHOW_TRANSITIONS = ['fade', 'slide']
 export const MONITORING_SLIDE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
+// Rotation order is fixed; the settings screen only toggles slides on and off.
+export const MONITORING_SLIDE_IDS = ['live', 'wxinfo', 'image']
+
+export const MONITORING_SLIDE_LABELS = Object.freeze({
+  live: '지도',
+  wxinfo: '기상정보',
+  image: '이미지',
+})
+
+const MIN_DURATION_SEC = 5
+const MAX_DURATION_SEC = 3600
+const LEGACY_DEFAULT_DURATION_SEC = 30
+
+const DEFAULT_SLIDES = Object.freeze([
+  Object.freeze({ id: 'live', enabled: true, durationSec: 180 }),
+  Object.freeze({ id: 'wxinfo', enabled: true, durationSec: 30 }),
+  Object.freeze({ id: 'image', enabled: false, durationSec: 30 }),
+])
+
 export const DEFAULT_MONITORING_SLIDESHOW_CONFIG = Object.freeze({
   enabled: false,
   target: 'whole-screen',
   transitionEffect: 'fade',
   transitionDurationMs: 350,
-  intervalSeconds: 30,
+  slides: DEFAULT_SLIDES,
   startTime: '00:00',
   endTime: '23:59',
 })
@@ -23,10 +42,40 @@ function isValidTimeString(value) {
   return typeof value === 'string' && TIME_PATTERN.test(value)
 }
 
-function clampInterval(value) {
+function clampDuration(value, fallback) {
   const n = Number(value)
-  if (!Number.isFinite(n)) return DEFAULT_MONITORING_SLIDESHOW_CONFIG.intervalSeconds
-  return Math.min(3600, Math.max(5, Math.round(n)))
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(MAX_DURATION_SEC, Math.max(MIN_DURATION_SEC, Math.round(n)))
+}
+
+function isValidDuration(value) {
+  const n = Number(value)
+  return Number.isFinite(n) && n >= MIN_DURATION_SEC && n <= MAX_DURATION_SEC
+}
+
+// Config v1 had a single `intervalSeconds` driving a live <-> image toggle. Rather than reset an
+// existing wall screen, carry that interval onto every slide and keep the same two slides on;
+// `wxinfo` is new, so it stays off until the user opts in.
+function migrateLegacySlides(intervalSeconds) {
+  const durationSec = clampDuration(intervalSeconds, LEGACY_DEFAULT_DURATION_SEC)
+  return MONITORING_SLIDE_IDS.map((id) => ({ id, enabled: id !== 'wxinfo', durationSec }))
+}
+
+function normalizeSlides(source) {
+  if (Array.isArray(source.slides)) {
+    return MONITORING_SLIDE_IDS.map((id) => {
+      const fallback = DEFAULT_SLIDES.find((slide) => slide.id === id)
+      const saved = source.slides.find((slide) => slide?.id === id)
+      if (!saved) return { ...fallback }
+      return {
+        id,
+        enabled: Boolean(saved.enabled),
+        durationSec: clampDuration(saved.durationSec, fallback.durationSec),
+      }
+    })
+  }
+  if (source.intervalSeconds !== undefined) return migrateLegacySlides(source.intervalSeconds)
+  return DEFAULT_SLIDES.map((slide) => ({ ...slide }))
 }
 
 const MIN_TRANSITION_DURATION_MS = 100
@@ -48,9 +97,7 @@ export function normalizeMonitoringSlideshowConfig(input) {
     transitionEffect: MONITORING_SLIDESHOW_TRANSITIONS.includes(source.transitionEffect)
       ? source.transitionEffect
       : DEFAULT_MONITORING_SLIDESHOW_CONFIG.transitionEffect,
-    intervalSeconds: clampInterval(
-      source.intervalSeconds ?? DEFAULT_MONITORING_SLIDESHOW_CONFIG.intervalSeconds
-    ),
+    slides: normalizeSlides(source),
     transitionDurationMs: clampTransitionDuration(
       source.transitionDurationMs ?? DEFAULT_MONITORING_SLIDESHOW_CONFIG.transitionDurationMs
     ),
@@ -65,10 +112,13 @@ export function normalizeMonitoringSlideshowConfig(input) {
 
 export function validateMonitoringSlideshowConfig(config) {
   const errors = {}
-  const interval = Number(config?.intervalSeconds)
+  const slides = Array.isArray(config?.slides) ? config.slides : []
+  const enabledSlides = slides.filter((slide) => slide?.enabled)
 
-  if (!Number.isFinite(interval) || interval < 5 || interval > 3600) {
-    errors.intervalSeconds = '전환 간격은 5초에서 3,600초 사이여야 합니다.'
+  if (enabledSlides.length === 0) {
+    errors.slides = '보여줄 장면을 최소 한 개 선택하세요.'
+  } else if (!enabledSlides.every((slide) => isValidDuration(slide.durationSec))) {
+    errors.slides = `머무는 시간은 ${MIN_DURATION_SEC}초에서 ${MAX_DURATION_SEC.toLocaleString()}초 사이여야 합니다.`
   }
   const durationMs = Number(config?.transitionDurationMs)
   if (!Number.isFinite(durationMs) || durationMs < MIN_TRANSITION_DURATION_MS || durationMs > MAX_TRANSITION_DURATION_MS) {
@@ -114,8 +164,23 @@ export function getMonitoringSlideshowStatus(config, now = new Date()) {
   return current >= start || current < end ? 'active' : 'waiting'
 }
 
-export function nextMonitoringSlide(currentSlide) {
-  return currentSlide === 'image' ? 'live' : 'image'
+// The enabled set is only half the story: a slide with nothing behind it (no bulletin for the
+// selected airport, no chosen image) must not put a blank panel on a wall screen. `live` is the
+// map itself, so it is always available.
+export function resolveMonitoringSlides(config, availability) {
+  const slides = Array.isArray(config?.slides) ? config.slides : []
+  return slides
+    .filter((slide) => slide?.enabled && (slide.id === 'live' || availability?.[slide.id] === true))
+    .map((slide) => ({ id: slide.id, durationSec: slide.durationSec }))
+}
+
+export function nextMonitoringSlide(currentSlide, availableSlides) {
+  const slides = Array.isArray(availableSlides) ? availableSlides : []
+  if (slides.length === 0) return null
+  const index = slides.findIndex((slide) => slide?.id === currentSlide)
+  // A current slide that vanished (airport changed, image removed) restarts the cycle.
+  if (index < 0) return slides[0].id
+  return slides[(index + 1) % slides.length].id
 }
 
 function hasLocalStorage() {

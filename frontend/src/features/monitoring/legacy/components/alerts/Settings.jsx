@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   resolveSettings,
   savePersonalSettings,
@@ -14,6 +14,7 @@ import {
 } from "../../utils/advisory-filter";
 import {
   MONITORING_SLIDE_IMAGE_TYPES,
+  MONITORING_SLIDE_LABELS,
   validateMonitoringSlideshowConfig,
 } from "../../../lib/monitoringSlideshow.js";
 
@@ -124,6 +125,8 @@ export default function Settings({
 }) {
   const isInline = variant === "inline";
   const current = resolveSettings(defaults);
+  // The panel renders inline and as a modal at the same time, so row ids must not collide.
+  const rowIdBase = useId();
 
   const [globalEnabled, setGlobalEnabled] = useState(current.global.alerts_enabled);
   const [cooldown, setCooldown] = useState(current.global.cooldown_seconds);
@@ -381,6 +384,35 @@ export default function Settings({
     );
   }
 
+  // A <label> wrapping this row would claim the 예시 button as the control it labels, replacing the
+  // button's accessible name with the row text and leaving the checkbox with no name at all. The
+  // row is a plain div and the text is tied to the checkbox by id, so clicking the text still
+  // toggles it. The 예시 buttons also need distinct names — three bare "예시" are ambiguous.
+  function renderDispatcherRow(channel, text, checked, setChecked) {
+    const inputId = `${rowIdBase}-${channel}`
+    return (
+      <div className="alert-settings-row">
+        <label htmlFor={inputId}>{text}</label>
+        <span className="alert-settings-inline-actions">
+          <button
+            type="button"
+            className="alert-settings-preview-btn"
+            aria-label={`${text} 예시`}
+            onClick={() => onPreviewAlert?.(channel, getPreviewDispatchers())}
+          >
+            예시
+          </button>
+          <input
+            id={inputId}
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => setChecked(e.target.checked)}
+          />
+        </span>
+      </div>
+    )
+  }
+
   function getPreviewDispatchers() {
     return {
       popup: {
@@ -479,45 +511,9 @@ export default function Settings({
                     <span>알림 사용</span>
                     <input type="checkbox" checked={globalEnabled} onChange={(e) => setGlobalEnabled(e.target.checked)} />
                   </label>
-                  <label className="alert-settings-row">
-                    <span>팝업 사용</span>
-                    <span className="alert-settings-inline-actions">
-                      <button
-                        type="button"
-                        className="alert-settings-preview-btn"
-                        onClick={() => onPreviewAlert?.("popup", getPreviewDispatchers())}
-                      >
-                        예시
-                      </button>
-                      <input type="checkbox" checked={popupEnabled} onChange={(e) => setPopupEnabled(e.target.checked)} />
-                    </span>
-                  </label>
-                  <label className="alert-settings-row">
-                    <span>소리 사용</span>
-                    <span className="alert-settings-inline-actions">
-                      <button
-                        type="button"
-                        className="alert-settings-preview-btn"
-                        onClick={() => onPreviewAlert?.("sound", getPreviewDispatchers())}
-                      >
-                        예시
-                      </button>
-                      <input type="checkbox" checked={soundEnabled} onChange={(e) => setSoundEnabled(e.target.checked)} />
-                    </span>
-                  </label>
-                  <label className="alert-settings-row">
-                    <span>하단 알림 바 표시</span>
-                    <span className="alert-settings-inline-actions">
-                      <button
-                        type="button"
-                        className="alert-settings-preview-btn"
-                        onClick={() => onPreviewAlert?.("marquee", getPreviewDispatchers())}
-                      >
-                        예시
-                      </button>
-                      <input type="checkbox" checked={marqueeEnabled} onChange={(e) => setMarqueeEnabled(e.target.checked)} />
-                    </span>
-                  </label>
+                  {renderDispatcherRow("popup", "팝업 사용", popupEnabled, setPopupEnabled)}
+                  {renderDispatcherRow("sound", "소리 사용", soundEnabled, setSoundEnabled)}
+                  {renderDispatcherRow("marquee", "하단 알림 바 표시", marqueeEnabled, setMarqueeEnabled)}
                   <label className="alert-settings-row">
                     <span>야간 시작</span>
                     <input type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} />
@@ -651,7 +647,7 @@ export default function Settings({
                     value={slideshowConfig?.target || "whole-screen"}
                     onChange={(e) => onSlideshowConfigChange?.({ target: e.target.value })}
                   >
-                    <option value="whole-screen">전체 화면 (운항/지상 ↔ 이미지)</option>
+                    <option value="whole-screen">전체 화면</option>
                     <option value="map-panel">지도 패널만</option>
                   </select>
                 </label>
@@ -679,16 +675,47 @@ export default function Settings({
                   />
                 </label>
 
-                <label className="alert-settings-row">
-                  <span>전환 간격(초)</span>
-                  <input
-                    type="number"
-                    min={5}
-                    max={3600}
-                    value={slideshowConfig?.intervalSeconds ?? 30}
-                    onChange={(e) => onSlideshowConfigChange?.({ intervalSeconds: Number(e.target.value) })}
-                  />
-                </label>
+                <p className="alert-settings-help">
+                  체크한 장면만 위에서 아래 순서로 돌아갑니다. 장면마다 머무는 시간을 따로 정할 수 있어,
+                  지도를 오래 띄우고 기상정보만 잠깐 끼워 넣는 식으로 쓸 수 있습니다.
+                </p>
+                {(slideshowConfig?.slides || []).map((slide) => (
+                  <label className="alert-settings-row" key={slide.id}>
+                    <span>
+                      <input
+                        type="checkbox"
+                        aria-label={`${MONITORING_SLIDE_LABELS[slide.id] || slide.id} 장면 사용`}
+                        checked={Boolean(slide.enabled)}
+                        onChange={(e) => onSlideshowConfigChange?.({
+                          slides: (slideshowConfig?.slides || []).map((item) => (
+                            item.id === slide.id ? { ...item, enabled: e.target.checked } : item
+                          )),
+                        })}
+                      />
+                      {" "}{MONITORING_SLIDE_LABELS[slide.id] || slide.id}
+                    </span>
+                    <span className="alert-settings-inline-actions">
+                      <input
+                        type="number"
+                        aria-label={`${MONITORING_SLIDE_LABELS[slide.id] || slide.id} 머무는 시간(초)`}
+                        min={5}
+                        max={3600}
+                        value={slide.durationSec ?? 30}
+                        disabled={!slide.enabled}
+                        onChange={(e) => onSlideshowConfigChange?.({
+                          slides: (slideshowConfig?.slides || []).map((item) => (
+                            item.id === slide.id ? { ...item, durationSec: Number(e.target.value) } : item
+                          )),
+                        })}
+                      />
+                      초
+                    </span>
+                  </label>
+                ))}
+                <p className="alert-settings-help">
+                  기상정보는 선택한 공항의 항공기상청 공문 원문이며, 패널 크기에 맞게 글씨가 자동으로 조절됩니다.
+                  해당 공항의 기상정보가 없으면 그 장면은 건너뜁니다.
+                </p>
 
                 <label className="alert-settings-row">
                   <span>시작 시각</span>
@@ -724,16 +751,20 @@ export default function Settings({
                     }}
                   />
                 </label>
+                {/* Status/action rows are not form-control rows. A <label> here would label its
+                    first labelable descendant — the button — replacing the button's accessible
+                    name with the row text, so screen readers announced "미리보기" as
+                    "상태: 꺼짐 중지". Plain divs let each button keep its own name. */}
                 {slideshowImageInfo && (
-                  <label className="alert-settings-row">
+                  <div className="alert-settings-row">
                     <span>선택한 이미지: {slideshowImageInfo.name}</span>
                     <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideImageRemove?.()}>
                       제거
                     </button>
-                  </label>
+                  </div>
                 )}
 
-                <label className="alert-settings-row">
+                <div className="alert-settings-row">
                   <span>상태: {slideshowStatusLabel || "꺼짐"}</span>
                   <span className="alert-settings-inline-actions">
                     <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideshowPreview?.()}>
@@ -743,7 +774,7 @@ export default function Settings({
                       중지
                     </button>
                   </span>
-                </label>
+                </div>
 
                 {slideshowPersistenceNotice && (
                   <p className="alert-settings-help">{slideshowPersistenceNotice}</p>

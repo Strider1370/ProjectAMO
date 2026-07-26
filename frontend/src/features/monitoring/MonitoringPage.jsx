@@ -29,6 +29,7 @@ import AlertMarquee from './legacy/components/alerts/AlertMarquee'
 import Settings from './legacy/components/alerts/Settings'
 import MonitoringMap from './MonitoringMap.jsx'
 import MonitoringSlideOverlay from './MonitoringSlideOverlay.jsx'
+import MonitoringWxInfoSlide from './MonitoringWxInfoSlide.jsx'
 import { useMonitoringSlideshow } from './useMonitoringSlideshow.js'
 import {
   normalizeMonitoringSlideshowConfig,
@@ -325,7 +326,33 @@ export default function MonitoringPage() {
   const effectiveSlideshowConfig = isMobileLayout
     ? { ...slideshowConfig, enabled: false }
     : slideshowConfig
-  const slideshow = useMonitoringSlideshow(effectiveSlideshowConfig, slideImageBlob, slideImageRevision)
+  // Domestic airports only — the bulletin is a 항공기상청 product, so overseas selections have none.
+  const selectedAirportInfo = data.airportInfo?.airports?.[selectedAirport] || null
+  const slideshow = useMonitoringSlideshow(
+    effectiveSlideshowConfig,
+    slideImageBlob,
+    slideImageRevision,
+    { hasWxInfo: Boolean(selectedAirportInfo) }
+  )
+  // Only the stage for the configured target ever leaves 'live'. Driving both would run the
+  // bulletin's fit twice, once inside a hidden panel that measures zero.
+  function slideIdFor(target) {
+    return slideshowConfig.target === target ? slideshow.visibleSlide : 'live'
+  }
+
+  // `live` is the map itself — already on screen, so it contributes no layer.
+  function slideContentFor(target) {
+    switch (slideIdFor(target)) {
+      case 'wxinfo':
+        return <MonitoringWxInfoSlide info={selectedAirportInfo} />
+      case 'image':
+        return slideshow.imageUrl
+          ? <img className="monitoring-slide-overlay-image" src={slideshow.imageUrl} alt="" />
+          : null
+      default:
+        return null
+    }
+  }
   const slideshowStatusLabel = SLIDESHOW_STATUS_LABELS[slideshow.status] || null
   const slideshowPersistenceNotice = slideshowPersistenceError || slideshow.persistenceError
     ? '이 세션에서는 계속 사용할 수 있지만, 새로고침하면 설정이 저장되지 않습니다.'
@@ -507,8 +534,8 @@ export default function MonitoringPage() {
         selectedAirport={selectedAirport}
         onAirportSelect={setSelectedAirport}
         basemapId={basemapId}
-        slideshowVisible={slideshowConfig.target === 'map-panel' && slideshow.visibleSlide === 'image'}
-        slideshowImageUrl={slideshow.imageUrl}
+        slideshowSlideId={slideIdFor('map-panel')}
+        slideshowContent={slideContentFor('map-panel')}
         onStopSlideshow={handleSlideshowStop}
         slideshowStatusLabel={slideshowStatusLabel}
         slideshowEffect={slideshowConfig.transitionEffect}
@@ -635,8 +662,8 @@ export default function MonitoringPage() {
 
       {data.metar && slideshowConfig.target === 'whole-screen' && (
         <MonitoringSlideOverlay
-          visible={slideshow.visibleSlide === 'image'}
-          imageUrl={slideshow.imageUrl}
+          slideId={slideIdFor('whole-screen')}
+          content={slideContentFor('whole-screen')}
           scope="whole-screen"
           onStop={handleSlideshowStop}
           statusLabel={slideshowStatusLabel}

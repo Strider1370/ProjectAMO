@@ -72,48 +72,91 @@
 
 /* Personal slideshow overlay. Alerts (z-index 9998-10000 in legacy/App.css) must stay
    above the whole-screen scope, so this sits well below that band. */
+/* The stage itself never moves or paints — it only clips. The live map is the backdrop, so an idle
+   stage must let clicks through to it. */
 .monitoring-slide-overlay {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  pointer-events: none;
+  background: none;
+}
+
+.monitoring-slide-overlay.is-visible {
+  pointer-events: auto;
+}
+
+/* One slide. Opaque, because a slide must never blend with whatever is behind it mid-move. */
+.monitoring-slide-layer {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #000;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity var(--monitoring-slide-transition-ms, 350ms) ease,
-    visibility 0s linear var(--monitoring-slide-transition-ms, 350ms);
 }
 
-.monitoring-slide-overlay.is-visible {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transition: opacity var(--monitoring-slide-transition-ms, 350ms) ease;
+/* Emphasized easing (Material 3): a decisive start that settles softly. The leaving and entering
+   layers deliberately share one duration and one curve — they are two frames of the same strip of
+   film, and any difference between them tears the strip apart mid-move. */
+.monitoring-slide-overlay--effect-slide .monitoring-slide-layer {
+  animation-duration: var(--monitoring-slide-transition-ms, 350ms);
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  animation-fill-mode: both;
 }
 
-/* Slide effect moves the whole overlay in from the right instead of fading;
-   it stays opaque throughout so it never blends with what's behind it. */
-.monitoring-slide-overlay--effect-slide {
-  opacity: 1;
-  transform: translateX(100%);
-  transition: transform var(--monitoring-slide-transition-ms, 350ms) ease-in-out,
-    visibility 0s linear var(--monitoring-slide-transition-ms, 350ms);
+.monitoring-slide-overlay--effect-slide .monitoring-slide-layer.is-entering {
+  animation-name: monitoring-slide-enter;
 }
 
-.monitoring-slide-overlay--effect-slide.is-visible {
-  transform: translateX(0);
-  transition: transform var(--monitoring-slide-transition-ms, 350ms) ease-in-out;
+.monitoring-slide-overlay--effect-slide .monitoring-slide-layer.is-leaving {
+  animation-name: monitoring-slide-leave;
+}
+
+.monitoring-slide-overlay--effect-fade .monitoring-slide-layer {
+  animation-duration: var(--monitoring-slide-transition-ms, 350ms);
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  animation-fill-mode: both;
+}
+
+.monitoring-slide-overlay--effect-fade .monitoring-slide-layer.is-entering {
+  animation-name: monitoring-slide-fade-in;
+}
+
+.monitoring-slide-overlay--effect-fade .monitoring-slide-layer.is-leaving {
+  animation-name: monitoring-slide-fade-out;
+}
+
+/* Entering comes from the right and leaving continues to the left, so the pair travels in one
+   direction instead of the incoming slide rewinding back the way it arrived. */
+@keyframes monitoring-slide-enter {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes monitoring-slide-leave {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes monitoring-slide-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes monitoring-slide-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .monitoring-slide-overlay,
-  .monitoring-slide-overlay.is-visible,
-  .monitoring-slide-overlay--effect-slide,
-  .monitoring-slide-overlay--effect-slide.is-visible {
-    transition: none;
+  .monitoring-slide-layer {
+    animation: none !important;
+  }
+
+  /* With no animation the outgoing layer would just sit on top for the length of the move. */
+  .monitoring-slide-layer.is-leaving {
+    display: none;
   }
 }
 
@@ -130,6 +173,25 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* Weather bulletin slide. The document is laid out at the panel's full width and then scaled by
+   MonitoringWxInfoSlide, so this box only has to clip and anchor it. */
+.monitoring-wxinfo-slide {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Padding, colours and borders come from .ap-info-doc so the bulletin looks the same here as in
+   the airport panel; this rule only handles placement and scaling. */
+.monitoring-wxinfo-slide-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  box-sizing: border-box;
 }
 
 .monitoring-slide-overlay-controls {
