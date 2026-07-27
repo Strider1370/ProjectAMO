@@ -55,7 +55,7 @@ test('integration: briefing includes route weather legs from one injected cross-
     enrouteCrossSection: { available: true, axis: weatherAxis, crossSection, turbulence: { levels: [] }, totalDistanceNm: 20 },
   })
   assert.equal(briefing.sections.enroute.legs.length, 1)
-  assert.deepEqual(Object.keys(briefing.sections.enroute.legs[0].wind), ['meanComponentKt', 'minComponentKt', 'maxComponentKt'])
+  assert.deepEqual(Object.keys(briefing.sections.enroute.legs[0].wind), ['meanComponentKt', 'minComponentKt', 'maxComponentKt', 'directionDeg', 'speedKt'])
   assert.equal(briefing.sections.enroute.legs[0].from, 'FIXA')
   assert.equal(briefing.sections.enroute.legs[0].to, 'FIXB')
 })

@@ -20,6 +20,9 @@ function parseHeightToken(tok) {
   if (!tok) return null
   const t = tok.trim().toUpperCase()
   if (t === 'SFC' || t === 'GND') return { value: 0, ref: 'AGL', unit: 'FT' }
+  // UNL(제한 없음)을 못 읽으면 F)SFC G)UNL 짜리 금지·위험구역이 통째로 Q-line 자리표시자로
+  // 떨어져, "고도가 적혀 있었다"는 사실을 잃는다(실측 2건). FL999는 하류에서 무제한으로 푼다.
+  if (t === 'UNL' || t === 'UNLTD' || t === 'UNLIMITED') return { value: 999, ref: null, unit: 'FL' }
   const fl = t.match(/^FL\s*(\d+)/)
   if (fl) return { value: Number(fl[1]), ref: null, unit: 'FL' }
   const ft = t.match(/(\d+)\s*FT\s*(AMSL|AGL)?/)
@@ -37,14 +40,17 @@ export function parseQcodeBand(qLine, fLine, gLine) {
   // F)와 G)의 단위가 다르게 오는 NOTAM이 있다(F)SFC G)FL360, F)7000FT AMSL G)FL430).
   // unit은 밴드당 하나뿐이라 f.unit만 취하면 FL360이 360ft로 남아 밴드가 100배 좁아지거나
   // 아예 뒤집힌다. 섞였을 때만 둘 다 ft로 펴고, 같은 단위면 원래 표기를 유지한다.
+  // source: 'fg' = F)/G)에 실제 고도가 적혀 있었음. 'qline' = Q-line 값뿐 —
+  // ICAO는 고도가 무관한 NOTAM에 000/999를 기본값으로 넣으므로, 이 값만으로는
+  // "지표~무제한"인지 "고도 정보 없음"인지 구분할 수 없다. 그 구분을 출처로 남긴다.
   if (f && g && f.unit !== g.unit) {
     const toFt = (h) => (h.unit === 'FL' ? h.value * 100 : h.value)
-    return { lower: toFt(f), upper: toFt(g), unit: 'FT', ref: f.ref || g.ref || null }
+    return { lower: toFt(f), upper: toFt(g), unit: 'FT', ref: f.ref || g.ref || null, source: 'fg' }
   }
-  if (f && g) return { lower: f.value, upper: g.value, unit: f.unit, ref: f.ref || g.ref || null }
+  if (f && g) return { lower: f.value, upper: g.value, unit: f.unit, ref: f.ref || g.ref || null, source: 'fg' }
   // Q-line: .../lower/upper/coord — e.g. /000/999/3459N12623E005
   const m = String(qLine || '').match(/\/(\d{3})\/(\d{3})\/\d/)
-  if (m) return { lower: Number(m[1]), upper: Number(m[2]), unit: 'FL', ref: null }
+  if (m) return { lower: Number(m[1]), upper: Number(m[2]), unit: 'FL', ref: null, source: 'qline' }
   return null
 }
 

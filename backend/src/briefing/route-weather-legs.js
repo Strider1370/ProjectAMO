@@ -81,8 +81,14 @@ function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection
     if (hazard.airportScope || hazard.altitudeExposure?.status === 'clear' || overlapNm(range, interval) <= OVERLAP_EPSILON_NM) return []
     return [{ code: hazard.code ?? hazard.sourceId ?? null, label: hazard.label ?? hazard.code ?? null, routeDistanceNm: overlapNm(range, interval), verticalStatus: hazard.altitudeExposure?.status ?? 'unknown', timeStatus: hazard.timeStatus ?? 'unavailable' }]
   })
+  // effect는 "실제 저촉인가"다. comparisonStatus를 그대로 쓰면 안 된다 — 그건 "시간·고도를
+  // 비교할 수 있었나"라서, 정보성 시설 NOTAM(TAR 정비 등)까지 warn으로 올라간다.
   const notams = (routeNotams ?? []).flatMap((notam) => overlapNm(range, notam.routeIntervalNm) > OVERLAP_EPSILON_NM
-    ? [{ id: notam.id, summary: notam.summary, effect: notam.comparisonStatus ?? (notam.conflict ? 'warn' : 'undetermined') }]
+    ? [{
+        id: notam.id,
+        summary: notam.summary,
+        effect: notam.conflict ? 'warn' : (notam.comparisonStatus === 'undetermined' ? 'undetermined' : 'info'),
+      }]
     : [])
   return {
     from: segment.fromFix ?? null,
@@ -93,7 +99,7 @@ function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection
     courseTrueDeg: courseTrueDeg(weatherAxis, weights),
     selectedAltitudeFt: Number(selectedCruiseAltitudeFt) || null,
     alignmentStatus: 'aligned',
-    wind: wind && { meanComponentKt: wind.averageKt, minComponentKt: wind.minKt, maxComponentKt: wind.maxKt },
+    wind: wind && { meanComponentKt: wind.averageKt, minComponentKt: wind.minKt, maxComponentKt: wind.maxKt, directionDeg: wind.directionDeg, speedKt: wind.speedKt },
     temp: weightedTemperature(crossSection?.levels ?? [], weatherAxis, selectedCruiseAltitudeFt, weights, false),
     icing: { peakLevel: icingSummary.highestGrade, exposures: exposures(icingSummary) },
     turbulence: { peakLevel: turbulenceSummary.highestGrade, exposures: exposures(turbulenceSummary) },

@@ -49,7 +49,11 @@ export function matchRouteNotams(items, ctx) {
     const positionStatus = it.geometry ? 'resolved' : 'unresolved'
     const airportRole = roleByIcao.get(it.location) || null // 출/도착/교체 공항의 NOTAM인가
     if (!interval.entered && !airportRole && positionStatus === 'resolved') continue // 경로도 안 걸리고 대상 공항도 아니면 제외(위치 불명은 예외)
-    const bandFt = notamBandToFt(it.altitude)
+    // Q-line 값만 있는(=F)/G)에 고도가 안 적힌) NOTAM은 고도 미상으로 본다. ICAO가 고도와
+    // 무관한 NOTAM에 000/999를 기본값으로 넣기 때문에, 그대로 믿으면 지상 장비 고장(TAR·VOR·
+    // 활주로)이 순항고도에서 "고도 확인됨"으로 승격돼 저촉처럼 보인다(실측 73건).
+    // 옛 자료(source 없음)는 기존 동작을 유지한다.
+    const bandFt = it.altitude?.source === 'qline' ? null : notamBandToFt(it.altitude)
     let encounter = 'nearby'
     let verticalKnown = false
     if (interval.entered) {

@@ -5,6 +5,19 @@ import {
   TIME_STATUS,
 } from '../../../shared/briefing-status.js'
 import { routeCorridorInGeometry, timeWindowsOverlap } from './geo-time-match.js'
+import { bandToFt } from './planned-altitude.js'
+
+// AIRMET Sierra 계열(지상 시정 저하·산악 흐림·IFR·저고도 윈드시어)은 정의상 지표 부근 현상이라
+// 원문 IWXXM에 고도(FL) 자체가 없다(ICAO Annex 3 Appendix 6). 고도 정보가 없다고 모든 순항고도에서
+// "판정 불가"로 남기면 FL310 노선 표에도 지표시정이 매 구간 붙는다. 착빙/난류/뇌우 등은 원문에
+// 고도가 항상 있으므로 이 가정을 적용하지 않는다.
+const SURFACE_PHENOMENON_CODES = new Set(['SFC_VIS', 'MT_OBSC', 'IFR', 'LLWS'])
+const SURFACE_BAND_FT = { lowFt: 0, highFt: 10000 }
+
+// 위험기상 원문 item → 고도 밴드(ft). 위험기상을 고도로 거르는 모든 경로가 이 함수 하나를 쓴다.
+export function hazardBandFt(item) {
+  return bandToFt(item?.altitude) ?? (SURFACE_PHENOMENON_CODES.has(item?.phenomenon_code) ? SURFACE_BAND_FT : null)
+}
 
 // 항로 브리핑에 포함되는 위험기상 범위 — 항로 양쪽 30NM. 실제 EFB(ForeFlight)가 항로
 // 브리핑 커버리지로 쓰는 값과 같다(FAA 표준 flight plan briefing corridor).

@@ -1,21 +1,9 @@
-import { bandToFt } from './planned-altitude.js'
-import { evaluateHorizontalExposure, evaluateTimeStatus, evaluateAltitudeExposure } from './hazard-exposure.js'
+import { evaluateHorizontalExposure, evaluateTimeStatus, evaluateAltitudeExposure, hazardBandFt } from './hazard-exposure.js'
 import { notamBandToFt } from './notam-briefing.js'
 import { routeIntervalInGeometry, timeWindowsOverlap } from './geo-time-match.js'
 import { ktgIntensity } from '../processors/ktg-model.js'
 
 const RESTRICTION_CATEGORIES = new Set(['prohibited', 'restricted', 'danger', 'firing'])
-
-// AIRMET Sierra 계열(지상 시정 저하·산악 흐림·IFR·저고도 윈드시어)은 정의상 지표 부근 현상이라
-// 원문 IWXXM에 고도(FL) 자체가 없다(ICAO Annex 3 Appendix 6). 고도 정보가 없다고 모든 순항고도에서
-// "인근"으로 보이면 안 되므로, 이 현상들만 지표~FL100로 가정한다. 착빙/난류/뇌우 등은 원문에
-// 고도가 항상 있으므로 이 가정을 적용하지 않는다.
-const SURFACE_PHENOMENON_CODES = new Set(['SFC_VIS', 'MT_OBSC', 'IFR', 'LLWS'])
-const SURFACE_BAND_FT = { lowFt: 0, highFt: 10000 }
-
-function hazardBandFt(item) {
-  return bandToFt(item.altitude) ?? (SURFACE_PHENOMENON_CODES.has(item.phenomenon_code) ? SURFACE_BAND_FT : null)
-}
 
 function ft(value) {
   if (value?.value == null || value.value === '' || !Number.isFinite(Number(value.value))) return null
@@ -93,8 +81,19 @@ function interpolate(levels, altitudeFt, sampleIndex, field) {
   return { value: lower.value + (upper.value - lower.value) * ((altitudeFt - lower.altFt) / (upper.altFt - lower.altFt)), source: 'interpolated' }
 }
 
+const MS_TO_KT = 1.94384
+
+// 동서(u)·남북(v) 성분 → 바람이 "불어오는" 방향(도)과 세기(kt). 항공 관례대로 풍향은 from 기준.
+function windVector(uMs, vMs) {
+  const speedKt = Math.round(Math.hypot(uMs, vMs) * MS_TO_KT)
+  if (speedKt === 0) return { directionDeg: null, speedKt: 0 }
+  const directionDeg = (Math.round(Math.atan2(-uMs, -vMs) * 180 / Math.PI) + 360) % 360
+  return { directionDeg: directionDeg === 0 ? 360 : directionDeg, speedKt }
+}
+
 export function weightedWind(levels, axis, altitudeFt, weights, includeZeroWeight = true) {
   const values = []
+  const vectors = []
   const samples = axis.samples ?? []
   for (const [index, sample] of samples.entries()) {
     if (!includeZeroWeight && !(weights[index] > 0)) continue
@@ -102,14 +101,25 @@ export function weightedWind(levels, axis, altitudeFt, weights, includeZeroWeigh
     const v = interpolate(levels, altitudeFt, index, 'v')
     if (!u || !v) continue
     const rad = sample.bearingDeg * Math.PI / 180
-    values.push({ value: (u.value * Math.sin(rad) + v.value * Math.cos(rad)) * 1.94384, weight: weights[index] })
+    values.push({ value: (u.value * Math.sin(rad) + v.value * Math.cos(rad)) * MS_TO_KT, weight: weights[index] })
+    // 풍향은 각도 평균을 내면 359°와 1° 사이에서 무너지므로 u·v 벡터를 평균한 뒤 각도로 되돌린다.
+    vectors.push({ u: u.value, v: v.value, weight: weights[index] })
   }
   if (!values.length) return null
   const totalWeight = values.reduce((sum, item) => sum + item.weight, 0)
   const average = totalWeight > 0
     ? values.reduce((sum, item) => sum + item.value * item.weight, 0) / totalWeight
     : values.reduce((sum, item) => sum + item.value, 0) / values.length
-  return { averageKt: Math.round(average), minKt: Math.round(Math.min(...values.map((item) => item.value))), maxKt: Math.round(Math.max(...values.map((item) => item.value))) }
+  const vectorWeight = vectors.reduce((sum, item) => sum + item.weight, 0)
+  const meanOf = (key) => (vectorWeight > 0
+    ? vectors.reduce((sum, item) => sum + item[key] * item.weight, 0) / vectorWeight
+    : vectors.reduce((sum, item) => sum + item[key], 0) / vectors.length)
+  return {
+    averageKt: Math.round(average),
+    minKt: Math.round(Math.min(...values.map((item) => item.value))),
+    maxKt: Math.round(Math.max(...values.map((item) => item.value))),
+    ...windVector(meanOf('u'), meanOf('v')),
+  }
 }
 
 export function sampleWeights(samples) {
@@ -153,6 +163,13 @@ export function exposureSummary(levels, axis, altitudeFt, field, weights, transf
     : { status: 'available', highestGrade: highest, highestGradeExposureNm: byGrade[String(highest)] ?? 0, exposureNmByGrade: byGrade }
 }
 
+// 국제표준대기(ISA) 기온. 해면 15°C에서 1,000ft당 1.98°C씩 내려가고, 대류권계면
+// (36,089ft) 위로는 -56.5°C로 일정하다. 성능·결빙 판단은 절대기온이 아니라 이 기준
+// 대비 편차로 하므로 기온과 함께 낸다.
+export function isaTemperatureC(altitudeFt) {
+  return altitudeFt >= 36089 ? -56.5 : 15 - 1.98 * (altitudeFt / 1000)
+}
+
 export function weightedTemperature(levels, axis, altitudeFt, weights, includeZeroWeight = true) {
   const values = []
   for (const [index] of (axis?.samples ?? []).entries()) {
@@ -167,7 +184,12 @@ export function weightedTemperature(levels, axis, altitudeFt, weights, includeZe
   const average = totalWeight > 0
     ? values.reduce((sum, item) => sum + item.value * item.weight, 0) / totalWeight
     : values.reduce((sum, item) => sum + item.value, 0) / values.length
-  return { meanC: Math.round(average), minC: Math.round(Math.min(...values.map((item) => item.value))), maxC: Math.round(Math.max(...values.map((item) => item.value))) }
+  return {
+    meanC: Math.round(average),
+    minC: Math.round(Math.min(...values.map((item) => item.value))),
+    maxC: Math.round(Math.max(...values.map((item) => item.value))),
+    isaDevC: Math.round(average - isaTemperatureC(altitudeFt)),
+  }
 }
 
 function matchHazards(hazards, axis, altitudeFt, etd, eta) {

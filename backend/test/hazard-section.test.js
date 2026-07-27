@@ -69,3 +69,30 @@ test('missing ETD/ETA keeps the horizontal and altitude result with time not_pro
   assert.equal(sec.hazards[0].timeStatus, 'not_provided')
   assert.equal(sec.hazards[0].encounter, 'on')
 })
+
+// 지표 현상 AIRMET(SFC_VIS·MT_OBSC·IFR·LLWS)은 원문 IWXXM에 고도가 아예 없다.
+// 밴드를 모른다고 순항고도에서 "고도 판정 불가"로 남기면 FL310 NAVLOG에도 지표시정이
+// 매 구간 붙는다 — 실제 운영 자료에서 관측된 문제. 지표~FL100로 가정해 걸러낸다.
+const sfcVisNoAltitude = {
+  id: 'a2', phenomenon_code: 'SFC_VIS', phenomenon_label: 'Surface Visibility',
+  valid_from: '2026-06-26T08:00:00Z', valid_to: '2026-06-26T14:00:00Z', geometry: onRoutePoly,
+  altitude: { lower_fl: null, upper_fl: null, lower_uom: null, upper_uom: null },
+}
+
+test('고도 없는 지표 현상 AIRMET은 순항고도에서 "판정 불가"가 아니라 "고도 밖"으로 확정된다', () => {
+  const high = buildHazardSection({ sigmet: [], airmet: [sfcVisNoAltitude], axis, ...ctxBase, cruiseAltitudeFt: 31000 })
+  // ① 위험 요약에는 남는다 — 지표 시정은 이착륙에 직결되므로 목록에서 지우면 안 된다.
+  assert.equal(high.hazards.length, 1)
+  assert.equal(high.hazards[0].verticalKnown, true)
+  // 다만 순항고도와는 무관하다고 확정된다. NAVLOG는 이 clear를 보고 구간에서 뺀다.
+  assert.equal(high.hazards[0].altitudeExposure.status, 'clear')
+  assert.equal(high.hazards[0].encounter, 'nearby')
+})
+
+test('같은 지표 현상 AIRMET도 저고도 비행에서는 그대로 남는다', () => {
+  const low = buildHazardSection({ sigmet: [], airmet: [sfcVisNoAltitude], axis, ...ctxBase, cruiseAltitudeFt: 4000 })
+  assert.equal(low.hazards.length, 1)
+  assert.equal(low.hazards[0].encounter, 'on')
+  assert.equal(low.hazards[0].verticalKnown, true)
+  assert.deepEqual(low.hazards[0].bandFt, { lowFt: 0, highFt: 10000 })
+})

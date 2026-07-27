@@ -199,3 +199,34 @@ test('D) 시간대 밖 비행이면 저촉이 아니다', () => {
   assert.equal(outside.routeConflicts.length, 0, '시간대 밖이면 저촉이 아니어야 한다')
   assert.equal(outside.routeNotams[0].scheduleState, 'outside')
 })
+
+// 실측: FL310 NAVLOG 전 구간에 "TAR U/S DUE TO MAINT"(터미널 레이더 정비)가 빨갛게 붙었다.
+// 원인은 Q-line의 000/999를 실제 고도대로 읽은 것 — ICAO는 고도와 무관한 NOTAM에 이 값을
+// 기본으로 넣으므로, 값만으로는 "지표~무제한"과 "고도 정보 없음"이 구분되지 않는다.
+// 판정 근거는 값이 아니라 출처(F)/G)에 적혀 있었는지)여야 한다.
+const groundFacility = {
+  id: 'C1386/26', category: 'other', scope: 'airport',
+  valid_from: '2026-06-26T08:00:00Z', valid_to: '2026-06-26T14:00:00Z',
+  altitude: { lower: 0, upper: 999, unit: 'FL', ref: null, source: 'qline' },
+  summary: 'TAR U/S DUE TO MAINT', geometry: onRoutePoly,
+}
+
+test('Q-line 000/999뿐인 지상 시설 NOTAM은 순항고도에서 고도 미상으로 남는다', () => {
+  const { routeNotams } = matchRouteNotams([groundFacility], ctx)
+  assert.equal(routeNotams.length, 1, '목록에서 지우지는 않는다')
+  assert.equal(routeNotams[0].verticalKnown, false)
+  assert.equal(routeNotams[0].comparisonStatus, 'undetermined')
+  assert.equal(routeNotams[0].conflict, false)
+})
+
+test('F)/G)에 고도가 적힌 구역은 그대로 고도 확인 처리한다', () => {
+  const prohibited = {
+    ...groundFacility,
+    id: 'D1768/26', category: 'prohibited', summary: 'TEMPO PROHIBITED AREA ACT',
+    altitude: { lower: 0, upper: 99900, unit: 'FT', ref: 'AGL', source: 'fg' },
+  }
+  const { routeNotams, routeConflicts } = matchRouteNotams([prohibited], ctx)
+  assert.equal(routeNotams[0].verticalKnown, true)
+  assert.equal(routeNotams[0].conflict, true)
+  assert.equal(routeConflicts.length, 1)
+})

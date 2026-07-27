@@ -54,8 +54,8 @@ test('buildRouteWeatherLegs keeps every aligned segment and aggregates its selec
     { from: 'A', to: 'B', distanceNm: 10 },
     { from: 'B', to: 'C', distanceNm: 10 },
   ])
-  assert.deepEqual(result.legs[1].wind, { meanComponentKt: 39, minComponentKt: 39, maxComponentKt: 39 })
-  assert.deepEqual(result.legs[1].temp, { meanC: -39, minC: -39, maxC: -39 })
+  assert.deepEqual(result.legs[1].wind, { meanComponentKt: 39, minComponentKt: 39, maxComponentKt: 39, directionDeg: 270, speedKt: 39 })
+  assert.deepEqual(result.legs[1].temp, { meanC: -39, minC: -39, maxC: -39, isaDevC: -36 })
   assert.deepEqual(result.legs[1].icing, { peakLevel: 2, exposures: [{ level: 2, distanceNm: 10 }] })
   assert.equal(result.legs[1].turbulence.peakLevel, 'moderate')
   assert.deepEqual(result.legs[1].hazards.map(({ code, verticalStatus }) => ({ code, verticalStatus })), [{ code: 'SEV_TURB', verticalStatus: 'unknown' }])
@@ -64,4 +64,72 @@ test('buildRouteWeatherLegs keeps every aligned segment and aggregates its selec
   assert.equal(result.legs[1].altitudeConstraint.sourceCycle, 'AIP-2026-07')
   assert.equal('eta' in result.legs[1], false)
   assert.equal('headingDeg' in result.legs[1], false)
+})
+
+// FL310 NAVLOG에 지표시정(AIRMET)이 매 구간 붙던 실제 문제를 고정한다.
+// hazard-section이 지표 현상에 지표~FL100 밴드를 매기면 altitudeExposure가 clear가 되고,
+// 구간 표는 그 clear를 보고 빼야 한다.
+test('순항고도 밖으로 확정된(clear) 위험기상은 구간에 붙지 않는다', () => {
+  const build = (status) => buildRouteWeatherLegs({
+    routeModel: { enRouteSegments: [{ id: 'A-B', fromFix: 'A', toFix: 'B', startNm: 0, endNm: 20, alignmentStatus: 'aligned' }] },
+    weatherAxis: axis,
+    selectedCruiseAltitudeFt: 31000,
+    crossSection: { levels: [values('t', [-40, -39, -38])] },
+    hazards: [{
+      source: 'AIRMET', code: 'SFC_VIS', label: 'Surface Visibility', airportScope: null,
+      routeIntervalNm: { startNm: 0, endNm: 20 }, altitudeExposure: { status }, timeStatus: 'matched',
+    }],
+  }).legs[0].hazards
+
+  assert.deepEqual(build('clear'), [])
+  assert.equal(build('unknown').length, 1)
+})
+
+// ForeFlight 등 상용 EFB는 바람을 성분(CMP)과 실제 풍향/풍속(DIR/SPD) 두 가지로 같이 준다.
+// 성분만으로는 어느 쪽에서 부는지 알 수 없어 대체 고도·경로 판단에 못 쓴다.
+test('바람은 항로 성분과 실제 풍향·풍속을 함께 낸다', () => {
+  // u=서→동 10m/s, v=0 → 서풍(270°에서 불어옴), 19.4kt.
+  const westerly = buildRouteWeatherLegs({
+    routeModel: { enRouteSegments: [{ id: 'A-B', fromFix: 'A', toFix: 'B', startNm: 0, endNm: 20, alignmentStatus: 'aligned' }] },
+    weatherAxis: axis, // 전 구간 bearing 90° = 정동진
+    selectedCruiseAltitudeFt: 9000,
+    crossSection: { levels: [values('u', [10, 10, 10]), values('v', [0, 0, 0])] },
+  }).legs[0].wind
+
+  assert.equal(westerly.directionDeg, 270)
+  assert.equal(westerly.speedKt, 19)
+  // 동쪽으로 가는데 서풍 → 뒷바람(양수), 성분 크기는 풍속과 같다.
+  assert.equal(westerly.meanComponentKt, 19)
+})
+
+// 고도가 같아도 ISA 대비 얼마나 따뜻한지가 성능·결빙 판단의 기준이다.
+test('기온에 ISA 편차를 함께 낸다', () => {
+  const leg = (altitudeFt, tempC) => buildRouteWeatherLegs({
+    routeModel: { enRouteSegments: [{ id: 'A-B', fromFix: 'A', toFix: 'B', startNm: 0, endNm: 20, alignmentStatus: 'aligned' }] },
+    weatherAxis: axis,
+    selectedCruiseAltitudeFt: altitudeFt,
+    crossSection: { levels: [{ altFt: altitudeFt, values: [0, 1, 2].map((i) => ({ distanceNm: i * 10, altFt: altitudeFt, t: tempC })) }] },
+  }).legs[0].temp
+
+  // 해면 15°C가 ISA 기준 — 편차 0.
+  assert.equal(leg(0, 15).isaDevC, 0)
+  // FL310 ISA = 15 - 1.98 x 31 = -46.4°C. 실측 -27°C면 ISA+19.
+  assert.equal(leg(31000, -27).meanC, -27)
+  assert.equal(leg(31000, -27).isaDevC, 19)
+  // 대류권계면(36,089ft) 위는 -56.5°C로 고정된다.
+  assert.equal(leg(41000, -50).isaDevC, 7)
+})
+
+// NAVLOG 칩 색은 "실제 저촉(conflict)"으로 정해야 한다. comparisonStatus는 "시간·고도를
+// 비교할 수 있었나"라서, 그걸 쓰면 정보성 시설 NOTAM(TAR 정비 등)까지 빨갛게 뜬다.
+test('NOTAM 칩은 실제 저촉만 warn으로 낸다', () => {
+  const effects = (notam) => buildRouteWeatherLegs({
+    routeModel: { enRouteSegments: [{ id: 'A-B', fromFix: 'A', toFix: 'B', startNm: 0, endNm: 20, alignmentStatus: 'aligned' }] },
+    weatherAxis: axis, selectedCruiseAltitudeFt: 31000,
+    routeNotams: [{ id: 'N1', summary: 's', routeIntervalNm: { startNm: 0, endNm: 20 }, ...notam }],
+  }).legs[0].notams.map((n) => n.effect)
+
+  assert.deepEqual(effects({ conflict: true, comparisonStatus: 'warn' }), ['warn'], '진짜 저촉만 빨강')
+  assert.deepEqual(effects({ conflict: false, comparisonStatus: 'warn' }), ['info'], '비교는 됐지만 저촉 아님 → 정보')
+  assert.deepEqual(effects({ conflict: false, comparisonStatus: 'undetermined' }), ['undetermined'])
 })

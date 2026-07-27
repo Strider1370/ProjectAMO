@@ -1114,8 +1114,10 @@ app.post('/api/briefing/altitudes', (req, res) => {
       constraints: { ...candidateResult.constraints, provenance: aip.provenance },
       rows,
       crossSectionRun: crossSectionResult.crossSection?.run ?? null,
+      // availableTimes까지 같이 실어야 이 응답을 재사용하는 고도비교 단면도에서도
+      // 예보시각 앞뒤 이동이 뜬다(빠지면 목록이 비어 버튼이 통째로 사라진다).
       crossSection: crossSectionResult.available
-        ? { ...crossSectionResult.crossSection, turbulence: crossSectionResult.turbulence }
+        ? { ...crossSectionResult.crossSection, turbulence: crossSectionResult.turbulence, availableTimes: crossSectionResult.availableTimes }
         : null,
     })
   } catch (error) {

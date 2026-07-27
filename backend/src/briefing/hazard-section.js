@@ -1,9 +1,9 @@
-import { bandToFt } from './planned-altitude.js'
 import {
   evaluateAltitudeExposure,
   evaluateHorizontalExposure,
   evaluateTimeStatus,
   exposureConfidence,
+  hazardBandFt,
 } from './hazard-exposure.js'
 
 function matchItems(items, source, ctx) {
@@ -13,7 +13,7 @@ function matchItems(items, source, ctx) {
     if (horizontalExposure.status !== 'intersects') continue
     const timeStatus = evaluateTimeStatus({ etd: ctx.etd, eta: ctx.eta, validFrom: it.valid_from, validTo: it.valid_to })
     if (timeStatus == null) continue
-    const bandFt = bandToFt(it.altitude)
+    const bandFt = hazardBandFt(it)
     const altitudeExposure = evaluateAltitudeExposure({ horizontalExposure, bandFt, plannedCruiseAltitudeFt: ctx.cruiseAltitudeFt })
     const routeIntervalNm = horizontalExposure.intervals[0]
     out.push({
