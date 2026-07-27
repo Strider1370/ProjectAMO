@@ -104,6 +104,14 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
         const cloudSpans = computeColumnSpans(periods, (item) => item.cloudText)
         const windSpans = computeColumnSpans(periods, (item) => item.windText)
         const wxSpans = computeColumnSpans(periods, (item) => item.weatherText)
+        const etaMs = Date.parse(eta)
+        // ETA 강조는 시간(첫) 칸에만 준다. 값 칸은 여러 시간대에 걸쳐 병합돼 있어서
+        // 같이 칠하면 "그 값 전체가 ETA"인 것처럼 읽히고, 줄 전체에 테두리를 두르면
+        // 앞줄에서 시작한 병합 칸을 가로지르는 잘린 선이 그어진다.
+        const etaIndex = periods.findIndex((p) => p.slots.some((slot) => {
+          const slotMs = Date.parse(slot.time)
+          return slotMs <= etaMs && etaMs < slotMs + 3600000
+        }))
         return (
           <div className="ap-taf-table-wrap">
             <table className="ap-taf-table">
@@ -112,14 +120,10 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
               {periods.map((p, index) => {
                 const item = p.first
                 const catColor = TAF_CATEGORY_COLOR[item.flight.category]
-                const etaMs = Date.parse(eta)
-                const isEtaPeriod = Number.isFinite(etaMs) && p.slots.some((slot) => {
-                  const slotMs = Date.parse(slot.time)
-                  return slotMs <= etaMs && etaMs < slotMs + 3600000
-                })
+                const isEtaPeriod = index === etaIndex
                 return (
                   <tr key={index} className={isEtaPeriod ? 'ap-taf-eta-period' : undefined}>
-                    <td className="ap-taf-tcol" style={{ borderLeft: `4px solid ${catColor}` }}>
+                    <td className={`ap-taf-tcol${isEtaPeriod ? ' is-eta' : ''}`} style={{ borderLeft: `4px solid ${catColor}` }}>
                       <span className="ap-taf-trange">{periodRange(p, tz)}</span>
                       <span className="ap-taf-tcat" style={{ color: catColor }}>
                         {item.flight.category}

@@ -1240,6 +1240,12 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   font-weight: 900;
 }
 
+/* NAVLOG 구간 강조 — 지도 하이라이트와 같은 파란색. 호버는 옅게, 클릭 고정은 진하게. */
+.vertical-profile-leg-band rect { fill: #1d4ed8; opacity: 0.06; }
+.vertical-profile-leg-band line { stroke: #1d4ed8; stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.55; }
+.vertical-profile-leg-band.is-pinned rect { opacity: 0.12; }
+.vertical-profile-leg-band.is-pinned line { opacity: 1; stroke-width: 2; }
+
 .vertical-profile-tod-label {
   fill: var(--level-amber);
   font-size: 11px;

@@ -23,7 +23,7 @@ import { phenomenonKo } from '../../shared/weather/phenomenonKo.js'
 import { buildAmosConsoleModel } from '../../shared/weather/amosViewModel.js'
 import { buildMetarTacSegments, buildMetarViewModel } from '../airport-panel/lib/metarViewModel.js'
 import EnhancedTafTab from '../airport-panel/tabs/TafTab.jsx'
-import { useCrossSectionLayers, CrossSectionToggles } from './crossSectionLayers.jsx'
+import { useCrossSectionLayers, CrossSectionToggles, ForecastHourNav } from './crossSectionLayers.jsx'
 import { buildRawWindsTable } from './lib/rawWindsModel.js'
 import { LEVEL_COLOR, catColorOf, catDisplay, worstAirport, worstInterval, pctOf, tafBarSegments } from './lib/briefingViewModel.js'
 import { deriveNotamTime, formatAltitude, formatValidPeriod, NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
@@ -53,7 +53,7 @@ function CatBadge({ category }) {
   return <Badge appearance="filled" style={{ backgroundColor: catColorOf(category), color: '#fff' }}>{c}</Badge>
 }
 
-export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, routeSnapshot = null }) {
+export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, routeSnapshot = null }) {
   const isMobile = useIsMobile()
   const { tz } = useTimeZone()
   const { nowMs } = useDemoMode()
@@ -67,6 +67,8 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   const [notamGroupOpen, setNotamGroupOpen] = useState({}) // ⑤ 공항별 NOTAM "더 보기" 펼침(role별)
   const [collapsed, setCollapsed] = useState(false) // 패널 접기 — 지도를 보려고 오른쪽으로 슬라이드아웃(닫기와 달리 브리핑 유지)
   const [expanded, setExpanded] = useState(false)
+  const [pinnedLeg, setPinnedLeg] = useState(null) // NAVLOG에서 클릭해 고정한 구간
+  const [activeLeg, setActiveLeg] = useState(null) // 지금 가리킨 구간(호버 또는 고정) — 단면도 강조용
   const headerRef = useRef(null)
   const [headerHidden, setHeaderHidden] = useState(false) // 헤더 스크롤아웃 시에만 sticky nav의 닫기 노출(중복 버튼 방지)
   const toggleRole = (role) => setExpandedRoles((m) => ({ ...m, [role]: !m[role] }))
@@ -87,6 +89,11 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   onFocusRef.current = onFocus
 
   useEffect(() => { if (activeId) onFocusRef.current?.(activeId) }, [activeId])
+
+  // 브리핑이 닫히면 지도에 남은 구간 강조도 같이 지운다.
+  const onHighlightLegRef = useRef(onHighlightLeg)
+  onHighlightLegRef.current = onHighlightLeg
+  useEffect(() => () => onHighlightLegRef.current?.(null), [])
 
   const hasEnroute = Boolean(briefing?.sections?.enroute)
   const hasNotam = (briefing?.routeNotams ?? []).length > 0
@@ -433,7 +440,9 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             })}
           </div>
         )}
-        {legs.length > 0 && <RouteWeatherLegTable legs={legs} selectedAltitudeFt={sections.enroute.plannedCruiseAltitudeFt} />}
+        {/* 연직단면도가 리본(착빙·난류 구간 막대) 바로 아래에 온다 — 둘 다 같은 경로 거리축을
+            쓰므로 세로로 붙여야 "이 막대 구간이 단면도의 어디"인지 눈으로 이어진다.
+            NAVLOG는 웨이포인트 단위라 축이 달라 그 아래로 내린다. */}
         {(verticalProfile || sections.enroute.crossSectionAvailable) && (
           <section className="bv-leg-briefing" aria-label="연직단면도">
             <div className="bv-leg-head">
@@ -441,12 +450,13 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
                 <Subtitle2 as="h4">연직단면도</Subtitle2>
                 <Caption1 className="bv-leg-sub">경로를 따라 자른 고도 단면 · 레이어로 표시 항목을 켜고 끕니다</Caption1>
               </div>
+              <ForecastHourNav crossSection={crossSection} onSelect={onSelectForecastHour} loading={crossSectionHourLoading} />
             </div>
             {verticalProfile && (
               <>
                 <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} />
                 <div className={`bv-xsection${isMobile ? ' bv-xsection-scroll' : ''}`}>
-                  <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} />
+                  <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} highlightRangeNm={activeLeg} />
                 </div>
               </>
             )}
@@ -455,6 +465,16 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             )}
           </section>
         )}
+        {legs.length > 0 && <RouteWeatherLegTable
+          legs={legs}
+          selectedAltitudeFt={sections.enroute.plannedCruiseAltitudeFt}
+          pinnedLegKey={pinnedLeg?.key ?? null}
+          onHighlightLeg={(leg) => {
+            if (leg?.pinned || !leg) setPinnedLeg(leg?.pinned ? leg : null)
+            setActiveLeg(leg)
+            onHighlightLeg?.(leg)
+          }}
+        />}
         {rawWinds && (
           <details className="bv-rawwinds">
             <summary>상층바람·기온 원자료 <span className="dim">(격자·층별)</span></summary>
@@ -730,7 +750,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
           <div className="bv-xfull" role="dialog" aria-label="단면도 전체화면" onClick={() => setXsectionFull(false)}>
             <button type="button" className="bv-xfull-close" onClick={() => setXsectionFull(false)} aria-label="닫기">×</button>
             <div className="bv-xfull-rotate" onClick={(e) => e.stopPropagation()}>
-              <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={{ icing: true, turbulence: true }} />
+              <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={{ icing: true, turbulence: true }} highlightRangeNm={pinnedLeg} />
             </div>
           </div>
         )}

@@ -117,6 +117,7 @@ import {
   syncRoutePreviewLayers,
   syncVfrWaypointData,
 } from '../route-briefing/lib/routePreviewSync.js'
+import { legCoordinates, syncLegHighlight } from '../route-briefing/lib/legHighlight.js'
 import { useRouteBriefing } from '../route-briefing/useRouteBriefing.js'
 import AirportTooltip from './AirportTooltip.jsx'
 import './MapView.css'
@@ -494,6 +495,7 @@ const MapView = forwardRef(function MapView({
     },
   }))
   const { routeResult, fitBoundsRequest } = routeBriefing.state
+  const [highlightedLeg, setHighlightedLeg] = useState(null) // NAVLOG 표에서 가리킨 구간
   const flyToKorea = () => {
     const map = mapRef.current
     const home = initialHomeRef.current
@@ -569,6 +571,14 @@ const MapView = forwardRef(function MapView({
     if (lw > 0) pad.left = cap(lw)
     return pad
   }
+
+  // NAVLOG 구간 강조 — 표의 한 줄에 호버/클릭하면 그 구간만 지도에서 굵게. 시점은 옮기지 않는다.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return
+    const coordinates = highlightedLeg ? legCoordinates(routeResult?.previewGeojson, highlightedLeg.from, highlightedLeg.to) : []
+    syncLegHighlight(map, coordinates, { pinned: Boolean(highlightedLeg?.pinned) })
+  }, [highlightedLeg, routeResult, isStyleReady, styleRevision])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1848,6 +1858,9 @@ const MapView = forwardRef(function MapView({
                 metVisibility={metVisibility}
                 onToggleMetLayer={toggleMet}
                 onEnterMapMode={() => setRouteBriefingMapMode(true)}
+                onHighlightLeg={setHighlightedLeg}
+                onSelectForecastHour={routeBriefing.actions.handleSelectForecastHour}
+                crossSectionHourLoading={routeBriefing.state.crossSectionHourLoading}
                 routeSnapshot={{
                   routeForm: routeBriefing.state.routeForm,
                   vfrWaypoints: routeBriefing.state.vfrWaypoints,

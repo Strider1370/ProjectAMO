@@ -204,6 +204,7 @@ export default function VerticalProfileChart({
   onSelectCandidateAltitude,
   enableDragScroll = false,
   hideMeta = false,
+  highlightRangeNm = null, // NAVLOG에서 가리킨 구간 {startNm, endNm, pinned}
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
@@ -313,6 +314,17 @@ export default function VerticalProfileChart({
   const todLabelY = todMarker ? Math.max(padding.top + 14, todMarker.y - 30) : 0
   const todArrowTopY = todMarker ? Math.max(todLabelY + 7, todMarker.y - 21) : 0
   const todArrowTipY = todMarker ? Math.min(todMarker.y - 7, todArrowTopY + 10) : 0
+  // NAVLOG 구간 강조 — 양끝을 세로 점선으로 긋고 사이를 옅게 덮는다. 거리축이 같으므로
+  // 표의 한 줄이 단면도의 어느 폭인지 바로 보인다. 축 밖으로 나가지 않게 잘라 준다.
+  const legBand = (() => {
+    const start = Number(highlightRangeNm?.startNm)
+    const end = Number(highlightRangeNm?.endNm)
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
+    const left = xFor(Math.max(0, Math.min(start, maxDistance)))
+    const right = xFor(Math.max(0, Math.min(end, maxDistance)))
+    if (!(right > left)) return null
+    return { left, right, pinned: Boolean(highlightRangeNm.pinned) }
+  })()
   const yTickInterval = yMax <= 10000 ? 2000 : yMax <= 20000 ? 3000 : yMax <= 40000 ? 5000 : 10000
   const yTicks = Array.from({ length: Math.floor(yMax / yTickInterval) + 1 }, (_, i) => i * yTickInterval)
     .filter(v => v <= yMax && (!Number.isFinite(selectedCruiseAltitudeFt) || Math.abs(v - selectedCruiseAltitudeFt) > yTickInterval * 0.4))
@@ -635,6 +647,13 @@ export default function VerticalProfileChart({
             />
           ) : null
         })}
+        {legBand && (
+          <g className={`vertical-profile-leg-band${legBand.pinned ? ' is-pinned' : ''}`} aria-hidden="true">
+            <rect x={legBand.left} y={padding.top} width={legBand.right - legBand.left} height={plotHeight} />
+            <line x1={legBand.left} x2={legBand.left} y1={padding.top} y2={padding.top + plotHeight} />
+            <line x1={legBand.right} x2={legBand.right} y1={padding.top} y2={padding.top + plotHeight} />
+          </g>
+        )}
         {todMarker && (
           <g>
             <text

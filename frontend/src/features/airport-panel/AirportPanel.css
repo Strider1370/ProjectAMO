@@ -1314,7 +1314,10 @@
   padding: 2px 6px;
   border-radius: 3px;
 }
-.ap-taf-table tr.ap-taf-eta-period { background: var(--level-gray-bg); outline: 1px solid var(--accent); outline-offset: -1px; }
+/* ETA 강조는 줄이 아니라 칸 단위 — 병합 칸(여러 시간대에 걸친 값)은 통째로 둘러싸야
+   한 시간대만 강조한다고 병합 칸을 가로지르는 선이 그어지지 않는다.
+   outline 대신 inset box-shadow를 쓰는 이유: 병합 칸 안쪽 경계에 정확히 붙고 자리를 안 밀어낸다. */
+.ap-taf-table td.is-eta { background: var(--level-gray-bg); box-shadow: inset 0 0 0 1px var(--accent); }
 .ap-taf-eta-period .ap-taf-trange { font-weight: var(--fw-bold); }
 .ap-taf-eta-badge { display: inline-block; margin-left: var(--space-xs); padding: 0 var(--space-xs); border-radius: var(--radius-sm); background: var(--accent); color: #fff; font-size: var(--fs-100); font-weight: var(--fw-bold); line-height: 1.4; vertical-align: 1px; }
 
@@ -1694,14 +1697,14 @@
 
 /* The briefing side panel is narrow even on desktop, so it uses the mobile table geometry. */
 .ap-taf--compact .ap-taf-table-wrap { overflow-x: visible; }
-.ap-taf--compact .ap-taf-table { min-width: 0; table-layout: fixed; font-size: var(--fs-200); }
+.ap-taf--compact .ap-taf-table { min-width: 0; table-layout: fixed; font-size: var(--fs-300); }
 .ap-taf--compact .ap-taf-table th,
 .ap-taf--compact .ap-taf-table td { padding: var(--space-xs); overflow-wrap: anywhere; }
 .ap-taf--compact .ap-taf-table th:first-child,
 .ap-taf--compact .ap-taf-table td:first-child { width: 32%; }
 .ap-taf--compact .ap-taf-tcol { padding-left: var(--space-s) !important; }
-.ap-taf--compact .ap-taf-trange { font-size: var(--fs-100); }
-.ap-taf--compact .ap-taf-tcat { font-size: var(--fs-200); }
+.ap-taf--compact .ap-taf-trange { font-size: var(--fs-200); }
+.ap-taf--compact .ap-taf-tcat { font-size: var(--fs-300); }
 
 .ap-taf-table th,
 .ap-taf-table td {

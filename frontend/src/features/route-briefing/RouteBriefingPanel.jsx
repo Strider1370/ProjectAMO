@@ -608,7 +608,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           </Field>
         </div>
 
-        {/* 자동 생성은 초안만 만들며, 적용 전에는 기존 기본 경로를 바꾸지 않는다. */}
+        {/* 자동 생성은 초안을 만든 뒤 곧바로 기본 경로로 적용까지 이어간다(useRouteBriefing의 autoApplyPending). */}
         {isIfr && (
           <div className={s.toolSection}>
             <span className={s.toolLabel}>경로 작성 도구</span>

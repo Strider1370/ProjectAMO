@@ -1,7 +1,5 @@
 import VerticalProfileChart from './VerticalProfileChart.jsx'
-import { useCrossSectionLayers, CrossSectionToggles } from './crossSectionLayers.jsx'
-import { formatNwpTimeTick } from '../weather-overlays/NwpSliderBarModel.js'
-import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
+import { useCrossSectionLayers, CrossSectionToggles, ForecastHourNav } from './crossSectionLayers.jsx'
 
 function formatFlightLevel(value) {
   return value >= 10000 ? `FL${Math.round(value / 100)}` : `${Math.round(value).toLocaleString()} ft`
@@ -21,16 +19,7 @@ export default function VerticalProfileWindow({
   placement = 'bottom',
 }) {
   const [layers, toggle] = useCrossSectionLayers()
-  const { tz } = useTimeZone()
   if (!profile || !isOpen) return null
-  const availableTimes = crossSection?.availableTimes ?? []
-  const currentHf = crossSection?.run?.hf
-  const timeIndex = availableTimes.findIndex((t) => Number(t.hf) === Number(currentHf))
-  const previousTime = timeIndex > 0 ? availableTimes[timeIndex - 1] : null
-  const nextTime = timeIndex >= 0 && timeIndex < availableTimes.length - 1 ? availableTimes[timeIndex + 1] : null
-  const currentTimeLabel = timeIndex >= 0
-    ? formatNwpTimeTick(availableTimes[timeIndex], null, tz)
-    : (Number.isFinite(currentHf) ? `+${currentHf}h` : null)
   const terrainMaxFt = Math.max(0, ...(profile.terrain?.values ?? []).map((value) => Number(value.elevationM) * 3.28084).filter(Number.isFinite))
   const tod = profile.flightPlan?.profile?.tod
   const todText = tod && Number.isFinite(tod.distanceFromEnrouteEndNm)
@@ -41,13 +30,7 @@ export default function VerticalProfileWindow({
   const previousAltitude = selectableAltitudes[selectedAltitudeIndex - 1]
   const nextAltitude = selectableAltitudes[selectedAltitudeIndex + 1]
   const model = profile.flightPlan?.profile?.model
-  const forecastHourNav = onSelectForecastHour && availableTimes.length > 1 ? (
-    <span className="vertical-profile-hour-nav" aria-label="예보시간 선택">
-      <button type="button" onClick={() => onSelectForecastHour(previousTime.hf)} disabled={!previousTime || crossSectionHourLoading} aria-label="이전 예보시간">‹</button>
-      <strong>{crossSectionHourLoading ? '…' : currentTimeLabel}</strong>
-      <button type="button" onClick={() => onSelectForecastHour(nextTime.hf)} disabled={!nextTime || crossSectionHourLoading} aria-label="다음 예보시간">›</button>
-    </span>
-  ) : null
+  const forecastHourNav = <ForecastHourNav crossSection={crossSection} onSelect={onSelectForecastHour} loading={crossSectionHourLoading} />
   const mobileToolbar = placement === 'mobile-full' ? <>
     <span className="vertical-profile-toolbar-group">
       <span className="vertical-profile-toolbar-terrain">지형 {Math.round(terrainMaxFt).toLocaleString()} ft</span>

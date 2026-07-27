@@ -91,6 +91,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const [firExitOptions, setFirExitOptions] = useState([])
   const [navpointsById, setNavpointsById] = useState({})
   const [autoRecommendRequested, setAutoRecommendRequested] = useState(false)
+  const [autoApplyPending, setAutoApplyPending] = useState(false) // 자동 생성 → 경로 적용까지 이어서
   const [fitBoundsRequest, setFitBoundsRequest] = useState(null)
   const [mapInteractionMode, setMapInteractionMode] = useState(null)
   const [pendingContextChange, setPendingContextChange] = useState(null)
@@ -383,7 +384,13 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       loadOverseasLinks,
       buildBriefingRoute,
     }).then(async (best) => {
-      if (cancelled || resetVersion !== routeResetVersionRef.current || !best) return
+      if (cancelled || resetVersion !== routeResetVersionRef.current) return
+      if (!best) {
+        // 추천할 절차를 못 찾았다 — 초안이 안 생기므로 자동 적용도 취소한다.
+        setAutoRecommendRequested(false)
+        setAutoApplyPending(false)
+        return
+      }
 
       const nextForm = {
         ...routeForm,
@@ -410,6 +417,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       } catch (error) {
         if (!cancelled && resetVersion === routeResetVersionRef.current) {
           setAutoRecommendRequested(false)
+          setAutoApplyPending(false) // 생성이 실패했으면 적용까지 이어가지 않는다.
           setRouteError(error.message)
         }
       }
@@ -497,7 +505,18 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   function handleAutoRecommend() {
     setRouteError(null)
     setAutoRecommendRequested(true)
+    setAutoApplyPending(true)
   }
+
+  // 자동 생성은 초안(routeEditor)만 만든다. 그 자리에서 applyRouteDraft를 부르면 아직
+  // 반영되지 않은 옛 초안·옛 SID/STAR로 적용되므로, 초안이 실제로 들어온 다음 렌더에서
+  // 이어서 적용한다. 그때는 rawText와 preview가 맞아 이미 만든 결과를 그대로 재사용한다.
+  useEffect(() => {
+    if (!autoApplyPending || autoRecommendRequested || routeLoading) return
+    if (!routeEditor.rawText?.trim()) return
+    setAutoApplyPending(false)
+    applyRouteDraft()
+  }, [autoApplyPending, autoRecommendRequested, routeLoading, routeEditor])
 
   function updateRouteDraftText(value) {
     const editor = routeEditor

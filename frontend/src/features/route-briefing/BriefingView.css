@@ -207,14 +207,20 @@
 .bv-leg-table { min-width: 720px; font-variant-numeric: tabular-nums; table-layout: fixed; }
 .bv-leg-table th { color: var(--text-3); font-size: var(--fs-300); font-weight: var(--fw-regular); white-space: nowrap; }
 .bv-leg-table td { font-size: var(--fs-300); vertical-align: top; }
-/* 위험기상이 화면을 지배하도록 — 나머지 5열은 내용에 맞춰 좁힌다. */
-.bv-leg-table th:nth-child(1), .bv-leg-table td:nth-child(1) { width: 19%; }
-.bv-leg-table th:nth-child(2), .bv-leg-table td:nth-child(2) { width: 10%; }
-.bv-leg-table th:nth-child(3), .bv-leg-table td:nth-child(3) { width: 10%; }
-.bv-leg-table th:nth-child(4), .bv-leg-table td:nth-child(4) { width: 13%; }
-.bv-leg-table th:nth-child(5), .bv-leg-table td:nth-child(5) { width: 8%; }
-.bv-leg-table th:nth-child(6), .bv-leg-table td:nth-child(6) { width: 40%; }
+/* 위험기상이 화면을 지배하도록 — 나머지 7열은 내용에 맞춰 좁힌다. */
+.bv-leg-table th:nth-child(1), .bv-leg-table td:nth-child(1) { width: 16%; }
+.bv-leg-table th:nth-child(2), .bv-leg-table td:nth-child(2) { width: 8%; }
+.bv-leg-table th:nth-child(3), .bv-leg-table td:nth-child(3) { width: 8%; }
+.bv-leg-table th:nth-child(4), .bv-leg-table td:nth-child(4) { width: 12%; }
+.bv-leg-table th:nth-child(5), .bv-leg-table td:nth-child(5) { width: 10%; }
+.bv-leg-table th:nth-child(6), .bv-leg-table td:nth-child(6) { width: 7%; }
+.bv-leg-table th:nth-child(7), .bv-leg-table td:nth-child(7) { width: 8%; }
+.bv-leg-table th:nth-child(8), .bv-leg-table td:nth-child(8) { width: 31%; }
 .bv-leg-none { color: var(--text-3); }
+/* 줄을 가리키면 지도에 그 구간이 뜬다 — 누를 수 있다는 걸 커서와 배경으로 알린다. */
+.bv-leg-row { cursor: pointer; }
+.bv-leg-row:hover td { background: var(--bg-3); }
+.bv-leg-row.is-pinned td { background: var(--level-gray-bg); box-shadow: inset 3px 0 0 0 #1d4ed8; }
 .bv-leg-hazards { display: flex; flex-wrap: wrap; gap: var(--space-xxs); }
 .bv-leg-chip {
   display: inline-flex; align-items: baseline; gap: var(--space-xxs);
