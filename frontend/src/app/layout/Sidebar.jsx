@@ -1,6 +1,6 @@
 import {
   Cloud, FileText, Layers, Settings,
-  Menu, Monitor, HelpCircle, History, Search, FileWarning
+  Menu, Monitor, HelpCircle, History, Search, FileWarning, User
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CURRENT_VERSION } from '../../features/about/changelog.js'
@@ -90,8 +90,9 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
     <aside className={`sidebar ${isExpanded ? 'is-expanded' : ''}`}>
       {/* 최상단: 햄버거 & 로고 */}
       <div className="sidebar-section">
+        {/* 26px로 표시되므로 512px 원본(47KB) 대신 파비콘용 64px(2.7KB)를 함께 쓴다. */}
         <div className="sidebar-brand-mark" aria-hidden="true">
-          <img className="sidebar-brand-mark-image" src="/favicon.svg" alt="" />
+          <img className="sidebar-brand-mark-image" src="/favicon-gisang.png" alt="" />
         </div>
         <div className="sidebar-header">
           <button 
@@ -175,7 +176,7 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
           aria-label={user ? '계정' : '로그인'}
         >
           <div className="profile-avatar">
-            <img className="profile-avatar-image" src="/gisang-i/clear_3_avatar.png" alt="" />
+            <User size={20} aria-hidden="true" />
           </div>
           {isExpanded && (
             <div className="profile-info">
