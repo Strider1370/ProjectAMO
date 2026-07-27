@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCloseOnBackButton } from './useCloseOnBackButton.js'
 import './MobileSheet.css'
 
 // Shared non-modal mobile bottom sheet: grabber handle, peek/half/full detents
@@ -64,6 +65,9 @@ export default function MobileSheet({
     document.body.classList.toggle('amo-sheet-full', isFull)
     return () => document.body.classList.remove('amo-sheet-full')
   }, [open, detent])
+
+  // 모바일 브라우저 뒤로가기가 시트만 닫고 앱을 벗어나지 않게.
+  useCloseOnBackButton(open, onClose)
 
   // H3 사용자 제어: Escape로 닫기. H13 접근성: 열릴 때 포커스를 시트로 옮기고
   // 닫힐 때 이전 요소로 복귀(non-modal이라 포커스 트랩은 두지 않음 — 지도는 계속 조작 가능).

@@ -700,9 +700,9 @@
   pointer-events: auto;
 }
 
-/* When the far-right level rail is shown, shift the legends left (with a gap) and align their top
-   to the level rail's chip box (which sits below the "고도" title). */
-.map-view-wrapper:has(.level-rail) .map-right-legends {
+/* When the far-right vertical level slider (KIM/난류/운정고도, mutually exclusive) is shown,
+   shift the legends left with a gap so they don't sit under it. */
+.map-view-wrapper:has(.pressure-level-slider) .map-right-legends {
   right: 88px;
   top: 100px;
 }
@@ -900,36 +900,10 @@
   min-width: 0;
 }
 
-.map-legends-bottom .radar-motion-control--mobile .radar-motion-toggle {
-  width: 100%;
-}
-
 .map-view-wrapper .radar-motion-control {
   display: grid;
   gap: 4px;
   margin-top: 4px;
-}
-
-.map-view-wrapper .radar-motion-toggle {
-  min-height: 44px;
-  padding: 6px 8px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--accent);
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.map-view-wrapper .radar-motion-toggle[aria-pressed='true'] {
-  background: var(--accent);
-  color: #fff;
-}
-
-.map-view-wrapper .radar-motion-toggle:disabled {
-  border-color: var(--border-2);
-  color: var(--text-3);
 }
 
 .map-view-wrapper .radar-motion-note {
@@ -1489,62 +1463,6 @@
 
 .nwp-time-slider-tick.is-active {
   color: color-mix(in srgb, var(--accent) 14%, var(--bg-1));
-}
-
-/* Far-right vertical level (altitude) selector: compact chip stack, highest on top. */
-.level-rail {
-  position: absolute;
-  right: 14px;
-  top: 76px;
-  z-index: 6;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  pointer-events: auto;
-  font-family: var(--app-font, system-ui, sans-serif);
-}
-
-.level-rail__title {
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text-3);
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.85);
-}
-
-.level-rail__chips {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 5px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.78);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  border: 0.5px solid rgba(51, 65, 85, 0.2);
-}
-
-.level-rail__chip {
-  min-width: 42px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-2);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  text-align: center;
-}
-
-.level-rail__chip:hover {
-  background: rgba(51, 65, 85, 0.08);
-}
-
-.level-rail__chip.is-active {
-  background: var(--accent);
-  color: #fff;
 }
 
 /* Aviation-style pressure selector: evenly-spaced KIM pressure-surface snap
@@ -2325,10 +2243,38 @@
 }
 
 .layer-tile-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 8px;
   color: var(--text-2);
   font-size: 12px;
   font-weight: 700;
+}
+
+.layer-tile-group-title-action {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--bg-1);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.layer-tile-group-title-action[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+
+.layer-tile-group-title-action:disabled {
+  border-color: var(--border-2);
+  color: var(--text-3);
+  cursor: default;
 }
 
 .layer-tile-grid {
@@ -2541,7 +2487,6 @@
 
 .vertical-level-rail-stack { position:absolute; right:12px; top:63px; z-index:6; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; }
 .vertical-level-rail-stack > * { pointer-events:auto; }
-.level-rail--embedded { position:static; }
 .convective-overlay-card { position:absolute; left:calc(var(--convective-card-x) + var(--space-m)); top:calc(var(--convective-card-y) - var(--space-m)); z-index:6; display:grid; gap:var(--space-s); min-width:260px; max-width:320px; padding:var(--space-l); border:3px solid var(--stroke-1); border-radius:var(--radius-lg); background:rgba(255,255,255,.94); color:var(--text-1); font-size:var(--fs-300); line-height:var(--lh-300); box-shadow:0 2px 8px rgba(15,23,42,.16); transform:translateY(-100%); }
 .convective-overlay-card__time,.convective-legend__note { color:var(--text-3); font-size:var(--fs-200); line-height:var(--lh-200); }
 .weather-point-inspector { position:absolute; top:calc(var(--weather-point-y) - var(--space-m)); z-index:7; width:min(360px, calc(100% - 32px)); padding:var(--space-m); border:3px solid var(--weather-point-accent); border-radius:var(--radius-lg); background:rgba(255,255,255,.96); color:var(--text-1); box-shadow:0 4px 14px rgba(15,23,42,.2); transform:translateY(-100%); }
@@ -2604,7 +2549,9 @@
   .pressure-level-slider.is-mobile-measured {
     position: fixed;
     top: var(--pressure-mobile-top);
-    right: var(--space-m);
+    /* 오른쪽 눈금 라벨이 안 보이는 모바일에서는 화면 가장자리에 붙을 필요가 없어,
+       가능하면 아래 줌 컨트롤과 세로축을 맞춘다(--pressure-mobile-right 측정값). */
+    right: var(--pressure-mobile-right, var(--space-m));
     width: 56px;
     height: var(--pressure-mobile-height);
     visibility: visible;
@@ -2612,10 +2559,6 @@
   /* 화면 오른쪽 끝 12px은 OS 뒤로가기 스와이프 구역이라 손가락이 자주 먹힌다.
      44px 폭이면 그 구역을 뺀 실사용 폭이 32px밖에 남지 않아 폭을 조금 넓혔다. */
   .pressure-level-slider__track { width: 56px; height: 100%; min-height: 0; margin: 0; }
-  /* 모바일에서 등압면 슬라이더는 position:fixed로 열에서 빠져나가므로, 같은 오른쪽 가장자리에
-     남아 있는 고도 칩 열(난류 등)이 슬라이더 위를 덮어 터치를 통째로 가져갔다.
-     슬라이더가 떠 있는 동안에는 칩 열을 슬라이더와 그 FL 라벨 왼쪽으로 비켜 세운다. */
-  .vertical-level-rail-stack:has(.pressure-level-slider.is-mobile-measured) { right: 128px; }
   .pressure-level-slider__tick span { display: none; }
   .pressure-level-slider__value { right: calc(50% + 14px); font-size: var(--fs-200); }
   .pressure-level-slider__value small { font-size: var(--fs-100); }

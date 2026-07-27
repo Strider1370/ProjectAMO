@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { X, ChevronDown } from 'lucide-react'
 import { CHANGELOG } from './changelog.js'
+import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import './UpdatesModal.css'
 
 export default function UpdatesModal({ onClose }) {
+  useCloseOnBackButton(true, onClose)
   // The latest entry starts expanded; the rest collapse until clicked.
   const [expanded, setExpanded] = useState(() => ({ [CHANGELOG[0].version]: true }))
   const toggle = (version) => setExpanded((prev) => ({ ...prev, [version]: !prev[version] }))

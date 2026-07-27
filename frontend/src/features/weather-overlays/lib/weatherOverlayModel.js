@@ -7,7 +7,7 @@ import {
 import { advisoryItemsToFeatureCollection, advisoryItemsToLabelFeatureCollection, formatAdvisoryFir } from './advisoryLayers.js'
 import { phenomenonText } from '../../../shared/weather/phenomenonKo.js'
 import { sigwxLowToMapboxData } from './sigwxData.js'
-import { LIGHTNING_AGE_BANDS, createLightningGeoJSON } from './lightningLayers.js'
+import { LIGHTNING_AGE_BANDS, LIGHTNING_RECENT_COUNT_WINDOW_MINUTES, createLightningGeoJSON } from './lightningLayers.js'
 
 export function parseFrameTmToMs(tm) {
   if (!tm || !/^\d{12}$/.test(String(tm))) return null
@@ -213,25 +213,21 @@ export function buildWeatherOverlayModel({
   const ciFrame = convectiveFrame?.ci ? { ...convectiveFrame, ...convectiveFrame.ci } : null
   const ctpsFrame = convectiveFrame?.ctps ? { ...convectiveFrame, ...convectiveFrame.ctps } : null
   const radarReferenceTimeMs = parseFrameTmToMs(radarFrame?.tm)
-  const latestRadarFrame = radarFrames.at(-1) || null
-  const latestRadarTimeMs = latestRadarFrame?.timeMs ?? null
   const motion = radarFrame?.motion || null
+  // 표시 조건은 "선택 시각과 motion.tm이 정확히 일치"뿐이다(스펙 참조) — 3시간 보존 구간
+  // 전부가 이 조건을 만족하면 다 보여준다. 최신 시각과의 근접도로 추가로 거르지 않는다.
   const hasExactMotion = Number.isFinite(radarReferenceTimeMs)
     && Number(motion?.observedAtMs) === radarReferenceTimeMs
     && Boolean(motion?.path)
-  const motionStale = hasExactMotion
-    && Number.isFinite(latestRadarTimeMs)
-    && latestRadarTimeMs - radarReferenceTimeMs > 20 * 60 * 1000
   const radarMotion = {
-    visible: Boolean(visibility.radar && hasExactMotion && !motionStale),
-    stale: Boolean(motionStale),
+    visible: Boolean(visibility.radar && hasExactMotion),
     frameTm: radarFrame?.tm ?? null,
     dataUrl: hasExactMotion ? motion.path : null,
     observedAtMs: hasExactMotion ? motion.observedAtMs : null,
     comparedFromMs: hasExactMotion ? motion.comparedFromMs ?? null : null,
   }
   // 낙뢰 나이의 기준시각. 벽시계를 쓰면 수집이 늦어질수록 방금 친 번개가 밴드를 넘겨
-  // 60분 창 밖으로 사라진다 — 낙뢰 자료 자신의 수집시각을 기준으로 재고, 그 시각이
+  // 30분 창 밖으로 사라진다 — 낙뢰 자료 자신의 수집시각을 기준으로 재고, 그 시각이
   // 없을 때만 벽시계로 물러난다. (범례는 이 기준시각을 실제 시계 시각으로 찍어 주므로
   // 자료가 오래됐다는 사실이 감춰지지는 않는다.)
   const lightningCollectedAtMs = new Date(lightningData?.fetched_at ?? NaN).getTime()
@@ -327,7 +323,7 @@ export function buildWeatherOverlayModel({
     sigmetIntlCount: sigmetIntlFeatures.features.length,
     airmetCount: airmetFeatures.features.length,
     sigwxCount: sigwxGroups.length,
-    lightningCount: lightningGeoJSON.features.length,
+    lightningCount: lightningGeoJSON.features.filter((f) => f.properties.ageMinutes < LIGHTNING_RECENT_COUNT_WINDOW_MINUTES).length,
     radarLegendVisible: visibility.radar && !!radarFrame,
     radarOverseasLegendVisible: !!visibility.radarOverseas,
     // 레이어는 켰는데 선택 시각이 RainViewer 커버(최근 2시간) 밖 — 조용히 사라지면 고장으로 보인다.

@@ -77,7 +77,8 @@
       "Bash(claude plugin *)",
       "Bash(iconv -f UTF-16LE -t UTF-8)",
       "Bash(/home/john_doe/.orca/agent-hooks/claude-hook.sh)",
-      "Bash(echo \"exit code: $?\")"
+      "Bash(echo \"exit code: $?\")",
+      "Bash(npx vitest *)"
     ]
   }
 }

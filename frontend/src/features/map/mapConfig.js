@@ -63,16 +63,6 @@ export const BASEMAP_OPTIONS = [
     },
   },
   {
-    // VFR 체크포인트 가시성용 지형 basemap. 임시로 Mapbox Outdoors(음영기복·등고선·물길)를
-    // base로 걸어 미리보기 — 사장님 Studio 커스텀 스타일(물/강/저수지 강조) 완성 후 style URL만 교체.
-    // ⚠️ Outdoors는 클래식 스타일이라 아래 config(basemap import)는 무시됨(applyRoadVisibility가 가드).
-    id: 'terrain',
-    label: '지형',
-    thumbnail: '/basemap-thumbs/standard.png',
-    style: 'mapbox://styles/mapbox/outdoors-v12',
-    config: {},
-  },
-  {
     id: 'satellite',
     label: '위성',
     thumbnail: '/basemap-thumbs/satellite.png',

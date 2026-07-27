@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext.jsx'
 import useNotifications from './useNotifications.js'
 import { formatNotification, severityLevel, severityTag } from './notificationFormat.js'
 import { formatZAndKst } from '../personal/lib/timeFormat.js'
+import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 
 const LEVEL_VAR = { red: 'var(--level-red)', amber: 'var(--level-amber)', gray: 'var(--level-gray)' }
 
@@ -28,6 +29,7 @@ const useStyles = makeStyles({
 
 // #13 Task 10 딥링크 착지 — ?flight=<routeId> 탭 시 해당 비행의 변경점 에스컬레이션 화면.
 export default function FlightAlertDetail({ flightId, onClose, onOpenRoute }) {
+  useCloseOnBackButton(true, onClose)
   const s = useStyles()
   const { user } = useAuth()
   const { notifications, markRead } = useNotifications()

@@ -4,14 +4,15 @@ export const LIGHTNING_SOURCE = 'kma-lightning'
 export const LIGHTNING_GROUND_LAYER = 'kma-lightning-ground'
 export const LIGHTNING_CLOUD_LAYER = 'kma-lightning-cloud'
 export const LIGHTNING_BLINK_INTERVAL_MS = 800
-export const LIGHTNING_TIME_WINDOW_MINUTES = 60
+export const LIGHTNING_TIME_WINDOW_MINUTES = 30
+export const LIGHTNING_RECENT_COUNT_WINDOW_MINUTES = 5
 export const LIGHTNING_AGE_BANDS = [
-  { min: 0, max: 10, color: '#ff1f1f', opacity: 1, iconId: 'lightning-0-10' },
-  { min: 10, max: 20, color: '#ff00ff', opacity: 0.92, iconId: 'lightning-10-20' },
-  { min: 20, max: 30, color: '#2f55ff', opacity: 0.85, iconId: 'lightning-20-30' },
-  { min: 30, max: 40, color: '#1dd9e6', opacity: 0.78, iconId: 'lightning-30-40' },
-  { min: 40, max: 50, color: '#25d90a', opacity: 0.7, iconId: 'lightning-40-50' },
-  { min: 50, max: 60, color: '#ffeb00', opacity: 0.62, iconId: 'lightning-50-60' },
+  { min: 0, max: 5, color: '#ff1f1f', opacity: 1, iconId: 'lightning-0-5' },
+  { min: 5, max: 10, color: '#ff00ff', opacity: 0.92, iconId: 'lightning-5-10' },
+  { min: 10, max: 15, color: '#2f55ff', opacity: 0.85, iconId: 'lightning-10-15' },
+  { min: 15, max: 20, color: '#1dd9e6', opacity: 0.78, iconId: 'lightning-15-20' },
+  { min: 20, max: 25, color: '#25d90a', opacity: 0.7, iconId: 'lightning-20-25' },
+  { min: 25, max: 30, color: '#ffeb00', opacity: 0.62, iconId: 'lightning-25-30' },
 ]
 
 export function getLightningAgeBand(ageMinutes) {

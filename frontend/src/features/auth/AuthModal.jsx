@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, LogOut } from 'lucide-react'
 import { useAuth, ROLE_LABEL_KO } from './AuthContext.jsx'
+import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import './AuthModal.css'
 
 const ERROR_KO = {
@@ -15,6 +16,7 @@ const ERROR_KO = {
 }
 
 export default function AuthModal({ onClose }) {
+  useCloseOnBackButton(true, onClose)
   const { user, login, register, logout } = useAuth()
   const [mode, setMode] = useState('login') // 'login' | 'register'
   const [username, setUsername] = useState('')

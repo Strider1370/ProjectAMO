@@ -38,7 +38,7 @@ import useRadarMotionOverlay from '../weather-overlays/lib/useRadarMotionOverlay
 import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
 import NwpSliderBar from '../weather-overlays/NwpSliderBar.jsx'
-import LevelRail from '../weather-overlays/LevelRail.jsx'
+import LevelSliderPanel from '../weather-overlays/LevelSliderPanel.jsx'
 import ConvectiveOverlayControls from '../weather-overlays/ConvectiveOverlayControls.jsx'
 import ConvectiveOverlayCard from '../weather-overlays/ConvectiveOverlayCard.jsx'
 import EchoTopCard from '../weather-overlays/EchoTopCard.jsx'
@@ -360,6 +360,32 @@ const MapView = forwardRef(function MapView({
     togglePlay: toggleWeatherTimelinePlay,
     speed: weatherTimelineSpeed,
   } = useTimelineRail()
+
+  // 데스크톱 화살표키: 지도 이동 대신 좌우=타임라인, 상하=연직슬라이더(떠 있을 때만) 이동.
+  // 각 레일은 포커스 상태에서 이미 자체 onKeyDown으로 화살표를 처리하므로(TimelineRail,
+  // LevelSlider), 여기서는 그 DOM 노드에 키 이벤트를 그대로 전달만 한다.
+  useEffect(() => {
+    if (isMobile) return undefined
+    function onArrowKeyDown(event) {
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
+      const target = event.target
+      if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) return
+      // 레일 자체에 포커스가 있으면 그 컴포넌트의 onKeyDown이 이미 처리했다 — 중복 전달 방지.
+      if (target?.closest?.('.timeline-rail__viewport, .pressure-level-slider__track')) return
+
+      event.preventDefault()
+      const isHorizontal = event.key === 'ArrowLeft' || event.key === 'ArrowRight'
+      const forwardTarget = document.querySelector(
+        isHorizontal
+          ? '.timeline-rail__viewport'
+          : '.vertical-level-rail-stack .pressure-level-slider__track',
+      )
+      forwardTarget?.dispatchEvent(new KeyboardEvent('keydown', { key: event.key, bubbles: true, cancelable: true }))
+    }
+    window.addEventListener('keydown', onArrowKeyDown)
+    return () => window.removeEventListener('keydown', onArrowKeyDown)
+  }, [isMobile])
+
   const [windFlowOpacity, setWindFlowOpacity] = useState(0.8)
   const [windFlowTrail, setWindFlowTrail] = useState(0.9)
   const [windFlowWidth, setWindFlowWidth] = useState(1.5)
@@ -721,7 +747,6 @@ const MapView = forwardRef(function MapView({
   const radarMotionOverlay = useRadarMotionOverlay({
     radarEnabled: weatherOverlayModel.visibility.radar,
     hasExactMotionFrame: Boolean(weatherOverlayModel.radarMotion.dataUrl),
-    stale: weatherOverlayModel.radarMotion.stale,
   })
   const {
     radarFrames,
@@ -1053,6 +1078,8 @@ const MapView = forwardRef(function MapView({
       attributionControl: false,
     })
 
+    // 화살표키는 지도 이동이 아니라 타임라인/연직슬라이더 조작에 쓴다(아래 keydown 포워딩 참고).
+    map.keyboard.disable()
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
     if (showGeolocateControl) {
@@ -1646,11 +1673,8 @@ const MapView = forwardRef(function MapView({
           radarReferenceTimeMs={radarReferenceTimeMs}
           lightningReferenceTimeMs={lightningReferenceTimeMs}
           radarMotionAvailable={Boolean(radarMotion.dataUrl)}
-          radarMotionStale={radarMotion.stale}
-          radarMotionRequested={radarMotionOverlay.requestedVisible}
           radarMotionObservedAtMs={radarMotion.observedAtMs}
           radarMotionComparedFromMs={radarMotion.comparedFromMs}
-          onRadarMotionRequestedChange={radarMotionOverlay.setRequestedVisible}
             formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
             bottomDock={!isMobile}
             open={weatherLegendOpen}
@@ -1727,16 +1751,15 @@ const MapView = forwardRef(function MapView({
           availability={sliderAvailability}
           isElevated
           timeSliderEnabled={false}
-          levelRailEmbedded
           onSelectionChange={setNwpSelection}
         />
         {enableWindOverlay && metVisibility.turbulence && altLevelsFt.length > 1 && (
-          <LevelRail
-            title="고도"
-            items={altLevelsFt.map((ft) => ({ value: ft, label: String(ft / 1000) + 'K' }))}
-            activeValue={altLevelsFt.indexOf(selectedAltFt) >= 0 ? selectedAltFt : altLevelsFt[0]}
+          // 트랙 위쪽(index 0)이 위 화살표가 가는 방향 — 고도가 높은 쪽이 맨 위로 오게 내림차순.
+          <LevelSliderPanel
+            items={[...altLevelsFt].sort((a, b) => b - a).map((ft) => ({ id: ft, primary: `${ft.toLocaleString()} ft` }))}
+            activeValue={altLevelsFt.includes(selectedAltFt) ? selectedAltFt : altLevelsFt[0]}
             onSelect={setSelectedAltFt}
-            embedded
+            ariaLabel="난류 고도"
           />
         )}
         <ConvectiveOverlayControls ctpsVisible={metVisibility.ctps} minFl={convectiveOverlay.minFl} onMinFlChange={convectiveOverlay.setMinFl} />
@@ -1952,6 +1975,9 @@ const MapView = forwardRef(function MapView({
           onWindFlowOpacityChange={setWindFlowOpacity}
           onWindFlowTrailChange={setWindFlowTrail}
           onWindFlowWidthChange={setWindFlowWidth}
+          radarMotionAvailable={Boolean(radarMotion.dataUrl)}
+          radarMotionRequested={radarMotionOverlay.requestedVisible}
+          onRadarMotionRequestedChange={radarMotionOverlay.setRequestedVisible}
         />
       )}
 

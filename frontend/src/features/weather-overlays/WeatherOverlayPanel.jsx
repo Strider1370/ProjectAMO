@@ -38,6 +38,9 @@ function WeatherOverlayPanel({
   isLayerDisabled,
   getLayerBadge,
   showWind = true,
+  radarMotionAvailable = false,
+  radarMotionRequested = false,
+  onRadarMotionRequestedChange,
 }) {
   const isMobile = useIsMobile()
   // TEMP 숨김: flight_category 백엔드 수집 중단(용량 절감)에 맞춰 패널에서도 임시로 감춤.
@@ -87,7 +90,20 @@ function WeatherOverlayPanel({
     <div className="layer-tile-groups">
       {groups.filter((group) => group.ids.some((id) => layerById.has(id) && !TEMP_HIDDEN_LAYER_IDS.includes(id))).map((group) => (
         <section key={group.title} className="layer-tile-group">
-          <div className="layer-tile-group-title">{group.title}</div>
+          <div className="layer-tile-group-title">
+            {group.title}
+            {group.id === 'observation' && visibility.radar && (
+              <button
+                type="button"
+                className="layer-tile-group-title-action"
+                onClick={() => onRadarMotionRequestedChange?.((prev) => !prev)}
+                aria-pressed={radarMotionRequested}
+                disabled={!radarMotionAvailable}
+              >
+                레이더 에코 이동벡터 표시
+              </button>
+            )}
+          </div>
           <div className="layer-tile-grid">
             {group.ids.map((id) => {
               if (TEMP_HIDDEN_LAYER_IDS.includes(id)) return null

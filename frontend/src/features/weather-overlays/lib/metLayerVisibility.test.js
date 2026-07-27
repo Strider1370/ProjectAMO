@@ -28,7 +28,7 @@ test('getNextMetVisibility makes wind and temp mutually exclusive', () => {
       'wind',
       { lowPower: false },
     ),
-    { wind: true, temp: false, cloud: false, icing: false, windFlow: true, windSpeed: true },
+    { wind: true, temp: false, cloud: false, icing: false, turbulence: false, ctps: false, windFlow: true, windSpeed: true },
   )
 
   assert.deepEqual(
@@ -37,7 +37,7 @@ test('getNextMetVisibility makes wind and temp mutually exclusive', () => {
       'temp',
       { lowPower: false },
     ),
-    { wind: false, temp: true, cloud: false, icing: false, windFlow: false, windSpeed: true },
+    { wind: false, temp: true, cloud: false, icing: false, turbulence: false, ctps: false, windFlow: false, windSpeed: true },
   )
 
   assert.deepEqual(
@@ -46,7 +46,7 @@ test('getNextMetVisibility makes wind and temp mutually exclusive', () => {
       'cloud',
       { lowPower: false },
     ),
-    { wind: false, temp: false, cloud: true, icing: false, windFlow: false, windSpeed: true },
+    { wind: false, temp: false, cloud: true, icing: false, turbulence: false, ctps: false, windFlow: false, windSpeed: true },
   )
 })
 
@@ -68,7 +68,7 @@ test('getNextMetVisibility adds icing to NWP mutual exclusion', () => {
       'icing',
       { lowPower: false },
     ),
-    { wind: false, temp: false, cloud: false, icing: true, windFlow: false, windSpeed: true },
+    { wind: false, temp: false, cloud: false, icing: true, turbulence: false, ctps: false, windFlow: false, windSpeed: true },
   )
 
   assert.equal(
@@ -78,5 +78,47 @@ test('getNextMetVisibility adds icing to NWP mutual exclusion', () => {
       { lowPower: false },
     ).icing,
     false,
+  )
+})
+
+// 오른쪽 세로 슬라이더 자리는 하나뿐 — KIM(바람 등) ↔ 난류 ↔ 운정고도(ctps)는 서로 배타적이다.
+test('KIM, 난류, 운정고도는 세로 슬라이더 자리를 두고 서로 배타적', () => {
+  assert.deepEqual(
+    getNextMetVisibility(
+      { wind: false, temp: false, cloud: false, icing: false, turbulence: false, ctps: false, windFlow: false, windSpeed: false },
+      'turbulence',
+      { lowPower: false },
+    ),
+    { wind: false, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: false, windSpeed: false },
+  )
+
+  // 난류가 켜진 상태에서 KIM(바람)을 켜면 난류는 꺼진다.
+  assert.deepEqual(
+    getNextMetVisibility(
+      { wind: false, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: false, windSpeed: false },
+      'wind',
+      { lowPower: false },
+    ),
+    { wind: true, temp: false, cloud: false, icing: false, turbulence: false, ctps: false, windFlow: true, windSpeed: true },
+  )
+
+  // 운정고도를 켜면 KIM과 난류가 모두 꺼진다.
+  assert.deepEqual(
+    getNextMetVisibility(
+      { wind: true, temp: false, cloud: false, icing: false, turbulence: false, ctps: false, windFlow: true, windSpeed: true },
+      'ctps',
+      { lowPower: false },
+    ),
+    { wind: false, temp: false, cloud: false, icing: false, turbulence: false, ctps: true, windFlow: false, windSpeed: true },
+  )
+
+  // 운정고도가 켜진 상태에서 난류를 켜면 운정고도는 꺼진다.
+  assert.deepEqual(
+    getNextMetVisibility(
+      { wind: false, temp: false, cloud: false, icing: false, turbulence: false, ctps: true, windFlow: false, windSpeed: false },
+      'turbulence',
+      { lowPower: false },
+    ),
+    { wind: false, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: false, windSpeed: false },
   )
 })

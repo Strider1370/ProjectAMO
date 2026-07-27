@@ -81,7 +81,7 @@ test('buildWeatherOverlayModel selects latest visible timeline frame by default'
   assert.equal(model.weatherTimelineTicks.length, 3)
   assert.equal(model.radarFrame.tm, '202605140200')
   assert.equal(model.weatherTimelineVisible, true)
-  assert.equal(model.lightningLegendEntries[0].iconId, 'lightning-0-10')
+  assert.equal(model.lightningLegendEntries[0].iconId, 'lightning-0-5')
 })
 
 test('uses the actually rendered radar frame\'s own motion, not an earlier stale one', () => {
@@ -134,7 +134,7 @@ test('레이더가 꺼져 있어도 낙뢰 나이는 낙뢰 자료 자신의 수
     lightningData: {
       fetched_at: new Date(collectedAtMs).toISOString(),
       query: { tm: '202605141200' },
-      nationwide: { strikes: [{ lon: 127, lat: 37, type: 'G', type_name: 'ground', time: new Date(collectedAtMs - 5 * 60 * 1000).toISOString() }] },
+      nationwide: { strikes: [{ lon: 127, lat: 37, type: 'G', type_name: 'ground', time: new Date(collectedAtMs - 2 * 60 * 1000).toISOString() }] },
     },
     sigwxLowData: null,
     sigwxLowHistoryData: [],
@@ -154,7 +154,7 @@ test('레이더가 꺼져 있어도 낙뢰 나이는 낙뢰 자료 자신의 수
 
   assert.equal(model.lightningReferenceTimeMs, collectedAtMs)
   assert.equal(model.lightningCount, 1)
-  assert.equal(model.lightningGeoJSON.features[0].properties.iconId, 'lightning-0-10')
+  assert.equal(model.lightningGeoJSON.features[0].properties.iconId, 'lightning-0-5')
 })
 
 test('시각이 정확히 맞으면 이동 화살표 자료를 노출한다', () => {

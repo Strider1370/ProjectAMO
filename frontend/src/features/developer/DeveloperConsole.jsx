@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, TabList, Tab, makeStyles, tokens } from '../../shared/ui/fluent.js'
 import TriggerTab from './tabs/TriggerTab.jsx'
 import ObserveTab from './tabs/ObserveTab.jsx'
+import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 
 const useStyles = makeStyles({
   surface: { width: '760px', maxWidth: '96vw' },
@@ -12,6 +13,7 @@ const useStyles = makeStyles({
 // /dev 페이지와 완전히 동일한 조작/관찰 탭(TriggerTab·ObserveTab)을 재사용한다.
 // 닫힌 동안엔 탭 내용을 언마운트해 ObserveTab의 2초 폴링을 멈춘다.
 export default function DeveloperConsole({ open, onOpenChange }) {
+  useCloseOnBackButton(open, () => onOpenChange(false))
   const s = useStyles()
   const [tab, setTab] = useState('trigger')
   return (

@@ -60,11 +60,8 @@ function WeatherLegends({
   radarReferenceTimeMs,
   lightningReferenceTimeMs,
   radarMotionAvailable = false,
-  radarMotionStale = false,
-  radarMotionRequested = false,
   radarMotionObservedAtMs,
   radarMotionComparedFromMs,
-  onRadarMotionRequestedChange,
   formatReferenceTimeLabel,
   bottomDock = false,
   open: controlledOpen,
@@ -98,21 +95,10 @@ function WeatherLegends({
             ))}
           </div>
           {radarLegendVisible && <div className="radar-motion-control">
-            <button
-              type="button"
-              className="radar-motion-toggle"
-              onClick={() => onRadarMotionRequestedChange?.((visible) => !visible)}
-              aria-pressed={radarMotionRequested}
-              disabled={!radarMotionAvailable || radarMotionStale}
-            >
-              이동 화살표 표시
-            </button>
             <span className="radar-motion-note">
-              {radarMotionStale
-                ? '레이더 자료 지연'
-                : radarMotionAvailable
-                  ? `관측 ${formatReferenceTimeLabel(radarMotionObservedAtMs)} · 비교 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} · 길이 = 10분 이동거리 · 예측 아님`
-                  : '표시 중인 레이더 프레임의 이동 자료 없음'}
+              {radarMotionAvailable
+                ? `관측 ${formatReferenceTimeLabel(radarMotionObservedAtMs)} · 비교 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} · 길이 = 10분 이동거리 · 예측 아님`
+                : '표시 중인 레이더 프레임의 이동 자료 없음'}
             </span>
           </div>}
         </div>
@@ -164,7 +150,7 @@ function WeatherLegends({
       {lightningLegendVisible && (
         <div className="lightning-time-legend" aria-label="Lightning time legend">
           <div className="lightning-time-legend-title">LIGHTNING</div>
-          <div className="lightning-time-legend-sub">10 MIN</div>
+          <div className="lightning-time-legend-sub">5 MIN</div>
           <div className="lightning-time-legend-current">
             {formatReferenceTimeLabel(radarLegendVisible ? radarReferenceTimeMs : lightningReferenceTimeMs)}
           </div>
@@ -313,7 +299,7 @@ function WeatherLegends({
 
   const mobileLegends = [
     radarLegendVisible && { key: 'radar', title: '레이더 · mm/h', entries: radarRainrateLegend, reverse: true },
-    lightningLegendVisible && { key: 'ltg', title: '낙뢰 · 10분', entries: lightningLegendEntries },
+    lightningLegendVisible && { key: 'ltg', title: '낙뢰 · 5분', entries: lightningLegendEntries },
     windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
     temperatureLegendVisible && { key: 'temp', title: '기온 · °C', entries: temperatureLegendEntries },
     cloudLegendVisible && { key: 'cloud', title: '습도 · T-Td °C', entries: cloudLegendEntries },
@@ -336,21 +322,10 @@ function WeatherLegends({
         ))}
         {radarLegendVisible && (
           <div className="radar-motion-control radar-motion-control--mobile">
-            <button
-              type="button"
-              className="radar-motion-toggle"
-              onClick={() => onRadarMotionRequestedChange?.((visible) => !visible)}
-              aria-pressed={radarMotionRequested}
-              disabled={!radarMotionAvailable || radarMotionStale}
-            >
-              {'\uC774\uB3D9 \uD654\uC0B4\uD45C \uD45C\uC2DC'}
-            </button>
             <span className="radar-motion-note">
-              {radarMotionStale
-                ? '\uB808\uC774\uB354 \uC790\uB8CC \uC9C0\uC5F0'
-                : radarMotionAvailable
-                  ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9 \u00B7 \uAE38\uC774 = 10\uBD84 \uC774\uB3D9\uAC70\uB9AC`
-                  : '\uC774\uB3D9 \uC790\uB8CC \uC5C6\uC74C'}
+              {radarMotionAvailable
+                ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9 \u00B7 \uAE38\uC774 = 10\uBD84 \uC774\uB3D9\uAC70\uB9AC`
+                : '\uC774\uB3D9 \uC790\uB8CC \uC5C6\uC74C'}
             </span>
           </div>
         )}

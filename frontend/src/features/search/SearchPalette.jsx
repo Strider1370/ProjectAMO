@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SearchBox } from '../../shared/ui/fluent.js'
 import { matchSearch } from '../map/layerActions.js'
+import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import './SearchPalette.css'
 
 // 결과 타입 꼬리표(중립색) — 동음("위성") 구분 + 무엇을 하는지 표시.
@@ -10,6 +11,7 @@ const TYPE_TAG = {
 
 // 공항 + 기능 통합 검색 팔레트. catalog=buildSearchCatalog(airports), onRun=App의 라우터.
 export default function SearchPalette({ open, onClose, catalog, onRun }) {
+  useCloseOnBackButton(open, onClose)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef(null)

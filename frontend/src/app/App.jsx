@@ -19,6 +19,7 @@ import { buildSearchCatalog } from '../features/map/layerActions.js'
 import { mergeAdvisoryPayloads, mergeAirportPayloads } from '../api/weatherApi.js'
 import { useLastSeenVersion } from '../features/about/useLastSeenVersion.js'
 import useIsMobile from '../shared/ui/useIsMobile.js'
+import ExitOnDoubleBack from '../shared/ui/ExitOnDoubleBack.jsx'
 import { TimeZoneProvider, useTimeZone } from '../shared/timezone/TimeZoneContext.jsx'
 
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
@@ -263,6 +264,7 @@ function MainAppShell() {
       )}
 
       <div className="utc-bar">{formatTimeByTz(nowMs, tz)}</div>
+      <ExitOnDoubleBack />
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
       {deeplinkFlightId != null && (
         <FlightAlertDetail

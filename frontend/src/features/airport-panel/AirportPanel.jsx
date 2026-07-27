@@ -14,6 +14,7 @@ import NotamTab from './tabs/NotamTab.jsx'
 import MoonSection from './tabs/MoonSection.jsx'
 import WarningCarousel from './WarningCarousel.jsx'
 import { resolveAirportBanner } from './lib/airportBanner.js'
+import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import './AirportPanel.css'
 
 const AIRPORT_HEADER_NAME_KO = {
@@ -58,6 +59,9 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // 모바일 뒤로가기 → 드로어만 닫기 (앱 자체를 벗어나지 않게)
+  useCloseOnBackButton(!!airport, onClose)
 
   // 기상정보는 지연 로드 대상인데, info 섹션이 맨 아래라 스크롤 감지(IntersectionObserver)
   // 트리거가 안 걸려 fetch가 영영 안 불리는 문제가 있었다. 풀피처 공항 패널이 열리면(공항 변경 포함)

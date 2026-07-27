@@ -7,11 +7,15 @@ import { entriesLeftToRight } from './lib/legendOrder.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const source = fs.readFileSync(path.join(here, 'WeatherLegends.jsx'), 'utf8')
+const panelSource = fs.readFileSync(path.join(here, 'WeatherOverlayPanel.jsx'), 'utf8')
 const css = fs.readFileSync(path.join(here, '../map/MapView.css'), 'utf8')
 
-test('radar legend shows the motion toggle', () => {
+// 토글 버튼은 레이더 타일을 켜는 즉시 눈에 띄도록 WeatherOverlayPanel(레이어 패널)의
+// "레이더/위성" 제목 줄로 옮겼다 — 범례 팝업 안에 있으면 찾기 어렵다는 피드백 반영.
+test('the radar motion toggle lives in the layer panel, not the legend', () => {
   assert.doesNotMatch(source, /const radarMotionEnabled/)
-  assert.match(source, /이동 화살표 표시/)
+  assert.doesNotMatch(source, /radar-motion-toggle/)
+  assert.match(panelSource, /레이더 에코 이동벡터 표시/)
   assert.match(css, /\.map-view-wrapper \.map-right-legends > \* \{[\s\S]*?pointer-events:\s*auto/)
 })
 
