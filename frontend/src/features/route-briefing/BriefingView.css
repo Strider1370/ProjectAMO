@@ -204,10 +204,27 @@
 .bv-leg-sub, .bv-leg-disclaimer { display: block; color: var(--text-3); margin-top: var(--space-xxs); }
 .bv-leg-disclaimer { max-width: 280px; text-align: right; }
 .bv-leg-scroll { overflow-x: auto; margin-top: var(--space-s); }
-.bv-leg-table { min-width: 880px; font-variant-numeric: tabular-nums; }
-.bv-leg-table th { color: var(--text-3); font-size: var(--fs-200); font-weight: var(--fw-regular); white-space: nowrap; }
-.bv-leg-table td { font-size: var(--fs-200); vertical-align: top; }
-.bv-leg-hazards { display: grid; gap: var(--space-xxs); min-width: 190px; }
+.bv-leg-table { min-width: 720px; font-variant-numeric: tabular-nums; table-layout: fixed; }
+.bv-leg-table th { color: var(--text-3); font-size: var(--fs-300); font-weight: var(--fw-regular); white-space: nowrap; }
+.bv-leg-table td { font-size: var(--fs-300); vertical-align: top; }
+/* 위험기상이 화면을 지배하도록 — 나머지 5열은 내용에 맞춰 좁힌다. */
+.bv-leg-table th:nth-child(1), .bv-leg-table td:nth-child(1) { width: 19%; }
+.bv-leg-table th:nth-child(2), .bv-leg-table td:nth-child(2) { width: 10%; }
+.bv-leg-table th:nth-child(3), .bv-leg-table td:nth-child(3) { width: 10%; }
+.bv-leg-table th:nth-child(4), .bv-leg-table td:nth-child(4) { width: 13%; }
+.bv-leg-table th:nth-child(5), .bv-leg-table td:nth-child(5) { width: 8%; }
+.bv-leg-table th:nth-child(6), .bv-leg-table td:nth-child(6) { width: 40%; }
+.bv-leg-none { color: var(--text-3); }
+.bv-leg-hazards { display: flex; flex-wrap: wrap; gap: var(--space-xxs); }
+.bv-leg-chip {
+  display: inline-flex; align-items: baseline; gap: var(--space-xxs);
+  padding: 2px var(--space-xs); border-radius: var(--radius-md);
+  font-size: var(--fs-300); line-height: 1.45; white-space: nowrap;
+}
+.bv-leg-chip-note { font-size: var(--fs-200); opacity: 0.75; }
+.bv-leg-chip.is-red { background: var(--level-red-bg); color: var(--level-red); }
+.bv-leg-chip.is-amber { background: var(--level-amber-bg); color: var(--level-amber); }
+.bv-leg-chip.is-gray { background: var(--level-gray-bg); color: var(--level-gray); }
 .bv-leg-tailwind { color: var(--level-green); }
 .bv-leg-headwind { color: var(--level-amber); }
 
@@ -217,8 +234,9 @@
   .bv-leg-table thead { display: none; }
   .bv-leg-table tbody { display: grid; gap: var(--space-s); }
   .bv-leg-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs) var(--space-m); padding: var(--space-m); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); }
-  .bv-leg-row td { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: var(--space-xs); padding: 0; overflow-wrap: anywhere; }
-  .bv-leg-row td::before { content: attr(data-label); color: var(--text-3); font-size: var(--fs-200); }
+  .bv-leg-row td { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: var(--space-xs); padding: 0; overflow-wrap: anywhere; }
+  .bv-leg-row td::before { content: attr(data-label); color: var(--text-3); font-size: var(--fs-300); }
+  .bv-leg-table td:nth-child(n) { width: auto; }
   .bv-leg-row td:first-child, .bv-leg-row td:last-child { grid-column: 1 / -1; }
   .bv-leg-head { display: grid; }
   .bv-leg-disclaimer { max-width: none; text-align: left; }
@@ -327,4 +345,14 @@
 .bv-xfull-close {
   position: absolute; top: 10px; right: 12px; z-index: 2; width: 36px; height: 36px; border-radius: 999px;
   border: 1px solid var(--stroke-2); background: var(--bg-1); color: var(--accent); font-size: 20px; line-height: 1; cursor: pointer;
+}
+
+/* 모바일 시트 푸터 "이전 단계" — 경로 패널로 돌아가는 유일한 가시적 출구.
+   경로 패널 푸터(RouteBriefing.css)와 같은 모양이지만, 브리핑은 별도 청크라
+   그 파일이 로드돼 있다는 보장이 없어 여기서 자체적으로 정의한다. */
+.bv-sheet-footer { display: flex; }
+.bv-back-step {
+  flex: 1 1 auto; min-height: 44px; border-radius: var(--radius-lg);
+  border: 1px solid var(--stroke-1); background: var(--bg-1); color: var(--text-2);
+  font: inherit; font-weight: var(--fw-bold); cursor: pointer;
 }

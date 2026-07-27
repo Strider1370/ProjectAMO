@@ -10,7 +10,7 @@ export const CROSS_SECTION_TOGGLES = [
   ['advisories', 'SIGMET/AIRMET'],
 ]
 
-const DEFAULT_LAYERS = { temp: true, wind: true, icing: false, moisture: false, turbulence: true, advisories: false }
+const DEFAULT_LAYERS = { temp: true, wind: true, icing: false, moisture: true, turbulence: false, advisories: true }
 
 export function useCrossSectionLayers(initial = DEFAULT_LAYERS) {
   const [layers, setLayers] = useState(initial)

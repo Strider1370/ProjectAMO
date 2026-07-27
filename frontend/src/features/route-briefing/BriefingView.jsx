@@ -75,11 +75,13 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   const hazardCodes = (briefing?.sections?.adverse?.hazards ?? []).map((h) => h.code)
   const modelKinds = new Set((briefing?.sections?.enroute?.model?.elements ?? []).map((e) => e.kind))
   const hazHas = (codes) => codes.some((c) => hazardCodes.includes(c))
+  // 기온·습도·바람·SIGMET/AIRMET은 항상 기본 ON. 착빙·난류는 해당 현상이 있을 때만.
+  const icingOn = hazHas(['SEV_ICE', 'MOD_ICE']) || modelKinds.has('icing')
   const [xLayers, toggleXLayer] = useCrossSectionLayers({
-    temp: false, wind: false, moisture: false,
-    icing: hazHas(['SEV_ICE', 'MOD_ICE']) || modelKinds.has('icing'),
+    temp: true, wind: true, advisories: true,
+    icing: icingOn,
+    moisture: !icingOn, // 착빙과 습도는 같은 영역을 칠해 색이 겹친다 — 착빙이 켜지면 습도는 양보.
     turbulence: hazHas(['SEV_TURB', 'MOD_TURB']) || modelKinds.has('turbulence'),
-    advisories: hazardCodes.length > 0,
   })
   const onFocusRef = useRef(onFocus)
   onFocusRef.current = onFocus
@@ -432,16 +434,26 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
           </div>
         )}
         {legs.length > 0 && <RouteWeatherLegTable legs={legs} selectedAltitudeFt={sections.enroute.plannedCruiseAltitudeFt} />}
-        {verticalProfile && (
-          <>
-            <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} />
-            <div className={`bv-xsection${isMobile ? ' bv-xsection-scroll' : ''}`}>
-              <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} />
+        {(verticalProfile || sections.enroute.crossSectionAvailable) && (
+          <section className="bv-leg-briefing" aria-label="연직단면도">
+            <div className="bv-leg-head">
+              <div>
+                <Subtitle2 as="h4">연직단면도</Subtitle2>
+                <Caption1 className="bv-leg-sub">경로를 따라 자른 고도 단면 · 레이어로 표시 항목을 켜고 끕니다</Caption1>
+              </div>
             </div>
-          </>
-        )}
-        {sections.enroute.crossSectionAvailable && (isMobile ? verticalProfile : onOpenProfile) && (
-          <Button appearance="secondary" size="small" onClick={isMobile ? () => setXsectionFull(true) : onOpenProfile}>단면도 크게 열기</Button>
+            {verticalProfile && (
+              <>
+                <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} />
+                <div className={`bv-xsection${isMobile ? ' bv-xsection-scroll' : ''}`}>
+                  <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} />
+                </div>
+              </>
+            )}
+            {sections.enroute.crossSectionAvailable && (isMobile ? verticalProfile : onOpenProfile) && (
+              <Button appearance="secondary" size="small" onClick={isMobile ? () => setXsectionFull(true) : onOpenProfile}>단면도 크게 열기</Button>
+            )}
+          </section>
         )}
         {rawWinds && (
           <details className="bv-rawwinds">
@@ -697,7 +709,16 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
       <>
         <MobileSheet open eyebrow="비행 전 브리핑" title={`${meta.departureAirport} → ${meta.arrivalAirport}`}
           headerExtra={<Badge appearance="tint">{meta.flightRule}</Badge>}
-          onClose={onClose} detent={detent} onDetentChange={setDetent} peekContent={peek}>
+          onClose={onClose} detent={detent} onDetentChange={setDetent} peekContent={peek}
+          // 브리핑은 경로 패널 위에 뜨는 별도 화면이라 패널의 "이전 단계" 푸터를 물려받지
+          // 않는다. 모바일 시트에는 헤더 닫기 버튼도 없어서(그래버 스와이프가 그 역할을 겸함)
+          // 경로를 고치러 돌아갈 길이 화면에 안 보였다. 데스크톱 "닫기"와 같은 동작을
+          // 앞 단계들과 같은 표현으로 노출한다 — 닫으면 경로 패널로 돌아간다.
+          footer={(
+            <div className="bv-sheet-footer">
+              <button type="button" className="bv-back-step" onClick={onClose}>이전 단계</button>
+            </div>
+          )}>
           <div className="bv-mobile" ref={containerRef}>
             {etdEtaLine && <Caption1 style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>{etdEtaLine}</Caption1>}
             <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
