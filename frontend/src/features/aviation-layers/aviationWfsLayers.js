@@ -60,6 +60,8 @@ export const AVIATION_WFS_LAYERS = [
     internalLabelLayerId: 'wfs-fir-internal-labels',
     typeName: 'lt_c_aisfirc',
     dataUrl: '/data/fir.geojson',
+    // useFirTickOverlay가 같은 파일을 좌표 계산용으로 읽는다 — 지도 소스와 한 번만 받아 공유.
+    shareJson: true,
     fillRole: 'incheon-fir',
     lineRole: 'incheon-fir-boundary',
     color: '#1485d4',

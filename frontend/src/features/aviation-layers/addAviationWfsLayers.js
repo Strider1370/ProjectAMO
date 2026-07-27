@@ -364,6 +364,8 @@ export function addAviationWfsLayers(map) {
     // setLayerVisibility(mapLayerUtils.js)가 그때서야 dataUrl로 소스를 채운다.
     addLazyGeoJsonSource(map, layer.sourceId, layer.dataUrl, {
       eager: layer.defaultVisible,
+      shareJson: layer.shareJson, // 자바스크립트 쪽에서도 같은 파일을 읽는 레이어(FIR)는 한 번만 받아 공유
+
       // 데이터 출처 표기(레이어 켜졌을 때만 Mapbox attribution에 노출). VAT-Spy FIR = CC-BY-SA-4.0.
       ...(layer.attribution ? { attribution: layer.attribution } : {}),
     })

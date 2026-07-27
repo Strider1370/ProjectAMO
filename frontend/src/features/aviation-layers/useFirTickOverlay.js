@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AVIATION_WFS_LAYERS } from './aviationWfsLayers.js'
+import { loadGeoJsonOnce } from '../map/lib/mapLayerUtils.js'
 
 // FIR 경계 틱(수직 짧은 획)을 symbol이 아니라 '실제 선분 지오메트리'로 렌더한다.
 // 왜: symbol-placement:'line'은 스크롤 연속 줌 후 배치가 stale로 남아 대각선에서 틱이 선에서 떨어진다
@@ -77,11 +78,12 @@ export function useFirTickOverlay(mapRef, isStyleReady, styleRevision) {
   const fir = AVIATION_WFS_LAYERS.find((l) => l.id === 'fir')
   const [lines, setLines] = useState(null)
 
-  // 틱을 다는 경계선 좌표를 1회 로드(브라우저 캐시 — 지도 소스가 이미 받은 파일).
+  // 틱을 다는 경계선 좌표. 지도 소스와 같은 파일이라 loadGeoJsonOnce로 공유한다 —
+  // 예전엔 각자 fetch해서, 첫 방문에 두 요청이 동시에 나가 브라우저 캐시로도 못 막고
+  // 254KB를 두 번 받았다.
   useEffect(() => {
     let alive = true
-    fetch(fir.dataUrl)
-      .then((r) => r.json())
+    loadGeoJsonOnce(fir.dataUrl)
       .then((fc) => {
         if (!alive) return
         const out = []

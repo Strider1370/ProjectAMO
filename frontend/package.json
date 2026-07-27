@@ -9,7 +9,7 @@
   "packageManager": "npm@10.9.8",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "NODE_ENV=production vite build",
     "test": "node --test",
     "dev:contract": "node verification/port-guard.mjs && playwright test",
     "dev:contract:fast": "CONTRACT_REUSE_SERVER=1 playwright test --project=desktop --retries=0",
