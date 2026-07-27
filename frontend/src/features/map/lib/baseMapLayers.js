@@ -217,9 +217,41 @@ export function addGeoBoundaryLayers(map) {
   })
 }
 
+// mapbox 레이어 가시 규칙과 동일: minzoom 이상, maxzoom 미만일 때만 실제로 그려진다.
+export function geoLayerInZoomRange(layer, zoom) {
+  if (layer.minzoom !== undefined && zoom < layer.minzoom) return false
+  if (layer.maxzoom !== undefined && zoom >= layer.maxzoom) return false
+  return true
+}
+
+// 지금 확대 단계에서 실제로 그려지는 레이어의 데이터만 받는다. sigungu.json은 4.4MB인데
+// 시작 zoom 6에서는 그려지지도 않으므로(minzoom 9) 예전엔 통째로 낭비됐다.
+// ensureGeoJsonSourceLoaded가 이미 로드된 소스를 걸러내므로 반복 호출은 Set 조회 한 번.
+function loadGeoSourcesForZoom(map) {
+  const zoom = map.getZoom()
+  GEO_LAYERS.forEach((layer) => {
+    if (geoLayerInZoomRange(layer, zoom)) ensureGeoJsonSourceLoaded(map, layer.sourceId, layer.url)
+  })
+}
+
+// 경계선을 켜 둔 동안에는 확대할 때마다 범위에 새로 들어온 레이어를 받아야 한다.
+// 이 연결이 없으면 확대해도 시군구 경계가 영영 안 나온다.
+const geoZoomHandlers = new WeakMap()
+
 export function setGeoBoundaryVisibility(map, show) {
   if (show) {
-    GEO_LAYERS.forEach(({ sourceId, url }) => ensureGeoJsonSourceLoaded(map, sourceId, url))
+    loadGeoSourcesForZoom(map)
+    if (!geoZoomHandlers.has(map)) {
+      const onZoom = () => loadGeoSourcesForZoom(map)
+      geoZoomHandlers.set(map, onZoom)
+      map.on('zoom', onZoom)
+    }
+  } else {
+    const onZoom = geoZoomHandlers.get(map)
+    if (onZoom) {
+      map.off('zoom', onZoom)
+      geoZoomHandlers.delete(map)
+    }
   }
   GEO_LAYERS.forEach(({ layerId }) => setMapLayerVisible(map, layerId, show))
 }

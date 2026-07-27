@@ -1,5 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+// node에는 전역 DOMParser가 없다(브라우저는 내장). routeImport.js는 전역만 쓰므로
+// 테스트 환경의 폴백은 여기서 심는다 — 그래야 xmldom이 운영 번들에 실리지 않는다.
+import { DOMParser } from '@xmldom/xmldom'
+globalThis.DOMParser ??= DOMParser
 import { parseRouteFile, extractRoutePaths, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
 
 const GEOJSON_LINE = JSON.stringify({

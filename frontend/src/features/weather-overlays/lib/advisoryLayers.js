@@ -49,6 +49,27 @@ const ADVISORY_MARKER_WIDTH = 176
 const ADVISORY_MARKER_HEIGHT = 52
 const ADVISORY_ICON_CENTER_X = ADVISORY_MARKER_WIDTH / 2
 
+// 마커는 이동방향·속도를 덧그리므로 현상마다 다른 이미지지만, 합성 재료인 원본 PNG는 같다.
+// markerKey로만 걸러내면 같은 PNG를 현상 수만큼 내려받는다(운영 실측 EMBD_TS.png 63회).
+// 진행 중인 로드까지 URL 단위로 공유해 1회로 줄인다. 실패는 캐시하지 않는다 — 남기면
+// 일시적 네트워크 오류가 새로고침 전까지 그 아이콘을 영구히 못 쓰게 만든다.
+const advisoryIconLoads = new Map()
+
+function loadAdvisoryIcon(map, url) {
+  const cached = advisoryIconLoads.get(url)
+  if (cached) return cached
+
+  const pending = new Promise((resolve, reject) => {
+    map.loadImage(url, (error, image) => {
+      if (error || !image) reject(error)
+      else resolve(image)
+    })
+  })
+  pending.catch(() => advisoryIconLoads.delete(url))
+  advisoryIconLoads.set(url, pending)
+  return pending
+}
+
 function ensureAdvisoryMarkerImage(map, feature) {
   const props = feature.properties || {}
   const direction = Number.isFinite(props.motionDirection) ? props.motionDirection : null
@@ -57,8 +78,8 @@ function ensureAdvisoryMarkerImage(map, feature) {
   props.markerKey = markerKey
   if (!props.iconUrl || map.hasImage(markerKey)) return
 
-  map.loadImage(props.iconUrl, (error, image) => {
-    if (error || !image || map.hasImage(markerKey) || typeof document === 'undefined') return
+  loadAdvisoryIcon(map, props.iconUrl).then((image) => {
+    if (map.hasImage(markerKey) || typeof document === 'undefined') return
 
     const canvas = document.createElement('canvas')
     canvas.width = ADVISORY_MARKER_WIDTH
@@ -95,7 +116,7 @@ function ensureAdvisoryMarkerImage(map, feature) {
     }
 
     map.addImage(markerKey, context.getImageData(0, 0, ADVISORY_MARKER_WIDTH, ADVISORY_MARKER_HEIGHT))
-  })
+  }).catch(() => {}) // 아이콘 로드 실패는 기존 동작대로 조용히 무시(마커 없이 폴리곤만 표시)
 }
 
 function formatAltitude(item) {

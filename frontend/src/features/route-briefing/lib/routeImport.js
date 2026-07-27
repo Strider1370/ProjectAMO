@@ -1,16 +1,14 @@
 // 외부 경로 파일(GeoJSON/GPX/KML)을 우리 VFR 경유점 파이프라인이 먹을 수 있는
 // [lon,lat] 좌표 배열로 바꾸는 순수 함수 모음. UI/상태 없음 — useRouteBriefing이 호출한다.
 import { kml as kmlToGeoJSON } from '@tmcw/togeojson'
-import { DOMParser as NodeDOMParser } from '@xmldom/xmldom'
 import simplify from 'simplify-js'
 import { greatCircleNm } from './routePreview.js'
 
-// 브라우저는 전역 DOMParser를 우선 쓰고, 전역이 없는 환경(node --test)에선 xmldom로
-// 폴백한다. 두 구현 모두 표준 DOM Level 1 API(getElementsByTagName·getAttribute·
-// textContent)를 지원하므로 이후 코드는 어느 쪽이 만든 doc인지 신경 쓸 필요 없다.
-function getDomParserCtor() {
-  return typeof DOMParser !== 'undefined' ? DOMParser : NodeDOMParser
-}
+// 전역 DOMParser만 쓴다. 브라우저는 내장이라 항상 있고, node --test에는 없으므로
+// routeImport.test.js가 xmldom을 globalThis에 심어준다. 여기서 xmldom을 직접 import하면
+// 브라우저에서 한 줄도 실행되지 않는 268KB(전송 68KB)가 첫 화면 번들에 실린다.
+// 두 구현 모두 표준 DOM Level 1 API(getElementsByTagName·getAttribute·textContent)를
+// 지원하므로 이후 코드는 어느 쪽이 만든 doc인지 신경 쓸 필요 없다.
 
 // 지도 maxBounds(frontend/src/features/map/mapConfig.js MAP_CONFIG.maxBounds)와 동일한
 // 한국 FIR 근사 경계. 숫자 4개뿐이라 별도 import로 feature 간 결합을 만들지 않고 값만 미러링.
@@ -47,8 +45,7 @@ export function parseRouteFile(name, text) {
     }
     return { format: 'geojson', geojson }
   }
-  const Ctor = getDomParserCtor()
-  const doc = new Ctor().parseFromString(text, 'text/xml')
+  const doc = new DOMParser().parseFromString(text, 'text/xml')
   if (kind === 'gpx') return { format: 'gpx', doc }
   return { format: 'kml', geojson: kmlToGeoJSON(doc) }
 }
