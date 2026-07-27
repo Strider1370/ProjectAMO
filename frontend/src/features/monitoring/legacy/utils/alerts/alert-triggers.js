@@ -16,18 +16,6 @@ function findNewWarnings(current, previous) {
   );
 }
 
-function findClearedWarnings(current, previous) {
-  if (!previous?.warnings) return [];
-  if (!current?.warnings) return previous.warnings;
-
-  const curKeys = new Set(
-    current.warnings.map((w) => `${w.wrng_type}:${w.valid_start}:${w.valid_end}`)
-  );
-  return previous.warnings.filter(
-    (w) => !curKeys.has(`${w.wrng_type}:${w.valid_start}:${w.valid_end}`)
-  );
-}
-
 // T-01: 경보 발령
 const warningIssued = {
   id: "warning_issued",
@@ -45,26 +33,6 @@ const warningIssued = {
       message: filtered
         .map((w) => `${w.wrng_type_name} (${formatUtc(w.valid_start)} ~ ${formatUtc(w.valid_end)})`)
         .join("\n"),
-      data: filtered,
-    };
-  },
-};
-
-// T-02: 경보 해제
-const warningCleared = {
-  id: "warning_cleared",
-  name: "공항경보 해제",
-  category: "warning",
-  severity: "info",
-  evaluate(current, previous, params) {
-    const cleared = findClearedWarnings(current, previous);
-    const filtered = cleared.filter((w) => params.types.includes(w.wrng_type));
-    if (filtered.length === 0) return null;
-    return {
-      triggerId: "warning_cleared",
-      severity: "info",
-      title: `경보 해제: ${filtered.map((w) => w.wrng_type_name).join(", ")}`,
-      message: "경보가 해제되었습니다.",
       data: filtered,
     };
   },
@@ -271,7 +239,6 @@ const lightningDetected = {
 
 const triggers = [
   warningIssued,
-  warningCleared,
   lowVisibility,
   highWind,
   weatherPhenomenon,

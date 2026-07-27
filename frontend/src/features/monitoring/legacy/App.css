@@ -3042,6 +3042,37 @@ body {
   flex-direction: column;
   overflow: hidden;
 }
+/* 접힌 상태 — 패널 자리에 남는 작은 알약. 누르면 그 자리에서 다시 펼쳐진다. */
+.alert-panel-badge {
+  position: fixed;
+  top: 76px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--alert-color);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--alert-color);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 10px var(--alert-glow);
+}
+.alert-panel-badge:hover {
+  background: var(--alert-color);
+  color: #fff;
+}
+.alert-panel-badge--critical {
+  animation: alert-panel-badge-pulse 1.6s ease-in-out infinite;
+}
+@keyframes alert-panel-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--alert-glow); }
+  50%      { box-shadow: 0 0 0 6px var(--alert-glow); }
+}
+
 .alert-panel-empty {
   padding: 14px 16px;
   border-radius: 12px;

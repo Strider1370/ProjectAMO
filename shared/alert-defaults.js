@@ -31,10 +31,6 @@ const alertDefaults = {
       enabled: true,
       params: { types: ["00", "1", "2", "3", "4", "5", "7", "8", "13"] },
     },
-    warning_cleared: {
-      enabled: true,
-      params: { types: ["00", "1", "2", "3", "4", "5", "7", "8", "13"] },
-    },
     low_visibility: {
       enabled: true,
       params: { threshold: 1500 },

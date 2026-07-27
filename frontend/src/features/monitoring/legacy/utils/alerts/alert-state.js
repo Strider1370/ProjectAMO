@@ -6,7 +6,7 @@ const alertHistory = {};
 export function buildAlertKey(result, icao) {
   const { triggerId, data } = result;
 
-  if (triggerId === "warning_issued" || triggerId === "warning_cleared") {
+  if (triggerId === "warning_issued") {
     const items = Array.isArray(data) ? data : [];
     const suffix = items.map((w) => `${w.wrng_type_name}:${w.valid_start}-${w.valid_end}`).join("|");
     return `${triggerId}:${icao}:${suffix}`;

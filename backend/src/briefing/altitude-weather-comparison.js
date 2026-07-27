@@ -157,8 +157,10 @@ export function weightedTemperature(levels, axis, altitudeFt, weights, includeZe
   const values = []
   for (const [index] of (axis?.samples ?? []).entries()) {
     if (!includeZeroWeight && !(weights[index] > 0)) continue
-    const value = interpolate(levels, altitudeFt, index, 'T')
-    if (value) values.push({ value: value.value - 273.15, weight: weights[index] })
+    // 단면 샘플러가 내보내는 키는 소문자 t이고 이미 섭씨다(cross-section-sampler의 nullableC).
+    // 대문자 'T' + 켈빈 변환은 원본 격자 필드명을 그대로 쓴 것이라 항상 null이 됐다.
+    const value = interpolate(levels, altitudeFt, index, 't')
+    if (value) values.push({ value: value.value, weight: weights[index] })
   }
   if (!values.length) return null
   const totalWeight = values.reduce((sum, item) => sum + item.weight, 0)

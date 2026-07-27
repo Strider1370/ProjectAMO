@@ -20,7 +20,6 @@ import {
 
 const TRIGGER_LABELS = {
   warning_issued: "공항경보가 발령되면 알림",
-  warning_cleared: "공항경보 해제는 조용히 표시",
   low_visibility: "시정이 나빠지면 알림",
   high_wind: "바람이 강해지면 알림",
   weather_phenomenon: "특이기상(TS/SN/FG)이 나타나면 알림",
@@ -85,7 +84,7 @@ const ALERT_USER_SECTIONS = [
     id: "forecast-official",
     title: "예고 / 공식 알림",
     description: "앞으로 대비해야 할 상황이나 공식 경보를 알려줍니다.",
-    triggerIds: ["taf_adverse_weather", "warning_issued", "warning_cleared"],
+    triggerIds: ["taf_adverse_weather", "warning_issued"],
   },
   {
     id: "repeat",
@@ -545,7 +544,7 @@ export default function Settings({
                     <input type="number" min={0} max={3600} value={cooldown} onChange={(e) => setCooldown(e.target.value)} />
                   </label>
                   <label className="alert-settings-row">
-                    <span>팝업이 화면에 머무는 시간(초)</span>
+                    <span>알림 목록이 접히기까지 시간(초, 0이면 계속 펼침)</span>
                     <input type="number" min={0} max={60} value={autoDismiss} onChange={(e) => setAutoDismiss(e.target.value)} />
                   </label>
                 </fieldset>

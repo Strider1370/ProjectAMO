@@ -30,7 +30,8 @@ test('buildRouteWeatherLegs keeps every aligned segment and aggregates its selec
       levels: [
         values('u', [10, 20, 30]),
         values('v', [0, 0, 0]),
-        values('T', [273.15, 274.15, 275.15]),
+        // 단면 샘플러(cross-section-sampler)가 실제로 내보내는 키·단위: 소문자 t, 섭씨.
+        values('t', [-40, -39, -38]),
         values('icing', [1, 2, 3]),
       ],
     },
@@ -54,6 +55,7 @@ test('buildRouteWeatherLegs keeps every aligned segment and aggregates its selec
     { from: 'B', to: 'C', distanceNm: 10 },
   ])
   assert.deepEqual(result.legs[1].wind, { meanComponentKt: 39, minComponentKt: 39, maxComponentKt: 39 })
+  assert.deepEqual(result.legs[1].temp, { meanC: -39, minC: -39, maxC: -39 })
   assert.deepEqual(result.legs[1].icing, { peakLevel: 2, exposures: [{ level: 2, distanceNm: 10 }] })
   assert.equal(result.legs[1].turbulence.peakLevel, 'moderate')
   assert.deepEqual(result.legs[1].hazards.map(({ code, verticalStatus }) => ({ code, verticalStatus })), [{ code: 'SEV_TURB', verticalStatus: 'unknown' }])

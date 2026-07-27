@@ -43,6 +43,37 @@ test.describe('monitoring', () => {
     }
   })
 
+  test('alert panel collapses to a badge but keeps the list until dismissed', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'popup panel is a desktop dashboard surface')
+
+    // 접히기까지의 시간을 줄여 테스트가 기본값 10초를 기다리지 않게 한다.
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'aviation-weather-alert-settings',
+        JSON.stringify({ dispatchers: { popup: { auto_dismiss_seconds: 2 } } })
+      )
+    })
+    await openMonitoringState(page, 'settings')
+    await page.getByRole('button', { name: '알림', exact: true }).click()
+    await page.getByRole('button', { name: '팝업 사용 예시', exact: true }).click()
+    await page.locator('.alert-popup-close').click()
+
+    // 예시 3건이 순서대로 쌓여 패널이 펼쳐진다.
+    const featured = page.locator('.alert-panel-featured')
+    await expect(featured).toBeVisible()
+    await expect(page.locator('.alert-panel-row')).toHaveCount(2)
+
+    // 머무는 시간이 지나면 패널은 배지로 접힌다 — 알림이 지워진 것이 아니다.
+    const badge = page.getByRole('button', { name: '알림 3건 펼치기', exact: true })
+    await expect(badge).toBeVisible()
+    await expect(featured).toHaveCount(0)
+
+    // 배지를 누르면 3건이 그대로 돌아온다.
+    await badge.click()
+    await expect(featured).toBeVisible()
+    await expect(page.locator('.alert-panel-row')).toHaveCount(2)
+  })
+
   test('mobile: opens monitoring and navigates task tabs', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only test')
 
