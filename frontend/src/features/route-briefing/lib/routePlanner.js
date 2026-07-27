@@ -3,7 +3,25 @@ const FIR_EXIT_AIRPORT = 'FIR_EXIT'
 const FIR_IN_AIRPORT = 'FIR_IN'
 import { parseManualRouteString } from './manualRouteInput.js'
 
-let navdataCache = null
+// 결과가 아니라 "받는 중"이라는 약속을 저장한다. 결과를 다 받은 뒤에 표시하면
+// 받는 동안 들어온 호출이 저마다 "아직 없네" 하고 따로 나가서, 화면이 뜰 때
+// 같은 파일을 4~6번 내려받는다(캐시 스탬피드). 나가는 순간 표시하면 뒤에 온
+// 호출은 같은 약속을 기다린다.
+//
+// 실패한 약속은 반드시 지운다. 남기면 접속 순간의 일시적 네트워크 오류가
+// 새로고침 전까지 그 데이터를 영구히 못 쓰게 만든다.
+// catch는 곁가지라 부르는 쪽은 오류를 그대로 받는다(오류를 삼키지 않는다).
+const inFlightLoads = new Map()
+
+function loadOnce(key, load) {
+  const pending = inFlightLoads.get(key)
+  if (pending) return pending
+
+  const promise = load()
+  promise.catch(() => inFlightLoads.delete(key))
+  inFlightLoads.set(key, promise)
+  return promise
+}
 
 async function fetchJson(path) {
   const response = await fetch(`${NAVDATA_BASE_URL}/${path}`)
@@ -61,8 +79,8 @@ function buildRouteGraph(segments) {
   return graph
 }
 
-export async function loadNavdata() {
-  if (!navdataCache) {
+export function loadNavdata() {
+  return loadOnce('navdata', async () => {
     const [airports, enroute] = await Promise.all([
       fetchJson('airports.json'),
       fetchJson('enroute.json'),
@@ -79,7 +97,7 @@ export async function loadNavdata() {
 
     const allSegments = [...enroute.segments, ...(routeSegmentsO || [])]
 
-    navdataCache = {
+    return {
       // 공항: 겹침 없음(국내 RK / 해외 그 외)
       airports: { ...airports, ...(airportsO || {}) },
       // 지점·항로: 공유 ident/routeId는 국내 정의 우선(방향 메타데이터 보존)
@@ -89,9 +107,7 @@ export async function loadNavdata() {
       routes: { ...(routesO || {}), ...enroute.routes },
       routeDirectionMetadata: { routes: enroute.routes },
     }
-  }
-
-  return navdataCache
+  })
 }
 
 function normalizeIdent(value) {
@@ -131,33 +147,32 @@ export async function loadNavpoints() {
 
 // ponytail: load overseas airports + links map; returns {} if file missing or network error.
 // Used by RouteBriefingPanel to populate arrival airport options.
-let overseasAirportsCache = null
+//
+// 안쪽은 실패 시 throw해야 loadOnce가 캐시를 지우고 다음 호출이 다시 시도한다.
+// 바깥에서 {}로 바꿔주므로 부르는 쪽 계약("실패하면 빈 객체")은 그대로다.
+// 예전에는 네트워크 오류일 때만 {}를 영구 캐시하고 HTTP 오류일 땐 재시도해서
+// 같은 실패인데 결과가 달랐다 — 재시도하는 쪽으로 통일한다.
 export async function loadOverseasAirports() {
-  if (overseasAirportsCache !== null) return overseasAirportsCache
-
   try {
-    const response = await fetch(`${NAVDATA_BASE_URL}/airports-overseas.json`)
-    if (!response.ok) return {}
-    overseasAirportsCache = await response.json()
-    return overseasAirportsCache
+    return await loadOnce('overseas-airports', async () => {
+      const response = await fetch(`${NAVDATA_BASE_URL}/airports-overseas.json`)
+      if (!response.ok) throw new Error('airports-overseas.json unavailable')
+      return response.json()
+    })
   } catch {
-    overseasAirportsCache = {}
     return {}
   }
 }
 
 // Load airport-route-links-overseas.json: { ICAO: { nearestFix, nearbyFixes }, ... }
-let overseasLinksCache = null
 export async function loadOverseasLinks() {
-  if (overseasLinksCache !== null) return overseasLinksCache
-
   try {
-    const response = await fetch(`${NAVDATA_BASE_URL}/airport-route-links-overseas.json`)
-    if (!response.ok) return {}
-    overseasLinksCache = await response.json()
-    return overseasLinksCache
+    return await loadOnce('overseas-links', async () => {
+      const response = await fetch(`${NAVDATA_BASE_URL}/airport-route-links-overseas.json`)
+      if (!response.ok) throw new Error('airport-route-links-overseas.json unavailable')
+      return response.json()
+    })
   } catch {
-    overseasLinksCache = {}
     return {}
   }
 }
