@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
-import { getMetrics, getTraffic, getUsers, getPending, approve, reject } from './adminApi.js'
+import { getMetrics, getUsers, getPending, approve, reject } from './adminApi.js'
 import ResourceTimeline from './ResourceTimeline.jsx'
 import CreateForecasterDialog from './CreateForecasterDialog.jsx'
-import DemoModePanel from './DemoModePanel.jsx'
+import DataHealthDashboard from './DataHealthDashboard.jsx'
+import ServerHealthPanel from './ServerHealthPanel.jsx'
+import UserActivityPanel from './UserActivityPanel.jsx'
 import './AdminPage.css'
 
 const ROLE_KO = { pilot: '조종사', forecaster: '예보관', admin: '관리자' }
 const STATUS_KO = { pending: '대기', active: '활성', rejected: '거절' }
 const RANGES = [['1h', '1시간'], ['24h', '24시간'], ['7d', '7일']]
+const TABS = [['data', '데이터'], ['resources', '서버 전산자원'], ['users', '이용자']]
 
 // 임계 색상(리서치: <70 초록·70~89 주황·90+ 빨강).
 function levelColor(p) {
@@ -36,9 +39,9 @@ function ResourceGauge({ label, pct, sub }) {
 
 export default function AdminPage() {
   const { user, loading } = useAuth()
+  const [tab, setTab] = useState('data')
   const [range, setRange] = useState('24h')
   const [metrics, setMetrics] = useState(null)
-  const [traffic, setTraffic] = useState(null)
   const [users, setUsers] = useState([])
   const [pending, setPending] = useState([])
   const [denied, setDenied] = useState(false)
@@ -46,10 +49,12 @@ export default function AdminPage() {
 
   const isAdmin = user?.role === 'admin' // 실제 차단은 서버(requireRole). 여기선 UI 노출만 관리자로 제한.
 
+  // 가입 승인 대기는 탭과 무관하게 항상 눈에 띄어야 해서(시간 민감), users/pending은 탭 밖(여기)에서
+  // 계속 폴링한다. 트래픽·서버 리소스는 각 탭 컴포넌트가 자기 몫만 따로 폴링한다.
   const load = useCallback(async () => {
     try {
-      const [m, t, u, p] = await Promise.all([getMetrics(range), getTraffic(), getUsers(), getPending()])
-      setMetrics(m); setTraffic(t); setUsers(u); setPending(p); setDenied(false)
+      const [m, u, p] = await Promise.all([getMetrics(range), getUsers(), getPending()])
+      setMetrics(m); setUsers(u); setPending(p); setDenied(false)
     } catch (err) {
       if (err.status === 401 || err.status === 403) setDenied(true)
     }
@@ -84,81 +89,93 @@ export default function AdminPage() {
         <h1>관리자 콘솔</h1>
       </header>
 
-      {/* 0) 시연 모드 — 자동수집(cron) 정지/재개 + 데이터 스냅샷 + "지금" 시각 오버라이드. 개발자 콘솔(/dev)에도 같은 패널이 있음. */}
-      <DemoModePanel />
-
-      {/* 1) 시스템 리소스 */}
-      <section className="admin-card admin-resources">
-        <div className="admin-card-head">
-          <h2>시스템 리소스</h2>
-          <div className="admin-range-toggle" role="tablist">
-            {RANGES.map(([key, label]) => (
-              <button key={key} type="button" className={`admin-range-btn${range === key ? ' is-active' : ''}`} onClick={() => setRange(key)}>{label}</button>
-            ))}
-          </div>
+      <div className="admin-tabbar">
+        <div className="admin-tabbar-tabs" role="tablist">
+          {TABS.map(([key, label]) => (
+            <button key={key} type="button" className={`admin-tab-btn${tab === key ? ' is-active' : ''}`} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>
+              {label}
+            </button>
+          ))}
         </div>
-        <div className="admin-gauges">
-          <ResourceGauge label="CPU" pct={cur?.cpuPct ?? 0} />
-          <ResourceGauge label="메모리" pct={memPct} sub={cur ? `${gb(cur.memUsed)} / ${gb(cur.memTotal)} GB` : ''} />
-          <ResourceGauge label="디스크" pct={diskPct} sub={cur && cur.diskTotal ? `${gb(cur.diskUsed)} / ${gb(cur.diskTotal)} GB` : '—'} />
-        </div>
-        <ResourceTimeline series={metrics?.series || []} peakCpu={metrics?.peakCpu || null} />
-      </section>
-
-      <div className="admin-two-col">
-        {/* 2a) 트래픽 */}
-        <section className="admin-card">
-          <div className="admin-card-head"><h2>트래픽</h2></div>
-          <div className="admin-traffic-stats">
-            <div><span className="admin-stat-num">{traffic?.online ?? '—'}</span><span className="admin-stat-label">현재 접속</span></div>
-            <div><span className="admin-stat-num">{traffic?.total ?? '—'}</span><span className="admin-stat-label">총 방문자</span></div>
-          </div>
-        </section>
-
-        {/* 2b) 가입 승인 대기 */}
-        <section className="admin-card">
-          <div className="admin-card-head"><h2>가입 승인 대기 {pending.length > 0 && <span className="admin-badge">{pending.length}</span>}</h2></div>
-          {pending.length === 0 ? (
-            <p className="admin-empty">대기 중인 가입 요청이 없습니다.</p>
-          ) : (
-            <ul className="admin-pending-list">
-              {pending.map((u) => (
-                <li key={u.id}>
-                  <span className="admin-pending-name">{u.username}</span>
-                  <span className="admin-pending-date">{fmtDate(u.created_at)}</span>
-                  <span className="admin-pending-actions">
-                    <button type="button" className="admin-btn-approve" onClick={async () => { await approve(u.id); load() }}>승인</button>
-                    <button type="button" className="admin-btn-reject" onClick={async () => { await reject(u.id); load() }}>거절</button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {/* 가입 승인 대기는 시간 민감이라 탭 안에 묻지 않고 항상 보이게 둔다. 누르면 이용자 탭으로. */}
+        {pending.length > 0 && (
+          <button type="button" className="admin-tabbar-pending" onClick={() => setTab('users')}>
+            가입 승인 대기 <span className="admin-badge">{pending.length}</span>
+          </button>
+        )}
       </div>
 
-      {/* 3) 전체 사용자 */}
-      <section className="admin-card">
-        <div className="admin-card-head">
-          <h2>전체 사용자 <span className="admin-count">{users.length}</span></h2>
-          <button type="button" className="admin-add-btn" onClick={() => setShowDialog(true)}>예보관 추가</button>
-        </div>
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead><tr><th>아이디</th><th>역할</th><th>상태</th><th>가입일</th></tr></thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.username}</td>
-                  <td><span className="admin-role-badge" data-role={u.role}>{ROLE_KO[u.role] || u.role}</span></td>
-                  <td><span className="admin-status-badge" data-status={u.status}>{STATUS_KO[u.status] || u.status}</span></td>
-                  <td>{fmtDate(u.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {tab === 'data' && <DataHealthDashboard />}
+
+      {tab === 'resources' && (
+        <>
+          <section className="admin-card admin-resources">
+            <div className="admin-card-head">
+              <h2>시스템 리소스</h2>
+              <div className="admin-range-toggle" role="tablist">
+                {RANGES.map(([key, label]) => (
+                  <button key={key} type="button" className={`admin-range-btn${range === key ? ' is-active' : ''}`} onClick={() => setRange(key)}>{label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="admin-gauges">
+              <ResourceGauge label="CPU" pct={cur?.cpuPct ?? 0} />
+              <ResourceGauge label="메모리" pct={memPct} sub={cur ? `${gb(cur.memUsed)} / ${gb(cur.memTotal)} GB` : ''} />
+              <ResourceGauge label="디스크" pct={diskPct} sub={cur && cur.diskTotal ? `${gb(cur.diskUsed)} / ${gb(cur.diskTotal)} GB` : '—'} />
+            </div>
+            <ResourceTimeline series={metrics?.series || []} peakCpu={metrics?.peakCpu || null} />
+          </section>
+          <ServerHealthPanel />
+        </>
+      )}
+
+      {tab === 'users' && (
+        <>
+          <UserActivityPanel />
+
+          <section className="admin-card">
+            <div className="admin-card-head"><h2>가입 승인 대기 {pending.length > 0 && <span className="admin-badge">{pending.length}</span>}</h2></div>
+            {pending.length === 0 ? (
+              <p className="admin-empty">대기 중인 가입 요청이 없습니다.</p>
+            ) : (
+              <ul className="admin-pending-list">
+                {pending.map((u) => (
+                  <li key={u.id}>
+                    <span className="admin-pending-name">{u.username}</span>
+                    <span className="admin-pending-date">{fmtDate(u.created_at)}</span>
+                    <span className="admin-pending-actions">
+                      <button type="button" className="admin-btn-approve" onClick={async () => { await approve(u.id); load() }}>승인</button>
+                      <button type="button" className="admin-btn-reject" onClick={async () => { await reject(u.id); load() }}>거절</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="admin-card">
+            <div className="admin-card-head">
+              <h2>전체 사용자 <span className="admin-count">{users.length}</span></h2>
+              <button type="button" className="admin-add-btn" onClick={() => setShowDialog(true)}>예보관 추가</button>
+            </div>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead><tr><th>아이디</th><th>역할</th><th>상태</th><th>가입일</th></tr></thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.id}>
+                      <td>{u.username}</td>
+                      <td><span className="admin-role-badge" data-role={u.role}>{ROLE_KO[u.role] || u.role}</span></td>
+                      <td><span className="admin-status-badge" data-status={u.status}>{STATUS_KO[u.status] || u.status}</span></td>
+                      <td>{fmtDate(u.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
 
       {showDialog && <CreateForecasterDialog onClose={() => setShowDialog(false)} onCreated={load} />}
     </div>

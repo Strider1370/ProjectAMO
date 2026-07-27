@@ -51,6 +51,19 @@ test('admin endpoints require admin and return data', async () => {
     assert.equal((await fetch(at(server, '/api/admin/metrics?range=24h'), getWith(cookie))).status, 200)
     assert.equal((await fetch(at(server, '/api/admin/traffic'), getWith(cookie))).status, 200)
 
+    const health = await (await fetch(at(server, '/api/admin/data-health'), getWith(cookie))).json()
+    assert.ok(Array.isArray(health.types) && health.types.length > 0)
+    assert.ok(health.types.every((t) => 'key' in t && 'label' in t && 'fetchedAt' in t && 'failing' in t))
+
+    const serverHealth = await (await fetch(at(server, '/api/admin/server-health'), getWith(cookie))).json()
+    assert.ok(serverHealth.process.uptimeSec >= 0)
+    assert.ok(Array.isArray(serverHealth.disk))
+    assert.ok(Array.isArray(serverHealth.recentErrors))
+
+    const trends = await (await fetch(at(server, '/api/admin/trends?granularity=week'), getWith(cookie))).json()
+    assert.equal(trends.granularity, 'week')
+    assert.ok(Array.isArray(trends.visits) && Array.isArray(trends.newVisitors) && Array.isArray(trends.signups))
+
     assert.equal((await fetch(at(server, `/api/admin/users/${pending[0].id}/approve`), postWith(cookie))).status, 200)
 
     // 잘못된 id → 400, 존재하지 않는 id → 404(조용한 200 금지)

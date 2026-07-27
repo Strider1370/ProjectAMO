@@ -2,7 +2,14 @@ import fs from 'fs'
 import path from 'path'
 
 // 여기 없는 type은 recordSuccess/Failure가 조용히 버린다(아래 `if (!entry) return`). 새 수집기는 반드시 등록할 것.
-const TYPES = ['metar', 'taf', 'warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'radar', 'rainviewer', 'amos', 'adsb', 'metar_overseas', 'taf_overseas', 'sigmet_overseas']
+// ('radar'는 실제로 쓰는 키가 'radar_echo'라 여태 한 번도 안 채워졌다 — index.js의 runWithLock 호출과 이름을 맞춤.
+//  echo_top·satellite·rainviewer·ground_forecast·environment·airport_info·takeoff_fcst·ktg·notam·typhoon도
+//  같은 이유로 빠져 있었다: 등록 안 된 새 수집기 추가 때마다 이 목록을 안 늘려서 실패가 조용히 유실됐다.)
+const TYPES = [
+  'metar', 'taf', 'warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'radar_echo', 'echo_top',
+  'satellite', 'rainviewer', 'amos', 'adsb', 'metar_overseas', 'taf_overseas', 'sigmet_overseas',
+  'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'ktg', 'notam', 'typhoon', 'kim_surface_wind',
+]
 const MAX_RECENT_RUNS = 50
 
 const METAR_LIMIT_MIN = { RKSI: 40 }

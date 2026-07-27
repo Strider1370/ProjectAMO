@@ -1,4 +1,7 @@
 /* 관리자 콘솔. 토큰은 design-language §5(:root 변수) 사용. accent #334155, level green/amber/red. */
+/* 전역 html/body{overflow:hidden}·#root{height:100dvh}은 전체화면 지도 앱을 위한 규칙이라
+   건드리지 않는다 — 대신 이 페이지 자신을 독립 스크롤 컨테이너로 만들어 내용이 길어져도
+   잘리지 않고 이 안에서 스크롤되게 한다. */
 .admin-page {
   max-width: 1080px;
   margin: 0 auto;
@@ -6,7 +9,8 @@
   font-family: var(--font-base);
   color: var(--text-1);
   background: var(--bg-2);
-  min-height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
   box-sizing: border-box;
 }
 
@@ -109,6 +113,58 @@
 .admin-gauge-bar span { display: block; height: 100%; border-radius: var(--radius-circular); }
 .admin-gauge-sub { font-size: var(--fs-100); color: var(--text-3); }
 
+/* 이용자 추이 */
+.admin-trend-card + .admin-trend-card { margin-top: var(--space-l); }
+
+/* 디스크 사용량 */
+.admin-disk-list { list-style: none; margin: 0; padding: 0; }
+.admin-disk-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 72px;
+  align-items: center;
+  gap: var(--space-m);
+  padding: var(--space-xs) 0;
+}
+.admin-disk-name { font-size: var(--fs-200); color: var(--text-2); }
+.admin-disk-bar { height: 6px; background: var(--bg-4); border-radius: var(--radius-circular); overflow: hidden; }
+.admin-disk-bar span { display: block; height: 100%; background: var(--accent); border-radius: var(--radius-circular); }
+.admin-disk-bytes { font-size: var(--fs-200); color: var(--text-3); text-align: right; }
+
+/* 최근 실패 */
+.admin-error-list { list-style: none; margin: 0; padding: 0; }
+.admin-error-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-s);
+  padding: var(--space-xs) 0;
+  border-bottom: 1px solid var(--stroke-2);
+  font-size: var(--fs-200);
+}
+.admin-error-type { font-weight: var(--fw-medium); color: var(--level-red); flex: 0 0 auto; }
+.admin-error-msg { color: var(--text-2); flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-error-time { color: var(--text-3); flex: 0 0 auto; }
+
+/* 데이터 현황 타일 */
+.data-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: var(--space-s);
+}
+.data-health-tile {
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-s) var(--space-m);
+  background: var(--bg-2);
+}
+.data-health-tile.is-failing {
+  border-color: var(--level-red);
+  background: var(--level-red-bg);
+}
+.data-health-tile-label { font-size: var(--fs-100); color: var(--text-3); margin-bottom: var(--space-xxs); }
+.data-health-tile-ago { font-size: var(--fs-200); font-weight: var(--fw-semibold); }
+.data-health-tile.is-failing .data-health-tile-ago { color: var(--level-red); }
+.data-health-tile-clock { font-size: var(--fs-100); color: var(--text-3); margin-top: var(--space-xxs); }
+
 /* SVG 차트 */
 .admin-chart-svg { width: 100%; height: auto; display: block; cursor: crosshair; }
 .admin-chart-tick { font-size: 9px; fill: var(--text-3); }
@@ -127,6 +183,43 @@
 .admin-chart-legend-item { display: inline-flex; align-items: center; gap: var(--space-xs); font-size: var(--fs-200); color: var(--text-2); }
 .admin-chart-swatch { width: 12px; height: 3px; border-radius: 2px; }
 
+/* 탭 */
+.admin-tabbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-m);
+  margin-bottom: var(--space-l);
+  flex-wrap: wrap;
+}
+.admin-tabbar-tabs { display: flex; gap: var(--space-xxs); }
+.admin-tab-btn {
+  font-family: var(--font-base);
+  font-size: var(--fs-300);
+  font-weight: var(--fw-medium);
+  padding: var(--space-s) var(--space-m);
+  border: 1px solid var(--stroke-1);
+  background: var(--bg-1);
+  color: var(--text-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.admin-tab-btn.is-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.admin-tabbar-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font-base);
+  font-size: var(--fs-200);
+  font-weight: var(--fw-medium);
+  padding: var(--space-xs) var(--space-m);
+  border: 1px solid var(--level-amber);
+  background: var(--level-amber-bg);
+  color: var(--level-amber);
+  border-radius: var(--radius-circular);
+  cursor: pointer;
+}
+
 /* 2열 */
 .admin-two-col {
   display: grid;
@@ -136,8 +229,9 @@
 .admin-two-col .admin-card { margin-bottom: 0; }
 
 /* 트래픽 */
-.admin-traffic-stats { display: flex; gap: var(--space-xxl); }
+.admin-traffic-stats { display: flex; gap: var(--space-xxl); flex-wrap: wrap; }
 .admin-traffic-stats > div { display: flex; flex-direction: column; }
+.admin-process-stats { margin-bottom: 0; }
 .admin-stat-num { font-size: var(--fs-700); line-height: var(--lh-700); font-weight: var(--fw-bold); color: var(--accent); }
 .admin-stat-label { font-size: var(--fs-200); color: var(--text-3); }
 

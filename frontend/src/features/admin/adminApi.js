@@ -12,6 +12,9 @@ const j = async (r) => {
 
 export const getMetrics = (range) => fetch(`${base}/metrics?range=${range}`, { credentials: 'include' }).then(j)
 export const getTraffic = () => fetch(`${base}/traffic`, { credentials: 'include' }).then(j)
+export const getDataHealth = () => fetch(`${base}/data-health`, { credentials: 'include' }).then(j)
+export const getServerHealth = () => fetch(`${base}/server-health`, { credentials: 'include' }).then(j)
+export const getTrends = (granularity) => fetch(`${base}/trends?granularity=${granularity}`, { credentials: 'include' }).then(j)
 export const getUsers = () => fetch(`${base}/users`, { credentials: 'include' }).then(j)
 export const getPending = () => fetch(`${base}/pending`, { credentials: 'include' }).then(j)
 export const approve = (id) => fetch(`${base}/users/${id}/approve`, { method: 'POST', credentials: 'include' }).then(j)

@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { createDb } from '../src/db/index.js'
-import { buildBriefingRequest, buildSnapshot, evaluateFlight } from '../src/alerts/scheduler.js'
+import { buildBriefingRequest, buildSnapshot, evaluateFlight, cleanupExpired } from '../src/alerts/scheduler.js'
 
 const ETD = '2026-07-08T10:00:00Z'
 const ETA = '2026-07-08T12:00:00Z'
@@ -115,5 +115,22 @@ test('evaluateFlight: routeGeometry 없으면 skip', () => {
     const route = seed(db, { withGeometry: false })
     const res = evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: {}, cache: new Map() })
     assert.equal(res.skipped, 'no_geometry')
+  } finally { db.close() }
+})
+
+test('cleanupExpired: 알림 이력이 없는 만료 경로는 지우고, 있는 경로는 남겨서 이후 정리를 막지 않는다', () => {
+  const db = createDb(':memory:')
+  try {
+    const past = new Date('2026-01-01T00:00:00Z').toISOString()
+    const withHistory = seed(db)
+    const withoutHistory = seed(db)
+    db.prepare('UPDATE routes SET expires_at=? WHERE id IN (?,?)').run(past, withHistory.id, withoutHistory.id)
+    db.prepare(`INSERT INTO triggered_alerts (user_id, route_id, type, severity, target, from_val, to_val, source_id, dedup_key, detected_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?)`).run(withHistory.user_id, withHistory.id, 'ceiling', '중', 'dest', '3000', '400', null, 'k1', past)
+
+    cleanupExpired(db, Date.parse('2026-07-27T00:00:00Z'))
+
+    assert.ok(db.prepare('SELECT 1 FROM routes WHERE id=?').get(withHistory.id), '이력 있는 만료 경로는 삭제되지 않는다')
+    assert.equal(db.prepare('SELECT 1 FROM routes WHERE id=?').get(withoutHistory.id), undefined, '이력 없는 만료 경로는 삭제된다')
   } finally { db.close() }
 })

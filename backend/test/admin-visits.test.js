@@ -11,3 +11,16 @@ test('recordVisit upserts; trafficStats counts online(5m) and total', () => {
   assert.equal(s.total, 2)
   assert.equal(s.online, 2) // 방금 기록 → 5분 내
 })
+
+test('trafficStats.activeUsers: 로그인 계정의 last_active_at 기준, 방문 쿠키와는 별개 집계', () => {
+  const db = createDb(':memory:')
+  const now = new Date().toISOString()
+  const old = new Date(Date.now() - 40 * 86400e3).toISOString()
+  db.prepare("INSERT INTO users (username, password_hash, created_at, last_active_at) VALUES (?,?,?,?)").run('recent', 'x', now, now)
+  db.prepare("INSERT INTO users (username, password_hash, created_at, last_active_at) VALUES (?,?,?,?)").run('stale', 'x', now, old)
+  db.prepare("INSERT INTO users (username, password_hash, created_at) VALUES (?,?,?)").run('never', 'x', now)
+
+  const s = trafficStats(db)
+  assert.equal(s.activeUsers.last7d, 1)
+  assert.equal(s.activeUsers.last30d, 1)
+})

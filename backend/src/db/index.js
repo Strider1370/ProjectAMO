@@ -34,6 +34,7 @@ function ensureColumns(database) {
     if (!userCols.includes('status')) database.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'") // 가입 승인(기존=active)
     if (!userCols.includes('min_ceiling_ft')) database.exec('ALTER TABLE users ADD COLUMN min_ceiling_ft INTEGER') // #13 개인 미니마(단일값)
     if (!userCols.includes('min_visibility_m')) database.exec('ALTER TABLE users ADD COLUMN min_visibility_m INTEGER')
+    if (!userCols.includes('last_active_at')) database.exec('ALTER TABLE users ADD COLUMN last_active_at TEXT') // 관리자 콘솔 "활성 사용자" — 로그인 시각 기준
   }
 }
 

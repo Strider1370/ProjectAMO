@@ -176,8 +176,20 @@ export function activeFlights(db, now = Date.now()) {
 }
 
 // ETD+유예(expires_at) 지난 예정비행 정리(§11.1 자동삭제).
+// 행 단위로 지운다 — 이미 알림이 발송된 경로는 triggered_alerts.route_id(NOT NULL FK)가
+// 참조 중이라 삭제가 막힌다(알림센터가 route LEFT JOIN이라 이력은 원래 route 삭제 후에도
+// 남는 게 맞다: me/alerts.js 참조). 한 벌크 DELETE로 하면 그 행 하나 때문에 문 전체가 롤백돼
+// 이 함수를 감싸지 않는 호출부(runTick)까지 예외가 올라가 이후 알림 평가 자체가 안 돈다.
 export function cleanupExpired(db, now = Date.now()) {
-  db.prepare('DELETE FROM routes WHERE alert_enabled=1 AND expires_at IS NOT NULL AND expires_at < ?').run(new Date(now).toISOString())
+  const nowIso = new Date(now).toISOString()
+  const expired = db.prepare('SELECT id FROM routes WHERE alert_enabled=1 AND expires_at IS NOT NULL AND expires_at < ?').all(nowIso)
+  for (const { id } of expired) {
+    try {
+      db.prepare('DELETE FROM routes WHERE id=?').run(id)
+    } catch (err) {
+      console.warn(`[alert-scheduler] cleanup skipped route ${id} (referenced by alert history):`, err.message)
+    }
+  }
 }
 
 // 저장 route 재브리핑 — store 캐시 + 경로단면(KIM/KTG best-effort) → { briefing, tafByIcao }.

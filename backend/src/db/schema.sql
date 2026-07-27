@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   status        TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('pending','active','rejected')),  -- 가입 승인
   min_ceiling_ft   INTEGER CHECK (min_ceiling_ft BETWEEN 0 AND 60000),   -- #13 개인 미니마(사용자당 단일값)
   min_visibility_m INTEGER CHECK (min_visibility_m BETWEEN 0 AND 10000),
+  last_active_at TEXT,                        -- 관리자 콘솔 "활성 사용자" — 로그인 시각 기준
   created_at    TEXT NOT NULL
 );
 
@@ -73,6 +74,15 @@ CREATE TABLE IF NOT EXISTS metrics (        -- 리소스 시계열(60초 샘플,
 CREATE TABLE IF NOT EXISTS visits (         -- 익명 포함 방문 추적. 관리자 콘솔
   visitor_id TEXT PRIMARY KEY, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL
 );
+
+-- 방문자별 "이 날 왔었다" 1줄(하루에 여러 번 와도 중복 없음, INSERT OR IGNORE).
+-- visits는 방문자당 한 줄이라 재방문을 포함한 일별 접속 추이를 못 낸다 — 이 표가 그걸 메운다.
+CREATE TABLE IF NOT EXISTS visit_days (
+  visitor_id TEXT NOT NULL,
+  day        TEXT NOT NULL,                  -- 'YYYY-MM-DD'
+  PRIMARY KEY (visitor_id, day)
+);
+CREATE INDEX IF NOT EXISTS idx_visit_days_day ON visit_days(day);
 
 CREATE TABLE IF NOT EXISTS triggered_alerts (   -- #13 발송 이력·dedup·알림센터 피드
   id            INTEGER PRIMARY KEY,

@@ -100,7 +100,16 @@ export function createAlertsRouter({ db = null } = {}) {
   router.delete('/alerts/:id', (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_input' })
-    database().prepare('DELETE FROM routes WHERE id=? AND user_id=? AND alert_enabled=1').run(id, req.session.userId)
+    const db2 = database()
+    try {
+      db2.prepare('DELETE FROM routes WHERE id=? AND user_id=? AND alert_enabled=1').run(id, req.session.userId)
+    } catch {
+      // 이미 발송된 알림 기록(triggered_alerts)이 이 경로를 참조 중이면 삭제가 막힌다(FK).
+      // 그 기록은 알림센터에서 계속 보여야 하므로 지우지 않고, 대신 감시만 끈다 — 활성 목록에서
+      // 사라지고 새 알림도 더는 안 오는 건 사용자가 기대하는 "삭제"와 결과가 같다.
+      db2.prepare('UPDATE routes SET alert_enabled=0, updated_at=? WHERE id=? AND user_id=?')
+        .run(new Date().toISOString(), id, req.session.userId)
+    }
     res.json({ ok: true })
   })
 

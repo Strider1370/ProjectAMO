@@ -51,6 +51,7 @@ export function createAuthRouter({ db = null } = {}) {
     req.session.userId = user.id
     req.session.role = user.role
     req.session.absoluteExpiry = Date.now() + ABSOLUTE_TTL_MS
+    database().prepare('UPDATE users SET last_active_at=? WHERE id=?').run(new Date().toISOString(), user.id)
     return res.json({ id: user.id, username: user.username, role: user.role, display_name: user.display_name })
   })
 

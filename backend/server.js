@@ -20,6 +20,7 @@ import { isDemoMode, getEffectiveNow } from './src/dev/demo-mode.js'
 import { createAdminRouter } from './src/admin/router.js'
 import { visitTracker } from './src/admin/visits.js'
 import { startSampler } from './src/admin/metrics.js'
+import { recordBoot } from './src/admin/process-health.js'
 import { getDb } from './src/db/index.js'
 import { createMeRouter } from './src/me/presets.js'
 import { createRoutesRouter } from './src/me/routes.js'
@@ -1144,6 +1145,7 @@ if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, HOST, () => console.log(`[server] Backend running on ${HOST}:${PORT}`))
 
   startSampler(getDb()) // 관리자 콘솔: 60초 리소스 샘플링 시작
+  recordBoot(config.storage.base_path) // 관리자 콘솔: 재시작 횟수 집계
 
   startAlertScheduler(getDb()) // #13 경로 예보변화 알림: 활성 예정비행 15분 재브리핑 → diff → 알림 적재
 
