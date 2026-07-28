@@ -288,9 +288,19 @@ export default function MetarCard({
   onVersionToggle,
   tz = "UTC",
   mobileLayout = false,
+  highlightFields = {},
 }) {
   const target = metarData?.airports?.[icao];
   const amosTarget = amosData?.airports?.[icao] || null;
+
+  // 여러 알람이 동시에 발동하면 각 칸이 각자의 심각도 색으로 깜빡인다.
+  const blinkClass = (field) => {
+    const severity = highlightFields[field];
+    if (!severity) return "";
+    return severity === "critical"
+      ? " alert-outline-blink"
+      : ` alert-outline-blink alert-outline-blink--${severity}`;
+  };
 
   if (!target) {
     return (
@@ -589,7 +599,7 @@ export default function MetarCard({
 
               <div className="flight-condition-stack" style={{ gridTemplateRows: hasRvrDetails ? "1fr 1fr 1fr" : "1fr 1fr" }}>
                 <article
-                  className="metar-surface-card metar-surface-card--weather"
+                  className={`metar-surface-card metar-surface-card--weather${blinkClass("visibility")}`}
                   style={{
                     backgroundColor: catColors(visibilityCategory).bg,
                     borderLeft: `3px solid ${visibilityCategory.border}`,
@@ -653,7 +663,7 @@ export default function MetarCard({
                 )}
 
                 <article
-                  className="metar-surface-card metar-surface-card--weather"
+                  className={`metar-surface-card metar-surface-card--weather${blinkClass("ceiling")}`}
                   style={{
                     backgroundColor: catColors(ceilingCategory).bg,
                     borderLeft: `3px solid ${ceilingCategory.border}`,
@@ -692,7 +702,7 @@ export default function MetarCard({
           </div>
           <div className="metar-section-body metar-section-body--weather">
             <div className="metar-weather-grid">
-              <article className={`metar-surface-card metar-surface-card--wind${highWind ? " metar-card--alert-outline" : ""}`}>
+              <article className={`metar-surface-card metar-surface-card--wind${highWind ? " metar-card--alert-outline" : ""}${blinkClass("wind")}`}>
                 <div className="metar-side-label metar-side-label--icon">
                   <div className="metar-side-icon metar-side-icon--wind">
                     <span
@@ -720,7 +730,7 @@ export default function MetarCard({
               </article>
 
               <article
-                className={`metar-surface-card metar-surface-card--weather${specialWeather ? " metar-card--special-weather" : ""}${precipitationWeather ? " metar-card--precip-weather" : ""}`}
+                className={`metar-surface-card metar-surface-card--weather${specialWeather ? " metar-card--special-weather" : ""}${precipitationWeather ? " metar-card--precip-weather" : ""}${blinkClass("weather")}`}
                 style={precipitationCardStyle || undefined}
               >
                 <div className="metar-side-label metar-side-label--icon">

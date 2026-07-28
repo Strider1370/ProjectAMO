@@ -288,6 +288,17 @@ function removeRangeRings(map) {
   if (map.getSource(RANGE_RING_SOURCE_ID)) map.removeSource(RANGE_RING_SOURCE_ID)
 }
 
+// 강조 대상 링만 굵게, 낙뢰 깜빡임 틱(lightningBlinkOff)을 그대로 타고 함께 뒤집는다.
+// 기본 굵기는 1.5 그대로 — 강조와 무관한 상시 표시를 바꾸지 않는다.
+function updateRangeRingHighlight(map, highlightRingRadiusKm, lightningBlinkOff) {
+  if (!map.getLayer(RANGE_RING_LINE_LAYER)) return
+  map.setPaintProperty(RANGE_RING_LINE_LAYER, 'line-width', [
+    'case',
+    ['==', ['get', 'radiusKm'], highlightRingRadiusKm ?? -1], lightningBlinkOff ? 1.5 : 5,
+    1.5,
+  ])
+}
+
 const MapView = forwardRef(function MapView({
   activePanel,
   mobileTask = 'map',
@@ -324,6 +335,7 @@ const MapView = forwardRef(function MapView({
   showGeolocateControl = true,
   showWeatherLegends = true,
   rangeRingRadiiKm = null,
+  highlightRingRadiusKm = null,
 }, ref) {
   const isMobile = useIsMobile()
   const mapContainerRef = useRef(null)
@@ -1366,7 +1378,8 @@ const MapView = forwardRef(function MapView({
 
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     syncLightningLayers(map, lightningLayerModel)
-  }, [lightningLayerModel])
+    updateRangeRingHighlight(map, highlightRingRadiusKm, lightningBlinkOff)
+  }, [lightningLayerModel, highlightRingRadiusKm])
 
   // FIR 경계 틱(지오메트리 렌더 + moveend 재생성) — 스크롤 후 틱 이탈 방지.
   useFirTickOverlay(mapRef, isStyleReady, styleRevision)

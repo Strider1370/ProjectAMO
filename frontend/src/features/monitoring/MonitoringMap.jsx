@@ -4,6 +4,9 @@ import MapView from '../map/MapView.jsx'
 import MonitoringSlideOverlay from './MonitoringSlideOverlay.jsx'
 import { mergeAdvisoryPayloads, mergeAirportPayloads } from '../../api/weatherApi.js'
 
+// 지도의 RANGE_RING 반지름과 대응: 경보 8km · 위험 16km · 주의 32km.
+const ZONE_RADIUS_KM = { alert: 8, danger: 16, caution: 32 }
+
 function MonitoringMap({
   weather,
   selectedAirport,
@@ -15,6 +18,7 @@ function MonitoringMap({
   slideshowStatusLabel = null,
   slideshowEffect = 'fade',
   slideshowDurationMs = 350,
+  highlightZones = {},
 }) {
   const [activeMapPanel, setActiveMapPanel] = useState(null)
   const [legendsOpen, setLegendsOpen] = useState(false)
@@ -29,6 +33,9 @@ function MonitoringMap({
   }, [selectedAirport])
   const mapMetarData = mergeAirportPayloads(weather?.metar || null, weather?.metarOverseas || null)
   const mapSigmetData = mergeAdvisoryPayloads(weather?.sigmet || null, weather?.sigmetOverseas || null)
+  // 링은 한 번에 하나만 강조 — 가장 급한 구역(경보 > 위험 > 주의) 반지름을 넘긴다.
+  const highlightedZone = ['alert', 'danger', 'caution'].find((zone) => highlightZones[zone])
+  const highlightRingRadiusKm = highlightedZone ? ZONE_RADIUS_KM[highlightedZone] : null
 
   function toggleMapPanel(panelId) {
     setActiveMapPanel((current) => (current === panelId ? null : panelId))
@@ -74,6 +81,7 @@ function MonitoringMap({
         showGeolocateControl={false}
         showWeatherLegends={legendsOpen}
         rangeRingRadiiKm={[8, 16, 32]}
+        highlightRingRadiusKm={highlightRingRadiusKm}
         airports={weather?.airports || []}
         metarData={mapMetarData}
         echoMeta={weather?.echoMeta}

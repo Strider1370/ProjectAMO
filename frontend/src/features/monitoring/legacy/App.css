@@ -5654,3 +5654,25 @@ tr.row-danger td { background: #ffe9e7; }
   border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
   transform: translateY(-1px);
 }
+
+/* 요소 반짝임 — "어디가 문제인가"를 60초만 짚어준다.
+   outline은 레이아웃을 차지하지 않으므로 칸이 밀리지 않는다.
+   0.8초 주기 = 초당 1.25회. WCAG 2.3.1(초당 3회 이하)을 지킨다. */
+.alert-outline-blink {
+  --alert-outline-color: var(--level-red);
+  outline: 3px solid var(--alert-outline-color);
+  outline-offset: 2px;
+  animation: alert-outline-blink 0.8s step-end infinite;
+}
+
+.alert-outline-blink--warning { --alert-outline-color: var(--level-amber); }
+.alert-outline-blink--info    { --alert-outline-color: var(--level-gray); }
+
+@keyframes alert-outline-blink {
+  50% { outline-color: transparent; }
+}
+
+/* 움직임을 줄이는 설정에서는 깜빡이지 않고 고정 외곽선만 남긴다. */
+@media (prefers-reduced-motion: reduce) {
+  .alert-outline-blink { animation: none; }
+}

@@ -254,7 +254,14 @@ function formatTafRange(start, end, tz) {
   return `${startDay}일 ${startHour}시 ~${endDayLabel} ${endHourExclusive}시`;
 }
 
-export default function TafTimeline({ tafData, icao, minimaSettings = null, version = "v2", onVersionToggle, tz = "UTC", mobileLayout = false }) {
+export default function TafTimeline({ tafData, icao, minimaSettings = null, version = "v2", onVersionToggle, tz = "UTC", mobileLayout = false, highlightTimes = {} }) {
+  const blinkClass = (time) => {
+    const severity = highlightTimes[time];
+    if (!severity) return "";
+    return severity === "critical"
+      ? " alert-outline-blink"
+      : ` alert-outline-blink alert-outline-blink--${severity}`;
+  };
   const target = tafData?.airports?.[icao];
   const rawTimeline = target?.timeline || [];
   const now = Date.now();
@@ -354,7 +361,7 @@ export default function TafTimeline({ tafData, icao, minimaSettings = null, vers
                 const isNewDay = hour === 0;
                 if (hour % 3 === 0 || isFirst || isNewDay) {
                   return (
-                    <div key={i} className="taf-scale-item" style={{ left: `${(i / displaySlots.length) * 100}%` }}>
+                    <div key={i} className={`taf-scale-item${blinkClass(displaySlot.time)}`} style={{ left: `${(i / displaySlots.length) * 100}%` }}>
                       {(isFirst || isNewDay) && <span className="taf-scale-date">{dateObj.getUTCDate()}일</span>}
                       <span className="taf-scale-hour">{hour}시</span>
                     </div>
