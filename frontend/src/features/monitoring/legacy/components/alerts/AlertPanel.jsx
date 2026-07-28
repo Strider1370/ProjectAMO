@@ -20,7 +20,10 @@ export default function AlertPanel({ alerts, validKeys, onDismiss, settings }) {
   const maxVisible = settings?.max_visible ?? 6;
 
   const now = Date.now();
-  const isNew = (alert) => now - alert.timestamp < highlightMs;
+  // highlightSince: 최초 발동 시각(재발화에도 안 바뀜). 예시 알람처럼 없는 경우만
+  // timestamp로 대체한다. 표에 보이는 시각(formatTime)은 여전히 timestamp(마지막
+  // 발동)를 쓴다 — 강조 기준점과 표시 시각은 서로 다른 의미다.
+  const isNew = (alert) => now - (alert.highlightSince ?? alert.timestamp) < highlightMs;
 
   // 강조 창이 지나면 다시 그려 "새 알람"에서 빠지게 한다. 강조 중인 알람이 하나라도
   // 있을 때만 돈다 — alerts.length로 걸면 강조가 다 끝난 뒤에도(며칠 켜져 있는

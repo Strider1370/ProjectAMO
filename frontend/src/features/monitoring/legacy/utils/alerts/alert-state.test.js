@@ -1,7 +1,7 @@
 import { test, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildAlertKey, isInCooldown, recordAlert, clearResolvedAlerts, getHistory } from './alert-state.js'
+import { buildAlertKey, isInCooldown, recordAlert, clearResolvedAlerts, getHistory, getFirstFired } from './alert-state.js'
 
 beforeEach(() => {
   // 이력은 모듈 수준 객체다. 테스트마다 비운다.
@@ -36,4 +36,28 @@ test('같은 공항에서 조건이 해소되면 이력이 지워진다', () => 
   recordAlert(key)
   clearResolvedAlerts(new Set(), 'RKSI')
   assert.equal(getHistory()[key], undefined)
+})
+
+test('최초 발동 시각(firstFired)은 재발화에도 바뀌지 않는다', () => {
+  const key = buildAlertKey({ triggerId: 'high_wind' }, 'RKSI')
+  recordAlert(key)
+  const firstFired = getFirstFired(key)
+  assert.ok(firstFired)
+
+  // 쿨다운 만료 후 재발화 — recordAlert가 다시 호출돼도 firstFired는 그대로다
+  recordAlert(key)
+  assert.equal(getFirstFired(key), firstFired)
+  assert.equal(getHistory()[key].count, 2)
+})
+
+test('조건이 해소됐다가 다시 발동하면 firstFired가 새로 갱신된다', () => {
+  const key = buildAlertKey({ triggerId: 'high_wind' }, 'RKSI')
+  recordAlert(key)
+  const firstFired = getFirstFired(key)
+
+  clearResolvedAlerts(new Set(), 'RKSI') // 조건 해소 — 이력 삭제
+  assert.equal(getFirstFired(key), null)
+
+  recordAlert(key) // 새로 발동
+  assert.ok(getFirstFired(key) >= firstFired)
 })

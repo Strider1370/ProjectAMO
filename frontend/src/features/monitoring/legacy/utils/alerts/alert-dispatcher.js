@@ -23,8 +23,10 @@ export function setAlertCallback(cb) {
 /**
  * 트리거 결과를 디스패치한다.
  * 콘솔 로그 + React 콜백 호출.
+ * highlightSince: 강조 창의 기준 시각(최초 발동 시각). 재발화 호출에서도 그대로 넘겨
+ * 받아 강조가 재시작되지 않게 한다. 넘기지 않으면(예시 알람 등) 지금 시각으로 대체한다.
  */
-export function dispatch(result, dispatchers, icao, alertKey) {
+export function dispatch(result, dispatchers, icao, alertKey, highlightSince) {
   const { severity, title, message } = result;
   const label = SEVERITY_LABELS[severity] || "UNKNOWN";
   const style = SEVERITY_STYLES[severity] || "";
@@ -52,6 +54,7 @@ export function dispatch(result, dispatchers, icao, alertKey) {
       highlight: result.highlight || null,
       alertKey,
       timestamp: Date.now(),
+      highlightSince: highlightSince ?? Date.now(),
     });
   }
 }

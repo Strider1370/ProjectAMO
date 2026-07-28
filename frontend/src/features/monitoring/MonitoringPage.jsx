@@ -4,6 +4,7 @@ import {
   clearResolvedAlerts,
   dispatch,
   evaluate,
+  getFirstFired,
   isInCooldown,
   isQuietHours,
   recordAlert,
@@ -171,7 +172,16 @@ export default function MonitoringPage() {
 
   useEffect(() => {
     setAlertCallback((alertObj) => {
-      setActiveAlerts((prev) => [alertObj, ...prev].slice(0, 20))
+      setActiveAlerts((prev) => {
+        // 재발화(같은 alertKey)는 새 줄을 추가하지 않고 기존 줄을 갈아 끼운다 —
+        // id·timestamp는 새 값으로 바뀌어(소리 재알림용) 있어도 highlightSince는
+        // dispatch()가 이미 최초 발동 시각으로 넘겨줬으므로 강조는 재시작되지 않는다.
+        const idx = alertObj.alertKey ? prev.findIndex((alert) => alert.alertKey === alertObj.alertKey) : -1
+        if (idx === -1) return [alertObj, ...prev].slice(0, 20)
+        const next = [...prev]
+        next[idx] = alertObj
+        return next
+      })
     })
     return () => setAlertCallback(null)
   }, [])
@@ -254,7 +264,7 @@ export default function MonitoringPage() {
       firedKeys.add(key)
       if (isInCooldown(key, settings.global.cooldown_seconds)) continue
       recordAlert(key)
-      dispatch(result, settings.dispatchers, selectedAirport, key)
+      dispatch(result, settings.dispatchers, selectedAirport, key, getFirstFired(key))
     }
 
     // 이력과 무관하게 "지금 데이터만으로도 여전히 조건이 성립하는지" 다시 확인한다.
@@ -489,8 +499,10 @@ export default function MonitoringPage() {
   // 지도(mapPanel)는 모드와 무관하게 항상 그려지므로, 지상 모드에서는 여기서
   // 강조 자체를 비운다 — activeAlerts를 그대로 둔 채로도 지도 링이 깜빡이지 않게 한다.
   const highlightMs = (settings?.dispatchers?.popup?.highlight_seconds ?? 60) * 1000
+  // highlightSince: 최초 발동 시각. 재발화(쿨다운 만료 후 재알림)해도 이 값은 그대로라
+  // 조건이 이어지는 동안 강조가 재시작되지 않는다. 없으면(예시 알람 등) timestamp로 대체.
   const highlighting = dashboardMode === 'ground' ? [] : popupAlerts.filter(
-    (alert) => alert.highlight && Date.now() - alert.timestamp < highlightMs
+    (alert) => alert.highlight && Date.now() - (alert.highlightSince ?? alert.timestamp) < highlightMs
   )
 
   // 같은 대상에 둘이 겹치면 더 심각한 쪽 색을 남긴다.

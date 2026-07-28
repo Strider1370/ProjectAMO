@@ -5,6 +5,7 @@ export {
   recordAlert,
   clearResolvedAlerts,
   getHistory,
+  getFirstFired,
 } from "./alert-state.js";
 export { dispatch, isQuietHours, setAlertCallback } from "./alert-dispatcher.js";
 export {

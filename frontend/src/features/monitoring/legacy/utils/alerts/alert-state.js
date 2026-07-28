@@ -83,3 +83,12 @@ export function clearResolvedAlerts(firedKeys, icao) {
 export function getHistory() {
   return { ...alertHistory };
 }
+
+/**
+ * 조건이 처음 발동한 시각. 재발화(recordAlert 재호출)에도 바뀌지 않고,
+ * 조건이 해소되어 이력이 지워진 뒤 다시 발동하면 새 시각으로 갱신된다.
+ * 강조 창의 기준점으로 쓴다 — timestamp(마지막 발동)와는 다른 값이다.
+ */
+export function getFirstFired(alertKey) {
+  return alertHistory[alertKey]?.firstFired ?? null;
+}
