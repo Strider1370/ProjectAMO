@@ -6,12 +6,6 @@ const alertHistory = {};
 export function buildAlertKey(result, icao) {
   const { triggerId, data } = result;
 
-  if (triggerId === "warning_issued") {
-    const items = Array.isArray(data) ? data : [];
-    const suffix = items.map((w) => `${w.wrng_type_name}:${w.valid_start}-${w.valid_end}`).join("|");
-    return `${triggerId}:${icao}:${suffix}`;
-  }
-
   if (triggerId === "low_visibility") {
     return `${triggerId}:${icao}:${data?.threshold}`;
   }
@@ -69,11 +63,14 @@ export function recordAlert(alertKey) {
 }
 
 /**
- * 조건이 해소된 트리거의 이력을 삭제한다.
+ * 조건이 해소된 트리거의 이력을 삭제한다. 해당 공항의 키만 본다.
+ * 이력이 전역이면 다른 공항을 보는 동안 이전 공항 이력이 지워져 재알림 간격이 무시된다.
  * firedKeys: 이번 사이클에서 발동된 키 Set
  */
-export function clearResolvedAlerts(firedKeys) {
+export function clearResolvedAlerts(firedKeys, icao) {
+  const suffix = `:${icao}`;
   for (const key of Object.keys(alertHistory)) {
+    if (!key.endsWith(suffix) && !key.includes(`${suffix}:`)) continue;
     if (!firedKeys.has(key)) {
       delete alertHistory[key];
     }
