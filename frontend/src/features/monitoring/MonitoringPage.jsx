@@ -274,7 +274,7 @@ export default function MonitoringPage() {
           ...example,
           icao: selectedAirport || DEFAULT_AIRPORT,
           triggerId: 'preview_popup',
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
           previewChannels: { popup: true, sound: false, marquee: false },
         }
         setPreviewAlerts((prev) => [previewAlert, ...prev].slice(0, 10))
@@ -306,7 +306,7 @@ export default function MonitoringPage() {
         : '하단 알림 바에는 이런 식으로 메시지가 표시됩니다.',
       icao: selectedAirport || DEFAULT_AIRPORT,
       triggerId: `preview_${channel}`,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
       previewChannels,
     }
     setPreviewAlerts((prev) => [previewAlert, ...prev].slice(0, 10))
