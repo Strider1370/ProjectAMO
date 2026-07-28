@@ -19,6 +19,7 @@ const lowVisibility = {
       title: `METAR 저시정: ${vis}m`,
       message: `현재 시정이 ${vis}m으로 임계값(${params.threshold}m) 이하입니다.`,
       data: { value: vis, threshold: params.threshold },
+      highlight: { panel: "metar", field: "visibility" },
     };
   },
 };
@@ -42,6 +43,7 @@ const highWind = {
       title: `강풍: ${exceeded.join(", ")}`,
       message: `${wind.raw || ""} — 임계값 초과`,
       data: { speed: wind.speed, gust: wind.gust },
+      highlight: { panel: "metar", field: "wind" },
     };
   },
 };
@@ -78,6 +80,7 @@ const weatherPhenomenon = {
       title: `기상현상: ${matched.map((m) => m.code).join(", ")}`,
       message: `관측된 기상현상: ${wxList.map((w) => w.raw).join(" ")}`,
       data: matched,
+      highlight: { panel: "metar", field: "weather" },
     };
   },
 };
@@ -101,6 +104,7 @@ const lowCeiling = {
       title: `저운고: ${ceiling.amount}${String(Math.round(ceiling.base / 100)).padStart(3, "0")} (${ceiling.base}ft)`,
       message: `운저고도 ${ceiling.base}ft — 임계값(${params.threshold}ft) 이하`,
       data: { amount: ceiling.amount, base: ceiling.base },
+      highlight: { panel: "metar", field: "ceiling" },
     };
   },
 };
@@ -133,6 +137,10 @@ const tafAdverseWeather = {
     }
 
     if (alerts.length === 0) return null;
+
+    const highlightFields = [...new Set(alerts.map((a) => (a.type === "vis" ? "visibility" : "weather")))];
+    const highlightTimes = [...new Set(alerts.map((a) => a.time))];
+
     // 제목엔 실제로 위험한 값(시정/기상현상)을 담는다 — "TAF"라는 분류명은 본문으로 내리고,
     // METAR 기반 저시정("관측 저시정")과 헷갈리지 않게 "예보"를 명시한다.
     const worst = alerts.find((a) => a.type === "wx" && /TS|FC/.test(a.detail)) || alerts[0];
@@ -144,6 +152,7 @@ const tafAdverseWeather = {
       message: `TAF ${params.lookahead_hours}시간 내 예보\n`
         + alerts.map((a) => `[${formatUtc(a.time)}] ${a.detail}`).join("\n"),
       data: alerts,
+      highlight: { panel: "taf", fields: highlightFields, times: highlightTimes },
     };
   },
 };
@@ -199,6 +208,10 @@ const lightningDetected = {
         .filter(Boolean)
         .join(" | "),
       data: { byZone, nearest, newStrikes: fresh },
+      highlight: {
+        panel: "map",
+        zone: byZone.alert > 0 ? "alert" : byZone.danger > 0 ? "danger" : "caution",
+      },
     };
   },
 };
