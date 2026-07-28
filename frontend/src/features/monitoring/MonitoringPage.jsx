@@ -112,6 +112,7 @@ export default function MonitoringPage() {
   ))
 
   const prevDataRef = useRef(null)
+  const wasPausedRef = useRef(false)
 
   useEffect(() => {
     localStorage.setItem('selected_airport_monitoring', selectedAirport || '')
@@ -217,7 +218,19 @@ export default function MonitoringPage() {
   useEffect(() => {
     if (!selectedAirport || !alertDefaults) return
     const settings = resolveSettings(alertDefaults)
-    if (!settings.global.alerts_enabled || isQuietHours(settings.global.quiet_hours)) return
+    const paused = !settings.global.alerts_enabled
+      || isQuietHours(settings.global.quiet_hours)
+      || dashboardMode === 'ground'
+    if (paused) {
+      wasPausedRef.current = true
+      // 지상 모드에서는 목록·반짝임·소리 모두 없다(스펙 §8). 판정만 멈추면
+      // 이미 떠 있던 알람이 그대로 남으므로 목록도 비운다.
+      if (dashboardMode === 'ground') {
+        setActiveAlerts([])
+        setValidAlertKeys(new Set())
+      }
+      return
+    }
 
     const currentData = {
       metar: data.metar?.airports?.[selectedAirport] || null,
@@ -225,7 +238,10 @@ export default function MonitoringPage() {
       warning: data.warning?.airports?.[selectedAirport] || null,
       lightning: data.lightning?.airports?.[selectedAirport] || null,
     }
-    const prev = prevDataRef.current
+    // 재개 직후에는 "그동안 무엇이 바뀌었나"가 아니라 "지금 무엇이 나쁜가"로 판정한다.
+    const resuming = wasPausedRef.current
+    wasPausedRef.current = false
+    const prev = resuming ? null : prevDataRef.current
     const previousData = prev ? {
       metar: prev.metar?.airports?.[selectedAirport] || null,
       taf: prev.taf?.airports?.[selectedAirport] || null,
@@ -248,35 +264,64 @@ export default function MonitoringPage() {
     const liveResults = evaluate(currentData, null, settings)
     setValidAlertKeys(new Set(liveResults.map((result) => buildAlertKey(result, selectedAirport))))
 
-    clearResolvedAlerts(firedKeys)
+    clearResolvedAlerts(firedKeys, selectedAirport)
     prevDataRef.current = data
-  }, [data, selectedAirport, alertDefaults])
+  }, [data, selectedAirport, alertDefaults, dashboardMode])
 
   function handleDismissAlert(id) {
     setActiveAlerts((prev) => prev.filter((alert) => alert.id !== id))
     setPreviewAlerts((prev) => prev.filter((alert) => alert.id !== id))
   }
 
-  // 실제 트리거가 낼 법한 문구를 흉내 낸 예시 3종. 패널에 순서대로 쌓이는 모습을 보여주기 위한 것이라
-  // alertKey가 없다 — 그래서 항상 "유효"로 표시된다 (진짜 유효/해제 구분은 실제 데이터로만 확인 가능).
+  // 실제 트리거가 낼 법한 문구를 흉내 낸 예시 3종. alertKey가 없어 조건 해소로 사라지지 않으므로
+  // 강조 시간이 끝나고 10초 뒤 스스로 빠진다.
+  // 심각도 내림차순이라 마지막에 뜬 3번이 목록 맨 아래에 들어간다 — 채운 줄이 맨 위가 아님을 보여준다.
   const PANEL_PREVIEW_SEQUENCE = [
-    { severity: 'critical', title: '경보 발령: 강풍', message: '강풍 (23일 21:00 ~ 24일 03:00)' },
-    { severity: 'warning', title: 'METAR 저시정: 3000m', message: '현재 시정이 3000m으로 임계값(5000m) 이하입니다.' },
-    { severity: 'warning', title: 'TAF 저시정: 2500m', message: 'TAF 6시간 내 예보\n[24일 02:00] 시정 2500m' },
+    {
+      severity: 'critical',
+      title: '[예시] 낙뢰 경보: 8km 이내 3건',
+      message: '최근접 5.2km | 경보 3건',
+      highlight: { panel: 'map', zone: 'alert' },
+    },
+    {
+      severity: 'warning',
+      title: '[예시] METAR 저시정: 1200m',
+      message: '현재 시정이 1200m으로 임계값(1500m) 이하입니다.',
+      highlight: { panel: 'metar', field: 'visibility' },
+    },
+    {
+      severity: 'info',
+      title: '[예시] TAF 저시정: 2500m',
+      message: 'TAF 6시간 내 예보\n시정 2500m',
+      highlight: { panel: 'taf', fields: ['visibility'] },
+    },
   ]
 
-  function firePopupPreviewSequence() {
+  function firePopupPreviewSequence(highlightSeconds) {
+    // 화면에 실제로 그려진 시간칸이어야 강조가 붙는다. 없으면 빈 배열 —
+    // 스펙 §6의 "대상을 표시할 수 없으면 생략"에 걸려 조용히 넘어간다.
+    const tafTimes = (data.taf?.airports?.[selectedAirport]?.timeline || [])
+      .map((slot) => slot.time)
+      .filter((time) => new Date(time) > new Date())
+      .slice(0, 3)
+
     PANEL_PREVIEW_SEQUENCE.forEach((example, index) => {
       window.setTimeout(() => {
         const previewAlert = {
           id: `preview-popup-${Date.now()}-${index}`,
           ...example,
+          highlight: example.highlight.panel === 'taf'
+            ? { ...example.highlight, times: tafTimes }
+            : example.highlight,
           icao: selectedAirport || DEFAULT_AIRPORT,
           triggerId: 'preview_popup',
           timestamp: Date.now(),
-          previewChannels: { popup: true, sound: false, marquee: false },
         }
         setPreviewAlerts((prev) => [previewAlert, ...prev].slice(0, 10))
+        // 강조가 끝나고 10초 뒤 스스로 빠진다. 예시는 조건 해소 판정이 없다.
+        window.setTimeout(() => {
+          setPreviewAlerts((prev) => prev.filter((alert) => alert.id !== previewAlert.id))
+        }, highlightSeconds * 1000 + 10000)
       }, index * 600)
     })
   }
@@ -287,39 +332,27 @@ export default function MonitoringPage() {
     const dispatchers = previewDispatchers || settings.dispatchers
 
     if (channel === 'popup') {
-      firePopupPreviewSequence()
+      firePopupPreviewSequence(dispatchers.popup?.highlight_seconds ?? 60)
       return
     }
 
-    const previewChannels = {
-      popup: false,
-      sound: channel === 'sound',
-      marquee: channel === 'marquee',
-    }
+    // 소리 예시: 목록에 줄을 만들되 강조 대상이 없고, 재생이 끝나면 곧 사라진다.
     const previewAlert = {
-      id: `preview-${channel}-${Date.now()}`,
-      severity: channel === 'sound' ? 'critical' : 'warning',
-      title: channel === 'sound' ? '소리 알림 예시' : '하단 알림 바 예시',
-      message: channel === 'sound'
-        ? '현재 설정된 사운드 크기와 패턴으로 재생됩니다.'
-        : '하단 알림 바에는 이런 식으로 메시지가 표시됩니다.',
+      id: `preview-sound-${Date.now()}`,
+      severity: 'critical',
+      title: '소리 알림 예시',
+      message: '현재 설정된 사운드 크기와 패턴으로 재생됩니다.',
       icao: selectedAirport || DEFAULT_AIRPORT,
-      triggerId: `preview_${channel}`,
+      triggerId: 'preview_sound',
       timestamp: Date.now(),
-      previewChannels,
+      previewChannels: { sound: true },
     }
     setPreviewAlerts((prev) => [previewAlert, ...prev].slice(0, 10))
 
-    const marqueeLifetimeMs = previewChannels.marquee
-      ? Math.max((dispatchers.marquee?.show_duration_seconds ?? 30) * 1000, 5000)
-      : 0
-    const soundRepeat = dispatchers.sound?.repeat_count?.critical ?? 3
-    const soundLifetimeMs = previewChannels.sound ? Math.max(soundRepeat * 500 + 1000, 2500) : 0
-    const lifetimeMs = Math.max(marqueeLifetimeMs, soundLifetimeMs, 4000)
-
+    const repeat = dispatchers.sound?.repeat_count?.critical ?? 3
     window.setTimeout(() => {
       setPreviewAlerts((prev) => prev.filter((alert) => alert.id !== previewAlert.id))
-    }, lifetimeMs)
+    }, Math.max(repeat * 500 + 1000, 2500))
   }
 
   const effectiveSlideshowConfig = isMobileLayout
@@ -433,6 +466,7 @@ export default function MonitoringPage() {
           saveAdvisoryFilterSettings(next || getDefaultAdvisoryFilterSettings())
         }}
         onPreviewAlert={handlePreviewAlert}
+        isGroundMode={dashboardMode === 'ground'}
         variant={variant}
         slideshowConfig={slideshowConfig}
         slideshowStatusLabel={slideshowStatusLabel}
@@ -449,8 +483,44 @@ export default function MonitoringPage() {
   }
 
   const settings = alertDefaults ? resolveSettings(alertDefaults) : null
-  const popupAlerts = [...previewAlerts.filter((alert) => alert.previewChannels?.popup), ...activeAlerts]
+  const popupAlerts = [...previewAlerts, ...activeAlerts]
   const soundAlerts = [...previewAlerts.filter((alert) => alert.previewChannels?.sound), ...activeAlerts]
+
+  // 강조는 새 알람 창 안의 것만. 창 밖으로 나가면 요소는 평소 모습으로 돌아간다.
+  // 동시에 여러 알람이 살아 있으면 각자의 칸이 각자의 심각도 색으로 깜빡인다(스펙 §7).
+  const highlightMs = (settings?.dispatchers?.popup?.highlight_seconds ?? 60) * 1000
+  const highlighting = popupAlerts.filter(
+    (alert) => alert.highlight && Date.now() - alert.timestamp < highlightMs
+  )
+
+  // 같은 대상에 둘이 겹치면 더 심각한 쪽 색을 남긴다.
+  const SEVERITY_RANK = { critical: 0, warning: 1, info: 2 }
+  const collect = (panel, keyOf) => {
+    const out = {}
+    for (const alert of highlighting) {
+      if (alert.highlight.panel !== panel) continue
+      for (const key of keyOf(alert.highlight)) {
+        const before = out[key]
+        if (!before || SEVERITY_RANK[alert.severity] < SEVERITY_RANK[before]) {
+          out[key] = alert.severity
+        }
+      }
+    }
+    return out
+  }
+
+  const metarHighlightFields = collect('metar', (h) => (h.field ? [h.field] : []))
+  const tafHighlightTimes = collect('taf', (h) => h.times || [])
+  const mapHighlightZones = collect('map', (h) => (h.zone ? [h.zone] : []))
+
+  // 강조 창이 닫히는 순간을 잡으려면 재렌더가 필요하다. 강조 중일 때만 돈다.
+  const [, setHighlightTick] = useState(0)
+  useEffect(() => {
+    if (highlighting.length === 0) return undefined
+    const timer = window.setInterval(() => setHighlightTick((n) => n + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [highlighting.length])
+
   const isDomesticIcao = (icao) => typeof icao === 'string' && icao.startsWith('RK')
   const airportSet = new Set([
     ...Object.keys(data.metar?.airports || {}),
@@ -511,6 +581,7 @@ export default function MonitoringPage() {
       metarTime={metarTime}
       version="v2"
       tz={timeZone}
+      highlightFields={metarHighlightFields}
     />
   )
   const tafPanel = dashboardMode === 'ground' ? (
@@ -522,6 +593,7 @@ export default function MonitoringPage() {
       version={tafVersion}
       onVersionToggle={setTafVersion}
       tz={timeZone}
+      highlightTimes={tafHighlightTimes}
     />
   )
   const mapPanel = (
@@ -538,6 +610,7 @@ export default function MonitoringPage() {
         slideshowStatusLabel={slideshowStatusLabel}
         slideshowEffect={slideshowConfig.transitionEffect}
         slideshowDurationMs={slideshowConfig.transitionDurationMs}
+        highlightZones={mapHighlightZones}
       />
     </>
   )

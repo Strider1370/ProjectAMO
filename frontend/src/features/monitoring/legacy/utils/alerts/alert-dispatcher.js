@@ -49,6 +49,7 @@ export function dispatch(result, dispatchers, icao, alertKey) {
       message,
       icao,
       triggerId: result.triggerId,
+      highlight: result.highlight || null,
       alertKey,
       timestamp: Date.now(),
     });
