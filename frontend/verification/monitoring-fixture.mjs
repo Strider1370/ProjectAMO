@@ -85,7 +85,8 @@ export async function installMonitoringFixture(page) {
     if (route.request().method() === 'GET') {
       fulfill(route, {
         content_hash: HASH_METAR,
-        data: {
+        // 실제 metar-processor.js 결과는 `airports`가 최상위 키다(`data`로 감싸지 않는다).
+        airports: {
           RKSI: {
             raw: 'METAR RKSI 231200Z 27010KT 9999 FEW030 BKN080 18/09 A3012',
             observation: {
@@ -106,13 +107,15 @@ export async function installMonitoringFixture(page) {
   })
 
   await page.route('**/api/metar-overseas', (route) => {
-    fulfill(route, { content_hash: HASH_METAR_OVERSEAS, data: {} })
+    // overseas-weather-processor.js도 `airports`가 최상위 키다.
+    fulfill(route, { content_hash: HASH_METAR_OVERSEAS, airports: {} })
   })
 
   await page.route('**/api/taf', (route) => {
     fulfill(route, {
       content_hash: HASH_TAF,
-      data: {
+      // taf-processor.js 결과도 `airports`가 최상위 키다.
+      airports: {
         RKSI: {
           raw: 'TAF RKSI 231130Z 2312/2424 27010KT P6000 FEW030 BKN080',
           header: { icao: 'RKSI' },
@@ -125,39 +128,47 @@ export async function installMonitoringFixture(page) {
   })
 
   await page.route('**/api/taf-overseas', (route) => {
-    fulfill(route, { content_hash: HASH_TAF_OVERSEAS, data: {} })
+    fulfill(route, { content_hash: HASH_TAF_OVERSEAS, airports: {} })
   })
 
   await page.route('**/api/amos', (route) => {
-    fulfill(route, { content_hash: HASH_AMOS, data: {} })
+    // amos-processor.js 결과도 `airports`가 최상위 키다.
+    fulfill(route, { content_hash: HASH_AMOS, airports: {} })
   })
 
   await page.route('**/api/warning', (route) => {
-    fulfill(route, { content_hash: HASH_WARNING, data: {} })
+    // warning-parser.js가 내는 parsed 결과도 `airports`가 최상위 키다.
+    fulfill(route, { content_hash: HASH_WARNING, airports: {} })
   })
 
   await page.route('**/api/notam', (route) => {
-    fulfill(route, { content_hash: HASH_NOTAM, data: {} })
+    // notam-processor.js 결과는 `items`가 최상위 키다 (airports 아님).
+    fulfill(route, { content_hash: HASH_NOTAM, items: [] })
   })
 
   await page.route('**/api/sigmet', (route) => {
-    fulfill(route, { content_hash: HASH_SIGMET, data: { items: [] } })
+    // sigmet-processor.js 결과는 `items`가 최상위 키다 (data로 감싸지 않는다).
+    fulfill(route, { content_hash: HASH_SIGMET, items: [] })
   })
 
   await page.route('**/api/sigmet-overseas', (route) => {
-    fulfill(route, { content_hash: HASH_SIGMET_OVERSEAS, data: { items: [] } })
+    fulfill(route, { content_hash: HASH_SIGMET_OVERSEAS, items: [] })
   })
 
   await page.route('**/api/airmet', (route) => {
-    fulfill(route, { content_hash: HASH_AIRMET, data: { items: [] } })
+    // airmet-processor.js 결과도 `items`가 최상위 키다.
+    fulfill(route, { content_hash: HASH_AIRMET, items: [] })
   })
 
   await page.route('**/api/lightning', (route) => {
-    fulfill(route, { content_hash: HASH_LIGHTNING, data: { items: [] } })
+    // lightning-processor.js 결과는 `nationwide.strikes`다 — items가 아니다.
+    fulfill(route, { content_hash: HASH_LIGHTNING, nationwide: { strikes: [] } })
   })
 
   await page.route('**/api/sigwx-low', (route) => {
-    fulfill(route, { content_hash: HASH_SIGWX_LOW, data: {} })
+    // sigwx-low-processor.js 결과는 data 래핑 없이 tmfc/source 등이 최상위에 있다.
+    // 이 mock은 원래도 빈 값이라 넣을 필드가 없다 — 빈 래퍼만 걷어낸다.
+    fulfill(route, { content_hash: HASH_SIGWX_LOW })
   })
 
   await page.route('**/api/sigwx-low-history', (route) => {
@@ -181,19 +192,23 @@ export async function installMonitoringFixture(page) {
   })
 
   await page.route('**/api/adsb', (route) => {
-    fulfill(route, { content_hash: HASH_ADSB, data: { aircraft: [] } })
+    // adsb-processor.js 결과는 `aircraft`가 최상위 키다.
+    fulfill(route, { content_hash: HASH_ADSB, aircraft: [] })
   })
 
   await page.route('**/api/ground-forecast', (route) => {
-    fulfill(route, { content_hash: HASH_GROUND_FORECAST, data: {} })
+    // ground-forecast-processor.js 결과도 `airports`가 최상위 키다.
+    fulfill(route, { content_hash: HASH_GROUND_FORECAST, airports: {} })
   })
 
   await page.route('**/api/ground-overview', (route) => {
-    fulfill(route, { content_hash: HASH_GROUND_OVERVIEW, data: {} })
+    // WarningList.jsx가 groundOverviewData?.airports?.[icao]로 읽는다.
+    fulfill(route, { content_hash: HASH_GROUND_OVERVIEW, airports: {} })
   })
 
   await page.route('**/api/environment', (route) => {
-    fulfill(route, { content_hash: HASH_ENVIRONMENT, data: {} })
+    // environment-processor.js 결과도 `airports`가 최상위 키다.
+    fulfill(route, { content_hash: HASH_ENVIRONMENT, airports: {} })
   })
 
   await page.route('**/api/airport-info', (route) => {

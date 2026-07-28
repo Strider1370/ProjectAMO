@@ -25,13 +25,15 @@ test.describe('monitoring', () => {
     await expect(operations).toHaveAttribute('aria-selected', 'false')
   })
 
-  test('alert dispatcher rows name both the checkbox and its 예시 button', async ({ page }) => {
+  test('alert dispatcher rows name both the checkbox and its 예시 button', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
     // A <label> wrapping the row used to take the 예시 button's accessible name and leave the
     // checkbox unnamed, so a screen reader announced neither correctly.
     await openMonitoringState(page, 'settings')
     await page.getByRole('button', { name: '알림', exact: true }).click()
 
-    for (const label of ['팝업 사용', '소리 사용', '하단 알림 바 표시']) {
+    for (const label of ['알람 목록 표시', '소리 사용']) {
       const checkbox = page.getByRole('checkbox', { name: label, exact: true })
       await expect(checkbox).toHaveCount(1)
       // Clicking the row text must still toggle the checkbox.
@@ -43,49 +45,120 @@ test.describe('monitoring', () => {
     }
   })
 
-  test('alert panel collapses to a badge but keeps the list until dismissed', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', 'popup panel is a desktop dashboard surface')
+  test('alert table sorts by severity and fills exactly one row', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
 
-    // 접히기까지의 시간을 줄여 테스트가 기본값 10초를 기다리지 않게 한다.
+    // 강조 창을 짧게 두어 테스트가 기본값 60초를 기다리지 않게 한다.
     await page.addInitScript(() => {
       localStorage.setItem(
         'aviation-weather-alert-settings',
-        JSON.stringify({ dispatchers: { popup: { auto_dismiss_seconds: 2 } } })
+        JSON.stringify({ dispatchers: { popup: { highlight_seconds: 3 } } })
       )
     })
     await openMonitoringState(page, 'settings')
     await page.getByRole('button', { name: '알림', exact: true }).click()
-    await page.getByRole('button', { name: '팝업 사용 예시', exact: true }).click()
+    await page.getByRole('button', { name: '알람 목록 표시 예시', exact: true }).click()
     await page.locator('.alert-popup-close').click()
 
-    // 예시 3건이 순서대로 쌓여 패널이 펼쳐진다.
-    const featured = page.locator('.alert-panel-featured')
-    await expect(featured).toBeVisible()
-    await expect(page.locator('.alert-panel-row')).toHaveCount(2)
+    // 예시 3건이 표에 쌓인다.
+    const rows = page.locator('.alert-table-row')
+    await expect(rows).toHaveCount(3)
 
-    // 머무는 시간이 지나면 패널은 배지로 접힌다 — 알림이 지워진 것이 아니다.
-    const badge = page.getByRole('button', { name: '알림 3건 펼치기', exact: true })
-    await expect(badge).toBeVisible()
-    await expect(featured).toHaveCount(0)
+    // 색으로 채운 줄은 항상 1건뿐이다.
+    await expect(page.locator('.alert-table-row--new')).toHaveCount(1)
 
-    // 배지를 누르면 3건이 그대로 돌아온다.
-    await badge.click()
-    await expect(featured).toBeVisible()
-    await expect(page.locator('.alert-panel-row')).toHaveCount(2)
+    // 심각도순 정렬 — 위험이 맨 위다.
+    await expect(rows.first()).toHaveClass(/alert-table-row--critical/)
+
+    // 강조 창이 지나면 채운 줄이 가라앉되 목록에서 사라지지 않는다.
+    await expect(page.locator('.alert-table-row--new')).toHaveCount(0, { timeout: 10000 })
+    await expect(rows).toHaveCount(3)
   })
 
-  test('mobile: opens monitoring and navigates task tabs', async ({ page }, testInfo) => {
+  test('alert table renders above the fullscreen slideshow overlay', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    await openMonitoringState(page, 'settings')
+    await page.getByRole('button', { name: '알림', exact: true }).click()
+    await page.getByRole('button', { name: '알람 목록 표시 예시', exact: true }).click()
+    await page.locator('.alert-popup-close').click()
+    await expect(page.locator('.alert-table')).toBeVisible()
+
+    // 실제 전체화면 슬라이드 오버레이를 띄운 뒤 알람 표가 여전히 보이는지 본다.
+    // CSS 상수를 CSS로 읽어 비교하면 동어반복이라 회귀를 못 잡는다.
+    await page.evaluate(() => {
+      const stage = document.createElement('div')
+      stage.className = 'monitoring-slide-overlay monitoring-slide-overlay--whole-screen is-visible'
+      stage.style.background = '#000'
+      stage.dataset.testStage = 'true'
+      document.body.appendChild(stage)
+    })
+
+    const table = page.locator('.alert-table')
+    await expect(table).toBeVisible()
+    // 표의 한 점이 오버레이가 아니라 표 자신에게 닿아야 한다.
+    const onTop = await table.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + 4)
+      return el.contains(hit) || hit === el
+    })
+    expect(onTop).toBe(true)
+  })
+
+  test('ground mode hides alerts and disables the list preview button', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    // openMonitoringState(page, 'settings')는 '/monitoring?mode=ops'로 다시 이동해
+    // 지상 모드를 되돌린다(monitoring-fixture.mjs:322). 여기서는 쓰지 않고 직접 연다.
+    await page.goto('/monitoring?mode=ground', { waitUntil: 'load' })
+    await page.locator('.dashboard-root').waitFor({ state: 'attached' })
+
+    // 지상 모드에서는 알람이 아예 표시되지 않는다 (스펙 §8).
+    await expect(page.locator('.alert-table')).toHaveCount(0)
+
+    await page.getByLabel('설정').click()
+    await page.getByRole('button', { name: '알림', exact: true }).click()
+
+    await expect(page.getByRole('button', { name: '알람 목록 표시 예시', exact: true })).toBeDisabled()
+    await expect(page.getByRole('button', { name: '소리 사용 예시', exact: true })).toBeEnabled()
+  })
+
+  test('low visibility alert outlines the METAR visibility cell', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    await openMonitoringState(page, 'settings')
+    await page.getByRole('button', { name: '알림', exact: true }).click()
+    await page.getByRole('button', { name: '알람 목록 표시 예시', exact: true }).click()
+    await page.locator('.alert-popup-close').click()
+
+    // 예시 2번이 METAR 시정 칸을 대상으로 삼는다.
+    await expect(page.locator('.metar-surface-card.alert-outline-blink')).toHaveCount(1)
+  })
+
+  test('resolved alerts drop out of the table on their own', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    // 예시 알람은 alertKey가 없어 조건 해소 판정을 타지 않는다. 대신 강조 창 + 10초 뒤
+    // 스스로 빠지는 경로가 "아무도 조작하지 않아도 정리된다"를 같은 자리에서 증명한다.
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'aviation-weather-alert-settings',
+        JSON.stringify({ dispatchers: { popup: { highlight_seconds: 1 } } })
+      )
+    })
+    await openMonitoringState(page, 'settings')
+    await page.getByRole('button', { name: '알림', exact: true }).click()
+    await page.getByRole('button', { name: '알람 목록 표시 예시', exact: true }).click()
+    await page.locator('.alert-popup-close').click()
+
+    await expect(page.locator('.alert-table-row')).toHaveCount(3)
+    await expect(page.locator('.alert-table')).toHaveCount(0, { timeout: 20000 })
+  })
+
+  test('mobile is redirected away from monitoring', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only test')
 
-    await openMonitoringState(page, 'ops')
-    await expect(page.locator('[class*="dashboard-root"]')).toBeVisible()
-
-    // Open map task
-    await openMonitoringState(page, 'map')
-    await page.waitForTimeout(300)
-
-    // Open settings task
-    await openMonitoringState(page, 'settings')
-    await page.waitForTimeout(300)
+    await page.goto('/monitoring')
+    await expect(page).toHaveURL(/\/$/)
   })
 })
