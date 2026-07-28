@@ -357,7 +357,7 @@ const MapView = forwardRef(function MapView({
   const adsbEventCleanupRef = useRef(null)
   const sectorEventCleanupRef = useRef(null)
   const [error, setError] = useState(null)
-  const { on: demoMode } = useDemoMode()
+  const { on: demoMode, nowMs: demoNowMs } = useDemoMode()
   const [isStyleReady, setIsStyleReady] = useState(false)
   const [styleRevision, setStyleRevision] = useState(0)
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
@@ -416,8 +416,9 @@ const MapView = forwardRef(function MapView({
   const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
   // 브리핑 NOTAM 경로전용 필터가 아래 NOTAM 동기화 effect에서 참조 → 반드시 effect보다 먼저 선언(TDZ 방지).
   const [routeBriefingMapMode, setRouteBriefingMapMode] = useState(false)
-  const routeBriefing = useRouteBriefing({ activePanel, airports, metarData })
-  const notamFc = useMemo(() => notamToFeatureCollection(notamData, Date.now()), [notamData])
+  const routeBriefing = useRouteBriefing({ activePanel, airports, metarData, demoMode, demoNowMs })
+  const effectiveLightningReferenceTimeMs = demoMode ? demoNowMs : lightningReferenceTimeMs
+  const notamFc = useMemo(() => notamToFeatureCollection(notamData, demoNowMs), [notamData, demoNowMs])
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     registerNotamObstacleImages(map) // 장애물 종류별 아이콘 등록(비동기, 준비되면 심볼 레이어가 참조)
     updateNotamLayerData(map, notamFc)
@@ -725,7 +726,7 @@ const MapView = forwardRef(function MapView({
     hiddenAdvisoryKeys,
     selectedSigwxFrontMeta,
     selectedSigwxCloudMeta,
-    lightningReferenceTimeMs,
+    lightningReferenceTimeMs: effectiveLightningReferenceTimeMs,
     nwpSelection,
     ktgGrid,
     flightCategoryGeojson,
@@ -748,7 +749,7 @@ const MapView = forwardRef(function MapView({
     hiddenAdvisoryKeys,
     selectedSigwxFrontMeta,
     selectedSigwxCloudMeta,
-    lightningReferenceTimeMs,
+    effectiveLightningReferenceTimeMs,
     nwpSelection,
     ktgGrid,
     flightCategoryGeojson,
@@ -1743,6 +1744,7 @@ const MapView = forwardRef(function MapView({
         isPlaying={weatherTimelinePlaying}
         onScrub={scrubWeatherTimeline}
         onPlayPause={toggleWeatherTimelinePlay}
+        referenceNowMs={demoMode ? demoNowMs : null}
       />
 
       {/* 브리핑 패널을 닫아도 경로는 지도에 남는다 — 패널을 다시 열지 않고도 지울 수
@@ -2023,7 +2025,7 @@ const MapView = forwardRef(function MapView({
           masterOn={metVisibility.notam}
           onMasterToggle={() => toggleMet('notam')}
           onLocate={locateNotam}
-          nowMs={Date.now()}
+          nowMs={demoNowMs}
           tz={tz}
         />
       )}

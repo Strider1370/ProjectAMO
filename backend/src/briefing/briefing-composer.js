@@ -191,7 +191,7 @@ export function composeBriefing(request, data) {
       flightRule: request.flightRule,
       etd: request.etd,
       eta: request.eta,
-      generatedAt: new Date().toISOString(),
+      generatedAt: new Date(data?.now ?? Date.now()).toISOString(),
     },
     summary,
     banner,

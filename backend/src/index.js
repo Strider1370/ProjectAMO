@@ -57,6 +57,20 @@ async function runWithLock(type, job) {
   }
 }
 
+export function activeCollectionTypes() {
+  return Object.entries(locks).filter(([, active]) => active).map(([type]) => type)
+}
+
+export async function waitForCollectionIdle({ timeoutMs = 120_000, pollMs = 100 } = {}) {
+  const deadline = Date.now() + timeoutMs
+  while (activeCollectionTypes().length > 0) {
+    if (Date.now() >= deadline) {
+      throw new Error(`collection_drain_timeout:${activeCollectionTypes().join(',')}`)
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollMs))
+  }
+}
+
 function scheduleKimNwpJob(scheduler = cron, enabled = config.kim_nwp?.enabled !== false) {
   if (!enabled) return null
   return scheduler.schedule(
@@ -186,4 +200,4 @@ if (process.argv[1] && (__filename === process.argv[1] || __filename.endsWith(pr
 }
 
 export { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleTakeoffFcstJob, scheduleKimNwpJob }
-export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleTakeoffFcstJob, scheduleKimNwpJob }
+export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, activeCollectionTypes, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }

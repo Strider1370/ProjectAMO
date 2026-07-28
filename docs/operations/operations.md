@@ -29,6 +29,39 @@ Current behavior:
 - `sigwx_low` front/cloud overlay files are deleted when the corresponding snapshot disappears.
 - On restart, the server reloads `latest.json` files into memory before the next collector run.
 
+## Demo Mode
+
+시연 모드는 데이터 교체와 시각 변경을 따로 수행하지 않는다. 관리자 화면에서 준비 완료된 스냅샷의 `시연 시작` 또는 진행 중인 시연의 `시연 종료`만 사용한다.
+
+시연 시작 계약:
+
+- 먼저 모든 수집 게시를 동결하고 진행 중인 수집 작업이 끝날 때까지 기다린다.
+- 남아 있던 `_live_backup`은 폐기하고, 그 순간의 실황 파일을 새 `_live_backup`으로 캡처한다.
+- 준비 점검을 통과한 스냅샷을 복원하고 서버·브라우저의 유효 현재시각을 스냅샷 기준시각으로 고정한다.
+- 준비 점검은 핵심 자료 21종, 레이더 36장, 위성 18장, 참조 파일, KIM/KTG 인덱스와 ADS-B 시각 오차 30분 이하를 요구한다.
+- 과거 스냅샷이 소유하지 않는 이후 추가 자료(현재는 태풍)는 교체하지 않고 현재 자료를 유지한다.
+- 복원 I/O가 실패하면 수집을 동결한 채 직전 실황 백업으로 되감는다.
+
+시연 종료 계약:
+
+- 외부 API를 호출하지 않고 `_live_backup`의 파일을 먼저 복원한다.
+- 복원이 성공한 뒤에만 수집 동결을 해제하고 사용한 백업을 삭제한다.
+- 백업이 없는 재개 세션에서 다른 스냅샷으로 전환하려 하면 거부한다.
+
+로컬 스냅샷 준비 점검에서 레이더·위성 이력이 부족하거나 ADS-B 시각이 어긋나면 다음 도구로 과거 프레임을 채우고 오래된 항공기 위치를 안전하게 비운다. 과거 ADS-B 위치는 보간하거나 현재 위치로 위장하지 않는다.
+
+```bash
+npm run demo:repair-weather -- --data-root backend/data --name demo
+```
+
+이미 준비된 레이더·위성을 그대로 두고 ADS-B만 정리할 때:
+
+```bash
+npm run demo:repair-weather -- --data-root backend/data --name demo --skip-weather
+```
+
+운영 서버 적용은 로컬의 준비 점검, 시연 시작, 경로 확인, 비행 전 브리핑, 시연 종료 후 파일 해시 복원이 모두 통과하고 운영자가 승인한 뒤에만 진행한다.
+
 ## Fetch Strategy
 
 - Frontend performs one full weather load at startup.

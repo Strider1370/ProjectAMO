@@ -34,6 +34,43 @@ test('integration: 3D briefing payload is internally consistent', () => {
   assert.equal(b.sections.current.airports.length, 3)
 })
 
+test('demo-time route includes a July 22 SIGMET in preflight adverse weather', () => {
+  const demoSigmet = {
+    id: 'RKSI-J03-2026-07-22T090000Z',
+    phenomenon_code: 'EMBD_TS',
+    phenomenon_label: 'Embedded Thunderstorm',
+    valid_from: '2026-07-22T09:00:00Z',
+    valid_to: '2026-07-22T13:00:00Z',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[[126.1, 35.7], [130, 35.7], [130, 38.7], [126.1, 38.7], [126.1, 35.7]]],
+    },
+    altitude: { lower_fl: null, upper_fl: 320, upper_uom: 'FL' },
+  }
+  const demoRequest = {
+    ...request,
+    routeGeometry: { type: 'LineString', coordinates: [[126.45, 37.46], [129.1, 35.9]] },
+    etd: '2026-07-22T10:00:00Z',
+    eta: '2026-07-22T11:30:00Z',
+    plannedCruiseAltitudeFt: 31_000,
+  }
+  const briefing = composeBriefing(demoRequest, {
+    ...data,
+    now: Date.parse('2026-07-22T10:00:00Z'),
+    sigmet: { items: [demoSigmet] },
+  })
+  assert.equal(briefing.meta.generatedAt, '2026-07-22T10:00:00.000Z')
+  assert.equal(briefing.sections.adverse.hazards.some((hazard) => hazard.sourceId === demoSigmet.id), true)
+  assert.equal(briefing.sections.enroute.encounters.some((hazard) => hazard.sourceId === demoSigmet.id), true)
+
+  const wrongClock = composeBriefing({
+    ...demoRequest,
+    etd: '2026-07-28T10:00:00Z',
+    eta: '2026-07-28T11:30:00Z',
+  }, { ...data, sigmet: { items: [demoSigmet] } })
+  assert.equal(wrongClock.sections.adverse.hazards.some((hazard) => hazard.sourceId === demoSigmet.id), false)
+})
+
 test('integration: briefing includes route weather legs from one injected cross-section', () => {
   const weatherAxis = {
     totalDistanceNm: 20,

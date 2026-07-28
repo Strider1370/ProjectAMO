@@ -602,7 +602,7 @@ function sendKimField(req, res, { type, buildFn, errorLabel }) {
 function sendKimIndex(res, { buildPayload, errorLabel }) {
   const index = readKimNwpIndex(DATA_ROOT)
   if (index) {
-    const payload = buildPayload(index)
+    const payload = buildPayload(index, getEffectiveNow().getTime())
     sendRevalidatedJson(res, payload, store.canonicalHash(payload))
     return
   }
@@ -620,7 +620,7 @@ function sendKimWindField(req, res, { allowDefault = false } = {}) {
 
     if (allowDefault && (!selection.tmfc || !selection.level || !Number.isFinite(selection.hf))) {
       const index = readKimNwpIndex(DATA_ROOT)
-      selection = index ? selectDefaultKimNwpField(filterKimNwpIndexForMap(index)) : null
+      selection = index ? selectDefaultKimNwpField(filterKimNwpIndexForMap(index, getEffectiveNow().getTime())) : null
     }
 
     if (!selection) {
@@ -737,26 +737,26 @@ app.get('/api/kim/surface-wind', (req, res) => {
   sendLatest(res, 'kim_surface_wind')
 })
 app.get('/api/kim/wind/index', (_req, res) => sendKimIndex(res, {
-  buildPayload: (index) => filterKimNwpIndexForMapVariables(index, ['u', 'v']),
+  buildPayload: (index, nowMs) => filterKimNwpIndexForMapVariables(index, ['u', 'v'], nowMs),
   errorLabel: 'kim wind index unavailable',
 }))
 app.get('/api/kim/wind/field', (req, res) => sendKimWindField(req, res))
 app.get('/api/kim/temp/index', (_req, res) => sendKimIndex(res, {
-  buildPayload: (index) => ({ ...filterKimNwpIndexForMapVariables(index, ['T']), type: 'kim_nwp_temp_index' }),
+  buildPayload: (index, nowMs) => ({ ...filterKimNwpIndexForMapVariables(index, ['T'], nowMs), type: 'kim_nwp_temp_index' }),
   errorLabel: 'kim temp index unavailable',
 }))
 app.get('/api/kim/temp/field', (req, res) =>
   sendKimField(req, res, { type: 'temp', buildFn: buildKimTemperatureFieldFromGrid, errorLabel: 'invalid kim temp selection' })
 )
 app.get('/api/kim/cloud/index', (_req, res) => sendKimIndex(res, {
-  buildPayload: (index) => ({ ...filterKimCloudIndexForMap(index), type: 'kim_nwp_cloud_index' }),
+  buildPayload: (index, nowMs) => ({ ...filterKimCloudIndexForMap(index, nowMs), type: 'kim_nwp_cloud_index' }),
   errorLabel: 'kim cloud index unavailable',
 }))
 app.get('/api/kim/cloud/field', (req, res) =>
   sendKimField(req, res, { type: 'cloud', buildFn: buildKimCloudPotentialFieldFromGrid, errorLabel: 'invalid kim cloud selection' })
 )
 app.get('/api/kim/icing/index', (_req, res) => sendKimIndex(res, {
-  buildPayload: (index) => ({ ...filterKimIcingIndexForMap(index), type: 'kim_nwp_icing_index' }),
+  buildPayload: (index, nowMs) => ({ ...filterKimIcingIndexForMap(index, nowMs), type: 'kim_nwp_icing_index' }),
   errorLabel: 'kim icing index unavailable',
 }))
 app.get('/api/kim/icing/field', (req, res) =>

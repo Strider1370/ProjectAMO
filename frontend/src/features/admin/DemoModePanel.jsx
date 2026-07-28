@@ -9,6 +9,21 @@ function fmtDateTime(iso) {
   return `${date} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+function readinessText(inspection) {
+  if (!inspection) return '점검 중'
+  if (inspection.ready) return '준비 완료'
+  const blockers = inspection.blockers ?? []
+  const radar = blockers.find((item) => item.startsWith('radar:short_history:'))
+  const satellite = blockers.find((item) => item.startsWith('satellite:short_history:'))
+  const adsb = blockers.find((item) => item.startsWith('adsb:reference_skew:'))
+  const missingCount = blockers.filter((item) => item.startsWith('missing_type:')).length
+  if (radar) return `레이더 이력 부족 (${radar.split(':').at(-1)})`
+  if (satellite) return `위성 이력 부족 (${satellite.split(':').at(-1)})`
+  if (adsb) return '항공기 위치 시각 불일치'
+  if (missingCount) return `핵심 자료 ${missingCount}종 누락`
+  return `점검 실패 (${blockers.length}건)`
+}
+
 // 시연 모드 = 딱 두 가지 동작만 있다: ① 스냅샷 하나를 골라 "시연 시작"(그 데이터로 교체 + 자동수집 정지 +
 // 시각 고정이 한 번에 됨) ② "시연 종료"(원래 실황 복원 + 자동수집 재개가 한 번에 됨). 켜기/끄기/복원/되돌리기가
 // 따로 노는 버튼이었던 이전 버전이 헷갈린다는 피드백으로 단순화함.
@@ -44,7 +59,9 @@ export default function DemoModePanel() {
       setMsg({ ok: true, text: typeof okText === 'function' ? okText(d) : okText })
       await refresh()
     } catch (err) {
-      setMsg({ ok: false, text: err.message })
+      const reason = err.body?.error ?? err.message
+      const inspection = err.body?.inspection
+      setMsg({ ok: false, text: inspection ? `${reason}: ${readinessText(inspection)}` : reason })
     } finally {
       clearInterval(elapsedTimerRef.current)
       setBusyLabel(null)
@@ -78,10 +95,10 @@ export default function DemoModePanel() {
               <span className="admin-empty">다른 스냅샷으로 전환</span>
               <div style={{ marginTop: 6 }}>
                 {snapshots.map((snap) => (
-                  <button key={snap.name} type="button" className="admin-btn-approve" disabled={busy}
+                  <button key={snap.name} type="button" className="admin-btn-approve" disabled={busy || !snap.inspection?.ready}
                     style={{ marginRight: 6, marginBottom: 6 }}
                     onClick={() => run(`${snap.name}로 전환 중`, () => loadSnapshot(snap.name), (d) => `전환됨: ${d.name} (기준시각 ${fmtDateTime(d.now)})`)}>
-                    {snap.name} — {fmtDateTime(snap.referenceTime)}
+                    {snap.name} — {fmtDateTime(snap.referenceTime)} · {readinessText(snap.inspection)}
                   </button>
                 ))}
               </div>
@@ -101,9 +118,9 @@ export default function DemoModePanel() {
               <ol style={{ margin: '8px 0 0', paddingLeft: 20 }}>
                 {snapshots.map((snap, i) => (
                   <li key={snap.name} style={{ marginBottom: 6 }}>
-                    <button type="button" className="admin-btn-approve" disabled={busy}
+                    <button type="button" className="admin-btn-approve" disabled={busy || !snap.inspection?.ready}
                       onClick={() => run(`${snap.name} 시연 시작 중`, () => loadSnapshot(snap.name), (d) => `시연 시작: ${d.name} (기준시각 ${fmtDateTime(d.now)})`)}>
-                      {busy ? '⏳ 처리 중…' : `${i + 1}. ▶ 시연 시작 — 기준시각 ${fmtDateTime(snap.referenceTime)}`}
+                      {busy ? '⏳ 처리 중…' : `${i + 1}. ▶ 시연 시작 — 기준시각 ${fmtDateTime(snap.referenceTime)} · ${readinessText(snap.inspection)}`}
                     </button>
                   </li>
                 ))}

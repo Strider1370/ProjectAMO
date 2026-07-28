@@ -37,21 +37,24 @@ function TimelineRail({
   isPlaying = false,
   onScrub,
   onPlayPause,
+  referenceNowMs = null,
 }) {
   const { tz } = useTimeZone()
   // 모바일은 좁은 폭에 12h가 빡빡 → 6h만 노출해 시간당 간격을 2배로(드래그로 더 볼 수 있음).
   const isMobile = useIsMobile()
   const visibleSpanMs = isMobile ? VISIBLE_SPAN_MS / 2 : VISIBLE_SPAN_MS
-  const [nowMs, setNowMs] = useState(() => Date.now())
+  const [liveNowMs, setLiveNowMs] = useState(() => Date.now())
+  const nowMs = Number.isFinite(referenceNowMs) ? referenceNowMs : liveNowMs
   const viewportRef = useRef(null)
   const dragRef = useRef(null)
   const [active, setActive] = useState(false) // scrubbing or focused -> show time readout
   const isLive = !Number.isFinite(selectedMs)
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000)
+    if (Number.isFinite(referenceNowMs)) return undefined
+    const timer = window.setInterval(() => setLiveNowMs(Date.now()), 30_000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [referenceNowMs])
 
   const futureMs = normalizeNwpTimes(nwpTimes).map((time) => time.ms)
   const domain = buildTimelineDomain({ pastTicksMs, nwpTimesMs: futureMs, nowMs })

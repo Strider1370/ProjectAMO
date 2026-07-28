@@ -13,8 +13,34 @@ const NAME_RE = /^[a-zA-Z0-9_-]+$/ // 경로 이탈(../) 방지 — 영문/숫�
 const FULL_DIR_TYPES = new Set(['kim_nwp', 'ktg', 'radar', 'satellite'])
 // latest.json이 없어서 일반 스캔(listCapturableTypes)에 안 걸리지만 캡처해야 하는 디렉터리.
 const EXTRA_CAPTURE_TYPES = new Set(['radar', 'satellite'])
+// 이 자료가 빠지면 복원 뒤 해당 종류만 실황으로 남아 서로 다른 시각의 데이터가 섞인다.
+// 태풍은 과거 스냅샷 도입 뒤 추가된 자료라 의도적으로 제외해 최신 자료를 유지한다.
+export const DEMO_REQUIRED_TYPES = Object.freeze([
+  'adsb',
+  'airmet',
+  'airport_info',
+  'amos',
+  'environment',
+  'ground_forecast',
+  'kim_nwp',
+  'ktg',
+  'lightning',
+  'metar',
+  'metar_overseas',
+  'notam',
+  'radar',
+  'satellite',
+  'sigmet',
+  'sigmet_overseas',
+  'sigwx_low',
+  'taf',
+  'taf_overseas',
+  'takeoff_fcst',
+  'warning',
+])
 // 스냅샷 로드 직전 실황을 자동 백업해두는 예약 이름 — 목록에 노출 안 함, "되돌리기" 전용.
 export const RESERVED_LIVE_BACKUP = '_live_backup'
+const ADSB_REFERENCE_TOLERANCE_MS = 30 * 60 * 1000
 
 export function isValidSnapshotName(name) {
   return typeof name === 'string' && NAME_RE.test(name)
@@ -72,6 +98,49 @@ export function hasLiveBackup(basePath) {
   return fs.existsSync(path.join(basePath, 'snapshots', RESERVED_LIVE_BACKUP))
 }
 
+export function discardLiveBackup(basePath) {
+  const dir = path.join(basePath, 'snapshots', RESERVED_LIVE_BACKUP)
+  const existed = fs.existsSync(dir)
+  fs.rmSync(dir, { recursive: true, force: true })
+  return existed
+}
+
+function replaceDirectory(srcDir, destDir) {
+  const suffix = `${process.pid}-${Date.now()}`
+  const stage = `${destDir}.restore-${suffix}`
+  const prior = `${destDir}.prior-${suffix}`
+  fs.rmSync(stage, { recursive: true, force: true })
+  fs.cpSync(srcDir, stage, { recursive: true })
+  if (fs.existsSync(destDir)) fs.renameSync(destDir, prior)
+  try {
+    fs.renameSync(stage, destDir)
+    fs.rmSync(prior, { recursive: true, force: true })
+  } catch (error) {
+    fs.rmSync(stage, { recursive: true, force: true })
+    if (!fs.existsSync(destDir) && fs.existsSync(prior)) fs.renameSync(prior, destDir)
+    throw error
+  }
+}
+
+function publishPreparedDirectory(stageDir, destDir) {
+  const prior = `${destDir}.prior-${process.pid}-${Date.now()}`
+  if (fs.existsSync(destDir)) fs.renameSync(destDir, prior)
+  try {
+    fs.renameSync(stageDir, destDir)
+    fs.rmSync(prior, { recursive: true, force: true })
+  } catch (error) {
+    if (!fs.existsSync(destDir) && fs.existsSync(prior)) fs.renameSync(prior, destDir)
+    throw error
+  }
+}
+
+function replaceFile(srcFile, destFile) {
+  const stage = `${destFile}.restore-${process.pid}-${Date.now()}`
+  fs.mkdirSync(path.dirname(destFile), { recursive: true })
+  fs.copyFileSync(srcFile, stage)
+  fs.renameSync(stage, destFile)
+}
+
 // 스냅샷 "기준시각" — METAR 배치 수신시각(fetched_at)을 대표값으로 씀. 복원 시 시연 모드의
 // demoNow를 이 값으로 맞춰서, 그 시점 데이터에 맞는 "지금"으로 새 비행계획을 짤 수 있게 한다.
 function referenceTimeFor(basePath) {
@@ -81,14 +150,21 @@ function referenceTimeFor(basePath) {
 
 export function saveSnapshot(basePath, name) {
   const destBase = path.join(basePath, 'snapshots', name)
+  const stageBase = `${destBase}.capture-${process.pid}-${Date.now()}`
+  fs.rmSync(stageBase, { recursive: true, force: true })
   const saved = []
-  for (const type of listCapturableTypes(basePath)) {
-    copyTypeInto(basePath, type, path.join(destBase, type))
-    saved.push(type)
+  try {
+    for (const type of listCapturableTypes(basePath)) {
+      copyTypeInto(basePath, type, path.join(stageBase, type))
+      saved.push(type)
+    }
+    const referenceTime = referenceTimeFor(basePath)
+    fs.writeFileSync(path.join(stageBase, 'meta.json'), JSON.stringify({ savedAt: new Date().toISOString(), referenceTime }, null, 2))
+    publishPreparedDirectory(stageBase, destBase)
+    return { saved, referenceTime }
+  } finally {
+    fs.rmSync(stageBase, { recursive: true, force: true })
   }
-  const referenceTime = referenceTimeFor(basePath)
-  fs.writeFileSync(path.join(destBase, 'meta.json'), JSON.stringify({ savedAt: new Date().toISOString(), referenceTime }, null, 2))
-  return { saved, referenceTime }
 }
 
 // skipBackup: true면 실황을 _live_backup에 백업하지 않고 바로 복원한다. 되돌리기(_live_backup 복원)
@@ -104,15 +180,13 @@ export function loadSnapshot(basePath, name, { skipBackup = false } = {}) {
   for (const type of fs.readdirSync(srcBase, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)) {
     const srcDir = path.join(srcBase, type)
     if (FULL_DIR_TYPES.has(type)) {
-      fs.rmSync(path.join(basePath, type), { recursive: true, force: true })
-      fs.cpSync(srcDir, path.join(basePath, type), { recursive: true })
+      replaceDirectory(srcDir, path.join(basePath, type))
       restored.push(type)
       continue
     }
     const srcFile = path.join(srcDir, 'latest.json')
     if (!fs.existsSync(srcFile)) continue
-    fs.mkdirSync(path.join(basePath, type), { recursive: true })
-    fs.copyFileSync(srcFile, path.join(basePath, type, 'latest.json'))
+    replaceFile(srcFile, path.join(basePath, type, 'latest.json'))
     restored.push(type)
   }
   initFromFiles(basePath)
@@ -120,4 +194,107 @@ export function loadSnapshot(basePath, name, { skipBackup = false } = {}) {
   let referenceTime = null
   try { referenceTime = JSON.parse(fs.readFileSync(path.join(srcBase, 'meta.json'), 'utf8')).referenceTime ?? null } catch { /* 메타 없는 구버전 스냅샷 */ }
   return { restored, referenceTime }
+}
+
+function referencedPathExists(snapshotRoot, value) {
+  if (typeof value !== 'string' || !value.startsWith('/data/')) return false
+  return fs.existsSync(path.join(snapshotRoot, value.slice('/data/'.length)))
+}
+
+export function inspectSnapshot(basePath, name) {
+  const snapshotRoot = path.join(basePath, 'snapshots', name)
+  const blockers = []
+  const warnings = []
+  if (!isValidSnapshotName(name) || !fs.existsSync(snapshotRoot)) {
+    return { ready: false, blockers: ['snapshot_not_found'], warnings, referenceTime: null, types: [], summaries: {} }
+  }
+
+  const meta = readSnapshotMeta(basePath, name)
+  const referenceMs = Date.parse(meta.referenceTime)
+  if (!Number.isFinite(referenceMs)) blockers.push('reference_time_missing')
+  const types = fs.readdirSync(snapshotRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()
+  for (const type of DEMO_REQUIRED_TYPES) {
+    if (!types.includes(type)) {
+      blockers.push(`missing_type:${type}`)
+      continue
+    }
+    if (type === 'radar' || type === 'satellite') {
+      const metadataFile = type === 'radar' ? 'echo_meta.json' : 'sat_meta.json'
+      if (!fs.existsSync(path.join(snapshotRoot, type, metadataFile))) blockers.push(`${type}:metadata_missing`)
+    } else if (!fs.existsSync(path.join(snapshotRoot, type, 'latest.json'))) {
+      blockers.push(`${type}:latest_missing`)
+    }
+  }
+  const summaries = {}
+
+  for (const type of types) {
+    const latestPath = path.join(snapshotRoot, type, 'latest.json')
+    if (!fs.existsSync(latestPath)) continue
+    try {
+      const payload = JSON.parse(fs.readFileSync(latestPath, 'utf8'))
+      summaries[type] = {
+        fetchedAt: payload.fetched_at ?? payload.updated_at ?? null,
+        itemCount: Array.isArray(payload.items)
+          ? payload.items.length
+          : (Array.isArray(payload.aircraft) ? payload.aircraft.length : null),
+      }
+      if (type === 'adsb' && Number.isFinite(referenceMs)) {
+        const fetchedMs = Date.parse(payload.fetched_at)
+        if (!Number.isFinite(fetchedMs)) {
+          blockers.push('adsb:fetched_at_missing')
+        } else {
+          const skewMs = Math.abs(fetchedMs - referenceMs)
+          if (skewMs > ADSB_REFERENCE_TOLERANCE_MS) {
+            blockers.push(`adsb:reference_skew:${Math.round(skewMs / 60_000)}m/30m`)
+          }
+        }
+      }
+    } catch {
+      blockers.push(`${type}:invalid_latest_json`)
+    }
+  }
+
+  for (const [type, metaFile] of [['radar', 'echo_meta.json'], ['satellite', 'sat_meta.json']]) {
+    const filePath = path.join(snapshotRoot, type, metaFile)
+    if (!fs.existsSync(filePath)) continue
+    try {
+      const payload = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+      const frames = Array.isArray(payload.frames) ? payload.frames : []
+      const missing = frames.filter((frame) => !referencedPathExists(snapshotRoot, frame.path)).length
+      if (missing) blockers.push(`${type}:missing_frame_files:${missing}`)
+      summaries[type] = {
+        fetchedAt: payload.fetched_at ?? null,
+        frameCount: frames.length,
+        firstFrame: frames[0]?.tm ?? null,
+        lastFrame: frames.at(-1)?.tm ?? null,
+      }
+      if (type === 'radar' && frames.length < 36) blockers.push(`radar:short_history:${frames.length}/36`)
+      if (type === 'satellite' && frames.length < 18) blockers.push(`satellite:short_history:${frames.length}/18`)
+    } catch {
+      blockers.push(`${type}:invalid_metadata`)
+    }
+  }
+
+  for (const type of ['kim_nwp', 'ktg']) {
+    const latestPath = path.join(snapshotRoot, type, 'latest.json')
+    if (!fs.existsSync(latestPath)) continue
+    try {
+      const latest = JSON.parse(fs.readFileSync(latestPath, 'utf8'))
+      const indexPath = latest.indexPath ? path.join(snapshotRoot, latest.indexPath) : path.join(snapshotRoot, type, 'index.json')
+      if (!fs.existsSync(indexPath)) blockers.push(`${type}:missing_index`)
+      summaries[type] = { ...(summaries[type] || {}), latestRun: latest.latestRun ?? latest.tmfc ?? null }
+    } catch {
+      blockers.push(`${type}:invalid_latest_json`)
+    }
+  }
+
+  return {
+    ready: blockers.length === 0,
+    blockers,
+    warnings,
+    referenceTime: meta.referenceTime,
+    savedAt: meta.savedAt,
+    types,
+    summaries,
+  }
 }

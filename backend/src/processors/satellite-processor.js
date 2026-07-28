@@ -37,8 +37,8 @@ function formatKstTm(dateUtc) {
 // GK2A CI·CTPS의 10분 관측 간격에 맞춰 위성 프레임도 10분으로 유지한다.
 const SAT_FRAME_STEP_MIN = 10;
 
-function getCandidateTms(delayMinutes = config.satellite.delay_minutes) {
-  const now = new Date();
+function getCandidateTms(delayMinutes = config.satellite.delay_minutes, referenceTime = new Date()) {
+  const now = new Date(referenceTime);
   const delayed = new Date(now.getTime() - delayMinutes * 60 * 1000);
 
   const minute = Math.floor(delayed.getUTCMinutes() / SAT_FRAME_STEP_MIN) * SAT_FRAME_STEP_MIN;
@@ -162,7 +162,7 @@ async function renderFrame(satDir, requestTm, displayTm) {
   };
 }
 
-function writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames) {
+function writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames, { updatedAt = new Date() } = {}) {
   const frames = frameSpecs
     .map((frame) => existingFrames.get(frame.displayTm))
     .filter(Boolean)
@@ -174,7 +174,7 @@ function writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames) {
     channel: config.satellite.channel,
     region: config.satellite.region,
     render_version: RENDER_VERSION,
-    updated_at: new Date().toISOString(),
+    updated_at: new Date(updatedAt).toISOString(),
     tm: latestFrameSpec.displayTm,
     request_tm_utc: latestFrameSpec.requestTm,
     latest: frames.find((frame) => frame.tm === latestFrameSpec.displayTm) || null,
@@ -270,14 +270,19 @@ function scheduleBackgroundFill(satDir, pendingFrameSpecs, existingFrames, lates
   }, 0);
 }
 
-async function process() {
+async function process({
+  now = new Date(),
+  fillAll = false,
+  collectConvective = true,
+  scheduleRetries = true,
+} = {}) {
   if (!config.api.radar_satellite_auth_key) {
     throw new Error("Satellite auth key missing (set KMA_RADAR_SATELLITE_AUTH_KEY)");
   }
 
   const satDir = ensureSatelliteDir();
   const frameCount = config.satellite.max_frames || 18;
-  const candidates = getCandidateTms();
+  const candidates = getCandidateTms(config.satellite.delay_minutes, now);
   const latestFrameSpec = candidates[0] || null;
 
   if (!latestFrameSpec) {
@@ -305,8 +310,8 @@ async function process() {
     return false;
   });
 
-  const immediateFrameSpecs = missingFrameSpecs.slice(-IMMEDIATE_FRAME_COUNT);
-  const deferredFrameSpecs = missingFrameSpecs.slice(0, -IMMEDIATE_FRAME_COUNT);
+  const immediateFrameSpecs = fillAll ? missingFrameSpecs : missingFrameSpecs.slice(-IMMEDIATE_FRAME_COUNT);
+  const deferredFrameSpecs = fillAll ? [] : missingFrameSpecs.slice(0, -IMMEDIATE_FRAME_COUNT);
 
   for (const frameSpec of immediateFrameSpecs) {
     try {
@@ -317,8 +322,8 @@ async function process() {
     }
   }
 
-  const meta = writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames);
-  if (meta.latest?.tm === latestFrameSpec.displayTm) {
+  const meta = writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames, { updatedAt: now });
+  if (collectConvective && meta.latest?.tm === latestFrameSpec.displayTm) {
     try {
       await collectConvectiveSatelliteFrame({ tm: latestFrameSpec.displayTm, request_tm_utc: latestFrameSpec.requestTm })
     } catch (error) {
@@ -328,7 +333,7 @@ async function process() {
   scheduleBackgroundFill(satDir, deferredFrameSpecs, existingFrames, latestFrameSpec, frameSpecs);
 
   const latestFrame = existingFrames.get(latestFrameSpec.displayTm);
-  if (latestFrame?.fogPixelCount === null) {
+  if (scheduleRetries && latestFrame?.fogPixelCount === null) {
     scheduleFogRetry(satDir, latestFrameSpec, frameSpecs);
   }
 
@@ -343,5 +348,5 @@ async function process() {
   };
 }
 
-export { process }
+export { getCandidateTms, process }
 export default { process }

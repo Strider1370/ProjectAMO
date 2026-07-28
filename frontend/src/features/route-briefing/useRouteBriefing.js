@@ -12,6 +12,7 @@ import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
 import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
 import { normalizeRouteSnapshot } from './lib/routeStore.js'
+import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
 import { parseRouteFile, extractRoutePaths, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './lib/routeImport.js'
 import {
@@ -37,7 +38,7 @@ export const DEFAULT_CRUISE_ALTITUDE_FT = 31000
 // 밀집지역 300m(1,000ft)/일반지역 150m(500ft) — 혼잡 여부를 지형데이터만으로 판단 못 하므로
 // 보수적으로 밀집지역 기준(1,000ft)을 항상 적용한다.
 
-export function useRouteBriefing({ activePanel, airports = [], metarData = null }) {
+export function useRouteBriefing({ activePanel, airports = [], metarData = null, demoMode = false, demoNowMs = null }) {
   const [routeEditor, setRouteEditor] = useState(() => emptyEditorForContext(initialRouteForm))
   const routeForm = routeEditor.routeForm
   const selectedSid = routeEditor.procedures.sid
@@ -131,12 +132,45 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
   const effectiveRouteType = isOverseasRoute ? 'ALL' : routeForm.routeType
   const selectedIap = iapData?.iapRoutes?.[selectedIapKey] ?? null
   const [alternateAirport, setAlternateAirport] = useState('')
-  const [etd, setEtd] = useState(() => {
+  const [storedEtd, setStoredEtd] = useState(() => {
     // Absolute UTC instant; the ETD field renders/edits it in the app timezone.
     const d = new Date()
     d.setUTCSeconds(0, 0)
     return d.toISOString().replace('.000Z', 'Z')
   })
+  const [etdUserEdited, setEtdUserEdited] = useState(false)
+  const etd = selectEffectiveEtd({
+    storedEtd,
+    demoOn: demoMode,
+    demoNowMs,
+    userEdited: etdUserEdited,
+  })
+  const setEtd = (next) => {
+    setEtdUserEdited(true)
+    setStoredEtd((current) => typeof next === 'function' ? next(current) : next)
+  }
+  const lastAppliedDemoNowRef = useRef(null)
+  useEffect(() => {
+    if (!demoMode) {
+      if (lastAppliedDemoNowRef.current !== null) {
+        const liveNow = new Date()
+        liveNow.setUTCSeconds(0, 0)
+        setStoredEtd(liveNow.toISOString().replace('.000Z', 'Z'))
+        setEtdUserEdited(false)
+      }
+      lastAppliedDemoNowRef.current = null
+      return
+    }
+    if (!Number.isFinite(demoNowMs)) return
+    setStoredEtd((currentEtd) => resolveDemoEtd({
+      currentEtd,
+      demoOn: demoMode,
+      lastAppliedDemoNowMs: lastAppliedDemoNowRef.current,
+      demoNowMs,
+    }))
+    setEtdUserEdited(false)
+    lastAppliedDemoNowRef.current = demoNowMs
+  }, [demoMode, demoNowMs])
   const [tasKt, setTasKt] = useState(() => getPerformanceForRule(initialRouteForm.flightRule).tasKt)
   const [eta, setEta] = useState(null)
   const [briefing, setBriefing] = useState(null)

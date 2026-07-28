@@ -26,8 +26,8 @@ function formatKstTm(dateKst) {
   return `${y}${m}${d}${h}${mi}`;
 }
 
-function getCandidateTms(delayMinutes = config.radar_echo.delay_minutes) {
-  const nowUtc = new Date();
+function getCandidateTms(delayMinutes = config.radar_echo.delay_minutes, referenceTime = new Date()) {
+  const nowUtc = new Date(referenceTime);
   const nowKst = new Date(nowUtc.getTime() + 9 * 60 * 60 * 1000);
   nowKst.setUTCMinutes(nowKst.getUTCMinutes() - delayMinutes);
 
@@ -209,7 +209,7 @@ async function renderFrame(radarDir, tm) {
   };
 }
 
-function writeMeta(radarDir, latestTm, frameTms, existingFrames) {
+function writeMeta(radarDir, latestTm, frameTms, existingFrames, { updatedAt = new Date() } = {}) {
   const frames = frameTms
     .map((tm) => existingFrames.get(tm))
     .filter(Boolean)
@@ -219,7 +219,7 @@ function writeMeta(radarDir, latestTm, frameTms, existingFrames) {
     type: "RADAR_ECHO",
     cmp: config.radar_echo.cmp,
     render_version: RENDER_VERSION,
-    updated_at: new Date().toISOString(),
+    updated_at: new Date(updatedAt).toISOString(),
     tm: latestTm,
     nationwide: frames.find((frame) => frame.tm === latestTm) || null,
     frames,
@@ -283,14 +283,14 @@ function scheduleBackgroundFill(radarDir, pendingTms, existingFrames, latestTm, 
   }, 0);
 }
 
-async function process() {
+async function process({ now = new Date(), fillAll = false } = {}) {
   if (!config.api.radar_satellite_auth_key) {
     throw new Error("Radar echo auth key missing (set KMA_RADAR_SATELLITE_AUTH_KEY)");
   }
 
   const radarDir = ensureRadarDir();
   const frameCount = config.radar_echo.max_images || 36;
-  const candidates = getCandidateTms();
+  const candidates = getCandidateTms(config.radar_echo.delay_minutes, now);
   const latestTm = candidates[0] || null;
 
   if (!latestTm) {
@@ -315,8 +315,8 @@ async function process() {
     return !(fs.existsSync(filePath) && existingFrames.get(tm));
   });
 
-  const immediateTms = missingTms.slice(-IMMEDIATE_FRAME_COUNT);
-  const deferredTms = missingTms.slice(0, -IMMEDIATE_FRAME_COUNT);
+  const immediateTms = fillAll ? missingTms : missingTms.slice(-IMMEDIATE_FRAME_COUNT);
+  const deferredTms = fillAll ? [] : missingTms.slice(0, -IMMEDIATE_FRAME_COUNT);
   let previousInput = config.radar_echo_motion.enabled ? loadLatestMotionInput(radarDir) : null;
 
   for (const tm of immediateTms) {
@@ -333,7 +333,7 @@ async function process() {
     }
   }
 
-  const meta = writeMeta(radarDir, latestTm, frameTms, existingFrames);
+  const meta = writeMeta(radarDir, latestTm, frameTms, existingFrames, { updatedAt: now });
   scheduleBackgroundFill(radarDir, deferredTms, existingFrames, latestTm, frameTms);
 
   return {
@@ -346,5 +346,5 @@ async function process() {
   };
 }
 
-export { attachMotionFrame, isAdjacentFrame, process, writeMeta }
+export { attachMotionFrame, getCandidateTms, isAdjacentFrame, process, writeMeta }
 export default { process }

@@ -137,6 +137,7 @@ ProjectAMO/
 - `scripts/build_enroute_navdata.py` -> converts the active reviewed AIP snapshot into `enroute.json` and the matching domestic airway GeoJSON; `run_aip_airway_operations.py --activate` runs it after activation and restores the prior manifest if generation fails.
 - `frontend/src/features/route-briefing/lib/routePlanner.js` -> loads domestic `enroute.json`, derives the route graph in memory, merges optional overseas route data, and keeps the route-confirmation result contract stable.
 - `frontend/src/features/route-briefing/useRouteBriefing.js` -> route briefing state, async transitions/lifecycle cancellation, route search, vertical profile orchestration, and delegation of IFR procedure selection to `recommendProcedures`.
+- `frontend/src/features/route-briefing/lib/demoTime.js` -> 시연 모드의 기준시각을 새 경로 ETD에 적용하는 순수 전환 규칙. 사용자가 ETD를 직접 수정하기 전에는 스냅샷 전환을 따라가고, 직접 수정한 값은 주기적 상태 조회가 덮어쓰지 않는다.
 - `frontend/src/features/route-briefing/lib/recommendProcedures.js` -> injected-I/O IFR procedure recommendation owner.
 - `frontend/src/features/route-briefing/lib/briefingViewModel.js` -> pure briefing display-transform owner.
 - `frontend/src/features/route-briefing/RouteBriefingPanel.jsx` -> route-check panel UI for IFR/VFR form, route result, VFR altitude editing, and vertical profile controls.
@@ -181,6 +182,10 @@ ProjectAMO/
 
 ### Backend
 
+- `backend/src/dev/demo-session.js` -> 시연 전환의 단일 interface. 실황→시연은 먼저 수집을 동결하고 진행 중 작업을 비운 뒤 기존 `_live_backup`을 폐기하고 직전 실황을 새로 캡처한다. 준비 점검을 통과한 스냅샷만 복원하고 기준시각을 적용하며, 실패 시 수집을 동결한 채 실황 백업으로 되감는다. 시연 종료는 외부 재수집 없이 백업 파일을 먼저 복원한 뒤 동결을 해제하고 백업을 소비한다.
+- `backend/src/dev/snapshot-store.js` -> 파일시스템 스냅샷 캡처·복원·준비 점검. JSON은 임시 파일, 레이더·위성·KIM·KTG는 임시 디렉터리로 준비한 뒤 rename으로 게시한다. 시연 가능 상태는 기준시각, 핵심 자료 21종, 레이더 36장, 위성 18장, 참조 파일, KIM/KTG 인덱스, ADS-B 기준시각 오차(30분 이하)를 검사한다. 과거 스냅샷에 없는 태풍 등 이후 추가 자료는 소유하지 않으므로 현재 자료를 유지한다.
+- `backend/src/dev/demo-mode.js` -> 프로세스 재시작에도 유지되는 시연 모드와 유효 현재시각. 서버·브라우저의 시간 의존 로직은 실제 `Date.now()` 대신 이 유효 시각을 주입받는다.
+- `backend/src/admin/router.js` -> 관리자 스냅샷 저장·점검·시연 시작·종료 HTTP adapter. 데이터 교체와 시각 토글을 따로 호출하는 우회 interface는 제공하지 않는다.
 - `backend/src/parsers/satellite-parser.js` + `lib/{ctps-grid,satellite-ko-grid}.js` -> shared GK2A NetCDF validation, CTPS geographic lookup, and KO display resampling contract.
 - `backend/src/processors/convective-satellite-{model,store,processor}.js` -> CI/CTPS conversion, atomic independent satellite/convective asset publication, retention, and last-good preservation.
 - `backend/server.js` -> serves convective metadata and an exact-frame CTPS point API while blocking the server-only CTPS binary.
