@@ -18,7 +18,7 @@
 - 한글이 포함된 파일은 `Edit`/`Write` 도구로만 수정한다. 셸 리다이렉션(`>`)으로 덮어쓰지 않는다. 근거: `docs/policies/encoding-safety.md`
 - 깜빡임 주기는 **0.8초** 고정. 기존 `LIGHTNING_BLINK_INTERVAL_MS`와 같은 값을 재사용한다. WCAG 2.3.1(초당 3회 이하) 준수.
 - `prefers-reduced-motion: reduce`에서는 깜빡이지 않고 고정 외곽선만 그린다.
-- 강조 색은 시맨틱 레벨색만 쓴다 — red `#c0291f` / amber `#92400e` / gray `#475569`.
+- 강조 색은 시맨틱 레벨색 **토큰**만 쓴다 — `var(--level-red)` / `var(--level-amber)` / `var(--level-gray)`. 스펙 §6이 적은 `#c0291f`·`#92400e`·`#475569`가 바로 이 토큰들의 값이며(`docs/policies/design/design-language.md:108-109`), CSS에 원색 리터럴을 그대로 쓰면 `frontend/scripts/lint-colors.mjs`가 잡는다.
 - 강조는 **외곽선(`outline`)** 으로만 그린다. `border`나 `background`를 쓰지 않는다. 근거: 해당 칸들이 이미 배경색으로 비행조건(VFR/IFR/LIFR)을 표현하므로 한 색에 두 의미가 생긴다.
 - 하단 알람 표 최대 표시 **6건**. 초과 시 오래된 것부터 제거.
 - 새 알람 강조 시간 기본 **60초** (`highlight_seconds`).
@@ -113,7 +113,19 @@
 2. `warningIssued` 상수 전체 (19-39행, `// T-01: 경보 발령` 주석 포함)
 3. 배열의 `warningIssued,` 한 줄 (241행)
 
-`import { formatUtc } from "../helpers";`는 `tafAdverseWeather`와 `lightningDetected`가 계속 쓰므로 남긴다.
+`import { formatUtc } from "../helpers";`는 `tafAdverseWeather`와 `lightningDetected`가 계속 쓰므로 남기되, **확장자를 붙여 고친다.**
+
+```js
+import { formatUtc } from "../helpers.js";
+```
+
+`frontend/package.json`의 `"type": "module"` 때문에 확장자 없는 상대 임포트는 Node에서 해석되지 않는다. 이대로 두면 Task 2의 단위 테스트가 `ERR_MODULE_NOT_FOUND`로 아예 실행되지 않는다. 번들러(Vite)는 관대해서 브라우저에서는 지금까지 문제가 없었다.
+
+확인:
+```bash
+cd /home/john_doe/ProjectAMO/frontend && node -e "import('./src/features/monitoring/legacy/utils/alerts/alert-triggers.js').then(()=>console.log('OK')).catch(e=>console.log(e.code))"
+```
+Expected: `OK`
 
 - [ ] **Step 3: 남은 참조가 없는지 확인한다**
 
@@ -121,7 +133,18 @@ Run:
 ```bash
 cd /home/john_doe/ProjectAMO && grep -rn "warning_issued\|warningIssued\|findNewWarnings\|dispatchers.marquee\|auto_dismiss_seconds\|popup.position" frontend/src shared backend/src --include=*.js --include=*.jsx
 ```
-Expected: `MonitoringPage.jsx`(자막 배선), `Settings.jsx`(설정 항목·`TRIGGER_LABELS`), `AlertMarquee.jsx`만 나온다. 이들은 Task 6·10에서 정리한다. `alert-triggers.js`와 `shared/alert-defaults.js`에서는 **한 건도 나오지 않아야 한다.**
+Expected: 아래 파일들만 나온다. `alert-triggers.js`와 `shared/alert-defaults.js`에서는 **한 건도 나오지 않아야 한다.**
+
+| 남는 파일 | 무엇이 | 정리 Task |
+|---|---|---|
+| `MonitoringPage.jsx` | 자막 배선 | 6, 8 |
+| `Settings.jsx` | 설정 항목·`TRIGGER_LABELS`·`autoDismiss` | 10 |
+| `AlertMarquee.jsx` | 컴포넌트 전체 | 6 |
+| `alert-state.js` | `buildAlertKey`의 `warning_issued` 분기 | 3 |
+| `App.css` | 자막 스타일 | 6 |
+| `verification/contracts/monitoring.spec.mjs` | `auto_dismiss_seconds` | 11 |
+
+이 목록에 없는 파일이 나오면 멈추고 확인한다.
 
 - [ ] **Step 4: 커밋**
 
@@ -630,11 +653,15 @@ export default function AlertPanel({ alerts, validKeys, onDismiss, settings }) {
   const now = Date.now();
   const isNew = (alert) => now - alert.timestamp < highlightMs;
 
-  const sorted = [...live].sort((a, b) => {
-    const bySeverity = (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2);
-    return bySeverity !== 0 ? bySeverity : b.timestamp - a.timestamp;
-  });
-  const visible = sorted.slice(0, maxVisible);
+  // 초과분은 "오래된 것부터" 버린다(스펙 §7). 그래서 최신순으로 먼저 추린 뒤
+  // 그 결과를 심각도순으로 세운다. 순서를 바꾸면 방금 뜬 낮은 등급 알람이 잘려 나간다.
+  const visible = [...live]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, maxVisible)
+    .sort((a, b) => {
+      const bySeverity = (SEVERITY_ORDER[a.severity] ?? 2) - (SEVERITY_ORDER[b.severity] ?? 2);
+      return bySeverity !== 0 ? bySeverity : b.timestamp - a.timestamp;
+    });
 
   // 색으로 채우는 줄은 새 알람 중 가장 최근 1건뿐이다. 색을 아껴 써야 무엇이 급한지가 남는다.
   const featuredId = visible
@@ -690,14 +717,17 @@ export default function AlertPanel({ alerts, validKeys, onDismiss, settings }) {
   bottom: 0;
   z-index: 9998;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   gap: 2px;
   padding: 4px;
   pointer-events: none;
 }
 
+/* column-reverse를 쓰지 않는다. 그러면 DOM 첫 행(가장 심각)이 화면 맨 아래로 가서
+   심각도 정렬이 눈에는 뒤집혀 보인다. bottom:0 만으로 이미 "아래 고정, 위로 자람"이 된다. */
+
 .alert-table-row {
-  --alert-level-color: #475569;
+  --alert-level-color: var(--level-gray);
   display: grid;
   grid-template-columns: 6px 4.5rem 1fr auto auto;
   align-items: center;
@@ -709,9 +739,10 @@ export default function AlertPanel({ alerts, validKeys, onDismiss, settings }) {
   pointer-events: auto;
 }
 
-.alert-table-row--critical { --alert-level-color: #c0291f; }
-.alert-table-row--warning  { --alert-level-color: #92400e; }
-.alert-table-row--info     { --alert-level-color: #475569; }
+/* 시맨틱 레벨색 토큰을 쓴다. 원색 리터럴은 frontend/scripts/lint-colors.mjs가 잡는다. */
+.alert-table-row--critical { --alert-level-color: var(--level-red); }
+.alert-table-row--warning  { --alert-level-color: var(--level-amber); }
+.alert-table-row--info     { --alert-level-color: var(--level-gray); }
 
 .alert-table-band {
   align-self: stretch;
@@ -778,7 +809,25 @@ export default function AlertPanel({ alerts, validKeys, onDismiss, settings }) {
 .alert-table-row--new .alert-table-close { opacity: 0.8; }
 ```
 
-- [ ] **Step 3: 화면에 뜨는지 눈으로 확인한다**
+- [ ] **Step 3: 섹션 주석과 예시 알람의 시각 타입을 맞춘다**
+
+두 가지가 새 표와 어긋난 채 남는다.
+
+먼저 `App.css`에서 지운 블록 바로 위(3028행 부근)의 섹션 주석이 `ALERT POPUP / MARQUEE / SETTINGS MODAL`을 가리킨다. `ALERT TABLE / SETTINGS MODAL`로 고친다. 실제 문구는 확인 후 맞춘다.
+
+```bash
+cd /home/john_doe/ProjectAMO && sed -n '3020,3035p' frontend/src/features/monitoring/legacy/App.css
+```
+
+그리고 **예시 알람의 시각 타입을 지금 고친다.** `alert-dispatcher.js:53`이 만드는 실제 알람은 `timestamp: Date.now()`(숫자)인데, `MonitoringPage.jsx:277`의 예시 알람은 `new Date().toISOString()`(문자열)이다. 새 표는 `now - alert.timestamp`로 강조 여부를 판단하므로 문자열이 들어오면 `NaN`이 되어 예시가 절대 강조되지 않고 정렬도 무너진다. Task 8까지 미루면 Step 4의 "새로 깨지는 것이 없어야 한다" 게이트가 헛돈다.
+
+`MonitoringPage.jsx`의 예시 알람 두 곳(`firePopupPreviewSequence`와 `handlePreviewAlert`)에서 한 줄씩 고친다.
+
+```js
+          timestamp: Date.now(),
+```
+
+- [ ] **Step 4: 화면에 뜨는지 눈으로 확인한다**
 
 Run:
 ```bash
@@ -786,7 +835,7 @@ cd /home/john_doe/ProjectAMO/frontend && CONTRACT_REUSE_SERVER=1 npx playwright 
 ```
 Expected: 여전히 1 failed (배지 계약 — Task 11에서 교체한다). 새로 깨지는 것이 없어야 한다. `alert panel collapses to a badge` 외의 실패가 나오면 멈추고 원인을 찾는다.
 
-- [ ] **Step 4: 커밋**
+- [ ] **Step 5: 커밋**
 
 ```bash
 cd /home/john_doe/ProjectAMO
@@ -869,7 +918,7 @@ git commit -m "refactor(monitoring): 자막 알림 바를 걷어낸다
 
 어느 칸이 문제인지 화면에서 직접 짚어준다. **칸 바깥 외곽선만 쓴다** — 이 칸들은 이미 배경색으로 비행조건을 표현하므로 배경이나 테두리를 쓰면 한 색에 두 의미가 생긴다.
 
-기존 `metar-card--alert-outline` 클래스가 이미 같은 일을 하고 있다(`MetarCard.jsx:474,485,695,746`). 새 클래스를 만들지 말고 그 이름을 그대로 쓴다.
+기존 `metar-card--alert-outline` 클래스가 이미 바람 카드에서 정적 외곽선을 그리고 있다(`MetarCard.jsx:474,485,695,746`). **그 클래스는 그대로 두고, 깜빡임 전용 클래스를 따로 만들어 함께 붙인다.** 둘 다 `outline`을 설정하므로 같은 칸에 겹치면 나중 규칙이 이긴다 — 깜빡임 규칙을 파일 뒤쪽에 두고 `!important` 없이 순서로 해결한다. 알람이 뜬 칸은 알람 색으로 깜빡이는 것이 맞다.
 
 **Files:**
 - Modify: `frontend/src/features/monitoring/legacy/App.css` (외곽선·깜빡임 규칙)
@@ -879,10 +928,11 @@ git commit -m "refactor(monitoring): 자막 알림 바를 걷어낸다
 
 **Interfaces:**
 - Consumes: Task 2의 `highlight` 모양
-- Produces: 세 컴포넌트가 `highlight` prop을 받는다.
-  - `MetarCard`: `highlightField?: 'visibility'|'ceiling'|'wind'|'weather'`
-  - `TafTimeline`: `highlightTimes?: string[]`, `highlightFields?: string[]`
-  - `MonitoringMap`/`MapView`: `highlightZone?: 'alert'|'danger'|'caution'`
+- Produces: 세 컴포넌트가 강조 prop을 받는다. **여러 알람이 동시에 발동하면 각자의 칸이 각자 깜빡여야 하므로**(스펙 §7) 단수가 아니라 묶음으로 넘긴다.
+  - `MetarCard`: `highlightFields?: Record<'visibility'|'ceiling'|'wind'|'weather', 'critical'|'warning'|'info'>` — 칸 이름 → 심각도
+  - `TafTimeline`: `highlightTimes?: Record<string, 'critical'|'warning'|'info'>` — ISO 시각 → 심각도
+  - `MonitoringMap`: `highlightZones?: Record<'alert'|'danger'|'caution', 'critical'|'warning'|'info'>`
+  - 셋 다 기본값은 빈 객체 `{}`다.
 
 - [ ] **Step 1: 깜빡이는 외곽선 규칙을 넣는다**
 
@@ -893,14 +943,14 @@ git commit -m "refactor(monitoring): 자막 알림 바를 걷어낸다
    outline은 레이아웃을 차지하지 않으므로 칸이 밀리지 않는다.
    0.8초 주기 = 초당 1.25회. WCAG 2.3.1(초당 3회 이하)을 지킨다. */
 .alert-outline-blink {
-  --alert-outline-color: #c0291f;
+  --alert-outline-color: var(--level-red);
   outline: 3px solid var(--alert-outline-color);
   outline-offset: 2px;
   animation: alert-outline-blink 0.8s step-end infinite;
 }
 
-.alert-outline-blink--warning { --alert-outline-color: #92400e; }
-.alert-outline-blink--info    { --alert-outline-color: #475569; }
+.alert-outline-blink--warning { --alert-outline-color: var(--level-amber); }
+.alert-outline-blink--info    { --alert-outline-color: var(--level-gray); }
 
 @keyframes alert-outline-blink {
   50% { outline-color: transparent; }
@@ -917,17 +967,23 @@ git commit -m "refactor(monitoring): 자막 알림 바를 걷어낸다
 컴포넌트 서명에 prop을 더한다(`MetarCard.jsx:280` 근처의 `export default function MetarCard({ ... })`).
 
 ```jsx
-export default function MetarCard({ /* 기존 props 그대로 */, highlightField = null, highlightSeverity = "critical" }) {
+export default function MetarCard({ /* 기존 props 그대로 */, highlightFields = {} }) {
 ```
 
-그리고 강조가 붙을 칸의 `className`에 조건부로 클래스를 더한다. 데스크톱 카드는 `metar-surface-card`, 모바일 카드는 `metar-mobile-card`다. 헬퍼를 컴포넌트 안에 하나 두고 재사용한다.
+헬퍼를 컴포넌트 안에 하나 두고 재사용한다. 심각도가 칸마다 다를 수 있으므로 칸별로 색을 고른다.
 
 ```jsx
-  const blinkClass = (field) =>
-    highlightField === field
-      ? ` alert-outline-blink${highlightSeverity === "critical" ? "" : ` alert-outline-blink--${highlightSeverity}`}`
-      : "";
+  // 여러 알람이 동시에 발동하면 각 칸이 각자의 심각도 색으로 깜빡인다.
+  const blinkClass = (field) => {
+    const severity = highlightFields[field];
+    if (!severity) return "";
+    return severity === "critical"
+      ? " alert-outline-blink"
+      : ` alert-outline-blink alert-outline-blink--${severity}`;
+  };
 ```
+
+**데스크톱 카드에 붙인다.** 모바일은 §3으로 상황판 진입이 막히므로 모바일 카드(474·485행)는 손대지 않는다 — 나중에 모바일을 열 때 함께 다룬다.
 
 바람 카드는 이미 `metar-card--alert-outline`을 조건부로 붙이고 있으므로 그 뒤에 이어 붙인다(695행).
 
@@ -935,59 +991,99 @@ export default function MetarCard({ /* 기존 props 그대로 */, highlightField
               <article className={`metar-surface-card metar-surface-card--wind${highWind ? " metar-card--alert-outline" : ""}${blinkClass("wind")}`}>
 ```
 
-시정·운고·날씨 카드에도 같은 방식으로 `blinkClass("visibility")`, `blinkClass("ceiling")`, `blinkClass("weather")`를 붙인다. 붙일 자리는 각 카드의 최상위 `className` 문자열 끝이다.
+시정·운고·날씨의 데스크톱 카드에도 같은 방식으로 `blinkClass("visibility")`, `blinkClass("ceiling")`, `blinkClass("weather")`를 붙인다. 붙일 자리는 각 카드의 최상위 `className` 문자열 끝이다. 데스크톱 카드는 `metar-surface-card`로 시작하는 것들이다.
+
+Run으로 자리를 먼저 확인한다:
+```bash
+cd /home/john_doe/ProjectAMO && grep -n "metar-surface-card" frontend/src/features/monitoring/legacy/components/MetarCard.jsx
+```
 
 - [ ] **Step 3: `TafTimeline`이 강조 시각을 받게 한다**
 
 서명에 prop을 더한다(`TafTimeline.jsx:257` 근처).
 
 ```jsx
-export default function TafTimeline({ /* 기존 props 그대로 */, highlightTimes = [], highlightSeverity = "critical" }) {
-  const highlightSet = new Set(highlightTimes);
+export default function TafTimeline({ /* 기존 props 그대로 */, highlightTimes = {} }) {
 ```
 
-시간칸을 그리는 곳에서 `slot.time`이 집합에 있으면 클래스를 붙인다. `displaySlots`를 도는 `.map()`의 각 칸 `className` 끝에 이어 붙인다.
+컴포넌트 안에 헬퍼를 둔다.
 
 ```jsx
-                className={`${기존_클래스}${highlightSet.has(slot.time) ? ` alert-outline-blink${highlightSeverity === "critical" ? "" : ` alert-outline-blink--${highlightSeverity}`}` : ""}`}
+  const blinkClass = (time) => {
+    const severity = highlightTimes[time];
+    if (!severity) return "";
+    return severity === "critical"
+      ? " alert-outline-blink"
+      : ` alert-outline-blink alert-outline-blink--${severity}`;
+  };
 ```
 
-`displaySlots`는 `buildTafDisplaySlots()`(161행)가 만든다. 각 항목이 원본 `time`을 갖고 있는지 먼저 확인한다.
+시간칸을 그리는 `.map()`의 각 칸 `className` 끝에 `${blinkClass(slot.time)}`을 이어 붙인다.
 
-Run:
+`displaySlots`는 `buildTafDisplaySlots()`(161행)가 만들고, **각 항목이 이미 원본 `time`을 담고 있다** — 확인했다. 파서 쪽에 손댈 것이 없다.
+
+**타임라인이 아닌 모드에서는 강조를 생략한다.** `TafTimeline`은 `version` 분기를 갖는다(257행 근처). 타임라인 모드가 아닌 경로에는 `blinkClass`를 붙이지 않는다. 스펙 §6 "TAF가 타임라인이 아닌 카드/표 모드인 경우 강조를 생략한다. 오류로 취급하지 않는다"를 그대로 따른다.
+
+Run으로 분기를 확인한다:
 ```bash
-cd /home/john_doe/ProjectAMO && sed -n '161,200p' frontend/src/features/monitoring/legacy/components/TafTimeline.jsx
+cd /home/john_doe/ProjectAMO && grep -n "version" frontend/src/features/monitoring/legacy/components/TafTimeline.jsx | head
 ```
-`time` 필드가 없으면 `buildTafDisplaySlots`가 원본 시각을 함께 담도록 한 줄 더한다.
 
 - [ ] **Step 4: 지도 링을 굵게·깜빡이게 한다**
 
-`RANGE_RING` 레이어는 feature마다 `radiusKm` 속성을 갖는다. 구역과 반지름 대응은 경보 8km · 위험 16km · 주의 32km다.
+**새 타이머도, 새 state도, 새 `useEffect`도 만들지 않는다.** `docs/policies/engineering/map-and-layers.md:17`이 `MapView.jsx`에 새 feature state나 맨 `useEffect`를 추가하는 것을 금지한다.
 
-`MapView.jsx`에서 링 레이어의 `line-width` paint 속성을 강조 구역에 반응하도록 바꾼다.
+만들 필요도 없다. `MapView.jsx:529-538`에 **이미 0.8초 간격으로 뒤집히는 `lightningBlinkOff` state가 있다.** 그것을 그대로 탄다.
 
 ```js
-'line-width': [
-  'case',
-  ['==', ['get', 'radiusKm'], highlightRadiusKm ?? -1], 5,
-  2,
-],
+  useEffect(() => {
+    if (!metVisibility.lightning || !blinkLightning) {
+      setLightningBlinkOff(false)
+      return undefined
+    }
+    const timer = window.setInterval(() => {
+      setLightningBlinkOff((prev) => !prev)
+    }, LIGHTNING_BLINK_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [metVisibility.lightning, blinkLightning])
 ```
 
-`highlightRadiusKm`는 prop으로 받은 `highlightZone`을 반지름으로 옮긴 값이다.
+이 토글이 낙뢰 레이어가 꺼져 있으면 돌지 않는다는 점도 스펙과 맞는다 — §6이 "낙뢰 레이어 꺼짐"을 **강조 생략** 사유로 명시한다. 레이어가 꺼져 있으면 링 강조도 없다. 오류가 아니다.
+
+할 일은 둘뿐이다.
+
+**(1) prop 하나를 받는다.** `MapView`의 props에 더한다.
+
+```jsx
+  highlightRingRadiusKm = null,
+```
+
+`MonitoringMap`이 구역 이름을 반지름으로 옮겨 넘긴다. 대응은 지도의 `RANGE_RING` 반지름과 같다 — 경보 8km · 위험 16km · 주의 32km.
 
 ```js
 const ZONE_RADIUS_KM = { alert: 8, danger: 16, caution: 32 }
-const highlightRadiusKm = highlightZone ? ZONE_RADIUS_KM[highlightZone] : null
 ```
 
-깜빡임은 0.8초 간격으로 `line-width`를 5와 2 사이에서 토글해 만든다. 기존 낙뢰 깜빡임이 쓰는 `LIGHTNING_BLINK_INTERVAL_MS`를 재사용한다.
+**(2) 링의 `line-width`를 표현식으로 바꾼다.** `MapView.jsx:260`을 고친다.
 
-Run:
+```js
+      'line-width': [
+        'case',
+        ['==', ['get', 'radiusKm'], highlightRingRadiusKm ?? -1], 5,
+        1.5,
+      ],
+```
+
+**기본값은 반드시 `1.5`다.** 현재 값이 `1.5`이고(`MapView.jsx:260`) 강조와 무관한 상시 표시를 굵게 만드는 것은 스펙에 없는 변경이다.
+
+깜빡임은 `lightningBlinkOff`가 참일 때 강조 굵기를 기본값으로 되돌려 만든다. 위 표현식의 `5`를 `lightningBlinkOff ? 1.5 : 5`로 계산해 넣는다.
+
+레이어는 이미 만들어진 뒤이므로 값만 갱신해야 한다. 기존 코드가 낙뢰 paint를 갱신하는 방식을 그대로 따른다. 먼저 확인한다:
+
 ```bash
-cd /home/john_doe/ProjectAMO && grep -rn "LIGHTNING_BLINK_INTERVAL_MS\|RANGE_RING" frontend/src --include=*.js --include=*.jsx
+cd /home/john_doe/ProjectAMO && grep -n "setPaintProperty\|lightningBlinkOff" frontend/src/features/map/MapView.jsx
 ```
-나온 곳의 기존 깜빡임 구현을 그대로 따른다. 새 타이머 방식을 발명하지 않는다.
+나온 갱신 지점 옆에 링 `line-width` 갱신 한 줄을 더한다. **새 `useEffect`를 만들지 않고 기존 것에 얹는다.**
 
 - [ ] **Step 5: 단위 테스트가 여전히 통과하는지 확인한다**
 
@@ -1022,21 +1118,32 @@ git commit -m "feat(monitoring): 문제가 난 요소를 외곽선으로 짚어�
 - Consumes: Task 2의 `highlight`, Task 3의 `clearResolvedAlerts(firedKeys, icao)`, Task 7의 세 컴포넌트 prop
 - Produces: 없음 (배선 계층)
 
-- [ ] **Step 1: 지상 모드에서 판정을 멈추고 이력 정리에 공항을 넘긴다**
+- [ ] **Step 1: 판정을 멈출 조건을 한 곳으로 모으고, 지상 모드에서는 목록도 비운다**
 
-`useEffect`(218행) 안에서 두 곳을 고친다. 지상 모드 여부를 나타내는 값의 이름은 먼저 확인한다.
+지상 모드 변수는 **`dashboardMode`** 다(`MonitoringPage.jsx:83`). `mode`라는 이름은 렌더 스코프에 없다 — `setMode(mode)`(401행)의 매개변수일 뿐이라 그대로 쓰면 ReferenceError로 화면이 백지가 된다.
 
-Run:
-```bash
-cd /home/john_doe/ProjectAMO && grep -n "mode\b\|'ground'\|\"ground\"" frontend/src/features/monitoring/MonitoringPage.jsx | head -20
-```
-
-확인한 이름을 써서 조기 반환을 더한다(221행의 기존 조기 반환 바로 아래).
+`useEffect`(218행)의 조기 반환(221행)을 아래로 교체한다.
 
 ```js
-    if (!settings.global.alerts_enabled || isQuietHours(settings.global.quiet_hours)) return
-    // 지상 모드에서는 알람 판정 자체를 멈춘다. 목록·반짝임·소리 모두 없다.
-    if (mode === 'ground') return
+    const paused = !settings.global.alerts_enabled
+      || isQuietHours(settings.global.quiet_hours)
+      || dashboardMode === 'ground'
+    if (paused) {
+      wasPausedRef.current = true
+      // 지상 모드에서는 목록·반짝임·소리 모두 없다(스펙 §8). 판정만 멈추면
+      // 이미 떠 있던 알람이 그대로 남으므로 목록도 비운다.
+      if (dashboardMode === 'ground') {
+        setActiveAlerts([])
+        setValidAlertKeys(new Set())
+      }
+      return
+    }
+```
+
+`useEffect`의 의존성 배열(254행)에 `dashboardMode`를 더한다.
+
+```js
+  }, [data, selectedAirport, alertDefaults, dashboardMode])
 ```
 
 그리고 이력 정리 호출(252행)에 공항을 넘긴다.
@@ -1049,26 +1156,14 @@ cd /home/john_doe/ProjectAMO && grep -n "mode\b\|'ground'\|\"ground\"" frontend/
 
 지상 모드·방해금지 시간이 끝나 판정이 재개될 때, 중단 중 갱신되지 않은 이전 데이터와 비교하면 그동안의 변화가 한꺼번에 터진다. 재개 시에는 "지금 무엇이 나쁜가"로만 판정한다.
 
-`prevDataRef` 선언(115행) 옆에 중단 여부를 기억할 ref를 하나 더 둔다.
+`prevDataRef` 선언(115행) 옆에 중단 여부를 기억할 ref를 하나 더 둔다. Step 1이 이미 이 ref를 쓴다.
 
 ```js
   const prevDataRef = useRef(null)
   const wasPausedRef = useRef(false)
 ```
 
-Step 1에서 더한 두 조기 반환을 아래처럼 바꿔 중단을 기록한다.
-
-```js
-    const paused = !settings.global.alerts_enabled
-      || isQuietHours(settings.global.quiet_hours)
-      || mode === 'ground'
-    if (paused) {
-      wasPausedRef.current = true
-      return
-    }
-```
-
-그리고 `previousData` 계산(230행)에서 재개 직후면 이전 데이터를 비운다.
+그리고 `const prev = prevDataRef.current`(**229행**)를 교체한다.
 
 ```js
     // 재개 직후에는 "그동안 무엇이 바뀌었나"가 아니라 "지금 무엇이 나쁜가"로 판정한다.
@@ -1086,31 +1181,59 @@ Step 1에서 더한 두 조기 반환을 아래처럼 바꿔 중단을 기록한
   const soundAlerts = [...previewAlerts.filter((alert) => alert.previewChannels?.sound), ...activeAlerts]
 
   // 강조는 새 알람 창 안의 것만. 창 밖으로 나가면 요소는 평소 모습으로 돌아간다.
+  // 동시에 여러 알람이 살아 있으면 각자의 칸이 각자의 심각도 색으로 깜빡인다(스펙 §7).
   const highlightMs = (settings?.dispatchers?.popup?.highlight_seconds ?? 60) * 1000
   const highlighting = popupAlerts.filter(
     (alert) => alert.highlight && Date.now() - alert.timestamp < highlightMs
   )
-  const metarHighlight = highlighting.find((a) => a.highlight.panel === 'metar')
-  const tafHighlight = highlighting.find((a) => a.highlight.panel === 'taf')
-  const mapHighlight = highlighting.find((a) => a.highlight.panel === 'map')
+
+  // 같은 대상에 둘이 겹치면 더 심각한 쪽 색을 남긴다.
+  const SEVERITY_RANK = { critical: 0, warning: 1, info: 2 }
+  const collect = (panel, keyOf) => {
+    const out = {}
+    for (const alert of highlighting) {
+      if (alert.highlight.panel !== panel) continue
+      for (const key of keyOf(alert.highlight)) {
+        const before = out[key]
+        if (!before || SEVERITY_RANK[alert.severity] < SEVERITY_RANK[before]) {
+          out[key] = alert.severity
+        }
+      }
+    }
+    return out
+  }
+
+  const metarHighlightFields = collect('metar', (h) => (h.field ? [h.field] : []))
+  const tafHighlightTimes = collect('taf', (h) => h.times || [])
+  const mapHighlightZones = collect('map', (h) => (h.zone ? [h.zone] : []))
+```
+
+강조 창이 닫힐 때 화면을 다시 그릴 것이 필요하다. `Date.now()`를 렌더 중에 읽기만 하면 다음 폴링이 올 때까지 깜빡임이 안 꺼진다. **1초 tick을 하나 둔다.**
+
+```js
+  // 강조 창이 닫히는 순간을 잡으려면 재렌더가 필요하다. 강조 중일 때만 돈다.
+  const [, setHighlightTick] = useState(0)
+  useEffect(() => {
+    if (highlighting.length === 0) return undefined
+    const timer = window.setInterval(() => setHighlightTick((n) => n + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [highlighting.length])
 ```
 
 그리고 세 컴포넌트에 넘긴다. `MetarCard`·`TafTimeline`이 렌더되는 자리에 prop을 더한다.
 
 ```jsx
-      highlightField={metarHighlight?.highlight.field ?? null}
-      highlightSeverity={metarHighlight?.severity ?? 'critical'}
+      highlightFields={metarHighlightFields}
 ```
 
 ```jsx
-      highlightTimes={tafHighlight?.highlight.times ?? []}
-      highlightSeverity={tafHighlight?.severity ?? 'critical'}
+      highlightTimes={tafHighlightTimes}
 ```
 
-`MonitoringMap`(532행)에는:
+`MonitoringMap`(532행)에는 구역 묶음을 넘긴다. `MonitoringMap`이 이것을 반지름으로 옮겨 `MapView`의 `highlightRingRadiusKm`로 전달한다. 링은 한 번에 하나만 굵어지므로 가장 심각한 구역을 고른다.
 
 ```jsx
-        highlightZone={mapHighlight?.highlight.zone ?? null}
+        highlightZones={mapHighlightZones}
 ```
 
 `alert-dispatcher.js`가 `highlight`를 알람 객체에 담아야 하므로 한 줄 더한다. `alert-dispatcher.js:51` 뒤에:
@@ -1131,23 +1254,47 @@ Step 1에서 더한 두 조기 반환을 아래처럼 바꿔 중단을 기록한
   const PANEL_PREVIEW_SEQUENCE = [
     {
       severity: 'critical',
-      title: '낙뢰 경보: 8km 이내 3건',
+      title: '[예시] 낙뢰 경보: 8km 이내 3건',
       message: '최근접 5.2km | 경보 3건',
       highlight: { panel: 'map', zone: 'alert' },
     },
     {
       severity: 'warning',
-      title: 'METAR 저시정: 1200m',
+      title: '[예시] METAR 저시정: 1200m',
       message: '현재 시정이 1200m으로 임계값(1500m) 이하입니다.',
       highlight: { panel: 'metar', field: 'visibility' },
     },
     {
       severity: 'info',
-      title: 'TAF 저시정: 2500m',
-      message: 'TAF 6시간 내 예보\n[24일 02:00] 시정 2500m',
-      highlight: { panel: 'taf', fields: ['visibility'], times: [] },
+      title: '[예시] TAF 저시정: 2500m',
+      message: 'TAF 6시간 내 예보\n시정 2500m',
+      highlight: { panel: 'taf', fields: ['visibility'] },
     },
   ]
+```
+
+제목 앞의 `[예시]`는 스펙 §14의 "문구는 실제 트리거가 낼 법한 형식을 따르되 **예시임이 드러나야 한다**"를 지키기 위한 것이다. 이것이 없으면 `alert-triggers.js:220`이 내는 실제 제목과 글자까지 같아져 벽걸이 화면에서 진짜 경보와 구분되지 않는다.
+
+TAF 예시의 `times`는 고정값으로 둘 수 없다 — 화면에 그려진 타임라인에 없는 시각을 넣으면 강조가 아무 데도 안 붙는다. **지금 보고 있는 TAF의 앞쪽 시각을 그대로 쓴다.** `firePopupPreviewSequence` 안에서 채운다.
+
+```js
+    // 화면에 실제로 그려진 시간칸이어야 강조가 붙는다. 없으면 빈 배열 —
+    // 스펙 §6의 "대상을 표시할 수 없으면 생략"에 걸려 조용히 넘어간다.
+    const tafTimes = (data.taf?.airports?.[selectedAirport]?.timeline || [])
+      .map((slot) => slot.time)
+      .filter((time) => new Date(time) > new Date())
+      .slice(0, 3)
+```
+
+그리고 예시를 만들 때 TAF 항목에만 얹는다.
+
+```js
+        const previewAlert = {
+          id: `preview-popup-${Date.now()}-${index}`,
+          ...example,
+          highlight: example.highlight.panel === 'taf'
+            ? { ...example.highlight, times: tafTimes }
+            : example.highlight,
 ```
 
 `firePopupPreviewSequence`(269-283행)에서 `previewChannels`를 없앤다. 채널이 팝업 하나뿐이라 갈래가 필요 없다.
@@ -1356,10 +1503,10 @@ const TRIGGER_LABELS = {
   isGroundMode = false,
 ```
 
-그리고 `MonitoringPage`가 넘긴다(436행 `onPreviewAlert` 옆).
+그리고 `MonitoringPage`가 넘긴다(436행 `onPreviewAlert` 옆). 변수명은 **`dashboardMode`** 다(`MonitoringPage.jsx:83`) — `mode`는 렌더 스코프에 없다.
 
 ```jsx
-        isGroundMode={mode === 'ground'}
+        isGroundMode={dashboardMode === 'ground'}
 ```
 
 - [ ] **Step 4: 예시용 설정 묶음에서 자막을 뺀다**
@@ -1386,9 +1533,9 @@ const TRIGGER_LABELS = {
 
 Run:
 ```bash
-cd /home/john_doe/ProjectAMO && grep -n "autoDismiss\|머무는 시간\|marquee\|팝업 사용\|max_visible" frontend/src/features/monitoring/legacy/components/alerts/Settings.jsx
+cd /home/john_doe/ProjectAMO && grep -n "autoDismiss\|머무는 시간\|marquee\|팝업 사용\|max_visible\|position" frontend/src/features/monitoring/legacy/components/alerts/Settings.jsx
 ```
-나온 곳을 모두 새 이름·새 라벨로 고치고, 자막 관련 상태·입력을 지운다. 다 고친 뒤 같은 명령을 다시 돌려 `marquee`·`autoDismiss`·`머무는 시간`·`팝업 사용`이 **한 건도 남지 않아야 한다.**
+나온 곳을 모두 새 이름·새 라벨로 고치고, 자막 관련 상태·입력과 팝업 위치 항목을 지운다(스펙 §14 삭제 목록). 다 고친 뒤 같은 명령을 다시 돌려 `marquee`·`autoDismiss`·`머무는 시간`·`팝업 사용`·`position`이 **한 건도 남지 않아야 한다.**
 
 - [ ] **Step 5: 커밋**
 
@@ -1409,20 +1556,35 @@ git commit -m "feat(monitoring): 설정창에서 자막·공항경보 항목을 
 시작 시점부터 깨져 있던 배지 계약을 새 계약으로 갈아끼운다.
 
 **Files:**
-- Modify: `frontend/verification/contracts/monitoring.spec.mjs:28-75`
+- Modify: `frontend/verification/contracts/monitoring.spec.mjs:28-90`
 - Modify: `docs/policies/verification/contracts.md:27`
+- Read: `frontend/verification/monitoring-fixture.mjs` (`openMonitoringState`의 동작 확인용)
 
 **Interfaces:**
 - Consumes: Task 5의 `.alert-table*` 클래스, Task 10의 설정 라벨
 - Produces: 없음 (최종 검증)
 
-- [ ] **Step 1: 자막 체크박스 계약을 고친다**
+**주의 — 계약은 세 프로젝트에서 돈다.** `frontend/playwright.config`의 `projects`에 `desktop` · `ipad-landscape` · `mobile`(Pixel 5)이 있다. Task 9가 모바일을 `/`로 되돌리므로, 상황판에 들어가는 모든 계약에 모바일 skip이 있어야 한다. 없으면 Step 4의 "0 failed"에 절대 도달하지 못한다.
 
-`monitoring.spec.mjs:34`의 목록에서 자막을 빼고 팝업 이름을 바꾼다.
+**주의 — `openMonitoringState(page, 'settings')`는 운항 모드로 되돌린다.** `monitoring-fixture.mjs:322`가 `page.goto('/monitoring?mode=ops')`를 한다. 지상 모드를 확인하는 계약에서 이 헬퍼를 쓰면 지상 클릭이 통째로 버려진다.
+
+- [ ] **Step 1: 자막 체크박스 계약을 고치고 모바일에서 제외한다**
+
+`monitoring.spec.mjs:28`의 테스트를 고친다. 라벨 목록만 고치면 모바일에서 반드시 실패한다 — 이 테스트에는 모바일 skip이 없다.
 
 ```js
+  test('alert dispatcher rows name both the checkbox and its 예시 button', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    // A <label> wrapping the row used to take the 예시 button's accessible name and leave the
+    // checkbox unnamed, so a screen reader announced neither correctly.
+    await openMonitoringState(page, 'settings')
+    await page.getByRole('button', { name: '알림', exact: true }).click()
+
     for (const label of ['알람 목록 표시', '소리 사용']) {
 ```
+
+서명에 `testInfo`가 추가된 것에 주의한다. 나머지 본문은 그대로 둔다.
 
 - [ ] **Step 2: 배지 계약을 알람 표 계약으로 갈아끼운다**
 
@@ -1459,7 +1621,55 @@ git commit -m "feat(monitoring): 설정창에서 자막·공항경보 항목을 
     await expect(rows).toHaveCount(3)
   })
 
-  test('alert table stays above the fullscreen slideshow', async ({ page }, testInfo) => {
+  test('alert table renders above the fullscreen slideshow overlay', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    await openMonitoringState(page, 'settings')
+    await page.getByRole('button', { name: '알림', exact: true }).click()
+    await page.getByRole('button', { name: '알람 목록 표시 예시', exact: true }).click()
+    await page.locator('.alert-popup-close').click()
+    await expect(page.locator('.alert-table')).toBeVisible()
+
+    // 실제 전체화면 슬라이드 오버레이를 띄운 뒤 알람 표가 여전히 보이는지 본다.
+    // CSS 상수를 CSS로 읽어 비교하면 동어반복이라 회귀를 못 잡는다.
+    await page.evaluate(() => {
+      const stage = document.createElement('div')
+      stage.className = 'monitoring-slide-overlay monitoring-slide-overlay--whole-screen is-visible'
+      stage.style.background = '#000'
+      stage.dataset.testStage = 'true'
+      document.body.appendChild(stage)
+    })
+
+    const table = page.locator('.alert-table')
+    await expect(table).toBeVisible()
+    // 표의 한 점이 오버레이가 아니라 표 자신에게 닿아야 한다.
+    const onTop = await table.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + 4)
+      return el.contains(hit) || hit === el
+    })
+    expect(onTop).toBe(true)
+  })
+
+  test('ground mode hides alerts and disables the list preview button', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    // openMonitoringState(page, 'settings')는 '/monitoring?mode=ops'로 다시 이동해
+    // 지상 모드를 되돌린다(monitoring-fixture.mjs:322). 여기서는 쓰지 않고 직접 연다.
+    await page.goto('/monitoring?mode=ground', { waitUntil: 'load' })
+    await page.locator('.dashboard-root').waitFor({ state: 'attached' })
+
+    // 지상 모드에서는 알람이 아예 표시되지 않는다 (스펙 §8).
+    await expect(page.locator('.alert-table')).toHaveCount(0)
+
+    await page.getByLabel('설정').click()
+    await page.getByRole('button', { name: '알림', exact: true }).click()
+
+    await expect(page.getByRole('button', { name: '알람 목록 표시 예시', exact: true })).toBeDisabled()
+    await expect(page.getByRole('button', { name: '소리 사용 예시', exact: true })).toBeEnabled()
+  })
+
+  test('low visibility alert outlines the METAR visibility cell', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
 
     await openMonitoringState(page, 'settings')
@@ -1467,20 +1677,28 @@ git commit -m "feat(monitoring): 설정창에서 자막·공항경보 항목을 
     await page.getByRole('button', { name: '알람 목록 표시 예시', exact: true }).click()
     await page.locator('.alert-popup-close').click()
 
-    const tableZ = await page.locator('.alert-table').evaluate((el) => Number(getComputedStyle(el).zIndex))
-    expect(tableZ).toBeGreaterThan(900)
+    // 예시 2번이 METAR 시정 칸을 대상으로 삼는다.
+    await expect(page.locator('.metar-surface-card.alert-outline-blink')).toHaveCount(1)
   })
 
-  test('ground mode disables the list preview button', async ({ page }, testInfo) => {
+  test('resolved alerts drop out of the table on their own', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
 
-    await openMonitoringState(page, 'ops')
-    await page.getByRole('tab', { name: '지상', exact: true }).click()
+    // 예시 알람은 alertKey가 없어 조건 해소 판정을 타지 않는다. 대신 강조 창 + 10초 뒤
+    // 스스로 빠지는 경로가 "아무도 조작하지 않아도 정리된다"를 같은 자리에서 증명한다.
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'aviation-weather-alert-settings',
+        JSON.stringify({ dispatchers: { popup: { highlight_seconds: 1 } } })
+      )
+    })
     await openMonitoringState(page, 'settings')
     await page.getByRole('button', { name: '알림', exact: true }).click()
+    await page.getByRole('button', { name: '알람 목록 표시 예시', exact: true }).click()
+    await page.locator('.alert-popup-close').click()
 
-    await expect(page.getByRole('button', { name: '알람 목록 표시 예시', exact: true })).toBeDisabled()
-    await expect(page.getByRole('button', { name: '소리 사용 예시', exact: true })).toBeEnabled()
+    await expect(page.locator('.alert-table-row')).toHaveCount(3)
+    await expect(page.locator('.alert-table')).toHaveCount(0, { timeout: 20000 })
   })
 
   test('mobile is redirected away from monitoring', async ({ page }, testInfo) => {
@@ -1497,11 +1715,15 @@ git commit -m "feat(monitoring): 설정창에서 자막·공항경보 항목을 
 
 - [ ] **Step 4: 계약 전체를 돌린다**
 
+세 프로젝트(`desktop` · `ipad-landscape` · `mobile`) 전부에서 돌린다. 프로젝트를 지정하지 않으면 전부 돈다.
+
 Run:
 ```bash
 cd /home/john_doe/ProjectAMO/frontend && CONTRACT_REUSE_SERVER=1 npx playwright test verification/contracts/monitoring.spec.mjs --retries=0 --reporter=line
 ```
 Expected: **0 failed.** 시작 시점의 1 failed가 사라져야 한다. 실패가 남으면 멈추고 원인을 찾는다 — 이 시점에는 통과가 완료 조건이다.
+
+`ipad-landscape`에서 `.alert-popup-close`가 안 잡히면 `Settings.jsx:439`의 `isInline` 분기를 확인한다. 인라인 모드에서는 닫기 버튼이 렌더되지 않는다.
 
 - [ ] **Step 5: 단위 테스트 전체를 돌린다**
 
@@ -1550,10 +1772,27 @@ git commit -m "test(monitoring): 알람 표 계약으로 갈아끼우고 등록�
 | §9 평가 기준 리셋 (지상 복귀·방해금지 종료·공항 전환) | 3, 8 |
 | §14 설정 (삭제·이름 변경·저장분 정리·예시 버튼) | 1, 4, 10 |
 | §15 오류 처리 | 5, 7 (강조 생략), 2 (트리거 예외는 기존 유지) |
-| §16 검증 | 2, 3, 4, 11 |
+| §16 검증 | 2, 3, 4, 11 — 아래 표로 항목별 대조 |
 | §17 영향 파일 | 전체 |
 
-빠진 것: **§15의 "컴포넌트 해제 시 반짝임 타이머 정리"** 는 Task 5의 `useEffect` 정리 함수와 Task 7의 지도 깜빡임(기존 낙뢰 구현 재사용)이 각각 맡는다. 별도 작업으로 두지 않았다.
+**§16 브라우저 계약 항목별 대조** (계획 A 범위만)
+
+| 스펙 §16 항목 | Task 11의 계약 |
+|---|---|
+| 심각도순 정렬 | `alert table sorts by severity and fills exactly one row` |
+| 채운 줄이 항상 1건 | 같은 계약 |
+| 강조 시간이 지나면 가라앉되 사라지지 않음 | 같은 계약 |
+| 조건이 해소되면 자동 제거 | `resolved alerts drop out of the table on their own` |
+| 저시정 알람 시 METAR 시정 칸 강조 | `low visibility alert outlines the METAR visibility cell` |
+| 지상 모드에서 알람 미표시 | `ground mode hides alerts and disables the list preview button` |
+| 슬라이드쇼 위 표시 | `alert table renders above the fullscreen slideshow overlay` |
+| 예시 3건·채운 줄 1건 | `alert table sorts by severity and fills exactly one row` |
+| 지상 모드 예시 버튼 비활성 | `ground mode hides alerts and disables the list preview button` |
+| 모바일 리디렉션 | `mobile is redirected away from monitoring` |
+
+"조건이 해소되면 자동 제거"는 예시 알람의 시각 기반 제거로 검증한다. 예시에는 `alertKey`가 없어 트리거 재평가 경로를 타지 않으므로 **판정에 의한 해소 자체를 브라우저에서 직접 몰기 어렵다.** 목적인 "아무도 조작하지 않아도 목록이 정리된다"는 같은 자리에서 증명된다. 판정에 의한 해소 경로는 `AlertPanel`의 `validKeys` 필터 한 줄이며 Task 5에서 유지된다.
+
+**§15의 "컴포넌트 해제 시 반짝임 타이머 정리"** 는 세 곳이 각각 맡는다 — Task 5의 `AlertPanel` 내부 tick, Task 8의 `MonitoringPage` 강조 tick, Task 7의 지도(기존 `lightningBlinkOff` 타이머 재사용). 셋 다 `useEffect` 정리 함수를 갖는다. 별도 작업으로 두지 않았다.
 
 **2. 미완성 표현** — "TBD"·"적절히"·"필요시" 없음. 코드 단계는 모두 실제 코드를 담았다.
 
@@ -1565,11 +1804,17 @@ git commit -m "test(monitoring): 알람 표 계약으로 갈아끼우고 등록�
 이들은 "알아서 하라"가 아니라 **"이 명령을 돌려 나온 것을 이렇게 고쳐라"** 형태다.
 
 **3. 타입 일관성**
-- `highlight` 모양이 Task 2(생성) → Task 7(소비) → Task 8(분배)에서 일치한다
+- `highlight` 모양이 Task 2(생성) → Task 8(묶음으로 변환) → Task 7(소비)에서 일치한다
+- 강조 prop은 셋 다 **`Record<키, 심각도>`** 다 — `highlightFields`(MetarCard) · `highlightTimes`(TafTimeline) · `highlightZones`(MonitoringMap). 단수 prop은 남아 있지 않다
 - `clearResolvedAlerts(firedKeys, icao)` 두 인자가 Task 3(정의)과 Task 8(호출)에서 일치한다
 - `highlight_seconds`가 Task 1(기본값)·4(마이그레이션)·5(표)·8(강조 창)·10(설정)·11(계약)에서 같은 이름이다
+- `timestamp`는 어디서나 **숫자**(`Date.now()`)다. Task 5가 예시 알람을 문자열에서 숫자로 옮긴다
+- 지상 모드 변수는 어디서나 **`dashboardMode`** 다. `mode`는 쓰지 않는다
 - `.alert-table-row--new` 클래스가 Task 5(생성)와 Task 11(검사)에서 일치한다
+- `alert-outline-blink` 클래스가 Task 7(생성)과 Task 11(검사)에서 일치한다
 - 예시 버튼 이름 `알람 목록 표시 예시`가 Task 10(생성)과 Task 11(검사)에서 일치한다
+
+**4. 리뷰 반영** — 2026-07-28 `reviewer` 서브에이전트 검토에서 나온 17건을 전부 반영했다. 치명 4건(ESM 확장자·`dashboardMode`·모바일 skip 누락·픽스처가 지상 모드를 되돌림)은 직접 실행·grep으로 재확인한 뒤 고쳤다. 스펙과 어긋났던 "6건 초과 시 제거 기준"은 사용자 확인을 거쳐 **스펙대로 오래된 것부터**로 정했다.
 
 ---
 
