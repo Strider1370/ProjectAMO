@@ -4,7 +4,7 @@ import path from 'node:path'
 import config from '../config.js'
 
 const SNAPSHOT_NAME = /^[a-zA-Z0-9_-]+$/
-const LIVE_PASSTHROUGH = Object.freeze(['typhoon', 'terrain'])
+const LIVE_PASSTHROUGH = Object.freeze(['aip', 'typhoon', 'terrain'])
 
 function readJson(filePath) {
   try {

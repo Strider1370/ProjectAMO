@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   buildProcedureContextPayload,
   buildProcedurePayload,
+  buildCrossSectionRequest,
   buildVerticalProfileRequest,
 } from './verticalProfileRequest.js'
 
@@ -107,4 +108,27 @@ test('buildVerticalProfileRequest preserves IFR route marker payload shape', () 
     { label: 'RKSS', lon: 128, lat: 39, kind: 'AIRPORT' },
   ])
   assert.equal(result.routeModel.graphConnectionStatus, 'unavailable')
+})
+
+test('buildCrossSectionRequest keeps ETD as the forecast selection reference', () => {
+  const routeGeometry = { type: 'LineString', coordinates: [[126, 37], [127, 38]] }
+  assert.deepEqual(buildCrossSectionRequest({
+    routeGeometry,
+    etd: '2026-07-22T10:00:00.000Z',
+    tmfc: '2026072200',
+    hf: 9,
+  }), {
+    routeGeometry,
+    etd: '2026-07-22T10:00:00.000Z',
+    tmfc: '2026072200',
+    hf: 9,
+  })
+  assert.deepEqual(buildCrossSectionRequest({
+    routeGeometry,
+    etd: '2026-07-22T10:00:00.000Z',
+    hf: null,
+  }), {
+    routeGeometry,
+    etd: '2026-07-22T10:00:00.000Z',
+  })
 })

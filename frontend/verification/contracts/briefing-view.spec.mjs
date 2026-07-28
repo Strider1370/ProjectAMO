@@ -3,7 +3,7 @@ import { installRouteBriefingFixtures } from '../route-fixture.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 async function createBriefing(page) {
-  await installRouteBriefingFixtures(page)
+  const requests = await installRouteBriefingFixtures(page)
   // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
   // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
   // 소스의 상수를 그대로 쓴다.
@@ -40,11 +40,12 @@ async function createBriefing(page) {
   }
   await page.getByRole('button', { name: '브리핑 준비로', exact: true }).click()
   await page.getByRole('button', { name: '브리핑 생성', exact: true }).click()
+  return requests
 }
 
 test.describe('briefing-view', () => {
   test('renders route weather legs as a table or mobile cards', async ({ page }) => {
-    await createBriefing(page)
+    const requests = await createBriefing(page)
 
     await expect(page.getByRole('heading', { name: 'NAVLOG', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: '연직단면도', exact: true })).toBeVisible()
@@ -61,6 +62,10 @@ test.describe('briefing-view', () => {
     await expect(page.locator('.cs-toggle').first()).toBeVisible()
     for (const label of ['기온', '습도', '바람', 'SIGMET/AIRMET']) {
       await expect(page.locator('.cs-toggle[aria-pressed="true"]').filter({ hasText: label }).first()).toBeVisible()
+    }
+    expect(requests.crossSection.bodies.length).toBeGreaterThan(0)
+    for (const body of requests.crossSection.bodies) {
+      expect(Date.parse(body.etd)).not.toBeNaN()
     }
   })
 

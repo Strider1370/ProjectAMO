@@ -4,7 +4,7 @@
 import config from '../config.js'
 import { buildCrossSection, buildKtgCrossSection, gridIndexFor } from './cross-section-sampler.js'
 import { buildRouteAxis } from './route-axis.js'
-import { selectNearestForecastHour } from '../processors/kim-forecast-hour.js'
+import { selectClosestForecastTime } from '../processors/kim-forecast-hour.js'
 import {
   KIM_NWP_LEVELS,
   calcKFipLiteScore,
@@ -104,7 +104,18 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
   }) ?? []
   const availableHours = availableTimes.map((t) => t.hf)
   const candidateHours = availableHours.length > 0 ? availableHours : (config.kim_nwp?.forecast_hours || [0, 3, 6, 9, 12])
-  const hf = Number.isFinite(Number(body.hf)) ? Number(body.hf) : selectNearestForecastHour({ tmfc, candidateHours })
+  const candidateTimes = availableTimes.length > 0 ? availableTimes : candidateHours.map((hf) => ({ hf }))
+  const requestedHf = body.hf !== '' && body.hf != null && Number.isFinite(Number(body.hf)) ? Number(body.hf) : null
+  const etdMs = Date.parse(body.etd)
+  const referenceMs = Number.isFinite(etdMs) ? etdMs : Date.parse(body.referenceTime)
+  const selectedKimTime = selectClosestForecastTime({
+    tmfc,
+    targetMs: Number.isFinite(referenceMs) ? referenceMs : Date.now(),
+    candidateTimes: requestedHf == null
+      ? candidateTimes
+      : [candidateTimes.find((time) => Number(time.hf) === requestedHf) ?? { hf: requestedHf }],
+  })
+  const hf = selectedKimTime?.hf ?? candidateHours[0] ?? 0
   const kimBundleKey = `${root}|${tmfc}|${hf}|${latest.content_hash ?? latest.updated_at ?? ''}`
 
   const axis = buildRouteAxis(routeGeometry, body.sampleSpacingMeters ?? 250)
@@ -121,18 +132,23 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
 
   const crossSection = buildCrossSection({
     axis,
-    run: { tmfc, hf, validTime: latest.validTime ?? null },
+    run: { tmfc, hf, validTime: selectedKimTime?.validTime ?? null },
     levelIds: KIM_NWP_LEVELS.filter((l) => l.kind === 'pressure').map((l) => l.id),
     loadLevel,
   })
 
-  // KTG 저고도 난류 — 단면의 나머지(바람·기온)와 같은 예보시간(hf)으로 정합. 해당 hf 미수집이면 nearest 폴백.
+  // KTG run 시각은 KIM과 다를 수 있으므로 같은 hf가 아니라 KIM의 실제 유효시각과 가장 가까운 자료를 고른다.
   const ktgLatest = readKtgLatest(root)
   const ktgIndex = ktgLatest ? readKtgIndex(root) : null
   const ktgHours = ktgIndex?.hours ?? (ktgLatest ? [{ hf: ktgLatest.hf, validTime: ktgLatest.validTime }] : [])
-  const ktgMatch = ktgHours.find((h) => h.hf === hf)
-  const ktgHf = ktgMatch ? ktgMatch.hf : ktgLatest?.hf
-  const ktgValidTime = ktgMatch ? ktgMatch.validTime : ktgLatest?.validTime
+  const kimValidMs = Date.parse(selectedKimTime?.validTime)
+  const selectedKtgTime = ktgLatest ? selectClosestForecastTime({
+    tmfc: ktgLatest.tmfc,
+    targetMs: Number.isFinite(kimValidMs) ? kimValidMs : referenceMs,
+    candidateTimes: ktgHours,
+  }) : null
+  const ktgHf = selectedKtgTime?.hf ?? ktgLatest?.hf
+  const ktgValidTime = selectedKtgTime?.validTime ?? ktgLatest?.validTime
   const ktgBundleKey = ktgLatest && `${root}|${ktgLatest.tmfc}|${ktgHf}|${ktgLatest.updated_at ?? ktgIndex?.fetched_at ?? ''}`
   const ktgCoords = ktgLatest ? cachedGrid('ktg', ktgBundleKey, 'coords', () =>
     readKtgCoords({ root, tmfc: ktgLatest.tmfc, hf: ktgHf })) : null
@@ -148,6 +164,10 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
   // 사용자가 단면도에서 다른 예보시간(hf)을 골라볼 수 있도록, 바람 자료가 실제로 있는 시각 목록을 함께 내려준다.
   return {
     available: true, axis, crossSection, turbulence, totalDistanceNm: axis.totalDistanceNm,
-    availableTimes: availableTimes.length > 0 ? availableTimes : candidateHours.map((candidateHf) => ({ hf: candidateHf, validTime: null })),
+    availableTimes: candidateTimes.map((time) => selectClosestForecastTime({
+      tmfc,
+      targetMs: 0,
+      candidateTimes: [time],
+    })).filter(Boolean),
   }
 }

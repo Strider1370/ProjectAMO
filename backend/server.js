@@ -1145,7 +1145,11 @@ app.post('/api/briefing/cross-section', (req, res) => {
     if (!routeGeometry?.coordinates?.length) {
       return res.status(400).json({ error: 'routeGeometry required' })
     }
-    const model = loadRouteCrossSection({ root: DATA_ROOT, routeGeometry, body: req.body })
+    const body = {
+      ...req.body,
+      referenceTime: req.body?.referenceTime ?? getEffectiveNow().toISOString(),
+    }
+    const model = loadRouteCrossSection({ root: DATA_ROOT, routeGeometry, body })
     if (!model.available) return res.status(503).json({ error: 'kim run unavailable' })
 
     setNoStore(res)

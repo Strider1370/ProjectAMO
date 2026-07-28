@@ -151,7 +151,7 @@ const exposure = {
 // requests below are deterministic so dev:test collection state cannot affect assertions.
 export async function installRouteBriefingFixtures(page, { altitudeResponse = altitudeComparison } = {}) {
   const exposureRequests = { single: new Map(), batch: new Map() }
-  const crossSectionRequests = { count: 0 }
+  const crossSectionRequests = { count: 0, bodies: [] }
   await page.route('**/api/briefing/route-exposure', (route) => {
     const key = stableRoutePayload(route)
     exposureRequests.single.set(key, (exposureRequests.single.get(key) || 0) + 1)
@@ -169,7 +169,9 @@ export async function installRouteBriefingFixtures(page, { altitudeResponse = al
   await page.route('**/api/vertical-profile', (route) => fulfill(route, profileFor(requestJson(route))))
   await page.route('**/api/briefing/cross-section', (route) => {
     crossSectionRequests.count += 1
-    const { hf } = requestJson(route)
+    const body = requestJson(route)
+    crossSectionRequests.bodies.push(body)
+    const { hf } = body
     return fulfill(route, { ...crossSection, run: { ...crossSection.run, hf: Number.isFinite(Number(hf)) ? Number(hf) : crossSection.run.hf } })
   })
   await page.route('**/api/route-briefing', (route) => fulfill(route, briefingFor(requestJson(route))))

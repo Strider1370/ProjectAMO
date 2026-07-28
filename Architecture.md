@@ -182,7 +182,7 @@ ProjectAMO/
 
 ### Backend
 
-- `backend/src/dev/data-view.js` -> 실황/시연 활성 데이터 뷰의 단일 interface. 기존 `DATA_PATH`는 수집기가 계속 쓰는 실황 루트이고, `DATA_PATH/.active-data` 심볼릭 링크만 Linux `rename`으로 원자 교체한다. 시연 뷰는 스냅샷 자료를 연결하되 태풍·지형만 명시적으로 실황에 통과 연결하며, 뷰 메타가 모드·기준시각·revision의 재시작 가능한 단일 진실원이다.
+- `backend/src/dev/data-view.js` -> 실황/시연 활성 데이터 뷰의 단일 interface. 기존 `DATA_PATH`는 수집기가 계속 쓰는 실황 루트이고, `DATA_PATH/.active-data` 심볼릭 링크만 Linux `rename`으로 원자 교체한다. 시연 뷰는 스냅샷 자료를 연결하되 AIP·태풍·지형은 명시적으로 실황에 통과 연결하며, 뷰 메타가 모드·기준시각·revision의 재시작 가능한 단일 진실원이다.
 - `backend/src/dev/demo-session.js` -> 준비 점검을 통과한 스냅샷 뷰 시작과 최신 실황 뷰 종료를 직렬화하고, 포인터 전환 직후 활성 읽기 캐시를 다시 적재한다. 시작·종료는 수집 drain, `_live_backup`, 대용량 복사, 외부 호출을 하지 않는다. 새 스냅샷 캡처만 일관성을 위해 진행 중 수집을 정리한다.
 - `backend/src/dev/snapshot-store.js` -> 파일시스템 스냅샷 캡처·레거시 복원·준비 점검. 시연 가능 상태는 기준시각, 핵심 자료 21종, 레이더 36장, 위성 18장, 참조 파일, KIM/KTG 인덱스, ADS-B 기준시각 오차(30분 이하)를 검사한다.
 - `backend/src/dev/demo-mode.js` -> 활성 데이터 뷰에서 시연 여부와 유효 현재시각을 파생하는 호환 adapter. 서버·브라우저의 시간 의존 로직은 실제 `Date.now()` 대신 이 유효 시각을 주입받는다.

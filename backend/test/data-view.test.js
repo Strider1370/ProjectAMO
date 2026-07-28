@@ -9,7 +9,7 @@ import { createDataViewManager } from '../src/dev/data-view.js'
 function fixture() {
   const basePath = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-data-view-'))
   const activePath = path.join(basePath, '.active-data')
-  for (const type of ['metar', 'sigmet', 'typhoon', 'terrain']) {
+  for (const type of ['metar', 'sigmet', 'aip', 'typhoon', 'terrain']) {
     fs.mkdirSync(path.join(basePath, type), { recursive: true })
     fs.writeFileSync(path.join(basePath, type, 'marker'), `live-${type}`)
   }
@@ -43,6 +43,7 @@ test('activateDemo atomically selects snapshot data and explicit live passthroug
   assert.equal(context.referenceTime, '2026-07-22T10:00:00.000Z')
   assert.equal(fs.readFileSync(path.join(activePath, 'metar', 'marker'), 'utf8'), 'demo-metar')
   assert.equal(fs.readFileSync(path.join(activePath, 'sigmet', 'marker'), 'utf8'), 'demo-sigmet')
+  assert.equal(fs.realpathSync(path.join(activePath, 'aip')), fs.realpathSync(path.join(basePath, 'aip')))
   assert.equal(fs.realpathSync(path.join(activePath, 'typhoon')), fs.realpathSync(path.join(basePath, 'typhoon')))
   assert.equal(fs.realpathSync(path.join(activePath, 'terrain')), fs.realpathSync(path.join(basePath, 'terrain')))
 })

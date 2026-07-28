@@ -8,13 +8,22 @@ import test from 'node:test'
 import {
   KIM_NWP_LEVELS,
   KIM_NWP_MODEL,
+  buildKimNwpIndex,
+  buildKimNwpIndexEntry,
   buildKimNwpGrid,
 } from '../src/processors/kim-nwp-model.js'
 import {
   buildKimNwpRunId,
   writeKimNwpGrid,
+  writeKimNwpIndex,
   writeKimNwpLatest,
 } from '../src/processors/kim-nwp-store.js'
+import {
+  writeKtgCoords,
+  writeKtgGrid,
+  writeKtgIndex,
+  writeKtgLatest,
+} from '../src/processors/ktg-store.js'
 import {
   clearRouteCrossSectionCache,
   loadRouteCrossSection,
@@ -135,6 +144,104 @@ test('cross-section reuses same-revision grids and clears them on latest revisio
     loadRouteCrossSection({ root, routeGeometry: ROUTE_GEOMETRY, body: { tmfc, hf } })
     const afterRevision = routeCrossSectionCacheMetrics()
     assert.ok(afterRevision.kim.misses > afterSecond.kim.misses)
+  } finally {
+    clearRouteCrossSectionCache()
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('cross-section selects KIM closest to ETD and KTG closest to the selected valid time', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'kim-cross-section-etd-'))
+  const level = KIM_NWP_LEVELS.find((entry) => entry.id === '850hPa')
+  const tmfc = '2026072200'
+  const entries = []
+
+  for (const hf of [9, 12, 30]) {
+    const grid = buildKimNwpGrid({
+      model: KIM_NWP_MODEL,
+      tmfc,
+      hf,
+      level,
+      components: [
+        { variable: 'u', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(hf) },
+        { variable: 'v', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(0) },
+      ],
+      fetchedAt: '2026-07-22T00:30:00.000Z',
+    })
+    const gridPath = writeKimNwpGrid({ root, grid })
+    entries.push(buildKimNwpIndexEntry(grid, gridPath))
+  }
+  writeKimNwpIndex(root, buildKimNwpIndex({ model: KIM_NWP_MODEL, tmfc, entries }))
+  writeKimNwpLatest(root, {
+    type: 'kim_nwp_latest',
+    model: KIM_NWP_MODEL,
+    latestRun: tmfc,
+    latestRunId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc }),
+    indexPath: 'kim_nwp/index.json',
+    updated_at: '2026-07-22T00:30:00.000Z',
+    content_hash: 'etd-selection',
+  })
+
+  const ktgTmfc = '2026072206'
+  const ktgHours = [
+    { hf: 0, validTime: '2026-07-22T06:00:00.000Z' },
+    { hf: 3, validTime: '2026-07-22T09:00:00.000Z' },
+    { hf: 6, validTime: '2026-07-22T12:00:00.000Z' },
+  ]
+  writeKtgIndex(root, {
+    type: 'ktg_index',
+    tmfc: ktgTmfc,
+    hf: 0,
+    validTime: ktgHours[0].validTime,
+    hours: ktgHours,
+    altLevelsFt: [3000],
+    fetched_at: '2026-07-22T06:30:00.000Z',
+  })
+  writeKtgLatest(root, {
+    type: 'ktg_latest',
+    tmfc: ktgTmfc,
+    hf: 0,
+    validTime: ktgHours[0].validTime,
+    updated_at: '2026-07-22T06:30:00.000Z',
+  })
+  writeKtgCoords({
+    root,
+    tmfc: ktgTmfc,
+    hf: 3,
+    coords: { type: 'ktg_coords', ny: 1, nx: 1, lat: [37], lon: [126] },
+  })
+  writeKtgGrid({
+    root,
+    grid: {
+      type: 'ktg_grid',
+      tmfc: ktgTmfc,
+      hf: 3,
+      validTime: ktgHours[1].validTime,
+      altFt: 3000,
+      grid: { ny: 1, nx: 1 },
+      ktg: [0.5],
+    },
+  })
+
+  clearRouteCrossSectionCache()
+  try {
+    const result = loadRouteCrossSection({
+      root,
+      routeGeometry: ROUTE_GEOMETRY,
+      body: { etd: '2026-07-22T10:00:00.000Z' },
+    })
+
+    assert.deepEqual(result.crossSection.run, {
+      tmfc,
+      hf: 9,
+      validTime: '2026-07-22T09:00:00.000Z',
+    })
+    assert.deepEqual(result.turbulence.run, {
+      tmfc: ktgTmfc,
+      hf: 3,
+      validTime: '2026-07-22T09:00:00.000Z',
+    })
+    assert.equal(result.turbulence.available, true)
   } finally {
     clearRouteCrossSectionCache()
     await rm(root, { recursive: true, force: true })

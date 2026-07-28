@@ -7,7 +7,7 @@ import { calcVfrDistance } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
 import { getPerformanceForRule, setPerformanceForRule } from './lib/aircraftProfiles.js'
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './lib/altitude.js'
-import { buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
+import { buildCrossSectionRequest, buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
 import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
 import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
@@ -1618,7 +1618,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           plannedCruiseAltitudeFt,
           candidateCruiseAltitudesFt,
         })),
-        existingCrossSection ?? fetchCrossSection({ routeGeometry }).catch(() => null),
+        existingCrossSection ?? fetchCrossSection(buildCrossSectionRequest({ routeGeometry, etd })).catch(() => null),
       ])
       if (requestId !== verticalProfileRequestRef.current) return
       setVerticalProfile(profile)
@@ -1646,7 +1646,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const requestId = ++verticalProfileRequestRef.current
     setCrossSectionHourLoading(true)
     try {
-      const cs = await fetchCrossSection({ routeGeometry, tmfc: crossSection?.run?.tmfc, hf }).catch(() => null)
+      const cs = await fetchCrossSection(buildCrossSectionRequest({
+        routeGeometry,
+        etd,
+        tmfc: crossSection?.run?.tmfc,
+        hf,
+      })).catch(() => null)
       if (requestId !== verticalProfileRequestRef.current) return
       if (cs) setCrossSection(cs)
     } finally {
@@ -1757,7 +1762,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           fetchVerticalProfile(buildVerticalProfileRequest({
             routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints: appliedVfrWaypoints, plannedCruiseAltitudeFt,
           })),
-          fetchCrossSection({ routeGeometry }).catch(() => null),
+          fetchCrossSection(buildCrossSectionRequest({ routeGeometry, etd: etdIso })).catch(() => null),
         ])
         setVerticalProfile(profile)
         setCrossSection(cs)

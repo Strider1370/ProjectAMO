@@ -57,6 +57,16 @@ export function buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints }) {
     .filter(Boolean)
 }
 
+export function buildCrossSectionRequest({ routeGeometry, etd, tmfc, hf }) {
+  const hasForecastHour = hf !== '' && hf != null && Number.isFinite(Number(hf))
+  return {
+    routeGeometry,
+    etd,
+    ...(tmfc ? { tmfc } : {}),
+    ...(hasForecastHour ? { hf: Number(hf) } : {}),
+  }
+}
+
 export function buildVerticalProfileRequest({
   routeGeometry,
   routeModel = null,
