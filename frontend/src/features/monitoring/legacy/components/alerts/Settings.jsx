@@ -19,7 +19,6 @@ import {
 } from "../../../lib/monitoringSlideshow.js";
 
 const TRIGGER_LABELS = {
-  warning_issued: "공항경보가 발령되면 알림",
   low_visibility: "시정이 나빠지면 알림",
   high_wind: "바람이 강해지면 알림",
   weather_phenomenon: "특이기상(TS/SN/FG)이 나타나면 알림",
@@ -84,7 +83,7 @@ const ALERT_USER_SECTIONS = [
     id: "forecast-official",
     title: "예고 / 공식 알림",
     description: "앞으로 대비해야 할 상황이나 공식 경보를 알려줍니다.",
-    triggerIds: ["taf_adverse_weather", "warning_issued"],
+    triggerIds: ["taf_adverse_weather"],
   },
   {
     id: "repeat",
@@ -121,6 +120,7 @@ export default function Settings({
   onSlideshowPreview,
   onSlideshowStop,
   variant = "modal",
+  isGroundMode = false,
 }) {
   const isInline = variant === "inline";
   const current = resolveSettings(defaults);
@@ -134,10 +134,9 @@ export default function Settings({
   const [quietEnd, setQuietEnd] = useState(current.global.quiet_hours?.end || "");
 
   const [popupEnabled, setPopupEnabled] = useState(current.dispatchers.popup.enabled);
-  const [autoDismiss, setAutoDismiss] = useState(current.dispatchers.popup.auto_dismiss_seconds);
+  const [highlightSeconds, setHighlightSeconds] = useState(current.dispatchers.popup.highlight_seconds);
   const [soundEnabled, setSoundEnabled] = useState(current.dispatchers.sound.enabled);
   const [volume, setVolume] = useState(current.dispatchers.sound.volume);
-  const [marqueeEnabled, setMarqueeEnabled] = useState(current.dispatchers.marquee.enabled);
 
   const [localTimeZone, setLocalTimeZone] = useState(timeZone || "KST");
   const [localMapTheme, setLocalMapTheme] = useState(mapTheme || localStorage.getItem("map_theme") || "light");
@@ -206,9 +205,8 @@ export default function Settings({
         quiet_hours: quietStart && quietEnd ? { start: quietStart, end: quietEnd } : null,
       },
       dispatchers: {
-        popup: { enabled: popupEnabled, auto_dismiss_seconds: Number(autoDismiss) },
+        popup: { enabled: popupEnabled, highlight_seconds: Number(highlightSeconds) },
         sound: { enabled: soundEnabled, volume: Number(volume) },
-        marquee: { enabled: marqueeEnabled },
       },
       triggers,
     };
@@ -389,6 +387,8 @@ export default function Settings({
   // toggles it. The 예시 buttons also need distinct names — three bare "예시" are ambiguous.
   function renderDispatcherRow(channel, text, checked, setChecked) {
     const inputId = `${rowIdBase}-${channel}`
+    // 지상 모드에서는 판정이 멈춰 있다. 목록 예시는 판정을 우회하므로 함께 막는다.
+    const blocked = channel === "popup" && isGroundMode
     return (
       <div className="alert-settings-row">
         <label htmlFor={inputId}>{text}</label>
@@ -397,6 +397,8 @@ export default function Settings({
             type="button"
             className="alert-settings-preview-btn"
             aria-label={`${text} 예시`}
+            disabled={blocked}
+            title={blocked ? "지상 모드에서는 알람이 동작하지 않습니다" : undefined}
             onClick={() => onPreviewAlert?.(channel, getPreviewDispatchers())}
           >
             예시
@@ -416,18 +418,12 @@ export default function Settings({
     return {
       popup: {
         enabled: popupEnabled,
-        auto_dismiss_seconds: Number(autoDismiss),
+        highlight_seconds: Number(highlightSeconds),
       },
       sound: {
         enabled: soundEnabled,
         volume: Number(volume),
         repeat_count: current.dispatchers.sound.repeat_count,
-      },
-      marquee: {
-        enabled: marqueeEnabled,
-        min_severity: current.dispatchers.marquee.min_severity,
-        speed: current.dispatchers.marquee.speed,
-        show_duration_seconds: current.dispatchers.marquee.show_duration_seconds,
       },
     };
   }
@@ -510,9 +506,8 @@ export default function Settings({
                     <span>알림 사용</span>
                     <input type="checkbox" checked={globalEnabled} onChange={(e) => setGlobalEnabled(e.target.checked)} />
                   </label>
-                  {renderDispatcherRow("popup", "팝업 사용", popupEnabled, setPopupEnabled)}
+                  {renderDispatcherRow("popup", "알람 목록 표시", popupEnabled, setPopupEnabled)}
                   {renderDispatcherRow("sound", "소리 사용", soundEnabled, setSoundEnabled)}
-                  {renderDispatcherRow("marquee", "하단 알림 바 표시", marqueeEnabled, setMarqueeEnabled)}
                   <label className="alert-settings-row">
                     <span>야간 시작</span>
                     <input type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} />
@@ -544,8 +539,8 @@ export default function Settings({
                     <input type="number" min={0} max={3600} value={cooldown} onChange={(e) => setCooldown(e.target.value)} />
                   </label>
                   <label className="alert-settings-row">
-                    <span>알림 목록이 접히기까지 시간(초, 0이면 계속 펼침)</span>
-                    <input type="number" min={0} max={60} value={autoDismiss} onChange={(e) => setAutoDismiss(e.target.value)} />
+                    <span>새 알람 강조 시간(초)</span>
+                    <input type="number" min={0} max={60} value={highlightSeconds} onChange={(e) => setHighlightSeconds(e.target.value)} />
                   </label>
                 </fieldset>
               </>
