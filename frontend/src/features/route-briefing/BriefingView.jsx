@@ -748,9 +748,15 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
         </MobileSheet>
         {xsectionFull && verticalProfile && (
           <div className="bv-xfull" role="dialog" aria-label="단면도 전체화면" onClick={() => setXsectionFull(false)}>
-            <button type="button" className="bv-xfull-close" onClick={() => setXsectionFull(false)} aria-label="닫기">×</button>
             <div className="bv-xfull-rotate" onClick={(e) => e.stopPropagation()}>
-              <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={{ icing: true, turbulence: true }} highlightRangeNm={pinnedLeg} />
+              <div className="bv-xfull-toolbar">
+                <div className="bv-xfull-toolbar-main">
+                  <span className="bv-xfull-summary">연직단면도</span>
+                  <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} compact inline />
+                  <button type="button" className="bv-xfull-close" onClick={() => setXsectionFull(false)} aria-label="닫기">×</button>
+                </div>
+              </div>
+              <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} highlightRangeNm={pinnedLeg} metaTrailing={<ForecastHourNav crossSection={crossSection} onSelect={onSelectForecastHour} loading={crossSectionHourLoading} />} />
             </div>
           </div>
         )}

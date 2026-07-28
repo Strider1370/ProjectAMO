@@ -345,11 +345,29 @@
 
 /* 단면도 "크게 열기" — landscape 풀스크린 (폰 세로 화면 90° 회전) */
 .bv-xfull { position: fixed; inset: 0; z-index: 9999; background: var(--bg-1); }
-.bv-xfull-rotate { position: absolute; top: 50%; left: 50%; width: 100vh; transform: translate(-50%, -50%) rotate(90deg); transform-origin: center center; }
-.bv-xfull-rotate .vertical-profile-chart { width: 100%; border: none; padding: 0; background: transparent; }
-.bv-xfull-rotate svg { display: block; width: 100%; height: auto; }
+.bv-xfull-rotate {
+  position: absolute; top: 50%; left: 50%; width: 100vh; height: 100dvw;
+  transform: translate(-50%, -50%) rotate(90deg); transform-origin: center center;
+  display: flex; flex-direction: column; overflow: hidden; container-type: inline-size;
+}
+.bv-xfull-toolbar { flex: 0 0 auto; padding: 4px var(--space-s); border-bottom: 1px solid var(--stroke-2); }
+.bv-xfull-toolbar-main { display: grid; grid-template-columns: minmax(64px, auto) minmax(0, 1fr) 36px; align-items: center; gap: var(--space-s); min-height: 36px; }
+.bv-xfull-summary { min-width: 0; color: var(--text-2); font-size: var(--fs-300); font-weight: var(--fw-bold); white-space: nowrap; }
+.bv-xfull-toolbar-main .cross-section-toggles.is-inline { display: block; min-width: 0; padding: 0; border: 0; }
+.bv-xfull-toolbar-main .cross-section-toggle-group { gap: var(--space-s); }
+.bv-xfull .cs-toggle,
+.bv-xfull-close { min-height: 36px; }
+.bv-xfull .cs-toggle { min-width: 0; padding: 2px 6px; justify-content: center; white-space: nowrap; }
+.bv-xfull-close { width: 36px; height: 36px; }
+.bv-xfull-rotate .vertical-profile-chart {
+  display: flex; flex: 1 1 0; flex-direction: column; min-height: 0; width: 100%;
+  border: none; padding: var(--space-s); background: transparent; box-sizing: border-box;
+}
+.bv-xfull-rotate .vertical-profile-chart-body,
+.bv-xfull-rotate .vertical-profile-plot-scroll { flex: 1 1 auto; min-height: 0; overflow-y: hidden; }
+.bv-xfull-rotate .vertical-profile-plot-svg { height: 100% !important; }
 .bv-xfull-close {
-  position: absolute; top: 10px; right: 12px; z-index: 2; width: 36px; height: 36px; border-radius: 999px;
+  position: static; z-index: 2; border-radius: 999px;
   border: 1px solid var(--stroke-2); background: var(--bg-1); color: var(--accent); font-size: 20px; line-height: 1; cursor: pointer;
 }
 

@@ -50,13 +50,13 @@ export function ForecastHourNav({ crossSection, onSelect, loading = false }) {
 }
 
 // keys 주면 그 레이어만 노출(데이터 없는 토글 숨김용). 기본은 전체.
-export function CrossSectionToggles({ layers, onToggle, keys, trailing = null }) {
+export function CrossSectionToggles({ layers, onToggle, keys, trailing = null, compact = false, inline = false }) {
   const items = keys ? CROSS_SECTION_TOGGLES.filter(([k]) => keys.includes(k)) : CROSS_SECTION_TOGGLES
   return (
-    <div className="cross-section-toggles" role="group" aria-label="레이어">
+    <div className={`cross-section-toggles${inline ? ' is-inline' : ''}`} role="group" aria-label="레이어">
       <span className="cross-section-toggle-group">
         {items.map(([k, label]) => (
-          <button key={k} type="button" className={`cs-toggle${layers[k] ? ' is-on' : ''}`} aria-pressed={layers[k]} onClick={() => onToggle(k)}>{label}</button>
+          <button key={k} type="button" className={`cs-toggle${layers[k] ? ' is-on' : ''}`} aria-label={label} aria-pressed={layers[k]} onClick={() => onToggle(k)}>{compact && k === 'advisories' ? <>SIGMET/<br />AIRMET</> : label}</button>
         ))}
       </span>
       {trailing}

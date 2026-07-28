@@ -204,6 +204,7 @@ export default function VerticalProfileChart({
   onSelectCandidateAltitude,
   enableDragScroll = false,
   hideMeta = false,
+  metaTrailing = null,
   highlightRangeNm = null, // NAVLOG에서 가리킨 구간 {startNm, endNm, pinned}
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
@@ -543,6 +544,7 @@ export default function VerticalProfileChart({
             <button type="button" onClick={() => onSelectCandidateAltitude(nextAltitude)} disabled={!Number.isFinite(nextAltitude)} aria-label="다음 비교 고도">›</button>
           </span>
         )}
+        {metaTrailing}
       </div>}
       <div className="vertical-profile-chart-body" ref={containerRef}>
       <div className="vertical-profile-plot-scroll" onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag}>

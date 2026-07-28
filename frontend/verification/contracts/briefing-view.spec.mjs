@@ -81,6 +81,27 @@ test.describe('briefing-view', () => {
     await expect(page.getByRole('button', { name: '브리핑 생성', exact: true })).toBeVisible()
   })
 
+  test('mobile fullscreen vertical profile keeps controls and layer state', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', '모바일 전체화면 단면도 전용')
+    await createBriefing(page)
+
+    await page.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()
+    const fullscreen = page.getByRole('dialog', { name: '단면도 전체화면', exact: true })
+    await expect(fullscreen.getByRole('button', { name: '닫기', exact: true })).toBeVisible()
+    await expect(fullscreen.getByRole('button', { name: '이전 예보시간', exact: true })).toBeVisible()
+    await expect(fullscreen.getByRole('button', { name: '다음 예보시간', exact: true })).toBeVisible()
+    for (const label of ['기온', '습도', '착빙', '바람', '난류', 'SIGMET/AIRMET']) {
+      await expect(fullscreen.getByRole('button', { name: label, exact: true })).toBeVisible()
+    }
+
+    const temperature = fullscreen.getByRole('button', { name: '기온', exact: true })
+    await temperature.click()
+    await expect(temperature).toHaveAttribute('aria-pressed', 'false')
+    await fullscreen.getByRole('button', { name: '닫기', exact: true }).click()
+    await expect(page.locator('.bv-leg-briefing').getByRole('button', { name: '기온', exact: true })).toHaveAttribute('aria-pressed', 'false')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  })
+
   test('저촉 배너가 내용·구간·고도를 보여주고 위치 미확인을 분리한다', async ({ page }) => {
     await createBriefing(page)
 

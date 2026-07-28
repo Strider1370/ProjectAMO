@@ -105,7 +105,11 @@ function profileFor(request) {
   })
 }
 
-const crossSection = { run: { id: 'contract-fixture', model: 'fixture' }, levels: [], coverage: { byVariable: {} }, turbulence: { available: false, levels: [] } }
+const crossSection = {
+  run: { id: 'contract-fixture', model: 'fixture', hf: 0 },
+  availableTimes: [{ hf: 0, validTime: '2026-07-18T09:00:00Z' }, { hf: 3, validTime: '2026-07-18T12:00:00Z' }],
+  levels: [], coverage: { byVariable: {} }, turbulence: { available: false, levels: [] },
+}
 const altitudeComparison = {
   constraints: { status: 'matched', routeFloorFt: 7000, routeCeilingFt: 11000 },
   rows: [7000, 9000, 11000].map((altFt) => altFt === 9000 ? {
@@ -165,7 +169,8 @@ export async function installRouteBriefingFixtures(page) {
   await page.route('**/api/vertical-profile', (route) => fulfill(route, profileFor(requestJson(route))))
   await page.route('**/api/briefing/cross-section', (route) => {
     crossSectionRequests.count += 1
-    return fulfill(route, crossSection)
+    const { hf } = requestJson(route)
+    return fulfill(route, { ...crossSection, run: { ...crossSection.run, hf: Number.isFinite(Number(hf)) ? Number(hf) : crossSection.run.hf } })
   })
   await page.route('**/api/route-briefing', (route) => fulfill(route, briefingFor(requestJson(route))))
   return { ...exposureRequests, crossSection: crossSectionRequests }
