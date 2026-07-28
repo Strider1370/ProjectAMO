@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures.mjs'
-import { installMonitoringFixture, openMonitoringState } from '../monitoring-fixture.mjs'
+import { installMonitoringFixture, openMonitoringState, buildTafPayload, buildSnapshotMeta, TAF_HASH } from '../monitoring-fixture.mjs'
 
 test.describe('monitoring', () => {
   test.beforeEach(async ({ page }) => {
@@ -164,5 +164,91 @@ test.describe('monitoring', () => {
 
     await page.goto('/monitoring')
     await expect(page).toHaveURL(/\/$/)
+  })
+
+  test('TAF worsening alert shows one row listing every worsened element', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    await page.goto('/monitoring?mode=ops', { waitUntil: 'load' })
+    await page.locator('.dashboard-root').waitFor({ state: 'attached' })
+
+    // 픽스처의 새 TAF는 +2시간 칸이 1200m로 나빠졌고 직전 TAF에서는 멀쩡했다.
+    // 여러 요소가 동시에 악화해도 줄은 하나여야 한다(스펙 §12.7).
+    const rows = page.locator('.alert-table-row', { hasText: 'TAF 악화' })
+    await expect(rows).toHaveCount(1, { timeout: 15000 })
+  })
+
+  test('TAF worsening alert outlines the affected timeline slot', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    await page.goto('/monitoring?mode=ops', { waitUntil: 'load' })
+    await page.locator('.dashboard-root').waitFor({ state: 'attached' })
+    await expect(page.locator('.alert-table-row', { hasText: 'TAF 악화' })).toHaveCount(1, { timeout: 15000 })
+
+    // 강조는 시간 눈금이 아니라 **막대 자체**에 붙는다. 한 시간대가 걸리면
+    // 다섯 줄(비행조건·날씨·바람·시정·운고)의 해당 막대가 함께 강조된다.
+    const blinking = page.locator('.taf-new-timeline .alert-outline-blink')
+    await expect(blinking).toHaveCount(5)
+
+    // 시간 눈금에는 테두리가 가지 않는다 — 눈금이 몰린 구간에서 뭉개져 못 읽는다.
+    await expect(page.locator('.taf-scale-item.alert-outline-blink')).toHaveCount(0)
+  })
+
+  test('an AMD worsening alert is raised one severity step', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    // AMD면 심각도가 한 단계 올라간다(스펙 §12.6). 알람 표가 심각도순으로 정렬하므로
+    // 그 결과 정규 발표보다 위에 온다 — 정렬 자체는 기존 계약이 이미 덮는다.
+    //
+    // route.fetch()를 쓰지 않는다. 그것은 페이지 라우트를 거치지 않고 실제 백엔드로
+    // 나가므로 픽스처가 아니라 수집이 꺼진 서버에 닿는다. 대신 본문을 직접 만든다.
+    // 나중에 등록한 라우트가 먼저 매치되므로 픽스처 설치 뒤에 덮어쓰면 된다.
+    await page.route('**/api/taf', (route) =>
+      route.fulfill({ json: buildTafPayload({ reportStatus: 'AMENDMENT' }) })
+    )
+    await page.goto('/monitoring?mode=ops', { waitUntil: 'load' })
+    await page.locator('.dashboard-root').waitFor({ state: 'attached' })
+
+    const row = page.locator('.alert-table-row', { hasText: 'TAF AMD 악화' })
+    await expect(row).toHaveCount(1, { timeout: 15000 })
+    await expect(row).toHaveClass(/alert-table-row--critical/)
+    await expect(page.locator('.alert-table-row', { hasText: /TAF 악화/ })).toHaveCount(0)
+  })
+
+  test('a new TAF replaces the previous TAF alert row instead of stacking', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
+
+    // 폴링 간격을 수동 제어하기 위해 시간을 설치한다. 페이지 로드 전에 해야
+    // 모든 타이머가 제어되는 시계를 쓴다.
+    await page.clock.install()
+
+    await page.goto('/monitoring?mode=ops', { waitUntil: 'load' })
+    await page.locator('.dashboard-root').waitFor({ state: 'attached' })
+
+    const rows = page.locator('.alert-table-row', { hasText: 'TAF 악화' })
+    await expect(rows).toHaveCount(1, { timeout: 15000 })
+    // 교체를 확인하려면 "옛 줄이 사라졌다"를 봐야 한다. 발동 시각으로 구별한다.
+    const firstRowTime = await rows.first().locator('.alert-table-time').textContent()
+
+    // 프런트는 /api/snapshot-meta의 taf.hash가 바뀔 때만 TAF를 다시 내려받는다(스펙 §1.3).
+    // 본문만 바꾸면 새 TAF가 영영 도착하지 않아 계약이 아무 일 없이 통과해 버린다.
+    const newIssued = new Date().toISOString()
+    await page.route('**/api/taf', (route) =>
+      route.fulfill({ json: buildTafPayload({ issued: newIssued }) })
+    )
+    await page.route('**/api/snapshot-meta', (route) =>
+      route.fulfill({ json: buildSnapshotMeta({ taf: { hash: `${TAF_HASH}-changed` } }) })
+    )
+
+    // 폴링 간격(60초)을 넘어선다. 그러면 프런트가 /api/snapshot-meta를 다시 내려받고
+    // hash 변화를 감지해 새 TAF를 가져온다.
+    await page.clock.runFor(61 * 1000)
+
+    // 새 발표가 오면 알람 키의 issued가 바뀐다. 옛 줄은 유효 목록에서 빠지고
+    // 새 줄이 대신 들어간다 — 두 줄이 되면 안 된다(스펙 §12.7 수명).
+    await expect(rows).toHaveCount(1, { timeout: 30000 })
+    await expect
+      .poll(async () => rows.first().locator('.alert-table-time').textContent(), { timeout: 5000 })
+      .not.toBe(firstRowTime)
   })
 })
