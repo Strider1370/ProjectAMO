@@ -3,6 +3,7 @@ import apiClient from '../api-client.js'
 import store from '../store.js'
 import tafParser from '../parsers/taf-parser.js'
 import { buildTafTacPresentation } from '../serializers/taf-tac.js'
+import { attachPrevious } from './taf-previous.js'
 
 async function processAll() {
   const result = {
@@ -33,6 +34,11 @@ async function processAll() {
   if (failedAirports.length > 0) {
     store.mergeWithPrevious(result, "taf", failedAirports);
   }
+
+  // 직전 TAF를 previous 칸에 보관한다(스펙 §11). mergeWithPrevious 뒤에 두어야
+  // 수신 실패로 직전 것이 채워진 공항이 "같은 issued 재수신" 갈래를 탄다.
+  // previous는 result 안에 들어가므로 저장·재시작 복원이 자동으로 된다.
+  result.airports = attachPrevious(result.airports, store.getCached("taf")?.airports);
 
   const saveResult = store.save("taf", result);
   return {
