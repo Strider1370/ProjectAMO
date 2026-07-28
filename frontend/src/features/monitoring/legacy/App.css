@@ -5683,11 +5683,13 @@ tr.row-danger td { background: #ffe9e7; }
   .alert-outline-blink { animation: none; }
 }
 
-/* TAF 타임라인 막대는 서로 맞붙어 있고 전부 position: static이다. outline은 상자
-   바깥에 그려지므로, 뒤에 그려지는 옆 막대의 배경이 그 선을 덮어 한쪽 변만 남는다.
-   쌓임 순서를 올려 네 변이 다 보이게 한다. 범위를 타임라인으로 한정한다 —
-   .alert-outline-blink는 METAR 카드에도 붙는데 그쪽은 position을 바꾸면 안 된다. */
+/* TAF 타임라인 막대는 테두리를 **안쪽**에 그린다.
+   .taf-new-timeline이 border-radius를 위해 overflow: hidden을 쓰고 막대는 height: 100%라
+   컨테이너를 꽉 채운다. 바깥쪽 outline(offset 양수)은 컨테이너 밖으로 나가 위·아래 선이
+   통째로 잘리고 좌우 세로선만 남는다 — 테두리가 닫히지 않아 강조로 읽히지 않는다.
+   음수 offset은 상자 안쪽에 그리므로 잘리지도, 옆 막대에 덮이지도 않는다.
+   METAR 카드는 그런 컨테이너 안에 없어 기본값(바깥쪽) 그대로 둔다. */
 .taf-new-timeline .alert-outline-blink {
-  position: relative;
-  z-index: 2;
+  outline-offset: -3px;
+  border-radius: inherit;
 }
