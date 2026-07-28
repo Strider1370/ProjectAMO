@@ -9,28 +9,17 @@ const alertDefaults = {
   dispatchers: {
     popup: {
       enabled: true,
-      auto_dismiss_seconds: 10,
-      max_visible: 5,
-      position: "top-right",
+      highlight_seconds: 60,
+      max_visible: 6,
     },
     sound: {
       enabled: true,
       volume: 70,
       repeat_count: { info: 1, warning: 1, critical: 3 },
     },
-    marquee: {
-      enabled: true,
-      min_severity: "warning",
-      speed: "normal",
-      show_duration_seconds: 30,
-    },
   },
 
   triggers: {
-    warning_issued: {
-      enabled: true,
-      params: { types: ["00", "1", "2", "3", "4", "5", "7", "8", "13"] },
-    },
     low_visibility: {
       enabled: true,
       params: { threshold: 1500 },

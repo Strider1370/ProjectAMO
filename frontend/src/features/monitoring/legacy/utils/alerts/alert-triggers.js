@@ -1,42 +1,8 @@
-import { formatUtc } from "../helpers";
+import { formatUtc } from "../helpers.js";
 
 function strikeKey(s) {
   return `${s.time}:${s.lon}:${s.lat}:${s.type}`;
 }
-
-function findNewWarnings(current, previous) {
-  if (!current?.warnings) return [];
-  if (!previous?.warnings) return current.warnings;
-
-  const prevKeys = new Set(
-    previous.warnings.map((w) => `${w.wrng_type}:${w.valid_start}:${w.valid_end}`)
-  );
-  return current.warnings.filter(
-    (w) => !prevKeys.has(`${w.wrng_type}:${w.valid_start}:${w.valid_end}`)
-  );
-}
-
-// T-01: 경보 발령
-const warningIssued = {
-  id: "warning_issued",
-  name: "공항경보 발령",
-  category: "warning",
-  severity: "critical",
-  evaluate(current, previous, params) {
-    const newWarnings = findNewWarnings(current, previous);
-    const filtered = newWarnings.filter((w) => params.types.includes(w.wrng_type));
-    if (filtered.length === 0) return null;
-    return {
-      triggerId: "warning_issued",
-      severity: "critical",
-      title: `경보 발령: ${filtered.map((w) => w.wrng_type_name).join(", ")}`,
-      message: filtered
-        .map((w) => `${w.wrng_type_name} (${formatUtc(w.valid_start)} ~ ${formatUtc(w.valid_end)})`)
-        .join("\n"),
-      data: filtered,
-    };
-  },
-};
 
 // T-03: 저시정
 const lowVisibility = {
@@ -238,7 +204,6 @@ const lightningDetected = {
 };
 
 const triggers = [
-  warningIssued,
   lowVisibility,
   highWind,
   weatherPhenomenon,
