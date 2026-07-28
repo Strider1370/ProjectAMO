@@ -25,6 +25,8 @@ const TRIGGER_LABELS = {
   low_ceiling: "구름고도가 낮아지면 알림",
   taf_adverse_weather: "예보에 악기상이 들어오면 알림",
   lightning_detected: "공항 주변 낙뢰가 발생하면 알림",
+  taf_change: "TAF가 바뀌어 위험이 늘면 알림",
+  taf_new_period: "TAF 새 구간에 위험이 있으면 알림",
 };
 
 const TRAFFIC_ALTITUDE_OPTIONS = [
@@ -83,7 +85,7 @@ const ALERT_USER_SECTIONS = [
     id: "forecast-official",
     title: "예고 / 공식 알림",
     description: "앞으로 대비해야 할 상황이나 공식 경보를 알려줍니다.",
-    triggerIds: ["taf_adverse_weather"],
+    triggerIds: ["taf_adverse_weather", "taf_change", "taf_new_period"],
   },
   {
     id: "repeat",
