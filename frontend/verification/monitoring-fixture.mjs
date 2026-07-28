@@ -23,6 +23,111 @@ const META_SAT_TM = '2026-07-23T11:20:00Z'
 const META_SIGWX_FRONT = 'hash-001'
 const META_SIGWX_CLOUD = 'hash-002'
 
+// TAF 픽스처. 계약이 상태를 바꿔 가며 재사용한다. route.fetch()는 페이지 라우트를 거치지 않고
+// 실제 백엔드로 나가므로, 응답을 받아 고치는 대신 본문을 여기서 완결해 만든다.
+export const TAF_HASH = HASH_TAF
+
+export function buildTafPayload({ reportStatus = 'NORMAL', issued = null } = {}) {
+  const hourMs = 3600000
+  const iso = (offsetHours) => new Date(Date.now() + offsetHours * hourMs).toISOString()
+  const slot = (offsetHours, over = {}) => ({
+    time: iso(offsetHours),
+    wind: { speed: 10, raw: '27010KT' },
+    visibility: { value: 9999, cavok: false },
+    weather: [],
+    clouds: [{ amount: 'BKN', base: 3000 }],
+    display: { wind: '27010KT', vis: '9999', clouds: 'BKN030' },
+    ...over,
+  })
+
+  // 새 TAF: +2시간 칸이 저시정(1200m)으로 나빠졌다. 직전 TAF에서는 멀쩡했다.
+  const badSlot = slot(2, {
+    visibility: { value: 1200, cavok: false },
+    display: { wind: '27010KT', vis: '1200', clouds: 'BKN030' },
+  })
+  const previousSlot = { ...slot(2) }
+  delete previousSlot.display
+
+  return {
+    content_hash: HASH_TAF,
+    // taf-processor.js 결과도 `airports`가 최상위 키다.
+    airports: {
+      RKSI: {
+        header: {
+          icao: 'RKSI',
+          issued: issued ?? iso(-0.5),
+          valid_start: iso(-1),
+          valid_end: iso(12),
+          report_status: reportStatus,
+          raw_text: 'TAF RKSI 2712/2812 27010KT 9999 BKN030',
+        },
+        base: {},
+        change_groups: [],
+        timeline: [slot(1), badSlot, slot(3), slot(4), slot(5), slot(6)],
+        previous: {
+          header: {
+            issued: iso(-6.5),
+            valid_start: iso(-7),
+            valid_end: iso(12),
+            report_status: 'NORMAL',
+          },
+          timeline: [
+            { ...slot(1), display: undefined },
+            previousSlot,
+            { ...slot(3), display: undefined },
+            { ...slot(4), display: undefined },
+            { ...slot(5), display: undefined },
+            { ...slot(6), display: undefined },
+          ],
+        },
+      },
+    },
+  }
+}
+
+export function buildSnapshotMeta(overrides = {}) {
+  return {
+    metar: { hash: HASH_METAR },
+    metarOverseas: { hash: HASH_METAR_OVERSEAS },
+    metar_overseas: { hash: HASH_METAR_OVERSEAS },
+    taf: { hash: HASH_TAF },
+    tafOverseas: { hash: HASH_TAF_OVERSEAS },
+    taf_overseas: { hash: HASH_TAF_OVERSEAS },
+    warning: { hash: HASH_WARNING },
+    sigmet: { hash: HASH_SIGMET },
+    sigmetOverseas: { hash: HASH_SIGMET_OVERSEAS },
+    sigmet_overseas: { hash: HASH_SIGMET_OVERSEAS },
+    airmet: { hash: HASH_AIRMET },
+    sigwxLow: { hash: HASH_SIGWX_LOW },
+    amos: { hash: HASH_AMOS },
+    lightning: { hash: HASH_LIGHTNING },
+    adsb: { hash: HASH_ADSB },
+    groundForecast: { hash: HASH_GROUND_FORECAST },
+    ground_forecast: { hash: HASH_GROUND_FORECAST },
+    groundOverview: { hash: HASH_GROUND_OVERVIEW },
+    ground_overview: { hash: HASH_GROUND_OVERVIEW },
+    environment: { hash: HASH_ENVIRONMENT },
+    airportInfo: { hash: HASH_AIRPORT_INFO },
+    notam: { hash: HASH_NOTAM },
+    echoMeta: { tm: META_ECHO_TM },
+    rainviewerMeta: null,
+    satMeta: { tm: META_SAT_TM },
+    sigwxFrontMeta: {
+      tmfc: 'latest',
+      source_hash: META_SIGWX_FRONT,
+      updated_at: '2026-07-23T11:00:00Z',
+      render_version: 'v1',
+    },
+    sigwxCloudMeta: {
+      tmfc: 'latest',
+      source_hash: META_SIGWX_CLOUD,
+      updated_at: '2026-07-23T11:00:00Z',
+      render_version: 'v1',
+    },
+    ...overrides,
+  }
+}
+
 // Real 항공기상청 bulletins captured 2026-07-26 06:00 UTC. RKSI is near the short end (~370 chars)
 // and RKSS near the long end (~680), which is the range the slideshow's auto-fit has to cover.
 const AIRPORT_INFO_BULLETINS = {
@@ -111,21 +216,7 @@ export async function installMonitoringFixture(page) {
     fulfill(route, { content_hash: HASH_METAR_OVERSEAS, airports: {} })
   })
 
-  await page.route('**/api/taf', (route) => {
-    fulfill(route, {
-      content_hash: HASH_TAF,
-      // taf-processor.js 결과도 `airports`가 최상위 키다.
-      airports: {
-        RKSI: {
-          raw: 'TAF RKSI 231130Z 2312/2424 27010KT P6000 FEW030 BKN080',
-          header: { icao: 'RKSI' },
-          issuedAt: '2026-07-23T11:30:00Z',
-          validFrom: '2026-07-23T12:00:00Z',
-          validUntil: '2026-07-25T00:00:00Z',
-        },
-      },
-    })
-  })
+  await page.route('**/api/taf', (route) => fulfill(route, buildTafPayload()))
 
   await page.route('**/api/taf-overseas', (route) => {
     fulfill(route, { content_hash: HASH_TAF_OVERSEAS, airports: {} })
@@ -232,47 +323,7 @@ export async function installMonitoringFixture(page) {
     fulfill(route, alertDefaults)
   })
 
-  await page.route('**/api/snapshot-meta', (route) => {
-    fulfill(route, {
-      metar: { hash: HASH_METAR },
-      metarOverseas: { hash: HASH_METAR_OVERSEAS },
-      metar_overseas: { hash: HASH_METAR_OVERSEAS },
-      taf: { hash: HASH_TAF },
-      tafOverseas: { hash: HASH_TAF_OVERSEAS },
-      taf_overseas: { hash: HASH_TAF_OVERSEAS },
-      warning: { hash: HASH_WARNING },
-      sigmet: { hash: HASH_SIGMET },
-      sigmetOverseas: { hash: HASH_SIGMET_OVERSEAS },
-      sigmet_overseas: { hash: HASH_SIGMET_OVERSEAS },
-      airmet: { hash: HASH_AIRMET },
-      sigwxLow: { hash: HASH_SIGWX_LOW },
-      amos: { hash: HASH_AMOS },
-      lightning: { hash: HASH_LIGHTNING },
-      adsb: { hash: HASH_ADSB },
-      groundForecast: { hash: HASH_GROUND_FORECAST },
-      ground_forecast: { hash: HASH_GROUND_FORECAST },
-      groundOverview: { hash: HASH_GROUND_OVERVIEW },
-      ground_overview: { hash: HASH_GROUND_OVERVIEW },
-      environment: { hash: HASH_ENVIRONMENT },
-      airportInfo: { hash: HASH_AIRPORT_INFO },
-      notam: { hash: HASH_NOTAM },
-      echoMeta: { tm: META_ECHO_TM },
-      rainviewerMeta: null,
-      satMeta: { tm: META_SAT_TM },
-      sigwxFrontMeta: {
-        tmfc: 'latest',
-        source_hash: META_SIGWX_FRONT,
-        updated_at: '2026-07-23T11:00:00Z',
-        render_version: 'v1',
-      },
-      sigwxCloudMeta: {
-        tmfc: 'latest',
-        source_hash: META_SIGWX_CLOUD,
-        updated_at: '2026-07-23T11:00:00Z',
-        render_version: 'v1',
-      },
-    })
-  })
+  await page.route('**/api/snapshot-meta', (route) => fulfill(route, buildSnapshotMeta()))
 
   // Mock radar/satellite metadata
   await page.route('**/data/radar/echo_meta.json', (route) => {
