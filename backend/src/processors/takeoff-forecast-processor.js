@@ -11,7 +11,7 @@ function latestFctm() {
   return `${y}${pad(kst.getUTCMonth() + 1)}${pad(kst.getUTCDate())}${pad(kst.getUTCHours())}00`
 }
 
-async function process() {
+async function process({ signal } = {}) {
   const fctm = latestFctm()
   const airports = {}
   const failed = []
@@ -19,15 +19,17 @@ async function process() {
   await Promise.allSettled(
     config.airports.map(async ({ icao }) => {
       try {
-        const xml = await apiClient.fetchTakeoffFcst(icao, fctm)
+        const xml = await apiClient.fetchTakeoffFcst(icao, fctm, { signal })
         const parsed = takeoffForecastParser.parse(xml, icao)
         if (parsed) airports[icao] = parsed
         else failed.push(icao)
-      } catch {
+      } catch (error) {
+        if (signal?.aborted) throw signal.reason ?? error
         failed.push(icao)
       }
     }),
   )
+  signal?.throwIfAborted()
 
   // 실패/공백은 이전 캐시로 stale 유지(airport_info 패턴).
   const previous = store.getCached('takeoff_fcst')

@@ -2,8 +2,20 @@ import config from './config.js'
 
 const { api } = config
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+function sleep(ms, signal) {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms))
+  if (signal.aborted) return Promise.reject(signal.reason)
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(signal.reason)
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
 }
 
 function shouldDecodeEucKr(contentType) {
@@ -75,9 +87,12 @@ async function fetchTextWithRetries(url, type, options = {}) {
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), api.timeout_ms)
+    const signal = options.signal
+      ? AbortSignal.any([controller.signal, options.signal])
+      : controller.signal
 
     try {
-      const response = await fetch(url, { signal: controller.signal })
+      const response = await fetch(url, { signal })
       const body = await responseToText(response)
 
       if (!response.ok) {
@@ -102,8 +117,9 @@ async function fetchTextWithRetries(url, type, options = {}) {
 
       return body
     } catch (error) {
+      if (options.signal?.aborted) throw options.signal.reason ?? error
       if (error.nonRetryable || attempt === maxRetries) throw error
-      await sleep(60 * 1000)
+      await sleep(options.retryDelayMs ?? 60 * 1000, options.signal)
     } finally {
       clearTimeout(timeout)
     }

@@ -182,7 +182,7 @@ ProjectAMO/
 
 ### Backend
 
-- `backend/src/dev/demo-session.js` -> 시연 전환의 단일 interface. 실황→시연은 먼저 수집을 동결하고 진행 중 작업을 비운 뒤 기존 `_live_backup`을 폐기하고 직전 실황을 새로 캡처한다. 준비 점검을 통과한 스냅샷만 복원하고 기준시각을 적용하며, 실패 시 수집을 동결한 채 실황 백업으로 되감는다. 시연 종료는 외부 재수집 없이 백업 파일을 먼저 복원한 뒤 동결을 해제하고 백업을 소비한다.
+- `backend/src/dev/demo-session.js` -> 시연 전환의 단일 interface. 실황→시연은 먼저 새 수집을 동결하고 진행 중 수집에 취소 신호를 보낸 뒤 기존 `_live_backup`을 폐기하고 직전 실황을 새로 캡처한다. 준비 점검을 통과한 스냅샷만 복원하고 기준시각을 적용한다. 백업 캡처 전 수집 정리가 실패하면 즉시 실황 모드로 돌아가며, 스냅샷 복원 실패는 수집을 동결한 채 실황 백업으로 되감는다. 시연 종료는 외부 재수집 없이 백업 파일을 먼저 복원한 뒤 동결을 해제하고 백업을 소비하며, 백업 없는 실패 세션은 고아 모드 플래그만 즉시 해제한다.
 - `backend/src/dev/snapshot-store.js` -> 파일시스템 스냅샷 캡처·복원·준비 점검. JSON은 임시 파일, 레이더·위성·KIM·KTG는 임시 디렉터리로 준비한 뒤 rename으로 게시한다. 시연 가능 상태는 기준시각, 핵심 자료 21종, 레이더 36장, 위성 18장, 참조 파일, KIM/KTG 인덱스, ADS-B 기준시각 오차(30분 이하)를 검사한다. 과거 스냅샷에 없는 태풍 등 이후 추가 자료는 소유하지 않으므로 현재 자료를 유지한다.
 - `backend/src/dev/demo-mode.js` -> 프로세스 재시작에도 유지되는 시연 모드와 유효 현재시각. 서버·브라우저의 시간 의존 로직은 실제 `Date.now()` 대신 이 유효 시각을 주입받는다.
 - `backend/src/admin/router.js` -> 관리자 스냅샷 저장·점검·시연 시작·종료 HTTP adapter. 데이터 교체와 시각 토글을 따로 호출하는 우회 interface는 제공하지 않는다.
@@ -218,7 +218,7 @@ ProjectAMO/
 - 해외 기상(NOAA) 갈래 — **국내와 완전 분리**: `config.noaa`(공항 목록은 `frontend/public/data/navdata/airports-overseas.json`에서 파생, 20 FIR·VDPP→VDPF), `api-client`(`fetchNoaaMetar/Taf/Sigmet` — JSON·무인증·EUC-KR/resultCode 없음), `parsers/noaa-{metar,taf,sigmet}-parser.js`(→ KMA 정규화 shape, 시정 SM→**미터**, wdir "VRB", TAF base/change_groups/timeline·`header.raw_text`, SIGMET firId 필터·RKRR 제외·자기교차 링만 중심각 복구). `processors/overseas-weather-processor.js`(`processMetar/Taf/Sigmet`)가 **별도 store 타입**(`metar_overseas`/`taf_overseas`/`sigmet_overseas`)에 저장 — 국내 파일과 안 섞음. index.js가 국내와 **같은 cron 주기**로 별도 job 등록. server.js `/api/{metar,taf,sigmet}-overseas` 라우트와 snapshot-meta의 `metarOverseas`/`tafOverseas`/`sigmetOverseas` hash를 제공. 프론트 상태는 `metar`/`metarOverseas`, `taf`/`tafOverseas`, `sigmet`/`sigmetOverseas`로 분리하고, 지도·브리핑처럼 함께 보여야 하는 경로에서만 표시/판정용 병합을 수행. 국내 {metar,taf,sigmet}-processor·IWXXM 파이프라인은 **불변**. 지도 마커는 `airports-overseas.json`을 `weatherData.airports`에 병합해 렌더.
 - `backend/src/terrain/terrain-cache.js` -> terrain tile metadata lookup and lazy tile cache.
 - `backend/src/terrain/terrain-sampler.js` -> terrain sampling along route-axis samples.
-- `backend/src/index.js` -> scheduled weather collection jobs, per-type locks, and UTC KIM NWP release-window scheduling.
+- `backend/src/index.js` -> scheduled weather collection jobs, per-type locks, data-transition cancellation controllers, and UTC KIM NWP release-window scheduling.
 - `backend/src/api-client.js` -> upstream KMA/weather API request construction.
 - `backend/src/store.js` -> in-memory cache and SHA-256 change detection.
 - `backend/src/notam/notam-crawler.js` -> headless Playwright crawler for KOCA 유효 NOTAM KML (site-default 24h window; no date manipulation).

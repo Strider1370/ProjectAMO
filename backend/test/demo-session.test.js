@@ -67,6 +67,38 @@ test('startDemo replaces stale backup with immediate live state', async () => {
   assert.equal(result.on, true)
 })
 
+test('startDemo unfreezes live collection when draining fails before backup capture', async () => {
+  const { calls, state } = harness()
+  const session = createDemoSession({
+    basePath: '/data',
+    clock: {
+      isDemoMode: () => state.on,
+      setDemoMode(value) {
+        state.on = value
+        if (!value) state.now = null
+        calls.push(value ? 'freeze' : 'unfreeze')
+      },
+      setDemoNow(value) { state.now = value },
+      getEffectiveNow: () => new Date(state.now || '2026-07-28T10:00:00Z'),
+    },
+    snapshots: {
+      inspectSnapshot: () => ({ ready: true, blockers: [], warnings: [] }),
+      discardLiveBackup: () => calls.push('discard-live-backup'),
+      hasLiveBackup: () => false,
+      saveSnapshot: () => calls.push('capture-live-backup'),
+      loadSnapshot: () => calls.push('restore:demo'),
+    },
+    drain: async () => {
+      calls.push('drain')
+      throw new Error('collection_drain_timeout:metar,taf')
+    },
+  })
+
+  await assert.rejects(session.startDemo('demo'), /collection_drain_timeout/)
+  assert.deepEqual(calls, ['freeze', 'drain', 'unfreeze'])
+  assert.equal(state.on, false)
+})
+
 test('switching snapshots in one demo session preserves one live backup', async () => {
   const { calls, session } = harness()
   await session.startDemo('demo-a')
@@ -81,6 +113,15 @@ test('stopDemo restores before unfreezing and consumes backup', async () => {
   await session.stopDemo()
   assert.deepEqual(calls, ['drain', 'restore-live-backup', 'unfreeze', 'discard-live-backup'])
   assert.equal(state.backup, false)
+})
+
+test('stopDemo immediately clears an orphaned demo flag when no live backup exists', async () => {
+  const { calls, session, state } = harness({ on: true })
+  const result = await session.stopDemo()
+
+  assert.deepEqual(calls, ['unfreeze'])
+  assert.equal(result.restoredLiveBackup, false)
+  assert.equal(state.on, false)
 })
 
 test('failed demo restore rolls back toward the live backup and stays frozen', async () => {

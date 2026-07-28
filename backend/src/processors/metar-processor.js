@@ -4,7 +4,7 @@ import store from '../store.js'
 import metarParser from '../parsers/metar-parser.js'
 import { buildMetarTacPresentation } from '../serializers/metar-tac.js'
 
-async function processAll() {
+async function processAll({ signal } = {}) {
   const result = {
     type: "METAR",
     fetched_at: new Date().toISOString(),
@@ -15,8 +15,9 @@ async function processAll() {
   const airportErrors = {};
 
   for (const airport of config.airports) {
+    signal?.throwIfAborted()
     try {
-      const xml = await apiClient.fetch("metar", airport.icao);
+      const xml = await apiClient.fetch("metar", airport.icao, { signal });
       const parsed = metarParser.parse(xml);
       if (parsed) {
         if (parsed.header?.source) parsed.header.source.fetch_time = result.fetched_at;
@@ -25,6 +26,7 @@ async function processAll() {
         result.airports[airport.icao] = parsed;
       }
     } catch (error) {
+      if (signal?.aborted) throw signal.reason ?? error
       failedAirports.push(airport.icao);
       airportErrors[airport.icao] = error.message || "Unknown error";
     }

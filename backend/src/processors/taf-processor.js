@@ -5,7 +5,7 @@ import tafParser from '../parsers/taf-parser.js'
 import { buildTafTacPresentation } from '../serializers/taf-tac.js'
 import { attachPrevious } from './taf-previous.js'
 
-async function processAll() {
+async function processAll({ signal } = {}) {
   const result = {
     type: "TAF",
     fetched_at: new Date().toISOString(),
@@ -16,8 +16,9 @@ async function processAll() {
   const airportErrors = {};
 
   for (const airport of config.airports) {
+    signal?.throwIfAborted()
     try {
-      const xml = await apiClient.fetch("taf", airport.icao);
+      const xml = await apiClient.fetch("taf", airport.icao, { signal });
       const parsed = tafParser.parse(xml);
       if (parsed) {
         if (parsed.header?.source) parsed.header.source.fetch_time = result.fetched_at;
@@ -26,6 +27,7 @@ async function processAll() {
         result.airports[airport.icao] = parsed;
       }
     } catch (error) {
+      if (signal?.aborted) throw signal.reason ?? error
       failedAirports.push(airport.icao);
       airportErrors[airport.icao] = error.message || "Unknown error";
     }

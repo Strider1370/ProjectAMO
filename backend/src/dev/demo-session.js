@@ -1,5 +1,5 @@
 import config from '../config.js'
-import { waitForCollectionIdle } from '../index.js'
+import { quiesceCollections } from '../index.js'
 import {
   getEffectiveNow,
   isDemoMode,
@@ -25,7 +25,7 @@ export function createDemoSession({
     loadSnapshot,
     saveSnapshot,
   },
-  drain = waitForCollectionIdle,
+  drain = quiesceCollections,
 } = {}) {
   async function captureSnapshot(name) {
     const wasOn = clock.isDemoMode()
@@ -55,7 +55,15 @@ export function createDemoSession({
       throw error
     }
     clock.setDemoMode(true)
-    await drain()
+    try {
+      await drain()
+    } catch (error) {
+      // 스냅샷/실황 백업을 건드리기 전 drain 실패라면 고아 시연 플래그를
+      // 남기지 않는다. 이미 시연 중인 스냅샷 전환은 기존 백업 보호를 위해
+      // 계속 동결한다.
+      if (enteringFromLive) clock.setDemoMode(false)
+      throw error
+    }
 
     if (enteringFromLive) {
       snapshots.discardLiveBackup(basePath)
@@ -97,19 +105,23 @@ export function createDemoSession({
 
   async function stopDemo() {
     const had = snapshots.hasLiveBackup(basePath)
-    await drain()
-    if (had) {
-      const result = snapshots.loadSnapshot(basePath, RESERVED_LIVE_BACKUP, { skipBackup: true })
-      if (!result) throw new Error('live_backup_restore_failed')
+    if (!had) {
+      clock.setDemoMode(false)
+      return {
+        on: false,
+        restoredLiveBackup: false,
+        note: '되돌릴 실황 백업이 없어 시연 모드만 종료했습니다.',
+      }
     }
+    await drain()
+    const result = snapshots.loadSnapshot(basePath, RESERVED_LIVE_BACKUP, { skipBackup: true })
+    if (!result) throw new Error('live_backup_restore_failed')
     clock.setDemoMode(false)
-    if (had) snapshots.discardLiveBackup(basePath)
+    snapshots.discardLiveBackup(basePath)
     return {
       on: false,
-      restoredLiveBackup: had,
-      note: had
-        ? '스냅샷 직전 실황으로 즉시 복원하고 시연 모드를 종료했습니다.'
-        : '되돌릴 실황 백업이 없어 시연 모드만 종료했습니다.',
+      restoredLiveBackup: true,
+      note: '스냅샷 직전 실황으로 즉시 복원하고 시연 모드를 종료했습니다.',
     }
   }
 

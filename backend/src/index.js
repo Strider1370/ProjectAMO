@@ -29,6 +29,7 @@ import { isDemoMode } from './dev/demo-mode.js'
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
 const locks = { metar: false, taf: false, warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false };
+const activeControllers = new Map()
 const KIM_NWP_CRON_OPTIONS = { timezone: 'Etc/UTC' }
 const AIRPORT_INFO_CRON_OPTIONS = { timezone: 'Asia/Seoul' }
 
@@ -44,15 +45,23 @@ async function runWithLock(type, job) {
   }
 
   locks[type] = true;
+  const controller = new AbortController()
+  activeControllers.set(type, controller)
   const t0 = Date.now();
   try {
-    const result = await job();
+    const result = await job({ signal: controller.signal });
     console.log(`[${new Date().toISOString()}] ${type}:`, result);
     stats.recordSuccess(type, result, Date.now() - t0);
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] ${type} failed:`, error.message);
-    stats.recordFailure(type, error.message, Date.now() - t0);
+    if (controller.signal.aborted) {
+      console.warn(`[${new Date().toISOString()}] ${type}: cancelled for data transition`)
+      stats.recordSkip(type)
+    } else {
+      console.error(`[${new Date().toISOString()}] ${type} failed:`, error.message);
+      stats.recordFailure(type, error.message, Date.now() - t0);
+    }
   } finally {
+    activeControllers.delete(type)
     locks[type] = false;
   }
 }
@@ -69,6 +78,19 @@ export async function waitForCollectionIdle({ timeoutMs = 120_000, pollMs = 100 
     }
     await new Promise((resolve) => setTimeout(resolve, pollMs))
   }
+}
+
+export function abortActiveCollections() {
+  for (const controller of activeControllers.values()) {
+    if (!controller.signal.aborted) {
+      controller.abort(new Error('collection_cancelled_for_data_transition'))
+    }
+  }
+}
+
+export async function quiesceCollections(options) {
+  abortActiveCollections()
+  await waitForCollectionIdle(options)
 }
 
 function scheduleKimNwpJob(scheduler = cron, enabled = config.kim_nwp?.enabled !== false) {
@@ -200,4 +222,4 @@ if (process.argv[1] && (__filename === process.argv[1] || __filename.endsWith(pr
 }
 
 export { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleTakeoffFcstJob, scheduleKimNwpJob }
-export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, activeCollectionTypes, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }
+export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, runWithLock, scheduleAirportInfoJob, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }
