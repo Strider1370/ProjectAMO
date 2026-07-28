@@ -308,6 +308,14 @@ function MainAppShell() {
 
 function App() {
   if (window.location.pathname === '/monitoring') {
+    // 상황판은 벽걸이 전용이다. 모바일 폭에서는 조용히 메인으로 되돌린다 —
+    // 운영자가 주소를 직접 아는 화면이라 모바일 사용자에게 설명할 맥락이 없다.
+    // 가드는 여기 한 곳뿐이다. MonitoringPage의 모바일 대응 코드는 그대로 두어
+    // 이 가드만 풀면 되살아나게 한다.
+    if (window.innerWidth <= 719) {
+      window.location.replace('/')
+      return null
+    }
     return <Suspense fallback={null}><MonitoringPage /></Suspense>
   }
   if (window.location.pathname === '/test' && import.meta.env.DEV) {
