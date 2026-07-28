@@ -25,7 +25,6 @@ import GroundHourlyStrip from './legacy/components/GroundHourlyStrip'
 import GroundCurrentWeatherCard from './legacy/components/GroundCurrentWeatherCard'
 import AlertPanel from './legacy/components/alerts/AlertPanel'
 import AlertSound from './legacy/components/alerts/AlertSound'
-import AlertMarquee from './legacy/components/alerts/AlertMarquee'
 import Settings from './legacy/components/alerts/Settings'
 import MonitoringMap from './MonitoringMap.jsx'
 import MonitoringSlideOverlay from './MonitoringSlideOverlay.jsx'
@@ -452,7 +451,6 @@ export default function MonitoringPage() {
   const settings = alertDefaults ? resolveSettings(alertDefaults) : null
   const popupAlerts = [...previewAlerts.filter((alert) => alert.previewChannels?.popup), ...activeAlerts]
   const soundAlerts = [...previewAlerts.filter((alert) => alert.previewChannels?.sound), ...activeAlerts]
-  const marqueeAlerts = [...previewAlerts.filter((alert) => alert.previewChannels?.marquee), ...activeAlerts]
   const isDomesticIcao = (icao) => typeof icao === 'string' && icao.startsWith('RK')
   const airportSet = new Set([
     ...Object.keys(data.metar?.airports || {}),
@@ -550,7 +548,6 @@ export default function MonitoringPage() {
         <>
           <AlertPanel alerts={popupAlerts} validKeys={validAlertKeys} onDismiss={handleDismissAlert} settings={settings.dispatchers.popup} />
           <AlertSound alerts={soundAlerts} settings={settings.dispatchers.sound} />
-          <AlertMarquee alerts={marqueeAlerts} settings={settings.dispatchers.marquee} />
         </>
       )}
 
