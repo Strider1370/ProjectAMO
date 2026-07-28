@@ -1,15 +1,15 @@
-export { evaluate } from "./alert-engine";
+export { evaluate } from "./alert-engine.js";
 export {
   buildAlertKey,
   isInCooldown,
   recordAlert,
   clearResolvedAlerts,
   getHistory,
-} from "./alert-state";
-export { dispatch, isQuietHours, setAlertCallback } from "./alert-dispatcher";
+} from "./alert-state.js";
+export { dispatch, isQuietHours, setAlertCallback } from "./alert-dispatcher.js";
 export {
   resolveSettings,
   savePersonalSettings,
   clearPersonalSettings,
   loadPersonalSettings,
-} from "./alert-settings";
+} from "./alert-settings.js";

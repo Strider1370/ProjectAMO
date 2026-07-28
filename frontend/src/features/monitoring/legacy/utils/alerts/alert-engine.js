@@ -1,4 +1,4 @@
-import triggers from "./alert-triggers";
+import triggers from "./alert-triggers.js";
 
 /**
  * 현재 선택된 공항의 데이터에 대해 모든 트리거를 평가한다.
