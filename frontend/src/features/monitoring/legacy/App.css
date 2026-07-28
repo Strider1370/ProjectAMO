@@ -3061,6 +3061,10 @@ body {
   background: var(--paper, #fff);
   border-top: 1px solid var(--line);
   font-size: clamp(18px, 1.7vw, 32px);
+  /* 단위 없는 값이라 글자 크기를 따라간다. 조상에서 line-height: 20px(고정)를 물려받는데
+     이 표의 글자는 46px까지 커진다 — 46px 글자를 20px 줄에 넣으면 글자가 줄 밖으로
+     튀어나와 옆 줄과 겹친다. 1920px 실측: 제목 상자 20px에 내용 37px. */
+  line-height: 1.25;
   pointer-events: auto;
 }
 
@@ -5677,4 +5681,13 @@ tr.row-danger td { background: #ffe9e7; }
 /* 움직임을 줄이는 설정에서는 깜빡이지 않고 고정 외곽선만 남긴다. */
 @media (prefers-reduced-motion: reduce) {
   .alert-outline-blink { animation: none; }
+}
+
+/* TAF 타임라인 막대는 서로 맞붙어 있고 전부 position: static이다. outline은 상자
+   바깥에 그려지므로, 뒤에 그려지는 옆 막대의 배경이 그 선을 덮어 한쪽 변만 남는다.
+   쌓임 순서를 올려 네 변이 다 보이게 한다. 범위를 타임라인으로 한정한다 —
+   .alert-outline-blink는 METAR 카드에도 붙는데 그쪽은 position을 바꾸면 안 된다. */
+.taf-new-timeline .alert-outline-blink {
+  position: relative;
+  z-index: 2;
 }
