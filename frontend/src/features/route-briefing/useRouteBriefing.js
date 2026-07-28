@@ -825,7 +825,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     }
   }
 
-  async function handleDesignWaypointDrop({ designId, kind, index, coordinates }) {
+  async function handleDesignWaypointDrop({ designId, kind, index, coordinates, snapToNavpoint = true }) {
     const design = routeDesigns.find((item) => item.id === designId)
     if (!design || design.id !== selectedRouteDesignId || design.kind !== 'alternative' || !Array.isArray(coordinates) || !Number.isInteger(index)) return
     const beforeDraft = design.draftEditor ? structuredClone(design.draftEditor) : null
@@ -841,14 +841,16 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
       if (kind !== 'delete') {
         proposal = { kind: 'coordinate', coordinate: { lon: coordinates[0], lat: coordinates[1] } }
         proposalLabel = formatCoordinateToken(proposal.coordinate)
-        try {
-          const nearest = await resolveNearestNavpoint(coordinates)
-          const navpoint = (await loadNavpoints())[nearest.id]
-          if (Number.isFinite(navpoint?.coordinates?.lon) && Number.isFinite(navpoint?.coordinates?.lat)) {
-            proposal = { kind: 'fix', id: nearest.id }
-            proposalLabel = nearest.id
-          }
-        } catch { /* Coordinate waypoints remain valid when a published FIX is unavailable. */ }
+        if (snapToNavpoint !== false) {
+          try {
+            const nearest = await resolveNearestNavpoint(coordinates)
+            const navpoint = (await loadNavpoints())[nearest.id]
+            if (Number.isFinite(navpoint?.coordinates?.lon) && Number.isFinite(navpoint?.coordinates?.lat)) {
+              proposal = { kind: 'fix', id: nearest.id }
+              proposalLabel = nearest.id
+            }
+          } catch { /* Coordinate waypoints remain valid when a published FIX is unavailable. */ }
+        }
       }
       let legIntents
       if (design.routeForm.flightRule === 'VFR') {
@@ -899,7 +901,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
           ? `${previousLabel} – ${nextLabel} 사이 ${proposalLabel} 삭제`
           : `${previousLabel} – ${nextLabel} 사이에 ${proposalLabel} ${kind === 'insert' ? '삽입' : '변경'}`,
         coordinates,
-        onApply: () => setRouteDesigns((designs) => designs.map((item) => item.id !== design.id ? item : { ...item, pendingEdit: null })),
+        isTouch: snapToNavpoint === false,
+        onApply: () => applySelectedDesignDraft({ designId: design.id, draft: proposed.editor }),
         onCancel: () => setRouteDesigns((designs) => designs.map((item) => item.id !== design.id ? item : { ...item, draftEditor: beforeDraft, pendingEdit: null })),
       })
     } catch (error) {
@@ -912,9 +915,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null 
     setRouteDesigns((designs) => designs.map((design) => design.id !== selectedRouteDesignId ? design : { ...design, draftEditor: null, pendingEdit: null }))
   }
 
-  async function applySelectedDesignDraft() {
-    const design = routeDesigns.find((item) => item.id === selectedRouteDesignId)
-    let draft = design?.draftEditor
+  async function applySelectedDesignDraft({ designId = selectedRouteDesignId, draft: draftOverride } = {}) {
+    const design = routeDesigns.find((item) => item.id === designId)
+    let draft = draftOverride ?? design?.draftEditor
     if (!design || design.kind !== 'alternative' || !draft) return null
     if (!draft.preview) {
       try {

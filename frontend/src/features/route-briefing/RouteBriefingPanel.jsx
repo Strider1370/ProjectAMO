@@ -256,6 +256,13 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const [resetArmed, setResetArmed] = useState(false)
   const resetArmTimerRef = useRef(null)
   const hasInput = !!routeResult || !!routeForm.departureAirport || !!routeForm.arrivalAirport
+  const revealAlternativeOnMap = (action) => (...args) => {
+    if (isMobile) {
+      setDetentTouched(true)
+      setSheetDetent('peek')
+    }
+    return action(...args)
+  }
   function armOrReset() {
     if (resetArmed || !hasInput) {
       clearTimeout(resetArmTimerRef.current)
@@ -633,7 +640,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       </form>}
       {workflowStep === 'compare' && (
         <div className={s.form}>
-          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
+          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={revealAlternativeOnMap(selectRouteDesign)} onDuplicate={revealAlternativeOnMap(duplicateSelectedRouteDesign)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
         </div>
       )}
       {workflowStep === 'altitude' && (
@@ -718,7 +725,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         </>
       )}
       {workflowStep === 'compare' && (
-        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={selectRouteDesign} onDuplicate={duplicateSelectedRouteDesign} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
+        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={revealAlternativeOnMap(selectRouteDesign)} onDuplicate={revealAlternativeOnMap(duplicateSelectedRouteDesign)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
       )}
       {workflowStep === 'altitude' && (
         <>

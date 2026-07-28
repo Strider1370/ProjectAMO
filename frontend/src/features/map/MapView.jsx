@@ -1109,6 +1109,7 @@ const MapView = forwardRef(function MapView({
     window.addEventListener('resize', resizeMap)
 
     let vfrInteractionsBound = false
+    let routeInteractionCleanup = null
 
     // zoom handler lives outside style.load to avoid duplicate registration on style switch
     let roadsVisible = map.getZoom() >= ROAD_VISIBILITY_ZOOM
@@ -1132,7 +1133,7 @@ const MapView = forwardRef(function MapView({
       if (!vfrInteractionsBound) {
         vfrInteractionsBound = true
         bindVfrInteractions(map, vfrWaypointsRef, vfrWaypointDropRef, isComparisonRef, designWaypointDropRef)
-        bindIfrClickInteraction(map, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef)
+        routeInteractionCleanup = bindIfrClickInteraction(map, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef)
         // Procedure waypoint name on hover, in the original label style (small
         // colored text beside the dot) — reveal only the hovered fix's label.
         const procWpRoleFilter = ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp'], ['==', ['get', 'role'], 'iap-wp']]
@@ -1175,6 +1176,7 @@ const MapView = forwardRef(function MapView({
       resizeObserver.disconnect()
       window.removeEventListener('resize', resizeMap)
       if (resizeFrame) cancelAnimationFrame(resizeFrame)
+      routeInteractionCleanup?.()
       map.remove()
       mapRef.current = null
     }

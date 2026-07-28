@@ -456,7 +456,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
     source.setData(data)
   }
 
-  const beginDesignLineDrag = (e) => {
+  const beginDesignLineDrag = (e, { snapToNavpoint = true } = {}) => {
     if (!isComparisonRef.current || designDrag) return
     const feature = e.features?.[0]
     const properties = feature?.properties ?? {}
@@ -469,7 +469,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
     e.preventDefault()
     const sourceIndex = findInsertIndex(sourceLine.geometry.coordinates.map(([lon, lat]) => ({ lon, lat })), e.lngLat)
     const modelIndex = sourceIndex + (Number(properties.sourceIndexOffset) || 0)
-    designDrag = { designId: properties.designId, kind: 'insert', index: modelIndex - 1, sourceIndex }
+    designDrag = { designId: properties.designId, kind: 'insert', index: modelIndex - 1, sourceIndex, snapToNavpoint }
     designCoordinates = [e.lngLat.lng, e.lngLat.lat]
     designSourceData = sourceData
     redrawDesignDrag()
@@ -498,6 +498,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
   map.on('mousedown', ROUTE_PREVIEW_POINT, beginDesignDrag)
   map.on('mousedown', ROUTE_PREVIEW_LABEL, beginDesignDrag)
   map.on('mousedown', ROUTE_DESIGN_LINE_HIT, beginDesignLineDrag)
+  map.on('touchstart', ROUTE_DESIGN_LINE_HIT, (event) => beginDesignLineDrag(event, { snapToNavpoint: false }))
 
   map.on('mousedown', VFR_WP_CIRCLE, (e) => {
     e.preventDefault()
@@ -547,7 +548,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
     if (draggingIdx < 0) map.getCanvas().style.cursor = ''
   })
 
-  map.on('mousemove', (e) => {
+  const moveDrag = (e) => {
     if (designDrag) {
       designCoordinates = [e.lngLat.lng, e.lngLat.lat]
       redrawDesignDrag()
@@ -559,15 +560,17 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
     )
     vfrWaypointsRef.current = updated
     map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(buildVfrGeoJSON(updated))
-  })
+  }
+  map.on('mousemove', moveDrag)
+  map.on('touchmove', moveDrag)
 
-  map.on('mouseup', () => {
+  const finishDrag = () => {
     if (designDrag) {
       const isClick = designDrag.kind === 'move'
         && Math.abs(designCoordinates[0] - designDrag.startCoordinates[0]) < 1e-8
         && Math.abs(designCoordinates[1] - designDrag.startCoordinates[1]) < 1e-8
-      const { startCoordinates, sourceIndex, ...drop } = designDrag
-      onDesignWaypointDrop.current?.({ ...drop, kind: isClick ? 'delete' : drop.kind, coordinates: designCoordinates })
+      const { startCoordinates, sourceIndex, snapToNavpoint, ...drop } = designDrag
+      onDesignWaypointDrop.current?.({ ...drop, kind: isClick ? 'delete' : drop.kind, coordinates: designCoordinates, ...(snapToNavpoint === false ? { snapToNavpoint: false } : {}) })
       designDrag = null
       designCoordinates = null
       designSourceData = null
@@ -585,10 +588,24 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
     beforeDrag = null
     map.dragPan.enable()
     map.getCanvas().style.cursor = ''
-  })
+  }
+  const cancelDesignDrag = () => {
+    if (!designDrag) return
+    map.getSource(ROUTE_PREVIEW_SOURCE)?.setData(designSourceData)
+    designDrag = null
+    designCoordinates = null
+    designSourceData = null
+    map.dragPan.enable()
+    map.getCanvas().style.cursor = ''
+  }
+  map.on('mouseup', finishDrag)
+  map.on('touchend', finishDrag)
+  map.on('touchcancel', cancelDesignDrag)
 }
 
 export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
+  const documentRef = map.getContainer().ownerDocument
+  const windowRef = documentRef.defaultView
   const status = document.createElement('div')
   status.className = 'route-map-interaction-status'
   status.hidden = true
@@ -600,13 +617,16 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
   const confirmation = document.createElement('div')
   confirmation.className = 'route-map-interaction-confirm'
   confirmation.hidden = true
-  // The card lives inside the map container; its controls must not be treated as another map click.
+  // Keep confirmations above map chrome and mobile sheets; controls are not map clicks.
   confirmation.addEventListener('mousedown', (event) => event.stopPropagation())
+  confirmation.addEventListener('touchstart', (event) => event.stopPropagation())
   confirmation.addEventListener('click', (event) => event.stopPropagation())
-  map.getContainer().append(confirmation)
-  statusRef.current.showConfirmation = ({ message, coordinates, onApply, onCancel } = {}) => {
+  documentRef.body.append(confirmation)
+  statusRef.current.showConfirmation = ({ message, coordinates, onApply, onCancel, isTouch = false } = {}) => {
     if (!message || !Array.isArray(coordinates)) { confirmation.hidden = true; return }
     const point = map.project(coordinates)
+    const bounds = map.getContainer().getBoundingClientRect()
+    confirmation.classList.toggle('is-touch', isTouch)
     confirmation.replaceChildren()
     const text = document.createElement('span')
     text.className = 'route-map-interaction-confirm-text'
@@ -619,10 +639,23 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
     cancel.type = 'button'; cancel.className = 'route-map-interaction-confirm-cancel'; cancel.textContent = '취소'; cancel.onclick = (event) => { event.stopPropagation(); confirmation.hidden = true; onCancel?.() }
     actions.append(apply, cancel)
     confirmation.append(text, actions)
-    confirmation.style.left = `${point.x}px`
-    confirmation.style.top = `${point.y}px`
+    confirmation.style.left = isTouch ? '' : `${bounds.left + point.x}px`
+    confirmation.style.right = ''
+    confirmation.style.top = isTouch ? '0px' : `${bounds.top + point.y}px`
     confirmation.hidden = false
+    if (isTouch) {
+      const topBarrier = bounds.top + 72
+      const barriers = [windowRef.innerHeight - 12, bounds.bottom - 12]
+      for (const selector of ['.mobile-taskbar', '.mobile-sheet']) {
+        const element = documentRef.querySelector(selector)
+        if (element) barriers.push(element.getBoundingClientRect().top - 12)
+      }
+      const maxTop = Math.max(topBarrier, Math.min(...barriers) - confirmation.getBoundingClientRect().height)
+      confirmation.style.top = `${Math.min(Math.max(bounds.top + point.y, topBarrier), maxTop)}px`
+    }
   }
+
+  return () => { status.remove(); confirmation.remove() }
 
   map.on('click', (event) => {
     if (modeRef.current === 'click-add') addPointRef.current?.([event.lngLat.lng, event.lngLat.lat])

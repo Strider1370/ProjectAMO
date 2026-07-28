@@ -59,3 +59,21 @@ test('manual DCT legs align on the final route axis without pretending to be air
   assert.equal(model.enRouteSegments[1].kind, 'dct')
   assert.equal(model.enRouteSegments[1].routeId, null)
 })
+
+test('uses the displayed waypoint label for a manual coordinate leg', () => {
+  const model = buildCommonRouteModel({
+    routeGeometry: { type: 'LineString', coordinates: [[126, 37], [127, 37], [128, 37]] },
+    routeResult: {
+      flightRule: 'IFR',
+      navpointIds: ['BULTI', 'WP2'],
+      manualLegs: [
+        { id: 'dct:BULTI:coordinate-1', kind: 'dct', fromFix: 'BULTI', toFix: 'coordinate-1', geometry: [[126, 37], [127, 37]] },
+      ],
+    },
+  })
+
+  assert.deepEqual(
+    model.enRouteSegments.map(({ fromFix, toFix }) => ({ fromFix, toFix })),
+    [{ fromFix: 'BULTI', toFix: 'WP2' }],
+  )
+})

@@ -9,3 +9,9 @@ test('switching route designs preserves the previous route draft', () => {
   assert.doesNotMatch(selectRouteDesign, /draftEditor:\s*null/)
   assert.match(selectRouteDesign, /pendingEdit:\s*null/)
 })
+
+test('touch route drops retain their coordinate and confirmation apply commits the draft', () => {
+  const handleDrop = source.match(/async function handleDesignWaypointDrop\([\s\S]*?\n  \}/)?.[0] ?? ''
+  assert.match(handleDrop, /snapToNavpoint\s*===\s*false/)
+  assert.match(handleDrop, /applySelectedDesignDraft\(\{ designId: design\.id, draft: proposed\.editor \}\)/)
+})

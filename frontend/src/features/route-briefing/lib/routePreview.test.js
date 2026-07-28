@@ -130,6 +130,50 @@ test('comparison line drag inserts and redraws a temporary waypoint before confi
   assert.deepEqual(drops, [{ designId: 'route-design-1', kind: 'insert', index: 2, coordinates: [128.5, 38] }])
 })
 
+test('comparison line touch drag inserts an unsnapped coordinate waypoint', () => {
+  const events = new Map()
+  const source = {
+    data: { type: 'FeatureCollection', features: [
+      { type: 'Feature', properties: { role: 'route-design-hit', designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[126, 37], [128, 37]] } },
+      { type: 'Feature', properties: { role: 'route-design-line', designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[126, 37], [128, 37]] } },
+    ] },
+    serialize() { return { data: this.data } },
+    setData(data) { this.data = data },
+  }
+  const map = {
+    on(event, layer, handler) { events.set(`${event}:${handler ? layer : '*'}`, handler ?? layer) },
+    dragPan: { disable() {}, enable() {} },
+    getCanvas: () => ({ style: {} }), getSource: () => source, queryRenderedFeatures: () => [],
+  }
+  const drops = []
+  bindVfrInteractions(map, { current: [] }, { current: null }, { current: true }, { current: (drop) => drops.push(drop) })
+  events.get('touchstart:briefing-route-design-line-hit')({ preventDefault() {}, lngLat: { lng: 127, lat: 37 }, features: [{ properties: { designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[126, 37], [128, 37]] } }] })
+  events.get('touchmove:*')({ lngLat: { lng: 127, lat: 38 } })
+  events.get('touchend:*')()
+  assert.deepEqual(drops, [{ designId: 'route-design-1', kind: 'insert', index: 0, coordinates: [127, 38], snapToNavpoint: false }])
+})
+
+test('comparison touch cancel restores the original route source and map panning', () => {
+  const events = new Map()
+  const original = { type: 'FeatureCollection', features: [
+    { type: 'Feature', properties: { role: 'route-design-hit', designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[126, 37], [128, 37]] } },
+    { type: 'Feature', properties: { role: 'route-design-line', designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[126, 37], [128, 37]] } },
+  ] }
+  const source = { data: structuredClone(original), serialize() { return { data: this.data } }, setData(data) { this.data = data } }
+  let enabled = 0
+  const map = {
+    on(event, layer, handler) { events.set(`${event}:${handler ? layer : '*'}`, handler ?? layer) },
+    dragPan: { disable() {}, enable() { enabled += 1 } },
+    getCanvas: () => ({ style: {} }), getSource: () => source, queryRenderedFeatures: () => [],
+  }
+  bindVfrInteractions(map, { current: [] }, { current: null }, { current: true }, { current: null })
+  events.get('touchstart:briefing-route-design-line-hit')({ preventDefault() {}, lngLat: { lng: 127, lat: 37 }, features: [{ properties: { designId: 'route-design-1', selected: true }, geometry: { type: 'LineString', coordinates: [[126, 37], [128, 37]] } }] })
+  events.get('touchmove:*')({ lngLat: { lng: 127, lat: 38 } })
+  events.get('touchcancel:*')()
+  assert.deepEqual(source.data, original)
+  assert.equal(enabled, 1)
+})
+
 test('comparison line drag preserves the original insertion index after a SID trims the displayed line', () => {
   const events = new Map()
   const source = {

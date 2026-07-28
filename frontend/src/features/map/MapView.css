@@ -2415,6 +2415,16 @@
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
   transform: translate(-50%, calc(-100% - 12px));
 }
+.route-map-interaction-confirm.is-touch {
+  position: fixed;
+  z-index: 1200;
+  left: 12px;
+  right: 12px;
+  min-width: 0;
+  max-width: none;
+  padding: 12px;
+  transform: none;
+}
 
 .layer-timestamp-controls {
   display: inline-flex;
@@ -2444,19 +2454,6 @@
 }
 .route-map-interaction-confirm[hidden] { display: none; }
 
-@media (max-width: 719px) {
-  .route-map-interaction-confirm {
-    left: 12px !important;
-    right: 12px;
-    top: 12px !important;
-    bottom: auto;
-    min-width: 0;
-    max-width: none;
-    padding: 12px;
-    transform: none;
-  }
-}
-
 .route-map-interaction-confirm-text { overflow-wrap: anywhere; }
 .route-map-interaction-confirm-actions {
   display: flex;
@@ -2467,7 +2464,7 @@
 .route-map-interaction-confirm button {
   border: 1px solid var(--border-strong);
   border-radius: 4px;
-  min-height: 32px;
+  min-height: var(--touch-min);
   padding: 5px 12px;
   background: var(--bg-1);
   color: var(--text-1);

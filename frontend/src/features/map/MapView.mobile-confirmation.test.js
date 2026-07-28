@@ -5,5 +5,6 @@ import assert from 'node:assert/strict'
 const css = readFileSync(new URL('./MapView.css', import.meta.url), 'utf8')
 
 test('mobile route confirmation stays within the map viewport', () => {
-  assert.match(css, /@media \(max-width: 719px\)\s*\{[\s\S]*?\.route-map-interaction-confirm\s*\{[^}]*left:\s*12px !important;[^}]*right:\s*12px;[^}]*top:\s*12px !important;[^}]*bottom:\s*auto;[^}]*transform:\s*none;/s)
+  assert.match(css, /\.route-map-interaction-confirm\.is-touch\s*\{[^}]*position:\s*fixed;[^}]*z-index:\s*1200;[^}]*left:\s*12px;[^}]*right:\s*12px;[^}]*transform:\s*none;/s)
+  assert.match(css, /\.route-map-interaction-confirm button\s*\{[^}]*min-height:\s*var\(--touch-min\)/s)
 })

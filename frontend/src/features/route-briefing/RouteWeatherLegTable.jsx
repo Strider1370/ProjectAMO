@@ -86,7 +86,7 @@ export default function RouteWeatherLegTable({ legs, selectedAltitudeFt, onHighl
       <div className="bv-leg-head">
         <div>
           <Subtitle2 as="h4">NAVLOG</Subtitle2>
-          <Caption1 className="bv-leg-sub">경로 구간 기상 · 선택 고도 {formatAltitude(selectedAltitudeFt)} 기준</Caption1>
+          <Caption1 className="bv-leg-sub">경로 구간 기상 · 선택 고도 {formatAltitude(selectedAltitudeFt)} 기준 · 행을 가리키면 미리보기, 클릭하면 지도와 연직단면도에 고정</Caption1>
         </div>
         <Caption1 className="bv-leg-disclaimer">
           ETA 또는 연료 계산은 포함하지 않습니다.
