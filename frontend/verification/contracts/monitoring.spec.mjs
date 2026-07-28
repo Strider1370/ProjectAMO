@@ -172,10 +172,15 @@ test.describe('monitoring', () => {
     await page.goto('/monitoring?mode=ops', { waitUntil: 'load' })
     await page.locator('.dashboard-root').waitFor({ state: 'attached' })
 
-    // 픽스처의 새 TAF는 +2시간 칸이 1200m로 나빠졌고 직전 TAF에서는 멀쩡했다.
+    // 픽스처의 새 TAF는 +2시간 칸에서 시정(9999→1200m)과 운고(3000→400ft) 모두 악화.
     // 여러 요소가 동시에 악화해도 줄은 하나여야 한다(스펙 §12.7).
     const rows = page.locator('.alert-table-row', { hasText: 'TAF 악화' })
     await expect(rows).toHaveCount(1, { timeout: 15000 })
+
+    // 한 줄에 모든 악화 요소가 함께 표시되어야 한다.
+    const rowText = await rows.first().textContent()
+    await expect(rowText).toContain('시정')
+    await expect(rowText).toContain('운고')
   })
 
   test('TAF worsening alert outlines the affected timeline slot', async ({ page }, testInfo) => {
@@ -194,11 +199,11 @@ test.describe('monitoring', () => {
     await expect(page.locator('.taf-scale-item.alert-outline-blink')).toHaveCount(0)
   })
 
-  test('an AMD worsening alert is raised one severity step', async ({ page }, testInfo) => {
+  test('an AMD worsening alert sorts above a regular one', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
 
-    // AMD면 심각도가 한 단계 올라간다(스펙 §12.6). 알람 표가 심각도순으로 정렬하므로
-    // 그 결과 정규 발표보다 위에 온다 — 정렬 자체는 기존 계약이 이미 덮는다.
+    // AMD 심각도 상승(한 단계)으로 AlertPanel 정렬에서 정규 발표보다 위에 가는 것을 단언한다.
+    // 정렬 로직 자체는 기존 계약이 덮으므로 여기서는 심각도만 검증한다.
     //
     // route.fetch()를 쓰지 않는다. 그것은 페이지 라우트를 거치지 않고 실제 백엔드로
     // 나가므로 픽스처가 아니라 수집이 꺼진 서버에 닿는다. 대신 본문을 직접 만든다.

@@ -40,10 +40,12 @@ export function buildTafPayload({ reportStatus = 'NORMAL', issued = null } = {})
     ...over,
   })
 
-  // 새 TAF: +2시간 칸이 저시정(1200m)으로 나빠졌다. 직전 TAF에서는 멀쩡했다.
+  // 새 TAF: +2시간 칸이 시정(9999→1200m)과 운고(3000→400ft) 모두 악화했다. 직전 TAF에서는 멀쩡했다.
   const badSlot = slot(2, {
     visibility: { value: 1200, cavok: false },
-    display: { wind: '27010KT', vis: '1200', clouds: 'BKN030' },
+    weather: [],
+    clouds: [{ amount: 'BKN', base: 400 }],
+    display: { wind: '27010KT', vis: '1200', clouds: 'BKN004' },
   })
   const previousSlot = { ...slot(2) }
   delete previousSlot.display
