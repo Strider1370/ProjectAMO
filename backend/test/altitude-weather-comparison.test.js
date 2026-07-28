@@ -37,10 +37,63 @@ test('buildAltitudeCandidates keeps an UNL upper limit unbounded for RKSI-style 
   assert.equal(result.candidates.find((row) => row.altitudeFt === 21000).status, 'valid')
 })
 
-test('buildAltitudeCandidates with missing AIP constraints does not create weather-comparison rows', () => {
+test('buildAltitudeCandidates keeps the entered altitude when AIP constraints are unavailable', () => {
   const result = buildAltitudeCandidates({ routeSegments: [{ id: 'A', status: 'unavailable', constraints: null }], plannedCruiseAltitudeFt: 23000 })
   assert.equal(result.constraints.status, 'unavailable')
-  assert.deepEqual(result.candidates, [])
+  assert.deepEqual(result.candidates, [{
+    altitudeFt: 23000,
+    status: 'input_only',
+    displayMode: 'flight_level',
+    label: 'FL230',
+  }])
+})
+
+test('buildAltitudeCandidates keeps the entered altitude for weather-only comparison without AIP airway segments', () => {
+  const result = buildAltitudeCandidates({ routeSegments: [], plannedCruiseAltitudeFt: 9000 })
+  assert.equal(result.constraints.status, 'not_applicable')
+  assert.deepEqual(result.candidates, [{
+    altitudeFt: 9000,
+    status: 'input_only',
+    displayMode: 'altitude',
+    label: '9,000 ft',
+  }])
+})
+
+test('buildAltitudeCandidates keeps only the entered altitude when published series conflict', () => {
+  const result = buildAltitudeCandidates({
+    routeSegments: [matched('A', 'Odd'), matched('B', 'Even')],
+    plannedCruiseAltitudeFt: 22000,
+  })
+  assert.equal(result.constraints.status, 'conflicting')
+  assert.deepEqual(result.candidates, [{
+    altitudeFt: 22000,
+    status: 'input_only',
+    displayMode: 'flight_level',
+    label: 'FL220',
+  }])
+})
+
+test('comparison evaluates weather for an input-only altitude', () => {
+  const rows = buildAltitudeWeatherComparison({
+    candidates: [{ altitudeFt: 9000, status: 'input_only' }],
+    crossSection: {
+      levels: [{
+        values: [
+          { distanceNm: 0, altFt: 9000, u: 5, v: 0, icing: 0 },
+          { distanceNm: 10, altFt: 9000, u: 5, v: 0, icing: 0 },
+        ],
+      }],
+    },
+    axis: {
+      samples: [
+        { distanceNm: 0, bearingDeg: 90, lon: 0, lat: 0 },
+        { distanceNm: 10, bearingDeg: 90, lon: 1, lat: 0 },
+      ],
+    },
+  })
+  assert.equal(rows[0].status, 'input_only')
+  assert.equal(rows[0].weatherStatus, 'available')
+  assert.equal(rows[0].wind.averageKt, 10)
 })
 
 test('comparison interpolates sample-level KIM heights and keeps unknown-time NOTAM undetermined', () => {

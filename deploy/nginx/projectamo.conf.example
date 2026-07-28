@@ -32,17 +32,17 @@ server {
   }
 
   location /data/ {
-    alias /opt/projectamo/shared/data/;
+    alias /opt/projectamo/shared/data/.active-data/;
     try_files $uri @projectamo_data_backend;
   }
 
   location ~* "^/data/(radar/echo_korea_\d{12}\.png|satellite/sat_korea_\d{12}\.(png|webp)|sigwx_low/(fronts|clouds)_\d{10}\.png)$" {
-    alias /opt/projectamo/shared/data/$1;
+    alias /opt/projectamo/shared/data/.active-data/$1;
     add_header Cache-Control "public, max-age=10800, immutable";
   }
 
   location ~* "^/data/(radar/echo_meta\.json|radar/rainviewer_meta\.json|satellite/sat_meta\.json|sigwx_low/(fronts_meta|clouds_meta)_\d{10}\.json)$" {
-    alias /opt/projectamo/shared/data/$1;
+    alias /opt/projectamo/shared/data/.active-data/$1;
     add_header Cache-Control "no-cache";
   }
 
@@ -50,7 +50,7 @@ server {
   # them out of the generic frontend GeoJSON location below, which resolves
   # against /opt/projectamo/current/frontend/dist and would return 404.
   location ~* "^/data/satellite/convective/(ci_\d{12}\.geojson|ctps_\d{12}_.*\.webp)$" {
-    alias /opt/projectamo/shared/data/satellite/convective/$1;
+    alias /opt/projectamo/shared/data/.active-data/satellite/convective/$1;
     add_header Cache-Control "public, max-age=10800, immutable";
   }
 

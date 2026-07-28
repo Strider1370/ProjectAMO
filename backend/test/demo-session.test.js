@@ -5,171 +5,86 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { createDemoSession } from '../src/dev/demo-session.js'
-import {
-  DEMO_REQUIRED_TYPES,
-  RESERVED_LIVE_BACKUP,
-  discardLiveBackup,
-  hasLiveBackup,
-  inspectSnapshot,
-  loadSnapshot,
-  saveSnapshot,
-} from '../src/dev/snapshot-store.js'
+import { createDataViewManager } from '../src/dev/data-view.js'
+import { DEMO_REQUIRED_TYPES, inspectSnapshot, saveSnapshot } from '../src/dev/snapshot-store.js'
 
 const DEMO_NOW = '2026-07-22T10:00:00.000Z'
 
-function harness({ on = false, failRestore = false } = {}) {
+function harness() {
   const calls = []
-  const state = { on, now: null, backup: false }
-  const clock = {
-    isDemoMode: () => state.on,
-    setDemoMode(value) {
-      state.on = value
-      if (!value) state.now = null
-      calls.push(value ? 'freeze' : 'unfreeze')
+  let context = { mode: 'live', name: null, referenceTime: null, revision: 'live' }
+  const views = {
+    current: () => context,
+    activateDemo(name) {
+      calls.push(`activate-demo:${name}`)
+      context = { mode: 'demo', name, referenceTime: DEMO_NOW, revision: `demo:${name}:${DEMO_NOW}` }
+      return context
     },
-    setDemoNow(value) {
-      state.now = value
-      calls.push(`set-now:${value}`)
+    activateLive() {
+      calls.push('activate-live')
+      context = { mode: 'live', name: null, referenceTime: null, revision: 'live' }
+      return context
     },
-    getEffectiveNow: () => new Date(state.now || '2026-07-28T10:00:00Z'),
   }
   const snapshots = {
-    inspectSnapshot: () => ({ ready: true, blockers: [], warnings: [] }),
-    discardLiveBackup() {
-      calls.push('discard-live-backup')
-      state.backup = false
-      return true
-    },
-    hasLiveBackup: () => state.backup,
-    saveSnapshot(_root, name) {
-      calls.push(name === '_live_backup' ? 'capture-live-backup' : `capture:${name}`)
-      if (name === '_live_backup') state.backup = true
-      return { saved: ['metar'], referenceTime: DEMO_NOW }
-    },
-    loadSnapshot(_root, name) {
-      calls.push(name === '_live_backup' ? 'restore-live-backup' : `restore:${name}`)
-      if (failRestore) return null
-      return { restored: ['metar'], referenceTime: DEMO_NOW }
-    },
-  }
-  const drain = async () => { calls.push('drain') }
-  return { calls, session: createDemoSession({ basePath: '/data', clock, snapshots, drain }), state }
-}
-
-test('startDemo replaces stale backup with immediate live state', async () => {
-  const { calls, session, state } = harness()
-  state.backup = true
-  const result = await session.startDemo('demo')
-  assert.deepEqual(calls, [
-    'freeze', 'drain', 'discard-live-backup', 'capture-live-backup',
-    'restore:demo', `set-now:${DEMO_NOW}`,
-  ])
-  assert.equal(result.on, true)
-})
-
-test('startDemo unfreezes live collection when draining fails before backup capture', async () => {
-  const { calls, state } = harness()
-  const session = createDemoSession({
-    basePath: '/data',
-    clock: {
-      isDemoMode: () => state.on,
-      setDemoMode(value) {
-        state.on = value
-        if (!value) state.now = null
-        calls.push(value ? 'freeze' : 'unfreeze')
-      },
-      setDemoNow(value) { state.now = value },
-      getEffectiveNow: () => new Date(state.now || '2026-07-28T10:00:00Z'),
-    },
-    snapshots: {
-      inspectSnapshot: () => ({ ready: true, blockers: [], warnings: [] }),
-      discardLiveBackup: () => calls.push('discard-live-backup'),
-      hasLiveBackup: () => false,
-      saveSnapshot: () => calls.push('capture-live-backup'),
-      loadSnapshot: () => calls.push('restore:demo'),
-    },
-    drain: async () => {
-      calls.push('drain')
-      throw new Error('collection_drain_timeout:metar,taf')
-    },
-  })
-
-  await assert.rejects(session.startDemo('demo'), /collection_drain_timeout/)
-  assert.deepEqual(calls, ['freeze', 'drain', 'unfreeze'])
-  assert.equal(state.on, false)
-})
-
-test('switching snapshots in one demo session preserves one live backup', async () => {
-  const { calls, session } = harness()
-  await session.startDemo('demo-a')
-  await session.startDemo('demo-b')
-  assert.equal(calls.filter((call) => call === 'capture-live-backup').length, 1)
-  assert.equal(calls.includes('discard-live-backup'), true)
-})
-
-test('stopDemo restores before unfreezing and consumes backup', async () => {
-  const { calls, session, state } = harness({ on: true })
-  state.backup = true
-  await session.stopDemo()
-  assert.deepEqual(calls, ['drain', 'restore-live-backup', 'unfreeze', 'discard-live-backup'])
-  assert.equal(state.backup, false)
-})
-
-test('stopDemo immediately clears an orphaned demo flag when no live backup exists', async () => {
-  const { calls, session, state } = harness({ on: true })
-  const result = await session.stopDemo()
-
-  assert.deepEqual(calls, ['unfreeze'])
-  assert.equal(result.restoredLiveBackup, false)
-  assert.equal(state.on, false)
-})
-
-test('failed demo restore rolls back toward the live backup and stays frozen', async () => {
-  const { calls, session, state } = harness({ failRestore: true })
-  await assert.rejects(session.startDemo('broken'), /snapshot_not_found/)
-  assert.equal(state.on, true)
-  assert.equal(state.backup, true)
-  assert.deepEqual(calls.slice(-2), ['restore:broken', 'restore-live-backup'])
-})
-
-test('startDemo refuses an incomplete snapshot before touching live state', async () => {
-  const { calls, state } = harness()
-  const report = {
-    ready: false,
-    blockers: ['radar:short_history:2/36'],
-    warnings: [],
+    inspectSnapshot: () => ({ ready: true, blockers: [], warnings: [], types: ['metar', 'sigmet'] }),
+    saveSnapshot: (_root, name) => ({ saved: [name], referenceTime: DEMO_NOW }),
   }
   const session = createDemoSession({
-    basePath: '/data',
-    clock: {
-      isDemoMode: () => state.on,
-      setDemoMode(value) { state.on = value; calls.push(value ? 'freeze' : 'unfreeze') },
-      setDemoNow() {},
-      getEffectiveNow: () => new Date('2026-07-28T10:00:00Z'),
-    },
-    snapshots: {
-      inspectSnapshot: () => report,
-      discardLiveBackup: () => calls.push('discard-live-backup'),
-      hasLiveBackup: () => false,
-      saveSnapshot: () => calls.push('capture-live-backup'),
-      loadSnapshot: () => calls.push('restore:demo'),
-    },
+    basePath: '/live',
+    activePath: '/active',
+    views,
+    snapshots,
+    reloadActive: () => calls.push('reload-active'),
     drain: async () => calls.push('drain'),
   })
+  return { calls, session }
+}
 
-  await assert.rejects(session.startDemo('demo'), (error) => {
+test('demo session starts and stops by switching the active path only', async () => {
+  const { calls, session } = harness()
+  const started = await session.startDemo('demo')
+  assert.deepEqual(calls, ['activate-demo:demo', 'reload-active'])
+  assert.equal(started.on, true)
+  assert.equal(started.now, DEMO_NOW)
+  assert.equal(session.status().revision, `demo:demo:${DEMO_NOW}`)
+
+  calls.length = 0
+  const stopped = await session.stopDemo()
+  assert.deepEqual(calls, ['activate-live', 'reload-active'])
+  assert.equal(stopped.on, false)
+  assert.equal(stopped.restoredLiveBackup, false)
+})
+
+test('demo switching never drains collectors while snapshot capture still does', async () => {
+  const { calls, session } = harness()
+  await session.startDemo('demo')
+  assert.equal(calls.includes('drain'), false)
+  calls.length = 0
+  await session.captureSnapshot('new-snapshot')
+  assert.deepEqual(calls, ['drain'])
+})
+
+test('startDemo refuses an incomplete snapshot before changing the view', async () => {
+  const { calls, session } = harness()
+  session.startDemo
+  const report = { ready: false, blockers: ['radar:short_history:2/36'], warnings: [], types: [] }
+  const rejected = createDemoSession({
+    basePath: '/live',
+    activePath: '/active',
+    views: {
+      current: () => ({ mode: 'live', revision: 'live' }),
+      activateDemo: () => calls.push('activate-demo'),
+      activateLive: () => calls.push('activate-live'),
+    },
+    snapshots: { inspectSnapshot: () => report },
+    reloadActive: () => calls.push('reload-active'),
+  })
+  await assert.rejects(rejected.startDemo('demo'), (error) => {
     assert.equal(error.code, 'snapshot_not_ready')
     assert.deepEqual(error.report, report)
     return true
   })
-  assert.deepEqual(calls, [])
-  assert.equal(state.on, false)
-})
-
-test('startDemo refuses to replace data when a resumed demo lost its live backup', async () => {
-  const { calls, session } = harness({ on: true })
-
-  await assert.rejects(session.startDemo('demo'), (error) => error.code === 'live_backup_missing')
   assert.deepEqual(calls, [])
 })
 
@@ -185,10 +100,7 @@ function populateCompleteDataset(root, marker, referenceTime) {
   }
   for (const type of ['kim_nwp', 'ktg']) {
     writeJson(path.join(root, type, 'latest.json'), {
-      type,
-      marker,
-      updated_at: referenceTime,
-      indexPath: `${type}/index.json`,
+      type, marker, updated_at: referenceTime, indexPath: `${type}/index.json`,
     })
     writeJson(path.join(root, type, 'index.json'), { type, marker, times: [] })
   }
@@ -207,39 +119,33 @@ function populateCompleteDataset(root, marker, referenceTime) {
   for (const frame of satelliteFrames) fs.writeFileSync(path.join(root, 'satellite', path.basename(frame.path)), marker)
 }
 
-test('filesystem session restores the exact pre-demo files without collecting upstream data', async () => {
+test('filesystem session leaves live files untouched and immediately returns to their newest version', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'projectamo-demo-session-'))
-  const state = { on: false, now: null }
-  const clock = {
-    isDemoMode: () => state.on,
-    setDemoMode(value) { state.on = value; if (!value) state.now = null },
-    setDemoNow(value) { state.now = value },
-    getEffectiveNow: () => new Date(state.now || '2026-07-28T10:00:00Z'),
-  }
+  const activePath = path.join(root, '.active-data')
   try {
     populateCompleteDataset(root, 'demo', DEMO_NOW)
     saveSnapshot(root, 'demo')
-    populateCompleteDataset(root, 'live', '2026-07-28T10:00:00.000Z')
-    const liveMetar = fs.readFileSync(path.join(root, 'metar', 'latest.json'), 'utf8')
-    const liveRadar = fs.readFileSync(path.join(root, 'radar', 'echo_meta.json'), 'utf8')
+    populateCompleteDataset(root, 'live-before', '2026-07-28T10:00:00.000Z')
+    const views = createDataViewManager({ basePath: root, activePath })
+    views.ensure()
     const session = createDemoSession({
       basePath: root,
-      clock,
-      snapshots: { discardLiveBackup, hasLiveBackup, inspectSnapshot, loadSnapshot, saveSnapshot },
+      activePath,
+      views,
+      snapshots: { inspectSnapshot, saveSnapshot },
+      reloadActive: () => {},
       drain: async () => {},
     })
 
-    const started = await session.startDemo('demo')
-    assert.equal(started.inspection.ready, true)
-    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'metar', 'latest.json'))).marker, 'demo')
-    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'radar', 'echo_meta.json'))).frames.length, 36)
-    assert.equal(hasLiveBackup(root), true)
+    await session.startDemo('demo')
+    assert.equal(JSON.parse(fs.readFileSync(path.join(activePath, 'metar', 'latest.json'))).marker, 'demo')
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'metar', 'latest.json'))).marker, 'live-before')
 
-    const stopped = await session.stopDemo()
-    assert.equal(stopped.restoredLiveBackup, true)
-    assert.equal(fs.readFileSync(path.join(root, 'metar', 'latest.json'), 'utf8'), liveMetar)
-    assert.equal(fs.readFileSync(path.join(root, 'radar', 'echo_meta.json'), 'utf8'), liveRadar)
-    assert.equal(hasLiveBackup(root), false)
+    populateCompleteDataset(root, 'live-during-demo', '2026-07-28T10:05:00.000Z')
+    assert.equal(JSON.parse(fs.readFileSync(path.join(activePath, 'metar', 'latest.json'))).marker, 'demo')
+
+    await session.stopDemo()
+    assert.equal(JSON.parse(fs.readFileSync(path.join(activePath, 'metar', 'latest.json'))).marker, 'live-during-demo')
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }

@@ -17,6 +17,7 @@ import { sessionMiddleware, ABSOLUTE_TTL_MS } from './src/auth/session.js'
 import { createAuthRouter } from './src/auth/router.js'
 import { createUser } from './src/db/users.js'
 import { isDemoMode, getEffectiveNow } from './src/dev/demo-mode.js'
+import { ensureActiveDataView, getActiveDataContext } from './src/dev/data-view.js'
 import { createAdminRouter } from './src/admin/router.js'
 import { visitTracker } from './src/admin/visits.js'
 import { startSampler } from './src/admin/metrics.js'
@@ -69,7 +70,9 @@ sharp.cache(false)
 const app = express()
 const PORT = process.env.BACKEND_PORT || 3001
 const HOST = process.env.BACKEND_HOST || '127.0.0.1'
-const DATA_ROOT = config.storage.base_path
+ensureActiveDataView()
+const DATA_ROOT = config.storage.active_path
+const LIVE_DATA_ROOT = config.storage.base_path
 const terrainSampler = createDefaultTerrainSampler(DATA_ROOT)
 const KIM_ICING_REQUIRED_VARIABLES = ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']
 const SNAPSHOT_META_CACHE_TTL_MS = 5000
@@ -458,9 +461,12 @@ const SNAPSHOT_SOURCES = [
 ]
 
 function buildSnapshotMetaCacheKey() {
-  return SNAPSHOT_SOURCES
+  return [
+    `view:${getActiveDataContext().revision}`,
+    ...SNAPSHOT_SOURCES
     .flatMap((source) => source.files)
-    .map((filePath) => `${filePath}:${fileMtimeMs(filePath)}`)
+    .map((filePath) => `${filePath}:${fileMtimeMs(filePath)}`),
+  ]
     .join('|')
 }
 
@@ -479,7 +485,7 @@ function getCachedSnapshotMeta(nowMs = Date.now()) {
 }
 
 function buildSnapshotMeta() {
-  const out = {}
+  const out = { viewRevision: getActiveDataContext().revision }
   for (const source of SNAPSHOT_SOURCES) {
     const value = source.build()
     for (const key of source.keys) out[key] = value
@@ -663,7 +669,7 @@ const ADSB_COLD_MS = 30 * 60 * 1000
 let adsbRefreshing = null
 function adsbFileAgeMs() {
   try {
-    return Date.now() - fs.statSync(path.join(DATA_ROOT, 'adsb', 'latest.json')).mtimeMs
+    return Date.now() - fs.statSync(path.join(LIVE_DATA_ROOT, 'adsb', 'latest.json')).mtimeMs
   } catch {
     return Infinity
   }
@@ -974,7 +980,15 @@ app.get('/api/stats', (_req, res) => res.json(stats.getStats()))
 app.get('/api/health', (_req, res) => res.json({ ok: true, uptime: process.uptime(), testMode: !!process.env.DISABLE_COLLECTION }))
 // 지도의 "시연용 모드" 배지 + 프런트의 "지금" 기준용 — 누구나 조회 가능(로그인 불필요).
 // 켜고 끄기·스냅샷 선택은 /api/admin/*(관리자 전용).
-app.get('/api/demo-mode', (_req, res) => res.json({ on: isDemoMode(), now: getEffectiveNow().toISOString() }))
+app.get('/api/demo-mode', (_req, res) => {
+  const context = getActiveDataContext()
+  res.json({
+    on: context.mode === 'demo',
+    name: context.name,
+    now: getEffectiveNow().toISOString(),
+    revision: context.revision,
+  })
+})
 app.post('/api/vertical-profile', (req, res) => {
   try {
     res.json(buildVerticalProfile(req.body, terrainSampler))

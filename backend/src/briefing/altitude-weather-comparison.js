@@ -11,6 +11,7 @@ function ft(value) {
 }
 
 function constraintStatus(routeSegments) {
+  if (routeSegments.length === 0) return 'not_applicable'
   const states = routeSegments.map((segment) => segment.status)
   if (states.includes('conflicting')) return 'conflicting'
   if (states.every((state) => state === 'matched')) return 'matched'
@@ -31,6 +32,15 @@ function seriesFor(rule) {
   return IFR_LEVELS[key] ?? null
 }
 
+function altitudeCandidate(altitudeFt, status) {
+  return {
+    altitudeFt,
+    status,
+    displayMode: altitudeFt <= 14000 ? 'altitude' : 'flight_level',
+    label: altitudeFt <= 14000 ? `${altitudeFt.toLocaleString()} ft` : `FL${String(altitudeFt / 100).padStart(3, '0')}`,
+  }
+}
+
 function commonSeries(routeSegments) {
   const series = routeSegments.map((segment) => seriesFor(segment.constraints?.cruisingLevelSeries?.series))
   if (!series.every(Array.isArray)) return null
@@ -48,9 +58,10 @@ export function buildAltitudeCandidates({ routeSegments = [], plannedCruiseAltit
     crossSectionAvailable: !!crossSection?.levels?.length,
   }
   const input = Number(plannedCruiseAltitudeFt)
-  if (status !== 'matched') return { constraints: base, candidates: [] }
+  const inputOnly = Number.isFinite(input) && input > 0 ? altitudeCandidate(input, 'input_only') : null
+  if (status !== 'matched') return { constraints: base, candidates: inputOnly ? [inputOnly] : [] }
   const series = commonSeries(routeSegments)
-  if (!series?.length) return { constraints: { ...base, status: 'conflicting' }, candidates: [] }
+  if (!series?.length) return { constraints: { ...base, status: 'conflicting' }, candidates: inputOnly ? [inputOnly] : [] }
   const valid = series.filter((value) => value >= floor && value <= ceiling)
   const inputValid = valid.includes(input)
   const lower = valid.filter((value) => value < input).slice(-2)
@@ -58,12 +69,7 @@ export function buildAltitudeCandidates({ routeSegments = [], plannedCruiseAltit
   const values = [...new Set([...lower, input, ...upper])]
   return {
     constraints: base,
-    candidates: values.map((altitudeFt) => ({
-      altitudeFt,
-      status: altitudeFt === input && !inputValid ? 'input_invalid' : 'valid',
-      displayMode: altitudeFt <= 14000 ? 'altitude' : 'flight_level',
-      label: altitudeFt <= 14000 ? `${altitudeFt.toLocaleString()} ft` : `FL${String(altitudeFt / 100).padStart(3, '0')}`,
-    })),
+    candidates: values.map((altitudeFt) => altitudeCandidate(altitudeFt, altitudeFt === input && !inputValid ? 'input_invalid' : 'valid')),
   }
 }
 
@@ -235,7 +241,7 @@ function matchNotams(notams, axis, altitudeFt, etd, eta) {
 export function buildAltitudeWeatherComparison({ candidates = [], crossSection, turbulence, axis, hazards = [], notams = [], etd, eta } = {}) {
   const weights = sampleWeights(axis?.samples ?? [])
   return candidates.map((candidate) => {
-    if (candidate.status !== 'valid') return { ...candidate, weatherStatus: 'unavailable' }
+    if (candidate.status !== 'valid' && candidate.status !== 'input_only') return { ...candidate, weatherStatus: 'unavailable' }
     const wind = weightedWind(crossSection?.levels ?? [], axis, candidate.altitudeFt, weights)
     const weatherStatus = wind ? 'available' : 'weather_unavailable'
     return {

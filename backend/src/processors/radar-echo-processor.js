@@ -4,7 +4,6 @@ import config from '../config.js'
 import { gridToLatLon, parseRadarBinary, renderFullCoverageEcho } from '../parsers/radar-echo-parser.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 import { createMotionInput, deriveMotionGeoJSON, deserializeMotionInput, serializeMotionInput } from './radar-motion.js'
-import { isDemoMode } from '../dev/demo-mode.js'
 
 let backgroundFillRunning = false;
 const RENDER_VERSION = "rainrate-reproject-full-v5-motion-dense";
@@ -256,9 +255,6 @@ function scheduleBackgroundFill(radarDir, pendingTms, existingFrames, latestTm, 
   backgroundFillRunning = true;
   setTimeout(async () => {
     try {
-      // 시연 모드: 이 setTimeout은 cron(runWithLock)이 아니라 process() 안에서 예약된 별도 타이머라
-      // isDemoMode() 가드를 못 거치고 그대로 실행돼 얼려둔 스냅샷을 덮어쓴다 — 여기서 직접 막는다.
-      if (isDemoMode()) return;
       let previousInput = null;
       for (const tm of pendingTms) {
         const filename = `echo_korea_${tm}.png`;

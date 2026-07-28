@@ -5,7 +5,6 @@ import config from '../config.js'
 import { parseSatelliteNC, parseFogNC, renderFogImage } from '../parsers/satellite-parser.js'
 import { collectConvectiveSatelliteFrame } from './convective-satellite-processor.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
-import { isDemoMode } from '../dev/demo-mode.js'
 
 let backgroundFillRunning = false;
 const fogRetryTimers = new Map();
@@ -205,9 +204,6 @@ function scheduleFogRetry(satDir, frameSpec, frameSpecs, attempt = 1) {
 
   const timer = setTimeout(async () => {
     fogRetryTimers.delete(frameSpec.displayTm);
-    // 시연 모드: process() 밖에서 예약된 타이머라 runWithLock의 isDemoMode() 가드를 못 거친다 — 직접 막는다.
-    if (isDemoMode()) return;
-
     try {
       const existingMeta = loadExistingMeta(satDir);
       if (existingMeta?.render_version !== RENDER_VERSION) {
@@ -248,7 +244,6 @@ function scheduleBackgroundFill(satDir, pendingFrameSpecs, existingFrames, lates
   backgroundFillRunning = true;
   setTimeout(async () => {
     try {
-      if (isDemoMode()) return;
       for (const frameSpec of pendingFrameSpecs) {
         const filename = `sat_korea_${frameSpec.displayTm}.webp`;
         const filePath = path.join(satDir, filename);

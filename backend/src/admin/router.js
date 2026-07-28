@@ -29,7 +29,7 @@ export function createAdminRouter({ db = null } = {}) {
     res.json(readTrends(database(), granularity))
   })
   router.get('/data-health', (req, res) => res.json({
-    types: readDataHealth(config.storage.base_path, { getCached: store.getCached, getStats: stats.getStats }),
+    types: readDataHealth(config.storage.active_path, { getCached: store.getCached, getStats: stats.getStats }),
   }))
   // 서버 전산자원 탭: 재시작 횟수/가동시간/힙 메모리 + 폴더별 디스크 사용량 + 최근 실패 로그.
   // 디스크만 캐시(5분) — 나머지는 계산이 가벼워 매 요청 그대로.

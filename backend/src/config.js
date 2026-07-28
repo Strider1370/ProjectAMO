@@ -356,6 +356,9 @@ export const schedule = {
 
 export const storage = {
   base_path: resolveDataPath(process.env.DATA_PATH),
+  // Collectors always write to base_path. User-facing weather reads follow this
+  // atomically replaceable symlink, which points to live data or a demo view.
+  active_path: path.join(resolveDataPath(process.env.DATA_PATH), '.active-data'),
   max_files_per_category: 10,
   max_files_by_type: {
     lightning: 48,

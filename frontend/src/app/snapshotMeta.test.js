@@ -44,3 +44,11 @@ test('detectSnapshotChanges detects a same-time convective partial update by has
   const next = { convectiveMeta: { tm: '202607231200', hash: 'ci-and-ctps' } }
   assert.equal(detectSnapshotChanges(prev, next).convectiveMeta, true)
 })
+
+test('a data-view revision change invalidates every polled weather source', () => {
+  const changes = detectSnapshotChanges(
+    { viewRevision: 'live' },
+    { viewRevision: 'demo:demo:2026-07-22T10:00:00.000Z' },
+  )
+  assert.ok(Object.values(changes).every(Boolean))
+})

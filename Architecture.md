@@ -182,9 +182,10 @@ ProjectAMO/
 
 ### Backend
 
-- `backend/src/dev/demo-session.js` -> 시연 전환의 단일 interface. 실황→시연은 먼저 새 수집을 동결하고 진행 중 수집에 취소 신호를 보낸 뒤 기존 `_live_backup`을 폐기하고 직전 실황을 새로 캡처한다. 준비 점검을 통과한 스냅샷만 복원하고 기준시각을 적용한다. 백업 캡처 전 수집 정리가 실패하면 즉시 실황 모드로 돌아가며, 스냅샷 복원 실패는 수집을 동결한 채 실황 백업으로 되감는다. 시연 종료는 외부 재수집 없이 백업 파일을 먼저 복원한 뒤 동결을 해제하고 백업을 소비하며, 백업 없는 실패 세션은 고아 모드 플래그만 즉시 해제한다.
-- `backend/src/dev/snapshot-store.js` -> 파일시스템 스냅샷 캡처·복원·준비 점검. JSON은 임시 파일, 레이더·위성·KIM·KTG는 임시 디렉터리로 준비한 뒤 rename으로 게시한다. 시연 가능 상태는 기준시각, 핵심 자료 21종, 레이더 36장, 위성 18장, 참조 파일, KIM/KTG 인덱스, ADS-B 기준시각 오차(30분 이하)를 검사한다. 과거 스냅샷에 없는 태풍 등 이후 추가 자료는 소유하지 않으므로 현재 자료를 유지한다.
-- `backend/src/dev/demo-mode.js` -> 프로세스 재시작에도 유지되는 시연 모드와 유효 현재시각. 서버·브라우저의 시간 의존 로직은 실제 `Date.now()` 대신 이 유효 시각을 주입받는다.
+- `backend/src/dev/data-view.js` -> 실황/시연 활성 데이터 뷰의 단일 interface. 기존 `DATA_PATH`는 수집기가 계속 쓰는 실황 루트이고, `DATA_PATH/.active-data` 심볼릭 링크만 Linux `rename`으로 원자 교체한다. 시연 뷰는 스냅샷 자료를 연결하되 태풍·지형만 명시적으로 실황에 통과 연결하며, 뷰 메타가 모드·기준시각·revision의 재시작 가능한 단일 진실원이다.
+- `backend/src/dev/demo-session.js` -> 준비 점검을 통과한 스냅샷 뷰 시작과 최신 실황 뷰 종료를 직렬화하고, 포인터 전환 직후 활성 읽기 캐시를 다시 적재한다. 시작·종료는 수집 drain, `_live_backup`, 대용량 복사, 외부 호출을 하지 않는다. 새 스냅샷 캡처만 일관성을 위해 진행 중 수집을 정리한다.
+- `backend/src/dev/snapshot-store.js` -> 파일시스템 스냅샷 캡처·레거시 복원·준비 점검. 시연 가능 상태는 기준시각, 핵심 자료 21종, 레이더 36장, 위성 18장, 참조 파일, KIM/KTG 인덱스, ADS-B 기준시각 오차(30분 이하)를 검사한다.
+- `backend/src/dev/demo-mode.js` -> 활성 데이터 뷰에서 시연 여부와 유효 현재시각을 파생하는 호환 adapter. 서버·브라우저의 시간 의존 로직은 실제 `Date.now()` 대신 이 유효 시각을 주입받는다.
 - `backend/src/admin/router.js` -> 관리자 스냅샷 저장·점검·시연 시작·종료 HTTP adapter. 데이터 교체와 시각 토글을 따로 호출하는 우회 interface는 제공하지 않는다.
 - `backend/src/parsers/satellite-parser.js` + `lib/{ctps-grid,satellite-ko-grid}.js` -> shared GK2A NetCDF validation, CTPS geographic lookup, and KO display resampling contract.
 - `backend/src/processors/convective-satellite-{model,store,processor}.js` -> CI/CTPS conversion, atomic independent satellite/convective asset publication, retention, and last-good preservation.

@@ -93,6 +93,12 @@ export function useSnapshotPolling(options) {
     return () => window.clearInterval(timer)
   }, [options.intervalMs, pollChangedData])
 
+  useEffect(() => {
+    const refreshView = () => fetchInitialData()
+    window.addEventListener('projectamo:data-view-changed', refreshView)
+    return () => window.removeEventListener('projectamo:data-view-changed', refreshView)
+  }, [fetchInitialData])
+
   const applyData = useCallback((updater, computeSnapshot) => {
     setData((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater
@@ -115,7 +121,10 @@ function useWeatherPolling() {
     detectChanges: (latest, saved) => detectSnapshotChanges(saved, latest),
     hasChanges: hasSnapshotChanges,
     loadChangedData: (changes) => loadChangedWeatherData(changes, { deferredKeys: loadedDeferredKeysRef.current }),
-    advanceSnapshot: ({ mergedData }) => buildSnapshotMetaFromData(mergedData),
+    advanceSnapshot: ({ latestSnapshot, mergedData }) => ({
+      ...buildSnapshotMetaFromData(mergedData),
+      viewRevision: latestSnapshot.viewRevision,
+    }),
     intervalMs: REFRESH_INTERVAL_MS,
     initialErrorMode: 'silent',
     logPrefix: '[App]',

@@ -14,7 +14,7 @@ function overlayMetaDiffer(prev, next) {
 }
 
 export function detectSnapshotChanges(prev, next) {
-  return {
+  const changes = {
     metar: hashesDiffer(prev?.metar, next?.metar),
     metarOverseas: hashesDiffer(prev?.metarOverseas || prev?.metar_overseas, next?.metarOverseas || next?.metar_overseas),
     taf: hashesDiffer(prev?.taf, next?.taf),
@@ -40,6 +40,10 @@ export function detectSnapshotChanges(prev, next) {
     flightCategory: hashesDiffer(prev?.flightCategory, next?.flightCategory),
     ktg: hashesDiffer(prev?.ktg, next?.ktg),
   }
+  if (prev?.viewRevision !== next?.viewRevision) {
+    for (const key of Object.keys(changes)) changes[key] = true
+  }
+  return changes
 }
 
 export function hasSnapshotChanges(changes) {

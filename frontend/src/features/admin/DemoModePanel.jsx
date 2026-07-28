@@ -24,8 +24,8 @@ function readinessText(inspection) {
   return `점검 실패 (${blockers.length}건)`
 }
 
-// 시연 모드 = 딱 두 가지 동작만 있다: ① 스냅샷 하나를 골라 "시연 시작"(그 데이터로 교체 + 자동수집 정지 +
-// 시각 고정이 한 번에 됨) ② "시연 종료"(원래 실황 복원 + 자동수집 재개가 한 번에 됨). 켜기/끄기/복원/되돌리기가
+// 시연 모드 = 딱 두 가지 동작만 있다: ① 스냅샷 하나를 골라 "시연 시작"(활성 읽기 경로 + 시각 전환)
+// ② "시연 종료"(계속 수집 중인 실황 경로로 즉시 복귀). 켜기/끄기/복원/되돌리기가
 // 따로 노는 버튼이었던 이전 버전이 헷갈린다는 피드백으로 단순화함.
 // 관리자 콘솔(/admin)과 개발자 콘솔(/dev) 둘 다에서 씀 — 백엔드는 /api/admin/*(admin 전용, 배포 서버에서도 항상 마운트).
 export default function DemoModePanel() {
@@ -56,6 +56,7 @@ export default function DemoModePanel() {
     elapsedTimerRef.current = setInterval(() => setElapsedSec((s) => s + 1), 1000)
     try {
       const d = await fn()
+      window.dispatchEvent(new Event('projectamo:data-view-changed'))
       setMsg({ ok: true, text: typeof okText === 'function' ? okText(d) : okText })
       await refresh()
     } catch (err) {
@@ -76,19 +77,19 @@ export default function DemoModePanel() {
 
       {busy && (
         <p className="admin-empty" style={{ color: 'var(--level-amber, #b45309)', fontWeight: 700 }}>
-          ⏳ {busyLabel}… ({elapsedSec}초 경과 — 레이더·위성·수치예보 포함 스냅샷은 수십 초 걸릴 수 있습니다. 완료될 때까지 기다려주세요.)
+          ⏳ {busyLabel}… ({elapsedSec}초 경과 — 경로 전환은 즉시 끝나며, 새 스냅샷 저장만 자료량에 따라 오래 걸릴 수 있습니다.)
         </p>
       )}
 
       {demoStatus.on ? (
         <>
           <p className="admin-empty">
-            지금 시연 데이터로 바뀐 상태입니다 — 자동수집 정지, 지도에 "시연용 모드" 배지 표시,
+            지금 시연 데이터 뷰를 읽는 상태입니다 — 실황 수집은 별도 경로에서 계속되고, 지도에 "시연용 모드" 배지 표시,
             브리핑 기준 "지금" 시각은 <b>{fmtDateTime(demoStatus.now)}</b>로 고정.
           </p>
           <button type="button" className="admin-btn-reject" disabled={busy} style={{ marginBottom: 12 }}
             onClick={() => run('시연 종료 처리 중', revertDemoMode, (d) => d.note)}>
-            {busy ? '⏳ 처리 중…' : '■ 시연 종료 (실황으로 복원 + 자동수집 재개)'}
+            {busy ? '⏳ 처리 중…' : '■ 시연 종료 (최신 실황 경로로 즉시 전환)'}
           </button>
           {snapshots.length > 1 && (
             <div>
@@ -108,7 +109,7 @@ export default function DemoModePanel() {
       ) : (
         <>
           <p className="admin-empty">
-            아래 스냅샷 중 하나를 골라 "시연 시작"을 누르면 그 시점 데이터로 바뀌고, 자동수집이 멈추고,
+            아래 스냅샷 중 하나를 골라 "시연 시작"을 누르면 복사 없이 그 시점 데이터 경로로 즉시 바뀌고,
             지도에 "시연용 모드" 배지가 뜨고, 새 비행계획도 그 시점 "지금"으로 맞춰집니다 — 한 번에 다 됩니다.
           </p>
           <div style={{ marginBottom: 12 }}>

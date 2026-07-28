@@ -6,7 +6,6 @@ import { isSameFiveMinuteBucket, observedBucketMs, parseQcdVolume } from '../par
 import { loadRadarBounds } from '../parsers/radar-echo-parser.js'
 import { computeSiteEchoTop, encodeEchoTopBinary, mergeSiteEchoTops, renderEchoTopRgba } from './echo-top-model.js'
 import { publishEchoTopFrame, readEchoTopMeta } from './echo-top-store.js'
-import { isDemoMode } from '../dev/demo-mode.js'
 
 const OUTPUT_WIDTH = 1600
 
@@ -165,7 +164,6 @@ export async function backfill(deps = {}) {
 
   let filled = 0
   for (const frameTm of pending) {
-    if (isDemoMode()) break
     const frameMs = tmToUtcMs(frameTm)
     // 아직 관측되지 않은 미래 프레임은 건너뛴다.
     if (!Number.isFinite(frameMs) || frameMs > requestedMs) continue

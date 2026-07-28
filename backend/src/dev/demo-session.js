@@ -1,41 +1,36 @@
 import config from '../config.js'
+import store from '../store.js'
 import { quiesceCollections } from '../index.js'
-import {
-  getEffectiveNow,
-  isDemoMode,
-  setDemoMode,
-  setDemoNow,
-} from './demo-mode.js'
-import {
-  RESERVED_LIVE_BACKUP,
-  discardLiveBackup,
-  hasLiveBackup,
-  inspectSnapshot,
-  loadSnapshot,
-  saveSnapshot,
-} from './snapshot-store.js'
+import { dataView } from './data-view.js'
+import { inspectSnapshot, saveSnapshot } from './snapshot-store.js'
 
 export function createDemoSession({
   basePath = config.storage.base_path,
-  clock = { getEffectiveNow, isDemoMode, setDemoMode, setDemoNow },
-  snapshots = {
-    discardLiveBackup,
-    hasLiveBackup,
-    inspectSnapshot,
-    loadSnapshot,
-    saveSnapshot,
-  },
+  activePath = config.storage.active_path,
+  views = dataView,
+  snapshots = { inspectSnapshot, saveSnapshot },
+  reloadActive = (root) => store.initActiveFromFiles(root),
   drain = quiesceCollections,
 } = {}) {
-  async function captureSnapshot(name) {
-    const wasOn = clock.isDemoMode()
-    if (!wasOn) clock.setDemoMode(true)
-    try {
-      await drain()
-      return snapshots.saveSnapshot(basePath, name)
-    } finally {
-      if (!wasOn) clock.setDemoMode(false)
+  let transitioning = false
+
+  function exclusive(action) {
+    if (transitioning) {
+      const error = new Error('demo_transition_in_progress')
+      error.code = 'demo_transition_in_progress'
+      throw error
     }
+    transitioning = true
+    try {
+      return action()
+    } finally {
+      transitioning = false
+    }
+  }
+
+  async function captureSnapshot(name) {
+    await drain()
+    return snapshots.saveSnapshot(basePath, name)
   }
 
   async function startDemo(name) {
@@ -48,88 +43,51 @@ export function createDemoSession({
       throw error
     }
 
-    const enteringFromLive = !clock.isDemoMode()
-    if (!enteringFromLive && !snapshots.hasLiveBackup(basePath)) {
-      const error = new Error('live_backup_missing')
-      error.code = 'live_backup_missing'
-      throw error
-    }
-    clock.setDemoMode(true)
-    try {
-      await drain()
-    } catch (error) {
-      // 스냅샷/실황 백업을 건드리기 전 drain 실패라면 고아 시연 플래그를
-      // 남기지 않는다. 이미 시연 중인 스냅샷 전환은 기존 백업 보호를 위해
-      // 계속 동결한다.
-      if (enteringFromLive) clock.setDemoMode(false)
-      throw error
-    }
-
-    if (enteringFromLive) {
-      snapshots.discardLiveBackup(basePath)
-      snapshots.saveSnapshot(basePath, RESERVED_LIVE_BACKUP)
-    }
-
-    let result
-    try {
-      result = snapshots.loadSnapshot(basePath, name, { skipBackup: true })
-      if (!result) {
-        const error = new Error('snapshot_not_found')
-        error.code = 'snapshot_not_found'
-        throw error
-      }
-      if (!result.referenceTime) {
-        const error = new Error('snapshot_reference_time_missing')
-        error.code = 'snapshot_reference_time_missing'
-        throw error
-      }
-    } catch (error) {
-      // 디렉터리 단위 교체 도중 I/O 오류가 나도 혼합 상태를 남기지 않도록,
-      // 수집은 계속 동결한 채 방금 캡처한 실황 백업으로 즉시 되감는다.
+    return exclusive(() => {
+      const before = views.current()
       try {
-        snapshots.loadSnapshot(basePath, RESERVED_LIVE_BACKUP, { skipBackup: true })
-      } catch (rollbackError) {
-        error.rollbackError = rollbackError
+        const context = views.activateDemo(name)
+        reloadActive(activePath)
+        return {
+          name,
+          on: true,
+          now: context.referenceTime,
+          referenceTime: context.referenceTime,
+          revision: context.revision,
+          restored: report.types,
+          inspection: report,
+        }
+      } catch (error) {
+        if (before.mode === 'live') views.activateLive()
+        else views.activateDemo(before.name)
+        reloadActive(activePath)
+        throw error
       }
-      throw error
-    }
-    clock.setDemoNow(result.referenceTime)
-    return {
-      ...result,
-      name,
-      on: true,
-      now: clock.getEffectiveNow().toISOString(),
-      inspection: report,
-    }
+    })
   }
 
   async function stopDemo() {
-    const had = snapshots.hasLiveBackup(basePath)
-    if (!had) {
-      clock.setDemoMode(false)
+    return exclusive(() => {
+      const context = views.activateLive()
+      reloadActive(activePath)
       return {
         on: false,
+        now: new Date().toISOString(),
+        revision: context.revision,
         restoredLiveBackup: false,
-        note: '되돌릴 실황 백업이 없어 시연 모드만 종료했습니다.',
+        note: '저장돼 있던 최신 실황 경로로 즉시 전환했습니다.',
       }
-    }
-    await drain()
-    const result = snapshots.loadSnapshot(basePath, RESERVED_LIVE_BACKUP, { skipBackup: true })
-    if (!result) throw new Error('live_backup_restore_failed')
-    clock.setDemoMode(false)
-    snapshots.discardLiveBackup(basePath)
-    return {
-      on: false,
-      restoredLiveBackup: true,
-      note: '스냅샷 직전 실황으로 즉시 복원하고 시연 모드를 종료했습니다.',
-    }
+    })
   }
 
   function status() {
+    const context = views.current()
     return {
-      on: clock.isDemoMode(),
-      now: clock.getEffectiveNow().toISOString(),
-      hasLiveBackup: snapshots.hasLiveBackup(basePath),
+      on: context.mode === 'demo',
+      name: context.name,
+      now: context.referenceTime || new Date().toISOString(),
+      revision: context.revision,
+      hasLiveBackup: false,
     }
   }
 

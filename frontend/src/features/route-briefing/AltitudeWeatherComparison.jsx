@@ -26,7 +26,9 @@ function warningMessages(row) {
   const items = []
   if (row.notams?.some((notam) => (notam.effect ?? notam.status) === 'undetermined')) items.push('NOTAM 판정 불가')
   if (row.timeStatus === 'not_provided') items.push('시간 판단 불가')
-  if (row.candidateStatus === 'input_invalid' || row.status === 'input_invalid') {
+  if (row.candidateStatus === 'input_only' || row.status === 'input_only') {
+    items.push('공표 고도 제약 미확인 · 입력 고도 기상만 표시')
+  } else if (row.candidateStatus === 'input_invalid' || row.status === 'input_invalid') {
     items.push('이 항로의 공표 고도 방향 규칙상 비교 대상 아님')
   } else if (row.weatherStatus === 'weather_unavailable') {
     items.push('KIM 고도 기상 자료가 없어 비교할 수 없음')
@@ -88,7 +90,7 @@ export default function AltitudeWeatherComparison({
         const altitudeFt = row.altFt ?? row.altitudeFt
         const status = row.candidateStatus ?? row.status
         const selected = altitudeFt === selectedAltitudeFt
-        const selectable = status === 'valid' && row.weatherStatus !== 'weather_unavailable'
+        const selectable = (status === 'valid' || status === 'input_only') && row.weatherStatus !== 'weather_unavailable'
         const warnings = warningMessages(row)
 
         const windKt = row.wind?.meanComponentKt ?? row.wind?.averageKt

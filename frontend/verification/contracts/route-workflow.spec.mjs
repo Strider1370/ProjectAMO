@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures.mjs'
 import { installRouteBriefingFixtures } from '../route-fixture.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
-async function openRouteBriefing(page, isMobile) {
+async function openRouteBriefing(page, isMobile, fixtureOptions) {
   // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
   // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
   // 소스의 상수를 그대로 쓴다.
@@ -12,7 +12,7 @@ async function openRouteBriefing(page, isMobile) {
   }, CURRENT_VERSION)
   // Precondition: route geometry is committed navdata; this installs deterministic
   // weather, terrain, altitude, and briefing responses because dev:test has none.
-  const exposureRequests = await installRouteBriefingFixtures(page)
+  const exposureRequests = await installRouteBriefingFixtures(page, fixtureOptions)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: isMobile ? '브리핑' : '비행 전 브리핑', exact: true }).click()
   return exposureRequests
@@ -30,7 +30,7 @@ async function setFlightRule(page, rule, isMobile) {
   await control.click()
 }
 
-async function completeWorkflow(page, rule, isMobile, { stopAtCompare = false, stopAtAltitude = false } = {}) {
+async function completeWorkflow(page, rule, isMobile, { stopAtCompare = false, stopAtAltitude = false, expectedAltitude = /^FL90/ } = {}) {
   await setFlightRule(page, rule, isMobile)
   await selectAirport(page, '출발', 'RKSS', isMobile)
   await selectAirport(page, '도착', 'RKPK', isMobile)
@@ -49,9 +49,9 @@ async function completeWorkflow(page, rule, isMobile, { stopAtCompare = false, s
 
   await page.getByRole('spinbutton', { name: '계획 순항고도 (ft)', exact: true }).fill('9000')
   await page.getByRole('button', { name: isMobile ? '고도 비교 실행' : '고도 비교', exact: true }).click()
-  const flightLevel = page.getByRole('button', { name: /^FL90/ })
-  await expect(flightLevel).toBeVisible()
-  await flightLevel.click()
+  const altitude = page.getByRole('button', { name: expectedAltitude })
+  await expect(altitude).toBeVisible()
+  await altitude.click()
   if (stopAtAltitude) return
   if (!isMobile) await page.getByRole('button', { name: '연직단면도 숨기고 지도 보기', exact: true }).click()
   await page.getByRole('button', { name: '브리핑 준비로', exact: true }).click()
@@ -68,6 +68,28 @@ test.describe('route-workflow', () => {
   test('VFR flight setup progresses through the same preparation workflow', async ({ page }, testInfo) => {
     await openRouteBriefing(page, testInfo.project.name === 'mobile')
     await completeWorkflow(page, 'VFR', testInfo.project.name === 'mobile')
+  })
+
+  test('a route without AIP airway segments still compares weather at the entered altitude', async ({ page }, testInfo) => {
+    const isMobile = testInfo.project.name === 'mobile'
+    await openRouteBriefing(page, isMobile, {
+      altitudeResponse: {
+        constraints: { status: 'not_applicable', routeFloorFt: null, routeCeilingFt: null },
+        rows: [{
+          altitudeFt: 9000,
+          label: '9,000 ft',
+          status: 'input_only',
+          weatherStatus: 'available',
+          wind: { averageKt: 12 },
+          icing: { summary: { status: 'available', highestGrade: 0 } },
+          turbulence: { summary: { status: 'available', highestGrade: 0 } },
+          hazards: [],
+          notams: [],
+        }],
+      },
+    })
+    await completeWorkflow(page, 'VFR', isMobile, { stopAtAltitude: true, expectedAltitude: /^9,000 ft/ })
+    await expect(page.getByText('공표 고도 제약 미확인 · 입력 고도 기상만 표시', { exact: true })).toBeVisible()
   })
 
   test('mobile opens the vertical profile as a full-screen sheet', async ({ page }, testInfo) => {

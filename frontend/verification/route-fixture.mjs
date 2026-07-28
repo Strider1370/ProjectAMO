@@ -149,7 +149,7 @@ const exposure = {
 
 // Contract precondition: the route is built from committed navdata; weather and terrain
 // requests below are deterministic so dev:test collection state cannot affect assertions.
-export async function installRouteBriefingFixtures(page) {
+export async function installRouteBriefingFixtures(page, { altitudeResponse = altitudeComparison } = {}) {
   const exposureRequests = { single: new Map(), batch: new Map() }
   const crossSectionRequests = { count: 0 }
   await page.route('**/api/briefing/route-exposure', (route) => {
@@ -165,7 +165,7 @@ export async function installRouteBriefingFixtures(page) {
     }
     return fulfill(route, { results: routes.map(({ id }) => ({ id, ...exposure })), snapshot: { id: 'route-fixture' } })
   })
-  await page.route('**/api/briefing/altitudes', (route) => fulfill(route, altitudeComparison))
+  await page.route('**/api/briefing/altitudes', (route) => fulfill(route, altitudeResponse))
   await page.route('**/api/vertical-profile', (route) => fulfill(route, profileFor(requestJson(route))))
   await page.route('**/api/briefing/cross-section', (route) => {
     crossSectionRequests.count += 1

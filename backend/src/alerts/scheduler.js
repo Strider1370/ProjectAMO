@@ -203,7 +203,7 @@ export function recompute(route) {
     sigmet: store.getCached('sigmet'), sigmetOverseas: store.getCached('sigmet_overseas'),
     airmet: store.getCached('airmet'), warning: store.getCached('warning'),
     amos: store.getCached('amos'), takeoff_fcst: store.getCached('takeoff_fcst'), notam: store.getCached('notam'),
-    dataRoot: storage.base_path, // composeBriefing이 enroute 단면 모델을 직접 로드(이전엔 여기서 사후 mutate)
+    dataRoot: storage.active_path, // 사용자와 같은 활성 실황/시연 뷰에서 단면을 읽는다.
     now: getEffectiveNow().getTime(), // 시연 모드면 스냅샷 기준시각으로 고정(실제 현재시각 아님)
   }
   const briefing = composeBriefing(request, data)

@@ -4,7 +4,6 @@ import https from 'https'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import config from '../config.js'
-import { isDemoMode } from '../dev/demo-mode.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -200,8 +199,7 @@ function normalizeState(ac) {
   };
 }
 
-async function process({ demoMode = isDemoMode, fetchPayload = () => fetchWithTimeout(buildUrl()) } = {}) {
-  if (demoMode()) return { type: 'adsb', skipped: true, reason: 'demo_mode' }
+async function process({ fetchPayload = () => fetchWithTimeout(buildUrl()) } = {}) {
   const dir = getAdsbDir();
   fs.mkdirSync(dir, { recursive: true });
 
@@ -227,7 +225,6 @@ async function process({ demoMode = isDemoMode, fetchPayload = () => fetchWithTi
     aircraft
   };
 
-  if (demoMode()) return { type: 'adsb', skipped: true, reason: 'demo_mode' }
   snapshot.content_hash = contentHash(snapshot);
   writeJson(path.join(dir, "latest.json"), snapshot);
 

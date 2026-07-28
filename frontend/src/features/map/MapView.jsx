@@ -1936,7 +1936,7 @@ const MapView = forwardRef(function MapView({
             ]}
             selectedCandidateAltitudeFt={routeBriefing.state.cruiseAltitudeFt}
             candidateAltitudes={(routeBriefing.state.altitudeComparison?.rows ?? [])
-              .filter((row) => (row.candidateStatus ?? row.status) === 'valid' && row.weatherStatus !== 'weather_unavailable')
+              .filter((row) => ['valid', 'input_only'].includes(row.candidateStatus ?? row.status) && row.weatherStatus !== 'weather_unavailable')
               .map((row) => Number(row.altFt ?? row.altitudeFt))}
             onSelectCandidateAltitude={isMobile ? routeBriefing.actions.selectCruiseAltitude : undefined}
             onSelectForecastHour={routeBriefing.actions.handleSelectForecastHour}

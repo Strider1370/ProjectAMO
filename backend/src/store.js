@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import config from './config.js'
+import { isLiveViewActive } from './dev/data-view.js'
 import { buildMetarTacPresentation } from './serializers/metar-tac.js'
 import { buildTafTacPresentation } from './serializers/taf-tac.js'
 import { annotateMetarTac, annotateTafTac } from './parsers/tac-annotation.js'
@@ -30,7 +31,8 @@ const FILE_PREFIX = {
   notam: 'NOTAM',
 }
 
-const cache = {
+function emptyCache() {
+  return {
   metar: { hash: null, prev_data: null },
   taf: { hash: null, prev_data: null },
   warning: { hash: null, prev_data: null },
@@ -52,7 +54,11 @@ const cache = {
   taf_overseas: { hash: null, prev_data: null },
   sigmet_overseas: { hash: null, prev_data: null },
   typhoon: { hash: null, prev_data: null },
+  }
 }
+
+const cache = emptyCache()
+const liveCache = emptyCache()
 
 // 이전 스냅샷은 파일을 고치지 않고 메모리에 올릴 때만 최신 TAC 표현 계약을 보강한다.
 // 화면은 항상 같은 구조화 토큰을 받고, 프런트엔드는 원문 문자열을 다시 해석하지 않는다.
@@ -224,12 +230,12 @@ export function canonicalHash(result) {
 
 function shouldSave(type, data) {
   const newHash = canonicalHash(data)
-  return { changed: cache[type].hash !== newHash, hash: newHash }
+  return { changed: liveCache[type].hash !== newHash, hash: newHash }
 }
 
 export function mergeWithPrevious(result, type, failedAirports) {
   if (!result || !result.airports || !Array.isArray(failedAirports) || failedAirports.length === 0) return result
-  const prev = cache[type].prev_data
+  const prev = liveCache[type].prev_data
   if (!prev || !prev.airports) return result
   for (const icao of failedAirports) {
     const prevAirport = prev.airports[icao]
@@ -246,16 +252,43 @@ export function updateCache(type, data, hash) {
   cache[type].prev_data = data
 }
 
+export function updateLiveCache(type, data, hash) {
+  hydrateTacPresentation(type, data)
+  liveCache[type].hash = hash
+  liveCache[type].prev_data = data
+}
+
 export function getCached(type) {
   return cache[type]?.prev_data ?? null
 }
 
-export function initFromFiles(basePath) {
+function resetCache(target) {
+  for (const type of TYPES) {
+    target[type].hash = null
+    target[type].prev_data = null
+  }
+}
+
+export function initActiveFromFiles(basePath) {
+  resetCache(cache)
   for (const type of TYPES) {
     const dir = getTypeDir(basePath, type)
     const latest = loadLatest(dir)
     if (latest) updateCache(type, latest, canonicalHash(latest))
   }
+}
+
+export function initLiveFromFiles(basePath) {
+  resetCache(liveCache)
+  for (const type of TYPES) {
+    const latest = loadLatest(getTypeDir(basePath, type))
+    if (latest) updateLiveCache(type, latest, canonicalHash(latest))
+  }
+}
+
+export function initFromFiles(basePath) {
+  initLiveFromFiles(basePath)
+  initActiveFromFiles(basePath)
 }
 
 export function save(type, data) {
@@ -275,8 +308,9 @@ export function save(type, data) {
       writeJson(latestPath, latest)
     }
     data.content_hash = decision.hash
-    updateCache(type, data, decision.hash)
-    return { saved: false, reason: 'unchanged' }
+      updateLiveCache(type, data, decision.hash)
+      if (isLiveViewActive()) updateCache(type, data, decision.hash)
+      return { saved: false, reason: 'unchanged' }
   }
 
   const prefix = FILE_PREFIX[type] || type.toUpperCase()
@@ -300,14 +334,16 @@ export function save(type, data) {
     cleanupSigwxLowTmfcFiles(dir, data?.tmfc, filename)
     cleanupSigwxLowOverlayFiles(dir)
   }
-  updateCache(type, data, decision.hash)
+  updateLiveCache(type, data, decision.hash)
+  if (isLiveViewActive()) updateCache(type, data, decision.hash)
   return { saved: true, filePath }
 }
 
-export { cache }
+export { cache, liveCache }
 
 export default {
   cache,
+  liveCache,
   ensureDirectories,
   saveAndUpdateLatest,
   rotateFiles,
@@ -316,6 +352,8 @@ export default {
   mergeWithPrevious,
   updateCache,
   getCached,
+  initActiveFromFiles,
+  initLiveFromFiles,
   initFromFiles,
   save,
 }
