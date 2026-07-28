@@ -152,6 +152,8 @@ const tafAdverseWeather = {
       message: `TAF ${params.lookahead_hours}시간 내 예보\n`
         + alerts.map((a) => `[${formatUtc(a.time)}] ${a.detail}`).join("\n"),
       data: alerts,
+      // fields는 계획 B(TAF 변화 알람 - 날씨/비행조건 막대 강조)를 위해 남겨둔 값이다.
+      // 지금은 소비하는 곳이 없다 — TafTimeline은 times만 쓴다.
       highlight: { panel: "taf", fields: highlightFields, times: highlightTimes },
     };
   },

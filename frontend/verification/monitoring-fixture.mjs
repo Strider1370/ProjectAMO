@@ -172,7 +172,8 @@ export async function installMonitoringFixture(page) {
   })
 
   await page.route('**/api/sigwx-low-history', (route) => {
-    fulfill(route, { content_hash: 'sigwx-history-001', data: {} })
+    // server.js:882의 readRecent()는 래핑 없는 배열을 돌려준다 — mock도 맞춰야 한다.
+    fulfill(route, [])
   })
 
   await page.route('**/api/sigwx-low-fronts', (route) => {

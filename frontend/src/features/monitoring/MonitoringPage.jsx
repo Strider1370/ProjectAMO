@@ -223,12 +223,10 @@ export default function MonitoringPage() {
       || dashboardMode === 'ground'
     if (paused) {
       wasPausedRef.current = true
-      // 지상 모드에서는 목록·반짝임·소리 모두 없다(스펙 §8). 판정만 멈추면
-      // 이미 떠 있던 알람이 그대로 남으므로 목록도 비운다.
-      if (dashboardMode === 'ground') {
-        setActiveAlerts([])
-        setValidAlertKeys(new Set())
-      }
+      // 지상 모드에서는 목록·반짝임·소리 모두 없다(스펙 §8) — 이건 렌더 쪽(§8 게이트)에서
+      // 막는다. 여기서 activeAlerts/validAlertKeys를 비우면 운항으로 돌아왔을 때
+      // 쿨다운에 걸린 조건은 재발화가 아니라서 목록이 최대 cooldown_seconds 동안
+      // 텅 비게 된다. 판정만 멈추고 이미 살아있는 알람은 그대로 둔다.
       return
     }
 
@@ -488,8 +486,10 @@ export default function MonitoringPage() {
 
   // 강조는 새 알람 창 안의 것만. 창 밖으로 나가면 요소는 평소 모습으로 돌아간다.
   // 동시에 여러 알람이 살아 있으면 각자의 칸이 각자의 심각도 색으로 깜빡인다(스펙 §7).
+  // 지도(mapPanel)는 모드와 무관하게 항상 그려지므로, 지상 모드에서는 여기서
+  // 강조 자체를 비운다 — activeAlerts를 그대로 둔 채로도 지도 링이 깜빡이지 않게 한다.
   const highlightMs = (settings?.dispatchers?.popup?.highlight_seconds ?? 60) * 1000
-  const highlighting = popupAlerts.filter(
+  const highlighting = dashboardMode === 'ground' ? [] : popupAlerts.filter(
     (alert) => alert.highlight && Date.now() - alert.timestamp < highlightMs
   )
 
@@ -501,7 +501,7 @@ export default function MonitoringPage() {
       if (alert.highlight.panel !== panel) continue
       for (const key of keyOf(alert.highlight)) {
         const before = out[key]
-        if (!before || SEVERITY_RANK[alert.severity] < SEVERITY_RANK[before]) {
+        if (!before || (SEVERITY_RANK[alert.severity] ?? Infinity) < (SEVERITY_RANK[before] ?? Infinity)) {
           out[key] = alert.severity
         }
       }
@@ -617,7 +617,7 @@ export default function MonitoringPage() {
 
   return (
     <>
-      {settings && (
+      {settings && dashboardMode !== 'ground' && (
         <>
           <AlertPanel alerts={popupAlerts} validKeys={validAlertKeys} onDismiss={handleDismissAlert} settings={settings.dispatchers.popup} />
           <AlertSound alerts={soundAlerts} settings={settings.dispatchers.sound} />

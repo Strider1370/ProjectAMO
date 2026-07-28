@@ -1381,7 +1381,7 @@ const MapView = forwardRef(function MapView({
 
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     syncLightningLayers(map, lightningLayerModel)
-    updateRangeRingHighlight(map, highlightRingRadiusKm, lightningBlinkOff, metVisibility.lightning && blinkLightning)
+    updateRangeRingHighlight(map, highlightRingRadiusKm, lightningBlinkOff, metVisibility.lightning)
   }, [lightningLayerModel, highlightRingRadiusKm, metVisibility.lightning, blinkLightning])
 
   // FIR 경계 틱(지오메트리 렌더 + moveend 재생성) — 스크롤 후 틱 이탈 방지.

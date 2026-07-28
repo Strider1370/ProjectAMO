@@ -19,21 +19,24 @@ export default function AlertPanel({ alerts, validKeys, onDismiss, settings }) {
   const highlightMs = (settings?.highlight_seconds ?? 60) * 1000;
   const maxVisible = settings?.max_visible ?? 6;
 
-  // 강조 창이 지나면 다시 그려 "새 알람"에서 빠지게 한다. 타이머 하나로 충분하다.
+  const now = Date.now();
+  const isNew = (alert) => now - alert.timestamp < highlightMs;
+
+  // 강조 창이 지나면 다시 그려 "새 알람"에서 빠지게 한다. 강조 중인 알람이 하나라도
+  // 있을 때만 돈다 — alerts.length로 걸면 강조가 다 끝난 뒤에도(며칠 켜져 있는
+  // 상황판이라) 초당 재렌더가 영원히 계속된다.
+  const hasOpenHighlight = alerts.some((alert) => isAlertValid(alert, validKeys) && isNew(alert));
   const [, setTick] = useState(0);
   useEffect(() => {
-    if (alerts.length === 0) return undefined;
+    if (!hasOpenHighlight) return undefined;
     const timer = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(timer);
-  }, [alerts.length]);
+  }, [hasOpenHighlight]);
 
   if (!settings?.enabled) return null;
 
   const live = alerts.filter((alert) => isAlertValid(alert, validKeys));
   if (live.length === 0) return null;
-
-  const now = Date.now();
-  const isNew = (alert) => now - alert.timestamp < highlightMs;
 
   // 초과분은 "오래된 것부터" 버린다(스펙 §7). 그래서 최신순으로 먼저 추린 뒤
   // 그 결과를 심각도순으로 세운다. 순서를 바꾸면 방금 뜬 낮은 등급 알람이 잘려 나간다.

@@ -3057,7 +3057,7 @@ body {
   gap: 0.75rem;
   padding: 0.35rem 0.75rem;
   background: var(--paper, #fff);
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid var(--line);
   font-size: clamp(18px, 1.7vw, 32px);
   pointer-events: auto;
 }

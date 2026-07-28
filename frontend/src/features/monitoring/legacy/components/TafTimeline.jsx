@@ -359,7 +359,11 @@ export default function TafTimeline({ tafData, icao, minimaSettings = null, vers
                 const hour = dateObj.getUTCHours();
                 const isFirst = i === 0;
                 const isNewDay = hour === 0;
-                if (hour % 3 === 0 || isFirst || isNewDay) {
+                // 3시간 눈금 밖 시각이라도 강조 대상이면 눈금을 만든다 — 안 그러면
+                // blinkClass가 매치할 요소가 없어 강조가 조용히 사라진다.
+                // ponytail: 강조를 시간 눈금에 붙인다. 날씨/비행조건 막대는 병합 그룹이라
+                // 시각→막대 대응표가 없다. 그 표가 생기면 막대 자체를 강조하는 것이 옳다.
+                if (hour % 3 === 0 || isFirst || isNewDay || blinkClass(displaySlot.time)) {
                   return (
                     <div key={i} className={`taf-scale-item${blinkClass(displaySlot.time)}`} style={{ left: `${(i / displaySlots.length) * 100}%` }}>
                       {(isFirst || isNewDay) && <span className="taf-scale-date">{dateObj.getUTCDate()}일</span>}
