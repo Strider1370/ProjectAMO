@@ -2,9 +2,49 @@
 
 - 작성일: 2026-07-27 (2026-07-28 TAF 변화 알람 통합)
 - 대상 화면: `/monitoring` (운항 모드)
-- 상태: 설계 확정, 구현 전
+- 상태: **§4~§9·§14~§17 구현 완료(계획 A, 2026-07-28). §10~§13 미구현(계획 B).**
 
 두 가지를 함께 다룬다. **알람을 어떻게 보여줄 것인가**(§4~§9)와 **TAF가 나빠졌을 때 알리는 새 알람**(§10~§13)이다. 두 작업은 같은 파일 여섯 개를 건드리고, 새 알람이 개편으로 만들어지는 알람 표 위에서만 성립하므로 하나의 스펙으로 묶는다.
+
+## 0. 계획 A 완료 상태 (2026-07-28)
+
+계획 B를 쓰기 전에 이 절을 먼저 읽는다. 설계 판단은 하나도 바뀌지 않았고, **실행하며 사실과 달라진 것만** 적는다.
+
+계획 A: [`docs/superpowers/plans/2026-07-28-monitoring-alert-display-redesign.md`](../plans/2026-07-28-monitoring-alert-display-redesign.md) — 커밋 13개, 단위 테스트 17개, 브라우저 계약 세 프로젝트 0 실패.
+
+### 끝난 것 / 남은 것
+
+| 절 | 상태 |
+|---|---|
+| §3 삭제·모바일 차단, §4~§9, §14~§17 | **완료** — 다시 하지 않는다 |
+| §10~§13 (TAF 변화 알람) | **미구현** — 계획 B의 범위 |
+| §16 브라우저 계약 앞 10개 항목 | **완료** |
+| §16 브라우저 계약 뒤 4개 항목 (TAF 악화·시간칸 강조·AMD 정렬·다음 TAF 교체) | **미구현** — 계획 B |
+
+### 계획 B가 새로 만들지 말고 **갖다 써야** 하는 것
+
+| 이미 있는 것 | 위치 | 계획 B에서 |
+|---|---|---|
+| `highlight` 필드 (§5 모양 그대로) | 각 트리거의 반환 객체 | 새 트리거 2종도 **반드시 실어야** 한다. TAF용은 `{ panel: 'taf', fields, times }` |
+| `highlight.fields` | 위와 같음 | **아직 아무도 읽지 않는다.** `TafTimeline`은 `times`만 본다. 계획 B가 요소별 강조를 원하면 소비처를 만들어야 한다 |
+| 하단 알람 표 | `.alert-table` · `.alert-table-row` · `.alert-table-row--new` | 계약이 이 이름으로 찾는다. 바꾸지 않는다 |
+| 요소 반짝임 | `.alert-outline-blink`(+`--warning`/`--info`) | 새 알람도 이 클래스를 쓴다 |
+| 알람 이력 (공항별 분리됨) | `clearResolvedAlerts(firedKeys, icao)` | **인자가 둘이다.** §12.7의 `issued` 포함 키(`taf_change:RKSI:<issued>`)는 이 정리 규칙과 호환된다 |
+| 저장분 정리 | `migratePersonalSettings(personal)` (`alert-settings.js`) | §14가 설정 2개를 더하므로 여기도 함께 본다 |
+
+### 계획 B가 반드시 손대야 하는데 스펙에 안 적힌 파일
+
+**`frontend/verification/monitoring-fixture.mjs`** — 브라우저 계약의 가짜 서버 응답이다. 계획 A 실행 중 **이 파일이 처음부터 실제 백엔드와 다른 모양이었음이 드러났다**(`/api/metar`·`/api/taf`를 `data:`로 mock했으나 실제는 `airports:`). 그래서 METAR/TAF 패널이 브라우저 계약에서 한 번도 렌더된 적이 없었다. 계획 A가 엔드포인트별로 실제 processor에 맞춰 바로잡았다.
+
+§11이 TAF에 `previous`를 더하므로 **계획 B는 이 픽스처의 TAF mock을 반드시 고쳐야 한다.** 고치지 않으면 §16의 TAF 계약 4개가 성립하지 않는다.
+
+남은 알려진 불일치 1건: `/api/sigwx-low-history` mock이 객체인데 실제 라우트(`server.js:882`)는 배열을 낸다. `Array.isArray` 가드가 있어 조용히 "이력 없음"으로 떨어진다.
+
+### 실행 중 확정된 동작 (스펙 문구를 보완한다)
+
+- **§6 강조 지속** — "조건이 이어지는 동안 재개하지 않는다"와 재알림 간격이 충돌했다. 사용자 결정: **스펙대로 처음 60초만 강조하고, 조건이 이어지는 동안 알람 줄은 표에 남되 다시 강조하지 않는다.**
+- **§8 지상 모드** — 판정을 멈추는 것만으로 부족해 **렌더 자체를 막는다.** 예시 알람도 지상 모드에서는 표에 그려지지 않는다. 단 소리 예시 **버튼**은 활성 그대로다(§14가 정한 대로).
+- **§6 지도 강조 생략 조건** — "낙뢰 레이어 꺼짐"만 해당한다. 낙뢰 **깜빡임 토글**은 별개 컨트롤이며 강조 여부와 무관하다.
 
 ## 1. 배경
 
@@ -369,14 +409,16 @@ taf.airports.RKSI = {
 
 값이 조금 나빠진 것까지 잡으면 소음이 된다. 아래 경계를 새로 넘을 때만 악화로 본다.
 
-| 요소 | 경계 | 근거 |
+| 요소 | 경계 | 근거 (`alert-triggers.js`) |
 |---|---|---|
-| 시정 | 500m 미만 | `alert-triggers.js:52` |
-| 운고 | 200ft 미만 | `alert-triggers.js:134` |
-| 바람 | 거스트 50kt 이상 | `alert-triggers.js:75` |
-| 특이기상 | TS 신규 등장 | `alert-triggers.js:176` |
+| 시정 | 500m 미만 | `lowVisibility`의 `severity` 분기 |
+| 운고 | 200ft 미만 | `lowCeiling`의 `severity` 분기 |
+| 바람 | 거스트 50kt 이상 | `highWind`의 `severity` 분기 |
+| 특이기상 | TS 신규 등장 | `tafAdverseWeather`의 `severity` 분기 |
 
 이 값들은 기존 트리거가 심각도를 `warning`에서 `critical`로 올릴 때 이미 쓰고 있는 경계다. 새 숫자를 만들지 않았다.
+
+> 줄 번호 대신 심볼 이름으로 적는다. 계획 A가 이 파일에서 `warning_issued`를 지우고 각 트리거에 `highlight`를 더하면서 줄이 크게 밀렸고, 앞으로도 밀린다. 2026-07-28 기준 실제 위치는 각각 `:18` · `:103` · `:42` · `:150`이다.
 
 ### 12.4 좋아진 경우
 
@@ -594,7 +636,16 @@ AMD는 유효기간이 직전과 같거나 짧은 것이 보통이므로 꼬리 
 
 ### 단위 테스트 — TAF 변화 (프런트, 신규 파일)
 
-알람 폴더에는 현재 테스트 파일이 없다. 실행기는 이미 있다(`frontend/package.json`의 `node --test`).
+알람 폴더에는 계획 A가 만든 테스트 파일 3개(테스트 17개)가 이미 있다 — `alert-triggers.test.js` · `alert-state.test.js` · `alert-settings.test.js`. 같은 자리에 파일을 더한다.
+
+> **실행 명령 주의 — 디렉터리 형식은 가짜 통과를 낸다.**
+> Node v22.23.1에서 `node --test <디렉터리>`는 `*.test.js`를 재귀 탐색하지 않는다. 디렉터리를 모듈 지정자로 보고 `index.js`를 임포트한 뒤 **그 임포트 성공을 "테스트 1개 통과"로 센다.** 실제 assertion은 0개다. 반드시 글로브 형식을 쓴다.
+>
+> ```bash
+> cd frontend && node --test src/features/monitoring/legacy/utils/alerts/*.test.js
+> ```
+>
+> 계획 A 실행 중 실측: 디렉터리 형식 → `# tests 1 # pass 1`, 글로브 형식 → `# tests 17 # pass 17`.
 
 | 확인 | 기대 |
 |---|---|
@@ -629,26 +680,37 @@ AMD는 유효기간이 직전과 같거나 짧은 것이 보통이므로 꼬리 
 
 ## 17. 영향 파일
 
-| 파일 | 변경 |
-|---|---|
-| `backend/src/processors/taf-processor.js` | `issued` 비교, `previous` 이동·유지, 취소 예외 |
-| `frontend/src/features/monitoring/legacy/utils/alerts/alert-triggers.js` | `warning_issued` 삭제, 나머지에 강조 대상 추가, TAF 변화 트리거 2종 추가 |
-| `frontend/src/features/monitoring/legacy/utils/alerts/alert-state.js` | 이력을 공항별로 분리, 새 트리거의 알람 키(`issued` 포함) |
-| `shared/alert-defaults.js` | `warning_issued`·자막 설정·`position` 삭제, 설정 키 변경, `max_visible` 기본 6, 새 트리거 2종 기본 설정 |
-| `frontend/src/features/monitoring/legacy/utils/alerts/alert-settings.js` | 저장된 개인 설정 1회 정리 |
-| `frontend/src/app/App.jsx` | 모바일 폭에서 `/monitoring` 진입 차단 |
-| `frontend/src/features/monitoring/MonitoringPage.jsx` | 강조 대상 분배, 지상 모드 정지, 평가 기준 리셋, 예시 3건 교체·자막 예시 경로 삭제 (`isMobileLayout`은 손대지 않음) |
-| `frontend/src/features/monitoring/legacy/components/alerts/AlertPanel.jsx` | 표 형식으로 재작성 |
-| `frontend/src/features/monitoring/legacy/components/alerts/AlertMarquee.jsx` | **삭제** |
-| `frontend/src/features/monitoring/legacy/components/MetarCard.jsx` | 강조 대상 수신·표시 |
-| `frontend/src/features/monitoring/legacy/components/TafTimeline.jsx` | 강조 대상 수신·표시 |
-| `frontend/src/features/monitoring/MonitoringMap.jsx`, `frontend/src/features/map/MapView.jsx` | 링 강조 |
-| `frontend/src/features/monitoring/legacy/components/alerts/Settings.jsx` | 설정 항목 정리, 자막 예시 버튼 삭제, 지상 모드 시 예시 버튼 비활성화, 새 트리거 항목 2개 |
-| `frontend/src/features/monitoring/legacy/App.css` | 표·강조 스타일, 자막 CSS 삭제 |
-| `frontend/src/features/monitoring/legacy/utils/alerts/alert-triggers.test.js` | 신규 — TAF 변화 판정 |
-| `backend/test/taf-processor.test.js` | 신규 또는 기존에 추가 — `previous` 보관 |
-| `frontend/verification/contracts/monitoring.spec.mjs` | 계약 추가·수정 |
-| `docs/policies/verification/contracts.md` | 계약 통과일 갱신, `monitoring` 행의 "mobile uses a different task UI" 비고를 모바일 차단으로 정정 |
+✅ = 계획 A에서 완료 · ⬜ = 계획 B에서 할 일
+
+| 파일 | 변경 | 상태 |
+|---|---|---|
+| `backend/src/processors/taf-processor.js` | `issued` 비교, `previous` 이동·유지, 취소 예외 | ⬜ |
+| `frontend/src/features/monitoring/legacy/utils/alerts/alert-triggers.js` | `warning_issued` 삭제, 나머지에 강조 대상 추가 | ✅ |
+| 〃 | TAF 변화 트리거 2종 추가 | ⬜ |
+| `frontend/src/features/monitoring/legacy/utils/alerts/alert-state.js` | 이력을 공항별로 분리 | ✅ |
+| 〃 | 새 트리거의 알람 키(`issued` 포함) | ⬜ |
+| `shared/alert-defaults.js` | `warning_issued`·자막 설정·`position` 삭제, 설정 키 변경, `max_visible` 기본 6 | ✅ |
+| 〃 | 새 트리거 2종 기본 설정 | ⬜ |
+| `frontend/src/features/monitoring/legacy/utils/alerts/alert-settings.js` | 저장된 개인 설정 1회 정리 (`migratePersonalSettings`) | ✅ |
+| `frontend/src/app/App.jsx` | 모바일 폭에서 `/monitoring` 진입 차단 | ✅ |
+| `frontend/src/features/monitoring/MonitoringPage.jsx` | 강조 대상 분배, 지상 모드 정지, 평가 기준 리셋, 예시 3건 교체·자막 예시 경로 삭제 (`isMobileLayout`은 손대지 않음) | ✅ |
+| `frontend/src/features/monitoring/legacy/components/alerts/AlertPanel.jsx` | 표 형식으로 재작성 | ✅ |
+| `frontend/src/features/monitoring/legacy/components/alerts/AlertMarquee.jsx` | **삭제** | ✅ |
+| `frontend/src/features/monitoring/legacy/components/MetarCard.jsx` | 강조 대상 수신·표시 (`highlightFields`) | ✅ |
+| `frontend/src/features/monitoring/legacy/components/TafTimeline.jsx` | 강조 대상 수신·표시 (`highlightTimes`) | ✅ |
+| `frontend/src/features/monitoring/MonitoringMap.jsx`, `frontend/src/features/map/MapView.jsx` | 링 강조 | ✅ |
+| `frontend/src/features/monitoring/legacy/components/alerts/Settings.jsx` | 설정 항목 정리, 자막 예시 버튼 삭제, 지상 모드 시 예시 버튼 비활성화 | ✅ |
+| 〃 | 새 트리거 항목 2개 | ⬜ |
+| `frontend/src/features/monitoring/legacy/App.css` | 표·강조 스타일, 자막 CSS 삭제 | ✅ |
+| `frontend/.../alerts/alert-triggers.test.js` | 신규 — 강조 대상 판정 (7건) | ✅ |
+| 〃 | TAF 변화 판정 테스트 | ⬜ |
+| `frontend/.../alerts/alert-state.test.js`, `alert-settings.test.js` | 신규 — 이력 분리(4건), 저장분 정리(6건) | ✅ |
+| `backend/test/taf-processor.test.js` | 신규 또는 기존에 추가 — `previous` 보관 | ⬜ |
+| **`frontend/verification/monitoring-fixture.mjs`** | 실제 백엔드 응답 모양에 맞춰 mock 교정 (§0 참조) | ✅ |
+| 〃 | TAF mock에 `previous` 추가 | ⬜ |
+| `frontend/verification/contracts/monitoring.spec.mjs` | 알람 표·강조·지상 모드·모바일 리디렉션 계약 | ✅ |
+| 〃 | TAF 변화 계약 4건 | ⬜ |
+| `docs/policies/verification/contracts.md` | 계약 통과일 갱신, `monitoring` 행 비고 정정 | ✅ |
 
 ## 18. 기존 코드와의 관계
 
