@@ -39,8 +39,8 @@
 
 | 대상 | 사유 |
 |---|---|
-| `warning_issued` 트리거 | 공항경보 패널과 중복 |
-| `warning_cleared` 트리거 | 위와 동일. 더불어 해제 판정 구조상 항상 "해제됨"으로 표시되는 결함이 있었다 |
+| `warning_issued` 트리거 | 공항경보 패널과 중복. 경보 관련 트리거는 이 하나뿐이며 별도의 해제 트리거는 존재하지 않는다 |
+| `position` 설정 키 (`dispatchers.popup.position`, 기본 `"top-right"`) | 알람 표가 하단 전폭 고정이 되어 위치 선택이 성립하지 않는다 |
 | `AlertMarquee.jsx` 및 관련 CSS | 하단 알람 목록이 같은 자리에서 대체 |
 | 자막 설정 키 4개 (`marquee.enabled`, `min_severity`, `speed`, `show_duration_seconds`) | 자막 삭제에 수반 |
 
@@ -57,7 +57,25 @@
 
 - 알람 이력 보기 (해소된 알람 되짚기)
 - 알람 확인(acknowledge)
-- 모바일(<=719px) — 모니터링 모바일은 별도 task UI이며 벽걸이와 무관. **모바일 레이아웃에서는 하단 알람 표를 렌더링하지 않는다.** 요소 반짝임과 소리는 그대로 둔다
+- 모바일 화면에 맞춘 알람 표시 — 아래 "모바일 차단" 참조. 맞출 대상이 사라진다
+
+### 모바일 차단
+
+`/monitoring`은 벽걸이 전용 화면이다. 모바일 폭(<=719px)에서는 **페이지 진입 자체를 막고 메인 화면(`/`)으로 되돌린다.** 현재는 `App.jsx`가 경로만 보고 바로 띄우므로 가드가 없다.
+
+```
+/monitoring 진입
+  → 폭 <= 719px 이면 window.location.replace('/')
+  → 아니면 평소대로 MonitoringPage
+```
+
+판정 기준은 이 프로젝트가 이미 쓰는 719px 브레이크포인트를 그대로 쓴다. 기기 종류가 아니라 창 폭으로 판정하므로, 데스크톱에서 창을 좁혀도 되돌아간다. 벽걸이 용도에서는 문제가 되지 않는다.
+
+안내 문구 없이 조용히 되돌린다. 상황판은 운영자가 주소를 직접 아는 화면이고, 모바일 사용자에게는 설명할 맥락이 없다.
+
+**차단은 진입 가드 한 곳에서만 한다. 이미 만들어 둔 모바일 대응 코드는 지우지 않는다.** `MonitoringPage`의 `isMobileLayout`과 그에 딸린 분기는 당분간 도달하지 않지만, 나중에 모바일 상황판을 열 수 있으므로 그대로 둔다. 가드를 푸는 것만으로 되살아나야 한다.
+
+이 결정으로 이번 개편에서 알람 표시의 모바일 예외를 새로 설계할 필요는 없어진다.
 
 ## 4. 구조
 
@@ -132,6 +150,8 @@ TAF 악기상  → { panel: 'taf', fields: ['visibility'|'weather'], times: [...
 
 화면 최하단 전폭. 실측 결과 현재 이 영역(화면 높이의 약 22%)은 비어 있어 **콘텐츠를 가리지 않는다.** 아래에 고정되어 위로 자란다.
 
+**전체화면 슬라이드쇼보다 위에 그린다.** 슬라이드 오버레이는 `.monitoring-slide-overlay--whole-screen`이 `position: fixed; z-index: 900`으로 화면을 덮는다(`MonitoringPage.css`). 현재 자막 바가 `z-index: 9998`로 그 위에 있고, 알람 표가 이 층위를 그대로 물려받는다. 이 값을 낮추면 슬라이드쇼를 켜놓은 벽걸이 화면에서 알람이 보이지 않는다.
+
 ### 골격
 
 ```
@@ -195,7 +215,8 @@ px는 55인치 1920px 화면 기준 환산값이다. 실제 구현은 컨테이�
 ### 삭제
 
 - 하단 알림 바 표시 / 최소 심각도 / 속도, 자막 예시 버튼
-- 공항경보 발령 알림 / 해제 알림 항목
+- 공항경보 발령 알림 항목
+- 팝업 위치(`position`) — 설정창에 노출된 항목이 있으면 함께 제거
 
 ### 이름 변경
 
@@ -206,9 +227,72 @@ px는 55인치 1920px 화면 기준 환산값이다. 실제 구현은 컨테이�
 
 `max_visible` 기본값을 5에서 6으로 조정한다.
 
+### 이미 저장된 개인 설정
+
+설정은 `localStorage`의 `aviation-weather-alert-settings`에 개인 override로 저장되고, `resolveSettings()`가 기본값 위에 깊은 병합한다(`alert-settings.js`). 따라서 **기본값만 바꾸면 이미 값을 저장한 사용자에게는 아무 일도 일어나지 않는다.** 저장분을 한 번 정리한다.
+
+| 저장된 키 | 처리 |
+|---|---|
+| `dispatchers.popup.auto_dismiss_seconds` | `highlight_seconds`로 **값을 옮긴다.** 기존에 10초를 쓰던 사용자는 새 기본값 60초를 받는다 — 10초는 팝업이 사라지는 시간이었고 새 값은 강조가 유지되는 시간이라 의미가 다르므로, 옮기되 **10 이하의 값은 60으로 올린다** |
+| `dispatchers.popup.max_visible` | 저장값이 5(구 기본값)이면 6으로 올린다. 사용자가 일부러 고른 다른 값은 그대로 둔다 |
+| `dispatchers.popup.position` | 삭제 |
+| `dispatchers.marquee.*` | 삭제 |
+| `triggers.warning_issued` | 삭제 |
+
+정리는 저장분을 읽을 때 1회 수행하고 그 결과를 다시 저장한다. 정리 후에는 삭제된 키가 브라우저에 남지 않는다. 정리 도중 예외가 나면 개인 설정을 통째로 버리지 말고 기본값으로 동작한다 — 알람이 뜨는 것이 개인 설정을 지키는 것보다 중요하다.
+
 ### 유지
 
 알람 전체 켜기/끄기, 방해금지 시간, 재알림 간격, 소리 켜기/끄기·음량, 알람 6종 각각의 켜기/끄기와 임계값.
+
+### 예시 버튼
+
+설정창의 각 알림 방식 행에는 **예시** 버튼이 붙어 있다(`renderDispatcherRow`). 자막 삭제로 3개에서 2개가 된다.
+
+| 버튼 | 남김 여부 |
+|---|---|
+| 알람 목록 표시 (기존 "팝업 사용") | 유지 — 내용 전면 교체 |
+| 소리 사용 | 유지 — 동작 그대로 |
+| 하단 알림 바 표시 | **삭제** |
+
+예시 알람은 실제 알람과 같은 목록·같은 표시 규칙을 통과한다. 그래야 예시가 예시 구실을 한다. 판정을 거치지 않고 직접 만들어 넣으므로 `alertKey`가 없고, 따라서 조건 해소에 의한 자동 제거가 걸리지 않는다. 대신 아래의 수명으로 스스로 사라진다.
+
+#### 목록 예시가 보여줄 것
+
+교체 후 예시 3건은 **남는 알람 6종 중에서** 고른다. 삭제되는 공항경보를 예시로 보여주면 존재하지 않는 알람을 광고하게 된다.
+
+| 순서 | 알람 | 심각도 | 강조 대상 |
+|---|---|---|---|
+| 1 | 낙뢰 감지 | 높음 | `{ panel: 'map', zone: 'alert' }` |
+| 2 | METAR 저시정 | 중간 | `{ panel: 'metar', field: 'visibility' }` |
+| 3 | TAF 악기상 | 낮음 | `{ panel: 'taf', fields: ['visibility'], times: [...] }` |
+
+기존과 같이 0.6초 간격으로 순차 발동한다. 이 순서는 의도적이다.
+
+- 심각도가 **내림차순**이므로 마지막에 뜬 3번이 목록 맨 아래에 들어간다. §7의 "채운 줄이 맨 위가 아닐 수 있다"가 예시에서 그대로 재현된다
+- 3건이 동시에 살아 있어도 **색으로 채운 줄은 3번 하나뿐**임이 눈으로 확인된다
+- 강조 대상이 METAR·TAF·지도 세 곳으로 갈려, 요소 반짝임이 어디에 붙는지 한 번에 보인다
+
+문구는 실제 트리거가 낼 법한 형식을 따르되, 예시임이 드러나야 한다. 판정 임계값을 설정창에서 바꿔도 예시 문구의 수치는 따라가지 않는다 — 예시는 표시 형식을 보여주는 것이지 판정을 흉내 내는 것이 아니다.
+
+#### 예시의 수명
+
+- 강조(채운 줄 + 요소 반짝임)는 설정된 `highlight_seconds` **실값**을 그대로 쓴다. 사용자가 값을 바꿔 가며 확인하는 것이 이 설정의 유일한 확인 수단이다
+- 강조가 끝나고 **10초** 뒤 목록에서 스스로 빠진다. 예시는 조건 해소 판정이 없으므로 이 시각 제거가 유일한 정리 경로다
+- `×` 버튼으로 언제든 즉시 지울 수 있다
+- 소리 예시는 목록에 줄을 만들되 강조 대상이 없고, 재생이 끝나면 즉시 사라진다(수 초). 벽걸이 표에 소리 예시 줄이 오래 남지 않는다
+
+#### 요소 반짝임 예시
+
+예시 알람도 강조 대상을 싣고 있으므로 실제 METAR 칸·TAF 시간칸·지도 링이 깜빡인다. 설정 모달이 화면을 덮고 있는 동안에는 그 칸이 가려 보이지 않는데, **§6의 "대상을 표시할 수 없을 때 생략" 규칙을 그대로 적용한다. 별도 처리를 두지 않는다.** 강조 시간이 기본 60초이므로 모달을 닫으면 남은 시간 동안 보인다.
+
+#### 지상 모드
+
+지상 모드에서는 알람 판정 자체가 멈춰 있다(§8). **목록 예시 버튼을 비활성화**하고 왜 눌리지 않는지 한 줄로 알린다. 예시는 판정을 우회하므로, 막지 않으면 알람이 없어야 할 화면에 알람이 뜬다.
+
+소리 예시는 지상 모드에서도 그대로 둔다. §8이 막는 것은 판정이 만들어 내는 알람이고, 소리 예시는 사용자가 직접 눌러 음량을 확인하는 동작이다. 지상 모드에서 미리 음량을 맞춰 두는 것이 오히려 정상적인 사용이다.
+
+모바일은 페이지에 들어올 수 없으므로(§3) 별도 처리가 필요 없다.
 
 ## 11. 오류 처리
 
@@ -229,14 +313,20 @@ px는 55인치 1920px 화면 기준 환산값이다. 실제 구현은 컨테이�
 - 조건이 해소되면 자동으로 제거되는가
 - 저시정 알람 발동 시 METAR 시정 칸에 강조가 붙는가
 - 지상 모드에서 알람이 표시되지 않는가
+- 목록 예시 버튼을 누르면 3건이 뜨고, 그중 색으로 채운 줄이 1건인가
+- 지상 모드에서 목록 예시 버튼이 비활성화되는가
+- 모바일 폭에서 `/monitoring`에 들어가면 메인 화면으로 되돌아가는가
+- 전체화면 슬라이드쇼가 켜져 있어도 알람 표가 그 위에 보이는가
 
 ### 단위 테스트
 
 각 트리거가 올바른 강조 대상을 반환하는가. 낙뢰는 최근접 거리에 따라 `alert`/`danger`/`caution` 중 맞는 구역을 반환하는가.
 
+저장된 개인 설정 정리가 올바른가 — `auto_dismiss_seconds` 10 이하는 60이 되고 그보다 큰 값은 보존되는가, `max_visible` 5는 6이 되고 다른 값은 보존되는가, 삭제 대상 키가 남지 않는가, 깨진 저장분에서 예외 없이 기본값으로 떨어지는가.
+
 ### 기존 테스트 수정
 
-`monitoring` 계약에서 자막 바 체크박스를 확인하는 부분을 제거한다.
+`monitoring` 계약에서 자막 바 체크박스를 확인하는 부분을 제거한다. 자막 예시 버튼을 확인하는 부분이 있으면 함께 제거한다.
 
 ## 13. 영향 파일
 
@@ -244,14 +334,16 @@ px는 55인치 1920px 화면 기준 환산값이다. 실제 구현은 컨테이�
 |---|---|
 | `frontend/src/features/monitoring/legacy/utils/alerts/alert-triggers.js` | 경보 2종 삭제, 나머지에 강조 대상 추가 |
 | `frontend/src/features/monitoring/legacy/utils/alerts/alert-state.js` | 이력을 공항별로 분리 |
-| `shared/alert-defaults.js` | 경보 2종·자막 설정 삭제, 설정 키 변경 |
-| `frontend/src/features/monitoring/MonitoringPage.jsx` | 강조 대상 분배, 지상 모드 정지, 평가 기준 리셋 |
+| `shared/alert-defaults.js` | `warning_issued`·자막 설정·`position` 삭제, 설정 키 변경, `max_visible` 기본 6 |
+| `frontend/src/features/monitoring/legacy/utils/alerts/alert-settings.js` | 저장된 개인 설정 1회 정리 |
+| `frontend/src/app/App.jsx` | 모바일 폭에서 `/monitoring` 진입 차단 |
+| `frontend/src/features/monitoring/MonitoringPage.jsx` | 강조 대상 분배, 지상 모드 정지, 평가 기준 리셋, 예시 3건 교체·자막 예시 경로 삭제 (`isMobileLayout`은 손대지 않음) |
 | `frontend/src/features/monitoring/legacy/components/alerts/AlertPanel.jsx` | 표 형식으로 재작성 |
 | `frontend/src/features/monitoring/legacy/components/alerts/AlertMarquee.jsx` | **삭제** |
 | `frontend/src/features/monitoring/legacy/components/MetarCard.jsx` | 강조 대상 수신·표시 |
 | `frontend/src/features/monitoring/legacy/components/TafTimeline.jsx` | 강조 대상 수신·표시 |
 | `frontend/src/features/monitoring/MonitoringMap.jsx`, `frontend/src/features/map/MapView.jsx` | 링 강조 |
-| `frontend/src/features/monitoring/legacy/components/alerts/Settings.jsx` | 설정 항목 정리 |
+| `frontend/src/features/monitoring/legacy/components/alerts/Settings.jsx` | 설정 항목 정리, 자막 예시 버튼 삭제, 지상 모드 시 예시 버튼 비활성화 |
 | `frontend/src/features/monitoring/legacy/App.css` | 표·강조 스타일, 자막 CSS 삭제 |
 | `frontend/verification/contracts/monitoring.spec.mjs` | 계약 추가·수정 |
-| `docs/policies/verification/contracts.md` | 계약 통과일 갱신 |
+| `docs/policies/verification/contracts.md` | 계약 통과일 갱신, `monitoring` 행의 "mobile uses a different task UI" 비고를 모바일 차단으로 정정 |
