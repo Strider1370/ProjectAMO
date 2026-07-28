@@ -255,8 +255,8 @@ function formatTafRange(start, end, tz) {
 }
 
 export default function TafTimeline({ tafData, icao, minimaSettings = null, version = "v2", onVersionToggle, tz = "UTC", mobileLayout = false, highlightTimes = {} }) {
-  const blinkClass = (time) => {
-    const severity = highlightTimes[time];
+  // 심각도 → 외곽선 클래스. critical은 기본색(빨강)이라 수식 클래스가 없다.
+  const outlineClass = (severity) => {
     if (!severity) return "";
     return severity === "critical"
       ? " alert-outline-blink"
@@ -341,6 +341,22 @@ export default function TafTimeline({ tafData, icao, minimaSettings = null, vers
     const ceilingGroups = groupElementsByValue(displaySlots, (displaySlot) => String(displaySlot.ceiling ?? "null"));
     const visibilityGroups = groupElementsByValue(displaySlots, (displaySlot) => String(displaySlot.visibilityValue ?? "null"));
 
+    // 강조 대상 시각을 덮는 막대에 외곽선을 준다. 시간 눈금 글자에 두르면 눈금이
+    // 몰린 구간에서 테두리끼리 겹쳐 뭉개지고, 4m 거리에서 무엇을 가리키는지 읽히지 않는다.
+    // 막대는 여러 시간을 묶지만 startIndex·hourCount가 있어 덮는 시각을 그대로 알 수 있다.
+    // 한 시간대가 걸리면 다섯 줄을 함께 강조한다 — "이 시간대가 문제"가 멀리서 보여야 한다.
+    const SEVERITY_RANK = { critical: 0, warning: 1, info: 2 };
+    const blinkGroup = (group) => {
+      let worst = null;
+      const end = group.startIndex + group.hourCount;
+      for (let i = group.startIndex; i < end; i += 1) {
+        const severity = highlightTimes[displaySlots[i]?.time];
+        if (!severity) continue;
+        if (!worst || (SEVERITY_RANK[severity] ?? 2) < (SEVERITY_RANK[worst] ?? 2)) worst = severity;
+      }
+      return outlineClass(worst);
+    };
+
     return (
       <section className="taf-new-panel">
         <div className="taf-new-header">
@@ -359,13 +375,9 @@ export default function TafTimeline({ tafData, icao, minimaSettings = null, vers
                 const hour = dateObj.getUTCHours();
                 const isFirst = i === 0;
                 const isNewDay = hour === 0;
-                // 3시간 눈금 밖 시각이라도 강조 대상이면 눈금을 만든다 — 안 그러면
-                // blinkClass가 매치할 요소가 없어 강조가 조용히 사라진다.
-                // ponytail: 강조를 시간 눈금에 붙인다. 날씨/비행조건 막대는 병합 그룹이라
-                // 시각→막대 대응표가 없다. 그 표가 생기면 막대 자체를 강조하는 것이 옳다.
-                if (hour % 3 === 0 || isFirst || isNewDay || blinkClass(displaySlot.time)) {
+                if (hour % 3 === 0 || isFirst || isNewDay) {
                   return (
-                    <div key={i} className={`taf-scale-item${blinkClass(displaySlot.time)}`} style={{ left: `${(i / displaySlots.length) * 100}%` }}>
+                    <div key={i} className="taf-scale-item" style={{ left: `${(i / displaySlots.length) * 100}%` }}>
                       {(isFirst || isNewDay) && <span className="taf-scale-date">{dateObj.getUTCDate()}일</span>}
                       <span className="taf-scale-hour">{hour}시</span>
                     </div>
@@ -392,7 +404,7 @@ export default function TafTimeline({ tafData, icao, minimaSettings = null, vers
                 return (
                   <div
                     key={i}
-                    className={getSegmentClassName("taf-new-seg--flight", density)}
+                    className={`${getSegmentClassName("taf-new-seg--flight", density)}${blinkGroup(group)}`}
                     style={{
                       width: `${group.width}%`,
                       backgroundColor: FC_COLORS[group.value] || FC_COLORS.VFR,
@@ -418,11 +430,11 @@ export default function TafTimeline({ tafData, icao, minimaSettings = null, vers
                 return (
                   <div
                     key={i}
-                    className={getSegmentClassName(
+                    className={`${getSegmentClassName(
                       "taf-new-seg--weather",
                       density,
                       `${group.data.isSpecialWeather ? " taf-new-seg--special-weather" : ""}${precipitationWeather ? " taf-new-seg--precip-weather" : ""}`
-                    )}
+                    )}${blinkGroup(group)}`}
                     style={{ width: `${group.width}%`, ...getWeatherStyle(precipitationWeather) }}
                     title={weatherLabel}
                   >
@@ -442,7 +454,7 @@ export default function TafTimeline({ tafData, icao, minimaSettings = null, vers
                 return (
                   <div
                     key={i}
-                    className={getSegmentClassName("taf-new-seg--wind", density, group.data.highWind ? " taf-new-seg--wind-alert" : "")}
+                    className={`${getSegmentClassName("taf-new-seg--wind", density, group.data.highWind ? " taf-new-seg--wind-alert" : "")}${blinkGroup(group)}`}
                     style={{ width: `${group.width}%`, ...WIND_STYLE }}
                     title={`${group.data.wind?.direction ?? "VRB"}° ${group.data.windText}`}
                   >
@@ -467,7 +479,7 @@ export default function TafTimeline({ tafData, icao, minimaSettings = null, vers
                 return (
                   <div
                     key={i}
-                    className={getSegmentClassName("taf-new-seg--tint", density, getVisibilitySegmentExtraClass(density))}
+                    className={`${getSegmentClassName("taf-new-seg--tint", density, getVisibilitySegmentExtraClass(density))}${blinkGroup(group)}`}
                     style={{ width: `${group.width}%`, ...group.data.visibilityStyle }}
                     title={visibilityText}
                   >
@@ -486,7 +498,7 @@ export default function TafTimeline({ tafData, icao, minimaSettings = null, vers
                 return (
                   <div
                     key={i}
-                    className={getSegmentClassName("taf-new-seg--tint", density)}
+                    className={`${getSegmentClassName("taf-new-seg--tint", density)}${blinkGroup(group)}`}
                     style={{ width: `${group.width}%`, ...group.data.ceilingStyle }}
                     title={group.data.ceilingText}
                   >

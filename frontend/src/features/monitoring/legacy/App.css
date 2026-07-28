@@ -3052,7 +3052,9 @@ body {
 .alert-table-row {
   --alert-level-color: var(--level-gray);
   display: grid;
-  grid-template-columns: 6px 4.5rem 1fr auto auto;
+  /* 등급 칸을 em으로 잡는다. rem(고정 72px)로 두면 글자가 화면 폭에 따라 46px까지
+     커질 때 "위험"이 칸을 뚫고 나와 잘린다 — 1920px에서 실측: 필요 80px vs 칸 72px. */
+  grid-template-columns: 6px 2.6em 1fr auto auto;
   align-items: center;
   gap: 0.75rem;
   padding: 0.35rem 0.75rem;
