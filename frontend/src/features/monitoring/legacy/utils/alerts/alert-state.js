@@ -27,6 +27,12 @@ export function buildAlertKey(result, icao) {
     return `${triggerId}:${icao}`;
   }
 
+  if (triggerId === "taf_change" || triggerId === "taf_new_period") {
+    // 발표마다 별개의 알람이 되어 재알림 간격이 새 발표를 가로막지 않는다(스펙 §12.7).
+    // 새 TAF가 오면 키가 바뀌어 옛 줄이 유효 목록에서 빠지고 교체된다.
+    return `${triggerId}:${icao}:${result.issued ?? ""}`;
+  }
+
   if (triggerId === "lightning_detected") {
     const newest = data?.newStrikes?.[0]?.time || "";
     return `${triggerId}:${icao}:${newest}`;

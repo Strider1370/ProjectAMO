@@ -6,6 +6,8 @@ import triggers from "./alert-triggers.js";
  * @param {object} currentData   - { metar, taf, warning, lightning } 현재 공항 데이터
  * @param {object} previousData  - { metar, taf, warning, lightning } 이전 공항 데이터 (없으면 null)
  * @param {object} settings      - resolveSettings() 결과
+ * 네 번째 인자로 전체 트리거 설정을 넘긴다. TAF 변화 알람이 다른 트리거의 임계값을
+ * 그대로 읽어 쓰기 때문이다(스펙 §12.1). 기존 6종은 이 인자를 쓰지 않는다.
  * @returns {Array} 발동된 트리거 결과 배열
  */
 export function evaluate(currentData, previousData, settings) {
@@ -35,7 +37,7 @@ export function evaluate(currentData, previousData, settings) {
     if (!current) continue;
 
     try {
-      const result = trigger.evaluate(current, previous, triggerSettings.params);
+      const result = trigger.evaluate(current, previous, triggerSettings.params, settings.triggers);
       if (result) {
         results.push(result);
       }

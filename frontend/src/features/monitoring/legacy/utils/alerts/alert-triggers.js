@@ -1,4 +1,6 @@
 import { formatUtc } from "../helpers.js";
+import { collectThresholds } from "./taf-risk.js";
+import { findWorsening, findTailRisk } from "./taf-change.js";
 
 function strikeKey(s) {
   return `${s.time}:${s.lon}:${s.lat}:${s.type}`;
@@ -218,12 +220,140 @@ const lightningDetected = {
   },
 };
 
+const FIELD_LABEL = {
+  visibility: "시정",
+  weather: "특이기상",
+  ceiling: "운고",
+  wind: "바람",
+};
+
+const RANK = { info: 0, warning: 1, critical: 2 };
+const BY_RANK = ["info", "warning", "critical"];
+const bump = (severity) => BY_RANK[Math.min(RANK[severity] + 1, 2)];
+
+// 정정(CORRECTION)도 수정(AMENDMENT)과 같이 본다 — 사용자 결정(2026-07-28).
+// 둘 다 "예정에 없던 발표"이고 예보관이 급히 값을 고쳤다는 신호이므로 무게를 같이 둔다.
+// 스펙 §12.6은 AMD만 적었으나 실제 파서가 CORRECTION을 내보낸다.
+const isAmendment = (status) => typeof status === "string" && /AMD|AMEND|COR/i.test(status);
+const isCancellation = (status) => status === "CANCELLATION";
+
+function describe(item) {
+  const label = FIELD_LABEL[item.field] ?? item.field;
+  const when = formatUtc(item.time);
+  if (item.field === "weather") return `${label}  ${when} ${item.to ?? item.value}`;
+  const unit = item.field === "ceiling" ? "ft" : item.field === "wind" ? "kt" : "m";
+  if (item.rule === "new") return `${label}  ${when} 새로 위험 (${item.to}${unit})`;
+  if (item.rule === "worse") return `${label}  ${when} ${item.from}${unit} → ${item.to}${unit}`;
+  return `${label}  ${when} ${item.value}${unit}`;
+}
+
+// T-09: TAF 변화 — 새 발표가 겹치는 구간을 나쁘게 바꿨는가.
+// 알람 엔진이 넘기는 previous 인자를 쓰지 않고 current.previous를 읽는다. 그래야
+// 유효성 재확인으로 previous 인자가 비는 경우에도 판정이 성립하고, 알람이 다음 TAF가
+// 올 때까지 살아 있다가 새 TAF가 오면 교체된다. 별도의 수명 관리 코드가 필요 없다.
+const tafChange = {
+  id: "taf_change",
+  name: "TAF 변화 알림",
+  category: "taf",
+  severity: "warning",
+  evaluate(current, _previous, _params, allTriggers) {
+    const previous = current?.previous;
+    if (!previous) return null;
+    if (isCancellation(current.header?.report_status)) return null;
+
+    const thresholds = collectThresholds(allTriggers);
+    const worsened = findWorsening(previous, current, thresholds, new Date());
+    const amd = isAmendment(current.header?.report_status);
+
+    if (worsened.length === 0) {
+      // 악화 없음 + 정규 발표 → 알릴 것이 없다.
+      if (!amd) return null;
+      // 악화 없음 + AMD → 발표가 있었다는 사실만 알린다.
+      return {
+        triggerId: "taf_change",
+        issued: current.header?.issued ?? null,
+        severity: "info",
+        title: "TAF AMD 발표됨",
+        message: `${formatUtc(current.header?.issued)} AMD — 위험 증가 없음`,
+        data: [],
+        highlight: { panel: "taf", fields: [], times: [] },
+      };
+    }
+
+    const base = worsened.some((w) => w.field === "weather" && String(w.to).includes("TS"))
+      ? "critical"
+      : "warning";
+    const severity = amd ? bump(base) : base;
+
+    // 제목엔 실제로 위험한 값을 담는다. 한 번의 발표는 한 줄이며 본문에 요소별로 나열한다.
+    const worst = worsened.find((w) => w.field === "visibility") ?? worsened[0];
+    const kind = FIELD_LABEL[worst.field] ?? worst.field;
+    // 단위를 붙인다 — 4m 거리에서 읽는 화면이라 숫자만 있으면 무엇인지 알 수 없다.
+    const unit = worst.field === "ceiling" ? "ft" : worst.field === "wind" ? "kt" : worst.field === "visibility" ? "m" : "";
+    const title = `${amd ? "TAF AMD 악화" : "TAF 악화"}: ${kind} ${worst.to}${unit}`;
+
+    return {
+      triggerId: "taf_change",
+      issued: current.header?.issued ?? null,
+      severity,
+      title,
+      message: `${formatUtc(current.header?.issued)} ${amd ? "AMD" : "발표"} (직전 ${formatUtc(previous.header?.issued)} 대비)\n`
+        + worsened.map(describe).join("\n"),
+      data: worsened,
+      highlight: {
+        panel: "taf",
+        fields: [...new Set(worsened.map((w) => w.field))],
+        times: [...new Set(worsened.map((w) => w.time))],
+      },
+    };
+  },
+};
+
+// T-10: TAF 새 구간 — 이전 TAF에 없던 꼬리 구간에 위험이 있는가.
+// 비교 대상이 없으므로 "늘었다"고 말하지 않는다.
+const tafNewPeriod = {
+  id: "taf_new_period",
+  name: "TAF 새 구간 알림",
+  category: "taf",
+  severity: "info",
+  evaluate(current, _previous, _params, allTriggers) {
+    const previous = current?.previous;
+    if (!previous) return null;
+    if (isCancellation(current.header?.report_status)) return null;
+
+    const thresholds = collectThresholds(allTriggers);
+    const risks = findTailRisk(previous, current, thresholds, new Date());
+    if (risks.length === 0) return null;
+
+    const worst = risks.find((r) => r.field === "weather") ?? risks[0];
+    const kind = FIELD_LABEL[worst.field] ?? worst.field;
+
+    return {
+      triggerId: "taf_new_period",
+      issued: current.header?.issued ?? null,
+      // AMD여도 심각도를 올리지 않는다. AMD의 무게는 taf_change가 이미 표현한다.
+      severity: "info",
+      title: `TAF 새 구간: ${formatUtc(worst.time)} ${kind} ${worst.value}`,
+      message: `${formatUtc(current.header?.issued)} 발표 — 직전 예보에 없던 구간\n`
+        + risks.map(describe).join("\n"),
+      data: risks,
+      highlight: {
+        panel: "taf",
+        fields: [...new Set(risks.map((r) => r.field))],
+        times: [...new Set(risks.map((r) => r.time))],
+      },
+    };
+  },
+};
+
 const triggers = [
   lowVisibility,
   highWind,
   weatherPhenomenon,
   lowCeiling,
   tafAdverseWeather,
+  tafChange,
+  tafNewPeriod,
   lightningDetected,
 ];
 

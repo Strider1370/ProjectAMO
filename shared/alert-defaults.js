@@ -44,6 +44,14 @@ const alertDefaults = {
         phenomena: ["TS", "SN", "FZRA"],
       },
     },
+    taf_change: {
+      enabled: true,
+      params: {},
+    },
+    taf_new_period: {
+      enabled: true,
+      params: {},
+    },
     lightning_detected: {
       enabled: true,
       params: {

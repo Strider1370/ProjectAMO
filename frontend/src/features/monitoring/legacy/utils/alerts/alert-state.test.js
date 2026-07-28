@@ -61,3 +61,18 @@ test('조건이 해소됐다가 다시 발동하면 firstFired가 새로 갱신�
   recordAlert(key) // 새로 발동
   assert.ok(getFirstFired(key) >= firstFired)
 })
+
+test('TAF 변화 알람 키는 발표(issued)마다 달라진다', () => {
+  const k1 = buildAlertKey({ triggerId: 'taf_change', issued: 'i1' }, 'RKSI')
+  const k2 = buildAlertKey({ triggerId: 'taf_change', issued: 'i2' }, 'RKSI')
+
+  assert.equal(k1, 'taf_change:RKSI:i1')
+  assert.notEqual(k1, k2, '키가 같으면 재알림 간격이 새 발표를 가로막는다')
+})
+
+test('TAF 변화 알람 키가 공항별 이력 정리 규칙에 걸린다', () => {
+  const key = buildAlertKey({ triggerId: 'taf_new_period', issued: 'i1' }, 'RKSI')
+  recordAlert(key)
+  clearResolvedAlerts(new Set(), 'RKSI')
+  assert.equal(getHistory()[key], undefined, ':ICAO: 모양을 정리 규칙이 잡아야 한다')
+})
