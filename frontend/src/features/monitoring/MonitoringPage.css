@@ -22,6 +22,38 @@
   gap: 8px;
 }
 
+.monitoring-map-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(15, 23, 42, 0.72);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.monitoring-map-loading__spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.38);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: monitoring-map-loading-spin 0.8s linear infinite;
+}
+
+.monitoring-mapbox-panel:has(.map-view-error) .monitoring-map-loading {
+  display: none;
+}
+
+@keyframes monitoring-map-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
 .monitoring-map-icon-btn {
   display: grid;
   place-items: center;

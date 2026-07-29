@@ -22,6 +22,7 @@ function MonitoringMap({
 }) {
   const [activeMapPanel, setActiveMapPanel] = useState(null)
   const [legendsOpen, setLegendsOpen] = useState(false)
+  const [mapStyleReady, setMapStyleReady] = useState(false)
   const mapViewRef = useRef(null)
 
   useEffect(() => {
@@ -96,8 +97,15 @@ function MonitoringMap({
         sigwxCloudMeta={weather?.sigwxCloudMeta || weather?.sigwxLowClouds}
         selectedAirport={selectedAirport}
         onAirportSelect={onAirportSelect}
+        onStyleReady={() => setMapStyleReady(true)}
         enableWindOverlay={false}
       />
+      {!mapStyleReady && (
+        <div className="monitoring-map-loading" role="status" aria-live="polite">
+          <span className="monitoring-map-loading__spinner" aria-hidden="true" />
+          <span>지도 불러오는 중…</span>
+        </div>
+      )}
       <MonitoringSlideOverlay
         slideId={slideshowSlideId}
         content={slideshowContent}
