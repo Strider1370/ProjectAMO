@@ -19,6 +19,7 @@ function MonitoringMap({
   slideshowEffect = 'fade',
   slideshowDurationMs = 350,
   highlightZones = {},
+  canvasScale = null,
 }) {
   const [activeMapPanel, setActiveMapPanel] = useState(null)
   const [legendsOpen, setLegendsOpen] = useState(false)
@@ -28,6 +29,12 @@ function MonitoringMap({
   useEffect(() => {
     if (basemapId) mapViewRef.current?.switchBasemap(basemapId)
   }, [basemapId])
+
+  // 고정 캔버스 배율이 바뀌면 지도가 차지하는 실제 화면 픽셀 수가 달라진다. 컨테이너의 CSS 크기는
+  // 그대로라 mapbox는 스스로 알아채지 못하므로, 여기서 다시 그리게 해 해상도를 맞춘다.
+  useEffect(() => {
+    if (canvasScale) mapViewRef.current?.resizeMap()
+  }, [canvasScale])
 
   useEffect(() => {
     if (selectedAirport) mapViewRef.current?.flyToAirport(selectedAirport, { fitRadiusKm: 32 })

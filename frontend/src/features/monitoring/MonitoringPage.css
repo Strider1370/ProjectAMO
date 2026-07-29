@@ -3,6 +3,48 @@
   overflow: hidden;
 }
 
+/* Fixed canvas. The dashboard is laid out 1920px wide and the whole rendered result is scaled to the
+   viewport, so every px size in legacy/App.css keeps the same apparent size at any resolution and any
+   OS display-scaling setting. `display: contents` makes the stage vanish from layout when the canvas
+   is off (narrow viewports), leaving the responsive rules in legacy/App.css exactly as they were. */
+.monitoring-canvas-stage {
+  display: contents;
+}
+
+/* Height is the viewport divided by the scale, so scaling it back up fills the window exactly: the
+   canvas is as tall as the window allows rather than a fixed 1080, and no width is lost to
+   letterboxing when the window is not 16:9.
+
+   The transform is on this element rather than on .dashboard-root because a transformed element is
+   the containing block for `position: fixed` descendants — that is what pulls the alert table, the
+   whole-screen slideshow and the settings modal into the canvas instead of leaving them pinned to
+   the raw viewport. It also makes this the stacking context they share, so their existing z-index
+   order (slideshow 900 below alerts 9998) is preserved. */
+.monitoring-canvas-stage.is-fixed {
+  /* Must override the `display: contents` above: an element with no box has no transform, no
+     containing block and no stacking context, which silently disables the whole canvas. */
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: calc(100vh / var(--monitoring-canvas-scale, 1));
+  overflow: hidden;
+  background: var(--bg);
+  transform: scale(var(--monitoring-canvas-scale, 1));
+  transform-origin: top left;
+}
+
+.monitoring-canvas-stage.is-fixed > .dashboard-root,
+.monitoring-canvas-stage.is-fixed > .loading-overlay {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* The map keeps its plain layout under the fixed canvas — its rendering resolution is handled in
+   MonitoringPage.jsx instead. Counter-scaling this panel to win back resolution was tried and left
+   the mapbox canvas mis-sized against its slot at every scale except exactly 1. */
 .monitoring-mapbox-panel {
   position: relative;
   width: 100%;

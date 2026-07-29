@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   buildAlertKey,
   clearResolvedAlerts,
@@ -39,6 +39,7 @@ import {
   saveMonitoringSlideImage,
   clearMonitoringSlideImage,
 } from './lib/monitoringSlideshow.js'
+import { canvasScale } from './lib/canvasScale.js'
 import { useSnapshotPolling } from '../../app/useWeatherPolling.js'
 import {
   buildMonitoringSnapshot,
@@ -64,6 +65,21 @@ const AIRPORT_NAME_KO = {
   RKNY: '양양국제공항',
   RKPU: '울산공항',
   RKJY: '여수공항',
+}
+
+// Captured once, before anything can shadow it: `delete window.devicePixelRatio` does not restore a
+// native value here — the property is the window's own, so deleting it leaves the read undefined and
+// mapbox silently falls back to a ratio of 1.
+const NATIVE_DEVICE_PIXEL_RATIO = typeof window === 'undefined'
+  ? null
+  : Object.getOwnPropertyDescriptor(window, 'devicePixelRatio')
+    || Object.getOwnPropertyDescriptor(Window.prototype, 'devicePixelRatio')
+
+function readNativeDevicePixelRatio() {
+  if (!NATIVE_DEVICE_PIXEL_RATIO) return 1
+  return NATIVE_DEVICE_PIXEL_RATIO.get
+    ? NATIVE_DEVICE_PIXEL_RATIO.get.call(window)
+    : NATIVE_DEVICE_PIXEL_RATIO.value
 }
 
 const DEFAULT_AIRPORT = 'RKSI'
@@ -110,6 +126,10 @@ export default function MonitoringPage() {
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia(MOBILE_LAYOUT_QUERY).matches
       : false
+  ))
+  // null = fixed canvas off, legacy/App.css owns the layout. See lib/canvasScale.js.
+  const [fixedCanvasScale, setFixedCanvasScale] = useState(() => (
+    typeof window === 'undefined' ? null : canvasScale(window.innerWidth)
   ))
 
   const prevDataRef = useRef(null)
@@ -169,6 +189,33 @@ export default function MonitoringPage() {
     mql.addEventListener('change', onChange)
     return () => mql.removeEventListener('change', onChange)
   }, [])
+
+  // Resize covers browser zoom and a monitor swap too — both change innerWidth.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const onResize = () => setFixedCanvasScale(canvasScale(window.innerWidth))
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  // Mapbox draws into a bitmap sized from window.devicePixelRatio and knows nothing about the canvas
+  // transform above it, so at scale > 1 it produces 1/scale of the pixels it needs and the map alone
+  // looks soft while text and panels stay crisp. Its container never changes size — the canvas pins
+  // it to 1920px coordinates — so mapbox never re-measures on its own; the ratio is overridden here
+  // and MonitoringMap tells the map to redraw. /monitoring renders nothing but this page, so nothing
+  // else can read the overridden value. Layout effect: it must be in place before MapView's own
+  // effect creates the map.
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined' || !fixedCanvasScale || !NATIVE_DEVICE_PIXEL_RATIO) return undefined
+    Object.defineProperty(window, 'devicePixelRatio', {
+      configurable: true,
+      get: () => readNativeDevicePixelRatio() * fixedCanvasScale,
+    })
+    return () => {
+      Object.defineProperty(window, 'devicePixelRatio', NATIVE_DEVICE_PIXEL_RATIO)
+    }
+  }, [fixedCanvasScale])
 
   useEffect(() => {
     setAlertCallback((alertObj) => {
@@ -623,12 +670,20 @@ export default function MonitoringPage() {
         slideshowEffect={slideshowConfig.transitionEffect}
         slideshowDurationMs={slideshowConfig.transitionDurationMs}
         highlightZones={mapHighlightZones}
+        canvasScale={fixedCanvasScale}
       />
     </>
   )
 
   return (
-    <>
+    // The whole page lives inside the canvas, not just the dashboard grid: the alert table, the
+    // whole-screen slideshow and the settings modal all place themselves with `position: fixed`,
+    // which resolves against this element because it is transformed. Outside it they would stay at
+    // raw device size and shrink against everything else as the resolution grows.
+    <div
+      className={`monitoring-canvas-stage${fixedCanvasScale ? ' is-fixed' : ''}`}
+      style={fixedCanvasScale ? { '--monitoring-canvas-scale': fixedCanvasScale } : undefined}
+    >
       {settings && dashboardMode !== 'ground' && (
         <>
           <AlertPanel alerts={popupAlerts} validKeys={validAlertKeys} onDismiss={handleDismissAlert} settings={settings.dispatchers.popup} />
@@ -755,6 +810,6 @@ export default function MonitoringPage() {
       )}
 
       {showSettings && renderSettingsPanel()}
-    </>
+    </div>
   )
 }

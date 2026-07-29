@@ -477,6 +477,9 @@ const MapView = forwardRef(function MapView({
   // loadRouteBriefing: 딥링크 '전체 브리핑 보기'가 저장경로를 route-briefing 훅으로 로드+브리핑 자동생성(§검증).
   useImperativeHandle(ref, () => ({
     setLayerOn, switchBasemap,
+    // 컨테이너 크기가 그대로여도 다시 그려야 할 때가 있다 — 모니터링의 고정 캔버스는 컨테이너를
+    // 1920px 좌표계에 붙박아 두고 화면 배율만 바꾸므로 mapbox의 ResizeObserver가 영영 발동하지 않는다.
+    resizeMap: () => mapRef.current?.resize(),
     loadRouteBriefing: (saved) => routeBriefing.actions.loadSavedRoute(saved, { autoBriefing: true }),
     // 온보딩 투어용: 실제 공항 좌표를 써야 스포트라이트가 마커 위에 정확히 얹혀 클릭이 마커에 맞는다.
     // 공항 → 화면 픽셀(스포트라이트 위치). 데이터/지도 준비 전엔 null(오버레이가 대기).

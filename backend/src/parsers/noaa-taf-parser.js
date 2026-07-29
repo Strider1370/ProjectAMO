@@ -59,7 +59,19 @@ function parseWxString(wxString) {
   return { value, touched: true }
 }
 
-function parseState(fcst, isBase = false) {
+function parseState(fcst, isBase = false, cavok = false) {
+  if (cavok) {
+    return {
+      wind: buildWind(fcst.wdir, fcst.wspd, fcst.wgst),
+      vis: 9999,
+      wx: [],
+      clouds: [],
+      wx_touched: true,
+      clouds_touched: true,
+      cavok_flag: true,
+      nsc_flag: false,
+    }
+  }
   const wind = buildWind(fcst.wdir, fcst.wspd, fcst.wgst)
   const vis = convertSmToMeters(fcst.visib)
   const wx = parseWxString(fcst.wxString)
@@ -88,11 +100,25 @@ function mapType(fcst) {
 function partialMerge(current, change) {
   const next = deepClone(current)
   if (change.wind != null) next.wind = change.wind
-  if (change.vis != null) next.vis = change.vis
-  if (change.wx_touched === true) next.wx = change.wx
+  if (change.vis != null) {
+    next.vis = change.vis
+    if (change.vis !== 9999) next.cavok_flag = false
+  }
+  if (change.wx_touched === true) {
+    next.wx = change.wx
+    if (!change.cavok_flag) next.cavok_flag = false
+  }
   if (change.clouds_touched === true) {
     next.clouds = change.clouds
+    next.cavok_flag = false
     next.nsc_flag = change.nsc_flag === true
+  }
+  if (change.cavok_flag === true) {
+    next.cavok_flag = true
+    next.nsc_flag = false
+    next.vis = 9999
+    next.wx = []
+    next.clouds = []
   }
   return next
 }
@@ -112,9 +138,9 @@ function formatDisplay(state) {
   return {
     wind: state.wind?.raw || null,
     visibility: String(state.vis ?? '//'),
-    weather: weatherList.map((w) => w.raw).join(' '),
-    clouds: state.nsc_flag ? 'NSC' : (state.clouds || []).map((c) => c.raw).join(' '),
-    weather_icon: pickPrimaryWeatherIcon(weatherList),
+    weather: state.cavok_flag ? '' : weatherList.map((w) => w.raw).join(' '),
+    clouds: (state.cavok_flag || state.nsc_flag) ? 'NSC' : (state.clouds || []).map((c) => c.raw).join(' '),
+    weather_icon: state.cavok_flag ? 'CAVOK' : pickPrimaryWeatherIcon(weatherList),
     weather_intensity: weatherList[0]?.intensity || null,
   }
 }
@@ -137,12 +163,22 @@ export function parse(entry) {
   if (!validStart || !validEnd) return null
 
   // fcstChange===null → base/FM 세그먼트, 그 외 → 변화군.
-  const segments = entry.fcsts.map((f) => ({
-    ...parseState(f, f.fcstChange == null),
-    _from: unixToIso(f.timeFrom),
-    _to: unixToIso(f.timeTo),
-    _raw: f,
-  }))
+  const rawTokens = String(entry.rawTAF || '').toUpperCase().split(/\s+/)
+  const cavokIndex = rawTokens.indexOf('CAVOK')
+  const baseCavok = cavokIndex >= 0 && !rawTokens.slice(0, cavokIndex)
+    .some((token) => token === 'BECMG' || token === 'TEMPO' || /^PROB(?:30|40)?$/.test(token) || /^FM\d{6}$/.test(token))
+  let baseSeen = false
+  const segments = entry.fcsts.map((f) => {
+    const isBase = f.fcstChange == null
+    const cavok = isBase && !baseSeen && baseCavok
+    if (isBase) baseSeen = true
+    return {
+      ...parseState(f, isBase, cavok),
+      _from: unixToIso(f.timeFrom),
+      _to: unixToIso(f.timeTo),
+      _raw: f,
+    }
+  })
 
   const baseSegments = segments.filter((s) => s._raw.fcstChange == null)
     .sort((a, b) => (a._from || '').localeCompare(b._from || ''))

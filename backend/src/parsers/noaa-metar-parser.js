@@ -46,13 +46,16 @@ const CLOUD_CODES = new Set(['FEW', 'SCT', 'BKN', 'OVC', 'NSC', 'SKC', 'CLR', 'N
 
 // NOAA METAR JSON엔 구조화된 현재기상 배열이 없어 rawOb 토큰에서 추출한다.
 // (알려진 한계 = ceiling: rawOb 토큰 스캔 휴리스틱. 구름/바람/기온/QNH/시정 토큰은 제외.)
-function extractPresentWeather(rawOb) {
+function extractPresentWeather(rawOb, stationIcao) {
   if (!rawOb) return []
   const tokens = String(rawOb).split(/\s+/)
   const out = []
   for (const tok of tokens) {
     const t = tok.replace(/=$/, '')
     if (!t || t.length < 2) continue
+    if (['TEMPO', 'BECMG', 'NOSIG', 'RMK'].includes(t)) break
+    if (t === stationIcao) continue
+    if (/^RE[A-Z+\-]/.test(t)) continue // 최근 현상(RESHRA 등)은 현재기상이 아님
     if (/^\d/.test(t)) continue // 시정(9999)·활주로 등 숫자 시작
     if (/KT$/.test(t)) continue // 바람
     if (/^Q\d{4}$/.test(t) || /^A\d{4}$/.test(t)) continue // QNH
@@ -118,7 +121,7 @@ export function parse(entry) {
   const cavok = /\bCAVOK\b/.test(rawOb || '')
   const clouds = cavok ? [] : buildClouds(entry.clouds)
   const nscFlag = !cavok && clouds.length === 0
-  const weather = cavok ? [] : extractPresentWeather(rawOb)
+  const weather = cavok ? [] : extractPresentWeather(rawOb, String(entry.icaoId).toUpperCase())
 
   const visValue = cavok ? 9999 : convertSmToMeters(entry.visib)
 

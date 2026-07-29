@@ -655,8 +655,6 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
     }
   }
 
-  return () => { status.remove(); confirmation.remove() }
-
   map.on('click', (event) => {
     if (modeRef.current === 'click-add') addPointRef.current?.([event.lngLat.lng, event.lngLat.lat])
   })
@@ -664,6 +662,7 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
   let drawing = null
   map.on('mousedown', (event) => {
     if (modeRef.current !== 'draw') return
+    event.preventDefault()
     drawing = [[event.lngLat.lng, event.lngLat.lat]]
     map.getSource(ROUTE_DRAW_SOURCE)?.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: drawing } }] })
     map.dragPan.disable()
@@ -708,6 +707,8 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
   map.on('mousemove', () => {
     if (drawing || detourStart) return
     const cursor = modeRef.current === 'draw' || modeRef.current === 'click-add' ? 'crosshair' : modeRef.current === 'segment-detour' ? 'copy' : ''
-    if (cursor) map.getCanvas().style.cursor = cursor
+    map.getCanvas().style.cursor = cursor
   })
+
+  return () => { status.remove(); confirmation.remove() }
 }

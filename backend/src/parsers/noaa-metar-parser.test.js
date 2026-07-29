@@ -58,6 +58,11 @@ describe('noaa-metar parse', () => {
     assert.equal(r.observation.visibility.value, 3219) // 2 SM → 미터
   })
 
+  it('최근 현상(RE...)은 현재기상에서 제외', () => {
+    const r = parse({ ...base, rawOb: 'METAR ZGSZ 290600Z 11005MPS 9999 -SHRA NSC 28/26 Q1010 RESHRA NOSIG' })
+    assert.deepEqual(r.observation.weather.map((weather) => weather.raw), ['-SHRA'])
+  })
+
   it('CAVOK → 시정 9999·구름 NSC', () => {
     const r = parse({ ...base, visib: '6+', clouds: [], rawOb: 'METAR RJTT 051300Z 13006KT CAVOK 23/20 Q1012' })
     assert.equal(r.cavok_flag, true)

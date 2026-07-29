@@ -62,6 +62,22 @@ describe('noaa-taf parse', () => {
     assert.equal(at(15).wind.raw, '04010KT')
   })
 
+  it('원문 TAF의 base CAVOK을 타임라인까지 보존', () => {
+    const r = parse({
+      ...entry,
+      rawTAF: 'TAF RJTT 051100Z 0512/0612 12006KT CAVOK BECMG 0600/0602 04010KT',
+      fcsts: [
+        { ...entry.fcsts[0], clouds: [] },
+        { ...entry.fcsts[2], clouds: [] },
+      ],
+    })
+    const at = (h) => r.timeline.find((t) => t.time === new Date((FROM + h * H) * 1000).toISOString().replace('.000Z', 'Z'))
+
+    assert.equal(r.base.cavok_flag, true)
+    assert.equal(at(0).visibility.cavok, true)
+    assert.equal(at(15).visibility.cavok, true)
+  })
+
   it('입력 불량 → null', () => {
     assert.equal(parse(null), null)
     assert.equal(parse({ icaoId: 'RJTT', fcsts: [] }), null)

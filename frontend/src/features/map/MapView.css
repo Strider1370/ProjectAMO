@@ -2381,7 +2381,7 @@
 /* Route editing mode is owned by routePreview.js; MapView keeps no route state. */
 .route-map-interaction-status {
   position: absolute;
-  top: 16px;
+  top: 64px;
   left: 50%;
   z-index: 4;
   max-width: min(420px, calc(100% - 32px));
@@ -2396,6 +2396,9 @@
   transform: translateX(-50%);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
   pointer-events: none;
+}
+@media (max-width: 720px) {
+  .route-map-interaction-status { top: 88px; }
 }
 .route-map-interaction-confirm {
   position: absolute;
