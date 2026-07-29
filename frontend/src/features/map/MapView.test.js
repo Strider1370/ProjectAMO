@@ -22,3 +22,10 @@ test('MapView observes container size changes and resizes the Mapbox canvas', ()
   assert.match(source, /map\.resize\(\)/)
   assert.match(source, /\.disconnect\(\)/)
 })
+
+test('MapView connects the one-shot notifier to initial style readiness', () => {
+  const source = readFileSync(join(__dirname, 'MapView.jsx'), 'utf8')
+  assert.match(source, /import \{ createOneShotNotifier \} from '.\/lib\/createOneShotNotifier\.js'/)
+  assert.match(source, /const notifyInitialStyleReady = useMemo\(\(\) => createOneShotNotifier\(onStyleReady\), \[onStyleReady\]\)/)
+  assert.match(source, /setIsStyleReady\(true\)\s*\n\s*notifyInitialStyleReady\(\)/)
+})

@@ -85,6 +85,7 @@ import {
 } from '../weather-overlays/lib/flightCategoryLayers.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import MapToolsLauncher from '../map-tools/MapToolsLauncher.jsx'
+import { createOneShotNotifier } from './lib/createOneShotNotifier.js'
 import { setLayerVisibility, resetLazyGeoJsonSources } from './lib/mapLayerUtils.js'
 import { bindLayerEvent, cleanupAll } from './lib/mapStyleSync.js'
 import {
@@ -324,6 +325,7 @@ const MapView = forwardRef(function MapView({
   warnedAirports = [],
   warningLabels = {},
   onAirportSelect,
+  onStyleReady,
   onRequestDeferredWeatherData,
   onLayerCountsChange,
   onClosePanel,
@@ -340,6 +342,7 @@ const MapView = forwardRef(function MapView({
   rangeRingRadiiKm = null,
   highlightRingRadiusKm = null,
 }, ref) {
+  const notifyInitialStyleReady = useMemo(() => createOneShotNotifier(onStyleReady), [onStyleReady])
   const isMobile = useIsMobile()
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
@@ -1183,6 +1186,7 @@ const MapView = forwardRef(function MapView({
 
       setStyleRevision((value) => value + 1)
       setIsStyleReady(true)
+      notifyInitialStyleReady()
     })
 
     mapRef.current = map
