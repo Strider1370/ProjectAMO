@@ -23,6 +23,7 @@ import ExitOnDoubleBack from '../shared/ui/ExitOnDoubleBack.jsx'
 import { TimeZoneProvider, useTimeZone } from '../shared/timezone/TimeZoneContext.jsx'
 
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
+const TerminalPage = lazy(() => import('../features/terminal/TerminalPage.jsx'))
 const DesignTestPage = lazy(() => import('../features/design-test/DesignTestPage.jsx'))
 const AdminPage = lazy(() => import('../features/admin/AdminPage.jsx'))
 const DeveloperPage = lazy(() => import('../features/developer/DeveloperPage.jsx'))
@@ -308,6 +309,9 @@ function MainAppShell() {
 }
 
 function App() {
+  if (window.location.pathname === '/terminal') {
+    return <Suspense fallback={null}><TerminalPage /></Suspense>
+  }
   if (window.location.pathname === '/monitoring') {
     // 상황판은 벽걸이 전용이다. 모바일 폭에서는 조용히 메인으로 되돌린다 —
     // 운영자가 주소를 직접 아는 화면이라 모바일 사용자에게 설명할 맥락이 없다.
