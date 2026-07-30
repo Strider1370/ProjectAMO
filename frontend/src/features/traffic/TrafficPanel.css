@@ -1,44 +1,150 @@
-/* 항적 패널 — 껍데기(layer-drawer)는 기상·항공 패널과 공유하고, 필터 위젯만 여기서 정의한다. */
+/* 항적 패널 — 껍데기(layer-drawer)와 레이어 타일(layer-tile)은 기상·항공 패널과 공유하고,
+   필터 위젯만 여기서 정의한다. 값은 전부 디자인 토큰(헌법 §5)에서 가져온다 — 하드코딩 px/hex 금지. */
 .traffic-panel .layer-drawer-body { display: flex; flex-direction: column; gap: var(--space-m); }
 
-.traffic-switch { display: flex; align-items: center; gap: var(--space-s); font-weight: var(--fw-semibold); }
-.traffic-hint { margin: 0; font-size: var(--fs-200); color: var(--text-3); }
+/* ADS-B 켜기/끄기 — 기상 패널 타일과 같은 버튼. 이 패널의 레이어는 하나뿐이라 한 칸을 다 쓴다. */
+/* 공용 .layer-tile-grid(3열)를 이겨야 하므로 두 클래스를 함께 건다. */
+.layer-tile-grid.traffic-toggle-grid { grid-template-columns: 1fr; }
+/* 아이콘·높이·선택 표시는 .layer-tile 그대로 두고 라벨만 키운다 — 한 칸을 다 쓰므로 11px은 작다. */
+.traffic-toggle .layer-tile-label { font-size: var(--fs-300); }
+
+.traffic-hint { margin: 0; font-size: var(--fs-200); line-height: 1.45; color: var(--text-3); }
 .traffic-hint--empty { padding: 0 var(--space-m) var(--space-m); color: var(--level-amber); }
-.traffic-note { margin: var(--space-snudge) 0 0; font-size: var(--fs-200); color: var(--text-3); }
+.traffic-note { margin: var(--space-xs) 0 0; font-size: var(--fs-200); line-height: 1.45; color: var(--text-3); }
 
-.traffic-section { display: flex; flex-direction: column; gap: var(--space-xs); }
-.traffic-section-title { margin: 0; font-size: var(--fs-200); font-weight: 800; color: var(--accent); }
+.traffic-section { display: flex; flex-direction: column; gap: var(--space-xxs); }
+/* 제목은 무채색 — 색은 "켜짐/선택"에만 쓴다(색 = 의미). */
+.traffic-section-title {
+  margin: 0 0 var(--space-xxs);
+  font-size: var(--fs-300); font-weight: var(--fw-semibold); color: var(--text-2);
+}
 
-.traffic-group-head { display: flex; align-items: center; gap: var(--space-xs); }
-.traffic-check { display: flex; align-items: center; gap: var(--space-xs); flex: 1; min-width: 0; }
-.traffic-check--child { padding-left: var(--space-l); }
-.traffic-check span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.traffic-count { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--text-3); }
-.traffic-group-fold { background: none; border: 0; cursor: pointer; color: var(--text-3); }
+/* 소속 목록 — 기존 레이어 토글 행과 같은 리듬(호버·선택 배경, 알약 배지). */
+.traffic-group-head { display: flex; align-items: center; gap: var(--space-xxs); }
+.traffic-row {
+  display: flex; align-items: center; gap: var(--space-s);
+  flex: 1; min-width: 0; min-height: var(--touch-min);
+  padding: 0 var(--space-s);
+  border: 1px solid transparent; border-radius: var(--radius-lg);
+  font-size: var(--fs-300); cursor: pointer;
+}
+.traffic-row:hover { border-color: var(--stroke-2); background: var(--bg-2); }
+.traffic-row.is-on {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-1));
+}
+.traffic-row:has(input:disabled) { cursor: default; color: var(--text-disabled); }
+.traffic-row:has(input:disabled):hover { border-color: transparent; background: none; }
+.traffic-check--child { padding-left: var(--space-xl); }
+.traffic-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 이중 슬라이더 — 두 개의 native range를 겹쳐 둔다(라이브러리 없이). 아래쪽 트랙만 보이게
-   하고 손잡이만 각각 잡히도록 pointer-events를 손잡이에만 준다. */
-.traffic-alt-slider { position: relative; height: 28px; }
+.traffic-count {
+  margin-left: auto; padding: var(--space-xxs) var(--space-s);
+  border-radius: var(--radius-circular); background: var(--bg-4);
+  color: var(--text-2); font-size: var(--fs-100); font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.traffic-row.is-on .traffic-count {
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-1)); color: var(--accent);
+}
+
+.traffic-group-fold {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--space-xxl); height: var(--space-xxl);
+  border: 0; border-radius: var(--radius-md);
+  background: none; color: var(--text-3); cursor: pointer;
+}
+.traffic-group-fold:hover { background: var(--bg-3); color: var(--text-1); }
+
+/* 고도 — 선택 구간을 색으로 채워 어디가 잡혔는지 보이게 한다.
+   이중 슬라이더는 native range 두 개를 겹쳐 쓰고(라이브러리 없이), 손잡이에만 pointer-events를 준다. */
+.traffic-alt-value {
+  font-size: var(--fs-400); font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums; color: var(--text-1);
+}
+.traffic-alt-unit { font-size: var(--fs-200); font-weight: var(--fw-regular); color: var(--text-3); }
+
+.traffic-alt-slider { position: relative; height: var(--touch-min); }
+.traffic-alt-track, .traffic-alt-fill {
+  position: absolute; top: 50%; height: var(--space-xs);
+  margin-top: calc(var(--space-xs) / -2); border-radius: var(--radius-circular);
+}
+.traffic-alt-track { left: 0; right: 0; background: var(--bg-4); }
+.traffic-alt-fill { background: var(--accent); }
+
 .traffic-alt-slider input[type='range'] {
   position: absolute; inset: 0; width: 100%; margin: 0;
   background: none; pointer-events: none; -webkit-appearance: none; appearance: none;
 }
-.traffic-alt-slider input[type='range']::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; }
-.traffic-alt-slider input[type='range']::-moz-range-thumb { pointer-events: auto; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; }
-.traffic-alt-slider::before {
-  content: ''; position: absolute; left: 0; right: 0; top: 13px; height: 2px; background: var(--stroke-2);
+.traffic-alt-slider input[type='range']::-webkit-slider-thumb {
+  pointer-events: auto; -webkit-appearance: none; appearance: none;
+  width: var(--space-xl); height: var(--space-xl); border-radius: var(--radius-circular);
+  background: var(--bg-1); border: 3px solid var(--accent); cursor: pointer;
 }
-.traffic-alt-value { font-variant-numeric: tabular-nums; font-weight: var(--fw-semibold); }
+.traffic-alt-slider input[type='range']::-moz-range-thumb {
+  pointer-events: auto;
+  width: var(--space-xl); height: var(--space-xl); border-radius: var(--radius-circular);
+  background: var(--bg-1); border: 3px solid var(--accent); cursor: pointer;
+}
+.traffic-alt-slider input[type='range']:disabled::-webkit-slider-thumb { border-color: var(--text-disabled); cursor: default; }
+.traffic-alt-slider input[type='range']:disabled::-moz-range-thumb { border-color: var(--text-disabled); cursor: default; }
 
-.traffic-chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
-.traffic-chip { padding: 4px 10px; border: 1px solid var(--stroke-2); border-radius: 999px; background: var(--bg-1); font-size: var(--fs-200); cursor: pointer; }
-.traffic-chip.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* 기종 — 기상 패널 타일과 같은 3열 격자. */
+.traffic-classes { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-s); }
+.traffic-class {
+  display: flex; align-items: center; justify-content: center;
+  min-height: var(--touch-min); padding: var(--space-s) var(--space-xs);
+  border: 1px solid var(--stroke-2); border-radius: var(--radius-xl);
+  background: var(--bg-1); color: var(--text-2);
+  font-family: inherit; font-size: var(--fs-300); font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+.traffic-class:hover:not(:disabled) { border-color: var(--stroke-1); background: var(--bg-2); }
+.traffic-class.is-on {
+  border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-1));
+  color: var(--accent); font-weight: var(--fw-semibold);
+}
+.traffic-class:disabled { opacity: 0.4; cursor: default; }
 
-.traffic-search { width: 100%; padding: 6px 8px; border: 1px solid var(--stroke-2); border-radius: var(--radius-md); font-size: var(--fs-300); }
+.traffic-search {
+  width: 100%; min-height: var(--touch-min); padding: 0 var(--space-m);
+  border: 1px solid var(--stroke-1); border-radius: var(--radius-xl);
+  background: var(--bg-1); color: var(--text-1);
+  font-family: inherit; font-size: var(--fs-300);
+}
+.traffic-search:disabled { background: var(--bg-3); color: var(--text-disabled); }
 
-.layer-drawer-close { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: none; border-radius: 6px; background: transparent; color: var(--text-2); cursor: pointer; }
-.layer-drawer-close:hover { background: var(--bg-3); }
-
-.layer-drawer-footer { display: flex; align-items: center; gap: var(--space-s); padding: 10px 14px 14px; border-top: 1px solid var(--stroke-2); }
-
+/* 하단 — 상태는 읽을거리라 알약을 벗기고 숫자만 굵게. 버튼은 버튼답게. */
 .traffic-footer { display: flex; align-items: center; gap: var(--space-s); }
+.traffic-reset {
+  min-height: var(--space-xxl); padding: 0 var(--space-m);
+  border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);
+  background: var(--bg-1); color: var(--text-2);
+  font-family: inherit; font-size: var(--fs-300); font-weight: var(--fw-medium);
+  white-space: nowrap; cursor: pointer;
+}
+.traffic-reset:hover:not(:disabled) { background: var(--bg-3); color: var(--text-1); }
+.traffic-reset:disabled { color: var(--text-disabled); cursor: default; }
+
+.traffic-status {
+  margin-left: auto; padding: 0; border: 0; border-radius: 0; background: none;
+  color: var(--text-2); font-size: var(--fs-300); font-weight: var(--fw-regular);
+}
+.traffic-status b {
+  font-size: var(--fs-400); font-weight: var(--fw-bold); color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 패널 껍데기 중 아직 공용 CSS에 없던 두 조각 — 항적 패널이 처음 쓴다. */
+.layer-drawer-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--space-xxl); height: var(--space-xxl);
+  border: none; border-radius: var(--radius-lg);
+  background: transparent; color: var(--text-2); cursor: pointer;
+}
+.layer-drawer-close:hover { background: var(--bg-3); }
+.layer-drawer-footer {
+  display: flex; align-items: center; gap: var(--space-s);
+  padding: var(--space-mnudge) var(--space-l) var(--space-l);
+  border-top: 1px solid var(--stroke-2);
+}

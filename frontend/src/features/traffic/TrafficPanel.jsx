@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Radio, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Radio, X } from 'lucide-react'
 
 import {
   ALTITUDE_MAX_FT, ALTITUDE_MIN_FT, ALTITUDE_STEP_FT,
@@ -13,6 +13,11 @@ function toggleInList(list = [], value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value]
 }
 
+// 슬라이더 트랙에서 고도값이 놓이는 위치(%). 선택 구간을 색으로 채우는 데만 쓴다.
+function altitudePercent(ft) {
+  return ((ft - ALTITUDE_MIN_FT) / (ALTITUDE_MAX_FT - ALTITUDE_MIN_FT)) * 100
+}
+
 function OperatorGroup({ group, counts, filters, onChangeFilters, disabled }) {
   const [open, setOpen] = useState(false)
   const items = counts.items.filter((i) => i.group === group)
@@ -20,31 +25,40 @@ function OperatorGroup({ group, counts, filters, onChangeFilters, disabled }) {
   return (
     <div className="traffic-group">
       <div className="traffic-group-head">
-        <label className="traffic-check">
+        <label className={`traffic-row traffic-check${checked ? ' is-on' : ''}`}>
           <input
             type="checkbox"
             checked={checked}
             disabled={disabled}
             onChange={() => onChangeFilters({ groups: toggleInList(filters.groups, group) })}
           />
-          <span>{GROUP_LABELS[group]}</span>
+          <span className="traffic-row-name">{GROUP_LABELS[group]}</span>
+          <span className="traffic-count">{counts.groups[group] ?? 0}</span>
         </label>
-        <span className="traffic-count">{counts.groups[group] ?? 0}</span>
         {items.length > 0 && (
-          <button type="button" className="traffic-group-fold" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-            {open ? '▾' : '▸'}
+          <button
+            type="button"
+            className="traffic-group-fold"
+            aria-expanded={open}
+            aria-label={`${GROUP_LABELS[group]} 개별 소속 ${open ? '접기' : '펼치기'}`}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </button>
         )}
       </div>
       {open && items.map((item) => (
-        <label className="traffic-check traffic-check--child" key={item.code}>
+        <label
+          className={`traffic-row traffic-check traffic-check--child${filters.codes.includes(item.code) ? ' is-on' : ''}`}
+          key={item.code}
+        >
           <input
             type="checkbox"
             checked={filters.codes.includes(item.code)}
             disabled={disabled || checked}
             onChange={() => onChangeFilters({ codes: toggleInList(filters.codes, item.code) })}
           />
-          <span>{item.name}</span>
+          <span className="traffic-row-name">{item.name}</span>
           <span className="traffic-count">{item.count}</span>
         </label>
       ))}
@@ -75,11 +89,19 @@ export default function TrafficPanel({
       </div>
 
       <div className="layer-drawer-body">
-        <label className="traffic-switch">
-          <input type="checkbox" checked={visible} onChange={onToggleVisible} />
-          <Radio size={18} aria-hidden="true" />
-          <span>ADS-B 표시</span>
-        </label>
+        {/* 기상 레이어 패널의 타일 버튼과 같은 껍데기를 쓴다 — 같은 지도 레이어를 켜고 끄는 일이라 생김새도 같아야 한다. */}
+        <div className="layer-tile-grid traffic-toggle-grid">
+          <button
+            type="button"
+            className={`layer-tile traffic-toggle${visible ? ' is-active' : ''}`}
+            aria-pressed={visible}
+            onClick={onToggleVisible}
+          >
+            <span className="layer-tile-visual"><Radio size={22} aria-hidden="true" /></span>
+            <span className="layer-tile-label">ADS-B 표시</span>
+            {visible && <span className="layer-tile-check" aria-hidden="true">✓</span>}
+          </button>
+        </div>
 
         {!visible && <p className="traffic-hint">ADS-B를 켜면 지금 떠 있는 소속이 표시됩니다.</p>}
         {visible && receiving && <p className="traffic-hint">수신 중…</p>}
@@ -103,8 +125,16 @@ export default function TrafficPanel({
 
         <section className="traffic-section">
           <h3 className="traffic-section-title">고도</h3>
-          <div className="traffic-alt-value">{lo.toLocaleString()} – {hi.toLocaleString()} ft</div>
+          <div className="traffic-alt-value">
+            {lo.toLocaleString()} – {hi.toLocaleString()} <span className="traffic-alt-unit">ft</span>
+          </div>
           <div className="traffic-alt-slider">
+            <span className="traffic-alt-track" aria-hidden="true" />
+            <span
+              className="traffic-alt-fill"
+              aria-hidden="true"
+              style={{ left: `${altitudePercent(lo)}%`, right: `${100 - altitudePercent(hi)}%` }}
+            />
             <input
               type="range"
               aria-label="고도 하한"
@@ -127,12 +157,12 @@ export default function TrafficPanel({
 
         <section className="traffic-section">
           <h3 className="traffic-section-title">기종</h3>
-          <div className="traffic-chips">
+          <div className="traffic-classes">
             {CLASS_IDS.map((id) => (
               <button
                 type="button"
                 key={id}
-                className={`traffic-chip${filters.classes.includes(id) ? ' is-on' : ''}`}
+                className={`traffic-class${filters.classes.includes(id) ? ' is-on' : ''}`}
                 aria-pressed={filters.classes.includes(id)}
                 disabled={!visible}
                 onClick={() => onChangeFilters({ classes: toggleInList(filters.classes, id) })}
@@ -158,11 +188,11 @@ export default function TrafficPanel({
       </div>
 
       <div className="layer-drawer-footer traffic-footer">
-        <button type="button" className="layer-sheet-clear" disabled={!filtered} onClick={onResetFilters}>
+        <button type="button" className="traffic-reset" disabled={!filtered} onClick={onResetFilters}>
           필터 초기화
         </button>
-        <span className="layer-drawer-status">
-          보이는 항공기 {visibleCount} / 전체 {counts.total}
+        <span className="layer-drawer-status traffic-status">
+          보이는 항공기 <b>{visibleCount}</b> / 전체 <b>{counts.total}</b>
         </span>
       </div>
 
