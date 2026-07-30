@@ -1,0 +1,44 @@
+/* 항적 패널 — 껍데기(layer-drawer)는 기상·항공 패널과 공유하고, 필터 위젯만 여기서 정의한다. */
+.traffic-panel .layer-drawer-body { display: flex; flex-direction: column; gap: var(--space-m); }
+
+.traffic-switch { display: flex; align-items: center; gap: var(--space-s); font-weight: var(--fw-semibold); }
+.traffic-hint { margin: 0; font-size: var(--fs-200); color: var(--text-3); }
+.traffic-hint--empty { padding: 0 var(--space-m) var(--space-m); color: var(--level-amber); }
+.traffic-note { margin: var(--space-snudge) 0 0; font-size: var(--fs-200); color: var(--text-3); }
+
+.traffic-section { display: flex; flex-direction: column; gap: var(--space-xs); }
+.traffic-section-title { margin: 0; font-size: var(--fs-200); font-weight: 800; color: var(--accent); }
+
+.traffic-group-head { display: flex; align-items: center; gap: var(--space-xs); }
+.traffic-check { display: flex; align-items: center; gap: var(--space-xs); flex: 1; min-width: 0; }
+.traffic-check--child { padding-left: var(--space-l); }
+.traffic-check span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.traffic-count { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--text-3); }
+.traffic-group-fold { background: none; border: 0; cursor: pointer; color: var(--text-3); }
+
+/* 이중 슬라이더 — 두 개의 native range를 겹쳐 둔다(라이브러리 없이). 아래쪽 트랙만 보이게
+   하고 손잡이만 각각 잡히도록 pointer-events를 손잡이에만 준다. */
+.traffic-alt-slider { position: relative; height: 28px; }
+.traffic-alt-slider input[type='range'] {
+  position: absolute; inset: 0; width: 100%; margin: 0;
+  background: none; pointer-events: none; -webkit-appearance: none; appearance: none;
+}
+.traffic-alt-slider input[type='range']::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; }
+.traffic-alt-slider input[type='range']::-moz-range-thumb { pointer-events: auto; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; }
+.traffic-alt-slider::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 13px; height: 2px; background: var(--stroke-2);
+}
+.traffic-alt-value { font-variant-numeric: tabular-nums; font-weight: var(--fw-semibold); }
+
+.traffic-chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.traffic-chip { padding: 4px 10px; border: 1px solid var(--stroke-2); border-radius: 999px; background: var(--bg-1); font-size: var(--fs-200); cursor: pointer; }
+.traffic-chip.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.traffic-search { width: 100%; padding: 6px 8px; border: 1px solid var(--stroke-2); border-radius: var(--radius-md); font-size: var(--fs-300); }
+
+.layer-drawer-close { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: none; border-radius: 6px; background: transparent; color: var(--text-2); cursor: pointer; }
+.layer-drawer-close:hover { background: rgba(148, 163, 184, 0.12); }
+
+.layer-drawer-footer { display: flex; align-items: center; gap: var(--space-s); padding: 10px 14px 14px; border-top: 1px solid rgba(226, 232, 240, 0.95); }
+
+.traffic-footer { display: flex; align-items: center; gap: var(--space-s); }
