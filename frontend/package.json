@@ -39,6 +39,7 @@
     "project-kma": "file:..",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-icons": "^5.7.0",
     "simplify-js": "^1.2.4",
     "suncalc": "^2.0.1"
   },
