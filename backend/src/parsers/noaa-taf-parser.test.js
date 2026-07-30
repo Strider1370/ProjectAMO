@@ -78,6 +78,25 @@ describe('noaa-taf parse', () => {
     assert.equal(at(15).visibility.cavok, true)
   })
 
+  it('미터 시정 전문은 SM 왕복 손실을 원문값으로 되돌린다', () => {
+    const r = parse({
+      ...entry,
+      icaoId: 'VVNB',
+      rawTAF: 'TAF VVNB 051100Z 0512/0612 11005KT 9999 SCT025 TEMPO 0516/0520 3500 TSRA SCT015',
+      fcsts: [
+        { ...entry.fcsts[0], visib: '6+' },
+        { ...entry.fcsts[1], timeFrom: FROM + 4 * H, timeTo: FROM + 8 * H, visib: '2.17', wxString: 'TSRA' },
+      ],
+    })
+    const tempo = r.change_groups.find((g) => g.type === 'TEMPO')
+    assert.equal(tempo.vis, 3500) // 2.17SM → 3492m가 아니라 원문 3500m
+  })
+
+  it('SM 전문(미터군 없음)은 그대로 환산한다', () => {
+    const r = parse({ ...entry, rawTAF: 'TAF RJTT 051100Z 0512/0612 12006KT P6SM TEMPO 0516/0520 2SM -SHRA' })
+    assert.equal(r.change_groups.find((g) => g.type === 'TEMPO').vis, 3219)
+  })
+
   it('입력 불량 → null', () => {
     assert.equal(parse(null), null)
     assert.equal(parse({ icaoId: 'RJTT', fcsts: [] }), null)

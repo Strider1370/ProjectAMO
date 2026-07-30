@@ -131,7 +131,9 @@ export function parseCloudLayer(layerNode) {
     cloud['aixm:cloudAmount']?.['@_xlink:href']
 
   const amount = lastToken(amountHref).toUpperCase() || null
-  const typeSuffix = lastToken(cloud['iwxxm:cloudType']?.['@_xlink:href']).toUpperCase() === 'CB' ? 'CB' : ''
+  const cloudType = lastToken(cloud['iwxxm:cloudType']?.['@_xlink:href']).toUpperCase()
+  const type = cloudType === 'CB' || cloudType === 'TCU' ? cloudType : null
+  const typeSuffix = type || ''
 
   const baseNode =
     cloud['iwxxm:base'] ||
@@ -148,6 +150,7 @@ export function parseCloudLayer(layerNode) {
   return {
     amount,
     base,
+    type, // CB/TCU — 대류운 여부. 표시단에서 운량·운고 뒤에 붙인다.
     raw: amount && Number.isFinite(base) ? `${amount}${formatCloudBase(base)}${typeSuffix}` : amount || null,
   }
 }
@@ -202,10 +205,13 @@ export function parseWind(windNode) {
   return parsed
 }
 
+// TAC 기온군은 정수 2자리. NOAA JSON은 21.1/17.8처럼 소수를 주므로 반올림 후 포맷한다.
+// 영하 0도대(-0.4°C)는 TAC에서 M00 — 반올림하면 부호가 사라지므로 원값 부호로 판정한다.
 export function toMetarTempToken(v) {
   if (!Number.isFinite(v)) return '//'
-  if (v < 0) return `M${String(Math.abs(v)).padStart(2, '0')}`
-  return String(v).padStart(2, '0')
+  const n = Math.round(v)
+  if (n < 0 || (n === 0 && v < 0)) return `M${String(Math.abs(n)).padStart(2, '0')}`
+  return String(n).padStart(2, '0')
 }
 
 export function resolveDdhh(ddhh, anchor) {

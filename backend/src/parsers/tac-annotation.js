@@ -1,27 +1,52 @@
 import { parseWeatherCode } from './parse-utils.js'
 import { weatherTokenRole } from '../serializers/tac-presentation.js'
 
-function roleForToken(text) {
+const REPORT_KEYWORD = /^(METAR|SPECI|TAF|AMD|COR)$/i
+
+// isStation은 문법 위치로 판정한다 — 4글자 대문자 규칙만 쓰면 TSRA·VCSH·FZFG·MIFG 같은
+// 4글자 현상코드가 공항코드로 잡혀 강조에서 빠지고, SASA 같은 실제 공항코드는 반대로 기상으로 잡힌다.
+function roleForToken(text, { isStation = false, inRemark = false } = {}) {
   const token = text.replace(/=$/, '')
-  if (/^(METAR|SPECI|TAF|AMD|COR)$/i.test(token)) return 'report'
-  if (/^[A-Z]{4}$/.test(token)) return 'station'
+  if (REPORT_KEYWORD.test(token)) return 'report'
+  if (isStation) return 'station'
   if (/^\d{6}Z$/.test(token)) return 'time'
   if (/^\d{4}\/\d{4}$/.test(token)) return 'validity'
   if (/^(FM\d{6}|BECMG|TEMPO|PROB\d{2})$/.test(token)) return 'change'
-  if (/^(?:\d{3}|VRB)\d{2,3}(?:G\d{2,3})?KT$/.test(token)) return 'wind'
+  // 해외는 m/s(MPS)·km/h(KMH) 표기와 풍향변동군(120V180)을 쓴다. 결측은 /////KT.
+  if (/^(?:\d{3}|VRB|\/{3})(?:\d{2,3}|\/{2})(?:G\d{2,3})?(?:KT|MPS|KMH)$/.test(token)) return 'wind'
+  if (/^\d{3}V\d{3}$/.test(token)) return 'wind'
   if (/^R\d{2}[LCR]?\//.test(token)) return 'rvr'
-  if (/^(?:M|P)?\d+(?:\/\d+)?SM$/.test(token) || /^\d{4}$/.test(token)) return 'visibility'
+  if (/^(?:M|P)?\d+(?:\/\d+)?SM$/.test(token) || /^\d{4}(?:[NSEW]{1,2})?$/.test(token)) return 'visibility'
   if (/^(?:FEW|SCT|BKN|OVC)\d{3}CB$/.test(token)) return 'cloud-cb'
-  if (/^(BKN|OVC)\d{3}$/.test(token)) return 'ceiling'
-  if (/^(FEW|SCT|VV)\d{3}$/.test(token)) return 'plain'
+  // VV(수직시정)는 하늘이 막힌 상태 — 운고와 같은 등급 강조를 받아야 한다.
+  if (/^(?:BKN|OVC)\d{3}$/.test(token) || /^VV\d{3}$/.test(token)) return 'ceiling'
+  if (/^(?:FEW|SCT)\d{3}$/.test(token)) return 'plain'
   if (/^(M?\d{2})\/(M?\d{2})$/.test(token)) return 'temperature'
   if (/^[QA]\d{4}$/.test(token)) return 'qnh'
+  // RMK 이후는 국가별 자유서식(FG8, SLP154, AO2…) → 현재기상으로 해석하지 않는다.
+  // RE군(RESHRA·RESN…)은 지나간 현상이므로 현재기상과 같은 강조를 주지 않는다.
+  if (inRemark || /^RE[A-Z]{2}/.test(token)) return 'plain'
   const weather = parseWeatherCode(token)
   return weather ? weatherTokenRole(weather) : 'plain'
 }
 
 function annotateLine(text, slotTime = null) {
-  const tokens = String(text).split(/(\s+)/).filter(Boolean).map((value) => ({ text: value, role: /^\s+$/.test(value) ? 'separator' : roleForToken(value) }))
+  const parts = String(text).split(/(\s+)/).filter(Boolean)
+  // 관측소 코드는 보고종별 뒤 첫 토큰 하나뿐. RMK 이후는 자유서식 구간.
+  const words = parts.filter((value) => !/^\s+$/.test(value))
+  const firstBody = words.find((value) => !REPORT_KEYWORD.test(value.replace(/=$/, '')))
+  const stationWord = firstBody && /^[A-Z]{4}$/.test(firstBody) ? firstBody : null
+  let stationTaken = false
+  let inRemark = false
+
+  const tokens = parts.map((value) => {
+    if (/^\s+$/.test(value)) return { text: value, role: 'separator' }
+    const isStation = !stationTaken && value === stationWord
+    if (isStation) stationTaken = true
+    const role = roleForToken(value, { isStation, inRemark })
+    if (value.replace(/=$/, '') === 'RMK') inRemark = true
+    return { text: value, role }
+  })
   return { text: String(text), slot_time: slotTime, tokens }
 }
 

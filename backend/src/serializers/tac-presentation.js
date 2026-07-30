@@ -6,6 +6,7 @@ export function weatherTokenRole(weather) {
   const phenomena = weather?.phenomena || []
   if (weather?.descriptor === 'TS' || weather?.descriptor === 'FZ' || phenomena.includes('FG') || phenomena.includes('SN')) return 'weather-special'
   if (phenomena.some((code) => ['RA', 'DZ', 'SG', 'IC', 'PL', 'GR', 'GS', 'UP'].includes(code))) return 'weather-precip'
+  if (weather?.descriptor === 'SH') return 'weather-precip' // VCSH(근접 소나기)는 강수 현상군
   return 'plain'
 }
 

@@ -43,7 +43,10 @@ function buildClouds(cloudArr) {
     if (CLEAR_COVERS.has(amount)) { nsc = true; continue }
     const base = Number.isFinite(c?.base) ? c.base : null
     const code = Number.isFinite(base) ? String(Math.max(0, Math.round(base / 100))).padStart(3, '0') : null
-    list.push({ amount, base, raw: code ? `${amount}${code}` : amount })
+    // NOAA TAF JSON은 대류운을 type: "CB"로 준다(METAR JSON엔 없는 필드).
+    const t = c?.type ? String(c.type).toUpperCase() : null
+    const type = t === 'CB' || t === 'TCU' ? t : null
+    list.push({ amount, base, type, raw: code ? `${amount}${code}${type || ''}` : amount })
   }
   return { list, nsc }
 }
@@ -59,7 +62,24 @@ function parseWxString(wxString) {
   return { value, touched: true }
 }
 
-function parseState(fcst, isBase = false, cavok = false) {
+// 원문 TAF의 미터 시정군(9999, 3500, 0800). 시각군(3012/3118)·바람(33006KT)·기온군(TX32/3106Z)은
+// 슬래시나 접미사가 있어 걸리지 않는다.
+export function tacVisibilityMeters(rawTaf) {
+  const out = []
+  for (const t of String(rawTaf || '').toUpperCase().split(/\s+/)) {
+    if (/^\d{4}$/.test(t)) out.push(Number(t))
+  }
+  return out
+}
+
+// NOAA는 TAF 시정도 SM으로 정규화한다: 3500m → 2.17SM → 되돌리면 3492m. METAR와 같은 왕복 손실이라
+// 원문 미터군이 있으면 그 값으로 되돌린다. 소수 둘째자리 반올림이라 오차는 최대 ±9m → ±10m 안에서만 스냅.
+export function snapVisibilityToTac(meters, tacMeters) {
+  if (!Number.isFinite(meters)) return meters
+  return tacMeters.find((m) => Math.abs(m - meters) <= 10) ?? meters
+}
+
+function parseState(fcst, isBase = false, cavok = false, tacMeters = []) {
   if (cavok) {
     return {
       wind: buildWind(fcst.wdir, fcst.wspd, fcst.wgst),
@@ -73,7 +93,7 @@ function parseState(fcst, isBase = false, cavok = false) {
     }
   }
   const wind = buildWind(fcst.wdir, fcst.wspd, fcst.wgst)
-  const vis = convertSmToMeters(fcst.visib)
+  const vis = snapVisibilityToTac(convertSmToMeters(fcst.visib), tacMeters)
   const wx = parseWxString(fcst.wxString)
   const clouds = buildClouds(fcst.clouds)
   return {
@@ -167,13 +187,14 @@ export function parse(entry) {
   const cavokIndex = rawTokens.indexOf('CAVOK')
   const baseCavok = cavokIndex >= 0 && !rawTokens.slice(0, cavokIndex)
     .some((token) => token === 'BECMG' || token === 'TEMPO' || /^PROB(?:30|40)?$/.test(token) || /^FM\d{6}$/.test(token))
+  const tacMeters = tacVisibilityMeters(entry.rawTAF)
   let baseSeen = false
   const segments = entry.fcsts.map((f) => {
     const isBase = f.fcstChange == null
     const cavok = isBase && !baseSeen && baseCavok
     if (isBase) baseSeen = true
     return {
-      ...parseState(f, isBase, cavok),
+      ...parseState(f, isBase, cavok, tacMeters),
       _from: unixToIso(f.timeFrom),
       _to: unixToIso(f.timeTo),
       _raw: f,
