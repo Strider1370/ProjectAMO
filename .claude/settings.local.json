@@ -79,7 +79,8 @@
       "Bash(/home/john_doe/.orca/agent-hooks/claude-hook.sh)",
       "Bash(echo \"exit code: $?\")",
       "Bash(npx vitest *)",
-      "Bash(npx --yes vite-bundle-visualizer --help)"
+      "Bash(npx --yes vite-bundle-visualizer --help)",
+      "Bash(git fetch *)"
     ]
   }
 }
