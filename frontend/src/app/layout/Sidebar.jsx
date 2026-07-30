@@ -65,7 +65,7 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
   }, [isExpanded])
   // 관리자 콘솔은 사이드바 노출 없이 /admin 직접 진입(서버 requireRole로 차단). UI에 진입점 안 둠.
   // 켜진 레이어 수 배지(모바일과 동일 정보). ponytail: 축소 시 점만, 확장 시 숫자 — 36px 레일에 숫자 욱여넣지 않음.
-  const counts = layerCounts || { aviation: 0, met: 0 }
+  const counts = layerCounts || { aviation: 0, met: 0, traffic: 0 }
   const badgeFor = (label) =>
     label === '항공정보' ? counts.aviation || undefined
     : label === '기상정보' ? counts.met || undefined

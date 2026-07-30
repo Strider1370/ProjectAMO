@@ -53,7 +53,7 @@ function MainAppShell() {
   })
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [mobileTask, setMobileTask] = useState('map')
-  const [layerCounts, setLayerCounts] = useState({ aviation: 0, met: 0 })
+  const [layerCounts, setLayerCounts] = useState({ aviation: 0, met: 0, traffic: 0 })
   const [searchOpen, setSearchOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const mapRef = useRef(null)
