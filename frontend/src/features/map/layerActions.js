@@ -34,7 +34,6 @@ const MET_META = {
   airmet: { label: 'AIRMET', aliases: ['에어멧'] },
   sigwx: { label: 'SIGWX', aliases: ['시그윅스', '악기상'] },
   typhoon: { label: '태풍', aliases: ['태풍', 'typhoon', '타이푼'] },
-  adsb: { label: 'ADS-B', aliases: ['항공기', '실시간항공기', 'adsb'] },
   flightCategory: { label: '비행기상구역', aliases: ['비행구역', '카테고리'] },
 }
 export const MET_ACTIONS = MET_LAYERS.map((l) => ({
@@ -42,6 +41,11 @@ export const MET_ACTIONS = MET_LAYERS.map((l) => ({
   label: MET_META[l.id]?.label ?? l.label,
   aliases: MET_META[l.id]?.aliases ?? [],
 }))
+
+// B-2. 항적(ADS-B) — 기상이 아니라 교통이라 전용 패널('traffic')을 연다.
+export const TRAFFIC_ACTIONS = [
+  { id: 'adsb', type: 'traffic', panelId: 'traffic', label: 'ADS-B', aliases: ['항공기', '실시간항공기', 'adsb', '항적'] },
+]
 
 // C. 항공 레이어 — 패널('aviation') 열고 해당 레이어 ON
 const AVIATION_META = {
@@ -82,7 +86,7 @@ export const BASEMAP_ACTIONS = BASEMAP_OPTIONS.map((o) => ({
   aliases: BASEMAP_META[o.id]?.aliases ?? [],
 }))
 
-export const ALL_ACTIONS = [...PANEL_ACTIONS, ...MET_ACTIONS, ...AVIATION_ACTIONS, ...BASEMAP_ACTIONS]
+export const ALL_ACTIONS = [...PANEL_ACTIONS, ...MET_ACTIONS, ...TRAFFIC_ACTIONS, ...AVIATION_ACTIONS, ...BASEMAP_ACTIONS]
 
 // id → 한글 라벨 (토글칩 등 공유 UI용). 라벨 단일 출처.
 export const metLabel = (id) => MET_ACTIONS.find((a) => a.id === id)?.label ?? id

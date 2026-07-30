@@ -63,7 +63,7 @@ function createMockMap() {
 
 test('weather overlay exports keep MET panel metadata intact', () => {
   assert.equal(MET_LAYERS.find((layer) => layer.id === 'sigmet')?.label, 'SIGMET')
-  assert.equal(MET_LAYERS.find((layer) => layer.id === 'adsb')?.label, 'ADS-B')
+  assert.equal(MET_LAYERS.find((layer) => layer.id === 'adsb'), undefined)
   assert.equal(RADAR_RAINRATE_LEGEND[0].label, '150')
   assert.equal(RADAR_RAINRATE_LEGEND.at(-1).label, '0.0')
 })

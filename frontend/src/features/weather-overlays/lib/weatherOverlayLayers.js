@@ -158,7 +158,6 @@ export const MET_LAYERS = [
   { id: 'airmet', label: 'AIRMET', color: ADVISORY_LAYER_DEFS.airmet.color },
   { id: 'sigwx', label: 'SIGWX', color: '#a78bfa' },
   { id: 'typhoon', label: '태풍', color: '#dc2626' },   // TYPHOON_PALETTE[0]과 같은 값
-  { id: 'adsb', label: 'ADS-B', color: '#10b981' },
   { id: 'flightCategory', label: '비행기상구역', color: '#f97316' },
   { id: 'notam', label: 'NOTAM', color: '#334155' },
 ]

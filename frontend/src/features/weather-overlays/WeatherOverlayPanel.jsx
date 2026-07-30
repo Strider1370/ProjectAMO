@@ -26,7 +26,6 @@ const WEATHER_TILE_ICON = {
   airmet: AlertOctagon,
   sigwx: CloudFog,
   typhoon: Tornado,
-  adsb: Radio,
 }
 
 function WeatherOverlayPanel({
@@ -47,9 +46,7 @@ function WeatherOverlayPanel({
   // 재개하려면 이 배열을 비우고 백엔드 수집(index.js)도 되돌릴 것.
   const TEMP_HIDDEN_LAYER_IDS = ['flightCategory']
   // 순서는 조종사가 보는 급한 순서 — 발효 중인 위험기상이 먼저, 그다음 실제 관측(레이더·위성),
-  // 그다음 예보(수치모델), 마지막이 참고용 항적.
-  // 레이더와 위성은 같은 "지금 무엇이 보이는가"라 한 묶음으로 두고, 그 안에서 레이더 산출물 →
-  // 위성 산출물 순으로 늘어놓는다.
+  // 마지막이 예보(수치모델). 항적(ADS-B)은 기상이 아니라 교통이라 별도 '항적' 패널에 있다.
   const groups = [
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'typhoon'] },
     {
@@ -58,7 +55,6 @@ function WeatherOverlayPanel({
       ids: ['radar', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'ci', 'ctps'],
     },
     { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : [] },
-    { id: 'traffic', title: '항적', ids: ['adsb'] },
   ]
   const layerLabels = {
     radar: '레이더',
@@ -78,7 +74,6 @@ function WeatherOverlayPanel({
     airmet: 'AIRMET',
     sigwx: 'SIGWX',
     typhoon: '태풍',
-    adsb: 'ADS-B',
     flightCategory: '비행기상구역',
   }
   const visibleLayers = layers.filter((layer) => showWind || !['wind', 'temp', 'cloud', 'icing'].includes(layer.id))

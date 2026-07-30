@@ -5,7 +5,7 @@ import { MET_LAYERS } from '../weather-overlays/lib/weatherOverlayLayers.js'
 import { AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
 import { BASEMAP_OPTIONS } from './mapConfig.js'
 import {
-  MET_ACTIONS, AVIATION_ACTIONS, BASEMAP_ACTIONS,
+  MET_ACTIONS, TRAFFIC_ACTIONS, AVIATION_ACTIONS, BASEMAP_ACTIONS,
   buildSearchCatalog, matchSearch,
 } from './layerActions.js'
 
@@ -26,8 +26,22 @@ test('every basemap is registered', () => {
   for (const o of BASEMAP_OPTIONS) assert.ok(ids.has(o.id), `베이스맵 미등록: ${o.id}`)
 })
 
+test('ADS-B는 기상이 아니라 항적 액션이다', () => {
+  assert.equal(MET_ACTIONS.some((a) => a.id === 'adsb'), false)
+  const adsb = TRAFFIC_ACTIONS.find((a) => a.id === 'adsb')
+  assert.ok(adsb, '항적 액션 미등록: adsb')
+  assert.equal(adsb.type, 'traffic')
+  assert.equal(adsb.panelId, 'traffic')
+})
+
+test('"항공기"로 검색하면 항적 액션이 나온다', () => {
+  const hits = matchSearch(ALL(), '항공기')
+  assert.equal(hits[0].id, 'adsb')
+  assert.equal(hits[0].type, 'traffic')
+})
+
 test('모든 action 라벨이 비어있지 않다', () => {
-  for (const a of [...MET_ACTIONS, ...AVIATION_ACTIONS, ...BASEMAP_ACTIONS])
+  for (const a of [...MET_ACTIONS, ...TRAFFIC_ACTIONS, ...AVIATION_ACTIONS, ...BASEMAP_ACTIONS])
     assert.ok(a.label && a.label.length > 0, `라벨 없음: ${a.type}/${a.id}`)
 })
 
