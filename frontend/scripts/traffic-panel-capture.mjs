@@ -15,6 +15,7 @@ function countAircraftOnMap() {
   return page.evaluate(() => window.__map.queryRenderedFeatures({ layers: ['adsb-layer'] }).length)
 }
 
+try {
 await page.goto(url, { waitUntil: 'domcontentloaded' })
 await page.waitForSelector('.map-shell', { timeout: 30000 })
 const closeModal = page.locator('.updates-modal__close')
@@ -67,5 +68,6 @@ await page.waitForSelector('[aria-label="항적 필터"]')
 console.log('새로고침 후 표시 켜짐:', await page.locator('[aria-label="항적 필터"] .traffic-switch input').isChecked())
 console.log('새로고침 후 필터 유지:', await page.locator('[aria-label="항적 필터"] .traffic-group input[type=checkbox]').first().isChecked())
 await page.locator('[aria-label="항적 필터"]').screenshot({ path: `${outDir}/04-after-reload.png` })
-
-await browser.close()
+} finally {
+  await browser.close()
+}

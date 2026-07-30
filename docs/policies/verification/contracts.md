@@ -43,7 +43,7 @@ desktop 한 종, 재시도 없음, 이미 떠 있는 서버 재사용(`CONTRACT_
 
 | Contract | Preconditions | Status |
 | --- | --- | --- |
-| `traffic-panel` | Vite dev server on 5173; `/api/adsb` returning aircraft data | capture — `node frontend/scripts/traffic-panel-capture.mjs`; active 2026-07-31 |
+| `traffic-panel` | Vite on 5173; `/api/adsb` returning aircraft data. Guarantee: sidebar 항적 → panel opens; ADS-B enable + operator/altitude/search filters → map aircraft count matches panel `보이는 항공기 N / 전체 M`; reload preserves filters, display off | capture — `node frontend/scripts/traffic-panel-capture.mjs`; active 2026-07-31 |
 
 ## Phase A coverage and legacy mapping
 
