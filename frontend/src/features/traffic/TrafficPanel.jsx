@@ -178,7 +178,7 @@ export default function TrafficPanel({
           <input
             type="search"
             className="traffic-search"
-            placeholder="편명 또는 등록기호 (KAL123, HL1234)"
+            placeholder="편명 · 등록기호 (KAL123)"
             value={filters.search}
             disabled={!visible}
             onChange={(e) => onChangeFilters({ search: e.target.value })}

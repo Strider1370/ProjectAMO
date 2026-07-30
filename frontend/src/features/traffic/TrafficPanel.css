@@ -83,6 +83,8 @@
 }
 .traffic-alt-track { left: 0; right: 0; background: var(--bg-4); }
 .traffic-alt-fill { background: var(--accent); }
+/* ADS-B가 꺼져 있으면 채움도 같이 죽인다 — 손잡이만 회색이고 막대는 진하면 켜진 것처럼 보인다. */
+.traffic-alt-slider:has(input:disabled) .traffic-alt-fill { background: var(--stroke-1); }
 
 .traffic-alt-slider input[type='range'] {
   position: absolute; inset: 0; width: 100%; margin: 0;

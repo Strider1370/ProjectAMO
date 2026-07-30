@@ -34,7 +34,7 @@ const closeModal = page.locator('.updates-modal__close')
 if (await closeModal.count()) { await closeModal.first().click() }
 
 // 1) 사이드바 → 항적 패널
-await page.getByRole('button', { name: '항적' }).first().click()
+await page.getByRole('button', { name: 'ADS-B', exact: true }).first().click()
 await page.waitForSelector('[aria-label="항적 필터"]', { timeout: 10000 })
 await page.locator('[aria-label="항적 필터"]').screenshot({ path: `${outDir}/01-panel-off.png` })
 
@@ -45,7 +45,7 @@ const metText = await page.locator('[aria-label="기상 레이어 토글"]').inn
 console.log('기상 패널에 ADS-B 흔적:', /ADS-B|항적/.test(metText))
 
 // 3) ADS-B 켜기 → 수신 대기
-await page.getByRole('button', { name: '항적' }).first().click()
+await page.getByRole('button', { name: 'ADS-B', exact: true }).first().click()
 await page.locator('[aria-label="항적 필터"] .traffic-toggle').click()
 await page.waitForFunction(() => !document.querySelector('[aria-label="항적 필터"]')?.innerText.includes('전체 0'), { timeout: 60000 })
 // Wait for features to actually render on the map
@@ -72,7 +72,7 @@ await page.locator('[aria-label="항적 필터"]').screenshot({ path: `${outDir}
 // 7) 새로고침 → 필터 유지, 표시는 꺼짐
 await page.reload({ waitUntil: 'domcontentloaded' })
 await page.waitForSelector('.map-shell', { timeout: 30000 })
-await page.getByRole('button', { name: '항적' }).first().click()
+await page.getByRole('button', { name: 'ADS-B', exact: true }).first().click()
 await page.waitForSelector('[aria-label="항적 필터"]')
 console.log('새로고침 후 표시 켜짐:', await page.locator('[aria-label="항적 필터"] .traffic-toggle').getAttribute('aria-pressed') === 'true')
 console.log('새로고침 후 필터 유지:', await page.locator('[aria-label="항적 필터"] .traffic-group input[type=checkbox]').first().isChecked())

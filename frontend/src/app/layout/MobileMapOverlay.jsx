@@ -30,10 +30,10 @@ export default function MobileMapOverlay({ activePanel, onToggle, aviationCount 
           type="button"
           className={`mobile-map-layer-btn${activePanel === 'traffic' ? ' is-active' : ''}`}
           onClick={() => onToggle('traffic')}
-          aria-label="항적"
+          aria-label="ADS-B"
         >
           <Radio size={20} strokeWidth={2} />
-          <span>항적</span>
+          <span>ADS-B</span>
           {trafficCount > 0 && <span className="mobile-map-layer-count">{trafficCount}</span>}
         </button>
       </div>

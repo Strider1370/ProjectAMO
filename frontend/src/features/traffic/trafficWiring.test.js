@@ -9,8 +9,8 @@ const mapView = read('../map/MapView.jsx')
 const metPanel = read('../weather-overlays/WeatherOverlayPanel.jsx')
 
 test('사이드바에 항적 항목과 패널 연결이 있다', () => {
-  assert.match(sidebar, /label: '항적'/)
-  assert.match(sidebar, /항적:\s+'traffic'/)
+  assert.match(sidebar, /label: 'ADS-B'/)
+  assert.match(sidebar, /'ADS-B':\s+'traffic'/)
   assert.match(sidebar, /counts\.traffic/)
 })
 
