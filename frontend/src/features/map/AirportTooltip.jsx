@@ -39,7 +39,9 @@ function formatClouds(observation) {
   if (!significant.length) return 'SKC'
   return significant.map((c) => {
     const base = Number.isFinite(c.base) ? String(Math.round(c.base / 100)).padStart(3, '0') : '///'
-    return `${String(c.amount).toUpperCase()}${base}`
+    // CB/TCU(대류운)는 운고와 함께 봐야 하는 정보 — 전문 표기 그대로 뒤에 붙인다.
+    const type = c.type === 'CB' || c.type === 'TCU' ? c.type : ''
+    return `${String(c.amount).toUpperCase()}${base}${type}`
   }).join(' ')
 }
 

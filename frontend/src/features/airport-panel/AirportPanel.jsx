@@ -122,7 +122,8 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
 
   const metarTime = metar?.header?.observation_time || metar?.header?.issue_time
   const tafValid = taf?.header?.valid_start
-    ? `${fmtKstShort(taf.header.valid_start, tz)} – ${fmtKstShort(taf.header.valid_end, tz)}`
+    // 한 줄에 들어가도록 연도를 떼고 시간대 표기는 끝에 한 번만 (07-30 17:00 – 07-31 23:00 KST)
+    ? `${fmtKstShort(taf.header.valid_start, tz).slice(5, 16)} – ${fmtKstShort(taf.header.valid_end, tz).slice(5)}`
     : ''
   const metarSpeci = metar?.header?.report_type === 'SPECI' // 특별관측 → 제목을 SPECI로
   const tafAmd = taf?.header?.report_status === 'AMENDMENT' // 정정 → 제목을 TAF AMD로

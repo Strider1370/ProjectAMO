@@ -50,5 +50,10 @@
 .ap-notam-tab .notam-cell-title, .bv-airport-notam .notam-cell-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 1.35; white-space: normal; }
 .ap-notam-tab .notam-cell-ts, .bv-airport-notam .notam-cell-ts { padding: 0; border-radius: 0; background: transparent; color: var(--text-3); }
 .ap-notam-tab .notam-cell-raw, .bv-airport-notam .notam-cell-raw { background: var(--bg-1); border-color: var(--stroke-strong); color: var(--text-1); font-size: 14px; font-weight: 600; }
+/* 모바일: 카드 폭이 좁아 제목 2줄이 답답하므로 한 단계 작게 */
+@media (max-width: 719px) {
+  .ap-notam-tab .notam-cell-title, .bv-airport-notam .notam-cell-title { font-size: 13px; }
+}
+
 .ap-notam-fir { margin-top: 12px; }
 .ap-notam-fir > summary { cursor: pointer; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }

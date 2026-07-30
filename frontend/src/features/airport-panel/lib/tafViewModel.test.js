@@ -68,3 +68,21 @@ describe('airport TAF view model weather highlighting', () => {
     assert.equal(formatTafPeriodRange('2026-07-21T14:00:00Z', '2026-07-21T16:00:00Z', 'KST'), '21/23–22/01')
   })
 })
+
+describe('airport TAF CAVOK slots', () => {
+  it('flags CAVOK slots so the table can merge visibility, clouds and weather', () => {
+    const taf = {
+      header: { valid_start: '2026-05-21T06:00:00Z', valid_end: '2026-05-22T12:00:00Z' },
+      timeline: [
+        futureSlot(2, '', { visibility: { value: 9999, cavok: true }, clouds: [] }),
+        futureSlot(3, 'NSW'),
+      ],
+    }
+
+    const model = buildTafViewModel(taf, 'RKSI')
+
+    assert.deepEqual(model.slots.map((slot) => slot.cavok), [true, false])
+    assert.equal(model.slots[0].cloudText, 'CAVOK')
+    assert.equal(model.slots[0].weatherText, 'CAVOK')
+  })
+})

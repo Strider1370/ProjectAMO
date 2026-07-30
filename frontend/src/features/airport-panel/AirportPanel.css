@@ -933,6 +933,11 @@
 
 .ap-taf-tac-block .ap-metar-tac { font-size: var(--fs-400); line-height: var(--lh-400); }
 
+/* 모바일: 20px면 한 줄이 두세 줄로 접혀 읽기 흐름이 끊긴다 → TAF 원문과 같은 16px */
+@media (max-width: 719px) {
+  .ap-metar-tac { font-size: var(--fs-400); line-height: var(--lh-400); }
+}
+
 .ap-metar-tac-chip {
   display: inline-flex;
   align-items: baseline;
@@ -965,9 +970,9 @@
   outline-offset: -1px;
 }
 
-/* ── TAF TAC 원문 — METAR TAC과 동일한 큰 글자·임계값 색칠 + 줄마다 그 시점의
-   비행조건 배지(기본/TEMPO/BECMG/FM/PROB). 시각을 못 찾은 줄(RMK 등)은 배지 폭만큼
-   빈 칸을 둬 정렬을 맞춘다. ── */
+/* ── TAF TAC 원문 — METAR TAC과 동일한 큰 글자·임계값 색칠. 줄마다 그 시점의
+   비행조건을 배지 대신 왼쪽 색 테두리로 표시(표의 시간 칸과 같은 규칙). 시각을
+   못 찾은 줄(RMK 등)은 투명 테두리로 들여쓰기만 맞춘다. ── */
 .ap-taf-tac-block {
   display: flex;
   flex-direction: column;
@@ -979,11 +984,12 @@
   align-items: baseline;
   gap: 8px;
   flex-wrap: wrap;
+  border-left: 4px solid transparent;
+  padding-left: 8px;
 }
-.ap-taf-tac-chip-spacer {
-  flex: 0 0 auto;
-  width: 40px;
-}
+.ap-taf-tac-row--VFR { border-left-color: var(--level-green); }
+.ap-taf-tac-row--IFR { border-left-color: var(--level-amber); }
+.ap-taf-tac-row--LIFR { border-left-color: var(--level-red); }
 
 /* ── 해독 카드 접기 (원문이 메인이 된 뒤, 카드는 보조 상세) ── */
 .ap-metar-detail {
@@ -1776,6 +1782,11 @@
 .ap-taf-table td.ap-taf-merged {
   vertical-align: middle;
 }
+/* CAVOK은 시정·구름·날씨 3열을 하나로 합쳐 표시 */
+.ap-taf-table td.ap-taf-cavok {
+  text-align: center;
+  font-weight: 700;
+}
 
 .ap-taf-weather-cell {
   display: flex;
@@ -2512,20 +2523,28 @@
   .ap-taf-table {
     min-width: 0; /* 540px 강제폭 해제 → 가로 스크롤 제거 */
     table-layout: fixed;
-    font-size: 13px; /* 가독성 위해 키움 (열 하나 줄여서 여유 확보) */
+    font-size: 12px; /* CB 붙은 구름군(FEW018CB)까지 넣으려면 375px에선 12px가 한계 */
   }
 
-  .ap-taf-table th:nth-child(1) { width: 31%; }
+  /* 구름 열은 CB가 붙은 8자(FEW018CB), 날씨 열은 5자(+SHRA)가 기준. 375px에서 다섯 열이
+     동시에 여유를 가질 수는 없어서 시간·시정을 최소로 깎고 나머지를 관측군에 줬다. */
+  .ap-taf-table th:nth-child(1) { width: 26%; }
   .ap-taf-table th:nth-child(2) { width: 13%; }
-  .ap-taf-table th:nth-child(3) { width: 19%; }
-  .ap-taf-table th:nth-child(4) { width: 24%; }
-  .ap-taf-table th:nth-child(5) { width: 13%; }
+  .ap-taf-table th:nth-child(3) { width: 23%; }
+  .ap-taf-table th:nth-child(4) { width: 14%; }
+  .ap-taf-table th:nth-child(5) { width: 24%; }
   .ap-taf-table th { font-size: var(--fs-200); }
 
   .ap-taf-table th,
   .ap-taf-table td {
     padding: 7px 5px;
+    overflow-wrap: anywhere; /* 최후수단: 그래도 넘치면 칸 안에서 줄을 바꾼다 */
   }
+  /* 관측군은 토큰을 쪼개면 못 읽는다(FEW018C+B, +SHR+A) → 낱말 사이에서만 줄바꿈 */
+  .ap-taf-table td .ap-taf-clouds,
+  .ap-taf-table td.ap-taf-wx { overflow-wrap: normal; word-break: keep-all; }
+  /* 날씨군이 둘 이상이면(TSRA +SHRA) nowrap 상태로 옆 칸을 덮는다 → 모바일에선 줄바꿈 허용 */
+  .ap-taf-table td.ap-taf-wx { white-space: normal; }
 
   .ap-taf-weather-cell {
     padding: 3px 4px;

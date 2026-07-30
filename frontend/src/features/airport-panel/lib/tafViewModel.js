@@ -63,6 +63,7 @@ function tafSlotView(slot, icao) {
     isSpecialWeather: hasSpecialWeather(slot),
     visibilityText: formatTafVisibility(slot),
     cloudText: formatTafClouds(slot),
+    cavok: Boolean(slot?.visibility?.cavok ?? slot?.cavok),
   }
 }
 

@@ -100,10 +100,12 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
       )}
 
       {slots.length > 0 && view === 'table' && (() => {
-        const visSpans = computeColumnSpans(periods, (item) => item.visibilityText)
-        const cloudSpans = computeColumnSpans(periods, (item) => item.cloudText)
+        // CAVOK 구간은 시정·구름·날씨를 CAVOK 한 칸으로 합치므로, 세 열의 병합 구간이
+        // 항상 CAVOK 경계에서 같이 끊기도록 같은 sentinel 키를 쓴다.
+        const visSpans = computeColumnSpans(periods, (item) => (item.cavok ? 'CAVOK' : item.visibilityText))
+        const cloudSpans = computeColumnSpans(periods, (item) => (item.cavok ? 'CAVOK' : item.cloudText))
         const windSpans = computeColumnSpans(periods, (item) => item.windText)
-        const wxSpans = computeColumnSpans(periods, (item) => item.weatherText)
+        const wxSpans = computeColumnSpans(periods, (item) => (item.cavok ? 'CAVOK' : item.weatherText))
         const etaMs = Date.parse(eta)
         // ETA 강조는 시간(첫) 칸에만 준다. 값 칸은 여러 시간대에 걸쳐 병합돼 있어서
         // 같이 칠하면 "그 값 전체가 ETA"인 것처럼 읽히고, 줄 전체에 테두리를 두르면
@@ -115,7 +117,7 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
         return (
           <div className="ap-taf-table-wrap">
             <table className="ap-taf-table">
-            <thead><tr><th>시간 ({tz})</th><th>시정(m)</th><th>구름(ft)</th><th>바람</th><th>날씨</th></tr></thead>
+            <thead><tr><th>시간 ({tz})</th><th>시정(m)</th><th>구름(ft)</th><th>날씨</th><th>바람</th></tr></thead>
             <tbody>
               {periods.map((p, index) => {
                 const item = p.first
@@ -130,10 +132,16 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
                         {isEtaPeriod && <span className="ap-taf-eta-badge">ETA</span>}
                       </span>
                     </td>
-                    {visSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={visSpans[index]} style={{ color: item.visibilityCategory.valueColor }}>{item.visibilityText}</td>}
-                    {cloudSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={cloudSpans[index]} style={{ color: item.ceilingCategory.valueColor }}><CloudText value={item.cloudText} /></td>}
+                    {item.cavok
+                      ? visSpans[index] > 0 && <td className="ap-taf-merged ap-taf-cavok" colSpan={3} rowSpan={visSpans[index]} style={{ color: item.visibilityCategory.valueColor }}>CAVOK</td>
+                      : (
+                        <>
+                          {visSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={visSpans[index]} style={{ color: item.visibilityCategory.valueColor }}>{item.visibilityText}</td>}
+                          {cloudSpans[index] > 0 && <td className="ap-taf-merged" rowSpan={cloudSpans[index]} style={{ color: item.ceilingCategory.valueColor }}><CloudText value={item.cloudText} /></td>}
+                          {wxSpans[index] > 0 && <td className={`ap-taf-merged ap-taf-wx${item.hasPrecipitation ? ' ap-taf-wx--precip' : ''}${item.isSpecialWeather ? ' ap-taf-wx--special' : ''}`} rowSpan={wxSpans[index]}>{item.weatherText}</td>}
+                        </>
+                      )}
                     {windSpans[index] > 0 && <td className={`ap-taf-merged${item.highWind ? ' is-alert' : ''}`} rowSpan={windSpans[index]}>{item.windText}</td>}
-                    {wxSpans[index] > 0 && <td className={`ap-taf-merged ap-taf-wx${item.hasPrecipitation ? ' ap-taf-wx--precip' : ''}${item.isSpecialWeather ? ' ap-taf-wx--special' : ''}`} rowSpan={wxSpans[index]}>{item.weatherText}</td>}
                   </tr>
                 )
               })}
@@ -144,17 +152,16 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
       })()}
 
       {/* ── 원문(TAC) — 접이식(기본 접힘). METAR TAC과 동일하게 큰 글자 + 임계값 색칠,
-          줄(기본/TEMPO/BECMG/FM/PROB)마다 그 시점의 비행조건 배지를 앞에 붙인다. ── */}
+          줄(기본/TEMPO/BECMG/FM/PROB)마다 그 시점의 비행조건을 왼쪽 색 테두리로 표시한다. ── */}
       {tacLines.length > 0 && (
         <details className="ap-raw-fold">
           <summary className="ap-raw-fold-summary">원문 (TAC)</summary>
           <div className="ap-taf-tac-block">
             {tacLines.map((line, i) => (
-              <div className="ap-taf-tac-row" key={i}>
+              <div className={`ap-taf-tac-row${line.category ? ` ap-taf-tac-row--${line.category}` : ''}`} key={i} title={line.category || undefined} aria-label={line.category ? `${line.category} 구간` : undefined}>
                 <code className="ap-metar-tac">
                   {line.segments.map((seg, j) => <span key={j} className={seg.className}>{seg.text}</span>)}
                 </code>
-                {line.category ? <span className={`ap-metar-tac-chip ap-metar-tac-chip--${line.category}`}>{line.category}</span> : null}
               </div>
             ))}
           </div>
