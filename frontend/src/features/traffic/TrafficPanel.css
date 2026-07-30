@@ -1,12 +1,21 @@
 /* 항적 패널 — 껍데기(layer-drawer)와 레이어 타일(layer-tile)은 기상·항공 패널과 공유하고,
    필터 위젯만 여기서 정의한다. 값은 전부 디자인 토큰(헌법 §5)에서 가져온다 — 하드코딩 px/hex 금지. */
-.traffic-panel .layer-drawer-body { display: flex; flex-direction: column; gap: var(--space-m); }
+/* 패널 자체를 세로 flex로 잡아 본문만 줄어들게 한다. 공용 껍데기는 본문에 고정 max-height를
+   주는데, 내용이 길어지면 패널의 overflow:hidden에 눌려 하단 푸터가 잘려 나간다(실제로 잘렸다).
+   본문이 남는 높이를 먹고 스크롤하면 푸터는 항상 보인다. */
+.traffic-panel { display: flex; flex-direction: column; }
+.traffic-panel .layer-drawer-body {
+  display: flex; flex-direction: column; gap: var(--space-m);
+  flex: 1 1 auto; min-height: 0; max-height: none;
+}
+.traffic-panel .layer-drawer-header,
+.traffic-panel .layer-drawer-footer { flex: 0 0 auto; }
 
 /* ADS-B 켜기/끄기 — 기상 패널 타일과 같은 버튼. 이 패널의 레이어는 하나뿐이라 한 칸을 다 쓴다. */
 /* 공용 .layer-tile-grid(3열)를 이겨야 하므로 두 클래스를 함께 건다. */
 .layer-tile-grid.traffic-toggle-grid { grid-template-columns: 1fr; }
 /* 아이콘·높이·선택 표시는 .layer-tile 그대로 두고 라벨만 키운다 — 한 칸을 다 쓰므로 11px은 작다. */
-.traffic-toggle .layer-tile-label { font-size: var(--fs-300); }
+.traffic-toggle .layer-tile-label { font-size: var(--fs-400); }
 
 .traffic-hint { margin: 0; font-size: var(--fs-200); line-height: 1.45; color: var(--text-3); }
 .traffic-hint--empty { padding: 0 var(--space-m) var(--space-m); color: var(--level-amber); }
@@ -36,12 +45,15 @@
 .traffic-row:has(input:disabled) { cursor: default; color: var(--text-disabled); }
 .traffic-row:has(input:disabled):hover { border-color: transparent; background: none; }
 .traffic-check--child { padding-left: var(--space-xl); }
-.traffic-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.traffic-row-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-400); color: var(--text-1);
+}
 
 .traffic-count {
   margin-left: auto; padding: var(--space-xxs) var(--space-s);
   border-radius: var(--radius-circular); background: var(--bg-4);
-  color: var(--text-2); font-size: var(--fs-100); font-weight: var(--fw-bold);
+  color: var(--text-2); font-size: var(--fs-300); font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
 .traffic-row.is-on .traffic-count {
@@ -96,7 +108,7 @@
   min-height: var(--touch-min); padding: var(--space-s) var(--space-xs);
   border: 1px solid var(--stroke-2); border-radius: var(--radius-xl);
   background: var(--bg-1); color: var(--text-2);
-  font-family: inherit; font-size: var(--fs-300); font-weight: var(--fw-medium);
+  font-family: inherit; font-size: var(--fs-400); font-weight: var(--fw-medium);
   cursor: pointer;
 }
 .traffic-class:hover:not(:disabled) { border-color: var(--stroke-1); background: var(--bg-2); }
@@ -110,14 +122,21 @@
   width: 100%; min-height: var(--touch-min); padding: 0 var(--space-m);
   border: 1px solid var(--stroke-1); border-radius: var(--radius-xl);
   background: var(--bg-1); color: var(--text-1);
-  font-family: inherit; font-size: var(--fs-300);
+  font-family: inherit; font-size: var(--fs-400);
 }
 .traffic-search:disabled { background: var(--bg-3); color: var(--text-disabled); }
 
-/* 하단 — 상태는 읽을거리라 알약을 벗기고 숫자만 굵게. 버튼은 버튼답게. */
-.traffic-footer { display: flex; align-items: center; gap: var(--space-s); }
+/* 하단 — 상태는 읽을거리라 알약을 벗기고 숫자만 굵게. 버튼은 버튼답게.
+   패널이 260px까지 좁아지면 한 줄에 둘이 안 들어간다. 글자를 줄이는 대신 세로로 쌓는다
+   (헌법 §6: 들어맞을 때까지 폰트 축소는 나쁜 수정, 위계 재배치가 좋은 수정).
+   순서도 상태 먼저, 컨트롤 나중. */
+/* 아래쪽 공용 .layer-drawer-footer 규칙이 같은 특정도라 나중에 선언된 쪽이 이긴다 —
+   패널 클래스를 붙여 이 배치가 확실히 적용되게 한다. */
+.traffic-panel .traffic-footer {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-s);
+}
 .traffic-reset {
-  min-height: var(--space-xxl); padding: 0 var(--space-m);
+  min-height: var(--space-xxxl); padding: 0 var(--space-m);
   border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);
   background: var(--bg-1); color: var(--text-2);
   font-family: inherit; font-size: var(--fs-300); font-weight: var(--fw-medium);
@@ -126,11 +145,12 @@
 .traffic-reset:hover:not(:disabled) { background: var(--bg-3); color: var(--text-1); }
 .traffic-reset:disabled { color: var(--text-disabled); cursor: default; }
 
-.traffic-status {
-  margin-left: auto; padding: 0; border: 0; border-radius: 0; background: none;
+/* 공용 .layer-drawer-status(11px 알약)를 이겨야 해서 패널 클래스를 앞에 붙인다. */
+.traffic-panel .traffic-status {
+  margin-left: 0; padding: 0; border: 0; border-radius: 0; background: none;
   color: var(--text-2); font-size: var(--fs-300); font-weight: var(--fw-regular);
 }
-.traffic-status b {
+.traffic-panel .traffic-status b {
   font-size: var(--fs-400); font-weight: var(--fw-bold); color: var(--text-1);
   font-variant-numeric: tabular-nums;
 }

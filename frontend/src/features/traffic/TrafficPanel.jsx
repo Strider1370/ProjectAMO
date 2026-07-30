@@ -188,12 +188,12 @@ export default function TrafficPanel({
       </div>
 
       <div className="layer-drawer-footer traffic-footer">
-        <button type="button" className="traffic-reset" disabled={!filtered} onClick={onResetFilters}>
-          필터 초기화
-        </button>
         <span className="layer-drawer-status traffic-status">
           보이는 항공기 <b>{visibleCount}</b> / 전체 <b>{counts.total}</b>
         </span>
+        <button type="button" className="traffic-reset" disabled={!filtered} onClick={onResetFilters}>
+          필터 초기화
+        </button>
       </div>
 
       {visible && !receiving && counts.total > 0 && visibleCount === 0 && (
