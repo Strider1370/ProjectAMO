@@ -25,6 +25,9 @@ import MapToolsPanel from '../map-tools/MapToolsPanel.jsx'
 import { useMapTools } from '../map-tools/useMapTools.js'
 import NotamPanel from '../notam/NotamPanel.jsx'
 import { updateNotamLayerData, setNotamVisibility, setNotamCategoryFilter as applyNotamCategoryFilter, notamPopupHtml, notamsAtPoint, addNotamHighlight, setNotamHighlight, geometryBounds } from '../notam/lib/notamLayers.js'
+import TrafficPanel from '../traffic/TrafficPanel.jsx'
+import useTrafficFilters from '../traffic/useTrafficFilters.js'
+import { adsbIdFilter, countAircraft, hasActiveFilters, visibleIds } from '../traffic/trafficFilter.js'
 import { notamToFeatureCollection, displayGeometry } from '../notam/lib/notamGeoJson.js'
 import { registerNotamObstacleImages } from '../notam/lib/notamObstacleIcons.js'
 import { NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
@@ -466,6 +469,9 @@ const MapView = forwardRef(function MapView({
   }, [notamFc, metVisibility.notam, notamCategoryFilter, notamLocationFilter, routeBriefingMapMode, routeBriefing.state.briefing])
   const [adsbData, setAdsbData] = useState(null)
   const [adsbLoading, setAdsbLoading] = useState(false)
+  // ADS-B 켜기/끄기는 기상 레이어에서 분리됐다 — 항적 패널이 소유한다. 저장하지 않는다.
+  const [trafficVisible, setTrafficVisible] = useState(false)
+  const { filters: trafficFilters, setFilters: setTrafficFilters, resetFilters: resetTrafficFilters } = useTrafficFilters()
   const [basemapId, setBasemapId] = useState('standard')
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
 
@@ -473,6 +479,7 @@ const MapView = forwardRef(function MapView({
   function setLayerOn(id, kind) {
     if (kind === 'met') setMetVisibility((prev) => (prev[id] ? prev : getNextMetVisibility(prev, id, { lowPower })))
     else if (kind === 'aviation') setAviationVisibility((prev) => (prev[id] ? prev : { ...prev, [id]: true }))
+    else if (kind === 'traffic') setTrafficVisible(true)
   }
   // loadRouteBriefing: 딥링크 '전체 브리핑 보기'가 저장경로를 route-briefing 훅으로 로드+브리핑 자동생성(§검증).
   useImperativeHandle(ref, () => ({
@@ -714,6 +721,8 @@ const MapView = forwardRef(function MapView({
   )
   const adsbGeoJSON = useMemo(() => createAdsbGeoJSON(adsbData), [adsbData])
   const adsbTrailGeoJSON = useMemo(() => createAdsbTrailGeoJSON(adsbData), [adsbData])
+  const adsbCounts = useMemo(() => countAircraft(adsbGeoJSON.features), [adsbGeoJSON])
+  const adsbVisibleIds = useMemo(() => visibleIds(adsbGeoJSON.features, trafficFilters), [adsbGeoJSON, trafficFilters])
   const weatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
     echoMeta,
     rainviewerMeta,
@@ -1059,7 +1068,7 @@ const MapView = forwardRef(function MapView({
     let timeoutId
     let cancelled = false
 
-    if (ADSB_FETCH_DISABLED || !metVisibility.adsb) {
+    if (ADSB_FETCH_DISABLED || !trafficVisible) {
       setAdsbLoading(false)
       return undefined
     }
@@ -1079,7 +1088,7 @@ const MapView = forwardRef(function MapView({
       cancelled = true
       clearTimeout(timeoutId)
     }
-  }, [metVisibility.adsb])
+  }, [trafficVisible])
 
   // ???? Map init ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -1494,8 +1503,8 @@ const MapView = forwardRef(function MapView({
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     registerAircraftImages(map)
     registerAirlineLogos(map)
-    syncAdsbLayer(map, { geojson: adsbGeoJSON, trailGeojson: adsbTrailGeoJSON, isVisible: metVisibility.adsb })
-  }, [adsbGeoJSON, adsbTrailGeoJSON, metVisibility.adsb])
+    syncAdsbLayer(map, { geojson: adsbGeoJSON, trailGeojson: adsbTrailGeoJSON, isVisible: trafficVisible })
+  }, [adsbGeoJSON, adsbTrailGeoJSON, trafficVisible])
 
   // ???? Sync flight category overlay ??????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -1651,8 +1660,8 @@ const MapView = forwardRef(function MapView({
   }).length
   const metActiveCount = MET_LAYERS.filter((l) => metVisibility[l.id] && !isMetLayerDisabled(l.id)).length
   useEffect(() => {
-    onLayerCountsChange?.({ aviation: aviationActiveCount, met: metActiveCount })
-  }, [aviationActiveCount, metActiveCount, onLayerCountsChange])
+    onLayerCountsChange?.({ aviation: aviationActiveCount, met: metActiveCount, traffic: trafficVisible ? 1 : 0 })
+  }, [aviationActiveCount, metActiveCount, trafficVisible, onLayerCountsChange])
 
   // ???? Render ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
@@ -1816,7 +1825,7 @@ const MapView = forwardRef(function MapView({
       <WeatherPointInspector selection={weatherPointInspector.selection} onClose={weatherPointInspector.clearSelection} />
 
       <AdsbTimestamp
-        isVisible={metVisibility.adsb}
+        isVisible={trafficVisible}
         updatedAt={adsbData?.updated_at}
         compact
       />
@@ -1990,6 +1999,20 @@ const MapView = forwardRef(function MapView({
           />
         )
       })()}
+
+      {activePanel === 'traffic' && (
+        <TrafficPanel
+          visible={trafficVisible}
+          onToggleVisible={() => setTrafficVisible((v) => !v)}
+          filters={trafficFilters}
+          onChangeFilters={setTrafficFilters}
+          onResetFilters={resetTrafficFilters}
+          counts={adsbCounts}
+          visibleCount={adsbVisibleIds.length}
+          receiving={adsbLoading}
+          onClose={onClosePanel}
+        />
+      )}
 
       {activePanel === 'met' && (
         <WeatherOverlayPanel

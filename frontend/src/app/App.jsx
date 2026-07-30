@@ -248,6 +248,7 @@ function MainAppShell() {
           onToggle={togglePanel}
           aviationCount={layerCounts.aviation}
           metCount={layerCounts.met}
+          trafficCount={layerCounts.traffic}
         />
       )}
       {isMobile && mobileTask === 'more' && !selectedAirport && (
