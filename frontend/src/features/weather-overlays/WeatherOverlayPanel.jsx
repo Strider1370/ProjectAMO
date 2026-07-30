@@ -1,6 +1,6 @@
 import {
   Radar, Satellite, Zap, Wind, Thermometer, Droplets,
-  Snowflake, Activity, Plane, AlertTriangle, AlertOctagon, CloudFog, Radio, Globe, Cloud, CloudLightning, Mountain,
+  Snowflake, Activity, Plane, AlertTriangle, AlertOctagon, CloudFog, Globe, Cloud, CloudLightning, Mountain,
   Tornado,
 } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
