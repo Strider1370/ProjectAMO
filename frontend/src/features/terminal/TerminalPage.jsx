@@ -1,5 +1,5 @@
-import { App as DestinationWeatherPrototype } from '../../../../prototypes/destination-weather-comparison/src/App.jsx'
-import '../../../../prototypes/destination-weather-comparison/src/styles.css'
+import { App as DestinationWeatherPrototype } from './DestinationWeatherPage.jsx'
+import './terminal.css'
 
 /**
  * Passenger terminal display. It deliberately uses fixture data until the

@@ -79,6 +79,7 @@ ProjectAMO/
 - `frontend/src/features/map/lib/baseMapLayers.js` -> airport and geo-boundary source/layer install helpers, plus geo-boundary visibility policy for basemap and weather/NWP overlay contrast.
 - `frontend/src/features/map/basemapSwitcher/BasemapSwitcher.jsx` -> basemap switcher UI.
 - `frontend/src/features/monitoring/MonitoringPage.jsx` -> standalone `/monitoring` legacy-style ops/ground screen.
+- `frontend/src/features/terminal/TerminalPage.jsx` -> standalone `/terminal` passenger terminal display entry; `DestinationWeatherPage.jsx` and `terminal.css` own its destination-weather presentation and bundled image assets.
 - `frontend/src/features/monitoring/MonitoringMap.jsx` -> monitoring wrapper around the main MapView with local Aviation/MET icon toggles.
 - `frontend/src/features/monitoring/monitoringApi.js` -> monitoring data loader using current API shape, plus the monitoring `useSnapshotPolling` profile (`loadMonitoringInitialData`, `buildMonitoringSnapshot`, `detectMonitoringSnapshotChanges`, `nextMonitoringSnapshot`).
 - `frontend/src/features/monitoring/legacy/*` -> copied previous-project dashboard components, alert utilities, and CSS for the standalone monitoring screen; weather rendering reuses shared `WeatherIcon`, resolver, registry, and BasMilius assets.
