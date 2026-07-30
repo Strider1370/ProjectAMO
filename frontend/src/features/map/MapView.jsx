@@ -28,6 +28,7 @@ import { updateNotamLayerData, setNotamVisibility, setNotamCategoryFilter as app
 import TrafficPanel from '../traffic/TrafficPanel.jsx'
 import useTrafficFilters from '../traffic/useTrafficFilters.js'
 import { adsbIdFilter, countAircraft, hasActiveFilters, visibleIds } from '../traffic/trafficFilter.js'
+import { applyAdsbFilter } from '../traffic/applyAdsbFilter.js'
 import { notamToFeatureCollection, displayGeometry } from '../notam/lib/notamGeoJson.js'
 import { registerNotamObstacleImages } from '../notam/lib/notamObstacleIcons.js'
 import { NOTAM_CATEGORIES } from '../notam/lib/notamViewModel.js'
@@ -1504,7 +1505,8 @@ const MapView = forwardRef(function MapView({
     registerAircraftImages(map)
     registerAirlineLogos(map)
     syncAdsbLayer(map, { geojson: adsbGeoJSON, trailGeojson: adsbTrailGeoJSON, isVisible: trafficVisible })
-  }, [adsbGeoJSON, adsbTrailGeoJSON, trafficVisible])
+    applyAdsbFilter(map, { ids: adsbVisibleIds, filtered: hasActiveFilters(trafficFilters) })
+  }, [adsbGeoJSON, adsbTrailGeoJSON, trafficVisible, adsbVisibleIds, trafficFilters])
 
   // ???? Sync flight category overlay ??????????????????????????????????????????????????????????????????????????????????????????????????
 
