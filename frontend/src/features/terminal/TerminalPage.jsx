@@ -38,12 +38,12 @@ export default function TerminalPage() {
     motionReplay.schedule()
   }, [cancelMotionReplay, motionReplay, pager.transitioning])
 
-  return <DestinationWeatherPage
+  return <div className="terminal-signage"><DestinationWeatherPage
     view={view}
     groups={groups}
     pager={pager}
     motionMode={motionMode}
     onViewChange={selectView}
     onMotionChange={selectMotion}
-  />
+  /></div>
 }

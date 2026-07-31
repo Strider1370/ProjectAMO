@@ -6,9 +6,11 @@ import { appLightTheme } from './shared/theme/fluentTheme.js'
 import 'pretendard-gov/dist/web/static/pretendard-gov-dynamic-subset.css'
 import './shared/theme/tokens.css'
 import './app/App.css'
-import { loadStoredFont } from './shared/theme/fontPrefs.js'
+import { loadStoredFont, shouldLoadStoredFont } from './shared/theme/fontPrefs.js'
 
-loadStoredFont()
+// /terminal is a fixed public-display route: ignore stored comparison-font
+// preferences so no remote stylesheet request can leak into signage playback.
+if (shouldLoadStoredFont(window.location.pathname)) loadStoredFont()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

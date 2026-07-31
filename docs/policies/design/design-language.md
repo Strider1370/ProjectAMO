@@ -76,6 +76,10 @@ Re-check the policy index when a task changes responsive structure, a feature bo
 굵기: `regular 400 · medium 500 · semibold 600 · bold 700`
 폰트 스택: `Pretendard, system-ui, sans-serif` (자체 호스팅)
 
+### Terminal passenger signage
+
+`/terminal` is a fixed 1920×1080 passenger display for 50–65-inch screens. It may use the approved physical-distance 22–64px `--signage-*` scale, declared once in `frontend/src/shared/theme/tokens.css` and mirrored in `tokens.js`: title 40, destination 64, code 34, flight 48, primary 56, temperature 60, arrival 40, clock 36, status 30, body 28, label 26, caption 24, footer 22; safe edges are x 40 and y 24. This exception does not replace Fluent semantic colors, spacing, radii, font ownership, or state tokens. The route uses locally hosted `var(--font-base)` and scopes its reset beneath `.terminal-signage`.
+
 ### radius
 `none 0 · sm 2 · md 4(기본) · lg 6 · xl 8 · circular 9999`
 

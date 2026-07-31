@@ -82,8 +82,8 @@ function currentMetric(value, unit) {
   return typeof value === "number" ? `${value}${unit}` : value;
 }
 
-function WeatherCondition({ point, className = "", style }) {
-  return <em className={`weather-condition ${className}`.trim()} style={style}>{weatherText(point)}</em>;
+function WeatherCondition({ point, className = "", style, ...props }) {
+  return <em className={`weather-condition ${className}`.trim()} style={style} {...props}>{weatherText(point)}</em>;
 }
 
 function RailWeatherImage({ point }) {
@@ -132,8 +132,8 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
               </h2>
               <div className="board-destination-meta">
                 <div className="destination-clock roll-unit flap-unit" style={rollStyle(3)}>
-                  <span>현지 시각</span><strong>{clocks.destinationNow}</strong><b>{destination.timezone}</b>
-                  <small>{clocks.destinationDate} · 한국 {clocks.koreaNow} KST</small>
+                  <span>현지 시각</span><strong className="terminal-time-value" data-signage-text="required">{clocks.destinationNow}</strong><b>{destination.timezone}</b>
+                  <small><span className="terminal-time-value" data-signage-text="required">{clocks.destinationDate}</span> · 한국 <span className="terminal-time-value" data-signage-text="required">{clocks.koreaNow}</span> KST</small>
                 </div>
               </div>
             </div>
@@ -158,11 +158,11 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
           <div className="schedule-grid">
             <div>
               <span className="roll-unit" style={rollStyle(0)}>출발 예정</span>
-              <strong className="roll-unit flap-unit" style={rollStyle(1)}>{operation.departure}</strong>
+              <strong className="roll-unit flap-unit terminal-time-value" data-signage-text="required" style={rollStyle(1)}>{operation.departure}</strong>
             </div>
             <div>
               <span className="roll-unit" style={rollStyle(2)}>탑승구</span>
-              <strong className="roll-unit flap-unit" style={rollStyle(3)}>{operation.gate}</strong>
+              <strong className="roll-unit flap-unit terminal-time-value" data-signage-text="required" style={rollStyle(3)}>{operation.gate}</strong>
             </div>
           </div>
           <div className="board-divider" />
@@ -191,11 +191,11 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
                 <BoardWeatherImage point={current} />
                 <WeatherCondition point={current} />
               </span>
-              <strong className="roll-unit flap-unit" style={rollStyle(4)}>{current.available ? current.temperature : current.fallback}<small>{current.available && "℃"}</small></strong>
+              <strong className="roll-unit flap-unit terminal-time-value" data-signage-text="required" style={rollStyle(4)}>{current.available ? current.temperature : current.fallback}<small>{current.available && "℃"}</small></strong>
             </div>
             <dl>
-              <div className="roll-unit" style={rollStyle(5)}><dt>체감</dt><dd className="flap-unit">{current.available ? currentMetric(current.feelsLike, "℃") : current.fallback}</dd></div>
-              <div className="roll-unit" style={rollStyle(6)}><dt>습도</dt><dd className="flap-unit">{current.available ? currentMetric(current.humidity, "%") : current.fallback}</dd></div>
+              <div className="roll-unit" style={rollStyle(5)}><dt>체감</dt><dd className="flap-unit terminal-time-value" data-signage-text="required">{current.available ? currentMetric(current.feelsLike, "℃") : current.fallback}</dd></div>
+              <div className="roll-unit" style={rollStyle(6)}><dt>습도</dt><dd className="flap-unit terminal-time-value" data-signage-text="required">{current.available ? currentMetric(current.humidity, "%") : current.fallback}</dd></div>
               <div className="roll-unit" style={rollStyle(7)}><dt>바람</dt><dd className="flap-unit">{current.available ? current.wind : current.fallback}</dd></div>
             </dl>
           </div>
@@ -206,16 +206,16 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
         <div className="board-band-surface">
           <div className="arrival-time">
             <span className="roll-unit" style={rollStyle(0)}>도착 예정</span>
-            <strong className="roll-unit flap-unit" style={rollStyle(1)}>{clocks.arrivalLocal}</strong>
-            <small className="roll-unit flap-unit" style={rollStyle(2)}>(현지 시각 · 한국 {formatArrivalKorea({ time: clocks.arrivalKorea, dayOffset: clocks.arrivalKoreaDayOffset })} KST)</small>
+            <strong className="roll-unit flap-unit terminal-time-value" data-signage-text="required" style={rollStyle(1)}>{clocks.arrivalLocal}</strong>
+            <small className="roll-unit flap-unit" style={rollStyle(2)}>(현지 시각 · 한국 <span className="terminal-time-value" data-signage-text="required">{formatArrivalKorea({ time: clocks.arrivalKorea, dayOffset: clocks.arrivalKoreaDayOffset })}</span> KST)</small>
           </div>
           <div className="board-forecast">
             {forecast.map((point, index) => (
               <div className={index === 0 ? "is-arrival" : ""} key={point.time ?? index}>
-                <time className="roll-unit flap-unit" style={rollStyle(3 + index * 4)}>{point.available ? point.time : point.fallback}</time>
+                <time className="roll-unit flap-unit terminal-time-value" data-signage-text="ordinary" style={rollStyle(3 + index * 4)}>{point.available ? point.time : point.fallback}</time>
                 <span className="roll-unit flap-unit" style={rollStyle(4 + index * 4)}><BoardWeatherImage point={point} small /></span>
-                <WeatherCondition point={point} className="roll-unit flap-unit" style={rollStyle(5 + index * 4)} />
-                <strong className="roll-unit flap-unit" style={rollStyle(6 + index * 4)}>{point.available ? `${point.temperature}℃` : point.fallback}</strong>
+                <WeatherCondition point={point} className="roll-unit flap-unit" style={rollStyle(5 + index * 4)} data-signage-text="ordinary" />
+                <strong className="roll-unit flap-unit terminal-time-value" data-signage-text="ordinary" style={rollStyle(6 + index * 4)}>{point.available ? `${point.temperature}℃` : point.fallback}</strong>
               </div>
             ))}
           </div>
@@ -260,7 +260,7 @@ function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage
       <footer className="board-footer">
         <MdInfoOutline />
         <span>도착 현지 시간 기준 · 예보는 참고용이며, 실제 날씨와 다를 수 있습니다.</span>
-        <b>다음 업데이트&nbsp;&nbsp; <strong>06:45</strong>&nbsp; KST</b>
+        <b>다음 업데이트&nbsp;&nbsp; <strong className="terminal-time-value" data-signage-text="required">06:45</strong>&nbsp; KST</b>
       </footer>
     </section>
   );
@@ -271,15 +271,15 @@ function RailStats({ flight }) {
     <div className="rail-stats">
       <div>
         <span>출발</span>
-        <div className="rail-motion-unit" style={{ "--rail-item": 6 }}><strong>{flight.operation.departure}</strong>{flight.operation.revisedDeparture && <em>{flight.operation.revisedDeparture}</em>}</div>
+        <div className="rail-motion-unit" style={{ "--rail-item": 6 }}><strong className="terminal-time-value" data-signage-text="required">{flight.operation.departure}</strong>{flight.operation.revisedDeparture && <em className="terminal-time-value" data-signage-text="required">{flight.operation.revisedDeparture}</em>}</div>
       </div>
       <div>
         <span>예상 비행시간</span>
-        <div className="rail-motion-unit" style={{ "--rail-item": 7 }}><strong>{flight.operation.duration}</strong></div>
+        <div className="rail-motion-unit" style={{ "--rail-item": 7 }}><strong className="terminal-time-value" data-signage-text="required">{flight.operation.duration}</strong></div>
       </div>
       <div>
         <span>탑승구</span>
-        <div className="rail-motion-unit" style={{ "--rail-item": 8 }}><strong>{flight.operation.gate}</strong></div>
+        <div className="rail-motion-unit" style={{ "--rail-item": 8 }}><strong className="terminal-time-value" data-signage-text="required">{flight.operation.gate}</strong></div>
       </div>
     </div>
   );
@@ -293,10 +293,10 @@ function ForecastTimeline({ flight }) {
           <span className="progress-label__title">예상 도착</span>
           <div className="arrival-clocks">
             <div className="progress-clock">
-              <span>현지</span><strong className="rail-motion-unit" style={{ "--rail-item": 9 }}>{flight.clocks.arrivalLocal}</strong>
+              <span>현지</span><strong className="rail-motion-unit terminal-time-value" data-signage-text="required" style={{ "--rail-item": 9 }}>{flight.clocks.arrivalLocal}</strong>
             </div>
             <div className="progress-clock">
-              <span>한국</span><strong className="rail-motion-unit" style={{ "--rail-item": 10 }}>{formatArrivalKorea({ time: flight.clocks.arrivalKorea, dayOffset: flight.clocks.arrivalKoreaDayOffset })}</strong><small>KST</small>
+              <span>한국</span><strong className="rail-motion-unit terminal-time-value" data-signage-text="required" style={{ "--rail-item": 10 }}>{formatArrivalKorea({ time: flight.clocks.arrivalKorea, dayOffset: flight.clocks.arrivalKoreaDayOffset })}</strong><small>KST</small>
             </div>
           </div>
         </div>
@@ -308,10 +308,10 @@ function ForecastTimeline({ flight }) {
       <div className="pre-arrival-forecast">
         <span>도착 1시간 전</span>
         <div className="pre-arrival-values rail-motion-unit" style={{ "--rail-item": 11 }}>
-          <time>{flight.weather.preArrival.available ? flight.weather.preArrival.time : flight.weather.preArrival.fallback}</time>
+          <time className="terminal-time-value" data-signage-text="ordinary">{flight.weather.preArrival.available ? flight.weather.preArrival.time : flight.weather.preArrival.fallback}</time>
           <RailWeatherImage point={flight.weather.preArrival} />
-          <WeatherCondition point={flight.weather.preArrival} />
-          <strong>{flight.weather.preArrival.available ? `${flight.weather.preArrival.temperature}℃` : flight.weather.preArrival.fallback}</strong>
+          <WeatherCondition point={flight.weather.preArrival} data-signage-text="ordinary" />
+          <strong className="terminal-time-value" data-signage-text="ordinary">{flight.weather.preArrival.available ? `${flight.weather.preArrival.temperature}℃` : flight.weather.preArrival.fallback}</strong>
         </div>
       </div>
       <div className="timeline-forecast">
@@ -321,10 +321,10 @@ function ForecastTimeline({ flight }) {
             key={point.time ?? index}
           >
             <div className="rail-forecast-content rail-motion-unit" style={{ "--rail-item": 12 + index }}>
-              <time>{point.available ? point.time : point.fallback}</time>
+              <time className="terminal-time-value" data-signage-text="ordinary">{point.available ? point.time : point.fallback}</time>
               <RailWeatherImage point={point} />
-              <WeatherCondition point={point} />
-              <strong>{point.available ? `${point.temperature}℃` : point.fallback}</strong>
+              <WeatherCondition point={point} data-signage-text="ordinary" />
+              <strong className="terminal-time-value" data-signage-text="ordinary">{point.available ? `${point.temperature}℃` : point.fallback}</strong>
             </div>
           </div>
         ))}
@@ -341,9 +341,9 @@ function RailRow({ flight, index }) {
         <h2 className="rail-motion-unit" style={{ "--rail-item": 0 }}>{destinationDisplayName(flight.destination)} <span>{flight.destination.code}</span></h2>
         <div className="rail-local-clock">
           <span>현지 시각</span>
-          <strong className="rail-motion-unit" style={{ "--rail-item": 1 }}>{flight.clocks.destinationNow}</strong>
+          <strong className="rail-motion-unit terminal-time-value" data-signage-text="required" style={{ "--rail-item": 1 }}>{flight.clocks.destinationNow}</strong>
           <b className="rail-motion-unit" style={{ "--rail-item": 2 }}>{flight.destination.timezone}</b>
-          <small className="rail-motion-unit" style={{ "--rail-item": 3 }}>{flight.clocks.destinationDate} · 한국 {flight.clocks.koreaNow} KST</small>
+          <small className="rail-motion-unit" style={{ "--rail-item": 3 }}><span className="terminal-time-value" data-signage-text="required">{flight.clocks.destinationDate}</span> · 한국 <span className="terminal-time-value" data-signage-text="required">{flight.clocks.koreaNow}</span> KST</small>
         </div>
         <div className="rail-flight-status">
           <span className="rail-flight-number rail-motion-unit" style={{ "--rail-item": 4 }}>
@@ -383,7 +383,7 @@ function RailScreen({
           </div>
         )}
       </div>
-      <footer><MdInfoOutline /><span>도착 현지 시간 기준 · 예보는 참고용이며, 실제 날씨와 다를 수 있습니다.</span><b>다음 업데이트&nbsp;&nbsp; <strong>09:30</strong>&nbsp; KST</b></footer>
+      <footer><MdInfoOutline /><span>도착 현지 시간 기준 · 예보는 참고용이며, 실제 날씨와 다를 수 있습니다.</span><b>다음 업데이트&nbsp;&nbsp; <strong className="terminal-time-value" data-signage-text="required">09:30</strong>&nbsp; KST</b></footer>
     </section>
   );
 }

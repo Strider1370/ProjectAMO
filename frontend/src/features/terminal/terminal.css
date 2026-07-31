@@ -1,36 +1,38 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=Roboto+Mono:wght@500;600;700&display=swap");
-
-:root {
-  font-family: "Noto Sans KR", sans-serif;
-  color: #071735;
-  background: #dfe4eb;
+.terminal-signage {
+  box-sizing: border-box;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow: hidden;
+  color: var(--text-1);
+  background: var(--bg-5);
+  font-family: var(--font-base);
   font-synthesis: none;
 }
-
-* { box-sizing: border-box; }
-html, body, #root { min-width: 320px; min-height: 100%; margin: 0; }
-body { min-height: 100vh; overflow: hidden; }
-.prototype-shell { display: grid; min-height: 100vh; place-items: center; background: #dfe4eb; }
-.exact-screen { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; background: #fbfbfb; }
+.terminal-signage *,
+.terminal-signage *::before,
+.terminal-signage *::after { box-sizing: border-box; }
+.terminal-signage .prototype-shell { display: grid; min-height: 100vh; place-items: center; background: var(--bg-5); }
+.terminal-signage .exact-screen { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; background: var(--bg-1); }
+.terminal-time-value { font-variant-numeric: tabular-nums; }
 .view-switcher { z-index: 20; display: grid; grid-template-columns: repeat(2, 52px); height: 46px; border: 1px solid #aeb7c3; background: #fff; }
-.view-switcher button { border: 0; background: transparent; color: #344256; font: 700 13px "Noto Sans KR", sans-serif; cursor: pointer; }
+.view-switcher button { border: 0; background: transparent; color: #344256; font: var(--fw-bold) 20px var(--font-base); cursor: pointer; }
 .view-switcher button + button { border-left: 1px solid #aeb7c3; }
 .view-switcher button.is-active { background: #071735; color: #fff; }
 .view-switcher button:focus-visible { outline: 3px solid #2f80ed; outline-offset: -3px; }
 .terminal-page-indicator {
   position: absolute;
   z-index: 30;
-  top: 13px;
+  top: var(--signage-safe-y);
   left: 50%;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   transform: translateX(-50%);
 }
 .terminal-page-indicator i {
   display: block;
-  width: 9px;
-  height: 9px;
+  width: 12px;
+  height: 12px;
   border: 1px solid #7b8798;
   border-radius: 50%;
   background: #fbfbfb;
@@ -47,18 +49,18 @@ body { min-height: 100vh; overflow: hidden; }
 
 /* Option 1 — exact vertical gate board */
 .exact-board { display: grid; grid-template-rows: 90px 1fr 48px; }
-.board-header { display: grid; grid-template-columns: 54px minmax(510px, 1fr) auto auto; align-items: center; gap: 16px; padding: 0 28px; border-bottom: 1px solid #cad0d8; background: #fbfbfb; }
+.board-header { display: grid; grid-template-columns: 54px minmax(510px, 1fr) auto auto; align-items: center; gap: 16px; padding: 0 var(--signage-safe-x); border-bottom: 1px solid #cad0d8; background: #fbfbfb; }
 .board-header > img { display: block; width: 64px; height: 55px; object-fit: contain; mix-blend-mode: multiply; }
-.board-header h1 { margin: 0; font-size: 38px; font-weight: 800; letter-spacing: -.045em; white-space: nowrap; }
+.board-header h1 { margin: 0; font-size: var(--signage-title); font-weight: 800; letter-spacing: -.045em; white-space: nowrap; }
 .board-header-actions { display: flex; align-items: center; gap: 8px; }
 .board-header-clock { display: grid; grid-template-columns: auto auto; align-items: baseline; justify-content: end; column-gap: 10px; min-width: 205px; }
-.board-header-clock span { font-size: 12px; font-weight: 600; }
-.board-header-clock strong { font-size: 38px; line-height: 1; }
-.board-header-clock small { grid-column: 1 / -1; margin-top: 2px; font-size: 11px; text-align: right; }
+.board-header-clock span { font-size: var(--signage-label); font-weight: 600; }
+.board-header-clock strong { font-size: var(--signage-clock); line-height: 1; }
+.board-header-clock small { grid-column: 1 / -1; margin-top: 2px; font-size: var(--signage-caption); text-align: right; }
 .board-viewport { position: relative; min-height: 0; overflow: hidden; }
 .board-page {
   position: absolute;
-  inset: 32px 56px 40px;
+  inset: var(--signage-safe-y) var(--signage-safe-x);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr) 1px minmax(0, 1fr);
   column-gap: 12px;
@@ -78,33 +80,33 @@ body { min-height: 100vh; overflow: hidden; }
 .board-band-surface { position: relative; height: 100%; background: #fbfbfb; backface-visibility: hidden; transform-style: preserve-3d; will-change: transform, opacity; }
 .board-destination { display: flex; height: calc(100% - 1px); min-height: 0; align-items: center; }
 .board-destination > div { width: 100%; min-width: 0; }
-.board-destination h2 { margin: 0; font-size: 59px; font-weight: 800; line-height: 1.16; letter-spacing: -.055em; }
+.board-destination h2 { margin: 0; font-size: var(--signage-destination); font-weight: 800; line-height: 1.16; letter-spacing: -.055em; }
 .board-destination h2 span { display: inline-block; }
-.board-destination h2 .destination-code { margin-left: 10px; color: #445066; font-size: 32px; font-weight: 600; letter-spacing: 0; }
+.board-destination h2 .destination-code { margin-left: 10px; color: #445066; font-size: var(--signage-code); font-weight: 600; letter-spacing: 0; }
 .board-destination-meta { display: flex; min-width: 0; align-items: end; justify-content: space-between; gap: 12px; margin-top: -2px; }
-.board-destination p { margin: 0; color: #4e5868; font-size: 16px; }
+.board-destination p { margin: 0; color: #4e5868; font-size: var(--signage-caption); }
 .destination-clock { display: grid; grid-template-columns: auto auto auto; flex: 0 0 245px; align-items: baseline; justify-content: end; column-gap: 8px; margin-left: auto; text-align: right; }
-.destination-clock > span { color: #596576; font-size: 14px; font-weight: 600; white-space: nowrap; }
-.destination-clock strong { color: #071735; font-family: "Roboto Mono", monospace; font-size: 32px; line-height: 1; letter-spacing: -.05em; }
-.destination-clock b { color: #596576; font-size: 13px; font-weight: 700; }
-.destination-clock small { grid-column: 1 / -1; margin-top: 5px; color: #596576; font-size: 13px; line-height: 1.2; }
+.destination-clock > span { color: #596576; font-size: var(--signage-label); font-weight: 600; white-space: nowrap; }
+.destination-clock strong { color: #071735; font-size: var(--signage-clock); line-height: 1; letter-spacing: -.05em; }
+.destination-clock b { color: #596576; font-size: var(--signage-caption); font-weight: 700; }
+.destination-clock small { grid-column: 1 / -1; margin-top: 5px; color: #596576; font-size: var(--signage-caption); line-height: 1.2; }
 .airline-block { display: flex; height: calc(100% - 1px); min-height: 0; align-items: center; gap: 18px; }
 .airline-logo { display: flex; width: 72px; height: 78px; flex: 0 0 72px; align-items: center; justify-content: center; overflow: hidden; }
 .airline-logo img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; }
 .airline-block > div:last-child { display: grid; }
-.airline-block strong { font-size: 44px; line-height: 1.05; }
-.airline-block span { color: #697282; font-size: 15px; letter-spacing: .05em; }
+.airline-block strong { font-size: var(--signage-flight); line-height: 1.05; }
+.airline-block span { color: #697282; font-size: var(--signage-caption); letter-spacing: .05em; }
 .board-divider { height: 1px; background: #d4d8de; }
 .schedule-grid { display: grid; grid-template-columns: 1fr .68fr; height: calc(100% - 1px); }
 .schedule-grid > div { display: grid; align-content: center; padding-left: 12px; }
 .schedule-grid > div + div { border-left: 1px solid #d4d8de; }
-.schedule-grid span { color: #303b4e; font-size: 15px; font-weight: 600; }
-.section-label, .arrival-time span { color: #303b4e; font-size: 18px; font-weight: 600; }
-.schedule-grid strong { font-size: 61px; line-height: 1.05; }
-.operation-status { display: flex; align-items: center; gap: 10px; height: calc(100% - 1px); padding-left: 12px; font-size: 15px; }
+.schedule-grid span { color: #303b4e; font-size: var(--signage-label); font-weight: 600; }
+.section-label, .arrival-time span { color: #303b4e; font-size: var(--signage-label); font-weight: 600; }
+.schedule-grid strong { font-size: var(--signage-primary); line-height: 1.05; }
+.operation-status { display: flex; align-items: center; gap: 10px; height: calc(100% - 1px); padding-left: 12px; font-size: var(--signage-status); }
 .operation-status > span { margin-right: 8px; }
 .operation-status i { width: 10px; height: 10px; border-radius: 50%; background: #149348; }
-.operation-status strong { color: #149348; font-size: 17px; }
+.operation-status strong { color: #149348; font-size: var(--signage-status); }
 .operation-status.delay i { background: #f07c19; }
 .operation-status.delay strong { color: #f07c19; }
 .board-band:nth-child(5) .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
@@ -123,18 +125,18 @@ body { min-height: 100vh; overflow: hidden; }
 .temperature .weather-icon-stack { display: grid; justify-items: center; }
 .temperature img { display: block; width: 116px; height: 104px; object-fit: contain; mix-blend-mode: multiply; }
 .weather-condition { color: #4f5d70; font-style: normal; font-weight: 600; line-height: 1.15; white-space: nowrap; }
-.temperature .weather-condition { margin-top: -10px; font-size: 15px; }
-.temperature strong { font-size: 70px; line-height: 1; }
-.temperature small { font-size: 21px; font-weight: 600; }
-.current-weather dl { display: grid; gap: 7px; margin: 0; padding-left: 20px; border-left: 1px solid #c8ced7; font-size: 20px; line-height: 1.25; }
+.temperature .weather-condition { margin-top: -10px; font-size: var(--signage-caption); }
+.temperature strong { font-size: var(--signage-temperature); line-height: 1; }
+.temperature small { font-size: var(--signage-label); font-weight: 600; }
+.current-weather dl { display: grid; gap: 7px; margin: 0; padding-left: 20px; border-left: 1px solid #c8ced7; font-size: var(--signage-body); line-height: 1.25; }
 .current-weather dl div { display: grid; grid-template-columns: 58px 1fr; align-items: baseline; }
 .current-weather dt, .current-weather dd { margin: 0; }
 .current-weather dt { color: #303b4e; font-weight: 500; }
 .current-weather dd { color: #071735; font-weight: 600; white-space: nowrap; }
 .board-band:last-child .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
 .arrival-time { display: flex; align-items: baseline; gap: 10px; min-height: 68px; padding-top: 23px; }
-.arrival-time strong { font-size: 32px; }
-.arrival-time small { color: #5c6675; font-size: 14px; }
+.arrival-time strong { font-size: var(--signage-arrival); }
+.arrival-time small { color: #5c6675; font-size: var(--signage-caption); }
 .board-forecast { display: grid; grid-template-columns: repeat(5, 1fr); min-height: 0; margin-top: 2px; }
 .board-forecast > div { display: grid; align-content: center; justify-items: center; gap: 1px; border-right: 1px dotted #cbd0d6; }
 .board-forecast > div:last-child { border-right: 0; }
@@ -142,20 +144,20 @@ body { min-height: 100vh; overflow: hidden; }
   border: 1px solid #d6e4f5;
   background: #f2f7ff;
 }
-.board-forecast time { font-size: 16px; }
+.board-forecast time { font-size: var(--signage-label); }
 .board-forecast > div > span { display: block; }
 .board-forecast img { display: block; width: 66px; height: 62px; object-fit: contain; }
-.board-forecast .weather-condition { font-size: 14px; }
-.board-forecast strong { font-size: 18px; }
+.board-forecast .weather-condition { font-size: var(--signage-label); }
+.board-forecast strong { font-size: var(--signage-label); }
 .board-forecast > div.is-arrival time,
 .board-forecast > div.is-arrival strong { font-weight: 800; }
 .motion-mode-switch { display: grid; grid-template-columns: repeat(var(--motion-count, 4), 62px); gap: 5px; }
 .motion-mode-switch button { display: grid; min-height: 46px; place-items: center; align-content: center; gap: 1px; padding: 3px; border: 1px solid #aeb7c3; background: #fff; color: #23334b; cursor: pointer; }
-.motion-mode-switch button strong { font-family: "Roboto Mono", monospace; font-size: 12px; letter-spacing: .04em; }
-.motion-mode-switch button span { font-size: 10px; font-weight: 700; }
+.motion-mode-switch button strong { font-size: 22px; letter-spacing: .04em; }
+.motion-mode-switch button span { font-size: 20px; font-weight: 700; }
 .motion-mode-switch button.is-active { border-color: #071735; background: #071735; color: #fff; }
 .motion-mode-switch button:focus-visible { outline: 3px solid #2f80ed; outline-offset: 2px; }
-.next-board-button { display: flex; height: 46px; align-items: center; gap: 2px; padding: 0 10px; border: 1px solid #aeb7c3; background: #fff; color: #23334b; font: 700 11px "Noto Sans KR", sans-serif; white-space: nowrap; cursor: pointer; }
+.next-board-button { display: flex; height: 46px; align-items: center; gap: 2px; padding: 0 10px; border: 1px solid #aeb7c3; background: #fff; color: #23334b; font: var(--fw-bold) 20px var(--font-base); white-space: nowrap; cursor: pointer; }
 .next-board-button svg { font-size: 22px; }
 .next-board-button:focus-visible { outline: 3px solid #2f80ed; outline-offset: 2px; }
 .board-footer {
@@ -163,12 +165,12 @@ body { min-height: 100vh; overflow: hidden; }
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 10px;
-  padding: 0 56px;
+  padding: 0 var(--signage-safe-x);
   border-top: 1px solid #cbd2dc;
   color: #5f6b7b;
-  font-size: 12px;
+  font-size: var(--signage-footer);
 }
-.board-footer svg { font-size: 18px; }
+.board-footer svg { font-size: var(--signage-caption); }
 .board-footer b { font-weight: 500; }
 .board-footer strong { color: #1165d6; }
 .board-page.is-entering { z-index: 2; background: transparent; }
@@ -243,17 +245,18 @@ body { min-height: 100vh; overflow: hidden; }
 
 /* Option 3 — exact horizontal forecast rail */
 .exact-rail { display: grid; grid-template-rows: 90px 1fr 57px; }
-.rail-header { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto auto; align-items: center; gap: 16px; height: 90px; padding: 0 42px; border-bottom: 1px solid #cbd2dc; background: #fbfbfb; }
-.rail-header h1 { margin: 0; padding-right: 38px; border-right: 1px solid #cbd2dc; font-size: 43px; font-weight: 800; letter-spacing: -.04em; }
-.rail-header > span { padding-left: 34px; font-size: 12px; font-weight: 600; }
+.rail-header { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto auto; align-items: center; gap: 16px; height: 90px; padding: 0 var(--signage-safe-x); border-bottom: 1px solid #cbd2dc; background: #fbfbfb; }
+.rail-header h1 { margin: 0; padding-right: 38px; border-right: 1px solid #cbd2dc; font-size: var(--signage-title); font-weight: 800; letter-spacing: -.04em; }
+.rail-header > span { padding-left: 34px; font-size: var(--signage-caption); font-weight: 600; }
 .rail-header-actions { display: flex; align-items: center; gap: 8px; }
 .rail-header-clock { display: flex; align-items: baseline; gap: 12px; }
-.rail-header-clock small { font-size: 13px; }
-.rail-header-clock strong { font-size: 31px; }
-.rail-header-clock b { font-size: 14px; }
+.rail-header-clock > span { font-size: var(--signage-caption); }
+.rail-header-clock small { font-size: var(--signage-caption); }
+.rail-header-clock strong { font-size: var(--signage-clock); }
+.rail-header-clock b { font-size: var(--signage-caption); }
 .rail-viewport { position: relative; min-height: 0; overflow: hidden; }
 .rail-page { position: absolute; inset: 0; display: grid; grid-template-rows: repeat(3, 1fr); }
-.rail-flight-row { position: relative; display: grid; grid-template-columns: 33% 67%; border-bottom: 1px solid #cbd2dc; background: #fbfbfb; perspective: 900px; }
+.rail-flight-row { position: relative; display: grid; grid-template-columns: 32% 68%; border-bottom: 1px solid #cbd2dc; background: #fbfbfb; perspective: 900px; }
 
 .terminal-data-surface {
   display: grid;
@@ -261,7 +264,7 @@ body { min-height: 100vh; overflow: hidden; }
   margin: 0;
   color: var(--text-2);
   background: #fbfbfb;
-  font-size: var(--fs-500);
+  font-size: var(--signage-body);
   font-weight: var(--fw-semibold);
   text-align: center;
 }
@@ -288,7 +291,7 @@ body { min-height: 100vh; overflow: hidden; }
   border-radius: var(--radius-sm);
   background: var(--bg-2);
   color: var(--text-3);
-  font-size: 20px;
+  font-size: var(--signage-caption);
   font-weight: var(--fw-medium);
 }
 .destination-name { overflow: hidden; text-overflow: ellipsis; }
@@ -296,39 +299,39 @@ body { min-height: 100vh; overflow: hidden; }
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: 110px 64px minmax(0, 1fr);
-  padding: 14px 36px 12px;
+  padding: 14px 36px 12px var(--signage-safe-x);
   border-right: 1px solid #d3d9e1;
 }
-.rail-flight-info h2 { grid-column: 1; grid-row: 1; align-self: start; margin: 0; font-size: 56px; font-weight: 800; letter-spacing: -.05em; line-height: 1.05; white-space: nowrap; }
-.rail-flight-info h2 span { margin-left: 7px; color: #4d5a70; font-size: 31px; font-weight: 600; letter-spacing: 0; }
+.rail-flight-info h2 { grid-column: 1; grid-row: 1; align-self: start; margin: 0; font-size: var(--signage-destination); font-weight: 800; letter-spacing: -.05em; line-height: 1.05; white-space: nowrap; }
+.rail-flight-info h2 span { margin-left: 7px; color: #4d5a70; font-size: var(--signage-code); font-weight: 600; letter-spacing: 0; }
 .rail-local-clock { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: auto auto auto; align-self: end; align-items: baseline; justify-content: end; column-gap: 8px; row-gap: 4px; min-width: 0; text-align: right; }
-.rail-local-clock > span { color: #697282; font-size: 14px; font-weight: 600; }
-.rail-local-clock strong { color: #071735; font-family: "Roboto Mono", monospace; font-size: 28px; line-height: 1; letter-spacing: -.04em; }
-.rail-local-clock b { color: #697282; font-size: 12px; font-weight: 700; }
-.rail-local-clock small { grid-column: 1 / -1; color: #697282; font-size: 13px; white-space: nowrap; }
+.rail-local-clock > span { color: #697282; font-size: var(--signage-label); font-weight: 600; }
+.rail-local-clock strong { color: #071735; font-size: var(--signage-clock); line-height: 1; letter-spacing: -.04em; }
+.rail-local-clock b { color: #697282; font-size: var(--signage-caption); font-weight: 700; }
+.rail-local-clock small { grid-column: 1 / -1; color: #697282; font-size: var(--signage-caption); white-space: nowrap; }
 .rail-flight-status { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 30px; margin: 0; padding: 7px 4px 7px 0; }
-.rail-flight-status > span { font-size: 19px; font-weight: 700; }
+.rail-flight-status > span { font-size: var(--signage-status); font-weight: 700; }
 .rail-flight-status > span:last-child { justify-self: end; }
 .rail-flight-number { display: inline-flex; align-items: center; gap: 10px; color: #071735; }
 .rail-flight-number img { display: block; width: 44px; height: 44px; object-fit: contain; mix-blend-mode: multiply; }
-.rail-flight-number strong { font-size: 34px; line-height: 1; }
+.rail-flight-number strong { font-size: var(--signage-flight); line-height: 1; }
 .rail-flight-status .ok { color: #168b45; }
 .rail-flight-status .delay { color: #f07c19; }
 .rail-stats { grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: 1fr 1.45fr .8fr; width: 100%; margin: 0; }
 .rail-stats > div { display: grid; align-content: center; min-height: 0; padding-right: 14px; }
 .rail-stats > div + div { padding-left: 20px; border-left: 1px solid #cbd2dc; }
 .rail-stats .rail-motion-unit { display: grid; }
-.rail-stats span { color: #5a6577; font-size: 14px; }
-.rail-stats strong { font-size: 30px; }
-.rail-stats em { color: #f07c19; font-size: 12px; font-style: normal; font-weight: 700; }
+.rail-stats span { color: #5a6577; font-size: var(--signage-label); }
+.rail-stats strong { font-size: var(--signage-primary); }
+.rail-stats em { color: #f07c19; font-size: var(--signage-caption); font-style: normal; font-weight: 700; }
 .timeline { --forecast-left: 180px; --forecast-right: 45px; --current-offset: calc(64px - var(--forecast-left)); position: relative; min-width: 0; }
 .timeline-arrival-grid { position: absolute; top: 17px; right: var(--forecast-right); left: var(--forecast-left); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .progress-label { display: grid; line-height: 1.15; }
-.progress-label__title { margin-bottom: 5px; color: #303b4e; font-size: 16px; font-weight: 700; }
+.progress-label__title { margin-bottom: 5px; color: #303b4e; font-size: var(--signage-label); font-weight: 700; }
 .progress-clock { display: grid; grid-template-columns: auto auto auto; align-items: baseline; justify-content: start; gap: 6px; white-space: nowrap; }
-.progress-clock > span { color: #5d6879; font-size: 14px; font-weight: 700; }
-.progress-clock strong { color: #071735; font-size: 26px; line-height: 1; }
-.progress-clock small { color: #667182; font-size: 13px; font-weight: 600; }
+.progress-clock > span { color: #5d6879; font-size: var(--signage-label); font-weight: 700; }
+.progress-clock strong { color: #071735; font-size: var(--signage-arrival); line-height: 1; }
+.progress-clock small { color: #667182; font-size: var(--signage-caption); font-weight: 600; }
 .progress-label--arrival { grid-column: 1; width: 360px; justify-self: center; text-align: center; }
 .arrival-clocks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .arrival-clocks .progress-clock {
@@ -345,7 +348,7 @@ body { min-height: 100vh; overflow: hidden; }
 .progress-dots { position: absolute; top: 1px; right: 90%; left: var(--current-offset); border-top: 3px dotted #94a3b8; }
 .progress-line { position: absolute; top: 1px; right: 5px; left: 10%; height: 2px; background: #94a3b8; }
 .flight-progress b { position: absolute; z-index: 2; top: -8px; left: 10%; width: 20px; height: 20px; border: 5px solid #071735; border-radius: 50%; background: #fff; transform: translateX(-50%); }
-.progress-arrow { position: absolute; top: -10px; right: -10px; color: #475569; font-size: 23px; }
+.progress-arrow { position: absolute; top: -10px; right: -10px; color: #475569; font-size: var(--signage-caption); }
 .pre-arrival-forecast {
   position: absolute;
   top: 126px;
@@ -357,11 +360,11 @@ body { min-height: 100vh; overflow: hidden; }
   transform: translateX(-50%);
 }
 .pre-arrival-values { display: grid; justify-items: center; gap: 1px; }
-.pre-arrival-forecast span { color: #667182; font-size: 13px; font-weight: 700; }
-.pre-arrival-forecast time { color: #344256; font-size: 18px; }
+.pre-arrival-forecast span { color: #667182; font-size: var(--signage-caption); font-weight: 700; }
+.pre-arrival-forecast time { color: #344256; font-size: var(--signage-label); }
 .pre-arrival-forecast img { display: block; width: 72px; height: 64px; object-fit: contain; }
-.pre-arrival-forecast .weather-condition { font-size: 14px; }
-.pre-arrival-forecast strong { font-size: 20px; }
+.pre-arrival-forecast .weather-condition { font-size: var(--signage-label); }
+.pre-arrival-forecast strong { font-size: var(--signage-label); }
 .timeline-forecast { position: absolute; top: 104px; right: var(--forecast-right); left: var(--forecast-left); display: grid; grid-template-columns: repeat(5, 1fr); height: 160px; }
 .timeline-forecast > div { position: relative; display: grid; justify-items: center; align-content: start; gap: 1px; padding-top: 34px; }
 .rail-forecast-content { display: grid; justify-items: center; gap: 1px; }
@@ -369,14 +372,14 @@ body { min-height: 100vh; overflow: hidden; }
   border: 1px solid #d6e4f5;
   background: #f2f7ff;
 }
-.timeline-forecast time { color: #344256; font-size: 18px; }
+.timeline-forecast time { color: #344256; font-size: var(--signage-label); }
 .timeline-forecast img { display: block; width: 72px; height: 64px; object-fit: contain; }
-.timeline-forecast .weather-condition { font-size: 14px; }
+.timeline-forecast .weather-condition { font-size: var(--signage-label); }
 .timeline-forecast > div.is-arrival time,
 .timeline-forecast > div.is-arrival strong { font-weight: 800; }
-.timeline-forecast strong { font-size: 20px; }
-.exact-rail footer { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 0 38px; color: #667182; font-size: 9px; }
-.exact-rail footer svg { font-size: 16px; }
+.timeline-forecast strong { font-size: var(--signage-label); }
+.exact-rail footer { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 0 var(--signage-safe-x); color: #667182; font-size: var(--signage-footer); }
+.exact-rail footer svg { font-size: var(--signage-caption); }
 .exact-rail footer b { font-weight: 400; }
 .exact-rail footer strong { color: #1165d6; }
 .rail-page.is-entering { z-index: 2; background: transparent; }
@@ -467,5 +470,5 @@ body { min-height: 100vh; overflow: hidden; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+  .terminal-signage *, .terminal-signage *::before, .terminal-signage *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; }
 }

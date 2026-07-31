@@ -40,6 +40,23 @@
   --fw-semibold: 600;
   --fw-bold: 700;
 
+  /* Terminal passenger signage — fixed 1920×1080 physical display scale. */
+  --signage-title: 40px;
+  --signage-destination: 64px;
+  --signage-code: 34px;
+  --signage-flight: 48px;
+  --signage-primary: 56px;
+  --signage-temperature: 60px;
+  --signage-arrival: 40px;
+  --signage-clock: 36px;
+  --signage-status: 30px;
+  --signage-body: 28px;
+  --signage-label: 26px;
+  --signage-caption: 24px;
+  --signage-footer: 22px;
+  --signage-safe-x: 40px;
+  --signage-safe-y: 24px;
+
   /* radius */
   --radius-none: 0;
   --radius-sm: 2px;
