@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DestinationWeatherPage } from './DestinationWeatherPage.jsx'
+import { BoardView } from './components/BoardView.jsx'
 import { applyTerminalFixtureState, TERMINAL_FLIGHT_GROUPS } from './data/terminalFixtures.js'
 import { parseTerminalFixtureState, parseTerminalMotionMode, parseTerminalView } from './model/terminalPager.js'
 import { useTerminalPager } from './motion/useTerminalPager.js'
@@ -38,12 +39,20 @@ export default function TerminalPage() {
     motionReplay.schedule()
   }, [cancelMotionReplay, motionReplay, pager.transitioning])
 
-  return <div className="terminal-signage"><DestinationWeatherPage
-    view={view}
-    groups={groups}
-    pager={pager}
-    motionMode={motionMode}
-    onViewChange={selectView}
-    onMotionChange={selectMotion}
-  /></div>
+  const screenProps = {
+    activeFlights: groups[pager.currentPage],
+    pendingFlights: groups[pager.pendingPage],
+    transition: pager.transitioning,
+    currentPage: pager.currentPage,
+    pageCount: groups.length,
+    motionMode,
+    onReplay: pager.advance,
+    onSelectMotion: selectMotion,
+    onSelectView: selectView,
+  }
+
+  return <div className="terminal-signage">{view === 'board'
+    ? <main className="prototype-shell"><BoardView {...screenProps} /></main>
+    : <DestinationWeatherPage groups={groups} pager={pager} motionMode={motionMode} onViewChange={selectView} onMotionChange={selectMotion} />
+  }</div>
 }

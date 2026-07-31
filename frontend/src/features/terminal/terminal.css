@@ -109,7 +109,6 @@
 .operation-status strong { color: #149348; font-size: var(--signage-status); }
 .operation-status.delay i { background: #f07c19; }
 .operation-status.delay strong { color: #f07c19; }
-.board-band:nth-child(5) .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
 .section-label {
   display: grid;
   grid-template-columns: auto var(--weather-city-slot, 5em) auto;
@@ -133,7 +132,6 @@
 .current-weather dt, .current-weather dd { margin: 0; }
 .current-weather dt { color: #303b4e; font-weight: 500; }
 .current-weather dd { color: #071735; font-weight: 600; white-space: nowrap; }
-.board-band:last-child .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
 .arrival-time { display: flex; align-items: baseline; gap: 10px; min-height: 68px; padding-top: 23px; }
 .arrival-time strong { font-size: var(--signage-arrival); }
 .arrival-time small { color: #5c6675; font-size: var(--signage-caption); }
@@ -175,9 +173,11 @@
 .board-footer strong { color: #1165d6; }
 .board-page.is-entering { z-index: 2; background: transparent; }
 .board-page.is-entering .board-band { background: transparent; }
+.board-page.is-entering .terminal-board-flight { background: transparent; }
+.board-page.is-entering .terminal-board-flight .board-band-surface { background: transparent; }
 .flap-unit { backface-visibility: hidden; transform-style: preserve-3d; will-change: transform, opacity; }
 .motion-split .board-page.is-entering .board-band-surface { background: transparent; }
-.motion-split .board-page.is-entering .board-column { visibility: hidden; }
+.motion-split .board-page.is-entering .terminal-board-flight { visibility: hidden; }
 .motion-split .board-page.is-entering .flap-unit { visibility: visible; }
 .motion-split .board-page.is-entering .board-column-separator { visibility: hidden; }
 .motion-split .board-page.is-leaving .flap-unit {
@@ -242,6 +242,62 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Task 4 — arrival-weather-first board */
+.terminal-board-flight {
+  display: grid;
+  grid-template-rows: 178px 104px 116px 180px 170px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  padding: 0 20px;
+  background: var(--bg-1);
+}
+.terminal-board-flight > .board-band { min-height: 0; border-bottom: 1px solid var(--stroke-1); }
+.terminal-board-flight > .board-band:last-child { border-bottom: 0; }
+.terminal-board-flight .board-band-surface { min-width: 0; }
+.terminal-board-identity .board-band-surface { position: relative; display: grid; align-content: center; }
+.terminal-board-city { margin: 0; color: var(--text-1); font-size: var(--signage-destination); font-weight: var(--fw-bold); letter-spacing: -.05em; line-height: 1; white-space: nowrap; }
+.terminal-board-city b { margin-left: var(--space-s); color: var(--text-3); font-size: var(--signage-code); font-weight: var(--fw-semibold); letter-spacing: 0; }
+.terminal-board-identity p { overflow: hidden; margin: var(--space-xs) 0 0; color: var(--text-3); font-size: var(--signage-label); text-overflow: ellipsis; white-space: nowrap; }
+.terminal-board-local-clock { position: absolute; right: 0; bottom: var(--space-m); display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 0 var(--space-s); text-align: right; }
+.terminal-board-local-clock > span { color: var(--text-3); font-size: var(--signage-label); }
+.terminal-board-local-clock strong { font-size: var(--signage-clock); line-height: 1; }
+.terminal-board-local-clock small { grid-column: 1 / -1; margin-top: var(--space-xs); color: var(--text-3); font-size: var(--signage-caption); }
+.terminal-board-flight-id .board-band-surface { display: grid; grid-template-columns: 66px 1fr; grid-template-rows: 1fr auto; align-items: center; column-gap: var(--space-m); }
+.terminal-board-flight-id img { grid-row: 1 / -1; display: block; width: 66px; height: 66px; object-fit: contain; }
+.terminal-board-flight-id strong { align-self: end; font-size: var(--signage-flight); line-height: 1; }
+.terminal-board-flight-id span { align-self: start; color: var(--text-3); font-size: var(--signage-caption); }
+.terminal-board-flight-id .terminal-board-operation { font-weight: var(--fw-semibold); }
+.terminal-board-flight-id .terminal-board-operation.ok { color: var(--level-green); }
+.terminal-board-flight-id .terminal-board-operation.delay { color: var(--level-amber); }
+.terminal-board-departure .board-band-surface { display: grid; grid-template-columns: 1fr 1fr; }
+.terminal-board-departure .board-band-surface > div { display: grid; align-content: center; }
+.terminal-board-departure .board-band-surface > div + div { padding-left: var(--space-m); border-left: 1px solid var(--stroke-1); }
+.terminal-board-departure span { color: var(--text-2); font-size: var(--signage-label); font-weight: var(--fw-semibold); }
+.terminal-board-departure strong { font-size: var(--signage-primary); line-height: 1.05; }
+.terminal-arrival-surface .board-band-surface { display: grid; grid-template-columns: 1fr auto; gap: var(--space-m); padding: var(--space-m); border: 1px solid var(--stroke-1); border-radius: 0; background: var(--bg-3); }
+.terminal-arrival-heading { display: grid; align-content: space-between; }
+.terminal-arrival-heading > span { font-size: var(--signage-label); font-weight: var(--fw-bold); }
+.terminal-arrival-heading > div { display: grid; grid-template-columns: 52px 1fr; align-items: baseline; }
+.terminal-arrival-heading small { color: var(--text-3); font-size: var(--signage-caption); }
+.terminal-arrival-heading strong { font-size: var(--signage-arrival); line-height: 1; white-space: nowrap; }
+.terminal-arrival-weather { display: grid; justify-items: center; align-content: center; }
+.terminal-arrival-weather > strong { font-size: var(--signage-temperature); line-height: 1; }
+.terminal-weather-visual { display: grid; justify-items: center; align-content: center; color: var(--text-3); font-size: var(--signage-label); font-style: normal; text-align: center; }
+.terminal-weather-visual img { display: block; width: 76px; height: 64px; object-fit: contain; }
+.terminal-weather-visual .weather-condition { font-size: var(--signage-label); }
+.terminal-weather-visual--arrival img { width: 94px; height: 80px; }
+.terminal-weather-visual--forecast img { width: 50px; height: 42px; }
+.terminal-weather-visual--current img { width: 60px; height: 52px; }
+.terminal-board-forecast .board-band-surface { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.terminal-forecast-cell { display: grid; min-width: 0; align-content: center; justify-items: center; gap: 0; border-right: 1px solid var(--stroke-1); text-align: center; }
+.terminal-forecast-cell:last-child { border-right: 0; }
+.terminal-forecast-cell time, .terminal-forecast-cell > strong, .terminal-forecast-cell > span { font-size: var(--signage-label); line-height: 1.15; white-space: nowrap; }
+.terminal-current-weather .board-band-surface { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-content: center; column-gap: var(--space-m); }
+.terminal-current-weather p { grid-column: 1 / -1; margin: 0; color: var(--text-3); font-size: var(--signage-label); }
+.terminal-current-weather > .board-band-surface > div { display: flex; align-items: center; gap: var(--space-s); }
+.terminal-current-weather > .board-band-surface > div > strong { font-size: var(--signage-arrival); }
+.terminal-current-weather small { color: var(--text-3); font-size: var(--signage-caption); line-height: 1.25; }
 
 /* Option 3 — exact horizontal forecast rail */
 .exact-rail { display: grid; grid-template-rows: 90px 1fr 57px; }

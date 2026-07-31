@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 const css = readFileSync(new URL('./terminal.css', import.meta.url), 'utf8')
 const themeCss = readFileSync(new URL('../../shared/theme/tokens.css', import.meta.url), 'utf8')
 const pageSource = readFileSync(new URL('./DestinationWeatherPage.jsx', import.meta.url), 'utf8')
+const boardColumnSource = readFileSync(new URL('./components/BoardFlightColumn.jsx', import.meta.url), 'utf8')
 const headerSource = readFileSync(new URL('./components/TerminalHeader.jsx', import.meta.url), 'utf8')
 const mainSource = readFileSync(new URL('../../main.jsx', import.meta.url), 'utf8')
 
@@ -40,23 +41,29 @@ test('terminal route does not load a stored remote font preference', () => {
 })
 
 test('passenger values carry signage markers, tabular numerals, and floor rules', () => {
-  for (const source of [pageSource, headerSource]) {
+  for (const source of [pageSource, boardColumnSource, headerSource]) {
     assert.match(source, /terminal-time-value/)
     assert.match(source, /data-signage-text=/)
   }
-  assert.match(pageSource, /data-signage-text="ordinary"/)
-  for (const selector of ['\\.board-forecast time', '\\.board-forecast \\.weather-condition', '\\.board-forecast strong', '\\.pre-arrival-forecast time', '\\.timeline-forecast strong']) {
+  assert.match(boardColumnSource, /data-signage-text="ordinary"/)
+  for (const selector of ['\\.terminal-forecast-cell time', '\\.terminal-forecast-cell > strong', '\\.pre-arrival-forecast time', '\\.timeline-forecast strong']) {
     assert.match(css, new RegExp(`${selector}[^}]*font-size:\\s*var\\(--signage-label\\)`, 's'))
   }
 })
 
 test('every terminal numeric value category is explicitly marked', () => {
+  const source = `${pageSource}\n${boardColumnSource}\n${headerSource}`
   for (const field of [
     'clocks.destinationNow', 'clocks.koreaNow', 'operation.departure', 'operation.duration',
-    'operation.gate', 'current.temperature', 'current.feelsLike', 'current.humidity',
-    'clocks.arrivalLocal', 'clocks.arrivalKorea', 'preArrival.time', 'preArrival.temperature',
-    'point.time', 'point.temperature', '2026-07-30', 'clocks.destinationDate',
-  ]) assert.match(`${pageSource}\n${headerSource}`, new RegExp(`terminal-time-value[^>]*>[\\s\\S]{0,180}${field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
+    'operation.gate', 'clocks.arrivalLocal', 'clocks.arrivalKorea', 'point.time',
+    'point.temperature', '2026-07-30', 'clocks.destinationDate',
+  ]) assert.match(source, new RegExp(`terminal-time-value[^>]*>[\\s\\S]{0,180}${field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
+  assert.match(boardColumnSource, /WeatherTemperature weather=\{weather\.current\}/)
+  assert.match(boardColumnSource, /weather\.current\.feelsLike/)
+  assert.match(boardColumnSource, /weather\.current\.humidity/)
+  assert.match(boardColumnSource, /WeatherTemperature\(\{ weather/)
+  assert.match(pageSource, /weatherValue\(flight\.weather\.preArrival, 'time'\)/)
+  assert.match(pageSource, /WeatherValue point=\{flight\.weather\.preArrival\}/)
 })
 
 test('edge-facing terminal chrome uses the signage safe edges', () => {
