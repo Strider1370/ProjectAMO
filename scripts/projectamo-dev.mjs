@@ -9,6 +9,16 @@ const logDir = path.join(rootDir, 'artifacts', 'runtime-logs')
 const appUrl = process.env.PROJECTAMO_URL || 'http://127.0.0.1:5173'
 const backendHealthUrl = process.env.PROJECTAMO_BACKEND_HEALTH_URL || 'http://127.0.0.1:3001/api/health'
 const command = process.argv[2] || 'verify'
+let activeTaskChild = null
+let shutdownRequested = false
+
+function terminateManagedLifecycle() {
+  shutdownRequested = true
+  if (activeTaskChild?.exitCode === null) activeTaskChild.kill('SIGTERM')
+}
+
+process.once('SIGINT', terminateManagedLifecycle)
+process.once('SIGTERM', terminateManagedLifecycle)
 
 async function startProcess(name, cmd, args, cwd = rootDir) {
   const out = createWriteStream(path.join(logDir, `${name}.out.log`), { flags: 'w' })
@@ -33,8 +43,8 @@ async function startProcess(name, cmd, args, cwd = rootDir) {
   return { child, out, err, name }
 }
 
-function stopProcess(entry) {
-  if (!entry?.child?.pid || entry.child.exitCode !== null) {
+async function stopProcess(entry) {
+  if (!entry?.child?.pid || entry.child.exitCode !== null || entry.child.signalCode !== null) {
     return
   }
 
@@ -45,6 +55,9 @@ function stopProcess(entry) {
       entry.child.kill('SIGTERM')
     } catch {}
   }
+  if (entry.child.exitCode === null && entry.child.signalCode === null) {
+    await new Promise((resolve) => entry.child.once('exit', resolve))
+  }
 }
 
 async function waitForUrl(url, label, timeoutMs = 60000) {
@@ -52,6 +65,7 @@ async function waitForUrl(url, label, timeoutMs = 60000) {
   let lastError = null
 
   while (Date.now() < deadline) {
+    if (shutdownRequested) throw new Error('managed lifecycle cancelled')
     try {
       const response = await fetch(url)
       if (response.ok) {
@@ -73,10 +87,27 @@ async function runNpm(name, args, extraEnv = {}) {
     env: { ...process.env, ...extraEnv },
     stdio: 'inherit',
   })
+  activeTaskChild = child
+  try {
+    const code = await new Promise((resolve) => child.on('exit', resolve))
+    if (code !== 0) throw new Error(`${name} failed with exit code ${code}`)
+  } finally {
+    activeTaskChild = null
+  }
+}
 
-  const code = await new Promise((resolve) => child.on('exit', resolve))
-  if (code !== 0) {
-    throw new Error(`${name} failed with exit code ${code}`)
+async function runNode(name, args, extraEnv = {}) {
+  const child = spawn(process.execPath, args, {
+    cwd: rootDir,
+    env: { ...process.env, ...extraEnv },
+    stdio: 'inherit',
+  })
+  activeTaskChild = child
+  try {
+    const code = await new Promise((resolve) => child.on('exit', resolve))
+    if (code !== 0) throw new Error(`${name} failed with exit code ${code}`)
+  } finally {
+    activeTaskChild = null
   }
 }
 
@@ -108,19 +139,21 @@ async function startServers() {
 async function withServers(task) {
   const servers = await startServers()
   try {
+    if (shutdownRequested) throw new Error('managed lifecycle cancelled')
     await waitForUrl(backendHealthUrl, 'backend')
     await waitForUrl(appUrl, 'frontend')
     console.log(`[projectamo-dev] backend ready: ${backendHealthUrl}`)
     console.log(`[projectamo-dev] frontend ready: ${appUrl}`)
+    if (shutdownRequested) throw new Error('managed lifecycle cancelled')
     await task()
   } finally {
-    stopProcess(servers.frontend)
-    stopProcess(servers.backend)
+    await stopProcess(servers.frontend)
+    await stopProcess(servers.backend)
   }
 }
 
-if (!['serve', 'serve:test', 'serve:no-nwp', 'verify', 'smoke', 'screenshots'].includes(command)) {
-  console.error('Usage: node scripts/projectamo-dev.mjs [serve|serve:test|serve:no-nwp|verify|smoke|screenshots]')
+if (!['serve', 'serve:test', 'serve:no-nwp', 'verify', 'smoke', 'screenshots', 'terminal-signage-capture'].includes(command)) {
+  console.error('Usage: node scripts/projectamo-dev.mjs [serve|serve:test|serve:no-nwp|verify|smoke|screenshots|terminal-signage-capture]')
   process.exit(2)
 }
 
@@ -168,6 +201,14 @@ try {
   if (command === 'screenshots') {
     await withServers(async () => {
       await runNpm('responsive screenshots', ['run', 'screenshots:responsive', '--prefix', 'frontend'], {
+        PROJECTAMO_URL: appUrl,
+      })
+    })
+  }
+
+  if (command === 'terminal-signage-capture') {
+    await withServers(async () => {
+      await runNode('terminal signage capture', [path.join(rootDir, 'frontend', 'scripts', 'terminal-signage-capture.mjs')], {
         PROJECTAMO_URL: appUrl,
       })
     })
