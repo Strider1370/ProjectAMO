@@ -64,3 +64,8 @@ test('ready destinations retain city and airport labels in both branches', () =>
   )
   assert.match(css, /\.destination-name \{ overflow: hidden; text-overflow: ellipsis;/)
 })
+
+test('rail renderer binds its progress-chevron icon import', () => {
+  assert.match(page, /import \{[^}]*MdChevronRight[^}]*\} from "react-icons\/md"/)
+  assert.match(page, /<MdChevronRight className="progress-arrow" \/>/)
+})

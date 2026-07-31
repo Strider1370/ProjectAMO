@@ -17,7 +17,7 @@ body { min-height: 100vh; overflow: hidden; }
 .view-switcher button + button { border-left: 1px solid #aeb7c3; }
 .view-switcher button.is-active { background: #071735; color: #fff; }
 .view-switcher button:focus-visible { outline: 3px solid #2f80ed; outline-offset: -3px; }
-.page-indicator {
+.terminal-page-indicator {
   position: absolute;
   z-index: 30;
   top: 13px;
@@ -27,7 +27,7 @@ body { min-height: 100vh; overflow: hidden; }
   gap: 8px;
   transform: translateX(-50%);
 }
-.page-indicator i {
+.terminal-page-indicator i {
   display: block;
   width: 9px;
   height: 9px;
@@ -35,7 +35,7 @@ body { min-height: 100vh; overflow: hidden; }
   border-radius: 50%;
   background: #fbfbfb;
 }
-.page-indicator i.is-current {
+.terminal-page-indicator i.is-current {
   border-color: #071735;
   background: #071735;
 }

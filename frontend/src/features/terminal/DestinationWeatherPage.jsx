@@ -1,17 +1,16 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment } from "react";
 import { MdChevronRight, MdInfoOutline } from "react-icons/md";
 import { WiCloud, WiCloudy, WiDayCloudy, WiDaySunny, WiRain, WiShowers, WiThunderstorm } from "react-icons/wi";
 import clearDay from "../../assets/weather-icons/basmilius/clear-day.svg";
 import clearNight from "../../assets/weather-icons/basmilius/clear-night.svg";
 import snowDay from "../../assets/weather-icons/basmilius/snow-day.svg";
-import boardHeaderPlane from "./assets/board-header-plane.png";
 import forecastCloud from "./assets/forecast-cloud-transparent.png";
 import forecastPartly from "./assets/forecast-partly-transparent.png";
 import forecastRain from "./assets/forecast-rain-transparent.png";
 import forecastStorm from "./assets/forecast-storm-transparent.png";
 import { airlineLogoFor } from "./components/airlineLogoRegistry.js";
-import { TERMINAL_FLIGHT_GROUPS } from "./data/terminalFixtures.js";
 import { formatArrivalKorea } from "./model/terminalDisplayModel.js";
+import { TerminalHeader } from "./components/TerminalHeader.jsx";
 
 const icons = {
   clear: WiDaySunny,
@@ -226,78 +225,10 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
   );
 }
 
-function ViewSwitcher({ view, onSelectView }) {
-  return (
-    <nav className="view-switcher" aria-label="화면 비교">
-      <button type="button" className={view === "board" ? "is-active" : ""} aria-pressed={view === "board"} onClick={() => onSelectView("board")}>1안</button>
-      <button type="button" className={view === "rail" ? "is-active" : ""} aria-pressed={view === "rail"} onClick={() => onSelectView("rail")}>3안</button>
-    </nav>
-  );
-}
-
-function PageIndicator({ currentPage, pageCount }) {
-  return (
-    <div
-      className="page-indicator"
-      role="status"
-      aria-label={`${pageCount}페이지 중 ${currentPage + 1}페이지`}
-    >
-      {Array.from({ length: pageCount }, (_, index) => (
-        <i className={index === currentPage ? "is-current" : ""} aria-hidden="true" key={index} />
-      ))}
-    </div>
-  );
-}
-
-const boardMotionModes = [
-  ["split", "FLAP", "뒤집기"],
-  ["roll", "ROLL", "세로 롤"],
-  ["wipe", "WIPE", "마스크"],
-  ["fade", "FADE", "겹침"],
-];
-
-const railMotionModes = [
-  ["cascade", "CASCADE", "행 순차"],
-  ["flap", "FLAP", "요소 플랩"],
-  ["roll", "ROLL", "요소 롤"],
-  ["wipe", "WIPE", "마스크"],
-  ["fade", "FADE", "겹침"],
-];
-
-function MotionModeSwitcher({ motionMode, onSelectMotion, modes = boardMotionModes, ariaLabel = "1안 전환 애니메이션" }) {
-  return (
-    <div className="motion-mode-switch" aria-label={ariaLabel} style={{ "--motion-count": modes.length }}>
-      {modes.map(([mode, title, label]) => (
-        <button
-          type="button"
-          className={motionMode === mode ? "is-active" : ""}
-          aria-pressed={motionMode === mode}
-          onClick={() => onSelectMotion(mode)}
-          key={mode}
-        >
-          <strong>{title}</strong><span>{label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage, pageCount, motionMode, onReplay, onSelectMotion, onSelectView }) {
   return (
     <section className={`exact-screen exact-board motion-${motionMode}`} data-testid="option-one">
-      <PageIndicator currentPage={currentPage} pageCount={pageCount} />
-      <header className="board-header">
-        <img src={boardHeaderPlane} alt="" aria-hidden="true" />
-        <h1>곧 출발하는 항공편 · 목적지 날씨</h1>
-        <div className="board-header-actions">
-          <ViewSwitcher view="board" onSelectView={onSelectView} />
-          <MotionModeSwitcher motionMode={motionMode} onSelectMotion={onSelectMotion} />
-          <button type="button" className="next-board-button" onClick={onReplay}>
-            <MdChevronRight /><span>다음 3편</span>
-          </button>
-        </div>
-        <div className="board-header-clock"><span>한국 시각</span><strong>06:32</strong><small>2026-07-30 (목) · KST</small></div>
-      </header>
+      <TerminalHeader view="board" motionMode={motionMode} page={currentPage} pageCount={pageCount} onViewChange={onSelectView} onMotionChange={onSelectMotion} onAdvance={onReplay} />
       <div className="board-viewport">
         <div className={`board-page ${transitioning ? "is-leaving" : ""}`}>
           {activeFlights.map((flight, index) => (
@@ -441,23 +372,7 @@ function RailScreen({
 }) {
   return (
     <section className={`exact-screen exact-rail rail-motion-${motionMode}`} data-testid="option-three">
-      <PageIndicator currentPage={currentPage} pageCount={pageCount} />
-      <header className="rail-header">
-        <h1>곧 출발 · 도착지 예보</h1><span>도착 현지 시간 기준 예보</span>
-        <div className="rail-header-actions">
-          <ViewSwitcher view="rail" onSelectView={onSelectView} />
-          <MotionModeSwitcher
-            motionMode={motionMode}
-            onSelectMotion={onSelectMotion}
-            modes={railMotionModes}
-            ariaLabel="3안 전환 애니메이션"
-          />
-          <button type="button" className="next-board-button" onClick={onReplay}>
-            <MdChevronRight /><span>다음 3편</span>
-          </button>
-        </div>
-        <div className="rail-header-clock"><small>7월 30일 (목)</small><strong>09:15</strong><b>KST</b></div>
-      </header>
+      <TerminalHeader view="rail" motionMode={motionMode} page={currentPage} pageCount={pageCount} onViewChange={onSelectView} onMotionChange={onSelectMotion} onAdvance={onReplay} />
       <div className="rail-viewport">
         <div className={`rail-page ${transitioning ? "is-leaving" : ""}`}>
           {activeFlights.map((flight, index) => <RailRow flight={flight} index={index} key={flight.id} />)}
@@ -473,101 +388,21 @@ function RailScreen({
   );
 }
 
-export function App() {
-  const params = useMemo(() => new URLSearchParams(window.location.search), []);
-  const [view, setView] = useState(params.get("view") === "rail" ? "rail" : "board");
-  const [transitioning, setTransitioning] = useState(false);
-  const [activeBoardGroup, setActiveBoardGroup] = useState(0);
-  const [activeRailGroup, setActiveRailGroup] = useState(0);
-  const [motionMode, setMotionMode] = useState(() => {
-    const requestedMode = params.get("motion");
-    return ["split", "roll", "wipe", "fade"].includes(requestedMode) ? requestedMode : "split";
-  });
-  const [railMotionMode, setRailMotionMode] = useState(() => {
-    const requestedMode = params.get("railMotion");
-    return ["cascade", "flap", "roll", "wipe", "fade"].includes(requestedMode) ? requestedMode : "cascade";
-  });
-  const timer = useRef(null);
-
-  const replay = useCallback(() => {
-    if (transitioning) return;
-    setTransitioning(true);
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      if (view === "board") {
-        setActiveBoardGroup((current) => (current + 1) % TERMINAL_FLIGHT_GROUPS.length);
-      } else {
-        setActiveRailGroup((current) => (current + 1) % TERMINAL_FLIGHT_GROUPS.length);
-      }
-      setTransitioning(false);
-    }, view === "board" ? 1800 : 1250);
-  }, [transitioning, view]);
-
-  useEffect(() => {
-    if (params.get("autoplay") === "0") return undefined;
-    const interval = window.setInterval(replay, 9000);
-    return () => window.clearInterval(interval);
-  }, [params, replay]);
-
-  useEffect(() => {
-    const onKey = (event) => {
-      if (event.key === "1") setView("board");
-      if (event.key === "3") setView("rail");
-      if (event.key.toLowerCase() === "r") replay();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [replay]);
-
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-
-  const selectMotionMode = useCallback((mode) => {
-    if (transitioning) return;
-    setMotionMode(mode);
-    window.requestAnimationFrame(() => replay());
-  }, [replay, transitioning]);
-
-  const selectRailMotionMode = useCallback((mode) => {
-    if (transitioning) return;
-    setRailMotionMode(mode);
-    window.requestAnimationFrame(() => replay());
-  }, [replay, transitioning]);
-
-  const selectView = useCallback((nextView) => {
-    window.clearTimeout(timer.current);
-    setTransitioning(false);
-    setView(nextView);
-  }, []);
-
-  const pendingBoardGroup = (activeBoardGroup + 1) % TERMINAL_FLIGHT_GROUPS.length;
-  const pendingRailGroup = (activeRailGroup + 1) % TERMINAL_FLIGHT_GROUPS.length;
-  return (
-    <main className="prototype-shell">
-      {view === "board" ? (
-        <BoardScreen
-          transitioning={transitioning}
-          activeFlights={TERMINAL_FLIGHT_GROUPS[activeBoardGroup]}
-          pendingFlights={TERMINAL_FLIGHT_GROUPS[pendingBoardGroup]}
-          currentPage={activeBoardGroup}
-          pageCount={TERMINAL_FLIGHT_GROUPS.length}
-          motionMode={motionMode}
-          onReplay={replay}
-          onSelectMotion={selectMotionMode}
-          onSelectView={selectView}
-        />
-      ) : (
-        <RailScreen
-          transitioning={transitioning}
-          activeFlights={TERMINAL_FLIGHT_GROUPS[activeRailGroup]}
-          pendingFlights={TERMINAL_FLIGHT_GROUPS[pendingRailGroup]}
-          currentPage={activeRailGroup}
-          pageCount={TERMINAL_FLIGHT_GROUPS.length}
-          motionMode={railMotionMode}
-          onReplay={replay}
-          onSelectMotion={selectRailMotionMode}
-          onSelectView={selectView}
-        />
-      )}
-    </main>
-  );
+export function DestinationWeatherPage({ view, groups, pager, motionMode, onViewChange, onMotionChange }) {
+  const activeFlights = groups[pager.currentPage]
+  const pendingFlights = groups[pager.pendingPage]
+  const screenProps = {
+    transitioning: pager.transitioning,
+    activeFlights,
+    pendingFlights,
+    currentPage: pager.currentPage,
+    pageCount: groups.length,
+    motionMode,
+    onReplay: pager.advance,
+    onSelectMotion: onMotionChange,
+    onSelectView: onViewChange,
+  }
+  return <main className="prototype-shell">{view === 'board' ? <BoardScreen {...screenProps} /> : <RailScreen {...screenProps} />}</main>
 }
+
+export const App = DestinationWeatherPage

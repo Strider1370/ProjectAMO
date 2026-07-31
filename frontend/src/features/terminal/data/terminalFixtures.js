@@ -47,3 +47,18 @@ const rawGroups = [
 ]
 
 export const TERMINAL_FLIGHT_GROUPS = Object.freeze(rawGroups.map((group) => Object.freeze(group.map(normalizeTerminalFlight))))
+
+export function applyTerminalFixtureState(groups, phase = 'ready') {
+  if (!['loading', 'partial', 'error'].includes(phase)) return groups
+  return groups.map((group) => group.map((flight, index) => {
+    if (phase === 'partial' && index === 0) {
+      return normalizeTerminalFlight({
+        ...flight,
+        operation: { ...flight.operation, gate: null },
+        weather: { ...flight.weather, afterArrival: [null, ...flight.weather.afterArrival.slice(1)] },
+        dataState: { ...flight.dataState, phase },
+      })
+    }
+    return normalizeTerminalFlight({ ...flight, dataState: { ...flight.dataState, phase } })
+  }))
+}

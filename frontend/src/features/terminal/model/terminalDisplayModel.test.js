@@ -7,7 +7,7 @@ import {
   normalizeTerminalDataState,
   normalizeWeatherPoint,
 } from './terminalDisplayModel.js'
-import { TERMINAL_FLIGHT_GROUPS } from '../data/terminalFixtures.js'
+import { applyTerminalFixtureState, TERMINAL_FLIGHT_GROUPS } from '../data/terminalFixtures.js'
 
 test('승객용 날씨 문구는 승인된 어휘로 정규화한다', () => {
   assert.deepEqual(Object.values(TERMINAL_WEATHER_LABELS), [
@@ -75,4 +75,13 @@ test('부분 current weather는 핵심 관측을 유지하고 보조 값만 pass
   assert.equal(flight.weather.current.feelsLike, '정보 확인 중')
   assert.equal(flight.weather.current.humidity, '정보 확인 중')
   assert.equal(flight.weather.current.wind, '정보 확인 중')
+})
+
+test('검증 fixture 상태는 identity를 보존하고 partial fallback을 만든다', () => {
+  const [source] = TERMINAL_FLIGHT_GROUPS
+  assert.equal(applyTerminalFixtureState(TERMINAL_FLIGHT_GROUPS, 'loading')[0][0].id, source[0].id)
+  assert.equal(applyTerminalFixtureState(TERMINAL_FLIGHT_GROUPS, 'error')[0][0].destination.code, source[0].destination.code)
+  const partial = applyTerminalFixtureState(TERMINAL_FLIGHT_GROUPS, 'partial')[0][0]
+  assert.equal(partial.operation.gate, '정보 확인 중')
+  assert.equal(partial.weather.afterArrival[0].available, false)
 })
