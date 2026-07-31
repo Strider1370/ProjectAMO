@@ -1,138 +1,27 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdChevronRight, MdInfoOutline } from "react-icons/md";
 import { WiCloud, WiCloudy, WiDayCloudy, WiDaySunny, WiRain, WiShowers, WiThunderstorm } from "react-icons/wi";
+import clearDay from "../../assets/weather-icons/basmilius/clear-day.svg";
 import clearNight from "../../assets/weather-icons/basmilius/clear-night.svg";
-import fewCloudsNight from "../../assets/weather-icons/basmilius/few-clouds-night.svg";
-import boardAf from "./assets/board-af.png";
+import snowDay from "../../assets/weather-icons/basmilius/snow-day.svg";
 import boardHeaderPlane from "./assets/board-header-plane.png";
-import boardJal from "./assets/board-jal.png";
-import boardSq from "./assets/board-sq.png";
 import forecastCloud from "./assets/forecast-cloud-transparent.png";
 import forecastPartly from "./assets/forecast-partly-transparent.png";
 import forecastRain from "./assets/forecast-rain-transparent.png";
 import forecastStorm from "./assets/forecast-storm-transparent.png";
+import { airlineLogoFor } from "./components/airlineLogoRegistry.js";
+import { TERMINAL_FLIGHT_GROUPS } from "./data/terminalFixtures.js";
+import { formatArrivalKorea } from "./model/terminalDisplayModel.js";
 
 const icons = {
-  sun: WiDaySunny,
+  clear: WiDaySunny,
   partly: WiDayCloudy,
-  cloud: WiCloud,
+  mostlyCloudy: WiCloud,
   cloudy: WiCloudy,
   rain: WiRain,
   shower: WiShowers,
   storm: WiThunderstorm,
 };
-
-const boardFlights = [
-  {
-    city: "도쿄", displayName: "도쿄 하네다", code: "HND", airport: "하네다 국제공항", flight: "JL 090", airline: "JAPAN AIRLINES",
-    logo: boardJal, departure: "07:20", gate: "12", status: "정상 운항",
-    localClock: "7/30 06:32", localZone: "JST", kstClock: "7/30 06:32", arrivalKst: "16:10",
-    current: { icon: "rain", temp: 27, feels: "31℃", humidity: "78%", wind: "남서 6m/s" },
-    arrival: "16:10",
-    forecast: [["16시", "rain", "27℃"], ["17시", "rain", "27℃"], ["18시", "cloud", "26℃"], ["19시", "cloud", "26℃"], ["20시", "cloudy", "25℃"]],
-  },
-  {
-    city: "싱가포르", displayName: "싱가포르", code: "SIN", airport: "창이 국제공항", flight: "SQ 605", airline: "SINGAPORE AIRLINES",
-    logo: boardSq, departure: "08:05", gate: "23", status: "정상 운항",
-    localClock: "7/30 05:32", localZone: "SGT", kstClock: "7/30 06:32", arrivalKst: "16:35",
-    current: { icon: "partly", temp: 31, feels: "36℃", humidity: "69%", wind: "남동 4m/s" },
-    arrival: "15:35",
-    forecast: [["15시", "partly", "31℃"], ["16시", "partly", "31℃"], ["17시", "storm", "30℃"], ["18시", "storm", "29℃"], ["19시", "cloud", "28℃"]],
-  },
-  {
-    city: "파리", displayName: "파리 샤를 드 골", code: "CDG", airport: "샤를 드골 국제공항", flight: "AF 267", airline: "AIR FRANCE",
-    logo: boardAf, departure: "09:40", gate: "31", status: "정상 운항",
-    localClock: "7/29 23:32", localZone: "CEST", kstClock: "7/30 06:32", arrivalKst: "23:50",
-    current: { icon: "cloudy", temp: 20, feels: "20℃", humidity: "62%", wind: "북동 3m/s" },
-    arrival: "16:50",
-    forecast: [["16시", "cloudy", "20℃"], ["17시", "partly", "21℃"], ["18시", "cloudy", "21℃"], ["19시", "cloudy", "20℃"], ["20시", "rain", "19℃"]],
-  },
-];
-
-const alternateBoardFlights = [
-  {
-    city: "오사카", displayName: "오사카 간사이", code: "KIX", airport: "간사이 국제공항", flight: "JL 120", airline: "JAPAN AIRLINES",
-    logo: boardJal, departure: "10:20", gate: "18", status: "정상 운항",
-    localClock: "7/30 06:32", localZone: "JST", kstClock: "7/30 06:32", arrivalKst: "12:05",
-    current: { icon: "partly", temp: 26, feels: "28℃", humidity: "65%", wind: "남서 3m/s" },
-    arrival: "12:05",
-    forecast: [["12시", "partly", "26℃"], ["13시", "partly", "27℃"], ["14시", "cloud", "27℃"], ["15시", "cloud", "26℃"], ["16시", "rain", "25℃"]],
-  },
-  {
-    city: "방콕", displayName: "방콕 수완나품", code: "BKK", airport: "수완나품 국제공항", flight: "SQ 711", airline: "SINGAPORE AIRLINES",
-    logo: boardSq, departure: "10:55", gate: "26", status: "탑승 준비",
-    localClock: "7/30 04:32", localZone: "ICT", kstClock: "7/30 06:32", arrivalKst: "17:10",
-    current: { icon: "rain", temp: 30, feels: "35℃", humidity: "74%", wind: "남동 2m/s" },
-    arrival: "15:10",
-    forecast: [["15시", "rain", "30℃"], ["16시", "storm", "29℃"], ["17시", "rain", "29℃"], ["18시", "cloud", "28℃"], ["19시", "cloud", "28℃"]],
-  },
-  {
-    city: "로마", displayName: "로마 피우미치노", code: "FCO", airport: "레오나르도 다 빈치 국제공항", flight: "AF 140", airline: "AIR FRANCE",
-    logo: boardAf, departure: "11:30", gate: "34", status: "정상 운항",
-    localClock: "7/29 23:32", localZone: "CEST", kstClock: "7/30 06:32", arrivalKst: "다음 날 01:25",
-    current: { icon: "sun", temp: 24, feels: "25℃", humidity: "58%", wind: "서풍 3m/s" },
-    arrival: "18:25",
-    forecast: [["18시", "partly", "24℃"], ["19시", "partly", "23℃"], ["20시", "cloud", "22℃"], ["21시", "cloud", "21℃"], ["22시", "cloud", "20℃"]],
-  },
-];
-
-const boardFlightGroups = [boardFlights, alternateBoardFlights];
-
-const railFlights = [
-  {
-    city: "도쿄 하네다", code: "HND", flight: "JL92", status: "정시 운항", statusTone: "ok",
-    logo: boardJal, airline: "Japan Airlines",
-    localClock: "7/30 09:15", localZone: "JST", kstClock: "7/30 09:15", arrivalKst: "11:25",
-    departure: "09:30", duration: "02:10", gate: "32", now: "09:15", arrival: "11:25", arrivalSlot: 0,
-    preArrival: ["10:00", "cloudy", "27℃"],
-    forecast: [["12:00", "partly", "28℃"], ["14:00", "cloudy", "29℃"], ["16:00", "cloudy", "28℃"], ["18:00", "partly", "27℃"], ["20:00", "cloudy", "26℃"]],
-  },
-  {
-    city: "싱가포르", code: "SIN", flight: "SQ607", status: "정시 운항", statusTone: "ok",
-    logo: boardSq, airline: "Singapore Airlines",
-    localClock: "7/30 08:15", localZone: "SGT", kstClock: "7/30 09:15", arrivalKst: "17:05",
-    departure: "10:25", duration: "06:40", gate: "25", now: "09:15", arrival: "16:05", arrivalSlot: 0,
-    preArrival: ["15:00", "cloudy", "29℃"],
-    forecast: [["16:00", "rain", "28℃"], ["18:00", "storm", "27℃"], ["20:00", "cloudy", "27℃"], ["22:00", "rain", "26℃"], ["00:00", "cloudy", "26℃"]],
-  },
-  {
-    city: "파리 샤를 드 골", code: "CDG", flight: "AF267", status: "지연 20분", statusTone: "delay",
-    logo: boardAf, airline: "Air France",
-    localClock: "7/30 02:15", localZone: "CEST", kstClock: "7/30 09:15", arrivalKst: "다음 날 01:50",
-    departure: "11:05", revised: "11:25", duration: "13:45", gate: "12", now: "09:15", arrival: "18:50", arrivalSlot: 0,
-    preArrival: ["18:00", "partly", "20℃"],
-    forecast: [["19:00", "partly", "20℃"], ["21:00", "nightPartly", "18℃"], ["23:00", "night", "17℃"], ["01:00", "night", "16℃"], ["03:00", "cloudy", "16℃"]],
-  },
-];
-
-const alternateRailFlights = [
-  {
-    city: "오사카 간사이", code: "KIX", flight: "JL120", status: "정시 운항", statusTone: "ok",
-    logo: boardJal, airline: "Japan Airlines",
-    localClock: "7/30 09:15", localZone: "JST", kstClock: "7/30 09:15", arrivalKst: "12:05",
-    departure: "10:20", duration: "01:45", gate: "18", now: "09:15", arrival: "12:05", arrivalSlot: 0,
-    preArrival: ["11:00", "cloudy", "26℃"],
-    forecast: [["12:00", "partly", "26℃"], ["14:00", "cloudy", "27℃"], ["16:00", "rain", "25℃"], ["18:00", "cloudy", "24℃"], ["20:00", "cloudy", "23℃"]],
-  },
-  {
-    city: "방콕 수완나품", code: "BKK", flight: "SQ711", status: "탑승 준비", statusTone: "ok",
-    logo: boardSq, airline: "Singapore Airlines",
-    localClock: "7/30 07:15", localZone: "ICT", kstClock: "7/30 09:15", arrivalKst: "17:10",
-    departure: "10:55", duration: "06:15", gate: "26", now: "09:15", arrival: "15:10", arrivalSlot: 0,
-    preArrival: ["14:00", "rain", "30℃"],
-    forecast: [["15:00", "rain", "30℃"], ["17:00", "storm", "29℃"], ["19:00", "cloudy", "28℃"], ["21:00", "rain", "27℃"], ["23:00", "cloudy", "27℃"]],
-  },
-  {
-    city: "로마 피우미치노", code: "FCO", flight: "AF140", status: "정시 운항", statusTone: "ok",
-    logo: boardAf, airline: "Air France",
-    localClock: "7/30 02:15", localZone: "CEST", kstClock: "7/30 09:15", arrivalKst: "다음 날 01:25",
-    departure: "11:30", duration: "13:55", gate: "34", now: "09:15", arrival: "18:25", arrivalSlot: 0,
-    preArrival: ["17:00", "partly", "24℃"],
-    forecast: [["18:00", "partly", "24℃"], ["20:00", "partly", "23℃"], ["22:00", "cloudy", "22℃"], ["00:00", "nightPartly", "20℃"], ["02:00", "night", "19℃"]],
-  },
-];
-
-const railFlightGroups = [railFlights, alternateRailFlights];
 
 function WeatherIcon({ type, className = "" }) {
   const Icon = icons[type] ?? WiCloudy;
@@ -140,89 +29,112 @@ function WeatherIcon({ type, className = "" }) {
 }
 
 const boardWeatherAssets = {
-  sun: forecastPartly,
+  clear: clearDay,
   rain: forecastRain,
   partly: forecastPartly,
-  cloud: forecastCloud,
+  mostlyCloudy: forecastCloud,
   cloudy: forecastCloud,
   shower: forecastRain,
+  snow: snowDay,
   storm: forecastRain,
 };
 
 const boardForecastAssets = {
+  clear: clearDay,
   rain: forecastRain,
   partly: forecastPartly,
-  cloud: forecastCloud,
+  mostlyCloudy: forecastCloud,
   cloudy: forecastCloud,
   shower: forecastRain,
+  snow: snowDay,
   storm: forecastStorm,
 };
 
-function BoardWeatherImage({ type, small = false }) {
-  const source = (small ? boardForecastAssets : boardWeatherAssets)[type] ?? boardWeatherAssets.cloud;
+const fallbackWeatherAsset = forecastCloud;
+
+function clearWeatherAsset(point) {
+  const hour = Number(point.time?.slice(0, 2));
+  return hour >= 18 || hour < 6 ? clearNight : clearDay;
+}
+
+function BoardWeatherImage({ point, small = false }) {
+  const type = point.type;
+  const source = type === "clear" ? clearWeatherAsset(point) : (small ? boardForecastAssets : boardWeatherAssets)[type] ?? fallbackWeatherAsset;
   const opticalClass = small ? ` weather-image weather-image--${type}` : "";
   return <img className={opticalClass.trim()} src={source} alt="" aria-hidden="true" />;
 }
 
 const railWeatherAssets = {
-  sun: boardForecastAssets.partly,
+  clear: clearDay,
   partly: boardForecastAssets.partly,
-  cloud: boardForecastAssets.cloud,
+  mostlyCloudy: boardForecastAssets.mostlyCloudy,
   cloudy: boardForecastAssets.cloudy,
   rain: boardForecastAssets.rain,
   shower: boardForecastAssets.shower,
+  snow: boardForecastAssets.snow,
   storm: boardForecastAssets.storm,
-  night: clearNight,
-  nightPartly: fewCloudsNight,
 };
 
-const weatherLabels = {
-  sun: "맑음",
-  partly: "구름 조금",
-  cloud: "흐림",
-  cloudy: "흐림",
-  rain: "비",
-  shower: "소나기",
-  storm: "뇌우",
-  night: "맑음",
-  nightPartly: "구름 조금",
-};
-
-function WeatherCondition({ type, className = "", style }) {
-  return <em className={`weather-condition ${className}`.trim()} style={style}>{weatherLabels[type] ?? "흐림"}</em>;
+function weatherText(point) {
+  return point.available ? point.label : point.fallback;
 }
 
-function RailWeatherImage({ type }) {
-  return <img className={`weather-image weather-image--${type}`} src={railWeatherAssets[type] ?? railWeatherAssets.cloud} alt="" aria-hidden="true" />;
+function currentMetric(value, unit) {
+  return typeof value === "number" ? `${value}${unit}` : value;
+}
+
+function WeatherCondition({ point, className = "", style }) {
+  return <em className={`weather-condition ${className}`.trim()} style={style}>{weatherText(point)}</em>;
+}
+
+function RailWeatherImage({ point }) {
+  const source = point.type === "clear" ? clearWeatherAsset(point) : railWeatherAssets[point.type] ?? fallbackWeatherAsset;
+  return <img className={`weather-image weather-image--${point.type ?? "unavailable"}`} src={source} alt="" aria-hidden="true" />;
 }
 
 function AirlineLogo({ flight }) {
   return (
-    <div className={`airline-logo airline-logo--${flight.code.toLowerCase()}`}>
-      <img src={flight.logo} alt={`${flight.airline} 로고`} />
+    <div className={`airline-logo airline-logo--${flight.destination.code.toLowerCase()}`}>
+      <img src={airlineLogoFor(flight.airline.logoKey)} alt={`${flight.airline.name} 로고`} />
     </div>
   );
+}
+
+function FlightDataSurface({ flight, variant, children }) {
+  const { phase } = flight.dataState;
+  if (phase === "loading" || phase === "error") {
+    const copy = phase === "loading" ? "운항 정보를 불러오는 중입니다" : "운항 정보를 불러오지 못했습니다";
+    const geometry = variant === "board" ? "board-column" : "rail-flight-row";
+    return <article className={`${geometry} terminal-data-surface terminal-data-surface--${variant} terminal-data-surface--${phase}`}>{copy}</article>;
+  }
+  return children;
+}
+
+function destinationDisplayName(destination) {
+  return destination.displayName;
 }
 
 function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
   const bandStyle = (band) => ({ "--band": band, "--column": columnIndex });
   const rollStyle = (item) => ({ "--item": item });
-  const [localDate, localTime] = flight.localClock.split(" ");
-  const [kstDate, kstTime] = flight.kstClock.split(" ");
+  const { destination, airline, operation, clocks, weather } = flight;
+  const current = weather.current;
+  const forecast = [weather.arrival, ...weather.afterArrival];
   return (
-    <article className="board-column">
+    <FlightDataSurface flight={flight} variant="board"><article className="board-column">
+      {flight.dataState.phase === "partial" && <p className="terminal-data-surface terminal-data-surface--board terminal-data-surface--partial">일부 정보 확인 중</p>}
       <div className="board-band" style={bandStyle(0)}>
         <div className="board-band-surface">
           <div className="board-destination">
             <div>
               <h2>
-                <span className="destination-name roll-unit flap-unit" style={rollStyle(0)}>{flight.displayName}</span>{" "}
-                <span className="destination-code roll-unit flap-unit" style={rollStyle(1)}>{flight.code}</span>
+                <span className="destination-name roll-unit flap-unit" style={rollStyle(0)}>{destinationDisplayName(flight.destination)}</span>{" "}
+                <span className="destination-code roll-unit flap-unit" style={rollStyle(1)}>{destination.code}</span>
               </h2>
               <div className="board-destination-meta">
                 <div className="destination-clock roll-unit flap-unit" style={rollStyle(3)}>
-                  <span>현지 시각</span><strong>{localTime}</strong><b>{flight.localZone}</b>
-                  <small>{localDate} · 한국 {kstTime} KST</small>
+                  <span>현지 시각</span><strong>{clocks.destinationNow}</strong><b>{destination.timezone}</b>
+                  <small>{clocks.destinationDate} · 한국 {clocks.koreaNow} KST</small>
                 </div>
               </div>
             </div>
@@ -235,8 +147,8 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
           <div className="airline-block">
             <div className="roll-unit flap-unit" style={rollStyle(0)}><AirlineLogo flight={flight} /></div>
             <div>
-              <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.flight}</strong>
-              <span className="roll-unit flap-unit" style={rollStyle(2)}>{flight.airline}</span>
+              <strong className="roll-unit flap-unit" style={rollStyle(1)}>{airline.flightNumber}</strong>
+              <span className="roll-unit flap-unit" style={rollStyle(2)}>{airline.name}</span>
             </div>
           </div>
           <div className="board-divider" />
@@ -247,11 +159,11 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
           <div className="schedule-grid">
             <div>
               <span className="roll-unit" style={rollStyle(0)}>출발 예정</span>
-              <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.departure}</strong>
+              <strong className="roll-unit flap-unit" style={rollStyle(1)}>{operation.departure}</strong>
             </div>
             <div>
               <span className="roll-unit" style={rollStyle(2)}>탑승구</span>
-              <strong className="roll-unit flap-unit" style={rollStyle(3)}>{flight.gate}</strong>
+              <strong className="roll-unit flap-unit" style={rollStyle(3)}>{operation.gate}</strong>
             </div>
           </div>
           <div className="board-divider" />
@@ -259,10 +171,10 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
       </div>
       <div className="board-band" style={bandStyle(3)}>
         <div className="board-band-surface">
-          <div className="operation-status">
+          <div className={`operation-status ${operation.tone}`}>
             <span className="roll-unit" style={rollStyle(0)}>운항 상태</span>
             <i className="roll-unit flap-unit" style={rollStyle(1)} />
-            <strong className="roll-unit flap-unit" style={rollStyle(2)}>{flight.status}</strong>
+            <strong className="roll-unit flap-unit" style={rollStyle(2)}>{operation.status}</strong>
           </div>
           <div className="board-divider" />
         </div>
@@ -271,21 +183,21 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
         <div className="board-band-surface">
           <p className="section-label" style={{ "--weather-city-slot": weatherCitySlot }}>
             <span className="roll-unit" style={rollStyle(0)}>현재</span>{" "}
-            <span className="roll-unit flap-unit" style={rollStyle(1)}>{flight.city}</span>{" "}
+            <span className="roll-unit flap-unit" style={rollStyle(1)}>{destination.city}</span>{" "}
             <span className="roll-unit" style={rollStyle(2)}>날씨</span>
           </p>
           <div className="current-weather">
             <div className="temperature">
               <span className="weather-icon-stack roll-unit flap-unit" style={rollStyle(3)}>
-                <BoardWeatherImage type={flight.current.icon} />
-                <WeatherCondition type={flight.current.icon} />
+                <BoardWeatherImage point={current} />
+                <WeatherCondition point={current} />
               </span>
-              <strong className="roll-unit flap-unit" style={rollStyle(4)}>{flight.current.temp}<small>℃</small></strong>
+              <strong className="roll-unit flap-unit" style={rollStyle(4)}>{current.available ? current.temperature : current.fallback}<small>{current.available && "℃"}</small></strong>
             </div>
             <dl>
-              <div className="roll-unit" style={rollStyle(5)}><dt>체감</dt><dd className="flap-unit">{flight.current.feels}</dd></div>
-              <div className="roll-unit" style={rollStyle(6)}><dt>습도</dt><dd className="flap-unit">{flight.current.humidity}</dd></div>
-              <div className="roll-unit" style={rollStyle(7)}><dt>바람</dt><dd className="flap-unit">{flight.current.wind}</dd></div>
+              <div className="roll-unit" style={rollStyle(5)}><dt>체감</dt><dd className="flap-unit">{current.available ? currentMetric(current.feelsLike, "℃") : current.fallback}</dd></div>
+              <div className="roll-unit" style={rollStyle(6)}><dt>습도</dt><dd className="flap-unit">{current.available ? currentMetric(current.humidity, "%") : current.fallback}</dd></div>
+              <div className="roll-unit" style={rollStyle(7)}><dt>바람</dt><dd className="flap-unit">{current.available ? current.wind : current.fallback}</dd></div>
             </dl>
           </div>
           <div className="board-divider" />
@@ -295,22 +207,22 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
         <div className="board-band-surface">
           <div className="arrival-time">
             <span className="roll-unit" style={rollStyle(0)}>도착 예정</span>
-            <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.arrival}</strong>
-            <small className="roll-unit flap-unit" style={rollStyle(2)}>(현지 시각 · 한국 {flight.arrivalKst} KST)</small>
+            <strong className="roll-unit flap-unit" style={rollStyle(1)}>{clocks.arrivalLocal}</strong>
+            <small className="roll-unit flap-unit" style={rollStyle(2)}>(현지 시각 · 한국 {formatArrivalKorea({ time: clocks.arrivalKorea, dayOffset: clocks.arrivalKoreaDayOffset })} KST)</small>
           </div>
           <div className="board-forecast">
-            {flight.forecast.map(([time, icon, temp], index) => (
-              <div className={index === 0 ? "is-arrival" : ""} key={time}>
-                <time className="roll-unit flap-unit" style={rollStyle(3 + index * 4)}>{time}</time>
-                <span className="roll-unit flap-unit" style={rollStyle(4 + index * 4)}><BoardWeatherImage type={icon} small /></span>
-                <WeatherCondition type={icon} className="roll-unit flap-unit" style={rollStyle(5 + index * 4)} />
-                <strong className="roll-unit flap-unit" style={rollStyle(6 + index * 4)}>{temp}</strong>
+            {forecast.map((point, index) => (
+              <div className={index === 0 ? "is-arrival" : ""} key={point.time ?? index}>
+                <time className="roll-unit flap-unit" style={rollStyle(3 + index * 4)}>{point.available ? point.time : point.fallback}</time>
+                <span className="roll-unit flap-unit" style={rollStyle(4 + index * 4)}><BoardWeatherImage point={point} small /></span>
+                <WeatherCondition point={point} className="roll-unit flap-unit" style={rollStyle(5 + index * 4)} />
+                <strong className="roll-unit flap-unit" style={rollStyle(6 + index * 4)}>{point.available ? `${point.temperature}℃` : point.fallback}</strong>
               </div>
             ))}
           </div>
         </div>
       </div>
-    </article>
+    </article></FlightDataSurface>
   );
 }
 
@@ -389,11 +301,11 @@ function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage
       <div className="board-viewport">
         <div className={`board-page ${transitioning ? "is-leaving" : ""}`}>
           {activeFlights.map((flight, index) => (
-            <Fragment key={flight.code}>
+            <Fragment key={flight.id}>
               <BoardColumn
                 flight={flight}
                 columnIndex={index}
-                weatherCitySlot={`${Math.max(flight.city.length, pendingFlights[index]?.city.length ?? 0)}em`}
+                weatherCitySlot={`${Math.max(flight.destination.city.length, pendingFlights[index]?.destination.city.length ?? 0)}em`}
               />
               {index < activeFlights.length - 1 && <i className="board-column-separator" aria-hidden="true" />}
             </Fragment>
@@ -402,11 +314,11 @@ function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage
         {transitioning && (
           <div className="board-page is-entering" aria-hidden="true">
             {pendingFlights.map((flight, index) => (
-              <Fragment key={flight.code}>
+              <Fragment key={flight.id}>
                 <BoardColumn
                   flight={flight}
                   columnIndex={index}
-                  weatherCitySlot={`${Math.max(flight.city.length, activeFlights[index]?.city.length ?? 0)}em`}
+                  weatherCitySlot={`${Math.max(flight.destination.city.length, activeFlights[index]?.destination.city.length ?? 0)}em`}
                 />
                 {index < pendingFlights.length - 1 && <i className="board-column-separator" aria-hidden="true" />}
               </Fragment>
@@ -428,15 +340,15 @@ function RailStats({ flight }) {
     <div className="rail-stats">
       <div>
         <span>출발</span>
-        <div className="rail-motion-unit" style={{ "--rail-item": 6 }}><strong>{flight.departure}</strong>{flight.revised && <em>{flight.revised}</em>}</div>
+        <div className="rail-motion-unit" style={{ "--rail-item": 6 }}><strong>{flight.operation.departure}</strong>{flight.operation.revisedDeparture && <em>{flight.operation.revisedDeparture}</em>}</div>
       </div>
       <div>
         <span>예상 비행시간</span>
-        <div className="rail-motion-unit" style={{ "--rail-item": 7 }}><strong>{flight.duration}</strong></div>
+        <div className="rail-motion-unit" style={{ "--rail-item": 7 }}><strong>{flight.operation.duration}</strong></div>
       </div>
       <div>
         <span>탑승구</span>
-        <div className="rail-motion-unit" style={{ "--rail-item": 8 }}><strong>{flight.gate}</strong></div>
+        <div className="rail-motion-unit" style={{ "--rail-item": 8 }}><strong>{flight.operation.gate}</strong></div>
       </div>
     </div>
   );
@@ -450,10 +362,10 @@ function ForecastTimeline({ flight }) {
           <span className="progress-label__title">예상 도착</span>
           <div className="arrival-clocks">
             <div className="progress-clock">
-              <span>현지</span><strong className="rail-motion-unit" style={{ "--rail-item": 9 }}>{flight.arrival}</strong>
+              <span>현지</span><strong className="rail-motion-unit" style={{ "--rail-item": 9 }}>{flight.clocks.arrivalLocal}</strong>
             </div>
             <div className="progress-clock">
-              <span>한국</span><strong className="rail-motion-unit" style={{ "--rail-item": 10 }}>{flight.arrivalKst}</strong><small>KST</small>
+              <span>한국</span><strong className="rail-motion-unit" style={{ "--rail-item": 10 }}>{formatArrivalKorea({ time: flight.clocks.arrivalKorea, dayOffset: flight.clocks.arrivalKoreaDayOffset })}</strong><small>KST</small>
             </div>
           </div>
         </div>
@@ -465,23 +377,23 @@ function ForecastTimeline({ flight }) {
       <div className="pre-arrival-forecast">
         <span>도착 1시간 전</span>
         <div className="pre-arrival-values rail-motion-unit" style={{ "--rail-item": 11 }}>
-          <time>{flight.preArrival[0]}</time>
-          <RailWeatherImage type={flight.preArrival[1]} />
-          <WeatherCondition type={flight.preArrival[1]} />
-          <strong>{flight.preArrival[2]}</strong>
+          <time>{flight.weather.preArrival.available ? flight.weather.preArrival.time : flight.weather.preArrival.fallback}</time>
+          <RailWeatherImage point={flight.weather.preArrival} />
+          <WeatherCondition point={flight.weather.preArrival} />
+          <strong>{flight.weather.preArrival.available ? `${flight.weather.preArrival.temperature}℃` : flight.weather.preArrival.fallback}</strong>
         </div>
       </div>
       <div className="timeline-forecast">
-        {flight.forecast.map(([time, icon, temp], index) => (
+        {[flight.weather.arrival, ...flight.weather.afterArrival].map((point, index) => (
           <div
-            className={index === flight.arrivalSlot ? "is-arrival" : ""}
-            key={time}
+            className={index === 0 ? "is-arrival" : ""}
+            key={point.time ?? index}
           >
             <div className="rail-forecast-content rail-motion-unit" style={{ "--rail-item": 12 + index }}>
-              <time>{time}</time>
-              <RailWeatherImage type={icon} />
-              <WeatherCondition type={icon} />
-              <strong>{temp}</strong>
+              <time>{point.available ? point.time : point.fallback}</time>
+              <RailWeatherImage point={point} />
+              <WeatherCondition point={point} />
+              <strong>{point.available ? `${point.temperature}℃` : point.fallback}</strong>
             </div>
           </div>
         ))}
@@ -491,29 +403,28 @@ function ForecastTimeline({ flight }) {
 }
 
 function RailRow({ flight, index }) {
-  const [localDate, localTime] = flight.localClock.split(" ");
-  const [, kstTime] = flight.kstClock.split(" ");
   return (
-    <article className="rail-flight-row" style={{ "--order": index }}>
+    <FlightDataSurface flight={flight} variant="rail"><article className="rail-flight-row" style={{ "--order": index }}>
+      {flight.dataState.phase === "partial" && <p className="terminal-data-surface terminal-data-surface--rail terminal-data-surface--partial">일부 정보 확인 중</p>}
       <div className="rail-flight-info">
-        <h2 className="rail-motion-unit" style={{ "--rail-item": 0 }}>{flight.city} <span>{flight.code}</span></h2>
+        <h2 className="rail-motion-unit" style={{ "--rail-item": 0 }}>{destinationDisplayName(flight.destination)} <span>{flight.destination.code}</span></h2>
         <div className="rail-local-clock">
           <span>현지 시각</span>
-          <strong className="rail-motion-unit" style={{ "--rail-item": 1 }}>{localTime}</strong>
-          <b className="rail-motion-unit" style={{ "--rail-item": 2 }}>{flight.localZone}</b>
-          <small className="rail-motion-unit" style={{ "--rail-item": 3 }}>{localDate} · 한국 {kstTime} KST</small>
+          <strong className="rail-motion-unit" style={{ "--rail-item": 1 }}>{flight.clocks.destinationNow}</strong>
+          <b className="rail-motion-unit" style={{ "--rail-item": 2 }}>{flight.destination.timezone}</b>
+          <small className="rail-motion-unit" style={{ "--rail-item": 3 }}>{flight.clocks.destinationDate} · 한국 {flight.clocks.koreaNow} KST</small>
         </div>
         <div className="rail-flight-status">
           <span className="rail-flight-number rail-motion-unit" style={{ "--rail-item": 4 }}>
-            <img src={flight.logo} alt={`${flight.airline} 로고`} />
-            <strong>{flight.flight}</strong>
+            <img src={airlineLogoFor(flight.airline.logoKey)} alt={`${flight.airline.name} 로고`} />
+            <strong>{flight.airline.flightNumber}</strong>
           </span>
-          <span className={`${flight.statusTone} rail-motion-unit`} style={{ "--rail-item": 5 }}>{flight.status}</span>
+          <span className={`${flight.operation.tone} rail-motion-unit`} style={{ "--rail-item": 5 }}>{flight.operation.status}</span>
         </div>
         <RailStats flight={flight} />
       </div>
       <ForecastTimeline flight={flight} />
-    </article>
+    </article></FlightDataSurface>
   );
 }
 
@@ -549,11 +460,11 @@ function RailScreen({
       </header>
       <div className="rail-viewport">
         <div className={`rail-page ${transitioning ? "is-leaving" : ""}`}>
-          {activeFlights.map((flight, index) => <RailRow flight={flight} index={index} key={flight.code} />)}
+          {activeFlights.map((flight, index) => <RailRow flight={flight} index={index} key={flight.id} />)}
         </div>
         {transitioning && (
           <div className="rail-page is-entering" aria-hidden="true">
-            {pendingFlights.map((flight, index) => <RailRow flight={flight} index={index} key={flight.code} />)}
+            {pendingFlights.map((flight, index) => <RailRow flight={flight} index={index} key={flight.id} />)}
           </div>
         )}
       </div>
@@ -584,9 +495,9 @@ export function App() {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       if (view === "board") {
-        setActiveBoardGroup((current) => (current + 1) % boardFlightGroups.length);
+        setActiveBoardGroup((current) => (current + 1) % TERMINAL_FLIGHT_GROUPS.length);
       } else {
-        setActiveRailGroup((current) => (current + 1) % railFlightGroups.length);
+        setActiveRailGroup((current) => (current + 1) % TERMINAL_FLIGHT_GROUPS.length);
       }
       setTransitioning(false);
     }, view === "board" ? 1800 : 1250);
@@ -628,17 +539,17 @@ export function App() {
     setView(nextView);
   }, []);
 
-  const pendingBoardGroup = (activeBoardGroup + 1) % boardFlightGroups.length;
-  const pendingRailGroup = (activeRailGroup + 1) % railFlightGroups.length;
+  const pendingBoardGroup = (activeBoardGroup + 1) % TERMINAL_FLIGHT_GROUPS.length;
+  const pendingRailGroup = (activeRailGroup + 1) % TERMINAL_FLIGHT_GROUPS.length;
   return (
     <main className="prototype-shell">
       {view === "board" ? (
         <BoardScreen
           transitioning={transitioning}
-          activeFlights={boardFlightGroups[activeBoardGroup]}
-          pendingFlights={boardFlightGroups[pendingBoardGroup]}
+          activeFlights={TERMINAL_FLIGHT_GROUPS[activeBoardGroup]}
+          pendingFlights={TERMINAL_FLIGHT_GROUPS[pendingBoardGroup]}
           currentPage={activeBoardGroup}
-          pageCount={boardFlightGroups.length}
+          pageCount={TERMINAL_FLIGHT_GROUPS.length}
           motionMode={motionMode}
           onReplay={replay}
           onSelectMotion={selectMotionMode}
@@ -647,10 +558,10 @@ export function App() {
       ) : (
         <RailScreen
           transitioning={transitioning}
-          activeFlights={railFlightGroups[activeRailGroup]}
-          pendingFlights={railFlightGroups[pendingRailGroup]}
+          activeFlights={TERMINAL_FLIGHT_GROUPS[activeRailGroup]}
+          pendingFlights={TERMINAL_FLIGHT_GROUPS[pendingRailGroup]}
           currentPage={activeRailGroup}
-          pageCount={railFlightGroups.length}
+          pageCount={TERMINAL_FLIGHT_GROUPS.length}
           motionMode={railMotionMode}
           onReplay={replay}
           onSelectMotion={selectRailMotionMode}

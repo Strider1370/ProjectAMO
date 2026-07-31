@@ -105,6 +105,8 @@ body { min-height: 100vh; overflow: hidden; }
 .operation-status > span { margin-right: 8px; }
 .operation-status i { width: 10px; height: 10px; border-radius: 50%; background: #149348; }
 .operation-status strong { color: #149348; font-size: 17px; }
+.operation-status.delay i { background: #f07c19; }
+.operation-status.delay strong { color: #f07c19; }
 .board-band:nth-child(5) .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
 .section-label {
   display: grid;
@@ -251,7 +253,45 @@ body { min-height: 100vh; overflow: hidden; }
 .rail-header-clock b { font-size: 14px; }
 .rail-viewport { position: relative; min-height: 0; overflow: hidden; }
 .rail-page { position: absolute; inset: 0; display: grid; grid-template-rows: repeat(3, 1fr); }
-.rail-flight-row { display: grid; grid-template-columns: 33% 67%; border-bottom: 1px solid #cbd2dc; background: #fbfbfb; perspective: 900px; }
+.rail-flight-row { position: relative; display: grid; grid-template-columns: 33% 67%; border-bottom: 1px solid #cbd2dc; background: #fbfbfb; perspective: 900px; }
+
+.terminal-data-surface {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--text-2);
+  background: #fbfbfb;
+  font-size: var(--fs-500);
+  font-weight: var(--fw-semibold);
+  text-align: center;
+}
+.terminal-data-surface--board { min-height: 100%; }
+.terminal-data-surface--rail { min-height: 100%; }
+.terminal-data-surface--board.terminal-data-surface--loading,
+.terminal-data-surface--board.terminal-data-surface--error,
+.terminal-data-surface--rail.terminal-data-surface--loading,
+.terminal-data-surface--rail.terminal-data-surface--error {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  inline-size: 100%;
+  block-size: 100%;
+  padding: 0;
+}
+.terminal-data-surface--partial {
+  position: absolute;
+  z-index: 3;
+  top: var(--space-s);
+  right: var(--space-m);
+  min-height: auto;
+  padding: var(--space-xs) var(--space-s);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--text-3);
+  font-size: 20px;
+  font-weight: var(--fw-medium);
+}
+.destination-name { overflow: hidden; text-overflow: ellipsis; }
 .rail-flight-info {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
