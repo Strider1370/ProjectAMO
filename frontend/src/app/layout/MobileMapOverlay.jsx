@@ -28,7 +28,7 @@ export default function MobileMapOverlay({ activePanel, onToggle, aviationCount 
         </button>
         <button
           type="button"
-          className={`mobile-map-layer-btn${activePanel === 'traffic' ? ' is-active' : ''}`}
+          className={`mobile-map-layer-btn mobile-map-layer-btn--adsb${activePanel === 'traffic' ? ' is-active' : ''}`}
           onClick={() => onToggle('traffic')}
           aria-label="ADS-B"
         >

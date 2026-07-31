@@ -113,6 +113,13 @@ optgroup {
     cursor: pointer;
   }
 
+  /* 'ADS-B'는 두 글자 한글 라벨보다 길어 52px 안에서 두 줄로 깨진다. 이 버튼만 살짝 줄인다. */
+  .mobile-map-layer-btn--adsb > span:not(.mobile-map-layer-count) {
+    font-size: var(--fs-100);
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
   .mobile-map-layer-btn.is-active {
     background: var(--accent);
     border-color: var(--accent);

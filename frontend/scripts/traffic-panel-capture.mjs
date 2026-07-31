@@ -20,7 +20,7 @@ function countAircraftOnMap() {
 // 대신 "지도에 그려진 수 == 패널이 말하는 수"가 되는 순간을 기다린다 — 그게 이 계약이 보장하는 상태다.
 async function settledCount() {
   await page.waitForFunction(() => {
-    const shown = document.querySelector('.layer-drawer-status')?.innerText?.match(/보이는 항공기\s*(\d+)/)
+    const shown = document.querySelector('.traffic-status')?.innerText?.match(/보이는 항공기\s*(\d+)/)
     if (!shown) return false
     return window.__map.queryRenderedFeatures({ layers: ['adsb-layer'] }).length === Number(shown[1])
   }, { timeout: 15000 })
@@ -57,7 +57,7 @@ await page.locator('[aria-label="항적 필터"]').screenshot({ path: `${outDir}
 // 4) 소속 하나만 체크 → 줄어드는지
 await page.locator('[aria-label="항적 필터"] .traffic-group input[type=checkbox]').first().check()
 const afterOperator = await settledCount()
-const panelCount = await page.locator('.layer-drawer-status').innerText()
+const panelCount = await page.locator('.traffic-status').innerText()
 console.log('소속 필터 후 지도:', afterOperator, '| 패널 표기:', panelCount)
 
 // 5) 고도 구간 좁히기
