@@ -976,6 +976,16 @@ test('CH_MIN -9는 결측이므로 제외한다', () => {
 })
 ```
 
+**한국어 지점명 디코딩도 함께 고정한다.** 위 모의 문자열은 전부 ASCII라 EUC-KR 처리를 잘못해도 통과한다. 좌표표(`ASOS_STATIONS`)에서 붙는 이름이 깨지지 않는지 별도로 확인한다 — 실제 바이트로 검증하며, 콘솔 출력 모양으로 판단하지 않는다([encoding-safety](../../policies/encoding-safety.md)).
+
+```js
+test('지점명이 깨지지 않는다', () => {
+  const seoul = ASOS_STATIONS.find((s) => s.stn === 108)
+  assert.equal(seoul.name, '서울')
+  assert.equal(Buffer.from(seoul.name, 'utf8').length, 6)   // 한글 2자 = UTF-8 6바이트
+})
+```
+
 - [ ] **Step 3: 구현**
 
 - 요청 `tm`은 **직전 정시**(KST). cron은 매시 15분에 돌아 여유를 둔다.
@@ -1033,20 +1043,64 @@ test('AMOS의 25000 이상은 구름 없음이므로 제외한다', () => { /* �
 test('모델값이 있으면 차이를 낸다', () => { /* diff_ft = 관측 - 모델 */ })
 ```
 
-- [ ] **Step 2: 구현**
+- [ ] **Step 2: 마스킹을 먼저 추출한다 (중복 방지)**
 
-- **위성 마스크를 적용한 뒤의 운고**를 읽는다. 화면에 그려진 면과 같은 값이어야 지점과 면이 같은 말을 한다. `buildCeilingGeoJson`이 쓰는 마스킹과 동일한 판정을 재사용한다 — 두 번 구현하지 않는다.
+지금 위성 마스킹은 `ceiling-kim.js`의 `buildCeilingGeoJson` **안에 박혀 있다**(97–105행). 그대로 두고 `stations.js`에서 같은 판정을 하면 7줄을 복사하게 되고, 나중에 마스킹 규칙이 바뀌면 **면과 지점이 서로 다른 말을 하게 된다.** 그러니 먼저 함수로 뽑는다.
+
+`ceiling-kim.js`에 추가하고 `buildCeilingGeoJson`이 이것을 부르도록 바꾼다. 동작은 그대로여서 기존 5개 테스트가 계속 통과해야 한다.
+
+```js
+/** 위성이 "구름 없음"이라 하는 격자의 운저를 지운다. 원본을 건드리지 않는다. */
+export function maskCeilingWithCtps(ceilingM, grid, ctpsMask) {
+  const masked = Float32Array.from(ceilingM)
+  if (!ctpsMask) return masked
+  for (let i = 0; i < masked.length; i++) {
+    if (masked[i] < 0) continue
+    const [lon, lat] = cellToLonLat(grid, i % grid.nx, Math.floor(i / grid.nx))
+    if (ctpsMask.isClearAt(lat, lon)) masked[i] = -1
+  }
+  return masked
+}
+```
+
+`cellToLonLat`도 함께 export한다 — `stations.js`가 지점 좌표를 격자 칸으로 되돌릴 때 같은 함수를 써야 한다.
+
+- [ ] **Step 3: 구현**
+
+- **`maskCeilingWithCtps`의 결과에서** 지점 좌표의 운고를 읽는다. 화면에 그려진 면과 같은 값이어야 지점과 면이 같은 말을 한다.
+- `amos`는 `store.getCached('amos')`를 그대로 넘긴다. 실측 구조(2026-08-01): `airports`에 15개 ICAO 키가 있고 각각 `observation.cloud_min_m`(m 단위)를 갖는다. 운고를 실제로 주는 곳은 그중 7곳이다. 좌표는 `config.airports`에서 ICAO로 찾는다(Task 4에서 지운 `getAmosCeilingPoints`가 쓰던 것과 같은 경로).
+- `asos`는 `store.getCached('asos_ceiling')`. 없거나(`null`) 비어 있어도 예외 없이 빈 목록을 반환해야 한다.
 - 모델값이 없으면 `model_ceiling_ft`와 `diff_ft`를 `null`로 둔다. 0으로 채우지 않는다.
 - `source`는 `'ASOS'` 또는 `'AMOS'`. 같은 위치에 둘 다 있으면 AMOS(공항)를 남긴다.
 - ASOS 저장본이 **2시간 넘게 오래됐으면 쓰지 않는다.** 수집기가 죽었을 때 어제 값이 계속 떠 있는 것이 가장 위험하다.
 
-- [ ] **Step 3: `process()`에 연결**
+- [ ] **Step 4: `process()`에 연결 — 수집이 살아 있으므로 절대 던지면 안 된다**
 
-`result.stations`와 `result.sources.stations = { asos: n, amos: n, tm }`을 추가한다.
+Task 5에서 수집을 `*/20` cron으로 되살렸다. Task 1–5 때와 달리 `process()`가 실제로 20분마다 돈다. 여기서 예외가 나면 오버레이 갱신이 그 자리에서 멈춘다. 그런데 `process()`에는 테스트가 없으므로 `node --test`는 이것을 잡지 못한다.
 
-- [ ] **Step 4: 회귀와 커밋**
+`flight-category-processor.js`의 `process()` 안, `result` 조립 직전에 넣는다:
+
+```js
+  const asos = store.getCached('asos_ceiling')
+  let stations = []
+  try {
+    stations = buildStations({ asos, amos: store.getCached('amos'), kimCeiling, ctpsMask })
+  } catch (e) {
+    // 지점은 부가 정보다. 여기서 죽으면 시정·운고 면까지 같이 사라진다.
+    console.warn('flight-cat: 지점 조립 실패 —', e.message)
+  }
+```
+
+`result`에 `stations`와 `sources.stations = { asos: n, amos: n, tm }`를 더한다.
+
+- [ ] **Step 5: 회귀와 실제 1회 확인**
 
 Run: `cd backend && node --test`
+Run: `cd backend && node -e "import('./src/processors/flight-category-processor.js').then(m=>m.default.process()).then(console.log)"`
+
+`process()`는 테스트가 없다 — 손으로 한 번 돌려 예외가 없는지 본다. Task 2에서 `process()`가 깨진 채 전체 테스트가 통과했던 전례가 있다.
+
+- [ ] **Step 6: 커밋**
 
 ```bash
 git commit -m "feat(flight-category): add observation stations with model difference"
@@ -1083,9 +1137,27 @@ test('3시간 전 산출물이 없으면 추세는 null', () => {
 
 - [ ] **Step 2: 구현**
 
-- `buildQueryGrid`에 운고를 더한다. **위성 마스크 적용 후** 값을 피트로. 결측은 음수로 둔다(별도 플래그 없음 — 스펙 §8).
-- 3시간 전 산출물은 저장 디렉터리에서 `computed_at`이 3시간 전에 가장 가까운 것을 고른다. ±20분을 벗어나면 쓰지 않는다.
+- `buildQueryGrid`에 운고를 더한다. **`maskCeilingWithCtps`의 결과에서** 뽑아 피트로. 결측은 음수로 둔다(별도 플래그 없음 — 스펙 §8).
 - 서버 시작 후 3시간 동안 `trend`가 `null`인 것은 정상이다.
+
+**과거 산출물 읽기 — 쓸 수 있는 함수가 없다.** `readRecent(type, limit)`은 `backend/server.js:308`의 **비공개 함수**라 프로세서에서 import할 수 없다. `store.js`에는 `loadLatest`만 있고 과거 목록을 주는 export가 없다. 그러니 `store.js`에 하나 추가한다:
+
+```js
+/** 해당 타입의 저장 파일을 최신순으로 읽는다. latest.json은 중복이므로 제외한다. */
+export function loadRecent(type, limit = 12) {
+  const dir = getTypeDir(config.storage.base_path, type)
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir)
+    .filter((n) => n.endsWith('.json') && n !== 'latest.json')
+    .sort().reverse().slice(0, limit)
+    .map((n) => readJsonSafe(path.join(dir, n)))
+    .filter(Boolean)
+}
+```
+
+`buildTrend`는 이 목록에서 `computed_at`이 **3시간 전에 가장 가까운 하나**를 고른다. 차이가 20분을 넘으면 쓰지 않고 `null`을 반환한다. 후보가 여럿이면 가장 가까운 것 하나만 쓴다.
+
+`buildTrend(current, past)`는 **이미 읽어놓은 두 객체를 받는다** — 파일을 직접 열지 않는다. 그래야 테스트가 디스크 없이 돌고, 파일 고르는 규칙과 뺄셈 규칙을 따로 검증할 수 있다. 파일 고르기는 `pickTrendBaseline(recent, now)`로 분리해 따로 테스트한다.
 
 - [ ] **Step 3: 보관 개수 늘리기**
 
@@ -1121,19 +1193,46 @@ git commit -m "feat(flight-category): add 3-hour visibility trend and ceiling qu
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
-좌표 변환을 실측으로 고정한다. 선형 가정으로는 수십 km 어긋나므로 맞고 틀림이 분명히 갈린다.
+**시험 지점을 서울로 잡으면 안 된다.** 계산해 보면 서울에서는 LCC와 선형 가정이 5.0 km밖에 안 벌어지고, 8 km짜리 조회 격자에서는 **같은 칸을 짚는다.** 잘못된 구현이 그대로 통과한다. 어긋남이 조회 격자 한 칸을 확실히 넘는 지점을 쓴다.
+
+실측 어긋남 (2026-08-01 계산):
+
+| 지점 | 위경도 | 선형과의 차이 | 조회 칸 차 |
+|---|---|---|---|
+| 서울 | 37.5714, 126.9658 | 5.0 km | 1칸 — **부적합** |
+| 속초 | 38.25, 128.56 | 6.6 km | 1칸 — 부적합 |
+| **부산** | **35.10, 129.03** | **21.1 km** | **2.2칸** |
+| 울릉도 | 37.48, 130.90 | 19.6 km | 2.2칸 |
+| 제주 | 33.51, 126.53 | 14.0 km | 2.2칸 |
 
 ```js
-test('점 조회는 LCC 변환을 쓴다 — 서울 좌표가 서울 칸을 짚는다', () => {
-  // 격자에 서울 위치만 표식을 넣고 그 칸이 나오는지 본다.
-  const { lat, lon } = sfcPixelToLatLon(/* 서울에 해당하는 col,row */)
-  const got = sampleQueryGrid(GRID_FIXTURE, lat, lon)
-  assert.equal(got.vis_m, MARKER)
+// 부산 — LCC와 선형 가정이 21 km(조회 격자 2칸 이상) 벌어지는 지점.
+// 서울은 5 km라 같은 칸을 짚어 잘못된 구현도 통과한다.
+const BUSAN = { lat: 35.10, lon: 129.03 }
+
+test('점 조회는 LCC 변환을 쓴다 — 선형 가정이면 다른 칸을 짚는다', () => {
+  // 128×128 격자에 부산 칸만 표식을 넣고 나머지는 0으로 둔다.
+  const grid = { width: 128, height: 128, vis: new Array(128 * 128).fill(0), ceil_ft: new Array(128 * 128).fill(-1) }
+  const { qc, qr } = queryCellFor(BUSAN.lat, BUSAN.lon)   // LCC 기준 칸
+  grid.vis[qr * 128 + qc] = 4242
+  assert.equal(sampleQueryGrid(grid, BUSAN.lat, BUSAN.lon).vis_m, 4242)
 })
 
 test('격자 밖은 null', () => {
   assert.equal(sampleQueryGrid(GRID_FIXTURE, 10, 100), null)
 })
+```
+
+`queryCellFor`는 `sampleQueryGrid`가 내부에서 쓰는 것과 같은 변환이어야 한다. 테스트가 자기 자신을 증명하는 것을 막으려면, **표식 칸을 상수로 박아 넣는다** — 부산의 LCC 기준 칸을 미리 계산해 숫자로 적고, 구현이 그 칸을 짚는지 본다. 계산은 아래로 뽑는다:
+
+```bash
+cd backend && node --input-type=module -e "
+const {latLonToEN84}=await import('./src/lib/lcc-projection.js')
+const {SFC_W,SFC_H}=await import('./src/parsers/sfc-grid-parser.js')
+const [e,n]=latLonToEN84(35.10,129.03)
+const col=e/500+880, row=SFC_H-1-(n/500+1540)
+console.log('qc=',Math.round(col*127/(SFC_W-1)),'qr=',Math.round(row*127/(SFC_H-1)))
+"
 ```
 
 - [ ] **Step 2: 조회 함수를 격자 쪽으로 옮긴다**
