@@ -186,7 +186,8 @@ function contourFeature(mask, band) {
       highQuality: false,
     })
     return s.geometry?.coordinates?.length ? s : feature
-  } catch {
+  } catch (e) {
+    console.warn('flight-cat: simplify failed for', band, e.message)
     return feature
   }
 }

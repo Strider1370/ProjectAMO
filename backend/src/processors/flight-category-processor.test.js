@@ -14,6 +14,11 @@ test('시정 밴드 경계값', () => {
 
 test('결측은 missing이며 절대 clear가 아니다', () => {
   assert.equal(classifyVisibility(-1), 'missing')
+  // 파서가 숫자 파싱에 실패하면 NaN이 나온다. NaN >= 0 은 false라 missing으로 떨어진다.
+  assert.equal(classifyVisibility(NaN), 'missing')
+  assert.equal(classifyVisibility(undefined), 'missing')
+  // 시정 0은 결측이 아니라 최악의 실제 관측이다.
+  assert.equal(classifyVisibility(0), 'severe')
 })
 
 test('clear 구역은 폴리곤을 만들지 않는다', () => {
