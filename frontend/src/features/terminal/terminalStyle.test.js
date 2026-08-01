@@ -63,7 +63,7 @@ test('every terminal numeric value category is explicitly marked', () => {
   assert.match(boardColumnSource, /weather\.current\.humidity/)
   assert.match(boardColumnSource, /WeatherTemperature\(\{ weather/)
   assert.match(pageSource, /Forecast point=\{flight\.weather\.preArrival\}/)
-  assert.match(pageSource, /<WeatherTemperature weather=\{point\} \/>/)
+  assert.match(pageSource, /<WeatherTemperature weather=\{point\} order=\{order \+ 2\} \/>/)
 })
 
 test('edge-facing terminal chrome uses the signage safe edges', () => {

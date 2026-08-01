@@ -15,6 +15,7 @@ export default function TerminalPage() {
   const search = useMemo(() => window.location.search, [])
   const [view, setView] = useState(() => parseTerminalView(window.location.search))
   const [motionMode, setMotionMode] = useState(() => parseTerminalMotionMode(search, view))
+  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   const fixtureState = parseTerminalFixtureState(window.location.search, { allowOverride: import.meta.env.DEV })
   const groups = useMemo(() => applyTerminalFixtureState(TERMINAL_FLIGHT_GROUPS, fixtureState), [fixtureState])
   const pager = useTerminalPager({
@@ -26,6 +27,12 @@ export default function TerminalPage() {
   const motionReplay = useMemo(() => createTerminalMotionReplay({ clock: window, advance: pager.advance }), [pager.advance])
   const cancelMotionReplay = useCallback(() => motionReplay.cancel(), [motionReplay])
   useEffect(() => () => cancelMotionReplay(), [cancelMotionReplay])
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => setReducedMotion(media.matches)
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
   const selectView = useCallback((nextView) => {
     cancelMotionReplay()
     pager.cancel()
@@ -49,6 +56,7 @@ export default function TerminalPage() {
     onReplay: pager.advance,
     onSelectMotion: selectMotion,
     onSelectView: selectView,
+    reducedMotion,
   }
 
   return <div className="terminal-signage">{view === 'board'

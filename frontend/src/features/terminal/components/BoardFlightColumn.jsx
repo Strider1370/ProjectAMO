@@ -1,6 +1,7 @@
 import { airlineLogoFor } from './airlineLogoRegistry.js'
 import { WeatherVisual } from './WeatherVisual.jsx'
 import { formatArrivalKorea } from '../model/terminalDisplayModel.js'
+import AnimatedValue from '../motion/AnimatedValue.jsx'
 
 const unavailableForecast = { available: false, fallback: '예보 확인 중' }
 
@@ -8,9 +9,9 @@ function value(value) {
   return value == null || value === '' || value === '--' ? '정보 확인 중' : value
 }
 
-function WeatherTemperature({ weather, priority = 'ordinary' }) {
+function WeatherTemperature({ weather, priority = 'ordinary', order }) {
   return weather?.available
-    ? <strong className="terminal-time-value" data-signage-text={priority}>{weather.temperature}℃</strong>
+    ? <AnimatedValue as="strong" mode="value" order={order} className="terminal-time-value" data-signage-text={priority}>{weather.temperature}℃</AnimatedValue>
     : null
 }
 
@@ -18,12 +19,12 @@ function metric(value, unit) {
   return typeof value === 'number' ? `${value}${unit}` : value
 }
 
-function ForecastCell({ point }) {
-  if (!point.available) return <div className="terminal-forecast-cell"><span data-signage-text="ordinary">예보 확인 중</span></div>
+function ForecastCell({ point, order }) {
+  if (!point.available) return <div className="terminal-forecast-cell"><AnimatedValue mode="value" order={order} data-signage-text="ordinary">예보 확인 중</AnimatedValue></div>
   return <div className="terminal-forecast-cell">
-    <time className="terminal-time-value" data-signage-text="ordinary">{point.time}</time>
-    <WeatherVisual weather={point} size="forecast" textPriority="ordinary" />
-    <WeatherTemperature weather={point} />
+    <AnimatedValue as="time" mode="value" order={order} className="terminal-time-value" data-signage-text="ordinary">{point.time}</AnimatedValue>
+    <AnimatedValue mode="value" order={order + 1}><WeatherVisual weather={point} size="forecast" textPriority="ordinary" /></AnimatedValue>
+    <WeatherTemperature weather={point} order={order + 2} />
   </div>
 }
 
@@ -42,42 +43,42 @@ export function BoardFlightColumn({ flight, columnIndex }) {
   return <article className="terminal-board-flight" aria-labelledby={destinationHeadingId} style={{ '--column': columnIndex }}>
     <div data-section="identity" className="terminal-board-identity board-band" style={{ '--band': 0 }}>
       <div className="board-band-surface">
-        <h2 id={destinationHeadingId} className="terminal-board-city"><span className="roll-unit flap-unit">{value(destination.city)}</span> <b className="roll-unit flap-unit">{value(destination.code)}</b></h2>
-        <p className="roll-unit flap-unit">{value(destination.airportName)}</p>
+        <h2 id={destinationHeadingId} className="terminal-board-city"><AnimatedValue mode="value" order={0}>{value(destination.city)}</AnimatedValue> <AnimatedValue as="b" mode="value" order={1}>{value(destination.code)}</AnimatedValue></h2>
+        <AnimatedValue as="p" mode="value" order={2}>{value(destination.airportName)}</AnimatedValue>
         <div className="terminal-board-local-clock">
-          <span>현지 시각</span><strong className="terminal-time-value roll-unit flap-unit" data-signage-text="required">{value(clocks.destinationNow)}</strong>
-          <small><span className="terminal-time-value" data-signage-text="required">{value(clocks.destinationDate)}</span> · 한국 <span className="terminal-time-value" data-signage-text="required">{value(clocks.koreaNow)}</span> KST</small>
+          <span>현지 시각</span><AnimatedValue as="strong" mode="value" order={3} className="terminal-time-value" data-signage-text="required">{value(clocks.destinationNow)}</AnimatedValue>
+          <div className="terminal-board-local-date"><AnimatedValue mode="value" order={4} className="terminal-time-value" data-signage-text="required">{value(clocks.destinationDate)}</AnimatedValue><span>한국</span><AnimatedValue mode="value" order={5} className="terminal-time-value" data-signage-text="required">{value(clocks.koreaNow)}</AnimatedValue><span>KST</span></div>
         </div>
       </div>
     </div>
     <div data-section="flight" className="terminal-board-flight-id board-band" style={{ '--band': 1 }}>
       <div className="board-band-surface">
-        <img src={airlineLogoFor(airline.logoKey)} alt={`${airline.name} 로고`} />
-        <strong className="roll-unit flap-unit">{value(airline.flightNumber)}</strong><span className={`terminal-board-operation ${operation.tone}`}>{value(operation.status)}</span><span>{value(airline.name)}</span>
+        <AnimatedValue mode="value" order={6} className="terminal-board-airline-logo"><img src={airlineLogoFor(airline.logoKey)} alt={`${airline.name} 로고`} /></AnimatedValue>
+        <AnimatedValue as="strong" mode="value" order={7}>{value(airline.flightNumber)}</AnimatedValue><AnimatedValue mode="value" order={8} className={`terminal-board-operation ${operation.tone}`}>{value(operation.status)}</AnimatedValue><AnimatedValue mode="value" order={9}>{value(airline.name)}</AnimatedValue>
       </div>
     </div>
     <div data-section="departure" className="terminal-board-departure board-band" style={{ '--band': 2 }}>
       <div className="board-band-surface">
-        <div><span>출발</span><strong className="terminal-time-value roll-unit flap-unit" data-signage-text="required">{value(operation.departure)}</strong></div>
-        <div><span>탑승구</span><strong className="terminal-time-value roll-unit flap-unit" data-signage-text="required">{value(operation.gate)}</strong></div>
+        <div><span>출발</span><AnimatedValue as="strong" mode="value" order={9} className="terminal-time-value" data-signage-text="required">{value(operation.departure)}</AnimatedValue></div>
+        <div><span>탑승구</span><AnimatedValue as="strong" mode="value" order={10} className="terminal-time-value" data-signage-text="required">{value(operation.gate)}</AnimatedValue></div>
       </div>
     </div>
     <div data-section="arrival" className="terminal-arrival-surface board-band" style={{ '--band': 3 }}>
       <div className="board-band-surface">
-        <div className="terminal-arrival-heading"><span>도착</span><div><small>현지</small><strong className="terminal-time-value" data-signage-text="required">{value(clocks.arrivalLocal)}</strong></div><div><small>한국</small><strong className="terminal-time-value" data-signage-text="required">{formatArrivalKorea({ time: value(clocks.arrivalKorea), dayOffset: clocks.arrivalKoreaDayOffset })}</strong></div></div>
-        <div className="terminal-arrival-weather"><WeatherVisual weather={weather.arrival} size="arrival" textPriority="required" /><WeatherTemperature weather={weather.arrival} priority="required" /></div>
+        <div className="terminal-arrival-heading"><span>도착</span><div><small>현지</small><AnimatedValue as="strong" mode="value" order={11} className="terminal-time-value" data-signage-text="required">{value(clocks.arrivalLocal)}</AnimatedValue></div><div><small>한국</small><AnimatedValue as="strong" mode="value" order={12} className="terminal-time-value" data-signage-text="required">{formatArrivalKorea({ time: value(clocks.arrivalKorea), dayOffset: clocks.arrivalKoreaDayOffset })}</AnimatedValue></div></div>
+        <div className="terminal-arrival-weather"><AnimatedValue mode="value" order={13}><WeatherVisual weather={weather.arrival} size="arrival" textPriority="required" /></AnimatedValue><WeatherTemperature weather={weather.arrival} priority="required" order={14} /></div>
       </div>
     </div>
     <div data-section="forecast" className="terminal-board-forecast board-band" style={{ '--band': 4 }}>
       <div className="board-band-surface">
-        {forecast.map((point, index) => <ForecastCell point={point} key={`${point.time ?? 'unavailable'}-${index}`} />)}
+        {forecast.map((point, index) => <ForecastCell point={point} order={15 + index * 3} key={`${point.time ?? 'unavailable'}-${index}`} />)}
       </div>
     </div>
     <div data-section="current-weather" className="terminal-current-weather board-band" style={{ '--band': 5 }}>
       <div className="board-band-surface">
-        <p>{destination.city} 현재 날씨</p>
-        <div><WeatherVisual weather={weather.current} size="current" textPriority="ordinary" /><WeatherTemperature weather={weather.current} /></div>
-        {weather.current.available && <small>체감 {metric(weather.current.feelsLike, '℃')} · 습도 {metric(weather.current.humidity, '%')} · 바람 {value(weather.current.wind)}</small>}
+        <p className="terminal-current-weather-heading"><AnimatedValue mode="value" order={30}>{destination.city}</AnimatedValue><span>현재 날씨</span></p>
+        <div><AnimatedValue mode="value" order={31}><WeatherVisual weather={weather.current} size="current" textPriority="ordinary" /></AnimatedValue><WeatherTemperature weather={weather.current} order={32} /></div>
+        {weather.current.available && <small>체감 <AnimatedValue mode="value" order={33}>{metric(weather.current.feelsLike, '℃')}</AnimatedValue> · 습도 <AnimatedValue mode="value" order={34}>{metric(weather.current.humidity, '%')}</AnimatedValue> · 바람 <AnimatedValue mode="value" order={35}>{value(weather.current.wind)}</AnimatedValue></small>}
       </div>
     </div>
   </article>

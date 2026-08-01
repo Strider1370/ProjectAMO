@@ -37,17 +37,31 @@ test('부분 current metric은 숫자에만 단위를 붙인다', () => {
 })
 
 test('사용할 수 없는 예보 cell은 ordinary marker가 있는 한 문구만 표시한다', () => {
-  assert.match(source, /function ForecastCell\(\{ point \}\)/)
+  assert.match(source, /function ForecastCell\(\{ point, order \}\)/)
   assert.match(source, /data-signage-text="ordinary">예보 확인 중/)
-  assert.match(source, /if \(!point\.available\) return <div className="terminal-forecast-cell">/)
+  assert.match(source, /if \(!point\.available\) return <div className="terminal-forecast-cell"><AnimatedValue mode="value" order=\{order\} data-signage-text="ordinary">예보 확인 중<\/AnimatedValue><\/div>/)
 })
 
-test('보드는 기존 page 전환 계층과 band delay 변수를 제공한다', () => {
+test('changing airline logo is a value boundary', () => {
+  assert.match(source, /<AnimatedValue mode="value" order=\{6\} className="terminal-board-airline-logo"><img src=\{airlineLogoFor\(airline\.logoKey\)\}/)
+  assert.match(css, /\.terminal-board-airline-logo \{[^}]*grid-row: 1 \/ -1/)
+})
+
+test('보드는 page 전환 계층을 유지하고 changing values만 전환한다', () => {
   assert.match(viewSource, /className=\{`board-page \$\{transition \? 'is-leaving' : ''\}`\}/)
   assert.match(viewSource, /className="board-page is-entering"/)
-  assert.equal((source.match(/'--band'/g) || []).length, 6)
+  assert.match(source, /import AnimatedValue from '\.\.\/motion\/AnimatedValue\.jsx'/)
+  for (const field of ['destination.city', 'airline.flightNumber', 'operation.departure', 'clocks.arrivalLocal', 'weather.current.wind']) {
+    assert.match(source, new RegExp(`<AnimatedValue[^>]*>[\\s\\S]{0,180}${field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
+  }
+  for (const label of ['출발', '탑승구', '도착', '현지', '한국', '현재 날씨']) {
+    assert.doesNotMatch(source, new RegExp(`<AnimatedValue[^>]*>${label}`))
+  }
   assert.match(css, /\.board-page\.is-entering \.terminal-board-flight \{ background: transparent; \}/)
-  assert.match(css, /\.motion-split \.board-page\.is-entering \.terminal-board-flight \{ visibility: hidden; \}/)
+  for (const mode of ['motion-split', 'motion-roll', 'motion-wipe', 'motion-fade']) {
+    assert.match(css, new RegExp(`\\.${mode}[^}]*\\[data-terminal-motion-value\\]`, 's'))
+    assert.doesNotMatch(css, new RegExp(`\\.${mode}[^}]*\\.(?:terminal-board-flight|board-band|board-band-surface)[^}]*?(?:transform|visibility|clip-path|animation)`, 's'))
+  }
   assert.doesNotMatch(css, /\.board-band:nth-child\(5\)/)
   assert.doesNotMatch(css, /\.board-band:last-child \.board-band-surface/)
 })
@@ -57,6 +71,15 @@ test('board column has one destination heading and labels its article', () => {
   assert.match(source, /const destinationHeadingId = `terminal-board-destination-\$\{flight\.id\}`/)
   assert.match(source, /<h2 id=\{destinationHeadingId\} className="terminal-board-city">/)
   assert.doesNotMatch(source, /<section data-section=/)
+})
+
+test('current weather and clock values occupy stable label tracks', () => {
+  assert.match(source, /className="terminal-current-weather-heading"><AnimatedValue[^>]*>\{destination\.city\}<\/AnimatedValue><span>현재 날씨<\/span>/)
+  assert.match(source, /className="terminal-board-local-date"/)
+  assert.match(css, /\.terminal-current-weather-heading \{[^}]*grid-template-columns: 12ch max-content/)
+  const localDateRule = css.match(/\.terminal-board-local-date \{[^}]+\}/)?.[0] ?? ''
+  assert.match(localDateRule, /grid-template-columns:\s*minmax\(10ch,\s*12ch\)\s+max-content\s+5ch\s+max-content/)
+  assert.doesNotMatch(localDateRule, /grid-template-columns:\s*auto\s+auto\s+auto\s+auto/)
 })
 
 test('board delay status uses the shared amber token rather than a literal color', () => {

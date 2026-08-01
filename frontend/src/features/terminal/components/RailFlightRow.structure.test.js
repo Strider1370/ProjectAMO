@@ -25,24 +25,47 @@ test('도착 시각은 현지와 한국 고정 열을 사용한다', () => {
   assert.doesNotMatch(source, /한국[^<]*KST/)
 })
 
-test('기존 FLAP과 ROLL은 행이 아닌 변경 값 wrapper를 대상으로 한다', () => {
-  assert.match(source, /className="rail-flight-number rail-motion-unit"/)
-  assert.match(source, /className="terminal-time-value rail-motion-unit"/)
-  assert.match(source, /className=\{`rail-forecast-content rail-motion-unit/)
-  assert.match(css, /\.rail-motion-roll \.rail-page\.is-entering \.rail-motion-unit/)
-  assert.match(css, /\.rail-motion-flap \.rail-page\.is-entering \.rail-motion-unit/)
+test('rail destination keeps the city and code at their dedicated signage sizes', () => {
+  assert.match(source, /className="rail-destination-city"/)
+  assert.match(source, /className="rail-destination-code"/)
+  assert.match(css, /\.rail-destination-city \{[^}]*font-size: var\(--signage-destination\)/)
+  assert.match(css, /\.rail-destination-code \{[^}]*font-size: var\(--signage-code\)/)
+})
+
+test('rail local and Korea times use stable value tracks', () => {
+  assert.match(source, /className="rail-local-date"/)
+  assert.match(source, /<span>한국<\/span>/)
+  assert.match(source, /<span>KST<\/span>/)
+  const localDateRule = css.match(/\.rail-local-date \{[^}]+\}/)?.[0] ?? ''
+  assert.match(localDateRule, /grid-template-columns:\s*minmax\(10ch,\s*12ch\)\s+max-content\s+5ch\s+max-content/)
+  assert.doesNotMatch(localDateRule, /grid-template-columns:\s*auto\s+auto\s+auto\s+auto/)
+})
+
+test('FLAP과 ROLL은 fixed labels나 행이 아닌 changing values를 대상으로 한다', () => {
+  assert.match(source, /import AnimatedValue from '\.\.\/motion\/AnimatedValue\.jsx'/)
+  assert.match(source, /motionOrder\(rowIndex, 0\)/)
+  assert.match(source, /motionOrder\(rowIndex, 15\)/)
+  assert.match(source, /const RAIL_MOTION_ITEMS_PER_ROW = 6/)
+  assert.match(source, /return rowIndex \* RAIL_MOTION_ITEMS_PER_ROW \+ item % RAIL_MOTION_ITEMS_PER_ROW/)
+  assert.doesNotMatch(source, /rail-motion-unit/)
+  for (const label of ['출발', '탑승구', '도착', '현지', '한국']) {
+    assert.doesNotMatch(source, new RegExp(`<AnimatedValue[^>]*>${label}`))
+  }
+  for (const mode of ['rail-motion-roll', 'rail-motion-flap', 'rail-motion-wipe', 'rail-motion-fade']) {
+    assert.match(css, new RegExp(`\\.${mode}[^}]*\\[data-terminal-motion-value\\]`, 's'))
+    assert.doesNotMatch(css, new RegExp(`\\.${mode}[^}]*\\.rail-flight-row[^}]*?(?:transform|visibility|clip-path|animation)`, 's'))
+  }
 })
 
 test('partial fixture의 누락 예보는 하나의 marked fallback으로 렌더한다', () => {
   const partial = applyTerminalFixtureState(TERMINAL_FLIGHT_GROUPS, 'partial')[0][0]
   assert.equal(partial.weather.afterArrival[0].available, false)
-  assert.match(source, /if \(!point\.available\) return <span className="rail-forecast-unavailable rail-forecast-content rail-motion-unit" data-signage-text="ordinary" style=\{\{ '--rail-item': motionItem \}\}>예보 확인 중<\/span>/)
+  assert.match(source, /if \(!point\.available\) return <AnimatedValue mode="value" order=\{order\} className="rail-forecast-unavailable rail-forecast-content" data-signage-text="ordinary">예보 확인 중<\/AnimatedValue>/)
 })
 
-test('loading/error 행도 FLAP과 ROLL에서 같은 motion order로 copy를 드러낸다', () => {
+test('loading/error 행은 stationary fallback copy를 유지한다', () => {
   assert.match(source, /terminal-data-surface--\$\{flight\.dataState\.phase\}`\} style=\{\{ '--order': rowIndex \}\}/)
-  assert.match(source, /<span className="rail-motion-unit" style=\{\{ '--rail-item': 0 \}\}>\{flight\.dataState\.phase === 'loading' \? '운항 정보를 불러오는 중입니다' : '운항 정보를 불러오지 못했습니다'\}<\/span>/)
-  assert.match(css, /\.rail-motion-roll \.rail-page\.is-entering \.rail-flight-row[^}]*visibility: hidden/s)
-  assert.match(css, /\.rail-motion-roll \.rail-page\.is-entering \.rail-motion-unit[^}]*visibility: visible/s)
-  assert.match(css, /\.rail-motion-flap \.rail-page\.is-entering \.rail-motion-unit[^}]*visibility: visible/s)
+  assert.match(source, /<span>\{flight\.dataState\.phase === 'loading' \? '운항 정보를 불러오는 중입니다' : '운항 정보를 불러오지 못했습니다'\}<\/span>/)
+  assert.match(css, /\.rail-motion-cascade \.rail-page\.is-entering \[data-terminal-motion-value\]/)
+  assert.doesNotMatch(css, /rail-motion-cascade[^}]*\.rail-flight-row[^}]*transform/s)
 })
