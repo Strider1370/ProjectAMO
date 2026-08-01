@@ -38,7 +38,6 @@ desktop 한 종, 재시도 없음, 이미 떠 있는 서버 재사용(`CONTRACT_
 | `briefing-view` | `BriefingView.jsx`, `MapView.jsx` | desktop, iPad landscape, mobile | committed navdata; `route-fixture.mjs` provides two cross-section forecast times; mobile verifies the fullscreen vertical-profile controls | `frontend/verification/contracts/briefing-view.spec.mjs` | frontend | active — mobile fullscreen coverage added 2026-07-28 |
 | `moa-activation` | `useMoaActivation.js`, `moaActivation.js`, `aviationWfsLayers.js` MOA 레이어 | desktop | `moa-activation-notam.mjs`가 `/api/notam`을 가로챔(2026-07-25 라이브 NOTAM 캡처, 유효시각만 상대값); 커밋된 `moa.geojson` | `frontend/verification/contracts/moa-activation.spec.mjs` | frontend | active — passed 2026-07-26 (3/3, desktop) |
 | `typhoon` | `typhoonLayers.js`, `typhoonOverlaySync.js`, `TyphoonPanel.jsx`, `typhoonColors.js`, `WeatherOverlayPanel.jsx` | desktop, iPad landscape, mobile | `typhoon-snapshot.json`(2018년 19호·20호 실제 응답 기반)이 `/api/typhoon`을 가로챔; 활성 태풍 없음·수집 실패 상태도 함께 검증 | `frontend/verification/contracts/typhoon.spec.mjs` | frontend | active — passed 2026-07-26 (36/36) |
-| `terminal-signage` | `/terminal`; 1안 board, 3안 rail, type floors, value-only motion | 1920×1080 desktop | committed terminal fixtures; `autoplay=0` | `frontend/verification/contracts/terminal-signage.spec.mjs` | frontend | active |
 
 ## Registered next
 

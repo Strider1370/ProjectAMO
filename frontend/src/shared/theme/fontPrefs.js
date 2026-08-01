@@ -29,10 +29,6 @@ export function getFontPref() {
   return localStorage.getItem(KEY) || DEFAULT_ID
 }
 
-export function shouldLoadStoredFont(pathname) {
-  return pathname !== '/terminal'
-}
-
 export function applyFont(id) {
   const opt = FONT_OPTIONS.find((o) => o.id === id) || FONT_OPTIONS[0]
   ensureFontLoaded(opt)

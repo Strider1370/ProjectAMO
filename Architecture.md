@@ -20,7 +20,6 @@ ProjectAMO/
       features/
         map/                   -> Mapbox lifecycle, basemap/style readiness, map-owned layers, and high-level feature orchestration
         monitoring/            -> standalone legacy-style ops/ground monitoring page with Mapbox overlay panel
-        terminal/              -> first-class `/terminal` passenger-signage feature: entry, normalized model/data, board/rail views, value-only motion, scoped CSS, and managed browser contract
         aviation-layers/       -> aviation WFS and ADS-B layers
         notam/                 -> NOTAM panel, GeoJSON adapter, map layers, filters, and popups
         weather-overlays/      -> radar/satellite/lightning/SIGWX/advisory overlays
@@ -80,7 +79,7 @@ ProjectAMO/
 - `frontend/src/features/map/lib/baseMapLayers.js` -> airport and geo-boundary source/layer install helpers, plus geo-boundary visibility policy for basemap and weather/NWP overlay contrast.
 - `frontend/src/features/map/basemapSwitcher/BasemapSwitcher.jsx` -> basemap switcher UI.
 - `frontend/src/features/monitoring/MonitoringPage.jsx` -> standalone `/monitoring` legacy-style ops/ground screen.
-- `frontend/src/features/terminal/TerminalPage.jsx` -> standalone `/terminal` passenger-signage entry; its shared `model/` and `data/` normalize fixture-backed flight groups, `components/BoardView.jsx` and `components/RailView.jsx` render the two approved displays, `motion/` owns value-only transitions, `terminal.css` scopes the display layout, and `terminal-signage` is its managed browser contract.
+- `frontend/src/features/terminal/TerminalPage.jsx` -> standalone `/terminal` passenger terminal display entry; `DestinationWeatherPage.jsx` and `terminal.css` own its destination-weather presentation and bundled image assets.
 - `frontend/src/features/monitoring/MonitoringMap.jsx` -> monitoring wrapper around the main MapView with local Aviation/MET icon toggles.
 - `frontend/src/features/monitoring/monitoringApi.js` -> monitoring data loader using current API shape, plus the monitoring `useSnapshotPolling` profile (`loadMonitoringInitialData`, `buildMonitoringSnapshot`, `detectMonitoringSnapshotChanges`, `nextMonitoringSnapshot`).
 - `frontend/src/features/monitoring/legacy/*` -> copied previous-project dashboard components, alert utilities, and CSS for the standalone monitoring screen; weather rendering reuses shared `WeatherIcon`, resolver, registry, and BasMilius assets.
