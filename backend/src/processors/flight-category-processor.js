@@ -7,8 +7,9 @@ import { ctpsIndexForLatLon } from '../lib/ctps-grid.js'
 import { convectiveDir, readConvectiveMeta } from './convective-satellite-store.js'
 import { decodeCtpsRecord } from './convective-satellite-model.js'
 import { createDailyByteBudget } from '../lib/daily-byte-budget.js'
-import { loadKimCeiling, buildCeilingGeoJson } from './flight-category/ceiling-kim.js'
+import { loadKimCeiling, buildCeilingGeoJson, maskCeilingWithCtps, cellToLonLat } from './flight-category/ceiling-kim.js'
 import { buildStations } from './flight-category/stations.js'
+import { loadRecent } from '../store.js'
 import { contours } from 'd3-contour'
 import { simplify } from '@turf/simplify'
 
@@ -117,16 +118,39 @@ export function loadCtpsMask(root) {
 
 const QUERY_GRID_SIZE = 128
 
-function buildQueryGrid(visGrid) {
+function buildQueryGrid(visGrid, ceilingMasked, kimGrid) {
   const vis = new Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE)
+  const ceil_ft = new Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE)
+
   for (let qr = 0; qr < QUERY_GRID_SIZE; qr++) {
     for (let qc = 0; qc < QUERY_GRID_SIZE; qc++) {
       const sr = Math.round((qr * (SFC_H - 1)) / (QUERY_GRID_SIZE - 1))
       const sc = Math.round((qc * (SFC_W - 1)) / (QUERY_GRID_SIZE - 1))
       vis[qr * QUERY_GRID_SIZE + qc] = visGrid[sr * SFC_W + sc]
+
+      // Sample ceiling at this query cell
+      let ceilValue = -1
+      if (ceilingMasked && kimGrid) {
+        const { lat, lon } = sfcPixelToLatLon(sc, sr)
+        // Map lat/lon to KIM grid cell
+        const kx = (lon - kimGrid.lonMin) / (kimGrid.lonMax - kimGrid.lonMin) * (kimGrid.nx - 1)
+        const ky = (lat - kimGrid.latMin) / (kimGrid.latMax - kimGrid.latMin) * (kimGrid.ny - 1)
+        // Use containing cell (no interpolation)
+        const kx_idx = Math.round(kx)
+        const ky_idx = Math.round(ky)
+        if (kx_idx >= 0 && kx_idx < kimGrid.nx && ky_idx >= 0 && ky_idx < kimGrid.ny) {
+          const kimIdx = ky_idx * kimGrid.nx + kx_idx
+          if (kimIdx >= 0 && kimIdx < ceilingMasked.length) {
+            const ceilM = ceilingMasked[kimIdx]
+            // Convert m to ft: multiply by 3.28084
+            ceilValue = ceilM < 0 ? -1 : Math.round(ceilM * 3.28084)
+          }
+        }
+      }
+      ceil_ft[qr * QUERY_GRID_SIZE + qc] = ceilValue
     }
   }
-  return { width: QUERY_GRID_SIZE, height: QUERY_GRID_SIZE, vis }
+  return { width: QUERY_GRID_SIZE, height: QUERY_GRID_SIZE, vis, ceil_ft }
 }
 
 function pixelToLonLat(px, py) {
@@ -174,6 +198,46 @@ export function buildVisibilityGeoJson(visGrid) {
   return { type: 'FeatureCollection', features }
 }
 
+/** 과거 산출물 목록에서 3시간 전에 가장 가까운 하나를 고른다. 20분을 넘으면 null. */
+export function pickTrendBaseline(recent, now) {
+  if (!Array.isArray(recent) || recent.length === 0) return null
+  const targetTime = new Date(now.getTime() - 3 * 3600 * 1000)
+  let closest = null
+  let minDiff = Infinity
+  for (const item of recent) {
+    if (!item?.computed_at) continue
+    const itemTime = new Date(item.computed_at)
+    const diff = Math.abs(itemTime.getTime() - targetTime.getTime())
+    if (diff < minDiff) {
+      minDiff = diff
+      closest = item
+    }
+  }
+  // 20분(1200000ms) 보다 크면 쓰지 않는다
+  if (minDiff > 20 * 60 * 1000) return null
+  return closest
+}
+
+/** 현재와 과거 산출물에서 시정 추세를 낸다. 결측이 있으면 null. */
+export function buildTrend(current, past) {
+  if (!past) return null
+  if (!current?.query_grid?.vis || !past?.query_grid?.vis) return null
+  if (current.query_grid.vis.length !== past.query_grid.vis.length) return null
+
+  const vis_delta = new Array(current.query_grid.vis.length)
+  for (let i = 0; i < current.query_grid.vis.length; i++) {
+    const curr = current.query_grid.vis[i]
+    const prev = past.query_grid.vis[i]
+    // If either is missing (negative), delta is null
+    if (!(curr >= 0) || !(prev >= 0)) {
+      vis_delta[i] = null
+    } else {
+      vis_delta[i] = curr - prev
+    }
+  }
+  return { hours: 3, vis_delta }
+}
+
 // ─── 공개 프로세서 함수 ───────────────────────────────────────
 
 export async function process() {
@@ -194,9 +258,15 @@ export async function process() {
   const ctpsMask = loadCtpsMask(root)
   const kimCeiling = loadKimCeiling(root)
   // 둘 다 조용히 null이 될 수 있다(저장본 없음/구조 변경). 그러면 운고 면이 통째로 비므로
-  // 운영자가 알아챌 수 있게 남긴다 — 시정만 나오는 화면은 정상처럼 보인다.
+  // 운영자가 알아챘을 수 있게 남긴다 — 시정만 나오는 화면은 정상처럼 보인다.
   if (!kimCeiling) console.warn('flight-cat: KIM 운고 자료 없음 — 운고 면 생략')
   if (!ctpsMask) console.warn('flight-cat: CTPS 저장본 없음 — 위성 구름 마스킹 생략')
+
+  // 운고를 조회 격자로 샘플링하기 위해 마스킹된 천장을 준비한다
+  let ceilingMasked = null
+  if (kimCeiling) {
+    ceilingMasked = maskCeilingWithCtps(kimCeiling.ceilingM, kimCeiling.grid, ctpsMask)
+  }
 
   let missing = 0
   for (let i = 0; i < visGrid.length; i++) {
@@ -212,6 +282,20 @@ export async function process() {
     console.warn('flight-cat: 지점 조립 실패 —', e.message)
   }
 
+  // 조회 격자를 한 번 계산해 재사용한다
+  const queryGrid = buildQueryGrid(visGrid, ceilingMasked, kimCeiling?.grid)
+
+  // 3시간 추세를 계산한다
+  let trend = null
+  try {
+    const recent = loadRecent('flight_category_overlay', 12)
+    const nowForTrend = new Date()
+    const baseline = pickTrendBaseline(recent, nowForTrend)
+    trend = buildTrend({ query_grid: queryGrid }, baseline)
+  } catch (e) {
+    console.warn('flight-cat: 추세 계산 실패 —', e.message)
+  }
+
   const now = new Date().toISOString()
   const result = {
     type: 'flight_category_overlay',
@@ -219,8 +303,9 @@ export async function process() {
     computed_at: now,
     visibility: { geojson: buildVisibilityGeoJson(visGrid) },
     ceiling: { geojson: buildCeilingGeoJson(kimCeiling, ctpsMask) },
-    query_grid: buildQueryGrid(visGrid),
+    query_grid: queryGrid,
     stations,
+    trend,
     sources: {
       kim: kimCeiling ? { run: kimCeiling.run, hf: 0 } : null,
       ctps: ctpsMask ? { frame_tm: ctpsMask.frameTm } : null,

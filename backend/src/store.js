@@ -212,6 +212,16 @@ export function loadLatest(dir) {
   }
 }
 
+export function loadRecent(type, limit = 12) {
+  const dir = getTypeDir(config.storage.base_path, type)
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir)
+    .filter((n) => n.endsWith('.json') && n !== 'latest.json')
+    .sort().reverse().slice(0, limit)
+    .map((n) => readJsonSafe(path.join(dir, n)))
+    .filter(Boolean)
+}
+
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map((item) => canonicalize(item))
   if (value && typeof value === 'object') {
@@ -350,6 +360,7 @@ export default {
   saveAndUpdateLatest,
   rotateFiles,
   loadLatest,
+  loadRecent,
   canonicalHash,
   mergeWithPrevious,
   updateCache,

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { classifyVisibility, buildVisibilityGeoJson, loadCtpsMask } from './flight-category-processor.js'
+import { classifyVisibility, buildVisibilityGeoJson, loadCtpsMask, pickTrendBaseline, buildTrend } from './flight-category-processor.js'
 import { SFC_W, SFC_H } from '../parsers/sfc-grid-parser.js'
 import { encodeCtpsBinary } from './convective-satellite-model.js'
 
@@ -61,4 +61,38 @@ test('구름 있는 프레임에서 국내 좌표는 clear가 아니다', () => 
 test('무효 픽셀은 clear로 본다', () => {
   const mask = loadCtpsMask(makeRoot('202608010300', false))
   assert.equal(mask.isClearAt(37.5, 127.0), true)
+})
+
+test('결측은 추세를 만들지 않는다', () => {
+  const t = buildTrend({ query_grid: { vis: [5000, -1, 4000] } }, { query_grid: { vis: [7000, 6000, -1] } })
+  assert.equal(t.vis_delta[0], -2000)
+  assert.equal(t.vis_delta[1], null)   // 지금이 결측
+  assert.equal(t.vis_delta[2], null)   // 3시간 전이 결측
+})
+
+test('3시간 전 산출물이 없으면 추세는 null', () => {
+  assert.equal(buildTrend({ query_grid: { vis: [5000] } }, null), null)
+})
+
+test('3시간에 가까운 과거 산출물을 고른다', () => {
+  const now = new Date('2026-08-01T12:00:00Z')
+  const target3hAgo = new Date(now.getTime() - 3 * 3600 * 1000)
+  const recent = [
+    { computed_at: new Date(target3hAgo.getTime() + 5 * 60 * 1000).toISOString() },
+    { computed_at: new Date(target3hAgo.getTime() - 8 * 60 * 1000).toISOString() },
+    { computed_at: new Date(target3hAgo.getTime() + 15 * 60 * 1000).toISOString() },
+  ]
+  const baseline = pickTrendBaseline(recent, now)
+  // 가장 가까운 것은 5분 차이
+  assert.equal(baseline.computed_at, recent[0].computed_at)
+})
+
+test('20분을 넘으면 null', () => {
+  const now = new Date('2026-08-01T12:00:00Z')
+  const target3hAgo = new Date(now.getTime() - 3 * 3600 * 1000)
+  const recent = [
+    { computed_at: new Date(target3hAgo.getTime() + 25 * 60 * 1000).toISOString() },
+  ]
+  const baseline = pickTrendBaseline(recent, now)
+  assert.equal(baseline, null)
 })

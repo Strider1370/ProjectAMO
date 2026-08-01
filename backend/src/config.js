@@ -370,6 +370,7 @@ export const storage = {
   max_files_by_type: {
     lightning: 48,
     sigwx_low: 12,
+    flight_category_overlay: 12,
   },
 }
 
