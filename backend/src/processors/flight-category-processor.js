@@ -170,6 +170,10 @@ export async function process() {
   const root = config.storage.base_path
   const ctpsMask = loadCtpsMask(root)
   const kimCeiling = loadKimCeiling(root)
+  // 둘 다 조용히 null이 될 수 있다(저장본 없음/구조 변경). 그러면 운고 면이 통째로 비므로
+  // 운영자가 알아챌 수 있게 남긴다 — 시정만 나오는 화면은 정상처럼 보인다.
+  if (!kimCeiling) console.warn('flight-cat: KIM 운고 자료 없음 — 운고 면 생략')
+  if (!ctpsMask) console.warn('flight-cat: CTPS 저장본 없음 — 위성 구름 마스킹 생략')
 
   let missing = 0
   for (let i = 0; i < visGrid.length; i++) {
