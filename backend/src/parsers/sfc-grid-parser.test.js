@@ -1,42 +1,29 @@
-import { describe, it } from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import { parseSfcAscii, sfcPixelToLatLon, SFC_W, SFC_H } from './sfc-grid-parser.js'
 
-describe('parseSfcAscii', () => {
-  it('returns Float32Array of SFC_W * SFC_H', () => {
-    const total = SFC_W * SFC_H
-    const vals = Array.from({ length: total }, (_, i) => i % 5 === 0 ? -999.0 : 50000.0)
-    const text = `  ${SFC_W},  ${SFC_H},=\n${vals.join(',')}\n`
-    const result = parseSfcAscii(text)
-    assert.ok(result instanceof Float32Array)
-    assert.equal(result.length, total)
-  })
+const fixture = JSON.parse(
+  fs.readFileSync(new URL('../../test/fixtures/sfc-grid-samples.json', import.meta.url), 'utf8'),
+)
 
-  it('converts raw km units to metres (×1000)', () => {
-    const total = SFC_W * SFC_H
-    const text = `  ${SFC_W},  ${SFC_H},=\n${Array(total).fill('5.0').join(',')}\n`
-    const result = parseSfcAscii(text)
-    assert.ok(Math.abs(result[0] - 5000) < 0.1)
-  })
-
-  it('maps fill value (-999) to -1', () => {
-    const total = SFC_W * SFC_H
-    const text = `  ${SFC_W},  ${SFC_H},=\n${Array(total).fill('-999.0').join(',')}\n`
-    const result = parseSfcAscii(text)
-    assert.ok(result.every(v => v === -1))
-  })
+test('격자 좌표가 원본 .nc 값과 100m 이내로 일치', () => {
+  for (const s of fixture.samples) {
+    // 픽스처 row는 남쪽 우선, sfcPixelToLatLon은 북쪽 우선을 받는다.
+    const { lat, lon } = sfcPixelToLatLon(s.col, SFC_H - 1 - s.row)
+    const dLat = (lat - s.lat) * 111.0
+    const dLon = (lon - s.lon) * 111.0 * Math.cos((s.lat * Math.PI) / 180)
+    const dist = Math.hypot(dLat, dLon)
+    assert.ok(dist < 0.1, `row=${s.row} col=${s.col} 오차 ${dist.toFixed(3)}km`)
+  }
 })
 
-describe('sfcPixelToLatLon', () => {
-  it('row 0, col 0 → northwest corner', () => {
-    const { lat, lon } = sfcPixelToLatLon(0, 0)
-    assert.ok(Math.abs(lat - 40.35) < 0.1, `lat=${lat}`)
-    assert.ok(Math.abs(lon - 120.67) < 0.1, `lon=${lon}`)
-  })
-
-  it('bottom-right pixel → southeast corner', () => {
-    const { lat, lon } = sfcPixelToLatLon(SFC_W - 1, SFC_H - 1)
-    assert.ok(Math.abs(lat - 30.74) < 0.1, `lat=${lat}`)
-    assert.ok(Math.abs(lon - 133.07) < 0.1, `lon=${lon}`)
-  })
+test('결측 -999는 -1로, 유효값은 km에서 m로 변환된다', () => {
+  const body = new Array(SFC_W * SFC_H).fill('-999.0')
+  body[0] = '5.0'
+  const text = `  2049,  2049,=\n${body.join(',')}`
+  const grid = parseSfcAscii(text)
+  // 파서가 행을 뒤집으므로 남쪽 첫 칸은 마지막 행으로 간다.
+  assert.equal(grid[(SFC_H - 1) * SFC_W], 5000)
+  assert.equal(grid[1], -1)
 })

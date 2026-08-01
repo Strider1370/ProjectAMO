@@ -1,10 +1,12 @@
+import { enToLatLon84 } from '../lib/lcc-projection.js'
+
 export const SFC_W = 2049
 export const SFC_H = 2049
 
-const LAT_MAX = 40.35
-const LAT_MIN = 30.74
-const LON_MIN = 120.67
-const LON_MAX = 133.07
+// sfc_grid_latlon.nc 헤더: 격자 0.5km, 투영 원점(38N,126E)이 col 880 / 남쪽기준 row 1540.
+const CELL_M = 500
+const ORIGIN_COL = 880
+const ORIGIN_ROW_FROM_SOUTH = 1540
 
 /**
  * Parse nph-sfc_obs_nc_api ASCII response (obs=vs, disp=A).
@@ -52,13 +54,13 @@ export function parseSfcAscii(text) {
 }
 
 /**
- * Map sfc grid pixel (col, row) to {lat, lon}.
- * Row 0 = LAT_MAX (북단), Row H-1 = LAT_MIN (남단).
- * Col 0 = LON_MIN (서단), Col W-1 = LON_MAX (동단).
+ * 격자 픽셀 → 위경도. row 0 = 북단(parseSfcAscii가 뒤집은 뒤 관례).
+ * WGS84 타원체 Lambert Conformal Conic.
  */
 export function sfcPixelToLatLon(col, row) {
-  return {
-    lat: LAT_MAX - (row / (SFC_H - 1)) * (LAT_MAX - LAT_MIN),
-    lon: LON_MIN + (col / (SFC_W - 1)) * (LON_MAX - LON_MIN),
-  }
+  const rowFromSouth = SFC_H - 1 - row
+  const easting = (col - ORIGIN_COL) * CELL_M
+  const northing = (rowFromSouth - ORIGIN_ROW_FROM_SOUTH) * CELL_M
+  const [lat, lon] = enToLatLon84(easting, northing)
+  return { lat, lon }
 }
