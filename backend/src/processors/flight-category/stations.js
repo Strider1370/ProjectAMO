@@ -1,5 +1,5 @@
 import config from '../../config.js'
-import { maskCeilingWithCtps, cellToLonLat } from './ceiling-kim.js'
+import { maskCeilingWithCtps } from './ceiling-kim.js'
 
 /**
  * Parse ASOS timestamp to get age in milliseconds.
@@ -19,38 +19,27 @@ function getAsosTmAgeMs(tmStr) {
 }
 
 /**
- * Sample the KIM ceiling grid at a lat/lon point.
- * Returns ceiling in metres, or -1 if not available.
+ * Sample the KIM ceiling grid at a lat/lon point. Returns metres, or -1.
+ *
+ * 보간하지 않고 그 지점이 속한 칸 하나를 그대로 읽는다. 면을 그리는
+ * `buildCeilingGeoJson`도 칸 단위로 밴드를 나누므로, 보간하면 지점이 면과
+ * 다른 값을 말하게 된다. 이 지점 표시의 목적 자체가 면과 관측을 견주는
+ * 것이라 둘의 기준이 어긋나면 쓸모가 없다.
+ *
+ * 운고 격자에는 -1(운고 없음)이 섞여 있어 보간은 애초에 성립하지 않는다.
+ * -1과 300을 섞으면 아무 뜻도 없는 숫자가 나온다.
  */
 function sampleKimCeiling(kimCeiling, lat, lon) {
-  if (!kimCeiling || !kimCeiling.grid || !kimCeiling.ceilingM) return -1
+  if (!kimCeiling?.grid || !kimCeiling.ceilingM) return -1
   const { grid, ceilingM } = kimCeiling
-  // Bilinear interpolation within the grid bounds
-  const lonRange = grid.lonMax - grid.lonMin
-  const latRange = grid.latMax - grid.latMin
-  const normLon = lonRange > 0 ? (lon - grid.lonMin) / lonRange : 0.5
-  const normLat = latRange > 0 ? (lat - grid.latMin) / latRange : 0.5
-  if (normLon < 0 || normLon > 1 || normLat < 0 || normLat > 1) return -1
-  const px = normLon * (grid.nx - 1)
-  const py = normLat * (grid.ny - 1)
-  const x0 = Math.floor(px)
-  const x1 = Math.min(x0 + 1, grid.nx - 1)
-  const y0 = Math.floor(py)
-  const y1 = Math.min(y0 + 1, grid.ny - 1)
-  const fx = px - x0
-  const fy = py - y0
-  const idx00 = y0 * grid.nx + x0
-  const idx10 = y0 * grid.nx + x1
-  const idx01 = y1 * grid.nx + x0
-  const idx11 = y1 * grid.nx + x1
-  const v00 = ceilingM[idx00]
-  const v10 = ceilingM[idx10]
-  const v01 = ceilingM[idx01]
-  const v11 = ceilingM[idx11]
-  // Mark as missing if any corner is missing
-  if (v00 < 0 || v10 < 0 || v01 < 0 || v11 < 0) return -1
-  return (v00 * (1 - fx) * (1 - fy) + v10 * fx * (1 - fy) +
-          v01 * (1 - fx) * fy + v11 * fx * fy)
+  // 축이 한 칸뿐이면(폭 0) 그 축은 0번 칸이다. 나눗셈을 하면 NaN이 된다.
+  const cell = (value, min, max, n) =>
+    n <= 1 || !(max - min > 0) ? 0 : Math.round(((value - min) / (max - min)) * (n - 1))
+  const px = cell(lon, grid.lonMin, grid.lonMax, grid.nx)
+  const py = cell(lat, grid.latMin, grid.latMax, grid.ny)
+  if (!(px >= 0 && px <= grid.nx - 1 && py >= 0 && py <= grid.ny - 1)) return -1
+  const v = ceilingM[py * grid.nx + px]
+  return v >= 0 ? v : -1
 }
 
 /**
@@ -59,21 +48,29 @@ function sampleKimCeiling(kimCeiling, lat, lon) {
  */
 export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
   const stations = []
-  const seen = new Set() // Track (lat, lon) pairs to avoid duplicates
+  // 좌표가 정확히 같은 경우는 없으므로 근접 판정을 쓴다. 공항과 그 도시의
+  // ASOS 관측소는 몇 km 떨어져 있어 좌표 문자열로는 절대 겹치지 않는다.
+  const NEAR_KM = 2
+  const isNear = (lat, lon) => stations.some((s) =>
+    Math.hypot((s.lat - lat) * 111, (s.lon - lon) * 111 * Math.cos((lat * Math.PI) / 180)) < NEAR_KM)
 
   // Apply satellite mask to KIM ceiling
   const maskedCeilingM = kimCeiling ? maskCeilingWithCtps(kimCeiling.ceilingM, kimCeiling.grid, ctpsMask) : null
 
-  // Process ASOS observations
+  // AMOS를 먼저 넣는다 — 겹치면 공항 관측을 남기라는 것이 스펙 §5.4다.
+  // ASOS를 먼저 넣으면 정반대가 된다.
+  addAmos()
+  addAsos()
+  return stations
+
+  function addAsos() {
   if (asos && asos.stations && Array.isArray(asos.stations)) {
     // Check if ASOS data is not too old (older than 2 hours)
     const ageMs = getAsosTmAgeMs(asos.tm)
     const twoHoursMs = 2 * 60 * 60 * 1000
     if (ageMs < twoHoursMs) {
       for (const sta of asos.stations) {
-        const key = `${sta.lat.toFixed(4)},${sta.lon.toFixed(4)}`
-        if (seen.has(key)) continue // Skip if already have AMOS for this location
-        seen.add(key)
+        if (isNear(sta.lat, sta.lon)) continue // 같은 자리에 AMOS가 이미 있다
 
         // Sample model ceiling (from masked grid)
         let modelCeilingFt = null
@@ -99,8 +96,9 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
       }
     }
   }
+  }
 
-  // Process AMOS observations
+  function addAmos() {
   if (amos && amos.airports && typeof amos.airports === 'object') {
     for (const [icao, airport] of Object.entries(amos.airports)) {
       const cloudMinM = airport?.observation?.cloud_min_m
@@ -108,22 +106,19 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
         continue // Exclude missing (-9) and NSC (>=25000)
       }
 
-      // Get airport coordinates from config
-      const airportInfo = config.airports?.[icao]
-      if (!airportInfo) {
+      // config.airports는 ICAO를 키로 갖는 객체가 아니라 배열이다.
+      // `config.airports[icao]`로 찾으면 전부 undefined가 되어 AMOS가 통째로 빠진다.
+      const airportInfo = config.airports.find((a) => a.icao === icao)
+      if (!airportInfo?.lat || !airportInfo?.lon) {
         console.warn(`flight-cat: ICAO ${icao} not in config.airports`)
         continue
       }
 
       const lat = airportInfo.lat
       const lon = airportInfo.lon
-      const name = airportInfo.name || icao
+      const name = airportInfo.nameKo || airportInfo.name || icao
 
-      const key = `${lat.toFixed(4)},${lon.toFixed(4)}`
-      if (seen.has(key)) {
-        continue // Already have ASOS for this location, skip AMOS
-      }
-      seen.add(key)
+      if (isNear(lat, lon)) continue
 
       // Convert AMOS ceiling from metres to feet
       const ceilingFt = Math.round(cloudMinM * 3.28084)
@@ -151,6 +146,5 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
       })
     }
   }
-
-  return stations
+  }
 }

@@ -64,18 +64,40 @@ async function fetchSfcVis() {
   })
 }
 
+/** `YYYYMMDDHHmm`에서 n시간을 뺀 같은 형식 문자열. 프레임 tm 비교용. */
+function tmMinusHours(tm, hours) {
+  if (!tm) return '0'
+  const d = new Date(Date.UTC(
+    +tm.slice(0, 4), +tm.slice(4, 6) - 1, +tm.slice(6, 8), +tm.slice(8, 10), +tm.slice(10, 12),
+  ) - hours * 3600 * 1000)
+  return d.getUTCFullYear().toString()
+    + String(d.getUTCMonth() + 1).padStart(2, '0')
+    + String(d.getUTCDate()).padStart(2, '0')
+    + String(d.getUTCHours()).padStart(2, '0')
+    + String(d.getUTCMinutes()).padStart(2, '0')
+}
+
 /**
- * 위성 프로세서가 발행한 최신 CTPS 이진을 읽어 "구름 없음" 조회기를 만든다.
+ * 위성 프로세서가 발행한 CTPS 이진을 읽어 "구름 없음" 조회기를 만든다.
  * 별도 수집하지 않는다 — 이미 5분 주기로 받고 있는 자료다.
+ * 이진이 실제로 있는 가장 최근 프레임을 쓴다.
  */
 export function loadCtpsMask(root) {
-  const tm = readConvectiveMeta(root)?.latest?.tm
+  const meta = readConvectiveMeta(root)
+  if (!meta) return null
+  // `latest`를 그대로 믿으면 안 된다. 프레임은 CI만 있고 CTPS 이진이 없을 수 있어
+  // 최신 프레임에 ctps_<tm>.bin이 없는 경우가 흔하다(실측: 프레임 18개 대 이진 15개).
+  // 그때 null을 반환하면 위성 마스크가 조용히 통째로 꺼진다.
+  const dir = convectiveDir(root)
+  const frames = (meta.frames?.length ? meta.frames.map((f) => f.tm) : [meta.latest?.tm])
+    .filter(Boolean).sort().reverse()
+  // 한 시간 넘게 묵은 구름 판정으로 현재 운고를 지우지 않는다.
+  const oldest = tmMinusHours(frames[0], 1)
+  const tm = frames.find((t) => t >= oldest && fs.existsSync(path.join(dir, `ctps_${t}.bin`)))
   if (!tm) return null
-  const file = path.join(convectiveDir(root), `ctps_${tm}.bin`)
-  if (!fs.existsSync(file)) return null
   let buffer
   try {
-    buffer = fs.readFileSync(file)
+    buffer = fs.readFileSync(path.join(dir, `ctps_${tm}.bin`))
   } catch {
     return null
   }
