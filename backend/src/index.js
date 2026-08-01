@@ -21,6 +21,7 @@ import airportInfoProcessor from './processors/airport-info-processor.js'
 import takeoffForecastProcessor from './processors/takeoff-forecast-processor.js'
 import ktgProcessor from './processors/ktg-processor.js'
 import flightCategoryProcessor from './processors/flight-category-processor.js'
+import asosCeilingProcessor from './processors/asos-ceiling-processor.js'
 import notamProcessor from './processors/notam-processor.js'
 import overseasProcessor from './processors/overseas-weather-processor.js'
 import typhoonProcessor from "./processors/typhoon-processor.js";
@@ -28,7 +29,7 @@ import { ensureActiveDataView } from './dev/data-view.js'
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
-const locks = { metar: false, taf: false, warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false };
+const locks = { metar: false, taf: false, warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false };
 const activeControllers = new Map()
 const KIM_NWP_CRON_OPTIONS = { timezone: 'Etc/UTC' }
 const AIRPORT_INFO_CRON_OPTIONS = { timezone: 'Asia/Seoul' }
@@ -149,6 +150,7 @@ function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.enabled !=
   if (includeKimNwp) jobs.splice(10, 0, ["kim_surface_wind", kimSurfaceWindProcessor.process])
   if (config.ktg?.collect_on_startup !== false) jobs.push(["ktg", ktgProcessor.process])
   if (config.flight_category?.collect_on_startup !== false) jobs.push(["flight_category", flightCategoryProcessor.process])
+  if (config.asos_ceiling?.collect_on_startup !== false) jobs.push(["asos_ceiling", asosCeilingProcessor.process])
   // NOTAM 시작 크롤: 명시적으로 끄지 않았고(collect_on_startup) 캐시가 오래됐을 때만.
   // 유효한 최신 스냅샷이 이미 있으면(신선도 내) 굳이 재크롤 안 하고 그걸 그대로 씀 — 재시작해도 즉시 표시.
   if (config.notam?.collect_on_startup !== false && isNotamCacheStale()) jobs.push(["notam", notamProcessor.process])
@@ -198,6 +200,7 @@ async function main() {
   scheduleAirportInfoJob();
   scheduleTakeoffFcstJob();
   cron.schedule(config.schedule.flight_category_interval, () => runWithLock('flight_category', flightCategoryProcessor.process))
+  cron.schedule(config.schedule.asos_ceiling_interval, () => runWithLock('asos_ceiling', asosCeilingProcessor.process), { timezone: 'Asia/Seoul' })
   cron.schedule(config.schedule.notam_interval, () => runWithLock("notam", notamProcessor.process))
 
   // 서버 시작 직후 1회 즉시 수집

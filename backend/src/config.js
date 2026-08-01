@@ -244,6 +244,11 @@ export const flight_category = {
   collect_on_startup: process.env.FLIGHT_CATEGORY_ON_STARTUP !== '0',
 }
 
+export const asos_ceiling = {
+  timeout_ms: 30000,
+  collect_on_startup: process.env.ASOS_CEILING_ON_STARTUP !== '0',
+}
+
 export const adsb = {
   url: process.env.ADSB_API_URL || 'https://api.adsb.lol/v2',
   timeout_ms: 20000,
@@ -353,6 +358,7 @@ export const schedule = {
   airport_info_interval: '0,30 6,17 * * *',
   takeoff_fcst_interval: '8 * * * *', // 매시(KST) — 이륙예보는 정시 발표
   flight_category_interval: '*/20 * * * *',
+  asos_ceiling_interval: '15 * * * *', // 매시 15분(KST) — 직전 정시 자료 요청
 }
 
 export const storage = {
@@ -382,6 +388,7 @@ export default {
   environment,
   ground_forecast,
   flight_category,
+  asos_ceiling,
   ktg,
   lightning,
   amos,
