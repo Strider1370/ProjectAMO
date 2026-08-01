@@ -1,4 +1,4 @@
-import { enToLatLon84 } from '../lib/lcc-projection.js'
+import { enToLatLon84, latLonToEN84 } from '../lib/lcc-projection.js'
 
 export const SFC_W = 2049
 export const SFC_H = 2049
@@ -63,4 +63,17 @@ export function sfcPixelToLatLon(col, row) {
   const northing = (rowFromSouth - ORIGIN_ROW_FROM_SOUTH) * CELL_M
   const [lat, lon] = enToLatLon84(easting, northing)
   return { lat, lon }
+}
+
+/**
+ * 위경도 → 격자 픽셀. `sfcPixelToLatLon`의 역이며 소수 좌표를 그대로 돌려준다.
+ * 격자 원점·간격 상수를 이 파일 밖으로 내보내지 않기 위한 짝이다 — 읽는 쪽이
+ * 상수를 복사하면 격자를 만드는 쪽과 어긋난다.
+ */
+export function sfcLatLonToPixel(lat, lon) {
+  const [easting, northing] = latLonToEN84(lat, lon)
+  return {
+    col: easting / CELL_M + ORIGIN_COL,
+    row: SFC_H - 1 - (northing / CELL_M + ORIGIN_ROW_FROM_SOUTH),
+  }
 }

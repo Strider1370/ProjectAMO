@@ -16,6 +16,23 @@ export const CEILING_BANDS = [
   { id: 'mid', maxM: 900, color: '#f97316' },
 ]
 
+const M_TO_FT = 3.28084
+
+/**
+ * 운고(피트) → 밴드. 면을 그리는 `CEILING_BANDS`와 같은 경계를 쓴다.
+ * 경계값이 미터이므로 반드시 환산해서 견준다 — 450/900을 피트 값과 그대로
+ * 비교하면 300 m(984 ft) 운고가 'high'로 분류되어 위험이 사라진다.
+ */
+export function classifyCeilingFt(ceilFt) {
+  // `null >= 0`은 자바스크립트에서 참이다. Number.isFinite로 걸러야 결측이
+  // 'low'(최악 밴드)로 둔갑하지 않는다.
+  if (!Number.isFinite(ceilFt) || ceilFt < 0) return 'missing'
+  for (const band of CEILING_BANDS) {
+    if (ceilFt < band.maxM * M_TO_FT) return band.id
+  }
+  return 'high'
+}
+
 /** 한 격자점에서 저층부터 훑어 처음 임계값을 넘는 층의 hgt(m). 없으면 null. */
 export function ceilingFromLevels(levels, index) {
   for (const level of levels) {

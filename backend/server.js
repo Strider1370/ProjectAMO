@@ -33,6 +33,7 @@ import { createMeRequestsRouter } from './src/me/requests.js'
 import { createForecasterRouter } from './src/forecaster/router.js'
 import adsbProcessor from './src/processors/adsb-processor.js'
 import { sampleQueryGrid, classifyVisibility } from './src/processors/flight-category-processor.js'
+import { classifyCeilingFt } from './src/processors/flight-category/ceiling-kim.js'
 import warningTypes from '../shared/warning-types.js'
 import alertDefaults from '../shared/alert-defaults.js'
 import { buildVerticalProfile } from './src/briefing/vertical-profile.js'
@@ -850,26 +851,15 @@ app.get('/api/weather/flight-category-overlay/point', (req, res) => {
   const vis_m = sample.vis_m >= 0 ? sample.vis_m : null
   const vis_band = vis_m === null ? 'missing' : classifyVisibility(vis_m)
 
-  // 운고 값과 밴드
+  // 운고 값과 밴드. 경계는 면을 그리는 CEILING_BANDS와 같은 정의를 쓴다.
   const ceil_ft = sample.ceil_ft >= 0 ? sample.ceil_ft : null
-  const ceil_band = ceil_ft === null ? 'missing' : ceil_ft < 450 ? 'low' : ceil_ft < 900 ? 'mid' : 'high'
+  const ceil_band = classifyCeilingFt(ceil_ft)
 
   // 3시간 추세 계산
-  let vis_trend = null
-  if (data.trend?.vis_delta && vis_m !== null) {
-    // query_grid는 128×128이고, trend.vis_delta도 같은 크기
-    // 부산 좌표로 격자 칸을 계산하면 같은 인덱스를 쓸 수 있다
-    // 대략적 근사: 시정 격자 칸
-    const QUERY_GRID_SIZE = 128
-    const fc = (lon + 180) / 360 * (QUERY_GRID_SIZE - 1)  // 대략적 근사
-    const fr = (90 - lat) / 180 * (QUERY_GRID_SIZE - 1)   // 대략적 근사
-    const c = Math.round(Math.min(Math.max(fc, 0), QUERY_GRID_SIZE - 1))
-    const r = Math.round(Math.min(Math.max(fr, 0), QUERY_GRID_SIZE - 1))
-    const idx = r * QUERY_GRID_SIZE + c
-    if (idx >= 0 && idx < data.trend.vis_delta.length) {
-      vis_trend = data.trend.vis_delta[idx]
-    }
-  }
+  // trend.vis_delta는 query_grid와 같은 128×128 배열이므로 같은 칸 번호를 쓴다.
+  // 좌표를 여기서 다시 계산하지 않는다 — 격자와 다른 규칙을 쓰면 엉뚱한 지역의
+  // 추세를 이 지점 값이라고 답하게 된다.
+  const vis_trend = data.trend?.vis_delta?.[sample.index] ?? null
 
   // 가장 가까운 관측 지점
   let nearest_station = null
