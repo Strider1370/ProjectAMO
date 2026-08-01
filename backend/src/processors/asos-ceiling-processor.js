@@ -34,7 +34,9 @@ export function parseAsosCeiling(text) {
     const stn = Number(fields[1])
     const ch_min = Number(fields[27])
     if (!Number.isFinite(ch_min) || ch_min === -9) continue
-    const ceiling_ft = ch_min * 100 * 3.281
+    // 원값이 100 m 단위라 피트 소수점은 의미가 없다. 반올림하지 않으면
+    // 3937.2000000000003 같은 값이 그대로 저장돼 산출물만 지저분해진다.
+    const ceiling_ft = Math.round(ch_min * 100 * 3.281)
     result.push({ stn, ceiling_ft })
   }
   return result
