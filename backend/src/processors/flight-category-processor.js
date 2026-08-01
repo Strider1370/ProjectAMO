@@ -2,7 +2,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import config from '../config.js'
 import store from '../store.js'
-import { idwInterpolate } from '../lib/idw.js'
 import { parseSfcAscii, sfcPixelToLatLon, SFC_W, SFC_H } from '../parsers/sfc-grid-parser.js'
 import { ctpsIndexForLatLon } from '../lib/ctps-grid.js'
 import { convectiveDir, readConvectiveMeta } from './convective-satellite-store.js'
@@ -29,25 +28,6 @@ export function classifyVisibility(visM) {
   return 'clear'
 }
 
-// ─── CTH lookup table ─────────────────────────────────────────
-// Maps each SFC pixel index → CTH flat index (-1 = outside CTH domain).
-// Built once on first use: 4.2 M LCC projections up-front so the per-pixel loops
-// only does a single Int32Array read per pixel instead of a trig projection.
-
-let _cthLookup = null
-
-function getCthLookup() {
-  if (_cthLookup) return _cthLookup
-  _cthLookup = new Int32Array(SFC_W * SFC_H)
-  for (let i = 0; i < _cthLookup.length; i++) {
-    const row = Math.floor(i / SFC_W), col = i % SFC_W
-    const { lat, lon } = sfcPixelToLatLon(col, row)
-    const idx = ctpsIndexForLatLon(lat, lon)
-    _cthLookup[i] = idx !== null ? idx : -1
-  }
-  return _cthLookup
-}
-
 // ─── 파이프라인 내부 함수 ─────────────────────────────────────
 
 function formatKstTm(offsetMs = 0) {
@@ -58,16 +38,6 @@ function formatKstTm(offsetMs = 0) {
     + String(kst.getUTCDate()).padStart(2, '0')
     + String(kst.getUTCHours()).padStart(2, '0')
     + String(kst.getUTCMinutes()).padStart(2, '0')
-}
-
-function formatUtcTm(offsetMs = 0) {
-  const d = new Date(Date.now() - offsetMs)
-  d.setUTCMinutes(Math.floor(d.getUTCMinutes() / 10) * 10, 0, 0)
-  return d.getUTCFullYear().toString()
-    + String(d.getUTCMonth() + 1).padStart(2, '0')
-    + String(d.getUTCDate()).padStart(2, '0')
-    + String(d.getUTCHours()).padStart(2, '0')
-    + String(d.getUTCMinutes()).padStart(2, '0')
 }
 
 async function withTimeout(fn, ms = config.flight_category.timeout_ms) {
@@ -115,43 +85,6 @@ export function loadCtpsMask(root) {
       }
     },
   }
-}
-
-function getAmosCeilingPoints() {
-  const amos = store.getCached('amos')
-  if (!amos?.airports) return []
-  const points = []
-  for (const [icao, data] of Object.entries(amos.airports)) {
-    const ceilM = data?.observation?.cloud_min_m
-    if (ceilM == null || ceilM >= 25000) continue  // 25000 = NSC sentinel
-    const airport = config.airports.find(a => a.icao === icao)
-    if (!airport?.lat || !airport?.lon) continue
-    points.push({
-      x: (airport.lon - 120.67) / (133.07 - 120.67),
-      y: (40.35 - airport.lat) / (40.35 - 30.74),
-      value: ceilM * 3.281,  // m → ft
-    })
-  }
-  return points
-}
-
-function bilinearUpscale(src, srcSize, dstW, dstH) {
-  const dst = new Float32Array(dstW * dstH)
-  const sx = srcSize / dstW, sy = srcSize / dstH
-  for (let r = 0; r < dstH; r++) {
-    for (let c = 0; c < dstW; c++) {
-      const fx = c * sx, fy = r * sy
-      const x0 = Math.floor(fx), y0 = Math.floor(fy)
-      const x1 = Math.min(x0 + 1, srcSize - 1), y1 = Math.min(y0 + 1, srcSize - 1)
-      const dx = fx - x0, dy = fy - y0
-      dst[r * dstW + c] =
-        src[y0 * srcSize + x0] * (1 - dx) * (1 - dy) +
-        src[y0 * srcSize + x1] * dx * (1 - dy) +
-        src[y1 * srcSize + x0] * (1 - dx) * dy +
-        src[y1 * srcSize + x1] * dx * dy
-    }
-  }
-  return dst
 }
 
 const QUERY_GRID_SIZE = 128
