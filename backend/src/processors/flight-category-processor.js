@@ -3,6 +3,7 @@ import path from 'node:path'
 import config from '../config.js'
 import store from '../store.js'
 import { parseSfcAscii, sfcPixelToLatLon, SFC_W, SFC_H } from '../parsers/sfc-grid-parser.js'
+import { latLonToEN84 } from '../lib/lcc-projection.js'
 import { ctpsIndexForLatLon } from '../lib/ctps-grid.js'
 import { convectiveDir, readConvectiveMeta } from './convective-satellite-store.js'
 import { decodeCtpsRecord } from './convective-satellite-model.js'
@@ -116,6 +117,49 @@ export function loadCtpsMask(root) {
 }
 
 const QUERY_GRID_SIZE = 128
+
+/**
+ * 조회 격자에서 lat/lon 좌표의 시정과 운고를 샘플링한다.
+ * 모든 좌표 변환은 여기서 한다 — server.js는 좌표 산술을 하지 않는다.
+ * LCC 투영을 사용해 격자를 만드는 쪽과 읽는 쪽이 같은 규칙을 쓴다.
+ */
+export function sampleQueryGrid(queryGrid, lat, lon) {
+  // lat/lon → LCC 동-북쪽 좌표 (m)
+  const [easting, northing] = latLonToEN84(lat, lon)
+
+  // LCC 좌표 → 2049×2049 격자 픽셀 (원점 col 880, row_from_south 1540)
+  const col = easting / 500 + 880
+  const rowFromSouth = northing / 500 + 1540
+  const row = SFC_H - 1 - rowFromSouth
+
+  // 픽셀 좌표 → 128×128 조회 격자 칸
+  const fc = (col * (QUERY_GRID_SIZE - 1)) / (SFC_W - 1)
+  const fr = (row * (QUERY_GRID_SIZE - 1)) / (SFC_H - 1)
+
+  // 범위 체크
+  if (fc < 0 || fc > QUERY_GRID_SIZE - 1 || fr < 0 || fr > QUERY_GRID_SIZE - 1) {
+    return null
+  }
+
+  const c0 = Math.floor(fc)
+  const c1 = Math.min(c0 + 1, QUERY_GRID_SIZE - 1)
+  const r0 = Math.floor(fr)
+  const r1 = Math.min(r0 + 1, QUERY_GRID_SIZE - 1)
+  const dc = fc - c0
+  const dr = fr - r0
+
+  // 쌍선형 보간
+  const bilerp = (arr) =>
+    arr[r0 * QUERY_GRID_SIZE + c0] * (1 - dc) * (1 - dr) +
+    arr[r0 * QUERY_GRID_SIZE + c1] * dc * (1 - dr) +
+    arr[r1 * QUERY_GRID_SIZE + c0] * (1 - dc) * dr +
+    arr[r1 * QUERY_GRID_SIZE + c1] * dc * dr
+
+  const vis_m = bilerp(queryGrid.vis)
+  const ceil_ft = bilerp(queryGrid.ceil_ft)
+
+  return { vis_m: Math.round(vis_m), ceil_ft: Math.round(ceil_ft) }
+}
 
 function buildQueryGrid(visGrid, ceilingMasked, kimGrid) {
   const vis = new Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE)

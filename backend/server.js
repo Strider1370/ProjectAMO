@@ -32,6 +32,7 @@ import { recordRequest, bumpCache } from './src/dev/instrument.js'
 import { createMeRequestsRouter } from './src/me/requests.js'
 import { createForecasterRouter } from './src/forecaster/router.js'
 import adsbProcessor from './src/processors/adsb-processor.js'
+import { sampleQueryGrid, classifyVisibility } from './src/processors/flight-category-processor.js'
 import warningTypes from '../shared/warning-types.js'
 import alertDefaults from '../shared/alert-defaults.js'
 import { buildVerticalProfile } from './src/briefing/vertical-profile.js'
@@ -840,45 +841,88 @@ app.get('/api/weather/flight-category-overlay/point', (req, res) => {
   const data = store.getCached('flight_category_overlay')
   if (!data?.query_grid) return res.status(503).json({ error: 'no data' })
 
-  const { width, height, lat_max, lat_min, lon_min, lon_max, vis, ceil_ft } = data.query_grid
-
-  const fc = (lon - lon_min) / (lon_max - lon_min) * (width - 1)
-  const fr = (lat_max - lat) / (lat_max - lat_min) * (height - 1)
-  if (fc < 0 || fc > width - 1 || fr < 0 || fr > height - 1) {
+  const sample = sampleQueryGrid(data.query_grid, lat, lon)
+  if (!sample) {
     return res.status(400).json({ error: 'out of domain' })
   }
 
-  const c0 = Math.floor(fc), c1 = Math.min(c0 + 1, width - 1)
-  const r0 = Math.floor(fr), r1 = Math.min(r0 + 1, height - 1)
-  const dc = fc - c0, dr = fr - r0
-  const bilerp = (arr) =>
-    arr[r0 * width + c0] * (1 - dc) * (1 - dr) +
-    arr[r0 * width + c1] * dc * (1 - dr) +
-    arr[r1 * width + c0] * (1 - dc) * dr +
-    arr[r1 * width + c1] * dc * dr
+  // 시정 값과 밴드
+  const vis_m = sample.vis_m >= 0 ? sample.vis_m : null
+  const vis_band = vis_m === null ? 'missing' : classifyVisibility(vis_m)
 
-  const vis_m = bilerp(vis)
-  const ceil = bilerp(ceil_ft)
-  const ranks = ['VFR', 'IFR', 'LIFR']
-  const vcat = vis_m < 0 ? 0 : vis_m < 800 ? 2 : vis_m < 5000 ? 1 : 0
-  const ccat = ceil < 0 ? 0 : ceil >= 99000 ? 0 : ceil < 500 ? 2 : ceil < 1500 ? 1 : 0
-  const category = ranks[Math.max(vcat, ccat)]
+  // 운고 값과 밴드
+  const ceil_ft = sample.ceil_ft >= 0 ? sample.ceil_ft : null
+  const ceil_band = ceil_ft === null ? 'missing' : ceil_ft < 450 ? 'low' : ceil_ft < 900 ? 'mid' : 'high'
+
+  // 3시간 추세 계산
+  let vis_trend = null
+  if (data.trend?.vis_delta && vis_m !== null) {
+    // query_grid는 128×128이고, trend.vis_delta도 같은 크기
+    // 부산 좌표로 격자 칸을 계산하면 같은 인덱스를 쓸 수 있다
+    // 대략적 근사: 시정 격자 칸
+    const QUERY_GRID_SIZE = 128
+    const fc = (lon + 180) / 360 * (QUERY_GRID_SIZE - 1)  // 대략적 근사
+    const fr = (90 - lat) / 180 * (QUERY_GRID_SIZE - 1)   // 대략적 근사
+    const c = Math.round(Math.min(Math.max(fc, 0), QUERY_GRID_SIZE - 1))
+    const r = Math.round(Math.min(Math.max(fr, 0), QUERY_GRID_SIZE - 1))
+    const idx = r * QUERY_GRID_SIZE + c
+    if (idx >= 0 && idx < data.trend.vis_delta.length) {
+      vis_trend = data.trend.vis_delta[idx]
+    }
+  }
+
+  // 가장 가까운 관측 지점
+  let nearest_station = null
+  if (data.stations && data.stations.length > 0) {
+    let minDist = Infinity
+    for (const stn of data.stations) {
+      const dLat = (stn.lat - lat) * 111.0
+      const dLon = (stn.lon - lon) * 111.0 * Math.cos((lat * Math.PI) / 180)
+      const dist = Math.hypot(dLat, dLon)
+      if (dist < minDist) {
+        minDist = dist
+        nearest_station = {
+          id: stn.id,
+          name: stn.name,
+          source: stn.source,
+          distance_km: Math.round(minDist * 10) / 10,
+          ceiling_ft: stn.ceiling_ft,
+          model_ceiling_ft: stn.model_ceiling_ft,
+          diff_ft: stn.diff_ft,
+        }
+      }
+    }
+  }
 
   res.json({
     lat, lon,
-    vis_m: Math.round(vis_m),
-    ceil_ft: ceil >= 99000 ? null : Math.round(ceil),
-    category,
+    vis_m,
+    vis_band,
+    ceil_ft,
+    ceil_band,
+    vis_trend,
+    nearest_station,
   })
 })
 
 app.get('/api/weather/flight-category-overlay', (req, res) => {
   const data = store.getCached('flight_category_overlay')
-  if (!data?.geojson) {
-    return res.json({ type: 'FeatureCollection', features: [] })
+  if (!data) {
+    res.setHeader('Cache-Control', 'no-cache')
+    return res.status(503).json({ error: 'flight-category overlay not available' })
   }
-  const etag = `"${data.content_hash || store.canonicalHash(data.geojson)}"`
-  const payload = { ...data.geojson, fetched_at: data.amos_fetched_at ?? data.fetched_at }
+  const etag = `"${data.content_hash || store.canonicalHash(data)}"`
+  const payload = {
+    type: data.type,
+    fetched_at: data.fetched_at,
+    computed_at: data.computed_at,
+    visibility: data.visibility,
+    ceiling: data.ceiling,
+    query_grid: data.query_grid,
+    stations: data.stations,
+    trend: data.trend,
+    sources: data.sources,
+  }
   sendWithEtag(res, payload, etag, 'no-cache', { lastModified: data.computed_at })
 })
 app.get('/api/snapshot-meta', (_req, res) => {

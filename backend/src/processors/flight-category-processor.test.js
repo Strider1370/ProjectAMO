@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { classifyVisibility, buildVisibilityGeoJson, loadCtpsMask, pickTrendBaseline, buildTrend } from './flight-category-processor.js'
+import { classifyVisibility, buildVisibilityGeoJson, loadCtpsMask, pickTrendBaseline, buildTrend, sampleQueryGrid } from './flight-category-processor.js'
 import { SFC_W, SFC_H } from '../parsers/sfc-grid-parser.js'
 import { encodeCtpsBinary } from './convective-satellite-model.js'
 
@@ -95,4 +95,49 @@ test('20분을 넘으면 null', () => {
   ]
   const baseline = pickTrendBaseline(recent, now)
   assert.equal(baseline, null)
+})
+
+test('점 조회는 LCC 변환을 쓴다 — 선형 가정이면 다른 칸을 짚는다', () => {
+  // 부산 — LCC와 선형 가정이 21 km(조회 격자 2칸 이상) 벌어지는 지점.
+  // 서울은 5 km라 같은 칸을 짚어 잘못된 구현도 통과한다.
+  const BUSAN = { lat: 35.10, lon: 129.03 }
+  const QUERY_GRID_SIZE = 128
+
+  // 128×128 격자를 생성한다.
+  const grid = {
+    width: QUERY_GRID_SIZE,
+    height: QUERY_GRID_SIZE,
+    vis: new Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE).fill(0),
+    ceil_ft: new Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE).fill(-1),
+  }
+  // 부산의 LCC 기준 칸 인접 영역 (계산됨: fc≈88.19, fr≈69.89)
+  // 쌍선형 보간이 (88,69), (89,69), (88,70), (89,70)을 사용하므로 모두 표식한다
+  const cells = [
+    { c: 88, r: 69 },
+    { c: 89, r: 69 },
+    { c: 88, r: 70 },
+    { c: 89, r: 70 },
+  ]
+  for (const { c, r } of cells) {
+    grid.vis[r * QUERY_GRID_SIZE + c] = 4242
+    grid.ceil_ft[r * QUERY_GRID_SIZE + c] = 1234
+  }
+
+  const result = sampleQueryGrid(grid, BUSAN.lat, BUSAN.lon)
+  assert.ok(result !== null, '결과가 null이 아니어야 함')
+  assert.equal(result.vis_m, 4242, '부산 영역의 시정 값을 읽어야 함')
+  assert.equal(result.ceil_ft, 1234, '부산 영역의 운고 값을 읽어야 함')
+})
+
+test('격자 밖은 null', () => {
+  const QUERY_GRID_SIZE = 128
+  const grid = {
+    width: QUERY_GRID_SIZE,
+    height: QUERY_GRID_SIZE,
+    vis: new Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE).fill(5000),
+    ceil_ft: new Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE).fill(-1),
+  }
+  // 격자 범위 밖의 좌표
+  const result = sampleQueryGrid(grid, 10, 100)
+  assert.equal(result, null, '격자 밖 좌표는 null을 반환해야 함')
 })
