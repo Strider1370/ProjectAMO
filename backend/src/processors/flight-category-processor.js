@@ -8,6 +8,7 @@ import { convectiveDir, readConvectiveMeta } from './convective-satellite-store.
 import { decodeCtpsRecord } from './convective-satellite-model.js'
 import { createDailyByteBudget } from '../lib/daily-byte-budget.js'
 import { loadKimCeiling, buildCeilingGeoJson } from './flight-category/ceiling-kim.js'
+import { buildStations } from './flight-category/stations.js'
 import { contours } from 'd3-contour'
 import { simplify } from '@turf/simplify'
 
@@ -180,6 +181,15 @@ export async function process() {
     if (classifyVisibility(visGrid[i]) === 'missing') missing++
   }
 
+  const asos = store.getCached('asos_ceiling')
+  let stations = []
+  try {
+    stations = buildStations({ asos, amos: store.getCached('amos'), kimCeiling, ctpsMask })
+  } catch (e) {
+    // 지점은 부가 정보다. 여기서 죽으면 시정·운고 면까지 같이 사라진다.
+    console.warn('flight-cat: 지점 조립 실패 —', e.message)
+  }
+
   const now = new Date().toISOString()
   const result = {
     type: 'flight_category_overlay',
@@ -188,10 +198,16 @@ export async function process() {
     visibility: { geojson: buildVisibilityGeoJson(visGrid) },
     ceiling: { geojson: buildCeilingGeoJson(kimCeiling, ctpsMask) },
     query_grid: buildQueryGrid(visGrid),
+    stations,
     sources: {
       kim: kimCeiling ? { run: kimCeiling.run, hf: 0 } : null,
       ctps: ctpsMask ? { frame_tm: ctpsMask.frameTm } : null,
       missing_ratio: missing / visGrid.length,
+      stations: {
+        asos: asos ? asos.stations?.length || 0 : 0,
+        amos: stations.filter(s => s.source === 'AMOS').length,
+        tm: asos?.tm,
+      },
     },
   }
 

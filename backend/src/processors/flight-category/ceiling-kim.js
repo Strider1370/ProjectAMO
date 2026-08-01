@@ -80,10 +80,25 @@ export function loadKimCeiling(root) {
   return { run, grid, ceilingM }
 }
 
-function cellToLonLat(grid, px, py) {
+export function cellToLonLat(grid, px, py) {
   const lon = grid.lonMin + (px / Math.max(grid.nx - 1, 1)) * (grid.lonMax - grid.lonMin)
   const lat = grid.latMin + (py / Math.max(grid.ny - 1, 1)) * (grid.latMax - grid.latMin)
   return [lon, lat]
+}
+
+/**
+ * 위성이 "구름 없음"이라 하는 격자의 운저를 지운다. 원본을 건드리지 않는다.
+ * 면 그리기와 지점 조회가 같은 마스크를 써야 일관성을 유지한다.
+ */
+export function maskCeilingWithCtps(ceilingM, grid, ctpsMask) {
+  const masked = Float32Array.from(ceilingM)
+  if (!ctpsMask) return masked
+  for (let i = 0; i < masked.length; i++) {
+    if (masked[i] < 0) continue
+    const [lon, lat] = cellToLonLat(grid, i % grid.nx, Math.floor(i / grid.nx))
+    if (ctpsMask.isClearAt(lat, lon)) masked[i] = -1
+  }
+  return masked
 }
 
 /**
@@ -93,16 +108,7 @@ function cellToLonLat(grid, px, py) {
 export function buildCeilingGeoJson(kimCeiling, ctpsMask) {
   if (!kimCeiling) return { type: 'FeatureCollection', features: [] }
   const { grid, ceilingM } = kimCeiling
-  const masked = Float32Array.from(ceilingM)
-  if (ctpsMask) {
-    for (let i = 0; i < masked.length; i++) {
-      if (masked[i] < 0) continue
-      const py = Math.floor(i / grid.nx)
-      const px = i % grid.nx
-      const [lon, lat] = cellToLonLat(grid, px, py)
-      if (ctpsMask.isClearAt(lat, lon)) masked[i] = -1
-    }
-  }
+  const masked = maskCeilingWithCtps(ceilingM, grid, ctpsMask)
 
   const features = []
   let lower = 0
