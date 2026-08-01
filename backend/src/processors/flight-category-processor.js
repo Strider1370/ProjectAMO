@@ -9,32 +9,26 @@ import { simplify } from '@turf/simplify'
 
 const CTH_FILL = 65535
 
-// ─── 분류 상수 ────────────────────────────────────────────────
-export const CATEGORY_COLORS = { VFR: '#15803d', IFR: '#f97316', LIFR: '#dc2626' }
-const RANK = { VFR: 0, IFR: 1, LIFR: 2 }
-const BY_RANK = ['VFR', 'IFR', 'LIFR']
-
-// ─── 순수 함수 ────────────────────────────────────────────────
-
-export function worstCategory(a, b) {
-  return BY_RANK[Math.max(RANK[a], RANK[b])]
+// ─── 시정 밴드 ────────────────────────────────────────────────
+// 별표 24 기준선 5,000m 를 가운데 두고 아래위로 한 단계씩.
+export const VIS_BAND_COLORS = {
+  severe: '#dc2626',
+  below: '#f97316',
+  marginal: '#fde047',
+  missing: '#9ca3af',
 }
 
-export function classifyFlightCategory(vis_m, ceil_ft) {
-  // Negative = fill / no-data sentinel. Treated as unlimited (VFR) by design:
-  //   vis: parser maps fill -999 → -1.
-  //   ceil: IDW fallback fills with -1 when zero AMOS points are available.
-  //   CTH masking independently overrides ceil to 99999 where sky is confirmed clear.
-  const vc = vis_m < 0 ? 'VFR' : vis_m < 800 ? 'LIFR' : vis_m < 5000 ? 'IFR' : 'VFR'
-  const cc = ceil_ft < 0 ? 'VFR' : ceil_ft < 500 ? 'LIFR' : ceil_ft < 1500 ? 'IFR' : 'VFR'
-  return worstCategory(vc, cc)
+export function classifyVisibility(visM) {
+  if (!(visM >= 0)) return 'missing'
+  if (visM < 3000) return 'severe'
+  if (visM < 5000) return 'below'
+  if (visM < 7000) return 'marginal'
+  return 'clear'
 }
-
-export const cthIndexToPixel = ctpsIndexForLatLon
 
 // ─── CTH lookup table ─────────────────────────────────────────
 // Maps each SFC pixel index → CTH flat index (-1 = outside CTH domain).
-// Built once on first use: 4.2 M LCC projections up-front so buildCategoryGrid
+// Built once on first use: 4.2 M LCC projections up-front so the per-pixel loops
 // only does a single Int32Array read per pixel instead of a trig projection.
 
 let _cthLookup = null
@@ -45,7 +39,7 @@ function getCthLookup() {
   for (let i = 0; i < _cthLookup.length; i++) {
     const row = Math.floor(i / SFC_W), col = i % SFC_W
     const { lat, lon } = sfcPixelToLatLon(col, row)
-    const idx = cthIndexToPixel(lat, lon)
+    const idx = ctpsIndexForLatLon(lat, lon)
     _cthLookup[i] = idx !== null ? idx : -1
   }
   return _cthLookup
@@ -143,21 +137,6 @@ function bilinearUpscale(src, srcSize, dstW, dstH) {
   return dst
 }
 
-function buildCategoryGrid(visGrid, ceilGrid, cthRaw) {
-  const cat = new Uint8Array(SFC_W * SFC_H)
-  const lookup = cthRaw ? getCthLookup() : null
-  for (let i = 0; i < cat.length; i++) {
-    let ceil_ft = ceilGrid[i]
-    if (lookup) {
-      const cthIdx = lookup[i]
-      const cthVal = cthIdx >= 0 ? cthRaw[cthIdx] : CTH_FILL
-      if (cthVal === CTH_FILL || cthVal === 0) ceil_ft = 99999  // CLEAR
-    }
-    cat[i] = RANK[classifyFlightCategory(visGrid[i], ceil_ft)]
-  }
-  return cat
-}
-
 const QUERY_GRID_SIZE = 128
 
 function buildQueryGrids(visGrid, ceilFull, cthRaw) {
@@ -183,65 +162,46 @@ function buildQueryGrids(visGrid, ceilFull, cthRaw) {
 }
 
 function pixelToLonLat(px, py) {
-  const LON_MIN = 120.67, LON_MAX = 133.07
-  const LAT_MAX = 40.35
-  const LAT_MIN = 30.74
-  return [
-    LON_MIN + (px / (SFC_W - 1)) * (LON_MAX - LON_MIN),
-    LAT_MAX - (py / (SFC_H - 1)) * (LAT_MAX - LAT_MIN),
-  ]
+  const { lat, lon } = sfcPixelToLatLon(px, py)
+  return [lon, lat]
 }
 
-function categoryGridToGeoJson(catGrid) {
-  // Per-category binary masks — one d3-contour pass per category.
-  //
-  // Why not thresholds([0.5, 1.5]) on the full grid?
-  //   d3-contour threshold T produces polygons where value ≥ T.
-  //   At T=0.5 that captures RANK≥1 = IFR ∪ LIFR (superset), not IFR alone.
-  //   The IFR polygon would incorrectly cover LIFR pixels, causing wrong labels.
-  //
-  // Instead: build a separate {0,1} mask for each category, then contour at 0.5.
-  // Each polygon covers exactly the pixels with that RANK value.
-
+function contourFeature(mask, band) {
   const gen = contours().size([SFC_W, SFC_H]).thresholds([0.5])
-  const categories = [
-    { rank: 1, category: 'IFR' },
-    { rank: 2, category: 'LIFR' },
-  ]
-  const features = []
-
-  for (const { rank, category } of categories) {
-    const mask = new Uint8Array(catGrid.length)
-    for (let i = 0; i < catGrid.length; i++) {
-      if (catGrid[i] === rank) mask[i] = 1
-    }
-
-    const [contour] = gen(mask)
-    if (!contour?.coordinates?.length) continue
-
-    const color = CATEGORY_COLORS[category]
-    const transformedCoords = contour.coordinates.map(polygon =>
-      polygon.map(ring => ring.map(([px, py]) => pixelToLonLat(px, py)))
-    )
-
-    const feature = {
-      type: 'Feature',
-      properties: { category, color },
-      geometry: { type: 'MultiPolygon', coordinates: transformedCoords },
-    }
-
-    try {
-      const simplified = simplify(feature, {
-        tolerance: config.flight_category.simplify_tolerance,
-        highQuality: false,
-      })
-      if (simplified.geometry?.coordinates?.length) features.push(simplified)
-    } catch (e) {
-      console.warn('flight-cat: simplify failed for', category, e.message)
-      features.push(feature)
-    }
+  const [contour] = gen(mask)
+  if (!contour?.coordinates?.length) return null
+  const feature = {
+    type: 'Feature',
+    properties: { band, color: VIS_BAND_COLORS[band] },
+    geometry: {
+      type: 'MultiPolygon',
+      coordinates: contour.coordinates.map((polygon) =>
+        polygon.map((ring) => ring.map(([px, py]) => pixelToLonLat(px, py))),
+      ),
+    },
   }
+  try {
+    const s = simplify(feature, {
+      tolerance: config.flight_category.simplify_tolerance,
+      highQuality: false,
+    })
+    return s.geometry?.coordinates?.length ? s : feature
+  } catch {
+    return feature
+  }
+}
 
+/** clear 구역은 도형을 만들지 않는다. 배경이 곧 기준 충족이다. */
+export function buildVisibilityGeoJson(visGrid) {
+  const features = []
+  for (const band of ['severe', 'below', 'marginal', 'missing']) {
+    const mask = new Uint8Array(visGrid.length)
+    for (let i = 0; i < visGrid.length; i++) {
+      if (classifyVisibility(visGrid[i]) === band) mask[i] = 1
+    }
+    const f = contourFeature(mask, band)
+    if (f) features.push(f)
+  }
   return { type: 'FeatureCollection', features }
 }
 
@@ -263,8 +223,7 @@ export async function process() {
     : new Float32Array(config.flight_category.idw_grid_size ** 2).fill(-1)
 
   const ceilFull = bilinearUpscale(idwGrid, config.flight_category.idw_grid_size, SFC_W, SFC_H)
-  const catGrid = buildCategoryGrid(visGrid, ceilFull, cthRaw)
-  const geojson = categoryGridToGeoJson(catGrid)
+  const geojson = buildVisibilityGeoJson(visGrid)
 
   const queryGrids = buildQueryGrids(visGrid, ceilFull, cthRaw)
   const amosFetchedAt = store.getCached('amos')?.fetched_at ?? null
