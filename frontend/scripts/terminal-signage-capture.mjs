@@ -7,8 +7,8 @@ import { chromium } from 'playwright'
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const viewport = { width: 1920, height: 1080 }
 const routes = [
-  { name: '01-board.png', url: '/terminal?autoplay=0', readiness: '[data-testid="option-one"]' },
-  { name: '02-rail.png', url: '/terminal?view=rail&autoplay=0', readiness: '[data-testid="option-three"]' },
+  { name: '01-board.png', url: '/terminal?autoplay=0', expectedView: '1안', expectedRoot: '[data-testid="option-one"]' },
+  { name: '02-rail.png', url: '/terminal?view=rail&autoplay=0', expectedView: '3안', expectedRoot: '[data-testid="option-three"]' },
 ]
 
 export function safePathComponent(value, name) {
@@ -21,7 +21,7 @@ export function buildCaptureCommand(phase, label) {
 }
 
 export function createManifest({ capturedAt, commit, browser, phase, label }) {
-  return { capturedAt, commit, routes: routes.map(({ name, url }) => ({ name, url })), viewport, browser, command: buildCaptureCommand(phase, label), screenshots: [], status: 'running', error: null }
+  return { capturedAt, commit, routes: routes.map(({ name, url }) => ({ name, url })), viewport, browser, command: buildCaptureCommand(phase, label), activeView: [], activeMotion: [], screenshots: [], status: 'running', error: null }
 }
 
 export async function captureSignage() {
@@ -45,8 +45,16 @@ export async function captureSignage() {
       try {
         const page = await context.newPage()
         await page.goto(new URL(route.url, appUrl).toString(), { waitUntil: 'domcontentloaded', timeout: 30000 })
-        await page.waitForSelector(route.readiness, { timeout: 30000 })
+        await page.getByRole('heading', { name: '출발 항공편 · 도착지 날씨' }).waitFor({ state: 'visible', timeout: 30000 })
+        const activeViewButton = page.getByRole('button', { name: route.expectedView })
+        const expectedRoot = page.locator(route.expectedRoot)
+        await activeViewButton.waitFor({ state: 'visible', timeout: 30000 })
+        await expectedRoot.waitFor({ state: 'visible', timeout: 30000 })
+        const routeMatchesExpectation = await activeViewButton.evaluate((button) => button.classList.contains('is-active') && button.getAttribute('aria-pressed') === 'true')
+        if (!routeMatchesExpectation) throw new Error(`route ${route.name} did not activate ${route.expectedView}`)
         await page.evaluate(async () => document.fonts.ready)
+        manifest.activeView.push({ name: route.name, value: await page.locator('.view-switcher button.is-active').textContent() })
+        manifest.activeMotion.push({ name: route.name, value: await page.locator('.motion-mode-switch button.is-active strong').textContent() })
         await page.screenshot({ path: path.join(outputDir, route.name), fullPage: false })
         manifest.screenshots.push(route.name)
         console.log(`captured ${route.name}`)

@@ -19,7 +19,7 @@ export function TerminalHeader({ view, motionMode, page, pageCount, onViewChange
         <div className="motion-mode-switch" aria-label={`${isBoard ? '1안' : '3안'} 전환 애니메이션`} style={{ '--motion-count': modes.length }}>{modes.map(([mode, title, label]) => <button type="button" className={motionMode === mode ? 'is-active' : ''} aria-pressed={motionMode === mode} onClick={() => onMotionChange(mode)} key={mode}><strong>{title}</strong><span>{label}</span></button>)}</div>
         <button type="button" className="next-board-button" onClick={onAdvance}><MdChevronRight /><span>다음 3편</span></button>
       </div>
-      {isBoard ? <div className="board-header-clock"><span>한국 시각</span><strong className="terminal-time-value" data-signage-text="required">06:32</strong><small><span className="terminal-time-value" data-signage-text="required">2026-07-30</span> (목) · KST</small></div> : <div className="rail-header-clock"><span>한국 시각</span><strong className="terminal-time-value" data-signage-text="required">09:15</strong><small><span className="terminal-time-value" data-signage-text="required">2026-07-30</span> (목)</small><b>KST</b></div>}
+      {isBoard ? <div className="board-header-clock"><span data-fixed-label>한국 시각</span><strong className="terminal-time-value" data-signage-text="required">06:32</strong><small><span className="terminal-time-value" data-signage-text="required">2026-07-30</span> (목) · KST</small></div> : <div className="rail-header-clock"><span data-fixed-label>한국 시각</span><strong className="terminal-time-value" data-signage-text="required">09:15</strong><small><span className="terminal-time-value" data-signage-text="required">2026-07-30</span> (목)</small><b data-fixed-label>KST</b></div>}
     </header>
   </>
 }

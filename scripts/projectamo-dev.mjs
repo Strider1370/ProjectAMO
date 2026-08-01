@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
+import { stopProcess } from './projectamo-dev-lifecycle.mjs'
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const logDir = path.join(rootDir, 'artifacts', 'runtime-logs')
@@ -41,23 +42,6 @@ async function startProcess(name, cmd, args, cwd = rootDir) {
   })
 
   return { child, out, err, name }
-}
-
-async function stopProcess(entry) {
-  if (!entry?.child?.pid || entry.child.exitCode !== null || entry.child.signalCode !== null) {
-    return
-  }
-
-  try {
-    process.kill(-entry.child.pid, 'SIGTERM')
-  } catch {
-    try {
-      entry.child.kill('SIGTERM')
-    } catch {}
-  }
-  if (entry.child.exitCode === null && entry.child.signalCode === null) {
-    await new Promise((resolve) => entry.child.once('exit', resolve))
-  }
 }
 
 async function waitForUrl(url, label, timeoutMs = 60000) {

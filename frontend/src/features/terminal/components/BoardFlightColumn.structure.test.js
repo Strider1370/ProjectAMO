@@ -14,9 +14,9 @@ test('1안은 승객 우선순위 순서로 렌더한다', () => {
 })
 
 test('승객용 고정 문구는 짧은 승인 문구를 사용한다', () => {
-  assert.match(source, />출발</)
-  assert.match(source, />탑승구</)
-  assert.match(source, />도착</)
+  for (const label of ['현지 시각', '한국', 'KST', '출발', '탑승구', '도착', '현지', '현재 날씨']) {
+    assert.match(source, new RegExp(`<(?:span|small) data-fixed-label>${label}`))
+  }
   assert.doesNotMatch(source, /출발 예정|도착 예정|예상 도착|운항 상태/)
 })
 
@@ -74,7 +74,7 @@ test('board column has one destination heading and labels its article', () => {
 })
 
 test('current weather and clock values occupy stable label tracks', () => {
-  assert.match(source, /className="terminal-current-weather-heading"><AnimatedValue[^>]*>\{destination\.city\}<\/AnimatedValue><span>현재 날씨<\/span>/)
+  assert.match(source, /className="terminal-current-weather-heading"><AnimatedValue[^>]*>\{destination\.city\}<\/AnimatedValue><span data-fixed-label>현재 날씨<\/span>/)
   assert.match(source, /className="terminal-board-local-date"/)
   assert.match(css, /\.terminal-current-weather-heading \{[^}]*grid-template-columns: 12ch max-content/)
   const localDateRule = css.match(/\.terminal-board-local-date \{[^}]+\}/)?.[0] ?? ''

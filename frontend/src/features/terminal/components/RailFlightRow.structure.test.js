@@ -20,8 +20,8 @@ test('도착 예보가 일반 과거 예보보다 먼저 온다', () => {
 })
 
 test('도착 시각은 현지와 한국 고정 열을 사용한다', () => {
-  assert.match(source, />현지</)
-  assert.match(source, />한국</)
+  assert.match(source, /<span data-fixed-label>현지<\/span>/)
+  assert.match(source, /<span data-fixed-label>한국<\/span>/)
   assert.doesNotMatch(source, /한국[^<]*KST/)
 })
 
@@ -34,8 +34,8 @@ test('rail destination keeps the city and code at their dedicated signage sizes'
 
 test('rail local and Korea times use stable value tracks', () => {
   assert.match(source, /className="rail-local-date"/)
-  assert.match(source, /<span>한국<\/span>/)
-  assert.match(source, /<span>KST<\/span>/)
+  assert.match(source, /<span data-fixed-label>한국<\/span>/)
+  assert.match(source, /<span data-fixed-label>KST<\/span>/)
   const localDateRule = css.match(/\.rail-local-date \{[^}]+\}/)?.[0] ?? ''
   assert.match(localDateRule, /grid-template-columns:\s*minmax\(10ch,\s*12ch\)\s+max-content\s+5ch\s+max-content/)
   assert.doesNotMatch(localDateRule, /grid-template-columns:\s*auto\s+auto\s+auto\s+auto/)
@@ -45,8 +45,9 @@ test('FLAP과 ROLL은 fixed labels나 행이 아닌 changing values를 대상으
   assert.match(source, /import AnimatedValue from '\.\.\/motion\/AnimatedValue\.jsx'/)
   assert.match(source, /motionOrder\(rowIndex, 0\)/)
   assert.match(source, /motionOrder\(rowIndex, 15\)/)
-  assert.match(source, /const RAIL_MOTION_ITEMS_PER_ROW = 6/)
-  assert.match(source, /return rowIndex \* RAIL_MOTION_ITEMS_PER_ROW \+ item % RAIL_MOTION_ITEMS_PER_ROW/)
+  assert.match(source, /const RAIL_MOTION_ITEMS_PER_ROW = 32/)
+  assert.match(source, /return rowIndex \* RAIL_MOTION_ITEMS_PER_ROW \+ item/)
+  assert.doesNotMatch(source, /item % RAIL_MOTION_ITEMS_PER_ROW/)
   assert.doesNotMatch(source, /rail-motion-unit/)
   for (const label of ['출발', '탑승구', '도착', '현지', '한국']) {
     assert.doesNotMatch(source, new RegExp(`<AnimatedValue[^>]*>${label}`))
@@ -57,6 +58,10 @@ test('FLAP과 ROLL은 fixed labels나 행이 아닌 changing values를 대상으
   }
 })
 
+test('rail rows expose stable flight hooks for geometry contracts', () => {
+  assert.match(source, /data-testid="rail-flight-row" data-flight-id=\{flight\.id\}/)
+})
+
 test('partial fixture의 누락 예보는 하나의 marked fallback으로 렌더한다', () => {
   const partial = applyTerminalFixtureState(TERMINAL_FLIGHT_GROUPS, 'partial')[0][0]
   assert.equal(partial.weather.afterArrival[0].available, false)
@@ -64,7 +69,7 @@ test('partial fixture의 누락 예보는 하나의 marked fallback으로 렌더
 })
 
 test('loading/error 행은 stationary fallback copy를 유지한다', () => {
-  assert.match(source, /terminal-data-surface--\$\{flight\.dataState\.phase\}`\} style=\{\{ '--order': rowIndex \}\}/)
+  assert.match(source, /terminal-data-surface--\$\{flight\.dataState\.phase\}`\} data-testid="rail-flight-row" data-flight-id=\{flight\.id\} style=\{\{ '--order': rowIndex \}\}/)
   assert.match(source, /<span>\{flight\.dataState\.phase === 'loading' \? '운항 정보를 불러오는 중입니다' : '운항 정보를 불러오지 못했습니다'\}<\/span>/)
   assert.match(css, /\.rail-motion-cascade \.rail-page\.is-entering \[data-terminal-motion-value\]/)
   assert.doesNotMatch(css, /rail-motion-cascade[^}]*\.rail-flight-row[^}]*transform/s)
