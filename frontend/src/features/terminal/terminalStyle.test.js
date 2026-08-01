@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 
 const css = readFileSync(new URL('./terminal.css', import.meta.url), 'utf8')
 const themeCss = readFileSync(new URL('../../shared/theme/tokens.css', import.meta.url), 'utf8')
-const pageSource = readFileSync(new URL('./DestinationWeatherPage.jsx', import.meta.url), 'utf8')
+const pageSource = readFileSync(new URL('./components/RailFlightRow.jsx', import.meta.url), 'utf8')
 const boardColumnSource = readFileSync(new URL('./components/BoardFlightColumn.jsx', import.meta.url), 'utf8')
 const headerSource = readFileSync(new URL('./components/TerminalHeader.jsx', import.meta.url), 'utf8')
 const mainSource = readFileSync(new URL('../../main.jsx', import.meta.url), 'utf8')
@@ -56,14 +56,14 @@ test('every terminal numeric value category is explicitly marked', () => {
   for (const field of [
     'clocks.destinationNow', 'clocks.koreaNow', 'operation.departure', 'operation.duration',
     'operation.gate', 'clocks.arrivalLocal', 'clocks.arrivalKorea', 'point.time',
-    'point.temperature', '2026-07-30', 'clocks.destinationDate',
+    'weather.temperature', '2026-07-30', 'clocks.destinationDate',
   ]) assert.match(source, new RegExp(`terminal-time-value[^>]*>[\\s\\S]{0,180}${field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
   assert.match(boardColumnSource, /WeatherTemperature weather=\{weather\.current\}/)
   assert.match(boardColumnSource, /weather\.current\.feelsLike/)
   assert.match(boardColumnSource, /weather\.current\.humidity/)
   assert.match(boardColumnSource, /WeatherTemperature\(\{ weather/)
-  assert.match(pageSource, /weatherValue\(flight\.weather\.preArrival, 'time'\)/)
-  assert.match(pageSource, /WeatherValue point=\{flight\.weather\.preArrival\}/)
+  assert.match(pageSource, /Forecast point=\{flight\.weather\.preArrival\}/)
+  assert.match(pageSource, /<WeatherTemperature weather=\{point\} \/>/)
 })
 
 test('edge-facing terminal chrome uses the signage safe edges', () => {

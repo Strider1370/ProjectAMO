@@ -380,6 +380,34 @@
 .rail-stats span { color: #5a6577; font-size: var(--signage-label); }
 .rail-stats strong { font-size: var(--signage-primary); }
 .rail-stats em { color: #f07c19; font-size: var(--signage-caption); font-style: normal; font-weight: 700; }
+
+/* Arrival-first rail: the flight region stays at 32%, while the forecast starts
+   with the arrival surface and reserves its auxiliary pre-arrival forecast. */
+.rail-flight-info { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 106px 66px minmax(0, 1fr); }
+.rail-destination { min-width: 0; }
+.rail-destination h2 { margin: 0; }
+.rail-destination p { margin: var(--space-xs) 0 0; overflow: hidden; color: var(--text-3); font-size: var(--signage-caption); text-overflow: ellipsis; white-space: nowrap; }
+.rail-local-clock { grid-column: 2; grid-row: 1; }
+.rail-arrival-weather { display: grid; grid-template-columns: minmax(288px, .95fr) minmax(0, 1.7fr); min-width: 0; padding: var(--space-l) var(--signage-safe-x) var(--space-m) var(--space-xl); }
+.terminal-arrival-clocks { display: grid; grid-template-columns: 1fr; align-content: start; gap: var(--space-xs); min-width: 0; padding-right: var(--space-l); }
+.terminal-arrival-clocks > span { color: var(--text-2); font-size: var(--signage-label); font-weight: var(--fw-semibold); }
+.terminal-arrival-clocks > div { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: baseline; column-gap: var(--space-s); min-width: 0; }
+.terminal-arrival-clocks > div > span { color: var(--text-3); font-size: var(--signage-label); font-weight: var(--fw-semibold); }
+.terminal-arrival-clocks strong { color: var(--text-1); font-size: var(--signage-arrival); line-height: 1; white-space: nowrap; }
+.rail-forecast-grid { display: grid; grid-template-columns: minmax(118px, 1.1fr) repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr) auto; min-width: 0; border: 1px solid var(--stroke-1); background: var(--bg-2); }
+.rail-arrival-forecast { display: grid; grid-column: 1; grid-row: 1 / -1; align-items: center; border-right: 1px solid var(--stroke-1); background: #f2f7ff; }
+.rail-future-forecast { display: contents; }
+.rail-future-forecast .rail-forecast-content { grid-row: 1; padding: var(--space-m) var(--space-xs); }
+.rail-pre-arrival-forecast { grid-column: 2 / -1; grid-row: 2; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--space-s); min-height: 42px; padding: var(--space-xs) var(--space-s); border-top: 1px solid var(--stroke-1); color: var(--text-3); }
+.rail-pre-arrival-forecast > span { font-size: var(--signage-caption); font-weight: var(--fw-semibold); white-space: nowrap; }
+.rail-pre-arrival-forecast .rail-forecast-content { display: flex; align-items: center; justify-content: start; gap: var(--space-s); }
+.rail-pre-arrival-forecast .terminal-weather-visual { display: flex; align-items: center; gap: var(--space-xs); }
+.rail-pre-arrival-forecast .terminal-weather-visual img { width: 36px; height: 30px; }
+.rail-forecast-content { display: grid; min-width: 0; align-content: center; justify-items: center; gap: var(--space-xxs); text-align: center; }
+.rail-forecast-content time, .rail-forecast-content > strong, .rail-forecast-content > span { font-size: var(--signage-label); line-height: 1.15; white-space: nowrap; }
+.rail-arrival-forecast .rail-forecast-content time, .rail-arrival-forecast .rail-forecast-content > strong { font-weight: var(--fw-bold); }
+.rail-forecast-unavailable { display: grid; min-width: 0; align-content: center; justify-items: center; padding: var(--space-xs); color: var(--text-3); font-size: var(--signage-label); text-align: center; }
+.rail-arrival-forecast .rail-forecast-unavailable { min-height: 100%; }
 .timeline { --forecast-left: 180px; --forecast-right: 45px; --current-offset: calc(64px - var(--forecast-left)); position: relative; min-width: 0; }
 .timeline-arrival-grid { position: absolute; top: 17px; right: var(--forecast-right); left: var(--forecast-left); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .progress-label { display: grid; line-height: 1.15; }

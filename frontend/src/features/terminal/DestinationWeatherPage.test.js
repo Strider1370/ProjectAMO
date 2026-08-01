@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { TERMINAL_FLIGHT_GROUPS } from './data/terminalFixtures.js'
 
-const railSource = readFileSync(new URL('./DestinationWeatherPage.jsx', import.meta.url), 'utf8')
+const railSource = readFileSync(new URL('./components/RailFlightRow.jsx', import.meta.url), 'utf8')
 const boardSource = readFileSync(new URL('./components/BoardFlightColumn.jsx', import.meta.url), 'utf8')
 const visualSource = readFileSync(new URL('./components/WeatherVisual.jsx', import.meta.url), 'utf8')
 const css = readFileSync(new URL('./terminal.css', import.meta.url), 'utf8')
@@ -27,7 +27,7 @@ test('clear는 공유 WeatherVisual에서 번들 day/night artwork를 사용한�
 
 test('AF267 지연 tone은 board와 rail status에 같은 amber semantics를 적용한다', () => {
   assert.match(boardSource, /terminal-board-operation \$\{operation\.tone\}/)
-  assert.match(railSource, /\$\{flight\.operation\.tone\} rail-motion-unit/)
+  assert.match(railSource, /className=\{operation\.tone\}/)
   assert.equal(TERMINAL_FLIGHT_GROUPS[0][2].operation.tone, 'delay')
   assert.match(css, /\.terminal-board-operation\.delay/)
   assert.match(css, /\.rail-flight-status \.delay/)
@@ -45,9 +45,9 @@ test('로딩·부분·오류 상태는 board와 rail의 기존 행 geometry를 �
   assert.match(boardSource, /dataState\.phase === 'loading'/)
   assert.match(boardSource, /dataState\.phase === 'error'/)
   assert.match(boardSource, /terminal-data-surface--\$\{dataState\.phase\}/)
-  assert.match(railSource, /phase === 'loading'/)
-  assert.match(railSource, /phase === 'partial'/)
-  assert.match(railSource, /phase === 'error'/)
+  assert.match(railSource, /dataState\.phase === 'loading'/)
+  assert.match(railSource, /dataState\.phase === 'partial'/)
+  assert.match(railSource, /dataState\.phase === 'error'/)
   assert.match(css, /\.terminal-data-surface--board\.terminal-data-surface--loading/)
   assert.match(css, /\.terminal-data-surface--rail\.terminal-data-surface--error/)
   assert.match(css, /inline-size: 100%/)
@@ -58,7 +58,8 @@ test('로딩·부분·오류 상태는 board와 rail의 기존 행 geometry를 �
 test('ready destinations retain city and airport labels in both branches', () => {
   assert.match(boardSource, /destination\.city/)
   assert.match(boardSource, /destination\.airportName/)
-  assert.match(railSource, /flight\.destination\.displayName/)
+  assert.match(railSource, /destination\.city/)
+  assert.match(railSource, /destination\.airportName/)
   assert.deepEqual(
     TERMINAL_FLIGHT_GROUPS.flat().map((flight) => flight.destination.displayName),
     ['도쿄 하네다', '싱가포르', '파리 샤를 드 골', '오사카 간사이', '방콕 수완나품', '로마 피우미치노'],
@@ -66,7 +67,6 @@ test('ready destinations retain city and airport labels in both branches', () =>
   assert.match(css, /\.terminal-board-identity p \{ overflow: hidden;.*text-overflow: ellipsis;/)
 })
 
-test('rail renderer binds its progress-chevron icon import', () => {
-  assert.match(railSource, /import \{[^}]*MdChevronRight[^}]*\} from 'react-icons\/md'/)
-  assert.match(railSource, /<MdChevronRight className="progress-arrow" \/>/)
+test('rail renderer puts the arrival forecast before its later forecast cells', () => {
+  assert.ok(railSource.indexOf('data-section="arrival"') < railSource.indexOf('data-section="future-forecast"'))
 })

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { DestinationWeatherPage } from './DestinationWeatherPage.jsx'
 import { BoardView } from './components/BoardView.jsx'
+import { RailView } from './components/RailView.jsx'
 import { applyTerminalFixtureState, TERMINAL_FLIGHT_GROUPS } from './data/terminalFixtures.js'
 import { parseTerminalFixtureState, parseTerminalMotionMode, parseTerminalView } from './model/terminalPager.js'
 import { useTerminalPager } from './motion/useTerminalPager.js'
@@ -53,6 +53,6 @@ export default function TerminalPage() {
 
   return <div className="terminal-signage">{view === 'board'
     ? <main className="prototype-shell"><BoardView {...screenProps} /></main>
-    : <DestinationWeatherPage groups={groups} pager={pager} motionMode={motionMode} onViewChange={selectView} onMotionChange={selectMotion} />
+    : <main className="prototype-shell"><RailView {...screenProps} /></main>
   }</div>
 }
