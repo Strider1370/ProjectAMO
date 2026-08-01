@@ -7,9 +7,8 @@ import { ctpsIndexForLatLon } from '../lib/ctps-grid.js'
 import { convectiveDir, readConvectiveMeta } from './convective-satellite-store.js'
 import { decodeCtpsRecord } from './convective-satellite-model.js'
 import { createDailyByteBudget } from '../lib/daily-byte-budget.js'
-import { loadKimCeiling, buildCeilingGeoJson, maskCeilingWithCtps, cellToLonLat } from './flight-category/ceiling-kim.js'
+import { loadKimCeiling, buildCeilingGeoJson, maskCeilingWithCtps, sampleCeilingAt } from './flight-category/ceiling-kim.js'
 import { buildStations } from './flight-category/stations.js'
-import { loadRecent } from '../store.js'
 import { contours } from 'd3-contour'
 import { simplify } from '@turf/simplify'
 
@@ -128,24 +127,13 @@ function buildQueryGrid(visGrid, ceilingMasked, kimGrid) {
       const sc = Math.round((qc * (SFC_W - 1)) / (QUERY_GRID_SIZE - 1))
       vis[qr * QUERY_GRID_SIZE + qc] = visGrid[sr * SFC_W + sc]
 
-      // Sample ceiling at this query cell
+      // 운고는 지점 표시와 반드시 같은 함수로 읽는다. 따로 구현하면 같은 자리에서
+      // 점과 격자가 다른 값을 답한다.
       let ceilValue = -1
       if (ceilingMasked && kimGrid) {
         const { lat, lon } = sfcPixelToLatLon(sc, sr)
-        // Map lat/lon to KIM grid cell
-        const kx = (lon - kimGrid.lonMin) / (kimGrid.lonMax - kimGrid.lonMin) * (kimGrid.nx - 1)
-        const ky = (lat - kimGrid.latMin) / (kimGrid.latMax - kimGrid.latMin) * (kimGrid.ny - 1)
-        // Use containing cell (no interpolation)
-        const kx_idx = Math.round(kx)
-        const ky_idx = Math.round(ky)
-        if (kx_idx >= 0 && kx_idx < kimGrid.nx && ky_idx >= 0 && ky_idx < kimGrid.ny) {
-          const kimIdx = ky_idx * kimGrid.nx + kx_idx
-          if (kimIdx >= 0 && kimIdx < ceilingMasked.length) {
-            const ceilM = ceilingMasked[kimIdx]
-            // Convert m to ft: multiply by 3.28084
-            ceilValue = ceilM < 0 ? -1 : Math.round(ceilM * 3.28084)
-          }
-        }
+        const ceilM = sampleCeilingAt(ceilingMasked, kimGrid, lat, lon)
+        ceilValue = ceilM < 0 ? -1 : Math.round(ceilM * 3.28084)
       }
       ceil_ft[qr * QUERY_GRID_SIZE + qc] = ceilValue
     }
@@ -288,7 +276,7 @@ export async function process() {
   // 3시간 추세를 계산한다
   let trend = null
   try {
-    const recent = loadRecent('flight_category_overlay', 12)
+    const recent = store.loadRecent('flight_category_overlay', 12)
     const nowForTrend = new Date()
     const baseline = pickTrendBaseline(recent, nowForTrend)
     trend = buildTrend({ query_grid: queryGrid }, baseline)
@@ -310,10 +298,12 @@ export async function process() {
       kim: kimCeiling ? { run: kimCeiling.run, hf: 0 } : null,
       ctps: ctpsMask ? { frame_tm: ctpsMask.frameTm } : null,
       missing_ratio: missing / visGrid.length,
+      // 실제로 화면에 나가는 개수를 센다. 저장본에 든 개수를 세면 ASOS가 2시간을
+      // 넘겨 통째로 빠진 상황에서도 "asos: 4"라고 말해 화면과 어긋난다.
       stations: {
-        asos: asos ? asos.stations?.length || 0 : 0,
-        amos: stations.filter(s => s.source === 'AMOS').length,
-        tm: asos?.tm,
+        asos: stations.filter((s) => s.source === 'ASOS').length,
+        amos: stations.filter((s) => s.source === 'AMOS').length,
+        tm: asos?.tm ?? null,
       },
     },
   }

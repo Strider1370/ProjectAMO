@@ -87,6 +87,28 @@ export function cellToLonLat(grid, px, py) {
 }
 
 /**
+ * 위경도가 속한 격자 칸의 운저(m). 없으면 -1. `cellToLonLat`의 역이다.
+ *
+ * 보간하지 않는다. 운고 격자에는 -1(운저 없음)이 섞여 있어 -1과 300 m를 섞으면
+ * 아무 뜻도 없는 값이 나오고, 면을 그리는 `buildCeilingGeoJson`도 칸 단위로
+ * 밴드를 나누므로 보간하면 점과 면이 서로 다른 값을 말하게 된다.
+ *
+ * 지점 표시(stations.js)와 조회 격자(flight-category-processor.js)가 **둘 다
+ * 이 함수를 쓴다.** 각자 구현하면 같은 자리에서 다른 답이 나온다.
+ */
+export function sampleCeilingAt(ceilingM, grid, lat, lon) {
+  if (!ceilingM || !grid) return -1
+  // 축이 한 칸뿐이면(폭 0) 그 축은 0번 칸이다. 나눗셈을 하면 NaN이 된다.
+  const cell = (value, min, max, n) =>
+    n <= 1 || !(max - min > 0) ? 0 : Math.round(((value - min) / (max - min)) * (n - 1))
+  const px = cell(lon, grid.lonMin, grid.lonMax, grid.nx)
+  const py = cell(lat, grid.latMin, grid.latMax, grid.ny)
+  if (!(px >= 0 && px <= grid.nx - 1 && py >= 0 && py <= grid.ny - 1)) return -1
+  const v = ceilingM[py * grid.nx + px]
+  return v >= 0 ? v : -1
+}
+
+/**
  * 위성이 "구름 없음"이라 하는 격자의 운저를 지운다. 원본을 건드리지 않는다.
  * 면 그리기와 지점 조회가 같은 마스크를 써야 일관성을 유지한다.
  */

@@ -1,5 +1,5 @@
 import config from '../../config.js'
-import { maskCeilingWithCtps } from './ceiling-kim.js'
+import { maskCeilingWithCtps, sampleCeilingAt } from './ceiling-kim.js'
 
 /**
  * Parse ASOS timestamp to get age in milliseconds.
@@ -31,15 +31,7 @@ function getAsosTmAgeMs(tmStr) {
  */
 function sampleKimCeiling(kimCeiling, lat, lon) {
   if (!kimCeiling?.grid || !kimCeiling.ceilingM) return -1
-  const { grid, ceilingM } = kimCeiling
-  // 축이 한 칸뿐이면(폭 0) 그 축은 0번 칸이다. 나눗셈을 하면 NaN이 된다.
-  const cell = (value, min, max, n) =>
-    n <= 1 || !(max - min > 0) ? 0 : Math.round(((value - min) / (max - min)) * (n - 1))
-  const px = cell(lon, grid.lonMin, grid.lonMax, grid.nx)
-  const py = cell(lat, grid.latMin, grid.latMax, grid.ny)
-  if (!(px >= 0 && px <= grid.nx - 1 && py >= 0 && py <= grid.ny - 1)) return -1
-  const v = ceilingM[py * grid.nx + px]
-  return v >= 0 ? v : -1
+  return sampleCeilingAt(kimCeiling.ceilingM, kimCeiling.grid, lat, lon)
 }
 
 /**
