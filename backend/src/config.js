@@ -238,8 +238,9 @@ export const flight_category = {
   ctps_url: process.env.CTPS_URL ||
     'https://apihub.kma.go.kr/api/typ05/api/GK2A/LE2/CTPS/KO/data',
   timeout_ms: 30000,
-  idw_grid_size: 512,
   simplify_tolerance: 0.01,
+  // 정상 사용량 1.92GB/일(20분 주기) 대비 여유를 둔 backstop.
+  daily_byte_limit: Number(process.env.FLIGHT_CATEGORY_DAILY_BYTES || 3_000_000_000),
   collect_on_startup: process.env.FLIGHT_CATEGORY_ON_STARTUP !== '0',
 }
 
@@ -351,7 +352,7 @@ export const schedule = {
   environment_interval: '10 * * * *',
   airport_info_interval: '0,30 6,17 * * *',
   takeoff_fcst_interval: '8 * * * *', // 매시(KST) — 이륙예보는 정시 발표
-  flight_category_interval: '5 * * * *',
+  flight_category_interval: '*/20 * * * *',
 }
 
 export const storage = {

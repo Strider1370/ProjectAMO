@@ -6,10 +6,14 @@ import { parseSfcAscii, sfcPixelToLatLon, SFC_W, SFC_H } from '../parsers/sfc-gr
 import { ctpsIndexForLatLon } from '../lib/ctps-grid.js'
 import { convectiveDir, readConvectiveMeta } from './convective-satellite-store.js'
 import { decodeCtpsRecord } from './convective-satellite-model.js'
+import { createDailyByteBudget } from '../lib/daily-byte-budget.js'
+import { loadKimCeiling, buildCeilingGeoJson } from './flight-category/ceiling-kim.js'
 import { contours } from 'd3-contour'
 import { simplify } from '@turf/simplify'
 
-const CTH_FILL = 65535
+const budget = createDailyByteBudget({
+  limitBytes: config.flight_category.daily_byte_limit,
+})
 
 // ─── 시정 밴드 ────────────────────────────────────────────────
 // 별표 24 기준선 5,000m 를 가운데 두고 아래위로 한 단계씩.
@@ -53,6 +57,7 @@ async function fetchSfcVis() {
     const res = await fetch(url, { signal })
     if (!res.ok) throw new Error(`sfc_vis HTTP ${res.status}`)
     const text = await res.text()
+    budget.add(Buffer.byteLength(text))
     if (text.includes('data_read: error')) throw new Error('sfc_vis: data_read error')
     return parseSfcAscii(text)
   })
@@ -89,26 +94,16 @@ export function loadCtpsMask(root) {
 
 const QUERY_GRID_SIZE = 128
 
-function buildQueryGrids(visGrid, ceilFull, cthRaw) {
-  const lookup = cthRaw ? getCthLookup() : null
-  const vis = new Float32Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE)
-  const ceil = new Float32Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE)
+function buildQueryGrid(visGrid) {
+  const vis = new Array(QUERY_GRID_SIZE * QUERY_GRID_SIZE)
   for (let qr = 0; qr < QUERY_GRID_SIZE; qr++) {
     for (let qc = 0; qc < QUERY_GRID_SIZE; qc++) {
-      const sr = Math.round(qr * (SFC_H - 1) / (QUERY_GRID_SIZE - 1))
-      const sc = Math.round(qc * (SFC_W - 1) / (QUERY_GRID_SIZE - 1))
-      const i = sr * SFC_W + sc
-      vis[qr * QUERY_GRID_SIZE + qc] = visGrid[i]
-      let ceil_ft = ceilFull[i]
-      if (lookup) {
-        const cthIdx = lookup[i]
-        const cthVal = cthIdx >= 0 ? cthRaw[cthIdx] : CTH_FILL
-        if (cthVal === CTH_FILL || cthVal === 0) ceil_ft = 99999
-      }
-      ceil[qr * QUERY_GRID_SIZE + qc] = ceil_ft
+      const sr = Math.round((qr * (SFC_H - 1)) / (QUERY_GRID_SIZE - 1))
+      const sc = Math.round((qc * (SFC_W - 1)) / (QUERY_GRID_SIZE - 1))
+      vis[qr * QUERY_GRID_SIZE + qc] = visGrid[sr * SFC_W + sc]
     }
   }
-  return { vis: Array.from(vis), ceil_ft: Array.from(ceil) }
+  return { width: QUERY_GRID_SIZE, height: QUERY_GRID_SIZE, vis }
 }
 
 function pixelToLonLat(px, py) {
@@ -159,44 +154,50 @@ export function buildVisibilityGeoJson(visGrid) {
 // ─── 공개 프로세서 함수 ───────────────────────────────────────
 
 export async function process() {
-  const [visGrid, cthRaw] = await Promise.all([
-    fetchSfcVis().catch(e => { console.warn('flight-cat: sfc_vis failed:', e.message); return null }),
-    fetchCtps().catch(e => { console.warn('flight-cat: CTPS failed:', e.message); return null }),
-  ])
+  if (!budget.canSpend()) {
+    console.warn('flight-cat: 일일 용량 한도 도달 — 이번 사이클 건너뜀')
+    return { type: 'flight_category_overlay', saved: false, reason: 'daily budget exhausted' }
+  }
 
-  if (!visGrid) {
+  let visGrid
+  try {
+    visGrid = await fetchSfcVis()
+  } catch (e) {
+    console.warn('flight-cat: sfc_vis failed:', e.message)
     return { type: 'flight_category_overlay', saved: false, reason: 'sfc_vis unavailable' }
   }
 
-  const amosPts = getAmosCeilingPoints()
-  const idwGrid = amosPts.length > 0
-    ? idwInterpolate(amosPts, config.flight_category.idw_grid_size)
-    : new Float32Array(config.flight_category.idw_grid_size ** 2).fill(-1)
+  const root = config.storage.base_path
+  const ctpsMask = loadCtpsMask(root)
+  const kimCeiling = loadKimCeiling(root)
 
-  const ceilFull = bilinearUpscale(idwGrid, config.flight_category.idw_grid_size, SFC_W, SFC_H)
-  const geojson = buildVisibilityGeoJson(visGrid)
+  let missing = 0
+  for (let i = 0; i < visGrid.length; i++) {
+    if (classifyVisibility(visGrid[i]) === 'missing') missing++
+  }
 
-  const queryGrids = buildQueryGrids(visGrid, ceilFull, cthRaw)
-  const amosFetchedAt = store.getCached('amos')?.fetched_at ?? null
+  const now = new Date().toISOString()
   const result = {
     type: 'flight_category_overlay',
-    fetched_at: new Date().toISOString(),
-    amos_fetched_at: amosFetchedAt,
-    computed_at: new Date().toISOString(),
-    feature_count: geojson.features.length,
-    geojson,
-    query_grid: {
-      width: QUERY_GRID_SIZE,
-      height: QUERY_GRID_SIZE,
-      lat_max: 40.35, lat_min: 30.74, lon_min: 120.67, lon_max: 133.07,
-      vis: queryGrids.vis,
-      ceil_ft: queryGrids.ceil_ft,
+    fetched_at: now,
+    computed_at: now,
+    visibility: { geojson: buildVisibilityGeoJson(visGrid) },
+    ceiling: { geojson: buildCeilingGeoJson(kimCeiling, ctpsMask) },
+    query_grid: buildQueryGrid(visGrid),
+    sources: {
+      kim: kimCeiling ? { run: kimCeiling.run, hf: 0 } : null,
+      ctps: ctpsMask ? { frame_tm: ctpsMask.frameTm } : null,
+      missing_ratio: missing / visGrid.length,
     },
   }
 
-  // store.save() returns { saved: true, filePath } | { saved: false, reason: 'unchanged' }
   const saved = store.save('flight_category_overlay', result)
-  return { type: 'flight_category_overlay', saved: saved.saved, feature_count: geojson.features.length }
+  return {
+    type: 'flight_category_overlay',
+    saved: saved.saved,
+    vis_features: result.visibility.geojson.features.length,
+    ceiling_features: result.ceiling.geojson.features.length,
+  }
 }
 
 export default { process }
