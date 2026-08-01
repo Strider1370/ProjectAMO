@@ -20,17 +20,18 @@ body { min-height: 100vh; overflow: hidden; }
 .page-indicator {
   position: absolute;
   z-index: 30;
-  top: 13px;
+  top: auto;
+  bottom: 17px;
   left: 50%;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   transform: translateX(-50%);
 }
 .page-indicator i {
   display: block;
-  width: 9px;
-  height: 9px;
+  width: 12px;
+  height: 12px;
   border: 1px solid #7b8798;
   border-radius: 50%;
   background: #fbfbfb;
@@ -46,19 +47,20 @@ body { min-height: 100vh; overflow: hidden; }
 .weather-image--storm { transform: translateX(4.7%); }
 
 /* Option 1 — exact vertical gate board */
-.exact-board { display: grid; grid-template-rows: 90px 1fr 48px; }
-.board-header { display: grid; grid-template-columns: 54px minmax(510px, 1fr) auto auto; align-items: center; gap: 16px; padding: 0 28px; border-bottom: 1px solid #cad0d8; background: #fbfbfb; }
-.board-header > img { display: block; width: 64px; height: 55px; object-fit: contain; mix-blend-mode: multiply; }
+.exact-board { display: grid; grid-template-rows: 90px 1fr 70px; }
+.board-header { position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 0 28px; border-bottom: 1px solid #cad0d8; background: #fbfbfb; }
+.exact-board .board-header { grid-template-columns: 54px minmax(0, 1fr) auto; }
+.agency-mascot { display: block; width: 54px; height: 54px; object-fit: contain; }
 .board-header h1 { margin: 0; font-size: 38px; font-weight: 800; letter-spacing: -.045em; white-space: nowrap; }
 .board-header-actions { display: flex; align-items: center; gap: 8px; }
-.board-header-clock { display: grid; grid-template-columns: auto auto; align-items: baseline; justify-content: end; column-gap: 10px; min-width: 205px; }
-.board-header-clock span { font-size: 12px; font-weight: 600; }
-.board-header-clock strong { font-size: 38px; line-height: 1; }
-.board-header-clock small { grid-column: 1 / -1; margin-top: 2px; font-size: 11px; text-align: right; }
+.exact-board .board-header-actions { position: absolute; z-index: 35; top: 22px; left: 66%; transform: translateX(-50%); }
+.board-header-clock { display: flex; align-items: baseline; justify-self: end; gap: 12px; white-space: nowrap; }
+.board-header-clock span { color: #475569; font-family: inherit; font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
+.board-header-clock strong { color: #071735; font-family: inherit; font-size: 36px; line-height: 1; letter-spacing: -.04em; }
 .board-viewport { position: relative; min-height: 0; overflow: hidden; }
 .board-page {
   position: absolute;
-  inset: 32px 56px 40px;
+  inset: 32px 56px 18px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr) 1px minmax(0, 1fr);
   column-gap: 12px;
@@ -67,7 +69,7 @@ body { min-height: 100vh; overflow: hidden; }
 .board-column {
   position: relative;
   display: grid;
-  grid-template-rows: 140px 120px 140px 72px 190px 208px;
+  grid-template-rows: 140px 120px 140px 238px 232px;
   min-width: 0;
   min-height: 0;
   padding: 0 24px;
@@ -81,41 +83,41 @@ body { min-height: 100vh; overflow: hidden; }
 .board-destination h2 { margin: 0; font-size: 59px; font-weight: 800; line-height: 1.16; letter-spacing: -.055em; }
 .board-destination h2 span { display: inline-block; }
 .board-destination h2 .destination-code { margin-left: 10px; color: #445066; font-size: 32px; font-weight: 600; letter-spacing: 0; }
-.board-destination-meta { display: flex; min-width: 0; align-items: end; justify-content: space-between; gap: 12px; margin-top: -2px; }
-.board-destination p { margin: 0; color: #4e5868; font-size: 16px; }
-.destination-clock { display: grid; grid-template-columns: auto auto auto; flex: 0 0 245px; align-items: baseline; justify-content: end; column-gap: 8px; margin-left: auto; text-align: right; }
-.destination-clock > span { color: #596576; font-size: 14px; font-weight: 600; white-space: nowrap; }
-.destination-clock strong { color: #071735; font-family: "Roboto Mono", monospace; font-size: 32px; line-height: 1; letter-spacing: -.05em; }
-.destination-clock b { color: #596576; font-size: 13px; font-weight: 700; }
-.destination-clock small { grid-column: 1 / -1; margin-top: 5px; color: #596576; font-size: 13px; line-height: 1.2; }
-.airline-block { display: flex; height: calc(100% - 1px); min-height: 0; align-items: center; gap: 18px; }
+.airline-block { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; height: calc(100% - 1px); min-height: 0; align-items: center; gap: 18px; }
 .airline-logo { display: flex; width: 72px; height: 78px; flex: 0 0 72px; align-items: center; justify-content: center; overflow: hidden; }
 .airline-logo img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; }
-.airline-block > div:last-child { display: grid; }
+.airline-flight-meta { display: grid; min-width: 0; row-gap: 12px; }
 .airline-block strong { font-size: 44px; line-height: 1.05; }
 .airline-block span { color: #697282; font-size: 15px; letter-spacing: .05em; }
 .board-divider { height: 1px; background: #d4d8de; }
 .schedule-grid { display: grid; grid-template-columns: 1fr .68fr; height: calc(100% - 1px); }
-.schedule-grid > div { display: grid; align-content: center; padding-left: 12px; }
+.schedule-grid > div { display: grid; align-content: center; row-gap: 12px; padding-left: 12px; }
 .schedule-grid > div + div { border-left: 1px solid #d4d8de; }
-.schedule-grid span { color: #303b4e; font-size: 15px; font-weight: 600; }
-.section-label, .arrival-time span { color: #303b4e; font-size: 18px; font-weight: 600; }
+.schedule-grid span { color: #303b4e; font-size: 22px; font-weight: 600; }
+.section-label, .arrival-time span { color: #303b4e; font-size: 24px; font-weight: 600; }
 .schedule-grid strong { font-size: 61px; line-height: 1.05; }
-.operation-status { display: flex; align-items: center; gap: 10px; height: calc(100% - 1px); padding-left: 12px; font-size: 15px; }
-.operation-status > span { margin-right: 8px; }
-.operation-status i { width: 10px; height: 10px; border-radius: 50%; background: #149348; }
-.operation-status strong { color: #149348; font-size: 17px; }
-.board-band:nth-child(5) .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
+.operation-status { display: flex; align-items: center; gap: 12px; justify-self: end; font-size: 15px; white-space: nowrap; }
+.operation-status i { width: 12px; height: 12px; border-radius: 50%; background: #149348; }
+.operation-status strong { color: #149348; font-size: 25px; }
+.board-band:nth-child(4) .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
+.current-weather-heading { display: flex; min-width: 0; align-items: start; justify-content: space-between; gap: 24px; }
 .section-label {
-  display: grid;
-  grid-template-columns: auto var(--weather-city-slot, 5em) auto;
+  display: flex;
+  min-width: 0;
   align-items: baseline;
-  justify-content: start;
-  column-gap: .25em;
-  margin: 18px 0 5px;
+  gap: .25em;
+  margin: 20px 0 14px;
 }
 .section-label .flap-unit { display: block; }
-.current-weather { display: grid; grid-template-columns: minmax(0, 1fr) 190px; align-items: center; column-gap: 24px; min-height: 0; }
+.weather-title { flex: 0 1 auto; white-space: nowrap; }
+.current-weather-clock { display: grid; grid-template-columns: 1fr; flex: 0 0 300px; row-gap: 4px; margin-top: 12px; text-align: right; }
+.local-clock-main { display: flex; align-items: baseline; justify-content: end; gap: 6px; }
+.local-clock-main > span { color: #596576; font-size: 16px; font-weight: 600; white-space: nowrap; }
+.local-clock-main time { color: #596576; font-family: "Roboto Mono", monospace; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.local-clock-main strong { color: #071735; font-family: "Roboto Mono", monospace; font-size: 34px; line-height: 1; letter-spacing: -.05em; }
+.local-clock-main b { color: #596576; font-size: 16px; font-weight: 700; }
+.current-weather-clock small { grid-column: 1 / -1; margin-top: 4px; color: #596576; font-size: 14px; line-height: 1.2; white-space: nowrap; }
+.current-weather { display: grid; grid-template-columns: minmax(0, 1fr) 190px; align-items: center; column-gap: 32px; min-height: 0; }
 .temperature { display: flex; align-items: center; }
 .temperature > span { display: block; }
 .temperature .weather-icon-stack { display: grid; justify-items: center; }
@@ -130,21 +132,22 @@ body { min-height: 100vh; overflow: hidden; }
 .current-weather dt { color: #303b4e; font-weight: 500; }
 .current-weather dd { color: #071735; font-weight: 600; white-space: nowrap; }
 .board-band:last-child .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
-.arrival-time { display: flex; align-items: baseline; gap: 10px; min-height: 68px; padding-top: 23px; }
-.arrival-time strong { font-size: 32px; }
-.arrival-time small { color: #5c6675; font-size: 14px; }
-.board-forecast { display: grid; grid-template-columns: repeat(5, 1fr); min-height: 0; margin-top: 2px; }
-.board-forecast > div { display: grid; align-content: center; justify-items: center; gap: 1px; border-right: 1px dotted #cbd0d6; }
+.arrival-time { display: flex; align-items: baseline; gap: 16px; min-height: 76px; padding-top: 20px; }
+.arrival-time strong { font-size: 44px; line-height: 1; }
+.arrival-time strong b { margin-left: 8px; color: #526176; font-size: 16px; font-weight: 700; letter-spacing: 0; }
+.arrival-time small { color: #5c6675; font-size: 15px; }
+.board-forecast { display: grid; grid-template-columns: repeat(5, 1fr); min-height: 0; margin-top: 8px; padding-bottom: 10px; }
+.board-forecast > div { display: grid; align-content: center; justify-items: center; gap: 6px; border-right: 1px dotted #cbd0d6; }
 .board-forecast > div:last-child { border-right: 0; }
 .board-forecast > div.is-arrival {
   border: 1px solid #d6e4f5;
   background: #f2f7ff;
 }
-.board-forecast time { font-size: 16px; }
+.board-forecast time { font-size: 18px; font-weight: 600; }
 .board-forecast > div > span { display: block; }
 .board-forecast img { display: block; width: 66px; height: 62px; object-fit: contain; }
-.board-forecast .weather-condition { font-size: 14px; }
-.board-forecast strong { font-size: 18px; }
+.board-forecast .weather-condition { color: #526176; font-size: 15px; font-weight: 600; }
+.board-forecast strong { font-size: 20px; line-height: 1; }
 .board-forecast > div.is-arrival time,
 .board-forecast > div.is-arrival strong { font-weight: 800; }
 .motion-mode-switch { display: grid; grid-template-columns: repeat(var(--motion-count, 4), 62px); gap: 5px; }
@@ -156,19 +159,25 @@ body { min-height: 100vh; overflow: hidden; }
 .next-board-button { display: flex; height: 46px; align-items: center; gap: 2px; padding: 0 10px; border: 1px solid #aeb7c3; background: #fff; color: #23334b; font: 700 11px "Noto Sans KR", sans-serif; white-space: nowrap; cursor: pointer; }
 .next-board-button svg { font-size: 22px; }
 .next-board-button:focus-visible { outline: 3px solid #2f80ed; outline-offset: 2px; }
-.board-footer {
+.screen-footer {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 0 56px;
+  gap: 24px;
+  padding: 0 24px 0 56px;
   border-top: 1px solid #cbd2dc;
-  color: #5f6b7b;
-  font-size: 12px;
+  color: #475569;
+  font-size: 16px;
 }
-.board-footer svg { font-size: 18px; }
-.board-footer b { font-weight: 500; }
-.board-footer strong { color: #1165d6; }
+.screen-footer-note { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 600; }
+.screen-footer-note svg { flex: 0 0 auto; font-size: 18px; }
+.header-weather-panel { display: grid; align-items: center; color: #071735; text-decoration: none; }
+.screen-footer .header-weather-panel { grid-template-columns: 110px auto 50px; gap: 10px; padding-left: 18px; border-left: 1px solid #cad0d8; }
+.header-weather-panel img.agency-wordmark { display: block; width: 110px; height: auto; border: 0; }
+.header-weather-panel > span { display: grid; justify-items: end; gap: 4px; text-align: right; white-space: nowrap; }
+.header-weather-panel strong { color: #24466d; font-size: 15px; font-weight: 800; }
+.header-weather-panel small { color: #526176; font-family: "Roboto Mono", monospace; font-size: 13px; font-weight: 700; }
+.header-weather-panel img { display: block; width: 50px; height: 50px; border: 1px solid #d4dbe4; }
 .board-page.is-entering { z-index: 2; background: transparent; }
 .board-page.is-entering .board-band { background: transparent; }
 .flap-unit { backface-visibility: hidden; transform-style: preserve-3d; will-change: transform, opacity; }
@@ -240,55 +249,57 @@ body { min-height: 100vh; overflow: hidden; }
 }
 
 /* Option 3 — exact horizontal forecast rail */
-.exact-rail { display: grid; grid-template-rows: 90px 1fr 57px; }
-.rail-header { display: grid; grid-template-columns: auto minmax(120px, 1fr) auto auto; align-items: center; gap: 16px; height: 90px; padding: 0 42px; border-bottom: 1px solid #cbd2dc; background: #fbfbfb; }
+.exact-rail { display: grid; grid-template-rows: 90px 1fr 70px; }
+.rail-header { position: relative; display: grid; grid-template-columns: 54px auto minmax(120px, 1fr) auto; align-items: center; gap: 16px; height: 90px; padding: 0 42px; border-bottom: 1px solid #cbd2dc; background: #fbfbfb; }
 .rail-header h1 { margin: 0; padding-right: 38px; border-right: 1px solid #cbd2dc; font-size: 43px; font-weight: 800; letter-spacing: -.04em; }
-.rail-header > span { padding-left: 34px; font-size: 12px; font-weight: 600; }
-.rail-header-actions { display: flex; align-items: center; gap: 8px; }
-.rail-header-clock { display: flex; align-items: baseline; gap: 12px; }
-.rail-header-clock small { font-size: 13px; }
-.rail-header-clock strong { font-size: 31px; }
-.rail-header-clock b { font-size: 14px; }
+.rail-header-actions { position: absolute; top: 22px; left: 66%; display: flex; align-items: center; gap: 8px; transform: translateX(-50%); }
+.rail-header-clock { position: absolute; top: auto; right: 42px; bottom: 27px; left: auto; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
+.rail-header-clock span { color: #475569; font-family: inherit; font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
+.rail-header-clock strong { color: #071735; font-family: inherit; font-size: 36px; letter-spacing: -.04em; }
 .rail-viewport { position: relative; min-height: 0; overflow: hidden; }
 .rail-page { position: absolute; inset: 0; display: grid; grid-template-rows: repeat(3, 1fr); }
 .rail-flight-row { display: grid; grid-template-columns: 33% 67%; border-bottom: 1px solid #cbd2dc; background: #fbfbfb; perspective: 900px; }
+.rail-page > .rail-flight-row:first-child .rail-flight-info h2 { margin-top: 14px; }
+.rail-page > .rail-flight-row:first-child .rail-local-clock,
+.rail-page > .rail-flight-row:first-child .rail-flight-status,
+.rail-page > .rail-flight-row:first-child .rail-stats,
+.rail-page > .rail-flight-row:first-child .timeline { transform: translateY(14px); }
 .rail-flight-info {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 110px 64px minmax(0, 1fr);
+  grid-template-rows: 108px 78px minmax(0, 1fr);
   padding: 14px 36px 12px;
   border-right: 1px solid #d3d9e1;
 }
-.rail-flight-info h2 { grid-column: 1; grid-row: 1; align-self: start; margin: 0; font-size: 56px; font-weight: 800; letter-spacing: -.05em; line-height: 1.05; white-space: nowrap; }
-.rail-flight-info h2 span { margin-left: 7px; color: #4d5a70; font-size: 31px; font-weight: 600; letter-spacing: 0; }
-.rail-local-clock { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: auto auto auto; align-self: end; align-items: baseline; justify-content: end; column-gap: 8px; row-gap: 4px; min-width: 0; text-align: right; }
-.rail-local-clock > span { color: #697282; font-size: 14px; font-weight: 600; }
-.rail-local-clock strong { color: #071735; font-family: "Roboto Mono", monospace; font-size: 28px; line-height: 1; letter-spacing: -.04em; }
-.rail-local-clock b { color: #697282; font-size: 12px; font-weight: 700; }
-.rail-local-clock small { grid-column: 1 / -1; color: #697282; font-size: 13px; white-space: nowrap; }
+.rail-flight-info h2 { grid-column: 1; grid-row: 1; align-self: start; margin: 0; font-size: 59px; font-weight: 800; letter-spacing: -.055em; line-height: 1.05; white-space: nowrap; }
+.rail-flight-info h2 span { margin-left: 10px; color: #4d5a70; font-size: 32px; font-weight: 600; letter-spacing: 0; }
+.rail-local-clock { grid-column: 1; grid-row: 1; align-self: end; justify-self: end; display: flex; align-items: baseline; gap: 6px; color: #596576; white-space: nowrap; }
+.rail-local-clock > span { font-size: 16px; font-weight: 600; }
+.rail-local-clock strong { color: #071735; font-family: "Roboto Mono", monospace; font-size: 34px; line-height: 1; letter-spacing: -.05em; }
+.rail-local-clock b { font-size: 16px; font-weight: 700; }
 .rail-flight-status { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 30px; margin: 0; padding: 7px 4px 7px 0; }
-.rail-flight-status > span { font-size: 19px; font-weight: 700; }
+.rail-flight-status > span { font-size: 25px; font-weight: 700; }
 .rail-flight-status > span:last-child { justify-self: end; }
 .rail-flight-number { display: inline-flex; align-items: center; gap: 10px; color: #071735; }
-.rail-flight-number img { display: block; width: 44px; height: 44px; object-fit: contain; mix-blend-mode: multiply; }
-.rail-flight-number strong { font-size: 34px; line-height: 1; }
+.rail-flight-number img { display: block; width: 52px; height: 52px; object-fit: contain; mix-blend-mode: multiply; }
+.rail-flight-number strong { font-size: 44px; line-height: 1; }
 .rail-flight-status .ok { color: #168b45; }
 .rail-flight-status .delay { color: #f07c19; }
 .rail-stats { grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: 1fr 1.45fr .8fr; width: 100%; margin: 0; }
-.rail-stats > div { display: grid; align-content: center; min-height: 0; padding-right: 14px; }
+.rail-stats > div { display: grid; align-content: center; row-gap: 8px; min-height: 0; padding-right: 14px; }
 .rail-stats > div + div { padding-left: 20px; border-left: 1px solid #cbd2dc; }
 .rail-stats .rail-motion-unit { display: grid; }
-.rail-stats span { color: #5a6577; font-size: 14px; }
-.rail-stats strong { font-size: 30px; }
+.rail-stats span { color: #5a6577; font-size: 20px; }
+.rail-stats strong { font-size: 44px; line-height: 1; }
 .rail-stats em { color: #f07c19; font-size: 12px; font-style: normal; font-weight: 700; }
-.timeline { --forecast-left: 180px; --forecast-right: 45px; --current-offset: calc(64px - var(--forecast-left)); position: relative; min-width: 0; }
+.timeline { --forecast-left: 45px; --forecast-right: 45px; --current-offset: calc(64px - var(--forecast-left)); position: relative; min-width: 0; }
 .timeline-arrival-grid { position: absolute; top: 17px; right: var(--forecast-right); left: var(--forecast-left); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .progress-label { display: grid; line-height: 1.15; }
-.progress-label__title { margin-bottom: 5px; color: #303b4e; font-size: 16px; font-weight: 700; }
+.progress-label__title { margin-bottom: 6px; color: #303b4e; font-size: 18px; font-weight: 700; }
 .progress-clock { display: grid; grid-template-columns: auto auto auto; align-items: baseline; justify-content: start; gap: 6px; white-space: nowrap; }
-.progress-clock > span { color: #5d6879; font-size: 14px; font-weight: 700; }
-.progress-clock strong { color: #071735; font-size: 26px; line-height: 1; }
-.progress-clock small { color: #667182; font-size: 13px; font-weight: 600; }
+.progress-clock > span { color: #5d6879; font-size: 16px; font-weight: 700; }
+.progress-clock strong { color: #071735; font-size: 34px; line-height: 1; }
+.progress-clock small { color: #667182; font-size: 14px; font-weight: 600; }
 .progress-label--arrival { grid-column: 1; width: 360px; justify-self: center; text-align: center; }
 .arrival-clocks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .arrival-clocks .progress-clock {
@@ -306,39 +317,21 @@ body { min-height: 100vh; overflow: hidden; }
 .progress-line { position: absolute; top: 1px; right: 5px; left: 10%; height: 2px; background: #94a3b8; }
 .flight-progress b { position: absolute; z-index: 2; top: -8px; left: 10%; width: 20px; height: 20px; border: 5px solid #071735; border-radius: 50%; background: #fff; transform: translateX(-50%); }
 .progress-arrow { position: absolute; top: -10px; right: -10px; color: #475569; font-size: 23px; }
-.pre-arrival-forecast {
-  position: absolute;
-  top: 126px;
-  left: calc(var(--forecast-left) + var(--current-offset) + 12px);
-  display: grid;
-  justify-items: center;
-  gap: 1px;
-  min-width: 100px;
-  transform: translateX(-50%);
-}
-.pre-arrival-values { display: grid; justify-items: center; gap: 1px; }
-.pre-arrival-forecast span { color: #667182; font-size: 13px; font-weight: 700; }
-.pre-arrival-forecast time { color: #344256; font-size: 18px; }
-.pre-arrival-forecast img { display: block; width: 72px; height: 64px; object-fit: contain; }
-.pre-arrival-forecast .weather-condition { font-size: 14px; }
-.pre-arrival-forecast strong { font-size: 20px; }
-.timeline-forecast { position: absolute; top: 104px; right: var(--forecast-right); left: var(--forecast-left); display: grid; grid-template-columns: repeat(5, 1fr); height: 160px; }
+.timeline-forecast { position: absolute; top: 104px; right: var(--forecast-right); left: var(--forecast-left); display: grid; grid-template-columns: repeat(5, 1fr); height: 176px; }
 .timeline-forecast > div { position: relative; display: grid; justify-items: center; align-content: start; gap: 1px; padding-top: 34px; }
 .rail-forecast-content { display: grid; justify-items: center; gap: 1px; }
 .timeline-forecast > div.is-arrival {
   border: 1px solid #d6e4f5;
   background: #f2f7ff;
 }
-.timeline-forecast time { color: #344256; font-size: 18px; }
-.timeline-forecast img { display: block; width: 72px; height: 64px; object-fit: contain; }
-.timeline-forecast .weather-condition { font-size: 14px; }
+.timeline-forecast time { color: #344256; font-size: 22px; }
+.timeline-forecast img { display: block; width: 84px; height: 74px; object-fit: contain; }
+.timeline-forecast .weather-condition { font-size: 16px; }
 .timeline-forecast > div.is-arrival time,
 .timeline-forecast > div.is-arrival strong { font-weight: 800; }
-.timeline-forecast strong { font-size: 20px; }
-.exact-rail footer { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 0 38px; color: #667182; font-size: 9px; }
-.exact-rail footer svg { font-size: 16px; }
-.exact-rail footer b { font-weight: 400; }
-.exact-rail footer strong { color: #1165d6; }
+.timeline-forecast strong { font-size: 24px; }
+.rail-footer { padding: 0 24px 0 38px; color: #475569; font-size: 16px; }
+.rail-footer .screen-footer-note svg { font-size: 16px; }
 .rail-page.is-entering { z-index: 2; background: transparent; }
 .rail-motion-cascade .rail-page.is-entering .rail-flight-row { animation: exact-row-in 900ms cubic-bezier(.18,.78,.18,1) both; animation-delay: calc(var(--order) * 120ms); }
 .rail-motion-cascade .rail-page.is-leaving .rail-flight-row { animation: exact-row-out 760ms cubic-bezier(.36,0,.4,1) both; animation-delay: calc(var(--order) * 80ms); }

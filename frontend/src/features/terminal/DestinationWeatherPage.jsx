@@ -4,7 +4,8 @@ import { WiCloud, WiCloudy, WiDayCloudy, WiDaySunny, WiRain, WiShowers, WiThunde
 import clearNight from "../../assets/weather-icons/basmilius/clear-night.svg";
 import fewCloudsNight from "../../assets/weather-icons/basmilius/few-clouds-night.svg";
 import boardAf from "./assets/board-af.png";
-import boardHeaderPlane from "./assets/board-header-plane.png";
+import amoWordmark from "./assets/amo-wordmark.png";
+import airportWeatherQr from "./assets/airport-weather-qr.svg";
 import boardJal from "./assets/board-jal.png";
 import boardSq from "./assets/board-sq.png";
 import forecastCloud from "./assets/forecast-cloud-transparent.png";
@@ -208,7 +209,8 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
   const bandStyle = (band) => ({ "--band": band, "--column": columnIndex });
   const rollStyle = (item) => ({ "--item": item });
   const [localDate, localTime] = flight.localClock.split(" ");
-  const [kstDate, kstTime] = flight.kstClock.split(" ");
+  const [kstDate] = flight.kstClock.split(" ");
+  const showLocalDate = localDate !== kstDate;
   return (
     <article className="board-column">
       <div className="board-band" style={bandStyle(0)}>
@@ -219,12 +221,6 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
                 <span className="destination-name roll-unit flap-unit" style={rollStyle(0)}>{flight.displayName}</span>{" "}
                 <span className="destination-code roll-unit flap-unit" style={rollStyle(1)}>{flight.code}</span>
               </h2>
-              <div className="board-destination-meta">
-                <div className="destination-clock roll-unit flap-unit" style={rollStyle(3)}>
-                  <span>현지 시각</span><strong>{localTime}</strong><b>{flight.localZone}</b>
-                  <small>{localDate} · 한국 {kstTime} KST</small>
-                </div>
-              </div>
             </div>
           </div>
           <div className="board-divider" />
@@ -234,9 +230,13 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
         <div className="board-band-surface">
           <div className="airline-block">
             <div className="roll-unit flap-unit" style={rollStyle(0)}><AirlineLogo flight={flight} /></div>
-            <div>
+            <div className="airline-flight-meta">
               <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.flight}</strong>
               <span className="roll-unit flap-unit" style={rollStyle(2)}>{flight.airline}</span>
+            </div>
+            <div className="operation-status">
+              <i className="roll-unit flap-unit" style={rollStyle(3)} />
+              <strong className="roll-unit flap-unit" style={rollStyle(4)}>{flight.status}</strong>
             </div>
           </div>
           <div className="board-divider" />
@@ -246,7 +246,7 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
         <div className="board-band-surface">
           <div className="schedule-grid">
             <div>
-              <span className="roll-unit" style={rollStyle(0)}>출발 예정</span>
+              <span className="roll-unit" style={rollStyle(0)}>출발</span>
               <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.departure}</strong>
             </div>
             <div>
@@ -259,21 +259,14 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
       </div>
       <div className="board-band" style={bandStyle(3)}>
         <div className="board-band-surface">
-          <div className="operation-status">
-            <span className="roll-unit" style={rollStyle(0)}>운항 상태</span>
-            <i className="roll-unit flap-unit" style={rollStyle(1)} />
-            <strong className="roll-unit flap-unit" style={rollStyle(2)}>{flight.status}</strong>
+          <div className="current-weather-heading">
+            <p className="section-label" style={{ "--weather-city-slot": weatherCitySlot }}>
+              <span className="weather-title roll-unit flap-unit" style={rollStyle(0)}>{flight.city} 현재 날씨</span>
+            </p>
+            <div className="current-weather-clock roll-unit flap-unit" style={rollStyle(2)}>
+              <div className="local-clock-main"><span>현지 시각</span>{showLocalDate && <time>{localDate}</time>}<strong>{localTime}</strong><b>{flight.localZone}</b></div>
+            </div>
           </div>
-          <div className="board-divider" />
-        </div>
-      </div>
-      <div className="board-band" style={bandStyle(4)}>
-        <div className="board-band-surface">
-          <p className="section-label" style={{ "--weather-city-slot": weatherCitySlot }}>
-            <span className="roll-unit" style={rollStyle(0)}>현재</span>{" "}
-            <span className="roll-unit flap-unit" style={rollStyle(1)}>{flight.city}</span>{" "}
-            <span className="roll-unit" style={rollStyle(2)}>날씨</span>
-          </p>
           <div className="current-weather">
             <div className="temperature">
               <span className="weather-icon-stack roll-unit flap-unit" style={rollStyle(3)}>
@@ -291,12 +284,12 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
           <div className="board-divider" />
         </div>
       </div>
-      <div className="board-band" style={bandStyle(5)}>
+      <div className="board-band" style={bandStyle(4)}>
         <div className="board-band-surface">
           <div className="arrival-time">
-            <span className="roll-unit" style={rollStyle(0)}>도착 예정</span>
-            <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.arrival}</strong>
-            <small className="roll-unit flap-unit" style={rollStyle(2)}>(현지 시각 · 한국 {flight.arrivalKst} KST)</small>
+            <span className="roll-unit" style={rollStyle(0)}>도착</span>
+            <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.arrival}<b>{flight.localZone}</b></strong>
+            <small className="roll-unit flap-unit" style={rollStyle(2)}>(한국 {flight.arrivalKst}KST)</small>
           </div>
           <div className="board-forecast">
             {flight.forecast.map(([time, icon, temp], index) => (
@@ -327,13 +320,27 @@ function PageIndicator({ currentPage, pageCount }) {
   return (
     <div
       className="page-indicator"
-      role="status"
-      aria-label={`${pageCount}페이지 중 ${currentPage + 1}페이지`}
+      role="img"
+      aria-label={`${currentPage + 1} / ${pageCount} 페이지`}
     >
       {Array.from({ length: pageCount }, (_, index) => (
         <i className={index === currentPage ? "is-current" : ""} aria-hidden="true" key={index} />
       ))}
     </div>
+  );
+}
+
+function AgencyMascot() {
+  return <img className="agency-mascot" src="/gisang-i/clear_3_avatar.png" alt="항공기상청 기상이" />;
+}
+
+function HeaderWeatherPanel({ showWordmark = false }) {
+  return (
+    <a className="header-weather-panel" href="https://amo.kma.go.kr/weather/airport.do">
+      {showWordmark && <img className="agency-wordmark" src={amoWordmark} alt="책임운영기관 항공기상청" />}
+      <span><strong>해외 공항 상세 날씨</strong><small>amo.kma.go.kr</small></span>
+      <img src={airportWeatherQr} alt="해외 공항 상세 날씨 QR 코드" />
+    </a>
   );
 }
 
@@ -375,8 +382,8 @@ function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage
     <section className={`exact-screen exact-board motion-${motionMode}`} data-testid="option-one">
       <PageIndicator currentPage={currentPage} pageCount={pageCount} />
       <header className="board-header">
-        <img src={boardHeaderPlane} alt="" aria-hidden="true" />
-        <h1>곧 출발하는 항공편 · 목적지 날씨</h1>
+        <AgencyMascot />
+        <h1>출발 항공편 · 도착지 날씨</h1>
         <div className="board-header-actions">
           <ViewSwitcher view="board" onSelectView={onSelectView} />
           <MotionModeSwitcher motionMode={motionMode} onSelectMotion={onSelectMotion} />
@@ -384,7 +391,7 @@ function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage
             <MdChevronRight /><span>다음 3편</span>
           </button>
         </div>
-        <div className="board-header-clock"><span>한국 시각</span><strong>06:32</strong><small>2026-07-30 (목) · KST</small></div>
+        <div className="board-header-clock"><span>2026.07.30 (목)</span><strong>06:32</strong></div>
       </header>
       <div className="board-viewport">
         <div className={`board-page ${transitioning ? "is-leaving" : ""}`}>
@@ -414,10 +421,9 @@ function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage
           </div>
         )}
       </div>
-      <footer className="board-footer">
-        <MdInfoOutline />
-        <span>도착 현지 시간 기준 · 예보는 참고용이며, 실제 날씨와 다를 수 있습니다.</span>
-        <b>다음 업데이트&nbsp;&nbsp; <strong>06:45</strong>&nbsp; KST</b>
+      <footer className="screen-footer board-footer">
+        <div className="screen-footer-note"><MdInfoOutline /><span>도착 현지 시간 기준 · 예보는 참고용이며, 실제 날씨와 다를 수 있습니다.</span></div>
+        <HeaderWeatherPanel showWordmark />
       </footer>
     </section>
   );
@@ -462,15 +468,6 @@ function ForecastTimeline({ flight }) {
         <i className="progress-dots" /><i className="progress-line" /><b />
         <MdChevronRight className="progress-arrow" />
       </div>
-      <div className="pre-arrival-forecast">
-        <span>도착 1시간 전</span>
-        <div className="pre-arrival-values rail-motion-unit" style={{ "--rail-item": 11 }}>
-          <time>{flight.preArrival[0]}</time>
-          <RailWeatherImage type={flight.preArrival[1]} />
-          <WeatherCondition type={flight.preArrival[1]} />
-          <strong>{flight.preArrival[2]}</strong>
-        </div>
-      </div>
       <div className="timeline-forecast">
         {flight.forecast.map(([time, icon, temp], index) => (
           <div
@@ -491,18 +488,12 @@ function ForecastTimeline({ flight }) {
 }
 
 function RailRow({ flight, index }) {
-  const [localDate, localTime] = flight.localClock.split(" ");
-  const [, kstTime] = flight.kstClock.split(" ");
+  const [, localTime] = flight.localClock.split(" ");
   return (
     <article className="rail-flight-row" style={{ "--order": index }}>
       <div className="rail-flight-info">
         <h2 className="rail-motion-unit" style={{ "--rail-item": 0 }}>{flight.city} <span>{flight.code}</span></h2>
-        <div className="rail-local-clock">
-          <span>현지 시각</span>
-          <strong className="rail-motion-unit" style={{ "--rail-item": 1 }}>{localTime}</strong>
-          <b className="rail-motion-unit" style={{ "--rail-item": 2 }}>{flight.localZone}</b>
-          <small className="rail-motion-unit" style={{ "--rail-item": 3 }}>{localDate} · 한국 {kstTime} KST</small>
-        </div>
+        <div className="rail-local-clock"><span>현지 시각</span><strong>{localTime}</strong><b>{flight.localZone}</b></div>
         <div className="rail-flight-status">
           <span className="rail-flight-number rail-motion-unit" style={{ "--rail-item": 4 }}>
             <img src={flight.logo} alt={`${flight.airline} 로고`} />
@@ -532,7 +523,8 @@ function RailScreen({
     <section className={`exact-screen exact-rail rail-motion-${motionMode}`} data-testid="option-three">
       <PageIndicator currentPage={currentPage} pageCount={pageCount} />
       <header className="rail-header">
-        <h1>곧 출발 · 도착지 예보</h1><span>도착 현지 시간 기준 예보</span>
+        <AgencyMascot />
+        <h1>출발 항공편 · 도착지 날씨</h1>
         <div className="rail-header-actions">
           <ViewSwitcher view="rail" onSelectView={onSelectView} />
           <MotionModeSwitcher
@@ -545,7 +537,7 @@ function RailScreen({
             <MdChevronRight /><span>다음 3편</span>
           </button>
         </div>
-        <div className="rail-header-clock"><small>7월 30일 (목)</small><strong>09:15</strong><b>KST</b></div>
+        <div className="rail-header-clock"><span>2026.07.30 (목)</span><strong>09:15</strong></div>
       </header>
       <div className="rail-viewport">
         <div className={`rail-page ${transitioning ? "is-leaving" : ""}`}>
@@ -557,7 +549,10 @@ function RailScreen({
           </div>
         )}
       </div>
-      <footer><MdInfoOutline /><span>도착 현지 시간 기준 · 예보는 참고용이며, 실제 날씨와 다를 수 있습니다.</span><b>다음 업데이트&nbsp;&nbsp; <strong>09:30</strong>&nbsp; KST</b></footer>
+      <footer className="screen-footer rail-footer">
+        <div className="screen-footer-note"><MdInfoOutline /><span>도착 현지 시간 기준 · 예보는 참고용이며, 실제 날씨와 다를 수 있습니다.</span></div>
+        <HeaderWeatherPanel showWordmark />
+      </footer>
     </section>
   );
 }
