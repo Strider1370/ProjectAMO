@@ -71,7 +71,7 @@ test('rail renderer puts the arrival forecast before its later forecast cells', 
   assert.ok(railSource.indexOf('data-section="arrival"') < railSource.indexOf('data-section="future-forecast"'))
 })
 
-test('deprecated rail facade retains stationary rows while values own motion boundaries', () => {
+test('rail presentation retains stationary rows while values own motion boundaries', () => {
   assert.match(railSource, /import AnimatedValue from '\.\.\/motion\/AnimatedValue\.jsx'/)
   assert.doesNotMatch(railSource, /rail-motion-unit/)
   assert.match(css, /\.rail-motion-cascade \.rail-page\.is-entering \[data-terminal-motion-value\]/)

@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
+const app = readFileSync(new URL('../../app/App.jsx', import.meta.url), 'utf8')
 const page = readFileSync(new URL('./TerminalPage.jsx', import.meta.url), 'utf8')
 const boardView = readFileSync(new URL('./components/BoardView.jsx', import.meta.url), 'utf8')
 const railView = readFileSync(new URL('./components/RailView.jsx', import.meta.url), 'utf8')
@@ -16,6 +17,17 @@ test('TerminalPage owns the URL, fixture seam, pager, and current board/rail pre
   assert.match(page, /\? <main className="prototype-shell"><BoardView \{\.\.\.screenProps\} \/><\/main>/)
   assert.match(page, /: <main className="prototype-shell"><RailView \{\.\.\.screenProps\} \/><\/main>/)
   assert.doesNotMatch(page, /DestinationWeatherPage/)
+})
+
+test('/terminal은 정식 feature entry만 lazy-load한다', () => {
+  assert.match(app, /features\/terminal\/TerminalPage\.jsx/)
+  assert.match(app, /if \(window\.location\.pathname === '\/terminal'\) \{\s+return <Suspense fallback=\{null\}><TerminalPage \/><\/Suspense>/)
+  assert.doesNotMatch(app, /prototypes\/|DestinationWeatherPage/)
+  assert.doesNotMatch(page, /prototypes\/|DestinationWeatherPage/)
+  assert.equal(existsSync(new URL('./DestinationWeatherPage.jsx', import.meta.url)), false)
+  assert.equal(existsSync(new URL('../../../../prototypes/destination-weather-comparison/', import.meta.url)), false)
+  assert.equal(existsSync(new URL('../../../../prototypes/destination-weather-comparison/src/App.jsx', import.meta.url)), false)
+  assert.equal(existsSync(new URL('../../../../prototypes/destination-weather-comparison/vite.config.mjs', import.meta.url)), false)
 })
 
 test('TerminalPage validates motion modes and cancels pending motion replay frames', () => {
