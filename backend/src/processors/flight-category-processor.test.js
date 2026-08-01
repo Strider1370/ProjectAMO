@@ -1,7 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyVisibility, buildVisibilityGeoJson } from './flight-category-processor.js'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { classifyVisibility, buildVisibilityGeoJson, loadCtpsMask } from './flight-category-processor.js'
 import { SFC_W, SFC_H } from '../parsers/sfc-grid-parser.js'
+import { encodeCtpsBinary } from './convective-satellite-model.js'
 
 test('시정 밴드 경계값', () => {
   assert.equal(classifyVisibility(2999), 'severe')
@@ -27,4 +31,34 @@ test('clear 구역은 폴리곤을 만들지 않는다', () => {
   const bands = buildVisibilityGeoJson(grid).features.map((f) => f.properties.band)
   assert.ok(bands.includes('severe'))
   assert.ok(!bands.includes('clear'))
+})
+
+function makeRoot(tm, cloudy) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ctps-'))
+  const dir = path.join(root, 'satellite', 'convective')
+  fs.mkdirSync(dir, { recursive: true })
+  const size = 900 * 900
+  fs.writeFileSync(path.join(dir, `ctps_${tm}.bin`), encodeCtpsBinary({
+    attrs: { width: 900, height: 900, pixelSize: 2000, ulEasting: -899000, ulNorthing: 899000 },
+    heightFt: new Uint32Array(size).fill(cloudy ? 12000 : 4294967295),
+    temperatureCentiC: new Int16Array(size).fill(cloudy ? -1000 : 32767),
+    quality: new Uint8Array(size).fill(cloudy ? 0 : 255),
+  }))
+  fs.writeFileSync(path.join(dir, 'convective_meta.json'), JSON.stringify({ frames: [{ tm }], latest: { tm } }))
+  return root
+}
+
+test('저장본이 없으면 null', () => {
+  assert.equal(loadCtpsMask(fs.mkdtempSync(path.join(os.tmpdir(), 'empty-'))), null)
+})
+
+test('구름 있는 프레임에서 국내 좌표는 clear가 아니다', () => {
+  const mask = loadCtpsMask(makeRoot('202608010300', true))
+  assert.equal(mask.frameTm, '202608010300')
+  assert.equal(mask.isClearAt(37.5, 127.0), false)
+})
+
+test('무효 픽셀은 clear로 본다', () => {
+  const mask = loadCtpsMask(makeRoot('202608010300', false))
+  assert.equal(mask.isClearAt(37.5, 127.0), true)
 })

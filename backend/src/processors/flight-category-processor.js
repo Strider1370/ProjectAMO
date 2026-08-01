@@ -1,9 +1,12 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import config from '../config.js'
 import store from '../store.js'
 import { idwInterpolate } from '../lib/idw.js'
 import { parseSfcAscii, sfcPixelToLatLon, SFC_W, SFC_H } from '../parsers/sfc-grid-parser.js'
 import { ctpsIndexForLatLon } from '../lib/ctps-grid.js'
-import { parseCtpsNC } from '../parsers/satellite-parser.js'
+import { convectiveDir, readConvectiveMeta } from './convective-satellite-store.js'
+import { decodeCtpsRecord } from './convective-satellite-model.js'
 import { contours } from 'd3-contour'
 import { simplify } from '@turf/simplify'
 
@@ -85,19 +88,33 @@ async function fetchSfcVis() {
   })
 }
 
-async function fetchCtps() {
-  const tm = formatUtcTm(20 * 60 * 1000)
-  const url = `${config.flight_category.ctps_url}?date=${tm}&authKey=${config.api.radar_satellite_auth_key}`
-  return withTimeout(async (signal) => {
-    const res = await fetch(url, { signal })
-    if (!res.ok) throw new Error(`CTPS HTTP ${res.status}`)
-    const buf = Buffer.from(await res.arrayBuffer())
-    return parseCthBuffer(buf)
-  })
-}
-
-async function parseCthBuffer(buf) {
-  return (await parseCtpsNC(buf)).cth
+/**
+ * 위성 프로세서가 발행한 최신 CTPS 이진을 읽어 "구름 없음" 조회기를 만든다.
+ * 별도 수집하지 않는다 — 이미 5분 주기로 받고 있는 자료다.
+ */
+export function loadCtpsMask(root) {
+  const tm = readConvectiveMeta(root)?.latest?.tm
+  if (!tm) return null
+  const file = path.join(convectiveDir(root), `ctps_${tm}.bin`)
+  if (!fs.existsSync(file)) return null
+  let buffer
+  try {
+    buffer = fs.readFileSync(file)
+  } catch {
+    return null
+  }
+  return {
+    frameTm: tm,
+    isClearAt(lat, lon) {
+      const idx = ctpsIndexForLatLon(lat, lon)
+      if (idx === null) return true
+      try {
+        return decodeCtpsRecord(buffer, idx) === null
+      } catch {
+        return true
+      }
+    },
+  }
 }
 
 function getAmosCeilingPoints() {
