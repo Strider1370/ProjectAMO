@@ -900,6 +900,8 @@
   min-width: 0;
 }
 
+.map-legends-bottom .flight-category-legend-controls { display: flex; gap: var(--space-xs); }
+
 .map-view-wrapper .radar-motion-control {
   display: grid;
   gap: 4px;
