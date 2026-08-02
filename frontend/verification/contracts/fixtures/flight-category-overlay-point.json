@@ -1,0 +1,15 @@
+{
+  "lat": 37.3,
+  "lon": 127.5,
+  "vis_m": 4200,
+  "vis_band": "below",
+  "ceil_ft": null,
+  "ceil_band": "missing",
+  "vis_trend": null,
+  "nearest_station": {
+    "id": "fx_caution_ring", "name": "픽스주황링", "source": "ASOS",
+    "distance_km": 3.2,
+    "ceiling_ft": 2000, "model_ceiling_ft": 3500, "diff_ft": -1500,
+    "sky_clear": false, "visibility_m": 4500, "obs_tm": "202608021600"
+  }
+}

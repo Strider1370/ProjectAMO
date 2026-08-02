@@ -1,0 +1,52 @@
+{
+  "type": "flight_category_overlay",
+  "fetched_at": "2026-08-02T08:58:30.000Z",
+  "computed_at": "2026-08-02T08:58:00.000Z",
+  "visibility": {
+    "geojson": {
+      "type": "FeatureCollection",
+      "features": [
+        { "type": "Feature", "properties": { "band": "severe", "color": "#dc2626" },
+          "geometry": { "type": "Polygon", "coordinates": [[[126.4, 37.2], [126.6, 37.2], [126.6, 37.4], [126.4, 37.4], [126.4, 37.2]]] } },
+        { "type": "Feature", "properties": { "band": "below", "color": "#f97316" },
+          "geometry": { "type": "Polygon", "coordinates": [[[127.4, 37.2], [127.6, 37.2], [127.6, 37.4], [127.4, 37.4], [127.4, 37.2]]] } },
+        { "type": "Feature", "properties": { "band": "marginal", "color": "#fde047" },
+          "geometry": { "type": "Polygon", "coordinates": [[[128.4, 37.2], [128.6, 37.2], [128.6, 37.4], [128.4, 37.4], [128.4, 37.2]]] } },
+        { "type": "Feature", "properties": { "band": "missing", "color": "#9ca3af" },
+          "geometry": { "type": "Polygon", "coordinates": [[[129.4, 37.2], [129.6, 37.2], [129.6, 37.4], [129.4, 37.4], [129.4, 37.2]]] } }
+      ]
+    }
+  },
+  "ceiling": {
+    "geojson": {
+      "type": "FeatureCollection",
+      "features": [
+        { "type": "Feature", "properties": { "band": "low", "color": "#dc2626" },
+          "geometry": { "type": "Polygon", "coordinates": [[[126.4, 36.6], [126.6, 36.6], [126.6, 36.8], [126.4, 36.8], [126.4, 36.6]]] } },
+        { "type": "Feature", "properties": { "band": "mid", "color": "#f97316" },
+          "geometry": { "type": "Polygon", "coordinates": [[[127.4, 36.6], [127.6, 36.6], [127.6, 36.8], [127.4, 36.8], [127.4, 36.6]]] } }
+      ]
+    }
+  },
+  "stations": [
+    { "id": "fx_severe_ring", "name": "픽스빨강링", "source": "ASOS", "lat": 37.3, "lon": 126.5,
+      "ceiling_ft": 800, "model_ceiling_ft": null, "diff_ft": null,
+      "sky_clear": false, "visibility_m": 1200, "obs_tm": "202608021600" },
+    { "id": "fx_caution_ring", "name": "픽스주황링", "source": "ASOS", "lat": 37.6, "lon": 126.9,
+      "ceiling_ft": 2000, "model_ceiling_ft": 3500, "diff_ft": -1500,
+      "sky_clear": false, "visibility_m": 4500, "obs_tm": "202608021600" },
+    { "id": "fx_good", "name": "픽스초록", "source": "AMOS", "lat": 37.6, "lon": 127.9,
+      "ceiling_ft": null, "model_ceiling_ft": null, "diff_ft": null,
+      "sky_clear": true, "visibility_m": 9999, "obs_tm": "202608021600" },
+    { "id": "fx_missing", "name": "픽스결측", "source": "ASOS", "lat": 37.6, "lon": 128.9,
+      "ceiling_ft": null, "model_ceiling_ft": null, "diff_ft": null,
+      "sky_clear": false, "visibility_m": null, "obs_tm": "202608021600" }
+  ],
+  "trend": { "hours": 3, "vis_delta": [] },
+  "sources": {
+    "kim": { "run": "2026080106", "hf": 0 },
+    "ctps": { "frame_tm": "202608021655" },
+    "missing_ratio": 0.1,
+    "stations": { "tm": "202608021600", "asos": 3, "amos": 1 }
+  }
+}

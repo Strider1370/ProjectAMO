@@ -45,6 +45,8 @@ function WeatherLegends({
   flightCategoryLegendVisible = false,
   flightCategoryVisibilityOn = false,
   flightCategoryBands = [],
+  flightCategoryStationLegendVisible = false,
+  flightCategoryStationBands = [],
   flightCategoryStationCount = null,
   showFlightCategoryMissing = false,
   onShowFlightCategoryMissingChange,
@@ -318,6 +320,13 @@ function WeatherLegends({
         ? [...flightCategoryBands, { label: '자료 없음', color: '#9ca3af' }]
         : flightCategoryBands,
       note: '색 없음 = 기준 충족 또는 자료 없음',
+    },
+    // 점 색의 뜻(빨강·주황·초록)과 흰 테두리(관측이 모델보다 낮음)를 알려준다.
+    // 게이트는 지점 층이 실제로 그려지는 조건(showFlightCategoryStations && (시정 또는 운고))과 같다.
+    flightCategoryStationLegendVisible && {
+      key: 'fcStations', title: '관측지점',
+      entries: flightCategoryStationBands,
+      note: '흰 테두리 = 관측이 모델보다 낮음',
     },
     windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
     temperatureLegendVisible && { key: 'temp', title: '기온 · °C', entries: temperatureLegendEntries },

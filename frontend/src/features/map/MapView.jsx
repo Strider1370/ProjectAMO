@@ -86,6 +86,7 @@ import {
   syncFlightCategoryLayers,
   removeFlightCategoryLayers,
   bindFlightCategoryClick,
+  STATION_COLORS,
 } from '../weather-overlays/lib/flightCategoryLayers.js'
 import { escapeHtml } from '../../shared/ui/escapeHtml.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
@@ -233,6 +234,14 @@ const FLIGHT_CATEGORY_LEGEND_BANDS = [
   { label: '3 km 미만', color: '#dc2626' },
   { label: '3~5 km', color: '#f97316' },
   { label: '5~7 km', color: '#fde047' },
+]
+
+// 지점 색은 flightCategoryLayers.js의 STATION_COLORS를 그대로 쓴다 — 여기서 리터럴로
+// 다시 적으면 그 파일의 STATION_FILL이 바뀔 때 범례만 예전 색에 머무는 거짓말이 생긴다.
+const FLIGHT_CATEGORY_STATION_LEGEND_BANDS = [
+  { label: '450 m 미만', color: STATION_COLORS.severe },
+  { label: '450~900 m', color: STATION_COLORS.caution },
+  { label: '900 m 초과·구름 없음', color: STATION_COLORS.good },
 ]
 
 // 선택 공항 중심 낙뢰 접근 확인용 거리(km) 점선 원. ponytail: km 라벨 텍스트만, 회전/자북 보정 없음.
@@ -1733,6 +1742,8 @@ const MapView = forwardRef(function MapView({
           flightCategoryLegendVisible={!!(metVisibility.visibility || metVisibility.ceiling)}
           flightCategoryVisibilityOn={!!metVisibility.visibility}
           flightCategoryBands={FLIGHT_CATEGORY_LEGEND_BANDS}
+          flightCategoryStationLegendVisible={showFlightCategoryStations && !!(metVisibility.visibility || metVisibility.ceiling)}
+          flightCategoryStationBands={FLIGHT_CATEGORY_STATION_LEGEND_BANDS}
           flightCategoryStationCount={flightCategory.hasData ? fcStamps.stationCount : null}
           showFlightCategoryMissing={showFlightCategoryMissing}
           onShowFlightCategoryMissingChange={setShowFlightCategoryMissing}

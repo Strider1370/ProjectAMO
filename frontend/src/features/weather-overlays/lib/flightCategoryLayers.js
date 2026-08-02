@@ -25,7 +25,12 @@ const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 // backend/src/processors/flight-category/ceiling-kim.js의 밴드 색과 같아야 한다.
 // 프런트가 값을 따로 들고 있는 이유는 지점 속성이 'color'가 아니라 'fill'이기 때문 —
 // 백엔드 색이 바뀌면 여기도 같이 바꿔야 점과 면이 어긋나지 않는다.
-const STATION_FILL = ['match', ['get', 'fill'], 'severe', '#dc2626', 'caution', '#f97316', 'good', '#16a34a', 'rgba(0,0,0,0)']
+// 범례(MapView.jsx의 FLIGHT_CATEGORY_STATION_LEGEND_BANDS)도 이 값을 그대로 가져다 쓴다 —
+// 다른 곳에 같은 색을 리터럴로 다시 적지 않는다.
+export const STATION_COLORS = { severe: '#dc2626', caution: '#f97316', good: '#16a34a' }
+const STATION_FILL = ['match', ['get', 'fill'],
+  'severe', STATION_COLORS.severe, 'caution', STATION_COLORS.caution, 'good', STATION_COLORS.good,
+  'rgba(0,0,0,0)']
 // ['get']을 조건으로 쓸 때는 boolean으로 감싼다 — 속성이 없으면 표현식이 던진다.
 const HAS_RING = ['boolean', ['get', 'ring'], false]
 
@@ -93,7 +98,10 @@ function rowsHtml(lines) {
       <div style="display:flex;gap:8px;font-size:12px;line-height:1.7;${l.alert ? 'color:#dc2626;font-weight:700' : 'color:#1e293b'}">
         <span style="width:34px;color:#64748b;font-weight:600">${escapeHtml(l.label)}</span>
         <span>${escapeHtml(l.value)}</span>
-        ${l.note ? `<span style="color:#64748b">${escapeHtml(l.note)}</span>` : ''}
+        ${/* 강조된 줄에서는 주석도 줄 색을 따라간다 — 회색을 강제하면 값만 빨갛고
+             관측소 이름·거리는 회색으로 남아 "그 줄을 눈에 띄게 한다"는 스펙 §4.2가
+             반만 지켜진다. */ ''}
+        ${l.note ? `<span${l.alert ? '' : ' style="color:#64748b"'}>${escapeHtml(l.note)}</span>` : ''}
       </div>`).join('')
 }
 
