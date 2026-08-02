@@ -879,6 +879,9 @@ app.get('/api/weather/flight-category-overlay/point', (req, res) => {
           ceiling_ft: stn.ceiling_ft,
           model_ceiling_ft: stn.model_ceiling_ft,
           diff_ft: stn.diff_ft,
+          sky_clear: stn.sky_clear,
+          visibility_m: stn.visibility_m,
+          obs_tm: stn.obs_tm,
         }
       }
     }

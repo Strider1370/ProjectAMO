@@ -73,7 +73,10 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
           }
         }
 
-        const diffFt = modelCeilingFt !== null ? sta.ceiling_ft - modelCeilingFt : null
+        // sta.ceiling_ft가 null(구름 없음)이면 잴 운고가 없다 — diff도 없다.
+        // null - modelCeilingFt는 JS에서 0으로 강제 변환돼 -modelCeilingFt라는
+        // 지어낸 값이 나가 버린다.
+        const diffFt = modelCeilingFt !== null && sta.ceiling_ft !== null ? sta.ceiling_ft - modelCeilingFt : null
 
         stations.push({
           id: `asos_${sta.stn}`,
@@ -84,6 +87,9 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
           ceiling_ft: sta.ceiling_ft,
           model_ceiling_ft: modelCeilingFt,
           diff_ft: diffFt,
+          sky_clear: sta.sky_clear ?? false,
+          visibility_m: sta.visibility_m ?? null,
+          obs_tm: asos.tm,
         })
       }
     }
@@ -94,9 +100,11 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
   if (amos && amos.airports && typeof amos.airports === 'object') {
     for (const [icao, airport] of Object.entries(amos.airports)) {
       const cloudMinM = airport?.observation?.cloud_min_m
-      if (typeof cloudMinM !== 'number' || cloudMinM === -9 || cloudMinM >= 25000) {
-        continue // Exclude missing (-9) and NSC (>=25000)
+      if (typeof cloudMinM !== 'number' || cloudMinM === -9) {
+        continue // 결측 — 관측소가 값을 못 내고 있다, 그리지 않는다
       }
+      // NSC(>=25000 ft 환산)는 ASOS와 같은 기준으로 구름 없음(초록)으로 남긴다.
+      const skyClear = Math.round(cloudMinM * 3.28084) >= 25000
 
       // config.airports는 ICAO를 키로 갖는 객체가 아니라 배열이다.
       // `config.airports[icao]`로 찾으면 전부 undefined가 되어 AMOS가 통째로 빠진다.
@@ -112,8 +120,9 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
 
       if (isNear(lat, lon)) continue
 
-      // Convert AMOS ceiling from metres to feet
-      const ceilingFt = Math.round(cloudMinM * 3.28084)
+      // Convert AMOS ceiling from metres to feet. NSC는 잴 운고가 없다 — ASOS와
+      // 같이 ceiling_ft를 null로 둔다(sky_clear로 표시).
+      const ceilingFt = skyClear ? null : Math.round(cloudMinM * 3.28084)
 
       // Sample model ceiling (from masked grid)
       let modelCeilingFt = null
@@ -124,7 +133,7 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
         }
       }
 
-      const diffFt = modelCeilingFt !== null ? ceilingFt - modelCeilingFt : null
+      const diffFt = modelCeilingFt !== null && ceilingFt !== null ? ceilingFt - modelCeilingFt : null
 
       stations.push({
         id: `amos_${icao}`,
@@ -135,6 +144,11 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
         ceiling_ft: ceilingFt,
         model_ceiling_ft: modelCeilingFt,
         diff_ft: diffFt,
+        sky_clear: skyClear,
+        // 활주로 좌/우 시정 중 어느 쪽을 대표값으로 쓸지는 이번 범위 밖이다
+        // (스펙 §5). 값을 지어내지 않고 null로 둔다.
+        visibility_m: null,
+        obs_tm: airport?.observation?.observed_tm_kst ?? null,
       })
     }
   }
