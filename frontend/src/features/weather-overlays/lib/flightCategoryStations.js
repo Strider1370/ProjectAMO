@@ -3,7 +3,7 @@
 // 백엔드 Task 9에서 실제로 났던 오류다.
 const M_TO_FT = 3.28084
 export const LOW_FT = 450 * M_TO_FT      // 1476
-const MID_FT = 900 * M_TO_FT      // 2953
+export const MID_FT = 900 * M_TO_FT      // 2953
 export const RING_MIN_DIFF_FT = 200
 
 function band(ceilFt) {

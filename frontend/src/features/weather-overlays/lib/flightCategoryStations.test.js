@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { stationMarkerStyle, toStationFeatures, LOW_FT, RING_MIN_DIFF_FT } from './flightCategoryStations.js'
+import { stationMarkerStyle, toStationFeatures, LOW_FT, MID_FT, RING_MIN_DIFF_FT } from './flightCategoryStations.js'
 
 const stn = (over) => ({
   id: 'asos_1', name: '시험', source: 'ASOS', lat: 37, lon: 127,
@@ -58,12 +58,10 @@ test('좌표와 표식 속성을 실어 보낸다', () => {
 })
 
 test('900 m 경계값은 caution이다 (900 m 이하는 mid)', () => {
-  const MID_FT = 900 * 3.28084
   assert.equal(stationMarkerStyle(stn({ ceiling_ft: MID_FT })).fill, 'caution')
 })
 
 test('450 m 경계값은 caution이다 (하한 경계는 이미 옳음)', () => {
-  const LOW_FT = 450 * 3.28084
   assert.equal(stationMarkerStyle(stn({ ceiling_ft: LOW_FT })).fill, 'caution')
 })
 
