@@ -1,6 +1,6 @@
 import {
   Radar, Satellite, Zap, Wind, Thermometer, Droplets,
-  Snowflake, Activity, Plane, AlertTriangle, AlertOctagon, CloudFog, Globe, Cloud, CloudLightning, Mountain,
+  Snowflake, Activity, Eye, AlertTriangle, AlertOctagon, CloudFog, Globe, Cloud, CloudLightning, Mountain,
   Tornado,
 } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
@@ -20,7 +20,8 @@ const WEATHER_TILE_ICON = {
   cloud: Droplets,
   icing: Snowflake,
   turbulence: Activity,
-  flightCategory: Plane,
+  visibility: Eye,
+  ceiling: CloudFog,
   sigmet: AlertTriangle,
   sigmet_intl: Globe,
   airmet: AlertOctagon,
@@ -42,9 +43,7 @@ function WeatherOverlayPanel({
   onRadarMotionRequestedChange,
 }) {
   const isMobile = useIsMobile()
-  // TEMP 숨김: flight_category 백엔드 수집 중단(용량 절감)에 맞춰 패널에서도 임시로 감춤.
-  // 재개하려면 이 배열을 비우고 백엔드 수집(index.js)도 되돌릴 것.
-  const TEMP_HIDDEN_LAYER_IDS = ['flightCategory']
+  const TEMP_HIDDEN_LAYER_IDS = []
   // 순서는 조종사가 보는 급한 순서 — 발효 중인 위험기상이 먼저, 그다음 실제 관측(레이더·위성),
   // 마지막이 예보(수치모델). 항적(ADS-B)은 기상이 아니라 교통이라 별도 '항적' 패널에 있다.
   const groups = [
@@ -54,7 +53,7 @@ function WeatherOverlayPanel({
       title: '레이더/위성',
       ids: ['radar', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'ci', 'ctps'],
     },
-    { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'flightCategory'] : [] },
+    { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'] : [] },
   ]
   const layerLabels = {
     radar: '레이더',
@@ -74,7 +73,8 @@ function WeatherOverlayPanel({
     airmet: 'AIRMET',
     sigwx: 'SIGWX',
     typhoon: '태풍',
-    flightCategory: '비행기상구역',
+    visibility: '시정',
+    ceiling: '운고',
   }
   const visibleLayers = layers.filter((layer) => showWind || !['wind', 'temp', 'cloud', 'icing'].includes(layer.id))
   const activeCount = visibleLayers.filter((layer) => visibility[layer.id] && !isLayerDisabled(layer.id)).length

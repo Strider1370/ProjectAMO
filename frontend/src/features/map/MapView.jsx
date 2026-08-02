@@ -82,10 +82,9 @@ import {
 } from '../weather-overlays/lib/weatherOverlayModel.js'
 import { useFlightCategory } from '../weather-overlays/lib/useFlightCategory.js'
 import {
-  addFlightCategoryLayer,
+  syncFlightCategoryLayers,
+  removeFlightCategoryLayers,
   bindFlightCategoryClick,
-  removeFlightCategoryLayer,
-  syncFlightCategoryLayer,
 } from '../weather-overlays/lib/flightCategoryLayers.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import MapToolsLauncher from '../map-tools/MapToolsLauncher.jsx'
@@ -369,6 +368,8 @@ const MapView = forwardRef(function MapView({
   const [styleRevision, setStyleRevision] = useState(0)
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
   const [metVisibility, setMetVisibility] = useState(initMetVisibility)
+  const [showFlightCategoryMissing, setShowFlightCategoryMissing] = useState(false)
+  const [showFlightCategoryStations, setShowFlightCategoryStations] = useState(true)
   const [timestampOpen, setTimestampOpen] = useState(true)
   const [weatherLegendOpen, setWeatherLegendOpen] = useState(false)
   const [weatherLegendPanelHeight, setWeatherLegendPanelHeight] = useState(0)
@@ -535,7 +536,7 @@ const MapView = forwardRef(function MapView({
   const { vfrWaypointsRef, hideTimerRef, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, vfrWaypointDropRef, designWaypointDropRef, isComparisonRef } = routeBriefing.refs
   const { setHoveredWpInfo } = routeBriefing.actions
   const { routePreviewModel } = routeBriefing
-  const { geojson: flightCategoryGeojson } = useFlightCategory()
+  const flightCategory = useFlightCategory()
   const fcPopupRef = useRef(null)
   const {
     windField, windRendererOptions, temperatureField, cloudField, icingField, ktgGrid,
@@ -745,7 +746,6 @@ const MapView = forwardRef(function MapView({
     lightningReferenceTimeMs: effectiveLightningReferenceTimeMs,
     nwpSelection,
     ktgGrid,
-    flightCategoryGeojson,
     tz,
   }), [
     echoMeta,
@@ -768,7 +768,6 @@ const MapView = forwardRef(function MapView({
     effectiveLightningReferenceTimeMs,
     nwpSelection,
     ktgGrid,
-    flightCategoryGeojson,
     tz,
   ])
   const convectiveOverlay = useConvectiveOverlay({
@@ -838,7 +837,7 @@ const MapView = forwardRef(function MapView({
       entries.push({ key: 'icing', label: '착빙', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
     if (enableWindOverlay && metVisibility.turbulence)
       entries.push({ key: 'turbulence', label: '난류', issueLabel: ktgIssueLabel, validLabel: ktgValidLabel })
-    if (metVisibility.flightCategory)
+    if (metVisibility.visibility)
       entries.push({ key: 'flightCategory', label: '비행기상구역', issueLabel: flightCategoryIssueLabel })
     if (metVisibility.sigwx) {
       const entryCount = sigwxHistoryEntries.length
@@ -859,7 +858,7 @@ const MapView = forwardRef(function MapView({
   }, [
     enableWindOverlay,
     metVisibility.wind, metVisibility.temp, metVisibility.cloud,
-    metVisibility.icing, metVisibility.turbulence, metVisibility.flightCategory, metVisibility.sigwx,
+    metVisibility.icing, metVisibility.turbulence, metVisibility.visibility, metVisibility.sigwx,
     nwpIssueLabel, nwpValidLabel, ktgIssueLabel, ktgValidLabel, flightCategoryIssueLabel,
     sigwxIssueLabel, sigwxValidLabel, sigwxHistoryEntries.length, sigwxHistoryIndex,
   ])
@@ -1191,9 +1190,6 @@ const MapView = forwardRef(function MapView({
       // Airport circles
       addAirportLayers(map, { type: 'FeatureCollection', features: [] })
 
-      // Flight category overlay (before airport circles so airports render on top)
-      addFlightCategoryLayer(map, AIRPORT_CIRCLE_LAYER)
-
       // ADS-B
       addAdsbLayers(map)
 
@@ -1511,12 +1507,21 @@ const MapView = forwardRef(function MapView({
   // ???? Sync flight category overlay ??????????????????????????????????????????????????????????????????????????????????????????????????
 
   useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
-    syncFlightCategoryLayer(map, {
-      geojson: flightCategoryGeojson,
-      visible: !!metVisibility.flightCategory,
+    syncFlightCategoryLayers(map, {
+      visibility: flightCategory.visibility,
+      ceiling: flightCategory.ceiling,
+      stations: flightCategory.stations,
+      showVisibility: !!metVisibility.visibility,
+      showCeiling: !!metVisibility.ceiling,
+      showMissing: showFlightCategoryMissing,
+      showStations: showFlightCategoryStations,
       beforeLayerId: AIRPORT_CIRCLE_LAYER,
     })
-  }, removeFlightCategoryLayer, [flightCategoryGeojson, metVisibility.flightCategory])
+  }, removeFlightCategoryLayers, [
+    flightCategory.visibility, flightCategory.ceiling, flightCategory.stations,
+    metVisibility.visibility, metVisibility.ceiling,
+    showFlightCategoryMissing, showFlightCategoryStations,
+  ])
 
   // ???? Sync selected-airport range rings (monitoring only) ??????????????????????????????????????????????????????????????????????????
 

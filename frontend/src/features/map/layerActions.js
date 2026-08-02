@@ -34,7 +34,8 @@ const MET_META = {
   airmet: { label: 'AIRMET', aliases: ['에어멧'] },
   sigwx: { label: 'SIGWX', aliases: ['시그윅스', '악기상'] },
   typhoon: { label: '태풍', aliases: ['태풍', 'typhoon', '타이푼'] },
-  flightCategory: { label: '비행기상구역', aliases: ['비행구역', '카테고리'] },
+  visibility: { label: '시정', aliases: ['시정', 'visibility', '가시거리'] },
+  ceiling: { label: '운고', aliases: ['운고', 'ceiling', '운저'] },
 }
 export const MET_ACTIONS = MET_LAYERS.map((l) => ({
   id: l.id, type: 'met', panelId: 'met',
