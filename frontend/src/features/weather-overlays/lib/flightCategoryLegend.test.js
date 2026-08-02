@@ -40,6 +40,15 @@ test('모르는 tz 토큰도 던지지 않고 KST로 대체한다', () => {
   assert.equal(out.stations, '22:00')
 })
 
+test('IANA 지역/도시 형식(/포함)은 그대로 통과시킨다', () => {
+  // 오늘은 설정에 KST/UTC 두 값뿐이지만, 나중에 실제 시간대가 추가되면
+  // 여기서 KST로 뭉개는 게 크래시보다 더 나쁘다 — 조용히 틀린 시각을 보여준다.
+  const out = legendStamps(sources, true, '2026-08-01T15:22:13.722Z', 'America/New_York')
+  assert.equal(out.visibility, '11:22')
+  assert.equal(out.ceiling, '02:00')
+  assert.equal(out.stations, '09:00')
+})
+
 test('자료를 한 번도 못 받았으면 자료 없음이다', () => {
   const out = legendStamps(null, false, null, 'Asia/Seoul')
   assert.equal(out.visibility, '자료 없음')

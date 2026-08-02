@@ -308,7 +308,17 @@ function WeatherLegends({
   const mobileLegends = [
     radarLegendVisible && { key: 'radar', title: '레이더 · mm/h', entries: radarRainrateLegend, reverse: true },
     lightningLegendVisible && { key: 'ltg', title: '낙뢰 · 5분', entries: lightningLegendEntries },
-    flightCategoryVisibilityOn && { key: 'fc', title: '시정 · km', entries: flightCategoryBands, note: '색 없음 = 기준 충족 또는 자료 없음' },
+    // 자료없음 표시가 꺼져 있으면 결측 밴드는 아예 안 그려지므로(flightCategoryLayers.js
+    // filterMissing) 위 note 문구로 충분하다. 켜면 결측이 회색(#9ca3af, 백엔드
+    // flight-category-processor.js의 missing 색과 같다)으로 화면에 나오는데, 범례에 그
+    // 항목이 없으면 회색이 "설명 안 된 네 번째 밴드"로 보인다.
+    flightCategoryVisibilityOn && {
+      key: 'fc', title: '시정 · km',
+      entries: showFlightCategoryMissing
+        ? [...flightCategoryBands, { label: '자료 없음', color: '#9ca3af' }]
+        : flightCategoryBands,
+      note: '색 없음 = 기준 충족 또는 자료 없음',
+    },
     windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
     temperatureLegendVisible && { key: 'temp', title: '기온 · °C', entries: temperatureLegendEntries },
     cloudLegendVisible && { key: 'cloud', title: '습도 · T-Td °C', entries: cloudLegendEntries },

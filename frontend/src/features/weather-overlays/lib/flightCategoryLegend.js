@@ -1,8 +1,13 @@
 const NO_DATA = '자료 없음'
 
 function hhmmInTz(date, tz) {
+  // 설정 화면은 오늘 'KST'/'UTC' 두 토큰만 준다 — 그 외(모르는 값, 손으로 고친 localStorage
+  // 값)는 KST로 대체해 죽지 않게 한다. 다만 IANA 지역/도시 형식('/' 포함, 예: Asia/Tokyo)은
+  // 실제 시간대일 수 있으므로 그대로 넘긴다 — 여기서 KST로 뭉개면 크래시 대신 조용히 틀린
+  // 시각을 보여주게 되고, 그게 더 나쁘다.
+  const zone = tz === 'UTC' ? 'UTC' : typeof tz === 'string' && tz.includes('/') ? tz : 'Asia/Seoul'
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: zone, hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(date)
 }
 

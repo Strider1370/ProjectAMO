@@ -97,7 +97,9 @@ async function screenshotStation(page, [lon, lat], name) {
   const canvas = page.locator('.mapboxgl-canvas').first()
   const box = await canvas.boundingBox()
   await page.evaluate(([lon, lat]) => window.__map.jumpTo({ center: [lon, lat], zoom: 15 }), [lon, lat])
-  await page.waitForTimeout(300)
+  // 고정 대기 대신 실제로 타일이 다 실렸는지를 기다린다 — 느린 호스트에서는 300ms 뒤에도
+  // 타일이 안 실려 크롭이 빈 화면을 찍을 수 있다.
+  await page.waitForFunction(() => window.__map.areTilesLoaded())
   const point = await page.evaluate(([lon, lat]) => window.__map.project([lon, lat]), [lon, lat])
   await expect(page).toHaveScreenshot(name, {
     clip: { x: box.x + point.x - 24, y: box.y + point.y - 24, width: 48, height: 48 },
@@ -170,6 +172,10 @@ test.describe('flight-category-overlay', () => {
     await expect(stations).toHaveAttribute('aria-pressed', 'true')
     // 산출물(backend/data/flight_category_overlay/latest.json)은 지점 10곳을 낸다.
     await expect(stations).toHaveText(/관측지점 \d+곳/)
+    // 버튼 문구만으론 층이 실제로 켜졌는지 못 잡는다 — flightCategoryLayers.js:81의
+    // 게이트(showStations && (showVisibility || showCeiling))가 항상 false로 깨져도
+    // 버튼은 그대로 aria-pressed=true·"관측지점 N곳"을 보여준다. 소스·레이어를 직접 본다.
+    await assertLayerRendering(page, FC_STATION_SOURCE, [FC_STATION_LAYER], true)
     // 화면 스크린샷은 여기 안 찍는다 — 이 상태(시정 on·자료없음 off·관측지점 on)는
     // missing-off.png가 이미 찍는 화면과 같다. 같은 그림을 두 파일로 남기면
     // 유지비만 늘고 신호는 늘지 않는다.
@@ -191,6 +197,14 @@ test.describe('flight-category-overlay', () => {
     const popup = page.locator('.mapboxgl-popup')
     await expect(popup).toBeVisible()
     await expect(popup.getByText('추세')).toBeVisible()
+    // "추세"만 보이는 걸론 모든 행이 자료 없음으로 뭉개지거나 지점 줄이 통째로 빠지거나
+    // 지점명이 이중 이스케이프돼도 통과한다. 산출물의 이 지점(126.5E, 37.3N)은
+    // /api/weather/flight-category-overlay/point로 직접 확인한 값이다: 시정 3,800 m,
+    // 최근접 지점 인천국제공항(결측 아님 — band(4265ft)='high'). 거리는 실제로는 클릭
+    // 좌표를 픽셀로 반올림한 지점을 쓰므로(project→round→click) 18.5 km 근방에서
+    // 흔들린다 — 정확한 소수점을 못 박지 않고 자리수 패턴으로만 지점 줄 자체를 확인한다.
+    await expect(popup.getByText('3,800 m')).toBeVisible()
+    await expect(popup.getByText(/인천국제공항 \d+\.\d km/)).toBeVisible()
   })
 
   // 모델보다 낮은 관측 지점은 흰 테두리로 표시된다(flightCategoryLayers.js의
@@ -217,5 +231,31 @@ test.describe('flight-category-overlay', () => {
     // 채움색이 달라 흰 테두리가 severe 지점보다도 더 뚜렷이 갈린다.
     await assertStationHasRing(page, [126.52969, 33.51411])
     await screenshotStation(page, [126.52969, 33.51411], 'station-ring-caution.png')
+  })
+
+  // 이 branch의 핵심 안전 주장: 시정·운고·관측지점은 갱신 주기가 서로 다르므로(20분/하루
+  // 네 번/매시) 각자 자기 발표 시각을 보여줘야 한다. MapView.jsx가 fcStamps.visibility/
+  // .ceiling/.stations를 엉뚱한 층에 배선해도(예: 시정↔운고 스와핑) 단위 테스트·빌드·
+  // 지금까지의 이 contract 어느 것도 잡지 못한다 — 조종사가 20분 전 시정을 6시간 묵은
+  // 운고로 착각하게 되는 경로다(spec §5.1). 값은 산출물을 직접 읽어 고정했다
+  // (backend/data/flight_category_overlay/latest.json: computed_at 2026-08-02T00:58:21Z
+  // → KST 09:58, sources.kim.run 2026080106 → KST 15:00). 두 값이 다르다는 것과 각자
+  // 자기 출처와 같다는 것을 모두 확인해야 스와핑도 "둘 다 같은 값으로 뭉개짐"도 잡는다.
+  test('층별 시각 표시줄이 시정·운고 각자의 발표 시각을 보여준다 (배선 검증)', async ({ page }, testInfo) => {
+    await openWeatherPanel(page, testInfo)
+    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '운고', exact: true }).click()
+    await panelToggle(page, testInfo).click()
+
+    const bar = page.locator('.layer-timestamp-bar')
+    const header = bar.locator('.layer-timestamp-header span').first()
+    const issueCell = bar.locator('.layer-timestamp-cell').first()
+
+    await expect(header).toHaveText('시정')
+    await expect(issueCell).toContainText('09:58')
+
+    await bar.getByRole('button', { name: '다음 기상 레이어' }).click()
+    await expect(header).toHaveText('운고')
+    await expect(issueCell).toContainText('15:00')
   })
 })

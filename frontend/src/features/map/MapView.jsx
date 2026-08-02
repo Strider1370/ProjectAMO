@@ -224,6 +224,11 @@ const RANGE_RING_LABEL_LAYER = 'range-rings-label'
 // 가까운 링일수록 위험도 높음: 빨강(가까움) → 주황 → 노랑(멂). 원색 톤으로 눈에 띄게.
 const RANGE_RING_COLORS = ['#ff0000', '#ff8800', '#ffd500']
 
+// 라벨·색은 백엔드 VIS_BAND_COLORS와 classifyVisibility의 경계를 그대로 옮겨 적은 것이다
+// (backend/src/processors/flight-category-processor.js). 오늘은 값이 일치하지만 프런트가
+// 따로 들고 있으므로, 백엔드가 밴드를 다시 나누면 지도는 새 색으로 칠하는데 범례 문구만
+// 예전 값에 머물러 거짓말을 하게 된다 — flightCategoryLayers.js의 STATION_FILL 주석과
+// 같은 종류의 경고.
 const FLIGHT_CATEGORY_LEGEND_BANDS = [
   { label: '3 km 미만', color: '#dc2626' },
   { label: '3~5 km', color: '#f97316' },
