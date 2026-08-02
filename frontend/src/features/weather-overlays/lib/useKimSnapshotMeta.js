@@ -35,7 +35,9 @@ export function createKimSnapshotMetaPoller({
 
   function start() {
     if (!timer && listeners.size > 0 && typeof setIntervalFn === 'function') {
-      timer = setIntervalFn(refresh, intervalMs)
+      timer = setIntervalFn(() => {
+        refresh().catch(() => {})
+      }, intervalMs)
       // Cold start: don't make the first subscriber wait a full intervalMs
       // for data. refresh() already coalesces via inFlight, so this can't
       // race a subscriber's own manual refresh(). Swallow rejection here
