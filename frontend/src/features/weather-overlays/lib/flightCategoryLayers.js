@@ -25,7 +25,7 @@ const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 // backend/src/processors/flight-category/ceiling-kim.js의 밴드 색과 같아야 한다.
 // 프런트가 값을 따로 들고 있는 이유는 지점 속성이 'color'가 아니라 'fill'이기 때문 —
 // 백엔드 색이 바뀌면 여기도 같이 바꿔야 점과 면이 어긋나지 않는다.
-const STATION_FILL = ['match', ['get', 'fill'], 'severe', '#dc2626', 'caution', '#f97316', 'rgba(0,0,0,0)']
+const STATION_FILL = ['match', ['get', 'fill'], 'severe', '#dc2626', 'caution', '#f97316', 'good', '#16a34a', 'rgba(0,0,0,0)']
 // ['get']을 조건으로 쓸 때는 boolean으로 감싼다 — 속성이 없으면 표현식이 던진다.
 const HAS_RING = ['boolean', ['get', 'ring'], false]
 
