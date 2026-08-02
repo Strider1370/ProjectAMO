@@ -150,7 +150,6 @@ export function buildWeatherOverlayModel({
   lightningBlinkOff,
   nwpSelection = null,
   ktgGrid = null,
-  flightCategoryGeojson = null,
   tz = 'KST',
 }) {
   const radarFrames = normalizeFrames(echoMeta?.frames?.length ? echoMeta.frames : [echoMeta?.nationwide])
@@ -346,7 +345,6 @@ export function buildWeatherOverlayModel({
     })(),
     ktgIssueLabel: formatUtcTmfcStamp(ktgGrid?.run?.tmfc ?? null, tz),
     ktgValidLabel: formatSigwxStamp(ktgGrid?.run?.validTime ?? null, tz),
-    flightCategoryIssueLabel: formatSigwxStamp(flightCategoryGeojson?.fetched_at ?? null, tz),
     blinkLightning,
     lightningBlinkOff,
     lightningReferenceTimeMs: resolvedLightningReferenceTimeMs,

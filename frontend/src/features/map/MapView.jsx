@@ -40,6 +40,7 @@ import TimelineRail from '../weather-overlays/TimelineRail.jsx'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
 import useRadarMotionOverlay from '../weather-overlays/lib/useRadarMotionOverlay.js'
 import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
+import { legendStamps } from '../weather-overlays/lib/flightCategoryLegend.js'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
 import NwpSliderBar from '../weather-overlays/NwpSliderBar.jsx'
 import LevelSliderPanel from '../weather-overlays/LevelSliderPanel.jsx'
@@ -222,6 +223,12 @@ const RANGE_RING_LABEL_LAYER = 'range-rings-label'
 
 // 가까운 링일수록 위험도 높음: 빨강(가까움) → 주황 → 노랑(멂). 원색 톤으로 눈에 띄게.
 const RANGE_RING_COLORS = ['#ff0000', '#ff8800', '#ffd500']
+
+const FLIGHT_CATEGORY_LEGEND_BANDS = [
+  { label: '3 km 미만', color: '#dc2626' },
+  { label: '3~5 km', color: '#f97316' },
+  { label: '5~7 km', color: '#fde047' },
+]
 
 // 선택 공항 중심 낙뢰 접근 확인용 거리(km) 점선 원. ponytail: km 라벨 텍스트만, 회전/자북 보정 없음.
 // circle()의 0번 꼭짓점은 반경과 무관하게 같은 중심·steps에서 항상 같은 방위 → 라벨 1개씩 한 줄로 정렬.
@@ -817,7 +824,6 @@ const MapView = forwardRef(function MapView({
     nwpValidLabel,
     ktgIssueLabel,
     ktgValidLabel,
-    flightCategoryIssueLabel,
   } = weatherOverlayModel
   const advisoryPanelItems = useMemo(() => {
     if (openAdvisoryPanel === 'sigwxLow') return sigwxGroups
@@ -838,8 +844,13 @@ const MapView = forwardRef(function MapView({
       entries.push({ key: 'icing', label: '착빙', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
     if (enableWindOverlay && metVisibility.turbulence)
       entries.push({ key: 'turbulence', label: '난류', issueLabel: ktgIssueLabel, validLabel: ktgValidLabel })
+    const fcStamps = legendStamps(flightCategory.sources, flightCategory.hasData, flightCategory.computedAt, tz)
     if (metVisibility.visibility)
-      entries.push({ key: 'flightCategory', label: '비행기상구역', issueLabel: flightCategoryIssueLabel })
+      entries.push({ key: 'visibility', label: '시정', issueLabel: fcStamps.visibility })
+    if (metVisibility.ceiling)
+      entries.push({ key: 'ceiling', label: '운고', issueLabel: fcStamps.ceiling })
+    if (showFlightCategoryStations && (metVisibility.visibility || metVisibility.ceiling))
+      entries.push({ key: 'fcStations', label: '관측지점', issueLabel: fcStamps.stations })
     if (metVisibility.sigwx) {
       const entryCount = sigwxHistoryEntries.length
       entries.push({
@@ -859,8 +870,9 @@ const MapView = forwardRef(function MapView({
   }, [
     enableWindOverlay,
     metVisibility.wind, metVisibility.temp, metVisibility.cloud,
-    metVisibility.icing, metVisibility.turbulence, metVisibility.visibility, metVisibility.sigwx,
-    nwpIssueLabel, nwpValidLabel, ktgIssueLabel, ktgValidLabel, flightCategoryIssueLabel,
+    metVisibility.icing, metVisibility.turbulence, metVisibility.visibility, metVisibility.ceiling, metVisibility.sigwx,
+    nwpIssueLabel, nwpValidLabel, ktgIssueLabel, ktgValidLabel,
+    flightCategory.sources, flightCategory.hasData, flightCategory.computedAt, showFlightCategoryStations, tz,
     sigwxIssueLabel, sigwxValidLabel, sigwxHistoryEntries.length, sigwxHistoryIndex,
   ])
 
@@ -1709,6 +1721,13 @@ const MapView = forwardRef(function MapView({
           lightningLegendVisible={lightningLegendVisible}
           blinkLightning={blinkLightning}
           onBlinkLightningChange={setBlinkLightning}
+          flightCategoryLegendVisible={!!(metVisibility.visibility || metVisibility.ceiling)}
+          flightCategoryBands={FLIGHT_CATEGORY_LEGEND_BANDS}
+          flightCategoryStationCount={legendStamps(flightCategory.sources, flightCategory.hasData, flightCategory.computedAt, tz).stationCount}
+          showFlightCategoryMissing={showFlightCategoryMissing}
+          onShowFlightCategoryMissingChange={setShowFlightCategoryMissing}
+          showFlightCategoryStations={showFlightCategoryStations}
+          onShowFlightCategoryStationsChange={setShowFlightCategoryStations}
           radarRainrateLegend={RADAR_RAINRATE_LEGEND}
           lightningLegendEntries={lightningLegendEntries}
           windSpeedLegendVisible={!!(enableWindOverlay && metVisibility.wind && metVisibility.windSpeed && windField)}

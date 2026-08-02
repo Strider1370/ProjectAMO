@@ -42,6 +42,13 @@ function WeatherLegends({
   lightningLegendVisible,
   blinkLightning = false,
   onBlinkLightningChange,
+  flightCategoryLegendVisible = false,
+  flightCategoryBands = [],
+  flightCategoryStationCount = 0,
+  showFlightCategoryMissing = false,
+  onShowFlightCategoryMissingChange,
+  showFlightCategoryStations = true,
+  onShowFlightCategoryStationsChange,
   radarRainrateLegend,
   lightningLegendEntries,
   windSpeedLegendVisible,
@@ -178,6 +185,19 @@ function WeatherLegends({
           )}
         </div>
       )}
+      {flightCategoryLegendVisible && (
+        <div className="flight-category-legend" aria-label="Flight category legend">
+          <HLegend title="시정" entries={flightCategoryBands} note="색 없음 = 기준 충족 또는 자료 없음" />
+          <button type="button" aria-pressed={showFlightCategoryMissing}
+            onClick={() => onShowFlightCategoryMissingChange?.((prev) => !prev)}>
+            자료없음 표시 {showFlightCategoryMissing ? 'ON' : 'OFF'}
+          </button>
+          <button type="button" aria-pressed={showFlightCategoryStations}
+            onClick={() => onShowFlightCategoryStationsChange?.((prev) => !prev)}>
+            관측지점 {flightCategoryStationCount}곳
+          </button>
+        </div>
+      )}
       {windSpeedLegendVisible && (
         <div className="wind-speed-legend" aria-label="Wind speed legend">
           <div className="wind-speed-legend-title">kt</div>
@@ -292,7 +312,7 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
+  if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
 
   // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
   if (!isMobile && !bottomDock) return panel
