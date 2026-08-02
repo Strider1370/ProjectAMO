@@ -20,6 +20,10 @@ export const FC_SOURCE_IDS = [FC_VIS_SOURCE, FC_CEIL_SOURCE, FC_STATION_SOURCE]
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
 // 지점 색은 면과 같은 색판을 쓴다 — 점과 주변 면의 색이 다르면 그 자체가 불일치 신호다.
+// 이 값은 backend/src/processors/flight-category-processor.js와
+// backend/src/processors/flight-category/ceiling-kim.js의 밴드 색과 같아야 한다.
+// 프런트가 값을 따로 들고 있는 이유는 지점 속성이 'color'가 아니라 'fill'이기 때문 —
+// 백엔드 색이 바뀌면 여기도 같이 바꿔야 점과 면이 어긋나지 않는다.
 const STATION_FILL = ['match', ['get', 'fill'], 'severe', '#dc2626', 'caution', '#f97316', 'rgba(0,0,0,0)']
 // ['get']을 조건으로 쓸 때는 boolean으로 감싼다 — 속성이 없으면 표현식이 던진다.
 const HAS_RING = ['boolean', ['get', 'ring'], false]
@@ -81,20 +85,28 @@ export function removeFlightCategoryLayers(map) {
   } catch {}
 }
 
+// station.name은 KMA ASOS 원본/공항명(자유 텍스트)이라 innerHTML에 그대로 넣으면 안 된다.
+export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
 export function bindFlightCategoryClick(map, popupRef) {
+  let cancelled = false
+  let seq = 0 // 클릭마다 증가 — 늦게 도착한 응답이 최신 클릭의 팝업을 덮어쓰지 않게 한다.
   async function handleClick(e) {
+    const mySeq = ++seq
     const { lat, lng } = e.lngLat
     let point = null
     try {
       const res = await fetch(`/api/weather/flight-category-overlay/point?lat=${lat}&lon=${lng}`)
       if (res.ok) point = await res.json()
     } catch { /* 일시적 오류 — 아래에서 자료 없음으로 그린다 */ }
+    // 언바인드됐거나(지도가 사라짐) 그 사이 다른 클릭이 들어왔으면(응답 역전) 그리지 않는다.
+    if (cancelled || mySeq !== seq) return
 
     const rows = formatPointLines(point).map((l) => `
       <div style="display:flex;gap:8px;font-size:12px;line-height:1.7;${l.alert ? 'color:#dc2626;font-weight:700' : 'color:#1e293b'}">
-        <span style="width:34px;color:#64748b;font-weight:600">${l.label}</span>
-        <span>${l.value}</span>
-        ${l.note ? `<span style="color:#64748b">${l.note}</span>` : ''}
+        <span style="width:34px;color:#64748b;font-weight:600">${esc(l.label)}</span>
+        <span>${esc(l.value)}</span>
+        ${l.note ? `<span style="color:#64748b">${esc(l.note)}</span>` : ''}
       </div>`).join('')
 
     popupRef.current?.remove()
@@ -108,6 +120,7 @@ export function bindFlightCategoryClick(map, popupRef) {
   map.on('mouseenter', FC_VIS_LAYER, onEnter)
   map.on('mouseleave', FC_VIS_LAYER, onLeave)
   return () => {
+    cancelled = true
     map.off('click', FC_VIS_LAYER, handleClick)
     map.off('mouseenter', FC_VIS_LAYER, onEnter)
     map.off('mouseleave', FC_VIS_LAYER, onLeave)

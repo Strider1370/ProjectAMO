@@ -1540,6 +1540,8 @@ const MapView = forwardRef(function MapView({
     syncRangeRings(map, buildRangeRingGeoJSON(rangeRingCenter, rangeRingRadiiKm))
   }, removeRangeRings, [rangeRingCenter, rangeRingRadiiKm])
 
+  // FC_VIS_LAYER가 이미 있어야 click을 걸 수 있다 — 위 동기화 effect(:1509)가 이 effect보다
+  // 먼저 선언돼 있어야 같은 커밋에서 레이어가 먼저 만들어진다. 훅 순서를 바꾸면 조용히 깨진다.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady) return
