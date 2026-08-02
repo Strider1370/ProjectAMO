@@ -1,7 +1,7 @@
 import mapboxgl from 'mapbox-gl'
 import { setMapLayerVisible } from '../../map/lib/mapLayerUtils.js'
 import { toStationFeatures } from './flightCategoryStations.js'
-import { formatPointLines } from './flightCategoryPopup.js'
+import { formatPointLines, formatStationLines } from './flightCategoryPopup.js'
 import { escapeHtml } from '../../../shared/ui/escapeHtml.js'
 
 export const FC_VIS_SOURCE = 'flight-category-vis-source'
@@ -88,10 +88,31 @@ export function removeFlightCategoryLayers(map) {
   } catch {}
 }
 
+function rowsHtml(lines) {
+  return lines.map((l) => `
+      <div style="display:flex;gap:8px;font-size:12px;line-height:1.7;${l.alert ? 'color:#dc2626;font-weight:700' : 'color:#1e293b'}">
+        <span style="width:34px;color:#64748b;font-weight:600">${escapeHtml(l.label)}</span>
+        <span>${escapeHtml(l.value)}</span>
+        ${l.note ? `<span style="color:#64748b">${escapeHtml(l.note)}</span>` : ''}
+      </div>`).join('')
+}
+
 export function bindFlightCategoryClick(map, popupRef) {
   let cancelled = false
   let seq = 0 // 클릭마다 증가 — 늦게 도착한 응답이 최신 클릭의 팝업을 덮어쓰지 않게 한다.
-  async function handleClick(e) {
+
+  function renderPopup(lngLat, rows) {
+    popupRef.current?.remove()
+    popupRef.current = new mapboxgl.Popup({ closeButton: true, offset: 8, maxWidth: '260px' })
+      .setLngLat(lngLat).setHTML(`<div style="font-family:'Noto Sans KR',sans-serif;padding:2px 0">${rows}</div>`)
+      .addTo(map)
+  }
+
+  async function handleAreaClick(e) {
+    // 점이 면 위에 얹혀 있어 점을 눌러도 면 click이 같이 잡힌다. 점 층에 실제로 뭐가
+    // 있으면 여기서 넘기고 점 핸들러가 그리게 한다 — 등록 순서에 기대지 않고 매번 확인한다.
+    if (map.queryRenderedFeatures(e.point, { layers: [FC_STATION_LAYER] }).length) return
+
     const mySeq = ++seq
     const { lat, lng } = e.lngLat
     let point = null
@@ -102,28 +123,34 @@ export function bindFlightCategoryClick(map, popupRef) {
     // 언바인드됐거나(지도가 사라짐) 그 사이 다른 클릭이 들어왔으면(응답 역전) 그리지 않는다.
     if (cancelled || mySeq !== seq) return
 
-    const rows = formatPointLines(point).map((l) => `
-      <div style="display:flex;gap:8px;font-size:12px;line-height:1.7;${l.alert ? 'color:#dc2626;font-weight:700' : 'color:#1e293b'}">
-        <span style="width:34px;color:#64748b;font-weight:600">${escapeHtml(l.label)}</span>
-        <span>${escapeHtml(l.value)}</span>
-        ${l.note ? `<span style="color:#64748b">${escapeHtml(l.note)}</span>` : ''}
-      </div>`).join('')
-
-    popupRef.current?.remove()
-    popupRef.current = new mapboxgl.Popup({ closeButton: true, offset: 8, maxWidth: '260px' })
-      .setLngLat(e.lngLat).setHTML(`<div style="font-family:'Noto Sans KR',sans-serif;padding:2px 0">${rows}</div>`)
-      .addTo(map)
+    renderPopup(e.lngLat, rowsHtml(formatPointLines(point)))
   }
+
+  function handleStationClick(e) {
+    const feature = e.features?.[0]
+    if (!feature) return
+    // 진행 중인 면 클릭의 fetch가 이 클릭보다 늦게 돌아와도 지금 그리는 점 팝업을
+    // 덮어쓰지 못하게 한다 — 네트워크가 없는 점 팝업 자체는 늦을 일이 없다.
+    ++seq
+    renderPopup(e.lngLat, rowsHtml(formatStationLines(feature.properties)))
+  }
+
   const onEnter = () => { map.getCanvas().style.cursor = 'pointer' }
   const onLeave = () => { map.getCanvas().style.cursor = '' }
-  map.on('click', FC_VIS_LAYER, handleClick)
+  map.on('click', FC_VIS_LAYER, handleAreaClick)
+  map.on('click', FC_STATION_LAYER, handleStationClick)
   map.on('mouseenter', FC_VIS_LAYER, onEnter)
   map.on('mouseleave', FC_VIS_LAYER, onLeave)
+  map.on('mouseenter', FC_STATION_LAYER, onEnter)
+  map.on('mouseleave', FC_STATION_LAYER, onLeave)
   return () => {
     cancelled = true
-    map.off('click', FC_VIS_LAYER, handleClick)
+    map.off('click', FC_VIS_LAYER, handleAreaClick)
+    map.off('click', FC_STATION_LAYER, handleStationClick)
     map.off('mouseenter', FC_VIS_LAYER, onEnter)
     map.off('mouseleave', FC_VIS_LAYER, onLeave)
+    map.off('mouseenter', FC_STATION_LAYER, onEnter)
+    map.off('mouseleave', FC_STATION_LAYER, onLeave)
     popupRef.current?.remove()
   }
 }

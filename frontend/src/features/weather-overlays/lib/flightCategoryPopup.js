@@ -46,3 +46,43 @@ export function formatPointLines(point) {
 
   return lines
 }
+
+/** ring 지점의 모델값·차이. modelBand가 missing이면 stationMarkerStyle과 같은 뜻으로
+ * "모델이 구름 없음으로 봤다"이지 결측이 아니다 — 그 경우 차이를 셀 수 없다. */
+function ringNote(station) {
+  if (band(station?.model_ceiling_ft) === 'missing') return '모델 구름 없음'
+  const diff = station.model_ceiling_ft - station.ceiling_ft
+  return `${ceilingText(station.model_ceiling_ft)} · 차이 ${Math.round(diff).toLocaleString('en-US')} ft`
+}
+
+/** tm은 이미 KST 벽시계 시각이다(YYYYMMDDHHmm) — UTC로 파싱한 뒤 되돌리면 오히려
+ * 틀린다. 자릿수만 그대로 읽는다. */
+function obsTimeKst(tm) {
+  if (typeof tm !== 'string' || tm.length < 12) return NO_DATA
+  const hh = tm.slice(8, 10)
+  const mm = tm.slice(10, 12)
+  if (!/^\d\d$/.test(hh) || !/^\d\d$/.test(mm)) return NO_DATA
+  return `${hh}:${mm}`
+}
+
+export function formatStationLines(station) {
+  return [
+    { label: '', value: `${station?.name ?? ''} (${station?.source ?? ''})`, note: null, alert: false },
+    {
+      label: '운고',
+      // sky_clear는 ceiling_ft가 null이어도 "구름 없음" 확인이다 — band()로 재는 대신
+      // 지도 표식과 같은 sky_clear 판정을 그대로 쓴다.
+      value: station?.sky_clear ? '구름 없음' : ceilingText(station?.ceiling_ft),
+      note: station?.ring ? ringNote(station) : null,
+      alert: !!station?.ring,
+    },
+    {
+      label: '시정',
+      // 격자값이 아니라 이 관측소가 실측한 값이다(spec §3.1).
+      value: Number.isFinite(station?.visibility_m) ? `${station.visibility_m.toLocaleString('en-US')} m` : NO_DATA,
+      note: null,
+      alert: false,
+    },
+    { label: '관측', value: obsTimeKst(station?.obs_tm), note: null, alert: false },
+  ]
+}

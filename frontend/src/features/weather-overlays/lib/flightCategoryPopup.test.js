@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { formatPointLines } from './flightCategoryPopup.js'
+import { formatPointLines, formatStationLines } from './flightCategoryPopup.js'
 
 const point = {
   vis_m: 4200, vis_band: 'below', ceil_ft: 1713, ceil_band: 'mid', vis_trend: -2100,
@@ -62,4 +62,60 @@ test('음수 결측 센티널도 자료 없음으로 다룬다 (band()와 같은
   const p = { ...point, ceil_ft: -1, nearest_station: { ...point.nearest_station, ceiling_ft: -1 } }
   assert.equal(find(p, '운고').value, '자료 없음')
   assert.equal(formatPointLines(p).some((l) => l.note?.includes('청주')), false)
+})
+
+const station = {
+  id: 'asos_93', name: '북춘천', source: 'ASOS', ceiling_ft: 6562,
+  model_ceiling_ft: null, sky_clear: false, visibility_m: 20000,
+  obs_tm: '202608021600', fill: 'good', ring: false,
+}
+const findStn = (s, label) => formatStationLines(s).find((l) => l.label === label)
+
+test('이름과 출처를 첫 줄에 적는다', () => {
+  assert.equal(formatStationLines(station)[0].value, '북춘천 (ASOS)')
+})
+
+test('운고는 100 ft 단위로 반올림하고 약을 붙인다', () => {
+  assert.equal(findStn(station, '운고').value, '약 6,600 ft')
+})
+
+test('시정은 관측소 실측값이다', () => {
+  assert.equal(findStn(station, '시정').value, '20,000 m')
+})
+
+test('관측 시각은 obs_tm의 KST 벽시계 HH:mm을 그대로 읽는다', () => {
+  // obs_tm은 이미 KST다 — UTC로 파싱한 뒤 되돌리면 오히려 틀린다.
+  assert.equal(findStn(station, '관측').value, '16:00')
+})
+
+test('sky_clear면 운고 대신 구름 없음을 적는다', () => {
+  const s = { ...station, ceiling_ft: null, sky_clear: true }
+  assert.equal(findStn(s, '운고').value, '구름 없음')
+})
+
+test('시정이 없으면 자료 없음이다', () => {
+  const s = { ...station, visibility_m: null }
+  assert.equal(findStn(s, '시정').value, '자료 없음')
+})
+
+test('관측 시각이 형식에 안 맞으면 자료 없음이다', () => {
+  const s = { ...station, obs_tm: null }
+  assert.equal(findStn(s, '관측').value, '자료 없음')
+})
+
+test('ring이면 운고 줄에 모델값과 차이를 함께 적고 눈에 띄게 한다', () => {
+  const s = { ...station, ceiling_ft: 1200, model_ceiling_ft: 1713, ring: true }
+  const line = findStn(s, '운고')
+  assert.equal(line.alert, true)
+  assert.equal(line.note, '약 1,700 ft · 차이 513 ft')
+})
+
+test('ring인데 모델이 구름 없음(missing band)이면 숫자 대신 문구를 적는다', () => {
+  const s = { ...station, ceiling_ft: 1200, model_ceiling_ft: null, ring: true }
+  assert.equal(findStn(s, '운고').note, '모델 구름 없음')
+})
+
+test('ring이 아니면 운고 줄에 note를 붙이지 않는다', () => {
+  assert.equal(findStn(station, '운고').note, null)
+  assert.equal(findStn(station, '운고').alert, false)
 })
