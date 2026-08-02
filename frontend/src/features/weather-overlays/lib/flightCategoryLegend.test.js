@@ -31,6 +31,15 @@ test('KST 토큰도 Asia/Seoul과 같은 결과를 준다', () => {
   assert.equal(out.stations, '22:00')
 })
 
+test('모르는 tz 토큰도 던지지 않고 KST로 대체한다', () => {
+  // localStorage의 time_zone 값은 오래되거나 손으로 고친 값일 수 있다
+  // (MonitoringPage.jsx:112). Intl이 모르는 토큰을 만나 죽지 않아야 한다.
+  const out = legendStamps(sources, true, '2026-08-01T15:22:13.722Z', 'ZZZ')
+  assert.equal(out.visibility, '00:22')
+  assert.equal(out.ceiling, '15:00')
+  assert.equal(out.stations, '22:00')
+})
+
 test('자료를 한 번도 못 받았으면 자료 없음이다', () => {
   const out = legendStamps(null, false, null, 'Asia/Seoul')
   assert.equal(out.visibility, '자료 없음')

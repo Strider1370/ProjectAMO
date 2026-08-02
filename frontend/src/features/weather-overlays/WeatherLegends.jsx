@@ -43,6 +43,7 @@ function WeatherLegends({
   blinkLightning = false,
   onBlinkLightningChange,
   flightCategoryLegendVisible = false,
+  flightCategoryVisibilityOn = false,
   flightCategoryBands = [],
   flightCategoryStationCount = null,
   showFlightCategoryMissing = false,
@@ -307,7 +308,7 @@ function WeatherLegends({
   const mobileLegends = [
     radarLegendVisible && { key: 'radar', title: '레이더 · mm/h', entries: radarRainrateLegend, reverse: true },
     lightningLegendVisible && { key: 'ltg', title: '낙뢰 · 5분', entries: lightningLegendEntries },
-    flightCategoryLegendVisible && { key: 'fc', title: '시정 · km', entries: flightCategoryBands, note: '색 없음 = 기준 충족 또는 자료 없음' },
+    flightCategoryVisibilityOn && { key: 'fc', title: '시정 · km', entries: flightCategoryBands, note: '색 없음 = 기준 충족 또는 자료 없음' },
     windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
     temperatureLegendVisible && { key: 'temp', title: '기온 · °C', entries: temperatureLegendEntries },
     cloudLegendVisible && { key: 'cloud', title: '습도 · T-Td °C', entries: cloudLegendEntries },
@@ -339,11 +340,13 @@ function WeatherLegends({
         )}
         {flightCategoryLegendVisible && (
           <div className="flight-category-legend-controls">
-            <button type="button" aria-pressed={showFlightCategoryMissing}
+            <button type="button" className={`lightning-legend-blink${showFlightCategoryMissing ? ' is-on' : ''}`}
+              aria-pressed={showFlightCategoryMissing}
               onClick={() => onShowFlightCategoryMissingChange?.((prev) => !prev)}>
               자료없음 표시 {showFlightCategoryMissing ? 'ON' : 'OFF'}
             </button>
-            <button type="button" aria-pressed={showFlightCategoryStations}
+            <button type="button" className={`lightning-legend-blink${showFlightCategoryStations ? ' is-on' : ''}`}
+              aria-pressed={showFlightCategoryStations}
               onClick={() => onShowFlightCategoryStationsChange?.((prev) => !prev)}>
               관측지점 {flightCategoryStationCount == null ? '자료 없음' : `${flightCategoryStationCount}곳`}
             </button>

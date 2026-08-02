@@ -1726,6 +1726,7 @@ const MapView = forwardRef(function MapView({
           blinkLightning={blinkLightning}
           onBlinkLightningChange={setBlinkLightning}
           flightCategoryLegendVisible={!!(metVisibility.visibility || metVisibility.ceiling)}
+          flightCategoryVisibilityOn={!!metVisibility.visibility}
           flightCategoryBands={FLIGHT_CATEGORY_LEGEND_BANDS}
           flightCategoryStationCount={flightCategory.hasData ? fcStamps.stationCount : null}
           showFlightCategoryMissing={showFlightCategoryMissing}

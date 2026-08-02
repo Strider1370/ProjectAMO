@@ -2,7 +2,7 @@ const NO_DATA = '자료 없음'
 
 function hhmmInTz(date, tz) {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: tz === 'KST' ? 'Asia/Seoul' : tz, hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(date)
 }
 
