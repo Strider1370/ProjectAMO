@@ -2,6 +2,7 @@ import mapboxgl from 'mapbox-gl'
 import { setMapLayerVisible } from '../../map/lib/mapLayerUtils.js'
 import { toStationFeatures } from './flightCategoryStations.js'
 import { formatPointLines } from './flightCategoryPopup.js'
+import { escapeHtml } from '../../../shared/ui/escapeHtml.js'
 
 export const FC_VIS_SOURCE = 'flight-category-vis-source'
 export const FC_CEIL_SOURCE = 'flight-category-ceil-source'
@@ -85,9 +86,6 @@ export function removeFlightCategoryLayers(map) {
   } catch {}
 }
 
-// station.name은 KMA ASOS 원본/공항명(자유 텍스트)이라 innerHTML에 그대로 넣으면 안 된다.
-export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
-
 export function bindFlightCategoryClick(map, popupRef) {
   let cancelled = false
   let seq = 0 // 클릭마다 증가 — 늦게 도착한 응답이 최신 클릭의 팝업을 덮어쓰지 않게 한다.
@@ -104,9 +102,9 @@ export function bindFlightCategoryClick(map, popupRef) {
 
     const rows = formatPointLines(point).map((l) => `
       <div style="display:flex;gap:8px;font-size:12px;line-height:1.7;${l.alert ? 'color:#dc2626;font-weight:700' : 'color:#1e293b'}">
-        <span style="width:34px;color:#64748b;font-weight:600">${esc(l.label)}</span>
-        <span>${esc(l.value)}</span>
-        ${l.note ? `<span style="color:#64748b">${esc(l.note)}</span>` : ''}
+        <span style="width:34px;color:#64748b;font-weight:600">${escapeHtml(l.label)}</span>
+        <span>${escapeHtml(l.value)}</span>
+        ${l.note ? `<span style="color:#64748b">${escapeHtml(l.note)}</span>` : ''}
       </div>`).join('')
 
     popupRef.current?.remove()

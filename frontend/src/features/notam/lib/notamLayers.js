@@ -1,4 +1,5 @@
 import { TIME_STATE, NOTAM_CATEGORIES } from './notamViewModel.js'
+import { escapeHtml } from '../../../shared/ui/escapeHtml.js'
 
 // NOTAM Mapbox 레이어: 색 = 시간상태 3색(카테고리 무관 균일), 형태 = 색맹 대비(채움/반채움/외곽선).
 // advisoryLayers.js 패턴을 따름. 줌 분기(마커↔폴리곤)는 이 코드베이스 선례 없음 →
@@ -208,10 +209,6 @@ export function addNotamHighlight(map) {
 export function setNotamHighlight(map, feature) {
   const src = map.getSource('notam-hl-src')
   if (src) src.setData(feature ? { type: 'FeatureCollection', features: [feature] } : EMPTY_FC)
-}
-
-function escapeHtml(s) {
-  return String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 }
 
 // 팝업 카테고리 아이콘(표·공항탭과 동일 lucide 아이콘의 인라인 SVG — HTML 팝업이라 React 못 씀).

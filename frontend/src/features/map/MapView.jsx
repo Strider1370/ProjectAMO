@@ -86,6 +86,7 @@ import {
   removeFlightCategoryLayers,
   bindFlightCategoryClick,
 } from '../weather-overlays/lib/flightCategoryLayers.js'
+import { escapeHtml } from '../../shared/ui/escapeHtml.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import MapToolsLauncher from '../map-tools/MapToolsLauncher.jsx'
 import { createOneShotNotifier } from './lib/createOneShotNotifier.js'
@@ -1265,7 +1266,6 @@ const MapView = forwardRef(function MapView({
       ADVISORY_LAYER_DEFS.airmet.fillLayerId,
       ADVISORY_LAYER_DEFS.airmet.lineLayerId,
     ]
-    const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
     // 클릭 하나가 여러 레이어(국내/해외 SIGMET, AIRMET)에서 동시에 걸릴 수 있어 레이어별
     // 핸들러가 각자 팝업을 띄우면 중복이 뜬다 — 같은 물리 클릭(원본 DOM 이벤트)당 한 번만
     // 처리하고, 그 지점의 모든 항목을 모아 겹친 것 전부를 한 팝업에 같이 보여준다.
