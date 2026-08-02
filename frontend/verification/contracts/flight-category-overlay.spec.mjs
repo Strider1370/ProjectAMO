@@ -1,12 +1,16 @@
 import { test, expect } from '../fixtures.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
-import { FC_STATION_SOURCE, FC_STATION_LAYER } from '../../src/features/weather-overlays/lib/flightCategoryLayers.js'
+import {
+  FC_VIS_SOURCE, FC_VIS_LAYER, FC_CEIL_SOURCE, FC_CEIL_FILL_LAYER, FC_CEIL_LINE_LAYER,
+  FC_STATION_SOURCE, FC_STATION_LAYER,
+} from '../../src/features/weather-overlays/lib/flightCategoryLayers.js'
 
-// 지도 렌더는 안티에일리어싱·글리프 힌팅이 실행마다 몇 픽셀씩 흔들린다 — monitoring-visual.spec.mjs와
-// 같은 값(0.02)을 쓴다. 채움 레이어 하나가 통째로 안 그려지면 수천~수만 픽셀이 바뀌므로
-// 이 여유로는 못 가린다: canvas 1384x876=1,212,384픽셀 중 0.02면 24,247픽셀까지 허용하는데,
-// 지금 실제로 흔들리는 양은 (재실행 확인) 120픽셀 안팎이다.
-const SCREENSHOT_TOLERANCE = { maxDiffPixelRatio: 0.02 }
+// ratio 0.02(=24,247px, monitoring-visual.spec.mjs와 같은 값)는 여기엔 너무 헐겁다 — 직접
+// 재봤다: 정상 실행의 흔들림(안티에일리어싱)은 120~263px, 시정 면을 통째로 안 그리게 만들면
+// (fill-opacity 0.35→0) 2,103px, 운고 채움+윤곽선을 둘 다 지우면(0.12→0, 2.5→0) 1,386px —
+// 즉 신호가 잡음의 13배(운고)~16배(시정)밖에 안 된다. 절대 픽셀수로 700을 쓴다: 잡음
+// 최댓값(263)의 2.7배 위, 가장 작은 신호(운고 1,386)의 절반 아래라 양쪽 다 여유가 남는다.
+const SCREENSHOT_TOLERANCE = { maxDiffPixels: 700 }
 
 // 앱 기동은 echo-top.spec.mjs와 같은 패턴 — 온보딩·릴리스노트 패널을 먼저 지워야
 // 사이드바 버튼이 가려지지 않는다.
@@ -68,6 +72,27 @@ async function assertStationHasRing(page, [lon, lat]) {
   expect(strokeWidth).toEqual(['case', ['boolean', ['get', 'ring'], false], 3, 1.5])
 }
 
+// 픽셀 허용치(700)는 잡음은 삼키지만 신호(1,386px 이상)를 다 못 가리진 않는다는 걸 재서
+// 확인했지만, 그 자체가 안전망은 아니다 — 그래서 화면과 별개로 소스에 도형이 들어왔는지,
+// 레이어가 실제로 visible인지를 window.__map에서 직접 읽는다. 스크린샷이 못 잡는 경우에도
+// 이 assert는 흔들리지 않는다.
+async function assertLayerRendering(page, sourceId, layerIds, expectVisible) {
+  const { hasFeatures, visibilities } = await page.evaluate(([sourceId, layerIds]) => {
+    const src = window.__map.getSource(sourceId)
+    return {
+      hasFeatures: !!src?._data?.features?.length,
+      visibilities: layerIds.map((id) => window.__map.getLayoutProperty(id, 'visibility')),
+    }
+  }, [sourceId, layerIds])
+
+  if (expectVisible) {
+    expect(hasFeatures, `${sourceId}에 도형 자료가 있어야 한다`).toBe(true)
+    for (const v of visibilities) expect(v).toBe('visible')
+  } else {
+    for (const v of visibilities) expect(v).toBe('none')
+  }
+}
+
 async function screenshotStation(page, [lon, lat], name) {
   const canvas = page.locator('.mapboxgl-canvas').first()
   const box = await canvas.boundingBox()
@@ -87,11 +112,13 @@ test.describe('flight-category-overlay', () => {
     const canvas = page.locator('.mapboxgl-canvas').first()
     await expect(canvas).toBeVisible()
     await panelToggle(page, testInfo).click()
+    await assertLayerRendering(page, FC_VIS_SOURCE, [FC_VIS_LAYER], true)
     await expect(canvas).toHaveScreenshot('vis-on.png', SCREENSHOT_TOLERANCE)
 
     await panelToggle(page, testInfo).click()
     await page.getByRole('button', { name: '시정', exact: true }).click()
     await panelToggle(page, testInfo).click()
+    await assertLayerRendering(page, FC_VIS_SOURCE, [FC_VIS_LAYER], false)
     await expect(canvas).toHaveScreenshot('vis-off.png', SCREENSHOT_TOLERANCE)
   })
 
@@ -101,6 +128,7 @@ test.describe('flight-category-overlay', () => {
 
     const canvas = page.locator('.mapboxgl-canvas').first()
     await panelToggle(page, testInfo).click()
+    await assertLayerRendering(page, FC_CEIL_SOURCE, [FC_CEIL_FILL_LAYER, FC_CEIL_LINE_LAYER], true)
     // 운고 단독 상태 — 위 스와치 행 없이 하위 옵션 버튼만 있는 것이 정상이다(범례 없음이 아니다).
     await expect(canvas).toHaveScreenshot('ceil-only.png', SCREENSHOT_TOLERANCE)
   })
@@ -112,6 +140,8 @@ test.describe('flight-category-overlay', () => {
 
     const canvas = page.locator('.mapboxgl-canvas').first()
     await panelToggle(page, testInfo).click()
+    await assertLayerRendering(page, FC_VIS_SOURCE, [FC_VIS_LAYER], true)
+    await assertLayerRendering(page, FC_CEIL_SOURCE, [FC_CEIL_FILL_LAYER, FC_CEIL_LINE_LAYER], true)
     await expect(canvas).toHaveScreenshot('vis-and-ceil.png', SCREENSHOT_TOLERANCE)
   })
 
