@@ -9,7 +9,7 @@ const RING_MIN_DIFF_FT = 200
 function band(ceilFt) {
   if (!Number.isFinite(ceilFt) || ceilFt < 0) return 'missing'
   if (ceilFt < LOW_FT) return 'low'
-  if (ceilFt < MID_FT) return 'mid'
+  if (ceilFt <= MID_FT) return 'mid'
   return 'high'
 }
 

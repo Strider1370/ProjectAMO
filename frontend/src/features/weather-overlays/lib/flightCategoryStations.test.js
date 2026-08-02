@@ -56,3 +56,17 @@ test('좌표와 표식 속성을 실어 보낸다', () => {
   assert.equal(f.properties.ring, true)
   assert.equal(f.properties.name, '시험')
 })
+
+test('900 m 경계값은 caution이다 (900 m 이하는 mid)', () => {
+  const MID_FT = 900 * 3.28084
+  assert.equal(stationMarkerStyle(stn({ ceiling_ft: MID_FT })).fill, 'caution')
+})
+
+test('450 m 경계값은 caution이다 (하한 경계는 이미 옳음)', () => {
+  const LOW_FT = 450 * 3.28084
+  assert.equal(stationMarkerStyle(stn({ ceiling_ft: LOW_FT })).fill, 'caution')
+})
+
+test('차이가 정확히 200 ft이면 테두리를 붙이지 않는다 (초과만 해당)', () => {
+  assert.equal(stationMarkerStyle(stn({ ceiling_ft: 1000, model_ceiling_ft: 1200 })).ring, false)
+})
