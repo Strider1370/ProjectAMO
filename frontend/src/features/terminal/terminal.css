@@ -90,7 +90,10 @@ body { min-height: 100vh; overflow: hidden; }
 .agency-mascot { display: block; width: 54px; height: 54px; object-fit: contain; }
 .board-header h1 { align-self: end; margin: 0; margin-bottom: var(--terminal-header-bottom-gap); font-size: var(--terminal-type-screen-title); font-weight: 800; letter-spacing: -.045em; white-space: nowrap; }
 .board-header-actions { display: flex; align-items: center; gap: var(--terminal-space-2); }
-.exact-board .board-header-actions { position: absolute; z-index: 35; top: var(--terminal-safe-top); left: 66%; transform: translateX(-50%); }
+.terminal-airport-selector { display: flex; height: 46px; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid #aeb7c3; background: #fff; color: #23334b; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.terminal-airport-selector select { min-width: 94px; border: 0; background: transparent; color: #071735; font: 700 13px "Noto Sans KR", sans-serif; cursor: pointer; }
+.terminal-airport-selector:focus-within { outline: 3px solid #2f80ed; outline-offset: 2px; }
+.exact-board .board-header-actions { position: absolute; z-index: 35; top: var(--terminal-safe-top); left: 60%; transform: translateX(-50%); }
 .board-header-clock { position: absolute; top: auto; right: var(--terminal-safe-side); bottom: var(--terminal-header-bottom-gap); left: auto; display: flex; align-items: baseline; justify-self: end; gap: 12px; white-space: nowrap; }
 .board-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
 .board-header-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
@@ -299,7 +302,7 @@ body { min-height: 100vh; overflow: hidden; }
 .exact-rail { display: grid; grid-template-rows: 90px 1fr 92px; }
 .rail-header { position: relative; display: grid; grid-template-columns: 54px auto minmax(120px, 1fr) auto; align-items: center; gap: var(--terminal-space-4); height: 90px; padding: 28px var(--terminal-safe-side) 0; border-bottom: 1px solid var(--terminal-border); background: var(--terminal-surface); }
 .rail-header h1 { align-self: end; margin: 0; margin-bottom: var(--terminal-header-bottom-gap); padding-right: 38px; border-right: 1px solid var(--terminal-border); font-size: var(--terminal-type-screen-title); font-weight: 800; letter-spacing: -.04em; }
-.rail-header-actions { position: absolute; top: var(--terminal-safe-top); left: 66%; display: flex; align-items: center; gap: var(--terminal-space-2); transform: translateX(-50%); }
+.rail-header-actions { position: absolute; top: var(--terminal-safe-top); left: 60%; display: flex; align-items: center; gap: var(--terminal-space-2); transform: translateX(-50%); }
 .rail-header-clock { position: absolute; top: auto; right: var(--terminal-safe-side); bottom: var(--terminal-header-bottom-gap); left: auto; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
 .rail-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
 .rail-header-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; letter-spacing: -.04em; }
@@ -349,6 +352,7 @@ body { min-height: 100vh; overflow: hidden; }
 .progress-clock { display: grid; grid-template-columns: auto auto auto; align-items: baseline; justify-content: start; gap: 6px; white-space: nowrap; }
 .progress-clock > span { color: #5d6879; font-size: 16px; font-weight: 700; }
 .progress-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 34px; line-height: 1; }
+.progress-clock strong .arrival-next-day { margin-right: 8px; font-family: "Noto Sans KR", sans-serif; }
 .progress-clock small { color: #667182; font-size: 14px; font-weight: 600; }
 .progress-label--arrival { grid-column: 1; width: 360px; justify-self: center; text-align: center; }
 .arrival-clocks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }

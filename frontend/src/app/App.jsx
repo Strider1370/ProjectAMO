@@ -309,7 +309,7 @@ function MainAppShell() {
 }
 
 function App() {
-  if (window.location.pathname === '/terminal') {
+  if (/^\/terminal(?:\/[a-z0-9]{4})?\/?$/i.test(window.location.pathname)) {
     return <Suspense fallback={null}><TerminalPage /></Suspense>
   }
   if (window.location.pathname === '/monitoring') {

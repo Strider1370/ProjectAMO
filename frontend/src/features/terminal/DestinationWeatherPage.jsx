@@ -12,6 +12,8 @@ import forecastCloud from "./assets/forecast-cloud-transparent.png";
 import forecastPartly from "./assets/forecast-partly-transparent.png";
 import forecastRain from "./assets/forecast-rain-transparent.png";
 import forecastStorm from "./assets/forecast-storm-transparent.png";
+import { loadTerminalLiveWeatherData, mergeTerminalLiveWeather } from './terminalLiveData.js';
+import { departureAirportFromPathname, selectTerminalDepartureAirport } from './terminalAirportSelection.js';
 
 const koreanAirLogo = "/Symbols/airlines/KAL-symbol.svg";
 const asianaAirlinesLogo = "/Symbols/airlines/AAR-symbol.svg";
@@ -194,6 +196,21 @@ const weatherLabels = {
 };
 
 const displayTemperature = (value) => String(value).replace("℃", "°C");
+const displayForecastHour = (value) => String(value).replace(/^\d{2}:00$/, `${Number(String(value).slice(0, 2))}시`);
+const splitArrivalKst = (value) => value.startsWith("다음 날 ")
+  ? { dayLabel: "다음 날", time: value.slice("다음 날 ".length) }
+  : { dayLabel: "", time: value };
+
+function formatKoreanClock(value) {
+  const koreanDays = ["일", "월", "화", "수", "목", "금", "토"];
+  const kst = new Date(new Date(value).getTime() + 9 * 60 * 60 * 1000);
+  const year = kst.getUTCFullYear();
+  const month = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kst.getUTCDate()).padStart(2, "0");
+  const hour = String(kst.getUTCHours()).padStart(2, "0");
+  const minute = String(kst.getUTCMinutes()).padStart(2, "0");
+  return { date: `${year}.${month}.${day} (${koreanDays[kst.getUTCDay()]})`, time: `${hour}:${minute}` };
+}
 
 function WeatherCondition({ type, className = "", style }) {
   return <em className={`weather-condition weather-condition--${type} ${className}`.trim()} style={style}>{weatherLabels[type] ?? "흐림"}</em>;
@@ -326,6 +343,18 @@ function ViewSwitcher({ view, onSelectView }) {
   );
 }
 
+function DepartureAirportSelect({ airports, selectedIcao, onSelect }) {
+  if (airports.length === 0) return null;
+  return (
+    <label className="terminal-airport-selector">
+      <span>출발 공항</span>
+      <select aria-label="출발 공항" value={selectedIcao} onChange={(event) => onSelect(event.target.value)}>
+        {airports.map((airport) => <option key={airport.icao} value={airport.icao}>{airport.nameKo}</option>)}
+      </select>
+    </label>
+  );
+}
+
 function PageIndicator({ currentPage, pageCount }) {
   return (
     <div
@@ -387,21 +416,22 @@ function MotionModeSwitcher({ motionMode, onSelectMotion, modes = boardMotionMod
   );
 }
 
-function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage, pageCount, motionMode, onReplay, onSelectMotion, onSelectView }) {
+function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage, pageCount, motionMode, onReplay, onSelectMotion, onSelectView, clock, title, departureAirports, departureAirportIcao, onSelectDepartureAirport }) {
   return (
     <section className={`exact-screen exact-board motion-${motionMode}`} data-testid="option-one">
       <PageIndicator currentPage={currentPage} pageCount={pageCount} />
       <header className="board-header">
         <AgencyMascot />
-        <h1>출발 항공편 · 도착지 날씨</h1>
+        <h1>{title}</h1>
         <div className="board-header-actions">
+          <DepartureAirportSelect airports={departureAirports} selectedIcao={departureAirportIcao} onSelect={onSelectDepartureAirport} />
           <ViewSwitcher view="board" onSelectView={onSelectView} />
           <MotionModeSwitcher motionMode={motionMode} onSelectMotion={onSelectMotion} />
           <button type="button" className="next-board-button" onClick={onReplay}>
             <MdChevronRight /><span>다음 3편</span>
           </button>
         </div>
-        <div className="board-header-clock"><span>2026.07.30 (목)</span><strong>06:32</strong></div>
+        <div className="board-header-clock"><span>{clock.date}</span><strong>{clock.time}</strong></div>
       </header>
       <div className="board-viewport">
         <div className={`board-page ${transitioning ? "is-leaving" : ""}`}>
@@ -459,6 +489,7 @@ function RailStats({ flight }) {
 }
 
 function ForecastTimeline({ flight }) {
+  const { dayLabel: arrivalDayLabel, time: arrivalKstTime } = splitArrivalKst(flight.arrivalKst);
   return (
     <div className="timeline">
       <div className="timeline-arrival-grid">
@@ -469,7 +500,7 @@ function ForecastTimeline({ flight }) {
               <span>현지</span><strong className="rail-motion-unit" style={{ "--rail-item": 9 }}>{flight.arrival}</strong>
             </div>
             <div className="progress-clock">
-              <span>한국</span><strong className="rail-motion-unit" style={{ "--rail-item": 10 }}>{flight.arrivalKst}</strong><small>KST</small>
+              <span>한국</span><strong className="rail-motion-unit" style={{ "--rail-item": 10 }}>{arrivalDayLabel && <span className="arrival-next-day">{arrivalDayLabel}</span>}{arrivalKstTime}</strong><small>KST</small>
             </div>
           </div>
         </div>
@@ -485,7 +516,7 @@ function ForecastTimeline({ flight }) {
             key={time}
           >
             <div className="rail-forecast-content rail-motion-unit" style={{ "--rail-item": 12 + index }}>
-              <time>{time}</time>
+              <time>{displayForecastHour(time)}</time>
               <RailWeatherImage type={icon} />
               <WeatherCondition type={icon} />
               <strong>{displayTemperature(temp)}</strong>
@@ -531,14 +562,20 @@ function RailScreen({
   onReplay,
   onSelectMotion,
   onSelectView,
+  clock,
+  title,
+  departureAirports,
+  departureAirportIcao,
+  onSelectDepartureAirport,
 }) {
   return (
     <section className={`exact-screen exact-rail rail-motion-${motionMode}`} data-testid="option-three">
       <PageIndicator currentPage={currentPage} pageCount={pageCount} />
       <header className="rail-header">
         <AgencyMascot />
-        <h1>출발 항공편 · 도착지 날씨</h1>
-        <div className="rail-header-actions">
+        <h1>{title}</h1>
+          <div className="rail-header-actions">
+            <DepartureAirportSelect airports={departureAirports} selectedIcao={departureAirportIcao} onSelect={onSelectDepartureAirport} />
           <ViewSwitcher view="rail" onSelectView={onSelectView} />
           <MotionModeSwitcher
             motionMode={motionMode}
@@ -550,7 +587,7 @@ function RailScreen({
             <MdChevronRight /><span>다음 3편</span>
           </button>
         </div>
-        <div className="rail-header-clock"><span>2026.07.30 (목)</span><strong>09:15</strong></div>
+        <div className="rail-header-clock"><span>{clock.date}</span><strong>{clock.time}</strong></div>
       </header>
       <div className="rail-viewport">
         <div className={`rail-page ${transitioning ? "is-leaving" : ""}`}>
@@ -584,7 +621,28 @@ export function App() {
     const requestedMode = params.get("railMotion");
     return ["cascade", "flap", "roll", "wipe", "fade"].includes(requestedMode) ? requestedMode : "cascade";
   });
+  const [liveWeatherData, setLiveWeatherData] = useState(null);
+  const [now, setNow] = useState(() => new Date());
+  const [departureAirportIcao, setDepartureAirportIcao] = useState(() => departureAirportFromPathname(window.location.pathname) || params.get('departureAirport') || 'RKSS');
   const timer = useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const refresh = () => loadTerminalLiveWeatherData().then((data) => {
+      if (mounted) setLiveWeatherData(data);
+    });
+    refresh();
+    const interval = window.setInterval(refresh, 5 * 60 * 1000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 30 * 1000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const replay = useCallback(() => {
     if (transitioning) return;
@@ -638,19 +696,40 @@ export function App() {
 
   const pendingBoardGroup = (activeBoardGroup + 1) % boardFlightGroups.length;
   const pendingRailGroup = (activeRailGroup + 1) % railFlightGroups.length;
+  const liveBoardFlightGroups = useMemo(() => liveWeatherData
+    ? boardFlightGroups.map((group) => group.map((flight) => mergeTerminalLiveWeather(flight, liveWeatherData)))
+    : boardFlightGroups, [liveWeatherData]);
+  const koreanClock = formatKoreanClock(now);
+  const departureAirportState = useMemo(
+    () => selectTerminalDepartureAirport(liveWeatherData?.airportCatalog, departureAirportIcao),
+    [liveWeatherData, departureAirportIcao],
+  );
+  const terminalTitle = `${departureAirportState.selected?.nameKo?.replace('국제', '') || '김포공항'} 도착지 날씨`;
+  const selectDepartureAirport = useCallback((icao) => {
+    setDepartureAirportIcao(icao);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.pathname = `/terminal/${icao.toLowerCase()}`;
+    nextUrl.searchParams.delete('departureAirport');
+    window.history.replaceState(null, '', nextUrl);
+  }, []);
   return (
     <main className="prototype-shell">
       {view === "board" ? (
         <BoardScreen
           transitioning={transitioning}
-          activeFlights={boardFlightGroups[activeBoardGroup]}
-          pendingFlights={boardFlightGroups[pendingBoardGroup]}
+          activeFlights={liveBoardFlightGroups[activeBoardGroup]}
+          pendingFlights={liveBoardFlightGroups[pendingBoardGroup]}
           currentPage={activeBoardGroup}
           pageCount={boardFlightGroups.length}
           motionMode={motionMode}
           onReplay={replay}
           onSelectMotion={selectMotionMode}
           onSelectView={selectView}
+          clock={koreanClock}
+          title={terminalTitle}
+          departureAirports={departureAirportState.options}
+          departureAirportIcao={departureAirportState.selected?.icao || departureAirportIcao}
+          onSelectDepartureAirport={selectDepartureAirport}
         />
       ) : (
         <RailScreen
@@ -663,6 +742,11 @@ export function App() {
           onReplay={replay}
           onSelectMotion={selectRailMotionMode}
           onSelectView={selectView}
+          clock={koreanClock}
+          title={terminalTitle}
+          departureAirports={departureAirportState.options}
+          departureAirportIcao={departureAirportState.selected?.icao || departureAirportIcao}
+          onSelectDepartureAirport={selectDepartureAirport}
         />
       )}
     </main>
