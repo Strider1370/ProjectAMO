@@ -1,5 +1,12 @@
 import { test, expect } from '../fixtures.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
+import { FC_STATION_SOURCE, FC_STATION_LAYER } from '../../src/features/weather-overlays/lib/flightCategoryLayers.js'
+
+// 지도 렌더는 안티에일리어싱·글리프 힌팅이 실행마다 몇 픽셀씩 흔들린다 — monitoring-visual.spec.mjs와
+// 같은 값(0.02)을 쓴다. 채움 레이어 하나가 통째로 안 그려지면 수천~수만 픽셀이 바뀌므로
+// 이 여유로는 못 가린다: canvas 1384x876=1,212,384픽셀 중 0.02면 24,247픽셀까지 허용하는데,
+// 지금 실제로 흔들리는 양은 (재실행 확인) 120픽셀 안팎이다.
+const SCREENSHOT_TOLERANCE = { maxDiffPixelRatio: 0.02 }
 
 // 앱 기동은 echo-top.spec.mjs와 같은 패턴 — 온보딩·릴리스노트 패널을 먼저 지워야
 // 사이드바 버튼이 가려지지 않는다.
@@ -39,6 +46,28 @@ async function revealLegends(page, testInfo) {
 // 지도 locator의 toHaveScreenshot({clip})은 무시되고 캔버스 전체가 찍힌다 — page 기준
 // clip을 쓰되, 지도 캔버스는 사이드바만큼 페이지 왼쪽에서 밀려 있으므로
 // canvas의 boundingBox() 오프셋을 더해야 실제로 지점 위가 잘린다.
+// 48x48 자름은 픽셀 허용치로는 못 지킨다 — 몇 픽셀만 어긋나도 링이 있는지 없는지 자체가
+// 바뀐다. 그래서 그림은 참고로 남기고, 판정은 window.__map에서 소스 속성과 paint 값을
+// 직접 읽는 이 assert가 진다. 렌더링 흔들림에 흔들리지 않는다.
+async function assertStationHasRing(page, [lon, lat]) {
+  const { hasRing, strokeColor, strokeWidth } = await page.evaluate(([lon, lat, sourceId, layerId]) => {
+    const src = window.__map.getSource(sourceId)
+    const feature = src?._data?.features?.find((f) => {
+      const [flon, flat] = f.geometry.coordinates
+      return Math.abs(flon - lon) < 1e-3 && Math.abs(flat - lat) < 1e-3
+    })
+    return {
+      hasRing: feature?.properties?.ring === true,
+      strokeColor: window.__map.getPaintProperty(layerId, 'circle-stroke-color'),
+      strokeWidth: window.__map.getPaintProperty(layerId, 'circle-stroke-width'),
+    }
+  }, [lon, lat, FC_STATION_SOURCE, FC_STATION_LAYER])
+
+  expect(hasRing, '해당 관측지점 자료의 ring 속성이 true여야 한다').toBe(true)
+  expect(strokeColor).toEqual(['case', ['boolean', ['get', 'ring'], false], '#ffffff', '#334155'])
+  expect(strokeWidth).toEqual(['case', ['boolean', ['get', 'ring'], false], 3, 1.5])
+}
+
 async function screenshotStation(page, [lon, lat], name) {
   const canvas = page.locator('.mapboxgl-canvas').first()
   const box = await canvas.boundingBox()
@@ -58,12 +87,12 @@ test.describe('flight-category-overlay', () => {
     const canvas = page.locator('.mapboxgl-canvas').first()
     await expect(canvas).toBeVisible()
     await panelToggle(page, testInfo).click()
-    await expect(canvas).toHaveScreenshot('vis-on.png')
+    await expect(canvas).toHaveScreenshot('vis-on.png', SCREENSHOT_TOLERANCE)
 
     await panelToggle(page, testInfo).click()
     await page.getByRole('button', { name: '시정', exact: true }).click()
     await panelToggle(page, testInfo).click()
-    await expect(canvas).toHaveScreenshot('vis-off.png')
+    await expect(canvas).toHaveScreenshot('vis-off.png', SCREENSHOT_TOLERANCE)
   })
 
   test('운고는 윤곽선으로 나오고 시정과 구분된다 (운고 단독)', async ({ page }, testInfo) => {
@@ -73,7 +102,7 @@ test.describe('flight-category-overlay', () => {
     const canvas = page.locator('.mapboxgl-canvas').first()
     await panelToggle(page, testInfo).click()
     // 운고 단독 상태 — 위 스와치 행 없이 하위 옵션 버튼만 있는 것이 정상이다(범례 없음이 아니다).
-    await expect(canvas).toHaveScreenshot('ceil-only.png')
+    await expect(canvas).toHaveScreenshot('ceil-only.png', SCREENSHOT_TOLERANCE)
   })
 
   test('시정과 운고를 함께 켜면 채움과 윤곽선이 겹쳐 보인다', async ({ page }, testInfo) => {
@@ -83,7 +112,7 @@ test.describe('flight-category-overlay', () => {
 
     const canvas = page.locator('.mapboxgl-canvas').first()
     await panelToggle(page, testInfo).click()
-    await expect(canvas).toHaveScreenshot('vis-and-ceil.png')
+    await expect(canvas).toHaveScreenshot('vis-and-ceil.png', SCREENSHOT_TOLERANCE)
   })
 
   test('자료없음 표시는 기본이 꺼짐이고 켜면 화면이 바뀐다', async ({ page }, testInfo) => {
@@ -95,11 +124,11 @@ test.describe('flight-category-overlay', () => {
     await expect(missing).toHaveAttribute('aria-pressed', 'false')
 
     const canvas = page.locator('.mapboxgl-canvas').first()
-    await expect(canvas).toHaveScreenshot('missing-off.png')
+    await expect(canvas).toHaveScreenshot('missing-off.png', SCREENSHOT_TOLERANCE)
 
     await missing.click()
     await expect(missing).toHaveAttribute('aria-pressed', 'true')
-    await expect(canvas).toHaveScreenshot('missing-on.png')
+    await expect(canvas).toHaveScreenshot('missing-on.png', SCREENSHOT_TOLERANCE)
   })
 
   test('관측지점은 기본이 켜짐이고 개수를 적는다', async ({ page }, testInfo) => {
@@ -146,6 +175,7 @@ test.describe('flight-category-overlay', () => {
     await panelToggle(page, testInfo).click()
     // asos_108 서울 — 운고 1,312ft, severe(빨강) 밴드, model_ceiling_ft=null이라
     // 결측 임계값(2,953ft) 미만이면 바로 테두리 대상이 된다(stationMarkerStyle).
+    await assertStationHasRing(page, [126.9658, 37.57142])
     await screenshotStation(page, [126.9658, 37.57142], 'station-ring-severe.png')
   })
 
@@ -155,6 +185,7 @@ test.describe('flight-category-overlay', () => {
     await panelToggle(page, testInfo).click()
     // asos_184 제주 — 운고 2,625ft, caution(주황) 밴드. 같은 테두리 판정이지만
     // 채움색이 달라 흰 테두리가 severe 지점보다도 더 뚜렷이 갈린다.
+    await assertStationHasRing(page, [126.52969, 33.51411])
     await screenshotStation(page, [126.52969, 33.51411], 'station-ring-caution.png')
   })
 })
