@@ -13,6 +13,10 @@ import forecastPartly from "./assets/forecast-partly-transparent.png";
 import forecastRain from "./assets/forecast-rain-transparent.png";
 import forecastStorm from "./assets/forecast-storm-transparent.png";
 
+const koreanAirLogo = "/Symbols/airlines/KAL-symbol.svg";
+const asianaAirlinesLogo = "/Symbols/airlines/AAR-symbol.svg";
+const jejuAirLogo = "/Symbols/airlines/JJA.svg";
+
 const icons = {
   sun: WiDaySunny,
   partly: WiDayCloudy,
@@ -33,7 +37,7 @@ const boardFlights = [
     forecast: [["16시", "rain", "27℃"], ["17시", "rain", "27℃"], ["18시", "cloud", "26℃"], ["19시", "cloud", "26℃"], ["20시", "cloudy", "25℃"]],
   },
   {
-    city: "싱가포르", displayName: "싱가포르", code: "SIN", airport: "창이 국제공항", flight: "SQ 605", airline: "SINGAPORE AIRLINES",
+    city: "싱가포르", displayName: "싱가포르 창이", code: "SIN", airport: "창이 국제공항", flight: "SQ 605", airline: "SINGAPORE AIRLINES",
     logo: boardSq, departure: "08:05", gate: "23", status: "정상 운항",
     localClock: "7/30 05:32", localZone: "SGT", kstClock: "7/30 06:32", arrivalKst: "16:35",
     current: { icon: "partly", temp: 31, feels: "36℃", humidity: "69%", wind: "남동 4m/s" },
@@ -42,7 +46,7 @@ const boardFlights = [
   },
   {
     city: "파리", displayName: "파리 샤를 드 골", code: "CDG", airport: "샤를 드골 국제공항", flight: "AF 267", airline: "AIR FRANCE",
-    logo: boardAf, departure: "09:40", gate: "31", status: "정상 운항",
+    logo: boardAf, departure: "09:40", revised: "10:00", gate: "31", status: "지연 20분", statusTone: "delay",
     localClock: "7/29 23:32", localZone: "CEST", kstClock: "7/30 06:32", arrivalKst: "23:50",
     current: { icon: "cloudy", temp: 20, feels: "20℃", humidity: "62%", wind: "북동 3m/s" },
     arrival: "16:50",
@@ -52,28 +56,28 @@ const boardFlights = [
 
 const alternateBoardFlights = [
   {
-    city: "오사카", displayName: "오사카 간사이", code: "KIX", airport: "간사이 국제공항", flight: "JL 120", airline: "JAPAN AIRLINES",
-    logo: boardJal, departure: "10:20", gate: "18", status: "정상 운항",
-    localClock: "7/30 06:32", localZone: "JST", kstClock: "7/30 06:32", arrivalKst: "12:05",
-    current: { icon: "partly", temp: 26, feels: "28℃", humidity: "65%", wind: "남서 3m/s" },
-    arrival: "12:05",
-    forecast: [["12시", "partly", "26℃"], ["13시", "partly", "27℃"], ["14시", "cloud", "27℃"], ["15시", "cloud", "26℃"], ["16시", "rain", "25℃"]],
+    city: "서울", displayName: "서울 김포", code: "GMP", airport: "김포국제공항", flight: "KE 1205", airline: "KOREAN AIR",
+    logo: koreanAirLogo, departure: "10:20", gate: "18", status: "정상 운항",
+    localClock: "7/30 06:32", localZone: "KST", kstClock: "7/30 06:32", arrivalKst: "11:30",
+    current: { icon: "cloud", temp: 25, feels: "26℃", humidity: "72%", wind: "북서 3m/s" },
+    arrival: "11:30",
+    forecast: [["11시", "cloud", "25℃"], ["12시", "partly", "26℃"], ["13시", "partly", "27℃"], ["14시", "cloud", "27℃"], ["15시", "cloud", "26℃"]],
   },
   {
-    city: "방콕", displayName: "방콕 수완나품", code: "BKK", airport: "수완나품 국제공항", flight: "SQ 711", airline: "SINGAPORE AIRLINES",
-    logo: boardSq, departure: "10:55", gate: "26", status: "탑승 준비",
-    localClock: "7/30 04:32", localZone: "ICT", kstClock: "7/30 06:32", arrivalKst: "17:10",
-    current: { icon: "rain", temp: 30, feels: "35℃", humidity: "74%", wind: "남동 2m/s" },
-    arrival: "15:10",
-    forecast: [["15시", "rain", "30℃"], ["16시", "storm", "29℃"], ["17시", "rain", "29℃"], ["18시", "cloud", "28℃"], ["19시", "cloud", "28℃"]],
+    city: "제주", displayName: "제주", code: "CJU", airport: "제주국제공항", flight: "OZ 8901", airline: "ASIANA AIRLINES",
+    logo: asianaAirlinesLogo, departure: "10:45", gate: "21", status: "탑승 준비",
+    localClock: "7/30 06:32", localZone: "KST", kstClock: "7/30 06:32", arrivalKst: "11:55",
+    current: { icon: "partly", temp: 28, feels: "30℃", humidity: "68%", wind: "남서 4m/s" },
+    arrival: "11:55",
+    forecast: [["11시", "partly", "28℃"], ["12시", "partly", "29℃"], ["13시", "cloud", "29℃"], ["14시", "rain", "28℃"], ["15시", "rain", "27℃"]],
   },
   {
-    city: "로마", displayName: "로마 피우미치노", code: "FCO", airport: "레오나르도 다 빈치 국제공항", flight: "AF 140", airline: "AIR FRANCE",
-    logo: boardAf, departure: "11:30", gate: "34", status: "정상 운항",
-    localClock: "7/29 23:32", localZone: "CEST", kstClock: "7/30 06:32", arrivalKst: "다음 날 01:25",
-    current: { icon: "sun", temp: 24, feels: "25℃", humidity: "58%", wind: "서풍 3m/s" },
-    arrival: "18:25",
-    forecast: [["18시", "partly", "24℃"], ["19시", "partly", "23℃"], ["20시", "cloud", "22℃"], ["21시", "cloud", "21℃"], ["22시", "cloud", "20℃"]],
+    city: "부산", displayName: "부산 김해", code: "PUS", airport: "김해국제공항", flight: "7C 112", airline: "JEJU AIR",
+    logo: jejuAirLogo, departure: "11:10", gate: "25", status: "정상 운항",
+    localClock: "7/30 06:32", localZone: "KST", kstClock: "7/30 06:32", arrivalKst: "12:20",
+    current: { icon: "rain", temp: 27, feels: "29℃", humidity: "81%", wind: "남동 3m/s" },
+    arrival: "12:20",
+    forecast: [["12시", "rain", "27℃"], ["13시", "rain", "27℃"], ["14시", "cloud", "26℃"], ["15시", "cloud", "26℃"], ["16시", "partly", "25℃"]],
   },
 ];
 
@@ -89,7 +93,7 @@ const railFlights = [
     forecast: [["12:00", "partly", "28℃"], ["14:00", "cloudy", "29℃"], ["16:00", "cloudy", "28℃"], ["18:00", "partly", "27℃"], ["20:00", "cloudy", "26℃"]],
   },
   {
-    city: "싱가포르", code: "SIN", flight: "SQ607", status: "정시 운항", statusTone: "ok",
+    city: "싱가포르 창이", code: "SIN", flight: "SQ607", status: "정시 운항", statusTone: "ok",
     logo: boardSq, airline: "Singapore Airlines",
     localClock: "7/30 08:15", localZone: "SGT", kstClock: "7/30 09:15", arrivalKst: "17:05",
     departure: "10:25", duration: "06:40", gate: "25", now: "09:15", arrival: "16:05", arrivalSlot: 0,
@@ -108,28 +112,28 @@ const railFlights = [
 
 const alternateRailFlights = [
   {
-    city: "오사카 간사이", code: "KIX", flight: "JL120", status: "정시 운항", statusTone: "ok",
-    logo: boardJal, airline: "Japan Airlines",
-    localClock: "7/30 09:15", localZone: "JST", kstClock: "7/30 09:15", arrivalKst: "12:05",
-    departure: "10:20", duration: "01:45", gate: "18", now: "09:15", arrival: "12:05", arrivalSlot: 0,
-    preArrival: ["11:00", "cloudy", "26℃"],
-    forecast: [["12:00", "partly", "26℃"], ["14:00", "cloudy", "27℃"], ["16:00", "rain", "25℃"], ["18:00", "cloudy", "24℃"], ["20:00", "cloudy", "23℃"]],
+    city: "서울 김포", code: "GMP", flight: "KE1205", status: "정시 운항", statusTone: "ok",
+    logo: koreanAirLogo, airline: "Korean Air",
+    localClock: "7/30 09:15", localZone: "KST", kstClock: "7/30 09:15", arrivalKst: "10:45",
+    departure: "09:50", duration: "00:55", gate: "18", now: "09:15", arrival: "10:45", arrivalSlot: 0,
+    preArrival: ["10:00", "cloudy", "25℃"],
+    forecast: [["11:00", "cloudy", "25℃"], ["12:00", "partly", "26℃"], ["13:00", "partly", "27℃"], ["14:00", "cloudy", "27℃"], ["15:00", "cloudy", "26℃"]],
   },
   {
-    city: "방콕 수완나품", code: "BKK", flight: "SQ711", status: "탑승 준비", statusTone: "ok",
-    logo: boardSq, airline: "Singapore Airlines",
-    localClock: "7/30 07:15", localZone: "ICT", kstClock: "7/30 09:15", arrivalKst: "17:10",
-    departure: "10:55", duration: "06:15", gate: "26", now: "09:15", arrival: "15:10", arrivalSlot: 0,
-    preArrival: ["14:00", "rain", "30℃"],
-    forecast: [["15:00", "rain", "30℃"], ["17:00", "storm", "29℃"], ["19:00", "cloudy", "28℃"], ["21:00", "rain", "27℃"], ["23:00", "cloudy", "27℃"]],
+    city: "제주", code: "CJU", flight: "OZ8901", status: "탑승 준비", statusTone: "ok",
+    logo: asianaAirlinesLogo, airline: "Asiana Airlines",
+    localClock: "7/30 09:15", localZone: "KST", kstClock: "7/30 09:15", arrivalKst: "11:55",
+    departure: "10:45", duration: "01:10", gate: "21", now: "09:15", arrival: "11:55", arrivalSlot: 0,
+    preArrival: ["11:00", "partly", "28℃"],
+    forecast: [["12:00", "partly", "29℃"], ["13:00", "cloudy", "29℃"], ["14:00", "rain", "28℃"], ["15:00", "rain", "27℃"], ["16:00", "cloudy", "27℃"]],
   },
   {
-    city: "로마 피우미치노", code: "FCO", flight: "AF140", status: "정시 운항", statusTone: "ok",
-    logo: boardAf, airline: "Air France",
-    localClock: "7/30 02:15", localZone: "CEST", kstClock: "7/30 09:15", arrivalKst: "다음 날 01:25",
-    departure: "11:30", duration: "13:55", gate: "34", now: "09:15", arrival: "18:25", arrivalSlot: 0,
-    preArrival: ["17:00", "partly", "24℃"],
-    forecast: [["18:00", "partly", "24℃"], ["20:00", "partly", "23℃"], ["22:00", "cloudy", "22℃"], ["00:00", "nightPartly", "20℃"], ["02:00", "night", "19℃"]],
+    city: "부산 김해", code: "PUS", flight: "7C112", status: "정시 운항", statusTone: "ok",
+    logo: jejuAirLogo, airline: "Jeju Air",
+    localClock: "7/30 09:15", localZone: "KST", kstClock: "7/30 09:15", arrivalKst: "12:20",
+    departure: "11:10", duration: "01:10", gate: "25", now: "09:15", arrival: "12:20", arrivalSlot: 0,
+    preArrival: ["11:00", "rain", "27℃"],
+    forecast: [["12:00", "rain", "27℃"], ["13:00", "cloudy", "26℃"], ["14:00", "cloudy", "26℃"], ["15:00", "partly", "25℃"], ["16:00", "partly", "25℃"]],
   },
 ];
 
@@ -189,8 +193,10 @@ const weatherLabels = {
   nightPartly: "구름 조금",
 };
 
+const displayTemperature = (value) => String(value).replace("℃", "°C");
+
 function WeatherCondition({ type, className = "", style }) {
-  return <em className={`weather-condition ${className}`.trim()} style={style}>{weatherLabels[type] ?? "흐림"}</em>;
+  return <em className={`weather-condition weather-condition--${type} ${className}`.trim()} style={style}>{weatherLabels[type] ?? "흐림"}</em>;
 }
 
 function RailWeatherImage({ type }) {
@@ -208,6 +214,7 @@ function AirlineLogo({ flight }) {
 function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
   const bandStyle = (band) => ({ "--band": band, "--column": columnIndex });
   const rollStyle = (item) => ({ "--item": item });
+  const isDelayed = Boolean(flight.revised);
   const [localDate, localTime] = flight.localClock.split(" ");
   const [kstDate] = flight.kstClock.split(" ");
   const showLocalDate = localDate !== kstDate;
@@ -234,7 +241,7 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
               <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.flight}</strong>
               <span className="roll-unit flap-unit" style={rollStyle(2)}>{flight.airline}</span>
             </div>
-            <div className="operation-status">
+            <div className={`operation-status${isDelayed ? " is-delay" : ""}`}>
               <i className="roll-unit flap-unit" style={rollStyle(3)} />
               <strong className="roll-unit flap-unit" style={rollStyle(4)}>{flight.status}</strong>
             </div>
@@ -247,11 +254,14 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
           <div className="schedule-grid">
             <div>
               <span className="roll-unit" style={rollStyle(0)}>출발</span>
-              <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.departure}</strong>
+              <div className={`departure-time${isDelayed ? " is-delayed" : ""}`}>
+                <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.revised ?? flight.departure}</strong>
+                {flight.revised && <small className="roll-unit" style={rollStyle(2)}>예정 <s>{flight.departure}</s></small>}
+              </div>
             </div>
             <div>
-              <span className="roll-unit" style={rollStyle(2)}>탑승구</span>
-              <strong className="roll-unit flap-unit" style={rollStyle(3)}>{flight.gate}</strong>
+              <span className="roll-unit" style={rollStyle(3)}>탑승구</span>
+              <strong className="roll-unit flap-unit" style={rollStyle(4)}>{flight.gate}</strong>
             </div>
           </div>
           <div className="board-divider" />
@@ -273,7 +283,7 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
                 <BoardWeatherImage type={flight.current.icon} />
                 <WeatherCondition type={flight.current.icon} />
               </span>
-              <strong className="roll-unit flap-unit" style={rollStyle(4)}>{flight.current.temp}<small>℃</small></strong>
+              <strong className="roll-unit flap-unit" style={rollStyle(4)}>{flight.current.temp}<small>°C</small></strong>
             </div>
             <dl>
               <div className="roll-unit" style={rollStyle(5)}><dt>체감</dt><dd className="flap-unit">{flight.current.feels}</dd></div>
@@ -297,7 +307,7 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
                 <time className="roll-unit flap-unit" style={rollStyle(3 + index * 4)}>{time}</time>
                 <span className="roll-unit flap-unit" style={rollStyle(4 + index * 4)}><BoardWeatherImage type={icon} small /></span>
                 <WeatherCondition type={icon} className="roll-unit flap-unit" style={rollStyle(5 + index * 4)} />
-                <strong className="roll-unit flap-unit" style={rollStyle(6 + index * 4)}>{temp}</strong>
+                <strong className="roll-unit flap-unit" style={rollStyle(6 + index * 4)}>{displayTemperature(temp)}</strong>
               </div>
             ))}
           </div>
@@ -434,7 +444,7 @@ function RailStats({ flight }) {
     <div className="rail-stats">
       <div>
         <span>출발</span>
-        <div className="rail-motion-unit" style={{ "--rail-item": 6 }}><strong>{flight.departure}</strong>{flight.revised && <em>{flight.revised}</em>}</div>
+        <div className={`rail-motion-unit${flight.revised ? " is-delayed" : ""}`} style={{ "--rail-item": 6 }}><strong>{flight.revised ?? flight.departure}</strong>{flight.revised && <em>예정 <s>{flight.departure}</s></em>}</div>
       </div>
       <div>
         <span>예상 비행시간</span>
@@ -478,7 +488,7 @@ function ForecastTimeline({ flight }) {
               <time>{time}</time>
               <RailWeatherImage type={icon} />
               <WeatherCondition type={icon} />
-              <strong>{temp}</strong>
+              <strong>{displayTemperature(temp)}</strong>
             </div>
           </div>
         ))}
@@ -497,7 +507,10 @@ function RailRow({ flight, index }) {
         <div className="rail-flight-status">
           <span className="rail-flight-number rail-motion-unit" style={{ "--rail-item": 4 }}>
             <img src={flight.logo} alt={`${flight.airline} 로고`} />
-            <strong>{flight.flight}</strong>
+            <span className="rail-airline-meta">
+              <strong>{flight.flight}</strong>
+              <small>{flight.airline}</small>
+            </span>
           </span>
           <span className={`${flight.statusTone} rail-motion-unit`} style={{ "--rail-item": 5 }}>{flight.status}</span>
         </div>
