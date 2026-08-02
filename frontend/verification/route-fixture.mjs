@@ -105,10 +105,19 @@ function profileFor(request) {
   })
 }
 
+const cloudDistancesNm = [0, 20, 40, 60, 80, 100, 120, 140, 160]
+const cloudRows = [
+  { pressure: 975, altFt: 1000, cld: [.1,.1,.2,.2,.1,null,.1,.1,.1] },
+  { pressure: 925, altFt: 2500, cld: [.1,.2,.7,.8,.2,null,.1,.7,.1] },
+  { pressure: 850, altFt: 5000, cld: [.1,.7,.9,.8,.2,null,.7,.9,.2] },
+  { pressure: 750, altFt: 8000, cld: [.1,.2,.8,.3,.1,null,.2,.7,.1] },
+  { pressure: 700, altFt: 10000, cld: [.1,.1,.2,.1,.1,null,.1,.1,.1] },
+]
+const cloudLevels = cloudRows.map((row) => ({ pressure: row.pressure, altFt: row.altFt, values: row.cld.map((cld, index) => ({ distanceNm: cloudDistancesNm[index], altFt: row.altFt, cld, t: null, spread: null, icing: null, u: null, v: null })) }))
 const crossSection = {
-  run: { id: 'contract-fixture', model: 'fixture', hf: 0 },
+  run: { id: 'contract-fixture', model: 'fixture', tmfc: '2026071800', hf: 0, validTime: '2026-07-18T09:00:00Z' },
   availableTimes: [{ hf: 0, validTime: '2026-07-18T09:00:00Z' }, { hf: 3, validTime: '2026-07-18T12:00:00Z' }],
-  levels: [], coverage: { byVariable: {} }, turbulence: { available: false, levels: [] },
+  levels: cloudLevels, coverage: { byVariable: { cld: { available: true, topPressure: 700, threshold: .6, unit: '1' } } }, turbulence: { available: false, levels: [] },
 }
 const altitudeComparison = {
   constraints: { status: 'matched', routeFloorFt: 7000, routeCeilingFt: 11000 },
@@ -172,7 +181,9 @@ export async function installRouteBriefingFixtures(page, { altitudeResponse = al
     const body = requestJson(route)
     crossSectionRequests.bodies.push(body)
     const { hf } = body
-    return fulfill(route, { ...crossSection, run: { ...crossSection.run, hf: Number.isFinite(Number(hf)) ? Number(hf) : crossSection.run.hf } })
+    const selectedHf = Number.isFinite(Number(hf)) ? Number(hf) : crossSection.run.hf
+    const selectedTime = crossSection.availableTimes.find((time) => time.hf === selectedHf)
+    return fulfill(route, { ...crossSection, run: { ...crossSection.run, hf: selectedHf, validTime: selectedTime?.validTime ?? crossSection.run.validTime } })
   })
   await page.route('**/api/route-briefing', (route) => fulfill(route, briefingFor(requestJson(route))))
   return { ...exposureRequests, crossSection: crossSectionRequests }

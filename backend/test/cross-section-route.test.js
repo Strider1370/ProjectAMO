@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { mkdtemp, rm } from 'node:fs/promises'
 import test from 'node:test'
+import config from '../src/config.js'
 
 import {
   KIM_NWP_LEVELS,
@@ -55,6 +56,12 @@ test('cross-section route validates fields and returns cross-section structure',
   const root = await mkdtemp(path.join(os.tmpdir(), 'kim-cross-section-'))
   process.env.NODE_ENV = 'test'
   process.env.DATA_PATH = root
+  const previousStorage = { ...config.storage }
+  // The test module's static imports have already initialized config. Mutate only
+  // its shared test object before importing server so the HTTP handler reads this
+  // temporary fixture root rather than the repository data directory.
+  config.storage.base_path = root
+  config.storage.active_path = root
 
   const level = KIM_NWP_LEVELS.find((l) => l.id === '850hPa')
   const tmfc = '2099010100'
@@ -64,10 +71,15 @@ test('cross-section route validates fields and returns cross-section structure',
     components: [
       { variable: 'u', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(5) },
       { variable: 'v', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(0) },
+      { variable: 'hgt', unit: 'm', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(1500) },
+      { variable: 'cld', unit: '1', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(.72) },
     ],
     fetchedAt: '2099-01-01T00:00:00.000Z',
   })
-  writeKimNwpGrid({ root, grid })
+  const gridPath = writeKimNwpGrid({ root, grid })
+  writeKimNwpIndex(root, buildKimNwpIndex({
+    model: KIM_NWP_MODEL, tmfc, entries: [buildKimNwpIndexEntry(grid, gridPath)],
+  }))
   writeKimNwpLatest(root, {
     type: 'kim_nwp_latest',
     model: KIM_NWP_MODEL,
@@ -103,8 +115,17 @@ test('cross-section route validates fields and returns cross-section structure',
     assert.ok(Array.isArray(body.levels))
     assert.ok(body.coverage)
     assert.ok(body.coverage.byVariable)
+    const level850 = body.levels.find(({ pressure }) => pressure === 850)
+    assert.ok(level850)
+    assert.ok(Math.abs(level850.values[0].cld - .72) < .001)
+    assert.equal(level850.values[0].icing, null)
+    assert.equal(body.coverage.byVariable.cld.threshold, .6)
+    assert.equal(body.coverage.byVariable.cld.available, true)
+    assert.equal(body.run.tmfc, tmfc)
+    assert.equal(body.run.hf, hf)
   } finally {
     await close(server)
+    Object.assign(config.storage, previousStorage)
     await rm(root, { recursive: true, force: true })
     delete process.env.DATA_PATH
   }

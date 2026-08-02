@@ -27,6 +27,7 @@ const WEATHER_TILE_ICON = {
   airmet: AlertOctagon,
   sigwx: CloudFog,
   typhoon: Tornado,
+  terrainHazard: Mountain,
 }
 
 function WeatherOverlayPanel({
@@ -41,6 +42,7 @@ function WeatherOverlayPanel({
   radarMotionAvailable = false,
   radarMotionRequested = false,
   onRadarMotionRequestedChange,
+  terrainAltitudeFt = 3000,
 }) {
   const isMobile = useIsMobile()
   const TEMP_HIDDEN_LAYER_IDS = []
@@ -54,6 +56,7 @@ function WeatherOverlayPanel({
       ids: ['radar', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'ci', 'ctps'],
     },
     { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'] : [] },
+    { id: 'terrain', title: '지형', ids: ['terrainHazard'] },
   ]
   const layerLabels = {
     radar: '레이더',
@@ -75,6 +78,7 @@ function WeatherOverlayPanel({
     typhoon: '태풍',
     visibility: '시정',
     ceiling: '운고',
+    terrainHazard: '지형 근접',
   }
   const visibleLayers = layers.filter((layer) => showWind || !['wind', 'temp', 'cloud', 'icing'].includes(layer.id))
   const activeCount = visibleLayers.filter((layer) => visibility[layer.id] && !isLayerDisabled(layer.id)).length
@@ -124,6 +128,14 @@ function WeatherOverlayPanel({
               )
             })}
           </div>
+          {group.id === 'terrain' && visibility.terrainHazard && (
+            <p className="terrain-hazard-note">
+              기준 고도는 오른쪽 고도 레일에서 고릅니다 (지금 <strong>{terrainAltitudeFt.toLocaleString()} ft</strong>).<br />
+              <span style={{ color: '#dc2626' }}>■</span> 100ft 이내·위{'  '}
+              <span style={{ color: '#eab308' }}>■</span> 1,000ft 이내 — 인천 FIR 안쪽 지형 표고(MSL)
+              기준이며, 송전선·철탑 등 장애물은 포함하지 않습니다.
+            </p>
+          )}
         </section>
       ))}
     </div>

@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { contours } from 'd3-contour'
+import { KIM_CLOUD_CONTOUR_THRESHOLD } from '../kim-cloud-threshold.js'
 
 // 항공 ceiling 관례는 BKN(5/8) 이상. 흐린 날 표본으로 재조정할 수 있게 상수로 둔다.
-export const CLD_THRESHOLD = 0.6
+export const CLD_THRESHOLD = KIM_CLOUD_CONTOUR_THRESHOLD
 
 // 1000hPa는 평균 고도 36m로 지표에 붙어 지형 아래 격자가 많아 제외한다.
 export const CEILING_SEARCH_LEVELS = [

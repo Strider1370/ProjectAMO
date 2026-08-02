@@ -1,4 +1,5 @@
 const M_TO_FT = 3.28084
+import { KIM_CLOUD_CONTOUR_THRESHOLD } from '../processors/kim-cloud-threshold.js'
 
 function gridStep(min, max, count, fallback) {
   if (Number.isFinite(min) && Number.isFinite(max) && count > 1) return (max - min) / (count - 1)
@@ -28,8 +29,8 @@ export function sampleGridAt(grid, values, lon, lat) {
 export function buildCrossSection({ axis, run, levelIds, loadLevel }) {
   const samples = axis?.samples ?? []
   const levels = []
-  const coverageTop = { T: null, moisture: null, icing: null, wind: null }
-  const has = { T: false, moisture: false, icing: false, wind: false }
+  const coverageTop = { T: null, moisture: null, icing: null, wind: null, cld: null }
+  const has = { T: false, moisture: false, icing: false, wind: false, cld: false }
 
   for (const levelId of levelIds) {
     const field = loadLevel(levelId)
@@ -54,12 +55,14 @@ export function buildCrossSection({ axis, run, levelIds, loadLevel }) {
       icing: Number.isFinite(value.icing) ? value.icing : null,
       u: Number.isFinite(value.u) ? value.u : null,
       v: Number.isFinite(value.v) ? value.v : null,
+      cld: Number.isFinite(value.cld) ? value.cld : null,
     }))
 
     if (sampledValues.some((value) => Number.isFinite(value.T))) { has.T = true; coverageTop.T = trackTop(coverageTop.T, pressure) }
     if (sampledValues.some((value) => Number.isFinite(value.spread))) { has.moisture = true; coverageTop.moisture = trackTop(coverageTop.moisture, pressure) }
     if (sampledValues.some((value) => Number.isFinite(value.icing))) { has.icing = true; coverageTop.icing = trackTop(coverageTop.icing, pressure) }
     if (sampledValues.some((value) => Number.isFinite(value.u) && Number.isFinite(value.v))) { has.wind = true; coverageTop.wind = trackTop(coverageTop.wind, pressure) }
+    if (sampledValues.some((value) => Number.isFinite(value.cld))) { has.cld = true; coverageTop.cld = trackTop(coverageTop.cld, pressure) }
 
     levels.push({ pressure, altFt, values })
   }
@@ -73,6 +76,7 @@ export function buildCrossSection({ axis, run, levelIds, loadLevel }) {
         moisture: { available: has.moisture, topPressure: coverageTop.moisture },
         icing: { available: has.icing, topPressure: coverageTop.icing, disabledByConfig: !has.icing },
         wind: { available: has.wind, topPressure: coverageTop.wind },
+        cld: { available: has.cld, topPressure: coverageTop.cld, threshold: KIM_CLOUD_CONTOUR_THRESHOLD, unit: '1' },
       },
     },
     warnings: [],

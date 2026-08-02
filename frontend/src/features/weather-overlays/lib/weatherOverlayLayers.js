@@ -160,6 +160,7 @@ export const MET_LAYERS = [
   { id: 'typhoon', label: '태풍', color: '#dc2626' },   // TYPHOON_PALETTE[0]과 같은 값
   { id: 'visibility', label: '시정', color: '#f97316' },
   { id: 'ceiling', label: '운고', color: '#dc2626' },
+  { id: 'terrainHazard', label: '지형 근접', color: '#dc2626' },
   { id: 'notam', label: 'NOTAM', color: '#334155' },
 ]
 

@@ -1,0 +1,1 @@
+export const KIM_CLOUD_CONTOUR_THRESHOLD = 0.6

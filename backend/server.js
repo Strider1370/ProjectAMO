@@ -40,6 +40,7 @@ import { buildVerticalProfile } from './src/briefing/vertical-profile.js'
 import { composeBriefing } from './src/briefing/briefing-composer.js'
 import { loadAirspaceZoneItems } from './src/briefing/airspace-zones.js'
 import { createDefaultTerrainSampler } from './src/terrain/terrain-sampler.js'
+import { createTerrainRgbTiler } from './src/terrain/terrain-rgb-tiles.js'
 import {
   buildKimCloudPotentialFieldFromGrid,
   buildKimIcingFieldFromGrid,
@@ -76,6 +77,7 @@ ensureActiveDataView()
 const DATA_ROOT = config.storage.active_path
 const LIVE_DATA_ROOT = config.storage.base_path
 const terrainSampler = createDefaultTerrainSampler(DATA_ROOT)
+const renderTerrainRgbTile = createTerrainRgbTiler({ terrainRoot: path.join(DATA_ROOT, 'terrain') })
 const KIM_ICING_REQUIRED_VARIABLES = ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']
 const SNAPSHOT_META_CACHE_TTL_MS = 5000
 const snapshotMetaCache = { key: null, value: null, expiresAt: 0 }
@@ -832,6 +834,28 @@ app.get('/api/terrain/elevation', (req, res) => {
   }
   const result = terrainSampler.sampleAxis({ samples: [{ index: 0, lon: lng, lat }] })
   res.json({ elevationM: result.terrain.values[0]?.elevationM ?? null })
+})
+
+// 지형 근접 색칠용 terrain-RGB 타일. 인천 FIR 안쪽만 표고를 담고 밖은 '자료 없음'이라
+// 프런트에서 투명하게 빠진다. 표고는 연직 프로파일과 같은 DEM을 쓴다.
+app.get('/api/terrain/rgb/:z/:x/:y.png', async (req, res) => {
+  const z = Number(req.params.z)
+  const x = Number(req.params.x)
+  const y = Number(req.params.y)
+  const limit = 2 ** z
+  if (![z, x, y].every(Number.isInteger) || z < 0 || z > 14 || x < 0 || y < 0 || x >= limit || y >= limit) {
+    return res.status(400).json({ error: 'invalid_tile' })
+  }
+  try {
+    const png = await renderTerrainRgbTile({ z, x, y })
+    res.set('Content-Type', 'image/png')
+    res.set('Cache-Control', 'public, max-age=86400')
+    res.send(png)
+  } catch (error) {
+    if (error?.code === 'TERRAIN_NOT_READY') return res.status(503).json({ error: 'terrain_not_ready' })
+    console.error('[terrain-rgb] tile render failed', error)
+    res.status(500).json({ error: 'tile_render_failed' })
+  }
 })
 
 app.get('/api/weather/flight-category-overlay/point', (req, res) => {

@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const source = readFileSync(new URL('./DestinationWeatherPage.jsx', import.meta.url), 'utf8')
 const styles = readFileSync(new URL('./terminal.css', import.meta.url), 'utf8')
+const simulationSource = readFileSync(new URL('./terminalFlightSimulation.js', import.meta.url), 'utf8')
 
 test('터미널은 기존 기상 엔드포인트만 쓰는 실시간 날씨 어댑터를 화면에 연결한다', () => {
   assert.match(source, /import \{ loadTerminalLiveWeatherData, mergeTerminalLiveWeather \} from '\.\/terminalLiveData\.js'/)
@@ -48,28 +49,34 @@ test('1안은 승인된 짧은 승객용 문구를 사용한다', () => {
 })
 
 test('두 안은 선택된 출발 공항명을 제목으로 사용한다', () => {
-  assert.equal((source.match(/<h1>\{title\}<\/h1>/g) ?? []).length, 2)
+  assert.match(source, /function TerminalTitle\(\{ title, flightCount, destinationCount \}\)/)
+  assert.equal((source.match(/<TerminalTitle title=\{title\}/g) ?? []).length, 2)
   assert.match(source, /const terminalTitle = `\$\{departureAirportState\.selected\?\.nameKo\?\.replace\('국제', ''\) \|\| '김포공항'\} 도착지 날씨`/)
   assert.doesNotMatch(source, /곧 출발하는 항공편 · 목적지 날씨|곧 출발 · 도착지 예보/)
   assert.doesNotMatch(source, /도착 현지 시간 기준 예보/)
 })
 
-test('공항별 기상 표시는 도시와 공항 고유명을 함께 써서 목적지를 식별한다', () => {
-  assert.match(source, /displayName: "싱가포르 창이", code: "SIN"/)
-  assert.match(source, /city: "싱가포르 창이", code: "SIN", flight: "SQ607"/)
-  assert.doesNotMatch(source, /displayName: "싱가포르", code: "SIN"/)
-  assert.doesNotMatch(source, /city: "싱가포르", code: "SIN", flight: "SQ607"/)
+test('공항별 기상 표시는 실제 목적지의 도시와 공항 고유명을 함께 써서 식별한다', () => {
+  assert.match(simulationSource, /destination\('오사카', '오사카 간사이', '오사카 간사이', 'JST'/)
+  assert.match(simulationSource, /destination\('베이징', '베이징 다싱', '베이징 다싱', 'CST'/)
+  assert.doesNotMatch(simulationSource, /샤를 드골|싱가포르 창이|도쿄 하네다/)
 })
 
-test('다음 3편은 국내 공항과 국적 항공사 3편을 두 안에 같은 순서로 표시한다', () => {
-  assert.match(source, /const alternateBoardFlights = \[[\s\S]*?displayName: "서울 김포", code: "GMP"[\s\S]*?airline: "KOREAN AIR"[\s\S]*?displayName: "제주", code: "CJU"[\s\S]*?airline: "ASIANA AIRLINES"[\s\S]*?displayName: "부산 김해", code: "PUS"[\s\S]*?airline: "JEJU AIR"/)
-  assert.match(source, /const alternateRailFlights = \[[\s\S]*?city: "서울 김포", code: "GMP"[\s\S]*?airline: "Korean Air"[\s\S]*?city: "제주", code: "CJU"[\s\S]*?airline: "Asiana Airlines"[\s\S]*?city: "부산 김해", code: "PUS"[\s\S]*?airline: "Jeju Air"/)
-  assert.match(source, /localZone: "KST"/)
+test('1안과 3안은 한 정규화 시뮬레이션 프레임을 함께 사용한다', () => {
+  assert.match(source, /const activeFlights = useMemo\(/)
+  assert.equal((source.match(/activeFlights=\{activeFlights\}/g) ?? []).length, 2)
+  assert.doesNotMatch(source, /boardFlightGroups|railFlightGroups|alternateBoardFlights|alternateRailFlights/)
+})
+
+test('두 안은 묶기 전 전체 운항편 수와 목적지 수를 함께 표시한다', () => {
+  assert.equal((source.match(/flightCount=\{simulation\.totalFlights\}/g) ?? []).length, 2)
+  assert.equal((source.match(/destinationCount=\{simulation\.totalDestinations\}/g) ?? []).length, 2)
+  assert.match(source, /총 \{flightCount\}편 · \{destinationCount\}개 목적지/)
 })
 
 test('국내 항공사의 가로 워드마크 대신 심볼 전용 로고 자산을 사용한다', () => {
-  assert.match(source, /const koreanAirLogo = "\/Symbols\/airlines\/KAL-symbol\.svg"/)
-  assert.match(source, /const asianaAirlinesLogo = "\/Symbols\/airlines\/AAR-symbol\.svg"/)
+  assert.match(simulationSource, /logo: '\/Symbols\/airlines\/KAL-symbol\.svg'/)
+  assert.match(simulationSource, /logo: '\/Symbols\/airlines\/AAR-symbol\.svg'/)
   assert.ok(existsSync(new URL('../../../public/Symbols/airlines/KAL-symbol.svg', import.meta.url)))
   assert.ok(existsSync(new URL('../../../public/Symbols/airlines/AAR-symbol.svg', import.meta.url)))
 })
@@ -206,14 +213,47 @@ test('3안은 편명 오른쪽에 항공사명을 보조 정보로 표시한다'
   assert.match(styles, /\.rail-airline-meta small \{[^}]*font-size: 14px/)
 })
 
-test('지연 항공편은 변경 출발시각을 우선하고 예정 시각을 보조 정보로 남긴다', () => {
-  assert.match(source, /flight: "AF 267", airline: "AIR FRANCE"/)
-  assert.match(source, /departure: "09:40", revised: "10:00", gate: "31", status: "지연 20분"/)
+test('변경 출발시각이 들어오면 변경값을 우선하고 예정 시각을 보조 정보로 남긴다', () => {
   assert.match(source, /\{flight\.revised \?\? flight\.departure\}/)
   assert.match(source, /예정 <s>\{flight\.departure\}<\/s>/)
   assert.match(styles, /\.operation-status\.is-delay strong \{[^}]*color: var\(--terminal-status-warning\)/)
   assert.match(styles, /\.departure-time\.is-delayed strong, \.rail-stats \.is-delayed strong \{[^}]*color: var\(--terminal-status-warning\)/)
   assert.match(styles, /\.departure-time small s, \.rail-stats em s \{[^}]*text-decoration: line-through/)
+})
+
+test('같은 목적지 편명 전환은 pending 값을 선렌더하고 바뀌는 운항값만 움직인다', () => {
+  assert.match(source, /classifyTerminalSlotTransition\(activeFlights\[index\], pendingFlights\[index\]\)/)
+  assert.match(source, /board-page is-entering/)
+  assert.match(source, /rail-page is-entering/)
+  assert.match(source, /transitionKind=\{slotTransitions\[index\]\}/)
+  assert.match(source, /flight-variant-value/)
+  assert.match(styles, /\.board-page\.is-entering \.board-column\.is-slot-flight \{ visibility: hidden; \}/)
+  assert.match(styles, /\.rail-page\.is-entering \.rail-flight-row\.is-slot-flight \{ visibility: hidden; background: transparent; \}/)
+})
+
+test('혼합 프레임은 각 슬롯에 편명·목적지·퇴장 전환 클래스를 독립 적용한다', () => {
+  assert.match(source, /function terminalSlotTransitions\(activeFlights, pendingFlights\)/)
+  assert.match(source, /className=\{`board-column is-slot-\$\{transitionKind\}/)
+  assert.match(source, /className=\{`rail-flight-row is-slot-\$\{transitionKind\}/)
+  assert.doesNotMatch(source, /isFlightOnlyTransition/)
+  assert.match(styles, /\.board-column\.is-slot-stable/)
+  assert.match(styles, /\.rail-flight-row\.is-slot-stable/)
+})
+
+test('1안 빈 슬롯은 카드 구조와 구분선을 함께 퇴장·진입시킨다', () => {
+  assert.equal((source.match(/board-column-separator is-slot-\$\{slotTransitions\[index \+ 1\]\}/g) ?? []).length, 2)
+  assert.match(styles, /\.motion-split \.board-page\.is-leaving \.board-column\.is-slot-exit \.board-band-surface \{[^}]*animation: split-flap-out/)
+  assert.match(styles, /\.motion-split \.board-page\.is-entering \.board-column\.is-slot-enter \.board-band-surface \{[^}]*animation: split-flap-in/)
+  assert.match(styles, /\.motion-roll \.board-page\.is-leaving \.board-column\.is-slot-exit \.board-band-surface \{[^}]*animation: vertical-roll-word-out/)
+  assert.match(styles, /\.motion-roll \.board-page\.is-entering \.board-column\.is-slot-enter \.board-band-surface \{[^}]*animation: vertical-roll-word-in/)
+  assert.match(styles, /\.board-page\.is-leaving \.board-column-separator\.is-slot-exit \{[^}]*animation: slot-divider-out/)
+  assert.match(styles, /\.board-page\.is-entering \.board-column-separator\.is-slot-enter \{[^}]*visibility: visible[^}]*animation: slot-divider-in/)
+})
+
+test('1안 WIPE 편명 전환은 기존 운항값을 먼저 마스킹해 두 프레임이 겹치지 않는다', () => {
+  assert.match(styles, /\.motion-wipe \.board-page\.is-leaving \.board-column\.is-slot-flight \.flight-variant-value \{[^}]*animation: masked-wipe-out/)
+  assert.match(styles, /@keyframes masked-wipe-out \{\s*from \{ clip-path: inset\(0 0 0 0\); \}\s*to \{ clip-path: inset\(0 0 0 100%\); \}\s*\}/)
+  assert.match(styles, /\.motion-wipe \.board-page\.is-entering \.board-column\.is-slot-flight \.flight-variant-value \{[^}]*animation-delay: calc\(330ms/)
 })
 
 test('3안은 현지 시각을 공항명 아래 왼쪽 패널 오른쪽에 한 줄로 표시한다', () => {
@@ -245,9 +285,11 @@ test('3안은 도착 1시간 전 보조 예보를 제거하고 5개 예보에 �
   assert.match(styles, /\.timeline \{[^}]*--forecast-left: 45px/)
 })
 
-test('페이지 표시는 승인된 원 크기·간격과 현재/전체 접근성 이름을 사용한다', () => {
+test('프레임 표시는 실제 편명 전환 프레임 수와 현재 위치를 사용한다', () => {
   assert.match(source, /role="img"/)
-  assert.match(source, /aria-label=\{`\$\{currentPage \+ 1\} \/ \$\{pageCount\} 페이지`\}/)
+  assert.match(source, /aria-label=\{`\$\{currentFrame \+ 1\} \/ \$\{frameCount\} 프레임`\}/)
+  assert.equal((source.match(/currentFrame=\{activeFrame\.frameIndex\}/g) ?? []).length, 2)
+  assert.equal((source.match(/frameCount=\{activeFrame\.frameCount\}/g) ?? []).length, 2)
   assert.match(styles, /\.page-indicator i \{[^}]*width: 12px/)
   assert.match(styles, /\.page-indicator i \{[^}]*height: 12px/)
   assert.match(styles, /\.page-indicator \{[^}]*gap: 10px/)

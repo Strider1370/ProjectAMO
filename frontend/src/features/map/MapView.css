@@ -2279,6 +2279,13 @@
   cursor: default;
 }
 
+.terrain-hazard-note {
+  margin: 10px 0 0;
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .layer-tile-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

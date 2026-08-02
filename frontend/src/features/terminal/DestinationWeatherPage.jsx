@@ -3,21 +3,21 @@ import { MdChevronRight, MdInfoOutline } from "react-icons/md";
 import { WiCloud, WiCloudy, WiDayCloudy, WiDaySunny, WiRain, WiShowers, WiThunderstorm } from "react-icons/wi";
 import clearNight from "../../assets/weather-icons/basmilius/clear-night.svg";
 import fewCloudsNight from "../../assets/weather-icons/basmilius/few-clouds-night.svg";
-import boardAf from "./assets/board-af.png";
 import amoWordmark from "./assets/amo-wordmark.png";
 import airportWeatherQr from "./assets/airport-weather-qr.svg";
-import boardJal from "./assets/board-jal.png";
-import boardSq from "./assets/board-sq.png";
 import forecastCloud from "./assets/forecast-cloud-transparent.png";
 import forecastPartly from "./assets/forecast-partly-transparent.png";
 import forecastRain from "./assets/forecast-rain-transparent.png";
 import forecastStorm from "./assets/forecast-storm-transparent.png";
 import { loadTerminalLiveWeatherData, mergeTerminalLiveWeather } from './terminalLiveData.js';
 import { departureAirportFromPathname, selectTerminalDepartureAirport } from './terminalAirportSelection.js';
-
-const koreanAirLogo = "/Symbols/airlines/KAL-symbol.svg";
-const asianaAirlinesLogo = "/Symbols/airlines/AAR-symbol.svg";
-const jejuAirLogo = "/Symbols/airlines/JJA.svg";
+import {
+  TERMINAL_SIMULATION_REFERENCE,
+  buildTerminalSimulation,
+  classifyTerminalSlotTransition,
+  hasTerminalNextFrame,
+  terminalFrameAt,
+} from './terminalFlightSimulation.js';
 
 const icons = {
   sun: WiDaySunny,
@@ -28,118 +28,6 @@ const icons = {
   shower: WiShowers,
   storm: WiThunderstorm,
 };
-
-const boardFlights = [
-  {
-    city: "도쿄", displayName: "도쿄 하네다", code: "HND", airport: "하네다 국제공항", flight: "JL 090", airline: "JAPAN AIRLINES",
-    logo: boardJal, departure: "07:20", gate: "12", status: "정상 운항",
-    localClock: "7/30 06:32", localZone: "JST", kstClock: "7/30 06:32", arrivalKst: "16:10",
-    current: { icon: "rain", temp: 27, feels: "31℃", humidity: "78%", wind: "남서 6m/s" },
-    arrival: "16:10",
-    forecast: [["16시", "rain", "27℃"], ["17시", "rain", "27℃"], ["18시", "cloud", "26℃"], ["19시", "cloud", "26℃"], ["20시", "cloudy", "25℃"]],
-  },
-  {
-    city: "싱가포르", displayName: "싱가포르 창이", code: "SIN", airport: "창이 국제공항", flight: "SQ 605", airline: "SINGAPORE AIRLINES",
-    logo: boardSq, departure: "08:05", gate: "23", status: "정상 운항",
-    localClock: "7/30 05:32", localZone: "SGT", kstClock: "7/30 06:32", arrivalKst: "16:35",
-    current: { icon: "partly", temp: 31, feels: "36℃", humidity: "69%", wind: "남동 4m/s" },
-    arrival: "15:35",
-    forecast: [["15시", "partly", "31℃"], ["16시", "partly", "31℃"], ["17시", "storm", "30℃"], ["18시", "storm", "29℃"], ["19시", "cloud", "28℃"]],
-  },
-  {
-    city: "파리", displayName: "파리 샤를 드 골", code: "CDG", airport: "샤를 드골 국제공항", flight: "AF 267", airline: "AIR FRANCE",
-    logo: boardAf, departure: "09:40", revised: "10:00", gate: "31", status: "지연 20분", statusTone: "delay",
-    localClock: "7/29 23:32", localZone: "CEST", kstClock: "7/30 06:32", arrivalKst: "23:50",
-    current: { icon: "cloudy", temp: 20, feels: "20℃", humidity: "62%", wind: "북동 3m/s" },
-    arrival: "16:50",
-    forecast: [["16시", "cloudy", "20℃"], ["17시", "partly", "21℃"], ["18시", "cloudy", "21℃"], ["19시", "cloudy", "20℃"], ["20시", "rain", "19℃"]],
-  },
-];
-
-const alternateBoardFlights = [
-  {
-    city: "서울", displayName: "서울 김포", code: "GMP", airport: "김포국제공항", flight: "KE 1205", airline: "KOREAN AIR",
-    logo: koreanAirLogo, departure: "10:20", gate: "18", status: "정상 운항",
-    localClock: "7/30 06:32", localZone: "KST", kstClock: "7/30 06:32", arrivalKst: "11:30",
-    current: { icon: "cloud", temp: 25, feels: "26℃", humidity: "72%", wind: "북서 3m/s" },
-    arrival: "11:30",
-    forecast: [["11시", "cloud", "25℃"], ["12시", "partly", "26℃"], ["13시", "partly", "27℃"], ["14시", "cloud", "27℃"], ["15시", "cloud", "26℃"]],
-  },
-  {
-    city: "제주", displayName: "제주", code: "CJU", airport: "제주국제공항", flight: "OZ 8901", airline: "ASIANA AIRLINES",
-    logo: asianaAirlinesLogo, departure: "10:45", gate: "21", status: "탑승 준비",
-    localClock: "7/30 06:32", localZone: "KST", kstClock: "7/30 06:32", arrivalKst: "11:55",
-    current: { icon: "partly", temp: 28, feels: "30℃", humidity: "68%", wind: "남서 4m/s" },
-    arrival: "11:55",
-    forecast: [["11시", "partly", "28℃"], ["12시", "partly", "29℃"], ["13시", "cloud", "29℃"], ["14시", "rain", "28℃"], ["15시", "rain", "27℃"]],
-  },
-  {
-    city: "부산", displayName: "부산 김해", code: "PUS", airport: "김해국제공항", flight: "7C 112", airline: "JEJU AIR",
-    logo: jejuAirLogo, departure: "11:10", gate: "25", status: "정상 운항",
-    localClock: "7/30 06:32", localZone: "KST", kstClock: "7/30 06:32", arrivalKst: "12:20",
-    current: { icon: "rain", temp: 27, feels: "29℃", humidity: "81%", wind: "남동 3m/s" },
-    arrival: "12:20",
-    forecast: [["12시", "rain", "27℃"], ["13시", "rain", "27℃"], ["14시", "cloud", "26℃"], ["15시", "cloud", "26℃"], ["16시", "partly", "25℃"]],
-  },
-];
-
-const boardFlightGroups = [boardFlights, alternateBoardFlights];
-
-const railFlights = [
-  {
-    city: "도쿄 하네다", code: "HND", flight: "JL92", status: "정시 운항", statusTone: "ok",
-    logo: boardJal, airline: "Japan Airlines",
-    localClock: "7/30 09:15", localZone: "JST", kstClock: "7/30 09:15", arrivalKst: "11:25",
-    departure: "09:30", duration: "02:10", gate: "32", now: "09:15", arrival: "11:25", arrivalSlot: 0,
-    preArrival: ["10:00", "cloudy", "27℃"],
-    forecast: [["12:00", "partly", "28℃"], ["14:00", "cloudy", "29℃"], ["16:00", "cloudy", "28℃"], ["18:00", "partly", "27℃"], ["20:00", "cloudy", "26℃"]],
-  },
-  {
-    city: "싱가포르 창이", code: "SIN", flight: "SQ607", status: "정시 운항", statusTone: "ok",
-    logo: boardSq, airline: "Singapore Airlines",
-    localClock: "7/30 08:15", localZone: "SGT", kstClock: "7/30 09:15", arrivalKst: "17:05",
-    departure: "10:25", duration: "06:40", gate: "25", now: "09:15", arrival: "16:05", arrivalSlot: 0,
-    preArrival: ["15:00", "cloudy", "29℃"],
-    forecast: [["16:00", "rain", "28℃"], ["18:00", "storm", "27℃"], ["20:00", "cloudy", "27℃"], ["22:00", "rain", "26℃"], ["00:00", "cloudy", "26℃"]],
-  },
-  {
-    city: "파리 샤를 드 골", code: "CDG", flight: "AF267", status: "지연 20분", statusTone: "delay",
-    logo: boardAf, airline: "Air France",
-    localClock: "7/30 02:15", localZone: "CEST", kstClock: "7/30 09:15", arrivalKst: "다음 날 01:50",
-    departure: "11:05", revised: "11:25", duration: "13:45", gate: "12", now: "09:15", arrival: "18:50", arrivalSlot: 0,
-    preArrival: ["18:00", "partly", "20℃"],
-    forecast: [["19:00", "partly", "20℃"], ["21:00", "nightPartly", "18℃"], ["23:00", "night", "17℃"], ["01:00", "night", "16℃"], ["03:00", "cloudy", "16℃"]],
-  },
-];
-
-const alternateRailFlights = [
-  {
-    city: "서울 김포", code: "GMP", flight: "KE1205", status: "정시 운항", statusTone: "ok",
-    logo: koreanAirLogo, airline: "Korean Air",
-    localClock: "7/30 09:15", localZone: "KST", kstClock: "7/30 09:15", arrivalKst: "10:45",
-    departure: "09:50", duration: "00:55", gate: "18", now: "09:15", arrival: "10:45", arrivalSlot: 0,
-    preArrival: ["10:00", "cloudy", "25℃"],
-    forecast: [["11:00", "cloudy", "25℃"], ["12:00", "partly", "26℃"], ["13:00", "partly", "27℃"], ["14:00", "cloudy", "27℃"], ["15:00", "cloudy", "26℃"]],
-  },
-  {
-    city: "제주", code: "CJU", flight: "OZ8901", status: "탑승 준비", statusTone: "ok",
-    logo: asianaAirlinesLogo, airline: "Asiana Airlines",
-    localClock: "7/30 09:15", localZone: "KST", kstClock: "7/30 09:15", arrivalKst: "11:55",
-    departure: "10:45", duration: "01:10", gate: "21", now: "09:15", arrival: "11:55", arrivalSlot: 0,
-    preArrival: ["11:00", "partly", "28℃"],
-    forecast: [["12:00", "partly", "29℃"], ["13:00", "cloudy", "29℃"], ["14:00", "rain", "28℃"], ["15:00", "rain", "27℃"], ["16:00", "cloudy", "27℃"]],
-  },
-  {
-    city: "부산 김해", code: "PUS", flight: "7C112", status: "정시 운항", statusTone: "ok",
-    logo: jejuAirLogo, airline: "Jeju Air",
-    localClock: "7/30 09:15", localZone: "KST", kstClock: "7/30 09:15", arrivalKst: "12:20",
-    departure: "11:10", duration: "01:10", gate: "25", now: "09:15", arrival: "12:20", arrivalSlot: 0,
-    preArrival: ["11:00", "rain", "27℃"],
-    forecast: [["12:00", "rain", "27℃"], ["13:00", "cloudy", "26℃"], ["14:00", "cloudy", "26℃"], ["15:00", "partly", "25℃"], ["16:00", "partly", "25℃"]],
-  },
-];
-
-const railFlightGroups = [railFlights, alternateRailFlights];
 
 function WeatherIcon({ type, className = "" }) {
   const Icon = icons[type] ?? WiCloudy;
@@ -223,20 +111,34 @@ function RailWeatherImage({ type }) {
 function AirlineLogo({ flight }) {
   return (
     <div className={`airline-logo airline-logo--${flight.code.toLowerCase()}`}>
-      <img src={flight.logo} alt={`${flight.airline} 로고`} />
+      {flight.logo
+        ? <img src={flight.logo} alt={`${flight.airline} 로고`} />
+        : <span className="airline-logo-fallback" aria-label={flight.airline}>{flight.flight.slice(0, 2)}</span>}
     </div>
   );
 }
 
-function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
+function changedVariantClass(flight, comparisonFlight, fields) {
+  return comparisonFlight && fields.some((field) => flight[field] !== comparisonFlight[field]) ? ' flight-variant-value' : '';
+}
+
+function terminalSlotTransitions(activeFlights, pendingFlights) {
+  return Array.from(
+    { length: Math.max(activeFlights.length, pendingFlights.length) },
+    (_, index) => classifyTerminalSlotTransition(activeFlights[index], pendingFlights[index]),
+  );
+}
+
+function BoardColumn({ flight, comparisonFlight, columnIndex, weatherCitySlot, transitionKind }) {
   const bandStyle = (band) => ({ "--band": band, "--column": columnIndex });
   const rollStyle = (item) => ({ "--item": item });
+  const variant = (...fields) => changedVariantClass(flight, comparisonFlight, fields);
   const isDelayed = Boolean(flight.revised);
   const [localDate, localTime] = flight.localClock.split(" ");
   const [kstDate] = flight.kstClock.split(" ");
   const showLocalDate = localDate !== kstDate;
   return (
-    <article className="board-column">
+    <article className={`board-column is-slot-${transitionKind}${transitionKind === "flight" ? " is-flight-variant-changing" : ""}`} data-testid="board-flight-column" data-destination-code={flight.code} data-flight-key={flight.flightKey}>
       <div className="board-band" style={bandStyle(0)}>
         <div className="board-band-surface">
           <div className="board-destination">
@@ -253,14 +155,14 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
       <div className="board-band" style={bandStyle(1)}>
         <div className="board-band-surface">
           <div className="airline-block">
-            <div className="roll-unit flap-unit" style={rollStyle(0)}><AirlineLogo flight={flight} /></div>
+            <div className={`roll-unit flap-unit${variant('logo', 'airline')}`} style={rollStyle(0)}><AirlineLogo flight={flight} /></div>
             <div className="airline-flight-meta">
-              <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.flight}</strong>
-              <span className="roll-unit flap-unit" style={rollStyle(2)}>{flight.airline}</span>
+              <strong className={`roll-unit flap-unit${variant('flight')}`} style={rollStyle(1)}>{flight.flight}</strong>
+              <span className={`roll-unit flap-unit${variant('airline')}`} style={rollStyle(2)}>{flight.airline}</span>
             </div>
             <div className={`operation-status${isDelayed ? " is-delay" : ""}`}>
-              <i className="roll-unit flap-unit" style={rollStyle(3)} />
-              <strong className="roll-unit flap-unit" style={rollStyle(4)}>{flight.status}</strong>
+              <i className={`roll-unit flap-unit${variant('statusTone')}`} style={rollStyle(3)} />
+              <strong className={`roll-unit flap-unit${variant('status')}`} style={rollStyle(4)}>{flight.status}</strong>
             </div>
           </div>
           <div className="board-divider" />
@@ -272,13 +174,13 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
             <div>
               <span className="roll-unit" style={rollStyle(0)}>출발</span>
               <div className={`departure-time${isDelayed ? " is-delayed" : ""}`}>
-                <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.revised ?? flight.departure}</strong>
-                {flight.revised && <small className="roll-unit" style={rollStyle(2)}>예정 <s>{flight.departure}</s></small>}
+                <strong className={`roll-unit flap-unit${variant('revised', 'departure')}`} style={rollStyle(1)}>{flight.revised ?? flight.departure}</strong>
+                {flight.revised && <small className={`roll-unit${variant('revised', 'departure')}`} style={rollStyle(2)}>예정 <s>{flight.departure}</s></small>}
               </div>
             </div>
             <div>
               <span className="roll-unit" style={rollStyle(3)}>탑승구</span>
-              <strong className="roll-unit flap-unit" style={rollStyle(4)}>{flight.gate}</strong>
+              <strong className={`roll-unit flap-unit${variant('gate')}`} style={rollStyle(4)}>{flight.gate}</strong>
             </div>
           </div>
           <div className="board-divider" />
@@ -315,8 +217,8 @@ function BoardColumn({ flight, columnIndex, weatherCitySlot }) {
         <div className="board-band-surface">
           <div className="arrival-time">
             <span className="roll-unit" style={rollStyle(0)}>도착</span>
-            <strong className="roll-unit flap-unit" style={rollStyle(1)}>{flight.arrival}<b>{flight.localZone}</b></strong>
-            <small className="roll-unit flap-unit" style={rollStyle(2)}>(한국 {flight.arrivalKst}KST)</small>
+            <strong className={`roll-unit flap-unit${variant('arrival', 'localZone')}`} style={rollStyle(1)}>{flight.arrival}<b>{flight.localZone}</b></strong>
+            <small className={`roll-unit flap-unit${variant('arrivalKst')}`} style={rollStyle(2)}>(한국 {flight.arrivalKst}KST)</small>
           </div>
           <div className="board-forecast">
             {flight.forecast.map(([time, icon, temp], index) => (
@@ -355,15 +257,15 @@ function DepartureAirportSelect({ airports, selectedIcao, onSelect }) {
   );
 }
 
-function PageIndicator({ currentPage, pageCount }) {
+function PageIndicator({ currentFrame, frameCount }) {
   return (
     <div
       className="page-indicator"
       role="img"
-      aria-label={`${currentPage + 1} / ${pageCount} 페이지`}
+      aria-label={`${currentFrame + 1} / ${frameCount} 프레임`}
     >
-      {Array.from({ length: pageCount }, (_, index) => (
-        <i className={index === currentPage ? "is-current" : ""} aria-hidden="true" key={index} />
+      {Array.from({ length: frameCount }, (_, index) => (
+        <i className={index === currentFrame ? "is-current" : ""} aria-hidden="true" key={index} />
       ))}
     </div>
   );
@@ -416,80 +318,100 @@ function MotionModeSwitcher({ motionMode, onSelectMotion, modes = boardMotionMod
   );
 }
 
-function BoardScreen({ transitioning, activeFlights, pendingFlights, currentPage, pageCount, motionMode, onReplay, onSelectMotion, onSelectView, clock, title, departureAirports, departureAirportIcao, onSelectDepartureAirport }) {
+function TerminalEmptyState({ airportName }) {
+  return (
+    <div className="terminal-empty-state" role="status">
+      <strong>해당 시간대 출발편이 없습니다</strong>
+      <span>{airportName} · {TERMINAL_SIMULATION_REFERENCE.time} 이후 조회 기준</span>
+    </div>
+  );
+}
+
+function TerminalTitle({ title, flightCount, destinationCount }) {
+  return <h1>{title}{flightCount > 0 && <small>총 {flightCount}편 · {destinationCount}개 목적지</small>}</h1>;
+}
+
+function BoardScreen({ transitioning, activeFlights, pendingFlights, currentFrame, frameCount, flightCount, destinationCount, motionMode, onReplay, hasNext, onSelectMotion, onSelectView, clock, title, departureAirports, departureAirportIcao, departureAirportName, onSelectDepartureAirport }) {
+  const slotTransitions = terminalSlotTransitions(activeFlights, pendingFlights);
   return (
     <section className={`exact-screen exact-board motion-${motionMode}`} data-testid="option-one">
-      <PageIndicator currentPage={currentPage} pageCount={pageCount} />
+      <PageIndicator currentFrame={currentFrame} frameCount={frameCount} />
       <header className="board-header">
         <AgencyMascot />
-        <h1>{title}</h1>
+        <TerminalTitle title={title} flightCount={flightCount} destinationCount={destinationCount} />
         <div className="board-header-actions">
           <DepartureAirportSelect airports={departureAirports} selectedIcao={departureAirportIcao} onSelect={onSelectDepartureAirport} />
           <ViewSwitcher view="board" onSelectView={onSelectView} />
           <MotionModeSwitcher motionMode={motionMode} onSelectMotion={onSelectMotion} />
-          <button type="button" className="next-board-button" onClick={onReplay}>
-            <MdChevronRight /><span>다음 3편</span>
+          <button type="button" className="next-board-button" onClick={onReplay} disabled={!hasNext}>
+            <MdChevronRight /><span>다음 항공편</span>
           </button>
         </div>
         <div className="board-header-clock"><span>{clock.date}</span><strong>{clock.time}</strong></div>
       </header>
       <div className="board-viewport">
-        <div className={`board-page ${transitioning ? "is-leaving" : ""}`}>
+        {activeFlights.length === 0 ? <TerminalEmptyState airportName={departureAirportName} /> : <div className={`board-page ${transitioning ? "is-leaving" : ""}`} data-testid="board-active-page">
           {activeFlights.map((flight, index) => (
-            <Fragment key={flight.code}>
+            <Fragment key={`${index}-${flight.flightKey}`}>
               <BoardColumn
                 flight={flight}
+                comparisonFlight={pendingFlights[index]}
                 columnIndex={index}
                 weatherCitySlot={`${Math.max(flight.city.length, pendingFlights[index]?.city.length ?? 0)}em`}
+                transitionKind={slotTransitions[index]}
               />
-              {index < activeFlights.length - 1 && <i className="board-column-separator" aria-hidden="true" />}
+              {index < activeFlights.length - 1 && <i className={`board-column-separator is-slot-${slotTransitions[index + 1]}`} aria-hidden="true" />}
             </Fragment>
           ))}
-        </div>
+        </div>}
         {transitioning && (
-          <div className="board-page is-entering" aria-hidden="true">
+          <div className="board-page is-entering" data-testid="board-pending-page" aria-hidden="true">
             {pendingFlights.map((flight, index) => (
-              <Fragment key={flight.code}>
+              <Fragment key={`${index}-${flight.flightKey}`}>
                 <BoardColumn
                   flight={flight}
+                  comparisonFlight={activeFlights[index]}
                   columnIndex={index}
                   weatherCitySlot={`${Math.max(flight.city.length, activeFlights[index]?.city.length ?? 0)}em`}
+                  transitionKind={slotTransitions[index]}
                 />
-                {index < pendingFlights.length - 1 && <i className="board-column-separator" aria-hidden="true" />}
+                {index < pendingFlights.length - 1 && <i className={`board-column-separator is-slot-${slotTransitions[index + 1]}`} aria-hidden="true" />}
               </Fragment>
             ))}
           </div>
         )}
       </div>
       <footer className="screen-footer board-footer">
-        <div className="screen-footer-note"><MdInfoOutline /><span>도착 현지 시간 기준 · 예보는 참고용이며, 실제 날씨와 다를 수 있습니다.</span></div>
+        <div className="screen-footer-note"><MdInfoOutline /><span>2026.08.02 13:00 KST 한국공항공사 운항스케줄 기준 · 도착 날씨는 참고용입니다.</span></div>
         <HeaderWeatherPanel showWordmark />
       </footer>
     </section>
   );
 }
 
-function RailStats({ flight }) {
+function RailStats({ flight, comparisonFlight }) {
+  const variant = (...fields) => changedVariantClass(flight, comparisonFlight, fields);
   return (
     <div className="rail-stats">
       <div>
         <span>출발</span>
-        <div className={`rail-motion-unit${flight.revised ? " is-delayed" : ""}`} style={{ "--rail-item": 6 }}><strong>{flight.revised ?? flight.departure}</strong>{flight.revised && <em>예정 <s>{flight.departure}</s></em>}</div>
+        <div className={`rail-motion-unit${variant('revised', 'departure')}${flight.revised ? " is-delayed" : ""}`} style={{ "--rail-item": 6 }}><strong>{flight.revised ?? flight.departure}</strong>{flight.revised && <em>예정 <s>{flight.departure}</s></em>}</div>
       </div>
       <div>
         <span>예상 비행시간</span>
-        <div className="rail-motion-unit" style={{ "--rail-item": 7 }}><strong>{flight.duration}</strong></div>
+        <div className={`rail-motion-unit${variant('duration')}`} style={{ "--rail-item": 7 }}><strong>{flight.duration}</strong></div>
       </div>
       <div>
         <span>탑승구</span>
-        <div className="rail-motion-unit" style={{ "--rail-item": 8 }}><strong>{flight.gate}</strong></div>
+        <div className={`rail-motion-unit${variant('gate')}`} style={{ "--rail-item": 8 }}><strong>{flight.gate}</strong></div>
       </div>
     </div>
   );
 }
 
-function ForecastTimeline({ flight }) {
+function ForecastTimeline({ flight, comparisonFlight }) {
   const { dayLabel: arrivalDayLabel, time: arrivalKstTime } = splitArrivalKst(flight.arrivalKst);
+  const variant = (...fields) => changedVariantClass(flight, comparisonFlight, fields);
   return (
     <div className="timeline">
       <div className="timeline-arrival-grid">
@@ -497,10 +419,10 @@ function ForecastTimeline({ flight }) {
           <span className="progress-label__title">예상 도착</span>
           <div className="arrival-clocks">
             <div className="progress-clock">
-              <span>현지</span><strong className="rail-motion-unit" style={{ "--rail-item": 9 }}>{flight.arrival}</strong>
+              <span>현지</span><strong className={`rail-motion-unit${variant('arrival', 'localZone')}`} style={{ "--rail-item": 9 }}>{flight.arrival}</strong>
             </div>
             <div className="progress-clock">
-              <span>한국</span><strong className="rail-motion-unit" style={{ "--rail-item": 10 }}>{arrivalDayLabel && <span className="arrival-next-day">{arrivalDayLabel}</span>}{arrivalKstTime}</strong><small>KST</small>
+              <span>한국</span><strong className={`rail-motion-unit${variant('arrivalKst')}`} style={{ "--rail-item": 10 }}>{arrivalDayLabel && <span className="arrival-next-day">{arrivalDayLabel}</span>}{arrivalKstTime}</strong><small>KST</small>
             </div>
           </div>
         </div>
@@ -528,26 +450,29 @@ function ForecastTimeline({ flight }) {
   );
 }
 
-function RailRow({ flight, index }) {
+function RailRow({ flight, comparisonFlight, index, transitionKind }) {
   const [, localTime] = flight.localClock.split(" ");
+  const variant = (...fields) => changedVariantClass(flight, comparisonFlight, fields);
   return (
-    <article className="rail-flight-row" style={{ "--order": index }}>
+    <article className={`rail-flight-row is-slot-${transitionKind}${transitionKind === "flight" ? " is-flight-variant-changing" : ""}`} data-testid="rail-flight-row" data-destination-code={flight.code} data-flight-key={flight.flightKey} style={{ "--order": index }}>
       <div className="rail-flight-info">
         <h2 className="rail-motion-unit" style={{ "--rail-item": 0 }}>{flight.city} <span>{flight.code}</span></h2>
         <div className="rail-local-clock"><span>현지 시각</span><strong>{localTime}</strong><b>{flight.localZone}</b></div>
         <div className="rail-flight-status">
-          <span className="rail-flight-number rail-motion-unit" style={{ "--rail-item": 4 }}>
-            <img src={flight.logo} alt={`${flight.airline} 로고`} />
+          <span className={`rail-flight-number rail-motion-unit${variant('flight', 'airline', 'logo')}`} style={{ "--rail-item": 4 }}>
+            {flight.logo
+              ? <img src={flight.logo} alt={`${flight.airline} 로고`} />
+              : <span className="airline-logo-fallback" aria-label={flight.airline}>{flight.flight.slice(0, 2)}</span>}
             <span className="rail-airline-meta">
               <strong>{flight.flight}</strong>
               <small>{flight.airline}</small>
             </span>
           </span>
-          <span className={`${flight.statusTone} rail-motion-unit`} style={{ "--rail-item": 5 }}>{flight.status}</span>
+          <span className={`${flight.statusTone} rail-motion-unit${variant('status', 'statusTone')}`} style={{ "--rail-item": 5 }}>{flight.status}</span>
         </div>
-        <RailStats flight={flight} />
+        <RailStats flight={flight} comparisonFlight={comparisonFlight} />
       </div>
-      <ForecastTimeline flight={flight} />
+      <ForecastTimeline flight={flight} comparisonFlight={comparisonFlight} />
     </article>
   );
 }
@@ -556,24 +481,29 @@ function RailScreen({
   transitioning,
   activeFlights,
   pendingFlights,
-  currentPage,
-  pageCount,
+  currentFrame,
+  frameCount,
+  flightCount,
+  destinationCount,
   motionMode,
   onReplay,
+  hasNext,
   onSelectMotion,
   onSelectView,
   clock,
   title,
   departureAirports,
   departureAirportIcao,
+  departureAirportName,
   onSelectDepartureAirport,
 }) {
+  const slotTransitions = terminalSlotTransitions(activeFlights, pendingFlights);
   return (
     <section className={`exact-screen exact-rail rail-motion-${motionMode}`} data-testid="option-three">
-      <PageIndicator currentPage={currentPage} pageCount={pageCount} />
+      <PageIndicator currentFrame={currentFrame} frameCount={frameCount} />
       <header className="rail-header">
         <AgencyMascot />
-        <h1>{title}</h1>
+        <TerminalTitle title={title} flightCount={flightCount} destinationCount={destinationCount} />
           <div className="rail-header-actions">
             <DepartureAirportSelect airports={departureAirports} selectedIcao={departureAirportIcao} onSelect={onSelectDepartureAirport} />
           <ViewSwitcher view="rail" onSelectView={onSelectView} />
@@ -583,24 +513,24 @@ function RailScreen({
             modes={railMotionModes}
             ariaLabel="3안 전환 애니메이션"
           />
-          <button type="button" className="next-board-button" onClick={onReplay}>
-            <MdChevronRight /><span>다음 3편</span>
+          <button type="button" className="next-board-button" onClick={onReplay} disabled={!hasNext}>
+            <MdChevronRight /><span>다음 항공편</span>
           </button>
         </div>
         <div className="rail-header-clock"><span>{clock.date}</span><strong>{clock.time}</strong></div>
       </header>
       <div className="rail-viewport">
-        <div className={`rail-page ${transitioning ? "is-leaving" : ""}`}>
-          {activeFlights.map((flight, index) => <RailRow flight={flight} index={index} key={flight.code} />)}
-        </div>
+        {activeFlights.length === 0 ? <TerminalEmptyState airportName={departureAirportName} /> : <div className={`rail-page ${transitioning ? "is-leaving" : ""}`} data-testid="rail-active-page">
+          {activeFlights.map((flight, index) => <RailRow flight={flight} comparisonFlight={pendingFlights[index]} index={index} transitionKind={slotTransitions[index]} key={`${index}-${flight.flightKey}`} />)}
+        </div>}
         {transitioning && (
-          <div className="rail-page is-entering" aria-hidden="true">
-            {pendingFlights.map((flight, index) => <RailRow flight={flight} index={index} key={flight.code} />)}
+          <div className="rail-page is-entering" data-testid="rail-pending-page" aria-hidden="true">
+            {pendingFlights.map((flight, index) => <RailRow flight={flight} comparisonFlight={activeFlights[index]} index={index} transitionKind={slotTransitions[index]} key={`${index}-${flight.flightKey}`} />)}
           </div>
         )}
       </div>
       <footer className="screen-footer rail-footer">
-        <div className="screen-footer-note"><MdInfoOutline /><span>도착 현지 시간 기준 · 예보는 참고용이며, 실제 날씨와 다를 수 있습니다.</span></div>
+        <div className="screen-footer-note"><MdInfoOutline /><span>2026.08.02 13:00 KST 한국공항공사 운항스케줄 기준 · 도착 날씨는 참고용입니다.</span></div>
         <HeaderWeatherPanel showWordmark />
       </footer>
     </section>
@@ -611,8 +541,7 @@ export function App() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const [view, setView] = useState(params.get("view") === "rail" ? "rail" : "board");
   const [transitioning, setTransitioning] = useState(false);
-  const [activeBoardGroup, setActiveBoardGroup] = useState(0);
-  const [activeRailGroup, setActiveRailGroup] = useState(0);
+  const [frameCursor, setFrameCursor] = useState(0);
   const [motionMode, setMotionMode] = useState(() => {
     const requestedMode = params.get("motion");
     return ["split", "roll", "wipe", "fade"].includes(requestedMode) ? requestedMode : "split";
@@ -625,6 +554,21 @@ export function App() {
   const [now, setNow] = useState(() => new Date());
   const [departureAirportIcao, setDepartureAirportIcao] = useState(() => departureAirportFromPathname(window.location.pathname) || params.get('departureAirport') || 'RKSS');
   const timer = useRef(null);
+  const departureAirportState = useMemo(
+    () => selectTerminalDepartureAirport(liveWeatherData?.airportCatalog, departureAirportIcao),
+    [liveWeatherData, departureAirportIcao],
+  );
+  const selectedDepartureIcao = departureAirportState.selected?.icao || departureAirportIcao;
+  const simulation = useMemo(() => buildTerminalSimulation(selectedDepartureIcao), [selectedDepartureIcao]);
+  const hasNextFrame = hasTerminalNextFrame(simulation);
+  const activeFrame = useMemo(() => terminalFrameAt(simulation, frameCursor), [simulation, frameCursor]);
+  const pendingFrame = useMemo(() => terminalFrameAt(simulation, frameCursor + 1), [simulation, frameCursor]);
+  const activeFlights = useMemo(() => liveWeatherData
+    ? activeFrame.flights.map((flight) => mergeTerminalLiveWeather(flight, liveWeatherData))
+    : activeFrame.flights, [activeFrame, liveWeatherData]);
+  const pendingFlights = useMemo(() => liveWeatherData
+    ? pendingFrame.flights.map((flight) => mergeTerminalLiveWeather(flight, liveWeatherData))
+    : pendingFrame.flights, [pendingFrame, liveWeatherData]);
 
   useEffect(() => {
     let mounted = true;
@@ -645,18 +589,14 @@ export function App() {
   }, []);
 
   const replay = useCallback(() => {
-    if (transitioning) return;
+    if (transitioning || !hasNextFrame) return;
     setTransitioning(true);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
-      if (view === "board") {
-        setActiveBoardGroup((current) => (current + 1) % boardFlightGroups.length);
-      } else {
-        setActiveRailGroup((current) => (current + 1) % railFlightGroups.length);
-      }
+      setFrameCursor((current) => current + 1);
       setTransitioning(false);
     }, view === "board" ? 1800 : 1250);
-  }, [transitioning, view]);
+  }, [hasNextFrame, transitioning, view]);
 
   useEffect(() => {
     if (params.get("autoplay") === "0") return undefined;
@@ -694,18 +634,12 @@ export function App() {
     setView(nextView);
   }, []);
 
-  const pendingBoardGroup = (activeBoardGroup + 1) % boardFlightGroups.length;
-  const pendingRailGroup = (activeRailGroup + 1) % railFlightGroups.length;
-  const liveBoardFlightGroups = useMemo(() => liveWeatherData
-    ? boardFlightGroups.map((group) => group.map((flight) => mergeTerminalLiveWeather(flight, liveWeatherData)))
-    : boardFlightGroups, [liveWeatherData]);
   const koreanClock = formatKoreanClock(now);
-  const departureAirportState = useMemo(
-    () => selectTerminalDepartureAirport(liveWeatherData?.airportCatalog, departureAirportIcao),
-    [liveWeatherData, departureAirportIcao],
-  );
   const terminalTitle = `${departureAirportState.selected?.nameKo?.replace('국제', '') || '김포공항'} 도착지 날씨`;
   const selectDepartureAirport = useCallback((icao) => {
+    window.clearTimeout(timer.current);
+    setTransitioning(false);
+    setFrameCursor(0);
     setDepartureAirportIcao(icao);
     const nextUrl = new URL(window.location.href);
     nextUrl.pathname = `/terminal/${icao.toLowerCase()}`;
@@ -717,35 +651,43 @@ export function App() {
       {view === "board" ? (
         <BoardScreen
           transitioning={transitioning}
-          activeFlights={liveBoardFlightGroups[activeBoardGroup]}
-          pendingFlights={liveBoardFlightGroups[pendingBoardGroup]}
-          currentPage={activeBoardGroup}
-          pageCount={boardFlightGroups.length}
+          activeFlights={activeFlights}
+          pendingFlights={pendingFlights}
+          currentFrame={activeFrame.frameIndex}
+          frameCount={activeFrame.frameCount}
+          flightCount={simulation.totalFlights}
+          destinationCount={simulation.totalDestinations}
           motionMode={motionMode}
           onReplay={replay}
+          hasNext={hasNextFrame}
           onSelectMotion={selectMotionMode}
           onSelectView={selectView}
           clock={koreanClock}
           title={terminalTitle}
           departureAirports={departureAirportState.options}
-          departureAirportIcao={departureAirportState.selected?.icao || departureAirportIcao}
+          departureAirportIcao={selectedDepartureIcao}
+          departureAirportName={departureAirportState.selected?.nameKo || '김포공항'}
           onSelectDepartureAirport={selectDepartureAirport}
         />
       ) : (
         <RailScreen
           transitioning={transitioning}
-          activeFlights={railFlightGroups[activeRailGroup]}
-          pendingFlights={railFlightGroups[pendingRailGroup]}
-          currentPage={activeRailGroup}
-          pageCount={railFlightGroups.length}
+          activeFlights={activeFlights}
+          pendingFlights={pendingFlights}
+          currentFrame={activeFrame.frameIndex}
+          frameCount={activeFrame.frameCount}
+          flightCount={simulation.totalFlights}
+          destinationCount={simulation.totalDestinations}
           motionMode={railMotionMode}
           onReplay={replay}
+          hasNext={hasNextFrame}
           onSelectMotion={selectRailMotionMode}
           onSelectView={selectView}
           clock={koreanClock}
           title={terminalTitle}
           departureAirports={departureAirportState.options}
-          departureAirportIcao={departureAirportState.selected?.icao || departureAirportIcao}
+          departureAirportIcao={selectedDepartureIcao}
+          departureAirportName={departureAirportState.selected?.nameKo || '김포공항'}
           onSelectDepartureAirport={selectDepartureAirport}
         />
       )}

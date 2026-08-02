@@ -36,6 +36,7 @@ const MET_META = {
   typhoon: { label: '태풍', aliases: ['태풍', 'typhoon', '타이푼'] },
   visibility: { label: '시정', aliases: ['시정', 'visibility', '가시거리'] },
   ceiling: { label: '운고', aliases: ['운고', 'ceiling', '운저'] },
+  terrainHazard: { label: '지형 근접', aliases: ['지형', '표고', '산', 'terrain', 'hazard advisor', '지형근접'] },
 }
 export const MET_ACTIONS = MET_LAYERS.map((l) => ({
   id: l.id, type: 'met', panelId: 'met',

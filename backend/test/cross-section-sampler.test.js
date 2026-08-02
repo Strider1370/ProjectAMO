@@ -17,8 +17,8 @@ test('buildCrossSection assembles levels with altFt from hgt and per-variable co
     if (levelId === '500hPa') return {
       pressure: 500,
       values: [
-        { distanceNm: 0, T: 253, hgt: 5500, u: 10, v: 0, spread: 5, icing: 1 },
-        { distanceNm: 10, T: 256, hgt: 5500, u: 10, v: 0, spread: 6, icing: 2 },
+        { distanceNm: 0, T: 253, hgt: 5500, u: 10, v: 0, spread: 5, icing: 1, cld: .72 },
+        { distanceNm: 10, T: 256, hgt: 5500, u: 10, v: 0, spread: 6, icing: 2, cld: Number.NaN },
       ],
     }
     return null
@@ -38,4 +38,12 @@ test('buildCrossSection assembles levels with altFt from hgt and per-variable co
   assert.equal(typeof l.values[0].t, 'number')
   assert.equal(cs.coverage.byVariable.T.available, true)
   assert.equal(cs.coverage.byVariable.T.topPressure, 500)
+  assert.equal(l.values[0].cld, .72)
+  assert.equal(l.values[1].cld, null)
+  assert.deepEqual(cs.coverage.byVariable.cld, { available: true, topPressure: 500, threshold: .6, unit: '1' })
+})
+
+test('buildCrossSection reports unavailable CLD without finite samples', () => {
+  const cs = buildCrossSection({ axis: { samples: [] }, run: {}, levelIds: ['500hPa'], loadLevel: () => ({ pressure: 500, values: [{ distanceNm: 0, cld: Number.NaN }] }) })
+  assert.deepEqual(cs.coverage.byVariable.cld, { available: false, topPressure: null, threshold: .6, unit: '1' })
 })

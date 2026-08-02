@@ -57,6 +57,16 @@ test('shares the forecast-hour nav between the profile window and the briefing i
   assert.doesNotMatch(jsx, /aria-label="이전 예보시간"/)
 })
 
+test('wires the default-on cloud contour layer through the shared profile state', () => {
+  const shared = readFileSync(new URL('./crossSectionLayers.jsx', import.meta.url), 'utf8')
+  assert.match(shared, /\['cloud', '구름'\]/)
+  assert.match(shared, /cloud: true/)
+  assert.match(jsx, /cloud: true/)
+  assert.match(profileChartJsx, /data-testid="kim-cloud-contours"/)
+  assert.match(profileChartJsx, /className="cs-cloud-contour"/)
+  assert.match(profileChartJsx, /fill="none"/)
+})
+
 test('keeps the mobile fullscreen profile controls in the shared state flow', () => {
   const fullscreenStart = jsx.indexOf('{xsectionFull && verticalProfile && (')
   const fullscreenEnd = jsx.indexOf('\n        )}', fullscreenStart)

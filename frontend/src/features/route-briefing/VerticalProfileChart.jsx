@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { msToKt, windBarbFeathers, windDirectionFromUV, isothermSegments, pressureToFallbackFt } from './lib/crossSectionGrid.js'
 import { advisorySymbolUrl } from '../weather-overlays/lib/advisoryLayers.js'
+import { buildCloudContourModel } from './lib/cloudContour.js'
 
 const ADVISORY_ICON_PX = 32 // 평면도 기호의 ~2배. 단면도 맨 앞에 그림.
 
@@ -333,6 +334,13 @@ export default function VerticalProfileChart({
     ? selectedCruiseAltitudeFt
     : null
   const csLevels = crossSection?.levels ?? []
+  const cldCoverage = crossSection?.coverage?.byVariable?.cld
+  const cldLevels = Number.isFinite(cldCoverage?.topPressure)
+    ? csLevels.filter((level) => Number(level.pressure) >= Number(cldCoverage.topPressure)) : []
+  const cloudContour = Number.isFinite(cldCoverage?.threshold)
+    ? buildCloudContourModel(cldLevels, cldCoverage.threshold)
+    : { status: 'unavailable', partial: false, threshold: null, chains: [] }
+  const cloudPaths = layers.cloud ? cloudContour.chains.map((chain) => buildPath(chain.map((point) => ({ x: xFor(point.distanceNm), y: yFor(point.altFt) })))).filter(Boolean) : []
   const altFor = (lvl) => Number.isFinite(lvl.altFt) ? lvl.altFt : pressureToFallbackFt(lvl.pressure)
   const turbulenceCells = (() => {
     const turb = crossSection?.turbulence
@@ -523,6 +531,14 @@ export default function VerticalProfileChart({
           <span>{'\uc120\ud0dd \uc21c\ud56d\uace0\ub3c4'}</span>
           <strong>{formatFt(selectedCruiseAltitudeFt)}</strong>
         </span>}
+        {layers.cloud && crossSection && <span className="vertical-profile-meta-item cs-cloud-meta">
+          <span>구름 윤곽</span>
+          <strong>{cloudContour.status === 'detected'
+            ? `KIM CLD ≥ ${cloudContour.threshold} 윤곽${cloudContour.partial ? ' · 일부 결측' : ''}`
+            : cloudContour.status === 'not_detected'
+              ? cloudContour.partial ? 'KIM CLD 일부 결측' : `KIM CLD ≥ ${cloudContour.threshold} 없음`
+              : 'KIM CLD 자료 없음'}</strong>
+        </span>}
         {todOffsetText && (
           <span className="vertical-profile-tod-summary">{todOffsetText}</span>
         )}
@@ -580,6 +596,9 @@ export default function VerticalProfileChart({
               <path key={`t${level}-${ci}`} d={catmullRomPath(pts)} className={bold ? 'cs-isotherm cs-isotherm-zero' : 'cs-isotherm'} />
             ))
           )}
+          {layers.cloud && cloudPaths.length > 0 && <g data-testid="kim-cloud-contours" aria-label="KIM CLD 구름 윤곽">
+            {cloudPaths.map((path, index) => <path key={`cld-${index}`} d={path} className="cs-cloud-contour" fill="none"><title>{`KIM CLD ${cloudContour.threshold} 구름 윤곽`}</title></path>)}
+          </g>}
           {windBarbs.map((wb) => <WindBarb key={wb.key} cx={wb.cx} cy={wb.cy} u={wb.u} v={wb.v} />)}
           {advisoryBands.map((band) => (
             <rect

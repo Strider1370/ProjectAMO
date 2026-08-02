@@ -69,6 +69,7 @@ function sampleLevelValues(grid, samples) {
     if (variables?.T) value.T = decodeAt(variables.T, idx)
     if (variables?.u) value.u = decodeAt(variables.u, idx)
     if (variables?.v) value.v = decodeAt(variables.v, idx)
+    if (variables?.cld) value.cld = decodeAt(variables.cld, idx)
     if (variables?.T && variables?.rh) {
       const tempK = value.T
       const tdC = dewpointCFromTempRh(tempK, decodeAt(variables.rh, idx))
@@ -79,7 +80,7 @@ function sampleLevelValues(grid, samples) {
         tempC: value.T - 273.15,
         rhLiq: decodeAt(variables.rh_liq, idx), w: decodeAt(variables.w, idx),
         tqc: decodeAt(variables.tqc, idx), tqi: decodeAt(variables.tqi, idx),
-        tqr: decodeAt(variables.tqr, idx), tqs: decodeAt(variables.tqs, idx), cld: decodeAt(variables.cld, idx),
+        tqr: decodeAt(variables.tqr, idx), tqs: decodeAt(variables.tqs, idx), cld: value.cld,
       }
       if (Object.values(icing).every(Number.isFinite)) {
         const { score, mCl, bFrz } = calcKFipLiteScore(icing)

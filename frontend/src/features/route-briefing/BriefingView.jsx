@@ -80,7 +80,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   // 기온·습도·바람·SIGMET/AIRMET은 항상 기본 ON. 착빙·난류는 해당 현상이 있을 때만.
   const icingOn = hazHas(['SEV_ICE', 'MOD_ICE']) || modelKinds.has('icing')
   const [xLayers, toggleXLayer] = useCrossSectionLayers({
-    temp: true, wind: true, advisories: true,
+    temp: true, wind: true, cloud: true, advisories: true,
     icing: icingOn,
     moisture: !icingOn, // 착빙과 습도는 같은 영역을 칠해 색이 겹친다 — 착빙이 켜지면 습도는 양보.
     turbulence: hazHas(['SEV_TURB', 'MOD_TURB']) || modelKinds.has('turbulence'),

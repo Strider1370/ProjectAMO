@@ -965,6 +965,17 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   fill: none;
 }
 
+.cs-cloud-contour {
+  fill: none;
+  stroke: #0369a1;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.cs-cloud-meta strong { color: #0369a1; }
+
 .cs-isotherm-zero {
   stroke: rgba(220, 60, 60, 0.85);
   stroke-width: 2.5;

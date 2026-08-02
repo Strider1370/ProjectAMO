@@ -95,7 +95,7 @@ test.describe('briefing-view', () => {
     await expect(fullscreen.getByRole('button', { name: '닫기', exact: true })).toBeVisible()
     await expect(fullscreen.getByRole('button', { name: '이전 예보시간', exact: true })).toBeVisible()
     await expect(fullscreen.getByRole('button', { name: '다음 예보시간', exact: true })).toBeVisible()
-    for (const label of ['기온', '습도', '착빙', '바람', '난류', 'SIGMET/AIRMET']) {
+    for (const label of ['기온', '습도', '구름', '착빙', '바람', '난류', 'SIGMET/AIRMET']) {
       await expect(fullscreen.getByRole('button', { name: label, exact: true })).toBeVisible()
     }
 
@@ -104,6 +104,34 @@ test.describe('briefing-view', () => {
     await expect(temperature).toHaveAttribute('aria-pressed', 'false')
     await fullscreen.getByRole('button', { name: '닫기', exact: true }).click()
     await expect(page.locator('.bv-leg-briefing').getByRole('button', { name: '기온', exact: true })).toHaveAttribute('aria-pressed', 'false')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  })
+
+  test('shows two outline-only KIM CLD cloud regions and toggles them', async ({ page }, testInfo) => {
+    await createBriefing(page)
+    const profile = page.getByRole('region', { name: '연직단면도', exact: true })
+    const cloudToggle = profile.getByRole('button', { name: '구름', exact: true })
+    await expect(cloudToggle).toHaveAttribute('aria-pressed', 'true')
+    const contours = profile.getByTestId('kim-cloud-contours')
+    await expect(contours).toBeVisible()
+    await expect(contours.locator('path.cs-cloud-contour')).toHaveCount(2)
+    await expect(profile.getByText('KIM CLD ≥ 0.6 윤곽 · 일부 결측', { exact: true })).toBeVisible()
+    expect(await contours.locator('path.cs-cloud-contour').evaluateAll((paths) => paths.every((path) => path.getAttribute('fill') === 'none' && getComputedStyle(path).fill === 'none'))).toBe(true)
+    await cloudToggle.click(); await expect(profile.getByTestId('kim-cloud-contours')).toHaveCount(0)
+    await cloudToggle.click(); await expect(profile.getByTestId('kim-cloud-contours')).toBeVisible()
+    const screenshotTarget = testInfo.project.name === 'mobile'
+      ? await (async () => {
+          await page.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()
+          const fullscreen = page.getByRole('dialog', { name: '단면도 전체화면', exact: true })
+          await expect(fullscreen.getByTestId('kim-cloud-contours')).toBeVisible()
+          const fullscreenContours = fullscreen.locator('path.cs-cloud-contour')
+          const plotScroll = fullscreen.locator('.vertical-profile-plot-scroll')
+          await plotScroll.evaluate((element) => { element.scrollLeft = 0 })
+          await expect(fullscreenContours.first()).toBeInViewport()
+          return fullscreen.locator('.vertical-profile-chart')
+        })()
+      : profile.locator('.vertical-profile-chart')
+    await expect(screenshotTarget).toHaveScreenshot('kim-cld-cloud-contours.png', { animations: 'disabled' })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   })
 

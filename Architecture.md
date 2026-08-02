@@ -79,7 +79,7 @@ ProjectAMO/
 - `frontend/src/features/map/lib/baseMapLayers.js` -> airport and geo-boundary source/layer install helpers, plus geo-boundary visibility policy for basemap and weather/NWP overlay contrast.
 - `frontend/src/features/map/basemapSwitcher/BasemapSwitcher.jsx` -> basemap switcher UI.
 - `frontend/src/features/monitoring/MonitoringPage.jsx` -> standalone `/monitoring` legacy-style ops/ground screen.
-- `frontend/src/features/terminal/TerminalPage.jsx` -> standalone `/terminal` passenger terminal display entry; `DestinationWeatherPage.jsx` and `terminal.css` own its destination-weather presentation and bundled image assets.
+- `frontend/src/features/terminal/TerminalPage.jsx` -> standalone `/terminal` passenger terminal display entry; `DestinationWeatherPage.jsx` and `terminal.css` own its destination-weather presentation, per-slot active/pending transitions, and bundled image assets, while `terminalFlightSimulation.js` owns the dated KAC schedule snapshot, destination-queue packing, and compact frame sequence shared by both signage views.
 - `frontend/src/features/monitoring/MonitoringMap.jsx` -> monitoring wrapper around the main MapView with local Aviation/MET icon toggles.
 - `frontend/src/features/monitoring/monitoringApi.js` -> monitoring data loader using current API shape, plus the monitoring `useSnapshotPolling` profile (`loadMonitoringInitialData`, `buildMonitoringSnapshot`, `detectMonitoringSnapshotChanges`, `nextMonitoringSnapshot`).
 - `frontend/src/features/monitoring/legacy/*` -> copied previous-project dashboard components, alert utilities, and CSS for the standalone monitoring screen; weather rendering reuses shared `WeatherIcon`, resolver, registry, and BasMilius assets.
@@ -253,6 +253,10 @@ ProjectAMO/
 - `frontend/src/features/*` may import `api/`, `shared/`, and local feature siblings when a UI flow requires it.
 - `frontend/src/shared/*` must stay frontend-only and must not import from `app/` or `features/`.
 - Root `shared/` is for backend/frontend common constants; do not mix it with `frontend/src/shared/`.
+- Terminal schedule selection keeps `RKSS`, `RKPC`, and `RKPK` within the 30-minute reference window. For low-frequency `RKPU`, `RKNY`, `RKJY`, and `RKJB`, it first selects the two-hour window, then appends later verified departures in chronological order until three same-day flights are selected or the schedule is exhausted; it never crosses into the next day or fabricates a flight.
+- Terminal schedule frames order the selected destination queues by descending flight count with first-schedule order as the tie breaker. Each frame consumes one flight from up to three live destinations first, then fills spare slots from the largest remaining queue; every `flightKey` appears exactly once and the cycle uses `ceil(totalFlights / 3)` frames.
+- Terminal destination forecasts copy the destination fixture per selected flight and relabel its five display hours from that flight's scheduled arrival hour; shared weather fixtures are not mutated.
+- Terminal signage transitions are classified per positional slot: the same destination changes only pre-rendered flight values, a new destination replaces the full card, a missing pending value exits the old card, and active state commits only after the transition timer completes.
 - `frontend/src/features/map/MapView.jsx` owns Mapbox instance creation, basemap switching, style readiness, and `styleRevision`; it should not apply feature data or visibility from stale `style.load` closures.
 - Feature-owned Mapbox adapters should expose or document their source/layer IDs when they own persistent Mapbox resources.
 - Weather overlay map writes belong under `frontend/src/features/weather-overlays/lib/`; route preview map writes belong under `frontend/src/features/route-briefing/lib/`; ADS-B map writes belong under `frontend/src/features/aviation-layers/`.

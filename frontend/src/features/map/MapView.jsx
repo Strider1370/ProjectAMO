@@ -77,6 +77,7 @@ import {
   syncLightningLayers,
   syncRasterAndSigwxLayers,
 } from '../weather-overlays/lib/weatherOverlayLayers.js'
+import { syncTerrainHazardLayer, terrainHazardAltitudeItems } from '../weather-overlays/lib/terrainHazardLayer.js'
 import {
   buildWeatherOverlayModel,
   formatReferenceTimeLabel,
@@ -395,6 +396,7 @@ const MapView = forwardRef(function MapView({
   const [timestampOpen, setTimestampOpen] = useState(true)
   const [weatherLegendOpen, setWeatherLegendOpen] = useState(false)
   const [weatherLegendPanelHeight, setWeatherLegendPanelHeight] = useState(0)
+  const [terrainAltitudeFt, setTerrainAltitudeFt] = useState(3000)
   const [blinkLightning, setBlinkLightning] = useState(false)
   const [lightningBlinkOff, setLightningBlinkOff] = useState(false)
   const [lightningReferenceTimeMs, setLightningReferenceTimeMs] = useState(() => Date.now())
@@ -1415,6 +1417,15 @@ const MapView = forwardRef(function MapView({
     syncRasterAndSigwxLayers(map, rasterAndSigwxModel)
   }, [rasterAndSigwxModel])
 
+  // ???? Sync terrain hazard shading ????????????????????????????????????????????????????????????????????????????????
+
+  useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
+    syncTerrainHazardLayer(map, {
+      visible: metVisibility.terrainHazard,
+      altitudeFt: terrainAltitudeFt,
+    })
+  }, [metVisibility.terrainHazard, terrainAltitudeFt])
+
   // ???? Sync SIGMET / AIRMET ????????????????????????????????????????????????????????????????????????????????????????????????????
 
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
@@ -1857,6 +1868,14 @@ const MapView = forwardRef(function MapView({
             ariaLabel="난류 고도"
           />
         )}
+        {metVisibility.terrainHazard && (
+          <LevelSliderPanel
+            items={terrainHazardAltitudeItems()}
+            activeValue={terrainAltitudeFt}
+            onSelect={setTerrainAltitudeFt}
+            ariaLabel="지형 근접 기준 고도"
+          />
+        )}
         <ConvectiveOverlayControls ctpsVisible={metVisibility.ctps} minFl={convectiveOverlay.minFl} onMinFlChange={convectiveOverlay.setMinFl} />
       </div>
       <ConvectiveOverlayCard selection={convectiveOverlay.selection} tz={tz} />
@@ -2090,6 +2109,7 @@ const MapView = forwardRef(function MapView({
           radarMotionAvailable={Boolean(radarMotion.dataUrl)}
           radarMotionRequested={radarMotionOverlay.requestedVisible}
           onRadarMotionRequestedChange={radarMotionOverlay.setRequestedVisible}
+          terrainAltitudeFt={terrainAltitudeFt}
         />
       )}
 

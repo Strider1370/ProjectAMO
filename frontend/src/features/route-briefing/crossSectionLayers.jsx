@@ -6,13 +6,14 @@ import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 export const CROSS_SECTION_TOGGLES = [
   ['temp', '기온'],
   ['moisture', '습도'],
+  ['cloud', '구름'],
   ['icing', '착빙'],
   ['wind', '바람'],
   ['turbulence', '난류'],
   ['advisories', 'SIGMET/AIRMET'],
 ]
 
-const DEFAULT_LAYERS = { temp: true, wind: true, icing: false, moisture: true, turbulence: false, advisories: true }
+const DEFAULT_LAYERS = { temp: true, wind: true, icing: false, moisture: true, cloud: true, turbulence: false, advisories: true }
 
 export function useCrossSectionLayers(initial = DEFAULT_LAYERS) {
   const [layers, setLayers] = useState(initial)
