@@ -105,16 +105,43 @@ function rowsHtml(lines) {
       </div>`).join('')
 }
 
+/**
+ * 관측지점 말풍선은 공항 마커 툴팁과 같은 모양을 쓴다(사용자 요청).
+ * AirportTooltip.css의 클래스를 그대로 재사용한다 — 글꼴·크기·여백·구분선을
+ * 여기서 다시 정의하면 한쪽만 바뀌었을 때 둘이 어긋난다.
+ * 테두리 색은 그 지점의 점 색을 따른다(공항 툴팁이 비행범주 색을 쓰는 것과 같은 뜻).
+ */
+function stationPopupHtml(props) {
+  // 주석(모델값·차이)은 값 옆에 붙이지 않고 아래 줄로 내린다 — 폭이 152px라
+  // 옆에 붙이면 "약 800 ft 모델 / 구름 없음"처럼 엉뚱한 자리에서 줄바꿈된다.
+  const row = (label, value, alert, small) => `
+      <div class="airport-tooltip-row">
+        <span class="airport-tooltip-label">${escapeHtml(label)}</span>
+        <span class="airport-tooltip-value${small ? ' airport-tooltip-time' : ''}"${alert ? ' style="color:#dc2626"' : ''}>${escapeHtml(value)}</span>
+      </div>`
+  const rows = formatStationLines(props).filter((l) => l.label).map((l) =>
+    row(l.label, l.value, l.alert, l.label === '관측')
+    + (l.note ? row('', l.note, l.alert, true) : '')).join('')
+  return `<div class="fc-station-popup">
+      <div class="airport-tooltip-header"><span class="airport-tooltip-icao">${escapeHtml(props?.name ?? '')}</span></div>
+      <div class="airport-tooltip-name">${escapeHtml(props?.source ?? '')}</div>
+      <div class="airport-tooltip-divider"></div>
+      <div class="airport-tooltip-rows">${rows}</div>
+    </div>`
+}
+
 export function bindFlightCategoryClick(map, popupRef) {
   let cancelled = false
   let seq = 0 // 클릭마다 증가 — 늦게 도착한 응답이 최신 클릭의 팝업을 덮어쓰지 않게 한다.
 
-  function renderPopup(lngLat, rows) {
+  function renderPopup(lngLat, html, className) {
     popupRef.current?.remove()
-    popupRef.current = new mapboxgl.Popup({ closeButton: true, offset: 8, maxWidth: '260px' })
-      .setLngLat(lngLat).setHTML(`<div style="font-family:'Noto Sans KR',sans-serif;padding:2px 0">${rows}</div>`)
+    popupRef.current = new mapboxgl.Popup({ closeButton: true, offset: 8, maxWidth: '260px', className })
+      .setLngLat(lngLat).setHTML(html)
       .addTo(map)
   }
+
+  const areaHtml = (rows) => `<div style="font-family:'Noto Sans KR',sans-serif;padding:2px 0">${rows}</div>`
 
   async function handleAreaClick(e) {
     // 점이 면 위에 얹혀 있어 점을 눌러도 면 click이 같이 잡힌다. 점 층에 실제로 뭐가
@@ -131,7 +158,7 @@ export function bindFlightCategoryClick(map, popupRef) {
     // 언바인드됐거나(지도가 사라짐) 그 사이 다른 클릭이 들어왔으면(응답 역전) 그리지 않는다.
     if (cancelled || mySeq !== seq) return
 
-    renderPopup(e.lngLat, rowsHtml(formatPointLines(point)))
+    renderPopup(e.lngLat, areaHtml(rowsHtml(formatPointLines(point))))
   }
 
   function handleStationClick(e) {
@@ -140,7 +167,9 @@ export function bindFlightCategoryClick(map, popupRef) {
     // 진행 중인 면 클릭의 fetch가 이 클릭보다 늦게 돌아와도 지금 그리는 점 팝업을
     // 덮어쓰지 못하게 한다 — 네트워크가 없는 점 팝업 자체는 늦을 일이 없다.
     ++seq
-    renderPopup(e.lngLat, rowsHtml(formatStationLines(feature.properties)))
+    const fill = feature.properties?.fill
+    renderPopup(e.lngLat, stationPopupHtml(feature.properties),
+      `fc-station-popup-wrap fc-station-popup-wrap--${fill === 'severe' || fill === 'caution' ? fill : 'good'}`)
   }
 
   const onEnter = () => { map.getCanvas().style.cursor = 'pointer' }

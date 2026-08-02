@@ -2565,3 +2565,39 @@
   .pressure-level-slider__value { right: calc(50% + 14px); font-size: var(--fs-200); }
   .pressure-level-slider__value small { font-size: var(--fs-100); }
 }
+
+/* ASOS 관측지점 말풍선 — 공항 마커 툴팁과 같은 모양(사용자 요청).
+   안쪽 글꼴·크기·여백은 AirportTooltip.css의 클래스를 그대로 재사용하므로
+   여기서는 껍데기(테두리·모서리·그림자·폭)만 맞춘다. 값을 다시 적으면
+   한쪽만 바뀌었을 때 둘이 어긋난다. */
+.mapboxgl-popup-content:has(.fc-station-popup) {
+  padding: 0;
+  border-radius: 8px;
+  border: 2px solid var(--text-3);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14), 0 2px 4px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.fc-station-popup {
+  width: 152px;
+  font-family: var(--app-font, system-ui, sans-serif);
+}
+
+/* 테두리 색은 그 지점의 점 색을 따른다 — 공항 툴팁이 비행범주 색을 쓰는 것과 같다.
+   말풍선 꼬리도 같이 맞춰야 테두리가 끊겨 보이지 않는다. */
+.fc-station-popup-wrap--severe .mapboxgl-popup-content { border-color: #dc2626; }
+.fc-station-popup-wrap--caution .mapboxgl-popup-content { border-color: #f97316; }
+.fc-station-popup-wrap--good .mapboxgl-popup-content { border-color: #16a34a; }
+.fc-station-popup-wrap--severe .mapboxgl-popup-tip { border-top-color: #dc2626; }
+.fc-station-popup-wrap--caution .mapboxgl-popup-tip { border-top-color: #f97316; }
+.fc-station-popup-wrap--good .mapboxgl-popup-tip { border-top-color: #16a34a; }
+
+/* 닫기 버튼이 이름 위를 덮지 않게 살짝 물러나 앉는다. */
+.mapboxgl-popup-content:has(.fc-station-popup) .mapboxgl-popup-close-button {
+  top: 2px;
+  right: 4px;
+  color: var(--text-3);
+  font-size: 15px;
+  line-height: 1;
+}
