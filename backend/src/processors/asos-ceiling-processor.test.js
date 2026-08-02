@@ -34,10 +34,12 @@ test('일반 운고는 그대로 유지한다', () => {
   assert.equal(out[0].cloud_amount, 2)
 })
 
-test('시정을 미터로 변환 없이 그대로 읽는다', () => {
-  const text = `#START7777\n${row('108', { ch: '10', vs: '3993' })}\n#7777END`
+test('시정은 10 m 단위라 10을 곱해 미터로 바꾼다', () => {
+  // 실측: 서울 station VS=3750일 때 시정 격자는 22,800 m — ×10(37,500 m)이
+  // 격자와 같은 자릿수가 된다. ×1(3,750 m)이면 격자와 6배 어긋난다.
+  const text = `#START7777\n${row('108', { ch: '10', vs: '3750' })}\n#7777END`
   const out = parseAsosCeiling(text)
-  assert.equal(out[0].visibility_m, 3993)
+  assert.equal(out[0].visibility_m, 37500)
 })
 
 test('시정 결측(-9)은 null이다', () => {

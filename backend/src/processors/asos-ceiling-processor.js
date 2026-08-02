@@ -33,10 +33,16 @@ const NSC_CEILING_FT = 25000
  *     DAY TOT -- -- ---------------------- TOT MID MIN -------- TOP MID LOW GD C 5 10 20 30 SEA m -- - -
  * CA_TOT(전운량) = fields[25], CH_MIN(운고) = fields[27], VS(시정) = fields[32].
  * 표준 배열 추정(전운량 26번째, 시정 33번째, 1-indexed)과 일치했다.
+ * 위치는 첫 번째 머리글 줄만으로 확인했다 — 두 번째 줄(서브 라벨 "GD" 등)은 토큰 수가
+ * 47 대 44로 첫 줄과 어긋나 위치 대조에 쓸 수 없다(예: `VS`의 서브 라벨로 보였던
+ * "GD"는 실제로는 뒤쪽의 `ST_GD` 것). 실측 CH_MIN이 기존 코드의 fields[27]과 일치하는
+ * 것으로 첫 줄의 인덱스만 교차검증했다.
  *
- * VS 단위: 실측 데이터에서 여러 지점이 정확히 3993, 5000처럼 미터 단위로 보이는 값을
- * 내고, 특히 다수 지점이 정확히 5000에서 끊긴다(5 km 상한 표기) — 10 m 단위였다면
- * 50 km 상한이 되어 시정 관측으로는 말이 안 된다. 즉 VS는 이미 미터 단위, 변환 불필요.
+ * VS 단위: 실측 97개 지점 중 42개(43%)가 정확히 5000에 몰려 있다 — 미터 단위라면
+ * 한국의 거의 절반이 정확히 5 km에서 끊긴다는 뜻이라 말이 안 된다. 시정 격자
+ * (같은 관측을 객관분석한 값)와 대조하면 서울이 grid 22,800 m인 시각에 station
+ * VS 원값은 3750 — ×10 하면 37,500 m로 같은 자릿수가 된다. KMA ASOS 시정은
+ * 10 m 단위이므로 `visibility_m = VS * 10`.
  *
  * Returns array of { stn, ceiling_ft, cloud_amount, visibility_m, sky_clear }.
  * - sky_clear: CH_MIN === -9 이고 CA_TOT === 0(진짜 맑음), 또는 CH_MIN이 NSC 상한 이상.
@@ -59,7 +65,7 @@ export function parseAsosCeiling(text) {
     if (!Number.isFinite(ch_min)) continue
 
     const cloud_amount = Number.isFinite(ca_tot) && ca_tot !== -9 ? ca_tot : null
-    const visibility_m = Number.isFinite(vs) && vs !== -9 ? vs : null
+    const visibility_m = Number.isFinite(vs) && vs !== -9 ? vs * 10 : null
 
     if (ch_min === -9) {
       if (ca_tot !== 0) continue // 결측 — 관측소가 값을 못 내고 있다, 그리지 않는다
