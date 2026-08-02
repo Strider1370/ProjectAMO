@@ -50,11 +50,16 @@ export function stationMarkerStyle(station) {
 /**
  * 관측값도 없고 sky_clear도 아닌 지점은 뺀다 — 그리면 고장난 관측소가 "OK"로 읽힌다.
  * sky_clear 지점은 ceiling_ft가 null이어도 남긴다(구름 없음 확인, 결측이 아니다).
+ *
+ * AMOS(공항 관측)는 점을 찍지 않는다 — 지도에 이미 공항 마커가 있어 같은 지점이
+ * 두 번 그려진다. 자료 자체는 백엔드에 그대로 있고, 면을 눌렀을 때 나오는
+ * "가장 가까운 관측소" 줄에는 계속 쓰인다. 여기서 빼는 것은 표식뿐이다.
  */
 export function toStationFeatures(stations) {
   return {
     type: 'FeatureCollection',
     features: (stations ?? [])
+      .filter((s) => s?.source !== 'AMOS')
       .filter((s) => s?.sky_clear || band(s?.ceiling_ft) !== 'missing')
       .map((s) => ({
         type: 'Feature',

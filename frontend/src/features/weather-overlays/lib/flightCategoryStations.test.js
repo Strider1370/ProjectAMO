@@ -93,3 +93,13 @@ test('차이가 정확히 200 ft이면 테두리를 붙이지 않는다 (초과�
     false,
   )
 })
+
+test('AMOS는 점을 찍지 않는다 — 공항 마커가 이미 있어 두 번 그려진다', () => {
+  const stns = [
+    { id: 'amos_RKSI', name: '인천국제공항', source: 'AMOS', lat: 37.46, lon: 126.44, ceiling_ft: 1200, model_ceiling_ft: null },
+    { id: 'asos_108', name: '서울', source: 'ASOS', lat: 37.57, lon: 126.97, ceiling_ft: 1200, model_ceiling_ft: null },
+  ]
+  const out = toStationFeatures(stns).features
+  assert.equal(out.length, 1)
+  assert.equal(out[0].properties.source, 'ASOS')
+})
