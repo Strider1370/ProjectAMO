@@ -21,6 +21,16 @@ test('세 시각이 같은 시간대로 나온다', () => {
   assert.equal(out.stations, '22:00')     // 이미 KST
 })
 
+test('KST 토큰도 Asia/Seoul과 같은 결과를 준다', () => {
+  // 앱의 실제 tz 값은 'Asia/Seoul'이 아니라 문자열 'KST'다
+  // (TimeZoneContext.jsx 기본값, SettingsModal.jsx 선택지). Intl에 그대로
+  // 넘기면 RangeError로 죽는다 — 이 값이 실제로 프로덕션에서 쓰이는 값이다.
+  const out = legendStamps(sources, true, '2026-08-01T15:22:13.722Z', 'KST')
+  assert.equal(out.visibility, '00:22')
+  assert.equal(out.ceiling, '15:00')
+  assert.equal(out.stations, '22:00')
+})
+
 test('자료를 한 번도 못 받았으면 자료 없음이다', () => {
   const out = legendStamps(null, false, null, 'Asia/Seoul')
   assert.equal(out.visibility, '자료 없음')

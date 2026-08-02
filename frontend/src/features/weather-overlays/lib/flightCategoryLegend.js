@@ -2,7 +2,7 @@ const NO_DATA = '자료 없음'
 
 function hhmmInTz(date, tz) {
   return new Intl.DateTimeFormat('en-GB', {
-    timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: tz === 'KST' ? 'Asia/Seoul' : tz, hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(date)
 }
 
@@ -21,7 +21,7 @@ function parseUtcTm(tm) {
  * 세 값의 원래 시간대가 다르다: computed_at은 UTC(ISO), kim.run은 UTC,
  * stations.tm은 KST. 모두 tz로 맞춰 내보낸다.
  */
-export function legendStamps(sources, hasData, computedAt, tz = 'Asia/Seoul') {
+export function legendStamps(sources, hasData, computedAt, tz = 'KST') {
   if (!hasData) return { visibility: NO_DATA, ceiling: NO_DATA, stations: NO_DATA, stationCount: 0 }
 
   const visDate = computedAt ? new Date(computedAt) : null

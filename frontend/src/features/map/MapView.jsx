@@ -832,6 +832,11 @@ const MapView = forwardRef(function MapView({
     return []
   }, [openAdvisoryPanel, sigwxGroups, sigmetItems, airmetItems])
 
+  const fcStamps = useMemo(
+    () => legendStamps(flightCategory.sources, flightCategory.hasData, flightCategory.computedAt, tz),
+    [flightCategory.sources, flightCategory.hasData, flightCategory.computedAt, tz],
+  )
+
   const timestampEntries = useMemo(() => {
     const entries = []
     if (enableWindOverlay && metVisibility.wind)
@@ -844,7 +849,6 @@ const MapView = forwardRef(function MapView({
       entries.push({ key: 'icing', label: '착빙', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
     if (enableWindOverlay && metVisibility.turbulence)
       entries.push({ key: 'turbulence', label: '난류', issueLabel: ktgIssueLabel, validLabel: ktgValidLabel })
-    const fcStamps = legendStamps(flightCategory.sources, flightCategory.hasData, flightCategory.computedAt, tz)
     if (metVisibility.visibility)
       entries.push({ key: 'visibility', label: '시정', issueLabel: fcStamps.visibility })
     if (metVisibility.ceiling)
@@ -872,7 +876,7 @@ const MapView = forwardRef(function MapView({
     metVisibility.wind, metVisibility.temp, metVisibility.cloud,
     metVisibility.icing, metVisibility.turbulence, metVisibility.visibility, metVisibility.ceiling, metVisibility.sigwx,
     nwpIssueLabel, nwpValidLabel, ktgIssueLabel, ktgValidLabel,
-    flightCategory.sources, flightCategory.hasData, flightCategory.computedAt, showFlightCategoryStations, tz,
+    fcStamps, showFlightCategoryStations,
     sigwxIssueLabel, sigwxValidLabel, sigwxHistoryEntries.length, sigwxHistoryIndex,
   ])
 
@@ -1723,7 +1727,7 @@ const MapView = forwardRef(function MapView({
           onBlinkLightningChange={setBlinkLightning}
           flightCategoryLegendVisible={!!(metVisibility.visibility || metVisibility.ceiling)}
           flightCategoryBands={FLIGHT_CATEGORY_LEGEND_BANDS}
-          flightCategoryStationCount={legendStamps(flightCategory.sources, flightCategory.hasData, flightCategory.computedAt, tz).stationCount}
+          flightCategoryStationCount={flightCategory.hasData ? fcStamps.stationCount : null}
           showFlightCategoryMissing={showFlightCategoryMissing}
           onShowFlightCategoryMissingChange={setShowFlightCategoryMissing}
           showFlightCategoryStations={showFlightCategoryStations}

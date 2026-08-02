@@ -44,7 +44,7 @@ function WeatherLegends({
   onBlinkLightningChange,
   flightCategoryLegendVisible = false,
   flightCategoryBands = [],
-  flightCategoryStationCount = 0,
+  flightCategoryStationCount = null,
   showFlightCategoryMissing = false,
   onShowFlightCategoryMissingChange,
   showFlightCategoryStations = true,
@@ -185,19 +185,6 @@ function WeatherLegends({
           )}
         </div>
       )}
-      {flightCategoryLegendVisible && (
-        <div className="flight-category-legend" aria-label="Flight category legend">
-          <HLegend title="시정" entries={flightCategoryBands} note="색 없음 = 기준 충족 또는 자료 없음" />
-          <button type="button" aria-pressed={showFlightCategoryMissing}
-            onClick={() => onShowFlightCategoryMissingChange?.((prev) => !prev)}>
-            자료없음 표시 {showFlightCategoryMissing ? 'ON' : 'OFF'}
-          </button>
-          <button type="button" aria-pressed={showFlightCategoryStations}
-            onClick={() => onShowFlightCategoryStationsChange?.((prev) => !prev)}>
-            관측지점 {flightCategoryStationCount}곳
-          </button>
-        </div>
-      )}
       {windSpeedLegendVisible && (
         <div className="wind-speed-legend" aria-label="Wind speed legend">
           <div className="wind-speed-legend-title">kt</div>
@@ -320,6 +307,7 @@ function WeatherLegends({
   const mobileLegends = [
     radarLegendVisible && { key: 'radar', title: '레이더 · mm/h', entries: radarRainrateLegend, reverse: true },
     lightningLegendVisible && { key: 'ltg', title: '낙뢰 · 5분', entries: lightningLegendEntries },
+    flightCategoryLegendVisible && { key: 'fc', title: '시정 · km', entries: flightCategoryBands, note: '색 없음 = 기준 충족 또는 자료 없음' },
     windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
     temperatureLegendVisible && { key: 'temp', title: '기온 · °C', entries: temperatureLegendEntries },
     cloudLegendVisible && { key: 'cloud', title: '습도 · T-Td °C', entries: cloudLegendEntries },
@@ -347,6 +335,18 @@ function WeatherLegends({
                 ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9 \u00B7 \uAE38\uC774 = 10\uBD84 \uC774\uB3D9\uAC70\uB9AC`
                 : '\uC774\uB3D9 \uC790\uB8CC \uC5C6\uC74C'}
             </span>
+          </div>
+        )}
+        {flightCategoryLegendVisible && (
+          <div className="flight-category-legend-controls">
+            <button type="button" aria-pressed={showFlightCategoryMissing}
+              onClick={() => onShowFlightCategoryMissingChange?.((prev) => !prev)}>
+              자료없음 표시 {showFlightCategoryMissing ? 'ON' : 'OFF'}
+            </button>
+            <button type="button" aria-pressed={showFlightCategoryStations}
+              onClick={() => onShowFlightCategoryStationsChange?.((prev) => !prev)}>
+              관측지점 {flightCategoryStationCount == null ? '자료 없음' : `${flightCategoryStationCount}곳`}
+            </button>
           </div>
         )}
       </div>
