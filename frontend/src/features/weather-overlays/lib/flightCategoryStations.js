@@ -6,7 +6,7 @@ export const LOW_FT = 450 * M_TO_FT      // 1476
 export const MID_FT = 900 * M_TO_FT      // 2953
 export const RING_MIN_DIFF_FT = 200
 
-function band(ceilFt) {
+export function band(ceilFt) {
   if (!Number.isFinite(ceilFt) || ceilFt < 0) return 'missing'
   if (ceilFt < LOW_FT) return 'low'
   if (ceilFt <= MID_FT) return 'mid'

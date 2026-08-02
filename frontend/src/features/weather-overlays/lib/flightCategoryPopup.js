@@ -1,11 +1,13 @@
-import { stationMarkerStyle } from './flightCategoryStations.js'
+import { band, stationMarkerStyle } from './flightCategoryStations.js'
 
 const NO_DATA = '자료 없음'
 const VIS_BAND_KO = { severe: '기준 크게 미달', below: '기준 미달', marginal: '여유 적음', clear: '기준 충족', missing: NO_DATA }
 
 /** 모델 층 간격이 200~250 m다. 100 ft 단위로 낮춰 없는 정밀도를 주장하지 않는다. */
 function ceilingText(ft) {
-  if (!Number.isFinite(ft)) return NO_DATA
+  // "결측"의 정의를 band()와 공유한다 — 음수 센티널을 여기서 따로 판정하면
+  // 지도와 말풍선이 서로 다른 값을 결측으로 본다.
+  if (band(ft) === 'missing') return NO_DATA
   return `약 ${(Math.round(ft / 100) * 100).toLocaleString('en-US')} ft`
 }
 
@@ -21,7 +23,7 @@ export function formatPointLines(point) {
   ]
 
   const stn = point?.nearest_station
-  if (stn && Number.isFinite(stn.ceiling_ft)) {
+  if (stn && band(stn.ceiling_ft) !== 'missing') {
     // 강조 여부를 지도 표식과 같은 함수로 정한다. 규칙을 두 벌 만들면
     // 점은 조용한데 말풍선만 빨개지는 어긋남이 생긴다.
     lines.push({

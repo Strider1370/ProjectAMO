@@ -45,3 +45,21 @@ test('자료가 없는 줄은 자료 없음으로 적는다', () => {
   assert.equal(find(p, '운고').value, '자료 없음')
   assert.equal(find(p, '추세').value, '자료 없음')
 })
+
+test('관측이 없는 인근 관측소는 줄 자체를 빼지만 다른 줄은 그대로 있다', () => {
+  // 스펙 §4.2의 "거리를 항상 같이 적는다"는 값이 있을 때 거리를 붙이라는 뜻이지,
+  // 값 없이 거리만 적힌 줄을 항상 보이라는 뜻이 아니다. 비교 대상이 없는데
+  // "청주 12.3 km"만 뜨면 그 결측을 "괜찮다"로 읽게 된다.
+  const p = { ...point, nearest_station: { ...point.nearest_station, ceiling_ft: null } }
+  const lines = formatPointLines(p)
+  assert.equal(lines.some((l) => l.note?.includes('청주')), false)
+  assert.equal(find(p, '시정').value, '4,200 m')
+  assert.equal(find(p, '운고').value, '약 1,700 ft')
+  assert.equal(find(p, '추세').value, '지난 3시간 −2,100 m')
+})
+
+test('음수 결측 센티널도 자료 없음으로 다룬다 (band()와 같은 정의)', () => {
+  const p = { ...point, ceil_ft: -1, nearest_station: { ...point.nearest_station, ceiling_ft: -1 } }
+  assert.equal(find(p, '운고').value, '자료 없음')
+  assert.equal(formatPointLines(p).some((l) => l.note?.includes('청주')), false)
+})
