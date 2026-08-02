@@ -54,7 +54,9 @@ function ensure(map, beforeLayerId) {
       'circle-radius': 6,
       'circle-color': STATION_FILL,
       'circle-stroke-width': ['case', HAS_RING, 3, 1.5],
-      'circle-stroke-color': ['case', HAS_RING, '#dc2626', '#334155'],
+      // 흰색: severe 밴드 채움이 이미 #dc2626이라 빨간 테두리는 severe 지점에서 안 보인다 —
+      // 링 신호가 가장 필요한 곳(spec §3.4 "가장 값진 정보")에서 사라지면 안 되므로 흰색으로 뺀다.
+      'circle-stroke-color': ['case', HAS_RING, '#ffffff', '#334155'],
     } })
 }
 
