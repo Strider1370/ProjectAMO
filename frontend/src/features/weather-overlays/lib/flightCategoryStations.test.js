@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { stationMarkerStyle, toStationFeatures } from './flightCategoryStations.js'
+import { stationMarkerStyle, toStationFeatures, LOW_FT, RING_MIN_DIFF_FT } from './flightCategoryStations.js'
 
 const stn = (over) => ({
   id: 'asos_1', name: '시험', source: 'ASOS', lat: 37, lon: 127,
@@ -68,5 +68,10 @@ test('450 m 경계값은 caution이다 (하한 경계는 이미 옳음)', () => 
 })
 
 test('차이가 정확히 200 ft이면 테두리를 붙이지 않는다 (초과만 해당)', () => {
-  assert.equal(stationMarkerStyle(stn({ ceiling_ft: 1000, model_ceiling_ft: 1200 })).ring, false)
+  // obs는 low band, model은 mid band로 실제로 밴드가 갈리게 하여
+  // 200 ft 비교가 판정을 결정하도록 만든다.
+  assert.equal(
+    stationMarkerStyle(stn({ ceiling_ft: LOW_FT - RING_MIN_DIFF_FT, model_ceiling_ft: LOW_FT })).ring,
+    false,
+  )
 })

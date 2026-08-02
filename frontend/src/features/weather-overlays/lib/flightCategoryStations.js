@@ -2,9 +2,9 @@
 // 미터 값을 피트와 그대로 비교하면 300 m(984 ft) 운고가 안전한 것으로 뒤집힌다 —
 // 백엔드 Task 9에서 실제로 났던 오류다.
 const M_TO_FT = 3.28084
-const LOW_FT = 450 * M_TO_FT      // 1476
+export const LOW_FT = 450 * M_TO_FT      // 1476
 const MID_FT = 900 * M_TO_FT      // 2953
-const RING_MIN_DIFF_FT = 200
+export const RING_MIN_DIFF_FT = 200
 
 function band(ceilFt) {
   if (!Number.isFinite(ceilFt) || ceilFt < 0) return 'missing'
