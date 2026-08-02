@@ -40,13 +40,23 @@ test('모르는 tz 토큰도 던지지 않고 KST로 대체한다', () => {
   assert.equal(out.stations, '22:00')
 })
 
-test('IANA 지역/도시 형식(/포함)은 그대로 통과시킨다', () => {
+test('실제 IANA 지역/도시 존은 그대로 통과시킨다', () => {
   // 오늘은 설정에 KST/UTC 두 값뿐이지만, 나중에 실제 시간대가 추가되면
-  // 여기서 KST로 뭉개는 게 크래시보다 더 나쁘다 — 조용히 틀린 시각을 보여준다.
+  // 여기서 KST로 뭉개는 게 조용히 틀린 시각을 보여주는 셈이라 더 나쁘다.
   const out = legendStamps(sources, true, '2026-08-01T15:22:13.722Z', 'America/New_York')
   assert.equal(out.visibility, '11:22')
   assert.equal(out.ceiling, '02:00')
   assert.equal(out.stations, '09:00')
+})
+
+test("'/'가 있어도 실제 존이 아니면 던지지 않고 KST로 대체한다", () => {
+  // '/'만 보고 IANA 존이라 믿으면 손으로 깨진 값('Foo/Bar')이 Intl의 RangeError를
+  // 그대로 통과시켜 fcStamps useMemo까지 올라가고 지도 전체가 사라진다(da05f2e와 같은
+  // 실패 형태). try/catch로 실제 유효성을 검증해야 한다.
+  const out = legendStamps(sources, true, '2026-08-01T15:22:13.722Z', 'Foo/Bar')
+  assert.equal(out.visibility, '00:22')
+  assert.equal(out.ceiling, '15:00')
+  assert.equal(out.stations, '22:00')
 })
 
 test('자료를 한 번도 못 받았으면 자료 없음이다', () => {

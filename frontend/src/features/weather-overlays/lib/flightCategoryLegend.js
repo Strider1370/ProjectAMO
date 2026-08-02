@@ -1,14 +1,19 @@
 const NO_DATA = '자료 없음'
 
 function hhmmInTz(date, tz) {
-  // 설정 화면은 오늘 'KST'/'UTC' 두 토큰만 준다 — 그 외(모르는 값, 손으로 고친 localStorage
-  // 값)는 KST로 대체해 죽지 않게 한다. 다만 IANA 지역/도시 형식('/' 포함, 예: Asia/Tokyo)은
-  // 실제 시간대일 수 있으므로 그대로 넘긴다 — 여기서 KST로 뭉개면 크래시 대신 조용히 틀린
-  // 시각을 보여주게 되고, 그게 더 나쁘다.
-  const zone = tz === 'UTC' ? 'UTC' : typeof tz === 'string' && tz.includes('/') ? tz : 'Asia/Seoul'
-  return new Intl.DateTimeFormat('en-GB', {
+  // tz는 localStorage(time_zone)에서 그대로 오는 검증 안 된 값이다(TimeZoneContext.jsx).
+  // '/'가 있다고 실제 IANA 존인 건 아니다 — 손으로 깨진 값('Foo/Bar')도 통과시키면
+  // Intl이 RangeError를 던지고, 그게 fcStamps useMemo까지 올라가 지도 전체가 사라진다
+  // (da05f2e에서 이미 겪은 실패 형태). 시도해보고 안 되면 KST로 내려간다 — 조용히 틀린
+  // 시각보다야 낫지만, 지도가 사라지는 것보단 훨씬 낫다.
+  const fmt = (zone) => new Intl.DateTimeFormat('en-GB', {
     timeZone: zone, hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(date)
+  try {
+    return fmt(tz === 'UTC' ? 'UTC' : tz)
+  } catch {
+    return fmt('Asia/Seoul')
+  }
 }
 
 /** `YYYYMMDDHH[mm]`(UTC)를 Date로. 형식이 아니면 null. */
