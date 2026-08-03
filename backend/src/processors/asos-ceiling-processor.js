@@ -4,13 +4,10 @@ import { ASOS_STATIONS as _ASOS_STATIONS } from '../../../shared/asos-stations.j
 
 export const ASOS_STATIONS = _ASOS_STATIONS
 
-/**
- * Get the previous whole hour in KST as YYYYMMDDHHmm.
- * Cron runs at :15 past each hour, so we request the top of the previous hour.
- */
-function getPreviousHourTm(now = new Date()) {
+/** KST 정시를 YYYYMMDDHHmm으로 만든다. hoursAgo=0이면 현재 정시다. */
+function formatAsosHourTm(now = new Date(), hoursAgo = 0) {
   const kst = new Date(now.getTime() + 9 * 3600 * 1000)
-  kst.setUTCHours(kst.getUTCHours() - 1)
+  kst.setUTCHours(kst.getUTCHours() - hoursAgo)
   kst.setUTCMinutes(0, 0, 0)
   const y = kst.getUTCFullYear()
   const m = String(kst.getUTCMonth() + 1).padStart(2, '0')
@@ -107,33 +104,27 @@ async function fetchAsosCeiling(tm, timeoutMs = config.flight_category?.timeout_
 }
 
 export default {
-  async process() {
-    let tm = getPreviousHourTm()
-    let text = ''
-    try {
-      text = await fetchAsosCeiling(tm)
-    } catch (e) {
-      console.warn(`asos-ceiling: fetch failed for ${tm}:`, e.message)
-      // Retry with the hour before
-      const kst = new Date(new Date().getTime() + 9 * 3600 * 1000)
-      kst.setUTCHours(kst.getUTCHours() - 2)
-      kst.setUTCMinutes(0, 0, 0)
-      const y = kst.getUTCFullYear()
-      const m = String(kst.getUTCMonth() + 1).padStart(2, '0')
-      const d = String(kst.getUTCDate()).padStart(2, '0')
-      const h = String(kst.getUTCHours()).padStart(2, '0')
-      tm = `${y}${m}${d}${h}00`
+  async process({ now = new Date() } = {}) {
+    let tm = null
+    let ceilingRows = []
+    for (const hoursAgo of [0, 1]) {
+      const candidateTm = formatAsosHourTm(now, hoursAgo)
       try {
-        text = await fetchAsosCeiling(tm)
-      } catch (e2) {
-        console.warn(`asos-ceiling: retry also failed for ${tm}:`, e2.message)
-        return { type: 'asos_ceiling', saved: false, reason: 'both fetches failed', station_count: 0 }
+        const text = await fetchAsosCeiling(candidateTm)
+        const rows = parseAsosCeiling(text)
+        if (rows.length > 0) {
+          tm = candidateTm
+          ceilingRows = rows
+          break
+        }
+        console.warn(`asos-ceiling: no observation rows for ${candidateTm}`)
+      } catch (e) {
+        console.warn(`asos-ceiling: fetch failed for ${candidateTm}:`, e.message)
       }
     }
 
-    const ceilingRows = parseAsosCeiling(text)
     if (ceilingRows.length === 0) {
-      // No ceiling data for either hour — leave previous artifact intact
+      // 현재와 한 시간 전 모두 자료가 없으면 이전 저장본을 그대로 둔다.
       return { type: 'asos_ceiling', saved: false, reason: 'no data', station_count: 0 }
     }
 

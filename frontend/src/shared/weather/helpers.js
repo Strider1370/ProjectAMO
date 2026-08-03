@@ -33,6 +33,85 @@ export function formatUtc(value, tz = 'UTC') {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 }
 
+function toLocalDateParts(date, tz) {
+  const timeZone = tz === 'KST' ? 'Asia/Seoul' : 'UTC';
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(date);
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  const day = Number(parts.find((part) => part.type === 'day')?.value);
+  return { year, month, day };
+}
+
+function dayOfYear(year, month, day) {
+  const start = Date.UTC(year, 0, 0);
+  const current = Date.UTC(year, month - 1, day);
+  return Math.floor((current - start) / 86400000);
+}
+
+function normalizeDegrees(value) {
+  return ((value % 360) + 360) % 360;
+}
+
+function formatClockFromMinutes(totalMinutes) {
+  if (!Number.isFinite(totalMinutes)) return '-';
+  const normalized = ((Math.round(totalMinutes) % 1440) + 1440) % 1440;
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+export function computeSunTimes(lat, lon, date, tz, dateBoundaryTz = tz) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return { sunrise: '-', sunset: '-' };
+  }
+
+  const { year, month, day } = toLocalDateParts(date, dateBoundaryTz);
+  const n = dayOfYear(year, month, day);
+  const lngHour = lon / 15;
+  const zenith = 90.833;
+  const degToRad = (deg) => (deg * Math.PI) / 180;
+  const radToDeg = (rad) => (rad * 180) / Math.PI;
+
+  function calculate(isSunrise) {
+    const t = n + ((isSunrise ? 6 : 18) - lngHour) / 24;
+    const M = (0.9856 * t) - 3.289;
+    let L = M + (1.916 * Math.sin(degToRad(M))) + (0.02 * Math.sin(2 * degToRad(M))) + 282.634;
+    L = normalizeDegrees(L);
+
+    let RA = radToDeg(Math.atan(0.91764 * Math.tan(degToRad(L))));
+    RA = normalizeDegrees(RA);
+
+    const Lquadrant = Math.floor(L / 90) * 90;
+    const RAquadrant = Math.floor(RA / 90) * 90;
+    RA = (RA + (Lquadrant - RAquadrant)) / 15;
+
+    const sinDec = 0.39782 * Math.sin(degToRad(L));
+    const cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(degToRad(zenith)) - (sinDec * Math.sin(degToRad(lat)))) / (cosDec * Math.cos(degToRad(lat)));
+
+    if (cosH < -1 || cosH > 1) return null;
+
+    let H = isSunrise ? 360 - radToDeg(Math.acos(cosH)) : radToDeg(Math.acos(cosH));
+    H /= 15;
+
+    const T = H + RA - (0.06571 * t) - 6.622;
+    const UT = normalizeDegrees((T - lngHour) * 15) / 15;
+    const localOffsetHours = tz === 'KST' ? 9 : 0;
+    return (UT + localOffsetHours) * 60;
+  }
+
+  return {
+    sunrise: formatClockFromMinutes(calculate(true)),
+    sunset: formatClockFromMinutes(calculate(false)),
+  };
+}
+
 export function getSeverityLevel({ visibility, wind, gust }) {
   if (visibility != null && visibility < 800) return 'danger';
   if (gust != null && gust >= 35) return 'danger';

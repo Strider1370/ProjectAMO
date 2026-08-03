@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Cloud, Clock, Gauge, FileText, Info, Moon, ChevronDown } from 'lucide-react'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
-import { fmtKstShort } from './lib/formatters.js'
+import { fmtKstShort, formatElevationFt } from './lib/formatters.js'
 import { formatAmosTime } from '../../shared/weather/amosViewModel.js'
+import { computeSunTimes } from '../../shared/weather/helpers.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import MetarTab from './tabs/MetarTab.jsx'
 import { buildMetarViewModel, countMetarHazards } from './lib/metarViewModel.js'
@@ -32,6 +33,22 @@ const FULL_FEATURE_AIRPORTS = new Set(['RKSI', 'RKSS', 'RKPC', 'RKPU', 'RKJY', '
 
 // 섹션·레일 공용 아이콘(§12 — 레일과 제목바가 같은 아이콘으로 묶임)
 const SECTION_ICON = { warn: AlertTriangle, metar: Cloud, taf: Clock, amos: Gauge, notam: FileText, info: Info, moon: Moon }
+
+function AirportOperationsStrip({ airport, tz, now = new Date() }) {
+  if (airport?.overseas) return null
+
+  const { sunrise, sunset } = computeSunTimes(airport?.lat, airport?.lon, now, tz, 'KST')
+  const elevation = formatElevationFt(airport?.elevation_ft)
+
+  return (
+    <div className="ap-operations-strip" role="group" aria-label="공항 운항정보">
+      <span className="ap-operations-item">표고 {elevation}</span>
+      <span className="ap-operations-item">
+        <span aria-hidden="true">☀ </span>일출 {sunrise} · 일몰 {sunset}
+      </span>
+    </div>
+  )
+}
 
 // Phase 1: 탭 → 단일 스크롤 + 스크롤스파이 레일. 섹션 순서 = 위험도/시급성(스펙 §4).
 // 각 섹션은 기존 탭 컴포넌트를 그대로 감쌈(§12 세부 표시는 Phase 2~4에서). 현재날씨는 해체(렌더 제외).
@@ -171,6 +188,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
           </span>
           <span className="airport-panel-name">{headerNameEn}</span>
         </div>
+        <AirportOperationsStrip airport={airport} tz={tz} />
         <button className="airport-panel-close" onClick={onClose} aria-label="닫기">×</button>
       </header>
 

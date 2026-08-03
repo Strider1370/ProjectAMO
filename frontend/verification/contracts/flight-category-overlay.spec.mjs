@@ -367,8 +367,9 @@ test.describe('flight-category-overlay', () => {
   // 네 번/매시) 각자 자기 발표 시각을 보여줘야 한다. MapView.jsx가 fcStamps.visibility/
   // .ceiling/.stations를 엉뚱한 층에 배선해도(예: 시정↔운고 스와핑) 단위 테스트·빌드·
   // 지금까지의 이 contract 어느 것도 잡지 못한다 — 조종사가 20분 전 시정을 6시간 묵은
-  // 운고로 착각하게 되는 경로다(spec §5.1). 값은 fixture에서 고정했다: computed_at
-  // 2026-08-02T08:58:00Z → KST 17:58, sources.kim.run 2026080106 → KST 15:00. 두 값이
+  // 운고로 착각하게 되는 경로다(spec §5.1). 값은 fixture에서 고정했다:
+  // sources.visibility.tm 202608021640(KST), sources.kim.validTime
+  // 2026-08-01T09:00:00Z → KST 18:00. 두 값이
   // 다르다는 것과 각자 자기 출처와 같다는 것을 모두 확인해야 스와핑도 "둘 다 같은
   // 값으로 뭉개짐"도 잡는다.
   test('층별 시각 표시줄이 시정·운고 각자의 발표 시각을 보여준다 (배선 검증)', async ({ page }, testInfo) => {
@@ -382,10 +383,10 @@ test.describe('flight-category-overlay', () => {
     const issueCell = bar.locator('.layer-timestamp-cell').first()
 
     await expect(header).toHaveText('시정')
-    await expect(issueCell).toContainText('17:58')
+    await expect(issueCell).toContainText('16:40')
 
     await bar.getByRole('button', { name: '다음 기상 레이어' }).click()
     await expect(header).toHaveText('운고')
-    await expect(issueCell).toContainText('15:00')
+    await expect(issueCell).toContainText('18:00')
   })
 })

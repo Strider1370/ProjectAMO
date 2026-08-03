@@ -1,6 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { ceilingFromLevels, CLD_THRESHOLD, buildCeilingGeoJson, classifyCeilingFt } from './ceiling-kim.js'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { ceilingFromLevels, CLD_THRESHOLD, buildCeilingGeoJson, classifyCeilingFt, loadKimCeiling } from './ceiling-kim.js'
 
 const lv = (id, cld, hgt) => ({ id, cld: Float32Array.from([cld]), hgt: Float32Array.from([hgt]) })
 
@@ -45,4 +48,67 @@ test('운고 결측은 절대 밴드로 분류되지 않는다', () => {
   for (const v of [null, undefined, Number.NaN, -1]) {
     assert.equal(classifyCeilingFt(v), 'missing', `${v}가 missing이 아니다`)
   }
+})
+
+function writeKimHour(root, run, hf, heightM) {
+  const dir = path.join(root, 'kim_nwp', 'runs', `KIMG_NE57_${run}`, 'normalized', `hf${String(hf).padStart(3, '0')}`, '975hPa')
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'grid.json'), JSON.stringify({
+    grid: { nx: 1, ny: 1, lonMin: 127, lonMax: 127, latMin: 37, latMax: 37 },
+    variables: {
+      cld: { scale: 1, offset: 0, values: [1] },
+      hgt: { scale: 1, offset: 0, values: [heightM] },
+    },
+  }))
+}
+
+test('현재 시각에 가장 가까운 과거 KIM 예보시간의 운고를 읽는다', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kim-ceiling-'))
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const run = '2026080306'
+  writeKimHour(root, run, 0, 300)
+  writeKimHour(root, run, 6, 600)
+  fs.writeFileSync(path.join(root, 'kim_nwp', 'index.json'), JSON.stringify({
+    latestRun: run,
+    times: [
+      { hf: 0, validTime: '2026-08-03T06:00:00.000Z' },
+      { hf: 6, validTime: '2026-08-03T12:00:00.000Z' },
+    ],
+    availability: {
+      '975hPa': {
+        0: { variables: ['cld', 'hgt'] },
+        6: { variables: ['cld', 'hgt'] },
+      },
+    },
+  }))
+
+  const ceiling = loadKimCeiling(root, Date.parse('2026-08-03T12:20:00.000Z'))
+  assert.equal(ceiling.hf, 6)
+  assert.equal(ceiling.validTime, '2026-08-03T12:00:00.000Z')
+  assert.equal(ceiling.ceilingM[0], 600)
+})
+
+test('운고 변수 파일이 없는 예보시간은 선택하지 않는다', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kim-ceiling-'))
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const run = '2026080306'
+  writeKimHour(root, run, 3, 450)
+  fs.mkdirSync(path.join(root, 'kim_nwp'), { recursive: true })
+  fs.writeFileSync(path.join(root, 'kim_nwp', 'index.json'), JSON.stringify({
+    latestRun: run,
+    times: [
+      { hf: 3, validTime: '2026-08-03T09:00:00.000Z' },
+      { hf: 6, validTime: '2026-08-03T12:00:00.000Z' },
+    ],
+    availability: {
+      '975hPa': {
+        3: { variables: ['cld', 'hgt'] },
+        6: { variables: ['cld'] },
+      },
+    },
+  }))
+
+  const ceiling = loadKimCeiling(root, Date.parse('2026-08-03T12:20:00.000Z'))
+  assert.notEqual(ceiling, null)
+  assert.equal(ceiling.hf, 3)
 })

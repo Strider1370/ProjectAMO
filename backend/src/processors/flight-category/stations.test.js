@@ -128,3 +128,25 @@ test('모델값이 있으면 차이를 낸다', () => {
   assert.equal(s[0].model_ceiling_ft, 984)
   assert.ok(s[0].diff_ft > 0)
 })
+
+test('정확히 2시간 된 ASOS는 아직 유효하다', () => {
+  const s = buildStations({
+    asos: { tm: '202608030800', stations: [{ stn: 108, name: '서울', lat: 37, lon: 126.5, ceiling_ft: 1000 }] },
+    amos: null,
+    kimCeiling: KIM_FIXTURE,
+    ctpsMask: null,
+    nowMs: Date.parse('2026-08-03T01:00:00.000Z'), // 10:00 KST
+  })
+  assert.equal(s.length, 1)
+})
+
+test('2시간을 넘긴 ASOS는 제외한다', () => {
+  const s = buildStations({
+    asos: { tm: '202608030800', stations: [{ stn: 108, name: '서울', lat: 37, lon: 126.5, ceiling_ft: 1000 }] },
+    amos: null,
+    kimCeiling: KIM_FIXTURE,
+    ctpsMask: null,
+    nowMs: Date.parse('2026-08-03T01:00:00.001Z'),
+  })
+  assert.equal(s.length, 0)
+})

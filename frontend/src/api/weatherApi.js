@@ -53,9 +53,14 @@ function fetchJsonWithXhr(url) {
 
 function normalizeAirports(airports) {
   const source = Array.isArray(airports) && airports.length > 0 ? airports : FALLBACK_AIRPORTS
+  const fallbackByIcao = new Map(FALLBACK_AIRPORTS.map((airport) => [airport.icao, airport]))
   return source
     .filter((a) => a.icao !== 'TST1')
-    .map((a) => ({ ...a, nameKo: AIRPORT_NAME_KO[a.icao] || a.name || a.icao }))
+    .map((a) => ({
+      ...(fallbackByIcao.get(a.icao) || {}),
+      ...a,
+      nameKo: AIRPORT_NAME_KO[a.icao] || a.name || a.icao,
+    }))
 }
 
 // Overseas airport navdata is used only for map/search metadata.

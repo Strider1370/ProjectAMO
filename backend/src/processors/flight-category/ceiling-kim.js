@@ -57,8 +57,27 @@ function decodeVariable(variable) {
   return out
 }
 
-/** 최신 KIM run의 hf000에서 저층 cld/hgt를 읽어 운저 격자를 만든다. */
-export function loadKimCeiling(root) {
+function hasCeilingVariables(index, hf) {
+  return CEILING_SEARCH_LEVELS.some((level) => {
+    const variables = index?.availability?.[level]?.[String(hf)]?.variables || []
+    return variables.includes('cld') && variables.includes('hgt')
+  })
+}
+
+/** 현재보다 늦지 않은 가장 가까운 운고 예보시간. 전부 미래면 가장 이른 시간을 쓴다. */
+function selectCeilingTime(index, nowMs) {
+  const candidates = (index?.times || [])
+    .map((time) => ({ ...time, hf: Number(time.hf), validMs: Date.parse(time.validTime) }))
+    .filter((time) => Number.isInteger(time.hf) && Number.isFinite(time.validMs)
+      && hasCeilingVariables(index, time.hf))
+    .sort((a, b) => a.validMs - b.validMs)
+  if (candidates.length === 0) return null
+  const past = candidates.filter((time) => time.validMs <= nowMs)
+  return past.at(-1) || candidates[0]
+}
+
+/** 최신 KIM run에서 현재 유효한 저층 cld/hgt를 읽어 운저 격자를 만든다. */
+export function loadKimCeiling(root, nowMs = Date.now()) {
   const indexPath = path.join(root, 'kim_nwp', 'index.json')
   if (!fs.existsSync(indexPath)) return null
   let index
@@ -69,8 +88,10 @@ export function loadKimCeiling(root) {
   }
   const run = index?.latestRun
   if (!run) return null
+  const selected = selectCeilingTime(index, nowMs)
+  if (!selected) return null
 
-  const runDir = path.join(root, 'kim_nwp', 'runs', `KIMG_NE57_${run}`, 'normalized', 'hf000')
+  const runDir = path.join(root, 'kim_nwp', 'runs', `KIMG_NE57_${run}`, 'normalized', `hf${String(selected.hf).padStart(3, '0')}`)
   const levels = []
   let grid = null
   for (const id of CEILING_SEARCH_LEVELS) {
@@ -95,7 +116,7 @@ export function loadKimCeiling(root) {
     const c = ceilingFromLevels(levels, i)
     ceilingM[i] = c === null ? -1 : c
   }
-  return { run, grid, ceilingM }
+  return { run, hf: selected.hf, validTime: selected.validTime, grid, ceilingM }
 }
 
 export function cellToLonLat(grid, px, py) {

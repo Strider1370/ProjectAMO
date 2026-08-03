@@ -33,10 +33,13 @@ export function fmtKstShort(iso, tz = 'KST') {
   } catch { return iso }
 }
 
+export function formatElevationFt(value) {
+  return Number.isFinite(value) ? `${value} ft` : '-'
+}
+
 export function getWindDirectionRotation(wind) {
   if (!wind || wind.calm || !Number.isFinite(wind.direction)) return 0
   return ((wind.direction % 360) + 360 + 180) % 360
 }
 
 // ── METAR tab ────────────────────────────────────────────────────────────────
-

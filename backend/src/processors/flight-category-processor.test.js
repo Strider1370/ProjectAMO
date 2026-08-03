@@ -6,6 +6,7 @@ import path from 'node:path'
 import { classifyVisibility, buildVisibilityGeoJson, loadCtpsMask, pickTrendBaseline, buildTrend, sampleQueryGrid } from './flight-category-processor.js'
 import { SFC_W, SFC_H } from '../parsers/sfc-grid-parser.js'
 import { encodeCtpsBinary } from './convective-satellite-model.js'
+import * as flightCategoryProcessor from './flight-category-processor.js'
 
 test('시정 밴드 경계값', () => {
   assert.equal(classifyVisibility(2999), 'severe')
@@ -140,4 +141,9 @@ test('격자 밖은 null', () => {
   // 격자 범위 밖의 좌표
   const result = sampleQueryGrid(grid, 10, 100)
   assert.equal(result, null, '격자 밖 좌표는 null을 반환해야 함')
+})
+
+test('시정 요청 시각은 현재보다 10분 전을 10분 단위로 내린 KST다', () => {
+  const nowMs = Date.parse('2026-08-03T01:17:45.000Z') // 10:17:45 KST
+  assert.equal(flightCategoryProcessor.visibilityRequestTm?.(nowMs), '202608031000')
 })

@@ -16,7 +16,11 @@ export const TERMINAL_SIMULATION_REFERENCE = Object.freeze({
     RKJY: 120,
     RKJB: 120,
   }),
+  /** 창에 걸린 편이 이보다 적으면 다음 편들로 채운다. 화면이 3칸이라 3편이다. */
   minimumFlights: Object.freeze({
+    RKSS: 3,
+    RKPC: 3,
+    RKPK: 3,
     RKPU: 3,
     RKNY: 3,
     RKJY: 3,
@@ -24,18 +28,66 @@ export const TERMINAL_SIMULATION_REFERENCE = Object.freeze({
   }),
 })
 
+// 편명 앞 두 글자(IATA)로 찾는 항공사 표기와 로고.
+// 72x78 자리에 들어가므로 정사각형 심볼이 가장 잘 읽힌다. 심볼을 구하지 못한 곳은
+// 가로 워드마크로 두었다(7C·TW·BX·ZE·MM·RF·XU) - 작게 나오지만 식별은 된다.
+// XU·WE는 반납된 IATA 코드를 물려받아 외부 로고 출처가 옛 주인 것을 준다
+// (XU=African Express, WE=Thai Smile). 반드시 리포의 SVG를 쓴다.
+// 상표는 각 소유자의 것이며 항공편 식별 목적으로만 표시한다.
+// 명단 출처: 한국공항공사 운항스케줄 + 실시간 운항정보 (scripts/audit-terminal-airlines.mjs)
 const AIRLINES = Object.freeze({
-  KE: { airline: 'KOREAN AIR', logo: '/Symbols/airlines/KAL-symbol.svg' },
-  OZ: { airline: 'ASIANA AIRLINES', logo: '/Symbols/airlines/AAR-symbol.svg' },
-  '7C': { airline: 'JEJU AIR', logo: '/Symbols/airlines/JJA.svg' },
-  LJ: { airline: 'JIN AIR', logo: '/Symbols/airlines/JNA.svg' },
-  TW: { airline: 'T\'WAY AIR', logo: '/Symbols/airlines/TWB.svg' },
-  ZE: { airline: 'EASTAR JET', logo: '/Symbols/airlines/ESR.svg' },
-  BX: { airline: 'AIR BUSAN', logo: '/Symbols/airlines/ABL.svg' },
-  MM: { airline: 'PEACH AVIATION', logo: '/Symbols/airlines/MM.svg' },
-  CZ: { airline: 'CHINA SOUTHERN', logo: '/Symbols/airlines/CZ.svg' },
-  WE: { airline: 'PARATA AIR', logo: '/Symbols/airlines/WE.svg' },
+  '3U': { airline: '사천항공', logo: '/Symbols/airlines/3U.png' },
+  '7C': { airline: '제주항공', logo: '/Symbols/airlines/JJA.svg' },
+  '9C': { airline: '춘추항공', logo: '/Symbols/airlines/9C.png' },
+  AF: { airline: '에어프랑스', logo: '/Symbols/airlines/AF.png' },
+  AI: { airline: '에어인디아', logo: '/Symbols/airlines/AI.png' },
+  BR: { airline: '에바항공', logo: '/Symbols/airlines/BR.png' },
+  BX: { airline: '에어부산', logo: '/Symbols/airlines/ABL.svg' },
+  CA: { airline: '중국국제항공', logo: '/Symbols/airlines/CA.png' },
+  CI: { airline: '중화항공', logo: '/Symbols/airlines/CI.png' },
+  CX: { airline: '캐세이퍼시픽항공', logo: '/Symbols/airlines/CX.png' },
+  CZ: { airline: '중국남방항공', logo: '/Symbols/airlines/CZ.svg' },
+  DL: { airline: '델타항공', logo: '/Symbols/airlines/DL.png' },
+  DR: { airline: '루일리항공', logo: '/Symbols/airlines/DR.png' },
+  FM: { airline: '상해항공', logo: '/Symbols/airlines/FM.png' },
+  GA: { airline: '가루다인도네시아', logo: '/Symbols/airlines/GA.png' },
+  GJ: { airline: '룽에어', logo: '/Symbols/airlines/GJ.png' },
+  HO: { airline: '준야오항공', logo: '/Symbols/airlines/HO.png' },
+  IT: { airline: '타이거에어 타이완', logo: '/Symbols/airlines/IT.png' },
+  JD: { airline: '북경수도항공', logo: '/Symbols/airlines/JD.png' },
+  JL: { airline: '일본항공', logo: '/Symbols/airlines/JL.png' },
+  JX: { airline: '스타럭스항공', logo: '/Symbols/airlines/JX.png' },
+  KE: { airline: '대한항공', logo: '/Symbols/airlines/KAL-symbol.svg' },
+  KL: { airline: '네덜란드항공', logo: '/Symbols/airlines/KL.png' },
+  KN: { airline: '중국연합항공', logo: '/Symbols/airlines/KN.png' },
+  LJ: { airline: '진에어', logo: '/Symbols/airlines/LJ-symbol.png' },
+  MF: { airline: '하문항공', logo: '/Symbols/airlines/MF.png' },
+  MM: { airline: '피치항공', logo: '/Symbols/airlines/MM.svg' },
+  MU: { airline: '중국동방항공', logo: '/Symbols/airlines/MU.png' },
+  NH: { airline: '전일본공수', logo: '/Symbols/airlines/NH.png' },
+  NZ: { airline: '에어뉴질랜드', logo: '/Symbols/airlines/NZ.png' },
+  OZ: { airline: '아시아나항공', logo: '/Symbols/airlines/AAR-symbol.svg' },
+  PN: { airline: '서부항공', logo: '/Symbols/airlines/PN.png' },
+  PR: { airline: '필리핀항공', logo: '/Symbols/airlines/PR.png' },
+  QW: { airline: '칭다오항공', logo: '/Symbols/airlines/QW.png' },
+  RF: { airline: '에어로케이', logo: '/Symbols/airlines/EOK.svg' },
+  RS: { airline: '에어서울', logo: '/Symbols/airlines/RS.png' },
+  SQ: { airline: '싱가포르항공', logo: '/Symbols/airlines/SQ.png' },
+  TR: { airline: '스쿠트 항공', logo: '/Symbols/airlines/TR.png' },
+  TW: { airline: '티웨이항공', logo: '/Symbols/airlines/TWB.svg' },
+  UO: { airline: '홍콩익스프레스', logo: '/Symbols/airlines/UO.png' },
+  VA: { airline: '버진오스트레일리아항공', logo: '/Symbols/airlines/VA.png' },
+  VJ: { airline: '비엣젯항공', logo: '/Symbols/airlines/VJ.png' },
+  VN: { airline: '베트남항공', logo: '/Symbols/airlines/VN.png' },
+  VS: { airline: '버진아틀랜틱항공', logo: '/Symbols/airlines/VS.png' },
+  WE: { airline: '파라타항공', logo: '/Symbols/airlines/WE-symbol.png' },
+  XU: { airline: '섬에어', logo: '/Symbols/airlines/XUM.svg' },
+  ZE: { airline: '이스타항공', logo: '/Symbols/airlines/ESR.svg' },
+  ZH: { airline: '심천항공', logo: '/Symbols/airlines/ZH.png' },
 })
+
+// 감사 스크립트가 "이 코드는 로고가 있나"를 묻는 통로. 표 자체는 내보내지 않는다.
+export const TERMINAL_AIRLINE_CODES = new Set(Object.keys(AIRLINES))
 
 // 국적기 IATA 코드. airlines.js의 KOREAN_AIRLINES와 같은 명단인데, 그쪽은 ADS-B용 ICAO 3글자라
 // 편명(IATA 2글자)으로는 조회할 수 없다. 여기 편명 기준으로 따로 둔다.
@@ -277,7 +329,7 @@ export function terminalFlightsFromFeed(rows = []) {
     // 국적기 편명이 섞여 있으면 그걸 맨 앞에 세운다. 승객 대부분이 그 편명으로 표를 샀다.
     // sort는 안정 정렬이라 국적기끼리, 외항사끼리는 받은 순서가 그대로 남는다.
     const codeshares = (row.codeshares?.length ? row.codeshares : [{ flight: row.flight, airlineEnglish: row.airlineEnglish, airlineKorean: row.airlineKorean }])
-      .map((share) => ({ flight: share.flight, ...airlineOf(share.flight, share.airlineEnglish || share.airlineKorean) }))
+      .map((share) => ({ flight: share.flight, ...airlineOf(share.flight, share.airlineKorean || share.airlineEnglish) }))
       .sort((a, b) => Number(isKoreanFlightNumber(b.flight)) - Number(isKoreanFlightNumber(a.flight)))
     // departure는 예정 시각, revised는 변경된 시각. 화면은 revised를 크게, 예정을 취소선으로 보여준다.
     const revised = row.delayed && row.estimated ? row.estimated : null
@@ -299,7 +351,7 @@ export function terminalFlightsFromFeed(rows = []) {
       gate: row.gate || UNKNOWN,
       status: row.status || '운항 예정',
       statusTone: row.delayed ? 'delay' : 'ok',
-      airline: row.airlineEnglish || row.airlineKorean || '',
+      airline: row.airlineKorean || row.airlineEnglish || '',
       ...AIRLINES[airlineCode],
       codeshares,
       destinationData: destinationFromFeed(row),
@@ -315,7 +367,15 @@ function selectTerminalSourceFlights(departureIcao, sourceFlights, referenceTime
     .filter((candidate) => candidate.departureIcao === departureIcao)
     .filter((candidate) => timeMinutes(candidate.departure) >= referenceMinutes)
     .sort((left, right) => timeMinutes(left.departure) - timeMinutes(right.departure))
-  const selected = candidates.filter((candidate) => timeMinutes(candidate.departure) - referenceMinutes <= windowMinutes)
+  /**
+   * 그날 운항이 시작되기 전에는 지금이 아니라 첫 출발편 시각을 기준으로 삼는다.
+   * 새벽 0시에 김포를 지금 기준으로 보면 30분 창이 텅 비어 `운항 종료`가 뜨는데,
+   * 실제로는 그날 편이 그대로 남아 있어 거짓말이 된다. 첫 편이 창 밖에 있으면
+   * 그 첫 편에 창을 걸어, 아침에 뜰 편들을 미리 보여준다. 창 폭은 그대로 쓴다.
+   */
+  const firstMinutes = candidates.length ? timeMinutes(candidates[0].departure) : referenceMinutes
+  const anchorMinutes = firstMinutes - referenceMinutes > windowMinutes ? firstMinutes : referenceMinutes
+  const selected = candidates.filter((candidate) => timeMinutes(candidate.departure) - anchorMinutes <= windowMinutes)
 
   if (!minimumFlights || selected.length >= minimumFlights) return selected
   for (const candidate of candidates) {

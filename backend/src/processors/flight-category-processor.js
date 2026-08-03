@@ -35,8 +35,8 @@ export function classifyVisibility(visM) {
 
 // ─── 파이프라인 내부 함수 ─────────────────────────────────────
 
-function formatKstTm(offsetMs = 0) {
-  const kst = new Date(Date.now() - offsetMs + 9 * 3600 * 1000)
+export function visibilityRequestTm(nowMs = Date.now()) {
+  const kst = new Date(nowMs - 10 * 60 * 1000 + 9 * 3600 * 1000)
   kst.setUTCMinutes(Math.floor(kst.getUTCMinutes() / 10) * 10, 0, 0)
   return kst.getUTCFullYear().toString()
     + String(kst.getUTCMonth() + 1).padStart(2, '0')
@@ -52,7 +52,7 @@ async function withTimeout(fn, ms = config.flight_category.timeout_ms) {
 }
 
 async function fetchSfcVis() {
-  const tm = formatKstTm(10 * 60 * 1000)
+  const tm = visibilityRequestTm()
   const url = `${config.flight_category.sfc_vis_url}?obs=vs&tm=${tm}&disp=A&authKey=${config.api.auth_key}`
   return withTimeout(async (signal) => {
     const res = await fetch(url, { signal })
@@ -60,7 +60,7 @@ async function fetchSfcVis() {
     const text = await res.text()
     budget.add(Buffer.byteLength(text))
     if (text.includes('data_read: error')) throw new Error('sfc_vis: data_read error')
-    return parseSfcAscii(text)
+    return { tm, grid: parseSfcAscii(text) }
   })
 }
 
@@ -264,13 +264,14 @@ export async function process() {
     return { type: 'flight_category_overlay', saved: false, reason: 'daily budget exhausted' }
   }
 
-  let visGrid
+  let visibilitySource
   try {
-    visGrid = await fetchSfcVis()
+    visibilitySource = await fetchSfcVis()
   } catch (e) {
     console.warn('flight-cat: sfc_vis failed:', e.message)
     return { type: 'flight_category_overlay', saved: false, reason: 'sfc_vis unavailable' }
   }
+  const visGrid = visibilitySource.grid
 
   const root = config.storage.base_path
   const ctpsMask = loadCtpsMask(root)
@@ -325,7 +326,8 @@ export async function process() {
     stations,
     trend,
     sources: {
-      kim: kimCeiling ? { run: kimCeiling.run, hf: 0 } : null,
+      visibility: { tm: visibilitySource.tm },
+      kim: kimCeiling ? { run: kimCeiling.run, hf: kimCeiling.hf, validTime: kimCeiling.validTime } : null,
       ctps: ctpsMask ? { frame_tm: ctpsMask.frameTm } : null,
       missing_ratio: missing / visGrid.length,
       // 실제로 화면에 나가는 개수를 센다. 저장본에 든 개수를 세면 ASOS가 2시간을

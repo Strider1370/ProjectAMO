@@ -20,7 +20,11 @@ test('시뮬레이션 기준 시각과 공항별 조회 창을 명시한다', ()
   assert.equal(TERMINAL_SIMULATION_REFERENCE.windowMinutes.RKPC, 30)
   assert.equal(TERMINAL_SIMULATION_REFERENCE.windowMinutes.RKPK, 30)
   assert.equal(TERMINAL_SIMULATION_REFERENCE.windowMinutes.RKPU, 120)
+  // 창이 비어도 최소 3편은 채운다. 큰 공항도 한산한 시간대에는 창에 한두 편밖에 안 걸린다.
   assert.deepEqual(TERMINAL_SIMULATION_REFERENCE.minimumFlights, {
+    RKSS: 3,
+    RKPC: 3,
+    RKPK: 3,
     RKPU: 3,
     RKNY: 3,
     RKJY: 3,
@@ -139,9 +143,9 @@ test('양양의 파라타항공 실제 편명은 항공사명과 로고 자산�
   const flight = terminalFrameAt(buildTerminalSimulation('RKNY'), 0).flights[0]
 
   assert.equal(flight.flight, 'WE6703')
-  assert.equal(flight.airline, 'PARATA AIR')
-  assert.equal(flight.logo, '/Symbols/airlines/WE.svg')
-  assert.equal(existsSync(new URL('../../../public/Symbols/airlines/WE.svg', import.meta.url)), true)
+  assert.equal(flight.airline, '파라타항공')
+  assert.equal(flight.logo, '/Symbols/airlines/WE-symbol.png')
+  assert.equal(existsSync(new URL('../../../public/Symbols/airlines/WE-symbol.png', import.meta.url)), true)
 })
 
 test('당일 13시 이후 운항편이 실제로 없는 공항은 빈 상태를 유지한다', () => {
@@ -331,8 +335,8 @@ test('공동운항편은 편명마다 항공사와 로고를 함께 담는다', 
     ],
   }])
   assert.deepEqual(flight.codeshares, [
-    { flight: 'BX8827', airline: 'AIR BUSAN', logo: '/Symbols/airlines/ABL.svg' },
-    { flight: 'OZ8827', airline: 'ASIANA AIRLINES', logo: '/Symbols/airlines/AAR-symbol.svg' },
+    { flight: 'BX8827', airline: '에어부산', logo: '/Symbols/airlines/ABL.svg' },
+    { flight: 'OZ8827', airline: '아시아나항공', logo: '/Symbols/airlines/AAR-symbol.svg' },
   ])
 })
 

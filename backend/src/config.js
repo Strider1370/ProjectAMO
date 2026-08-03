@@ -111,7 +111,9 @@ export const api = {
   radar_satellite_auth_key: radarSatelliteAuthKey,
   kim_nwp_auth_key: kimNwpAuthKey,
   airkorea_key: process.env.AIRKOREA_API_KEY || '',
-  kac_flight_key: process.env.KAC_FLIGHT_API_KEY || '',
+  // 공공데이터포털은 계정당 키 하나를 여러 API에 함께 쓴다. 운항정보용 키를 따로 두지 않았으면
+  // 에어코리아 키가 그대로 통한다(활용신청만 돼 있으면 된다).
+  kac_flight_key: process.env.KAC_FLIGHT_API_KEY || process.env.AIRKOREA_API_KEY || '',
   kma_uv_key: process.env.KMA_UV_API_KEY || aviationAuthKey,
   default_params: { pageNo: 1, numOfRows: 10, dataType: 'XML' },
   timeout_ms: 10000,

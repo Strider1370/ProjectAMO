@@ -241,6 +241,39 @@
   background: transparent; /* 투명하게 변경하여 본체 색상 노출 */
 }
 
+.ap-operations-strip {
+  position: absolute;
+  right: var(--space-xxl);
+  bottom: var(--space-mnudge);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--space-xs) var(--space-s);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.48);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-200);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-200);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.ap-operations-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.ap-operations-item + .ap-operations-item {
+  margin-left: var(--space-s);
+  padding-left: var(--space-s);
+  border-left: 1px solid rgba(255, 255, 255, 0.32);
+}
+
 /* ── 스크롤 섹션 (Phase 2: 접이식 + 통일 제목바) ── */
 .ap-sec {
   scroll-margin-top: 8px;

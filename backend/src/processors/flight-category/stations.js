@@ -5,7 +5,7 @@ import { maskCeilingWithCtps, sampleCeilingAt } from './ceiling-kim.js'
  * Parse ASOS timestamp to get age in milliseconds.
  * tm format: YYYYMMDDHHmm (KST).
  */
-function getAsosTmAgeMs(tmStr) {
+function getAsosTmAgeMs(tmStr, nowMs) {
   if (!tmStr || tmStr.length < 12) return Infinity
   const y = parseInt(tmStr.slice(0, 4))
   const m = parseInt(tmStr.slice(4, 6)) - 1
@@ -15,7 +15,7 @@ function getAsosTmAgeMs(tmStr) {
   const kstDate = new Date(Date.UTC(y, m, d, h, min, 0))
   // Convert KST to UTC by subtracting 9 hours
   const utcDate = new Date(kstDate.getTime() - 9 * 3600 * 1000)
-  return Date.now() - utcDate.getTime()
+  return nowMs - utcDate.getTime()
 }
 
 /**
@@ -38,7 +38,7 @@ function sampleKimCeiling(kimCeiling, lat, lon) {
  * Merge ASOS and AMOS ceiling observations with KIM model ceiling.
  * Returns array of { id, name, source, lat, lon, ceiling_ft, model_ceiling_ft, diff_ft }.
  */
-export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
+export function buildStations({ asos, amos, kimCeiling, ctpsMask, nowMs = Date.now() }) {
   const stations = []
   // 좌표가 정확히 같은 경우는 없으므로 근접 판정을 쓴다. 공항과 그 도시의
   // ASOS 관측소는 몇 km 떨어져 있어 좌표 문자열로는 절대 겹치지 않는다.
@@ -58,9 +58,9 @@ export function buildStations({ asos, amos, kimCeiling, ctpsMask }) {
   function addAsos() {
   if (asos && asos.stations && Array.isArray(asos.stations)) {
     // Check if ASOS data is not too old (older than 2 hours)
-    const ageMs = getAsosTmAgeMs(asos.tm)
+    const ageMs = getAsosTmAgeMs(asos.tm, nowMs)
     const twoHoursMs = 2 * 60 * 60 * 1000
-    if (ageMs < twoHoursMs) {
+    if (ageMs <= twoHoursMs) {
       for (const sta of asos.stations) {
         if (isNear(sta.lat, sta.lon)) continue // 같은 자리에 AMOS가 이미 있다
 

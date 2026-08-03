@@ -25,6 +25,13 @@ test.beforeEach(async ({ page }, testInfo) => {
   await page.route('**/api/terminal-flights', (route) => route.fulfill({ json: null }))
 })
 
+/** 시험용 조작(출발 공항·화면안·전환 효과·다음 항공편)은 모서리 설정창 안에 있다.
+    details는 누를 때마다 여닫히므로, 이미 열려 있으면 그대로 둔다. */
+const openSettings = async (page) => {
+  const settings = page.locator('.terminal-settings').first()
+  if (!(await settings.evaluate((element) => element.open))) await settings.locator('summary').click()
+}
+
 const cases = [
   { view: 'board', modeParam: 'motion', mode: 'split', duration: 2200 },
   { view: 'board', modeParam: 'motion', mode: 'roll', duration: 2200 },
@@ -41,14 +48,14 @@ for (const target of cases) {
   test(`terminal-signage ${target.view} ${target.mode} pre-renders mixed slot transitions`, async ({ page }) => {
     const viewQuery = target.view === 'rail' ? '&view=rail' : ''
     await page.goto(`/terminal/rkss?autoplay=0&${target.modeParam}=${target.mode}${viewQuery}`)
-    await expect(page.getByRole('heading', { name: '김포공항 도착지 날씨' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '김포공항 가는 곳 날씨' })).toBeVisible()
 
     const activePage = page.getByTestId(`${target.view}-active-page`)
     await expect(activePage.getByText('TW715', { exact: true })).toBeVisible()
-    await expect(page.getByText('총 8편 · 3개 목적지', { exact: true })).toBeVisible()
     await expect(activePage.locator('[data-destination-code="CJU"]')).toHaveCount(1)
-    await expect(activePage.getByAltText('PEACH AVIATION 로고')).toBeVisible()
-    await expect(activePage.getByAltText('CHINA SOUTHERN 로고')).toBeVisible()
+    await expect(activePage.getByAltText('피치항공 로고')).toBeVisible()
+    await expect(activePage.getByAltText('중국남방항공 로고')).toBeVisible()
+    await openSettings(page)
     await page.getByRole('button', { name: '다음 항공편' }).click()
 
     const pendingPage = page.getByTestId(`${target.view}-pending-page`)
@@ -124,6 +131,7 @@ for (const target of cases) {
 
 test('terminal-signage FLAP removes and restores a trailing slot as one complete card', async ({ page }) => {
   await page.goto('/terminal/rkss?autoplay=0&motion=split')
+  await openSettings(page)
   const nextButton = page.getByRole('button', { name: '다음 항공편' })
 
   await nextButton.click()
@@ -169,7 +177,6 @@ test('terminal-signage exposes all 17 Jeju departures once through six compact f
 
   await page.setViewportSize({ width: 1319, height: 960 })
   await page.goto('/terminal/rkpc?autoplay=0&motion=fade')
-  await expect(page.getByText('총 17편 · 5개 목적지', { exact: true })).toBeVisible()
 
   for (let frame = 0; frame < 6; frame += 1) {
     await expect(page.getByRole('img', { name: `${frame + 1} / 6 프레임`, exact: true })).toBeVisible()
@@ -181,6 +188,7 @@ test('terminal-signage exposes all 17 Jeju departures once through six compact f
       seenFlights.add(flight)
     }
     if (frame < 5) {
+      await openSettings(page)
       await page.getByRole('button', { name: '다음 항공편' }).click()
       await expect(page.getByTestId('board-pending-page')).toHaveCount(0, { timeout: 2500 })
     }
@@ -191,29 +199,36 @@ test('terminal-signage exposes all 17 Jeju departures once through six compact f
 
 test('terminal-signage extends low-frequency airports to real same-day departures', async ({ page }) => {
   const cases = [
-    { route: 'rkpu', summary: '총 3편 · 2개 목적지', flights: ['KE1595', 'LJ656', 'BX8305'], forecastFlight: 'BX8305', forecastHours: ['19시', '20시', '21시', '22시', '23시'] },
-    { route: 'rkjy', summary: '총 3편 · 2개 목적지', flights: ['KE1635', 'OZ8199', 'LJ672'], forecastFlight: 'LJ672', forecastHours: ['18시', '19시', '20시', '21시', '22시'] },
-    { route: 'rkny', summary: '총 1편 · 1개 목적지', flights: ['WE6703'], forecastFlight: 'WE6703', forecastHours: ['16시', '17시', '18시', '19시', '20시'] },
+    { route: 'rkpu', flights: ['KE1595', 'LJ656', 'BX8305'], forecastFlight: 'BX8305', forecastHours: ['19시', '20시', '21시', '22시', '23시'] },
+    { route: 'rkjy', flights: ['KE1635', 'OZ8199', 'LJ672'], forecastFlight: 'LJ672', forecastHours: ['18시', '19시', '20시', '21시', '22시'] },
+    { route: 'rkny', flights: ['WE6703'], forecastFlight: 'WE6703', forecastHours: ['16시', '17시', '18시', '19시', '20시'] },
   ]
 
   for (const airport of cases) {
     await page.goto(`/terminal/${airport.route}?autoplay=0`)
     const activePage = page.getByTestId('board-active-page')
-    await expect(page.getByText(airport.summary, { exact: true })).toBeVisible()
     for (const flight of airport.flights) await expect(activePage.getByText(flight, { exact: true })).toBeVisible()
     const forecastHours = await activePage.locator(`[data-flight-key*="-${airport.forecastFlight}-"] .board-forecast time`).allTextContents()
     expect(forecastHours).toEqual(airport.forecastHours)
   }
 
-  const parataLogo = page.getByAltText('PARATA AIR 로고')
+  const parataLogo = page.getByAltText('파라타항공 로고')
   await expect(parataLogo).toBeVisible()
   await expect.poll(() => parataLogo.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true)
 })
 
 test('terminal-signage shows an honest empty state when the reference window has no departure', async ({ page }) => {
   await page.goto('/terminal/rkjb?autoplay=0')
-  await expect(page.getByRole('status')).toContainText('오늘 더 이상 출발 예정인 항공편이 없습니다')
-  await expect(page.getByRole('button', { name: '다음 항공편' })).toBeDisabled()
+  await expect(page.getByRole('status')).toContainText('금일 운항이 종료되었습니다')
+  // 밤늦게 남은 외국인 승객을 위한 영문 안내와 기상이 그림도 함께 나간다.
+  await expect(page.getByRole('status')).toContainText("Today’s departures have ended")
+  await expect(page.getByRole('status').locator('img')).toHaveAttribute('src', '/gisang-i/clear_2.png')
+  // 넘길 항공편이 없으므로 조작 요소는 아예 내린다. 남는 것은 안내 문구와 항공기상청 안내뿐이다.
+  await expect(page.getByRole('button', { name: '다음 항공편' })).toBeHidden()
+  await expect(page.locator('.board-header')).toBeHidden()
+  await expect(page.locator('.page-indicator')).toBeHidden()
+  await expect(page.locator('.screen-footer-note')).toBeHidden()
+  await expect(page.locator('.header-weather-panel')).toBeVisible()
   await expect(page.locator('main')).not.toContainText(/undefined|샤를 드골|싱가포르 창이|도쿄 하네다/)
 })
 
@@ -251,7 +266,6 @@ test('terminal-signage renders the live KAC flight feed instead of the fixture',
 
   await page.goto('/terminal/rkss?autoplay=0')
   const activePage = page.getByTestId('board-active-page')
-  await expect(page.getByText('총 3편 · 3개 목적지', { exact: true })).toBeVisible()
 
   // 피드에 있는 실제 편명이 그대로 보인다.
   for (const flight of ['TW717', 'KE1819', 'CA138']) {
@@ -277,7 +291,7 @@ test('terminal-signage renders the live KAC flight feed instead of the fixture',
   // 도착 시각을 모르는 국제선은 도착 줄 자체를 내린다. 예보는 그대로 남는다.
   const international = activePage.locator('[data-flight-key*="-CA138-"]')
   // 제목은 국내·국제가 같고, 도착 시각을 모르는 편에는 시각이 붙지 않는다.
-  await expect(international.locator('.arrival-forecast-label')).toHaveText('도착공항 예보')
+  await expect(international.locator('.arrival-forecast-label')).toHaveText('목적지 공항 예보')
   await expect(international.locator('.arrival-time-value')).toHaveCount(0)
   await expect(international.locator('.board-forecast > div')).toHaveCount(5)
   // 비행시간표로 잡은 16:36 기준이라 16시 칸부터 시작하고, 기온은 정수로 나온다.
@@ -287,10 +301,13 @@ test('terminal-signage renders the live KAC flight feed instead of the fixture',
 
   // 도착 시각을 아는 국내선은 그대로 보여준다.
   const domestic = activePage.locator('[data-flight-key*="-TW717-"]')
-  await expect(domestic.locator('.arrival-forecast-label')).toHaveText('도착공항 예보')
-  await expect(domestic.locator('.arrival-time-value')).toHaveText('15:10')
+  await expect(domestic.locator('.arrival-forecast-label')).toHaveText('목적지 공항 예보')
+  // 시각 앞에 붙는 라벨은 스펙 5.1이 정한 `도착`이다. 시각 자체는 그대로 나와야 한다.
+  await expect(domestic.locator('.arrival-time-caption')).toHaveText('도착')
+  await expect(domestic.locator('.arrival-time-value')).toContainText('15:10')
 
-  // 기준 시각은 벽시계가 아니라 피드를 받아온 시각을 쓴다.
-  await expect(page.locator('.screen-footer-note')).toContainText('8/3 13:55 KST')
+  // 기준 시각 표기는 화면에서 내렸다(상단 시계와 성격이 겹쳤다). 푸터에는 출처만 남는다.
+  await expect(page.locator('.screen-footer-note')).toHaveText('한국공항공사 실시간 운항정보')
+  await expect(page.locator('.screen-footer-clock')).toHaveCount(0)
   await expect(page.locator('main')).not.toContainText(/undefined|NaN|null/)
 })

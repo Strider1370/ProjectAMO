@@ -28,6 +28,7 @@ test('loadWeatherData skips deferred panel-only datasets on first entry', async 
   try {
     const data = await loadWeatherData()
     assert.equal(data.airports.length, 1)
+    assert.equal(data.airports[0].elevation_ft, 23)
     assert.equal(recorder.calls.includes('/api/sigwx-low-history'), false)
     assert.equal(recorder.calls.includes('/api/ground-overview'), false)
     assert.equal(recorder.calls.includes('/api/environment'), false)

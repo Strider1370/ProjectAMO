@@ -43,8 +43,8 @@ test('1안은 현지 시각을 현재 날씨 제목의 오른쪽에 둔다', () 
 test('1안은 승인된 짧은 승객용 문구를 사용한다', () => {
   assert.match(source, />출발</)
   assert.match(source, />탑승구</)
-  // 도착 줄의 제목은 사용자가 정한 `도착공항 예보`다. 국내·국제가 같은 문구를 쓴다.
-  assert.match(source, />도착공항 예보</)
+  // 도착 줄의 제목은 사용자가 정한 `목적지 공항 예보`다. 국내·국제가 같은 문구를 쓴다.
+  assert.match(source, />목적지 공항 예보</)
   assert.match(source, /현재 날씨/)
   // 스펙 5.1이 금지하는 것은 `출발 예정`을 고정 label로 쓰는 것이다.
   // 빈 화면 안내문의 "더 이상 출발 예정인 항공편이 없습니다"는 label이 아니라 문장이라 해당하지 않는다.
@@ -52,9 +52,9 @@ test('1안은 승인된 짧은 승객용 문구를 사용한다', () => {
 })
 
 test('두 안은 선택된 출발 공항명을 제목으로 사용한다', () => {
-  assert.match(source, /function TerminalTitle\(\{ title, flightCount, destinationCount \}\)/)
+  assert.match(source, /function TerminalTitle\(\{ title \}\)/)
   assert.equal((source.match(/<TerminalTitle title=\{title\}/g) ?? []).length, 2)
-  assert.match(source, /const terminalTitle = `\$\{departureAirportState\.selected\?\.nameKo\?\.replace\('국제', ''\) \|\| '김포공항'\} 도착지 날씨`/)
+  assert.match(source, /const terminalTitle = `\$\{departureAirportState\.selected\?\.nameKo\?\.replace\('국제', ''\) \|\| '김포공항'\} 가는 곳 날씨`/)
   assert.doesNotMatch(source, /곧 출발하는 항공편 · 목적지 날씨|곧 출발 · 도착지 예보/)
   assert.doesNotMatch(source, /도착 현지 시간 기준 예보/)
 })
@@ -71,10 +71,10 @@ test('1안과 3안은 한 정규화 시뮬레이션 프레임을 함께 사용�
   assert.doesNotMatch(source, /boardFlightGroups|railFlightGroups|alternateBoardFlights|alternateRailFlights/)
 })
 
-test('두 안은 묶기 전 전체 운항편 수와 목적지 수를 함께 표시한다', () => {
-  assert.equal((source.match(/flightCount=\{simulation\.totalFlights\}/g) ?? []).length, 2)
-  assert.equal((source.match(/destinationCount=\{simulation\.totalDestinations\}/g) ?? []).length, 2)
-  assert.match(source, /총 \{flightCount\}편 · \{destinationCount\}개 목적지/)
+test('제목은 공항명만 적고 편수·목적지 수는 붙이지 않는다', () => {
+  // 승객이 볼 안내판에 집계 숫자는 필요 없다. 화면에 몇 편이 떠 있는지는 눈으로 보면 안다.
+  assert.doesNotMatch(source, /총 \{flightCount\}편|개 목적지/)
+  assert.doesNotMatch(source, /flightCount|destinationCount/)
 })
 
 test('국내 항공사의 가로 워드마크 대신 심볼 전용 로고 자산을 사용한다', () => {
@@ -85,7 +85,7 @@ test('국내 항공사의 가로 워드마크 대신 심볼 전용 로고 자산
 })
 
 test('두 안은 터미널 전용 토큰으로 공통 시각 언어를 공유한다', () => {
-  assert.match(styles, /\.exact-screen \{[^}]*--terminal-type-screen-title: 40px[^}]*--terminal-type-destination: 59px[^}]*--terminal-type-flight-number: 44px/)
+  assert.match(styles, /\.exact-screen \{[^}]*--terminal-type-screen-title: 48px[^}]*--terminal-type-destination: 59px[^}]*--terminal-type-flight-number: 56px/)
   assert.match(styles, /\.exact-screen \{[^}]*--terminal-space-2: 8px[^}]*--terminal-space-4: 16px[^}]*--terminal-space-5: 24px/)
   assert.match(styles, /\.exact-screen \{[^}]*--terminal-border: #cbd2dc[^}]*--terminal-status-success: #168b45/)
   assert.match(styles, /\.board-header h1 \{[^}]*font-size: var\(--terminal-type-screen-title\)/)
@@ -94,8 +94,8 @@ test('두 안은 터미널 전용 토큰으로 공통 시각 언어를 공유한
 
 test('사이니지 숫자·보조 라벨·단위·안전영역은 원거리 판독을 우선한다', () => {
   assert.match(styles, /\.exact-screen \{[^}]*--terminal-safe-side: 60px[^}]*--terminal-safe-top: 32px[^}]*--terminal-safe-bottom: 32px[^}]*font-feature-settings: "tnum" 1[^}]*font-variant-numeric: tabular-nums/)
-  // 위 22px + 제목 40px + 아래 28px = 헤더 90px. 제목 줄높이를 글자에 맞추면서 위에서 6px을 빌렸다.
-  assert.match(styles, /\.board-header \{[^}]*padding: 22px var\(--terminal-safe-side\) 0/)
+  // 위 14px + 제목 48px + 아래 28px = 헤더 90px. 제목을 키운 만큼 위 여백에서 덜어냈다.
+  assert.match(styles, /\.board-header \{[^}]*padding: 14px var\(--terminal-safe-side\) 0/)
   assert.match(styles, /\.board-header h1 \{[^}]*line-height: 1/)
   assert.match(styles, /\.screen-footer \{[^}]*padding: 0 var\(--terminal-safe-side\) 22px/)
   assert.match(styles, /\.page-indicator \{[^}]*bottom: var\(--terminal-safe-bottom\)/)
@@ -159,11 +159,12 @@ test('도착 현지 시간 기준 안내문은 원거리에서도 읽을 수 있
   assert.match(styles, /\.screen-footer-note \{[^}]*font-weight: 600/)
 })
 
-test('터미널은 프로젝트의 기상이 마스코트와 해외 공항 상세 날씨 안내를 사용한다', () => {
+test('터미널은 프로젝트의 기상이 마스코트와 목적지 공항 상세 날씨 안내를 사용한다', () => {
   assert.match(source, /src="\/gisang-i\/clear_3_avatar\.png" alt="항공기상청 기상이"/)
   assert.match(source, /href="https:\/\/amo\.kma\.go\.kr\/weather\/airport\.do"/)
-  assert.match(source, /<strong>해외 공항 상세 날씨<\/strong>/)
-  assert.match(styles, /\.agency-mascot \{[^}]*width: 54px/)
+  assert.match(source, /<strong>목적지 공항 상세 날씨<\/strong>/)
+  // 제목과 아래 정렬을 공유하므로 상자 높이가 같아야 시각 중심이 겹친다.
+  assert.match(styles, /\.agency-mascot \{[^}]*width: 54px; height: 48px/)
   assert.match(styles, /\.agency-mascot \{[^}]*align-self: end[^}]*margin-bottom: var\(--terminal-header-bottom-gap\)/)
 })
 
@@ -173,21 +174,28 @@ test('기관 안내는 하단 우측 QR로, 페이지 표시는 하단 중앙으
   assert.match(source, /src=\{airportWeatherQr\}/)
   assert.match(styles, /\.page-indicator \{[^}]*top: auto[^}]*bottom: var\(--terminal-safe-bottom\)/)
   assert.match(styles, /\.board-header-clock \{[^}]*justify-self: end/)
+  // 왼쪽에 운항정보 출처, 오른쪽에 항공기상청 안내. 기준 시각은 상단 시계와 겹쳐 내렸다.
   assert.match(styles, /\.screen-footer \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto/)
+  assert.match(source, /한국공항공사 실시간 운항정보/)
+  assert.doesNotMatch(source, /screen-footer-clock|KST 기준/)
   assert.match(styles, /\.screen-footer \{[^}]*padding: 0 var\(--terminal-safe-side\) 22px/)
-  assert.match(styles, /\.screen-footer \.header-weather-panel \{[^}]*grid-template-columns: 110px auto 50px/)
+  assert.match(styles, /\.screen-footer \.header-weather-panel \{[^}]*grid-template-columns: 50px auto 110px/)
 })
 
-test('1안은 3안과 같은 헤더 중앙 위치에 시험용 전환 컨트롤을 두고 기관 워드마크를 하단 QR 왼쪽에 둔다', () => {
+test('시험용 조작은 설정창으로 내리고 기관 워드마크는 하단 QR 왼쪽에 둔다', () => {
   assert.match(source, /import amoWordmark from "\.\/assets\/amo-wordmark\.png"/)
   assert.equal((source.match(/<HeaderWeatherPanel showWordmark \/>/g) ?? []).length, 2)
-  assert.match(styles, /\.exact-board \.board-header-actions \{[^}]*top: var\(--terminal-safe-top\)[^}]*left: 60%/)
-  assert.match(styles, /\.screen-footer \.header-weather-panel \{[^}]*grid-template-columns: 110px auto 50px/)
+  // 출발 공항·화면안·전환 효과·다음 항공편은 헤더가 아니라 설정창 안에 있다. 두 안 모두 같다.
+  assert.equal((source.match(/<TerminalSettings>/g) ?? []).length, 2)
+  assert.doesNotMatch(source, /board-header-actions|rail-header-actions/)
+  // 안내판 정보 영역 바깥 모서리에서, 평소에는 거의 보이지 않는다.
+  assert.match(styles, /\.terminal-settings \{[^}]*position: absolute[^}]*bottom: 10px[^}]*left: 10px/)
+  assert.match(styles, /\.terminal-settings summary \{[^}]*opacity: \.35/)
+  assert.match(styles, /\.screen-footer \.header-weather-panel \{[^}]*grid-template-columns: 50px auto 110px/)
 })
 
-test('3안의 한국 시각은 1안처럼 헤더 맨 오른쪽에 고정되고 조작 콘솔과 분리된다', () => {
+test('3안의 한국 시각은 1안처럼 헤더 맨 오른쪽에 고정된다', () => {
   assert.match(styles, /\.rail-header-clock \{[^}]*position: absolute[^}]*top: auto[^}]*right: var\(--terminal-safe-side\)[^}]*bottom: var\(--terminal-header-bottom-gap\)[^}]*left: auto/)
-  assert.match(styles, /\.rail-header-actions \{[^}]*position: absolute[^}]*left: 60%/)
 })
 
 test('3안 첫 항공편 행은 헤더와 분리되는 상단 여백을 둔다', () => {
@@ -199,12 +207,14 @@ test('3안 첫 항공편 행은 헤더와 분리되는 상단 여백을 둔다',
 test('3안 왼쪽 패널은 1안과 같은 원거리 판독 위계로 도시·현지 시각·항공편·운항 값을 표시한다', () => {
   assert.match(styles, /\.rail-flight-row \{[^}]*grid-template-columns: 35% 65%/)
   assert.match(styles, /\.rail-flight-info \{[^}]*padding: 14px 36px 12px calc\(var\(--terminal-safe-side\) \+ var\(--terminal-space-5\)\)/)
-  assert.match(styles, /\.rail-flight-info h2 \{[^}]*font-size: var\(--terminal-type-destination\)/)
+  // 3안은 한 행이 화면 1/3 높이다. 1안 칸 크기를 그대로 쓰면 행 안에서 글자가 과하다.
+  assert.match(styles, /\.rail-flight-info h2 \{[^}]*font-size: 44px/)
   assert.match(styles, /\.rail-local-clock strong \{[^}]*font-size: var\(--terminal-type-primary-time\)/)
-  assert.match(styles, /\.rail-flight-number strong \{[^}]*font-size: var\(--terminal-type-flight-number\)/)
-  assert.match(styles, /\.rail-flight-status > span \{[^}]*font-size: var\(--terminal-type-status\)/)
+  assert.match(styles, /\.rail-flight-number strong \{[^}]*font-size: 40px/)
+  assert.match(styles, /\.rail-flight-status > span \{[^}]*font-size: 20px/)
+  // 1안의 `출발`·`탑승구` 라벨(22px)과 값(61px)에 맞춘다. 같은 역할인데 3안만 작을 이유가 없다.
   assert.match(styles, /\.rail-stats span \{[^}]*font-size: var\(--terminal-type-label\)/)
-  assert.match(styles, /\.rail-stats strong \{[^}]*font-size: var\(--terminal-type-flight-number\)/)
+  assert.match(styles, /\.rail-stats strong \{[^}]*font-size: 44px/)
   assert.match(styles, /\.rail-stats > div \{[^}]*row-gap: var\(--terminal-space-2\)/)
 })
 
@@ -216,7 +226,8 @@ test('3안은 좌우 컬럼이 아니라 항공편별 가로 행으로 먼저 �
 test('3안은 편명 오른쪽에 항공사명을 보조 정보로 표시한다', () => {
   assert.match(source, /className="rail-airline-meta"[^>]*>\s*<strong>\{flight\.flight\}<\/strong>\s*<small>\{flight\.airline\}<\/small>/)
   assert.match(styles, /\.rail-airline-meta \{[^}]*display: flex[^}]*align-items: baseline[^}]*gap: 14px/)
-  assert.match(styles, /\.rail-airline-meta small \{[^}]*font-size: 14px/)
+  // 1안의 항공사명(20px)과 같은 크기다.
+  assert.match(styles, /\.rail-airline-meta small \{[^}]*font-size: 16px/)
 })
 
 test('지연·탑승구 변경은 지금 유효한 값 하나만 보여준다', () => {
@@ -278,11 +289,23 @@ test('3안은 현지 시각을 공항명 아래 왼쪽 패널 오른쪽에 한 �
   assert.match(source, /className="rail-local-clock"/)
   assert.doesNotMatch(source, /className="rail-current-clock"/)
   assert.doesNotMatch(source, /한국 \{kstTime\} KST/)
-  assert.match(styles, /\.rail-local-clock \{[^}]*grid-row: 1[^}]*align-self: end[^}]*justify-self: end/)
+  // 자리를 잡는 쪽은 감싸는 상자다. 현지 시각과 현재 날씨가 그 안에 위아래로 들어간다.
+  assert.match(styles, /\.rail-destination-side \{[^}]*grid-row: 1[^}]*align-self: end[^}]*justify-self: end/)
   assert.match(styles, /\.rail-local-clock strong \{[^}]*font-size: var\(--terminal-type-primary-time\)/)
 })
 
+test('3안도 1안과 같은 정보를 담는다 - 현재 날씨와 공동운항 표시', () => {
+  // 화면 제목이 `가는 곳 날씨`인데 3안에는 지금 그곳이 어떤지가 빠져 있었다.
+  assert.match(source, /className="rail-current-weather/)
+  assert.match(source, /<dt>체감<\/dt>[\s\S]*<dt>습도<\/dt>[\s\S]*<dt>바람<\/dt>/)
+  // 편명이 3초마다 도는 이유를 알려주는 배지는 두 안 모두에 있어야 한다.
+  assert.equal((source.match(/className="codeshare-badge"/g) ?? []).length, 2)
+  // 비행시간은 뺐다. 같은 노선이면 세 행에 같은 숫자가 반복된다.
+  assert.doesNotMatch(source, /예상 비행시간|>비행시간</)
+})
+
 test('3안 오른쪽 예보는 진행선보다 시각·아이콘·온도가 먼저 읽히도록 확대한다', () => {
+  // 도착 시각은 1안(44px)과 같다. 예보 칸 글자는 3안 칸이 더 넓어 1안보다 크게 둔다.
   assert.match(styles, /\.progress-clock strong \{[^}]*font-size: 34px/)
   assert.match(styles, /\.timeline-forecast time \{[^}]*font-size: 22px/)
   assert.match(styles, /\.timeline-forecast img \{[^}]*width: 84px[^}]*height: 74px/)
@@ -348,7 +371,9 @@ test('1안은 해외 목적지에만 시간대와 현지 시각을 붙인다', (
 
   // 목적지가 한국이면 KST를 덧붙이지 않는다. 화면 전체가 이미 그 기준이라 군더더기다.
   assert.match(source, /const isDomesticDestination = flight\.localZone === "KST"/)
-  assert.match(source, /\{flight\.arrival\}\{!isDomesticDestination && <b>\{flight\.localZone\}<\/b>\}/)
+  // 도착 시각은 국내선만 적는다. 국제선은 현지 시각·시차 때문에 오히려 헷갈려 비워 둔다.
+  assert.match(source, /\{hasArrivalTime && isDomesticDestination && <strong className=\{`arrival-time-value/)
+  assert.doesNotMatch(source, /\{flight\.arrival\}\{!isDomesticDestination && <b>\{flight\.localZone\}<\/b>\}/)
   // 목적지가 한국이면 도착 시각 옆 KST도 붙이지 않는다.
   assert.doesNotMatch(source, /\(한국 \{flight\.arrivalKst\}KST\)/)
   assert.match(source, /\{showLocalClock && <div className="current-weather-clock/)
@@ -360,10 +385,10 @@ test('1안은 해외 목적지에만 시간대와 현지 시각을 붙인다', (
   assert.doesNotMatch(currentClock, /kstDifferenceLabel|kst-difference/)
 })
 
-test('예보 줄 제목은 국내·국제가 같고 도착 시각은 아는 편만 오른쪽에 붙인다', () => {
-  assert.match(source, /<span className="arrival-forecast-label roll-unit"[^>]*>도착공항 예보<\/span>/)
-  assert.match(source, /<span className="progress-label__title">도착공항 예보<\/span>/)
-  assert.match(source, /\{hasArrivalTime && <strong className=\{`arrival-time-value/)
+test('예보 줄 제목은 국내·국제가 같고 도착 시각은 국내선만 오른쪽에 붙인다', () => {
+  assert.match(source, /<span className="arrival-forecast-label roll-unit"[^>]*>목적지 공항 예보<\/span>/)
+  assert.match(source, /<span className="progress-label__title">목적지 공항 예보<\/span>/)
+  assert.match(source, /\{hasArrivalTime && isDomesticDestination && <strong className=\{`arrival-time-value/)
   // 제목은 왼쪽, 시각은 오른쪽 끝에 붙는다.
   assert.match(styles, /\.arrival-time \{[^}]*justify-content: space-between/)
   assert.match(styles, /\.arrival-forecast-label \{[^}]*font-weight: 700/)
@@ -383,7 +408,7 @@ test('화면 갱신 주기는 수집 주기와 같은 1분이다', () => {
   assert.doesNotMatch(source, /setInterval\(refresh, 5 \* 60 \* 1000\)/)
 })
 
-test('도착공항 예보 제목은 도착 시각 유무와 무관하게 같은 높이에 놓인다', () => {
+test('목적지 공항 예보 제목은 도착 시각 유무와 무관하게 같은 높이에 놓인다', () => {
   // min-height가 없으면 도착 시각(44px)이 없는 국제선 칸만 제목 칸이 낮아져
   // 세 열의 예보 시작 위치가 어긋난다. 12px + 44px = 56px가 그 높이다.
   assert.match(styles, /\.arrival-time \{[^}]*min-height: 56px/)
@@ -398,7 +423,7 @@ test('고정 라벨은 값이 한 줄 늘어나도 움직이지 않는다', () =
   assert.doesNotMatch(styles, /\.schedule-grid > div \{[^}]*align-content: center/)
 })
 
-test('도착공항 예보 제목은 형제 섹션과 같은 위치에서 시작한다', () => {
+test('목적지 공항 예보 제목은 형제 섹션과 같은 위치에서 시작한다', () => {
   // 위 칸 `현재 날씨`의 구조를 그대로 따른다.
   //   .current-weather-heading { align-items: start }
   //     .section-label         { margin-top: 20px }   작은 제목
