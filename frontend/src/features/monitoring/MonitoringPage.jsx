@@ -614,6 +614,7 @@ export default function MonitoringPage() {
   const warningPanel = (
     <WarningList
       warningData={data.warning}
+      kmaSpecialWarningData={data.kmaSpecialWarning}
       groundOverviewData={data.groundOverview}
       icao={selectedAirport}
       warningTypes={data.warningTypes}

@@ -182,7 +182,7 @@ function isRevalidatedApiRequest(req) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return false
   return (
     /^\/(?:airports|warning-types|alert-defaults)$/i.test(req.path)
-    || /^\/(?:metar|taf|warning|sigmet|airmet|sigwx-low|lightning|amos|adsb|ground-forecast|ground-overview|environment|airport-info|typhoon)$/i.test(req.path)
+    || /^\/(?:metar|taf|warning|kma-special-warning|sigmet|airmet|sigwx-low|lightning|amos|adsb|ground-forecast|ground-overview|environment|airport-info|typhoon)$/i.test(req.path)
     || /^\/(?:metar|taf|sigmet)-overseas$/i.test(req.path)
     || /^\/sigwx-low-history$/i.test(req.path)
     || /^\/radar\/echo-meta$/i.test(req.path)
@@ -437,6 +437,7 @@ const SNAPSHOT_SOURCES = [
   { keys: ['taf'], files: [snapshotMetaLatest('taf')], build: () => buildHashEntry('taf') },
   { keys: ['tafOverseas', 'taf_overseas'], files: [snapshotMetaLatest('taf_overseas')], build: () => buildHashEntry('taf_overseas') },
   { keys: ['warning'], files: [snapshotMetaLatest('warning')], build: () => buildHashEntry('warning') },
+  { keys: ['kmaSpecialWarning'], files: [snapshotMetaLatest('kma_special_warning')], build: () => buildHashEntry('kma_special_warning') },
   { keys: ['sigmet'], files: [snapshotMetaLatest('sigmet')], build: () => buildHashEntry('sigmet') },
   { keys: ['sigmetOverseas', 'sigmet_overseas'], files: [snapshotMetaLatest('sigmet_overseas')], build: () => buildHashEntry('sigmet_overseas') },
   { keys: ['airmet'], files: [snapshotMetaLatest('airmet')], build: () => buildHashEntry('airmet') },
@@ -654,6 +655,7 @@ function sendKimWindField(req, res, { allowDefault = false } = {}) {
 app.get('/api/metar', (_, res) => sendLatest(res, 'metar'))
 app.get('/api/taf', (_, res) => sendLatest(res, 'taf'))
 app.get('/api/warning', (_, res) => sendLatest(res, 'warning'))
+app.get('/api/kma-special-warning', (_, res) => sendLatest(res, 'kma_special_warning'))
 app.get('/api/sigmet', (_, res) => sendLatest(res, 'sigmet'))
 // 해외(NOAA) — 국내와 별도 파일/별도 API로 유지.
 app.get('/api/metar-overseas', (_, res) => sendLatest(res, 'metar_overseas'))

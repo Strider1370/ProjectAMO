@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { safe, warningMeta, getDisplayDate } from "../utils/helpers";
-
-const EMPTY_LIST = [];
+import { buildWarningEntries, warningBannerLabel } from './warningBannerModel.js';
 
 const WARNING_NAME_KO = {
   WIND_SHEAR: "급변풍",
@@ -27,12 +26,15 @@ function formatValidTime(value, tz = "UTC") {
   return `${day}일 ${hour}시 ${minute}분`;
 }
 
-export default function WarningList({ warningData, groundOverviewData, icao, warningTypes, dashboardMode = "ops", tz = "UTC" }) {
+export default function WarningList({ warningData, kmaSpecialWarningData, groundOverviewData, icao, warningTypes, dashboardMode = "ops", tz = "UTC" }) {
   const block = warningData?.airports?.[icao];
+  const kmaBlock = kmaSpecialWarningData?.airports?.[icao];
   const overview = groundOverviewData?.airports?.[icao] || null;
-  const list = useMemo(() => (
-    Array.isArray(block?.warnings) ? block.warnings : EMPTY_LIST
-  ), [block?.warnings]);
+  const list = useMemo(() => buildWarningEntries({
+    airportWarnings: block?.warnings,
+    kmaWarnings: kmaBlock?.warnings,
+    dashboardMode,
+  }), [block?.warnings, dashboardMode, kmaBlock?.warnings]);
   const viewportRef = useRef(null);
   const measureRef = useRef(null);
   const [pages, setPages] = useState([]);
@@ -158,16 +160,20 @@ export default function WarningList({ warningData, groundOverviewData, icao, war
         return null;
       }
 
-      const meta = warningMeta(item.wrng_type, warningTypes || {}) || {};
-      const key = item.wrng_type_key === "UNKNOWN" && meta.key ? meta.key : item.wrng_type_key;
-      const name = WARNING_NAME_KO[key] || safe(item.wrng_type_name) || "미확인경보";
+      const warning = item.warning;
+      const isKma = item.source === 'kma';
+      const meta = warningMeta(warning.wrng_type, warningTypes || {}) || {};
+      const key = warning.wrng_type_key === "UNKNOWN" && meta.key ? meta.key : warning.wrng_type_key;
+      const name = isKma
+        ? `기상청 특보 · ${warning.phenomenon === 'COLD_WAVE' ? '한파' : '폭염'}${warning.levelLabel}`
+        : WARNING_NAME_KO[key] || safe(warning.wrng_type_name) || "미확인경보";
 
       return (
         <span key={`${keyPrefix}-${i}`} className="warning-banner-item">
           <span className="warning-banner-entry">
             <strong className="warning-banner-name">{name}</strong>
             <span className="warning-banner-time">
-              {formatValidTime(item.valid_start, tz)} ~ {formatValidTime(item.valid_end, tz)}
+              {isKma ? `발효 ${formatValidTime(warning.effectiveAt, tz)}` : `${formatValidTime(warning.valid_start, tz)} ~ ${formatValidTime(warning.valid_end, tz)}`}
             </span>
           </span>
         </span>
@@ -219,7 +225,7 @@ export default function WarningList({ warningData, groundOverviewData, icao, war
     <div className="warning-banner warning-banner--danger">
       <div className="warning-banner-side">
         <span className="warning-banner-icon warning-banner-icon--alert">&#9888;</span>
-        <span className="warning-banner-label">공항경보</span>
+        <span className="warning-banner-label">{warningBannerLabel(list, dashboardMode)}</span>
       </div>
       <div
         ref={viewportRef}
