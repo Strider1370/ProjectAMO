@@ -3439,6 +3439,10 @@ label { font-size: 0.9rem; font-weight: 700; }
   padding: 12px 16px;
 }
 .ground-hourly-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--ink, #242424);
@@ -3537,14 +3541,17 @@ label { font-size: 0.9rem; font-weight: 700; }
   justify-content: flex-end;
 }
 .ground-forecast-status,
-.ground-forecast-stale {
+.ground-forecast-issued {
   font-size: 12px;
   color: var(--muted);
   white-space: nowrap;
 }
+.ground-forecast-issued {
+  font-weight: 600;
+}
 .ground-forecast-grid {
   display: grid;
-  grid-template-columns: 78px repeat(7, minmax(0, 1fr));
+  grid-template-columns: 78px repeat(var(--ground-forecast-days, 6), minmax(0, 1fr));
   grid-template-rows: 54px 70px 70px 48px;
   gap: 8px;
   align-items: stretch;
@@ -3561,14 +3568,6 @@ label { font-size: 0.9rem; font-weight: 700; }
   grid-row: 1 / span 4;
   gap: 0;
   position: relative;
-}
-.ground-forecast-day-column.is-today::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border: 2px solid #16a34a;
-  border-radius: 12px;
-  pointer-events: none;
 }
 .ground-forecast-label-cell {
   display: flex;
@@ -3994,7 +3993,7 @@ label { font-size: 0.9rem; font-weight: 700; }
    component pass can validate each card/table state with screenshots. */
 @media (max-width: 1400px) {
   .ground-forecast-grid {
-    grid-template-columns: 72px repeat(4, minmax(0, 1fr));
+    grid-template-columns: 72px repeat(var(--ground-forecast-days, 6), minmax(0, 1fr));
     grid-template-rows: 72px 86px 86px 60px;
   }
   .ground-forecast-label-column {
@@ -4008,7 +4007,7 @@ label { font-size: 0.9rem; font-weight: 700; }
   .ground-forecast-grid {
     width: max-content;
     min-width: 100%;
-    grid-template-columns: 64px repeat(7, minmax(72px, 1fr));
+    grid-template-columns: 64px repeat(var(--ground-forecast-days, 6), minmax(72px, 1fr));
   }
   .ground-forecast-label-cell {
     font-size: 0.92rem;

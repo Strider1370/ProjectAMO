@@ -159,12 +159,12 @@ function initAviationVisibility() {
   return AVIATION_WFS_LAYERS.reduce((acc, l) => { acc[l.id] = l.defaultVisible; return acc }, {})
 }
 
-function initMetVisibility() {
+function initMetVisibility(overrides) {
   const visibility = MET_LAYERS.reduce((acc, l) => { acc[l.id] = false; return acc }, {})
   visibility.radar = true
   visibility.windFlow = true
   visibility.windSpeed = true
-  return visibility
+  return { ...visibility, ...overrides }
 }
 
 function bindSectorHover(map) {
@@ -360,6 +360,7 @@ const MapView = forwardRef(function MapView({
   onOpenCustomAreaPanel,
   onOpenMetPanel,
   enableWindOverlay = true,
+  initialMetVisibility = null,
   showMapTools = true,
   showBasemapSwitcher = true,
   showAdvisoryBadges = true,
@@ -390,7 +391,7 @@ const MapView = forwardRef(function MapView({
   const [isStyleReady, setIsStyleReady] = useState(false)
   const [styleRevision, setStyleRevision] = useState(0)
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
-  const [metVisibility, setMetVisibility] = useState(initMetVisibility)
+  const [metVisibility, setMetVisibility] = useState(() => initMetVisibility(initialMetVisibility))
   const [showFlightCategoryMissing, setShowFlightCategoryMissing] = useState(false)
   const [showFlightCategoryStations, setShowFlightCategoryStations] = useState(true)
   const [timestampOpen, setTimestampOpen] = useState(true)

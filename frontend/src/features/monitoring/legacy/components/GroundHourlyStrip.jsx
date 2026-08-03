@@ -1,5 +1,5 @@
 import { getWeatherIconSrc } from "../../../../shared/weather/weather-icon-registry.js";
-import { mapGroundForecastIcon, isPrecipitationIcon } from "./GroundForecastPanel";
+import { mapGroundForecastIcon, isPrecipitationIcon, formatIssuedAt } from "./GroundForecastPanel";
 
 const W = 720;
 const H = 172;
@@ -35,8 +35,11 @@ function everyThirdHour(slots) {
 }
 
 export default function GroundHourlyStrip({ groundForecastData, icao }) {
-  const slots = everyThirdHour(groundForecastData?.airports?.[icao]?.hourly || []);
+  const airport = groundForecastData?.airports?.[icao] || null;
+  const slots = everyThirdHour(airport?.hourly || []);
   if (slots.length === 0) return null;
+
+  const issuedAt = formatIssuedAt(`${airport?.hourly_status?.base_date || ""}${airport?.hourly_status?.base_time || ""}`);
 
   const n = slots.length;
   const step = n > 1 ? (W - PAD_L - PAD_R) / (n - 1) : 0;
@@ -73,7 +76,10 @@ export default function GroundHourlyStrip({ groundForecastData, icao }) {
 
   return (
     <section className="ground-hourly-strip panel" aria-label="시간별 예보">
-      <div className="ground-hourly-header">시간별 예보</div>
+      <div className="ground-hourly-header">
+        <span>시간별 예보</span>
+        {issuedAt && <span className="ground-forecast-issued">동네예보 {issuedAt} 발표</span>}
+      </div>
       <svg
         className="ground-hourly-svg"
         viewBox={`0 0 ${W} ${H}`}

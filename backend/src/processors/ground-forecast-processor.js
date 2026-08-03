@@ -342,10 +342,9 @@ async function fetchShortForecast(regId, requestCaches) {
   });
 }
 
-async function fetchVillageForecast(nx, ny, requestCaches) {
+async function fetchVillageForecast(nx, ny, requestCaches, base) {
   const key = `${nx}:${ny}`;
   return getOrCreateRequest(requestCaches.village, key, async () => {
-    const base = getLatestVillageBase();
     const url = buildJsonUrl(config.ground_forecast.village_endpoint, {
       numOfRows: "300",
       base_date: base.baseDate,
@@ -550,6 +549,7 @@ async function process() {
   };
   const requestCaches = buildRequestCaches();
   const tmFc = getLatestMidTmfc(new Date(result.fetched_at));
+  const villageBase = getLatestVillageBase(new Date(result.fetched_at));
   const previous = store.getCached("ground_forecast");
   const airportErrors = {};
   const failedAirports = [];
@@ -567,9 +567,9 @@ async function process() {
     if (!mapping) {
       airportErrors[icao] = "Missing ground forecast regId mapping";
       let hourlyOnly = [];
-      const hourlyOnlyStatus = { ok: false, nx: grid.nx, ny: grid.ny, error: null };
+      const hourlyOnlyStatus = { ok: false, nx: grid.nx, ny: grid.ny, base_date: villageBase.baseDate, base_time: villageBase.baseTime, error: null };
       try {
-        hourlyOnly = extractHourlySlots(await fetchVillageForecast(grid.nx, grid.ny, requestCaches));
+        hourlyOnly = extractHourlySlots(await fetchVillageForecast(grid.nx, grid.ny, requestCaches, villageBase));
         hourlyOnlyStatus.ok = hourlyOnly.length > 0;
       } catch (error) {
         hourlyOnlyStatus.error = error.message || "Unknown error";
@@ -587,7 +587,7 @@ async function process() {
     }
 
     // 시간별(동네예보)은 주간예보 품질 판정과 무관하므로 sourceStatus와 분리한다.
-    const hourlyStatus = { ok: false, nx: grid.nx, ny: grid.ny, error: null };
+    const hourlyStatus = { ok: false, nx: grid.nx, ny: grid.ny, base_date: villageBase.baseDate, base_time: villageBase.baseTime, error: null };
     const sourceStatus = {
       short: { ok: false, regId: mapping.short_reg_id, error: null },
       mid_land: { ok: false, regId: mapping.mid_land_reg_id, tmFc, error: null },
@@ -607,7 +607,7 @@ async function process() {
     }
 
     try {
-      const villageItems = await fetchVillageForecast(grid.nx, grid.ny, requestCaches);
+      const villageItems = await fetchVillageForecast(grid.nx, grid.ny, requestCaches, villageBase);
       hourly = extractHourlySlots(villageItems);
       hourlyStatus.ok = hourly.length > 0;
     } catch (error) {
