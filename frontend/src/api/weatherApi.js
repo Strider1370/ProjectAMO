@@ -107,6 +107,7 @@ export function buildSnapshotMetaFromData(data = {}) {
     tafOverseas: buildHashEntry(data.tafOverseas),
     taf_overseas: buildHashEntry(data.tafOverseas),
     warning: buildHashEntry(data.warning),
+    kmaSpecialWarning: buildHashEntry(data.kmaSpecialWarning),
     sigmet: buildHashEntry(data.sigmet),
     sigmetOverseas: buildHashEntry(data.sigmetOverseas),
     sigmet_overseas: buildHashEntry(data.sigmetOverseas),
@@ -142,7 +143,7 @@ function buildOverlayMetaEntry(meta) {
 
 export async function loadWeatherData() {
   const [
-    airports, metar, taf, amos, warning,
+    airports, metar, taf, amos, warning, kmaSpecialWarning,
     sigmet, airmet, lightning,
     echoMeta, echoTopMeta, rainviewerMeta, satMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
     groundForecast, notam, overseasAirports,
@@ -153,6 +154,7 @@ export async function loadWeatherData() {
     fetchJson('/api/taf', { optional: true }),
     fetchJson('/api/amos', { optional: true }),
     fetchJson('/api/warning', { optional: true }),
+    fetchJson('/api/kma-special-warning', { optional: true }),
     fetchJson('/api/sigmet', { optional: true }),
     fetchJson('/api/airmet', { optional: true }),
     fetchJson('/api/lightning', { optional: true }),
@@ -180,6 +182,7 @@ export async function loadWeatherData() {
     tafOverseas,
     amos,
     warning,
+    kmaSpecialWarning,
     sigmet,
     sigmetOverseas,
     airmet,
@@ -308,6 +311,7 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all' } =
   if (changes.taf) { fetches.push(fetchJson('/api/taf', { optional: 'preserve' })); keys.push('taf') }
   if (changes.tafOverseas) { fetches.push(fetchJson('/api/taf-overseas', { optional: 'preserve' })); keys.push('tafOverseas') }
   if (changes.warning) { fetches.push(fetchJson('/api/warning', { optional: 'preserve' })); keys.push('warning') }
+  if (changes.kmaSpecialWarning) { fetches.push(fetchJson('/api/kma-special-warning', { optional: 'preserve' })); keys.push('kmaSpecialWarning') }
   if (changes.sigmet) { fetches.push(fetchJson('/api/sigmet', { optional: 'preserve' })); keys.push('sigmet') }
   if (changes.sigmetOverseas) { fetches.push(fetchJson('/api/sigmet-overseas', { optional: 'preserve' })); keys.push('sigmetOverseas') }
   if (changes.airmet) { fetches.push(fetchJson('/api/airmet', { optional: 'preserve' })); keys.push('airmet') }

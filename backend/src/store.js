@@ -8,11 +8,12 @@ import { buildTafTacPresentation } from './serializers/taf-tac.js'
 import { annotateMetarTac, annotateTafTac } from './parsers/tac-annotation.js'
 import { pickPrimaryWeatherIcon } from './parsers/parse-utils.js'
 
-const TYPES = ['metar', 'taf', 'warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'kim_surface_wind', 'ground_forecast', 'ground_overview', 'environment', 'airport_info', 'takeoff_fcst', 'flight_category_overlay', 'asos_ceiling', 'notam', 'metar_overseas', 'taf_overseas', 'sigmet_overseas', 'typhoon']
+const TYPES = ['metar', 'taf', 'warning', 'kma_special_warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'kim_surface_wind', 'ground_forecast', 'ground_overview', 'environment', 'airport_info', 'takeoff_fcst', 'flight_category_overlay', 'asos_ceiling', 'notam', 'metar_overseas', 'taf_overseas', 'sigmet_overseas', 'typhoon']
 const FILE_PREFIX = {
   metar: 'METAR',
   taf: 'TAF',
   warning: 'WARNINGS',
+  kma_special_warning: 'KMA_SPECIAL_WARNINGS',
   lightning: 'LIGHTNING',
   sigmet: 'SIGMET',
   airmet: 'AIRMET',
@@ -37,6 +38,7 @@ function emptyCache() {
   metar: { hash: null, prev_data: null },
   taf: { hash: null, prev_data: null },
   warning: { hash: null, prev_data: null },
+  kma_special_warning: { hash: null, prev_data: null },
   lightning: { hash: null, prev_data: null },
   sigmet: { hash: null, prev_data: null },
   airmet: { hash: null, prev_data: null },

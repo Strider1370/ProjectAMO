@@ -79,6 +79,7 @@ export const api = {
   lightning_url: process.env.LIGHTNING_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/lgt_pnt.php',
   amos_url: process.env.AMOS_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/amos.php',
   sigwx_low_url: process.env.SIGWX_LOW_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/amo_sigwx.php',
+  kma_special_warning_url: process.env.KMA_SPECIAL_WARNING_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/wrn_now_data_new.php',
   radar_url: process.env.RADAR_API_URL || 'https://apihub.kma.go.kr/api/typ04/url/rdr_cmp_file.php',
   airkorea_pm_url: process.env.AIRKOREA_PM_URL || 'https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty',
   kma_uv_url: process.env.KMA_UV_URL || 'https://apihub.kma.go.kr/api/typ01/url/kma_sfctm_uv.php',
@@ -96,6 +97,7 @@ export const api = {
   },
   // 기존 항공·일반 KMA 수집기 기본 키. 새 역할별 키가 비어 있으면 이 값으로 안전하게 폴백한다.
   auth_key: aviationAuthKey,
+  kma_special_warning_auth_key: process.env.KMA_SPECIAL_WARNING_AUTH_KEY || aviationAuthKey,
   radar_satellite_auth_key: radarSatelliteAuthKey,
   kim_nwp_auth_key: kimNwpAuthKey,
   airkorea_key: process.env.AIRKOREA_API_KEY || '',

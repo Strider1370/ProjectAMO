@@ -103,16 +103,18 @@ async function fetchTextWithRetries(url, type, options = {}) {
         throw error
       }
 
-      const { resultCode, resultMsg } = parseApiHeader(body)
-      if (type === 'sigwx_low' && !/<odmap_ml[\s>]/i.test(body)) {
-        throw new Error('SIGWX LOW payload missing odmap_ml')
-      }
-      if (!isSuccessByType(type, resultCode, resultMsg)) {
-        const error = new Error(`API ${resultCode}: ${resultMsg || 'UNKNOWN_ERROR'}`)
-        if (/유효한 인증키/i.test(resultMsg || '')) {
-          error.nonRetryable = true
+      if (!options.skipApiHeader) {
+        const { resultCode, resultMsg } = parseApiHeader(body)
+        if (type === 'sigwx_low' && !/<odmap_ml[\s>]/i.test(body)) {
+          throw new Error('SIGWX LOW payload missing odmap_ml')
         }
-        throw error
+        if (!isSuccessByType(type, resultCode, resultMsg)) {
+          const error = new Error(`API ${resultCode}: ${resultMsg || 'UNKNOWN_ERROR'}`)
+          if (/유효한 인증키/i.test(resultMsg || '')) {
+            error.nonRetryable = true
+          }
+          throw error
+        }
       }
 
       return body
@@ -154,6 +156,18 @@ export function buildAirportInfoUrl(icao, baseDate, baseTime) {
 export async function fetchAirportInfo(icao, baseDate, baseTime, options = {}) {
   const url = buildAirportInfoUrl(icao, baseDate, baseTime)
   return fetchTextWithRetries(url, 'airport_info', options)
+}
+
+export function buildKmaSpecialWarningUrl() {
+  const params = new URLSearchParams({ authKey: api.kma_special_warning_auth_key })
+  return `${api.kma_special_warning_url}?${params.toString()}`
+}
+
+export async function fetchKmaSpecialWarning(options = {}) {
+  const url = buildKmaSpecialWarningUrl()
+  const body = await fetchTextWithRetries(url, 'kma_special_warning', { ...options, skipApiHeader: true })
+  if (!body.includes('#START7777')) throw new Error('KMA special warning payload is invalid')
+  return body
 }
 
 // 이륙예보(AirInfoService/getAirInfo) — fctm=발표시각(KST YYYYMMDDHHmm), icaoCode별 매시 wd/ws/ta/qnh.
@@ -263,11 +277,13 @@ export default {
   fetchNoaaTaf,
   fetchNoaaSigmet,
   fetchSigwxLow,
+  fetchKmaSpecialWarning,
   fetchAirportInfo,
   fetchTakeoffFcst,
   fetchKimGrid,
   buildUrl,
   buildSigwxLowUrl,
+  buildKmaSpecialWarningUrl,
   buildAirportInfoUrl,
   buildTakeoffFcstUrl,
   buildKimGridUrl,
