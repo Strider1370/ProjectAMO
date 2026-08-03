@@ -826,6 +826,8 @@ app.get('/api/ground-forecast', (_, res) => sendLatest(res, 'ground_forecast'))
 app.get('/api/ground-overview', (_, res) => sendLatest(res, 'ground_overview'))
 app.get('/api/environment', (_, res) => sendLatest(res, 'environment'))
 app.get('/api/airport-info', (_, res) => sendLatest(res, 'airport_info'))
+app.get('/api/terminal-flights', (_, res) => sendLatest(res, 'terminal_flights'))
+app.get('/api/overseas-forecast', (_, res) => sendLatest(res, 'overseas_forecast'))
 
 // 지도 도구 '고도 확인' — 단일 점 표고(m). 기존 terrainSampler(브리핑용) 재사용.
 app.get('/api/terrain/elevation', (req, res) => {

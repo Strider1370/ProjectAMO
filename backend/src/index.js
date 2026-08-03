@@ -25,12 +25,14 @@ import flightCategoryProcessor from './processors/flight-category-processor.js'
 import asosCeilingProcessor from './processors/asos-ceiling-processor.js'
 import notamProcessor from './processors/notam-processor.js'
 import overseasProcessor from './processors/overseas-weather-processor.js'
+import terminalFlightProcessor from './processors/terminal-flight-processor.js'
+import overseasForecastProcessor from './processors/overseas-forecast-processor.js'
 import typhoonProcessor from "./processors/typhoon-processor.js";
 import { ensureActiveDataView } from './dev/data-view.js'
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
-const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false };
+const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
 const activeControllers = new Map()
 const KIM_NWP_CRON_OPTIONS = { timezone: 'Etc/UTC' }
 const AIRPORT_INFO_CRON_OPTIONS = { timezone: 'Asia/Seoul' }
@@ -148,6 +150,8 @@ function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.enabled !=
     ["airport_info", airportInfoProcessor.process],
     ["takeoff_fcst", takeoffForecastProcessor.process],
     ['typhoon', typhoonProcessor.process],
+    ['terminal_flights', terminalFlightProcessor.process],
+    ['overseas_forecast', overseasForecastProcessor.process],
   ]
   if (includeKimNwp) jobs.splice(10, 0, ["kim_surface_wind", kimSurfaceWindProcessor.process])
   if (config.ktg?.collect_on_startup !== false) jobs.push(["ktg", ktgProcessor.process])
@@ -200,6 +204,9 @@ async function main() {
   // 발표 시각이 KST 기준이라 서버 TZ와 무관하게 Asia/Seoul로 고정.
   cron.schedule(config.schedule.ground_forecast_interval, () => runWithLock("ground_forecast", groundForecastProcessor.process), { timezone: 'Asia/Seoul' });
   cron.schedule(config.schedule.environment_interval, () => runWithLock("environment", environmentProcessor.process));
+  // 운항시간대 제한은 KST 기준이다. 서버가 UTC로 돌면 시간대를 안 주는 순간 9시간 어긋난다.
+  cron.schedule(config.schedule.terminal_flight_interval, () => runWithLock("terminal_flights", terminalFlightProcessor.process), AIRPORT_INFO_CRON_OPTIONS);
+  cron.schedule(config.schedule.overseas_forecast_interval, () => runWithLock("overseas_forecast", overseasForecastProcessor.process), AIRPORT_INFO_CRON_OPTIONS);
   scheduleAirportInfoJob();
   scheduleTakeoffFcstJob();
   cron.schedule(config.schedule.flight_category_interval, () => runWithLock('flight_category', flightCategoryProcessor.process))

@@ -43,10 +43,19 @@ body { min-height: 100vh; overflow: hidden; }
   --terminal-header-bottom-gap: 28px;
   font-feature-settings: "tnum" 1;
   font-variant-numeric: tabular-nums;
-  position: relative;
-  width: min(100vw, calc(100vh * 16 / 9));
-  aspect-ratio: 16 / 9;
+  /* 1920px 폭으로 그려두고 결과 전체를 화면에 맞춰 확대·축소한다(terminalCanvasScale.js).
+     그래야 이 파일의 px 값들이 4K TV에서도 노트북 미리보기에서도 같은 크기로 보인다.
+     높이는 `100vh / 배율`이라 다시 확대하면 창을 정확히 채운다. 전체화면 16:9에서는 1080px가 된다.
+     transform을 여기 걸면 이 요소가 `position: fixed` 자손의 기준이 되어,
+     빈 화면 안내와 페이지 표시 점도 캔버스 안에서 같이 확대된다. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: calc(100vh / var(--terminal-canvas-scale, 1));
   overflow: hidden;
+  transform: scale(var(--terminal-canvas-scale, 1));
+  transform-origin: top left;
   background: var(--terminal-surface);
 }
 .view-switcher { z-index: 20; display: grid; grid-template-columns: repeat(2, 52px); height: 46px; border: 1px solid #aeb7c3; background: #fff; }
@@ -85,10 +94,12 @@ body { min-height: 100vh; overflow: hidden; }
 
 /* Option 1 — exact vertical gate board */
 .exact-board { display: grid; grid-template-rows: 90px 1fr 92px; }
-.board-header { position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: var(--terminal-space-4); padding: 28px var(--terminal-safe-side) 0; border-bottom: 1px solid var(--terminal-border); background: var(--terminal-surface); }
+.board-header { position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: var(--terminal-space-4); /* 위 22px + 제목 40px + 아래 28px = 90px. 제목 줄높이를 글자 크기에 맞추면
+     예전 28px 위 여백으로는 6px이 모자라 제목이 아래 선에 붙는다. */
+  padding: 22px var(--terminal-safe-side) 0; border-bottom: 1px solid var(--terminal-border); background: var(--terminal-surface); }
 .exact-board .board-header { grid-template-columns: 54px minmax(0, 1fr) auto; }
-.agency-mascot { display: block; width: 54px; height: 54px; object-fit: contain; }
-.board-header h1 { display: flex; align-self: end; align-items: baseline; gap: 14px; margin: 0; margin-bottom: var(--terminal-header-bottom-gap); font-size: var(--terminal-type-screen-title); font-weight: 800; letter-spacing: -.045em; white-space: nowrap; }
+.agency-mascot { display: block; width: 54px; height: 54px; align-self: end; margin-bottom: var(--terminal-header-bottom-gap); object-fit: contain; }
+.board-header h1 { display: flex; align-self: end; align-items: baseline; gap: 14px; margin: 0; margin-bottom: var(--terminal-header-bottom-gap); line-height: 1; font-size: var(--terminal-type-screen-title); font-weight: 800; letter-spacing: -.045em; white-space: nowrap; }
 .board-header h1 small, .rail-header h1 small { color: #526176; font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
 .board-header-actions { display: flex; align-items: center; gap: var(--terminal-space-2); }
 .terminal-airport-selector { display: flex; height: 46px; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid #aeb7c3; background: #fff; color: #23334b; font-size: 11px; font-weight: 700; white-space: nowrap; }
@@ -129,19 +140,31 @@ body { min-height: 100vh; overflow: hidden; }
 .airline-logo img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; }
 .airline-logo-fallback { display: grid; width: 52px; height: 52px; place-items: center; border: 2px solid #526176; border-radius: 50%; color: #334155; font-family: var(--terminal-font-time); font-size: 20px; font-weight: 800; letter-spacing: -.04em; }
 .airline-flight-meta { display: grid; min-width: 0; row-gap: var(--terminal-space-3); }
+.airline-flight-line { display: flex; min-width: 0; align-items: center; gap: 14px; }
+/* 공동운항 표시. 배지가 사실을, 아래 점이 지금 몇 번째 편명인지를 알려준다.
+   편명 옆에 붙이면 편명 글자 수가 바뀔 때마다 3초마다 좌우로 흔들린다.
+   칸 오른쪽 끝에 붙여야 편명이 뭘로 바뀌든 자리가 그대로다. */
+.codeshare-badge-group { display: grid; justify-items: center; margin-left: auto; row-gap: 9px; }
+.codeshare-badge { padding: 6px 16px; border: 1px solid var(--terminal-border); border-radius: 999px; background: #eef2f7; color: #3a4759; font-size: 20px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.codeshare-dots { display: flex; gap: 9px; }
+.codeshare-dots i { display: block; width: 11px; height: 11px; border: 1px solid #8b98a9; border-radius: 50%; background: transparent; transition: background 240ms ease, border-color 240ms ease; }
+.codeshare-dots i.is-current { border-color: #071735; background: #071735; }
+@media (prefers-reduced-motion: reduce) { .codeshare-dots i { transition: none; } }
 .airline-block strong { font-size: var(--terminal-type-flight-number); line-height: 1.05; }
 .airline-block span { color: #526176; font-size: 15px; letter-spacing: .05em; }
 .board-divider { height: 1px; background: #d4d8de; }
 .schedule-grid { display: grid; grid-template-columns: 1fr .68fr; height: calc(100% - 1px); }
-.schedule-grid > div { display: grid; align-content: center; row-gap: var(--terminal-space-3); padding-left: var(--terminal-space-3); }
+/* 스펙 10.1 — `출발`·`탑승구` 같은 고정 라벨은 움직이지 않는다.
+   가운데 정렬이면 지연(예정 시각 한 줄)이나 탑승구 변경(이전 번호 한 줄)이 붙는 순간
+   묶음이 길어지면서 라벨이 위로 밀린다. 실측으로 각각 9px, 14px 움직였다.
+   위에서부터 붙이고 여백을 고정해, 늘어나는 줄은 아래 빈 공간으로만 자란다. */
+.schedule-grid > div { display: grid; align-content: start; row-gap: var(--terminal-space-3); padding-top: 16px; padding-left: var(--terminal-space-3); }
 .schedule-grid > div + div { border-left: 1px solid #d4d8de; }
 .schedule-grid span { color: #303b4e; font-size: 22px; font-weight: 600; }
 .section-label, .arrival-time span { color: #303b4e; font-size: 24px; font-weight: 600; }
 .schedule-grid strong { font-size: 61px; line-height: 1.05; }
-.departure-time { display: grid; row-gap: var(--terminal-space-1); }
+.departure-time { display: flex; align-items: baseline; gap: 10px; }
 .departure-time.is-delayed strong, .rail-stats .is-delayed strong { color: var(--terminal-status-warning); }
-.departure-time small, .rail-stats em { color: var(--terminal-text-muted); font-size: 14px; font-style: normal; font-weight: 600; line-height: 1; }
-.departure-time small s, .rail-stats em s { text-decoration: line-through; text-decoration-thickness: 1px; }
 .operation-status { display: flex; align-items: center; gap: var(--terminal-space-3); justify-self: end; font-size: 15px; white-space: nowrap; }
 .operation-status i { width: 12px; height: 12px; border-radius: 50%; background: var(--terminal-status-success); }
 .operation-status strong { color: var(--terminal-status-success); font-size: var(--terminal-type-status); }
@@ -183,12 +206,23 @@ body { min-height: 100vh; overflow: hidden; }
 .current-weather dt { color: #303b4e; font-weight: 500; }
 .current-weather dd { color: #071735; font-weight: 600; white-space: nowrap; }
 .board-band:last-child .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
-.arrival-time { display: flex; align-items: baseline; gap: 16px; min-height: 76px; padding-top: 20px; }
+/* 위 칸 `현재 날씨`와 같은 구조다.
+     .current-weather-heading { align-items: start }
+       .section-label         { margin-top: 20px }   작은 제목
+       .current-weather-clock { margin-top: 12px }   큰 숫자
+   아래끝 정렬을 쓰면 44px짜리 도착 시각에 끌려 제목이 구분선에서 40px까지 내려간다.
+   min-height는 12px + 도착 시각 44px. 도착 시각이 없는 국제선 칸도 같은 높이를 유지해야
+   세 열의 예보 시작 위치가 어긋나지 않는다. */
+.arrival-time { display: flex; align-items: start; justify-content: space-between; gap: 16px; min-height: 56px; }
 .departure-time strong { font-family: var(--terminal-font-time); }
 .arrival-time strong { font-family: var(--terminal-font-time); font-size: 44px; line-height: 1; }
+/* 제목과 시각을 아래끝으로 맞춘다. baseline 정렬은 시각이 없는 국제선에서 제목이 위로 떠오른다. */
+.arrival-time-value { margin-top: 12px; line-height: 1; }
 .arrival-time strong b { margin-left: 8px; color: #526176; font-family: "Noto Sans KR", sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0; }
 .arrival-time small { color: #5c6675; font-size: 15px; }
-.board-forecast { display: grid; grid-template-columns: repeat(5, 1fr); min-height: 0; margin-top: 8px; padding-bottom: 10px; }
+/* 위 칸(`현재 날씨`)과 같은 위계의 제목-내용 간격이다. 그쪽은 `.section-label`의
+   `margin: 20px 0 14px`가 만든다. 여기도 위 20px(.arrival-time padding-top) / 아래 14px로 맞춘다. */
+.board-forecast { display: grid; grid-template-columns: repeat(5, 1fr); min-height: 0; margin-top: 14px; padding-bottom: 10px; }
 .board-forecast > div { display: grid; align-content: center; justify-items: center; gap: 6px; border-right: 1px dotted #cbd0d6; }
 .board-forecast > div:last-child { border-right: 0; }
 .board-forecast > div.is-arrival {
@@ -259,6 +293,15 @@ body { min-height: 100vh; overflow: hidden; }
   46% { opacity: .9; transform: rotateX(20deg) translate3d(0,1px,0); }
   72% { transform: rotateX(-5deg) translate3d(0,0,0); }
   100% { opacity: 1; transform: rotateX(0deg) translate3d(0,0,0); }
+}
+/* 공동운항 편명이 3초마다 돌 때도 화면 전환과 같은 FLAP으로 뒤집는다.
+   페이지 전환 중에는 빼야 두 애니메이션이 같은 요소를 두고 다투지 않는다. */
+.board-page:not(.is-entering):not(.is-leaving) .flap-unit.codeshare-flap {
+  animation: split-flap-in 420ms cubic-bezier(.12,.72,.16,1) both !important;
+  animation-delay: calc(var(--item, 0) * 60ms) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-page .flap-unit.codeshare-flap { animation: none !important; }
 }
 .roll-unit { will-change: transform, opacity; }
 .motion-roll .board-page.is-entering .board-band-surface { background: transparent; }
@@ -386,8 +429,10 @@ body { min-height: 100vh; overflow: hidden; }
 
 /* Option 3 — exact horizontal forecast rail */
 .exact-rail { display: grid; grid-template-rows: 90px 1fr 92px; }
-.rail-header { position: relative; display: grid; grid-template-columns: 54px auto minmax(120px, 1fr) auto; align-items: center; gap: var(--terminal-space-4); height: 90px; padding: 28px var(--terminal-safe-side) 0; border-bottom: 1px solid var(--terminal-border); background: var(--terminal-surface); }
-.rail-header h1 { display: flex; align-self: end; align-items: baseline; gap: 14px; margin: 0; margin-bottom: var(--terminal-header-bottom-gap); padding-right: 38px; border-right: 1px solid var(--terminal-border); font-size: var(--terminal-type-screen-title); font-weight: 800; letter-spacing: -.04em; white-space: nowrap; }
+.rail-header { position: relative; display: grid; grid-template-columns: 54px auto minmax(120px, 1fr) auto; align-items: center; gap: var(--terminal-space-4); height: 90px; /* 위 22px + 제목 40px + 아래 28px = 90px. 제목 줄높이를 글자 크기에 맞추면
+     예전 28px 위 여백으로는 6px이 모자라 제목이 아래 선에 붙는다. */
+  padding: 22px var(--terminal-safe-side) 0; border-bottom: 1px solid var(--terminal-border); background: var(--terminal-surface); }
+.rail-header h1 { display: flex; align-self: end; align-items: baseline; gap: 14px; margin: 0; margin-bottom: var(--terminal-header-bottom-gap); line-height: 1; padding-right: 38px; border-right: 1px solid var(--terminal-border); font-size: var(--terminal-type-screen-title); font-weight: 800; letter-spacing: -.04em; white-space: nowrap; }
 .rail-header-actions { position: absolute; top: var(--terminal-safe-top); left: 60%; display: flex; align-items: center; gap: var(--terminal-space-2); transform: translateX(-50%); }
 .rail-header-clock { position: absolute; top: auto; right: var(--terminal-safe-side); bottom: var(--terminal-header-bottom-gap); left: auto; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
 .rail-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
@@ -598,3 +643,29 @@ body { min-height: 100vh; overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; }
 }
+
+/* 값을 모를 때의 대체 문구. 큰 숫자 자리를 그대로 쓰면 줄바꿈되고 자간이 벌어진다. */
+.value-unknown {
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 30px;
+  font-weight: 600;
+  font-style: normal;
+  white-space: nowrap;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  color: #526176;
+}
+
+/* 예보 줄의 제목. 형제인 `.section-label`과 같은 20px 위 여백을 쓴다. */
+.arrival-forecast-label {
+  margin-top: 20px;
+  font-size: var(--terminal-type-section-label, 24px);
+  font-weight: 700;
+  line-height: 1;
+  color: #23334b;
+  letter-spacing: -.02em;
+}
+
+/* 탑승구가 바뀌었을 때. 출발 시각의 지연 표기와 같은 모양을 써서 승객이 같은 뜻으로 읽게 한다. */
+.gate-value { display: flex; align-items: baseline; gap: 10px; }
+.gate-value.is-changed strong { color: var(--terminal-status-warning); }

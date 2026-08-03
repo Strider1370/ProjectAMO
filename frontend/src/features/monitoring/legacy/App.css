@@ -289,6 +289,8 @@ body {
   align-items: stretch;
   line-height: 1.2;
   flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .warning-banner-entry {
@@ -298,12 +300,14 @@ body {
   gap: 4px;
   padding-left: 12px;
   border-left: 2px solid rgba(255, 247, 237, 0.72);
+  min-width: 0;
 }
 
 .warning-banner-name {
   font-size: 18px;
   font-weight: 800;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .warning-banner-time {

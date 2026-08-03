@@ -8,7 +8,7 @@ import { buildTafTacPresentation } from './serializers/taf-tac.js'
 import { annotateMetarTac, annotateTafTac } from './parsers/tac-annotation.js'
 import { pickPrimaryWeatherIcon } from './parsers/parse-utils.js'
 
-const TYPES = ['metar', 'taf', 'warning', 'kma_special_warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'kim_surface_wind', 'ground_forecast', 'ground_overview', 'environment', 'airport_info', 'takeoff_fcst', 'flight_category_overlay', 'asos_ceiling', 'notam', 'metar_overseas', 'taf_overseas', 'sigmet_overseas', 'typhoon']
+const TYPES = ['metar', 'taf', 'warning', 'kma_special_warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'kim_surface_wind', 'ground_forecast', 'ground_overview', 'environment', 'airport_info', 'takeoff_fcst', 'flight_category_overlay', 'asos_ceiling', 'notam', 'metar_overseas', 'taf_overseas', 'sigmet_overseas', 'typhoon', 'terminal_flights', 'overseas_forecast']
 const FILE_PREFIX = {
   metar: 'METAR',
   taf: 'TAF',
@@ -33,32 +33,9 @@ const FILE_PREFIX = {
   notam: 'NOTAM',
 }
 
+// TYPES에서 직접 파생한다. 손으로 베낀 목록은 타입을 추가할 때 조용히 어긋난다.
 function emptyCache() {
-  return {
-  metar: { hash: null, prev_data: null },
-  taf: { hash: null, prev_data: null },
-  warning: { hash: null, prev_data: null },
-  kma_special_warning: { hash: null, prev_data: null },
-  lightning: { hash: null, prev_data: null },
-  sigmet: { hash: null, prev_data: null },
-  airmet: { hash: null, prev_data: null },
-  sigwx_low: { hash: null, prev_data: null },
-  amos: { hash: null, prev_data: null },
-  adsb: { hash: null, prev_data: null },
-  kim_surface_wind: { hash: null, prev_data: null },
-  ground_forecast: { hash: null, prev_data: null },
-  ground_overview: { hash: null, prev_data: null },
-  environment: { hash: null, prev_data: null },
-  airport_info: { hash: null, prev_data: null },
-  takeoff_fcst: { hash: null, prev_data: null },
-  flight_category_overlay: { hash: null, prev_data: null },
-  asos_ceiling: { hash: null, prev_data: null },
-  notam: { hash: null, prev_data: null },
-  metar_overseas: { hash: null, prev_data: null },
-  taf_overseas: { hash: null, prev_data: null },
-  sigmet_overseas: { hash: null, prev_data: null },
-  typhoon: { hash: null, prev_data: null },
-  }
+  return Object.fromEntries(TYPES.map((type) => [type, { hash: null, prev_data: null }]))
 }
 
 const cache = emptyCache()

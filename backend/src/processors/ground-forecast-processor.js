@@ -5,8 +5,10 @@ import { latLonToGrid } from '../utils/kma-grid.js'
 
 const VILLAGE_BASE_TIMES = [2, 5, 8, 11, 14, 17, 20, 23] // 동네예보 발표시각 (KST)
 const VILLAGE_PUBLISH_DELAY_MIN = 15 // 발표 후 제공까지 버퍼
-const HOURLY_SLOT_COUNT = 8 // 24h / 3h
-const HOURLY_STEP_HOURS = 3
+// 기상청 동네예보는 1시간 단위로 온다. 원본 해상도 그대로 24시간을 담는다.
+// 3시간 간격이 필요한 화면은 받는 쪽에서 솎아 쓴다(GroundHourlyStrip).
+const HOURLY_SLOT_COUNT = 24
+const HOURLY_STEP_HOURS = 1
 
 const DAY_LABELS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -557,20 +559,33 @@ async function process() {
     const mapping = config.ground_forecast.airports[icao];
     const previousAirport = previous?.airports?.[icao] || null;
 
+    // 주간예보(단기·중기)는 기상청 구역코드가 있어야 하지만, 시간별 동네예보는 위경도만 있으면 된다.
+    // 구역코드가 없다고 시간별 예보까지 버리면 청주·광주·대구처럼 코드를 등록하지 않은 공항이
+    // 도착지 예보를 통째로 잃는다. 여기서는 시간별만 받고 주간예보는 비워 둔다.
+    const grid = latLonToGrid(airport.lat, airport.lon);
+
     if (!mapping) {
-      failedAirports.push(icao);
       airportErrors[icao] = "Missing ground forecast regId mapping";
-      if (previousAirport) {
-        result.airports[icao] = {
-          ...previousAirport,
-          icao,
-          _stale: true,
-        };
+      let hourlyOnly = [];
+      const hourlyOnlyStatus = { ok: false, nx: grid.nx, ny: grid.ny, error: null };
+      try {
+        hourlyOnly = extractHourlySlots(await fetchVillageForecast(grid.nx, grid.ny, requestCaches));
+        hourlyOnlyStatus.ok = hourlyOnly.length > 0;
+      } catch (error) {
+        hourlyOnlyStatus.error = error.message || "Unknown error";
       }
+      if (!hourlyOnlyStatus.ok) failedAirports.push(icao);
+      result.airports[icao] = {
+        ...(previousAirport || {}),
+        icao,
+        forecast: previousAirport?.forecast || [],
+        hourly: hourlyOnly.length > 0 ? hourlyOnly : (previousAirport?.hourly || []),
+        hourly_status: hourlyOnlyStatus,
+        _stale: hourlyOnly.length === 0 && Boolean(previousAirport),
+      };
       continue;
     }
 
-    const grid = latLonToGrid(airport.lat, airport.lon);
     // 시간별(동네예보)은 주간예보 품질 판정과 무관하므로 sourceStatus와 분리한다.
     const hourlyStatus = { ok: false, nx: grid.nx, ny: grid.ny, error: null };
     const sourceStatus = {

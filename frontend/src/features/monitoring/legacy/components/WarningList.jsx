@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { safe, warningMeta, getDisplayDate } from "../utils/helpers";
-import { buildWarningEntries, warningBannerLabel } from './warningBannerModel.js';
+import { buildWarningEntries, formatKmaWarningName, warningBannerLabel } from './warningBannerModel.js';
 
 const WARNING_NAME_KO = {
   WIND_SHEAR: "급변풍",
@@ -165,7 +165,7 @@ export default function WarningList({ warningData, kmaSpecialWarningData, ground
       const meta = warningMeta(warning.wrng_type, warningTypes || {}) || {};
       const key = warning.wrng_type_key === "UNKNOWN" && meta.key ? meta.key : warning.wrng_type_key;
       const name = isKma
-        ? `기상청 특보 · ${warning.phenomenon === 'COLD_WAVE' ? '한파' : '폭염'}${warning.levelLabel}`
+        ? formatKmaWarningName(warning)
         : WARNING_NAME_KO[key] || safe(warning.wrng_type_name) || "미확인경보";
 
       return (

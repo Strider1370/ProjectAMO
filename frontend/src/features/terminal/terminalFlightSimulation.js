@@ -37,6 +37,14 @@ const AIRLINES = Object.freeze({
   WE: { airline: 'PARATA AIR', logo: '/Symbols/airlines/WE.svg' },
 })
 
+// 국적기 IATA 코드. airlines.js의 KOREAN_AIRLINES와 같은 명단인데, 그쪽은 ADS-B용 ICAO 3글자라
+// 편명(IATA 2글자)으로는 조회할 수 없다. 여기 편명 기준으로 따로 둔다.
+const KOREAN_FLIGHT_PREFIXES = Object.freeze(new Set(['KE', 'OZ', '7C', 'LJ', 'TW', 'ZE', 'BX', 'RS', 'YP', 'RF', '4H', 'WE']))
+
+function isKoreanFlightNumber(flightNumber) {
+  return KOREAN_FLIGHT_PREFIXES.has(String(flightNumber || '').match(/^[A-Z0-9]{2}/)?.[0] || '')
+}
+
 const DESTINATIONS = Object.freeze({
   CJU: destination('제주', '제주', '제주국제공항', 'KST', '8/2 13:00', current('partly', 30, 32, 70, '남동 4m/s')),
   KIX: destination('오사카', '오사카 간사이', '오사카 간사이', 'JST', '8/2 13:00', current('partly', 33, 36, 64, '남서 3m/s')),
@@ -135,13 +143,16 @@ const FLIGHTS = Object.freeze([
   flight('RKJY', 'GMP', 'OZ8736', '18:20', '19:20'),
 ])
 
-function displayFlight(raw) {
-  const destinationData = DESTINATIONS[raw.code]
+function displayFlight(raw, kstClock) {
+  const destinationData = raw.destinationData || DESTINATIONS[raw.code]
   return {
     ...destinationData,
+    // 화면은 localClock을 공백 기준 "날짜 시각"으로 쪼개 읽는다. 빈 값도, 공백이 든 값도 넘기면 안 된다.
+    // 그래서 시차를 모르는 목적지에는 '확인 중'이 아니라 공백 없는 '미정'을 쓴다.
+    localClock: localClockFrom(kstClock, destinationData.localZone) || `${kstClock.split(' ')[0]} 미정`,
     ...raw,
     forecast: forecastForArrival(destinationData.forecast, raw.arrivalKst),
-    kstClock: '8/2 13:00',
+    kstClock,
     arrivalSlot: 0,
     flightKey: `${raw.departureIcao}-${raw.flight}-${raw.departure}`,
   }
@@ -149,7 +160,8 @@ function displayFlight(raw) {
 
 function forecastForArrival(forecast, arrivalKst) {
   if (!/^\d{2}:\d{2}$/.test(arrivalKst)) return forecast
-  const startHour = Math.max(14, Number(arrivalKst.slice(0, 2)))
+  // 예보는 도착 시각부터 이어진다. 이전의 14시 하한은 fixture가 13:00 기준일 때만 맞던 값이다.
+  const startHour = Number(arrivalKst.slice(0, 2))
   return forecast.map(([, icon, temperature], index) => [`${(startHour + index) % 24}시`, icon, temperature])
 }
 
@@ -158,11 +170,148 @@ function timeMinutes(value) {
   return hour * 60 + minute
 }
 
-function selectTerminalSourceFlights(departureIcao) {
-  const referenceMinutes = timeMinutes(TERMINAL_SIMULATION_REFERENCE.time)
+const UNKNOWN = '확인 중'
+
+// 한국 시각 기준 시차(분). fixture가 쓰는 세 시간대만 담는다.
+const ZONE_OFFSET_MINUTES = Object.freeze({ KST: 0, JST: 0, CST: -60 })
+
+/** 목적지 현지 시각은 기준 한국 시각에서 계산한다. 고정값을 두면 데이터가 바뀌어도 낡은 시각이 남는다. */
+function localClockFrom(kstClock, localZone) {
+  const offset = ZONE_OFFSET_MINUTES[localZone]
+  const match = /^(\d{1,2})\/(\d{1,2}) (\d{2}):(\d{2})$/.exec(kstClock)
+  if (offset == null || !match) return null
+  const [, month, day, hour, minute] = match.map(Number)
+  const shifted = new Date(Date.UTC(2000, month - 1, day, hour, minute + offset))
+  const shiftedHour = String(shifted.getUTCHours()).padStart(2, '0')
+  return `${shifted.getUTCMonth() + 1}/${shifted.getUTCDate()} ${shiftedHour}:${String(shifted.getUTCMinutes()).padStart(2, '0')}`
+}
+
+/**
+ * 한국공항공사의 `arrivedKor`은 대개 `도시/공항`이라, 슬래시를 띄어쓰기로 바꾸면
+ * `오사카 간사이`, `베이징 서우두`가 그대로 나온다.
+ *
+ * 그런데 슬래시가 늘 도시와 공항을 가르지는 않는다. 아래 목적지들은 같은 지명의
+ * 옛 표기와 현행 표기여서, 이으면 `청도 칭다오` 같은 말이 만들어진다.
+ *
+ * 문자열만 보고 두 경우를 가르는 규칙은 없다. 초성 유사도를 재봤더니
+ * `상하이/홍차오`(0.67)가 `청도/칭다오`(0.67)와 같은 점수로 나왔다. 한글 초성은
+ * 가짓수가 적고 `ㅇ`이 흔해서, 관계없는 낱말끼리도 우연히 겹친다.
+ * 이건 표기 지식이지 파싱할 수 있는 구조가 아니므로 목록으로 둔다.
+ *
+ * 목록에 없는 목적지는 `도시 공항`으로 이어 붙인다. 잘못 이으면 겹쳐 보일 뿐이지만,
+ * 잘못 줄이면 도시명이 사라져 승객이 목적지를 못 찾는다. 안전한 쪽을 기본값으로 둔다.
+ *
+ * 새 노선이 열려 목록에 없는 목적지가 생기면
+ * `node --env-file=.env backend/scripts/audit-terminal-destinations.mjs`가 이름과 함께 보고한다.
+ */
+const SAME_PLACE_ALTERNATE_SPELLING = Object.freeze(new Set([
+  'HGH', // 항조우/항저우
+  'KMJ', // 구마모도/구마모토
+  'NKG', // 난징(남경)/난징
+  'PQC', // 푸꼭(푸국)/푸꾸옥
+  'SGN', // 호치민/호찌민
+  'SHE', // 심양/선양
+  'SIN', // 싱가폴/싱가포르
+  'SZX', // 심천/선전
+  'TAO', // 청도/칭다오
+  'YNJ', // 연길/옌지
+]))
+
+/** 2026-08-03 전국 출발편에서 확인한 `도시/공항` 목적지. 감사 스크립트가 새 목적지를 가려내는 기준. */
+export const REVIEWED_SLASH_DESTINATIONS = Object.freeze(new Set([
+  'BKK', 'GMP', 'HGH', 'HIN', 'HND', 'KIX', 'KMJ', 'KPO', 'NGO', 'NKG',
+  'NRT', 'PEK', 'PKX', 'PQC', 'PUS', 'PVG', 'RMQ', 'SGN', 'SHA', 'SHE',
+  'SIN', 'SZX', 'TAG', 'TAO', 'TPE', 'TSA', 'UBN', 'YNJ',
+]))
+
+/** `베이징(서우두)/서우두` → { city: '베이징', displayName: '베이징 서우두' } */
+export function destinationNameFromKac(rawName, iata) {
+  const cleaned = String(rawName || '').replace(/\([^)]*\)/g, '').trim()
+  const [city, airport] = cleaned.split('/').map((part) => part.trim())
+  if (!city) return { city: iata || UNKNOWN, displayName: iata || UNKNOWN }
+  if (!airport) return { city, displayName: city }
+
+  if (SAME_PLACE_ALTERNATE_SPELLING.has(iata)) {
+    const name = airport.length >= city.length ? airport : city
+    return { city: name, displayName: name }
+  }
+  // `포항/포항경주`, `팡라오/보홀팡라오`처럼 한쪽이 다른 쪽을 품고 있으면 도시명을 두 번 쓰지 않는다.
+  if (airport.includes(city)) return { city, displayName: airport }
+  return { city, displayName: `${city} ${airport}` }
+}
+
+/**
+ * 이름은 언제나 피드에서 만든다. 일부만 우리 표를 쓰면 같은 도시가 화면마다 다르게 적힌다.
+ * 날씨 fixture는 9개 공항만 담고 있어서, 없는 곳은 비워 둔 채 내보낸다.
+ * 실제 관측이 있으면 mergeTerminalLiveWeather가 뒤에서 덮어쓴다.
+ */
+function destinationFromFeed(row) {
+  const { city, displayName } = destinationNameFromKac(row.destinationKorean, row.destinationIata)
+  const known = DESTINATIONS[row.destinationIata]
+  return {
+    ...(known || {
+      // 도착 시각이 있다는 건 한국공항공사가 그 공항의 도착 기록을 가졌다는 뜻, 곧 국내 공항이다.
+      // 김해-인천처럼 국제선으로 분류되지만 목적지가 한국인 편도 여기서 걸러진다.
+      localZone: row.arrivalKst || !row.international ? 'KST' : null,
+      current: { icon: null, temp: null, feels: UNKNOWN, humidity: UNKNOWN, wind: UNKNOWN },
+      forecast: [],
+    }),
+    city,
+    displayName,
+    airport: known?.airport || row.destinationEnglish || displayName,
+    localClock: null,
+  }
+}
+
+/** `/api/terminal-flights` 한 줄을 fixture와 똑같은 모양의 원본 항공편으로 바꾼다. */
+/** 편명에서 항공사 이름과 로고를 찾는다. 공동운항이면 편명마다 다르다. */
+function airlineOf(flightNumber, fallbackName) {
+  const code = String(flightNumber || '').match(/^[A-Z0-9]{2}/)?.[0] || ''
+  return { airline: fallbackName || '', ...AIRLINES[code] }
+}
+
+export function terminalFlightsFromFeed(rows = []) {
+  return rows.filter((row) => row?.scheduled && row?.flight).map((row) => {
+    const airlineCode = row.flight.match(/^[A-Z0-9]{2}/)?.[0] || ''
+    // 공동운항이면 편명·항공사·로고가 한 벌씩이다. 화면이 번갈아 보여준다.
+    // 국적기 편명이 섞여 있으면 그걸 맨 앞에 세운다. 승객 대부분이 그 편명으로 표를 샀다.
+    // sort는 안정 정렬이라 국적기끼리, 외항사끼리는 받은 순서가 그대로 남는다.
+    const codeshares = (row.codeshares?.length ? row.codeshares : [{ flight: row.flight, airlineEnglish: row.airlineEnglish, airlineKorean: row.airlineKorean }])
+      .map((share) => ({ flight: share.flight, ...airlineOf(share.flight, share.airlineEnglish || share.airlineKorean) }))
+      .sort((a, b) => Number(isKoreanFlightNumber(b.flight)) - Number(isKoreanFlightNumber(a.flight)))
+    // departure는 예정 시각, revised는 변경된 시각. 화면은 revised를 크게, 예정을 취소선으로 보여준다.
+    const revised = row.delayed && row.estimated ? row.estimated : null
+    // 늦은 만큼(분)과 이전 탑승구는 화면이 쓰지 않는다. 지금 유효한 값 하나만 보여주고,
+    // 바뀌었다는 사실은 상태 단어(`지연`, `탑승구 변경`)가 알린다.
+    // const delayMinutes = revised ? (timeMinutes(revised) - timeMinutes(row.scheduled) + 1440) % 1440 : null
+    return {
+      departureIcao: row.departureIcao,
+      code: row.destinationIata || UNKNOWN,
+      destinationIcao: row.destinationIcao || null,
+      flight: row.flight,
+      departure: row.scheduled,
+      revised,
+      arrivalKst: row.arrivalKst || UNKNOWN,
+      // 도착 시각을 모르는 국제선도 예보 칸은 고를 수 있다. 시각으로는 절대 표시하지 않는다.
+      forecastAnchorKst: row.forecastAnchorKst || row.arrivalKst || null,
+      arrival: row.arrivalKst || UNKNOWN,
+      duration: row.arrivalKst ? durationBetween(revised || row.scheduled, row.arrivalKst) : UNKNOWN,
+      gate: row.gate || UNKNOWN,
+      status: row.status || '운항 예정',
+      statusTone: row.delayed ? 'delay' : 'ok',
+      airline: row.airlineEnglish || row.airlineKorean || '',
+      ...AIRLINES[airlineCode],
+      codeshares,
+      destinationData: destinationFromFeed(row),
+    }
+  })
+}
+
+function selectTerminalSourceFlights(departureIcao, sourceFlights, referenceTime) {
+  const referenceMinutes = timeMinutes(referenceTime)
   const windowMinutes = TERMINAL_SIMULATION_REFERENCE.windowMinutes[departureIcao] ?? 0
   const minimumFlights = TERMINAL_SIMULATION_REFERENCE.minimumFlights[departureIcao]
-  const candidates = FLIGHTS
+  const candidates = sourceFlights
     .filter((candidate) => candidate.departureIcao === departureIcao)
     .filter((candidate) => timeMinutes(candidate.departure) >= referenceMinutes)
     .sort((left, right) => timeMinutes(left.departure) - timeMinutes(right.departure))
@@ -176,12 +325,21 @@ function selectTerminalSourceFlights(departureIcao) {
   return selected.sort((left, right) => timeMinutes(left.departure) - timeMinutes(right.departure))
 }
 
-export function buildTerminalSimulation(departureIcao) {
+/**
+ * 실제 운항 데이터가 있으면 flights/referenceTime/kstClock을 넘기고, 없으면 검증된 fixture로 돈다.
+ * 선택 규칙(공항별 시간창·최소 편수·같은 날 소진)은 두 경우 모두 동일하다.
+ */
+export function buildTerminalSimulation(departureIcao, options = {}) {
+  const {
+    flights = FLIGHTS,
+    referenceTime = TERMINAL_SIMULATION_REFERENCE.time,
+    kstClock = `8/2 ${TERMINAL_SIMULATION_REFERENCE.time}`,
+  } = options
   const grouped = new Map()
-  const sourceFlights = selectTerminalSourceFlights(departureIcao)
+  const sourceFlights = selectTerminalSourceFlights(departureIcao, flights, referenceTime)
   for (const raw of sourceFlights) {
     if (!grouped.has(raw.code)) grouped.set(raw.code, [])
-    grouped.get(raw.code).push(displayFlight(raw))
+    grouped.get(raw.code).push(displayFlight(raw, kstClock))
   }
 
   const destinations = [...grouped.entries()]
@@ -190,6 +348,7 @@ export function buildTerminalSimulation(departureIcao) {
   const frames = buildCompactFrames(destinations)
   return {
     departureIcao,
+    kstClock,
     destinations,
     frames,
     frameCount: frames.length,
@@ -243,6 +402,21 @@ export function terminalFrameAt(simulation, cursor) {
     frameCount: Math.max(1, simulation.frameCount),
     flights: simulation.frames[frameIndex] || [],
   }
+}
+
+/**
+ * 화면에 걸어둘 편성을 고른다. 새 데이터가 들어와도 순환 한 바퀴가 끝나기 전에는 바꾸지 않는다.
+ * 승객이 2/4 페이지를 읽는 중에 세 편이 통째로 바뀌면 읽던 항공편을 잃는다.
+ *
+ * 대신 최대 한 바퀴만큼 낡은 값이 보인다. 한 바퀴는 프레임당 9초라 대개 1분 안쪽이고,
+ * 수집 주기(1분)보다 길지 않아 지연·탑승구 변경이 눈에 띄게 늦지는 않는다.
+ */
+export function nextDisplayedSimulation(current, next, frameCursor) {
+  if (!current) return next
+  // 출발 공항 전환은 사용자의 조작이라 한 바퀴를 기다리지 않는다.
+  if (current.departureIcao !== next.departureIcao) return next
+  // 프레임이 하나뿐이면 기다릴 경계가 없다. 이때는 편성 순서가 아니라 값만 바뀐다.
+  return frameCursor % Math.max(1, current.frameCount) === 0 ? next : current
 }
 
 export function hasTerminalNextFrame(simulation) {

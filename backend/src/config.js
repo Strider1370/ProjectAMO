@@ -86,6 +86,16 @@ export const api = {
   kim_grid_url: process.env.KIM_GRID_API_URL || 'https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph-kim_nc_xy_txt2',
   typhoon_now_url: process.env.TYPHOON_NOW_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_now.php',
   typhoon_list_url: process.env.TYPHOON_LIST_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_lst.php',
+  // 인천국제공항공사 항공기 운항 현황 상세 조회. 한국공항공사는 인천을 운영하지 않아
+  // 인천 도착 시각을 거의 주지 않는다(실측 23편 중 5편). 인천행은 이 API로 채운다.
+  iiac_arrivals_url: process.env.IIAC_ARRIVALS_URL || 'https://apis.data.go.kr/B551177/statusOfAllFltDeOdp/getFltArrivalsDeOdp',
+  // 이 API가 채우는 것은 인천행 하루 24편뿐이다(김해 23 + 제주 1). 운항정보와 같은 주기로 돌 이유가 없다.
+  // 2026 하계 시즌 기준 인천행 출발 07:00~16:30, 인천 도착은 대략 08:00~17:40이다.
+  // 앞뒤로 여유를 둬 06~19시만, 10분 간격으로 부른다 = 하루 84회로 일 500회 한도의 17%.
+  // 김해-인천은 한 시간짜리라 10분 간격이면 지연도 충분히 따라잡는다.
+  iiac_arrival_window: { from_hour: 6, to_hour: 19, every_minutes: 10 },
+  // 한국공항공사 실시간 항공기 운항정보 조회. https는 지원하지 않으므로 http로 고정한다.
+  kac_flight_url: process.env.KAC_FLIGHT_URL || 'http://openapi.airport.co.kr/service/rest/FlightStatusList/getFlightStatusList',
   endpoints: {
     metar: '/AmmIwxxmService/getMetar',
     taf: '/AmmIwxxmService/getTaf',
@@ -101,6 +111,7 @@ export const api = {
   radar_satellite_auth_key: radarSatelliteAuthKey,
   kim_nwp_auth_key: kimNwpAuthKey,
   airkorea_key: process.env.AIRKOREA_API_KEY || '',
+  kac_flight_key: process.env.KAC_FLIGHT_API_KEY || '',
   kma_uv_key: process.env.KMA_UV_API_KEY || aviationAuthKey,
   default_params: { pageNo: 1, numOfRows: 10, dataType: 'XML' },
   timeout_ms: 10000,
@@ -357,10 +368,107 @@ export const schedule = {
   // 동네예보 발표 8회(02,05,08,11,14,17,20,23 KST) + 30분 여유. 중기예보(06/18 발표)는 08:30·20:30 슬롯이 받는다.
   ground_forecast_interval: '30 2,5,8,11,14,17,20,23 * * *',
   environment_interval: '10 * * * *',
+  // 운항시간대에만 수집한다. 인천을 뺀 국내공항은 24시간 운항하지 않는다.
+  //
+  // 2026 하계 시즌(4/22~10/24) 스케줄 전수로 확인한 대상 공항의 운항 시간대:
+  //   김포 06:00~22:35 · 제주 06:05~22:40 · 김해 06:05~22:30
+  //   울산 08:20~20:35 · 여수 08:05~18:20 · 양양 09:20~15:15 · 무안 운항 없음
+  // 새벽 0~4시 스케줄은 거의 전부 인천(00:05~23:55)이고 대상 공항에는 없다.
+  //
+  // 04시부터 도는 것은 여유분이다. 확인한 것은 하계 시즌뿐이라 동계에 첫 편이 당겨질 수 있고,
+  // 대구(05:25)·청주(06:05)를 나중에 대상에 넣어도 그대로 덮인다.
+  //
+  // 1분 주기 x 20시간 = 하루 1,200회로 한국공항공사 5,000회 한도의 24%다.
+  // 인천공항공사 호출은 여기 묶이지 않는다. iiac_arrival_window가 10분마다만 열어서
+  // 이 주기를 아무리 당겨도 인천은 하루 84회에 머문다.
+  terminal_flight_interval: '*/1 4-23 * * *',
+  // 해외 예보는 시간별 값이라 매시면 충분하다. 공항 54곳 = 시간당 54회 x 20시간.
+  overseas_forecast_interval: '25 4-23 * * *',
   airport_info_interval: '0,30 6,17 * * *',
   takeoff_fcst_interval: '8 * * * *', // 매시(KST) — 이륙예보는 정시 발표
   flight_category_interval: '*/20 * * * *',
   asos_ceiling_interval: '15 * * * *', // 매시 15분(KST) — 직전 정시 자료 요청
+}
+
+// MET Norway locationforecast. 상업·공공 게시가 허용되는(CC BY 4.0) 무료 전세계 예보.
+// TOS상 식별 가능한 User-Agent가 없으면 403이 떨어진다. 연락처는 반드시 유지할 것.
+// 국제선 노선별 비행시간(분). 이 API는 해외 도착 시각을 주지 않으므로, 도착 시간대를 이 표로 추정한다.
+//
+// 추정한 시각은 화면에 도착 시각으로 표시하지 않는다. 도착 무렵 예보 칸을 고르는 데만 쓴다.
+// 몇 분 오차는 어느 칸을 고르는지에 대체로 영향이 없지만, 시각으로 적으면 틀린 정보가 된다.
+//
+// 값의 출처는 항공사가 공시하는 운항 시각표여야 한다. 확인한 노선만 넣고, 없는 노선은
+// 비워 둔다. 비어 있으면 그 편은 예보 없이 나가고, 지어낸 값이 화면에 오르지 않는다.
+// 키는 `<출발ICAO>-<도착IATA>`.
+//
+// 아래 값은 실측이 아니라 **대권거리 기반 추정치**다. 공식은 다음과 같다.
+//
+//     분 = 20.8 + 거리(km) x 0.0758      (지상 약 21분 + 순항 791km/h)
+//
+// 계수는 2026-08-03 OpenSky 관측에서 얻은 6개 노선의 소요시간 중앙값에 최소자승으로 맞췄다.
+// 그 6개 노선(225~1345km) 안에서는 최대 오차 10분, 대부분 5분 이내였다.
+// 그 범위를 벗어난 노선은 외삽이라 주석에 표시했고 오차가 더 클 수 있다.
+//
+// 이 값은 도착 무렵 예보 칸을 고르는 데만 쓰고, 화면에 도착 시각으로 적지 않는다.
+// 예보 칸이 한 시간 단위라 10분 안팎의 오차는 대개 같은 칸에 머문다.
+// 항공사 공시 시각표로 대체할 수 있으면 그쪽이 정확하다.
+export const terminal_route_durations = {
+  'RKPC-FUK': 49,   // 367km
+  'RKPC-HGH': 72,   // 678km
+  'RKPC-HKG': 154,  // 1752km, 적합범위 밖(외삽)
+  'RKPC-KHH': 124,  // 1356km, 적합범위 밖(외삽)
+  'RKPC-KIX': 82,   // 813km
+  'RKPC-MFM': 156,  // 1787km, 적합범위 밖(외삽)
+  'RKPC-NKG': 77,   // 741km
+  'RKPC-NRT': 119,  // 1295km
+  'RKPC-PEK': 107,  // 1143km
+  'RKPC-PKX': 106,  // 1119km
+  'RKPC-PVG': 60,   // 513km
+  'RKPC-SHE': 92,   // 942km
+  'RKPC-SIN': 345,  // 4276km, 적합범위 밖(외삽)
+  'RKPC-SZX': 152,  // 1732km, 적합범위 밖(외삽)
+  'RKPC-TPE': 102,  // 1067km
+  'RKPK-BKK': 301,  // 3698km, 적합범위 밖(외삽)
+  'RKPK-CEB': 234,  // 2811km, 적합범위 밖(외삽)
+  'RKPK-CTS': 126,  // 1386km, 적합범위 밖(외삽)
+  'RKPK-CXR': 267,  // 3254km, 적합범위 밖(외삽)
+  'RKPK-DAD': 245,  // 2962km, 적합범위 밖(외삽)
+  'RKPK-DPS': 407,  // 5094km, 적합범위 밖(외삽)
+  'RKPK-FUK': 38,   // 225km
+  'RKPK-HAN': 228,  // 2736km, 적합범위 밖(외삽)
+  'RKPK-HGH': 94,   // 967km
+  'RKPK-HKG': 176,  // 2043km, 적합범위 밖(외삽)
+  'RKPK-ICN': 46,   // 338km
+  'RKPK-KHH': 144,  // 1630km, 적합범위 밖(외삽)
+  'RKPK-KIX': 65,   // 582km
+  'RKPK-KMJ': 45,   // 315km
+  'RKPK-MNL': 205,  // 2431km, 적합범위 밖(외삽)
+  'RKPK-MYJ': 49,   // 376km
+  'RKPK-NGO': 75,   // 717km
+  'RKPK-NKG': 97,   // 1009km
+  'RKPK-NRT': 100,  // 1038km
+  'RKPK-OKA': 97,   // 1007km
+  'RKPK-PEK': 113,  // 1214km
+  'RKPK-PQC': 306,  // 3756km, 적합범위 밖(외삽)
+  'RKPK-PVG': 82,   // 801km
+  'RKPK-RMQ': 131,  // 1454km, 적합범위 밖(외삽)
+  'RKPK-SGN': 288,  // 3523km, 적합범위 밖(외삽)
+  'RKPK-SHE': 86,   // 861km
+  'RKPK-SIN': 367,  // 4561km, 적합범위 밖(외삽)
+  'RKPK-TAO': 82,   // 809km
+  'RKPK-TPE': 123,  // 1345km
+  'RKPK-UBN': 195,  // 2294km, 적합범위 밖(외삽)
+  'RKSS-HND': 110,  // 1181km
+  'RKSS-KHH': 155,  // 1776km, 적합범위 밖(외삽)
+  'RKSS-KIX': 84,   // 836km
+  'RKSS-NGO': 93,   // 947km
+  'RKSS-PEK': 91,   // 926km
+  'RKSS-PKX': 91,   // 928km
+  'RKSS-SHA': 86,   // 866km
+}
+
+export const met_no = {
+  user_agent: process.env.MET_NO_USER_AGENT || 'ProjectAMO/1.0 junn1370@gmail.com',
 }
 
 export const storage = {
@@ -390,6 +498,8 @@ export default {
   notam,
   environment,
   ground_forecast,
+  met_no,
+  terminal_route_durations,
   flight_category,
   asos_ceiling,
   ktg,

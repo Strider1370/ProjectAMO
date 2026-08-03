@@ -26,8 +26,16 @@ function dateChip(date) {
   return `${d}일`;
 }
 
+// 수집기는 기상청 원본대로 1시간 간격 24개를 담는다. 이 띠는 24시간을 한눈에 보여주는
+// 용도라 3시간 간격 8칸으로 솎아 쓴다. 도착지 예보처럼 촘촘한 값이 필요한 화면은 원본을 쓴다.
+const DISPLAY_STEP_HOURS = 3;
+
+function everyThirdHour(slots) {
+  return slots.filter((slot) => Number(String(slot?.time).slice(0, 2)) % DISPLAY_STEP_HOURS === 0);
+}
+
 export default function GroundHourlyStrip({ groundForecastData, icao }) {
-  const slots = groundForecastData?.airports?.[icao]?.hourly || [];
+  const slots = everyThirdHour(groundForecastData?.airports?.[icao]?.hourly || []);
   if (slots.length === 0) return null;
 
   const n = slots.length;

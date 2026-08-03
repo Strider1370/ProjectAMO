@@ -7,6 +7,10 @@ export function buildWarningEntries({ airportWarnings, kmaWarnings, dashboardMod
   return [...airport, ...kma]
 }
 
-export function warningBannerLabel(entries, dashboardMode) {
-  return dashboardMode === 'ground' && entries.some((entry) => entry.source === 'kma') ? '기상경보·특보' : '공항경보'
+export function warningBannerLabel() {
+  return '공항경보'
+}
+
+export function formatKmaWarningName(warning) {
+  return `${warning?.phenomenon === 'COLD_WAVE' ? '한파' : '폭염'}${warning?.levelLabel || ''}`
 }
