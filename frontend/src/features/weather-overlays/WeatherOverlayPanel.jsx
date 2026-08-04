@@ -39,9 +39,10 @@ function WeatherOverlayPanel({
   isLayerDisabled,
   getLayerBadge,
   showWind = true,
-  radarMotionAvailable = false,
-  radarMotionRequested = false,
-  onRadarMotionRequestedChange,
+  radarWindAvailable = false,
+  radarWindRequested = false,
+  radarWindHeightM = 1524,
+  onRadarWindRequestedChange,
   terrainAltitudeFt = 3000,
 }) {
   const isMobile = useIsMobile()
@@ -95,11 +96,13 @@ function WeatherOverlayPanel({
               <button
                 type="button"
                 className="layer-tile-group-title-action"
-                onClick={() => onRadarMotionRequestedChange?.((prev) => !prev)}
-                aria-pressed={radarMotionRequested}
-                disabled={!radarMotionAvailable}
+                onClick={() => onRadarWindRequestedChange?.((prev) => !prev)}
+                aria-label={`레이더 바람장 (WISSDOM) · ${radarWindHeightM.toLocaleString()} m`}
+                aria-pressed={radarWindRequested}
+                disabled={!radarWindAvailable}
+                title={!radarWindAvailable ? '표시 시각의 WISSDOM 자료 없음' : undefined}
               >
-                레이더 에코 이동벡터 표시
+                레이더 바람장 (WISSDOM) · {radarWindHeightM.toLocaleString()} m
               </button>
             )}
           </div>

@@ -69,9 +69,9 @@ function WeatherLegends({
   echoTopLegendVisible = false,
   radarReferenceTimeMs,
   lightningReferenceTimeMs,
-  radarMotionAvailable = false,
-  radarMotionObservedAtMs,
-  radarMotionComparedFromMs,
+  radarWindLegendVisible = false,
+  radarWindLegendPath,
+  radarWindObservedAtMs,
   formatReferenceTimeLabel,
   bottomDock = false,
   open: controlledOpen,
@@ -104,12 +104,9 @@ function WeatherLegends({
               </div>
             ))}
           </div>
-          {radarLegendVisible && <div className="radar-motion-control">
-            <span className="radar-motion-note">
-              {radarMotionAvailable
-                ? `관측 ${formatReferenceTimeLabel(radarMotionObservedAtMs)} · 비교 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} · 길이 = 10분 이동거리 · 예측 아님`
-                : '표시 중인 레이더 프레임의 이동 자료 없음'}
-            </span>
+          {radarWindLegendVisible && <div className="radar-wind-control">
+            <span className="radar-wind-note">WISSDOM · KMA 관측 {formatReferenceTimeLabel(radarWindObservedAtMs)}</span>
+            {radarWindLegendPath && <img src={radarWindLegendPath} alt="WISSDOM KMA 범례" />}
           </div>}
         </div>
       )}
@@ -348,13 +345,12 @@ function WeatherLegends({
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
         ))}
-        {radarLegendVisible && (
-          <div className="radar-motion-control radar-motion-control--mobile">
-            <span className="radar-motion-note">
-              {radarMotionAvailable
-                ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9 \u00B7 \uAE38\uC774 = 10\uBD84 \uC774\uB3D9\uAC70\uB9AC`
-                : '\uC774\uB3D9 \uC790\uB8CC \uC5C6\uC74C'}
+        {radarWindLegendVisible && (
+          <div className="radar-wind-control radar-wind-control--mobile">
+            <span className="radar-wind-note">
+              WISSDOM · KMA 관측 {formatReferenceTimeLabel(radarWindObservedAtMs)}
             </span>
+            {radarWindLegendPath && <img src={radarWindLegendPath} alt="WISSDOM KMA 범례" />}
           </div>
         )}
         {flightCategoryLegendVisible && (

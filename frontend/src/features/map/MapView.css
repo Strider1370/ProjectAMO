@@ -896,19 +896,19 @@
   font-variant-numeric: tabular-nums;
 }
 
-.map-legends-bottom .radar-motion-control--mobile {
+.map-legends-bottom .radar-wind-control--mobile {
   min-width: 0;
 }
 
 .map-legends-bottom .flight-category-legend-controls { display: flex; gap: var(--space-xs); }
 
-.map-view-wrapper .radar-motion-control {
+.map-view-wrapper .radar-wind-control {
   display: grid;
   gap: 4px;
   margin-top: 4px;
 }
 
-.map-view-wrapper .radar-motion-note {
+.map-view-wrapper .radar-wind-note {
   color: var(--text-2);
   font-size: 0.58rem;
   line-height: 1.25;

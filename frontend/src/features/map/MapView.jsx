@@ -38,7 +38,7 @@ import AdsbTimestamp from '../weather-overlays/AdsbTimestamp.jsx'
 import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
 import TimelineRail from '../weather-overlays/TimelineRail.jsx'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
-import useRadarMotionOverlay from '../weather-overlays/lib/useRadarMotionOverlay.js'
+import useRadarWindOverlay, { WISSDOM_HEIGHTS_M } from '../weather-overlays/lib/useRadarWindOverlay.js'
 import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
 import { legendStamps } from '../weather-overlays/lib/flightCategoryLegend.js'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
@@ -335,6 +335,7 @@ const MapView = forwardRef(function MapView({
   airports = [],
   metarData = null,
   echoMeta = null,
+  wissdomMeta = null,
   qpfMeta = null,
   rainviewerMeta = null,
   satMeta = null,
@@ -398,6 +399,7 @@ const MapView = forwardRef(function MapView({
   const [timestampOpen, setTimestampOpen] = useState(true)
   const [weatherLegendOpen, setWeatherLegendOpen] = useState(false)
   const [weatherLegendPanelHeight, setWeatherLegendPanelHeight] = useState(0)
+  const [verticalRailSource, setVerticalRailSource] = useState('kim')
   const [terrainAltitudeFt, setTerrainAltitudeFt] = useState(3000)
   const [blinkLightning, setBlinkLightning] = useState(false)
   const [lightningBlinkOff, setLightningBlinkOff] = useState(false)
@@ -751,8 +753,18 @@ const MapView = forwardRef(function MapView({
   const adsbTrailGeoJSON = useMemo(() => createAdsbTrailGeoJSON(adsbData), [adsbData])
   const adsbCounts = useMemo(() => countAircraft(adsbGeoJSON.features), [adsbGeoJSON])
   const adsbVisibleIds = useMemo(() => visibleIds(adsbGeoJSON.features, trafficFilters), [adsbGeoJSON, trafficFilters])
+  const radarWindAvailableHeightsM = useMemo(
+    () => Object.keys(wissdomMeta?.framesByHeight || {}).map(Number).filter((heightM) => WISSDOM_HEIGHTS_M.includes(heightM)),
+    [wissdomMeta],
+  )
+  const radarWindOverlay = useRadarWindOverlay({
+    radarEnabled: metVisibility.radar,
+    availableHeightsM: radarWindAvailableHeightsM,
+    exactFrameAvailable: false,
+  })
   const weatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
     echoMeta,
+    wissdomMeta,
     qpfMeta,
     rainviewerMeta,
     satMeta,
@@ -765,6 +777,8 @@ const MapView = forwardRef(function MapView({
     airmetData,
     visibility: metVisibility,
     selectedWeatherTimeMs: weatherTimelineSelectedMs,
+    radarWindHeightM: radarWindOverlay.heightM,
+    radarWindRequested: radarWindOverlay.requestedVisible,
     sigwxHistoryIndex,
     sigwxFilter,
     hiddenAdvisoryKeys,
@@ -776,6 +790,7 @@ const MapView = forwardRef(function MapView({
     tz,
   }), [
     echoMeta,
+    wissdomMeta,
     qpfMeta,
     rainviewerMeta,
     satMeta,
@@ -788,6 +803,8 @@ const MapView = forwardRef(function MapView({
     airmetData,
     metVisibility,
     weatherTimelineSelectedMs,
+    radarWindOverlay.heightM,
+    radarWindOverlay.requestedVisible,
     sigwxHistoryIndex,
     sigwxFilter,
     hiddenAdvisoryKeys,
@@ -813,10 +830,7 @@ const MapView = forwardRef(function MapView({
   const typhoonOverlay = useTyphoonOverlay({
     mapRef, isStyleReady, styleRevision, visible: metVisibility.typhoon,
   })
-  const radarMotionOverlay = useRadarMotionOverlay({
-    radarEnabled: weatherOverlayModel.visibility.radar,
-    hasExactMotionFrame: Boolean(weatherOverlayModel.radarMotion.dataUrl),
-  })
+  const radarWindEffectiveVisible = Boolean(radarWindOverlay.requestedVisible && weatherOverlayModel.wissdomAvailable)
   const {
     radarFrames,
     satelliteFrames,
@@ -838,7 +852,6 @@ const MapView = forwardRef(function MapView({
     lightningLegendVisible,
     lightningLegendEntries,
     radarReferenceTimeMs,
-    radarMotion,
     sigwxIssueLabel,
     sigwxValidLabel,
     nwpIssueLabel,
@@ -1781,9 +1794,9 @@ const MapView = forwardRef(function MapView({
           echoTopLegendVisible={!!metVisibility.echoTop}
           radarReferenceTimeMs={radarReferenceTimeMs}
           lightningReferenceTimeMs={lightningReferenceTimeMs}
-          radarMotionAvailable={Boolean(radarMotion.dataUrl)}
-          radarMotionObservedAtMs={radarMotion.observedAtMs}
-          radarMotionComparedFromMs={radarMotion.comparedFromMs}
+          radarWindLegendVisible={radarWindEffectiveVisible}
+          radarWindLegendPath={weatherOverlayModel.wissdomFrame?.legendPath}
+          radarWindObservedAtMs={radarWindEffectiveVisible ? radarReferenceTimeMs : null}
             formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
             bottomDock={!isMobile}
             open={weatherLegendOpen}
@@ -1853,8 +1866,18 @@ const MapView = forwardRef(function MapView({
       )}
 
       <div className="vertical-level-rail-stack">
+        {enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing) && radarWindOverlay.requestedVisible && (
+          <select
+            aria-label="세로 고도 레일 자료원"
+            value={verticalRailSource}
+            onChange={(event) => setVerticalRailSource(event.target.value)}
+          >
+            <option value="kim">KIM · {nwpSelection?.level ?? ''}</option>
+            <option value="wissdom">WISSDOM · {radarWindOverlay.heightM.toLocaleString()} m</option>
+          </select>
+        )}
         <NwpSliderBar
-          isVisible={enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)}
+          isVisible={verticalRailSource === 'kim' && enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)}
           levels={sliderLevels}
           times={sliderTimes}
           selection={nwpSelection}
@@ -1863,6 +1886,14 @@ const MapView = forwardRef(function MapView({
           timeSliderEnabled={false}
           onSelectionChange={setNwpSelection}
         />
+        {verticalRailSource === 'wissdom' && radarWindOverlay.requestedVisible && (
+          <LevelSliderPanel
+            items={WISSDOM_HEIGHTS_M.map((heightM) => ({ id: heightM, primary: `${heightM.toLocaleString()} m` }))}
+            activeValue={radarWindOverlay.heightM}
+            onSelect={radarWindOverlay.setHeightM}
+            ariaLabel="WISSDOM 높이"
+          />
+        )}
         {enableWindOverlay && metVisibility.turbulence && altLevelsFt.length > 1 && (
           // 트랙 위쪽(index 0)이 위 화살표가 가는 방향 — 고도가 높은 쪽이 맨 위로 오게 내림차순.
           <LevelSliderPanel
@@ -2110,9 +2141,10 @@ const MapView = forwardRef(function MapView({
           onWindFlowOpacityChange={setWindFlowOpacity}
           onWindFlowTrailChange={setWindFlowTrail}
           onWindFlowWidthChange={setWindFlowWidth}
-          radarMotionAvailable={Boolean(radarMotion.dataUrl)}
-          radarMotionRequested={radarMotionOverlay.requestedVisible}
-          onRadarMotionRequestedChange={radarMotionOverlay.setRequestedVisible}
+          radarWindAvailable={Boolean(weatherOverlayModel.wissdomAvailable)}
+          radarWindRequested={radarWindOverlay.requestedVisible}
+          radarWindHeightM={radarWindOverlay.heightM}
+          onRadarWindRequestedChange={radarWindOverlay.setRequestedVisible}
           terrainAltitudeFt={terrainAltitudeFt}
         />
       )}
