@@ -503,7 +503,9 @@ body { min-height: 100vh; overflow: hidden; }
 /* 12%(머리띠) + 40%(현재날씨·항공편) 고정, 예보는 남는 높이를 전부 쓰고, 푸터는 1안(`.exact-board`)과
    같은 92px 고정 줄이다. 이전에는 셋째 줄이 48%로 고정돼 있고 푸터를 `position:absolute`로 그 위에
    덮어써서, 예보 줄 아래쪽(강수·시각 라벨, 주간 다섯째 줄)이 푸터에 가려 잘려 보였다. */
-.wf-screen { display: grid; grid-template-rows: 12% 40% 1fr 92px; }
+/* 승객이 볼 값만 남긴다 - 출처 표시 줄과 QR 바를 없앤다. 다만 그 높이를 예보가 통째로
+   먹으면 값이 화면 밑변에 붙는다. 아래 안전여백은 남긴다. */
+.wf-screen { display: grid; grid-template-rows: 12% 40% 1fr; padding-bottom: var(--terminal-safe-bottom); }
 
 /* 머리띠 */
 /* 왼쪽 칸(도시명)을 420px 고정 트랙으로 둔다 - `.wf-header-city`는 grid item이라 flex 규칙은
@@ -533,7 +535,10 @@ body { min-height: 100vh; overflow: hidden; }
 .wf-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
 .wf-header-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
 
-.tw-destination-pager { display: flex; align-items: center; justify-content: flex-end; gap: var(--terminal-space-5); min-width: 0; overflow: hidden; }
+/* 화면 한가운데에 고정한다. 격자 칸 안에서 가운데 정렬하면 도시 이름 길이에 따라 중심이
+   흔들린다. 절대 위치로 화면 중심에 걸어두면 도시가 몇 곳이든 자리가 그대로다.
+   최대 폭을 두어 도시가 아주 많아도 좌우 도시명·시계를 침범하지 않는다. */
+.tw-destination-pager { position: absolute; left: 50%; display: flex; max-width: 880px; align-items: center; justify-content: center; gap: var(--terminal-space-5); overflow: hidden; transform: translateX(-50%); }
 .tw-pager-item { color: #8a97a8; font-size: 20px; font-weight: 700; white-space: nowrap; }
 .tw-pager-item.is-current { color: var(--terminal-text-primary); font-size: 24px; }
 .tw-pager-dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: #c3cad4; }
@@ -658,7 +663,7 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
    2안과 같은 구조라 `tw-` 공용 클래스가 실제 스타일을 담당하고, 여기는 아래쪽만 새로 잡는다. */
 
 /* 2안과 같은 이유로 셋째 줄을 1fr + 92px 고정 푸터 줄로 바꾼다. */
-.ww-screen { display: grid; grid-template-rows: 12% 40% 1fr 92px; }
+.ww-screen { display: grid; grid-template-rows: 12% 40% 1fr; padding-bottom: var(--terminal-safe-bottom); }
 
 /* 머리띠 - 2안과 같은 구조. 왼쪽 칸(도시명)을 420px 고정 트랙으로 둬 오른쪽 순환 표시가 안 밀린다. */
 .ww-header {

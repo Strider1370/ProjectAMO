@@ -4,10 +4,8 @@ import {
   DepartureAirportSelect,
   DestinationPager,
   FlightList,
-  HeaderWeatherPanel,
   MotionModeSwitcher,
 
-  ScreenFooterNote,
   TerminalEmptyState,
   TerminalSettings,
   ViewSwitcher,
@@ -191,10 +189,6 @@ export default function WeeklyWeatherScreen({
       ) : (
         <TerminalEmptyState airportName={departureName} referenceClock={clock.time} />
       )}
-      <footer className="screen-footer ww-footer">
-        <ScreenFooterNote />
-        <HeaderWeatherPanel showWordmark />
-      </footer>
     </section>
   );
 }
