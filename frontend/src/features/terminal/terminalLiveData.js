@@ -201,10 +201,15 @@ function forecastFromHourly(hourly, arrivalKst, slots) {
   if (!/^\d{2}:\d{2}$/.test(String(arrivalKst || ''))) return null
 
   const arrivalHour = Number(String(arrivalKst).slice(0, 2))
-  const startIndex = hourly.findIndex((slot) => Number(String(slot?.time).slice(0, 2)) === arrivalHour)
+  // arrivalKst엔 날짜가 없어 시각만으로 맞춘다. hourly가 3일치(72칸)로 늘어나면서 같은 시각이
+  // 최대 3번 나올 수 있으므로, 매칭 전에 앞 24칸으로 잘라 "지금부터 24시간 안의 다음 그 시각"만
+  // 보게 한다. 1안 보드는 원래도 이 범위만 썼으므로 동작은 바뀌지 않는다(날짜 정보가 없어
+  // 그 이상은 애초에 정확히 맞출 수 없다).
+  const nextDay = hourly.slice(0, 24)
+  const startIndex = nextDay.findIndex((slot) => Number(String(slot?.time).slice(0, 2)) === arrivalHour)
   if (startIndex < 0) return null
 
-  const picked = hourly.slice(startIndex, startIndex + slots)
+  const picked = nextDay.slice(startIndex, startIndex + slots)
   if (picked.length === 0) return null
   return picked.map((slot) => [
     `${Number(String(slot.time).slice(0, 2))}시`,

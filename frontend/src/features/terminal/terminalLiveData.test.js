@@ -135,6 +135,33 @@ test('예보가 다섯 칸에 못 미치면 있는 만큼만 준다', () => {
   assert.deepEqual(forecast, [['18시', 'cloudy', '30℃'], ['19시', 'sun', '29℃']])
 })
 
+test('hourly가 3일치라도 24시간 밖의 같은 시각을 잘못 골라 붙이지 않는다', () => {
+  // hourly가 72칸(3일치)로 늘어나면서 같은 시각(예: 05시)이 날짜를 바꿔가며 여러 번 나올 수 있다.
+  // arrivalKst는 시각만 있고 날짜가 없으므로, 다음 24시간 안에 그 시각이 없으면 더 뒤쪽(다른 날)의
+  // 같은 시각을 집어서는 안 된다 — 예전처럼 null을 돌려줘야 화면이 기존 값을 유지한다.
+  // 이 함수는 date/time 문자열을 그대로 시각 숫자로만 쓰고 KST 변환은 하지 않으므로,
+  // 시작 시각의 UTC 시(hour) 숫자가 곧 '13시'로 취급된다.
+  const hourly = []
+  const start = new Date('2026-08-03T13:00:00Z') // '13시'부터 한 시간씩
+  const skipHour = 16 // 이 오프셋(다음날 05시)만 빼서 앞 24칸에 05시가 없게 만든다
+  for (let h = 0; h <= 24; h += 1) {
+    if (h === skipHour) continue
+    const at = new Date(start.getTime() + h * 3600 * 1000)
+    const pad = (v) => String(v).padStart(2, '0')
+    const date = `${at.getUTCFullYear()}${pad(at.getUTCMonth() + 1)}${pad(at.getUTCDate())}`
+    const time = `${pad(at.getUTCHours())}00`
+    hourly.push({ date, time, temp: 20, rainProb: 0, icon: 'sunny' })
+  }
+  // 앞 24칸(index 0-23) 밖에 같은 05시가 다시 나온다. 값을 다르게 줘서 잘못 골랐는지 바로 드러나게 한다.
+  hourly.push({ date: '20260805', time: '0500', temp: 99, rainProb: 0, icon: 'snow' })
+
+  assert.equal(hourly.length, 25) // 24개(스킵분 제외) + 뒤쪽(index 24) 05시 1개
+  assert.ok(!hourly.slice(0, 24).some((slot) => slot.time === '0500'), '앞 24칸엔 05시가 없어야 진짜 테스트가 된다')
+
+  const forecast = { airports: { RKPC: { hourly } } }
+  assert.equal(destinationForecastFromGround(forecast, 'RKPC', '05:10'), null)
+})
+
 test('관측이 없어도 도착 예보는 붙는다', () => {
   // 예보와 현재 관측은 출처가 다르다. METAR가 없다고 예보까지 버리면 안 된다.
   const flight = { airport: '제주국제공항', arrivalKst: '15:10', forecast: [['14시', 'sun', '30℃']] }
