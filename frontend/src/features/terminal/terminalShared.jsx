@@ -116,6 +116,7 @@ export function ViewSwitcher({ view, onSelectView }) {
   return (
     <nav className="view-switcher" aria-label="화면 비교">
       <button type="button" className={view === "board" ? "is-active" : ""} aria-pressed={view === "board"} onClick={() => onSelectView("board")}>1안</button>
+      <button type="button" className={view === "weather" ? "is-active" : ""} aria-pressed={view === "weather"} onClick={() => onSelectView("weather")}>2안</button>
       <button type="button" className={view === "rail" ? "is-active" : ""} aria-pressed={view === "rail"} onClick={() => onSelectView("rail")}>3안</button>
     </nav>
   );

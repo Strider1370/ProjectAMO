@@ -2,18 +2,21 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { MdChevronRight } from "react-icons/md";
 import clearNight from "../../assets/weather-icons/basmilius/clear-night.svg";
 import fewCloudsNight from "../../assets/weather-icons/basmilius/few-clouds-night.svg";
-import { kstClockFromIso, loadTerminalLiveWeatherData, mergeTerminalLiveWeather } from './terminalLiveData.js';
+import { airportTemperature, destinationHourly, resolveTerminalAirport, kstClockFromIso, loadTerminalLiveWeatherData, mergeTerminalLiveWeather } from './terminalLiveData.js';
 import { departureAirportFromPathname, selectTerminalDepartureAirport } from './terminalAirportSelection.js';
 import { terminalCanvasScale } from './terminalCanvasScale.js';
 import {
   TERMINAL_SIMULATION_REFERENCE,
+  buildDestinationFrames,
   buildTerminalSimulation,
   classifyTerminalSlotTransition,
+  destinationFrameAt,
   hasTerminalNextFrame,
   nextDisplayedSimulation,
   terminalFlightsFromFeed,
   terminalFrameAt,
 } from './terminalFlightSimulation.js';
+import WeatherFirstScreen from './WeatherFirstScreen.jsx';
 import {
   AgencyMascot,
   AirlineLogo,
@@ -471,14 +474,28 @@ function RailScreen({
   );
 }
 
+// 1안은 9초, 2안·3안은 30초. 2안·3안은 3일치 예보 띠를 훑는 데 시간이 걸린다.
+const FRAME_INTERVAL_MS = { board: 9000, weather: 30000, rail: 30000 };
+
 export function App() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
-  const [view, setView] = useState(params.get("view") === "rail" ? "rail" : "board");
+  const [view, setView] = useState(() => {
+    const requested = params.get("view");
+    return ["board", "weather", "rail"].includes(requested) ? requested : "board";
+  });
   const [transitioning, setTransitioning] = useState(false);
   const [frameCursor, setFrameCursor] = useState(0);
+  // 2안은 도시 단위 프레임 배열(destinationFrames)을 쓴다 - 1안·3안의 frameCursor를 그대로
+  // 나눠 쓰면 배열 길이가 달라 모듈로 연산 결과가 서로 무관한 인덱스를 가리키게 되고, 화면을
+  // 넘나들 때마다 엉뚱한 도시로 튄다. 그래서 2안만 자기 커서를 따로 둔다.
+  const [weatherFrameCursor, setWeatherFrameCursor] = useState(0);
   const [motionMode, setMotionMode] = useState(() => {
     const requestedMode = params.get("motion");
     return ["split", "roll", "wipe", "fade"].includes(requestedMode) ? requestedMode : "split";
+  });
+  const [weatherMotionMode, setWeatherMotionMode] = useState(() => {
+    const requested = params.get("weatherMotion");
+    return ["cascade", "flap", "roll", "wipe", "fade"].includes(requested) ? requested : "cascade";
   });
   const [railMotionMode, setRailMotionMode] = useState(() => {
     const requestedMode = params.get("railMotion");
@@ -521,6 +538,52 @@ export function App() {
     ? pendingFrame.flights.map((flight) => mergeTerminalLiveWeather(flight, liveWeatherData))
     : pendingFrame.flights, [pendingFrame, liveWeatherData]);
 
+  // 2안·3안은 도시 하나가 한 프레임이다. 1안의 세 칸짜리 프레임(simulation.frames)과는 다른 배열이다.
+  const destinationFrames = useMemo(() => buildDestinationFrames(simulation.destinations), [simulation]);
+  const hasDestinationNextFrame = destinationFrames.length > 1;
+  const activeDestinationFrame = useMemo(
+    () => destinationFrameAt(destinationFrames, weatherFrameCursor),
+    [destinationFrames, weatherFrameCursor],
+  );
+  // 도시 순서(destinationFrames)는 한 바퀴가 끝날 때까지 바뀌지 않지만(nextDisplayedSimulation),
+  // 편 하나의 지연·탑승구는 즉시 반영해야 한다. 1안이 activeFlights에 하는 것과 같은 처리를 여기도 한다.
+  const destinationFlights = useMemo(() => {
+    const flights = activeDestinationFrame.frame?.flights || [];
+    return liveWeatherData ? flights.map((flight) => mergeTerminalLiveWeather(flight, liveWeatherData)) : flights;
+  }, [activeDestinationFrame, liveWeatherData]);
+  // DestinationPager가 쓰는 도시 목록. destinationFrames 자체(도시별로 최대 두 프레임까지 쪼개짐)에서
+  // 도시당 첫 프레임만 남겨 destinationIndex와 순서를 그대로 맞춘다.
+  const weatherDestinations = useMemo(() => {
+    const seen = new Set();
+    return destinationFrames
+      .filter((frame) => {
+        if (seen.has(frame.destinationIndex)) return false;
+        seen.add(frame.destinationIndex);
+        return true;
+      })
+      .map((frame) => ({ code: frame.code, city: frame.flights[0]?.city }));
+  }, [destinationFrames]);
+  // 예보 칸을 고르는 기준 시각. 화면 상단 시계(now)와 같은 값을 쓴다.
+  const nowKst = useMemo(() => ({
+    date: `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`,
+    hour: now.getHours(),
+  }), [now]);
+  const departureTemp = useMemo(
+    () => (liveWeatherData ? airportTemperature(liveWeatherData, selectedDepartureIcao) : null),
+    [liveWeatherData, selectedDepartureIcao],
+  );
+  // liveWeather.airportIcao(mergeTerminalLiveWeather 결과)는 METAR 관측이 있을 때만 붙는다.
+  // 예보 조회는 관측 유무와 무관해야 하므로, 1안·mergeTerminalLiveWeather가 내부에서 쓰는 것과
+  // 같은 resolveTerminalAirport를 직접 불러 목적지 ICAO를 구한다.
+  const destinationIcao = useMemo(() => {
+    const airport = resolveTerminalAirport(destinationFlights[0], liveWeatherData?.airportCatalog);
+    return airport?.icao || airport?.id;
+  }, [destinationFlights, liveWeatherData]);
+  const destinationHourlyForecast = useMemo(
+    () => (liveWeatherData && destinationIcao ? destinationHourly(liveWeatherData, destinationIcao) : []),
+    [liveWeatherData, destinationIcao],
+  );
+
   useEffect(() => {
     let mounted = true;
     const refresh = () => loadTerminalLiveWeatherData().then((data) => {
@@ -560,24 +623,32 @@ export function App() {
   }, []);
 
   const replay = useCallback(() => {
-    if (transitioning || !hasNextFrame) return;
+    const hasNext = view === "weather" ? hasDestinationNextFrame : hasNextFrame;
+    if (transitioning || !hasNext) return;
     setTransitioning(true);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
-      setFrameCursor((current) => current + 1);
+      if (view === "weather") {
+        setWeatherFrameCursor((current) => current + 1);
+      } else {
+        setFrameCursor((current) => current + 1);
+      }
       setTransitioning(false);
     }, view === "board" ? 1800 : 1250);
-  }, [hasNextFrame, transitioning, view]);
+  }, [hasDestinationNextFrame, hasNextFrame, transitioning, view]);
 
   useEffect(() => {
     if (params.get("autoplay") === "0") return undefined;
-    const interval = window.setInterval(replay, 9000);
+    // 1안은 9초, 2안·3안은 30초. 도시 순서는 한 바퀴 유지되지만(nextDisplayedSimulation) 편 상태는
+    // 즉시 갱신되므로(destinationFlights), 간격이 길어도 지연·탑승구 변경이 늦게 뜨지 않는다.
+    const interval = window.setInterval(replay, FRAME_INTERVAL_MS[view] ?? 9000);
     return () => window.clearInterval(interval);
-  }, [params, replay]);
+  }, [params, replay, view]);
 
   useEffect(() => {
     const onKey = (event) => {
       if (event.key === "1") setView("board");
+      if (event.key === "2") setView("weather");
       if (event.key === "3") setView("rail");
       if (event.key.toLowerCase() === "r") replay();
     };
@@ -590,6 +661,12 @@ export function App() {
   const selectMotionMode = useCallback((mode) => {
     if (transitioning) return;
     setMotionMode(mode);
+    window.requestAnimationFrame(() => replay());
+  }, [replay, transitioning]);
+
+  const selectWeatherMotionMode = useCallback((mode) => {
+    if (transitioning) return;
+    setWeatherMotionMode(mode);
     window.requestAnimationFrame(() => replay());
   }, [replay, transitioning]);
 
@@ -611,6 +688,7 @@ export function App() {
     window.clearTimeout(timer.current);
     setTransitioning(false);
     setFrameCursor(0);
+    setWeatherFrameCursor(0);
     setDepartureAirportIcao(icao);
     const nextUrl = new URL(window.location.href);
     nextUrl.pathname = `/terminal/${icao.toLowerCase()}`;
@@ -637,6 +715,26 @@ export function App() {
           departureAirports={departureAirportState.options}
           departureAirportIcao={selectedDepartureIcao}
           departureAirportName={departureAirportState.selected?.nameKo || '김포공항'}
+          onSelectDepartureAirport={selectDepartureAirport}
+        />
+      ) : view === "weather" ? (
+        <WeatherFirstScreen
+          frame={activeDestinationFrame.frame ? { ...activeDestinationFrame.frame, flights: destinationFlights } : null}
+          destinations={weatherDestinations}
+          destinationIndex={activeDestinationFrame.frame?.destinationIndex ?? 0}
+          departureName={departureAirportState.selected?.nameKo || '김포공항'}
+          departureTemp={departureTemp}
+          hourly={destinationHourlyForecast}
+          nowKst={nowKst}
+          transitioning={transitioning}
+          motionMode={weatherMotionMode}
+          onSelectMotion={selectWeatherMotionMode}
+          onSelectView={selectView}
+          onReplay={replay}
+          hasNext={hasDestinationNextFrame}
+          clock={koreanClock}
+          departureAirports={departureAirportState.options}
+          departureAirportIcao={selectedDepartureIcao}
           onSelectDepartureAirport={selectDepartureAirport}
         />
       ) : (
