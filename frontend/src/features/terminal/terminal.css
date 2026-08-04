@@ -747,8 +747,11 @@ body { min-height: 100vh; overflow: hidden; }
    IATA 코드(span)는 항상 짧고 식별에 필요해 줄이지 않고, 도시명(strong) 쪽만 말줄임한다.
    flex item은 기본 min-width가 content 크기라 줄어들지 않으므로 min-width: 0을 같이 준다. */
 .wf-header-city { display: flex; align-items: baseline; gap: 14px; min-width: 0; overflow: hidden; }
-.wf-header-city strong { min-width: 0; overflow: hidden; font-size: var(--terminal-type-destination); font-weight: 800; letter-spacing: -.045em; white-space: nowrap; text-overflow: ellipsis; }
-.wf-header-city span { flex: 0 0 auto; color: var(--terminal-text-secondary); font-size: var(--terminal-type-airport-code); font-weight: 700; }
+/* line-height를 안 정하면 전역 기본값(20px)을 그대로 물려받는다. 글자 자체는 59px라 그
+   20px짜리 줄 상자 밖으로 위아래가 삐져나와 다음 줄과 겹쳐 보인다(제주 → 세주처럼 뭉개짐).
+   1안(`.board-destination h2`, 같은 59px)도 이 값이라 여기도 맞춘다. */
+.wf-header-city strong { min-width: 0; overflow: hidden; font-size: var(--terminal-type-destination); font-weight: 800; line-height: 1.16; letter-spacing: -.045em; white-space: nowrap; text-overflow: ellipsis; }
+.wf-header-city span { flex: 0 0 auto; color: var(--terminal-text-secondary); font-size: var(--terminal-type-airport-code); font-weight: 700; line-height: 1.16; }
 .wf-header-clock { position: absolute; top: auto; right: var(--terminal-safe-side); bottom: var(--terminal-header-bottom-gap); left: auto; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
 .wf-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
 .wf-header-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
