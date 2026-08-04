@@ -552,7 +552,8 @@ body { min-height: 100vh; overflow: hidden; }
 /* 가운데 정렬하면 58% 폭 안에서 덩어리가 붕 뜨고 좌우가 다 빈다. 아래 예보 띠와 같은
    세로선(--terminal-safe-side)에서 시작해야 두 영역이 한 화면으로 읽힌다. */
 .tw-current-weather-main { display: flex; align-items: center; justify-content: flex-start; gap: var(--terminal-space-6); }
-.tw-current-weather-icon { width: 96px; height: 96px; color: #23334b; }
+.tw-current-weather-icon { display: grid; width: 128px; height: 128px; flex: 0 0 128px; place-items: center; }
+.tw-current-weather-icon img { width: 128px; height: 128px; object-fit: contain; }
 .tw-current-weather-title { margin: 0; color: var(--terminal-text-secondary); font-size: var(--terminal-type-label); font-weight: 700; }
 .tw-current-weather-temp { display: block; margin-top: 4px; font-size: 96px; font-weight: 800; line-height: 1; letter-spacing: -.04em; }
 .tw-current-weather-temp small { margin-left: 4px; font-size: 32px; font-weight: 700; }
@@ -621,7 +622,10 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
   padding-left: calc(var(--terminal-space-6) / 2);
 }
 .wf-forecast-title { text-align: left; color: #23334b; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
-.wf-forecast-icon { width: 78px; height: 78px; margin: 0 auto; color: #23334b; }
+/* 1안이 쓰는 날씨 그림(BoardWeatherImage)을 그대로 쓴다. 칸은 열 폭만큼 늘려야 구간 구분선이
+   그림 옆이 아니라 열 사이에 그려지고, 그림만 그 안에서 가운데로 온다. */
+.wf-forecast-icon { display: grid; height: 82px; place-items: center; }
+.wf-forecast-icon img { width: 82px; height: 82px; object-fit: contain; }
 .wf-forecast-line-row { position: relative; }
 .wf-forecast-line-row i { align-self: stretch; }
 /* 꺾은선은 라벨 칸을 비켜 데이터 열 위에만 그린다.
@@ -703,7 +707,8 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .ww-hourly-row { display: grid; align-items: center; column-gap: var(--terminal-space-4); text-align: center; }
 .ww-hourly-row-label, .ww-strip-title { justify-self: start; margin: 0; color: var(--terminal-text-secondary); font-size: 19px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
 .ww-strip-title { color: #23334b; font-size: 23px; }
-.ww-hourly-icon { width: 70px; height: 70px; margin: 0 auto; color: #23334b; }
+.ww-hourly-icon { display: grid; height: 74px; place-items: center; }
+.ww-hourly-icon img { width: 74px; height: 74px; object-fit: contain; }
 .ww-hourly-line-row { position: relative; }
 /* svg는 대체 요소라 left/right만으로는 폭이 안 잡힌다. 라벨 칸을 뺀 폭을 직접 계산해 준다. */
 .ww-hourly-line { position: absolute; top: 0; bottom: 0; left: var(--ww-strip-gutter); width: calc(100% - var(--ww-strip-gutter)); height: 100%; overflow: visible; }
@@ -728,7 +733,8 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .ww-weekly-date strong { font-size: 30px; font-weight: 800; }
 .ww-weekly-date span { color: var(--terminal-text-secondary); font-size: 16px; font-weight: 600; }
 .ww-weekly-am, .ww-weekly-pm { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.ww-weekly-icon { width: 56px; height: 56px; }
+.ww-weekly-icon { display: grid; width: 60px; height: 60px; flex: 0 0 60px; place-items: center; }
+.ww-weekly-icon img { width: 60px; height: 60px; object-fit: contain; }
 /* 1안의 시각 숫자 크기(`--terminal-type-primary-time`)를 그대로 쓴다. */
 .ww-weekly-am strong, .ww-weekly-pm strong { font-size: var(--terminal-type-primary-time); font-weight: 800; }
 /* 최저는 파랑, 최고는 빨강. */

@@ -11,7 +11,7 @@ import {
   TerminalEmptyState,
   TerminalSettings,
   ViewSwitcher,
-  WeatherIcon,
+  BoardWeatherImage,
 } from './terminalShared.jsx';
 import { dayCycleStrip, isPrecipHighlighted } from './terminalForecastStrip.js';
 import { weeklyRows } from './terminalWeeklyForecast.js';
@@ -50,7 +50,11 @@ function HourlyStrip({ cells }) {
     <div className="ww-hourly-strip">
       <div className="ww-hourly-row ww-hourly-icon-row" style={{ gridTemplateColumns: columns }}>
         <i aria-hidden="true" />
-        {slots.map((cell, index) => <WeatherIcon type={cell?.icon} className="ww-hourly-icon" key={index} />)}
+        {slots.map((cell, index) => (
+          <span className="ww-hourly-icon" key={index}>
+            {cell && <BoardWeatherImage type={cell.icon} small />}
+          </span>
+        ))}
       </div>
       <div className="ww-hourly-row ww-hourly-line-row" style={{ gridTemplateColumns: columns }}>
         <svg className="ww-hourly-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -103,11 +107,11 @@ function WeeklyPanel({ rows }) {
                   <span>{row.monthDay}</span>
                 </div>
                 <div className="ww-weekly-am">
-                  <WeatherIcon type={row.amIcon} className="ww-weekly-icon" />
+                  <span className="ww-weekly-icon"><BoardWeatherImage type={row.amIcon} small /></span>
                   <strong className="ww-temp-min">{row.tempMin == null ? '' : `${row.tempMin}°`}</strong>
                 </div>
                 <div className="ww-weekly-pm">
-                  <WeatherIcon type={row.pmIcon} className="ww-weekly-icon" />
+                  <span className="ww-weekly-icon"><BoardWeatherImage type={row.pmIcon} small /></span>
                   <strong className="ww-temp-max">{row.tempMax == null ? '' : `${row.tempMax}°`}</strong>
                 </div>
               </>

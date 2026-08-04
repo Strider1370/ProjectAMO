@@ -10,7 +10,7 @@ import {
   TerminalEmptyState,
   TerminalSettings,
   ViewSwitcher,
-  WeatherIcon,
+  BoardWeatherImage,
 } from './terminalShared.jsx';
 import { threeDayStrip, isPrecipHighlighted, formatMonthDay } from './terminalForecastStrip.js';
 
@@ -85,7 +85,11 @@ function ForecastStrip({ cells }) {
       </div>
       <div className="wf-forecast-row wf-forecast-icon-row" style={{ gridTemplateColumns: columns }}>
         <i aria-hidden="true" />
-        {cells.map((cell, index) => <WeatherIcon type={cell.icon} className={`wf-forecast-icon ${cellClass(index)}`} key={index} />)}
+        {cells.map((cell, index) => (
+          <span className={`wf-forecast-icon ${cellClass(index)}`} key={index}>
+            <BoardWeatherImage type={cell.icon} small />
+          </span>
+        ))}
       </div>
       <div className="wf-forecast-row wf-forecast-line-row" style={{ gridTemplateColumns: columns }}>
         <i aria-hidden="true" />

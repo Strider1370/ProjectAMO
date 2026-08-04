@@ -342,7 +342,7 @@ export function CurrentWeatherBlock({ flight, departureName, departureTemp }) {
   return (
     <div className="tw-current-weather">
       <div className="tw-current-weather-main">
-        <WeatherIcon type={flight.current.icon} className="tw-current-weather-icon" />
+        <span className="tw-current-weather-icon"><BoardWeatherImage type={flight.current.icon} /></span>
         <div className="tw-current-weather-body">
           <p className="tw-current-weather-title">지금 {flight.city}</p>
           <strong className="tw-current-weather-temp">
