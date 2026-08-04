@@ -55,8 +55,11 @@ export function addOrUpdateImageOverlay(map, { sourceId, layerId, frame, opacity
   if (!layer) {
     map.addLayer(rasterLayer(layerId, currentSourceId, opacity))
   } else if (previous?.sourceId !== currentSourceId) {
+    const styleLayers = map.getStyle?.()?.layers || []
+    const layerIndex = styleLayers.findIndex(({ id }) => id === layerId)
+    const beforeId = layerIndex >= 0 ? styleLayers[layerIndex + 1]?.id : undefined
     map.removeLayer(layerId)
-    map.addLayer(rasterLayer(layerId, currentSourceId, opacity))
+    map.addLayer(rasterLayer(layerId, currentSourceId, opacity), beforeId)
     if (previous?.sourceId && map.getSource(previous.sourceId)) {
       map.removeSource(previous.sourceId)
     }

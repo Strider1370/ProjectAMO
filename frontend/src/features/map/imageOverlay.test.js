@@ -26,9 +26,14 @@ function createMap() {
     getLayer(id) {
       return layers.get(id) ?? null
     },
-    addLayer(layer) {
+    getStyle() {
+      return { layers: layerOrder.map((id) => layers.get(id)) }
+    },
+    addLayer(layer, beforeId) {
       layers.set(layer.id, layer)
-      layerOrder.push(layer.id)
+      const beforeIndex = layerOrder.indexOf(beforeId)
+      if (beforeIndex === -1) layerOrder.push(layer.id)
+      else layerOrder.splice(beforeIndex, 0, layer.id)
     },
     removeLayer(id) {
       removeLayerCalls.push(id)
@@ -63,7 +68,7 @@ test('addOrUpdateImageOverlay installs unchanged frame URL only once', () => {
   assert.equal(map.removeLayerCalls.length, 0)
 })
 
-test('addOrUpdateImageOverlay removes replaced hashed image sources when looping A to B to A', () => {
+test('addOrUpdateImageOverlay preserves its same-slot sibling order when looping A to B to A', () => {
   const map = createMap()
 
   addOrUpdateImageOverlay(map, {
@@ -72,12 +77,14 @@ test('addOrUpdateImageOverlay removes replaced hashed image sources when looping
     frame: { path: '/data/radar/echo_korea_202605201200.png', bounds: [[30, 120], [40, 130]] },
     opacity: 0.88,
   })
+  map.addLayer({ id: 'same-slot-sibling', slot: 'middle' })
   addOrUpdateImageOverlay(map, {
     sourceId: 'radar',
     layerId: 'radar-layer',
     frame: { path: '/data/radar/echo_korea_202605201210.png', bounds: [[30, 120], [40, 130]] },
     opacity: 0.88,
   })
+  assert.deepEqual(map.layerOrder, ['radar-layer', 'same-slot-sibling'])
   addOrUpdateImageOverlay(map, {
     sourceId: 'radar',
     layerId: 'radar-layer',
@@ -89,6 +96,6 @@ test('addOrUpdateImageOverlay removes replaced hashed image sources when looping
   assert.equal(map.removeLayerCalls.length, 2)
   assert.equal(map.removeSourceCalls.length, 2)
   assert.notEqual(map.removeSourceCalls[0], map.removeSourceCalls[1])
-  assert.deepEqual(map.layerOrder, ['radar-layer'])
+  assert.deepEqual(map.layerOrder, ['radar-layer', 'same-slot-sibling'])
   assert.equal(map.getLayer('radar-layer').source, map.addSourceCalls.at(-1).id)
 })

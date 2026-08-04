@@ -10,6 +10,7 @@ DONE
 - Forwarded their Task 4 model frames through the existing MapView composition payload without adding MapView layer ownership or ordering logic.
 - Removed radar-motion map adapter ownership and its tests.
 - Removed superseded hashed image sources only after the raster layer has rebound to the new source.
+- Preserved the owned raster layer's next-sibling placement when rebinding a changed image source.
 
 ## Verification
 
@@ -18,6 +19,14 @@ node --test frontend/src/features/weather-overlays/lib/wissdomLayers.test.js fro
 ```
 
 Result: 18 passed, 0 failed.
+
+## Fix round 1 verification
+
+```bash
+node --test frontend/src/features/map/imageOverlay.test.js
+```
+
+Result: 2 passed, 0 failed. The A→B→A replacement retains its same-slot sibling ordering after both transitions.
 
 ## Residual risk
 
