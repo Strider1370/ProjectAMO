@@ -10,12 +10,11 @@ import {
   clampMs,
   dragToTimeDelta,
   normalizeNwpTimes,
+  pickAdjacentTimelineTick,
   tapePercent,
 } from './lib/timelineRailModel.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
-
-const KEY_STEP_MS = 10 * 60 * 1000
 
 function majorLabel(ms, tz) {
   // formatKstMinute -> "MM/DD HH:MM KST". Show the date at midnight (date crossing), else just the clock.
@@ -57,6 +56,7 @@ function TimelineRail({
   }, [referenceNowMs])
 
   const futureMs = normalizeNwpTimes(nwpTimes).map((time) => time.ms)
+  const keyboardTicks = [...new Set([...pastTicksMs, ...futureMs])].sort((a, b) => a - b)
   const domain = buildTimelineDomain({ pastTicksMs, nwpTimesMs: futureMs, nowMs })
   const selected = Number.isFinite(selectedMs)
     ? clampMs(domain, selectedMs)
@@ -92,8 +92,8 @@ function TimelineRail({
     viewportRef.current?.releasePointerCapture?.(event.pointerId)
   }
   const handleKeyDown = (event) => {
-    if (event.key === 'ArrowLeft') { commit(selected - KEY_STEP_MS); event.preventDefault() }
-    else if (event.key === 'ArrowRight') { commit(selected + KEY_STEP_MS); event.preventDefault() }
+    if (event.key === 'ArrowLeft') { commit(pickAdjacentTimelineTick(keyboardTicks, selected, -1)); event.preventDefault() }
+    else if (event.key === 'ArrowRight') { commit(pickAdjacentTimelineTick(keyboardTicks, selected, 1)); event.preventDefault() }
   }
 
   return (

@@ -114,13 +114,13 @@ test('rejects error, unsafe, malformed, and unbounded graphics responses', () =>
 test('builds product requests as URLSearchParams without an authentication value', () => {
   const wissdom = buildImpgRequest('wissdom', { tm: '202307201700', heightM: 1524 })
   assert.equal(wissdom instanceof URLSearchParams, true)
-  assert.deepEqual(Object.fromEntries(wissdom), {
-    tm: '202307201700', data1: 'r01', data2: 'rdr_wis_nqc', dataDtlCd: 'rdr_rdr_wis_nqc_0', ht: '1524',
+  assert.deepEqual(Object.fromEntries(['PROJ', 'tm', 'data1', 'data2', 'dataDtlCd', 'ht'].map((key) => [key, wissdom.get(key)])), {
+    PROJ: 'LCC', tm: '202307201700', data1: 'r01', data2: 'rdr_wis_nqc', dataDtlCd: 'rdr_rdr_wis_nqc_0', ht: '1524',
   })
 
   const qpf = buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 60 })
-  assert.deepEqual(Object.fromEntries(qpf), {
-    tm: '202307201700', data1: 'r01', data2: 'rdr_qpf_ana1', dataDtlCd: 'rdr_rdr_qpf_ana1_0', qpf: 'M', ef: '60',
+  assert.deepEqual(Object.fromEntries(['PROJ', 'tm', 'data1', 'data2', 'dataDtlCd', 'qpf', 'ef'].map((key) => [key, qpf.get(key)])), {
+    PROJ: 'LCC', tm: '202307201700', data1: 'r01', data2: 'rdr_qpf_ana1', dataDtlCd: 'rdr_rdr_qpf_ana1_0', qpf: 'M', ef: '60',
   })
   assert.equal(qpf.has('authKey'), false)
 })

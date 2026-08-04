@@ -29,27 +29,26 @@ const qpfFrame = (validTimeMs, leadMinutes) => ({
 })
 
 async function installFixture(page) {
-  await page.route('**/data/radar/echo_meta.json', (route) => route.fulfill({
-    contentType: 'application/json',
-    body: JSON.stringify({ type: 'RADAR_ECHO', tm: TM.latest, frames: [radarFrame(TM.observed), radarFrame(TM.latest)] }),
-  }))
-  await page.route('**/data/radar/wissdom/wissdom_meta.json', (route) => route.fulfill({
-    contentType: 'application/json',
-    body: JSON.stringify({
-      type: 'WISSDOM',
-      framesByHeight: {
+  await page.route('**/data/radar/**', (route) => {
+    const pathname = new URL(route.request().url()).pathname
+    if (pathname.endsWith('/echo_meta.json')) return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ type: 'RADAR_ECHO', tm: TM.latest, frames: [radarFrame(TM.observed), radarFrame(TM.latest)] }),
+    })
+    if (pathname.endsWith('/wissdom/wissdom_meta.json')) return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ type: 'WISSDOM', framesByHeight: {
         '1524': [wissdomFrame(1524, TM.observed), wissdomFrame(1524, TM.latest)],
         '3048': [wissdomFrame(3048, TM.observed)],
-      },
-    }),
-  }))
-  await page.route('**/data/radar/qpf/qpf_meta.json', (route) => route.fulfill({
-    contentType: 'application/json',
-    body: JSON.stringify({ type: 'QPF', frames: [qpfFrame(QPF_10, 10), qpfFrame(QPF_30, 30)] }),
-  }))
-  await page.route('**/data/radar/echo_korea_*.png', (route) => route.fulfill({ contentType: 'image/webp', body: WEBP_STUB }))
-  await page.route('**/data/radar/wissdom/*.webp', (route) => route.fulfill({ contentType: 'image/webp', body: WEBP_STUB }))
-  await page.route('**/data/radar/qpf/*.webp', (route) => route.fulfill({ contentType: 'image/webp', body: WEBP_STUB }))
+      } }),
+    })
+    if (pathname.endsWith('/qpf/qpf_meta.json')) return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ type: 'QPF', frames: [qpfFrame(QPF_10, 10), qpfFrame(QPF_30, 30)] }),
+    })
+    if (/\.(?:png|webp)$/.test(pathname)) return route.fulfill({ contentType: 'image/webp', body: WEBP_STUB })
+    return route.fallback()
+  })
 }
 
 async function openWeatherPanel(page, testInfo) {
@@ -76,11 +75,13 @@ const layerState = (page, layerId) => page.evaluate((id) => {
 
 async function selectTimeline(page, targetMs) {
   const slider = page.getByRole('slider', { name: /기상 자료 시각/ })
-  const currentMs = Number(await slider.getAttribute('aria-valuenow'))
-  const key = targetMs >= currentMs ? 'ArrowRight' : 'ArrowLeft'
-  const presses = Math.round(Math.abs(targetMs - currentMs) / (10 * 60 * 1000))
   await slider.focus()
-  for (let index = 0; index < presses; index += 1) await slider.press(key)
+  for (let index = 0; index < 12; index += 1) {
+    const currentMs = Number(await slider.getAttribute('aria-valuenow'))
+    if (currentMs === targetMs) return
+    await slider.press(targetMs > currentMs ? 'ArrowRight' : 'ArrowLeft')
+  }
+  expect(Number(await slider.getAttribute('aria-valuenow'))).toBe(targetMs)
 }
 
 test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
@@ -90,7 +91,7 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
     await openWeatherPanel(page, testInfo)
     const radar = page.getByRole('button', { name: '레이더', exact: true })
     await radar.click()
-    const wissdom = page.getByRole('button', { name: /레이더 바람장 \(WISSDOM\) · 1,524 m/ })
+    const wissdom = page.getByRole('button', { name: '레이더 바람장 (WISSDOM)', exact: true })
     await expect(wissdom).toBeEnabled()
     await wissdom.click()
     await expect(wissdom).toHaveAttribute('aria-pressed', 'true')
@@ -103,11 +104,11 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
     // Jump to the fixture's 3,048 m level; only 10:20 has an exact frame there.
     for (let index = 0; index < 4; index += 1) await height.press('ArrowRight')
     await expect(height).toHaveAttribute('aria-valuetext', '3,048 m')
-    await expect(page.getByRole('button', { name: /레이더 바람장 \(WISSDOM\) · 3,048 m/ })).toBeDisabled()
+    await expect(wissdom).toBeDisabled()
     await expect.poll(() => layerState(page, 'kma-wissdom-overlay')).toMatchObject({ visibility: 'none' })
 
     await selectTimeline(page, Date.UTC(2026, 7, 4, 1, 20))
-    await expect(page.getByRole('button', { name: /레이더 바람장 \(WISSDOM\) · 3,048 m/ })).toBeEnabled()
+    await expect(wissdom).toBeEnabled()
   })
 
   test('QPF replaces observed layers and exposes its exact MAPLE status and legend', async ({ page }, testInfo) => {

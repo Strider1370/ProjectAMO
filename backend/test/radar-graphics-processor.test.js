@@ -19,18 +19,18 @@ const descriptor = ({ tm, title, product }) => ({
   } },
 })
 
-function depsFor(rootDir, { wissdomTm = '202608041705', qpfTm = '202608041705', fail = null } = {}) {
+function depsFor(rootDir, { wissdomTm = null, qpfTm = '202608041705', fail = null } = {}) {
   const calls = []
   const imageCalls = []
   return {
     root: rootDir,
-    config: { api: { radar_satellite_auth_key: 'test-only', radar_graphics_url: 'https://kma.invalid' }, radar_graphics: { enabled: true, wissdom_heights_m: [1524], qpf_lead_minutes: [60], frame_step_minutes: 5, max_frames: 2, timeout_ms: 1 } },
+    config: { api: { radar_satellite_auth_key: 'test-only', radar_graphics_url: 'https://kma.invalid' }, radar_graphics: { enabled: true, wissdom_heights_m: [1524], qpf_lead_minutes: [60], frame_step_minutes: 5, delay_minutes: 10, max_frames: 2, timeout_ms: 1 } },
     fetchJson: async (url) => {
       calls.push(url)
       if (fail === 'json') throw new Error('network down')
       const parsed = new URL(url)
       const product = parsed.pathname.includes('wis') ? 'wissdom' : 'qpf'
-      return descriptor({ tm: product === 'wissdom' ? wissdomTm : qpfTm, title: product, product })
+      return descriptor({ tm: product === 'wissdom' ? (wissdomTm || parsed.searchParams.get('tm')) : qpfTm, title: product, product })
     },
     fetchImage: async (url) => {
       imageCalls.push(url)
@@ -51,7 +51,7 @@ test('publishes exact WISSDOM frames as WebP before atomic metadata and removes 
   await processWissdom({ now: new Date('2026-08-04T08:07:00Z'), deps })
   const meta = readMeta(dataRoot, 'wissdom')
   const frame = meta.framesByHeight['1524'].at(-1)
-  assert.equal(frame.tm, '202608041705')
+  assert.equal(frame.tm, '202608041655')
   const filePath = path.join(dataRoot, frame.path.replace(/^\/data\//, ''))
   assert.equal(fs.existsSync(filePath), true)
   assert.equal(deps.imageCalls.every((url) => !url.includes('authKey')), true)
@@ -74,7 +74,7 @@ test('publishes QPF valid time from its analysis time and preserves last complet
 test('treats missing data as absent but preserves a frame on a wrong returned timestamp', async () => {
   const dataRoot = root()
   await processWissdom({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(dataRoot) })
-  await processWissdom({ now: new Date('2026-08-04T08:12:00Z'), deps: depsFor(dataRoot, { wissdomTm: '202608041705' }) })
+  await processWissdom({ now: new Date('2026-08-04T08:12:00Z'), deps: depsFor(dataRoot, { wissdomTm: '202608041745' }) })
   assert.equal(readMeta(dataRoot, 'wissdom').framesByHeight['1524'].length, 1)
 })
 
@@ -137,7 +137,7 @@ test('publishes both assets before their metadata and stops immediately when abo
   } finally {
     fs.renameSync = originalRename
   }
-  assert.deepEqual(observed.slice(-3), ['wissdom_1524_202608041705.webp', 'wissdom_1524_202608041705_legend.webp', 'wissdom_meta.json'])
+  assert.deepEqual(observed.slice(-3), ['wissdom_1524_202608041655.webp', 'wissdom_1524_202608041655_legend.webp', 'wissdom_meta.json'])
   const controller = new AbortController(); controller.abort(new Error('stop'))
   await assert.rejects(processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(root()), signal: controller.signal }), /stop/)
 })

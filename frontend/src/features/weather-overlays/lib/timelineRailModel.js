@@ -88,6 +88,26 @@ export function clampMs(domain, ms) {
   return Math.max(domain.startMs, Math.min(domain.endMs, ms))
 }
 
+// Keyboard scrubbing must visit the actual published frame times. A fixed
+// minute increment can skip a 5-minute radar frame that has an exact WISSDOM
+// counterpart, leaving that overlay unreachable with the keyboard.
+export function pickAdjacentTimelineTick(ticks, selectedMs, direction) {
+  const ordered = [...new Set((Array.isArray(ticks) ? ticks : []).filter(finite))]
+    .sort((a, b) => a - b)
+  if (!ordered.length || !finite(selectedMs) || !Number.isFinite(direction) || direction === 0) return selectedMs
+
+  if (direction < 0) {
+    for (let index = ordered.length - 1; index >= 0; index -= 1) {
+      if (ordered[index] < selectedMs) return ordered[index]
+    }
+    return ordered[0]
+  }
+  for (const tick of ordered) {
+    if (tick > selectedMs) return tick
+  }
+  return ordered.at(-1)
+}
+
 // Map a selected absolute time back to the nearest past frame index (for the index-based weather model).
 export function pickNearestPastIndex(pastTicksMs, selectedMs) {
   const past = (Array.isArray(pastTicksMs) ? pastTicksMs : []).filter(finite)

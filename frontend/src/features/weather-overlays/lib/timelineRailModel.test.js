@@ -11,6 +11,7 @@ import {
   dragToTimeDelta,
   normalizeNwpTimes,
   percentToMs,
+  pickAdjacentTimelineTick,
   pickNearestNwp,
   pickNearestPastIndex,
   tapePercent,
@@ -86,6 +87,13 @@ test('pickNearestNwp returns the closest forecast entry', () => {
   assert.equal(pickNearestNwp(times, NOW + 2.4 * HOUR).hf, 3)
   assert.equal(pickNearestNwp(times, NOW).hf, 1)
   assert.equal(pickNearestNwp([], NOW), null)
+})
+
+test('pickAdjacentTimelineTick steps through every published observation frame', () => {
+  const ticks = [NOW - 15 * 60 * 1000, NOW - 10 * 60 * 1000, NOW - 5 * 60 * 1000]
+
+  assert.equal(pickAdjacentTimelineTick(ticks, NOW - 5 * 60 * 1000, -1), NOW - 10 * 60 * 1000)
+  assert.equal(pickAdjacentTimelineTick(ticks, NOW - 10 * 60 * 1000, 1), NOW - 5 * 60 * 1000)
 })
 
 test('tapePercent puts the selected time at the playhead and scrolls others', () => {

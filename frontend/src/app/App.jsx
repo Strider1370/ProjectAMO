@@ -211,6 +211,7 @@ function MainAppShell() {
           airports={weatherData?.airports || []}
           metarData={mapMetarData}
           echoMeta={weatherData?.echoMeta || null}
+          wissdomMeta={weatherData?.wissdomMeta || null}
           qpfMeta={weatherData?.qpfMeta || null}
           echoTopMeta={weatherData?.echoTopMeta || null}
           rainviewerMeta={weatherData?.rainviewerMeta || null}
