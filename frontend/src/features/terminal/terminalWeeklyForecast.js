@@ -13,7 +13,7 @@ const EMPTY_ROW = Object.freeze({ empty: true })
 // 국내 주간예보(forecast[].date)는 `2026-08-04`처럼 대시가 섞여 오지만, 시간별(hourly[].date)과
 // 해외 daily[].date는 `20260804`다. 대시가 있으면 문자열 비교(>)가 자릿수 기준을 벗어나
 // 항상 거짓이 되어 국내 주간 줄이 통째로 빈 줄로 나온다 - 비교·가공 전에 숫자만 남긴다.
-function normalizeDate(dateString) {
+export function normalizeDate(dateString) {
   return String(dateString).replace(/\D/g, '')
 }
 

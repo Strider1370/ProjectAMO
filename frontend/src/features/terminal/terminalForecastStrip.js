@@ -5,19 +5,20 @@
  * 두 화면이 같은 자료에서 다르게 뽑는 것뿐이라 한 파일에 둔다.
  */
 
+import { normalizeDate } from './terminalWeeklyForecast.js'
+
 /** 강수확률이 이 값 이상이면 주황 알약으로 칠한다. 실제 화면을 보고 조정할 수 있게 상수로 둔다. */
 export const PRECIP_HIGHLIGHT_PROB = 60
 
 const HOUR_STEP = 3
 const TODAY_MAX_CELLS = 4
-// 내일·모레를 대표하는 시각과 그 시각이 없을 때 대신 찾을 범위.
-// 오전은 활동 시작, 오후는 기온이 가장 높을 때, 밤은 귀가 시간.
-// met.no는 처음 이틀 남짓만 1시간 간격이고 그 뒤로는 6시간 간격(00·06·12·18시)이라
-// 모레는 09·15·21시가 통째로 빌 수 있다 - 그 시간대 안에서 가장 가까운 칸으로 대신한다.
+// 내일·모레를 대표하는 시각과 그 시각이 없을 때 대신 찾을 범위. 오전은 활동 시작,
+// 오후는 기온이 가장 높을 때. 국내 기상청 시간별은 24시간 안팎뿐이라 애초에 내일·모레
+// 칸이 없는 게 보통이고, 그때는 threeDayStrip이 주간예보(am/pm)로 대신 채운다 -
+// `key`는 그 주간예보 쪽 필드 이름과 맞춘 것이다. 밤(21시)은 주간예보에 없는 구간이라 뺐다.
 const DAY_PARTS = [
-  { label: '오전', hour: 9, rangeStart: 6, rangeEnd: 12 },
-  { label: '오후', hour: 15, rangeStart: 12, rangeEnd: 18 },
-  { label: '밤', hour: 21, rangeStart: 18, rangeEnd: 24 },
+  { label: '오전', key: 'am', hour: 9, rangeStart: 6, rangeEnd: 12 },
+  { label: '오후', key: 'pm', hour: 15, rangeStart: 12, rangeEnd: 18 },
 ]
 
 function hourOf(slot) {
@@ -73,18 +74,39 @@ function findDayPartSlot(slots, part) {
   ))
 }
 
+// 시간별에 그 날짜 칸이 없을 때(국내는 늘 이렇다 - 24시간치뿐이라) 주간예보로 대신 채운다.
+// 오전은 그 날의 최저기온, 오후는 최고기온과 짝짓는다(실제 하루 흐름과 맞는 값이라 스펙이 정한 규칙).
+function dayPartCellFromWeek(day, part, group) {
+  const bucket = day?.[part.key]
+  const temp = part.key === 'am' ? day?.tempMin : day?.tempMax
+  if (!bucket || !Number.isFinite(temp)) return null
+  return {
+    group,
+    label: part.label,
+    date: normalizeDate(day.date),
+    icon: bucket.icon || null,
+    temp: Math.round(temp),
+    precipKind: Number.isFinite(bucket.rainProb) ? 'prob' : null,
+    precipValue: Number.isFinite(bucket.rainProb) ? bucket.rainProb : null,
+  }
+}
+
 /**
  * 2안용. 오늘은 지금 이후 3시간 간격으로 자정까지 최대 네 칸,
- * 내일·모레는 오전(09시)·오후(15시)·밤(21시) 세 칸씩.
+ * 내일·모레는 오전·오후 두 칸씩. 시간별에 그 날짜 칸이 있으면(주로 해외) 그걸 쓰고,
+ * 없으면(국내는 시간별이 24시간 안팎뿐이라 거의 항상 이 경우다) 주간예보(`days`)로 채운다.
  * 밤 늦은 시간에는 오늘 칸이 줄고 남은 폭을 내일·모레가 나눠 가진다.
  */
-export function threeDayStrip(hourly, nowKst) {
+export function threeDayStrip(hourly, nowKst, days = []) {
   if (!Array.isArray(hourly) || hourly.length === 0 || !nowKst?.date) return []
   const byDate = new Map()
   for (const slot of hourly) {
     if (!byDate.has(slot.date)) byDate.set(slot.date, [])
     byDate.get(slot.date).push(slot)
   }
+  const byWeekDate = new Map(
+    (Array.isArray(days) ? days : []).map((day) => [normalizeDate(day?.date), day]),
+  )
 
   const cells = []
   const todaySlots = byDate.get(nowKst.date) || []
@@ -99,10 +121,13 @@ export function threeDayStrip(hourly, nowKst) {
   }
 
   for (const [offset, group] of [[1, 'tomorrow'], [2, 'dayAfter']]) {
-    const slots = byDate.get(addDays(nowKst.date, offset)) || []
+    const date = addDays(nowKst.date, offset)
+    const slots = byDate.get(date) || []
+    const week = byWeekDate.get(date)
     for (const part of DAY_PARTS) {
       const slot = findDayPartSlot(slots, part)
-      if (slot) cells.push(toCell(slot, group, part.label))
+      const cell = slot ? toCell(slot, group, part.label) : dayPartCellFromWeek(week, part, group)
+      if (cell) cells.push(cell)
     }
   }
 

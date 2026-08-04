@@ -103,6 +103,7 @@ export default function WeatherFirstScreen({
   departureName,
   departureTemp,
   hourly,
+  days,
   nowKst,
   transitioning,
   motionMode,
@@ -118,7 +119,7 @@ export default function WeatherFirstScreen({
   const flights = frame?.flights || [];
   // 화면 하나가 도시 하나를 맡는다 - 첫 편의 목적지 정보(도시명·현재날씨)가 화면 전체를 대표한다.
   const primaryFlight = flights[0];
-  const cells = threeDayStrip(hourly, nowKst);
+  const cells = threeDayStrip(hourly, nowKst, days);
   const hasFlights = flights.length > 0;
   return (
     <section className={`exact-screen wf-screen motion-${motionMode}${hasFlights ? "" : " is-operations-ended"}`} data-testid="option-two">

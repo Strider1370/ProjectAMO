@@ -270,3 +270,40 @@ test('주간 자료는 국내 forecast와 해외 daily에서 온다', () => {
   assert.equal(destinationDailyDays(liveData, 'RJBB')[0].date, '20260805')
   assert.deepEqual(destinationDailyDays(liveData, 'RKPU'), [])
 })
+
+// 국내 수집기(ground-forecast-processor.js)는 기상청 자기 어휘(sunny·mostly_cloudy·partly_cloudy…)를
+// 그대로 저장한다. 화면 아이콘은 sun·cloud·partly 같은 다른 어휘를 쓰므로 여기서 바꿔야 한다 -
+// 안 바꾸면 화면 쪽 아이콘 매핑에 없는 값이라 전부 기본 구름 아이콘으로 떨어진다.
+const iconLiveData = {
+  groundForecast: {
+    airports: {
+      RKPC: {
+        hourly: [{ date: '20260804', time: '1500', temp: 34, icon: 'sunny' }],
+        forecast: [{ date: '20260805', am: { icon: 'partly_cloudy', rainProb: 10 }, pm: { icon: 'mostly_cloudy', rainProb: 20 }, tempMin: 24, tempMax: 30 }],
+      },
+    },
+  },
+  overseasForecast: {
+    airports: { RJBB: { hourly: [{ date: '20260804', time: '1500', temp: 31, icon: 'sun' }], daily: [{ date: '20260805', am: { icon: 'sun' }, pm: { icon: 'cloud' } }] } },
+  },
+}
+
+test('국내 시간별 아이콘은 기상청 어휘를 화면 어휘로 바꾼다', () => {
+  assert.equal(destinationHourly(iconLiveData, 'RKPC')[0].icon, 'sun')
+})
+
+test('해외 시간별 아이콘은 이미 화면 어휘라 그대로 둔다', () => {
+  assert.equal(destinationHourly(iconLiveData, 'RJBB')[0].icon, 'sun')
+})
+
+test('국내 주간 am/pm 아이콘도 화면 어휘로 바꾼다', () => {
+  const [day] = destinationDailyDays(iconLiveData, 'RKPC')
+  assert.equal(day.am.icon, 'partly')
+  assert.equal(day.pm.icon, 'cloud')
+})
+
+test('해외 주간 am/pm 아이콘은 그대로 둔다', () => {
+  const [day] = destinationDailyDays(iconLiveData, 'RJBB')
+  assert.equal(day.am.icon, 'sun')
+  assert.equal(day.pm.icon, 'cloud')
+})

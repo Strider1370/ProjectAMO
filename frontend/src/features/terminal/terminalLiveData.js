@@ -168,12 +168,16 @@ export async function loadTerminalLiveWeatherData() {
   }
 }
 
-// 기상청 동네예보 아이콘 -> 사이니지 표시 어휘(스펙 5.3)
+// 기상청 동네예보 아이콘 -> 사이니지 표시 어휘(스펙 5.3). ground-forecast-processor.js의
+// mapWeatherToIcon·skyPtyToIcon이 실제로 내는 값(partly_cloudy·sleet 포함)을 전부 담아야
+// displayIcon의 기본값(cloud)으로 조용히 떨어지지 않는다.
 const GROUND_FORECAST_ICONS = Object.freeze({
   sunny: 'sun',
+  partly_cloudy: 'partly',
   mostly_cloudy: 'cloud',
   cloudy: 'cloudy',
   rain: 'rain',
+  sleet: 'rain',
   shower: 'shower',
   snow: 'snow',
   thunder: 'storm',
@@ -251,18 +255,29 @@ export function temperatureGap(departureTemp, destinationTemp) {
   return { value: Math.abs(difference), sign: difference > 0 ? '+' : '-' }
 }
 
-/** 목적지 시간별 예보. 국내(기상청)를 먼저 보고 없으면 해외(met.no)를 본다. */
+/** 목적지 시간별 예보. 국내(기상청)를 먼저 보고 없으면 해외(met.no)를 본다.
+ * 국내 수집기는 기상청 자기 어휘(sunny·mostly_cloudy…)를 그대로 저장하므로 여기서
+ * 화면 어휘로 바꾼다 - 해외는 이미 변환돼 저장돼 있어 그대로 둔다. */
 export function destinationHourly(liveData, icao) {
   const domestic = sourceAirportRecord(liveData?.groundForecast, icao)?.hourly
-  if (Array.isArray(domestic) && domestic.length > 0) return domestic
+  if (Array.isArray(domestic) && domestic.length > 0) {
+    return domestic.map((slot) => ({ ...slot, icon: displayIcon(slot.icon) }))
+  }
   const overseas = sourceAirportRecord(liveData?.overseasForecast, icao)?.hourly
   return Array.isArray(overseas) ? overseas : []
 }
 
-/** 목적지 주간 예보. 국내는 기상청이 만든 `forecast`, 해외는 백엔드가 만든 `daily`. */
+/** 목적지 주간 예보. 국내는 기상청이 만든 `forecast`, 해외는 백엔드가 만든 `daily`.
+ * 국내 쪽 am/pm 아이콘도 시간별과 같은 이유로 여기서 화면 어휘로 바꾼다. */
 export function destinationDailyDays(liveData, icao) {
   const domestic = sourceAirportRecord(liveData?.groundForecast, icao)?.forecast
-  if (Array.isArray(domestic) && domestic.length > 0) return domestic
+  if (Array.isArray(domestic) && domestic.length > 0) {
+    return domestic.map((day) => ({
+      ...day,
+      am: day.am ? { ...day.am, icon: displayIcon(day.am.icon) } : day.am,
+      pm: day.pm ? { ...day.pm, icon: displayIcon(day.pm.icon) } : day.pm,
+    }))
+  }
   const overseas = sourceAirportRecord(liveData?.overseasForecast, icao)?.daily
   return Array.isArray(overseas) ? overseas : []
 }

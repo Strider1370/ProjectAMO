@@ -522,6 +522,7 @@ export function App() {
           departureName={departureAirportState.selected?.nameKo || '김포공항'}
           departureTemp={departureTemp}
           hourly={destinationHourlyForecast}
+          days={destinationDailyForecast}
           nowKst={nowKst}
           transitioning={transitioning}
           motionMode={weatherMotionMode}
