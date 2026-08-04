@@ -66,7 +66,7 @@ function finite(value) {
  * 예보 시각은 한국 시각으로 맞춘다. 화면이 다루는 도착 시각이 한국 시각 기준이라,
  * 여기서 현지 시간대로 바꾸면 두 번 변환하게 된다.
  */
-export function extractOverseasSlots(payload, hours = 24) {
+export function extractOverseasSlots(payload, hours = 72) {
   const series = payload?.properties?.timeseries
   if (!Array.isArray(series)) return []
 
@@ -74,14 +74,19 @@ export function extractOverseasSlots(payload, hours = 24) {
     const parts = kstParts(entry?.time)
     if (!parts) return null
     const details = entry?.data?.instant?.details || {}
-    const symbol = entry?.data?.next_1_hours?.summary?.symbol_code
-      || entry?.data?.next_6_hours?.summary?.symbol_code
+    const nextHour = entry?.data?.next_1_hours
+    const nextSixHours = entry?.data?.next_6_hours
+    const symbol = nextHour?.summary?.symbol_code || nextSixHours?.summary?.symbol_code
     return {
       ...parts,
       temp: finite(details.air_temperature),
       humidity: finite(details.relative_humidity),
       windSpeed: finite(details.wind_speed),
       windDirection: finite(details.wind_from_direction),
+      // 국내는 강수확률(POP)을 주지만 met.no는 주지 않는다. 대신 강수량을 쓴다.
+      // 사이니지는 한 화면에 도시 하나만 띄우므로 한 줄 안에서 단위가 섞이지 않는다.
+      precipitation: finite(nextHour?.details?.precipitation_amount)
+        ?? finite(nextSixHours?.details?.precipitation_amount),
       icon: symbolToIcon(symbol),
     }
   }).filter((slot) => slot && slot.temp != null)
