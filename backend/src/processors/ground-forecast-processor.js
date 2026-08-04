@@ -5,9 +5,10 @@ import { latLonToGrid } from '../utils/kma-grid.js'
 
 const VILLAGE_BASE_TIMES = [2, 5, 8, 11, 14, 17, 20, 23] // 동네예보 발표시각 (KST)
 const VILLAGE_PUBLISH_DELAY_MIN = 15 // 발표 후 제공까지 버퍼
-// 기상청 동네예보는 1시간 단위로 온다. 원본 해상도 그대로 24시간을 담는다.
+// 기상청 동네예보는 1시간 단위로 온다. 원본 해상도 그대로 담는다.
 // 3시간 간격이 필요한 화면은 받는 쪽에서 솎아 쓴다(GroundHourlyStrip).
-const HOURLY_SLOT_COUNT = 24
+// 2안·3안 사이니지가 3일치 예보를 그린다. 단기예보는 원래 3일을 주는데 24칸에서 잘라 쓰고 있었다.
+const HOURLY_SLOT_COUNT = 72
 const HOURLY_STEP_HOURS = 1
 
 const DAY_LABELS_KO = ["일", "월", "화", "수", "목", "금", "토"];
