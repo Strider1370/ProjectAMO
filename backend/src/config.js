@@ -82,6 +82,7 @@ export const api = {
   sigwx_low_url: process.env.SIGWX_LOW_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/amo_sigwx.php',
   kma_special_warning_url: process.env.KMA_SPECIAL_WARNING_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/wrn_now_data_new.php',
   radar_url: process.env.RADAR_API_URL || 'https://apihub.kma.go.kr/api/typ04/url/rdr_cmp_file.php',
+  radar_graphics_url: process.env.RADAR_GRAPHICS_API_URL || 'https://apihub.kma.go.kr/api/typ03/cgi/rdr',
   airkorea_pm_url: process.env.AIRKOREA_PM_URL || 'https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty',
   kma_uv_url: process.env.KMA_UV_URL || 'https://apihub.kma.go.kr/api/typ01/url/kma_sfctm_uv.php',
   kim_grid_url: process.env.KIM_GRID_API_URL || 'https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph-kim_nc_xy_txt2',
@@ -199,6 +200,7 @@ export const radar_graphics = {
   initial_wissdom_height_m: 1524,
   qpf_lead_minutes: KMA_GRAPHIC_QPF_LEAD_MINUTES,
   frame_step_minutes: 5,
+  delay_minutes: 10,
   max_frames: 36,
 }
 
@@ -502,6 +504,7 @@ export default {
   lightning,
   amos,
   radar_echo,
+  radar_graphics,
   radar_echo_top,
   rainviewer,
   satellite,

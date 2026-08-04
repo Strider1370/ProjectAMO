@@ -10,7 +10,7 @@ const isImage = (value) => Buffer.isBuffer(value) && ((value[0] === 0x89 && valu
 const kstTm = (date) => { const d = new Date(date.getTime() + 9 * 3600000); d.setUTCMinutes(Math.floor(d.getUTCMinutes() / 5) * 5, 0, 0); return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}` }
 const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch { return null } }
 function writeAtomic(file, data) { fs.mkdirSync(path.dirname(file), { recursive: true }); const temp = `${file}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`; fs.writeFileSync(temp, data); fs.renameSync(temp, file) }
-function apiUrl(activeConfig, product, request) { const base = activeConfig.api.radar_graphics_url || `${KMA_ORIGIN}/api/typ04/url`; const query = new URLSearchParams(buildImpgRequest(product, request)); query.set('authKey', activeConfig.api.radar_satellite_auth_key); return `${base.replace(/\/$/, '')}/${KMA_GRAPHIC_PRODUCTS[product].endpoint}.php?${query}` }
+function apiUrl(activeConfig, product, request) { const base = activeConfig.api.radar_graphics_url || `${KMA_ORIGIN}/api/typ03/cgi/rdr`; const query = new URLSearchParams(buildImpgRequest(product, request)); query.set('authKey', activeConfig.api.radar_satellite_auth_key); return `${base.replace(/\/$/, '')}/${KMA_GRAPHIC_PRODUCTS[product].endpoint}?${query}` }
 function assetUrl(safePath) { return new URL(safePath, KMA_ORIGIN).toString() }
 async function defaultJson(url, timeout, signal) { const response = await fetchWithTimeout(url, timeout, { signal }); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json() }
 async function defaultImage(url, timeout, signal) { const response = await fetchWithTimeout(url, timeout, { signal }); if (!response.ok) throw new Error(`HTTP ${response.status}`); return Buffer.from(await response.arrayBuffer()) }
@@ -52,7 +52,11 @@ function throwIfAborted(signal) { if (signal?.aborted) throw signal.reason || ne
 async function collect(type, { now = new Date(), deps = {}, signal } = {}) {
   const activeConfig = deps.config || config, productConfig = activeConfig.radar_graphics || {}
   if (productConfig.enabled === false || !activeConfig.api?.radar_satellite_auth_key) return { type, saved: false }
-  const root = deps.root || activeConfig.storage.base_path, requestTm = kstTm(now), target = paths(root, type), previous = readJson(target.meta)
+  const root = deps.root || activeConfig.storage.base_path
+  const delayedNow = type === 'wissdom'
+    ? new Date(now.getTime() - (productConfig.delay_minutes || 10) * 60_000)
+    : now
+  const requestTm = kstTm(delayedNow), target = paths(root, type), previous = readJson(target.meta)
   const units = type === 'wissdom' ? productConfig.wissdom_heights_m : productConfig.qpf_lead_minutes
   const published = (item) => fs.existsSync(path.join(root, item.path.replace(/^\/data\//, '')))
     && fs.existsSync(path.join(root, item.legendPath.replace(/^\/data\//, '')))

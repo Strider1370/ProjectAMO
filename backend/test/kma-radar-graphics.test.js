@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import config from '../src/config.js'
 
 import {
   buildImpgRequest,
@@ -39,6 +40,12 @@ const wissdomFixture = {
     },
   },
 }
+
+test('exposes radar graphics configuration through the default collector config', () => {
+  assert.equal(config.api.radar_graphics_url, 'https://apihub.kma.go.kr/api/typ03/cgi/rdr')
+  assert.deepEqual(config.radar_graphics.wissdom_heights_m, [305, 610, 914, 1219, 1524, 1829, 2134, 2438, 2743, 3048])
+  assert.deepEqual(config.radar_graphics.qpf_lead_minutes, [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60])
+})
 
 test('parses compact KMA KST timestamps at the source boundary', () => {
   assert.deepEqual(parseKmaKstTm('202307201700'), {

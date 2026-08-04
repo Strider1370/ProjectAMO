@@ -32,7 +32,7 @@ export function parseKmaKstTm(tm) {
 
 function parseKmaDateTime(value) {
   if (typeof value !== 'string') return null
-  const match = /^(\d{4})\.(\d{2})\.(\d{2})\.(\d{2}):(\d{2})$/.exec(value)
+  const match = /^(\d{4})\.(\d{2})\.(\d{2})\.(\d{2}):(\d{2})(?:\s+\(\+\d+분\))?$/.exec(value)
   if (!match) return null
   const tm = `${match[1]}${match[2]}${match[3]}${match[4]}${match[5]}`
   return parseKmaKstTm(tm)
@@ -52,9 +52,10 @@ function projectedBounds(result) {
     result?.imageCoverageEndProjX,
     result?.imageCoverageEndProjY,
   ]
-  if (!values.every(Number.isFinite)) return null
-  const [startX, startY, endX, endY] = values
-  return startX !== endX && startY !== endY ? values : null
+  const numeric = values.map((value) => typeof value === 'number' ? value : (typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN))
+  if (!numeric.every(Number.isFinite)) return null
+  const [startX, startY, endX, endY] = numeric
+  return startX !== endX && startY !== endY ? numeric : null
 }
 
 export function visualAlignmentBounds() {
@@ -87,10 +88,18 @@ export function buildImpgRequest(product, { tm, heightM, leadMinutes } = {}) {
   const definition = KMA_GRAPHIC_PRODUCTS[product]
   if (!definition || !parseKmaKstTm(tm)) throw new TypeError('Invalid KMA graphics request')
   const params = new URLSearchParams({
+    PROJ: 'LCC',
     tm,
     data1: definition.data1,
     data2: definition.data2,
     dataDtlCd: definition.dataDtlCd,
+    cmp: 'HSR', obs: product === 'wissdom' ? 'wv' : 'ECHO', qcd: 'NQC', grid: '2', itv: '10', tm_mode: 'm10',
+    data0: 'RCM', level: 'C', map: 'R', dtm: 'm0', zoom_level: '0', zoom_rate: '2', zoom_x: '0000000', zoom_y: '0000000',
+    auto_man: '1', mode: 'H', umove: '10', fmove: '2', dmove: '180', bmove: '10', winnum: '0', rand: '10', size: '320',
+    an_frn: '1', an_itv: '1', river: 'on', road: 'on', city: 'on', gis_auto: 'on', stnname: 'on', ctrl: '0', data3: '0',
+    overlay: 'spr', color: 'C4', effect: 'N', height: '320', legend: '1',
+    STARTX: '-384032.28285233676', STARTY: '4878817.500765007', ENDX: '758967.7171476632', ENDY: '3778150.834098339', ZOOMLVL: '11', selWs: 'kh',
+    tm_st: tm, tm_ed: tm, tm2: tm, eva: '1', option: '1',
   })
   if (product === 'wissdom') {
     if (!KMA_GRAPHIC_WISSDOM_HEIGHTS_M.includes(heightM)) throw new TypeError('Invalid WISSDOM height')
