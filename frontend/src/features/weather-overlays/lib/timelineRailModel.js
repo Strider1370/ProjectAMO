@@ -53,19 +53,21 @@ export function normalizeNwpTimes(nwpTimes) {
 export function buildTimelineDomain({
   pastTicksMs = [],
   nwpTimesMs = [],
+  qpfTimesMs = [],
   nowMs,
   pastWindowMs = DEFAULT_PAST_WINDOW_MS,
   futureWindowMs = DEFAULT_FUTURE_WINDOW_MS,
 }) {
   const now = finite(nowMs) ? nowMs : Date.now()
   const past = pastTicksMs.filter(finite)
-  const future = nwpTimesMs.filter(finite)
+  const future = [...nwpTimesMs, ...qpfTimesMs].filter(finite)
   const earliest = past.length ? Math.min(...past) : now
   const latest = future.length ? Math.max(...future) : now
   return {
     startMs: Math.min(now - pastWindowMs, earliest),
     endMs: Math.max(now + futureWindowMs, latest),
     nowMs: now,
+    forecastTicksMs: [...new Set(future)].sort((a, b) => a - b),
   }
 }
 

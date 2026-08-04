@@ -37,6 +37,17 @@ test('buildTimelineDomain extends to oldest past frame and latest forecast', () 
   assert.equal(domain.endMs, NOW + 6 * HOUR)
 })
 
+test('buildTimelineDomain includes QPF future ticks without treating them as NWP entries', () => {
+  const domain = buildTimelineDomain({
+    pastTicksMs: [NOW - HOUR],
+    nwpTimesMs: [NOW + HOUR],
+    qpfTimesMs: [NOW + 20 * 60 * 1000, NOW + 40 * 60 * 1000],
+    nowMs: NOW,
+  })
+  assert.equal(domain.endMs, NOW + HOUR)
+  assert.deepEqual(domain.forecastTicksMs, [NOW + 20 * 60 * 1000, NOW + 40 * 60 * 1000, NOW + HOUR])
+})
+
 test('toPercent / percentToMs round-trip now to the midpoint', () => {
   const domain = { startMs: NOW - 2 * HOUR, endMs: NOW + 2 * HOUR, nowMs: NOW }
   assert.ok(Math.abs(toPercent(domain, NOW) - 50) < 1e-6)
