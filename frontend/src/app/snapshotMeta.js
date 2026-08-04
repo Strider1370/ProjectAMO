@@ -6,6 +6,12 @@ function framesDiffer(prev, next) {
   return (prev?.tm || null) !== (next?.tm || null)
 }
 
+function graphicsMetaDiffer(prev, next) {
+  return framesDiffer(prev, next)
+    || Boolean(prev?.hash && next?.hash && hashesDiffer(prev, next))
+    || Boolean(prev?.updated_at && next?.updated_at && prev.updated_at !== next.updated_at)
+}
+
 function overlayMetaDiffer(prev, next) {
   return (prev?.tmfc || null) !== (next?.tmfc || null)
     || (prev?.source_hash || null) !== (next?.source_hash || null)
@@ -32,6 +38,8 @@ export function detectSnapshotChanges(prev, next) {
     environment: hashesDiffer(prev?.environment, next?.environment),
     airportInfo: hashesDiffer(prev?.airportInfo, next?.airportInfo),
     echoMeta: framesDiffer(prev?.echoMeta, next?.echoMeta),
+    wissdomMeta: graphicsMetaDiffer(prev?.wissdomMeta || prev?.wissdom, next?.wissdomMeta || next?.wissdom),
+    qpfMeta: graphicsMetaDiffer(prev?.qpfMeta || prev?.qpf, next?.qpfMeta || next?.qpf),
     rainviewerMeta: framesDiffer(prev?.rainviewerMeta || prev?.rainviewer, next?.rainviewerMeta || next?.rainviewer),
     satMeta: framesDiffer(prev?.satMeta, next?.satMeta),
     convectiveMeta: framesDiffer(prev?.convectiveMeta, next?.convectiveMeta) || hashesDiffer(prev?.convectiveMeta, next?.convectiveMeta),

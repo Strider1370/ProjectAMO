@@ -128,12 +128,24 @@ export function buildSnapshotMetaFromData(data = {}) {
     environment: buildHashEntry(data.environment),
     airportInfo: buildHashEntry(data.airportInfo),
     echoMeta: data.echoMeta?.tm ? { tm: data.echoMeta.tm } : null,
+    wissdomMeta: buildGraphicsMetaEntry(data.wissdomMeta),
+    qpfMeta: buildGraphicsMetaEntry(data.qpfMeta),
     echoTopMeta: data.echoTopMeta?.tm ? { tm: data.echoTopMeta.tm } : null,
     rainviewerMeta: data.rainviewerMeta?.tm ? { tm: data.rainviewerMeta.tm } : null,
     satMeta: data.satMeta?.tm ? { tm: data.satMeta.tm } : null,
     sigwxFrontMeta: buildOverlayMetaEntry(data.sigwxFrontMeta),
     sigwxCloudMeta: buildOverlayMetaEntry(data.sigwxCloudMeta),
   }
+}
+
+function buildGraphicsMetaEntry(meta) {
+  const frames = meta?.frames || Object.values(meta?.framesByHeight || {}).flat()
+  const latest = [...frames].sort((a, b) => (a.validTimeMs || a.timeMs || 0) - (b.validTimeMs || b.timeMs || 0)).at(-1)
+  const tm = meta?.tm || latest?.tm
+  const hash = meta?.content_hash || meta?.hash
+  const updatedAt = meta?.updated_at || meta?.updatedAt
+  if (!tm && !hash) return null
+  return { ...(tm ? { tm } : {}), ...(hash ? { hash } : {}), ...(updatedAt ? { updated_at: updatedAt } : {}) }
 }
 
 function buildOverlayMetaEntry(meta) {
@@ -150,7 +162,7 @@ export async function loadWeatherData() {
   const [
     airports, metar, taf, amos, warning, kmaSpecialWarning,
     sigmet, airmet, lightning,
-    echoMeta, echoTopMeta, rainviewerMeta, satMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
+    echoMeta, wissdomMeta, qpfMeta, echoTopMeta, rainviewerMeta, satMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
     groundForecast, notam, overseasAirports,
     metarOverseas, tafOverseas, sigmetOverseas,
   ] = await Promise.all([
@@ -164,6 +176,8 @@ export async function loadWeatherData() {
     fetchJson('/api/airmet', { optional: true }),
     fetchJson('/api/lightning', { optional: true }),
     fetchJson('/data/radar/echo_meta.json', { optional: true }),
+    fetchJson('/data/radar/wissdom/wissdom_meta.json', { optional: true }),
+    fetchJson('/data/radar/qpf/qpf_meta.json', { optional: true }),
     fetchJson('/data/radar/echotop/echotop_meta.json', { optional: true }),
     fetchJson('/data/radar/rainviewer_meta.json', { optional: true }),
     fetchJson('/data/satellite/sat_meta.json', { optional: true }),
@@ -193,6 +207,8 @@ export async function loadWeatherData() {
     airmet,
     lightning,
     echoMeta,
+    wissdomMeta,
+    qpfMeta,
     echoTopMeta,
     rainviewerMeta,
     satMeta,
@@ -348,6 +364,8 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all' } =
   if (changes.groundOverview && includesDeferredKey(deferredKeys, 'groundOverview')) { fetches.push(fetchJson('/api/ground-overview', { optional: 'preserve' })); keys.push('groundOverview') }
   if (changes.environment && includesDeferredKey(deferredKeys, 'environment')) { fetches.push(fetchJson('/api/environment', { optional: 'preserve' })); keys.push('environment') }
   if (changes.echoMeta) { fetches.push(fetchJson('/data/radar/echo_meta.json', { optional: 'preserve' })); keys.push('echoMeta') }
+  if (changes.wissdomMeta) { fetches.push(fetchJson('/data/radar/wissdom/wissdom_meta.json', { optional: 'preserve' })); keys.push('wissdomMeta') }
+  if (changes.qpfMeta) { fetches.push(fetchJson('/data/radar/qpf/qpf_meta.json', { optional: 'preserve' })); keys.push('qpfMeta') }
   if (changes.echoTopMeta) { fetches.push(fetchJson('/data/radar/echotop/echotop_meta.json', { optional: 'preserve' })); keys.push('echoTopMeta') }
   if (changes.rainviewerMeta) { fetches.push(fetchJson('/data/radar/rainviewer_meta.json', { optional: 'preserve' })); keys.push('rainviewerMeta') }
   if (changes.satMeta) { fetches.push(fetchJson('/data/satellite/sat_meta.json', { optional: 'preserve' })); keys.push('satMeta') }
