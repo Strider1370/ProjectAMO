@@ -14,7 +14,7 @@ async function renderCard(props) {
     configFile: false,
     plugins: [react()],
     optimizeDeps: { noDiscovery: true },
-    server: { middlewareMode: true },
+    server: { middlewareMode: true, hmr: false },
   })
   const { default: QpfStatusCard } = await viteServer.ssrLoadModule('/src/features/weather-overlays/QpfStatusCard.jsx')
   return renderToStaticMarkup(QpfStatusCard(props))

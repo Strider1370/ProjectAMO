@@ -1,14 +1,34 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
-import test from 'node:test'
+import test, { after } from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import react from '@vitejs/plugin-react'
+import { createServer } from 'vite'
 import { entriesLeftToRight } from './lib/legendOrder.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
+const frontendRoot = path.resolve(here, '../../..')
 const source = fs.readFileSync(path.join(here, 'WeatherLegends.jsx'), 'utf8')
 const panelSource = fs.readFileSync(path.join(here, 'WeatherOverlayPanel.jsx'), 'utf8')
 const css = fs.readFileSync(path.join(here, '../map/MapView.css'), 'utf8')
+let viteServer
+
+async function renderLegends(props) {
+  viteServer ??= await createServer({
+    root: frontendRoot,
+    configFile: false,
+    plugins: [react()],
+    optimizeDeps: { noDiscovery: true },
+    server: { middlewareMode: true, hmr: false },
+  })
+  const { default: WeatherLegends } = await viteServer.ssrLoadModule('/src/features/weather-overlays/WeatherLegends.jsx')
+  return renderToStaticMarkup(createElement(WeatherLegends, props))
+}
+
+after(async () => viteServer?.close())
 
 test('the WISSDOM toggle lives in the layer panel, not the legend', () => {
   assert.doesNotMatch(source, /radarMotion/)
@@ -40,4 +60,16 @@ test('horizontal legends preserve ascending ramps and reverse only descending so
 test('WISSDOM legend uses its KMA observation time', () => {
   assert.match(source, /WISSDOM/)
   assert.match(source, /radarWindObservedAtMs/)
+})
+
+test('QPF API legend appears only for the exact MAPLE forecast frame', async () => {
+  const qpfStatus = { source: 'MAPLE', analysisTimeMs: 1, validTimeMs: 2, leadMinutes: 1, unit: 'mm/h' }
+  const hidden = await renderLegends({ qpfStatus: null, qpfLegendPath: '/api/qpf/legend.png' })
+  const visible = await renderLegends({ qpfStatus, qpfLegendPath: '/api/qpf/legend.png' })
+
+  assert.equal(hidden, '')
+  assert.match(visible, /초단기 강수예측/)
+  assert.match(visible, /MAPLE/)
+  assert.match(visible, /src="\/api\/qpf\/legend\.png"/)
+  assert.doesNotMatch(visible, /레이더 관측|QPF.{0,12}관측|관측.{0,12}QPF/)
 })

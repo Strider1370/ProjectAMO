@@ -53,6 +53,8 @@ function WeatherLegends({
   showFlightCategoryStations = true,
   onShowFlightCategoryStationsChange,
   radarRainrateLegend,
+  qpfStatus = null,
+  qpfLegendPath = null,
   lightningLegendEntries,
   windSpeedLegendVisible,
   windSpeedLegendEntries = [],
@@ -87,6 +89,7 @@ function WeatherLegends({
     if (controlledOpen === undefined) setUncontrolledOpen(resolved)
     onOpenChange?.(resolved)
   }
+  const qpfLegendVisible = Boolean(qpfStatus && qpfLegendPath)
   const panel = (
     <div className="map-right-legends">
       {radarLegendVisible && (
@@ -108,6 +111,12 @@ function WeatherLegends({
             <span className="radar-wind-note">WISSDOM · KMA 관측 {formatReferenceTimeLabel(radarWindObservedAtMs)}</span>
             {radarWindLegendPath && <img src={radarWindLegendPath} alt="WISSDOM KMA 범례" />}
           </div>}
+        </div>
+      )}
+      {qpfLegendVisible && (
+        <div className="qpf-api-legend" aria-label="MAPLE 초단기 강수예측 범례">
+          <div className="qpf-api-legend__title">초단기 강수예측 · MAPLE</div>
+          <img src={qpfLegendPath} alt="MAPLE 초단기 강수예측 범례" />
         </div>
       )}
       {/* 해외 레이더(RainViewer): 우리는 픽셀만 받고 숫자가 없다 → mm/h 눈금을 붙이면 오독을 부른다.
@@ -299,7 +308,7 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
+  if (!radarLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
 
   // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
   if (!isMobile && !bottomDock) return panel
@@ -351,6 +360,12 @@ function WeatherLegends({
               WISSDOM · KMA 관측 {formatReferenceTimeLabel(radarWindObservedAtMs)}
             </span>
             {radarWindLegendPath && <img src={radarWindLegendPath} alt="WISSDOM KMA 범례" />}
+          </div>
+        )}
+        {qpfLegendVisible && (
+          <div className="qpf-api-legend" aria-label="MAPLE 초단기 강수예측 범례">
+            <div className="qpf-api-legend__title">초단기 강수예측 · MAPLE</div>
+            <img src={qpfLegendPath} alt="MAPLE 초단기 강수예측 범례" />
           </div>
         )}
         {flightCategoryLegendVisible && (
