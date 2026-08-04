@@ -11,6 +11,7 @@ import {
   terminalFlightsFromFeed,
   classifyTerminalSlotTransition,
   terminalFrameAt,
+  buildDestinationFrames,
 } from './terminalFlightSimulation.js'
 
 test('시뮬레이션 기준 시각과 공항별 조회 창을 명시한다', () => {
@@ -367,4 +368,44 @@ test('국적기끼리는 순서를 바꾸지 않는다', () => {
     ],
   }])
   assert.deepEqual(flight.codeshares.map((share) => share.flight), ['BX8827', 'OZ8827'])
+})
+
+function destination(code, flightCount, priority) {
+  return {
+    code,
+    priority,
+    flights: Array.from({ length: flightCount }, (unused, index) => ({ flight: `${code}${index}` })),
+  }
+}
+
+test('도시 하나가 프레임 하나가 된다', () => {
+  const frames = buildDestinationFrames([destination('CJU', 3, 0), destination('KIX', 1, 1)])
+  assert.equal(frames.length, 2)
+  assert.deepEqual(frames.map((frame) => frame.code), ['CJU', 'KIX'])
+})
+
+test('출발 시각순으로 돈다', () => {
+  // buildTerminalSimulation은 편 수 순으로 정렬해 넘긴다(1안이 세 칸을 채워야 해서).
+  // 2안·3안은 priority(등장 순서 = 출발 시각순)로 되돌려 쓴다.
+  const frames = buildDestinationFrames([destination('CJU', 5, 0), destination('KIX', 1, 1), destination('PKX', 1, 2)])
+  assert.deepEqual(frames.map((frame) => frame.code), ['CJU', 'KIX', 'PKX'])
+})
+
+test('편이 여섯 편 이상이면 같은 도시를 나눠 넘긴다', () => {
+  const frames = buildDestinationFrames([destination('CJU', 8, 0)])
+  assert.equal(frames.length, 2)
+  assert.equal(frames[0].flights.length, 5)
+  assert.equal(frames[1].flights.length, 3)
+  assert.deepEqual(frames.map((frame) => frame.page), [1, 2])
+  assert.equal(frames[0].pageCount, 2)
+})
+
+test('나뉜 도시는 연달아 나온다', () => {
+  // 제주(1/2) → 오사카 → 제주(2/2)로 흩어지면 승객이 읽던 목록을 잃는다.
+  const frames = buildDestinationFrames([destination('CJU', 7, 0), destination('KIX', 1, 1)])
+  assert.deepEqual(frames.map((frame) => frame.code), ['CJU', 'CJU', 'KIX'])
+})
+
+test('목적지가 없으면 빈 배열을 준다', () => {
+  assert.deepEqual(buildDestinationFrames([]), [])
 })

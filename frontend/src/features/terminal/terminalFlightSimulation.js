@@ -453,6 +453,47 @@ function buildCompactFrames(destinations, capacity = 3) {
   return frames
 }
 
+/** 2안·3안의 한 프레임에 들어가는 항공편 줄 수. 자리 고정을 위해 화면도 이 값만큼 줄을 잡는다. */
+export const DESTINATION_FRAME_CAPACITY = 5
+
+/**
+ * 2안·3안용 프레임. 한 프레임에 도시 하나와 그 도시로 가는 편 최대 다섯 편이 들어간다.
+ *
+ * `destinations`는 1안을 위해 편 수 순으로 정렬되어 오지만, 그 배열의 `priority`는
+ * 정렬 전에 매겨진 출발 시각순 번호다. 여기서 그 번호로 되돌려 쓴다. 공유 정렬을 바꾸면
+ * 1안의 프레임 묶기가 달라지므로 건드리지 않는다.
+ *
+ * 편이 여섯 편 이상인 도시는 같은 도시를 연달아 두 프레임으로 나눈다. 다른 도시 뒤로 흩어지면
+ * 승객이 읽던 목록을 잃는다. 날씨는 그대로 두고 목록만 넘어가므로 시선도 편하다.
+ */
+export function buildDestinationFrames(destinations, capacity = DESTINATION_FRAME_CAPACITY) {
+  if (!Array.isArray(destinations) || destinations.length === 0) return []
+
+  const frames = []
+  const ordered = [...destinations].sort((left, right) => left.priority - right.priority)
+  ordered.forEach((destination, destinationIndex) => {
+    const flights = destination.flights || []
+    const pageCount = Math.max(1, Math.ceil(flights.length / capacity))
+    for (let page = 0; page < pageCount; page += 1) {
+      frames.push({
+        ...destination,
+        destinationIndex,
+        flights: flights.slice(page * capacity, (page + 1) * capacity),
+        page: page + 1,
+        pageCount,
+      })
+    }
+  })
+  return frames
+}
+
+export function destinationFrameAt(frames, cursor) {
+  const safeCursor = Math.max(0, Number(cursor) || 0)
+  const frameCount = Math.max(1, frames.length)
+  const frameIndex = frames.length ? safeCursor % frames.length : 0
+  return { frameIndex, frameCount, frame: frames[frameIndex] || null }
+}
+
 export function terminalFrameAt(simulation, cursor) {
   const safeCursor = Math.max(0, Number(cursor) || 0)
   const frameIndex = simulation.frames.length ? safeCursor % simulation.frames.length : 0
