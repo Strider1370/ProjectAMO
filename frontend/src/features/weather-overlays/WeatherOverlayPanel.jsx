@@ -103,11 +103,9 @@ function WeatherOverlayPanel({
                   aria-label="레이더 바람장 (WISSDOM)"
                   aria-pressed={radarWindRequested}
                   disabled={!radarWindAvailable}
-                  aria-describedby={!radarWindAvailable ? 'radar-wind-unavailable' : undefined}
                 >
                   레이더 바람장 (WISSDOM)
                 </button>
-                {!radarWindAvailable && <span id="radar-wind-unavailable">표시 시각의 WISSDOM 자료 없음</span>}
               </>
             )}
           </div>
