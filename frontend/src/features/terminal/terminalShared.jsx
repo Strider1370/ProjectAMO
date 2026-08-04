@@ -267,6 +267,9 @@ export function FlightRow({ flight }) {
   const isGateChanged = flight.status === GATE_CHANGED_STATUS;
   return (
     <li className="tw-flight-row" data-testid="tw-flight-row" data-destination-code={flight.code}>
+      {/* 항공사 로고는 1안이 쓰는 것을 그대로 가져온다. 편명 앞 두 글자만으로도 항공사를 알 수는
+          있지만, 로고가 있으면 승객이 글자를 읽기 전에 자기 항공사 줄을 찾는다. */}
+      <AirlineLogo flight={flight} />
       <div className="tw-flight-number">
         {isCodeshare
           ? <span className="tw-flight-number-stack">{flight.codeshares.map((share) => <strong key={share.flight}>{share.flight}</strong>)}</span>
@@ -279,7 +282,10 @@ export function FlightRow({ flight }) {
       <div className={`tw-flight-gate${isGateChanged ? " is-changed" : ""}`}>
         <strong>{UNDECIDED_VALUES.has(flight.gate) ? <em className="value-unknown">{flight.gate}</em> : flight.gate}</strong>
       </div>
-      <div className={`tw-flight-status${isDelayed ? " is-delay" : ""}`}>
+      {/* 상태는 1안의 `.operation-status`를 그대로 쓴다 - 색 점과 색 글자가 한 덩어리로 붙어야
+          지연·탑승구 변경이 무채색 글자 사이에서 눈에 띈다. */}
+      <div className={`operation-status${isDelayed || isGateChanged ? " is-delay" : ""}`}>
+        <i />
         <strong>{flight.status}</strong>
       </div>
     </li>
@@ -292,10 +298,17 @@ export function FlightList({ flights }) {
   const rows = flights.slice(0, DESTINATION_FRAME_CAPACITY);
   const emptyCount = DESTINATION_FRAME_CAPACITY - rows.length;
   return (
-    <ul className="tw-flight-list">
-      {rows.map((flight) => <FlightRow flight={flight} key={flight.flightKey} />)}
-      {Array.from({ length: emptyCount }, (_, index) => <li className="is-empty" aria-hidden="true" key={`empty-${index}`} />)}
-    </ul>
+    <div className="tw-flight-panel">
+      {/* 열 제목이 없으면 `06:00 확인 중 운항 예정`이 한 문장처럼 읽혀 어느 값이 시각이고
+          어느 값이 탑승구인지 구분되지 않는다. */}
+      <div className="tw-flight-head" aria-hidden="true">
+        <span /><span>편명</span><span>출발</span><span>탑승구</span><span>상태</span>
+      </div>
+      <ul className="tw-flight-list">
+        {rows.map((flight) => <FlightRow flight={flight} key={flight.flightKey} />)}
+        {Array.from({ length: emptyCount }, (_, index) => <li className="is-empty" aria-hidden="true" key={`empty-${index}`} />)}
+      </ul>
+    </div>
   );
 }
 

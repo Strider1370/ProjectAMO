@@ -6,7 +6,7 @@ import {
   FlightList,
   HeaderWeatherPanel,
   MotionModeSwitcher,
-  PrecipRowLabel,
+
   ScreenFooterNote,
   TerminalEmptyState,
   TerminalSettings,
@@ -30,7 +30,9 @@ const HOURLY_CELL_COUNT = 8;
 
 /** 왼쪽. 3시간 간격 여덟 칸을 날짜 구분 없이 잇는다. 칸 수가 고정이라 도시가 바뀌어도 폭이 안 변한다. */
 function HourlyStrip({ cells }) {
-  const columns = `repeat(${HOURLY_CELL_COUNT}, 1fr)`;
+  /* 2안 예보 띠와 같은 규칙. 맨 왼쪽 라벨 칸을 두어 `시간별`·`강수확률 %` 같은 줄 제목과
+     값들이 같은 세로선에서 시작하게 한다. */
+  const columns = `var(--ww-strip-gutter) repeat(${HOURLY_CELL_COUNT}, 1fr)`;
   const slots = Array.from({ length: HOURLY_CELL_COUNT }, (unused, index) => cells[index] || null);
   const temps = cells.map((cell) => cell.temp);
   const min = temps.length ? Math.min(...temps) : 0;
@@ -39,13 +41,15 @@ function HourlyStrip({ cells }) {
   const points = cells
     .map((cell, index) => {
       const x = ((index + 0.5) / HOURLY_CELL_COUNT) * 100;
-      const y = 90 - ((cell.temp - min) / span) * 80;
+      const y = 94 - ((cell.temp - min) / span) * 88;
       return `${x},${y}`;
     })
     .join(' ');
+  const precipKind = cells.find((cell) => cell?.precipKind)?.precipKind;
   return (
     <div className="ww-hourly-strip">
-      <div className="ww-hourly-row" style={{ gridTemplateColumns: columns }}>
+      <div className="ww-hourly-row ww-hourly-icon-row" style={{ gridTemplateColumns: columns }}>
+        <i aria-hidden="true" />
         {slots.map((cell, index) => <WeatherIcon type={cell?.icon} className="ww-hourly-icon" key={index} />)}
       </div>
       <div className="ww-hourly-row ww-hourly-line-row" style={{ gridTemplateColumns: columns }}>
@@ -53,18 +57,23 @@ function HourlyStrip({ cells }) {
           <polyline points={points} fill="none" />
         </svg>
       </div>
-      <div className="ww-hourly-row" style={{ gridTemplateColumns: columns }}>
+      <div className="ww-hourly-row ww-hourly-temp-row" style={{ gridTemplateColumns: columns }}>
+        <i aria-hidden="true" />
         {slots.map((cell, index) => <strong key={index}>{cell ? `${cell.temp}°` : ''}</strong>)}
       </div>
-      <PrecipRowLabel cells={cells} className="ww-hourly-precip-label" />
-      <div className="ww-hourly-row" style={{ gridTemplateColumns: columns }}>
+      <div className="ww-hourly-row ww-hourly-precip-row" style={{ gridTemplateColumns: columns }}>
+        <p className="ww-hourly-row-label">{precipKind === 'amount' ? '강수량 mm' : '강수확률 %'}</p>
+        {/* 알약 배경은 안쪽 <b>에만 준다. 2안과 같은 이유다. */}
         {slots.map((cell, index) => (
-          <span className={cell && isPrecipHighlighted(cell) ? "is-highlighted" : ""} key={index}>
-            {cell?.precipValue == null ? '' : cell.precipKind === 'prob' ? `${cell.precipValue}%` : `${cell.precipValue}mm`}
+          <span key={index}>
+            <b className={cell && isPrecipHighlighted(cell) ? "is-highlighted" : undefined}>
+              {cell?.precipValue == null ? '' : cell.precipKind === 'prob' ? `${cell.precipValue}%` : `${cell.precipValue}mm`}
+            </b>
           </span>
         ))}
       </div>
-      <div className="ww-hourly-row" style={{ gridTemplateColumns: columns }}>
+      <div className="ww-hourly-row ww-hourly-hour-row" style={{ gridTemplateColumns: columns }}>
+        <i aria-hidden="true" />
         {slots.map((cell, index) => <time key={index}>{cell?.label ?? ''}</time>)}
       </div>
     </div>

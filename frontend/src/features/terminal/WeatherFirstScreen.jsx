@@ -6,7 +6,6 @@ import {
   FlightList,
   HeaderWeatherPanel,
   MotionModeSwitcher,
-  PrecipRowLabel,
   ScreenFooterNote,
   TerminalEmptyState,
   TerminalSettings,
@@ -44,15 +43,20 @@ const MOTION_MODES = [
  */
 function ForecastStrip({ cells }) {
   if (cells.length === 0) return null;
-  const columns = `repeat(${cells.length}, 1fr)`;
+  /* 맨 왼쪽에 라벨 전용 칸을 하나 두고 모든 줄이 그 칸을 함께 쓴다. 이게 없으면 `강수확률 %`
+     같은 줄 제목만 화면 왼쪽 끝에 붙고 값들은 첫 칸 가운데에 놓여, 제목과 값이 서로 다른
+     세로선 위에 서서 정렬이 어긋나 보인다. */
+  const columns = `var(--wf-strip-gutter) repeat(${cells.length}, 1fr)`;
   const temps = cells.map((cell) => cell.temp);
   const min = Math.min(...temps);
   const max = Math.max(...temps);
   const span = Math.max(1, max - min);
+  /* 꺾은선은 위아래 여백을 6%만 남기고 칸 높이를 거의 다 쓴다. 진폭이 작으면 28°와 34°가
+     같은 높이로 보여 선이 아무것도 말해주지 않는다. */
   const points = cells
     .map((cell, index) => {
       const x = ((index + 0.5) / cells.length) * 100;
-      const y = 90 - ((cell.temp - min) / span) * 80;
+      const y = 94 - ((cell.temp - min) / span) * 88;
       return `${x},${y}`;
     })
     .join(' ');
@@ -60,36 +64,54 @@ function ForecastStrip({ cells }) {
   const groupStarts = cells.map((cell, index) => index > 0 && cell.group !== cells[index - 1].group);
   const cellClass = (index) => `wf-forecast-cell${groupStarts[index] ? " wf-group-start" : ""}`;
   const groupRuns = forecastGroupRuns(cells);
+  const precipKind = cells.find((cell) => cell?.precipKind)?.precipKind;
+  let column = 2;
   return (
     <div className="wf-forecast-strip">
       <div className="wf-forecast-row wf-forecast-title-row" style={{ gridTemplateColumns: columns }}>
-        {groupRuns.map((run, index) => (
-          <span className={`wf-forecast-title${index > 0 ? " wf-group-start" : ""}`} style={{ gridColumn: `span ${run.count}` }} key={run.group}>
-            {run.title}
-          </span>
-        ))}
+        {groupRuns.map((run, index) => {
+          const start = column;
+          column += run.count;
+          return (
+            <span
+              className={`wf-forecast-title${index > 0 ? " wf-group-start" : ""}`}
+              style={{ gridColumn: `${start} / span ${run.count}` }}
+              key={run.group}
+            >
+              {run.title}
+            </span>
+          );
+        })}
       </div>
-      <div className="wf-forecast-row" style={{ gridTemplateColumns: columns }}>
+      <div className="wf-forecast-row wf-forecast-icon-row" style={{ gridTemplateColumns: columns }}>
+        <i aria-hidden="true" />
         {cells.map((cell, index) => <WeatherIcon type={cell.icon} className={`wf-forecast-icon ${cellClass(index)}`} key={index} />)}
       </div>
       <div className="wf-forecast-row wf-forecast-line-row" style={{ gridTemplateColumns: columns }}>
+        <i aria-hidden="true" />
         {cells.map((cell, index) => <i className={cellClass(index)} aria-hidden="true" key={index} />)}
         <svg className="wf-forecast-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           <polyline points={points} fill="none" />
         </svg>
       </div>
-      <div className="wf-forecast-row" style={{ gridTemplateColumns: columns }}>
+      <div className="wf-forecast-row wf-forecast-temp-row" style={{ gridTemplateColumns: columns }}>
+        <i aria-hidden="true" />
         {cells.map((cell, index) => <strong className={cellClass(index)} key={index}>{cell.temp}°</strong>)}
       </div>
-      <PrecipRowLabel cells={cells} className="wf-forecast-precip-label" />
-      <div className="wf-forecast-row" style={{ gridTemplateColumns: columns }}>
+      <div className="wf-forecast-row wf-forecast-precip-row" style={{ gridTemplateColumns: columns }}>
+        <p className="wf-forecast-row-label">{precipKind === 'amount' ? '강수량 mm' : '강수확률 %'}</p>
+        {/* 알약 배경은 안쪽 <b>에만 준다. 칸 자체에 두면 구간 구분선이 둥근 모서리를 타고 휘어
+            괄호처럼 보인다. */}
         {cells.map((cell, index) => (
-          <span className={`${cellClass(index)}${isPrecipHighlighted(cell) ? " is-highlighted" : ""}`} key={index}>
-            {cell.precipValue == null ? '' : cell.precipKind === 'prob' ? `${cell.precipValue}%` : `${cell.precipValue}mm`}
+          <span className={cellClass(index)} key={index}>
+            <b className={isPrecipHighlighted(cell) ? "is-highlighted" : undefined}>
+              {cell.precipValue == null ? '' : cell.precipKind === 'prob' ? `${cell.precipValue}%` : `${cell.precipValue}mm`}
+            </b>
           </span>
         ))}
       </div>
-      <div className="wf-forecast-row" style={{ gridTemplateColumns: columns }}>
+      <div className="wf-forecast-row wf-forecast-hour-row" style={{ gridTemplateColumns: columns }}>
+        <i aria-hidden="true" />
         {cells.map((cell, index) => <time className={cellClass(index)} key={index}>{cell.label}</time>)}
       </div>
     </div>
