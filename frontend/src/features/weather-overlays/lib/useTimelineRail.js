@@ -23,17 +23,15 @@ export function useTimelineRail() {
 
 // Advances selectedMs through the ordered frame times while playing. Separate hook so it can read
 // the tick list produced after the overlay model runs, without adding effects to MapView.
-export function useTimelinePlayback({ isPlaying, speed, pastTicksMs = [], nwpTimes = [], setSelectedMs }) {
-  const ordered = buildOrderedTimes(pastTicksMs, nwpTimes)
+export function useTimelinePlayback({ isPlaying, speed, pastTicksMs = [], nwpTimes = [], qpfTimesMs = [], setSelectedMs }) {
+  const ordered = buildOrderedTimes(pastTicksMs, nwpTimes, qpfTimesMs)
   const orderedKey = ordered.join(',')
 
   useEffect(() => {
     if (!isPlaying || ordered.length <= 1) return undefined
     const timer = window.setInterval(() => {
       setSelectedMs((prev) => {
-        const currentIndex = Number.isFinite(prev) ? nearestIndex(ordered, prev) : ordered.length - 1
-        const nextIndex = currentIndex >= ordered.length - 1 ? 0 : currentIndex + 1
-        return ordered[nextIndex]
+        return nextPlaybackTime(ordered, prev)
       })
     }, getPlaybackDelayMs(speed))
     return () => window.clearInterval(timer)
@@ -41,11 +39,19 @@ export function useTimelinePlayback({ isPlaying, speed, pastTicksMs = [], nwpTim
   }, [isPlaying, speed, orderedKey, setSelectedMs]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-function buildOrderedTimes(pastTicksMs, nwpTimes) {
+export function buildOrderedTimes(pastTicksMs, nwpTimes, qpfTimesMs = []) {
   const future = normalizeNwpTimes(nwpTimes).map((time) => time.ms)
-  const all = [...(Array.isArray(pastTicksMs) ? pastTicksMs : []), ...future]
+  const qpf = Array.isArray(qpfTimesMs) ? qpfTimesMs : []
+  const all = [...(Array.isArray(pastTicksMs) ? pastTicksMs : []), ...future, ...qpf]
     .filter((ms) => Number.isFinite(ms))
   return [...new Set(all)].sort((a, b) => a - b)
+}
+
+export function nextPlaybackTime(ordered, currentMs) {
+  if (!ordered.length) return null
+  const currentIndex = Number.isFinite(currentMs) ? nearestIndex(ordered, currentMs) : ordered.length - 1
+  const nextIndex = currentIndex >= ordered.length - 1 ? 0 : currentIndex + 1
+  return ordered[nextIndex]
 }
 
 function nearestIndex(list, ms) {

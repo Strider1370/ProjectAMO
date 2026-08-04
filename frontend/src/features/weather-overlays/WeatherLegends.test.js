@@ -1,21 +1,40 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
-import test from 'node:test'
+import test, { after } from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import react from '@vitejs/plugin-react'
+import { createServer } from 'vite'
 import { entriesLeftToRight } from './lib/legendOrder.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
+const frontendRoot = path.resolve(here, '../../..')
 const source = fs.readFileSync(path.join(here, 'WeatherLegends.jsx'), 'utf8')
 const panelSource = fs.readFileSync(path.join(here, 'WeatherOverlayPanel.jsx'), 'utf8')
 const css = fs.readFileSync(path.join(here, '../map/MapView.css'), 'utf8')
+let viteServer
 
-// 토글 버튼은 레이더 타일을 켜는 즉시 눈에 띄도록 WeatherOverlayPanel(레이어 패널)의
-// "레이더/위성" 제목 줄로 옮겼다 — 범례 팝업 안에 있으면 찾기 어렵다는 피드백 반영.
-test('the radar motion toggle lives in the layer panel, not the legend', () => {
-  assert.doesNotMatch(source, /const radarMotionEnabled/)
-  assert.doesNotMatch(source, /radar-motion-toggle/)
-  assert.match(panelSource, /레이더 에코 이동벡터 표시/)
+async function renderLegends(props) {
+  viteServer ??= await createServer({
+    root: frontendRoot,
+    configFile: false,
+    plugins: [react()],
+    optimizeDeps: { noDiscovery: true },
+    server: { middlewareMode: true, hmr: false },
+  })
+  const { default: WeatherLegends } = await viteServer.ssrLoadModule('/src/features/weather-overlays/WeatherLegends.jsx')
+  return renderToStaticMarkup(createElement(WeatherLegends, props))
+}
+
+after(async () => viteServer?.close())
+
+test('the WISSDOM toggle lives in the layer panel, not the legend', () => {
+  assert.doesNotMatch(source, /radarMotion/)
+  assert.doesNotMatch(source, /radar-motion/)
+  assert.match(panelSource, /레이더 바람장 \(WISSDOM\)/)
+  assert.doesNotMatch(panelSource, /레이더 에코 이동벡터 표시/)
   assert.match(css, /\.map-view-wrapper \.map-right-legends > \* \{[\s\S]*?pointer-events:\s*auto/)
 })
 
@@ -38,7 +57,19 @@ test('horizontal legends preserve ascending ramps and reverse only descending so
 // 통과했다 — MapView가 bottomDock={!isMobile}을 넘겨 오른쪽 범례(panel)는 어느 화면에서도 렌더되지
 // 않는데, 그 경로의 문구만 확인하고 있었다. 계약이 실제 화면에서 문구와 자료 없음 상태를 확인한다.
 
-test('motion note explains what the arrow length means', () => {
-  assert.match(source, /길이 = 10분 이동거리/)
-  assert.match(source, /예측 아님/)
+test('WISSDOM legend uses its KMA observation time', () => {
+  assert.match(source, /WISSDOM/)
+  assert.match(source, /radarWindObservedAtMs/)
+})
+
+test('QPF API legend appears only for the exact MAPLE forecast frame', async () => {
+  const qpfStatus = { source: 'MAPLE', analysisTimeMs: 1, validTimeMs: 2, leadMinutes: 1, unit: 'mm/h' }
+  const hidden = await renderLegends({ qpfStatus: null, qpfLegendPath: '/api/qpf/legend.png' })
+  const visible = await renderLegends({ qpfStatus, qpfLegendPath: '/api/qpf/legend.png' })
+
+  assert.equal(hidden, '')
+  assert.match(visible, /초단기 강수예측/)
+  assert.match(visible, /MAPLE/)
+  assert.match(visible, /src="\/api\/qpf\/legend\.png"/)
+  assert.doesNotMatch(visible, /레이더 관측|QPF.{0,12}관측|관측.{0,12}QPF/)
 })

@@ -1,6 +1,8 @@
 // 오른쪽 세로 슬라이더 자리 하나를 공유하는 그룹: KIM(바람·기온·구름·착빙) 4형제는
 // 서로 배타적이고(하나만 켜짐), 그 KIM 그룹 전체가 난류·운정고도와도 서로 배타적이다.
 // 셋 중 하나를 켜면 슬라이더 자리의 내용물만 바뀌는 것처럼 보이도록 나머지 KIM/난류/운정고도를 끈다.
+// WISSDOM is an independent radar-height control, not a MET visibility layer; it must
+// never clear or rewrite the KIM pressure selection here.
 const KIM_LAYER_IDS = ['wind', 'temp', 'cloud', 'icing']
 const VERTICAL_SLIDER_GROUP_IDS = [...KIM_LAYER_IDS, 'turbulence', 'ctps']
 

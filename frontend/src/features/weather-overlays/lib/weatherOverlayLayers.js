@@ -22,12 +22,17 @@ import {
   syncRainviewerLayers,
 } from './rainviewerLayers.js'
 import {
-  RADAR_MOTION_ARROW_LAYER,
-  RADAR_MOTION_SHAFT_LAYER,
-  RADAR_MOTION_SHAFT_SOURCE,
-  RADAR_MOTION_SOURCE,
-  syncRadarMotionLayer,
-} from './radarMotionLayers.js'
+  QPF_LAYER,
+  QPF_SOURCE,
+  syncQpfLayer,
+} from './qpfLayers.js'
+import {
+  WISSDOM_LAYER,
+  WISSDOM_SOURCE,
+  syncWissdomLayer,
+} from './wissdomLayers.js'
+
+export { QPF_LAYER, QPF_SOURCE, WISSDOM_LAYER, WISSDOM_SOURCE }
 
 export const SATELLITE_SOURCE = 'kma-satellite-overlay'
 export const SATELLITE_LAYER = 'kma-satellite-overlay'
@@ -62,8 +67,8 @@ export const SIGWX_VECTOR_LAYERS = [
 export const WEATHER_OVERLAY_SOURCE_IDS = [
   SATELLITE_SOURCE,
   RADAR_SOURCE,
-  RADAR_MOTION_SOURCE,
-  RADAR_MOTION_SHAFT_SOURCE,
+  WISSDOM_SOURCE,
+  QPF_SOURCE,
   RAINVIEWER_SOURCE,
   RAINVIEWER_COVERAGE_SOURCE,
   SIGWX_SOURCE,
@@ -85,8 +90,8 @@ export const WEATHER_OVERLAY_SOURCE_IDS = [
 export const WEATHER_OVERLAY_LAYER_IDS = [
   SATELLITE_LAYER,
   RADAR_LAYER,
-  RADAR_MOTION_SHAFT_LAYER,
-  RADAR_MOTION_ARROW_LAYER,
+  WISSDOM_LAYER,
+  QPF_LAYER,
   RAINVIEWER_LAYER,
   RAINVIEWER_COVERAGE_LAYER,
   SIGWX_LAYER,
@@ -462,6 +467,8 @@ export function syncRasterAndSigwxLayers(map, model) {
     frame: model.radarFrame,
     opacity: 0.88,
   })
+  syncWissdomLayer(map, model)
+  syncQpfLayer(map, model)
   // 해외 레이더 — 국내와 상호배타라 z-order 다툼이 없다. 프레임이 없으면(커버 시간 밖) 스스로 숨는다.
   syncRainviewerLayers(map, {
     meta: model.rainviewerMeta,
@@ -484,7 +491,6 @@ export function syncRasterAndSigwxLayers(map, model) {
   addOrUpdateSigwxLowLayers(map, model.sigwxLowMapData, { loadIcons: model.visibility.sigwx })
   setMapLayerVisible(map, SATELLITE_LAYER, hasSat && model.visibility.satellite)
   setMapLayerVisible(map, RADAR_LAYER, hasRadar && model.visibility.radar)
-  syncRadarMotionLayer(map, model.radarMotion)
   setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && model.visibility.sigwx && model.showVisibleSigwxFrontOverlay)
   setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && model.visibility.sigwx && model.showVisibleSigwxCloudOverlay)
   setSigwxLowVisibility(map, model.visibility.sigwx)

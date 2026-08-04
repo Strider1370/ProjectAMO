@@ -12,6 +12,7 @@ import sigwxLowProcessor from './processors/sigwx-low-processor.js'
 import amosProcessor from './processors/amos-processor.js'
 import lightningProcessor from './processors/lightning-processor.js'
 import radarEchoProcessor from './processors/radar-echo-processor.js'
+import radarGraphicsProcessor from './processors/radar-graphics-processor.js'
 import echoTopProcessor from './processors/echo-top-processor.js'
 import rainviewerProcessor from './processors/rainviewer-processor.js'
 import kimSurfaceWindProcessor from './processors/kim-surface-wind-processor.js'
@@ -32,7 +33,7 @@ import { ensureActiveDataView } from './dev/data-view.js'
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
-const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
+const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, wissdom: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
 const activeControllers = new Map()
 const KIM_NWP_CRON_OPTIONS = { timezone: 'Etc/UTC' }
 const AIRPORT_INFO_CRON_OPTIONS = { timezone: 'Asia/Seoul' }
@@ -118,6 +119,19 @@ function scheduleTakeoffFcstJob(scheduler = cron) {
   )
 }
 
+function graphicsEnabled(activeConfig = config) {
+  return activeConfig.radar_graphics?.enabled !== false && !!activeConfig.api?.radar_satellite_auth_key
+}
+
+function scheduleRadarGraphicsJobs(scheduler = cron, activeConfig = config) {
+  if (!graphicsEnabled(activeConfig)) return []
+  const interval = activeConfig.radar_graphics?.interval || '*/10 * * * *'
+  return [
+    scheduler.schedule(interval, () => runWithLock('wissdom', radarGraphicsProcessor.processWissdom)),
+    scheduler.schedule(interval, () => runWithLock('qpf', radarGraphicsProcessor.processQpf)),
+  ]
+}
+
 // 시작 시점 NOTAM 캐시가 재크롤이 필요할 만큼 오래됐나. 없음/빈것/시각손상은 stale로 간주(크롤).
 function isNotamCacheStale() {
   const cached = store.getCached('notam')
@@ -142,6 +156,7 @@ function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.enabled !=
     ["amos", amosProcessor.process],
     ["lightning", lightningProcessor.process],
     ["radar_echo", radarEchoProcessor.process],
+    ...(graphicsEnabled() ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf]] : []),
     ["echo_top", echoTopProcessor.process],
     ["rainviewer", rainviewerProcessor.process],
     ["satellite", satelliteProcessor.process],
@@ -194,6 +209,7 @@ async function main() {
   cron.schedule(config.schedule.lightning_interval, () => runWithLock("lightning", lightningProcessor.process));
   cron.schedule(config.schedule.typhoon_interval, () => runWithLock("typhoon", typhoonProcessor.process));
   cron.schedule(config.schedule.radar_echo_interval, () => runWithLock("radar_echo", radarEchoProcessor.process));
+  scheduleRadarGraphicsJobs()
   cron.schedule(config.schedule.echo_top_interval, () => runWithLock("echo_top", echoTopProcessor.process));
   // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.
   runWithLock("echo_top", echoTopProcessor.backfill);
@@ -229,5 +245,5 @@ if (process.argv[1] && (__filename === process.argv[1] || __filename.endsWith(pr
   });
 }
 
-export { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleTakeoffFcstJob, scheduleKimNwpJob }
-export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, runWithLock, scheduleAirportInfoJob, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }
+export { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleTakeoffFcstJob, scheduleKimNwpJob }
+export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }

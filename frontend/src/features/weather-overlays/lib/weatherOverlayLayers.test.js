@@ -6,6 +6,10 @@ import {
   RADAR_RAINRATE_LEGEND,
   SATELLITE_LAYER,
   RADAR_LAYER,
+  QPF_SOURCE,
+  QPF_LAYER,
+  WISSDOM_SOURCE,
+  WISSDOM_LAYER,
   SIGWX_LAYER,
   SIGWX_CLOUD_LAYER,
   WEATHER_OVERLAY_LAYER_IDS,
@@ -225,6 +229,58 @@ test('syncAdvisoryLayers and syncLightningLayers update installed sources and vi
 test('weather overlay ownership exports are unique', () => {
   assert.equal(new Set(WEATHER_OVERLAY_SOURCE_IDS).size, WEATHER_OVERLAY_SOURCE_IDS.length)
   assert.equal(new Set(WEATHER_OVERLAY_LAYER_IDS).size, WEATHER_OVERLAY_LAYER_IDS.length)
+})
+
+test('weather overlay sync keeps WISSDOM above radar and QPF above WISSDOM', () => {
+  const map = createMockMap()
+  const bounds = [[30, 120], [40, 130]]
+
+  installWeatherOverlayLayers(map)
+  syncRasterAndSigwxLayers(map, {
+    satelliteFrame: null,
+    radarFrame: { path: '/radar.webp', bounds },
+    wissdomFrame: { path: '/wissdom.webp', bounds },
+    qpfFrame: { path: '/qpf.webp', bounds },
+    selectedSigwxFrontMeta: null,
+    selectedSigwxCloudMeta: null,
+    sigwxLowMapData: null,
+    visibility: { satellite: false, radar: true, radarOverseas: false, sigwx: false },
+    showVisibleSigwxFrontOverlay: false,
+    showVisibleSigwxCloudOverlay: false,
+  })
+
+  const layerOrder = [...map.layers.keys()]
+  assert.ok(layerOrder.indexOf(RADAR_LAYER) < layerOrder.indexOf(WISSDOM_LAYER))
+  assert.ok(layerOrder.indexOf(WISSDOM_LAYER) < layerOrder.indexOf(QPF_LAYER))
+  assert.equal(map.getLayer(WISSDOM_LAYER).slot, 'middle')
+  assert.equal(map.getLayer(QPF_LAYER).slot, 'middle')
+  assert.equal(map.getLayer('kma-sigmet-advisories-fill').slot, 'top')
+})
+
+test('weather overlay installation preserves WISSDOM and QPF ownership on a fresh style', () => {
+  const map = createMockMap()
+  const bounds = [[30, 120], [40, 130]]
+
+  installWeatherOverlayLayers(map)
+  syncRasterAndSigwxLayers(map, {
+    satelliteFrame: null,
+    radarFrame: { path: '/radar.webp', bounds },
+    wissdomFrame: { path: '/wissdom.webp', bounds },
+    qpfFrame: { path: '/qpf.webp', bounds },
+    selectedSigwxFrontMeta: null,
+    selectedSigwxCloudMeta: null,
+    sigwxLowMapData: null,
+    visibility: { satellite: false, radar: true, radarOverseas: false, sigwx: false },
+    showVisibleSigwxFrontOverlay: false,
+    showVisibleSigwxCloudOverlay: false,
+  })
+
+  assert.ok(map.getLayer(WISSDOM_LAYER))
+  assert.ok(map.getLayer(QPF_LAYER))
+  assert.ok(WEATHER_OVERLAY_SOURCE_IDS.includes(WISSDOM_SOURCE))
+  assert.ok(WEATHER_OVERLAY_SOURCE_IDS.includes(QPF_SOURCE))
+  assert.ok(WEATHER_OVERLAY_LAYER_IDS.includes(WISSDOM_LAYER))
+  assert.ok(WEATHER_OVERLAY_LAYER_IDS.includes(QPF_LAYER))
 })
 
 test('installWeatherOverlayLayers can run with empty data', () => {

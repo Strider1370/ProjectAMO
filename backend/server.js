@@ -128,12 +128,17 @@ function readJsonFileSafe(filePath) {
 function setGeneratedDataCacheHeaders(res, filePath) {
   const relPath = path.relative(DATA_ROOT, filePath).replace(/\\/g, '/')
 
-  if (/^radar\/(?:echo_korea_\d{12}\.png|motion_korea_\d{12}\.geojson)$/i.test(relPath)) {
+  if (/^radar\/echo_korea_\d{12}\.png$/i.test(relPath)) {
     res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
     return
   }
 
   if (/^radar\/echotop\/echotop_\d{12}\.webp$/i.test(relPath)) {
+    res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
+    return
+  }
+
+  if (/^radar\/(?:wissdom\/wissdom_\d+_\d{12}|qpf\/qpf_\d{12}_p\d+)(?:_legend)?\.webp$/i.test(relPath)) {
     res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
     return
   }
@@ -156,6 +161,8 @@ function setGeneratedDataCacheHeaders(res, filePath) {
   if (
     relPath === 'radar/echo_meta.json'
     || relPath === 'radar/echotop/echotop_meta.json'
+    || relPath === 'radar/wissdom/wissdom_meta.json'
+    || relPath === 'radar/qpf/qpf_meta.json'
     || relPath === 'satellite/sat_meta.json'
     || relPath === 'satellite/convective/convective_meta.json'
     || /^sigwx_low\/(?:fronts_meta|clouds_meta)_\d{10}\.json$/i.test(relPath)
@@ -186,6 +193,7 @@ function isRevalidatedApiRequest(req) {
     || /^\/(?:metar|taf|sigmet)-overseas$/i.test(req.path)
     || /^\/sigwx-low-history$/i.test(req.path)
     || /^\/radar\/echo-meta$/i.test(req.path)
+    || /^\/radar\/(?:wissdom|qpf)-meta$/i.test(req.path)
     || /^\/satellite\/meta$/i.test(req.path)
     || /^\/sigwx-(?:front|cloud)-meta$/i.test(req.path)
     || /^\/sigwx-low-(?:fronts|clouds)$/i.test(req.path)
@@ -385,6 +393,12 @@ function buildFrameEntry(filePath) {
   return { tm: payload.tm }
 }
 
+function buildRadarGraphicsSnapshotEntry(payload) {
+  const frames = payload?.frames || Object.values(payload?.framesByHeight || {}).flat()
+  const latest = [...frames].sort((a, b) => (a.validTimeMs || a.timeMs || 0) - (b.validTimeMs || b.timeMs || 0)).at(-1)
+  return latest?.tm ? { hash: store.canonicalHash(payload), tm: latest.tm, updated_at: payload.updatedAt || null } : null
+}
+
 function buildSigwxOverlaySnapshotEntry(kind) {
   const tmfc = resolveSigwxTmfc()
   const meta = readSigwxOverlayMeta(kind, tmfc)
@@ -455,6 +469,8 @@ const SNAPSHOT_SOURCES = [
   { keys: ['takeoffFcst', 'takeoff_fcst'], files: [snapshotMetaLatest('takeoff_fcst')], build: () => buildHashEntry('takeoff_fcst') },
   { keys: ['notam'], files: [snapshotMetaLatest('notam')], build: () => buildHashEntry('notam') },
   { keys: ['echoMeta', 'echo'], files: [snapshotMetaFile('radar', 'echo_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'echo_meta.json')) },
+  { keys: ['wissdomMeta', 'wissdom'], files: [snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json'))) },
+  { keys: ['qpfMeta', 'qpf'], files: [snapshotMetaFile('radar', 'qpf', 'qpf_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'qpf', 'qpf_meta.json'))) },
   { keys: ['satMeta', 'satellite'], files: [snapshotMetaFile('satellite', 'sat_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('satellite', 'sat_meta.json')) },
   { keys: ['convectiveMeta'], files: [snapshotMetaFile('satellite', 'convective', 'convective_meta.json')], build: buildConvectiveSnapshotEntry },
   { keys: ['rainviewerMeta', 'rainviewer'], files: [snapshotMetaFile('radar', 'rainviewer_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'rainviewer_meta.json')) },
@@ -968,6 +984,14 @@ app.get('/api/radar/echo-top-meta', (_req, res) =>
   sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'echotop', 'echotop_meta.json')),
 )
 
+app.get('/api/radar/wissdom-meta', (_req, res) =>
+  sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'wissdom', 'wissdom_meta.json')),
+)
+
+app.get('/api/radar/qpf-meta', (_req, res) =>
+  sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'qpf', 'qpf_meta.json')),
+)
+
 app.get('/api/satellite/meta', (_req, res) =>
   sendJsonFile(res, path.join(DATA_ROOT, 'satellite', 'sat_meta.json')),
 )
@@ -1224,7 +1248,7 @@ app.post('/api/briefing/cross-section', (req, res) => {
   }
 })
 
-export { app, getCachedSnapshotMeta, readSelectedKimCloudField, readSelectedKimIcingField }
+export { app, buildRadarGraphicsSnapshotEntry, getCachedSnapshotMeta, readSelectedKimCloudField, readSelectedKimIcingField }
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, HOST, () => console.log(`[server] Backend running on ${HOST}:${PORT}`))

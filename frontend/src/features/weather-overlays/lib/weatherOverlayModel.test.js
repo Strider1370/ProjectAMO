@@ -84,6 +84,151 @@ test('buildWeatherOverlayModel selects latest visible timeline frame by default'
   assert.equal(model.lightningLegendEntries[0].iconId, 'lightning-0-5')
 })
 
+test('selects WISSDOM only when its selected-height frame exactly matches the rendered radar tm', () => {
+  const base = {
+    echoMeta: { frames: [
+      { tm: '202608041920', path: '/radar-1020.webp' },
+      { tm: '202608041925', path: '/radar-1025.webp' },
+    ] },
+    wissdomMeta: { framesByHeight: {
+      1524: [
+        { tm: '202608041920', heightM: 1524, path: '/wissdom-1020.webp' },
+        { tm: '202608041930', heightM: 1524, path: '/wissdom-1030.webp' },
+      ],
+    } },
+    visibility: { radar: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 25),
+    radarWindHeightM: 1524,
+    radarWindRequested: true,
+  }
+
+  const missing = buildWeatherOverlayModel(base)
+  assert.equal(missing.radarFrame.tm, '202608041925')
+  assert.equal(missing.wissdomFrame, null)
+  assert.equal(missing.wissdomAvailable, false)
+
+  const exact = buildWeatherOverlayModel({
+    ...base,
+    wissdomMeta: { framesByHeight: {
+      1524: [...base.wissdomMeta.framesByHeight[1524], { tm: '202608041925', heightM: 1524, path: '/wissdom-1025.webp' }],
+    } },
+  })
+  assert.equal(exact.wissdomFrame.path, '/wissdom-1025.webp')
+  assert.equal(exact.wissdomAvailable, true)
+})
+
+test('uses the requested WISSDOM height independently of the KIM selection', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: { frames: [{ tm: '202608041925', path: '/radar-1025.webp' }] },
+    wissdomMeta: { framesByHeight: {
+      914: [{ tm: '202608041925', heightM: 914, path: '/wissdom-914.webp' }],
+      1524: [{ tm: '202608041925', heightM: 1524, path: '/wissdom-1524.webp' }],
+    } },
+    visibility: { radar: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 25),
+    radarWindHeightM: 914,
+    radarWindRequested: true,
+    nwpSelection: { tmfc: '202608040000', hf: 6 },
+  })
+
+  assert.equal(model.wissdomFrame.path, '/wissdom-914.webp')
+  assert.deepEqual(model.nwpSelection, { tmfc: '202608040000', hf: 6 })
+})
+
+test('selects only an exact future QPF frame and hides observed radar and motion', () => {
+  const analysisTimeMs = Date.UTC(2026, 7, 4, 10, 25)
+  const model = buildWeatherOverlayModel({
+    echoMeta: { frames: [{
+      tm: '202608041925', path: '/radar-1025.webp',
+      motion: { observedAtMs: analysisTimeMs, path: '/motion-1025.geojson' },
+    }] },
+    qpfMeta: { frames: [
+      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' },
+      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, path: '/qpf-20.webp' },
+      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 55), leadMinutes: 30, path: '/qpf-30.webp' },
+    ] },
+    visibility: { radar: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 45),
+  })
+
+  assert.equal(model.qpfFrame.path, '/qpf-20.webp')
+  assert.deepEqual(model.qpfStatus, { source: 'MAPLE', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, unit: 'mm/h' })
+  assert.equal(model.radarDisplayVisible, false)
+  assert.equal(model.radarFrame, null)
+  assert.equal(model.radarMotion.dataUrl, null)
+  assert.deepEqual(model.forecastTimelineTicks, [Date.UTC(2026, 7, 4, 10, 35), Date.UTC(2026, 7, 4, 10, 45), Date.UTC(2026, 7, 4, 10, 55)])
+})
+
+test('keeps live selection on the latest observed tick when future QPF ticks exist', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: { frames: [{ tm: '202608041925', path: '/radar-1025.webp' }] },
+    qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' }] },
+    visibility: { radar: true },
+    selectedWeatherTimeMs: null,
+  })
+
+  assert.equal(model.selectedWeatherTimeMs, Date.UTC(2026, 7, 4, 10, 25))
+  assert.equal(model.radarFrame.path, '/radar-1025.webp')
+  assert.equal(model.qpfFrame, null)
+})
+
+test('keeps live selection null when only future QPF ticks exist', () => {
+  const model = buildWeatherOverlayModel({
+    qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' }] },
+    visibility: { radar: true },
+    selectedWeatherTimeMs: null,
+  })
+
+  assert.equal(model.selectedWeatherTimeMs, null)
+  assert.equal(model.qpfFrame, null)
+})
+
+test('deduplicates overlapping QPF valid times in favour of the newest analysis', () => {
+  const model = buildWeatherOverlayModel({
+    qpfMeta: { frames: [
+      { tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, path: '/qpf-1025-p20.webp' },
+      { tm: '202608041930', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 30), validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 15, path: '/qpf-1030-p15.webp' },
+    ] },
+    visibility: { radar: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 45),
+  })
+
+  assert.equal(model.qpfFrames.length, 1)
+  assert.equal(model.qpfFrame.path, '/qpf-1030-p15.webp')
+  assert.equal(model.qpfStatus.analysisTimeMs, Date.UTC(2026, 7, 4, 10, 30))
+  assert.equal(model.qpfStatus.leadMinutes, 15)
+})
+
+test('never selects a nearest QPF frame outside its exact future tick', () => {
+  const qpfMeta = { frames: [
+    { tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' },
+    { tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, path: '/qpf-20.webp' },
+  ] }
+  for (const selectedWeatherTimeMs of [Date.UTC(2026, 7, 4, 10, 40), Date.UTC(2026, 7, 4, 10, 25), Date.UTC(2026, 7, 4, 10, 55)]) {
+    const model = buildWeatherOverlayModel({ qpfMeta, visibility: { radar: true }, selectedWeatherTimeMs })
+    assert.equal(model.qpfFrame, null)
+    assert.equal(model.qpfStatus, null)
+  }
+})
+
+test('crossing the final observation and first QPF tick clears each stale raster', () => {
+  const base = {
+    echoMeta: { frames: [{ tm: '202608041925', path: '/radar-1025.webp' }] },
+    qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' }] },
+    visibility: { radar: true },
+  }
+  const observation = buildWeatherOverlayModel({ ...base, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 25) })
+  const forecast = buildWeatherOverlayModel({ ...base, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 35) })
+  const returned = buildWeatherOverlayModel({ ...base, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 25) })
+
+  assert.equal(observation.radarFrame.path, '/radar-1025.webp')
+  assert.equal(observation.qpfFrame, null)
+  assert.equal(forecast.radarFrame, null)
+  assert.equal(forecast.qpfFrame.path, '/qpf-10.webp')
+  assert.equal(returned.radarFrame.path, '/radar-1025.webp')
+  assert.equal(returned.qpfFrame, null)
+})
+
 test('uses the actually rendered radar frame\'s own motion, not an earlier stale one', () => {
   const selectedMs = Date.UTC(2026, 4, 14, 3, 7)
   const model = buildWeatherOverlayModel({

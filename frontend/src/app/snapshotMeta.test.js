@@ -34,6 +34,29 @@ test('main profile still detects RainViewer changes', () => {
   assert.equal(detectSnapshotChanges(prev, next).rainviewerMeta, true)
 })
 
+test('detectSnapshotChanges tracks WISSDOM and QPF graphics metadata independently', () => {
+  const prev = {
+    wissdomMeta: { tm: '202608041700', hash: 'wissdom-old' },
+    qpfMeta: { tm: '202608041700', hash: 'qpf-stable' },
+  }
+  const next = {
+    wissdomMeta: { tm: '202608041700', hash: 'wissdom-new' },
+    qpfMeta: { tm: '202608041700', hash: 'qpf-stable' },
+  }
+
+  const changes = detectSnapshotChanges(prev, next)
+
+  assert.equal(changes.wissdomMeta, true)
+  assert.equal(changes.qpfMeta, false)
+})
+
+test('detectSnapshotChanges does not re-fetch graphics metadata after the client rebuilds its snapshot', () => {
+  const saved = { wissdomMeta: { tm: '202608041700', updated_at: '2026-08-04T08:00:00Z' } }
+  const latest = { wissdomMeta: { tm: '202608041700', hash: 'backend-canonical-hash', updated_at: '2026-08-04T08:00:00Z' } }
+
+  assert.equal(detectSnapshotChanges(saved, latest).wissdomMeta, false)
+})
+
 test('main profile change set does not gain a notam key (NOTAM stays initial-load-only, per spec)', () => {
   const changes = detectSnapshotChanges({}, {})
   assert.ok(!('notam' in changes))

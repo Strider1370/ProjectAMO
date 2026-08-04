@@ -117,6 +117,26 @@ function normalizeRainviewerFrames(meta) {
     .sort((a, b) => a.timeMs - b.timeMs)
 }
 
+function normalizeWissdomFrames(meta, heightM) {
+  const frames = meta?.framesByHeight?.[String(heightM)] || meta?.framesByHeight?.[heightM] || []
+  return normalizeFrames(frames)
+}
+
+function normalizeQpfFrames(meta) {
+  const normalized = (Array.isArray(meta?.frames) ? meta.frames : [])
+    .map((frame) => {
+      const timeMs = Number.isFinite(frame?.timeMs) ? frame.timeMs : parseFrameTmToMs(frame?.tm)
+      const analysisTimeMs = Number.isFinite(frame?.analysisTimeMs) ? frame.analysisTimeMs : timeMs
+      const validTimeMs = Number(frame?.validTimeMs)
+      const leadMinutes = Number(frame?.leadMinutes)
+      if (!Number.isFinite(timeMs) || !Number.isFinite(analysisTimeMs) || !Number.isFinite(validTimeMs) || !Number.isFinite(leadMinutes) || validTimeMs <= analysisTimeMs) return null
+      return { ...frame, timeMs, analysisTimeMs, validTimeMs, leadMinutes }
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.validTimeMs - b.validTimeMs || b.analysisTimeMs - a.analysisTimeMs)
+  return normalized.filter((frame, index) => index === 0 || normalized[index - 1].validTimeMs !== frame.validTimeMs)
+}
+
 // pickNearestPreviousFrame은 선택 시각이 모든 프레임보다 과거여도 null이 아니라 frames[0]을 준다
 // (weatherTimeline.js: `return selected || frames[0]`). RainViewer는 2시간치뿐이라, 위성(6시간) 등이
 // 타임라인을 더 과거로 늘리면 "3시간 전을 보는데 2시간 전 강수를 그리는" 시간 어긋남이 생긴다.
@@ -129,6 +149,8 @@ function pickRainviewerFrame(frames, selectedTimeMs) {
 
 export function buildWeatherOverlayModel({
   echoMeta,
+  wissdomMeta,
+  qpfMeta,
   echoTopMeta,
   rainviewerMeta,
   satMeta,
@@ -140,6 +162,8 @@ export function buildWeatherOverlayModel({
   airmetData,
   visibility = {},
   selectedWeatherTimeMs = null,
+  radarWindHeightM = null,
+  radarWindRequested = false,
   sigwxHistoryIndex,
   sigwxFilter,
   hiddenAdvisoryKeys = {},
@@ -153,6 +177,9 @@ export function buildWeatherOverlayModel({
   tz = 'KST',
 }) {
   const radarFrames = normalizeFrames(echoMeta?.frames?.length ? echoMeta.frames : [echoMeta?.nationwide])
+  const wissdomFrames = normalizeWissdomFrames(wissdomMeta, radarWindHeightM)
+  const qpfFrames = normalizeQpfFrames(qpfMeta)
+  const forecastTimelineTicks = [...new Set(qpfFrames.map((frame) => frame.validTimeMs))]
   const echoTopFrames = normalizeFrames(echoTopMeta?.frames?.length ? echoTopMeta.frames : [echoTopMeta?.latest])
   const rainviewerFrames = normalizeRainviewerFrames(rainviewerMeta)
   const satelliteFrames = normalizeFrames(satMeta?.frames?.length ? satMeta.frames : [satMeta?.latest])
@@ -169,15 +196,33 @@ export function buildWeatherOverlayModel({
   ])
   // selectedWeatherTimeMs is the unified absolute-time axis; null = live (newest frame).
   // Scrubbing into the forecast (future) zone clamps observed layers to their newest frame.
-  const firstTickMs = weatherTimelineTicks.length ? weatherTimelineTicks[0] : null
-  const latestTickMs = weatherTimelineTicks.length ? weatherTimelineTicks[weatherTimelineTicks.length - 1] : null
-  const resolvedWeatherTimeMs = weatherTimelineTicks.length
+  const timelineTicks = [...new Set([...weatherTimelineTicks, ...forecastTimelineTicks])].sort((a, b) => a - b)
+  const firstTickMs = timelineTicks.length ? timelineTicks[0] : null
+  const latestTickMs = timelineTicks.length ? timelineTicks[timelineTicks.length - 1] : null
+  const resolvedWeatherTimeMs = timelineTicks.length
     ? (Number.isFinite(selectedWeatherTimeMs)
       ? Math.min(Math.max(selectedWeatherTimeMs, firstTickMs), latestTickMs)
-      : latestTickMs)
+      : (weatherTimelineTicks.at(-1) ?? null))
     : null
-  const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && weatherTimelineTicks.length > 0
-  const radarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
+  const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && timelineTicks.length > 0
+  const observedRadarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
+  const qpfFrame = qpfFrames.find((frame) => frame.validTimeMs === selectedWeatherTimeMs) || null
+  const radarFrame = qpfFrame ? null : observedRadarFrame
+  const radarDisplayVisible = Boolean(visibility.radar && radarFrame)
+  const wissdomExactFrame = observedRadarFrame
+    ? wissdomFrames.find((frame) => frame.tm === observedRadarFrame.tm) || null
+    : null
+  const wissdomAvailable = Boolean(visibility.radar && !qpfFrame && wissdomExactFrame)
+  const wissdomFrame = radarWindRequested && wissdomAvailable ? wissdomExactFrame : null
+  const qpfStatus = qpfFrame
+    ? {
+      source: 'MAPLE',
+      analysisTimeMs: qpfFrame.analysisTimeMs,
+      validTimeMs: qpfFrame.validTimeMs,
+      leadMinutes: qpfFrame.leadMinutes,
+      unit: 'mm/h',
+    }
+    : null
   // Echo Top은 레이더와 같은 선택 규칙을 쓴다 — 같이 켜면 같이 보이고 같이 사라진다.
   // 수집 지연도 레이더와 같게 맞춰(config.radar_echo_top.delay_minutes) 평상시엔 시각이 일치하고,
   // 한 주기를 놓쳤을 때만 직전 프레임이 대신 나온다.
@@ -219,11 +264,11 @@ export function buildWeatherOverlayModel({
     && Number(motion?.observedAtMs) === radarReferenceTimeMs
     && Boolean(motion?.path)
   const radarMotion = {
-    visible: Boolean(visibility.radar && hasExactMotion),
+    visible: Boolean(radarDisplayVisible && hasExactMotion),
     frameTm: radarFrame?.tm ?? null,
-    dataUrl: hasExactMotion ? motion.path : null,
-    observedAtMs: hasExactMotion ? motion.observedAtMs : null,
-    comparedFromMs: hasExactMotion ? motion.comparedFromMs ?? null : null,
+    dataUrl: radarDisplayVisible && hasExactMotion ? motion.path : null,
+    observedAtMs: radarDisplayVisible && hasExactMotion ? motion.observedAtMs : null,
+    comparedFromMs: radarDisplayVisible && hasExactMotion ? motion.comparedFromMs ?? null : null,
   }
   // 낙뢰 나이의 기준시각. 벽시계를 쓰면 수집이 늦어질수록 방금 친 번개가 밴드를 넘겨
   // 30분 창 밖으로 사라진다 — 낙뢰 자료 자신의 수집시각을 기준으로 재고, 그 시각이
@@ -283,6 +328,8 @@ export function buildWeatherOverlayModel({
   return {
     visibility,
     radarFrames,
+    wissdomFrames,
+    qpfFrames,
     echoTopFrames,
     rainviewerMeta: rainviewerMeta || null,
     rainviewerFrames,
@@ -290,9 +337,15 @@ export function buildWeatherOverlayModel({
     convectiveFrames,
     lightningFrames,
     weatherTimelineTicks,
+    forecastTimelineTicks,
     selectedWeatherTimeMs: resolvedWeatherTimeMs,
     weatherTimelineVisible,
     radarFrame,
+    radarDisplayVisible,
+    wissdomFrame,
+    wissdomAvailable,
+    qpfFrame,
+    qpfStatus,
     echoTopFrame,
     radarMotion,
     rainviewerFrame,
@@ -337,6 +390,7 @@ export function buildWeatherOverlayModel({
     sigwxIssueLabel: formatSigwxStamp(selectedSigwxEntry?.fetched_at, tz),
     sigwxValidLabel: formatSigwxStamp(selectedSigwxEntry?.tmfc, tz),
     nwpIssueLabel: formatUtcTmfcStamp(nwpSelection?.tmfc ?? null, tz),
+    nwpSelection,
     nwpValidLabel: (() => {
       const base = parseUtcTmfcToMs(nwpSelection?.tmfc)
       const hf = Number(nwpSelection?.hf)

@@ -53,6 +53,8 @@ function WeatherLegends({
   showFlightCategoryStations = true,
   onShowFlightCategoryStationsChange,
   radarRainrateLegend,
+  qpfStatus = null,
+  qpfLegendPath = null,
   lightningLegendEntries,
   windSpeedLegendVisible,
   windSpeedLegendEntries = [],
@@ -69,9 +71,9 @@ function WeatherLegends({
   echoTopLegendVisible = false,
   radarReferenceTimeMs,
   lightningReferenceTimeMs,
-  radarMotionAvailable = false,
-  radarMotionObservedAtMs,
-  radarMotionComparedFromMs,
+  radarWindLegendVisible = false,
+  radarWindLegendPath,
+  radarWindObservedAtMs,
   formatReferenceTimeLabel,
   bottomDock = false,
   open: controlledOpen,
@@ -87,6 +89,7 @@ function WeatherLegends({
     if (controlledOpen === undefined) setUncontrolledOpen(resolved)
     onOpenChange?.(resolved)
   }
+  const qpfLegendVisible = Boolean(qpfStatus && qpfLegendPath)
   const panel = (
     <div className="map-right-legends">
       {radarLegendVisible && (
@@ -104,13 +107,16 @@ function WeatherLegends({
               </div>
             ))}
           </div>
-          {radarLegendVisible && <div className="radar-motion-control">
-            <span className="radar-motion-note">
-              {radarMotionAvailable
-                ? `관측 ${formatReferenceTimeLabel(radarMotionObservedAtMs)} · 비교 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} · 길이 = 10분 이동거리 · 예측 아님`
-                : '표시 중인 레이더 프레임의 이동 자료 없음'}
-            </span>
+          {radarWindLegendVisible && <div className="radar-wind-control">
+            <span className="radar-wind-note">WISSDOM · KMA 관측 {formatReferenceTimeLabel(radarWindObservedAtMs)}</span>
+            {radarWindLegendPath && <img src={radarWindLegendPath} alt="WISSDOM KMA 범례" />}
           </div>}
+        </div>
+      )}
+      {qpfLegendVisible && (
+        <div className="qpf-api-legend" aria-label="MAPLE 초단기 강수예측 범례">
+          <div className="qpf-api-legend__title">초단기 강수예측 · MAPLE</div>
+          <img src={qpfLegendPath} alt="MAPLE 초단기 강수예측 범례" />
         </div>
       )}
       {/* 해외 레이더(RainViewer): 우리는 픽셀만 받고 숫자가 없다 → mm/h 눈금을 붙이면 오독을 부른다.
@@ -302,7 +308,7 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
+  if (!radarLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
 
   // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
   if (!isMobile && !bottomDock) return panel
@@ -348,13 +354,18 @@ function WeatherLegends({
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
         ))}
-        {radarLegendVisible && (
-          <div className="radar-motion-control radar-motion-control--mobile">
-            <span className="radar-motion-note">
-              {radarMotionAvailable
-                ? `${formatReferenceTimeLabel(radarMotionObservedAtMs)} \u00B7 ${formatReferenceTimeLabel(radarMotionComparedFromMs)} \u00B7 \uAD00\uCE21 \uC774\uB3D9 \u00B7 \uAE38\uC774 = 10\uBD84 \uC774\uB3D9\uAC70\uB9AC`
-                : '\uC774\uB3D9 \uC790\uB8CC \uC5C6\uC74C'}
+        {radarWindLegendVisible && (
+          <div className="radar-wind-control radar-wind-control--mobile">
+            <span className="radar-wind-note">
+              WISSDOM · KMA 관측 {formatReferenceTimeLabel(radarWindObservedAtMs)}
             </span>
+            {radarWindLegendPath && <img src={radarWindLegendPath} alt="WISSDOM KMA 범례" />}
+          </div>
+        )}
+        {qpfLegendVisible && (
+          <div className="qpf-api-legend" aria-label="MAPLE 초단기 강수예측 범례">
+            <div className="qpf-api-legend__title">초단기 강수예측 · MAPLE</div>
+            <img src={qpfLegendPath} alt="MAPLE 초단기 강수예측 범례" />
           </div>
         )}
         {flightCategoryLegendVisible && (

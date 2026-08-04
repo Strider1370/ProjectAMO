@@ -38,15 +38,16 @@ import AdsbTimestamp from '../weather-overlays/AdsbTimestamp.jsx'
 import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
 import TimelineRail from '../weather-overlays/TimelineRail.jsx'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
-import useRadarMotionOverlay from '../weather-overlays/lib/useRadarMotionOverlay.js'
+import useRadarWindOverlay, { deriveRadarWindRailActive, hasExactRadarWindFrame } from '../weather-overlays/lib/useRadarWindOverlay.js'
 import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
 import { legendStamps } from '../weather-overlays/lib/flightCategoryLegend.js'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
-import NwpSliderBar from '../weather-overlays/NwpSliderBar.jsx'
+import RadarWindVerticalRail from '../weather-overlays/RadarWindVerticalRail.jsx'
 import LevelSliderPanel from '../weather-overlays/LevelSliderPanel.jsx'
 import ConvectiveOverlayControls from '../weather-overlays/ConvectiveOverlayControls.jsx'
 import ConvectiveOverlayCard from '../weather-overlays/ConvectiveOverlayCard.jsx'
 import EchoTopCard from '../weather-overlays/EchoTopCard.jsx'
+import QpfStatusCard from '../weather-overlays/QpfStatusCard.jsx'
 import TyphoonPanel from '../weather-overlays/TyphoonPanel.jsx'
 import { useTyphoonOverlay } from '../weather-overlays/lib/typhoonOverlaySync.js'
 import WeatherPointInspector from '../weather-overlays/WeatherPointInspector.jsx'
@@ -335,6 +336,8 @@ const MapView = forwardRef(function MapView({
   airports = [],
   metarData = null,
   echoMeta = null,
+  wissdomMeta = null,
+  qpfMeta = null,
   rainviewerMeta = null,
   satMeta = null,
   convectiveMeta = null,
@@ -750,8 +753,14 @@ const MapView = forwardRef(function MapView({
   const adsbTrailGeoJSON = useMemo(() => createAdsbTrailGeoJSON(adsbData), [adsbData])
   const adsbCounts = useMemo(() => countAircraft(adsbGeoJSON.features), [adsbGeoJSON])
   const adsbVisibleIds = useMemo(() => visibleIds(adsbGeoJSON.features, trafficFilters), [adsbGeoJSON, trafficFilters])
-  const weatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
+  const radarWindAvailableHeightsM = useMemo(
+    () => Object.keys(wissdomMeta?.framesByHeight || {}).map(Number).filter(Number.isFinite),
+    [wissdomMeta],
+  )
+  const baseWeatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
     echoMeta,
+    wissdomMeta,
+    qpfMeta,
     rainviewerMeta,
     satMeta,
     convectiveMeta,
@@ -774,6 +783,8 @@ const MapView = forwardRef(function MapView({
     tz,
   }), [
     echoMeta,
+    wissdomMeta,
+    qpfMeta,
     rainviewerMeta,
     satMeta,
     convectiveMeta,
@@ -795,6 +806,25 @@ const MapView = forwardRef(function MapView({
     ktgGrid,
     tz,
   ])
+  const radarWindOverlay = useRadarWindOverlay({
+    radarEnabled: baseWeatherOverlayModel.visibility.radar,
+    availableHeightsM: radarWindAvailableHeightsM,
+    exactFrameAvailable: (heightM) => hasExactRadarWindFrame({
+      radarFrame: baseWeatherOverlayModel.radarFrame,
+      wissdomMeta,
+      heightM,
+    }),
+  })
+  const weatherOverlayModel = buildWeatherOverlayModel({
+    echoMeta, wissdomMeta, qpfMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
+    lightningData, sigwxLowData, sigwxLowHistoryData, sigmetData, airmetData,
+    visibility: metVisibility, selectedWeatherTimeMs: weatherTimelineSelectedMs,
+    radarWindHeightM: radarWindOverlay.heightM,
+    radarWindRequested: radarWindOverlay.effectiveVisible,
+    sigwxHistoryIndex, sigwxFilter, hiddenAdvisoryKeys, selectedSigwxFrontMeta,
+    selectedSigwxCloudMeta, lightningReferenceTimeMs: effectiveLightningReferenceTimeMs,
+    nwpSelection, ktgGrid, tz,
+  })
   const convectiveOverlay = useConvectiveOverlay({
     mapRef, isStyleReady, styleRevision,
     ciVisible: metVisibility.ci, ctpsVisible: metVisibility.ctps,
@@ -810,14 +840,12 @@ const MapView = forwardRef(function MapView({
   const typhoonOverlay = useTyphoonOverlay({
     mapRef, isStyleReady, styleRevision, visible: metVisibility.typhoon,
   })
-  const radarMotionOverlay = useRadarMotionOverlay({
-    radarEnabled: weatherOverlayModel.visibility.radar,
-    hasExactMotionFrame: Boolean(weatherOverlayModel.radarMotion.dataUrl),
-  })
+  const radarWindEffectiveVisible = radarWindOverlay.effectiveVisible
   const {
     radarFrames,
     satelliteFrames,
     weatherTimelineTicks,
+    forecastTimelineTicks,
     sigwxHistoryEntries,
     selectedSigwxEntry,
     sigwxGroups,
@@ -834,7 +862,6 @@ const MapView = forwardRef(function MapView({
     lightningLegendVisible,
     lightningLegendEntries,
     radarReferenceTimeMs,
-    radarMotion,
     sigwxIssueLabel,
     sigwxValidLabel,
     nwpIssueLabel,
@@ -928,6 +955,7 @@ const MapView = forwardRef(function MapView({
     speed: weatherTimelineSpeed,
     pastTicksMs: weatherTimelineTicks,
     nwpTimes: sliderTimes,
+    qpfTimesMs: forecastTimelineTicks,
     setSelectedMs: setWeatherTimelineSelectedMs,
   })
 
@@ -987,10 +1015,8 @@ const MapView = forwardRef(function MapView({
   const rasterAndSigwxModel = useMemo(() => ({
     satelliteFrame: weatherOverlayModel.satelliteFrame,
     radarFrame: weatherOverlayModel.radarFrame,
-    radarMotion: {
-      ...weatherOverlayModel.radarMotion,
-      visible: radarMotionOverlay.effectiveVisible,
-    },
+    wissdomFrame: weatherOverlayModel.wissdomFrame,
+    qpfFrame: weatherOverlayModel.qpfFrame,
     rainviewerMeta: weatherOverlayModel.rainviewerMeta,
     rainviewerFrame: weatherOverlayModel.rainviewerFrame,
     selectedSigwxFrontMeta: weatherOverlayModel.selectedSigwxFrontMeta,
@@ -1007,8 +1033,8 @@ const MapView = forwardRef(function MapView({
   }), [
     weatherOverlayModel.satelliteFrame,
     weatherOverlayModel.radarFrame,
-    weatherOverlayModel.radarMotion,
-    radarMotionOverlay.effectiveVisible,
+    weatherOverlayModel.wissdomFrame,
+    weatherOverlayModel.qpfFrame,
     weatherOverlayModel.rainviewerMeta,
     weatherOverlayModel.rainviewerFrame,
     weatherOverlayModel.selectedSigwxFrontMeta,
@@ -1762,6 +1788,8 @@ const MapView = forwardRef(function MapView({
           showFlightCategoryStations={showFlightCategoryStations}
           onShowFlightCategoryStationsChange={setShowFlightCategoryStations}
           radarRainrateLegend={RADAR_RAINRATE_LEGEND}
+          qpfStatus={weatherOverlayModel.qpfStatus}
+          qpfLegendPath={weatherOverlayModel.qpfFrame?.legendPath}
           lightningLegendEntries={lightningLegendEntries}
           windSpeedLegendVisible={!!(enableWindOverlay && metVisibility.wind && metVisibility.windSpeed && windField)}
           windSpeedLegendEntries={WIND_SPEED_COLOR_RAMP}
@@ -1778,9 +1806,9 @@ const MapView = forwardRef(function MapView({
           echoTopLegendVisible={!!metVisibility.echoTop}
           radarReferenceTimeMs={radarReferenceTimeMs}
           lightningReferenceTimeMs={lightningReferenceTimeMs}
-          radarMotionAvailable={Boolean(radarMotion.dataUrl)}
-          radarMotionObservedAtMs={radarMotion.observedAtMs}
-          radarMotionComparedFromMs={radarMotion.comparedFromMs}
+          radarWindLegendVisible={radarWindEffectiveVisible}
+          radarWindLegendPath={weatherOverlayModel.wissdomFrame?.legendPath}
+          radarWindObservedAtMs={radarWindEffectiveVisible ? radarReferenceTimeMs : null}
             formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
             bottomDock={!isMobile}
             open={weatherLegendOpen}
@@ -1823,6 +1851,7 @@ const MapView = forwardRef(function MapView({
         onPlayPause={toggleWeatherTimelinePlay}
         referenceNowMs={demoMode ? demoNowMs : null}
       />
+      <QpfStatusCard status={weatherOverlayModel.qpfStatus} tz={tz} />
 
       {/* 브리핑 패널을 닫아도 경로는 지도에 남는다 — 패널을 다시 열지 않고도 지울 수
           있도록 하단 중앙(타임라인 스크럽 스택 위, 겹침 확인됨)에 요약+지우기 칩 표시. */}
@@ -1850,15 +1879,16 @@ const MapView = forwardRef(function MapView({
       )}
 
       <div className="vertical-level-rail-stack">
-        <NwpSliderBar
-          isVisible={enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)}
+        <RadarWindVerticalRail
+          kimActive={enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)}
           levels={sliderLevels}
           times={sliderTimes}
           selection={nwpSelection}
           availability={sliderAvailability}
-          isElevated
-          timeSliderEnabled={false}
-          onSelectionChange={setNwpSelection}
+          onKimSelectionChange={setNwpSelection}
+          radarWindActive={deriveRadarWindRailActive(radarWindOverlay)}
+          radarWindHeightM={radarWindOverlay.heightM}
+          onRadarWindHeightChange={radarWindOverlay.setHeightM}
         />
         {enableWindOverlay && metVisibility.turbulence && altLevelsFt.length > 1 && (
           // 트랙 위쪽(index 0)이 위 화살표가 가는 방향 — 고도가 높은 쪽이 맨 위로 오게 내림차순.
@@ -2107,9 +2137,11 @@ const MapView = forwardRef(function MapView({
           onWindFlowOpacityChange={setWindFlowOpacity}
           onWindFlowTrailChange={setWindFlowTrail}
           onWindFlowWidthChange={setWindFlowWidth}
-          radarMotionAvailable={Boolean(radarMotion.dataUrl)}
-          radarMotionRequested={radarMotionOverlay.requestedVisible}
-          onRadarMotionRequestedChange={radarMotionOverlay.setRequestedVisible}
+          radarWindAvailable={hasExactRadarWindFrame({ radarFrame: baseWeatherOverlayModel.radarFrame, wissdomMeta, heightM: radarWindOverlay.heightM })}
+          radarWindRequested={radarWindOverlay.requestedVisible}
+          radarWindHeightM={radarWindOverlay.heightM}
+          onRadarWindRequestedChange={radarWindOverlay.setRequestedVisible}
+          onRadarWindHeightChange={radarWindOverlay.setHeightM}
           terrainAltitudeFt={terrainAltitudeFt}
         />
       )}
