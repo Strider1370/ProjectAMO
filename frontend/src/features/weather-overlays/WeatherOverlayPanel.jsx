@@ -95,18 +95,20 @@ function WeatherOverlayPanel({
           <div className="layer-tile-group-title">
             {group.title}
             {group.id === 'observation' && visibility.radar && (
-              <button
-                type="button"
-                className="layer-tile-group-title-action"
-                onClick={() => onRadarWindRequestedChange?.((prev) => !prev)}
-                aria-label={`레이더 바람장 (WISSDOM) · ${radarWindHeightM.toLocaleString()} m`}
-                aria-pressed={radarWindRequested}
-                disabled={!radarWindAvailable}
-                aria-describedby={!radarWindAvailable ? 'radar-wind-unavailable' : undefined}
-              >
-                레이더 바람장 (WISSDOM) · {radarWindHeightM.toLocaleString()} m
-              </button>
-              {!radarWindAvailable && <span id="radar-wind-unavailable">표시 시각의 WISSDOM 자료 없음</span>}
+              <>
+                <button
+                  type="button"
+                  className="layer-tile-group-title-action"
+                  onClick={() => onRadarWindRequestedChange?.((prev) => !prev)}
+                  aria-label={`레이더 바람장 (WISSDOM) · ${radarWindHeightM.toLocaleString()} m`}
+                  aria-pressed={radarWindRequested}
+                  disabled={!radarWindAvailable}
+                  aria-describedby={!radarWindAvailable ? 'radar-wind-unavailable' : undefined}
+                >
+                  레이더 바람장 (WISSDOM) · {radarWindHeightM.toLocaleString()} m
+                </button>
+                {!radarWindAvailable && <span id="radar-wind-unavailable">표시 시각의 WISSDOM 자료 없음</span>}
+              </>
             )}
           </div>
           <div className="layer-tile-grid">
