@@ -99,3 +99,25 @@ export function threeDayStrip(hourly, nowKst) {
 
   return cells
 }
+
+const DAY_CYCLE_CELLS = 8
+
+/**
+ * 3안용. 앞으로 24시간을 3시간 간격 여덟 칸으로 잇는다.
+ * 자정에 구분선을 두지 않아 기온 꺾은선이 하루의 오르내림을 끊기지 않고 보여준다.
+ * 칸 수가 시각에만 달렸고 도시와 무관해서, 도시가 바뀌어도 칸 폭이 변하지 않는다.
+ */
+export function dayCycleStrip(hourly, nowKst) {
+  if (!Array.isArray(hourly) || hourly.length === 0 || !nowKst?.date) return []
+  const startHour = (Math.floor(nowKst.hour / HOUR_STEP) + 1) * HOUR_STEP
+  const cells = []
+  for (let step = 0; step < DAY_CYCLE_CELLS; step += 1) {
+    const absoluteHour = startHour + step * HOUR_STEP
+    const date = addDays(nowKst.date, Math.floor(absoluteHour / 24))
+    const hour = absoluteHour % 24
+    const slot = hourly.find((entry) => entry.date === date && hourOf(entry) === hour)
+    if (!slot) break
+    cells.push({ label: `${hour}시`, icon: slot.icon || null, temp: Math.round(slot.temp), ...precipOf(slot) })
+  }
+  return cells
+}

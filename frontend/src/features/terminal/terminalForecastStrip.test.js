@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { threeDayStrip, isPrecipHighlighted } from './terminalForecastStrip.js'
+import { threeDayStrip, isPrecipHighlighted, dayCycleStrip } from './terminalForecastStrip.js'
 
 // 기준 시각부터 1시간 간격으로 hours칸을 만든다. 국내(rainProb) 모양이다.
 function hourlySlots(startDate, startHour, hours) {
@@ -99,4 +99,24 @@ test('6시간 간격 자료만 있는 날도 오전·오후·밤 세 칸이 나�
   // 09시가 없으니 06~12시 범위에서 가장 가까운 06시 칸을 쓴다. 마찬가지로 오후는 12시, 밤은 18시.
   assert.equal(dayAfterCells[0].precipValue, 0.1)
   assert.equal(dayAfterCells[0].precipKind, 'amount')
+})
+
+test('앞으로 24시간을 3시간 간격 여덟 칸으로 잇는다', () => {
+  const strip = dayCycleStrip(hourlySlots('20260804', 13, 72), { date: '20260804', hour: 13 })
+  assert.deepEqual(
+    strip.map((cell) => cell.label),
+    ['15시', '18시', '21시', '0시', '3시', '6시', '9시', '12시'],
+  )
+})
+
+test('자정을 구분선 없이 그냥 넘어간다', () => {
+  // 3안은 날짜를 나누지 않는다. 기온 곡선이 끊기지 않아야 하루의 오르내림이 보인다.
+  const strip = dayCycleStrip(hourlySlots('20260804', 22, 40), { date: '20260804', hour: 22 })
+  assert.equal(strip.length, 8)
+  assert.equal(strip[0].label, '0시')
+})
+
+test('예보가 모자라면 있는 칸까지만 준다', () => {
+  const strip = dayCycleStrip(hourlySlots('20260804', 13, 10), { date: '20260804', hour: 13 })
+  assert.equal(strip.length, 3)
 })
