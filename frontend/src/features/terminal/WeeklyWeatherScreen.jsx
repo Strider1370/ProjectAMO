@@ -39,7 +39,7 @@ function HourlyStrip({ cells }) {
   /* 2안과 같은 규칙 - 기온 숫자를 점에 붙여 선과 함께 오르내리게 한다. */
   const chartPoints = cells.map((cell, index) => ({
     x: ((index + 0.5) / HOURLY_CELL_COUNT) * 100,
-    y: 92 - ((cell.temp - min) / span) * 58,
+    y: 94 - ((cell.temp - min) / span) * 52,
     temp: cell.temp,
   }));
   const line = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
@@ -99,10 +99,12 @@ function WeeklyPanel({ rows }) {
     <>
       {/* 오전/오후 제목은 첫 줄 위에만 한 번 둔다. 아이콘·기온 두 벌 중 어느 게 오전인지
        * 승객이 매 줄 눈으로 짐작하지 않게 한다. */}
+      {/* 제목을 한 덩어리로 가운데 두면 `오전`이 오전 그림 위에 서지 않는다. 아래 값과 같은
+          2열 격자를 써서 낱말 하나가 값 하나 위에 정확히 오게 한다. */}
       <div className="ww-weekly-header" aria-hidden="true">
         <span />
-        <span className="ww-head-icons">오전 · 오후</span>
-        <span className="ww-head-temps"><b className="ww-temp-min">최저</b> · <b className="ww-temp-max">최고</b></span>
+        <span className="ww-head-icons"><i>오전</i><i>오후</i></span>
+        <span className="ww-head-temps"><i className="ww-temp-min">최저</i><i className="ww-temp-max">최고</i></span>
       </div>
       <ul className="ww-weekly-list">
         {rows.map((row, index) => (
@@ -163,16 +165,10 @@ export default function WeeklyWeatherScreen({
   return (
     <section className={`exact-screen ww-screen motion-${motionMode}${hasFlights ? "" : " is-operations-ended"}`} data-testid="option-three">
       <header className="ww-header">
-        {/* 도시 이름 길이가 달라도(제주/오사카) 오른쪽 순환 표시가 밀리지 않게 왼쪽 칸 폭을 고정한다. */}
-        <div className="ww-header-city">
-          {primaryFlight
-            ? <><strong>{primaryFlight.city}</strong><span>{frame.code}</span></>
-            : <strong>{departureName}</strong>}
-        </div>
+        {/* 머리띠 왼쪽은 화면 이름이다. 도시명은 현재날씨 블록이 말한다. */}
+        <h1 className="ww-header-title">목적지 날씨</h1>
         <DestinationPager destinations={destinations} destinationIndex={destinationIndex} />
         <div className="ww-header-clock">
-          {/* 도시 이름만 크게 있으면 처음 본 승객이 출발 안내판인지 날씨 화면인지 모른다. */}
-          <p className="tw-screen-title">가는 곳 날씨</p>
           <div className="ww-header-time"><span>{clock.date}</span><strong>{clock.time}</strong></div>
         </div>
         {/* 30초마다 도시가 바뀌는데 남은 시간을 모르면, 주간 예보를 읽다 화면이 넘어갔을 때
@@ -194,7 +190,13 @@ export default function WeeklyWeatherScreen({
       </TerminalSettings>
       {hasFlights ? (
         <div className="ww-viewport">
-          <div className={`ww-page${transitioning ? " is-leaving" : ""}`} data-testid="ww-active-page">
+          {/* 프레임이 바뀌면 key가 달라져 이 덩어리가 다시 마운트되고, 그때 들어오는 애니메이션이
+              처음부터 다시 돈다. 나가는 화면을 따로 그리지 않아도 전환이 보인다. */}
+          <div
+            className={`ww-page${transitioning ? " is-leaving" : ""}`}
+            key={`${frame?.code ?? ''}-${frame?.page ?? 0}`}
+            data-testid="ww-active-page"
+          >
             <div className="ww-middle">
               <CurrentWeatherBlock flight={primaryFlight} departureName={departureName} departureTemp={departureTemp} />
               <FlightList flights={flights} />

@@ -355,6 +355,9 @@ export function CurrentWeatherBlock({ flight, departureName, departureTemp }) {
   const observedAt = formatObservedAt(flight.current.observedAt);
   return (
     <div className="tw-current-weather">
+      {/* 도시명은 이 블록의 것이다. 머리띠에 두면 화면 제목처럼 읽혀 무슨 화면인지와
+          어느 도시인지가 뒤섞인다. 머리띠는 화면 이름, 여기는 값의 주인을 말한다. */}
+      <p className="tw-current-city"><strong>{flight.city}</strong><span>{flight.code}</span></p>
       <div className="tw-current-weather-main">
         <span className="tw-current-weather-icon"><BoardWeatherImage type={flight.current.icon} /></span>
         <div className="tw-current-weather-body">

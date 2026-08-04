@@ -54,7 +54,7 @@ function ForecastStrip({ cells }) {
      y는 34~92% 범위만 쓴다 - 점 위에 얹히는 숫자가 칸 밖으로 잘리지 않게 위쪽을 비워둔다. */
   const chartPoints = cells.map((cell, index) => ({
     x: ((index + 0.5) / cells.length) * 100,
-    y: 92 - ((cell.temp - min) / span) * 58,
+    y: 94 - ((cell.temp - min) / span) * 52,
     temp: cell.temp,
   }));
   const line = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
@@ -157,16 +157,10 @@ export default function WeatherFirstScreen({
   return (
     <section className={`exact-screen wf-screen motion-${motionMode}${hasFlights ? "" : " is-operations-ended"}`} data-testid="option-two">
       <header className="wf-header">
-        {/* 도시 이름 길이가 달라도(제주/오사카) 오른쪽 순환 표시가 밀리지 않게 왼쪽 칸 폭을 고정한다. */}
-        <div className="wf-header-city">
-          {primaryFlight
-            ? <><strong>{primaryFlight.city}</strong><span>{frame.code}</span></>
-            : <strong>{departureName}</strong>}
-        </div>
+        {/* 머리띠 왼쪽은 화면 이름이다. 도시명은 현재날씨 블록이 말한다. */}
+        <h1 className="wf-header-title">목적지 날씨</h1>
         <DestinationPager destinations={destinations} destinationIndex={destinationIndex} />
         <div className="wf-header-clock">
-          {/* 도시 이름만 크게 있으면 처음 본 승객이 출발 안내판인지 날씨 화면인지 모른다. */}
-          <p className="tw-screen-title">가는 곳 날씨</p>
           <div className="wf-header-time"><span>{clock.date}</span><strong>{clock.time}</strong></div>
         </div>
         {/* 30초마다 도시가 바뀌는데 남은 시간을 모르면, 주간 예보를 읽다 화면이 넘어갔을 때
@@ -188,7 +182,13 @@ export default function WeatherFirstScreen({
       </TerminalSettings>
       {hasFlights ? (
         <div className="wf-viewport">
-          <div className={`wf-page${transitioning ? " is-leaving" : ""}`} data-testid="wf-active-page">
+          {/* 프레임이 바뀌면 key가 달라져 이 덩어리가 다시 마운트되고, 그때 들어오는 애니메이션이
+              처음부터 다시 돈다. 나가는 화면을 따로 그리지 않아도 전환이 보인다. */}
+          <div
+            className={`wf-page${transitioning ? " is-leaving" : ""}`}
+            key={`${frame?.code ?? ''}-${frame?.page ?? 0}`}
+            data-testid="wf-active-page"
+          >
             <div className="wf-middle">
               <CurrentWeatherBlock flight={primaryFlight} departureName={departureName} departureTemp={departureTemp} />
               <FlightList flights={flights} />
