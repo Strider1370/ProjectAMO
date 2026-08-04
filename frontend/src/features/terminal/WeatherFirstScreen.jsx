@@ -6,13 +6,29 @@ import {
   FlightList,
   HeaderWeatherPanel,
   MotionModeSwitcher,
+  PrecipRowLabel,
   ScreenFooterNote,
   TerminalEmptyState,
   TerminalSettings,
   ViewSwitcher,
   WeatherIcon,
 } from './terminalShared.jsx';
-import { threeDayStrip, isPrecipHighlighted } from './terminalForecastStrip.js';
+import { threeDayStrip, isPrecipHighlighted, formatMonthDay } from './terminalForecastStrip.js';
+
+const GROUP_TITLES = { today: () => '오늘', tomorrow: (md) => `내일 ${md}`, dayAfter: (md) => `모레 ${md}` };
+
+/** 오늘 | 내일 8/5 | 모레 8/6 — 구간이 바뀌는 첫 칸에서 몇 칸을 묶는지 센다.
+ * 국내 목적지는 밤에 모레 구간이 통째로 빌 수 있는데, cells가 애초에 그 구간을 안 담고 있어
+ * 여기서도 자연히 빠진다 — 접거나 나누는 처리를 따로 하지 않아도 된다. */
+function forecastGroupRuns(cells) {
+  const runs = [];
+  for (const cell of cells) {
+    const last = runs[runs.length - 1];
+    if (last && last.group === cell.group) { last.count += 1; continue; }
+    runs.push({ group: cell.group, date: cell.date, count: 1 });
+  }
+  return runs.map((run) => ({ ...run, title: GROUP_TITLES[run.group](formatMonthDay(run.date)) }));
+}
 
 const MOTION_MODES = [
   ["cascade", "CASCADE", "행 순차"],
@@ -43,10 +59,18 @@ function ForecastStrip({ cells }) {
   // 그룹(오늘·내일·모레)이 바뀌는 첫 칸에만 세로 구분선을 그린다.
   const groupStarts = cells.map((cell, index) => index > 0 && cell.group !== cells[index - 1].group);
   const cellClass = (index) => `wf-forecast-cell${groupStarts[index] ? " wf-group-start" : ""}`;
+  const groupRuns = forecastGroupRuns(cells);
   return (
     <div className="wf-forecast-strip">
+      <div className="wf-forecast-row wf-forecast-title-row" style={{ gridTemplateColumns: columns }}>
+        {groupRuns.map((run, index) => (
+          <span className={`wf-forecast-title${index > 0 ? " wf-group-start" : ""}`} style={{ gridColumn: `span ${run.count}` }} key={run.group}>
+            {run.title}
+          </span>
+        ))}
+      </div>
       <div className="wf-forecast-row" style={{ gridTemplateColumns: columns }}>
-        {cells.map((cell, index) => <WeatherIcon type={cell.icon} className={cellClass(index)} key={index} />)}
+        {cells.map((cell, index) => <WeatherIcon type={cell.icon} className={`wf-forecast-icon ${cellClass(index)}`} key={index} />)}
       </div>
       <div className="wf-forecast-row wf-forecast-line-row" style={{ gridTemplateColumns: columns }}>
         {cells.map((cell, index) => <i className={cellClass(index)} aria-hidden="true" key={index} />)}
@@ -57,6 +81,7 @@ function ForecastStrip({ cells }) {
       <div className="wf-forecast-row" style={{ gridTemplateColumns: columns }}>
         {cells.map((cell, index) => <strong className={cellClass(index)} key={index}>{cell.temp}°</strong>)}
       </div>
+      <PrecipRowLabel cells={cells} className="wf-forecast-precip-label" />
       <div className="wf-forecast-row" style={{ gridTemplateColumns: columns }}>
         {cells.map((cell, index) => (
           <span className={`${cellClass(index)}${isPrecipHighlighted(cell) ? " is-highlighted" : ""}`} key={index}>

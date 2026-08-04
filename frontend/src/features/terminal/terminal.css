@@ -500,7 +500,10 @@ body { min-height: 100vh; overflow: hidden; }
    나중에 안 하나를 지울 때 이 구역만 통째로 지우면 된다. `tw-` 접두는 2안·3안 공용 조각
    (terminalShared.jsx)의 것이라 이 구역에도 그 클래스들의 스타일이 함께 있다. */
 
-.wf-screen { display: grid; grid-template-rows: 12% 40% 48%; }
+/* 12%(머리띠) + 40%(현재날씨·항공편) 고정, 예보는 남는 높이를 전부 쓰고, 푸터는 1안(`.exact-board`)과
+   같은 92px 고정 줄이다. 이전에는 셋째 줄이 48%로 고정돼 있고 푸터를 `position:absolute`로 그 위에
+   덮어써서, 예보 줄 아래쪽(강수·시각 라벨, 주간 다섯째 줄)이 푸터에 가려 잘려 보였다. */
+.wf-screen { display: grid; grid-template-rows: 12% 40% 1fr 92px; }
 
 /* 머리띠 */
 /* 왼쪽 칸(도시명)을 420px 고정 트랙으로 둔다 - `.wf-header-city`는 grid item이라 flex 규칙은
@@ -543,7 +546,10 @@ body { min-height: 100vh; overflow: hidden; }
 .wf-middle { display: grid; grid-template-columns: 58% 42%; min-height: 0; border-bottom: 1px solid var(--terminal-border); }
 
 .tw-current-weather { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--terminal-space-5); height: 100%; padding: 0 var(--terminal-space-6); border-right: 1px solid var(--terminal-border-subtle); }
-.tw-current-weather-main { display: flex; align-items: center; gap: var(--terminal-space-5); }
+/* 아이콘+글자 묶음을 기온차 칸을 뺀 나머지 폭 가운데로 옮긴다. 전에는 왼쪽에 붙어 있어
+   58% 폭 블록의 오른쪽 절반이 통째로 비어 보였다 - 둘을 떼어 양끝으로 벌리면 아이콘과
+   글자 사이가 오히려 남남처럼 멀어지므로, 묶음째로 가운데로 밀어 좌우 균형을 맞춘다. */
+.tw-current-weather-main { display: flex; align-items: center; justify-content: center; gap: var(--terminal-space-5); }
 .tw-current-weather-icon { width: 96px; height: 96px; color: #23334b; }
 .tw-current-weather-title { margin: 0; color: var(--terminal-text-secondary); font-size: var(--terminal-type-label); font-weight: 700; }
 .tw-current-weather-temp { display: block; margin-top: 4px; font-size: 96px; font-weight: 800; line-height: 1; letter-spacing: -.04em; }
@@ -559,37 +565,53 @@ body { min-height: 100vh; overflow: hidden; }
 /* 모든 줄 높이를 같게 고정한다. 공동운항으로 편명이 두 개인 줄도 다른 줄과 높이가 같아야
    전환 중 목록 안 다른 줄들의 자리가 밀리지 않는다. 편명 두 개는 그 안에서 작게 쌓는다. */
 .tw-flight-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: var(--terminal-space-4); height: 100%; border-bottom: 1px solid var(--terminal-border-subtle); }
-/* 목록은 항상 다섯 줄 자리를 잡는다. 남는 줄은 투명하게 비워 자리만 지킨다. */
-li.is-empty { visibility: hidden; border-bottom: 1px solid transparent; }
+/* 목록은 항상 다섯 줄 자리를 잡는다. 남는 줄은 자리만 지키되, 옅은 배경과 구분선을 남겨
+   "여기까지가 목록"이 보이게 한다 - 완전히 투명하면 편이 적은 도시는 오른쪽이 백지로 보였다. */
+li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background: rgba(7, 23, 53, .025); }
 .tw-flight-number { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .tw-flight-number strong { font-size: 32px; font-weight: 800; letter-spacing: -.02em; }
 .tw-flight-number-stack { display: grid; row-gap: 2px; }
 .tw-flight-number-stack strong { font-size: 20px; }
-.tw-flight-time strong, .tw-flight-gate strong { font-family: var(--terminal-font-time); font-size: 26px; font-weight: 700; }
+/* 편명(32px)보다 작으면 안 되는 값이다. 1안의 시각 숫자 크기(`--terminal-type-primary-time`)를 그대로 쓴다. */
+.tw-flight-time strong, .tw-flight-gate strong { font-family: var(--terminal-font-time); font-size: var(--terminal-type-primary-time); font-weight: 700; }
 .tw-flight-gate.is-changed strong, .tw-flight-time.is-delayed strong { color: var(--terminal-status-warning); }
-.tw-flight-status strong { font-size: 18px; font-weight: 700; }
+/* 지연·탑승구 변경은 가장 급한 정보라 1안의 `.operation-status strong`과 같은 크기(`--terminal-type-status`)를 쓴다. */
+.tw-flight-status strong { font-size: var(--terminal-type-status); font-weight: 700; }
 .tw-flight-status.is-delay strong { color: var(--terminal-status-warning); }
 
-/* 예보(48%) - 오늘 | 내일 | 모레, 그룹 경계에만 세로 구분선을 긋는다.
-   칸 수가 시각에만 달렸고 도시와 무관해서, 도시가 바뀌어도 칸 폭이 변하지 않는다(자리 고정에 안전). */
-.wf-forecast-strip { display: grid; grid-template-rows: 64px 44px 1fr 32px 28px; height: 100%; padding: var(--terminal-space-4) var(--terminal-safe-side) 110px; }
-.wf-forecast-row { display: grid; align-items: center; justify-items: center; }
-.wf-forecast-cell.wf-group-start { border-left: 2px solid var(--terminal-border); }
+/* 예보 - 오늘 | 내일 8/5 | 모레 8/6 구간 제목, 그룹 경계에만 세로 구분선을 긋는다.
+   칸 수가 시각에만 달렸고 도시와 무관해서, 도시가 바뀌어도 칸 폭이 변하지 않는다(자리 고정에 안전).
+   국내 목적지가 밤에 모레 구간을 못 채우면 cells 자체가 그 구간을 안 담아 칸 수가 줄고,
+   남은 구간이 1fr 칸 폭을 나눠 갖는다 - 따로 접는 처리가 필요 없다.
+   행 순서: 구간 제목 / 아이콘 / 꺾은선 / 기온 / 강수 줄 제목 / 강수 값 / 시각. */
+.wf-forecast-strip { display: grid; grid-template-rows: 34px 66px 44px 1fr 22px 34px 26px; min-height: 0; height: 100%; padding: var(--terminal-space-3) var(--terminal-safe-side); }
+.wf-forecast-row { display: grid; align-items: center; justify-items: center; column-gap: var(--terminal-space-3); }
+/* 구분선을 칸의 맨 왼쪽 끝에 딱 붙이면 가운데 정렬된 글자와 겹쳐 보인다(오전, 29° 위를 지남).
+   칸 사이에 실제 여백(column-gap)을 두고 그 여백 안에 선을 그어야 글자를 비켜 간다. */
+.wf-forecast-cell.wf-group-start { border-left: 2px solid var(--terminal-border); margin-left: calc(-1 * var(--terminal-space-3) / 2); padding-left: calc(var(--terminal-space-3) / 2); }
+.wf-forecast-title { justify-self: start; padding-left: 4px; color: #23334b; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.wf-forecast-title.wf-group-start { margin-left: calc(-1 * var(--terminal-space-3) / 2); padding-left: calc(var(--terminal-space-3) / 2 + 4px); }
+.wf-forecast-icon { width: 66px; height: 62px; }
 .wf-forecast-line-row { position: relative; }
 .wf-forecast-line-row i { align-self: stretch; }
-.wf-forecast-line-row i.wf-group-start { border-left: 2px solid var(--terminal-border); }
+.wf-forecast-line-row i.wf-group-start { border-left: 2px solid var(--terminal-border); margin-left: calc(-1 * var(--terminal-space-3) / 2); }
 .wf-forecast-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .wf-forecast-line polyline { stroke: #2f80ed; stroke-width: 2; vector-effect: non-scaling-stroke; }
-.wf-forecast-row strong { font-size: 30px; font-weight: 800; }
-.wf-forecast-row span { padding: 3px 10px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 16px; font-weight: 700; }
+/* 예보 기온은 이 화면 예보 영역의 주인공이다. 1안의 `.arrival-time strong`(보조 영역의 큰 시각 숫자)과
+   같은 크기를 쓴다 - 예보 띠 자체가 화면 절반 가까이를 차지하는 큰 영역이라 그 정도 위계가 맞다. */
+.wf-forecast-row strong { font-size: 44px; font-weight: 800; }
+/* 시각 라벨과 강수 값은 1안 `.schedule-grid span`(필드 값 텍스트)과 같은 크기를 쓴다. */
+.wf-forecast-row span { padding: 3px 10px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 22px; font-weight: 700; }
 .wf-forecast-row span.is-highlighted { background: #fde3c8; color: #b1560a; }
-.wf-forecast-row time { color: var(--terminal-text-secondary); font-size: 16px; font-weight: 600; }
+.wf-forecast-row time { color: var(--terminal-text-secondary); font-size: 22px; font-weight: 600; }
+.wf-forecast-precip-label { margin: 0; padding-left: 4px; color: var(--terminal-text-secondary); font-size: 16px; font-weight: 700; }
 
 /* 운항 종료 화면은 가운데+예보 영역(2·3행)을 통째로 덮는다. `.terminal-empty-state`의
    `inset: 0`이 이 자리를 기준으로 채워지도록 격자 자리를 명시로 지정한다. */
 .wf-screen > .terminal-empty-state { grid-row: 2 / span 2; }
 
-.wf-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 25; background: var(--terminal-surface); }
+/* 1안처럼 진짜 격자 줄(4행)이라 예보 내용과 겹칠 일이 없다. */
+.wf-footer { background: var(--terminal-surface); }
 
 /* 운항이 끝나도 머리띠는 남긴다 - 도시 목록이 아니라 출발 공항 하나를 보여줄 뿐이라 1안처럼
    내릴 조작 버튼이 없다. 넘길 것이 없다는 사실은 `next-board-button`의 disabled가 이미 알린다. */
@@ -600,7 +622,8 @@ li.is-empty { visibility: hidden; border-bottom: 1px solid transparent; }
    나중에 안 하나를 지울 때 이 구역만 통째로 지우면 된다. 위쪽 절반(머리띠·현재날씨·항공편)은
    2안과 같은 구조라 `tw-` 공용 클래스가 실제 스타일을 담당하고, 여기는 아래쪽만 새로 잡는다. */
 
-.ww-screen { display: grid; grid-template-rows: 12% 40% 48%; }
+/* 2안과 같은 이유로 셋째 줄을 1fr + 92px 고정 푸터 줄로 바꾼다. */
+.ww-screen { display: grid; grid-template-rows: 12% 40% 1fr 92px; }
 
 /* 머리띠 - 2안과 같은 구조. 왼쪽 칸(도시명)을 420px 고정 트랙으로 둬 오른쪽 순환 표시가 안 밀린다. */
 .ww-header {
@@ -631,31 +654,44 @@ li.is-empty { visibility: hidden; border-bottom: 1px solid transparent; }
 /* 아래쪽 - 시간별(좌 62%) / 주간(우 38%). 초안 비율이며 실제 화면을 보고 조정한다. */
 .ww-bottom { display: grid; grid-template-columns: 62% 38%; min-height: 0; }
 
+/* 좌우 제목("시간별"·"주간"). 없으면 왼쪽·오른쪽이 뭘 보여주는지 승객이 알 수 없다. */
+.ww-hourly-panel { display: grid; grid-template-rows: auto 1fr; min-height: 0; border-right: 1px solid var(--terminal-border); }
+.ww-weekly-panel { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
+.ww-panel-title { margin: 0; padding: var(--terminal-space-3) 0 4px var(--terminal-safe-side); color: #23334b; font-size: var(--terminal-type-label); font-weight: 700; }
+.ww-weekly-panel .ww-panel-title { padding-left: var(--terminal-space-5); }
+
 /* 왼쪽 시간별 - 여덟 칸 고정 격자. 자정에 구분선을 두지 않아 기온 꺾은선이 하루의
-   오르내림을 끊기지 않게 보여준다. */
-.ww-hourly-strip { display: grid; grid-template-rows: 64px 44px 1fr 32px 28px; height: 100%; padding: var(--terminal-space-4) var(--terminal-space-5) 24px var(--terminal-safe-side); border-right: 1px solid var(--terminal-border); }
+   오르내림을 끊기지 않게 보여준다. 행 순서: 아이콘 / 꺾은선 / 기온 / 강수 줄 제목 / 강수 값 / 시각. */
+.ww-hourly-strip { display: grid; grid-template-rows: 66px 44px 1fr 22px 34px 26px; min-height: 0; height: 100%; padding: 0 var(--terminal-space-5) var(--terminal-space-3) var(--terminal-safe-side); }
 .ww-hourly-row { display: grid; align-items: center; justify-items: center; }
-.ww-hourly-icon { width: 40px; height: 40px; }
+.ww-hourly-icon { width: 66px; height: 62px; }
 .ww-hourly-line-row { position: relative; }
 .ww-hourly-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .ww-hourly-line polyline { stroke: #2f80ed; stroke-width: 2; vector-effect: non-scaling-stroke; }
-.ww-hourly-row strong { font-size: 30px; font-weight: 800; }
-.ww-hourly-row span { padding: 3px 10px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 16px; font-weight: 700; }
+/* 2안 예보 기온과 같은 크기·같은 근거(1안 `.arrival-time strong`)를 쓴다. */
+.ww-hourly-row strong { font-size: 44px; font-weight: 800; }
+.ww-hourly-row span { padding: 3px 10px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 22px; font-weight: 700; }
 .ww-hourly-row span.is-highlighted { background: #fde3c8; color: #b1560a; }
-.ww-hourly-row time { color: var(--terminal-text-secondary); font-size: 16px; font-weight: 600; }
+.ww-hourly-row time { color: var(--terminal-text-secondary); font-size: 22px; font-weight: 600; }
+.ww-hourly-precip-label { margin: 0; padding-left: 4px; color: var(--terminal-text-secondary); font-size: 16px; font-weight: 700; }
 
 /* 오른쪽 주간 - 다섯 줄 고정. 아이콘과 기온을 짝지어 붙인다(각 칸 안에서 flex로 묶는다) -
    떨어뜨리면 어느 아이콘이 어느 기온인지 승객이 눈으로 이어야 한다. */
-.ww-weekly-list { display: grid; grid-template-rows: repeat(5, 1fr); height: 100%; margin: 0; padding: var(--terminal-space-4) var(--terminal-safe-side) 24px var(--terminal-space-5); list-style: none; }
+/* 첫 줄 위에만 오전/오후 제목. 목록과 같은 3열(요일 / 오전 / 오후) 격자를 써서 아래 값과 줄을 맞춘다. */
+.ww-weekly-header { display: grid; grid-template-columns: auto 1fr 1fr; column-gap: var(--terminal-space-4); padding: 0 var(--terminal-safe-side) 6px var(--terminal-space-5); }
+.ww-weekly-header span:not(:first-child) { color: var(--terminal-text-secondary); font-size: var(--terminal-type-label); font-weight: 700; text-align: center; }
+.ww-weekly-list { display: grid; grid-template-rows: repeat(5, 1fr); height: 100%; margin: 0; padding: 0 var(--terminal-safe-side) var(--terminal-space-3) var(--terminal-space-5); list-style: none; }
 .ww-weekly-row { display: grid; grid-template-columns: auto 1fr 1fr; align-items: center; column-gap: var(--terminal-space-4); border-bottom: 1px solid var(--terminal-border-subtle); }
-/* 자리는 잡되 내용을 비운다 - 도시마다 줄 수가 달라지면 전환 중 자리가 밀려 글자가 겹친다. */
-.ww-weekly-row.is-empty { visibility: hidden; border-bottom-color: transparent; }
+/* 자리는 잡되 내용을 비운다 - 도시마다 줄 수가 달라지면 전환 중 자리가 밀려 글자가 겹친다.
+   완전히 투명하면 자료가 모자란 목적지는 오른쪽이 백지로 보여, 옅은 배경만 남겨 목록 끝을 알린다. */
+.ww-weekly-row.is-empty { border-bottom-color: transparent; background: rgba(7, 23, 53, .025); }
 .ww-weekly-date { display: grid; justify-items: start; }
-.ww-weekly-date strong { font-size: 22px; font-weight: 800; }
+.ww-weekly-date strong { font-size: 30px; font-weight: 800; }
 .ww-weekly-date span { color: var(--terminal-text-secondary); font-size: 16px; font-weight: 600; }
 .ww-weekly-am, .ww-weekly-pm { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.ww-weekly-icon { width: 40px; height: 40px; }
-.ww-weekly-am strong, .ww-weekly-pm strong { font-size: 26px; font-weight: 800; }
+.ww-weekly-icon { width: 56px; height: 56px; }
+/* 1안의 시각 숫자 크기(`--terminal-type-primary-time`)를 그대로 쓴다. */
+.ww-weekly-am strong, .ww-weekly-pm strong { font-size: var(--terminal-type-primary-time); font-weight: 800; }
 /* 최저는 파랑, 최고는 빨강. */
 .ww-temp-min { color: #2f6fd6; }
 .ww-temp-max { color: #d64545; }
@@ -663,7 +699,7 @@ li.is-empty { visibility: hidden; border-bottom: 1px solid transparent; }
 /* 운항 종료 화면은 가운데+아래 영역(2·3행)을 통째로 덮는다. 2안과 같은 이유다. */
 .ww-screen > .terminal-empty-state { grid-row: 2 / span 2; }
 
-.ww-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 25; background: var(--terminal-surface); }
+.ww-footer { background: var(--terminal-surface); }
 
 .is-operations-ended.ww-screen .screen-footer-note { display: none; }
 .is-operations-ended .wf-footer { grid-template-columns: auto; justify-content: end; border-top: 0; }

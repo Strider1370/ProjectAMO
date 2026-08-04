@@ -246,6 +246,19 @@ export function TerminalTitle({ title }) {
 // 클래스 이름은 `tw-`(terminal weather 공용)로 시작한다. `wf-`(2안)·`ww-`(3안)와 겹치지 않아야,
 // 나중에 안 하나를 지울 때 어느 CSS가 남아야 하는지 헷갈리지 않는다.
 
+/** 기온차 문구용 짧은 공항 이름. `김포국제공항` → `김포`. 인천·김해·제주 모두 자연스럽게 읽힌다. */
+export function shortAirportName(value) {
+  return String(value || '').replace(/국제공항|공항/g, '').trim();
+}
+
+/** 강수 줄 제목. 국내는 `강수확률 %`, 해외는 `강수량 mm` — 칸마다 반복하지 않고 줄에 한 번만 적는다.
+ * 한 화면은 도시 하나만 보여주므로 칸 안에서 단위가 섞이지 않는다. */
+export function PrecipRowLabel({ cells, className }) {
+  const sample = cells.find((cell) => cell?.precipKind);
+  if (!sample) return null;
+  return <p className={className}>{sample.precipKind === 'prob' ? '강수확률 %' : '강수량 mm'}</p>;
+}
+
 /** 항공편 줄. 공동운항은 편명만 위아래로 쌓고 시각·탑승구는 하나만 둔다.
  * 목록 전체가 이미 순환하는데 그 안에서 편명까지 3초마다 돌리면 시선이 두 겹으로 흔들린다. */
 export function FlightRow({ flight }) {
@@ -326,7 +339,7 @@ export function CurrentWeatherBlock({ flight, departureName, departureTemp }) {
         </div>
       </div>
       <div className="tw-temp-gap">
-        {gap && <><span>{departureName}보다</span><strong>{gap.sign}{gap.value}°</strong></>}
+        {gap && <><span>{shortAirportName(departureName)}보다</span><strong>{gap.sign}{gap.value}°</strong></>}
       </div>
     </div>
   );

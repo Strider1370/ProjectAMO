@@ -32,7 +32,16 @@ function precipOf(slot) {
 }
 
 function toCell(slot, group, label) {
-  return { group, label, icon: slot.icon || null, temp: Math.round(slot.temp), ...precipOf(slot) }
+  // date를 실어 두면 화면 쪽이 addDays를 다시 계산하지 않고 구간 제목(`내일 8/5`)의
+  // 월/일을 그 칸의 실제 날짜에서 바로 읽을 수 있다.
+  return { group, label, date: slot.date, icon: slot.icon || null, temp: Math.round(slot.temp), ...precipOf(slot) }
+}
+
+/** `YYYYMMDD` → `8/5`. 구간 제목(`내일 8/5`)과 주간 날짜 표시가 같은 형식을 쓴다. */
+export function formatMonthDay(dateString) {
+  const value = String(dateString || '')
+  if (value.length < 8) return ''
+  return `${Number(value.slice(4, 6))}/${Number(value.slice(6, 8))}`
 }
 
 export function isPrecipHighlighted(cell) {

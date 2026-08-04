@@ -6,6 +6,7 @@ import {
   FlightList,
   HeaderWeatherPanel,
   MotionModeSwitcher,
+  PrecipRowLabel,
   ScreenFooterNote,
   TerminalEmptyState,
   TerminalSettings,
@@ -55,6 +56,7 @@ function HourlyStrip({ cells }) {
       <div className="ww-hourly-row" style={{ gridTemplateColumns: columns }}>
         {slots.map((cell, index) => <strong key={index}>{cell ? `${cell.temp}°` : ''}</strong>)}
       </div>
+      <PrecipRowLabel cells={cells} className="ww-hourly-precip-label" />
       <div className="ww-hourly-row" style={{ gridTemplateColumns: columns }}>
         {slots.map((cell, index) => (
           <span className={cell && isPrecipHighlighted(cell) ? "is-highlighted" : ""} key={index}>
@@ -73,29 +75,38 @@ function HourlyStrip({ cells }) {
  * 어느 기온인지 승객이 눈으로 이어야 한다. 최저는 파랑, 최고는 빨강. */
 function WeeklyPanel({ rows }) {
   return (
-    <ul className="ww-weekly-list">
-      {rows.map((row, index) => (
-        // weeklyRows가 돌려주는 빈 줄은 얼려진 공유 객체라 값 기반 key를 못 쓴다. 순번을 쓴다.
-        <li className={`ww-weekly-row${row.empty ? " is-empty" : ""}`} aria-hidden={row.empty || undefined} key={index}>
-          {!row.empty && (
-            <>
-              <div className="ww-weekly-date">
-                <strong>{row.dayOfWeek}</strong>
-                <span>{row.monthDay}</span>
-              </div>
-              <div className="ww-weekly-am">
-                <WeatherIcon type={row.amIcon} className="ww-weekly-icon" />
-                <strong className="ww-temp-min">{row.tempMin == null ? '' : `${row.tempMin}°`}</strong>
-              </div>
-              <div className="ww-weekly-pm">
-                <WeatherIcon type={row.pmIcon} className="ww-weekly-icon" />
-                <strong className="ww-temp-max">{row.tempMax == null ? '' : `${row.tempMax}°`}</strong>
-              </div>
-            </>
-          )}
-        </li>
-      ))}
-    </ul>
+    <>
+      {/* 오전/오후 제목은 첫 줄 위에만 한 번 둔다. 아이콘·기온 두 벌 중 어느 게 오전인지
+       * 승객이 매 줄 눈으로 짐작하지 않게 한다. */}
+      <div className="ww-weekly-header" aria-hidden="true">
+        <span />
+        <span>오전</span>
+        <span>오후</span>
+      </div>
+      <ul className="ww-weekly-list">
+        {rows.map((row, index) => (
+          // weeklyRows가 돌려주는 빈 줄은 얼려진 공유 객체라 값 기반 key를 못 쓴다. 순번을 쓴다.
+          <li className={`ww-weekly-row${row.empty ? " is-empty" : ""}`} aria-hidden={row.empty || undefined} key={index}>
+            {!row.empty && (
+              <>
+                <div className="ww-weekly-date">
+                  <strong>{row.dayOfWeek}</strong>
+                  <span>{row.monthDay}</span>
+                </div>
+                <div className="ww-weekly-am">
+                  <WeatherIcon type={row.amIcon} className="ww-weekly-icon" />
+                  <strong className="ww-temp-min">{row.tempMin == null ? '' : `${row.tempMin}°`}</strong>
+                </div>
+                <div className="ww-weekly-pm">
+                  <WeatherIcon type={row.pmIcon} className="ww-weekly-icon" />
+                  <strong className="ww-temp-max">{row.tempMax == null ? '' : `${row.tempMax}°`}</strong>
+                </div>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -153,8 +164,14 @@ export default function WeeklyWeatherScreen({
               <FlightList flights={flights} />
             </div>
             <div className="ww-bottom">
-              <HourlyStrip cells={cells} />
-              <WeeklyPanel rows={rows} />
+              <div className="ww-hourly-panel">
+                <h2 className="ww-panel-title">시간별</h2>
+                <HourlyStrip cells={cells} />
+              </div>
+              <div className="ww-weekly-panel">
+                <h2 className="ww-panel-title">주간</h2>
+                <WeeklyPanel rows={rows} />
+              </div>
             </div>
           </div>
         </div>
