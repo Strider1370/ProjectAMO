@@ -2,6 +2,7 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 import fs from 'fs'
 import dotenv from 'dotenv'
+import { KMA_GRAPHIC_QPF_LEAD_MINUTES, KMA_GRAPHIC_WISSDOM_HEIGHTS_M } from './lib/kma-radar-graphics.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -191,6 +192,14 @@ export const radar_echo = {
   range_km: 100,
   crop_size: 200,
   timeout_ms: 30000,
+}
+
+export const radar_graphics = {
+  wissdom_heights_m: KMA_GRAPHIC_WISSDOM_HEIGHTS_M,
+  initial_wissdom_height_m: 1524,
+  qpf_lead_minutes: KMA_GRAPHIC_QPF_LEAD_MINUTES,
+  frame_step_minutes: 5,
+  max_frames: 36,
 }
 
 // 레이더 에코 이동벡터 — 5분 간격 두 프레임의 SAD 블록 정합으로 앞면 화살표를 만든다.
