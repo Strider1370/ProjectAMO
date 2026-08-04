@@ -37,17 +37,13 @@ const cases = [
   { view: 'board', modeParam: 'motion', mode: 'roll', duration: 2200 },
   { view: 'board', modeParam: 'motion', mode: 'wipe', duration: 2200 },
   { view: 'board', modeParam: 'motion', mode: 'fade', duration: 2200 },
-  { view: 'rail', modeParam: 'railMotion', mode: 'cascade', duration: 1700 },
-  { view: 'rail', modeParam: 'railMotion', mode: 'flap', duration: 1700 },
-  { view: 'rail', modeParam: 'railMotion', mode: 'roll', duration: 1700 },
-  { view: 'rail', modeParam: 'railMotion', mode: 'wipe', duration: 1700 },
-  { view: 'rail', modeParam: 'railMotion', mode: 'fade', duration: 1700 },
 ]
 
+// 3안(과거 rail)이 항공편별 가로 행 전환을 하던 시절의 케이스는 이 계약에서 지웠다.
+// 새 3안(WeeklyWeatherScreen)은 2안처럼 도시 단위 페이지 전환만 하고 편별 슬롯 전환이 없다.
 for (const target of cases) {
   test(`terminal-signage ${target.view} ${target.mode} pre-renders mixed slot transitions`, async ({ page }) => {
-    const viewQuery = target.view === 'rail' ? '&view=rail' : ''
-    await page.goto(`/terminal/rkss?autoplay=0&${target.modeParam}=${target.mode}${viewQuery}`)
+    await page.goto(`/terminal/rkss?autoplay=0&${target.modeParam}=${target.mode}`)
     await expect(page.getByRole('heading', { name: '김포공항 가는 곳 날씨' })).toBeVisible()
 
     const activePage = page.getByTestId(`${target.view}-active-page`)
@@ -71,8 +67,8 @@ for (const target of cases) {
       const pending = findFlight('pending', '7C121')
       const activeReplacement = findFlight('active', 'MM738')
       const pendingReplacement = findFlight('pending', 'KE1113')
-      const destinationSelector = view === 'board' ? '.destination-name' : 'h2'
-      const unchangedStatusSelector = view === 'board' ? '.operation-status strong' : '.rail-flight-status > span:last-child'
+      const destinationSelector = '.destination-name'
+      const unchangedStatusSelector = '.operation-status strong'
       const pendingFlight = [...pending.querySelectorAll('.flight-variant-value')]
         .find((node) => node.textContent.includes('7C121'))
       const activeFlight = [...active.querySelectorAll('.flight-variant-value')]

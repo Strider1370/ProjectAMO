@@ -35,7 +35,6 @@ const boardWeatherAssets = {
   storm: forecastRain,
 };
 
-// railWeatherAssets(DestinationWeatherPage.jsx)가 이 맵을 그대로 가져다 쓴다.
 export const boardForecastAssets = {
   // 맑음이 빠져 있으면 흐림 아이콘으로 떨어져, 문구는 `맑음`인데 그림은 구름이 된다.
   sun: forecastPartly,
@@ -71,9 +70,6 @@ export const UNDECIDED_VALUES = new Set(["확인", "확인 중"]);
 
 
 export const displayTemperature = (value) => String(value).replace("℃", "°C");
-export const splitArrivalKst = (value) => value.startsWith("다음 날 ")
-  ? { dayLabel: "다음 날", time: value.slice("다음 날 ".length) }
-  : { dayLabel: "", time: value };
 
 export function formatKoreanClock(value) {
   const koreanDays = ["일", "월", "화", "수", "목", "금", "토"];

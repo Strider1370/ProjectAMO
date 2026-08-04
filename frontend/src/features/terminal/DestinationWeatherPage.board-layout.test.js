@@ -15,10 +15,9 @@ test('터미널은 기존 기상 엔드포인트만 쓰는 실시간 날씨 어�
   assert.match(source, /mergeTerminalLiveWeather\(flight, liveWeatherData\)/)
 })
 
-test('두 안의 상단 한국 시각은 fixture가 아니라 공통 실시간 시각 값을 사용한다', () => {
+test('1안의 상단 한국 시각은 fixture가 아니라 공통 실시간 시각 값을 사용한다', () => {
   assert.match(source, /function formatKoreanClock\(value\)/)
   assert.match(source, /<div className="board-header-clock"><span>\{clock\.date\}<\/span><strong>\{clock\.time\}<\/strong><\/div>/)
-  assert.match(source, /<div className="rail-header-clock"><span>\{clock\.date\}<\/span><strong>\{clock\.time\}<\/strong><\/div>/)
 })
 
 test('1안은 항공편 정보 오른쪽에 운항 상태를 표시하고 고정 label은 쓰지 않는다', () => {
@@ -54,9 +53,9 @@ test('1안은 승인된 짧은 승객용 문구를 사용한다', () => {
   assert.doesNotMatch(source, />출발 예정<|>도착 예정</)
 })
 
-test('두 안은 선택된 출발 공항명을 제목으로 사용한다', () => {
+test('1안은 선택된 출발 공항명을 제목으로 사용한다', () => {
   assert.match(source, /function TerminalTitle\(\{ title \}\)/)
-  assert.equal((source.match(/<TerminalTitle title=\{title\}/g) ?? []).length, 2)
+  assert.equal((source.match(/<TerminalTitle title=\{title\}/g) ?? []).length, 1)
   assert.match(source, /const terminalTitle = `\$\{departureAirportState\.selected\?\.nameKo\?\.replace\('국제', ''\) \|\| '김포공항'\} 가는 곳 날씨`/)
   assert.doesNotMatch(source, /곧 출발하는 항공편 · 목적지 날씨|곧 출발 · 도착지 예보/)
   assert.doesNotMatch(source, /도착 현지 시간 기준 예보/)
@@ -68,9 +67,10 @@ test('공항별 기상 표시는 실제 목적지의 도시와 공항 고유명�
   assert.doesNotMatch(simulationSource, /샤를 드골|싱가포르 창이|도쿄 하네다/)
 })
 
-test('1안과 3안은 한 정규화 시뮬레이션 프레임을 함께 사용한다', () => {
+test('1안은 정규화 시뮬레이션 프레임을 그대로 사용한다', () => {
+  // 2안·3안은 도시 단위 프레임(destinationFrames)을 쓰고, 1안만 activeFlights를 쓴다.
   assert.match(source, /const activeFlights = useMemo\(/)
-  assert.equal((source.match(/activeFlights=\{activeFlights\}/g) ?? []).length, 2)
+  assert.equal((source.match(/activeFlights=\{activeFlights\}/g) ?? []).length, 1)
   assert.doesNotMatch(source, /boardFlightGroups|railFlightGroups|alternateBoardFlights|alternateRailFlights/)
 })
 
@@ -92,7 +92,6 @@ test('두 안은 터미널 전용 토큰으로 공통 시각 언어를 공유한
   assert.match(styles, /\.exact-screen \{[^}]*--terminal-space-2: 8px[^}]*--terminal-space-4: 16px[^}]*--terminal-space-5: 24px/)
   assert.match(styles, /\.exact-screen \{[^}]*--terminal-border: #cbd2dc[^}]*--terminal-status-success: #168b45/)
   assert.match(styles, /\.board-header h1 \{[^}]*font-size: var\(--terminal-type-screen-title\)/)
-  assert.match(styles, /\.rail-header h1 \{[^}]*font-size: var\(--terminal-type-screen-title\)/)
 })
 
 test('사이니지 숫자·보조 라벨·단위·안전영역은 원거리 판독을 우선한다', () => {
@@ -103,7 +102,6 @@ test('사이니지 숫자·보조 라벨·단위·안전영역은 원거리 판�
   assert.match(styles, /\.screen-footer \{[^}]*padding: 0 var\(--terminal-safe-side\) 22px/)
   assert.match(styles, /\.page-indicator \{[^}]*bottom: var\(--terminal-safe-bottom\)/)
   assert.match(styles, /\.airline-block span \{[^}]*color: #526176/)
-  assert.match(styles, /\.rail-airline-meta small \{[^}]*color: #526176/)
   assert.match(styles, /\.temperature \.weather-condition \{[^}]*font-size: 16px/)
   assert.match(styles, /\.board-forecast \.weather-condition \{[^}]*font-size: 16px/)
   assert.match(source, /const displayTemperature = \(value\) => String\(value\)\.replace\("℃", "°C"\)/)
@@ -111,46 +109,33 @@ test('사이니지 숫자·보조 라벨·단위·안전영역은 원거리 판�
   assert.match(source, /<small>°C<\/small>/)
 })
 
-test('한국 시각은 날짜·요일·시각만 한 줄로 간결하게 표시한다', () => {
+test('1안의 한국 시각은 날짜·요일·시각만 한 줄로 간결하게 표시한다', () => {
   assert.match(source, /className="board-header-clock"><span>\{clock\.date\}<\/span><strong>\{clock\.time\}<\/strong><\/div>/)
-  assert.match(source, /className="rail-header-clock"><span>\{clock\.date\}<\/span><strong>\{clock\.time\}<\/strong><\/div>/)
   assert.doesNotMatch(source, /한국 시각/)
   assert.doesNotMatch(source, /2026-07-30 \(목\) · KST/)
 })
 
-test('상단 날짜·시각은 현지 시각과 같은 숫자 서체로 맞추고 날짜도 충분히 크게 표시한다', () => {
+test('1안의 상단 날짜·시각은 현지 시각과 같은 숫자 서체로 맞추고 날짜도 충분히 크게 표시한다', () => {
   assert.match(styles, /\.board-header-clock span \{[^}]*font-family: var\(--terminal-font-time\)[^}]*font-size: 24px/)
   assert.match(styles, /\.board-header-clock strong \{[^}]*font-family: var\(--terminal-font-time\)[^}]*font-size: 36px/)
-  assert.match(styles, /\.rail-header-clock span \{[^}]*font-family: var\(--terminal-font-time\)[^}]*font-size: 24px/)
 })
 
-test('제목과 날짜·시각은 헤더 하단선에서 같은 여백을 두고 현재 날씨 설명은 아이콘의 시각 중심을 따른다', () => {
+test('1안의 제목과 날짜·시각은 헤더 하단선에서 같은 여백을 두고 현재 날씨 설명은 아이콘의 시각 중심을 따른다', () => {
   assert.match(styles, /--terminal-header-bottom-gap: 28px/)
   assert.match(styles, /\.board-header h1 \{[^}]*align-self: end[^}]*margin-bottom: var\(--terminal-header-bottom-gap\)/)
-  assert.match(styles, /\.rail-header h1 \{[^}]*align-self: end[^}]*margin-bottom: var\(--terminal-header-bottom-gap\)/)
   assert.match(styles, /\.board-header-clock \{[^}]*position: absolute[^}]*top: auto[^}]*right: var\(--terminal-safe-side\)[^}]*bottom: var\(--terminal-header-bottom-gap\)[^}]*left: auto/)
-  assert.match(styles, /\.rail-header-clock \{[^}]*position: absolute[^}]*top: auto[^}]*right: var\(--terminal-safe-side\)[^}]*bottom: var\(--terminal-header-bottom-gap\)[^}]*left: auto/)
   assert.match(source, /weather-condition--\$\{type\}/)
   assert.match(styles, /\.temperature \.weather-condition--cloud, \.temperature \.weather-condition--cloudy \{ transform: translateX\(-7px\); \}/)
   assert.match(styles, /\.temperature \.weather-condition--partly, \.temperature \.weather-condition--sun \{ transform: translateX\(-14px\); \}/)
 })
 
-test('시각·기간·예보 시각만 현지 시각과 같은 숫자 서체를 쓰고 다른 숫자 정보는 유지한다', () => {
+test('1안은 시각·기간·예보 시각만 현지 시각과 같은 숫자 서체를 쓰고 다른 숫자 정보는 유지한다', () => {
   assert.match(styles, /--terminal-font-time: "Roboto Mono", monospace/)
   assert.match(styles, /\.departure-time strong \{[^}]*font-family: var\(--terminal-font-time\)/)
   assert.match(styles, /\.arrival-time strong \{[^}]*font-family: var\(--terminal-font-time\)/)
   assert.match(styles, /\.board-forecast time \{[^}]*font-family: var\(--terminal-font-time\)/)
-  assert.match(styles, /\.rail-stats > div:nth-child\(-n \+ 2\) strong \{[^}]*font-family: var\(--terminal-font-time\)/)
-  assert.match(styles, /\.progress-clock strong \{[^}]*font-family: var\(--terminal-font-time\)/)
-  assert.match(styles, /\.timeline-forecast time \{[^}]*font-family: var\(--terminal-font-time\)/)
   assert.doesNotMatch(styles, /\.schedule-grid strong \{[^}]*font-family: var\(--terminal-font-time\)/)
   assert.doesNotMatch(styles, /\.temperature strong \{[^}]*font-family: var\(--terminal-font-time\)/)
-})
-
-test('다음 날은 날짜 보조 문구로 유지하고 뒤의 시각만 시각 숫자 서체를 쓴다', () => {
-  assert.match(source, /const splitArrivalKst = \(value\) => value\.startsWith\("다음 날 "\)/)
-  assert.match(source, /<span className="arrival-next-day">\{arrivalDayLabel\}<\/span>/)
-  assert.match(styles, /\.progress-clock strong \.arrival-next-day \{[^}]*font-family: "Noto Sans KR", sans-serif/)
 })
 
 test('터미널 하단은 다음 업데이트 표시를 노출하지 않는다', () => {
@@ -185,52 +170,18 @@ test('기관 안내는 하단 우측 QR로, 페이지 표시는 하단 중앙으
   assert.match(styles, /\.screen-footer \.header-weather-panel \{[^}]*grid-template-columns: 50px auto 110px/)
 })
 
-test('시험용 조작은 설정창으로 내리고 기관 워드마크는 하단 QR 왼쪽에 둔다', () => {
+test('1안의 시험용 조작은 설정창으로 내리고 기관 워드마크는 하단 QR 왼쪽에 둔다', () => {
+  // source는 DestinationWeatherPage.jsx + terminalShared.jsx다. 2안·3안(WeatherFirstScreen·
+  // WeeklyWeatherScreen)은 각자 파일이라 여기 안 잡히고, 1안(BoardScreen)만 남아 개수가 1이다.
   assert.match(source, /import amoWordmark from "\.\/assets\/amo-wordmark\.png"/)
-  assert.equal((source.match(/<HeaderWeatherPanel showWordmark \/>/g) ?? []).length, 2)
-  // 출발 공항·화면안·전환 효과·다음 항공편은 헤더가 아니라 설정창 안에 있다. 두 안 모두 같다.
-  assert.equal((source.match(/<TerminalSettings>/g) ?? []).length, 2)
+  assert.equal((source.match(/<HeaderWeatherPanel showWordmark \/>/g) ?? []).length, 1)
+  // 출발 공항·화면안·전환 효과·다음 항공편은 헤더가 아니라 설정창 안에 있다.
+  assert.equal((source.match(/<TerminalSettings>/g) ?? []).length, 1)
   assert.doesNotMatch(source, /board-header-actions|rail-header-actions/)
   // 안내판 정보 영역 바깥 모서리에서, 평소에는 거의 보이지 않는다.
   assert.match(styles, /\.terminal-settings \{[^}]*position: absolute[^}]*bottom: 10px[^}]*left: 10px/)
   assert.match(styles, /\.terminal-settings summary \{[^}]*opacity: \.35/)
   assert.match(styles, /\.screen-footer \.header-weather-panel \{[^}]*grid-template-columns: 50px auto 110px/)
-})
-
-test('3안의 한국 시각은 1안처럼 헤더 맨 오른쪽에 고정된다', () => {
-  assert.match(styles, /\.rail-header-clock \{[^}]*position: absolute[^}]*top: auto[^}]*right: var\(--terminal-safe-side\)[^}]*bottom: var\(--terminal-header-bottom-gap\)[^}]*left: auto/)
-})
-
-test('3안 첫 항공편 행은 헤더와 분리되는 상단 여백을 둔다', () => {
-  assert.doesNotMatch(styles, /\.rail-page > \.rail-flight-row:first-child \{[^}]*padding-top/)
-  assert.match(styles, /\.rail-page > \.rail-flight-row:first-child \.rail-flight-info h2 \{[^}]*margin-top: 14px/)
-  assert.match(styles, /\.rail-page > \.rail-flight-row:first-child \.timeline \{[^}]*transform: translateY\(14px\)/)
-})
-
-test('3안 왼쪽 패널은 1안과 같은 원거리 판독 위계로 도시·현지 시각·항공편·운항 값을 표시한다', () => {
-  assert.match(styles, /\.rail-flight-row \{[^}]*grid-template-columns: 35% 65%/)
-  assert.match(styles, /\.rail-flight-info \{[^}]*padding: 14px 36px 12px calc\(var\(--terminal-safe-side\) \+ var\(--terminal-space-5\)\)/)
-  // 3안은 한 행이 화면 1/3 높이다. 1안 칸 크기를 그대로 쓰면 행 안에서 글자가 과하다.
-  assert.match(styles, /\.rail-flight-info h2 \{[^}]*font-size: 44px/)
-  assert.match(styles, /\.rail-local-clock strong \{[^}]*font-size: var\(--terminal-type-primary-time\)/)
-  assert.match(styles, /\.rail-flight-number strong \{[^}]*font-size: 40px/)
-  assert.match(styles, /\.rail-flight-status > span \{[^}]*font-size: 20px/)
-  // 1안의 `출발`·`탑승구` 라벨(22px)과 값(61px)에 맞춘다. 같은 역할인데 3안만 작을 이유가 없다.
-  assert.match(styles, /\.rail-stats span \{[^}]*font-size: var\(--terminal-type-label\)/)
-  assert.match(styles, /\.rail-stats strong \{[^}]*font-size: 44px/)
-  assert.match(styles, /\.rail-stats > div \{[^}]*row-gap: var\(--terminal-space-2\)/)
-})
-
-test('3안은 좌우 컬럼이 아니라 항공편별 가로 행으로 먼저 묶여 읽힌다', () => {
-  assert.match(styles, /\.rail-flight-row \{[^}]*border-bottom: 2px solid #d3dbe5/)
-  assert.match(styles, /\.rail-flight-info \{[^}]*background: #f7f9fc[^}]*border-right: 2px solid #c5d0dd/)
-})
-
-test('3안은 편명 오른쪽에 항공사명을 보조 정보로 표시한다', () => {
-  assert.match(source, /className="rail-airline-meta"[^>]*>\s*<strong>\{flight\.flight\}<\/strong>\s*<small>\{flight\.airline\}<\/small>/)
-  assert.match(styles, /\.rail-airline-meta \{[^}]*display: flex[^}]*align-items: baseline[^}]*gap: 14px/)
-  // 1안의 항공사명(20px)과 같은 크기다.
-  assert.match(styles, /\.rail-airline-meta small \{[^}]*font-size: 16px/)
 })
 
 test('지연·탑승구 변경은 지금 유효한 값 하나만 보여준다', () => {
@@ -249,27 +200,23 @@ test('지연·탑승구 변경은 지금 유효한 값 하나만 보여준다', 
 
   // 바뀌었다는 사실은 색과 상태 단어가 알린다.
   assert.match(styles, /\.operation-status\.is-delay strong \{[^}]*color: var\(--terminal-status-warning\)/)
-  assert.match(styles, /\.departure-time\.is-delayed strong, \.rail-stats \.is-delayed strong \{[^}]*color: var\(--terminal-status-warning\)/)
+  assert.match(styles, /\.departure-time\.is-delayed strong \{[^}]*color: var\(--terminal-status-warning\)/)
   assert.match(styles, /\.gate-value\.is-changed strong \{[^}]*color: var\(--terminal-status-warning\)/)
 })
 
-test('같은 목적지 편명 전환은 pending 값을 선렌더하고 바뀌는 운항값만 움직인다', () => {
+test('1안은 같은 목적지 편명 전환에서 pending 값을 선렌더하고 바뀌는 운항값만 움직인다', () => {
   assert.match(source, /classifyTerminalSlotTransition\(activeFlights\[index\], pendingFlights\[index\]\)/)
   assert.match(source, /board-page is-entering/)
-  assert.match(source, /rail-page is-entering/)
   assert.match(source, /transitionKind=\{slotTransitions\[index\]\}/)
   assert.match(source, /flight-variant-value/)
   assert.match(styles, /\.board-page\.is-entering \.board-column\.is-slot-flight \{ visibility: hidden; \}/)
-  assert.match(styles, /\.rail-page\.is-entering \.rail-flight-row\.is-slot-flight \{ visibility: hidden; background: transparent; \}/)
 })
 
-test('혼합 프레임은 각 슬롯에 편명·목적지·퇴장 전환 클래스를 독립 적용한다', () => {
+test('1안 혼합 프레임은 각 슬롯에 편명·목적지·퇴장 전환 클래스를 독립 적용한다', () => {
   assert.match(source, /function terminalSlotTransitions\(activeFlights, pendingFlights\)/)
   assert.match(source, /className=\{`board-column is-slot-\$\{transitionKind\}/)
-  assert.match(source, /className=\{`rail-flight-row is-slot-\$\{transitionKind\}/)
   assert.doesNotMatch(source, /isFlightOnlyTransition/)
   assert.match(styles, /\.board-column\.is-slot-stable/)
-  assert.match(styles, /\.rail-flight-row\.is-slot-stable/)
 })
 
 test('1안 빈 슬롯은 카드 구조와 구분선을 함께 퇴장·진입시킨다', () => {
@@ -288,53 +235,21 @@ test('1안 WIPE 편명 전환은 기존 운항값을 먼저 마스킹해 두 프
   assert.match(styles, /\.motion-wipe \.board-page\.is-entering \.board-column\.is-slot-flight \.flight-variant-value \{[^}]*animation-delay: calc\(330ms/)
 })
 
-test('3안은 현지 시각을 공항명 아래 왼쪽 패널 오른쪽에 한 줄로 표시한다', () => {
-  assert.match(source, /className="rail-local-clock"/)
-  assert.doesNotMatch(source, /className="rail-current-clock"/)
-  assert.doesNotMatch(source, /한국 \{kstTime\} KST/)
-  // 자리를 잡는 쪽은 감싸는 상자다. 현지 시각과 현재 날씨가 그 안에 위아래로 들어간다.
-  assert.match(styles, /\.rail-destination-side \{[^}]*grid-row: 1[^}]*align-self: end[^}]*justify-self: end/)
-  assert.match(styles, /\.rail-local-clock strong \{[^}]*font-size: var\(--terminal-type-primary-time\)/)
-})
-
-test('3안도 1안과 같은 정보를 담는다 - 현재 날씨와 공동운항 표시', () => {
-  // 화면 제목이 `가는 곳 날씨`인데 3안에는 지금 그곳이 어떤지가 빠져 있었다.
-  assert.match(source, /className="rail-current-weather/)
+test('1안도 배지로 공동운항 사실을 알린다 - 현재 날씨와 공동운항 표시', () => {
   assert.match(source, /<dt>체감<\/dt>[\s\S]*<dt>습도<\/dt>[\s\S]*<dt>바람<\/dt>/)
-  // 편명이 3초마다 도는 이유를 알려주는 배지는 1안·3안에 있어야 한다.
-  // 2안(terminalShared.jsx의 FlightRow)도 스펙에 따라 같은 배지를 재사용해 셋이 됐다.
-  assert.equal((source.match(/className="codeshare-badge"/g) ?? []).length, 3)
+  // 편명이 3초마다 도는 이유를 알려주는 배지는 1안에 있어야 한다.
+  // 2안·3안(terminalShared.jsx의 FlightRow, 2안·3안이 함께 쓴다)도 같은 배지를 재사용해 둘이 됐다.
+  assert.equal((source.match(/className="codeshare-badge"/g) ?? []).length, 2)
   // 비행시간은 뺐다. 같은 노선이면 세 행에 같은 숫자가 반복된다.
   assert.doesNotMatch(source, /예상 비행시간|>비행시간</)
 })
 
-test('3안 오른쪽 예보는 진행선보다 시각·아이콘·온도가 먼저 읽히도록 확대한다', () => {
-  // 도착 시각은 1안(44px)과 같다. 예보 칸 글자는 3안 칸이 더 넓어 1안보다 크게 둔다.
-  assert.match(styles, /\.progress-clock strong \{[^}]*font-size: 34px/)
-  assert.match(styles, /\.timeline-forecast time \{[^}]*font-size: 22px/)
-  assert.match(styles, /\.timeline-forecast img \{[^}]*width: 84px[^}]*height: 74px/)
-  assert.match(styles, /\.timeline-forecast \.weather-condition \{[^}]*font-size: 16px/)
-  assert.match(styles, /\.timeline-forecast strong \{[^}]*font-size: 24px/)
-  assert.match(styles, /\.rail-forecast-content > strong \{[^}]*margin-top: var\(--terminal-space-2\)/)
-  assert.match(styles, /\.flight-progress \{[^}]*height: 20px/)
-})
-
-test('3안의 시간대별 예보는 1안과 같은 시 단위 표기를 사용한다', () => {
-  assert.match(source, /const displayForecastHour = \(value\) => String\(value\)\.replace\(\/\^\\d\{2\}:00\$\//)
-  assert.match(source, /<time>\{displayForecastHour\(time\)\}<\/time>/)
-})
-
-test('3안은 도착 1시간 전 보조 예보를 제거하고 5개 예보에 오른쪽 패널 전체 폭을 쓴다', () => {
-  assert.doesNotMatch(source, /도착 1시간 전/)
-  assert.doesNotMatch(styles, /\.pre-arrival-forecast/)
-  assert.match(styles, /\.timeline \{[^}]*--forecast-left: 45px/)
-})
-
-test('프레임 표시는 실제 편명 전환 프레임 수와 현재 위치를 사용한다', () => {
+test('1안의 프레임 표시는 실제 편명 전환 프레임 수와 현재 위치를 사용한다', () => {
+  // PageIndicator는 1안(BoardScreen)만 쓴다. 2안·3안은 도시 단위로 넘어가 편명 전환 프레임이 없다.
   assert.match(source, /role="img"/)
   assert.match(source, /aria-label=\{`\$\{currentFrame \+ 1\} \/ \$\{frameCount\} 프레임`\}/)
-  assert.equal((source.match(/currentFrame=\{activeFrame\.frameIndex\}/g) ?? []).length, 2)
-  assert.equal((source.match(/frameCount=\{activeFrame\.frameCount\}/g) ?? []).length, 2)
+  assert.equal((source.match(/currentFrame=\{activeFrame\.frameIndex\}/g) ?? []).length, 1)
+  assert.equal((source.match(/frameCount=\{activeFrame\.frameCount\}/g) ?? []).length, 1)
   assert.match(styles, /\.page-indicator i \{[^}]*width: 12px/)
   assert.match(styles, /\.page-indicator i \{[^}]*height: 12px/)
   assert.match(styles, /\.page-indicator \{[^}]*gap: 10px/)
@@ -389,9 +304,8 @@ test('1안은 해외 목적지에만 시간대와 현지 시각을 붙인다', (
   assert.doesNotMatch(currentClock, /kstDifferenceLabel|kst-difference/)
 })
 
-test('예보 줄 제목은 국내·국제가 같고 도착 시각은 국내선만 오른쪽에 붙인다', () => {
+test('1안의 예보 줄 제목은 도착 시각 유무와 무관하게 표시하고 도착 시각은 국내선만 오른쪽에 붙인다', () => {
   assert.match(source, /<span className="arrival-forecast-label roll-unit"[^>]*>목적지 공항 예보<\/span>/)
-  assert.match(source, /<span className="progress-label__title">목적지 공항 예보<\/span>/)
   assert.match(source, /\{hasArrivalTime && isDomesticDestination && <strong className=\{`arrival-time-value/)
   // 제목은 왼쪽, 시각은 오른쪽 끝에 붙는다.
   assert.match(styles, /\.arrival-time \{[^}]*justify-content: space-between/)

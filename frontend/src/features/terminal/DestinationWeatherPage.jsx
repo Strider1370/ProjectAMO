@@ -1,8 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MdChevronRight } from "react-icons/md";
-import clearNight from "../../assets/weather-icons/basmilius/clear-night.svg";
-import fewCloudsNight from "../../assets/weather-icons/basmilius/few-clouds-night.svg";
-import { airportTemperature, destinationHourly, resolveTerminalAirport, kstClockFromIso, loadTerminalLiveWeatherData, mergeTerminalLiveWeather } from './terminalLiveData.js';
+import { airportTemperature, destinationDailyDays, destinationHourly, resolveTerminalAirport, kstClockFromIso, loadTerminalLiveWeatherData, mergeTerminalLiveWeather } from './terminalLiveData.js';
 import { departureAirportFromPathname, selectTerminalDepartureAirport } from './terminalAirportSelection.js';
 import { terminalCanvasScale } from './terminalCanvasScale.js';
 import {
@@ -17,6 +15,7 @@ import {
   terminalFrameAt,
 } from './terminalFlightSimulation.js';
 import WeatherFirstScreen from './WeatherFirstScreen.jsx';
+import WeeklyWeatherScreen from './WeeklyWeatherScreen.jsx';
 import {
   AgencyMascot,
   AirlineLogo,
@@ -33,30 +32,10 @@ import {
   UNDECIDED_VALUES,
   ViewSwitcher,
   WeatherCondition,
-  boardForecastAssets,
   displayTemperature,
   formatKoreanClock,
-  splitArrivalKst,
   withCodeshare,
 } from './terminalShared.jsx';
-
-const railWeatherAssets = {
-  sun: boardForecastAssets.partly,
-  partly: boardForecastAssets.partly,
-  cloud: boardForecastAssets.cloud,
-  cloudy: boardForecastAssets.cloudy,
-  rain: boardForecastAssets.rain,
-  shower: boardForecastAssets.shower,
-  storm: boardForecastAssets.storm,
-  night: clearNight,
-  nightPartly: fewCloudsNight,
-};
-
-const displayForecastHour = (value) => String(value).replace(/^\d{2}:00$/, `${Number(String(value).slice(0, 2))}시`);
-
-function RailWeatherImage({ type }) {
-  return <img className={`weather-image weather-image--${type}`} src={railWeatherAssets[type] ?? railWeatherAssets.cloud} alt="" aria-hidden="true" />;
-}
 
 function changedVariantClass(flight, comparisonFlight, fields) {
   return comparisonFlight && fields.some((field) => flight[field] !== comparisonFlight[field]) ? ' flight-variant-value' : '';
@@ -225,14 +204,6 @@ const boardMotionModes = [
   ["fade", "FADE", "겹침"],
 ];
 
-const railMotionModes = [
-  ["cascade", "CASCADE", "행 순차"],
-  ["flap", "FLAP", "요소 플랩"],
-  ["roll", "ROLL", "요소 롤"],
-  ["wipe", "WIPE", "마스크"],
-  ["fade", "FADE", "겹침"],
-];
-
 function BoardScreen({ codeshareTurn, transitioning, activeFlights, pendingFlights, currentFrame, frameCount, motionMode, onReplay, hasNext, onSelectMotion, onSelectView, clock, title, departureAirports, departureAirportIcao, departureAirportName, onSelectDepartureAirport }) {
   const slotTransitions = terminalSlotTransitions(activeFlights, pendingFlights);
   return (
@@ -293,188 +264,7 @@ function BoardScreen({ codeshareTurn, transitioning, activeFlights, pendingFligh
   );
 }
 
-function RailStats({ flight, comparisonFlight }) {
-  const variant = (...fields) => changedVariantClass(flight, comparisonFlight, fields);
-  return (
-    <div className="rail-stats">
-      <div>
-        <span>출발</span>
-        <div className={`rail-motion-unit${variant('revised', 'departure')}${flight.revised ? " is-delayed" : ""}`} style={{ "--rail-item": 6 }}><strong>{flight.revised ?? flight.departure}</strong></div>
-      </div>
-      {/* 비행시간은 뺐다. 같은 노선이면 세 행에 같은 숫자가 반복되고, 떠나는 승객이
-          안내판에서 찾는 값도 아니다. 그 폭을 출발·탑승구가 나눠 갖는다. */}
-      <div>
-        <span>탑승구</span>
-        {/* 1안과 같다. 아직 정해지지 않은 값을 큰 숫자 자리에 그대로 넣으면 좁은 칸에서 세 줄로 쪼개진다. */}
-        <div className={`rail-motion-unit${variant('gate')}${flight.status === GATE_CHANGED_STATUS ? " is-delayed" : ""}`} style={{ "--rail-item": 8 }}><strong>{UNDECIDED_VALUES.has(flight.gate) ? <em className="value-unknown">{flight.gate}</em> : flight.gate}</strong></div>
-      </div>
-    </div>
-  );
-}
-
-function ForecastTimeline({ flight, comparisonFlight }) {
-  const { dayLabel: arrivalDayLabel, time: arrivalKstTime } = splitArrivalKst(flight.arrivalKst);
-  const hasArrivalTime = flight.arrivalKst !== "확인 중";
-  const isDomesticDestination = flight.localZone === "KST";
-  const variant = (...fields) => changedVariantClass(flight, comparisonFlight, fields);
-  return (
-    <div className="timeline">
-      {/* 1안과 같은 규칙 — 도착 시각을 모르면 시각 대신 예보 제목으로 그 자리를 채운다.
-          목적지가 한국이면 현지·한국을 나눌 이유가 없으므로 한 줄만 남긴다. */}
-      <div className="timeline-arrival-grid">
-        <div className="progress-label progress-label--arrival">
-          <span className="progress-label__title">목적지 공항 예보</span>
-          {hasArrivalTime && <div className="arrival-clocks">
-            <div className="progress-clock">
-              {!isDomesticDestination && <span>현지</span>}
-              <strong className={`rail-motion-unit${variant('arrival', 'localZone')}`} style={{ "--rail-item": 9 }}>{flight.arrival}</strong>
-            </div>
-            {!isDomesticDestination && <div className="progress-clock">
-              <span>한국</span><strong className={`rail-motion-unit${variant('arrivalKst')}`} style={{ "--rail-item": 10 }}>{arrivalDayLabel && <span className="arrival-next-day">{arrivalDayLabel}</span>}{arrivalKstTime}</strong><small>KST</small>
-            </div>}
-          </div>}
-        </div>
-      </div>
-      <div className="flight-progress">
-        <i className="progress-dots" /><i className="progress-line" /><b />
-        <MdChevronRight className="progress-arrow" />
-      </div>
-      <div className="timeline-forecast">
-        {flight.forecast.map(([time, icon, temp], index) => (
-          <div
-            className={index === flight.arrivalSlot ? "is-arrival" : ""}
-            key={time}
-          >
-            <div className="rail-forecast-content rail-motion-unit" style={{ "--rail-item": 12 + index }}>
-              <time>{displayForecastHour(time)}</time>
-              <RailWeatherImage type={icon} />
-              <WeatherCondition type={icon} />
-              <strong>{displayTemperature(temp)}</strong>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function RailRow({ flight: rawFlight, comparisonFlight, index, transitionKind, codeshareTurn }) {
-  const flight = withCodeshare(rawFlight, codeshareTurn);
-  const [, localTime] = flight.localClock.split(" ");
-  const variant = (...fields) => changedVariantClass(flight, comparisonFlight, fields);
-  // 1안과 같은 규칙. 목적지가 한국이면 현지 시각은 상단 시계와 같은 값이라 군더더기다.
-  const showLocalClock = Boolean(flight.localZone) && flight.localZone !== "KST";
-  const isCodeshare = rawFlight.codeshares?.length >= 2;
-  const shareIndex = isCodeshare ? codeshareTurn % rawFlight.codeshares.length : 0;
-  return (
-    <article className={`rail-flight-row is-slot-${transitionKind}${transitionKind === "flight" ? " is-flight-variant-changing" : ""}`} data-testid="rail-flight-row" data-destination-code={flight.code} data-flight-key={flight.flightKey} style={{ "--order": index }}>
-      <div className="rail-flight-info">
-        {/* 같은 목적지 행이 여럿이면 제목만 훑는 화면 낭독기에서 구별이 안 된다. 편명을 함께 싣는다. */}
-        <h2 className="rail-motion-unit" style={{ "--rail-item": 0 }}>{flight.city} <span>{flight.code}</span><span className="visually-hidden"> {flight.flight}편</span></h2>
-        {/* 목적지 줄 오른쪽은 1안의 `현재 날씨` 칸이 하던 일을 맡는다. 화면 제목이 `가는 곳 날씨`인데
-            3안에는 지금 그곳이 어떤지가 없어 승객이 가장 먼저 궁금해하는 값이 빠져 있었다. */}
-        <div className="rail-destination-side">
-          {showLocalClock && <div className="rail-local-clock"><span>현지 시각</span><strong>{localTime}</strong><b>{flight.localZone}</b></div>}
-          <div className="rail-current-weather rail-motion-unit" style={{ "--rail-item": 1 }}>
-            <RailWeatherImage type={flight.current.icon} />
-            <WeatherCondition type={flight.current.icon} />
-            <strong>{flight.current.temp == null ? <em className="value-unknown">확인 중</em> : <>{flight.current.temp}<small>°C</small></>}</strong>
-            <dl>
-              <div><dt>체감</dt><dd>{flight.current.feels}</dd></div>
-              <div><dt>습도</dt><dd>{flight.current.humidity}</dd></div>
-              <div><dt>바람</dt><dd>{flight.current.wind}</dd></div>
-            </dl>
-          </div>
-        </div>
-        <div className="rail-flight-status">
-          <span className={`rail-flight-number rail-motion-unit${variant('flight', 'airline', 'logo')}`} style={{ "--rail-item": 4 }}>
-            {flight.logo
-              ? <img src={flight.logo} alt={`${flight.airline} 로고`} />
-              : <span className="airline-logo-fallback" aria-label={flight.airline}>{flight.flight.slice(0, 2)}</span>}
-            <span className="rail-airline-meta">
-              <strong>{flight.flight}</strong>
-              <small>{flight.airline}</small>
-            </span>
-            {/* 1안과 같다. 편명이 3초마다 도는 이유를 배지가, 지금 몇 번째인지를 점이 알려준다.
-                이게 없으면 승객 눈에는 화면이 까닭 없이 깜빡이는 것으로 보인다. */}
-            {isCodeshare && (
-              <span className="codeshare-badge-group">
-                <b className="codeshare-badge">공동운항</b>
-                <span className="codeshare-dots" role="img" aria-label={`공동운항 편명 ${rawFlight.codeshares.length}개 중 ${shareIndex + 1}번째`}>
-                  {rawFlight.codeshares.map((share, index) => <i key={share.flight} className={index === shareIndex ? "is-current" : undefined} />)}
-                </span>
-              </span>
-            )}
-          </span>
-          <span className={`${flight.statusTone} rail-motion-unit${variant('status', 'statusTone')}`} style={{ "--rail-item": 5 }}>{flight.status}</span>
-        </div>
-        <RailStats flight={flight} comparisonFlight={comparisonFlight} />
-      </div>
-      <ForecastTimeline flight={flight} comparisonFlight={comparisonFlight} />
-    </article>
-  );
-}
-
-function RailScreen({
-  transitioning,
-  activeFlights,
-  pendingFlights,
-  currentFrame,
-  frameCount,
-  motionMode,
-  onReplay,
-  hasNext,
-  onSelectMotion,
-  onSelectView,
-  clock,
-  title,
-  departureAirports,
-  departureAirportIcao,
-  departureAirportName,
-  codeshareTurn,
-  onSelectDepartureAirport,
-}) {
-  const slotTransitions = terminalSlotTransitions(activeFlights, pendingFlights);
-  return (
-    <section className={`exact-screen exact-rail rail-motion-${motionMode}${activeFlights.length === 0 ? " is-operations-ended" : ""}`} data-testid="option-three">
-      <PageIndicator currentFrame={currentFrame} frameCount={frameCount} />
-      <header className="rail-header">
-        <AgencyMascot />
-        <TerminalTitle title={title} />
-        <div className="rail-header-clock"><span>{clock.date}</span><strong>{clock.time}</strong></div>
-      </header>
-      <TerminalSettings>
-        <DepartureAirportSelect airports={departureAirports} selectedIcao={departureAirportIcao} onSelect={onSelectDepartureAirport} />
-        <ViewSwitcher view="rail" onSelectView={onSelectView} />
-        <MotionModeSwitcher
-          motionMode={motionMode}
-          onSelectMotion={onSelectMotion}
-          modes={railMotionModes}
-          ariaLabel="3안 전환 애니메이션"
-        />
-        <button type="button" className="next-board-button" onClick={onReplay} disabled={!hasNext}>
-          <MdChevronRight /><span>다음 항공편</span>
-        </button>
-      </TerminalSettings>
-      <div className="rail-viewport">
-        {activeFlights.length === 0 ? <TerminalEmptyState airportName={departureAirportName} referenceClock={clock.time} /> : <div className={`rail-page ${transitioning ? "is-leaving" : ""}`} data-testid="rail-active-page">
-          {activeFlights.map((flight, index) => <RailRow flight={flight} comparisonFlight={pendingFlights[index]} index={index} transitionKind={slotTransitions[index]} codeshareTurn={codeshareTurn} key={`${index}-${flight.flightKey}`} />)}
-        </div>}
-        {transitioning && (
-          <div className="rail-page is-entering" data-testid="rail-pending-page" aria-hidden="true">
-            {pendingFlights.map((flight, index) => <RailRow flight={flight} comparisonFlight={activeFlights[index]} index={index} transitionKind={slotTransitions[index]} codeshareTurn={codeshareTurn} key={`${index}-${flight.flightKey}`} />)}
-          </div>
-        )}
-      </div>
-      <footer className="screen-footer rail-footer">
-        <ScreenFooterNote />
-        <HeaderWeatherPanel showWordmark />
-      </footer>
-    </section>
-  );
-}
-
-// 1안은 9초, 2안·3안은 30초. 2안·3안은 3일치 예보 띠를 훑는 데 시간이 걸린다.
+// 1안은 9초, 2안·3안은 30초. 2안·3안은 예보 자료를 훑는 데 시간이 걸린다.
 const FRAME_INTERVAL_MS = { board: 9000, weather: 30000, rail: 30000 };
 
 export function App() {
@@ -497,8 +287,8 @@ export function App() {
     const requested = params.get("weatherMotion");
     return ["cascade", "flap", "roll", "wipe", "fade"].includes(requested) ? requested : "cascade";
   });
-  const [railMotionMode, setRailMotionMode] = useState(() => {
-    const requestedMode = params.get("railMotion");
+  const [weeklyMotionMode, setWeeklyMotionMode] = useState(() => {
+    const requestedMode = params.get("weeklyMotion");
     return ["cascade", "flap", "roll", "wipe", "fade"].includes(requestedMode) ? requestedMode : "cascade";
   });
   const [liveWeatherData, setLiveWeatherData] = useState(null);
@@ -583,6 +373,11 @@ export function App() {
     () => (liveWeatherData && destinationIcao ? destinationHourly(liveWeatherData, destinationIcao) : []),
     [liveWeatherData, destinationIcao],
   );
+  // 3안 오른쪽 주간 칸. 2안의 시간별과 같은 이유로 관측 유무와 무관한 destinationIcao를 쓴다.
+  const destinationDailyForecast = useMemo(
+    () => (liveWeatherData && destinationIcao ? destinationDailyDays(liveWeatherData, destinationIcao) : []),
+    [liveWeatherData, destinationIcao],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -623,12 +418,14 @@ export function App() {
   }, []);
 
   const replay = useCallback(() => {
-    const hasNext = view === "weather" ? hasDestinationNextFrame : hasNextFrame;
+    // 2안·3안(rail)은 도시 단위 프레임(destinationFrames)을 함께 쓴다. 1안만 편성 프레임을 쓴다.
+    const usesDestinationFrame = view !== "board";
+    const hasNext = usesDestinationFrame ? hasDestinationNextFrame : hasNextFrame;
     if (transitioning || !hasNext) return;
     setTransitioning(true);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
-      if (view === "weather") {
+      if (usesDestinationFrame) {
         setWeatherFrameCursor((current) => current + 1);
       } else {
         setFrameCursor((current) => current + 1);
@@ -670,9 +467,9 @@ export function App() {
     window.requestAnimationFrame(() => replay());
   }, [replay, transitioning]);
 
-  const selectRailMotionMode = useCallback((mode) => {
+  const selectWeeklyMotionMode = useCallback((mode) => {
     if (transitioning) return;
-    setRailMotionMode(mode);
+    setWeeklyMotionMode(mode);
     window.requestAnimationFrame(() => replay());
   }, [replay, transitioning]);
 
@@ -738,23 +535,24 @@ export function App() {
           onSelectDepartureAirport={selectDepartureAirport}
         />
       ) : (
-        <RailScreen
+        <WeeklyWeatherScreen
+          frame={activeDestinationFrame.frame ? { ...activeDestinationFrame.frame, flights: destinationFlights } : null}
+          destinations={weatherDestinations}
+          destinationIndex={activeDestinationFrame.frame?.destinationIndex ?? 0}
+          departureName={departureAirportState.selected?.nameKo || '김포공항'}
+          departureTemp={departureTemp}
+          hourly={destinationHourlyForecast}
+          days={destinationDailyForecast}
+          nowKst={nowKst}
           transitioning={transitioning}
-          activeFlights={activeFlights}
-          pendingFlights={pendingFlights}
-          currentFrame={activeFrame.frameIndex}
-          frameCount={activeFrame.frameCount}
-          motionMode={railMotionMode}
-          onReplay={replay}
-          hasNext={hasNextFrame}
-          onSelectMotion={selectRailMotionMode}
+          motionMode={weeklyMotionMode}
+          onSelectMotion={selectWeeklyMotionMode}
           onSelectView={selectView}
+          onReplay={replay}
+          hasNext={hasDestinationNextFrame}
           clock={koreanClock}
-          codeshareTurn={codeshareTurn}
-          title={terminalTitle}
           departureAirports={departureAirportState.options}
           departureAirportIcao={selectedDepartureIcao}
-          departureAirportName={departureAirportState.selected?.nameKo || '김포공항'}
           onSelectDepartureAirport={selectDepartureAirport}
         />
       )}

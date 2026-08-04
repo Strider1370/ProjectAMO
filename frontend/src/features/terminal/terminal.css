@@ -99,7 +99,7 @@ body { min-height: 100vh; overflow: hidden; }
 .exact-board .board-header { grid-template-columns: 54px minmax(0, 1fr) auto; }
 .agency-mascot { display: block; width: 54px; height: 48px; align-self: end; margin-bottom: var(--terminal-header-bottom-gap); object-fit: contain; }
 .board-header h1 { display: flex; align-self: end; align-items: baseline; gap: 14px; margin: 0; margin-bottom: var(--terminal-header-bottom-gap); line-height: 1; font-size: var(--terminal-type-screen-title); font-weight: 800; letter-spacing: -.045em; white-space: nowrap; }
-.board-header h1 small, .rail-header h1 small { color: #526176; font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+.board-header h1 small { color: #526176; font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
 .terminal-airport-selector { display: flex; height: 46px; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid #aeb7c3; background: #fff; color: #23334b; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .terminal-airport-selector select { min-width: 94px; border: 0; background: transparent; color: #071735; font: 700 13px "Noto Sans KR", sans-serif; cursor: pointer; }
 .terminal-airport-selector:focus-within { outline: 3px solid #2f80ed; outline-offset: 2px; }
@@ -176,7 +176,7 @@ body { min-height: 100vh; overflow: hidden; }
 .section-label, .arrival-time span { color: #303b4e; font-size: 24px; font-weight: 600; }
 .schedule-grid strong { font-size: 61px; line-height: 1.05; }
 .departure-time { display: flex; align-items: baseline; gap: 10px; }
-.departure-time.is-delayed strong, .rail-stats .is-delayed strong { color: var(--terminal-status-warning); }
+.departure-time.is-delayed strong { color: var(--terminal-status-warning); }
 .operation-status { display: flex; align-items: center; gap: var(--terminal-space-3); justify-self: end; font-size: 15px; white-space: nowrap; }
 .operation-status i { width: 12px; height: 12px; border-radius: 50%; background: var(--terminal-status-success); }
 .operation-status strong { color: var(--terminal-status-success); font-size: var(--terminal-type-status); }
@@ -265,13 +265,11 @@ body { min-height: 100vh; overflow: hidden; }
 /* 운항이 끝나면 화면에서 조작할 것도, 넘길 것도 없다. 안내 문구와 항공기상청 안내만 남긴다.
    헤더·전환 버튼·페이지 표시·기준 문구는 전부 내린다. 없는 항공편을 넘기는 버튼은 승객을 헷갈리게 한다. */
 .is-operations-ended .board-header,
-.is-operations-ended .rail-header,
 .is-operations-ended .page-indicator,
 .is-operations-ended .screen-footer-note { display: none; }
 /* 화면은 헤더 90px / 본문 / 푸터 92px 세 줄이다. 헤더를 내리면 남은 둘만 놓이도록 줄 수를 다시 적는다.
    이걸 빠뜨리면 본문이 헤더 자리(90px)로 올라가 문구가 화면 밖으로 밀린다. */
-.is-operations-ended.exact-board,
-.is-operations-ended.exact-rail { grid-template-rows: 1fr 92px; }
+.is-operations-ended.exact-board { grid-template-rows: 1fr 92px; }
 .is-operations-ended .screen-footer { grid-template-columns: auto; justify-content: end; border-top: 0; }
 
 /* 운항 종료 화면. 문구만 가운데 쌓으면 고장난 빈 화면처럼 보인다.
@@ -467,232 +465,6 @@ body { min-height: 100vh; overflow: hidden; }
   animation-delay: calc(170ms + var(--band) * 110ms + var(--column) * 28ms + var(--item, 0) * 18ms);
 }
 
-/* Option 3 — exact horizontal forecast rail */
-.exact-rail { display: grid; grid-template-rows: 90px 1fr 92px; }
-.rail-header { position: relative; display: grid; grid-template-columns: 54px auto minmax(120px, 1fr) auto; align-items: center; gap: var(--terminal-space-4); height: 90px; /* 위 14px + 제목 48px + 아래 28px = 90px. 제목을 키운 만큼 위 여백에서 덜어내 헤더 높이는 그대로 둔다. */
-  padding: 14px var(--terminal-safe-side) 0; border-bottom: 1px solid var(--terminal-border); background: var(--terminal-surface); }
-.rail-header h1 { display: flex; align-self: end; align-items: baseline; gap: 14px; margin: 0; margin-bottom: var(--terminal-header-bottom-gap); line-height: 1; padding-right: 38px; border-right: 1px solid var(--terminal-border); font-size: var(--terminal-type-screen-title); font-weight: 800; letter-spacing: -.04em; white-space: nowrap; }
-.rail-header-clock { position: absolute; top: auto; right: var(--terminal-safe-side); bottom: var(--terminal-header-bottom-gap); left: auto; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
-.rail-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
-.rail-header-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; letter-spacing: -.04em; }
-.rail-viewport { position: relative; min-height: 0; overflow: hidden; }
-.rail-page { position: absolute; inset: 0; display: grid; grid-template-rows: repeat(3, 1fr); }
-.rail-flight-row { display: grid; grid-template-columns: 35% 65%; border-bottom: 2px solid #d3dbe5; background: var(--terminal-surface); perspective: 900px; }
-.rail-page > .rail-flight-row:first-child .rail-flight-info h2 { margin-top: 14px; }
-.rail-page > .rail-flight-row:first-child .rail-local-clock,
-.rail-page > .rail-flight-row:first-child .rail-flight-status,
-.rail-page > .rail-flight-row:first-child .rail-stats,
-.rail-page > .rail-flight-row:first-child .timeline { transform: translateY(14px); }
-.rail-flight-info {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 108px 78px minmax(0, 1fr);
-  padding: 14px 36px 12px calc(var(--terminal-safe-side) + var(--terminal-space-5));
-  background: #f7f9fc;
-  border-right: 2px solid #c5d0dd;
-}
-.rail-flight-info h2 { grid-column: 1; grid-row: 1; align-self: start; margin: 0; font-size: 44px; font-weight: 800; letter-spacing: -.055em; line-height: 1.05; white-space: nowrap; }
-.rail-flight-info h2 span { margin-left: 10px; color: #4d5a70; font-size: 24px; font-weight: 600; letter-spacing: 0; }
-/* 목적지 줄 오른쪽. 국제선이면 현지 시각이 위에, 그 아래 현재 날씨가 붙는다. */
-.rail-destination-side { grid-column: 1; grid-row: 1; align-self: end; justify-self: end; display: grid; justify-items: end; row-gap: 6px; }
-.rail-current-weather { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
-.rail-current-weather img { display: block; width: 52px; height: 48px; object-fit: contain; mix-blend-mode: multiply; }
-.rail-current-weather .weather-condition { font-size: 15px; }
-.rail-current-weather > strong { color: var(--terminal-text-primary); font-size: 32px; line-height: 1; letter-spacing: -.03em; }
-.rail-current-weather > strong small { font-size: 15px; font-weight: 600; }
-.rail-current-weather dl { display: flex; gap: 16px; margin: 0; padding-left: 14px; border-left: 1px solid #c8ced7; font-size: 16px; line-height: 1.2; }
-.rail-current-weather dl div { display: flex; gap: 6px; }
-.rail-current-weather dt, .rail-current-weather dd { margin: 0; }
-.rail-current-weather dt { color: #5a6577; font-weight: 500; }
-.rail-current-weather dd { color: #071735; font-weight: 600; }
-.rail-local-clock { display: flex; align-items: baseline; gap: 6px; color: #596576; white-space: nowrap; }
-.rail-local-clock > span { font-size: 16px; font-weight: 600; }
-.rail-local-clock strong { color: var(--terminal-text-primary); font-family: var(--terminal-font-time); font-size: var(--terminal-type-primary-time); line-height: 1; letter-spacing: -.05em; }
-.rail-local-clock b { font-size: 16px; font-weight: 700; }
-.rail-flight-status { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 30px; margin: 0; padding: 7px 4px 7px 0; }
-.rail-flight-status > span { font-size: 20px; font-weight: 700; }
-.rail-flight-status > span:last-child { justify-self: end; }
-.rail-flight-number { display: inline-flex; align-items: center; gap: 10px; color: #071735; }
-.rail-flight-number img { display: block; width: 42px; height: 42px; object-fit: contain; mix-blend-mode: multiply; }
-.rail-flight-number .airline-logo-fallback { flex: 0 0 52px; }
-.rail-flight-number strong { font-size: 40px; line-height: 1; }
-.rail-airline-meta { display: flex; align-items: baseline; gap: 14px; }
-.rail-airline-meta small { color: #526176; font-size: 16px; font-weight: 500; letter-spacing: 0; line-height: 1; white-space: nowrap; }
-.rail-flight-status .ok { color: var(--terminal-status-success); }
-.rail-flight-status .delay { color: var(--terminal-status-warning); }
-/* 비행시간 칸을 뺐다. 남은 두 칸이 폭을 나눠 갖는다. */
-.rail-stats { grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: 1fr 1fr; width: 100%; margin: 0; }
-.rail-stats > div { display: grid; align-content: center; row-gap: var(--terminal-space-2); min-height: 0; padding-right: 14px; }
-.rail-stats > div + div { padding-left: 20px; border-left: 1px solid #cbd2dc; }
-.rail-stats .rail-motion-unit { display: grid; }
-.rail-stats span { color: #5a6577; font-size: var(--terminal-type-label); }
-.rail-stats strong { font-size: 44px; line-height: 1; }
-.rail-stats > div:nth-child(-n + 2) strong { font-family: var(--terminal-font-time); }
-.timeline { --forecast-left: 45px; --forecast-right: 45px; --current-offset: calc(64px - var(--forecast-left)); position: relative; min-width: 0; }
-.timeline-arrival-grid { position: absolute; top: 17px; right: var(--forecast-right); left: var(--forecast-left); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.progress-label { display: grid; line-height: 1.15; }
-/* 1안의 `.arrival-forecast-label`(24px)과 같은 역할이다. 오른쪽 절반 전체를 이끄는 제목인데 18px이면 묻힌다. */
-.progress-label__title { margin-bottom: 6px; color: #303b4e; font-size: 20px; font-weight: 700; }
-.progress-clock { display: grid; grid-template-columns: auto auto auto; align-items: baseline; justify-content: start; gap: 6px; white-space: nowrap; }
-.progress-clock > span { color: #5d6879; font-size: 16px; font-weight: 700; }
-/* 1안의 도착 시각(44px)과 같은 값이다. */
-.progress-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 34px; line-height: 1; }
-.progress-clock strong .arrival-next-day { margin-right: 8px; font-family: "Noto Sans KR", sans-serif; }
-.progress-clock small { color: #667182; font-size: 14px; font-weight: 600; }
-.progress-label--arrival { grid-column: 1; width: 360px; justify-self: center; text-align: center; }
-.arrival-clocks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.arrival-clocks .progress-clock {
-  grid-template-columns: 38px auto auto;
-  justify-content: start;
-  gap: 6px;
-  min-width: 0;
-  padding: 0 28px;
-}
-.arrival-clocks .progress-clock > span { text-align: right; }
-.arrival-clocks .progress-clock strong { text-align: left; }
-.arrival-clocks .progress-clock + .progress-clock { border-left: 1px solid #cbd2dc; }
-.flight-progress { position: absolute; top: 102px; right: var(--forecast-right); left: var(--forecast-left); height: 20px; }
-.progress-dots { position: absolute; top: 1px; right: 90%; left: var(--current-offset); border-top: 3px dotted #94a3b8; }
-.progress-line { position: absolute; top: 1px; right: 5px; left: 10%; height: 2px; background: #94a3b8; }
-.flight-progress b { position: absolute; z-index: 2; top: -8px; left: 10%; width: 20px; height: 20px; border: 5px solid #071735; border-radius: 50%; background: #fff; transform: translateX(-50%); }
-.progress-arrow { position: absolute; top: -10px; right: -10px; color: #475569; font-size: 23px; }
-.timeline-forecast { position: absolute; top: 104px; right: var(--forecast-right); left: var(--forecast-left); display: grid; grid-template-columns: repeat(5, 1fr); height: 176px; }
-.timeline-forecast > div { position: relative; display: grid; justify-items: center; align-content: start; gap: 1px; padding-top: 34px; }
-.rail-forecast-content { display: grid; justify-items: center; gap: 1px; }
-.rail-forecast-content > strong { margin-top: var(--terminal-space-2); }
-.timeline-forecast > div.is-arrival {
-  border: 1px solid var(--terminal-border-selected);
-  background: var(--terminal-surface-selected);
-}
-.timeline-forecast time { color: #344256; font-family: var(--terminal-font-time); font-size: 22px; }
-.timeline-forecast img { display: block; width: 84px; height: 74px; object-fit: contain; }
-.timeline-forecast .weather-condition { font-size: 16px; }
-.timeline-forecast > div.is-arrival time,
-.timeline-forecast > div.is-arrival strong { font-weight: 800; }
-.timeline-forecast strong { font-size: 24px; }
-.rail-footer { padding: 0 var(--terminal-safe-side) 22px; color: #475569; font-size: 16px; }
-.rail-footer .screen-footer-note svg { font-size: 16px; }
-.rail-page.is-entering { z-index: 2; background: transparent; }
-.rail-motion-cascade .rail-page.is-entering .rail-flight-row { animation: exact-row-in 900ms cubic-bezier(.18,.78,.18,1) both; animation-delay: calc(var(--order) * 120ms); }
-.rail-motion-cascade .rail-page.is-leaving .rail-flight-row { animation: exact-row-out 760ms cubic-bezier(.36,0,.4,1) both; animation-delay: calc(var(--order) * 80ms); }
-@keyframes exact-row-in { from { transform: translate3d(100%,0,0); } to { transform: translate3d(0,0,0); } }
-@keyframes exact-row-out { from { transform: translate3d(0,0,0); } to { transform: translate3d(-24%,0,0); } }
-
-.rail-motion-roll .rail-page.is-entering .rail-flight-row,
-.rail-motion-flap .rail-page.is-entering .rail-flight-row { visibility: hidden; background: transparent; }
-.rail-motion-roll .rail-page.is-entering .rail-motion-unit,
-.rail-motion-flap .rail-page.is-entering .rail-motion-unit { visibility: visible; }
-.rail-motion-roll .rail-page.is-entering .timeline-forecast > div.is-arrival,
-.rail-motion-flap .rail-page.is-entering .timeline-forecast > div.is-arrival { border-color: transparent; background: transparent; }
-.rail-motion-roll .rail-page.is-leaving .rail-motion-unit {
-  animation: rail-element-roll-out 220ms cubic-bezier(.4,0,.7,.3) both;
-  animation-delay: calc(var(--order) * 60ms + var(--rail-item) * 22ms);
-}
-.rail-motion-roll .rail-page.is-entering .rail-motion-unit {
-  animation: rail-element-roll-in 420ms cubic-bezier(.16,.82,.2,1) both;
-  animation-delay: calc(260ms + var(--order) * 60ms + var(--rail-item) * 22ms);
-}
-@keyframes rail-element-roll-out {
-  from { opacity: 1; transform: translate3d(0,0,0); }
-  to { opacity: 0; transform: translate3d(0,24%,0); }
-}
-@keyframes rail-element-roll-in {
-  from { opacity: 0; transform: translate3d(0,-34%,0); }
-  72% { opacity: 1; transform: translate3d(0,2%,0); }
-  to { opacity: 1; transform: translate3d(0,0,0); }
-}
-
-.rail-motion-flap .rail-motion-unit {
-  backface-visibility: hidden;
-  transform-style: preserve-3d;
-  transform-origin: center;
-}
-.rail-motion-flap .rail-page.is-leaving .rail-motion-unit {
-  animation: rail-element-flap-out 220ms cubic-bezier(.55,.02,.85,.45) both;
-  animation-delay: calc(var(--order) * 60ms + var(--rail-item) * 18ms);
-}
-.rail-motion-flap .rail-page.is-entering .rail-motion-unit {
-  animation: rail-element-flap-in 400ms cubic-bezier(.12,.72,.16,1) both;
-  animation-delay: calc(250ms + var(--order) * 60ms + var(--rail-item) * 18ms);
-}
-@keyframes rail-element-flap-out {
-  from { opacity: 1; transform: rotateX(0deg) translate3d(0,0,0); }
-  to { opacity: 0; transform: rotateX(-88deg) translate3d(0,-4px,0); }
-}
-@keyframes rail-element-flap-in {
-  from { opacity: 0; transform: rotateX(88deg) translate3d(0,4px,0); }
-  72% { opacity: 1; transform: rotateX(-4deg) translate3d(0,0,0); }
-  to { opacity: 1; transform: rotateX(0deg) translate3d(0,0,0); }
-}
-
-.rail-motion-wipe .rail-page.is-leaving .rail-flight-row {
-  animation: rail-row-wipe-out 340ms ease-in both;
-  animation-delay: calc(var(--order) * 70ms);
-}
-.rail-motion-wipe .rail-page.is-entering .rail-flight-row {
-  animation: rail-row-wipe-in 620ms cubic-bezier(.2,.78,.2,1) both;
-  animation-delay: calc(210ms + var(--order) * 110ms);
-}
-@keyframes rail-row-wipe-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-@keyframes rail-row-wipe-in {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
-}
-
-.rail-motion-fade .rail-page.is-leaving .rail-flight-row {
-  animation: rail-row-fade-out 320ms ease-in-out both;
-  animation-delay: calc(var(--order) * 70ms);
-}
-.rail-motion-fade .rail-page.is-entering .rail-flight-row {
-  animation: rail-row-fade-in 500ms ease-in-out both;
-  animation-delay: calc(220ms + var(--order) * 90ms);
-}
-@keyframes rail-row-fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-@keyframes rail-row-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.rail-flight-row.is-slot-stable,
-.rail-flight-row.is-slot-flight { animation: none !important; }
-.rail-page.is-entering .rail-flight-row.is-slot-stable,
-.rail-page.is-entering .rail-flight-row.is-slot-flight { visibility: hidden; background: transparent; }
-.rail-page.is-entering .rail-flight-row.is-slot-stable .rail-motion-unit,
-.rail-page.is-entering .rail-flight-row.is-slot-flight .rail-motion-unit { visibility: hidden; }
-.rail-page.is-entering .rail-flight-row.is-slot-flight .flight-variant-value { visibility: visible; }
-.rail-flight-row.is-slot-stable .rail-motion-unit,
-.rail-flight-row.is-slot-flight .rail-motion-unit:not(.flight-variant-value) { animation: none !important; }
-.rail-motion-cascade .rail-page.is-leaving .rail-flight-row.is-slot-flight .flight-variant-value {
-  animation: rail-element-roll-out 220ms cubic-bezier(.4,0,.7,.3) both;
-  animation-delay: calc(var(--order) * 80ms + var(--rail-item) * 22ms);
-}
-.rail-motion-cascade .rail-page.is-entering .rail-flight-row.is-slot-flight .flight-variant-value {
-  animation: rail-element-roll-in 420ms cubic-bezier(.16,.82,.2,1) both;
-  animation-delay: calc(260ms + var(--order) * 120ms + var(--rail-item) * 22ms);
-}
-.rail-motion-wipe .rail-page.is-leaving .rail-flight-row.is-slot-flight .flight-variant-value {
-  animation: rail-row-wipe-out 340ms ease-in both;
-  animation-delay: calc(var(--order) * 70ms + var(--rail-item) * 12ms);
-}
-.rail-motion-wipe .rail-page.is-entering .rail-flight-row.is-slot-flight .flight-variant-value {
-  animation: rail-row-wipe-in 620ms cubic-bezier(.2,.78,.2,1) both;
-  animation-delay: calc(210ms + var(--order) * 110ms + var(--rail-item) * 12ms);
-}
-.rail-motion-fade .rail-page.is-leaving .rail-flight-row.is-slot-flight .flight-variant-value {
-  animation: rail-row-fade-out 320ms ease-in-out both;
-  animation-delay: calc(var(--order) * 70ms + var(--rail-item) * 12ms);
-}
-.rail-motion-fade .rail-page.is-entering .rail-flight-row.is-slot-flight .flight-variant-value {
-  animation: rail-row-fade-in 500ms ease-in-out both;
-  animation-delay: calc(220ms + var(--order) * 90ms + var(--rail-item) * 12ms);
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; }
 }
@@ -724,7 +496,7 @@ body { min-height: 100vh; overflow: hidden; }
 .gate-value.is-changed strong { color: var(--terminal-status-warning); }
 
 /* ===== 2안 (WeatherFirstScreen) ===== */
-/* 클래스 이름은 전부 `wf-`로 시작한다(1안의 `.board-*`, 3안의 `.rail-*`와 겹치지 않는다).
+/* 클래스 이름은 전부 `wf-`로 시작한다(1안의 `.board-*`, 3안의 `.ww-*`와 겹치지 않는다).
    나중에 안 하나를 지울 때 이 구역만 통째로 지우면 된다. `tw-` 접두는 2안·3안 공용 조각
    (terminalShared.jsx)의 것이라 이 구역에도 그 클래스들의 스타일이 함께 있다. */
 
@@ -822,4 +594,76 @@ li.is-empty { visibility: hidden; border-bottom: 1px solid transparent; }
 /* 운항이 끝나도 머리띠는 남긴다 - 도시 목록이 아니라 출발 공항 하나를 보여줄 뿐이라 1안처럼
    내릴 조작 버튼이 없다. 넘길 것이 없다는 사실은 `next-board-button`의 disabled가 이미 알린다. */
 .is-operations-ended.wf-screen .screen-footer-note { display: none; }
+
+/* ===== 3안 (WeeklyWeatherScreen) ===== */
+/* 클래스 이름은 전부 `ww-`로 시작한다(1안의 `.board-*`, 2안의 `.wf-*`와 겹치지 않는다).
+   나중에 안 하나를 지울 때 이 구역만 통째로 지우면 된다. 위쪽 절반(머리띠·현재날씨·항공편)은
+   2안과 같은 구조라 `tw-` 공용 클래스가 실제 스타일을 담당하고, 여기는 아래쪽만 새로 잡는다. */
+
+.ww-screen { display: grid; grid-template-rows: 12% 40% 48%; }
+
+/* 머리띠 - 2안과 같은 구조. 왼쪽 칸(도시명)을 420px 고정 트랙으로 둬 오른쪽 순환 표시가 안 밀린다. */
+.ww-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: 420px auto;
+  align-items: center;
+  gap: var(--terminal-space-5);
+  padding: 0 var(--terminal-safe-side);
+  border-bottom: 1px solid var(--terminal-border);
+  background: var(--terminal-surface);
+}
+.ww-header-city { display: flex; align-items: baseline; gap: 14px; min-width: 0; overflow: hidden; }
+.ww-header-city strong { min-width: 0; overflow: hidden; font-size: var(--terminal-type-destination); font-weight: 800; line-height: 1.16; letter-spacing: -.045em; white-space: nowrap; text-overflow: ellipsis; }
+.ww-header-city span { flex: 0 0 auto; color: var(--terminal-text-secondary); font-size: var(--terminal-type-airport-code); font-weight: 700; line-height: 1.16; }
+.ww-header-clock { position: absolute; top: auto; right: var(--terminal-safe-side); bottom: var(--terminal-header-bottom-gap); left: auto; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
+.ww-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
+.ww-header-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
+
+/* 나가는 화면과 들어오는 화면을 같은 격자칸에 포갠다 - 2안과 같은 이유(전환 중 겹침 방지). */
+.ww-viewport { position: relative; display: grid; grid-row: 2 / span 2; min-height: 0; }
+.ww-page { grid-area: 1 / 1; display: grid; grid-template-rows: 40fr 48fr; min-height: 0; }
+.ww-page.is-entering { background: var(--terminal-surface, #fff); }
+
+/* 가운데 - 현재날씨(좌 58%) / 항공편(우 42%). 2안과 같다. */
+.ww-middle { display: grid; grid-template-columns: 58% 42%; min-height: 0; border-bottom: 1px solid var(--terminal-border); }
+
+/* 아래쪽 - 시간별(좌 62%) / 주간(우 38%). 초안 비율이며 실제 화면을 보고 조정한다. */
+.ww-bottom { display: grid; grid-template-columns: 62% 38%; min-height: 0; }
+
+/* 왼쪽 시간별 - 여덟 칸 고정 격자. 자정에 구분선을 두지 않아 기온 꺾은선이 하루의
+   오르내림을 끊기지 않게 보여준다. */
+.ww-hourly-strip { display: grid; grid-template-rows: 64px 44px 1fr 32px 28px; height: 100%; padding: var(--terminal-space-4) var(--terminal-space-5) 24px var(--terminal-safe-side); border-right: 1px solid var(--terminal-border); }
+.ww-hourly-row { display: grid; align-items: center; justify-items: center; }
+.ww-hourly-icon { width: 40px; height: 40px; }
+.ww-hourly-line-row { position: relative; }
+.ww-hourly-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ww-hourly-line polyline { stroke: #2f80ed; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.ww-hourly-row strong { font-size: 30px; font-weight: 800; }
+.ww-hourly-row span { padding: 3px 10px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 16px; font-weight: 700; }
+.ww-hourly-row span.is-highlighted { background: #fde3c8; color: #b1560a; }
+.ww-hourly-row time { color: var(--terminal-text-secondary); font-size: 16px; font-weight: 600; }
+
+/* 오른쪽 주간 - 다섯 줄 고정. 아이콘과 기온을 짝지어 붙인다(각 칸 안에서 flex로 묶는다) -
+   떨어뜨리면 어느 아이콘이 어느 기온인지 승객이 눈으로 이어야 한다. */
+.ww-weekly-list { display: grid; grid-template-rows: repeat(5, 1fr); height: 100%; margin: 0; padding: var(--terminal-space-4) var(--terminal-safe-side) 24px var(--terminal-space-5); list-style: none; }
+.ww-weekly-row { display: grid; grid-template-columns: auto 1fr 1fr; align-items: center; column-gap: var(--terminal-space-4); border-bottom: 1px solid var(--terminal-border-subtle); }
+/* 자리는 잡되 내용을 비운다 - 도시마다 줄 수가 달라지면 전환 중 자리가 밀려 글자가 겹친다. */
+.ww-weekly-row.is-empty { visibility: hidden; border-bottom-color: transparent; }
+.ww-weekly-date { display: grid; justify-items: start; }
+.ww-weekly-date strong { font-size: 22px; font-weight: 800; }
+.ww-weekly-date span { color: var(--terminal-text-secondary); font-size: 16px; font-weight: 600; }
+.ww-weekly-am, .ww-weekly-pm { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.ww-weekly-icon { width: 40px; height: 40px; }
+.ww-weekly-am strong, .ww-weekly-pm strong { font-size: 26px; font-weight: 800; }
+/* 최저는 파랑, 최고는 빨강. */
+.ww-temp-min { color: #2f6fd6; }
+.ww-temp-max { color: #d64545; }
+
+/* 운항 종료 화면은 가운데+아래 영역(2·3행)을 통째로 덮는다. 2안과 같은 이유다. */
+.ww-screen > .terminal-empty-state { grid-row: 2 / span 2; }
+
+.ww-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 25; background: var(--terminal-surface); }
+
+.is-operations-ended.ww-screen .screen-footer-note { display: none; }
 .is-operations-ended .wf-footer { grid-template-columns: auto; justify-content: end; border-top: 0; }

@@ -43,3 +43,16 @@ test('자료가 없어도 다섯 줄을 준다', () => {
   assert.equal(rows.length, 5)
   assert.ok(rows.every((row) => row.empty))
 })
+
+test('국내 주간예보처럼 날짜에 대시가 섞여 와도 오늘 이후 줄을 그대로 뽑는다', () => {
+  // ground-forecast-processor.js는 forecast[].date를 `2026-08-04`처럼 대시를 섞어 준다.
+  // 시간별(hourly[].date)·해외 daily[].date는 `20260804`라 형식이 다르다.
+  const dashedDays = [
+    { date: '2026-08-04', dayOfWeek: '화', am: { icon: 'sun' }, pm: { icon: 'sun' }, tempMin: 26, tempMax: 32 },
+    { date: '2026-08-05', dayOfWeek: '수', am: { icon: 'rain' }, pm: { icon: 'cloud' }, tempMin: 25, tempMax: 29 },
+  ]
+  const rows = weeklyRows(dashedDays, '20260804')
+  assert.equal(rows[0].empty, false)
+  assert.equal(rows[0].dayOfWeek, '수')
+  assert.equal(rows[0].monthDay, '8/5')
+})
