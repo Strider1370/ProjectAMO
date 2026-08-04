@@ -123,7 +123,7 @@ function normalizeWissdomFrames(meta, heightM) {
 }
 
 function normalizeQpfFrames(meta) {
-  return (Array.isArray(meta?.frames) ? meta.frames : [])
+  const normalized = (Array.isArray(meta?.frames) ? meta.frames : [])
     .map((frame) => {
       const timeMs = Number.isFinite(frame?.timeMs) ? frame.timeMs : parseFrameTmToMs(frame?.tm)
       const analysisTimeMs = Number.isFinite(frame?.analysisTimeMs) ? frame.analysisTimeMs : timeMs
@@ -133,7 +133,8 @@ function normalizeQpfFrames(meta) {
       return { ...frame, timeMs, analysisTimeMs, validTimeMs, leadMinutes }
     })
     .filter(Boolean)
-    .sort((a, b) => a.validTimeMs - b.validTimeMs)
+    .sort((a, b) => a.validTimeMs - b.validTimeMs || b.analysisTimeMs - a.analysisTimeMs)
+  return normalized.filter((frame, index) => index === 0 || normalized[index - 1].validTimeMs !== frame.validTimeMs)
 }
 
 // pickNearestPreviousFrame은 선택 시각이 모든 프레임보다 과거여도 null이 아니라 frames[0]을 준다
@@ -201,7 +202,7 @@ export function buildWeatherOverlayModel({
   const resolvedWeatherTimeMs = timelineTicks.length
     ? (Number.isFinite(selectedWeatherTimeMs)
       ? Math.min(Math.max(selectedWeatherTimeMs, firstTickMs), latestTickMs)
-      : latestTickMs)
+      : (weatherTimelineTicks.at(-1) ?? latestTickMs))
     : null
   const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && timelineTicks.length > 0
   const observedRadarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)

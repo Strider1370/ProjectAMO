@@ -159,6 +159,35 @@ test('selects only an exact future QPF frame and hides observed radar and motion
   assert.deepEqual(model.forecastTimelineTicks, [Date.UTC(2026, 7, 4, 10, 35), Date.UTC(2026, 7, 4, 10, 45), Date.UTC(2026, 7, 4, 10, 55)])
 })
 
+test('keeps live selection on the latest observed tick when future QPF ticks exist', () => {
+  const model = buildWeatherOverlayModel({
+    echoMeta: { frames: [{ tm: '202608041925', path: '/radar-1025.webp' }] },
+    qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' }] },
+    visibility: { radar: true },
+    selectedWeatherTimeMs: null,
+  })
+
+  assert.equal(model.selectedWeatherTimeMs, Date.UTC(2026, 7, 4, 10, 25))
+  assert.equal(model.radarFrame.path, '/radar-1025.webp')
+  assert.equal(model.qpfFrame, null)
+})
+
+test('deduplicates overlapping QPF valid times in favour of the newest analysis', () => {
+  const model = buildWeatherOverlayModel({
+    qpfMeta: { frames: [
+      { tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, path: '/qpf-1025-p20.webp' },
+      { tm: '202608041930', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 30), validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 15, path: '/qpf-1030-p15.webp' },
+    ] },
+    visibility: { radar: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 45),
+  })
+
+  assert.equal(model.qpfFrames.length, 1)
+  assert.equal(model.qpfFrame.path, '/qpf-1030-p15.webp')
+  assert.equal(model.qpfStatus.analysisTimeMs, Date.UTC(2026, 7, 4, 10, 30))
+  assert.equal(model.qpfStatus.leadMinutes, 15)
+})
+
 test('never selects a nearest QPF frame outside its exact future tick', () => {
   const qpfMeta = { frames: [
     { tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' },

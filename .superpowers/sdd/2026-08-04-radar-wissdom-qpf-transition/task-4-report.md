@@ -38,3 +38,14 @@ Status: DONE
 - This task intentionally exposes pure-model outputs only. A later composition
   task must pass the polling metadata and control state into this model and
   supply `forecastTimelineTicks` to the timeline UI/overlay adapters.
+
+## Fix round 1
+
+- Live (`null`) selection now resolves to the latest observed tick instead of
+  a future QPF tick.
+- QPF valid-time collisions retain only the frame from the newest analysis.
+- `useTimelinePlayback` now accepts QPF ticks separately from KIM/NWP times;
+  its shared ordered-time/advance helpers are covered through the
+  observed → QPF → wrapped-observation transition.
+- Focused RED run failed for all three reviewed gaps; focused GREEN run passes
+  43 tests with no failures.
