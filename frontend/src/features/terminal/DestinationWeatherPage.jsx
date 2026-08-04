@@ -1,14 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MdChevronRight, MdInfoOutline, MdSettings } from "react-icons/md";
-import { WiCloud, WiCloudy, WiDayCloudy, WiDaySunny, WiRain, WiShowers, WiThunderstorm } from "react-icons/wi";
+import { MdChevronRight } from "react-icons/md";
 import clearNight from "../../assets/weather-icons/basmilius/clear-night.svg";
 import fewCloudsNight from "../../assets/weather-icons/basmilius/few-clouds-night.svg";
-import amoWordmark from "./assets/amo-wordmark.png";
-import airportWeatherQr from "./assets/airport-weather-qr.svg";
-import forecastCloud from "./assets/forecast-cloud-transparent.png";
-import forecastPartly from "./assets/forecast-partly-transparent.png";
-import forecastRain from "./assets/forecast-rain-transparent.png";
-import forecastStorm from "./assets/forecast-storm-transparent.png";
 import { kstClockFromIso, loadTerminalLiveWeatherData, mergeTerminalLiveWeather } from './terminalLiveData.js';
 import { departureAirportFromPathname, selectTerminalDepartureAirport } from './terminalAirportSelection.js';
 import { terminalCanvasScale } from './terminalCanvasScale.js';
@@ -21,48 +14,28 @@ import {
   terminalFlightsFromFeed,
   terminalFrameAt,
 } from './terminalFlightSimulation.js';
-
-const icons = {
-  sun: WiDaySunny,
-  partly: WiDayCloudy,
-  cloud: WiCloud,
-  cloudy: WiCloudy,
-  rain: WiRain,
-  shower: WiShowers,
-  storm: WiThunderstorm,
-};
-
-function WeatherIcon({ type, className = "" }) {
-  const Icon = icons[type] ?? WiCloudy;
-  return <Icon className={className} aria-hidden="true" />;
-}
-
-const boardWeatherAssets = {
-  sun: forecastPartly,
-  rain: forecastRain,
-  partly: forecastPartly,
-  cloud: forecastCloud,
-  cloudy: forecastCloud,
-  shower: forecastRain,
-  storm: forecastRain,
-};
-
-const boardForecastAssets = {
-  // 맑음이 빠져 있으면 흐림 아이콘으로 떨어져, 문구는 `맑음`인데 그림은 구름이 된다.
-  sun: forecastPartly,
-  rain: forecastRain,
-  partly: forecastPartly,
-  cloud: forecastCloud,
-  cloudy: forecastCloud,
-  shower: forecastRain,
-  storm: forecastStorm,
-};
-
-function BoardWeatherImage({ type, small = false }) {
-  const source = (small ? boardForecastAssets : boardWeatherAssets)[type] ?? boardWeatherAssets.cloud;
-  const opticalClass = small ? ` weather-image weather-image--${type}` : "";
-  return <img className={opticalClass.trim()} src={source} alt="" aria-hidden="true" />;
-}
+import {
+  AgencyMascot,
+  AirlineLogo,
+  BoardWeatherImage,
+  DepartureAirportSelect,
+  GATE_CHANGED_STATUS,
+  HeaderWeatherPanel,
+  MotionModeSwitcher,
+  PageIndicator,
+  ScreenFooterNote,
+  TerminalEmptyState,
+  TerminalSettings,
+  TerminalTitle,
+  UNDECIDED_VALUES,
+  ViewSwitcher,
+  WeatherCondition,
+  boardForecastAssets,
+  displayTemperature,
+  formatKoreanClock,
+  splitArrivalKst,
+  withCodeshare,
+} from './terminalShared.jsx';
 
 const railWeatherAssets = {
   sun: boardForecastAssets.partly,
@@ -76,68 +49,10 @@ const railWeatherAssets = {
   nightPartly: fewCloudsNight,
 };
 
-const weatherLabels = {
-  sun: "맑음",
-  partly: "구름 조금",
-  cloud: "흐림",
-  cloudy: "흐림",
-  rain: "비",
-  shower: "소나기",
-  storm: "뇌우",
-  night: "맑음",
-  nightPartly: "구름 조금",
-};
-
-const GATE_CHANGED_STATUS = "탑승구 변경";
-/** 아직 값이 없다는 뜻으로 API·fixture가 쓰는 말. 실제 값처럼 크게 띄우지 않는다. */
-const UNDECIDED_VALUES = new Set(["확인", "확인 중"]);
-
-
-const displayTemperature = (value) => String(value).replace("℃", "°C");
 const displayForecastHour = (value) => String(value).replace(/^\d{2}:00$/, `${Number(String(value).slice(0, 2))}시`);
-const splitArrivalKst = (value) => value.startsWith("다음 날 ")
-  ? { dayLabel: "다음 날", time: value.slice("다음 날 ".length) }
-  : { dayLabel: "", time: value };
-
-function formatKoreanClock(value) {
-  const koreanDays = ["일", "월", "화", "수", "목", "금", "토"];
-  const kst = new Date(new Date(value).getTime() + 9 * 60 * 60 * 1000);
-  const year = kst.getUTCFullYear();
-  const month = String(kst.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(kst.getUTCDate()).padStart(2, "0");
-  const hour = String(kst.getUTCHours()).padStart(2, "0");
-  const minute = String(kst.getUTCMinutes()).padStart(2, "0");
-  return { date: `${year}.${month}.${day} (${koreanDays[kst.getUTCDay()]})`, time: `${hour}:${minute}` };
-}
-
-function WeatherCondition({ type, className = "", style }) {
-  return <em className={`weather-condition weather-condition--${type} ${className}`.trim()} style={style}>{weatherLabels[type] ?? "흐림"}</em>;
-}
 
 function RailWeatherImage({ type }) {
   return <img className={`weather-image weather-image--${type}`} src={railWeatherAssets[type] ?? railWeatherAssets.cloud} alt="" aria-hidden="true" />;
-}
-
-function AirlineLogo({ flight }) {
-  return (
-    <div className={`airline-logo airline-logo--${flight.code.toLowerCase()}`}>
-      {flight.logo
-        ? <img src={flight.logo} alt={`${flight.airline} 로고`} />
-        : <span className="airline-logo-fallback" aria-label={flight.airline}>{flight.flight.slice(0, 2)}</span>}
-    </div>
-  );
-}
-
-/**
- * 공동운항편은 편명이 여럿이라 한 칸에 다 못 넣는다(44px 두 개면 373px, 칸은 337px).
- * 순번을 돌려 하나씩 보여주고, 항공사 이름과 로고도 함께 바꾼다.
- * 편명이 하나뿐이면 그대로 둔다.
- */
-function withCodeshare(flight, turn) {
-  const shares = flight.codeshares;
-  if (!shares || shares.length < 2) return flight;
-  const share = shares[turn % shares.length];
-  return { ...flight, flight: share.flight, airline: share.airline, logo: share.logo };
 }
 
 function changedVariantClass(flight, comparisonFlight, fields) {
@@ -300,96 +215,6 @@ function BoardColumn({ flight: rawFlight, comparisonFlight, columnIndex, weather
   );
 }
 
-function ViewSwitcher({ view, onSelectView }) {
-  return (
-    <nav className="view-switcher" aria-label="화면 비교">
-      <button type="button" className={view === "board" ? "is-active" : ""} aria-pressed={view === "board"} onClick={() => onSelectView("board")}>1안</button>
-      <button type="button" className={view === "rail" ? "is-active" : ""} aria-pressed={view === "rail"} onClick={() => onSelectView("rail")}>3안</button>
-    </nav>
-  );
-}
-
-function DepartureAirportSelect({ airports, selectedIcao, onSelect }) {
-  if (airports.length === 0) return null;
-  return (
-    <label className="terminal-airport-selector">
-      <span>출발 공항</span>
-      <select aria-label="출발 공항" value={selectedIcao} onChange={(event) => onSelect(event.target.value)}>
-        {airports.map((airport) => <option key={airport.icao} value={airport.icao}>{airport.nameKo}</option>)}
-      </select>
-    </label>
-  );
-}
-
-/**
- * 운영자용 조작 모음. 승객이 볼 안내판에 버튼이 늘어서 있으면 안 되므로 모서리로 내린다.
- * 평소에는 흐리게 두고 마우스를 올려야 진해진다. 마우스가 없는 실제 전광판에서는 없는 것과 같다.
- * 여닫기는 `details`가 해준다. 상태 변수도, 바깥 클릭 처리도 필요 없다.
- */
-function TerminalSettings({ children }) {
-  const box = useRef(null);
-  // 열어둔 채 두면 승객이 볼 화면에 패널이 남는다. Escape와 바깥 클릭으로도 닫는다.
-  useEffect(() => {
-    const close = (event) => {
-      const panel = box.current;
-      if (!panel?.open) return;
-      if (event.type === "keydown" && event.key !== "Escape") return;
-      if (event.type === "pointerdown" && panel.contains(event.target)) return;
-      panel.open = false;
-    };
-    document.addEventListener("keydown", close);
-    document.addEventListener("pointerdown", close);
-    return () => {
-      document.removeEventListener("keydown", close);
-      document.removeEventListener("pointerdown", close);
-    };
-  }, []);
-  return (
-    <details className="terminal-settings" ref={box}>
-      <summary aria-label="화면 설정"><MdSettings /></summary>
-      <div className="terminal-settings-panel">{children}</div>
-    </details>
-  );
-}
-
-function PageIndicator({ currentFrame, frameCount }) {
-  return (
-    <div
-      className="page-indicator"
-      role="img"
-      aria-label={`${currentFrame + 1} / ${frameCount} 프레임`}
-    >
-      {Array.from({ length: frameCount }, (_, index) => (
-        <i className={index === currentFrame ? "is-current" : ""} aria-hidden="true" key={index} />
-      ))}
-    </div>
-  );
-}
-
-function AgencyMascot() {
-  return <img className="agency-mascot" src="/gisang-i/clear_3_avatar.png" alt="항공기상청 기상이" />;
-}
-
-/** 운항 정보 출처. 화면 아래 왼쪽에 두고, 오른쪽 항공기상청 안내와 좌우로 나눠 놓는다. */
-function ScreenFooterNote() {
-  return (
-    <div className="screen-footer-note">
-      <MdInfoOutline />
-      <span>한국공항공사 실시간 운항정보</span>
-    </div>
-  );
-}
-
-function HeaderWeatherPanel({ showWordmark = false }) {
-  return (
-    <a className="header-weather-panel" href="https://amo.kma.go.kr/weather/airport.do">
-      <img src={airportWeatherQr} alt="목적지 공항 상세 날씨 QR 코드" />
-      <span><strong>목적지 공항 상세 날씨</strong><small>amo.kma.go.kr</small></span>
-      {showWordmark && <img className="agency-wordmark" src={amoWordmark} alt="책임운영기관 항공기상청" />}
-    </a>
-  );
-}
-
 const boardMotionModes = [
   ["split", "FLAP", "뒤집기"],
   ["roll", "ROLL", "세로 롤"],
@@ -405,48 +230,6 @@ const railMotionModes = [
   ["fade", "FADE", "겹침"],
 ];
 
-function MotionModeSwitcher({ motionMode, onSelectMotion, modes = boardMotionModes, ariaLabel = "1안 전환 애니메이션" }) {
-  return (
-    <div className="motion-mode-switch" aria-label={ariaLabel} style={{ "--motion-count": modes.length }}>
-      {modes.map(([mode, title, label]) => (
-        <button
-          type="button"
-          className={motionMode === mode ? "is-active" : ""}
-          aria-pressed={motionMode === mode}
-          onClick={() => onSelectMotion(mode)}
-          key={mode}
-        >
-          <strong>{title}</strong><span>{label}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/**
- * 마지막 편이 뜬 뒤 자정까지의 빈 시간. 공항 전광판이 쓰는 어투로 사실만 적는다.
- * 밤늦게 남은 승객에는 외국인도 있어 영문을 함께 건다.
- * 기상이는 눈을 감고 웃는 그림(clear_2)이다. 하루를 닫는 화면과 표정이 맞는다.
- */
-function TerminalEmptyState({ airportName, referenceClock }) {
-  return (
-    <div className="terminal-empty-state" role="status">
-      <i className="terminal-empty-rule" aria-hidden="true" />
-      <div className="terminal-empty-body">
-        <img src="/gisang-i/clear_2.png" alt="" aria-hidden="true" />
-        <strong>금일 운항이 종료되었습니다</strong>
-        <span lang="en">Today&rsquo;s departures have ended</span>
-        <small>{airportName} · {referenceClock} 기준</small>
-      </div>
-      <i className="terminal-empty-rule" aria-hidden="true" />
-    </div>
-  );
-}
-
-function TerminalTitle({ title }) {
-  return <h1>{title}</h1>;
-}
-
 function BoardScreen({ codeshareTurn, transitioning, activeFlights, pendingFlights, currentFrame, frameCount, motionMode, onReplay, hasNext, onSelectMotion, onSelectView, clock, title, departureAirports, departureAirportIcao, departureAirportName, onSelectDepartureAirport }) {
   const slotTransitions = terminalSlotTransitions(activeFlights, pendingFlights);
   return (
@@ -460,7 +243,7 @@ function BoardScreen({ codeshareTurn, transitioning, activeFlights, pendingFligh
       <TerminalSettings>
         <DepartureAirportSelect airports={departureAirports} selectedIcao={departureAirportIcao} onSelect={onSelectDepartureAirport} />
         <ViewSwitcher view="board" onSelectView={onSelectView} />
-        <MotionModeSwitcher motionMode={motionMode} onSelectMotion={onSelectMotion} />
+        <MotionModeSwitcher motionMode={motionMode} onSelectMotion={onSelectMotion} modes={boardMotionModes} ariaLabel="1안 전환 애니메이션" />
         <button type="button" className="next-board-button" onClick={onReplay} disabled={!hasNext}>
           <MdChevronRight /><span>다음 항공편</span>
         </button>

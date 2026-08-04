@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
+// 1안·3안이 쓰던 공용 조각(TerminalTitle, HeaderWeatherPanel 등)이 terminalShared.jsx로 옮겨갔다.
+// 아래 검사들은 그 구현 텍스트를 그대로 찾으므로, 두 파일을 합쳐서 본다.
 const source = readFileSync(new URL('./DestinationWeatherPage.jsx', import.meta.url), 'utf8')
+  + '\n' + readFileSync(new URL('./terminalShared.jsx', import.meta.url), 'utf8')
 const styles = readFileSync(new URL('./terminal.css', import.meta.url), 'utf8')
 const simulationSource = readFileSync(new URL('./terminalFlightSimulation.js', import.meta.url), 'utf8')
 
@@ -298,8 +301,9 @@ test('3안도 1안과 같은 정보를 담는다 - 현재 날씨와 공동운항
   // 화면 제목이 `가는 곳 날씨`인데 3안에는 지금 그곳이 어떤지가 빠져 있었다.
   assert.match(source, /className="rail-current-weather/)
   assert.match(source, /<dt>체감<\/dt>[\s\S]*<dt>습도<\/dt>[\s\S]*<dt>바람<\/dt>/)
-  // 편명이 3초마다 도는 이유를 알려주는 배지는 두 안 모두에 있어야 한다.
-  assert.equal((source.match(/className="codeshare-badge"/g) ?? []).length, 2)
+  // 편명이 3초마다 도는 이유를 알려주는 배지는 1안·3안에 있어야 한다.
+  // 2안(terminalShared.jsx의 FlightRow)도 스펙에 따라 같은 배지를 재사용해 셋이 됐다.
+  assert.equal((source.match(/className="codeshare-badge"/g) ?? []).length, 3)
   // 비행시간은 뺐다. 같은 노선이면 세 행에 같은 숫자가 반복된다.
   assert.doesNotMatch(source, /예상 비행시간|>비행시간</)
 })
