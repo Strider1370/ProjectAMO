@@ -393,6 +393,12 @@ function buildFrameEntry(filePath) {
   return { tm: payload.tm }
 }
 
+function buildRadarGraphicsSnapshotEntry(payload) {
+  const frames = payload?.frames || Object.values(payload?.framesByHeight || {}).flat()
+  const latest = [...frames].sort((a, b) => (a.validTimeMs || a.timeMs || 0) - (b.validTimeMs || b.timeMs || 0)).at(-1)
+  return latest?.tm ? { hash: store.canonicalHash(payload), tm: latest.tm, updated_at: payload.updatedAt || null } : null
+}
+
 function buildSigwxOverlaySnapshotEntry(kind) {
   const tmfc = resolveSigwxTmfc()
   const meta = readSigwxOverlayMeta(kind, tmfc)
@@ -463,8 +469,8 @@ const SNAPSHOT_SOURCES = [
   { keys: ['takeoffFcst', 'takeoff_fcst'], files: [snapshotMetaLatest('takeoff_fcst')], build: () => buildHashEntry('takeoff_fcst') },
   { keys: ['notam'], files: [snapshotMetaLatest('notam')], build: () => buildHashEntry('notam') },
   { keys: ['echoMeta', 'echo'], files: [snapshotMetaFile('radar', 'echo_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'echo_meta.json')) },
-  { keys: ['wissdomMeta', 'wissdom'], files: [snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json')) },
-  { keys: ['qpfMeta', 'qpf'], files: [snapshotMetaFile('radar', 'qpf', 'qpf_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'qpf', 'qpf_meta.json')) },
+  { keys: ['wissdomMeta', 'wissdom'], files: [snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json'))) },
+  { keys: ['qpfMeta', 'qpf'], files: [snapshotMetaFile('radar', 'qpf', 'qpf_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'qpf', 'qpf_meta.json'))) },
   { keys: ['satMeta', 'satellite'], files: [snapshotMetaFile('satellite', 'sat_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('satellite', 'sat_meta.json')) },
   { keys: ['convectiveMeta'], files: [snapshotMetaFile('satellite', 'convective', 'convective_meta.json')], build: buildConvectiveSnapshotEntry },
   { keys: ['rainviewerMeta', 'rainviewer'], files: [snapshotMetaFile('radar', 'rainviewer_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'rainviewer_meta.json')) },
@@ -1242,7 +1248,7 @@ app.post('/api/briefing/cross-section', (req, res) => {
   }
 })
 
-export { app, getCachedSnapshotMeta, readSelectedKimCloudField, readSelectedKimIcingField }
+export { app, buildRadarGraphicsSnapshotEntry, getCachedSnapshotMeta, readSelectedKimCloudField, readSelectedKimIcingField }
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, HOST, () => console.log(`[server] Backend running on ${HOST}:${PORT}`))

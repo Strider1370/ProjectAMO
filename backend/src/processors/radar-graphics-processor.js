@@ -12,8 +12,8 @@ const readJson = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8
 function writeAtomic(file, data) { fs.mkdirSync(path.dirname(file), { recursive: true }); const temp = `${file}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`; fs.writeFileSync(temp, data); fs.renameSync(temp, file) }
 function apiUrl(activeConfig, product, request) { const base = activeConfig.api.radar_graphics_url || `${KMA_ORIGIN}/api/typ04/url`; const query = new URLSearchParams(buildImpgRequest(product, request)); query.set('authKey', activeConfig.api.radar_satellite_auth_key); return `${base.replace(/\/$/, '')}/${KMA_GRAPHIC_PRODUCTS[product].endpoint}.php?${query}` }
 function assetUrl(safePath) { return new URL(safePath, KMA_ORIGIN).toString() }
-async function defaultJson(url, timeout) { const response = await fetchWithTimeout(url, timeout); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json() }
-async function defaultImage(url, timeout) { const response = await fetchWithTimeout(url, timeout); if (!response.ok) throw new Error(`HTTP ${response.status}`); return Buffer.from(await response.arrayBuffer()) }
+async function defaultJson(url, timeout, signal) { const response = await fetchWithTimeout(url, timeout, { signal }); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json() }
+async function defaultImage(url, timeout, signal) { const response = await fetchWithTimeout(url, timeout, { signal }); if (!response.ok) throw new Error(`HTTP ${response.status}`); return Buffer.from(await response.arrayBuffer()) }
 async function normalize(buffer) {
   if (!isImage(buffer)) throw new Error('invalid image signature')
   const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
@@ -48,7 +48,8 @@ async function publish({ root, type, descriptor, image, legend, previous, maxFra
   clean(target.dir, meta, maxFrames)
   return meta
 }
-async function collect(type, { now = new Date(), deps = {} } = {}) {
+function throwIfAborted(signal) { if (signal?.aborted) throw signal.reason || new Error('collection aborted') }
+async function collect(type, { now = new Date(), deps = {}, signal } = {}) {
   const activeConfig = deps.config || config, productConfig = activeConfig.radar_graphics || {}
   if (productConfig.enabled === false || !activeConfig.api?.radar_satellite_auth_key) return { type, saved: false }
   const root = deps.root || activeConfig.storage.base_path, requestTm = kstTm(now), target = paths(root, type), previous = readJson(target.meta)
@@ -59,20 +60,32 @@ async function collect(type, { now = new Date(), deps = {} } = {}) {
     ? new Set(Object.values(previous?.framesByHeight || {}).flat().filter(published).map((item) => `${item.heightM}:${item.tm}`))
     : new Set((previous?.frames || []).filter(published).map((item) => `${item.tm}:${item.leadMinutes}`))
   let saved = false
+  let qpfAnalysisTm = null
   for (const value of units || []) {
-    const key = `${type === 'wissdom' ? value : requestTm}:${type === 'wissdom' ? requestTm : value}`
-    if (complete.has(key)) continue
+    throwIfAborted(signal)
+    const requestedTm = type === 'qpf' && qpfAnalysisTm ? qpfAnalysisTm : requestTm
+    const key = `${type === 'wissdom' ? value : requestedTm}:${type === 'wissdom' ? requestedTm : value}`
+    if (type === 'wissdom' && complete.has(key)) continue
     try {
-      const request = type === 'wissdom' ? { tm: requestTm, heightM: value } : { tm: requestTm, leadMinutes: value }
-      const fetchJson = deps.fetchJson || ((url) => defaultJson(url, productConfig.timeout_ms || 30000))
-      const fetchImage = deps.fetchImage || ((url) => defaultImage(url, productConfig.timeout_ms || 30000))
-      const parsed = parseImpgResult(await fetchJson(apiUrl(activeConfig, type, request)), { product: type, requestedTm: requestTm, leadMinutes: type === 'qpf' ? value : 0 })
-      if (!parsed || parsed.tm !== requestTm || (type === 'qpf' && parsed.validTimeMs !== parsed.timeMs + value * 60000)) continue
+      const request = type === 'wissdom' ? { tm: requestedTm, heightM: value } : { tm: requestedTm, leadMinutes: value }
+      const fetchJson = deps.fetchJson || ((url) => defaultJson(url, productConfig.timeout_ms || 30000, signal))
+      const fetchImage = deps.fetchImage || ((url) => defaultImage(url, productConfig.timeout_ms || 30000, signal))
+      const parsed = parseImpgResult(await fetchJson(apiUrl(activeConfig, type, request), { signal }), { product: type, requestedTm, leadMinutes: type === 'qpf' ? value : 0 })
+      throwIfAborted(signal)
+      if (!parsed || (type === 'wissdom' && parsed.tm !== requestedTm)) continue
+      if (type === 'qpf') {
+        qpfAnalysisTm ||= parsed.tm
+        if (parsed.tm !== qpfAnalysisTm || complete.has(`${parsed.tm}:${value}`) || parsed.validTimeMs !== parsed.timeMs + value * 60000) continue
+      }
       parsed.heightM = type === 'wissdom' ? value : null
-      const [image, legend] = await Promise.all([fetchImage(assetUrl(parsed.imagePath)), fetchImage(assetUrl(parsed.legendPath))])
+      const [image, legend] = await Promise.all([fetchImage(assetUrl(parsed.imagePath), { signal }), fetchImage(assetUrl(parsed.legendPath), { signal })])
+      throwIfAborted(signal)
       await publish({ root, type, descriptor: parsed, image, legend, previous: readJson(target.meta), maxFrames: productConfig.max_frames || 36 })
       saved = true
-    } catch { /* Last successful metadata remains the published view. */ }
+    } catch (error) {
+      if (signal?.aborted) throw error
+      /* Last successful metadata remains the published view. */
+    }
   }
   return { type, saved }
 }

@@ -86,3 +86,58 @@ test('does not register graphics collectors without an enabled backend credentia
   assert.equal(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true }, api: { radar_satellite_auth_key: 'key' } }).length, 2)
   assert.equal(scheduled.length, 2)
 })
+
+test('uses one lagged QPF analysis timestamp for every lead and retains only its configured assets', async () => {
+  const dataRoot = root(), deps = depsFor(dataRoot, { qpfTm: '202608041700' })
+  deps.config.radar_graphics.qpf_lead_minutes = [5, 60]
+  deps.config.radar_graphics.max_frames = 1
+  await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps })
+  const frames = readMeta(dataRoot, 'qpf').frames
+  assert.equal(frames.length, 1)
+  assert.equal(frames[0].tm, '202608041700')
+  assert.equal(frames[0].leadMinutes, 60)
+  assert.equal(frames[0].validTimeMs, Date.UTC(2026, 7, 4, 9, 0))
+  assert.equal(fs.readdirSync(path.join(dataRoot, 'radar', 'qpf')).filter((name) => name.endsWith('.webp')).length, 2)
+})
+
+test('keeps complete metadata when image validation fails and product failures remain independent', async () => {
+  const dataRoot = root()
+  await processWissdom({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(dataRoot) })
+  const before = JSON.stringify(readMeta(dataRoot, 'wissdom'))
+  const invalid = depsFor(dataRoot)
+  invalid.fetchImage = async () => Buffer.from('not an image')
+  const goodQpf = depsFor(dataRoot)
+  await Promise.all([processWissdom({ now: new Date('2026-08-04T08:12:00Z'), deps: invalid }), processQpf({ now: new Date('2026-08-04T08:12:00Z'), deps: goodQpf })])
+  assert.equal(JSON.stringify(readMeta(dataRoot, 'wissdom')), before)
+  assert.equal(readMeta(dataRoot, 'qpf').frames.length, 1)
+})
+
+test('builds change-detectable snapshot entries for both graphics metadata shapes', async () => {
+  process.env.NODE_ENV = 'test'
+  const { buildRadarGraphicsSnapshotEntry } = await import('../server.js')
+  const wissdom = buildRadarGraphicsSnapshotEntry({ type: 'WISSDOM', updatedAt: '2026-08-04T08:00:00Z', framesByHeight: { '1524': [{ tm: '202608041705' }] } })
+  const qpf = buildRadarGraphicsSnapshotEntry({ type: 'QPF', updatedAt: '2026-08-04T08:00:00Z', frames: [{ tm: '202608041700', validTimeMs: Date.UTC(2026, 7, 4, 8, 5) }] })
+  assert.equal(wissdom.tm, '202608041705')
+  assert.equal(qpf.tm, '202608041700')
+  assert.notEqual(wissdom.hash, qpf.hash)
+})
+
+test('publishes both assets before their metadata and stops immediately when aborted', async () => {
+  const dataRoot = root(), originalRename = fs.renameSync
+  const observed = []
+  fs.renameSync = (from, to) => {
+    observed.push(path.basename(to))
+    if (path.basename(to) === 'wissdom_meta.json') {
+      assert.equal(fs.readdirSync(path.dirname(to)).filter((name) => name.endsWith('.webp')).length, 2)
+    }
+    return originalRename(from, to)
+  }
+  try {
+    await processWissdom({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(dataRoot) })
+  } finally {
+    fs.renameSync = originalRename
+  }
+  assert.deepEqual(observed.slice(-3), ['wissdom_1524_202608041705.webp', 'wissdom_1524_202608041705_legend.webp', 'wissdom_meta.json'])
+  const controller = new AbortController(); controller.abort(new Error('stop'))
+  await assert.rejects(processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(root()), signal: controller.signal }), /stop/)
+})
