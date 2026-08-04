@@ -226,3 +226,43 @@ function displayIcon(icon) {
   if (DISPLAY_ICONS.has(icon)) return icon
   return GROUND_FORECAST_ICONS[icon] || 'cloud'
 }
+
+/** 기온차를 표시하는 최소 차이(도). 이보다 작으면 자리는 두고 내용만 비운다. */
+export const TEMPERATURE_GAP_MIN = 2
+
+/** 공항 하나의 현재 기온. 목적지에 쓰던 경로를 출발 공항에도 그대로 쓴다. */
+export function airportTemperature(liveData, icao) {
+  const amosRecord = sourceAirportRecord(liveData?.amos, icao)
+  const amosTemp = finiteNumber(amosRecord?.weather?.temperature_c)
+  if (amosTemp != null) return amosTemp
+  const metarRecord = sourceAirportRecord(liveData?.metar, icao)
+    || sourceAirportRecord(liveData?.metarOverseas, icao)
+  return finiteNumber(metarRecord?.observation?.temperature?.air)
+}
+
+/**
+ * "김포보다 +4°". 둘 다 관측값이라 같은 기준으로 비교된다.
+ * 차이가 작으면 숨긴다 - `+0°`는 공간만 먹고 승객이 읽을 게 없다.
+ */
+export function temperatureGap(departureTemp, destinationTemp) {
+  if (!Number.isFinite(departureTemp) || !Number.isFinite(destinationTemp)) return null
+  const difference = Math.round(destinationTemp - departureTemp)
+  if (Math.abs(difference) < TEMPERATURE_GAP_MIN) return null
+  return { value: Math.abs(difference), sign: difference > 0 ? '+' : '-' }
+}
+
+/** 목적지 시간별 예보. 국내(기상청)를 먼저 보고 없으면 해외(met.no)를 본다. */
+export function destinationHourly(liveData, icao) {
+  const domestic = sourceAirportRecord(liveData?.groundForecast, icao)?.hourly
+  if (Array.isArray(domestic) && domestic.length > 0) return domestic
+  const overseas = sourceAirportRecord(liveData?.overseasForecast, icao)?.hourly
+  return Array.isArray(overseas) ? overseas : []
+}
+
+/** 목적지 주간 예보. 국내는 기상청이 만든 `forecast`, 해외는 백엔드가 만든 `daily`. */
+export function destinationDailyDays(liveData, icao) {
+  const domestic = sourceAirportRecord(liveData?.groundForecast, icao)?.forecast
+  if (Array.isArray(domestic) && domestic.length > 0) return domestic
+  const overseas = sourceAirportRecord(liveData?.overseasForecast, icao)?.daily
+  return Array.isArray(overseas) ? overseas : []
+}

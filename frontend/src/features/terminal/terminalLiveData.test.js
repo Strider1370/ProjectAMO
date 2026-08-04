@@ -221,3 +221,52 @@ test('해외 목적지도 관측 없이 예보만으로 붙는다', () => {
   assert.equal(merged.forecastSource, 'met.no')
   assert.deepEqual(merged.forecast[0], ['15시', 'cloudy', '28℃'])
 })
+
+import { airportTemperature, temperatureGap, destinationHourly, destinationDailyDays } from './terminalLiveData.js'
+
+const liveData = {
+  amos: { airports: { RKSS: { weather: { temperature_c: 28 } } } },
+  metar: { airports: { RKPC: { observation: { temperature: { air: 32 } } } } },
+  groundForecast: { airports: { RKPC: { hourly: [{ date: '20260804', time: '1500', temp: 34 }], forecast: [{ date: '20260805' }] } } },
+  overseasForecast: { airports: { RJBB: { hourly: [{ date: '20260804', time: '1500', temp: 31 }], daily: [{ date: '20260805' }] } } },
+}
+
+test('출발 공항 기온은 AMOS를 먼저 쓴다', () => {
+  assert.equal(airportTemperature(liveData, 'RKSS'), 28)
+})
+
+test('AMOS가 없으면 METAR 기온을 쓴다', () => {
+  assert.equal(airportTemperature(liveData, 'RKPC'), 32)
+})
+
+test('관측이 없으면 null이다', () => {
+  assert.equal(airportTemperature(liveData, 'RKPU'), null)
+})
+
+test('기온차가 2도 미만이면 표시하지 않는다', () => {
+  // 자리는 유지하고 내용만 비운다. +0°는 공간만 먹고 읽을 게 없다.
+  assert.equal(temperatureGap(28, 29), null)
+  assert.equal(temperatureGap(28, 26.5), null)
+})
+
+test('기온차가 2도 이상이면 부호와 함께 준다', () => {
+  assert.deepEqual(temperatureGap(28, 32), { value: 4, sign: '+' })
+  assert.deepEqual(temperatureGap(32, 28), { value: 4, sign: '-' })
+})
+
+test('한쪽 관측이 없으면 기온차도 없다', () => {
+  assert.equal(temperatureGap(null, 32), null)
+  assert.equal(temperatureGap(28, null), null)
+})
+
+test('국내 목적지는 기상청 시간별을, 해외는 met.no를 쓴다', () => {
+  assert.equal(destinationHourly(liveData, 'RKPC')[0].temp, 34)
+  assert.equal(destinationHourly(liveData, 'RJBB')[0].temp, 31)
+  assert.deepEqual(destinationHourly(liveData, 'RKPU'), [])
+})
+
+test('주간 자료는 국내 forecast와 해외 daily에서 온다', () => {
+  assert.equal(destinationDailyDays(liveData, 'RKPC')[0].date, '20260805')
+  assert.equal(destinationDailyDays(liveData, 'RJBB')[0].date, '20260805')
+  assert.deepEqual(destinationDailyDays(liveData, 'RKPU'), [])
+})
