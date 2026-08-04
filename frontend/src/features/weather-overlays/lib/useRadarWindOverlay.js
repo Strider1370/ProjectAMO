@@ -18,6 +18,11 @@ export function resolveVerticalRailSource({ preferredSource, kimActive, radarWin
   return null
 }
 
+export function deriveRadarWindRailActive({ requestedVisible, effectiveVisible }) {
+  void effectiveVisible
+  return Boolean(requestedVisible)
+}
+
 export function hasExactRadarWindFrame({ radarFrame, wissdomMeta, heightM }) {
   return Boolean(
     radarFrame?.tm

@@ -38,7 +38,7 @@ import AdsbTimestamp from '../weather-overlays/AdsbTimestamp.jsx'
 import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
 import TimelineRail from '../weather-overlays/TimelineRail.jsx'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
-import useRadarWindOverlay, { hasExactRadarWindFrame } from '../weather-overlays/lib/useRadarWindOverlay.js'
+import useRadarWindOverlay, { deriveRadarWindRailActive, hasExactRadarWindFrame } from '../weather-overlays/lib/useRadarWindOverlay.js'
 import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
 import { legendStamps } from '../weather-overlays/lib/flightCategoryLegend.js'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
@@ -1882,7 +1882,7 @@ const MapView = forwardRef(function MapView({
           selection={nwpSelection}
           availability={sliderAvailability}
           onKimSelectionChange={setNwpSelection}
-          radarWindActive={radarWindEffectiveVisible}
+          radarWindActive={deriveRadarWindRailActive(radarWindOverlay)}
           radarWindHeightM={radarWindOverlay.heightM}
           onRadarWindHeightChange={radarWindOverlay.setHeightM}
         />

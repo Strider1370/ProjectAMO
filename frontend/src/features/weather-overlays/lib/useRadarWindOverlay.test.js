@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   INITIAL_WISSDOM_HEIGHT_M,
   deriveRadarWindOverlayState,
+  deriveRadarWindRailActive,
   resolveVerticalRailSource,
 } from './useRadarWindOverlay.js'
 
@@ -51,4 +52,23 @@ test('the vertical rail returns to KIM when radar turns off without changing KIM
 
   assert.equal(resolveVerticalRailSource({ preferredSource: 'wissdom', kimActive: true, radarWindActive: false }), 'kim')
   assert.deepEqual(kimSelection, { tmfc: '2026080400', hf: 3, level: '850hPa' })
+})
+
+test('WISSDOM-only rail remains available through exact-frame loss', () => {
+  const unavailable = deriveRadarWindOverlayState({ requestedVisible: true, radarEnabled: true, exactFrameAvailable: false })
+
+  assert.equal(unavailable.effectiveVisible, false)
+  assert.equal(deriveRadarWindRailActive(unavailable), true)
+  assert.equal(resolveVerticalRailSource({ preferredSource: 'wissdom', kimActive: false, radarWindActive: true }), 'wissdom')
+})
+
+test('dual-source rail preserves WISSDOM height across exact-frame recovery', () => {
+  const heightM = 2134
+  const unavailable = deriveRadarWindOverlayState({ requestedVisible: true, radarEnabled: true, exactFrameAvailable: false })
+  const restored = deriveRadarWindOverlayState({ requestedVisible: true, radarEnabled: true, exactFrameAvailable: true })
+
+  assert.equal(resolveVerticalRailSource({ preferredSource: 'wissdom', kimActive: true, radarWindActive: deriveRadarWindRailActive(unavailable) }), 'wissdom')
+  assert.equal(heightM, 2134)
+  assert.equal(restored.effectiveVisible, true)
+  assert.equal(resolveVerticalRailSource({ preferredSource: 'wissdom', kimActive: true, radarWindActive: deriveRadarWindRailActive(restored) }), 'wissdom')
 })
