@@ -348,12 +348,23 @@ export function CurrentWeatherBlock({ flight, departureName, departureTemp }) {
           <strong className="tw-current-weather-temp">
             {flight.current.temp == null ? <em className="value-unknown">확인 중</em> : <>{flight.current.temp}<small>°C</small></>}
           </strong>
-          <p className="tw-current-weather-detail"><WeatherCondition type={flight.current.icon} /> · {flight.current.wind}</p>
+          <p className="tw-current-weather-detail"><WeatherCondition type={flight.current.icon} /></p>
         </div>
       </div>
-      <div className="tw-temp-gap">
-        {gap && <><span>{shortAirportName(departureName)}보다</span><strong>{gap.sign}{gap.value}°</strong></>}
-      </div>
+      {/* 체감·습도·바람은 이미 관측에서 계산해 두고도 화면에 안 쓰던 값이다. 방송 기상 그래픽이
+          수십 년 쓰는 세로 칸 구조로 나란히 둔다 - 승객이 묻는 "뭘 입지"에 답하는 값들이다.
+          값이 없는 항목은 칸째 비우지 않고 `-`로 자리를 지킨다(도시마다 칸 수가 달라지면 안 된다). */}
+      <dl className="tw-current-metrics">
+        <div><dt>체감</dt><dd>{displayTemperature(flight.current.feels ?? '-')}</dd></div>
+        <div><dt>습도</dt><dd>{flight.current.humidity ?? '-'}</dd></div>
+        <div><dt>바람</dt><dd className="tw-metric-wind">{flight.current.wind ?? '-'}</dd></div>
+        {/* 기온차도 같은 줄에 둔다. 따로 오른쪽 끝에 붙여 두면 차이가 작아 숨겨지는 날마다
+            그 폭이 통째로 비어 보인다. 네 값이 폭을 고르게 나눠 가진다. */}
+        <div className="tw-metric-gap">
+          <dt>{gap ? `${shortAirportName(departureName)}보다` : ''}</dt>
+          <dd>{gap ? `${gap.sign}${gap.value}°` : ''}</dd>
+        </div>
+      </dl>
     </div>
   );
 }

@@ -98,8 +98,8 @@ function WeeklyPanel({ rows }) {
        * 승객이 매 줄 눈으로 짐작하지 않게 한다. */}
       <div className="ww-weekly-header" aria-hidden="true">
         <span />
-        <span>오전</span>
-        <span>오후</span>
+        <span className="ww-head-icons">오전 · 오후</span>
+        <span className="ww-head-temps"><b className="ww-temp-min">최저</b> · <b className="ww-temp-max">최고</b></span>
       </div>
       <ul className="ww-weekly-list">
         {rows.map((row, index) => (
@@ -111,12 +111,14 @@ function WeeklyPanel({ rows }) {
                   <strong>{row.dayOfWeek}</strong>
                   <span>{row.monthDay}</span>
                 </div>
-                <div className="ww-weekly-am">
+                {/* 오전·오후 그림을 나란히 붙이고 그 뒤에 최저·최고를 둔다. 그림과 기온을
+                    번갈아 놓으면 하루가 두 덩이로 쪼개져 보인다. */}
+                <div className="ww-weekly-icons">
                   <span className="ww-weekly-icon"><BoardWeatherImage type={row.amIcon} small /></span>
-                  <strong className="ww-temp-min">{row.tempMin == null ? '' : `${row.tempMin}°`}</strong>
-                </div>
-                <div className="ww-weekly-pm">
                   <span className="ww-weekly-icon"><BoardWeatherImage type={row.pmIcon} small /></span>
+                </div>
+                <div className="ww-weekly-temps">
+                  <strong className="ww-temp-min">{row.tempMin == null ? '' : `${row.tempMin}°`}</strong>
                   <strong className="ww-temp-max">{row.tempMax == null ? '' : `${row.tempMax}°`}</strong>
                 </div>
               </>
