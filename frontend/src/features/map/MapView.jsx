@@ -335,6 +335,7 @@ const MapView = forwardRef(function MapView({
   airports = [],
   metarData = null,
   echoMeta = null,
+  qpfMeta = null,
   rainviewerMeta = null,
   satMeta = null,
   convectiveMeta = null,
@@ -752,6 +753,7 @@ const MapView = forwardRef(function MapView({
   const adsbVisibleIds = useMemo(() => visibleIds(adsbGeoJSON.features, trafficFilters), [adsbGeoJSON, trafficFilters])
   const weatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
     echoMeta,
+    qpfMeta,
     rainviewerMeta,
     satMeta,
     convectiveMeta,
@@ -774,6 +776,7 @@ const MapView = forwardRef(function MapView({
     tz,
   }), [
     echoMeta,
+    qpfMeta,
     rainviewerMeta,
     satMeta,
     convectiveMeta,
@@ -818,6 +821,7 @@ const MapView = forwardRef(function MapView({
     radarFrames,
     satelliteFrames,
     weatherTimelineTicks,
+    forecastTimelineTicks,
     sigwxHistoryEntries,
     selectedSigwxEntry,
     sigwxGroups,
@@ -928,6 +932,7 @@ const MapView = forwardRef(function MapView({
     speed: weatherTimelineSpeed,
     pastTicksMs: weatherTimelineTicks,
     nwpTimes: sliderTimes,
+    qpfTimesMs: forecastTimelineTicks,
     setSelectedMs: setWeatherTimelineSelectedMs,
   })
 

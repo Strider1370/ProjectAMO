@@ -172,6 +172,17 @@ test('keeps live selection on the latest observed tick when future QPF ticks exi
   assert.equal(model.qpfFrame, null)
 })
 
+test('keeps live selection null when only future QPF ticks exist', () => {
+  const model = buildWeatherOverlayModel({
+    qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' }] },
+    visibility: { radar: true },
+    selectedWeatherTimeMs: null,
+  })
+
+  assert.equal(model.selectedWeatherTimeMs, null)
+  assert.equal(model.qpfFrame, null)
+})
+
 test('deduplicates overlapping QPF valid times in favour of the newest analysis', () => {
   const model = buildWeatherOverlayModel({
     qpfMeta: { frames: [

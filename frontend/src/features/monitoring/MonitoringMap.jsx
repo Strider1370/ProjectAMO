@@ -93,6 +93,7 @@ function MonitoringMap({
         airports={weather?.airports || []}
         metarData={mapMetarData}
         echoMeta={weather?.echoMeta}
+        qpfMeta={weather?.qpfMeta || null}
         satMeta={weather?.satMeta}
         convectiveMeta={weather?.convectiveMeta || null}
         sigmetData={mapSigmetData}

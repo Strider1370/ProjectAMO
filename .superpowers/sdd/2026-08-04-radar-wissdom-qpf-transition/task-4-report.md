@@ -49,3 +49,12 @@ Status: DONE
   observed → QPF → wrapped-observation transition.
 - Focused RED run failed for all three reviewed gaps; focused GREEN run passes
   43 tests with no failures.
+
+## Fix round 2
+
+- Main and monitoring MapView composition now pass `qpfMeta`; MapView passes
+  `forecastTimelineTicks` as `qpfTimesMs` to playback, independently of KIM.
+- With no observed tick, live selection remains `null` rather than resolving to
+  an unselected future QPF tick.
+- Focused RED run failed for both real-path defects; focused GREEN run passes
+  48 tests with no failures.

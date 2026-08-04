@@ -202,7 +202,7 @@ export function buildWeatherOverlayModel({
   const resolvedWeatherTimeMs = timelineTicks.length
     ? (Number.isFinite(selectedWeatherTimeMs)
       ? Math.min(Math.max(selectedWeatherTimeMs, firstTickMs), latestTickMs)
-      : (weatherTimelineTicks.at(-1) ?? latestTickMs))
+      : (weatherTimelineTicks.at(-1) ?? null))
     : null
   const weatherTimelineVisible = (visibility.radar || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && timelineTicks.length > 0
   const observedRadarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
