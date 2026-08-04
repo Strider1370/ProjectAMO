@@ -47,6 +47,7 @@ import LevelSliderPanel from '../weather-overlays/LevelSliderPanel.jsx'
 import ConvectiveOverlayControls from '../weather-overlays/ConvectiveOverlayControls.jsx'
 import ConvectiveOverlayCard from '../weather-overlays/ConvectiveOverlayCard.jsx'
 import EchoTopCard from '../weather-overlays/EchoTopCard.jsx'
+import QpfStatusCard from '../weather-overlays/QpfStatusCard.jsx'
 import TyphoonPanel from '../weather-overlays/TyphoonPanel.jsx'
 import { useTyphoonOverlay } from '../weather-overlays/lib/typhoonOverlaySync.js'
 import WeatherPointInspector from '../weather-overlays/WeatherPointInspector.jsx'
@@ -1848,6 +1849,7 @@ const MapView = forwardRef(function MapView({
         onPlayPause={toggleWeatherTimelinePlay}
         referenceNowMs={demoMode ? demoNowMs : null}
       />
+      <QpfStatusCard status={weatherOverlayModel.qpfStatus} tz={tz} />
 
       {/* 브리핑 패널을 닫아도 경로는 지도에 남는다 — 패널을 다시 열지 않고도 지울 수
           있도록 하단 중앙(타임라인 스크럽 스택 위, 겹침 확인됨)에 요약+지우기 칩 표시. */}
