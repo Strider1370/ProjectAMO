@@ -613,7 +613,8 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
   display: grid;
   /* 구간 제목 / 시각 / 아이콘 / 꺾은선 / 기온 / 강수. 시각은 그 칸이 언제인지 알려주는
      값이라 아이콘·기온보다 먼저 읽혀야 한다 - 맨 아래에 두면 다 보고 나서야 시각을 안다. */
-  grid-template-rows: 36px 34px 84px 1fr 66px 42px;
+  /* 구간 제목 / 시각 / 아이콘 / 차트(기온 숫자 포함) / 강수 */
+  grid-template-rows: 36px 34px 84px 1fr 44px;
   row-gap: 12px;
   min-height: 0;
   height: 100%;
@@ -635,13 +636,20 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
    그림 옆이 아니라 열 사이에 그려지고, 그림만 그 안에서 가운데로 온다. */
 .wf-forecast-icon { display: grid; height: 82px; place-items: center; }
 .wf-forecast-icon img { width: 82px; height: 82px; object-fit: contain; }
-.wf-forecast-line-row { position: relative; }
-.wf-forecast-line-row i { align-self: stretch; }
+.wf-forecast-chart-row { position: relative; }
+.wf-forecast-chart-row i { align-self: stretch; }
 /* 꺾은선은 라벨 칸을 비켜 데이터 열 위에만 그린다.
    svg는 대체 요소라 left/right만 주면 폭이 기본값(300px)으로 잡혀 왼쪽 구석에 뭉친다. 폭을 직접 계산해 준다. */
 .wf-forecast-line { position: absolute; top: 0; bottom: 0; left: var(--wf-strip-gutter); width: calc(100% - var(--wf-strip-gutter)); height: 100%; overflow: visible; }
 .wf-forecast-line polyline { stroke: #2f80ed; stroke-width: 3; vector-effect: non-scaling-stroke; }
-.wf-forecast-temp-row strong { font-size: 52px; font-weight: 800; letter-spacing: -.03em; }
+/* 선 아래 옅은 면은 그래프에 무게를 준다. 선 하나만 있으면 넓은 칸에서 실오라기처럼 보인다. */
+.wf-forecast-area { fill: rgb(47 128 237 / 8%); }
+/* 기온 숫자를 점 위에 얹어 선과 함께 오르내리게 한다 - 아래 고정된 줄에 두면 어느 숫자가
+   어느 점인지 눈으로 이어야 한다. */
+.wf-forecast-points { position: absolute; top: 0; right: 0; bottom: 0; left: var(--wf-strip-gutter); }
+.wf-forecast-point { position: absolute; transform: translate(-50%, -50%); }
+.wf-forecast-point::before { display: block; width: 14px; height: 14px; border-radius: 50%; background: #2f80ed; content: ""; }
+.wf-forecast-point b { position: absolute; bottom: 22px; left: 50%; font-size: 52px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; transform: translateX(-50%); }
 .wf-forecast-precip-row b { display: inline-block; padding: 4px 14px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 24px; font-weight: 700; }
 .wf-forecast-precip-row b.is-highlighted { background: #fde3c8; color: #b1560a; }
 .wf-forecast-hour-row time { color: var(--terminal-text-secondary); font-size: 24px; font-weight: 600; }
@@ -708,8 +716,8 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
   /* 2안 예보 띠와 같은 규칙. 줄 제목과 값이 같은 세로선에서 시작하도록 라벨 칸을 둔다. */
   --ww-strip-gutter: 128px;
   display: grid;
-  /* 시각 / 아이콘 / 꺾은선 / 기온 / 강수 (2안과 같은 순서) */
-  grid-template-rows: 32px 76px 1fr 58px 40px;
+  /* 시각 / 아이콘 / 차트(기온 숫자 포함) / 강수 */
+  grid-template-rows: 32px 76px 1fr 42px;
   row-gap: 10px;
   min-height: 0;
   height: 100%;
@@ -721,12 +729,16 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .ww-strip-title { color: #23334b; font-size: 23px; }
 .ww-hourly-icon { display: grid; height: 74px; place-items: center; }
 .ww-hourly-icon img { width: 74px; height: 74px; object-fit: contain; }
-.ww-hourly-line-row { position: relative; }
+.ww-hourly-chart-row { position: relative; }
 /* svg는 대체 요소라 left/right만으로는 폭이 안 잡힌다. 라벨 칸을 뺀 폭을 직접 계산해 준다. */
 .ww-hourly-line { position: absolute; top: 0; bottom: 0; left: var(--ww-strip-gutter); width: calc(100% - var(--ww-strip-gutter)); height: 100%; overflow: visible; }
 .ww-hourly-line polyline { stroke: #2f80ed; stroke-width: 3; vector-effect: non-scaling-stroke; }
+.ww-hourly-area { fill: rgb(47 128 237 / 8%); }
+.ww-hourly-points { position: absolute; top: 0; right: 0; bottom: 0; left: var(--ww-strip-gutter); }
+.ww-hourly-point { position: absolute; transform: translate(-50%, -50%); }
+.ww-hourly-point::before { display: block; width: 13px; height: 13px; border-radius: 50%; background: #2f80ed; content: ""; }
+.ww-hourly-point b { position: absolute; bottom: 20px; left: 50%; font-size: 46px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; transform: translateX(-50%); }
 /* 2안 예보 기온과 같은 크기·같은 근거(1안 `.arrival-time strong`)를 쓴다. */
-.ww-hourly-temp-row strong { font-size: 46px; font-weight: 800; letter-spacing: -.03em; }
 .ww-hourly-precip-row b { display: inline-block; padding: 4px 12px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 22px; font-weight: 700; }
 .ww-hourly-precip-row b.is-highlighted { background: #fde3c8; color: #b1560a; }
 .ww-hourly-hour-row time { color: var(--terminal-text-secondary); font-size: 22px; font-weight: 600; }

@@ -49,15 +49,16 @@ function ForecastStrip({ cells }) {
   const min = Math.min(...temps);
   const max = Math.max(...temps);
   const span = Math.max(1, max - min);
-  /* 꺾은선은 위아래 여백을 6%만 남기고 칸 높이를 거의 다 쓴다. 진폭이 작으면 28°와 34°가
-     같은 높이로 보여 선이 아무것도 말해주지 않는다. */
-  const points = cells
-    .map((cell, index) => {
-      const x = ((index + 0.5) / cells.length) * 100;
-      const y = 94 - ((cell.temp - min) / span) * 88;
-      return `${x},${y}`;
-    })
-    .join(' ');
+  /* 기온 숫자를 꺾은선에서 떼어 아래 고정된 줄에 두면, 어느 숫자가 어느 점인지 승객이 눈으로
+     이어야 한다. 날씨 서비스들이 쓰는 방식대로 숫자를 점에 붙여 선과 함께 오르내리게 한다.
+     y는 34~92% 범위만 쓴다 - 점 위에 얹히는 숫자가 칸 밖으로 잘리지 않게 위쪽을 비워둔다. */
+  const chartPoints = cells.map((cell, index) => ({
+    x: ((index + 0.5) / cells.length) * 100,
+    y: 92 - ((cell.temp - min) / span) * 58,
+    temp: cell.temp,
+  }));
+  const line = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
+  const area = `${chartPoints[0].x},100 ${line} ${chartPoints[chartPoints.length - 1].x},100`;
   // 그룹(오늘·내일·모레)이 바뀌는 첫 칸에만 세로 구분선을 그린다.
   const groupStarts = cells.map((cell, index) => index > 0 && cell.group !== cells[index - 1].group);
   const cellClass = (index) => `wf-forecast-cell${groupStarts[index] ? " wf-group-start" : ""}`;
@@ -93,16 +94,20 @@ function ForecastStrip({ cells }) {
           </span>
         ))}
       </div>
-      <div className="wf-forecast-row wf-forecast-line-row" style={{ gridTemplateColumns: columns }}>
+      <div className="wf-forecast-row wf-forecast-chart-row" style={{ gridTemplateColumns: columns }}>
         <i aria-hidden="true" />
         {cells.map((cell, index) => <i className={cellClass(index)} aria-hidden="true" key={index} />)}
         <svg className="wf-forecast-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <polyline points={points} fill="none" />
+          <polygon className="wf-forecast-area" points={area} />
+          <polyline points={line} fill="none" />
         </svg>
-      </div>
-      <div className="wf-forecast-row wf-forecast-temp-row" style={{ gridTemplateColumns: columns }}>
-        <i aria-hidden="true" />
-        {cells.map((cell, index) => <strong className={cellClass(index)} key={index}>{cell.temp}°</strong>)}
+        <div className="wf-forecast-points">
+          {chartPoints.map((point, index) => (
+            <span className="wf-forecast-point" style={{ left: `${point.x}%`, top: `${point.y}%` }} key={index}>
+              <b>{point.temp}°</b>
+            </span>
+          ))}
+        </div>
       </div>
       <div className="wf-forecast-row wf-forecast-precip-row" style={{ gridTemplateColumns: columns }}>
         <p className="wf-forecast-row-label">{precipKind === 'amount' ? '강수량 mm' : '강수확률 %'}</p>

@@ -36,13 +36,16 @@ function HourlyStrip({ cells }) {
   const min = temps.length ? Math.min(...temps) : 0;
   const max = temps.length ? Math.max(...temps) : 0;
   const span = Math.max(1, max - min);
-  const points = cells
-    .map((cell, index) => {
-      const x = ((index + 0.5) / HOURLY_CELL_COUNT) * 100;
-      const y = 94 - ((cell.temp - min) / span) * 88;
-      return `${x},${y}`;
-    })
-    .join(' ');
+  /* 2안과 같은 규칙 - 기온 숫자를 점에 붙여 선과 함께 오르내리게 한다. */
+  const chartPoints = cells.map((cell, index) => ({
+    x: ((index + 0.5) / HOURLY_CELL_COUNT) * 100,
+    y: 92 - ((cell.temp - min) / span) * 58,
+    temp: cell.temp,
+  }));
+  const line = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
+  const area = chartPoints.length
+    ? `${chartPoints[0].x},100 ${line} ${chartPoints[chartPoints.length - 1].x},100`
+    : '';
   const precipKind = cells.find((cell) => cell?.precipKind)?.precipKind;
   return (
     <div className="ww-hourly-strip">
@@ -58,14 +61,18 @@ function HourlyStrip({ cells }) {
           </span>
         ))}
       </div>
-      <div className="ww-hourly-row ww-hourly-line-row" style={{ gridTemplateColumns: columns }}>
+      <div className="ww-hourly-row ww-hourly-chart-row" style={{ gridTemplateColumns: columns }}>
         <svg className="ww-hourly-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <polyline points={points} fill="none" />
+          <polygon className="ww-hourly-area" points={area} />
+          <polyline points={line} fill="none" />
         </svg>
-      </div>
-      <div className="ww-hourly-row ww-hourly-temp-row" style={{ gridTemplateColumns: columns }}>
-        <i aria-hidden="true" />
-        {slots.map((cell, index) => <strong key={index}>{cell ? `${cell.temp}°` : ''}</strong>)}
+        <div className="ww-hourly-points">
+          {chartPoints.map((point, index) => (
+            <span className="ww-hourly-point" style={{ left: `${point.x}%`, top: `${point.y}%` }} key={index}>
+              <b>{point.temp}°</b>
+            </span>
+          ))}
+        </div>
       </div>
       <div className="ww-hourly-row ww-hourly-precip-row" style={{ gridTemplateColumns: columns }}>
         <p className="ww-hourly-row-label">{precipKind === 'amount' ? '강수량 mm' : '강수확률 %'}</p>
