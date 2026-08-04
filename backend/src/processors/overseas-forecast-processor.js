@@ -1,5 +1,6 @@
 import config, { overseasAirports } from '../config.js'
 import store from '../store.js'
+import { buildOverseasDaily } from './overseas-daily.js'
 
 /**
  * 해외 목적지의 시간별 기온·날씨 예보.
@@ -127,7 +128,10 @@ async function process({ signal } = {}) {
     try {
       const hourly = await fetchForecast(airport)
       if (hourly.length === 0) throw new Error('empty forecast')
-      result.airports[airport.icao] = { icao: airport.icao, hourly }
+      // 해외공항 자료에 시차가 없어 한국 시각 기준으로 오전·오후를 나눈다.
+      // 시차 1시간(베이징)까지는 경계 칸 하나만 어긋난다. 시차가 큰 목적지가 늘면
+      // 공항 자료에 시차를 채우고 buildOverseasDaily에 offsetMinutes로 넘긴다.
+      result.airports[airport.icao] = { icao: airport.icao, hourly, daily: buildOverseasDaily(hourly) }
     } catch (error) {
       failed.push(airport.icao)
       // 한 공항이 실패해도 이전 값을 남긴다. 승객 화면에서 예보가 통째로 사라지는 편이 더 나쁘다.
