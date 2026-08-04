@@ -83,6 +83,10 @@ function ForecastStrip({ cells }) {
           );
         })}
       </div>
+      <div className="wf-forecast-row wf-forecast-hour-row" style={{ gridTemplateColumns: columns }}>
+        <i aria-hidden="true" />
+        {cells.map((cell, index) => <time className={cellClass(index)} key={index}>{cell.label}</time>)}
+      </div>
       <div className="wf-forecast-row wf-forecast-icon-row" style={{ gridTemplateColumns: columns }}>
         <i aria-hidden="true" />
         {cells.map((cell, index) => (
@@ -113,10 +117,6 @@ function ForecastStrip({ cells }) {
             </b>
           </span>
         ))}
-      </div>
-      <div className="wf-forecast-row wf-forecast-hour-row" style={{ gridTemplateColumns: columns }}>
-        <i aria-hidden="true" />
-        {cells.map((cell, index) => <time className={cellClass(index)} key={index}>{cell.label}</time>)}
       </div>
     </div>
   );

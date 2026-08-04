@@ -48,6 +48,10 @@ function HourlyStrip({ cells }) {
   const precipKind = cells.find((cell) => cell?.precipKind)?.precipKind;
   return (
     <div className="ww-hourly-strip">
+      <div className="ww-hourly-row ww-hourly-hour-row" style={{ gridTemplateColumns: columns }}>
+        <i aria-hidden="true" />
+        {slots.map((cell, index) => <time key={index}>{cell?.label ?? ''}</time>)}
+      </div>
       <div className="ww-hourly-row ww-hourly-icon-row" style={{ gridTemplateColumns: columns }}>
         <i aria-hidden="true" />
         {slots.map((cell, index) => (
@@ -75,10 +79,6 @@ function HourlyStrip({ cells }) {
             </b>
           </span>
         ))}
-      </div>
-      <div className="ww-hourly-row ww-hourly-hour-row" style={{ gridTemplateColumns: columns }}>
-        <i aria-hidden="true" />
-        {slots.map((cell, index) => <time key={index}>{cell?.label ?? ''}</time>)}
       </div>
     </div>
   );
