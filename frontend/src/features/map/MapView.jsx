@@ -992,10 +992,8 @@ const MapView = forwardRef(function MapView({
   const rasterAndSigwxModel = useMemo(() => ({
     satelliteFrame: weatherOverlayModel.satelliteFrame,
     radarFrame: weatherOverlayModel.radarFrame,
-    radarMotion: {
-      ...weatherOverlayModel.radarMotion,
-      visible: radarMotionOverlay.effectiveVisible,
-    },
+    wissdomFrame: weatherOverlayModel.wissdomFrame,
+    qpfFrame: weatherOverlayModel.qpfFrame,
     rainviewerMeta: weatherOverlayModel.rainviewerMeta,
     rainviewerFrame: weatherOverlayModel.rainviewerFrame,
     selectedSigwxFrontMeta: weatherOverlayModel.selectedSigwxFrontMeta,
@@ -1012,8 +1010,8 @@ const MapView = forwardRef(function MapView({
   }), [
     weatherOverlayModel.satelliteFrame,
     weatherOverlayModel.radarFrame,
-    weatherOverlayModel.radarMotion,
-    radarMotionOverlay.effectiveVisible,
+    weatherOverlayModel.wissdomFrame,
+    weatherOverlayModel.qpfFrame,
     weatherOverlayModel.rainviewerMeta,
     weatherOverlayModel.rainviewerFrame,
     weatherOverlayModel.selectedSigwxFrontMeta,

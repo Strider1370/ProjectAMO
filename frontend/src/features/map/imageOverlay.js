@@ -57,6 +57,9 @@ export function addOrUpdateImageOverlay(map, { sourceId, layerId, frame, opacity
   } else if (previous?.sourceId !== currentSourceId) {
     map.removeLayer(layerId)
     map.addLayer(rasterLayer(layerId, currentSourceId, opacity))
+    if (previous?.sourceId && map.getSource(previous.sourceId)) {
+      map.removeSource(previous.sourceId)
+    }
   }
   mapState.set(sourceId, { key, sourceId: currentSourceId })
 

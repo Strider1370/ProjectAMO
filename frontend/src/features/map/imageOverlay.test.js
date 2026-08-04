@@ -8,10 +8,14 @@ function createMap() {
   const layers = new Map()
   const addSourceCalls = []
   const removeLayerCalls = []
+  const removeSourceCalls = []
+  const layerOrder = []
 
   return {
     addSourceCalls,
     removeLayerCalls,
+    removeSourceCalls,
+    layerOrder,
     addSource(id, source) {
       addSourceCalls.push({ id, source })
       sources.set(id, source)
@@ -24,10 +28,16 @@ function createMap() {
     },
     addLayer(layer) {
       layers.set(layer.id, layer)
+      layerOrder.push(layer.id)
     },
     removeLayer(id) {
       removeLayerCalls.push(id)
       layers.delete(id)
+      layerOrder.splice(layerOrder.indexOf(id), 1)
+    },
+    removeSource(id) {
+      removeSourceCalls.push(id)
+      sources.delete(id)
     },
   }
 }
@@ -53,7 +63,7 @@ test('addOrUpdateImageOverlay installs unchanged frame URL only once', () => {
   assert.equal(map.removeLayerCalls.length, 0)
 })
 
-test('addOrUpdateImageOverlay installs each frame URL once when looping back to a previous frame', () => {
+test('addOrUpdateImageOverlay removes replaced hashed image sources when looping A to B to A', () => {
   const map = createMap()
 
   addOrUpdateImageOverlay(map, {
@@ -75,6 +85,10 @@ test('addOrUpdateImageOverlay installs each frame URL once when looping back to 
     opacity: 0.88,
   })
 
-  assert.equal(map.addSourceCalls.length, 2)
+  assert.equal(map.addSourceCalls.length, 3)
   assert.equal(map.removeLayerCalls.length, 2)
+  assert.equal(map.removeSourceCalls.length, 2)
+  assert.notEqual(map.removeSourceCalls[0], map.removeSourceCalls[1])
+  assert.deepEqual(map.layerOrder, ['radar-layer'])
+  assert.equal(map.getLayer('radar-layer').source, map.addSourceCalls.at(-1).id)
 })
