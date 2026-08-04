@@ -43,9 +43,11 @@ function WeatherOverlayPanel({
   radarWindRequested = false,
   radarWindHeightM = 1524,
   onRadarWindRequestedChange,
+  onRadarWindHeightChange,
   terrainAltitudeFt = 3000,
 }) {
   const isMobile = useIsMobile()
+  void onRadarWindHeightChange
   const TEMP_HIDDEN_LAYER_IDS = []
   // 순서는 조종사가 보는 급한 순서 — 발효 중인 위험기상이 먼저, 그다음 실제 관측(레이더·위성),
   // 마지막이 예보(수치모델). 항적(ADS-B)은 기상이 아니라 교통이라 별도 '항적' 패널에 있다.
@@ -100,10 +102,11 @@ function WeatherOverlayPanel({
                 aria-label={`레이더 바람장 (WISSDOM) · ${radarWindHeightM.toLocaleString()} m`}
                 aria-pressed={radarWindRequested}
                 disabled={!radarWindAvailable}
-                title={!radarWindAvailable ? '표시 시각의 WISSDOM 자료 없음' : undefined}
+                aria-describedby={!radarWindAvailable ? 'radar-wind-unavailable' : undefined}
               >
                 레이더 바람장 (WISSDOM) · {radarWindHeightM.toLocaleString()} m
               </button>
+              {!radarWindAvailable && <span id="radar-wind-unavailable">표시 시각의 WISSDOM 자료 없음</span>}
             )}
           </div>
           <div className="layer-tile-grid">

@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   INITIAL_WISSDOM_HEIGHT_M,
   deriveRadarWindOverlayState,
+  resolveVerticalRailSource,
 } from './useRadarWindOverlay.js'
 
 test('WISSDOM defaults to the configured 1,524 m height', () => {
@@ -39,4 +40,15 @@ test('WISSDOM keeps the selected height when an exact frame temporarily disappea
 
   assert.equal(selectedHeightM, 2134)
   assert.equal(unavailable.effectiveVisible, false)
+})
+
+test('the vertical rail selects WISSDOM when it is the only active source', () => {
+  assert.equal(resolveVerticalRailSource({ preferredSource: 'kim', kimActive: false, radarWindActive: true }), 'wissdom')
+})
+
+test('the vertical rail returns to KIM when radar turns off without changing KIM selection', () => {
+  const kimSelection = { tmfc: '2026080400', hf: 3, level: '850hPa' }
+
+  assert.equal(resolveVerticalRailSource({ preferredSource: 'wissdom', kimActive: true, radarWindActive: false }), 'kim')
+  assert.deepEqual(kimSelection, { tmfc: '2026080400', hf: 3, level: '850hPa' })
 })

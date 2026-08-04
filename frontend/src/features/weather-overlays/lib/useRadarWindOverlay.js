@@ -11,10 +11,30 @@ export function deriveRadarWindOverlayState({ requestedVisible, radarEnabled, ex
   }
 }
 
+export function resolveVerticalRailSource({ preferredSource, kimActive, radarWindActive }) {
+  if (kimActive && radarWindActive) return preferredSource === 'wissdom' ? 'wissdom' : 'kim'
+  if (radarWindActive) return 'wissdom'
+  if (kimActive) return 'kim'
+  return null
+}
+
+export function hasExactRadarWindFrame({ radarFrame, wissdomMeta, heightM }) {
+  return Boolean(
+    radarFrame?.tm
+    && wissdomMeta?.framesByHeight?.[String(heightM)]?.some((frame) => frame?.tm === radarFrame.tm),
+  )
+}
+
 export default function useRadarWindOverlay({ radarEnabled, availableHeightsM, exactFrameAvailable }) {
   const [requestedVisible, setRequestedVisible] = useState(false)
   const [heightM, setHeightM] = useState(INITIAL_WISSDOM_HEIGHT_M)
-  const state = deriveRadarWindOverlayState({ requestedVisible, radarEnabled, exactFrameAvailable })
+  const state = deriveRadarWindOverlayState({
+    requestedVisible,
+    radarEnabled,
+    exactFrameAvailable: typeof exactFrameAvailable === 'function'
+      ? exactFrameAvailable(heightM)
+      : exactFrameAvailable,
+  })
 
   useEffect(() => {
     if (!radarEnabled) setRequestedVisible(false)
