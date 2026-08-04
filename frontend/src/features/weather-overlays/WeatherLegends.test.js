@@ -34,7 +34,9 @@ test('the WISSDOM toggle lives in the layer panel, not the legend', () => {
   assert.doesNotMatch(source, /radarMotion/)
   assert.doesNotMatch(source, /radar-motion/)
   assert.match(panelSource, /레이더 바람장 \(WISSDOM\)/)
+  assert.doesNotMatch(panelSource, /레이더 바람장 \(WISSDOM\) · \{radarWindHeightM\.toLocaleString\(\)\} m/)
   assert.doesNotMatch(panelSource, /레이더 에코 이동벡터 표시/)
+  assert.match(css, /\.layer-tile-group-title-action:disabled \{[\s\S]*?background:\s*var\(--surface-2\)/)
   assert.match(css, /\.map-view-wrapper \.map-right-legends > \* \{[\s\S]*?pointer-events:\s*auto/)
 })
 

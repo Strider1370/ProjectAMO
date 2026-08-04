@@ -2293,6 +2293,7 @@
 
 .layer-tile-group-title-action:disabled {
   border-color: var(--border-2);
+  background: var(--surface-2);
   color: var(--text-3);
   cursor: default;
 }
