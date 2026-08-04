@@ -731,20 +731,24 @@ body { min-height: 100vh; overflow: hidden; }
 .wf-screen { display: grid; grid-template-rows: 12% 40% 48%; }
 
 /* 머리띠 */
+/* 왼쪽 칸(도시명)을 420px 고정 트랙으로 둔다 - `.wf-header-city`는 grid item이라 flex 규칙은
+   먹지 않는다. 트랙 자체를 고정해야 오른쪽 순환 표시가 밀리지 않는다. */
 .wf-header {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 420px auto;
   align-items: center;
   gap: var(--terminal-space-5);
   padding: 0 var(--terminal-safe-side);
   border-bottom: 1px solid var(--terminal-border);
   background: var(--terminal-surface);
 }
-/* 도시 이름 길이가 달라도(제주 / 오사카) 오른쪽 순환 표시가 밀리지 않게 왼쪽 칸을 고정 폭으로 둔다. */
-.wf-header-city { display: flex; flex: 0 0 420px; align-items: baseline; gap: 14px; white-space: nowrap; }
-.wf-header-city strong { font-size: var(--terminal-type-destination); font-weight: 800; letter-spacing: -.045em; }
-.wf-header-city span { color: var(--terminal-text-secondary); font-size: var(--terminal-type-airport-code); font-weight: 700; }
+/* 420px보다 긴 도시명이 들어와도 오른쪽 칸을 침범하지 않게 자른다(넘침 방어).
+   IATA 코드(span)는 항상 짧고 식별에 필요해 줄이지 않고, 도시명(strong) 쪽만 말줄임한다.
+   flex item은 기본 min-width가 content 크기라 줄어들지 않으므로 min-width: 0을 같이 준다. */
+.wf-header-city { display: flex; align-items: baseline; gap: 14px; min-width: 0; overflow: hidden; }
+.wf-header-city strong { min-width: 0; overflow: hidden; font-size: var(--terminal-type-destination); font-weight: 800; letter-spacing: -.045em; white-space: nowrap; text-overflow: ellipsis; }
+.wf-header-city span { flex: 0 0 auto; color: var(--terminal-text-secondary); font-size: var(--terminal-type-airport-code); font-weight: 700; }
 .wf-header-clock { position: absolute; top: auto; right: var(--terminal-safe-side); bottom: var(--terminal-header-bottom-gap); left: auto; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
 .wf-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
 .wf-header-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
