@@ -516,6 +516,7 @@ export function App() {
         />
       ) : view === "weather" ? (
         <WeatherFirstScreen
+          frameSeconds={(FRAME_INTERVAL_MS[view] ?? 9000) / 1000}
           frame={activeDestinationFrame.frame ? { ...activeDestinationFrame.frame, flights: destinationFlights } : null}
           destinations={weatherDestinations}
           destinationIndex={activeDestinationFrame.frame?.destinationIndex ?? 0}
@@ -537,6 +538,7 @@ export function App() {
         />
       ) : (
         <WeeklyWeatherScreen
+          frameSeconds={(FRAME_INTERVAL_MS[view] ?? 9000) / 1000}
           frame={activeDestinationFrame.frame ? { ...activeDestinationFrame.frame, flights: destinationFlights } : null}
           destinations={weatherDestinations}
           destinationIndex={activeDestinationFrame.frame?.destinationIndex ?? 0}

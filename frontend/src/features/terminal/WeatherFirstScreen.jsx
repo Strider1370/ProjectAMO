@@ -64,9 +64,12 @@ function ForecastStrip({ cells }) {
   const cellClass = (index) => `wf-forecast-cell${groupStarts[index] ? " wf-group-start" : ""}`;
   const groupRuns = forecastGroupRuns(cells);
   const precipKind = cells.find((cell) => cell?.precipKind)?.precipKind;
+  /* 여덟 칸이 전부 0%면 화면 폭을 쓰면서 아무것도 알려주지 않는다. 그 줄을 접고
+     높이를 기온 곡선에 준다. 비가 오는 날에만 줄이 나타나 눈에 띈다. */
+  const hasPrecip = cells.some((cell) => Number.isFinite(cell?.precipValue) && cell.precipValue > 0);
   let column = 2;
   return (
-    <div className="wf-forecast-strip">
+    <div className={`wf-forecast-strip${hasPrecip ? "" : " is-precip-empty"}`}>
       <div className="wf-forecast-row wf-forecast-title-row" style={{ gridTemplateColumns: columns }}>
         {groupRuns.map((run, index) => {
           const start = column;
@@ -109,7 +112,7 @@ function ForecastStrip({ cells }) {
           ))}
         </div>
       </div>
-      <div className="wf-forecast-row wf-forecast-precip-row" style={{ gridTemplateColumns: columns }}>
+      {hasPrecip && <div className="wf-forecast-row wf-forecast-precip-row" style={{ gridTemplateColumns: columns }}>
         <p className="wf-forecast-row-label">{precipKind === 'amount' ? '강수량 mm' : '강수확률 %'}</p>
         {/* 알약 배경은 안쪽 <b>에만 준다. 칸 자체에 두면 구간 구분선이 둥근 모서리를 타고 휘어
             괄호처럼 보인다. */}
@@ -120,7 +123,7 @@ function ForecastStrip({ cells }) {
             </b>
           </span>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -144,6 +147,7 @@ export default function WeatherFirstScreen({
   departureAirports,
   departureAirportIcao,
   onSelectDepartureAirport,
+  frameSeconds = 30,
 }) {
   const flights = frame?.flights || [];
   // 화면 하나가 도시 하나를 맡는다 - 첫 편의 목적지 정보(도시명·현재날씨)가 화면 전체를 대표한다.
@@ -160,7 +164,19 @@ export default function WeatherFirstScreen({
             : <strong>{departureName}</strong>}
         </div>
         <DestinationPager destinations={destinations} destinationIndex={destinationIndex} />
-        <div className="wf-header-clock"><span>{clock.date}</span><strong>{clock.time}</strong></div>
+        <div className="wf-header-clock">
+          {/* 도시 이름만 크게 있으면 처음 본 승객이 출발 안내판인지 날씨 화면인지 모른다. */}
+          <p className="tw-screen-title">가는 곳 날씨</p>
+          <div className="wf-header-time"><span>{clock.date}</span><strong>{clock.time}</strong></div>
+        </div>
+        {/* 30초마다 도시가 바뀌는데 남은 시간을 모르면, 주간 예보를 읽다 화면이 넘어갔을 때
+            승객이 처음부터 다시 기다려야 할지 판단할 수 없다. */}
+        <i
+          className="tw-frame-progress"
+          style={{ "--frame-seconds": `${frameSeconds}s` }}
+          key={`${frame?.code ?? ''}-${frame?.page ?? 0}`}
+          aria-hidden="true"
+        />
       </header>
       <TerminalSettings>
         <DepartureAirportSelect airports={departureAirports} selectedIcao={departureAirportIcao} onSelect={onSelectDepartureAirport} />

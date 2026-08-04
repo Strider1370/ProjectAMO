@@ -180,7 +180,8 @@ body { min-height: 100vh; overflow: hidden; }
 .operation-status { display: flex; align-items: center; gap: var(--terminal-space-3); justify-self: end; font-size: 15px; white-space: nowrap; }
 .operation-status i { width: 12px; height: 12px; border-radius: 50%; background: var(--terminal-status-success); }
 .operation-status strong { color: var(--terminal-status-success); font-size: var(--terminal-type-status); }
-.operation-status.is-delay i { background: var(--terminal-status-warning); }
+/* 색각 이상 승객에게 초록·주황은 같아 보인다. 지연은 점을 마름모로 돌려 모양으로도 구분한다. */
+.operation-status.is-delay i { border-radius: 2px; background: var(--terminal-status-warning); transform: rotate(45deg); }
 .operation-status.is-delay strong { color: var(--terminal-status-warning); }
 .board-band:nth-child(4) .board-band-surface { display: grid; grid-template-rows: auto 1fr; }
 .current-weather-heading { display: flex; min-width: 0; align-items: start; justify-content: space-between; gap: 24px; }
@@ -531,17 +532,28 @@ body { min-height: 100vh; overflow: hidden; }
    1안(`.board-destination h2`, 같은 59px)도 이 값이라 여기도 맞춘다. */
 .wf-header-city strong { min-width: 0; overflow: hidden; font-size: var(--terminal-type-destination); font-weight: 800; line-height: 1.16; letter-spacing: -.045em; white-space: nowrap; text-overflow: ellipsis; }
 .wf-header-city span { flex: 0 0 auto; color: var(--terminal-text-secondary); font-size: var(--terminal-type-airport-code); font-weight: 700; line-height: 1.16; }
-.wf-header-clock { display: flex; align-items: baseline; justify-self: end; gap: 12px; white-space: nowrap; }
-.wf-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
-.wf-header-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
+.wf-header-clock { display: grid; justify-items: end; justify-self: end; row-gap: 2px; white-space: nowrap; }
+.wf-header-time { display: flex; align-items: baseline; gap: 12px; }
+.wf-header-time span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
+.wf-header-time strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
 
 /* 화면 한가운데에 고정한다. 격자 칸 안에서 가운데 정렬하면 도시 이름 길이에 따라 중심이
    흔들린다. 절대 위치로 화면 중심에 걸어두면 도시가 몇 곳이든 자리가 그대로다.
    최대 폭을 두어 도시가 아주 많아도 좌우 도시명·시계를 침범하지 않는다. */
+/* 30초 동안 왼쪽에서 오른쪽으로 채워진다. 프레임이 바뀔 때 key가 달라져 처음부터 다시 그린다. */
+.tw-frame-progress { position: absolute; bottom: -1px; left: 0; height: 4px; background: #2f80ed; animation: tw-frame-progress var(--frame-seconds, 30s) linear forwards; }
+@keyframes tw-frame-progress { from { width: 0; } to { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .tw-frame-progress { animation: none; width: 100%; opacity: .25; } }
+.tw-screen-title { margin: 0; color: var(--terminal-text-secondary); font-size: 24px; font-weight: 700; line-height: 1.3; letter-spacing: -.02em; white-space: nowrap; }
+
 .tw-destination-pager { position: absolute; left: 50%; display: flex; max-width: 880px; align-items: center; justify-content: center; gap: var(--terminal-space-5); overflow: hidden; transform: translateX(-50%); }
-.tw-pager-item { color: #8a97a8; font-size: 20px; font-weight: 700; white-space: nowrap; }
-.tw-pager-item.is-current { color: var(--terminal-text-primary); font-size: 24px; }
-.tw-pager-dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: #c3cad4; }
+/* #8a97a8은 흰 배경 대비 2.9:1로 WCAG 최소(4.5:1)에 미달했다. 다음 도시를 알려주는
+   유일한 장치라 가장 잘 보여야 하는데 가장 안 보였다. */
+/* 줄 높이를 함께 주지 않으면 전역 기본값(20px) 줄 상자를 물려받아 26px 글자가 잘린다
+   (`제주`가 `제수`처럼 보였다). 크기를 올릴 때마다 같이 올려야 한다. */
+.tw-pager-item { color: var(--terminal-text-secondary); font-size: 26px; font-weight: 700; line-height: 1.3; white-space: nowrap; }
+.tw-pager-item.is-current { color: var(--terminal-text-primary); font-size: 32px; font-weight: 800; line-height: 1.3; }
+.tw-pager-dot { display: block; width: 12px; height: 12px; border-radius: 50%; background: #8a97a8; }
 
 /* 나가는 화면과 들어오는 화면을 같은 격자칸에 포갠다. 나란히 놓으면 서로를 밀어내 글자가 겹치지만,
    포개면 각자 제자리에서만 움직여 위치가 바뀔 일이 없다. */
@@ -572,7 +584,7 @@ body { min-height: 100vh; overflow: hidden; }
 /* 체감·습도·바람. 라벨과 값을 세로로 쌓고 셋을 가로로 나란히 둔다. */
 /* 남는 폭에 고르게 편다. start 정렬이면 셋이 기온 옆에 뭉치고 오른쪽이 그대로 빈다. */
 .tw-current-metrics { display: grid; width: 100%; grid-auto-flow: column; grid-auto-columns: 1fr; justify-items: center; margin: 0; }
-.tw-current-metrics dt { color: var(--terminal-text-secondary); font-size: 22px; font-weight: 700; text-align: center; }
+.tw-current-metrics dt { color: var(--terminal-text-secondary); font-size: 26px; font-weight: 700; line-height: 1.3; text-align: center; }
 .tw-current-metrics dd { margin: 8px 0 0; font-size: 52px; font-weight: 800; letter-spacing: -.03em; text-align: center; }
 /* 바람은 방향까지 담아 `동북동 9m/s`처럼 길어진다. 기온·습도와 같은 크기면 줄이 넘친다. */
 .tw-current-metrics dd.tw-metric-wind { font-size: 36px; white-space: nowrap; }
@@ -586,7 +598,8 @@ body { min-height: 100vh; overflow: hidden; }
 .tw-flight-head,
 .tw-flight-row { display: grid; grid-template-columns: 68px minmax(0, 1fr) 128px 104px 168px; align-items: center; column-gap: var(--terminal-space-4); }
 .tw-flight-head { align-content: center; border-bottom: 2px solid var(--terminal-border); }
-.tw-flight-head span { color: var(--terminal-text-secondary); font-size: 19px; font-weight: 700; letter-spacing: -.02em; text-align: center; }
+/* 19px는 55" 화면에서 약 6m까지만 읽힌다. 게이트 대기 구역은 3~10m다. */
+.tw-flight-head span { color: var(--terminal-text-secondary); font-size: 24px; font-weight: 700; letter-spacing: -.02em; text-align: center; }
 .tw-flight-head span:nth-child(2) { text-align: left; }
 .tw-flight-list { display: grid; grid-template-rows: repeat(5, 1fr); min-height: 0; margin: 0; padding: 0; list-style: none; }
 /* 모든 줄 높이를 같게 고정한다. 공동운항으로 편명이 두 개인 줄도 다른 줄과 높이가 같아야
@@ -608,8 +621,9 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .tw-flight-gate.is-changed strong, .tw-flight-time.is-delayed strong { color: var(--terminal-status-warning); }
 /* 상태 배지는 1안 `.operation-status`(색 점 + 색 글자)를 그대로 쓰고 크기만 이 줄에 맞춘다. */
 .tw-flight-row .operation-status { justify-self: center; gap: var(--terminal-space-2); }
-.tw-flight-row .operation-status i { width: 10px; height: 10px; }
-.tw-flight-row .operation-status strong { font-size: 23px; font-weight: 700; }
+.tw-flight-row .operation-status i { width: 14px; height: 14px; }
+/* 지연·탑승구 변경은 가장 급한 정보인데 가장 작았다(23px = 약 7m). */
+.tw-flight-row .operation-status strong { font-size: 30px; font-weight: 700; line-height: 1.3; }
 
 /* 예보 - 오늘 | 내일 8/5 | 모레 8/6 구간 제목, 그룹 경계에만 세로 구분선을 긋는다.
    칸 수가 시각에만 달렸고 도시와 무관해서, 도시가 바뀌어도 칸 폭이 변하지 않는다(자리 고정에 안전).
@@ -624,6 +638,9 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
      값이라 아이콘·기온보다 먼저 읽혀야 한다 - 맨 아래에 두면 다 보고 나서야 시각을 안다. */
   /* 구간 제목 / 시각 / 아이콘 / 차트(기온 숫자 포함) / 강수 */
   grid-template-rows: 36px 34px 84px 1fr 44px;
+}
+.wf-forecast-strip.is-precip-empty {
+  grid-template-rows: 36px 34px 84px 1fr;
   row-gap: 12px;
   min-height: 0;
   height: 100%;
@@ -632,7 +649,7 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 /* 칸을 내용 크기로 줄이지 않고(justify-items: center 금지) 열 폭만큼 늘린다. 줄어든 칸에
    테두리를 그리면 선이 열 경계가 아니라 글자 바로 옆에 붙어 `|오전`, `|29°`처럼 보인다. */
 .wf-forecast-row { display: grid; align-items: center; column-gap: var(--terminal-space-6); text-align: center; }
-.wf-forecast-row-label { justify-self: start; margin: 0; color: var(--terminal-text-secondary); font-size: 20px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.wf-forecast-row-label { justify-self: start; margin: 0; color: var(--terminal-text-secondary); font-size: 24px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
 /* 구간 구분선은 열 사이 여백(column-gap) 한가운데를 지난다. 음수 여백으로 선을 여백 중앙까지
    밀고 같은 값만큼 안쪽 여백을 줘서 글자 위치는 그대로 둔다. */
 .wf-forecast-strip .wf-group-start {
@@ -659,9 +676,9 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .wf-forecast-point { position: absolute; transform: translate(-50%, -50%); }
 .wf-forecast-point::before { display: block; width: 14px; height: 14px; border-radius: 50%; background: #2f80ed; content: ""; }
 .wf-forecast-point b { position: absolute; bottom: 22px; left: 50%; font-size: 52px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; transform: translateX(-50%); }
-.wf-forecast-precip-row b { display: inline-block; padding: 4px 14px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 24px; font-weight: 700; }
+.wf-forecast-precip-row b { display: inline-block; padding: 4px 14px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 28px; font-weight: 700; }
 .wf-forecast-precip-row b.is-highlighted { background: #fde3c8; color: #b1560a; }
-.wf-forecast-hour-row time { color: var(--terminal-text-secondary); font-size: 24px; font-weight: 600; }
+.wf-forecast-hour-row time { color: var(--terminal-text-secondary); font-size: 28px; font-weight: 600; }
 
 /* 운항 종료 화면은 가운데+예보 영역(2·3행)을 통째로 덮는다. `.terminal-empty-state`의
    `inset: 0`이 이 자리를 기준으로 채워지도록 격자 자리를 명시로 지정한다. */
@@ -698,9 +715,10 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .ww-header-city { display: flex; align-items: baseline; gap: 14px; min-width: 0; overflow: hidden; }
 .ww-header-city strong { min-width: 0; overflow: hidden; font-size: var(--terminal-type-destination); font-weight: 800; line-height: 1.16; letter-spacing: -.045em; white-space: nowrap; text-overflow: ellipsis; }
 .ww-header-city span { flex: 0 0 auto; color: var(--terminal-text-secondary); font-size: var(--terminal-type-airport-code); font-weight: 700; line-height: 1.16; }
-.ww-header-clock { display: flex; align-items: baseline; justify-self: end; gap: 12px; white-space: nowrap; }
-.ww-header-clock span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
-.ww-header-clock strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
+.ww-header-clock { display: grid; justify-items: end; justify-self: end; row-gap: 2px; white-space: nowrap; }
+.ww-header-time { display: flex; align-items: baseline; gap: 12px; }
+.ww-header-time span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
+.ww-header-time strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
 
 /* 나가는 화면과 들어오는 화면을 같은 격자칸에 포갠다 - 2안과 같은 이유(전환 중 겹침 방지). */
 .ww-viewport { position: relative; display: grid; grid-row: 2 / span 2; min-height: 0; }
@@ -727,6 +745,9 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
   display: grid;
   /* 시각 / 아이콘 / 차트(기온 숫자 포함) / 강수 */
   grid-template-rows: 32px 76px 1fr 42px;
+}
+.ww-hourly-strip.is-precip-empty {
+  grid-template-rows: 32px 76px 1fr;
   row-gap: 10px;
   min-height: 0;
   height: 100%;
@@ -734,7 +755,7 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 }
 /* 칸을 내용 크기로 줄이지 않고 열 폭만큼 늘린다(2안과 같은 이유 - 줄어든 칸에는 글자 옆에 선이 붙는다). */
 .ww-hourly-row { display: grid; align-items: center; column-gap: var(--terminal-space-4); text-align: center; }
-.ww-hourly-row-label, .ww-strip-title { justify-self: start; margin: 0; color: var(--terminal-text-secondary); font-size: 19px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.ww-hourly-row-label, .ww-strip-title { justify-self: start; margin: 0; color: var(--terminal-text-secondary); font-size: 24px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
 .ww-strip-title { color: #23334b; font-size: 23px; }
 .ww-hourly-icon { display: grid; height: 74px; place-items: center; }
 .ww-hourly-icon img { width: 74px; height: 74px; object-fit: contain; }
@@ -748,9 +769,9 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .ww-hourly-point::before { display: block; width: 13px; height: 13px; border-radius: 50%; background: #2f80ed; content: ""; }
 .ww-hourly-point b { position: absolute; bottom: 20px; left: 50%; font-size: 46px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; transform: translateX(-50%); }
 /* 2안 예보 기온과 같은 크기·같은 근거(1안 `.arrival-time strong`)를 쓴다. */
-.ww-hourly-precip-row b { display: inline-block; padding: 4px 12px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 22px; font-weight: 700; }
+.ww-hourly-precip-row b { display: inline-block; padding: 4px 12px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 28px; font-weight: 700; }
 .ww-hourly-precip-row b.is-highlighted { background: #fde3c8; color: #b1560a; }
-.ww-hourly-hour-row time { color: var(--terminal-text-secondary); font-size: 22px; font-weight: 600; }
+.ww-hourly-hour-row time { color: var(--terminal-text-secondary); font-size: 28px; font-weight: 600; }
 
 /* 오른쪽 주간 - 다섯 줄 고정. 아이콘과 기온을 짝지어 붙인다(각 칸 안에서 flex로 묶는다) -
    떨어뜨리면 어느 아이콘이 어느 기온인지 승객이 눈으로 이어야 한다. */
@@ -758,8 +779,8 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .ww-weekly-header { display: grid; grid-template-columns: auto 1fr 1fr; column-gap: var(--terminal-space-4); padding: 0 var(--terminal-safe-side) 6px var(--terminal-space-5); }
 /* `오전`만으로는 파란 숫자가 그 시간대 기온인지 하루 최저인지 알 수 없다. 무엇을 보고 있는지
    제목에 함께 적는다. */
-.ww-weekly-header span:not(:first-child) { display: flex; align-items: baseline; justify-content: center; gap: var(--terminal-space-1); color: var(--terminal-text-secondary); font-size: 22px; font-weight: 700; }
-.ww-weekly-header b { font-size: 22px; font-weight: 800; }
+.ww-weekly-header span:not(:first-child) { display: flex; align-items: baseline; justify-content: center; gap: var(--terminal-space-1); color: var(--terminal-text-secondary); font-size: 26px; font-weight: 700; line-height: 1.3; }
+.ww-weekly-header b { font-size: 26px; font-weight: 800; }
 .ww-weekly-header b.ww-temp-min { color: #1d6fd0; }
 .ww-weekly-header b.ww-temp-max { color: #c0392b; }
 .ww-weekly-list { display: grid; grid-template-rows: repeat(5, 1fr); height: 100%; margin: 0; padding: 0 var(--terminal-safe-side) var(--terminal-space-3) var(--terminal-space-5); list-style: none; }
@@ -773,7 +794,7 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
    가로로 나란히 두고 기준선을 맞춘다 - 겹치지도 않고 한 줄로 읽힌다. */
 .ww-weekly-date { display: flex; align-items: baseline; gap: var(--terminal-space-2); }
 .ww-weekly-date strong { font-size: 30px; font-weight: 800; line-height: 1.2; }
-.ww-weekly-date span { color: var(--terminal-text-secondary); font-size: 18px; font-weight: 600; line-height: 1.2; }
+.ww-weekly-date span { color: var(--terminal-text-secondary); font-size: 24px; font-weight: 600; line-height: 1.2; }
 .ww-weekly-icon { display: grid; width: 60px; height: 60px; flex: 0 0 60px; place-items: center; }
 .ww-weekly-icon img { width: 60px; height: 60px; object-fit: contain; }
 /* 1안의 시각 숫자 크기(`--terminal-type-primary-time`)를 그대로 쓴다. */

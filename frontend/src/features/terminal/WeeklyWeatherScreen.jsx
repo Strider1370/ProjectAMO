@@ -47,8 +47,11 @@ function HourlyStrip({ cells }) {
     ? `${chartPoints[0].x},100 ${line} ${chartPoints[chartPoints.length - 1].x},100`
     : '';
   const precipKind = cells.find((cell) => cell?.precipKind)?.precipKind;
+  /* 여덟 칸이 전부 0%면 화면 폭을 쓰면서 아무것도 알려주지 않는다. 그 줄을 접고
+     높이를 기온 곡선에 준다. 비가 오는 날에만 줄이 나타나 눈에 띈다. */
+  const hasPrecip = cells.some((cell) => Number.isFinite(cell?.precipValue) && cell.precipValue > 0);
   return (
-    <div className="ww-hourly-strip">
+    <div className={`ww-hourly-strip${hasPrecip ? "" : " is-precip-empty"}`}>
       <div className="ww-hourly-row ww-hourly-hour-row" style={{ gridTemplateColumns: columns }}>
         <i aria-hidden="true" />
         {slots.map((cell, index) => <time key={index}>{cell?.label ?? ''}</time>)}
@@ -74,7 +77,7 @@ function HourlyStrip({ cells }) {
           ))}
         </div>
       </div>
-      <div className="ww-hourly-row ww-hourly-precip-row" style={{ gridTemplateColumns: columns }}>
+      {hasPrecip && <div className="ww-hourly-row ww-hourly-precip-row" style={{ gridTemplateColumns: columns }}>
         <p className="ww-hourly-row-label">{precipKind === 'amount' ? '강수량 mm' : '강수확률 %'}</p>
         {/* 알약 배경은 안쪽 <b>에만 준다. 2안과 같은 이유다. */}
         {slots.map((cell, index) => (
@@ -84,7 +87,7 @@ function HourlyStrip({ cells }) {
             </b>
           </span>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -149,6 +152,7 @@ export default function WeeklyWeatherScreen({
   departureAirports,
   departureAirportIcao,
   onSelectDepartureAirport,
+  frameSeconds = 30,
 }) {
   const flights = frame?.flights || [];
   // 화면 하나가 도시 하나를 맡는다 - 첫 편의 목적지 정보(도시명·현재날씨)가 화면 전체를 대표한다.
@@ -166,7 +170,19 @@ export default function WeeklyWeatherScreen({
             : <strong>{departureName}</strong>}
         </div>
         <DestinationPager destinations={destinations} destinationIndex={destinationIndex} />
-        <div className="ww-header-clock"><span>{clock.date}</span><strong>{clock.time}</strong></div>
+        <div className="ww-header-clock">
+          {/* 도시 이름만 크게 있으면 처음 본 승객이 출발 안내판인지 날씨 화면인지 모른다. */}
+          <p className="tw-screen-title">가는 곳 날씨</p>
+          <div className="ww-header-time"><span>{clock.date}</span><strong>{clock.time}</strong></div>
+        </div>
+        {/* 30초마다 도시가 바뀌는데 남은 시간을 모르면, 주간 예보를 읽다 화면이 넘어갔을 때
+            승객이 처음부터 다시 기다려야 할지 판단할 수 없다. */}
+        <i
+          className="tw-frame-progress"
+          style={{ "--frame-seconds": `${frameSeconds}s` }}
+          key={`${frame?.code ?? ''}-${frame?.page ?? 0}`}
+          aria-hidden="true"
+        />
       </header>
       <TerminalSettings>
         <DepartureAirportSelect airports={departureAirports} selectedIcao={departureAirportIcao} onSelect={onSelectDepartureAirport} />

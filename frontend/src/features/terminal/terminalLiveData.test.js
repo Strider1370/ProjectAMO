@@ -43,7 +43,9 @@ test('국내 목적지는 AMOS 습도를 쓰고 바람·체감은 METAR에서 �
   })
 
   assert.deepEqual(result.current, {
+    // observedAt은 화면이 "언제 잰 값인지"를 함께 보여주기 위해 붙인다.
     icon: 'rain', temp: 29, feels: '31℃', humidity: '81%', wind: '남 5m/s',
+    observedAt: '2026-08-02T00:00:00.000Z',
   })
   assert.equal(result.liveWeather.updatedAt, '2026-08-02T00:00:00.000Z')
 })
@@ -70,6 +72,7 @@ test('해외 목적지는 AMOS가 없으니 이슬점으로 습도를 계산한�
 
   assert.deepEqual(result.current, {
     icon: 'sun', temp: 29, feels: '30℃', humidity: '70%', wind: '남남서 7m/s',
+    observedAt: '2026-08-03T10:30:00.000Z',
   })
 })
 

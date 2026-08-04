@@ -280,10 +280,14 @@ export function FlightRow({ flight }) {
         <strong>{flight.revised ?? flight.departure}</strong>
       </div>
       <div className={`tw-flight-gate${isGateChanged ? " is-changed" : ""}`}>
-        <strong>{UNDECIDED_VALUES.has(flight.gate) ? <em className="value-unknown">{flight.gate}</em> : flight.gate}</strong>
+        {/* 숫자가 올 자리에 `확인 중` 같은 상태 문구가 들어가면 열의 뜻이 흔들린다.
+            미정은 기호로 두고 상태는 상태 칸이 말하게 한다. */}
+        <strong>{UNDECIDED_VALUES.has(flight.gate) ? <em className="value-unknown" aria-label="탑승구 미정">–</em> : flight.gate}</strong>
       </div>
       {/* 상태는 1안의 `.operation-status`를 그대로 쓴다 - 색 점과 색 글자가 한 덩어리로 붙어야
           지연·탑승구 변경이 무채색 글자 사이에서 눈에 띈다. */}
+      {/* 색만 다르면 적록색각 이상(남성 약 8%)에게 정상과 지연이 같아 보인다. 지연은 점을
+          마름모로 바꿔 모양으로도 구분되게 한다. */}
       <div className={`operation-status${isDelayed || isGateChanged ? " is-delay" : ""}`}>
         <i />
         <strong>{flight.status}</strong>
@@ -337,14 +341,26 @@ export function DestinationPager({ destinations, destinationIndex }) {
 
 /** 아이콘 · 지금 도시 · 기온 · 하늘상태/바람 · 출발지 대비 기온차. 기온차 자리는 비어도 유지한다 -
  * 도시마다 있고 없고가 갈리면 현재날씨 가로 배치가 전환 중에 밀린다. */
+/** METAR 관측 시각을 `01:30`으로 줄인다. 값이 언제 것인지 모르면 낡은 값이 떠 있어도 알 수 없다. */
+function formatObservedAt(value) {
+  if (!value) return null;
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return null;
+  const kst = new Date(at.getTime() + 9 * 60 * 60 * 1000);
+  return `${String(kst.getUTCHours()).padStart(2, '0')}:${String(kst.getUTCMinutes()).padStart(2, '0')}`;
+}
+
 export function CurrentWeatherBlock({ flight, departureName, departureTemp }) {
   const gap = temperatureGap(departureTemp, flight.current.temp);
+  const observedAt = formatObservedAt(flight.current.observedAt);
   return (
     <div className="tw-current-weather">
       <div className="tw-current-weather-main">
         <span className="tw-current-weather-icon"><BoardWeatherImage type={flight.current.icon} /></span>
         <div className="tw-current-weather-body">
-          <p className="tw-current-weather-title">지금 {flight.city}</p>
+          {/* 도시명은 화면 제목에 이미 크게 있다. 여기서는 `지금`과 관측 시각만 말한다 -
+              값이 방금 것인지 한 시간 전 것인지 알 수 없으면 승객이 판단을 못 한다. */}
+          <p className="tw-current-weather-title">지금{observedAt && <time> · {observedAt} 관측</time>}</p>
           <strong className="tw-current-weather-temp">
             {flight.current.temp == null ? <em className="value-unknown">확인 중</em> : <>{flight.current.temp}<small>°C</small></>}
           </strong>

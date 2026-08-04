@@ -115,6 +115,8 @@ export function mergeTerminalLiveWeather(flight, { airportCatalog = [], metar, m
     ...(feels != null ? { feels: `${Math.round(feels)}℃` } : {}),
     ...(humidity != null ? { humidity: `${Math.round(humidity)}%` } : {}),
     ...(wind ? { wind } : {}),
+    // 화면이 "언제 잰 값인지"를 함께 보여줘야 낡은 값이 떠 있어도 승객이 알아챈다.
+    ...(metarRecord.header?.observation_time ? { observedAt: metarRecord.header.observation_time } : {}),
   }
 
   return {
