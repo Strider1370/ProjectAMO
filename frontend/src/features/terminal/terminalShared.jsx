@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { MdInfoOutline, MdSettings } from "react-icons/md";
-import { WiCloud, WiCloudy, WiDayCloudy, WiDaySunny, WiRain, WiShowers, WiThunderstorm } from "react-icons/wi";
+import { WiCloud, WiCloudy, WiDayCloudy, WiDaySunny, WiHumidity, WiRain, WiShowers, WiStrongWind, WiThermometer, WiThunderstorm } from "react-icons/wi";
 import amoWordmark from "./assets/amo-wordmark.png";
 import airportWeatherQr from "./assets/airport-weather-qr.svg";
 import forecastCloud from "./assets/forecast-cloud-transparent.png";
@@ -319,7 +319,7 @@ export function FlightList({ flights, fillRows = true, showAirline = false, over
       </div>
       <div className="tw-flight-list-viewport">
         <ul className={`tw-flight-list${overflowing ? " is-overflowing" : ""}${rolling ? " is-rolling" : ""}`} style={{ "--tw-flight-row-count": rowCount }}>
-          {rows.map((flight, index) => <FlightRow flight={flight} showAirline={showAirline} key={`${index}-${flight.flightKey}`} />)}
+          {rows.map((flight, index) => <FlightRow flight={flight} showAirline={showAirline} key={index} />)}
           {Array.from({ length: emptyCount }, (_, index) => <li className="is-empty" aria-hidden="true" key={`empty-${index}`} />)}
         </ul>
       </div>
@@ -365,12 +365,19 @@ export function CurrentWeatherBlock({ flight, departureName, departureTemp, vari
   const gap = temperatureGap(departureTemp, flight.current.temp);
   const observedAt = formatObservedAt(flight.current.observedAt);
   const localTime = String(flight.localClock || '').split(' ').at(-1);
+  const isTerminalWeather = variant === 'terminal-weather';
+  const showDestinationClock = isTerminalWeather || variant === 'weekly';
+  const showLocalClock = showDestinationClock && (!isTerminalWeather || flight.localZone !== 'KST');
+  const gapSentence = gap && `${shortAirportName(departureName)}보다 ${gap.value}°C ${gap.sign === '+' ? '높아요' : '낮아요'}`;
   return (
-    <div className="tw-current-weather">
+    <div className={`tw-current-weather${isTerminalWeather ? ` tw-current-weather--terminal tw-current-weather--${flight.current.icon}` : ''}`}>
       {/* 도시명은 이 블록의 것이다. 머리띠에 두면 화면 제목처럼 읽혀 무슨 화면인지와
           어느 도시인지가 뒤섞인다. 머리띠는 화면 이름, 여기는 값의 주인을 말한다. */}
-      <p className="tw-current-city"><strong>{variant === 'weekly' ? flight.displayName || flight.city : flight.city}</strong>{variant !== 'weekly' && <span>{flight.code}</span>}</p>
-      {variant === 'weekly' && <p className="tw-current-local-clock">현지 시각 <time>{localTime} {flight.localZone}</time></p>}
+      <p className="tw-current-city" data-testid={isTerminalWeather ? 'current-weather-city' : undefined}>
+        <strong>{showDestinationClock ? flight.displayName || flight.city : flight.city}</strong>
+        {(isTerminalWeather || !showDestinationClock) && <span>{flight.code}</span>}
+      </p>
+      {showLocalClock && <p className="tw-current-local-clock" data-testid={isTerminalWeather ? 'current-weather-local-clock' : undefined}>현지 시각 <time>{localTime} {flight.localZone}</time></p>}
       <div className="tw-current-weather-main">
         <span className="tw-current-weather-icon"><BoardWeatherImage type={flight.current.icon} /></span>
         <div className="tw-current-weather-body">
@@ -381,18 +388,19 @@ export function CurrentWeatherBlock({ flight, departureName, departureTemp, vari
             {flight.current.temp == null ? <em className="value-unknown">확인 중</em> : <>{flight.current.temp}<small>°C</small></>}
           </strong>
           <p className="tw-current-weather-detail"><WeatherCondition type={flight.current.icon} /></p>
+          {isTerminalWeather && gapSentence && <p className="tw-current-gap">{gapSentence}</p>}
         </div>
       </div>
       {variant === 'weekly' && gap && <p className="tw-current-gap">{shortAirportName(departureName)}보다 {gap.sign}{gap.value}°</p>}
       {/* 체감·습도·바람은 이미 관측에서 계산해 두고도 화면에 안 쓰던 값이다. 방송 기상 그래픽이
           수십 년 쓰는 세로 칸 구조로 나란히 둔다 - 승객이 묻는 "뭘 입지"에 답하는 값들이다.
           값이 없는 항목은 칸째 비우지 않고 `-`로 자리를 지킨다(도시마다 칸 수가 달라지면 안 된다). */}
-      <dl className="tw-current-metrics">
-        <div><dt>체감</dt><dd>{displayTemperature(flight.current.feels ?? '-')}</dd></div>
-        <div><dt>습도</dt><dd>{flight.current.humidity ?? '-'}</dd></div>
-        <div><dt>바람</dt><dd className="tw-metric-wind">{flight.current.wind ?? '-'}</dd></div>
+      <dl className="tw-current-metrics" data-testid={isTerminalWeather ? 'current-weather-metrics' : undefined}>
+        <div><dt>{isTerminalWeather && <WiThermometer aria-hidden="true" />}<span>체감</span></dt><dd>{displayTemperature(flight.current.feels ?? '-')}</dd></div>
+        <div><dt>{isTerminalWeather && <WiHumidity aria-hidden="true" />}<span>습도</span></dt><dd>{flight.current.humidity ?? '-'}</dd></div>
+        <div><dt>{isTerminalWeather && <WiStrongWind aria-hidden="true" />}<span>바람</span></dt><dd className="tw-metric-wind">{flight.current.wind ?? '-'}</dd></div>
         {/* 2안은 기온차를 네 번째 칸에, 3안은 시안의 강조 알약으로 둔다. */}
-        {variant !== 'weekly' && <div className="tw-metric-gap">
+        {!isTerminalWeather && variant !== 'weekly' && <div className="tw-metric-gap">
           <dt>{gap ? `${shortAirportName(departureName)}보다` : ''}</dt>
           <dd>{gap ? `${gap.sign}${gap.value}°` : ''}</dd>
         </div>}

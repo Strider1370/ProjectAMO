@@ -53,12 +53,19 @@ function computeColumnSpans(periods, textFn) {
 }
 
 export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = false }) {
-  // 모바일: 테이블 고정. 데스크톱·태블릿: 타임라인 고정. 뷰 토글 없음.
-  const [view] = useState(() =>
-    forceCompact || (typeof window !== 'undefined' && window.matchMedia('(max-width: 719px)').matches)
-      ? 'table'
-      : 'timeline',
-  )
+  // 모바일·태블릿: 테이블 고정. 데스크톱: 타임라인 고정. 뷰 토글 없음.
+  // 타임라인은 패널 폭이 좁아지면 칸이 잘게 쪼개져 값이 칸 밖으로 넘친다. 패널 폭은
+  // clamp(560px, 50vw, 960px)라 화면이 좁을수록 패널도 좁다 — 아이패드 11" 가로(1194px)에서
+  // 패널 597px, 가장 좁은 칸 57px이라 바람(14006KT)이 잘렸다.
+  // 데스크톱(패널 720px)도 변화구간이 많은 TAF에서는 바람 값이 넘친다 — 그건 타임라인 자체 문제라 여기서 다루지 않는다.
+  const [{ view, compact }] = useState(() => {
+    if (forceCompact) return { view: 'table', compact: true }
+    if (typeof window === 'undefined') return { view: 'timeline', compact: false }
+    // 휴대폰은 기존 그대로(가로 스크롤 표). 태블릿·좁은 창은 표에 좁은 폭 기하까지 적용한다.
+    if (window.matchMedia('(max-width: 719px)').matches) return { view: 'table', compact: false }
+    if (window.matchMedia('(max-width: 1279px)').matches) return { view: 'table', compact: true }
+    return { view: 'timeline', compact: false }
+  })
   const { tz } = useTimeZone()
   const { nowMs } = useDemoMode()
   if (!taf) return <div className="ap-empty">TAF 데이터 없음</div>
@@ -68,7 +75,7 @@ export default function EnhancedTafTab({ taf, icao, eta = null, forceCompact = f
   const tacLines = buildTafTacLines(taf, icao)
 
   return (
-    <div className={`ap-taf${forceCompact ? ' ap-taf--compact' : ''}`}>
+    <div className={`ap-taf${compact ? ' ap-taf--compact' : ''}`}>
       {rawTimeline.length === 0 && <div className="ap-empty">TAF 시간대 데이터 없음</div>}
       {rawTimeline.length > 0 && slots.length === 0 && <div className="ap-empty">TAF 유효 기간 만료</div>}
 

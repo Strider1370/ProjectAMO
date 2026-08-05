@@ -59,20 +59,21 @@ export function matchTyphoonHazards({ typhoons = [], axis, etd, eta, enRouteRang
       // 스펙 §10은 "예보 시점마다"다. 지나온 분석 행까지 돌면 이미 지나간 위치를 보고하게 되고,
       // 힌남노 기준 태풍당 39번 회랑 스캔이 돈다. 현재 위치와 예보만 본다.
       if (!row.forecast && !isSameRow(row, typhoon.current)) continue
-      const geometry = judgementPolygon(row)
-      if (!geometry) { missingGeometry = true; continue }
       const window = windowOf(row.validAt, stepHours)
       if (!window) continue
+      // 시간이 확실히 어긋나면(null) 그 시점은 채택하지 않는다. 반경 결측도 마찬가지다 —
+      // 착륙 한참 뒤 예보시점의 강풍반경이 비어 있다는 이유로 오늘 비행에 태풍 카드를 띄우면 안 된다.
+      const status = evaluateTimeStatus({ etd, eta, validFrom: window.from, validTo: window.to })
+      if (status === null) continue
+
+      const geometry = judgementPolygon(row)
+      if (!geometry) { missingGeometry = true; continue }
 
       const exposure = evaluateHorizontalExposure({ axis, geometry, enRouteRange })
       const { hit: hitAirports, unknown } = airportsInside(geometry, airports)
       unknown.forEach((icao) => { if (icao) unknownAirports.add(icao) })
       const routeHit = exposure.status === HORIZONTAL_EXPOSURE.INTERSECTS
       if (!routeHit && hitAirports.length === 0) continue
-
-      // 시간이 확실히 어긋나면(null) 그 시점은 채택하지 않는다.
-      const status = evaluateTimeStatus({ etd, eta, validFrom: window.from, validTo: window.to })
-      if (status === null) continue
 
       if (routeHit) {
         horizontalExposure = exposure

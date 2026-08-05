@@ -659,22 +659,26 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
     if (modeRef.current === 'click-add') addPointRef.current?.([event.lngLat.lng, event.lngLat.lat])
   })
 
+  // 터치(아이패드 Safari)에서는 mousedown/mousemove/mouseup이 오지 않는다 — 손가락으로 그으면
+  // 지도만 끌려 다녔다. 마우스와 터치를 같은 핸들러에 함께 건다(위 웨이포인트 드래그와 같은 방식).
   let drawing = null
-  map.on('mousedown', (event) => {
+  const beginDraw = (event) => {
     if (modeRef.current !== 'draw') return
+    // 두 손가락은 확대·축소로 넘긴다.
+    if (event.points && event.points.length > 1) return
     event.preventDefault()
     drawing = [[event.lngLat.lng, event.lngLat.lat]]
     map.getSource(ROUTE_DRAW_SOURCE)?.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: drawing } }] })
     map.dragPan.disable()
     statusRef.current?.('그리는 중… FIX를 지나는 선을 그리세요')
-  })
-  map.on('mousemove', (event) => {
-    if (drawing) {
-      drawing.push([event.lngLat.lng, event.lngLat.lat])
-      map.getSource(ROUTE_DRAW_SOURCE)?.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: drawing } }] })
-    }
-  })
-  map.on('mouseup', (event) => {
+  }
+  const extendDraw = (event) => {
+    if (!drawing) return
+    event.preventDefault?.()
+    drawing.push([event.lngLat.lng, event.lngLat.lat])
+    map.getSource(ROUTE_DRAW_SOURCE)?.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: drawing } }] })
+  }
+  const finishDraw = (event) => {
     if (!drawing) return
     drawing.push([event.lngLat.lng, event.lngLat.lat])
     const coordinates = drawing
@@ -684,11 +688,26 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
       statusRef.current?.('선에서 항로 FIX를 찾는 중…')
       addPointRef.current?.({ type: 'draw', coordinates })
     }
-  })
+  }
+  const cancelDraw = () => {
+    if (!drawing) return
+    drawing = null
+    map.getSource(ROUTE_DRAW_SOURCE)?.setData({ type: 'FeatureCollection', features: [] })
+    map.dragPan.enable()
+    statusRef.current?.('')
+  }
+  map.on('mousedown', beginDraw)
+  map.on('touchstart', beginDraw)
+  map.on('mousemove', extendDraw)
+  map.on('touchmove', extendDraw)
+  map.on('mouseup', finishDraw)
+  map.on('touchend', finishDraw)
+  map.on('touchcancel', cancelDraw)
 
   let detourStart = null
   const beginDetour = (event) => {
     if (modeRef.current !== 'segment-detour') return
+    if (event.points && event.points.length > 1) return
     event.preventDefault()
     detourStart = event.point
     map.dragPan.disable()
@@ -696,13 +715,17 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
   }
   map.on('mousedown', ROUTE_DESIGN_LINE_HIT, beginDetour)
   map.on('mousedown', ROUTE_PREVIEW_LINE_HIT, beginDetour)
-  map.on('mouseup', (event) => {
+  map.on('touchstart', ROUTE_DESIGN_LINE_HIT, beginDetour)
+  map.on('touchstart', ROUTE_PREVIEW_LINE_HIT, beginDetour)
+  const finishDetour = (event) => {
     if (!detourStart) return
     detourStart = null
     map.dragPan.enable()
     statusRef.current?.('우회 지점을 항로 FIX로 확인하는 중…')
     addPointRef.current?.({ type: 'segment-detour', coordinates: [event.lngLat.lng, event.lngLat.lat] })
-  })
+  }
+  map.on('mouseup', finishDetour)
+  map.on('touchend', finishDetour)
 
   map.on('mousemove', () => {
     if (drawing || detourStart) return

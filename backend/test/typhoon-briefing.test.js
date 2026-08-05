@@ -116,3 +116,27 @@ test('공항이 영향권에 들면 공항 코드가 담긴다', () => {
 test('활성 태풍이 없으면 빈 배열이다', () => {
   assert.deepEqual(matchTyphoonHazards({ typhoons: [], axis, etd: '2022-09-05T02:00:00.000Z', eta: '2022-09-05T03:30:00.000Z', airports: [] }), [])
 })
+
+// 구지라(2026-14호) 실사례: +36h 예보의 강풍반경이 결측이었는데, 판정 자체를 못 한 태풍으로
+// 취급되어 18시간 전에 착륙하는 비행의 위험 요약에 "태풍 주변?"이 떴다.
+test('비행시간 밖 시점의 반경 결측은 판정 불가로 올리지 않는다', () => {
+  const base = typhoonAt({ lat: 20.0, lon: 140.0, validAt: '2022-09-05T03:00:00.000Z' })
+  base.rows = [
+    { ...base.rows[0], validAt: '2022-09-05T03:00:00.000Z', leadHours: 12 },
+    { ...base.rows[0], validAt: '2022-09-05T15:00:00.000Z', leadHours: 24, gale: null },
+  ]
+  const hazards = matchTyphoonHazards({
+    typhoons: [base], axis, etd: '2022-09-05T02:00:00.000Z', eta: '2022-09-05T03:30:00.000Z', airports: [],
+  })
+  assert.deepEqual(hazards, [])
+})
+
+test('비행시간과 겹치는 시점의 반경 결측은 판정 불가로 올린다', () => {
+  const base = typhoonAt({ lat: 34.3, lon: 127.7, validAt: '2022-09-05T03:00:00.000Z' })
+  base.rows = [{ ...base.rows[0], validAt: '2022-09-05T03:00:00.000Z', leadHours: 12, gale: null }]
+  const [hazard] = matchTyphoonHazards({
+    typhoons: [base], axis, etd: '2022-09-05T02:00:00.000Z', eta: '2022-09-05T03:30:00.000Z', airports: [],
+  })
+  assert.equal(hazard.confidence, 'unavailable')
+  assert.equal(hazard.horizontalExposure.status, 'unavailable')
+})

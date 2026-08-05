@@ -206,7 +206,8 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
         <div className="bv-haz-main">
           <div className="bv-haz-line1">
             <Icon size={16} className="bv-haz-icon" aria-hidden />
-            <span>{phenomenonKo(h.code) || h.label}</span>
+            {/* 태풍은 코드(TC)가 아니라 번호·이름이 식별자다 — "태풍"만 띄우면 어느 태풍인지 알 수 없다 */}
+            <span>{h.source === 'TYPHOON' ? (h.label || phenomenonKo(h.code)) : (phenomenonKo(h.code) || h.label)}</span>
             {h.code ? <span className="bv-haz-code">{h.code}</span> : null}
             {/* 밴드는 경로위험만 — 공항경보는 고도밴드 개념 없음 */}
             {!h.airportScope && (

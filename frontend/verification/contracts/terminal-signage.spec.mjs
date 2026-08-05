@@ -66,7 +66,7 @@ const liveFlight = ({
 const routeTerminalFeed = async (page, rows) => {
   await page.unroute('**/api/terminal-flights')
   await page.route('**/api/terminal-flights', (route) => route.fulfill({
-    json: { fetched_at: '2026-08-05T10:30:00.000Z', airports: { RKSS: rows } },
+    json: { fetched_at: new Date().toISOString(), airports: { RKSS: rows } },
   }))
 }
 
@@ -95,29 +95,107 @@ test('terminal-signage 3안은 위아래 패널의 세로 분할선을 맞춘다
 
   const boundaries = await page.evaluate(() => ({
     upper: document.querySelector('.ww-middle > :first-child').getBoundingClientRect().right,
+    upperNext: document.querySelector('.ww-middle > :nth-child(2)').getBoundingClientRect().left,
     lower: document.querySelector('.ww-bottom > :first-child').getBoundingClientRect().right,
+    lowerNext: document.querySelector('.ww-bottom > :nth-child(2)').getBoundingClientRect().left,
   }))
 
   expect(Math.abs(boundaries.upper - boundaries.lower)).toBeLessThanOrEqual(1)
+  expect(boundaries.upperNext - boundaries.upper).toBeGreaterThan(0)
+  expect(boundaries.lowerNext - boundaries.lower).toBeGreaterThan(0)
 })
 
-test('terminal-signage 3안 항공편 패널은 목적지와 노선을 먼저 보여준다', async ({ page }) => {
+test('terminal-signage 2안과 3안은 전환 진행선과 수치 날씨 레일을 표시한다', async ({ page }) => {
+  for (const [view, screenId] of [['weather', 'option-two'], ['rail', 'option-three']]) {
+    await page.goto(`/terminal/rkss?view=${view}&autoplay=0`)
+    const screen = page.getByTestId(screenId)
+
+    await expect(screen.getByRole('heading', { name: '목적지 날씨' })).toBeVisible()
+    await expect(screen.getByTestId('frame-progress')).toBeVisible()
+    await expect(screen.getByTestId('current-weather-metrics')).toContainText('체감')
+    await expect(screen.getByTestId('current-weather-metrics')).toContainText('습도')
+    await expect(screen.getByTestId('current-weather-metrics')).toContainText('바람')
+  }
+})
+
+test('terminal-signage 현재 기상 수치는 한 덩어리로 읽히며 멀리서도 식별된다', async ({ page }) => {
+  await page.goto('/terminal/rkss?view=weather&autoplay=0')
+  const metrics = page.getByTestId('current-weather-metrics')
+
+  const layout = await metrics.evaluate((element) => {
+    const firstValue = element.querySelector('dd')
+    const style = window.getComputedStyle(firstValue)
+    const items = [...element.children].map((item) => item.getBoundingClientRect())
+    const dividers = [...element.querySelectorAll(':scope > div + div')].map((item) => {
+      const rect = item.getBoundingClientRect()
+      const divider = window.getComputedStyle(item, '::before')
+      return rect.left + Number.parseFloat(divider.left) + Number.parseFloat(divider.width) / 2
+    })
+    const firstMetric = element.querySelector(':scope > div')
+    const label = firstMetric.querySelector('dt').getBoundingClientRect()
+    const value = firstMetric.querySelector('dd').getBoundingClientRect()
+    return {
+      width: element.getBoundingClientRect().width,
+      panelWidth: element.closest('.tw-current-weather').getBoundingClientRect().width,
+      valueSize: Number.parseFloat(style.fontSize),
+      columnGap: Number.parseFloat(window.getComputedStyle(element).columnGap),
+      itemCenters: items.map((item) => (item.left + item.right) / 2),
+      dividerCenters: dividers,
+      labelValueGap: value.top - label.bottom,
+    }
+  })
+
+  expect(layout.width).toBeLessThan(layout.panelWidth * 0.8)
+  expect(layout.valueSize).toBeGreaterThanOrEqual(38)
+  expect(layout.columnGap).toBeGreaterThanOrEqual(24)
+  expect(layout.labelValueGap).toBeGreaterThanOrEqual(8)
+  expect(Math.abs(layout.dividerCenters[0] - (layout.itemCenters[0] + layout.itemCenters[1]) / 2)).toBeLessThanOrEqual(1)
+  expect(Math.abs(layout.dividerCenters[1] - (layout.itemCenters[1] + layout.itemCenters[2]) / 2)).toBeLessThanOrEqual(1)
+})
+
+test('terminal-signage 3안 항공편 패널은 노선 제목 없이 표를 바로 표시한다', async ({ page }) => {
   await page.goto('/terminal/rkss?view=rail&autoplay=0')
   const screen = page.getByTestId('option-three')
 
-  await expect(screen.getByRole('heading', { name: '김포국제공항 → 제주국제공항' })).toBeVisible()
-  await expect(screen.locator('.ww-flight-summary p')).toHaveCount(0)
+  await expect(screen.getByRole('heading', { name: '김포국제공항 → 제주국제공항' })).toHaveCount(0)
   await expect(screen.locator('.tw-flight-head')).toContainText('탑승구')
   await expect(screen).not.toContainText('도착 후 바로 확인할 정보')
 })
 
-test('terminal-signage 3안은 현지 시각과 항공사명을 보조 정보로 표시한다', async ({ page }) => {
+test('terminal-signage 3안 운항 상태는 주간 예보의 오른쪽 기준선 안에 둔다', async ({ page }) => {
+  await routeTerminalFeed(page, [
+    liveFlight({ flight: 'LJ461', airlineKorean: '진에어', airlineEnglish: 'JIN AIR', destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '09:20' }),
+  ])
+  await routeZeroPrecipForecast(page)
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  const screen = page.getByTestId('option-three')
+  await expect(screen.getByText('운항 예정', { exact: true }).first()).toBeVisible()
+
+  const status = screen.locator('.tw-flight-row .operation-status').first()
+  const weekly = screen.locator('.ww-weekly-header > span').last()
+  const [statusRight, weeklyRight] = await Promise.all([
+    status.evaluate((element) => element.getBoundingClientRect().right),
+    weekly.evaluate((element) => element.getBoundingClientRect().right),
+  ])
+
+  expect(weeklyRight - statusRight).toBeGreaterThanOrEqual(24)
+})
+
+test('terminal-signage 3안은 공항 IATA를 병기하고 해외 목적지에만 현지 시각을 표시한다', async ({ page }) => {
   await page.goto('/terminal/rkss?view=rail&autoplay=0')
   const screen = page.getByTestId('option-three')
 
-  await expect(screen).toContainText('현지 시각')
+  await expect(screen.getByTestId('current-weather-city')).toContainText('제주')
+  await expect(screen.getByTestId('current-weather-city')).toContainText('CJU')
+  await expect(screen.getByTestId('current-weather-local-clock')).toHaveCount(0)
   await expect(screen.getByTestId('tw-flight-row').first()).toContainText('티웨이항공')
-  await expect(screen.locator('.tw-pager-item.is-current')).toHaveText('제주')
+  await expect(screen.locator('.tw-current-city')).toHaveText('제주CJU')
+
+  await routeTerminalFeed(page, [
+    liveFlight({ flight: 'JL094', airlineKorean: '일본항공', airlineEnglish: 'JAPAN AIRLINES', destinationIata: 'KIX', destinationIcao: 'RJBB', destinationKorean: '오사카/간사이', destinationEnglish: 'OSAKA KANSAI', scheduled: '19:35' }),
+  ])
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  await expect(page.getByTestId('option-three').getByTestId('current-weather-local-clock')).toContainText('현지 시각')
 })
 
 test('terminal-signage 3안은 현재 목적지만 공항 이름까지 표시한다', async ({ page }) => {
@@ -128,19 +206,17 @@ test('terminal-signage 3안은 현재 목적지만 공항 이름까지 표시한
   await page.goto('/terminal/rkss?view=rail&autoplay=0')
   const screen = page.getByTestId('option-three')
 
-  await expect(screen.locator('.tw-pager-item.is-current')).toHaveText('제주')
-  await expect(screen.locator('.tw-pager-item').filter({ hasText: /^도쿄$/ })).toBeVisible()
+  await expect(screen.locator('.tw-current-city')).toContainText('제주')
   await page.keyboard.press('r')
-  await expect(screen.locator('.tw-pager-item.is-current')).toHaveText('도쿄 하네다')
-  await expect(screen.locator('.tw-current-city')).toHaveText('도쿄 하네다')
-  await expect(screen.locator('.ww-flight-summary')).toHaveText('김포국제공항 → 도쿄 하네다')
+  await expect(screen.locator('.tw-current-city')).toContainText('도쿄 하네다')
 })
 
-test('terminal-signage 3안 시간별 예보는 날씨와 온도 줄 제목을 표시한다', async ({ page }) => {
+test('terminal-signage 3안 시간별 예보는 제목과 날씨·온도 줄 제목을 표시한다', async ({ page }) => {
   await routeZeroPrecipForecast(page)
   await page.goto('/terminal/rkss?view=rail&autoplay=0')
   const hourly = page.getByTestId('option-three').locator('.ww-hourly-panel')
 
+  await expect(hourly.getByRole('heading', { name: '시간별 예보' })).toBeVisible()
   await expect(hourly.getByText('날씨', { exact: true })).toBeVisible()
   await expect(hourly.getByText('온도', { exact: true })).toBeVisible()
 })
@@ -262,7 +338,7 @@ test('terminal-signage 3안 해외 목적지는 예보와 항공사 로고를 �
   await page.goto('/terminal/rkss?view=rail&autoplay=0')
   const screen = page.getByTestId('option-three')
 
-  await expect(screen.locator('.tw-pager-item.is-current')).toHaveText('제주')
+  await expect(screen.locator('.tw-current-city')).toContainText('제주')
   await expect(screen.getByText('TW715', { exact: true })).toBeVisible()
   await page.keyboard.press('r')
   await expect(screen.locator('.tw-current-city')).toContainText('오사카')

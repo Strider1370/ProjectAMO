@@ -5,6 +5,9 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  /* iOS Safari는 overflow:hidden만으로 문서가 튕기는 것(rubber-band)을 막지 못한다. 패널 안에서
+     끝까지 스크롤하면 문서로 넘어가 화면 전체가 밀리고, position:fixed 패널이 함께 끌려간다. */
+  overscroll-behavior: none;
   background: var(--bg-3);
   /* 글꼴 단일 레버: --app-font 하나로 앱 전역(상속 텍스트 포함) 적용 */
   font-family: var(--app-font, system-ui, sans-serif);

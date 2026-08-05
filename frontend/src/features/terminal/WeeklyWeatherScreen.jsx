@@ -3,7 +3,6 @@ import { MdChevronRight } from "react-icons/md";
 import {
   CurrentWeatherBlock,
   DepartureAirportSelect,
-  DestinationPager,
   FlightList,
   MotionModeSwitcher,
 
@@ -181,7 +180,7 @@ function WeeklyPanel({ rows }) {
       {hasForecast ? <ul className="ww-weekly-list">
         {rows.map((row, index) => (
           // weeklyRows가 돌려주는 빈 줄은 얼려진 공유 객체라 값 기반 key를 못 쓴다. 순번을 쓴다.
-          <li className={`ww-weekly-row${row.empty ? " is-empty" : ""}`} aria-hidden={row.empty || undefined} key={index}>
+          <li className={`ww-weekly-row${row.empty ? " is-empty" : ""}${row.dayOfWeek === '토' ? ' is-saturday' : ''}${row.dayOfWeek === '일' ? ' is-sunday' : ''}`} aria-hidden={row.empty || undefined} key={index}>
             {!row.empty && (
               <>
                 <div className="ww-weekly-date">
@@ -240,7 +239,6 @@ export default function WeeklyWeatherScreen({
       <header className="ww-header">
         {/* 머리띠 왼쪽은 화면 이름이다. 도시명은 현재날씨 블록이 말한다. */}
         <h1 className="ww-header-title">목적지 날씨</h1>
-        <DestinationPager destinations={destinations} destinationIndex={destinationIndex} />
         <div className="ww-header-clock">
           <div className="ww-header-time"><span>{clock.date}</span><strong>{clock.time}</strong></div>
         </div>
@@ -251,6 +249,7 @@ export default function WeeklyWeatherScreen({
           style={{ "--frame-seconds": `${frameSeconds}s` }}
           key={`${frame?.code ?? ''}-${frame?.page ?? 0}`}
           aria-hidden="true"
+          data-testid="frame-progress"
         />
       </header>
       <TerminalSettings>
@@ -271,21 +270,18 @@ export default function WeeklyWeatherScreen({
             data-testid="ww-active-page"
           >
             <div className="ww-middle">
-              <CurrentWeatherBlock flight={primaryFlight} departureName={departureName} departureTemp={departureTemp} variant="weekly" />
+              <CurrentWeatherBlock flight={primaryFlight} departureName={departureName} departureTemp={departureTemp} variant="terminal-weather" />
               <div className="ww-flight-panel">
-                <div className="ww-flight-summary">
-                  <h2>{departureName} → {primaryFlight.airport}</h2>
-                </div>
                 <RollingFlightList flights={flights} />
               </div>
             </div>
             <div className="ww-bottom">
               <div className="ww-hourly-panel">
-                <h2 className="ww-panel-title">시간별</h2>
+                <h2 className="ww-panel-title">시간별 예보</h2>
                 <HourlyStrip cells={cells} />
               </div>
               <div className="ww-weekly-panel">
-                <h2 className="ww-panel-title">주간</h2>
+                <h2 className="ww-panel-title">주간 예보</h2>
                 <WeeklyPanel rows={rows} />
               </div>
             </div>

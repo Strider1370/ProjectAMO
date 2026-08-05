@@ -2,7 +2,6 @@ import { MdChevronRight } from "react-icons/md";
 import {
   CurrentWeatherBlock,
   DepartureAirportSelect,
-  DestinationPager,
   FlightList,
   MotionModeSwitcher,
   TerminalEmptyState,
@@ -159,7 +158,6 @@ export default function WeatherFirstScreen({
       <header className="wf-header">
         {/* 머리띠 왼쪽은 화면 이름이다. 도시명은 현재날씨 블록이 말한다. */}
         <h1 className="wf-header-title">목적지 날씨</h1>
-        <DestinationPager destinations={destinations} destinationIndex={destinationIndex} />
         <div className="wf-header-clock">
           <div className="wf-header-time"><span>{clock.date}</span><strong>{clock.time}</strong></div>
         </div>
@@ -170,6 +168,7 @@ export default function WeatherFirstScreen({
           style={{ "--frame-seconds": `${frameSeconds}s` }}
           key={`${frame?.code ?? ''}-${frame?.page ?? 0}`}
           aria-hidden="true"
+          data-testid="frame-progress"
         />
       </header>
       <TerminalSettings>
@@ -190,7 +189,7 @@ export default function WeatherFirstScreen({
             data-testid="wf-active-page"
           >
             <div className="wf-middle">
-              <CurrentWeatherBlock flight={primaryFlight} departureName={departureName} departureTemp={departureTemp} />
+              <CurrentWeatherBlock flight={primaryFlight} departureName={departureName} departureTemp={departureTemp} variant="terminal-weather" />
               <FlightList flights={flights} />
             </div>
             <ForecastStrip cells={cells} />
