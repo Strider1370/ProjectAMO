@@ -12,6 +12,7 @@ test('playback advances through QPF separately from KIM and wraps back to observ
     echoMeta: { frames: [{ tm: '202608041925', path: '/radar-1025.webp' }] },
     qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: observed, validTimeMs: qpf, leadMinutes: 10, path: '/qpf-10.webp' }] },
     visibility: { radar: true },
+    nowMs: observed,
   }
 
   const forecast = nextPlaybackTime(ordered, observed)

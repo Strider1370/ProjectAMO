@@ -195,6 +195,7 @@ test('날씨 fixture에 없는 목적지도 도시명을 잃지 않는다', () =
     ...FEED_ROW, destinationIata: 'YNJ', destinationKorean: '연길/옌지', destinationEnglish: 'YANJI',
   }])
   assert.equal(flight.destinationData.city, '옌지', '현행 표기를 쓴다')
+  assert.equal(flight.destinationData.airport, '옌지', '화면 노선명도 영문 피드 대신 한글 표기를 쓴다')
   assert.equal(flight.destinationData.current.temp, null, '없는 날씨를 지어내지 않는다')
 })
 

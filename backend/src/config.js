@@ -2,7 +2,7 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 import fs from 'fs'
 import dotenv from 'dotenv'
-import { KMA_GRAPHIC_QPF_LEAD_MINUTES, KMA_GRAPHIC_WISSDOM_HEIGHTS_M } from './lib/kma-radar-graphics.js'
+import { KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL, KMA_GRAPHIC_QPF_LEAD_MINUTES, KMA_GRAPHIC_WISSDOM_HEIGHTS_M } from './lib/kma-radar-graphics.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -199,6 +199,7 @@ export const radar_graphics = {
   wissdom_heights_m: KMA_GRAPHIC_WISSDOM_HEIGHTS_M,
   initial_wissdom_height_m: 1524,
   qpf_lead_minutes: KMA_GRAPHIC_QPF_LEAD_MINUTES,
+  image_zoom_level: KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL,
   frame_step_minutes: 5,
   delay_minutes: 10,
   max_frames: 36,

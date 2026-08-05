@@ -328,8 +328,11 @@ export function App() {
     ? pendingFrame.flights.map((flight) => mergeTerminalLiveWeather(flight, liveWeatherData))
     : pendingFrame.flights, [pendingFrame, liveWeatherData]);
 
-  // 2안·3안은 도시 하나가 한 프레임이다. 1안의 세 칸짜리 프레임(simulation.frames)과는 다른 배열이다.
-  const destinationFrames = useMemo(() => buildDestinationFrames(simulation.destinations), [simulation]);
+  // 2안은 다섯 편씩 페이지를 나누고, 3안은 도시의 모든 편을 넘겨 목록 안에서 한 행씩 올린다.
+  const destinationFrames = useMemo(
+    () => buildDestinationFrames(simulation.destinations, view === 'rail' ? Number.MAX_SAFE_INTEGER : undefined),
+    [simulation, view],
+  );
   const hasDestinationNextFrame = destinationFrames.length > 1;
   const activeDestinationFrame = useMemo(
     () => destinationFrameAt(destinationFrames, weatherFrameCursor),
@@ -351,7 +354,7 @@ export function App() {
         seen.add(frame.destinationIndex);
         return true;
       })
-      .map((frame) => ({ code: frame.code, city: frame.flights[0]?.city }));
+      .map((frame) => ({ code: frame.code, city: frame.flights[0]?.city, displayName: frame.flights[0]?.displayName }));
   }, [destinationFrames]);
   // 예보 칸을 고르는 기준 시각. 화면 상단 시계(now)와 같은 값을 쓴다.
   const nowKst = useMemo(() => ({

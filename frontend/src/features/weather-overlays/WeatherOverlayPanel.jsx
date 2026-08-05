@@ -96,16 +96,23 @@ function WeatherOverlayPanel({
             {group.title}
             {group.id === 'observation' && visibility.radar && (
               <>
+                {/* 켬/끔은 사용자 의사, 자료 유무는 상황 — 섞지 않는다. 자료가 없다고 버튼을 잠그면
+                    켜둔 상태에서 자료가 끊겼을 때 끌 수조차 없고, 왜 안 눌리는지도 알 수 없다. */}
                 <button
                   type="button"
                   className="layer-tile-group-title-action"
                   onClick={() => onRadarWindRequestedChange?.((prev) => !prev)}
                   aria-label="레이더 바람장 (WISSDOM)"
                   aria-pressed={radarWindRequested}
-                  disabled={!radarWindAvailable}
+                  aria-describedby={radarWindRequested && !radarWindAvailable ? 'radar-wind-unavailable' : undefined}
                 >
                   레이더 바람장 (WISSDOM)
                 </button>
+                {radarWindRequested && !radarWindAvailable && (
+                  <span id="radar-wind-unavailable" className="layer-tile-group-title-note">
+                    이 시각 WISSDOM 자료 없음
+                  </span>
+                )}
               </>
             )}
           </div>

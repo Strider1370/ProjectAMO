@@ -18,6 +18,15 @@ const wissdomFrame = (heightM, tm) => ({
   path: `/data/radar/wissdom/wissdom_${heightM}_${tm}.webp`,
   legendPath: `/data/radar/wissdom/wissdom_${heightM}_${tm}_legend.webp`,
 })
+// 10:00 KST — more than one WISSDOM publication interval before the 10:25 radar frame.
+const staleWissdomFrame = (heightM) => ({
+  tm: '202608041000',
+  timeMs: Date.UTC(2026, 7, 4, 1, 0),
+  heightM,
+  bounds: BOUNDS,
+  path: `/data/radar/wissdom/wissdom_${heightM}_202608041000.webp`,
+  legendPath: `/data/radar/wissdom/wissdom_${heightM}_202608041000_legend.webp`,
+})
 const qpfFrame = (validTimeMs, leadMinutes) => ({
   tm: TM.latest,
   analysisTimeMs: ANALYSIS_TIME_MS,
@@ -28,7 +37,16 @@ const qpfFrame = (validTimeMs, leadMinutes) => ({
   legendPath: `/data/radar/qpf/qpf_${TM.latest}_p${leadMinutes}_legend.webp`,
 })
 
+// The forecast/observation split is measured against "지금", so the clock must be fixed for the
+// fixture's timestamps to mean anything. QPF +10 and +30 sit after this instant; the radar frames sit before.
+const NOW_MS = ANALYSIS_TIME_MS + 5 * 60 * 1000
+
 async function installFixture(page) {
+  await page.route('**/api/demo-mode', (route) => route.fulfill({
+    contentType: 'application/json',
+    // on:false keeps the app on its normal data path; only the shared "지금" is pinned.
+    body: JSON.stringify({ on: false, now: new Date(NOW_MS).toISOString() }),
+  }))
   await page.route('**/data/radar/**', (route) => {
     const pathname = new URL(route.request().url()).pathname
     if (pathname.endsWith('/echo_meta.json')) return route.fulfill({
@@ -38,8 +56,11 @@ async function installFixture(page) {
     if (pathname.endsWith('/wissdom/wissdom_meta.json')) return route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({ type: 'WISSDOM', framesByHeight: {
+        // 1524 has an exact analysis; 3048 only the previous one (usable, five minutes back);
+        // 2743 is a full interval too old for the rendered radar frame (not usable).
         '1524': [wissdomFrame(1524, TM.observed), wissdomFrame(1524, TM.latest)],
         '3048': [wissdomFrame(3048, TM.observed)],
+        '2743': [staleWissdomFrame(2743)],
       } }),
     })
     if (pathname.endsWith('/qpf/qpf_meta.json')) return route.fulfill({
@@ -49,6 +70,14 @@ async function installFixture(page) {
     if (/\.(?:png|webp)$/.test(pathname)) return route.fulfill({ contentType: 'image/webp', body: WEBP_STUB })
     return route.fallback()
   })
+}
+
+async function ensureRadarOn(page) {
+  // 레이더 is on by default; a blind click turns it off and the WISSDOM control disappears with it.
+  const radar = page.getByRole('button', { name: '레이더', exact: true })
+  if (await radar.getAttribute('aria-pressed') !== 'true') await radar.click()
+  await expect(radar).toHaveAttribute('aria-pressed', 'true')
+  return radar
 }
 
 async function openWeatherPanel(page, testInfo) {
@@ -87,33 +116,42 @@ async function selectTimeline(page, targetMs) {
 test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
   test.beforeEach(async ({ page }) => { await installFixture(page) })
 
-  test('WISSDOM exact frame availability follows the selected observed time and height', async ({ page }, testInfo) => {
+  test('WISSDOM backs onto the previous analysis and says so when none is usable', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    const radar = page.getByRole('button', { name: '레이더', exact: true })
-    await radar.click()
+    await ensureRadarOn(page)
     const wissdom = page.getByRole('button', { name: '레이더 바람장 (WISSDOM)', exact: true })
-    await expect(wissdom).toBeEnabled()
+    const missingNote = page.getByText('이 시각 WISSDOM 자료 없음')
     await wissdom.click()
     await expect(wissdom).toHaveAttribute('aria-pressed', 'true')
     await expect.poll(() => layerState(page, 'kma-wissdom-overlay')).toMatchObject({ visibility: 'visible' })
+    await expect(missingNote).toHaveCount(0)
 
     const height = page.getByRole('slider', { name: 'WISSDOM 높이' })
     await height.focus()
     await height.press('ArrowRight')
     await expect(height).toHaveAttribute('aria-valuetext', '1,829 m')
-    // Jump to the fixture's 3,048 m level; only 10:20 has an exact frame there.
+    // 3,048 m carries only the 10:20 analysis; under the rendered 10:25 radar frame it still applies.
     for (let index = 0; index < 4; index += 1) await height.press('ArrowRight')
     await expect(height).toHaveAttribute('aria-valuetext', '3,048 m')
-    await expect(wissdom).toBeDisabled()
-    await expect.poll(() => layerState(page, 'kma-wissdom-overlay')).toMatchObject({ visibility: 'none' })
+    await expect.poll(() => layerState(page, 'kma-wissdom-overlay')).toMatchObject({ visibility: 'visible' })
+    await expect(missingNote).toHaveCount(0)
 
-    await selectTimeline(page, Date.UTC(2026, 7, 4, 1, 20))
+    // 2,743 m is a full interval stale: the layer drops out and the reason is stated on screen.
+    await height.press('ArrowLeft')
+    await expect(height).toHaveAttribute('aria-valuetext', '2,743 m')
+    await expect.poll(() => layerState(page, 'kma-wissdom-overlay')).toMatchObject({ visibility: 'none' })
+    await expect(missingNote).toBeVisible()
+
+    // The control stays operable while unavailable, so a pilot can always switch it back off.
     await expect(wissdom).toBeEnabled()
+    await wissdom.click()
+    await expect(wissdom).toHaveAttribute('aria-pressed', 'false')
+    await expect(missingNote).toHaveCount(0)
   })
 
   test('QPF replaces observed layers and exposes its exact MAPLE status and legend', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '레이더', exact: true }).click()
+    await ensureRadarOn(page)
     await page.getByRole('button', { name: /레이더 바람장 \(WISSDOM\)/ }).click()
     await selectTimeline(page, QPF_30)
 
@@ -138,7 +176,7 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
 
   test('WISSDOM height and KIM pressure remain independent', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '레이더', exact: true }).click()
+    await ensureRadarOn(page)
     await page.getByRole('button', { name: /레이더 바람장 \(WISSDOM\)/ }).click()
     await page.getByRole('button', { name: '바람', exact: true }).click()
     await page.getByRole('combobox', { name: '세로 고도 레일 자료원' }).selectOption('wissdom')
@@ -147,7 +185,8 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
     await page.getByRole('combobox', { name: '세로 고도 레일 자료원' }).selectOption('kim')
     const pressure = page.getByRole('slider', { name: 'KIM 등압면 고도' })
     const initialPressure = await pressure.getAttribute('aria-valuetext')
-    await pressure.press('ArrowRight')
+    // KIM opens on its lowest level (FL000 · 1000 hPa), the end of the rail — only ArrowLeft moves.
+    await pressure.press('ArrowLeft')
     const changedPressure = await pressure.getAttribute('aria-valuetext')
     expect(changedPressure).not.toBe(initialPressure)
     await page.getByRole('combobox', { name: '세로 고도 레일 자료원' }).selectOption('wissdom')
@@ -156,12 +195,12 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
 
   test('playback and two basemap switches retain single current WISSDOM/QPF ownership', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '레이더', exact: true }).click()
+    await ensureRadarOn(page)
     await page.getByRole('button', { name: /레이더 바람장 \(WISSDOM\)/ }).click()
     await selectTimeline(page, QPF_30)
     const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
     await mapChoice.click()
-    await page.getByRole('menuitemradio', { name: /^지형/ }).click()
+    await page.getByRole('menuitemradio', { name: /^단색/ }).click()
     await mapChoice.click()
     await page.getByRole('menuitemradio', { name: /^위성/ }).click()
     await expect.poll(() => layerState(page, 'kma-qpf-overlay')).toMatchObject({ visibility: 'visible', sourceCount: 1 })
@@ -179,7 +218,7 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
 
   test('WISSDOM control and QPF status card are axe-clean and fixtures expose no KMA key', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '레이더', exact: true }).click()
+    await ensureRadarOn(page)
     const wissdom = page.getByRole('button', { name: /레이더 바람장 \(WISSDOM\)/ })
     await wissdom.click()
     await selectTimeline(page, QPF_30)

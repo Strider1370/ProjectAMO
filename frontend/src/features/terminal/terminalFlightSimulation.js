@@ -310,7 +310,7 @@ function destinationFromFeed(row) {
     }),
     city,
     displayName,
-    airport: known?.airport || row.destinationEnglish || displayName,
+    airport: known?.airport || displayName,
     localClock: null,
   }
 }

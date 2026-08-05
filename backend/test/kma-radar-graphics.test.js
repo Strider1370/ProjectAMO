@@ -125,6 +125,15 @@ test('builds product requests as URLSearchParams without an authentication value
   assert.equal(qpf.has('authKey'), false)
 })
 
+test('renders graphics at the configured zoom level and rejects unusable ones', () => {
+  // ZOOMLVL is the only parameter that scales the rendered raster; the geographic coverage
+  // KMA reports back is identical at every level, so this is resolution alone.
+  assert.equal(buildImpgRequest('wissdom', { tm: '202307201700', heightM: 1524 }).get('ZOOMLVL'), '14')
+  assert.equal(buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 60 }).get('ZOOMLVL'), '14')
+  assert.equal(buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 60, zoomLevel: 13 }).get('ZOOMLVL'), '13')
+  assert.throws(() => buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 60, zoomLevel: 0 }), /Invalid zoom level/)
+})
+
 test('rejects unsupported WISSDOM heights and non-future QPF leads', () => {
   assert.throws(() => buildImpgRequest('wissdom', { tm: '202307201700', heightM: 1400 }), /Invalid WISSDOM height/)
   assert.throws(() => buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 0 }), /Invalid QPF lead time/)

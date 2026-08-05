@@ -117,13 +117,34 @@ function normalizeRainviewerFrames(meta) {
     .sort((a, b) => a.timeMs - b.timeMs)
 }
 
-function normalizeWissdomFrames(meta, heightM) {
+export function normalizeWissdomFrames(meta, heightM) {
   const frames = meta?.framesByHeight?.[String(heightM)] || meta?.framesByHeight?.[heightM] || []
   return normalizeFrames(frames)
 }
 
-function normalizeQpfFrames(meta) {
+// KMA publishes WISSDOM every ten minutes while radar runs every five, so requiring an identical
+// tm hides the wind field on every odd radar frame. Take the analysis at or before the rendered
+// radar frame, never one ahead of it, and never one older than a full publication interval —
+// beyond that the wind no longer describes the echoes underneath. The legend states the WISSDOM
+// analysis time itself, so the offset is disclosed rather than hidden.
+export const WISSDOM_MAX_LAG_MS = 10 * 60 * 1000
+
+export function pickWissdomFrameForRadar(frames, radarFrame) {
+  const radarTimeMs = Number(radarFrame?.timeMs)
+  if (!Array.isArray(frames) || !Number.isFinite(radarTimeMs)) return null
+  const candidate = pickNearestPreviousFrame(frames, radarTimeMs)
+  if (!Number.isFinite(candidate?.timeMs)) return null
+  const lagMs = radarTimeMs - candidate.timeMs
+  return lagMs >= 0 && lagMs < WISSDOM_MAX_LAG_MS ? candidate : null
+}
+
+// MAPLE publishes about 15 minutes after its analysis time, so a fresh run arrives with its
+// shortest leads already lapsed. Those belong to the radar observation — a forecast that is
+// no longer a forecast must not render, and must not put a tick in the timeline's past.
+function normalizeQpfFrames(meta, nowMs) {
+  const horizonMs = Number.isFinite(nowMs) ? nowMs : Date.now()
   const normalized = (Array.isArray(meta?.frames) ? meta.frames : [])
+    .filter((frame) => Number(frame?.validTimeMs) > horizonMs)
     .map((frame) => {
       const timeMs = Number.isFinite(frame?.timeMs) ? frame.timeMs : parseFrameTmToMs(frame?.tm)
       const analysisTimeMs = Number.isFinite(frame?.analysisTimeMs) ? frame.analysisTimeMs : timeMs
@@ -174,11 +195,12 @@ export function buildWeatherOverlayModel({
   lightningBlinkOff,
   nwpSelection = null,
   ktgGrid = null,
+  nowMs = null,
   tz = 'KST',
 }) {
   const radarFrames = normalizeFrames(echoMeta?.frames?.length ? echoMeta.frames : [echoMeta?.nationwide])
   const wissdomFrames = normalizeWissdomFrames(wissdomMeta, radarWindHeightM)
-  const qpfFrames = normalizeQpfFrames(qpfMeta)
+  const qpfFrames = normalizeQpfFrames(qpfMeta, nowMs)
   const forecastTimelineTicks = [...new Set(qpfFrames.map((frame) => frame.validTimeMs))]
   const echoTopFrames = normalizeFrames(echoTopMeta?.frames?.length ? echoTopMeta.frames : [echoTopMeta?.latest])
   const rainviewerFrames = normalizeRainviewerFrames(rainviewerMeta)
@@ -209,9 +231,7 @@ export function buildWeatherOverlayModel({
   const qpfFrame = qpfFrames.find((frame) => frame.validTimeMs === selectedWeatherTimeMs) || null
   const radarFrame = qpfFrame ? null : observedRadarFrame
   const radarDisplayVisible = Boolean(visibility.radar && radarFrame)
-  const wissdomExactFrame = observedRadarFrame
-    ? wissdomFrames.find((frame) => frame.tm === observedRadarFrame.tm) || null
-    : null
+  const wissdomExactFrame = pickWissdomFrameForRadar(wissdomFrames, observedRadarFrame)
   const wissdomAvailable = Boolean(visibility.radar && !qpfFrame && wissdomExactFrame)
   const wissdomFrame = radarWindRequested && wissdomAvailable ? wissdomExactFrame : null
   const qpfStatus = qpfFrame

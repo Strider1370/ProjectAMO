@@ -32,6 +32,7 @@ function majorLabel(ms, tz) {
 function TimelineRail({
   pastTicksMs = [],
   nwpTimes = [],
+  forecastTicksMs = [],
   selectedMs = null,
   isPlaying = false,
   onScrub,
@@ -56,8 +57,11 @@ function TimelineRail({
   }, [referenceNowMs])
 
   const futureMs = normalizeNwpTimes(nwpTimes).map((time) => time.ms)
-  const keyboardTicks = [...new Set([...pastTicksMs, ...futureMs])].sort((a, b) => a - b)
-  const domain = buildTimelineDomain({ pastTicksMs, nwpTimesMs: futureMs, nowMs })
+  // QPF valid times are selectable only on an exact match, so they must be reachable ticks —
+  // by keyboard and by drag — not just times the playback loop happens to step onto.
+  const forecastMs = (Array.isArray(forecastTicksMs) ? forecastTicksMs : []).filter(Number.isFinite)
+  const keyboardTicks = [...new Set([...pastTicksMs, ...forecastMs, ...futureMs])].sort((a, b) => a - b)
+  const domain = buildTimelineDomain({ pastTicksMs, nwpTimesMs: futureMs, qpfTimesMs: forecastMs, nowMs })
   const selected = Number.isFinite(selectedMs)
     ? clampMs(domain, selectedMs)
     : (pastTicksMs.length ? pastTicksMs[pastTicksMs.length - 1] : nowMs)

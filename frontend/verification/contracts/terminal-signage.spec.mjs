@@ -32,6 +32,256 @@ const openSettings = async (page) => {
   if (!(await settings.evaluate((element) => element.open))) await settings.locator('summary').click()
 }
 
+const liveFlight = ({
+  flight,
+  destinationIata,
+  destinationIcao,
+  destinationKorean,
+  destinationEnglish,
+  scheduled,
+  airlineKorean,
+  airlineEnglish,
+  codeshares,
+}) => ({
+  departureIcao: 'RKSS',
+  flight,
+  airlineKorean,
+  airlineEnglish,
+  destinationIata,
+  destinationIcao,
+  destinationKorean,
+  destinationEnglish,
+  scheduled,
+  estimated: null,
+  arrivalKst: '20:45',
+  forecastAnchorKst: '20:45',
+  gate: '17',
+  previousGate: null,
+  status: '운항 예정',
+  delayed: false,
+  international: destinationIata !== 'CJU',
+  ...(codeshares ? { codeshares } : {}),
+})
+
+const routeTerminalFeed = async (page, rows) => {
+  await page.unroute('**/api/terminal-flights')
+  await page.route('**/api/terminal-flights', (route) => route.fulfill({
+    json: { fetched_at: '2026-08-05T10:30:00.000Z', airports: { RKSS: rows } },
+  }))
+}
+
+const routeZeroPrecipForecast = async (page) => {
+  const now = new Date()
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const hourly = Array.from({ length: 72 }, (_, index) => {
+    const at = new Date(midnight)
+    at.setHours(index)
+    const pad = (value) => String(value).padStart(2, '0')
+    return {
+      date: `${at.getFullYear()}${pad(at.getMonth() + 1)}${pad(at.getDate())}`,
+      time: `${pad(at.getHours())}00`,
+      temp: 24 + (index % 7),
+      icon: 'sunny',
+      rainProb: 0,
+    }
+  })
+  await page.route('**/api/ground-forecast', (route) => route.fulfill({ json: { airports: { RKPC: { hourly } } } }))
+  return { now, midnight }
+}
+
+test('terminal-signage 3안은 위아래 패널의 세로 분할선을 맞춘다', async ({ page }) => {
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  await expect(page.getByTestId('option-three')).toBeVisible()
+
+  const boundaries = await page.evaluate(() => ({
+    upper: document.querySelector('.ww-middle > :first-child').getBoundingClientRect().right,
+    lower: document.querySelector('.ww-bottom > :first-child').getBoundingClientRect().right,
+  }))
+
+  expect(Math.abs(boundaries.upper - boundaries.lower)).toBeLessThanOrEqual(1)
+})
+
+test('terminal-signage 3안 항공편 패널은 목적지와 노선을 먼저 보여준다', async ({ page }) => {
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  const screen = page.getByTestId('option-three')
+
+  await expect(screen.getByRole('heading', { name: '김포국제공항 → 제주국제공항' })).toBeVisible()
+  await expect(screen.locator('.ww-flight-summary p')).toHaveCount(0)
+  await expect(screen.locator('.tw-flight-head')).toContainText('탑승구')
+  await expect(screen).not.toContainText('도착 후 바로 확인할 정보')
+})
+
+test('terminal-signage 3안은 현지 시각과 항공사명을 보조 정보로 표시한다', async ({ page }) => {
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  const screen = page.getByTestId('option-three')
+
+  await expect(screen).toContainText('현지 시각')
+  await expect(screen.getByTestId('tw-flight-row').first()).toContainText('티웨이항공')
+  await expect(screen.locator('.tw-pager-item.is-current')).toHaveText('제주')
+})
+
+test('terminal-signage 3안은 현재 목적지만 공항 이름까지 표시한다', async ({ page }) => {
+  await routeTerminalFeed(page, [
+    liveFlight({ flight: 'TW717', airlineKorean: '티웨이항공', airlineEnglish: "T'WAY AIR", destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '19:30' }),
+    liveFlight({ flight: 'JL094', airlineKorean: '일본항공', airlineEnglish: 'JAPAN AIRLINES', destinationIata: 'HND', destinationIcao: 'RJTT', destinationKorean: '도쿄/하네다', destinationEnglish: 'TOKYO HANEDA', scheduled: '19:35' }),
+  ])
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  const screen = page.getByTestId('option-three')
+
+  await expect(screen.locator('.tw-pager-item.is-current')).toHaveText('제주')
+  await expect(screen.locator('.tw-pager-item').filter({ hasText: /^도쿄$/ })).toBeVisible()
+  await page.keyboard.press('r')
+  await expect(screen.locator('.tw-pager-item.is-current')).toHaveText('도쿄 하네다')
+  await expect(screen.locator('.tw-current-city')).toHaveText('도쿄 하네다')
+  await expect(screen.locator('.ww-flight-summary')).toHaveText('김포국제공항 → 도쿄 하네다')
+})
+
+test('terminal-signage 3안 시간별 예보는 날씨와 온도 줄 제목을 표시한다', async ({ page }) => {
+  await routeZeroPrecipForecast(page)
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  const hourly = page.getByTestId('option-three').locator('.ww-hourly-panel')
+
+  await expect(hourly.getByText('날씨', { exact: true })).toBeVisible()
+  await expect(hourly.getByText('온도', { exact: true })).toBeVisible()
+})
+
+test('terminal-signage 3안은 0인 강수 줄도 항상 표시한다', async ({ page }) => {
+  await routeZeroPrecipForecast(page)
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  const precip = page.getByTestId('option-three').locator('.ww-hourly-precip-row')
+
+  await expect(precip.getByText('강수확률 %', { exact: true })).toBeVisible()
+  await expect(precip.locator('b')).toHaveText(Array(8).fill('0%'))
+})
+
+test('terminal-signage 3안 시간축은 첫 시각과 날짜 경계에 일을 표시한다', async ({ page }) => {
+  const { now, midnight } = await routeZeroPrecipForecast(page)
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  const times = page.getByTestId('option-three').locator('.ww-hourly-hour-row time')
+  const firstAt = new Date(midnight)
+  firstAt.setHours((Math.floor(now.getHours() / 3) + 1) * 3)
+  const nextMidnight = new Date(midnight)
+  nextMidnight.setDate(nextMidnight.getDate() + 1)
+
+  await expect(times.first().locator('small')).toHaveText(`${firstAt.getDate()}일`)
+  await expect(times.filter({ hasText: /0시$/ }).locator('small')).toHaveText(`${nextMidnight.getDate()}일`)
+})
+
+test('terminal-signage 3안 항공편은 다섯 줄을 유지하며 공동운항편을 개별 행으로 올린다', async ({ page }) => {
+  await routeTerminalFeed(page, [
+    liveFlight({
+      flight: 'BX8019', airlineKorean: '에어부산', airlineEnglish: 'AIR BUSAN', destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '19:30',
+      codeshares: [
+        { flight: 'BX8019', airlineKorean: '에어부산', airlineEnglish: 'AIR BUSAN' },
+        { flight: 'OZ8019', airlineKorean: '아시아나항공', airlineEnglish: 'ASIANA AIRLINES' },
+      ],
+    }),
+    liveFlight({ flight: 'ZE231', airlineKorean: '이스타항공', airlineEnglish: 'EASTAR JET', destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '19:35' }),
+    liveFlight({ flight: '7C139', airlineKorean: '제주항공', airlineEnglish: 'JEJU AIR', destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '19:40' }),
+    liveFlight({ flight: 'KE1121', airlineKorean: '대한항공', airlineEnglish: 'KOREAN AIR', destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '19:45' }),
+    liveFlight({ flight: 'TW731', airlineKorean: '티웨이항공', airlineEnglish: "T'WAY AIR", destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '19:50' }),
+    liveFlight({ flight: 'LJ513', airlineKorean: '진에어', airlineEnglish: 'JIN AIR', destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '19:55' }),
+  ])
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  const screen = page.getByTestId('option-three')
+  await expect(screen.getByText('BX8019', { exact: true })).toBeVisible()
+
+  const codeshares = screen.locator('.tw-flight-row.is-codeshare')
+  await expect(codeshares).toHaveCount(2)
+  await expect(codeshares.nth(0)).toContainText('BX8019')
+  await expect(codeshares.nth(1)).toContainText('OZ8019')
+  expect(new Set(await codeshares.evaluateAll((rows) => rows.map((row) => row.dataset.codeshareGroup))).size).toBe(1)
+  expect(await codeshares.first().evaluate((row) => {
+    const logo = row.querySelector('.airline-logo').getBoundingClientRect()
+    const standardLogo = row.parentElement.querySelector('.tw-flight-row:not(.is-codeshare) .airline-logo').getBoundingClientRect()
+    return {
+      logoOffset: logo.left - standardLogo.left,
+      railOffset: Number.parseFloat(getComputedStyle(row, '::before').left),
+    }
+  })).toEqual({ logoOffset: 0, railOffset: -8 })
+
+  const initial = await screen.locator('.tw-flight-list-viewport').evaluate((viewport) => {
+    const box = viewport.getBoundingClientRect()
+    const rows = [...viewport.querySelectorAll('.tw-flight-row')]
+      .map((row) => ({ flight: row.dataset.flightNumber, box: row.getBoundingClientRect() }))
+      .filter((row) => row.box.top < box.bottom - 1 && row.box.bottom > box.top + 1)
+    return { flights: rows.map((row) => row.flight), heights: rows.map((row) => row.box.height) }
+  })
+  expect(initial.flights).toHaveLength(5)
+  expect(Math.max(...initial.heights) - Math.min(...initial.heights)).toBeLessThanOrEqual(1)
+
+  await page.waitForTimeout(5000)
+  await expect.poll(() => screen.locator('.tw-flight-list-viewport').evaluate((viewport) => {
+    const box = viewport.getBoundingClientRect()
+    return [...viewport.querySelectorAll('.tw-flight-row')]
+      .find((row) => {
+        const item = row.getBoundingClientRect()
+        return item.top >= box.top - 1 && item.bottom <= box.bottom + 1
+      })?.dataset.flightNumber
+  })).toBe('OZ8019')
+})
+
+test('terminal-signage 3안 현재날씨는 아이콘부터 왼쪽 여백을 채운다', async ({ page }) => {
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  await expect(page.getByTestId('option-three').locator('.tw-current-weather-icon')).toBeVisible()
+
+  const position = await page.evaluate(() => {
+    const panel = document.querySelector('.tw-current-weather').getBoundingClientRect()
+    const icon = document.querySelector('.tw-current-weather-icon').getBoundingClientRect()
+    return icon.left - panel.left
+  })
+
+  expect(position).toBeLessThanOrEqual(180)
+})
+
+test('terminal-signage 3안은 주정보와 보조 문구 사이를 충분히 띄운다', async ({ page }) => {
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  await expect(page.getByTestId('option-three')).toBeVisible()
+  await page.locator('.tw-current-city').evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)))
+
+  const gaps = await page.evaluate(() => {
+    const vertical = (top, bottom) => bottom.getBoundingClientRect().top - top.getBoundingClientRect().bottom
+    const detail = document.querySelector('.tw-flight-number-detail')
+    const metric = document.querySelector('.ww-middle .tw-current-metrics > div')
+    const weather = document.querySelector('.tw-current-weather-body')
+
+    return {
+      airline: vertical(detail.querySelector('strong'), detail.querySelector('small')),
+      metric: vertical(metric.querySelector('dt'), metric.querySelector('dd')),
+      localClock: vertical(document.querySelector('.tw-current-city'), document.querySelector('.tw-current-local-clock')),
+      observation: vertical(weather.querySelector('.tw-current-weather-title'), weather.querySelector('.tw-current-weather-temp')),
+    }
+  })
+
+  for (const [name, gap] of Object.entries(gaps)) {
+    expect(gap, `${name} 간격`).toBeGreaterThanOrEqual(8)
+  }
+})
+
+test('terminal-signage 3안 해외 목적지는 예보와 항공사 로고를 비우지 않는다', async ({ page }) => {
+  await page.goto('/terminal/rkss?view=rail&autoplay=0')
+  const screen = page.getByTestId('option-three')
+
+  await expect(screen.locator('.tw-pager-item.is-current')).toHaveText('제주')
+  await expect(screen.getByText('TW715', { exact: true })).toBeVisible()
+  await page.keyboard.press('r')
+  await expect(screen.locator('.tw-current-city')).toContainText('오사카')
+  await expect(screen.getByText('TW715', { exact: true })).toHaveCount(0)
+
+  await expect(screen.locator('.ww-hourly-hour-row time').filter({ hasText: /시$/ })).not.toHaveCount(0)
+  await expect(screen.locator('.ww-weekly-empty')).toHaveText('주간 예보 확인 중')
+
+  const logo = screen.locator('.tw-flight-row .airline-logo img')
+  await expect(logo).toBeVisible()
+  await expect(logo).toHaveJSProperty('complete', true)
+  const placement = await page.evaluate(() => {
+    const list = document.querySelector('.tw-flight-list').getBoundingClientRect()
+    const image = document.querySelector('.tw-flight-row .airline-logo img').getBoundingClientRect()
+    return { logoCenter: image.top + image.height / 2, firstThird: list.top + list.height / 3 }
+  })
+  expect(placement.logoCenter).toBeLessThan(placement.firstThird)
+})
+
 const cases = [
   { view: 'board', modeParam: 'motion', mode: 'split', duration: 2200 },
   { view: 'board', modeParam: 'motion', mode: 'roll', duration: 2200 },

@@ -261,20 +261,29 @@ export function PrecipRowLabel({ cells, className }) {
 
 /** 항공편 줄. 공동운항은 편명만 위아래로 쌓고 시각·탑승구는 하나만 둔다.
  * 목록 전체가 이미 순환하는데 그 안에서 편명까지 3초마다 돌리면 시선이 두 겹으로 흔들린다. */
-export function FlightRow({ flight }) {
-  const isCodeshare = flight.codeshares?.length >= 2;
+export function FlightRow({ flight, showAirline = false }) {
+  const isExpandedCodeshare = Boolean(flight.codeshareGroup);
+  const isCodeshare = !isExpandedCodeshare && flight.codeshares?.length >= 2;
   const isDelayed = Boolean(flight.revised);
   const isGateChanged = flight.status === GATE_CHANGED_STATUS;
   return (
-    <li className="tw-flight-row" data-testid="tw-flight-row" data-destination-code={flight.code}>
+    <li
+      className={`tw-flight-row${isExpandedCodeshare ? " is-codeshare" : ""}`}
+      data-testid="tw-flight-row"
+      data-destination-code={flight.code}
+      data-flight-number={flight.flight}
+      data-codeshare-group={flight.codeshareGroup || undefined}
+    >
       {/* 항공사 로고는 1안이 쓰는 것을 그대로 가져온다. 편명 앞 두 글자만으로도 항공사를 알 수는
           있지만, 로고가 있으면 승객이 글자를 읽기 전에 자기 항공사 줄을 찾는다. */}
       <AirlineLogo flight={flight} />
       <div className="tw-flight-number">
         {isCodeshare
           ? <span className="tw-flight-number-stack">{flight.codeshares.map((share) => <strong key={share.flight}>{share.flight}</strong>)}</span>
-          : <strong>{flight.flight}</strong>}
-        {isCodeshare && <b className="codeshare-badge">공동운항</b>}
+          : showAirline
+            ? <span className="tw-flight-number-detail"><strong>{flight.flight}</strong><small>{flight.airline}</small></span>
+            : <strong>{flight.flight}</strong>}
+        {(isCodeshare || isExpandedCodeshare) && <b className="codeshare-badge">공동운항</b>}
       </div>
       <div className={`tw-flight-time${isDelayed ? " is-delayed" : ""}`}>
         <strong>{flight.revised ?? flight.departure}</strong>
@@ -296,11 +305,11 @@ export function FlightRow({ flight }) {
   );
 }
 
-/** 목록은 항상 다섯 줄 자리를 잡는다. 편이 몇 편이든 자리 수가 같아야 도시가 바뀔 때 목록 높이가
- * 흔들리지 않는다. 빈 줄은 투명하게 둬야 전환 중 자리가 안 밀린다. */
-export function FlightList({ flights }) {
-  const rows = flights.slice(0, DESTINATION_FRAME_CAPACITY);
-  const emptyCount = DESTINATION_FRAME_CAPACITY - rows.length;
+/** 2안은 다섯 줄 자리를 유지하고, 3안은 시안처럼 실제 편수만 같은 높이로 나눈다. */
+export function FlightList({ flights, fillRows = true, showAirline = false, overflowing = false, rolling = false }) {
+  const rows = flights.slice(0, overflowing ? DESTINATION_FRAME_CAPACITY + 1 : DESTINATION_FRAME_CAPACITY);
+  const emptyCount = fillRows ? Math.max(0, DESTINATION_FRAME_CAPACITY - rows.length) : 0;
+  const rowCount = fillRows ? DESTINATION_FRAME_CAPACITY : Math.max(rows.length, 3);
   return (
     <div className="tw-flight-panel">
       {/* 열 제목이 없으면 `06:00 확인 중 운항 예정`이 한 문장처럼 읽혀 어느 값이 시각이고
@@ -308,10 +317,12 @@ export function FlightList({ flights }) {
       <div className="tw-flight-head" aria-hidden="true">
         <span /><span>편명</span><span>출발</span><span>탑승구</span><span>상태</span>
       </div>
-      <ul className="tw-flight-list">
-        {rows.map((flight) => <FlightRow flight={flight} key={flight.flightKey} />)}
-        {Array.from({ length: emptyCount }, (_, index) => <li className="is-empty" aria-hidden="true" key={`empty-${index}`} />)}
-      </ul>
+      <div className="tw-flight-list-viewport">
+        <ul className={`tw-flight-list${overflowing ? " is-overflowing" : ""}${rolling ? " is-rolling" : ""}`} style={{ "--tw-flight-row-count": rowCount }}>
+          {rows.map((flight, index) => <FlightRow flight={flight} showAirline={showAirline} key={`${index}-${flight.flightKey}`} />)}
+          {Array.from({ length: emptyCount }, (_, index) => <li className="is-empty" aria-hidden="true" key={`empty-${index}`} />)}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -331,7 +342,7 @@ export function DestinationPager({ destinations, destinationIndex }) {
         const showName = showAllNames || Math.abs(index - destinationIndex) <= PAGER_NAME_WINDOW;
         return (
           <span className={`tw-pager-item${isCurrent ? " is-current" : ""}`} key={destination.code}>
-            {showName ? destination.city : <i className="tw-pager-dot" aria-hidden="true" />}
+            {showName ? (isCurrent ? destination.displayName || destination.city : destination.city) : <i className="tw-pager-dot" aria-hidden="true" />}
           </span>
         );
       })}
@@ -350,14 +361,16 @@ function formatObservedAt(value) {
   return `${String(kst.getUTCHours()).padStart(2, '0')}:${String(kst.getUTCMinutes()).padStart(2, '0')}`;
 }
 
-export function CurrentWeatherBlock({ flight, departureName, departureTemp }) {
+export function CurrentWeatherBlock({ flight, departureName, departureTemp, variant = 'default' }) {
   const gap = temperatureGap(departureTemp, flight.current.temp);
   const observedAt = formatObservedAt(flight.current.observedAt);
+  const localTime = String(flight.localClock || '').split(' ').at(-1);
   return (
     <div className="tw-current-weather">
       {/* 도시명은 이 블록의 것이다. 머리띠에 두면 화면 제목처럼 읽혀 무슨 화면인지와
           어느 도시인지가 뒤섞인다. 머리띠는 화면 이름, 여기는 값의 주인을 말한다. */}
-      <p className="tw-current-city"><strong>{flight.city}</strong><span>{flight.code}</span></p>
+      <p className="tw-current-city"><strong>{variant === 'weekly' ? flight.displayName || flight.city : flight.city}</strong>{variant !== 'weekly' && <span>{flight.code}</span>}</p>
+      {variant === 'weekly' && <p className="tw-current-local-clock">현지 시각 <time>{localTime} {flight.localZone}</time></p>}
       <div className="tw-current-weather-main">
         <span className="tw-current-weather-icon"><BoardWeatherImage type={flight.current.icon} /></span>
         <div className="tw-current-weather-body">
@@ -370,6 +383,7 @@ export function CurrentWeatherBlock({ flight, departureName, departureTemp }) {
           <p className="tw-current-weather-detail"><WeatherCondition type={flight.current.icon} /></p>
         </div>
       </div>
+      {variant === 'weekly' && gap && <p className="tw-current-gap">{shortAirportName(departureName)}보다 {gap.sign}{gap.value}°</p>}
       {/* 체감·습도·바람은 이미 관측에서 계산해 두고도 화면에 안 쓰던 값이다. 방송 기상 그래픽이
           수십 년 쓰는 세로 칸 구조로 나란히 둔다 - 승객이 묻는 "뭘 입지"에 답하는 값들이다.
           값이 없는 항목은 칸째 비우지 않고 `-`로 자리를 지킨다(도시마다 칸 수가 달라지면 안 된다). */}
@@ -377,12 +391,11 @@ export function CurrentWeatherBlock({ flight, departureName, departureTemp }) {
         <div><dt>체감</dt><dd>{displayTemperature(flight.current.feels ?? '-')}</dd></div>
         <div><dt>습도</dt><dd>{flight.current.humidity ?? '-'}</dd></div>
         <div><dt>바람</dt><dd className="tw-metric-wind">{flight.current.wind ?? '-'}</dd></div>
-        {/* 기온차도 같은 줄에 둔다. 따로 오른쪽 끝에 붙여 두면 차이가 작아 숨겨지는 날마다
-            그 폭이 통째로 비어 보인다. 네 값이 폭을 고르게 나눠 가진다. */}
-        <div className="tw-metric-gap">
+        {/* 2안은 기온차를 네 번째 칸에, 3안은 시안의 강조 알약으로 둔다. */}
+        {variant !== 'weekly' && <div className="tw-metric-gap">
           <dt>{gap ? `${shortAirportName(departureName)}보다` : ''}</dt>
           <dd>{gap ? `${gap.sign}${gap.value}°` : ''}</dd>
-        </div>
+        </div>}
       </dl>
     </div>
   );

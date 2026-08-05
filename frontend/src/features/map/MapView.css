@@ -2298,6 +2298,15 @@
   cursor: default;
 }
 
+/* WISSDOM은 켜져 있으나 표시 시각에 자료가 없을 때의 사유 표시. */
+.layer-tile-group-title-note {
+  flex: 1 1 100%;
+  margin-top: 4px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .terrain-hazard-note {
   margin: 10px 0 0;
   color: var(--text-3);

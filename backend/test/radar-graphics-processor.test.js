@@ -51,7 +51,7 @@ test('publishes exact WISSDOM frames as WebP before atomic metadata and removes 
   await processWissdom({ now: new Date('2026-08-04T08:07:00Z'), deps })
   const meta = readMeta(dataRoot, 'wissdom')
   const frame = meta.framesByHeight['1524'].at(-1)
-  assert.equal(frame.tm, '202608041655')
+  assert.equal(frame.tm, '202608041650')
   const filePath = path.join(dataRoot, frame.path.replace(/^\/data\//, ''))
   assert.equal(fs.existsSync(filePath), true)
   assert.equal(deps.imageCalls.every((url) => !url.includes('authKey')), true)
@@ -76,6 +76,20 @@ test('treats missing data as absent but preserves a frame on a wrong returned ti
   await processWissdom({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(dataRoot) })
   await processWissdom({ now: new Date('2026-08-04T08:12:00Z'), deps: depsFor(dataRoot, { wissdomTm: '202608041745' }) })
   assert.equal(readMeta(dataRoot, 'wissdom').framesByHeight['1524'].length, 1)
+})
+
+test('requests WISSDOM on its ten-minute publication grid and keeps the frame KMA actually answers with', async () => {
+  // KMA publishes WISSDOM every ten minutes. Asking on a five-minute boundary makes it answer
+  // with the previous ten-minute frame, and a strict equality check then discards every other cycle.
+  const dataRoot = root(), deps = depsFor(dataRoot)
+  await processWissdom({ now: new Date('2026-08-04T08:07:00Z'), deps })
+  assert.equal(new URL(deps.calls[0]).searchParams.get('tm'), '202608041650')
+
+  // An older answer is the newest frame KMA has; publish it under its own timestamp.
+  const lagging = depsFor(dataRoot, { wissdomTm: '202608041640' })
+  await processWissdom({ now: new Date('2026-08-04T08:17:00Z'), deps: lagging })
+  const frames = readMeta(dataRoot, 'wissdom').framesByHeight['1524']
+  assert.deepEqual(frames.map((frame) => frame.tm), ['202608041640', '202608041650'])
 })
 
 test('does not register graphics collectors without an enabled backend credential', () => {
@@ -112,6 +126,55 @@ test('keeps complete metadata when image validation fails and product failures r
   assert.equal(readMeta(dataRoot, 'qpf').frames.length, 1)
 })
 
+test('drops the QPF white canvas but never edits legend pixels', async () => {
+  const dataRoot = root(), deps = depsFor(dataRoot)
+  // KMA renders QPF over an opaque near-white canvas, and its legend over pure white with black text.
+  const body = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 250, g: 250, b: 250, alpha: 1 } } })
+    .composite([{ input: Buffer.from([0, 200, 255, 255]), raw: { width: 1, height: 1, channels: 4 }, left: 1, top: 0 }]).png().toBuffer()
+  const legend = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } } })
+    .composite([{ input: Buffer.from([0, 0, 0, 255]), raw: { width: 1, height: 1, channels: 4 }, left: 1, top: 0 }]).png().toBuffer()
+  deps.fetchImage = async (url) => url.includes('legend') ? legend : body
+  await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps })
+
+  const frame = readMeta(dataRoot, 'qpf').frames.at(-1)
+  // A fully opaque WebP drops its alpha channel, so read every published asset as RGBA.
+  const published = (relative) => sharp(path.join(dataRoot, relative.replace(/^\/data\//, ''))).ensureAlpha().raw().toBuffer()
+  const bodyPixels = await published(frame.path)
+  assert.equal(bodyPixels[3], 0, 'the white canvas must not cover the map')
+  assert.deepEqual([...bodyPixels.slice(4, 8)], [0, 200, 255, 255], 'precipitation must survive')
+  const legendPixels = await published(frame.legendPath)
+  assert.deepEqual([...legendPixels.slice(4, 8)], [0, 0, 0, 255], 'legend text must stay opaque')
+})
+
+test('re-requests a blank render and gives up without losing the run', async () => {
+  // The KMA renderer intermittently returns an empty canvas for a frame that has data; the
+  // response metadata is identical either way, so the only signal is the rendered image.
+  const blank = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 127, g: 127, b: 127, alpha: 0 } } }).png().toBuffer()
+  const filled = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 250, g: 250, b: 250, alpha: 1 } } })
+    .composite([{ input: Buffer.from([0, 200, 255, 255]), raw: { width: 1, height: 1, channels: 4 }, left: 1, top: 0 }]).png().toBuffer()
+
+  const dataRoot = root(), deps = depsFor(dataRoot)
+  let bodyCalls = 0
+  deps.fetchImage = async (url) => {
+    if (url.includes('legend')) return filled
+    bodyCalls += 1
+    return bodyCalls === 1 ? blank : filled
+  }
+  await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps })
+  assert.equal(bodyCalls, 2, 'a blank render must be re-requested')
+  const frame = readMeta(dataRoot, 'qpf').frames.at(-1)
+  const pixels = await sharp(path.join(dataRoot, frame.path.replace(/^\/data\//, ''))).ensureAlpha().raw().toBuffer()
+  assert.deepEqual([...pixels.slice(4, 8)], [0, 200, 255, 255])
+
+  // A frame that is genuinely empty must still be published rather than retried forever.
+  const dryRoot = root(), dry = depsFor(dryRoot)
+  let dryCalls = 0
+  dry.fetchImage = async (url) => { if (!url.includes('legend')) dryCalls += 1; return url.includes('legend') ? filled : blank }
+  await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps: dry })
+  assert.equal(dryCalls, 3, 'retries must be bounded')
+  assert.equal(readMeta(dryRoot, 'qpf').frames.length, 1)
+})
+
 test('builds change-detectable snapshot entries for both graphics metadata shapes', async () => {
   process.env.NODE_ENV = 'test'
   const { buildRadarGraphicsSnapshotEntry } = await import('../server.js')
@@ -137,7 +200,7 @@ test('publishes both assets before their metadata and stops immediately when abo
   } finally {
     fs.renameSync = originalRename
   }
-  assert.deepEqual(observed.slice(-3), ['wissdom_1524_202608041655.webp', 'wissdom_1524_202608041655_legend.webp', 'wissdom_meta.json'])
+  assert.deepEqual(observed.slice(-3), ['wissdom_1524_202608041650.webp', 'wissdom_1524_202608041650_legend.webp', 'wissdom_meta.json'])
   const controller = new AbortController(); controller.abort(new Error('stop'))
   await assert.rejects(processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps: depsFor(root()), signal: controller.signal }), /stop/)
 })

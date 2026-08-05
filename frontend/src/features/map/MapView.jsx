@@ -780,6 +780,9 @@ const MapView = forwardRef(function MapView({
     lightningReferenceTimeMs: effectiveLightningReferenceTimeMs,
     nwpSelection,
     ktgGrid,
+    // Shared "지금" — real time outside demo mode, refreshed every 30 s. It is what separates
+    // the observed past from the forecast future on the timeline.
+    nowMs: demoNowMs,
     tz,
   }), [
     echoMeta,
@@ -804,6 +807,7 @@ const MapView = forwardRef(function MapView({
     effectiveLightningReferenceTimeMs,
     nwpSelection,
     ktgGrid,
+    demoNowMs,
     tz,
   ])
   const radarWindOverlay = useRadarWindOverlay({
@@ -823,7 +827,7 @@ const MapView = forwardRef(function MapView({
     radarWindRequested: radarWindOverlay.effectiveVisible,
     sigwxHistoryIndex, sigwxFilter, hiddenAdvisoryKeys, selectedSigwxFrontMeta,
     selectedSigwxCloudMeta, lightningReferenceTimeMs: effectiveLightningReferenceTimeMs,
-    nwpSelection, ktgGrid, tz,
+    nwpSelection, ktgGrid, nowMs: demoNowMs, tz,
   })
   const convectiveOverlay = useConvectiveOverlay({
     mapRef, isStyleReady, styleRevision,
@@ -1808,7 +1812,7 @@ const MapView = forwardRef(function MapView({
           lightningReferenceTimeMs={lightningReferenceTimeMs}
           radarWindLegendVisible={radarWindEffectiveVisible}
           radarWindLegendPath={weatherOverlayModel.wissdomFrame?.legendPath}
-          radarWindObservedAtMs={radarWindEffectiveVisible ? radarReferenceTimeMs : null}
+          radarWindObservedAtMs={radarWindEffectiveVisible ? (weatherOverlayModel.wissdomFrame?.timeMs ?? null) : null}
             formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
             bottomDock={!isMobile}
             open={weatherLegendOpen}
@@ -1845,6 +1849,7 @@ const MapView = forwardRef(function MapView({
       <TimelineRail
         pastTicksMs={weatherTimelineTicks}
         nwpTimes={sliderTimes}
+        forecastTicksMs={forecastTimelineTicks}
         selectedMs={weatherTimelineSelectedMs}
         isPlaying={weatherTimelinePlaying}
         onScrub={scrubWeatherTimeline}

@@ -551,6 +551,7 @@ body { min-height: 100vh; overflow: hidden; }
    (`제주`가 `제수`처럼 보였다). 크기를 올릴 때마다 같이 올려야 한다. */
 .tw-pager-item { color: var(--terminal-text-secondary); font-size: 26px; font-weight: 700; line-height: 1.3; white-space: nowrap; }
 .tw-pager-item.is-current { color: var(--terminal-text-primary); font-size: 32px; font-weight: 800; line-height: 1.3; }
+.tw-pager-item.is-current small { font: inherit; }
 .tw-pager-dot { display: block; width: 12px; height: 12px; border-radius: 50%; background: #8a97a8; }
 
 /* 나가는 화면과 들어오는 화면을 같은 격자칸에 포갠다. 나란히 놓으면 서로를 밀어내 글자가 겹치지만,
@@ -604,10 +605,15 @@ body { min-height: 100vh; overflow: hidden; }
 /* 19px는 55" 화면에서 약 6m까지만 읽힌다. 게이트 대기 구역은 3~10m다. */
 .tw-flight-head span { color: var(--terminal-text-secondary); font-size: 24px; font-weight: 700; letter-spacing: -.02em; text-align: center; }
 .tw-flight-head span:nth-child(2) { text-align: left; }
-.tw-flight-list { display: grid; grid-template-rows: repeat(5, 1fr); min-height: 0; margin: 0; padding: 0; list-style: none; }
+.tw-flight-list-viewport { height: 100%; min-height: 0; overflow: hidden; }
+.tw-flight-list { display: grid; height: 100%; grid-template-rows: repeat(var(--tw-flight-row-count, 5), 1fr); min-height: 0; margin: 0; padding: 0; list-style: none; }
+.tw-flight-list.is-overflowing { height: 120%; grid-template-rows: repeat(6, 1fr); transition: transform 450ms cubic-bezier(.18, .78, .18, 1); }
+.tw-flight-list.is-overflowing.is-rolling { transform: translateY(calc(-100% / 6)); }
 /* 모든 줄 높이를 같게 고정한다. 공동운항으로 편명이 두 개인 줄도 다른 줄과 높이가 같아야
    전환 중 목록 안 다른 줄들의 자리가 밀리지 않는다. 편명 두 개는 그 안에서 작게 쌓는다. */
-.tw-flight-row { height: 100%; border-bottom: 1px solid var(--terminal-border-subtle); }
+.tw-flight-row { position: relative; height: 100%; border-bottom: 1px solid var(--terminal-border-subtle); }
+.tw-flight-row.is-codeshare { background: #f2f7ff; }
+.tw-flight-row.is-codeshare::before { position: absolute; top: 0; bottom: 0; left: -8px; width: 4px; background: #2f80ed; content: ""; }
 /* 목록은 항상 다섯 줄 자리를 잡는다. 남는 줄은 자리만 지키되, 옅은 배경과 구분선을 남겨
    "여기까지가 목록"이 보이게 한다 - 완전히 투명하면 편이 적은 도시는 오른쪽이 백지로 보였다. */
 li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background: rgba(7, 23, 53, .025); }
@@ -616,7 +622,9 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .tw-flight-row .airline-logo-fallback { width: 44px; height: 44px; font-size: 17px; }
 .tw-flight-number { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .tw-flight-number strong { font-size: 38px; font-weight: 800; letter-spacing: -.02em; }
-.tw-flight-number-stack { display: grid; row-gap: 2px; }
+.tw-flight-number-detail { display: grid; row-gap: var(--terminal-space-2); }
+.tw-flight-number-detail small { color: var(--terminal-text-secondary); font-size: 17px; font-weight: 600; line-height: 1.2; }
+.tw-flight-number-stack { display: grid; row-gap: var(--terminal-space-2); }
 .tw-flight-number-stack strong { font-size: 24px; }
 .tw-flight-row .codeshare-badge { padding: 3px 10px; font-size: 15px; }
 .tw-flight-time, .tw-flight-gate { text-align: center; }
@@ -698,8 +706,9 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
    나중에 안 하나를 지울 때 이 구역만 통째로 지우면 된다. 위쪽 절반(머리띠·현재날씨·항공편)은
    2안과 같은 구조라 `tw-` 공용 클래스가 실제 스타일을 담당하고, 여기는 아래쪽만 새로 잡는다. */
 
-/* 2안과 같은 이유로 셋째 줄을 1fr + 92px 고정 푸터 줄로 바꾼다. */
-.ww-screen { display: grid; grid-template-rows: 12% 40% 1fr; padding-bottom: var(--terminal-safe-bottom); }
+/* 1920×1080 시안의 세 구역을 그대로 고정한다. 캔버스 전체가 비율대로 축소되므로 좁은 화면에서도
+   안쪽 글씨만 따로 줄어들지 않는다. */
+.ww-screen { display: grid; grid-template-rows: 112px minmax(500px, 500fr) minmax(468px, 468fr); padding-bottom: 0; }
 
 /* 머리띠 - 2안과 같은 구조. 왼쪽 칸(도시명)을 420px 고정 트랙으로 둬 오른쪽 순환 표시가 안 밀린다. */
 .ww-header {
@@ -714,27 +723,67 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
   border-bottom: 1px solid var(--terminal-border);
   background: var(--terminal-surface);
 }
-.ww-header-title { margin: 0; color: var(--terminal-text-primary); font-size: 40px; font-weight: 800; line-height: 1.2; letter-spacing: -.035em; white-space: nowrap; }
+.ww-header-title { margin: 0; color: var(--terminal-text-primary); font-size: 48px; font-weight: 800; line-height: 1.2; letter-spacing: -.035em; white-space: nowrap; }
 .ww-header-clock { display: grid; justify-items: end; justify-self: end; row-gap: 2px; white-space: nowrap; }
 .ww-header-time { display: flex; align-items: baseline; gap: 12px; }
 .ww-header-time span { color: #475569; font-family: var(--terminal-font-time); font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
 .ww-header-time strong { color: #071735; font-family: var(--terminal-font-time); font-size: 36px; line-height: 1; letter-spacing: -.04em; }
+.ww-header .tw-pager-item.is-current { min-width: 278px; padding: 12px 40px; border: 1px solid #cbd8e8; border-radius: 9999px; background: #f2f7ff; text-align: center; }
 
 /* 나가는 화면과 들어오는 화면을 같은 격자칸에 포갠다 - 2안과 같은 이유(전환 중 겹침 방지). */
 .ww-viewport { position: relative; display: grid; grid-row: 2 / span 2; min-height: 0; }
-.ww-page { grid-area: 1 / 1; display: grid; grid-template-rows: 40fr 48fr; min-height: 0; }
+.ww-page { grid-area: 1 / 1; display: grid; grid-template-rows: minmax(500px, 500fr) minmax(468px, 468fr); min-height: 0; }
 .ww-page.is-entering { background: var(--terminal-surface, #fff); }
 
 /* 가운데 - 현재날씨(좌 58%) / 항공편(우 42%). 2안과 같다. */
 .ww-middle { display: grid; grid-template-columns: 58% 42%; min-height: 0; border-bottom: 1px solid var(--terminal-border); }
 
-/* 아래쪽 - 시간별(좌 62%) / 주간(우 38%). 초안 비율이며 실제 화면을 보고 조정한다. */
-.ww-bottom { display: grid; grid-template-columns: 62% 38%; min-height: 0; }
+/* 위·아래 분할선을 같은 x축에 둔다. 서로 다른 비율은 네 패널을 한 격자로 읽지 못하게 했다. */
+.ww-bottom { display: grid; grid-template-columns: 58% 42%; min-height: 0; }
+
+/* 선택한 3안 시안의 현재날씨 카드. 공용 `tw-` 구조는 그대로 두고 3안 안에서만 재배치한다. */
+.ww-middle .tw-current-weather {
+  position: relative;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto 1fr 94px;
+  gap: var(--terminal-space-2);
+  padding: 26px var(--terminal-safe-side) 24px;
+  background: #f2f7ff;
+}
+.ww-middle .tw-current-city strong { font-size: 56px; }
+.ww-middle .tw-current-local-clock { margin: 4px 0 0; color: var(--terminal-text-secondary); font-size: 22px; font-weight: 700; }
+.ww-middle .tw-current-local-clock time { margin-left: 16px; font-family: var(--terminal-font-time); }
+.ww-middle .tw-current-weather-main { justify-content: flex-start; gap: 100px; min-height: 0; padding-left: 40px; }
+.ww-middle .tw-current-weather-icon,
+.ww-middle .tw-current-weather-icon img { width: 160px; height: 160px; flex-basis: 160px; }
+.ww-middle .tw-current-weather-temp { margin-top: var(--terminal-space-3); font-size: 130px; }
+.ww-middle .tw-current-weather-detail { font-size: 30px; }
+.ww-middle .tw-current-gap { position: absolute; top: 156px; right: var(--terminal-safe-side); min-width: 300px; margin: 0; padding: 12px 24px; border-radius: 9999px; background: #e3effd; color: #2f80ed; font-size: 25px; font-weight: 800; text-align: center; }
+.ww-middle .tw-current-metrics {
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-flow: initial;
+  height: 94px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--terminal-border);
+  border-radius: 8px;
+  background: var(--terminal-surface);
+}
+.ww-middle .tw-current-metrics > div + div { border-left: 1px solid var(--terminal-border-subtle); }
+.ww-middle .tw-current-metrics dt { font-size: 22px; }
+.ww-middle .tw-current-metrics dd,
+.ww-middle .tw-current-metrics dd.tw-metric-wind { margin-top: var(--terminal-space-2); font-size: 36px; }
+
+/* 시안처럼 목록을 읽기 전에 목적지와 노선을 한 번 요약한다. */
+.ww-flight-panel { display: grid; grid-template-rows: 98px 1fr; min-width: 0; min-height: 0; }
+.ww-flight-summary { align-self: center; padding: 12px var(--terminal-space-5) 0; }
+.ww-flight-summary h2 { margin: 0; font-size: 32px; font-weight: 800; line-height: 1.25; letter-spacing: -.03em; }
+.ww-flight-panel .tw-flight-panel { padding-bottom: var(--terminal-space-3); }
 
 /* 좌우 제목("시간별"·"주간"). 없으면 왼쪽·오른쪽이 뭘 보여주는지 승객이 알 수 없다. */
 .ww-hourly-panel { display: grid; grid-template-rows: auto 1fr; min-height: 0; border-right: 1px solid var(--terminal-border); }
 .ww-weekly-panel { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
-.ww-panel-title { margin: 0; padding: var(--terminal-space-3) 0 4px var(--terminal-safe-side); color: #23334b; font-size: var(--terminal-type-label); font-weight: 700; }
+.ww-panel-title { margin: 0; padding: 24px 0 8px var(--terminal-safe-side); color: #23334b; font-size: 36px; font-weight: 800; line-height: 1.2; }
 .ww-weekly-panel .ww-panel-title { padding-left: var(--terminal-space-5); }
 
 /* 왼쪽 시간별 - 여덟 칸 고정 격자. 자정에 구분선을 두지 않아 기온 꺾은선이 하루의
@@ -744,20 +793,19 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
   --ww-strip-gutter: 128px;
   display: grid;
   /* 시각 / 아이콘 / 차트(기온 숫자 포함) / 강수 */
-  grid-template-rows: 32px 76px 1fr 42px;
+  grid-template-rows: 52px 76px 1fr 42px;
   row-gap: 10px;
   min-height: 0;
   height: 100%;
   padding: var(--terminal-space-3) var(--terminal-space-5) var(--terminal-space-4) var(--terminal-safe-side);
 }
-.ww-hourly-strip.is-precip-empty { grid-template-rows: 32px 76px 1fr; }
 /* 칸을 내용 크기로 줄이지 않고 열 폭만큼 늘린다(2안과 같은 이유 - 줄어든 칸에는 글자 옆에 선이 붙는다). */
 .ww-hourly-row { display: grid; align-items: center; column-gap: var(--terminal-space-4); text-align: center; }
 .ww-hourly-row-label, .ww-strip-title { justify-self: start; margin: 0; color: var(--terminal-text-secondary); font-size: 24px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
 .ww-strip-title { color: #23334b; font-size: 23px; }
 .ww-hourly-icon { display: grid; height: 74px; place-items: center; }
 .ww-hourly-icon img { width: 74px; height: 74px; object-fit: contain; }
-.ww-hourly-chart-row { position: relative; }
+.ww-hourly-chart-row { position: relative; margin-top: 16px; }
 /* svg는 대체 요소라 left/right만으로는 폭이 안 잡힌다. 라벨 칸을 뺀 폭을 직접 계산해 준다. */
 .ww-hourly-line { position: absolute; top: 0; bottom: 0; left: var(--ww-strip-gutter); width: calc(100% - var(--ww-strip-gutter)); height: 100%; overflow: visible; }
 .ww-hourly-line polyline { stroke: #2f80ed; stroke-width: 3; vector-effect: non-scaling-stroke; }
@@ -769,7 +817,9 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 /* 2안 예보 기온과 같은 크기·같은 근거(1안 `.arrival-time strong`)를 쓴다. */
 .ww-hourly-precip-row b { display: inline-block; padding: 4px 12px; border-radius: 999px; color: var(--terminal-text-secondary); font-size: 28px; font-weight: 700; }
 .ww-hourly-precip-row b.is-highlighted { background: #fde3c8; color: #b1560a; }
-.ww-hourly-hour-row time { color: var(--terminal-text-secondary); font-size: 28px; font-weight: 600; }
+.ww-hourly-hour-row time { display: grid; align-content: center; height: 100%; color: var(--terminal-text-secondary); font-size: 28px; font-weight: 600; line-height: 1.05; }
+.ww-hourly-hour-row time small { min-height: 18px; color: #2f80ed; font-size: 18px; font-weight: 800; }
+.ww-hourly-hour-row time span { display: block; }
 
 /* 오른쪽 주간 - 다섯 줄 고정. 아이콘과 기온을 짝지어 붙인다(각 칸 안에서 flex로 묶는다) -
    떨어뜨리면 어느 아이콘이 어느 기온인지 승객이 눈으로 이어야 한다. */
@@ -785,6 +835,7 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .ww-weekly-header i.ww-temp-min { color: #1d6fd0; }
 .ww-weekly-header i.ww-temp-max { color: #c0392b; }
 .ww-weekly-list { display: grid; grid-template-rows: repeat(5, 1fr); height: 100%; margin: 0; padding: 0 var(--terminal-safe-side) var(--terminal-space-3) var(--terminal-space-5); list-style: none; }
+.ww-weekly-empty { align-self: center; justify-self: center; margin: 0; color: var(--terminal-text-secondary); font-size: 30px; font-weight: 700; }
 .ww-weekly-row { display: grid; grid-template-columns: 136px 1fr 1fr; align-items: center; column-gap: var(--terminal-space-4); border-bottom: 1px solid var(--terminal-border-subtle); }
 .ww-weekly-icons { display: grid; grid-template-columns: repeat(2, 1fr); align-items: center; justify-items: center; }
 .ww-weekly-temps { display: grid; grid-template-columns: repeat(2, 1fr); align-items: baseline; justify-items: center; }
@@ -793,7 +844,7 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .ww-weekly-row.is-empty { border-bottom-color: transparent; background: rgba(7, 23, 53, .025); }
 /* 요일과 날짜를 세로로 쌓으면 30px 요일이 기본 줄 상자(20px)를 넘어 아래 날짜와 겹친다.
    가로로 나란히 두고 기준선을 맞춘다 - 겹치지도 않고 한 줄로 읽힌다. */
-.ww-weekly-date { display: flex; align-items: baseline; gap: var(--terminal-space-2); }
+.ww-weekly-date { display: flex; align-items: baseline; gap: var(--terminal-space-3); }
 .ww-weekly-date strong { font-size: 30px; font-weight: 800; line-height: 1.2; }
 .ww-weekly-date span { color: var(--terminal-text-secondary); font-size: 24px; font-weight: 600; line-height: 1.2; }
 .ww-weekly-icon { display: grid; width: 60px; height: 60px; flex: 0 0 60px; place-items: center; }
@@ -891,4 +942,5 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 /* 전정기관이 예민한 사람에게 큰 화면의 움직임은 불편을 준다. 값은 그대로 두고 움직임만 없앤다. */
 @media (prefers-reduced-motion: reduce) {
   .wf-page *, .ww-page * { animation: none !important; }
+  .tw-flight-list.is-overflowing { transition: none; }
 }

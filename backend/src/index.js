@@ -1,4 +1,5 @@
 ﻿import cron from 'node-cron'
+import net from 'node:net'
 import config from './config.js'
 import store from './store.js'
 import stats from './stats.js'
@@ -30,6 +31,8 @@ import terminalFlightProcessor from './processors/terminal-flight-processor.js'
 import overseasForecastProcessor from './processors/overseas-forecast-processor.js'
 import typhoonProcessor from "./processors/typhoon-processor.js";
 import { ensureActiveDataView } from './dev/data-view.js'
+
+net.setDefaultAutoSelectFamily(false)
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.

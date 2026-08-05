@@ -84,7 +84,7 @@ test('buildWeatherOverlayModel selects latest visible timeline frame by default'
   assert.equal(model.lightningLegendEntries[0].iconId, 'lightning-0-5')
 })
 
-test('selects WISSDOM only when its selected-height frame exactly matches the rendered radar tm', () => {
+test('selects WISSDOM from the requested height alone and prefers an exactly matching analysis', () => {
   const base = {
     echoMeta: { frames: [
       { tm: '202608041920', path: '/radar-1020.webp' },
@@ -102,10 +102,11 @@ test('selects WISSDOM only when its selected-height frame exactly matches the re
     radarWindRequested: true,
   }
 
-  const missing = buildWeatherOverlayModel(base)
-  assert.equal(missing.radarFrame.tm, '202608041925')
-  assert.equal(missing.wissdomFrame, null)
-  assert.equal(missing.wissdomAvailable, false)
+  // 10:30 is ahead of the rendered 10:25 radar frame, so the 10:20 analysis is the one to use.
+  const backed = buildWeatherOverlayModel(base)
+  assert.equal(backed.radarFrame.tm, '202608041925')
+  assert.equal(backed.wissdomFrame.path, '/wissdom-1020.webp')
+  assert.equal(backed.wissdomAvailable, true)
 
   const exact = buildWeatherOverlayModel({
     ...base,
@@ -113,8 +114,53 @@ test('selects WISSDOM only when its selected-height frame exactly matches the re
       1524: [...base.wissdomMeta.framesByHeight[1524], { tm: '202608041925', heightM: 1524, path: '/wissdom-1025.webp' }],
     } },
   })
-  assert.equal(exact.wissdomFrame.path, '/wissdom-1025.webp')
-  assert.equal(exact.wissdomAvailable, true)
+  assert.equal(exact.wissdomFrame.path, '/wissdom-1025.webp', 'an exact analysis still wins')
+
+  // A height with no published analysis stays hidden rather than borrowing another height's wind.
+  const otherHeight = buildWeatherOverlayModel({ ...base, radarWindHeightM: 3048 })
+  assert.equal(otherHeight.wissdomFrame, null)
+  assert.equal(otherHeight.wissdomAvailable, false)
+})
+
+test('backs WISSDOM onto the preceding analysis and reports that analysis time', () => {
+  // WISSDOM is a ten-minute product and radar is five-minute, so an exact-tm rule leaves the
+  // wind field hidden on every odd radar frame. Fall back to the preceding WISSDOM analysis
+  // and expose its own time so the legend can state how old it is.
+  const base = {
+    echoMeta: { frames: [
+      { tm: '202608051900', path: '/radar-1900.webp' },
+      { tm: '202608051905', path: '/radar-1905.webp' },
+    ] },
+    wissdomMeta: { framesByHeight: { 1524: [{ tm: '202608051900', heightM: 1524, path: '/wissdom-1900.webp' }] } },
+    visibility: { radar: true },
+    radarWindHeightM: 1524,
+    radarWindRequested: true,
+    nowMs: Date.UTC(2026, 7, 5, 10, 10),
+  }
+
+  const offset = buildWeatherOverlayModel({ ...base, selectedWeatherTimeMs: Date.UTC(2026, 7, 5, 10, 5) })
+  assert.equal(offset.radarFrame.tm, '202608051905')
+  assert.equal(offset.wissdomFrame.path, '/wissdom-1900.webp', 'the previous analysis must still render')
+  assert.equal(offset.wissdomAvailable, true)
+  assert.equal(offset.wissdomFrame.timeMs, Date.UTC(2026, 7, 5, 10, 0), 'the legend needs WISSDOM own time')
+
+  // Beyond one publication interval the wind is too old to sit under this radar image.
+  const stale = buildWeatherOverlayModel({
+    ...base,
+    echoMeta: { frames: [{ tm: '202608051920', path: '/radar-1920.webp' }] },
+    selectedWeatherTimeMs: Date.UTC(2026, 7, 5, 10, 20),
+    nowMs: Date.UTC(2026, 7, 5, 10, 25),
+  })
+  assert.equal(stale.wissdomFrame, null)
+  assert.equal(stale.wissdomAvailable, false)
+
+  // A WISSDOM analysis newer than the rendered radar frame must never be pulled backwards.
+  const ahead = buildWeatherOverlayModel({
+    ...base,
+    wissdomMeta: { framesByHeight: { 1524: [{ tm: '202608051910', heightM: 1524, path: '/wissdom-1910.webp' }] } },
+    selectedWeatherTimeMs: Date.UTC(2026, 7, 5, 10, 5),
+  })
+  assert.equal(ahead.wissdomFrame, null)
 })
 
 test('uses the requested WISSDOM height independently of the KIM selection', () => {
@@ -148,6 +194,7 @@ test('selects only an exact future QPF frame and hides observed radar and motion
       { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 55), leadMinutes: 30, path: '/qpf-30.webp' },
     ] },
     visibility: { radar: true },
+    nowMs: Date.UTC(2026, 7, 4, 10, 30),
     selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 45),
   })
 
@@ -157,6 +204,32 @@ test('selects only an exact future QPF frame and hides observed radar and motion
   assert.equal(model.radarFrame, null)
   assert.equal(model.radarMotion.dataUrl, null)
   assert.deepEqual(model.forecastTimelineTicks, [Date.UTC(2026, 7, 4, 10, 35), Date.UTC(2026, 7, 4, 10, 45), Date.UTC(2026, 7, 4, 10, 55)])
+})
+
+test('never offers a QPF frame whose valid time has already passed', () => {
+  // MAPLE takes about 15 minutes to publish, so the shortest leads of a fresh analysis are
+  // already history when they arrive. The past belongs to the radar observation, not a forecast.
+  const analysisTimeMs = Date.UTC(2026, 7, 4, 10, 25)
+  const nowMs = Date.UTC(2026, 7, 4, 10, 42)
+  const args = {
+    echoMeta: { frames: [{ tm: '202608041935', path: '/radar-1035.webp' }] },
+    qpfMeta: { frames: [
+      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' },
+      { tm: '202608041925', analysisTimeMs, validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 20, path: '/qpf-20.webp' },
+    ] },
+    visibility: { radar: true },
+    nowMs,
+  }
+
+  const past = buildWeatherOverlayModel({ ...args, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 35) })
+  assert.equal(past.qpfFrame, null, 'a lapsed forecast must not render')
+  assert.equal(past.qpfStatus, null)
+  assert.equal(past.radarDisplayVisible, true, 'the past stays with the observation')
+  assert.deepEqual(past.forecastTimelineTicks, [Date.UTC(2026, 7, 4, 10, 45)], 'no forecast tick in the past')
+
+  const future = buildWeatherOverlayModel({ ...args, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 45) })
+  assert.equal(future.qpfFrame.path, '/qpf-20.webp')
+  assert.equal(future.radarDisplayVisible, false)
 })
 
 test('keeps live selection on the latest observed tick when future QPF ticks exist', () => {
@@ -190,6 +263,7 @@ test('deduplicates overlapping QPF valid times in favour of the newest analysis'
       { tm: '202608041930', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 30), validTimeMs: Date.UTC(2026, 7, 4, 10, 45), leadMinutes: 15, path: '/qpf-1030-p15.webp' },
     ] },
     visibility: { radar: true },
+    nowMs: Date.UTC(2026, 7, 4, 10, 32),
     selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 45),
   })
 
@@ -216,6 +290,7 @@ test('crossing the final observation and first QPF tick clears each stale raster
     echoMeta: { frames: [{ tm: '202608041925', path: '/radar-1025.webp' }] },
     qpfMeta: { frames: [{ tm: '202608041925', analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25), validTimeMs: Date.UTC(2026, 7, 4, 10, 35), leadMinutes: 10, path: '/qpf-10.webp' }] },
     visibility: { radar: true },
+    nowMs: Date.UTC(2026, 7, 4, 10, 30),
   }
   const observation = buildWeatherOverlayModel({ ...base, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 25) })
   const forecast = buildWeatherOverlayModel({ ...base, selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 35) })

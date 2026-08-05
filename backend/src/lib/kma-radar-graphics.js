@@ -5,6 +5,8 @@ export const KMA_GRAPHIC_PRODUCTS = Object.freeze({
 
 export const KMA_GRAPHIC_WISSDOM_HEIGHTS_M = Object.freeze([305, 610, 914, 1219, 1524, 1829, 2134, 2438, 2743, 3048])
 export const KMA_GRAPHIC_QPF_LEAD_MINUTES = Object.freeze([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60])
+// WISSDOM analyses land on :00, :10, :20 … — a five-minute request is answered with the previous slot.
+export const KMA_GRAPHIC_WISSDOM_STEP_MINUTES = 10
 
 const VISUAL_ALIGNMENT_BOUNDS = Object.freeze([
   Object.freeze([30.12520229746768, 118.82639855789549]),
@@ -84,9 +86,16 @@ export function parseImpgResult(payload, { product, requestedTm, leadMinutes = 0
   }
 }
 
-export function buildImpgRequest(product, { tm, heightM, leadMinutes } = {}) {
+// ZOOMLVL scales the rendered raster and nothing else — KMA reports the same image coverage
+// at every level. Level 11 renders ~430x480 for the whole peninsula, which is far coarser than
+// the 1600x1830 radar layer it sits beside, so the default renders at a comparable-or-better
+// scale. Raise it for sharper signage output, lower it to cut bandwidth.
+export const KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL = 14
+
+export function buildImpgRequest(product, { tm, heightM, leadMinutes, zoomLevel = KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL } = {}) {
   const definition = KMA_GRAPHIC_PRODUCTS[product]
   if (!definition || !parseKmaKstTm(tm)) throw new TypeError('Invalid KMA graphics request')
+  if (!Number.isInteger(zoomLevel) || zoomLevel < 11 || zoomLevel > 15) throw new TypeError('Invalid zoom level')
   const params = new URLSearchParams({
     PROJ: 'LCC',
     tm,
@@ -98,7 +107,7 @@ export function buildImpgRequest(product, { tm, heightM, leadMinutes } = {}) {
     auto_man: '1', mode: 'H', umove: '10', fmove: '2', dmove: '180', bmove: '10', winnum: '0', rand: '10', size: '320',
     an_frn: '1', an_itv: '1', river: 'on', road: 'on', city: 'on', gis_auto: 'on', stnname: 'on', ctrl: '0', data3: '0',
     overlay: 'spr', color: 'C4', effect: 'N', height: '320', legend: '1',
-    STARTX: '-384032.28285233676', STARTY: '4878817.500765007', ENDX: '758967.7171476632', ENDY: '3778150.834098339', ZOOMLVL: '11', selWs: 'kh',
+    STARTX: '-384032.28285233676', STARTY: '4878817.500765007', ENDX: '758967.7171476632', ENDY: '3778150.834098339', ZOOMLVL: String(zoomLevel), selWs: 'kh',
     tm_st: tm, tm_ed: tm, tm2: tm, eva: '1', option: '1',
   })
   if (product === 'wissdom') {

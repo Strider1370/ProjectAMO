@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { MdChevronRight } from "react-icons/md";
 import {
   CurrentWeatherBlock,
@@ -11,7 +12,7 @@ import {
   ViewSwitcher,
   BoardWeatherImage,
 } from './terminalShared.jsx';
-import { dayCycleStrip, isPrecipHighlighted } from './terminalForecastStrip.js';
+import { addDays, dayCycleStrip, isPrecipHighlighted } from './terminalForecastStrip.js';
 import { weeklyRows } from './terminalWeeklyForecast.js';
 
 const MOTION_MODES = [
@@ -25,6 +26,19 @@ const MOTION_MODES = [
 // 칸 수를 자료 길이(cells.length)가 아니라 이 상수로 고정한다. 자정 부근이라 자료가
 // 8칸을 다 못 채워도 격자 폭은 그대로 둬야 도시가 바뀔 때 폭이 흔들리지 않는다.
 const HOURLY_CELL_COUNT = 8;
+
+function flightForecastCells(forecast, startDate) {
+  if (!Array.isArray(forecast)) return [];
+  let date = startDate;
+  let previousHour = null;
+  return forecast.flatMap(([label, icon, temperature]) => {
+    const temp = Number.parseFloat(String(temperature).replace(/[^\d.-]/g, ''));
+    const hour = Number.parseInt(label, 10);
+    if (date && Number.isFinite(hour) && previousHour != null && hour < previousHour) date = addDays(date, 1);
+    if (Number.isFinite(hour)) previousHour = hour;
+    return Number.isFinite(temp) ? [{ date, label, icon, temp, precipKind: null, precipValue: null }] : [];
+  });
+}
 
 /** 왼쪽. 3시간 간격 여덟 칸을 날짜 구분 없이 잇는다. 칸 수가 고정이라 도시가 바뀌어도 폭이 안 변한다. */
 function HourlyStrip({ cells }) {
@@ -47,17 +61,19 @@ function HourlyStrip({ cells }) {
     ? `${chartPoints[0].x},100 ${line} ${chartPoints[chartPoints.length - 1].x},100`
     : '';
   const precipKind = cells.find((cell) => cell?.precipKind)?.precipKind;
-  /* 여덟 칸이 전부 0%면 화면 폭을 쓰면서 아무것도 알려주지 않는다. 그 줄을 접고
-     높이를 기온 곡선에 준다. 비가 오는 날에만 줄이 나타나 눈에 띈다. */
-  const hasPrecip = cells.some((cell) => Number.isFinite(cell?.precipValue) && cell.precipValue > 0);
+  const dayLabel = (cell, index) => (
+    cell?.date && (index === 0 || cell.date !== slots[index - 1]?.date)
+      ? `${Number(cell.date.slice(-2))}일`
+      : ''
+  );
   return (
-    <div className={`ww-hourly-strip${hasPrecip ? "" : " is-precip-empty"}`}>
+    <div className="ww-hourly-strip">
       <div className="ww-hourly-row ww-hourly-hour-row" style={{ gridTemplateColumns: columns }}>
         <i aria-hidden="true" />
-        {slots.map((cell, index) => <time key={index}>{cell?.label ?? ''}</time>)}
+        {slots.map((cell, index) => <time key={index}><small>{dayLabel(cell, index)}</small><span>{cell?.label ?? ''}</span></time>)}
       </div>
       <div className="ww-hourly-row ww-hourly-icon-row" style={{ gridTemplateColumns: columns }}>
-        <i aria-hidden="true" />
+        <p className="ww-hourly-row-label">날씨</p>
         {slots.map((cell, index) => (
           <span className="ww-hourly-icon" key={index}>
             {cell && <BoardWeatherImage type={cell.icon} small />}
@@ -65,6 +81,7 @@ function HourlyStrip({ cells }) {
         ))}
       </div>
       <div className="ww-hourly-row ww-hourly-chart-row" style={{ gridTemplateColumns: columns }}>
+        <p className="ww-hourly-row-label">온도</p>
         <svg className="ww-hourly-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           <polygon className="ww-hourly-area" points={area} />
           <polyline points={line} fill="none" />
@@ -77,24 +94,79 @@ function HourlyStrip({ cells }) {
           ))}
         </div>
       </div>
-      {hasPrecip && <div className="ww-hourly-row ww-hourly-precip-row" style={{ gridTemplateColumns: columns }}>
+      <div className="ww-hourly-row ww-hourly-precip-row" style={{ gridTemplateColumns: columns }}>
         <p className="ww-hourly-row-label">{precipKind === 'amount' ? '강수량 mm' : '강수확률 %'}</p>
         {/* 알약 배경은 안쪽 <b>에만 준다. 2안과 같은 이유다. */}
         {slots.map((cell, index) => (
           <span key={index}>
             <b className={cell && isPrecipHighlighted(cell) ? "is-highlighted" : undefined}>
-              {cell?.precipValue == null ? '' : cell.precipKind === 'prob' ? `${cell.precipValue}%` : `${cell.precipValue}mm`}
+              {cell?.precipValue == null ? '–' : cell.precipKind === 'prob' ? `${cell.precipValue}%` : `${cell.precipValue}mm`}
             </b>
           </span>
         ))}
-      </div>}
+      </div>
     </div>
   );
+}
+
+const FLIGHT_ROW_COUNT = 5;
+const FLIGHT_ROLL_INTERVAL_MS = 4000;
+const FLIGHT_ROLL_DURATION_MS = 450;
+
+export function expandWeeklyFlights(flights) {
+  return flights.flatMap((flight) => {
+    if (!flight.codeshares || flight.codeshares.length < 2) return [flight];
+    return flight.codeshares.map((share, index) => ({
+      ...flight,
+      ...share,
+      flightKey: `${flight.flightKey}-${share.flight}`,
+      codeshares: null,
+      codeshareGroup: flight.flightKey,
+      codeshareIndex: index,
+      codeshareCount: flight.codeshares.length,
+    }));
+  });
+}
+
+function RollingFlightList({ flights }) {
+  const rows = expandWeeklyFlights(flights);
+  const signature = rows.map((flight) => flight.flightKey).join('|');
+  const [offset, setOffset] = useState(0);
+  const [rolling, setRolling] = useState(false);
+  const finishTimer = useRef(null);
+  const overflowing = rows.length > FLIGHT_ROW_COUNT;
+
+  useEffect(() => {
+    setOffset(0);
+    setRolling(false);
+  }, [signature]);
+
+  useEffect(() => {
+    if (!overflowing) return undefined;
+    const interval = window.setInterval(() => {
+      setRolling(true);
+      window.clearTimeout(finishTimer.current);
+      finishTimer.current = window.setTimeout(() => {
+        setOffset((current) => (current + 1) % rows.length);
+        setRolling(false);
+      }, FLIGHT_ROLL_DURATION_MS);
+    }, FLIGHT_ROLL_INTERVAL_MS);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(finishTimer.current);
+    };
+  }, [overflowing, rows.length, signature]);
+
+  const visibleRows = overflowing
+    ? Array.from({ length: FLIGHT_ROW_COUNT + 1 }, (_, index) => rows[(offset + index) % rows.length])
+    : rows;
+  return <FlightList flights={visibleRows} showAirline overflowing={overflowing} rolling={rolling} />;
 }
 
 /** 오른쪽. 다섯 줄 고정. 아이콘과 기온을 짝지어 붙인다 - 떨어뜨리면 어느 아이콘이
  * 어느 기온인지 승객이 눈으로 이어야 한다. 최저는 파랑, 최고는 빨강. */
 function WeeklyPanel({ rows }) {
+  const hasForecast = rows.some((row) => !row.empty);
   return (
     <>
       {/* 오전/오후 제목은 첫 줄 위에만 한 번 둔다. 아이콘·기온 두 벌 중 어느 게 오전인지
@@ -106,7 +178,7 @@ function WeeklyPanel({ rows }) {
         <span className="ww-head-icons"><i>오전</i><i>오후</i></span>
         <span className="ww-head-temps"><i className="ww-temp-min">최저</i><i className="ww-temp-max">최고</i></span>
       </div>
-      <ul className="ww-weekly-list">
+      {hasForecast ? <ul className="ww-weekly-list">
         {rows.map((row, index) => (
           // weeklyRows가 돌려주는 빈 줄은 얼려진 공유 객체라 값 기반 key를 못 쓴다. 순번을 쓴다.
           <li className={`ww-weekly-row${row.empty ? " is-empty" : ""}`} aria-hidden={row.empty || undefined} key={index}>
@@ -130,7 +202,7 @@ function WeeklyPanel({ rows }) {
             )}
           </li>
         ))}
-      </ul>
+      </ul> : <p className="ww-weekly-empty">주간 예보 확인 중</p>}
     </>
   );
 }
@@ -159,7 +231,8 @@ export default function WeeklyWeatherScreen({
   const flights = frame?.flights || [];
   // 화면 하나가 도시 하나를 맡는다 - 첫 편의 목적지 정보(도시명·현재날씨)가 화면 전체를 대표한다.
   const primaryFlight = flights[0];
-  const cells = dayCycleStrip(hourly, nowKst);
+  const liveCells = dayCycleStrip(hourly, nowKst);
+  const cells = liveCells.length ? liveCells : flightForecastCells(primaryFlight?.forecast, nowKst?.date);
   const rows = weeklyRows(days, nowKst?.date);
   const hasFlights = flights.length > 0;
   return (
@@ -198,8 +271,13 @@ export default function WeeklyWeatherScreen({
             data-testid="ww-active-page"
           >
             <div className="ww-middle">
-              <CurrentWeatherBlock flight={primaryFlight} departureName={departureName} departureTemp={departureTemp} />
-              <FlightList flights={flights} />
+              <CurrentWeatherBlock flight={primaryFlight} departureName={departureName} departureTemp={departureTemp} variant="weekly" />
+              <div className="ww-flight-panel">
+                <div className="ww-flight-summary">
+                  <h2>{departureName} → {primaryFlight.airport}</h2>
+                </div>
+                <RollingFlightList flights={flights} />
+              </div>
             </div>
             <div className="ww-bottom">
               <div className="ww-hourly-panel">

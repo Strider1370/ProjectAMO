@@ -50,7 +50,7 @@ export function isPrecipHighlighted(cell) {
   return cell.precipKind === 'prob' ? cell.precipValue >= PRECIP_HIGHLIGHT_PROB : cell.precipValue > 0
 }
 
-function addDays(dateString, days) {
+export function addDays(dateString, days) {
   const at = new Date(Date.UTC(
     Number(dateString.slice(0, 4)),
     Number(dateString.slice(4, 6)) - 1,
@@ -151,7 +151,7 @@ export function dayCycleStrip(hourly, nowKst) {
     const hour = absoluteHour % 24
     const slot = hourly.find((entry) => entry.date === date && hourOf(entry) === hour)
     if (!slot) break
-    cells.push({ label: `${hour}시`, icon: slot.icon || null, temp: Math.round(slot.temp), ...precipOf(slot) })
+    cells.push({ date, label: `${hour}시`, icon: slot.icon || null, temp: Math.round(slot.temp), ...precipOf(slot) })
   }
   return cells
 }

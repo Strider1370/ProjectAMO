@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { normalizeWissdomFrames, pickWissdomFrameForRadar } from './weatherOverlayModel.js'
 
 export const WISSDOM_HEIGHTS_M = Object.freeze([305, 610, 914, 1219, 1524, 1829, 2134, 2438, 2743, 3048])
 export const INITIAL_WISSDOM_HEIGHT_M = 1524
@@ -23,11 +24,9 @@ export function deriveRadarWindRailActive({ requestedVisible, effectiveVisible }
   return Boolean(requestedVisible)
 }
 
+// Availability must use the same rule the model renders with, or the control and the layer disagree.
 export function hasExactRadarWindFrame({ radarFrame, wissdomMeta, heightM }) {
-  return Boolean(
-    radarFrame?.tm
-    && wissdomMeta?.framesByHeight?.[String(heightM)]?.some((frame) => frame?.tm === radarFrame.tm),
-  )
+  return Boolean(pickWissdomFrameForRadar(normalizeWissdomFrames(wissdomMeta, heightM), radarFrame))
 }
 
 export default function useRadarWindOverlay({ radarEnabled, availableHeightsM, exactFrameAvailable }) {
