@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildTyphoonGeoJson, TYPHOON_LAYER_IDS, TYPHOON_SOURCE_IDS } from './typhoonLayers.js'
+import { addTyphoonLayers, buildTyphoonGeoJson, TYPHOON_LAYER_IDS, TYPHOON_SOURCE_IDS } from './typhoonLayers.js'
 
 const row = (leadHours, forecast, lat, lon, validAt) => ({
   forecast, leadHours, lat, lon, seq: 32,
@@ -80,4 +80,45 @@ test('소스와 레이어 ID가 중복 없이 정의된다', () => {
   assert.equal(new Set(TYPHOON_SOURCE_IDS).size, TYPHOON_SOURCE_IDS.length)
   assert.equal(new Set(TYPHOON_LAYER_IDS).size, TYPHOON_LAYER_IDS.length)
   assert.ok(TYPHOON_LAYER_IDS.length >= TYPHOON_SOURCE_IDS.length)
+})
+
+test('분석과 예보 지점 모두 강도 숫자를 가진 심볼로 표시한다', () => {
+  const { points } = buildTyphoonGeoJson(TYPHOONS)
+  assert.deepEqual(points.features.map((feature) => feature.properties.strength), ['4', '4', '4', '4'])
+
+  const layers = []
+  const map = {
+    getSource: () => null,
+    addSource: () => {},
+    getLayer: () => null,
+    addLayer: (layer) => layers.push(layer),
+  }
+  addTyphoonLayers(map)
+  const marker = layers.find((layer) => layer.id === 'typhoon-points-circle')
+  assert.ok(marker)
+  assert.equal(marker.type, 'circle')
+  assert.equal(marker.paint['circle-color'], 'rgba(0, 0, 0, 0)')
+  assert.equal(marker.paint['circle-stroke-color'], '#111827')
+  assert.ok(TYPHOON_LAYER_IDS.includes('typhoon-points-circle'))
+  assert.ok(TYPHOON_LAYER_IDS.includes('typhoon-points-strength'))
+  assert.ok(!TYPHOON_LAYER_IDS.includes('typhoon-points-label'))
+})
+
+test('반경과 오차 콘은 색 테두리로 구분하고 콘 테두리는 점선이다', () => {
+  const layers = []
+  const map = {
+    getSource: () => null,
+    addSource: () => {},
+    getLayer: () => null,
+    addLayer: (layer) => layers.push(layer),
+  }
+  addTyphoonLayers(map)
+  for (const id of ['typhoon-gale-outline', 'typhoon-storm-outline']) {
+    const layer = layers.find((entry) => entry.id === id)
+    assert.ok(layer)
+    assert.deepEqual(layer.paint['line-color'], ['get', 'color'])
+  }
+  const cone = layers.find((entry) => entry.id === 'typhoon-cone-outline')
+  assert.ok(cone)
+  assert.deepEqual(cone.paint['line-dasharray'], [2, 2])
 })

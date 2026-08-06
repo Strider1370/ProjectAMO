@@ -1,6 +1,7 @@
 // 태풍 지도 레이어. 도형은 백엔드가 계산해 내려준다 — 여기서 다시 만들지 않는다.
 // 색만으로 구분하지 않는다: 각 지점에 태풍번호 라벨이 함께 붙는다.
 import { assignTyphoonColors } from './typhoonColors.js'
+import { intensityOf } from './typhoonListModel.js'
 
 // JSON 왕복 후에는 참조 비교가 무의미하다. 값으로 현재 행을 가린다.
 function isSameRow(a, b) {
@@ -13,12 +14,15 @@ export const TYPHOON_SOURCE_IDS = [
 
 export const TYPHOON_LAYER_IDS = [
   'typhoon-cone-fill',
+  'typhoon-cone-outline',
   'typhoon-gale-fill',
+  'typhoon-gale-outline',
   'typhoon-storm-fill',
+  'typhoon-storm-outline',
   'typhoon-track-line',
   'typhoon-forecast-track-line',
   'typhoon-points-circle',
-  'typhoon-points-label',
+  'typhoon-points-strength',
 ]
 
 const empty = () => ({ type: 'FeatureCollection', features: [] })
@@ -65,6 +69,8 @@ export function buildTyphoonGeoJson(typhoons = [], selected = null) {
           isCurrent: isSameRow(row, typhoon.current),
           leadHours: row.leadHours,
           pressureHpa: row.pressureHpa,
+          maxWindMs: row.maxWindMs,
+          strength: intensityOf(row.maxWindMs) ?? 'TD',
           validAt: row.validAt,
           isSelected: Boolean(selected) && selected.number === typhoon.number && selected.validAt === row.validAt,
         },
@@ -94,33 +100,32 @@ export function addTyphoonLayers(map) {
   const add = (layer) => { if (!map.getLayer(layer.id)) map.addLayer(layer) }
 
   add({ id: 'typhoon-cone-fill', type: 'fill', source: 'typhoon-cone', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 } })
+  add({ id: 'typhoon-cone-outline', type: 'line', source: 'typhoon-cone', paint: { 'line-color': ['get', 'color'], 'line-width': 1.75, 'line-dasharray': [2, 2] } })
   add({ id: 'typhoon-gale-fill', type: 'fill', source: 'typhoon-gale', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.2 } })
+  add({ id: 'typhoon-gale-outline', type: 'line', source: 'typhoon-gale', paint: { 'line-color': ['get', 'color'], 'line-width': 2 } })
   add({ id: 'typhoon-storm-fill', type: 'fill', source: 'typhoon-storm', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.38 } })
+  add({ id: 'typhoon-storm-outline', type: 'line', source: 'typhoon-storm', paint: { 'line-color': ['get', 'color'], 'line-width': 2 } })
   add({ id: 'typhoon-track-line', type: 'line', source: 'typhoon-track', paint: { 'line-color': ['get', 'color'], 'line-width': 2.5 } })
   add({ id: 'typhoon-forecast-track-line', type: 'line', source: 'typhoon-forecast-track', paint: { 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-dasharray': [2, 2] } })
-    // 선택된 지점을 굵게. 패널의 시각 행과 지도 지점이 양방향으로 연결되는 시각 신호다.
   add({
     id: 'typhoon-points-circle', type: 'circle', source: 'typhoon-points',
     paint: {
-      'circle-color': ['get', 'color'],
-      'circle-radius': ['case', ['get', 'isSelected'], 10, ['get', 'forecast'], 4, 6],
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': ['case', ['get', 'isSelected'], 3, 1.5],
+      'circle-color': 'rgba(0, 0, 0, 0)',
+      'circle-radius': ['case', ['get', 'isSelected'], 16, 14],
+      'circle-stroke-color': '#111827',
+      'circle-stroke-width': ['case', ['get', 'isSelected'], 3, 2.5],
     },
   })
   add({
-    id: 'typhoon-points-label', type: 'symbol', source: 'typhoon-points',
-    // 현재 위치 한 곳에만 라벨을 찍는다. leadHours==0으로 거르면 지나온 경로 전체에 라벨이 쌓인다.
-    filter: ['==', ['get', 'isCurrent'], true],
-    // 스펙 §9: 라벨은 태풍번호와 중심기압. 색만으로 구분하지 않기 위한 것이므로 번호는 반드시 남는다.
+    id: 'typhoon-points-strength', type: 'symbol', source: 'typhoon-points',
     layout: {
-      'text-field': ['case',
-        ['has', 'pressureHpa'], ['concat', ['get', 'label'], ' · ', ['to-string', ['get', 'pressureHpa']], ' hPa'],
-        ['get', 'label'],
-      ],
-      'text-size': 12, 'text-offset': [0, 1.2], 'text-allow-overlap': false,
+      'text-field': ['get', 'strength'],
+      'text-size': 14,
+      'text-font': ['Open Sans Bold'],
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
     },
-    paint: { 'text-color': ['get', 'color'], 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+    paint: { 'text-color': '#000000', 'text-halo-color': '#ffffff', 'text-halo-width': 1 },
   })
 }
 

@@ -4,12 +4,12 @@
 // design-language의 색만 쓴다. #2563eb/#1d4ed8/#1e40af는 금지색이다
 // (frontend/scripts/lint-colors.mjs:32 — "forbidden MS blue").
 export const TYPHOON_PALETTE = [
-  '#dc2626', // red
-  '#0891b2', // cyan
-  '#d97706', // amber
+  '#c0291f', // red
+  '#92400e', // amber
+  '#7c2d12', // burnt orange
   '#7c3aed', // violet
-  '#65a30d', // lime
-  '#be185d', // pink
+  '#a21caf', // magenta
+  '#4d7c0f', // olive
 ]
 
 export function assignTyphoonColors(numbers = []) {

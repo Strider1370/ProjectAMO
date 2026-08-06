@@ -31,13 +31,6 @@ import {
   WISSDOM_SOURCE,
   syncWissdomLayer,
 } from './wissdomLayers.js'
-import {
-  RADAR_COVERAGE_LINE_LAYER,
-  RADAR_COVERAGE_MASK_LAYER,
-  RADAR_COVERAGE_SOURCE,
-  addRadarCoverageLayers,
-  syncRadarCoverageLayers,
-} from './radarCoverageLayers.js'
 
 export { QPF_LAYER, QPF_SOURCE, WISSDOM_LAYER, WISSDOM_SOURCE }
 
@@ -76,7 +69,6 @@ export const WEATHER_OVERLAY_SOURCE_IDS = [
   RADAR_SOURCE,
   WISSDOM_SOURCE,
   QPF_SOURCE,
-  RADAR_COVERAGE_SOURCE,
   RAINVIEWER_SOURCE,
   RAINVIEWER_COVERAGE_SOURCE,
   SIGWX_SOURCE,
@@ -100,8 +92,6 @@ export const WEATHER_OVERLAY_LAYER_IDS = [
   RADAR_LAYER,
   WISSDOM_LAYER,
   QPF_LAYER,
-  RADAR_COVERAGE_MASK_LAYER,
-  RADAR_COVERAGE_LINE_LAYER,
   RAINVIEWER_LAYER,
   RAINVIEWER_COVERAGE_LAYER,
   SIGWX_LAYER,
@@ -174,7 +164,7 @@ export const MET_LAYERS = [
   { id: 'radar', label: 'Radar', color: '#38bdf8' },
   // ponytail: 기상청이 그려주는 합성영상 두 종류를 임시로 붙여 비교 중이다. 쓸지 결정되면
   // 하나로 정리하거나 우리 렌더링으로 되돌린다.
-  { id: 'radarHsr', label: 'Radar(KMA 그림)', color: '#38bdf8' },
+  { id: 'radarHsr', label: 'Radar(이미지)', color: '#38bdf8' },
   { id: 'radarHci', label: '강수 형태', color: '#0ea5e9' },
   { id: 'radarOverseas', label: 'Radar(해외)', color: '#38bdf8' },
   { id: 'echoTop', label: '에코탑(재산출)', color: '#7E22CE' },
@@ -521,10 +511,6 @@ export function syncRasterAndSigwxLayers(map, model) {
   addOrUpdateSigwxLowLayers(map, model.sigwxLowMapData, { loadIcons: model.visibility.sigwx })
   setMapLayerVisible(map, SATELLITE_LAYER, hasSat && model.visibility.satellite)
   setMapLayerVisible(map, RADAR_LAYER, hasRadar && model.visibility.radar)
-  // 국내 레이더가 보일 때만 그 관측 반경을 함께 밝힌다 — 화면 가장자리의 빈 하늘이
-  // "비가 없다"인지 "레이더가 안 닿는다"인지 구분되게 한다.
-  addRadarCoverageLayers(map)
-  syncRadarCoverageLayers(map, hasRadar && model.visibility.radar)
   setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && model.visibility.sigwx && model.showVisibleSigwxFrontOverlay)
   setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && model.visibility.sigwx && model.showVisibleSigwxCloudOverlay)
   setSigwxLowVisibility(map, model.visibility.sigwx)

@@ -1,7 +1,7 @@
 import {
   Radar, Satellite, Zap, Wind, Thermometer, Droplets,
   Snowflake, Activity, Eye, AlertTriangle, AlertOctagon, CloudFog, Globe, Cloud, CloudLightning, Mountain,
-  Tornado, Sun,
+  Tornado, Sun, CloudHail,
 } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -9,6 +9,8 @@ import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 // Representative icon per weather layer for the tile grid (legend-like).
 const WEATHER_TILE_ICON = {
   radar: Radar,
+  radarHsr: Radar,      // 같은 레이더다 — 우리가 그렸느냐 기상청 그림이냐만 다르다
+  radarHci: CloudHail,  // 수상체 = 비/눈/우박 구분
   radarOverseas: Globe, // 해외 = Globe (SIGMET(해외)와 동일 규칙)
   echoTop: Mountain,
   satellite: Satellite,
@@ -40,7 +42,6 @@ function WeatherOverlayPanel({
   isLayerDisabled,
   getLayerBadge,
   showWind = true,
-  radarWindAvailable = false,
   radarWindRequested = false,
   onRadarWindRequestedChange,
   terrainAltitudeFt = 3000,
@@ -62,7 +63,7 @@ function WeatherOverlayPanel({
   ]
   const layerLabels = {
     radar: '레이더',
-    radarHsr: '레이더(기상청 그림)',
+    radarHsr: '레이더(이미지)',
     radarHci: '강수 형태',
     radarOverseas: '해외 레이더',
     echoTop: '에코탑(재산출)',
@@ -97,25 +98,19 @@ function WeatherOverlayPanel({
           <div className="layer-tile-group-title">
             {group.title}
             {group.id === 'observation' && visibility.radar && (
-              <>
-                {/* 켬/끔은 사용자 의사, 자료 유무는 상황 — 섞지 않는다. 자료가 없다고 버튼을 잠그면
-                    켜둔 상태에서 자료가 끊겼을 때 끌 수조차 없고, 왜 안 눌리는지도 알 수 없다. */}
-                <button
-                  type="button"
-                  className="layer-tile-group-title-action"
-                  onClick={() => onRadarWindRequestedChange?.((prev) => !prev)}
-                  aria-label="레이더 바람장 (WISSDOM)"
-                  aria-pressed={radarWindRequested}
-                  aria-describedby={radarWindRequested && !radarWindAvailable ? 'radar-wind-unavailable' : undefined}
-                >
-                  레이더 바람장 (WISSDOM)
-                </button>
-                {radarWindRequested && !radarWindAvailable && (
-                  <span id="radar-wind-unavailable" className="layer-tile-group-title-note">
-                    이 시각 WISSDOM 자료 없음
-                  </span>
-                )}
-              </>
+              // 켬/끔은 사용자 의사, 자료 유무는 상황 — 섞지 않는다. 자료가 없다고 버튼을 잠그면
+              // 켜둔 상태에서 자료가 끊겼을 때 끌 수조차 없다. 자료가 없다는 사실은 지도에서
+              // 바람깃이 안 그려지는 것으로 이미 드러나므로, 제목줄에 문구를 덧붙이지 않는다
+              // (한 줄을 넘겨 그룹 제목까지 밀어냈다).
+              <button
+                type="button"
+                className="layer-tile-group-title-action"
+                onClick={() => onRadarWindRequestedChange?.((prev) => !prev)}
+                aria-label="레이더 바람장 (WISSDOM)"
+                aria-pressed={radarWindRequested}
+              >
+                레이더 바람장 (WISSDOM)
+              </button>
             )}
           </div>
           <div className="layer-tile-grid">

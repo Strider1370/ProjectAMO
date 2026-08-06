@@ -7,6 +7,7 @@ import { CURRENT_VERSION } from '../../features/about/changelog.js'
 import { useAuth, ROLE_LABEL_KO } from '../../features/auth/AuthContext.jsx'
 import NotificationCenter from '../../features/notifications/NotificationCenter.jsx'
 import DeveloperConsoleButton from '../../features/developer/DeveloperConsoleButton.jsx'
+import useHasHover from '../../shared/ui/useHasHover.js'
 import './Sidebar.css'
 
 const topItems = [
@@ -14,7 +15,7 @@ const topItems = [
   { label: '기상정보',         icon: Cloud },
   { label: 'ADS-B',           icon: Radio },
   { label: 'NOTAM',            icon: FileWarning },
-  { label: '상황판',           icon: Monitor, href: '/monitoring' },
+  { label: '상황판',           icon: Monitor, href: '/monitoring', pointerOnly: true }, // 벽걸이 전용 — 터치 기기에서는 감춘다
   { label: '비행 전 브리핑',   icon: FileText },
 ]
 
@@ -58,6 +59,7 @@ const PANEL_MAP = {
 
 function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick, onHelp }) {
   const { user } = useAuth()
+  const hasHover = useHasHover()
   const [isUtilityOpen, setIsUtilityOpen] = useState(false)
 
   useEffect(() => {
@@ -118,7 +120,7 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
             item={{ label: '검색', icon: Search }}
             onClick={onSearchOpen}
           />
-          {topItems.map((item) => {
+          {topItems.filter((item) => hasHover || !item.pointerOnly).map((item) => {
             const panelId = PANEL_MAP[item.label]
             const handleClick = item.href
               ? () => window.location.assign(item.href)

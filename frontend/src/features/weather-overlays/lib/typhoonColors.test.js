@@ -34,3 +34,7 @@ test('활성 태풍이 팔레트보다 많으면 색을 재사용한다', () => 
 test('빈 목록은 빈 객체다', () => {
   assert.deepEqual(assignTyphoonColors([]), {})
 })
+
+test('태풍 팔레트는 청록이나 파랑을 쓰지 않는다', () => {
+  assert.deepEqual(TYPHOON_PALETTE, ['#c0291f', '#92400e', '#7c2d12', '#7c3aed', '#a21caf', '#4d7c0f'])
+})

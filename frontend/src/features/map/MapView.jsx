@@ -2,6 +2,7 @@ import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, us
 import { ChartSpline, House } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
+import useHasHover from '../../shared/ui/useHasHover.js'
 import useDemoMode from '../../shared/demoMode/useDemoMode.js'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -378,6 +379,9 @@ const MapView = forwardRef(function MapView({
 }, ref) {
   const notifyInitialStyleReady = useMemo(() => createOneShotNotifier(onStyleReady), [onStyleReady])
   const isMobile = useIsMobile()
+  // 터치 기기에서는 공항 호버 툴팁을 띄우지 않는다 — 탭하면 공항 패널이 열리는데
+  // 그 직전에 가짜 mousemove로 툴팁이 깜빡였다 사라졌다.
+  const hasHover = useHasHover()
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const initialHomeRef = useRef(null)
@@ -858,7 +862,7 @@ const MapView = forwardRef(function MapView({
     fetchPoint: fetchEchoTopPoint,
   })
   const typhoonOverlay = useTyphoonOverlay({
-    mapRef, isStyleReady, styleRevision, visible: metVisibility.typhoon,
+    mapRef, isStyleReady, styleRevision, visible: metVisibility.typhoon, timeZone: tz,
   })
   const radarWindEffectiveVisible = radarWindOverlay.effectiveVisible
   const {
@@ -2110,7 +2114,7 @@ const MapView = forwardRef(function MapView({
         />
       )}
 
-      {hoveredAirportIcao && (() => {
+      {hasHover && hoveredAirportIcao && (() => {
         const hoveredMetar = metarData?.airports?.[hoveredAirportIcao] || null
         const hoveredAirportMeta = airports.find((a) => a.icao === hoveredAirportIcao) || null
         const hoveredFeature = airportGeoJSON.features.find((f) => f.properties.icao === hoveredAirportIcao)
@@ -2167,7 +2171,6 @@ const MapView = forwardRef(function MapView({
           onWindFlowOpacityChange={setWindFlowOpacity}
           onWindFlowTrailChange={setWindFlowTrail}
           onWindFlowWidthChange={setWindFlowWidth}
-          radarWindAvailable={hasExactRadarWindFrame({ radarFrame: baseWeatherOverlayModel.radarFrame, wissdomMeta, heightM: radarWindOverlay.heightM })}
           radarWindRequested={radarWindOverlay.requestedVisible}
           onRadarWindRequestedChange={radarWindOverlay.setRequestedVisible}
           terrainAltitudeFt={terrainAltitudeFt}
