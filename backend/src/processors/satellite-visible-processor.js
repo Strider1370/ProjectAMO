@@ -25,6 +25,11 @@ const MAX_FRAMES = 12
 const MAX_COUNT = 4095
 const GAMMA = 2.0
 
+// 밤 판정. 반사광이 없어도 원시값이 정확히 0으로 오지는 않는다 — 운영 서버에서 01:50에 저장된
+// 프레임이 평균 21, 최대 27(255 만점)의 균일한 잡음이었다. "0인 화소가 하나도 없다"로는 못 거른다.
+// 낮이면 구름이든 지표든 어딘가는 반드시 밝으므로, 화면에서 가장 밝은 값으로 판정한다.
+const NIGHT_MAX_LEVEL = 40
+
 function paths(root) {
   const dir = path.join(root, 'satellite', 'visible')
   return { dir, meta: path.join(dir, 'visible_meta.json') }
@@ -68,6 +73,7 @@ export async function renderVisible(parsed) {
   const outH = KO_DISPLAY_GRID.height
   const buf = Buffer.alloc(outW * outH * 4)
   let lit = 0
+  let maxLevel = 0
 
   for (let py = 0; py < outH; py += 1) {
     for (let px = 0; px < outW; px += 1) {
@@ -76,11 +82,12 @@ export async function renderVisible(parsed) {
       const level = toDisplayLevel(Number(data[idx]))
       if (level <= 0) continue
       lit += 1
+      if (level > maxLevel) maxLevel = level
       const o = (py * outW + px) * 4
       buf[o] = level; buf[o + 1] = level; buf[o + 2] = level; buf[o + 3] = 255
     }
   }
-  return { buffer: buf, width: outW, height: outH, litPixels: lit }
+  return { buffer: buf, width: outW, height: outH, litPixels: lit, maxLevel }
 }
 
 export async function processSatelliteVisible({ now = new Date(), deps = {} } = {}) {
@@ -101,8 +108,8 @@ export async function processSatelliteVisible({ now = new Date(), deps = {} } = 
   const parsed = await parseSatelliteNC(Buffer.from(await response.arrayBuffer()))
 
   const rendered = await renderVisible(parsed)
-  // 밤에는 반사광이 없어 전부 0이 된다 — 빈 그림을 굳이 저장하지 않는다.
-  if (rendered.litPixels === 0) return { saved: false, tm, reason: 'night' }
+  // 밤에는 볼 것이 없다 — 저장하면 지도에 검은 판이 덮인다.
+  if (rendered.maxLevel < NIGHT_MAX_LEVEL) return { saved: false, tm, reason: 'night', maxLevel: rendered.maxLevel }
 
   const webp = await sharp(rendered.buffer, { raw: { width: rendered.width, height: rendered.height, channels: 4 } })
     .webp({ quality: 82 }).toBuffer()
