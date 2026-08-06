@@ -15,16 +15,18 @@ export default defineConfig(({ mode }) => {
         changeOrigin: true,
       },
       // Backend-generated data (radar, satellite, sigwx images)
-      // Frontend public/data/ serves aviation geojson — don't catch those here
-      '/data/radar': {
+      // Frontend public/data/ serves aviation geojson — don't catch those here.
+      // 끝의 슬래시가 중요하다: vite 프록시는 접두사 일치라, '/data/radar'로 두면
+      // public/data/radar-coverage.geojson 같은 정적 파일까지 백엔드로 넘겨 404가 된다.
+      '/data/radar/': {
         target: backendTarget,
         changeOrigin: true,
       },
-      '/data/satellite': {
+      '/data/satellite/': {
         target: backendTarget,
         changeOrigin: true,
       },
-      '/data/sigwx_low': {
+      '/data/sigwx_low/': {
         target: backendTarget,
         changeOrigin: true,
       },

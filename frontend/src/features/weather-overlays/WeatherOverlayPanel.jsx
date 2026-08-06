@@ -41,13 +41,11 @@ function WeatherOverlayPanel({
   showWind = true,
   radarWindAvailable = false,
   radarWindRequested = false,
-  radarWindHeightM = 1524,
   onRadarWindRequestedChange,
-  onRadarWindHeightChange,
   terrainAltitudeFt = 3000,
 }) {
+  // WISSDOM 높이 선택은 세로 고도 레일(RadarWindVerticalRail)이 맡는다 — 이 패널은 켬/끔만 다룬다.
   const isMobile = useIsMobile()
-  void onRadarWindHeightChange
   const TEMP_HIDDEN_LAYER_IDS = []
   // 순서는 조종사가 보는 급한 순서 — 발효 중인 위험기상이 먼저, 그다음 실제 관측(레이더·위성),
   // 마지막이 예보(수치모델). 항적(ADS-B)은 기상이 아니라 교통이라 별도 '항적' 패널에 있다.
@@ -56,13 +54,15 @@ function WeatherOverlayPanel({
     {
       id: 'observation',
       title: '레이더/위성',
-      ids: ['radar', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'ci', 'ctps'],
+      ids: ['radar', 'radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'ci', 'ctps'],
     },
     { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'] : [] },
     { id: 'terrain', title: '지형', ids: ['terrainHazard'] },
   ]
   const layerLabels = {
     radar: '레이더',
+    radarHsr: '레이더(기상청 그림)',
+    radarHci: '강수 형태',
     radarOverseas: '해외 레이더',
     echoTop: '에코탑(재산출)',
     satellite: '위성',

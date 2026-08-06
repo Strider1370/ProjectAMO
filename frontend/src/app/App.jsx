@@ -213,6 +213,8 @@ function MainAppShell() {
           echoMeta={weatherData?.echoMeta || null}
           wissdomMeta={weatherData?.wissdomMeta || null}
           qpfMeta={weatherData?.qpfMeta || null}
+          hsrMeta={weatherData?.hsrMeta || null}
+          hciMeta={weatherData?.hciMeta || null}
           echoTopMeta={weatherData?.echoTopMeta || null}
           rainviewerMeta={weatherData?.rainviewerMeta || null}
           satMeta={weatherData?.satMeta || null}

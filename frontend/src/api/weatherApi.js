@@ -162,7 +162,7 @@ export async function loadWeatherData() {
   const [
     airports, metar, taf, amos, warning, kmaSpecialWarning,
     sigmet, airmet, lightning,
-    echoMeta, wissdomMeta, qpfMeta, echoTopMeta, rainviewerMeta, satMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
+    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, echoTopMeta, rainviewerMeta, satMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
     groundForecast, notam, overseasAirports,
     metarOverseas, tafOverseas, sigmetOverseas,
   ] = await Promise.all([
@@ -178,6 +178,8 @@ export async function loadWeatherData() {
     fetchJson('/data/radar/echo_meta.json', { optional: true }),
     fetchJson('/data/radar/wissdom/wissdom_meta.json', { optional: true }),
     fetchJson('/data/radar/qpf/qpf_meta.json', { optional: true }),
+    fetchJson('/data/radar/hsr/hsr_meta.json', { optional: true }),
+    fetchJson('/data/radar/hci/hci_meta.json', { optional: true }),
     fetchJson('/data/radar/echotop/echotop_meta.json', { optional: true }),
     fetchJson('/data/radar/rainviewer_meta.json', { optional: true }),
     fetchJson('/data/satellite/sat_meta.json', { optional: true }),
@@ -209,6 +211,8 @@ export async function loadWeatherData() {
     echoMeta,
     wissdomMeta,
     qpfMeta,
+    hsrMeta,
+    hciMeta,
     echoTopMeta,
     rainviewerMeta,
     satMeta,
@@ -366,6 +370,11 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all' } =
   if (changes.echoMeta) { fetches.push(fetchJson('/data/radar/echo_meta.json', { optional: 'preserve' })); keys.push('echoMeta') }
   if (changes.wissdomMeta) { fetches.push(fetchJson('/data/radar/wissdom/wissdom_meta.json', { optional: 'preserve' })); keys.push('wissdomMeta') }
   if (changes.qpfMeta) { fetches.push(fetchJson('/data/radar/qpf/qpf_meta.json', { optional: 'preserve' })); keys.push('qpfMeta') }
+  // ponytail: 임시로 붙인 기상청 합성영상 두 종류. 스냅샷 해시에 아직 없어서 레이더 갱신에 얹어 받는다.
+  if (changes.echoMeta) {
+    fetches.push(fetchJson('/data/radar/hsr/hsr_meta.json', { optional: 'preserve' })); keys.push('hsrMeta')
+    fetches.push(fetchJson('/data/radar/hci/hci_meta.json', { optional: 'preserve' })); keys.push('hciMeta')
+  }
   if (changes.echoTopMeta) { fetches.push(fetchJson('/data/radar/echotop/echotop_meta.json', { optional: 'preserve' })); keys.push('echoTopMeta') }
   if (changes.rainviewerMeta) { fetches.push(fetchJson('/data/radar/rainviewer_meta.json', { optional: 'preserve' })); keys.push('rainviewerMeta') }
   if (changes.satMeta) { fetches.push(fetchJson('/data/satellite/sat_meta.json', { optional: 'preserve' })); keys.push('satMeta') }

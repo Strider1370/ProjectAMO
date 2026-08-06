@@ -31,6 +31,13 @@ import {
   WISSDOM_SOURCE,
   syncWissdomLayer,
 } from './wissdomLayers.js'
+import {
+  RADAR_COVERAGE_LINE_LAYER,
+  RADAR_COVERAGE_MASK_LAYER,
+  RADAR_COVERAGE_SOURCE,
+  addRadarCoverageLayers,
+  syncRadarCoverageLayers,
+} from './radarCoverageLayers.js'
 
 export { QPF_LAYER, QPF_SOURCE, WISSDOM_LAYER, WISSDOM_SOURCE }
 
@@ -69,6 +76,7 @@ export const WEATHER_OVERLAY_SOURCE_IDS = [
   RADAR_SOURCE,
   WISSDOM_SOURCE,
   QPF_SOURCE,
+  RADAR_COVERAGE_SOURCE,
   RAINVIEWER_SOURCE,
   RAINVIEWER_COVERAGE_SOURCE,
   SIGWX_SOURCE,
@@ -92,6 +100,8 @@ export const WEATHER_OVERLAY_LAYER_IDS = [
   RADAR_LAYER,
   WISSDOM_LAYER,
   QPF_LAYER,
+  RADAR_COVERAGE_MASK_LAYER,
+  RADAR_COVERAGE_LINE_LAYER,
   RAINVIEWER_LAYER,
   RAINVIEWER_COVERAGE_LAYER,
   SIGWX_LAYER,
@@ -143,10 +153,29 @@ export const RADAR_RAINRATE_LEGEND = [
   { label: '0.0', color: 'rgb(247, 252, 249)' },
 ]
 
+// WISSDOM 바람장 풍속 밴드(m/s). 색은 눈대중이 아니라 기상청이 함께 보내주는 범례 이미지
+// (RDR_WIS_legend320.png)의 픽셀에서 그대로 읽은 값이다 — 40px씩 여덟 칸.
+// 라벨은 각 밴드의 하한이다. 기상청 원본에는 0 아래로 흰색(#EEEEEE) 칸이 하나 더 있는데,
+// 지도에서 사실상 보이지 않는 무풍/무자료 칸이라 범례에서 뺐다.
+// 기상청이 색이나 구간을 바꾸면 이 표도 같이 바꿔야 한다 — 그때는 범례 이미지를 다시 읽으면 된다.
+export const WISSDOM_WIND_LEGEND = [
+  { label: '0', color: 'rgb(204, 170, 0)' },
+  { label: '5', color: 'rgb(0, 128, 0)' },
+  { label: '10', color: 'rgb(7, 171, 255)' },
+  { label: '20', color: 'rgb(0, 0, 255)' },
+  { label: '40', color: 'rgb(255, 0, 255)' },
+  { label: '60', color: 'rgb(213, 0, 0)' },
+  { label: '85', color: 'rgb(51, 51, 51)' },
+]
+
 // 이 레이어들은 공유 레이어 레지스트리(features/map/layerActions.js)에 연동됨.
 // id 추가/삭제 시 layerActions.test.js 커버리지 테스트가 동기화를 강제한다.
 export const MET_LAYERS = [
   { id: 'radar', label: 'Radar', color: '#38bdf8' },
+  // ponytail: 기상청이 그려주는 합성영상 두 종류를 임시로 붙여 비교 중이다. 쓸지 결정되면
+  // 하나로 정리하거나 우리 렌더링으로 되돌린다.
+  { id: 'radarHsr', label: 'Radar(KMA 그림)', color: '#38bdf8' },
+  { id: 'radarHci', label: '강수 형태', color: '#0ea5e9' },
   { id: 'radarOverseas', label: 'Radar(해외)', color: '#38bdf8' },
   { id: 'echoTop', label: '에코탑(재산출)', color: '#7E22CE' },
   { id: 'satellite', label: 'Satellite', color: '#64748b' },
@@ -491,6 +520,10 @@ export function syncRasterAndSigwxLayers(map, model) {
   addOrUpdateSigwxLowLayers(map, model.sigwxLowMapData, { loadIcons: model.visibility.sigwx })
   setMapLayerVisible(map, SATELLITE_LAYER, hasSat && model.visibility.satellite)
   setMapLayerVisible(map, RADAR_LAYER, hasRadar && model.visibility.radar)
+  // 국내 레이더가 보일 때만 그 관측 반경을 함께 밝힌다 — 화면 가장자리의 빈 하늘이
+  // "비가 없다"인지 "레이더가 안 닿는다"인지 구분되게 한다.
+  addRadarCoverageLayers(map)
+  syncRadarCoverageLayers(map, hasRadar && model.visibility.radar)
   setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && model.visibility.sigwx && model.showVisibleSigwxFrontOverlay)
   setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && model.visibility.sigwx && model.showVisibleSigwxCloudOverlay)
   setSigwxLowVisibility(map, model.visibility.sigwx)

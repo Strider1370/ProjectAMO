@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import { RAINVIEWER_LEGEND } from './lib/rainviewerLayers.js'
+import { WISSDOM_WIND_LEGEND } from './lib/weatherOverlayLayers.js'
 import { entriesLeftToRight } from './lib/legendOrder.js'
 
 function HLegend({ title, entries = [], reverse = false, note = null }) {
@@ -72,7 +73,6 @@ function WeatherLegends({
   radarReferenceTimeMs,
   lightningReferenceTimeMs,
   radarWindLegendVisible = false,
-  radarWindLegendPath,
   radarWindObservedAtMs,
   formatReferenceTimeLabel,
   bottomDock = false,
@@ -90,6 +90,11 @@ function WeatherLegends({
     onOpenChange?.(resolved)
   }
   const qpfLegendVisible = Boolean(qpfStatus && qpfLegendPath)
+  // 색은 우리가 그리지만 시각은 기상청 분석 시각이다 — 어느 시점의 바람인지 함께 밝힌다.
+  // 바람장이 꺼져 있으면 형식 함수 자체가 안 넘어올 수 있으므로 그때는 만들지 않는다.
+  const wissdomNote = radarWindLegendVisible
+    ? `KMA 관측 ${formatReferenceTimeLabel?.(radarWindObservedAtMs) ?? ''}`
+    : null
   const panel = (
     <div className="map-right-legends">
       {radarLegendVisible && (
@@ -107,10 +112,11 @@ function WeatherLegends({
               </div>
             ))}
           </div>
-          {radarWindLegendVisible && <div className="radar-wind-control">
-            <span className="radar-wind-note">WISSDOM · KMA 관측 {formatReferenceTimeLabel(radarWindObservedAtMs)}</span>
-            {radarWindLegendPath && <img src={radarWindLegendPath} alt="WISSDOM KMA 범례" />}
-          </div>}
+          {radarWindLegendVisible && (
+            <div className="radar-wind-control">
+              <HLegend title="WISSDOM · m/s" entries={WISSDOM_WIND_LEGEND} note={wissdomNote} />
+            </div>
+          )}
         </div>
       )}
       {qpfLegendVisible && (
@@ -355,12 +361,7 @@ function WeatherLegends({
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
         ))}
         {radarWindLegendVisible && (
-          <div className="radar-wind-control radar-wind-control--mobile">
-            <span className="radar-wind-note">
-              WISSDOM · KMA 관측 {formatReferenceTimeLabel(radarWindObservedAtMs)}
-            </span>
-            {radarWindLegendPath && <img src={radarWindLegendPath} alt="WISSDOM KMA 범례" />}
-          </div>
+          <HLegend title="WISSDOM · m/s" entries={WISSDOM_WIND_LEGEND} note={wissdomNote} />
         )}
         {qpfLegendVisible && (
           <div className="qpf-api-legend" aria-label="MAPLE 초단기 강수예측 범례">

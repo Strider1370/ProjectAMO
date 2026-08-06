@@ -50,6 +50,7 @@ import EchoTopCard from '../weather-overlays/EchoTopCard.jsx'
 import QpfStatusCard from '../weather-overlays/QpfStatusCard.jsx'
 import TyphoonPanel from '../weather-overlays/TyphoonPanel.jsx'
 import { useTyphoonOverlay } from '../weather-overlays/lib/typhoonOverlaySync.js'
+import { syncKmaCompositeLayers } from '../weather-overlays/lib/kmaCompositeLayers.js'
 import WeatherPointInspector from '../weather-overlays/WeatherPointInspector.jsx'
 import { useConvectiveOverlay } from '../weather-overlays/lib/useConvectiveOverlay.js'
 import { useEchoTopOverlay } from '../weather-overlays/lib/useEchoTopOverlay.js'
@@ -338,6 +339,8 @@ const MapView = forwardRef(function MapView({
   echoMeta = null,
   wissdomMeta = null,
   qpfMeta = null,
+  hsrMeta = null,
+  hciMeta = null,
   rainviewerMeta = null,
   satMeta = null,
   convectiveMeta = null,
@@ -753,14 +756,12 @@ const MapView = forwardRef(function MapView({
   const adsbTrailGeoJSON = useMemo(() => createAdsbTrailGeoJSON(adsbData), [adsbData])
   const adsbCounts = useMemo(() => countAircraft(adsbGeoJSON.features), [adsbGeoJSON])
   const adsbVisibleIds = useMemo(() => visibleIds(adsbGeoJSON.features, trafficFilters), [adsbGeoJSON, trafficFilters])
-  const radarWindAvailableHeightsM = useMemo(
-    () => Object.keys(wissdomMeta?.framesByHeight || {}).map(Number).filter(Number.isFinite),
-    [wissdomMeta],
-  )
   const baseWeatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
     echoMeta,
     wissdomMeta,
     qpfMeta,
+    hsrMeta,
+    hciMeta,
     rainviewerMeta,
     satMeta,
     convectiveMeta,
@@ -788,6 +789,8 @@ const MapView = forwardRef(function MapView({
     echoMeta,
     wissdomMeta,
     qpfMeta,
+    hsrMeta,
+    hciMeta,
     rainviewerMeta,
     satMeta,
     convectiveMeta,
@@ -812,15 +815,17 @@ const MapView = forwardRef(function MapView({
   ])
   const radarWindOverlay = useRadarWindOverlay({
     radarEnabled: baseWeatherOverlayModel.visibility.radar,
-    availableHeightsM: radarWindAvailableHeightsM,
     exactFrameAvailable: (heightM) => hasExactRadarWindFrame({
       radarFrame: baseWeatherOverlayModel.radarFrame,
       wissdomMeta,
       heightM,
     }),
   })
-  const weatherOverlayModel = buildWeatherOverlayModel({
-    echoMeta, wissdomMeta, qpfMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
+  // baseWeatherOverlayModel과 같은 계산을 WISSDOM 선택 결과까지 반영해 한 번 더 돈다.
+  // useMemo가 없으면 렌더마다 프레임 객체가 새로 생겨, 아래 rasterAndSigwxModel 등이
+  // 내용은 그대로인데 "바뀐 것"으로 판정돼 지도 동기화가 통째로 매 렌더 다시 돈다.
+  const weatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
+    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
     lightningData, sigwxLowData, sigwxLowHistoryData, sigmetData, airmetData,
     visibility: metVisibility, selectedWeatherTimeMs: weatherTimelineSelectedMs,
     radarWindHeightM: radarWindOverlay.heightM,
@@ -828,7 +833,15 @@ const MapView = forwardRef(function MapView({
     sigwxHistoryIndex, sigwxFilter, hiddenAdvisoryKeys, selectedSigwxFrontMeta,
     selectedSigwxCloudMeta, lightningReferenceTimeMs: effectiveLightningReferenceTimeMs,
     nwpSelection, ktgGrid, nowMs: demoNowMs, tz,
-  })
+  }), [
+    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
+    lightningData, sigwxLowData, sigwxLowHistoryData, sigmetData, airmetData,
+    metVisibility, weatherTimelineSelectedMs,
+    radarWindOverlay.heightM, radarWindOverlay.effectiveVisible,
+    sigwxHistoryIndex, sigwxFilter, hiddenAdvisoryKeys, selectedSigwxFrontMeta,
+    selectedSigwxCloudMeta, effectiveLightningReferenceTimeMs,
+    nwpSelection, ktgGrid, demoNowMs, tz,
+  ])
   const convectiveOverlay = useConvectiveOverlay({
     mapRef, isStyleReady, styleRevision,
     ciVisible: metVisibility.ci, ctpsVisible: metVisibility.ctps,
@@ -1400,11 +1413,12 @@ const MapView = forwardRef(function MapView({
 
   // ???? Sync aviation layer visibility ??????????????????????????????????????????????????????????????????????????????
 
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map?.isStyleLoaded()) return
+  // map.isStyleLoaded()로 막으면 안 된다 — 레이더처럼 계속 갱신되는 소스가 하나라도 있으면
+  // 그 값이 계속 false라, 토글이 통째로 무시되고 다시 시도되지도 않는다(레이어가 안 켜짐).
+  // 다른 동기화들과 같이 style.load로 세운 isStyleReady/styleRevision을 기준으로 삼는다.
+  useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     AVIATION_WFS_LAYERS.forEach((l) => setLayerVisibility(map, l, aviationVisibility[l.id]))
-  }, [aviationVisibility, styleRevision])
+  }, [aviationVisibility])
 
   // ???? Route highlight (?롪퍔?δ빳???뚮뜆?????깅턄???띠룆踰????戮?뻣) ????????????????????????????????????????????????????
 
@@ -1447,6 +1461,15 @@ const MapView = forwardRef(function MapView({
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     syncRasterAndSigwxLayers(map, rasterAndSigwxModel)
   }, [rasterAndSigwxModel])
+
+  // ponytail: 기상청 합성영상(HSR·수상체) 임시 비교용 동기화.
+  useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
+    syncKmaCompositeLayers(map, {
+      hsrMeta, hciMeta,
+      selectedMs: weatherOverlayModel.selectedWeatherTimeMs,
+      visibility: metVisibility,
+    })
+  }, [hsrMeta, hciMeta, weatherOverlayModel.selectedWeatherTimeMs, metVisibility])
 
   // ???? Sync terrain hazard shading ????????????????????????????????????????????????????????????????????????????????
 
@@ -1811,7 +1834,6 @@ const MapView = forwardRef(function MapView({
           radarReferenceTimeMs={radarReferenceTimeMs}
           lightningReferenceTimeMs={lightningReferenceTimeMs}
           radarWindLegendVisible={radarWindEffectiveVisible}
-          radarWindLegendPath={weatherOverlayModel.wissdomFrame?.legendPath}
           radarWindObservedAtMs={radarWindEffectiveVisible ? (weatherOverlayModel.wissdomFrame?.timeMs ?? null) : null}
             formatReferenceTimeLabel={(ms) => formatReferenceTimeLabel(ms, tz)}
             bottomDock={!isMobile}
@@ -2144,9 +2166,7 @@ const MapView = forwardRef(function MapView({
           onWindFlowWidthChange={setWindFlowWidth}
           radarWindAvailable={hasExactRadarWindFrame({ radarFrame: baseWeatherOverlayModel.radarFrame, wissdomMeta, heightM: radarWindOverlay.heightM })}
           radarWindRequested={radarWindOverlay.requestedVisible}
-          radarWindHeightM={radarWindOverlay.heightM}
           onRadarWindRequestedChange={radarWindOverlay.setRequestedVisible}
-          onRadarWindHeightChange={radarWindOverlay.setHeightM}
           terrainAltitudeFt={terrainAltitudeFt}
         />
       )}

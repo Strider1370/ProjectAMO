@@ -48,6 +48,19 @@ function TimelineRail({
   const viewportRef = useRef(null)
   const dragRef = useRef(null)
   const [active, setActive] = useState(false) // scrubbing or focused -> show time readout
+  const readoutTimerRef = useRef(null)
+  useEffect(() => () => window.clearTimeout(readoutTimerRef.current), [])
+
+  // 화살표키 스크럽은 레일에 포커스를 주지 않는다 — MapView가 창 전체에서 키를 받아 이 노드로
+  // 이벤트만 흘려보내기 때문이다(포커스는 지도나 패널에 그대로 있다). 그래서 눌린 동안만
+  // 시각을 띄웠다가 손을 떼면 지운다. 진짜로 포커스가 와 있으면 onBlur가 지울 때까지 남긴다.
+  const flashReadout = () => {
+    setActive(true)
+    window.clearTimeout(readoutTimerRef.current)
+    readoutTimerRef.current = window.setTimeout(() => {
+      if (document.activeElement !== viewportRef.current) setActive(false)
+    }, 1500)
+  }
   const isLive = !Number.isFinite(selectedMs)
 
   useEffect(() => {
@@ -96,8 +109,8 @@ function TimelineRail({
     viewportRef.current?.releasePointerCapture?.(event.pointerId)
   }
   const handleKeyDown = (event) => {
-    if (event.key === 'ArrowLeft') { commit(pickAdjacentTimelineTick(keyboardTicks, selected, -1)); event.preventDefault() }
-    else if (event.key === 'ArrowRight') { commit(pickAdjacentTimelineTick(keyboardTicks, selected, 1)); event.preventDefault() }
+    if (event.key === 'ArrowLeft') { commit(pickAdjacentTimelineTick(keyboardTicks, selected, -1)); flashReadout(); event.preventDefault() }
+    else if (event.key === 'ArrowRight') { commit(pickAdjacentTimelineTick(keyboardTicks, selected, 1)); flashReadout(); event.preventDefault() }
   }
 
   return (
