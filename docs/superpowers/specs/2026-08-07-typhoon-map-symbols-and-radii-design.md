@@ -19,6 +19,7 @@
 - 태풍별 색상 팔레트의 바다 배경 대비 개선
 - 강풍·폭풍 영향반경의 채움과 윤곽선 동시 표시
 - 예보 오차영역과 풍속 영향반경의 시각적 구분
+- 선택형 미니멀 태풍 패널
 - 단위 테스트와 실제 Mapbox 브라우저 검증
 
 제외:
@@ -81,24 +82,40 @@ KMA 원천의 `RAD15`/`RAD25` 비대칭 도형은 그대로 사용한다. 도형
 | `frontend/src/features/weather-overlays/lib/typhoonColors.js` | 대비를 고려한 안정적 태풍번호별 색 배정 |
 | `frontend/src/features/weather-overlays/lib/typhoonLayers.js` | GeoJSON 속성, Mapbox 소스·선/면/심볼 레이어, 반경 윤곽선, hover/focus 이벤트와 popup 수명주기 |
 | `frontend/src/features/weather-overlays/lib/typhoonOverlaySync.js` | 기존 선택 상태와 레이어 동기화. 네트워크 요청 책임은 유지 |
-| `frontend/src/features/weather-overlays/TyphoonPanel.jsx` | 행 hover/focus/click이 지도 선택 상태를 계속 구동하도록 유지 |
+| `frontend/src/features/weather-overlays/TyphoonPanel.jsx` | 태풍 선택 탭, 현재 상태 요약, 예보/지난 관측 행과 지도 선택 상태 연동 |
+| `frontend/src/features/weather-overlays/TyphoonPanel.css` | 탭·요약·예보 행의 밀도, 열 정렬, 반응형 재배치 |
 | `frontend/src/features/map/MapView.jsx` | 기존 합성 슬롯만 유지. 태풍 레이어의 데이터 변환·이벤트 로직을 소유하지 않음 |
 
 커스텀 강도 심볼은 Mapbox 스타일 재로드 뒤에도 안전하게 다시 등록한다. 레이어와 이벤트 정리는 기존 `TYPHOON_SOURCE_IDS`/`TYPHOON_LAYER_IDS` 소유권 규약을 따른다.
 
-## 6. 오류·접근성
+## 6. 태풍 패널
+
+여러 태풍을 세로로 모두 펼쳐 보이지 않는다. 상단의 태풍 선택 탭은 고유색 점과 `번호 + 이름`을 함께 보이고, 선택된 탭만 밑줄로 표시한다. 첫 탭은 현재 활성 목록의 첫 태풍으로 하고, 탭을 바꾸면 지도 focus와 상세 내용도 같은 태풍으로 바꾼다.
+
+선택된 태풍의 본문 순서는 다음과 같다.
+
+1. **현재 상태 요약:** 번호·이름·발표시각, 현재 강도·풍속·기압, 위치를 조금 큰 글자로 보인다. 탭과 같은 고유색은 작은 점과 제목 옆의 가는 세로선에만 쓴다. 배경색 카드, 색 글자, 알약 배지는 쓰지 않는다.
+2. **예상 경로:** 모든 예보 행에 `시각 · 강도 · 풍속 · 기압 · 위치`를 유지한다.
+3. **지난 관측:** 기본적으로 접고, 사용자가 열면 같은 열 구조로 보인다.
+
+예보 헤더와 모든 데이터 행은 **같은 CSS grid 열 정의**를 사용한다. 열 정렬은 시각·위치는 왼쪽, 강도는 가운데, 풍속·기압은 오른쪽이다. 행은 기존보다 넉넉한 세로 padding을 두고 구분선을 사용해, 인접 수치를 한 행으로 오독하지 않게 한다.
+
+모바일 시트에서는 같은 정보를 유지하되 첫 줄에 `시각 · 강도 · 풍속 · 기압`을 고정 grid로 두고, 위치는 다음 줄 전체 폭에 배치한다. 가로 스크롤이나 축소 글꼴로 5개 열을 억지로 유지하지 않는다.
+
+## 7. 오류·접근성
 
 - 최대풍속이 없으면 `TD` 또는 이용 가능한 약한 상태 심볼을 쓰고, popup 수치는 `—`로 표시한다. 수집 실패를 태풍 없음으로 바꾸지 않는 현재 계약은 유지한다.
 - 심볼은 pointer뿐 아니라 keyboard focus로 popup을 열 수 있어야 하며, popup의 텍스트는 색에 의존하지 않는다.
 - 강도는 심볼 형태·숫자와 popup 텍스트로, 실황/예보는 선종류와 popup 텍스트로 함께 전달한다.
 
-## 7. 검증
+## 8. 검증
 
 1. 순수 모델 테스트: 풍속→심볼 강도, 누락 값, 안정적인 색 배정, popup 표시 필드.
 2. Mapbox 레이어 테스트: 모든 분석·예보 행이 심볼 feature가 되고, 강풍·폭풍 면에 fill과 outline 레이어가 모두 설치되며, 예보선만 점선이다.
 3. 브라우저 계약: 실제 태풍 fixture에서 파랑 계열이 없는 복수 태풍 색, 선명한 모든 시점 심볼, 강풍반경 윤곽선, hover와 keyboard-focus 카드의 필드를 캡처로 확인한다.
+4. 패널 브라우저 계약: 복수 태풍 탭 전환, 현재 상태 강조, 헤더와 예보 행의 열 정렬, 지난 관측 접기, 모바일 위치 행 재배치를 캡처로 확인한다.
 
-## 8. 근거
+## 9. 근거
 
 - [Hong Kong Observatory GIS 태풍 경로 지도](https://www.hko.gov.hk/en/103397/Tropical-cyclone-track-information---GIS-version)는 분석·예보 지점의 강도 심볼과 지점 hover 상세를 제공한다.
 - [JMA RSMC 태풍 정보](https://www.jma.go.jp/jma/jma-eng/jma-center/rsmc-hp-pub-eg/advisory.html)는 30/50 kt 풍역과 중심 위치 확률 원을 별도 정보로 정의한다.
