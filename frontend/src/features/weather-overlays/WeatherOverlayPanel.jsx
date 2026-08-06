@@ -1,7 +1,7 @@
 import {
   Radar, Satellite, Zap, Wind, Thermometer, Droplets,
   Snowflake, Activity, Eye, AlertTriangle, AlertOctagon, CloudFog, Globe, Cloud, CloudLightning, Mountain,
-  Tornado,
+  Tornado, Sun,
 } from 'lucide-react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -12,6 +12,7 @@ const WEATHER_TILE_ICON = {
   radarOverseas: Globe, // 해외 = Globe (SIGMET(해외)와 동일 규칙)
   echoTop: Mountain,
   satellite: Satellite,
+  satelliteVisible: Sun,
   ci: CloudLightning,
   ctps: Cloud,
   lightning: Zap,
@@ -54,7 +55,7 @@ function WeatherOverlayPanel({
     {
       id: 'observation',
       title: '레이더/위성',
-      ids: ['radar', 'radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'ci', 'ctps'],
+      ids: ['radar', 'radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'satelliteVisible', 'ci', 'ctps'],
     },
     { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'] : [] },
     { id: 'terrain', title: '지형', ids: ['terrainHazard'] },
@@ -65,7 +66,8 @@ function WeatherOverlayPanel({
     radarHci: '강수 형태',
     radarOverseas: '해외 레이더',
     echoTop: '에코탑(재산출)',
-    satellite: '위성',
+    satellite: '적외영상',
+    satelliteVisible: '가시영상',
     ci: '대류 가능성',
     ctps: '운정고도',
     lightning: '낙뢰',

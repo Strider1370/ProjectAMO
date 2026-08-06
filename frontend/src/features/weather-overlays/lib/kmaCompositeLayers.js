@@ -9,6 +9,9 @@ export const HSR_SOURCE = 'kma-hsr-overlay'
 export const HSR_LAYER = 'kma-hsr-overlay'
 export const HCI_SOURCE = 'kma-hci-overlay'
 export const HCI_LAYER = 'kma-hci-overlay'
+// 가시영상(GK2A VI006). 적외와 같은 표시 상자를 쓰므로 둘을 겹쳐도 어긋나지 않는다.
+export const VISIBLE_SOURCE = 'gk2a-visible-overlay'
+export const VISIBLE_LAYER = 'gk2a-visible-overlay'
 
 // 선택 시각에 가장 가까운 과거 프레임. 없으면 최신.
 export function pickCompositeFrame(meta, selectedMs) {
@@ -19,7 +22,7 @@ export function pickCompositeFrame(meta, selectedMs) {
   return past.length ? past.at(-1) : frames[0]
 }
 
-export function syncKmaCompositeLayers(map, { hsrMeta, hciMeta, selectedMs, visibility = {} }) {
+export function syncKmaCompositeLayers(map, { hsrMeta, hciMeta, visibleMeta, selectedMs, visibility = {} }) {
   const hsrFrame = visibility.radarHsr ? pickCompositeFrame(hsrMeta, selectedMs) : null
   const hciFrame = visibility.radarHci ? pickCompositeFrame(hciMeta, selectedMs) : null
   setMapLayerVisible(map, HSR_LAYER, addOrUpdateImageOverlay(map, {
@@ -27,5 +30,10 @@ export function syncKmaCompositeLayers(map, { hsrMeta, hciMeta, selectedMs, visi
   }))
   setMapLayerVisible(map, HCI_LAYER, addOrUpdateImageOverlay(map, {
     sourceId: HCI_SOURCE, layerId: HCI_LAYER, frame: hciFrame, opacity: 0.85,
+  }))
+
+  const visibleFrame = visibility.satelliteVisible ? pickCompositeFrame(visibleMeta, selectedMs) : null
+  setMapLayerVisible(map, VISIBLE_LAYER, addOrUpdateImageOverlay(map, {
+    sourceId: VISIBLE_SOURCE, layerId: VISIBLE_LAYER, frame: visibleFrame, opacity: 0.9,
   }))
 }

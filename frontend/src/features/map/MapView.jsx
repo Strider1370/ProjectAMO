@@ -341,6 +341,7 @@ const MapView = forwardRef(function MapView({
   qpfMeta = null,
   hsrMeta = null,
   hciMeta = null,
+  satVisibleMeta = null,
   rainviewerMeta = null,
   satMeta = null,
   convectiveMeta = null,
@@ -762,6 +763,7 @@ const MapView = forwardRef(function MapView({
     qpfMeta,
     hsrMeta,
     hciMeta,
+    satVisibleMeta,
     rainviewerMeta,
     satMeta,
     convectiveMeta,
@@ -791,6 +793,7 @@ const MapView = forwardRef(function MapView({
     qpfMeta,
     hsrMeta,
     hciMeta,
+    satVisibleMeta,
     rainviewerMeta,
     satMeta,
     convectiveMeta,
@@ -825,7 +828,7 @@ const MapView = forwardRef(function MapView({
   // useMemo가 없으면 렌더마다 프레임 객체가 새로 생겨, 아래 rasterAndSigwxModel 등이
   // 내용은 그대로인데 "바뀐 것"으로 판정돼 지도 동기화가 통째로 매 렌더 다시 돈다.
   const weatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
-    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
+    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, satVisibleMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
     lightningData, sigwxLowData, sigwxLowHistoryData, sigmetData, airmetData,
     visibility: metVisibility, selectedWeatherTimeMs: weatherTimelineSelectedMs,
     radarWindHeightM: radarWindOverlay.heightM,
@@ -834,7 +837,7 @@ const MapView = forwardRef(function MapView({
     selectedSigwxCloudMeta, lightningReferenceTimeMs: effectiveLightningReferenceTimeMs,
     nwpSelection, ktgGrid, nowMs: demoNowMs, tz,
   }), [
-    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
+    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, satVisibleMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
     lightningData, sigwxLowData, sigwxLowHistoryData, sigmetData, airmetData,
     metVisibility, weatherTimelineSelectedMs,
     radarWindOverlay.heightM, radarWindOverlay.effectiveVisible,
@@ -1465,11 +1468,11 @@ const MapView = forwardRef(function MapView({
   // ponytail: 기상청 합성영상(HSR·수상체) 임시 비교용 동기화.
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     syncKmaCompositeLayers(map, {
-      hsrMeta, hciMeta,
+      hsrMeta, hciMeta, visibleMeta: satVisibleMeta,
       selectedMs: weatherOverlayModel.selectedWeatherTimeMs,
       visibility: metVisibility,
     })
-  }, [hsrMeta, hciMeta, weatherOverlayModel.selectedWeatherTimeMs, metVisibility])
+  }, [hsrMeta, hciMeta, satVisibleMeta, weatherOverlayModel.selectedWeatherTimeMs, metVisibility])
 
   // ???? Sync terrain hazard shading ????????????????????????????????????????????????????????????????????????????????
 

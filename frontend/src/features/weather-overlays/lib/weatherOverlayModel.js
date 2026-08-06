@@ -174,6 +174,7 @@ export function buildWeatherOverlayModel({
   qpfMeta,
   hsrMeta,
   hciMeta,
+  satVisibleMeta,
   echoTopMeta,
   rainviewerMeta,
   satMeta,
@@ -204,6 +205,7 @@ export function buildWeatherOverlayModel({
   // ponytail: 임시로 붙인 기상청 합성영상(HSR·수상체). 자기 눈금을 내야 이것만 켜고도 과거로 갈 수 있다.
   const hsrFrames = normalizeFrames(hsrMeta?.frames || [])
   const hciFrames = normalizeFrames(hciMeta?.frames || [])
+  const satVisibleFrames = normalizeFrames(satVisibleMeta?.frames || [])
   const wissdomFrames = normalizeWissdomFrames(wissdomMeta, radarWindHeightM)
   const qpfFrames = normalizeQpfFrames(qpfMeta, nowMs)
   const forecastTimelineTicks = [...new Set(qpfFrames.map((frame) => frame.validTimeMs))]
@@ -217,6 +219,7 @@ export function buildWeatherOverlayModel({
     visibility.radar ? radarFrames : [],
     visibility.radarHsr ? hsrFrames : [],
     visibility.radarHci ? hciFrames : [],
+    visibility.satelliteVisible ? satVisibleFrames : [],
     // 해외 레이더도 국내와 대등하게 자기 눈금을 낸다(상호배타라 둘이 동시에 눈금을 내지 않는다).
     visibility.radarOverseas ? rainviewerFrames : [],
     visibility.echoTop ? echoTopFrames : [],
@@ -233,7 +236,7 @@ export function buildWeatherOverlayModel({
       ? Math.min(Math.max(selectedWeatherTimeMs, firstTickMs), latestTickMs)
       : (weatherTimelineTicks.at(-1) ?? null))
     : null
-  const weatherTimelineVisible = (visibility.radar || visibility.radarHsr || visibility.radarHci || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && timelineTicks.length > 0
+  const weatherTimelineVisible = (visibility.radar || visibility.radarHsr || visibility.radarHci || visibility.satelliteVisible || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && timelineTicks.length > 0
   const observedRadarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
   // 다른 선택과 같은 기준시각(범위 보정 후)을 쓴다 — 보정 전 값과 비교하면 슬라이더가 끝을
   // 넘어간 순간에만 예측이 사라지는 어긋남이 생긴다.
@@ -359,6 +362,7 @@ export function buildWeatherOverlayModel({
     radarFrames,
     hsrFrames,
     hciFrames,
+    satVisibleFrames,
     wissdomFrames,
     qpfFrames,
     echoTopFrames,

@@ -162,7 +162,7 @@ export async function loadWeatherData() {
   const [
     airports, metar, taf, amos, warning, kmaSpecialWarning,
     sigmet, airmet, lightning,
-    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, echoTopMeta, rainviewerMeta, satMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
+    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, echoTopMeta, rainviewerMeta, satMeta, satVisibleMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
     groundForecast, notam, overseasAirports,
     metarOverseas, tafOverseas, sigmetOverseas,
   ] = await Promise.all([
@@ -183,6 +183,7 @@ export async function loadWeatherData() {
     fetchJson('/data/radar/echotop/echotop_meta.json', { optional: true }),
     fetchJson('/data/radar/rainviewer_meta.json', { optional: true }),
     fetchJson('/data/satellite/sat_meta.json', { optional: true }),
+    fetchJson('/data/satellite/visible/visible_meta.json', { optional: true }),
     fetchJson('/data/satellite/convective/convective_meta.json', { optional: true }),
     fetchJson('/api/sigwx-low', { optional: true }),
     fetchJson('/api/sigwx-front-meta', { optional: true }),
@@ -216,6 +217,7 @@ export async function loadWeatherData() {
     echoTopMeta,
     rainviewerMeta,
     satMeta,
+    satVisibleMeta,
     convectiveMeta,
     sigwxLow,
     sigwxLowHistory: null,
@@ -377,7 +379,10 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all' } =
   }
   if (changes.echoTopMeta) { fetches.push(fetchJson('/data/radar/echotop/echotop_meta.json', { optional: 'preserve' })); keys.push('echoTopMeta') }
   if (changes.rainviewerMeta) { fetches.push(fetchJson('/data/radar/rainviewer_meta.json', { optional: 'preserve' })); keys.push('rainviewerMeta') }
-  if (changes.satMeta) { fetches.push(fetchJson('/data/satellite/sat_meta.json', { optional: 'preserve' })); keys.push('satMeta') }
+  if (changes.satMeta) {
+    fetches.push(fetchJson('/data/satellite/sat_meta.json', { optional: 'preserve' })); keys.push('satMeta')
+    fetches.push(fetchJson('/data/satellite/visible/visible_meta.json', { optional: 'preserve' })); keys.push('satVisibleMeta')
+  }
   if (changes.convectiveMeta) { fetches.push(fetchJson('/data/satellite/convective/convective_meta.json', { optional: 'preserve' })); keys.push('convectiveMeta') }
   if (changes.airportInfo && includesDeferredKey(deferredKeys, 'airportInfo')) { fetches.push(fetchJson('/api/airport-info', { optional: 'preserve' })); keys.push('airportInfo') }
 
