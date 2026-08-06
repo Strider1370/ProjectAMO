@@ -132,6 +132,8 @@ function scheduleRadarGraphicsJobs(scheduler = cron, activeConfig = config) {
   return [
     scheduler.schedule(interval, () => runWithLock('wissdom', radarGraphicsProcessor.processWissdom)),
     scheduler.schedule(interval, () => runWithLock('qpf', radarGraphicsProcessor.processQpf)),
+    scheduler.schedule(interval, () => runWithLock('hsr', radarGraphicsProcessor.processHsr)),
+    scheduler.schedule(interval, () => runWithLock('hci', radarGraphicsProcessor.processHci)),
   ]
 }
 
@@ -159,7 +161,7 @@ function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.enabled !=
     ["amos", amosProcessor.process],
     ["lightning", lightningProcessor.process],
     ["radar_echo", radarEchoProcessor.process],
-    ...(graphicsEnabled() ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf]] : []),
+    ...(graphicsEnabled() ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
     ["echo_top", echoTopProcessor.process],
     ["rainviewer", rainviewerProcessor.process],
     ["satellite", satelliteProcessor.process],

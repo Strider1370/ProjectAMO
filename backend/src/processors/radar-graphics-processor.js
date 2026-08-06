@@ -4,6 +4,7 @@ import sharp from 'sharp'
 import config from '../config.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 import { KMA_GRAPHIC_PRODUCTS, KMA_GRAPHIC_WISSDOM_STEP_MINUTES, buildImpgRequest, parseImpgResult } from '../lib/kma-radar-graphics.js'
+import { reprojectToMercator } from '../lib/kma-graphics-projection.js'
 
 const KMA_ORIGIN = 'https://apihub.kma.go.kr'
 const isImage = (value) => Buffer.isBuffer(value) && ((value[0] === 0x89 && value[1] === 0x50 && value[2] === 0x4e && value[3] === 0x47) || (value.subarray(0, 4).toString() === 'RIFF' && value.subarray(8, 12).toString() === 'WEBP'))
@@ -19,21 +20,33 @@ async function defaultImage(url, timeout, signal) { const response = await fetch
 // must drop out, or the layer covers the map. Product palettes are saturated, so neither
 // test can swallow real data.
 const isDeclaredBackground = (r, g, b) => (r === 0 && g === 0 && b === 0) || (r >= 245 && g >= 245 && b >= 245)
-async function normalize(buffer, { stripBackground = true } = {}) {
+async function normalize(buffer, { stripBackground = true, projected = null, bounds = null } = {}) {
   if (!isImage(buffer)) throw new Error('invalid image signature')
   // Legends are read as a colour key next to the map, not drawn over it. Their palette runs
   // from white through black, so background removal would erase their labels and swatches.
   if (!stripBackground) return sharp(buffer).webp({ lossless: true }).toBuffer()
   const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
   for (let index = 0; index < data.length; index += 4) if (isDeclaredBackground(data[index], data[index + 1], data[index + 2])) data[index + 3] = 0
-  return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).webp({ lossless: true }).toBuffer()
+  // KMA가 그려 보내는 그림은 람베르트 원추도법이다. 위경도 상자에 그대로 붙이면 지점에 따라
+  // 100~350 km까지 어긋나므로(공항 기준 실측) 지도와 같은 메르카토르로 다시 표본화한다.
+  const raster = projected && bounds
+    ? reprojectToMercator({ data, width: info.width, height: info.height }, projected, bounds)
+    : { data, width: info.width, height: info.height }
+  return sharp(raster.data, { raw: { width: raster.width, height: raster.height, channels: 4 } }).webp({ lossless: true }).toBuffer()
 }
 function paths(root, type) { const dir = path.join(root, 'radar', type); return { dir, meta: path.join(dir, `${type}_meta.json`) } }
-function frameAsset(type, descriptor, extra = '') { const key = type === 'wissdom' ? `${descriptor.heightM}_${descriptor.tm}` : `${descriptor.tm}_p${descriptor.leadMinutes}`; return `${type}_${key}${extra}.webp` }
-function clean(dir, meta, maxFrames) {
+const kindOf = (type) => KMA_GRAPHIC_PRODUCTS[type]?.kind || 'single'
+function frameAsset(type, descriptor, extra = '') {
+  const kind = kindOf(type)
+  const key = kind === 'height' ? `${descriptor.heightM}_${descriptor.tm}`
+    : kind === 'lead' ? `${descriptor.tm}_p${descriptor.leadMinutes}`
+    : descriptor.tm
+  return `${type}_${key}${extra}.webp`
+}
+function clean(dir, meta) {
   const frames = meta.frames || Object.values(meta.framesByHeight || {}).flat()
   const keep = new Set(frames.flatMap((frame) => [path.basename(frame.path), path.basename(frame.legendPath)]))
-  for (const filename of fs.readdirSync(dir)) if (/^(wissdom|qpf)_.+\.webp$/.test(filename) && !keep.has(filename)) fs.unlinkSync(path.join(dir, filename))
+  for (const filename of fs.readdirSync(dir)) if (/^(wissdom|qpf|hsr|hci)_.+\.webp$/.test(filename) && !keep.has(filename)) fs.unlinkSync(path.join(dir, filename))
 }
 // A frame is blank when nothing survived background removal. The renderer sometimes returns an
 // empty canvas for a frame that has data, and the response metadata is identical either way.
@@ -47,18 +60,23 @@ async function publish({ root, type, descriptor, image, legend, previous, maxFra
   writeAtomic(path.join(target.dir, imageName), image)
   writeAtomic(path.join(target.dir, legendName), legend)
   const frame = { tm: descriptor.tm, timeMs: descriptor.timeMs, analysisTimeMs: descriptor.timeMs, validTimeMs: descriptor.validTimeMs, leadMinutes: descriptor.leadMinutes, heightM: descriptor.heightM, bounds: descriptor.bounds, projectedBounds: descriptor.projectedBounds, path: `/data/radar/${type}/${imageName}`, legendPath: `/data/radar/${type}/${legendName}`, title: descriptor.title, source: 'KMA' }
+  const kind = kindOf(type)
   let meta
-  if (type === 'wissdom') {
+  if (kind === 'height') {
     const byHeight = { ...(previous?.framesByHeight || {}) }, key = String(descriptor.heightM)
     const frames = [...(byHeight[key] || []).filter((item) => item.tm !== frame.tm), frame].sort((a, b) => a.tm.localeCompare(b.tm)).slice(-maxFrames)
     byHeight[key] = frames
     meta = { type: 'WISSDOM', updatedAt: new Date().toISOString(), framesByHeight: byHeight }
-  } else {
+  } else if (kind === 'lead') {
     const frames = [...(previous?.frames || []).filter((item) => !(item.tm === frame.tm && item.leadMinutes === frame.leadMinutes)), frame].sort((a, b) => a.validTimeMs - b.validTimeMs).slice(-maxFrames)
     meta = { type: 'QPF', updatedAt: new Date().toISOString(), frames }
+  } else {
+    // 시각당 그림 한 장 — 관측이므로 분석시각 순으로 쌓기만 한다.
+    const frames = [...(previous?.frames || []).filter((item) => item.tm !== frame.tm), frame].sort((a, b) => a.tm.localeCompare(b.tm)).slice(-maxFrames)
+    meta = { type: type.toUpperCase(), updatedAt: new Date().toISOString(), frames }
   }
   writeAtomic(target.meta, `${JSON.stringify(meta, null, 2)}\n`)
-  clean(target.dir, meta, maxFrames)
+  clean(target.dir, meta)
   return meta
 }
 function throwIfAborted(signal) { if (signal?.aborted) throw signal.reason || new Error('collection aborted') }
@@ -66,50 +84,57 @@ async function collect(type, { now = new Date(), deps = {}, signal } = {}) {
   const activeConfig = deps.config || config, productConfig = activeConfig.radar_graphics || {}
   if (productConfig.enabled === false || !activeConfig.api?.radar_satellite_auth_key) return { type, saved: false }
   const root = deps.root || activeConfig.storage.base_path
-  const delayedNow = type === 'wissdom'
-    ? new Date(now.getTime() - (productConfig.delay_minutes || 10) * 60_000)
-    : now
-  // WISSDOM is published every ten minutes; QPF carries its own analysis time in the response.
-  const requestTm = kstTm(delayedNow, type === 'wissdom' ? KMA_GRAPHIC_WISSDOM_STEP_MINUTES : 5)
+  const kind = kindOf(type)
+  const delayedNow = kind === 'lead' ? now : new Date(now.getTime() - (productConfig.delay_minutes || 10) * 60_000)
+  // WISSDOM and the composites publish every ten minutes; QPF carries its own analysis time.
+  const requestTm = kstTm(delayedNow, kind === 'lead' ? 5 : KMA_GRAPHIC_WISSDOM_STEP_MINUTES)
   const target = paths(root, type), previous = readJson(target.meta)
-  const units = type === 'wissdom' ? productConfig.wissdom_heights_m : productConfig.qpf_lead_minutes
+  // 'single'은 고도도 예측시간도 없다 — 한 바퀴만 돌리려고 자리표시자 하나를 넣는다.
+  const units = kind === 'height' ? productConfig.wissdom_heights_m
+    : kind === 'lead' ? productConfig.qpf_lead_minutes
+    : [null]
   const published = (item) => fs.existsSync(path.join(root, item.path.replace(/^\/data\//, '')))
     && fs.existsSync(path.join(root, item.legendPath.replace(/^\/data\//, '')))
-  const complete = type === 'wissdom'
+  const complete = kind === 'height'
     ? new Set(Object.values(previous?.framesByHeight || {}).flat().filter(published).map((item) => `${item.heightM}:${item.tm}`))
-    : new Set((previous?.frames || []).filter(published).map((item) => `${item.tm}:${item.leadMinutes}`))
+    : kind === 'lead'
+      ? new Set((previous?.frames || []).filter(published).map((item) => `${item.tm}:${item.leadMinutes}`))
+      : new Set((previous?.frames || []).filter(published).map((item) => item.tm))
   let saved = false
   let qpfAnalysisTm = null
   for (const value of units || []) {
     throwIfAborted(signal)
-    const requestedTm = type === 'qpf' && qpfAnalysisTm ? qpfAnalysisTm : requestTm
-    const key = `${type === 'wissdom' ? value : requestedTm}:${type === 'wissdom' ? requestedTm : value}`
-    if (type === 'wissdom' && complete.has(key)) continue
+    const requestedTm = kind === 'lead' && qpfAnalysisTm ? qpfAnalysisTm : requestTm
+    if (kind === 'height' && complete.has(`${value}:${requestTm}`)) continue
     try {
-      const zoomLevel = productConfig.image_zoom_level
-      const request = type === 'wissdom' ? { tm: requestedTm, heightM: value, zoomLevel } : { tm: requestedTm, leadMinutes: value, zoomLevel }
+      // 산출물이 자기 줌 레벨을 갖고 있으면 그것이 우선한다(합성영상 14, 바람장 13).
+      const zoomLevel = KMA_GRAPHIC_PRODUCTS[type]?.zoomLevel ?? productConfig.image_zoom_level
+      const request = kind === 'height' ? { tm: requestedTm, heightM: value, zoomLevel }
+        : kind === 'lead' ? { tm: requestedTm, leadMinutes: value, zoomLevel }
+        : { tm: requestedTm, zoomLevel }
       const fetchJson = deps.fetchJson || ((url) => defaultJson(url, productConfig.timeout_ms || 30000, signal))
       const fetchImage = deps.fetchImage || ((url) => defaultImage(url, productConfig.timeout_ms || 30000, signal))
       let parsed = null, body = null, legendImage = null
       for (let attempt = 1; attempt <= BLANK_RENDER_ATTEMPTS; attempt += 1) {
-        parsed = parseImpgResult(await fetchJson(apiUrl(activeConfig, type, request), { signal }), { product: type, requestedTm, leadMinutes: type === 'qpf' ? value : 0 })
+        parsed = parseImpgResult(await fetchJson(apiUrl(activeConfig, type, request), { signal }), { product: type, requestedTm, leadMinutes: kind === 'lead' ? value : 0 })
         throwIfAborted(signal)
         // KMA answers with the newest frame it holds, which can lag the requested slot. Accept that
         // frame under its own timestamp; only a timestamp ahead of the request means a wrong answer.
         if (!parsed) break
-        if (type === 'wissdom' && (parsed.tm > requestedTm || complete.has(`${value}:${parsed.tm}`))) { parsed = null; break }
-        if (type === 'qpf') {
+        if (kind === 'height' && (parsed.tm > requestedTm || complete.has(`${value}:${parsed.tm}`))) { parsed = null; break }
+        if (kind === 'single' && (parsed.tm > requestedTm || complete.has(parsed.tm))) { parsed = null; break }
+        if (kind === 'lead') {
           qpfAnalysisTm ||= parsed.tm
           if (parsed.tm !== qpfAnalysisTm || complete.has(`${parsed.tm}:${value}`) || parsed.validTimeMs !== parsed.timeMs + value * 60000) { parsed = null; break }
         }
         const [image, legend] = await Promise.all([fetchImage(assetUrl(parsed.imagePath), { signal }), fetchImage(assetUrl(parsed.legendPath), { signal })])
         throwIfAborted(signal)
-        body = await normalize(image)
+        body = await normalize(image, { projected: parsed.projectedBounds, bounds: parsed.bounds })
         legendImage = await normalize(legend, { stripBackground: false })
         if (!await isBlank(body)) break
       }
       if (!parsed) continue
-      parsed.heightM = type === 'wissdom' ? value : null
+      parsed.heightM = kind === 'height' ? value : null
       await publish({ root, type, descriptor: parsed, image: body, legend: legendImage, previous: readJson(target.meta), maxFrames: productConfig.max_frames || 36 })
       saved = true
     } catch (error) {
@@ -122,4 +147,6 @@ async function collect(type, { now = new Date(), deps = {}, signal } = {}) {
 
 export const processWissdom = (options) => collect('wissdom', options)
 export const processQpf = (options) => collect('qpf', options)
-export default { processWissdom, processQpf }
+export const processHsr = (options) => collect('hsr', options)
+export const processHci = (options) => collect('hci', options)
+export default { processWissdom, processQpf, processHsr, processHci }

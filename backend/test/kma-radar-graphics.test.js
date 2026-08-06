@@ -6,8 +6,8 @@ import {
   buildImpgRequest,
   parseImpgResult,
   parseKmaKstTm,
-  visualAlignmentBounds,
 } from '../src/lib/kma-radar-graphics.js'
+import { coverageBounds, latLonToProjected, projectedToLatLon } from '../src/lib/kma-graphics-projection.js'
 
 const qpfFixture = {
   meta: { errCd: '000' },
@@ -17,10 +17,11 @@ const qpfFixture = {
       title: 'MAPLE QPF (+60분) mm/h',
       url: '/data/BUFD/RDR/IMG/qpf.png',
       bar: '/data/BUFD/RDR/IMG/qpf_legend.png',
-      imageCoverageStartProjX: 12345.5,
-      imageCoverageStartProjY: 45678.5,
-      imageCoverageEndProjX: 22345.5,
-      imageCoverageEndProjY: 55678.5,
+      // 실제 KMA 응답값. QPF 캔버스는 WISSDOM과 같은 서남단에서 시작하지만 동쪽·북쪽으로 더 넓다.
+      imageCoverageStartProjX: -386015.5,
+      imageCoverageStartProjY: 4821054,
+      imageCoverageEndProjX: 585174.375,
+      imageCoverageEndProjY: 3799270.5,
     },
   },
 }
@@ -33,10 +34,11 @@ const wissdomFixture = {
       title: 'WISSDOM 1524 m',
       url: '/data/BUFD/RDR/IMG/RDR_WIS_NQC_202608042050.png',
       bar: '/data/BUFD/RDR/IMG/RDR_WIS_legend320.png',
-      imageCoverageStartProjX: -576000,
-      imageCoverageStartProjY: 3837000,
-      imageCoverageEndProjX: 576000,
-      imageCoverageEndProjY: 4800000,
+      // 실제 KMA 응답값 — 이 범위가 시각 정합의 기준이라 환산 결과가 기준 상자와 정확히 같아야 한다.
+      imageCoverageStartProjX: -386001.375,
+      imageCoverageStartProjY: 4757139,
+      imageCoverageEndProjX: 521047.21875,
+      imageCoverageEndProjY: 3799247,
     },
   },
 }
@@ -67,11 +69,46 @@ test('parses a valid QPF image descriptor without exposing a credential', () => 
   assert.equal(qpf.leadMinutes, 60)
   assert.equal(qpf.imagePath.startsWith('/data/'), true)
   assert.equal(qpf.imagePath.includes('authKey'), false)
-  assert.deepEqual(qpf.projectedBounds, [12345.5, 45678.5, 22345.5, 55678.5])
-  assert.deepEqual(qpf.bounds, [
-    [30.12520229746768, 118.82639855789549],
-    [43.56590987094148, 133.58114159940212],
-  ])
+  assert.deepEqual(qpf.projectedBounds, [-386015.5, 4821054, 585174.375, 3799270.5])
+
+  // 상자는 응답이 알려준 렌더 범위를 실제 투영 수식으로 환산한 값이어야 한다.
+  assert.deepEqual(qpf.bounds, coverageBounds(qpf.projectedBounds))
+})
+
+test('상자는 그림이 실제로 덮는 땅에서 나온다 — 제품마다 다르다', () => {
+  const wissdom = parseImpgResult(wissdomFixture, { product: 'wissdom', requestedTm: '202608042050' })
+  const qpf = parseImpgResult(qpfFixture, { product: 'qpf', requestedTm: '202307201700', leadMinutes: 60 })
+  const [[wSouth, wWest], [wNorth, wEast]] = wissdom.bounds
+  const [[qSouth, qWest], [qNorth, qEast]] = qpf.bounds
+
+  // QPF 캔버스가 동쪽·북쪽으로 더 넓다.
+  assert.ok(qNorth > wNorth && qEast > wEast)
+  // 예전에는 두 제품 모두 전체 격자 상자(북 43.57°, 서 118.83°)에 붙였다. 실제 렌더 범위는
+  // 그보다 한참 좁아서, 그렇게 붙이면 강릉 기준 350 km까지 밀렸다.
+  assert.ok(wNorth < 40 && qNorth < 41, '북쪽 끝이 전체 격자 상자보다 훨씬 아래다')
+  assert.ok(wWest > 121 && qWest > 121, '서쪽 끝이 전체 격자 상자보다 훨씬 오른쪽이다')
+  // 인천 FIR 주요 공항은 모두 그림 안에 들어와야 한다.
+  for (const [lat, lon] of [[33.51, 126.49], [37.46, 126.44], [35.18, 128.94], [37.75, 128.94]]) {
+    assert.ok(lat > wSouth && lat < wNorth && lon > wWest && lon < wEast, `${lat},${lon}이 WISSDOM 범위 안`)
+    assert.ok(lat > qSouth && lat < qNorth && lon > qWest && lon < qEast, `${lat},${lon}이 QPF 범위 안`)
+  }
+})
+
+test('투영 왕복이 원래 위경도로 돌아온다', () => {
+  for (const [lat, lon] of [[33.51, 126.49], [37.46, 126.44], [38.0, 126.0]]) {
+    const [back, backLon] = projectedToLatLon(...latLonToProjected(lat, lon))
+    assert.ok(Math.abs(back - lat) < 1e-6 && Math.abs(backLon - lon) < 1e-6)
+  }
+})
+
+
+
+test('환산 결과가 한반도 밖으로 나가는 응답은 프레임째 버린다', () => {
+  const wrong = {
+    ...qpfFixture,
+    data: { result: { ...qpfFixture.data.result, imageCoverageStartProjX: 12345.5, imageCoverageStartProjY: 45678.5, imageCoverageEndProjX: 22345.5, imageCoverageEndProjY: 55678.5 } },
+  }
+  assert.equal(parseImpgResult(wrong, { product: 'qpf', requestedTm: '202307201700', leadMinutes: 60 }), null)
 })
 
 test('parses a sanitized real-shape WISSDOM descriptor', () => {
@@ -82,19 +119,7 @@ test('parses a sanitized real-shape WISSDOM descriptor', () => {
 
   assert.equal(wissdom.tm, '202608042050')
   assert.equal(wissdom.imagePath, '/data/BUFD/RDR/IMG/RDR_WIS_NQC_202608042050.png')
-  assert.deepEqual(wissdom.projectedBounds, [-576000, 3837000, 576000, 4800000])
-})
-
-test('uses the existing HSR nationwide renderer bounds as visual alignment', () => {
-  const bounds = visualAlignmentBounds()
-  assert.deepEqual(bounds, [
-    [30.12520229746768, 118.82639855789549],
-    [43.56590987094148, 133.58114159940212],
-  ])
-  const [[south, west], [north, east]] = bounds
-  assert.equal([south, west, north, east].every(Number.isFinite), true)
-  assert.equal(south < north, true)
-  assert.equal(west < east, true)
+  assert.deepEqual(wissdom.projectedBounds, [-386001.375, 4757139, 521047.21875, 3799247])
 })
 
 test('rejects error, unsafe, malformed, and unbounded graphics responses', () => {
@@ -128,9 +153,9 @@ test('builds product requests as URLSearchParams without an authentication value
 test('renders graphics at the configured zoom level and rejects unusable ones', () => {
   // ZOOMLVL is the only parameter that scales the rendered raster; the geographic coverage
   // KMA reports back is identical at every level, so this is resolution alone.
-  assert.equal(buildImpgRequest('wissdom', { tm: '202307201700', heightM: 1524 }).get('ZOOMLVL'), '14')
-  assert.equal(buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 60 }).get('ZOOMLVL'), '14')
-  assert.equal(buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 60, zoomLevel: 13 }).get('ZOOMLVL'), '13')
+  assert.equal(buildImpgRequest('wissdom', { tm: '202307201700', heightM: 1524 }).get('ZOOMLVL'), '13')
+  assert.equal(buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 60 }).get('ZOOMLVL'), '13')
+  assert.equal(buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 60, zoomLevel: 14 }).get('ZOOMLVL'), '14')
   assert.throws(() => buildImpgRequest('qpf', { tm: '202307201700', leadMinutes: 60, zoomLevel: 0 }), /Invalid zoom level/)
 })
 

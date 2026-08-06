@@ -15,7 +15,8 @@ const descriptor = ({ tm, title, product }) => ({
   meta: { errCd: '000' }, data: { result: {
     dateTime: `${tm.slice(0, 4)}.${tm.slice(4, 6)}.${tm.slice(6, 8)}.${tm.slice(8, 10)}:${tm.slice(10, 12)}`,
     title, url: `/data/${product}-${tm}.png`, bar: `/data/${product}-legend.png`,
-    imageCoverageStartProjX: 1, imageCoverageStartProjY: 2, imageCoverageEndProjX: 3, imageCoverageEndProjY: 4,
+    // 실제 KMA 응답 범위 — 좌표 환산이 한반도 밖으로 나가면 프레임이 버려지므로 진짜 값이어야 한다.
+    imageCoverageStartProjX: -386001.375, imageCoverageStartProjY: 4757139, imageCoverageEndProjX: 521047.21875, imageCoverageEndProjY: 3799247,
   } },
 })
 
@@ -97,8 +98,9 @@ test('does not register graphics collectors without an enabled backend credentia
   const scheduler = { schedule: (...args) => { scheduled.push(args); return args } }
   assert.deepEqual(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: false }, api: { radar_satellite_auth_key: 'key' } }), [])
   assert.deepEqual(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true }, api: { radar_satellite_auth_key: '' } }), [])
-  assert.equal(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true }, api: { radar_satellite_auth_key: 'key' } }).length, 2)
-  assert.equal(scheduled.length, 2)
+  // WISSDOM · QPF · HSR · 수상체 넷을 같은 주기로 건다.
+  assert.equal(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true }, api: { radar_satellite_auth_key: 'key' } }).length, 4)
+  assert.equal(scheduled.length, 4)
 })
 
 test('uses one lagged QPF analysis timestamp for every lead and retains only its configured assets', async () => {
