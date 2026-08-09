@@ -59,11 +59,27 @@ test('initial collection can omit Echo Top when its source is disabled', () => {
   )
 })
 
+test('initial collection omits every radar and satellite key consumer when that key is disabled', () => {
+  const types = buildInitialCollectionJobs({ includeRadarSatellite: false }).map(([type]) => type)
+
+  for (const type of ['radar_echo', 'wissdom', 'qpf', 'hsr', 'hci', 'echo_top', 'satellite', 'satellite_visible']) {
+    assert.equal(types.includes(type), false, type)
+  }
+})
+
 test('Echo Top scheduler can be disabled without registering a cron job', () => {
   const calls = []
   const fakeScheduler = { schedule: (...args) => calls.push(args) }
 
   assert.equal(scheduleEchoTopJob(fakeScheduler, { radar_echo_top: { enabled: false } }), null)
+  assert.equal(calls.length, 0)
+})
+
+test('Echo Top scheduler does not register when the radar and satellite key is unavailable', () => {
+  const calls = []
+  const fakeScheduler = { schedule: (...args) => calls.push(args) }
+
+  assert.equal(scheduleEchoTopJob(fakeScheduler, { radar_echo_top: { enabled: true }, api: { radar_satellite_auth_key: '' } }), null)
   assert.equal(calls.length, 0)
 })
 

@@ -72,7 +72,9 @@ function loadOverseasAirports() {
 export const overseasAirports = loadOverseasAirports()
 
 const aviationAuthKey = process.env.KMA_AVIATION_AUTH_KEY || process.env.KMA_AUTH_KEY || process.env.API_AUTH_KEY || ''
-const radarSatelliteAuthKey = process.env.KMA_RADAR_SATELLITE_AUTH_KEY || aviationAuthKey
+const radarSatelliteAuthKey = process.env.KMA_RADAR_SATELLITE_ENABLED === '0'
+  ? ''
+  : process.env.KMA_RADAR_SATELLITE_AUTH_KEY || aviationAuthKey
 const kimNwpAuthKey = process.env.KMA_KIM_NWP_AUTH_KEY || aviationAuthKey
 
 export const api = {

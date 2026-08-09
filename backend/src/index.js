@@ -123,8 +123,12 @@ function scheduleTakeoffFcstJob(scheduler = cron) {
   )
 }
 
+function radarSatelliteEnabled(activeConfig = config) {
+  return !!activeConfig.api?.radar_satellite_auth_key
+}
+
 function graphicsEnabled(activeConfig = config) {
-  return activeConfig.radar_graphics?.enabled !== false && !!activeConfig.api?.radar_satellite_auth_key
+  return activeConfig.radar_graphics?.enabled !== false && radarSatelliteEnabled(activeConfig)
 }
 
 function scheduleRadarGraphicsJobs(scheduler = cron, activeConfig = config) {
@@ -139,7 +143,7 @@ function scheduleRadarGraphicsJobs(scheduler = cron, activeConfig = config) {
 }
 
 function scheduleEchoTopJob(scheduler = cron, activeConfig = config) {
-  if (activeConfig.radar_echo_top?.enabled === false) return null
+  if (activeConfig.radar_echo_top?.enabled === false || !radarSatelliteEnabled(activeConfig)) return null
   return scheduler.schedule(
     activeConfig.schedule?.echo_top_interval || config.schedule.echo_top_interval,
     () => runWithLock("echo_top", echoTopProcessor.process),
@@ -157,7 +161,8 @@ function isNotamCacheStale() {
 
 function buildInitialCollectionJobs({
   includeKimNwp = config.kim_nwp?.enabled !== false && config.kim_nwp?.collect_on_startup !== false,
-  includeEchoTop = config.radar_echo_top?.enabled !== false,
+  includeRadarSatellite = radarSatelliteEnabled(),
+  includeEchoTop = includeRadarSatellite && config.radar_echo_top?.enabled !== false,
 } = {}) {
   const jobs = [
     ["metar", metarProcessor.processAll],
@@ -172,12 +177,13 @@ function buildInitialCollectionJobs({
     ["sigwx_low", sigwxLowProcessor.process],
     ["amos", amosProcessor.process],
     ["lightning", lightningProcessor.process],
-    ["radar_echo", radarEchoProcessor.process],
-    ...(graphicsEnabled() ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
-    ...(includeEchoTop ? [["echo_top", echoTopProcessor.process]] : []),
+    ...(includeRadarSatellite ? [
+      ["radar_echo", radarEchoProcessor.process],
+      ...(graphicsEnabled() ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
+      ...(includeEchoTop ? [["echo_top", echoTopProcessor.process]] : []),
+    ] : []),
     ["rainviewer", rainviewerProcessor.process],
-    ["satellite", satelliteProcessor.process],
-    ["satellite_visible", satelliteVisibleProcessor.processSatelliteVisible],
+    ...(includeRadarSatellite ? [["satellite", satelliteProcessor.process], ["satellite_visible", satelliteVisibleProcessor.processSatelliteVisible]] : []),
     ["ground_forecast", groundForecastProcessor.process],
     ["environment", environmentProcessor.process],
     ["airport_info", airportInfoProcessor.process],
@@ -226,17 +232,21 @@ async function main() {
   cron.schedule(config.schedule.amos_interval, () => runWithLock("amos", amosProcessor.process));
   cron.schedule(config.schedule.lightning_interval, () => runWithLock("lightning", lightningProcessor.process));
   cron.schedule(config.schedule.typhoon_interval, () => runWithLock("typhoon", typhoonProcessor.process));
-  cron.schedule(config.schedule.radar_echo_interval, () => runWithLock("radar_echo", radarEchoProcessor.process));
-  scheduleRadarGraphicsJobs()
-  scheduleEchoTopJob()
-  // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.
-  if (config.radar_echo_top?.enabled !== false) runWithLock("echo_top", echoTopProcessor.backfill);
+  if (radarSatelliteEnabled()) {
+    cron.schedule(config.schedule.radar_echo_interval, () => runWithLock("radar_echo", radarEchoProcessor.process));
+    scheduleRadarGraphicsJobs()
+    scheduleEchoTopJob()
+    // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.
+    if (config.radar_echo_top?.enabled !== false) runWithLock("echo_top", echoTopProcessor.backfill);
+    cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite", satelliteProcessor.process));
+    // 가시영상도 같은 주기 — 밤에는 수집기가 스스로 빈 그림을 걸러낸다.
+    cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite_visible", satelliteVisibleProcessor.processSatelliteVisible));
+  } else {
+    console.warn('[collection] KMA radar/satellite key disabled — radar and satellite collection skipped.')
+  }
   cron.schedule(config.schedule.rainviewer_interval, () => runWithLock("rainviewer", rainviewerProcessor.process));
   scheduleKimNwpJob();
   cron.schedule(config.schedule.ktg_interval, () => runWithLock('ktg', ktgProcessor.process), KIM_NWP_CRON_OPTIONS);
-  cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite", satelliteProcessor.process));
-  // 가시영상도 같은 주기 — 밤에는 수집기가 스스로 빈 그림을 걸러낸다.
-  cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite_visible", satelliteVisibleProcessor.processSatelliteVisible));
   // 발표 시각이 KST 기준이라 서버 TZ와 무관하게 Asia/Seoul로 고정.
   cron.schedule(config.schedule.ground_forecast_interval, () => runWithLock("ground_forecast", groundForecastProcessor.process), { timezone: 'Asia/Seoul' });
   cron.schedule(config.schedule.environment_interval, () => runWithLock("environment", environmentProcessor.process));
