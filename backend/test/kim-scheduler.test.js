@@ -8,6 +8,7 @@ import {
   buildInitialCollectionJobs,
   scheduleAirportInfoJob,
   scheduleKimNwpJob,
+  scheduleEchoTopJob,
 } from '../src/index.js'
 
 test('KIM NWP scheduler uses UTC for synoptic release retry windows', () => {
@@ -45,6 +46,25 @@ test('initial collection can omit KIM NWP for low-resource startup', () => {
     buildInitialCollectionJobs({ includeKimNwp: true }).some(([type]) => type === 'kim_surface_wind'),
     true,
   )
+})
+
+test('initial collection can omit Echo Top when its source is disabled', () => {
+  assert.equal(
+    buildInitialCollectionJobs({ includeEchoTop: false }).some(([type]) => type === 'echo_top'),
+    false,
+  )
+  assert.equal(
+    buildInitialCollectionJobs({ includeEchoTop: true }).some(([type]) => type === 'echo_top'),
+    true,
+  )
+})
+
+test('Echo Top scheduler can be disabled without registering a cron job', () => {
+  const calls = []
+  const fakeScheduler = { schedule: (...args) => calls.push(args) }
+
+  assert.equal(scheduleEchoTopJob(fakeScheduler, { radar_echo_top: { enabled: false } }), null)
+  assert.equal(calls.length, 0)
 })
 
 test('airport info scheduler runs at KST bulletin release and retry times', () => {

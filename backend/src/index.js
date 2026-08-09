@@ -138,6 +138,14 @@ function scheduleRadarGraphicsJobs(scheduler = cron, activeConfig = config) {
   ]
 }
 
+function scheduleEchoTopJob(scheduler = cron, activeConfig = config) {
+  if (activeConfig.radar_echo_top?.enabled === false) return null
+  return scheduler.schedule(
+    activeConfig.schedule?.echo_top_interval || config.schedule.echo_top_interval,
+    () => runWithLock("echo_top", echoTopProcessor.process),
+  )
+}
+
 // 시작 시점 NOTAM 캐시가 재크롤이 필요할 만큼 오래됐나. 없음/빈것/시각손상은 stale로 간주(크롤).
 function isNotamCacheStale() {
   const cached = store.getCached('notam')
@@ -147,7 +155,10 @@ function isNotamCacheStale() {
   return Date.now() - fetchedMs >= maxAgeMs
 }
 
-function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.enabled !== false && config.kim_nwp?.collect_on_startup !== false } = {}) {
+function buildInitialCollectionJobs({
+  includeKimNwp = config.kim_nwp?.enabled !== false && config.kim_nwp?.collect_on_startup !== false,
+  includeEchoTop = config.radar_echo_top?.enabled !== false,
+} = {}) {
   const jobs = [
     ["metar", metarProcessor.processAll],
     ["taf", tafProcessor.processAll],
@@ -163,7 +174,7 @@ function buildInitialCollectionJobs({ includeKimNwp = config.kim_nwp?.enabled !=
     ["lightning", lightningProcessor.process],
     ["radar_echo", radarEchoProcessor.process],
     ...(graphicsEnabled() ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
-    ["echo_top", echoTopProcessor.process],
+    ...(includeEchoTop ? [["echo_top", echoTopProcessor.process]] : []),
     ["rainviewer", rainviewerProcessor.process],
     ["satellite", satelliteProcessor.process],
     ["satellite_visible", satelliteVisibleProcessor.processSatelliteVisible],
@@ -217,9 +228,9 @@ async function main() {
   cron.schedule(config.schedule.typhoon_interval, () => runWithLock("typhoon", typhoonProcessor.process));
   cron.schedule(config.schedule.radar_echo_interval, () => runWithLock("radar_echo", radarEchoProcessor.process));
   scheduleRadarGraphicsJobs()
-  cron.schedule(config.schedule.echo_top_interval, () => runWithLock("echo_top", echoTopProcessor.process));
+  scheduleEchoTopJob()
   // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.
-  runWithLock("echo_top", echoTopProcessor.backfill);
+  if (config.radar_echo_top?.enabled !== false) runWithLock("echo_top", echoTopProcessor.backfill);
   cron.schedule(config.schedule.rainviewer_interval, () => runWithLock("rainviewer", rainviewerProcessor.process));
   scheduleKimNwpJob();
   cron.schedule(config.schedule.ktg_interval, () => runWithLock('ktg', ktgProcessor.process), KIM_NWP_CRON_OPTIONS);
@@ -254,5 +265,5 @@ if (process.argv[1] && (__filename === process.argv[1] || __filename.endsWith(pr
   });
 }
 
-export { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleTakeoffFcstJob, scheduleKimNwpJob }
-export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }
+export { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleEchoTopJob, scheduleTakeoffFcstJob, scheduleKimNwpJob }
+export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleEchoTopJob, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }
