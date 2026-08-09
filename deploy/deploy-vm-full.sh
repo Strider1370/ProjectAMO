@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+exec 9>/tmp/projectamo-deploy.lock
+flock -n 9 || { echo "[deploy-full] another deployment is already running" >&2; exit 1; }
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
