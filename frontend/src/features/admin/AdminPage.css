@@ -113,6 +113,22 @@
 .admin-gauge-bar span { display: block; height: 100%; border-radius: var(--radius-circular); }
 .admin-gauge-sub { font-size: var(--fs-100); color: var(--text-3); }
 
+.admin-api-hub-usage { margin-top: var(--space-l); }
+.admin-api-hub-row { border-top: 1px solid var(--stroke-2); padding: var(--space-s) 0; }
+.admin-api-hub-row:first-of-type { border-top: 0; }
+.admin-api-hub-summary { display: grid; grid-template-columns: 1fr auto auto 18px; width: 100%; gap: var(--space-s); align-items: center; border: 0; background: transparent; padding: var(--space-xs) 0; color: var(--text-1); cursor: pointer; text-align: left; font-family: var(--font-base); }
+.admin-api-hub-name { font-weight: var(--fw-medium); }
+.admin-api-hub-value, .admin-api-hub-meta, .admin-api-hub-reset { color: var(--text-3); font-size: var(--fs-100); }
+.admin-api-hub-status { font-size: var(--fs-100); color: var(--level-green); }
+.admin-api-hub-row.is-blocked .admin-api-hub-status, .admin-api-hub-row.is-blocked .admin-api-hub-reset { color: var(--level-red); }
+.admin-api-hub-row.is-unconfigured .admin-api-hub-status { color: var(--level-gray); }
+.admin-api-hub-bar { margin: var(--space-xxs) 0; }
+.admin-api-hub-bar span { background: var(--accent); }
+.admin-api-hub-row.is-blocked .admin-api-hub-bar span { background: var(--level-red); }
+.admin-api-hub-endpoints { margin-top: var(--space-s); background: var(--bg-2); border-radius: var(--radius-md); padding: var(--space-s); }
+.admin-api-hub-endpoint { display: grid; grid-template-columns: 1fr auto auto auto; gap: var(--space-m); padding: var(--space-xs) 0; font-size: var(--fs-100); color: var(--text-2); }
+.admin-api-hub-endpoint span:nth-child(2) { font-weight: var(--fw-medium); color: var(--text-1); }
+
 /* 이용자 추이 */
 .admin-trend-card + .admin-trend-card { margin-top: var(--space-l); }
 

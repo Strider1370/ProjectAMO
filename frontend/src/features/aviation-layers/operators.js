@@ -10,13 +10,16 @@ export const OPERATOR_NAMES = {
   CJU: '청주대학교',
   KFS: '산림청',
   NFA: '소방청(119)',
+  KMA: '기상청',
 }
 
 // Operators we ship a logo image for (public/Symbols/operators/{CODE}.png).
-export const OPERATOR_LOGOS = new Set(['KAU', 'CJU', 'KNUT', 'HANSEO', 'CHODANG', 'NFA'])
+export const OPERATOR_LOGOS = new Set(['KAU', 'CJU', 'KNUT', 'HANSEO', 'CHODANG', 'NFA', 'KMA'])
 
 // Registration (HL number) -> operator code.
 export const REGISTRATION_OPERATOR = {
+  // KMA (1)
+  HL5240: 'KMA',
   // KAU (19)
   HL0304: 'KAU',
   HL1081: 'KAU',

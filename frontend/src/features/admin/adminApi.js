@@ -14,6 +14,7 @@ export const getMetrics = (range) => fetch(`${base}/metrics?range=${range}`, { c
 export const getTraffic = () => fetch(`${base}/traffic`, { credentials: 'include' }).then(j)
 export const getDataHealth = () => fetch(`${base}/data-health`, { credentials: 'include' }).then(j)
 export const getServerHealth = () => fetch(`${base}/server-health`, { credentials: 'include' }).then(j)
+export const getApiHubUsage = () => fetch(`${base}/api-hub-usage`, { credentials: 'include' }).then(j)
 export const getTrends = (granularity) => fetch(`${base}/trends?granularity=${granularity}`, { credentials: 'include' }).then(j)
 export const getUsers = () => fetch(`${base}/users`, { credentials: 'include' }).then(j)
 export const getPending = () => fetch(`${base}/pending`, { credentials: 'include' }).then(j)

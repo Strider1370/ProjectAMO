@@ -50,6 +50,11 @@ test('admin endpoints require admin and return data', async () => {
     assert.equal((await fetch(at(server, '/api/admin/users'), getWith(cookie))).status, 200)
     assert.equal((await fetch(at(server, '/api/admin/metrics?range=24h'), getWith(cookie))).status, 200)
     assert.equal((await fetch(at(server, '/api/admin/traffic'), getWith(cookie))).status, 200)
+    const apiHubUsage = await (await fetch(at(server, '/api/admin/api-hub-usage'), getWith(cookie))).json()
+    assert.equal(apiHubUsage.keys.length, 3)
+    assert.ok(apiHubUsage.keys.every((key) => Array.isArray(key.endpoints)))
+    assert.ok(apiHubUsage.keys.every((key) => !('credential' in key) && !('url' in key)))
+    assert.ok(apiHubUsage.keys.every((key) => key.endpoints.every((endpoint) => Object.keys(endpoint).every((field) => ['label', 'bytes', 'requests', 'successes', 'failures', 'lastCalledAt'].includes(field)))))
 
     const health = await (await fetch(at(server, '/api/admin/data-health'), getWith(cookie))).json()
     assert.ok(Array.isArray(health.types) && health.types.length > 0)

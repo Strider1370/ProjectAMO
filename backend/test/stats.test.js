@@ -13,3 +13,12 @@ test('stats tracks overseas weather job types', () => {
   assert.equal(stats.types.sigmet_overseas.failure, 1)
   assert.equal(stats.recent_runs[0].type, 'sigmet_overseas')
 })
+
+test('stats records an API Hub budget skip as a non-failure recent run', () => {
+  statsModule.recordSkip('wissdom', 'api_hub_key_blocked')
+  const recent = statsModule.getStats().recent_runs[0]
+  assert.deepEqual(
+    { type: recent.type, success: recent.success, skipped: recent.skipped, reason: recent.reason },
+    { type: 'wissdom', success: true, skipped: true, reason: 'api_hub_key_blocked' },
+  )
+})

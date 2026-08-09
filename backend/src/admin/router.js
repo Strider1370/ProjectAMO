@@ -15,6 +15,7 @@ import { recordDemoEvent, getDemoEvents } from '../dev/demo-mode.js'
 import { demoSession } from '../dev/demo-session.js'
 import { listSnapshots, inspectSnapshot, isValidSnapshotName, nextSnapshotName, RESERVED_LIVE_BACKUP } from '../dev/snapshot-store.js'
 import config from '../config.js'
+import apiHubUsage from '../api-hub-usage.js'
 
 // /api/admin/* — 전체 requireRole('admin'). db 주입 가능(테스트).
 export function createAdminRouter({ db = null } = {}) {
@@ -38,6 +39,7 @@ export function createAdminRouter({ db = null } = {}) {
     disk: readDiskUsage(config.storage.base_path),
     recentErrors: (stats.getStats().recent_runs || []).filter((r) => !r.success).slice(0, 20),
   }))
+  router.get('/api-hub-usage', (req, res) => res.json(apiHubUsage.snapshot()))
   router.get('/users', (req, res) => res.json(listUsers(database())))
   router.get('/pending', (req, res) => res.json(listPending(database())))
   // id 검증 + 실제 변경 여부 확인(없는 id를 조용히 200 처리하지 않음).

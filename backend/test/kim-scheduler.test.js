@@ -6,10 +6,27 @@ import {
   AIRPORT_INFO_CRON_OPTIONS,
   KIM_NWP_CRON_OPTIONS,
   buildInitialCollectionJobs,
+  runWithLock,
   scheduleAirportInfoJob,
   scheduleKimNwpJob,
   scheduleEchoTopJob,
 } from '../src/index.js'
+
+test('blocked API Hub key skips its collection before the processor runs', async () => {
+  const result = await runWithLock('radar_echo', async () => assert.fail('processor must not run'), {
+    apiHubCategories: ['radar_satellite'],
+    isBlocked: () => true,
+  })
+  assert.deepEqual(result, { skipped: 'api_hub_key_blocked' })
+})
+
+test('a non-blocked API Hub key still runs its collection', async () => {
+  const result = await runWithLock('radar_echo', async () => ({ saved: true }), {
+    apiHubCategories: ['radar_satellite'],
+    isBlocked: () => false,
+  })
+  assert.deepEqual(result, { saved: true })
+})
 
 test('KIM NWP scheduler uses UTC for synoptic release retry windows', () => {
   const calls = []

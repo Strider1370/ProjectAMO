@@ -2,6 +2,7 @@ import https from 'https'
 import config from '../config.js'
 import store from '../store.js'
 import { latLonToGrid } from '../utils/kma-grid.js'
+import apiHubUsage from '../api-hub-usage.js'
 
 const VILLAGE_BASE_TIMES = [2, 5, 8, 11, 14, 17, 20, 23] // 동네예보 발표시각 (KST)
 const VILLAGE_PUBLISH_DELAY_MIN = 15 // 발표 후 제공까지 버퍼
@@ -103,6 +104,7 @@ async function fetchJson(url, timeoutMs = config.ground_forecast.timeout_ms) {
 
 function fetchJsonViaHttpsRequest(url, timeoutMs) {
   return new Promise((resolve, reject) => {
+    apiHubUsage.assertAllowed(config.api.auth_key)
     const request = https.request(url, {
       method: "GET",
       rejectUnauthorized: false,
@@ -110,12 +112,19 @@ function fetchJsonViaHttpsRequest(url, timeoutMs) {
         "User-Agent": "KMA-Weather-Dashboard/1.0"
       }
     }, (response) => {
-      let body = "";
+      const chunks = [];
       response.setEncoding("utf8");
       response.on("data", (chunk) => {
-        body += chunk;
+        chunks.push(chunk);
       });
-      response.on("end", () => {
+      response.on("end", async () => {
+        const body = chunks.join('');
+        try {
+          await apiHubUsage.record(config.api.auth_key, { bytes: Buffer.byteLength(body), status: response.statusCode || 500, endpoint: 'ground_forecast' });
+        } catch (error) {
+          reject(error);
+          return;
+        }
         if ((response.statusCode || 500) >= 400) {
           reject(new Error(`HTTP ${response.statusCode}: ${body.slice(0, 200)}`));
           return;

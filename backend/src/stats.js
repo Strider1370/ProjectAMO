@@ -6,9 +6,9 @@ import path from 'path'
 //  echo_top·satellite·rainviewer·ground_forecast·environment·airport_info·takeoff_fcst·ktg·notam·typhoon도
 //  같은 이유로 빠져 있었다: 등록 안 된 새 수집기 추가 때마다 이 목록을 안 늘려서 실패가 조용히 유실됐다.)
 const TYPES = [
-  'metar', 'taf', 'warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'radar_echo', 'echo_top',
+  'metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'radar_echo', 'wissdom', 'qpf', 'hsr', 'hci', 'echo_top',
   'satellite', 'rainviewer', 'amos', 'adsb', 'metar_overseas', 'taf_overseas', 'sigmet_overseas',
-  'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'ktg', 'notam', 'typhoon', 'kim_surface_wind',
+  'satellite_visible', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'ktg', 'notam', 'typhoon', 'kim_surface_wind', 'flight_category', 'asos_ceiling', 'terminal_flights', 'overseas_forecast',
 ]
 const MAX_RECENT_RUNS = 50
 
@@ -72,7 +72,7 @@ function saveToFile() {
   }
 }
 
-function addRecentRun(type, success, error, failedAirports, durationMs) {
+function addRecentRun(type, success, error, failedAirports, durationMs, extra = {}) {
   statsData.recent_runs.unshift({
     type,
     time: new Date().toISOString(),
@@ -80,6 +80,7 @@ function addRecentRun(type, success, error, failedAirports, durationMs) {
     error: error || null,
     failed_airports: failedAirports || [],
     duration_ms: durationMs ?? null,
+    ...extra,
   })
   if (statsData.recent_runs.length > MAX_RECENT_RUNS) {
     statsData.recent_runs = statsData.recent_runs.slice(0, MAX_RECENT_RUNS)
@@ -87,10 +88,12 @@ function addRecentRun(type, success, error, failedAirports, durationMs) {
 }
 
 // 락 스킵(직전 run이 아직 진행 중) 카운트 — 수집 주기가 처리시간보다 짧다는 신호.
-export function recordSkip(type) {
+export function recordSkip(type, reason = 'already_running') {
   const entry = statsData.types[type]
   if (!entry) return
   entry.skips = (entry.skips || 0) + 1
+  addRecentRun(type, true, null, [], null, { skipped: true, reason })
+  saveToFile()
 }
 
 export function recordSuccess(type, result, durationMs) {

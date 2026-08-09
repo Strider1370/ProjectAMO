@@ -66,3 +66,12 @@ test('ADS-B GeoJSON hides aircraft without a reported direction or speed', () =>
   ] })
   assert.deepEqual(geojson.features.map((feature) => feature.properties.icao24), ['complete'])
 })
+
+test('HL5240 is identified as the Korea Meteorological Administration', () => {
+  const geojson = createAdsbGeoJSON({ aircraft: [{
+    icao24: 'kma001', lat: 37, lon: 127, true_track: 180, velocity: 200, registration: 'HL5240',
+  }] })
+  const { operator, airline_name: name } = geojson.features[0].properties
+  assert.equal(operator, 'KMA')
+  assert.equal(name, '기상청')
+})

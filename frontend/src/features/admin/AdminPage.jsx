@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
-import { getMetrics, getUsers, getPending, approve, reject } from './adminApi.js'
+import { getApiHubUsage, getMetrics, getUsers, getPending, approve, reject } from './adminApi.js'
 import ResourceTimeline from './ResourceTimeline.jsx'
 import CreateForecasterDialog from './CreateForecasterDialog.jsx'
 import DataHealthDashboard from './DataHealthDashboard.jsx'
 import ServerHealthPanel from './ServerHealthPanel.jsx'
 import UserActivityPanel from './UserActivityPanel.jsx'
+import ApiHubUsagePanel from './ApiHubUsagePanel.js'
 import './AdminPage.css'
 
 const ROLE_KO = { pilot: '조종사', forecaster: '예보관', admin: '관리자' }
@@ -44,6 +45,7 @@ export default function AdminPage() {
   const [metrics, setMetrics] = useState(null)
   const [users, setUsers] = useState([])
   const [pending, setPending] = useState([])
+  const [apiHubUsage, setApiHubUsage] = useState(null)
   const [denied, setDenied] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
 
@@ -53,8 +55,8 @@ export default function AdminPage() {
   // 계속 폴링한다. 트래픽·서버 리소스는 각 탭 컴포넌트가 자기 몫만 따로 폴링한다.
   const load = useCallback(async () => {
     try {
-      const [m, u, p] = await Promise.all([getMetrics(range), getUsers(), getPending()])
-      setMetrics(m); setUsers(u); setPending(p); setDenied(false)
+      const [m, u, p, usage] = await Promise.all([getMetrics(range), getUsers(), getPending(), getApiHubUsage()])
+      setMetrics(m); setUsers(u); setPending(p); setApiHubUsage(usage); setDenied(false)
     } catch (err) {
       if (err.status === 401 || err.status === 403) setDenied(true)
     }
@@ -126,6 +128,7 @@ export default function AdminPage() {
             <ResourceTimeline series={metrics?.series || []} peakCpu={metrics?.peakCpu || null} />
           </section>
           <ServerHealthPanel />
+          <ApiHubUsagePanel usage={apiHubUsage} />
         </>
       )}
 

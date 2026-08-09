@@ -1,5 +1,6 @@
 import store from './src/store.js'
 import config from './src/config.js'
+import { installApiHubFetchGuard } from './src/lib/fetch-api-hub.js'
 
 const TYPE_MAP = {
   airport_info:    () => import('./src/processors/airport-info-processor.js'),
@@ -23,6 +24,7 @@ if (!type || !TYPE_MAP[type]) {
 }
 
 store.ensureDirectories(config.storage.base_path)
+installApiHubFetchGuard()
 store.initFromFiles(config.storage.base_path)
 
 console.log(`Collecting ${type}...`)
