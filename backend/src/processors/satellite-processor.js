@@ -81,6 +81,18 @@ async function fetchNC(url) {
   }
 }
 
+// FOG(안개)만 못 받은 프레임은 다시 받아볼 값어치가 있지만 무한히는 아니다. 상한이 없으면
+// FOG가 끝내 올라오지 않는 시각의 프레임을 매 주기마다 적외+안개까지 통째로 다시 내려받는다.
+export function needsFogRefetch(frame) {
+  return Boolean(frame) && frame.fogPixelCount === null && (frame.fogAttempts || 0) < MAX_FOG_RETRIES;
+}
+
+// FOG 없이 저장된 프레임에 시도 횟수를 새긴다. 메타에 남아야 재시작·다음 주기에도 상한이 유지된다.
+function withFogAttempt(frameInfo, previousFrame) {
+  if (!frameInfo || frameInfo.fogPixelCount !== null) return frameInfo;
+  return { ...frameInfo, fogAttempts: (previousFrame?.fogAttempts || 0) + 1 };
+}
+
 function loadExistingMeta(satDir) {
   const metaPath = path.join(satDir, "sat_meta.json");
   if (!fs.existsSync(metaPath)) return null;
@@ -212,7 +224,7 @@ function scheduleFogRetry(satDir, frameSpec, frameSpecs, attempt = 1) {
 
       const existingFrames = new Map((existingMeta.frames || []).map((frame) => [frame.tm, frame]));
       const currentFrame = existingFrames.get(frameSpec.displayTm);
-      if (currentFrame && currentFrame.fogPixelCount !== null) {
+      if (currentFrame && (currentFrame.fogPixelCount !== null || (currentFrame.fogAttempts || 0) >= MAX_FOG_RETRIES)) {
         return;
       }
 
@@ -221,7 +233,7 @@ function scheduleFogRetry(satDir, frameSpec, frameSpecs, attempt = 1) {
         return;
       }
 
-      existingFrames.set(frameSpec.displayTm, frameInfo);
+      existingFrames.set(frameSpec.displayTm, withFogAttempt(frameInfo, currentFrame));
       writeMeta(satDir, frameSpec, frameSpecs, existingFrames);
 
       if (frameInfo.fogPixelCount === null && attempt < MAX_FOG_RETRIES) {
@@ -252,7 +264,7 @@ function scheduleBackgroundFill(satDir, pendingFrameSpecs, existingFrames, lates
         try {
           const frameInfo = await renderFrame(satDir, frameSpec.requestTm, frameSpec.displayTm);
           if (frameInfo) {
-            existingFrames.set(frameSpec.displayTm, frameInfo);
+            existingFrames.set(frameSpec.displayTm, withFogAttempt(frameInfo, existingFrames.get(frameSpec.displayTm)));
             writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames);
           }
         } catch (err) {
@@ -299,10 +311,7 @@ async function process({
     const filename = `sat_korea_${frameSpec.displayTm}.webp`;
     const filePath = path.join(satDir, filename);
     if (!fs.existsSync(filePath) || !existingFrames.get(frameSpec.displayTm)) return true;
-    // Re-render frames where FOG fetch failed (fogPixelCount=null means FOG NC was unavailable)
-    const frame = existingFrames.get(frameSpec.displayTm);
-    if (frame.fogPixelCount === null) return true;
-    return false;
+    return needsFogRefetch(existingFrames.get(frameSpec.displayTm));
   });
 
   const immediateFrameSpecs = fillAll ? missingFrameSpecs : missingFrameSpecs.slice(-IMMEDIATE_FRAME_COUNT);
@@ -311,7 +320,7 @@ async function process({
   for (const frameSpec of immediateFrameSpecs) {
     try {
       const frameInfo = await renderFrame(satDir, frameSpec.requestTm, frameSpec.displayTm);
-      if (frameInfo) existingFrames.set(frameSpec.displayTm, frameInfo);
+      if (frameInfo) existingFrames.set(frameSpec.displayTm, withFogAttempt(frameInfo, existingFrames.get(frameSpec.displayTm)));
     } catch (err) {
       console.warn(`satellite: failed to render frame ${frameSpec.requestTm}:`, err.message);
     }

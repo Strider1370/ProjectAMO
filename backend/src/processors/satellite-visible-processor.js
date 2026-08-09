@@ -100,16 +100,29 @@ export async function processSatelliteVisible({ now = new Date(), deps = {} } = 
   const delayMinutes = activeConfig.satellite?.delay_minutes ?? 20
   const tmUtc = utcTm(new Date(now.getTime() - delayMinutes * 60_000))
   const tm = kstTmFromUtc(tmUtc)
-  if ((previous?.frames || []).some((frame) => frame.tm === tm)) return { saved: false, tm, reason: 'already-collected' }
+  // 저장한 프레임뿐 아니라 "확인만 하고 버린" 시각도 기억한다 — 밤 프레임을 기억하지 않으면
+  // 저장이 없으니 매 주기마다 같은 20MB대 NetCDF를 다시 받는다.
+  if ((previous?.frames || []).some((frame) => frame.tm === tm) || previous?.lastCheckedTm === tm) {
+    return { saved: false, tm, reason: 'already-collected' }
+  }
 
   const url = `${activeConfig.satellite.url}/${CHANNEL}/${REGION}/data?date=${tmUtc}&authKey=${activeConfig.api.radar_satellite_auth_key}`
-  const response = await fetchWithTimeout(url, activeConfig.satellite?.timeout_ms || 60_000)
-  if (!response.ok) return { saved: false, tm, reason: `http-${response.status}` }
-  const parsed = await parseSatelliteNC(Buffer.from(await response.arrayBuffer()))
+  const fetchNc = deps.fetchNc || (async (target) => {
+    const response = await fetchWithTimeout(target, activeConfig.satellite?.timeout_ms || 60_000)
+    return response.ok ? Buffer.from(await response.arrayBuffer()) : { status: response.status }
+  })
+  const downloaded = await fetchNc(url)
+  if (!Buffer.isBuffer(downloaded)) return { saved: false, tm, reason: `http-${downloaded?.status}` }
+  const parsed = await (deps.parseNc || parseSatelliteNC)(downloaded)
 
   const rendered = await renderVisible(parsed)
-  // 밤에는 볼 것이 없다 — 저장하면 지도에 검은 판이 덮인다.
-  if (rendered.maxLevel < NIGHT_MAX_LEVEL) return { saved: false, tm, reason: 'night', maxLevel: rendered.maxLevel }
+  // 밤에는 볼 것이 없다 — 저장하면 지도에 검은 판이 덮인다. 그림은 버리되 확인한 시각은 남긴다.
+  if (rendered.maxLevel < NIGHT_MAX_LEVEL) {
+    const nightMeta = { type: 'GK2A_VISIBLE', ...(previous || {}), lastCheckedTm: tm, updatedAt: new Date().toISOString() }
+    if (!nightMeta.frames) nightMeta.frames = []
+    writeAtomic(target.meta, `${JSON.stringify(nightMeta, null, 2)}\n`)
+    return { saved: false, tm, reason: 'night', maxLevel: rendered.maxLevel }
+  }
 
   const webp = await sharp(rendered.buffer, { raw: { width: rendered.width, height: rendered.height, channels: 4 } })
     .webp({ quality: 82 }).toBuffer()
@@ -128,7 +141,7 @@ export async function processSatelliteVisible({ now = new Date(), deps = {} } = 
   }
   const frames = [...(previous?.frames || []).filter((item) => item.tm !== frame.tm), frame]
     .sort((a, b) => a.tm.localeCompare(b.tm)).slice(-MAX_FRAMES)
-  const meta = { type: 'GK2A_VISIBLE', updatedAt: new Date().toISOString(), tm, frames, latest: frame }
+  const meta = { type: 'GK2A_VISIBLE', updatedAt: new Date().toISOString(), tm, lastCheckedTm: tm, frames, latest: frame }
   writeAtomic(target.meta, `${JSON.stringify(meta, null, 2)}\n`)
 
   const keep = new Set(frames.map((item) => path.basename(item.path)))

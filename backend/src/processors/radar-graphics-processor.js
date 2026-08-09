@@ -48,11 +48,9 @@ function clean(dir, meta) {
   const keep = new Set(frames.flatMap((frame) => [path.basename(frame.path), path.basename(frame.legendPath)]))
   for (const filename of fs.readdirSync(dir)) if (/^(wissdom|qpf|hsr|hci)_.+\.webp$/.test(filename) && !keep.has(filename)) fs.unlinkSync(path.join(dir, filename))
 }
-// A frame is blank when nothing survived background removal. The renderer sometimes returns an
-// empty canvas for a frame that has data, and the response metadata is identical either way.
-const isBlank = async (webp) => { const alpha = (await sharp(webp).stats()).channels[3]; return Boolean(alpha) && alpha.max === 0 }
-// ponytail: three tries at ~50% blank leaves ~12% blank; add backoff only if KMA gets worse.
-const BLANK_RENDER_ATTEMPTS = 3
+// 빈 그림은 실패가 아니다 — 맑은 날 WISSDOM·QPF는 원래 비어 있다. 자료 부재를 재시도 사유로
+// 삼으면 맑은 날 내내 모든 산출물을 3배로 받게 된다(레이더/위성 키 일일 한도 초과의 한 원인).
+// 재시도는 응답 자체가 없을 때만 하고, 그 판단은 parseImpgResult가 null을 주는 경로가 맡는다.
 
 async function publish({ root, type, descriptor, image, legend, previous, maxFrames }) {
   const target = paths(root, type); fs.mkdirSync(target.dir, { recursive: true })
@@ -114,26 +112,21 @@ async function collect(type, { now = new Date(), deps = {}, signal } = {}) {
         : { tm: requestedTm, zoomLevel }
       const fetchJson = deps.fetchJson || ((url) => defaultJson(url, productConfig.timeout_ms || 30000, signal))
       const fetchImage = deps.fetchImage || ((url) => defaultImage(url, productConfig.timeout_ms || 30000, signal))
-      let parsed = null, body = null, legendImage = null
-      for (let attempt = 1; attempt <= BLANK_RENDER_ATTEMPTS; attempt += 1) {
-        parsed = parseImpgResult(await fetchJson(apiUrl(activeConfig, type, request), { signal }), { product: type, requestedTm, leadMinutes: kind === 'lead' ? value : 0 })
-        throwIfAborted(signal)
-        // KMA answers with the newest frame it holds, which can lag the requested slot. Accept that
-        // frame under its own timestamp; only a timestamp ahead of the request means a wrong answer.
-        if (!parsed) break
-        if (kind === 'height' && (parsed.tm > requestedTm || complete.has(`${value}:${parsed.tm}`))) { parsed = null; break }
-        if (kind === 'single' && (parsed.tm > requestedTm || complete.has(parsed.tm))) { parsed = null; break }
-        if (kind === 'lead') {
-          qpfAnalysisTm ||= parsed.tm
-          if (parsed.tm !== qpfAnalysisTm || complete.has(`${parsed.tm}:${value}`) || parsed.validTimeMs !== parsed.timeMs + value * 60000) { parsed = null; break }
-        }
-        const [image, legend] = await Promise.all([fetchImage(assetUrl(parsed.imagePath), { signal }), fetchImage(assetUrl(parsed.legendPath), { signal })])
-        throwIfAborted(signal)
-        body = await normalize(image, { projected: parsed.projectedBounds, bounds: parsed.bounds })
-        legendImage = await normalize(legend, { stripBackground: false })
-        if (!await isBlank(body)) break
-      }
+      const parsed = parseImpgResult(await fetchJson(apiUrl(activeConfig, type, request), { signal }), { product: type, requestedTm, leadMinutes: kind === 'lead' ? value : 0 })
+      throwIfAborted(signal)
+      // KMA answers with the newest frame it holds, which can lag the requested slot. Accept that
+      // frame under its own timestamp; only a timestamp ahead of the request means a wrong answer.
       if (!parsed) continue
+      if (kind === 'height' && (parsed.tm > requestedTm || complete.has(`${value}:${parsed.tm}`))) continue
+      if (kind === 'single' && (parsed.tm > requestedTm || complete.has(parsed.tm))) continue
+      if (kind === 'lead') {
+        qpfAnalysisTm ||= parsed.tm
+        if (parsed.tm !== qpfAnalysisTm || complete.has(`${parsed.tm}:${value}`) || parsed.validTimeMs !== parsed.timeMs + value * 60000) continue
+      }
+      const [image, legend] = await Promise.all([fetchImage(assetUrl(parsed.imagePath), { signal }), fetchImage(assetUrl(parsed.legendPath), { signal })])
+      throwIfAborted(signal)
+      const body = await normalize(image, { projected: parsed.projectedBounds, bounds: parsed.bounds })
+      const legendImage = await normalize(legend, { stripBackground: false })
       parsed.heightM = kind === 'height' ? value : null
       await publish({ root, type, descriptor: parsed, image: body, legend: legendImage, previous: readJson(target.meta), maxFrames: productConfig.max_frames || 36 })
       saved = true

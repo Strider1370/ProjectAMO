@@ -253,8 +253,9 @@ async function main() {
     // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.
     if (config.radar_echo_top?.enabled !== false) runWithLock("echo_top", echoTopProcessor.backfill, RADAR_SATELLITE_KEY);
     cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite", satelliteProcessor.process, RADAR_SATELLITE_KEY));
-    // 가시영상도 같은 주기 — 밤에는 수집기가 스스로 빈 그림을 걸러낸다.
-    cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite_visible", satelliteVisibleProcessor.processSatelliteVisible, RADAR_SATELLITE_KEY));
+    // 가시영상은 10분 — 파일이 가장 크고 원본 갱신도 10분이다. 밤 프레임은 수집기가 걸러내되
+    // 확인한 시각을 메타에 남겨 같은 파일을 다시 받지 않는다.
+    cron.schedule(config.schedule.satellite_visible_interval, () => runWithLock("satellite_visible", satelliteVisibleProcessor.processSatelliteVisible, RADAR_SATELLITE_KEY));
   } else {
     console.warn('[collection] KMA radar/satellite key disabled — radar and satellite collection skipped.')
   }

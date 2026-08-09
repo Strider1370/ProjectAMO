@@ -22,3 +22,4 @@ scripts/__pycache__/
 # brainstorming working artifacts
 .superpowers/
 .worktrees/
+.env.bak-*

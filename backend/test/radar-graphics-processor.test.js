@@ -148,33 +148,19 @@ test('drops the QPF white canvas but never edits legend pixels', async () => {
   assert.deepEqual([...legendPixels.slice(4, 8)], [0, 0, 0, 255], 'legend text must stay opaque')
 })
 
-test('re-requests a blank render and gives up without losing the run', async () => {
-  // The KMA renderer intermittently returns an empty canvas for a frame that has data; the
-  // response metadata is identical either way, so the only signal is the rendered image.
+test('publishes a blank render without re-requesting it', async () => {
+  // 맑은 날 WISSDOM·QPF는 원래 빈 그림이다. 빈 캔버스를 실패로 보고 다시 받으면 맑은 날 내내
+  // 모든 산출물이 3배로 나가 레이더/위성 키의 일일 한도를 태운다. 자료 부재는 재시도 사유가 아니다.
   const blank = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 127, g: 127, b: 127, alpha: 0 } } }).png().toBuffer()
   const filled = await sharp({ create: { width: 2, height: 1, channels: 4, background: { r: 250, g: 250, b: 250, alpha: 1 } } })
     .composite([{ input: Buffer.from([0, 200, 255, 255]), raw: { width: 1, height: 1, channels: 4 }, left: 1, top: 0 }]).png().toBuffer()
 
-  const dataRoot = root(), deps = depsFor(dataRoot)
-  let bodyCalls = 0
-  deps.fetchImage = async (url) => {
-    if (url.includes('legend')) return filled
-    bodyCalls += 1
-    return bodyCalls === 1 ? blank : filled
-  }
-  await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps })
-  assert.equal(bodyCalls, 2, 'a blank render must be re-requested')
-  const frame = readMeta(dataRoot, 'qpf').frames.at(-1)
-  const pixels = await sharp(path.join(dataRoot, frame.path.replace(/^\/data\//, ''))).ensureAlpha().raw().toBuffer()
-  assert.deepEqual([...pixels.slice(4, 8)], [0, 200, 255, 255])
-
-  // A frame that is genuinely empty must still be published rather than retried forever.
   const dryRoot = root(), dry = depsFor(dryRoot)
   let dryCalls = 0
   dry.fetchImage = async (url) => { if (!url.includes('legend')) dryCalls += 1; return url.includes('legend') ? filled : blank }
   await processQpf({ now: new Date('2026-08-04T08:07:00Z'), deps: dry })
-  assert.equal(dryCalls, 3, 'retries must be bounded')
-  assert.equal(readMeta(dryRoot, 'qpf').frames.length, 1)
+  assert.equal(dryCalls, 1, 'a blank render must be fetched exactly once')
+  assert.equal(readMeta(dryRoot, 'qpf').frames.length, 1, 'the blank frame is still published')
 })
 
 test('builds change-detectable snapshot entries for both graphics metadata shapes', async () => {
