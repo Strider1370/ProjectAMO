@@ -31,9 +31,11 @@ export function createAdminRouter({ db = null } = {}) {
     const granularity = ['day', 'week', 'month'].includes(req.query.granularity) ? req.query.granularity : 'day'
     res.json(readTrends(database(), granularity))
   })
-  router.get('/data-health', (req, res) => res.json(
-    readDataHealth(config.storage.active_path, { getCached: store.getCached, getStats: stats.getStats }),
-  ))
+  router.get('/data-health', (req, res) => {
+    const health = readDataHealth(config.storage.active_path, { getCached: store.getCached, getStats: stats.getStats })
+    health.rows = health.rows.map((row) => ({ ...row, stats: stats.getTypeSummary(row.statsKey) }))
+    res.json(health)
+  })
   // 서버 전산자원 탭: 재시작 횟수/가동시간/힙 메모리 + 폴더별 디스크 사용량 + 최근 실패 로그.
   // 디스크만 캐시(5분) — 나머지는 계산이 가벼워 매 요청 그대로.
   router.get('/server-health', (req, res) => res.json({

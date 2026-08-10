@@ -164,4 +164,26 @@ export function getStats() {
   return statsData
 }
 
-export default { initFromFile, recordSuccess, recordFailure, recordSkip, getStats }
+// 관리자 콘솔용 타입 요약. 성공률은 누적이다 — recent_runs는 34종이 함께 쓰는 50건짜리 공용
+// 목록이라 24시간 같은 시간 창을 계산할 근거가 못 된다(그건 2단계에서 따로 쌓는다).
+export function getTypeSummary(type) {
+  const entry = statsData.types[type]
+  const empty = { successRate: null, totalRuns: 0, skips: 0, avgMs: null, since: statsData.since, errorCounts: {}, lastError: null }
+  if (!entry) return empty
+
+  const durations = statsData.recent_runs
+    .filter((r) => r.type === type && Number.isFinite(r.duration_ms))
+    .map((r) => r.duration_ms)
+
+  return {
+    successRate: entry.total_runs > 0 ? entry.success / entry.total_runs : null,
+    totalRuns: entry.total_runs,
+    skips: entry.skips || 0,
+    avgMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null,
+    since: statsData.since,
+    errorCounts: entry.error_counts || {},
+    lastError: entry.last_error ?? null,
+  }
+}
+
+export default { initFromFile, recordSuccess, recordFailure, recordSkip, getStats, getTypeSummary }
