@@ -250,7 +250,9 @@ body {
   line-height: 1.2;
   overflow: hidden;
   position: relative;
-  --warning-page-height: 44px;
+  /* 경보 이름(18px x 1.2) + 간격 4px + 발효 시각(16px x 1.2) = 44.8px. 44px면 아래가 잘리면서
+     글자가 위로 붙어 보인다. 순환 애니메이션의 이동 거리도 이 값을 쓰므로 함께 커진다. */
+  --warning-page-height: 48px;
   height: var(--warning-page-height);
 }
 
@@ -297,6 +299,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center; /* 늘어난 높이 안에서 두 줄을 세로 가운데로 */
   gap: 4px;
   padding-left: 12px;
   border-left: 2px solid rgba(255, 247, 237, 0.72);
