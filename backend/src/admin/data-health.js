@@ -42,7 +42,12 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
 
   const rows = CATALOG.map((row) => {
     const entry = statsTypes[row.statsKey]
-    const lastSuccessAt = entry?.last_success ?? null
+    const contentAt = contentTime(basePath, row, getCached)
+    // last_success는 이번에 새로 생긴 항목이라, 그 전에 수집된 자료에는 값이 없다. 그때는 저장된
+    // 자료의 시각을 대신 쓴다 — store.save()는 내용이 그대로여도 fetched_at을 갱신하고, meta
+    // 파일은 쓰일 때 수정시각이 바뀌므로 둘 다 "그 시점에 수집이 성공했다"는 증거다.
+    // 이게 없으면 배포 직후 34종이 전부 "자료 없음"으로 빨개진다 — 사실도 아니고 쓸모도 없다.
+    const lastSuccessAt = entry?.last_success ?? contentAt
     const status = judge({
       row,
       lastSuccessMs: ms(lastSuccessAt),
@@ -59,7 +64,7 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
       character: row.character,
       status,
       lastSuccessAt,
-      contentAt: contentTime(basePath, row, getCached),
+      contentAt,
       normalMs: row.normalMs,
       lateMs: row.lateMs,
       stoppedMs: row.stoppedMs,
