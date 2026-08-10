@@ -66,21 +66,13 @@ function renderPeriod(period) {
   );
 }
 
-// 정상일 때는 아무것도 적지 않는다. 지연된 소스가 있을 때만 알린다.
-function buildStatusText(sourceStatus) {
-  if (!sourceStatus) return "";
-  const failed = Object.entries(sourceStatus)
-    .filter(([, status]) => status?.ok === false)
-    .map(([key]) => key);
-  if (failed.length === 0) return "";
-  return `일부 소스 지연: ${failed.join(", ")}`;
-}
-
+// 소스별 지연 문구("일부 소스 지연: mid_land, mid_ta")는 일부러 빼놨다. 조종사가 내부 소스
+// 이름을 봐도 할 수 있는 일이 없고, 예보를 못 믿게만 만든다. 그 정보는 source_status로 그대로
+// 내려오니 관리자 콘솔에서 볼 것 — 여기 다시 넣지 말 것.
 export default function GroundForecastClassicPanel({ groundForecastData, icao }) {
   const airportForecast = groundForecastData?.airports?.[icao] || null;
   const allDays = Array.isArray(airportForecast?.forecast) ? airportForecast.forecast : [];
   const days = allDays.filter((day) => !day.isToday);
-  const statusText = buildStatusText(airportForecast?.source_status);
   const shortIssuedAt = formatIssuedAt(airportForecast?.source_status?.short?.announce_time);
   const midIssuedAt = formatIssuedAt(airportForecast?.tmFc);
 
@@ -100,7 +92,6 @@ export default function GroundForecastClassicPanel({ groundForecastData, icao })
       <div className="ground-forecast-header">
         <h3>주간 예보</h3>
         <div className="ground-forecast-meta">
-          {statusText && <span className="ground-forecast-status">{statusText}</span>}
           {shortIssuedAt && <span className="ground-forecast-issued">단기예보 {shortIssuedAt} 발표</span>}
           {midIssuedAt && <span className="ground-forecast-issued">중기예보 {midIssuedAt} 발표</span>}
         </div>
