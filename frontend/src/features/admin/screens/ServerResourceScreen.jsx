@@ -9,6 +9,8 @@ const MEM_COLOR = '#a9701d'
 const DISK_COLOR = '#6d28d9'
 const DISK_TOP_N = 6
 const CERT_WARN_DAYS = 14
+// 하루가 넘도록 백업이 없으면 정기 백업이 안 돌고 있다는 뜻이다(예정 주기 24시간 + 여유).
+const BACKUP_STALE_MS = 30 * 3_600_000
 
 const timeLabel = (iso) => new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
 
@@ -116,6 +118,18 @@ export default function ServerResourceScreen({ server, metrics }) {
                 <td className="ac-r ac-muted">
                   {server.deployment?.deployedAt ? `${formatAge(Date.now() - Date.parse(server.deployment.deployedAt))} 전 배포` : '—'}
                 </td>
+              </tr>
+              {/* 백업은 도는지 보이지 않으면 없는 것과 같다. 오늘 것이 없으면 눈에 띄게 둔다. */}
+              <tr>
+                <td className="ac-nm">DB 백업</td>
+                <td className="ac-r">
+                  {server.backup
+                    ? <span className={`ac-chip ac-${Date.now() - Date.parse(server.backup.at) > BACKUP_STALE_MS ? 'bad' : 'ok'}`}>
+                        {formatAge(Date.now() - Date.parse(server.backup.at))} 전
+                      </span>
+                    : <span className="ac-chip ac-bad">없음</span>}
+                </td>
+                <td className="ac-r ac-muted">{server.backup ? `${server.backup.name} · ${formatBytes(server.backup.bytes)}` : '아직 한 번도 만들어지지 않았습니다'}</td>
               </tr>
               {cert && (
                 <tr>

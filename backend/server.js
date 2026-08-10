@@ -21,6 +21,8 @@ import { ensureActiveDataView, getActiveDataContext } from './src/dev/data-view.
 import { createAdminRouter } from './src/admin/router.js'
 import { visitTracker } from './src/admin/visits.js'
 import { startSampler } from './src/admin/metrics.js'
+import cron from 'node-cron'
+import { startDailyBackup } from './src/admin/db-backup.js'
 import { recordBoot } from './src/admin/process-health.js'
 import { getDb } from './src/db/index.js'
 import { createMeRouter } from './src/me/presets.js'
@@ -1255,6 +1257,7 @@ if (process.env.NODE_ENV !== 'test') {
 
   startSampler(getDb()) // 관리자 콘솔: 60초 리소스 샘플링 시작
   recordBoot(config.storage.base_path) // 관리자 콘솔: 재시작 횟수 집계
+  startDailyBackup(getDb(), config.storage.base_path, { cron }) // DB 백업: 매일 03:10 KST
 
   startAlertScheduler(getDb()) // #13 경로 예보변화 알림: 활성 예정비행 15분 재브리핑 → diff → 알림 적재
 

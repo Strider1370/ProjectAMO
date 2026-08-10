@@ -11,6 +11,7 @@ import { readDataHealth } from './data-health.js'
 import { processHealth } from './process-health.js'
 import { deploymentInfo } from './deployment.js'
 import { readDiskUsage } from './disk-usage.js'
+import { lastBackup } from './db-backup.js'
 import store from '../store.js'
 import stats from '../stats.js'
 import { recordDemoEvent, getDemoEvents } from '../dev/demo-mode.js'
@@ -47,6 +48,7 @@ export function createAdminRouter({ db = null } = {}) {
     recentErrors: (stats.getStats().recent_runs || []).filter((r) => !r.success).slice(0, 20),
     diskForecast: forecastDiskFull(readMetrics(database(), '7d').series),
     deployment: deploymentInfo(),
+    backup: lastBackup(config.storage.base_path),
   }))
   router.get('/api-hub-usage', (req, res) => res.json(apiHubUsage.snapshot()))
   router.get('/users', (req, res) => res.json(listUsers(database())))
