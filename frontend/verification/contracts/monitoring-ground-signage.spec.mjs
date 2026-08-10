@@ -107,6 +107,7 @@ test.describe('ground-signage', () => {
     }
     expect(new Set(layout.map((item) => Math.round(item.dotOffset))).size).toBe(1)
     await expect(hourly.locator('[data-hourly-precip-track]')).toHaveCount(0)
+    expect(await hourly.locator('[data-hourly-row="precip-bar"]').evaluateAll((bars) => Math.max(...bars.map((bar) => Number(bar.getAttribute('height')))))).toBeLessThanOrEqual(100)
     closeTo(await fontSize(hourly.locator('[data-hourly-time]').first()), 20)
     closeTo(await fontSize(hourly.locator('[data-hourly-precipitation]').first()), 20)
     closeTo(await fontSize(hourly.locator('[data-hourly-temperature]').first()), 32)

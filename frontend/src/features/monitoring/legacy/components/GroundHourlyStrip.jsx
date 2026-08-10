@@ -1,7 +1,7 @@
 import { getWeatherIconSrc } from '../../../../shared/weather/weather-icon-registry.js'
 import { mapGroundForecastIcon } from './GroundForecastPanel.jsx'
 import { createTemperatureScale, forecastColumnCenter, precipitationBar, selectHourlyForecastSlots } from '../utils/groundForecastViewModel.js'
-const W=1015, H=430, LEFT=28, RIGHT=987, TEMP_TOP=155, TEMP_BOTTOM=250, PRECIP_TOP=155, PRECIP_BOTTOM=355
+const W=1015, H=430, LEFT=28, RIGHT=987, TEMP_TOP=155, TEMP_BOTTOM=250, PRECIP_TOP=255, PRECIP_BOTTOM=355
 const hour = (time) => time ? `${Number(String(time).slice(0,2))}시` : '-'
 const dateLabel = (date) => {
   const day = Number(String(date || '').slice(6, 8))
