@@ -61,7 +61,7 @@ test.describe('ground-signage', () => {
     await openGround(page)
     const alert = page.getByRole('region', { name: '공항경보' })
     const current = page.getByRole('region', { name: '현재 날씨' })
-    closeTo(await fontSize(alert.locator('[data-warning-label]').first()), 30)
+    closeTo(await fontSize(alert.locator('[data-warning-label]').first()), 26)
     closeTo(await fontSize(alert.locator('[data-warning-time]').first()), 20)
     closeTo(await fontSize(current.locator('[data-current-temperature]')), 64)
     closeTo(await fontSize(current.locator('[data-current-feels]')), 20)
@@ -90,7 +90,6 @@ test.describe('ground-signage', () => {
       const dot = column.querySelector('[data-hourly-dot]')
       const label = column.querySelector('[data-hourly-temperature]')
       const precip = column.querySelector('[data-hourly-precipitation]')
-      const track = column.querySelector('[data-hourly-precip-track]')
       return {
         column: svgRect.left + Number(column.dataset.centerX) / viewBoxWidth * svgRect.width,
         time: center(column.querySelector('[data-hourly-time]')),
@@ -99,15 +98,13 @@ test.describe('ground-signage', () => {
         temperature: center(label),
         precipitation: center(precip),
         dotOffset: label.getBoundingClientRect().top - dot.getBoundingClientRect().top,
-        trackBottom: track.getBoundingClientRect().bottom,
-        svgBottom: element.querySelector('svg').getBoundingClientRect().bottom,
       }
     }))
     for (const item of layout) {
       for (const key of ['time', 'icon', 'dot', 'temperature', 'precipitation']) closeTo(item[key], item.column)
-      expect(item.trackBottom).toBeLessThanOrEqual(item.svgBottom)
     }
     expect(new Set(layout.map((item) => Math.round(item.dotOffset))).size).toBe(1)
+    await expect(hourly.locator('[data-hourly-precip-track]')).toHaveCount(0)
     closeTo(await fontSize(hourly.locator('[data-hourly-time]').first()), 20)
     closeTo(await fontSize(hourly.locator('[data-hourly-precipitation]').first()), 20)
     closeTo(await fontSize(hourly.locator('[data-hourly-temperature]').first()), 32)

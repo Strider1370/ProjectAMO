@@ -3941,6 +3941,33 @@ label { font-size: 0.9rem; font-weight: 700; }
   font-size: 30px;
 }
 
+.dashboard-root[data-dashboard-mode="ground"] .warning-banner {
+  grid-template-columns: 184px minmax(0, 1fr);
+  min-height: 130px;
+  height: 130px;
+  padding: 14px 28px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .warning-banner-side {
+  justify-content: center;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .warning-banner-label {
+  font-size: 26px;
+  white-space: nowrap;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .warning-banner-text {
+  height: 82px !important;
+  padding: 0 0 0 24px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .warning-banner-group,
+.dashboard-root[data-dashboard-mode="ground"] .warning-banner-page {
+  height: 82px;
+  align-items: center;
+}
+
 .dashboard-root[data-dashboard-mode="ground"] .warning-banner-time {
   font-size: 20px;
 }
