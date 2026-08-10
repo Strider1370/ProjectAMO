@@ -5,6 +5,7 @@ import {
 import { convertWeatherToKorean } from "../utils/visual-mapper";
 import WeatherIcon from "../../../../shared/ui/WeatherIcon.jsx";
 import { computeSunTimes } from "../../../../shared/weather/helpers.js";
+import { WiDaySunny, WiDust, WiHumidity, WiRaindrops, WiSmoke, WiStrongWind } from 'react-icons/wi'
 
 function formatGroundNow(date, tz) {
   try {
@@ -98,6 +99,16 @@ function EnvironmentValue({ metric }) {
   );
 }
 
+function GroundMetric({ icon: Icon, label, valueClassName = '', children }) {
+  return (
+    <div className="ground-current-metric" data-ground-metric={label}>
+      <Icon className="ground-current-metric-icon" data-current-metric-icon aria-hidden="true" focusable="false" />
+      <span className="ground-current-metric-label" data-current-metric-label>{label}</span>
+      <strong className={`ground-current-metric-value ${valueClassName}`.trim()} data-current-metric-value>{children}</strong>
+    </div>
+  )
+}
+
 export default function GroundCurrentWeatherCard({
   metarData,
   groundForecastData,
@@ -112,7 +123,7 @@ export default function GroundCurrentWeatherCard({
 
   if (!target) {
     return (
-      <section className="ground-current-card panel">
+      <section className="ground-current-card panel" role="region" aria-label="현재 날씨">
         <p className="ground-current-empty">현재 날씨 데이터를 불러올 수 없습니다.</p>
       </section>
     );
@@ -142,7 +153,7 @@ export default function GroundCurrentWeatherCard({
   const rainfallMm = amosData?.airports?.[icao]?.daily_rainfall?.mm;
 
   return (
-    <section className="ground-current-card panel">
+    <section className="ground-current-card panel" role="region" aria-label="현재 날씨">
       <div className="ground-current-card-topbar">
         <span className="ground-current-card-time">{formatGroundNow(now, tz)}</span>
         <span className="ground-current-card-suntime">☀ 일출 {sunTimes.sunrise} · 일몰 {sunTimes.sunset}</span>
@@ -151,9 +162,9 @@ export default function GroundCurrentWeatherCard({
         <div className="ground-current-card-main">
           <WeatherIcon iconKey={currentCondition.iconKey} className="ground-current-card-icon" alt={currentCondition.summary} />
           <div className="ground-current-card-temp-wrap">
-            <div className="ground-current-card-temp">{Number.isFinite(tempC) ? `${Math.round(tempC)}°C` : "-"}</div>
-            <div className="ground-current-card-feels">체감 {Number.isFinite(feelsLike?.value) ? `${Math.round(feelsLike.value)}°C` : "-"}</div>
-            <div className="ground-current-card-summary">{currentCondition.summary}</div>
+            <div className="ground-current-card-temp" data-current-temperature>{Number.isFinite(tempC) ? `${Math.round(tempC)}°C` : "-"}</div>
+            <div className="ground-current-card-feels" data-current-feels>체감 {Number.isFinite(feelsLike?.value) ? `${Math.round(feelsLike.value)}°C` : "-"}</div>
+            <div className="ground-current-card-summary" data-current-condition>{currentCondition.summary}</div>
             <div className="ground-current-card-minmax">
               <span className="ground-current-metric-min">{Number.isFinite(minTemp) ? `${Math.round(minTemp)}°` : "-"}</span>
               <span className="ground-current-metric-divider">/</span>
@@ -163,30 +174,12 @@ export default function GroundCurrentWeatherCard({
         </div>
         <div className="ground-current-card-divider" />
         <div className="ground-current-card-metrics">
-          <article className="ground-current-metric">
-            <span className="ground-current-metric-label">습도</span>
-            <strong className="ground-current-metric-value">{Number.isFinite(humidity) ? `${Math.round(humidity)}%` : "-"}</strong>
-          </article>
-          <article className="ground-current-metric">
-            <span className="ground-current-metric-label">바람</span>
-            <strong className="ground-current-metric-value">{Number.isFinite(windMs) ? `${windMs.toFixed(0)} m/s` : "-"} <span className="ground-current-metric-dir">{windDirectionKo(windDirection)}</span></strong>
-          </article>
-          <article className="ground-current-metric">
-            <span className="ground-current-metric-label">일강수량</span>
-            <strong className="ground-current-metric-value">{Number.isFinite(rainfallMm) ? `${rainfallMm.toFixed(1)} mm` : "-"}</strong>
-          </article>
-          <article className="ground-current-metric">
-            <span className="ground-current-metric-label">미세먼지(PM10)</span>
-            <strong className={`ground-current-metric-value ${pm10.pending ? "ground-current-metric-value--pending" : pm10.gradeClass}`.trim()}><EnvironmentValue metric={pm10} /></strong>
-          </article>
-          <article className="ground-current-metric">
-            <span className="ground-current-metric-label">초미세먼지(PM2.5)</span>
-            <strong className={`ground-current-metric-value ${pm25.pending ? "ground-current-metric-value--pending" : pm25.gradeClass}`.trim()}><EnvironmentValue metric={pm25} /></strong>
-          </article>
-          <article className="ground-current-metric">
-            <span className="ground-current-metric-label">자외선</span>
-            <strong className={`ground-current-metric-value ${uv.pending ? "ground-current-metric-value--pending" : uv.gradeClass}`.trim()}><EnvironmentValue metric={uv} /></strong>
-          </article>
+          <GroundMetric icon={WiHumidity} label="습도">{Number.isFinite(humidity) ? `${Math.round(humidity)}%` : "-"}</GroundMetric>
+          <GroundMetric icon={WiStrongWind} label="바람">{Number.isFinite(windMs) ? `${windMs.toFixed(0)} m/s` : "-"} <span className="ground-current-metric-dir">{windDirectionKo(windDirection)}</span></GroundMetric>
+          <GroundMetric icon={WiRaindrops} label="일강수량">{Number.isFinite(rainfallMm) ? `${rainfallMm.toFixed(1)} mm` : "-"}</GroundMetric>
+          <GroundMetric icon={WiDust} label="미세먼지(PM10)" valueClassName={pm10.pending ? "ground-current-metric-value--pending" : pm10.gradeClass}><EnvironmentValue metric={pm10} /></GroundMetric>
+          <GroundMetric icon={WiSmoke} label="초미세먼지(PM2.5)" valueClassName={pm25.pending ? "ground-current-metric-value--pending" : pm25.gradeClass}><EnvironmentValue metric={pm25} /></GroundMetric>
+          <GroundMetric icon={WiDaySunny} label="자외선" valueClassName={uv.pending ? "ground-current-metric-value--pending" : uv.gradeClass}><EnvironmentValue metric={uv} /></GroundMetric>
         </div>
       </div>
     </section>

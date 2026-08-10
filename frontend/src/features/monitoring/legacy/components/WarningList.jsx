@@ -171,8 +171,8 @@ export default function WarningList({ warningData, kmaSpecialWarningData, ground
       return (
         <span key={`${keyPrefix}-${i}`} className="warning-banner-item">
           <span className="warning-banner-entry">
-            <strong className="warning-banner-name">{name}</strong>
-            <span className="warning-banner-time">
+            <strong className="warning-banner-name" data-warning-name>{name}</strong>
+            <span className="warning-banner-time" data-warning-time>
               {isKma ? `발효 ${formatValidTime(warning.effectiveAt, tz)}` : `${formatValidTime(warning.valid_start, tz)} ~ ${formatValidTime(warning.valid_end, tz)}`}
             </span>
           </span>
@@ -198,7 +198,7 @@ export default function WarningList({ warningData, kmaSpecialWarningData, ground
   if (list.length === 0) {
     if (dashboardMode === "ground" && overview?.summary) {
       return (
-        <div className="warning-banner warning-banner--ok warning-banner--overview">
+        <section className="warning-banner warning-banner--ok warning-banner--overview" role="region" aria-label="공항경보">
           <div className="warning-banner-side">
             <span className="warning-banner-icon">&#9788;</span>
             <span className="warning-banner-label">일기개황</span>
@@ -208,24 +208,24 @@ export default function WarningList({ warningData, kmaSpecialWarningData, ground
               <span className="warning-banner-overview-summary">{overview.summary}</span>
             </div>
           </div>
-        </div>
+        </section>
       );
     }
     return (
-      <div className="warning-banner warning-banner--ok">
+      <section className="warning-banner warning-banner--ok" role="region" aria-label="공항경보">
         <div className="warning-banner-side warning-banner-side--single">
           <span className="warning-banner-icon">&#10003;</span>
           <span className="warning-banner-label">공항경보 없음</span>
         </div>
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="warning-banner warning-banner--danger">
+    <section className="warning-banner warning-banner--danger" role="region" aria-label="공항경보">
       <div className="warning-banner-side">
         <span className="warning-banner-icon warning-banner-icon--alert">&#9888;</span>
-        <span className="warning-banner-label">{warningBannerLabel(list, dashboardMode)}</span>
+        <span className="warning-banner-label" data-warning-label>{warningBannerLabel(list, dashboardMode)}</span>
       </div>
       <div
         ref={viewportRef}
@@ -250,6 +250,6 @@ export default function WarningList({ warningData, kmaSpecialWarningData, ground
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

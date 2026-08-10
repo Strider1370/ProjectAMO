@@ -3936,6 +3936,70 @@ label { font-size: 0.9rem; font-weight: 700; }
   font-size: 0.95rem;
 }
 
+.dashboard-root[data-dashboard-mode="ground"] .warning-banner-label,
+.dashboard-root[data-dashboard-mode="ground"] .warning-banner-name {
+  font-size: 30px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .warning-banner-time {
+  font-size: 20px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-card {
+  height: 300px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-card-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px 24px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-card-main {
+  gap: 28px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-card-icon.weather-icon-wrapper {
+  width: 104px;
+  height: 104px;
+  transform: none;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-card-temp {
+  font-size: 64px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-card-feels {
+  font-size: 20px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-card-summary {
+  font-size: 24px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-metric {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 2px;
+  align-content: center;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-metric-icon {
+  grid-row: 1 / span 2;
+  width: 36px;
+  height: 36px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-metric-label {
+  font-size: 17px;
+}
+
+.dashboard-root[data-dashboard-mode="ground"] .ground-current-metric-value {
+  font-size: 26px;
+}
+
 @media (max-width: 900px) {
   .ground-current-card-body {
     flex-direction: column;
