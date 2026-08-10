@@ -782,9 +782,11 @@ li.is-empty { border-bottom: 1px solid var(--terminal-border-subtle); background
 .ww-flight-panel .tw-flight-panel { padding-bottom: var(--terminal-space-3); }
 
 /* 좌우 제목("시간별"·"주간"). 없으면 왼쪽·오른쪽이 뭘 보여주는지 승객이 알 수 없다. */
-/* 제목 줄이 표 안으로 들어가면서 행이 하나 줄었다. 남은 높이는 예보가 그대로 쓴다. */
-.ww-hourly-panel { display: grid; grid-template-rows: 1fr; min-height: 0; border-right: 1px solid var(--terminal-border); }
-.ww-weekly-panel { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+/* 제목 줄이 표 안으로 들어가면서 행이 하나 줄었다. 비워진 높이는 전부 예보에 주지 않고
+   위 여백으로 일부 돌려준다 — 제목이 하던 "윗선과 띄우는" 역할이 사라지면 표가 경계선에
+   붙어 답답해진다. */
+.ww-hourly-panel { display: grid; grid-template-rows: 1fr; min-height: 0; padding-top: var(--terminal-space-6); border-right: 1px solid var(--terminal-border); }
+.ww-weekly-panel { display: grid; grid-template-rows: auto 1fr; min-height: 0; padding-top: var(--terminal-space-6); }
 /* 제목을 표 머리의 빈 칸에 넣는다. 위에 제목 줄을 따로 두면 그 높이만큼 예보가 눌리는데,
    그 칸은 어차피 비어 있었다. 첫 칸이 128~136px이라 36px 한 줄은 안 들어가서 두 줄로 접는다. */
 .ww-grid-title { margin: 0; align-self: center; color: #23334b; font-size: 28px; font-weight: 800; line-height: 1.15; word-break: keep-all; }
