@@ -81,6 +81,8 @@ test.describe('ground-signage', () => {
     const hourly = page.getByRole('region', { name: '지상 예보' }).locator('[data-forecast-view="hourly"]')
     const columns = hourly.locator('[data-hourly-column]')
     await expect(columns).toHaveCount(8)
+    await expect(hourly.locator('[data-hourly-icon-band]')).toHaveCount(1)
+    await expect(hourly.locator('[data-hourly-precip-icon-band]')).toHaveCount(2)
     const layout = await hourly.evaluate((element) => [...element.querySelectorAll('[data-hourly-column]')].map((column) => {
       const svg = element.querySelector('svg')
       const svgRect = svg.getBoundingClientRect()
@@ -186,6 +188,7 @@ test.describe('ground-signage', () => {
 
     const table = weekly.getByRole('table', { name: '주간 예보' })
     await expect(table.locator('[data-weekly-column]')).toHaveCount(6)
+    await expect(table.locator('[data-weekly-period].is-precip')).toHaveCount(2)
     const tableLayout = await table.evaluate((element) => {
       const columns = [...element.querySelectorAll('[data-weekly-column]')].map((column) => column.getBoundingClientRect())
       const rows = [...element.querySelectorAll('[data-weekly-row]')].map((row) => row.getBoundingClientRect())

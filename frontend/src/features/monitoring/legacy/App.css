@@ -4053,6 +4053,7 @@ label { font-size: 0.9rem; font-weight: 700; }
 .ground-hourly-svg .ghs-line { stroke:var(--accent); fill:none; stroke-width:3; }
 .ground-weekly-table { width:100%; height:397px; margin-top:26px; border-collapse:collapse; table-layout:fixed; }
 .ground-weekly-table th,.ground-weekly-table td { border:1px solid var(--line); text-align:center; }
+.ground-weekly-table [data-weekly-period].is-precip { background:rgba(186,230,253,.72); }
 .ground-weekly-table thead { height:64px; }.ground-weekly-table tbody tr:nth-child(1){height:123px}.ground-weekly-table tbody tr:nth-child(2){height:122px}.ground-weekly-table tbody tr:nth-child(3){height:88px}
 .ground-weekly-table th:first-child { width:72px; }.ground-weekly-table thead th:not(:first-child){ vertical-align:middle; }.ground-weekly-table thead strong,.ground-weekly-table thead span{display:block}.ground-weekly-table [data-weekly-weekday]{font-size:24px}.ground-weekly-table [data-weekly-date]{font-size:18px}.ground-weekly-table [data-weekly-icon]{display:inline-block;width:68px;height:68px}.ground-weekly-icon.weather-icon-wrapper{width:68px;height:68px}.ground-weekly-table [data-weekly-precipitation]{display:block;font-size:20px}.ground-weekly-table [data-weekly-minmax]{font-size:30px;font-weight:800}
 @keyframes ground-progress { to { width:100%; } }
