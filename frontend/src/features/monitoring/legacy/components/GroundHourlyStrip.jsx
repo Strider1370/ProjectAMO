@@ -1,7 +1,7 @@
 import { getWeatherIconSrc } from '../../../../shared/weather/weather-icon-registry.js'
 import { mapGroundForecastIcon } from './GroundForecastPanel.jsx'
 import { createTemperatureScale, forecastColumnCenter, precipitationBar, selectHourlyForecastSlots } from '../utils/groundForecastViewModel.js'
-const W=1015, H=430, LEFT=28, RIGHT=987, TEMP_TOP=115, TEMP_BOTTOM=245, PRECIP_TOP=290, PRECIP_BOTTOM=370
+const W=1015, H=430, LEFT=28, RIGHT=987, TEMP_TOP=115, TEMP_BOTTOM=245, PRECIP_TOP=326, PRECIP_BOTTOM=370
 const hour = (time) => time ? `${Number(String(time).slice(0,2))}시` : '-'
 export default function GroundHourlyStrip({ airport }) {
  const slots=selectHourlyForecastSlots(airport?.hourly || []), scale=createTemperatureScale(slots,{top:TEMP_TOP,bottom:TEMP_BOTTOM})
