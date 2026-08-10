@@ -119,8 +119,8 @@ async function withServers(task) {
   }
 }
 
-if (!['serve', 'serve:test', 'serve:no-nwp', 'verify', 'smoke', 'screenshots'].includes(command)) {
-  console.error('Usage: node scripts/projectamo-dev.mjs [serve|serve:test|serve:no-nwp|verify|smoke|screenshots]')
+if (!['serve', 'serve:test', 'serve:no-nwp', 'verify', 'smoke', 'screenshots', 'ground-signage-capture'].includes(command)) {
+  console.error('Usage: node scripts/projectamo-dev.mjs [serve|serve:test|serve:no-nwp|verify|smoke|screenshots|ground-signage-capture]')
   process.exit(2)
 }
 
@@ -170,6 +170,16 @@ try {
       await runNpm('responsive screenshots', ['run', 'screenshots:responsive', '--prefix', 'frontend'], {
         PROJECTAMO_URL: appUrl,
       })
+    })
+  }
+
+  if (command === 'ground-signage-capture') {
+    await withServers(async () => {
+      await runNpm(
+        'ground signage capture',
+        ['run', 'capture:monitoring-ground-signage', '--prefix', 'frontend'],
+        { PROJECTAMO_URL: appUrl },
+      )
     })
   }
 } catch (error) {

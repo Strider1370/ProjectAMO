@@ -16,6 +16,7 @@
     "dev:verify": "node scripts/projectamo-dev.mjs verify",
     "dev:smoke": "node scripts/projectamo-dev.mjs smoke",
     "dev:screenshots": "node scripts/projectamo-dev.mjs screenshots",
+    "dev:ground-signage-capture": "node scripts/projectamo-dev.mjs ground-signage-capture",
     "demo:repair-weather": "node scripts/repair-demo-weather.mjs",
     "build": "npm run build --prefix frontend",
     "test": "npm --prefix backend test && npm --prefix frontend test",

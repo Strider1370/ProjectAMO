@@ -15,6 +15,7 @@
     "dev:contract:fast": "CONTRACT_REUSE_SERVER=1 playwright test --project=desktop --retries=0",
     "smoke:responsive": "node scripts/responsive-smoke.mjs",
     "screenshots:responsive": "node scripts/responsive-screenshots.mjs",
+    "capture:monitoring-ground-signage": "node scripts/monitoring-ground-signage-capture.mjs",
     "test:layout": "node --test src/app/layout/layoutTokens.test.js",
     "test:airport-panel": "node --test src/features/airport-panel/lib/*.test.js",
     "lint:colors": "node scripts/lint-colors.mjs",
