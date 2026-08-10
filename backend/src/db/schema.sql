@@ -128,3 +128,12 @@ CREATE INDEX IF NOT EXISTS idx_visits_last ON visits(last_seen);
 CREATE INDEX IF NOT EXISTS idx_alerts_user ON triggered_alerts(user_id, detected_at);
 CREATE INDEX IF NOT EXISTS idx_alerts_dedup ON triggered_alerts(route_id, dedup_key);
 CREATE INDEX IF NOT EXISTS idx_pushsub_user ON push_subscriptions(user_id);
+
+-- 운영 알림 발송 기록(중복 방지, 90일 보관). 5분마다 판정하므로 이게 없으면 같은 사건으로
+-- 하루 288번 울린다. kind+subject가 하나의 "사건"이고, 사건이 끝나면(조건 해소) 기록을 지운다.
+CREATE TABLE IF NOT EXISTS alerts_sent (
+  kind    TEXT NOT NULL,
+  subject TEXT NOT NULL DEFAULT '',
+  sent_at TEXT NOT NULL,
+  PRIMARY KEY (kind, subject)
+);

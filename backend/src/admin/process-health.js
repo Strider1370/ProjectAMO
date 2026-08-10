@@ -6,7 +6,9 @@ import path from 'node:path'
 // 똑같이 동작한다. "왜 재시작됐는지"는 모르지만 "얼마나 자주 재시작되는지"는 이걸로 충분히 잡힌다.
 const FILE_NAME = 'process-health.json'
 
-let state = { bootCount: 0, firstBootAt: null, lastBootAt: null }
+// recentBoots: 최근 부팅 시각 몇 개. 누적 횟수만으로는 "한 시간에 5번" 같은 판단을 못 한다.
+const MAX_RECENT_BOOTS = 20
+let state = { bootCount: 0, firstBootAt: null, lastBootAt: null, recentBoots: [] }
 
 // 프로세스 시작 시 한 번만 부를 것(server.js). 호출할 때마다 카운트가 올라간다.
 export function recordBoot(basePath) {
@@ -18,6 +20,7 @@ export function recordBoot(basePath) {
     bootCount: (prev.bootCount || 0) + 1,
     firstBootAt: prev.firstBootAt || now,
     lastBootAt: now,
+    recentBoots: [now, ...(Array.isArray(prev.recentBoots) ? prev.recentBoots : [])].slice(0, MAX_RECENT_BOOTS),
   }
   try { fs.writeFileSync(filePath, JSON.stringify(state, null, 2)) } catch { /* 디스크 문제여도 메모리 값은 유효 */ }
   return state
@@ -29,6 +32,7 @@ export function processHealth() {
     bootCount: state.bootCount,
     firstBootAt: state.firstBootAt,
     lastBootAt: state.lastBootAt,
+    recentBoots: state.recentBoots,
     uptimeSec: Math.round(process.uptime()),
     heapUsed: mem.heapUsed,
     heapTotal: mem.heapTotal,
