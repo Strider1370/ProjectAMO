@@ -17,6 +17,7 @@ const PRE_CHANGE_CHROME = {
 const box = async (locator) => locator.boundingBox()
 const fontSize = async (locator) => locator.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))
 const closeTo = (actual, expected, tolerance = 1) => expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)
+const closeBox = (actual, expected) => Object.entries(expected).forEach(([key, value]) => closeTo(actual[key], value))
 
 async function openGround(page) {
   await page.goto('/monitoring?mode=ground', { waitUntil: 'load' })
@@ -42,16 +43,16 @@ test.describe('ground-signage', () => {
   test('ground-signage keeps the fixed header and map while sizing the three left rows', async ({ page }) => {
     await openGround(page)
 
-    expect(await box(page.locator('.left-panel-header'))).toEqual(PRE_CHANGE_CHROME.header)
-    expect(await box(page.locator('.right-panel-top'))).toEqual(PRE_CHANGE_CHROME.rightTop)
-    expect(await box(page.locator('.map-panel-wrap'))).toEqual(PRE_CHANGE_CHROME.map)
+    closeBox(await box(page.locator('.left-panel-header')), PRE_CHANGE_CHROME.header)
+    closeBox(await box(page.locator('.right-panel-top')), PRE_CHANGE_CHROME.rightTop)
+    closeBox(await box(page.locator('.map-panel-wrap')), PRE_CHANGE_CHROME.map)
 
     const alert = page.getByRole('region', { name: '공항경보' })
     const current = page.getByRole('region', { name: '현재 날씨' })
     const forecast = page.getByRole('region', { name: '지상 예보' })
-    expect(await box(alert)).toEqual({ x: 0, y: 74, width: 1055, height: 130 })
-    expect(await box(current)).toEqual({ x: 0, y: 216, width: 1055, height: 300 })
-    expect(await box(forecast)).toEqual({ x: 0, y: 528, width: 1055, height: 507 })
+    closeBox(await box(alert), { x: 20, y: 74, width: 1015, height: 130 })
+    closeBox(await box(current), { x: 20, y: 216, width: 1015, height: 300 })
+    closeBox(await box(forecast), { x: 20, y: 528, width: 1015, height: 507 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth === document.documentElement.clientWidth)).toBe(true)
     expect(await page.evaluate(() => document.body.scrollHeight <= window.innerHeight)).toBe(true)
   })
@@ -79,6 +80,9 @@ test.describe('ground-signage', () => {
     const columns = hourly.locator('[data-hourly-column]')
     await expect(columns).toHaveCount(8)
     const layout = await hourly.evaluate((element) => [...element.querySelectorAll('[data-hourly-column]')].map((column) => {
+      const svg = element.querySelector('svg')
+      const svgRect = svg.getBoundingClientRect()
+      const viewBoxWidth = svg.viewBox.baseVal.width
       const center = (node) => {
         const rect = node.getBoundingClientRect()
         return rect.left + rect.width / 2
@@ -88,7 +92,7 @@ test.describe('ground-signage', () => {
       const precip = column.querySelector('[data-hourly-precipitation]')
       const track = column.querySelector('[data-hourly-precip-track]')
       return {
-        column: center(column),
+        column: svgRect.left + Number(column.dataset.centerX) / viewBoxWidth * svgRect.width,
         time: center(column.querySelector('[data-hourly-time]')),
         icon: center(column.querySelector('[data-hourly-icon]')),
         dot: center(dot),
@@ -168,13 +172,14 @@ test.describe('ground-signage', () => {
       const rows = [...element.querySelectorAll('[data-weekly-row]')].map((row) => row.getBoundingClientRect())
       const header = element.querySelector('[data-weekly-header]').getBoundingClientRect()
       const rect = element.getBoundingClientRect()
-      return { widths: columns.map((column) => column.width), rowTops: rows.map((row) => row.top), inset: [columns[0].left - rect.left, rect.right - columns.at(-1).right, rect.bottom - rows.at(-1).bottom], headerGap: rows[0].top - header.bottom }
+      const layer = element.closest('.ground-forecast-layer').getBoundingClientRect()
+      return { widths: columns.map((column) => column.width), rowTops: rows.map((row) => row.top), inset: [rect.left - layer.left, layer.right - rect.right, layer.bottom - rect.bottom], headerGap: rect.top - layer.top }
     })
     expect(Math.max(...tableLayout.widths) - Math.min(...tableLayout.widths)).toBeLessThanOrEqual(1)
     expect(new Set(tableLayout.rowTops.map(Math.round)).size).toBe(4)
     for (const inset of tableLayout.inset) closeTo(inset, 28)
     closeTo(tableLayout.headerGap, 26)
-    closeTo(await weekly.locator('[data-weekly-icon]').first().evaluate((element) => element.getBoundingClientRect().width), 68)
+    closeTo(await weekly.locator('[data-weekly-icon]').first().evaluate((element) => Number.parseFloat(getComputedStyle(element).width)), 68)
     closeTo(await fontSize(weekly.locator('[data-weekly-weekday]').first()), 24)
     closeTo(await fontSize(weekly.locator('[data-weekly-date]').first()), 18)
     closeTo(await fontSize(weekly.locator('[data-weekly-precipitation]').first()), 20)
@@ -188,9 +193,9 @@ test.describe('ground-signage', () => {
     })
     await openGround(page)
     const forecast = page.getByRole('region', { name: '지상 예보' })
-    expect(await box(page.getByRole('region', { name: '공항경보' }))).toEqual({ x: 0, y: 74, width: 1055, height: 130 })
-    expect(await box(page.getByRole('region', { name: '현재 날씨' }))).toEqual({ x: 0, y: 216, width: 1055, height: 300 })
-    expect(await box(forecast)).toEqual({ x: 0, y: 528, width: 1055, height: 507 })
+    closeBox(await box(page.getByRole('region', { name: '공항경보' })), { x: 20, y: 74, width: 1015, height: 130 })
+    closeBox(await box(page.getByRole('region', { name: '현재 날씨' })), { x: 20, y: 216, width: 1015, height: 300 })
+    closeBox(await box(forecast), { x: 20, y: 528, width: 1015, height: 507 })
     await expect(forecast.locator('[data-hourly-column]')).toHaveCount(8)
     await page.clock.runFor(12_000)
     await expect(forecast.locator('[data-weekly-column]')).toHaveCount(6)

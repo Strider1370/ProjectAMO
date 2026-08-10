@@ -21,8 +21,7 @@ import Header from './legacy/components/Header'
 import MetarCard from './legacy/components/MetarCard'
 import WarningList from './legacy/components/WarningList'
 import TafTimeline from './legacy/components/TafTimeline'
-import GroundForecastPanel from './legacy/components/GroundForecastPanel'
-import GroundHourlyStrip from './legacy/components/GroundHourlyStrip'
+import GroundForecastViewport from './legacy/components/GroundForecastViewport'
 import GroundCurrentWeatherCard from './legacy/components/GroundCurrentWeatherCard'
 import AlertPanel from './legacy/components/alerts/AlertPanel'
 import AlertSound from './legacy/components/alerts/AlertSound'
@@ -644,9 +643,7 @@ export default function MonitoringPage() {
       highlightFields={metarHighlightFields}
     />
   )
-  const tafPanel = dashboardMode === 'ground' ? (
-    <GroundForecastPanel groundForecastData={data.groundForecast} icao={selectedAirport} />
-  ) : (
+  const tafPanel = dashboardMode === 'ground' ? null : (
     <TafTimeline
       tafData={data.taf}
       icao={selectedAirport}
@@ -786,9 +783,7 @@ export default function MonitoringPage() {
           <div className="left-panel-body">
             {warningPanel}
             {metarPanel}
-            {dashboardMode === 'ground' && (
-              <GroundHourlyStrip groundForecastData={data.groundForecast} icao={selectedAirport} />
-            )}
+            {dashboardMode === 'ground' && <GroundForecastViewport groundForecastData={data.groundForecast} icao={selectedAirport} />}
             {tafPanel}
           </div>
 
