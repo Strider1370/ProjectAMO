@@ -15,7 +15,7 @@ test('성공에만 last_success가 찍히고 실패는 그대로 둔다', () => 
   stats.recordFailure('metar', 'boom', 100)
   const entry = stats.getStats().types.metar
   assert.equal(entry.last_success, afterSuccess, '실패는 last_success를 건드리지 않는다')
-  assert.notEqual(entry.last_run, afterSuccess, 'last_run은 실패에도 갱신된다')
+  assert.equal(entry.last_run, entry.last_failure, 'last_run은 실패에도 갱신된다')
 })
 
 test('예전 통계 파일을 읽어도 last_success 칸이 생긴다', () => {
