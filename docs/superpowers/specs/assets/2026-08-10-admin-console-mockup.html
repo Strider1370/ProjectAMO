@@ -211,7 +211,7 @@ text.axv{font-size:11px;fill:var(--tx);font-weight:600;font-variant-numeric:tabu
         <div class="side">
           <div><div class="v n">180<s> ms</s></div><div class="l">사용자 응답 중앙값</div></div>
           <div><div class="v n">0.2<s>%</s></div><div class="l">오류율</div></div>
-          <div><div class="v n">78<s>%</s></div><div class="l">API 한도 · 항공키</div></div>
+          <div><div class="v n">78<s>%</s></div><div class="l">API 전송량 · 항공키</div></div>
           <div><div class="v n" style="color:var(--warn)">62<s>%</s></div><div class="l">디스크 · 41일 남음</div></div>
         </div>
       </div>
@@ -241,7 +241,7 @@ text.axv{font-size:11px;fill:var(--tx);font-weight:600;font-variant-numeric:tabu
         </h2>
 
         <div id="g-src">
-          <div class="grp"><div class="gl"><i class="kb" style="background:#3d5a80"></i><div>기상청 항공키<em>한도 78% · 15종</em></div></div><div class="tiles">
+          <div class="grp"><div class="gl"><i class="kb" style="background:#3d5a80"></i><div>기상청 항공키<em>전송량 78% · 15종</em></div></div><div class="tiles">
             <div class="tile"><div class="tn">METAR 국내</div><div class="ta">6분</div></div>
             <div class="tile"><div class="tn">TAF 국내</div><div class="ta">6분</div></div>
             <div class="tile"><div class="tn">SIGMET</div><div class="ta">방금</div></div>
@@ -258,7 +258,7 @@ text.axv{font-size:11px;fill:var(--tx);font-weight:600;font-variant-numeric:tabu
             <div class="tile"><div class="tn">대기환경</div><div class="ta">26분</div></div>
             <div class="tile"><div class="tn">운고 ASOS</div><div class="ta">21분</div></div>
           </div></div>
-          <div class="grp"><div class="gl"><i class="kb" style="background:#0e7490"></i><div>레이더·위성키<em>한도 41% · 10종</em></div></div><div class="tiles">
+          <div class="grp"><div class="gl"><i class="kb" style="background:#0e7490"></i><div>레이더·위성키<em>전송량 41% · 10종</em></div></div><div class="tiles">
             <div class="tile"><div class="tn">레이더</div><div class="ta">1분</div></div>
             <div class="tile bad"><div class="tn">에코탑</div><div class="ta">2일<span class="st">멈춤</span></div></div>
             <div class="tile"><div class="tn">합성 HSR</div><div class="ta">6분</div></div>
@@ -270,7 +270,7 @@ text.axv{font-size:11px;fill:var(--tx);font-weight:600;font-variant-numeric:tabu
             <div class="tile"><div class="tn">대류 CI·CTPS</div><div class="ta">6분</div></div>
             <div class="tile"><div class="tn">비행범주</div><div class="ta">8분</div></div>
           </div></div>
-          <div class="grp"><div class="gl"><i class="kb" style="background:#6d28d9"></i><div>수치예보키<em>한도 12% · 2종</em></div></div><div class="tiles">
+          <div class="grp"><div class="gl"><i class="kb" style="background:#6d28d9"></i><div>수치예보키<em>전송량 12% · 2종</em></div></div><div class="tiles">
             <div class="tile bad"><div class="tn">KIM 격자</div><div class="ta">64일<span class="st">멈춤</span></div></div>
             <div class="tile"><div class="tn">난류 KTG</div><div class="ta">2시간</div></div>
           </div></div>
@@ -279,7 +279,7 @@ text.axv{font-size:11px;fill:var(--tx);font-weight:600;font-variant-numeric:tabu
             <div class="tile"><div class="tn">TAF 해외</div><div class="ta">6분</div></div>
             <div class="tile"><div class="tn">SIGMET 해외</div><div class="ta">1분</div></div>
           </div></div>
-          <div class="grp"><div class="gl"><i class="kb" style="background:#a9701d"></i><div>공항공사<em>한도 24% · 2종</em></div></div><div class="tiles">
+          <div class="grp"><div class="gl"><i class="kb" style="background:#a9701d"></i><div>공항공사<em>별도 한도 · 2종</em></div></div><div class="tiles">
             <div class="tile"><div class="tn">운항편</div><div class="ta">1분</div></div>
             <div class="tile"><div class="tn">NOTAM</div><div class="ta">4시간</div></div>
           </div></div>
@@ -473,25 +473,25 @@ text.axv{font-size:11px;fill:var(--tx);font-weight:600;font-variant-numeric:tabu
     <!-- ══════════ API 사용량 ══════════ -->
     <section id="s-api" class="screen">
       <div class="hero">
-        <div><div class="big n">78<s>%</s></div><div class="cap">가장 많이 쓴 열쇠(항공키) · 04:00 초기화까지 4시간 22분</div></div>
+        <div><div class="big n">78<s>%</s></div><div class="cap">가장 많이 쓴 열쇠(항공키) · 하루 5 GB 중 · 04:00 초기화까지 4시간 22분</div></div>
       </div>
       <div class="sec">
-        <h2>열쇠별 한도<em>오늘</em></h2>
-        <div class="bar-row" style="grid-template-columns:186px 1fr 156px"><span class="bn"><b style="color:var(--tx)">기상청 항공키</b><div class="sub">15종 · 정상</div></span><span class="bar"><span style="width:78%;background:var(--warn)"></span></span><span class="bv">7,800 / 10,000<div class="sub">78%</div></span></div>
-        <div class="bar-row" style="grid-template-columns:186px 1fr 156px"><span class="bn"><b style="color:var(--tx)">레이더·위성키</b><div class="sub">10종 · 정상</div></span><span class="bar"><span style="width:41%"></span></span><span class="bv">4,100 / 10,000<div class="sub">41%</div></span></div>
-        <div class="bar-row" style="grid-template-columns:186px 1fr 156px"><span class="bn"><b style="color:var(--tx)">수치예보키</b><div class="sub">2종 · 정상</div></span><span class="bar"><span style="width:12%"></span></span><span class="bv">1,200 / 10,000<div class="sub">12%</div></span></div>
-        <div class="bar-row" style="grid-template-columns:186px 1fr 156px"><span class="bn"><b style="color:var(--tx)">한국공항공사</b><div class="sub">2종 · 정상</div></span><span class="bar"><span style="width:24%"></span></span><span class="bv">1,200 / 5,000<div class="sub">24%</div></span></div>
+        <h2>열쇠별 전송량<em>오늘 · 하루 5 GB 한도</em></h2>
+        <div class="bar-row" style="grid-template-columns:186px 1fr 156px"><span class="bn"><b style="color:var(--tx)">기상청 항공키</b><div class="sub">15종 · 정상</div></span><span class="bar"><span style="width:78%;background:var(--warn)"></span></span><span class="bv">3.9 / 5.0 GB<div class="sub">78%</div></span></div>
+        <div class="bar-row" style="grid-template-columns:186px 1fr 156px"><span class="bn"><b style="color:var(--tx)">레이더·위성키</b><div class="sub">10종 · 정상</div></span><span class="bar"><span style="width:41%"></span></span><span class="bv">2.1 / 5.0 GB<div class="sub">41%</div></span></div>
+        <div class="bar-row" style="grid-template-columns:186px 1fr 156px"><span class="bn"><b style="color:var(--tx)">수치예보키</b><div class="sub">2종 · 정상</div></span><span class="bar"><span style="width:12%"></span></span><span class="bv">0.6 / 5.0 GB<div class="sub">12%</div></span></div>
+        <div class="bar-row" style="grid-template-columns:186px 1fr 156px"><span class="bn"><b style="color:var(--tx)">한국공항공사</b><div class="sub">2종 · 별도 한도</div></span><span class="bar"><span style="width:0%"></span></span><span class="bv" style="color:var(--faint)">계량 안 됨<div class="sub">2단계</div></span></div>
         <p style="font-size:12.5px;color:var(--dim);margin:16px 0 0">열쇠 줄을 누르면 그 열쇠로 받는 자료 목록이 펼쳐집니다 — 개요의 출처별 격자와 같은 묶음입니다.</p>
       </div>
       <div class="sec flush">
         <h2>기상청 항공키 — 엔드포인트별<em>오늘</em></h2>
         <table class="t">
-          <thead><tr><th>엔드포인트</th><th>자료</th><th class="r">호출</th><th class="r">비중</th><th class="r">마지막</th></tr></thead>
+          <thead><tr><th>엔드포인트</th><th>자료</th><th class="r">전송량</th><th class="r">비중</th><th class="r">마지막</th></tr></thead>
           <tbody>
-            <tr><td class="nm">nph-amos_rt</td><td class="muted">AMOS</td><td class="r">2,880</td><td class="r">37%</td><td class="r muted">19:35</td></tr>
-            <tr><td class="nm">nph-lgt_rt</td><td class="muted">낙뢰</td><td class="r">2,880</td><td class="r">37%</td><td class="r muted">19:35</td></tr>
-            <tr><td class="nm">nph-aws_min</td><td class="muted">METAR · TAF</td><td class="r">1,440</td><td class="r">18%</td><td class="r muted">19:30</td></tr>
-            <tr><td class="nm">nph-vfk_sigmet</td><td class="muted">SIGMET · AIRMET</td><td class="r">576</td><td class="r">7%</td><td class="r muted">19:36</td></tr>
+            <tr><td class="nm">nph-amos_rt</td><td class="muted">AMOS</td><td class="r">1.44 GB</td><td class="r">37%</td><td class="r muted">19:35</td></tr>
+            <tr><td class="nm">nph-lgt_rt</td><td class="muted">낙뢰</td><td class="r">1.44 GB</td><td class="r">37%</td><td class="r muted">19:35</td></tr>
+            <tr><td class="nm">nph-aws_min</td><td class="muted">METAR · TAF</td><td class="r">0.70 GB</td><td class="r">18%</td><td class="r muted">19:30</td></tr>
+            <tr><td class="nm">nph-vfk_sigmet</td><td class="muted">SIGMET · AIRMET</td><td class="r">0.27 GB</td><td class="r">7%</td><td class="r muted">19:36</td></tr>
           </tbody>
         </table>
       </div>
