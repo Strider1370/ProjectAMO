@@ -18,7 +18,7 @@ export const API_HUB_ENDPOINTS = {
   metar: 'METAR', taf: 'TAF', warning: '공항 경보', sigmet: 'SIGMET', airmet: 'AIRMET',
   airport_info: '공항 정보', takeoff_fcst: '이륙 예보', sigwx_low: '저고도 SIGWX', amos: 'AMOS', sfc_vis: '지상 시정',
   special_warning: '기상특보', uv: '자외선', lightning: '낙뢰', typhoon_now: '태풍 현황', typhoon_list: '태풍 목록',
-  ground_forecast: '단기 예보', asos_ceiling: 'ASOS 운고',
+  ground_forecast: '단기 예보', mid_land: '중기 육상예보', mid_ta: '중기 기온예보', asos_ceiling: 'ASOS 운고',
   kim_grid: 'KIM 격자', ktg: 'KTG 격자',
   radar_echo: '레이더 반사도', radar_qcd: '레이더 QCD (Echo Top)',
   radar_wissdom: 'WISSDOM', radar_qpf: 'QPF', radar_hsr: '레이더 HSR', radar_hci: '레이더 HCI',

@@ -33,6 +33,10 @@ export function endpointFor(url) {
   if (pathname.includes('typ_now')) return 'typhoon_now'
   if (pathname.includes('typ_lst')) return 'typhoon_list'
   if (pathname.includes('getVilageFcst') || pathname.includes('getLandFcst')) return 'ground_forecast'
+  // 중기예보는 단기와 다른 서비스라 경로가 따로다. 여기 없으면 이름이 안 붙고,
+  // 이름 없는 호출은 사용량 기록에서 거부되어 중기예보가 통째로 안 들어온다.
+  if (pathname.includes('getMidLandFcst')) return 'mid_land'
+  if (pathname.includes('getMidTa')) return 'mid_ta'
   if (pathname.includes('kma_sfctm2')) return 'asos_ceiling'
   if (pathname.includes('nph-sfc_obs_nc_api')) return 'sfc_vis'
   if (pathname.includes('nph-kim')) return 'kim_grid'
