@@ -4,6 +4,7 @@ import { getDb } from '../db/index.js'
 import { requireRole } from '../auth/middleware.js'
 import { createUser, listUsers, listPending, setUserStatus } from '../db/users.js'
 import { readMetrics } from './metrics.js'
+import { forecastDiskFull } from './disk-forecast.js'
 import { trafficStats } from './visits.js'
 import { readTrends } from './trends.js'
 import { readDataHealth } from './data-health.js'
@@ -38,6 +39,7 @@ export function createAdminRouter({ db = null } = {}) {
     process: processHealth(),
     disk: readDiskUsage(config.storage.base_path),
     recentErrors: (stats.getStats().recent_runs || []).filter((r) => !r.success).slice(0, 20),
+    diskForecast: forecastDiskFull(readMetrics(database(), '7d').series),
   }))
   router.get('/api-hub-usage', (req, res) => res.json(apiHubUsage.snapshot()))
   router.get('/users', (req, res) => res.json(listUsers(database())))
