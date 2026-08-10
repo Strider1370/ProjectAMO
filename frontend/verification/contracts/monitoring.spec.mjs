@@ -25,6 +25,23 @@ test.describe('monitoring', () => {
     await expect(operations).toHaveAttribute('aria-selected', 'false')
   })
 
+  test('excludes military airfields from airport selection in operations and ground modes', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'mobile monitoring is redirected away')
+
+    await page.addInitScript(() => localStorage.setItem('selected_airport_monitoring', 'RKTU'))
+    await openMonitoringState(page, 'ops')
+
+    const airportMenu = page.locator('.airport-dropdown')
+    await airportMenu.getByRole('button').click()
+    const airportChoices = airportMenu.getByRole('list')
+    await expect(airportChoices.getByText('청주국제공항(RKTU)', { exact: true })).toHaveCount(0)
+    await expect(airportChoices.getByText('인천국제공항(RKSI)', { exact: true })).toBeVisible()
+
+    await page.getByRole('tab', { name: '지상', exact: true }).click()
+    await airportMenu.getByRole('button').click()
+    await expect(airportChoices.getByText('청주국제공항(RKTU)', { exact: true })).toHaveCount(0)
+  })
+
   test('alert dispatcher rows name both the checkbox and its 예시 button', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
 

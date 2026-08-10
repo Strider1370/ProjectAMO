@@ -22,6 +22,7 @@ import MetarCard from './legacy/components/MetarCard'
 import WarningList from './legacy/components/WarningList'
 import TafTimeline from './legacy/components/TafTimeline'
 import GroundForecastViewport from './legacy/components/GroundForecastViewport'
+import GroundForecastClassic from './legacy/components/GroundForecastClassic'
 import GroundCurrentWeatherCard from './legacy/components/GroundCurrentWeatherCard'
 import AlertPanel from './legacy/components/alerts/AlertPanel'
 import AlertSound from './legacy/components/alerts/AlertSound'
@@ -39,6 +40,12 @@ import {
   clearMonitoringSlideImage,
 } from './lib/monitoringSlideshow.js'
 import { canvasScale } from './lib/canvasScale.js'
+import { GROUND_FORECAST_DISPLAY_MODE, GROUND_FORECAST_DISPLAY_MODE_STORAGE_KEY, normalizeGroundForecastDisplayMode } from './lib/groundForecastDisplayMode.js'
+import {
+  filterMonitoringAirportChoices,
+  isMonitoringSelectableAirport,
+  resolveMonitoringAirportSelection,
+} from './lib/airportSelection.js'
 import { useSnapshotPolling } from '../../app/useWeatherPolling.js'
 import {
   buildMonitoringSnapshot,
@@ -108,6 +115,7 @@ export default function MonitoringPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [phoneTask, setPhoneTask] = useState('weather')
   const [tafVersion, setTafVersion] = useState(() => localStorage.getItem('taf_view_mode') || 'v2')
+  const [groundForecastDisplayMode, setGroundForecastDisplayMode] = useState(() => normalizeGroundForecastDisplayMode(localStorage.getItem(GROUND_FORECAST_DISPLAY_MODE_STORAGE_KEY)))
   const [timeZone, setTimeZone] = useState(() => localStorage.getItem('time_zone') || 'KST')
   const [mapTheme, setMapTheme] = useState(() => localStorage.getItem('map_theme') || 'light')
   const [basemapId, setBasemapId] = useState(() => localStorage.getItem('map_basemap_monitoring') || 'standard')
@@ -246,15 +254,13 @@ export default function MonitoringPage() {
     onInitialData: ({ data: merged, alertDefaults: defaults }) => {
       setAlertDefaults(defaults)
       setSelectedAirport((prev) => {
-        const available = new Set([
+        const available = filterMonitoringAirportChoices([
           ...Object.keys(merged.metar?.airports || {}),
           ...Object.keys(merged.taf?.airports || {}),
           ...Object.keys(merged.warning?.airports || {}),
           ...(merged.airports || []).filter((airport) => airport.icao !== 'TST1' && !airport.overseas).map((airport) => airport.icao),
         ].filter((icao) => icao.startsWith('RK')))
-        if (prev && available.has(prev)) return prev
-        if (available.has(DEFAULT_AIRPORT)) return DEFAULT_AIRPORT
-        return Array.from(available)[0] || null
+        return resolveMonitoringAirportSelection(prev, available, DEFAULT_AIRPORT)
       })
     },
     fetchSnapshot: fetchMonitoringSnapshotMeta,
@@ -482,6 +488,7 @@ export default function MonitoringPage() {
     setMapTheme(localStorage.getItem('map_theme') || 'light')
     setBasemapId(localStorage.getItem('map_basemap_monitoring') || 'standard')
     setAdvisoryFilter(loadAdvisoryFilterSettings())
+    setGroundForecastDisplayMode(normalizeGroundForecastDisplayMode(localStorage.getItem(GROUND_FORECAST_DISPLAY_MODE_STORAGE_KEY)))
   }
 
   function setMode(mode) {
@@ -520,6 +527,8 @@ export default function MonitoringPage() {
           saveAdvisoryFilterSettings(next || getDefaultAdvisoryFilterSettings())
         }}
         onPreviewAlert={handlePreviewAlert}
+        groundForecastDisplayMode={groundForecastDisplayMode}
+        setGroundForecastDisplayMode={setGroundForecastDisplayMode}
         isGroundMode={dashboardMode === 'ground'}
         variant={variant}
         slideshowConfig={slideshowConfig}
@@ -591,12 +600,18 @@ export default function MonitoringPage() {
     .filter((airport) => airport.icao !== 'TST1' && !airport.overseas)
     .map((airport) => airport.icao)
     .filter((icao) => airportSet.has(icao))
-  const airportList = [...orderedAirports, ...Array.from(airportSet).filter((icao) => !orderedAirports.includes(icao)).sort()]
+  const airportList = filterMonitoringAirportChoices([
+    ...orderedAirports,
+    ...Array.from(airportSet).filter((icao) => !orderedAirports.includes(icao)).sort(),
+  ])
   const airportOptions = airportList.map((icao) => {
     const airport = data.airports?.find((item) => item.icao === icao) || null
     const airportName = AIRPORT_NAME_KO[icao] || airport?.nameKo || airport?.name || icao
     return { icao, label: `${airportName}(${icao})` }
   })
+  const selectAirport = (icao) => {
+    if (isMonitoringSelectableAirport(icao)) setSelectedAirport(icao)
+  }
 
   const selectedAirportMeta = data.airports?.find((airport) => airport.icao === selectedAirport) || null
   const metarTarget = data.metar?.airports?.[selectedAirport]
@@ -630,6 +645,7 @@ export default function MonitoringPage() {
       icao={selectedAirport}
       airportMeta={selectedAirportMeta}
       tz={timeZone}
+      classic={groundForecastDisplayMode === GROUND_FORECAST_DISPLAY_MODE.CLASSIC}
     />
   ) : (
     <MetarCard
@@ -659,7 +675,7 @@ export default function MonitoringPage() {
       <MonitoringMap
         weather={data}
         selectedAirport={selectedAirport}
-        onAirportSelect={setSelectedAirport}
+        onAirportSelect={selectAirport}
         basemapId={basemapId}
         slideshowSlideId={slideIdFor('map-panel')}
         slideshowContent={slideContentFor('map-panel')}
@@ -702,7 +718,7 @@ export default function MonitoringPage() {
       )}
 
       {data.metar && (
-        <div className="dashboard-root" data-dashboard-mode={dashboardMode} data-phone-task={phoneTask}>
+        <div className="dashboard-root" data-dashboard-mode={dashboardMode} data-ground-forecast-display-mode={groundForecastDisplayMode} data-phone-task={phoneTask}>
           <div className="left-panel-header">
             <div className="phone-task-tabs" aria-label="모바일 모니터링 보기">
               <button
@@ -731,7 +747,7 @@ export default function MonitoringPage() {
               <Header
                 airports={airportOptions}
                 selectedAirport={selectedAirport}
-                onAirportChange={setSelectedAirport}
+                onAirportChange={selectAirport}
                 airportLabel={airportLabel}
               />
             </div>
@@ -783,7 +799,7 @@ export default function MonitoringPage() {
           <div className="left-panel-body">
             {warningPanel}
             {metarPanel}
-            {dashboardMode === 'ground' && <GroundForecastViewport groundForecastData={data.groundForecast} icao={selectedAirport} />}
+            {dashboardMode === 'ground' && (groundForecastDisplayMode === GROUND_FORECAST_DISPLAY_MODE.CLASSIC ? <GroundForecastClassic groundForecastData={data.groundForecast} icao={selectedAirport} /> : <GroundForecastViewport groundForecastData={data.groundForecast} icao={selectedAirport} />)}
             {tafPanel}
           </div>
 

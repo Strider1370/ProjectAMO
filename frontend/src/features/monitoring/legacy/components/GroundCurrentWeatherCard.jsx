@@ -117,6 +117,7 @@ export default function GroundCurrentWeatherCard({
   icao,
   airportMeta = null,
   tz = "KST",
+  classic = false,
 }) {
   const target = metarData?.airports?.[icao];
   const forecastToday = todayForecast(groundForecastData, icao);
@@ -174,12 +175,21 @@ export default function GroundCurrentWeatherCard({
         </div>
         <div className="ground-current-card-divider" />
         <div className="ground-current-card-metrics">
-          <GroundMetric icon={WiHumidity} label="습도">{Number.isFinite(humidity) ? `${Math.round(humidity)}%` : "-"}</GroundMetric>
-          <GroundMetric icon={WiStrongWind} label="바람">{Number.isFinite(windMs) ? `${windMs.toFixed(0)} m/s` : "-"} <span className="ground-current-metric-dir">{windDirectionKo(windDirection)}</span></GroundMetric>
-          <GroundMetric icon={WiRaindrops} label="일강수량">{Number.isFinite(rainfallMm) ? `${rainfallMm.toFixed(1)} mm` : "-"}</GroundMetric>
-          <GroundMetric icon={WiDust} label="미세먼지(PM10)" valueClassName={pm10.pending ? "ground-current-metric-value--pending" : pm10.gradeClass}><EnvironmentValue metric={pm10} /></GroundMetric>
-          <GroundMetric icon={WiSmoke} label="초미세먼지(PM2.5)" valueClassName={pm25.pending ? "ground-current-metric-value--pending" : pm25.gradeClass}><EnvironmentValue metric={pm25} /></GroundMetric>
-          <GroundMetric icon={WiDaySunny} label="자외선" valueClassName={uv.pending ? "ground-current-metric-value--pending" : uv.gradeClass}><EnvironmentValue metric={uv} /></GroundMetric>
+          {classic ? <>
+            <article className="ground-current-metric"><span className="ground-current-metric-label">습도</span><strong className="ground-current-metric-value">{Number.isFinite(humidity) ? `${Math.round(humidity)}%` : "-"}</strong></article>
+            <article className="ground-current-metric"><span className="ground-current-metric-label">바람</span><strong className="ground-current-metric-value">{Number.isFinite(windMs) ? `${windMs.toFixed(0)} m/s` : "-"} <span className="ground-current-metric-dir">{windDirectionKo(windDirection)}</span></strong></article>
+            <article className="ground-current-metric"><span className="ground-current-metric-label">일강수량</span><strong className="ground-current-metric-value">{Number.isFinite(rainfallMm) ? `${rainfallMm.toFixed(1)} mm` : "-"}</strong></article>
+            <article className="ground-current-metric"><span className="ground-current-metric-label">미세먼지(PM10)</span><strong className={`ground-current-metric-value ${pm10.pending ? "ground-current-metric-value--pending" : pm10.gradeClass}`.trim()}><EnvironmentValue metric={pm10} /></strong></article>
+            <article className="ground-current-metric"><span className="ground-current-metric-label">초미세먼지(PM2.5)</span><strong className={`ground-current-metric-value ${pm25.pending ? "ground-current-metric-value--pending" : pm25.gradeClass}`.trim()}><EnvironmentValue metric={pm25} /></strong></article>
+            <article className="ground-current-metric"><span className="ground-current-metric-label">자외선</span><strong className={`ground-current-metric-value ${uv.pending ? "ground-current-metric-value--pending" : uv.gradeClass}`.trim()}><EnvironmentValue metric={uv} /></strong></article>
+          </> : <>
+            <GroundMetric icon={WiHumidity} label="습도">{Number.isFinite(humidity) ? `${Math.round(humidity)}%` : "-"}</GroundMetric>
+            <GroundMetric icon={WiStrongWind} label="바람">{Number.isFinite(windMs) ? `${windMs.toFixed(0)} m/s` : "-"} <span className="ground-current-metric-dir">{windDirectionKo(windDirection)}</span></GroundMetric>
+            <GroundMetric icon={WiRaindrops} label="일강수량">{Number.isFinite(rainfallMm) ? `${rainfallMm.toFixed(1)} mm` : "-"}</GroundMetric>
+            <GroundMetric icon={WiDust} label="미세먼지(PM10)" valueClassName={pm10.pending ? "ground-current-metric-value--pending" : pm10.gradeClass}><EnvironmentValue metric={pm10} /></GroundMetric>
+            <GroundMetric icon={WiSmoke} label="초미세먼지(PM2.5)" valueClassName={pm25.pending ? "ground-current-metric-value--pending" : pm25.gradeClass}><EnvironmentValue metric={pm25} /></GroundMetric>
+            <GroundMetric icon={WiDaySunny} label="자외선" valueClassName={uv.pending ? "ground-current-metric-value--pending" : uv.gradeClass}><EnvironmentValue metric={uv} /></GroundMetric>
+          </>}
         </div>
       </div>
     </section>

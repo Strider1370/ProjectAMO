@@ -99,6 +99,8 @@ export default function Settings({
   onClose,
   onSettingsChange,
   onPreviewAlert,
+  groundForecastDisplayMode,
+  setGroundForecastDisplayMode,
   timeZone,
   setTimeZone,
   mapTheme,
@@ -142,6 +144,7 @@ export default function Settings({
 
   const [localTimeZone, setLocalTimeZone] = useState(timeZone || "KST");
   const [localMapTheme, setLocalMapTheme] = useState(mapTheme || localStorage.getItem("map_theme") || "light");
+  const [localGroundForecastDisplayMode, setLocalGroundForecastDisplayMode] = useState(groundForecastDisplayMode || localStorage.getItem("ground_forecast_display_mode") || "signage");
   const [localBasemapId, setLocalBasemapId] = useState(basemapId || localStorage.getItem("map_basemap_monitoring") || "standard");
   const [localTrafficCallsignFilter, setLocalTrafficCallsignFilter] = useState(trafficCallsignFilter || "");
   const [localTrafficAltitudeBands, setLocalTrafficAltitudeBands] = useState(trafficAltitudeBands || []);
@@ -216,6 +219,7 @@ export default function Settings({
     savePersonalSettings(overrides);
     localStorage.setItem("time_zone", localTimeZone);
     localStorage.setItem("map_theme", localMapTheme);
+    localStorage.setItem("ground_forecast_display_mode", localGroundForecastDisplayMode);
     localStorage.setItem("map_basemap_monitoring", localBasemapId);
     localStorage.setItem("traffic_callsign_filter", localTrafficCallsignFilter);
     localStorage.setItem("traffic_altitude_bands", JSON.stringify(localTrafficAltitudeBands));
@@ -223,6 +227,7 @@ export default function Settings({
 
     setTimeZone?.(localTimeZone);
     setMapTheme?.(localMapTheme);
+    setGroundForecastDisplayMode?.(localGroundForecastDisplayMode);
     setBasemapId?.(localBasemapId);
     setTrafficCallsignFilter?.(localTrafficCallsignFilter);
     setTrafficAltitudeBands?.(localTrafficAltitudeBands);
@@ -244,6 +249,7 @@ export default function Settings({
     clearPersonalSettings();
     localStorage.removeItem("time_zone");
     localStorage.removeItem("map_theme");
+    localStorage.removeItem("ground_forecast_display_mode");
     localStorage.removeItem("map_basemap_monitoring");
     localStorage.removeItem("traffic_callsign_filter");
     localStorage.removeItem("traffic_altitude_bands");
@@ -251,6 +257,7 @@ export default function Settings({
 
     setTimeZone?.("KST");
     setMapTheme?.("light");
+    setGroundForecastDisplayMode?.("signage");
     setBasemapId?.("standard");
     setTrafficCallsignFilter?.("");
     setTrafficAltitudeBands?.([]);
@@ -497,6 +504,13 @@ export default function Settings({
                     ))}
                   </select>
                 </label>
+                {isGroundMode && <label className="alert-settings-row">
+                  <span>지상 예보 표시</span>
+                  <select aria-label={`지상 예보 표시 ${isInline ? '인라인' : '모달'}`} value={localGroundForecastDisplayMode} onChange={(e) => setLocalGroundForecastDisplayMode(e.target.value)}>
+                    <option value="signage">사이니지형</option>
+                    <option value="classic">기존 카드형</option>
+                  </select>
+                </label>}
               </fieldset>
             )}
 

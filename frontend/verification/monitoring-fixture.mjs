@@ -184,6 +184,13 @@ export async function installMonitoringFixture(page) {
           lat: 37.6213,
           lon: 126.8009,
         },
+        {
+          icao: 'RKTU',
+          name: 'Cheongju International',
+          nameKo: '청주국제공항',
+          lat: 36.71556,
+          lon: 127.500289,
+        },
       ])
     }
   })
