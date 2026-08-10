@@ -9,6 +9,7 @@ import { trafficStats } from './visits.js'
 import { readTrends } from './trends.js'
 import { readDataHealth } from './data-health.js'
 import { processHealth } from './process-health.js'
+import { deploymentInfo } from './deployment.js'
 import { readDiskUsage } from './disk-usage.js'
 import store from '../store.js'
 import stats from '../stats.js'
@@ -40,6 +41,7 @@ export function createAdminRouter({ db = null } = {}) {
     disk: readDiskUsage(config.storage.base_path),
     recentErrors: (stats.getStats().recent_runs || []).filter((r) => !r.success).slice(0, 20),
     diskForecast: forecastDiskFull(readMetrics(database(), '7d').series),
+    deployment: deploymentInfo(),
   }))
   router.get('/api-hub-usage', (req, res) => res.json(apiHubUsage.snapshot()))
   router.get('/users', (req, res) => res.json(listUsers(database())))
