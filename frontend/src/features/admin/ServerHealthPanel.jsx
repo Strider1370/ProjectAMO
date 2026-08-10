@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { getServerHealth } from './adminApi.js'
 import './AdminPage.css'
 
+const DISK_TOP_N = 6
+
 function fmtBytes(bytes) {
   if (!Number.isFinite(bytes)) return '—'
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
@@ -42,6 +44,18 @@ export default function ServerHealthPanel() {
   if (!health) return null
   const { process: proc, disk, recentErrors } = health
   const diskTotal = disk.reduce((sum, d) => sum + d.bytes, 0)
+  // 폴더가 20개가 넘고 상위 두세 개가 용량의 대부분이다 — 나머지는 눈금도 안 보이는 줄이
+  // 화면 두 배 길이로 늘어질 뿐이라 접어둔다. disk는 백엔드에서 이미 큰 순으로 정렬돼 온다.
+  const topDisk = disk.slice(0, DISK_TOP_N)
+  const restDisk = disk.slice(DISK_TOP_N)
+  const restBytes = restDisk.reduce((sum, d) => sum + d.bytes, 0)
+  const diskRow = (d) => (
+    <li key={d.name} className="admin-disk-row">
+      <span className="admin-disk-name">{d.name}</span>
+      <span className="admin-disk-bar"><span style={{ width: `${diskTotal ? Math.max((d.bytes / diskTotal) * 100, 0.5) : 0}%` }} /></span>
+      <span className="admin-disk-bytes">{fmtBytes(d.bytes)}</span>
+    </li>
+  )
 
   return (
     <>
@@ -59,15 +73,15 @@ export default function ServerHealthPanel() {
         {disk.length === 0 ? (
           <p className="admin-empty">폴더 없음.</p>
         ) : (
-          <ul className="admin-disk-list">
-            {disk.map((d) => (
-              <li key={d.name} className="admin-disk-row">
-                <span className="admin-disk-name">{d.name}</span>
-                <span className="admin-disk-bar"><span style={{ width: `${diskTotal ? (d.bytes / diskTotal) * 100 : 0}%` }} /></span>
-                <span className="admin-disk-bytes">{fmtBytes(d.bytes)}</span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="admin-disk-list">{topDisk.map(diskRow)}</ul>
+            {restDisk.length > 0 && (
+              <details className="admin-disk-more">
+                <summary>나머지 {restDisk.length}개 · {fmtBytes(restBytes)}</summary>
+                <ul className="admin-disk-list">{restDisk.map(diskRow)}</ul>
+              </details>
+            )}
+          </>
         )}
       </section>
 
