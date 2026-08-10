@@ -21,6 +21,7 @@ function makeTypeEntry() {
     success: 0,
     failure: 0,
     last_run: null,
+    last_success: null,   // 마지막으로 성공한 수집 — 관리자 콘솔 신선도 판정의 기준
     last_failure: null,
     last_error: null,
     error_counts: {},
@@ -52,6 +53,7 @@ export function initFromFile(basePath) {
         if (!loaded.types[t].error_counts) loaded.types[t].error_counts = {}
         if (!loaded.types[t].airport_failures) loaded.types[t].airport_failures = {}
         if (!loaded.types[t].airport_error_counts) loaded.types[t].airport_error_counts = {}
+        if (loaded.types[t].last_success === undefined) loaded.types[t].last_success = null
       }
       if (!loaded.types.metar.airport_ontime) loaded.types.metar.airport_ontime = {}
       if (!loaded.types.metar.airport_late) loaded.types.metar.airport_late = {}
@@ -103,6 +105,7 @@ export function recordSuccess(type, result, durationMs) {
   entry.total_runs++
   entry.success++
   entry.last_run = new Date().toISOString()
+  entry.last_success = entry.last_run
 
   const failedAirports = Array.isArray(result?.failedAirports) ? result.failedAirports : []
   for (const icao of failedAirports) {
