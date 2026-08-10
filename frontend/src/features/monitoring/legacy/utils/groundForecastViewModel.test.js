@@ -65,6 +65,16 @@ test('metadata exposes only village and mid-range issue hours', () => {
   assert.doesNotMatch(label, /mid|short|tmFc|발표|08\/10/i)
 })
 
+test('metadata shows a placeholder when village issue time is absent or blank', () => {
+  for (const baseTime of [undefined, null, '', '   ']) {
+    assert.equal(
+      formatGroundForecastMeta({ hourly_status: { base_time: baseTime }, tmFc: '202608100600' }),
+      '동네예보 - · 중기예보 06시',
+    )
+  }
+  assert.equal(formatGroundForecastMeta({}), '동네예보 - · 중기예보 -')
+})
+
 test('ground forecast views alternate in both directions', () => {
   assert.equal(nextGroundForecastView('hourly'), 'weekly')
   assert.equal(nextGroundForecastView('weekly'), 'hourly')

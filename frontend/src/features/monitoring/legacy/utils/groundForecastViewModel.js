@@ -17,6 +17,7 @@ function isThreeHourSlot(slot) {
 
 function issueHour(value, format) {
   const text = String(value ?? '')
+  if (!text.trim()) return null
   const hour = format === 'compact' ? text.slice(8, 10) : text.padStart(4, '0').slice(0, 2)
   return /^\d{2}$/.test(hour) ? `${hour}시` : null
 }
