@@ -40,7 +40,7 @@ function flightForecastCells(forecast, startDate) {
 }
 
 /** 왼쪽. 3시간 간격 여덟 칸을 날짜 구분 없이 잇는다. 칸 수가 고정이라 도시가 바뀌어도 폭이 안 변한다. */
-function HourlyStrip({ cells }) {
+function HourlyStrip({ cells, title }) {
   /* 2안 예보 띠와 같은 규칙. 맨 왼쪽 라벨 칸을 두어 `시간별`·`강수확률 %` 같은 줄 제목과
      값들이 같은 세로선에서 시작하게 한다. */
   const columns = `var(--ww-strip-gutter) repeat(${HOURLY_CELL_COUNT}, 1fr)`;
@@ -68,7 +68,8 @@ function HourlyStrip({ cells }) {
   return (
     <div className="ww-hourly-strip">
       <div className="ww-hourly-row ww-hourly-hour-row" style={{ gridTemplateColumns: columns }}>
-        <i aria-hidden="true" />
+        {/* 표 머리의 빈 칸을 제목 자리로 쓴다. 위에 제목 줄을 따로 두면 그만큼 예보가 눌린다. */}
+        <h2 className="ww-grid-title">{title}</h2>
         {slots.map((cell, index) => <time key={index}><small>{dayLabel(cell, index)}</small><span>{cell?.label ?? ''}</span></time>)}
       </div>
       <div className="ww-hourly-row ww-hourly-icon-row" style={{ gridTemplateColumns: columns }}>
@@ -164,7 +165,7 @@ function RollingFlightList({ flights }) {
 
 /** 오른쪽. 다섯 줄 고정. 아이콘과 기온을 짝지어 붙인다 - 떨어뜨리면 어느 아이콘이
  * 어느 기온인지 승객이 눈으로 이어야 한다. 최저는 파랑, 최고는 빨강. */
-function WeeklyPanel({ rows }) {
+function WeeklyPanel({ rows, title }) {
   const hasForecast = rows.some((row) => !row.empty);
   return (
     <>
@@ -172,10 +173,11 @@ function WeeklyPanel({ rows }) {
        * 승객이 매 줄 눈으로 짐작하지 않게 한다. */}
       {/* 제목을 한 덩어리로 가운데 두면 `오전`이 오전 그림 위에 서지 않는다. 아래 값과 같은
           2열 격자를 써서 낱말 하나가 값 하나 위에 정확히 오게 한다. */}
-      <div className="ww-weekly-header" aria-hidden="true">
-        <span />
-        <span className="ww-head-icons"><i>오전</i><i>오후</i></span>
-        <span className="ww-head-temps"><i className="ww-temp-min">최저</i><i className="ww-temp-max">최고</i></span>
+      <div className="ww-weekly-header">
+        <h2 className="ww-grid-title">{title}</h2>
+        {/* 값 위의 낱말은 화면 안내에서 중복이라 읽지 않는다(원래 헤더 전체가 aria-hidden이었다). */}
+        <span className="ww-head-icons" aria-hidden="true"><i>오전</i><i>오후</i></span>
+        <span className="ww-head-temps" aria-hidden="true"><i className="ww-temp-min">최저</i><i className="ww-temp-max">최고</i></span>
       </div>
       {hasForecast ? <ul className="ww-weekly-list">
         {rows.map((row, index) => (
@@ -277,12 +279,10 @@ export default function WeeklyWeatherScreen({
             </div>
             <div className="ww-bottom">
               <div className="ww-hourly-panel">
-                <h2 className="ww-panel-title">시간별 예보</h2>
-                <HourlyStrip cells={cells} />
+                <HourlyStrip cells={cells} title="시간별 예보" />
               </div>
               <div className="ww-weekly-panel">
-                <h2 className="ww-panel-title">주간 예보</h2>
-                <WeeklyPanel rows={rows} />
+                <WeeklyPanel rows={rows} title="주간 예보" />
               </div>
             </div>
           </div>
