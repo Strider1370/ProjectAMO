@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import config from '../config.js'
 import { CATALOG, SOURCES, CHARACTERS } from './data-health-catalog.js'
 import { judge } from './freshness.js'
 
@@ -36,9 +37,9 @@ function isCurrentlyFailing(entry) {
 
 // getCached(type)와 getStats()를 주입받는다(store.js·stats.js 직접 의존 대신) — basePath만 있으면
 // 순수 함수로 테스트 가능하게. now/sun도 주입 가능(시간 의존 테스트).
-export function readDataHealth(basePath, { getCached, getStats, now = Date.now(), sun = {} }) {
+export function readDataHealth(basePath, { getCached, getStats, now = Date.now(), sun = {}, cfg = config }) {
   const statsTypes = getStats()?.types || {}
-  const counts = { total: CATALOG.length, ok: 0, late: 0, stopped: 0, quiet: 0, never: 0 }
+  const counts = { total: CATALOG.length, ok: 0, late: 0, stopped: 0, quiet: 0, never: 0, disabled: 0 }
 
   const rows = CATALOG.map((row) => {
     const entry = statsTypes[row.statsKey]
@@ -48,7 +49,9 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
     // 파일은 쓰일 때 수정시각이 바뀌므로 둘 다 "그 시점에 수집이 성공했다"는 증거다.
     // 이게 없으면 배포 직후 34종이 전부 "자료 없음"으로 빨개진다 — 사실도 아니고 쓸모도 없다.
     const lastSuccessAt = entry?.last_success ?? contentAt
-    const status = judge({
+    // 일부러 꺼둔 자료는 멈춘 것이 아니다. 판정하면 "24시간째 멈춤" 알림이 손쓸 일 없이 매일 온다.
+    const disabled = row.disabledWhen ? row.disabledWhen(cfg) : false
+    const status = disabled ? 'disabled' : judge({
       row,
       lastSuccessMs: ms(lastSuccessAt),
       nowMs: now,

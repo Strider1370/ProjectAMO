@@ -21,15 +21,33 @@ function gitCommit(cwd) {
   try { return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd, encoding: 'utf8' }).trim() } catch { return null }
 }
 
-// 배포 시각 — 배포 스크립트가 남긴 파일이 있으면 그걸 쓰고, 없으면 .git/HEAD 수정시각으로 근사한다.
+// 배포 시각. 배포 스크립트가 남긴 파일이 있으면 그걸 쓴다.
+//
+// 없으면 브랜치 참조(.git/refs/heads/<branch>)의 수정시각으로 근사한다 — .git/HEAD는 브랜치를
+// 바꿀 때만 바뀌고 fast-forward pull로는 갱신되지 않아서, 그걸 보면 몇 달 전 시각이 나온다.
+// (실제로 배포 직후 화면에 "81일 전 배포"가 떴다.) packed-ref만 있는 저장소를 대비해 HEAD도
+// 마지막 후보로 남긴다.
 function deployedAt(root) {
-  for (const p of [path.join(root, '.deployed-at'), path.join(root, '.git', 'HEAD')]) {
-    try { return fs.statSync(p).mtime.toISOString() } catch { /* 다음 후보 */ }
+  const gitDir = path.join(root, '.git')
+  const candidates = [path.join(root, '.deployed-at')]
+  try {
+    const head = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim()
+    const ref = head.startsWith('ref: ') ? head.slice(5) : null
+    if (ref) candidates.push(path.join(gitDir, ref))
+  } catch { /* git 정보가 없으면 아래 후보로 */ }
+  candidates.push(path.join(gitDir, 'HEAD'))
+
+  for (const candidate of candidates) {
+    try { return fs.statSync(candidate).mtime.toISOString() } catch { /* 다음 후보 */ }
   }
   return null
 }
 
-export function deploymentInfo({ certPath = CERT_PATH, root = process.cwd() } = {}) {
+// 저장소 최상위는 이 파일 위치에서 거슬러 올라가 정한다 — process.cwd()에 기대면 어디서
+// 실행했느냐에 따라 결과가 달라진다(backend/에서 켜면 .git을 못 찾는다).
+const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..')
+
+export function deploymentInfo({ certPath = CERT_PATH, root = REPO_ROOT } = {}) {
   return {
     commit: process.env.GIT_COMMIT || gitCommit(root),
     deployedAt: deployedAt(root),

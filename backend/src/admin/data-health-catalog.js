@@ -27,6 +27,18 @@ const NIGHT = { kind: 'night' }
 // 00–04시 KST에는 cron 자체가 돌지 않는다.
 const EARLY_MORNING = { kind: 'hours', fromHourKst: 0, toHourKst: 4 }
 
+// 일부러 꺼둔 자료를 가려내는 조건. 꺼둔 것은 멈춘 것이 아니라서 판정도 알림도 하지 않는다 —
+// 안 그러면 "에코탑 24시간째 멈춤" 같은 알림이 손쓸 일도 없이 매일 온다.
+// 레이더·위성 계열은 열쇠가 없으면 수집기 자체가 등록되지 않으므로(index.js) 그것도 꺼둔 것으로 본다.
+const OFF = {
+  echoTop: (c) => c.radar_echo_top?.enabled === false,
+  kimNwp: (c) => c.kim_nwp?.enabled === false,
+  convective: (c) => c.satellite?.convective_enabled === false,
+  graphics: (c) => c.radar_graphics?.enabled === false,
+  radarKey: (c) => !c.api?.radar_satellite_auth_key,
+}
+const anyOf = (...checks) => (c) => checks.some((check) => check(c))
+
 export const CATALOG = [
   { key: 'metar', label: 'METAR 국내', source: 'kma_aviation', character: 'report', normalMs: m(5), lateMs: m(20), stoppedMs: m(40) },
   { key: 'taf', label: 'TAF 국내', source: 'kma_aviation', character: 'report', normalMs: m(10), lateMs: m(30), stoppedMs: h(1) },
@@ -44,18 +56,18 @@ export const CATALOG = [
   { key: 'environment', label: '대기환경', source: 'kma_aviation', character: 'general', normalMs: h(1), lateMs: h(3), stoppedMs: h(6) },
   { key: 'asos_ceiling', label: '운고(ASOS)', source: 'kma_aviation', character: 'report', normalMs: h(1), lateMs: h(3), stoppedMs: h(6) },
 
-  { key: 'radar_echo', label: '레이더', source: 'kma_radar', character: 'observation', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), meta: 'radar/echo_meta.json' },
-  { key: 'echo_top', label: '에코탑(재산출)', source: 'kma_radar', character: 'observation', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), meta: 'radar/echotop/echotop_meta.json' },
-  { key: 'hsr', label: '합성 HSR', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hsr/hsr_meta.json' },
-  { key: 'hci', label: '합성 HCI', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hci/hci_meta.json' },
-  { key: 'wissdom', label: 'WISSDOM', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/wissdom/wissdom_meta.json' },
-  { key: 'qpf', label: 'QPF', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/qpf/qpf_meta.json' },
-  { key: 'satellite', label: '위성', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/sat_meta.json' },
-  { key: 'satellite_visible', label: '위성 가시', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), quiet: NIGHT, meta: 'satellite/visible/visible_meta.json' },
-  { key: 'convective', label: '대류 CI·CTPS', source: 'kma_radar', character: 'observation', statsKey: 'satellite', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/convective/convective_meta.json' },
+  { key: 'radar_echo', label: '레이더', source: 'kma_radar', character: 'observation', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), meta: 'radar/echo_meta.json', disabledWhen: OFF.radarKey,},
+  { key: 'echo_top', label: '에코탑(재산출)', source: 'kma_radar', character: 'observation', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), meta: 'radar/echotop/echotop_meta.json', disabledWhen: anyOf(OFF.echoTop, OFF.radarKey),},
+  { key: 'hsr', label: '합성 HSR', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hsr/hsr_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
+  { key: 'hci', label: '합성 HCI', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hci/hci_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
+  { key: 'wissdom', label: 'WISSDOM', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/wissdom/wissdom_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
+  { key: 'qpf', label: 'QPF', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/qpf/qpf_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
+  { key: 'satellite', label: '위성', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/sat_meta.json', disabledWhen: OFF.radarKey,},
+  { key: 'satellite_visible', label: '위성 가시', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), quiet: NIGHT, meta: 'satellite/visible/visible_meta.json', disabledWhen: OFF.radarKey,},
+  { key: 'convective', label: '대류 CI·CTPS', source: 'kma_radar', character: 'observation', statsKey: 'satellite', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/convective/convective_meta.json', disabledWhen: anyOf(OFF.convective, OFF.radarKey),},
   { key: 'flight_category_overlay', label: '비행범주', source: 'kma_radar', character: 'report', statsKey: 'flight_category', normalMs: m(20), lateMs: h(1), stoppedMs: h(2) },
 
-  { key: 'kim_nwp', label: 'KIM 수치예보 격자', source: 'kma_nwp', character: 'nwp', statsKey: 'kim_surface_wind', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/latest.json' },
+  { key: 'kim_nwp', label: 'KIM 수치예보 격자', source: 'kma_nwp', character: 'nwp', statsKey: 'kim_surface_wind', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/latest.json', disabledWhen: OFF.kimNwp,},
   { key: 'ktg', label: '난류(KTG)', source: 'kma_nwp', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'ktg/latest.json' },
 
   { key: 'metar_overseas', label: 'METAR 해외', source: 'noaa', character: 'report', normalMs: m(5), lateMs: m(20), stoppedMs: m(40) },
@@ -67,7 +79,7 @@ export const CATALOG = [
 
   { key: 'rainviewer', label: '해외 레이더', source: 'external', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/rainviewer_meta.json' },
   { key: 'overseas_forecast', label: '해외예보', source: 'external', character: 'general', normalMs: h(1), lateMs: h(3), stoppedMs: h(6), quiet: EARLY_MORNING },
-].map((row) => ({ statsKey: row.key, quiet: null, eventDriven: false, meta: null, ...row }))
+].map((row) => ({ statsKey: row.key, quiet: null, eventDriven: false, meta: null, disabledWhen: null, ...row }))
 
 const groupBy = (field, dict) => () =>
   Object.entries(dict).map(([id, meta]) => ({ id, ...meta, rows: CATALOG.filter((r) => r[field] === id) }))

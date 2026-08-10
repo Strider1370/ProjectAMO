@@ -27,7 +27,7 @@ function Tile({ row, now }) {
     <div className={className} title={row.lastError || undefined}>
       <div className="ac-tn">{row.label}</div>
       <div className="ac-ta">
-        {row.status === 'quiet' ? '쉬는 중' : age}
+        {row.status === 'quiet' ? '쉬는 중' : row.status === 'disabled' ? '꺼둠' : age}
         {(row.status === 'late' || row.status === 'stopped' || row.status === 'never') && (
           <span className="ac-st">{STATUS_WORD[row.status]}</span>
         )}
@@ -78,7 +78,7 @@ export default function DataGrid({ health, now = Date.now() }) {
         <span>정상은 표시하지 않습니다 — 글자만 놓입니다</span>
         <span><i style={{ background: 'var(--ac-warn-bg)', borderColor: 'var(--ac-warn-bd)' }} />지연</span>
         <span><i style={{ background: 'var(--ac-bad-bg)', borderColor: 'var(--ac-bad-bd)' }} />멈춤</span>
-        <span>흐린 글자 = 쉬는 시간(야간·운항시간 밖)</span>
+        <span>흐린 글자 = 쉬는 시간(야간·운항시간 밖) 또는 일부러 꺼둔 자료</span>
       </div>
     </section>
   )

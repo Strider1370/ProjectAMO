@@ -36,7 +36,10 @@ function DiskRow({ entry, total }) {
   )
 }
 
-export default function ServerResourceScreen({ server, metrics }) {
+const RANGES = [['1h', '1시간'], ['24h', '24시간'], ['7d', '7일']]
+const RANGE_LABEL = { '1h': '1시간', '24h': '24시간', '7d': '7일' }
+
+export default function ServerResourceScreen({ server, metrics, range = '24h', onRange }) {
   if (!server || !metrics?.current) return null
 
   const current = metrics.current
@@ -53,7 +56,14 @@ export default function ServerResourceScreen({ server, metrics }) {
   return (
     <>
       <section className="ac-sec">
-        <h2>시스템 리소스<em>24시간</em></h2>
+        <h2>
+          시스템 리소스
+          <div className="ac-seg" style={{ marginLeft: 'auto' }} role="tablist">
+            {RANGES.map(([key, label]) => (
+              <button type="button" key={key} className={range === key ? 'ac-on' : ''} onClick={() => onRange?.(key)}>{label}</button>
+            ))}
+          </div>
+        </h2>
         <div className="ac-gauges">
           <Gauge label="CPU" value={Math.round(current.cpuPct)} sub="" />
           <Gauge
@@ -75,8 +85,9 @@ export default function ServerResourceScreen({ server, metrics }) {
               height={230}
               max={100}
               unit="%"
-              xUnit="24시간"
+              xUnit={RANGE_LABEL[range] ?? range}
               xLabels={[timeLabel(series[0].ts), timeLabel(series[series.length - 1].ts)]}
+              hoverLabels={series.map((row) => timeLabel(row.ts))}
               peak={{ index: peakIndex, value: cpuPoints[peakIndex], color: CPU_COLOR, text: `피크 ${Math.round(cpuPoints[peakIndex])}% · ${timeLabel(series[peakIndex].ts)}` }}
               series={[
                 { label: 'CPU', color: CPU_COLOR, points: cpuPoints },

@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { axisTicks, barSlots, heatLevel, labelStride, plotGeometry, xPositions, yScale, CHART_WIDTH, PAD } from '../lib/chartAxis.js'
 
 // 관리자 콘솔 그래프. 축 없는 그래프를 만들지 않기 위해 전부 이 파일을 거친다 —
@@ -21,20 +23,52 @@ function Axes({ height, max, ticks, unit, xLabels, xUnit }) {
       <line x1={left} y1={bottom} x2={right} y2={bottom} stroke="#eae8e4" />
       {unit && <text x={left - 10} y={PAD.t - 7} textAnchor="end" className="ac-axu">{unit}</text>}
       {xUnit && <text x={right} y={height - 6} textAnchor="end" className="ac-ax">{xUnit}</text>}
+      {/* 양 끝 라벨은 가운데 정렬하면 그림 밖으로 잘린다 — 끝에서는 안쪽으로 붙인다. */}
       {xLabels.map((label, i) => (i % stride === 0 || i === xLabels.length - 1 ? (
-        <text key={`${label}-${i}`} x={xPositions(xLabels.length)[i]} y={height - 18} textAnchor="middle" className="ac-ax">{label}</text>
+        <text
+          key={`${label}-${i}`}
+          x={xPositions(xLabels.length)[i]}
+          y={height - 18}
+          textAnchor={i === 0 ? 'start' : i === xLabels.length - 1 ? 'end' : 'middle'}
+          className="ac-ax"
+        >{label}</text>
       ) : null))}
     </>
   )
 }
 
 // 시계열. series = [{ label, color, points: number[], dashed? }]
-export function LineChart({ series, max = 100, unit, xLabels = [], xUnit, height = 190, ticks = 5, peak = null }) {
+//
+// 마우스를 올리면 그 시점의 값을 전부 읽어준다. 그래프에서 "저 뾰족한 게 몇이었지"는
+// 눈금만으로는 못 읽는다 — 옛 화면에 있던 기능이라 새로 만들면서 되살렸다.
+export function LineChart({ series, max = 100, unit, xLabels = [], xUnit, height = 190, ticks = 5, peak = null, hoverLabels = null }) {
+  const [hover, setHover] = useState(null)
   const y = yScale(height, max)
   const longest = series.reduce((n, s) => Math.max(n, s.points.length), 0)
   const xs = xPositions(longest)
+  const { left, right, top, bottom } = plotGeometry(height)
+
+  const onMove = (event) => {
+    const box = event.currentTarget.getBoundingClientRect()
+    if (!box.width || longest < 2) return
+    const ratio = (event.clientX - box.left) / box.width
+    const svgX = ratio * CHART_WIDTH
+    const index = Math.round(((svgX - left) / (right - left)) * (longest - 1))
+    setHover(Math.min(longest - 1, Math.max(0, index)))
+  }
+
+  // 툴팁이 오른쪽 끝에서 그림 밖으로 나가지 않게 방향을 뒤집는다.
+  const tipWidth = 132
+  const tipX = hover != null && xs[hover] + tipWidth + 8 > right ? xs[hover] - tipWidth - 8 : (hover != null ? xs[hover] + 8 : 0)
+
   return (
-    <svg className="ac-chart" viewBox={`0 0 ${CHART_WIDTH} ${height}`} role="img">
+    <svg
+      className="ac-chart"
+      viewBox={`0 0 ${CHART_WIDTH} ${height}`}
+      role="img"
+      onMouseMove={onMove}
+      onMouseLeave={() => setHover(null)}
+    >
       <Axes height={height} max={max} ticks={ticks} unit={unit} xLabels={xLabels} xUnit={xUnit} />
       {series.map((s) => (
         <polyline
@@ -47,12 +81,34 @@ export function LineChart({ series, max = 100, unit, xLabels = [], xUnit, height
           points={s.points.map((v, i) => `${xs[i]?.toFixed(1)},${y(v).toFixed(1)}`).join(' ')}
         />
       ))}
-      {/* 피크는 색 점만 찍지 않고 숫자로도 적는다 — 색만으로 뜻을 전하지 않는다는 규칙. */}
+
+      {/* 피크는 색 점만 찍지 않고 숫자로도 적는다. 오른쪽 끝이면 안쪽으로 붙여 잘리지 않게. */}
       {peak && Number.isFinite(peak.index) && xs[peak.index] != null && (
         <>
           <circle cx={xs[peak.index]} cy={y(peak.value)} r="3" fill={peak.color} />
-          <text x={xs[peak.index]} y={y(peak.value) - 10} textAnchor="middle" className="ac-axv">{peak.text}</text>
+          <text
+            x={Math.min(xs[peak.index], right)}
+            y={Math.max(top + 10, y(peak.value) - 10)}
+            textAnchor={xs[peak.index] > right - 120 ? 'end' : 'middle'}
+            className="ac-axv"
+          >{peak.text}</text>
         </>
+      )}
+
+      {hover != null && xs[hover] != null && (
+        <g pointerEvents="none">
+          <line x1={xs[hover]} y1={top} x2={xs[hover]} y2={bottom} stroke="#a8a39c" strokeDasharray="3 3" />
+          {series.map((s) => (
+            s.points[hover] == null ? null : <circle key={s.label} cx={xs[hover]} cy={y(s.points[hover])} r="3" fill={s.color} />
+          ))}
+          <rect x={tipX} y={top + 4} width={tipWidth} height={20 + series.length * 15} rx="6" fill="#fff" stroke="#eae8e4" />
+          <text x={tipX + 10} y={top + 21} className="ac-axv">{hoverLabels?.[hover] ?? ''}</text>
+          {series.map((s, i) => (
+            <text key={s.label} x={tipX + 10} y={top + 38 + i * 15} className="ac-ax" fill={s.color}>
+              {s.label} {s.points[hover] == null ? '—' : `${Math.round(s.points[hover])}${unit ?? ''}`}
+            </text>
+          ))}
+        </g>
       )}
     </svg>
   )

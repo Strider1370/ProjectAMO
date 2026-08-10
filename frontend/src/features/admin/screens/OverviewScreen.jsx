@@ -75,6 +75,7 @@ export default function OverviewScreen({ health, server, metrics, onGo }) {
                 unit="%"
                 xUnit="24시간"
                 xLabels={[timeLabel(series[0].ts), timeLabel(series[series.length - 1].ts)]}
+                hoverLabels={series.map((row) => timeLabel(row.ts))}
                 peak={{ index: peakIndex, value: cpuPoints[peakIndex], color: CPU_COLOR, text: `피크 ${Math.round(cpuPoints[peakIndex])}% · ${timeLabel(series[peakIndex].ts)}` }}
                 series={[
                   { label: 'CPU', color: CPU_COLOR, points: cpuPoints },

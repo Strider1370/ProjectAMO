@@ -29,6 +29,7 @@ const POLL_MS = 5000
 
 export default function AdminShell() {
   const [menu, setMenu] = useState('overview')
+  const [range, setRange] = useState('24h') // 시스템 리소스 기간 — 서버 자원 화면이 바꾼다
   const [health, setHealth] = useState(null)
   const [server, setServer] = useState(null)
   const [metrics, setMetrics] = useState(null)
@@ -36,13 +37,13 @@ export default function AdminShell() {
 
   const refresh = useCallback(async () => {
     const [h, s, m, p] = await Promise.allSettled([
-      getDataHealth(), getServerHealth(), getMetrics('24h'), getPending(),
+      getDataHealth(), getServerHealth(), getMetrics(range), getPending(),
     ])
     if (h.status === 'fulfilled') setHealth(h.value)
     if (s.status === 'fulfilled') setServer(s.value)
     if (m.status === 'fulfilled') setMetrics(m.value)
     if (p.status === 'fulfilled') setPending(p.value)
-  }, [])
+  }, [range])
 
   useEffect(() => {
     refresh()
@@ -104,6 +105,8 @@ export default function AdminShell() {
               pending={pending}
               onGo={setMenu}
               onChanged={refresh}
+              range={range}
+              onRange={setRange}
             />
           </main>
         </div>

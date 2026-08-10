@@ -9,6 +9,7 @@ export const STATUS_WORD = {
   stopped: '멈춤',
   never: '자료 없음',
   quiet: '쉬는 시간',
+  disabled: '꺼둠',
 }
 
 export const STATUS_TONE = {
@@ -17,9 +18,10 @@ export const STATUS_TONE = {
   stopped: 'bad',
   never: 'bad',
   quiet: 'quiet',
+  disabled: 'quiet',
 }
 
-const SEVERITY = { never: 3, stopped: 3, late: 2, quiet: 1, ok: 0 }
+const SEVERITY = { never: 3, stopped: 3, late: 2, quiet: 1, disabled: 1, ok: 0 }
 
 // "6분 / 2시간 / 64일". 분 미만은 "방금" — 초 단위를 보여줘도 판단이 달라지지 않는다.
 export function formatAge(ms) {

@@ -104,3 +104,26 @@ test('재시작은 한 시간에 5회 이상일 때만 경고한다', () => {
 test('immediateAlerts는 해당 없으면 빈 배열이다 — 조용한 날엔 한 통도 안 간다', () => {
   assert.deepEqual(immediateAlerts({ health: health(['ok', 'ok']), usage: { keys: [] }, forecast: { daysLeft: 41 }, recentBoots: [], now: NOW }), [])
 })
+
+// 일부러 꺼둔 자료(에코탑을 플래그로 끈 것 등)는 멈춘 것이 아니다.
+// 이 구분이 없으면 "에코탑 24시간째 멈춤"이 손쓸 일도 없이 매일 온다.
+test('꺼둔 자료는 하루 요약에 올라가지 않는다', () => {
+  const rows = [
+    { key: 'echo_top', label: '에코탑', status: 'disabled', lastSuccessAt: ago(30 * 86_400_000) },
+    { key: 'kim', label: 'KIM 격자', status: 'stopped', lastSuccessAt: ago(64 * 86_400_000) },
+  ]
+  assert.deepEqual(longStopped({ rows }, NOW).map((r) => r.key), ['kim'])
+})
+
+test('꺼둔 자료는 대규모 장애 분모에서 빠진다', () => {
+  // 에코탑만 꺼져 있고 나머지가 멀쩡하면 장애가 아니다.
+  const h1 = health(['disabled', 'ok'])
+  assert.deepEqual(sourceOutages(h1), [])
+  // 꺼진 것을 빼면 나머지가 전부 멈춤 → 진짜 장애다.
+  const h2 = health(['disabled', 'stopped'])
+  assert.equal(sourceOutages(h2).length, 1)
+})
+
+test('전부 꺼둔 출처는 판정하지 않는다', () => {
+  assert.deepEqual(sourceOutages(health(['disabled', 'disabled'])), [])
+})

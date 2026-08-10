@@ -12,17 +12,20 @@ export const RESTART_WINDOW_MS = 3_600_000
 export const RESTART_WARN_COUNT = 5
 
 const isDown = (status) => status === 'stopped' || status === 'never'
+// 판정에서 빼는 상태 — 쉬는 시간(정상적으로 안 받는 시간)과 꺼둠(일부러 끈 것).
+const isExcluded = (status) => status === 'quiet' || status === 'disabled'
 
 // ① 한 출처(열쇠)의 자료가 전부 멈춤 = 대규모 호출 불가.
 //
-// 쉬는 시간인 자료는 분모에서 뺀다. 야간에 위성 가시가 쉬는 것 때문에 "전부 멈춤"이 성립하거나
-// 반대로 진짜 전멸인데 안 잡히면 안 된다. 전부 쉬는 시간이면 판정하지 않는다.
+// 쉬는 시간이거나 일부러 꺼둔 자료는 분모에서 뺀다. 야간에 위성 가시가 쉬는 것, 또는 에코탑을
+// 플래그로 꺼둔 것 때문에 "전부 멈춤"이 성립하거나 반대로 진짜 전멸인데 안 잡히면 안 된다.
+// 남는 자료가 없으면 판정하지 않는다.
 export function sourceOutages(health) {
   const groups = health?.groups?.source ?? []
   const byKey = new Map((health?.rows ?? []).map((row) => [row.key, row]))
   const outages = []
   for (const group of groups) {
-    const rows = group.keys.map((key) => byKey.get(key)).filter(Boolean).filter((row) => row.status !== 'quiet')
+    const rows = group.keys.map((key) => byKey.get(key)).filter(Boolean).filter((row) => !isExcluded(row.status))
     if (rows.length === 0) continue
     if (rows.every((row) => isDown(row.status))) {
       outages.push({ kind: 'source_down', subject: group.id, label: group.label, count: rows.length })
