@@ -4,10 +4,12 @@ import { getDb } from '../db/index.js'
 import { requireRole } from '../auth/middleware.js'
 import { createUser, listUsers, listPending, setUserStatus } from '../db/users.js'
 import { readMetrics } from './metrics.js'
-import { trafficStats } from './visits.js'
+import { forecastDiskFull } from './disk-forecast.js'
+import { trafficStats, hourlyPattern } from './visits.js'
 import { readTrends } from './trends.js'
 import { readDataHealth } from './data-health.js'
 import { processHealth } from './process-health.js'
+import { deploymentInfo } from './deployment.js'
 import { readDiskUsage } from './disk-usage.js'
 import store from '../store.js'
 import stats from '../stats.js'
@@ -24,20 +26,27 @@ export function createAdminRouter({ db = null } = {}) {
   router.use(requireRole('admin'))
 
   router.get('/metrics', (req, res) => res.json(readMetrics(database(), String(req.query.range || '24h'))))
-  router.get('/traffic', (req, res) => res.json(trafficStats(database())))
+  router.get('/traffic', (req, res) => res.json({
+    ...trafficStats(database()),
+    hourly: hourlyPattern(database()),
+  }))
   router.get('/trends', (req, res) => {
     const granularity = ['day', 'week', 'month'].includes(req.query.granularity) ? req.query.granularity : 'day'
     res.json(readTrends(database(), granularity))
   })
-  router.get('/data-health', (req, res) => res.json({
-    types: readDataHealth(config.storage.active_path, { getCached: store.getCached, getStats: stats.getStats }),
-  }))
+  router.get('/data-health', (req, res) => {
+    const health = readDataHealth(config.storage.active_path, { getCached: store.getCached, getStats: stats.getStats })
+    health.rows = health.rows.map((row) => ({ ...row, stats: stats.getTypeSummary(row.statsKey) }))
+    res.json(health)
+  })
   // 서버 전산자원 탭: 재시작 횟수/가동시간/힙 메모리 + 폴더별 디스크 사용량 + 최근 실패 로그.
   // 디스크만 캐시(5분) — 나머지는 계산이 가벼워 매 요청 그대로.
   router.get('/server-health', (req, res) => res.json({
     process: processHealth(),
     disk: readDiskUsage(config.storage.base_path),
     recentErrors: (stats.getStats().recent_runs || []).filter((r) => !r.success).slice(0, 20),
+    diskForecast: forecastDiskFull(readMetrics(database(), '7d').series),
+    deployment: deploymentInfo(),
   }))
   router.get('/api-hub-usage', (req, res) => res.json(apiHubUsage.snapshot()))
   router.get('/users', (req, res) => res.json(listUsers(database())))

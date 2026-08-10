@@ -84,6 +84,16 @@ CREATE TABLE IF NOT EXISTS visit_days (
 );
 CREATE INDEX IF NOT EXISTS idx_visit_days_day ON visit_days(day);
 
+-- 이용 시간대 격자(요일 x 시각). visit_days는 날짜까지만 있고 visits.last_seen은 덮어쓰기라
+-- 시간대 이력을 남기지 못한다 — 이 표가 그걸 메운다. 켠 시점부터 쌓인다.
+CREATE TABLE IF NOT EXISTS visit_hours (
+  day  TEXT NOT NULL,               -- 'YYYY-MM-DD' (KST)
+  hour INTEGER NOT NULL,            -- 0-23 (KST)
+  n    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, hour)
+);
+CREATE INDEX IF NOT EXISTS idx_visit_hours_day ON visit_hours(day);
+
 CREATE TABLE IF NOT EXISTS triggered_alerts (   -- #13 발송 이력·dedup·알림센터 피드
   id            INTEGER PRIMARY KEY,
   user_id       INTEGER NOT NULL REFERENCES users(id),

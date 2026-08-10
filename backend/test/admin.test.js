@@ -57,8 +57,11 @@ test('admin endpoints require admin and return data', async () => {
     assert.ok(apiHubUsage.keys.every((key) => key.endpoints.every((endpoint) => Object.keys(endpoint).every((field) => ['label', 'bytes', 'requests', 'successes', 'failures', 'lastCalledAt'].includes(field)))))
 
     const health = await (await fetch(at(server, '/api/admin/data-health'), getWith(cookie))).json()
-    assert.ok(Array.isArray(health.types) && health.types.length > 0)
-    assert.ok(health.types.every((t) => 'key' in t && 'label' in t && 'fetchedAt' in t && 'failing' in t))
+    assert.ok(Array.isArray(health.rows) && health.rows.length > 0)
+    assert.ok(health.rows.every((r) => 'key' in r && 'label' in r && 'status' in r))
+    assert.equal(health.counts.total, health.rows.length)
+    assert.ok(Array.isArray(health.groups.source) && health.groups.source.length > 0)
+    assert.ok(Array.isArray(health.groups.character) && health.groups.character.length > 0)
 
     const serverHealth = await (await fetch(at(server, '/api/admin/server-health'), getWith(cookie))).json()
     assert.ok(serverHealth.process.uptimeSec >= 0)
