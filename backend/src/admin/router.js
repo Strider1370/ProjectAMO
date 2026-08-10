@@ -5,7 +5,7 @@ import { requireRole } from '../auth/middleware.js'
 import { createUser, listUsers, listPending, setUserStatus } from '../db/users.js'
 import { readMetrics } from './metrics.js'
 import { forecastDiskFull } from './disk-forecast.js'
-import { trafficStats } from './visits.js'
+import { trafficStats, hourlyPattern } from './visits.js'
 import { readTrends } from './trends.js'
 import { readDataHealth } from './data-health.js'
 import { processHealth } from './process-health.js'
@@ -26,7 +26,10 @@ export function createAdminRouter({ db = null } = {}) {
   router.use(requireRole('admin'))
 
   router.get('/metrics', (req, res) => res.json(readMetrics(database(), String(req.query.range || '24h'))))
-  router.get('/traffic', (req, res) => res.json(trafficStats(database())))
+  router.get('/traffic', (req, res) => res.json({
+    ...trafficStats(database()),
+    hourly: hourlyPattern(database()),
+  }))
   router.get('/trends', (req, res) => {
     const granularity = ['day', 'week', 'month'].includes(req.query.granularity) ? req.query.granularity : 'day'
     res.json(readTrends(database(), granularity))

@@ -11,9 +11,13 @@ export function recordVisit(db, visitorId) {
   db.prepare('INSERT INTO visits (visitor_id,first_seen,last_seen) VALUES (?,?,?) ON CONFLICT(visitor_id) DO UPDATE SET last_seen=?')
     .run(visitorId, now, now, now)
   db.prepare('INSERT OR IGNORE INTO visit_days (visitor_id, day) VALUES (?, ?)').run(visitorId, now.slice(0, 10))
+  const kst = new Date(Date.now() + 9 * 3600_000)
+  db.prepare('INSERT INTO visit_hours (day,hour,n) VALUES (?,?,1) ON CONFLICT(day,hour) DO UPDATE SET n = n + 1')
+    .run(kst.toISOString().slice(0, 10), kst.getUTCHours())
   // ponytail: 방문마다 인덱스(idx_visits_last) 기반 prune — 이 규모(운영도구)엔 무해. 쓰기량 급증 시 타이머로 이동.
   db.prepare('DELETE FROM visits WHERE last_seen < ?').run(new Date(Date.now() - RETAIN_MS).toISOString())
   db.prepare('DELETE FROM visit_days WHERE day < ?').run(new Date(Date.now() - VISIT_DAYS_RETAIN_MS).toISOString().slice(0, 10))
+  db.prepare('DELETE FROM visit_hours WHERE day < ?').run(new Date(Date.now() - VISIT_DAYS_RETAIN_MS).toISOString().slice(0, 10))
 }
 
 // "활성 사용자"는 방문 쿠키(visits, 익명)가 아니라 실제 로그인 계정(users.last_active_at) 기준이다 —
@@ -48,4 +52,27 @@ export function visitTracker(getDb) {
   }
 }
 
-export default { recordVisit, trafficStats, visitTracker }
+const READY_DAYS = 14
+
+// 이용 시간대 격자. dow는 0=월 … 6=일 (한국에서 주는 월요일에 시작한다).
+export function hourlyPattern(db, { weeks = 4, now = Date.now() } = {}) {
+  const since = new Date(now - weeks * 7 * 86400e3).toISOString().slice(0, 10)
+  const rows = db.prepare('SELECT day, hour, n FROM visit_hours WHERE day >= ? ORDER BY day').all(since)
+
+  const bucket = new Map()
+  for (const r of rows) {
+    const dow = (new Date(`${r.day}T00:00:00Z`).getUTCDay() + 6) % 7 // 일=0 → 월=0
+    const key = `${dow}:${r.hour}`
+    bucket.set(key, (bucket.get(key) || 0) + r.n)
+  }
+
+  const cells = []
+  for (let dow = 0; dow < 7; dow += 1) {
+    for (let hour = 0; hour < 24; hour += 1) cells.push({ dow, hour, n: bucket.get(`${dow}:${hour}`) || 0 })
+  }
+
+  const days = new Set(rows.map((r) => r.day)).size
+  return { days, ready: days >= READY_DAYS, cells }
+}
+
+export default { recordVisit, trafficStats, hourlyPattern, visitTracker }
