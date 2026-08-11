@@ -174,7 +174,7 @@
    layers deliberately share one duration and one curve — they are two frames of the same strip of
    film, and any difference between them tears the strip apart mid-move. */
 .monitoring-slide-overlay--effect-slide .monitoring-slide-layer {
-  animation-duration: var(--monitoring-slide-transition-ms, 350ms);
+  animation-duration: var(--monitoring-slide-transition-ms, 1000ms);
   animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
   animation-fill-mode: both;
 }
@@ -188,7 +188,7 @@
 }
 
 .monitoring-slide-overlay--effect-fade .monitoring-slide-layer {
-  animation-duration: var(--monitoring-slide-transition-ms, 350ms);
+  animation-duration: var(--monitoring-slide-transition-ms, 1000ms);
   animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
   animation-fill-mode: both;
 }
@@ -266,31 +266,4 @@
   left: 0;
   transform-origin: top left;
   box-sizing: border-box;
-}
-
-.monitoring-slide-overlay-controls {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.monitoring-slide-overlay-status {
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.55);
-  color: #fff;
-  font-size: 12px;
-}
-
-.monitoring-slide-overlay-exit {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #0f172a;
-  font-weight: 700;
-  cursor: pointer;
 }

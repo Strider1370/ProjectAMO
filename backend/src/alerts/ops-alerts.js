@@ -101,9 +101,12 @@ export async function runOnce(db, { now = Date.now(), send = sendTelegram, state
 }
 
 // 5분 틱. 수집기가 아니라 서버에 건다 — 수집이 통째로 죽었을 때야말로 알림이 필요하다.
+//
+// 운영(AWS)에서만 건다. 개발 서버는 .env를 그대로 물려받아 같은 텔레그램 방으로 보내는데, 자료가
+// 며칠 묵어 있거나(dev:test는 수집 자체를 끈다) 그래서 켤 때마다 "전 출처 멈춤" 오알림이 나간다.
 export function startOpsAlerts(db, { cron, schedule = '*/5 * * * *' } = {}) {
-  if (process.env.ALERTS_DISABLED) {
-    console.log('[ops-alert] ALERTS_DISABLED — 판정만 하고 발송하지 않음')
+  if (process.env.ALERTS_DISABLED || process.env.NODE_ENV !== 'production') {
+    console.log('[ops-alert] 운영이 아니거나 ALERTS_DISABLED — 발송하지 않음')
     return null
   }
   return cron?.schedule(schedule, () => {

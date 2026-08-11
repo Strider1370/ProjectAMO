@@ -88,6 +88,11 @@ export function useMonitoringSlideshow(config, imageBlob, imageRevision, { hasWx
     })
   }, [slides])
 
+  const nextPage = useCallback(() => {
+    setPreviewOn(true)
+    setVisibleSlide((prev) => nextMonitoringSlide(prev, slides) ?? 'live')
+  }, [slides])
+
   const clearPreview = useCallback(() => {
     setPreviewOn(false)
     setVisibleSlide('live')
@@ -98,7 +103,7 @@ export function useMonitoringSlideshow(config, imageBlob, imageRevision, { hasWx
     setVisibleSlide('live')
   }, [])
 
-  return { status, visibleSlide, slides, imageUrl, persistenceError, preview, stop, clearPreview }
+  return { status, visibleSlide, slides, imageUrl, persistenceError, preview, nextPage, stop, clearPreview }
 }
 
 export default useMonitoringSlideshow

@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { createDb } from '../src/db/index.js'
-import { runOnce } from '../src/alerts/ops-alerts.js'
+import { runOnce, startOpsAlerts } from '../src/alerts/ops-alerts.js'
 
 const NOW = Date.parse('2026-08-11T01:00:00Z') // KST 10:00 — 하루 요약 시각 이후
 const ago = (ms) => new Date(NOW - ms).toISOString()
@@ -114,4 +114,18 @@ test('텔레그램 설정이 없으면 보낸 것으로 기록하지 않는다',
   await runOnce(db, { now: NOW, send, state })
   await runOnce(db, { now: NOW + 300_000, send, state })
   assert.equal(calls, 2, '설정이 생기면 바로 나가야 한다')
+})
+
+// 개발 서버가 운영과 같은 텔레그램 방으로 오알림을 쏜 적이 있다(2026-08-11). 운영에서만 건다.
+test('운영이 아니면 5분 틱을 걸지 않는다', () => {
+  const cron = { schedule: () => ({ scheduled: true }) }
+  const prev = process.env.NODE_ENV
+  try {
+    process.env.NODE_ENV = 'development'
+    assert.equal(startOpsAlerts(null, { cron }), null)
+    process.env.NODE_ENV = 'production'
+    assert.deepEqual(startOpsAlerts(null, { cron }), { scheduled: true })
+  } finally {
+    process.env.NODE_ENV = prev
+  }
 })

@@ -26,6 +26,18 @@ async function startPreview(page) {
   await expect(page.locator('.alert-settings-overlay')).toHaveCount(0)
 }
 
+async function stopPreview(page) {
+  // The fullscreen slide intentionally swallows pointer events now that its on-screen exit
+  // control is gone; let the test reach the settings-owned stop action programmatically.
+  await page.locator('.monitoring-slide-overlay--whole-screen').evaluate((element) => {
+    element.style.pointerEvents = 'none'
+  })
+  await page.getByLabel('설정').click()
+  await page.getByRole('button', { name: '화면 전환', exact: true }).click()
+  await page.getByRole('button', { name: '중지', exact: true }).click()
+  await page.locator('.alert-popup-close').click()
+}
+
 test.describe('monitoring personal slideshow', () => {
   test.beforeEach(async ({ page }) => {
     await installMonitoringFixture(page)
@@ -44,8 +56,27 @@ test.describe('monitoring personal slideshow', () => {
     await expect(overlay.locator('.monitoring-slide-overlay-image')).toBeVisible()
     await expect(page.locator('.dashboard-root')).toBeAttached()
 
-    await overlay.getByRole('button', { name: '화면 전환 종료' }).click()
-    await expect(overlay).not.toHaveClass(/is-visible/)
+    await expect(overlay).not.toHaveRole('button', { name: '화면 전환 종료' })
+  })
+
+  test('fades the outgoing slide away before revealing the live map', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'slideshow is unavailable on the mobile layout (FR-014)')
+
+    await openSlideshowTab(page)
+    await setSlides(page, ['지도', '이미지'])
+    await page.getByLabel('표시할 이미지 (PNG/JPEG/WebP)').setInputFiles(SAMPLE_IMAGE)
+    await startPreview(page)
+
+    const overlay = page.locator('.monitoring-slide-overlay--whole-screen')
+    await expect(overlay.locator('.monitoring-slide-overlay-image')).toBeVisible()
+    await stopPreview(page)
+
+    // Returning to live must keep the outgoing layer mounted while it fades, so the map underneath
+    // is revealed continuously instead of flashing off with the overlay.
+    await expect(overlay).toHaveClass(/is-visible/)
+    await expect(overlay.locator('.monitoring-slide-layer.is-leaving')).toHaveCount(1)
+    await expect(overlay.locator('.monitoring-slide-layer.is-leaving')).toHaveCSS('animation-duration', '1s')
+    await expect(overlay).not.toHaveClass(/is-visible/, { timeout: 1500 })
   })
 
   test('map-panel preview overlays only the map panel and keeps MapView mounted', async ({ page }, testInfo) => {
@@ -62,8 +93,7 @@ test.describe('monitoring personal slideshow', () => {
     await expect(page.locator('.monitoring-mapbox-panel canvas').first()).toBeAttached()
     await expect(page.locator('.left-panel-body')).toBeVisible()
 
-    await overlay.getByRole('button', { name: '화면 전환 종료' }).click()
-    await expect(overlay).not.toHaveClass(/is-visible/)
+    await expect(overlay).not.toHaveRole('button', { name: '화면 전환 종료' })
   })
 
   test('weather bulletin slide shows the selected airport document over the map panel', async ({ page }, testInfo) => {

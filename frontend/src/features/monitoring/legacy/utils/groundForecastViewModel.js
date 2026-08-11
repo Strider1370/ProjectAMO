@@ -6,6 +6,17 @@ export const GROUND_FORECAST_VIEW = {
 export const GROUND_FORECAST_CYCLE_MS = 12_000
 export const GROUND_FORECAST_FADE_MS = 350
 
+export const GROUND_FORECAST_LOCATION_LABELS = Object.freeze({
+  RKSI: '운서동',
+  RKSS: '공항동',
+  RKPC: '용담2동',
+  RKPK: '대저2동',
+  RKJB: '망운면',
+  RKJY: '율촌면',
+  RKPU: '송정동',
+  RKNY: '손양면',
+})
+
 function padSlots(slots, count) {
   return [...slots.slice(0, count), ...Array(Math.max(0, count - slots.length)).fill(null)]
 }
@@ -32,6 +43,12 @@ export function selectWeeklyForecastDays(forecast) {
   return padSlots(days, 6)
 }
 
+export function weeklyWeekdayClass(weekday) {
+  if (weekday === '토') return 'is-saturday'
+  if (weekday === '일') return 'is-sunday'
+  return ''
+}
+
 export function forecastColumnCenter(index, { start, end, count }) {
   const width = (end - start) / count
   return start + width * (index + 0.5)
@@ -56,10 +73,12 @@ export function precipitationBar(value, { top, bottom }) {
   return { value: percent, y: bottom - height, height }
 }
 
-export function formatGroundForecastMeta(airportForecast) {
+export function formatGroundForecastMeta(airportForecast, icao, activeView) {
   const village = issueHour(airportForecast?.hourly_status?.base_time, 'base')
   const mid = issueHour(airportForecast?.tmFc, 'compact')
-  return `동네예보 ${village ?? '-'} · 중기예보 ${mid ?? '-'}`
+  if (activeView === GROUND_FORECAST_VIEW.WEEKLY) return `중기예보 ${mid ?? '-'} 발표`
+  const location = GROUND_FORECAST_LOCATION_LABELS[icao]
+  return `${location ? `${location} ` : ''}동네예보 ${village ?? '-'} 발표`
 }
 
 export function nextGroundForecastView(view) {

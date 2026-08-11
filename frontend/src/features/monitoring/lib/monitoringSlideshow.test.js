@@ -28,6 +28,7 @@ describe('monitoring slideshow config', () => {
   it('defaults to disabled whole-screen with a valid daily range', () => {
     assert.equal(DEFAULT_MONITORING_SLIDESHOW_CONFIG.enabled, false)
     assert.equal(DEFAULT_MONITORING_SLIDESHOW_CONFIG.target, 'whole-screen')
+    assert.equal(DEFAULT_MONITORING_SLIDESHOW_CONFIG.transitionDurationMs, 1000)
     assert.equal(validateMonitoringSlideshowConfig(DEFAULT_MONITORING_SLIDESHOW_CONFIG).valid, true)
   })
 

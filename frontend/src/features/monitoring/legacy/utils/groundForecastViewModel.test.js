@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import * as groundForecastViewModel from './groundForecastViewModel.js'
 
 import {
   createTemperatureScale,
@@ -38,6 +39,12 @@ test('weekly display excludes today and pads to six positions', () => {
   )
 })
 
+test('weekly weekday labels expose semantic Saturday and Sunday classes', () => {
+  assert.equal(groundForecastViewModel.weeklyWeekdayClass('토'), 'is-saturday')
+  assert.equal(groundForecastViewModel.weeklyWeekdayClass('일'), 'is-sunday')
+  assert.equal(groundForecastViewModel.weeklyWeekdayClass('월'), '')
+})
+
 test('shared x scale returns one centre per column', () => {
   assert.deepEqual(
     Array.from({ length: 8 }, (_, index) => forecastColumnCenter(index, { start: 80, end: 960, count: 8 })),
@@ -58,21 +65,21 @@ test('precipitation bars clamp to the 0-100 percent band', () => {
   assert.deepEqual(precipitationBar(100, { top: 290, bottom: 370 }), { value: 100, y: 290, height: 80 })
 })
 
-test('metadata exposes only village and mid-range issue hours', () => {
-  const label = formatGroundForecastMeta({ hourly_status: { base_time: '1400' }, tmFc: '202608100600' })
-  assert.equal(label, '동네예보 14시 · 중기예보 06시')
-  assert.equal(formatGroundForecastMeta({ hourly_status: { base_time: '1400' } }), '동네예보 14시 · 중기예보 -')
-  assert.doesNotMatch(label, /mid|short|tmFc|발표|08\/10/i)
+test('hourly metadata includes the airport 읍면동 and only the village issue hour', () => {
+  const label = formatGroundForecastMeta({ hourly_status: { base_time: '1400' }, tmFc: '202608100600' }, 'RKJB', 'hourly')
+  assert.equal(label, '망운면 동네예보 14시 발표')
+  assert.equal(formatGroundForecastMeta({ hourly_status: { base_time: '1400' }, tmFc: '202608100600' }, 'RKJB', 'weekly'), '중기예보 06시 발표')
+  assert.doesNotMatch(label, /중기예보|mid|short|tmFc|08\/10/i)
 })
 
-test('metadata shows a placeholder when village issue time is absent or blank', () => {
+test('metadata keeps the active source and falls back when an airport has no 읍면동 mapping', () => {
   for (const baseTime of [undefined, null, '', '   ']) {
     assert.equal(
-      formatGroundForecastMeta({ hourly_status: { base_time: baseTime }, tmFc: '202608100600' }),
-      '동네예보 - · 중기예보 06시',
+      formatGroundForecastMeta({ hourly_status: { base_time: baseTime }, tmFc: '202608100600' }, 'UNKNOWN', 'hourly'),
+      '동네예보 - 발표',
     )
   }
-  assert.equal(formatGroundForecastMeta({}), '동네예보 - · 중기예보 -')
+  assert.equal(formatGroundForecastMeta({}, 'UNKNOWN', 'weekly'), '중기예보 - 발표')
 })
 
 test('ground forecast views alternate in both directions', () => {

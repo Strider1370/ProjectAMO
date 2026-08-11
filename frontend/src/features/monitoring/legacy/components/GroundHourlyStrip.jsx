@@ -2,7 +2,7 @@ import { getWeatherIconSrc } from '../../../../shared/weather/weather-icon-regis
 import { mapGroundForecastIcon } from './GroundForecastPanel.jsx'
 import { createTemperatureScale, forecastColumnCenter, precipitationBar, selectHourlyForecastSlots } from '../utils/groundForecastViewModel.js'
 
-const W = 1015, H = 430, LEFT = 28, RIGHT = 987, TEMP_TOP = 155, TEMP_BOTTOM = 250, PRECIP_TOP = 255, PRECIP_BOTTOM = 355
+const W = 1015, H = 430, LEFT = 28, RIGHT = 987, TEMP_TOP = 200, TEMP_BOTTOM = 270, TEMP_LABEL_TOP = 182, PRECIP_TOP = 290, PRECIP_BOTTOM = 370
 const ICON_BAND_TOP = 52, ICON_BAND_HEIGHT = 80
 const hour = (time) => time ? `${Number(String(time).slice(0, 2))}시` : '-'
 const isPrecipitationIcon = (icon) => ['rain', 'shower', 'snow', 'sleet'].includes(icon)
@@ -54,7 +54,7 @@ export default function GroundHourlyStrip({ airport }) {
       return <g key={index} data-hourly-column={index} data-center-x={x}>
         <text className={`ghs-time${index === 0 ? ' is-now' : ''}${changed ? ' is-daybreak' : ''}`} data-hourly-row="time" data-hourly-time x={x} y="45" textAnchor="middle">{label}</text>
         {slot ? <image data-hourly-row="icon" data-hourly-icon href={getWeatherIconSrc(mapGroundForecastIcon(slot.icon))} x={x - 34} y="58" width="68" height="68" /> : <text x={x} y="100" textAnchor="middle">-</text>}
-        {y != null && <><circle className={`ghs-dot ${extreme}`} data-hourly-row="temp-dot" data-hourly-dot cx={x} cy={y} r="6" /><text className={`ghs-temp ${extreme}`} data-hourly-row="temp-label" data-hourly-temperature x={x} y={y - 18} textAnchor="middle">{slot.temp}°</text></>}
+        {y != null && <><circle className={`ghs-dot ${extreme}`} data-hourly-row="temp-dot" data-hourly-dot cx={x} cy={y} r="6" /><text className={`ghs-temp ${extreme}`} data-hourly-row="temp-label" data-hourly-temperature x={x} y={Math.max(y - 18, TEMP_LABEL_TOP)} textAnchor="middle">{slot.temp}°</text></>}
         <rect data-hourly-row="precip-bar" x={x - 12} y={rain.y} width="24" height={rain.height} />
         <text data-hourly-row="precip-label" data-hourly-precipitation x={x} y="405" textAnchor="middle">{value}{value === '-' ? '' : '%'}</text>
       </g>

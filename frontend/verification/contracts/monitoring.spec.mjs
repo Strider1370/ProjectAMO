@@ -122,7 +122,7 @@ test.describe('monitoring', () => {
     expect(onTop).toBe(true)
   })
 
-  test('ground mode hides alerts and disables the list preview button', async ({ page }, testInfo) => {
+  test('ground mode shows only general and slideshow settings', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'monitoring is desktop-only; mobile is redirected away')
 
     // openMonitoringState(page, 'settings')는 '/monitoring?mode=ops'로 다시 이동해
@@ -134,10 +134,18 @@ test.describe('monitoring', () => {
     await expect(page.locator('.alert-table')).toHaveCount(0)
 
     await page.getByLabel('설정').click()
-    await page.getByRole('button', { name: '알림', exact: true }).click()
+    await expect(page.getByRole('button', { name: '일반', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '화면 전환', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '알림', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '항적', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '공역예보', exact: true })).toHaveCount(0)
 
-    await expect(page.getByRole('button', { name: '알람 목록 표시 예시', exact: true })).toBeDisabled()
-    await expect(page.getByRole('button', { name: '소리 사용 예시', exact: true })).toBeEnabled()
+    await page.getByRole('button', { name: '화면 전환', exact: true }).click()
+    await expect(page.getByText('표시할 장면', { exact: true })).toBeVisible()
+    await expect(page.getByText('고급 설정', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '다음 페이지', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+    await expect(page.locator('.monitoring-slide-overlay--whole-screen.is-visible')).toBeVisible()
   })
 
   test('low visibility alert outlines the METAR visibility cell', async ({ page }, testInfo) => {

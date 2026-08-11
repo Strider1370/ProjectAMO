@@ -30,7 +30,7 @@ export const DEFAULT_MONITORING_SLIDESHOW_CONFIG = Object.freeze({
   enabled: false,
   target: 'whole-screen',
   transitionEffect: 'fade',
-  transitionDurationMs: 350,
+  transitionDurationMs: 1000,
   slides: DEFAULT_SLIDES,
   startTime: '00:00',
   endTime: '23:59',

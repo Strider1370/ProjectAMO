@@ -7,29 +7,6 @@ import WeatherIcon from "../../../../shared/ui/WeatherIcon.jsx";
 import { computeSunTimes } from "../../../../shared/weather/helpers.js";
 import { WiDaySunny, WiDust, WiHumidity, WiRaindrops, WiSmoke, WiStrongWind } from 'react-icons/wi'
 
-function formatGroundNow(date, tz) {
-  try {
-    const formatter = new Intl.DateTimeFormat("ko-KR", {
-      timeZone: tz === "KST" ? "Asia/Seoul" : "UTC",
-      month: "numeric",
-      day: "numeric",
-      weekday: "long",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    const parts = formatter.formatToParts(date);
-    const month = parts.find((part) => part.type === "month")?.value;
-    const day = parts.find((part) => part.type === "day")?.value;
-    const weekday = parts.find((part) => part.type === "weekday")?.value;
-    const hour = parts.find((part) => part.type === "hour")?.value;
-    const minute = parts.find((part) => part.type === "minute")?.value;
-    return `${Number(month)}월 ${Number(day)}일 ${weekday} ${hour}:${minute}`;
-  } catch {
-    return date.toISOString();
-  }
-}
-
 function normalizeDegrees(value) {
   return ((value % 360) + 360) % 360;
 }
@@ -156,7 +133,7 @@ export default function GroundCurrentWeatherCard({
   return (
     <section className="ground-current-card panel" role="region" aria-label="현재 날씨">
       <div className="ground-current-card-topbar">
-        <span className="ground-current-card-time">{formatGroundNow(now, tz)}</span>
+        <span className="ground-current-card-title">현재 날씨</span>
         <span className="ground-current-card-suntime">☀ 일출 {sunTimes.sunrise} · 일몰 {sunTimes.sunset}</span>
       </div>
       <div className="ground-current-card-body">

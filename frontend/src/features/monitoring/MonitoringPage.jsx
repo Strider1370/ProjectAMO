@@ -541,6 +541,7 @@ export default function MonitoringPage() {
         onSlideImageRemove={handleSlideImageRemove}
         onSlideshowPreview={slideshow.preview}
         onSlideshowStop={handleSlideshowStop}
+        onSlideshowNextPage={slideshow.nextPage}
       />
     )
   }

@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   resolveSettings,
   savePersonalSettings,
@@ -94,6 +94,14 @@ const ALERT_USER_SECTIONS = [
   },
 ];
 
+const SETTINGS_TABS = [
+  { id: "general", label: "일반" },
+  { id: "alert", label: "알림" },
+  { id: "traffic", label: "항적" },
+  { id: "advisory", label: "공역예보" },
+  { id: "slideshow", label: "화면 전환" },
+];
+
 export default function Settings({
   defaults,
   onClose,
@@ -123,6 +131,7 @@ export default function Settings({
   onSlideImageRemove,
   onSlideshowPreview,
   onSlideshowStop,
+  onSlideshowNextPage,
   variant = "modal",
   isGroundMode = false,
 }) {
@@ -153,6 +162,13 @@ export default function Settings({
   );
   const [activeTab, setActiveTab] = useState("general");
   const [openAlertHelp, setOpenAlertHelp] = useState({});
+  const visibleTabs = isGroundMode
+    ? SETTINGS_TABS.filter((tab) => tab.id === "general" || tab.id === "slideshow")
+    : SETTINGS_TABS;
+
+  useEffect(() => {
+    if (!visibleTabs.some((tab) => tab.id === activeTab)) setActiveTab("general");
+  }, [activeTab, visibleTabs]);
 
   const [triggers, setTriggers] = useState(() => {
     const nextTriggers = {};
@@ -446,36 +462,15 @@ export default function Settings({
 
         <div className="alert-settings-layout">
           <div className="alert-settings-tabs">
-            <button
-              className={`alert-settings-tab-btn${activeTab === "general" ? " active" : ""}`}
-              onClick={() => setActiveTab("general")}
-            >
-              일반
-            </button>
-            <button
-              className={`alert-settings-tab-btn${activeTab === "alert" ? " active" : ""}`}
-              onClick={() => setActiveTab("alert")}
-            >
-              알림
-            </button>
-            <button
-              className={`alert-settings-tab-btn${activeTab === "traffic" ? " active" : ""}`}
-              onClick={() => setActiveTab("traffic")}
-            >
-              항적
-            </button>
-            <button
-              className={`alert-settings-tab-btn${activeTab === "advisory" ? " active" : ""}`}
-              onClick={() => setActiveTab("advisory")}
-            >
-              공역예보
-            </button>
-            <button
-              className={`alert-settings-tab-btn${activeTab === "slideshow" ? " active" : ""}`}
-              onClick={() => setActiveTab("slideshow")}
-            >
-              화면 전환
-            </button>
+            {visibleTabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`alert-settings-tab-btn${activeTab === tab.id ? " active" : ""}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           <div className="alert-settings-body">
@@ -631,160 +626,170 @@ export default function Settings({
               </div>
             )}
             {activeTab === "slideshow" && (
-              <fieldset className="alert-settings-section" disabled={slideshowDisabled}>
-                <legend>개인 화면 전환</legend>
+              <fieldset className="alert-settings-section alert-settings-slideshow" disabled={slideshowDisabled}>
+                <legend>화면 전환</legend>
                 {slideshowDisabled && (
                   <p className="alert-settings-help">
                     모바일 화면에서는 화면 전환 기능을 사용할 수 없습니다.
                   </p>
                 )}
                 <p className="alert-settings-help">
-                  선택한 이미지는 이 기기의 이 브라우저에만 저장되며, 다른 기기나 브라우저에는 표시되지 않습니다.
+                  지도와 기상정보를 자동으로 번갈아 표시합니다. 선택한 이미지는 이 기기의 이 브라우저에만 저장됩니다.
                 </p>
 
-                <label className="alert-settings-row">
-                  <span>화면 전환 사용</span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(slideshowConfig?.enabled)}
-                    onChange={(e) => onSlideshowConfigChange?.({ enabled: e.target.checked })}
-                  />
-                </label>
-
-                <label className="alert-settings-row">
-                  <span>전환 대상</span>
-                  <select
-                    value={slideshowConfig?.target || "whole-screen"}
-                    onChange={(e) => onSlideshowConfigChange?.({ target: e.target.value })}
-                  >
-                    <option value="whole-screen">전체 화면</option>
-                    <option value="map-panel">지도 패널만</option>
-                  </select>
-                </label>
-
-                <label className="alert-settings-row">
-                  <span>전환 효과</span>
-                  <select
-                    value={slideshowConfig?.transitionEffect || "fade"}
-                    onChange={(e) => onSlideshowConfigChange?.({ transitionEffect: e.target.value })}
-                  >
-                    <option value="fade">페이드 (부드럽게 전환)</option>
-                    <option value="slide">슬라이드 (밀려서 전환)</option>
-                  </select>
-                </label>
-
-                <label className="alert-settings-row">
-                  <span>전환 애니메이션 속도(ms)</span>
-                  <input
-                    type="number"
-                    min={100}
-                    max={2000}
-                    step={50}
-                    value={slideshowConfig?.transitionDurationMs ?? 350}
-                    onChange={(e) => onSlideshowConfigChange?.({ transitionDurationMs: Number(e.target.value) })}
-                  />
-                </label>
-
-                <p className="alert-settings-help">
-                  체크한 장면만 위에서 아래 순서로 돌아갑니다. 장면마다 머무는 시간을 따로 정할 수 있어,
-                  지도를 오래 띄우고 기상정보만 잠깐 끼워 넣는 식으로 쓸 수 있습니다.
-                </p>
-                {(slideshowConfig?.slides || []).map((slide) => (
-                  <label className="alert-settings-row" key={slide.id}>
-                    <span>
-                      <input
-                        type="checkbox"
-                        aria-label={`${MONITORING_SLIDE_LABELS[slide.id] || slide.id} 장면 사용`}
-                        checked={Boolean(slide.enabled)}
-                        onChange={(e) => onSlideshowConfigChange?.({
-                          slides: (slideshowConfig?.slides || []).map((item) => (
-                            item.id === slide.id ? { ...item, enabled: e.target.checked } : item
-                          )),
-                        })}
-                      />
-                      {" "}{MONITORING_SLIDE_LABELS[slide.id] || slide.id}
-                    </span>
-                    <span className="alert-settings-inline-actions">
-                      <input
-                        type="number"
-                        aria-label={`${MONITORING_SLIDE_LABELS[slide.id] || slide.id} 머무는 시간(초)`}
-                        min={5}
-                        max={3600}
-                        value={slide.durationSec ?? 30}
-                        disabled={!slide.enabled}
-                        onChange={(e) => onSlideshowConfigChange?.({
-                          slides: (slideshowConfig?.slides || []).map((item) => (
-                            item.id === slide.id ? { ...item, durationSec: Number(e.target.value) } : item
-                          )),
-                        })}
-                      />
-                      초
-                    </span>
+                <fieldset className="alert-settings-subsection">
+                  <legend>기본 설정</legend>
+                  <label className="alert-settings-row alert-settings-switch-row">
+                    <span>화면 전환 사용</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(slideshowConfig?.enabled)}
+                      onChange={(e) => onSlideshowConfigChange?.({ enabled: e.target.checked })}
+                    />
                   </label>
-                ))}
-                <p className="alert-settings-help">
-                  기상정보는 선택한 공항의 항공기상청 공문 원문이며, 패널 크기에 맞게 글씨가 자동으로 조절됩니다.
-                  해당 공항의 기상정보가 없으면 그 장면은 건너뜁니다.
-                </p>
-
-                <label className="alert-settings-row">
-                  <span>시작 시각</span>
-                  <input
-                    type="time"
-                    value={slideshowConfig?.startTime || "00:00"}
-                    onChange={(e) => onSlideshowConfigChange?.({ startTime: e.target.value })}
-                  />
-                </label>
-                <label className="alert-settings-row">
-                  <span>종료 시각</span>
-                  <input
-                    type="time"
-                    value={slideshowConfig?.endTime || "23:59"}
-                    onChange={(e) => onSlideshowConfigChange?.({ endTime: e.target.value })}
-                  />
-                </label>
-                {!validateMonitoringSlideshowConfig(slideshowConfig || {}).valid && (
-                  <p className="alert-settings-help">
-                    {Object.values(validateMonitoringSlideshowConfig(slideshowConfig || {}).errors).join(" ")}
-                  </p>
-                )}
-
-                <label className="alert-settings-row">
-                  <span>표시할 이미지 (PNG/JPEG/WebP)</span>
-                  <input
-                    type="file"
-                    accept={MONITORING_SLIDE_IMAGE_TYPES.join(",")}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) onSlideImageChoose?.(file)
-                      e.target.value = ""
-                    }}
-                  />
-                </label>
-                {/* Status/action rows are not form-control rows. A <label> here would label its
-                    first labelable descendant — the button — replacing the button's accessible
-                    name with the row text, so screen readers announced "미리보기" as
-                    "상태: 꺼짐 중지". Plain divs let each button keep its own name. */}
-                {slideshowImageInfo && (
-                  <div className="alert-settings-row">
-                    <span>선택한 이미지: {slideshowImageInfo.name}</span>
-                    <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideImageRemove?.()}>
-                      제거
-                    </button>
+                  <div className="alert-settings-row alert-settings-status-row">
+                    <span>현재 상태: {slideshowStatusLabel || "꺼짐"}</span>
+                    <span className="alert-settings-inline-actions">
+                      <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideshowPreview?.()}>
+                        미리보기
+                      </button>
+                      <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideshowStop?.()}>
+                        중지
+                      </button>
+                      <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideshowNextPage?.()}>
+                        다음 페이지
+                      </button>
+                    </span>
                   </div>
-                )}
+                  <label className="alert-settings-row">
+                    <span>전환 대상</span>
+                    <select
+                      value={slideshowConfig?.target || "whole-screen"}
+                      onChange={(e) => onSlideshowConfigChange?.({ target: e.target.value })}
+                    >
+                      <option value="whole-screen">전체 화면</option>
+                      <option value="map-panel">지도 패널만</option>
+                    </select>
+                  </label>
+                </fieldset>
 
-                <div className="alert-settings-row">
-                  <span>상태: {slideshowStatusLabel || "꺼짐"}</span>
-                  <span className="alert-settings-inline-actions">
-                    <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideshowPreview?.()}>
-                      미리보기
-                    </button>
-                    <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideshowStop?.()}>
-                      중지
-                    </button>
-                  </span>
-                </div>
+                <fieldset className="alert-settings-subsection">
+                  <legend>표시할 장면</legend>
+                  <p className="alert-settings-help">
+                    선택한 장면을 위에서 아래 순서로 반복합니다. 각 장면의 표시 시간을 따로 정할 수 있습니다.
+                  </p>
+                  {(slideshowConfig?.slides || []).map((slide) => (
+                    <label className="alert-settings-row alert-settings-slide-row" key={slide.id}>
+                      <span>
+                        <input
+                          type="checkbox"
+                          aria-label={`${MONITORING_SLIDE_LABELS[slide.id] || slide.id} 장면 사용`}
+                          checked={Boolean(slide.enabled)}
+                          onChange={(e) => onSlideshowConfigChange?.({
+                            slides: (slideshowConfig?.slides || []).map((item) => (
+                              item.id === slide.id ? { ...item, enabled: e.target.checked } : item
+                            )),
+                          })}
+                        />
+                        {" "}{MONITORING_SLIDE_LABELS[slide.id] || slide.id}
+                      </span>
+                      <span className="alert-settings-inline-actions">
+                        <input
+                          type="number"
+                          aria-label={`${MONITORING_SLIDE_LABELS[slide.id] || slide.id} 머무는 시간(초)`}
+                          min={5}
+                          max={3600}
+                          value={slide.durationSec ?? 30}
+                          disabled={!slide.enabled}
+                          onChange={(e) => onSlideshowConfigChange?.({
+                            slides: (slideshowConfig?.slides || []).map((item) => (
+                              item.id === slide.id ? { ...item, durationSec: Number(e.target.value) } : item
+                            )),
+                          })}
+                        />
+                        초
+                      </span>
+                    </label>
+                  ))}
+                  <p className="alert-settings-help">
+                    기상정보는 선택한 공항의 항공기상청 공문 원문입니다. 자료가 없으면 해당 장면은 건너뜁니다.
+                  </p>
+                </fieldset>
+
+                <fieldset className="alert-settings-subsection">
+                  <legend>표시 시간</legend>
+                  <label className="alert-settings-row">
+                    <span>시작 시각</span>
+                    <input
+                      type="time"
+                      value={slideshowConfig?.startTime || "00:00"}
+                      onChange={(e) => onSlideshowConfigChange?.({ startTime: e.target.value })}
+                    />
+                  </label>
+                  <label className="alert-settings-row">
+                    <span>종료 시각</span>
+                    <input
+                      type="time"
+                      value={slideshowConfig?.endTime || "23:59"}
+                      onChange={(e) => onSlideshowConfigChange?.({ endTime: e.target.value })}
+                    />
+                  </label>
+                  {!validateMonitoringSlideshowConfig(slideshowConfig || {}).valid && (
+                    <p className="alert-settings-help">
+                      {Object.values(validateMonitoringSlideshowConfig(slideshowConfig || {}).errors).join(" ")}
+                    </p>
+                  )}
+                </fieldset>
+
+                <fieldset className="alert-settings-subsection">
+                  <legend>안내 이미지</legend>
+                  <label className="alert-settings-row">
+                    <span>이미지 선택 (PNG/JPEG/WebP)</span>
+                    <input
+                      type="file"
+                      aria-label="표시할 이미지 (PNG/JPEG/WebP)"
+                      accept={MONITORING_SLIDE_IMAGE_TYPES.join(",")}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) onSlideImageChoose?.(file)
+                        e.target.value = ""
+                      }}
+                    />
+                  </label>
+                  {slideshowImageInfo && (
+                    <div className="alert-settings-row">
+                      <span>선택된 이미지: {slideshowImageInfo.name}</span>
+                      <button type="button" className="alert-settings-preview-btn" onClick={() => onSlideImageRemove?.()}>
+                        제거
+                      </button>
+                    </div>
+                  )}
+                </fieldset>
+
+                <details className="alert-settings-advanced">
+                  <summary>고급 설정</summary>
+                  <label className="alert-settings-row">
+                    <span>전환 효과</span>
+                    <select
+                      value={slideshowConfig?.transitionEffect || "fade"}
+                      onChange={(e) => onSlideshowConfigChange?.({ transitionEffect: e.target.value })}
+                    >
+                      <option value="fade">페이드 (부드럽게 전환)</option>
+                      <option value="slide">슬라이드 (밀려서 전환)</option>
+                    </select>
+                  </label>
+                  <label className="alert-settings-row">
+                    <span>전환 애니메이션 속도(ms)</span>
+                    <input
+                      type="number"
+                      min={100}
+                      max={2000}
+                      step={50}
+                      value={slideshowConfig?.transitionDurationMs ?? 1000}
+                      onChange={(e) => onSlideshowConfigChange?.({ transitionDurationMs: Number(e.target.value) })}
+                    />
+                  </label>
+                </details>
 
                 {slideshowPersistenceNotice && (
                   <p className="alert-settings-help">{slideshowPersistenceNotice}</p>

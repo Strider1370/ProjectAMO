@@ -17,7 +17,7 @@ function MonitoringMap({
   onStopSlideshow,
   slideshowStatusLabel = null,
   slideshowEffect = 'fade',
-  slideshowDurationMs = 350,
+  slideshowDurationMs = 1000,
   highlightZones = {},
   canvasScale = null,
 }) {
@@ -93,7 +93,13 @@ function MonitoringMap({
         airports={weather?.airports || []}
         metarData={mapMetarData}
         echoMeta={weather?.echoMeta}
+        wissdomMeta={weather?.wissdomMeta || null}
         qpfMeta={weather?.qpfMeta || null}
+        hsrMeta={weather?.hsrMeta || null}
+        hciMeta={weather?.hciMeta || null}
+        satVisibleMeta={weather?.satVisibleMeta || null}
+        echoTopMeta={weather?.echoTopMeta || null}
+        rainviewerMeta={weather?.rainviewerMeta || null}
         satMeta={weather?.satMeta}
         convectiveMeta={weather?.convectiveMeta || null}
         sigmetData={mapSigmetData}
@@ -103,10 +109,11 @@ function MonitoringMap({
         sigwxLowHistoryData={weather?.sigwxLowHistory}
         sigwxFrontMeta={weather?.sigwxFrontMeta || weather?.sigwxLowFronts}
         sigwxCloudMeta={weather?.sigwxCloudMeta || weather?.sigwxLowClouds}
+        notamData={weather?.notam || null}
         selectedAirport={selectedAirport}
         onAirportSelect={onAirportSelect}
         onStyleReady={() => setMapStyleReady(true)}
-        enableWindOverlay={false}
+        enableWindOverlay={true}
         initialMetVisibility={{ radar: true, lightning: true }}
       />
       {!mapStyleReady && (

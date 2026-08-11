@@ -26,10 +26,9 @@ function formatValidTime(value, tz = "UTC") {
   return `${day}일 ${hour}시 ${minute}분`;
 }
 
-export default function WarningList({ warningData, kmaSpecialWarningData, groundOverviewData, icao, warningTypes, dashboardMode = "ops", tz = "UTC" }) {
+export default function WarningList({ warningData, kmaSpecialWarningData, icao, warningTypes, dashboardMode = "ops", tz = "UTC" }) {
   const block = warningData?.airports?.[icao];
   const kmaBlock = kmaSpecialWarningData?.airports?.[icao];
-  const overview = groundOverviewData?.airports?.[icao] || null;
   const list = useMemo(() => buildWarningEntries({
     airportWarnings: block?.warnings,
     kmaWarnings: kmaBlock?.warnings,
@@ -196,21 +195,7 @@ export default function WarningList({ warningData, kmaSpecialWarningData, ground
   const incomingPage = normalizedPages[incomingPageIndex] || activePage;
 
   if (list.length === 0) {
-    if (dashboardMode === "ground" && overview?.summary) {
-      return (
-        <section className="warning-banner warning-banner--ok warning-banner--overview" role="region" aria-label="공항경보">
-          <div className="warning-banner-side">
-            <span className="warning-banner-icon">&#9788;</span>
-            <span className="warning-banner-label">일기개황</span>
-          </div>
-          <div className="warning-banner-text warning-banner-text--overview">
-            <div className="warning-banner-overview-copy">
-              <span className="warning-banner-overview-summary">{overview.summary}</span>
-            </div>
-          </div>
-        </section>
-      );
-    }
+    if (dashboardMode === "ground") return null;
     return (
       <section className="warning-banner warning-banner--ok" role="region" aria-label="공항경보">
         <div className="warning-banner-side warning-banner-side--single">

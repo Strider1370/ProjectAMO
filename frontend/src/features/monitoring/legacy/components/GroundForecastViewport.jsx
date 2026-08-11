@@ -9,10 +9,11 @@ export default function GroundForecastViewport({ groundForecastData, icao }) {
   const airport = groundForecastData?.airports?.[icao] || null
   useEffect(() => scheduleGroundForecastAdvance(() => setActiveView((view) => nextGroundForecastView(view)), window), [activeView])
   const active = (view) => activeView === view
+  const title = activeView === GROUND_FORECAST_VIEW.HOURLY ? '시간별 예보' : '주간 예보'
   return <section className="ground-forecast-viewport panel" role="region" aria-label="지상 예보" style={{ '--ground-forecast-cycle-ms': `${GROUND_FORECAST_CYCLE_MS}ms`, '--ground-forecast-fade-ms': `${GROUND_FORECAST_FADE_MS}ms` }}>
     <header className="ground-forecast-viewport-header">
-      {Object.values(GROUND_FORECAST_VIEW).map((view) => <span key={view} className={`ground-forecast-title${active(view) ? ' is-active' : ''}`} data-forecast-title={view} aria-current={active(view) ? 'true' : 'false'}><small>{active(view) ? '현재' : '다음'}</small>{view === 'hourly' ? '시간별 예보' : '주간 예보'}</span>)}
-      <span data-forecast-metadata>{formatGroundForecastMeta(airport)}</span>
+      <span className="ground-forecast-title is-active" data-forecast-title={activeView} aria-current="true">{title}</span>
+      <span data-forecast-metadata>{formatGroundForecastMeta(airport, icao, activeView)}</span>
     </header>
     <div className="ground-forecast-progress-track"><span key={activeView} data-forecast-progress /></div>
     <div className={`ground-forecast-layer${active('hourly') ? ' is-active' : ''}`} data-forecast-view="hourly" aria-hidden={active('hourly') ? 'false' : 'true'} inert={active('hourly') ? undefined : 'true'}><GroundHourlyStrip airport={airport} /></div>

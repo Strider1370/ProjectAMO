@@ -12,3 +12,22 @@ test('monitoring map keeps an accessible local loading status until Mapbox style
   assert.match(css, /\.monitoring-map-loading\s*\{[\s\S]*?pointer-events:\s*none;[\s\S]*?z-index:\s*5;/)
   assert.match(css, /\.monitoring-mapbox-panel:has\(\.map-view-error\) \.monitoring-map-loading\s*\{[\s\S]*?display:\s*none;/)
 })
+
+test('monitoring map forwards every weather overlay dataset supported by MapView', () => {
+  for (const prop of [
+    'wissdomMeta',
+    'qpfMeta',
+    'hsrMeta',
+    'hciMeta',
+    'satVisibleMeta',
+    'echoTopMeta',
+    'rainviewerMeta',
+    'satMeta',
+    'convectiveMeta',
+    'notamData',
+  ]) {
+    const weatherProp = prop === 'notamData' ? 'notam' : prop
+    assert.match(source, new RegExp(`${prop}=\\{weather\\?\\.${weatherProp}`))
+  }
+  assert.match(source, /enableWindOverlay=\{true\}/)
+})

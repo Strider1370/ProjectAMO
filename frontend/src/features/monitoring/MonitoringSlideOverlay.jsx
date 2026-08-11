@@ -1,10 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-
-const STATUS_LABELS = {
-  waiting: '대기 중',
-  active: '전환 중',
-  ended: '오늘 종료',
-}
+import { useLayoutEffect, useRef, useState } from 'react'
 
 // A two-layer stage rather than a single sliding panel.
 //
@@ -20,16 +14,13 @@ function MonitoringSlideOverlay({
   slideId = 'live',
   content = null,
   scope,
-  onStop,
-  statusLabel,
   effect = 'fade',
-  durationMs = 350,
+  durationMs = 1000,
 }) {
-  const label = statusLabel || STATUS_LABELS[scope] || null
   const [leaving, setLeaving] = useState(null)
   const shownRef = useRef({ id: slideId, content })
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previous = shownRef.current
     shownRef.current = { id: slideId, content }
     if (previous.id === slideId) return undefined
@@ -44,12 +35,13 @@ function MonitoringSlideOverlay({
   }, [slideId, durationMs])
 
   const showing = slideId !== 'live'
+  const visible = showing || Boolean(leaving)
 
   return (
     <div
-      className={`monitoring-slide-overlay monitoring-slide-overlay--${scope} monitoring-slide-overlay--effect-${effect}${showing ? ' is-visible' : ''}`}
+      className={`monitoring-slide-overlay monitoring-slide-overlay--${scope} monitoring-slide-overlay--effect-${effect}${visible ? ' is-visible' : ''}`}
       style={{ '--monitoring-slide-transition-ms': `${durationMs}ms` }}
-      aria-hidden={!showing}
+      aria-hidden={!visible}
     >
       {leaving && (
         <div className="monitoring-slide-layer is-leaving" key={leaving.id}>
@@ -59,19 +51,6 @@ function MonitoringSlideOverlay({
       {content && (
         <div className="monitoring-slide-layer is-entering" key={slideId}>
           {content}
-        </div>
-      )}
-      {showing && (
-        <div className="monitoring-slide-overlay-controls">
-          {label && <span className="monitoring-slide-overlay-status">{label}</span>}
-          <button
-            type="button"
-            className="monitoring-slide-overlay-exit"
-            onClick={onStop}
-            aria-label="화면 전환 종료"
-          >
-            종료
-          </button>
         </div>
       )}
     </div>

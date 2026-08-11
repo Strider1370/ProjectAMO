@@ -96,6 +96,15 @@ function overlayKey(entry) {
   ].join('|')
 }
 
+function graphicsKey(entry) {
+  if (!entry) return null
+  return [
+    entry.tm || '',
+    entry.content_hash || entry.hash || '',
+    entry.updated_at || entry.updatedAt || '',
+  ].join('|')
+}
+
 export function buildMonitoringSnapshot(data) {
   return {
     metar: data.metar?.content_hash || null,
@@ -116,7 +125,11 @@ export function buildMonitoringSnapshot(data) {
     environment: data.environment?.content_hash || null,
     airportInfo: data.airportInfo?.content_hash || null,
     echo: data.echoMeta?.tm || null,
+    wissdom: graphicsKey(data.wissdomMeta),
+    qpf: graphicsKey(data.qpfMeta),
+    rainviewer: graphicsKey(data.rainviewerMeta),
     satellite: data.satMeta?.tm || null,
+    convective: graphicsKey(data.convectiveMeta),
     sigwxFrontMeta: overlayKey(data.sigwxFrontMeta),
     sigwxCloudMeta: overlayKey(data.sigwxCloudMeta),
   }
@@ -130,7 +143,11 @@ export function detectMonitoringSnapshotChanges(snapshot, saved) {
   const groundForecast = snapshot?.groundForecast || snapshot?.ground_forecast
   const groundOverview = snapshot?.groundOverview || snapshot?.ground_overview
   const echo = snapshot?.echoMeta || snapshot?.echo
+  const wissdom = snapshot?.wissdomMeta || snapshot?.wissdom
+  const qpf = snapshot?.qpfMeta || snapshot?.qpf
+  const rainviewer = snapshot?.rainviewerMeta || snapshot?.rainviewer
   const satellite = snapshot?.satMeta || snapshot?.satellite
+  const convective = snapshot?.convectiveMeta || snapshot?.convective
 
   return {
     metar: hashOf(snapshot?.metar) !== saved.metar,
@@ -151,7 +168,11 @@ export function detectMonitoringSnapshotChanges(snapshot, saved) {
     environment: hashOf(snapshot?.environment) !== saved.environment,
     airportInfo: hashOf(snapshot?.airportInfo) !== saved.airportInfo,
     echoMeta: tmOf(echo) !== saved.echo,
+    wissdomMeta: graphicsKey(wissdom) !== saved.wissdom,
+    qpfMeta: graphicsKey(qpf) !== saved.qpf,
+    rainviewerMeta: graphicsKey(rainviewer) !== saved.rainviewer,
     satMeta: tmOf(satellite) !== saved.satellite,
+    convectiveMeta: graphicsKey(convective) !== saved.convective,
     sigwxFrontMeta: overlayKey(snapshot?.sigwxFrontMeta) !== saved.sigwxFrontMeta,
     sigwxCloudMeta: overlayKey(snapshot?.sigwxCloudMeta) !== saved.sigwxCloudMeta,
   }
@@ -165,7 +186,11 @@ export function nextMonitoringSnapshot(snapshot, changedData, saved) {
   const groundForecast = snapshot?.groundForecast || snapshot?.ground_forecast
   const groundOverview = snapshot?.groundOverview || snapshot?.ground_overview
   const echo = snapshot?.echoMeta || snapshot?.echo
+  const wissdom = snapshot?.wissdomMeta || snapshot?.wissdom
+  const qpf = snapshot?.qpfMeta || snapshot?.qpf
+  const rainviewer = snapshot?.rainviewerMeta || snapshot?.rainviewer
   const satellite = snapshot?.satMeta || snapshot?.satellite
+  const convective = snapshot?.convectiveMeta || snapshot?.convective
 
   return {
     metar: changedData.metar?.content_hash ?? hashOf(snapshot?.metar) ?? saved.metar,
@@ -186,7 +211,11 @@ export function nextMonitoringSnapshot(snapshot, changedData, saved) {
     environment: changedData.environment?.content_hash ?? hashOf(snapshot?.environment) ?? saved.environment,
     airportInfo: changedData.airportInfo?.content_hash ?? hashOf(snapshot?.airportInfo) ?? saved.airportInfo,
     echo: changedData.echoMeta?.tm ?? tmOf(echo) ?? saved.echo,
+    wissdom: graphicsKey(changedData.wissdomMeta) ?? graphicsKey(wissdom) ?? saved.wissdom,
+    qpf: graphicsKey(changedData.qpfMeta) ?? graphicsKey(qpf) ?? saved.qpf,
+    rainviewer: graphicsKey(changedData.rainviewerMeta) ?? graphicsKey(rainviewer) ?? saved.rainviewer,
     satellite: changedData.satMeta?.tm ?? tmOf(satellite) ?? saved.satellite,
+    convective: graphicsKey(changedData.convectiveMeta) ?? graphicsKey(convective) ?? saved.convective,
     sigwxFrontMeta: overlayKey(changedData.sigwxFrontMeta) ?? overlayKey(snapshot?.sigwxFrontMeta) ?? saved.sigwxFrontMeta,
     sigwxCloudMeta: overlayKey(changedData.sigwxCloudMeta) ?? overlayKey(snapshot?.sigwxCloudMeta) ?? saved.sigwxCloudMeta,
   }
