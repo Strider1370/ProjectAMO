@@ -156,6 +156,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     vfrLegs = [],
     importCandidates,
     importNotices,
+    roundTripPending,
     importError,
     navpointsById,
     hoveredWpInfo,
@@ -390,6 +391,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         <RouteImportChooser candidates={importCandidates} onSelect={applyImportedPath} onCancel={cancelImportChoice} />
       )}
       {/* key에 message를 붙인다 — fix-moved는 지점마다 하나씩 나올 수 있어 code만으로는 겹친다. */}
+      {roundTripPending && (
+        <MessageBar intent="warning">
+          <MessageBarBody>{'출발·도착이 같습니다 — 지도에서 돌아올 지점을 눌러주세요.'}</MessageBarBody>
+        </MessageBar>
+      )}
       {importNotices.map((notice) => (
         <MessageBar key={`${notice.code}:${notice.message}`} intent={notice.level === 'action' ? 'warning' : 'info'}>
           <MessageBarBody>{notice.message}</MessageBarBody>

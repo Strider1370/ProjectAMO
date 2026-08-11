@@ -124,6 +124,13 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   isComparisonRef.current = workflowStep === 'compare' && routeDesigns.length > 1
   mapInteractionModeRef.current = workflowStep === 'settings' ? mapInteractionMode : null
 
+  // 장주·훈련·유람 비행은 뜬 곳으로 돌아온다. 이때 자동 직선 경로는 길이가 0이라
+  // 만들 수 없으므로, 선회점을 하나 받을 때까지 경로를 비워두고 안내를 띄운다.
+  const isRoundTrip = routeForm.flightRule === 'VFR'
+    && !!routeForm.departureAirport
+    && routeForm.departureAirport === routeForm.arrivalAirport
+  // 선회점이 아직 없는 동안만 안내를 띄운다. 하나라도 찍히면 평소 VFR 경로와 같다.
+  const roundTripPending = isRoundTrip && !routeEditor.preview && !routeResult
   const isFirInMode = routeForm.flightRule === 'IFR' && routeForm.departureAirport === FIR_IN_AIRPORT
   const isFirExitMode = routeForm.flightRule === 'IFR' && routeForm.arrivalAirport === FIR_EXIT_AIRPORT
 
@@ -1085,7 +1092,31 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   async function proposeMapPoint(input) {
-    if (workflowStep !== 'settings' || routeForm.flightRule !== 'IFR') return
+    if (workflowStep !== 'settings') return
+    // VFR 왕복(출발=도착)은 자동 직선 경로가 없다 — 길이 0이라 만들 수가 없다. 그래서
+    // 첫 경유점만 지도에서 받아 경로를 띄운다. 그 뒤로는 평소처럼 선을 끌어 편집한다.
+    if (routeForm.flightRule === 'VFR') {
+      if (!roundTripPending) return
+      try {
+        const coordinates = Array.isArray(input) ? input : input?.coordinates?.at(-1)
+        if (!Array.isArray(coordinates)) throw new Error('지도 좌표를 확인할 수 없습니다.')
+        const [lon, lat] = coordinates
+        // 지역 비행의 선회점은 공표된 FIX가 아닌 경우가 대부분이다(호수, 마을, 훈련구역).
+        // IFR처럼 가까운 FIX로 끌어붙이지 않고 누른 자리를 그대로 쓴다.
+        const text = formatVfrDraftText({
+          departureAirport: routeForm.departureAirport,
+          arrivalAirport: routeForm.arrivalAirport,
+          enroute: { terms: [{ kind: 'coordinate', coordinate: { lon, lat } }], legIntents: [] },
+        })
+        await previewEditorRoute(text)
+        setRouteInteractionMode(null)
+        setRouteError(null)
+      } catch (error) {
+        setRouteError(error.message)
+      }
+      return
+    }
+    if (routeForm.flightRule !== 'IFR') return
     try {
       const drawn = input?.type === 'draw' ? input.coordinates ?? [] : null
       if (drawn?.length > 1) {
@@ -1236,9 +1267,21 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setRouteError(null)
   }
 
+  // 왕복 안내가 뜨는 동안은 지도 클릭을 바로 받는다 — 안내는 "지도를 눌러 찍으세요"인데
+  // 버튼을 한 번 더 누르게 하면 안내와 동작이 어긋난다.
+  useEffect(() => {
+    setRouteInteractionMode(roundTripPending ? 'click-add' : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundTripPending])
+
   function setRouteInteractionMode(mode) {
     setMapInteractionMode(mode)
     mapInteractionModeRef.current = mode
+    if (mode === 'click-add' && isRoundTrip) {
+      // VFR 선회점은 공표된 FIX일 필요가 없다 — 안내가 FIX를 요구하면 안 된다.
+      mapInteractionStatusRef.current?.('돌아올 지점을 지도에서 누르세요')
+      return
+    }
     mapInteractionStatusRef.current?.({
       'click-add': '지도 클릭 추가 모드 — 항로 FIX를 클릭하세요',
       draw: '그리기 모드 — 항로 FIX를 지나는 선을 그리세요',
@@ -1368,6 +1411,13 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     if (key === lastVfrKeyRef.current) return
     lastVfrKeyRef.current = key
     const requestId = ++vfrPreviewRequestRef.current
+    // 왕복(출발=도착)은 직선을 그릴 수 없다 — 같은 점을 잇는 길이 0짜리 경로다.
+    // 빈 편집기만 세워두고, 조종사가 지도에서 선회점을 찍으면 그때 경로가 생긴다.
+    if (dep === arr) {
+      setRouteEditor(createRouteEditor({ routeForm: { ...routeForm, departureAirport: dep, arrivalAirport: arr }, rawText: '' }))
+      setRouteError(null)
+      return
+    }
     const text = formatVfrDraftText({ departureAirport: dep, arrivalAirport: arr })
     const editor = createRouteEditor({ routeForm: { ...routeForm, departureAirport: dep, arrivalAirport: arr }, rawText: text })
     setRouteEditor(editor)
@@ -1849,6 +1899,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       importNotices,
       importedPreview,
       importError,
+      roundTripPending,
       hoveredWpInfo,
       sidOptions,
       availableSidIds,
