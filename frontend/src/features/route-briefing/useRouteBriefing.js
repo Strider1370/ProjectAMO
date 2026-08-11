@@ -14,7 +14,8 @@ import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRou
 import { normalizeRouteSnapshot } from './lib/routeStore.js'
 import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
-import { parseRouteFile, extractRoutePaths, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './lib/routeImport.js'
+import { parseRouteFile, extractRoutePaths, MAX_IMPORT_BYTES } from './lib/routeImport.js'
+import { resolveImportedRoute } from './lib/routeImportResolve.js'
 import {
   FIR_EXIT_AIRPORT,
   FIR_IN_AIRPORT,
@@ -79,8 +80,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const [vfrLegTerrain, setVfrLegTerrain] = useState({})
   const [, setVfrUndoStack] = useState([])
   const [importCandidates, setImportCandidates] = useState([]) // 다중 경로 파일일 때 사용자 선택 대기 목록
-  const [importWarning, setImportWarning] = useState(null)
+  const [importNotices, setImportNotices] = useState([])
+  const [importedPreview, setImportedPreview] = useState(null) // 공항 미확정 상태에서 지도에 그릴 원본 선
   const [importError, setImportError] = useState(null)
+  const pendingImportTermsRef = useRef(null)
   // 되돌리기: 패널에서의 경유점 편집(추가/삭제/순서/전체고도) 직전 스냅샷 스택.
   const [hoveredWpInfo, setHoveredWpInfo] = useState(null)
   const [sidOptions, setSidOptions] = useState([])
@@ -230,11 +233,17 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     selectedIap: appliedIap,
     navpointsById,
     baselinePreview,
-    pendingRouteResult: routeDraftResult,
+    // 공항 미확정 상태로 불러온 경로는 아직 routeResult가 없다. 이미 있는 "확정
+    // 전 미리보기" 통로에 원본 선만 실어 보내면 지도 쪽은 손대지 않아도 된다.
+    // flightRule이 없으므로 MapView의 VFR 경유점 분기는 자연히 건너뛴다 — 선만
+    // 그려지고 경유점 아이콘은 나오지 않는데, 공항 미확정 상태에서는 그게 맞다.
+    pendingRouteResult: importedPreview
+      ? { previewGeojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: importedPreview }] } }
+      : routeDraftResult,
     pendingSid: selectedSid,
     pendingStar: selectedStar,
     pendingIap: selectedIap,
-  }), [activeAppliedDesignId, appliedIap, appliedProcedures.sid, appliedProcedures.star, appliedVfrWaypoints, baselinePreview, draftVfrWaypoints, hiddenRouteDesignIds, navpointsById, routeDesigns, routeDraftResult, routeForm, routeResult, selectedIap, selectedRouteDesignId, selectedSid, selectedStar, workflowStep])
+  }), [activeAppliedDesignId, appliedIap, appliedProcedures.sid, appliedProcedures.star, appliedVfrWaypoints, baselinePreview, draftVfrWaypoints, hiddenRouteDesignIds, importedPreview, navpointsById, routeDesigns, routeDraftResult, routeForm, routeResult, selectedIap, selectedRouteDesignId, selectedSid, selectedStar, workflowStep])
 
   useEffect(() => {
     vfrWaypointsRef.current = draftVfrWaypoints.length >= 2 ? draftVfrWaypoints : appliedVfrWaypoints
@@ -1507,71 +1516,110 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 덮어쓰지 않는다: lastVfrKeyRef 선점 → clearRouteDisplay → routeForm → 결과 세팅.
   async function applyImportedPath(candidate) {
     setImportError(null)
+    setImportCandidates([])
     try {
-      const simplified = simplifyRoute(candidate.coords, 20)
-      const { departureAirport, arrivalAirport } = snapEndpointsToAirports(simplified, airports, 5)
-      // RDP 솎기가 점을 실제로 줄이면(트랙처럼 조밀한 입력) 이름 배열의 인덱스가 더는
-      // 좌표와 맞지 않는다 — 원본 개수 그대로 유지된 경우(실제 EFB route가 보통 이 경우)
-      // 에만 이름을 전달한다.
-      const waypointNames = candidate.names && simplified.length === candidate.coords.length ? candidate.names : null
-      if (!departureAirport || !arrivalAirport) throw new Error('가져온 경로의 양끝 공항을 확인하세요.')
-      const terms = simplified.slice(1, -1).map(([lon, lat], index) => {
-        const name = waypointNames?.[index + 1]
-        return name ? { kind: 'fix', id: name } : { kind: 'coordinate', coordinate: { lon, lat } }
-      })
-      const importedForm = { ...routeForm, flightRule: 'VFR', departureAirport, arrivalAirport }
-      const importedText = formatVfrDraftText({ departureAirport, arrivalAirport, enroute: { terms, legIntents: Array.from({ length: Math.max(0, terms.length - 1) }, () => ({ kind: 'dct' })) } })
-      const preview = await buildEditorPreview(createRouteEditor({ routeForm: importedForm, rawText: importedText }), importedText)
-      const routeGeometry = getCurrentRouteLineString({ routeResult: preview.result, vfrWaypoints: buildVfrWaypointsFromRouteResult(preview.result, airports) })
-      const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: preview.result })
+      const navpoints = await loadNavpoints()
+      const resolved = resolveImportedRoute({ candidate, airports, navpoints })
+      setImportNotices(resolved.notices)
+      setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: resolved.coordinates, maxZoom: 8 })
 
-      lastVfrKeyRef.current = `${departureAirport ?? ''}>${arrivalAirport ?? ''}`
-      clearRouteDisplay()
-      applyBaseRoute(createRouteDesign({
-        routeForm: importedForm,
-        procedures: { sid: null, star: null, iapKey: null },
-        routeResult: preview.result,
-        routeModel,
-        routeExposure: { trigger: 'unavailable', hazards: [] },
-        enroute: preview.editor.enroute,
-        routeString: preview.editor.rawText,
-      }))
-      setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: simplified, maxZoom: 8 })
-
-      const warnings = []
-      const [firstLon, firstLat] = simplified[0]
-      const [lastLon, lastLat] = simplified[simplified.length - 1]
-      if (!isWithinKoreaFir(firstLon, firstLat) || !isWithinKoreaFir(lastLon, lastLat)) {
-        warnings.push('경로가 한국 정보구역 밖 — 기상이 비어 있을 수 있습니다.')
+      const importedForm = {
+        ...routeForm,
+        departureAirport: resolved.departureAirport ?? '',
+        arrivalAirport: resolved.arrivalAirport ?? '',
       }
-      setImportWarning(warnings.join(' ') || null)
+      setRouteForm(importedForm)
+
+      // 공항이 아직 없으면 경로를 만들 수 없다. 파일의 선만 먼저 그려서 조종사가
+      // 무엇이 들어왔는지 보게 하고, 공항이 채워지면 아래 effect가 이어받는다.
+      if (!resolved.departureAirport || !resolved.arrivalAirport) {
+        setImportedPreview({ type: 'LineString', coordinates: resolved.coordinates })
+        pendingImportTermsRef.current = resolved.terms
+        return
+      }
+
+      setImportedPreview(null)
+      pendingImportTermsRef.current = null
+      await commitImportedRoute(importedForm, resolved.terms)
     } catch (err) {
       setImportError(err.message)
     }
-    setImportCandidates([])
   }
+
+  // 불러온 terms를 편집기에 얹는 부분. 공항이 처음부터 있었을 때와, 나중에
+  // 조종사가 고른 뒤에 둘 다 여기를 지난다. flightRule을 고정하지 않는다 —
+  // IFR 탭에서 불러오면 IFR 경로가 되어야 한다.
+  async function commitImportedRoute(form, terms) {
+    const legIntents = Array.from({ length: Math.max(0, terms.length - 1) }, () => ({ kind: 'dct' }))
+    const enroute = { terms, legIntents }
+    const importedText = form.flightRule === 'VFR'
+      ? formatVfrDraftText({ departureAirport: form.departureAirport, arrivalAirport: form.arrivalAirport, enroute })
+      : formatManualRouteString({ terms, legIntents })
+    const preview = await buildEditorPreview(createRouteEditor({ routeForm: form, rawText: importedText }), importedText)
+    const routeGeometry = getCurrentRouteLineString({
+      routeResult: preview.result,
+      vfrWaypoints: preview.result.flightRule === 'VFR' ? buildVfrWaypointsFromRouteResult(preview.result, airports) : [],
+    })
+    const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: preview.result })
+
+    lastVfrKeyRef.current = `${form.departureAirport ?? ''}>${form.arrivalAirport ?? ''}`
+    clearRouteDisplay()
+    applyBaseRoute(createRouteDesign({
+      routeForm: form,
+      procedures: { sid: null, star: null, iapKey: null },
+      routeResult: preview.result,
+      routeModel,
+      routeExposure: { trigger: 'unavailable', hazards: [] },
+      enroute: preview.editor.enroute,
+      routeString: preview.editor.rawText,
+    }))
+  }
+
+  // 공항 미확정 상태로 불러온 경로: 조종사가 출발·도착을 다 고르는 순간 이어서
+  // 경로를 만든다. 별도 실행 버튼을 두지 않는다.
+  useEffect(() => {
+    const terms = pendingImportTermsRef.current
+    if (!terms || !routeForm.departureAirport || !routeForm.arrivalAirport) return
+    pendingImportTermsRef.current = null
+    setImportedPreview(null)
+    commitImportedRoute(routeForm, terms).catch((err) => setImportError(err.message))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeForm.departureAirport, routeForm.arrivalAirport])
 
   // 파일 선택 → 파싱 → 후보 1개면 바로 적용, 여러 개면 선택 대기(importCandidates).
   async function importRouteFromFile(file) {
     setImportError(null)
-    setImportWarning(null)
+    setImportNotices([])
+    setImportedPreview(null)
+    pendingImportTermsRef.current = null
     if (!file) return
+    if (file.size > MAX_IMPORT_BYTES) {
+      setImportError('파일이 너무 큽니다 (10MB 이하).')
+      return
+    }
+    let candidates = []
+    let droppedTotal = 0
     try {
       const text = await file.text()
       const parsed = parseRouteFile(file.name, text)
-      const { candidates } = extractRoutePaths(parsed)
-      if (candidates.length === 0) {
-        setImportError('경로 점이 부족합니다.')
-        return
-      }
-      if (candidates.length === 1) {
-        applyImportedPath(candidates[0])
-        return
-      }
-      setImportCandidates(candidates)
-    } catch (err) {
-      setImportError(err.message || '파일을 읽을 수 없습니다 (GeoJSON/GPX/KML 확인)')
+      const extracted = extractRoutePaths(parsed)
+      candidates = extracted.candidates
+      droppedTotal = extracted.droppedTotal
+    } catch {
+      setImportError('파일을 해석할 수 없습니다. GeoJSON·GPX·KML·FPL 파일인지 확인하세요.')
+      return
     }
+    if (candidates.length === 0) {
+      setImportError(droppedTotal > 0
+        ? '좌표 값이 범위를 벗어났습니다. 파일이 손상되었을 수 있습니다.'
+        : '경로로 쓸 지점이 2개 이상 필요합니다.')
+      return
+    }
+    if (candidates.length === 1) {
+      applyImportedPath(candidates[0])
+      return
+    }
+    setImportCandidates(candidates)
   }
 
   function cancelImportChoice() {
@@ -1795,7 +1843,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       vfrWaypoints: appliedVfrWaypoints,
       vfrLegs,
       importCandidates,
-      importWarning,
+      importNotices,
+      importedPreview,
       importError,
       hoveredWpInfo,
       sidOptions,

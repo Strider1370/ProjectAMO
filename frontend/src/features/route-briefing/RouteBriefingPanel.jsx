@@ -155,7 +155,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     vfrWaypoints,
     vfrLegs = [],
     importCandidates,
-    importWarning,
+    importNotices,
     importError,
     navpointsById,
     hoveredWpInfo,
@@ -350,7 +350,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       <input
         ref={importFileInputRef}
         type="file"
-        accept=".geojson,.json,.gpx,.kml"
+        accept=".geojson,.json,.gpx,.kml,.fpl"
         data-testid="route-import-file"
         style={{ display: 'none' }}
         onChange={handleImportFileChange}
@@ -377,7 +377,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               onDragLeave={() => setIsDragOver(false)}
               onDrop={handleImportDrop}
             >
-              <span className="rb-import-dropzone-text">{'GeoJSON · GPX · KML 파일을 여기에 드래그하세요'}</span>
+              <span className="rb-import-dropzone-text">{'GeoJSON · GPX · KML · FPL 파일을 여기에 드래그하세요'}</span>
             </div>
           </DialogContent>
         </DialogBody>
@@ -389,7 +389,12 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       {importCandidates.length > 0 && (
         <RouteImportChooser candidates={importCandidates} onSelect={applyImportedPath} onCancel={cancelImportChoice} />
       )}
-      {importWarning && <MessageBar intent="warning"><MessageBarBody>{importWarning}</MessageBarBody></MessageBar>}
+      {/* key에 message를 붙인다 — fix-moved는 지점마다 하나씩 나올 수 있어 code만으로는 겹친다. */}
+      {importNotices.map((notice) => (
+        <MessageBar key={`${notice.code}:${notice.message}`} intent={notice.level === 'action' ? 'warning' : 'info'}>
+          <MessageBarBody>{notice.message}</MessageBarBody>
+        </MessageBar>
+      ))}
       {importError && <MessageBar intent="error"><MessageBarBody>{importError}</MessageBarBody></MessageBar>}
     </>
   )
