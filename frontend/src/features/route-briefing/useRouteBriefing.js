@@ -617,7 +617,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setPendingContextChange(null)
     setHoveredWpInfo(null)
     setImportCandidates([])
-    setImportWarning(null)
+    setImportNotices([])
+    setImportedPreview(null)
+    pendingImportTermsRef.current = null
     setImportError(null)
     setAutoBriefingPending(false)
     autoSearchRef.current = false
