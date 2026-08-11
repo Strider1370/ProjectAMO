@@ -14,6 +14,10 @@ export const ROUTE_PREVIEW_LABEL = 'briefing-route-preview-label'
 export const ROUTE_PENDING_POINT = 'briefing-route-pending-point'
 export const ROUTE_PENDING_LABEL = 'briefing-route-pending-label'
 export const VFR_WP_CIRCLE = 'vfr-wp-circle'
+// 손가락 끝은 마우스 포인터보다 훨씬 뭉툭하다. 그려진 동그라미(반지름 7px)를 그대로
+// 짚게 하면 태블릿에서 거의 못 잡는다. 경로선이 이미 쓰는 방식(투명한 폭 20px 띠)과
+// 같게, 경유점에도 보이지 않는 잡기용 원을 깐다.
+export const VFR_WP_HIT = 'vfr-wp-hit'
 export const VFR_WP_LABEL = 'vfr-wp-label'
 export const PROC_PREVIEW_SOURCE = 'procedure-preview'
 export const PROC_SID_LINE = 'procedure-sid-line'
@@ -391,6 +395,14 @@ export function addProcedurePreviewLayers(map) {
 }
 
 export function addVfrWaypointLayers(map) {
+  // 보이는 동그라미보다 먼저 깔아 아래에 둔다 — 잡기 판정만 넓히고 그림은 그대로다.
+  if (!map.getLayer(VFR_WP_HIT)) {
+    map.addLayer({
+      id: VFR_WP_HIT, type: 'circle', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
+      filter: ['==', ['get', 'role'], 'vfr-waypoint'],
+      paint: { 'circle-radius': 20, 'circle-color': '#000', 'circle-opacity': 0 },
+    })
+  }
   if (!map.getLayer(VFR_WP_CIRCLE)) {
     map.addLayer({
       id: VFR_WP_CIRCLE, type: 'circle', source: ROUTE_PREVIEW_SOURCE, slot: 'top',
@@ -500,20 +512,28 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
   map.on('mousedown', ROUTE_DESIGN_LINE_HIT, beginDesignLineDrag)
   map.on('touchstart', ROUTE_DESIGN_LINE_HIT, (event) => beginDesignLineDrag(event, { snapToNavpoint: false }))
 
-  map.on('mousedown', VFR_WP_CIRCLE, (e) => {
-    e.preventDefault()
+  // 잡기 시작은 mousedown과 touchstart를 함께 듣는다. 마우스만 듣던 동안에는 태블릿
+  // 터치가 그대로 지도로 흘러가 지도만 움직였다. dragPan.disable()은 이미 여기서
+  // 부르므로, 시작만 잡히면 끄는 동작은 손가락에서도 그대로 동작한다.
+  const beginWaypointDrag = (e) => {
     const wpIdx = e.features[0].properties.wpIndex
+    // 끌 수 없는 점(출발·도착 공항)이면 터치를 삼키지 않고 지도로 넘긴다 — 안 그러면
+    // 공항 표시에 손가락이 닿는 것만으로 지도가 굳는다.
     if (vfrWaypointsRef.current[wpIdx]?.fixed) return
+    e.preventDefault()
     beforeDrag = vfrWaypointsRef.current
     draggingIdx = wpIdx
     map.dragPan.disable()
     map.getCanvas().style.cursor = 'grabbing'
-  })
+  }
+  map.on('mousedown', VFR_WP_HIT, beginWaypointDrag)
+  map.on('touchstart', VFR_WP_HIT, beginWaypointDrag)
 
-  map.on('mousedown', ROUTE_PREVIEW_LINE_HIT, (e) => {
+  const beginLineInsertDrag = (e) => {
     if (isComparisonRef.current) return
     if (vfrWaypointsRef.current.length < 2) return
-    const wpHit = map.queryRenderedFeatures(e.point, { layers: [VFR_WP_CIRCLE] })
+    // 넓힌 잡기 원이 이겨야 한다 — 경유점을 짚었는데 선 위에 새 점이 끼어들면 안 된다.
+    const wpHit = map.queryRenderedFeatures(e.point, { layers: [VFR_WP_HIT] })
     if (wpHit.length > 0) return
     e.preventDefault()
     const wps = vfrWaypointsRef.current
@@ -527,7 +547,9 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
     draggingIdx = insertIdx
     map.dragPan.disable()
     map.getCanvas().style.cursor = 'grabbing'
-  })
+  }
+  map.on('mousedown', ROUTE_PREVIEW_LINE_HIT, beginLineInsertDrag)
+  map.on('touchstart', ROUTE_PREVIEW_LINE_HIT, beginLineInsertDrag)
 
   map.on('mousemove', ROUTE_PREVIEW_LINE_HIT, () => {
     if (draggingIdx < 0) map.getCanvas().style.cursor = 'crosshair'
