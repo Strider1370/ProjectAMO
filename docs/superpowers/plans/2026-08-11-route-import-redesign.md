@@ -20,7 +20,7 @@
 - 임계값 상수는 전부 named export로 두고 하드코딩하지 않는다: `AIRPORT_SNAP_NM = 10`, `FIX_MATCH_NM = 5`, `SIMPLIFY_TOLERANCE_DEG = 1/60`, `MAX_UNNAMED_POINTS = 200`, `MAX_IMPORT_BYTES = 10 * 1024 * 1024`.
 - 불러오기는 스펙의 실패 3종(해석 불가 / 점 부족 / 좌표 범위 밖) 외에는 실패하지 않는다.
 - 경로 모델과 `routePlanner.js`의 출발·도착 계약은 건드리지 않는다.
-- 각 태스크는 `cd frontend && node --test <파일>`이 통과한 뒤에만 커밋한다.
+- 각 태스크는 `cd frontend && node --test <파일>` (디렉터리 경로는 이 Node 버전에서 동작하지 않는다 — 전체는 `npm test`)이 통과한 뒤에만 커밋한다.
 
 ## File Structure
 
@@ -969,7 +969,7 @@ import { resolveImportedRoute } from './lib/routeImportResolve.js'
 - [ ] **Step 6: 빌드와 기존 시험 확인**
 
 ```bash
-cd frontend && npm run build && node --test src/features/route-briefing/lib/
+cd frontend && npm run build && npm test
 ```
 Expected: 빌드 성공, 모든 단위 시험 PASS.
 
@@ -1185,7 +1185,7 @@ Task 1의 fixture는 Garmin FPL 규격에 맞춰 손으로 쓴 것이다. **EFB�
 
 ## 완료 기준
 
-- `cd frontend && node --test src/features/route-briefing/lib/` 전부 통과
+- `cd frontend && npm test` 전부 통과
 - `cd frontend && npm run build` 성공
 - `route-import.spec.mjs` 계약 시험 전부 통과, 출력으로 증거 제시
 - 스펙의 실패 3종 외에는 어떤 파일도 불러오기를 실패시키지 않음
