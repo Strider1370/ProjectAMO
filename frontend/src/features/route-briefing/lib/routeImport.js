@@ -266,6 +266,33 @@ export function simplifyRoute(coords, maxPts = 20) {
   return best.map((p) => [p.x, p.y])
 }
 
+// 1NM을 위도 기준 도 단위로 환산한 값. 경도 방향은 위도가 높을수록 실제 거리가
+// 짧아지지만, 한반도 위도대에서 그 차이는 솎기 판정을 바꿀 정도가 아니다.
+export const SIMPLIFY_TOLERANCE_DEG = 1 / 60
+export const MAX_UNNAMED_POINTS = 200
+
+// 이름이 붙은 지점은 조종사가 의도적으로 넣은 것이므로 개수와 무관하게 유지한다.
+// 이름이 하나도 없는 좌표 나열(궤적 기록, 이름 없는 KML/GeoJSON 선)만 솎는다.
+export function thinRoute({ coords, names = [], types = [] }) {
+  const originalCount = coords.length
+  const unchanged = { coords, names, types, originalCount, thinned: false }
+  if (names.some(Boolean)) return unchanged
+
+  const points = coords.map(([lon, lat]) => ({ x: lon, y: lat }))
+  let kept = simplify(points, SIMPLIFY_TOLERANCE_DEG, true).map((p) => [p.x, p.y])
+  if (kept.length > MAX_UNNAMED_POINTS) kept = simplifyRoute(coords, MAX_UNNAMED_POINTS)
+  if (kept.length === originalCount) return unchanged
+
+  // 이름·종류가 전부 null인 경우에만 여기 오므로 길이만 맞춰주면 된다.
+  return {
+    coords: kept,
+    names: kept.map(() => null),
+    types: kept.map(() => null),
+    originalCount,
+    thinned: true,
+  }
+}
+
 // 끝점이 공항 임계거리(NM) 안이면 그 ICAO, 아니면 null(호출부가 일반 지점으로 폴백).
 export function snapEndpointsToAirports(coords, airports, thresholdNm = 5) {
   function nearest([lon, lat]) {

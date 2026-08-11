@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 // 테스트 환경의 폴백은 여기서 심는다 — 그래야 xmldom이 운영 번들에 실리지 않는다.
 import { DOMParser } from '@xmldom/xmldom'
 globalThis.DOMParser ??= DOMParser
-import { parseRouteFile, extractRoutePaths, MAX_IMPORT_BYTES, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
+import { parseRouteFile, extractRoutePaths, MAX_IMPORT_BYTES, thinRoute, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
 
 const FPL_TEXT = readFileSync(fileURLToPath(new URL('../../../../test/fixtures/route-import/rksi-rkpk.fpl', import.meta.url)), 'utf8')
 
@@ -322,4 +322,38 @@ test('extractRoutePaths: GPX rtept의 범위 밖 좌표도 후보의 droppedCoun
 
 test('MAX_IMPORT_BYTES는 10MB', () => {
   assert.equal(MAX_IMPORT_BYTES, 10 * 1024 * 1024)
+})
+
+test('thinRoute: 이름이 하나라도 있으면 점을 버리지 않는다', () => {
+  const coords = Array.from({ length: 40 }, (_, i) => [126 + i * 0.05, 37 + i * 0.05])
+  const names = coords.map((_, i) => (i === 0 ? 'RKSI' : null))
+  const out = thinRoute({ coords, names, types: coords.map(() => null) })
+  assert.equal(out.coords.length, 40)
+  assert.equal(out.thinned, false)
+  assert.equal(out.originalCount, 40)
+})
+
+test('thinRoute: 이름이 전혀 없으면 1NM 오차 안에서 솎는다', () => {
+  // 직선 위에 촘촘히 찍은 점 — 1NM 오차 안에서는 양 끝만 남아야 한다
+  const coords = Array.from({ length: 500 }, (_, i) => [126 + i * 0.002, 37])
+  const out = thinRoute({ coords, names: coords.map(() => null), types: coords.map(() => null) })
+  assert.ok(out.coords.length < 10, `expected heavy thinning, got ${out.coords.length}`)
+  assert.equal(out.thinned, true)
+  assert.equal(out.originalCount, 500)
+  assert.deepEqual(out.coords[0], [126, 37])
+  assert.deepEqual(out.coords.at(-1), [126 + 499 * 0.002, 37])
+})
+
+test('thinRoute: 솎은 뒤에도 200점을 넘으면 200점에서 끊는다', () => {
+  // 지그재그 — 1NM tolerance로는 거의 안 줄어든다
+  const coords = Array.from({ length: 600 }, (_, i) => [126 + i * 0.05, 37 + (i % 2) * 0.5])
+  const out = thinRoute({ coords, names: coords.map(() => null), types: coords.map(() => null) })
+  assert.ok(out.coords.length <= 200, `expected <= 200, got ${out.coords.length}`)
+})
+
+test('thinRoute: names/types는 솎은 좌표와 길이가 맞는다', () => {
+  const coords = Array.from({ length: 500 }, (_, i) => [126 + i * 0.002, 37])
+  const out = thinRoute({ coords, names: coords.map(() => null), types: coords.map(() => null) })
+  assert.equal(out.names.length, out.coords.length)
+  assert.equal(out.types.length, out.coords.length)
 })
