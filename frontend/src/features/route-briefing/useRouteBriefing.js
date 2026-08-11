@@ -1559,7 +1559,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     try {
       const text = await file.text()
       const parsed = parseRouteFile(file.name, text)
-      const candidates = extractRoutePaths(parsed)
+      const { candidates } = extractRoutePaths(parsed)
       if (candidates.length === 0) {
         setImportError('경로 점이 부족합니다.')
         return

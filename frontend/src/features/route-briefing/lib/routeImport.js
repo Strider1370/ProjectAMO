@@ -14,6 +14,15 @@ import { greatCircleNm } from './routePreview.js'
 // 한국 FIR 근사 경계. 숫자 4개뿐이라 별도 import로 feature 간 결합을 만들지 않고 값만 미러링.
 const KOREA_FIR_BOUNDS = { minLon: 116, maxLon: 139, minLat: 26, maxLat: 44 }
 
+// 밖에서 온 파일은 내용을 신뢰할 수 없다. 범위를 벗어난 좌표는 지도를 깨뜨리거나
+// 엉뚱한 위치의 기상을 보여주고, 대용량 궤적 파일은 브라우저를 멈춘다.
+export const MAX_IMPORT_BYTES = 10 * 1024 * 1024
+
+export function isValidLonLat(lon, lat) {
+  return Number.isFinite(lon) && Number.isFinite(lat) &&
+    lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90
+}
+
 export function isWithinKoreaFir(lon, lat) {
   return (
     Number.isFinite(lon) && Number.isFinite(lat) &&
@@ -65,37 +74,52 @@ function normalizeToFeatureList(geojson) {
 // 지오메트리 하나(LineString/MultiLineString/Point/GeometryCollection)를 후보 배열에
 // 누적한다. GeometryCollection은 KML <MultiGeometry>가 togeojson을 거치며 흔히 나오는
 // 모양이라 재귀로 자식들을 같은 방식으로 처리한다(중첩 GeometryCollection도 방어).
-function collectGeometry(geom, label, candidates, pointCoords, routeIdxRef) {
+// 후보 하나가 몇 점을 버렸는지 그 후보에 같이 싣는다 — 전체 합계만으로는
+// "이 경로에서 좌표가 빠졌다"는 알림을 만들 수 없다.
+function collectGeometry(geom, label, candidates, pointCoords, routeIdxRef, dropRef, pointDropRef) {
   if (!geom) return
-  if (geom.type === 'LineString' && geom.coordinates?.length >= 2) {
-    routeIdxRef.value += 1
-    candidates.push({ label: label || `경로 ${routeIdxRef.value}`, kind: 'route', coords: geom.coordinates })
+  const clean = (coords) => {
+    const kept = (coords ?? []).filter((coord) => isValidLonLat(coord?.[0], coord?.[1]))
+    const dropped = (coords?.length ?? 0) - kept.length
+    dropRef.value += dropped
+    return { coords: kept, dropped }
+  }
+  if (geom.type === 'LineString') {
+    const { coords, dropped } = clean(geom.coordinates)
+    if (coords.length >= 2) {
+      routeIdxRef.value += 1
+      candidates.push({ label: label || `경로 ${routeIdxRef.value}`, kind: 'route', coords, droppedCount: dropped })
+    }
   } else if (geom.type === 'MultiLineString') {
     for (const line of geom.coordinates ?? []) {
-      if (line.length >= 2) {
+      const { coords, dropped } = clean(line)
+      if (coords.length >= 2) {
         routeIdxRef.value += 1
-        candidates.push({ label: label || `경로 ${routeIdxRef.value}`, kind: 'route', coords: line })
+        candidates.push({ label: label || `경로 ${routeIdxRef.value}`, kind: 'route', coords, droppedCount: dropped })
       }
     }
-  } else if (geom.type === 'Point' && geom.coordinates?.length === 2) {
-    pointCoords.push(geom.coordinates)
+  } else if (geom.type === 'Point') {
+    const { coords, dropped } = clean([geom.coordinates])
+    pointDropRef.value += dropped
+    if (coords[0]) pointCoords.push(coords[0])
   } else if (geom.type === 'GeometryCollection') {
     for (const child of geom.geometries ?? []) {
-      collectGeometry(child, label, candidates, pointCoords, routeIdxRef)
+      collectGeometry(child, label, candidates, pointCoords, routeIdxRef, dropRef, pointDropRef)
     }
   }
 }
 
-function extractGeoJsonPaths(geojson) {
+function extractGeoJsonPaths(geojson, dropRef) {
   const candidates = []
   const features = normalizeToFeatureList(geojson)
   const routeIdxRef = { value: 0 }
+  const pointDropRef = { value: 0 }
   const pointCoords = []
   for (const feature of features ?? []) {
-    collectGeometry(feature?.geometry, feature?.properties?.name, candidates, pointCoords, routeIdxRef)
+    collectGeometry(feature?.geometry, feature?.properties?.name, candidates, pointCoords, routeIdxRef, dropRef, pointDropRef)
   }
   if (candidates.length === 0 && pointCoords.length >= 2) {
-    candidates.push({ label: '지점 모음', kind: 'points', coords: pointCoords })
+    candidates.push({ label: '지점 모음', kind: 'points', coords: pointCoords, droppedCount: pointDropRef.value })
   }
   return candidates
 }
@@ -103,41 +127,42 @@ function extractGeoJsonPaths(geojson) {
 // 좌표 + 각 지점의 <name>(있으면)을 나란한 배열 두 개로 뽑는다. 실제 EFB가 내보내는
 // GPX route(rte)는 rtept마다 픽스/공항 이름을 싣는 게 표준이라(GPX 1.0 스펙, ForeFlight
 // 등), 좌표만 뽑고 이름을 버리면 "AGAVO"가 "WP2"로 뭉개진다.
-function pointsFromGpxNodes(nodeList) {
+function pointsFromGpxNodes(nodeList, dropRef) {
   const coords = []
   const names = []
+  let dropped = 0
   for (const el of Array.from(nodeList)) {
     const lon = Number(el.getAttribute('lon'))
     const lat = Number(el.getAttribute('lat'))
-    if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue
+    if (!isValidLonLat(lon, lat)) { dropped += 1; dropRef.value += 1; continue }
     coords.push([lon, lat])
     const nameEl = el.getElementsByTagName('name')[0]
     names.push(nameEl?.textContent?.trim() || null)
   }
-  return { coords, names }
+  return { coords, names, dropped }
 }
 
-function extractGpxPaths(doc) {
+function extractGpxPaths(doc, dropRef) {
   const candidates = []
   const rtes = Array.from(doc.getElementsByTagName('rte'))
   rtes.forEach((rte, i) => {
-    const { coords, names } = pointsFromGpxNodes(rte.getElementsByTagName('rtept'))
+    const { coords, names, dropped } = pointsFromGpxNodes(rte.getElementsByTagName('rtept'), dropRef)
     if (coords.length >= 2) {
       const nameEl = rte.getElementsByTagName('name')[0]
-      candidates.push({ label: nameEl?.textContent?.trim() || `경로 ${i + 1}`, kind: 'route', coords, names })
+      candidates.push({ label: nameEl?.textContent?.trim() || `경로 ${i + 1}`, kind: 'route', coords, names, droppedCount: dropped })
     }
   })
   const trks = Array.from(doc.getElementsByTagName('trk'))
   trks.forEach((trk, i) => {
-    const { coords, names } = pointsFromGpxNodes(trk.getElementsByTagName('trkpt'))
+    const { coords, names, dropped } = pointsFromGpxNodes(trk.getElementsByTagName('trkpt'), dropRef)
     if (coords.length >= 2) {
       const nameEl = trk.getElementsByTagName('name')[0]
-      candidates.push({ label: nameEl?.textContent?.trim() || `궤적 ${i + 1}`, kind: 'track', coords, names })
+      candidates.push({ label: nameEl?.textContent?.trim() || `궤적 ${i + 1}`, kind: 'track', coords, names, droppedCount: dropped })
     }
   })
   if (candidates.length === 0) {
-    const { coords, names } = pointsFromGpxNodes(doc.getElementsByTagName('wpt'))
-    if (coords.length >= 2) candidates.push({ label: '지점 모음', kind: 'points', coords, names })
+    const { coords, names, dropped } = pointsFromGpxNodes(doc.getElementsByTagName('wpt'), dropRef)
+    if (coords.length >= 2) candidates.push({ label: '지점 모음', kind: 'points', coords, names, droppedCount: dropped })
   }
   return candidates
 }
@@ -145,20 +170,24 @@ function extractGpxPaths(doc) {
 // FPL은 좌표를 <waypoint-table>에 한 번 정의하고 <route>가 <waypoint-identifier>로
 // 참조하는 2단 구조다. 그래서 사전을 먼저 만들고 순서 목록을 훑는다. 사전에 없는
 // 참조는 그 지점만 건너뛴다 — 파일 하나가 통째로 못 쓰게 되는 것보다 낫다.
-function fplWaypointTable(doc) {
+function fplWaypointTable(doc, dropRef) {
   const table = new Map()
+  let dropped = 0
   for (const el of Array.from(doc.getElementsByTagName('waypoint'))) {
     const id = el.getElementsByTagName('identifier')[0]?.textContent?.trim()
     const lon = Number(el.getElementsByTagName('lon')[0]?.textContent)
     const lat = Number(el.getElementsByTagName('lat')[0]?.textContent)
-    if (!id || !Number.isFinite(lon) || !Number.isFinite(lat)) continue
+    if (!id) continue
+    if (!isValidLonLat(lon, lat)) { dropped += 1; dropRef.value += 1; continue }
     table.set(id, { lon, lat, type: el.getElementsByTagName('type')[0]?.textContent?.trim() || null })
   }
-  return table
+  return { table, dropped }
 }
 
-function extractFplPaths(doc) {
-  const table = fplWaypointTable(doc)
+// 사전에 없는 route-point를 건너뛴 것은 좌표 문제가 아니므로 droppedCount에 세지
+// 않는다 — 그 알림 문구("좌표 값이 범위를 벗어났습니다")가 사실과 달라진다.
+function extractFplPaths(doc, dropRef) {
+  const { table, dropped } = fplWaypointTable(doc, dropRef)
   const candidates = []
   Array.from(doc.getElementsByTagName('route')).forEach((route, i) => {
     const coords = []
@@ -174,7 +203,7 @@ function extractFplPaths(doc) {
     }
     if (coords.length >= 2) {
       const nameEl = route.getElementsByTagName('route-name')[0]
-      candidates.push({ label: nameEl?.textContent?.trim() || `경로 ${i + 1}`, kind: 'route', coords, names, types })
+      candidates.push({ label: nameEl?.textContent?.trim() || `경로 ${i + 1}`, kind: 'route', coords, names, types, droppedCount: dropped })
     }
   })
   return candidates
@@ -198,17 +227,21 @@ function disambiguateDuplicateLabels(candidates) {
 }
 
 export function extractRoutePaths(parsed) {
-  const candidates = parsed.format === 'fpl' ? extractFplPaths(parsed.doc)
-    : parsed.format === 'gpx' ? extractGpxPaths(parsed.doc)
-    : extractGeoJsonPaths(parsed.geojson)
+  const dropRef = { value: 0 }
+  const candidates = parsed.format === 'fpl' ? extractFplPaths(parsed.doc, dropRef)
+    : parsed.format === 'gpx' ? extractGpxPaths(parsed.doc, dropRef)
+    : extractGeoJsonPaths(parsed.geojson, dropRef)
   // names/types는 항상 coords와 같은 길이로 맞춘다 — 하류(routeImportResolve)가
   // 인덱스로 짝지어 읽으므로 길이가 어긋나면 조용히 엉뚱한 이름이 붙는다.
   const normalized = candidates.map((candidate) => ({
     ...candidate,
     names: candidate.names ?? candidate.coords.map(() => null),
     types: candidate.types ?? candidate.coords.map(() => null),
+    droppedCount: candidate.droppedCount ?? 0,
   }))
-  return disambiguateDuplicateLabels(normalized)
+  // 후보가 하나도 없을 때 호출부는 droppedTotal로 "좌표 범위 밖"과 "점 부족"을
+  // 구분한다 — 문구가 달라야 조종사가 뭘 확인해야 할지 안다.
+  return { candidates: disambiguateDuplicateLabels(normalized), droppedTotal: dropRef.value }
 }
 
 // RDP(Ramer-Douglas-Peucker)로 점을 줄인다. tolerance(도 단위)를 이분 탐색으로

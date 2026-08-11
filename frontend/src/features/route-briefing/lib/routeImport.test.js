@@ -6,9 +6,14 @@ import { fileURLToPath } from 'node:url'
 // 테스트 환경의 폴백은 여기서 심는다 — 그래야 xmldom이 운영 번들에 실리지 않는다.
 import { DOMParser } from '@xmldom/xmldom'
 globalThis.DOMParser ??= DOMParser
-import { parseRouteFile, extractRoutePaths, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
+import { parseRouteFile, extractRoutePaths, MAX_IMPORT_BYTES, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
 
 const FPL_TEXT = readFileSync(fileURLToPath(new URL('../../../../test/fixtures/route-import/rksi-rkpk.fpl', import.meta.url)), 'utf8')
+
+// extractRoutePaths는 { candidates, droppedTotal }을 반환한다. 후보만 보는
+// 시험이 대부분이라 여기서 한 번 벗겨준다 — droppedTotal을 보는 시험은
+// extractRoutePaths를 직접 부른다.
+const paths = (parsed) => extractRoutePaths(parsed).candidates
 
 const GEOJSON_LINE = JSON.stringify({
   type: 'FeatureCollection',
@@ -23,7 +28,7 @@ const GEOJSON_LINE = JSON.stringify({
 
 test('parseRouteFile + extractRoutePaths: GeoJSON LineString → 1개 후보', () => {
   const parsed = parseRouteFile('route.geojson', GEOJSON_LINE)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.equal(candidates.length, 1)
   assert.equal(candidates[0].kind, 'route')
   assert.equal(candidates[0].label, 'RKSS-RKPK VFR sample')
@@ -33,7 +38,7 @@ test('parseRouteFile + extractRoutePaths: GeoJSON LineString → 1개 후보', (
 
 test('parseRouteFile: 확장자 .json도 GeoJSON으로 처리', () => {
   const parsed = parseRouteFile('route.json', GEOJSON_LINE)
-  assert.equal(extractRoutePaths(parsed).length, 1)
+  assert.equal(paths(parsed).length, 1)
 })
 
 test('parseRouteFile: 깨진 GeoJSON은 에러', () => {
@@ -46,7 +51,7 @@ test('parseRouteFile: 깨진 GeoJSON은 에러', () => {
 test('parseRouteFile + extractRoutePaths: 순수 Geometry(래핑 없는 LineString)도 후보로 인식', () => {
   const bareLineString = JSON.stringify({ type: 'LineString', coordinates: [[126.79, 37.5583], [127.4, 37.0], [128.9382, 35.1795]] })
   const parsed = parseRouteFile('bare.geojson', bareLineString)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.equal(candidates.length, 1)
   assert.equal(candidates[0].kind, 'route')
   assert.equal(candidates[0].coords.length, 3)
@@ -71,7 +76,7 @@ test('extractRoutePaths: 같은 라벨의 후보가 여러 개면 번호를 붙�
     }],
   })
   const parsed = parseRouteFile('dup-labels.geojson', geojson)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.deepEqual(candidates.map((c) => c.label), ['MultiGeometry (1)', 'MultiGeometry (2)', 'MultiGeometry (3)'])
 })
 
@@ -91,7 +96,7 @@ test('parseRouteFile + extractRoutePaths: GeometryCollection 안의 LineString�
     }],
   })
   const parsed = parseRouteFile('multi.geojson', geojson)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.equal(candidates.length, 2)
   assert.ok(candidates.every((c) => c.kind === 'route' && c.coords.length === 2))
 })
@@ -103,7 +108,7 @@ test('parseRouteFile + extractRoutePaths: 래핑 없는 Feature(FeatureCollectio
     geometry: { type: 'LineString', coordinates: [[126.79, 37.5583], [127.4, 37.0]] },
   })
   const parsed = parseRouteFile('bare-feature.geojson', bareFeature)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.equal(candidates.length, 1)
   assert.equal(candidates[0].label, '단일 Feature')
 })
@@ -132,7 +137,7 @@ const GPX_TRACK = `<?xml version="1.0" encoding="UTF-8"?>
 
 test('extractRoutePaths: GPX rte는 kind=route', () => {
   const parsed = parseRouteFile('route.gpx', GPX_ROUTE)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.equal(candidates.length, 1)
   assert.equal(candidates[0].kind, 'route')
   assert.equal(candidates[0].label, 'RKSS-RKPK VFR sample')
@@ -144,7 +149,7 @@ test('extractRoutePaths: GPX rtept의 <name>을 좌표와 나란한 배열로 �
   // 실제 EFB(ForeFlight/SkyDemon)가 내보내는 GPX route는 각 rtept에 픽스/공항 이름이
   // 실려 있다 — 이걸 버리면 "WP2"처럼 뭉개져서 원래 경로의 정보가 사라진다.
   const parsed = parseRouteFile('route.gpx', GPX_ROUTE)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.deepEqual(candidates[0].names, ['RKSS', 'WP1', 'RKPK'])
 })
 
@@ -158,13 +163,13 @@ test('extractRoutePaths: rtept에 <name>이 없으면 해당 자리는 null', ()
   </rte>
 </gpx>`
   const parsed = parseRouteFile('no-names.gpx', gpxNoNames)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.deepEqual(candidates[0].names, [null, null])
 })
 
 test('extractRoutePaths: GPX trk는 kind=track', () => {
   const parsed = parseRouteFile('track.gpx', GPX_TRACK)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.equal(candidates.length, 1)
   assert.equal(candidates[0].kind, 'track')
   assert.equal(candidates[0].label, '실제 비행 궤적')
@@ -174,7 +179,7 @@ test('extractRoutePaths: GPX trk는 kind=track', () => {
 test('extractRoutePaths: rte와 trk가 둘 다 있으면 후보 2개', () => {
   const combined = GPX_ROUTE.replace('</gpx>', '') + GPX_TRACK.replace(/^<\?xml[^>]*>\s*<gpx[^>]*>/, '')
   const parsed = parseRouteFile('both.gpx', combined)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.equal(candidates.length, 2)
   assert.deepEqual(candidates.map((c) => c.kind).sort(), ['route', 'track'])
 })
@@ -237,7 +242,7 @@ test('isWithinKoreaFir: 경계 안/밖 판정', () => {
 
 test('extractRoutePaths: KML LineString은 kind=route', () => {
   const parsed = parseRouteFile('route.kml', KML_LINE)
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.equal(candidates.length, 1)
   assert.equal(candidates[0].kind, 'route')
   assert.equal(candidates[0].label, 'RKSS-RKPK')
@@ -252,7 +257,7 @@ test('extractRoutePaths: KML LineString은 kind=route', () => {
 test('parseRouteFile + extractRoutePaths: FPL은 route-point 순서대로 후보 1개', () => {
   const parsed = parseRouteFile('plan.fpl', FPL_TEXT)
   assert.equal(parsed.format, 'fpl')
-  const candidates = extractRoutePaths(parsed)
+  const candidates = paths(parsed)
   assert.equal(candidates.length, 1)
   assert.equal(candidates[0].kind, 'route')
   assert.equal(candidates[0].label, 'RKSI RKPK')
@@ -263,12 +268,58 @@ test('parseRouteFile + extractRoutePaths: FPL은 route-point 순서대로 후보
 
 test('extractRoutePaths: FPL route-point가 waypoint-table에 없으면 그 지점만 건너뛴다', () => {
   const text = FPL_TEXT.replace('<waypoint-identifier>GONAX</waypoint-identifier>', '<waypoint-identifier>NOPE</waypoint-identifier>')
-  const candidates = extractRoutePaths(parseRouteFile('plan.fpl', text))
+  const candidates = paths(parseRouteFile('plan.fpl', text))
   assert.equal(candidates[0].coords.length, 2)
   assert.deepEqual(candidates[0].names, ['RKSI', 'RKPK'])
 })
 
 test('extractRoutePaths: 다른 형식의 후보는 types가 전부 null', () => {
-  const candidates = extractRoutePaths(parseRouteFile('route.geojson', GEOJSON_LINE))
+  const candidates = paths(parseRouteFile('route.geojson', GEOJSON_LINE))
   assert.deepEqual(candidates[0].types, [null, null, null])
+})
+
+test('extractRoutePaths: 위경도 범위를 벗어난 점은 버리고 droppedCount에 센다', () => {
+  const text = JSON.stringify({
+    type: 'LineString',
+    coordinates: [[126.79, 37.55], [999, 37.0], [128.93, 35.17]],
+  })
+  const { candidates, droppedTotal } = extractRoutePaths(parseRouteFile('bad.geojson', text))
+  assert.equal(droppedTotal, 1)
+  assert.equal(candidates.length, 1)
+  assert.equal(candidates[0].coords.length, 2)
+  assert.equal(candidates[0].droppedCount, 1)
+})
+
+test('extractRoutePaths: 전부 범위 밖이면 후보 없음 + droppedTotal로 구분 가능', () => {
+  const text = JSON.stringify({ type: 'LineString', coordinates: [[999, 999], [888, 888]] })
+  const { candidates, droppedTotal } = extractRoutePaths(parseRouteFile('bad.geojson', text))
+  assert.equal(candidates.length, 0)
+  assert.equal(droppedTotal, 2)
+})
+
+test('extractRoutePaths: 점이 부족하면 후보 없음, droppedTotal은 0', () => {
+  const text = JSON.stringify({ type: 'LineString', coordinates: [[126.79, 37.55]] })
+  const { candidates, droppedTotal } = extractRoutePaths(parseRouteFile('short.geojson', text))
+  assert.equal(candidates.length, 0)
+  assert.equal(droppedTotal, 0)
+})
+
+test('extractRoutePaths: GPX rtept의 범위 밖 좌표도 후보의 droppedCount에 센다', () => {
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+  <rte>
+    <name>범위 밖 포함</name>
+    <rtept lat="37.0" lon="127.0"></rtept>
+    <rtept lat="91.0" lon="127.5"></rtept>
+    <rtept lat="36.0" lon="128.0"></rtept>
+  </rte>
+</gpx>`
+  const { candidates, droppedTotal } = extractRoutePaths(parseRouteFile('bad.gpx', gpx))
+  assert.equal(droppedTotal, 1)
+  assert.equal(candidates[0].coords.length, 2)
+  assert.equal(candidates[0].droppedCount, 1)
+})
+
+test('MAX_IMPORT_BYTES는 10MB', () => {
+  assert.equal(MAX_IMPORT_BYTES, 10 * 1024 * 1024)
 })
