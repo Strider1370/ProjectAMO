@@ -14,7 +14,7 @@ import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRou
 import { normalizeRouteSnapshot } from './lib/routeStore.js'
 import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
-import { parseRouteFile, extractRoutePaths, MAX_IMPORT_BYTES } from './lib/routeImport.js'
+import { parseRouteFile, extractRoutePaths, decodeImportedFile, MAX_IMPORT_BYTES } from './lib/routeImport.js'
 import { resolveImportedRoute } from './lib/routeImportResolve.js'
 import {
   FIR_EXIT_AIRPORT,
@@ -1600,7 +1600,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     let candidates = []
     let droppedTotal = 0
     try {
-      const text = await file.text()
+      // file.text()는 무조건 UTF-8로 읽는다 — Garmin FPL은 UTF-16이라 깨진다.
+      const text = decodeImportedFile(await file.arrayBuffer())
       const parsed = parseRouteFile(file.name, text)
       const extracted = extractRoutePaths(parsed)
       candidates = extracted.candidates

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 // 테스트 환경의 폴백은 여기서 심는다 — 그래야 xmldom이 운영 번들에 실리지 않는다.
 import { DOMParser } from '@xmldom/xmldom'
 globalThis.DOMParser ??= DOMParser
-import { parseRouteFile, extractRoutePaths, MAX_IMPORT_BYTES, thinRoute, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
+import { parseRouteFile, extractRoutePaths, decodeImportedFile, MAX_IMPORT_BYTES, thinRoute, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
 
 const FPL_TEXT = readFileSync(fileURLToPath(new URL('../../../../test/fixtures/route-import/rksi-rkpk.fpl', import.meta.url)), 'utf8')
 
@@ -356,4 +356,45 @@ test('thinRoute: names/types는 솎은 좌표와 길이가 맞는다', () => {
   const out = thinRoute({ coords, names: coords.map(() => null), types: coords.map(() => null) })
   assert.equal(out.names.length, out.coords.length)
   assert.equal(out.types.length, out.coords.length)
+})
+
+// Garmin 계열 도구는 FPL을 UTF-16으로 내보낸다(선언도 encoding="utf-16"). UTF-8로
+// 읽으면 글자가 전부 깨져 해석 자체가 실패하므로 BOM을 보고 고른다.
+const bytes = (...arrays) => {
+  const flat = arrays.flat()
+  return new Uint8Array(flat).buffer
+}
+const utf16le = (text) => {
+  const out = [0xFF, 0xFE]
+  for (const ch of text) { const c = ch.charCodeAt(0); out.push(c & 0xFF, c >> 8) }
+  return bytes(out)
+}
+const utf16be = (text) => {
+  const out = [0xFE, 0xFF]
+  for (const ch of text) { const c = ch.charCodeAt(0); out.push(c >> 8, c & 0xFF) }
+  return bytes(out)
+}
+
+test('decodeImportedFile: BOM이 없으면 UTF-8로 읽는다', () => {
+  const buffer = new TextEncoder().encode('<flight-plan>제주</flight-plan>').buffer
+  assert.equal(decodeImportedFile(buffer), '<flight-plan>제주</flight-plan>')
+})
+
+test('decodeImportedFile: UTF-16LE BOM이면 그쪽으로 읽는다', () => {
+  assert.equal(decodeImportedFile(utf16le('<flight-plan/>')), '<flight-plan/>')
+})
+
+test('decodeImportedFile: UTF-16BE BOM이면 그쪽으로 읽는다', () => {
+  assert.equal(decodeImportedFile(utf16be('<flight-plan/>')), '<flight-plan/>')
+})
+
+test('decodeImportedFile: UTF-16으로 저장된 FPL이 실제로 해석된다', () => {
+  const text = decodeImportedFile(utf16le(FPL_TEXT))
+  const { candidates } = extractRoutePaths(parseRouteFile('plan.fpl', text))
+  assert.equal(candidates.length, 1)
+  assert.deepEqual(candidates[0].names, ['RKSI', 'GONAX', 'RKPK'])
+})
+
+test('decodeImportedFile: 빈 파일도 던지지 않는다', () => {
+  assert.equal(decodeImportedFile(new ArrayBuffer(0)), '')
 })

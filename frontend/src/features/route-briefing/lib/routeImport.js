@@ -18,6 +18,18 @@ const KOREA_FIR_BOUNDS = { minLon: 116, maxLon: 139, minLat: 26, maxLat: 44 }
 // 엉뚱한 위치의 기상을 보여주고, 대용량 궤적 파일은 브라우저를 멈춘다.
 export const MAX_IMPORT_BYTES = 10 * 1024 * 1024
 
+// Garmin 계열 도구는 FPL을 UTF-16으로 내보낸다 — 실제 G1000 출력물의 첫 줄이
+// <?xml version="1.0" encoding="utf-16"?>다. 그대로 UTF-8로 읽으면 글자가 전부
+// 깨져 해석 자체가 실패한다. XML 선언은 이미 문자열이 된 뒤에나 보이므로 믿을 수
+// 없고, 바이트 앞머리의 BOM으로 판단한다. BOM이 없으면 UTF-8 — UTF-8 BOM은
+// TextDecoder가 알아서 떼어낸다.
+export function decodeImportedFile(buffer) {
+  const head = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength))
+  if (head[0] === 0xFF && head[1] === 0xFE) return new TextDecoder('utf-16le').decode(buffer)
+  if (head[0] === 0xFE && head[1] === 0xFF) return new TextDecoder('utf-16be').decode(buffer)
+  return new TextDecoder('utf-8').decode(buffer)
+}
+
 export function isValidLonLat(lon, lat) {
   return Number.isFinite(lon) && Number.isFinite(lat) &&
     lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90
