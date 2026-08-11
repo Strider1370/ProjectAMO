@@ -241,6 +241,10 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   } = actions
 
   const isIfr = routeForm.flightRule === 'IFR'
+  // VFR 왕복(장주·훈련·유람)은 뜬 곳으로 돌아온다 — 반대편에 같은 공항을 고를 수
+  // 있어야 한다. IFR은 같은 공항으로 비행계획을 내는 경우가 사실상 없어 그대로 잠근다.
+  const departurePickerLock = isIfr ? routeForm.arrivalAirport : null
+  const arrivalPickerLock = isIfr ? routeForm.departureAirport : null
   const etaDisplay = eta ? formatBriefingTime(eta, tz, { withDate: true }).replace('-', '/').replace('Z', ' UTC') : ''
   const appliedBase = routeDesigns.find((design) => design.id === 'base')
   // S8: 첫 경로 입력은 지도 맥락을 남기기 위해 항상 half로 시작한다. 사용자가 손수 드래그(detentTouched)했으면 존중하고
@@ -593,11 +597,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
             </div>
           </div>
           <div className={s.routeRow}>
-            {renderDesktopAirportSelect('출발 공항', routeForm.departureAirport, handleDepartureAirportChange, FIR_IN_AIRPORT, 'FIR 진입', routeForm.arrivalAirport, 'left')}
+            {renderDesktopAirportSelect('출발 공항', routeForm.departureAirport, handleDepartureAirportChange, FIR_IN_AIRPORT, 'FIR 진입', departurePickerLock, 'left')}
             <Button className={s.swapBtn} appearance="subtle" type="button" aria-label="출발 도착 교환"
               disabled={routeForm.departureAirport === FIR_IN_AIRPORT || routeForm.arrivalAirport === FIR_EXIT_AIRPORT}
               onClick={swapAirports}>⇄</Button>
-            {renderDesktopAirportSelect('도착 공항', routeForm.arrivalAirport, handleArrivalAirportChange, FIR_EXIT_AIRPORT, 'FIR 이탈', routeForm.departureAirport, 'right')}
+            {renderDesktopAirportSelect('도착 공항', routeForm.arrivalAirport, handleArrivalAirportChange, FIR_EXIT_AIRPORT, 'FIR 이탈', arrivalPickerLock, 'right')}
           </div>
           {isIfr && (
             <div className={s.grid}>
@@ -694,9 +698,9 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
             {importButton}
           </div>
           <div className="rb-route">
-            <AirportPickerField label="출발" value={routeForm.departureAirport} options={allAirportOptions} firOption={{ value: FIR_IN_AIRPORT, label: 'FIR 진입' }} onChange={handleDepartureAirportChange} disabledValue={routeForm.arrivalAirport} />
+            <AirportPickerField label="출발" value={routeForm.departureAirport} options={allAirportOptions} firOption={{ value: FIR_IN_AIRPORT, label: 'FIR 진입' }} onChange={handleDepartureAirportChange} disabledValue={departurePickerLock} />
             <div className="rb-swap"><button type="button" className="rb-swap-btn" onClick={swapAirports} disabled={firOnEitherSide} aria-label="출발 도착 교환">⇅</button></div>
-            <AirportPickerField label="도착" value={routeForm.arrivalAirport} options={allAirportOptions} firOption={{ value: FIR_EXIT_AIRPORT, label: 'FIR 이탈' }} onChange={handleArrivalAirportChange} disabledValue={routeForm.departureAirport} align="right" />
+            <AirportPickerField label="도착" value={routeForm.arrivalAirport} options={allAirportOptions} firOption={{ value: FIR_EXIT_AIRPORT, label: 'FIR 이탈' }} onChange={handleArrivalAirportChange} disabledValue={arrivalPickerLock} align="right" />
           </div>
           {(!isIfr || step1MoreOpen || (depChosen && arrChosen)) ? (
             <>
