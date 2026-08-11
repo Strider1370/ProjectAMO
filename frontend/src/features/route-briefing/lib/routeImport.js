@@ -26,6 +26,7 @@ function detectFileKind(name) {
   const ext = String(name ?? '').toLowerCase().split('.').pop()
   if (ext === 'gpx') return 'gpx'
   if (ext === 'kml') return 'kml'
+  if (ext === 'fpl') return 'fpl'
   return 'geojson'
 }
 
@@ -47,6 +48,7 @@ export function parseRouteFile(name, text) {
   }
   const doc = new DOMParser().parseFromString(text, 'text/xml')
   if (kind === 'gpx') return { format: 'gpx', doc }
+  if (kind === 'fpl') return { format: 'fpl', doc }
   return { format: 'kml', geojson: kmlToGeoJSON(doc) }
 }
 
@@ -140,6 +142,44 @@ function extractGpxPaths(doc) {
   return candidates
 }
 
+// FPL은 좌표를 <waypoint-table>에 한 번 정의하고 <route>가 <waypoint-identifier>로
+// 참조하는 2단 구조다. 그래서 사전을 먼저 만들고 순서 목록을 훑는다. 사전에 없는
+// 참조는 그 지점만 건너뛴다 — 파일 하나가 통째로 못 쓰게 되는 것보다 낫다.
+function fplWaypointTable(doc) {
+  const table = new Map()
+  for (const el of Array.from(doc.getElementsByTagName('waypoint'))) {
+    const id = el.getElementsByTagName('identifier')[0]?.textContent?.trim()
+    const lon = Number(el.getElementsByTagName('lon')[0]?.textContent)
+    const lat = Number(el.getElementsByTagName('lat')[0]?.textContent)
+    if (!id || !Number.isFinite(lon) || !Number.isFinite(lat)) continue
+    table.set(id, { lon, lat, type: el.getElementsByTagName('type')[0]?.textContent?.trim() || null })
+  }
+  return table
+}
+
+function extractFplPaths(doc) {
+  const table = fplWaypointTable(doc)
+  const candidates = []
+  Array.from(doc.getElementsByTagName('route')).forEach((route, i) => {
+    const coords = []
+    const names = []
+    const types = []
+    for (const point of Array.from(route.getElementsByTagName('route-point'))) {
+      const id = point.getElementsByTagName('waypoint-identifier')[0]?.textContent?.trim()
+      const entry = id ? table.get(id) : null
+      if (!entry) continue
+      coords.push([entry.lon, entry.lat])
+      names.push(id)
+      types.push(point.getElementsByTagName('waypoint-type')[0]?.textContent?.trim() || entry.type)
+    }
+    if (coords.length >= 2) {
+      const nameEl = route.getElementsByTagName('route-name')[0]
+      candidates.push({ label: nameEl?.textContent?.trim() || `경로 ${i + 1}`, kind: 'route', coords, names, types })
+    }
+  })
+  return candidates
+}
+
 // parseRouteFile의 결과에서 "선택 가능한 경로 후보" 목록을 뽑는다. 파일에 경로가
 // 여러 개면 전부 반환 — 고르는 건 호출부(useRouteBriefing) 책임.
 // 같은 이름의 후보가 여럿이면 선택 UI(RouteImportChooser)에서 구분이 안 된다 — 실제
@@ -158,8 +198,17 @@ function disambiguateDuplicateLabels(candidates) {
 }
 
 export function extractRoutePaths(parsed) {
-  const candidates = parsed.format === 'gpx' ? extractGpxPaths(parsed.doc) : extractGeoJsonPaths(parsed.geojson)
-  return disambiguateDuplicateLabels(candidates)
+  const candidates = parsed.format === 'fpl' ? extractFplPaths(parsed.doc)
+    : parsed.format === 'gpx' ? extractGpxPaths(parsed.doc)
+    : extractGeoJsonPaths(parsed.geojson)
+  // names/types는 항상 coords와 같은 길이로 맞춘다 — 하류(routeImportResolve)가
+  // 인덱스로 짝지어 읽으므로 길이가 어긋나면 조용히 엉뚱한 이름이 붙는다.
+  const normalized = candidates.map((candidate) => ({
+    ...candidate,
+    names: candidate.names ?? candidate.coords.map(() => null),
+    types: candidate.types ?? candidate.coords.map(() => null),
+  }))
+  return disambiguateDuplicateLabels(normalized)
 }
 
 // RDP(Ramer-Douglas-Peucker)로 점을 줄인다. tolerance(도 단위)를 이분 탐색으로

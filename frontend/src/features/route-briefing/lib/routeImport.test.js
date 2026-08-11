@@ -1,10 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 // node에는 전역 DOMParser가 없다(브라우저는 내장). routeImport.js는 전역만 쓰므로
 // 테스트 환경의 폴백은 여기서 심는다 — 그래야 xmldom이 운영 번들에 실리지 않는다.
 import { DOMParser } from '@xmldom/xmldom'
 globalThis.DOMParser ??= DOMParser
 import { parseRouteFile, extractRoutePaths, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
+
+const FPL_TEXT = readFileSync(fileURLToPath(new URL('../../../../test/fixtures/route-import/rksi-rkpk.fpl', import.meta.url)), 'utf8')
 
 const GEOJSON_LINE = JSON.stringify({
   type: 'FeatureCollection',
@@ -243,4 +247,28 @@ test('extractRoutePaths: KML LineString은 kind=route', () => {
   // 무시(스펙 §1) 계약과 일치하므로 앞 두 값만 검증한다.
   assert.equal(candidates[0].coords[0][0], 126.7906)
   assert.equal(candidates[0].coords[0][1], 37.5583)
+})
+
+test('parseRouteFile + extractRoutePaths: FPL은 route-point 순서대로 후보 1개', () => {
+  const parsed = parseRouteFile('plan.fpl', FPL_TEXT)
+  assert.equal(parsed.format, 'fpl')
+  const candidates = extractRoutePaths(parsed)
+  assert.equal(candidates.length, 1)
+  assert.equal(candidates[0].kind, 'route')
+  assert.equal(candidates[0].label, 'RKSI RKPK')
+  assert.deepEqual(candidates[0].coords, [[126.4505, 37.4691], [127.2, 36.8], [128.9382, 35.1795]])
+  assert.deepEqual(candidates[0].names, ['RKSI', 'GONAX', 'RKPK'])
+  assert.deepEqual(candidates[0].types, ['AIRPORT', 'INT', 'AIRPORT'])
+})
+
+test('extractRoutePaths: FPL route-point가 waypoint-table에 없으면 그 지점만 건너뛴다', () => {
+  const text = FPL_TEXT.replace('<waypoint-identifier>GONAX</waypoint-identifier>', '<waypoint-identifier>NOPE</waypoint-identifier>')
+  const candidates = extractRoutePaths(parseRouteFile('plan.fpl', text))
+  assert.equal(candidates[0].coords.length, 2)
+  assert.deepEqual(candidates[0].names, ['RKSI', 'RKPK'])
+})
+
+test('extractRoutePaths: 다른 형식의 후보는 types가 전부 null', () => {
+  const candidates = extractRoutePaths(parseRouteFile('route.geojson', GEOJSON_LINE))
+  assert.deepEqual(candidates[0].types, [null, null, null])
 })

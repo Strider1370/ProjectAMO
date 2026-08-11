@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<flight-plan xmlns="http://www8.garmin.com/xmlschemas/FlightPlan/v1">
+  <created>2026-08-11T00:00:00Z</created>
+  <waypoint-table>
+    <waypoint>
+      <identifier>RKSI</identifier>
+      <type>AIRPORT</type>
+      <country-code>KR</country-code>
+      <lat>37.4691</lat>
+      <lon>126.4505</lon>
+    </waypoint>
+    <waypoint>
+      <identifier>GONAX</identifier>
+      <type>INT</type>
+      <country-code>KR</country-code>
+      <lat>36.8000</lat>
+      <lon>127.2000</lon>
+    </waypoint>
+    <waypoint>
+      <identifier>RKPK</identifier>
+      <type>AIRPORT</type>
+      <country-code>KR</country-code>
+      <lat>35.1795</lat>
+      <lon>128.9382</lon>
+    </waypoint>
+  </waypoint-table>
+  <route>
+    <route-name>RKSI RKPK</route-name>
+    <flight-plan-index>1</flight-plan-index>
+    <route-point>
+      <waypoint-identifier>RKSI</waypoint-identifier>
+      <waypoint-type>AIRPORT</waypoint-type>
+      <waypoint-country-code>KR</waypoint-country-code>
+    </route-point>
+    <route-point>
+      <waypoint-identifier>GONAX</waypoint-identifier>
+      <waypoint-type>INT</waypoint-type>
+      <waypoint-country-code>KR</waypoint-country-code>
+    </route-point>
+    <route-point>
+      <waypoint-identifier>RKPK</waypoint-identifier>
+      <waypoint-type>AIRPORT</waypoint-type>
+      <waypoint-country-code>KR</waypoint-country-code>
+    </route-point>
+  </route>
+</flight-plan>
