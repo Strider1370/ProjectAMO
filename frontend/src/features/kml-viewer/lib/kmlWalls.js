@@ -62,6 +62,63 @@ export const EXTRUSION_PAINT = {
   'fill-extrusion-opacity': 0.4,
 }
 
+// --- 고도가 오르내리는 선 ---
+//
+// 출항절차·장주·최종접근처럼 조종사가 따라 나는 경로는 고도가 계속 변한다. 이건
+// 벽이 아니라 공중에 뜬 선이므로 기둥으로는 못 그린다. Mapbox 3.x의 `line-z-offset`이
+// 선을 띄워 주므로, 각 꼭짓점의 고도를 속성 배열로 옮겨 싣고 표현식이 읽게 한다.
+
+const partsOf = (g) => {
+  if (!g) return []
+  if (g.type === 'LineString') return [g.coordinates]
+  if (g.type === 'MultiLineString') return g.coordinates
+  if (g.type === 'GeometryCollection') return (g.geometries ?? []).flatMap(partsOf)
+  return []
+}
+
+export function lineToElevated(feature) {
+  const out = []
+  for (const coords of partsOf(feature?.geometry)) {
+    const elev = coords.map((c) => c[2])
+    if (elev.some((z) => typeof z !== 'number')) continue
+    if (new Set(elev).size < 2) continue // 평평한 선은 띄울 것이 없다
+    out.push({
+      type: 'Feature',
+      // line-progress는 선 하나를 0~1로 훑는다. 갈래를 한 feature에 묶어 두면
+      // 어느 갈래의 진행인지 알 수 없으므로 갈래마다 따로 낸다.
+      properties: { ...feature.properties, __elev: elev },
+      geometry: { type: 'LineString', coordinates: coords },
+    })
+  }
+  return out
+}
+
+// ponytail: line-progress(0~1)를 꼭짓점 번호로 그냥 비례 변환한다. 꼭짓점 간격이
+// 고르지 않으면 고도가 경로를 따라 조금 밀린다. 정확히 하려면 좌표를 등간격으로
+// 다시 뽑아야 하는데, 모양을 보는 데는 이걸로 충분하다.
+export const ELEVATED_LINE_LAYOUT = {
+  'line-z-offset': [
+    'at-interpolated',
+    ['*', ['line-progress'], ['-', ['length', ['get', '__elev']], 1]],
+    ['get', '__elev'],
+  ],
+  // 항공 고도는 해수면 기준이다. 지면 기준으로 두면 산 위에서 경로가 함께 솟는다.
+  'line-elevation-reference': 'sea',
+}
+
+export function buildElevatedLines(list) {
+  const out = []
+  for (const layer of list) {
+    for (const f of layer.features) {
+      for (const line of lineToElevated(f)) {
+        line.properties.__folder = layer.id
+        out.push(line)
+      }
+    }
+  }
+  return out
+}
+
 export function buildWalls(list) {
   const out = []
   for (const layer of list) {

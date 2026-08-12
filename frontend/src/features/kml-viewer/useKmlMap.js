@@ -3,13 +3,18 @@ import mapboxgl from 'mapbox-gl'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from '../map/mapConfig.js'
 import { isLayerVisible } from './lib/kmlFolderTree.js'
 import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT } from './lib/kmlPaint.js'
-import { buildWalls, EXTRUSION_PAINT } from './lib/kmlWalls.js'
+import { buildWalls, EXTRUSION_PAINT, buildElevatedLines, ELEVATED_LINE_LAYOUT } from './lib/kmlWalls.js'
 
 const SRC = 'kml-src'
 // 고도 벽은 원본 도형이 아니라 거기서 되찾은 바닥 고리다. 기하가 다르므로 소스를
 // 따로 둔다 — 43개뿐이라 부담이 없고, 평면 표시의 측정 경로를 건드리지 않는다.
 const WALL_SRC = 'kml-wall-src'
 const WALL_LYR = 'kml-wall'
+// 오르내리는 선도 마찬가지로 원본과 기하가 다르다(갈래마다 쪼개고 고도를 속성으로 옮김).
+const ELEV_SRC = 'kml-elev-src'
+const ELEV_LYR = 'kml-elev'
+// 3D에서만 나오는 레이어들. 켜고 끄기·필터를 한자리에서 돌린다.
+const LYR_3D = [WALL_LYR, ELEV_LYR]
 // slot: 'top'은 Mapbox Standard의 자체 레이어 위에 올리기 위한 관례다
 // (custom-area/usePolygonDraw.js와 같음).
 const SLOT = 'top'
@@ -34,6 +39,7 @@ export default function useKmlMap(containerRef) {
   const [addMs, setAddMs] = useState(null)
   const [displayMs, setDisplayMs] = useState(null)
   const [wallCount, setWallCount] = useState(null)
+  const [elevCount, setElevCount] = useState(null)
   const [wallMs, setWallMs] = useState(null)
 
   useEffect(() => {
@@ -72,8 +78,8 @@ export default function useKmlMap(containerRef) {
       if (!map.getLayer(LYR(def.kind))) continue
       map.setFilter(LYR(def.kind), ['all', def.geom, ['in', ['get', '__folder'], ['literal', visible]]])
     }
-    if (map.getLayer(WALL_LYR)) {
-      map.setFilter(WALL_LYR, ['in', ['get', '__folder'], ['literal', visible]])
+    for (const id of LYR_3D) {
+      if (map.getLayer(id)) map.setFilter(id, ['in', ['get', '__folder'], ['literal', visible]])
     }
   }
 
@@ -82,9 +88,9 @@ export default function useKmlMap(containerRef) {
     if (!map) return
     const started = performance.now()
     for (const def of LAYER_DEFS) if (map.getLayer(LYR(def.kind))) map.removeLayer(LYR(def.kind))
-    if (map.getLayer(WALL_LYR)) map.removeLayer(WALL_LYR)
+    for (const id of LYR_3D) if (map.getLayer(id)) map.removeLayer(id)
     if (map.getSource(SRC)) map.removeSource(SRC)
-    if (map.getSource(WALL_SRC)) map.removeSource(WALL_SRC)
+    for (const id of [WALL_SRC, ELEV_SRC]) if (map.getSource(id)) map.removeSource(id)
 
     // feature마다 어느 폴더에서 왔는지 심는다. 이게 있어야 소스 하나로 두고
     // 필터만으로 폴더를 켜고 끌 수 있다.
@@ -115,7 +121,17 @@ export default function useKmlMap(containerRef) {
       paint: EXTRUSION_PAINT,
       layout: { visibility: 'none' }, // 3D 보기를 켤 때만 나온다
     })
+    // 출항절차·장주처럼 고도가 오르내리는 경로는 벽이 아니라 공중에 뜬 선이다.
+    const elev = buildElevatedLines(list)
+    map.addSource(ELEV_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: elev }, lineMetrics: true })
+    map.addLayer({
+      id: ELEV_LYR, type: 'line', source: ELEV_SRC, slot: SLOT,
+      filter: ['in', ['get', '__folder'], ['literal', allIds]],
+      paint: LINE_PAINT,
+      layout: { ...ELEVATED_LINE_LAYOUT, visibility: 'none' },
+    })
     setWallCount(walls.length)
+    setElevCount(elev.length)
     setWallMs(Math.round(performance.now() - wallStarted))
 
     layersRef.current = list
@@ -141,7 +157,9 @@ export default function useKmlMap(containerRef) {
   const set3d = (on) => {
     const map = mapRef.current
     if (!map) return
-    if (map.getLayer(WALL_LYR)) map.setLayoutProperty(WALL_LYR, 'visibility', on ? 'visible' : 'none')
+    for (const id of LYR_3D) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
+    }
     map.easeTo({ pitch: on ? 60 : 0, duration: 400 })
   }
 
@@ -156,5 +174,5 @@ export default function useKmlMap(containerRef) {
     if (any) map.fitBounds(bounds, { padding: 40, duration: 0 })
   }
 
-  return { ready, error, setLayers, setHidden, setLabelsOn, set3d, fitTo, addMs, displayMs, wallCount, wallMs }
+  return { ready, error, setLayers, setHidden, setLabelsOn, set3d, fitTo, addMs, displayMs, wallCount, elevCount, wallMs }
 }

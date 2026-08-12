@@ -10,7 +10,7 @@ const mb = (n) => `${(n / 1048576).toFixed(1)} MB`
 
 export default function KmlViewerPage() {
   const mapContainerRef = useRef(null)
-  const { ready, error: mapError, setLayers, setHidden, setLabelsOn, set3d, fitTo, addMs, displayMs, wallCount, wallMs } = useKmlMap(mapContainerRef)
+  const { ready, error: mapError, setLayers, setHidden, setLabelsOn, set3d, fitTo, addMs, displayMs, wallCount, elevCount, wallMs } = useKmlMap(mapContainerRef)
   const [layers, setLayerList] = useState([])
   const [hidden, setHiddenSet] = useState(new Set())
   const [labelsOn, setLabels] = useState(true)
@@ -145,7 +145,7 @@ export default function KmlViewerPage() {
             <dt>Feature</dt><dd>{stats.features.toLocaleString()}</dd>
             <dt>폴리곤 / 선 / 점</dt><dd>{stats.poly.toLocaleString()} / {stats.line.toLocaleString()} / {stats.point.toLocaleString()}</dd>
             <dt>좌표점</dt><dd>{stats.coords.toLocaleString()}</dd>
-            <dt>고도 벽</dt><dd>{wallCount ?? '—'} 개 ({wallMs ?? '—'} ms)</dd>
+            <dt>고도 벽 / 뜬 경로</dt><dd>{wallCount ?? '—'} / {elevCount ?? '—'} 개 ({wallMs ?? '—'} ms)</dd>
             <dt>아이콘 주소</dt><dd>{stats.iconOk} / {stats.iconProbed} 불러와짐 (고유 {stats.iconTotal})</dd>
             <dt>메모리</dt><dd>{stats.memoryMb ? `${stats.memoryMb} MB` : '측정 불가'}</dd>
           </dl>
@@ -161,7 +161,7 @@ export default function KmlViewerPage() {
         {layers.length > 0 && (
           <label className="kv-labels">
             <input type="checkbox" checked={on3d} onChange={(e) => { setOn3d(e.target.checked); set3d(e.target.checked) }} />
-            {' 3D 보기 (고도 벽 세우고 지도 기울이기)'}
+            {' 3D 보기 (고도 벽 세우고, 경로 띄우고, 지도 기울이기)'}
           </label>
         )}
 
