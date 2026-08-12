@@ -4,7 +4,7 @@ import { readKmlFromBuffer } from './lib/kmzUnzip.js'
 import { buildLayerList, isLayerVisible } from './lib/kmlFolderTree.js'
 import { httpsIcon } from './lib/kmlPaint.js'
 import useKmlMap from './useKmlMap.js'
-import useKmlWeather, { WEATHER_LAYERS } from './useKmlWeather.js'
+import useKmlWeather, { WEATHER_LAYERS, TERRAIN_ALT_ITEMS } from './useKmlWeather.js'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
 import '../map/MapView.css' // 기상 패널 타일 스타일이 여기 있다 — 다시 만들지 않는다
 import './KmlViewerPage.css'
@@ -189,16 +189,26 @@ export default function KmlViewerPage() {
             </span>
           </h2>
           {weather.error && <p className="kv-failure">기상 자료: {weather.error}</p>}
+          {/* isLayerDisabled: 지형 근접만은 기상 자료를 안 쓰므로 자료를 기다릴 이유가 없다. */}
           <WeatherOverlayPanel
             layers={WEATHER_LAYERS}
             visibility={weather.visibility}
             onToggle={weather.toggle}
             onClose={() => {}}
             onClearAll={weather.clearAll}
-            isLayerDisabled={() => !weather.loaded}
+            isLayerDisabled={(id) => id !== 'terrainHazard' && !weather.loaded}
             getLayerBadge={() => null}
             showWind={false}
           />
+          {weather.visibility.terrainHazard && (
+            <label className="kv-labels">
+              {'지형 근접 기준 고도 '}
+              <select value={weather.terrainAltitudeFt}
+                onChange={(e) => weather.setTerrainAltitudeFt(Number(e.target.value))}>
+                {TERRAIN_ALT_ITEMS.map((it) => <option key={it.id} value={it.id}>{it.primary}</option>)}
+              </select>
+            </label>
+          )}
         </div>
 
         <ul className="kv-tree">
