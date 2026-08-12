@@ -4,13 +4,17 @@ import { readKmlFromBuffer } from './lib/kmzUnzip.js'
 import { buildLayerList, isLayerVisible } from './lib/kmlFolderTree.js'
 import { httpsIcon } from './lib/kmlPaint.js'
 import useKmlMap from './useKmlMap.js'
+import useKmlWeather, { WEATHER_LAYERS } from './useKmlWeather.js'
+import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
+import '../map/MapView.css' // 기상 패널 타일 스타일이 여기 있다 — 다시 만들지 않는다
 import './KmlViewerPage.css'
 
 const mb = (n) => `${(n / 1048576).toFixed(1)} MB`
 
 export default function KmlViewerPage() {
   const mapContainerRef = useRef(null)
-  const { ready, error: mapError, setLayers, setHidden, setLabelsOn, set3d, setExaggeration, fitTo, addMs, displayMs, wallCount, elevCount, wallMs } = useKmlMap(mapContainerRef)
+  const { mapRef, ready, error: mapError, setLayers, setHidden, setLabelsOn, set3d, setExaggeration, fitTo, addMs, displayMs, wallCount, elevCount, wallMs } = useKmlMap(mapContainerRef)
+  const weather = useKmlWeather(mapRef, ready)
   const [layers, setLayerList] = useState([])
   const [hidden, setHiddenSet] = useState(new Set())
   const [labelsOn, setLabels] = useState(true)
@@ -176,6 +180,26 @@ export default function KmlViewerPage() {
             <span className="kv-count">{' 높이만 늘린다 — 위치는 그대로'}</span>
           </label>
         )}
+
+        <div className="kv-weather">
+          <h2 className="kv-subtitle">
+            {'기상 레이어'}
+            <span className="kv-count">
+              {weather.loaded ? ` (자료 ${weather.loadMs} ms)` : ' 불러오는 중…'}
+            </span>
+          </h2>
+          {weather.error && <p className="kv-failure">기상 자료: {weather.error}</p>}
+          <WeatherOverlayPanel
+            layers={WEATHER_LAYERS}
+            visibility={weather.visibility}
+            onToggle={weather.toggle}
+            onClose={() => {}}
+            onClearAll={weather.clearAll}
+            isLayerDisabled={() => !weather.loaded}
+            getLayerBadge={() => null}
+            showWind={false}
+          />
+        </div>
 
         <ul className="kv-tree">
           {layers.map((l) => {

@@ -10,6 +10,16 @@
 .kv-labels { display: block; margin: 10px 0; }
 .kv-drop { margin: 8px 0; padding: 10px; border: 1px dashed #cbd5e1; border-radius: 4px; color: #6b7280; text-align: center; }
 .kv-off { color: #9ca3af; }
+.kv-weather { margin: 12px 0; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+.kv-subtitle { font-size: 13px; margin: 0 0 8px; }
+/* 기상 패널은 본 화면에서 지도 위에 떠 있는 서랍이다. 여기서는 왼쪽 목록 안에
+   그대로 끼워 넣어야 하므로 띄우기만 푼다 — 안쪽 타일 모양은 본 화면 것을 그대로 쓴다. */
+.kv-weather .dev-layer-panel {
+  position: static; inset: auto; width: auto; max-width: none;
+  max-height: none; margin: 0; box-shadow: none; transform: none;
+}
+.kv-weather .layer-tile-group-title { color: #6b7280; }
+.kv-weather .layer-tile { color: #111827; }
 .kv-tree { list-style: none; margin: 0; padding: 0; }
 .kv-tree li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kv-count { color: #9ca3af; }

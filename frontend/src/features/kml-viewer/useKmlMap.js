@@ -191,5 +191,6 @@ export default function useKmlMap(containerRef) {
     if (any) map.fitBounds(bounds, { padding: 40, duration: 0 })
   }
 
-  return { ready, error, setLayers, setHidden, setLabelsOn, set3d, setExaggeration, fitTo, addMs, displayMs, wallCount, elevCount, wallMs }
+  // mapRef를 내보내는 이유: 기상 레이어를 이 지도 위에 얹으려면 지도 인스턴스가 필요하다.
+  return { mapRef, ready, error, setLayers, setHidden, setLabelsOn, set3d, setExaggeration, fitTo, addMs, displayMs, wallCount, elevCount, wallMs }
 }
