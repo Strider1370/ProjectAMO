@@ -10,10 +10,11 @@ const mb = (n) => `${(n / 1048576).toFixed(1)} MB`
 
 export default function KmlViewerPage() {
   const mapContainerRef = useRef(null)
-  const { ready, error: mapError, setLayers, setHidden, setLabelsOn, fitTo, addMs, displayMs } = useKmlMap(mapContainerRef)
+  const { ready, error: mapError, setLayers, setHidden, setLabelsOn, set3d, fitTo, addMs, displayMs, wallCount, wallMs } = useKmlMap(mapContainerRef)
   const [layers, setLayerList] = useState([])
   const [hidden, setHiddenSet] = useState(new Set())
   const [labelsOn, setLabels] = useState(true)
+  const [on3d, setOn3d] = useState(false)
   const [stats, setStats] = useState(null)
   const [failure, setFailure] = useState(null)
   const [busy, setBusy] = useState(null)
@@ -51,6 +52,7 @@ export default function KmlViewerPage() {
       setHiddenSet(new Set())
       setLayers(list, t0)
       setLabelsOn(labelsOn) // 새로 그리면 라벨 레이어가 켜진 채로 생기므로 현재 설정을 다시 건다
+      set3d(on3d) // 기둥 레이어도 새로 생기므로 마찬가지
       fitTo(list)
 
       // 아이콘은 이 스파이크에서 그리지 않고(점은 원으로 표시) "쓸 수 있는가"만 잰다.
@@ -143,6 +145,7 @@ export default function KmlViewerPage() {
             <dt>Feature</dt><dd>{stats.features.toLocaleString()}</dd>
             <dt>폴리곤 / 선 / 점</dt><dd>{stats.poly.toLocaleString()} / {stats.line.toLocaleString()} / {stats.point.toLocaleString()}</dd>
             <dt>좌표점</dt><dd>{stats.coords.toLocaleString()}</dd>
+            <dt>고도 벽</dt><dd>{wallCount ?? '—'} 개 ({wallMs ?? '—'} ms)</dd>
             <dt>아이콘 주소</dt><dd>{stats.iconOk} / {stats.iconProbed} 불러와짐 (고유 {stats.iconTotal})</dd>
             <dt>메모리</dt><dd>{stats.memoryMb ? `${stats.memoryMb} MB` : '측정 불가'}</dd>
           </dl>
@@ -152,6 +155,13 @@ export default function KmlViewerPage() {
           <label className="kv-labels">
             <input type="checkbox" checked={labelsOn} onChange={(e) => { setLabels(e.target.checked); setLabelsOn(e.target.checked) }} />
             {' 이름표 표시'}
+          </label>
+        )}
+
+        {layers.length > 0 && (
+          <label className="kv-labels">
+            <input type="checkbox" checked={on3d} onChange={(e) => { setOn3d(e.target.checked); set3d(e.target.checked) }} />
+            {' 3D 보기 (고도 벽 세우고 지도 기울이기)'}
           </label>
         )}
 

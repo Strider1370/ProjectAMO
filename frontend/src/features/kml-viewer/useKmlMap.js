@@ -3,8 +3,13 @@ import mapboxgl from 'mapbox-gl'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from '../map/mapConfig.js'
 import { isLayerVisible } from './lib/kmlFolderTree.js'
 import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT } from './lib/kmlPaint.js'
+import { buildWalls, EXTRUSION_PAINT } from './lib/kmlWalls.js'
 
 const SRC = 'kml-src'
+// 고도 벽은 원본 도형이 아니라 거기서 되찾은 바닥 고리다. 기하가 다르므로 소스를
+// 따로 둔다 — 43개뿐이라 부담이 없고, 평면 표시의 측정 경로를 건드리지 않는다.
+const WALL_SRC = 'kml-wall-src'
+const WALL_LYR = 'kml-wall'
 // slot: 'top'은 Mapbox Standard의 자체 레이어 위에 올리기 위한 관례다
 // (custom-area/usePolygonDraw.js와 같음).
 const SLOT = 'top'
@@ -28,6 +33,8 @@ export default function useKmlMap(containerRef) {
   const [error, setError] = useState(null)
   const [addMs, setAddMs] = useState(null)
   const [displayMs, setDisplayMs] = useState(null)
+  const [wallCount, setWallCount] = useState(null)
+  const [wallMs, setWallMs] = useState(null)
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return undefined
@@ -47,6 +54,9 @@ export default function useKmlMap(containerRef) {
     })
     map.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
     map.on('load', () => setReady(true))
+    // 측정용 손잡이. 이 페이지는 개발 빌드에만 존재하므로 여기서만 쓴다 —
+    // 특정 지점·축척으로 정확히 옮겨 놓고 재려면 지도를 직접 잡을 수 있어야 한다.
+    window.__kmlMap = map
     map.on('error', (e) => setError(e?.error?.message ?? '지도 오류'))
     mapRef.current = map
     return () => { map.remove(); mapRef.current = null }
@@ -62,6 +72,9 @@ export default function useKmlMap(containerRef) {
       if (!map.getLayer(LYR(def.kind))) continue
       map.setFilter(LYR(def.kind), ['all', def.geom, ['in', ['get', '__folder'], ['literal', visible]]])
     }
+    if (map.getLayer(WALL_LYR)) {
+      map.setFilter(WALL_LYR, ['in', ['get', '__folder'], ['literal', visible]])
+    }
   }
 
   const setLayers = (list, startedAt) => {
@@ -69,7 +82,9 @@ export default function useKmlMap(containerRef) {
     if (!map) return
     const started = performance.now()
     for (const def of LAYER_DEFS) if (map.getLayer(LYR(def.kind))) map.removeLayer(LYR(def.kind))
+    if (map.getLayer(WALL_LYR)) map.removeLayer(WALL_LYR)
     if (map.getSource(SRC)) map.removeSource(SRC)
+    if (map.getSource(WALL_SRC)) map.removeSource(WALL_SRC)
 
     // feature마다 어느 폴더에서 왔는지 심는다. 이게 있어야 소스 하나로 두고
     // 필터만으로 폴더를 켜고 끌 수 있다.
@@ -89,6 +104,20 @@ export default function useKmlMap(containerRef) {
         ...(def.layout ? { layout: def.layout } : {}),
       })
     }
+    // 고도 벽은 평면 표시와 별개로 얹는다. 평면 도형은 그대로 두므로 스펙의
+    // "어떤 도형도 숨기지 않는다"는 그대로 지켜진다.
+    const wallStarted = performance.now()
+    const walls = buildWalls(list)
+    map.addSource(WALL_SRC, { type: 'geojson', data: { type: 'FeatureCollection', features: walls } })
+    map.addLayer({
+      id: WALL_LYR, type: 'fill-extrusion', source: WALL_SRC, slot: SLOT,
+      filter: ['in', ['get', '__folder'], ['literal', allIds]],
+      paint: EXTRUSION_PAINT,
+      layout: { visibility: 'none' }, // 3D 보기를 켤 때만 나온다
+    })
+    setWallCount(walls.length)
+    setWallMs(Math.round(performance.now() - wallStarted))
+
     layersRef.current = list
     setAddMs(Math.round(performance.now() - started))
 
@@ -107,6 +136,15 @@ export default function useKmlMap(containerRef) {
     map.setLayoutProperty(LYR('label'), 'visibility', on ? 'visible' : 'none')
   }
 
+  // 3D는 두 가지가 함께 있어야 보인다: 기둥 레이어와, 지도를 기울이는 것.
+  // 정면에서 내려다보면 기둥이 서 있어도 납작한 면과 구별되지 않는다.
+  const set3d = (on) => {
+    const map = mapRef.current
+    if (!map) return
+    if (map.getLayer(WALL_LYR)) map.setLayoutProperty(WALL_LYR, 'visibility', on ? 'visible' : 'none')
+    map.easeTo({ pitch: on ? 60 : 0, duration: 400 })
+  }
+
   const fitTo = (list) => {
     const map = mapRef.current
     if (!map) return
@@ -118,5 +156,5 @@ export default function useKmlMap(containerRef) {
     if (any) map.fitBounds(bounds, { padding: 40, duration: 0 })
   }
 
-  return { ready, error, setLayers, setHidden, setLabelsOn, fitTo, addMs, displayMs }
+  return { ready, error, setLayers, setHidden, setLabelsOn, set3d, fitTo, addMs, displayMs, wallCount, wallMs }
 }
