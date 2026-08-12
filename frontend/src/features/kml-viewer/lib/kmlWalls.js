@@ -108,7 +108,11 @@ export const elevatedLineLayout = (x = 1) => ({
     ['*', ['line-progress'], ['-', ['length', ['get', '__elev']], 1]],
     ['get', '__elev'],
   ]),
-  // 항공 고도는 해수면 기준이다. 지면 기준으로 두면 산 위에서 경로가 함께 솟는다.
+  // ponytail: 해수면 기준으로 고정했다. 그런데 맥케이 파일은 altitudeMode를 적은
+  // 192곳 중 187곳이 relativeToGround(지면 기준)다 — 엄밀히는 feature마다 기준을
+  // 달리 잡아야 한다. togeojson이 altitudeMode를 속성으로 주지 않아 KML을 따로
+  // 읽어야 하고, 이 파일은 고도값이 대부분 0 근처라 차이가 눈에 띄지 않는다.
+  // 고도를 실제로 쓰는 파일이 나오면 그때 기준을 feature별로 나눈다.
   'line-elevation-reference': 'sea',
 })
 
