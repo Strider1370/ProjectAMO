@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  wallToExtrusion, buildWalls, EXTRUSION_PAINT,
-  lineToElevated, buildElevatedLines, ELEVATED_LINE_LAYOUT,
+  wallToExtrusion, buildWalls, extrusionPaint,
+  lineToElevated, buildElevatedLines, elevatedLineLayout,
 } from './kmlWalls.js'
 
 // 파일의 "벽"은 얇은 판자 여러 장이다. 판자 한 장 = 땅에 붙은 점 둘 + 그 위 점 둘.
@@ -64,9 +64,9 @@ test('점이 셋도 안 되면 면을 만들 수 없어 건너뛴다', () => {
 })
 
 test('기둥은 우리가 심은 바닥·천장을 읽고, 색은 파일 값을 쓴다', () => {
-  assert.deepEqual(EXTRUSION_PAINT['fill-extrusion-base'], ['get', '__base'])
-  assert.deepEqual(EXTRUSION_PAINT['fill-extrusion-height'], ['get', '__height'])
-  assert.deepEqual(EXTRUSION_PAINT['fill-extrusion-color'], ['coalesce', ['get', 'fill'], ['get', 'stroke'], '#3388ff'])
+  assert.deepEqual(extrusionPaint()['fill-extrusion-base'], ['get', '__base'])
+  assert.deepEqual(extrusionPaint()['fill-extrusion-height'], ['get', '__height'])
+  assert.deepEqual(extrusionPaint()['fill-extrusion-color'], ['coalesce', ['get', 'fill'], ['get', 'stroke'], '#3388ff'])
 })
 
 test('buildWalls: 레이어 목록에서 벽만 골라 모은다', () => {
@@ -138,13 +138,13 @@ test('MultiLineString도 갈래마다 떼어낸다', () => {
 })
 
 test('띄우는 높이는 선을 따라 배열을 훑어 읽는다', () => {
-  assert.deepEqual(ELEVATED_LINE_LAYOUT['line-z-offset'], [
+  assert.deepEqual(elevatedLineLayout()['line-z-offset'], [
     'at-interpolated',
     ['*', ['line-progress'], ['-', ['length', ['get', '__elev']], 1]],
     ['get', '__elev'],
   ])
   // 항공 고도는 해수면 기준이다. 지면 기준으로 두면 산 위에서 경로가 솟는다.
-  assert.equal(ELEVATED_LINE_LAYOUT['line-elevation-reference'], 'sea')
+  assert.equal(elevatedLineLayout()['line-elevation-reference'], 'sea')
 })
 
 test('buildElevatedLines: 폴더 표시를 붙여 모은다', () => {
@@ -154,4 +154,34 @@ test('buildElevatedLines: 폴더 표시를 붙여 모은다', () => {
   ])
   assert.equal(lines.length, 1)
   assert.equal(lines[0].properties.__folder, 'f0')
+})
+
+// --- 고도 과장 ---
+
+test('배수 1이면 아무것도 곱하지 않는다', () => {
+  // 쓸데없는 곱셈을 표현식에 남기지 않는다.
+  assert.deepEqual(extrusionPaint(1)['fill-extrusion-height'], ['get', '__height'])
+})
+
+test('배수를 주면 높이에만 곱한다', () => {
+  const p = extrusionPaint(5)
+  assert.deepEqual(p['fill-extrusion-base'], ['*', 5, ['get', '__base']])
+  assert.deepEqual(p['fill-extrusion-height'], ['*', 5, ['get', '__height']])
+  // 색과 투명도는 배수와 무관하다.
+  assert.deepEqual(p['fill-extrusion-color'], ['coalesce', ['get', 'fill'], ['get', 'stroke'], '#3388ff'])
+})
+
+test('뜬 경로도 같은 배수로 올라간다', () => {
+  const z = elevatedLineLayout(3)['line-z-offset']
+  assert.equal(z[0], '*')
+  assert.equal(z[1], 3)
+  assert.equal(z[2][0], 'at-interpolated')
+  // 기준면은 배수와 무관하게 해수면이다.
+  assert.equal(elevatedLineLayout(3)['line-elevation-reference'], 'sea')
+})
+
+test('바닥과 천장에 같은 배수를 써야 층이 안 뒤집힌다', () => {
+  // 바닥만 곱하면 바닥이 천장을 넘어서는 도형이 생긴다.
+  const p = extrusionPaint(10)
+  assert.equal(p['fill-extrusion-base'][1], p['fill-extrusion-height'][1])
 })

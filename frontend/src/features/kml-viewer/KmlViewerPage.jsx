@@ -10,11 +10,12 @@ const mb = (n) => `${(n / 1048576).toFixed(1)} MB`
 
 export default function KmlViewerPage() {
   const mapContainerRef = useRef(null)
-  const { ready, error: mapError, setLayers, setHidden, setLabelsOn, set3d, fitTo, addMs, displayMs, wallCount, elevCount, wallMs } = useKmlMap(mapContainerRef)
+  const { ready, error: mapError, setLayers, setHidden, setLabelsOn, set3d, setExaggeration, fitTo, addMs, displayMs, wallCount, elevCount, wallMs } = useKmlMap(mapContainerRef)
   const [layers, setLayerList] = useState([])
   const [hidden, setHiddenSet] = useState(new Set())
   const [labelsOn, setLabels] = useState(true)
   const [on3d, setOn3d] = useState(false)
+  const [exaggeration, setExag] = useState(1)
   const [stats, setStats] = useState(null)
   const [failure, setFailure] = useState(null)
   const [busy, setBusy] = useState(null)
@@ -162,6 +163,17 @@ export default function KmlViewerPage() {
           <label className="kv-labels">
             <input type="checkbox" checked={on3d} onChange={(e) => { setOn3d(e.target.checked); set3d(e.target.checked) }} />
             {' 3D 보기 (고도 벽 세우고, 경로 띄우고, 지도 기울이기)'}
+          </label>
+        )}
+
+        {layers.length > 0 && on3d && (
+          <label className="kv-labels">
+            {'고도 과장 '}
+            <select value={exaggeration}
+              onChange={(e) => { const x = Number(e.target.value); setExag(x); setExaggeration(x) }}>
+              {[1, 3, 5, 10, 20].map((x) => <option key={x} value={x}>{x}배</option>)}
+            </select>
+            <span className="kv-count">{' 높이만 늘린다 — 위치는 그대로'}</span>
           </label>
         )}
 

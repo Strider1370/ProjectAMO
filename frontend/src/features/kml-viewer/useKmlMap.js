@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from '../map/mapConfig.js'
 import { isLayerVisible } from './lib/kmlFolderTree.js'
 import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT } from './lib/kmlPaint.js'
-import { buildWalls, EXTRUSION_PAINT, buildElevatedLines, ELEVATED_LINE_LAYOUT } from './lib/kmlWalls.js'
+import { buildWalls, extrusionPaint, buildElevatedLines, elevatedLineLayout } from './lib/kmlWalls.js'
 
 const SRC = 'kml-src'
 // 고도 벽은 원본 도형이 아니라 거기서 되찾은 바닥 고리다. 기하가 다르므로 소스를
@@ -34,6 +34,8 @@ const LYR = (kind) => `kml-${kind}`
 export default function useKmlMap(containerRef) {
   const mapRef = useRef(null)
   const layersRef = useRef([])
+  // 새로 파일을 올려 레이어를 다시 만들 때도 현재 배수를 유지해야 한다.
+  const exaggerationRef = useRef(1)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
   const [addMs, setAddMs] = useState(null)
@@ -118,7 +120,7 @@ export default function useKmlMap(containerRef) {
     map.addLayer({
       id: WALL_LYR, type: 'fill-extrusion', source: WALL_SRC, slot: SLOT,
       filter: ['in', ['get', '__folder'], ['literal', allIds]],
-      paint: EXTRUSION_PAINT,
+      paint: extrusionPaint(exaggerationRef.current),
       layout: { visibility: 'none' }, // 3D 보기를 켤 때만 나온다
     })
     // 출항절차·장주처럼 고도가 오르내리는 경로는 벽이 아니라 공중에 뜬 선이다.
@@ -128,7 +130,7 @@ export default function useKmlMap(containerRef) {
       id: ELEV_LYR, type: 'line', source: ELEV_SRC, slot: SLOT,
       filter: ['in', ['get', '__folder'], ['literal', allIds]],
       paint: LINE_PAINT,
-      layout: { ...ELEVATED_LINE_LAYOUT, visibility: 'none' },
+      layout: { ...elevatedLineLayout(exaggerationRef.current), visibility: 'none' },
     })
     setWallCount(walls.length)
     setElevCount(elev.length)
@@ -163,6 +165,21 @@ export default function useKmlMap(containerRef) {
     map.easeTo({ pitch: on ? 60 : 0, duration: 400 })
   }
 
+  // 높이에만 배수를 건다. 가로는 그대로이므로 위치는 거짓이 되지 않는다.
+  const setExaggeration = (x) => {
+    exaggerationRef.current = x
+    const map = mapRef.current
+    if (!map) return
+    if (map.getLayer(WALL_LYR)) {
+      const paint = extrusionPaint(x)
+      map.setPaintProperty(WALL_LYR, 'fill-extrusion-base', paint['fill-extrusion-base'])
+      map.setPaintProperty(WALL_LYR, 'fill-extrusion-height', paint['fill-extrusion-height'])
+    }
+    if (map.getLayer(ELEV_LYR)) {
+      map.setLayoutProperty(ELEV_LYR, 'line-z-offset', elevatedLineLayout(x)['line-z-offset'])
+    }
+  }
+
   const fitTo = (list) => {
     const map = mapRef.current
     if (!map) return
@@ -174,5 +191,5 @@ export default function useKmlMap(containerRef) {
     if (any) map.fitBounds(bounds, { padding: 40, duration: 0 })
   }
 
-  return { ready, error, setLayers, setHidden, setLabelsOn, set3d, fitTo, addMs, displayMs, wallCount, elevCount, wallMs }
+  return { ready, error, setLayers, setHidden, setLabelsOn, set3d, setExaggeration, fitTo, addMs, displayMs, wallCount, elevCount, wallMs }
 }

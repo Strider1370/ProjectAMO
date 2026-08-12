@@ -55,12 +55,18 @@ export function wallToExtrusion(feature) {
 // 천장 뚜껑이 생겨 위에서 보면 원판으로 덮인다. 벽면만 그리려면 판자마다 얇은 띠로
 // 부풀려야 하고(선분 → 폭 20m 사각형), 그러면 도형 수가 판자 수만큼 늘어난다.
 // 껍데기만 필요하다는 것이 본 기능에서 확정되면 그때 바꾼다.
-export const EXTRUSION_PAINT = {
+//
+// 고도 과장(exaggerate): 관제권은 반경 9km에 높이 300m라 실제 비율로는 눈에 띄지
+// 않는다. 높이에만 배수를 곱해 층 구조가 보이게 한다 — 지도 표출에서 흔히 쓰는
+// 방법이고, 가로는 그대로이므로 위치는 거짓이 되지 않는다.
+export const exaggerate = (x, expr) => (x === 1 ? expr : ['*', x, expr])
+
+export const extrusionPaint = (x = 1) => ({
   'fill-extrusion-color': ['coalesce', ['get', 'fill'], ['get', 'stroke'], '#3388ff'],
-  'fill-extrusion-base': ['get', '__base'],
-  'fill-extrusion-height': ['get', '__height'],
+  'fill-extrusion-base': exaggerate(x, ['get', '__base']),
+  'fill-extrusion-height': exaggerate(x, ['get', '__height']),
   'fill-extrusion-opacity': 0.4,
-}
+})
 
 // --- 고도가 오르내리는 선 ---
 //
@@ -96,15 +102,15 @@ export function lineToElevated(feature) {
 // ponytail: line-progress(0~1)를 꼭짓점 번호로 그냥 비례 변환한다. 꼭짓점 간격이
 // 고르지 않으면 고도가 경로를 따라 조금 밀린다. 정확히 하려면 좌표를 등간격으로
 // 다시 뽑아야 하는데, 모양을 보는 데는 이걸로 충분하다.
-export const ELEVATED_LINE_LAYOUT = {
-  'line-z-offset': [
+export const elevatedLineLayout = (x = 1) => ({
+  'line-z-offset': exaggerate(x, [
     'at-interpolated',
     ['*', ['line-progress'], ['-', ['length', ['get', '__elev']], 1]],
     ['get', '__elev'],
-  ],
+  ]),
   // 항공 고도는 해수면 기준이다. 지면 기준으로 두면 산 위에서 경로가 함께 솟는다.
   'line-elevation-reference': 'sea',
-}
+})
 
 export function buildElevatedLines(list) {
   const out = []
