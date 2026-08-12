@@ -25,6 +25,7 @@ import { TimeZoneProvider, useTimeZone } from '../shared/timezone/TimeZoneContex
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
 const TerminalPage = lazy(() => import('../features/terminal/TerminalPage.jsx'))
 const DesignTestPage = lazy(() => import('../features/design-test/DesignTestPage.jsx'))
+const KmlViewerPage = lazy(() => import('../features/kml-viewer/KmlViewerPage.jsx'))
 const AdminPage = lazy(() => import('../features/admin/AdminPage.jsx'))
 const DeveloperPage = lazy(() => import('../features/developer/DeveloperPage.jsx'))
 
@@ -331,6 +332,10 @@ function App() {
   if (window.location.pathname === '/test' && import.meta.env.DEV) {
     // 디자인 테스트 페이지 — 개발 빌드에서만. 운영 빌드(npm run build)에선 이 코드가 제거되어 접근 불가.
     return <Suspense fallback={null}><DesignTestPage /></Suspense>
+  }
+  if (window.location.pathname === '/kml' && import.meta.env.DEV) {
+    // KML 표출 시험 페이지 — 개발 빌드에서만. 운영 빌드에선 이 코드가 제거되어 접근 불가.
+    return <Suspense fallback={null}><KmlViewerPage /></Suspense>
   }
   if (window.location.pathname === '/admin') {
     return <Suspense fallback={null}><AuthProvider><AdminPage /></AuthProvider></Suspense>
