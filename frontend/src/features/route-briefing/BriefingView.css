@@ -248,6 +248,20 @@
   .bv-leg-disclaimer { max-width: none; text-align: left; }
 }
 
+/* iPad 가로는 패널 폭이 카드 전환점보다 좁아도 NAVLOG를 데스크톱 표로 유지한다.
+   표의 본질적인 가로 밀도는 축소하지 않고, 기존 데스크톱 폴백처럼 NAVLOG 안에서 스크롤한다. */
+@media (min-width: 720px) and (max-width: 1199px) and (orientation: landscape) {
+  .bv-leg-scroll { overflow-x: auto; }
+  .bv-leg-table { display: table; min-width: 720px; }
+  .bv-leg-table thead { display: table-header-group; }
+  .bv-leg-table tbody { display: table-row-group; }
+  .bv-leg-row { display: table-row; padding: 0; border: 0; border-radius: 0; }
+  .bv-leg-row td { display: table-cell; padding: revert; overflow-wrap: normal; }
+  .bv-leg-row td::before { content: none; }
+  .bv-leg-head { display: flex; }
+  .bv-leg-disclaimer { max-width: 280px; text-align: right; }
+}
+
 /* ③ 개황 — 일기도 뷰어 */
 .bv-syn-fold { margin: 0; }
 .bv-syn-fold-summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); cursor: pointer; list-style: none; }

@@ -44,6 +44,16 @@ async function createBriefing(page) {
 }
 
 test.describe('briefing-view', () => {
+  test('keeps NAVLOG in the desktop table layout on iPad landscape', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'ipad-landscape', 'iPad 가로 전용 NAVLOG 레이아웃')
+    await createBriefing(page)
+
+    const navlog = page.getByRole('region', { name: 'NAVLOG', exact: true })
+    await expect(navlog.locator('.bv-leg-table')).toHaveCSS('display', 'table')
+    await expect(navlog.locator('.bv-leg-table thead')).toHaveCSS('display', 'table-header-group')
+    await expect(navlog.locator('.bv-leg-row').first()).toHaveCSS('display', 'table-row')
+  })
+
   test('renders route weather legs as a table or mobile cards', async ({ page }) => {
     const requests = await createBriefing(page)
 
