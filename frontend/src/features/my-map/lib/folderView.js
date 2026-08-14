@@ -11,6 +11,28 @@ export function hasChildren(list, id) {
   return list.some((l) => l.parentId === id)
 }
 
+// 자기 도형 + 하위 폴더의 도형을 합쳐 센다.
+//
+// 직접 가진 것만 세면 안 된다. 맥케이 파일의 RKTA TAEAN은 직접 가진 도형이 0개인데
+// 하위에 1,134개가 있어서, 직접 것만 세면 제일 큰 폴더가 비어 보이고 "여기로"도
+// 안 뜬다.
+export function totalFeatures(list, id) {
+  const children = new Map()
+  for (const l of list) {
+    if (!l.parentId) continue
+    children.set(l.parentId, [...(children.get(l.parentId) ?? []), l.id])
+  }
+  const byId = new Map(list.map((l) => [l.id, l]))
+  const walk = (nodeId) => {
+    const node = byId.get(nodeId)
+    if (!node) return 0
+    let n = node.features?.length ?? 0
+    for (const childId of children.get(nodeId) ?? []) n += walk(childId)
+    return n
+  }
+  return walk(id)
+}
+
 export function toggleExpanded(expanded, id) {
   const next = new Set(expanded)
   if (next.has(id)) next.delete(id)

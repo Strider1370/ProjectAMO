@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { visibleRows, hasChildren, toggleExpanded } from './folderView.js'
+import { visibleRows, hasChildren, toggleExpanded, totalFeatures } from './folderView.js'
 
 // buildLayerList가 주는 모양만 흉내낸다. 도형은 이 모듈의 관심사가 아니다.
 const L = (id, name, depth, parentId) => ({ id, name, depth, parentId, features: [] })
@@ -66,4 +66,34 @@ test('toggleExpanded: 원본을 바꾸지 않고 새 Set을 준다', () => {
   assert.deepEqual([...before], ['f0'])
   assert.equal(after.has('f2'), true)
   assert.equal(toggleExpanded(after, 'f0').has('f0'), false)
+})
+
+// --- 하위까지 합친 도형 수 ---
+
+test('totalFeatures: 자기 도형과 하위 도형을 함께 센다', () => {
+  // 맥케이 파일의 RKTA TAEAN이 이런 모양이다 — 직접 가진 도형은 0개인데
+  // 하위에 1,134개가 있다. 직접 것만 세면 제일 큰 폴더가 비어 보인다.
+  const tree = [
+    { id: 'a', name: '큰폴더', depth: 0, parentId: null, features: [] },
+    { id: 'b', name: '하위1', depth: 1, parentId: 'a', features: [1, 2, 3] },
+    { id: 'c', name: '하위2', depth: 1, parentId: 'a', features: [4] },
+    { id: 'd', name: '손자', depth: 2, parentId: 'c', features: [5, 6] },
+    { id: 'e', name: '남', depth: 0, parentId: null, features: [7] },
+  ]
+  assert.equal(totalFeatures(tree, 'a'), 6)
+  assert.equal(totalFeatures(tree, 'c'), 3)
+  assert.equal(totalFeatures(tree, 'd'), 2)
+  assert.equal(totalFeatures(tree, 'e'), 1)
+})
+
+test('totalFeatures: 도형이 하나도 없으면 0', () => {
+  const tree = [
+    { id: 'a', name: '빈폴더', depth: 0, parentId: null, features: [] },
+    { id: 'b', name: '빈하위', depth: 1, parentId: 'a', features: [] },
+  ]
+  assert.equal(totalFeatures(tree, 'a'), 0)
+})
+
+test('totalFeatures: 없는 id는 0', () => {
+  assert.equal(totalFeatures(TREE, '없음'), 0)
 })

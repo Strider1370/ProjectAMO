@@ -1,23 +1,90 @@
-.my-map-intro { margin: 0 0 6px; font-size: 12px; line-height: 1.55; }
-.my-map-hint { margin: 0 0 10px; font-size: 11px; opacity: 0.75; }
-.my-map-file { display: block; margin-bottom: 8px; font-size: 12px; }
-.my-map-note { margin: 6px 0; font-size: 12px; opacity: 0.8; }
-.my-map-error { margin: 6px 0; padding: 8px; border-radius: 4px; background: #fef2f2; color: #b91c1c; font-size: 12px; white-space: pre-wrap; }
-.my-map-files { list-style: none; margin: 8px 0; padding: 0; font-size: 12px; }
-.my-map-files li { display: flex; align-items: center; gap: 6px; }
-.my-map-files label { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.my-map-intro { margin: 0 0 10px; font-size: 12px; line-height: 1.55; color: var(--text-2); }
+.my-map-hint { margin: 8px 0 0; font-size: 11px; color: var(--text-3); }
+
+/* 브리핑의 경로 불러오기 네모(.rb-import-dropzone)와 같은 모양. 다른 점 하나 —
+   여기서는 네모 자체가 버튼이라 눌러도 파일 선택창이 뜬다. */
+.my-map-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 150px;
+  padding: 20px;
+  border: 2px dashed var(--stroke-2);
+  border-radius: 12px;
+  background: var(--bg-2);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.my-map-dropzone:hover { border-color: var(--accent); }
+.my-map-dropzone.is-drag-over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.my-map-dropzone-text { color: var(--text-3); font-size: 13px; line-height: 1.6; }
+.my-map-dropzone.is-drag-over .my-map-dropzone-text { color: var(--accent); }
+
+.my-map-add,
+.my-map-add-cancel {
+  display: block;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--stroke-2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.my-map-add:hover, .my-map-add-cancel:hover { border-color: var(--accent); color: var(--accent); }
+.my-map-add-cancel { margin-top: 8px; }
+
+.my-map-note { margin: 6px 0; font-size: 12px; color: var(--text-3); }
+.my-map-error {
+  margin: 6px 0; padding: 8px; border-radius: 6px;
+  background: color-mix(in srgb, #dc2626 10%, transparent);
+  color: #b91c1c; font-size: 12px; white-space: pre-wrap;
+}
+
+.my-map-files { list-style: none; margin: 10px 0; padding: 0; font-size: 12px; }
+.my-map-files li { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.my-map-files label { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; cursor: pointer; }
 .my-map-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.my-map-file-size { margin-left: auto; opacity: 0.6; font-variant-numeric: tabular-nums; }
-.my-map-remove { border: 0; background: none; cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; }
+.my-map-file-size { margin-left: auto; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.my-map-remove {
+  border: 0; background: none; cursor: pointer; color: var(--text-3);
+  font-size: 15px; line-height: 1; padding: 0 2px;
+}
+.my-map-remove:hover { color: #b91c1c; }
+
 /* 찾기 상자는 목록 위에 고정한다 — 접기로는 101줄이 안 줄어서 이게 주된 도구다. */
-.my-map-search { position: sticky; top: 0; z-index: 1; padding: 6px 0; background: inherit; }
-.my-map-search input { width: 100%; box-sizing: border-box; padding: 5px 8px; font-size: 12px; }
+.my-map-search {
+  position: sticky; top: 0; z-index: 1;
+  padding: 6px 0; background: var(--bg-1, inherit);
+}
+.my-map-search input {
+  width: 100%; box-sizing: border-box; padding: 6px 9px; font-size: 12px;
+  border: 1px solid var(--stroke-2); border-radius: 8px;
+  background: var(--bg-2); color: inherit;
+}
+
 .my-map-tree { list-style: none; margin: 0; padding: 0; font-size: 12px; }
-.my-map-tree li { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-.my-map-tree-file { font-weight: 600; opacity: 0.7; margin-top: 6px; }
-.my-map-tree label { display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; }
-.my-map-caret { width: 14px; border: 0; background: none; cursor: pointer; padding: 0; opacity: 0.7; }
+.my-map-tree li { display: flex; align-items: center; gap: 3px; white-space: nowrap; padding: 1px 0; }
+.my-map-tree-file { font-weight: 600; color: var(--text-3); margin-top: 8px; }
+.my-map-tree label { display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.my-map-caret {
+  width: 14px; flex: 0 0 14px; border: 0; background: none; padding: 0;
+  cursor: pointer; color: var(--text-3);
+}
 .my-map-caret.is-hidden { visibility: hidden; }
-.my-map-count { margin-left: auto; opacity: 0.55; font-variant-numeric: tabular-nums; }
-.my-map-goto { border: 0; background: none; cursor: pointer; opacity: 0.7; font-size: 11px; text-decoration: underline; }
-.my-map-off { opacity: 0.45; }
+.my-map-count { margin-left: auto; color: var(--text-3); font-variant-numeric: tabular-nums; }
+/* 101줄에 101번 반복되는 버튼이라 평소에는 흐리게 둔다. */
+.my-map-goto {
+  flex: 0 0 auto; border: 0; background: none; padding: 0 2px;
+  cursor: pointer; color: var(--text-3); opacity: 0.35; font-size: 12px;
+}
+.my-map-tree li:hover .my-map-goto { opacity: 1; color: var(--accent); }
+.my-map-off { color: var(--text-3); opacity: 0.6; }
