@@ -700,9 +700,14 @@ test('both desktop and mobile use the shared token field', () => {
   assert.equal(uses.length, 2, '데스크톱과 모바일 두 곳에 있어야 한다')
 })
 
-test('the apply button and its stale help text are gone', () => {
+test('the apply button and its stale help text are gone from both paths', () => {
   assert.doesNotMatch(jsx, /경로 적용/)
   assert.doesNotMatch(jsx, /SID\/STAR는 절차 선택에 따로 표시됩니다/)
+  // 데스크톱 쪽 안내문과 요약 줄. 토큰 알약이 같은 정보를 이미 보여준다.
+  assert.doesNotMatch(jsx, /초안을 입력한 뒤 경로 적용으로 확정하세요/)
+  assert.doesNotMatch(jsx, /rb-route-plan/)
+  // 두 경로 모두 옛 textarea가 남아 있으면 안 된다.
+  assert.doesNotMatch(jsx, /routeDraftText/)
 })
 
 test('the read-only colored sequence row is gone', () => {
@@ -732,7 +737,16 @@ import RouteTokenField from './RouteTokenField.jsx'
 
 `:459` 부근의 `route-check-sequence` 블록을 통째로 지운다.
 
-데스크톱·모바일 양쪽에서 `<label className="rb-route-string">…</label>` 덩이를 다음으로 바꾼다:
+**두 경로의 구조가 다르다. 각각 다른 덩이를 바꾼다:**
+
+| | 지금 무엇이 있나 | 무엇을 지우나 |
+| --- | --- | --- |
+| 데스크톱 (`:635` 부근) | Fluent `<Field label={...}>` + `<textarea className={s.routeText}>` | `<Field>` 통째, 그 아래 `<small>` 안내문, `rb-route-plan` 요약 줄, `s.draftApply` 「경로 적용」 버튼 |
+| 모바일 (`:752`) | `<label className="rb-route-string">` + `<textarea>` | `<label>` 통째 (안내 `<span>`과 「경로 적용」 버튼 포함) |
+
+데스크톱의 `rb-route-plan` 줄(「적용된 기본 경로 · RKSI · SID 없음 → … 」)도 없앤다. 토큰 입력칸이 같은 정보를 알약으로 이미 보여주므로 두 번 보여주는 것이다.
+
+양쪽 모두 다음으로 바꾼다:
 
 ```jsx
 <RouteTokenField
