@@ -167,3 +167,12 @@
 .my-map-row:hover .my-map-goto { opacity: 1; }
 .my-map-goto:hover { color: var(--accent); }
 .my-map-goto:focus-visible { opacity: 1; }
+
+/* 지도 위 풍선. 패널과 같은 언어를 쓴다. */
+.my-map-popup .mapboxgl-popup-content {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-family: var(--app-font, system-ui, sans-serif);
+}
+.my-map-popup-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.my-map-popup-body { font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }

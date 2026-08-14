@@ -136,6 +136,54 @@ export default function useMyMap(mapRef, isStyleReady) {
     return () => { map.off('styledata', restack) }
   }, [mapRef])
 
+  // 도형을 누르면 파일에 적힌 이름과 설명을 보여준다.
+  //
+  // 설명은 남이 만든 파일에서 온 글이다. HTML로 넣으면 그 파일이 우리 화면에서
+  // 무엇이든 실행할 수 있다. 요소를 만들어 textContent로만 채운다 — 문자열을
+  // 이어붙여 setHTML을 부르는 길은 열어두지 않는다.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return undefined
+    const layers = LAYER_DEFS.map((d) => LYR(d.kind))
+    const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '280px', className: 'my-map-popup' })
+
+    const onClick = (e) => {
+      const feature = e.features?.[0]
+      if (!feature) return
+      const name = feature.properties?.name
+      const description = feature.properties?.description
+      if (!name && !description) return
+
+      const root = document.createElement('div')
+      if (name) {
+        const title = document.createElement('div')
+        title.className = 'my-map-popup-title'
+        title.textContent = String(name)
+        root.append(title)
+      }
+      if (description) {
+        const body = document.createElement('div')
+        body.className = 'my-map-popup-body'
+        // 파일이 준 글을 글자 그대로만 그린다.
+        body.textContent = String(description)
+        root.append(body)
+      }
+      popup.setLngLat(e.lngLat).setDOMContent(root).addTo(map)
+    }
+    const onEnter = () => { map.getCanvas().style.cursor = 'pointer' }
+    const onLeave = () => { map.getCanvas().style.cursor = '' }
+
+    map.on('click', layers, onClick)
+    map.on('mouseenter', layers, onEnter)
+    map.on('mouseleave', layers, onLeave)
+    return () => {
+      map.off('click', layers, onClick)
+      map.off('mouseenter', layers, onEnter)
+      map.off('mouseleave', layers, onLeave)
+      popup.remove()
+    }
+  }, [mapRef, isStyleReady])
+
   const fitTo = useCallback((features) => {
     const map = mapRef.current
     const bounds = boundsOf(features)
