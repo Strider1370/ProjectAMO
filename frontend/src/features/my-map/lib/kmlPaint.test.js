@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, httpsIcon } from './kmlPaint.js'
+import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, httpsIcon, labelHaloFor } from './kmlPaint.js'
 
 // 스타일은 JS로 feature를 순회해 계산하지 않고 Mapbox 표현식이 속성을 직접 읽는다.
 // feature 22만 개를 JS로 훑지 않아도 되고, 파일이 정한 값이 그대로 쓰인다.
@@ -37,7 +37,8 @@ test('라벨은 name을 쓴다', () => {
 // 파일 값을 우선해야 한다 — 우리가 색을 고르지 않는다는 원칙에 라벨도 포함된다.
 test('라벨 색과 크기도 파일 값을 우선한다', () => {
   assert.deepEqual(LABEL_PAINT['text-color'], ['coalesce', ['get', 'label-color'], '#111827'])
-  assert.deepEqual(LABEL_LAYOUT['text-size'], ['*', ['coalesce', ['get', 'label-scale'], 1], 11])
+  // 크기는 파일 값을 쓰되 읽을 수 있는 바닥을 둔다 — 아래 '최소 크기' 시험 참고.
+  assert.deepEqual(LABEL_LAYOUT['text-size'], ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 11])
 })
 
 test('httpsIcon: http 주소를 https로 바꾼다', () => {
@@ -52,4 +53,33 @@ test('httpsIcon: 이미 https면 그대로', () => {
 test('httpsIcon: KMZ 내부 상대 경로는 쓸 수 없으므로 null', () => {
   assert.equal(httpsIcon('files/dme1.bmp'), null)
   assert.equal(httpsIcon(undefined), null)
+})
+
+// --- 이름표 읽힘 ---
+
+test('밝은 글자에는 어두운 후광, 어두운 글자에는 흰 후광', () => {
+  // 맥케이 파일의 IC·JC 이름 455개가 흰색이다. 구글어스에선 위성영상 위라 맞지만
+  // 우리 기본 지도는 밝아서, 흰 글자에 흰 후광이면 아무것도 안 보인다.
+  assert.equal(labelHaloFor('#ffffff'), '#1f2937')
+  assert.equal(labelHaloFor('#ffff00'), '#1f2937')
+  assert.equal(labelHaloFor('#00ff00'), '#1f2937')
+  assert.equal(labelHaloFor('#000000'), '#ffffff')
+  assert.equal(labelHaloFor('#0000ff'), '#ffffff')
+  assert.equal(labelHaloFor('#ff0000'), '#ffffff')
+})
+
+test('색을 모르면 흰 후광 — 기본 글자색이 어둡기 때문', () => {
+  assert.equal(labelHaloFor(null), '#ffffff')
+  assert.equal(labelHaloFor(undefined), '#ffffff')
+  assert.equal(labelHaloFor('아무말'), '#ffffff')
+  assert.equal(labelHaloFor('#fff'), '#1f2937')   // 3자리도 읽는다
+})
+
+test('후광 색은 우리가 심은 속성을 읽는다', () => {
+  assert.deepEqual(LABEL_PAINT['text-halo-color'], ['coalesce', ['get', '__labelHalo'], '#ffffff'])
+})
+
+test('이름표에 최소 크기를 둔다', () => {
+  // 파일의 label-scale이 0.7이면 예전 기준(11px)으로 7.7px이라 읽을 수 없다.
+  assert.deepEqual(LABEL_LAYOUT['text-size'], ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 11])
 })

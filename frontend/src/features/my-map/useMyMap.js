@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { isLayerVisible } from './lib/kmlFolderTree.js'
-import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT } from './lib/kmlPaint.js'
+import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, labelHaloFor } from './lib/kmlPaint.js'
 import { parseMyMapFile } from './lib/parseMyMapFile.js'
 import { listMyMapFiles, saveMyMapFile, loadMyMapFile, deleteMyMapFile } from './lib/myMapStore.js'
 
@@ -59,7 +59,16 @@ export default function useMyMap(mapRef, isStyleReady) {
       for (const layer of list) {
         if (isLayerVisible(list, layer.id, hiddenSet)) visibleFolderIds.push(layer.id)
         for (const f of layer.features) {
-          features.push({ ...f, properties: { ...f.properties, __file: fileId, __folder: layer.id } })
+          features.push({
+            ...f,
+            properties: {
+              ...f.properties,
+              __file: fileId,
+              __folder: layer.id,
+              // 글자색은 파일 것을 쓰고, 뒤에 깔리는 후광만 읽히도록 반대로 둔다.
+              __labelHalo: labelHaloFor(f.properties?.['label-color']),
+            },
+          })
         }
       }
     }
