@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from '../map/mapConfig.js'
 import { isLayerVisible } from '../my-map/lib/kmlFolderTree.js'
 import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT } from '../my-map/lib/kmlPaint.js'
-import { buildWalls, extrusionPaint, buildElevatedLines, elevatedLineLayout } from '../my-map/lib/kmlWalls.js'
+import { buildWalls, extrusionPaint, buildElevatedLines, elevatedLineLayout } from './lib/kmlWalls.js'
 
 const SRC = 'kml-src'
 // 고도 벽은 원본 도형이 아니라 거기서 되찾은 바닥 고리다. 기하가 다르므로 소스를
