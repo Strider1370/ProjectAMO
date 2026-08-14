@@ -22,17 +22,22 @@
 
 ## File Structure
 
-- Modify: `frontend/src/features/map/imageOverlay.js` — preload, 두 이미지 버퍼, 취소 토큰, 크로스페이드와 정리.
-- Modify: `frontend/src/features/map/imageOverlay.test.js` — 전환 성공/취소/실패/재설치 단위 테스트.
+- Modify: `frontend/src/features/map/imageOverlay.js` — stateless image-coordinate/resource helpers만 유지.
+- Create: `frontend/src/features/weather-overlays/lib/rasterFrameTransition.js` — preload, 두 이미지 버퍼, 취소 토큰, 크로스페이드와 정리.
+- Create: `frontend/src/features/weather-overlays/lib/rasterFrameTransition.test.js` — 전환 성공/취소/Mapbox 실패/스타일 교체 단위 테스트.
 - Create: `frontend/src/features/weather-overlays/lib/rasterLegendModel.js` — HSR/HCI 가로 범례 상수와 표시 조건 순수 모델.
 - Create: `frontend/src/features/weather-overlays/lib/rasterLegendModel.test.js` — KMA 확인값과 범례 표시 조건 테스트.
 - Modify: `frontend/src/features/weather-overlays/lib/weatherOverlayModel.js` — HSR을 레이더 기준 프레임으로 삼고 WISSDOM·범례·자료 가능 프레임을 파생.
 - Modify: `frontend/src/features/weather-overlays/lib/weatherOverlayModel.test.js` — 레이더/WISSDOM 연동과 자료 가능 시각 합집합 테스트.
 - Modify: `frontend/src/features/weather-overlays/lib/kmaCompositeLayers.js` — HSR/HCI/가시영상에 공통 전환 어댑터 사용.
 - Modify: `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js` — 적외/WISSDOM/QPF의 공통 전환 사용과 이미지 실패 보존.
+- Modify: `frontend/src/features/weather-overlays/lib/lightningLayers.js` — 최신 선택 generation만 커밋하는 낙뢰 GeoJSON 준비/교체.
+- Modify: `frontend/src/features/weather-overlays/lib/lightningLayers.test.js` — 늦은 낙뢰 결과와 빈 다음 결과가 현재 프레임을 지우지 않는지 검증.
 - Modify: `frontend/src/features/weather-overlays/WeatherLegends.jsx` — HSR·HCI·WISSDOM 가로 범례 렌더.
 - Modify: `frontend/src/features/weather-overlays/WeatherLegends.test.js` — 원본 세로 `<img>` 미사용과 가로 범례 조건 테스트.
 - Modify: `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx` — BIN radar 숨김, HSR 이름 변경, WISSDOM 별도 제어 제거.
+- Modify: `frontend/src/features/weather-overlays/lib/useRadarWindOverlay.js`, `metLayerVisibility.js` 및 테스트 — HSR 자동 WISSDOM·HSR/해외레이더 상호배타로 legacy radar 의미 이전.
+- Modify: `frontend/src/features/monitoring/MonitoringMap.jsx` — legacy radar 기본 활성화 제거.
 - Modify: `frontend/src/features/map/lib/baseMapLayers.js` — HSR/HCI 포함 경계 가시성 및 위성 우선 노랑 색상 정책.
 - Modify: `frontend/src/features/map/MapView.jsx` — 기존 모델 조합 지점에서 새 경계/범례 입력을 전달.
 - Modify: `frontend/src/features/weather-overlays/lib/timelineRailModel.js` — 활성 레이어 프레임 합집합과 `hasDataAtTick` 순수 함수.
@@ -50,16 +55,16 @@
 - Modify: `frontend/src/features/weather-overlays/lib/weatherOverlayModel.test.js`
 
 **Interfaces:**
-- Produces `HSR_LEGEND`, `HCI_LEGEND`, and `buildRasterLegendModel({ visibility, hsrFrame, hciFrame, wissdomFrame })` returning `{ hsrVisible, hciVisible, wissdomVisible }`.
-- Produces `collectActiveFrameTimes({ visibility, hsrFrames, hciFrames, satelliteFrames, satelliteVisibleFrames, lightningFrames, wissdomFrames, qpfFrames, nwpTimes })` returning sorted unique epoch milliseconds.
+- Reuses the existing verified `RADAR_RAINRATE_LEGEND` from `weatherOverlayLayers.js`; it contains KMA HSR thresholds `0.0 … 90, 110, 150` and their exact colors.
+- Produces `HCI_LEGEND` and `buildRasterLegendModel({ visibility, hsrFrame, hciFrame, wissdomFrame })` returning `{ hsrVisible, hciVisible, wissdomVisible }`.
+- Produces source-aware availability entries `{ ms, cadenceMs }`, not a flattened list, so mixed radar/위성/NWP cadences remain correct.
 - `buildWeatherOverlayModel` exposes `radarFrame` from HSR when `visibility.radarHsr` is true and derives WISSDOM from that exact HSR timestamp.
 
 - [ ] **Step 1: Write failing legend and frame-union tests**
 
 ```js
-test('HSR and HCI use horizontal, KMA-verified legend entries', () => {
-  assert.equal(HSR_LEGEND.at(0).label, '0.1')
-  assert.equal(HSR_LEGEND.at(-1).label, '150')
+test('HSR reuses every verified KMA rain-rate legend band', () => {
+  assert.deepEqual(RADAR_RAINRATE_LEGEND.map(({ label }) => label), ['0.0', '0.1', '0.5', '1.0', '2', '3', '4', '5', '6', '7', '8', '9', '10', '15', '20', '25', '30', '40', '50', '60', '70', '80', '90', '110', '150'])
   assert.deepEqual(HCI_LEGEND.map(({ label }) => label), ['우박', '비', '눈', '빙정', '비강수없음'])
 })
 
@@ -82,8 +87,6 @@ Expected: FAIL because the module and exported union function do not exist.
 - [ ] **Step 3: Implement only verified KMA legend constants and pure derivation**
 
 ```js
-export const HSR_THRESHOLDS = Object.freeze(['0.1', '0.5', '1.0', '2', '3', '4', '5', '6', '7', '8', '9', '10', '15', '20', '25', '30', '40', '50', '60', '70', '80', '90', '100', '150'])
-
 export const HCI_LABELS = Object.freeze(['우박', '비', '눈', '빙정', '비강수없음'])
 
 export function collectActiveFrameTimes({ visibility = {}, hsrFrames = [], qpfFrames = [] }) {
@@ -94,7 +97,7 @@ export function collectActiveFrameTimes({ visibility = {}, hsrFrames = [], qpfFr
 }
 ```
 
-Use the KMA legend artifacts already collected under `backend/data/radar/{hsr,hci}/` to transcribe all colors/labels exactly; add no source image URL to the exported data.
+Import the existing verified HSR constant instead of retranscribing its colors. Transcribe only HCI’s five colors/labels from the saved KMA artifact and assert the full array; add no source image URL to exported data.
 
 - [ ] **Step 4: Update weather model semantics**
 
@@ -114,24 +117,25 @@ git commit -m "feat: derive HSR radar timeline state"
 ### Task 2: Mapbox 이미지 이중 버퍼 전환을 TDD로 구현
 
 **Files:**
-- Modify: `frontend/src/features/map/imageOverlay.js`
-- Modify: `frontend/src/features/map/imageOverlay.test.js`
+- Create: `frontend/src/features/weather-overlays/lib/rasterFrameTransition.js`
+- Create: `frontend/src/features/weather-overlays/lib/rasterFrameTransition.test.js`
 
 **Interfaces:**
-- Produces `syncImageOverlay(map, options)` where `options` contains `{ sourceId, layerId, frame, opacity, transitionMs: 200, signal }`.
-- Returns a cancellation-aware result; only the latest call for a `{ map, sourceId }` pair may commit a preload.
-- Existing `addOrUpdateImageOverlay` callers migrate to this interface or retain a compatibility wrapper with transition disabled only in tests that require immediate installation.
+- Produces `createRasterFrameTransition(map, options)` returning `{ sync(frame, visible), cancel(), dispose() }`.
+- `sync` returns immediately with current visibility; only its internal latest generation may commit a preloaded frame.
+- The owning style-synced effect returns `dispose` as cleanup. Map style change, visibility false, or next sync invalidates pending preload immediately.
 
 - [ ] **Step 1: Add failing controller tests**
 
 ```js
-test('keeps old image visible until the incoming frame preloads', async () => {
+test('keeps old image visible until the incoming frame and Mapbox source load', async () => {
   const map = createMap({ preload: deferredPreload })
   await syncImageOverlay(map, oldOptions)
   const pending = syncImageOverlay(map, { ...oldOptions, frame: newFrame })
   assert.equal(map.getLayer('radar-layer').paint['raster-opacity'], 0.88)
   deferredPreload.resolve()
   await pending
+  map.emitSourceData('radar-layer--incoming')
   assert.equal(map.getLayer('radar-layer--incoming').paint['raster-opacity'], 0.88)
 })
 
@@ -153,11 +157,11 @@ Expected: FAIL because `syncImageOverlay` and preload behavior are absent.
 
 - [ ] **Step 3: Implement the smallest two-buffer controller**
 
-Use a `WeakMap<Map, Map<sourceId, state>>` containing generation number, active source/layer IDs, incoming IDs, abort controller, and cleanup timer. Preload with `Image`; after `onload`, install incoming source/layer at opacity 0, animate both raster opacity values over 200ms, then remove old resources. On abort/error, remove only incoming resources and leave active state untouched.
+Use a `WeakMap<Map, Map<sourceId, state>>` containing generation number, active source/layer IDs, incoming IDs, abort controller, source-error cleanup, and cleanup timer. Preload with `Image`; after `onload`, install incoming source/layer at opacity 0, wait for its Mapbox source load, then animate both raster opacity values over 200ms. On abort, image error, source error, or style cleanup, remove only incoming resources and leave active state untouched.
 
 - [ ] **Step 4: Cover style restoration and same-frame idempotence**
 
-Add tests that unchanged frames add no source, a style-recreated map installs only the current active image, and cleanup retains sibling layer order.
+Add tests that unchanged frames add no source, a style change during preload cannot commit, a Mapbox source error retains the old frame, style recreation installs only the active image, and cleanup retains sibling layer order.
 
 - [ ] **Step 5: Run tests and commit**
 
@@ -166,7 +170,7 @@ Run: `cd frontend && node --test src/features/map/imageOverlay.test.js`
 Expected: PASS.
 
 ```bash
-git add frontend/src/features/map/imageOverlay.js frontend/src/features/map/imageOverlay.test.js
+git add frontend/src/features/weather-overlays/lib/rasterFrameTransition.js frontend/src/features/weather-overlays/lib/rasterFrameTransition.test.js
 git commit -m "feat: crossfade weather image frames"
 ```
 
@@ -231,6 +235,10 @@ git commit -m "feat: animate domestic raster overlays"
 
 **Files:**
 - Modify: `frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx`
+- Modify: `frontend/src/features/weather-overlays/lib/useRadarWindOverlay.js`
+- Modify: `frontend/src/features/weather-overlays/lib/metLayerVisibility.js`
+- Modify: their existing tests
+- Modify: `frontend/src/features/monitoring/MonitoringMap.jsx`
 - Modify: `frontend/src/features/map/layerActions.js`
 - Modify: `frontend/src/features/map/layerActions.test.js`
 - Modify: `frontend/src/features/map/lib/baseMapLayers.js`
@@ -270,7 +278,7 @@ Expected: FAIL because raw radar remains exposed/scheduled and the boundary colo
 
 - [ ] **Step 3: Implement policy changes**
 
-Remove `radar` from panel group IDs and shared actions, rename `radarHsr`, make WISSDOM automatic with it, and remove its independent panel action. Stop only `radar_echo` startup/cron registration; retain HSR/HCI/WISSDOM/QPF collectors. Change base boundary paint using the policy result during the existing style-synced effect.
+Remove `radar` from panel group IDs and shared actions, rename `radarHsr`, and remove its independent WISSDOM on/off action while retaining height selection. Make `useRadarWindOverlay` derive effective visibility from `radarHsr`; migrate MapView defaults and monitoring defaults away from legacy `radar`; make `radarHsr` and `radarOverseas` mutually exclusive in `metLayerVisibility`. Stop only `radar_echo` startup/cron registration; retain HSR/HCI/WISSDOM/QPF collectors. Change base boundary paint using the policy result during the existing style-synced effect.
 
 - [ ] **Step 4: Run focused tests and commit**
 
@@ -283,7 +291,51 @@ git add frontend/src/features/weather-overlays/WeatherOverlayPanel.jsx frontend/
 git commit -m "feat: promote KMA image radar"
 ```
 
-### Task 5: 기존 타임라인 눈금 내부 자료 있음 표시
+### Task 5: 낙뢰 최신 선택 가드
+
+**Files:**
+- Modify: `frontend/src/features/weather-overlays/lib/lightningLayers.js`
+- Modify: `frontend/src/features/weather-overlays/lib/lightningLayers.test.js`
+- Modify: `frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js`
+
+**Interfaces:**
+- Produces `createLightningFrameSync(map)` returning `{ sync({ geojson, visible, frameKey }), cancel() }`.
+- A frameKey generation may call `setData` only if it is still the latest visible generation and GeoJSON is valid.
+
+- [ ] **Step 1: Write failing stale-result tests**
+
+```js
+test('an older delayed lightning frame cannot overwrite a newer frame', async () => {
+  const sync = createLightningFrameSync(map)
+  const old = sync.sync({ geojson: oldGeojson, visible: true, frameKey: 'old' })
+  await sync.sync({ geojson: newGeojson, visible: true, frameKey: 'new' })
+  await old
+  assert.deepEqual(map.getSource(LIGHTNING_SOURCE).data, newGeojson)
+})
+```
+
+- [ ] **Step 2: Run focused test and confirm failure**
+
+Run: `cd frontend && node --test src/features/weather-overlays/lib/lightningLayers.test.js`
+
+Expected: FAIL because no generation-aware sync exists.
+
+- [ ] **Step 3: Implement the latest-generation guard and availability input**
+
+Prepare/validate the next feature collection before replacing the source. Ignore stale or invalid/empty replacement results while retaining the last valid visible data. Include the selected valid lightning frame in source-aware availability entries.
+
+- [ ] **Step 4: Run test and commit**
+
+Run: `cd frontend && node --test src/features/weather-overlays/lib/lightningLayers.test.js`
+
+Expected: PASS.
+
+```bash
+git add frontend/src/features/weather-overlays/lib/lightningLayers.js frontend/src/features/weather-overlays/lib/lightningLayers.test.js frontend/src/features/weather-overlays/lib/weatherOverlayLayers.js
+git commit -m "fix: guard stale lightning timeline frames"
+```
+
+### Task 6: 기존 타임라인 눈금 내부 자료 있음 표시
 
 **Files:**
 - Modify: `frontend/src/features/weather-overlays/lib/timelineRailModel.js`
@@ -293,15 +345,15 @@ git commit -m "feat: promote KMA image radar"
 - Modify: `frontend/src/features/map/MapView.jsx`
 
 **Interfaces:**
-- `hasDataAtTick(frameTimesMs, tickMs, toleranceMs)` returns a boolean using the source cadence tolerance.
-- `TimelineRail` accepts `availableFrameTimesMs = []` and decorates only existing tick markup with `timeline-rail__tick--has-data`.
+- `hasDataAtTick(entries, tickMs)` returns a boolean using each `{ ms, cadenceMs }` entry’s own tolerance.
+- `TimelineRail` accepts `availableFrameEntries = []` and decorates only existing tick markup with `timeline-rail__tick--has-data`.
 
 - [ ] **Step 1: Write failing pure-model tests**
 
 ```js
-test('marks a ruler tick when any active frame is within its cadence tolerance', () => {
-  assert.equal(hasDataAtTick([Date.UTC(2026, 7, 15, 0, 5)], Date.UTC(2026, 7, 15, 0, 0), 10 * 60_000), true)
-  assert.equal(hasDataAtTick([], Date.UTC(2026, 7, 15, 0, 0), 10 * 60_000), false)
+test('marks a ruler tick with mixed source cadences', () => {
+  assert.equal(hasDataAtTick([{ ms: Date.UTC(2026, 7, 15, 0, 5), cadenceMs: 5 * 60_000 }], Date.UTC(2026, 7, 15, 0, 0)), true)
+  assert.equal(hasDataAtTick([], Date.UTC(2026, 7, 15, 0, 0)), false)
 })
 ```
 
@@ -313,7 +365,7 @@ Expected: FAIL because `hasDataAtTick` is not exported.
 
 - [ ] **Step 3: Implement model and existing-markup decoration**
 
-Pass `weatherOverlayModel.activeFrameTimesMs` from `MapView` through the existing TimelineRail call. Add only a modifier class to the existing `timeline-rail__tick`; do not add siblings, new rows, labels, or padding.
+Merge model observation/QPF entries with enabled NWP `sliderTimes` in MapView before the existing TimelineRail call; exclude disabled NWP layers. Add only a modifier class to the existing `timeline-rail__tick`; do not add siblings, new rows, labels, or padding.
 
 - [ ] **Step 4: Add layout-preservation test and CSS**
 
@@ -330,7 +382,7 @@ git add frontend/src/features/weather-overlays/lib/timelineRailModel.js frontend
 git commit -m "feat: mark available weather timeline frames"
 ```
 
-### Task 6: 계약 검증과 회귀 확인
+### Task 7: 계약 검증과 회귀 확인
 
 **Files:**
 - Modify: `frontend/verification/contracts/radar-wissdom-qpf.spec.mjs`
@@ -350,7 +402,7 @@ Add a rapid pointer drag across three timeline positions, wait for the final sel
 
 - [ ] **Step 2: Run targeted Playwright contract and confirm failure**
 
-Run: `cd frontend && npx playwright test verification/contracts/radar-wissdom-qpf.spec.mjs --project=chromium`
+Run: `npm run dev:contract -- --grep "radar-wissdom-qpf"`
 
 Expected: FAIL before implementation because labels, automatic WISSDOM, and in-rail availability marker are absent.
 
@@ -365,7 +417,7 @@ Run:
 ```bash
 npm test
 npm run build
-cd frontend && npx playwright test verification/contracts/radar-wissdom-qpf.spec.mjs --project=chromium
+ npm run dev:contract -- --grep "radar-wissdom-qpf"
 cd .. && graphify update .
 ```
 
