@@ -197,8 +197,10 @@ test('찾기는 대소문자를 가리지 않는다', () => {
 })
 
 test('찾기는 원래 순서를 지킨다', () => {
+  // 'RKTA'는 f0·f1·f3 세 곳에 들어 있고, f3의 조상 f2가 따라온다.
+  // 그래도 순서는 원래 목록 순서 그대로여야 한다 — 맞은 것을 앞으로 끌어내지 않는다.
   const rows = visibleRows(TREE, { expanded: new Set(), query: 'RKTA' })
-  assert.deepEqual(rows.map((r) => r.id), ['f0', 'f1'])
+  assert.deepEqual(rows.map((r) => r.id), ['f0', 'f1', 'f2', 'f3'])
 })
 
 test('맞는 것이 없으면 빈 목록', () => {
