@@ -1,6 +1,6 @@
 import {
   Cloud, FileText, Layers, Settings,
-  Menu, Monitor, HelpCircle, History, Search, FileWarning, User, Radio
+  Menu, Monitor, HelpCircle, History, Search, FileWarning, User, Radio, Map
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CURRENT_VERSION } from '../../features/about/changelog.js'
@@ -12,6 +12,7 @@ import './Sidebar.css'
 
 const topItems = [
   { label: '항공정보',         icon: Layers, active: true },
+  { label: '내 지도',          icon: Map },
   { label: '기상정보',         icon: Cloud },
   { label: 'ADS-B',           icon: Radio },
   { label: 'NOTAM',            icon: FileWarning },
@@ -49,6 +50,7 @@ function SidebarButton({ item, isExpanded, onClick }) {
 
 const PANEL_MAP = {
   항공정보:        'aviation',
+  '내 지도':        'my-map',
   기상정보:        'met',
   'ADS-B':         'traffic',
   NOTAM:           'notam',

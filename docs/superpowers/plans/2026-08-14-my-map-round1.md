@@ -1448,12 +1448,7 @@ import MyMapPanel from '../my-map/MyMapPanel.jsx'
       )}
 ```
 
-지도를 만든 직후(`new mapboxgl.Map(...)`의 결과를 `mapRef.current`에 넣는 줄 옆)에 한 줄 더한다. Task 9의 계약이 레이어 순서와 소스 내용을 확인할 때 쓴다:
-
-```js
-    // 브라우저 계약이 레이어 순서·소스 내용을 확인할 때 쓰는 손잡이.
-    window.__projectamoMap = map
-```
+계약이 쓸 지도 손잡이는 **새로 만들지 않는다.** `MapView.jsx`에 이미 `window.__map = map`이 개발 빌드 전용으로 있다(`mapRef.current = map` 바로 아래). Task 9의 계약은 그것을 쓴다.
 
 - [ ] **Step 3: 빌드와 전체 시험**
 
@@ -1587,7 +1582,7 @@ const KML = fileURLToPath(new URL('../../test/fixtures/my-map/folders.kml', impo
 // 지도 소스의 데이터를 단언할 때 querySourceFeatures를 쓰지 않는다. 그것은 이미 그려진
 // 타일을 읽어 setData 직후를 반영하지 못한다(계약 등록부의 규칙).
 const sourceCount = (page) => page.evaluate(() => {
-  const map = window.__projectamoMap
+  const map = window.__map
   const src = map?.getSource('my-map-src')
   return src ? (src.serialize().data.features?.length ?? 0) : -1
 })
@@ -1659,7 +1654,7 @@ test.describe('my-map', () => {
     await page.getByRole('button', { name: '기상정보' }).click()
     await page.getByRole('button', { name: '레이더', exact: true }).click()
     await expect.poll(() => page.evaluate(() => {
-      const ids = window.__projectamoMap?.getStyle()?.layers?.map((l) => l.id) ?? []
+      const ids = window.__map?.getStyle()?.layers?.map((l) => l.id) ?? []
       const radar = ids.indexOf('kma-radar-overlay')
       const mine = ids.indexOf('my-map-fill')
       return radar >= 0 && mine >= 0 ? radar > mine : null
