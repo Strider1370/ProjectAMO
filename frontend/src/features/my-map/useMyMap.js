@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { isLayerVisible } from './lib/kmlFolderTree.js'
-import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, labelHaloFor } from './lib/kmlPaint.js'
+import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, labelHaloFor, httpsIcon, CIRCLE_FILTER_EXTRA } from './lib/kmlPaint.js'
+import { collectIconUrls, iconIdFor } from './lib/kmlIcons.js'
 import { parseMyMapFile } from './lib/parseMyMapFile.js'
 import { listMyMapFiles, saveMyMapFile, loadMyMapFile, deleteMyMapFile } from './lib/myMapStore.js'
 
@@ -17,7 +18,7 @@ const TERRAIN_LAYER = 'terrain-hazard-shade'
 const LAYER_DEFS = [
   { kind: 'fill', type: 'fill', geom: ['==', ['geometry-type'], 'Polygon'], paint: FILL_PAINT },
   { kind: 'line', type: 'line', geom: ['in', ['geometry-type'], ['literal', ['LineString', 'Polygon']]], paint: LINE_PAINT },
-  { kind: 'circle', type: 'circle', geom: ['==', ['geometry-type'], 'Point'], paint: CIRCLE_PAINT },
+  { kind: 'circle', type: 'circle', geom: ['all', ['==', ['geometry-type'], 'Point'], CIRCLE_FILTER_EXTRA], paint: CIRCLE_PAINT },
   { kind: 'label', type: 'symbol', geom: ['==', ['geometry-type'], 'Point'], paint: LABEL_PAINT, layout: LABEL_LAYOUT },
 ]
 const LYR = (kind) => `my-map-${kind}`
@@ -45,6 +46,29 @@ export default function useMyMap(mapRef, isStyleReady) {
   const stateRef = useRef({ activeFileIds, layersByFile, hidden })
   stateRef.current = { activeFileIds, layersByFile, hidden }
 
+  // 지도에 이미 올린 아이콘. 파일을 껐다 켜도 다시 받지 않는다.
+  const loadedIconsRef = useRef(new Set())
+
+  // 아이콘을 지도에 등록한다. 실패한 것은 그냥 두면 그 지점이 원으로 남는다.
+  const ensureIcons = useCallback(async (list) => {
+    const map = mapRef.current
+    if (!map) return
+    const wanted = collectIconUrls(list).filter(({ id }) => !loadedIconsRef.current.has(id))
+    if (wanted.length === 0) return
+    await Promise.all(wanted.map(({ url, id }) => new Promise((resolve) => {
+      // mapbox-gl의 loadImage는 콜백 방식이다.
+      map.loadImage(url, (error, image) => {
+        if (!error && image) {
+          if (!map.hasImage(id)) {
+            try { map.addImage(id, image) } catch { /* 이미 올라와 있으면 그만이다 */ }
+          }
+          loadedIconsRef.current.add(id)
+        }
+        resolve()
+      })
+    })))
+  }, [mapRef])
+
   // 켜진 파일의 도형을 모아 소스와 레이어를 다시 만든다.
   const rebuild = useCallback(() => {
     const map = mapRef.current
@@ -59,6 +83,8 @@ export default function useMyMap(mapRef, isStyleReady) {
       for (const layer of list) {
         if (isLayerVisible(list, layer.id, hiddenSet)) visibleFolderIds.push(layer.id)
         for (const f of layer.features) {
+          const iconUrl = httpsIcon(f.properties?.icon)
+          const iconId = iconUrl ? iconIdFor(iconUrl) : null
           features.push({
             ...f,
             properties: {
@@ -67,6 +93,8 @@ export default function useMyMap(mapRef, isStyleReady) {
               __folder: layer.id,
               // 글자색은 파일 것을 쓰고, 뒤에 깔리는 후광만 읽히도록 반대로 둔다.
               __labelHalo: labelHaloFor(f.properties?.['label-color']),
+              // 지도에 실제로 올라간 아이콘만 심는다. 못 올라간 것은 원으로 남는다.
+              ...(iconId && loadedIconsRef.current.has(iconId) ? { __icon: iconId } : {}),
             },
           })
         }
@@ -125,12 +153,15 @@ export default function useMyMap(mapRef, isStyleReady) {
       setError(`${e?.stage ?? '파일 읽기'} 단계에서 실패: ${e?.message ?? e}`)
       return null
     }
+    // 아이콘을 먼저 올린다. 순서가 바뀌면 첫 그리기에 아이콘이 빠진다.
+    setBusy('아이콘 불러오는 중…')
+    await ensureIcons(parsed.list)
     setBusy('지도에 올리는 중…')
     setLayersByFile((prev) => new Map(prev).set(fileId, parsed.list))
     setActiveFileIds((prev) => new Set(prev).add(fileId))
     setBusy(null)
     return parsed
-  }, [])
+  }, [ensureIcons])
 
   const addFile = useCallback(async (file) => {
     if (!file) return

@@ -14,7 +14,8 @@ export const FILL_PAINT = {
   'fill-opacity': ['coalesce', ['get', 'fill-opacity'], 0.3],
 }
 
-// 이 스파이크는 아이콘을 그리지 않는다(쓸 수 있는지만 확인). 점은 전부 원으로 표시.
+// 아이콘을 못 쓰는 지점을 그리는 원이다. 아이콘이 붙은 지점은 CIRCLE_FILTER_EXTRA가
+// 걸러내므로 여기 오지 않는다.
 // circle-radius의 coalesce는 반드시 * 안쪽에 둔다 — 바깥에 두면 Mapbox가 get을
 // ['number', ...]로 감싸면서 속성 없는 feature에서 평가 오류를 낸다.
 export const CIRCLE_PAINT = {
@@ -25,15 +26,29 @@ export const CIRCLE_PAINT = {
 }
 
 export const LABEL_LAYOUT = {
+  // 아이콘과 이름표를 한 레이어에 둔다. 따로 두면 두 심벌 레이어가 겹침 계산을
+  // 각자 해서 아이콘 옆에 남의 이름표가 끼어든다.
+  'icon-image': ['coalesce', ['get', '__icon'], ''],
+  // 구글 어스 아이콘은 64px 안팎이라 그대로 쓰면 지도를 덮는다. 파일의 icon-scale을
+  // 존중하되 절반으로 줄여 얹는다. ponytail: 눈으로 맞추는 값이다.
+  'icon-size': ['*', ['coalesce', ['get', 'icon-scale'], 1], 0.5],
+  // 압정·깃발은 아래쪽 끝이 그 지점을 가리킨다.
+  'icon-anchor': 'bottom',
+  'icon-allow-overlap': false,
   'text-field': ['coalesce', ['get', 'name'], ''],
   // 파일의 label-scale을 존중하되 바닥을 둔다. 맥케이 파일의 IC·JC 이름은 0.7이라
   // 예전 기준(11px)으로 7.7px이었다 — 화면에서 읽을 수 없는 크기다.
   // 바닥을 너무 올리면 작게 그리라고 지정한 것들이 오히려 제일 도드라진다.
   'text-size': ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 10],
-  'text-offset': [0, 1.1],
+  'text-offset': [0, 0.6],
   'text-anchor': 'top',
   'text-allow-overlap': false,
+  // 아이콘이 자리를 못 잡아 밀려나도 이름표는 남는다.
+  'text-optional': true,
 }
+
+// 아이콘이 붙은 지점은 원을 그리지 않는다 — 압정 밑에 색 동그라미가 깔리면 지저분하다.
+export const CIRCLE_FILTER_EXTRA = ['!', ['has', '__icon']]
 
 // 글자색은 파일이 정한 대로 쓰되, 후광은 그 색이 읽히도록 우리가 고른다.
 //
@@ -66,7 +81,7 @@ export const LABEL_PAINT = {
 
 // KML은 아이콘을 http:// 주소로 가리키는 일이 많다(구글 어스 기본 아이콘). https
 // 페이지에서 http 이미지는 차단되므로 주소만 바꿔 시도한다. KMZ 안에 든 상대 경로는
-// 이 스파이크 범위 밖이라 null을 돌려주고 호출부가 원으로 대체한다.
+// 우리가 압축에서 꺼내지 않으므로 null을 돌려주고, 그 지점은 원으로 남는다.
 export function httpsIcon(url) {
   if (typeof url !== 'string') return null
   if (url.startsWith('https://')) return url
