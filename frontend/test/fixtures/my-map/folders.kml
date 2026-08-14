@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>계약용</name>
+<Folder><name>RKTA TAEAN</name>
+  <Placemark><name>공항</name><Point><coordinates>126.42,36.72,0</coordinates></Point></Placemark>
+  <Folder><name>출항절차</name>
+    <Placemark><name>WP1</name><LineString><coordinates>126.42,36.72,0 126.55,36.85,0</coordinates></LineString></Placemark>
+  </Folder>
+</Folder>
+<Folder><name>공역</name>
+  <Placemark><name>R77</name><Polygon><outerBoundaryIs><LinearRing><coordinates>
+    127.0,37.0,0 127.4,37.0,0 127.4,37.4,0 127.0,37.4,0 127.0,37.0,0
+  </coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
+</Folder>
+</Document></kml>
