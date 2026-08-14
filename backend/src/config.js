@@ -368,7 +368,8 @@ export const schedule = {
   // 단일 호출이다. 원본 갱신도 10분이라 5분 주기는 절반이 헛걸음이다.
   satellite_visible_interval: '*/10 * * * *',
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
-  kim_surface_wind_interval: '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *',
+  // 00Z·12Z만 수집하고, 각 런은 자료 지연을 고려해 1·2시간 뒤 두 번만 재시도한다.
+  kim_surface_wind_interval: '12 0,1,2,12,13,14 * * *',
   // 동네예보 발표 8회(02,05,08,11,14,17,20,23 KST) + 30분 여유. 중기예보(06/18 발표)는 08:30·20:30 슬롯이 받는다.
   ground_forecast_interval: '30 2,5,8,11,14,17,20,23 * * *',
   environment_interval: '10 * * * *',

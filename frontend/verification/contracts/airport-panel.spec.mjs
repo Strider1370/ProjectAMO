@@ -13,6 +13,22 @@ test.describe('airport-panel', () => {
     await page.goto('/?airport=RKSI', { waitUntil: 'domcontentloaded' })
 
     await expect(page.getByText('인천국제공항 · RKSI', { exact: true })).toBeVisible()
+    await page.waitForFunction(() => {
+      const data = window.__map?.getSource('kma-weather-airports')?.serialize?.()?.data
+      return data?.features?.some((feature) => feature.properties?.icao === 'RKSI')
+    })
+    const airportMarker = await page.evaluate(() => {
+      const map = window.__map
+      const data = map?.getSource('kma-weather-airports')?.serialize?.()?.data
+      return {
+        featureCount: data?.features?.length ?? 0,
+        stationLayer: Boolean(map?.getLayer('kma-weather-airports-station-center')),
+        labelLayer: Boolean(map?.getLayer('kma-weather-airports-label')),
+      }
+    })
+    expect(airportMarker.featureCount).toBeGreaterThan(0)
+    expect(airportMarker.stationLayer).toBe(true)
+    expect(airportMarker.labelLayer).toBe(true)
     const sectionNav = page.getByRole('navigation', { name: '섹션 이동' })
     await expect(sectionNav.getByRole('button', { name: 'METAR', exact: true })).toBeVisible()
     await expect(sectionNav.getByRole('button', { name: /^TAF/ })).toBeVisible()

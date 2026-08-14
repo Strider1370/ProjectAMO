@@ -40,7 +40,7 @@ installApiHubFetchGuard()
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
-const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, flight_category: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
+const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
 const activeControllers = new Map()
 const KIM_NWP_CRON_OPTIONS = { timezone: 'Etc/UTC' }
 const AIRPORT_INFO_CRON_OPTIONS = { timezone: 'Asia/Seoul' }

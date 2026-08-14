@@ -82,7 +82,6 @@ import {
   syncLightningLayers,
   syncRasterAndSigwxLayers,
 } from '../weather-overlays/lib/weatherOverlayLayers.js'
-import { syncSurfacePressureLayer } from '../weather-overlays/lib/surfacePressureLayers.js'
 import { syncTerrainHazardLayer, terrainHazardAltitudeItems } from '../weather-overlays/lib/terrainHazardLayer.js'
 import {
   buildWeatherOverlayModel,
@@ -343,7 +342,6 @@ const MapView = forwardRef(function MapView({
   echoMeta = null,
   wissdomMeta = null,
   qpfMeta = null,
-  kimSurfacePressureMeta = null,
   hsrMeta = null,
   hciMeta = null,
   satVisibleMeta = null,
@@ -769,7 +767,6 @@ const MapView = forwardRef(function MapView({
     echoMeta,
     wissdomMeta,
     qpfMeta,
-    kimSurfacePressureMeta,
     hsrMeta,
     hciMeta,
     satVisibleMeta,
@@ -800,7 +797,6 @@ const MapView = forwardRef(function MapView({
     echoMeta,
     wissdomMeta,
     qpfMeta,
-    kimSurfacePressureMeta,
     hsrMeta,
     hciMeta,
     satVisibleMeta,
@@ -838,7 +834,7 @@ const MapView = forwardRef(function MapView({
   // useMemo가 없으면 렌더마다 프레임 객체가 새로 생겨, 아래 rasterAndSigwxModel 등이
   // 내용은 그대로인데 "바뀐 것"으로 판정돼 지도 동기화가 통째로 매 렌더 다시 돈다.
   const weatherOverlayModel = useMemo(() => buildWeatherOverlayModel({
-    echoMeta, wissdomMeta, qpfMeta, kimSurfacePressureMeta, hsrMeta, hciMeta, satVisibleMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
+    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, satVisibleMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
     lightningData, sigwxLowData, sigwxLowHistoryData, sigmetData, airmetData,
     visibility: metVisibility, selectedWeatherTimeMs: weatherTimelineSelectedMs,
     radarWindHeightM: radarWindOverlay.heightM,
@@ -847,7 +843,7 @@ const MapView = forwardRef(function MapView({
     selectedSigwxCloudMeta, lightningReferenceTimeMs: effectiveLightningReferenceTimeMs,
     nwpSelection, ktgGrid, nowMs: demoNowMs, tz,
   }), [
-    echoMeta, wissdomMeta, qpfMeta, kimSurfacePressureMeta, hsrMeta, hciMeta, satVisibleMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
+    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, satVisibleMeta, rainviewerMeta, satMeta, convectiveMeta, echoTopMeta,
     lightningData, sigwxLowData, sigwxLowHistoryData, sigmetData, airmetData,
     metVisibility, weatherTimelineSelectedMs,
     radarWindOverlay.heightM, radarWindOverlay.effectiveVisible,
@@ -898,9 +894,6 @@ const MapView = forwardRef(function MapView({
     nwpValidLabel,
     ktgIssueLabel,
     ktgValidLabel,
-    surfacePressureIssueLabel,
-    surfacePressureValidLabel,
-    surfacePressureFrame,
   } = weatherOverlayModel
   const advisoryPanelItems = useMemo(() => {
     if (openAdvisoryPanel === 'sigwxLow') return sigwxGroups
@@ -926,8 +919,6 @@ const MapView = forwardRef(function MapView({
       entries.push({ key: 'icing', label: '착빙', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
     if (enableWindOverlay && metVisibility.turbulence)
       entries.push({ key: 'turbulence', label: '난류', issueLabel: ktgIssueLabel, validLabel: ktgValidLabel })
-    if (metVisibility.surfacePressure && surfacePressureFrame)
-      entries.push({ key: 'surfacePressure', label: '지상기압', issueLabel: surfacePressureIssueLabel, validLabel: surfacePressureValidLabel })
     if (metVisibility.visibility)
       entries.push({ key: 'visibility', label: '시정', issueLabel: fcStamps.visibility })
     if (metVisibility.ceiling)
@@ -953,8 +944,8 @@ const MapView = forwardRef(function MapView({
   }, [
     enableWindOverlay,
     metVisibility.wind, metVisibility.temp, metVisibility.cloud,
-    metVisibility.icing, metVisibility.turbulence, metVisibility.surfacePressure, metVisibility.visibility, metVisibility.ceiling, metVisibility.sigwx,
-    nwpIssueLabel, nwpValidLabel, ktgIssueLabel, ktgValidLabel, surfacePressureFrame, surfacePressureIssueLabel, surfacePressureValidLabel,
+    metVisibility.icing, metVisibility.turbulence, metVisibility.visibility, metVisibility.ceiling, metVisibility.sigwx,
+    nwpIssueLabel, nwpValidLabel, ktgIssueLabel, ktgValidLabel,
     fcStamps, showFlightCategoryStations,
     sigwxIssueLabel, sigwxValidLabel, sigwxHistoryEntries.length, sigwxHistoryIndex,
   ])
@@ -1478,8 +1469,7 @@ const MapView = forwardRef(function MapView({
 
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     syncRasterAndSigwxLayers(map, rasterAndSigwxModel)
-    syncSurfacePressureLayer(map, { frame: weatherOverlayModel.surfacePressureFrame, visible: metVisibility.surfacePressure })
-  }, [rasterAndSigwxModel, weatherOverlayModel.surfacePressureFrame, metVisibility.surfacePressure])
+  }, [rasterAndSigwxModel])
 
   // 이용자가 올린 KML/KMZ. 상태와 레이어 배선은 전부 features/my-map/ 안에 있다.
   const myMap = useMyMap(mapRef, isStyleReady)

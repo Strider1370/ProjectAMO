@@ -35,6 +35,7 @@ test('loadWeatherData skips deferred panel-only datasets on first entry', async 
     assert.equal(recorder.calls.includes('/api/airport-info'), false)
     assert.equal(recorder.calls.includes('/api/adsb'), false)
     assert.equal(recorder.calls.includes('/data/satellite/convective/convective_meta.json'), true)
+    assert.equal(recorder.calls.some((url) => url.startsWith('/data/kim_')), false)
   } finally {
     recorder.restore()
   }

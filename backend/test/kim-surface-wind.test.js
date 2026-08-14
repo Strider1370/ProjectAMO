@@ -161,8 +161,8 @@ test('resolveKimSurfaceWindCandidates starts with recent synoptic cycles and hf 
   ])
 })
 
-test('KIM NWP scheduler polls only around synoptic release windows', () => {
-  assert.equal(config.schedule.kim_surface_wind_interval, '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *')
+test('KIM NWP scheduler polls only around 00Z and 12Z release windows', () => {
+  assert.equal(config.schedule.kim_surface_wind_interval, '12 0,1,2,12,13,14 * * *')
 })
 
 test('buildKimGridUrl uses the KMA APIHub KIM cgi endpoint', () => {
