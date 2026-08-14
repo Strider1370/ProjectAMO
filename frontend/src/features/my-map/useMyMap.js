@@ -184,6 +184,17 @@ export default function useMyMap(mapRef, isStyleReady) {
     })
   }, [])
 
+  // 켜진 파일의 폴더를 한 번에 끄고 켠다. 폴더가 101개라 하나씩 누르게 두면 안 된다.
+  const setAllFolders = useCallback((on) => {
+    const { activeFileIds: active, layersByFile: byFile } = stateRef.current
+    if (on) { setHidden(new Set()); return }
+    const next = new Set()
+    for (const fileId of active) {
+      for (const layer of byFile.get(fileId) ?? []) next.add(layer.id)
+    }
+    setHidden(next)
+  }, [])
+
   // 꺼져 있던 폴더면 켜면서 옮긴다 — 옮겨갔는데 아무것도 없으면 뜻이 없다.
   const flyToFolder = useCallback((folderId) => {
     const { layersByFile: byFile } = stateRef.current
@@ -205,5 +216,8 @@ export default function useMyMap(mapRef, isStyleReady) {
     }
   }, [fitTo])
 
-  return { files, activeFileIds, layersByFile, hidden, busy, error, addFile, toggleFile, removeFile, toggleFolder, flyToFolder }
+  return {
+    files, activeFileIds, layersByFile, hidden, busy, error,
+    addFile, toggleFile, removeFile, toggleFolder, setAllFolders, flyToFolder,
+  }
 }

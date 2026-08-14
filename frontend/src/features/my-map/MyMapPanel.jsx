@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
+import { Check, ChevronDown, ChevronRight, Crosshair, Plus, X } from 'lucide-react'
 import { isLayerVisible } from './lib/kmlFolderTree.js'
 import { visibleRows, hasChildren, toggleExpanded, totalFeatures } from './lib/folderView.js'
 import './MyMapPanel.css'
 
 const mb = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`)
 
-export default function MyMapPanel({ myMap, onClose }) {
+export default function MyMapPanel({ myMap }) {
   const fileInputRef = useRef(null)
   const [expanded, setExpanded] = useState(() => new Set())
   const [query, setQuery] = useState('')
@@ -25,10 +26,14 @@ export default function MyMapPanel({ myMap, onClose }) {
     myMap.addFile(file)
   }
 
+  const activeFiles = useMemo(
+    () => files.filter((f) => activeFileIds.has(f.id) && layersByFile.has(f.id)),
+    [files, activeFileIds, layersByFile],
+  )
+
   // 켜진 파일들의 폴더를 파일 순서대로 이어 붙인다.
   const rows = useMemo(() => {
     const out = []
-    const activeFiles = files.filter((f) => activeFileIds.has(f.id) && layersByFile.has(f.id))
     for (const file of activeFiles) {
       const list = layersByFile.get(file.id)
       // 파일 머리글은 여러 파일을 켰을 때만 — 하나뿐이면 위 목록과 겹친다.
@@ -38,7 +43,17 @@ export default function MyMapPanel({ myMap, onClose }) {
       }
     }
     return out
-  }, [files, activeFileIds, layersByFile, expanded, query])
+  }, [activeFiles, layersByFile, expanded, query])
+
+  // 헤더의 'N개 켜짐'은 지금 지도에 실제로 그려지는 폴더 수다.
+  const shownFolders = useMemo(() => {
+    let n = 0
+    for (const file of activeFiles) {
+      const list = layersByFile.get(file.id)
+      for (const layer of list) if (isLayerVisible(list, layer.id, hidden)) n += 1
+    }
+    return n
+  }, [activeFiles, layersByFile, hidden])
 
   return (
     <div className="dev-layer-panel layer-drawer my-map-panel" aria-label="내 지도">
@@ -47,7 +62,20 @@ export default function MyMapPanel({ myMap, onClose }) {
           <div className="layer-drawer-eyebrow">내 지도</div>
           <div className="layer-drawer-title">내가 만든 지도</div>
         </div>
-        <button type="button" className="layer-sheet-clear" onClick={onClose}>닫기</button>
+        {/* 닫기 버튼은 두지 않는다 — 항공정보·기상정보 패널과 같이 사이드바 아이콘을
+            다시 눌러 닫는다. 버튼을 하나 더 두면 제목이 두 줄로 밀린다. */}
+        {activeFiles.length > 0 && (
+          <div className="my-map-header-actions">
+            <button
+              type="button"
+              className="layer-sheet-clear"
+              onClick={() => myMap.setAllFolders(shownFolders === 0)}
+            >
+              {shownFolders === 0 ? '전체 켜기' : '전체 끄기'}
+            </button>
+            <span className="layer-drawer-status">{shownFolders.toLocaleString()}개 켜짐</span>
+          </div>
+        )}
       </div>
 
       <div className="layer-drawer-body">
@@ -79,6 +107,7 @@ export default function MyMapPanel({ myMap, onClose }) {
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => { e.preventDefault(); setDragOver(false); takeFile(e.dataTransfer.files?.[0]) }}
             >
+              <span className="my-map-dropzone-icon" aria-hidden="true"><Plus size={22} strokeWidth={1.8} /></span>
               <span className="my-map-dropzone-text">
                 {'KML · KMZ 파일을 여기에 끌어다 놓거나'}
                 <br />
@@ -89,14 +118,15 @@ export default function MyMapPanel({ myMap, onClose }) {
               <p className="my-map-hint">비행경로를 불러오려면 ‘비행 전 브리핑’을 쓰세요.</p>
             )}
             {addOpen && (
-              <button type="button" className="my-map-add-cancel" onClick={() => setAddOpen(false)}>취소</button>
+              <button type="button" className="my-map-ghost" onClick={() => setAddOpen(false)}>취소</button>
             )}
           </>
         )}
 
         {!dropOpen && (
-          <button type="button" data-testid="my-map-add" className="my-map-add" onClick={() => setAddOpen(true)}>
-            {'+ 파일 추가'}
+          <button type="button" data-testid="my-map-add" className="my-map-ghost" onClick={() => setAddOpen(true)}>
+            <Plus size={14} strokeWidth={2.2} aria-hidden="true" />
+            {' 파일 추가'}
           </button>
         )}
 
@@ -104,27 +134,37 @@ export default function MyMapPanel({ myMap, onClose }) {
         {error && <p className="my-map-error">{error}</p>}
 
         {files.length > 0 && (
-          <ul className="my-map-files" data-testid="my-map-files">
-            {files.map((f) => (
-              <li key={f.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={activeFileIds.has(f.id)}
-                    onChange={() => myMap.toggleFile(f.id)}
-                  />
-                  {' '}<span className="my-map-file-name">{f.name}</span>
-                  <span className="my-map-file-size">{mb(f.size)}</span>
-                </label>
-                <button type="button" className="my-map-remove" aria-label={`${f.name} 지우기`}
-                  onClick={() => myMap.removeFile(f.id)}>×</button>
-              </li>
-            ))}
-          </ul>
+          <section className="my-map-section">
+            <div className="layer-tile-group-title">내 파일</div>
+            <ul className="my-map-files" data-testid="my-map-files">
+              {files.map((f) => {
+                const on = activeFileIds.has(f.id)
+                return (
+                  <li key={f.id} className={`my-map-file-card${on ? ' is-active' : ''}`}>
+                    <button
+                      type="button"
+                      className="my-map-file-toggle"
+                      aria-pressed={on}
+                      onClick={() => myMap.toggleFile(f.id)}
+                    >
+                      <span className="my-map-mark" aria-hidden="true">{on && <Check size={12} strokeWidth={3} />}</span>
+                      <span className="my-map-file-name">{f.name}</span>
+                      <span className="my-map-file-size">{mb(f.size)}</span>
+                    </button>
+                    <button type="button" className="my-map-remove" aria-label={`${f.name} 지우기`}
+                      onClick={() => myMap.removeFile(f.id)}>
+                      <X size={13} strokeWidth={2.2} />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
         )}
 
         {rows.length > 0 && (
-          <>
+          <section className="my-map-section">
+            <div className="layer-tile-group-title">폴더</div>
             <div className="my-map-search">
               <input
                 data-testid="my-map-search"
@@ -142,22 +182,32 @@ export default function MyMapPanel({ myMap, onClose }) {
                 const { layer, list, file } = row
                 const effective = isLayerVisible(list, layer.id, hidden)
                 const openable = hasChildren(list, layer.id)
+                const open = expanded.has(layer.id)
                 // 하위까지 합쳐 센다 — 직접 것만 세면 제일 큰 폴더가 비어 보인다.
                 const count = totalFeatures(list, layer.id)
                 return (
-                  <li key={`${file.id}-${layer.id}`} style={{ paddingLeft: `${layer.depth * 14}px` }}>
+                  <li
+                    key={`${file.id}-${layer.id}`}
+                    className={`my-map-row${effective ? '' : ' is-off'}`}
+                    style={{ paddingLeft: `${4 + layer.depth * 13}px` }}
+                  >
                     <button
                       type="button"
                       className={`my-map-caret${openable ? '' : ' is-hidden'}`}
-                      aria-label={expanded.has(layer.id) ? '접기' : '펼치기'}
+                      aria-label={open ? '접기' : '펼치기'}
                       onClick={() => setExpanded((prev) => toggleExpanded(prev, layer.id))}
                     >
-                      {expanded.has(layer.id) ? '▾' : '▸'}
+                      {open ? <ChevronDown size={13} strokeWidth={2.2} /> : <ChevronRight size={13} strokeWidth={2.2} />}
                     </button>
-                    <label className={effective ? '' : 'my-map-off'}>
-                      <input type="checkbox" checked={effective} onChange={() => myMap.toggleFolder(layer.id)} />
-                      {' '}{layer.name}
-                    </label>
+                    <button
+                      type="button"
+                      className="my-map-row-toggle"
+                      aria-pressed={effective}
+                      onClick={() => myMap.toggleFolder(layer.id)}
+                    >
+                      <span className="my-map-mark" aria-hidden="true">{effective && <Check size={11} strokeWidth={3} />}</span>
+                      <span className="my-map-row-name">{layer.name}</span>
+                    </button>
                     <span className="my-map-count">{count > 0 ? count.toLocaleString() : ''}</span>
                     {count > 0 && (
                       <button
@@ -167,14 +217,14 @@ export default function MyMapPanel({ myMap, onClose }) {
                         title="이 폴더 위치로 이동"
                         onClick={() => myMap.flyToFolder(layer.id)}
                       >
-                        ⤢
+                        <Crosshair size={12} strokeWidth={2} />
                       </button>
                     )}
                   </li>
                 )
               })}
             </ul>
-          </>
+          </section>
         )}
       </div>
     </div>

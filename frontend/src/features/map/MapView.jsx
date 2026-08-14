@@ -2111,7 +2111,7 @@ const MapView = forwardRef(function MapView({
       )}
 
       {activePanel === 'my-map' && (
-        <MyMapPanel myMap={myMap} onClose={onClosePanel} />
+        <MyMapPanel myMap={myMap} />
       )}
 
       {activePanel === 'aviation' && (
