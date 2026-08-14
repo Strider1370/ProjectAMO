@@ -854,9 +854,18 @@ export async function parseMyMapFile(arrayBuffer, fileName = '') {
     throw fail('압축 해제', e?.message ?? '압축 파일을 열 수 없습니다.')
   }
 
-  const doc = new DOMParser().parseFromString(text, 'text/xml')
-  // 해석기는 깨진 문서에 예외를 던지지 않고 <parsererror>를 심는다.
-  if (doc.getElementsByTagName('parsererror').length > 0 || !doc.getElementsByTagName('kml').length) {
+  // 깨진 문서에서 해석기마다 반응이 다르다. 브라우저 DOMParser는 예외를 던지지 않고
+  // <parsererror>를 심고, xmldom은 예외를 던진다. 둘 다 같은 단계 오류로 묶는다 —
+  // 검사하지 않으면 "폴더 0개"만 뜨고 실패인 줄 모른다.
+  let doc
+  try {
+    doc = new DOMParser().parseFromString(text, 'text/xml')
+  } catch {
+    doc = null
+  }
+  if (!doc
+    || doc.getElementsByTagName('parsererror').length > 0
+    || doc.getElementsByTagName('kml').length === 0) {
     throw fail('지도 내용 해석', '지도 내용을 해석하지 못했습니다. 파일이 손상되었을 수 있습니다.')
   }
 
