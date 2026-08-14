@@ -16,6 +16,7 @@ import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
 import { parseRouteFile, extractRoutePaths, decodeImportedFile, MAX_IMPORT_BYTES } from './lib/routeImport.js'
 import { resolveImportedRoute } from './lib/routeImportResolve.js'
+import { describeMapFile } from '../my-map/lib/mapFileGuard.js'
 import {
   FIR_EXIT_AIRPORT,
   FIR_IN_AIRPORT,
@@ -1651,15 +1652,29 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     }
     let candidates = []
     let droppedTotal = 0
+    let mapFile = null
     try {
       // file.text()는 무조건 UTF-8로 읽는다 — Garmin FPL은 UTF-16이라 깨진다.
       const text = decodeImportedFile(await file.arrayBuffer())
       const parsed = parseRouteFile(file.name, text)
+      // KML만 검사한다. GPX/FPL/GeoJSON은 애초에 경로 형식이고, 여기서 함께 막으면
+      // 지금 되던 것을 막게 된다.
+      if (parsed.format === 'kml') {
+        const described = describeMapFile(parsed.geojson)
+        if (described.isMap) mapFile = described
+      }
       const extracted = extractRoutePaths(parsed)
       candidates = extracted.candidates
       droppedTotal = extracted.droppedTotal
     } catch {
       setImportError('파일을 해석할 수 없습니다. GeoJSON·GPX·KML·FPL 파일인지 확인하세요.')
+      return
+    }
+    if (mapFile) {
+      setImportError(
+        `이 파일은 비행경로가 아니라 지도로 보입니다 (도형 ${mapFile.features.toLocaleString()}개, `
+        + `면 ${mapFile.polygons.toLocaleString()}개). 왼쪽 '내 지도'에서 열어보세요.`,
+      )
       return
     }
     if (candidates.length === 0) {
