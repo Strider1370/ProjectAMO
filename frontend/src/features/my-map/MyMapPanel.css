@@ -63,11 +63,21 @@
 }
 
 .my-map-note { margin: 6px 0; font-size: 13px; color: var(--text-3); }
+.my-map-busy { display: flex; align-items: center; gap: 8px; }
 .my-map-error {
   margin: 6px 0; padding: 8px 10px; border-radius: 10px;
   border: 1.5px solid color-mix(in srgb, #dc2626 40%, transparent);
   background: color-mix(in srgb, #dc2626 8%, var(--bg-1));
   color: #b91c1c; font-size: 13px; white-space: pre-wrap;
+}
+
+/* 대기 단계가 바뀔 때와 오류가 뜰 때. 오류는 지도가 정상으로 보이는 채로 실패한 경우가 있어
+   (파일 보관 실패) 눈이 한 번 붙잡혀야 한다. */
+.my-map-busy,
+.my-map-error { animation: my-map-note-in var(--motion-base) var(--motion-enter); }
+@keyframes my-map-note-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
 }
 
 .my-map-section { margin-top: 14px; }
@@ -79,12 +89,20 @@
   border: 1.5px solid rgba(148, 163, 184, 0.6);
   border-radius: 4px;
   color: var(--bg-1);
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background var(--motion-fast) var(--motion-enter), border-color var(--motion-fast) var(--motion-enter);
 }
 .is-active .my-map-mark,
 [aria-pressed='true'] .my-map-mark {
   border-color: var(--accent);
   background: var(--accent);
+}
+/* 체크 자체도 배경과 같이 반응한다. 체크는 켜졌을 때만 DOM에 있으므로 transition이 아니라
+   등장 애니메이션을 쓴다 — 없던 요소는 전환할 시작 상태가 없다.
+   '전체 켜기'는 폴더 101개를 한 번에 뒤집으므로 120ms를 넘기면 안 된다. 길어지면 파도친다. */
+.my-map-mark svg { animation: my-map-check-in var(--motion-fast) var(--motion-enter); }
+@keyframes my-map-check-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: none; }
 }
 
 /* --- 내 파일: 개수가 적으니 타일과 같은 카드로 --- */
@@ -146,6 +164,10 @@
   color: var(--text-3); cursor: pointer;
 }
 .my-map-caret.is-hidden { visibility: hidden; }
+/* 펼침 표시는 아이콘 교체가 아니라 회전이다. 폴더 101개를 접었다 폈다 하는 화면에서
+   '방금 내가 연 줄'을 짚어준다. */
+.my-map-caret svg { transition: transform var(--motion-fast) var(--motion-enter); }
+.my-map-caret.is-open svg { transform: rotate(90deg); }
 .my-map-row-toggle {
   display: flex; align-items: center; gap: 7px;
   flex: 1; min-width: 0; padding: 4px 0;

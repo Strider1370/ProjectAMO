@@ -86,3 +86,8 @@
   .search-palette-backdrop { padding: 8vh 12px 12px; }
   .search-palette { width: 96vw; }
 }
+
+/* 단축키로 여닫는 창이라 갑자기 화면을 덮는 것이 특히 거칠게 느껴진다.
+   키프레임은 App.css에 있다. */
+.search-palette-backdrop { animation: modal-overlay-in var(--motion-fast) var(--motion-enter); }
+.search-palette { animation: modal-body-in var(--motion-fast) var(--motion-enter); }

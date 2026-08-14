@@ -53,6 +53,13 @@
   gap: 4px;
   max-height: 240px;
   overflow-y: auto;
+  /* 목록 높이는 건드리지 않는다 — 옵션이 많으면 늘어나는 동안 아래 내용이 계속 밀린다. */
+  animation: pkf-list-in var(--motion-fast) var(--motion-enter);
+}
+
+@keyframes pkf-list-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
 }
 
 .pkf .pkf-option {

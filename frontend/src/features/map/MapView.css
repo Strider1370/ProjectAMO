@@ -328,6 +328,15 @@
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
   backdrop-filter: blur(10px);
   overflow: hidden;
+  /* 이 틀을 태풍·항적·NOTAM·항공레이어·기상오버레이·내 지도 패널이 함께 쓴다.
+     여기 한 곳이 그 전부의 등장을 맡는다. 패널이 왼쪽에 붙으므로 왼쪽에서 들어온다.
+     사라질 때는 DOM에서 바로 빠지므로 등장만 있다. */
+  animation: layer-drawer-in var(--motion-base) var(--motion-enter);
+}
+
+@keyframes layer-drawer-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: none; }
 }
 
 .layer-drawer-header {

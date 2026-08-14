@@ -22,6 +22,13 @@ const LAYER_DEFS = [
 ]
 const LYR = (kind) => `my-map-${kind}`
 
+// 지도 카메라는 CSS가 아니라 JS 인자로 움직여서 App.css의 전역 안전망이 닿지 않는다.
+// 판정 방식은 useKimSurfaceWind.js의 getLowPowerState와 같다.
+function prefersReducedMotion() {
+  if (typeof window === 'undefined') return false
+  return !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+}
+
 function boundsOf(features) {
   const bounds = new mapboxgl.LngLatBounds()
   let any = false
@@ -108,10 +115,12 @@ export default function useMyMap(mapRef, isStyleReady) {
     return () => { map.off('styledata', restack) }
   }, [mapRef])
 
+  // 카메라는 움직여서 간다. 순간이동하면 어디로 얼마나 왔는지를 이용자가 스스로 다시 맞춰야 한다.
+  // 앱의 다른 카메라 이동(MapView.jsx)은 이미 500~800ms다 — 여기만 0이었다.
   const fitTo = useCallback((features) => {
     const map = mapRef.current
     const bounds = boundsOf(features)
-    if (map && bounds) map.fitBounds(bounds, { padding: 60, duration: 0 })
+    if (map && bounds) map.fitBounds(bounds, { padding: 60, duration: prefersReducedMotion() ? 0 : 700 })
   }, [mapRef])
 
   const openFile = useCallback(async (fileId, arrayBuffer, fileName) => {

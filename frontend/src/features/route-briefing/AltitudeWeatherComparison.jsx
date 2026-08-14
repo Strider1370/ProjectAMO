@@ -1,5 +1,5 @@
 import './RouteBriefing.css'
-import { Button } from '../../shared/ui/fluent.js'
+import { Button, Spinner } from '../../shared/ui/fluent.js'
 import { Snowflake, Waves, Wind, CloudLightning } from 'lucide-react'
 import { exposureNm, mergeExposureNm, windLabel, phenomenonLabelKo } from './lib/routeComparison.js'
 import HazardIcon from './lib/HazardIcon.jsx'
@@ -67,8 +67,17 @@ export default function AltitudeWeatherComparison({
   profileError,
   hideStepActions = false,
 }) {
-  if (loading) return <p className="rb-alternatives-status">고도별 기상 비교를 불러오는 중…</p>
-  if (error) return <p className="rb-alternatives-status">고도별 기상 비교를 확인할 수 없습니다: {error}</p>
+  // 세 상태가 같은 옷을 입고 있었다 — 기다리는 중인지, 실패했는지, 원래 없는지를
+  // 구분할 수 없으면 이용자는 그대로 다음 단계로 넘어가거나 처음부터 다시 한다.
+  if (loading) {
+    return (
+      <p className="rb-alternatives-status rb-status-busy" role="status">
+        <Spinner size="tiny" />
+        <span>고도별 기상 비교를 불러오는 중…</span>
+      </p>
+    )
+  }
+  if (error) return <p className="rb-alternatives-status rb-status-error" role="alert">고도별 기상 비교를 확인할 수 없습니다: {error}</p>
   if (!comparison) return <p className="rb-alternatives-status">고도별 기상 비교 자료 없음</p>
 
   const rows = comparison.rows ?? []
@@ -153,8 +162,13 @@ export default function AltitudeWeatherComparison({
         )
       })}
       {!rows.length && <p className="rb-alternatives-status">{comparison.constraints?.reasons?.[0] ?? '비교 가능한 공표 고도 없음'}</p>}
-      {profileLoading && <p className="rb-alternatives-status">오른쪽 연직단면도를 불러오는 중…</p>}
-      {profileError && <p className="rb-alternatives-status">연직단면도를 확인할 수 없습니다: {profileError}</p>}
+      {profileLoading && (
+        <p className="rb-alternatives-status rb-status-busy" role="status">
+          <Spinner size="tiny" />
+          <span>오른쪽 연직단면도를 불러오는 중…</span>
+        </p>
+      )}
+      {profileError && <p className="rb-alternatives-status rb-status-error" role="alert">연직단면도를 확인할 수 없습니다: {profileError}</p>}
       <p className="rb-alternatives-note">공표 항공로 제약을 기준으로 한 기상 비교 정보이며, 관제 허가·항공기 성능·연료·운항 제한을 결정하지 않습니다.</p>
       {!hideStepActions && <div className="rb-step-actions">
         <Button appearance="secondary" type="button" onClick={onBack}>이전 단계</Button>

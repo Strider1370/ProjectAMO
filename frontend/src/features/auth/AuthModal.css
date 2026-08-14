@@ -118,3 +118,7 @@
 .auth-role-badge[data-role="forecaster"] { background: #fef3c7; color: #92400e; }
 .auth-role-badge[data-role="admin"] { background: #fee2e2; color: #b91c1c; }
 .auth-logout { background: var(--text-1, #242424); margin-top: 10px; width: 100%; }
+
+/* 등장 규칙은 설정 창과 같다. 키프레임은 App.css에 있다. */
+.auth-overlay { animation: modal-overlay-in var(--motion-base) var(--motion-enter); }
+.auth-modal { animation: modal-body-in var(--motion-base) var(--motion-enter); }

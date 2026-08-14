@@ -286,3 +286,10 @@
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
+
+/* 뒤 배경은 흐려지고, 창 본체는 살짝 커지며 뜬다. 3%짜리 확대가 '뒤 화면 위에 얹혔다'는
+   층 관계를 만든다 — 그냥 뜨면 같은 평면에서 교체된 것처럼 보인다.
+   ponytail: Fluent Dialog로 갈아끼우면 애니메이션은 공짜지만 세 창의 생김새(모서리·배경 농도)가
+   제각각이라 다시 맞추는 쪽이 더 크다. 지금은 CSS로 직접. */
+.settings-overlay { animation: modal-overlay-in var(--motion-base) var(--motion-enter); }
+.settings-modal { animation: modal-body-in var(--motion-base) var(--motion-enter); }

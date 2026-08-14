@@ -1,5 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { KNOWN_AIRPORTS } from './lib/procedureData.js'
+
+// 단계 순서. 앞으로 갔는지 뒤로 왔는지를 이 순서로 판정한다.
+const WORKFLOW_STEP_ORDER = ['settings', 'compare', 'altitude', 'briefing']
 import { loadOverseasAirports } from './lib/routePlanner.js'
 import { calcVfrDistance } from './lib/routePreview.js'
 import { windLabel, phenomenonLabelKo } from './lib/routeComparison.js'
@@ -143,6 +146,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // 접어둔다(P3 점진 노출) — 사용자가 펼치거나, 출발+도착을 다 고르면(다음에 필요해질
   // 확률이 높아) 자동으로 펼친다.
   const [step1MoreOpen, setStep1MoreOpen] = useState(false)
+  const prevWorkflowStepRef = useRef('settings')
+  const stepDirectionRef = useRef('forward')
+  // 단계가 앞으로 갔는지 뒤로 왔는지. 렌더 중에 정해야 한다 — 효과로 미루면 이미 새 화면이
+  // 그려진 뒤라 한 박자 늦은 방향으로 움직인다. 같은 단계로 다시 그려질 때는 값을 유지하므로
+  // 이중 렌더에도 안전하다. 데스크톱·모바일이 같은 값을 쓴다.
   const {
     routeForm,
     routeResult,
@@ -239,6 +247,13 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     goBackWorkflow,
     handleGenerateBriefing,
   } = actions
+
+  if (prevWorkflowStepRef.current !== workflowStep) {
+    stepDirectionRef.current =
+      WORKFLOW_STEP_ORDER.indexOf(workflowStep) < WORKFLOW_STEP_ORDER.indexOf(prevWorkflowStepRef.current) ? 'back' : 'forward'
+    prevWorkflowStepRef.current = workflowStep
+  }
+  const stepDirection = stepDirectionRef.current
 
   const isIfr = routeForm.flightRule === 'IFR'
   // VFR 왕복(장주·훈련·유람)은 뜬 곳으로 돌아온다 — 반대편에 같은 공항을 고를 수
@@ -579,7 +594,9 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           ['settings', '비행 설정'], ['compare', '경로비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비'],
         ].map(([step, label]) => <button key={step} type="button" role="tab" aria-selected={workflowStep === step} disabled={!workflowAvailability[step]} className={workflowStep === step ? 'is-active' : (!workflowAvailability[step] ? 'is-disabled' : '')} onClick={() => goToWorkflowStep(step)}>{label}</button>)}
       </div>
-      {workflowStep === 'settings' && <form className={s.form} onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
+      {/* 각 단계는 이미 자기 요소로 새로 붙는다 — 방향만 넘기면 등장 애니메이션이 돈다.
+          감싸는 겹을 더하지 않으므로 폭·스크롤 구조는 그대로다. */}
+      {workflowStep === 'settings' && <form className={s.form} data-step-dir={stepDirection} onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
         <div className={s.section}>
           <h3 className={s.sectionTitle}>{'① 비행 규칙'}</h3>
           <TabList selectedValue={routeForm.flightRule} onTabSelect={(_, d) => switchFlightRule(d.value)}>
@@ -654,19 +671,19 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
       </form>}
       {workflowStep === 'compare' && (
-        <div className={s.form}>
+        <div className={s.form} data-step-dir={stepDirection}>
           <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={revealAlternativeOnMap(selectRouteDesign)} onDuplicate={revealAlternativeOnMap(duplicateSelectedRouteDesign)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
         </div>
       )}
       {workflowStep === 'altitude' && (
-        <div className={s.form}>
+        <div className={s.form} data-step-dir={stepDirection}>
           <Field label="계획 순항고도 (ft)"><Input className={s.ctrl} type="number" min="500" max="60000" step="500" value={altitudeDraftFt} placeholder="예: 9,000" onChange={(_, d) => setAltitudeDraft(d.value)} /></Field>
           <Button appearance="primary" type="button" className={s.full} onClick={startAltitudeComparison} disabled={altitudeComparisonLoading}>고도 비교</Button>
           {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} hideStepActions /> : <p className="rb-alternatives-status">고도 비교는 선택 사항입니다. 순항고도를 입력하면 바로 브리핑 준비로 갈 수 있습니다.</p>}
         </div>
       )}
       {workflowStep === 'briefing' && (
-        <div className={s.form}>
+        <div className={s.form} data-step-dir={stepDirection}>
           {briefingPreparation}
           {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
         </div>
@@ -686,8 +703,18 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       ))}
     </div>
   )
+  // 단계가 앞으로 갔는지 뒤로 왔는지를 화면에 남긴다. key로 다시 붙여 등장 애니메이션을 돌리고,
+  // 방향은 data 속성으로 넘긴다. 자식들은 원래도 단계마다 붙었다 떨어지므로 마운트 부담은 그대로다.
+  // ponytail: 데스크톱은 단계 표시가 늘 보이고 내용 폭이 넓어 방향 표시가 덜 필요해 넘겼다.
+  //           필요해지면 desktopBody의 네 조건부를 한 겹으로 감싸고 같은 key를 준다.
   const mobileBody = (
-    <form id="rb-mobile-form" className="route-check-form rb-mobile" onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
+    <form
+      id="rb-mobile-form"
+      key={workflowStep}
+      data-step-dir={stepDirection}
+      className="route-check-form rb-mobile"
+      onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}
+    >
       {workflowStep === 'settings' && (
         <>
           <div className="route-type-segmented">

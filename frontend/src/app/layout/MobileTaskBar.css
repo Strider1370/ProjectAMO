@@ -30,6 +30,12 @@
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
+  transition: color var(--motion-fast) var(--motion-enter);
+}
+
+/* 누른 순간 반응. 회선이 느릴 때 '안 눌렸나' 하고 두 번 누르는 것을 막는다. */
+.mobile-task-btn:active .mobile-task-icon {
+  transform: scale(0.92);
 }
 
 .mobile-task-btn.is-active {
@@ -39,6 +45,7 @@
 .mobile-task-icon {
   position: relative;
   display: inline-flex;
+  transition: transform var(--motion-fast) var(--motion-enter);
 }
 
 /* 활성 탭: 아이콘+라벨 전체 뒤에 accent 배경(강한 선택 표시). 색만으론 약함. */
@@ -54,6 +61,15 @@
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   z-index: 0;
+  /* 선택 표시가 버튼마다 자기 ::before로 그려져 있어 옆으로 미끄러지게 하려면 표시를
+     하나로 합치고 위치를 재야 한다. 여기서는 순간이동만 없앤다 — 제자리에서 커지며 뜬다.
+     ponytail: 미끄러지는 표시가 필요하면 단일 인디케이터 + 위치 측정으로 올린다. */
+  animation: mobile-task-pill-in var(--motion-fast) var(--motion-enter);
+}
+
+@keyframes mobile-task-pill-in {
+  from { opacity: 0; transform: translateX(-50%) scale(0.88); }
+  to { opacity: 1; transform: translateX(-50%); }
 }
 /* 내용은 배경 위로. */
 .mobile-task-btn .mobile-task-icon,

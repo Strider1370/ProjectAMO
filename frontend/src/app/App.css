@@ -260,3 +260,30 @@ optgroup {
     color: var(--stroke-1);
   }
 }
+
+/* 모달 등장 — 설정·로그인·검색 창이 함께 쓴다. 각 창의 CSS는 조건부로만 불려올 수 있어
+   키프레임은 항상 로드되는 여기에 둔다(정의가 없으면 애니메이션이 조용히 안 먹는다). */
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-body-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 동작 줄이기(기기 설정) — 전역 안전망.
+   전역 규칙은 속성을 가려서 끌 수 없어 흐림까지 함께 멈춘다. 흐림만 살리려면 개별 규칙이 필요한데,
+   흐림이 빠져도 정보는 그대로 보이므로 안전망은 통째로 끄는 쪽을 택한다.
+   이미 개별 대응이 있는 곳(터미널·모니터링·투어·공항툴팁)은 자기 규칙이 특이도로 이기므로 그대로다.
+   지도 카메라는 CSS가 아니라 JS 인자라 여기서 못 막는다 — useMyMap.js 등에서 duration을 0으로 둔다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

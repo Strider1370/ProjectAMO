@@ -74,6 +74,11 @@ export const CSS_VARS = {
   '--turb-light': '#64D264',
   '--turb-mod': '#FFC300',
   '--turb-sev': '#FF3737',
+  '--motion-fast': '120ms',
+  '--motion-base': '200ms',
+  '--motion-slow': '300ms',
+  '--motion-enter': 'cubic-bezier(0, 0, 0.2, 1)',
+  '--motion-exit': 'cubic-bezier(0.4, 0, 1, 1)',
   '--surface-night': '#1C2530',
   '--moon-lit': '#E8B54B',
 }

@@ -20,6 +20,14 @@
   padding: 12px;
   font-size: 17px;
   color: var(--text-2);
+  /* '수집 실패'와 '태풍 없음'은 뜻이 정반대인데 같은 자리에 같은 모양으로 뜬다.
+     등장 동작이 '방금 판정이 내려졌다'를 알린다. */
+  animation: typhoon-empty-in var(--motion-base) var(--motion-enter);
+}
+
+@keyframes typhoon-empty-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .typhoon-panel__item {

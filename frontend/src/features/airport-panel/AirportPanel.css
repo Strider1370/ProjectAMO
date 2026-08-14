@@ -335,6 +335,14 @@
   text-align: center;
 }
 
+/* 대기는 자료없음과 같은 자리에 뜨므로 옷이 달라야 한다. */
+.ap-empty--busy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 .ap-current-weather {
   min-height: 100%;
   display: grid;
@@ -1588,6 +1596,13 @@
   font-weight: 700;
   min-height: 40px; /* iPad 터치 타깃 */
   padding: 8px 14px;
+  transition: background var(--motion-fast) var(--motion-enter),
+              border-color var(--motion-fast) var(--motion-enter),
+              color var(--motion-fast) var(--motion-enter);
+}
+
+.ap-taf-switch-btn:active {
+  transform: scale(0.98);
 }
 
 .ap-taf-switch-btn.is-active {

@@ -1,7 +1,14 @@
 import AirportInfoDocument, { BulletText, fmtBulletinTime } from '../AirportInfoDocument.jsx'
+import { Spinner } from '../../../shared/ui/fluent.js'
 
 export default function AirportInfoTab({ info, loading = false }) {
-  if (!info) return <div className="ap-empty">{loading ? '기상정보 불러오는 중…' : '기상정보 데이터 없음'}</div>
+  // 오는 중과 원래 없는 것이 같은 회색 글자 한 줄이면 구분할 수 없다. 기상 브리핑에서
+  // '자료 없음'과 '아직 안 옴'을 섞으면 판단이 달라진다 — 대기는 도는 표시로 못박는다.
+  if (!info) {
+    return loading
+      ? <div className="ap-empty ap-empty--busy" role="status"><Spinner size="tiny" /><span>기상정보 불러오는 중…</span></div>
+      : <div className="ap-empty">기상정보 데이터 없음</div>
+  }
 
   const showSel3 = info.sel_val3 && info.sel_val3.trim()
   const hasWarn = info.warn && info.warn.trim() // ▶경보현황 섹션 표시용(원문 "○ 없음"도 표시)

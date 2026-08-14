@@ -90,6 +90,15 @@
   --turb-mod: #FFC300;
   --turb-sev: #FF3737;
 
+  /* 모션 — 시간과 속도곡선. 업무용 UI라 100~300ms를 벗어나지 않는다.
+     fast: 자주 누르는 작은 것(버튼·체크). base: 패널·모달·탭. slow: 지도 카메라.
+     enter는 빠르게 출발해 부드럽게 멈추고, exit는 천천히 출발해 빠르게 빠진다. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 300ms;
+  --motion-enter: cubic-bezier(0, 0, 0.2, 1);
+  --motion-exit: cubic-bezier(0.4, 0, 1, 1);
+
   /* 야간 조도 — 달빛 섹션 전용. 등급색이 아니다(§4 "관습 차용"). */
   --surface-night: #1C2530; /* 무월광 칸·달 아이콘 칩 배경 전용 */
   --moon-lit: #E8B54B; /* 달 원반·달빛 곡선 전용. 이 섹션의 유일한 유채색 */

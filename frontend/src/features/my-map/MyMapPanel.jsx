@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Crosshair, Plus, X } from 'lucide-react'
+import { Check, ChevronRight, Crosshair, Plus, X } from 'lucide-react'
+import { Spinner } from '../../shared/ui/fluent.js'
 import { isLayerVisible } from './lib/kmlFolderTree.js'
 import { visibleRows, hasChildren, toggleExpanded, totalFeatures } from './lib/folderView.js'
 import './MyMapPanel.css'
@@ -130,8 +131,15 @@ export default function MyMapPanel({ myMap }) {
           </button>
         )}
 
-        {busy && <p className="my-map-note">{busy}</p>}
-        {error && <p className="my-map-error">{error}</p>}
+        {/* key={busy} — 단계가 바뀔 때마다 다시 붙어 등장 애니메이션이 다시 돈다.
+            글자만 갈아치우면 큰 파일에서 몇 초씩 멈춰 보인다. 도는 표시가 '살아 있음'을 맡는다. */}
+        {busy && (
+          <p className="my-map-note my-map-busy" key={busy} role="status">
+            <Spinner size="tiny" />
+            <span>{busy}</span>
+          </p>
+        )}
+        {error && <p className="my-map-error" role="alert">{error}</p>}
 
         {files.length > 0 && (
           <section className="my-map-section">
@@ -193,11 +201,13 @@ export default function MyMapPanel({ myMap }) {
                   >
                     <button
                       type="button"
-                      className={`my-map-caret${openable ? '' : ' is-hidden'}`}
+                      className={`my-map-caret${openable ? '' : ' is-hidden'}${open ? ' is-open' : ''}`}
                       aria-label={open ? '접기' : '펼치기'}
                       onClick={() => setExpanded((prev) => toggleExpanded(prev, layer.id))}
                     >
-                      {open ? <ChevronDown size={13} strokeWidth={2.2} /> : <ChevronRight size={13} strokeWidth={2.2} />}
+                      {/* 아이콘을 바꿔 끼우지 않고 하나를 돌린다 — 교체는 애니메이션이 붙을 수 없다.
+                          줄 목록 자체의 높이는 건드리지 않는다. 폴더 하나에 수백 줄이 딸려 나온다. */}
+                      <ChevronRight size={13} strokeWidth={2.2} />
                     </button>
                     <button
                       type="button"
