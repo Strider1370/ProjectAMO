@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { isLayerVisible } from './lib/kmlFolderTree.js'
-import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, labelHaloFor } from './lib/kmlPaint.js'
+import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, labelHaloFor, httpsIcon, CIRCLE_FILTER_EXTRA } from './lib/kmlPaint.js'
+import { collectIconUrls, iconIdFor } from './lib/kmlIcons.js'
 import { parseMyMapFile } from './lib/parseMyMapFile.js'
 import { listMyMapFiles, saveMyMapFile, loadMyMapFile, deleteMyMapFile } from './lib/myMapStore.js'
+import { buildWalls, extrusionPaint, buildElevatedLines, elevatedLineLayout } from './lib/kmlWalls.js'
+import { maxZoomFor } from './lib/cameraLimit.js'
+import { MAP_CONFIG } from '../map/mapConfig.js'
 
 const SRC = 'my-map-src'
 // 기상 위험기상·낙뢰는 'top'에 있다. 이용자 지도는 그 아래여야 한다 — 조종사는
@@ -11,13 +15,21 @@ const SRC = 'my-map-src'
 const SLOT = 'middle'
 const TERRAIN_LAYER = 'terrain-hazard-shade'
 
+// 기둥과 뜬 경로는 원본과 기하가 다르다(바닥 고리를 되찾고, 갈래를 쪼갠다).
+// 그래서 소스를 따로 둔다. 맥케이 파일 기준 43 + 158개뿐이라 부담이 없다.
+const WALL_SRC = 'my-map-wall-src'
+const WALL_LYR = 'my-map-wall'
+const ELEV_SRC = 'my-map-elev-src'
+const ELEV_LYR = 'my-map-elev'
+const LYR_3D = [WALL_LYR, ELEV_LYR]
+
 // 면 → 선 → 점 → 이름표. 전역으로 이 순서를 지켜야 점이 면에 가리지 않는다.
 // 이름표는 Point에만 붙인다 — 도형 묶음은 하위 도형마다 쪼개지면서 속성이 복제되므로,
 // 필터가 없으면 지점 하나가 이름표 수백 개가 된다.
 const LAYER_DEFS = [
   { kind: 'fill', type: 'fill', geom: ['==', ['geometry-type'], 'Polygon'], paint: FILL_PAINT },
   { kind: 'line', type: 'line', geom: ['in', ['geometry-type'], ['literal', ['LineString', 'Polygon']]], paint: LINE_PAINT },
-  { kind: 'circle', type: 'circle', geom: ['==', ['geometry-type'], 'Point'], paint: CIRCLE_PAINT },
+  { kind: 'circle', type: 'circle', geom: ['all', ['==', ['geometry-type'], 'Point'], CIRCLE_FILTER_EXTRA], paint: CIRCLE_PAINT },
   { kind: 'label', type: 'symbol', geom: ['==', ['geometry-type'], 'Point'], paint: LABEL_PAINT, layout: LABEL_LAYOUT },
 ]
 const LYR = (kind) => `my-map-${kind}`
@@ -42,8 +54,39 @@ export default function useMyMap(mapRef, isStyleReady) {
   const [hidden, setHidden] = useState(() => new Set())
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
+  const [on3d, setOn3dState] = useState(false)
+  const [exaggeration, setExaggerationState] = useState(1)
+  const [wallCount, setWallCount] = useState(0)
+  const [elevCount, setElevCount] = useState(0)
   const stateRef = useRef({ activeFileIds, layersByFile, hidden })
   stateRef.current = { activeFileIds, layersByFile, hidden }
+  const on3dRef = useRef(on3d)
+  on3dRef.current = on3d
+  const exaggerationRef = useRef(exaggeration)
+  exaggerationRef.current = exaggeration
+
+  // 지도에 이미 올린 아이콘. 파일을 껐다 켜도 다시 받지 않는다.
+  const loadedIconsRef = useRef(new Set())
+
+  // 아이콘을 지도에 등록한다. 실패한 것은 그냥 두면 그 지점이 원으로 남는다.
+  const ensureIcons = useCallback(async (list) => {
+    const map = mapRef.current
+    if (!map) return
+    const wanted = collectIconUrls(list).filter(({ id }) => !loadedIconsRef.current.has(id))
+    if (wanted.length === 0) return
+    await Promise.all(wanted.map(({ url, id }) => new Promise((resolve) => {
+      // mapbox-gl의 loadImage는 콜백 방식이다.
+      map.loadImage(url, (error, image) => {
+        if (!error && image) {
+          if (!map.hasImage(id)) {
+            try { map.addImage(id, image) } catch { /* 이미 올라와 있으면 그만이다 */ }
+          }
+          loadedIconsRef.current.add(id)
+        }
+        resolve()
+      })
+    })))
+  }, [mapRef])
 
   // 켜진 파일의 도형을 모아 소스와 레이어를 다시 만든다.
   const rebuild = useCallback(() => {
@@ -59,6 +102,8 @@ export default function useMyMap(mapRef, isStyleReady) {
       for (const layer of list) {
         if (isLayerVisible(list, layer.id, hiddenSet)) visibleFolderIds.push(layer.id)
         for (const f of layer.features) {
+          const iconUrl = httpsIcon(f.properties?.icon)
+          const iconId = iconUrl ? iconIdFor(iconUrl) : null
           features.push({
             ...f,
             properties: {
@@ -67,6 +112,8 @@ export default function useMyMap(mapRef, isStyleReady) {
               __folder: layer.id,
               // 글자색은 파일 것을 쓰고, 뒤에 깔리는 후광만 읽히도록 반대로 둔다.
               __labelHalo: labelHaloFor(f.properties?.['label-color']),
+              // 지도에 실제로 올라간 아이콘만 심는다. 못 올라간 것은 원으로 남는다.
+              ...(iconId && loadedIconsRef.current.has(iconId) ? { __icon: iconId } : {}),
             },
           })
         }
@@ -86,6 +133,48 @@ export default function useMyMap(mapRef, isStyleReady) {
       map.addLayer({
         id, type: def.type, source: SRC, slot: SLOT, filter, paint: def.paint,
         ...(def.layout ? { layout: def.layout } : {}),
+      })
+    }
+
+    // 고도 벽과 오르내리는 경로. 평면 도형은 그대로 두므로 "어떤 도형도 숨기지
+    // 않는다"는 그대로 지켜진다 — 3D는 그 위에 얹는 것이다.
+    const walls = []
+    const elevated = []
+    for (const fileId of active) {
+      const list = byFile.get(fileId)
+      if (!list) continue
+      for (const w of buildWalls(list)) { w.properties.__file = fileId; walls.push(w) }
+      for (const l of buildElevatedLines(list)) { l.properties.__file = fileId; elevated.push(l) }
+    }
+    setWallCount(walls.length)
+    setElevCount(elevated.length)
+
+    const wallData = { type: 'FeatureCollection', features: walls }
+    if (map.getSource(WALL_SRC)) map.getSource(WALL_SRC).setData(wallData)
+    else map.addSource(WALL_SRC, { type: 'geojson', data: wallData })
+
+    const elevData = { type: 'FeatureCollection', features: elevated }
+    if (map.getSource(ELEV_SRC)) map.getSource(ELEV_SRC).setData(elevData)
+    // line-z-offset은 line-progress를 쓰므로 lineMetrics가 켜져 있어야 한다.
+    else map.addSource(ELEV_SRC, { type: 'geojson', data: elevData, lineMetrics: true })
+
+    const folderFilter = ['in', ['get', '__folder'], ['literal', visibleFolderIds]]
+    if (map.getLayer(WALL_LYR)) {
+      map.setFilter(WALL_LYR, folderFilter)
+    } else {
+      map.addLayer({
+        id: WALL_LYR, type: 'fill-extrusion', source: WALL_SRC, slot: SLOT,
+        filter: folderFilter, paint: extrusionPaint(exaggerationRef.current),
+        layout: { visibility: on3dRef.current ? 'visible' : 'none' },
+      })
+    }
+    if (map.getLayer(ELEV_LYR)) {
+      map.setFilter(ELEV_LYR, folderFilter)
+    } else {
+      map.addLayer({
+        id: ELEV_LYR, type: 'line', source: ELEV_SRC, slot: SLOT,
+        filter: folderFilter, paint: LINE_PAINT,
+        layout: { ...elevatedLineLayout(exaggerationRef.current), visibility: on3dRef.current ? 'visible' : 'none' },
       })
     }
   }, [mapRef, isStyleReady])
@@ -108,6 +197,54 @@ export default function useMyMap(mapRef, isStyleReady) {
     return () => { map.off('styledata', restack) }
   }, [mapRef])
 
+  // 도형을 누르면 파일에 적힌 이름과 설명을 보여준다.
+  //
+  // 설명은 남이 만든 파일에서 온 글이다. HTML로 넣으면 그 파일이 우리 화면에서
+  // 무엇이든 실행할 수 있다. 요소를 만들어 textContent로만 채운다 — 문자열을
+  // 이어붙여 setHTML을 부르는 길은 열어두지 않는다.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return undefined
+    const layers = LAYER_DEFS.map((d) => LYR(d.kind))
+    const popup = new mapboxgl.Popup({ closeButton: true, maxWidth: '280px', className: 'my-map-popup' })
+
+    const onClick = (e) => {
+      const feature = e.features?.[0]
+      if (!feature) return
+      const name = feature.properties?.name
+      const description = feature.properties?.description
+      if (!name && !description) return
+
+      const root = document.createElement('div')
+      if (name) {
+        const title = document.createElement('div')
+        title.className = 'my-map-popup-title'
+        title.textContent = String(name)
+        root.append(title)
+      }
+      if (description) {
+        const body = document.createElement('div')
+        body.className = 'my-map-popup-body'
+        // 파일이 준 글을 글자 그대로만 그린다.
+        body.textContent = String(description)
+        root.append(body)
+      }
+      popup.setLngLat(e.lngLat).setDOMContent(root).addTo(map)
+    }
+    const onEnter = () => { map.getCanvas().style.cursor = 'pointer' }
+    const onLeave = () => { map.getCanvas().style.cursor = '' }
+
+    map.on('click', layers, onClick)
+    map.on('mouseenter', layers, onEnter)
+    map.on('mouseleave', layers, onLeave)
+    return () => {
+      map.off('click', layers, onClick)
+      map.off('mouseenter', layers, onEnter)
+      map.off('mouseleave', layers, onLeave)
+      popup.remove()
+    }
+  }, [mapRef, isStyleReady])
+
   const fitTo = useCallback((features) => {
     const map = mapRef.current
     const bounds = boundsOf(features)
@@ -125,12 +262,15 @@ export default function useMyMap(mapRef, isStyleReady) {
       setError(`${e?.stage ?? '파일 읽기'} 단계에서 실패: ${e?.message ?? e}`)
       return null
     }
+    // 아이콘을 먼저 올린다. 순서가 바뀌면 첫 그리기에 아이콘이 빠진다.
+    setBusy('아이콘 불러오는 중…')
+    await ensureIcons(parsed.list)
     setBusy('지도에 올리는 중…')
     setLayersByFile((prev) => new Map(prev).set(fileId, parsed.list))
     setActiveFileIds((prev) => new Set(prev).add(fileId))
     setBusy(null)
     return parsed
-  }, [])
+  }, [ensureIcons])
 
   const addFile = useCallback(async (file) => {
     if (!file) return
@@ -204,6 +344,36 @@ export default function useMyMap(mapRef, isStyleReady) {
     setHidden(next)
   }, [])
 
+  // 3D는 두 가지가 함께 있어야 보인다: 기둥·뜬 경로 레이어와, 지도를 기울이는 것.
+  // 정면에서 내려다보면 기둥이 서 있어도 납작한 면과 구별되지 않는다.
+  const set3d = useCallback((on) => {
+    setOn3dState(on)
+    const map = mapRef.current
+    if (!map) return
+    for (const id of LYR_3D) {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none')
+    }
+    // 과장을 켠 채 가까이 가면 카메라가 기둥 안에 갇힌다. 3D일 때만 한계를 건다.
+    map.setMaxZoom(on ? maxZoomFor(exaggerationRef.current) : MAP_CONFIG.maxZoom)
+    map.easeTo({ pitch: on ? 60 : 0, duration: 400 })
+  }, [mapRef])
+
+  // 높이에만 배수를 건다. 가로는 그대로이므로 위치는 거짓이 되지 않는다.
+  const setExaggeration = useCallback((x) => {
+    setExaggerationState(x)
+    const map = mapRef.current
+    if (!map) return
+    if (map.getLayer(WALL_LYR)) {
+      const paint = extrusionPaint(x)
+      map.setPaintProperty(WALL_LYR, 'fill-extrusion-base', paint['fill-extrusion-base'])
+      map.setPaintProperty(WALL_LYR, 'fill-extrusion-height', paint['fill-extrusion-height'])
+    }
+    if (map.getLayer(ELEV_LYR)) {
+      map.setLayoutProperty(ELEV_LYR, 'line-z-offset', elevatedLineLayout(x)['line-z-offset'])
+    }
+    if (on3dRef.current) map.setMaxZoom(maxZoomFor(x))
+  }, [mapRef])
+
   // 꺼져 있던 폴더면 켜면서 옮긴다 — 옮겨갔는데 아무것도 없으면 뜻이 없다.
   const flyToFolder = useCallback((folderId) => {
     const { layersByFile: byFile } = stateRef.current
@@ -228,5 +398,6 @@ export default function useMyMap(mapRef, isStyleReady) {
   return {
     files, activeFileIds, layersByFile, hidden, busy, error,
     addFile, toggleFile, removeFile, toggleFolder, setAllFolders, flyToFolder,
+    on3d, set3d, exaggeration, setExaggeration, wallCount, elevCount,
   }
 }

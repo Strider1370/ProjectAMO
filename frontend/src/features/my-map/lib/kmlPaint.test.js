@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, httpsIcon, labelHaloFor } from './kmlPaint.js'
+import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, httpsIcon, labelHaloFor, CIRCLE_FILTER_EXTRA } from './kmlPaint.js'
 
 // 스타일은 JS로 feature를 순회해 계산하지 않고 Mapbox 표현식이 속성을 직접 읽는다.
 // feature 22만 개를 JS로 훑지 않아도 되고, 파일이 정한 값이 그대로 쓰인다.
@@ -84,4 +84,21 @@ test('후광 색은 우리가 심은 속성을 읽는다', () => {
 test('이름표에 최소 크기를 둔다', () => {
   // 파일의 label-scale이 0.7이면 예전 기준(11px)으로 7.7px이라 읽을 수 없다.
   assert.deepEqual(LABEL_LAYOUT['text-size'], ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 10])
+})
+
+// --- 아이콘 ---
+
+test('아이콘과 이름표를 한 레이어에 둔다', () => {
+  assert.deepEqual(LABEL_LAYOUT['icon-image'], ['coalesce', ['get', '__icon'], ''])
+  assert.deepEqual(LABEL_LAYOUT['icon-size'], ['*', ['coalesce', ['get', 'icon-scale'], 1], 0.5])
+  assert.equal(LABEL_LAYOUT['icon-anchor'], 'bottom')
+})
+
+test('아이콘이 있으면 원을 그리지 않는다', () => {
+  assert.deepEqual(CIRCLE_FILTER_EXTRA, ['!', ['has', '__icon']])
+})
+
+test('아이콘이 자리를 못 잡아도 이름표는 나온다', () => {
+  // text-optional이 없으면 아이콘이 밀려날 때 이름표까지 사라진다.
+  assert.equal(LABEL_LAYOUT['text-optional'], true)
 })
