@@ -12,8 +12,8 @@ import './Sidebar.css'
 
 const topItems = [
   { label: '항공정보',         icon: Layers, active: true },
-  { label: '내 지도',          icon: Map },
   { label: '기상정보',         icon: Cloud },
+  { label: '내 지도',          icon: Map },
   { label: 'ADS-B',           icon: Radio },
   { label: 'NOTAM',            icon: FileWarning },
   { label: '상황판',           icon: Monitor, href: '/monitoring', pointerOnly: true }, // 벽걸이 전용 — 터치 기기에서는 감춘다
