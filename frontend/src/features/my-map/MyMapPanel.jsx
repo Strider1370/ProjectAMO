@@ -14,7 +14,7 @@ export default function MyMapPanel({ myMap }) {
   const [dragOver, setDragOver] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
 
-  const { files, activeFileIds, layersByFile, hidden, busy, error, on3d, exaggeration, wallCount, elevCount } = myMap
+  const { files, activeFileIds, layersByFile, hidden, busy, error, on3d, exaggeration, wallCount } = myMap
 
   // 파일이 하나도 없으면 올리는 네모가 늘 열려 있다. 하나라도 생기면 접고
   // '파일 추가'로 다시 연다 — 목록이 주인공이 되어야 한다.
@@ -163,7 +163,7 @@ export default function MyMapPanel({ myMap }) {
           </section>
         )}
 
-        {activeFiles.length > 0 && (wallCount > 0 || elevCount > 0) && (
+        {activeFiles.length > 0 && wallCount > 0 && (
           <section className="my-map-section">
             <div className="layer-tile-group-title">3D</div>
             <button
@@ -176,7 +176,7 @@ export default function MyMapPanel({ myMap }) {
               <span className="my-map-mark" aria-hidden="true">{on3d && <Check size={12} strokeWidth={3} />}</span>
               <Box size={14} strokeWidth={2} aria-hidden="true" />
               <span>공역 기둥 세우고 지도 기울이기</span>
-              <span className="my-map-count">{(wallCount + elevCount).toLocaleString()}</span>
+              <span className="my-map-count">{wallCount.toLocaleString()}</span>
             </button>
             {on3d && (
               <label className="my-map-exag">

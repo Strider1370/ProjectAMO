@@ -5,7 +5,7 @@ import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, labelH
 import { collectIconUrls, iconIdFor } from './lib/kmlIcons.js'
 import { parseMyMapFile } from './lib/parseMyMapFile.js'
 import { listMyMapFiles, saveMyMapFile, loadMyMapFile, deleteMyMapFile } from './lib/myMapStore.js'
-import { buildWalls, extrusionPaint, buildElevatedLines, elevatedLineLayout } from './lib/kmlWalls.js'
+import { buildWalls, extrusionPaint } from './lib/kmlWalls.js'
 import { maxZoomFor } from './lib/cameraLimit.js'
 import { MAP_CONFIG } from '../map/mapConfig.js'
 
@@ -19,9 +19,11 @@ const TERRAIN_LAYER = 'terrain-hazard-shade'
 // 그래서 소스를 따로 둔다. 맥케이 파일 기준 43 + 158개뿐이라 부담이 없다.
 const WALL_SRC = 'my-map-wall-src'
 const WALL_LYR = 'my-map-wall'
-const ELEV_SRC = 'my-map-elev-src'
-const ELEV_LYR = 'my-map-elev'
-const LYR_3D = [WALL_LYR, ELEV_LYR]
+// 오르내리는 선을 공중에 띄우는 레이어는 두지 않는다. 켜는 것만으로 화면 응답이
+// 2ms → 243ms가 됐다(측정). 자료가 커서가 아니다 — 꼭짓점 5,942개뿐인데도 그랬다.
+// 게다가 이 파일의 경로에는 볼 고도가 없다(158개 중 100개가 100m 미만, 중앙값 25m).
+// 계산은 kmlWalls.js에 시험과 함께 남아 있으니 필요해지면 다시 붙인다.
+const LYR_3D = [WALL_LYR]
 
 // 면 → 선 → 점 → 이름표. 전역으로 이 순서를 지켜야 점이 면에 가리지 않는다.
 // 이름표는 Point에만 붙인다 — 도형 묶음은 하위 도형마다 쪼개지면서 속성이 복제되므로,
@@ -57,7 +59,6 @@ export default function useMyMap(mapRef, isStyleReady) {
   const [on3d, setOn3dState] = useState(false)
   const [exaggeration, setExaggerationState] = useState(1)
   const [wallCount, setWallCount] = useState(0)
-  const [elevCount, setElevCount] = useState(0)
   const stateRef = useRef({ activeFileIds, layersByFile, hidden })
   stateRef.current = { activeFileIds, layersByFile, hidden }
   const on3dRef = useRef(on3d)
@@ -139,24 +140,17 @@ export default function useMyMap(mapRef, isStyleReady) {
     // 고도 벽과 오르내리는 경로. 평면 도형은 그대로 두므로 "어떤 도형도 숨기지
     // 않는다"는 그대로 지켜진다 — 3D는 그 위에 얹는 것이다.
     const walls = []
-    const elevated = []
+
     for (const fileId of active) {
       const list = byFile.get(fileId)
       if (!list) continue
       for (const w of buildWalls(list)) { w.properties.__file = fileId; walls.push(w) }
-      for (const l of buildElevatedLines(list)) { l.properties.__file = fileId; elevated.push(l) }
     }
     setWallCount(walls.length)
-    setElevCount(elevated.length)
 
     const wallData = { type: 'FeatureCollection', features: walls }
     if (map.getSource(WALL_SRC)) map.getSource(WALL_SRC).setData(wallData)
     else map.addSource(WALL_SRC, { type: 'geojson', data: wallData })
-
-    const elevData = { type: 'FeatureCollection', features: elevated }
-    if (map.getSource(ELEV_SRC)) map.getSource(ELEV_SRC).setData(elevData)
-    // line-z-offset은 line-progress를 쓰므로 lineMetrics가 켜져 있어야 한다.
-    else map.addSource(ELEV_SRC, { type: 'geojson', data: elevData, lineMetrics: true })
 
     const folderFilter = ['in', ['get', '__folder'], ['literal', visibleFolderIds]]
     if (map.getLayer(WALL_LYR)) {
@@ -166,15 +160,6 @@ export default function useMyMap(mapRef, isStyleReady) {
         id: WALL_LYR, type: 'fill-extrusion', source: WALL_SRC, slot: SLOT,
         filter: folderFilter, paint: extrusionPaint(exaggerationRef.current),
         layout: { visibility: on3dRef.current ? 'visible' : 'none' },
-      })
-    }
-    if (map.getLayer(ELEV_LYR)) {
-      map.setFilter(ELEV_LYR, folderFilter)
-    } else {
-      map.addLayer({
-        id: ELEV_LYR, type: 'line', source: ELEV_SRC, slot: SLOT,
-        filter: folderFilter, paint: LINE_PAINT,
-        layout: { ...elevatedLineLayout(exaggerationRef.current), visibility: on3dRef.current ? 'visible' : 'none' },
       })
     }
   }, [mapRef, isStyleReady])
@@ -231,16 +216,13 @@ export default function useMyMap(mapRef, isStyleReady) {
       }
       popup.setLngLat(e.lngLat).setDOMContent(root).addTo(map)
     }
-    const onEnter = () => { map.getCanvas().style.cursor = 'pointer' }
-    const onLeave = () => { map.getCanvas().style.cursor = '' }
-
+    // 커서를 손 모양으로 바꾸지 않는다. mouseenter/mouseleave를 레이어에 걸면
+    // Mapbox가 마우스가 움직일 때마다 queryRenderedFeatures를 돌리는데, 대상에
+    // 폴리곤 16,170개짜리 면 레이어가 들어 있고 기울이면 조회 범위까지 넓어진다.
+    // 메인 스레드에서 도는 일이라 화면이 굳는다. 잃는 것은 커서 모양뿐이다.
     map.on('click', layers, onClick)
-    map.on('mouseenter', layers, onEnter)
-    map.on('mouseleave', layers, onLeave)
     return () => {
       map.off('click', layers, onClick)
-      map.off('mouseenter', layers, onEnter)
-      map.off('mouseleave', layers, onLeave)
       popup.remove()
     }
   }, [mapRef, isStyleReady])
@@ -368,9 +350,6 @@ export default function useMyMap(mapRef, isStyleReady) {
       map.setPaintProperty(WALL_LYR, 'fill-extrusion-base', paint['fill-extrusion-base'])
       map.setPaintProperty(WALL_LYR, 'fill-extrusion-height', paint['fill-extrusion-height'])
     }
-    if (map.getLayer(ELEV_LYR)) {
-      map.setLayoutProperty(ELEV_LYR, 'line-z-offset', elevatedLineLayout(x)['line-z-offset'])
-    }
     if (on3dRef.current) map.setMaxZoom(maxZoomFor(x))
   }, [mapRef])
 
@@ -398,6 +377,6 @@ export default function useMyMap(mapRef, isStyleReady) {
   return {
     files, activeFileIds, layersByFile, hidden, busy, error,
     addFile, toggleFile, removeFile, toggleFolder, setAllFolders, flyToFolder,
-    on3d, set3d, exaggeration, setExaggeration, wallCount, elevCount,
+    on3d, set3d, exaggeration, setExaggeration, wallCount,
   }
 }
