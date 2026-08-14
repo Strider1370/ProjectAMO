@@ -176,3 +176,26 @@
 }
 .my-map-popup-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 .my-map-popup-body { font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+
+/* --- 3D --- */
+.my-map-3d-toggle {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 9px 10px;
+  border: 1.5px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  background: var(--bg-1); color: inherit;
+  font-family: inherit; font-size: 13px; text-align: left; cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+.my-map-3d-toggle.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-1));
+  color: var(--accent);
+}
+.my-map-exag { display: block; margin-top: 8px; font-size: 12.5px; color: var(--text-2); }
+.my-map-exag select {
+  margin-left: 4px; padding: 4px 8px;
+  border: 1.5px solid rgba(148, 163, 184, 0.4); border-radius: 8px;
+  background: var(--bg-2); color: inherit; font-family: inherit; font-size: 12.5px;
+}
+.my-map-exag-hint { display: block; margin-top: 6px; font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
