@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { readKmlFromBuffer } from './kmzUnzip.js'
 
-const KMZ = readFileSync(fileURLToPath(new URL('../../../../test/fixtures/kml-viewer/tiny.kmz', import.meta.url)))
+const KMZ = readFileSync(fileURLToPath(new URL('../../../../test/fixtures/my-map/tiny.kmz', import.meta.url)))
 const toArrayBuffer = (b) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
 
 test('KMZ 안의 doc.kml을 꺼낸다', async () => {

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from '../map/mapConfig.js'
-import { isLayerVisible } from './lib/kmlFolderTree.js'
-import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT } from './lib/kmlPaint.js'
+import { isLayerVisible } from '../my-map/lib/kmlFolderTree.js'
+import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT } from '../my-map/lib/kmlPaint.js'
 import { buildWalls, extrusionPaint, buildElevatedLines, elevatedLineLayout } from './lib/kmlWalls.js'
 
 const SRC = 'kml-src'

@@ -93,7 +93,7 @@ const KMZ = readFileSync(fileURLToPath(new URL('../../../../test/fixtures/my-map
 - [ ] **Step 3: 옮긴 시험 22개가 그대로 통과하는지 확인**
 
 ```bash
-cd frontend && node --test src/features/my-map/lib/
+cd frontend && node --test "src/features/my-map/lib/*.test.js"
 ```
 Expected: PASS — 22개 (압축 해제 5, 폴더 트리 7, 색칠 10).
 
