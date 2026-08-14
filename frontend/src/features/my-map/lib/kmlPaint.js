@@ -28,7 +28,8 @@ export const LABEL_LAYOUT = {
   'text-field': ['coalesce', ['get', 'name'], ''],
   // 파일의 label-scale을 존중하되 바닥을 둔다. 맥케이 파일의 IC·JC 이름은 0.7이라
   // 예전 기준(11px)으로 7.7px이었다 — 화면에서 읽을 수 없는 크기다.
-  'text-size': ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 11],
+  // 바닥을 너무 올리면 작게 그리라고 지정한 것들이 오히려 제일 도드라진다.
+  'text-size': ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 10],
   'text-offset': [0, 1.1],
   'text-anchor': 'top',
   'text-allow-overlap': false,
@@ -39,23 +40,28 @@ export const LABEL_LAYOUT = {
 // 맥케이 파일은 IC·JC 이름 455개를 흰색으로 지정했다. 구글어스에서는 위성영상
 // 위에 놓이니 맞는 선택이지만, 우리 기본 지도는 밝아서 흰 글자에 흰 후광이면
 // 아무것도 안 보인다. 색을 바꾸지 않고 뒤에 깔리는 것만 반대로 둔다.
+const HALO_DARK = 'rgba(31, 41, 55, 0.72)'
+const HALO_LIGHT = 'rgba(255, 255, 255, 0.85)'
+
 export function labelHaloFor(color) {
-  if (typeof color !== 'string') return '#ffffff'
+  if (typeof color !== 'string') return HALO_LIGHT
   let hex = color.trim().replace(/^#/, '')
   if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('')
-  if (!/^[0-9a-f]{6}$/i.test(hex)) return '#ffffff'
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return HALO_LIGHT
   const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
   // 사람 눈이 느끼는 밝기 — 초록이 가장 밝게, 파랑이 가장 어둡게 보인다.
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-  return luminance > 0.5 ? '#1f2937' : '#ffffff'
+  // 반투명이다. 꽉 찬 검정 후광은 글자를 도드라지게 만들어, 배경으로 깔린
+  // 고속도로 IC 이름이 정작 봐야 할 공역·지점보다 튀게 된다. 읽히는 만큼만 남긴다.
+  return luminance > 0.5 ? HALO_DARK : HALO_LIGHT
 }
 
 export const LABEL_PAINT = {
   'text-color': ['coalesce', ['get', 'label-color'], '#111827'],
   // 후광 색은 호출부가 feature마다 심어준다(labelHaloFor). 없으면 흰색 —
   // 글자색 기본값이 어둡기 때문이다.
-  'text-halo-color': ['coalesce', ['get', '__labelHalo'], '#ffffff'],
-  'text-halo-width': 1.4,
+  'text-halo-color': ['coalesce', ['get', '__labelHalo'], HALO_LIGHT],
+  'text-halo-width': 1.1,
 }
 
 // KML은 아이콘을 http:// 주소로 가리키는 일이 많다(구글 어스 기본 아이콘). https

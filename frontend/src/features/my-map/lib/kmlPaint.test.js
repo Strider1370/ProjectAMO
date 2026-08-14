@@ -38,7 +38,7 @@ test('라벨은 name을 쓴다', () => {
 test('라벨 색과 크기도 파일 값을 우선한다', () => {
   assert.deepEqual(LABEL_PAINT['text-color'], ['coalesce', ['get', 'label-color'], '#111827'])
   // 크기는 파일 값을 쓰되 읽을 수 있는 바닥을 둔다 — 아래 '최소 크기' 시험 참고.
-  assert.deepEqual(LABEL_LAYOUT['text-size'], ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 11])
+  assert.deepEqual(LABEL_LAYOUT['text-size'], ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 10])
 })
 
 test('httpsIcon: http 주소를 https로 바꾼다', () => {
@@ -60,26 +60,28 @@ test('httpsIcon: KMZ 내부 상대 경로는 쓸 수 없으므로 null', () => {
 test('밝은 글자에는 어두운 후광, 어두운 글자에는 흰 후광', () => {
   // 맥케이 파일의 IC·JC 이름 455개가 흰색이다. 구글어스에선 위성영상 위라 맞지만
   // 우리 기본 지도는 밝아서, 흰 글자에 흰 후광이면 아무것도 안 보인다.
-  assert.equal(labelHaloFor('#ffffff'), '#1f2937')
-  assert.equal(labelHaloFor('#ffff00'), '#1f2937')
-  assert.equal(labelHaloFor('#00ff00'), '#1f2937')
-  assert.equal(labelHaloFor('#000000'), '#ffffff')
-  assert.equal(labelHaloFor('#0000ff'), '#ffffff')
-  assert.equal(labelHaloFor('#ff0000'), '#ffffff')
+  const DARK = 'rgba(31, 41, 55, 0.72)'
+  const LIGHT = 'rgba(255, 255, 255, 0.85)'
+  assert.equal(labelHaloFor('#ffffff'), DARK)
+  assert.equal(labelHaloFor('#ffff00'), DARK)
+  assert.equal(labelHaloFor('#00ff00'), DARK)
+  assert.equal(labelHaloFor('#000000'), LIGHT)
+  assert.equal(labelHaloFor('#0000ff'), LIGHT)
+  assert.equal(labelHaloFor('#ff0000'), LIGHT)
 })
 
 test('색을 모르면 흰 후광 — 기본 글자색이 어둡기 때문', () => {
-  assert.equal(labelHaloFor(null), '#ffffff')
-  assert.equal(labelHaloFor(undefined), '#ffffff')
-  assert.equal(labelHaloFor('아무말'), '#ffffff')
-  assert.equal(labelHaloFor('#fff'), '#1f2937')   // 3자리도 읽는다
+  assert.equal(labelHaloFor(null), 'rgba(255, 255, 255, 0.85)')
+  assert.equal(labelHaloFor(undefined), 'rgba(255, 255, 255, 0.85)')
+  assert.equal(labelHaloFor('아무말'), 'rgba(255, 255, 255, 0.85)')
+  assert.equal(labelHaloFor('#fff'), 'rgba(31, 41, 55, 0.72)')   // 3자리도 읽는다
 })
 
 test('후광 색은 우리가 심은 속성을 읽는다', () => {
-  assert.deepEqual(LABEL_PAINT['text-halo-color'], ['coalesce', ['get', '__labelHalo'], '#ffffff'])
+  assert.deepEqual(LABEL_PAINT['text-halo-color'], ['coalesce', ['get', '__labelHalo'], 'rgba(255, 255, 255, 0.85)'])
 })
 
 test('이름표에 최소 크기를 둔다', () => {
   // 파일의 label-scale이 0.7이면 예전 기준(11px)으로 7.7px이라 읽을 수 없다.
-  assert.deepEqual(LABEL_LAYOUT['text-size'], ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 11])
+  assert.deepEqual(LABEL_LAYOUT['text-size'], ['max', ['*', ['coalesce', ['get', 'label-scale'], 1], 13], 10])
 })
