@@ -44,9 +44,11 @@ export default function AuthModal({ onClose }) {
     }
   }
 
+  // 바깥을 눌러도 닫지 않는다 — 아이디·비밀번호를 입력하던 중 실수로 옆을 누르면
+  // 입력한 것이 통째로 날아간다. 닫기는 X 버튼(과 모바일 뒤로가기)으로만.
   return (
-    <div className="auth-overlay" onClick={onClose}>
-      <div className="auth-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="계정">
+    <div className="auth-overlay">
+      <div className="auth-modal" role="dialog" aria-modal="true" aria-label="계정">
         <button className="auth-close-btn" onClick={onClose} aria-label="닫기"><X size={18} /></button>
 
         {user ? (
