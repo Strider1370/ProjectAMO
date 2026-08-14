@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Box, Check, ChevronDown, ChevronRight, Crosshair, Plus, X } from 'lucide-react'
-import { EXAGGERATION_STEPS } from './lib/cameraLimit.js'
+import { Check, ChevronDown, ChevronRight, Crosshair, Plus, X } from 'lucide-react'
 import { isLayerVisible } from './lib/kmlFolderTree.js'
 import { visibleRows, hasChildren, toggleExpanded, totalFeatures } from './lib/folderView.js'
 import './MyMapPanel.css'
@@ -14,7 +13,7 @@ export default function MyMapPanel({ myMap }) {
   const [dragOver, setDragOver] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
 
-  const { files, activeFileIds, layersByFile, hidden, busy, error, on3d, exaggeration, wallCount } = myMap
+  const { files, activeFileIds, layersByFile, hidden, busy, error } = myMap
 
   // 파일이 하나도 없으면 올리는 네모가 늘 열려 있다. 하나라도 생기면 접고
   // '파일 추가'로 다시 연다 — 목록이 주인공이 되어야 한다.
@@ -160,39 +159,6 @@ export default function MyMapPanel({ myMap }) {
                 )
               })}
             </ul>
-          </section>
-        )}
-
-        {activeFiles.length > 0 && wallCount > 0 && (
-          <section className="my-map-section">
-            <div className="layer-tile-group-title">3D</div>
-            <button
-              type="button"
-              data-testid="my-map-3d"
-              className={`my-map-3d-toggle${on3d ? ' is-active' : ''}`}
-              aria-pressed={on3d}
-              onClick={() => myMap.set3d(!on3d)}
-            >
-              <span className="my-map-mark" aria-hidden="true">{on3d && <Check size={12} strokeWidth={3} />}</span>
-              <Box size={14} strokeWidth={2} aria-hidden="true" />
-              <span>공역 기둥 세우고 지도 기울이기</span>
-              <span className="my-map-count">{wallCount.toLocaleString()}</span>
-            </button>
-            {on3d && (
-              <label className="my-map-exag">
-                {'고도 과장 '}
-                <select
-                  data-testid="my-map-exaggeration"
-                  value={exaggeration}
-                  onChange={(e) => myMap.setExaggeration(Number(e.target.value))}
-                >
-                  {EXAGGERATION_STEPS.map((x) => <option key={x} value={x}>{x}배</option>)}
-                </select>
-                <span className="my-map-exag-hint">
-                  실제 비율로는 반경 9km 관제권의 높이가 300m라 납작합니다. 5~10배가 보기 좋습니다.
-                </span>
-              </label>
-            )}
           </section>
         )}
 
