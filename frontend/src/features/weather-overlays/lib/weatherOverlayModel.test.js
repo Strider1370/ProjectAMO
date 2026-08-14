@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   buildWeatherOverlayModel,
+  collectActiveFrameEntries,
   formatAdvisoryPanelLabel,
   formatSigwxStamp,
   formatUtcTmfcStamp,
@@ -10,6 +11,38 @@ import {
 
 const hiddenAdvisoryKeys = { sigwxLow: [], sigmet: [], airmet: [] }
 const sigwxFilter = {}
+
+test('collects enabled domestic observations and future QPF as source-aware availability entries', () => {
+  assert.deepEqual(collectActiveFrameEntries({
+    visibility: { radarHsr: true, radarHci: false, satellite: true, qpf: true },
+    hsrFrames: [{ timeMs: 1000 }],
+    hciFrames: [{ timeMs: 2000 }],
+    satelliteFrames: [{ timeMs: 1000 }, { timeMs: 3000 }],
+    satelliteVisibleFrames: [],
+    lightningFrames: [],
+    wissdomFrames: [],
+    qpfFrames: [{ validTimeMs: 5000 }],
+  }), [
+    { ms: 1000, cadenceMs: 5 * 60_000 },
+    { ms: 3000, cadenceMs: 10 * 60_000 },
+    { ms: 5000, cadenceMs: 10 * 60_000 },
+  ])
+})
+
+test('uses HSR as the domestic radar frame and automatically derives its WISSDOM frame', () => {
+  const model = buildWeatherOverlayModel({
+    hsrMeta: { frames: [{ tm: '202608041925', path: '/hsr.webp' }] },
+    wissdomMeta: { framesByHeight: { 1524: [{ tm: '202608041920', path: '/wissdom.webp' }] } },
+    visibility: { radarHsr: true },
+    selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 25),
+    radarWindHeightM: 1524,
+  })
+
+  assert.equal(model.radarFrame.path, '/hsr.webp')
+  assert.equal(model.radarDisplayVisible, true)
+  assert.equal(model.wissdomFrame.path, '/wissdom.webp')
+  assert.equal(model.wissdomAvailable, true)
+})
 
 test('formatSigwxStamp formats tmfc values as KST labels', () => {
   assert.equal(formatSigwxStamp('202605140300'), '05/14 03:00 KST')

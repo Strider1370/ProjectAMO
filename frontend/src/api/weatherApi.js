@@ -127,7 +127,6 @@ export function buildSnapshotMetaFromData(data = {}) {
     ground_overview: buildHashEntry(data.groundOverview),
     environment: buildHashEntry(data.environment),
     airportInfo: buildHashEntry(data.airportInfo),
-    echoMeta: data.echoMeta?.tm ? { tm: data.echoMeta.tm } : null,
     wissdomMeta: buildGraphicsMetaEntry(data.wissdomMeta),
     qpfMeta: buildGraphicsMetaEntry(data.qpfMeta),
     echoTopMeta: data.echoTopMeta?.tm ? { tm: data.echoTopMeta.tm } : null,
@@ -162,7 +161,7 @@ export async function loadWeatherData() {
   const [
     airports, metar, taf, amos, warning, kmaSpecialWarning,
     sigmet, airmet, lightning,
-    echoMeta, wissdomMeta, qpfMeta, hsrMeta, hciMeta, echoTopMeta, rainviewerMeta, satMeta, satVisibleMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
+    wissdomMeta, qpfMeta, hsrMeta, hciMeta, echoTopMeta, rainviewerMeta, satMeta, satVisibleMeta, convectiveMeta, sigwxLow, sigwxFrontMeta, sigwxCloudMeta,
     groundForecast, notam, overseasAirports,
     metarOverseas, tafOverseas, sigmetOverseas,
   ] = await Promise.all([
@@ -175,7 +174,6 @@ export async function loadWeatherData() {
     fetchJson('/api/sigmet', { optional: true }),
     fetchJson('/api/airmet', { optional: true }),
     fetchJson('/api/lightning', { optional: true }),
-    fetchJson('/data/radar/echo_meta.json', { optional: true }),
     fetchJson('/data/radar/wissdom/wissdom_meta.json', { optional: true }),
     fetchJson('/data/radar/qpf/qpf_meta.json', { optional: true }),
     fetchJson('/data/radar/hsr/hsr_meta.json', { optional: true }),
@@ -209,7 +207,6 @@ export async function loadWeatherData() {
     sigmetOverseas,
     airmet,
     lightning,
-    echoMeta,
     wissdomMeta,
     qpfMeta,
     hsrMeta,
@@ -369,7 +366,6 @@ export async function loadChangedWeatherData(changes, { deferredKeys = 'all' } =
   if (changes.groundForecast) { fetches.push(fetchJson('/api/ground-forecast', { optional: 'preserve' })); keys.push('groundForecast') }
   if (changes.groundOverview && includesDeferredKey(deferredKeys, 'groundOverview')) { fetches.push(fetchJson('/api/ground-overview', { optional: 'preserve' })); keys.push('groundOverview') }
   if (changes.environment && includesDeferredKey(deferredKeys, 'environment')) { fetches.push(fetchJson('/api/environment', { optional: 'preserve' })); keys.push('environment') }
-  if (changes.echoMeta) { fetches.push(fetchJson('/data/radar/echo_meta.json', { optional: 'preserve' })); keys.push('echoMeta') }
   if (changes.wissdomMeta) { fetches.push(fetchJson('/data/radar/wissdom/wissdom_meta.json', { optional: 'preserve' })); keys.push('wissdomMeta') }
   if (changes.qpfMeta) { fetches.push(fetchJson('/data/radar/qpf/qpf_meta.json', { optional: 'preserve' })); keys.push('qpfMeta') }
   // ponytail: 임시로 붙인 기상청 합성영상 두 종류. 스냅샷 해시에 아직 없어서 레이더 갱신에 얹어 받는다.

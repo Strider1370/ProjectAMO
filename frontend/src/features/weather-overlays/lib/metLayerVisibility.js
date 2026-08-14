@@ -16,11 +16,11 @@ export function getNextMetVisibility(prev, id, { lowPower = false } = {}) {
   // 국내(KMA) ↔ 해외(RainViewer) 레이더는 상호배타. 색상표·출처·정확도가 다른 별개 제품이고,
   // 겹쳐 켜면 KMA의 무에코(투명) 영역으로 해외 레이더가 비쳐 두 색 기준이 섞인다.
   // lowPower는 무관 — 남이 렌더한 타일이라 우리 쪽 계산 부하가 없다.
-  if (id === 'radar') {
-    return { ...prev, radar: !prev.radar, radarOverseas: false }
+  if (id === 'radarHsr') {
+    return { ...prev, radarHsr: !prev.radarHsr, radarOverseas: false }
   }
   if (id === 'radarOverseas') {
-    return { ...prev, radarOverseas: !prev.radarOverseas, radar: false }
+    return { ...prev, radarOverseas: !prev.radarOverseas, radarHsr: false }
   }
   if (id === 'wind') {
     const nextWind = !prev.wind

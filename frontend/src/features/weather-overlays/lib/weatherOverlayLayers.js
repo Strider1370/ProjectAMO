@@ -11,6 +11,7 @@ import {
   LIGHTNING_GROUND_LAYER,
   LIGHTNING_SOURCE,
   addLightningLayers,
+  createLightningFrameSync,
   setLightningBlinkState,
   setLightningVisibility,
 } from './lightningLayers.js'
@@ -31,6 +32,7 @@ import {
   WISSDOM_SOURCE,
   syncWissdomLayer,
 } from './wissdomLayers.js'
+import { syncRasterFrame } from './rasterFrameTransition.js'
 
 export { QPF_LAYER, QPF_SOURCE, WISSDOM_LAYER, WISSDOM_SOURCE }
 
@@ -161,10 +163,9 @@ export const WISSDOM_WIND_LEGEND = [
 // 이 레이어들은 공유 레이어 레지스트리(features/map/layerActions.js)에 연동됨.
 // id 추가/삭제 시 layerActions.test.js 커버리지 테스트가 동기화를 강제한다.
 export const MET_LAYERS = [
-  { id: 'radar', label: 'Radar', color: '#38bdf8' },
   // ponytail: 기상청이 그려주는 합성영상 두 종류를 임시로 붙여 비교 중이다. 쓸지 결정되면
   // 하나로 정리하거나 우리 렌더링으로 되돌린다.
-  { id: 'radarHsr', label: 'Radar(이미지)', color: '#38bdf8' },
+  { id: 'radarHsr', label: '레이더', color: '#38bdf8' },
   { id: 'radarHci', label: '강수 형태', color: '#0ea5e9' },
   { id: 'radarOverseas', label: 'Radar(해외)', color: '#38bdf8' },
   { id: 'echoTop', label: '에코탑(재산출)', color: '#7E22CE' },
@@ -195,6 +196,7 @@ const addedMapImages = new WeakMap()
 const loadedMapImages = new Map()
 const sigwxIconUrlsById = new Map()
 const styleImageMissingBoundMaps = new WeakSet()
+const lightningFrameSyncs = new WeakMap()
 
 function registerSigwxIconImages(images = []) {
   images.forEach(({ id, url }) => {
@@ -474,12 +476,14 @@ export function setSigwxLowVisibility(map, isVisible) {
   SIGWX_VECTOR_LAYERS.forEach((layerId) => setMapLayerVisible(map, layerId, isVisible))
 }
 
-export function syncRasterAndSigwxLayers(map, model) {
-  const hasSat = addOrUpdateImageOverlay(map, {
+export function syncRasterAndSigwxLayers(map, model, { syncRaster = syncRasterFrame } = {}) {
+  syncRaster(map, {
     sourceId: SATELLITE_SOURCE,
     layerId: SATELLITE_LAYER,
     frame: model.satelliteFrame,
     opacity: 0.92,
+    visible: Boolean(model.visibility.satellite && model.satelliteFrame),
+    transitionMs: 200,
   })
   const hasRadar = addOrUpdateImageOverlay(map, {
     sourceId: RADAR_SOURCE,
@@ -487,8 +491,8 @@ export function syncRasterAndSigwxLayers(map, model) {
     frame: model.radarFrame,
     opacity: 0.88,
   })
-  syncWissdomLayer(map, model)
-  syncQpfLayer(map, model)
+  syncWissdomLayer(map, model, { syncRaster })
+  syncQpfLayer(map, model, { syncRaster })
   // 해외 레이더 — 국내와 상호배타라 z-order 다툼이 없다. 프레임이 없으면(커버 시간 밖) 스스로 숨는다.
   syncRainviewerLayers(map, {
     meta: model.rainviewerMeta,
@@ -509,7 +513,6 @@ export function syncRasterAndSigwxLayers(map, model) {
   })
 
   addOrUpdateSigwxLowLayers(map, model.sigwxLowMapData, { loadIcons: model.visibility.sigwx })
-  setMapLayerVisible(map, SATELLITE_LAYER, hasSat && model.visibility.satellite)
   setMapLayerVisible(map, RADAR_LAYER, hasRadar && model.visibility.radar)
   setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && model.visibility.sigwx && model.showVisibleSigwxFrontOverlay)
   setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && model.visibility.sigwx && model.showVisibleSigwxCloudOverlay)
@@ -554,7 +557,16 @@ export function installWeatherOverlayLayers(map) {
 
 export function syncLightningLayers(map, model) {
   addLightningLayers(map, model.lightningGeoJSON)
-  map.getSource(LIGHTNING_SOURCE)?.setData(model.lightningGeoJSON)
+  let frameSync = lightningFrameSyncs.get(map)
+  if (!frameSync) {
+    frameSync = createLightningFrameSync(map)
+    lightningFrameSyncs.set(map, frameSync)
+  }
+  void frameSync.sync({
+    geojson: model.lightningGeoJSON,
+    visible: model.visibility.lightning,
+    frameKey: String(model.lightningReferenceTimeMs ?? ''),
+  })
   setLightningVisibility(map, model.visibility.lightning)
   setLightningBlinkState(map, model.visibility.lightning && model.blinkLightning && model.lightningBlinkOff)
 }

@@ -21,6 +21,7 @@ import {
   syncRasterAndSigwxLayers,
 } from './weatherOverlayLayers.js'
 import { LIGHTNING_SOURCE } from './lightningLayers.js'
+import { addOrUpdateImageOverlay } from '../../map/imageOverlay.js'
 
 function createMockMap() {
   const sources = new Map()
@@ -65,11 +66,41 @@ function createMockMap() {
   }
 }
 
+function syncRasterImmediately(map, options) {
+  const installed = Boolean(options.visible && addOrUpdateImageOverlay(map, options))
+  if (map.getLayer(options.layerId)) {
+    map.setLayoutProperty(options.layerId, 'visibility', installed ? 'visible' : 'none')
+  }
+  return installed
+}
+
 test('weather overlay exports keep MET panel metadata intact', () => {
   assert.equal(MET_LAYERS.find((layer) => layer.id === 'sigmet')?.label, 'SIGMET')
   assert.equal(MET_LAYERS.find((layer) => layer.id === 'adsb'), undefined)
   assert.equal(RADAR_RAINRATE_LEGEND[0].label, '150')
   assert.equal(RADAR_RAINRATE_LEGEND.at(-1).label, '0.0')
+})
+
+test('routes infrared, WISSDOM, and QPF through the 200ms raster transition', () => {
+  const calls = []
+  syncRasterAndSigwxLayers(createMockMap(), {
+    satelliteFrame: { path: '/ir.webp', bounds: [[30, 120], [40, 130]] },
+    radarFrame: null,
+    wissdomFrame: { path: '/wissdom.webp', bounds: [[30, 120], [40, 130]] },
+    qpfFrame: { path: '/qpf.webp', bounds: [[30, 120], [40, 130]] },
+    selectedSigwxFrontMeta: null,
+    selectedSigwxCloudMeta: null,
+    sigwxLowMapData: null,
+    visibility: { satellite: true, radar: false, radarHsr: true, radarOverseas: false, sigwx: false },
+  }, {
+    syncRaster: (_map, options) => calls.push(options),
+  })
+
+  assert.deepEqual(calls.slice(0, 3).map(({ sourceId, transitionMs, visible }) => ({ sourceId, transitionMs, visible })), [
+    { sourceId: 'kma-satellite-overlay', transitionMs: 200, visible: true },
+    { sourceId: 'kma-wissdom-overlay', transitionMs: 200, visible: true },
+    { sourceId: 'kma-qpf-overlay', transitionMs: 200, visible: true },
+  ])
 })
 
 test('syncRasterAndSigwxLayers installs raster overlays and visibility from the weather model', () => {
@@ -84,7 +115,7 @@ test('syncRasterAndSigwxLayers installs raster overlays and visibility from the 
     visibility: { satellite: true, radar: false, sigwx: true },
     showVisibleSigwxFrontOverlay: true,
     showVisibleSigwxCloudOverlay: false,
-  })
+  }, { syncRaster: syncRasterImmediately })
 
   assert.ok(map.getLayer(SATELLITE_LAYER))
   assert.ok(map.getLayer(RADAR_LAYER))
@@ -122,7 +153,7 @@ test('syncRasterAndSigwxLayers does not load SIGWX icons when the SIGWX layer is
     visibility: { satellite: true, radar: true, sigwx: false },
     showVisibleSigwxFrontOverlay: false,
     showVisibleSigwxCloudOverlay: false,
-  })
+  }, { syncRaster: syncRasterImmediately })
 
   assert.deepEqual(loadedUrls, [])
 })
@@ -153,7 +184,7 @@ test('syncRasterAndSigwxLayers loads SIGWX icons when the SIGWX layer is visible
     visibility: { satellite: false, radar: false, sigwx: true },
     showVisibleSigwxFrontOverlay: false,
     showVisibleSigwxCloudOverlay: false,
-  })
+  }, { syncRaster: syncRasterImmediately })
 
   assert.deepEqual(loadedUrls, ['/Symbols/Reference%20Symbols/icon_sigwx/test-visible-mist.png'])
 })
@@ -191,7 +222,7 @@ test('styleimagemissing loads a registered SIGWX icon on demand', () => {
     visibility: { satellite: false, radar: false, sigwx: false },
     showVisibleSigwxFrontOverlay: false,
     showVisibleSigwxCloudOverlay: false,
-  })
+  }, { syncRaster: syncRasterImmediately })
 
   handlers[0]?.({ id: 'sigwx-test-missing-mist.png' })
 
@@ -247,7 +278,7 @@ test('weather overlay sync keeps WISSDOM above radar and QPF above WISSDOM', () 
     visibility: { satellite: false, radar: true, radarOverseas: false, sigwx: false },
     showVisibleSigwxFrontOverlay: false,
     showVisibleSigwxCloudOverlay: false,
-  })
+  }, { syncRaster: syncRasterImmediately })
 
   const layerOrder = [...map.layers.keys()]
   assert.ok(layerOrder.indexOf(RADAR_LAYER) < layerOrder.indexOf(WISSDOM_LAYER))
@@ -273,7 +304,7 @@ test('weather overlay installation preserves WISSDOM and QPF ownership on a fres
     visibility: { satellite: false, radar: true, radarOverseas: false, sigwx: false },
     showVisibleSigwxFrontOverlay: false,
     showVisibleSigwxCloudOverlay: false,
-  })
+  }, { syncRaster: syncRasterImmediately })
 
   assert.ok(map.getLayer(WISSDOM_LAYER))
   assert.ok(map.getLayer(QPF_LAYER))

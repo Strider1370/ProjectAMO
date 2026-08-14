@@ -192,7 +192,6 @@ function buildInitialCollectionJobs({
     ["amos", amosProcessor.process],
     ["lightning", lightningProcessor.process],
     ...(includeRadarSatellite ? [
-      ["radar_echo", radarEchoProcessor.process],
       ...(graphicsEnabled() ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
       ...(includeEchoTop ? [["echo_top", echoTopProcessor.process]] : []),
     ] : []),
@@ -247,7 +246,6 @@ async function main() {
   cron.schedule(config.schedule.lightning_interval, () => runWithLock("lightning", lightningProcessor.process, AVIATION_KEY));
   cron.schedule(config.schedule.typhoon_interval, () => runWithLock("typhoon", typhoonProcessor.process, AVIATION_KEY));
   if (radarSatelliteEnabled()) {
-    cron.schedule(config.schedule.radar_echo_interval, () => runWithLock("radar_echo", radarEchoProcessor.process, RADAR_SATELLITE_KEY));
     scheduleRadarGraphicsJobs()
     scheduleEchoTopJob()
     // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.

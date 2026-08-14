@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { QPF_LAYER, QPF_SOURCE, syncQpfLayer } from './qpfLayers.js'
+import { addOrUpdateImageOverlay } from '../../map/imageOverlay.js'
 
 function createMockMap() {
   const sources = new Map()
@@ -21,12 +22,20 @@ function createMockMap() {
   }
 }
 
+function syncRasterImmediately(map, options) {
+  const installed = Boolean(options.visible && addOrUpdateImageOverlay(map, options))
+  if (map.getLayer(options.layerId)) {
+    map.setLayoutProperty(options.layerId, 'visibility', installed ? 'visible' : 'none')
+  }
+  return installed
+}
+
 test('syncQpfLayer renders a complete frame once with its image bounds', () => {
   const map = createMockMap()
   const frame = { path: '/data/radar/qpf_202608041925_p10.webp', bounds: [[30, 120], [40, 130]] }
 
-  syncQpfLayer(map, { qpfFrame: frame })
-  syncQpfLayer(map, { qpfFrame: frame })
+  syncQpfLayer(map, { qpfFrame: frame }, { syncRaster: syncRasterImmediately })
+  syncQpfLayer(map, { qpfFrame: frame }, { syncRaster: syncRasterImmediately })
 
   assert.equal(map.sources.size, 1)
   assert.equal(map.layers.size, 1)
@@ -42,9 +51,9 @@ test('syncQpfLayer renders a complete frame once with its image bounds', () => {
 test('syncQpfLayer hides missing or malformed frames', () => {
   const map = createMockMap()
 
-  syncQpfLayer(map, { qpfFrame: { path: '/qpf.webp', bounds: [[30, 120], [40, 130]] } })
-  syncQpfLayer(map, { qpfFrame: null })
-  syncQpfLayer(map, { qpfFrame: { path: '/qpf.webp', bounds: [[30, 120]] } })
+  syncQpfLayer(map, { qpfFrame: { path: '/qpf.webp', bounds: [[30, 120], [40, 130]] } }, { syncRaster: syncRasterImmediately })
+  syncQpfLayer(map, { qpfFrame: null }, { syncRaster: syncRasterImmediately })
+  syncQpfLayer(map, { qpfFrame: { path: '/qpf.webp', bounds: [[30, 120]] } }, { syncRaster: syncRasterImmediately })
 
   assert.deepEqual(map.layoutCalls.slice(-2), [[QPF_LAYER, 'visibility', 'none'], [QPF_LAYER, 'visibility', 'none']])
 })

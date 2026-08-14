@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { shouldShowGeoBoundaries, geoLayerInZoomRange, GEO_LAYERS, GEO_SIGUNGU_MIN_ZOOM } from './baseMapLayers.js'
+import { shouldShowGeoBoundaries, geoBoundaryPresentation, geoLayerInZoomRange, GEO_LAYERS, GEO_SIGUNGU_MIN_ZOOM } from './baseMapLayers.js'
 
 // 시군구(4.4MB)를 시작 화면에서 받지 않기 위한 판정. 이 규칙이 무너지면 첫 접속이
 // 다시 무거워지거나(과다 로드), 확대해도 경계가 안 나온다(과소 로드).
@@ -27,6 +27,12 @@ test('geo boundaries show on dark basemap and raster weather overlays', () => {
   // 해외 레이더도 래스터 오버레이 — 국경선이 있어야 대비가 산다
   assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { radarOverseas: true } }), true)
   assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: {} }), false)
+})
+
+test('HSR or HCI shows common boundaries and satellite selects yellow', () => {
+  assert.equal(geoBoundaryPresentation({ metVisibility: { radarHsr: true } }).visible, true)
+  assert.equal(geoBoundaryPresentation({ metVisibility: { radarHci: true } }).visible, true)
+  assert.equal(geoBoundaryPresentation({ metVisibility: { satelliteVisible: true } }).color, '#facc15')
 })
 
 test('geo boundaries show on every basemap when NWP overlays are active', () => {

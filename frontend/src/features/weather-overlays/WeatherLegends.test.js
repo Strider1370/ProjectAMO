@@ -30,10 +30,10 @@ async function renderLegends(props) {
 
 after(async () => viteServer?.close())
 
-test('the WISSDOM toggle lives in the layer panel, not the legend', () => {
+test('WISSDOM is automatic with HSR and has no independent panel toggle', () => {
   assert.doesNotMatch(source, /radarMotion/)
   assert.doesNotMatch(source, /radar-motion/)
-  assert.match(panelSource, /레이더 바람장 \(WISSDOM\)/)
+  assert.doesNotMatch(panelSource, /레이더 바람장 \(WISSDOM\)/)
   assert.doesNotMatch(panelSource, /레이더 바람장 \(WISSDOM\) · \{radarWindHeightM\.toLocaleString\(\)\} m/)
   assert.doesNotMatch(panelSource, /레이더 에코 이동벡터 표시/)
   assert.match(css, /\.layer-tile-group-title-action:disabled \{[\s\S]*?background:\s*var\(--surface-2\)/)
@@ -52,6 +52,22 @@ test('horizontal legends preserve ascending ramps and reverse only descending so
   const descending = [{ label: 'strong' }, { label: 'weak' }]
   assert.deepEqual(entriesLeftToRight(ascending).map((entry) => entry.label), ['weak', 'strong'])
   assert.deepEqual(entriesLeftToRight(descending, true).map((entry) => entry.label), ['weak', 'strong'])
+})
+
+test('renders HSR and HCI as horizontal UI legends without KMA legend images', async () => {
+  const html = await renderLegends({
+    hsrLegendVisible: true,
+    hciLegendVisible: true,
+    wissdomLegendVisible: true,
+    hsrLegend: [{ label: '0.0', color: 'rgb(247, 252, 249)' }, { label: '150', color: 'rgb(51, 50, 59)' }],
+    hciLegend: [{ label: '우박', color: 'rgb(255, 51, 0)' }, { label: '비', color: 'rgb(51, 102, 255)' }],
+    radarWindObservedAtMs: 0,
+  })
+
+  assert.match(html, /HSR · mm\/h/)
+  assert.match(html, /HCI · 강수 형태/)
+  assert.match(html, /WISSDOM · m\/s/)
+  assert.doesNotMatch(html, /<img/)
 })
 
 // 에코탑 범례의 동작 검증은 브라우저 계약(frontend/verification/contracts/echo-top.spec.mjs)이 맡는다.

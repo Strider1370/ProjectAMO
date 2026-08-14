@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { WISSDOM_LAYER, WISSDOM_SOURCE, syncWissdomLayer } from './wissdomLayers.js'
+import { addOrUpdateImageOverlay } from '../../map/imageOverlay.js'
 
 function createMockMap() {
   const sources = new Map()
@@ -21,12 +22,20 @@ function createMockMap() {
   }
 }
 
+function syncRasterImmediately(map, options) {
+  const installed = Boolean(options.visible && addOrUpdateImageOverlay(map, options))
+  if (map.getLayer(options.layerId)) {
+    map.setLayoutProperty(options.layerId, 'visibility', installed ? 'visible' : 'none')
+  }
+  return installed
+}
+
 test('syncWissdomLayer renders a complete frame once with its image bounds', () => {
   const map = createMockMap()
   const frame = { path: '/data/radar/wissdom_1524_202608041925.webp', bounds: [[30, 120], [40, 130]] }
 
-  syncWissdomLayer(map, { wissdomFrame: frame })
-  syncWissdomLayer(map, { wissdomFrame: frame })
+  syncWissdomLayer(map, { wissdomFrame: frame }, { syncRaster: syncRasterImmediately })
+  syncWissdomLayer(map, { wissdomFrame: frame }, { syncRaster: syncRasterImmediately })
 
   assert.equal(map.sources.size, 1)
   assert.equal(map.layers.size, 1)
@@ -42,9 +51,9 @@ test('syncWissdomLayer renders a complete frame once with its image bounds', () 
 test('syncWissdomLayer hides missing or malformed frames', () => {
   const map = createMockMap()
 
-  syncWissdomLayer(map, { wissdomFrame: { path: '/wissdom.webp', bounds: [[30, 120], [40, 130]] } })
-  syncWissdomLayer(map, { wissdomFrame: null })
-  syncWissdomLayer(map, { wissdomFrame: { path: '/wissdom.webp', bounds: [[30, 120]] } })
+  syncWissdomLayer(map, { wissdomFrame: { path: '/wissdom.webp', bounds: [[30, 120], [40, 130]] } }, { syncRaster: syncRasterImmediately })
+  syncWissdomLayer(map, { wissdomFrame: null }, { syncRaster: syncRasterImmediately })
+  syncWissdomLayer(map, { wissdomFrame: { path: '/wissdom.webp', bounds: [[30, 120]] } }, { syncRaster: syncRasterImmediately })
 
   assert.deepEqual(map.layoutCalls.slice(-2), [[WISSDOM_LAYER, 'visibility', 'none'], [WISSDOM_LAYER, 'visibility', 'none']])
 })

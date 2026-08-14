@@ -16,6 +16,9 @@ import {
   pickNearestPastIndex,
   tapePercent,
   toPercent,
+  hasDataAtTick,
+  nwpAvailabilityEntries,
+  buildAvailabilitySegments,
 } from './timelineRailModel.js'
 
 const HOUR = 60 * 60 * 1000
@@ -72,6 +75,20 @@ test('normalizeNwpTimes parses validTime to ms and sorts ascending', () => {
   assert.equal(out[0].ms, Date.UTC(2026, 5, 30, 11, 0))
 })
 
+test('NWP availability preserves the published forecast cadence', () => {
+  const entries = nwpAvailabilityEntries([
+    { hf: 6, validTime: '2026-06-30T16:00:00Z' },
+    { hf: 1, validTime: '2026-06-30T11:00:00Z' },
+    { hf: 3, validTime: '2026-06-30T13:00:00Z' },
+  ])
+
+  assert.deepEqual(entries, [
+    { ms: NOW + HOUR, cadenceMs: 2 * HOUR },
+    { ms: NOW + 3 * HOUR, cadenceMs: 2 * HOUR },
+    { ms: NOW + 6 * HOUR, cadenceMs: 3 * HOUR },
+  ])
+})
+
 test('pickNearestPastIndex returns the closest frame index', () => {
   const ticks = [NOW - 3 * HOUR, NOW - 2 * HOUR, NOW - HOUR]
   assert.equal(pickNearestPastIndex(ticks, NOW - 2 * HOUR - 5 * 60 * 1000), 1)
@@ -123,4 +140,21 @@ test('buildHourTicks produces hour-aligned ticks within the domain', () => {
   ticks.forEach((ms) => assert.equal(ms % HOUR, 0))
   assert.ok(ticks[0] >= domain.startMs)
   assert.ok(ticks[ticks.length - 1] <= domain.endMs)
+})
+
+test('hasDataAtTick uses each enabled source cadence', () => {
+  assert.equal(hasDataAtTick([{ ms: NOW + 5 * 60_000, cadenceMs: 5 * 60_000 }], NOW), true)
+  assert.equal(hasDataAtTick([{ ms: NOW + 10 * 60_000, cadenceMs: 5 * 60_000 }], NOW), false)
+  assert.equal(hasDataAtTick([], NOW), false)
+})
+
+test('availability segments merge adjacent cadence windows and preserve gaps', () => {
+  assert.deepEqual(buildAvailabilitySegments([
+    { ms: NOW + 5 * 60_000, cadenceMs: 10 * 60_000 },
+    { ms: NOW + 15 * 60_000, cadenceMs: 10 * 60_000 },
+    { ms: NOW + 45 * 60_000, cadenceMs: 10 * 60_000 },
+  ], NOW, NOW + HOUR), [
+    { startMs: NOW, endMs: NOW + 20 * 60_000 },
+    { startMs: NOW + 40 * 60_000, endMs: NOW + 50 * 60_000 },
+  ])
 })

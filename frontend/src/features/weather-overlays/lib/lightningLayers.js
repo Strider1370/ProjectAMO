@@ -102,6 +102,27 @@ export function createLightningGeoJSON(lightningData, referenceTimeMs) {
   }
 }
 
+function isValidLightningGeoJSON(geojson) {
+  return geojson?.type === 'FeatureCollection' && Array.isArray(geojson.features) && geojson.features.length > 0
+}
+
+export function createLightningFrameSync(map, { prepare = ({ geojson }) => Promise.resolve(geojson) } = {}) {
+  let generation = 0
+  return {
+    async sync({ geojson, visible, frameKey }) {
+      const current = ++generation
+      if (!visible) return false
+      const next = await prepare({ geojson, frameKey })
+      if (current !== generation || !isValidLightningGeoJSON(next)) return false
+      const source = map.getSource(LIGHTNING_SOURCE)
+      if (!source?.setData) return false
+      source.setData(next)
+      return true
+    },
+    cancel() { generation += 1 },
+  }
+}
+
 export function addLightningLayers(map, data) {
   ensureLightningIcons(map)
 

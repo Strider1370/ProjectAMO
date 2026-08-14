@@ -25,6 +25,42 @@ export function buildTapeTicks({ startMs, endMs }, stepMs = MINOR_STEP_MS) {
   return ticks
 }
 
+export function hasDataAtTick(entries, tickMs) {
+  if (!Number.isFinite(tickMs)) return false
+  return (Array.isArray(entries) ? entries : []).some(({ ms, cadenceMs }) => (
+    Number.isFinite(ms) && Number.isFinite(cadenceMs) && Math.abs(ms - tickMs) <= cadenceMs
+  ))
+}
+
+// A frame represents coverage until halfway to the adjacent expected frame.
+// Joining those windows paints quiet continuous availability spans instead of
+// repeating a visual marker on every ruler tick.
+export function buildAvailabilitySegments(entries, startMs, endMs) {
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return []
+  const intervals = (Array.isArray(entries) ? entries : [])
+    .map(({ ms, cadenceMs }) => ({
+      startMs: ms - cadenceMs / 2,
+      endMs: ms + cadenceMs / 2,
+    }))
+    .filter(({ startMs: intervalStart, endMs: intervalEnd }) => Number.isFinite(intervalStart) && Number.isFinite(intervalEnd))
+    .map(({ startMs: intervalStart, endMs: intervalEnd }) => ({
+      startMs: Math.max(startMs, intervalStart),
+      endMs: Math.min(endMs, intervalEnd),
+    }))
+    .filter(({ startMs: intervalStart, endMs: intervalEnd }) => intervalEnd > intervalStart)
+    .sort((a, b) => a.startMs - b.startMs)
+
+  return intervals.reduce((segments, interval) => {
+    const previous = segments.at(-1)
+    if (previous && interval.startMs <= previous.endMs) {
+      previous.endMs = Math.max(previous.endMs, interval.endMs)
+    } else {
+      segments.push(interval)
+    }
+    return segments
+  }, [])
+}
+
 // Horizontal position (percent, may fall outside 0-100 when off-screen) of an absolute time on the tape.
 export function tapePercent({ ms, selectedMs, visibleSpanMs = VISIBLE_SPAN_MS, playheadRatio = PLAYHEAD_RATIO }) {
   if (!Number.isFinite(ms) || !Number.isFinite(selectedMs) || visibleSpanMs <= 0) return playheadRatio * 100
@@ -47,6 +83,20 @@ export function normalizeNwpTimes(nwpTimes) {
     .map((time) => ({ hf: Number(time?.hf), ms: Date.parse(time?.validTime) }))
     .filter((time) => finite(time.ms) && Number.isFinite(time.hf))
     .sort((a, b) => a.ms - b.ms)
+}
+
+// Forecast products do not necessarily use an hourly cadence.  Derive each
+// published frame's tolerance from its nearest neighbour so the availability
+// marker follows the active product rather than an invented global interval.
+export function nwpAvailabilityEntries(nwpTimes) {
+  const times = normalizeNwpTimes(nwpTimes)
+  return times.map(({ ms }, index) => {
+    const gaps = [
+      ms - (times[index - 1]?.ms ?? NaN),
+      (times[index + 1]?.ms ?? NaN) - ms,
+    ].filter((gap) => Number.isFinite(gap) && gap > 0)
+    return { ms, cadenceMs: gaps.length ? Math.min(...gaps) : HOUR_MS }
+  })
 }
 
 // Domain spans from the oldest datum (or now - window) to the newest (or now + window).

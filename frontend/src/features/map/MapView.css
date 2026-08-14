@@ -1124,6 +1124,15 @@
   background: rgba(51, 65, 85, 0.38);
 }
 
+.timeline-rail__availability-segment {
+  position: absolute;
+  top: 0;
+  height: 2px;
+  background: rgba(13, 148, 136, 0.72);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .timeline-rail__tick-label {
   position: absolute;
   top: 16px;
@@ -1149,6 +1158,7 @@
   transform: translateX(-1px);
   background: var(--accent);
   pointer-events: none;
+  z-index: 2;
 }
 
 .timeline-rail__play {

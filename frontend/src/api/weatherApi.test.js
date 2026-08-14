@@ -30,12 +30,28 @@ test('loadWeatherData skips deferred panel-only datasets on first entry', async 
     assert.equal(data.airports.length, 1)
     assert.equal(data.airports[0].elevation_ft, 23)
     assert.equal(recorder.calls.includes('/api/sigwx-low-history'), false)
+    assert.equal(recorder.calls.includes('/data/radar/echo_meta.json'), false)
     assert.equal(recorder.calls.includes('/api/ground-overview'), false)
     assert.equal(recorder.calls.includes('/api/environment'), false)
     assert.equal(recorder.calls.includes('/api/airport-info'), false)
     assert.equal(recorder.calls.includes('/api/adsb'), false)
     assert.equal(recorder.calls.includes('/data/satellite/convective/convective_meta.json'), true)
     assert.equal(recorder.calls.some((url) => url.startsWith('/data/kim_')), false)
+  } finally {
+    recorder.restore()
+  }
+})
+
+test('loadChangedWeatherData refreshes HSR/HCI without requesting legacy echo metadata', async () => {
+  const recorder = installFetchRecorder()
+  try {
+    const data = await loadChangedWeatherData({ echoMeta: true })
+    assert.ok(data.hsrMeta)
+    assert.ok(data.hciMeta)
+    assert.deepEqual(recorder.calls, [
+      '/data/radar/hsr/hsr_meta.json',
+      '/data/radar/hci/hci_meta.json',
+    ])
   } finally {
     recorder.restore()
   }

@@ -17,7 +17,7 @@ export const PANEL_ACTIONS = [
 
 // B. 기상 레이어 — 패널('met') 열고 해당 레이어 ON
 const MET_META = {
-  radar: { label: '레이더', aliases: ['radar', '강수', '에코'] },
+  radarHsr: { label: '레이더', aliases: ['radar', '강수', '에코'] },
   radarOverseas: { label: '해외 레이더', aliases: ['해외레이더', '해외 레이더', 'overseas radar', 'rainviewer'] },
   echoTop: { label: '에코탑(재산출)', aliases: ['에코탑', 'echo top', 'echotop', '에코 top', '구름 높이 레이더'] },
   satellite: { label: '위성영상', aliases: ['위성영상', 'satellite', '적외', 'ir'] },

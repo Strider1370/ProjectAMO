@@ -8,6 +8,50 @@ import { advisoryItemsToFeatureCollection, advisoryItemsToLabelFeatureCollection
 import { phenomenonText } from '../../../shared/weather/phenomenonKo.js'
 import { sigwxLowToMapboxData } from './sigwxData.js'
 import { LIGHTNING_AGE_BANDS, LIGHTNING_RECENT_COUNT_WINDOW_MINUTES, createLightningGeoJSON } from './lightningLayers.js'
+import { buildRasterLegendModel } from './rasterLegendModel.js'
+
+const CADENCE_MS = Object.freeze({
+  hsr: 5 * 60_000,
+  hci: 10 * 60_000,
+  satellite: 10 * 60_000,
+  wissdom: 10 * 60_000,
+  lightning: 5 * 60_000,
+  qpf: 10 * 60_000,
+})
+
+function addAvailabilityEntries(target, frames, cadenceMs, timeKey = 'timeMs') {
+  for (const frame of frames) {
+    const ms = Number(frame?.[timeKey])
+    if (!Number.isFinite(ms)) continue
+    const previous = target.get(ms)
+    target.set(ms, Math.min(previous ?? cadenceMs, cadenceMs))
+  }
+}
+
+export function collectActiveFrameEntries({
+  visibility = {},
+  hsrFrames = [],
+  hciFrames = [],
+  satelliteFrames = [],
+  satelliteVisibleFrames = [],
+  lightningFrames = [],
+  wissdomFrames = [],
+  qpfFrames = [],
+} = {}) {
+  const entries = new Map()
+  if (visibility.radarHsr) {
+    addAvailabilityEntries(entries, hsrFrames, CADENCE_MS.hsr)
+    addAvailabilityEntries(entries, wissdomFrames, CADENCE_MS.wissdom)
+  }
+  if (visibility.radarHci) addAvailabilityEntries(entries, hciFrames, CADENCE_MS.hci)
+  if (visibility.satellite) addAvailabilityEntries(entries, satelliteFrames, CADENCE_MS.satellite)
+  if (visibility.satelliteVisible) addAvailabilityEntries(entries, satelliteVisibleFrames, CADENCE_MS.satellite)
+  if (visibility.lightning) addAvailabilityEntries(entries, lightningFrames, CADENCE_MS.lightning)
+  if (visibility.qpf) addAvailabilityEntries(entries, qpfFrames, CADENCE_MS.qpf, 'validTimeMs')
+  return [...entries]
+    .map(([ms, cadenceMs]) => ({ ms, cadenceMs }))
+    .sort((a, b) => a.ms - b.ms)
+}
 
 export function parseFrameTmToMs(tm) {
   if (!tm || !/^\d{12}$/.test(String(tm))) return null
@@ -238,14 +282,24 @@ export function buildWeatherOverlayModel({
     : null
   const weatherTimelineVisible = (visibility.radar || visibility.radarHsr || visibility.radarHci || visibility.satelliteVisible || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && timelineTicks.length > 0
   const observedRadarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
+  const hsrFrame = pickNearestPreviousFrame(hsrFrames, resolvedWeatherTimeMs)
+  const hciFrame = pickNearestPreviousFrame(hciFrames, resolvedWeatherTimeMs)
+  const domesticRadarEnabled = Boolean(visibility.radar || visibility.radarHsr)
   // 다른 선택과 같은 기준시각(범위 보정 후)을 쓴다 — 보정 전 값과 비교하면 슬라이더가 끝을
   // 넘어간 순간에만 예측이 사라지는 어긋남이 생긴다.
   const qpfFrame = qpfFrames.find((frame) => frame.validTimeMs === resolvedWeatherTimeMs) || null
-  const radarFrame = qpfFrame ? null : observedRadarFrame
-  const radarDisplayVisible = Boolean(visibility.radar && radarFrame)
-  const wissdomExactFrame = pickWissdomFrameForRadar(wissdomFrames, observedRadarFrame)
-  const wissdomAvailable = Boolean(visibility.radar && !qpfFrame && wissdomExactFrame)
-  const wissdomFrame = radarWindRequested && wissdomAvailable ? wissdomExactFrame : null
+  const selectedRadarFrame = visibility.radarHsr ? hsrFrame : observedRadarFrame
+  const radarFrame = qpfFrame ? null : selectedRadarFrame
+  const radarDisplayVisible = Boolean(domesticRadarEnabled && radarFrame)
+  const wissdomExactFrame = pickWissdomFrameForRadar(wissdomFrames, selectedRadarFrame)
+  const wissdomAvailable = Boolean(domesticRadarEnabled && !qpfFrame && wissdomExactFrame)
+  const wissdomFrame = (visibility.radarHsr || radarWindRequested) && wissdomAvailable ? wissdomExactFrame : null
+  const rasterLegend = buildRasterLegendModel({
+    visibility,
+    hsrFrame: qpfFrame ? null : hsrFrame,
+    hciFrame,
+    wissdomFrame,
+  })
   const qpfStatus = qpfFrame
     ? {
       source: 'MAPLE',
@@ -307,7 +361,7 @@ export function buildWeatherOverlayModel({
   // 없을 때만 벽시계로 물러난다. (범례는 이 기준시각을 실제 시계 시각으로 찍어 주므로
   // 자료가 오래됐다는 사실이 감춰지지는 않는다.)
   const lightningCollectedAtMs = new Date(lightningData?.fetched_at ?? NaN).getTime()
-  const resolvedLightningReferenceTimeMs = visibility.radar && Number.isFinite(radarReferenceTimeMs)
+  const resolvedLightningReferenceTimeMs = domesticRadarEnabled && Number.isFinite(radarReferenceTimeMs)
     ? radarReferenceTimeMs
     : (Number.isFinite(lightningCollectedAtMs) ? lightningCollectedAtMs : lightningReferenceTimeMs)
   const lightningGeoJSON = createLightningGeoJSON(lightningData, resolvedLightningReferenceTimeMs)
@@ -362,6 +416,8 @@ export function buildWeatherOverlayModel({
     radarFrames,
     hsrFrames,
     hciFrames,
+    hsrFrame,
+    hciFrame,
     satVisibleFrames,
     wissdomFrames,
     qpfFrames,
@@ -371,6 +427,16 @@ export function buildWeatherOverlayModel({
     satelliteFrames,
     convectiveFrames,
     lightningFrames,
+    activeFrameEntries: collectActiveFrameEntries({
+      visibility,
+      hsrFrames,
+      hciFrames,
+      satelliteFrames,
+      satelliteVisibleFrames: satVisibleFrames,
+      lightningFrames,
+      wissdomFrames,
+      qpfFrames,
+    }),
     weatherTimelineTicks,
     forecastTimelineTicks,
     selectedWeatherTimeMs: resolvedWeatherTimeMs,
@@ -412,6 +478,9 @@ export function buildWeatherOverlayModel({
     sigwxCount: sigwxGroups.length,
     lightningCount: lightningGeoJSON.features.filter((f) => f.properties.ageMinutes < LIGHTNING_RECENT_COUNT_WINDOW_MINUTES).length,
     radarLegendVisible: visibility.radar && !!radarFrame,
+    hsrLegendVisible: rasterLegend.hsrVisible,
+    hciLegendVisible: rasterLegend.hciVisible,
+    wissdomLegendVisible: rasterLegend.wissdomVisible,
     radarOverseasLegendVisible: !!visibility.radarOverseas,
     // 레이어는 켰는데 선택 시각이 RainViewer 커버(최근 2시간) 밖 — 조용히 사라지면 고장으로 보인다.
     rainviewerOutOfRange: !!visibility.radarOverseas && rainviewerFrames.length > 0 && !rainviewerFrame,

@@ -114,7 +114,7 @@ function MonitoringMap({
         onAirportSelect={onAirportSelect}
         onStyleReady={() => setMapStyleReady(true)}
         enableWindOverlay={true}
-        initialMetVisibility={{ radar: true, lightning: true }}
+        initialMetVisibility={{ radarHsr: true, lightning: true }}
       />
       {!mapStyleReady && (
         <div className="monitoring-map-loading" role="status" aria-live="polite">

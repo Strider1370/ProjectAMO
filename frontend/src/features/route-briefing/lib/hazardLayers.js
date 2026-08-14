@@ -6,8 +6,8 @@
 const RULEBOOK = [
   { codes: ['SEV_ICE', 'MOD_ICE'], layers: ['icing'] },
   { codes: ['SEV_TURB', 'MOD_TURB'], layers: ['turbulence'] },
-  { codes: ['TS', 'EMBD_TS', 'OBSC_TS', 'FRQ_TS', 'SQL_TS'], layers: ['radar', 'lightning', 'sigmet'] },
-  { codes: ['TC'], layers: ['radar', 'sigmet'] },
+  { codes: ['TS', 'EMBD_TS', 'OBSC_TS', 'FRQ_TS', 'SQL_TS'], layers: ['radarHsr', 'lightning', 'sigmet'] },
+  { codes: ['TC'], layers: ['radarHsr', 'sigmet'] },
   // 추후 추가: CB/GR(적란운·우박), MTW(산악파), VA(화산재), LLWS(윈드시어), IFR/SFC_VIS 등.
   // NOTAM 카테고리(사실 분류) → notam 마스터 레이어. 경로상 NOTAM 있으면 "지도에 NOTAM 레이어 보기" 칩.
   { codes: ['prohibited', 'restricted', 'danger', 'firing', 'obstacle', 'facility', 'other'], layers: ['notam'] },

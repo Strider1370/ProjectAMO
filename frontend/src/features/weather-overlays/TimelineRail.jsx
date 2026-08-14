@@ -12,6 +12,7 @@ import {
   normalizeNwpTimes,
   pickAdjacentTimelineTick,
   tapePercent,
+  buildAvailabilitySegments,
 } from './lib/timelineRailModel.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
@@ -38,6 +39,7 @@ function TimelineRail({
   onScrub,
   onPlayPause,
   referenceNowMs = null,
+  availableFrameEntries = [],
 }) {
   const { tz } = useTimeZone()
   // 모바일은 좁은 폭에 12h가 빡빡 → 6h만 노출해 시간당 간격을 2배로(드래그로 더 볼 수 있음).
@@ -86,6 +88,7 @@ function TimelineRail({
   const visibleStart = selected - visibleSpanMs * PLAYHEAD_RATIO
   const visibleEnd = selected + visibleSpanMs * (1 - PLAYHEAD_RATIO)
   const tapeTicks = buildTapeTicks({ startMs: visibleStart, endMs: visibleEnd })
+  const availabilitySegments = buildAvailabilitySegments(availableFrameEntries, visibleStart, visibleEnd)
 
   const commit = (ms) => onScrub?.(clampMs(domain, ms))
 
@@ -136,6 +139,18 @@ function TimelineRail({
         <div className="timeline-rail__playhead" aria-hidden="true" style={{ left: `${PLAYHEAD_RATIO * 100}%` }} />
         <div className="timeline-rail__baseline timeline-rail__baseline--past" style={{ right: `${100 - nowPct}%` }} />
         <div className="timeline-rail__baseline timeline-rail__baseline--future" style={{ left: `${nowPct}%` }} />
+        {availabilitySegments.map(({ startMs, endMs }) => {
+          const startPct = pct(startMs)
+          const endPct = pct(endMs)
+          return (
+            <span
+              key={`${startMs}-${endMs}`}
+              className="timeline-rail__availability-segment"
+              style={{ left: `${startPct}%`, width: `${Math.max(0, endPct - startPct)}%` }}
+              aria-hidden="true"
+            />
+          )
+        })}
         {pastTicksMs.map((ms) => (
           <span key={`p-${ms}`} className="timeline-rail__frame" style={{ left: `${pct(ms)}%` }} aria-hidden="true" />
         ))}

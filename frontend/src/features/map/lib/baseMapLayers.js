@@ -238,7 +238,7 @@ function loadGeoSourcesForZoom(map) {
 // 이 연결이 없으면 확대해도 시군구 경계가 영영 안 나온다.
 const geoZoomHandlers = new WeakMap()
 
-export function setGeoBoundaryVisibility(map, show) {
+export function setGeoBoundaryVisibility(map, show, color = GEO_BOUNDARY_COLOR) {
   if (show) {
     loadGeoSourcesForZoom(map)
     if (!geoZoomHandlers.has(map)) {
@@ -253,14 +253,24 @@ export function setGeoBoundaryVisibility(map, show) {
       geoZoomHandlers.delete(map)
     }
   }
-  GEO_LAYERS.forEach(({ layerId }) => setMapLayerVisible(map, layerId, show))
+  GEO_LAYERS.forEach(({ layerId }) => {
+    setMapLayerVisible(map, layerId, show)
+    map.setPaintProperty?.(layerId, 'line-color', color)
+  })
 }
 
 export function shouldShowGeoBoundaries({ basemapId, metVisibility = {}, enableWindOverlay = true } = {}) {
-  const hasRasterWeather = !!(metVisibility.radar || metVisibility.radarOverseas || metVisibility.satellite)
+  return geoBoundaryPresentation({ basemapId, metVisibility, enableWindOverlay }).visible
+}
+
+export function geoBoundaryPresentation({ basemapId, metVisibility = {}, enableWindOverlay = true } = {}) {
+  const hasRasterWeather = !!(metVisibility.radar || metVisibility.radarHsr || metVisibility.radarHci || metVisibility.radarOverseas || metVisibility.satellite || metVisibility.satelliteVisible)
   const hasNwpOverlay = !!(
     enableWindOverlay
     && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)
   )
-  return basemapId === 'dark' || hasRasterWeather || hasNwpOverlay
+  return {
+    visible: basemapId === 'dark' || hasRasterWeather || hasNwpOverlay,
+    color: metVisibility.satellite || metVisibility.satelliteVisible ? '#facc15' : GEO_BOUNDARY_COLOR,
+  }
 }

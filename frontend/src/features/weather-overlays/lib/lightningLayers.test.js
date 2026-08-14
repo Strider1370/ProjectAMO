@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   LIGHTNING_TIME_WINDOW_MINUTES,
   createLightningGeoJSON,
+  createLightningFrameSync,
   getLightningAgeBand,
 } from './lightningLayers.js'
 
@@ -11,6 +12,29 @@ test('getLightningAgeBand maps ages into configured bands', () => {
   assert.equal(getLightningAgeBand(9.9)?.iconId, 'lightning-5-10')
   assert.equal(getLightningAgeBand(29.9)?.iconId, 'lightning-25-30')
   assert.equal(getLightningAgeBand(LIGHTNING_TIME_WINDOW_MINUTES + 1), null)
+})
+
+test('an older delayed lightning frame cannot overwrite a newer valid frame', async () => {
+  let releaseOld
+  const old = new Promise((resolve) => { releaseOld = resolve })
+  const data = { value: null, setData(next) { this.value = next } }
+  const sync = createLightningFrameSync({ getSource: () => data }, {
+    prepare: ({ frameKey }) => frameKey === 'old' ? old : Promise.resolve({ type: 'FeatureCollection', features: [{ id: 'new' }] }),
+  })
+
+  const stale = sync.sync({ visible: true, frameKey: 'old' })
+  await sync.sync({ visible: true, frameKey: 'new' })
+  releaseOld({ type: 'FeatureCollection', features: [{ id: 'old' }] })
+  await stale
+
+  assert.deepEqual(data.value, { type: 'FeatureCollection', features: [{ id: 'new' }] })
+})
+
+test('an empty replacement keeps the prior valid lightning frame', async () => {
+  const data = { value: { type: 'FeatureCollection', features: [{ id: 'prior' }] }, setData(next) { this.value = next } }
+  const sync = createLightningFrameSync({ getSource: () => data })
+  await sync.sync({ visible: true, frameKey: 'empty', geojson: { type: 'FeatureCollection', features: [] } })
+  assert.deepEqual(data.value, { type: 'FeatureCollection', features: [{ id: 'prior' }] })
 })
 
 test('createLightningGeoJSON keeps only recent valid strikes', () => {

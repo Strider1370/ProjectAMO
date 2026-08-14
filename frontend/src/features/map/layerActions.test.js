@@ -16,6 +16,11 @@ test('every MET layer is registered', () => {
   for (const l of MET_LAYERS) assert.ok(ids.has(l.id), `MET 레이어 미등록: ${l.id}`)
 })
 
+test('raw BIN radar is hidden while HSR is exposed as 레이더', () => {
+  assert.equal(MET_ACTIONS.some((action) => action.id === 'radar'), false)
+  assert.equal(MET_ACTIONS.find((action) => action.id === 'radarHsr')?.label, '레이더')
+})
+
 test('every aviation layer is registered', () => {
   const ids = new Set(AVIATION_ACTIONS.map((a) => a.id))
   for (const l of AVIATION_WFS_LAYERS) assert.ok(ids.has(l.id), `항공 레이어 미등록: ${l.id}`)
@@ -45,9 +50,9 @@ test('모든 action 라벨이 비어있지 않다', () => {
     assert.ok(a.label && a.label.length > 0, `라벨 없음: ${a.type}/${a.id}`)
 })
 
-test('한글 별칭으로 레이어를 찾는다 — 레이더 → radar', () => {
+test('한글 별칭으로 레이어를 찾는다 — 레이더 → radarHsr', () => {
   const hits = matchSearch(ALL(), '레이더')
-  assert.equal(hits[0].id, 'radar')
+  assert.equal(hits[0].id, 'radarHsr')
   assert.equal(hits[0].type, 'met')
 })
 

@@ -14,14 +14,14 @@ const briefing = (hazards = [], modelKinds = [], routeNotams = []) => ({
 
 test('뇌우(TS) → 레이더+낙뢰+SIGMET', () => {
   const ids = hazardMapLayers(briefing([{ code: 'EMBD_TS', source: 'SIGMET' }]))
-  for (const x of ['radar', 'lightning', 'sigmet']) assert.ok(ids.includes(x), `누락: ${x}`)
+  for (const x of ['radarHsr', 'lightning', 'sigmet']) assert.ok(ids.includes(x), `누락: ${x}`)
 })
 
 test('해외(NOAA) SIGMET 뇌우 → SIGMET(국내) 대신 SIGMET(해외)', () => {
   const ids = hazardMapLayers(briefing([{ code: 'EMBD_TS', source: 'SIGMET', overseas: true }]))
   assert.ok(ids.includes('sigmet_intl'), 'sigmet_intl 누락')
   assert.ok(!ids.includes('sigmet'), '국내 sigmet가 잘못 포함됨')
-  assert.ok(ids.includes('radar') && ids.includes('lightning'))
+  assert.ok(ids.includes('radarHsr') && ids.includes('lightning'))
 })
 
 test('국내+해외 SIGMET 둘 다 걸리면 두 칩 모두', () => {
@@ -39,7 +39,7 @@ test('착빙/난류는 코드와 enroute 모델 둘 다에서 잡힌다', () => 
 
 test('태풍(TC) → 레이더+SIGMET (낙뢰는 아님)', () => {
   const ids = hazardMapLayers(briefing([{ code: 'TC' }]))
-  assert.ok(ids.includes('radar') && ids.includes('sigmet'))
+  assert.ok(ids.includes('radarHsr') && ids.includes('sigmet'))
   assert.ok(!ids.includes('lightning'))
 })
 

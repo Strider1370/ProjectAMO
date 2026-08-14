@@ -40,6 +40,7 @@ import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
 import TimelineRail from '../weather-overlays/TimelineRail.jsx'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
 import useRadarWindOverlay, { deriveRadarWindRailActive, hasExactRadarWindFrame } from '../weather-overlays/lib/useRadarWindOverlay.js'
+import { nwpAvailabilityEntries } from '../weather-overlays/lib/timelineRailModel.js'
 import WeatherLegends from '../weather-overlays/WeatherLegends.jsx'
 import { legendStamps } from '../weather-overlays/lib/flightCategoryLegend.js'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
@@ -87,6 +88,7 @@ import {
   buildWeatherOverlayModel,
   formatReferenceTimeLabel,
 } from '../weather-overlays/lib/weatherOverlayModel.js'
+import { HCI_LEGEND, HSR_LEGEND } from '../weather-overlays/lib/rasterLegendModel.js'
 import { useFlightCategory } from '../weather-overlays/lib/useFlightCategory.js'
 import {
   syncFlightCategoryLayers,
@@ -109,6 +111,7 @@ import {
   addGeoBoundaryLayers,
   createAirportGeoJSON,
   setGeoBoundaryVisibility,
+  geoBoundaryPresentation,
   shouldShowGeoBoundaries,
 } from './lib/baseMapLayers.js'
 import {
@@ -166,7 +169,6 @@ function initAviationVisibility() {
 
 function initMetVisibility(overrides) {
   const visibility = MET_LAYERS.reduce((acc, l) => { acc[l.id] = false; return acc }, {})
-  visibility.radar = true
   visibility.windFlow = true
   visibility.windSpeed = true
   return { ...visibility, ...overrides }
@@ -823,7 +825,7 @@ const MapView = forwardRef(function MapView({
     tz,
   ])
   const radarWindOverlay = useRadarWindOverlay({
-    radarEnabled: baseWeatherOverlayModel.visibility.radar,
+    radarHsrEnabled: baseWeatherOverlayModel.visibility.radarHsr,
     exactFrameAvailable: (heightM) => hasExactRadarWindFrame({
       radarFrame: baseWeatherOverlayModel.radarFrame,
       wissdomMeta,
@@ -867,6 +869,10 @@ const MapView = forwardRef(function MapView({
     mapRef, isStyleReady, styleRevision, visible: metVisibility.typhoon, timeZone: tz,
   })
   const radarWindEffectiveVisible = radarWindOverlay.effectiveVisible
+  const timelineAvailableFrameEntries = useMemo(() => [
+    ...weatherOverlayModel.activeFrameEntries,
+    ...nwpAvailabilityEntries(sliderTimes),
+  ], [sliderTimes, weatherOverlayModel.activeFrameEntries])
   const {
     radarFrames,
     satelliteFrames,
@@ -1101,11 +1107,13 @@ const MapView = forwardRef(function MapView({
       lightning: weatherOverlayModel.visibility.lightning,
     },
     lightningGeoJSON: weatherOverlayModel.lightningGeoJSON,
+    lightningReferenceTimeMs: weatherOverlayModel.lightningReferenceTimeMs,
     blinkLightning,
     lightningBlinkOff,
   }), [
     weatherOverlayModel.visibility.lightning,
     weatherOverlayModel.lightningGeoJSON,
+    weatherOverlayModel.lightningReferenceTimeMs,
     blinkLightning,
     lightningBlinkOff,
   ])
@@ -1478,10 +1486,11 @@ const MapView = forwardRef(function MapView({
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
     syncKmaCompositeLayers(map, {
       hsrMeta, hciMeta, visibleMeta: satVisibleMeta,
+      qpfFrame: weatherOverlayModel.qpfFrame,
       selectedMs: weatherOverlayModel.selectedWeatherTimeMs,
       visibility: metVisibility,
     })
-  }, [hsrMeta, hciMeta, satVisibleMeta, weatherOverlayModel.selectedWeatherTimeMs, metVisibility])
+  }, [hsrMeta, hciMeta, satVisibleMeta, weatherOverlayModel.qpfFrame, weatherOverlayModel.selectedWeatherTimeMs, metVisibility])
 
   // ???? Sync terrain hazard shading ????????????????????????????????????????????????????????????????????????????????
 
@@ -1590,12 +1599,16 @@ const MapView = forwardRef(function MapView({
   // ???? Sync geo boundaries ??????????????????????????????????????????????????????????????????????????????????????????????????????
 
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
-    setGeoBoundaryVisibility(map, shouldShowGeoBoundaries({ basemapId, metVisibility, enableWindOverlay }))
+    const presentation = geoBoundaryPresentation({ basemapId, metVisibility, enableWindOverlay })
+    setGeoBoundaryVisibility(map, presentation.visible, presentation.color)
   }, [
     basemapId,
     enableWindOverlay,
     metVisibility.satellite,
+    metVisibility.satelliteVisible,
     metVisibility.radar,
+    metVisibility.radarHsr,
+    metVisibility.radarHci,
     metVisibility.wind,
     metVisibility.temp,
     metVisibility.cloud,
@@ -1810,6 +1823,11 @@ const MapView = forwardRef(function MapView({
         {showWeatherLegends && (
           <WeatherLegends
           radarLegendVisible={radarLegendVisible}
+          hsrLegendVisible={weatherOverlayModel.hsrLegendVisible}
+          hciLegendVisible={weatherOverlayModel.hciLegendVisible}
+          wissdomLegendVisible={weatherOverlayModel.wissdomLegendVisible}
+          hsrLegend={HSR_LEGEND}
+          hciLegend={HCI_LEGEND}
           radarOverseasLegendVisible={radarOverseasLegendVisible}
           rainviewerOutOfRange={rainviewerOutOfRange}
           echoTopOutOfRange={metVisibility.echoTop && !weatherOverlayModel.echoTopFrame}
@@ -1889,6 +1907,7 @@ const MapView = forwardRef(function MapView({
         onScrub={scrubWeatherTimeline}
         onPlayPause={toggleWeatherTimelinePlay}
         referenceNowMs={demoMode ? demoNowMs : null}
+        availableFrameEntries={timelineAvailableFrameEntries}
       />
       <QpfStatusCard status={weatherOverlayModel.qpfStatus} tz={tz} />
 
@@ -2180,8 +2199,6 @@ const MapView = forwardRef(function MapView({
           onWindFlowOpacityChange={setWindFlowOpacity}
           onWindFlowTrailChange={setWindFlowTrail}
           onWindFlowWidthChange={setWindFlowWidth}
-          radarWindRequested={radarWindOverlay.requestedVisible}
-          onRadarWindRequestedChange={radarWindOverlay.setRequestedVisible}
           terrainAltitudeFt={terrainAltitudeFt}
         />
       )}

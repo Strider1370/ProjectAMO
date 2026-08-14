@@ -8,8 +8,7 @@ import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 
 // Representative icon per weather layer for the tile grid (legend-like).
 const WEATHER_TILE_ICON = {
-  radar: Radar,
-  radarHsr: Radar,      // 같은 레이더다 — 우리가 그렸느냐 기상청 그림이냐만 다르다
+  radarHsr: Radar,
   radarHci: CloudHail,  // 수상체 = 비/눈/우박 구분
   radarOverseas: Globe, // 해외 = Globe (SIGMET(해외)와 동일 규칙)
   echoTop: Mountain,
@@ -42,8 +41,6 @@ function WeatherOverlayPanel({
   isLayerDisabled,
   getLayerBadge,
   showWind = true,
-  radarWindRequested = false,
-  onRadarWindRequestedChange,
   terrainAltitudeFt = 3000,
 }) {
   // WISSDOM 높이 선택은 세로 고도 레일(RadarWindVerticalRail)이 맡는다 — 이 패널은 켬/끔만 다룬다.
@@ -57,14 +54,13 @@ function WeatherOverlayPanel({
     {
       id: 'observation',
       title: '레이더/위성',
-      ids: ['radar', 'radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'satelliteVisible', 'ci', 'ctps'].filter((id) => echoTopEnabled || id !== 'echoTop'),
+      ids: ['radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'satelliteVisible', 'ci', 'ctps'].filter((id) => echoTopEnabled || id !== 'echoTop'),
     },
     { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'] : [] },
     { id: 'terrain', title: '지형', ids: ['terrainHazard'] },
   ]
   const layerLabels = {
-    radar: '레이더',
-    radarHsr: '레이더(이미지)',
+    radarHsr: '레이더',
     radarHci: '강수 형태',
     radarOverseas: '해외 레이더',
     echoTop: '에코탑(재산출)',
@@ -98,21 +94,6 @@ function WeatherOverlayPanel({
         <section key={group.title} className="layer-tile-group">
           <div className="layer-tile-group-title">
             {group.title}
-            {group.id === 'observation' && visibility.radar && (
-              // 켬/끔은 사용자 의사, 자료 유무는 상황 — 섞지 않는다. 자료가 없다고 버튼을 잠그면
-              // 켜둔 상태에서 자료가 끊겼을 때 끌 수조차 없다. 자료가 없다는 사실은 지도에서
-              // 바람깃이 안 그려지는 것으로 이미 드러나므로, 제목줄에 문구를 덧붙이지 않는다
-              // (한 줄을 넘겨 그룹 제목까지 밀어냈다).
-              <button
-                type="button"
-                className="layer-tile-group-title-action"
-                onClick={() => onRadarWindRequestedChange?.((prev) => !prev)}
-                aria-label="레이더 바람장 (WISSDOM)"
-                aria-pressed={radarWindRequested}
-              >
-                레이더 바람장 (WISSDOM)
-              </button>
-            )}
           </div>
           <div className="layer-tile-grid">
             {group.ids.map((id) => {

@@ -11,22 +11,22 @@ import {
 test('WISSDOM defaults to the configured 1,524 m height', () => {
   assert.equal(INITIAL_WISSDOM_HEIGHT_M, 1524)
   assert.deepEqual(
-    deriveRadarWindOverlayState({ requestedVisible: false, radarEnabled: true, exactFrameAvailable: true }),
-    { requestedVisible: false, effectiveVisible: false },
+    deriveRadarWindOverlayState({ radarHsrEnabled: true, exactFrameAvailable: true }),
+    { requestedVisible: true, effectiveVisible: true },
   )
 })
 
 test('WISSDOM only renders when radar is enabled and its frame exactly matches', () => {
   assert.deepEqual(
-    deriveRadarWindOverlayState({ requestedVisible: true, radarEnabled: true, exactFrameAvailable: false }),
+    deriveRadarWindOverlayState({ radarHsrEnabled: true, exactFrameAvailable: false }),
     { requestedVisible: true, effectiveVisible: false },
   )
   assert.deepEqual(
-    deriveRadarWindOverlayState({ requestedVisible: true, radarEnabled: false, exactFrameAvailable: true }),
+    deriveRadarWindOverlayState({ radarHsrEnabled: false, exactFrameAvailable: true }),
     { requestedVisible: false, effectiveVisible: false },
   )
   assert.deepEqual(
-    deriveRadarWindOverlayState({ requestedVisible: true, radarEnabled: true, exactFrameAvailable: true }),
+    deriveRadarWindOverlayState({ radarHsrEnabled: true, exactFrameAvailable: true }),
     { requestedVisible: true, effectiveVisible: true },
   )
 })
@@ -34,8 +34,7 @@ test('WISSDOM only renders when radar is enabled and its frame exactly matches',
 test('WISSDOM keeps the selected height when an exact frame temporarily disappears', () => {
   const selectedHeightM = 2134
   const unavailable = deriveRadarWindOverlayState({
-    requestedVisible: true,
-    radarEnabled: true,
+    radarHsrEnabled: true,
     exactFrameAvailable: false,
   })
 
@@ -55,7 +54,7 @@ test('the vertical rail returns to KIM when radar turns off without changing KIM
 })
 
 test('WISSDOM-only rail remains available through exact-frame loss', () => {
-  const unavailable = deriveRadarWindOverlayState({ requestedVisible: true, radarEnabled: true, exactFrameAvailable: false })
+  const unavailable = deriveRadarWindOverlayState({ radarHsrEnabled: true, exactFrameAvailable: false })
 
   assert.equal(unavailable.effectiveVisible, false)
   assert.equal(deriveRadarWindRailActive(unavailable), true)
@@ -64,8 +63,8 @@ test('WISSDOM-only rail remains available through exact-frame loss', () => {
 
 test('dual-source rail preserves WISSDOM height across exact-frame recovery', () => {
   const heightM = 2134
-  const unavailable = deriveRadarWindOverlayState({ requestedVisible: true, radarEnabled: true, exactFrameAvailable: false })
-  const restored = deriveRadarWindOverlayState({ requestedVisible: true, radarEnabled: true, exactFrameAvailable: true })
+  const unavailable = deriveRadarWindOverlayState({ radarHsrEnabled: true, exactFrameAvailable: false })
+  const restored = deriveRadarWindOverlayState({ radarHsrEnabled: true, exactFrameAvailable: true })
 
   assert.equal(resolveVerticalRailSource({ preferredSource: 'wissdom', kimActive: true, radarWindActive: deriveRadarWindRailActive(unavailable) }), 'wissdom')
   assert.equal(heightM, 2134)

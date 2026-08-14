@@ -37,6 +37,11 @@ function ConvectiveLegend({ title, entries, note }) {
 
 function WeatherLegends({
   radarLegendVisible,
+  hsrLegendVisible = false,
+  hciLegendVisible = false,
+  wissdomLegendVisible = false,
+  hsrLegend = [],
+  hciLegend = [],
   radarOverseasLegendVisible,
   rainviewerOutOfRange = false,
   echoTopOutOfRange = false,
@@ -97,6 +102,21 @@ function WeatherLegends({
     : null
   const panel = (
     <div className="map-right-legends">
+      {hsrLegendVisible && (
+        <div className="rainrate-legend" aria-label="HSR rain rate legend">
+          <HLegend title="HSR · mm/h" entries={hsrLegend} />
+          {wissdomLegendVisible && (
+            <div className="radar-wind-control">
+              <HLegend title="WISSDOM · m/s" entries={WISSDOM_WIND_LEGEND} note={wissdomNote} />
+            </div>
+          )}
+        </div>
+      )}
+      {hciLegendVisible && (
+        <div className="rainrate-legend" aria-label="HCI precipitation type legend">
+          <HLegend title="HCI · 강수 형태" entries={hciLegend} />
+        </div>
+      )}
       {radarLegendVisible && (
         <div className="rainrate-legend" aria-label="Radar rain rate legend">
           <div className="rainrate-legend-title">mm/h</div>
@@ -314,12 +334,15 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
+  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
 
   // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
   if (!isMobile && !bottomDock) return panel
 
   const mobileLegends = [
+    hsrLegendVisible && { key: 'hsr', title: 'HSR · mm/h', entries: hsrLegend },
+    hciLegendVisible && { key: 'hci', title: 'HCI · 강수 형태', entries: hciLegend },
+    wissdomLegendVisible && { key: 'wissdom', title: 'WISSDOM · m/s', entries: WISSDOM_WIND_LEGEND, note: wissdomNote },
     radarLegendVisible && { key: 'radar', title: '레이더 · mm/h', entries: radarRainrateLegend, reverse: true },
     lightningLegendVisible && { key: 'ltg', title: '낙뢰 · 5분', entries: lightningLegendEntries },
     // 자료없음 표시가 꺼져 있으면 결측 밴드는 아예 안 그려지므로(flightCategoryLayers.js
