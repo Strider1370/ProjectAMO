@@ -176,6 +176,46 @@ test.describe('route-token-input', () => {
     await expect.poll(() => page.locator('.rtf-pill.is-procedure').count()).toBeGreaterThan(0)
   })
 
+  test('reset empties the field instead of letting the pills grow back', async ({ page }, testInfo) => {
+    // 토큰 목록이 경로의 원본이므로, 초기화가 그것을 비우지 않으면 남은 알약이
+    // 선택기와 경로를 곧바로 되살린다 — 눌러도 아무 일도 없는 것처럼 보인다.
+    await openRoutePanel(page, testInfo.project.name === 'mobile')
+    await enterRouteTokens(page, ['RKSI', 'ANDOL'])
+    await expect.poll(() => page.locator('.rtf-pill').count()).toBeGreaterThan(0)
+
+    // 오클릭 방지로 두 번 눌러야 한다(첫 번째는 '초기화 확인'으로 바뀜).
+    const reset = page.getByRole('button', { name: /^초기화/ }).first()
+    await reset.click()
+    await page.getByRole('button', { name: '초기화 확인', exact: true }).first().click()
+
+    await expect.poll(() => page.locator('.rtf-pill').count()).toBe(0)
+    await expect(page.getByRole('button', { name: /출발.*RKSI/ })).toHaveCount(0)
+  })
+
+  // 토큰만으로 경로를 만들어도 뒷단계(고도비교·연직단면도)까지 이어져야 한다. 선택기를
+  // 쓰지 않고 공항까지 치는 것이 실제 사용 방식이고, 계약은 그 길을 지켜야 한다.
+  test('a route typed entirely as tokens reaches altitude comparison and the profile', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', '모바일 단계 이동은 route-workflow가 덮는다')
+    await openRoutePanel(page, false)
+    await enterRouteTokens(page, ['RKSI', 'ANDOL', 'RKPK'])
+
+    // 거리가 나오면 경로가 실제로 계산된 것이다.
+    await expect(page.locator('.rtf-status-right')).toContainText('NM')
+
+    await page.getByRole('button', { name: '경로비교로', exact: true }).click()
+    await page.getByRole('button', { name: '기본 경로로 고도 비교', exact: true }).click()
+    await page.getByRole('spinbutton', { name: '계획 순항고도 (ft)', exact: true }).fill('9000')
+    await page.getByRole('button', { name: '고도 비교', exact: true }).click()
+
+    // 비교 카드가 뜬다.
+    await expect(page.getByText('9,000 ft', { exact: false }).first()).toBeVisible()
+    // 연직단면도는 창으로 바로 열린다(데스크톱). 창이 안 열리는 구성에서는 여는 버튼이
+    // 남으므로 둘 중 하나가 있으면 된다 — 어느 쪽이든 단면도에 닿을 수 있다는 뜻이다.
+    const profileWindow = page.getByText('연직단면도', { exact: true }).first()
+    const profileButton = page.getByRole('button', { name: '연직단면도 보기', exact: true })
+    await expect(profileWindow.or(profileButton).first()).toBeVisible()
+  })
+
   test('the four pill colors are actually different', async ({ page }, testInfo) => {
     await openRoutePanel(page, testInfo.project.name === 'mobile')
     await enterRouteTokens(page, ['RKSI', 'ANDOL', 'A582', 'GONXA'])

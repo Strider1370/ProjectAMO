@@ -843,6 +843,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // user resets. Mark it stale before clearing so it cannot restore the old
     // route after this fresh-start transition.
     routeResetVersionRef.current += 1
+    // 토큰 목록이 경로의 원본이므로 여기서 비우지 않으면 초기화가 되지 않는다 —
+    // 알약이 남고, 남은 알약이 선택기와 경로를 곧바로 되살린다.
+    setRouteTokenTexts([])
+    seededRef.current = false
+    lastAppliedTokenTextRef.current = null
     setRouteEditor(emptyEditorForContext(initialRouteForm))
     clearRouteDisplay()
     setMapInteractionMode(null)
