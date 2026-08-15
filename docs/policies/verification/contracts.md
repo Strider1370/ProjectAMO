@@ -30,7 +30,7 @@ WebKit 실행에는 시스템 라이브러리가 필요하다(`sudo npx playwrig
 
 | Contract | Features / owners | Viewports | Preconditions | Spec | Owner | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `responsive-baseline` | app shell; `App.jsx`, layout, `MapView.jsx` | desktop, iPad landscape, mobile | local app only; no route/weather fixture | `frontend/verification/contracts/responsive-baseline.spec.mjs` | frontend | active — passed 2026-07-19 |
+| `responsive-baseline` | app shell and release notice; `App.jsx`, `UpdatesModal.jsx`, layout, `MapView.jsx` | desktop, iPad landscape, mobile | local app only; no route/weather fixture | `frontend/verification/contracts/responsive-baseline.spec.mjs` | frontend | active — release notice coverage added and passed 2026-08-15 |
 | `map-base` | `MapView.jsx`, basemap switcher, weather overlays | desktop, iPad landscape, mobile | local map style/assets; no route/weather fixture | `frontend/verification/contracts/map-base.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `monitoring` | `MonitoringPage.jsx` | desktop, iPad landscape | local monitoring data; mobile is redirected away from /monitoring | `frontend/verification/contracts/monitoring.spec.mjs` | frontend | active — passed 2026-07-28 |
 | `terminal-signage` | `/terminal`; compact destination-queue frames, per-slot active/pending transitions, and low-frequency same-day minimum selection | desktop 1920×1080 plus RKPC 1319×960 evidence | committed 2026-08-02 KAC schedule simulation; weather APIs stubbed | `frontend/verification/contracts/terminal-signage.spec.mjs` | frontend | active — six-frame RKPC uniqueness, mixed slot transitions, RKPU/RKJY three-flight extension, RKNY honest exhaustion, and RKJB empty-state coverage added 2026-08-02 |
