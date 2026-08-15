@@ -531,7 +531,18 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
   useEffect(() => {
     if (errorCount(routeTokens) > 0) return
-    if (!enrouteTokenText) return
+    // en-route 알약을 다 지우면 지도가 옛 경로를 그대로 들고 있었다 — 입력창은 'RKSS RKPK'인데
+    // 지도는 여전히 지운 지점을 거쳐 갔다. 지운 뒤 같은 지점을 다시 쳐도 "이미 적용했다"는
+    // 기록이 남아 선이 돌아오지 않았다.
+    // IFR은 진입·이탈 FIX 없이 경로를 만들 수 없으므로 공항만으로 다시 검색하지는 않는다.
+    // 이전 경로를 지워 정상적인 입력 중간 상태로 남기고, 기록도 함께 비워 다시 칠 길을 열어둔다.
+    if (!enrouteTokenText) {
+      if (routeForm.departureAirport && routeForm.arrivalAirport && lastAppliedTokenTextRef.current !== '') {
+        lastAppliedTokenTextRef.current = ''
+        clearRouteDisplay({ clearEditor: false })
+      }
+      return
+    }
     // 경로 계산기는 양 끝 공항이 있어야 돌아간다(routePlanner의 buildManual*Route).
     // 그 전에 부르면 "출발·도착 공항을 확인하세요"가 빨갛게 뜨는데, 목적지를 아직 안 정한
     // 것은 오류가 아니라 정상적인 중간 상태다 — 그 사이 화면은 토큰 미리보기가 맡는다.
@@ -1561,7 +1572,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   async function requestAltitudeComparison(plannedAltitudeFt = cruiseAltitudeFt) {
     const design = selectedAppliedDesign
     const designResult = design?.routeResult ?? routeResult
-    const routeGeometry = design?.routeModel?.routeGeometry ?? getCurrentRouteLineString({ routeResult: designResult, selectedSid: design?.procedures?.sid, selectedStar: design?.procedures?.star, selectedIap: iapData?.iapRoutes?.[design?.procedures?.iapKey] })
+    const designSid = design?.procedures?.sid ?? selectedSid
+    const designStar = design?.procedures?.star ?? selectedStar
+    const designIap = iapData?.iapRoutes?.[design?.procedures?.iapKey ?? selectedIapKey] ?? selectedIap
+    const routeGeometry = design?.routeModel?.routeGeometry ?? getCurrentRouteLineString({ routeResult: designResult, selectedSid: designSid, selectedStar: designStar, selectedIap: designIap })
     if (!routeGeometry || !designResult) return null
     const requestId = ++altitudeComparisonRequestRef.current
     const routeModel = design?.routeModel ?? buildCommonRouteModel({ routeGeometry, routeResult: designResult })
@@ -1569,7 +1583,20 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setAltitudeComparisonLoading(true)
     setAltitudeComparisonError(null)
     try {
-      const result = await fetchAltitudeComparison({ routeGeometry, routeModel, plannedCruiseAltitudeFt: plannedAltitudeFt, etd: etdIso, eta: eta || null })
+      const result = await fetchAltitudeComparison({
+        ...buildVerticalProfileRequest({
+          routeGeometry,
+          routeModel,
+          routeResult: designResult,
+          selectedSid: designSid,
+          selectedStar: designStar,
+          selectedIap: designIap,
+          vfrWaypoints: appliedVfrWaypoints,
+          plannedCruiseAltitudeFt: plannedAltitudeFt,
+        }),
+        etd: etdIso,
+        eta: eta || null,
+      })
       if (requestId === altitudeComparisonRequestRef.current) setAltitudeComparison(result)
       return result
     } catch (error) {

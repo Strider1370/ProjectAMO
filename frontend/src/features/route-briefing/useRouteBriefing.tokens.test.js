@@ -52,3 +52,9 @@ test('FIR entry and exit are not written into the token list', () => {
   // FIR 진입·이탈은 실제 공항 코드가 아니라 우리 쪽 표시값이다.
   assert.match(source, /FIR_IN_AIRPORT && icao !== FIR_EXIT_AIRPORT/)
 })
+
+test('airport-only IFR setup clears stale route state without searching for an empty navpoint', () => {
+  const emptyEnrouteBranch = source.match(/if \(!enrouteTokenText\) \{([\s\S]*?)\n    \}/)?.[1] ?? ''
+  assert.match(emptyEnrouteBranch, /clearRouteDisplay\(\{ clearEditor: false \}\)/)
+  assert.doesNotMatch(emptyEnrouteBranch, /runRouteSearch\(routeForm\)/)
+})

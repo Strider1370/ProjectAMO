@@ -261,6 +261,41 @@ test.describe('route-token-input', () => {
     await expect(page.getByRole('button', { name: '적용', exact: true })).toHaveCount(0)
   })
 
+  test('deleting a fix and typing it back draws the route again', async ({ page }, testInfo) => {
+    // 중복 방지가 "마지막에 적용한 것"만 보고 판단하면, 지웠다 다시 친 같은 지점을
+    // 이미 적용했다고 보고 건너뛴다 — 선이 돌아오지 않는다.
+    test.skip(testInfo.project.name === 'mobile', '모바일 단계 이동은 route-workflow가 덮는다')
+    await openRoutePanel(page, false)
+    await enterRouteTokens(page, ['RKSS', 'ANDOL', 'RKPK'])
+
+    // 거리 글자로 판단하면 안 된다 — 지우고도 옛 거리가 남아 있어 시험이 통과해버린다.
+    // 지도에 실제로 그려진 좌표 수를 본다.
+    const appliedCoords = () => page.evaluate(() => {
+      const data = window.__map?.getSource?.('briefing-route-applied')?.serialize?.()?.data
+      return (data?.features ?? [])
+        .filter((f) => f.geometry?.type === 'LineString')
+        .reduce((n, f) => n + (f.geometry.coordinates?.length ?? 0), 0)
+    })
+    await expect.poll(appliedCoords, { timeout: 20000 }).toBe(3)
+
+    // ANDOL을 지운다 — 그 알약 뒤로 커서를 옮겨 백스페이스.
+    await page.locator('.rtf-pill').nth(2).click()
+    await page.keyboard.press('Backspace')
+    await expect.poll(() => page.locator('.rtf-pill').count()).toBe(2)
+    // 지운 뒤에도 옛 3점 경로가 남아 있으면 입력창과 지도가 어긋난 상태다.
+    await expect.poll(appliedCoords, { timeout: 20000 }).not.toBe(3)
+
+    // 다시 같은 지점을 넣는다.
+    await page.locator('.rtf-pill').nth(1).click()
+    const input = page.locator('.rtf-input').first()
+    await input.fill('ANDOL')
+    await page.keyboard.press('Space')
+
+    await expect.poll(() => page.locator('.rtf-pill').count()).toBe(3)
+    // 선이 다시 그려져야 한다.
+    await expect.poll(appliedCoords, { timeout: 20000 }).toBe(3)
+  })
+
   test('the four pill colors are actually different', async ({ page }, testInfo) => {
     await openRoutePanel(page, testInfo.project.name === 'mobile')
     await enterRouteTokens(page, ['RKSI', 'ANDOL', 'A582', 'GONXA'])
