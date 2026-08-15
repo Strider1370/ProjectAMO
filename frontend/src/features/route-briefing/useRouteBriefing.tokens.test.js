@@ -26,3 +26,16 @@ test('procedure forms come from the parts, never from the human label', () => {
   assert.match(source, /procedureTokenForms/)
   assert.doesNotMatch(source, /procedure\.label/)
 })
+
+test('pickers edit the token list through one path, not a parallel copy', () => {
+  // 선택기가 자기 상태를 따로 들고 목록과 서로 맞추면 입력이 튄다.
+  assert.match(source, /const setEndpointAirportToken = useCallback/)
+  const uses = source.match(/setEndpointAirportToken\(/g) ?? []
+  // 출발 · 도착 · 교환(양쪽) = 4곳
+  assert.equal(uses.length, 4)
+})
+
+test('FIR entry and exit are not written into the token list', () => {
+  // FIR 진입·이탈은 실제 공항 코드가 아니라 우리 쪽 표시값이다.
+  assert.match(source, /FIR_IN_AIRPORT && icao !== FIR_EXIT_AIRPORT/)
+})

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchVerticalProfile, fetchCrossSection, fetchRouteBriefing, fetchRouteExposure, fetchRouteExposureBatch, fetchAltitudeComparison } from '../../api/briefingApi.js'
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavdata, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
@@ -588,10 +588,35 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     return false
   }
 
+  // 선택기는 토큰 목록을 고치는 두 번째 편집기다. 목록이 유일한 원본이므로 선택기가
+  // 자기 상태를 따로 들고 목록과 서로 맞추지 않는다 — 양방향으로 서로를 갱신하면
+  // 한쪽을 고치는 순간 다른 쪽이 반응해서 입력이 튀거나 되돌아간다.
+  //
+  // 공항은 경로의 양 끝이다. 이미 그 자리에 공항이 있으면 바꾸고, 없으면 끼워넣는다.
+  // FIR 진입·이탈은 실제 공항 코드가 아니라 우리 쪽 표시값이라 토큰으로 넣지 않는다.
+  const setEndpointAirportToken = useCallback((end, icao) => {
+    const text = icao && icao !== FIR_IN_AIRPORT && icao !== FIR_EXIT_AIRPORT ? icao : null
+    setRouteTokenTexts((texts) => {
+      const next = [...texts]
+      const index = end === 'departure' ? 0 : next.length - 1
+      const existing = index >= 0 ? next[index] : undefined
+      const existingIsAirport = existing ? KNOWN_AIRPORTS.includes(existing.toUpperCase()) : false
+      if (!text) {
+        if (existingIsAirport) next.splice(index, 1)
+        return next
+      }
+      if (existingIsAirport) next[index] = text
+      else if (end === 'departure') next.unshift(text)
+      else next.push(text)
+      return next
+    })
+  }, [])
+
   function handleDepartureAirportChange(value) {
     const changes = { departureAirport: value, ...(value === FIR_IN_AIRPORT ? { entryFix: '' } : {}) }
     if (requestContextChange(changes, '출발 공항')) return
     setIapCandidates([])
+    setEndpointAirportToken('departure', value)
     updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
 
@@ -599,6 +624,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const changes = { arrivalAirport: value, ...(value === FIR_EXIT_AIRPORT ? { exitFix: '' } : {}) }
     if (requestContextChange(changes, '도착 공항')) return
     setIapCandidates([])
+    setEndpointAirportToken('arrival', value)
     updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
 
@@ -606,6 +632,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const changes = { departureAirport: routeForm.arrivalAirport, arrivalAirport: routeForm.departureAirport }
     if (requestContextChange(changes, '출발·도착 공항')) return
     setIapCandidates([])
+    setEndpointAirportToken('departure', routeForm.arrivalAirport)
+    setEndpointAirportToken('arrival', routeForm.departureAirport)
     updateEditorContext(changes, { procedures: { sid: null, star: null, iapKey: null }, resetDraft: true })
   }
 
