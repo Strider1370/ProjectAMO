@@ -90,9 +90,11 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
       {label && <span className="rtf-label">{label}</span>}
       <div className="rtf-box" onMouseDown={moveCaret(tokens.length)}>
         {tokens.slice(0, at).map(renderPill)}
+        {/* 입력칸이 알약보다 앞에 있으면서 남은 공간을 다 차지하면 뒤 알약이 오른쪽 끝으로
+            밀린다. 맨 끝에 있을 때만 늘어나게 한다(is-last). */}
         <input
           ref={inputRef}
-          className="rtf-input"
+          className={`rtf-input${at >= tokens.length ? ' is-last' : ''}`}
           type="text"
           autoCapitalize="characters"
           autoCorrect="off"

@@ -39,7 +39,7 @@ function reasonFor(text) {
 
 export function classifyToken(text, lookups = {}) {
   const value = String(text ?? '').trim().toUpperCase()
-  const { airports = [], navpoints = {}, routes = {}, procedures = [] } = lookups
+  const { airports = [], navpoints = {}, routes = {}, procedures = [], fixes = [] } = lookups
 
   if (!value) return null
   if (value === 'DCT') return { kind: TOKEN_KINDS.DCT, text: value }
@@ -47,6 +47,9 @@ export function classifyToken(text, lookups = {}) {
   if (airports.includes(value)) return { kind: TOKEN_KINDS.AIRPORT, text: value }
   if (Object.prototype.hasOwnProperty.call(routes, value)) return { kind: TOKEN_KINDS.AIRWAY, text: value }
   if (Object.prototype.hasOwnProperty.call(navpoints, value)) return { kind: TOKEN_KINDS.FIX, text: value }
+  // enroute.json에는 항로 지점만 있다. OSPAT처럼 터미널 구역에만 있는 FIX는 절차 자료
+  // 안에서만 나오는데, 조종사는 그것을 경로에 그대로 쓴다 — 없다고 하면 정상 입력이 오류가 된다.
+  if (fixes.includes(value)) return { kind: TOKEN_KINDS.FIX, text: value }
 
   try {
     if (parseCoordinateToken(value)) return { kind: TOKEN_KINDS.COORDINATE, text: value }
@@ -69,6 +72,18 @@ export function errorCount(tokens = []) {
 // getProcedures의 label("BULT2Q (RWY 32L)")은 사람이 읽는 이름이라 대조에 쓸 수 없다 —
 // 그대로 대조하면 절차를 정확히 쳐도 영원히 오류로 잡힌다.
 // 활주로를 빼고 치는 경우도 있으므로 절차 ID 단독형도 함께 받는다.
+// 절차 안에 나오는 FIX 이름들. 터미널 구역 FIX는 enroute.json에 없고 절차에만 있다.
+export function procedureFixIds(procedures = []) {
+  const ids = new Set()
+  for (const procedure of procedures) {
+    for (const fix of procedure?.fixes ?? []) if (fix?.id) ids.add(String(fix.id).toUpperCase())
+    for (const point of procedure?.displayPoints ?? []) if (point?.id) ids.add(String(point.id).toUpperCase())
+    if (procedure?.enrouteFix) ids.add(String(procedure.enrouteFix).toUpperCase())
+    if (procedure?.startFix) ids.add(String(procedure.startFix).toUpperCase())
+  }
+  return [...ids]
+}
+
 export function procedureTokenForms(procedures = []) {
   const forms = new Set()
   for (const procedure of procedures) {

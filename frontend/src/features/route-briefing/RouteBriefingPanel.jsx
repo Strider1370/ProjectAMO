@@ -283,6 +283,39 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     Number.isFinite(routeDistanceNm) ? `${Math.round(routeDistanceNm)} NM` : null,
     etaDisplay || null,
   ].filter(Boolean).join(' · ')
+
+  // 데스크톱과 모바일이 같은 입력칸을 쓴다. 구조가 다른 두 화면에 같은 것을 두 번 짜면
+  // 한쪽만 고쳐지는 일이 생긴다.
+  // 두 화면(desktopBody·mobileBody)보다 위에 있어야 한다 — 아래에 두면 그쪽이 정의되기 전에
+  // 참조해서 화면이 통째로 죽는다. 시험은 통과하고 빌드도 되지만 실행이 안 된다.
+  const routeTokenField = (
+    <>
+      <RouteTokenField
+        label={isIfr ? '경로' : '경로 (공항 · FIX · DCT · 좌표)'}
+        placeholder={isIfr ? '예: RKSI BINIL A582 ANDOL RKPC' : '예: RKSI DCT ANDOL DCT RKPC'}
+        tokens={routeTokens}
+        onChange={setRouteTokenTexts}
+        disabled={routeLoading}
+      />
+      <div className="rtf-status">
+        <span className="rtf-status-left">
+          {routeTokenErrors.length > 0 ? (
+            <button type="button" className="rtf-error-toggle" onClick={() => setErrorsOpen((open) => !open)}>
+              {`⚠ ${routeTokenErrors.length} error`}
+            </button>
+          ) : (!routeForm.departureAirport
+            ? '출발공항 없음 — 절차·공항 기상은 표시되지 않습니다'
+            : '')}
+        </span>
+        <span className="rtf-status-right">{routeSummaryText}</span>
+      </div>
+      {errorsOpen && routeTokenErrors.length > 0 && (
+        <ul className="rtf-error-list">
+          {routeTokenErrors.map((reason) => <li key={reason}>{reason}</li>)}
+        </ul>
+      )}
+    </>
+  )
   // 초기화 오클릭 방지: 잃을 입력이 있으면 한 번 더 눌러 확인(3초 후 자동 해제).
   const [resetArmed, setResetArmed] = useState(false)
   const resetArmTimerRef = useRef(null)
@@ -694,37 +727,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const depChosen = !!routeForm.departureAirport
   const arrChosen = !!routeForm.arrivalAirport
   const firOnEitherSide = routeForm.departureAirport === FIR_IN_AIRPORT || routeForm.arrivalAirport === FIR_EXIT_AIRPORT
-
-  // 데스크톱과 모바일이 같은 입력칸을 쓴다. 구조가 다른 두 화면에 같은 것을 두 번 쓰면
-  // 한쪽만 고쳐지는 일이 생긴다.
-  const routeTokenField = (
-    <>
-      <RouteTokenField
-        label={isIfr ? '경로' : '경로 (공항 · FIX · DCT · 좌표)'}
-        placeholder={isIfr ? '예: RKSI OSPAT Y711 GONA RKPK' : '예: RKSI DCT GONAX DCT RKPK'}
-        tokens={routeTokens}
-        onChange={setRouteTokenTexts}
-        disabled={routeLoading}
-      />
-      <div className="rtf-status">
-        <span className="rtf-status-left">
-          {routeTokenErrors.length > 0 ? (
-            <button type="button" className="rtf-error-toggle" onClick={() => setErrorsOpen((open) => !open)}>
-              {`⚠ ${routeTokenErrors.length} error`}
-            </button>
-          ) : (!routeForm.departureAirport
-            ? '출발공항 없음 — 절차·공항 기상은 표시되지 않습니다'
-            : '')}
-        </span>
-        <span className="rtf-status-right">{routeSummaryText}</span>
-      </div>
-      {errorsOpen && routeTokenErrors.length > 0 && (
-        <ul className="rtf-error-list">
-          {routeTokenErrors.map((reason) => <li key={reason}>{reason}</li>)}
-        </ul>
-      )}
-    </>
-  )
 
   const stepNav = (
     <div className="rb-steps">

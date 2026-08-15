@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchVerticalProfile, fetchCrossSection, fetchRouteBriefing, fetchRouteExposure, fetchRouteExposureBatch, fetchAltitudeComparison } from '../../api/briefingApi.js'
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavdata, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
-import { classifyTokens, errorCount, procedureTokenForms, TOKEN_KINDS } from './lib/routeTokens.js'
+import { classifyTokens, errorCount, procedureFixIds, procedureTokenForms, TOKEN_KINDS } from './lib/routeTokens.js'
 import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString, parseVfrDraftText } from './lib/manualRouteInput.js'
 import { calcVfrDistance } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
@@ -430,7 +430,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     Promise.all(icaos.flatMap((icao) => [getProcedures(icao, 'SID'), getProcedures(icao, 'STAR')]))
       .then((lists) => {
         if (cancelled) return
-        setTokenLookups((current) => ({ ...current, procedures: procedureTokenForms(lists.flat()) }))
+        const loaded = lists.flat()
+        setTokenLookups((current) => ({
+          ...current,
+          procedures: procedureTokenForms(loaded),
+          // 절차 안의 FIX도 같이 받는다 — OSPAT처럼 터미널 구역에만 있는 이름은
+          // enroute.json에 없어서, 없이 두면 정상 입력이 오류로 잡힌다.
+          fixes: procedureFixIds(loaded),
+        }))
       })
       .catch(() => { /* 절차를 못 불러오면 그 토큰만 오류로 남는다 — 다른 판정은 계속된다 */ })
 

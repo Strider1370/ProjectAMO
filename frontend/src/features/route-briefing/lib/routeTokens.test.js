@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { TOKEN_COLORS, TOKEN_KINDS, classifyToken, classifyTokens, errorCount, procedureTokenForms } from './routeTokens.js'
+import { TOKEN_COLORS, TOKEN_KINDS, classifyToken, classifyTokens, errorCount, procedureFixIds, procedureTokenForms } from './routeTokens.js'
 
 const lookups = {
   airports: ['RKSS', 'RKPC'],
@@ -68,6 +68,30 @@ test('red is reserved for errors', () => {
     .filter(([, color]) => color.fg.toLowerCase() === '#c0291f')
     .map(([kind]) => kind)
   assert.deepEqual(reds, [TOKEN_KINDS.ERROR])
+})
+
+test('terminal-area fixes that live only in procedure data still classify as fixes', () => {
+  // OSPAT은 enroute.json에 없다 — 절차 안에만 있다. 없다고 하면 정상 입력이 오류가 된다.
+  const withProcedureFixes = { ...lookups, fixes: ['OSPAT'] }
+  assert.equal(classifyToken('OSPAT', withProcedureFixes).kind, TOKEN_KINDS.FIX)
+  assert.equal(classifyToken('OSPAT', lookups).kind, TOKEN_KINDS.ERROR)
+})
+
+test('procedure fix ids are collected from every place a procedure names a fix', () => {
+  const ids = procedureFixIds([
+    {
+      id: 'BULT2Q',
+      enrouteFix: 'BULTI',
+      startFix: 'OSPAT',
+      fixes: [{ id: 'ospat' }, { id: 'KAMSO' }],
+      displayPoints: [{ id: 'GONAX' }],
+    },
+  ])
+  assert.ok(ids.includes('OSPAT'))
+  assert.ok(ids.includes('KAMSO'))
+  assert.ok(ids.includes('GONAX'))
+  assert.ok(ids.includes('BULTI'))
+  assert.equal(ids.filter((id) => id === 'OSPAT').length, 1, '중복은 한 번만')
 })
 
 test('a coordinate outside the valid range is an error, not a coordinate', () => {
