@@ -1900,3 +1900,35 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 @media (max-width: 560px) {
   .rb-briefing-preparation-grid { grid-template-columns: 1fr; }
 }
+
+/* 「경로 적용」이 있던 자리. 왼쪽에 상태, 오른쪽에 요약. 누를 것이 없어진 자리에
+   "지금 경로가 어떤 상태인지"를 놓는다 — 토큰을 하나 칠 때마다 거리와 시간이 바뀐다. */
+.rtf-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.rtf-error-toggle {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #c0291f;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+/* 숫자가 바뀔 때 자리가 흔들리지 않도록 고정폭 숫자를 쓴다. */
+.rtf-status-right { font-variant-numeric: tabular-nums; }
+.rtf-error-list {
+  margin: 6px 0 0;
+  padding: 8px 10px 8px 24px;
+  border-radius: 7px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  animation: route-check-error-in var(--motion-base) var(--motion-enter);
+}

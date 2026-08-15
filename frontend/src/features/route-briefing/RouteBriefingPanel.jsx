@@ -9,9 +9,7 @@ import { windLabel, phenomenonLabelKo } from './lib/routeComparison.js'
 import {
   FIR_EXIT_AIRPORT,
   FIR_IN_AIRPORT,
-  ROUTE_SEQUENCE_COLORS,
   buildIfrDistanceBreakdown,
-  buildIfrSequenceTokens,
 } from './lib/routeBriefingModel.js'
 import { Button, Field, Dropdown, Combobox, Option, Input, SpinButton, TabList, Tab, Badge, MessageBar, MessageBarBody, DatePicker, TimePicker, Menu, MenuTrigger, MenuButton, MenuPopover, MenuList, MenuItem, Divider, Dialog, DialogSurface, DialogTitle, DialogBody, DialogContent, makeStyles, tokens } from '../../shared/ui/fluent.js'
 import { listSavedRoutes, saveRoute, deleteSavedRoute } from './lib/routeStore.js'
@@ -24,6 +22,7 @@ import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import AirportPickerField from '../../shared/ui/AirportPickerField.jsx'
 import PickerField from '../../shared/ui/PickerField.jsx'
 import RouteAlternativesStep from './RouteAlternativesStep.jsx'
+import RouteTokenField from './RouteTokenField.jsx'
 import AltitudeWeatherComparison from './AltitudeWeatherComparison.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { computeEtaIso } from './lib/etaCalc.js'
@@ -148,6 +147,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const [step1MoreOpen, setStep1MoreOpen] = useState(false)
   const prevWorkflowStepRef = useRef('settings')
   const stepDirectionRef = useRef('forward')
+  const [errorsOpen, setErrorsOpen] = useState(false)
   // 단계가 앞으로 갔는지 뒤로 왔는지. 렌더 중에 정해야 한다 — 효과로 미루면 이미 새 화면이
   // 그려진 뒤라 한 박자 늦은 방향으로 움직인다. 같은 단계로 다시 그려질 때는 값을 유지하므로
   // 이중 렌더에도 안전하다. 데스크톱·모바일이 같은 값을 쓴다.
@@ -167,6 +167,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     roundTripPending,
     importError,
     navpointsById,
+    routeTokens,
+    routeTokenErrors,
     hoveredWpInfo,
     starOptions,
     selectedSid,
@@ -223,6 +225,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     setEtd,
     setTasKt,
     setRouteDraftText,
+    setRouteTokenTexts,
     applyRouteDraft,
     cancelPendingRouteEdit,
     undoBaseRoute,
@@ -270,8 +273,16 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     setSheetDetent(wantsFull ? 'full' : 'half')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isIfr, workflowStep, detentTouched])
-  // 출발·도착이 모두 있어야 검색 가능(빈 입력으로 검색→서버 오류를 사전 차단).
-  const canSearch = !!routeForm.departureAirport && !!routeForm.arrivalAirport
+  // 공항은 선택 사항이다. 경로 계산은 진입·이탈 FIX만 있으면 돌아가고(routePlanner의
+  // canBuildBriefingRoutePath), 공항이 없으면 절차·공항 기상·공항 기준 ETD/ETA만 빠진다 —
+  // 그 사실은 입력칸 아래 상태 줄이 알린다. 빈 입력으로 검색하는 것만 막는다.
+  const canSearch = routeTokens.length > 0
+  // 요약 숫자는 즉시 교체한다. 중간에 지나가는 값은 어떤 경로에도 해당하지 않는다.
+  const routeDistanceNm = routeResult?.totalDistanceNm ?? routeResult?.distanceNm
+  const routeSummaryText = [
+    Number.isFinite(routeDistanceNm) ? `${Math.round(routeDistanceNm)} NM` : null,
+    etaDisplay || null,
+  ].filter(Boolean).join(' · ')
   // 초기화 오클릭 방지: 잃을 입력이 있으면 한 번 더 눌러 확인(3초 후 자동 해제).
   const [resetArmed, setResetArmed] = useState(false)
   const resetArmTimerRef = useRef(null)
@@ -455,16 +466,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           <div className={s.detailToggleRow}>
             <span style={{ fontWeight: tokens.fontWeightSemibold }}>ETD {formatBriefingTime(etd, tz)} → ETA {etaIso ? formatBriefingTime(etaIso, tz) : '—'}</span>
           </div>
-          {showDetailRoute && (
-            <div className="route-check-sequence">
-              {buildIfrSequenceTokens(routeResult, { selectedSid, selectedStar, selectedIap }).map((token, index) => (
-                <span key={`${token.kind}-${token.text}-${index}`}>
-                  {index > 0 && <span className="route-check-sequence-sep">{' -> '}</span>}
-                  <span className={`route-check-sequence-token is-${token.kind}`} style={{ color: ROUTE_SEQUENCE_COLORS[token.kind] }}>{token.text}</span>
-                </span>
-              ))}
-            </div>
-          )}
+          {/* 적용된 경로를 색깔 글자 줄로 보여주던 자리. 입력칸이 같은 정보를 알약으로
+              이미 보여주므로 없앴다 — 같은 것을 두 번 보여줄 이유가 없다(스펙 결정 3). */}
         </div>
       )}
       {routeResult && !isIfr && summaryStrip}
@@ -520,7 +523,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const aviationLayerChips = buildRouteAviationLayerChips(aviationVisibility, onToggleAviation)
   const vfrRouteBuilder = isVfrResult && (
     <>
-      <p className="rb-vfr-note">지도에서 선을 끌어 지점을 넣으면 이 문자열이 갱신됩니다. 경로 적용 전에는 초안선만 바뀝니다.</p>
+      <p className="rb-vfr-note">지도에서 선을 끌어 지점을 넣으면 경로에 반영됩니다. 그린 선은 확인을 받은 뒤 반영됩니다.</p>
     </>
   )
 
@@ -632,19 +635,15 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               )}
             </div>
           )}
-          <Field className={s.fieldFull} label={isIfr ? 'en-route 경로 (FIX · 항공로 · DCT)' : 'VFR 초안 경로 (공항 · FIX · DCT · 좌표)'}>
-              <textarea className={s.routeText} value={routeDraftText} onChange={(event) => setRouteDraftText(event.target.value)} onKeyDown={(event) => { if (event.ctrlKey && event.key === 'Enter') { event.preventDefault(); applyRouteDraft() } }} placeholder={isIfr ? '예: OSPAT Y711 GONA DCT N3721.4E12712.8' : '예: RKSI DCT GONAX DCT RKPK'} />
-              <small>SID/STAR/IAP는 위 절차 선택에 따로 표시됩니다. Ctrl+Enter 또는 아래 버튼으로 적용합니다.</small>
-              <small>{isIfr
-                ? (hasRouteDraftPreview || pendingRouteEdit ? '초안이 지도에 점선으로 표시됩니다. 경로 적용을 눌러 기본 경로로 확정하세요.' : routeResult ? '적용된 기본 경로입니다.' : '초안을 입력한 뒤 경로 적용으로 확정하세요.')
-                : (routeResult ? '지도에서 경로선을 끌어 경유점을 추가하거나, 문자열로 FIX·DCT·좌표를 입력해 적용하세요.' : '출발·도착 공항을 고르면 편집 가능한 직항 경로가 만들어집니다.')}</small>
-              {appliedBase && <div className="rb-route-plan" aria-live="polite">적용된 기본 경로 · {appliedBase.routeForm.departureAirport || '출발'} · {appliedBase.procedures?.sid?.name || 'SID 없음'} → {appliedBase.routeString || 'en-route 미입력'} → {appliedBase.procedures?.star?.name || 'STAR 없음'} · {appliedBase.routeForm.arrivalAirport || '도착'}</div>}
+          {/* 토큰이 확정될 때마다 반영되므로 적용 버튼이 없다. 「되돌리기」와 지도 조작 확인은
+              적용과 별개 기능이라 그대로 남는다. */}
+          <div className={s.fieldFull}>
+              {routeTokenField}
               <div className={s.draftActions}>
-                <Button className={s.draftApply} appearance="primary" type="button" onClick={() => applyRouteDraft()} disabled={routeLoading || !canSearch || !routeDraftText.trim()}>경로 적용</Button>
                 <Button appearance="secondary" type="button" icon={<Undo2 size={16} />} onClick={undoBaseRoute} disabled={!canUndoBase}>되돌리기</Button>
               </div>
               {pendingRouteEdit && !pendingRouteEdit.mapCoordinates && <div className="rb-route-edit-confirm" role="status"><span>{pendingRouteEdit.message}</span><div><Button size="small" appearance="primary" type="button" onClick={() => applyRouteDraft(pendingRouteEdit.text)}>적용</Button><Button size="small" appearance="secondary" type="button" onClick={cancelPendingRouteEdit}>취소</Button></div></div>}
-          </Field>
+          </div>
         </div>
 
         {/* 자동 생성은 초안을 만든 뒤 곧바로 기본 경로로 적용까지 이어간다(useRouteBriefing의 autoApplyPending). */}
@@ -695,6 +694,37 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const depChosen = !!routeForm.departureAirport
   const arrChosen = !!routeForm.arrivalAirport
   const firOnEitherSide = routeForm.departureAirport === FIR_IN_AIRPORT || routeForm.arrivalAirport === FIR_EXIT_AIRPORT
+
+  // 데스크톱과 모바일이 같은 입력칸을 쓴다. 구조가 다른 두 화면에 같은 것을 두 번 쓰면
+  // 한쪽만 고쳐지는 일이 생긴다.
+  const routeTokenField = (
+    <>
+      <RouteTokenField
+        label={isIfr ? '경로' : '경로 (공항 · FIX · DCT · 좌표)'}
+        placeholder={isIfr ? '예: RKSI OSPAT Y711 GONA RKPK' : '예: RKSI DCT GONAX DCT RKPK'}
+        tokens={routeTokens}
+        onChange={setRouteTokenTexts}
+        disabled={routeLoading}
+      />
+      <div className="rtf-status">
+        <span className="rtf-status-left">
+          {routeTokenErrors.length > 0 ? (
+            <button type="button" className="rtf-error-toggle" onClick={() => setErrorsOpen((open) => !open)}>
+              {`⚠ ${routeTokenErrors.length} error`}
+            </button>
+          ) : (!routeForm.departureAirport
+            ? '출발공항 없음 — 절차·공항 기상은 표시되지 않습니다'
+            : '')}
+        </span>
+        <span className="rtf-status-right">{routeSummaryText}</span>
+      </div>
+      {errorsOpen && routeTokenErrors.length > 0 && (
+        <ul className="rtf-error-list">
+          {routeTokenErrors.map((reason) => <li key={reason}>{reason}</li>)}
+        </ul>
+      )}
+    </>
+  )
 
   const stepNav = (
     <div className="rb-steps">
@@ -749,12 +779,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
                 )}
                 {!isIfr && <div className="rb-vfr-note">VFR 초안 경로는 공항·FIX·DCT·좌표 전체 문자열로 편집합니다.</div>}
               </div>
-              <label className="rb-route-string">{isIfr ? 'en-route 경로' : 'VFR 초안 경로 (공항 · FIX · DCT · 좌표)'}
-                  <textarea value={routeDraftText} onChange={(event) => setRouteDraftText(event.target.value)} onKeyDown={(event) => { if (event.ctrlKey && event.key === 'Enter') { event.preventDefault(); applyRouteDraft() } }} placeholder={isIfr ? '예: OSPAT Y711 GONA DCT N3721.4E12712.8' : '예: RKSI DCT GONAX DCT RKPK'} />
-                  <span>{isIfr ? 'SID/STAR는 절차 선택에 따로 표시됩니다.' : '지도에서 선을 끌어 지점을 넣으면 이 문자열이 갱신됩니다.'}</span>
-                  <button type="button" className="route-check-search-button" onClick={applyRouteDraft} disabled={routeLoading || !canSearch || !routeDraftText.trim()}>경로 적용</button>
-                  {pendingRouteEdit && !pendingRouteEdit.mapCoordinates && <div className="rb-route-edit-confirm" role="status"><span>{pendingRouteEdit.message}</span><div><button type="button" onClick={() => applyRouteDraft(pendingRouteEdit.text)}>적용</button><button type="button" onClick={cancelPendingRouteEdit}>취소</button></div></div>}
-                </label>
+              {routeTokenField}
+              {pendingRouteEdit && !pendingRouteEdit.mapCoordinates && <div className="rb-route-edit-confirm" role="status"><span>{pendingRouteEdit.message}</span><div><button type="button" onClick={() => applyRouteDraft(pendingRouteEdit.text)}>적용</button><button type="button" onClick={cancelPendingRouteEdit}>취소</button></div></div>}
               {onToggleAviation && <div className="vfr-layer-toggles"><span className="vfr-fix-search-title">지도 레이어</span><LayerToggleChips items={aviationLayerChips} ariaLabel="경로 입력 지도 레이어" /></div>}
             </>
           ) : (
@@ -782,7 +808,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     </form>
   )
 
-  // Route creation belongs to the form's "경로 적용" action. Keep one shared
+  // 경로는 토큰이 확정될 때마다 만들어진다(적용 버튼은 없다). Keep one shared
   // workflow footer for desktop and mobile, enabling each next step only when ready.
   const workflowFooter = workflowStep === 'settings' ? (
     <div className="route-check-actions is-step">
