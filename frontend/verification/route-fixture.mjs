@@ -86,12 +86,42 @@ function briefingFor(request) {
         ],
         procedures: [
           {
-            type: 'SID', id: 'FIXTURE1A', from: 'RKSS', to: 'FIXA', startNm: 0, endNm: 24, distanceNm: 24,
-            coordinates: [[126.8, 37.55], [126.9, 37.3]],
+            type: 'SID', id: 'RKSS-SID-FIXTURE1A', from: 'RKSS', to: 'FIXA', startNm: 0, endNm: 24, distanceNm: 24,
+            coordinates: [[126.8, 37.55], [126.85, 37.42], [126.9, 37.3]],
+            legs: [
+              {
+                from: 'RKSS', to: 'SID01', startNm: 0, endNm: 10, distanceNm: 10, courseTrueDeg: 128,
+                wind: { meanComponentKt: 12, directionDeg: 270, speedKt: 12 }, temp: { meanC: -6, isaDevC: 4 },
+                icing: { peakLevel: 2, exposures: [{ level: 2, distanceNm: 7 }] }, turbulence: { peakLevel: 'moderate', exposures: [{ level: 'moderate', distanceNm: 3 }] },
+                hazards: [{ code: 'SIGMET_TS_ALPHA', routeDistanceNm: 2, verticalStatus: 'matched' }], notams: [],
+                altitudeConstraint: { status: 'unavailable', applicability: 'not_applicable' },
+              },
+              {
+                from: 'SID01', to: 'FIXA', startNm: 10, endNm: 24, distanceNm: 14, courseTrueDeg: 130,
+                wind: { meanComponentKt: 10, directionDeg: 275, speedKt: 14 }, temp: { meanC: -7, isaDevC: 3 },
+                icing: { peakLevel: 2, exposures: [{ level: 2, distanceNm: 5 }] }, turbulence: { peakLevel: 'moderate', exposures: [{ level: 'moderate', distanceNm: 4 }] },
+                hazards: [{ code: 'SIGMET_ICE_BRAVO', routeDistanceNm: 3, verticalStatus: 'matched' }], notams: [],
+                altitudeConstraint: { status: 'unavailable', applicability: 'not_applicable' },
+              },
+            ],
+          },
+          {
+            type: 'STAR', id: 'RKPK-STAR-FIXTURE2P', from: 'FIXC', to: 'IAF18', startNm: 51, endNm: 65, distanceNm: 14,
+            coordinates: [[128.8, 35.5], [128.95, 35.35]],
             legs: [{
-              from: 'RKSS', to: 'FIXA', startNm: 0, endNm: 24, distanceNm: 24, courseTrueDeg: 128,
-              wind: { meanComponentKt: 12, directionDeg: 270, speedKt: 12 }, temp: { meanC: -6, isaDevC: 4 },
-              icing: { peakLevel: 2, exposures: [{ level: 2, distanceNm: 12 }] }, turbulence: { peakLevel: null, exposures: [] }, hazards: [], notams: [],
+              from: 'FIXC', to: 'IAF18', startNm: 51, endNm: 65, distanceNm: 14, courseTrueDeg: 150,
+              wind: null, temp: null,
+              icing: { peakLevel: 1, exposures: [{ level: 1, distanceNm: 4 }] }, turbulence: { peakLevel: 'light', exposures: [{ level: 'light', distanceNm: 2 }] }, hazards: [], notams: [],
+              altitudeConstraint: { status: 'unavailable', applicability: 'not_applicable' },
+            }],
+          },
+          {
+            type: 'IAP', id: 'RKPK-IAP-ILS18', from: 'IAF18', to: 'RKPK', startNm: 65, endNm: 73, distanceNm: 8,
+            coordinates: [[128.95, 35.35], [129.0, 35.18]],
+            legs: [{
+              from: 'IAF18', to: 'RKPK', startNm: 65, endNm: 73, distanceNm: 8, courseTrueDeg: 180,
+              wind: null, temp: null,
+              icing: { peakLevel: 2, exposures: [{ level: 2, distanceNm: 3 }] }, turbulence: { peakLevel: 'moderate', exposures: [{ level: 'moderate', distanceNm: 1 }] }, hazards: [], notams: [],
               altitudeConstraint: { status: 'unavailable', applicability: 'not_applicable' },
             }],
           },

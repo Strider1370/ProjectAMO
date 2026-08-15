@@ -1,11 +1,18 @@
 import { Caption1, Subtitle2, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow } from '../../shared/ui/fluent.js'
 import { phenomenonKo } from '../../shared/weather/phenomenonKo.js'
+import { buildNavlogRows } from './lib/navlogRows.js'
 
 const noData = '자료 없음'
 const TURB_KO = { light: '약', moderate: '중', severe: '심' }
 
 // 같은 FIX 쌍이 두 번 나올 수 있으므로 순번까지 넣어야 줄이 고유해진다.
 const legKey = (leg, index) => `${leg.from}-${leg.to}-${index}`
+
+function procedureDisplayName(procedure) {
+  return (procedure?.procedureIds ?? [procedure?.id ?? noData])
+    .map((id) => String(id).replace(/^[A-Z0-9]{4}-(?:SID|STAR|IAP)-/i, ''))
+    .join(' · ')
+}
 
 function formatAltitude(value) {
   return Number.isFinite(Number(value)) ? `${Math.round(value).toLocaleString()} ft` : noData
@@ -53,7 +60,7 @@ function turbulenceChip(summary) {
 
 function hazardChips(leg) {
   const chips = [icingChip(leg.icing), turbulenceChip(leg.turbulence)].filter(Boolean)
-  for (const [i, hazard] of leg.hazards.entries()) {
+  for (const [i, hazard] of (leg.hazards ?? []).entries()) {
     const unknown = hazard.verticalStatus === 'unknown'
     chips.push({
       key: `h${i}`,
@@ -62,7 +69,7 @@ function hazardChips(leg) {
       level: unknown ? 'gray' : 'red',
     })
   }
-  for (const [i, notam] of leg.notams.entries()) {
+  for (const [i, notam] of (leg.notams ?? []).entries()) {
     chips.push({
       key: `n${i}`,
       label: notam.summary ?? notam.id,
@@ -74,59 +81,50 @@ function hazardChips(leg) {
   return chips
 }
 
-function ProcedureNavlogGroups({ procedures, onHighlightLeg, pinnedLegKey }) {
-  if (!procedures.length) return null
-  const procedureKey = (procedure) => `procedure-${procedure.type}-${procedure.id}`
-  return (
-    <div className="procedure-navlog-groups" aria-label="절차 NAVLOG">
-      {procedures.map((procedure) => {
-        const key = procedureKey(procedure)
-        const chips = procedure.legs.flatMap((leg) => hazardChips(leg))
-        const highlight = () => onHighlightLeg?.(pinnedLegKey === key ? null : {
-          from: procedure.from,
-          to: procedure.to,
-          startNm: procedure.startNm,
-          endNm: procedure.endNm,
-          coordinates: procedure.coordinates,
-          key,
-          pinned: true,
-        })
-        return (
-          <details key={key} className={`procedure-navlog${pinnedLegKey === key ? ' is-pinned' : ''}`}>
-            <summary className="procedure-navlog-summary" onClick={highlight}>
-              <span><b>{procedure.type}</b> {procedure.id}</span>
-              <span>{procedure.distanceNm} NM</span>
-              <span className="procedure-navlog-hazards">
-                {chips.length === 0 ? '—' : chips.map((chip, index) => <span key={`${chip.key}-${index}`} className={`bv-leg-chip is-${chip.level}`}>{chip.label}{chip.note ? <span className="bv-leg-chip-note">{chip.note}</span> : null}</span>)}
-              </span>
-            </summary>
-            <div className="bv-leg-scroll procedure-navlog-detail">
-              <Table size="small" className="bv-leg-table">
-                <TableHeader><TableRow>
-                  <TableHeaderCell>구간</TableHeaderCell><TableHeaderCell>거리</TableHeaderCell><TableHeaderCell>Bearing</TableHeaderCell>
-                  <TableHeaderCell>바람성분</TableHeaderCell><TableHeaderCell>풍향/풍속</TableHeaderCell>
-                  <TableHeaderCell>기온</TableHeaderCell><TableHeaderCell>ISA</TableHeaderCell><TableHeaderCell>위험기상</TableHeaderCell>
-                </TableRow></TableHeader>
-                <TableBody>{procedure.legs.map((leg, index) => {
-                  const legChips = hazardChips(leg)
-                  return <TableRow key={legKey(leg, index)} className="bv-leg-row procedure-navlog-detail-row" aria-label="절차 상세 웨이포인트">
-                    <TableCell data-label="구간"><b>{leg.from ?? noData} → {leg.to ?? noData}</b></TableCell>
-                    <TableCell data-label="거리">{leg.distanceNm == null ? noData : `${leg.distanceNm} NM`}</TableCell>
-                    <TableCell data-label="Bearing">{leg.courseTrueDeg == null ? noData : `${leg.courseTrueDeg}°T`}</TableCell>
-                    <TableCell data-label="바람성분" className={leg.wind?.meanComponentKt < 0 ? 'bv-leg-headwind' : 'bv-leg-tailwind'}>{formatWind(leg.wind)}</TableCell>
-                    <TableCell data-label="풍향/풍속">{formatWindVector(leg.wind)}</TableCell>
-                    <TableCell data-label="기온">{formatTemp(leg.temp)}</TableCell>
-                    <TableCell data-label="ISA">{formatIsa(leg.temp)}</TableCell>
-                    <TableCell data-label="위험기상">{legChips.length === 0 ? <span className="bv-leg-none" aria-label="위험기상 없음">—</span> : <div className="bv-leg-hazards">{legChips.map((chip) => <span key={chip.key} className={`bv-leg-chip is-${chip.level}`}>{chip.label}{chip.note ? <span className="bv-leg-chip-note">{chip.note}</span> : null}</span>)}</div>}</TableCell>
-                  </TableRow>
-                })}</TableBody>
-              </Table>
-            </div>
-          </details>
-        )
-      })}
-    </div>
-  )
+function procedureHazardChips(procedure) {
+  const legs = procedure.legs ?? []
+  const icingPeak = Math.max(0, ...legs.map((leg) => Number(leg.icing?.peakLevel) || 0))
+  const icingExposures = legs.flatMap((leg) => leg.icing?.exposures ?? [])
+  const turbulenceRank = { light: 1, moderate: 2, severe: 3 }
+  const turbulencePeak = legs.reduce((peak, leg) => (turbulenceRank[leg.turbulence?.peakLevel] ?? 0) > (turbulenceRank[peak] ?? 0) ? leg.turbulence.peakLevel : peak, null)
+  const turbulenceExposures = legs.flatMap((leg) => leg.turbulence?.exposures ?? [])
+  const summaryChips = [
+    icingChip(icingPeak ? { peakLevel: icingPeak, exposures: icingExposures } : null),
+    turbulenceChip(turbulencePeak ? { peakLevel: turbulencePeak, exposures: turbulenceExposures } : null),
+  ].filter(Boolean)
+  const seen = new Set()
+  const otherChips = legs.flatMap((leg) => hazardChips(leg))
+    .filter((chip) => chip.key !== 'icing' && chip.key !== 'turb')
+    .filter((chip) => {
+      const key = `${chip.label}-${chip.note}-${chip.level}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .map((chip) => ({ ...chip, key: `procedure-${chip.label}-${chip.note}-${chip.level}` }))
+  return [...summaryChips, ...otherChips]
+}
+
+function LegDataCells({ leg, chips }) {
+  return <>
+    <TableCell rowSpan={2} data-label="거리">
+      <span className="bv-leg-distance"><i className="bv-leg-direction" aria-hidden="true" />{leg.distanceNm == null ? noData : `${leg.distanceNm} NM`}</span>
+    </TableCell>
+    <TableCell rowSpan={2} data-label="Bearing">{leg.courseTrueDeg == null ? noData : `${leg.courseTrueDeg}°T`}</TableCell>
+    <TableCell rowSpan={2} data-label="바람성분" className={leg.wind?.meanComponentKt < 0 ? 'bv-leg-headwind' : 'bv-leg-tailwind'}>{formatWind(leg.wind)}</TableCell>
+    <TableCell rowSpan={2} data-label="풍향/풍속">{formatWindVector(leg.wind)}</TableCell>
+    <TableCell rowSpan={2} data-label="기온">{formatTemp(leg.temp)}</TableCell>
+    <TableCell rowSpan={2} data-label="ISA">{formatIsa(leg.temp)}</TableCell>
+    <TableCell rowSpan={2} data-label="위험기상">
+      {chips.length === 0
+        ? <span className="bv-leg-none" aria-label="위험기상 없음">—</span>
+        : <div className="bv-leg-hazards">{chips.map((chip) => (
+            <span key={chip.key} className={`bv-leg-chip is-${chip.level}`}>
+              {chip.label}{chip.note ? <span className="bv-leg-chip-note">{chip.note}</span> : null}
+            </span>
+          ))}</div>}
+    </TableCell>
+  </>
 }
 
 export default function RouteWeatherLegTable({ legs, procedures = [], selectedAltitudeFt, onHighlightLeg, pinnedLegKey = null }) {
@@ -136,57 +134,93 @@ export default function RouteWeatherLegTable({ legs, procedures = [], selectedAl
   const highlight = (leg, index, pinned) => onHighlightLeg?.(leg
     ? { from: leg.from, to: leg.to, startNm: leg.startNm, endNm: leg.endNm, key: legKey(leg, index), pinned }
     : null)
+  const navlogRows = buildNavlogRows(legs, procedures)
   return (
     <section className="bv-leg-briefing" aria-label="NAVLOG">
       <div className="bv-leg-head">
         <div>
           <Subtitle2 as="h4">NAVLOG</Subtitle2>
-          <Caption1 className="bv-leg-sub">경로 구간 기상 · 선택 고도 {formatAltitude(selectedAltitudeFt)} 기준 · 행을 가리키면 미리보기, 클릭하면 지도와 연직단면도에 고정</Caption1>
+          <Caption1 className="bv-leg-sub">경로 구간 기상 · 선택 고도 {formatAltitude(selectedAltitudeFt)} 기준 · 항로 구간 행을 가리키면 미리보기, 클릭하면 지도와 연직단면도에 고정</Caption1>
         </div>
         <Caption1 className="bv-leg-disclaimer">
           ETA 또는 연료 계산은 포함하지 않습니다.
           {constraintUnavailable ? <><br />AIP 고도 제약 확인 불가</> : null}
         </Caption1>
       </div>
-      <ProcedureNavlogGroups procedures={procedures} onHighlightLeg={onHighlightLeg} pinnedLegKey={pinnedLegKey} />
       <div className="bv-leg-scroll">
-        <Table size="small" className="bv-leg-table">
+        <Table size="small" className="bv-leg-table bv-main-navlog-table">
           <TableHeader><TableRow>
-            <TableHeaderCell>구간</TableHeaderCell><TableHeaderCell>거리</TableHeaderCell><TableHeaderCell>Bearing</TableHeaderCell>
+            <TableHeaderCell>웨이포인트</TableHeaderCell><TableHeaderCell>거리</TableHeaderCell><TableHeaderCell>Bearing</TableHeaderCell>
             <TableHeaderCell>바람성분</TableHeaderCell><TableHeaderCell>풍향/풍속</TableHeaderCell>
             <TableHeaderCell>기온</TableHeaderCell><TableHeaderCell>ISA</TableHeaderCell><TableHeaderCell>위험기상</TableHeaderCell>
           </TableRow></TableHeader>
-          <TableBody>{legs.map((leg, index) => {
+          <TableBody>{navlogRows.map((row, rowIndex) => {
+            if (row.kind === 'waypoint') {
+              const waypoint = row.waypoint ?? noData
+              const waypointRowSpan = navlogRows[rowIndex + 1]?.kind === 'leg' ? 2 : 1
+              return (
+                <TableRow
+                  key={row.key}
+                  className="bv-waypoint-row"
+                  aria-label={`웨이포인트 ${waypoint}`}
+                  data-testid="route-weather-waypoint"
+                >
+                  <TableCell rowSpan={waypointRowSpan} className="bv-waypoint-cell">
+                    <span className="bv-waypoint-label"><i aria-hidden="true" /> <b>{waypoint}</b></span>
+                  </TableCell>
+                </TableRow>
+              )
+            }
+
+            if (row.kind === 'procedure') {
+              const { procedure } = row
+              const displayName = procedureDisplayName(procedure)
+              const chips = procedureHazardChips(procedure)
+              return (
+                <TableRow
+                  key={row.key}
+                  className="bv-procedure-summary-row"
+                  data-testid="procedure-navlog-summary"
+                  aria-label={`절차 ${displayName} 요약`}
+                >
+                  <TableCell data-label="절차">
+                    <b>{displayName}</b>
+                  </TableCell>
+                  <TableCell data-label="거리">{procedure.distanceNm == null ? noData : `${procedure.distanceNm} NM`}</TableCell>
+                  {Array.from({ length: 5 }, (_, index) => <TableCell key={index} className="bv-procedure-empty" aria-hidden="true" />)}
+                  <TableCell data-label="위험기상">
+                    {chips.length === 0
+                      ? <span className="bv-leg-none" aria-label="위험기상 없음">—</span>
+                      : <div className="bv-leg-hazards">{chips.map((chip) => (
+                          <span key={chip.key} className={`bv-leg-chip is-${chip.level}`}>
+                            {chip.label}{chip.note ? <span className="bv-leg-chip-note">{chip.note}</span> : null}
+                          </span>
+                        ))}</div>}
+                  </TableCell>
+                </TableRow>
+              )
+            }
+
+            const { leg, index } = row
             const chips = hazardChips(leg)
             if (!constraintUnavailable && leg.altitudeConstraint?.status !== 'matched' && leg.altitudeConstraint?.applicability !== 'not_applicable') {
               chips.push({ key: 'aip', label: 'AIP 고도 제약', note: '확인 불가', level: 'gray' })
             }
+            const interactiveProps = {
+              onMouseEnter: () => { if (!pinnedLegKey) highlight(leg, index, false) },
+              onMouseLeave: () => { if (!pinnedLegKey) highlight(null) },
+              onClick: () => (pinnedLegKey === legKey(leg, index) ? highlight(null) : highlight(leg, index, true)),
+            }
             return (
               <TableRow
-                key={legKey(leg, index)}
+                key={row.key}
                 className={`bv-leg-row${pinnedLegKey === legKey(leg, index) ? ' is-pinned' : ''}`}
                 data-testid="route-weather-leg-card"
+                aria-label={`${leg.from ?? noData}에서 ${leg.to ?? noData}까지 구간`}
                 // 지도에서 이 구간이 어디인지 보여준다. 호버는 미리보기, 클릭은 고정(다시 누르면 해제).
-                onMouseEnter={() => { if (!pinnedLegKey) highlight(leg, index, false) }}
-                onMouseLeave={() => { if (!pinnedLegKey) highlight(null) }}
-                onClick={() => (pinnedLegKey === legKey(leg, index) ? highlight(null) : highlight(leg, index, true))}
+                {...interactiveProps}
               >
-                <TableCell data-label="구간"><b>{leg.from ?? noData} → {leg.to ?? noData}</b></TableCell>
-                <TableCell data-label="거리">{leg.distanceNm == null ? noData : `${leg.distanceNm} NM`}</TableCell>
-                <TableCell data-label="Bearing">{leg.courseTrueDeg == null ? noData : `${leg.courseTrueDeg}°T`}</TableCell>
-                <TableCell data-label="바람성분" className={leg.wind?.meanComponentKt < 0 ? 'bv-leg-headwind' : 'bv-leg-tailwind'}>{formatWind(leg.wind)}</TableCell>
-                <TableCell data-label="풍향/풍속">{formatWindVector(leg.wind)}</TableCell>
-                <TableCell data-label="기온">{formatTemp(leg.temp)}</TableCell>
-                <TableCell data-label="ISA">{formatIsa(leg.temp)}</TableCell>
-                <TableCell data-label="위험기상">
-                  {chips.length === 0
-                    ? <span className="bv-leg-none" aria-label="위험기상 없음">—</span>
-                    : <div className="bv-leg-hazards">{chips.map((chip) => (
-                        <span key={chip.key} className={`bv-leg-chip is-${chip.level}`}>
-                          {chip.label}{chip.note ? <span className="bv-leg-chip-note">{chip.note}</span> : null}
-                        </span>
-                      ))}</div>}
-                </TableCell>
+                <LegDataCells leg={leg} chips={chips} />
               </TableRow>
             )
           })}</TableBody>

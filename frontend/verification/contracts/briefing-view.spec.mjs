@@ -50,9 +50,37 @@ test.describe('briefing-view', () => {
     await createBriefing(page)
 
     const navlog = page.getByRole('region', { name: 'NAVLOG', exact: true })
-    await expect(navlog.locator('.bv-leg-table')).toHaveCSS('display', 'table')
-    await expect(navlog.locator('.bv-leg-table thead')).toHaveCSS('display', 'table-header-group')
-    await expect(navlog.locator('.bv-leg-row').first()).toHaveCSS('display', 'table-row')
+    const table = navlog.locator('.bv-main-navlog-table')
+    await expect(table).toHaveCSS('display', 'table')
+    await expect(table.locator('thead')).toHaveCSS('display', 'table-header-group')
+    await expect(table.locator('.bv-leg-row').first()).toHaveCSS('display', 'table-row')
+    const [fromCell, legCell, toCell, sidSummary, arrivalSummary] = await Promise.all([
+      page.getByRole('row', { name: '웨이포인트 FIXA', exact: true }).getByRole('cell').boundingBox(),
+      page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true }).getByRole('cell').first().boundingBox(),
+      page.getByRole('row', { name: '웨이포인트 FIXB', exact: true }).getByRole('cell').boundingBox(),
+      navlog.getByRole('row', { name: '절차 FIXTURE1A 요약', exact: true }).boundingBox(),
+      navlog.getByRole('row', { name: '절차 FIXTURE2P · ILS18 요약', exact: true }).boundingBox(),
+    ])
+    // 엇갈린 병합: 출발 웨이포인트 중간에서 구간 셀이 시작하고, 그 구간 셀 중간에서 다음 웨이포인트가 시작한다.
+    expect(fromCell.y).toBeLessThan(legCell.y)
+    expect(legCell.y).toBeLessThan(toCell.y)
+    expect(Math.abs((fromCell.y + fromCell.height) - toCell.y)).toBeLessThanOrEqual(1)
+    expect(legCell.y + legCell.height).toBeGreaterThan(toCell.y)
+    expect(fromCell.height).toBeGreaterThanOrEqual(44)
+    expect(fromCell.height).toBeLessThanOrEqual(56)
+    expect(Math.abs(sidSummary.height - legCell.height)).toBeLessThanOrEqual(1)
+    expect(Math.abs(arrivalSummary.height - legCell.height)).toBeLessThanOrEqual(1)
+    const fromCellLocator = page.getByRole('row', { name: '웨이포인트 FIXA', exact: true }).getByRole('cell')
+    const legCellLocator = page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true }).getByRole('cell').first()
+    const procedureCellLocator = navlog.getByRole('row', { name: '절차 FIXTURE1A 요약', exact: true }).getByRole('cell').first()
+    await expect(fromCellLocator).toHaveCSS('font-size', '14px')
+    await expect(fromCellLocator).toHaveCSS('vertical-align', 'middle')
+    await expect(legCellLocator).toHaveCSS('font-size', '14px')
+    await expect(legCellLocator).toHaveCSS('vertical-align', 'middle')
+    await expect(procedureCellLocator).toHaveCSS('font-size', '14px')
+    await expect(procedureCellLocator).toHaveCSS('vertical-align', 'middle')
+
+    await expect(procedureCellLocator.getByRole('button')).toHaveCount(0)
   })
 
   test('renders route weather legs as a table or mobile cards', async ({ page }) => {
@@ -60,14 +88,23 @@ test.describe('briefing-view', () => {
 
     await expect(page.getByRole('heading', { name: 'NAVLOG', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: '연직단면도', exact: true })).toBeVisible()
-    await expect(page.getByText('FIXA → FIXB', { exact: true })).toBeVisible()
-    await expect(page.getByText('FIXB → FIXC', { exact: true })).toBeVisible()
+    await expect(page.getByRole('row', { name: '웨이포인트 FIXA', exact: true })).toBeVisible()
+    await expect(page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true })).toBeVisible()
+    await expect(page.getByRole('row', { name: '웨이포인트 FIXB', exact: true })).toBeVisible()
+    await expect(page.getByRole('row', { name: 'FIXB에서 FIXC까지 구간', exact: true })).toBeVisible()
+    await expect(page.getByRole('row', { name: '웨이포인트 FIXC', exact: true })).toBeVisible()
+    await expect(page.getByRole('row', { name: '웨이포인트 FIXA', exact: true }).getByRole('cell')).toHaveAttribute('rowspan', '2')
+    const firstLegRow = page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true })
+    await expect(firstLegRow.getByRole('cell').first()).toHaveAttribute('rowspan', '2')
+    await expect(page.getByRole('row', { name: '웨이포인트 FIXA', exact: true }).locator('.bv-leg-connector')).toHaveCount(0)
+    await expect(firstLegRow.locator('.bv-leg-direction')).toBeVisible()
+    await expect(firstLegRow.locator('.bv-leg-direction')).toHaveCSS('border-left-style', 'solid')
     await expect(page.getByText(/NOTAM 판정 불가/)).toBeVisible()
     await expect(page.getByText('ETA 또는 연료 계산은 포함하지 않습니다.', { exact: true })).toBeVisible()
     // 표/카드 전환은 뷰포트가 아니라 패널 컨테이너 폭(@container briefing)이 정한다.
     // 데스크톱에서도 패널이 좁으면 카드로 떨어지므로 프로젝트 이름으로 분기하지 않는다.
     await expect(page.getByTestId('route-weather-leg-card')).toHaveCount(2)
-    await expect(page.locator('[data-label="위험기상"]').first()).toBeVisible()
+    await expect(page.locator('.bv-main-navlog-table [data-label="위험기상"]').first()).toBeVisible()
 
     // 연직단면도는 기온·습도·바람·SIGMET/AIRMET이 켜진 채로 열린다.
     await expect(page.locator('.cs-toggle').first()).toBeVisible()
@@ -80,16 +117,42 @@ test.describe('briefing-view', () => {
     }
   })
 
-  test('SID summary expands details and alone highlights its map and profile range', async ({ page }) => {
+  test('procedure summaries stay inline and merge STAR with IAP without detail controls', async ({ page }) => {
+    const duplicateKeyWarnings = []
+    page.on('console', (message) => {
+      if (message.text().includes('same key')) duplicateKeyWarnings.push(message.text())
+    })
     await createBriefing(page)
     const navlog = page.getByRole('region', { name: 'NAVLOG', exact: true })
-    const sid = navlog.locator('.procedure-navlog-summary').filter({ hasText: 'FIXTURE1A' })
-    await expect(sid).toContainText('SID')
-    await expect(sid).toContainText('24 NM')
-    await sid.click()
-    await expect(navlog.getByLabel('절차 상세 웨이포인트')).toContainText('RKSS → FIXA')
-    await expect.poll(() => page.evaluate(() => window.__map?.getSource('navlog-leg-highlight')?.serialize()?.data?.features?.length ?? 0)).toBe(1)
-    await expect(page.locator('.vertical-profile-leg-band')).toBeVisible()
+    const summaries = navlog.getByTestId('procedure-navlog-summary')
+    await expect(summaries).toHaveCount(2)
+    await expect(summaries.nth(0)).toContainText('FIXTURE1A')
+    await expect(summaries.nth(1)).toContainText('FIXTURE2P')
+    await expect(summaries.nth(1)).toContainText('ILS18')
+    await expect(summaries.nth(0)).not.toContainText('SID')
+    await expect(summaries.nth(1)).not.toContainText('STAR')
+    await expect(summaries.nth(1)).not.toContainText('IAP')
+    await expect(summaries.nth(0)).toContainText('24 NM')
+    await expect(summaries.nth(0).getByText('착빙 2')).toHaveCount(1)
+    await expect(summaries.nth(0).getByText('12NM')).toHaveCount(1)
+    await expect(summaries.nth(0).getByText('난류 중')).toHaveCount(1)
+    await expect(summaries.nth(0).getByText('7NM')).toHaveCount(1)
+    await expect(summaries.nth(0).getByText('SIGMET_TS_ALPHA')).toHaveCount(1)
+    await expect(summaries.nth(0).getByText('SIGMET_ICE_BRAVO')).toHaveCount(1)
+    await expect(summaries.nth(1)).toContainText('22 NM')
+    await expect(summaries.nth(1).getByText('착빙 2')).toHaveCount(1)
+    await expect(summaries.nth(1).getByText('7NM')).toHaveCount(1)
+    await expect(summaries.nth(1).getByText('난류 중')).toHaveCount(1)
+    await expect(summaries.nth(1).getByText('3NM')).toHaveCount(1)
+    expect(duplicateKeyWarnings).toEqual([])
+    await expect(navlog.locator('.procedure-navlog-groups')).toHaveCount(0)
+
+    await expect(summaries.getByRole('button')).toHaveCount(0)
+    await expect(navlog.locator('.bv-procedure-direction')).toHaveCount(0)
+    await expect(navlog.getByTestId('procedure-navlog-detail-leg')).toHaveCount(0)
+    await expect(navlog.getByRole('row', { name: '웨이포인트 IAF18', exact: true })).toHaveCount(0)
+    await expect(navlog.getByRole('row', { name: '웨이포인트 RKSS', exact: true })).toHaveCount(1)
+    await expect(navlog.getByRole('row', { name: '웨이포인트 FIXA', exact: true })).toHaveCount(1)
   })
 
   // 모바일 시트에는 헤더 닫기 버튼이 없고(그래버 스와이프가 그 역할을 겸함) 브리핑은
