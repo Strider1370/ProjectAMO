@@ -18,6 +18,14 @@ desktop 한 종, 재시도 없음, 이미 떠 있는 서버 재사용(`CONTRACT_
 - 같은 종류가 여러 개일 수 있으면(태풍 2개, 패널 2개) 반드시 대상을 지정한다.
 - 지도 소스의 데이터를 단언할 때 `querySourceFeatures`를 쓰지 않는다. 그것은 이미 그려진 타일을 읽어 `setData` 직후를 반영하지 못한다. `getSource(id).serialize().data`를 본다.
 
+### 사파리 엔진(`ipad-safari`)
+
+iPad는 실제로 사파리에서 돈다. `ipad-landscape`는 Chromium으로 못박혀 있고 그 엔진은 바꾸지 않는다 — 계약 24개와 스냅샷 기준선이 전부 그것에 걸려 있어, 엔진을 갈면 무관한 것들이 함께 흔들린다.
+
+대신 `ipad-safari` 프로젝트가 `grep`으로 좁힌 계약만 WebKit으로 돌린다. **입력 초점·키보드처럼 엔진마다 다른 동작을 검사하는 계약은 여기에 등록한다.** 계약 전부를 두 엔진으로 돌리는 비용은 지지 않는다.
+
+WebKit 실행에는 시스템 라이브러리가 필요하다(`sudo npx playwright install-deps webkit`). 없으면 이 프로젝트만 실패하므로, 그 상태에서는 `--project`로 다른 프로젝트를 골라 돌린다.
+
 ## Active
 
 | Contract | Features / owners | Viewports | Preconditions | Spec | Owner | Status |
@@ -34,7 +42,7 @@ desktop 한 종, 재시도 없음, 이미 떠 있는 서버 재사용(`CONTRACT_
 | `notam-and-settings` | `NotamPanel.jsx`, `SettingsModal.jsx` | desktop, iPad landscape, mobile | local app state only; mobile has settings but no NOTAM entry | `frontend/verification/contracts/notam-and-settings.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `route-import` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed `rksi-rkpk-multi.gpx` fixture; local airport/navdata | `frontend/verification/contracts/route-import.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `route-workflow` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed navdata; `route-fixture.mjs` intercepts exposure, altitude, profile, cross-section, briefing APIs | `frontend/verification/contracts/route-workflow.spec.mjs` | frontend | active — passed 2026-08-15 (토큰 입력으로 전환 후 재확인) |
-| `route-token-input` | 경로 토큰(알약) 입력칸; `RouteTokenField.jsx`, `lib/routeTokens.js`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed navdata; `route-fixture.mjs`. 알약 요소는 `.rtf-pill`, 입력칸은 `.rtf-input` — 이름으로 찾지 않는다 | `frontend/verification/contracts/route-token-input.spec.mjs` | frontend | active — passed 2026-08-15 (iPad 가로 7건) |
+| `route-token-input` | 경로 토큰(알약) 입력칸; `RouteTokenField.jsx`, `lib/routeTokens.js`, `useRouteBriefing.js` | desktop, iPad landscape, mobile, **ipad-safari** | committed navdata; `route-fixture.mjs`. 알약 요소는 `.rtf-pill`, 입력칸은 `.rtf-input` — 이름으로 찾지 않는다 | `frontend/verification/contracts/route-token-input.spec.mjs` | frontend | active — passed 2026-08-15 (iPad 가로 7건, 사파리 엔진 7건) |
 | `route-touch-draw` | `routePreview.js` `bindIfrClickInteraction` 그리기 모드 | iPad landscape (휴대폰 레이아웃에는 '그리기' 버튼이 없음) | committed navdata; `route-fixture.mjs`; CDP `Input.dispatchTouchEvent`로 실제 터치 제스처 발생 | `frontend/verification/contracts/route-touch-draw.spec.mjs` | frontend | active — passed 2026-08-05 |
 | `echo-top` | `echoTopLayers.js`, `useEchoTopOverlay.js`, `EchoTopCard.jsx`, `WeatherLegends.jsx` | desktop, iPad landscape, mobile | fixture intercepts `echotop_meta.json`, the overlay WebP and `/api/radar/echo-top-point`; radar `echo_meta.json` supplies the 5-minute axis | `frontend/verification/contracts/echo-top.spec.mjs` | frontend | active — passed 2026-07-26 (21/21) |
 | `radar-wissdom-qpf` | WISSDOM/QPF weather overlay model, layers, vertical rail, status card, and legends | desktop, iPad landscape, mobile | fixture publishes deterministic KST radar 10:20/10:25, WISSDOM heights, QPF +10/+30 metadata, legends, and images | `frontend/verification/contracts/radar-wissdom-qpf.spec.mjs` | frontend | pending — authored 2026-08-05; intentionally not run in Task 8 |

@@ -29,6 +29,15 @@ export default defineConfig({
     { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } },
     { name: 'ipad-landscape', use: { ...devices['iPad Pro 11 landscape'], browserName: 'chromium' } },
     { name: 'mobile', use: { ...devices['Pixel 5'] } },
+    // iPad는 사파리로 돈다. Chromium 흉내로는 잡히지 않는 것이 있어(입력 초점, 키보드
+    // 동작) 실제 엔진으로 한 번 확인한다.
+    // ipad-landscape의 엔진은 바꾸지 않는다 — 24개 계약과 스냅샷 기준선이 전부 그것에 걸려 있다.
+    // grep으로 범위를 좁혀, 계약 전부를 두 엔진으로 돌리는 비용은 지지 않는다.
+    {
+      name: 'ipad-safari',
+      grep: /route-token-input/,
+      use: { ...devices['iPad Pro 11 landscape'], browserName: 'webkit' },
+    },
   ],
   webServer: [
     {
