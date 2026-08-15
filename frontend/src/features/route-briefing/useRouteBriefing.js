@@ -474,6 +474,35 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenEndpointAirports, routeForm.departureAirport, routeForm.arrivalAirport])
 
+  // 토큰이 확정되면 경로를 만든다. 이것이 「경로 적용」 버튼을 대신하는 방아쇠다 —
+  // 버튼만 없애고 이 연결을 빼면 알약은 생기는데 경로는 만들어지지 않는다.
+  //
+  // 두 규칙이 받는 문자열이 다르다.
+  // IFR: en-route 구간만 (공항은 routeForm이, 절차는 procedures가 따로 쥔다)
+  // VFR: 공항까지 포함한 전체 (parseVfrDraftText가 양 끝 공항을 함께 해석한다)
+  // 이 구분을 놓치면 VFR 경로가 만들어지지 않는다.
+  const enrouteTokenText = useMemo(() => {
+    const isVfr = routeForm.flightRule === 'VFR'
+    return routeTokens
+      .filter((token) => isVfr
+        ? token.kind !== TOKEN_KINDS.PROCEDURE
+        : token.kind !== TOKEN_KINDS.AIRPORT && token.kind !== TOKEN_KINDS.PROCEDURE)
+      .map((token) => token.text)
+      .join(' ')
+  }, [routeTokens, routeForm.flightRule])
+
+  const applyRouteDraftRef = useRef(null)
+  const lastAppliedTokenTextRef = useRef(null)
+
+  useEffect(() => {
+    if (errorCount(routeTokens) > 0) return
+    if (!enrouteTokenText) return
+    // 같은 문자열을 두 번 적용하지 않는다 — 경로 계산은 서버를 부르므로 헛호출이 쌓인다.
+    if (lastAppliedTokenTextRef.current === enrouteTokenText) return
+    lastAppliedTokenTextRef.current = enrouteTokenText
+    applyRouteDraftRef.current?.(enrouteTokenText)
+  }, [enrouteTokenText, routeTokens])
+
   const seededRef = useRef(false)
   useEffect(() => {
     if (seededRef.current) return
@@ -634,14 +663,19 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const text = icao && icao !== FIR_IN_AIRPORT && icao !== FIR_EXIT_AIRPORT ? icao : null
     setRouteTokenTexts((texts) => {
       const next = [...texts]
+      const isAirport = (value) => (value ? KNOWN_AIRPORTS.includes(value.toUpperCase()) : false)
+      // 도착이 맨 끝 알약을 덮어쓸 수 있는 것은 그 알약이 출발 자리(0번)와 다를 때뿐이다.
+      // 목록에 공항이 하나뿐일 때 이 구분을 빼면 도착이 출발을 지워버려, 출발·도착이 같아지고
+      // 그것이 선택기로 되돌아가 두 칸이 같은 공항을 보여준다.
+      const canReplaceLast = next.length > 1 && isAirport(next.at(-1))
       const index = end === 'departure' ? 0 : next.length - 1
-      const existing = index >= 0 ? next[index] : undefined
-      const existingIsAirport = existing ? KNOWN_AIRPORTS.includes(existing.toUpperCase()) : false
+      const replaceable = end === 'departure' ? isAirport(next[0]) : canReplaceLast
+
       if (!text) {
-        if (existingIsAirport) next.splice(index, 1)
+        if (replaceable) next.splice(index, 1)
         return next
       }
-      if (existingIsAirport) next[index] = text
+      if (replaceable) next[index] = text
       else if (end === 'departure') next.unshift(text)
       else next.push(text)
       return next
@@ -1159,6 +1193,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setRouteEditor((editor) => editor.pendingIntent ? { ...editor, pendingIntent: null } : editor)
     mapInteractionStatusRef.current?.showConfirmation?.()
   }
+
+  // 위 효과가 부를 수 있도록 최신 함수를 ref에 담아둔다. 효과의 의존성으로 넣으면
+  // 이 함수가 매 렌더 새로 만들어져 경로 계산이 끝없이 다시 돈다.
+  applyRouteDraftRef.current = applyRouteDraft
 
   async function applyRouteDraft(text = routeDraftText) {
     const routeText = typeof text === 'string' ? text : routeDraftText

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TOKEN_COLORS, TOKEN_KINDS } from './lib/routeTokens.js'
 import './RouteTokenField.css'
 
@@ -17,6 +17,21 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
   const texts = tokens.map((token) => token.text)
   const at = Math.min(caret, tokens.length)
 
+  // 목록은 밖에서도 바뀐다(위쪽 선택기, 첫 진입 초기값). 그때 커서가 제자리에 남아 있으면
+  // 다음에 치는 토큰이 엉뚱한 자리에 끼워진다 — 공항을 고른 뒤 DCT를 치면 'DCT RKSS RKPK'가
+  // 되어 경로가 성립하지 않았다.
+  // 우리가 직접 바꾼 길이는 미리 적어두고, 그와 다르면 밖에서 바뀐 것으로 보고 커서를 끝으로 옮긴다.
+  // 커서는 끝이 아니라 '마지막 공항 앞'으로 간다. 공항이 양 끝에 놓인 뒤 다음에 치는 것은
+  // 그 사이에 들어가야 맞다 — 경로는 출발과 목적지 사이를 채우는 것이기 때문이다.
+  // 끝으로 보내면 VFR에서 'RKSS RKPK DCT'처럼 연결어가 목적지 뒤에 붙어 경로가 성립하지 않는다.
+  const expectedLengthRef = useRef(tokens.length)
+  useEffect(() => {
+    if (tokens.length === expectedLengthRef.current) return
+    expectedLengthRef.current = tokens.length
+    const lastIsAirport = tokens.length > 1 && tokens.at(-1)?.kind === TOKEN_KINDS.AIRPORT
+    setCaret(lastIsAirport ? tokens.length - 1 : tokens.length)
+  }, [tokens])
+
   const commit = (value) => {
     const trimmed = value.trim()
     if (!trimmed) return
@@ -24,6 +39,7 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
     // 한 번에 여러 토큰을 붙여넣는 경우가 있다 — 공백으로 갈라 각각 토큰으로 넣는다.
     const parts = trimmed.split(/\s+/)
     next.splice(at, 0, ...parts)
+    expectedLengthRef.current = next.length
     onChange?.(next)
     setCaret(at + parts.length)
     setDraft('')
@@ -33,6 +49,7 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
     if (at === 0) return
     const next = [...texts]
     next.splice(at - 1, 1)
+    expectedLengthRef.current = next.length
     onChange?.(next)
     setCaret(at - 1)
   }
@@ -102,6 +119,9 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
           disabled={disabled}
           value={draft}
           placeholder={tokens.length === 0 ? placeholder : ''}
+          // 입력칸을 누른 것은 자리를 옮기겠다는 뜻이 아니다. 이 이벤트가 상자로 번지면
+          // 상자의 처리기가 커서를 끝으로 끌어가, 목적지 앞에 있던 자리를 잃는다.
+          onMouseDown={(event) => event.stopPropagation()}
           onChange={(event) => setDraft(event.target.value.toUpperCase())}
           onKeyDown={onKeyDown}
           onBlur={() => commit(draft)}

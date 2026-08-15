@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures.mjs'
+import { enterRouteTokens } from '../route-token-input.mjs'
 import { installRouteBriefingFixtures } from '../route-fixture.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
@@ -35,11 +36,8 @@ async function completeWorkflow(page, rule, isMobile, { stopAtCompare = false, s
   await selectAirport(page, '출발', 'RKSS', isMobile)
   await selectAirport(page, '도착', 'RKPK', isMobile)
 
-  const routeDraft = page.getByRole('textbox', {
-    name: rule === 'IFR' ? /en-route 경로|예: OSPAT/ : (isMobile ? /VFR 초안 경로/ : /예: RKSI DCT GONAX DCT RKPK/),
-  })
-  await routeDraft.fill(rule === 'IFR' ? 'SEL' : 'RKSS DCT RKPK')
-  await page.getByRole('button', { name: '경로 적용', exact: true }).click()
+  // 토큰이 확정될 때마다 반영되므로 적용 버튼이 없다. 공항은 위 선택기가 이미 넣었다.
+  await enterRouteTokens(page, rule === 'IFR' ? ['SEL'] : ['DCT'])
   await expect(page.getByRole('button', { name: '경로비교로', exact: true })).toBeEnabled()
 
   await page.getByRole('button', { name: '경로비교로', exact: true }).click()

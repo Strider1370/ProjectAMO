@@ -1,5 +1,6 @@
 // ponytail: throwaway capture spec for RKSS→RKPC tab screenshots. Delete after review.
 import { test, expect } from '../fixtures.mjs'
+import { enterRouteTokens } from '../route-token-input.mjs'
 import { installRouteBriefingFixtures } from '../route-fixture.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
@@ -26,8 +27,8 @@ test.describe('tabcapture', () => {
     await page.getByRole('button', { name: '도착 공항 선택', exact: true }).click()
     await page.getByRole('button', { name: /RKPC$/ }).click()
 
-    await page.getByRole('textbox', { name: /en-route 경로|예: OSPAT/ }).fill('SEL')
-    await page.getByRole('button', { name: '경로 적용', exact: true }).click()
+    // 토큰이 확정될 때마다 반영되므로 적용 버튼이 없다.
+    await enterRouteTokens(page, ['SEL'])
     await expect(page.getByRole('button', { name: '경로비교로', exact: true })).toBeEnabled()
     await page.screenshot({ path: `${OUT}/1-route-apply.png`, fullPage: true })
 
@@ -71,8 +72,8 @@ test.describe('tabcapture', () => {
     await page.getByRole('button', { name: /RKSS$/ }).click()
     await page.getByRole('button', { name: '도착 공항 선택', exact: true }).click()
     await page.getByRole('button', { name: /RKPC$/ }).click()
-    await page.getByRole('textbox', { name: /en-route 경로|예: OSPAT/ }).fill('SEL')
-    await page.getByRole('button', { name: '경로 적용', exact: true }).click()
+    // 토큰이 확정될 때마다 반영되므로 적용 버튼이 없다.
+    await enterRouteTokens(page, ['SEL'])
     await page.getByRole('button', { name: '경로비교로', exact: true }).click()
     await page.getByText('기본 경로', { exact: true }).waitFor()
 

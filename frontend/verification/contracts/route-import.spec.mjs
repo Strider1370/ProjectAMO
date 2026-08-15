@@ -32,10 +32,10 @@ test.describe('route-import', () => {
     await plannedRoute.click()
     await expect(page.getByRole('button', { name: /출발.*RKSI/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /도착.*RKPK/ })).toBeVisible()
-    const routeDraft = testInfo.project.name === 'mobile'
-      ? page.getByRole('textbox', { name: /VFR 초안 경로/ })
-      : page.getByRole('textbox', { name: '예: RKSI DCT GONAX DCT RKPK' })
-    await expect(routeDraft).toHaveValue(/RKSI.*RKPK/)
+    // 경로는 이제 글자 칸의 값이 아니라 알약 목록이다. 불러온 경로가 양 끝 공항을 담고
+    // 있는지를 알약으로 확인한다.
+    await expect(page.locator('.rtf-pill').first()).toHaveText('RKSI')
+    await expect(page.locator('.rtf-pill').last()).toHaveText('RKPK')
     await expect(page.getByRole('button', { name: '경로비교로', exact: true })).toBeEnabled()
   })
 })
