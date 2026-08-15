@@ -31,14 +31,18 @@ const PROCEDURE_FILES = [
   { airport: 'RKJK', type: 'STAR', file: 'rkjk-star-procedures.json' },
 ]
 
+// 받은 뒤에만 저장하면, 같은 파일을 동시에 두 번 부를 때 둘 다 캐시를 못 보고 각자 네트워크를
+// 탄다. 실제로 절차 파일이 두 번씩 내려왔다 — 토큰 판정과 선택기 목록이 나란히 부르기 때문이다.
+// 진행 중인 약속 자체를 담아 두 번째 호출이 그것을 기다리게 한다(routePlanner의 loadOnce와 같은 방식).
 const cache = {}
 
-async function loadFile(file) {
+function loadFile(file) {
   if (cache[file]) return cache[file]
-  const res = await fetch(`${BASE}/${file}`)
-  const data = await res.json()
-  cache[file] = data
-  return data
+  const pending = fetch(`${BASE}/${file}`).then((res) => res.json())
+  // 실패는 캐시하지 않는다 — 한 번 끊긴 자료가 새로고침 전까지 영영 비어 있으면 안 된다.
+  pending.catch(() => { delete cache[file] })
+  cache[file] = pending
+  return pending
 }
 
 export async function getProcedures(airport, type) {

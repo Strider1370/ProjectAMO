@@ -23,22 +23,25 @@ function loadOnce(key, load) {
   return promise
 }
 
-async function fetchJson(path) {
-  const response = await fetch(`${NAVDATA_BASE_URL}/${path}`)
-
-  if (!response.ok) {
-    throw new Error(`Failed to load ${path}`)
-  }
-
-  return response.json()
+// 파일 단위로 한 번만 받는다. 같은 파일을 서로 다른 통로가 부르면(airports-overseas.json은
+// loadNavdata와 loadOverseasAirports가 각각 불렀다) 같은 것을 여러 번 내려받게 된다.
+// loadOnce는 진행 중인 약속을 담으므로 동시에 불러도 한 번만 나간다.
+function fetchJson(path) {
+  return loadOnce(`file:${path}`, async () => {
+    const response = await fetch(`${NAVDATA_BASE_URL}/${path}`)
+    if (!response.ok) throw new Error(`Failed to load ${path}`)
+    return response.json()
+  })
 }
 
 // 해외 navdata는 선택적 — 파일 없으면 null 반환(국내만으로 정상 동작).
+// 없는 파일도 캐시한다: 매번 404를 받아올 이유가 없다. 다만 loadOnce는 실패를 캐시하지
+// 않으므로, 없음을 null이라는 정상 값으로 바꿔 담는다.
 async function fetchJsonOptional(path) {
+  // fetchJson과 같은 이름표를 쓰도록 그것을 그대로 부른다. 이름표가 갈리면 같은 파일을
+  // 두 번 받는다 — airports-overseas.json이 실제로 그랬다.
   try {
-    const response = await fetch(`${NAVDATA_BASE_URL}/${path}`)
-    if (!response.ok) return null
-    return await response.json()
+    return await fetchJson(path)
   } catch {
     return null
   }
@@ -152,13 +155,11 @@ export async function loadNavpoints() {
 // 바깥에서 {}로 바꿔주므로 부르는 쪽 계약("실패하면 빈 객체")은 그대로다.
 // 예전에는 네트워크 오류일 때만 {}를 영구 캐시하고 HTTP 오류일 땐 재시도해서
 // 같은 실패인데 결과가 달랐다 — 재시도하는 쪽으로 통일한다.
+// fetchJson을 쓴다 — loadNavdata도 같은 파일을 받으므로, 각자 자기 이름표로 캐시하면
+// 같은 것을 두 번 내려받는다. 파일 경로를 이름표로 삼으면 어느 통로로 부르든 한 번이다.
 export async function loadOverseasAirports() {
   try {
-    return await loadOnce('overseas-airports', async () => {
-      const response = await fetch(`${NAVDATA_BASE_URL}/airports-overseas.json`)
-      if (!response.ok) throw new Error('airports-overseas.json unavailable')
-      return response.json()
-    })
+    return await fetchJson('airports-overseas.json')
   } catch {
     return {}
   }
