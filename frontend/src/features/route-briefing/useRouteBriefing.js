@@ -449,15 +449,44 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 문자열은 공항부터 목적지까지 경로 전체를 담는다. 선택기로 고른 공항이 있으면
   // 목록의 처음과 끝에 넣어준다 — 빈 칸에서 시작하면 공항을 두 번 입력하게 된다.
   // 이용자가 이미 손을 댄 목록은 건드리지 않는다.
+  // 토큰 목록 → 선택기. 목록이 원본이므로 선택기는 목록을 읽어 자기 상태를 보여준다.
+  // 이것이 없으면 경로에 RKSI 알약이 있는데 위쪽 「출발 공항」은 '선택'으로 남아, 같은 것을
+  // 두 곳에서 다르게 말하게 된다.
+  //
+  // 되먹임 걱정: 선택기를 고치면 setEndpointAirportToken이 목록을 고치고, 그 결과 이 효과가
+  // 돌지만 값이 이미 같으므로 아무것도 하지 않는다. 값이 같을 때 멈추는 것이 고리를 끊는다.
+  // requestContextChange를 거치지 않는 updateRouteField를 쓴다 — 효과 안에서 확인 창을
+  // 띄우면 이용자가 누르지 않은 확인이 뜬다.
+  const tokenEndpointAirports = useMemo(() => {
+    const airportTokens = routeTokens.filter((token) => token.kind === TOKEN_KINDS.AIRPORT)
+    return {
+      departure: routeTokens[0]?.kind === TOKEN_KINDS.AIRPORT ? routeTokens[0].text : null,
+      arrival: airportTokens.length > 1 && routeTokens.at(-1)?.kind === TOKEN_KINDS.AIRPORT
+        ? routeTokens.at(-1).text
+        : null,
+    }
+  }, [routeTokens])
+
+  useEffect(() => {
+    const { departure, arrival } = tokenEndpointAirports
+    if (departure && departure !== routeForm.departureAirport) updateRouteField('departureAirport', departure)
+    if (arrival && arrival !== routeForm.arrivalAirport) updateRouteField('arrivalAirport', arrival)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenEndpointAirports, routeForm.departureAirport, routeForm.arrivalAirport])
+
   const seededRef = useRef(false)
   useEffect(() => {
     if (seededRef.current) return
     const departure = routeForm.departureAirport
     const arrival = routeForm.arrivalAirport
     if (!departure && !arrival) return
+    // 목록이 비어 있을 때만 채운다. 이용자가 이미 무언가 쳤으면 그것이 원본이다 —
+    // 선택기가 공항을 채우는 순간 이 효과가 돌아 이용자가 친 것을 지우는 일이 있었다.
+    if (routeTokenTexts.length > 0) { seededRef.current = true; return }
     seededRef.current = true
     const enroute = routeDraftText.trim() ? routeDraftText.trim().split(/\s+/) : []
     setRouteTokenTexts([departure, ...enroute, arrival].filter(Boolean))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeForm.departureAirport, routeForm.arrivalAirport, routeDraftText])
 
   useEffect(() => {

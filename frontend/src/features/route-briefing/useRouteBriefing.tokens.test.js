@@ -35,6 +35,19 @@ test('pickers edit the token list through one path, not a parallel copy', () => 
   assert.equal(uses.length, 4)
 })
 
+test('seeding never overwrites a list the user has already typed into', () => {
+  // 선택기가 공항을 채우는 순간 초기화 효과가 돌아 이용자가 친 토큰을 지운 적이 있다.
+  assert.match(source, /if \(routeTokenTexts\.length > 0\)/)
+})
+
+test('the picker reads the token list, and the sync stops when values already agree', () => {
+  // 값이 같을 때 멈추는 것이 되먹임 고리를 끊는다.
+  assert.match(source, /departure !== routeForm\.departureAirport/)
+  assert.match(source, /arrival !== routeForm\.arrivalAirport/)
+  // 효과 안에서 확인 창을 띄우면 이용자가 누르지 않은 확인이 뜬다.
+  assert.match(source, /updateRouteField\('departureAirport'/)
+})
+
 test('FIR entry and exit are not written into the token list', () => {
   // FIR 진입·이탈은 실제 공항 코드가 아니라 우리 쪽 표시값이다.
   assert.match(source, /FIR_IN_AIRPORT && icao !== FIR_EXIT_AIRPORT/)
