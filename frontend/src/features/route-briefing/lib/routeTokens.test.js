@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { TOKEN_COLORS, TOKEN_KINDS, classifyToken, classifyTokens, errorCount, procedureFixIds, procedureTokenForms } from './routeTokens.js'
+import { TOKEN_COLORS, TOKEN_KINDS, classifyToken, classifyTokens, errorCount, findProcedureByToken, isProcedureText, procedureFixIds, procedureTokenForms } from './routeTokens.js'
 
 const lookups = {
   airports: ['RKSS', 'RKPC'],
@@ -42,14 +42,41 @@ test('empty and whitespace input yields no tokens', () => {
   assert.deepEqual(classifyTokens(['', '   '], lookups), [])
 })
 
-test('procedure token forms are built from parts, not from the human label', () => {
-  const forms = procedureTokenForms([
-    { id: 'BULT2Q', name: 'BULTI TWO QUEBEC', runways: ['32L', '32R'], enrouteFix: 'BULTI', label: 'BULT2Q (RWY 32L, 32R)' },
-  ])
-  assert.ok(forms.includes('32L.BULT2Q.BULTI'))
-  assert.ok(forms.includes('32R.BULT2Q.BULTI'))
-  assert.ok(forms.includes('BULT2Q'), '활주로를 빼고 치는 경우도 받아야 한다')
-  assert.ok(!forms.some((form) => form.includes('(')), '사람이 읽는 이름은 대조에 쓰지 않는다')
+// 실제 자료 모양: id는 내부 키, name이 조종사가 쓰는 이름, label은 사람이 읽는 표시.
+const RKSI_SID = {
+  id: 'RKSI-SID-BINIL3C',
+  name: 'BINIL3C',
+  runways: ['15L/R'],
+  enrouteFix: 'BINIL',
+  label: 'BINIL3C (RWY 15L/R)',
+}
+
+test('procedure forms use the name a pilot writes, not the internal id or the label', () => {
+  const forms = procedureTokenForms([RKSI_SID])
+  assert.ok(forms.includes('BINIL3C'), '절차 이름만 쳐도 받아야 한다')
+  assert.ok(!forms.includes('RKSI-SID-BINIL3C'), '내부 키는 경로에 치는 글자가 아니다')
+  assert.ok(!forms.some((form) => form.includes('(')), '사람이 읽는 표시는 대조에 쓰지 않는다')
+})
+
+test('paired runways split so each side can be written', () => {
+  // 자료에는 '15L/R'로 묶여 있지만 경로에는 한 쪽만 쓴다.
+  const forms = procedureTokenForms([RKSI_SID])
+  assert.ok(forms.includes('15L.BINIL3C.BINIL'))
+  assert.ok(forms.includes('15R.BINIL3C.BINIL'))
+})
+
+test('a typed procedure resolves back to its procedure for the picker', () => {
+  assert.equal(findProcedureByToken('BINIL3C', [RKSI_SID])?.id, 'RKSI-SID-BINIL3C')
+  assert.equal(findProcedureByToken('15L.BINIL3C.BINIL', [RKSI_SID])?.id, 'RKSI-SID-BINIL3C')
+  assert.equal(findProcedureByToken('BOPTA2A', [RKSI_SID]), null)
+  assert.equal(isProcedureText('BINIL3C', [RKSI_SID]), true)
+  assert.equal(isProcedureText('ANDOL', [RKSI_SID]), false)
+})
+
+test('a procedure classifies as a procedure once its forms are known', () => {
+  const withProcedure = { ...lookups, procedures: procedureTokenForms([RKSI_SID]) }
+  assert.equal(classifyToken('BINIL3C', withProcedure).kind, TOKEN_KINDS.PROCEDURE)
+  assert.equal(classifyToken('15L.BINIL3C.BINIL', withProcedure).kind, TOKEN_KINDS.PROCEDURE)
 })
 
 test('every token kind has a color, and only error and coordinate carry a border', () => {

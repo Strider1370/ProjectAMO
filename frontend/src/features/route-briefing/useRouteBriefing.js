@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchVerticalProfile, fetchCrossSection, fetchRouteBriefing, fetchRouteExposure, fetchRouteExposureBatch, fetchAltitudeComparison } from '../../api/briefingApi.js'
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavdata, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
-import { classifyTokens, errorCount, procedureFixCoordinates, procedureFixIds, procedureTokenForms, tokenGeometry, TOKEN_KINDS } from './lib/routeTokens.js'
+import { classifyTokens, errorCount, findProcedureByToken, isProcedureText, procedureFixCoordinates, procedureFixIds, procedureTokenForms, tokenGeometry, TOKEN_KINDS } from './lib/routeTokens.js'
 import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString, parseVfrDraftText } from './lib/manualRouteInput.js'
 import { calcVfrDistance } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
@@ -480,6 +480,29 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tokenEndpointAirports, routeForm.departureAirport, routeForm.arrivalAirport])
 
+  // 절차 토큰 → 선택기. 절차를 치면 위쪽 SID/STAR 칸도 그 절차를 보여야 한다.
+  // 값이 같으면 멈추므로 선택기로 고른 경우와 서로 밀고 당기지 않는다.
+  const procedureTokenTexts = useMemo(() => routeTokens
+    .filter((token) => token.kind === TOKEN_KINDS.PROCEDURE)
+    .map((token) => token.text)
+    .join(','), [routeTokens])
+
+  useEffect(() => {
+    if (!procedureTokenTexts) return
+    for (const text of procedureTokenTexts.split(',')) {
+      const sid = findProcedureByToken(text, sidOptions)
+      if (sid && sid.id !== selectedSid?.id) {
+        updateEditorContext({ entryFix: sid.enrouteFix ?? '' }, { procedures: { sid } })
+        continue
+      }
+      const star = findProcedureByToken(text, starOptions)
+      if (star && star.id !== selectedStar?.id) {
+        updateEditorContext({ exitFix: star.startFix ?? '' }, { procedures: { star } })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [procedureTokenTexts, sidOptions, starOptions, selectedSid?.id, selectedStar?.id])
+
   // 토큰이 확정되면 경로를 만든다. 이것이 「경로 적용」 버튼을 대신하는 방아쇠다 —
   // 버튼만 없애고 이 연결을 빼면 알약은 생기는데 경로는 만들어지지 않는다.
   //
@@ -777,12 +800,35 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setPendingContextChange(null)
   }
 
+  // 절차 토큰이 목록에서 놓이는 자리: SID는 출발공항 바로 뒤, STAR는 목적지 바로 앞.
+  // 자리가 뜻을 가지므로(어느 쪽 절차인지) 아무 데나 넣으면 안 된다.
+  const setProcedureToken = useCallback((end, procedure) => {
+    setRouteTokenTexts((texts) => {
+      const isAirport = (value) => (value ? KNOWN_AIRPORTS.includes(value.toUpperCase()) : false)
+      const forms = procedure ? procedureTokenForms([procedure]) : []
+      // 가장 완전한 형태(활주로.절차.FIX)를 쓴다. 없으면 절차 이름만.
+      const text = forms.find((form) => form.includes('.')) ?? forms[0] ?? null
+      const next = texts.filter((token) => !isProcedureText(token, end === 'departure' ? sidOptions : starOptions))
+      if (!text) return next
+      if (end === 'departure') {
+        const at = isAirport(next[0]) ? 1 : 0
+        next.splice(at, 0, text)
+      } else {
+        const at = next.length > 0 && isAirport(next.at(-1)) ? next.length - 1 : next.length
+        next.splice(at, 0, text)
+      }
+      return next
+    })
+  }, [sidOptions, starOptions])
+
   function handleSidChange(proc) {
+    setProcedureToken('departure', proc)
     updateEditorContext(proc ? { entryFix: proc.enrouteFix ?? '' } : {}, { procedures: { sid: proc } })
     if (routeResult) setRouteDraftResult(routeResult)
   }
 
   function handleStarChange(proc) {
+    setProcedureToken('arrival', proc)
     updateEditorContext(proc ? { exitFix: proc.startFix ?? '' } : {}, { procedures: { star: proc } })
     if (routeResult) setRouteDraftResult(routeResult)
   }

@@ -142,6 +142,40 @@ test.describe('route-token-input', () => {
     await expect(page.locator('.rtf-pill').nth(1)).toHaveText('A582')
   })
 
+  // SID/STAR는 양방향이어야 한다. 한쪽만 되면 같은 사실을 두 곳에서 다르게 말한다.
+  test('typing a SID selects it in the picker above', async ({ page }, testInfo) => {
+    const isMobile = testInfo.project.name === 'mobile'
+    await openRoutePanel(page, isMobile)
+    // 절차는 공항에 딸린 자료다 — 출발공항이 먼저 있어야 목록을 불러온다.
+    await enterRouteTokens(page, ['RKSI'])
+    await expect(page.getByRole('button', { name: /출발.*RKSI/ })).toBeVisible()
+
+    await enterRouteTokens(page, ['BINIL3C'])
+
+    // 절차 이름 그대로 쳤으니 오류가 아니어야 한다 — 선택기에 적힌 표시가 아니라 이름이다.
+    await expect.poll(() => page.locator('.rtf-pill.is-error').count()).toBe(0)
+    await expect(page.locator('.rtf-pill.is-procedure').first()).toContainText('BINIL3C')
+    // 위쪽 SID 칸이 그 절차를 보여준다.
+    await expect.poll(() => page.getByText('BINIL3C', { exact: false }).count()).toBeGreaterThan(1)
+  })
+
+  test('picking a SID writes it into the field', async ({ page }, testInfo) => {
+    const isMobile = testInfo.project.name === 'mobile'
+    test.skip(isMobile, '모바일 SID 칸은 점진 노출 뒤에 있어 별도 경로가 필요하다')
+    await openRoutePanel(page, isMobile)
+    await enterRouteTokens(page, ['RKSI'])
+
+    // Fluent Dropdown이다. 값이 '-- 없음 --'인 콤보박스가 SID 칸이고, 옵션은 목록에서
+    // 이름으로 잡는다 — 위치(nth)로 잡으면 옵션 순서가 바뀔 때 조용히 다른 것을 고른다.
+    const sid = page.getByRole('combobox').filter({ hasText: /없음/ }).first()
+    await sid.click()
+    const option = page.getByRole('option', { name: /BINIL3C/ }).first()
+    await option.click()
+
+    // 고른 절차가 알약으로 들어와야 한다 — 한 방향만 되면 두 곳이 어긋난다.
+    await expect.poll(() => page.locator('.rtf-pill.is-procedure').count()).toBeGreaterThan(0)
+  })
+
   test('the four pill colors are actually different', async ({ page }, testInfo) => {
     await openRoutePanel(page, testInfo.project.name === 'mobile')
     await enterRouteTokens(page, ['RKSI', 'ANDOL', 'A582', 'GONXA'])

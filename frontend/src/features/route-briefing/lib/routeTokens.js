@@ -132,16 +132,44 @@ export function procedureFixIds(procedures = []) {
   return [...ids]
 }
 
+// 활주로는 자료에 '15L/R'처럼 묶여 있다. 경로에는 한 쪽만 쓰므로 갈라놓는다.
+function runwayForms(runway) {
+  const value = String(runway ?? '').toUpperCase()
+  const paired = value.match(/^(\d{2})([LRC])\/([LRC])$/)
+  if (paired) return [`${paired[1]}${paired[2]}`, `${paired[1]}${paired[3]}`]
+  return value ? [value] : []
+}
+
+// 절차가 경로에 나타나는 형태들.
+//
+// 조종사가 쓰는 이름은 `name`(BINIL3C)이다. `id`는 내부 키(RKSI-SID-BINIL3C)이고
+// `label`은 사람이 읽는 표시(BINIL3C (RWY 15L/R))다 — 둘 다 경로에 치는 글자가 아니다.
+// 이것을 헷갈리면 절차를 정확히 쳐도 오류로 잡힌다.
 export function procedureTokenForms(procedures = []) {
   const forms = new Set()
   for (const procedure of procedures) {
-    const id = procedure?.id
-    if (!id) continue
-    forms.add(String(id).toUpperCase())
+    const name = procedure?.name ?? procedure?.id
+    if (!name) continue
+    forms.add(String(name).toUpperCase())
     const fix = procedure.enrouteFix
     for (const runway of procedure.runways ?? []) {
-      forms.add(fix ? `${runway}.${id}.${fix}`.toUpperCase() : `${runway}.${id}`.toUpperCase())
+      for (const rwy of runwayForms(runway)) {
+        // ForeFlight식 전체 형태: 활주로.절차.연결FIX
+        forms.add(fix ? `${rwy}.${name}.${fix}`.toUpperCase() : `${rwy}.${name}`.toUpperCase())
+      }
     }
   }
   return [...forms]
+}
+
+/** 토큰 글자가 어느 절차인지 찾는다. 위쪽 선택기를 그 절차로 맞추는 데 쓴다. */
+export function findProcedureByToken(text, procedures = []) {
+  const value = String(text ?? '').trim().toUpperCase()
+  if (!value) return null
+  return procedures.find((procedure) => procedureTokenForms([procedure]).includes(value)) ?? null
+}
+
+/** 이 글자가 주어진 절차 목록 중 하나인가. 선택기로 절차를 바꿀 때 옛 토큰을 걷어내는 데 쓴다. */
+export function isProcedureText(text, procedures = []) {
+  return !!findProcedureByToken(text, procedures)
 }
