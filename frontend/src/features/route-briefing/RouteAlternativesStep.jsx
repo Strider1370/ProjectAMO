@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './RouteBriefing.css'
 import { Button } from '../../shared/ui/fluent.js'
 import { Route, Clock, CloudLightning, Plus, X } from 'lucide-react'
 import LayerToggleChips from '../map/LayerToggleChips.jsx'
+import RouteTokenField from './RouteTokenField.jsx'
 import { metLabel, buildRouteAviationLayerChips } from '../map/layerActions.js'
 import { hazardMapLayers } from './lib/hazardLayers.js'
 import { formatRouteString } from './lib/routePlanner.js'
@@ -27,7 +28,7 @@ function relatedLayerIds(routeExposure) {
   return hazardMapLayers({ sections: { adverse: { hazards: (routeExposure?.hazards ?? []).map((hazard) => ({ code: hazard.phenomenon, source: hazard.source })) } } })
 }
 
-export default function RouteDesignStep({ designs = [], selectedDesignId, routeExposure, etd, tasKt, metVisibility = {}, onToggleMet, aviationVisibility = {}, onToggleAviation, onSelect, onDuplicate, onRemove, onStartDraft, onUpdateDraft, onPreviewDraft, onApplyDraft, onUndo, routeError, onBack, onContinue, hideStepActions = false }) {
+export default function RouteDesignStep({ designs = [], selectedDesignId, routeExposure, etd, tasKt, metVisibility = {}, onToggleMet, aviationVisibility = {}, onToggleAviation, onSelect, onDuplicate, onRemove, onStartDraft, onUpdateDraft, onPreviewDraft, onApplyDraft, onUndo, routeError, classifyRouteTexts, onBack, onContinue, hideStepActions = false }) {
   const [routeString, setRouteString] = useState('')
   const [changedTokens, setChangedTokens] = useState([])
   const [deleteArmed, setDeleteArmed] = useState(false)
@@ -39,6 +40,15 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
     return next
   })
   const previousRouteStringRef = useRef('')
+  // 판정은 비행 설정 단계와 같은 함수를 쓴다 — 자료를 복사해 오면 두 화면이 어긋난다.
+  const draftTokens = useMemo(
+    () => (classifyRouteTexts ? classifyRouteTexts(routeString.trim() ? routeString.trim().split(/\s+/) : []) : []),
+    [classifyRouteTexts, routeString],
+  )
+  const draftTokenErrors = useMemo(
+    () => draftTokens.filter((token) => token.reason).map((token) => token.reason),
+    [draftTokens],
+  )
   const selectedDesign = designs.find((design) => design.id === selectedDesignId)
   const appliedRouteString = selectedDesign?.routeString || formatRouteString(selectedDesign?.routeResult) || ''
   const baseDesign = designs.find((design) => design.kind === 'base' || design.id === 'base')
@@ -185,12 +195,27 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
         </button>
       )}
       {selectedDesign?.kind === 'alternative' && <div className="rb-design-route-string">
-        <label htmlFor="rb-compatible-route">항로 문자열 직접 편집</label>
-        <textarea id="rb-compatible-route" value={routeString} onChange={(event) => { setRouteString(event.target.value); onUpdateDraft?.(event.target.value) }} onKeyDown={(event) => { if (event.ctrlKey && event.key === 'Enter') onApplyDraft?.() }} />
-        <div className="rb-design-route-actions">
-          <Button appearance="primary" type="button" onClick={() => onApplyDraft?.()} disabled={!routeString.trim() || routeString.trim() === appliedRouteString.trim()}>적용</Button>
-          {selectedDesign.undoStack?.length > 0 && <Button appearance="secondary" type="button" onClick={onUndo}>되돌리기</Button>}
-        </div>
+        {/* 비행 설정 단계와 같은 입력칸을 쓴다. 같은 일을 두 화면에서 다르게 하면 배울 것이
+            두 가지가 된다. 토큰이 확정될 때 반영되므로 적용 버튼은 없다. */}
+        <RouteTokenField
+          label="항로 문자열 직접 편집"
+          placeholder="예: BULTI Y711 MEKIL"
+          tokens={draftTokens}
+          onChange={(texts) => {
+            const text = texts.join(' ')
+            setRouteString(text)
+            onUpdateDraft?.(text)
+            onApplyDraft?.(text)
+          }}
+        />
+        {draftTokenErrors.length > 0 && (
+          <ul className="rtf-error-list">
+            {draftTokenErrors.map((reason) => <li key={reason}>{reason}</li>)}
+          </ul>
+        )}
+        {selectedDesign.undoStack?.length > 0 && <div className="rb-design-route-actions">
+          <Button appearance="secondary" type="button" onClick={onUndo}>되돌리기</Button>
+        </div>}
         {selectedDesign.draftEditor?.error && <p role="alert">{selectedDesign.draftEditor.error}</p>}
       </div>}
       {changedTokens.length > 0 && <p className="rb-route-string-change">지도 수정 반영: {routeString.split(' ').map((token, index) => <span key={`${token}-${index}`} className={changedTokens.includes(token) ? 'is-changed' : ''}>{token} </span>)}</p>}

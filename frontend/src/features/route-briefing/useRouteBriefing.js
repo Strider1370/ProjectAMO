@@ -418,6 +418,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 지금까지 확정된 토큰이 지도에서 어디인지. 공항 하나만 쳐도 점이 보이고, 둘 이상이면
   // 그 사이가 이어진다 — 목적지를 정하기 전에도 친 것이 화면에 있어야 한다.
   const routeTokenGeometry = useMemo(() => tokenGeometry(routeTokens), [routeTokens])
+  // 우회안 초안처럼 이 목록과 별개인 글자를 같은 규칙으로 판정해야 하는 곳이 있다.
+  // 판정 자료를 그쪽에 넘기지 않고 함수만 내보낸다 — 자료를 복사하면 두 곳이 어긋난다.
+  const classifyRouteTexts = useCallback(
+    (texts) => classifyTokens(texts, tokenLookups),
+    [tokenLookups],
+  )
 
   // 절차는 공항에 딸려 있다. 토큰 목록에 들어온 공항의 절차를 불러 판정 자료에 채운다.
   // 이 순서를 안 지키면 SID를 제대로 쳐도 "그런 지점이 없습니다"로 잡힌다.
@@ -772,6 +778,25 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     if (!autoApplyPending || autoRecommendRequested || routeLoading) return
     if (!routeEditor.rawText?.trim()) return
     setAutoApplyPending(false)
+
+    // 만들어진 경로를 토큰 목록에도 넣는다. 목록이 경로의 원본이므로 여기 없으면
+    // 자동 생성 결과가 입력창에 나타나지 않는다 — 지도에는 있는데 글자로는 없는 상태가 된다.
+    // 절차는 그 자리에 놓는다: SID는 출발공항 뒤, STAR는 목적지 앞.
+    const enroute = routeEditor.rawText.trim().split(/\s+/)
+    const sidText = procedureTokenForms([routeEditor.procedures?.sid].filter(Boolean))
+      .find((form) => form.includes('.')) ?? null
+    const starText = procedureTokenForms([routeEditor.procedures?.star].filter(Boolean))
+      .find((form) => form.includes('.')) ?? null
+    setRouteTokenTexts([
+      routeForm.departureAirport,
+      sidText,
+      ...enroute,
+      starText,
+      routeForm.arrivalAirport,
+    ].filter(Boolean))
+    // 바로 아래에서 직접 적용하므로, 토큰 변화를 보고 도는 실시간 적용은 건너뛰게 표시한다.
+    // 표시하지 않으면 같은 경로를 두 번 계산해 서버를 두 번 부른다.
+    lastAppliedTokenTextRef.current = enroute.join(' ')
     applyRouteDraft()
   }, [autoApplyPending, autoRecommendRequested, routeLoading, routeEditor])
 
@@ -2173,6 +2198,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       routeTokens,
       routeTokenErrors,
       routeTokenGeometry,
+      classifyRouteTexts,
       autoRecommendRequested,
       fitBoundsRequest,
       mapInteractionMode,

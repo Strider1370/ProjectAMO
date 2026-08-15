@@ -147,6 +147,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const [step1MoreOpen, setStep1MoreOpen] = useState(false)
   const prevWorkflowStepRef = useRef('settings')
   const stepDirectionRef = useRef('forward')
+  const hasWorkflowStepTransitionRef = useRef(false)
   const [errorsOpen, setErrorsOpen] = useState(false)
   // 단계가 앞으로 갔는지 뒤로 왔는지. 렌더 중에 정해야 한다 — 효과로 미루면 이미 새 화면이
   // 그려진 뒤라 한 박자 늦은 방향으로 움직인다. 같은 단계로 다시 그려질 때는 값을 유지하므로
@@ -169,6 +170,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     navpointsById,
     routeTokens,
     routeTokenErrors,
+    classifyRouteTexts,
     hoveredWpInfo,
     starOptions,
     selectedSid,
@@ -255,8 +257,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     stepDirectionRef.current =
       WORKFLOW_STEP_ORDER.indexOf(workflowStep) < WORKFLOW_STEP_ORDER.indexOf(prevWorkflowStepRef.current) ? 'back' : 'forward'
     prevWorkflowStepRef.current = workflowStep
+    hasWorkflowStepTransitionRef.current = true
   }
   const stepDirection = stepDirectionRef.current
+  const hasWorkflowStepTransition = hasWorkflowStepTransitionRef.current
+  const stepMotion = hasWorkflowStepTransition ? stepDirection : undefined
 
   const isIfr = routeForm.flightRule === 'IFR'
   // VFR 왕복(장주·훈련·유람)은 뜬 곳으로 돌아온다 — 반대편에 같은 공항을 고를 수
@@ -632,7 +637,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       </div>
       {/* 각 단계는 이미 자기 요소로 새로 붙는다 — 방향만 넘기면 등장 애니메이션이 돈다.
           감싸는 겹을 더하지 않으므로 폭·스크롤 구조는 그대로다. */}
-      {workflowStep === 'settings' && <form className={s.form} data-step-dir={stepDirection} onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
+      {workflowStep === 'settings' && <form className={s.form} data-step-dir={stepMotion} onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}>
         <div className={s.section}>
           <h3 className={s.sectionTitle}>{'① 비행 규칙'}</h3>
           <TabList selectedValue={routeForm.flightRule} onTabSelect={(_, d) => switchFlightRule(d.value)}>
@@ -703,19 +708,19 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
       </form>}
       {workflowStep === 'compare' && (
-        <div className={s.form} data-step-dir={stepDirection}>
-          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={revealAlternativeOnMap(selectRouteDesign)} onDuplicate={revealAlternativeOnMap(duplicateSelectedRouteDesign)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
+        <div className={s.form} data-step-dir={stepMotion}>
+          <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={revealAlternativeOnMap(selectRouteDesign)} onDuplicate={revealAlternativeOnMap(duplicateSelectedRouteDesign)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} classifyRouteTexts={classifyRouteTexts} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
         </div>
       )}
       {workflowStep === 'altitude' && (
-        <div className={s.form} data-step-dir={stepDirection}>
+        <div className={s.form} data-step-dir={stepMotion}>
           <Field label="계획 순항고도 (ft)"><Input className={s.ctrl} type="number" min="500" max="60000" step="500" value={altitudeDraftFt} placeholder="예: 9,000" onChange={(_, d) => setAltitudeDraft(d.value)} /></Field>
           <Button appearance="primary" type="button" className={s.full} onClick={startAltitudeComparison} disabled={altitudeComparisonLoading}>고도 비교</Button>
           {(altitudeComparison || altitudeComparisonLoading || altitudeComparisonError) ? <AltitudeWeatherComparison comparison={altitudeComparison} loading={altitudeComparisonLoading} error={altitudeComparisonError} selectedAltitudeFt={Number(cruiseAltitudeFt)} onSelect={selectCruiseAltitude} onBack={goBackWorkflow} onContinue={continueToBriefing} profileLoading={verticalProfileLoading} profileError={verticalProfileError} hideStepActions /> : <p className="rb-alternatives-status">고도 비교는 선택 사항입니다. 순항고도를 입력하면 바로 브리핑 준비로 갈 수 있습니다.</p>}
         </div>
       )}
       {workflowStep === 'briefing' && (
-        <div className={s.form} data-step-dir={stepDirection}>
+        <div className={s.form} data-step-dir={stepMotion}>
           {briefingPreparation}
           {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
         </div>
@@ -743,7 +748,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     <form
       id="rb-mobile-form"
       key={workflowStep}
-      data-step-dir={stepDirection}
+      data-step-dir={stepMotion}
       className="route-check-form rb-mobile"
       onSubmit={(e) => { e.preventDefault(); if (isIfr) handleRouteSearch(e) }}
     >
@@ -795,7 +800,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         </>
       )}
       {workflowStep === 'compare' && (
-        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={revealAlternativeOnMap(selectRouteDesign)} onDuplicate={revealAlternativeOnMap(duplicateSelectedRouteDesign)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
+        <RouteAlternativesStep designs={routeDesigns} selectedDesignId={selectedRouteDesignId} routeExposure={routeExposure} etd={etd} tasKt={tasKt} metVisibility={metVisibility} onToggleMet={onToggleMet} aviationVisibility={aviationVisibility} onToggleAviation={onToggleAviation} onSelect={revealAlternativeOnMap(selectRouteDesign)} onDuplicate={revealAlternativeOnMap(duplicateSelectedRouteDesign)} onRemove={removeSelectedRouteDesign} onStartDraft={startAlternativeFrom} onUpdateDraft={updateSelectedDesignDraftText} onPreviewDraft={previewSelectedDesignDraft} onApplyDraft={applySelectedDesignDraft} onUndo={undoSelectedRouteDesign} routeError={routeError} classifyRouteTexts={classifyRouteTexts} onBack={goBackWorkflow} onContinue={continueToAltitudeComparison} hideStepActions />
       )}
       {workflowStep === 'altitude' && (
         <>

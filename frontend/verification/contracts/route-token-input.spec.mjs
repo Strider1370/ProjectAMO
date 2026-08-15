@@ -216,6 +216,51 @@ test.describe('route-token-input', () => {
     await expect(profileWindow.or(profileButton).first()).toBeVisible()
   })
 
+  test('auto-generate puts its whole route into the field', async ({ page }, testInfo) => {
+    // 목록이 경로의 원본이므로, 자동 생성 결과가 목록에 들어가지 않으면 지도에는 있는데
+    // 글자로는 없는 상태가 된다.
+    test.skip(testInfo.project.name === 'mobile', '모바일 자동 생성은 점진 노출 뒤에 있다')
+    await openRoutePanel(page, false)
+    // route-fixture가 맞춰둔 조합을 쓴다(route-workflow와 같은 RKSS→RKPK).
+    await enterRouteTokens(page, ['RKSS', 'RKPK'])
+
+    await page.getByRole('button', { name: '자동 생성', exact: true }).click()
+    await page.waitForTimeout(6000)
+
+    // 자동 생성은 추천할 절차를 못 찾으면 아무 경로도 만들지 않는다(그 자체는 이 계약의
+    // 관심사가 아니다). 이 계약이 지키는 것은 **만들어졌다면 입력창에도 있어야 한다**는 것이다 —
+    // 지도에는 있는데 글자로는 없는 상태가 이용자가 보고한 증상이었다.
+    const pills = await page.locator('.rtf-pill').count()
+    const distanceShown = /\d+\s*NM/.test((await page.locator('.rtf-status-right').textContent()) ?? '')
+    if (distanceShown) {
+      expect(pills, '경로가 만들어졌으면 양 끝 공항 말고도 알약이 있어야 한다').toBeGreaterThan(2)
+      await expect(page.locator('.rtf-pill').first()).toHaveText('RKSS')
+      await expect(page.locator('.rtf-pill').last()).toHaveText('RKPK')
+      // 생성된 경로가 오류로 잡히면 그 형태를 우리가 다시 못 읽는다는 뜻이다.
+      await expect(page.locator('.rtf-pill.is-error')).toHaveCount(0)
+    } else {
+      // 아무것도 만들어지지 않았다면 입력창도 그대로여야 한다 — 반쪽 상태가 없어야 한다.
+      expect(pills).toBe(2)
+    }
+  })
+
+  test('the alternatives step edits its route with pills too', async ({ page }, testInfo) => {
+    // 같은 일을 두 화면에서 다르게 하면 배울 것이 두 가지가 된다.
+    test.skip(testInfo.project.name === 'mobile', '모바일 대안 단계는 route-workflow가 덮는다')
+    await openRoutePanel(page, false)
+    await enterRouteTokens(page, ['RKSI', 'ANDOL', 'RKPK'])
+    await page.getByRole('button', { name: '경로비교로', exact: true }).click()
+
+    // 우회안을 만들면 항로 문자열 편집칸이 뜬다.
+    await page.getByRole('button', { name: /우회안 만들기/ }).click()
+    const editor = page.locator('.rtf-box')
+    await expect(editor).toHaveCount(1)
+    await expect(page.getByText('항로 문자열 직접 편집', { exact: true })).toBeVisible()
+    // 옛 방식(문자열 칸 + 적용 버튼)이 남아 있으면 안 된다.
+    await expect(page.locator('#rb-compatible-route')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '적용', exact: true })).toHaveCount(0)
+  })
+
   test('the four pill colors are actually different', async ({ page }, testInfo) => {
     await openRoutePanel(page, testInfo.project.name === 'mobile')
     await enterRouteTokens(page, ['RKSI', 'ANDOL', 'A582', 'GONXA'])
