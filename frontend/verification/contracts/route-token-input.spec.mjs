@@ -91,6 +91,57 @@ test.describe('route-token-input', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true)
   })
 
+  // 지도 소스의 데이터는 getSource(id).serialize().data로 읽는다 — querySourceFeatures는
+  // 이미 그려진 타일을 읽어 setData 직후를 반영하지 못한다(계약 등록부 규칙).
+  const tokenPreview = (page) => page.evaluate(() => {
+    const data = window.__map?.getSource?.('route-token-preview')?.serialize?.()?.data
+    const features = data?.features ?? []
+    return {
+      points: features.filter((f) => f.geometry.type === 'Point').map((f) => f.properties.text),
+      lines: features.filter((f) => f.geometry.type === 'LineString').length,
+    }
+  })
+
+  test('a departure airport alone shows its point on the map', async ({ page }, testInfo) => {
+    // 출발공항만 입력해도 그것이 입력됐다는 것을 지도에서 알 수 있어야 한다.
+    await openRoutePanel(page, testInfo.project.name === 'mobile')
+    await enterRouteTokens(page, ['RKSI'])
+
+    await expect.poll(() => tokenPreview(page).then((p) => p.points)).toEqual(['RKSI'])
+    expect((await tokenPreview(page)).lines).toBe(0)
+  })
+
+  test('a route without an arrival airport still draws its line', async ({ page }, testInfo) => {
+    // RKSI ANDOL만 쳐도 그 사이를 잇는 선이 실시간으로 나와야 한다.
+    await openRoutePanel(page, testInfo.project.name === 'mobile')
+    await enterRouteTokens(page, ['RKSI', 'ANDOL'])
+
+    await expect.poll(() => tokenPreview(page).then((p) => p.lines)).toBe(1)
+    expect((await tokenPreview(page)).points).toEqual(['RKSI', 'ANDOL'])
+  })
+
+  test('airways contribute no point — they are not places', async ({ page }, testInfo) => {
+    // 항공로에 점을 찍으면 있지도 않은 위치를 그리는 것이 된다.
+    await openRoutePanel(page, testInfo.project.name === 'mobile')
+    await enterRouteTokens(page, ['RKSI', 'A582', 'ANDOL'])
+
+    await expect.poll(() => tokenPreview(page).then((p) => p.points)).toEqual(['RKSI', 'ANDOL'])
+  })
+
+  test('arrow keys move the caret between pills', async ({ page }, testInfo) => {
+    await openRoutePanel(page, testInfo.project.name === 'mobile')
+    await enterRouteTokens(page, ['RKSI', 'ANDOL'])
+
+    // 커서를 왼쪽으로 한 칸 옮기면 그 자리에 세로선이 보이고, 치는 것이 그 자리에 들어간다.
+    await page.locator('.rtf-input').first().click()
+    await page.keyboard.press('ArrowLeft')
+    await expect(page.locator('.rtf-caret')).toBeVisible()
+
+    await page.locator('.rtf-input').first().fill('A582')
+    await page.keyboard.press('Space')
+    await expect(page.locator('.rtf-pill').nth(1)).toHaveText('A582')
+  })
+
   test('the four pill colors are actually different', async ({ page }, testInfo) => {
     await openRoutePanel(page, testInfo.project.name === 'mobile')
     await enterRouteTokens(page, ['RKSI', 'ANDOL', 'A582', 'GONXA'])

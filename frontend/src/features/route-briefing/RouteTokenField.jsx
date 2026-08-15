@@ -68,6 +68,20 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
     if (event.key === 'Backspace' && draft === '') {
       event.preventDefault()
       removeBefore()
+      return
+    }
+    // 글자를 치던 중이면 화살표는 그 글자 안에서 움직여야 한다(브라우저 기본 동작).
+    // 빈 칸일 때만 알약 사이를 옮겨다닌다.
+    if (draft === '' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      const next = event.key === 'ArrowLeft' ? at - 1 : at + 1
+      if (next < 0 || next > tokens.length) return
+      event.preventDefault()
+      setCaret(next)
+      return
+    }
+    if (draft === '' && (event.key === 'Home' || event.key === 'End')) {
+      event.preventDefault()
+      setCaret(event.key === 'Home' ? 0 : tokens.length)
     }
   }
 
@@ -107,11 +121,14 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
       {label && <span className="rtf-label">{label}</span>}
       <div className="rtf-box" onMouseDown={moveCaret(tokens.length)}>
         {tokens.slice(0, at).map(renderPill)}
+        {/* 알약 사이에 커서가 있고 아직 아무것도 치지 않았을 때만 세로선을 보인다.
+            치기 시작하면 글자 자체가 자리를 알리므로 선은 사라진다. */}
+        {at < tokens.length && draft === '' && <span className="rtf-caret" aria-hidden="true" />}
         {/* 입력칸이 알약보다 앞에 있으면서 남은 공간을 다 차지하면 뒤 알약이 오른쪽 끝으로
             밀린다. 맨 끝에 있을 때만 늘어나게 한다(is-last). */}
         <input
           ref={inputRef}
-          className={`rtf-input${at >= tokens.length ? ' is-last' : ''}`}
+          className={`rtf-input${at >= tokens.length ? ' is-last' : ''}${draft ? ' has-draft' : ''}`}
           type="text"
           autoCapitalize="characters"
           autoCorrect="off"

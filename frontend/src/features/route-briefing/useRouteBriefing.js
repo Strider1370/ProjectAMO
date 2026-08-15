@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchVerticalProfile, fetchCrossSection, fetchRouteBriefing, fetchRouteExposure, fetchRouteExposureBatch, fetchAltitudeComparison } from '../../api/briefingApi.js'
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavdata, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
-import { classifyTokens, errorCount, procedureFixIds, procedureTokenForms, TOKEN_KINDS } from './lib/routeTokens.js'
+import { classifyTokens, errorCount, procedureFixCoordinates, procedureFixIds, procedureTokenForms, tokenGeometry, TOKEN_KINDS } from './lib/routeTokens.js'
 import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString, parseVfrDraftText } from './lib/manualRouteInput.js'
 import { calcVfrDistance } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
@@ -394,6 +394,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
         setTokenLookups((current) => ({
           ...current,
           airports: Object.keys(navdata.airports ?? {}),
+          // 좌표까지 함께 넘긴다 — 토큰 하나만 확정돼도 지도에 그 지점을 보여주기 위해서다.
+          airportsById: navdata.airports ?? {},
           navpoints: navdata.navpoints ?? {},
           routes: navdata.routes ?? {},
         }))
@@ -413,6 +415,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     () => routeTokens.filter((token) => token.reason).map((token) => token.reason),
     [routeTokens],
   )
+  // 지금까지 확정된 토큰이 지도에서 어디인지. 공항 하나만 쳐도 점이 보이고, 둘 이상이면
+  // 그 사이가 이어진다 — 목적지를 정하기 전에도 친 것이 화면에 있어야 한다.
+  const routeTokenGeometry = useMemo(() => tokenGeometry(routeTokens), [routeTokens])
 
   // 절차는 공항에 딸려 있다. 토큰 목록에 들어온 공항의 절차를 불러 판정 자료에 채운다.
   // 이 순서를 안 지키면 SID를 제대로 쳐도 "그런 지점이 없습니다"로 잡힌다.
@@ -437,6 +442,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           // 절차 안의 FIX도 같이 받는다 — OSPAT처럼 터미널 구역에만 있는 이름은
           // enroute.json에 없어서, 없이 두면 정상 입력이 오류로 잡힌다.
           fixes: procedureFixIds(loaded),
+          fixCoords: procedureFixCoordinates(loaded),
         }))
       })
       .catch(() => { /* 절차를 못 불러오면 그 토큰만 오류로 남는다 — 다른 판정은 계속된다 */ })
@@ -497,11 +503,15 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   useEffect(() => {
     if (errorCount(routeTokens) > 0) return
     if (!enrouteTokenText) return
+    // 경로 계산기는 양 끝 공항이 있어야 돌아간다(routePlanner의 buildManual*Route).
+    // 그 전에 부르면 "출발·도착 공항을 확인하세요"가 빨갛게 뜨는데, 목적지를 아직 안 정한
+    // 것은 오류가 아니라 정상적인 중간 상태다 — 그 사이 화면은 토큰 미리보기가 맡는다.
+    if (!routeForm.departureAirport || !routeForm.arrivalAirport) return
     // 같은 문자열을 두 번 적용하지 않는다 — 경로 계산은 서버를 부르므로 헛호출이 쌓인다.
     if (lastAppliedTokenTextRef.current === enrouteTokenText) return
     lastAppliedTokenTextRef.current = enrouteTokenText
     applyRouteDraftRef.current?.(enrouteTokenText)
-  }, [enrouteTokenText, routeTokens])
+  }, [enrouteTokenText, routeTokens, routeForm.departureAirport, routeForm.arrivalAirport])
 
   const seededRef = useRef(false)
   useEffect(() => {
@@ -2111,6 +2121,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       navpointsById,
       routeTokens,
       routeTokenErrors,
+      routeTokenGeometry,
       autoRecommendRequested,
       fitBoundsRequest,
       mapInteractionMode,

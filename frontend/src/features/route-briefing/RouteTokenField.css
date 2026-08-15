@@ -39,15 +39,51 @@
   font-weight: 700;
 }
 
+/* 알약 사이에 있을 때는 칸을 벌리지 않는다. 빈 60px이 벌어지면 목록에 구멍이 난 것처럼
+   보여서, 무엇이 어디에 있는지가 오히려 흐려진다. 대신 글자 커서처럼 세로선 하나가
+   깜빡여 자리를 알린다 — 글자 칸에서 이미 익숙한 표시라 배울 것이 없다.
+   폭을 1px로 두어도 실제 input이므로 초점·키보드·붙여넣기는 그대로다. */
 .rtf-input {
-  flex: 0 1 60px;
-  min-width: 60px;
+  flex: 0 0 1px;
+  width: 1px;
+  min-width: 1px;
+  padding: 0;
   border: 0;
   outline: none;
   background: none;
+  color: transparent;
+  caret-color: var(--accent);
   font: inherit;
   font-weight: 700;
   text-transform: uppercase;
 }
-/* 맨 끝에 있을 때만 남은 공간을 채운다 — 그래야 눌러서 초점을 잡을 자리가 넓다. */
-.rtf-input.is-last { flex: 1 1 60px; }
+
+/* 글자를 치는 중에는 그 글자가 보여야 하므로 칸이 글자만큼 늘어난다. */
+.rtf-input.has-draft {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 1ch;
+  padding: 0 1px;
+  color: inherit;
+}
+
+/* 맨 끝에서는 남은 공간을 채운다 — 눌러서 초점을 잡을 자리가 넓어야 한다. */
+.rtf-input.is-last { flex: 1 1 60px; width: auto; min-width: 60px; }
+
+/* 알약 사이에 커서가 있을 때, 그 자리를 세로선으로 알린다. input의 기본 커서는 폭 1px
+   칸에서 안 보일 수 있어 눈에 보이는 선을 따로 그린다. */
+.rtf-caret {
+  flex: 0 0 0;
+  width: 0;
+  align-self: stretch;
+  border-left: 2px solid var(--accent);
+  animation: rtf-caret-blink 1s steps(2, start) infinite;
+}
+
+@keyframes rtf-caret-blink {
+  to { visibility: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rtf-caret { animation: none; }
+}

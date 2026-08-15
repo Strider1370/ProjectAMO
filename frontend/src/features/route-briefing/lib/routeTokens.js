@@ -37,6 +37,15 @@ function reasonFor(text) {
   return `${text} — 그런 지점이 없습니다`
 }
 
+// 좌표는 자료 모양이 제각각이라(공항은 airportsById, 지점은 navpoints, 절차 FIX는 fixCoords)
+// 한 군데서 꺼낸다. 없으면 null — 지도에 점을 찍지 않을 뿐 판정은 그대로다.
+function coordinateOf(value, { airportsById = {}, navpoints = {}, fixCoords = {} }) {
+  const source = airportsById[value] ?? navpoints[value] ?? fixCoords[value]
+  const lat = source?.coordinates?.lat ?? source?.lat
+  const lon = source?.coordinates?.lon ?? source?.lon
+  return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null
+}
+
 export function classifyToken(text, lookups = {}) {
   const value = String(text ?? '').trim().toUpperCase()
   const { airports = [], navpoints = {}, routes = {}, procedures = [], fixes = [] } = lookups
@@ -44,20 +53,44 @@ export function classifyToken(text, lookups = {}) {
   if (!value) return null
   if (value === 'DCT') return { kind: TOKEN_KINDS.DCT, text: value }
   if (procedures.includes(value)) return { kind: TOKEN_KINDS.PROCEDURE, text: value }
-  if (airports.includes(value)) return { kind: TOKEN_KINDS.AIRPORT, text: value }
+  if (airports.includes(value)) {
+    return { kind: TOKEN_KINDS.AIRPORT, text: value, coordinate: coordinateOf(value, lookups) }
+  }
   if (Object.prototype.hasOwnProperty.call(routes, value)) return { kind: TOKEN_KINDS.AIRWAY, text: value }
-  if (Object.prototype.hasOwnProperty.call(navpoints, value)) return { kind: TOKEN_KINDS.FIX, text: value }
+  if (Object.prototype.hasOwnProperty.call(navpoints, value)) {
+    return { kind: TOKEN_KINDS.FIX, text: value, coordinate: coordinateOf(value, lookups) }
+  }
   // enroute.json에는 항로 지점만 있다. OSPAT처럼 터미널 구역에만 있는 FIX는 절차 자료
   // 안에서만 나오는데, 조종사는 그것을 경로에 그대로 쓴다 — 없다고 하면 정상 입력이 오류가 된다.
-  if (fixes.includes(value)) return { kind: TOKEN_KINDS.FIX, text: value }
+  if (fixes.includes(value)) {
+    return { kind: TOKEN_KINDS.FIX, text: value, coordinate: coordinateOf(value, lookups) }
+  }
 
   try {
-    if (parseCoordinateToken(value)) return { kind: TOKEN_KINDS.COORDINATE, text: value }
+    const coordinate = parseCoordinateToken(value)
+    if (coordinate) return { kind: TOKEN_KINDS.COORDINATE, text: value, coordinate }
   } catch {
     // 좌표 모양이지만 범위를 벗어난 값 — 아래에서 오류로 떨어진다.
   }
 
   return { kind: TOKEN_KINDS.ERROR, text: value, reason: reasonFor(value) }
+}
+
+// 지금까지 확정된 토큰이 지도에서 어디인지. 공항 하나만 쳐도 점 하나가 나오고, 둘 이상이면
+// 그 사이를 잇는 선이 된다 — 목적지를 아직 안 정했어도 지금까지 친 것이 보여야 한다.
+//
+// 이 선은 계산된 경로가 아니다. 항공로(Y711 등)는 실제로 꺾여 가는데 여기서는 점과 점을
+// 직선으로 잇는다. 그래서 화면에서 실제 경로와 반드시 다르게 보여야 한다(점선 등) —
+// 곧게 그은 선을 실제 항로로 읽으면 위험하다.
+export function tokenGeometry(tokens = []) {
+  const points = tokens
+    .filter((token) => token?.coordinate)
+    .map((token) => ({ text: token.text, kind: token.kind, ...token.coordinate }))
+  return {
+    points,
+    // 선은 점이 둘 이상일 때만 뜻이 있다.
+    line: points.length > 1 ? points.map((point) => [point.lon, point.lat]) : [],
+  }
 }
 
 export function classifyTokens(texts = [], lookups = {}) {
@@ -72,6 +105,21 @@ export function errorCount(tokens = []) {
 // getProcedures의 label("BULT2Q (RWY 32L)")은 사람이 읽는 이름이라 대조에 쓸 수 없다 —
 // 그대로 대조하면 절차를 정확히 쳐도 영원히 오류로 잡힌다.
 // 활주로를 빼고 치는 경우도 있으므로 절차 ID 단독형도 함께 받는다.
+// 절차 안 FIX의 좌표. 이름만 알면 판정은 되지만 지도에 점을 찍으려면 좌표가 필요하다.
+export function procedureFixCoordinates(procedures = []) {
+  const byId = {}
+  const put = (id, lat, lon) => {
+    if (!id || !Number.isFinite(lat) || !Number.isFinite(lon)) return
+    const key = String(id).toUpperCase()
+    if (!byId[key]) byId[key] = { lat, lon }
+  }
+  for (const procedure of procedures) {
+    for (const fix of procedure?.fixes ?? []) put(fix?.id, fix?.lat, fix?.lon)
+    for (const point of procedure?.displayPoints ?? []) put(point?.id, point?.lat, point?.lon)
+  }
+  return byId
+}
+
 // 절차 안에 나오는 FIX 이름들. 터미널 구역 FIX는 enroute.json에 없고 절차에만 있다.
 export function procedureFixIds(procedures = []) {
   const ids = new Set()

@@ -133,6 +133,7 @@ import {
   syncRoutePreviewLayers,
   syncVfrWaypointData,
 } from '../route-briefing/lib/routePreviewSync.js'
+import { syncTokenPreviewLayers } from '../route-briefing/lib/tokenPreviewLayers.js'
 import { legCoordinates, syncLegHighlight } from '../route-briefing/lib/legHighlight.js'
 import { useRouteBriefing } from '../route-briefing/useRouteBriefing.js'
 import AirportTooltip from './AirportTooltip.jsx'
@@ -673,6 +674,15 @@ const MapView = forwardRef(function MapView({
       map.fitBounds(bounds, { padding: fitPaddingFor(80), maxZoom: 9, duration: 500 })
     }
   }, [routePreviewModel, isStyleReady, routeResult, styleRevision])
+
+  // 확정된 토큰을 점과 점선으로 보여준다. 공항 하나만 쳐도 그 지점이 지도에 뜨고,
+  // 둘 이상이면 그 사이가 이어진다 — 목적지를 정하기 전에도 친 것이 화면에 있어야 한다.
+  // 화면을 옮기지는 않는다: 치는 도중에 지도가 계속 움직이면 읽을 수가 없다.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return
+    syncTokenPreviewLayers(map, routeBriefing.state.routeTokenGeometry, { hasAppliedRoute: !!routeResult })
+  }, [routeBriefing.state.routeTokenGeometry, routeResult, isStyleReady, styleRevision])
 
   useEffect(() => {
     const map = mapRef.current
