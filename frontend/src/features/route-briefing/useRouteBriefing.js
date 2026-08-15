@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchVerticalProfile, fetchCrossSection, fetchRouteBriefing, fetchRouteExposure, fetchRouteExposureBatch, fetchAltitudeComparison } from '../../api/briefingApi.js'
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
-import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
+import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavdata, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
+import { classifyTokens, errorCount, procedureTokenForms, TOKEN_KINDS } from './lib/routeTokens.js'
 import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString, parseVfrDraftText } from './lib/manualRouteInput.js'
 import { calcVfrDistance } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
@@ -95,6 +96,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const [firInOptions, setFirInOptions] = useState([])
   const [firExitOptions, setFirExitOptions] = useState([])
   const [navpointsById, setNavpointsById] = useState({})
+  // 경로의 원본. 이 목록 외에 경로를 담는 곳은 없다.
+  const [routeTokenTexts, setRouteTokenTexts] = useState([])
+  const [tokenLookups, setTokenLookups] = useState({ airports: [], navpoints: {}, routes: {}, procedures: [] })
   const [autoRecommendRequested, setAutoRecommendRequested] = useState(false)
   const [autoApplyPending, setAutoApplyPending] = useState(false) // 자동 생성 → 경로 적용까지 이어서
   const [fitBoundsRequest, setFitBoundsRequest] = useState(null)
@@ -377,6 +381,77 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       cancelled = true
     }
   }, [])
+
+  // 토큰 판정은 브라우저 안에서 끝난다 — 공항·항공로·지점 자료가 이미 여기 있다.
+  // 서버에 묻는 것은 경로를 실제로 계산할 때뿐이고, 그것은 토큰이 확정된 뒤다.
+  // 글자마다 서버를 부르면 한 경로를 치는 동안 요청이 수십 번 나간다.
+  useEffect(() => {
+    let cancelled = false
+
+    loadNavdata()
+      .then((navdata) => {
+        if (cancelled) return
+        setTokenLookups((current) => ({
+          ...current,
+          airports: Object.keys(navdata.airports ?? {}),
+          navpoints: navdata.navpoints ?? {},
+          routes: navdata.routes ?? {},
+        }))
+      })
+      .catch(() => { /* 자료를 못 불러오면 모든 토큰이 오류로 남는다 — 화면이 그 사실을 알린다 */ })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const routeTokens = useMemo(
+    () => classifyTokens(routeTokenTexts, tokenLookups),
+    [routeTokenTexts, tokenLookups],
+  )
+  const routeTokenErrors = useMemo(
+    () => routeTokens.filter((token) => token.reason).map((token) => token.reason),
+    [routeTokens],
+  )
+
+  // 절차는 공항에 딸려 있다. 토큰 목록에 들어온 공항의 절차를 불러 판정 자료에 채운다.
+  // 이 순서를 안 지키면 SID를 제대로 쳐도 "그런 지점이 없습니다"로 잡힌다.
+  // 공항보다 절차를 먼저 치면 그 절차는 잠깐 오류로 보였다가 공항이 들어온 뒤 제 색을 찾는다.
+  const tokenAirports = useMemo(
+    () => routeTokens.filter((token) => token.kind === TOKEN_KINDS.AIRPORT).map((token) => token.text).join(','),
+    [routeTokens],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    const icaos = tokenAirports ? tokenAirports.split(',') : []
+    if (icaos.length === 0) return undefined
+
+    Promise.all(icaos.flatMap((icao) => [getProcedures(icao, 'SID'), getProcedures(icao, 'STAR')]))
+      .then((lists) => {
+        if (cancelled) return
+        setTokenLookups((current) => ({ ...current, procedures: procedureTokenForms(lists.flat()) }))
+      })
+      .catch(() => { /* 절차를 못 불러오면 그 토큰만 오류로 남는다 — 다른 판정은 계속된다 */ })
+
+    return () => {
+      cancelled = true
+    }
+  }, [tokenAirports])
+
+  // 문자열은 공항부터 목적지까지 경로 전체를 담는다. 선택기로 고른 공항이 있으면
+  // 목록의 처음과 끝에 넣어준다 — 빈 칸에서 시작하면 공항을 두 번 입력하게 된다.
+  // 이용자가 이미 손을 댄 목록은 건드리지 않는다.
+  const seededRef = useRef(false)
+  useEffect(() => {
+    if (seededRef.current) return
+    const departure = routeForm.departureAirport
+    const arrival = routeForm.arrivalAirport
+    if (!departure && !arrival) return
+    seededRef.current = true
+    const enroute = routeDraftText.trim() ? routeDraftText.trim().split(/\s+/) : []
+    setRouteTokenTexts([departure, ...enroute, arrival].filter(Boolean))
+  }, [routeForm.departureAirport, routeForm.arrivalAirport, routeDraftText])
 
   useEffect(() => {
     const airport = routeForm.arrivalAirport
@@ -1023,6 +1098,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
   async function applyRouteDraft(text = routeDraftText) {
     const routeText = typeof text === 'string' ? text : routeDraftText
+    // 오류가 있으면 지도용 경로를 갱신하지 않는다 — 마지막으로 성립했던 경로가 남는다.
+    // "빨간 게 있으면 지도는 내 최신 입력이 아니다"가 이 화면의 한 줄 규칙이다(스펙 결정 5).
+    // 오타를 건너뛰고 나머지로 경로를 만들면, 이용자가 의도한 적 없는 경로가 멀쩡한 모습으로
+    // 화면에 남는다 — 판단에 쓰는 화면에서 그것이 가장 위험하다.
+    if (errorCount(routeTokens) > 0) return
     setRouteLoading(true)
     setRouteError(null)
     try {
@@ -1927,6 +2007,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       firInOptions,
       firExitOptions,
       navpointsById,
+      routeTokens,
+      routeTokenErrors,
       autoRecommendRequested,
       fitBoundsRequest,
       mapInteractionMode,
@@ -2000,6 +2082,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setTasKt: updateTasKt,
       setEta,
       setRouteDraftText: updateRouteDraftText,
+      setRouteTokenTexts,
       applyRouteDraft,
       startAlternativeFrom,
       updateSelectedDesignDraftText,
