@@ -84,6 +84,18 @@ function briefingFor(request) {
             notams: [{ id: 'FIXTURE-NOTAM', summary: 'Restricted area', effect: 'undetermined' }], timeStatus: 'unavailable', altitudeConstraint: { status: 'unavailable', applicability: 'applicable' },
           },
         ],
+        procedures: [
+          {
+            type: 'SID', id: 'FIXTURE1A', from: 'RKSS', to: 'FIXA', startNm: 0, endNm: 24, distanceNm: 24,
+            coordinates: [[126.8, 37.55], [126.9, 37.3]],
+            legs: [{
+              from: 'RKSS', to: 'FIXA', startNm: 0, endNm: 24, distanceNm: 24, courseTrueDeg: 128,
+              wind: { meanComponentKt: 12, directionDeg: 270, speedKt: 12 }, temp: { meanC: -6, isaDevC: 4 },
+              icing: { peakLevel: 2, exposures: [{ level: 2, distanceNm: 12 }] }, turbulence: { peakLevel: null, exposures: [] }, hazards: [], notams: [],
+              altitudeConstraint: { status: 'unavailable', applicability: 'not_applicable' },
+            }],
+          },
+        ],
       },
     },
   }

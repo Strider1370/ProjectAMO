@@ -42,6 +42,9 @@ const SCALE_BY_VARIABLE = {
   rh_liq: 0.01,
   w: 0.001,
   cld: 0.0001,
+  // 비습 kg/kg. 2e-6이면 최대 65g/kg까지 담기고(실측 최대는 25g/kg 내외)
+  // 분해능 0.002g/kg이라 가강수량 오차는 무시할 수준이다.
+  q: 2e-6,
   tqc: 2e-7,
   tqi: 2e-7,
   tqr: 2e-7,

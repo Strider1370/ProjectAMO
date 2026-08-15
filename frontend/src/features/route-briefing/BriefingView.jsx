@@ -466,8 +466,9 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             )}
           </section>
         )}
-        {legs.length > 0 && <RouteWeatherLegTable
+        {(legs.length > 0 || (sections.enroute.procedures ?? []).length > 0) && <RouteWeatherLegTable
           legs={legs}
+          procedures={sections.enroute.procedures ?? []}
           selectedAltitudeFt={sections.enroute.plannedCruiseAltitudeFt}
           pinnedLegKey={pinnedLeg?.key ?? null}
           onHighlightLeg={(leg) => {

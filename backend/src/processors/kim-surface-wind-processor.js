@@ -129,6 +129,14 @@ export function resolveKimHumidityComponentRequest({ level }) {
   return { data: 'P', name: 'rh', level: level.level, variable: 'rh', unit: '%' }
 }
 
+export function resolveKimSpecificHumidityComponentRequest({
+  level,
+  collectSpecificHumidity = config.kim_nwp?.collect_specific_humidity !== false,
+} = {}) {
+  if (!collectSpecificHumidity || !isKimNwpMoistureLevel(level)) return null
+  return { data: 'P', name: 'q', level: level.level, variable: 'q', unit: 'kg/kg' }
+}
+
 export function resolveKimHgtComponentRequest({ level }) {
   if (level?.kind !== 'pressure') return null
   return { data: 'P', name: 'hgt', level: level.level, variable: 'hgt', unit: 'm' }
@@ -153,6 +161,7 @@ function rawComponentFileName({ level, name, variable }) {
   if (variable === 'T') return 'T.txt'
   if (variable === 'rh') return 'rh.txt'
   if (variable === 'hgt') return 'hgt.txt'
+  if (variable === 'q') return 'q.txt'
   if (DEFAULT_ICING_VARIABLES.includes(variable)) return `${variable}.txt`
   return `${name === level.uName ? 'u' : 'v'}.txt`
 }
@@ -376,6 +385,54 @@ async function addHgtToGrid({ grid, level, tmfc, hf }) {
   return mergeHgtComponentIntoGrid({ grid, level, tmfc, hf, hgtComponent })
 }
 
+async function fetchSpecificHumidityComponent({ level, tmfc, hf }) {
+  const kim = config.kim_surface_wind
+  const request = resolveKimSpecificHumidityComponentRequest({ level })
+  if (!request) return null
+  const text = await fetchKimGrid({
+    data: request.data,
+    name: request.name,
+    level: request.level,
+    tmfc,
+    hf,
+    sub: kim.sub,
+    map: 'S',
+    disp: 'A',
+  })
+  writeRawComponent({ level, tmfc, hf, name: request.name, variable: 'q', text })
+  const grid = parseKimGridText(text, {
+    variable: request.name,
+    level: request.level,
+    bounds: kim.bounds,
+  })
+  return { ...grid, variable: request.variable, unit: request.unit }
+}
+
+export function mergeSpecificHumidityComponentIntoGrid({ grid, level, tmfc, hf, specificHumidityComponent, fetchedAt = new Date().toISOString() }) {
+  if (!specificHumidityComponent) return grid
+  validateGridBounds(specificHumidityComponent)
+  return {
+    ...grid,
+    variables: {
+      ...grid.variables,
+      q: buildKimNwpGrid({
+        model: KIM_NWP_MODEL,
+        tmfc,
+        hf,
+        level,
+        components: [specificHumidityComponent],
+        fetchedAt: grid.fetched_at,
+      }).variables.q,
+    },
+    fetched_at: fetchedAt,
+  }
+}
+
+async function addSpecificHumidityToGrid({ grid, level, tmfc, hf }) {
+  const specificHumidityComponent = await fetchSpecificHumidityComponent({ level, tmfc, hf })
+  return mergeSpecificHumidityComponentIntoGrid({ grid, level, tmfc, hf, specificHumidityComponent })
+}
+
 export function mergeIcingComponentsIntoGrid({ grid, level, tmfc, hf, icingComponents = [], fetchedAt = new Date().toISOString() }) {
   if (!icingComponents.length) return grid
   const variables = { ...grid.variables }
@@ -405,10 +462,14 @@ async function addIcingToGrid({ grid, level, tmfc, hf }) {
   }
 }
 
-function requiredVariablesForTask(level, { collectIcing = config.kim_nwp?.collect_icing !== false } = {}) {
+function requiredVariablesForTask(level, {
+  collectIcing = config.kim_nwp?.collect_icing !== false,
+  collectSpecificHumidity = config.kim_nwp?.collect_specific_humidity !== false,
+} = {}) {
   const variables = ['u', 'v', 'T']
   if (level?.kind === 'pressure') variables.push('hgt')
   if (isKimNwpMoistureLevel(level)) variables.push('rh')
+  if (collectSpecificHumidity && isKimNwpMoistureLevel(level)) variables.push('q')
   if (collectIcing && isKimNwpIcingLevel(level)) {
     variables.push(...(config.kim_nwp?.icing_variables || DEFAULT_ICING_VARIABLES))
   }
@@ -425,8 +486,10 @@ export async function collectKimNwpTask({
   addTemperature = addTemperatureToGrid,
   addHgt = addHgtToGrid,
   addHumidity = addHumidityToGrid,
+  addSpecificHumidity = addSpecificHumidityToGrid,
   addIcing = addIcingToGrid,
   collectIcing = config.kim_nwp?.collect_icing !== false,
+  collectSpecificHumidity = config.kim_nwp?.collect_specific_humidity !== false,
   incrementalRetry = config.kim_nwp?.incremental_retry !== false,
   readExistingGrid = ({ level, tmfc, hf }) => readKimNwpGridSafe({
     root: config.storage.base_path,
@@ -439,7 +502,7 @@ export async function collectKimNwpTask({
 }) {
   if (incrementalRetry) {
     const existingGrid = readExistingGrid(task)
-    if (hasGridVariables(existingGrid, requiredVariablesForTask(task.level, { collectIcing }))) {
+    if (hasGridVariables(existingGrid, requiredVariablesForTask(task.level, { collectIcing, collectSpecificHumidity }))) {
       return { grid: existingGrid, lastError: null, reused: true }
     }
   }
@@ -461,6 +524,13 @@ export async function collectKimNwpTask({
     grid = await addHumidity({ grid, ...task })
   } catch (error) {
     lastError = error
+  }
+  if (collectSpecificHumidity) {
+    try {
+      grid = await addSpecificHumidity({ grid, ...task })
+    } catch (error) {
+      lastError = error
+    }
   }
   if (collectIcing) {
     try {
@@ -508,6 +578,7 @@ export function hasCompleteKimNwpRun({
   forecastHours = KIM_NWP_FORECAST_HOURS,
   levels = KIM_NWP_LEVELS,
   collectIcing = config.kim_nwp?.collect_icing !== false,
+  collectSpecificHumidity = config.kim_nwp?.collect_specific_humidity !== false,
   icingVariables = config.kim_nwp?.icing_variables || DEFAULT_ICING_VARIABLES,
 }) {
   if (!latest || !index || latest.latestRun !== tmfc || index.latestRun !== tmfc) return false
@@ -517,6 +588,7 @@ export function hasCompleteKimNwpRun({
       if (!variables.includes('u') || !variables.includes('v') || !variables.includes('T')) return false
       if (level.kind === 'pressure' && !variables.includes('hgt')) return false
       if (isKimNwpMoistureLevel(level) && !variables.includes('rh')) return false
+      if (collectSpecificHumidity && isKimNwpMoistureLevel(level) && !variables.includes('q')) return false
       if (collectIcing && isKimNwpIcingLevel(level) && !icingVariables.every((name) => variables.includes(name))) return false
     }
   }

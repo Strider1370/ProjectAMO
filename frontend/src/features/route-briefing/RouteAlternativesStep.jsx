@@ -116,6 +116,10 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
         <p className="rb-section-label">대안 경로</p>
         <p className="rb-drag-tip">우회안을 선택한 상태에서 지도의 경로 선을 드래그하면 그 위치에 경유점이 추가됩니다</p>
       </div>
+      {onToggleAviation && <div className="vfr-layer-toggles">
+        <span className="vfr-fix-search-title">지도 레이어</span>
+        <LayerToggleChips ariaLabel="대안 경로 항법 레이어" items={buildRouteAviationLayerChips(aviationVisibility, onToggleAviation)} />
+      </div>}
       {designs.filter((design) => design.kind === 'alternative').map((design) => {
         const selected = design.id === selectedDesignId
         const distance = design.routeResult?.totalDistanceNm ?? design.routeResult?.distanceNm
@@ -221,7 +225,6 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
       {changedTokens.length > 0 && <p className="rb-route-string-change">지도 수정 반영: {routeString.split(' ').map((token, index) => <span key={`${token}-${index}`} className={changedTokens.includes(token) ? 'is-changed' : ''}>{token} </span>)}</p>}
       {routeError && <p className="rb-alternatives-status" role="alert">{routeError}</p>}
       {layerIds.length > 0 && onToggleMet && <details className="rb-hazard-disclosure"><summary>위험 표시</summary><LayerToggleChips ariaLabel="경로 관련 기상 레이어" items={layerIds.map((id) => ({ key: id, label: metLabel(id), on: !!metVisibility[id], onToggle: () => onToggleMet(id) }))} /></details>}
-      {onToggleAviation && <details className="rb-hazard-disclosure"><summary>항법 표시</summary><LayerToggleChips ariaLabel="경로 관련 항법 레이어" items={buildRouteAviationLayerChips(aviationVisibility, onToggleAviation)} /></details>}
       <p className="rb-alternatives-note">지도: 경로마다 고유 색 · 선택한 경로는 굵고 진하게, 나머지는 가늘고 흐리게 · 위험 영역은 음영으로 표시</p>
       {!hideStepActions && <div className="rb-step-actions">
         <Button appearance="secondary" type="button" onClick={onBack}>이전 단계</Button>

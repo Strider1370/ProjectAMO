@@ -37,10 +37,13 @@ export function collectActiveFrameEntries({
   lightningFrames = [],
   wissdomFrames = [],
   qpfFrames = [],
+  wissdomRequested = false,
 } = {}) {
   const entries = new Map()
   if (visibility.radarHsr) {
     addAvailabilityEntries(entries, hsrFrames, CADENCE_MS.hsr)
+  }
+  if (visibility.radarHsr && wissdomRequested) {
     addAvailabilityEntries(entries, wissdomFrames, CADENCE_MS.wissdom)
   }
   if (visibility.radarHci) addAvailabilityEntries(entries, hciFrames, CADENCE_MS.hci)
@@ -293,7 +296,7 @@ export function buildWeatherOverlayModel({
   const radarDisplayVisible = Boolean(domesticRadarEnabled && radarFrame)
   const wissdomExactFrame = pickWissdomFrameForRadar(wissdomFrames, selectedRadarFrame)
   const wissdomAvailable = Boolean(domesticRadarEnabled && !qpfFrame && wissdomExactFrame)
-  const wissdomFrame = (visibility.radarHsr || radarWindRequested) && wissdomAvailable ? wissdomExactFrame : null
+  const wissdomFrame = radarWindRequested && wissdomAvailable ? wissdomExactFrame : null
   const rasterLegend = buildRasterLegendModel({
     visibility,
     hsrFrame: qpfFrame ? null : hsrFrame,
@@ -436,6 +439,7 @@ export function buildWeatherOverlayModel({
       lightningFrames,
       wissdomFrames,
       qpfFrames,
+      wissdomRequested: radarWindRequested,
     }),
     weatherTimelineTicks,
     forecastTimelineTicks,

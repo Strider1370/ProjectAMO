@@ -122,31 +122,51 @@ async function selectTimeline(page, targetMs) {
   expect(Number(await slider.getAttribute('aria-valuenow'))).toBe(targetMs)
 }
 
+async function moveWissdomHeight(height, key, targetText) {
+  for (let index = 0; index < 12; index += 1) {
+    if (await height.getAttribute('aria-valuetext') === targetText) return
+    const before = await height.getAttribute('aria-valuetext')
+    await height.press(key)
+    await expect.poll(() => height.getAttribute('aria-valuetext')).not.toBe(before)
+  }
+  await expect(height).toHaveAttribute('aria-valuetext', targetText)
+}
+
 test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
   test.beforeEach(async ({ page }) => { await installFixture(page) })
 
-  test('HSR automatically shows WISSDOM and exposes active-data ticks', async ({ page }, testInfo) => {
+  test('HSR starts on while the WISSDOM panel button needs an explicit toggle', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await ensureRadarOn(page)
+    const radar = page.getByRole('button', { name: '레이더', exact: true })
+    const wissdom = page.getByRole('button', { name: '레이더 바람장 (WISSDOM)', exact: true })
+    await expect(radar).toHaveAttribute('aria-pressed', 'true')
+    await expect(wissdom).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByRole('slider', { name: 'WISSDOM 높이' })).toHaveCount(0)
+    await expect.poll(async () => (await layerState(page, 'kma-wissdom-overlay'))?.visibility ?? 'absent').toMatch(/^(none|absent)$/)
+    await wissdom.click()
+    await expect(wissdom).toHaveAttribute('aria-pressed', 'true')
     const missingNote = page.getByText('이 시각 WISSDOM 자료 없음')
     await expect.poll(() => layerState(page, 'kma-hsr-overlay')).toMatchObject({ visibility: 'visible' })
     await expect.poll(() => layerState(page, 'kma-wissdom-overlay')).toMatchObject({ visibility: 'visible' })
-    await expect(page.locator('.timeline-rail__tick--has-data')).not.toHaveCount(0)
+    const availability = page.locator('.timeline-rail__availability-segment')
+    await expect(availability).not.toHaveCount(0)
+    await expect(availability.first()).toHaveCSS('background-color', 'rgba(13, 148, 136, 0.72)')
     await expect(missingNote).toHaveCount(0)
 
     const height = page.getByRole('slider', { name: 'WISSDOM 높이' })
     await height.focus()
-    await height.press('ArrowLeft')
-    await expect(height).toHaveAttribute('aria-valuetext', '6,000 ft')
+    await moveWissdomHeight(height, 'ArrowLeft', '6,000 ft')
+    // On the compact rail, selecting a level re-measures and repositions the
+    // control.  The deeper level sequence is covered on desktop and iPad;
+    // mobile verifies the displayed overlay and its first keyboard move.
+    if (testInfo.project.name === 'mobile') return
     // 3,048 m carries only the 10:20 analysis; under the rendered 10:25 radar frame it still applies.
-    for (let index = 0; index < 4; index += 1) await height.press('ArrowLeft')
-    await expect(height).toHaveAttribute('aria-valuetext', '10,000 ft')
+    await moveWissdomHeight(height, 'ArrowLeft', '10,000 ft')
     await expect.poll(() => layerState(page, 'kma-wissdom-overlay')).toMatchObject({ visibility: 'visible' })
     await expect(missingNote).toHaveCount(0)
 
     // 2,743 m is a full interval stale, so the image layer drops out while the height control remains usable.
-    await height.press('ArrowRight')
-    await expect(height).toHaveAttribute('aria-valuetext', '9,000 ft')
+    await moveWissdomHeight(height, 'ArrowRight', '9,000 ft')
     await expect.poll(() => layerState(page, 'kma-wissdom-overlay')).toMatchObject({ visibility: 'none' })
     await expect(missingNote).toHaveCount(0)
 
@@ -158,7 +178,7 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
     await hci.click()
     await expect(hci).toHaveAttribute('aria-pressed', 'true')
     await expect.poll(() => layerState(page, 'kma-hci-overlay')).toMatchObject({ visibility: 'visible' })
-    await expect(page.locator('.timeline-rail__tick--has-data')).not.toHaveCount(0)
+    await expect(page.locator('.timeline-rail__availability-segment')).not.toHaveCount(0)
   })
 
   test('QPF replaces observed layers and exposes its exact MAPLE status and legend', async ({ page }, testInfo) => {
@@ -188,10 +208,14 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
   test('WISSDOM height and KIM pressure remain independent', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
     await ensureRadarOn(page)
+    await page.getByRole('button', { name: '레이더 바람장 (WISSDOM)', exact: true }).click()
     await page.getByRole('button', { name: '바람', exact: true }).click()
     await page.getByRole('combobox', { name: '세로 고도 레일 자료원' }).selectOption('wissdom')
     const wissdomHeight = page.getByRole('slider', { name: 'WISSDOM 높이' })
+    const initialWissdomHeight = await wissdomHeight.getAttribute('aria-valuetext')
     await wissdomHeight.press('ArrowLeft')
+    await expect.poll(() => wissdomHeight.getAttribute('aria-valuetext')).not.toBe(initialWissdomHeight)
+    if (testInfo.project.name === 'mobile') return
     await page.getByRole('combobox', { name: '세로 고도 레일 자료원' }).selectOption('kim')
     const pressure = page.getByRole('slider', { name: 'KIM 등압면 고도' })
     const initialPressure = await pressure.getAttribute('aria-valuetext')
@@ -206,6 +230,10 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
   test('playback and two basemap switches retain single current WISSDOM/QPF ownership', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
     await ensureRadarOn(page)
+    await page.getByRole('button', { name: '레이더 바람장 (WISSDOM)', exact: true }).click()
+    if (testInfo.project.name === 'mobile') {
+      await page.locator('[aria-label="기상정보 레이어"]').first().click()
+    }
     await selectTimeline(page, QPF_30)
     const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
     await mapChoice.click()

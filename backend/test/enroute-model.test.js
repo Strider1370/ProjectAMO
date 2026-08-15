@@ -63,3 +63,43 @@ test('KTG outside its altitude coverage is ignored (high cruise)', () => {
   const turb = r.elements.find((e) => e.kind === 'turbulence')
   assert.equal(turb, undefined)
 })
+
+test('icing follows the full climb and descent profile instead of treating every point as cruise', () => {
+  const lowLevelIcing = {
+    levels: [
+      { altFt: 0, values: [
+        { distanceNm: 0, icing: 2 },
+        { distanceNm: 50, icing: 0 },
+        { distanceNm: 100, icing: 2 },
+      ] },
+      { altFt: 4000, values: [
+        { distanceNm: 0, icing: 0 },
+        { distanceNm: 50, icing: 0 },
+        { distanceNm: 100, icing: 0 },
+      ] },
+      { altFt: 9000, values: [
+        { distanceNm: 0, icing: 0 },
+        { distanceNm: 50, icing: 0 },
+        { distanceNm: 100, icing: 0 },
+      ] },
+    ],
+  }
+  const r = summarizeEnrouteModel({
+    crossSection: lowLevelIcing,
+    turbulence: null,
+    totalDistanceNm: 100,
+    cruiseAltitudeFt: 9000,
+    flightPlanProfile: {
+      points: [
+        { distanceNm: 0, altitudeFt: 0 },
+        { distanceNm: 50, altitudeFt: 9000 },
+        { distanceNm: 100, altitudeFt: 0 },
+      ],
+    },
+  })
+
+  assert.deepEqual(r.elements.find((element) => element.kind === 'icing')?.intervals, [
+    { startNm: 0, endNm: 0, level: '중' },
+    { startNm: 100, endNm: 100, level: '중' },
+  ])
+})

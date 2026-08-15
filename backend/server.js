@@ -1205,6 +1205,15 @@ app.post('/api/briefing/altitudes', (req, res) => {
       ...(store.getCached('sigmet_overseas')?.items ?? []).map((item) => ({ source: 'SIGMET', item })),
       ...(store.getCached('airmet')?.items ?? []).map((item) => ({ source: 'AIRMET', item })),
     ]
+    const flightPlanProfiles = Object.fromEntries(candidateResult.candidates.flatMap((candidate) => {
+      if (candidate.status !== 'valid' && candidate.status !== 'input_only') return []
+      try {
+        const profile = buildVerticalProfile({ ...body, plannedCruiseAltitudeFt: candidate.altitudeFt }, terrainSampler).flightPlan.profile
+        return [[candidate.altitudeFt, profile]]
+      } catch {
+        return []
+      }
+    }))
     const rows = buildAltitudeWeatherComparison({
       candidates: candidateResult.candidates,
       crossSection: crossSectionResult.crossSection,
@@ -1214,6 +1223,7 @@ app.post('/api/briefing/altitudes', (req, res) => {
       notams: store.getCached('notam')?.items ?? [],
       etd: body.etd,
       eta: body.eta,
+      flightPlanProfiles,
     })
     setNoStore(res)
     res.json({

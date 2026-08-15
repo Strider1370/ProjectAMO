@@ -5,6 +5,7 @@ import {
   weightedWind,
 } from './altitude-weather-comparison.js'
 import { ktgIntensity } from '../processors/ktg-model.js'
+import { distanceMeters } from './route-axis.js'
 
 const OVERLAP_EPSILON_NM = 0.2
 const KTG_LEVELS = ['none', 'light', 'moderate', 'severe']
@@ -64,6 +65,95 @@ function unavailableLeg(segment, selectedCruiseAltitudeFt, sourceCycle) {
   }
 }
 
+function coordinateOf(point) {
+  const lon = Number(point?.lon ?? point?.coordinates?.lon)
+  const lat = Number(point?.lat ?? point?.coordinates?.lat)
+  return Number.isFinite(lon) && Number.isFinite(lat) ? [lon, lat] : null
+}
+
+function distanceAlongRouteNm(coordinates, target) {
+  if (!Array.isArray(coordinates) || coordinates.length < 2 || !target) return null
+  let cumulativeMeters = 0
+  let nearest = { distanceSq: Infinity, distanceMeters: 0 }
+  for (let index = 0; index < coordinates.length - 1; index += 1) {
+    const start = coordinates[index]
+    const end = coordinates[index + 1]
+    const dx = end[0] - start[0]
+    const dy = end[1] - start[1]
+    const lengthSq = dx * dx + dy * dy
+    const ratio = lengthSq === 0 ? 0 : Math.max(0, Math.min(1, ((target[0] - start[0]) * dx + (target[1] - start[1]) * dy) / lengthSq))
+    const projected = [start[0] + dx * ratio, start[1] + dy * ratio]
+    const distanceSq = (target[0] - projected[0]) ** 2 + (target[1] - projected[1]) ** 2
+    if (distanceSq < nearest.distanceSq) {
+      nearest = { distanceSq, distanceMeters: cumulativeMeters + distanceMeters(start, end) * ratio }
+    }
+    cumulativeMeters += distanceMeters(start, end)
+  }
+  return Number((nearest.distanceMeters / 1852).toFixed(2))
+}
+
+function procedureEntries(procedureContext) {
+  const procedures = procedureContext?.procedures ?? []
+  return ['SID', 'STAR', 'IAP'].flatMap((type) => procedures
+    .filter((procedure) => String(procedure?.type ?? '').toUpperCase() === type)
+    .slice(0, 1))
+}
+
+function endpointMarker(routeMarkers, index) {
+  const marker = index < 0 ? routeMarkers?.at(index) : routeMarkers?.[index]
+  const coordinates = coordinateOf(marker)
+  if (!coordinates) return null
+  return { id: String(marker?.label ?? marker?.id ?? '').trim() || null, coordinates }
+}
+
+function dedupeProcedurePoints(points) {
+  return points.filter((point, index) => {
+    if (!point?.id || !point.coordinates) return false
+    const previous = points[index - 1]
+    return !previous || previous.id !== point.id || previous.coordinates[0] !== point.coordinates[0] || previous.coordinates[1] !== point.coordinates[1]
+  })
+}
+
+function buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams }) {
+  const routeCoordinates = routeGeometry?.coordinates
+  if (!Array.isArray(routeCoordinates) || routeCoordinates.length < 2) return []
+  const departure = endpointMarker(routeMarkers, 0)
+  const arrival = endpointMarker(routeMarkers, -1)
+  return procedureEntries(procedureContext).flatMap((procedure) => {
+    const type = String(procedure.type).toUpperCase()
+    const fixes = (procedure.fixes ?? []).map((fix) => ({ id: String(fix?.id ?? '').trim() || null, coordinates: coordinateOf(fix) })).filter((fix) => fix.id && fix.coordinates)
+    const points = dedupeProcedurePoints([
+      ...(type === 'SID' && departure ? [departure] : []),
+      ...fixes,
+      ...(type === 'IAP' && arrival ? [arrival] : []),
+    ])
+    if (points.length < 2) return []
+    const positioned = points.map((point) => ({ ...point, distanceNm: distanceAlongRouteNm(routeCoordinates, point.coordinates) }))
+    if (positioned.some((point) => !Number.isFinite(point.distanceNm))) return []
+    const startNm = positioned[0].distanceNm
+    const endNm = positioned.at(-1).distanceNm
+    if (endNm <= startNm) return []
+    const legs = positioned.slice(0, -1).map((from, index) => {
+      const to = positioned[index + 1]
+      return buildLeg({
+        segment: { kind: 'dct', fromFix: from.id, toFix: to.id, startNm: from.distanceNm, endNm: to.distanceNm, alignmentStatus: 'aligned' },
+        weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint: null, sourceCycle: null,
+      })
+    }).filter((leg) => leg.distanceNm > 0)
+    return [{
+      type,
+      id: String(procedure.id ?? '').trim() || type,
+      from: positioned[0].id,
+      to: positioned.at(-1).id,
+      startNm,
+      endNm,
+      distanceNm: Number((endNm - startNm).toFixed(2)),
+      coordinates: points.map((point) => point.coordinates),
+      legs,
+    }]
+  })
+}
+
 function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint, sourceCycle }) {
   if (segment.alignmentStatus !== 'aligned' || !Number.isFinite(segment.startNm) || !Number.isFinite(segment.endNm)) {
     return unavailableLeg(segment, selectedCruiseAltitudeFt, sourceCycle)
@@ -110,12 +200,13 @@ function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection
   }
 }
 
-export function buildRouteWeatherLegs({ routeModel, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards = [], routeNotams = [], aipConstraints } = {}) {
+export function buildRouteWeatherLegs({ routeModel, routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards = [], routeNotams = [], aipConstraints } = {}) {
   const segments = [...(routeModel?.enRouteSegments ?? [])].sort((a, b) => (a.startNm ?? Infinity) - (b.startNm ?? Infinity))
   const constraints = new Map((aipConstraints?.segments ?? []).map((entry) => [entry.id, entry]))
   const sourceCycle = aipConstraints?.provenance?.publicationId ?? null
   return {
     legs: segments.map((segment) => buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint: constraints.get(segment.id), sourceCycle })),
+    procedures: buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams }),
     totalDistanceNm: weatherAxis?.totalDistanceNm ?? null,
     altitudeConstraintStatus: aipConstraints?.status ?? 'unavailable',
   }

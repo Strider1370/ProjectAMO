@@ -80,6 +80,18 @@ test.describe('briefing-view', () => {
     }
   })
 
+  test('SID summary expands details and alone highlights its map and profile range', async ({ page }) => {
+    await createBriefing(page)
+    const navlog = page.getByRole('region', { name: 'NAVLOG', exact: true })
+    const sid = navlog.locator('.procedure-navlog-summary').filter({ hasText: 'FIXTURE1A' })
+    await expect(sid).toContainText('SID')
+    await expect(sid).toContainText('24 NM')
+    await sid.click()
+    await expect(navlog.getByLabel('절차 상세 웨이포인트')).toContainText('RKSS → FIXA')
+    await expect.poll(() => page.evaluate(() => window.__map?.getSource('navlog-leg-highlight')?.serialize()?.data?.features?.length ?? 0)).toBe(1)
+    await expect(page.locator('.vertical-profile-leg-band')).toBeVisible()
+  })
+
   // 모바일 시트에는 헤더 닫기 버튼이 없고(그래버 스와이프가 그 역할을 겸함) 브리핑은
   // 경로 패널 위에 뜨는 별도 화면이라 패널 푸터의 "이전 단계"도 물려받지 않는다.
   // 그래서 경로를 고치러 돌아갈 길이 화면에서 사라졌던 회귀를 고정한다.

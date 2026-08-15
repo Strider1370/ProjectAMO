@@ -241,16 +241,21 @@ ProjectAMO 현재값 `sub=1429,1441,1633,1609` = 119.0~136.0E / 30.0~44.0N, 205 
 
 모델: `KIMG` / `NE57` (전구). `backend/src/processors/kim-nwp-model.js` 의 `KIM_NWP_MODEL`.
 
-### 수집 변수 (13개)
+### 수집 변수 (14개)
 
-| 변수 | `data` | 쓰이는 곳 |
-|---|---|---|
-| `u`, `v` | P | 바람 오버레이, 항로 단면 |
-| `T` | P | 기온 오버레이, 착빙 하드게이트 |
-| `hgt` | P | 고도 |
-| `rh` | P | 습도 |
-| `w`, `rh_liq`, `tqc`, `tqi`, `tqr`, `tqs`, `cld` | P | 착빙(SFIP/K-FIP lite) · 구름 산출 |
-| `t2m` | U | 지상 기온 (`level=0`) |
+| 변수 | `data` | 층 | 쓰이는 곳 |
+|---|---|---|---|
+| `u`, `v` | P | 21층 | 바람 오버레이, 항로 단면 |
+| `T` | P | 21층 | 기온 오버레이, 착빙 하드게이트 |
+| `hgt` | P | 21층 | 고도 |
+| `rh` | P | 21층 | 습도 |
+| `q` | P | 21층 | 이슬점·가강수량 (Skew-T). `KIM_NWP_COLLECT_Q=0`으로 끔 |
+| `w`, `rh_liq`, `tqc`, `tqi`, `tqr`, `tqs`, `cld` | P | 300hPa 이상 | 착빙(SFIP/K-FIP lite) · 구름 산출 |
+| `t2m` | U | 단일면 | 지상 기온 (`level=0`) |
+
+**`rh`와 `q`를 둘 다 받는 이유.** `rh`는 물/빙정 혼합 기준이라 영하층에서 이슬점을 그대로 못 낸다.
+물 기준인 `rh_liq`은 착빙용이라 300hPa 아래에만 있다. `q`(비습)는 기준 구분 자체가 없어
+전 층에서 이슬점과 가강수량을 편향 없이 낸다. `q` 인코딩 스케일은 `2e-6`(최대 65g/kg, 분해능 0.002g/kg).
 
 착빙·구름·기온·바람 오버레이는 **저장하지 않고** 요청 시 위 변수로 계산한다
 (`/api/kim/{wind,temp,cloud,icing}/field`). 변수를 추가해도 오버레이 종류가 늘 뿐 저장 구조는 그대로다.
@@ -277,7 +282,8 @@ API는 '26.6.22. 이후 1시간 간격까지 제공하므로, 촘촘하게 바�
 | 요청 조립 | `backend/src/api-client.js` `buildKimGridUrl()` |
 | 응답 파싱 | `backend/src/parsers/kim-grid-parser.js` `parseKimGridText()` |
 | 고도층 정의 | `backend/src/processors/kim-nwp-model.js` `KIM_NWP_LEVELS` |
-| 예보시간·착빙변수 | `backend/src/config.js` `kim_nwp` |
+| 예보시간·착빙변수·비습 | `backend/src/config.js` `kim_nwp` |
+| 인코딩 스케일 | `backend/src/processors/kim-nwp-model.js` `SCALE_BY_VARIABLE` |
 
 ### 변수 하나 추가할 때
 

@@ -30,11 +30,11 @@ async function renderLegends(props) {
 
 after(async () => viteServer?.close())
 
-test('WISSDOM is automatic with HSR and has no independent panel toggle', () => {
+test('WISSDOM uses its existing panel button and is not automatic with HSR', () => {
   assert.doesNotMatch(source, /radarMotion/)
   assert.doesNotMatch(source, /radar-motion/)
-  assert.doesNotMatch(panelSource, /레이더 바람장 \(WISSDOM\)/)
-  assert.doesNotMatch(panelSource, /레이더 바람장 \(WISSDOM\) · \{radarWindHeightM\.toLocaleString\(\)\} m/)
+  assert.match(panelSource, /레이더 바람장 \(WISSDOM\)/)
+  assert.match(panelSource, /onRadarWindRequestedChange/)
   assert.doesNotMatch(panelSource, /레이더 에코 이동벡터 표시/)
   assert.match(css, /\.layer-tile-group-title-action:disabled \{[\s\S]*?background:\s*var\(--surface-2\)/)
   assert.match(css, /\.map-view-wrapper \.map-right-legends > \* \{[\s\S]*?pointer-events:\s*auto/)

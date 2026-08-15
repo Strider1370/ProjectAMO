@@ -19,6 +19,7 @@ import {
   mapKimNwpTasksWithConcurrency,
   mergeIcingComponentsIntoGrid,
   mergeHumidityComponentIntoGrid,
+  mergeSpecificHumidityComponentIntoGrid,
   resolveKimHumidityComponentRequest,
   resolveKimIcingComponentRequests,
   resolveKimSurfaceWindCandidates,
@@ -299,6 +300,7 @@ test('hasCompleteKimNwpRun skips only when latest run has wind temp and moisture
     forecastHours: [hf],
     levels: KIM_NWP_LEVELS,
     collectIcing: false,
+    collectSpecificHumidity: false,
   }), true)
   assert.equal(hasCompleteKimNwpRun({
     latest: { latestRun: tmfc },
@@ -307,6 +309,7 @@ test('hasCompleteKimNwpRun skips only when latest run has wind temp and moisture
     forecastHours: [hf],
     levels: KIM_NWP_LEVELS,
     collectIcing: false,
+    collectSpecificHumidity: false,
   }), false)
 })
 
@@ -367,6 +370,7 @@ test('hasCompleteKimNwpRun requires icing variables when collect_icing is enable
     forecastHours: [hf],
     levels: KIM_NWP_LEVELS,
     collectIcing: true,
+    collectSpecificHumidity: false,
   }), false)
   assert.equal(hasCompleteKimNwpRun({
     latest: { latestRun: tmfc },
@@ -375,6 +379,7 @@ test('hasCompleteKimNwpRun requires icing variables when collect_icing is enable
     forecastHours: [hf],
     levels: KIM_NWP_LEVELS,
     collectIcing: true,
+    collectSpecificHumidity: false,
   }), true)
 })
 
@@ -407,6 +412,40 @@ test('mergeHumidityComponentIntoGrid adds rh without dropping existing wind/temp
   assert.equal(merged.fetched_at, '2026-05-19T00:01:00.000Z')
 })
 
+test('mergeSpecificHumidityComponentIntoGrid keeps q resolvable in kg/kg', () => {
+  const level = KIM_NWP_LEVELS.find((entry) => entry.id === '1000hPa')
+  const grid = buildKimNwpGrid({
+    model: 'KIMG/NE57',
+    tmfc: '2026051900',
+    hf: 3,
+    level,
+    components: [
+      { variable: 'u', unit: 'm/s', level: 1000, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [1, 2, 3, 4] },
+      { variable: 'v', unit: 'm/s', level: 1000, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [0, 1, 0, 1] },
+    ],
+  })
+
+  // 0.024 kg/kg = 24 g/kg. 한여름 지면 최대치가 이 근처라 int16 상한을 넘지 않아야 한다.
+  const merged = mergeSpecificHumidityComponentIntoGrid({
+    grid,
+    level,
+    tmfc: '2026051900',
+    hf: 3,
+    specificHumidityComponent: {
+      variable: 'q', unit: 'kg/kg', level: 1000, nx: 2, ny: 2, bounds: BOUNDS_2X2,
+      values: [0.024, 0.012, 0.0005, 0],
+    },
+  })
+
+  const q = merged.variables.q
+  assert.equal(q.scale, 2e-6)
+  assert.ok(q.values.every((value) => value >= -32767 && value <= 32767), 'int16 범위를 넘었다')
+  const decoded = q.values.map((value) => value * q.scale + q.offset)
+  assert.ok(Math.abs(decoded[0] - 0.024) < 1e-5, `24g/kg 왕복 실패: ${decoded[0]}`)
+  assert.ok(Math.abs(decoded[2] - 0.0005) < 1e-5, `0.5g/kg 왕복 실패: ${decoded[2]}`)
+  assert.deepEqual(Object.keys(merged.variables), ['u', 'v', 'q'])
+})
+
 test('collectKimNwpTask reuses existing complete grid when incremental retry is enabled', async () => {
   const level = KIM_NWP_LEVELS.find((entry) => entry.id === '850hPa')
   const task = { level, tmfc: '2026051900', hf: 3 }
@@ -428,6 +467,7 @@ test('collectKimNwpTask reuses existing complete grid when incremental retry is 
       { variable: 'tqr', unit: 'kg/kg', level: 850, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [0, 0, 0, 0] },
       { variable: 'tqs', unit: 'kg/kg', level: 850, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [0, 0, 0, 0] },
       { variable: 'cld', unit: '1', level: 850, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [0.8, 0.8, 0.8, 0.8] },
+      { variable: 'q', unit: 'kg/kg', level: 850, nx: 2, ny: 2, bounds: BOUNDS_2X2, values: [0.01, 0.01, 0.01, 0.01] },
     ],
   })
   let fetchedWind = false
@@ -490,6 +530,7 @@ test('collectKimNwpTask refetches existing grid when required variables are miss
     addTemperature: async ({ grid }) => grid,
     addHgt: async ({ grid }) => grid,
     addHumidity: async ({ grid }) => grid,
+    addSpecificHumidity: async ({ grid }) => grid,
     writeGrid: (grid) => writes.push(grid),
   })
 
@@ -531,6 +572,7 @@ test('collectKimNwpTask keeps wind/temp grid publishable when rh merge fails', a
     addTemperature: async () => tempGrid,
     addHgt: async ({ grid: g }) => g,
     addHumidity: async () => { throw new Error('rh failed') },
+    addSpecificHumidity: async ({ grid }) => grid,
     collectIcing: false,
     writeGrid: (nextGrid) => writes.push(nextGrid),
   })
@@ -576,6 +618,7 @@ test('collectKimNwpTask keeps wind/temp grid publishable when icing merge fails'
     addTemperature: async () => tempGrid,
     addHgt: async ({ grid: nextGrid }) => nextGrid,
     addHumidity: async ({ grid: nextGrid }) => nextGrid,
+    addSpecificHumidity: async ({ grid: nextGrid }) => nextGrid,
     addIcing: async () => { throw new Error('icing failed') },
     collectIcing: true,
     writeGrid: (nextGrid) => writes.push(nextGrid),
@@ -626,6 +669,7 @@ test('collectKimNwpTask merges successful icing variables without dropping wind/
     addTemperature: async () => tempGrid,
     addHgt: async ({ grid: nextGrid }) => nextGrid,
     addHumidity: async ({ grid: nextGrid }) => nextGrid,
+    addSpecificHumidity: async ({ grid: nextGrid }) => nextGrid,
     addIcing: async ({ grid: nextGrid, level: nextLevel, tmfc, hf }) => ({
       grid: mergeIcingComponentsIntoGrid({ grid: nextGrid, level: nextLevel, tmfc, hf, icingComponents }),
       lastError: null,

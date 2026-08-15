@@ -26,3 +26,11 @@ test('renders the route weather leg table contract for desktop and mobile', () =
   assert.match(jsx, /is-pinned/)
   assert.doesNotMatch(jsx, /'Headwind'|'Tailwind'/)
 })
+
+test('renders compact SID STAR IAP summaries that alone control procedure highlighting', () => {
+  assert.match(jsx, /procedures = \[\]/)
+  assert.match(jsx, /procedure\.type/)
+  assert.match(jsx, /procedure-navlog-summary/)
+  assert.match(jsx, /procedure\.coordinates/)
+  assert.match(jsx, /절차 상세 웨이포인트/)
+})

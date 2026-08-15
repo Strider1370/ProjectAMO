@@ -233,6 +233,14 @@
 .bv-leg-chip.is-gray { background: var(--level-gray-bg); color: var(--level-gray); }
 .bv-leg-tailwind { color: var(--level-green); }
 .bv-leg-headwind { color: var(--level-amber); }
+.procedure-navlog-groups { display: grid; gap: var(--space-xs); margin-top: var(--space-s); }
+.procedure-navlog { border: 1px solid var(--stroke-2); border-radius: var(--radius-sm); background: var(--bg-1); }
+.procedure-navlog.is-pinned { border-color: #1d4ed8; box-shadow: inset 3px 0 0 #1d4ed8; }
+.procedure-navlog-summary { display: grid; grid-template-columns: minmax(150px, 1fr) auto minmax(140px, 1.4fr); align-items: center; gap: var(--space-s); padding: var(--space-s) var(--space-m); cursor: pointer; font-size: var(--fs-300); }
+.procedure-navlog-summary > span:first-child b { color: var(--accent); margin-right: var(--space-xs); }
+.procedure-navlog-hazards { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xxs); color: var(--text-3); }
+.procedure-navlog-detail { margin: 0; border-top: 1px solid var(--stroke-2); }
+.procedure-navlog-detail-row { cursor: default; }
 
 @container briefing (max-width: 719px) {
   .bv-leg-scroll { overflow: visible; }
@@ -244,6 +252,8 @@
   .bv-leg-row td::before { content: attr(data-label); color: var(--text-3); font-size: var(--fs-300); }
   .bv-leg-table td:nth-child(n) { width: auto; }
   .bv-leg-row td:first-child, .bv-leg-row td:last-child { grid-column: 1 / -1; }
+  .procedure-navlog-summary { grid-template-columns: 1fr auto; }
+  .procedure-navlog-hazards { grid-column: 1 / -1; justify-content: flex-start; }
   .bv-leg-head { display: grid; }
   .bv-leg-disclaimer { max-width: none; text-align: left; }
 }

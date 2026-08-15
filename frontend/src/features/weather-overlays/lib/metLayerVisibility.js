@@ -6,6 +6,11 @@
 const KIM_LAYER_IDS = ['wind', 'temp', 'cloud', 'icing']
 const VERTICAL_SLIDER_GROUP_IDS = [...KIM_LAYER_IDS, 'turbulence', 'ctps']
 
+export function createInitialMetVisibility(layerIds, overrides = {}) {
+  const visibility = Object.fromEntries(layerIds.map((id) => [id, false]))
+  return { ...visibility, radarHsr: true, windFlow: true, windSpeed: true, ...overrides }
+}
+
 function clearVerticalSliderGroup(prev) {
   const next = { ...prev }
   VERTICAL_SLIDER_GROUP_IDS.forEach((groupId) => { next[groupId] = false })

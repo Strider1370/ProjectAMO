@@ -71,7 +71,7 @@ import { ICING_COLOR_RAMP } from '../weather-overlays/lib/icingPotentialField.js
 import { destroyIcingPotentialOverlay, syncIcingPotentialOverlay } from '../weather-overlays/lib/icingPotentialOverlaySync.js'
 import { KTG_COLOR_RAMP } from '../weather-overlays/lib/ktgTurbulenceField.js'
 import { destroyKtgTurbulenceOverlay, syncKtgTurbulenceOverlay } from '../weather-overlays/lib/ktgTurbulenceOverlaySync.js'
-import { getNextMetVisibility } from '../weather-overlays/lib/metLayerVisibility.js'
+import { createInitialMetVisibility, getNextMetVisibility } from '../weather-overlays/lib/metLayerVisibility.js'
 import {
   LIGHTNING_BLINK_INTERVAL_MS,
 } from '../weather-overlays/lib/lightningLayers.js'
@@ -169,10 +169,7 @@ function initAviationVisibility() {
 }
 
 function initMetVisibility(overrides) {
-  const visibility = MET_LAYERS.reduce((acc, l) => { acc[l.id] = false; return acc }, {})
-  visibility.windFlow = true
-  visibility.windSpeed = true
-  return { ...visibility, ...overrides }
+  return createInitialMetVisibility(MET_LAYERS.map((layer) => layer.id), overrides)
 }
 
 function bindSectorHover(map) {
@@ -648,7 +645,9 @@ const MapView = forwardRef(function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !isStyleReady) return
-    const coordinates = highlightedLeg ? legCoordinates(routeResult?.previewGeojson, highlightedLeg.from, highlightedLeg.to) : []
+    const coordinates = highlightedLeg?.coordinates?.length > 1
+      ? highlightedLeg.coordinates
+      : highlightedLeg ? legCoordinates(routeResult?.previewGeojson, highlightedLeg.from, highlightedLeg.to) : []
     syncLegHighlight(map, coordinates, { pinned: Boolean(highlightedLeg?.pinned) })
   }, [highlightedLeg, routeResult, isStyleReady, styleRevision])
 
@@ -2209,6 +2208,8 @@ const MapView = forwardRef(function MapView({
           onWindFlowOpacityChange={setWindFlowOpacity}
           onWindFlowTrailChange={setWindFlowTrail}
           onWindFlowWidthChange={setWindFlowWidth}
+          radarWindRequested={radarWindOverlay.requestedVisible}
+          onRadarWindRequestedChange={radarWindOverlay.setRequestedVisible}
           terrainAltitudeFt={terrainAltitudeFt}
         />
       )}

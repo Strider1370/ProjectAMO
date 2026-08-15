@@ -2154,15 +2154,16 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setBriefingLoading(true); setBriefingError(null)
     try {
       const result = await fetchRouteBriefing({
-        flightRule: routeForm.flightRule,
+        ...buildVerticalProfileRequest({
+          routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap,
+          vfrWaypoints: appliedVfrWaypoints,
+          plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
+        }),
         departureAirport: routeForm.departureAirport,
         arrivalAirport: routeForm.arrivalAirport,
         alternateAirport: alternateAirport || null,
-        routeGeometry,
-        routeModel,
         etd: etdIso,
         eta: briefingEta,
-        plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
       })
       setBriefing(result)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: routeGeometry.coordinates, maxZoom: 8 })

@@ -74,7 +74,62 @@ function hazardChips(leg) {
   return chips
 }
 
-export default function RouteWeatherLegTable({ legs, selectedAltitudeFt, onHighlightLeg, pinnedLegKey = null }) {
+function ProcedureNavlogGroups({ procedures, onHighlightLeg, pinnedLegKey }) {
+  if (!procedures.length) return null
+  const procedureKey = (procedure) => `procedure-${procedure.type}-${procedure.id}`
+  return (
+    <div className="procedure-navlog-groups" aria-label="절차 NAVLOG">
+      {procedures.map((procedure) => {
+        const key = procedureKey(procedure)
+        const chips = procedure.legs.flatMap((leg) => hazardChips(leg))
+        const highlight = () => onHighlightLeg?.(pinnedLegKey === key ? null : {
+          from: procedure.from,
+          to: procedure.to,
+          startNm: procedure.startNm,
+          endNm: procedure.endNm,
+          coordinates: procedure.coordinates,
+          key,
+          pinned: true,
+        })
+        return (
+          <details key={key} className={`procedure-navlog${pinnedLegKey === key ? ' is-pinned' : ''}`}>
+            <summary className="procedure-navlog-summary" onClick={highlight}>
+              <span><b>{procedure.type}</b> {procedure.id}</span>
+              <span>{procedure.distanceNm} NM</span>
+              <span className="procedure-navlog-hazards">
+                {chips.length === 0 ? '—' : chips.map((chip, index) => <span key={`${chip.key}-${index}`} className={`bv-leg-chip is-${chip.level}`}>{chip.label}{chip.note ? <span className="bv-leg-chip-note">{chip.note}</span> : null}</span>)}
+              </span>
+            </summary>
+            <div className="bv-leg-scroll procedure-navlog-detail">
+              <Table size="small" className="bv-leg-table">
+                <TableHeader><TableRow>
+                  <TableHeaderCell>구간</TableHeaderCell><TableHeaderCell>거리</TableHeaderCell><TableHeaderCell>Bearing</TableHeaderCell>
+                  <TableHeaderCell>바람성분</TableHeaderCell><TableHeaderCell>풍향/풍속</TableHeaderCell>
+                  <TableHeaderCell>기온</TableHeaderCell><TableHeaderCell>ISA</TableHeaderCell><TableHeaderCell>위험기상</TableHeaderCell>
+                </TableRow></TableHeader>
+                <TableBody>{procedure.legs.map((leg, index) => {
+                  const legChips = hazardChips(leg)
+                  return <TableRow key={legKey(leg, index)} className="bv-leg-row procedure-navlog-detail-row" aria-label="절차 상세 웨이포인트">
+                    <TableCell data-label="구간"><b>{leg.from ?? noData} → {leg.to ?? noData}</b></TableCell>
+                    <TableCell data-label="거리">{leg.distanceNm == null ? noData : `${leg.distanceNm} NM`}</TableCell>
+                    <TableCell data-label="Bearing">{leg.courseTrueDeg == null ? noData : `${leg.courseTrueDeg}°T`}</TableCell>
+                    <TableCell data-label="바람성분" className={leg.wind?.meanComponentKt < 0 ? 'bv-leg-headwind' : 'bv-leg-tailwind'}>{formatWind(leg.wind)}</TableCell>
+                    <TableCell data-label="풍향/풍속">{formatWindVector(leg.wind)}</TableCell>
+                    <TableCell data-label="기온">{formatTemp(leg.temp)}</TableCell>
+                    <TableCell data-label="ISA">{formatIsa(leg.temp)}</TableCell>
+                    <TableCell data-label="위험기상">{legChips.length === 0 ? <span className="bv-leg-none" aria-label="위험기상 없음">—</span> : <div className="bv-leg-hazards">{legChips.map((chip) => <span key={chip.key} className={`bv-leg-chip is-${chip.level}`}>{chip.label}{chip.note ? <span className="bv-leg-chip-note">{chip.note}</span> : null}</span>)}</div>}</TableCell>
+                  </TableRow>
+                })}</TableBody>
+              </Table>
+            </div>
+          </details>
+        )
+      })}
+    </div>
+  )
+}
+
+export default function RouteWeatherLegTable({ legs, procedures = [], selectedAltitudeFt, onHighlightLeg, pinnedLegKey = null }) {
   // 모든 구간이 똑같이 확인 불가면 줄마다 반복하지 않고 표 머리에 한 번만 알린다.
   const constraintUnavailable = legs.length > 0 && legs.every((leg) => leg.altitudeConstraint?.status !== 'matched')
   // startNm·endNm까지 같이 넘긴다 — 지도는 FIX 이름으로 선을 자르고, 연직단면도는 거리축을 쓴다.
@@ -93,6 +148,7 @@ export default function RouteWeatherLegTable({ legs, selectedAltitudeFt, onHighl
           {constraintUnavailable ? <><br />AIP 고도 제약 확인 불가</> : null}
         </Caption1>
       </div>
+      <ProcedureNavlogGroups procedures={procedures} onHighlightLeg={onHighlightLeg} pinnedLegKey={pinnedLegKey} />
       <div className="bv-leg-scroll">
         <Table size="small" className="bv-leg-table">
           <TableHeader><TableRow>

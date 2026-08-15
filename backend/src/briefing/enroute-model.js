@@ -9,10 +9,35 @@ function sortedLevels(levels) {
     .sort((a, b) => a.altFt - b.altFt)
 }
 
+function altitudeAtProfileDistance(profile, distanceNm, fallbackAltitudeFt) {
+  const points = [...(profile?.points ?? [])]
+    .filter((point) => Number.isFinite(Number(point?.distanceNm)) && Number.isFinite(Number(point?.altitudeFt)))
+    .sort((a, b) => Number(a.distanceNm) - Number(b.distanceNm))
+  if (points.length === 0) return fallbackAltitudeFt
+
+  const distance = Number(distanceNm)
+  if (!Number.isFinite(distance)) return fallbackAltitudeFt
+  if (distance <= Number(points[0].distanceNm)) return Number(points[0].altitudeFt)
+  if (distance >= Number(points.at(-1).distanceNm)) return Number(points.at(-1).altitudeFt)
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const start = points[index]
+    const end = points[index + 1]
+    const startDistance = Number(start.distanceNm)
+    const endDistance = Number(end.distanceNm)
+    if (distance < startDistance || distance > endDistance) continue
+    const span = endDistance - startDistance
+    if (span <= 0) return Number(end.altitudeFt)
+    const fraction = (distance - startDistance) / span
+    return Number(start.altitudeFt) + (Number(end.altitudeFt) - Number(start.altitudeFt)) * fraction
+  }
+  return fallbackAltitudeFt
+}
+
 // 각 거리 샘플에서 계획고도 alt(d)에 해당하는 값을 두 기압면 사이에서 구한다.
 // mode 'worst': 위험 등급(착빙/난류) → 두 레벨 중 큰 값. mode 'interp': 연속값(바람/기온) → 선형 보간.
 // nullOutside: 계획고도가 레벨 커버리지 밖이면 null(저고도 한정 KTG용).
-function seriesAtAltitude(levels, totalDistanceNm, cruiseAltitudeFt, pick, { mode = 'interp', nullOutside = false } = {}) {
+function seriesAtAltitude(levels, totalDistanceNm, cruiseAltitudeFt, pick, { flightPlanProfile = null, mode = 'interp', nullOutside = false } = {}) {
   const sorted = sortedLevels(levels)
   if (sorted.length === 0) return []
   const minAlt = sorted[0].altFt
@@ -21,7 +46,7 @@ function seriesAtAltitude(levels, totalDistanceNm, cruiseAltitudeFt, pick, { mod
   const out = []
   for (let i = 0; i < n; i += 1) {
     const d = sorted[0].values[i]?.distanceNm
-    const alt = cruiseAltitudeFt
+    const alt = altitudeAtProfileDistance(flightPlanProfile, d, cruiseAltitudeFt)
     if (nullOutside && (alt < minAlt || alt > maxAlt)) { out.push({ distanceNm: d, value: null }); continue }
     let lo = sorted[0]
     let hi = sorted[sorted.length - 1]
@@ -75,12 +100,12 @@ function classifyIcing(g) { return g >= 3 ? '심' : g >= 2 ? '중' : null }
 // KTG 강도는 저장소 단일 진실원(ktg-model.js: 약<0.475, 중<0.75, 심≥0.75)을 따른다. 약(LGT)은 제외.
 function classifyKtg(v) { const i = ktgIntensity(v); return i >= 3 ? '심' : i >= 2 ? '중' : null }
 
-export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceNm, cruiseAltitudeFt }) {
+export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceNm, cruiseAltitudeFt, flightPlanProfile = null }) {
   const elements = []
   const kim = crossSection?.levels ?? []
   if (kim.length) {
     const icing = thresholdIntervals(
-      seriesAtAltitude(kim, totalDistanceNm, cruiseAltitudeFt, (e) => e?.icing, { mode: 'worst' }),
+      seriesAtAltitude(kim, totalDistanceNm, cruiseAltitudeFt, (e) => e?.icing, { flightPlanProfile, mode: 'worst' }),
       classifyIcing,
     )
     if (icing.length) elements.push({ kind: 'icing', label: '착빙', intervals: icing })
@@ -88,7 +113,7 @@ export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceN
   const ktg = turbulence?.levels ?? []
   if (ktg.length) {
     const turb = thresholdIntervals(
-      seriesAtAltitude(ktg, totalDistanceNm, cruiseAltitudeFt, (e) => e?.ktg, { mode: 'worst', nullOutside: true }),
+      seriesAtAltitude(ktg, totalDistanceNm, cruiseAltitudeFt, (e) => e?.ktg, { flightPlanProfile, mode: 'worst', nullOutside: true }),
       classifyKtg,
     )
     if (turb.length) elements.push({ kind: 'turbulence', label: '난류', intervals: turb })

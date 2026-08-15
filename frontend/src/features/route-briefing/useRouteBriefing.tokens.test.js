@@ -58,3 +58,7 @@ test('airport-only IFR setup clears stale route state without searching for an e
   assert.match(emptyEnrouteBranch, /clearRouteDisplay\(\{ clearEditor: false \}\)/)
   assert.doesNotMatch(emptyEnrouteBranch, /runRouteSearch\(routeForm\)/)
 })
+
+test('briefing request carries procedure context and route markers for procedure NAVLOG', () => {
+  assert.match(source, /fetchRouteBriefing\(\{\s*\.\.\.buildVerticalProfileRequest\(/s)
+})

@@ -151,13 +151,39 @@ function categoricalAt(levels, altitudeFt, sampleIndex, field) {
   return choices.sort((a, b) => Math.abs(a.altitudeFt - altitudeFt) - Math.abs(b.altitudeFt - altitudeFt))[0].value
 }
 
-export function exposureSummary(levels, axis, altitudeFt, field, weights, transform = (value) => value, includeZeroWeight = true) {
+function altitudeAtProfileDistance(profile, distanceNm, fallbackAltitudeFt) {
+  const points = [...(profile?.points ?? [])]
+    .filter((point) => Number.isFinite(Number(point?.distanceNm)) && Number.isFinite(Number(point?.altitudeFt)))
+    .sort((a, b) => Number(a.distanceNm) - Number(b.distanceNm))
+  if (points.length === 0) return fallbackAltitudeFt
+
+  const distance = Number(distanceNm)
+  if (!Number.isFinite(distance)) return fallbackAltitudeFt
+  if (distance <= Number(points[0].distanceNm)) return Number(points[0].altitudeFt)
+  if (distance >= Number(points.at(-1).distanceNm)) return Number(points.at(-1).altitudeFt)
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const start = points[index]
+    const end = points[index + 1]
+    const startDistance = Number(start.distanceNm)
+    const endDistance = Number(end.distanceNm)
+    if (distance < startDistance || distance > endDistance) continue
+    const span = endDistance - startDistance
+    if (span <= 0) return Number(end.altitudeFt)
+    const fraction = (distance - startDistance) / span
+    return Number(start.altitudeFt) + (Number(end.altitudeFt) - Number(start.altitudeFt)) * fraction
+  }
+  return fallbackAltitudeFt
+}
+
+export function exposureSummary(levels, axis, altitudeFt, field, weights, transform = (value) => value, includeZeroWeight = true, flightPlanProfile = null) {
   if (!Array.isArray(levels) || !levels.length || !axis?.samples?.length) return { status: 'unavailable', highestGrade: null, exposureNmByGrade: {} }
   const byGrade = {}
   let highest = null
   for (const [index, sample] of axis.samples.entries()) {
     if (!includeZeroWeight && !(weights[index] > 0)) continue
-    const rawGrade = categoricalAt(levels, altitudeFt, index, field)
+    const plannedAltitudeFt = altitudeAtProfileDistance(flightPlanProfile, sample.distanceNm, altitudeFt)
+    const rawGrade = categoricalAt(levels, plannedAltitudeFt, index, field)
     const grade = rawGrade == null ? null : transform(rawGrade)
     if (grade == null) continue
     const key = String(grade)
@@ -238,18 +264,19 @@ function matchNotams(notams, axis, altitudeFt, etd, eta) {
   })
 }
 
-export function buildAltitudeWeatherComparison({ candidates = [], crossSection, turbulence, axis, hazards = [], notams = [], etd, eta } = {}) {
+export function buildAltitudeWeatherComparison({ candidates = [], crossSection, turbulence, axis, hazards = [], notams = [], etd, eta, flightPlanProfiles = {} } = {}) {
   const weights = sampleWeights(axis?.samples ?? [])
   return candidates.map((candidate) => {
     if (candidate.status !== 'valid' && candidate.status !== 'input_only') return { ...candidate, weatherStatus: 'unavailable' }
     const wind = weightedWind(crossSection?.levels ?? [], axis, candidate.altitudeFt, weights)
     const weatherStatus = wind ? 'available' : 'weather_unavailable'
+    const flightPlanProfile = flightPlanProfiles[candidate.altitudeFt] ?? null
     return {
       ...candidate,
       weatherStatus,
       wind,
-      icing: { summary: exposureSummary(crossSection?.levels, axis, candidate.altitudeFt, 'icing', weights) },
-      turbulence: { summary: exposureSummary(turbulence?.levels, axis, candidate.altitudeFt, 'ktg', weights, ktgIntensity) },
+      icing: { summary: exposureSummary(crossSection?.levels, axis, candidate.altitudeFt, 'icing', weights, (value) => value, true, flightPlanProfile) },
+      turbulence: { summary: exposureSummary(turbulence?.levels, axis, candidate.altitudeFt, 'ktg', weights, ktgIntensity, true, flightPlanProfile) },
       hazards: matchHazards(hazards, axis, candidate.altitudeFt, etd, eta),
       notams: matchNotams(notams, axis, candidate.altitudeFt, etd, eta),
     }

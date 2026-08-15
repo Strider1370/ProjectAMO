@@ -14,3 +14,17 @@ test('mobile alternative selection and creation reveal the map with a peek sheet
   assert.match(panel, /onSelect=\{revealAlternativeOnMap\(selectRouteDesign\)\}/)
   assert.match(panel, /onDuplicate=\{revealAlternativeOnMap\(duplicateSelectedRouteDesign\)\}/)
 })
+
+test('initial route-panel content does not get a separate step-transition attribute', () => {
+  assert.match(panel, /const stepMotion = hasWorkflowStepTransition \? stepDirection : undefined/)
+  assert.doesNotMatch(panel, /data-step-dir=\{stepDirection\}/)
+  assert.match(panel, /data-step-dir=\{stepMotion\}/)
+})
+
+test('alternative routes expose NAVDATA and airway toggles without a collapsed disclosure', () => {
+  const alternatives = readFileSync(new URL('./RouteAlternativesStep.jsx', import.meta.url), 'utf8')
+  const layerActions = readFileSync(new URL('../map/layerActions.js', import.meta.url), 'utf8')
+  assert.match(alternatives, /ariaLabel="대안 경로 항법 레이어"/)
+  assert.match(layerActions, /'NAVDATA'/)
+  assert.doesNotMatch(alternatives, /<details className="rb-hazard-disclosure"><summary>항법 표시<\/summary>/)
+})

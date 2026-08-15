@@ -66,6 +66,42 @@ test('buildRouteWeatherLegs keeps every aligned segment and aggregates its selec
   assert.equal('headingDeg' in result.legs[1], false)
 })
 
+test('procedure NAVLOG groups keep SID, STAR, and IAP compact ranges with expandable weather legs', () => {
+  const result = buildRouteWeatherLegs({
+    routeModel: { enRouteSegments: [] },
+    routeGeometry: { type: 'LineString', coordinates: [[126, 37], [127, 36], [128, 35], [129, 34]] },
+    routeMarkers: [
+      { label: 'RKAA', lon: 126, lat: 37 },
+      { label: 'RKZZ', lon: 129, lat: 34 },
+    ],
+    procedureContext: {
+      procedures: [
+        { type: 'SID', id: 'ALPHA1A', fixes: [{ id: 'S1', lon: 126.5, lat: 36.5 }, { id: 'E1', lon: 127, lat: 36 }] },
+        { type: 'STAR', id: 'BRAVO2B', fixes: [{ id: 'X1', lon: 128, lat: 35 }, { id: 'S2', lon: 128.5, lat: 34.5 }] },
+        { type: 'IAP', id: 'ILS18', fixes: [{ id: 'I1', lon: 128.5, lat: 34.5 }, { id: 'RW18', lon: 129, lat: 34 }] },
+      ],
+    },
+    weatherAxis: axis,
+    selectedCruiseAltitudeFt: 9000,
+    crossSection: { levels: [values('t', [-20, -21, -22])] },
+  })
+
+  assert.deepEqual(result.procedures.map(({ type, id }) => ({ type, id })), [
+    { type: 'SID', id: 'ALPHA1A' },
+    { type: 'STAR', id: 'BRAVO2B' },
+    { type: 'IAP', id: 'ILS18' },
+  ])
+  assert.deepEqual(result.procedures.map(({ from, to }) => ({ from, to })), [
+    { from: 'RKAA', to: 'E1' },
+    { from: 'X1', to: 'S2' },
+    { from: 'I1', to: 'RKZZ' },
+  ])
+  assert.ok(result.procedures.every((procedure) => procedure.endNm > procedure.startNm))
+  assert.ok(result.procedures.every((procedure) => procedure.coordinates.length >= 2))
+  assert.ok(result.procedures.every((procedure) => procedure.legs.length >= 1))
+  assert.deepEqual(result.procedures[0].legs.map((leg) => [leg.from, leg.to]), [['RKAA', 'S1'], ['S1', 'E1']])
+})
+
 // FL310 NAVLOG에 지표시정(AIRMET)이 매 구간 붙던 실제 문제를 고정한다.
 // hazard-section이 지표 현상에 지표~FL100 밴드를 매기면 altitudeExposure가 clear가 되고,
 // 구간 표는 그 clear를 보고 빼야 한다.

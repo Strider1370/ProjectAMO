@@ -315,6 +315,9 @@ export const kim_nwp = {
   collect_on_startup: process.env.KIM_NWP_COLLECT_ON_STARTUP !== '0',
   incremental_retry: process.env.KIM_NWP_INCREMENTAL_RETRY !== '0',
   icing_variables: ['w', 'rh_liq', 'tqc', 'tqi', 'tqr', 'tqs', 'cld'],
+  // 비습. rh와 달리 물/빙정 기준 구분이 없어 이슬점과 가강수량을 편향 없이 낸다.
+  // rh_liq은 착빙용이라 300hPa 아래만 있고, q는 rh와 같은 21개 층 전부에 붙는다.
+  collect_specific_humidity: process.env.KIM_NWP_COLLECT_Q !== '0',
 }
 
 export const notam = {

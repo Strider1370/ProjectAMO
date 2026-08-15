@@ -29,19 +29,23 @@ test('collects enabled domestic observations and future QPF as source-aware avai
   ])
 })
 
-test('uses HSR as the domestic radar frame and automatically derives its WISSDOM frame', () => {
-  const model = buildWeatherOverlayModel({
+test('uses HSR as the domestic radar frame but only shows WISSDOM when requested', () => {
+  const base = {
     hsrMeta: { frames: [{ tm: '202608041925', path: '/hsr.webp' }] },
     wissdomMeta: { framesByHeight: { 1524: [{ tm: '202608041920', path: '/wissdom.webp' }] } },
     visibility: { radarHsr: true },
     selectedWeatherTimeMs: Date.UTC(2026, 7, 4, 10, 25),
     radarWindHeightM: 1524,
-  })
+  }
+  const model = buildWeatherOverlayModel(base)
 
   assert.equal(model.radarFrame.path, '/hsr.webp')
   assert.equal(model.radarDisplayVisible, true)
-  assert.equal(model.wissdomFrame.path, '/wissdom.webp')
+  assert.equal(model.wissdomFrame, null)
   assert.equal(model.wissdomAvailable, true)
+
+  const requested = buildWeatherOverlayModel({ ...base, radarWindRequested: true })
+  assert.equal(requested.wissdomFrame.path, '/wissdom.webp')
 })
 
 test('formatSigwxStamp formats tmfc values as KST labels', () => {

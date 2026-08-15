@@ -111,7 +111,7 @@ function combinedAviationToggle(ids, label, aviationVisibility, onToggleAviation
 }
 export function buildRouteAviationLayerChips(aviationVisibility = {}, onToggleAviation) {
   return [
-    combinedAviationToggle(['navaid', 'waypoint'], 'NAVAID/WAYPOINT', aviationVisibility, onToggleAviation),
+    combinedAviationToggle(['navaid', 'waypoint'], 'NAVDATA', aviationVisibility, onToggleAviation),
     combinedAviationToggle(['ats-route', 'rnav-route'], '항공로', aviationVisibility, onToggleAviation),
   ]
 }

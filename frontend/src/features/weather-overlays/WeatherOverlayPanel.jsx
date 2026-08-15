@@ -41,6 +41,8 @@ function WeatherOverlayPanel({
   isLayerDisabled,
   getLayerBadge,
   showWind = true,
+  radarWindRequested = false,
+  onRadarWindRequestedChange,
   terrainAltitudeFt = 3000,
 }) {
   // WISSDOM 높이 선택은 세로 고도 레일(RadarWindVerticalRail)이 맡는다 — 이 패널은 켬/끔만 다룬다.
@@ -94,6 +96,17 @@ function WeatherOverlayPanel({
         <section key={group.title} className="layer-tile-group">
           <div className="layer-tile-group-title">
             {group.title}
+            {group.id === 'observation' && (
+              <button
+                type="button"
+                className="layer-tile-group-title-action"
+                onClick={() => onRadarWindRequestedChange?.((previous) => !previous)}
+                aria-label="레이더 바람장 (WISSDOM)"
+                aria-pressed={radarWindRequested}
+              >
+                레이더 바람장 (WISSDOM)
+              </button>
+            )}
           </div>
           <div className="layer-tile-grid">
             {group.ids.map((id) => {

@@ -96,6 +96,45 @@ test('comparison evaluates weather for an input-only altitude', () => {
   assert.equal(rows[0].wind.averageKt, 10)
 })
 
+test('comparison counts icing along the complete climb and descent profile', () => {
+  const axis = {
+    samples: [
+      { distanceNm: 0, bearingDeg: 90 },
+      { distanceNm: 10, bearingDeg: 90 },
+      { distanceNm: 40, bearingDeg: 90 },
+      { distanceNm: 50, bearingDeg: 90 },
+    ],
+  }
+  const levels = [
+    { altFt: 0, values: [
+      { distanceNm: 0, icing: 2 }, { distanceNm: 10, icing: 0 }, { distanceNm: 40, icing: 2 }, { distanceNm: 50, icing: 0 },
+    ] },
+    { altFt: 4000, values: [
+      { distanceNm: 0, icing: 0 }, { distanceNm: 10, icing: 0 }, { distanceNm: 40, icing: 0 }, { distanceNm: 50, icing: 0 },
+    ] },
+    { altFt: 9000, values: [
+      { distanceNm: 0, icing: 0 }, { distanceNm: 10, icing: 0 }, { distanceNm: 40, icing: 0 }, { distanceNm: 50, icing: 0 },
+    ] },
+  ]
+  const rows = buildAltitudeWeatherComparison({
+    candidates: [{ altitudeFt: 9000, status: 'input_only' }],
+    crossSection: { levels },
+    axis,
+    flightPlanProfiles: {
+      9000: {
+        points: [
+          { distanceNm: 0, altitudeFt: 0 },
+          { distanceNm: 10, altitudeFt: 9000 },
+          { distanceNm: 40, altitudeFt: 0 },
+          { distanceNm: 50, altitudeFt: 0 },
+        ],
+      },
+    },
+  })
+
+  assert.equal(rows[0].icing.summary.exposureNmByGrade[2], 20)
+})
+
 test('comparison interpolates sample-level KIM heights and keeps unknown-time NOTAM undetermined', () => {
   const axis = { samples: [{ distanceNm: 0, bearingDeg: 90, lon: 0, lat: 0 }, { distanceNm: 2, bearingDeg: 90, lon: 0.2, lat: 0 }, { distanceNm: 10, bearingDeg: 90, lon: 1, lat: 0 }] }
   const crossSection = { levels: [

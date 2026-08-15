@@ -5,6 +5,7 @@ import { buildConfidenceWarnings } from './confidence.js'
 import { buildHazardSection } from './hazard-section.js'
 import { matchTyphoonHazards } from './typhoon-briefing.js'
 import { summarizeEnrouteModel } from './enroute-model.js'
+import { buildFlightPlanProfile } from './profile-composer.js'
 import { loadRouteCrossSection } from './enroute-cross-section.js'
 import { buildRouteWeatherLegs } from './route-weather-legs.js'
 import { buildRouteAxis } from './route-axis.js'
@@ -93,6 +94,14 @@ export function composeBriefing(request, data) {
 
   const axis = buildRouteAxis(request.routeGeometry, 2000)
   const cruiseAltitudeFt = Number(request.plannedCruiseAltitudeFt) || 0
+  let flightPlanProfile = null
+  try {
+    flightPlanProfile = buildFlightPlanProfile(request, axis).profile
+  } catch {
+    // 브리핑은 기존처럼 순항고도만으로도 계속 만들 수 있어야 한다. 프로파일을 만들지 못하면
+    // 단면 모델이 아래의 기존 순항고도 fallback을 사용한다.
+    flightPlanProfile = null
+  }
 
   const adverse = buildHazardSection({
     sigmet: sigmetPayload.items ?? [],
@@ -154,8 +163,21 @@ export function composeBriefing(request, data) {
     try { loaded = loadRouteCrossSection({ root: data.dataRoot, routeGeometry: request.routeGeometry, body: request }) } catch { loaded = null }
   }
   const enrouteModel = loaded?.available
-    ? summarizeEnrouteModel({ crossSection: loaded.crossSection, turbulence: loaded.turbulence, totalDistanceNm: loaded.totalDistanceNm, cruiseAltitudeFt })
+    ? summarizeEnrouteModel({ crossSection: loaded.crossSection, turbulence: loaded.turbulence, totalDistanceNm: loaded.totalDistanceNm, cruiseAltitudeFt, flightPlanProfile })
     : null
+  const routeWeatherLegs = buildRouteWeatherLegs({
+    routeModel: request.routeModel,
+    routeGeometry: request.routeGeometry,
+    routeMarkers: request.routeMarkers,
+    procedureContext: request.procedureContext,
+    weatherAxis: loaded?.axis,
+    selectedCruiseAltitudeFt: cruiseAltitudeFt,
+    crossSection: loaded?.crossSection,
+    turbulence: loaded?.turbulence,
+    hazards: adverse.hazards,
+    routeNotams,
+    aipConstraints,
+  })
   const enroute = {
     // adverse와 동일한 보수 레벨을 따른다(밴드 미상 SIGMET이 ④에서만 amber로 새지 않도록).
     level: adverse.level,
@@ -164,16 +186,8 @@ export function composeBriefing(request, data) {
     crossSectionAvailable: loaded ? Boolean(loaded.available) : true,
     // enroute 단면 모델을 여기서 소유(이전엔 라우트·경보 스케줄러가 사후 mutate). root 없으면 null.
     model: enrouteModel,
-    legs: buildRouteWeatherLegs({
-      routeModel: request.routeModel,
-      weatherAxis: loaded?.axis,
-      selectedCruiseAltitudeFt: cruiseAltitudeFt,
-      crossSection: loaded?.crossSection,
-      turbulence: loaded?.turbulence,
-      hazards: adverse.hazards,
-      routeNotams,
-      aipConstraints,
-    }).legs,
+    legs: routeWeatherLegs.legs,
+    procedures: routeWeatherLegs.procedures,
     aipConstraints,
   }
 

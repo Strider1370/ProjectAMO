@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { getNextMetVisibility } from './metLayerVisibility.js'
+import { createInitialMetVisibility, getNextMetVisibility } from './metLayerVisibility.js'
+
+test('initial MET visibility turns on only the domestic radar', () => {
+  assert.deepEqual(
+    createInitialMetVisibility(['radarHsr', 'radarHci', 'lightning']),
+    { radarHsr: true, radarHci: false, lightning: false, windFlow: true, windSpeed: true },
+  )
+})
 
 // 국내/해외 레이더는 상호배타. toggleMet과 setLayerOn(검색·브리핑 딥링크)이 모두 이 함수를 지나므로
 // 여기서만 막으면 우회 경로가 없다.
