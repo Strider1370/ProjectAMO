@@ -13,6 +13,7 @@ import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
 import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
 import { normalizeRouteSnapshot } from './lib/routeStore.js'
+import { buildSavedBriefingInputs } from './lib/savedRouteBriefing.js'
 import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
 import { parseRouteBuffer, extractRoutePaths, MAX_IMPORT_BYTES } from './lib/routeImport.js'
@@ -1759,6 +1760,60 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const [autoBriefingPending, setAutoBriefingPending] = useState(false)
   const autoSearchRef = useRef(false) // 자동추천이 픽스를 채운 뒤 검색을 1회만 재실행하도록 가드
 
+  // 저장 경로를 재검색 없이 연다 — 저장된 기하·routeModel·markers만으로 브리핑을 만든다.
+  // 해외 IFR은 절차 데이터가 한국 공항에만 있어 재검색(getProcedures/buildEditorPreview)이
+  // `No RNAV route path`로 깨진다. 저장된 선이 멀쩡한데 다시 찾다 실패하므로 그 경로를 아예 타지 않는다.
+  // 저장분이 부족하면(1단계 이전 저장분) 기존 재검색 경로로 위임한다.
+  async function openSavedRouteBriefing(saved) {
+    const inputs = buildSavedBriefingInputs(saved)
+    if (!inputs.ok) return loadSavedRoute(saved, { autoBriefing: true })
+    if (!inputs.etd || !inputs.eta) { setBriefingError('저장된 경로에 ETD/ETA가 없습니다.'); return }
+
+    const resetVersion = routeResetVersionRef.current
+    setBriefingLoading(true)
+    setBriefingError(null)
+    try {
+      const result = await fetchRouteBriefing({
+        flightRule: inputs.flightRule,
+        routeGeometry: inputs.routeGeometry,
+        routeModel: inputs.routeModel,
+        routeMarkers: inputs.routeMarkers,
+        plannedCruiseAltitudeFt: inputs.cruiseAltitudeFt || DEFAULT_CRUISE_ALTITUDE_FT,
+        candidateCruiseAltitudesFt: [],
+        sampleSpacingMeters: 250,
+        departureAirport: inputs.departureAirport,
+        arrivalAirport: inputs.arrivalAirport,
+        alternateAirport: inputs.alternateAirport,
+        etd: inputs.etd,
+        eta: inputs.eta,
+      })
+      if (resetVersion !== routeResetVersionRef.current) return
+      setRouteForm((previous) => ({
+        ...previous,
+        flightRule: inputs.flightRule,
+        departureAirport: inputs.departureAirport ?? '',
+        arrivalAirport: inputs.arrivalAirport ?? '',
+      }))
+      setAlternateAirport(inputs.alternateAirport || '')
+      setEtd(inputs.etd)
+      setEta(inputs.eta)
+      if (inputs.tasKt) updateTasKt(inputs.tasKt)
+      if (Number.isFinite(Number(inputs.cruiseAltitudeFt))) updateCruiseAltitudeFt(Number(inputs.cruiseAltitudeFt))
+      setBriefing(result)
+      setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
+      setWorkflowStep('briefing')
+      // 단면도는 있으면 좋고 없어도 브리핑은 성립한다.
+      try {
+        const cs = await fetchCrossSection(buildCrossSectionRequest({ routeGeometry: inputs.routeGeometry, etd: inputs.etd }))
+        if (resetVersion === routeResetVersionRef.current) setCrossSection(cs)
+      } catch { /* optional */ }
+    } catch (err) {
+      setBriefingError(err.message)
+    } finally {
+      setBriefingLoading(false)
+    }
+  }
+
   // 불러오기: restore saved inputs, re-search, then overlay saved VFR waypoints.
   // opts.autoBriefing=true → 경로검색 완료(routeResult) 후 아래 effect가 브리핑을 자동 생성.
   async function loadSavedRoute(saved, opts = {}) {
@@ -2372,6 +2427,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       handleRouteReset,
       handleRouteSearch,
       loadSavedRoute,
+      openSavedRouteBriefing,
       importRouteFromFile,
       applyImportedPath,
       cancelImportChoice,
