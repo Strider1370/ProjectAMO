@@ -44,6 +44,8 @@ function WeatherOverlayPanel({
   radarWindRequested = false,
   onRadarWindRequestedChange,
   terrainAltitudeFt = 3000,
+  visibleSatelliteVisuals = { brightness: 12, contrast: 0 },
+  onVisibleSatelliteVisualsChange,
 }) {
   // WISSDOM 높이 선택은 세로 고도 레일(RadarWindVerticalRail)이 맡는다 — 이 패널은 켬/끔만 다룬다.
   const isMobile = useIsMobile()
@@ -143,6 +145,35 @@ function WeatherOverlayPanel({
           )}
         </section>
       ))}
+      {visibility.satelliteVisible && (
+        <section className="satellite-visual-controls" aria-label="가시영상 표시 조절">
+          <div className="satellite-visual-controls__title">가시영상 표시</div>
+          <label className="satellite-visual-controls__row">
+            <span>밝기 <output>{visibleSatelliteVisuals.brightness}</output></span>
+            <input
+              type="range"
+              min="0"
+              max="40"
+              step="1"
+              value={visibleSatelliteVisuals.brightness}
+              onChange={(event) => onVisibleSatelliteVisualsChange?.({ brightness: Number(event.target.value) })}
+              aria-label="가시영상 밝기"
+            />
+          </label>
+          <label className="satellite-visual-controls__row">
+            <span>대비 <output>{visibleSatelliteVisuals.contrast}</output></span>
+            <input
+              type="range"
+              min="-50"
+              max="50"
+              step="1"
+              value={visibleSatelliteVisuals.contrast}
+              onChange={(event) => onVisibleSatelliteVisualsChange?.({ contrast: Number(event.target.value) })}
+              aria-label="가시영상 대비"
+            />
+          </label>
+        </section>
+      )}
     </div>
   )
 

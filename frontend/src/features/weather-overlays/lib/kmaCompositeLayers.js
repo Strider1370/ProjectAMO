@@ -13,6 +13,21 @@ export const HCI_LAYER = 'kma-hci-overlay'
 export const VISIBLE_SOURCE = 'gk2a-visible-overlay'
 export const VISIBLE_LAYER = 'gk2a-visible-overlay'
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, Number(value) || 0))
+}
+
+function visibleSatellitePresentation({ radarHsr, visuals = {} }) {
+  return {
+    opacity: radarHsr ? 0.5 : 0.9,
+    rasterPaint: {
+      'raster-brightness-min': clamp(visuals.brightness ?? 12, 0, 40) / 100,
+      'raster-brightness-max': 1,
+      'raster-contrast': clamp(visuals.contrast, -50, 50) / 100,
+    },
+  }
+}
+
 // 선택 시각에 가장 가까운 과거 프레임. 없으면 최신.
 export function pickCompositeFrame(meta, selectedMs) {
   const frames = (Array.isArray(meta?.frames) ? meta.frames : [])
@@ -25,7 +40,7 @@ export function pickCompositeFrame(meta, selectedMs) {
   return past.length ? past.at(-1) : frames[0]
 }
 
-export function syncKmaCompositeLayers(map, { hsrMeta, hciMeta, visibleMeta, qpfFrame, selectedMs, visibility = {} }, { syncRaster = syncRasterFrame } = {}) {
+export function syncKmaCompositeLayers(map, { hsrMeta, hciMeta, visibleMeta, qpfFrame, selectedMs, visibility = {}, visibleSatelliteVisuals }, { syncRaster = syncRasterFrame } = {}) {
   const hsrFrame = visibility.radarHsr && !qpfFrame ? pickCompositeFrame(hsrMeta, selectedMs) : null
   const hciFrame = visibility.radarHci ? pickCompositeFrame(hciMeta, selectedMs) : null
   syncRaster(map, {
@@ -38,8 +53,11 @@ export function syncKmaCompositeLayers(map, { hsrMeta, hciMeta, visibleMeta, qpf
   })
 
   const visibleFrame = visibility.satelliteVisible ? pickCompositeFrame(visibleMeta, selectedMs) : null
+  const visiblePresentation = visibleSatellitePresentation({ radarHsr: visibility.radarHsr, visuals: visibleSatelliteVisuals })
   syncRaster(map, {
-    sourceId: VISIBLE_SOURCE, layerId: VISIBLE_LAYER, frame: visibleFrame, opacity: 0.9,
+    sourceId: VISIBLE_SOURCE, layerId: VISIBLE_LAYER, frame: visibleFrame,
+    beforeLayerId: visibility.radarHsr ? HSR_LAYER : undefined,
+    ...visiblePresentation,
     visible: Boolean(visibleFrame), transitionMs: 200,
   })
 }

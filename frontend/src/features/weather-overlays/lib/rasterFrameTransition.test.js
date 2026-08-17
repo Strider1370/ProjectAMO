@@ -163,6 +163,29 @@ test('a style recreation restores the active frame without preloading another im
   assert.equal(map.getLayer('radar-layer').source, 'radar-source--incoming-1')
 })
 
+test('updates raster presentation on an already active frame', async () => {
+  const map = createMap()
+  const transition = createRasterFrameTransition(map, {
+    sourceId: 'satellite-source', layerId: 'satellite-layer', opacity: 0.9, transitionMs: 0,
+    rasterPaint: { 'raster-brightness-min': 0.12, 'raster-contrast': 0 },
+    preload: async () => undefined,
+  })
+  const initial = transition.sync(firstFrame, true)
+  await waitFor(() => map.getSource('satellite-source--incoming-1'))
+  map.emitSourceData('satellite-source--incoming-1')
+  await initial
+
+  transition.updatePresentation({
+    opacity: 0.5,
+    rasterPaint: { 'raster-brightness-min': 0.24, 'raster-contrast': 0.3 },
+  })
+  await transition.sync(firstFrame, true)
+
+  assert.equal(map.getLayer('satellite-layer').paint['raster-opacity'], 0.5)
+  assert.equal(map.getLayer('satellite-layer').paint['raster-brightness-min'], 0.24)
+  assert.equal(map.getLayer('satellite-layer').paint['raster-contrast'], 0.3)
+})
+
 test('style cleanup during preload cannot commit and same frame restores without a second preload', async () => {
   const pending = deferred()
   const map = createMap()

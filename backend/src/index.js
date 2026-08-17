@@ -12,7 +12,6 @@ import airmetProcessor from './processors/airmet-processor.js'
 import sigwxLowProcessor from './processors/sigwx-low-processor.js'
 import amosProcessor from './processors/amos-processor.js'
 import lightningProcessor from './processors/lightning-processor.js'
-import radarEchoProcessor from './processors/radar-echo-processor.js'
 import radarGraphicsProcessor from './processors/radar-graphics-processor.js'
 import echoTopProcessor from './processors/echo-top-processor.js'
 import rainviewerProcessor from './processors/rainviewer-processor.js'
@@ -40,7 +39,7 @@ installApiHubFetchGuard()
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
-const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, sigwx_low: false, amos: false, lightning: false, radar_echo: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
+const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
 const activeControllers = new Map()
 const KIM_NWP_CRON_OPTIONS = { timezone: 'Etc/UTC' }
 const AIRPORT_INFO_CRON_OPTIONS = { timezone: 'Asia/Seoul' }
@@ -275,7 +274,7 @@ async function main() {
   // 서버 시작 직후 1회 즉시 수집
   console.log("Running initial data collection...");
   await Promise.allSettled(
-    buildInitialCollectionJobs().map(([type, job]) => runWithLock(type, job, type === 'kim_surface_wind' || type === 'ktg' ? KIM_NWP_KEY : ['radar_echo', 'wissdom', 'qpf', 'hsr', 'hci', 'echo_top', 'satellite', 'satellite_visible'].includes(type) ? RADAR_SATELLITE_KEY : ['metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'lightning', 'typhoon', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'asos_ceiling'].includes(type) ? AVIATION_KEY : type === 'flight_category' ? AVIATION_AND_RADAR_KEYS : undefined)),
+    buildInitialCollectionJobs().map(([type, job]) => runWithLock(type, job, type === 'kim_surface_wind' || type === 'ktg' ? KIM_NWP_KEY : ['wissdom', 'qpf', 'hsr', 'hci', 'echo_top', 'satellite', 'satellite_visible'].includes(type) ? RADAR_SATELLITE_KEY : ['metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'lightning', 'typhoon', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'asos_ceiling'].includes(type) ? AVIATION_KEY : type === 'flight_category' ? AVIATION_AND_RADAR_KEYS : undefined)),
   );
   console.log("Initial data collection complete.");
 }

@@ -20,6 +20,33 @@ test('routes HSR, HCI, and visible satellite through the 200ms raster transition
     { sourceId: 'kma-hci-overlay', transitionMs: 200, visible: true },
     { sourceId: 'gk2a-visible-overlay', transitionMs: 200, visible: true },
   ])
+  assert.equal(calls.find((call) => call.sourceId === 'gk2a-visible-overlay').opacity, 0.5)
+  assert.deepEqual(calls.find((call) => call.sourceId === 'gk2a-visible-overlay').rasterPaint, {
+    'raster-brightness-min': 0.12,
+    'raster-brightness-max': 1,
+    'raster-contrast': 0,
+  })
+  assert.equal(calls.find((call) => call.sourceId === 'gk2a-visible-overlay').beforeLayerId, 'kma-hsr-overlay')
+})
+
+test('applies the requested visible-satellite brightness and contrast without changing radar priority', () => {
+  const calls = []
+  syncKmaCompositeLayers({}, {
+    visibleMeta: { frames: [{ timeMs: 1, path: '/visible.webp', bounds: [[30, 120], [40, 130]] }] },
+    selectedMs: 1,
+    visibleSatelliteVisuals: { brightness: 24, contrast: 30 },
+    visibility: { satelliteVisible: true },
+  }, {
+    syncRaster: (_map, options) => calls.push(options),
+  })
+
+  const visible = calls.find((call) => call.sourceId === 'gk2a-visible-overlay')
+  assert.equal(visible.opacity, 0.9)
+  assert.deepEqual(visible.rasterPaint, {
+    'raster-brightness-min': 0.24,
+    'raster-brightness-max': 1,
+    'raster-contrast': 0.3,
+  })
 })
 
 test('selects raw KMA tm metadata at the requested frame time', () => {

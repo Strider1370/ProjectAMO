@@ -12,20 +12,34 @@ import {
 const hiddenAdvisoryKeys = { sigwxLow: [], sigmet: [], airmet: [] }
 const sigwxFilter = {}
 
-test('collects enabled domestic observations and future QPF as source-aware availability entries', () => {
+test('collects every enabled timeline source as source-aware availability entries', () => {
   assert.deepEqual(collectActiveFrameEntries({
-    visibility: { radarHsr: true, radarHci: false, satellite: true, qpf: true },
+    visibility: {
+      radar: true, radarHsr: true, radarHci: true, radarOverseas: true,
+      echoTop: true, satellite: true, satelliteVisible: true, ci: true, ctps: true,
+      lightning: true,
+    },
+    radarFrames: [{ timeMs: 500 }],
     hsrFrames: [{ timeMs: 1000 }],
     hciFrames: [{ timeMs: 2000 }],
     satelliteFrames: [{ timeMs: 1000 }, { timeMs: 3000 }],
-    satelliteVisibleFrames: [],
-    lightningFrames: [],
+    satelliteVisibleFrames: [{ timeMs: 4000 }],
+    lightningFrames: [{ timeMs: 5000 }],
     wissdomFrames: [],
     qpfFrames: [{ validTimeMs: 5000 }],
+    echoTopFrames: [{ timeMs: 6000 }],
+    rainviewerFrames: [{ timeMs: 7000 }],
+    convectiveFrames: [{ timeMs: 8000 }],
   }), [
+    { ms: 500, cadenceMs: 5 * 60_000 },
     { ms: 1000, cadenceMs: 5 * 60_000 },
+    { ms: 2000, cadenceMs: 10 * 60_000 },
     { ms: 3000, cadenceMs: 10 * 60_000 },
-    { ms: 5000, cadenceMs: 10 * 60_000 },
+    { ms: 4000, cadenceMs: 10 * 60_000 },
+    { ms: 5000, cadenceMs: 5 * 60_000 },
+    { ms: 6000, cadenceMs: 5 * 60_000 },
+    { ms: 7000, cadenceMs: 10 * 60_000 },
+    { ms: 8000, cadenceMs: 10 * 60_000 },
   ])
 })
 

@@ -472,9 +472,13 @@ const SNAPSHOT_SOURCES = [
   { keys: ['takeoffFcst', 'takeoff_fcst'], files: [snapshotMetaLatest('takeoff_fcst')], build: () => buildHashEntry('takeoff_fcst') },
   { keys: ['notam'], files: [snapshotMetaLatest('notam')], build: () => buildHashEntry('notam') },
   { keys: ['echoMeta', 'echo'], files: [snapshotMetaFile('radar', 'echo_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'echo_meta.json')) },
+  { keys: ['hsrMeta', 'hsr'], files: [snapshotMetaFile('radar', 'hsr', 'hsr_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'hsr', 'hsr_meta.json'))) },
+  { keys: ['hciMeta', 'hci'], files: [snapshotMetaFile('radar', 'hci', 'hci_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'hci', 'hci_meta.json'))) },
   { keys: ['wissdomMeta', 'wissdom'], files: [snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'wissdom', 'wissdom_meta.json'))) },
   { keys: ['qpfMeta', 'qpf'], files: [snapshotMetaFile('radar', 'qpf', 'qpf_meta.json')], build: () => buildRadarGraphicsSnapshotEntry(readJsonFileSafe(snapshotMetaFile('radar', 'qpf', 'qpf_meta.json'))) },
+  { keys: ['echoTopMeta'], files: [snapshotMetaFile('radar', 'echotop', 'echotop_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'echotop', 'echotop_meta.json')) },
   { keys: ['satMeta', 'satellite'], files: [snapshotMetaFile('satellite', 'sat_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('satellite', 'sat_meta.json')) },
+  { keys: ['satVisibleMeta'], files: [snapshotMetaFile('satellite', 'visible', 'visible_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('satellite', 'visible', 'visible_meta.json')) },
   { keys: ['convectiveMeta'], files: [snapshotMetaFile('satellite', 'convective', 'convective_meta.json')], build: buildConvectiveSnapshotEntry },
   { keys: ['rainviewerMeta', 'rainviewer'], files: [snapshotMetaFile('radar', 'rainviewer_meta.json')], build: () => buildFrameEntry(snapshotMetaFile('radar', 'rainviewer_meta.json')) },
   // ponytail: sigwx 오버레이는 파일 경로가 tmfc 동적 → 정적 files 없음(5s TTL로 커버). 정적화는 필요할 때.

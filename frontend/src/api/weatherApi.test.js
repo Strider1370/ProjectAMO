@@ -42,15 +42,30 @@ test('loadWeatherData skips deferred panel-only datasets on first entry', async 
   }
 })
 
-test('loadChangedWeatherData refreshes HSR/HCI without requesting legacy echo metadata', async () => {
+test('loadChangedWeatherData refreshes HSR/HCI from their own metadata changes', async () => {
   const recorder = installFetchRecorder()
   try {
-    const data = await loadChangedWeatherData({ echoMeta: true })
+    const data = await loadChangedWeatherData({ hsrMeta: true, hciMeta: true })
     assert.ok(data.hsrMeta)
     assert.ok(data.hciMeta)
     assert.deepEqual(recorder.calls, [
       '/data/radar/hsr/hsr_meta.json',
       '/data/radar/hci/hci_meta.json',
+    ])
+  } finally {
+    recorder.restore()
+  }
+})
+
+test('loadChangedWeatherData refreshes other independently published timeline metadata', async () => {
+  const recorder = installFetchRecorder()
+  try {
+    const data = await loadChangedWeatherData({ echoTopMeta: true, satVisibleMeta: true })
+    assert.ok(data.echoTopMeta)
+    assert.ok(data.satVisibleMeta)
+    assert.deepEqual(recorder.calls, [
+      '/data/radar/echotop/echotop_meta.json',
+      '/data/satellite/visible/visible_meta.json',
     ])
   } finally {
     recorder.restore()

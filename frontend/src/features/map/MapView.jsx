@@ -405,6 +405,7 @@ const MapView = forwardRef(function MapView({
   const [styleRevision, setStyleRevision] = useState(0)
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
   const [metVisibility, setMetVisibility] = useState(() => initMetVisibility(initialMetVisibility))
+  const [visibleSatelliteVisuals, setVisibleSatelliteVisuals] = useState({ brightness: 12, contrast: 0 })
   const [showFlightCategoryMissing, setShowFlightCategoryMissing] = useState(false)
   const [showFlightCategoryStations, setShowFlightCategoryStations] = useState(true)
   const [timestampOpen, setTimestampOpen] = useState(true)
@@ -1498,8 +1499,9 @@ const MapView = forwardRef(function MapView({
       qpfFrame: weatherOverlayModel.qpfFrame,
       selectedMs: weatherOverlayModel.selectedWeatherTimeMs,
       visibility: metVisibility,
+      visibleSatelliteVisuals,
     })
-  }, [hsrMeta, hciMeta, satVisibleMeta, weatherOverlayModel.qpfFrame, weatherOverlayModel.selectedWeatherTimeMs, metVisibility])
+  }, [hsrMeta, hciMeta, satVisibleMeta, weatherOverlayModel.qpfFrame, weatherOverlayModel.selectedWeatherTimeMs, metVisibility, visibleSatelliteVisuals])
 
   // ???? Sync terrain hazard shading ????????????????????????????????????????????????????????????????????????????????
 
@@ -2208,6 +2210,8 @@ const MapView = forwardRef(function MapView({
           onWindFlowOpacityChange={setWindFlowOpacity}
           onWindFlowTrailChange={setWindFlowTrail}
           onWindFlowWidthChange={setWindFlowWidth}
+          visibleSatelliteVisuals={visibleSatelliteVisuals}
+          onVisibleSatelliteVisualsChange={(patch) => setVisibleSatelliteVisuals((current) => ({ ...current, ...patch }))}
           radarWindRequested={radarWindOverlay.requestedVisible}
           onRadarWindRequestedChange={radarWindOverlay.setRequestedVisible}
           terrainAltitudeFt={terrainAltitudeFt}

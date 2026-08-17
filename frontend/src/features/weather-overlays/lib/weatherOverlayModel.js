@@ -11,12 +11,16 @@ import { LIGHTNING_AGE_BANDS, LIGHTNING_RECENT_COUNT_WINDOW_MINUTES, createLight
 import { buildRasterLegendModel } from './rasterLegendModel.js'
 
 const CADENCE_MS = Object.freeze({
+  radar: 5 * 60_000,
   hsr: 5 * 60_000,
   hci: 10 * 60_000,
   satellite: 10 * 60_000,
   wissdom: 10 * 60_000,
   lightning: 5 * 60_000,
   qpf: 10 * 60_000,
+  echoTop: 5 * 60_000,
+  rainviewer: 10 * 60_000,
+  convective: 10 * 60_000,
 })
 
 function addAvailabilityEntries(target, frames, cadenceMs, timeKey = 'timeMs') {
@@ -30,6 +34,7 @@ function addAvailabilityEntries(target, frames, cadenceMs, timeKey = 'timeMs') {
 
 export function collectActiveFrameEntries({
   visibility = {},
+  radarFrames = [],
   hsrFrames = [],
   hciFrames = [],
   satelliteFrames = [],
@@ -37,9 +42,13 @@ export function collectActiveFrameEntries({
   lightningFrames = [],
   wissdomFrames = [],
   qpfFrames = [],
+  echoTopFrames = [],
+  rainviewerFrames = [],
+  convectiveFrames = [],
   wissdomRequested = false,
 } = {}) {
   const entries = new Map()
+  if (visibility.radar) addAvailabilityEntries(entries, radarFrames, CADENCE_MS.radar)
   if (visibility.radarHsr) {
     addAvailabilityEntries(entries, hsrFrames, CADENCE_MS.hsr)
   }
@@ -50,7 +59,10 @@ export function collectActiveFrameEntries({
   if (visibility.satellite) addAvailabilityEntries(entries, satelliteFrames, CADENCE_MS.satellite)
   if (visibility.satelliteVisible) addAvailabilityEntries(entries, satelliteVisibleFrames, CADENCE_MS.satellite)
   if (visibility.lightning) addAvailabilityEntries(entries, lightningFrames, CADENCE_MS.lightning)
-  if (visibility.qpf) addAvailabilityEntries(entries, qpfFrames, CADENCE_MS.qpf, 'validTimeMs')
+  if (visibility.radarHsr) addAvailabilityEntries(entries, qpfFrames, CADENCE_MS.qpf, 'validTimeMs')
+  if (visibility.echoTop) addAvailabilityEntries(entries, echoTopFrames, CADENCE_MS.echoTop)
+  if (visibility.radarOverseas) addAvailabilityEntries(entries, rainviewerFrames, CADENCE_MS.rainviewer)
+  if (visibility.ci || visibility.ctps) addAvailabilityEntries(entries, convectiveFrames, CADENCE_MS.convective)
   return [...entries]
     .map(([ms, cadenceMs]) => ({ ms, cadenceMs }))
     .sort((a, b) => a.ms - b.ms)
@@ -432,6 +444,7 @@ export function buildWeatherOverlayModel({
     lightningFrames,
     activeFrameEntries: collectActiveFrameEntries({
       visibility,
+      radarFrames,
       hsrFrames,
       hciFrames,
       satelliteFrames,
@@ -439,6 +452,9 @@ export function buildWeatherOverlayModel({
       lightningFrames,
       wissdomFrames,
       qpfFrames,
+      echoTopFrames,
+      rainviewerFrames,
+      convectiveFrames,
       wissdomRequested: radarWindRequested,
     }),
     weatherTimelineTicks,

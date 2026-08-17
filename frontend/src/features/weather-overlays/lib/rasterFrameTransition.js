@@ -5,13 +5,13 @@ function frameKey(frame) {
   return frame?.path && coordinates ? `${frame.path}|${JSON.stringify(coordinates)}` : null
 }
 
-function rasterLayer(id, source, opacity) {
+function rasterLayer(id, source, opacity, rasterPaint = {}) {
   return {
     id,
     type: 'raster',
     source,
     slot: 'middle',
-    paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0 },
+    paint: { 'raster-opacity': opacity, 'raster-fade-duration': 0, ...rasterPaint },
   }
 }
 
@@ -72,9 +72,14 @@ export function createRasterFrameTransition(map, {
   sourceId,
   layerId,
   opacity,
+  rasterPaint = {},
+  beforeLayerId,
   transitionMs = 200,
   preload = defaultPreload,
 } = {}) {
+  let currentOpacity = opacity
+  let currentRasterPaint = rasterPaint
+  let currentBeforeLayerId = beforeLayerId
   let generation = 0
   let active = null
   let incoming = null
@@ -88,7 +93,7 @@ export function createRasterFrameTransition(map, {
       map.addSource(active.sourceId, { type: 'image', url: active.frame.path, coordinates })
     }
     if (!map.getLayer?.(layerId)) {
-      map.addLayer(rasterLayer(layerId, active.sourceId, opacity))
+      map.addLayer(rasterLayer(layerId, active.sourceId, currentOpacity, currentRasterPaint), currentBeforeLayerId)
     }
     return true
   }
@@ -114,7 +119,8 @@ export function createRasterFrameTransition(map, {
 
     if (active?.key === key) {
       restoreActive()
-      map.setPaintProperty?.(layerId, 'raster-opacity', opacity)
+      map.setPaintProperty?.(layerId, 'raster-opacity', currentOpacity)
+      Object.entries(currentRasterPaint).forEach(([property, value]) => map.setPaintProperty?.(layerId, property, value))
       map.setLayoutProperty?.(layerId, 'visibility', 'visible')
       return true
     }
@@ -145,7 +151,7 @@ export function createRasterFrameTransition(map, {
     try {
       const coordinates = buildImageCoordinates(frame.bounds)
       map.addSource(next.sourceId, { type: 'image', url: frame.path, coordinates })
-      map.addLayer(rasterLayer(next.layerId, next.sourceId, 0), layerBeforeId(map, layerId))
+      map.addLayer(rasterLayer(next.layerId, next.sourceId, 0, currentRasterPaint), currentBeforeLayerId || layerBeforeId(map, layerId))
     } catch {
       if (incoming === next) removeResource(map, next.sourceId, next.layerId)
       if (incoming === next) incoming = null
@@ -162,7 +168,7 @@ export function createRasterFrameTransition(map, {
     if (!active) {
       const beforeId = layerBeforeId(map, next.layerId)
       map.removeLayer(next.layerId)
-      map.addLayer(rasterLayer(layerId, next.sourceId, opacity), beforeId)
+      map.addLayer(rasterLayer(layerId, next.sourceId, currentOpacity, currentRasterPaint), beforeId || currentBeforeLayerId)
       map.setLayoutProperty?.(layerId, 'visibility', 'visible')
       active = next
       incoming = null
@@ -173,7 +179,7 @@ export function createRasterFrameTransition(map, {
     map.setPaintProperty(layerId, 'raster-opacity', 0)
     map.setLayoutProperty?.(layerId, 'visibility', 'visible')
     map.setLayoutProperty?.(next.layerId, 'visibility', 'visible')
-    map.setPaintProperty(next.layerId, 'raster-opacity', opacity)
+    map.setPaintProperty(next.layerId, 'raster-opacity', currentOpacity)
     await new Promise((resolve) => { timer = setTimeout(resolve, transitionMs) })
     timer = null
     if (requestGeneration !== generation || incoming !== next) return false
@@ -181,7 +187,7 @@ export function createRasterFrameTransition(map, {
     const previous = active
     const beforeId = layerBeforeId(map, layerId)
     map.removeLayer(layerId)
-    map.addLayer(rasterLayer(layerId, next.sourceId, opacity), beforeId)
+    map.addLayer(rasterLayer(layerId, next.sourceId, currentOpacity, currentRasterPaint), beforeId || currentBeforeLayerId)
     map.setLayoutProperty?.(layerId, 'visibility', 'visible')
     removeResource(map, previous.sourceId, next.layerId)
     active = next
@@ -200,7 +206,20 @@ export function createRasterFrameTransition(map, {
     cancel()
   }
 
-  return { sync, cancel, dispose }
+  function updatePresentation(presentation = {}) {
+    const { opacity: nextOpacity, rasterPaint: nextRasterPaint, beforeLayerId: nextBeforeLayerId } = presentation
+    if (Number.isFinite(nextOpacity)) currentOpacity = nextOpacity
+    if (nextRasterPaint) currentRasterPaint = nextRasterPaint
+    if ('beforeLayerId' in presentation) currentBeforeLayerId = nextBeforeLayerId
+    if (currentBeforeLayerId && map.getLayer?.(layerId) && map.getLayer?.(currentBeforeLayerId)) {
+      map.moveLayer?.(layerId, currentBeforeLayerId)
+    }
+    if (!map.getLayer?.(layerId)) return
+    map.setPaintProperty?.(layerId, 'raster-opacity', currentOpacity)
+    Object.entries(currentRasterPaint).forEach(([property, value]) => map.setPaintProperty?.(layerId, property, value))
+  }
+
+  return { sync, cancel, dispose, updatePresentation }
 }
 
 const transitionsByMap = new WeakMap()
@@ -216,6 +235,8 @@ export function syncRasterFrame(map, options) {
   if (!transition) {
     transition = createRasterFrameTransition(map, options)
     transitions.set(key, transition)
+  } else {
+    transition.updatePresentation(options)
   }
   void transition.sync(options.frame, options.visible)
   return transition

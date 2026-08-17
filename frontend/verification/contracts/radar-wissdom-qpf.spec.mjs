@@ -11,6 +11,7 @@ const QPF_30 = ANALYSIS_TIME_MS + 30 * 60 * 1000
 
 const radarFrame = (tm) => ({ tm, path: `/data/radar/hsr/hsr_${tm}.webp`, bounds: BOUNDS })
 const hciFrame = (tm) => ({ tm, path: `/data/radar/hci/hci_${tm}.webp`, bounds: BOUNDS })
+const visibleFrame = (tm) => ({ tm, path: `/data/satellite/visible/vis_korea_${tm}.webp`, bounds: BOUNDS })
 const wissdomFrame = (heightM, tm) => ({
   tm,
   timeMs: Date.UTC(2026, 7, 4, 1, tm === TM.observed ? 20 : 25),
@@ -79,6 +80,15 @@ async function installFixture(page) {
     if (/\.(?:png|webp)$/.test(pathname)) return route.fulfill({ contentType: 'image/webp', body: WEBP_STUB })
     return route.fallback()
   })
+  await page.route('**/data/satellite/visible/**', (route) => {
+    const pathname = new URL(route.request().url()).pathname
+    if (pathname.endsWith('/visible_meta.json')) return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ type: 'GK2A_VISIBLE', tm: TM.latest, frames: [visibleFrame(TM.observed), visibleFrame(TM.latest)] }),
+    })
+    if (pathname.endsWith('.webp')) return route.fulfill({ contentType: 'image/webp', body: WEBP_STUB })
+    return route.fallback()
+  })
 }
 
 async function ensureRadarOn(page) {
@@ -110,6 +120,20 @@ const layerState = (page, layerId) => page.evaluate((id) => {
     sourceCount: map.getStyle().sources ? Object.keys(map.getStyle().sources).filter((sourceId) => sourceId.startsWith(id)).length : 0,
   }
 }, layerId)
+
+const rasterPresentation = (page) => page.evaluate(() => {
+  const map = window.__map
+  const layers = map?.getStyle()?.layers || []
+  const visibleIndex = layers.findIndex((layer) => layer.id === 'gk2a-visible-overlay')
+  const hsrIndex = layers.findIndex((layer) => layer.id === 'kma-hsr-overlay')
+  return {
+    visibleIndex,
+    hsrIndex,
+    opacity: map?.getPaintProperty('gk2a-visible-overlay', 'raster-opacity'),
+    brightness: map?.getPaintProperty('gk2a-visible-overlay', 'raster-brightness-min'),
+    contrast: map?.getPaintProperty('gk2a-visible-overlay', 'raster-contrast'),
+  }
+})
 
 async function selectTimeline(page, targetMs) {
   const slider = page.getByRole('slider', { name: /기상 자료 시각/ })
@@ -179,6 +203,27 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
     await expect(hci).toHaveAttribute('aria-pressed', 'true')
     await expect.poll(() => layerState(page, 'kma-hci-overlay')).toMatchObject({ visibility: 'visible' })
     await expect(page.locator('.timeline-rail__availability-segment')).not.toHaveCount(0)
+  })
+
+  test('visible satellite stays below HSR and exposes live brightness and contrast controls', async ({ page }, testInfo) => {
+    await openWeatherPanel(page, testInfo)
+    await ensureRadarOn(page)
+    const visible = page.getByRole('button', { name: '가시영상', exact: true })
+    await visible.click()
+    await expect(visible).toHaveAttribute('aria-pressed', 'true')
+    const brightness = page.getByRole('slider', { name: '가시영상 밝기' })
+    const contrast = page.getByRole('slider', { name: '가시영상 대비' })
+    await expect(brightness).toHaveValue('12')
+    await expect(contrast).toHaveValue('0')
+    await expect.poll(() => rasterPresentation(page)).toMatchObject({ opacity: 0.5, brightness: 0.12, contrast: 0 })
+    await expect.poll(() => rasterPresentation(page)).toMatchObject({ visibleIndex: expect.any(Number), hsrIndex: expect.any(Number) })
+    expect((await rasterPresentation(page)).visibleIndex).toBeLessThan((await rasterPresentation(page)).hsrIndex)
+
+    await brightness.press('ArrowRight')
+    await contrast.press('ArrowRight')
+    await expect(brightness).toHaveValue('13')
+    await expect(contrast).toHaveValue('1')
+    await expect.poll(() => rasterPresentation(page)).toMatchObject({ brightness: 0.13, contrast: 0.01 })
   })
 
   test('QPF replaces observed layers and exposes its exact MAPLE status and legend', async ({ page }, testInfo) => {

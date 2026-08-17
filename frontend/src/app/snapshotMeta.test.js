@@ -50,6 +50,29 @@ test('detectSnapshotChanges tracks WISSDOM and QPF graphics metadata independent
   assert.equal(changes.qpfMeta, false)
 })
 
+test('detectSnapshotChanges tracks every independently published timeline metadata file', () => {
+  const prev = {
+    hsrMeta: { tm: '202608041700', hash: 'hsr-old' },
+    hciMeta: { tm: '202608041700', hash: 'hci-stable' },
+    echoTopMeta: { tm: '202608041700', hash: 'etop-stable' },
+    satVisibleMeta: { tm: '202608041700', hash: 'visible-stable' },
+  }
+  const next = {
+    ...prev,
+    hsrMeta: { tm: '202608041710', hash: 'hsr-new' },
+    hciMeta: { tm: '202608041710', hash: 'hci-new' },
+    echoTopMeta: { tm: '202608041710', hash: 'etop-new' },
+    satVisibleMeta: { tm: '202608041710', hash: 'visible-new' },
+  }
+
+  const changes = detectSnapshotChanges(prev, next)
+
+  assert.equal(changes.hsrMeta, true)
+  assert.equal(changes.hciMeta, true)
+  assert.equal(changes.echoTopMeta, true)
+  assert.equal(changes.satVisibleMeta, true)
+})
+
 test('detectSnapshotChanges does not re-fetch graphics metadata after the client rebuilds its snapshot', () => {
   const saved = { wissdomMeta: { tm: '202608041700', updated_at: '2026-08-04T08:00:00Z' } }
   const latest = { wissdomMeta: { tm: '202608041700', hash: 'backend-canonical-hash', updated_at: '2026-08-04T08:00:00Z' } }

@@ -1,0 +1,257 @@
+/* 그리기 시험 페이지 — 개발 빌드 전용.
+   본 화면에 넣을 때는 지도 위에 뜨는 서랍이 되지만, 여기서는 조작 자체를
+   판단하는 것이 목적이라 옆에 고정한다. */
+
+.ds-root {
+  /* 값을 한자리에 모은다. 아래에서 이 이름만 쓴다 — 여기 없는 색·간격은 쓰지 않는다. */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px;  --sp-4: 16px;  --sp-5: 24px;
+
+  --text:      #111827;   /* 본문 */
+  --text-2:    #4b5563;   /* 보조 — 흰 배경 대비 7.5:1 */
+  --text-3:    #6b7280;   /* 흐림 — 흰 배경 대비 4.8:1. 이보다 흐린 색은 쓰지 않는다 */
+  --line:      #d1d5db;
+  --line-soft: #e5e7eb;
+  --accent:    #2563eb;
+  --accent-bg: #eff6ff;
+  --danger:    #b91c1c;
+  --danger-bg: #fef2f2;
+  --ok:        #15803d;
+  --surface:   #fff;
+
+  --radius: 6px;
+  --tap: 44px;              /* 손가락 기준 최소 누름 크기 */
+  --ease: 150ms ease;
+
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  height: 100vh;
+  font: 13px/1.5 system-ui, sans-serif;
+  color: var(--text);
+}
+
+/* 패널은 세로 흐름이다. 목록만 늘어나고 머리와 발은 자리를 지킨다 —
+   도형을 골랐다고 아래 내용이 화면 밖으로 밀려나면 안 된다. */
+.ds-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--line-soft);
+  background: var(--surface);
+}
+.ds-head { padding: var(--sp-3); border-bottom: 1px solid var(--line-soft); }
+.ds-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: var(--sp-3); }
+.ds-foot {
+  padding: var(--sp-3); border-top: 1px solid var(--line-soft);
+  background: var(--surface);
+}
+.ds-map { height: 100vh; }
+
+/* 키보드로 옮겨 다닐 때 지금 어디인지 항상 보여야 한다. */
+.ds-root :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* --- 글자 층위 --- */
+.ds-title { font-size: 16px; font-weight: 700; margin: 0; }
+.ds-subtitle { font-size: 13px; font-weight: 600; margin: 0 0 var(--sp-2); color: var(--text-2); }
+.ds-note { color: var(--text-3); margin: var(--sp-2) 0; }
+.ds-sep { height: 1px; background: var(--line-soft); margin: var(--sp-3) 0; }
+
+.ds-failure {
+  color: var(--danger); background: var(--danger-bg);
+  border: 1px solid #fecaca; border-radius: var(--radius);
+  padding: var(--sp-2); margin: var(--sp-2) 0;
+}
+
+/* --- 머리: 지도 이름과 저장 상태 --- */
+.ds-titleRow { display: flex; align-items: center; gap: var(--sp-2); }
+.ds-mapName {
+  flex: 1; min-width: 0; padding: var(--sp-1) var(--sp-2);
+  font: 600 15px/1.4 inherit; color: var(--text);
+  border: 1px solid transparent; border-radius: var(--radius); background: none;
+}
+.ds-mapName:hover { border-color: var(--line); }
+.ds-mapName:focus { border-color: var(--accent); background: var(--surface); }
+.ds-saved { flex: 0 0 auto; font-size: 11px; color: var(--ok); white-space: nowrap; }
+.ds-savedFail {
+  display: block; margin-top: var(--sp-2); padding: var(--sp-2);
+  border: 1px solid #fecaca; border-radius: var(--radius);
+  background: var(--danger-bg); color: var(--danger);
+}
+
+/* --- 도구 --- */
+.ds-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-1); }
+.ds-toolsGen { margin-top: var(--sp-1); grid-template-columns: repeat(3, 1fr); }
+.ds-tool {
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-1);
+  min-height: var(--tap); padding: var(--sp-1);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); cursor: pointer; font: inherit; color: var(--text);
+  transition: background var(--ease), border-color var(--ease);
+}
+.ds-tool:hover { background: #f9fafb; border-color: var(--text-3); }
+.ds-toolOn { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.ds-toolMark { font-size: 15px; line-height: 1; }
+
+.ds-undoRow { display: flex; gap: var(--sp-1); margin-top: var(--sp-2); }
+.ds-undoRow button {
+  flex: 1; min-height: 32px; font: inherit; color: var(--text-2);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); cursor: pointer; transition: background var(--ease);
+}
+.ds-undoRow button:hover:not(:disabled) { background: #f9fafb; }
+.ds-undoRow button:disabled { color: var(--line); border-color: var(--line-soft); cursor: default; }
+
+.ds-hint { color: var(--text-2); margin: var(--sp-2) 0 0; }
+.ds-hint kbd {
+  font: 11px/1 ui-monospace, monospace; padding: 2px 5px;
+  border: 1px solid var(--line); border-radius: 3px; background: #f9fafb; color: var(--text);
+}
+.ds-live {
+  margin: var(--sp-2) 0 0; padding: var(--sp-2);
+  border-radius: var(--radius); background: var(--accent-bg); color: var(--accent);
+  font-weight: 600; font-variant-numeric: tabular-nums;
+}
+
+/* --- 속성 편집 --- */
+.ds-inspector {
+  border: 1px solid var(--line-soft); border-radius: var(--radius);
+  padding: var(--sp-2); margin-bottom: var(--sp-3); background: var(--surface);
+}
+.ds-inspectorHead {
+  display: flex; align-items: center; gap: var(--sp-1);
+  margin-bottom: var(--sp-2); color: var(--text-2); font-weight: 600;
+}
+.ds-row { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-1) 0; }
+.ds-rowLabel { flex: 0 0 72px; color: var(--text-2); }
+.ds-input {
+  flex: 1; min-width: 0; min-height: 32px; padding: var(--sp-1) var(--sp-2); font: inherit;
+  color: var(--text); border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface);
+}
+.ds-num { flex: 0 0 96px; }
+.ds-color {
+  flex: 0 0 48px; height: 32px; padding: 0; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius); background: none;
+}
+.ds-row input[type="range"] { flex: 1; min-width: 0; }
+.ds-val { flex: 0 0 48px; text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+.ds-alt summary {
+  cursor: pointer; color: var(--text-2); font-weight: 600;
+  display: flex; justify-content: space-between; padding: var(--sp-1) 0;
+}
+.ds-measure {
+  margin: var(--sp-2) 0 0; padding-top: var(--sp-2);
+  border-top: 1px solid var(--line-soft);
+  color: var(--text-2); font-variant-numeric: tabular-nums;
+}
+.ds-genHead { color: var(--text-2); font-weight: 600; margin: var(--sp-2) 0 var(--sp-1); }
+
+/* --- 단추 --- */
+.ds-btn {
+  width: 100%; min-height: 36px; font: inherit; cursor: pointer;
+  border-radius: var(--radius); transition: background var(--ease);
+}
+.ds-danger { border: 1px solid #fecaca; background: var(--danger-bg); color: var(--danger); margin-top: var(--sp-2); }
+.ds-danger:hover { background: #fee2e2; }
+.ds-confirm { display: flex; gap: var(--sp-1); margin-top: var(--sp-2); }
+.ds-confirm > * { flex: 1; }
+.ds-confirmMsg { color: var(--danger); margin: var(--sp-2) 0 0; }
+.ds-primary {
+  border: 1px solid var(--accent); background: var(--accent); color: #fff; font-weight: 600;
+}
+.ds-primary:hover:not(:disabled) { background: #1d4ed8; }
+.ds-primary:disabled { border-color: var(--line); background: #f3f4f6; color: var(--text-3); cursor: default; }
+.ds-secondary { border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+.ds-secondary:hover { background: #f9fafb; }
+.ds-footRow { display: flex; gap: var(--sp-2); }
+
+/* --- 아이콘 고르개 (My Maps·onX 격자 + Felt 찾기칸) --- */
+.ds-iconBtn {
+  flex: 0 0 32px; height: 32px; padding: 0; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+  display: grid; place-items: center;
+}
+.ds-iconBtn img { max-width: 22px; max-height: 22px; }
+
+.ds-picker {
+  margin: var(--sp-2) 0; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); box-shadow: 0 4px 12px rgb(0 0 0 / .12);
+}
+.ds-pickerHead {
+  display: flex; gap: var(--sp-1); align-items: center;
+  padding: var(--sp-2); border-bottom: 1px solid var(--line-soft);
+}
+.ds-pickerBody { max-height: 240px; overflow-y: auto; padding: var(--sp-2); }
+.ds-pickerGroup { color: var(--text-2); font-size: 11px; font-weight: 600; margin: var(--sp-2) 0 var(--sp-1); }
+.ds-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--sp-1); }
+.ds-cell {
+  aspect-ratio: 1; min-height: 40px; padding: var(--sp-1); cursor: pointer;
+  border: 1px solid transparent; border-radius: var(--radius);
+  background: none; display: grid; place-items: center;
+  transition: background var(--ease);
+}
+.ds-cell:hover { background: #f3f4f6; }
+.ds-cellOn { border-color: var(--accent); background: var(--accent-bg); }
+.ds-cell img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* --- 폴더와 목록 (My Maps "레이어") --- */
+.ds-folder { margin-bottom: var(--sp-2); }
+.ds-folderHead {
+  display: flex; align-items: center; gap: var(--sp-2);
+  min-height: 32px; cursor: pointer;
+}
+.ds-folderName { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-off { color: var(--text-3); font-weight: 400; }
+.ds-count { color: var(--text-3); }
+.ds-list { list-style: none; margin: 0; padding: 0 0 0 var(--sp-4); }
+.ds-item { display: flex; align-items: center; gap: var(--sp-1); border-radius: var(--radius); }
+.ds-itemOn { background: var(--accent-bg); }
+.ds-itemBtn {
+  flex: 1; min-width: 0; min-height: 32px;
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2); border: 0; background: none; cursor: pointer;
+  font: inherit; color: var(--text); text-align: left;
+}
+.ds-itemBtn:hover { background: #f3f4f6; border-radius: var(--radius); }
+.ds-itemOn .ds-itemBtn { font-weight: 600; }
+.ds-itemName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-dot { flex: 0 0 10px; height: 10px; border-radius: 50%; }
+.ds-mini {
+  flex: 0 0 32px; min-height: 32px; padding: 0; cursor: pointer;
+  border: 0; background: none; color: var(--text-2); font: inherit; border-radius: var(--radius);
+  transition: background var(--ease);
+}
+.ds-mini:hover { background: #f3f4f6; color: var(--text); }
+
+/* --- 파일 받는 자리 --- */
+.ds-drop {
+  padding: var(--sp-3); text-align: center; color: var(--text-2);
+  border: 1px dashed var(--line); border-radius: var(--radius);
+  margin-bottom: var(--sp-3); transition: background var(--ease), border-color var(--ease);
+}
+.ds-dropOver { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+.ds-linkBtn {
+  border: 0; background: none; padding: 0; font: inherit; color: var(--accent);
+  text-decoration: underline; cursor: pointer;
+}
+
+/* --- 태블릿: 조종사는 태블릿을 쓴다 --- */
+@media (max-width: 900px) {
+  .ds-root { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .ds-map { height: 100%; min-height: 45vh; }
+  .ds-panel {
+    border-right: 0; border-top: 1px solid var(--line);
+    max-height: 55vh;
+  }
+  .ds-tools, .ds-toolsGen { grid-template-columns: repeat(6, 1fr); }
+  .ds-grid { grid-template-columns: repeat(8, 1fr); }
+}
+
+/* 움직임을 줄여 달라는 설정을 존중한다. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-root * { transition: none !important; }
+}

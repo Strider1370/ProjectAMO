@@ -26,6 +26,7 @@ const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.
 const TerminalPage = lazy(() => import('../features/terminal/TerminalPage.jsx'))
 const DesignTestPage = lazy(() => import('../features/design-test/DesignTestPage.jsx'))
 const KmlViewerPage = lazy(() => import('../features/kml-viewer/KmlViewerPage.jsx'))
+const DrawSpikePage = lazy(() => import('../features/draw-spike/DrawSpikePage.jsx'))
 const AdminPage = lazy(() => import('../features/admin/AdminPage.jsx'))
 const DeveloperPage = lazy(() => import('../features/developer/DeveloperPage.jsx'))
 
@@ -336,6 +337,10 @@ function App() {
   if (window.location.pathname === '/kml' && import.meta.env.DEV) {
     // KML 표출 시험 페이지 — 개발 빌드에서만. 운영 빌드에선 이 코드가 제거되어 접근 불가.
     return <Suspense fallback={null}><KmlViewerPage /></Suspense>
+  }
+  if (window.location.pathname === '/draw' && import.meta.env.DEV) {
+    // 그리기 시험 페이지 — 개발 빌드에서만. 운영 빌드에선 이 코드가 제거되어 접근 불가.
+    return <Suspense fallback={null}><DrawSpikePage /></Suspense>
   }
   if (window.location.pathname === '/admin') {
     return <Suspense fallback={null}><AuthProvider><AdminPage /></AuthProvider></Suspense>

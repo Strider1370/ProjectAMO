@@ -56,9 +56,8 @@ export const CATALOG = [
   { key: 'environment', label: '대기환경', source: 'kma_aviation', character: 'general', normalMs: h(1), lateMs: h(3), stoppedMs: h(6) },
   { key: 'asos_ceiling', label: '운고(ASOS)', source: 'kma_aviation', character: 'report', normalMs: h(1), lateMs: h(3), stoppedMs: h(6) },
 
-  { key: 'radar_echo', label: '레이더', source: 'kma_radar', character: 'observation', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), meta: 'radar/echo_meta.json', disabledWhen: OFF.radarKey,},
+  { key: 'radar', label: '레이더(합성 HSR)', source: 'kma_radar', character: 'observation', statsKey: 'hsr', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hsr/hsr_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
   { key: 'echo_top', label: '에코탑(재산출)', source: 'kma_radar', character: 'observation', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), meta: 'radar/echotop/echotop_meta.json', disabledWhen: anyOf(OFF.echoTop, OFF.radarKey),},
-  { key: 'hsr', label: '합성 HSR', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hsr/hsr_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
   { key: 'hci', label: '합성 HCI', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hci/hci_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
   { key: 'wissdom', label: 'WISSDOM', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/wissdom/wissdom_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
   { key: 'qpf', label: 'QPF', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/qpf/qpf_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
