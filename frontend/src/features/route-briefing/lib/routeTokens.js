@@ -48,10 +48,14 @@ function coordinateOf(value, { airportsById = {}, navpoints = {}, fixCoords = {}
 
 export function classifyToken(text, lookups = {}) {
   const value = String(text ?? '').trim().toUpperCase()
-  const { airports = [], navpoints = {}, routes = {}, procedures = [], fixes = [] } = lookups
+  const { airports = [], navpoints = {}, routes = {}, procedures = [], fixes = [], userWaypoints = [] } = lookups
 
   if (!value) return null
   if (value === 'DCT') return { kind: TOKEN_KINDS.DCT, text: value }
+  const userWaypoint = userWaypoints.find((waypoint) => String(waypoint?.name ?? '').toUpperCase() === value)
+  if (userWaypoint && Number.isFinite(userWaypoint.lon) && Number.isFinite(userWaypoint.lat)) {
+    return { kind: TOKEN_KINDS.COORDINATE, text: value, coordinate: { lon: userWaypoint.lon, lat: userWaypoint.lat } }
+  }
   if (procedures.includes(value)) return { kind: TOKEN_KINDS.PROCEDURE, text: value }
   if (airports.includes(value)) {
     return { kind: TOKEN_KINDS.AIRPORT, text: value, coordinate: coordinateOf(value, lookups) }

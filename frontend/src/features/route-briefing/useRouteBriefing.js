@@ -4,7 +4,7 @@ import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavdata, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
 import { classifyTokens, errorCount, findProcedureByToken, isProcedureText, procedureFixCoordinates, procedureFixIds, procedureTokenForms, tokenGeometry, TOKEN_KINDS } from './lib/routeTokens.js'
 import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString, parseVfrDraftText } from './lib/manualRouteInput.js'
-import { calcVfrDistance } from './lib/routePreview.js'
+import { calcVfrDistance, inlineImportedProcedureGeometry } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
 import { getPerformanceForRule, setPerformanceForRule } from './lib/aircraftProfiles.js'
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './lib/altitude.js'
@@ -17,6 +17,7 @@ import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
 import { parseRouteFile, extractRoutePaths, decodeImportedFile, MAX_IMPORT_BYTES } from './lib/routeImport.js'
 import { resolveImportedRoute } from './lib/routeImportResolve.js'
+import { buildImportedProcedureCoordinates, matchImportedProcedures } from './lib/procedureSequenceMatch.js'
 import { describeMapFile } from '../my-map/lib/mapFileGuard.js'
 import {
   FIR_EXIT_AIRPORT,
@@ -37,6 +38,22 @@ export const initialRouteForm = {
   exitFix: '', arrivalAirport: '', routeType: 'ALL',
 }
 export const DEFAULT_CRUISE_ALTITUDE_FT = 31000
+
+function procedureFixNames(procedures = []) {
+  return new Set(procedures.flatMap((procedure) => (procedure?.fixes ?? []).map((fix) => String(fix?.id ?? '').toUpperCase())))
+}
+
+function importNoticesAfterProcedureMatch(notices, unknownNames, procedures) {
+  const procedureFixes = procedureFixNames(procedures)
+  const remainingUnknownNames = (unknownNames ?? []).filter((name) => !procedureFixes.has(String(name).toUpperCase()))
+  return notices.flatMap((notice) => {
+    if (notice.code !== 'fix-unknown') return [notice]
+    return remainingUnknownNames.length > 0
+      ? [{ ...notice, message: `지점 ${remainingUnknownNames.length}개는 이름을 찾지 못해 좌표로 넣었습니다` }]
+      : []
+  })
+}
+
 // 경로 임포트 시 초기고도 자동설정용 지형 여유 마진. 항공안전법 시행규칙 §199(최저비행고도):
 // 밀집지역 300m(1,000ft)/일반지역 150m(500ft) — 혼잡 여부를 지형데이터만으로 판단 못 하므로
 // 보수적으로 밀집지역 기준(1,000ft)을 항상 적용한다.
@@ -98,7 +115,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const [navpointsById, setNavpointsById] = useState({})
   // 경로의 원본. 이 목록 외에 경로를 담는 곳은 없다.
   const [routeTokenTexts, setRouteTokenTexts] = useState([])
-  const [tokenLookups, setTokenLookups] = useState({ airports: [], navpoints: {}, routes: {}, procedures: [] })
+  const [tokenLookups, setTokenLookups] = useState({ airports: [], navpoints: {}, routes: {}, procedures: [], userWaypoints: [] })
   const [autoRecommendRequested, setAutoRecommendRequested] = useState(false)
   const [autoApplyPending, setAutoApplyPending] = useState(false) // 자동 생성 → 경로 적용까지 이어서
   const [fitBoundsRequest, setFitBoundsRequest] = useState(null)
@@ -298,7 +315,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     getProcedures(airport, 'SID').then((procs) => {
       if (requestId !== sidRequestRef.current) return
       setSidOptions(procs)
-      setSelectedSid(null)
+      setSelectedSid((selected) => procs.find((procedure) => procedure.id === selected?.id) ?? null)
     })
   }, [routeForm.departureAirport])
 
@@ -340,7 +357,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     getProcedures(airport, 'STAR').then((procs) => {
       if (requestId !== starRequestRef.current) return
       setStarOptions(procs)
-      setSelectedStar(null)
+      setSelectedStar((selected) => procs.find((procedure) => procedure.id === selected?.id) ?? null)
     })
   }, [routeForm.arrivalAirport])
 
@@ -365,6 +382,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    setTokenLookups((current) => ({ ...current, userWaypoints: routeEditor.enroute?.userWaypoints ?? [] }))
+  }, [routeEditor.enroute?.userWaypoints])
 
   useEffect(() => {
     let cancelled = false
@@ -528,6 +549,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
   const applyRouteDraftRef = useRef(null)
   const lastAppliedTokenTextRef = useRef(null)
+  // 가져오기 직후에는 표시용 SID/STAR 토큰이 실제 en-route FIX 하나를 대신한다.
+  // 이 한 번의 화면 갱신을 다시 문자열로 해석하면 절차 시작 FIX가 빠져 연결어만 남는다.
+  const skipImportedTokenReapplyRef = useRef(false)
+  const importedRouteApplyPendingRef = useRef(false)
 
   useEffect(() => {
     if (errorCount(routeTokens) > 0) return
@@ -537,6 +562,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // IFR은 진입·이탈 FIX 없이 경로를 만들 수 없으므로 공항만으로 다시 검색하지는 않는다.
     // 이전 경로를 지워 정상적인 입력 중간 상태로 남기고, 기록도 함께 비워 다시 칠 길을 열어둔다.
     if (!enrouteTokenText) {
+      if (importedRouteApplyPendingRef.current) return
       if (routeForm.departureAirport && routeForm.arrivalAirport && lastAppliedTokenTextRef.current !== '') {
         lastAppliedTokenTextRef.current = ''
         clearRouteDisplay({ clearEditor: false })
@@ -547,6 +573,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // 그 전에 부르면 "출발·도착 공항을 확인하세요"가 빨갛게 뜨는데, 목적지를 아직 안 정한
     // 것은 오류가 아니라 정상적인 중간 상태다 — 그 사이 화면은 토큰 미리보기가 맡는다.
     if (!routeForm.departureAirport || !routeForm.arrivalAirport) return
+    if (skipImportedTokenReapplyRef.current) {
+      skipImportedTokenReapplyRef.current = false
+      importedRouteApplyPendingRef.current = false
+      lastAppliedTokenTextRef.current = enrouteTokenText
+      return
+    }
     // 같은 문자열을 두 번 적용하지 않는다 — 경로 계산은 서버를 부르므로 헛호출이 쌓인다.
     if (lastAppliedTokenTextRef.current === enrouteTokenText) return
     lastAppliedTokenTextRef.current = enrouteTokenText
@@ -1868,7 +1900,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     try {
       const navpoints = await loadNavpoints()
       const resolved = resolveImportedRoute({ candidate, airports, navpoints })
-      setImportNotices(resolved.notices)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: resolved.coordinates, maxZoom: 8 })
 
       const importedForm = {
@@ -1882,13 +1913,22 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       // 무엇이 들어왔는지 보게 하고, 공항이 채워지면 아래 effect가 이어받는다.
       if (!resolved.departureAirport || !resolved.arrivalAirport) {
         setImportedPreview({ type: 'LineString', coordinates: resolved.coordinates })
-        pendingImportTermsRef.current = resolved.terms
+        pendingImportTermsRef.current = {
+          terms: resolved.terms,
+          userWaypoints: resolved.userWaypoints,
+          sourceCoordinates: resolved.coordinates,
+          termCoordinateStart: resolved.termCoordinateStart,
+        }
         return
       }
 
       setImportedPreview(null)
       pendingImportTermsRef.current = null
-      await commitImportedRoute(importedForm, resolved.terms)
+      const matched = await commitImportedRoute(importedForm, resolved.terms, resolved.userWaypoints, {
+        sourceCoordinates: resolved.coordinates,
+        termCoordinateStart: resolved.termCoordinateStart,
+      })
+      setImportNotices(importNoticesAfterProcedureMatch(resolved.notices, resolved.unknownWaypointNames, [matched.sid, matched.star]))
     } catch (err) {
       setImportError(err.message)
     }
@@ -1897,40 +1937,87 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 불러온 terms를 편집기에 얹는 부분. 공항이 처음부터 있었을 때와, 나중에
   // 조종사가 고른 뒤에 둘 다 여기를 지난다. flightRule을 고정하지 않는다 —
   // IFR 탭에서 불러오면 IFR 경로가 되어야 한다.
-  async function commitImportedRoute(form, terms) {
-    const legIntents = Array.from({ length: Math.max(0, terms.length - 1) }, () => ({ kind: 'dct' }))
-    const enroute = { terms, legIntents }
+  async function commitImportedRoute(form, terms, userWaypoints = [], importedSource = null) {
+    const [importedSids, importedStars] = form.flightRule === 'IFR'
+      ? await Promise.all([getProcedures(form.departureAirport, 'SID'), getProcedures(form.arrivalAirport, 'STAR')])
+      : [[], []]
+    const matched = matchImportedProcedures({ terms, sidOptions: importedSids, starOptions: importedStars })
+    const procedures = { sid: matched.sid, star: matched.star, iapKey: null }
+    const matchedForm = {
+      ...form,
+      entryFix: matched.sid?.enrouteFix ?? form.entryFix,
+      exitFix: matched.star?.startFix ?? form.exitFix,
+    }
+    const importedIntent = form.flightRule === 'IFR' ? { kind: 'auto' } : { kind: 'dct' }
+    const legIntents = Array.from({ length: Math.max(0, matched.terms.length - 1) }, () => importedIntent)
+    const enroute = { terms: matched.terms, legIntents, userWaypoints }
     const importedText = form.flightRule === 'VFR'
       ? formatVfrDraftText({ departureAirport: form.departureAirport, arrivalAirport: form.arrivalAirport, enroute })
-      : formatManualRouteString({ terms, legIntents })
-    const preview = await buildEditorPreview(createRouteEditor({ routeForm: form, rawText: importedText }), importedText)
+      : formatManualRouteString(enroute)
+    const preview = await buildEditorPreview(createRouteEditor({ routeForm: matchedForm, procedures, enroute, rawText: importedText }), importedText)
+    const inlineCoordinates = matched.procedureSpans.length > 0 && importedSource?.sourceCoordinates
+      ? buildImportedProcedureCoordinates({
+          sourceCoordinates: importedSource.sourceCoordinates,
+          termCoordinateStart: importedSource.termCoordinateStart,
+          procedureSpans: matched.procedureSpans,
+        })
+      : null
+    const routeResult = inlineCoordinates?.length > 1
+      ? { ...preview.result, previewGeojson: inlineImportedProcedureGeometry(preview.result.previewGeojson, inlineCoordinates) }
+      : preview.result
     const routeGeometry = getCurrentRouteLineString({
-      routeResult: preview.result,
-      vfrWaypoints: preview.result.flightRule === 'VFR' ? buildVfrWaypointsFromRouteResult(preview.result, airports) : [],
+      routeResult,
+      selectedSid: matched.sid,
+      selectedStar: matched.star,
+      vfrWaypoints: routeResult.flightRule === 'VFR' ? buildVfrWaypointsFromRouteResult(routeResult, airports) : [],
     })
-    const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: preview.result })
+    const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
+    const nextEta = eta || computeEtaIso(etd, routeResult.totalDistanceNm ?? routeResult.distanceNm, tasKt) || null
 
     lastVfrKeyRef.current = `${form.departureAirport ?? ''}>${form.arrivalAirport ?? ''}`
+    importedRouteApplyPendingRef.current = true
     clearRouteDisplay()
     applyBaseRoute(createRouteDesign({
-      routeForm: form,
-      procedures: { sid: null, star: null, iapKey: null },
-      routeResult: preview.result,
+      routeForm: matchedForm,
+      procedures,
+      routeResult,
       routeModel,
       routeExposure: { trigger: 'unavailable', hazards: [] },
       enroute: preview.editor.enroute,
       routeString: preview.editor.rawText,
     }))
+    setEta(nextEta)
+    seededRef.current = true
+    const importedTokens = preview.editor.rawText.trim().split(/\s+/).filter(Boolean)
+    if (matched.star) {
+      const followingTerm = preview.editor.enroute.terms[matched.starInsertionIndex]
+      const followingText = followingTerm?.kind === 'user-waypoint'
+        ? preview.editor.enroute.userWaypoints.find((waypoint) => waypoint.id === followingTerm.id)?.name
+        : followingTerm?.kind === 'coordinate'
+          ? formatCoordinateToken(followingTerm.coordinate)
+          : followingTerm?.id
+      const insertionIndex = followingText
+        ? importedTokens.findIndex((token) => token.toUpperCase() === followingText.toUpperCase())
+        : -1
+      importedTokens.splice(insertionIndex >= 0 ? insertionIndex : importedTokens.length, insertionIndex >= 0 ? 1 : 0, matched.star.name)
+    }
+    const displayTokens = form.flightRule === 'VFR'
+      ? importedTokens
+      : [form.departureAirport, matched.sid?.name, ...importedTokens, form.arrivalAirport].filter(Boolean)
+    skipImportedTokenReapplyRef.current = true
+    setRouteTokenTexts(displayTokens)
+    lastAppliedTokenTextRef.current = importedTokens.filter((token) => token !== matched.star?.name).join(' ')
+    return matched
   }
 
   // 공항 미확정 상태로 불러온 경로: 조종사가 출발·도착을 다 고르는 순간 이어서
   // 경로를 만든다. 별도 실행 버튼을 두지 않는다.
   useEffect(() => {
-    const terms = pendingImportTermsRef.current
-    if (!terms || !routeForm.departureAirport || !routeForm.arrivalAirport) return
+    const pending = pendingImportTermsRef.current
+    if (!pending || !routeForm.departureAirport || !routeForm.arrivalAirport) return
     pendingImportTermsRef.current = null
     setImportedPreview(null)
-    commitImportedRoute(routeForm, terms).catch((err) => setImportError(err.message))
+    commitImportedRoute(routeForm, pending.terms, pending.userWaypoints, pending).catch((err) => setImportError(err.message))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeForm.departureAirport, routeForm.arrivalAirport])
 

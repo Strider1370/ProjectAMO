@@ -6,6 +6,7 @@ import {
   buildVfrGeoJSON,
   bindVfrInteractions,
   calcVfrDistance,
+  inlineImportedProcedureGeometry,
   relabeledWaypoints,
   trimRouteLineForProcedures,
 } from './routePreview.js'
@@ -233,6 +234,16 @@ test('augmentRouteWithProcedures leaves route unchanged when no procedures exist
   assert.deepEqual(augmentRouteWithProcedures(preview, null, null, null), preview)
 })
 
+test('inlineImportedProcedureGeometry becomes the canonical map line and is not augmented or endpoint-trimmed again', () => {
+  const preview = buildVfrGeoJSON([
+    { id: 'A', lon: 126, lat: 37 }, { id: 'B', lon: 126.6, lat: 34.4 }, { id: 'C', lon: 126.33, lat: 33.43 }, { id: 'D', lon: 126.47, lat: 33.51 },
+  ])
+  const canonical = inlineImportedProcedureGeometry(preview, [[126, 37], [126.6, 34.4], [126.61, 34.25], [126.2, 33.46], [126.33, 33.43], [126.47, 33.51]])
+
+  assert.deepEqual(augmentRouteWithProcedures(canonical, { geometry: { coordinates: [[1, 1], [2, 2]] } }, { geometry: { coordinates: [[3, 3], [4, 4]] } }, null), canonical)
+  assert.deepEqual(trimRouteLineForProcedures(canonical, { fixes: [{}] }, { fixes: [{}] }), canonical)
+})
+
 test('augmentRouteWithProcedures bridges procedures to independent manual en-route endpoints', () => {
   const preview = buildVfrGeoJSON([
     { id: 'DEP', lon: 126, lat: 37 },
@@ -245,6 +256,28 @@ test('augmentRouteWithProcedures bridges procedures to independent manual en-rou
   const line = augmentRouteWithProcedures(preview, sid, star, null).features[0].geometry.coordinates
 
   assert.deepEqual(line, [[126, 37], [126.5, 37.2], [127, 37], [128, 36], [128.5, 35.8], [129, 36]])
+})
+
+test('augmentRouteWithProcedures replaces an imported STAR start while retaining its trailing approach fixes', () => {
+  const preview = buildVfrGeoJSON([
+    { id: 'RKSS', lon: 126, lat: 37 },
+    { id: 'NULDI', lon: 126.6, lat: 34.4 },
+    { id: 'DOTOL', lon: 126.61, lat: 34.25 },
+    { id: 'VTF:', lon: 126.33, lat: 33.43 },
+    { id: 'FF07', lon: 126.38, lat: 33.46 },
+    { id: 'RW07', lon: 126.47, lat: 33.5 },
+    { id: 'RKPC', lon: 126.47, lat: 33.51 },
+  ])
+  const star = {
+    geometry: { type: 'LineString', coordinates: [[126.61, 34.25], [126.2, 33.46]] },
+  }
+
+  const line = augmentRouteWithProcedures(preview, null, star, null).features[0].geometry.coordinates
+
+  assert.deepEqual(line, [
+    [126, 37], [126.6, 34.4], [126.61, 34.25], [126.2, 33.46],
+    [126.33, 33.43], [126.38, 33.46], [126.47, 33.5], [126.47, 33.51],
+  ])
 })
 
 test('trimRouteLineForProcedures leaves the line unchanged when there is no SID or STAR', () => {

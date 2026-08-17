@@ -35,22 +35,36 @@ function resolveEndpoint(coord, name, type, airports) {
   return { icao: null, distNm: null, absorb: false }
 }
 
-function middleTerm(coord, name, navpoints, counters) {
-  const asCoordinate = { kind: 'coordinate', coordinate: { lon: coord[0], lat: coord[1] } }
-  if (!name) return asCoordinate
+function importedWaypoint(coord, name, userWaypoints) {
+  const uniqueName = name && !LOOKS_LIKE_ICAO.test(name) && !userWaypoints.some((waypoint) => waypoint.name === name)
+    ? name
+    : `WP${userWaypoints.length + 1}`
+  const waypoint = {
+    id: `imported-wp-${userWaypoints.length + 1}`,
+    name: uniqueName,
+    lon: coord[0],
+    lat: coord[1],
+  }
+  userWaypoints.push(waypoint)
+  return { kind: 'user-waypoint', id: waypoint.id, name: waypoint.name }
+}
+
+function middleTerm(coord, name, navpoints, counters, userWaypoints) {
+  const asImportedWaypoint = () => importedWaypoint(coord, name, userWaypoints)
+  if (!name) return asImportedWaypoint()
   const navpoint = navpoints?.[name]
   if (!navpoint) {
     counters.unknown.push(name)
-    return asCoordinate
+    return asImportedWaypoint()
   }
   const distNm = greatCircleNm(coord[0], coord[1], navpoint.lon, navpoint.lat)
   if (distNm > FIX_MATCH_NM) {
     // 같은 식별자가 다른 FIR에 있거나 항법 데이터 주기가 오래됐을 수 있다.
     // 조종사가 계획한 위치는 파일 쪽이다.
     counters.moved.push({ name, distNm })
-    return asCoordinate
+    return asImportedWaypoint()
   }
-  if (LOOKS_LIKE_ICAO.test(name)) return asCoordinate
+  if (LOOKS_LIKE_ICAO.test(name)) return asImportedWaypoint()
   return { kind: 'fix', id: name }
 }
 
@@ -67,7 +81,8 @@ export function resolveImportedRoute({ candidate, airports = [], navpoints = {} 
   const to = end.absorb ? coords.length - 1 : coords.length
 
   const counters = { unknown: [], moved: [] }
-  const terms = coords.slice(from, to).map((coord, i) => middleTerm(coord, names[from + i], navpoints, counters))
+  const userWaypoints = []
+  const terms = coords.slice(from, to).map((coord, i) => middleTerm(coord, names[from + i], navpoints, counters, userWaypoints))
 
   const withDistance = (icao, distNm) => (distNm ? `${icao} (${distNm.toFixed(0)}NM)` : icao)
   if (start.icao && end.icao) {
@@ -96,5 +111,14 @@ export function resolveImportedRoute({ candidate, airports = [], navpoints = {} 
     notices.push({ level: 'info', code: 'outside-fir', message: '경로 일부가 한국 정보구역 밖 — 기상이 비어 있을 수 있습니다' })
   }
 
-  return { departureAirport: start.icao, arrivalAirport: end.icao, terms, coordinates: coords, notices }
+  return {
+    departureAirport: start.icao,
+    arrivalAirport: end.icao,
+    terms,
+    userWaypoints,
+    coordinates: coords,
+    termCoordinateStart: from,
+    notices,
+    unknownWaypointNames: counters.unknown,
+  }
 }

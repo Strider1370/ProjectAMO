@@ -145,6 +145,7 @@ export function augmentRouteWithProcedures(previewGeojson, sid, star, iap) {
   if (!sid && !star && !iap) return previewGeojson
   const lineFeature = previewGeojson.features.find((f) => f.properties.role === 'route-preview-line')
   if (!lineFeature) return previewGeojson
+  if (lineFeature.properties?.inlineProcedureGeometry) return previewGeojson
 
   // baseCoords = [depAirport, entryFix, ...airways..., exitFix, arrAirport]
   let combined = [...lineFeature.geometry.coordinates]
@@ -169,10 +170,18 @@ export function augmentRouteWithProcedures(previewGeojson, sid, star, iap) {
 
   if (starCoords.length > 0) {
     // starCoords starts at exitFix
-    const tail = iapTail.length > 0 ? iapTail : (sameCoordinate(starCoords.at(-1), arrCoord) ? [] : [arrCoord])
-    combined = sameCoordinate(starCoords[0], combined.at(-2))
-      ? [...combined.slice(0, -2), ...starCoords, ...tail]
-      : [...combined.slice(0, -1), ...starCoords, ...tail]
+    const starStartIndex = combined.findIndex((coordinate) => sameCoordinate(coordinate, starCoords[0]))
+    const importedApproachTail = starStartIndex >= 0 ? combined.slice(starStartIndex + 1) : []
+    // 가져온 FPL은 STAR 마지막 FIX 뒤에 접근 절차의 자체 지점(VTF, FF07, RW07 등)을
+    // 계속 담을 수 있다. 그때는 STAR 시작점부터만 교체해야 기존 DOTOL→VTF 직선이 남지 않는다.
+    if (importedApproachTail.length > 1) {
+      combined = [...combined.slice(0, starStartIndex), ...starCoords, ...importedApproachTail]
+    } else {
+      const tail = iapTail.length > 0 ? iapTail : (sameCoordinate(starCoords.at(-1), arrCoord) ? [] : [arrCoord])
+      combined = sameCoordinate(starCoords[0], combined.at(-2))
+        ? [...combined.slice(0, -2), ...starCoords, ...tail]
+        : [...combined.slice(0, -1), ...starCoords, ...tail]
+    }
   } else if (iapTail.length > 0) {
     // No STAR but have IAP (starts at exitFix)
     combined = [...combined.slice(0, -1), ...iapTail]
@@ -189,6 +198,18 @@ export function augmentRouteWithProcedures(previewGeojson, sid, star, iap) {
   }
 }
 
+// 가져온 FPL에서 절차 범위를 이미 공식 절차 좌표로 치환한 경우다. 이후 모든 지도 경로는
+// 이 선을 그대로 쓰고 절차를 다시 덧붙이거나 양끝만 자르지 않는다.
+export function inlineImportedProcedureGeometry(previewGeojson, coordinates) {
+  if (!Array.isArray(coordinates) || coordinates.length < 2) return previewGeojson
+  return {
+    ...previewGeojson,
+    features: previewGeojson.features.map((feature) => feature.properties?.role === 'route-preview-line'
+      ? { ...feature, properties: { ...feature.properties, inlineProcedureGeometry: true }, geometry: { ...feature.geometry, coordinates } }
+      : feature),
+  }
+}
+
 // 여러 설계안을 비교할 때 route-design-line은 절차 병합 없이 원본 선을 쓴다(routePreviewSync.js).
 // 하지만 원본 선은 "출발공항→진입fix"/"이탈fix→도착공항" 구간을 직선으로 잇고 있어서,
 // SID/STAR가 있으면 그 구간만 PROC_PREVIEW_SOURCE가 곡선으로 따로 그리는데도 이 직선이
@@ -198,6 +219,7 @@ export function trimRouteLineForProcedures(previewGeojson, sid, star) {
   if (!sid && !star) return previewGeojson
   const lineFeature = previewGeojson?.features?.find((f) => f.properties?.role === 'route-preview-line')
   if (!lineFeature) return previewGeojson
+  if (lineFeature.properties?.inlineProcedureGeometry) return previewGeojson
   let coords = lineFeature.geometry.coordinates
   if (sid && coords.length > 2) coords = coords.slice(1)
   if (star && coords.length > 2) coords = coords.slice(0, -1)

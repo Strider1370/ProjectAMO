@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<flight-plan xmlns="http://www8.garmin.com/xmlschemas/FlightPlan/v1">
+  <waypoint-table>
+    <waypoint><identifier>RKSS</identifier><type>AIRPORT</type><lat>37.556944</lat><lon>126.797500</lon></waypoint>
+    <waypoint><identifier>QD040</identifier><type>INT</type><lat>37.634167</lat><lon>126.692694</lon></waypoint>
+    <waypoint><identifier>BULTI</identifier><type>INT</type><lat>36.722861</lat><lon>126.824917</lon></waypoint>
+    <waypoint><identifier>MEKIL</identifier><type>INT</type><lat>36.556111</lat><lon>126.831389</lon></waypoint>
+    <waypoint><identifier>RKPC</identifier><type>AIRPORT</type><lat>33.511306</lat><lon>126.493028</lon></waypoint>
+  </waypoint-table>
+  <route>
+    <route-name>RKSS to RKPC</route-name>
+    <route-point><waypoint-identifier>RKSS</waypoint-identifier><waypoint-type>AIRPORT</waypoint-type></route-point>
+    <route-point><waypoint-identifier>QD040</waypoint-identifier><waypoint-type>INT</waypoint-type></route-point>
+    <route-point><waypoint-identifier>BULTI</waypoint-identifier><waypoint-type>INT</waypoint-type></route-point>
+    <route-point><waypoint-identifier>MEKIL</waypoint-identifier><waypoint-type>INT</waypoint-type></route-point>
+    <route-point><waypoint-identifier>RKPC</waypoint-identifier><waypoint-type>AIRPORT</waypoint-type></route-point>
+  </route>
+</flight-plan>

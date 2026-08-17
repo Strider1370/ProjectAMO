@@ -60,15 +60,23 @@ test('이름은 같은데 위치가 5NM 넘게 다르면 파일 좌표를 쓰고
     names: [null, 'GONAX', null],
   })
   const out = resolveImportedRoute({ candidate: named, airports: AIRPORTS, navpoints: NAVPOINTS })
-  assert.equal(out.terms[0].kind, 'coordinate')
+  assert.equal(out.terms[0].kind, 'user-waypoint')
   assert.ok(out.notices.some((n) => n.code === 'fix-moved' && n.message.includes('GONAX')))
 })
 
 test('항법 데이터에 없는 이름은 좌표로 넣고 개수를 알린다', () => {
   const named = candidate({ names: [null, 'ZZZZZ', null] })
   const out = resolveImportedRoute({ candidate: named, airports: AIRPORTS, navpoints: NAVPOINTS })
-  assert.equal(out.terms[0].kind, 'coordinate')
+  assert.equal(out.terms[0].kind, 'user-waypoint')
+  assert.deepEqual(out.unknownWaypointNames, ['ZZZZZ'])
   assert.ok(out.notices.some((n) => n.code === 'fix-unknown'))
+})
+
+test('항법 데이터에 없는 가져온 이름은 사용자 waypoint로 보존한다', () => {
+  const named = candidate({ names: [null, 'QD040', null] })
+  const out = resolveImportedRoute({ candidate: named, airports: AIRPORTS, navpoints: NAVPOINTS })
+  assert.deepEqual(out.terms, [{ kind: 'user-waypoint', id: 'imported-wp-1', name: 'QD040' }])
+  assert.deepEqual(out.userWaypoints, [{ id: 'imported-wp-1', name: 'QD040', lon: 127.2, lat: 36.8 }])
 })
 
 test('중간 지점 이름이 4글자 ICAO 꼴이면 좌표로 넣는다', () => {
@@ -80,7 +88,7 @@ test('중간 지점 이름이 4글자 ICAO 꼴이면 좌표로 넣는다', () =>
     airports: AIRPORTS,
     navpoints: { ...NAVPOINTS, RKSS: { lon: 127.2, lat: 36.8 } },
   })
-  assert.equal(out.terms[0].kind, 'coordinate')
+  assert.equal(out.terms[0].kind, 'user-waypoint')
 })
 
 test('궤적을 솎으면 알린다', () => {

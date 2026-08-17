@@ -104,6 +104,18 @@ test('terminal-area fixes that live only in procedure data still classify as fix
   assert.equal(classifyToken('OSPAT', lookups).kind, TOKEN_KINDS.ERROR)
 })
 
+test('an imported custom waypoint remains a coordinate token with its file coordinate', () => {
+  const token = classifyToken('QD040', {
+    ...lookups,
+    userWaypoints: [{ id: 'imported-wp-1', name: 'QD040', lon: 126.692694, lat: 37.634167 }],
+  })
+  assert.deepEqual(token, {
+    kind: TOKEN_KINDS.COORDINATE,
+    text: 'QD040',
+    coordinate: { lon: 126.692694, lat: 37.634167 },
+  })
+})
+
 test('procedure fix ids are collected from every place a procedure names a fix', () => {
   const ids = procedureFixIds([
     {
