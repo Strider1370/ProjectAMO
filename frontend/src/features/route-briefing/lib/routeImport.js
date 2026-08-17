@@ -3,6 +3,7 @@
 import { kml as kmlToGeoJSON } from '@tmcw/togeojson'
 import simplify from 'simplify-js'
 import { greatCircleNm } from './routePreview.js'
+import { readKmlFromBuffer } from '../../my-map/lib/kmzUnzip.js'
 
 // 전역 DOMParser만 쓴다. 브라우저는 내장이라 항상 있고, node --test에는 없으므로
 // routeImport.test.js가 xmldom을 globalThis에 심어준다. 여기서 xmldom을 직접 import하면
@@ -43,12 +44,35 @@ export function isWithinKoreaFir(lon, lat) {
   )
 }
 
-function detectFileKind(name) {
+function fileExtension(name) {
+  return String(name ?? '').toLowerCase().split('.').pop()
+}
+
+function detectXmlKind(text) {
+  const doc = new DOMParser().parseFromString(text, 'text/xml')
+  const root = String(doc.documentElement?.localName ?? doc.documentElement?.tagName ?? '').toLowerCase()
+  if (root === 'gpx') return 'gpx'
+  if (root === 'kml') return 'kml'
+  if (root === 'flight-plan') return 'fpl'
+  return null
+}
+
+function detectFileKind(name, text = '') {
   const ext = String(name ?? '').toLowerCase().split('.').pop()
   if (ext === 'gpx') return 'gpx'
   if (ext === 'kml') return 'kml'
   if (ext === 'fpl') return 'fpl'
+  if (/^\s*</.test(text)) return detectXmlKind(text) ?? 'geojson'
   return 'geojson'
+}
+
+function isZipBuffer(buffer) {
+  const bytes = new Uint8Array(buffer, 0, Math.min(4, buffer.byteLength))
+  return bytes[0] === 0x50 && bytes[1] === 0x4B && (
+    (bytes[2] === 0x03 && bytes[3] === 0x04) ||
+    (bytes[2] === 0x05 && bytes[3] === 0x06) ||
+    (bytes[2] === 0x07 && bytes[3] === 0x08)
+  )
 }
 
 // 파일 텍스트 → 중간 표현. GeoJSON은 그대로 파싱, GPX는 DOM(다음 스텝에서 후보 추출 시
@@ -57,7 +81,7 @@ function detectFileKind(name) {
 // 요소를 문서에 심는 방식이라, xmldom과 동일하게 동작을 보장할 테스트가 없는 채로 감지
 // 로직만 넣는 건 미검증 코드가 된다(YAGNI). 필요해지면 전용 테스트와 함께 추가한다.
 export function parseRouteFile(name, text) {
-  const kind = detectFileKind(name)
+  const kind = detectFileKind(name, text)
   if (kind === 'geojson') {
     let geojson
     try {
@@ -71,6 +95,14 @@ export function parseRouteFile(name, text) {
   if (kind === 'gpx') return { format: 'gpx', doc }
   if (kind === 'fpl') return { format: 'fpl', doc }
   return { format: 'kml', geojson: kmlToGeoJSON(doc) }
+}
+
+export async function parseRouteBuffer(name, buffer) {
+  if (fileExtension(name) === 'kmz' || isZipBuffer(buffer)) {
+    const kml = await readKmlFromBuffer(buffer, name)
+    return parseRouteFile('route.kml', kml)
+  }
+  return parseRouteFile(name, decodeImportedFile(buffer))
 }
 
 // GeoJSON 최상위 문서 3종을 전부 "Feature 목록"으로 정규화한다: FeatureCollection,

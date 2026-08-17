@@ -15,7 +15,7 @@ import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRou
 import { normalizeRouteSnapshot } from './lib/routeStore.js'
 import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
-import { parseRouteFile, extractRoutePaths, decodeImportedFile, MAX_IMPORT_BYTES } from './lib/routeImport.js'
+import { parseRouteBuffer, extractRoutePaths, MAX_IMPORT_BYTES } from './lib/routeImport.js'
 import { resolveImportedRoute } from './lib/routeImportResolve.js'
 import { buildImportedProcedureCoordinates, matchImportedProcedures } from './lib/procedureSequenceMatch.js'
 import { describeMapFile } from '../my-map/lib/mapFileGuard.js'
@@ -2036,9 +2036,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     let droppedTotal = 0
     let mapFile = null
     try {
-      // file.text()는 무조건 UTF-8로 읽는다 — Garmin FPL은 UTF-16이라 깨진다.
-      const text = decodeImportedFile(await file.arrayBuffer())
-      const parsed = parseRouteFile(file.name, text)
+      const parsed = await parseRouteBuffer(file.name, await file.arrayBuffer())
       // KML만 검사한다. GPX/FPL/GeoJSON은 애초에 경로 형식이고, 여기서 함께 막으면
       // 지금 되던 것을 막게 된다.
       if (parsed.format === 'kml') {
@@ -2049,7 +2047,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       candidates = extracted.candidates
       droppedTotal = extracted.droppedTotal
     } catch {
-      setImportError('파일을 해석할 수 없습니다. GeoJSON·GPX·KML·FPL 파일인지 확인하세요.')
+      setImportError('파일을 해석할 수 없습니다. GeoJSON·GPX·KML·KMZ·FPL 파일인지 확인하세요.')
       return
     }
     if (mapFile) {

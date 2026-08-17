@@ -1,9 +1,35 @@
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 import { test, expect } from '../fixtures.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 const multiRouteFile = fileURLToPath(new URL('../../test/fixtures/route-import/rksi-rkpk-multi.gpx', import.meta.url))
 const importedWaypointFile = fileURLToPath(new URL('../../test/fixtures/route-import/rkss-rkpc-imported-waypoint.fpl', import.meta.url))
+const kmzRouteKml = readFileSync(fileURLToPath(new URL('../../test/fixtures/route-import/rkss-rkpk.kml', import.meta.url)))
+
+function storedKmz(kml) {
+  const name = Buffer.from('doc.kml')
+  const local = Buffer.alloc(30)
+  local.writeUInt32LE(0x04034B50, 0)
+  local.writeUInt16LE(20, 4)
+  local.writeUInt32LE(kml.length, 18)
+  local.writeUInt32LE(kml.length, 22)
+  local.writeUInt16LE(name.length, 26)
+  const central = Buffer.alloc(46)
+  central.writeUInt32LE(0x02014B50, 0)
+  central.writeUInt16LE(20, 4)
+  central.writeUInt16LE(20, 6)
+  central.writeUInt32LE(kml.length, 20)
+  central.writeUInt32LE(kml.length, 24)
+  central.writeUInt16LE(name.length, 28)
+  const eocd = Buffer.alloc(22)
+  eocd.writeUInt32LE(0x06054B50, 0)
+  eocd.writeUInt16LE(1, 8)
+  eocd.writeUInt16LE(1, 10)
+  eocd.writeUInt32LE(central.length + name.length, 12)
+  eocd.writeUInt32LE(local.length + name.length + kml.length, 16)
+  return Buffer.concat([local, name, kml, central, name, eocd])
+}
 
 function fplWithProcedureSequences() {
   const points = [
@@ -78,6 +104,33 @@ test.describe('route-import', () => {
       const data = map?.getSource('briefing-route-applied')?.serialize()?.data
       return data?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry?.coordinates?.length ?? 0
     })).toBe(5)
+  })
+
+  test('imports a KMZ route selected through the route file input', async ({ page }, testInfo) => {
+    await page.addInitScript((version) => {
+      localStorage.setItem('amo.tour.v1.done', 'true')
+      localStorage.setItem('projectamo:lastSeenVersion', version)
+    }, CURRENT_VERSION)
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+
+    if (testInfo.project.name === 'mobile') {
+      await page.getByRole('button', { name: '브리핑', exact: true }).click()
+      await page.getByRole('button', { name: 'VFR', exact: true }).click()
+    } else {
+      await page.getByRole('button', { name: '비행 전 브리핑', exact: true }).click()
+      await page.getByRole('tab', { name: 'VFR', exact: true }).click()
+    }
+
+    await page.getByTestId('route-import-file').setInputFiles({
+      name: 'rkss-rkpk.kmz',
+      mimeType: 'application/vnd.google-earth.kmz',
+      buffer: storedKmz(kmzRouteKml),
+    })
+
+    await expect.poll(() => page.evaluate(() => {
+      const data = window.__map?.getSource('briefing-route-applied')?.serialize()?.data
+      return data?.features?.find((feature) => feature.properties?.role === 'route-preview-line')?.geometry?.coordinates?.length ?? 0
+    })).toBeGreaterThan(1)
   })
 
   test('replaces exact FPL procedure fix sequences with SID and STAR tokens', async ({ page }, testInfo) => {

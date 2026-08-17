@@ -6,9 +6,11 @@ import { fileURLToPath } from 'node:url'
 // 테스트 환경의 폴백은 여기서 심는다 — 그래야 xmldom이 운영 번들에 실리지 않는다.
 import { DOMParser } from '@xmldom/xmldom'
 globalThis.DOMParser ??= DOMParser
-import { parseRouteFile, extractRoutePaths, decodeImportedFile, MAX_IMPORT_BYTES, thinRoute, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
+import { parseRouteFile, parseRouteBuffer, extractRoutePaths, decodeImportedFile, MAX_IMPORT_BYTES, thinRoute, simplifyRoute, snapEndpointsToAirports, isWithinKoreaFir } from './routeImport.js'
 
 const FPL_TEXT = readFileSync(fileURLToPath(new URL('../../../../test/fixtures/route-import/rksi-rkpk.fpl', import.meta.url)), 'utf8')
+const KMZ = readFileSync(fileURLToPath(new URL('../../../../test/fixtures/my-map/tiny.kmz', import.meta.url)))
+const toArrayBuffer = (b) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)
 
 // extractRoutePaths는 { candidates, droppedTotal }을 반환한다. 후보만 보는
 // 시험이 대부분이라 여기서 한 번 벗겨준다 — droppedTotal을 보는 시험은
@@ -43,6 +45,20 @@ test('parseRouteFile: 확장자 .json도 GeoJSON으로 처리', () => {
 
 test('parseRouteFile: 깨진 GeoJSON은 에러', () => {
   assert.throws(() => parseRouteFile('bad.geojson', '{not json'))
+})
+
+test('parseRouteBuffer: 확장자를 알 수 없는 ForeFlight FPL도 XML 내용으로 해석한다', async () => {
+  const parsed = await parseRouteBuffer('ForeFlight export', new TextEncoder().encode(FPL_TEXT).buffer)
+
+  assert.equal(parsed.format, 'fpl')
+  assert.deepEqual(paths(parsed)[0].names, ['RKSI', 'GONAX', 'RKPK'])
+})
+
+test('parseRouteBuffer: KMZ 압축 파일에서 KML 경로를 해석한다', async () => {
+  const parsed = await parseRouteBuffer('route.kmz', toArrayBuffer(KMZ))
+
+  assert.equal(parsed.format, 'kml')
+  assert.equal(parsed.geojson.type, 'FeatureCollection')
 })
 
 // GeoJSON 스펙상 최상위 문서가 Feature/FeatureCollection 없이 순수 Geometry일 수도

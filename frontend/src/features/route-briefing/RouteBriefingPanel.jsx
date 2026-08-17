@@ -419,7 +419,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       <input
         ref={importFileInputRef}
         type="file"
-        accept=".geojson,.json,.gpx,.kml,.fpl"
         data-testid="route-import-file"
         style={{ display: 'none' }}
         onChange={handleImportFileChange}
@@ -446,7 +445,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
               onDragLeave={() => setIsDragOver(false)}
               onDrop={handleImportDrop}
             >
-              <span className="rb-import-dropzone-text">{'GeoJSON · GPX · KML · FPL 파일을 여기에 드래그하세요'}</span>
+              <span className="rb-import-dropzone-text">{'GeoJSON · GPX · KML · KMZ · FPL 파일을 여기에 드래그하세요'}</span>
             </div>
           </DialogContent>
         </DialogBody>
