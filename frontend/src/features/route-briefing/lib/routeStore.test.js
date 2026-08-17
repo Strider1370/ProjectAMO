@@ -40,3 +40,35 @@ test('normalizeRouteSnapshot v3 stores applied inputs without geometry or draft 
   assert.equal(snapshot.base.draftEditor, undefined)
   assert.equal(snapshot.alternatives[0].pendingEdit, undefined)
 })
+
+const GEOM = { type: 'LineString', coordinates: [[126.4, 37.4], [127.1, 36.9]] }
+const SKEL = { type: 'LineString', coordinates: [[126.4, 37.4], [127.1, 36.9], [128.0, 36.0]] }
+
+// 재검색 없이 복원하려면 기하가 살아남아야 한다. v3 분기는 필드를 명시 나열해 되돌리므로
+// 나열에 없는 필드는 조용히 버려진다 — 그래서 명시적으로 지킨다.
+test('normalizeRouteSnapshot: 기하·AIRAC·교체공항을 최상위에 보존한다', () => {
+  const out = normalizeRouteSnapshot({
+    version: 3,
+    base: { routeForm: { flightRule: 'IFR', departureAirport: 'RKSI', arrivalAirport: 'RKPC' }, enroute: {}, routeString: 'SEL' },
+    cruiseAltitudeFt: 31000,
+    routeGeometry: GEOM,
+    enrouteGeometry: SKEL,
+    airacCycle: '2026-06-25',
+    alternateAirport: 'RKPK',
+  })
+  assert.deepEqual(out.routeGeometry, GEOM)
+  assert.deepEqual(out.enrouteGeometry, SKEL)
+  assert.equal(out.airacCycle, '2026-06-25')
+  assert.equal(out.alternateAirport, 'RKPK')
+})
+
+test('normalizeRouteSnapshot: 새 필드가 없으면 null로 채운다', () => {
+  const out = normalizeRouteSnapshot({
+    version: 3,
+    base: { routeForm: { flightRule: 'VFR' }, enroute: {}, routeString: '' },
+  })
+  assert.equal(out.routeGeometry, null)
+  assert.equal(out.enrouteGeometry, null)
+  assert.equal(out.airacCycle, null)
+  assert.equal(out.alternateAirport, null)
+})
