@@ -220,6 +220,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     handleRouteReset,
     handleRouteSearch,
     loadSavedRoute,
+    openSavedRouteBriefing,
     importRouteFromFile,
     applyImportedPath,
     cancelImportChoice,
@@ -405,7 +406,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           {savedRoutes.map((r) => (
             <div key={r.id} className="rb-saved-row">
               <span className="rb-saved-name">{r.name}<span className="rb-saved-meta"> · {relativeTime(r.savedAt)}</span></span>
-              <button type="button" className="rb-saved-load" onClick={() => { setMenuOpen(false); loadSavedRoute(r) }}>{'로드'}</button>
+              <button type="button" className="rb-saved-load" onClick={() => { setMenuOpen(false); openSavedRouteBriefing(r) }}>{'로드'}</button>
               <button type="button" className="rb-saved-del" aria-label="경로 삭제" onClick={async () => { await deleteSavedRoute(r.id); refreshSaved() }}><X size={14} /></button>
             </div>
           ))}

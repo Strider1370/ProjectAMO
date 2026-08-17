@@ -27,7 +27,9 @@ const useStyles = makeStyles({
   loginHint: { padding: 'var(--space-m) 0', color: 'var(--text-2)', fontSize: 'var(--fs-300)' },
 })
 
-// #13 Task 10 딥링크 착지 — ?flight=<routeId> 탭 시 해당 비행의 변경점 에스컬레이션 화면.
+// 현재 어디서도 렌더하지 않는다. 딥링크(?flight=)는 브리핑으로 직행하도록 바뀌었다(App.jsx).
+// 3단계에서 변경점을 브리핑 상단 한 줄 띠로 옮길 때 이 표시 방식을 참고하고, 그때 지운다.
+// 원래 용도: ?flight=<routeId> 탭 시 해당 비행의 변경점 에스컬레이션 화면.
 export default function FlightAlertDetail({ flightId, onClose, onOpenRoute }) {
   useCloseOnBackButton(true, onClose)
   const s = useStyles()

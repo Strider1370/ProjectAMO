@@ -71,7 +71,7 @@ export default function NotificationCenter({ isExpanded = false }) {
   function handleOpen(n) {
     markRead(n.id)
     setOpen(false)
-    if (n.routeId != null) window.location.assign(`/?flight=${n.routeId}`) // 딥링크(Task 10에서 착지 처리)
+    if (n.routeId != null) window.location.assign(`/?flight=${n.routeId}`) // 딥링크 → 그 비행의 브리핑으로 직행(App.jsx)
   }
 
   return (
