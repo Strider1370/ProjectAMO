@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { createDb } from '../src/db/index.js'
-import { buildBriefingRequest, buildSnapshot, evaluateFlight, cleanupExpired } from '../src/alerts/scheduler.js'
+import { buildBriefingRequest, buildSnapshot, evaluateFlight, cleanupExpired, runTick } from '../src/alerts/scheduler.js'
 
 const ETD = '2026-07-08T10:00:00Z'
 const ETA = '2026-07-08T12:00:00Z'
@@ -159,4 +159,24 @@ test('buildBriefingRequest: 실제 저장 모양(base.routeForm, dep/dest 컬럼
   assert.equal(req.alternateAirport, 'RKPK')
   assert.equal(req.flightRule, 'IFR')
   assert.equal(req.plannedCruiseAltitudeFt, 31000)
+})
+
+// 기하 없는 경로를 조용히 넘기면 "감시중"으로 보이면서 아무것도 안 하는 상태가 오래 간다.
+test('runTick: 기하 없는 경로를 세어서 반환한다', async () => {
+  const db = createDb(':memory:')
+  const now = Date.parse('2026-08-17T00:00:00Z')
+  const nowIso = new Date(now).toISOString()
+  const etd = new Date(now + 60 * 60 * 1000).toISOString() // 감시창(ETD-2h ~ ETD) 안
+  const uid = db.prepare('INSERT INTO users (username, password_hash, created_at) VALUES (?,?,?)')
+    .run('pilot-skip', 'x', nowIso).lastInsertRowid
+  const payload = JSON.stringify({
+    version: 3,
+    base: { routeForm: { flightRule: 'IFR', departureAirport: 'RKSI', arrivalAirport: 'RKPC' }, enroute: {}, routeString: 'SEL' },
+  })
+  db.prepare(`INSERT INTO routes (user_id, name, etd, payload, alert_enabled, alert_start_min_before_etd, created_at, updated_at)
+    VALUES (?,?,?,?,1,120,?,?)`).run(uid, 'RKSI→RKPC', etd, payload, nowIso, nowIso)
+
+  const result = await runTick(db, now)
+  assert.equal(result.skipped, 1)
+  assert.equal(result.evaluated, 0)
 })

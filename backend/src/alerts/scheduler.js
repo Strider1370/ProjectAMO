@@ -218,10 +218,17 @@ export async function runTick(db, now = Date.now()) {
   cleanupExpired(db, now)
   let evaluated = 0
   let fired = 0
+  let skipped = 0
   for (const route of activeFlights(db, now)) {
     try {
       const res = recompute(route)
-      if (!res) continue
+      // 저장 payload에 경로 기하가 없으면 브리핑을 재구성할 수 없다. 조용히 넘기지 않는다 —
+      // 이 침묵 때문에 저장 경로가 한 건도 평가되지 않는 상태를 오래 알아채지 못했다.
+      if (!res) {
+        skipped++
+        console.warn(`[alert-scheduler] route ${route.id} 건너뜀 — 저장 payload에 경로 기하 없음`)
+        continue
+      }
       evaluated++
       const { changes } = evaluateFlight({ db, route, briefing: res.briefing, tafByIcao: res.tafByIcao, now })
       // §5B group_wait: 이 비행의 이번 변화들을 텔레그램 1건으로 묶어 발송(인앱은 이미 행 저장).
@@ -230,7 +237,8 @@ export async function runTick(db, now = Date.now()) {
       console.error(`[alert-scheduler] route ${route.id} 평가 실패:`, err.message)
     }
   }
-  return { evaluated, fired }
+  if (skipped) console.warn(`[alert-scheduler] ${skipped}개 경로를 기하 없음으로 건너뜀`)
+  return { evaluated, fired, skipped }
 }
 
 // 등록 직후 baseline 1회(diff 기준 확보). 이후 인터벌.
