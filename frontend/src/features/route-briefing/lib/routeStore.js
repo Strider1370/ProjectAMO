@@ -40,6 +40,9 @@ export function normalizeRouteSnapshot(snapshot = {}) {
     // 재검색 없이 복원하기 위한 기하 — 백엔드 buildBriefingRequest가 최상위에서 읽는다.
     routeGeometry: snapshot.routeGeometry ?? null,
     enrouteGeometry: snapshot.enrouteGeometry ?? null,
+    // 백엔드가 NAVLOG 구간표·절차 그룹을 만드는 재료. 좌표선은 routeGeometry에만 있다.
+    routeModel: snapshot.routeModel ?? null,
+    routeMarkers: snapshot.routeMarkers ?? [],
     // 저장 당시 AIRAC 주기. 이번 범위에선 기록만 한다 — 나중엔 소급이 불가능하다.
     airacCycle: snapshot.airacCycle ?? null,
     alternateAirport: snapshot.alternateAirport ?? null,

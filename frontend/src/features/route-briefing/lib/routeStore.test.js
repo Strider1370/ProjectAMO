@@ -72,3 +72,24 @@ test('normalizeRouteSnapshot: 새 필드가 없으면 null로 채운다', () => 
   assert.equal(out.airacCycle, null)
   assert.equal(out.alternateAirport, null)
 })
+
+test('normalizeRouteSnapshot: routeModel·routeMarkers를 보존한다', () => {
+  const out = normalizeRouteSnapshot({
+    version: 3,
+    base: { routeForm: { flightRule: 'IFR' }, enroute: {}, routeString: 'SEL' },
+    routeGeometry: GEOM,
+    routeModel: { schemaVersion: 1, enRouteSegments: [{ id: 'A582-001', routeId: 'A582' }] },
+    routeMarkers: [{ label: 'RKSS', lon: 126.4, lat: 37.4, kind: 'AIRPORT' }],
+  })
+  assert.equal(out.routeModel.enRouteSegments[0].routeId, 'A582')
+  assert.equal(out.routeMarkers[0].label, 'RKSS')
+})
+
+test('normalizeRouteSnapshot: routeModel·routeMarkers가 없으면 null/빈배열', () => {
+  const out = normalizeRouteSnapshot({
+    version: 3,
+    base: { routeForm: { flightRule: 'VFR' }, enroute: {}, routeString: '' },
+  })
+  assert.equal(out.routeModel, null)
+  assert.deepEqual(out.routeMarkers, [])
+})
