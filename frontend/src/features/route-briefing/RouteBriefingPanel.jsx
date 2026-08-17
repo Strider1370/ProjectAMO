@@ -27,6 +27,8 @@ import AltitudeWeatherComparison from './AltitudeWeatherComparison.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { computeEtaIso } from './lib/etaCalc.js'
 import { formatBriefingTime } from './lib/briefingTime.js'
+import { buildSavedGeometry } from './lib/routeSaveGeometry.js'
+import { loadNavdata } from './lib/routePlanner.js'
 import './RouteBriefing.css'
 
 const AIRPORT_KO = {
@@ -357,9 +359,21 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     const name = window.prompt('경로 이름', def)
     if (name == null) return
     const base = routeDesigns.find((design) => design.id === 'base')
+    // 완성된 경로선을 함께 남긴다 — 없으면 로드가 재검색으로 복원해야 하고(해외 IFR 실패),
+    // 알림 스케줄러는 경로 기하를 못 찾아 그 비행을 아예 건너뛴다.
+    const { routeGeometry, enrouteGeometry } = buildSavedGeometry({
+      routeResult: base?.routeResult ?? routeResult,
+      vfrWaypoints,
+      selectedSid: base?.procedures?.sid ?? selectedSid,
+      selectedStar: base?.procedures?.star ?? selectedStar,
+      selectedIap,
+    })
+    const airacCycle = (await loadNavdata()).publicationId ?? null
     await saveRoute(name.trim() || def, {
       version: 3,
       cruiseAltitudeFt, tasKt, etd,
+      routeGeometry, enrouteGeometry, airacCycle,
+      alternateAirport: alternateAirport || null,
       selectedAlternativeId: selectedRouteDesignId === 'base' ? null : selectedRouteDesignId,
       base: base && {
         id: 'base', kind: 'base', name: base.name,
