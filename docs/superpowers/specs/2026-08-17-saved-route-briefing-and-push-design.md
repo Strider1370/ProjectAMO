@@ -91,7 +91,8 @@
 
 - `RouteBriefingPanel.jsx` `handleSaveCurrentRoute` — 스냅샷 구성 시 geometry 주입
 - `routeStore.js` `persistedDesign` / `normalizeRouteSnapshot` — 새 필드 보존
-- 백엔드는 **손대지 않는다.** `buildBriefingRequest`가 이미 `routeGeometry ?? enrouteGeometry`로 읽는다.
+- 백엔드 `buildBriefingRequest`는 기하는 이미 `routeGeometry ?? enrouteGeometry`로 읽지만, **공항 이름은 못 읽는다.** 구현 중 발견: `p.routeForm`을 최상위에서 읽는데 실제 payload는 `p.base.routeForm`이고, `routes`의 `dep`/`dest`/`altn`/`rules` 컬럼은 저장(`me/routes.js:52`)·알림등록(`me/alerts.js:62`) 어느 쪽도 채우지 않아 폴백도 없다. 기하만 저장해도 출발·도착 공항이 `null`이 되어 브리핑이 성립하지 않는다. 기존 테스트가 컬럼을 채운 가짜 행을 써서 이 어긋남을 가리고 있었다.
+  → **1단계에서 함께 고쳤다** (`9727e04`). 실측·관문 결과는 [상태 문서](../status/2026-08-17-saved-route-geometry.status.md) 참조.
 
 ## 침묵을 없앤다
 
