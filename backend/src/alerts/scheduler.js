@@ -33,7 +33,9 @@ export function buildBriefingRequest(route) {
   const p = safeJson(route.payload) ?? {}
   const geometry = p.routeGeometry ?? p.enrouteGeometry
   if (!geometry?.coordinates?.length) return null
-  const form = p.routeForm ?? {}
+  // routeForm은 실제 저장 payload에서 base 아래에 있다(routeStore.normalizeRouteSnapshot).
+  // 최상위 폴백은 구형/합성 payload용으로 남긴다.
+  const form = p.base?.routeForm ?? p.routeForm ?? {}
   return {
     flightRule: form.flightRule ?? route.rules ?? 'IFR',
     departureAirport: form.departureAirport ?? route.dep,

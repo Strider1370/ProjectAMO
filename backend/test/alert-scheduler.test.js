@@ -134,3 +134,29 @@ test('cleanupExpired: 알림 이력이 없는 만료 경로는 지우고, 있는
     assert.equal(db.prepare('SELECT 1 FROM routes WHERE id=?').get(withoutHistory.id), undefined, '이력 없는 만료 경로는 삭제된다')
   } finally { db.close() }
 })
+
+// 실제 저장 payload는 routeForm을 base 아래에 두고, routes의 dep/dest/altn/rules 컬럼은
+// 저장(me/routes.js)·알림등록(me/alerts.js) 어느 쪽도 채우지 않는다 → payload가 유일한 출처.
+// 위 mk()는 dep/dest를 채워 이 어긋남을 가린다. 여기서는 실제와 같이 비워 둔다.
+test('buildBriefingRequest: 실제 저장 모양(base.routeForm, dep/dest 컬럼 없음)', () => {
+  const realRow = (payload) => ({
+    payload: JSON.stringify(payload), etd: ETD, eta: ETA,
+    dep: null, dest: null, altn: null, rules: null,
+  })
+  const req = buildBriefingRequest(realRow({
+    version: 3,
+    base: {
+      routeForm: { flightRule: 'IFR', departureAirport: 'RKSI', arrivalAirport: 'RKPC' },
+      enroute: {}, routeString: 'SEL',
+    },
+    routeGeometry: GEOM,
+    alternateAirport: 'RKPK',
+    cruiseAltitudeFt: 31000,
+  }))
+  assert.ok(req, '실제 저장 모양에서 null이 나오면 안 된다')
+  assert.equal(req.departureAirport, 'RKSI')
+  assert.equal(req.arrivalAirport, 'RKPC')
+  assert.equal(req.alternateAirport, 'RKPK')
+  assert.equal(req.flightRule, 'IFR')
+  assert.equal(req.plannedCruiseAltitudeFt, 31000)
+})
