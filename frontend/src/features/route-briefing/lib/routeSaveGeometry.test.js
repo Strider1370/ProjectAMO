@@ -46,5 +46,32 @@ test('VFR: 최종선만 낸다 — 경로선이 곧 스켈레톤', () => {
 })
 
 test('경로 없음: 둘 다 null', () => {
-  assert.deepEqual(buildSavedGeometry({ routeResult: null }), { routeGeometry: null, enrouteGeometry: null })
+  const result = buildSavedGeometry({ routeResult: null })
+  assert.equal(result.routeGeometry, null)
+  assert.equal(result.enrouteGeometry, null)
+})
+
+test('routeModel과 routeMarkers를 함께 낸다 — routeModel에 좌표선은 담지 않는다', () => {
+  const routeResult = {
+    flightRule: 'IFR',
+    previewGeojson: previewOf(SKELETON),
+    displaySequence: ['RKSS', 'BULTI', 'DOTOL', 'RKPC'],
+    routeIds: ['A582'],
+    segments: [{ id: 'A582-001', routeId: 'A582', kind: 'airway', geometry: [SKELETON[0], SKELETON[1]] }],
+  }
+  const result = buildSavedGeometry({ routeResult, selectedSid: SID })
+
+  assert.equal(result.routeModel.schemaVersion, 1)
+  assert.equal(result.routeModel.routeGeometry, undefined, 'routeGeometry는 따로 저장되므로 routeModel에 중복 담지 않는다')
+  assert.ok(Array.isArray(result.routeModel.enRouteSegments))
+  assert.equal(result.routeModel.enRouteSegments[0].routeId, 'A582')
+  // routeMarkers는 항로 ID를 뺀 표시 순서에서 나오되, 좌표가 있는 것까지만 남는다(스켈레톤 3좌표).
+  assert.deepEqual(result.routeMarkers.map((marker) => marker.label), ['RKSS', 'BULTI', 'DOTOL'])
+  assert.equal(result.routeMarkers[0].kind, 'AIRPORT')
+})
+
+test('경로 없음: routeModel·routeMarkers도 null/빈배열', () => {
+  const result = buildSavedGeometry({ routeResult: null })
+  assert.equal(result.routeModel, null)
+  assert.deepEqual(result.routeMarkers, [])
 })
