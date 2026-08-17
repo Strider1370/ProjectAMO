@@ -101,6 +101,8 @@ export function loadNavdata() {
     const allSegments = [...enroute.segments, ...(routeSegmentsO || [])]
 
     return {
+      // AIRAC 주기 — 저장 경로에 기록해 나중에 "이 경로는 어느 주기 기준인가"를 말할 수 있게 한다.
+      publicationId: enroute.publicationId ?? null,
       // 공항: 겹침 없음(국내 RK / 해외 그 외)
       airports: { ...airports, ...(airportsO || {}) },
       // 지점·항로: 공유 ident/routeId는 국내 정의 우선(방향 메타데이터 보존)

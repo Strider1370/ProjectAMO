@@ -10,7 +10,7 @@ function freshPlanner() {
 }
 
 const AIRPORTS = { RKSI: { icao: 'RKSI', lon: 126.45, lat: 37.46 } }
-const ENROUTE = { points: {}, segments: [], routes: {} }
+const ENROUTE = { publicationId: '2026-06-25', points: {}, segments: [], routes: {} }
 
 function jsonResponse(body) {
   return new Response(JSON.stringify(body), { status: 200 })
@@ -83,6 +83,13 @@ test('loadNavdata: 성공한 뒤에는 다시 받지 않는다', async () => {
   })
 
   assert.equal(stub.calls.get('airports.json'), 1)
+})
+
+// 저장 경로에 "어느 AIRAC 주기 기준인가"를 남기려면 이 값이 밖으로 나와야 한다.
+test('loadNavdata: enroute.json의 publicationId를 그대로 노출한다', async () => {
+  const { loadNavdata } = await freshPlanner()
+  const navdata = await withFetch(stubFetch(), () => loadNavdata())
+  assert.equal(navdata.publicationId, ENROUTE.publicationId)
 })
 
 test('loadOverseasAirports: 실패하면 {}를 주되 다음에 재시도한다', async () => {
