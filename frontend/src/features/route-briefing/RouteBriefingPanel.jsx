@@ -361,7 +361,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     const base = routeDesigns.find((design) => design.id === 'base')
     // 완성된 경로선을 함께 남긴다 — 없으면 로드가 재검색으로 복원해야 하고(해외 IFR 실패),
     // 알림 스케줄러는 경로 기하를 못 찾아 그 비행을 아예 건너뛴다.
-    const { routeGeometry, enrouteGeometry } = buildSavedGeometry({
+    const { routeGeometry, enrouteGeometry, routeModel, routeMarkers } = buildSavedGeometry({
       routeResult: base?.routeResult ?? routeResult,
       vfrWaypoints,
       selectedSid: base?.procedures?.sid ?? selectedSid,
@@ -372,7 +372,8 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     await saveRoute(name.trim() || def, {
       version: 3,
       cruiseAltitudeFt, tasKt, etd,
-      routeGeometry, enrouteGeometry, airacCycle,
+      eta: eta || null, // 사용자가 고친 ETA를 지킨다. 없으면 로드 때 거리·TAS로 계산.
+      routeGeometry, enrouteGeometry, routeModel, routeMarkers, airacCycle,
       alternateAirport: alternateAirport || null,
       selectedAlternativeId: selectedRouteDesignId === 'base' ? null : selectedRouteDesignId,
       base: base && {

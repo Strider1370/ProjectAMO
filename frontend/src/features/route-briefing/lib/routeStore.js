@@ -35,6 +35,8 @@ export function normalizeRouteSnapshot(snapshot = {}) {
     selectedAlternativeId: snapshot.selectedAlternativeId ?? null,
     cruiseAltitudeFt: snapshot.cruiseAltitudeFt,
     etd: snapshot.etd,
+    // 사용자가 손으로 고칠 수 있는 값이라 지킨다 — 없으면 로드 때 거리·TAS로 다시 계산된다.
+    eta: snapshot.eta ?? null,
     tasKt: snapshot.tasKt,
     etaPolicy: snapshot.etaPolicy,
     // 재검색 없이 복원하기 위한 기하 — 백엔드 buildBriefingRequest가 최상위에서 읽는다.

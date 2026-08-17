@@ -1,0 +1,68 @@
+// 저장 스냅샷 → 브리핑 요청 입력. 순수 함수 — 네트워크·항법데이터 조회 없음.
+// 이 모듈이 "재검색하지 않는다"의 계약이다: 여기서 나오는 값만으로 브리핑이 성립해야 한다.
+// 해외 IFR은 절차 데이터가 없어 재검색이 `No RNAV route path`로 깨진다. 그 경로를 아예 타지 않기 위한 것.
+import { normalizeRouteSnapshot } from './routeStore.js'
+import { computeEtaIso } from './etaCalc.js'
+
+const EARTH_RADIUS_NM = 3440.065
+
+function legNm([lon1, lat1], [lon2, lat2]) {
+  const toRad = (value) => value * Math.PI / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return 2 * EARTH_RADIUS_NM * Math.asin(Math.sqrt(a))
+}
+
+// 저장된 선의 총 거리. 재검색 결과의 totalDistanceNm을 대신한다.
+export function geometryDistanceNm(routeGeometry) {
+  const coordinates = routeGeometry?.coordinates ?? []
+  let total = 0
+  for (let index = 1; index < coordinates.length; index += 1) total += legNm(coordinates[index - 1], coordinates[index])
+  return Number(total.toFixed(2))
+}
+
+const isoOf = (value) => (Number.isFinite(Date.parse(value)) ? new Date(value).toISOString().replace('.000Z', 'Z') : null)
+
+// routeModel이 없거나 낡은 저장분이어도 브리핑 자체는 성립해야 한다 — 구간표만 빈다.
+const EMPTY_MODEL = {
+  schemaVersion: 1,
+  enRouteSegments: [],
+  enRouteRange: null,
+  terminalRanges: null,
+  graphConnectionStatus: 'unavailable',
+}
+
+export function buildSavedBriefingInputs(rawSaved) {
+  const saved = normalizeRouteSnapshot(rawSaved ?? {})
+  const form = saved.base?.routeForm ?? saved.routeForm ?? {}
+  const routeGeometry = saved.routeGeometry ?? saved.enrouteGeometry ?? null
+  if (!routeGeometry?.coordinates || routeGeometry.coordinates.length < 2) return { ok: false, reason: 'no_geometry' }
+
+  const etd = isoOf(saved.etd)
+  const distanceNm = geometryDistanceNm(routeGeometry)
+  const eta = isoOf(saved.eta) ?? isoOf(computeEtaIso(etd, distanceNm, saved.tasKt)) ?? null
+
+  return {
+    ok: true,
+    flightRule: form.flightRule ?? 'IFR',
+    departureAirport: form.departureAirport ?? null,
+    arrivalAirport: form.arrivalAirport ?? null,
+    alternateAirport: saved.alternateAirport || null,
+    routeGeometry,
+    // 브리핑 요청은 routeModel 안에 routeGeometry가 있는 모양을 기대한다(shared/route-model.js).
+    // 저장 때 중복을 피해 뺐으므로 여기서 다시 끼운다.
+    routeModel: { ...EMPTY_MODEL, ...(saved.routeModel ?? {}), routeGeometry },
+    routeMarkers: saved.routeMarkers ?? [],
+    etd,
+    eta,
+    cruiseAltitudeFt: Number(saved.cruiseAltitudeFt) || null,
+    tasKt: saved.tasKt ?? null,
+    distanceNm,
+    routeString: saved.base?.routeString ?? '',
+    enroute: saved.base?.enroute ?? null,
+    procedureIds: saved.base?.procedureIds ?? {},
+  }
+}
+
+export default { buildSavedBriefingInputs, geometryDistanceNm }
