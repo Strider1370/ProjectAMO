@@ -29,3 +29,23 @@ test('quiesceCollections aborts an active collector and waits for its lock to cl
   assert.equal(receivedSignal.aborted, true)
   assert.deepEqual(activeCollectionTypes(), [])
 })
+
+test('quiesceCollections aborts an active satellite collection before reporting idle', async () => {
+  let signal
+  let releaseStarted
+  const started = new Promise((resolve) => { releaseStarted = resolve })
+  const running = runWithLock('satellite', async ({ signal: collectionSignal }) => {
+    signal = collectionSignal
+    releaseStarted()
+    await new Promise((resolve, reject) => {
+      collectionSignal.addEventListener('abort', () => reject(collectionSignal.reason), { once: true })
+    })
+  })
+
+  await started
+  await quiesceCollections({ timeoutMs: 1_000, pollMs: 5 })
+  await running
+
+  assert.equal(signal.aborted, true)
+  assert.deepEqual(activeCollectionTypes(), [])
+})

@@ -151,4 +151,9 @@ export async function processSatelliteVisible({ now = new Date(), deps = {} } = 
   return { saved: true, tm, frameCount: frames.length, bytes: webp.length }
 }
 
+// The scheduler-facing function remains above; workers use this compact, timer-free envelope.
+export async function processSatelliteVisibleJob(options = {}) {
+  return { result: { type: 'satellite_visible', ...(await processSatelliteVisible(options)) }, followUps: [] }
+}
+
 export default { processSatelliteVisible }
