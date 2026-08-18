@@ -40,6 +40,14 @@ test('rejects invalid satellite job mode and time', () => {
     () => assertSatelliteJob({ kind: 'satellite', mode: 'current', now: 'not-a-time' }),
     /invalid satellite worker time/,
   )
+  assert.throws(
+    () => assertSatelliteJob({ kind: 'satellite', mode: 'current', now: '2026-08-18T14:10:00Z' }),
+    /invalid satellite worker time/,
+  )
+  assert.throws(
+    () => assertSatelliteJob({ kind: 'satellite', mode: 'current', now: '2026-02-30T14:10:00.000Z' }),
+    /invalid satellite worker time/,
+  )
 })
 
 test('only permits current visible satellite jobs', () => {
@@ -57,6 +65,46 @@ test('returns JSON-safe terminal messages', () => {
   assert.deepEqual(
     successMessage({ result: { saved: true }, followUps: [] }),
     { ok: true, result: { result: { saved: true }, followUps: [] } },
+  )
+})
+
+test('normalizes valid follow-ups into the IPC allowlist', () => {
+  const message = successMessage({
+    result: { saved: true },
+    followUps: [{
+      kind: 'satellite',
+      mode: 'fog_retry',
+      now: '2026-08-18T14:10:00.000Z',
+      frame: { tm: '202608182310' },
+      delayMs: 0,
+      credentials: 'must not cross IPC',
+    }],
+  })
+
+  assert.deepEqual(message.result.followUps, [{
+    kind: 'satellite',
+    mode: 'fog_retry',
+    now: '2026-08-18T14:10:00.000Z',
+    frame: { tm: '202608182310' },
+    delayMs: 0,
+  }])
+  assert.deepEqual(JSON.parse(JSON.stringify(message)), message)
+})
+
+test('rejects sparse and invalid-timestamp follow-up arrays', () => {
+  const sparse = []
+  sparse[1] = {
+    kind: 'satellite', mode: 'fog_retry', now: '2026-08-18T14:10:00.000Z', delayMs: 0,
+  }
+  assert.throws(
+    () => successMessage({ result: {}, followUps: sparse }),
+    /invalid satellite worker follow-up/,
+  )
+  assert.throws(
+    () => successMessage({ result: {}, followUps: [{
+      kind: 'satellite', mode: 'fog_retry', now: '2026-08-18T14:10:00Z', delayMs: 0,
+    }] }),
+    /invalid satellite worker follow-up/,
   )
 })
 
@@ -79,14 +127,30 @@ test('rejects unsafe success payloads and malformed follow-ups before IPC', () =
   )
 })
 
-test('failure messages expose only safe error identity and text', () => {
-  const error = new Error('download failed')
+test('rejects hidden serialization hazards before constructing terminal messages', () => {
+  const hiddenToJson = {}
+  Object.defineProperty(hiddenToJson, 'toJSON', { value: () => 1n })
+  const hiddenBigInt = {}
+  Object.defineProperty(hiddenBigInt, 'value', { value: 1n })
+  const hiddenCycle = {}
+  Object.defineProperty(hiddenCycle, 'self', { value: hiddenCycle })
+
+  for (const result of [hiddenToJson, hiddenBigInt, hiddenCycle]) {
+    assert.throws(
+      () => successMessage({ result, followUps: [] }),
+      /JSON-safe satellite worker payload/,
+    )
+  }
+})
+
+test('failure messages classify errors without exposing raw secrets', () => {
+  const error = new Error('download failed: token=super-secret')
   error.name = 'SatelliteDownloadError'
   error.stack = 'secret stack'
   error.credentials = 'secret credential'
 
   assert.deepEqual(failureMessage(error), {
     ok: false,
-    error: { name: 'SatelliteDownloadError', message: 'download failed' },
+    error: { name: 'SatelliteWorkerError', message: 'satellite worker failed' },
   })
 })
