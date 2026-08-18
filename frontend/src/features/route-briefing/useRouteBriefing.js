@@ -10,6 +10,9 @@ import { getPerformanceForRule, setPerformanceForRule } from './lib/aircraftProf
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './lib/altitude.js'
 import { buildCrossSectionRequest, buildRouteProfileMarkersPayload, buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
 import { rebaseNwpTimeSelection, setWaypointNwpOffset } from './lib/nwpTimeSelection.js'
+import { buildSavedGeometry } from './lib/routeSaveGeometry.js'
+import { defaultBriefingName } from './lib/briefingName.js'
+import { saveRoute } from './lib/routeStore.js'
 import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
 import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
@@ -2415,6 +2418,54 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedVfrWaypoints, routeResult?.flightRule])
 
+  // 브리핑 저장 — 고도까지 확정된 한 번의 비행을 통째로 남긴다. 경로 저장과 형식은 같고
+  // kind로만 갈린다. 기상은 담지 않는다(열 때마다 새로 계산해야 낡은 날씨로 판단하지 않는다).
+  // 로그인 확인은 부르는 쪽이 한다 — 훅이 인증에 얽히지 않게.
+  async function saveCurrentBriefing(name) {
+    if (!briefing) return { ok: false, reason: 'no_briefing' }
+    const base = routeDesigns.find((design) => design.id === activeAppliedDesignId)
+      ?? routeDesigns.find((design) => design.id === 'base')
+    const etdIso = Number.isFinite(Date.parse(etd)) ? new Date(etd).toISOString().replace('.000Z', 'Z') : null
+    const { routeGeometry, enrouteGeometry, routeModel, routeMarkers } = buildSavedGeometry({
+      routeResult: base?.routeResult ?? routeResult,
+      vfrWaypoints: appliedVfrWaypoints,
+      selectedSid, selectedStar, selectedIap,
+    })
+    const airacCycle = (await loadNavdata()).publicationId ?? null
+    const entry = await saveRoute(name, {
+      version: 3,
+      kind: 'briefing',
+      cruiseAltitudeFt, tasKt, etd: etdIso, eta,
+      routeGeometry, enrouteGeometry, routeModel, routeMarkers, airacCycle,
+      // 웨이포인트별 NWP 시각 규칙. 경로 저장이 이미 담는 값이라 여기서 빠뜨리면
+      // 브리핑만 시각 규칙이 날아간다. 해석하지 않고 그대로 옮긴다.
+      nwpTimeSelection: nwpTimeSelection ?? null,
+      alternateAirport: alternateAirport || null,
+      // 브리핑은 이미 고른 하나의 비행이다. 대안까지 담으면 payload가 커지고,
+      // 열었을 때 "어느 것이 이 브리핑인가"가 다시 모호해진다.
+      selectedAlternativeId: null,
+      alternatives: [],
+      base: base && {
+        id: 'base', kind: 'base', name: base.name,
+        routeForm: base.routeForm,
+        procedureIds: { sid: base.procedures?.sid?.id ?? null, star: base.procedures?.star?.id ?? null, iapKey: base.procedures?.iapKey ?? null },
+        enroute: base.enroute,
+        routeString: base.routeString,
+      },
+    })
+    return entry ? { ok: true, entry } : { ok: false, reason: 'save_failed' }
+  }
+
+  // 저장 이름 기본값 — 같은 노선을 여러 번 저장하므로 ETD·고도가 들어가야 목록에서 갈린다.
+  function suggestedBriefingName() {
+    return defaultBriefingName({
+      departureAirport: routeForm.departureAirport,
+      arrivalAirport: routeForm.arrivalAirport,
+      etd,
+      cruiseAltitudeFt,
+    })
+  }
+
   async function handleGenerateBriefing() {
     const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
     if (!routeGeometry) { setBriefingError('먼저 경로를 검색하세요.'); return }
@@ -2567,6 +2618,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       handleRouteSearch,
       loadSavedRoute,
       loadSavedRouteIntoEditor,
+      saveCurrentBriefing,
+      suggestedBriefingName,
       openSavedBriefing,
       importRouteFromFile,
       applyImportedPath,

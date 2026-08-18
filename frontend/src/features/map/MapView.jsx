@@ -136,6 +136,7 @@ import {
 import { syncTokenPreviewLayers } from '../route-briefing/lib/tokenPreviewLayers.js'
 import { legCoordinates, syncLegHighlight } from '../route-briefing/lib/legHighlight.js'
 import { useRouteBriefing } from '../route-briefing/useRouteBriefing.js'
+import { useAuth } from '../auth/AuthContext.jsx'
 import AirportTooltip from './AirportTooltip.jsx'
 import './MapView.css'
 
@@ -464,6 +465,22 @@ const MapView = forwardRef(function MapView({
   // 브리핑 NOTAM 경로전용 필터가 아래 NOTAM 동기화 effect에서 참조 → 반드시 effect보다 먼저 선언(TDZ 방지).
   const [routeBriefingMapMode, setRouteBriefingMapMode] = useState(false)
   const routeBriefing = useRouteBriefing({ activePanel, airports, metarData, demoMode, demoNowMs })
+  const { user: authUser } = useAuth()
+
+  // 브리핑 저장 — 이름을 묻고 저장한 뒤 결과를 알린다. 저장 직후가 이 기능이 어디 있는지
+  // 알려줄 유일한 자리다(메뉴를 아무리 잘 놓아도 안 찾아보면 못 찾는다).
+  // 게스트는 저장하지 않는다 — 브리핑은 알림 감시 대상이고 알림은 계정에 매인다.
+  async function handleSaveBriefing() {
+    if (!authUser) { window.alert('브리핑을 저장하려면 로그인하세요.'); return }
+    const name = window.prompt('브리핑 이름', routeBriefing.actions.suggestedBriefingName())
+    if (name == null) return
+    const result = await routeBriefing.actions.saveCurrentBriefing(name.trim() || routeBriefing.actions.suggestedBriefingName())
+    if (result.ok) {
+      window.alert('저장했습니다 — 왼쪽 아래 프로필 > 저장한 브리핑에서 다시 열 수 있습니다.')
+    } else if (result.reason === 'save_failed') {
+      window.alert('저장하지 못했습니다. 저장한 브리핑이 5개라면 계정에서 하나를 지우고 다시 시도하세요.')
+    }
+  }
   const effectiveLightningReferenceTimeMs = demoMode ? demoNowMs : lightningReferenceTimeMs
   const notamFc = useMemo(() => notamToFeatureCollection(notamData, demoNowMs), [notamData, demoNowMs])
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
@@ -2067,6 +2084,7 @@ const MapView = forwardRef(function MapView({
                 crossSectionHourLoading={routeBriefing.state.crossSectionHourLoading}
                 nwpTimeSelection={routeBriefing.state.nwpTimeSelection}
                 onSetWaypointNwpOffset={routeBriefing.actions.handleSetWaypointNwpOffset}
+                onSaveBriefing={handleSaveBriefing}
                 routeSnapshot={{
                   routeForm: routeBriefing.state.routeForm,
                   vfrWaypoints: routeBriefing.state.vfrWaypoints,

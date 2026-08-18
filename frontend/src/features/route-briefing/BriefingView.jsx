@@ -53,7 +53,7 @@ function CatBadge({ category }) {
   return <Badge appearance="filled" style={{ backgroundColor: catColorOf(category), color: '#fff' }}>{c}</Badge>
 }
 
-export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null }) {
+export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null }) {
   const isMobile = useIsMobile()
   const { tz } = useTimeZone()
   const { nowMs } = useDemoMode()
@@ -784,6 +784,9 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             {etdEtaLine && <Caption1 style={{ color: 'var(--accent)', display: 'block', fontVariantNumeric: 'tabular-nums' }}>{etdEtaLine}</Caption1>}
           </div>
           <div className="bv-head-side">
+            {onSaveBriefing && (
+              <Button appearance="primary" size="small" onClick={onSaveBriefing}>브리핑 저장</Button>
+            )}
             <Button appearance="secondary" size="small" onClick={() => setExpanded((value) => !value)}>{expanded ? '지도와 함께 보기' : '전체 보기'}</Button>
             <Button appearance="secondary" size="small" onClick={onClose}>닫기</Button>
           </div>
