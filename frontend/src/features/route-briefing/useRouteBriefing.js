@@ -1819,11 +1819,13 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     skipImportedTokenReapplyRef.current = true
     setRouteTokenTexts([inputs.departureAirport, procedures.sid?.name, ...enrouteTokens, procedures.star?.name, inputs.arrivalAirport].filter(Boolean))
     lastAppliedTokenTextRef.current = enrouteTokens.join(' ')
+    const selectedIap = savedIapData?.iapRoutes?.[procedures.iapKey] ?? null
     if (inputs.etd) setEtd(inputs.etd)
     if (inputs.eta) setEta(inputs.eta)
     if (inputs.tasKt) updateTasKt(inputs.tasKt)
     if (Number.isFinite(Number(inputs.cruiseAltitudeFt))) updateCruiseAltitudeFt(Number(inputs.cruiseAltitudeFt))
     setAlternateAirport(inputs.alternateAirport || '')
+    return { routeResult: savedRouteResult, procedures, selectedIap }
   }
 
   // 저장된 브리핑을 연다 — 경로 상태를 얹고 브리핑까지 만들어 브리핑 단계로 데려간다.
@@ -1837,16 +1839,27 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setBriefingLoading(true)
     setBriefingError(null)
     try {
-      await applySavedRouteState(inputs, resetVersion)
+      const applied = await applySavedRouteState(inputs, resetVersion)
       if (resetVersion !== routeResetVersionRef.current) return
-      const result = await fetchRouteBriefing({
-        flightRule: inputs.flightRule,
-        routeGeometry: inputs.routeGeometry,
-        routeModel: inputs.routeModel,
+      const plannedCruiseAltitudeFt = inputs.cruiseAltitudeFt || DEFAULT_CRUISE_ALTITUDE_FT
+      // 요청은 정상 브리핑 생성(handleGenerateBriefing)과 같은 생성기로 만든다 — 손으로 짜면
+      // procedureContext처럼 조용히 빠지는 것이 생긴다. 마커만 저장분으로 덮어쓴다(최소
+      // routeResult에는 마커를 만들 displaySequence가 없다).
+      const profileRequest = {
+        ...buildVerticalProfileRequest({
+          routeGeometry: inputs.routeGeometry,
+          routeModel: inputs.routeModel,
+          routeResult: applied.routeResult,
+          selectedSid: applied.procedures.sid,
+          selectedStar: applied.procedures.star,
+          selectedIap: applied.selectedIap,
+          vfrWaypoints: [],
+          plannedCruiseAltitudeFt,
+        }),
         routeMarkers: inputs.routeMarkers,
-        plannedCruiseAltitudeFt: inputs.cruiseAltitudeFt || DEFAULT_CRUISE_ALTITUDE_FT,
-        candidateCruiseAltitudesFt: [],
-        sampleSpacingMeters: 250,
+      }
+      const result = await fetchRouteBriefing({
+        ...profileRequest,
         departureAirport: inputs.departureAirport,
         arrivalAirport: inputs.arrivalAirport,
         alternateAirport: inputs.alternateAirport,
@@ -1857,10 +1870,13 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setBriefing(result)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
       setWorkflowStep('briefing')
-      // 단면도는 있으면 좋고 없어도 브리핑은 성립한다.
+      // 연직단면도·단면 자료. 정상 경로도 브리핑 뒤에 따로 받는다 — 없어도 브리핑은 성립한다.
       try {
-        const cs = await fetchCrossSection(buildCrossSectionRequest({ routeGeometry: inputs.routeGeometry, etd: inputs.etd }))
-        if (resetVersion === routeResetVersionRef.current) setCrossSection(cs)
+        const [profile, cs] = await Promise.all([
+          fetchVerticalProfile(profileRequest),
+          fetchCrossSection(buildCrossSectionRequest({ routeGeometry: inputs.routeGeometry, etd: inputs.etd })).catch(() => null),
+        ])
+        if (resetVersion === routeResetVersionRef.current) { setVerticalProfile(profile); setCrossSection(cs) }
       } catch { /* optional */ }
     } catch (err) {
       setBriefingError(err.message)
@@ -2342,7 +2358,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   async function handleGenerateBriefing() {
     const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
     if (!routeGeometry) { setBriefingError('먼저 경로를 검색하세요.'); return }
-    const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
+    // 저장분에서 불러온 경로는 구간 모델을 이미 들고 있다 — 다시 계산하면 segments가 없어
+    // NAVLOG 순항 구간이 빈다. 들고 있으면 그걸 쓰고, 없을 때만 계산한다.
+    const routeModel = routeResult?.routeModel ?? buildCommonRouteModel({ routeGeometry, routeResult })
     const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
     const briefingEta = routeForm.flightRule === 'IFR' ? eta : (eta || computeEtaIso(etdIso, plannedDistanceNm, tasKt) || etdIso)
     if (!briefingEta || !Number.isFinite(Date.parse(briefingEta))) { setBriefingError('예상 ETA를 입력하세요.'); return }

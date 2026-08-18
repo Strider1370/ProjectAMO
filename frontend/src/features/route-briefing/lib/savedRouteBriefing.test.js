@@ -103,3 +103,9 @@ test('마커가 없으면 선만 낸다', () => {
   const result = buildSavedRouteResult(buildSavedBriefingInputs(savedRoute({ routeMarkers: [] })))
   assert.equal(result.previewGeojson.features.length, 1)
 })
+
+test('routeResult가 저장된 구간 모델을 들고 간다 — NAVLOG 순항 구간이 비지 않도록', () => {
+  const result = buildSavedRouteResult(buildSavedBriefingInputs(savedRoute()))
+  assert.equal(result.routeModel.enRouteSegments[0].routeId, 'A582')
+  assert.deepEqual(result.routeModel.routeGeometry, GEOM)
+})

@@ -76,6 +76,9 @@ export function buildSavedRouteResult(inputs) {
     arrivalAirport: inputs.arrivalAirport,
     totalDistanceNm: inputs.distanceNm,
     distanceNm: inputs.distanceNm,
+    // 저장된 구간 모델을 실어 보낸다. 이게 없으면 브리핑을 만들 때 routeResult로부터 모델을
+    // 다시 계산하는데, 최소 routeResult엔 segments가 없어 NAVLOG 순항 구간이 통째로 빈다.
+    routeModel: inputs.routeModel,
     previewGeojson: {
       type: 'FeatureCollection',
       features: [
