@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 
 import {
-  TabList, Tab, Button, Menu, MenuTrigger, MenuButton, MenuPopover, MenuList, MenuItem, makeStyles, tokens,
+  TabList, Tab, Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, SplitButton, makeStyles, tokens,
 } from '../../shared/ui/fluent.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { PersonalSettingsContent } from '../personal/PersonalSettingsPanel.jsx'
@@ -75,15 +75,22 @@ function BriefingRow({ entry, watched, onOpen, onDelete }) {
         )}
       </span>
 
-      <Menu>
+      {/* SplitButton이라야 주 동작과 화살표가 갈린다. MenuButton은 버튼 전체가 메뉴를 여는
+          단일 버튼이라 화살표만 따로 누를 수 없다. */}
+      <Menu positioning="below-end">
         <MenuTrigger disableButtonEnhancement>
-          <MenuButton
-            appearance="primary"
-            size="small"
-            onClick={() => onOpen(entry, past ? { etd: new Date().toISOString() } : undefined)}
-          >
-            열기
-          </MenuButton>
+          {(triggerProps) => (
+            <SplitButton
+              appearance="primary"
+              size="small"
+              menuButton={triggerProps}
+              primaryActionButton={{
+                onClick: () => onOpen(entry, past ? { etd: new Date().toISOString() } : undefined),
+              }}
+            >
+              열기
+            </SplitButton>
+          )}
         </MenuTrigger>
         <MenuPopover>
           <MenuList>

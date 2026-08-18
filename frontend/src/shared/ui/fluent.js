@@ -2,7 +2,7 @@
 // 이유: 나중에 컴포넌트를 래핑/교체/제약할 때 이 한 파일만 바꾸면 됨(헌법 §0 하이브리드 전략).
 // 테마는 main.jsx의 FluentProvider(appLightTheme = 헌법 토큰 브리지)에서 전역 주입됨.
 export {
-  Button, CompoundButton, ToggleButton, MenuButton,
+  Button, CompoundButton, ToggleButton, MenuButton, SplitButton,
   Input, Textarea, Field, Dropdown, Option, Combobox, Select, SearchBox, SpinButton,
   Checkbox, Radio, RadioGroup, Switch, Slider,
   TabList, Tab,
