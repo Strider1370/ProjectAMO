@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildSavedBriefingInputs, buildSavedRouteResult } from './savedRouteBriefing.js'
+import { buildSavedBriefingInputs, buildSavedRouteResult, isSavedEtdPast } from './savedRouteBriefing.js'
 
 const GEOM = { type: 'LineString', coordinates: [[126.4, 37.4], [127.1, 36.9], [128.0, 36.0]] }
 const MODEL = { schemaVersion: 1, enRouteSegments: [{ id: 'A582-001', routeId: 'A582', startNm: 0, endNm: 40 }] }
@@ -154,4 +154,26 @@ test('VFR은 저장된 마커에서 경유점을 복원한다 — 양 끝 공항
 test('IFR에는 manualRoute를 만들지 않는다', () => {
   const result = buildSavedRouteResult(buildSavedBriefingInputs(savedRoute()))
   assert.equal(result.manualRoute, undefined)
+})
+
+test('ETD를 갈아끼우면 ETA도 다시 계산한다', () => {
+  const out = buildSavedBriefingInputs(savedRoute({ eta: '2026-08-18T03:30:00Z' }), { etd: '2026-08-20T05:00:00Z' })
+  assert.equal(out.etd, '2026-08-20T05:00:00Z')
+  assert.ok(Date.parse(out.eta) > Date.parse(out.etd), '저장된 ETA를 그대로 쓰면 비행시간이 어긋난다')
+})
+
+test('ETD를 안 주면 저장된 값을 쓴다', () => {
+  const out = buildSavedBriefingInputs(savedRoute({ eta: '2026-08-18T03:30:00Z' }))
+  assert.equal(out.etd, '2026-08-18T02:00:00Z')
+  assert.equal(out.eta, '2026-08-18T03:30:00Z')
+})
+
+test('isSavedEtdPast: 저장된 ETD가 지났는지 알려준다', () => {
+  const saved = savedRoute()
+  assert.equal(isSavedEtdPast(saved, Date.parse('2026-08-18T01:00:00Z')), false)
+  assert.equal(isSavedEtdPast(saved, Date.parse('2026-08-18T03:00:00Z')), true)
+})
+
+test('isSavedEtdPast: ETD가 없으면 지난 것으로 본다 — 저장된 시각으로 열 수 없다', () => {
+  assert.equal(isSavedEtdPast({ version: 3, base: {} }, Date.parse('2026-08-18T01:00:00Z')), true)
 })

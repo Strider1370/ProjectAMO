@@ -33,15 +33,16 @@ const EMPTY_MODEL = {
   graphConnectionStatus: 'unavailable',
 }
 
-export function buildSavedBriefingInputs(rawSaved) {
+export function buildSavedBriefingInputs(rawSaved, { etd: etdOverride = null } = {}) {
   const saved = normalizeRouteSnapshot(rawSaved ?? {})
   const form = saved.base?.routeForm ?? saved.routeForm ?? {}
   const routeGeometry = saved.routeGeometry ?? saved.enrouteGeometry ?? null
   if (!routeGeometry?.coordinates || routeGeometry.coordinates.length < 2) return { ok: false, reason: 'no_geometry' }
 
-  const etd = isoOf(saved.etd)
+  // 시각을 갈아끼우면 저장된 ETA는 버린다 — 그 ETA는 옛 ETD 기준이라 비행시간이 어긋난다.
+  const etd = isoOf(etdOverride) ?? isoOf(saved.etd)
   const distanceNm = geometryDistanceNm(routeGeometry)
-  const eta = isoOf(saved.eta) ?? isoOf(computeEtaIso(etd, distanceNm, saved.tasKt)) ?? null
+  const eta = (etdOverride ? null : isoOf(saved.eta)) ?? isoOf(computeEtaIso(etd, distanceNm, saved.tasKt)) ?? null
 
   return {
     ok: true,
@@ -119,4 +120,11 @@ export function buildSavedRouteResult(inputs) {
   }
 }
 
-export default { buildSavedBriefingInputs, buildSavedRouteResult, geometryDistanceNm }
+// 저장된 ETD가 지났는지. 지난 시각으로 열면 그 시각 예보가 없어 브리핑이 조용히 빈 값으로
+// 나온다 — 오류가 뜨는 것보다 위험하다. ETD가 아예 없으면 지난 것으로 본다.
+export function isSavedEtdPast(rawSaved, nowMs = Date.now()) {
+  const parsed = Date.parse(normalizeRouteSnapshot(rawSaved ?? {}).etd)
+  return Number.isFinite(parsed) ? parsed <= nowMs : true
+}
+
+export default { buildSavedBriefingInputs, buildSavedRouteResult, geometryDistanceNm, isSavedEtdPast }

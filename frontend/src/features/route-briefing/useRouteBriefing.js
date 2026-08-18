@@ -1836,8 +1836,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
   // 저장된 브리핑을 연다 — 경로 상태를 얹고 브리핑까지 만들어 브리핑 단계로 데려간다.
   // 고도가 확정된 저장분에만 쓴다.
-  async function openSavedBriefing(saved) {
-    const inputs = buildSavedBriefingInputs(saved)
+  async function openSavedBriefing(saved, { etd } = {}) {
+    const inputs = buildSavedBriefingInputs(saved, { etd })
     if (!inputs.ok) return loadSavedRoute(saved, { autoBriefing: true })
     if (!inputs.etd || !inputs.eta) { setBriefingError('저장된 브리핑에 ETD/ETA가 없습니다.'); return }
 
