@@ -109,3 +109,12 @@ test('routeResult가 저장된 구간 모델을 들고 간다 — NAVLOG 순항 
   assert.equal(result.routeModel.enRouteSegments[0].routeId, 'A582')
   assert.deepEqual(result.routeModel.routeGeometry, GEOM)
 })
+
+test('진입·이탈 픽스를 넘긴다 — 연직단면도 기준 픽스 이름표가 된다', () => {
+  const saved = savedRoute()
+  saved.base.routeForm.entryFix = 'EGOBA'
+  saved.base.routeForm.exitFix = 'PROOF'
+  const inputs = buildSavedBriefingInputs(saved)
+  assert.equal(inputs.entryFix, 'EGOBA')
+  assert.equal(buildSavedRouteResult(inputs).exitFix, 'PROOF')
+})

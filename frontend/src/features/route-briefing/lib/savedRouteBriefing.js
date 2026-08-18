@@ -48,6 +48,9 @@ export function buildSavedBriefingInputs(rawSaved) {
     flightRule: form.flightRule ?? 'IFR',
     departureAirport: form.departureAirport ?? null,
     arrivalAirport: form.arrivalAirport ?? null,
+    // procedureContext로 백엔드에 넘어가 연직단면도의 기준 픽스 이름표가 된다.
+    entryFix: form.entryFix ?? null,
+    exitFix: form.exitFix ?? null,
     alternateAirport: saved.alternateAirport || null,
     routeGeometry,
     // 브리핑 요청은 routeModel 안에 routeGeometry가 있는 모양을 기대한다(shared/route-model.js).
@@ -74,6 +77,8 @@ export function buildSavedRouteResult(inputs) {
     flightRule: inputs.flightRule,
     departureAirport: inputs.departureAirport,
     arrivalAirport: inputs.arrivalAirport,
+    entryFix: inputs.entryFix,
+    exitFix: inputs.exitFix,
     totalDistanceNm: inputs.distanceNm,
     distanceNm: inputs.distanceNm,
     // 저장된 구간 모델을 실어 보낸다. 이게 없으면 브리핑을 만들 때 routeResult로부터 모델을
