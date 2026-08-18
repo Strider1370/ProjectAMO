@@ -1803,44 +1803,48 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       // 지도·경로 패널이 그릴 상태. 이걸 안 채우면 routeResult가 비어 지도가 출발→도착 직선만
       // 그린다(저장한 경로가 아니라). 재검색 대신 저장된 선으로 최소 routeResult를 세운다.
       //
-      // 순서와 가드는 파일 임포트(commitImportedRoute)와 같다. 이유도 같다: 경로 글자가 바뀌면
-      // 그 글자로 경로를 다시 만드는 효과가 돌아(:559) 방금 넣은 선을 덮어쓴다. 저장된 선에는
-      // SID가 들어 있지만 글자에는 없어서, 다시 만들면 출발공항에서 첫 항로점으로 직선이 된다.
-      // seededRef/skipImportedTokenReapplyRef/lastAppliedTokenTextRef가 그 한 번을 건너뛰게 한다.
+      // 경로를 통째로 얹을 때 채워야 할 주인은 셋이다 — 공항(routeForm)·절차(procedures)·
+      // 경유점(경로 글자). 하나라도 비우면 글자로 경로를 다시 만드는 효과(:559)가 돌 때
+      // 그 조각이 사라진다. 절차를 비웠다가 SID가 통째로 빠진 적이 있다.
+      // 그래서 절차를 **먼저** 세우고, 그다음 선·글자 순으로 얹는다.
+      const ids = inputs.procedureIds ?? {}
+      const [savedSids, savedStars, savedIapData] = await Promise.all([
+        ids.sid ? getProcedures(inputs.departureAirport, 'SID').catch(() => []) : Promise.resolve([]),
+        ids.star ? getProcedures(inputs.arrivalAirport, 'STAR').catch(() => []) : Promise.resolve([]),
+        ids.iapKey ? loadIapData(inputs.arrivalAirport).catch(() => null) : Promise.resolve(null),
+      ])
+      if (resetVersion !== routeResetVersionRef.current) return
+      // 해외 공항은 절차 데이터가 없어 빈손으로 끝난다 — 그래도 저장된 선에 절차가 이미
+      // 들어 있으므로 지도와 브리핑은 그대로다. 여기서 얻는 것은 표시용 이름표뿐이다.
+      const procedures = {
+        sid: savedSids.find((procedure) => procedure.id === ids.sid) ?? null,
+        star: savedStars.find((procedure) => procedure.id === ids.star) ?? null,
+        iapKey: savedIapData?.iapRoutes?.[ids.iapKey] ? ids.iapKey : null,
+      }
+      setSelectedSid(procedures.sid)
+      setSelectedStar(procedures.star)
+      setSelectedIapKey(procedures.iapKey)
+
       const savedRouteResult = buildSavedRouteResult(inputs)
       const baseDesign = createRouteDesign({
         routeForm: { ...routeForm, flightRule: inputs.flightRule, departureAirport: inputs.departureAirport ?? '', arrivalAirport: inputs.arrivalAirport ?? '' },
-        procedures: { sid: null, star: null, iapKey: null }, // 저장된 선에 이미 절차가 반영돼 있다 — 다시 얹으면 두 번 그려진다.
+        procedures,
         routeResult: savedRouteResult,
         routeModel: inputs.routeModel,
         routeExposure: { trigger: 'unavailable', hazards: [] },
         enroute: inputs.enroute ?? undefined,
         routeString: inputs.routeString,
       })
+      // 저장된 선에 절차가 이미 반영돼 있다(inlineProcedureGeometry). 그래서 절차를 세워도
+      // 지도가 같은 구간을 두 번 그리지 않는다.
       importedRouteApplyPendingRef.current = true
       applyBaseRoute(baseDesign)
       seededRef.current = true
       const enrouteTokens = (inputs.routeString ?? '').trim().split(/\s+/).filter(Boolean)
+      // 이미 완성된 선을 얹었으므로 글자로 다시 만들 필요가 없다 — 임포트와 같은 가드.
       skipImportedTokenReapplyRef.current = true
-      setRouteTokenTexts([inputs.departureAirport, ...enrouteTokens, inputs.arrivalAirport].filter(Boolean))
+      setRouteTokenTexts([inputs.departureAirport, procedures.sid?.name, ...enrouteTokens, procedures.star?.name, inputs.arrivalAirport].filter(Boolean))
       lastAppliedTokenTextRef.current = enrouteTokens.join(' ')
-
-      // 절차 이름표 복원 — 저장된 선에 절차가 이미 반영돼 있으므로 순전히 표시용이다
-      // (선은 inlineProcedureGeometry 표시 덕에 다시 얹히지 않는다). 해외 공항은 절차
-      // 데이터가 없어 빈손으로 끝나는데, 그래도 브리핑과 경로선은 그대로다.
-      const ids = inputs.procedureIds ?? {}
-      Promise.all([
-        ids.sid ? getProcedures(inputs.departureAirport, 'SID').catch(() => []) : Promise.resolve([]),
-        ids.star ? getProcedures(inputs.arrivalAirport, 'STAR').catch(() => []) : Promise.resolve([]),
-        ids.iapKey ? loadIapData(inputs.arrivalAirport).catch(() => null) : Promise.resolve(null),
-      ]).then(([savedSids, savedStars, savedIapData]) => {
-        if (resetVersion !== routeResetVersionRef.current) return
-        const sid = savedSids.find((procedure) => procedure.id === ids.sid) ?? null
-        const star = savedStars.find((procedure) => procedure.id === ids.star) ?? null
-        if (sid) setSelectedSid(sid)
-        if (star) setSelectedStar(star)
-        if (savedIapData?.iapRoutes?.[ids.iapKey]) setSelectedIapKey(ids.iapKey)
-      }).catch(() => { /* 이름표는 없어도 브리핑은 성립한다 */ })
 
       setBriefing(result)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
