@@ -37,6 +37,15 @@ test('저장분만으로 브리핑 입력이 완성된다', () => {
   assert.equal(out.etd, '2026-08-18T02:00:00Z')
 })
 
+test('저장분의 웨이포인트 NWP 시간 선택 의도만 복원한다', () => {
+  const selection = {
+    baseTime: '2026-08-19T10:00:00.000Z',
+    waypointOverrides: [{ waypointId: 'marker:waypoint:WP2', offsetHours: 2 }],
+  }
+  const out = buildSavedBriefingInputs(savedRoute({ nwpTimeSelection: selection }))
+  assert.deepEqual(out.nwpTimeSelection, selection)
+})
+
 test('routeModel에 routeGeometry를 다시 끼운다 — 브리핑 요청이 그 모양을 기대한다', () => {
   const out = buildSavedBriefingInputs(savedRoute())
   assert.deepEqual(out.routeModel.routeGeometry, GEOM)

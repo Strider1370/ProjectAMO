@@ -65,6 +65,7 @@ export function buildSavedBriefingInputs(rawSaved) {
     routeString: saved.base?.routeString ?? '',
     enroute: saved.base?.enroute ?? null,
     procedureIds: saved.base?.procedureIds ?? {},
+    nwpTimeSelection: saved.nwpTimeSelection ?? null,
   }
 }
 

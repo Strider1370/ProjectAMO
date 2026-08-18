@@ -48,6 +48,7 @@ export function normalizeRouteSnapshot(snapshot = {}) {
     // 저장 당시 AIRAC 주기. 이번 범위에선 기록만 한다 — 나중엔 소급이 불가능하다.
     airacCycle: snapshot.airacCycle ?? null,
     alternateAirport: snapshot.alternateAirport ?? null,
+    nwpTimeSelection: snapshot.nwpTimeSelection ?? null,
   }
   const routeForm = snapshot.base?.routeForm ?? snapshot.routeForm ?? {}
   const legacyVfrWaypoints = snapshot.vfrWaypoints

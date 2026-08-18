@@ -119,9 +119,9 @@ test('buildVerticalProfile returns briefing-ready VFR profile and markers', () =
     plannedCruiseAltitudeFt: 5500,
     sampleSpacingMeters: 5000,
     vfrWaypoints: [
-      { id: 'RKSS', lon: 126, lat: 37, fixed: true, airportElevationFt: 60 },
-      { id: 'WP1', lon: 126.05, lat: 37, altitudeFt: 3500 },
-      { id: 'RKPC', lon: 126.1, lat: 37, fixed: true },
+      { id: 'marker:AIRPORT:RKSS:126.000000:37.000000:0', label: 'RKSS', lon: 126, lat: 37, fixed: true, airportElevationFt: 60 },
+      { id: 'marker:WAYPOINT:WP1:126.050000:37.000000:0', label: 'WP1', lon: 126.05, lat: 37, altitudeFt: 3500 },
+      { id: 'marker:AIRPORT:RKPC:126.100000:37.000000:0', label: 'RKPC', lon: 126.1, lat: 37, fixed: true },
     ],
   }, {
     sampleAxis(axis) {
@@ -140,6 +140,11 @@ test('buildVerticalProfile returns briefing-ready VFR profile and markers', () =
   assert.equal(profile.flightPlan.profile.points[1].altitudeFt, 3500)
   assert.equal(profile.flightPlan.profile.points[2].altitudeFt, 33)
   assert.equal(profile.markers.length, 3)
+  assert.deepEqual(profile.markers.map((marker) => marker.id), [
+    'marker:AIRPORT:RKSS:126.000000:37.000000:0',
+    'marker:WAYPOINT:WP1:126.050000:37.000000:0',
+    'marker:AIRPORT:RKPC:126.100000:37.000000:0',
+  ])
 })
 
 test('IFR profile climbs from ground and descends to ground when procedures are absent (overseas)', () => {

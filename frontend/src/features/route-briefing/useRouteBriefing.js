@@ -8,7 +8,8 @@ import { calcVfrDistance, inlineImportedProcedureGeometry } from './lib/routePre
 import { computeEtaIso } from './lib/etaCalc.js'
 import { getPerformanceForRule, setPerformanceForRule } from './lib/aircraftProfiles.js'
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './lib/altitude.js'
-import { buildCrossSectionRequest, buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
+import { buildCrossSectionRequest, buildRouteProfileMarkersPayload, buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
+import { rebaseNwpTimeSelection, setWaypointNwpOffset } from './lib/nwpTimeSelection.js'
 import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
 import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
@@ -91,6 +92,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(() => getPerformanceForRule(initialRouteForm.flightRule).altitudeFt)
   const [verticalProfile, setVerticalProfile] = useState(null)
   const [crossSection, setCrossSection] = useState(null)
+  const [nwpTimeSelection, setNwpTimeSelection] = useState(null)
   const [crossSectionHourLoading, setCrossSectionHourLoading] = useState(false)
   const [verticalProfileLoading, setVerticalProfileLoading] = useState(false)
   const [verticalProfileError, setVerticalProfileError] = useState(null)
@@ -1825,6 +1827,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     if (inputs.tasKt) updateTasKt(inputs.tasKt)
     if (Number.isFinite(Number(inputs.cruiseAltitudeFt))) updateCruiseAltitudeFt(Number(inputs.cruiseAltitudeFt))
     setAlternateAirport(inputs.alternateAirport || '')
+    setNwpTimeSelection(inputs.nwpTimeSelection ?? null)
     return { routeResult: savedRouteResult, procedures, selectedIap }
   }
 
@@ -1871,7 +1874,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       try {
         const [profile, cs] = await Promise.all([
           fetchVerticalProfile(profileRequest),
-          fetchCrossSection(buildCrossSectionRequest({ routeGeometry: inputs.routeGeometry, etd: inputs.etd })).catch(() => null),
+          fetchCrossSection(buildCrossSectionRequest({
+            routeGeometry: inputs.routeGeometry,
+            etd: inputs.etd,
+            routeMarkers: inputs.routeMarkers,
+            ...(inputs.nwpTimeSelection ? { nwpTimeSelection: inputs.nwpTimeSelection } : {}),
+          })).catch(() => null),
         ])
         if (resetVersion === routeResetVersionRef.current) { setVerticalProfile(profile); setCrossSection(cs) }
       } catch { /* optional */ }
@@ -1888,6 +1896,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const resetVersion = routeResetVersionRef.current
     saved = normalizeRouteSnapshot(saved)
     if (!saved?.base?.routeForm && !saved?.routeForm) return
+    setNwpTimeSelection(saved.nwpTimeSelection ?? null)
     if (opts.autoBriefing) { setAutoBriefingPending(true); autoSearchRef.current = false }
     if (saved.base?.routeString && saved.base?.enroute) {
       const savedForm = saved.base.routeForm ?? saved.routeForm
@@ -2197,6 +2206,45 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setImportCandidates([])
   }
 
+  function currentProfileMarkers() {
+    return buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints: appliedVfrWaypoints })
+  }
+
+  async function reloadCrossSectionForNwpSelection({ routeGeometry, nextSelection, tmfc = crossSection?.run?.tmfc } = {}) {
+    if (!routeGeometry || !nextSelection) return null
+    const requestId = ++verticalProfileRequestRef.current
+    setCrossSectionHourLoading(true)
+    try {
+      const cs = await fetchCrossSection(buildCrossSectionRequest({
+        routeGeometry,
+        etd,
+        tmfc,
+        routeMarkers: currentProfileMarkers(),
+        nwpTimeSelection: nextSelection,
+      })).catch(() => null)
+      if (requestId === verticalProfileRequestRef.current && cs) setCrossSection(cs)
+      return cs
+    } finally {
+      if (requestId === verticalProfileRequestRef.current) setCrossSectionHourLoading(false)
+    }
+  }
+
+  async function handleSetWaypointNwpOffset(waypointId, offsetHours) {
+    const routeGeometry = getCurrentRouteLineString({
+      routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap,
+    })
+    const markers = currentProfileMarkers()
+    const baseTime = nwpTimeSelection?.baseTime ?? crossSection?.run?.validTime ?? etd
+    const nextSelection = setWaypointNwpOffset(
+      nwpTimeSelection ?? { baseTime, waypointOverrides: [] },
+      waypointId,
+      offsetHours,
+      markers.map((marker) => marker.id),
+    )
+    setNwpTimeSelection(nextSelection)
+    await reloadCrossSectionForNwpSelection({ routeGeometry, nextSelection })
+  }
+
   async function handleVerticalProfileRequest({
     plannedCruiseAltitudeFt: requestedAltitudeFt = cruiseAltitudeFt,
     candidateCruiseAltitudesFt = [],
@@ -2237,7 +2285,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           plannedCruiseAltitudeFt,
           candidateCruiseAltitudesFt,
         })),
-        existingCrossSection ?? fetchCrossSection(buildCrossSectionRequest({ routeGeometry, etd })).catch(() => null),
+        existingCrossSection ?? fetchCrossSection(buildCrossSectionRequest({
+          routeGeometry,
+          etd,
+          routeMarkers: currentProfileMarkers(),
+          ...(nwpTimeSelection ? { nwpTimeSelection } : {}),
+        })).catch(() => null),
       ])
       if (requestId !== verticalProfileRequestRef.current) return
       setVerticalProfile(profile)
@@ -2262,6 +2315,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       selectedIap,
     })
     if (!routeGeometry || !Number.isFinite(Number(hf))) return
+    const routeMarkers = currentProfileMarkers()
+    const selectedTime = crossSection?.availableTimes?.find((time) => Number(time.hf) === Number(hf))?.validTime
+    const nextSelection = nwpTimeSelection && selectedTime
+      ? rebaseNwpTimeSelection(nwpTimeSelection, selectedTime)
+      : nwpTimeSelection
     const requestId = ++verticalProfileRequestRef.current
     setCrossSectionHourLoading(true)
     try {
@@ -2270,9 +2328,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
         etd,
         tmfc: crossSection?.run?.tmfc,
         hf,
+        routeMarkers,
+        ...(nextSelection ? { nwpTimeSelection: nextSelection } : {}),
       })).catch(() => null)
       if (requestId !== verticalProfileRequestRef.current) return
-      if (cs) setCrossSection(cs)
+      if (cs) {
+        setCrossSection(cs)
+        if (nextSelection) setNwpTimeSelection(nextSelection)
+      }
     } finally {
       if (requestId === verticalProfileRequestRef.current) setCrossSectionHourLoading(false)
     }
@@ -2384,7 +2447,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           fetchVerticalProfile(buildVerticalProfileRequest({
             routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints: appliedVfrWaypoints, plannedCruiseAltitudeFt,
           })),
-          fetchCrossSection(buildCrossSectionRequest({ routeGeometry, etd: etdIso })).catch(() => null),
+          fetchCrossSection(buildCrossSectionRequest({
+            routeGeometry,
+            etd: etdIso,
+            routeMarkers: currentProfileMarkers(),
+            ...(nwpTimeSelection ? { nwpTimeSelection } : {}),
+          })).catch(() => null),
         ])
         setVerticalProfile(profile)
         setCrossSection(cs)
@@ -2409,6 +2477,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       cruiseAltitudeFt,
       verticalProfile,
       crossSection,
+      nwpTimeSelection,
       crossSectionHourLoading,
       verticalProfileLoading,
       verticalProfileError,
@@ -2504,6 +2573,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       cancelImportChoice,
       handleVerticalProfileRequest,
       handleSelectForecastHour,
+      handleSetWaypointNwpOffset,
       setHoveredWpInfo,
       setVerticalProfileWindowOpen,
       setCruiseAltitudeFt: updateCruiseAltitudeFt,

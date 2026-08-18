@@ -376,6 +376,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       eta: eta || null, // 사용자가 고친 ETA를 지킨다. 없으면 로드 때 거리·TAS로 계산.
       routeGeometry, enrouteGeometry, routeModel, routeMarkers, airacCycle,
       alternateAirport: alternateAirport || null,
+      nwpTimeSelection: state.nwpTimeSelection ?? null,
       selectedAlternativeId: selectedRouteDesignId === 'base' ? null : selectedRouteDesignId,
       base: base && {
         id: 'base', kind: 'base', name: base.name,

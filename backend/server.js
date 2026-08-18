@@ -1259,7 +1259,7 @@ app.post('/api/briefing/cross-section', (req, res) => {
     if (!model.available) return res.status(503).json({ error: 'kim run unavailable' })
 
     setNoStore(res)
-    res.json({ ...model.crossSection, turbulence: model.turbulence, availableTimes: model.availableTimes })
+    res.json({ ...model.crossSection, turbulence: model.turbulence, availableTimes: model.availableTimes, timeRules: model.timeRules })
   } catch (error) {
     res.status(400).json({ error: error.message || 'cross-section failed' })
   }

@@ -67,6 +67,7 @@ test('buildVerticalProfileRequest includes VFR waypoints only for VFR routes', (
   assert.equal(result.plannedCruiseAltitudeFt, 5500)
   assert.equal(result.vfrWaypoints, vfrWaypoints)
   assert.deepEqual(result.routeMarkers[0], {
+    id: 'marker:WAYPOINT:WP1:126.000000:37.000000:0',
     label: 'WP1',
     named: false,
     lon: 126,
@@ -104,9 +105,9 @@ test('buildVerticalProfileRequest preserves IFR route marker payload shape', () 
 
   assert.equal(result.vfrWaypoints, undefined)
   assert.deepEqual(result.routeMarkers, [
-    { label: 'RKSI', lon: 126, lat: 37, kind: 'AIRPORT' },
-    { label: 'AGAVO', lon: 127, lat: 38, kind: 'FIX' },
-    { label: 'RKSS', lon: 128, lat: 39, kind: 'AIRPORT' },
+    { id: 'marker:AIRPORT:RKSI:126.000000:37.000000:0', label: 'RKSI', lon: 126, lat: 37, kind: 'AIRPORT' },
+    { id: 'marker:FIX:AGAVO:127.000000:38.000000:0', label: 'AGAVO', lon: 127, lat: 38, kind: 'FIX' },
+    { id: 'marker:AIRPORT:RKSS:128.000000:39.000000:0', label: 'RKSS', lon: 128, lat: 39, kind: 'AIRPORT' },
   ])
   assert.equal(result.routeModel.graphConnectionStatus, 'unavailable')
 })
@@ -131,5 +132,21 @@ test('buildCrossSectionRequest keeps ETD as the forecast selection reference', (
   }), {
     routeGeometry,
     etd: '2026-07-22T10:00:00.000Z',
+  })
+})
+
+test('buildCrossSectionRequest includes stable markers and NWP selection without weather payloads', () => {
+  const routeGeometry = { type: 'LineString', coordinates: [[126, 37], [127, 38]] }
+  const routeMarkers = [{ id: 'marker:FIX:WP1:126.000000:37.000000:0', label: 'WP1', lon: 126, lat: 37, kind: 'FIX' }]
+  const nwpTimeSelection = {
+    baseTime: '2026-08-19T10:00:00.000Z',
+    waypointOverrides: [{ waypointId: routeMarkers[0].id, offsetHours: 1 }],
+  }
+
+  assert.deepEqual(buildCrossSectionRequest({ routeGeometry, etd: '2026-08-19T10:00:00.000Z', routeMarkers, nwpTimeSelection }), {
+    routeGeometry,
+    etd: '2026-08-19T10:00:00.000Z',
+    routeMarkers,
+    nwpTimeSelection,
   })
 })

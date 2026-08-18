@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { msToKt, windBarbFeathers, windDirectionFromUV, isothermSegments, pressureToFallbackFt } from './lib/crossSectionGrid.js'
 import { advisorySymbolUrl } from '../weather-overlays/lib/advisoryLayers.js'
 import { buildCloudContourModel } from './lib/cloudContour.js'
+import { buildNwpTimeRail } from './lib/nwpTimeSelection.js'
+import { formatBriefingTime } from './lib/briefingTime.js'
+import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 
 const ADVISORY_ICON_PX = 32 // 평면도 기호의 ~2배. 단면도 맨 앞에 그림.
 
@@ -206,12 +209,17 @@ export default function VerticalProfileChart({
   enableDragScroll = false,
   hideMeta = false,
   metaTrailing = null,
+  nwpTimeSelection = null,
+  onSetWaypointNwpOffset = null,
   highlightRangeNm = null, // NAVLOG에서 가리킨 구간 {startNm, endNm, pinned}
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
   const dragRef = useRef(null)
   const [containerWidth, setContainerWidth] = useState(0)
+  const [editingNwpSegment, setEditingNwpSegment] = useState(null)
+  const [nwpMissingNoticeDismissed, setNwpMissingNoticeDismissed] = useState(false)
+  const { tz } = useTimeZone()
   useEffect(() => {
     const el = containerRef.current
     if (!el || typeof ResizeObserver === 'undefined') return undefined
@@ -272,7 +280,11 @@ export default function VerticalProfileChart({
     .map((marker, index) => ({ ...marker, key: `${marker.label}-${index}` }))
   const markerLabels = assignMarkerLanes(visibleMarkers, provisionalX)
   const markerLaneCount = Math.max(1, ...markerLabels.map((marker) => marker.lane + 1))
-  const padding = { ...basePadding, bottom: 36 + markerLaneCount * 16 }
+  const railEnabled = Boolean(onSetWaypointNwpOffset && visibleMarkers.length > 1)
+  // 시간선의 44px 클릭 영역과 기존 웨이포인트 이름 블록은 겹치면 안 된다.
+  // 이름표는 클릭 영역이 끝나는 바로 다음 행에서 시작한다.
+  const waypointLabelBandOffset = railEnabled ? 36 : 0
+  const padding = { ...basePadding, bottom: 36 + markerLaneCount * 16 + (railEnabled ? 28 : 0) }
   const plotWidth = width - padding.left - padding.right
   const plotHeight = height - padding.top - padding.bottom
   const terrainMaxFt = Math.max(...terrainPoints.map((point) => point.elevationFt), 0)
@@ -296,6 +308,13 @@ export default function VerticalProfileChart({
   const headroomFt = Number.isFinite(cruiseAltitudeFt) ? getAltitudeHeadroomFt(cruiseAltitudeFt) : 5000
   const yMax = Math.max(1000, Math.ceil((profileCeilingFt + headroomFt) / 1000) * 1000)
   const xFor = (distanceNm) => padding.left + (distanceNm / maxDistance) * plotWidth
+  const nwpRail = railEnabled
+    ? buildNwpTimeRail(visibleMarkers, nwpTimeSelection ?? { waypointOverrides: [] }).map((segment) => ({
+      ...segment,
+      startWaypointLabel: visibleMarkers.find((marker) => marker.id === segment.startWaypointId)?.label ?? segment.startWaypointId,
+    }))
+    : []
+  const nwpBaseTimeLabel = formatBriefingTime(nwpTimeSelection?.baseTime ?? crossSection?.run?.validTime, tz)
   const yFor = (altitudeFt) => padding.top + plotHeight - (altitudeFt / yMax) * plotHeight
   const terrainSvgPoints = terrainPoints.map((point) => ({ x: xFor(point.distanceNm), y: yFor(point.elevationFt) }))
   const terrainLine = buildPath(terrainSvgPoints)
@@ -334,6 +353,8 @@ export default function VerticalProfileChart({
     ? selectedCruiseAltitudeFt
     : null
   const csLevels = crossSection?.levels ?? []
+  const ktgRuleSummary = [...new Set((crossSection?.timeRules?.segments ?? []).map((segment) => segment.ktg?.validTime).filter(Boolean))]
+  const missingNwpWaypointIds = crossSection?.timeRules?.missingWaypointIds ?? []
   const cldCoverage = crossSection?.coverage?.byVariable?.cld
   const cldLevels = Number.isFinite(cldCoverage?.topPressure)
     ? csLevels.filter((level) => Number(level.pressure) >= Number(cldCoverage.topPressure)) : []
@@ -539,6 +560,10 @@ export default function VerticalProfileChart({
               ? cloudContour.partial ? 'KIM CLD 일부 결측' : `KIM CLD ≥ ${cloudContour.threshold} 없음`
               : 'KIM CLD 자료 없음'}</strong>
         </span>}
+        {ktgRuleSummary.length > 0 && <span className="vertical-profile-meta-item">
+          <span>KTG 적용</span>
+          <strong>{ktgRuleSummary.map((value) => formatBriefingTime(value, tz)).join(', ')}</strong>
+        </span>}
         {todOffsetText && (
           <span className="vertical-profile-tod-summary">{todOffsetText}</span>
         )}
@@ -636,19 +661,39 @@ export default function VerticalProfileChart({
             </text>
           </g>
         )}
+        {markerLabels.map((marker) => (
+          <line
+            key={`${marker.key}-connector`}
+            className="vertical-profile-marker-tick"
+            x1={marker.x}
+            x2={marker.x}
+            y1={padding.top + plotHeight}
+            y2={padding.top + plotHeight + waypointLabelBandOffset + 6 + marker.lane * 10}
+          />
+        ))}
+        {nwpRail.length > 0 && <g className="vertical-profile-nwp-rail" aria-label="NWP 시간 규칙">
+          {nwpRail.map((segment) => {
+            const x1 = xFor(segment.startDistanceNm)
+            const x2 = xFor(segment.endDistanceNm)
+            const y = padding.top + plotHeight + 13
+            return <g key={segment.startWaypointId}>
+              <line className={`vertical-profile-nwp-rail-line is-offset-${segment.offsetHours}`} x1={x1} x2={x2} y1={y} y2={y} />
+              <rect x={x1} y={y - 22} width={Math.max(1, x2 - x1)} height={44} fill="transparent" role="button" tabIndex={0}
+                aria-label={`${segment.startWaypointLabel}부터 NWP 시간 설정`}
+                onClick={(event) => { event.stopPropagation(); setEditingNwpSegment(segment) }}
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingNwpSegment(segment) } }} />
+              <circle cx={x1} cy={y} r={4} className="vertical-profile-nwp-rail-point" />
+              {segment.showLabel && <text x={x1 + 4} y={y - 5} className="vertical-profile-nwp-rail-label" pointerEvents="none">{segment.offsetHours === 0 ? `기준 ${nwpBaseTimeLabel}` : `+${segment.offsetHours}h`}</text>}
+            </g>
+          })}
+        </g>}
         {markerLabels.map((marker, index) => (
           <g key={marker.key}>
-            <line
-              className="vertical-profile-marker-tick"
-              x1={marker.x}
-              x2={marker.x}
-              y1={padding.top + plotHeight}
-              y2={padding.top + plotHeight + 6 + marker.lane * 10}
-            />
             <text
               className="vertical-profile-marker-label"
+              pointerEvents="none"
               x={marker.x}
-              y={padding.top + plotHeight + 18 + marker.lane * 16}
+              y={padding.top + plotHeight + waypointLabelBandOffset + 18 + marker.lane * 16}
               textAnchor={index === 0 ? 'end' : index === markerLabels.length - 1 ? 'start' : 'middle'}
             >
               {fitMarkerLabel(marker.label)}
@@ -714,6 +759,19 @@ export default function VerticalProfileChart({
         })}
       </svg>
       </div>
+      {missingNwpWaypointIds.length > 0 && !nwpMissingNoticeDismissed && <div className="vertical-profile-nwp-missing-notice" role="alert">
+        <span>{'\uc800\uc7a5\ub41c NWP \uc2dc\uac04 \uc124\uc815 \uc911 \ud604\uc7ac \uacbd\ub85c\uc5d0 \uc5c6\ub294 \uc6e8\uc774\ud3ec\uc778\ud2b8 \uc124\uc815\uc740 \uc801\uc6a9\ud558\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4.'}</span>
+        <button type="button" onClick={() => setNwpMissingNoticeDismissed(true)} aria-label="NWP 시간 설정 경고 닫기">{'\ub2eb\uae30'}</button>
+      </div>}
+      {editingNwpSegment && <div className="vertical-profile-nwp-popover" role="dialog" aria-label={`${editingNwpSegment.startWaypointLabel}부터 NWP 시간 설정`}>
+        <strong>{editingNwpSegment.startWaypointLabel}부터 적용</strong>
+        <div>{Array.from({ length: 13 }, (_, offsetHours) => <button key={offsetHours} type="button"
+          disabled={crossSection?.timeRules?.unavailableOffsets?.includes(offsetHours)}
+          title={crossSection?.timeRules?.unavailableOffsets?.includes(offsetHours) ? '수집된 NWP 시간 범위 밖' : undefined}
+          onClick={() => { onSetWaypointNwpOffset(editingNwpSegment.startWaypointId, offsetHours === 0 ? null : offsetHours); setEditingNwpSegment(null) }}>{offsetHours === 0 ? '기준' : `+${offsetHours}h`}</button>)}</div>
+        <button type="button" onClick={() => setEditingNwpSegment(null)}>닫기</button>
+      </div>}
+      {railEnabled && <p className="vertical-profile-nwp-hint">{'\uc544\ub798 \ud0c0\uc784\ub77c\uc778\uc758 \uad6c\uac04\uc744 \ub20c\ub7ec \ud574\ub2f9 \uc9c0\uc810\ubd80\ud130 NWP \uc2dc\uac04\ub300\ub97c \ubcc0\uacbd\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.'}</p>}
       {scrollable && (
         <svg
           className="vertical-profile-axis-overlay"

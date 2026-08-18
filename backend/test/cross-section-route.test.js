@@ -77,8 +77,19 @@ test('cross-section route validates fields and returns cross-section structure',
     fetchedAt: '2099-01-01T00:00:00.000Z',
   })
   const gridPath = writeKimNwpGrid({ root, grid })
+  const nextGrid = buildKimNwpGrid({
+    model: KIM_NWP_MODEL, tmfc, hf: 1, level,
+    components: [
+      { variable: 'u', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(9) },
+      { variable: 'v', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(0) },
+      { variable: 'hgt', unit: 'm', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(1600) },
+      { variable: 'cld', unit: '1', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(.62) },
+    ],
+    fetchedAt: '2099-01-01T00:00:00.000Z',
+  })
+  const nextGridPath = writeKimNwpGrid({ root, grid: nextGrid })
   writeKimNwpIndex(root, buildKimNwpIndex({
-    model: KIM_NWP_MODEL, tmfc, entries: [buildKimNwpIndexEntry(grid, gridPath)],
+    model: KIM_NWP_MODEL, tmfc, entries: [buildKimNwpIndexEntry(grid, gridPath), buildKimNwpIndexEntry(nextGrid, nextGridPath)],
   }))
   writeKimNwpLatest(root, {
     type: 'kim_nwp_latest',
@@ -123,6 +134,30 @@ test('cross-section route validates fields and returns cross-section structure',
     assert.equal(body.coverage.byVariable.cld.available, true)
     assert.equal(body.run.tmfc, tmfc)
     assert.equal(body.run.hf, hf)
+
+    const selected = await fetch(`${baseUrl}/api/briefing/cross-section`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        routeGeometry: ROUTE_GEOMETRY,
+        tmfc,
+        routeMarkers: [
+          { id: 'DEP', label: 'DEP', lon: 126, lat: 37, kind: 'AIRPORT' },
+          { id: 'WP2', label: 'WP2', lon: 126.5, lat: 37.5, kind: 'FIX' },
+          { id: 'ARR', label: 'ARR', lon: 127, lat: 38, kind: 'AIRPORT' },
+        ],
+        nwpTimeSelection: {
+          baseTime: '2099-01-01T00:00:00.000Z',
+          waypointOverrides: [{ waypointId: 'WP2', offsetHours: 1 }],
+        },
+      }),
+    })
+    assert.equal(selected.status, 200)
+    const selectedBody = await selected.json()
+    const selected850 = selectedBody.levels.find(({ pressure }) => pressure === 850)
+    assert.deepEqual(selectedBody.timeRules.segments.map((segment) => segment.kim?.hf), [0, 1])
+    assert.equal(selected850.values[0].sourceHf, 0)
+    assert.equal(selected850.values.at(-1).sourceHf, 1)
   } finally {
     await close(server)
     Object.assign(config.storage, previousStorage)

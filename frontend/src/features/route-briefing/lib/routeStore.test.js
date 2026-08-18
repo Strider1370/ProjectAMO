@@ -93,3 +93,19 @@ test('normalizeRouteSnapshot: routeModel·routeMarkers가 없으면 null/빈배�
   assert.equal(out.routeModel, null)
   assert.deepEqual(out.routeMarkers, [])
 })
+
+test('normalizeRouteSnapshot preserves NWP time selection intent without weather data', () => {
+  const out = normalizeRouteSnapshot({
+    version: 3,
+    base: { routeForm: { flightRule: 'IFR' }, enroute: {}, routeString: '' },
+    nwpTimeSelection: {
+      baseTime: '2026-08-19T10:00:00.000Z',
+      waypointOverrides: [{ waypointId: 'marker:FIX:WP2:126.000000:37.000000:0', offsetHours: 1 }],
+    },
+  })
+  assert.deepEqual(out.nwpTimeSelection, {
+    baseTime: '2026-08-19T10:00:00.000Z',
+    waypointOverrides: [{ waypointId: 'marker:FIX:WP2:126.000000:37.000000:0', offsetHours: 1 }],
+  })
+  assert.equal(JSON.stringify(out).includes('apiKey'), false)
+})

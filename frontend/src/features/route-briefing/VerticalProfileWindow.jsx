@@ -16,6 +16,8 @@ export default function VerticalProfileWindow({
   onSelectCandidateAltitude,
   onSelectForecastHour,
   crossSectionHourLoading = false,
+  nwpTimeSelection = null,
+  onSetWaypointNwpOffset,
   placement = 'bottom',
 }) {
   const [layers, toggle] = useCrossSectionLayers()
@@ -60,6 +62,8 @@ export default function VerticalProfileWindow({
           onSelectCandidateAltitude={placement === 'mobile-full' ? undefined : onSelectCandidateAltitude}
           enableDragScroll={placement === 'mobile-full'}
           metaTrailing={placement === 'mobile-full' ? forecastHourNav : null}
+          nwpTimeSelection={nwpTimeSelection}
+          onSetWaypointNwpOffset={onSetWaypointNwpOffset}
         />
       </section>
     </div>

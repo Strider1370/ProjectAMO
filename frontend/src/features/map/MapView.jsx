@@ -2065,6 +2065,8 @@ const MapView = forwardRef(function MapView({
                 onHighlightLeg={setHighlightedLeg}
                 onSelectForecastHour={routeBriefing.actions.handleSelectForecastHour}
                 crossSectionHourLoading={routeBriefing.state.crossSectionHourLoading}
+                nwpTimeSelection={routeBriefing.state.nwpTimeSelection}
+                onSetWaypointNwpOffset={routeBriefing.actions.handleSetWaypointNwpOffset}
                 routeSnapshot={{
                   routeForm: routeBriefing.state.routeForm,
                   vfrWaypoints: routeBriefing.state.vfrWaypoints,
@@ -2125,6 +2127,8 @@ const MapView = forwardRef(function MapView({
             onSelectCandidateAltitude={isMobile ? routeBriefing.actions.selectCruiseAltitude : undefined}
             onSelectForecastHour={routeBriefing.actions.handleSelectForecastHour}
             crossSectionHourLoading={routeBriefing.state.crossSectionHourLoading}
+            nwpTimeSelection={routeBriefing.state.nwpTimeSelection}
+            onSetWaypointNwpOffset={routeBriefing.actions.handleSetWaypointNwpOffset}
             placement={isMobile ? 'mobile-full' : routeBriefing.state.workflowStep === 'altitude' ? 'side' : 'bottom'}
           />
         </Suspense>
