@@ -7,7 +7,6 @@ import { collectConvectiveSatelliteFrame } from './convective-satellite-processo
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 
 const RENDER_VERSION = 'fog-composite-v3-kst-tm-webp'
-const IMMEDIATE_FRAME_COUNT = 2
 const FOG_RETRY_DELAY_MS = 3 * 60 * 1000
 const MAX_FOG_RETRIES = 2
 const SAT_FRAME_STEP_MIN = 10
@@ -120,6 +119,23 @@ function publishMeta({ fsImpl, satDir, activeConfig, latestFrameSpec, frameSpecs
   return meta
 }
 
+function snapshotFiles(fsImpl, satDir, frameSpecs) {
+  return new Map(frameSpecs.map(({ displayTm }) => {
+    const file = path.join(satDir, `sat_korea_${displayTm}.webp`)
+    return [file, fsImpl.existsSync(file) ? fsImpl.readFileSync(file) : null]
+  }))
+}
+
+function restoreFiles(fsImpl, snapshots) {
+  for (const [file, contents] of snapshots) {
+    if (contents === null) {
+      try { fsImpl.unlinkSync(file) } catch { /* no unpublished file to remove */ }
+    } else {
+      writeSatelliteAtomic(fsImpl, file, contents)
+    }
+  }
+}
+
 function followUp(mode, now, frame, delayMs) {
   return { kind: 'satellite', mode, now: new Date(now).toISOString(), ...(frame ? { frame } : {}), delayMs }
 }
@@ -154,17 +170,24 @@ export async function processSatellite({ now = new Date(), mode = 'current', fra
       const exists = state.fsImpl.existsSync(path.join(state.satDir, `sat_korea_${spec.displayTm}.webp`)) && state.existingFrames.get(spec.displayTm)
       return !exists || needsFogRefetch(state.existingFrames.get(spec.displayTm))
     })
-    const immediate = missing.slice(-IMMEDIATE_FRAME_COUNT)
-    for (const spec of immediate) {
-      const rendered = await renderFrame({ ...state, requestTm: spec.requestTm, displayTm: spec.displayTm, deps })
-      if (rendered) state.existingFrames.set(spec.displayTm, withFogAttempt(rendered, state.existingFrames.get(spec.displayTm)))
+    const immediate = missing.filter((spec) => spec.displayTm === latestFrameSpec.displayTm)
+    const snapshots = snapshotFiles(state.fsImpl, state.satDir, immediate)
+    let meta
+    try {
+      for (const spec of immediate) {
+        const rendered = await renderFrame({ ...state, requestTm: spec.requestTm, displayTm: spec.displayTm, deps })
+        if (rendered) state.existingFrames.set(spec.displayTm, withFogAttempt(rendered, state.existingFrames.get(spec.displayTm)))
+      }
+      meta = publishMeta({ ...state, latestFrameSpec, frameSpecs, updatedAt: activeNow })
+    } catch (error) {
+      restoreFiles(state.fsImpl, snapshots)
+      throw error
     }
-    const meta = publishMeta({ ...state, latestFrameSpec, frameSpecs, updatedAt: activeNow })
     if (deps.collectConvective !== false && meta.latest?.tm === latestFrameSpec.displayTm) {
       try { await (deps.collectConvectiveSatelliteFrame || collectConvectiveSatelliteFrame)({ tm: latestFrameSpec.displayTm, request_tm_utc: latestFrameSpec.requestTm }) } catch (error) { console.warn(`satellite: convective collection failed ${latestFrameSpec.requestTm}:`, error.message) }
     }
     const latest = state.existingFrames.get(latestFrameSpec.displayTm)
-    const followUps = missing.slice(0, -IMMEDIATE_FRAME_COUNT).map((spec) => followUp('backfill', activeNow, spec, 0))
+    const followUps = missing.filter((spec) => spec.displayTm !== latestFrameSpec.displayTm).map((spec) => followUp('backfill', activeNow, spec, 0))
     if (needsFogRefetch(latest)) followUps.push(followUp('fog_retry', activeNow, { ...latestFrameSpec, fogAttempts: latest.fogAttempts || 0 }, FOG_RETRY_DELAY_MS))
     return { result: { type: 'satellite', saved: immediate.length > 0 || meta.frames.length > 0, frameCount: meta.frames.length, tm: meta.tm, request_tm_utc: meta.request_tm_utc, deferredCount: followUps.filter((job) => job.mode === 'backfill').length }, followUps }
   }
@@ -175,26 +198,22 @@ export async function processSatellite({ now = new Date(), mode = 'current', fra
     ? { requestTm: state.existingMeta.request_tm_utc, displayTm: state.existingMeta.tm }
     : target
   const frameSpecs = buildFrameSpecs(latestFrameSpec.requestTm, frameCount)
-  if (!frameSpecs.some((spec) => spec.displayTm === target.displayTm)) frameSpecs.push(target)
+  if (!frameSpecs.some((spec) => spec.displayTm === target.displayTm)) {
+    return { result: { type: 'satellite', saved: false, reason: 'already-collected' }, followUps: [] }
+  }
   const previous = state.existingFrames.get(target.displayTm)
   const followUps = []
-  try {
-    if (mode === 'backfill' && state.fsImpl.existsSync(path.join(state.satDir, `sat_korea_${target.displayTm}.webp`)) && previous && !needsFogRefetch(previous)) {
-      return { result: { type: 'satellite', saved: false, reason: 'already-collected' }, followUps }
-    }
-    if (mode === 'fog_retry' && !needsFogRefetch(previous)) return { result: { type: 'satellite', saved: false, reason: 'already-collected' }, followUps }
-    const rendered = await renderFrame({ ...state, requestTm: target.requestTm, displayTm: target.displayTm, deps })
-    if (!rendered) return { result: { type: 'satellite', saved: false, reason: 'no data available' }, followUps }
-    const saved = withFogAttempt(rendered, previous)
-    state.existingFrames.set(target.displayTm, saved)
-    const meta = publishMeta({ ...state, latestFrameSpec, frameSpecs, updatedAt: activeNow })
-    if (mode === 'fog_retry' && needsFogRefetch(saved)) followUps.push(followUp('fog_retry', activeNow, { ...target, fogAttempts: saved.fogAttempts || 0 }, FOG_RETRY_DELAY_MS))
-    return { result: { type: 'satellite', saved: true, frameCount: meta.frames.length, tm: meta.tm, request_tm_utc: meta.request_tm_utc }, followUps }
-  } catch (error) {
-    const attempt = frame?.fogAttempts || 0
-    if (mode === 'fog_retry' && attempt < MAX_FOG_RETRIES) followUps.push(followUp('fog_retry', activeNow, { ...target, fogAttempts: attempt + 1 }, FOG_RETRY_DELAY_MS))
-    throw Object.assign(error, { followUps })
+  if (mode === 'backfill' && state.fsImpl.existsSync(path.join(state.satDir, `sat_korea_${target.displayTm}.webp`)) && previous && !needsFogRefetch(previous)) {
+    return { result: { type: 'satellite', saved: false, reason: 'already-collected' }, followUps }
   }
+  if (mode === 'fog_retry' && !needsFogRefetch(previous)) return { result: { type: 'satellite', saved: false, reason: 'already-collected' }, followUps }
+  const rendered = await renderFrame({ ...state, requestTm: target.requestTm, displayTm: target.displayTm, deps })
+  if (!rendered) return { result: { type: 'satellite', saved: false, reason: 'no data available' }, followUps }
+  const saved = withFogAttempt(rendered, previous)
+  state.existingFrames.set(target.displayTm, saved)
+  const meta = publishMeta({ ...state, latestFrameSpec, frameSpecs, updatedAt: activeNow })
+  if (mode === 'fog_retry' && needsFogRefetch(saved)) followUps.push(followUp('fog_retry', activeNow, { ...target, fogAttempts: saved.fogAttempts || 0 }, FOG_RETRY_DELAY_MS))
+  return { result: { type: 'satellite', saved: true, frameCount: meta.frames.length, tm: meta.tm, request_tm_utc: meta.request_tm_utc }, followUps }
 }
 
 // Compatibility for direct callers until scheduler wiring moves to the worker queue.
