@@ -106,17 +106,26 @@ function BriefingRow({ entry, watched, onOpen, onDelete }) {
 
 // 내 계정 — 저장한 브리핑과 개인설정을 한자리에 모은다. 둘 다 "내 것"인데 서로 다른 곳에
 // 흩어져 있을 이유가 없고, 알림 없이 브리핑을 여는 입구가 여기서 생긴다.
-export default function AccountPanel({ onClose, onOpenBriefing, watchedBriefingIds = [] }) {
+export default function AccountPanel({ onClose, onOpenBriefing }) {
   useCloseOnBackButton(true, onClose)
   const s = useStyles()
   const { user, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('briefings')
   const [briefings, setBriefings] = useState([])
-  const watched = new Set(watchedBriefingIds)
+  // 어느 브리핑이 알림 감시 중인지. 감시 행은 등록 시점의 복제본이라 sourceBriefingId로만
+  // 원본을 가리킨다 — 그게 없으면 삭제할 때 "알림도 끝났겠지"라는 오해를 못 막는다.
+  const [watched, setWatched] = useState(() => new Set())
 
   const refresh = useCallback(async () => {
     try { setBriefings(await listSavedRoutes({ kind: 'briefing' })) }
     catch { /* best-effort: 목록을 못 받아도 개인설정은 쓸 수 있어야 한다 */ }
+    try {
+      const res = await fetch('/api/me/alerts', { credentials: 'include' })
+      if (res.ok) {
+        const { flights = [] } = await res.json()
+        setWatched(new Set(flights.map((f) => f.sourceBriefingId).filter((id) => id != null)))
+      }
+    } catch { /* best-effort: 칩이 안 붙을 뿐 목록은 쓸 수 있다 */ }
   }, [])
 
   useEffect(() => { refresh() }, [refresh])

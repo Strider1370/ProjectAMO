@@ -58,22 +58,35 @@ export function createAlertsRouter({ db = null } = {}) {
 
     const now = new Date().toISOString()
     const expiresAt = new Date(etdMs + EXPIRE_MS).toISOString()
+    // 감시 행은 등록 시점의 복제본이다. 원본을 가리켜 두면 계정 목록에 '알림 감시중'을 띄우고
+    // 삭제할 때 정직하게 안내할 수 있다 — 원본을 지워도 감시는 계속 돈다(복제라 독립).
+    const sourceSnapshot = (() => { try { return JSON.parse(tpl.payload) } catch { return {} } })()
+    const payload = JSON.stringify({ ...sourceSnapshot, sourceBriefingId: templateId })
     const info = db2.prepare(`
       INSERT INTO routes (user_id, name, etd, eta, payload, alert_enabled, alert_start_min_before_etd, send_no_change_confirm, expires_at, created_at, updated_at)
       VALUES (?,?,?,?,?,1,?,?,?,?,?)
-    `).run(req.session.userId, tpl.name, etd, eta ?? null, tpl.payload, alertStartMinBeforeEtd ?? 120, sendNoChangeConfirm ? 1 : 0, expiresAt, now, now)
+    `).run(req.session.userId, tpl.name, etd, eta ?? null, payload, alertStartMinBeforeEtd ?? 120, sendNoChangeConfirm ? 1 : 0, expiresAt, now, now)
     res.status(201).json({ id: info.lastInsertRowid })
   })
 
   router.get('/alerts', (req, res) => {
     const rows = database().prepare(
-      'SELECT id, name, etd, eta, alert_start_min_before_etd FROM routes WHERE user_id = ? AND alert_enabled = 1 ORDER BY etd'
+      'SELECT id, name, etd, eta, alert_start_min_before_etd, payload FROM routes WHERE user_id = ? AND alert_enabled = 1 ORDER BY etd'
     ).all(req.session.userId)
     const active = pickActiveFlight(
       rows.map((r) => ({ id: r.id, etd: r.etd, alertStartMinBeforeEtd: r.alert_start_min_before_etd })),
       Date.now(),
     )
-    res.json({ flights: rows.map((r) => ({ ...r, active: active?.id === r.id })) })
+    // sourceBriefingId는 payload 안에만 있다(컬럼을 새로 만들지 않는다). 계정 목록이
+    // 어느 브리핑이 감시 중인지 표시하는 데 쓴다.
+    const sourceOf = (payload) => { try { return JSON.parse(payload).sourceBriefingId ?? null } catch { return null } }
+    res.json({
+      flights: rows.map(({ payload, ...r }) => ({
+        ...r,
+        active: active?.id === r.id,
+        sourceBriefingId: sourceOf(payload),
+      })),
+    })
   })
 
   // ETD 조정(지연) — expires_at 재계산.

@@ -132,7 +132,7 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
   }
 
   async function handleRegister() {
-    if (!templateId || !etdLocal) { setMsg({ intent: 'error', text: '템플릿과 ETD를 입력하세요.' }); return }
+    if (!templateId || !etdLocal) { setMsg({ intent: 'error', text: '감시할 브리핑과 ETD를 입력하세요.' }); return }
     const body = {
       templateId: Number(templateId),
       etd: localInputToIso(etdLocal),
@@ -150,9 +150,9 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
     <div className={s.tabBody}>
       <div className={s.row}>
         <label className={s.field}>
-          <span className={s.label}>경로 템플릿</span>
-          <select className={s.input} value={templateId} onChange={(e) => setTemplateId(e.target.value)} aria-label="경로 템플릿 선택">
-            <option value="">선택하세요</option>
+          <span className={s.label}>감시할 브리핑</span>
+          <select className={s.input} value={templateId} onChange={(e) => setTemplateId(e.target.value)} aria-label="감시할 브리핑 선택">
+            <option value="">{templates.length === 0 ? '저장한 브리핑이 없습니다' : '선택하세요'}</option>
             {templates.map((t) => <option key={t.id} value={t.id}>{templateLabel(t)}</option>)}
           </select>
         </label>
@@ -189,7 +189,7 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
 
       <div className={s.list}>
         {flights.length === 0
-          ? <div className={s.empty}>등록된 비행 알림이 없습니다</div>
+          ? <div className={s.empty}>등록된 비행 알림이 없습니다{templates.length === 0 && ' — 브리핑 화면에서 먼저 저장하세요'}</div>
           : flights.map((f) => (
             <div key={f.id} className={s.flightRow}>
               <span className={s.flightBody}>

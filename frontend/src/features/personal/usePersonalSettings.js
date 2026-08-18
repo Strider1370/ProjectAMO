@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/AuthContext.jsx'
+import { listSavedRoutes } from '../route-briefing/lib/routeStore.js'
 
 const MINIMA = '/api/me/minima'
-const ROUTES = '/api/me/routes'
 const ALERTS = '/api/me/alerts'
 
 const ERROR_KO = {
   etd_must_be_future: 'ETD는 미래 시각이어야 합니다.',
   eta_after_etd: 'ETA는 ETD 이후여야 합니다.',
   too_many_routes: '저장된 경로가 너무 많습니다.',
-  template_not_found: '선택한 경로 템플릿을 찾을 수 없습니다.',
+  template_not_found: '선택한 브리핑을 찾을 수 없습니다.',
+  too_many_briefings: '저장한 브리핑이 5개입니다. 계정에서 하나를 지우고 다시 시도하세요.',
   invalid_input: '입력값을 확인하세요.',
 }
 
@@ -30,12 +31,12 @@ export default function usePersonalSettings() {
     } catch { /* 오프라인/401 → 유지 */ }
   }, [user])
 
+  // 감시 대상은 저장된 브리핑이다 — 순항고도가 확정돼 있어야 착빙·난류 판정이 맞는다.
+  // 경로만으로는 고도를 몰라 스케줄러가 9000ft로 가정한다(scheduler.js DEFAULT_CRUISE_ALT_FT).
   const refreshTemplates = useCallback(async () => {
     if (!user) return
-    try {
-      const res = await fetch(ROUTES, { credentials: 'include' })
-      if (res.ok) setTemplates((await res.json()).routes || [])
-    } catch { /* best-effort */ }
+    try { setTemplates(await listSavedRoutes({ kind: 'briefing' })) }
+    catch { /* best-effort */ }
   }, [user])
 
   const refreshFlights = useCallback(async () => {
