@@ -65,4 +65,22 @@ export function buildSavedBriefingInputs(rawSaved) {
   }
 }
 
-export default { buildSavedBriefingInputs, geometryDistanceNm }
+// 지도·경로 패널이 그리는 데 쓰는 최소 routeResult. 재검색 결과를 대신한다 —
+// 이게 없으면 지도는 routeResult가 비어 출발·도착 직선만 그린다(저장한 경로가 아니라).
+// segments/navpointIds는 없다: NAVLOG는 백엔드가 routeModel로 만들고, 지도는 이 선만 필요하다.
+export function buildSavedRouteResult(inputs) {
+  if (!inputs?.ok) return null
+  return {
+    flightRule: inputs.flightRule,
+    departureAirport: inputs.departureAirport,
+    arrivalAirport: inputs.arrivalAirport,
+    totalDistanceNm: inputs.distanceNm,
+    distanceNm: inputs.distanceNm,
+    previewGeojson: {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: inputs.routeGeometry }],
+    },
+  }
+}
+
+export default { buildSavedBriefingInputs, buildSavedRouteResult, geometryDistanceNm }

@@ -13,7 +13,7 @@ import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
 import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
 import { normalizeRouteSnapshot } from './lib/routeStore.js'
-import { buildSavedBriefingInputs } from './lib/savedRouteBriefing.js'
+import { buildSavedBriefingInputs, buildSavedRouteResult } from './lib/savedRouteBriefing.js'
 import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
 import { parseRouteBuffer, extractRoutePaths, MAX_IMPORT_BYTES } from './lib/routeImport.js'
@@ -1799,6 +1799,26 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setEta(inputs.eta)
       if (inputs.tasKt) updateTasKt(inputs.tasKt)
       if (Number.isFinite(Number(inputs.cruiseAltitudeFt))) updateCruiseAltitudeFt(Number(inputs.cruiseAltitudeFt))
+
+      // 지도·경로 패널이 그릴 상태. 이걸 안 채우면 routeResult가 비어 지도가 출발→도착 직선만
+      // 그린다(저장한 경로가 아니라). 재검색 대신 저장된 선으로 최소 routeResult를 세운다.
+      const savedRouteResult = buildSavedRouteResult(inputs)
+      const baseDesign = createRouteDesign({
+        routeForm: { ...routeForm, flightRule: inputs.flightRule, departureAirport: inputs.departureAirport ?? '', arrivalAirport: inputs.arrivalAirport ?? '' },
+        procedures: { sid: null, star: null, iapKey: null }, // 저장된 선에 이미 절차가 반영돼 있다 — 다시 얹으면 두 번 그려진다.
+        routeResult: savedRouteResult,
+        routeModel: inputs.routeModel,
+        routeExposure: { trigger: 'unavailable', hazards: [] },
+        enroute: inputs.enroute ?? undefined,
+        routeString: inputs.routeString,
+      })
+      setRouteDesigns([baseDesign])
+      setSelectedRouteDesignId(baseDesign.id)
+      setActiveAppliedDesignId(baseDesign.id)
+      setRouteEditor(editorFromBase(baseDesign))
+      setRouteResult(savedRouteResult)
+      setRouteExposure(baseDesign.routeExposure)
+
       setBriefing(result)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
       setWorkflowStep('briefing')

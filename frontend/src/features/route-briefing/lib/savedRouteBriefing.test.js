@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildSavedBriefingInputs } from './savedRouteBriefing.js'
+import { buildSavedBriefingInputs, buildSavedRouteResult } from './savedRouteBriefing.js'
 
 const GEOM = { type: 'LineString', coordinates: [[126.4, 37.4], [127.1, 36.9], [128.0, 36.0]] }
 const MODEL = { schemaVersion: 1, enRouteSegments: [{ id: 'A582-001', routeId: 'A582', startNm: 0, endNm: 40 }] }
@@ -70,4 +70,17 @@ test('routeModel이 없어도 브리핑은 성립한다 — 구간표만 빈다'
 test('총 거리는 저장된 선에서 계산한다 — 재검색 결과가 필요 없다', () => {
   const out = buildSavedBriefingInputs(savedRoute())
   assert.ok(out.distanceNm > 100 && out.distanceNm < 300, `실제: ${out.distanceNm} NM`)
+})
+
+test('저장된 선으로 지도가 그릴 routeResult를 만든다', () => {
+  const inputs = buildSavedBriefingInputs(savedRoute())
+  const result = buildSavedRouteResult(inputs)
+
+  const line = result.previewGeojson.features.find((f) => f.properties.role === 'route-preview-line')
+  assert.deepEqual(line.geometry, GEOM, '지도는 저장된 선을 그대로 그려야 한다 — 출발·도착 직선이 아니라')
+  assert.equal(result.flightRule, 'IFR')
+  assert.equal(result.departureAirport, 'RKSS')
+  assert.equal(result.arrivalAirport, 'RKPC')
+  assert.equal(result.totalDistanceNm, inputs.distanceNm)
+  assert.equal(result.distanceNm, inputs.distanceNm)
 })
