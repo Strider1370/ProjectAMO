@@ -6,7 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { processSatelliteVisible } from '../src/processors/satellite-visible-processor.js'
-import { needsFogRefetch } from '../src/processors/satellite-processor.js'
+import { needsFogRefetch, processSatellite, writeSatelliteAtomic } from '../src/processors/satellite-processor.js'
 
 const root = () => fs.mkdtempSync(path.join(os.tmpdir(), 'amo-sat-'))
 
@@ -54,4 +54,62 @@ test('FOG-less frames stop being re-fetched once the attempt cap is reached', ()
   assert.equal(needsFogRefetch({ fogPixelCount: null, fogAttempts: 1 }), true)
   assert.equal(needsFogRefetch({ fogPixelCount: null, fogAttempts: 2 }), false, '상한에 닿으면 포기한다')
   assert.equal(needsFogRefetch(undefined), false)
+})
+
+test('a failed current-frame publish leaves the previous WebP and metadata intact', async () => {
+  const dataRoot = root()
+  const satelliteDir = path.join(dataRoot, 'satellite')
+  fs.mkdirSync(satelliteDir, { recursive: true })
+  const tm = '202608182310'
+  const requestTm = '202608181410'
+  const filename = `sat_korea_${tm}.webp`
+  const oldMeta = {
+    type: 'SATELLITE', product: 'FOG', channel: 'IR105', region: 'KO',
+    render_version: 'fog-composite-v3-kst-tm-webp', tm, request_tm_utc: requestTm,
+    latest: { tm, request_tm_utc: requestTm, path: `/data/satellite/${filename}`, fogPixelCount: null, fogAttempts: 0 },
+    frames: [{ tm, request_tm_utc: requestTm, path: `/data/satellite/${filename}`, fogPixelCount: null, fogAttempts: 0 }],
+  }
+  fs.writeFileSync(path.join(satelliteDir, filename), 'last-good-webp')
+  const metaFile = path.join(satelliteDir, 'sat_meta.json')
+  fs.writeFileSync(metaFile, JSON.stringify(oldMeta))
+
+  await assert.rejects(
+    processSatellite({
+      now: new Date('2026-08-18T14:10:00.000Z'),
+      deps: {
+        config: {
+          api: { radar_satellite_auth_key: 'test-key' }, storage: { base_path: dataRoot },
+          satellite: { url: 'https://example.invalid', fog_url: 'https://example.invalid', channel: 'IR105', fog_product: 'FOG', region: 'KO', delay_minutes: 0, timeout_ms: 1, max_frames: 1 },
+        },
+        renderFrame: async () => { throw new Error('forced worker termination during frame publication') },
+        collectConvective: false,
+      },
+    }),
+    /forced worker termination/,
+  )
+
+  assert.equal(fs.readFileSync(path.join(satelliteDir, filename), 'utf8'), 'last-good-webp')
+  assert.deepEqual(JSON.parse(fs.readFileSync(metaFile, 'utf8')), oldMeta)
+})
+
+test('an interrupted atomic WebP rename leaves the old WebP and metadata readable', () => {
+  const dataRoot = root()
+  const satelliteDir = path.join(dataRoot, 'satellite')
+  fs.mkdirSync(satelliteDir, { recursive: true })
+  const webp = path.join(satelliteDir, 'sat_korea_202608182310.webp')
+  const meta = path.join(satelliteDir, 'sat_meta.json')
+  const oldMeta = { frames: [{ tm: '202608182310', path: '/data/satellite/sat_korea_202608182310.webp' }] }
+  fs.writeFileSync(webp, 'last-good-webp')
+  fs.writeFileSync(meta, JSON.stringify(oldMeta))
+  const interruptedFs = {
+    ...fs,
+    renameSync(temp, target) {
+      if (target === webp) throw new Error('forced termination before WebP publication')
+      return fs.renameSync(temp, target)
+    },
+  }
+
+  assert.throws(() => writeSatelliteAtomic(interruptedFs, webp, 'incomplete-new-webp'), /forced termination/)
+  assert.equal(fs.readFileSync(webp, 'utf8'), 'last-good-webp')
+  assert.deepEqual(JSON.parse(fs.readFileSync(meta, 'utf8')), oldMeta)
 })
