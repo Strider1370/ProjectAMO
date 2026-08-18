@@ -90,3 +90,16 @@ test('저장된 선은 절차가 이미 박혀 있다고 표시한다 — 지도
   const line = result.previewGeojson.features.find((f) => f.properties.role === 'route-preview-line')
   assert.equal(line.properties.inlineProcedureGeometry, true)
 })
+
+test('저장된 마커로 경유점 이름표 피처를 만든다', () => {
+  const result = buildSavedRouteResult(buildSavedBriefingInputs(savedRoute()))
+  const points = result.previewGeojson.features.filter((f) => f.properties.role === 'route-preview-point')
+  assert.equal(points.length, MARKERS.length)
+  assert.equal(points[0].properties.label, 'RKSS')
+  assert.deepEqual(points[0].geometry, { type: 'Point', coordinates: [126.4, 37.4] })
+})
+
+test('마커가 없으면 선만 낸다', () => {
+  const result = buildSavedRouteResult(buildSavedBriefingInputs(savedRoute({ routeMarkers: [] })))
+  assert.equal(result.previewGeojson.features.length, 1)
+})
