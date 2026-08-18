@@ -118,3 +118,27 @@ test('진입·이탈 픽스를 넘긴다 — 연직단면도 기준 픽스 이�
   assert.equal(inputs.entryFix, 'EGOBA')
   assert.equal(buildSavedRouteResult(inputs).exitFix, 'PROOF')
 })
+
+test('routeResult가 저장된 마커를 들고 간다 — 공항 줄과 경유점 이름이 살아남도록', () => {
+  const result = buildSavedRouteResult(buildSavedBriefingInputs(savedRoute()))
+  assert.deepEqual(result.routeMarkers, MARKERS)
+})
+
+test('VFR은 저장된 마커에서 경유점을 복원한다 — 양 끝 공항은 뺀다', () => {
+  const saved = savedRoute()
+  saved.base.routeForm.flightRule = 'VFR'
+  saved.routeMarkers = [
+    { label: 'RKSI', lon: 126.4, lat: 37.4, kind: 'AIRPORT' },
+    { label: 'WP1', lon: 127.0, lat: 37.0, kind: 'WAYPOINT' },
+    { label: 'RKPC', lon: 126.5, lat: 33.5, kind: 'AIRPORT' },
+  ]
+  const result = buildSavedRouteResult(buildSavedBriefingInputs(saved))
+  assert.equal(result.manualRoute.points.length, 1)
+  assert.equal(result.manualRoute.points[0].label, 'WP1')
+  assert.deepEqual(result.manualRoute.points[0].coordinates, [127.0, 37.0])
+})
+
+test('IFR에는 manualRoute를 만들지 않는다', () => {
+  const result = buildSavedRouteResult(buildSavedBriefingInputs(savedRoute()))
+  assert.equal(result.manualRoute, undefined)
+})

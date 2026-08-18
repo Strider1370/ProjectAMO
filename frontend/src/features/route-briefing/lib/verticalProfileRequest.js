@@ -28,6 +28,9 @@ export function buildProcedureContextPayload({ routeResult, selectedSid, selecte
 
 export function buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints }) {
   if (!routeResult) return []
+  // 저장분에서 불러온 경로는 마커를 이미 들고 있다 — 다시 만들면 displaySequence가 없어
+  // 빈 배열이 되고, NAVLOG의 공항 줄과 연직단면도의 경유점 이름이 사라진다.
+  if (routeResult.routeMarkers?.length) return routeResult.routeMarkers
 
   if (routeResult.flightRule === 'VFR') {
     return (vfrWaypoints ?? []).map((wp) => ({

@@ -84,6 +84,18 @@ export function buildSavedRouteResult(inputs) {
     // 저장된 구간 모델을 실어 보낸다. 이게 없으면 브리핑을 만들 때 routeResult로부터 모델을
     // 다시 계산하는데, 최소 routeResult엔 segments가 없어 NAVLOG 순항 구간이 통째로 빈다.
     routeModel: inputs.routeModel,
+    // 마커도 같은 이유다. 다시 만들면 displaySequence가 없어 빈 배열이 되고, 그러면
+    // NAVLOG의 출발·도착 공항 줄과 연직단면도 아래 경유점 이름이 통째로 사라진다.
+    routeMarkers: inputs.routeMarkers,
+    // VFR 경유점은 manualRoute.points에서 복원된다(buildVfrWaypointsFromRouteResult).
+    // 양 끝 공항은 경로선의 처음·끝 좌표에서 따로 붙으므로 여기선 뺀다.
+    ...(inputs.flightRule === 'VFR' ? {
+      manualRoute: {
+        points: (inputs.routeMarkers ?? [])
+          .filter((marker) => marker.kind !== 'AIRPORT')
+          .map((marker) => ({ label: marker.label, coordinates: [marker.lon, marker.lat], kind: marker.kind })),
+      },
+    } : {}),
     previewGeojson: {
       type: 'FeatureCollection',
       features: [

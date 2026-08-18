@@ -1843,21 +1843,18 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       if (resetVersion !== routeResetVersionRef.current) return
       const plannedCruiseAltitudeFt = inputs.cruiseAltitudeFt || DEFAULT_CRUISE_ALTITUDE_FT
       // 요청은 정상 브리핑 생성(handleGenerateBriefing)과 같은 생성기로 만든다 — 손으로 짜면
-      // procedureContext처럼 조용히 빠지는 것이 생긴다. 마커만 저장분으로 덮어쓴다(최소
-      // routeResult에는 마커를 만들 displaySequence가 없다).
-      const profileRequest = {
-        ...buildVerticalProfileRequest({
-          routeGeometry: inputs.routeGeometry,
-          routeModel: inputs.routeModel,
-          routeResult: applied.routeResult,
-          selectedSid: applied.procedures.sid,
-          selectedStar: applied.procedures.star,
-          selectedIap: applied.selectedIap,
-          vfrWaypoints: [],
-          plannedCruiseAltitudeFt,
-        }),
-        routeMarkers: inputs.routeMarkers,
-      }
+      // procedureContext처럼 조용히 빠지는 것이 생긴다. 구간 모델과 마커는 routeResult가
+      // 들고 다니므로 생성기가 알아서 저장분을 쓴다.
+      const profileRequest = buildVerticalProfileRequest({
+        routeGeometry: inputs.routeGeometry,
+        routeModel: inputs.routeModel,
+        routeResult: applied.routeResult,
+        selectedSid: applied.procedures.sid,
+        selectedStar: applied.procedures.star,
+        selectedIap: applied.selectedIap,
+        vfrWaypoints: [],
+        plannedCruiseAltitudeFt,
+      })
       const result = await fetchRouteBriefing({
         ...profileRequest,
         departureAirport: inputs.departureAirport,
