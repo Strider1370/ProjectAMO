@@ -203,3 +203,13 @@ test('failure messages classify errors without exposing raw secrets', () => {
     error: { name: 'SatelliteWorkerError', message: 'satellite worker failed' },
   })
 })
+
+test('failure messages remain safe when an error name accessor throws', () => {
+  const error = {}
+  Object.defineProperty(error, 'name', { get: () => { throw new Error('hostile accessor') } })
+
+  assert.deepEqual(failureMessage(error), {
+    ok: false,
+    error: { name: 'SatelliteWorkerError', message: 'satellite worker failed' },
+  })
+})

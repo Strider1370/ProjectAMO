@@ -16,8 +16,6 @@ import radarGraphicsProcessor from './processors/radar-graphics-processor.js'
 import echoTopProcessor from './processors/echo-top-processor.js'
 import rainviewerProcessor from './processors/rainviewer-processor.js'
 import kimSurfaceWindProcessor from './processors/kim-surface-wind-processor.js'
-import satelliteProcessor from './processors/satellite-processor.js'
-import satelliteVisibleProcessor from './processors/satellite-visible-processor.js'
 import groundForecastProcessor from './processors/ground-forecast-processor.js'
 import environmentProcessor from './processors/environment-processor.js'
 import airportInfoProcessor from './processors/airport-info-processor.js'
@@ -33,6 +31,8 @@ import typhoonProcessor from "./processors/typhoon-processor.js";
 import { ensureActiveDataView } from './dev/data-view.js'
 import { installApiHubFetchGuard } from './lib/fetch-api-hub.js'
 import apiHubUsage from './api-hub-usage.js'
+import { runSatelliteWorker } from './satellite/worker-runner.js'
+import { createSatelliteWorkQueue } from './satellite/work-queue.js'
 
 net.setDefaultAutoSelectFamily(false)
 installApiHubFetchGuard()
@@ -47,6 +47,7 @@ const AVIATION_KEY = { apiHubCategories: ['aviation'] }
 const RADAR_SATELLITE_KEY = { apiHubCategories: ['radar_satellite'] }
 const KIM_NWP_KEY = { apiHubCategories: ['kim_nwp'] }
 const AVIATION_AND_RADAR_KEYS = { apiHubCategories: ['aviation', 'radar_satellite'] }
+const satelliteWorkQueue = createSatelliteWorkQueue({ runWorker: runSatelliteWorker })
 
 async function runWithLock(type, job, { apiHubCategories = [], isBlocked = (category) => apiHubUsage.snapshot().keys.find((key) => key.category === category)?.status === 'blocked' } = {}) {
   if (apiHubCategories.length > 0 && apiHubCategories.every(isBlocked)) {
@@ -96,19 +97,31 @@ export async function waitForCollectionIdle({ timeoutMs = 120_000, pollMs = 100 
     }
     await new Promise((resolve) => setTimeout(resolve, pollMs))
   }
+  const remainingTimeoutMs = deadline - Date.now()
+  await satelliteWorkQueue.whenIdle({ timeoutMs: remainingTimeoutMs, pollMs })
 }
 
 export function abortActiveCollections() {
+  const reason = new Error('collection_cancelled_for_data_transition')
   for (const controller of activeControllers.values()) {
     if (!controller.signal.aborted) {
-      controller.abort(new Error('collection_cancelled_for_data_transition'))
+      controller.abort(reason)
     }
   }
+  return satelliteWorkQueue.cancel(reason)
 }
 
 export async function quiesceCollections(options) {
-  abortActiveCollections()
+  await abortActiveCollections()
   await waitForCollectionIdle(options)
+}
+
+export function runSatelliteCollection(kind, { signal } = {}) {
+  return satelliteWorkQueue.enqueue({
+    kind,
+    mode: 'current',
+    now: new Date().toISOString(),
+  }, { signal })
 }
 
 function scheduleKimNwpJob(scheduler = cron, enabled = config.kim_nwp?.enabled !== false) {
@@ -163,6 +176,21 @@ function scheduleEchoTopJob(scheduler = cron, activeConfig = config) {
   )
 }
 
+function scheduleSatelliteJobs(scheduler = cron, satelliteJob = runSatelliteCollection, activeConfig = config) {
+  if (!radarSatelliteEnabled(activeConfig)) return []
+  const schedule = activeConfig.schedule ?? config.schedule
+  return [
+    scheduler.schedule(
+      schedule.satellite_interval,
+      () => runWithLock('satellite', ({ signal }) => satelliteJob('satellite', { signal }), RADAR_SATELLITE_KEY),
+    ),
+    scheduler.schedule(
+      schedule.satellite_visible_interval,
+      () => runWithLock('satellite_visible', ({ signal }) => satelliteJob('satellite_visible', { signal }), RADAR_SATELLITE_KEY),
+    ),
+  ]
+}
+
 // 시작 시점 NOTAM 캐시가 재크롤이 필요할 만큼 오래됐나. 없음/빈것/시각손상은 stale로 간주(크롤).
 function isNotamCacheStale() {
   const cached = store.getCached('notam')
@@ -176,6 +204,7 @@ function buildInitialCollectionJobs({
   includeKimNwp = config.kim_nwp?.enabled !== false && config.kim_nwp?.collect_on_startup !== false,
   includeRadarSatellite = radarSatelliteEnabled(),
   includeEchoTop = includeRadarSatellite && config.radar_echo_top?.enabled !== false,
+  satelliteJob = runSatelliteCollection,
 } = {}) {
   const jobs = [
     ["metar", metarProcessor.processAll],
@@ -195,7 +224,10 @@ function buildInitialCollectionJobs({
       ...(includeEchoTop ? [["echo_top", echoTopProcessor.process]] : []),
     ] : []),
     ["rainviewer", rainviewerProcessor.process],
-    ...(includeRadarSatellite ? [["satellite", satelliteProcessor.process], ["satellite_visible", satelliteVisibleProcessor.processSatelliteVisible]] : []),
+    ...(includeRadarSatellite ? [
+      ['satellite', ({ signal }) => satelliteJob('satellite', { signal })],
+      ['satellite_visible', ({ signal }) => satelliteJob('satellite_visible', { signal })],
+    ] : []),
     ["ground_forecast", groundForecastProcessor.process],
     ["environment", environmentProcessor.process],
     ["airport_info", airportInfoProcessor.process],
@@ -249,10 +281,9 @@ async function main() {
     scheduleEchoTopJob()
     // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.
     if (config.radar_echo_top?.enabled !== false) runWithLock("echo_top", echoTopProcessor.backfill, RADAR_SATELLITE_KEY);
-    cron.schedule(config.schedule.satellite_interval, () => runWithLock("satellite", satelliteProcessor.process, RADAR_SATELLITE_KEY));
     // 가시영상은 10분 — 파일이 가장 크고 원본 갱신도 10분이다. 밤 프레임은 수집기가 걸러내되
     // 확인한 시각을 메타에 남겨 같은 파일을 다시 받지 않는다.
-    cron.schedule(config.schedule.satellite_visible_interval, () => runWithLock("satellite_visible", satelliteVisibleProcessor.processSatelliteVisible, RADAR_SATELLITE_KEY));
+    scheduleSatelliteJobs()
   } else {
     console.warn('[collection] KMA radar/satellite key disabled — radar and satellite collection skipped.')
   }
@@ -287,5 +318,5 @@ if (process.argv[1] && (__filename === process.argv[1] || __filename.endsWith(pr
   });
 }
 
-export { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleEchoTopJob, scheduleTakeoffFcstJob, scheduleKimNwpJob }
-export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleEchoTopJob, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }
+export { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleEchoTopJob, scheduleSatelliteJobs, scheduleTakeoffFcstJob, scheduleKimNwpJob }
+export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, runSatelliteCollection, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleEchoTopJob, scheduleSatelliteJobs, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 import config from '../src/config.js'
@@ -8,8 +9,9 @@ import {
   buildInitialCollectionJobs,
   runWithLock,
   scheduleAirportInfoJob,
-  scheduleKimNwpJob,
   scheduleEchoTopJob,
+  scheduleKimNwpJob,
+  scheduleSatelliteJobs,
 } from '../src/index.js'
 
 test('blocked API Hub key skips its collection before the processor runs', async () => {
@@ -111,6 +113,41 @@ test('Echo Top scheduler does not register when the radar and satellite key is u
 
   assert.equal(scheduleEchoTopJob(fakeScheduler, { radar_echo_top: { enabled: true }, api: { radar_satellite_auth_key: '' } }), null)
   assert.equal(calls.length, 0)
+})
+
+test('satellite schedulers register normal and visible jobs through the shared worker queue', () => {
+  const calls = []
+  const fakeScheduler = { schedule: (...args) => calls.push(args) }
+  const satelliteJob = async (kind) => { satelliteJob.calls.push(kind); return { saved: true } }
+  satelliteJob.calls = []
+
+  const registrations = scheduleSatelliteJobs(fakeScheduler, satelliteJob)
+
+  assert.equal(registrations.length, 2)
+  assert.deepEqual(calls.map(([interval]) => interval), [config.schedule.satellite_interval, config.schedule.satellite_visible_interval])
+  assert.equal(typeof calls[0][1], 'function')
+  assert.equal(typeof calls[1][1], 'function')
+  calls[0][1]()
+  calls[1][1]()
+  assert.deepEqual(satelliteJob.calls, ['satellite', 'satellite_visible'])
+})
+
+test('initial satellite collection calls the isolated adapter', async () => {
+  const satelliteJob = async (kind) => { satelliteJob.calls.push(kind); return { saved: true } }
+  satelliteJob.calls = []
+  const jobs = buildInitialCollectionJobs({ includeRadarSatellite: true, satelliteJob })
+
+  await jobs.find(([type]) => type === 'satellite')[1]({ signal: new AbortController().signal })
+
+  assert.deepEqual(satelliteJob.calls, ['satellite'])
+})
+
+test('the long-lived scheduler does not import satellite WASM or image processors', async () => {
+  const source = await readFile(new URL('../src/index.js', import.meta.url), 'utf8')
+
+  for (const forbidden of ['satellite-processor.js', 'satellite-visible-processor.js', 'h5wasm', 'sharp']) {
+    assert.equal(source.includes(forbidden), false, forbidden)
+  }
 })
 
 test('airport info scheduler runs at KST bulletin release and retry times', () => {
