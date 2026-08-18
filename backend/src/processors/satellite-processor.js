@@ -113,8 +113,12 @@ function publishMeta({ fsImpl, satDir, activeConfig, latestFrameSpec, frameSpecs
   // Metadata is the commit record and is written only after every newly referenced WebP has been renamed into place.
   writeSatelliteAtomic(fsImpl, path.join(satDir, 'sat_meta.json'), `${JSON.stringify(meta, null, 2)}\n`)
   const names = new Set(frames.map((frame) => path.basename(frame.path)))
-  for (const filename of fsImpl.readdirSync(satDir)) {
-    if (/^sat_korea_\d{12}\.(?:png|webp)$/.test(filename) && !names.has(filename)) fsImpl.unlinkSync(path.join(satDir, filename))
+  try {
+    for (const filename of fsImpl.readdirSync(satDir)) {
+      if (/^sat_korea_\d{12}\.(?:png|webp)$/.test(filename) && !names.has(filename)) fsImpl.unlinkSync(path.join(satDir, filename))
+    }
+  } catch (error) {
+    console.warn(`satellite: stale frame cleanup failed: ${error.message}`)
   }
   return meta
 }

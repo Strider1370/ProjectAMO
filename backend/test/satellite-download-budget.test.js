@@ -182,6 +182,35 @@ test('non-current modes restore their target frame when metadata publication fai
   }
 })
 
+test('stale-file cleanup failure after metadata commit retains the new generation', async () => {
+  const dataRoot = root(), satelliteDir = path.join(dataRoot, 'satellite')
+  fs.mkdirSync(satelliteDir, { recursive: true })
+  const tm = '202608182310', requestTm = '202608181410', filename = `sat_korea_${tm}.webp`
+  const oldMeta = { type: 'SATELLITE', render_version: 'fog-composite-v3-kst-tm-webp', tm, request_tm_utc: requestTm, frames: [{ tm, request_tm_utc: requestTm, path: `/data/satellite/${filename}`, fogPixelCount: null, fogAttempts: 0 }] }
+  const webp = path.join(satelliteDir, filename), metaFile = path.join(satelliteDir, 'sat_meta.json')
+  fs.writeFileSync(webp, 'last-good-webp')
+  fs.writeFileSync(metaFile, JSON.stringify(oldMeta))
+  const cleanupFailureFs = { ...fs, readdirSync(target) {
+    if (target === satelliteDir) throw new Error('forced stale-file cleanup failure')
+    return fs.readdirSync(target)
+  } }
+
+  const work = await processSatellite({
+    now: new Date('2026-08-18T14:10:00.000Z'),
+    deps: {
+      config: normalConfig(dataRoot), fs: cleanupFailureFs, collectConvective: false,
+      renderFrame: async () => {
+        fs.writeFileSync(webp, 'new-webp')
+        return { tm, request_tm_utc: requestTm, path: `/data/satellite/${filename}`, fogPixelCount: 9 }
+      },
+    },
+  })
+
+  assert.equal(work.result.saved, true)
+  assert.equal(fs.readFileSync(webp, 'utf8'), 'new-webp')
+  assert.equal(JSON.parse(fs.readFileSync(metaFile, 'utf8')).frames[0].fogPixelCount, 9)
+})
+
 test('current mode renders only latest and emits every other missing frame as backfill', async () => {
   const dataRoot = root(), rendered = []
   const work = await processSatellite({
