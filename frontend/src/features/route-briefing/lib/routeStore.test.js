@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { normalizeRouteSnapshot } from './routeStore.js'
+import { normalizeRouteSnapshot, entryKind } from './routeStore.js'
 
 test('normalizeRouteSnapshot migrates legacy inputs without losing VFR waypoint fields', () => {
   const snapshot = normalizeRouteSnapshot({
@@ -108,4 +108,26 @@ test('normalizeRouteSnapshot preserves NWP time selection intent without weather
     waypointOverrides: [{ waypointId: 'marker:FIX:WP2:126.000000:37.000000:0', offsetHours: 1 }],
   })
   assert.equal(JSON.stringify(out).includes('apiKey'), false)
+})
+
+test('normalizeRouteSnapshot: kind를 보존하고, 없으면 경로로 본다', () => {
+  const briefing = normalizeRouteSnapshot({
+    version: 3, kind: 'briefing',
+    base: { routeForm: { flightRule: 'IFR' }, enroute: {}, routeString: '' },
+  })
+  assert.equal(briefing.kind, 'briefing')
+
+  // 2단계까지 저장된 것들에는 kind가 없다 — 경로로 취급한다.
+  const legacy = normalizeRouteSnapshot({
+    version: 3,
+    base: { routeForm: { flightRule: 'IFR' }, enroute: {}, routeString: '' },
+  })
+  assert.equal(legacy.kind, 'route')
+})
+
+test('entryKind: kind가 없으면 경로로 본다', () => {
+  assert.equal(entryKind({ kind: 'briefing' }), 'briefing')
+  assert.equal(entryKind({ kind: 'route' }), 'route')
+  assert.equal(entryKind({}), 'route')
+  assert.equal(entryKind(null), 'route')
 })

@@ -30,6 +30,9 @@ function persistedDesign(design = {}) {
 export function normalizeRouteSnapshot(snapshot = {}) {
   if (snapshot.version === 3 && snapshot.base) return {
     version: 3,
+    // 'route' = 경로(다음 비행의 출발점) · 'briefing' = 고도까지 확정된 한 번의 비행.
+    // 2단계까지 저장된 것들에는 없다 — 경로로 본다.
+    kind: snapshot.kind === 'briefing' ? 'briefing' : 'route',
     base: persistedDesign(snapshot.base),
     alternatives: (snapshot.alternatives ?? []).map(persistedDesign),
     selectedAlternativeId: snapshot.selectedAlternativeId ?? null,
@@ -94,13 +97,22 @@ export function normalizeRouteSnapshot(snapshot = {}) {
 }
 
 // snapshot: { routeForm, vfrWaypoints, cruiseAltitudeFt, alternateAirport, etd }
-export async function listSavedRoutes() {
+async function listAllSavedRoutes() {
   try {
     const res = await fetch(API, { credentials: 'include' })
     if (res.ok) return (await res.json()).routes.sort(bySavedDesc) // 로그인 → 서버
     // 401(게스트)·기타 → 로컬 폴백
   } catch { /* 서버 불가 → 로컬 */ }
   return read().sort(bySavedDesc)
+}
+
+// 경로와 브리핑은 성격이 달라 목록을 나눈다 — 경로는 경로 패널에서, 브리핑은 계정 패널에서 본다.
+// kind가 없는 저장분(2단계까지)은 경로로 본다.
+export const entryKind = (entry) => (entry?.kind === 'briefing' ? 'briefing' : 'route')
+
+export async function listSavedRoutes({ kind } = {}) {
+  const all = await listAllSavedRoutes()
+  return kind ? all.filter((entry) => entryKind(entry) === kind) : all
 }
 
 export async function saveRoute(name, snapshot) {
