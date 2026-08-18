@@ -19,7 +19,7 @@ test('returns a compact validated satellite job', () => {
     kind: 'satellite',
     mode: 'fog_retry',
     now: '2026-08-18T14:10:00.000Z',
-    frame: { tm: '202608182310', fogAttempts: 1 },
+    frame: { tm: '202608182310', fogAttempts: 1, credentials: 'must not cross IPC' },
     ignored: 'credential',
   })
 
@@ -68,6 +68,55 @@ test('returns JSON-safe terminal messages', () => {
   )
 })
 
+test('preserves direct and nested dense JSON arrays in allowlisted frame results', () => {
+  const message = successMessage({
+    result: {
+      saved: true,
+      frames: [{
+        tm: '202608182310',
+        path: '/data/satellite/sat_korea_202608182310.webp',
+        bounds: [[124, 32], [132, 40]],
+      }],
+    },
+    followUps: [],
+  })
+
+  assert.deepEqual(message.result.result.frames, [{
+    tm: '202608182310',
+    path: '/data/satellite/sat_korea_202608182310.webp',
+    bounds: [[124, 32], [132, 40]],
+  }])
+  assert.deepEqual(JSON.parse(JSON.stringify(message)), message)
+})
+
+test('drops credential-shaped fields from outbound job frames and results', () => {
+  const job = assertSatelliteJob({
+    kind: 'satellite', mode: 'fog_retry', now: '2026-08-18T14:10:00.000Z',
+    frame: { tm: '202608182310', apiKey: 'secret' },
+  })
+  const message = successMessage({
+    result: { saved: true, credentials: 'secret', authKey: 'also-secret' },
+    followUps: [],
+  })
+
+  assert.deepEqual(job.frame, { tm: '202608182310' })
+  assert.deepEqual(message.result.result, { saved: true })
+  assert.throws(
+    () => successMessage({ result: {
+      saved: true,
+      frames: [{ tm: '202608182310', bounds: [[124, 32], [132, { credentials: 'secret' }]] }],
+    }, followUps: [] }),
+    /invalid satellite worker success result/,
+  )
+})
+
+test('preserves the visible collector no-status result without opening arbitrary reasons', () => {
+  assert.deepEqual(
+    successMessage({ result: { saved: false, tm: '202608182310', reason: 'http-undefined' }, followUps: [] }),
+    { ok: true, result: { result: { saved: false, tm: '202608182310', reason: 'http-undefined' }, followUps: [] } },
+  )
+})
+
 test('normalizes valid follow-ups into the IPC allowlist', () => {
   const message = successMessage({
     result: { saved: true },
@@ -75,7 +124,7 @@ test('normalizes valid follow-ups into the IPC allowlist', () => {
       kind: 'satellite',
       mode: 'fog_retry',
       now: '2026-08-18T14:10:00.000Z',
-      frame: { tm: '202608182310' },
+      frame: { tm: '202608182310', credentials: 'must not cross IPC' },
       delayMs: 0,
       credentials: 'must not cross IPC',
     }],
