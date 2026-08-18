@@ -78,7 +78,10 @@ export function buildSavedRouteResult(inputs) {
     distanceNm: inputs.distanceNm,
     previewGeojson: {
       type: 'FeatureCollection',
-      features: [{ type: 'Feature', properties: { role: 'route-preview-line' }, geometry: inputs.routeGeometry }],
+      // inlineProcedureGeometry: 저장된 선에 이미 SID/STAR가 반영돼 있다는 표시.
+      // 이게 없으면 표시용으로 고른 절차를 지도가 한 번 더 얹어 같은 구간이 두 번 그려진다
+      // (routePreview.js의 augmentRouteWithProcedures / trimRouteLineForProcedures가 이 플래그를 보고 비켜준다).
+      features: [{ type: 'Feature', properties: { role: 'route-preview-line', inlineProcedureGeometry: true }, geometry: inputs.routeGeometry }],
     },
   }
 }

@@ -84,3 +84,9 @@ test('저장된 선으로 지도가 그릴 routeResult를 만든다', () => {
   assert.equal(result.totalDistanceNm, inputs.distanceNm)
   assert.equal(result.distanceNm, inputs.distanceNm)
 })
+
+test('저장된 선은 절차가 이미 박혀 있다고 표시한다 — 지도가 두 번 얹지 않도록', () => {
+  const result = buildSavedRouteResult(buildSavedBriefingInputs(savedRoute()))
+  const line = result.previewGeojson.features.find((f) => f.properties.role === 'route-preview-line')
+  assert.equal(line.properties.inlineProcedureGeometry, true)
+})

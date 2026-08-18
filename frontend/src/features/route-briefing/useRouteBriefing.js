@@ -1802,6 +1802,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
       // 지도·경로 패널이 그릴 상태. 이걸 안 채우면 routeResult가 비어 지도가 출발→도착 직선만
       // 그린다(저장한 경로가 아니라). 재검색 대신 저장된 선으로 최소 routeResult를 세운다.
+      //
+      // 순서와 가드는 파일 임포트(commitImportedRoute)와 같다. 이유도 같다: 경로 글자가 바뀌면
+      // 그 글자로 경로를 다시 만드는 효과가 돌아(:559) 방금 넣은 선을 덮어쓴다. 저장된 선에는
+      // SID가 들어 있지만 글자에는 없어서, 다시 만들면 출발공항에서 첫 항로점으로 직선이 된다.
+      // seededRef/skipImportedTokenReapplyRef/lastAppliedTokenTextRef가 그 한 번을 건너뛰게 한다.
       const savedRouteResult = buildSavedRouteResult(inputs)
       const baseDesign = createRouteDesign({
         routeForm: { ...routeForm, flightRule: inputs.flightRule, departureAirport: inputs.departureAirport ?? '', arrivalAirport: inputs.arrivalAirport ?? '' },
@@ -1812,12 +1817,13 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
         enroute: inputs.enroute ?? undefined,
         routeString: inputs.routeString,
       })
-      setRouteDesigns([baseDesign])
-      setSelectedRouteDesignId(baseDesign.id)
-      setActiveAppliedDesignId(baseDesign.id)
-      setRouteEditor(editorFromBase(baseDesign))
-      setRouteResult(savedRouteResult)
-      setRouteExposure(baseDesign.routeExposure)
+      importedRouteApplyPendingRef.current = true
+      applyBaseRoute(baseDesign)
+      seededRef.current = true
+      const enrouteTokens = (inputs.routeString ?? '').trim().split(/\s+/).filter(Boolean)
+      skipImportedTokenReapplyRef.current = true
+      setRouteTokenTexts([inputs.departureAirport, ...enrouteTokens, inputs.arrivalAirport].filter(Boolean))
+      lastAppliedTokenTextRef.current = enrouteTokens.join(' ')
 
       setBriefing(result)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
