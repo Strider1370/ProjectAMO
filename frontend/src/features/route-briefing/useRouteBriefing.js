@@ -1764,15 +1764,81 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 해외 IFR은 절차 데이터가 한국 공항에만 있어 재검색(getProcedures/buildEditorPreview)이
   // `No RNAV route path`로 깨진다. 저장된 선이 멀쩡한데 다시 찾다 실패하므로 그 경로를 아예 타지 않는다.
   // 저장분이 부족하면(1단계 이전 저장분) 기존 재검색 경로로 위임한다.
-  async function openSavedRouteBriefing(saved) {
+  // 저장분을 경로 입력 상태로만 얹는다 — 브리핑은 만들지 않는다.
+  // 경로 저장/불러오기는 "경로를 꺼내 손보는" 동작이다. 브리핑은 대안 비교와 고도 설정을
+  // 거친 뒤에 나와야 하므로, 경로만 불러온 상태에서 브리핑을 띄우면 사용자가 정한 적 없는
+  // 고도로 판단 화면이 뜬다. 브리핑까지 여는 것은 openSavedBriefing이 맡는다.
+  async function loadSavedRouteIntoEditor(saved) {
+    const inputs = buildSavedBriefingInputs(saved)
+    if (!inputs.ok) { await loadSavedRoute(saved); return null }
+    const resetVersion = routeResetVersionRef.current
+    await applySavedRouteState(inputs, resetVersion)
+    return resetVersion === routeResetVersionRef.current ? inputs : null
+  }
+
+  // 경로를 통째로 얹을 때 채워야 할 주인은 셋이다 — 공항(routeForm)·절차(procedures)·
+  // 경유점(경로 글자). 하나라도 비우면 글자로 경로를 다시 만드는 효과(:559)가 돌 때
+  // 그 조각이 사라진다. 절차를 비웠다가 SID가 통째로 빠진 적이 있다.
+  // 그래서 절차를 **먼저** 세우고, 그다음 선·글자 순으로 얹는다.
+  async function applySavedRouteState(inputs, resetVersion) {
+    const ids = inputs.procedureIds ?? {}
+    const [savedSids, savedStars, savedIapData] = await Promise.all([
+      ids.sid ? getProcedures(inputs.departureAirport, 'SID').catch(() => []) : Promise.resolve([]),
+      ids.star ? getProcedures(inputs.arrivalAirport, 'STAR').catch(() => []) : Promise.resolve([]),
+      ids.iapKey ? loadIapData(inputs.arrivalAirport).catch(() => null) : Promise.resolve(null),
+    ])
+    if (resetVersion !== routeResetVersionRef.current) return
+    // 해외 공항은 절차 데이터가 없어 빈손으로 끝난다 — 그래도 저장된 선에 절차가 이미
+    // 들어 있으므로 지도와 브리핑은 그대로다. 여기서 얻는 것은 표시용 이름표뿐이다.
+    const procedures = {
+      sid: savedSids.find((procedure) => procedure.id === ids.sid) ?? null,
+      star: savedStars.find((procedure) => procedure.id === ids.star) ?? null,
+      iapKey: savedIapData?.iapRoutes?.[ids.iapKey] ? ids.iapKey : null,
+    }
+    setSelectedSid(procedures.sid)
+    setSelectedStar(procedures.star)
+    setSelectedIapKey(procedures.iapKey)
+
+    const savedRouteResult = buildSavedRouteResult(inputs)
+    const baseDesign = createRouteDesign({
+      routeForm: { ...routeForm, flightRule: inputs.flightRule, departureAirport: inputs.departureAirport ?? '', arrivalAirport: inputs.arrivalAirport ?? '' },
+      procedures,
+      routeResult: savedRouteResult,
+      routeModel: inputs.routeModel,
+      routeExposure: { trigger: 'unavailable', hazards: [] },
+      enroute: inputs.enroute ?? undefined,
+      routeString: inputs.routeString,
+    })
+    // 저장된 선에 절차가 이미 반영돼 있다(inlineProcedureGeometry). 그래서 절차를 세워도
+    // 지도가 같은 구간을 두 번 그리지 않는다.
+    importedRouteApplyPendingRef.current = true
+    applyBaseRoute(baseDesign)
+    seededRef.current = true
+    const enrouteTokens = (inputs.routeString ?? '').trim().split(/\s+/).filter(Boolean)
+    // 이미 완성된 선을 얹었으므로 글자로 다시 만들 필요가 없다 — 임포트와 같은 가드.
+    skipImportedTokenReapplyRef.current = true
+    setRouteTokenTexts([inputs.departureAirport, procedures.sid?.name, ...enrouteTokens, procedures.star?.name, inputs.arrivalAirport].filter(Boolean))
+    lastAppliedTokenTextRef.current = enrouteTokens.join(' ')
+    if (inputs.etd) setEtd(inputs.etd)
+    if (inputs.eta) setEta(inputs.eta)
+    if (inputs.tasKt) updateTasKt(inputs.tasKt)
+    if (Number.isFinite(Number(inputs.cruiseAltitudeFt))) updateCruiseAltitudeFt(Number(inputs.cruiseAltitudeFt))
+    setAlternateAirport(inputs.alternateAirport || '')
+  }
+
+  // 저장된 브리핑을 연다 — 경로 상태를 얹고 브리핑까지 만들어 브리핑 단계로 데려간다.
+  // 고도가 확정된 저장분에만 쓴다.
+  async function openSavedBriefing(saved) {
     const inputs = buildSavedBriefingInputs(saved)
     if (!inputs.ok) return loadSavedRoute(saved, { autoBriefing: true })
-    if (!inputs.etd || !inputs.eta) { setBriefingError('저장된 경로에 ETD/ETA가 없습니다.'); return }
+    if (!inputs.etd || !inputs.eta) { setBriefingError('저장된 브리핑에 ETD/ETA가 없습니다.'); return }
 
     const resetVersion = routeResetVersionRef.current
     setBriefingLoading(true)
     setBriefingError(null)
     try {
+      await applySavedRouteState(inputs, resetVersion)
+      if (resetVersion !== routeResetVersionRef.current) return
       const result = await fetchRouteBriefing({
         flightRule: inputs.flightRule,
         routeGeometry: inputs.routeGeometry,
@@ -1788,64 +1854,6 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
         eta: inputs.eta,
       })
       if (resetVersion !== routeResetVersionRef.current) return
-      setRouteForm((previous) => ({
-        ...previous,
-        flightRule: inputs.flightRule,
-        departureAirport: inputs.departureAirport ?? '',
-        arrivalAirport: inputs.arrivalAirport ?? '',
-      }))
-      setAlternateAirport(inputs.alternateAirport || '')
-      setEtd(inputs.etd)
-      setEta(inputs.eta)
-      if (inputs.tasKt) updateTasKt(inputs.tasKt)
-      if (Number.isFinite(Number(inputs.cruiseAltitudeFt))) updateCruiseAltitudeFt(Number(inputs.cruiseAltitudeFt))
-
-      // 지도·경로 패널이 그릴 상태. 이걸 안 채우면 routeResult가 비어 지도가 출발→도착 직선만
-      // 그린다(저장한 경로가 아니라). 재검색 대신 저장된 선으로 최소 routeResult를 세운다.
-      //
-      // 경로를 통째로 얹을 때 채워야 할 주인은 셋이다 — 공항(routeForm)·절차(procedures)·
-      // 경유점(경로 글자). 하나라도 비우면 글자로 경로를 다시 만드는 효과(:559)가 돌 때
-      // 그 조각이 사라진다. 절차를 비웠다가 SID가 통째로 빠진 적이 있다.
-      // 그래서 절차를 **먼저** 세우고, 그다음 선·글자 순으로 얹는다.
-      const ids = inputs.procedureIds ?? {}
-      const [savedSids, savedStars, savedIapData] = await Promise.all([
-        ids.sid ? getProcedures(inputs.departureAirport, 'SID').catch(() => []) : Promise.resolve([]),
-        ids.star ? getProcedures(inputs.arrivalAirport, 'STAR').catch(() => []) : Promise.resolve([]),
-        ids.iapKey ? loadIapData(inputs.arrivalAirport).catch(() => null) : Promise.resolve(null),
-      ])
-      if (resetVersion !== routeResetVersionRef.current) return
-      // 해외 공항은 절차 데이터가 없어 빈손으로 끝난다 — 그래도 저장된 선에 절차가 이미
-      // 들어 있으므로 지도와 브리핑은 그대로다. 여기서 얻는 것은 표시용 이름표뿐이다.
-      const procedures = {
-        sid: savedSids.find((procedure) => procedure.id === ids.sid) ?? null,
-        star: savedStars.find((procedure) => procedure.id === ids.star) ?? null,
-        iapKey: savedIapData?.iapRoutes?.[ids.iapKey] ? ids.iapKey : null,
-      }
-      setSelectedSid(procedures.sid)
-      setSelectedStar(procedures.star)
-      setSelectedIapKey(procedures.iapKey)
-
-      const savedRouteResult = buildSavedRouteResult(inputs)
-      const baseDesign = createRouteDesign({
-        routeForm: { ...routeForm, flightRule: inputs.flightRule, departureAirport: inputs.departureAirport ?? '', arrivalAirport: inputs.arrivalAirport ?? '' },
-        procedures,
-        routeResult: savedRouteResult,
-        routeModel: inputs.routeModel,
-        routeExposure: { trigger: 'unavailable', hazards: [] },
-        enroute: inputs.enroute ?? undefined,
-        routeString: inputs.routeString,
-      })
-      // 저장된 선에 절차가 이미 반영돼 있다(inlineProcedureGeometry). 그래서 절차를 세워도
-      // 지도가 같은 구간을 두 번 그리지 않는다.
-      importedRouteApplyPendingRef.current = true
-      applyBaseRoute(baseDesign)
-      seededRef.current = true
-      const enrouteTokens = (inputs.routeString ?? '').trim().split(/\s+/).filter(Boolean)
-      // 이미 완성된 선을 얹었으므로 글자로 다시 만들 필요가 없다 — 임포트와 같은 가드.
-      skipImportedTokenReapplyRef.current = true
-      setRouteTokenTexts([inputs.departureAirport, procedures.sid?.name, ...enrouteTokens, procedures.star?.name, inputs.arrivalAirport].filter(Boolean))
-      lastAppliedTokenTextRef.current = enrouteTokens.join(' ')
-
       setBriefing(result)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
       setWorkflowStep('briefing')
@@ -2474,7 +2482,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       handleRouteReset,
       handleRouteSearch,
       loadSavedRoute,
-      openSavedRouteBriefing,
+      loadSavedRouteIntoEditor,
+      openSavedBriefing,
       importRouteFromFile,
       applyImportedPath,
       cancelImportChoice,
