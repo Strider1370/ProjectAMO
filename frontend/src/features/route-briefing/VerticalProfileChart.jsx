@@ -355,6 +355,9 @@ export default function VerticalProfileChart({
   const csLevels = crossSection?.levels ?? []
   const ktgRuleSummary = [...new Set((crossSection?.timeRules?.segments ?? []).map((segment) => segment.ktg?.validTime).filter(Boolean))]
   const missingNwpWaypointIds = crossSection?.timeRules?.missingWaypointIds ?? []
+  const unavailableNwpOffsets = crossSection?.timeRules?.unavailableOffsets
+    ?? crossSection?.nwpTimeAvailability?.unavailableOffsets
+    ?? []
   const cldCoverage = crossSection?.coverage?.byVariable?.cld
   const cldLevels = Number.isFinite(cldCoverage?.topPressure)
     ? csLevels.filter((level) => Number(level.pressure) >= Number(cldCoverage.topPressure)) : []
@@ -766,8 +769,8 @@ export default function VerticalProfileChart({
       {editingNwpSegment && <div className="vertical-profile-nwp-popover" role="dialog" aria-label={`${editingNwpSegment.startWaypointLabel}부터 NWP 시간 설정`}>
         <strong>{editingNwpSegment.startWaypointLabel}부터 적용</strong>
         <div>{Array.from({ length: 13 }, (_, offsetHours) => <button key={offsetHours} type="button"
-          disabled={crossSection?.timeRules?.unavailableOffsets?.includes(offsetHours)}
-          title={crossSection?.timeRules?.unavailableOffsets?.includes(offsetHours) ? '수집된 NWP 시간 범위 밖' : undefined}
+          disabled={unavailableNwpOffsets.includes(offsetHours)}
+          title={unavailableNwpOffsets.includes(offsetHours) ? '수집된 NWP 시간 범위 밖' : undefined}
           onClick={() => { onSetWaypointNwpOffset(editingNwpSegment.startWaypointId, offsetHours === 0 ? null : offsetHours); setEditingNwpSegment(null) }}>{offsetHours === 0 ? '기준' : `+${offsetHours}h`}</button>)}</div>
         <button type="button" onClick={() => setEditingNwpSegment(null)}>닫기</button>
       </div>}

@@ -67,6 +67,32 @@ export function buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints }) {
 
   const baseLine = routeResult.previewGeojson?.features?.find((feature) => feature.properties.role === 'route-preview-line')
   const baseCoordinates = baseLine?.geometry?.coordinates ?? []
+
+  // 수동 IFR 경로는 항로를 따라 중간 좌표가 추가된 선을 미리보기로 쓴다. 이 선의 인덱스를
+  // displaySequence에 맞추면 항로 ID를 제외한 뒤에도 마커가 한 칸씩 밀린다. 시간 레일은
+  // 사용자가 지정한 경유점 좌표를 기준으로 해야 하므로, 그 좌표가 있으면 이를 우선한다.
+  const manualPoints = routeResult.manualRoute?.points ?? []
+  const departureCoordinate = baseCoordinates[0]
+  const arrivalCoordinate = baseCoordinates.at(-1)
+  if (manualPoints.length > 0 && departureCoordinate && arrivalCoordinate) {
+    const intermediateMarkers = manualPoints
+      .map((point) => {
+        const [lon, lat] = point.coordinates ?? []
+        if (!point.label || !Number.isFinite(lon) || !Number.isFinite(lat)) return null
+        return { label: point.label, lon, lat, kind: 'FIX' }
+      })
+      .filter(Boolean)
+
+    if (intermediateMarkers.length === manualPoints.length) {
+      const labels = routeResult.displaySequence ?? []
+      return withStableMarkerIds([
+        { label: labels[0] ?? routeResult.departureAirport, lon: departureCoordinate[0], lat: departureCoordinate[1], kind: 'AIRPORT' },
+        ...intermediateMarkers,
+        { label: labels.at(-1) ?? routeResult.arrivalAirport, lon: arrivalCoordinate[0], lat: arrivalCoordinate[1], kind: 'AIRPORT' },
+      ])
+    }
+  }
+
   const routeIds = new Set(routeResult.routeIds ?? [])
   const labels = (routeResult.displaySequence ?? []).filter((item) => !routeIds.has(item))
 

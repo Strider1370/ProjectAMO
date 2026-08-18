@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveNwpTimeRules } from '../src/briefing/enroute-cross-section.js'
+import { resolveNwpTimeAvailability, resolveNwpTimeRules } from '../src/briefing/enroute-cross-section.js'
 
 const markers = [
   { id: 'DEP', distanceNm: 0 },
@@ -42,4 +42,13 @@ test('keeps an unavailable KIM offset unavailable instead of choosing the neares
 
   assert.equal(result.segments[1].kim, null)
   assert.equal(result.unavailableOffsets.includes(2), true)
+})
+
+test('exposes unavailable offsets before the user creates a waypoint override', () => {
+  const result = resolveNwpTimeAvailability({
+    baseTime: '2026-08-19T10:00:00.000Z',
+    candidateTimes,
+  })
+
+  assert.deepEqual(result.unavailableOffsets, [2, 4, 5, 6, 7, 8, 9, 10, 11, 12])
 })

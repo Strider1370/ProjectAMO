@@ -121,6 +121,16 @@ export function resolveNwpTimeRules({ markers = [], selection = {}, candidateTim
   }
 }
 
+// 최초 단면도도 사용자가 고를 수 있는 KIM 시각만 보여줘야 한다. 아직 경유점 규칙이
+// 없어도 기준시각으로부터의 오프셋 가용성은 같은 규칙으로 계산할 수 있다.
+export function resolveNwpTimeAvailability({ baseTime, candidateTimes = [] } = {}) {
+  return resolveNwpTimeRules({
+    markers: [],
+    selection: { baseTime, waypointOverrides: [] },
+    candidateTimes,
+  })
+}
+
 function ruleForDistance(segments, distanceNm) {
   let matched = null
   for (const segment of segments) {
@@ -174,6 +184,10 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
       : [candidateTimes.find((time) => Number(time.hf) === requestedHf) ?? { hf: requestedHf }],
   })
   const hf = selectedKimTime?.hf ?? candidateHours[0] ?? 0
+  const nwpTimeAvailability = resolveNwpTimeAvailability({
+    baseTime: selectedKimTime?.validTime,
+    candidateTimes,
+  })
   const kimBundleKey = `${root}|${tmfc}|${hf}|${latest.content_hash ?? latest.updated_at ?? ''}`
 
   const axis = buildRouteAxis(routeGeometry, body.sampleSpacingMeters ?? 250)
@@ -259,6 +273,7 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
   return {
     available: true, axis, crossSection, turbulence, totalDistanceNm: axis.totalDistanceNm,
     timeRules,
+    nwpTimeAvailability,
     availableTimes: candidateTimes.map((time) => selectClosestForecastTime({
       tmfc,
       targetMs: 0,
