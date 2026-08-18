@@ -187,10 +187,16 @@ export function successMessage(work) {
 }
 
 export function failureMessage(error) {
-  if (error?.name === 'SatelliteWorkerTimeoutError') {
+  let name
+  try {
+    name = error?.name
+  } catch {
+    name = undefined
+  }
+  if (name === 'SatelliteWorkerTimeoutError') {
     return { ok: false, error: { name: 'SatelliteWorkerTimeoutError', message: 'satellite worker timed out' } }
   }
-  if (error?.name === 'AbortError') {
+  if (name === 'AbortError') {
     return { ok: false, error: { name: 'SatelliteWorkerCancelledError', message: 'satellite worker cancelled' } }
   }
   return {

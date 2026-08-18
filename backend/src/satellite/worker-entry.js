@@ -7,13 +7,17 @@ export async function runWorkerEntry({ job, runJob, send, disconnect }) {
     const safeJob = assertSatelliteJob(job)
     const work = await runJob(safeJob)
     await send(successMessage(work))
-    disconnect()
-    return 0
   } catch (error) {
-    await send(failureMessage(error))
+    try {
+      await send(failureMessage(error))
+    } catch {
+      // The parent already closed IPC; process shutdown still releases worker memory.
+    }
     disconnect()
     return 1
   }
+  disconnect()
+  return 0
 }
 
 function runProcessWorker() {

@@ -76,3 +76,16 @@ test('entry sends a safe failure envelope for invalid jobs without importing a p
   assert.equal(ran, false)
   assert.deepEqual(sent, [{ ok: false, error: { name: 'SatelliteWorkerError', message: 'satellite worker failed' } }])
 })
+
+test('entry still disconnects and returns failure when terminal IPC cannot be sent', async () => {
+  let disconnected = false
+  const exitCode = await runWorkerEntry({
+    job: { kind: 'satellite', mode: 'current', now: '2026-08-18T14:10:00.000Z' },
+    runJob: async () => ({ result: { saved: true }, followUps: [] }),
+    send: async () => { throw new Error('ipc closed') },
+    disconnect: () => { disconnected = true },
+  })
+
+  assert.equal(exitCode, 1)
+  assert.equal(disconnected, true)
+})

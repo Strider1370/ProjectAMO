@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { fork } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import test from 'node:test'
 
@@ -139,4 +140,32 @@ test('uses a finite configured production timeout when no test override is suppl
   } finally {
     satelliteConfig.worker_timeout_ms = 180_000
   }
+})
+
+test('a real worker process returns a safe terminal failure and exits for an invalid job', async () => {
+  const child = fork(new URL('../src/satellite/worker-entry.js', import.meta.url), [], {
+    execArgv: [],
+    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+  })
+  const messages = []
+  child.on('message', (message) => messages.push(message))
+
+  const exit = new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      child.kill('SIGKILL')
+      reject(new Error('worker process did not exit'))
+    }, 1_000)
+    child.once('exit', (code, signal) => {
+      clearTimeout(timeoutId)
+      resolve({ code, signal })
+    })
+    child.once('error', reject)
+  })
+  child.send({ kind: 'invalid', mode: 'current', now: job.now })
+
+  assert.deepEqual(await exit, { code: 1, signal: null })
+  assert.deepEqual(messages, [{
+    ok: false,
+    error: { name: 'SatelliteWorkerError', message: 'satellite worker failed' },
+  }])
 })
