@@ -291,6 +291,9 @@ git commit -m "feat(briefing): name saved briefings by route, etd and altitude"
       kind: 'briefing',
       cruiseAltitudeFt, tasKt, etd: etdIso, eta,
       routeGeometry, enrouteGeometry, routeModel, routeMarkers, airacCycle,
+      // 웨이포인트별 NWP 시각 규칙. 경로 저장(RouteBriefingPanel)이 이미 담는 값이라
+      // 브리핑 저장에서 빠뜨리면 브리핑만 시각 규칙이 날아간다. 해석하지 않고 그대로 옮긴다.
+      nwpTimeSelection: state?.nwpTimeSelection ?? null,
       alternateAirport: alternateAirport || null,
       // 브리핑은 이미 고른 하나의 비행이다. 대안까지 담으면 payload가 커지고,
       // 열었을 때 "어느 것이 이 브리핑인가"가 다시 모호해진다.
