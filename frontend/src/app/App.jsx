@@ -8,7 +8,8 @@ import MobileMapOverlay from './layout/MobileMapOverlay.jsx'
 import MobileMoreMenu from './layout/MobileMoreMenu.jsx'
 import SettingsModal from '../features/settings/SettingsModal.jsx'
 import AuthModal from '../features/auth/AuthModal.jsx'
-import { AuthProvider } from '../features/auth/AuthContext.jsx'
+import AccountPanel from '../features/account/AccountPanel.jsx'
+import { AuthProvider, useAuth } from '../features/auth/AuthContext.jsx'
 import UpdatesModal from '../features/about/UpdatesModal.jsx'
 import SearchPalette from '../features/search/SearchPalette.jsx'
 import useTour from '../features/onboarding/useTour.js'
@@ -41,6 +42,7 @@ function formatTimeByTz(ms, tz) {
 
 function MainAppShell() {
   const { tz } = useTimeZone()
+  const { user } = useAuth()
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [activePanel, setActivePanel] = useState(null)
   const [selectedAirport, setSelectedAirport] = useState(() => {
@@ -58,6 +60,7 @@ function MainAppShell() {
   const [layerCounts, setLayerCounts] = useState({ aviation: 0, met: 0, traffic: 0 })
   const [searchOpen, setSearchOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
   const mapRef = useRef(null)
   const isMobile = useIsMobile()
   const { weatherData, requestDeferredWeatherData } = useWeatherPolling()
@@ -218,7 +221,7 @@ function MainAppShell() {
         hasUpdate={hasUpdate}
         layerCounts={layerCounts}
         onSearchOpen={() => setSearchOpen(true)}
-        onProfileClick={() => setAuthOpen(true)}
+        onProfileClick={() => (user ? setAccountOpen(true) : setAuthOpen(true))}
         onHelp={tour.restart}
       />
       <main className="map-shell">
@@ -291,6 +294,15 @@ function MainAppShell() {
       <div className="utc-bar">{formatTimeByTz(nowMs, tz)}</div>
       <ExitOnDoubleBack />
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+      {accountOpen && (
+        <AccountPanel
+          onClose={() => setAccountOpen(false)}
+          onOpenBriefing={(entry, options) => {
+            setActivePanel('route-check')
+            mapRef.current?.loadRouteBriefing?.(entry, options)
+          }}
+        />
+      )}
       {activePanel === 'settings' && (
         <SettingsModal onClose={() => togglePanel('settings')} />
       )}

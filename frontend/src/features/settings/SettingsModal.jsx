@@ -3,8 +3,6 @@ import { X } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { FONT_OPTIONS, applyFont, getFontPref } from '../../shared/theme/fontPrefs.js'
 import { TabList, Tab } from '../../shared/ui/fluent.js'
-import { useAuth } from '../auth/AuthContext.jsx'
-import { PersonalSettingsContent } from '../personal/PersonalSettingsPanel.jsx'
 import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import './SettingsModal.css'
 
@@ -12,7 +10,6 @@ import './SettingsModal.css'
 export default function SettingsModal({ onClose }) {
   useCloseOnBackButton(true, onClose)
   const { setTz } = useTimeZone()
-  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('display')
   const [timeZone, setTimeZone] = useState(() => localStorage.getItem('time_zone') || 'KST')
   const [language, setLanguage] = useState(() => localStorage.getItem('language') || 'ko')
@@ -45,7 +42,6 @@ export default function SettingsModal({ onClose }) {
             onTabSelect={(_, data) => setActiveTab(data.value)}
           >
             <Tab value="display">표시 설정</Tab>
-            <Tab value="personal" disabled={!user}>개인설정</Tab>
           </TabList>
 
           <div className="settings-body">
@@ -79,7 +75,10 @@ export default function SettingsModal({ onClose }) {
                 </label>
               </fieldset>
             )}
-            {activeTab === 'personal' && user && <PersonalSettingsContent />}
+            {/* 개인설정은 내 계정으로 옮겼다. 익숙한 자리에서 그냥 사라지면 못 찾는다. */}
+            <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-3)' }}>
+              기상 미니마와 비행 알림은 <strong>왼쪽 아래 프로필 &gt; 내 계정</strong>으로 옮겼습니다.
+            </p>
           </div>
         </div>
 
