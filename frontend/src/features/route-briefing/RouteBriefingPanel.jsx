@@ -354,7 +354,9 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // 경로 저장/불러오기 (localStorage). 저장은 입력값만; 로드는 재검색으로 복원.
   const [menuOpen, setMenuOpen] = useState(false)
   const [savedRoutes, setSavedRoutes] = useState([])
-  const refreshSaved = async () => setSavedRoutes(await listSavedRoutes())
+  // 경로 메뉴는 경로만 보여준다. 브리핑은 내 계정에서 연다 — 성격이 다른 둘을 한 목록에
+  // 섞으면 "이거 누르면 어디로 가지?"가 매번 생기고, 여기 X가 브리핑을 지우게 된다.
+  const refreshSaved = async () => setSavedRoutes(await listSavedRoutes({ kind: 'route' }))
   async function handleSaveCurrentRoute() {
     const def = `${routeForm.departureAirport || '?'} → ${routeForm.arrivalAirport || '?'}`
     const name = window.prompt('경로 이름', def)
