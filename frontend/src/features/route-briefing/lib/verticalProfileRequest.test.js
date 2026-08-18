@@ -68,6 +68,7 @@ test('buildVerticalProfileRequest includes VFR waypoints only for VFR routes', (
   assert.equal(result.vfrWaypoints, vfrWaypoints)
   assert.deepEqual(result.routeMarkers[0], {
     label: 'WP1',
+    named: false,
     lon: 126,
     lat: 37,
     kind: 'WAYPOINT',
