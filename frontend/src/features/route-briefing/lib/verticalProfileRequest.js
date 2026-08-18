@@ -38,6 +38,9 @@ export function buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints }) {
       lon: wp.lon,
       lat: wp.lat,
       kind: wp.fixed ? 'AIRPORT' : 'WAYPOINT',
+      // 공표된 픽스인지 지도에서 찍은 점인지. 저장분에서 경유점을 복원할 때 이 구분이 없으면
+      // 전부 찍은 점으로 되살아난다(백엔드는 이 필드를 쓰지 않는다).
+      named: Boolean(wp.named),
     }))
   }
 

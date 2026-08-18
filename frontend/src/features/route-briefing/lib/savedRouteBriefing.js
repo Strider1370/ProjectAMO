@@ -93,7 +93,11 @@ export function buildSavedRouteResult(inputs) {
       manualRoute: {
         points: (inputs.routeMarkers ?? [])
           .filter((marker) => marker.kind !== 'AIRPORT')
-          .map((marker) => ({ label: marker.label, coordinates: [marker.lon, marker.lat], kind: marker.kind })),
+          .map((marker) => ({
+            label: marker.label,
+            coordinates: [marker.lon, marker.lat],
+            kind: marker.named ? 'published-fix' : 'user',
+          })),
       },
     } : {}),
     previewGeojson: {

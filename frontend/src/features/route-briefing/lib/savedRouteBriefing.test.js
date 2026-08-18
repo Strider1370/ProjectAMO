@@ -129,13 +129,17 @@ test('VFR은 저장된 마커에서 경유점을 복원한다 — 양 끝 공항
   saved.base.routeForm.flightRule = 'VFR'
   saved.routeMarkers = [
     { label: 'RKSI', lon: 126.4, lat: 37.4, kind: 'AIRPORT' },
-    { label: 'WP1', lon: 127.0, lat: 37.0, kind: 'WAYPOINT' },
+    { label: 'WP1', lon: 127.0, lat: 37.0, kind: 'WAYPOINT', named: false },
+    { label: 'GONAX', lon: 127.5, lat: 36.5, kind: 'WAYPOINT', named: true },
     { label: 'RKPC', lon: 126.5, lat: 33.5, kind: 'AIRPORT' },
   ]
   const result = buildSavedRouteResult(buildSavedBriefingInputs(saved))
-  assert.equal(result.manualRoute.points.length, 1)
+  assert.equal(result.manualRoute.points.length, 2)
   assert.equal(result.manualRoute.points[0].label, 'WP1')
   assert.deepEqual(result.manualRoute.points[0].coordinates, [127.0, 37.0])
+  // 공표 픽스와 손으로 찍은 점의 구분이 살아남아야 한다.
+  assert.equal(result.manualRoute.points[0].kind, 'user')
+  assert.equal(result.manualRoute.points[1].kind, 'published-fix')
 })
 
 test('IFR에는 manualRoute를 만들지 않는다', () => {
