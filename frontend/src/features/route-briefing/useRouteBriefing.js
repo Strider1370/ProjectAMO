@@ -1825,6 +1825,23 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setRouteTokenTexts([inputs.departureAirport, ...enrouteTokens, inputs.arrivalAirport].filter(Boolean))
       lastAppliedTokenTextRef.current = enrouteTokens.join(' ')
 
+      // 절차 이름표 복원 — 저장된 선에 절차가 이미 반영돼 있으므로 순전히 표시용이다
+      // (선은 inlineProcedureGeometry 표시 덕에 다시 얹히지 않는다). 해외 공항은 절차
+      // 데이터가 없어 빈손으로 끝나는데, 그래도 브리핑과 경로선은 그대로다.
+      const ids = inputs.procedureIds ?? {}
+      Promise.all([
+        ids.sid ? getProcedures(inputs.departureAirport, 'SID').catch(() => []) : Promise.resolve([]),
+        ids.star ? getProcedures(inputs.arrivalAirport, 'STAR').catch(() => []) : Promise.resolve([]),
+        ids.iapKey ? loadIapData(inputs.arrivalAirport).catch(() => null) : Promise.resolve(null),
+      ]).then(([savedSids, savedStars, savedIapData]) => {
+        if (resetVersion !== routeResetVersionRef.current) return
+        const sid = savedSids.find((procedure) => procedure.id === ids.sid) ?? null
+        const star = savedStars.find((procedure) => procedure.id === ids.star) ?? null
+        if (sid) setSelectedSid(sid)
+        if (star) setSelectedStar(star)
+        if (savedIapData?.iapRoutes?.[ids.iapKey]) setSelectedIapKey(ids.iapKey)
+      }).catch(() => { /* 이름표는 없어도 브리핑은 성립한다 */ })
+
       setBriefing(result)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
       setWorkflowStep('briefing')
