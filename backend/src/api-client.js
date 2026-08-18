@@ -199,6 +199,7 @@ export function buildKimGridUrl({
   disp = 'A',
   group = 'KIMG',
   nwp = 'NE57',
+  credential = api.kim_nwp_auth_key,
 }) {
   const params = new URLSearchParams({
     group,
@@ -211,7 +212,7 @@ export function buildKimGridUrl({
     map,
     sub,
     disp,
-    authKey: api.kim_nwp_auth_key,
+    authKey: credential,
   })
   return `${api.kim_grid_url}?${params.toString()}`
 }

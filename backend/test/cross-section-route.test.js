@@ -177,7 +177,7 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
   const tmfc = '2026072200'
   const entries = []
 
-  for (const hf of [9, 12, 30]) {
+  for (const hf of [9, 12]) {
     const grid = buildKimNwpGrid({
       model: KIM_NWP_MODEL,
       tmfc,
@@ -205,14 +205,14 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
 
   const ktgTmfc = '2026072206'
   const ktgHours = [
-    { hf: 0, validTime: '2026-07-22T06:00:00.000Z' },
-    { hf: 3, validTime: '2026-07-22T09:00:00.000Z' },
     { hf: 6, validTime: '2026-07-22T12:00:00.000Z' },
+    { hf: 9, validTime: '2026-07-22T15:00:00.000Z' },
+    { hf: 12, validTime: '2026-07-22T18:00:00.000Z' },
   ]
   writeKtgIndex(root, {
     type: 'ktg_index',
     tmfc: ktgTmfc,
-    hf: 0,
+    hf: 6,
     validTime: ktgHours[0].validTime,
     hours: ktgHours,
     altLevelsFt: [3000],
@@ -221,14 +221,14 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
   writeKtgLatest(root, {
     type: 'ktg_latest',
     tmfc: ktgTmfc,
-    hf: 0,
+    hf: 6,
     validTime: ktgHours[0].validTime,
     updated_at: '2026-07-22T06:30:00.000Z',
   })
   writeKtgCoords({
     root,
     tmfc: ktgTmfc,
-    hf: 3,
+    hf: 6,
     coords: { type: 'ktg_coords', ny: 1, nx: 1, lat: [37], lon: [126] },
   })
   writeKtgGrid({
@@ -236,8 +236,8 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
     grid: {
       type: 'ktg_grid',
       tmfc: ktgTmfc,
-      hf: 3,
-      validTime: ktgHours[1].validTime,
+      hf: 6,
+      validTime: ktgHours[0].validTime,
       altFt: 3000,
       grid: { ny: 1, nx: 1 },
       ktg: [0.5],
@@ -259,8 +259,8 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
     })
     assert.deepEqual(result.turbulence.run, {
       tmfc: ktgTmfc,
-      hf: 3,
-      validTime: '2026-07-22T09:00:00.000Z',
+      hf: 6,
+      validTime: '2026-07-22T12:00:00.000Z',
     })
     assert.equal(result.turbulence.available, true)
   } finally {

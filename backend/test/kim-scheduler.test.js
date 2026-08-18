@@ -28,6 +28,19 @@ test('a non-blocked API Hub key still runs its collection', async () => {
   assert.deepEqual(result, { saved: true })
 })
 
+test('KIM scheduler jobs do not preflight-block a valid 18Z aviation-key run', async () => {
+  let ran = false
+  const result = await runWithLock('kim_surface_wind', async () => {
+    ran = true
+    return { selectedCredential: 'aviation-key' }
+  }, {
+    apiHubCategories: [],
+    isBlocked: (category) => category === 'kim_nwp',
+  })
+  assert.deepEqual(result, { selectedCredential: 'aviation-key' })
+  assert.equal(ran, true)
+})
+
 test('KIM NWP scheduler uses UTC for synoptic release retry windows', () => {
   const calls = []
   const fakeScheduler = {

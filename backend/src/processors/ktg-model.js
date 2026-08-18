@@ -1,6 +1,6 @@
 export const KTG_FILL_VALUE = 1e30
 export const KTG_ALT_LEVELS_FT = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
-export const KTG_FORECAST_HOURS = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30]
+export const KTG_FORECAST_HOURS = [6, 9, 12]
 export const KTG_SYNOPTIC_HOURS = [0, 6, 12, 18]
 
 export function ktgIntensity(ktg) {
