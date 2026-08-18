@@ -36,6 +36,8 @@
 | 7 | 게스트는 **경로만** 저장한다 |
 | 8 | 기존 저장분은 **지운다** |
 | 9 | 기능을 어떻게 발견하게 할지만 고민한다 |
+| 10 | 여는 시각은 **갈라지는 버튼**(`열기 ▾`)으로 고른다. 기본값은 상황에 맞게 자동 — ETD가 안 지났으면 저장된 시각, 지났으면 현재 시각 |
+| 11 | 알림 행이 **원본 브리핑을 가리킨다**. 목록에 `알림 감시중` 칩을 띄우고 삭제 안내를 정직하게 한다 |
 
 **결정 4·5·2의 결과:** 브리핑을 다듬을 때마다 새 항목이 쌓이고 자동 정리가 없으므로 5칸이 금방 찬다. 상한에 닿으면 **어느 것을 지울지 사용자가 고르게** 안내한다(조용히 실패하지 않는다).
 
@@ -525,20 +527,24 @@ git commit -m "feat(briefing): open a saved briefing at a chosen departure time"
 - **개인설정** — `PersonalSettingsContent`를 그대로 렌더
 - 로그아웃
 
-여는 시각 선택(결정 1):
+여는 시각 선택(결정 1·10): **갈라지는 버튼 하나**로 만든다. 나란한 버튼 두 개는 5줄이면 10개가 되고, 둘이 비슷하게 생겨 잘못 누르기 쉽다.
 
-```jsx
-<Button onClick={() => onOpenBriefing(entry, { etd: nowIso() })}>지금 시각으로 열기</Button>
-<Button
-  onClick={() => onOpenBriefing(entry)}
-  disabled={isSavedEtdPast(entry)}
-  title={isSavedEtdPast(entry) ? '저장된 출발시각이 지나 예보가 없습니다' : undefined}
->저장된 시각으로 열기</Button>
-```
+- 주 버튼 `열기` — **기본값이 상황에 맞게 정해진다.** ETD가 안 지났으면 저장된 시각, 지났으면 현재 시각
+- 화살표 메뉴 — `지금 시각으로 열기` / `저장된 시각으로 열기 (0200Z)`. 실제 시각을 문구에 적어 무엇을 고르는지 보이게 한다
+- ETD가 지났으면 메뉴의 `저장된 시각으로 열기`를 잠그되 **이유를 붙인다** — `저장된 출발시각이 지나 예보가 없습니다`. 이유 없이 회색이면 고장으로 읽힌다
 
-`disabled`에 `title`을 반드시 붙인다 — 왜 못 누르는지 보이지 않으면 고장으로 읽힌다.
+Fluent의 `Menu`/`MenuButton`을 쓴다(`RouteBriefingPanel.jsx`의 `경로` 메뉴가 같은 패턴).
 
-목록이 비면: `저장한 브리핑이 없습니다 — 브리핑 화면에서 [브리핑 저장]을 누르면 여기에 담깁니다`. 5개가 차면 그 사실과 지우는 방법을 한 줄로 안내한다.
+지난 브리핑 줄에는 칩을 단다: `출발시각 지남`. 지난 시각으로 열면 브리핑이 **조용히 빈 값으로** 나오기 때문에(과거 예보가 없다) 오류보다 위험하다.
+
+알림이 걸린 브리핑에는 칩을 단다: `알림 감시중` (Task 7에서 연결).
+
+목록이 비면: `저장한 브리핑이 없습니다 — 브리핑 화면에서 [브리핑 저장]을 누르면 여기에 담깁니다`.
+
+5개가 차면 **목록 위에 미리** 안내한다 — 저장하려다 거부당한 뒤에 아는 것보다 낫다: `5개까지 저장할 수 있습니다. 새로 저장하려면 하나를 지우세요`.
+
+삭제는 확인을 받는다. **알림이 걸린 브리핑이면 그 사실을 확인 문구에 적는다** — 알림은 등록 시점의 복제본을 감시하므로 원본을 지워도 계속 돈다. 사용자는 "지웠으니 알림도 끝"이라고 읽는다:
+`이 브리핑으로 등록한 비행 알림은 계속 감시합니다. 알림도 멈추려면 비행 알림에서 따로 지우세요.`
 
 - [ ] **Step 2: 로그인 버튼을 계정 패널로 잇는다**
 
@@ -599,19 +605,51 @@ git commit -m "feat(account): gather saved briefings and personal settings in on
 
 `경로 템플릿` → `감시할 브리핑`. `aria-label`도 함께. 목록이 비면 `저장한 브리핑이 없습니다 — 브리핑 화면에서 먼저 저장하세요`.
 
-- [ ] **Step 3: 빌드와 테스트**
+- [ ] **Step 3: 알림 행이 원본 브리핑을 가리키게 한다 (결정 11)**
+
+**Files:** `backend/src/me/alerts.js`, `backend/test/alert-active.test.js`(또는 새 테스트 파일)
+
+알림 등록은 템플릿 payload를 그대로 복제한다(`me/alerts.js:62`). 복제본에 원본 id를 심는다 — 컬럼을 새로 만들지 않는다.
+
+먼저 실패하는 테스트를 쓴다.
+
+```js
+test('POST /alerts: 감시 행이 원본 브리핑을 가리킨다', () => {
+  // 브리핑을 템플릿으로 등록하면 감시 행 payload에 sourceBriefingId가 템플릿 id로 들어가야 한다.
+})
+```
+
+그다음 등록 핸들러에서 payload를 심어 넣는다.
+
+```js
+    // 감시 행은 등록 시점의 복제본이다. 원본을 가리켜 두면 목록에 '알림 감시중'을 띄우고
+    // 삭제할 때 정직하게 안내할 수 있다. 원본이 지워져도 감시는 계속 돈다(복제라 독립).
+    const tplSnapshot = (() => { try { return JSON.parse(tpl.payload) } catch { return {} } })()
+    const payload = JSON.stringify({ ...tplSnapshot, sourceBriefingId: templateId })
+```
+
+`INSERT`의 `tpl.payload` 자리에 `payload`를 넣는다.
+
+- [ ] **Step 4: 목록에 감시 여부를 표시한다**
+
+`usePersonalSettings`가 이미 `flights`(등록된 알림)를 들고 있다. 계정 패널이 `flights`의 `sourceBriefingId` 집합을 받아 해당 브리핑 줄에 `알림 감시중` 칩을 띄운다.
+
+`GET /alerts` 응답에 `sourceBriefingId`를 포함시킨다 — 지금은 `id, name, etd, eta, alert_start_min_before_etd`만 준다(`me/alerts.js:70`). payload에서 꺼내 더한다.
+
+- [ ] **Step 5: 빌드와 테스트**
 
 ```bash
+npm --prefix backend test
 npm --prefix frontend run build
 npm --prefix frontend test
 ```
 
-- [ ] **Step 4: 커밋**
+- [ ] **Step 6: 커밋**
 
 ```bash
 git status --short
-git add frontend/src/features/personal/usePersonalSettings.js frontend/src/features/personal/PersonalSettingsPanel.jsx
-git commit -m "feat(alerts): watch saved briefings instead of routes"
+git add frontend/src/features/personal/usePersonalSettings.js frontend/src/features/personal/PersonalSettingsPanel.jsx backend/src/me/alerts.js backend/test/
+git commit -m "feat(alerts): watch saved briefings and point back at the source"
 ```
 
 ---
@@ -744,5 +782,5 @@ git commit -m "docs: record stage 3 gate results"
 - **덮어쓰기 저장** — 결정 2에 따라 항상 새 항목.
 - **자동 삭제** — 결정 5에 따라 만들지 않는다.
 - **게스트 브리핑 저장** — 결정 7에 따라 경로만.
-- **알림과 원본 브리핑의 연동** — 알림은 등록 시점의 복제본을 감시한다. 원본을 고쳐도 따라가지 않는다. 4단계에서 알림 규칙을 손볼 때 함께 본다.
+- **알림이 원본 브리핑의 수정을 따라가게 하는 것** — 알림은 등록 시점의 복제본을 감시한다. 원본을 고쳐도 따라가지 않는다. `sourceBriefingId`로 관계만 남기고, 따라가게 할지는 4단계에서 알림 규칙을 손볼 때 함께 본다.
 - **저장 형식 변경** — `kind` 한 필드만. 새 테이블·새 컬럼 금지.
