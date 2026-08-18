@@ -112,6 +112,26 @@ Current incremental keys:
 
 ## PM2
 
+PM2 owns only the long-lived API server and scheduler. Every satellite collection
+(IR/FOG, CI/CTPS, and VI006 visible) runs in one short-lived child Node process.
+The child exits after it atomically publishes its result, which releases h5wasm,
+HDF5, and image-processing memory without restarting the API server. The queue
+permits only one satellite child at a time on the 2 GiB VM.
+
+During a collection, inspect the parent and temporary child separately:
+
+```bash
+pm2 status projectamo-backend
+pgrep -af 'backend/src/satellite/worker-entry.js' || true
+ps -o pid,ppid,rss,etimes,args -C node
+curl -fsS http://127.0.0.1:3001/api/snapshot-meta
+```
+
+One worker is expected only while a satellite collection is active; after it
+finishes, `pgrep` must be empty. A PM2 memory restart is not the primary remedy
+for satellite memory growth: investigate a worker that remains alive or a failed
+worker cleanup instead.
+
 Recommended start command:
 
 ```bash
@@ -168,6 +188,8 @@ location /api/ {
 - Verify meta JSON returns `no-cache`
 - Verify `SIGWX_LOW` history keeps at least 2 days of snapshots
 - Verify `pm2 restart` preserves service using existing `latest.json`
+- During one normal and one visible satellite collection, verify at most one
+  `worker-entry.js` child exists and that it disappears afterward
 
 ## Stale Data Policy
 

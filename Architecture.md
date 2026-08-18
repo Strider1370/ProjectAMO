@@ -189,6 +189,7 @@ ProjectAMO/
 - `backend/src/admin/router.js` -> 관리자 스냅샷 저장·점검·시연 시작·종료 HTTP adapter. 데이터 교체와 시각 토글을 따로 호출하는 우회 interface는 제공하지 않는다.
 - `backend/src/parsers/satellite-parser.js` + `lib/{ctps-grid,satellite-ko-grid}.js` -> shared GK2A NetCDF validation, CTPS geographic lookup, and KO display resampling contract.
 - `backend/src/processors/convective-satellite-{model,store,processor}.js` -> CI/CTPS conversion, atomic independent satellite/convective asset publication, retention, and last-good preservation.
+- `backend/src/satellite/{worker-protocol,worker-jobs,worker-entry,worker-runner,work-queue}.js` -> one-shot, serialized IR/FOG, CI/CTPS, and VI006 satellite workers. The long-lived scheduler sends a constrained IPC job, retains locks/cancellation/follow-up timing, and never loads the satellite h5wasm/sharp processing modules itself.
 - `backend/server.js` -> serves convective metadata and an exact-frame CTPS point API while blocking the server-only CTPS binary.
 
 - `backend/src/parsers/radar-qcd-parser.js` -> reads KMA radar-site QCD volumes (CF-Radial v2.2 HDF5, ragged `ray_n_gates`/`ray_start_index` layout) via h5wasm, and decides whether a file's own `time_coverage_start` belongs in the requested 5-minute bucket. Throws on inconsistent ragged indices rather than silently returning fewer sweeps.
