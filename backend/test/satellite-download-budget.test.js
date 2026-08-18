@@ -148,6 +148,40 @@ test('a metadata rename failure rolls back a replaced same-timestamp WebP', asyn
   assert.deepEqual(JSON.parse(fs.readFileSync(metaFile, 'utf8')), oldMeta)
 })
 
+test('non-current modes restore their target frame when metadata publication fails', async (t) => {
+  for (const { mode, fogAttempts } of [
+    { mode: 'backfill', fogAttempts: 0 },
+    { mode: 'fog_retry', fogAttempts: 1 },
+  ]) {
+    await t.test(mode, async () => {
+      const dataRoot = root(), satelliteDir = path.join(dataRoot, 'satellite')
+      fs.mkdirSync(satelliteDir, { recursive: true })
+      const tm = '202608182310', requestTm = '202608181410', filename = `sat_korea_${tm}.webp`
+      const oldMeta = { type: 'SATELLITE', render_version: 'fog-composite-v3-kst-tm-webp', tm, request_tm_utc: requestTm, frames: [{ tm, request_tm_utc: requestTm, path: `/data/satellite/${filename}`, fogPixelCount: null, fogAttempts }] }
+      const webp = path.join(satelliteDir, filename), metaFile = path.join(satelliteDir, 'sat_meta.json')
+      fs.writeFileSync(webp, 'last-good-webp')
+      fs.writeFileSync(metaFile, JSON.stringify(oldMeta))
+      const interruptedFs = { ...fs, renameSync(temp, target) {
+        if (target === metaFile) throw new Error(`forced ${mode} metadata rename failure`)
+        return fs.renameSync(temp, target)
+      } }
+
+      await assert.rejects(processSatellite({
+        now: new Date('2026-08-18T14:10:00.000Z'), mode, frame: { requestTm, displayTm: tm, ...(mode === 'fog_retry' ? { fogAttempts } : {}) },
+        deps: {
+          config: normalConfig(dataRoot), fs: interruptedFs, collectConvective: false,
+          renderFrame: async () => {
+            fs.writeFileSync(webp, 'new-webp')
+            return { tm, request_tm_utc: requestTm, path: `/data/satellite/${filename}`, fogPixelCount: 8 }
+          },
+        },
+      }), /forced .* metadata rename failure/)
+      assert.equal(fs.readFileSync(webp, 'utf8'), 'last-good-webp')
+      assert.deepEqual(JSON.parse(fs.readFileSync(metaFile, 'utf8')), oldMeta)
+    })
+  }
+})
+
 test('current mode renders only latest and emits every other missing frame as backfill', async () => {
   const dataRoot = root(), rendered = []
   const work = await processSatellite({

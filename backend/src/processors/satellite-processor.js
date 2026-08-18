@@ -207,13 +207,22 @@ export async function processSatellite({ now = new Date(), mode = 'current', fra
     return { result: { type: 'satellite', saved: false, reason: 'already-collected' }, followUps }
   }
   if (mode === 'fog_retry' && !needsFogRefetch(previous)) return { result: { type: 'satellite', saved: false, reason: 'already-collected' }, followUps }
-  const rendered = await renderFrame({ ...state, requestTm: target.requestTm, displayTm: target.displayTm, deps })
-  if (!rendered) return { result: { type: 'satellite', saved: false, reason: 'no data available' }, followUps }
-  const saved = withFogAttempt(rendered, previous)
-  state.existingFrames.set(target.displayTm, saved)
-  const meta = publishMeta({ ...state, latestFrameSpec, frameSpecs, updatedAt: activeNow })
-  if (mode === 'fog_retry' && needsFogRefetch(saved)) followUps.push(followUp('fog_retry', activeNow, { ...target, fogAttempts: saved.fogAttempts || 0 }, FOG_RETRY_DELAY_MS))
-  return { result: { type: 'satellite', saved: true, frameCount: meta.frames.length, tm: meta.tm, request_tm_utc: meta.request_tm_utc }, followUps }
+  const snapshots = snapshotFiles(state.fsImpl, state.satDir, [target])
+  try {
+    const rendered = await renderFrame({ ...state, requestTm: target.requestTm, displayTm: target.displayTm, deps })
+    if (!rendered) {
+      restoreFiles(state.fsImpl, snapshots)
+      return { result: { type: 'satellite', saved: false, reason: 'no data available' }, followUps }
+    }
+    const saved = withFogAttempt(rendered, previous)
+    state.existingFrames.set(target.displayTm, saved)
+    const meta = publishMeta({ ...state, latestFrameSpec, frameSpecs, updatedAt: activeNow })
+    if (mode === 'fog_retry' && needsFogRefetch(saved)) followUps.push(followUp('fog_retry', activeNow, { ...target, fogAttempts: saved.fogAttempts || 0 }, FOG_RETRY_DELAY_MS))
+    return { result: { type: 'satellite', saved: true, frameCount: meta.frames.length, tm: meta.tm, request_tm_utc: meta.request_tm_utc }, followUps }
+  } catch (error) {
+    restoreFiles(state.fsImpl, snapshots)
+    throw error
+  }
 }
 
 // Compatibility for direct callers until scheduler wiring moves to the worker queue.
