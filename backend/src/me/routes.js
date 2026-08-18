@@ -5,7 +5,18 @@ import { getDb } from '../db/index.js'
 import { requireAuth } from '../auth/middleware.js'
 
 const MAX_ROUTES = 100
+// 브리핑은 고도까지 확정된 한 번의 비행이라 몇 개면 충분하다. 자동 삭제가 없고(같은 노선을
+// 반복 비행하는 사용자가 많다) 수정할 때마다 새 항목이 쌓이므로 낮게 둔다.
+export const MAX_BRIEFINGS = 5
 const MAX_PAYLOAD = 20000 // snapshot JSON 상한(웨이포인트 폭주 방지)
+
+// kind는 payload 안에만 있다(컬럼을 새로 만들지 않는다). 사용자당 최대 100행이라 훑어 세도
+// 부담이 없다. 깨진 payload는 건너뛴다 — 여기서 던지면 저장 자체가 막힌다.
+export function countSavedBriefings(db, userId) {
+  return db.prepare('SELECT payload FROM routes WHERE user_id = ?').all(userId)
+    .filter((row) => { try { return JSON.parse(row.payload).kind === 'briefing' } catch { return false } })
+    .length
+}
 
 // snapshot = 프론트 저장 스냅샷(routeForm/vfrWaypoints/cruiseAltitudeFt/alternateAirport/etd 등). 유연 통과.
 const createSchema = z.object({
@@ -44,6 +55,9 @@ export function createRoutesRouter({ db = null } = {}) {
     const db2 = database()
     const { n } = db2.prepare('SELECT COUNT(*) n FROM routes WHERE user_id = ?').get(req.session.userId)
     if (n >= MAX_ROUTES) return res.status(400).json({ error: 'too_many_routes' })
+    if (parsed.data.snapshot?.kind === 'briefing' && countSavedBriefings(db2, req.session.userId) >= MAX_BRIEFINGS) {
+      return res.status(400).json({ error: 'too_many_briefings' })
+    }
 
     const now = new Date().toISOString()
     const name = parsed.data.name || '이름 없는 경로'
