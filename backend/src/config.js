@@ -244,6 +244,7 @@ export const satellite = {
   delay_minutes: 20,
   max_frames: 18,
   timeout_ms: 30000,
+  worker_timeout_ms: 180_000,
 }
 
 export const flight_category = {
