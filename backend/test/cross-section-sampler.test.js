@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { sampleGridAt, buildCrossSection } from '../src/briefing/cross-section-sampler.js'
+import { sampleGridAt, buildCrossSection, buildKtgCrossSection } from '../src/briefing/cross-section-sampler.js'
 
 const grid2x2 = { nx: 2, ny: 2, lonMin: 0, lonMax: 1, latMin: 0, latMax: 1 }
 
@@ -46,4 +46,15 @@ test('buildCrossSection assembles levels with altFt from hgt and per-variable co
 test('buildCrossSection reports unavailable CLD without finite samples', () => {
   const cs = buildCrossSection({ axis: { samples: [] }, run: {}, levelIds: ['500hPa'], loadLevel: () => ({ pressure: 500, values: [{ distanceNm: 0, cld: Number.NaN }] }) })
   assert.deepEqual(cs.coverage.byVariable.cld, { available: false, topPressure: null, threshold: .6, unit: '1' })
+})
+
+test('buildKtgCrossSection uses the selected source hour for each route sample', () => {
+  const result = buildKtgCrossSection({
+    axis: { samples: [{ lon: 0, lat: 0, distanceNm: 0 }, { lon: 1, lat: 1, distanceNm: 10 }] },
+    coords: { lat: [0, 1], lon: [0, 1] },
+    altLevelsFt: [3000],
+    sourceForSample: (sample) => sample.distanceNm < 5 ? 6 : 9,
+    loadAltGrid: (_altFt, hf) => ({ ktg: hf === 6 ? [1, 1] : [9, 9] }),
+  })
+  assert.deepEqual(result.levels[0].values.map((value) => [value.ktg, value.sourceHf]), [[1, 6], [9, 9]])
 })

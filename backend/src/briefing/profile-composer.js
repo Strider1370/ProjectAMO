@@ -482,6 +482,7 @@ export function buildProfileMarkers(payload) {
       const label = String(marker.label ?? marker.id ?? '').trim()
       if (!label) return null
       return {
+        id: marker.id == null ? null : String(marker.id),
         label,
         distanceNm: distanceAlongRouteNm(routeCoordinates, coordinate),
         kind: marker.kind ?? defaultMarkerKind(index, markerInput),

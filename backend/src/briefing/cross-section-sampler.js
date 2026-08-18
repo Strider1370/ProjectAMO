@@ -48,6 +48,7 @@ export function buildCrossSection({ axis, run, levelIds, loadLevel }) {
 
     const values = sampledValues.map((value) => ({
       distanceNm: value.distanceNm,
+      sourceHf: Number.isFinite(value.sourceHf) ? value.sourceHf : null,
       altFt: nullableFt(value.hgt),
       t: nullableC(value.T),
       moistureSpread: null,
@@ -100,7 +101,7 @@ function nearestKtgIndex(coordsLat, coordsLon, targetLat, targetLon) {
 // Builds turbulence cross-section from pre-loaded KTG coords + per-altitude grids.
 // coords: { lat[], lon[], ny, nx }
 // loadAltGrid: (altFt) => { ktg: float[] } | null
-export function buildKtgCrossSection({ axis, coords, altLevelsFt, loadAltGrid }) {
+export function buildKtgCrossSection({ axis, coords, altLevelsFt, loadAltGrid, sourceForSample = null }) {
   if (!coords || !Array.isArray(coords.lat) || !altLevelsFt?.length) {
     return { available: false }
   }
@@ -112,14 +113,20 @@ export function buildKtgCrossSection({ axis, coords, altLevelsFt, loadAltGrid })
 
   const levels = []
   for (const altFt of altLevelsFt) {
-    const gridData = loadAltGrid(altFt)
-    if (!gridData?.ktg) continue
+    const gridByHf = new Map()
+    const gridFor = (sample) => {
+      const hf = sourceForSample?.(sample)
+      const key = Number.isFinite(hf) ? hf : 'default'
+      if (!gridByHf.has(key)) gridByHf.set(key, { hf: Number.isFinite(hf) ? hf : null, data: loadAltGrid(altFt, hf) })
+      return gridByHf.get(key)
+    }
     const values = samples.map((s, si) => {
       const idx = nearestIdx[si]
-      const ktg = idx >= 0 ? (gridData.ktg[idx] ?? null) : null
-      return { distanceNm: s.distanceNm, ktg }
+      const grid = gridFor(s)
+      const ktg = idx >= 0 ? (grid.data?.ktg?.[idx] ?? null) : null
+      return { distanceNm: s.distanceNm, ktg, sourceHf: grid.hf }
     })
-    levels.push({ altFt, values })
+    if (values.some((value) => Number.isFinite(value.ktg))) levels.push({ altFt, values })
   }
 
   return { available: levels.length > 0, levels }

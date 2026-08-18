@@ -17,6 +17,7 @@ import {
   writeKtgLatest,
 } from './ktg-store.js'
 import { selectNearestForecastHour } from './kim-forecast-hour.js'
+import { selectKimRunCredential } from './kim-run-credential.js'
 
 const TYPE = 'ktg'
 const SYNOPTIC_HOURS = [0, 6, 12, 18]
@@ -43,9 +44,22 @@ export function resolveKtgCandidates(now = new Date()) {
   })
 }
 
-async function fetchKtgFile({ tmfc, ef }) {
+export function buildKtgUrl({ tmfc, ef, credential = config.api.kim_nwp_auth_key }) {
   const efStr = String(Number(ef)).padStart(2, '0')
-  const url = `https://apihub.kma.go.kr/api/typ01/url/amo_nwp_file_down.php?tmfc=${tmfc}&ef=${efStr}&authKey=${config.api.kim_nwp_auth_key}`
+  return `https://apihub.kma.go.kr/api/typ01/url/amo_nwp_file_down.php?tmfc=${tmfc}&ef=${efStr}&authKey=${credential}`
+}
+
+export function selectKtgRunCredential(tmfc) {
+  return selectKimRunCredential({
+    tmfc,
+    kimCredential: config.api.kim_nwp_auth_key,
+    aviationCredential: config.api.auth_key,
+  })
+}
+
+async function fetchKtgFile({ tmfc, ef, credential }) {
+  const efStr = String(Number(ef)).padStart(2, '0')
+  const url = buildKtgUrl({ tmfc, ef, credential })
   const timeoutMs = config.ktg?.timeout_ms ?? 60000
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -74,8 +88,8 @@ function parseKtgNetCdf(buffer) {
 
 // Fetch+parse+write one forecast hour (coords + per-altitude grids).
 // Returns { hf, validTime, altLevelsFt } or throws on fetch/parse failure.
-async function collectKtgHf({ root, tmfc, hf, fetchedAt }) {
-  const buffer = await fetchKtgFile({ tmfc, ef: hf })
+async function collectKtgHf({ root, tmfc, hf, fetchedAt, credential }) {
+  const buffer = await fetchKtgFile({ tmfc, ef: hf, credential })
   const { lat, lon, alt, ktg, nz, ny, nx } = parseKtgNetCdf(buffer)
   const validTime = addForecastHoursKtg(tmfc, hf)
 
@@ -99,6 +113,7 @@ export async function process() {
   const single = config.ktg?.single_forecast !== false
 
   for (const tmfc of candidates) {
+    const credential = selectKtgRunCredential(tmfc)
     // single: 최근 1스텝만. multi: 미래예보 전체 hf.
     const hfs = single
       ? [selectNearestForecastHour({ tmfc, nowMs: Date.now(), candidateHours: forecastHours })]
@@ -116,7 +131,7 @@ export async function process() {
         continue
       }
       try {
-        const r = await collectKtgHf({ root, tmfc, hf, fetchedAt })
+        const r = await collectKtgHf({ root, tmfc, hf, fetchedAt, credential })
         collected.push({ hf: r.hf, validTime: r.validTime })
         altLevelsFt = r.altLevelsFt
         fetchedAny = true

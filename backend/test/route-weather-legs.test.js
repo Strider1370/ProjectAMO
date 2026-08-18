@@ -169,3 +169,66 @@ test('NOTAM 칩은 실제 저촉만 warn으로 낸다', () => {
   assert.deepEqual(effects({ conflict: false, comparisonStatus: 'warn' }), ['info'], '비교는 됐지만 저촉 아님 → 정보')
   assert.deepEqual(effects({ conflict: false, comparisonStatus: 'undetermined' }), ['undetermined'])
 })
+
+// 절차 자료는 한국 공항에만 있다. 해외 목적지는 접근절차 그룹이 안 만들어져 NAVLOG 마지막
+// 줄이 목적지가 아니라 마지막 항로점이 됐다 — 도착지 기상이 제일 중요한 노선에서.
+test('buildRouteWeatherLegs: 절차가 없으면 출발·도착 공항을 양 끝에 잇는다', () => {
+  const result = buildRouteWeatherLegs({
+    routeModel: {
+      enRouteSegments: [
+        { id: 'A-B', fromFix: 'A', toFix: 'B', startNm: 5, endNm: 10, alignmentStatus: 'aligned' },
+      ],
+    },
+    routeGeometry: { type: 'LineString', coordinates: [[126, 37], [127, 37], [128, 37]] },
+    routeMarkers: [
+      { label: 'RKSI', lon: 126, lat: 37, kind: 'AIRPORT' },
+      { label: 'RJBB', lon: 128, lat: 37, kind: 'AIRPORT' },
+    ],
+    procedureContext: null,
+    weatherAxis: axis,
+    selectedCruiseAltitudeFt: 9000,
+  })
+
+  assert.equal(result.legs.at(0).from, 'RKSI', '첫 줄은 출발공항에서 시작해야 한다')
+  assert.equal(result.legs.at(-1).to, 'RJBB', '마지막 줄은 목적지로 끝나야 한다')
+  assert.ok(result.legs.every((leg, index, all) => index === 0 || leg.startNm >= all[index - 1].startNm), '거리 순으로 정렬돼야 한다')
+})
+
+test('buildRouteWeatherLegs: 구간이 없으면 공항 줄도 만들지 않는다', () => {
+  const result = buildRouteWeatherLegs({
+    routeModel: { enRouteSegments: [] },
+    routeGeometry: { type: 'LineString', coordinates: [[126, 37], [128, 37]] },
+    routeMarkers: [
+      { label: 'RKSI', lon: 126, lat: 37, kind: 'AIRPORT' },
+      { label: 'RJBB', lon: 128, lat: 37, kind: 'AIRPORT' },
+    ],
+    weatherAxis: axis,
+    selectedCruiseAltitudeFt: 9000,
+  })
+  assert.deepEqual(result.legs, [])
+})
+
+test('buildRouteWeatherLegs: SID가 출발공항을 이미 품었으면 공항 줄을 또 만들지 않는다', () => {
+  const result = buildRouteWeatherLegs({
+    routeModel: {
+      enRouteSegments: [
+        { id: 'A-B', fromFix: 'A', toFix: 'B', startNm: 5, endNm: 10, alignmentStatus: 'aligned' },
+      ],
+    },
+    routeGeometry: { type: 'LineString', coordinates: [[126, 37], [126.5, 37], [127, 37], [128, 37]] },
+    routeMarkers: [
+      { label: 'RKSI', lon: 126, lat: 37, kind: 'AIRPORT' },
+      { label: 'RJBB', lon: 128, lat: 37, kind: 'AIRPORT' },
+    ],
+    procedureContext: {
+      procedures: [{ type: 'SID', id: 'SID1', fixes: [{ id: 'A', lon: 126.5, lat: 37 }] }],
+    },
+    weatherAxis: axis,
+    selectedCruiseAltitudeFt: 9000,
+  })
+
+  const sidGroup = result.procedures.find((group) => group.type === 'SID')
+  assert.equal(sidGroup?.from, 'RKSI', 'SID 그룹이 출발공항을 품는다')
+  assert.equal(result.legs.filter((leg) => leg.from === 'RKSI').length, 0, '그룹이 품었으면 별도 줄을 만들지 않는다')
+  assert.equal(result.legs.at(-1).to, 'RJBB', '도착공항은 절차가 없으니 여전히 붙는다')
+})

@@ -9,8 +9,11 @@ import { routeDistanceNm } from './lib/haversine.js'
 import { computeEtaIso } from '../route-briefing/lib/etaCalc.js'
 import { formatZAndKst, isoToLocalInputValue, localInputToIso } from './lib/timeFormat.js'
 
-const VFR_PRESET = { ceilingFt: 1000, visibilityM: 5000 }
-const IFR_PRESET = { ceilingFt: 500, visibilityM: 1600 }
+// 관제권 VFR 최저치(운고 1500ft·시정 5000m). flight-category.js의 IFR 경계와 같은 값이라
+// 이 프리셋을 쓰면 "VFR로 못 가는 상태"가 곧 내 미니마 미만이 된다.
+const VFR_PRESET = { ceilingFt: 1500, visibilityM: 5000 }
+// CAT-I 정밀접근 최저치(DH 200ft · RVR 550m).
+const CAT1_PRESET = { ceilingFt: 200, visibilityM: 550 }
 const WATCH_OPTIONS = [
   { label: '2시간 전', minutes: 120 },
   { label: '3시간 전', minutes: 180 },
@@ -86,8 +89,8 @@ function MinimaTab({ s, minima, saveMinima }) {
         </label>
       </div>
       <div className={s.presetRow}>
-        <Button size="small" onClick={() => applyPreset(VFR_PRESET)}>VFR (1000ft/5000m)</Button>
-        <Button size="small" onClick={() => applyPreset(IFR_PRESET)}>IFR (500ft/1600m)</Button>
+        <Button size="small" onClick={() => applyPreset(VFR_PRESET)}>VFR (1500ft/5000m)</Button>
+        <Button size="small" onClick={() => applyPreset(CAT1_PRESET)}>CAT-I (200ft/550m)</Button>
       </div>
       {msg && (
         <MessageBar intent={msg.intent}><MessageBarBody>{msg.text}</MessageBarBody></MessageBar>

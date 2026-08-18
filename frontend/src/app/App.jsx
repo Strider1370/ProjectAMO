@@ -13,7 +13,6 @@ import UpdatesModal from '../features/about/UpdatesModal.jsx'
 import SearchPalette from '../features/search/SearchPalette.jsx'
 import useTour from '../features/onboarding/useTour.js'
 import TourOverlay from '../features/onboarding/TourOverlay.jsx'
-import FlightAlertDetail from '../features/notifications/FlightAlertDetail.jsx'
 import { listSavedRoutes } from '../features/route-briefing/lib/routeStore.js'
 import { buildSearchCatalog } from '../features/map/layerActions.js'
 import { mergeAdvisoryPayloads, mergeAirportPayloads } from '../api/weatherApi.js'
@@ -146,6 +145,23 @@ function MainAppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weatherData])
 
+  // 딥링크 ?flight=<routeId> → 그 비행의 브리핑으로 직행. 변경점 다이얼로그를 한 겹 거치지
+  // 않는다 — 알림을 받고 온 사람도, 알림 없이 저장 경로를 보러 온 사람도 같은 화면에 닿아야 한다.
+  useEffect(() => {
+    if (deeplinkFlightId == null) return
+    const id = deeplinkFlightId
+    setDeeplinkFlightId(null)
+    setActivePanel('route-check')
+    ;(async () => {
+      try {
+        const routes = await listSavedRoutes()
+        const route = routes.find((r) => r.id === id)
+        if (route) mapRef.current?.loadRouteBriefing?.(route)
+      } catch { /* best-effort: 경로 로드 실패해도 패널은 열림 */ }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deeplinkFlightId])
+
   // Cmd/Ctrl+K → 검색 팔레트 (사이드바 검색 아이콘과 동일).
   useEffect(() => {
     function onKey(e) {
@@ -275,22 +291,6 @@ function MainAppShell() {
       <div className="utc-bar">{formatTimeByTz(nowMs, tz)}</div>
       <ExitOnDoubleBack />
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
-      {deeplinkFlightId != null && (
-        <FlightAlertDetail
-          flightId={deeplinkFlightId}
-          onClose={() => setDeeplinkFlightId(null)}
-          onOpenRoute={async () => {
-            const id = deeplinkFlightId
-            setDeeplinkFlightId(null)
-            setActivePanel('route-check')
-            try {
-              const routes = await listSavedRoutes()
-              const route = routes.find((r) => r.id === id)
-              if (route) mapRef.current?.loadRouteBriefing?.(route)
-            } catch { /* best-effort: 경로 로드 실패해도 패널은 열림 */ }
-          }}
-        />
-      )}
       {activePanel === 'settings' && (
         <SettingsModal onClose={() => togglePanel('settings')} />
       )}

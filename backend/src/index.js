@@ -128,7 +128,7 @@ function scheduleKimNwpJob(scheduler = cron, enabled = config.kim_nwp?.enabled !
   if (!enabled) return null
   return scheduler.schedule(
     config.schedule.kim_surface_wind_interval,
-    () => runWithLock("kim_surface_wind", kimSurfaceWindProcessor.process, KIM_NWP_KEY),
+    () => runWithLock("kim_surface_wind", kimSurfaceWindProcessor.process),
     KIM_NWP_CRON_OPTIONS,
   )
 }
@@ -289,7 +289,7 @@ async function main() {
   }
   cron.schedule(config.schedule.rainviewer_interval, () => runWithLock("rainviewer", rainviewerProcessor.process));
   scheduleKimNwpJob();
-  cron.schedule(config.schedule.ktg_interval, () => runWithLock('ktg', ktgProcessor.process, KIM_NWP_KEY), KIM_NWP_CRON_OPTIONS);
+  cron.schedule(config.schedule.ktg_interval, () => runWithLock('ktg', ktgProcessor.process), KIM_NWP_CRON_OPTIONS);
   // 발표 시각이 KST 기준이라 서버 TZ와 무관하게 Asia/Seoul로 고정.
   cron.schedule(config.schedule.ground_forecast_interval, () => runWithLock("ground_forecast", groundForecastProcessor.process, AVIATION_KEY), { timezone: 'Asia/Seoul' });
   cron.schedule(config.schedule.environment_interval, () => runWithLock("environment", environmentProcessor.process, AVIATION_KEY));
@@ -305,7 +305,7 @@ async function main() {
   // 서버 시작 직후 1회 즉시 수집
   console.log("Running initial data collection...");
   await Promise.allSettled(
-    buildInitialCollectionJobs().map(([type, job]) => runWithLock(type, job, type === 'kim_surface_wind' || type === 'ktg' ? KIM_NWP_KEY : ['wissdom', 'qpf', 'hsr', 'hci', 'echo_top', 'satellite', 'satellite_visible'].includes(type) ? RADAR_SATELLITE_KEY : ['metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'lightning', 'typhoon', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'asos_ceiling'].includes(type) ? AVIATION_KEY : type === 'flight_category' ? AVIATION_AND_RADAR_KEYS : undefined)),
+    buildInitialCollectionJobs().map(([type, job]) => runWithLock(type, job, ['wissdom', 'qpf', 'hsr', 'hci', 'echo_top', 'satellite', 'satellite_visible'].includes(type) ? RADAR_SATELLITE_KEY : ['metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'lightning', 'typhoon', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'asos_ceiling'].includes(type) ? AVIATION_KEY : type === 'flight_category' ? AVIATION_AND_RADAR_KEYS : undefined)),
   );
   console.log("Initial data collection complete.");
 }

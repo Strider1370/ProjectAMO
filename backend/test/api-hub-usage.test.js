@@ -49,6 +49,19 @@ test('blocks a key immediately when KMA returns 403', async () => {
   })
 })
 
+test('attributes aviation-key KIM grid and KTG usage to the aviation category', async () => {
+  await withUsage({ aviation: 'aviation-key', radar_satellite: 'radar-key', kim_nwp: 'kim-key' }, async (usage) => {
+    await usage.record('aviation-key', { bytes: 120, status: 200, endpoint: 'kim_grid' })
+    await usage.record('aviation-key', { bytes: 80, status: 200, endpoint: 'ktg' })
+
+    const snapshot = usage.snapshot()
+    const aviation = snapshot.keys.find((key) => key.category === 'aviation')
+    const kim = snapshot.keys.find((key) => key.category === 'kim_nwp')
+    assert.deepEqual(aviation.endpoints.map(({ label, bytes }) => [label, bytes]), [['KIM 격자', 120], ['KTG 격자', 80]])
+    assert.equal(kim.bytes, 0)
+  })
+})
+
 test('rejects a fourth credential and unknown endpoint without retaining query text', async () => {
   await withUsage({ aviation: 'aviation-key', radar_satellite: 'radar-key', kim_nwp: 'kim-key' }, async (usage, root) => {
     assert.throws(() => usage.assertAllowed('fourth-key'), { code: 'unknown_api_hub_credential' })

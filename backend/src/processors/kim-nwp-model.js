@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 
 export const KIM_NWP_MODEL = 'KIMG/NE57'
-export const KIM_NWP_FORECAST_HOURS = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36]
+export const KIM_NWP_FORECAST_HOURS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 export const KIM_NWP_LEVELS = [
   { id: '1000hPa', label: '1000', kind: 'pressure', value: 1000, unit: 'hPa', level: 1000, uName: 'u', vName: 'v' },
   { id: '975hPa', label: '975', kind: 'pressure', value: 975, unit: 'hPa', level: 975, uName: 'u', vName: 'v' },

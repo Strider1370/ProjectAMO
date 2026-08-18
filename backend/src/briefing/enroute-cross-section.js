@@ -4,6 +4,7 @@
 import config from '../config.js'
 import { buildCrossSection, buildKtgCrossSection, gridIndexFor } from './cross-section-sampler.js'
 import { buildRouteAxis } from './route-axis.js'
+import { distanceAlongRouteNm } from './profile-composer.js'
 import { selectClosestForecastTime } from '../processors/kim-forecast-hour.js'
 import {
   KIM_NWP_LEVELS,
@@ -15,6 +16,7 @@ import {
 } from '../processors/kim-nwp-model.js'
 import { readKimNwpGrid, readKimNwpIndex, readKimNwpLatest } from '../processors/kim-nwp-store.js'
 import { readKtgLatest, readKtgIndex, readKtgCoords, readKtgGridSafe } from '../processors/ktg-store.js'
+import { buildNwpTimeSegments, normalizeNwpTimeSelection } from '../../../shared/nwp-time-selection.js'
 
 const KIM_ICING_REQUIRED_VARIABLES = ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']
 const MAX_CACHED_ROUTE_GRIDS = 32 // 21 KIM pressure levels + 10 KTG levels + KTG coordinates; measured below 64 MiB in production.
@@ -91,6 +93,61 @@ function sampleLevelValues(grid, samples) {
   })
 }
 
+export function resolveNwpTimeRules({ markers = [], selection = {}, candidateTimes = [] } = {}) {
+  const orderedMarkers = markers
+    .filter((marker) => marker?.id && Number.isFinite(marker?.distanceNm))
+    .slice()
+    .sort((a, b) => a.distanceNm - b.distanceNm)
+  const normalized = normalizeNwpTimeSelection(selection, orderedMarkers.map((marker) => marker.id))
+  const baseTime = normalized.baseTime ?? candidateTimes[0]?.validTime ?? null
+  const baseMs = Date.parse(baseTime)
+  const byValidMs = new Map(candidateTimes
+    .filter((time) => Number.isFinite(Date.parse(time?.validTime)))
+    .map((time) => [Date.parse(time.validTime), time]))
+  const kimAtOffset = (offsetHours) => {
+    if (!Number.isFinite(baseMs)) return null
+    return byValidMs.get(baseMs + offsetHours * 60 * 60 * 1000) ?? null
+  }
+  const segments = buildNwpTimeSegments({ markers: orderedMarkers, selection: normalized })
+    .map((segment) => ({ ...segment, kim: kimAtOffset(segment.offsetHours) }))
+  const unavailableOffsets = Array.from({ length: 13 }, (_, offsetHours) => offsetHours)
+    .filter((offsetHours) => !kimAtOffset(offsetHours))
+
+  return {
+    baseTime,
+    segments,
+    unavailableOffsets,
+    missingWaypointIds: normalized.missingWaypointIds,
+  }
+}
+
+function ruleForDistance(segments, distanceNm) {
+  let matched = null
+  for (const segment of segments) {
+    if (distanceNm >= segment.startDistanceNm) matched = segment
+    else break
+  }
+  return matched
+}
+
+function sampleLevelValuesForRules({ samples, segments, readGrid }) {
+  const values = samples.map((sample) => ({ distanceNm: sample.distanceNm }))
+  const indexesByHf = new Map()
+  samples.forEach((sample, index) => {
+    const hf = ruleForDistance(segments, sample.distanceNm)?.kim?.hf
+    if (!Number.isFinite(hf)) return
+    if (!indexesByHf.has(hf)) indexesByHf.set(hf, [])
+    indexesByHf.get(hf).push(index)
+  })
+  for (const [hf, indexes] of indexesByHf) {
+    const grid = readGrid(hf)
+    if (!grid) continue
+    const sampled = sampleLevelValues(grid, indexes.map((index) => samples[index]))
+    indexes.forEach((index, position) => { values[index] = { ...sampled[position], sourceHf: hf } })
+  }
+  return values
+}
+
 // 경로의 KIM/KTG 단면 필드를 로드한다. KIM run이 없으면 { available: false }.
 export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
   const latest = readKimNwpLatest(root)
@@ -120,10 +177,33 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
   const kimBundleKey = `${root}|${tmfc}|${hf}|${latest.content_hash ?? latest.updated_at ?? ''}`
 
   const axis = buildRouteAxis(routeGeometry, body.sampleSpacingMeters ?? 250)
+  const ruleMarkers = body.nwpTimeSelection && Array.isArray(body.routeMarkers)
+    ? body.routeMarkers.map((marker) => ({
+        ...marker,
+        distanceNm: Number.isFinite(marker?.distanceNm)
+          ? marker.distanceNm
+          : distanceAlongRouteNm(routeGeometry.coordinates, [Number(marker?.lon), Number(marker?.lat)]),
+      })).filter((marker) => Number.isFinite(marker.distanceNm))
+    : []
+  const timeRules = ruleMarkers.length >= 2
+    ? resolveNwpTimeRules({ markers: ruleMarkers, selection: body.nwpTimeSelection, candidateTimes })
+    : null
 
   const loadLevel = (levelId) => {
     const level = KIM_NWP_LEVELS.find((l) => l.id === levelId)
     if (!level || level.kind !== 'pressure') return null
+    if (timeRules) {
+      return {
+        pressure: level.value,
+        values: sampleLevelValuesForRules({
+          samples: axis.samples,
+          segments: timeRules.segments,
+          readGrid: (sourceHf) => {
+            try { return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf: sourceHf, levelId }) } catch { return null }
+          },
+        }),
+      }
+    }
     const grid = cachedGrid('kim', kimBundleKey, levelId, () => {
       try { return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf, levelId }) } catch { return null }
     })
@@ -150,6 +230,14 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
   }) : null
   const ktgHf = selectedKtgTime?.hf ?? ktgLatest?.hf
   const ktgValidTime = selectedKtgTime?.validTime ?? ktgLatest?.validTime
+  if (timeRules && ktgLatest) {
+    timeRules.segments.forEach((segment) => {
+      const targetMs = Date.parse(segment.kim?.validTime)
+      segment.ktg = Number.isFinite(targetMs)
+        ? selectClosestForecastTime({ tmfc: ktgLatest.tmfc, targetMs, candidateTimes: ktgHours })
+        : null
+    })
+  }
   const ktgBundleKey = ktgLatest && `${root}|${ktgLatest.tmfc}|${ktgHf}|${ktgLatest.updated_at ?? ktgIndex?.fetched_at ?? ''}`
   const ktgCoords = ktgLatest ? cachedGrid('ktg', ktgBundleKey, 'coords', () =>
     readKtgCoords({ root, tmfc: ktgLatest.tmfc, hf: ktgHf })) : null
@@ -157,14 +245,20 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
     axis,
     coords: ktgCoords,
     altLevelsFt: ktgIndex?.altLevelsFt ?? [],
-    loadAltGrid: (altFt) => cachedGrid('ktg', ktgBundleKey, altFt, () =>
-      readKtgGridSafe({ root, tmfc: ktgLatest?.tmfc, hf: ktgHf, altFt })),
+    sourceForSample: timeRules
+      ? (sample) => ruleForDistance(timeRules.segments, sample.distanceNm)?.ktg?.hf ?? null
+      : null,
+    loadAltGrid: (altFt, sourceHf) => {
+      if (timeRules) return readKtgGridSafe({ root, tmfc: ktgLatest?.tmfc, hf: sourceHf, altFt })
+      return cachedGrid('ktg', ktgBundleKey, altFt, () => readKtgGridSafe({ root, tmfc: ktgLatest?.tmfc, hf: ktgHf, altFt }))
+    },
   })
   if (ktgLatest) turbulence.run = { tmfc: ktgLatest.tmfc, hf: ktgHf, validTime: ktgValidTime }
 
   // 사용자가 단면도에서 다른 예보시간(hf)을 골라볼 수 있도록, 바람 자료가 실제로 있는 시각 목록을 함께 내려준다.
   return {
     available: true, axis, crossSection, turbulence, totalDistanceNm: axis.totalDistanceNm,
+    timeRules,
     availableTimes: candidateTimes.map((time) => selectClosestForecastTime({
       tmfc,
       targetMs: 0,

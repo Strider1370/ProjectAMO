@@ -77,8 +77,19 @@ test('cross-section route validates fields and returns cross-section structure',
     fetchedAt: '2099-01-01T00:00:00.000Z',
   })
   const gridPath = writeKimNwpGrid({ root, grid })
+  const nextGrid = buildKimNwpGrid({
+    model: KIM_NWP_MODEL, tmfc, hf: 1, level,
+    components: [
+      { variable: 'u', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(9) },
+      { variable: 'v', unit: 'm/s', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(0) },
+      { variable: 'hgt', unit: 'm', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(1600) },
+      { variable: 'cld', unit: '1', level: 850, nx: 73, ny: 85, bounds: BOUNDS, values: Array(73 * 85).fill(.62) },
+    ],
+    fetchedAt: '2099-01-01T00:00:00.000Z',
+  })
+  const nextGridPath = writeKimNwpGrid({ root, grid: nextGrid })
   writeKimNwpIndex(root, buildKimNwpIndex({
-    model: KIM_NWP_MODEL, tmfc, entries: [buildKimNwpIndexEntry(grid, gridPath)],
+    model: KIM_NWP_MODEL, tmfc, entries: [buildKimNwpIndexEntry(grid, gridPath), buildKimNwpIndexEntry(nextGrid, nextGridPath)],
   }))
   writeKimNwpLatest(root, {
     type: 'kim_nwp_latest',
@@ -123,6 +134,30 @@ test('cross-section route validates fields and returns cross-section structure',
     assert.equal(body.coverage.byVariable.cld.available, true)
     assert.equal(body.run.tmfc, tmfc)
     assert.equal(body.run.hf, hf)
+
+    const selected = await fetch(`${baseUrl}/api/briefing/cross-section`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        routeGeometry: ROUTE_GEOMETRY,
+        tmfc,
+        routeMarkers: [
+          { id: 'DEP', label: 'DEP', lon: 126, lat: 37, kind: 'AIRPORT' },
+          { id: 'WP2', label: 'WP2', lon: 126.5, lat: 37.5, kind: 'FIX' },
+          { id: 'ARR', label: 'ARR', lon: 127, lat: 38, kind: 'AIRPORT' },
+        ],
+        nwpTimeSelection: {
+          baseTime: '2099-01-01T00:00:00.000Z',
+          waypointOverrides: [{ waypointId: 'WP2', offsetHours: 1 }],
+        },
+      }),
+    })
+    assert.equal(selected.status, 200)
+    const selectedBody = await selected.json()
+    const selected850 = selectedBody.levels.find(({ pressure }) => pressure === 850)
+    assert.deepEqual(selectedBody.timeRules.segments.map((segment) => segment.kim?.hf), [0, 1])
+    assert.equal(selected850.values[0].sourceHf, 0)
+    assert.equal(selected850.values.at(-1).sourceHf, 1)
   } finally {
     await close(server)
     Object.assign(config.storage, previousStorage)
@@ -177,7 +212,7 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
   const tmfc = '2026072200'
   const entries = []
 
-  for (const hf of [9, 12, 30]) {
+  for (const hf of [9, 12]) {
     const grid = buildKimNwpGrid({
       model: KIM_NWP_MODEL,
       tmfc,
@@ -205,14 +240,14 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
 
   const ktgTmfc = '2026072206'
   const ktgHours = [
-    { hf: 0, validTime: '2026-07-22T06:00:00.000Z' },
-    { hf: 3, validTime: '2026-07-22T09:00:00.000Z' },
     { hf: 6, validTime: '2026-07-22T12:00:00.000Z' },
+    { hf: 9, validTime: '2026-07-22T15:00:00.000Z' },
+    { hf: 12, validTime: '2026-07-22T18:00:00.000Z' },
   ]
   writeKtgIndex(root, {
     type: 'ktg_index',
     tmfc: ktgTmfc,
-    hf: 0,
+    hf: 6,
     validTime: ktgHours[0].validTime,
     hours: ktgHours,
     altLevelsFt: [3000],
@@ -221,14 +256,14 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
   writeKtgLatest(root, {
     type: 'ktg_latest',
     tmfc: ktgTmfc,
-    hf: 0,
+    hf: 6,
     validTime: ktgHours[0].validTime,
     updated_at: '2026-07-22T06:30:00.000Z',
   })
   writeKtgCoords({
     root,
     tmfc: ktgTmfc,
-    hf: 3,
+    hf: 6,
     coords: { type: 'ktg_coords', ny: 1, nx: 1, lat: [37], lon: [126] },
   })
   writeKtgGrid({
@@ -236,8 +271,8 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
     grid: {
       type: 'ktg_grid',
       tmfc: ktgTmfc,
-      hf: 3,
-      validTime: ktgHours[1].validTime,
+      hf: 6,
+      validTime: ktgHours[0].validTime,
       altFt: 3000,
       grid: { ny: 1, nx: 1 },
       ktg: [0.5],
@@ -259,8 +294,8 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
     })
     assert.deepEqual(result.turbulence.run, {
       tmfc: ktgTmfc,
-      hf: 3,
-      validTime: '2026-07-22T09:00:00.000Z',
+      hf: 6,
+      validTime: '2026-07-22T12:00:00.000Z',
     })
     assert.equal(result.turbulence.available, true)
   } finally {

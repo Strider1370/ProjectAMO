@@ -26,16 +26,43 @@ export function buildProcedureContextPayload({ routeResult, selectedSid, selecte
   }
 }
 
+function stableMarkerId(marker, occurrence) {
+  if (marker?.id) return String(marker.id)
+  const label = String(marker?.label ?? '').trim().toUpperCase()
+  const kind = String(marker?.kind ?? 'FIX').trim().toUpperCase()
+  const lon = Number(marker?.lon)
+  const lat = Number(marker?.lat)
+  if (!label || !Number.isFinite(lon) || !Number.isFinite(lat)) return null
+  return `marker:${kind}:${label}:${lon.toFixed(6)}:${lat.toFixed(6)}:${occurrence}`
+}
+
+function withStableMarkerIds(markers) {
+  const occurrences = new Map()
+  return markers.map((marker) => {
+    const label = String(marker?.label ?? '').trim().toUpperCase()
+    const occurrence = occurrences.get(label) ?? 0
+    occurrences.set(label, occurrence + 1)
+    const id = stableMarkerId(marker, occurrence)
+    return id ? { ...marker, id } : marker
+  })
+}
+
 export function buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints }) {
   if (!routeResult) return []
+  // 저장분에서 불러온 경로는 마커를 이미 들고 있다 — 다시 만들면 displaySequence가 없어
+  // 빈 배열이 되고, NAVLOG의 공항 줄과 연직단면도의 경유점 이름이 사라진다.
+  if (routeResult.routeMarkers?.length) return withStableMarkerIds(routeResult.routeMarkers)
 
   if (routeResult.flightRule === 'VFR') {
-    return (vfrWaypoints ?? []).map((wp) => ({
+    return withStableMarkerIds((vfrWaypoints ?? []).map((wp) => ({
       label: wp.id,
       lon: wp.lon,
       lat: wp.lat,
       kind: wp.fixed ? 'AIRPORT' : 'WAYPOINT',
-    }))
+      // 공표된 픽스인지 지도에서 찍은 점인지. 저장분에서 경유점을 복원할 때 이 구분이 없으면
+      // 전부 찍은 점으로 되살아난다(백엔드는 이 필드를 쓰지 않는다).
+      named: Boolean(wp.named),
+    })))
   }
 
   const baseLine = routeResult.previewGeojson?.features?.find((feature) => feature.properties.role === 'route-preview-line')
@@ -43,7 +70,7 @@ export function buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints }) {
   const routeIds = new Set(routeResult.routeIds ?? [])
   const labels = (routeResult.displaySequence ?? []).filter((item) => !routeIds.has(item))
 
-  return labels
+  return withStableMarkerIds(labels
     .map((label, index) => {
       const coordinate = baseCoordinates[index]
       if (!coordinate) return null
@@ -54,16 +81,18 @@ export function buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints }) {
         kind: index === 0 || index === labels.length - 1 ? 'AIRPORT' : 'FIX',
       }
     })
-    .filter(Boolean)
+    .filter(Boolean))
 }
 
-export function buildCrossSectionRequest({ routeGeometry, etd, tmfc, hf }) {
+export function buildCrossSectionRequest({ routeGeometry, etd, tmfc, hf, routeMarkers, nwpTimeSelection }) {
   const hasForecastHour = hf !== '' && hf != null && Number.isFinite(Number(hf))
   return {
     routeGeometry,
     etd,
     ...(tmfc ? { tmfc } : {}),
     ...(hasForecastHour ? { hf: Number(hf) } : {}),
+    ...(Array.isArray(routeMarkers) ? { routeMarkers } : {}),
+    ...(nwpTimeSelection ? { nwpTimeSelection } : {}),
   }
 }
 

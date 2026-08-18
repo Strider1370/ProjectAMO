@@ -200,13 +200,46 @@ function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection
   }
 }
 
+// 출발·도착 공항을 목록 양 끝에 잇는 구간. 공항 줄은 원래 SID·접근절차 그룹 안에서만 나오는데,
+// 절차 자료는 한국 공항에만 있어서 해외 목적지는 NAVLOG 마지막 줄이 목적지가 아니라 마지막
+// 항로점이 된다. 절차가 공항을 이미 품고 있으면 만들지 않는다(중복 방지).
+function buildTerminalLegs({ segments, groups, routeGeometry, routeMarkers, deps }) {
+  const routeCoordinates = routeGeometry?.coordinates
+  if (!Array.isArray(routeCoordinates) || routeCoordinates.length < 2 || segments.length === 0) return []
+  const departure = endpointMarker(routeMarkers, 0)
+  const arrival = endpointMarker(routeMarkers, -1)
+  const covered = new Set(groups.flatMap((group) => [group.from, group.to]))
+  const legs = []
+
+  const first = segments[0]
+  if (departure && !covered.has(departure.id) && Number.isFinite(first.startNm)) {
+    const startNm = distanceAlongRouteNm(routeCoordinates, departure.coordinates)
+    if (Number.isFinite(startNm) && first.startNm > startNm) {
+      legs.push(buildLeg({ segment: { kind: 'dct', fromFix: departure.id, toFix: first.fromFix, startNm, endNm: first.startNm, alignmentStatus: 'aligned' }, ...deps }))
+    }
+  }
+
+  const last = segments.at(-1)
+  if (arrival && !covered.has(arrival.id) && Number.isFinite(last.endNm)) {
+    const endNm = distanceAlongRouteNm(routeCoordinates, arrival.coordinates)
+    if (Number.isFinite(endNm) && endNm > last.endNm) {
+      legs.push(buildLeg({ segment: { kind: 'dct', fromFix: last.toFix, toFix: arrival.id, startNm: last.endNm, endNm, alignmentStatus: 'aligned' }, ...deps }))
+    }
+  }
+  return legs
+}
+
 export function buildRouteWeatherLegs({ routeModel, routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards = [], routeNotams = [], aipConstraints } = {}) {
   const segments = [...(routeModel?.enRouteSegments ?? [])].sort((a, b) => (a.startNm ?? Infinity) - (b.startNm ?? Infinity))
   const constraints = new Map((aipConstraints?.segments ?? []).map((entry) => [entry.id, entry]))
   const sourceCycle = aipConstraints?.provenance?.publicationId ?? null
+  const deps = { weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint: null, sourceCycle: null }
+  const groups = buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams })
+  const enrouteLegs = segments.map((segment) => buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint: constraints.get(segment.id), sourceCycle }))
+  const terminalLegs = buildTerminalLegs({ segments, groups, routeGeometry, routeMarkers, deps })
   return {
-    legs: segments.map((segment) => buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint: constraints.get(segment.id), sourceCycle })),
-    procedures: buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams }),
+    legs: [...enrouteLegs, ...terminalLegs].sort((a, b) => (a.startNm ?? Infinity) - (b.startNm ?? Infinity)),
+    procedures: groups,
     totalDistanceNm: weatherAxis?.totalDistanceNm ?? null,
     altitudeConstraintStatus: aipConstraints?.status ?? 'unavailable',
   }

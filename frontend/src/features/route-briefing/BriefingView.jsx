@@ -53,7 +53,7 @@ function CatBadge({ category }) {
   return <Badge appearance="filled" style={{ backgroundColor: catColorOf(category), color: '#fff' }}>{c}</Badge>
 }
 
-export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, routeSnapshot = null }) {
+export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null }) {
   const isMobile = useIsMobile()
   const { tz } = useTimeZone()
   const { nowMs } = useDemoMode()
@@ -457,7 +457,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
               <>
                 <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} />
                 <div className={`bv-xsection${isMobile ? ' bv-xsection-scroll' : ''}`}>
-                  <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} highlightRangeNm={activeLeg} />
+                  <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} highlightRangeNm={activeLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} />
                 </div>
               </>
             )}
@@ -758,7 +758,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
                   <button type="button" className="bv-xfull-close" onClick={() => setXsectionFull(false)} aria-label="닫기">×</button>
                 </div>
               </div>
-              <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} highlightRangeNm={pinnedLeg} metaTrailing={<ForecastHourNav crossSection={crossSection} onSelect={onSelectForecastHour} loading={crossSectionHourLoading} />} />
+              <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} highlightRangeNm={pinnedLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} metaTrailing={<ForecastHourNav crossSection={crossSection} onSelect={onSelectForecastHour} loading={crossSectionHourLoading} />} />
             </div>
           </div>
         )}

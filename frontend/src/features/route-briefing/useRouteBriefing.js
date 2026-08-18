@@ -8,11 +8,13 @@ import { calcVfrDistance, inlineImportedProcedureGeometry } from './lib/routePre
 import { computeEtaIso } from './lib/etaCalc.js'
 import { getPerformanceForRule, setPerformanceForRule } from './lib/aircraftProfiles.js'
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './lib/altitude.js'
-import { buildCrossSectionRequest, buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
+import { buildCrossSectionRequest, buildRouteProfileMarkersPayload, buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
+import { rebaseNwpTimeSelection, setWaypointNwpOffset } from './lib/nwpTimeSelection.js'
 import { buildCommonRouteModel } from '../../../../shared/route-model.js'
 import { recommendProcedures } from './lib/recommendProcedures.js'
 import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
 import { normalizeRouteSnapshot } from './lib/routeStore.js'
+import { buildSavedBriefingInputs, buildSavedRouteResult } from './lib/savedRouteBriefing.js'
 import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
 import { createRouteEditor, editorFromBase, emptyEditorForContext, replaceEditorProcedures, updateEditorContext as updateEditor } from './lib/routeEditor.js'
 import { parseRouteBuffer, extractRoutePaths, MAX_IMPORT_BYTES } from './lib/routeImport.js'
@@ -90,6 +92,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const [cruiseAltitudeFt, setCruiseAltitudeFt] = useState(() => getPerformanceForRule(initialRouteForm.flightRule).altitudeFt)
   const [verticalProfile, setVerticalProfile] = useState(null)
   const [crossSection, setCrossSection] = useState(null)
+  const [nwpTimeSelection, setNwpTimeSelection] = useState(null)
   const [crossSectionHourLoading, setCrossSectionHourLoading] = useState(false)
   const [verticalProfileLoading, setVerticalProfileLoading] = useState(false)
   const [verticalProfileError, setVerticalProfileError] = useState(null)
@@ -1759,12 +1762,141 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const [autoBriefingPending, setAutoBriefingPending] = useState(false)
   const autoSearchRef = useRef(false) // 자동추천이 픽스를 채운 뒤 검색을 1회만 재실행하도록 가드
 
+  // 저장 경로를 재검색 없이 연다 — 저장된 기하·routeModel·markers만으로 브리핑을 만든다.
+  // 해외 IFR은 절차 데이터가 한국 공항에만 있어 재검색(getProcedures/buildEditorPreview)이
+  // `No RNAV route path`로 깨진다. 저장된 선이 멀쩡한데 다시 찾다 실패하므로 그 경로를 아예 타지 않는다.
+  // 저장분이 부족하면(1단계 이전 저장분) 기존 재검색 경로로 위임한다.
+  // 저장분을 경로 입력 상태로만 얹는다 — 브리핑은 만들지 않는다.
+  // 경로 저장/불러오기는 "경로를 꺼내 손보는" 동작이다. 브리핑은 대안 비교와 고도 설정을
+  // 거친 뒤에 나와야 하므로, 경로만 불러온 상태에서 브리핑을 띄우면 사용자가 정한 적 없는
+  // 고도로 판단 화면이 뜬다. 브리핑까지 여는 것은 openSavedBriefing이 맡는다.
+  async function loadSavedRouteIntoEditor(saved) {
+    const inputs = buildSavedBriefingInputs(saved)
+    if (!inputs.ok) { await loadSavedRoute(saved); return null }
+    const resetVersion = routeResetVersionRef.current
+    await applySavedRouteState(inputs, resetVersion)
+    return resetVersion === routeResetVersionRef.current ? inputs : null
+  }
+
+  // 경로를 통째로 얹을 때 채워야 할 주인은 셋이다 — 공항(routeForm)·절차(procedures)·
+  // 경유점(경로 글자). 하나라도 비우면 글자로 경로를 다시 만드는 효과(:559)가 돌 때
+  // 그 조각이 사라진다. 절차를 비웠다가 SID가 통째로 빠진 적이 있다.
+  // 그래서 절차를 **먼저** 세우고, 그다음 선·글자 순으로 얹는다.
+  async function applySavedRouteState(inputs, resetVersion) {
+    const ids = inputs.procedureIds ?? {}
+    const [savedSids, savedStars, savedIapData] = await Promise.all([
+      ids.sid ? getProcedures(inputs.departureAirport, 'SID').catch(() => []) : Promise.resolve([]),
+      ids.star ? getProcedures(inputs.arrivalAirport, 'STAR').catch(() => []) : Promise.resolve([]),
+      ids.iapKey ? loadIapData(inputs.arrivalAirport).catch(() => null) : Promise.resolve(null),
+    ])
+    if (resetVersion !== routeResetVersionRef.current) return
+    // 해외 공항은 절차 데이터가 없어 빈손으로 끝난다 — 그래도 저장된 선에 절차가 이미
+    // 들어 있으므로 지도와 브리핑은 그대로다. 여기서 얻는 것은 표시용 이름표뿐이다.
+    const procedures = {
+      sid: savedSids.find((procedure) => procedure.id === ids.sid) ?? null,
+      star: savedStars.find((procedure) => procedure.id === ids.star) ?? null,
+      iapKey: savedIapData?.iapRoutes?.[ids.iapKey] ? ids.iapKey : null,
+    }
+    setSelectedSid(procedures.sid)
+    setSelectedStar(procedures.star)
+    setSelectedIapKey(procedures.iapKey)
+
+    const savedRouteResult = buildSavedRouteResult(inputs)
+    const baseDesign = createRouteDesign({
+      routeForm: { ...routeForm, flightRule: inputs.flightRule, departureAirport: inputs.departureAirport ?? '', arrivalAirport: inputs.arrivalAirport ?? '' },
+      procedures,
+      routeResult: savedRouteResult,
+      routeModel: inputs.routeModel,
+      routeExposure: { trigger: 'unavailable', hazards: [] },
+      enroute: inputs.enroute ?? undefined,
+      routeString: inputs.routeString,
+    })
+    // 저장된 선에 절차가 이미 반영돼 있다(inlineProcedureGeometry). 그래서 절차를 세워도
+    // 지도가 같은 구간을 두 번 그리지 않는다.
+    importedRouteApplyPendingRef.current = true
+    applyBaseRoute(baseDesign)
+    seededRef.current = true
+    const enrouteTokens = (inputs.routeString ?? '').trim().split(/\s+/).filter(Boolean)
+    // 이미 완성된 선을 얹었으므로 글자로 다시 만들 필요가 없다 — 임포트와 같은 가드.
+    skipImportedTokenReapplyRef.current = true
+    setRouteTokenTexts([inputs.departureAirport, procedures.sid?.name, ...enrouteTokens, procedures.star?.name, inputs.arrivalAirport].filter(Boolean))
+    lastAppliedTokenTextRef.current = enrouteTokens.join(' ')
+    const selectedIap = savedIapData?.iapRoutes?.[procedures.iapKey] ?? null
+    if (inputs.etd) setEtd(inputs.etd)
+    if (inputs.eta) setEta(inputs.eta)
+    if (inputs.tasKt) updateTasKt(inputs.tasKt)
+    if (Number.isFinite(Number(inputs.cruiseAltitudeFt))) updateCruiseAltitudeFt(Number(inputs.cruiseAltitudeFt))
+    setAlternateAirport(inputs.alternateAirport || '')
+    setNwpTimeSelection(inputs.nwpTimeSelection ?? null)
+    return { routeResult: savedRouteResult, procedures, selectedIap }
+  }
+
+  // 저장된 브리핑을 연다 — 경로 상태를 얹고 브리핑까지 만들어 브리핑 단계로 데려간다.
+  // 고도가 확정된 저장분에만 쓴다.
+  async function openSavedBriefing(saved) {
+    const inputs = buildSavedBriefingInputs(saved)
+    if (!inputs.ok) return loadSavedRoute(saved, { autoBriefing: true })
+    if (!inputs.etd || !inputs.eta) { setBriefingError('저장된 브리핑에 ETD/ETA가 없습니다.'); return }
+
+    const resetVersion = routeResetVersionRef.current
+    setBriefingLoading(true)
+    setBriefingError(null)
+    try {
+      const applied = await applySavedRouteState(inputs, resetVersion)
+      if (resetVersion !== routeResetVersionRef.current) return
+      const plannedCruiseAltitudeFt = inputs.cruiseAltitudeFt || DEFAULT_CRUISE_ALTITUDE_FT
+      // 요청은 정상 브리핑 생성(handleGenerateBriefing)과 같은 생성기로 만든다 — 손으로 짜면
+      // procedureContext처럼 조용히 빠지는 것이 생긴다. 구간 모델과 마커는 routeResult가
+      // 들고 다니므로 생성기가 알아서 저장분을 쓴다.
+      const profileRequest = buildVerticalProfileRequest({
+        routeGeometry: inputs.routeGeometry,
+        routeModel: inputs.routeModel,
+        routeResult: applied.routeResult,
+        selectedSid: applied.procedures.sid,
+        selectedStar: applied.procedures.star,
+        selectedIap: applied.selectedIap,
+        vfrWaypoints: [],
+        plannedCruiseAltitudeFt,
+      })
+      const result = await fetchRouteBriefing({
+        ...profileRequest,
+        departureAirport: inputs.departureAirport,
+        arrivalAirport: inputs.arrivalAirport,
+        alternateAirport: inputs.alternateAirport,
+        etd: inputs.etd,
+        eta: inputs.eta,
+      })
+      if (resetVersion !== routeResetVersionRef.current) return
+      setBriefing(result)
+      setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
+      setWorkflowStep('briefing')
+      // 연직단면도·단면 자료. 정상 경로도 브리핑 뒤에 따로 받는다 — 없어도 브리핑은 성립한다.
+      try {
+        const [profile, cs] = await Promise.all([
+          fetchVerticalProfile(profileRequest),
+          fetchCrossSection(buildCrossSectionRequest({
+            routeGeometry: inputs.routeGeometry,
+            etd: inputs.etd,
+            routeMarkers: inputs.routeMarkers,
+            ...(inputs.nwpTimeSelection ? { nwpTimeSelection: inputs.nwpTimeSelection } : {}),
+          })).catch(() => null),
+        ])
+        if (resetVersion === routeResetVersionRef.current) { setVerticalProfile(profile); setCrossSection(cs) }
+      } catch { /* optional */ }
+    } catch (err) {
+      setBriefingError(err.message)
+    } finally {
+      setBriefingLoading(false)
+    }
+  }
+
   // 불러오기: restore saved inputs, re-search, then overlay saved VFR waypoints.
   // opts.autoBriefing=true → 경로검색 완료(routeResult) 후 아래 effect가 브리핑을 자동 생성.
   async function loadSavedRoute(saved, opts = {}) {
     const resetVersion = routeResetVersionRef.current
     saved = normalizeRouteSnapshot(saved)
     if (!saved?.base?.routeForm && !saved?.routeForm) return
+    setNwpTimeSelection(saved.nwpTimeSelection ?? null)
     if (opts.autoBriefing) { setAutoBriefingPending(true); autoSearchRef.current = false }
     if (saved.base?.routeString && saved.base?.enroute) {
       const savedForm = saved.base.routeForm ?? saved.routeForm
@@ -2074,6 +2206,45 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setImportCandidates([])
   }
 
+  function currentProfileMarkers() {
+    return buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints: appliedVfrWaypoints })
+  }
+
+  async function reloadCrossSectionForNwpSelection({ routeGeometry, nextSelection, tmfc = crossSection?.run?.tmfc } = {}) {
+    if (!routeGeometry || !nextSelection) return null
+    const requestId = ++verticalProfileRequestRef.current
+    setCrossSectionHourLoading(true)
+    try {
+      const cs = await fetchCrossSection(buildCrossSectionRequest({
+        routeGeometry,
+        etd,
+        tmfc,
+        routeMarkers: currentProfileMarkers(),
+        nwpTimeSelection: nextSelection,
+      })).catch(() => null)
+      if (requestId === verticalProfileRequestRef.current && cs) setCrossSection(cs)
+      return cs
+    } finally {
+      if (requestId === verticalProfileRequestRef.current) setCrossSectionHourLoading(false)
+    }
+  }
+
+  async function handleSetWaypointNwpOffset(waypointId, offsetHours) {
+    const routeGeometry = getCurrentRouteLineString({
+      routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap,
+    })
+    const markers = currentProfileMarkers()
+    const baseTime = nwpTimeSelection?.baseTime ?? crossSection?.run?.validTime ?? etd
+    const nextSelection = setWaypointNwpOffset(
+      nwpTimeSelection ?? { baseTime, waypointOverrides: [] },
+      waypointId,
+      offsetHours,
+      markers.map((marker) => marker.id),
+    )
+    setNwpTimeSelection(nextSelection)
+    await reloadCrossSectionForNwpSelection({ routeGeometry, nextSelection })
+  }
+
   async function handleVerticalProfileRequest({
     plannedCruiseAltitudeFt: requestedAltitudeFt = cruiseAltitudeFt,
     candidateCruiseAltitudesFt = [],
@@ -2114,7 +2285,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           plannedCruiseAltitudeFt,
           candidateCruiseAltitudesFt,
         })),
-        existingCrossSection ?? fetchCrossSection(buildCrossSectionRequest({ routeGeometry, etd })).catch(() => null),
+        existingCrossSection ?? fetchCrossSection(buildCrossSectionRequest({
+          routeGeometry,
+          etd,
+          routeMarkers: currentProfileMarkers(),
+          ...(nwpTimeSelection ? { nwpTimeSelection } : {}),
+        })).catch(() => null),
       ])
       if (requestId !== verticalProfileRequestRef.current) return
       setVerticalProfile(profile)
@@ -2139,6 +2315,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       selectedIap,
     })
     if (!routeGeometry || !Number.isFinite(Number(hf))) return
+    const routeMarkers = currentProfileMarkers()
+    const selectedTime = crossSection?.availableTimes?.find((time) => Number(time.hf) === Number(hf))?.validTime
+    const nextSelection = nwpTimeSelection && selectedTime
+      ? rebaseNwpTimeSelection(nwpTimeSelection, selectedTime)
+      : nwpTimeSelection
     const requestId = ++verticalProfileRequestRef.current
     setCrossSectionHourLoading(true)
     try {
@@ -2147,9 +2328,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
         etd,
         tmfc: crossSection?.run?.tmfc,
         hf,
+        routeMarkers,
+        ...(nextSelection ? { nwpTimeSelection: nextSelection } : {}),
       })).catch(() => null)
       if (requestId !== verticalProfileRequestRef.current) return
-      if (cs) setCrossSection(cs)
+      if (cs) {
+        setCrossSection(cs)
+        if (nextSelection) setNwpTimeSelection(nextSelection)
+      }
     } finally {
       if (requestId === verticalProfileRequestRef.current) setCrossSectionHourLoading(false)
     }
@@ -2232,7 +2418,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   async function handleGenerateBriefing() {
     const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
     if (!routeGeometry) { setBriefingError('먼저 경로를 검색하세요.'); return }
-    const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
+    // 저장분에서 불러온 경로는 구간 모델을 이미 들고 있다 — 다시 계산하면 segments가 없어
+    // NAVLOG 순항 구간이 빈다. 들고 있으면 그걸 쓰고, 없을 때만 계산한다.
+    const routeModel = routeResult?.routeModel ?? buildCommonRouteModel({ routeGeometry, routeResult })
     const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
     const briefingEta = routeForm.flightRule === 'IFR' ? eta : (eta || computeEtaIso(etdIso, plannedDistanceNm, tasKt) || etdIso)
     if (!briefingEta || !Number.isFinite(Date.parse(briefingEta))) { setBriefingError('예상 ETA를 입력하세요.'); return }
@@ -2259,7 +2447,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           fetchVerticalProfile(buildVerticalProfileRequest({
             routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints: appliedVfrWaypoints, plannedCruiseAltitudeFt,
           })),
-          fetchCrossSection(buildCrossSectionRequest({ routeGeometry, etd: etdIso })).catch(() => null),
+          fetchCrossSection(buildCrossSectionRequest({
+            routeGeometry,
+            etd: etdIso,
+            routeMarkers: currentProfileMarkers(),
+            ...(nwpTimeSelection ? { nwpTimeSelection } : {}),
+          })).catch(() => null),
         ])
         setVerticalProfile(profile)
         setCrossSection(cs)
@@ -2284,6 +2477,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       cruiseAltitudeFt,
       verticalProfile,
       crossSection,
+      nwpTimeSelection,
       crossSectionHourLoading,
       verticalProfileLoading,
       verticalProfileError,
@@ -2372,11 +2566,14 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       handleRouteReset,
       handleRouteSearch,
       loadSavedRoute,
+      loadSavedRouteIntoEditor,
+      openSavedBriefing,
       importRouteFromFile,
       applyImportedPath,
       cancelImportChoice,
       handleVerticalProfileRequest,
       handleSelectForecastHour,
+      handleSetWaypointNwpOffset,
       setHoveredWpInfo,
       setVerticalProfileWindowOpen,
       setCruiseAltitudeFt: updateCruiseAltitudeFt,

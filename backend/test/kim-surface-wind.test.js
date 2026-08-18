@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, rm } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 import test from 'node:test'
 
 import { parseKimGridText } from '../src/parsers/kim-grid-parser.js'
@@ -26,6 +29,7 @@ import {
   selectLegacySurfaceWindGrid,
   shouldPublishKimNwpRun,
   resolveKimTemperatureComponentRequest,
+  process as processKimNwp,
 } from '../src/processors/kim-surface-wind-processor.js'
 
 const BOUNDS = {
@@ -162,8 +166,8 @@ test('resolveKimSurfaceWindCandidates starts with recent synoptic cycles and hf 
   ])
 })
 
-test('KIM NWP scheduler polls only around 00Z and 12Z release windows', () => {
-  assert.equal(config.schedule.kim_surface_wind_interval, '12 0,1,2,12,13,14 * * *')
+test('KIM NWP scheduler polls all four synoptic release windows and retries twice', () => {
+  assert.equal(config.schedule.kim_surface_wind_interval, '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *')
 })
 
 test('buildKimGridUrl uses the KMA APIHub KIM cgi endpoint', () => {
@@ -182,6 +186,83 @@ test('buildKimGridUrl uses the KMA APIHub KIM cgi endpoint', () => {
   assert.ok(url.includes('name=u10m'))
   assert.ok(url.includes('map=S'))
   assert.equal(new URL(url).searchParams.get('authKey'), config.api.kim_nwp_auth_key)
+})
+
+test('buildKimGridUrl uses an explicitly selected aviation credential for 18Z', () => {
+  const url = new URL(buildKimGridUrl({
+    data: 'U', name: 'u10m', level: 0, tmfc: '2026081818', hf: 0,
+    sub: '1429,1441,1633,1609', credential: 'aviation-key',
+  }))
+  assert.equal(url.searchParams.get('authKey'), 'aviation-key')
+})
+
+test('18Z KIM sends every requested variable with the aviation credential', async () => {
+  const original = {
+    basePath: config.storage.base_path,
+    kimCredential: config.api.kim_nwp_auth_key,
+    aviationCredential: config.api.auth_key,
+    bounds: config.kim_surface_wind.bounds,
+    concurrency: config.kim_nwp.concurrency,
+    forecastHours: config.kim_nwp.forecast_hours,
+    keepRaw: config.kim_nwp.keep_raw,
+  }
+  const root = await mkdtemp(path.join(os.tmpdir(), 'projectamo-kim-credential-'))
+  const originalFetch = globalThis.fetch
+  const requests = []
+  try {
+    config.storage.base_path = root
+    config.api.kim_nwp_auth_key = 'kim-key'
+    config.api.auth_key = 'aviation-key'
+    config.kim_surface_wind.bounds = BOUNDS_2X2
+    config.kim_nwp.concurrency = 1
+    config.kim_nwp.forecast_hours = [0]
+    config.kim_nwp.keep_raw = false
+    globalThis.fetch = async (url) => {
+      requests.push(new URL(url))
+      return new Response('# variable = grid, unit = 1, level = 0, i = 2, j = 2\n# j = 1\n1 2\n# j = 2\n3 4\n')
+    }
+
+    await processKimNwp({ candidates: [{ tmfc: '2026081818', hf: 0 }] })
+
+    assert.ok(requests.length > 0)
+    assert.ok(requests.every((url) => url.searchParams.get('authKey') === 'aviation-key'))
+    const names = new Set(requests.map((url) => url.searchParams.get('name')))
+    for (const name of ['u', 'v', 'T', 'hgt', 'rh', 'q', 'w', 'rh_liq', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']) {
+      assert.ok(names.has(name), `expected ${name} request`)
+    }
+  } finally {
+    globalThis.fetch = originalFetch
+    config.storage.base_path = original.basePath
+    config.api.kim_nwp_auth_key = original.kimCredential
+    config.api.auth_key = original.aviationCredential
+    config.kim_surface_wind.bounds = original.bounds
+    config.kim_nwp.concurrency = original.concurrency
+    config.kim_nwp.forecast_hours = original.forecastHours
+    config.kim_nwp.keep_raw = original.keepRaw
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('18Z KIM with an unavailable aviation credential makes zero requests and does not fall back', async () => {
+  const originalKimCredential = config.api.kim_nwp_auth_key
+  const originalAviationCredential = config.api.auth_key
+  const originalFetch = globalThis.fetch
+  let requestCount = 0
+  try {
+    config.api.kim_nwp_auth_key = 'kim-key'
+    config.api.auth_key = 'kim-key'
+    globalThis.fetch = async () => { requestCount += 1; return new Response('unexpected') }
+
+    await assert.rejects(
+      () => processKimNwp({ candidates: [{ tmfc: '2026081818', hf: 0 }] }),
+      { code: 'kim_18z_aviation_credential_unavailable' },
+    )
+    assert.equal(requestCount, 0)
+  } finally {
+    globalThis.fetch = originalFetch
+    config.api.kim_nwp_auth_key = originalKimCredential
+    config.api.auth_key = originalAviationCredential
+  }
 })
 
 test('resolveKimTemperatureComponentRequest uses pressure T and verified single-level t2m params', () => {
