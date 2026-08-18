@@ -6,351 +6,205 @@ import { parseSatelliteNC, parseFogNC, renderFogImage } from '../parsers/satelli
 import { collectConvectiveSatelliteFrame } from './convective-satellite-processor.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 
-let backgroundFillRunning = false;
-const fogRetryTimers = new Map();
-const RENDER_VERSION = "fog-composite-v3-kst-tm-webp";
-const IMMEDIATE_FRAME_COUNT = 2;
-const FOG_RETRY_DELAY_MS = 3 * 60 * 1000;
-const MAX_FOG_RETRIES = 2;
-
-function ensureSatelliteDir() {
-  const dir = path.join(config.storage.base_path, "satellite");
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
+const RENDER_VERSION = 'fog-composite-v3-kst-tm-webp'
+const IMMEDIATE_FRAME_COUNT = 2
+const FOG_RETRY_DELAY_MS = 3 * 60 * 1000
+const MAX_FOG_RETRIES = 2
+const SAT_FRAME_STEP_MIN = 10
 
 function formatUtcTm(date) {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  const h = String(date.getUTCHours()).padStart(2, "0");
-  const mi = String(date.getUTCMinutes()).padStart(2, "0");
-  return `${y}${m}${d}${h}${mi}`;
+  const p = (value) => String(value).padStart(2, '0')
+  return `${date.getUTCFullYear()}${p(date.getUTCMonth() + 1)}${p(date.getUTCDate())}${p(date.getUTCHours())}${p(date.getUTCMinutes())}`
 }
 
-function formatKstTm(dateUtc) {
-  const dateKst = new Date(dateUtc.getTime() + 9 * 60 * 60 * 1000);
-  return formatUtcTm(dateKst);
+function formatKstTm(dateUtc) { return formatUtcTm(new Date(dateUtc.getTime() + 9 * 60 * 60 * 1000)) }
+
+export function getCandidateTms(delayMinutes = config.satellite.delay_minutes, referenceTime = new Date()) {
+  const delayed = new Date(referenceTime)
+  delayed.setTime(delayed.getTime() - delayMinutes * 60 * 1000)
+  delayed.setUTCMinutes(Math.floor(delayed.getUTCMinutes() / SAT_FRAME_STEP_MIN) * SAT_FRAME_STEP_MIN, 0, 0)
+  return [0, 1, 2].map((index) => {
+    const time = new Date(delayed.getTime() - index * SAT_FRAME_STEP_MIN * 60 * 1000)
+    return { requestTm: formatUtcTm(time), displayTm: formatKstTm(time) }
+  })
 }
 
-// GK2A CI·CTPS의 10분 관측 간격에 맞춰 위성 프레임도 10분으로 유지한다.
-const SAT_FRAME_STEP_MIN = 10;
-
-function getCandidateTms(delayMinutes = config.satellite.delay_minutes, referenceTime = new Date()) {
-  const now = new Date(referenceTime);
-  const delayed = new Date(now.getTime() - delayMinutes * 60 * 1000);
-
-  const minute = Math.floor(delayed.getUTCMinutes() / SAT_FRAME_STEP_MIN) * SAT_FRAME_STEP_MIN;
-  delayed.setUTCMinutes(minute, 0, 0);
-
-  return [0, 1, 2].map((i) => {
-    const t = new Date(delayed.getTime() - i * SAT_FRAME_STEP_MIN * 60 * 1000);
-    return {
-      requestTm: formatUtcTm(t),
-      displayTm: formatKstTm(t),
-    };
-  });
+function buildIrUrl(activeConfig, tm) {
+  return `${activeConfig.satellite.url}/${activeConfig.satellite.channel}/${activeConfig.satellite.region}/data?date=${tm}&authKey=${activeConfig.api.radar_satellite_auth_key}`
 }
 
-function buildIrUrl(tm) {
-  const channel = config.satellite.channel;
-  const region = config.satellite.region;
-  return `${config.satellite.url}/${channel}/${region}/data?date=${tm}&authKey=${config.api.radar_satellite_auth_key}`;
+function buildFogUrl(activeConfig, tm) {
+  return `${activeConfig.satellite.fog_url}/${activeConfig.satellite.fog_product}/${activeConfig.satellite.region}/data?date=${tm}&authKey=${activeConfig.api.radar_satellite_auth_key}`
 }
 
-function buildFogUrl(tm) {
-  const product = config.satellite.fog_product;
-  const region = config.satellite.region;
-  return `${config.satellite.fog_url}/${product}/${region}/data?date=${tm}&authKey=${config.api.radar_satellite_auth_key}`;
-}
-
-
-async function fetchNC(url) {
-  try {
-    const response = await fetchWithTimeout(url, config.satellite.timeout_ms);
-    if (!response.ok) return null;
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    // HDF5 magic bytes: 0x89 0x48 0x44 0x46
-    if (buffer.length < 1000 || buffer[0] !== 0x89 || buffer[1] !== 0x48 || buffer[2] !== 0x44 || buffer[3] !== 0x46) {
-      return null;
-    }
-    return buffer;
-  } catch (error) {
-    return null;
-  }
-}
-
-// FOG(안개)만 못 받은 프레임은 다시 받아볼 값어치가 있지만 무한히는 아니다. 상한이 없으면
-// FOG가 끝내 올라오지 않는 시각의 프레임을 매 주기마다 적외+안개까지 통째로 다시 내려받는다.
 export function needsFogRefetch(frame) {
-  return Boolean(frame) && frame.fogPixelCount === null && (frame.fogAttempts || 0) < MAX_FOG_RETRIES;
+  return Boolean(frame) && frame.fogPixelCount === null && (frame.fogAttempts || 0) < MAX_FOG_RETRIES
 }
 
-// FOG 없이 저장된 프레임에 시도 횟수를 새긴다. 메타에 남아야 재시작·다음 주기에도 상한이 유지된다.
 function withFogAttempt(frameInfo, previousFrame) {
-  if (!frameInfo || frameInfo.fogPixelCount !== null) return frameInfo;
-  return { ...frameInfo, fogAttempts: (previousFrame?.fogAttempts || 0) + 1 };
+  if (!frameInfo || frameInfo.fogPixelCount !== null) return frameInfo
+  return { ...frameInfo, fogAttempts: (previousFrame?.fogAttempts || 0) + 1 }
 }
 
-function loadExistingMeta(satDir) {
-  const metaPath = path.join(satDir, "sat_meta.json");
-  if (!fs.existsSync(metaPath)) return null;
+function satelliteDir(activeConfig) { return path.join(activeConfig.storage.base_path, 'satellite') }
 
+function readJson(fsImpl, file) {
+  try { return JSON.parse(fsImpl.readFileSync(file, 'utf8')) } catch { return null }
+}
+
+// The temporary neighbour is deliberately created beside the published file: rename is atomic only within a filesystem.
+export function writeSatelliteAtomic(fsImpl, file, data) {
+  const temp = `${file}.${process.pid}.${Date.now()}.tmp`
   try {
-    return JSON.parse(fs.readFileSync(metaPath, "utf8"));
+    fsImpl.writeFileSync(temp, data)
+    fsImpl.renameSync(temp, file)
   } catch (error) {
-    return null;
+    try { fsImpl.unlinkSync(temp) } catch { /* best-effort temporary cleanup */ }
+    throw error
   }
 }
 
 function buildFrameSpecs(latestRequestTm, frameCount) {
-  const frameSpecs = [];
-  const latestDate = new Date(Date.UTC(
-    Number(latestRequestTm.slice(0, 4)),
-    Number(latestRequestTm.slice(4, 6)) - 1,
-    Number(latestRequestTm.slice(6, 8)),
-    Number(latestRequestTm.slice(8, 10)),
-    Number(latestRequestTm.slice(10, 12)),
-    0,
-    0
-  ));
-
-  for (let i = frameCount - 1; i >= 0; i--) {
-    const frameDate = new Date(latestDate.getTime() - i * SAT_FRAME_STEP_MIN * 60 * 1000);
-    frameSpecs.push({
-      requestTm: formatUtcTm(frameDate),
-      displayTm: formatKstTm(frameDate),
-    });
-  }
-
-  return frameSpecs;
+  const latest = new Date(Date.UTC(
+    Number(latestRequestTm.slice(0, 4)), Number(latestRequestTm.slice(4, 6)) - 1,
+    Number(latestRequestTm.slice(6, 8)), Number(latestRequestTm.slice(8, 10)), Number(latestRequestTm.slice(10, 12)),
+  ))
+  return Array.from({ length: frameCount }, (_, index) => {
+    const time = new Date(latest.getTime() - (frameCount - index - 1) * SAT_FRAME_STEP_MIN * 60 * 1000)
+    return { requestTm: formatUtcTm(time), displayTm: formatKstTm(time) }
+  })
 }
 
-async function renderFrame(satDir, requestTm, displayTm) {
-  const filename = `sat_korea_${displayTm}.webp`;
-  const filePath = path.join(satDir, filename);
+async function fetchNC(activeConfig, url, deps) {
+  const response = await (deps.fetchWithTimeout || fetchWithTimeout)(url, activeConfig.satellite.timeout_ms)
+  if (!response.ok) return null
+  const buffer = Buffer.from(await response.arrayBuffer())
+  return buffer.length >= 1000 && buffer[0] === 0x89 && buffer[1] === 0x48 && buffer[2] === 0x44 && buffer[3] === 0x46 ? buffer : null
+}
 
-  // Fetch both IR105 and FOG NC files in parallel
+async function renderFrame({ activeConfig, fsImpl, satDir, requestTm, displayTm, deps }) {
+  if (deps.renderFrame) return deps.renderFrame({ satDir, requestTm, displayTm })
   const [irBuffer, fogBuffer] = await Promise.all([
-    fetchNC(buildIrUrl(requestTm)),
-    fetchNC(buildFogUrl(requestTm)),
-  ]);
-
-  // IR is required; FOG is optional (composite still shows IR background)
-  if (!irBuffer) return null;
-
-  const irParsed = await parseSatelliteNC(irBuffer);
-
-  let result;
-  let hasFogData = false;
-  if (fogBuffer) {
-    const fogParsed = await parseFogNC(fogBuffer);
-    result = await renderFogImage(irParsed, fogParsed);
-    hasFogData = true;
-  } else {
-    // FOG unavailable — render IR-only by passing null fog data
-    result = await renderFogImage(irParsed, { fogData: null, delFta: null });
-  }
-
-  const webpBuffer = await sharp(result.pngBuffer)
-    .webp({ quality: 90, effort: 6 })
-    .toBuffer();
-
-  fs.writeFileSync(filePath, webpBuffer);
-
+    fetchNC(activeConfig, buildIrUrl(activeConfig, requestTm), deps),
+    fetchNC(activeConfig, buildFogUrl(activeConfig, requestTm), deps),
+  ])
+  if (!irBuffer) return null
+  const irParsed = await (deps.parseSatelliteNC || parseSatelliteNC)(irBuffer)
+  const hasFogData = Boolean(fogBuffer)
+  const result = hasFogData
+    ? await (deps.renderFogImage || renderFogImage)(irParsed, await (deps.parseFogNC || parseFogNC)(fogBuffer))
+    : await (deps.renderFogImage || renderFogImage)(irParsed, { fogData: null, delFta: null })
+  const webpBuffer = await (deps.sharp || sharp)(result.pngBuffer).webp({ quality: 90, effort: 6 }).toBuffer()
+  const filename = `sat_korea_${displayTm}.webp`
+  writeSatelliteAtomic(fsImpl, path.join(satDir, filename), webpBuffer)
   return {
-    tm: displayTm,
-    request_tm_utc: requestTm,
-    product: "FOG",
-    channel: config.satellite.channel,
-    render_version: RENDER_VERSION,
-    path: `/data/satellite/${filename}`,
-    bounds: result.bounds,
-    width: result.width,
-    height: result.height,
-    fogPixelCount: hasFogData ? result.fogPixelCount : null,
-  };
+    tm: displayTm, request_tm_utc: requestTm, product: 'FOG', channel: activeConfig.satellite.channel,
+    render_version: RENDER_VERSION, path: `/data/satellite/${filename}`, bounds: result.bounds,
+    width: result.width, height: result.height, fogPixelCount: hasFogData ? result.fogPixelCount : null,
+  }
 }
 
-function writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames, { updatedAt = new Date() } = {}) {
-  const frames = frameSpecs
-    .map((frame) => existingFrames.get(frame.displayTm))
-    .filter(Boolean)
-    .sort((a, b) => a.tm.localeCompare(b.tm));
-
+function publishMeta({ fsImpl, satDir, activeConfig, latestFrameSpec, frameSpecs, existingFrames, updatedAt }) {
+  const frames = frameSpecs.map((frame) => existingFrames.get(frame.displayTm)).filter(Boolean).sort((a, b) => a.tm.localeCompare(b.tm))
   const meta = {
-    type: "SATELLITE",
-    product: "FOG",
-    channel: config.satellite.channel,
-    region: config.satellite.region,
-    render_version: RENDER_VERSION,
-    updated_at: new Date(updatedAt).toISOString(),
-    tm: latestFrameSpec.displayTm,
-    request_tm_utc: latestFrameSpec.requestTm,
-    latest: frames.find((frame) => frame.tm === latestFrameSpec.displayTm) || null,
-    frames,
-  };
-
-  if (!meta.latest && frames.length) {
-    meta.latest = frames[frames.length - 1];
+    type: 'SATELLITE', product: 'FOG', channel: activeConfig.satellite.channel, region: activeConfig.satellite.region,
+    render_version: RENDER_VERSION, updated_at: new Date(updatedAt).toISOString(), tm: latestFrameSpec.displayTm,
+    request_tm_utc: latestFrameSpec.requestTm, latest: frames.find((frame) => frame.tm === latestFrameSpec.displayTm) || frames.at(-1) || null, frames,
   }
-
-  const validNames = new Set(frames.map((frame) => path.basename(frame.path)));
-
-  for (const filename of fs.readdirSync(satDir)) {
-    if (/^sat_korea_\d{12}\.(?:png|webp)$/.test(filename) && !validNames.has(filename)) {
-      fs.unlinkSync(path.join(satDir, filename));
-    }
+  // Metadata is the commit record and is written only after every newly referenced WebP has been renamed into place.
+  writeSatelliteAtomic(fsImpl, path.join(satDir, 'sat_meta.json'), `${JSON.stringify(meta, null, 2)}\n`)
+  const names = new Set(frames.map((frame) => path.basename(frame.path)))
+  for (const filename of fsImpl.readdirSync(satDir)) {
+    if (/^sat_korea_\d{12}\.(?:png|webp)$/.test(filename) && !names.has(filename)) fsImpl.unlinkSync(path.join(satDir, filename))
   }
-
-  const metaPath = path.join(satDir, "sat_meta.json");
-  fs.writeFileSync(metaPath, `${JSON.stringify(meta, null, 2)}\n`, "utf8");
-  return meta;
+  return meta
 }
 
-function scheduleFogRetry(satDir, frameSpec, frameSpecs, attempt = 1) {
-  if (!frameSpec?.displayTm || attempt > MAX_FOG_RETRIES || fogRetryTimers.has(frameSpec.displayTm)) {
-    return;
-  }
-
-  const timer = setTimeout(async () => {
-    fogRetryTimers.delete(frameSpec.displayTm);
-    try {
-      const existingMeta = loadExistingMeta(satDir);
-      if (existingMeta?.render_version !== RENDER_VERSION) {
-        return;
-      }
-
-      const existingFrames = new Map((existingMeta.frames || []).map((frame) => [frame.tm, frame]));
-      const currentFrame = existingFrames.get(frameSpec.displayTm);
-      if (currentFrame && (currentFrame.fogPixelCount !== null || (currentFrame.fogAttempts || 0) >= MAX_FOG_RETRIES)) {
-        return;
-      }
-
-      const frameInfo = await renderFrame(satDir, frameSpec.requestTm, frameSpec.displayTm);
-      if (!frameInfo) {
-        return;
-      }
-
-      existingFrames.set(frameSpec.displayTm, withFogAttempt(frameInfo, currentFrame));
-      writeMeta(satDir, frameSpec, frameSpecs, existingFrames);
-
-      if (frameInfo.fogPixelCount === null && attempt < MAX_FOG_RETRIES) {
-        scheduleFogRetry(satDir, frameSpec, frameSpecs, attempt + 1);
-      }
-    } catch (error) {
-      console.warn(`satellite: fog retry failed ${frameSpec.requestTm} (#${attempt}):`, error.message);
-      if (attempt < MAX_FOG_RETRIES) {
-        scheduleFogRetry(satDir, frameSpec, frameSpecs, attempt + 1);
-      }
-    }
-  }, FOG_RETRY_DELAY_MS);
-
-  fogRetryTimers.set(frameSpec.displayTm, timer);
+function followUp(mode, now, frame, delayMs) {
+  return { kind: 'satellite', mode, now: new Date(now).toISOString(), ...(frame ? { frame } : {}), delayMs }
 }
 
-function scheduleBackgroundFill(satDir, pendingFrameSpecs, existingFrames, latestFrameSpec, frameSpecs) {
-  if (!pendingFrameSpecs.length || backgroundFillRunning) return;
-
-  backgroundFillRunning = true;
-  setTimeout(async () => {
-    try {
-      for (const frameSpec of pendingFrameSpecs) {
-        const filename = `sat_korea_${frameSpec.displayTm}.webp`;
-        const filePath = path.join(satDir, filename);
-        if (fs.existsSync(filePath) && existingFrames.get(frameSpec.displayTm)) continue;
-
-        try {
-          const frameInfo = await renderFrame(satDir, frameSpec.requestTm, frameSpec.displayTm);
-          if (frameInfo) {
-            existingFrames.set(frameSpec.displayTm, withFogAttempt(frameInfo, existingFrames.get(frameSpec.displayTm)));
-            writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames);
-          }
-        } catch (err) {
-          console.warn(`satellite: failed background frame ${frameSpec.requestTm}:`, err.message);
-        }
-      }
-    } finally {
-      backgroundFillRunning = false;
-    }
-  }, 0);
+function resolveFrame(frame) {
+  if (!frame?.requestTm || !frame?.displayTm) throw new Error('satellite frame is required')
+  return { requestTm: frame.requestTm, displayTm: frame.displayTm }
 }
 
-async function process({
-  now = new Date(),
-  fillAll = false,
-  collectConvective = true,
-  scheduleRetries = true,
-} = {}) {
-  if (!config.api.radar_satellite_auth_key) {
-    throw new Error("Satellite auth key missing (set KMA_RADAR_SATELLITE_AUTH_KEY)");
-  }
-
-  const satDir = ensureSatelliteDir();
-  const frameCount = config.satellite.max_frames || 18;
-  const candidates = getCandidateTms(config.satellite.delay_minutes, now);
-  const latestFrameSpec = candidates[0] || null;
-
-  if (!latestFrameSpec) {
-    return {
-      type: "satellite",
-      saved: false,
-      reason: "no data available",
-    };
-  }
-
-  const frameSpecs = buildFrameSpecs(latestFrameSpec.requestTm, frameCount);
-
-  const existingMeta = loadExistingMeta(satDir);
-  const sameRenderVersion = existingMeta?.render_version === RENDER_VERSION;
-  const existingFrames = new Map(
-    ((sameRenderVersion ? existingMeta?.frames : []) || []).map((frame) => [frame.tm, frame])
-  );
-  const missingFrameSpecs = frameSpecs.filter((frameSpec) => {
-    const filename = `sat_korea_${frameSpec.displayTm}.webp`;
-    const filePath = path.join(satDir, filename);
-    if (!fs.existsSync(filePath) || !existingFrames.get(frameSpec.displayTm)) return true;
-    return needsFogRefetch(existingFrames.get(frameSpec.displayTm));
-  });
-
-  const immediateFrameSpecs = fillAll ? missingFrameSpecs : missingFrameSpecs.slice(-IMMEDIATE_FRAME_COUNT);
-  const deferredFrameSpecs = fillAll ? [] : missingFrameSpecs.slice(0, -IMMEDIATE_FRAME_COUNT);
-
-  for (const frameSpec of immediateFrameSpecs) {
-    try {
-      const frameInfo = await renderFrame(satDir, frameSpec.requestTm, frameSpec.displayTm);
-      if (frameInfo) existingFrames.set(frameSpec.displayTm, withFogAttempt(frameInfo, existingFrames.get(frameSpec.displayTm)));
-    } catch (err) {
-      console.warn(`satellite: failed to render frame ${frameSpec.requestTm}:`, err.message);
-    }
-  }
-
-  const meta = writeMeta(satDir, latestFrameSpec, frameSpecs, existingFrames, { updatedAt: now });
-  if (collectConvective && meta.latest?.tm === latestFrameSpec.displayTm) {
-    try {
-      await collectConvectiveSatelliteFrame({ tm: latestFrameSpec.displayTm, request_tm_utc: latestFrameSpec.requestTm })
-    } catch (error) {
-      console.warn(`satellite: convective collection failed ${latestFrameSpec.requestTm}:`, error.message)
-    }
-  }
-  scheduleBackgroundFill(satDir, deferredFrameSpecs, existingFrames, latestFrameSpec, frameSpecs);
-
-  const latestFrame = existingFrames.get(latestFrameSpec.displayTm);
-  if (scheduleRetries && latestFrame?.fogPixelCount === null) {
-    scheduleFogRetry(satDir, latestFrameSpec, frameSpecs);
-  }
-
-  return {
-    type: "satellite",
-    saved: immediateFrameSpecs.length > 0 || meta.frames.length > 0,
-    frameCount: meta.frames.length,
-    tm: meta.tm,
-    request_tm_utc: meta.request_tm_utc,
-    deferredCount: deferredFrameSpecs.length,
-    backgroundFillRunning,
-  };
+function context(now, deps) {
+  const activeConfig = deps.config || config
+  const fsImpl = deps.fs || fs
+  const satDir = satelliteDir(activeConfig)
+  fsImpl.mkdirSync(satDir, { recursive: true })
+  const existingMeta = readJson(fsImpl, path.join(satDir, 'sat_meta.json'))
+  const existingFrames = new Map(((existingMeta?.render_version === RENDER_VERSION ? existingMeta.frames : []) || []).map((frame) => [frame.tm, frame]))
+  return { activeConfig, fsImpl, satDir, existingMeta, existingFrames, now }
 }
 
-export { getCandidateTms, process }
-export default { process }
+export async function processSatellite({ now = new Date(), mode = 'current', frame, deps = {} } = {}) {
+  const activeNow = new Date(now)
+  const activeConfig = deps.config || config
+  if (!activeConfig.api?.radar_satellite_auth_key) throw new Error('Satellite auth key missing (set KMA_RADAR_SATELLITE_AUTH_KEY)')
+  const state = context(activeNow, deps)
+  const frameCount = activeConfig.satellite.max_frames || 18
+
+  if (mode === 'current') {
+    const latestFrameSpec = getCandidateTms(activeConfig.satellite.delay_minutes, activeNow)[0]
+    if (!latestFrameSpec) return { result: { type: 'satellite', saved: false, reason: 'no data available' }, followUps: [] }
+    const frameSpecs = buildFrameSpecs(latestFrameSpec.requestTm, frameCount)
+    const missing = frameSpecs.filter((spec) => {
+      const exists = state.fsImpl.existsSync(path.join(state.satDir, `sat_korea_${spec.displayTm}.webp`)) && state.existingFrames.get(spec.displayTm)
+      return !exists || needsFogRefetch(state.existingFrames.get(spec.displayTm))
+    })
+    const immediate = missing.slice(-IMMEDIATE_FRAME_COUNT)
+    for (const spec of immediate) {
+      const rendered = await renderFrame({ ...state, requestTm: spec.requestTm, displayTm: spec.displayTm, deps })
+      if (rendered) state.existingFrames.set(spec.displayTm, withFogAttempt(rendered, state.existingFrames.get(spec.displayTm)))
+    }
+    const meta = publishMeta({ ...state, latestFrameSpec, frameSpecs, updatedAt: activeNow })
+    if (deps.collectConvective !== false && meta.latest?.tm === latestFrameSpec.displayTm) {
+      try { await (deps.collectConvectiveSatelliteFrame || collectConvectiveSatelliteFrame)({ tm: latestFrameSpec.displayTm, request_tm_utc: latestFrameSpec.requestTm }) } catch (error) { console.warn(`satellite: convective collection failed ${latestFrameSpec.requestTm}:`, error.message) }
+    }
+    const latest = state.existingFrames.get(latestFrameSpec.displayTm)
+    const followUps = missing.slice(0, -IMMEDIATE_FRAME_COUNT).map((spec) => followUp('backfill', activeNow, spec, 0))
+    if (needsFogRefetch(latest)) followUps.push(followUp('fog_retry', activeNow, { ...latestFrameSpec, fogAttempts: latest.fogAttempts || 0 }, FOG_RETRY_DELAY_MS))
+    return { result: { type: 'satellite', saved: immediate.length > 0 || meta.frames.length > 0, frameCount: meta.frames.length, tm: meta.tm, request_tm_utc: meta.request_tm_utc, deferredCount: followUps.filter((job) => job.mode === 'backfill').length }, followUps }
+  }
+
+  if (!['backfill', 'fog_retry'].includes(mode)) throw new Error('invalid satellite mode')
+  const target = resolveFrame(frame)
+  const latestFrameSpec = state.existingMeta?.request_tm_utc && state.existingMeta?.tm
+    ? { requestTm: state.existingMeta.request_tm_utc, displayTm: state.existingMeta.tm }
+    : target
+  const frameSpecs = buildFrameSpecs(latestFrameSpec.requestTm, frameCount)
+  if (!frameSpecs.some((spec) => spec.displayTm === target.displayTm)) frameSpecs.push(target)
+  const previous = state.existingFrames.get(target.displayTm)
+  const followUps = []
+  try {
+    if (mode === 'backfill' && state.fsImpl.existsSync(path.join(state.satDir, `sat_korea_${target.displayTm}.webp`)) && previous && !needsFogRefetch(previous)) {
+      return { result: { type: 'satellite', saved: false, reason: 'already-collected' }, followUps }
+    }
+    if (mode === 'fog_retry' && !needsFogRefetch(previous)) return { result: { type: 'satellite', saved: false, reason: 'already-collected' }, followUps }
+    const rendered = await renderFrame({ ...state, requestTm: target.requestTm, displayTm: target.displayTm, deps })
+    if (!rendered) return { result: { type: 'satellite', saved: false, reason: 'no data available' }, followUps }
+    const saved = withFogAttempt(rendered, previous)
+    state.existingFrames.set(target.displayTm, saved)
+    const meta = publishMeta({ ...state, latestFrameSpec, frameSpecs, updatedAt: activeNow })
+    if (mode === 'fog_retry' && needsFogRefetch(saved)) followUps.push(followUp('fog_retry', activeNow, { ...target, fogAttempts: saved.fogAttempts || 0 }, FOG_RETRY_DELAY_MS))
+    return { result: { type: 'satellite', saved: true, frameCount: meta.frames.length, tm: meta.tm, request_tm_utc: meta.request_tm_utc }, followUps }
+  } catch (error) {
+    const attempt = frame?.fogAttempts || 0
+    if (mode === 'fog_retry' && attempt < MAX_FOG_RETRIES) followUps.push(followUp('fog_retry', activeNow, { ...target, fogAttempts: attempt + 1 }, FOG_RETRY_DELAY_MS))
+    throw Object.assign(error, { followUps })
+  }
+}
+
+// Compatibility for direct callers until scheduler wiring moves to the worker queue.
+export async function process({ now = new Date(), fillAll = false, collectConvective = true } = {}) {
+  if (fillAll) {
+    const work = await processSatellite({ now, deps: { collectConvective } })
+    for (const followUpJob of work.followUps.filter((job) => job.mode === 'backfill')) await processSatellite({ now, mode: 'backfill', frame: followUpJob.frame, deps: { collectConvective: false } })
+    return work.result
+  }
+  return (await processSatellite({ now, deps: { collectConvective } })).result
+}
+
+export default { process, processSatellite }
