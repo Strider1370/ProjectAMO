@@ -43,11 +43,24 @@ echo "[deploy-full] reloading nginx..."
 sudo systemctl reload nginx
 
 # pm2 재시작 직후엔 backend가 아직 부팅 중이라 즉시 curl은 실패(exit 7)한다. 준비될 때까지 재시도.
-echo "[deploy-full] health check..."
+echo "[deploy-full] health check (backend)..."
 for i in $(seq 1 20); do
-  if curl --fail --silent http://127.0.0.1:3001/api/health; then echo; echo "[deploy-full] healthy"; break; fi
-  [ "$i" = "20" ] && { echo; echo "[deploy-full] health check FAILED after 20s" >&2; exit 1; }
+  if curl --fail --silent http://127.0.0.1:3001/api/health; then echo; echo "[deploy-full] backend healthy"; break; fi
+  [ "$i" = "20" ] && { echo; echo "[deploy-full] backend health check FAILED after 20s" >&2; exit 1; }
   sleep 1
 done
+
+# 화면도 확인한다. 백엔드만 보면 nginx가 내보내는 페이지가 깨져도 "healthy"로 끝난다 —
+# 2026-08-19에 빌드가 죽어 dist가 빈 채로 사이트가 404였는데 배포는 성공으로 보고했다.
+echo "[deploy-full] health check (site)..."
+# -L: :80은 :443으로 넘기므로 리다이렉트를 따라간다. -k: 자기 자신에게 IP로 붙으면
+# 인증서 이름이 안 맞는다(발급은 도메인 기준). 여기서 보는 것은 화면이 나오느냐다.
+site_code="$(curl --silent --location --insecure --output /dev/null --write-out '%{http_code}' --max-time 15 http://127.0.0.1/ || true)"
+if [ "${site_code}" = "200" ]; then
+  echo "[deploy-full] site healthy"
+else
+  echo "[deploy-full] site returned ${site_code} — 화면이 정상적으로 나오지 않는다" >&2
+  exit 1
+fi
 
 echo "[deploy-full] done"

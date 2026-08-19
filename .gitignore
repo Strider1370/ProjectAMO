@@ -24,3 +24,6 @@ scripts/__pycache__/
 .worktrees/
 .env.bak-*
 backups/
+
+# 배포 스크립트가 남기는 배포 시각(관리자 콘솔이 읽는다). 서버마다 다르므로 추적하지 않는다.
+.deployed-at

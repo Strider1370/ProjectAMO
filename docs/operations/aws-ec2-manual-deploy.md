@@ -54,6 +54,18 @@ cd /opt/projectamo/current
 
 > ⚠️ 새 기능이 새 필수 env를 요구할 수 있다(예: 0.2.3 로그인 도입 시 `SESSION_SECRET`). 배포 후 `/api/health`가 죽어 있으면 §6으로 PM2 로그부터 확인.
 
+## 2.7 IPv6 회피 설정
+
+`ecosystem.config.cjs`가 백엔드에 `NODE_OPTIONS=--no-network-family-autoselection`을 준다.
+
+이 서버에는 IPv6 주소가 붙어 있고, 외부 기상 API 중 `aviationweather.gov`(NOAA)와
+`api.rainviewer.com`은 진짜 IPv6 주소를 갖고 있다. Node의 기본 동작은 IPv6를 먼저 시도하는데,
+밖으로 나가는 IPv6 경로가 막혀 있으면 매번 타임아웃을 기다렸다가 IPv4로 넘어가 **해외 기상과
+강수 레이더 수집이 느려지거나 실패한다.**
+
+2026-07-15에 운영 서버에서 직접 넣었으나 커밋되지 않아 저장소에는 없었다(2026-08-19에 발견해
+커밋). 서버를 새로 만들 때 이 설정이 빠지면 해외 자료가 조용히 안 들어온다.
+
 ## 3. 빠른 배포
 
 의존성 변경이 없으면 fast deploy를 사용합니다.
@@ -70,7 +82,17 @@ bash deploy/deploy-vm.sh
 3. `pm2 restart projectamo-backend --update-env`
 4. `sudo nginx -t`
 5. `sudo systemctl reload nginx`
-6. `curl http://127.0.0.1:3001/api/health`
+6. 건강 검사 — **백엔드와 화면 둘 다**
+
+### 건강 검사는 화면까지 본다
+
+예전에는 `curl http://127.0.0.1:3001/api/health`만 확인했다. 그래서 **화면이 404여도 배포는 성공으로
+끝났다** — 2026-08-19에 빌드가 죽어 `dist`가 빈 채로 사이트가 내려갔는데 스크립트는 `healthy`를 찍었다.
+
+지금은 백엔드 확인 뒤에 `curl -L -k http://127.0.0.1/`로 **실제 화면이 200으로 나오는지**까지 본다.
+`-L`은 `:80 → :443` 리다이렉트를 따라가기 위해서고, `-k`는 IP로 자기 자신에게 붙을 때 인증서
+이름이 안 맞기 때문이다(인증서는 도메인 기준으로 발급된다). 여기서 확인하는 것은 인증서가 아니라
+화면이 나오느냐다.
 
 ### 배포 스크립트는 pull 직후 스스로 다시 시작한다
 
