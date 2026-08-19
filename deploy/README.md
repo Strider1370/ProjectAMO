@@ -4,6 +4,11 @@ ProjectAMO 운영 배포 스크립트 정리입니다.
 
 ## Scripts
 
+- `build-frontend.sh`
+  - 프론트엔드 빌드 전용. 두 배포 스크립트가 공유한다
+  - **새 폴더에 빌드하고 성공했을 때만 `dist`와 교체** — 빌드가 죽어도 사이트가 안 내려간다
+  - Node 힙 한도를 올린다(`NODE_OPTIONS`로 덮어쓸 수 있음)
+
 - `deploy-vm.sh`
   - fast deploy
   - frontend build + PM2 restart + nginx reload

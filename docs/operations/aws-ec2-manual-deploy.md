@@ -66,11 +66,31 @@ bash deploy/deploy-vm.sh
 이 스크립트는 다음을 수행합니다.
 
 1. `git pull --ff-only origin main`
-2. `npm --prefix frontend run build`
+2. `bash deploy/build-frontend.sh` — **새 폴더(`frontend/dist.new`)에 빌드하고 성공했을 때만 `dist`와 교체**
 3. `pm2 restart projectamo-backend --update-env`
 4. `sudo nginx -t`
 5. `sudo systemctl reload nginx`
 6. `curl http://127.0.0.1:3001/api/health`
+
+### 빌드가 죽어도 사이트는 살아 있다
+
+vite는 빌드를 시작할 때 결과물 폴더를 먼저 비운다. nginx는 그 폴더를 그대로 서빙하므로,
+예전 방식(`dist`에 직접 빌드)에서는 **빌드가 중간에 죽으면 `index.html`이 사라져 사이트가 404**로
+내려갔다. 2026-08-19에 실제로 그렇게 죽었다 — 서버 메모리 1.9GB에서 백엔드가 도는 채로
+빌드가 돌다가 vite가 `SIGABRT`로 중단됐고, 그 순간부터 운영 사이트가 404였다.
+
+지금은 `deploy/build-frontend.sh`가 새 폴더에 빌드하고 **`index.html`이 실제로 만들어졌을 때만**
+폴더 이름을 바꾼다. 빌드가 죽으면 이전 화면이 그대로 서빙된다.
+
+같은 스크립트가 Node 힙 한도를 `--max-old-space-size=1536`으로 올린다(스왑 2GB가 받친다).
+필요하면 환경변수로 덮어쓸 수 있다:
+
+```bash
+NODE_OPTIONS="--max-old-space-size=1024" bash deploy/deploy-vm.sh
+```
+
+**이래도 계속 죽으면** 빌드를 서버 밖으로 빼야 한다 — 로컬 빌드 후 `rsync`, 또는 CI(GitHub Actions)
+빌드. 번들이 계속 커지는 중이라(현재 메인 청크 3.2MB) 언젠가 그 시점이 온다.
 
 참고:
 
@@ -98,7 +118,7 @@ bash deploy/deploy-vm-full.sh
 1. `git pull --ff-only origin main`
 2. `npm --prefix backend ci`
 3. `npm --prefix frontend ci`
-4. `npm --prefix frontend run build`
+4. `bash deploy/build-frontend.sh` (fast deploy와 같은 방식 — 성공 시에만 교체)
 5. `pm2 restart projectamo-backend --update-env`
 6. `sudo nginx -t`
 7. `sudo systemctl reload nginx`
