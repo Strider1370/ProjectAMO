@@ -17,7 +17,7 @@ git pull --ff-only origin main
 # 관리자 콘솔의 "배포 시각"이 읽는 파일. git 파일 수정시각에 기대는 것보다 정확하다.
 date -Iseconds > .deployed-at
 echo "[deploy] building frontend..."
-npm --prefix frontend run build
+bash deploy/build-frontend.sh
 
 echo "[deploy] restarting pm2 app..."
 pm2 restart projectamo-backend --update-env

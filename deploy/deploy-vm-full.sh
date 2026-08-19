@@ -21,7 +21,7 @@ echo "[deploy-full] installing frontend dependencies..."
 npm --prefix frontend ci
 
 echo "[deploy-full] building frontend..."
-npm --prefix frontend run build
+bash deploy/build-frontend.sh
 
 echo "[deploy-full] restarting pm2 app..."
 pm2 restart projectamo-backend --update-env
