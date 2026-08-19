@@ -86,11 +86,12 @@ bash deploy/deploy-vm.sh
 이 스크립트는 다음을 수행합니다.
 
 1. `git pull --ff-only origin main`
-2. `bash deploy/build-frontend.sh` — **새 폴더(`frontend/dist.new`)에 빌드하고 성공했을 때만 `dist`와 교체**
-3. `pm2 restart projectamo-backend --update-env`
-4. `sudo nginx -t`
-5. `sudo systemctl reload nginx`
-6. 건강 검사 — **백엔드와 화면 둘 다**
+2. **pull한 새 스크립트로 자기 자신을 재시작** (§아래)
+3. `bash deploy/build-frontend.sh` — **새 폴더(`frontend/dist.new`)에 빌드하고 성공했을 때만 `dist`와 교체**
+4. `pm2 restart ecosystem.config.cjs --update-env` + `pm2 save` — **앱 이름이 아니라 설정 파일을 지목**
+5. `sudo nginx -t` · `sudo systemctl reload nginx`
+6. **설정 적용 확인** — 파일의 `NODE_OPTIONS`와 실제 프로세스 값 대조, 다르면 실패
+7. 건강 검사 — **백엔드와 화면 둘 다**
 
 ### 건강 검사는 화면까지 본다
 
@@ -153,9 +154,10 @@ bash deploy/deploy-vm-full.sh
 이 스크립트는 다음을 수행합니다.
 
 1. `git pull --ff-only origin main`
-2. `npm --prefix backend ci`
-3. `npm --prefix frontend ci`
-4. `bash deploy/build-frontend.sh` (fast deploy와 같은 방식 — 성공 시에만 교체)
+2. pull한 새 스크립트로 자기 자신을 재시작
+3. `npm --prefix backend ci`
+4. `npm --prefix frontend ci`
+5. `bash deploy/build-frontend.sh` (fast deploy와 같은 방식 — 성공 시에만 교체)
 5. `pm2 restart projectamo-backend --update-env`
 6. `sudo nginx -t`
 7. `sudo systemctl reload nginx`
@@ -250,5 +252,15 @@ collector 오류는 일부 있어도 backend 자체는 떠 있을 수 있습니�
 - HTTPS: `/etc/letsencrypt/live/projectamo.co.kr/` 인증서 사용, nginx `projectamo.conf`
 - fast deploy 실패 원인 예시: 새 dependency 미설치
 - 해결: `bash deploy/deploy-vm-full.sh` 실행 후 health/pm2/nginx 재확인
+
+2026-08-19에 배포 경로를 점검하고 네 가지를 고쳤다. 넷 다 원인이 같다 —
+**저장소가 말하는 것과 서버가 실제로 하는 것이 달랐는데, 그것을 알아낼 방법이 없었다.**
+
+| 문제 | 지금 |
+|---|---|
+| 빌드가 죽으면 `dist`가 빈 채로 남아 사이트 404 | 새 폴더에 빌드하고 성공 시에만 교체 |
+| 배포 스크립트가 자기를 pull해 이번 실행엔 반영 안 됨 | pull 직후 새 내용으로 재시작 |
+| 건강 검사가 백엔드만 봐서 사이트가 404여도 성공 | 화면도 200인지 확인 |
+| `pm2 restart <이름>`이 `ecosystem.config.cjs`를 안 읽음 | 파일을 지목해 재시작하고 적용됐는지 대조 |
 
 이전 서버(`13.124.1.201`)에서 도메인 구매 후 신규 인스턴스(`3.34.113.37`)로 이전됨.

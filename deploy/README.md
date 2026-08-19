@@ -11,7 +11,8 @@ ProjectAMO 운영 배포 스크립트 정리입니다.
 
 - `deploy-vm.sh`
   - fast deploy
-  - frontend build + PM2 restart + nginx reload
+  - pull → 자기 재시작 → frontend build → PM2 restart(설정 파일 지목) → nginx reload → 검증
+  - 검증: 설정 적용 대조 + 백엔드 health + **화면 200**
   - package dependency 변경이 없을 때 사용
 
 - `deploy-vm-full.sh`
