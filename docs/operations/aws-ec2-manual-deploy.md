@@ -54,17 +54,25 @@ cd /opt/projectamo/current
 
 > ⚠️ 새 기능이 새 필수 env를 요구할 수 있다(예: 0.2.3 로그인 도입 시 `SESSION_SECRET`). 배포 후 `/api/health`가 죽어 있으면 §6으로 PM2 로그부터 확인.
 
-## 2.7 IPv6 회피 설정
+## 2.7 pm2 설정은 파일을 지목해야 반영된다
 
-`ecosystem.config.cjs`가 백엔드에 `NODE_OPTIONS=--no-network-family-autoselection`을 준다.
+`pm2 restart projectamo-backend`는 **pm2가 자기 안에 들고 있는 설정**으로 재시작할 뿐
+`ecosystem.config.cjs`를 다시 읽지 않는다. 그래서 그 파일을 고쳐도 아무 일이 일어나지 않는다.
 
-이 서버에는 IPv6 주소가 붙어 있고, 외부 기상 API 중 `aviationweather.gov`(NOAA)와
-`api.rainviewer.com`은 진짜 IPv6 주소를 갖고 있다. Node의 기본 동작은 IPv6를 먼저 시도하는데,
-밖으로 나가는 IPv6 경로가 막혀 있으면 매번 타임아웃을 기다렸다가 IPv4로 넘어가 **해외 기상과
-강수 레이더 수집이 느려지거나 실패한다.**
+2026-07-15에 누군가 그 파일에 `NODE_OPTIONS=--no-network-family-autoselection`을 넣었지만
+**한 달 내내 적용되지 않았고 아무도 몰랐다**(2026-08-19 발견). 그동안 실제로 돌던 값은
+`--max-old-space-size=1400`이었고, 그 값은 반대로 저장소 어디에도 없었다.
 
-2026-07-15에 운영 서버에서 직접 넣었으나 커밋되지 않아 저장소에는 없었다(2026-08-19에 발견해
-커밋). 서버를 새로 만들 때 이 설정이 빠지면 해외 자료가 조용히 안 들어온다.
+배포 스크립트는 이제 `pm2 restart ecosystem.config.cjs --update-env` + `pm2 save`로 파일을
+지목해 재시작하고, **재시작 뒤 실제 프로세스의 `NODE_OPTIONS`가 파일과 일치하는지 확인**한다.
+어긋나면 배포를 실패로 끝낸다 — 파일만 보고 "됐겠지" 하다가 한 달을 놓쳤기 때문이다.
+
+### IPv6 회피 설정은 넣지 않는다
+
+`aviationweather.gov`(NOAA)와 `api.rainviewer.com`은 진짜 IPv6 주소를 갖고 있고 이 서버에도
+IPv6가 붙어 있다. 그래서 `--no-network-family-autoselection`이 필요해 보이지만, **실제로는
+필요 없다** — 그 설정이 꺼져 있던 한 달 동안 해외 METAR/TAF/SIGMET과 RainViewer 수집이 모두
+정상이었다(2026-08-19 확인, 수집 간격대로 최신). 필요해지면 그때 넣는다.
 
 ## 3. 빠른 배포
 

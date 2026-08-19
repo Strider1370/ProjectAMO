@@ -29,8 +29,13 @@ date -Iseconds > .deployed-at
 echo "[deploy] building frontend..."
 bash deploy/build-frontend.sh
 
-echo "[deploy] restarting pm2 app..."
-pm2 restart projectamo-backend --update-env
+# 앱 이름이 아니라 **설정 파일을 지목해서** 재시작한다.
+# `pm2 restart <이름>`은 pm2가 자기 안에 들고 있는 설정을 쓸 뿐 ecosystem.config.cjs를 다시
+# 읽지 않는다. 그래서 그 파일을 고쳐도 아무 일이 일어나지 않는다 — 2026-07-15에 넣은 설정이
+# 한 달 내내 죽어 있었는데 아무도 몰랐다(2026-08-19 발견). 파일을 지목해야 반영된다.
+echo "[deploy] restarting pm2 app from ecosystem.config.cjs..."
+pm2 restart ecosystem.config.cjs --update-env
+pm2 save
 
 echo "[deploy] validating nginx..."
 sudo nginx -t
@@ -39,6 +44,20 @@ echo "[deploy] reloading nginx..."
 sudo systemctl reload nginx
 
 # pm2 재시작 직후엔 backend가 아직 부팅 중이라 즉시 curl은 실패(exit 7)한다. 준비될 때까지 재시도.
+# 설정이 실제로 걸렸는지 확인한다. 파일만 보고 "됐겠지" 하다가 한 달을 놓쳤다.
+echo "[deploy] verifying process options..."
+expected_opts="$(node -p "require('./ecosystem.config.cjs').apps[0].env.NODE_OPTIONS || ''")"
+if [ -n "${expected_opts}" ]; then
+  app_pid="$(pm2 jlist | node -p "JSON.parse(require('fs').readFileSync(0,'utf8'))[0].pid")"
+  actual_opts="$(tr '\0' '\n' < "/proc/${app_pid}/environ" | sed -n 's/^NODE_OPTIONS=//p')"
+  if [ "${actual_opts}" = "${expected_opts}" ]; then
+    echo "[deploy] NODE_OPTIONS applied: ${actual_opts}"
+  else
+    echo "[deploy] NODE_OPTIONS mismatch — 파일: '${expected_opts}' / 실제: '${actual_opts}'" >&2
+    exit 1
+  fi
+fi
+
 echo "[deploy] health check (backend)..."
 for i in $(seq 1 20); do
   if curl --fail --silent http://127.0.0.1:3001/api/health; then echo; echo "[deploy] backend healthy"; break; fi
