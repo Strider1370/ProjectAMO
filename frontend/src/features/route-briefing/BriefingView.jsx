@@ -53,7 +53,7 @@ function CatBadge({ category }) {
   return <Badge appearance="filled" style={{ backgroundColor: catColorOf(category), color: '#fff' }}>{c}</Badge>
 }
 
-export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null }) {
+export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeRefreshError = null, onRetryNwpTimeRefresh = null, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null }) {
   const isMobile = useIsMobile()
   const { tz } = useTimeZone()
   const { nowMs } = useDemoMode()
@@ -466,6 +466,8 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             )}
           </section>
         )}
+        {crossSectionHourLoading && <p className="bv-leg-sub" role="status">NWP 시간 반영 중…</p>}
+        {nwpTimeRefreshError && <p className="bv-leg-sub" role="alert">NWP 시간 반영 실패 <button type="button" onClick={onRetryNwpTimeRefresh}>다시 시도</button></p>}
         {(legs.length > 0 || (sections.enroute.procedures ?? []).length > 0) && <RouteWeatherLegTable
           legs={legs}
           procedures={sections.enroute.procedures ?? []}

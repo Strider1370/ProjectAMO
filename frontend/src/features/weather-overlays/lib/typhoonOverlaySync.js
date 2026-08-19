@@ -23,7 +23,7 @@ export function typhoonPopupHtml(row, number, name, timeZone = 'KST') {
   return `<section class="typhoon-popup"><div class="typhoon-popup__head"><strong>${text(number)}호 태풍 ${text(name)}</strong><span>강도 ${text(intensity)}</span></div><div class="typhoon-popup__rows"><div><span>유효시각</span><span>${validAt}</span></div><div><span>최대풍속</span><span>${text(row?.maxWindMs)} m/s</span></div></div></section>`
 }
 
-export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible, timeZone = 'KST' }) {
+export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible, timeZone = 'KST', enabled = true }) {
   const [snapshot, setSnapshot] = useState(null)
   // 패널의 시각 행과 지도 지점을 잇는 선택 상태. 어느 쪽에서 골라도 같은 값이 된다.
   // pinned = 클릭으로 고정한 것. 마우스가 떠나도 풀리지 않는다.
@@ -38,6 +38,7 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
 
   // 레이어를 켜기 전에도 받아둔다. 타일 배지가 활성 태풍 수를 보여줘야 하기 때문이다(스펙 §9.2).
   useEffect(() => {
+    if (!enabled) return undefined
     let cancelled = false
     const load = async () => {
       try {
@@ -52,7 +53,7 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
     }
     load()
     return () => { cancelled = true }
-  }, [])
+  }, [enabled])
 
   // useEchoTopOverlay.js:9-12와 같은 형태다. MapView 지역 헬퍼(useStyleSyncedEffect)를
   // 끌어다 쓰지 않는다 — 기존 오버레이 훅은 전부 이렇게 직접 가드한다.

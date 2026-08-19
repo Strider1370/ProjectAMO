@@ -1,9 +1,4 @@
-import {
-  fetchSnapshotMeta as fetchCurrentSnapshotMeta,
-  loadChangedWeatherData,
-  loadDeferredWeatherData,
-  loadWeatherData,
-} from '../../api/weatherApi.js'
+import { fetchSnapshotMeta as fetchCurrentSnapshotMeta } from '../../api/weatherApi.js'
 
 async function fetchJson(url, { optional = false } = {}) {
   try {
@@ -17,30 +12,42 @@ async function fetchJson(url, { optional = false } = {}) {
   }
 }
 
-export async function loadMonitoringStaticData() {
-  const [airports, warningTypes, alertDefaults] = await Promise.all([
-    fetchJson('/api/airports', { optional: true }),
-    fetchJson('/api/warning-types', { optional: true }),
-    fetchJson('/api/alert-defaults'),
-  ])
-  return { airports: airports || [], warningTypes: warningTypes || {}, alertDefaults }
+const MONITORING_DATA_FETCHERS = {
+  airports: { url: '/api/airports', optional: true },
+  metar: { url: '/api/metar', optional: true },
+  taf: { url: '/api/taf', optional: true },
+  amos: { url: '/api/amos', optional: true },
+  warning: { url: '/api/warning', optional: true },
+  kmaSpecialWarning: { url: '/api/kma-special-warning', optional: true },
+  sigmet: { url: '/api/sigmet', optional: true },
+  airmet: { url: '/api/airmet', optional: true },
+  lightning: { url: '/api/lightning', optional: true },
+  groundForecast: { url: '/api/ground-forecast', optional: true },
+  groundOverview: { url: '/api/ground-overview', optional: true },
+  environment: { url: '/api/environment', optional: true },
+  airportInfo: { url: '/api/airport-info', optional: true },
+  warningTypes: { url: '/api/warning-types', optional: true },
+  hsrMeta: { url: '/data/radar/hsr/hsr_meta.json', optional: true },
+  hciMeta: { url: '/data/radar/hci/hci_meta.json', optional: true },
+  satMeta: { url: '/data/satellite/sat_meta.json', optional: true },
+  satVisibleMeta: { url: '/data/satellite/visible/visible_meta.json', optional: true },
+}
+
+async function loadMonitoringEntries(keys, optional = true) {
+  const uniqueKeys = [...new Set(keys)].filter((key) => MONITORING_DATA_FETCHERS[key])
+  const values = await Promise.all(uniqueKeys.map((key) => {
+    const entry = MONITORING_DATA_FETCHERS[key]
+    return fetchJson(entry.url, { optional: optional === 'preserve' ? 'preserve' : entry.optional })
+  }))
+  return Object.fromEntries(uniqueKeys.map((key, index) => [key, values[index]]))
 }
 
 export async function loadMonitoringData() {
-  const data = await loadWeatherData()
-  const [deferredData, warningTypes, sigwxLowFronts, sigwxLowClouds] = await Promise.all([
-    loadDeferredWeatherData(['sigwxLowHistory', 'groundOverview', 'environment', 'airportInfo', 'adsb']),
-    fetchJson('/api/warning-types', { optional: true }),
-    fetchJson('/api/sigwx-low-fronts', { optional: true }),
-    fetchJson('/api/sigwx-low-clouds', { optional: true }),
-  ])
-
+  const data = await loadMonitoringEntries(Object.keys(MONITORING_DATA_FETCHERS))
   return {
     ...data,
-    ...deferredData,
-    warningTypes: warningTypes || {},
-    sigwxLowFronts,
-    sigwxLowClouds,
+    airports: data.airports || [],
+    warningTypes: data.warningTypes || {},
   }
 }
 
@@ -53,29 +60,18 @@ export async function fetchMonitoringSnapshotMeta() {
 }
 
 export async function loadChangedMonitoringData(changes) {
-  const changed = await loadChangedWeatherData(changes)
-
-  if (changes.sigwxLow || changes.sigwxFrontMeta) {
-    changed.sigwxLowFronts = await fetchJson('/api/sigwx-low-fronts', { optional: 'preserve' })
-  }
-  if (changes.sigwxLow || changes.sigwxCloudMeta) {
-    changed.sigwxLowClouds = await fetchJson('/api/sigwx-low-clouds', { optional: 'preserve' })
-  }
-
-  return changed
+  const changedKeys = Object.keys(MONITORING_DATA_FETCHERS)
+    .filter((key) => changes[key])
+  const changed = await loadMonitoringEntries(changedKeys, 'preserve')
+  return Object.fromEntries(Object.entries(changed).map(([key, value]) => [key, value ?? undefined]))
 }
 
 export async function loadMonitoringInitialData() {
-  const [{ airports, warningTypes, alertDefaults }, result] = await Promise.all([
-    loadMonitoringStaticData(),
+  const [data, alertDefaults] = await Promise.all([
     loadMonitoringData(),
+    loadMonitoringAlertDefaults(),
   ])
-  const merged = {
-    ...result,
-    airports: result.airports?.length ? result.airports : airports,
-    warningTypes: result.warningTypes || warningTypes,
-  }
-  return { data: merged, alertDefaults }
+  return { data, alertDefaults }
 }
 
 function hashOf(entry) {
@@ -84,16 +80,6 @@ function hashOf(entry) {
 
 function tmOf(entry) {
   return entry?.tm ?? null
-}
-
-function overlayKey(entry) {
-  if (!entry) return null
-  return [
-    entry.tmfc || '',
-    entry.source_hash || '',
-    entry.updated_at || '',
-    entry.render_version || '',
-  ].join('|')
 }
 
 function graphicsKey(entry) {
@@ -105,118 +91,83 @@ function graphicsKey(entry) {
   ].join('|')
 }
 
+function snapshotValue(snapshot, camelCase, snakeCase = camelCase) {
+  return snapshot?.[camelCase] || snapshot?.[snakeCase]
+}
+
 export function buildMonitoringSnapshot(data) {
   return {
     metar: data.metar?.content_hash || null,
-    metarOverseas: data.metarOverseas?.content_hash || null,
     taf: data.taf?.content_hash || null,
-    tafOverseas: data.tafOverseas?.content_hash || null,
     warning: data.warning?.content_hash || null,
     kmaSpecialWarning: data.kmaSpecialWarning?.content_hash || null,
     sigmet: data.sigmet?.content_hash || null,
-    sigmetOverseas: data.sigmetOverseas?.content_hash || null,
     airmet: data.airmet?.content_hash || null,
-    sigwxLow: data.sigwxLow?.content_hash || null,
     amos: data.amos?.content_hash || null,
     lightning: data.lightning?.content_hash || null,
-    adsb: data.adsb?.content_hash || null,
     groundForecast: data.groundForecast?.content_hash || null,
     groundOverview: data.groundOverview?.content_hash || null,
     environment: data.environment?.content_hash || null,
     airportInfo: data.airportInfo?.content_hash || null,
-    echo: data.echoMeta?.tm || null,
-    wissdom: graphicsKey(data.wissdomMeta),
-    qpf: graphicsKey(data.qpfMeta),
-    rainviewer: graphicsKey(data.rainviewerMeta),
-    satellite: data.satMeta?.tm || null,
-    convective: graphicsKey(data.convectiveMeta),
-    sigwxFrontMeta: overlayKey(data.sigwxFrontMeta),
-    sigwxCloudMeta: overlayKey(data.sigwxCloudMeta),
+    hsrMeta: graphicsKey(data.hsrMeta),
+    hciMeta: graphicsKey(data.hciMeta),
+    satMeta: tmOf(data.satMeta),
+    satVisibleMeta: tmOf(data.satVisibleMeta),
   }
 }
 
 export function detectMonitoringSnapshotChanges(snapshot, saved) {
-  const sigwxLow = snapshot?.sigwxLow || snapshot?.sigwx_low
-  const metarOverseas = snapshot?.metarOverseas || snapshot?.metar_overseas
-  const tafOverseas = snapshot?.tafOverseas || snapshot?.taf_overseas
-  const sigmetOverseas = snapshot?.sigmetOverseas || snapshot?.sigmet_overseas
-  const groundForecast = snapshot?.groundForecast || snapshot?.ground_forecast
-  const groundOverview = snapshot?.groundOverview || snapshot?.ground_overview
-  const echo = snapshot?.echoMeta || snapshot?.echo
-  const wissdom = snapshot?.wissdomMeta || snapshot?.wissdom
-  const qpf = snapshot?.qpfMeta || snapshot?.qpf
-  const rainviewer = snapshot?.rainviewerMeta || snapshot?.rainviewer
-  const satellite = snapshot?.satMeta || snapshot?.satellite
-  const convective = snapshot?.convectiveMeta || snapshot?.convective
+  const groundForecast = snapshotValue(snapshot, 'groundForecast', 'ground_forecast')
+  const groundOverview = snapshotValue(snapshot, 'groundOverview', 'ground_overview')
+  const hsrMeta = snapshotValue(snapshot, 'hsrMeta', 'hsr_meta')
+  const hciMeta = snapshotValue(snapshot, 'hciMeta', 'hci_meta')
+  const satMeta = snapshotValue(snapshot, 'satMeta', 'satellite')
+  const satVisibleMeta = snapshotValue(snapshot, 'satVisibleMeta', 'sat_visible')
 
   return {
     metar: hashOf(snapshot?.metar) !== saved.metar,
-    metarOverseas: hashOf(metarOverseas) !== saved.metarOverseas,
     taf: hashOf(snapshot?.taf) !== saved.taf,
-    tafOverseas: hashOf(tafOverseas) !== saved.tafOverseas,
     warning: hashOf(snapshot?.warning) !== saved.warning,
     kmaSpecialWarning: hashOf(snapshot?.kmaSpecialWarning) !== saved.kmaSpecialWarning,
     sigmet: hashOf(snapshot?.sigmet) !== saved.sigmet,
-    sigmetOverseas: hashOf(sigmetOverseas) !== saved.sigmetOverseas,
     airmet: hashOf(snapshot?.airmet) !== saved.airmet,
-    sigwxLow: hashOf(sigwxLow) !== saved.sigwxLow,
     amos: hashOf(snapshot?.amos) !== saved.amos,
     lightning: hashOf(snapshot?.lightning) !== saved.lightning,
-    adsb: hashOf(snapshot?.adsb) !== saved.adsb,
     groundForecast: hashOf(groundForecast) !== saved.groundForecast,
     groundOverview: hashOf(groundOverview) !== saved.groundOverview,
     environment: hashOf(snapshot?.environment) !== saved.environment,
     airportInfo: hashOf(snapshot?.airportInfo) !== saved.airportInfo,
-    echoMeta: tmOf(echo) !== saved.echo,
-    wissdomMeta: graphicsKey(wissdom) !== saved.wissdom,
-    qpfMeta: graphicsKey(qpf) !== saved.qpf,
-    rainviewerMeta: graphicsKey(rainviewer) !== saved.rainviewer,
-    satMeta: tmOf(satellite) !== saved.satellite,
-    convectiveMeta: graphicsKey(convective) !== saved.convective,
-    sigwxFrontMeta: overlayKey(snapshot?.sigwxFrontMeta) !== saved.sigwxFrontMeta,
-    sigwxCloudMeta: overlayKey(snapshot?.sigwxCloudMeta) !== saved.sigwxCloudMeta,
+    hsrMeta: graphicsKey(hsrMeta) !== saved.hsrMeta,
+    hciMeta: graphicsKey(hciMeta) !== saved.hciMeta,
+    satMeta: tmOf(satMeta) !== saved.satMeta,
+    satVisibleMeta: tmOf(satVisibleMeta) !== saved.satVisibleMeta,
   }
 }
 
 export function nextMonitoringSnapshot(snapshot, changedData, saved) {
-  const sigwxLow = snapshot?.sigwxLow || snapshot?.sigwx_low
-  const metarOverseas = snapshot?.metarOverseas || snapshot?.metar_overseas
-  const tafOverseas = snapshot?.tafOverseas || snapshot?.taf_overseas
-  const sigmetOverseas = snapshot?.sigmetOverseas || snapshot?.sigmet_overseas
-  const groundForecast = snapshot?.groundForecast || snapshot?.ground_forecast
-  const groundOverview = snapshot?.groundOverview || snapshot?.ground_overview
-  const echo = snapshot?.echoMeta || snapshot?.echo
-  const wissdom = snapshot?.wissdomMeta || snapshot?.wissdom
-  const qpf = snapshot?.qpfMeta || snapshot?.qpf
-  const rainviewer = snapshot?.rainviewerMeta || snapshot?.rainviewer
-  const satellite = snapshot?.satMeta || snapshot?.satellite
-  const convective = snapshot?.convectiveMeta || snapshot?.convective
+  const groundForecast = snapshotValue(snapshot, 'groundForecast', 'ground_forecast')
+  const groundOverview = snapshotValue(snapshot, 'groundOverview', 'ground_overview')
+  const hsrMeta = snapshotValue(snapshot, 'hsrMeta', 'hsr_meta')
+  const hciMeta = snapshotValue(snapshot, 'hciMeta', 'hci_meta')
+  const satMeta = snapshotValue(snapshot, 'satMeta', 'satellite')
+  const satVisibleMeta = snapshotValue(snapshot, 'satVisibleMeta', 'sat_visible')
 
   return {
     metar: changedData.metar?.content_hash ?? hashOf(snapshot?.metar) ?? saved.metar,
-    metarOverseas: changedData.metarOverseas?.content_hash ?? hashOf(metarOverseas) ?? saved.metarOverseas,
     taf: changedData.taf?.content_hash ?? hashOf(snapshot?.taf) ?? saved.taf,
-    tafOverseas: changedData.tafOverseas?.content_hash ?? hashOf(tafOverseas) ?? saved.tafOverseas,
     warning: changedData.warning?.content_hash ?? hashOf(snapshot?.warning) ?? saved.warning,
     kmaSpecialWarning: changedData.kmaSpecialWarning?.content_hash ?? hashOf(snapshot?.kmaSpecialWarning) ?? saved.kmaSpecialWarning,
     sigmet: changedData.sigmet?.content_hash ?? hashOf(snapshot?.sigmet) ?? saved.sigmet,
-    sigmetOverseas: changedData.sigmetOverseas?.content_hash ?? hashOf(sigmetOverseas) ?? saved.sigmetOverseas,
     airmet: changedData.airmet?.content_hash ?? hashOf(snapshot?.airmet) ?? saved.airmet,
-    sigwxLow: changedData.sigwxLow?.content_hash ?? hashOf(sigwxLow) ?? saved.sigwxLow,
     amos: changedData.amos?.content_hash ?? hashOf(snapshot?.amos) ?? saved.amos,
     lightning: changedData.lightning?.content_hash ?? hashOf(snapshot?.lightning) ?? saved.lightning,
-    adsb: changedData.adsb?.content_hash ?? hashOf(snapshot?.adsb) ?? saved.adsb,
     groundForecast: changedData.groundForecast?.content_hash ?? hashOf(groundForecast) ?? saved.groundForecast,
     groundOverview: changedData.groundOverview?.content_hash ?? hashOf(groundOverview) ?? saved.groundOverview,
     environment: changedData.environment?.content_hash ?? hashOf(snapshot?.environment) ?? saved.environment,
     airportInfo: changedData.airportInfo?.content_hash ?? hashOf(snapshot?.airportInfo) ?? saved.airportInfo,
-    echo: changedData.echoMeta?.tm ?? tmOf(echo) ?? saved.echo,
-    wissdom: graphicsKey(changedData.wissdomMeta) ?? graphicsKey(wissdom) ?? saved.wissdom,
-    qpf: graphicsKey(changedData.qpfMeta) ?? graphicsKey(qpf) ?? saved.qpf,
-    rainviewer: graphicsKey(changedData.rainviewerMeta) ?? graphicsKey(rainviewer) ?? saved.rainviewer,
-    satellite: changedData.satMeta?.tm ?? tmOf(satellite) ?? saved.satellite,
-    convective: graphicsKey(changedData.convectiveMeta) ?? graphicsKey(convective) ?? saved.convective,
-    sigwxFrontMeta: overlayKey(changedData.sigwxFrontMeta) ?? overlayKey(snapshot?.sigwxFrontMeta) ?? saved.sigwxFrontMeta,
-    sigwxCloudMeta: overlayKey(changedData.sigwxCloudMeta) ?? overlayKey(snapshot?.sigwxCloudMeta) ?? saved.sigwxCloudMeta,
+    hsrMeta: graphicsKey(changedData.hsrMeta) ?? graphicsKey(hsrMeta) ?? saved.hsrMeta,
+    hciMeta: graphicsKey(changedData.hciMeta) ?? graphicsKey(hciMeta) ?? saved.hciMeta,
+    satMeta: changedData.satMeta?.tm ?? tmOf(satMeta) ?? saved.satMeta,
+    satVisibleMeta: changedData.satVisibleMeta?.tm ?? tmOf(satVisibleMeta) ?? saved.satVisibleMeta,
   }
 }

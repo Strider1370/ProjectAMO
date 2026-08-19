@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Cloud, Layers, Palette } from 'lucide-react'
 import MapView from '../map/MapView.jsx'
 import MonitoringSlideOverlay from './MonitoringSlideOverlay.jsx'
-import { mergeAdvisoryPayloads, mergeAirportPayloads } from '../../api/weatherApi.js'
 
 // 지도의 RANGE_RING 반지름과 대응: 경보 8km · 위험 16km · 주의 32km.
 const ZONE_RADIUS_KM = { alert: 8, danger: 16, caution: 32 }
+const MONITORING_MET_LAYER_IDS = ['radarHsr', 'radarHci', 'lightning', 'satellite', 'satelliteVisible', 'sigmet', 'airmet']
 
 function MonitoringMap({
   weather,
@@ -39,8 +39,6 @@ function MonitoringMap({
   useEffect(() => {
     if (selectedAirport) mapViewRef.current?.flyToAirport(selectedAirport, { fitRadiusKm: 32 })
   }, [selectedAirport])
-  const mapMetarData = mergeAirportPayloads(weather?.metar || null, weather?.metarOverseas || null)
-  const mapSigmetData = mergeAdvisoryPayloads(weather?.sigmet || null, weather?.sigmetOverseas || null)
   // 링은 한 번에 하나만 강조 — 가장 급한 구역(경보 > 위험 > 주의) 반지름을 넘긴다.
   const highlightedZone = ['alert', 'danger', 'caution'].find((zone) => highlightZones[zone])
   const highlightRingRadiusKm = highlightedZone ? ZONE_RADIUS_KM[highlightedZone] : null
@@ -91,29 +89,23 @@ function MonitoringMap({
         rangeRingRadiiKm={[8, 16, 32]}
         highlightRingRadiusKm={highlightRingRadiusKm}
         airports={weather?.airports || []}
-        metarData={mapMetarData}
-        echoMeta={weather?.echoMeta}
-        wissdomMeta={weather?.wissdomMeta || null}
-        qpfMeta={weather?.qpfMeta || null}
+        metarData={weather?.metar || null}
         hsrMeta={weather?.hsrMeta || null}
         hciMeta={weather?.hciMeta || null}
         satVisibleMeta={weather?.satVisibleMeta || null}
-        echoTopMeta={weather?.echoTopMeta || null}
-        rainviewerMeta={weather?.rainviewerMeta || null}
-        satMeta={weather?.satMeta}
-        convectiveMeta={weather?.convectiveMeta || null}
-        sigmetData={mapSigmetData}
-        airmetData={weather?.airmet}
-        lightningData={weather?.lightning}
-        sigwxLowData={weather?.sigwxLow}
-        sigwxLowHistoryData={weather?.sigwxLowHistory}
-        sigwxFrontMeta={weather?.sigwxFrontMeta || weather?.sigwxLowFronts}
-        sigwxCloudMeta={weather?.sigwxCloudMeta || weather?.sigwxLowClouds}
-        notamData={weather?.notam || null}
+        satMeta={weather?.satMeta || null}
+        sigmetData={weather?.sigmet || null}
+        airmetData={weather?.airmet || null}
+        lightningData={weather?.lightning || null}
         selectedAirport={selectedAirport}
         onAirportSelect={onAirportSelect}
         onStyleReady={() => setMapStyleReady(true)}
-        enableWindOverlay={true}
+        metLayerIds={MONITORING_MET_LAYER_IDS}
+        enableWindOverlay={false}
+        showRadarWindControl={false}
+        enableFlightCategory={false}
+        enableTyphoonOverlay={false}
+        enableRouteBriefing={false}
         initialMetVisibility={{ radarHsr: true, lightning: true }}
       />
       {!mapStyleReady && (

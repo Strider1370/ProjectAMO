@@ -119,6 +119,24 @@ test('route exposure endpoint validates geometry and returns its model', async (
   }
 })
 
+test('NWP time refresh endpoint validates route geometry', async () => {
+  process.env.NODE_ENV = 'test'
+  const { app } = await import(`../server.js?nwp-time-refresh-test=${Date.now()}`)
+  const server = await new Promise((resolve) => {
+    const instance = http.createServer(app)
+    instance.listen(0, '127.0.0.1', () => resolve(instance))
+  })
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/briefing/nwp-time-refresh`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    })
+    assert.equal(response.status, 400)
+    assert.deepEqual(await response.json(), { error: 'routeGeometry required' })
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
+  }
+})
+
 test('route exposure batch fixes one cache snapshot for every route', async () => {
   process.env.NODE_ENV = 'test'
   const { app } = await import(`../server.js?route-exposure-batch-test=${Date.now()}`)

@@ -25,6 +25,49 @@ test.describe('monitoring', () => {
     await expect(operations).toHaveAttribute('aria-selected', 'false')
   })
 
+  test('loads only monitoring-owned weather data without API errors', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'mobile monitoring is redirected away')
+
+    const requested = []
+    const apiStatuses = []
+    page.on('request', (request) => {
+      if (request.method() === 'GET') {
+        const url = new URL(request.url())
+        if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/data/')) requested.push(url.pathname)
+      }
+    })
+    page.on('response', (response) => {
+      const url = new URL(response.url())
+      if (url.pathname.startsWith('/api/')) apiStatuses.push(response.status())
+    })
+
+    await openMonitoringState(page, 'ops')
+
+    for (const path of [
+      '/api/airports', '/api/metar', '/api/taf', '/api/sigmet', '/api/airmet', '/api/lightning',
+      '/data/radar/hsr/hsr_meta.json', '/data/radar/hci/hci_meta.json',
+      '/data/satellite/sat_meta.json', '/data/satellite/visible/visible_meta.json',
+    ]) {
+      expect(requested).toContain(path)
+    }
+    for (const path of [
+      '/api/notam', '/api/metar-overseas', '/api/taf-overseas', '/api/sigmet-overseas', '/api/typhoon',
+      '/api/weather/flight-category-overlay', '/data/navdata/airports-overseas.json',
+      '/data/radar/wissdom/wissdom_meta.json', '/data/radar/qpf/qpf_meta.json',
+      '/data/radar/echotop/echotop_meta.json', '/data/radar/rainviewer_meta.json',
+      '/data/satellite/convective/convective_meta.json',
+    ]) {
+      expect(requested).not.toContain(path)
+    }
+    expect(apiStatuses).not.toContain(503)
+
+    await page.getByRole('button', { name: '기상', exact: true }).click()
+    for (const label of ['레이더', '강수 형태', '낙뢰', '적외영상', '가시영상', 'SIGMET(국내)', 'AIRMET']) {
+      await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible()
+    }
+    await expect(page.getByRole('button', { name: /WISSDOM/ })).toHaveCount(0)
+  })
+
   test('excludes military airfields from airport selection in operations and ground modes', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'mobile monitoring is redirected away')
 

@@ -41,6 +41,7 @@ function WeatherOverlayPanel({
   isLayerDisabled,
   getLayerBadge,
   showWind = true,
+  showRadarWindControl = true,
   radarWindRequested = false,
   onRadarWindRequestedChange,
   terrainAltitudeFt = 3000,
@@ -98,7 +99,7 @@ function WeatherOverlayPanel({
         <section key={group.title} className="layer-tile-group">
           <div className="layer-tile-group-title">
             {group.title}
-            {group.id === 'observation' && (
+            {group.id === 'observation' && showRadarWindControl && (
               <button
                 type="button"
                 className="layer-tile-group-title-action"

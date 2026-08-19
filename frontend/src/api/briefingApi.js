@@ -21,6 +21,10 @@ export function fetchCrossSection(payload) {
   return postJson('/api/briefing/cross-section', payload)
 }
 
+export function fetchNwpTimeRefresh(payload) {
+  return postJson('/api/briefing/nwp-time-refresh', payload)
+}
+
 export function fetchRouteBriefing(payload) {
   return postJson('/api/route-briefing', payload)
 }
@@ -36,4 +40,3 @@ export function fetchRouteExposureBatch(payload) {
 export function fetchAltitudeComparison(payload) {
   return postJson('/api/briefing/altitudes', payload)
 }
-

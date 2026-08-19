@@ -61,6 +61,7 @@ import {
 } from './src/processors/kim-nwp-store.js'
 import { readKtgLatest, readKtgIndex, readKtgCoords, readKtgGridSafe } from './src/processors/ktg-store.js'
 import { loadRouteCrossSection } from './src/briefing/enroute-cross-section.js'
+import { buildNavlogNwpPatch } from './src/briefing/navlog-nwp-patch.js'
 import { buildRouteExposure } from './src/briefing/route-exposure.js'
 import { attachActiveAipConstraints } from './src/briefing/aip-airway-constraints.js'
 import { buildAltitudeCandidates, buildAltitudeWeatherComparison } from './src/briefing/altitude-weather-comparison.js'
@@ -1262,6 +1263,42 @@ app.post('/api/briefing/cross-section', (req, res) => {
     res.json({ ...model.crossSection, turbulence: model.turbulence, availableTimes: model.availableTimes, timeRules: model.timeRules, nwpTimeAvailability: model.nwpTimeAvailability })
   } catch (error) {
     res.status(400).json({ error: error.message || 'cross-section failed' })
+  }
+})
+
+app.post('/api/briefing/nwp-time-refresh', (req, res) => {
+  try {
+    const { routeGeometry } = req.body || {}
+    if (!routeGeometry?.coordinates?.length) {
+      return res.status(400).json({ error: 'routeGeometry required' })
+    }
+    const body = {
+      ...req.body,
+      referenceTime: req.body?.referenceTime ?? getEffectiveNow().toISOString(),
+    }
+    const crossSectionResult = loadRouteCrossSection({ root: DATA_ROOT, routeGeometry, body })
+    if (!crossSectionResult.available) return res.status(503).json({ error: 'kim run unavailable' })
+
+    const briefing = composeBriefing(body, {
+      metar: store.getCached('metar'), metarOverseas: store.getCached('metar_overseas'),
+      taf: store.getCached('taf'), tafOverseas: store.getCached('taf_overseas'),
+      sigmet: store.getCached('sigmet'), sigmetOverseas: store.getCached('sigmet_overseas'),
+      airmet: store.getCached('airmet'), warning: store.getCached('warning'),
+      notam: store.getCached('notam'), typhoon: store.getCached('typhoon'),
+      airspaceZones: loadAirspaceZoneItems(), dataRoot: DATA_ROOT,
+      enrouteCrossSection: crossSectionResult,
+      now: getEffectiveNow().getTime(),
+    })
+    const enroute = briefing.sections.enroute
+    setNoStore(res)
+    res.json({
+      crossSection: { ...crossSectionResult.crossSection, turbulence: crossSectionResult.turbulence, availableTimes: crossSectionResult.availableTimes },
+      navlogNwpPatch: buildNavlogNwpPatch({ legs: enroute.legs, procedures: enroute.procedures }),
+      timeRules: crossSectionResult.timeRules,
+      nwpTimeAvailability: crossSectionResult.nwpTimeAvailability,
+    })
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'NWP time refresh failed' })
   }
 })
 

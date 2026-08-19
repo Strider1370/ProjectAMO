@@ -335,6 +335,14 @@ export async function installMonitoringFixture(page) {
   await page.route('**/api/snapshot-meta', (route) => fulfill(route, buildSnapshotMeta()))
 
   // Mock radar/satellite metadata
+  await page.route('**/data/radar/hsr/hsr_meta.json', (route) => {
+    fulfill(route, { tm: META_ECHO_TM, available: true, frames: [] })
+  })
+
+  await page.route('**/data/radar/hci/hci_meta.json', (route) => {
+    fulfill(route, { tm: META_ECHO_TM, available: true, frames: [] })
+  })
+
   await page.route('**/data/radar/echo_meta.json', (route) => {
     fulfill(route, { tm: META_ECHO_TM, available: true })
   })
@@ -344,6 +352,10 @@ export async function installMonitoringFixture(page) {
   })
 
   await page.route('**/data/satellite/sat_meta.json', (route) => {
+    fulfill(route, { tm: META_SAT_TM, available: true })
+  })
+
+  await page.route('**/data/satellite/visible/visible_meta.json', (route) => {
     fulfill(route, { tm: META_SAT_TM, available: true })
   })
 

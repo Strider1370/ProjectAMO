@@ -19,15 +19,15 @@ export function splitOverlayPayload(data) {
   }
 }
 
-export function useFlightCategory() {
+export function useFlightCategory(enabled = true) {
   const [state, setState] = useState(() => splitOverlayPayload(null))
   const etagRef = useRef(null)
-  const snapshot = useKimSnapshotMeta(true)
+  const snapshot = useKimSnapshotMeta(enabled)
   const fcHash = snapshot?.flightCategory?.hash ?? null
   const hasSnapshot = snapshot !== null
 
   useEffect(() => {
-    if (!hasSnapshot) return
+    if (!enabled || !hasSnapshot) return
     let cancelled = false
     async function fetchData() {
       try {
@@ -48,7 +48,7 @@ export function useFlightCategory() {
     fetchData()
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasSnapshot, fcHash])
+  }, [enabled, hasSnapshot, fcHash])
 
   return state
 }

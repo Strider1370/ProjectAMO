@@ -371,6 +371,11 @@ const MapView = forwardRef(function MapView({
   onOpenCustomAreaPanel,
   onOpenMetPanel,
   enableWindOverlay = true,
+  metLayerIds = null,
+  showRadarWindControl = true,
+  enableFlightCategory = true,
+  enableTyphoonOverlay = true,
+  enableRouteBriefing = true,
   initialMetVisibility = null,
   showMapTools = true,
   showBasemapSwitcher = true,
@@ -405,6 +410,9 @@ const MapView = forwardRef(function MapView({
   const [isStyleReady, setIsStyleReady] = useState(false)
   const [styleRevision, setStyleRevision] = useState(0)
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
+  const availableMetLayers = useMemo(() => (
+    metLayerIds === null ? MET_LAYERS : MET_LAYERS.filter((layer) => metLayerIds.includes(layer.id))
+  ), [metLayerIds])
   const [metVisibility, setMetVisibility] = useState(() => initMetVisibility(initialMetVisibility))
   const [visibleSatelliteVisuals, setVisibleSatelliteVisuals] = useState({ brightness: 12, contrast: 0 })
   const [showFlightCategoryMissing, setShowFlightCategoryMissing] = useState(false)
@@ -464,7 +472,7 @@ const MapView = forwardRef(function MapView({
   const [selectedSigwxCloudMeta, setSelectedSigwxCloudMeta] = useState(sigwxCloudMeta)
   // 브리핑 NOTAM 경로전용 필터가 아래 NOTAM 동기화 effect에서 참조 → 반드시 effect보다 먼저 선언(TDZ 방지).
   const [routeBriefingMapMode, setRouteBriefingMapMode] = useState(false)
-  const routeBriefing = useRouteBriefing({ activePanel, airports, metarData, demoMode, demoNowMs })
+  const routeBriefing = useRouteBriefing({ activePanel, airports, metarData, demoMode, demoNowMs, enabled: enableRouteBriefing })
   const { user: authUser } = useAuth()
 
   // 브리핑 저장 — 이름을 묻고 저장한 뒤 결과를 알린다. 저장 직후가 이 기능이 어디 있는지
@@ -592,7 +600,7 @@ const MapView = forwardRef(function MapView({
   const { vfrWaypointsRef, hideTimerRef, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, vfrWaypointDropRef, designWaypointDropRef, isComparisonRef } = routeBriefing.refs
   const { setHoveredWpInfo } = routeBriefing.actions
   const { routePreviewModel } = routeBriefing
-  const flightCategory = useFlightCategory()
+  const flightCategory = useFlightCategory(enableFlightCategory)
   const fcPopupRef = useRef(null)
   const {
     windField, windRendererOptions, temperatureField, cloudField, icingField, ktgGrid,
@@ -893,7 +901,7 @@ const MapView = forwardRef(function MapView({
     fetchPoint: fetchEchoTopPoint,
   })
   const typhoonOverlay = useTyphoonOverlay({
-    mapRef, isStyleReady, styleRevision, visible: metVisibility.typhoon, timeZone: tz,
+    mapRef, isStyleReady, styleRevision, visible: enableTyphoonOverlay && metVisibility.typhoon, timeZone: tz, enabled: enableTyphoonOverlay,
   })
   const radarWindEffectiveVisible = radarWindOverlay.effectiveVisible
   const timelineAvailableFrameEntries = useMemo(() => [
@@ -1178,7 +1186,7 @@ const MapView = forwardRef(function MapView({
   function clearMetLayers() {
     setMetVisibility((prev) => {
       const next = { ...prev }
-      MET_LAYERS.forEach((l) => { next[l.id] = false })
+      availableMetLayers.forEach((l) => { next[l.id] = false })
       return next
     })
   }
@@ -1815,7 +1823,7 @@ const MapView = forwardRef(function MapView({
     if (merged) return merged.some((id) => aviationVisibility[id])
     return !Object.values(AVIATION_PANEL_MERGE_GROUPS).some((ids) => ids.includes(layer.id)) && aviationVisibility[layer.id]
   }).length
-  const metActiveCount = MET_LAYERS.filter((l) => metVisibility[l.id] && !isMetLayerDisabled(l.id)).length
+  const metActiveCount = availableMetLayers.filter((l) => metVisibility[l.id] && !isMetLayerDisabled(l.id)).length
   useEffect(() => {
     onLayerCountsChange?.({ aviation: aviationActiveCount, met: metActiveCount, traffic: trafficVisible ? 1 : 0 })
   }, [aviationActiveCount, metActiveCount, trafficVisible, onLayerCountsChange])
@@ -2082,6 +2090,8 @@ const MapView = forwardRef(function MapView({
                 onHighlightLeg={setHighlightedLeg}
                 onSelectForecastHour={routeBriefing.actions.handleSelectForecastHour}
                 crossSectionHourLoading={routeBriefing.state.crossSectionHourLoading}
+                nwpTimeRefreshError={routeBriefing.state.nwpTimeRefreshError}
+                onRetryNwpTimeRefresh={routeBriefing.actions.retryNwpTimeRefresh}
                 nwpTimeSelection={routeBriefing.state.nwpTimeSelection}
                 onSetWaypointNwpOffset={routeBriefing.actions.handleSetWaypointNwpOffset}
                 onSaveBriefing={handleSaveBriefing}
@@ -2210,7 +2220,7 @@ const MapView = forwardRef(function MapView({
 
       {activePanel === 'met' && (
         <WeatherOverlayPanel
-          layers={MET_LAYERS}
+          layers={availableMetLayers}
           visibility={metVisibility}
           blinkLightning={blinkLightning}
           onToggle={toggleMet}
@@ -2220,6 +2230,7 @@ const MapView = forwardRef(function MapView({
           isLayerDisabled={isMetLayerDisabled}
           getLayerBadge={metLayerBadge}
           showWind={enableWindOverlay}
+          showRadarWindControl={showRadarWindControl}
           windStatus={windStatus}
           tempStatus={tempStatus}
           cloudStatus={cloudStatus}

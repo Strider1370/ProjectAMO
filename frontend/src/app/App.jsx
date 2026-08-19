@@ -340,7 +340,7 @@ function App() {
       window.location.replace('/')
       return null
     }
-    return <Suspense fallback={null}><MonitoringPage /></Suspense>
+    return <Suspense fallback={null}><AuthProvider><MonitoringPage /></AuthProvider></Suspense>
   }
   if (window.location.pathname === '/test' && import.meta.env.DEV) {
     // 디자인 테스트 페이지 — 개발 빌드에서만. 운영 빌드(npm run build)에선 이 코드가 제거되어 접근 불가.

@@ -117,6 +117,21 @@ test.describe('briefing-view', () => {
     }
   })
 
+  test('refreshes the chart and NAVLOG together when the forecast hour changes', async ({ page }) => {
+    const requests = await createBriefing(page)
+    const profile = page.getByRole('region', { name: '연직단면도', exact: true })
+    const firstLeg = page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true })
+
+    await expect(firstLeg.getByRole('cell', { name: '풍향/풍속 자료 없음', exact: true })).toBeVisible()
+    await profile.getByRole('button', { name: '다음 예보시간', exact: true }).click()
+
+    await expect(profile.getByRole('button', { name: '다음 예보시간', exact: true })).toBeDisabled()
+    await expect(firstLeg.getByText('250/30kt', { exact: true })).toBeVisible()
+    await expect(firstLeg.getByText('AIP 고도 제약', { exact: true })).toHaveCount(0)
+    expect(requests.nwpTimeRefresh.bodies).toHaveLength(1)
+    expect(requests.nwpTimeRefresh.bodies[0].hf).toBe(3)
+  })
+
   test('procedure summaries stay inline and merge STAR with IAP without detail controls', async ({ page }) => {
     const duplicateKeyWarnings = []
     page.on('console', (message) => {

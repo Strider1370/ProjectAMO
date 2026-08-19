@@ -10,3 +10,8 @@ test('App code-splits the monitoring route', () => {
   const source = fs.readFileSync(path.join(__dirname, 'App.jsx'), 'utf8')
   assert.match(source, /lazy\s*\(\s*\(\)\s*=>\s*import\('\.\.\/features\/monitoring\/MonitoringPage\.jsx'\)/)
 })
+
+test('monitoring route provides auth context to its MapView', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'App.jsx'), 'utf8')
+  assert.match(source, /window\.location\.pathname === '\/monitoring'[\s\S]*?<AuthProvider><MonitoringPage \/><\/AuthProvider>/)
+})

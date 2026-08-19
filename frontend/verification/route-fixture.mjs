@@ -203,6 +203,7 @@ const exposure = {
 export async function installRouteBriefingFixtures(page, { altitudeResponse = altitudeComparison } = {}) {
   const exposureRequests = { single: new Map(), batch: new Map() }
   const crossSectionRequests = { count: 0, bodies: [] }
+  const nwpTimeRefreshRequests = { count: 0, bodies: [] }
   await page.route('**/api/briefing/route-exposure', (route) => {
     const key = stableRoutePayload(route)
     exposureRequests.single.set(key, (exposureRequests.single.get(key) || 0) + 1)
@@ -227,6 +228,28 @@ export async function installRouteBriefingFixtures(page, { altitudeResponse = al
     const selectedTime = crossSection.availableTimes.find((time) => time.hf === selectedHf)
     return fulfill(route, { ...crossSection, run: { ...crossSection.run, hf: selectedHf, validTime: selectedTime?.validTime ?? crossSection.run.validTime } })
   })
+  await page.route('**/api/briefing/nwp-time-refresh', (route) => {
+    nwpTimeRefreshRequests.count += 1
+    const body = requestJson(route)
+    nwpTimeRefreshRequests.bodies.push(body)
+    const selectedHf = Number.isFinite(Number(body.hf)) ? Number(body.hf) : crossSection.run.hf
+    const selectedTime = crossSection.availableTimes.find((time) => time.hf === selectedHf)
+    return fulfill(route, {
+      crossSection: { ...crossSection, run: { ...crossSection.run, hf: selectedHf, validTime: selectedTime?.validTime ?? crossSection.run.validTime } },
+      navlogNwpPatch: {
+        legs: [{
+          key: 'FIXA-FIXB-0.00-24.00',
+          wind: { meanComponentKt: -8, directionDeg: 250, speedKt: 30 },
+          temp: { meanC: -12, isaDevC: -3 },
+          icing: { peakLevel: 1, exposures: [{ level: 1, distanceNm: 4 }] },
+          turbulence: { peakLevel: 'light', exposures: [{ level: 'light', distanceNm: 3 }] },
+        }],
+        procedures: [],
+      },
+      timeRules: { status: 'matched' },
+      nwpTimeAvailability: { status: 'available' },
+    })
+  })
   await page.route('**/api/route-briefing', (route) => fulfill(route, briefingFor(requestJson(route))))
-  return { ...exposureRequests, crossSection: crossSectionRequests }
+  return { ...exposureRequests, crossSection: crossSectionRequests, nwpTimeRefresh: nwpTimeRefreshRequests }
 }

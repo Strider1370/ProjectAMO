@@ -13,21 +13,18 @@ test('monitoring map keeps an accessible local loading status until Mapbox style
   assert.match(css, /\.monitoring-mapbox-panel:has\(\.map-view-error\) \.monitoring-map-loading\s*\{[\s\S]*?display:\s*none;/)
 })
 
-test('monitoring map forwards every weather overlay dataset supported by MapView', () => {
-  for (const prop of [
-    'wissdomMeta',
-    'qpfMeta',
-    'hsrMeta',
-    'hciMeta',
-    'satVisibleMeta',
-    'echoTopMeta',
-    'rainviewerMeta',
-    'satMeta',
-    'convectiveMeta',
-    'notamData',
-  ]) {
-    const weatherProp = prop === 'notamData' ? 'notam' : prop
-    assert.match(source, new RegExp(`${prop}=\\{weather\\?\\.${weatherProp}`))
+test('monitoring map passes only its approved weather overlays', () => {
+  for (const prop of ['hsrMeta', 'hciMeta', 'satVisibleMeta', 'satMeta', 'airmetData', 'lightningData']) {
+    assert.match(source, new RegExp(`${prop}=\\{weather\\?\\.`))
   }
-  assert.match(source, /enableWindOverlay=\{true\}/)
+  assert.match(source, /sigmetData=\{weather\?\.sigmet \|\| null\}/)
+  for (const prop of ['echoMeta', 'wissdomMeta', 'qpfMeta', 'echoTopMeta', 'rainviewerMeta', 'convectiveMeta', 'sigwxLowData', 'notamData']) {
+    assert.doesNotMatch(source, new RegExp(`${prop}=`))
+  }
+  assert.match(source, /metLayerIds=\{MONITORING_MET_LAYER_IDS\}/)
+  assert.match(source, /enableWindOverlay=\{false\}/)
+  assert.match(source, /showRadarWindControl=\{false\}/)
+  assert.match(source, /enableFlightCategory=\{false\}/)
+  assert.match(source, /enableTyphoonOverlay=\{false\}/)
+  assert.match(source, /enableRouteBriefing=\{false\}/)
 })
