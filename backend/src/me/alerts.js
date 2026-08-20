@@ -148,7 +148,9 @@ export function createAlertsRouter({ db = null } = {}) {
 // 알림센터 피드: 내 발생 알림 최신순(경로명 조인) + 안 읽음 수. 순수 DB 함수(서버 없이 테스트).
 export function listNotifications(db, userId) {
   const notifications = db.prepare(`
-    SELECT t.id, t.route_id AS routeId, t.type, t.severity, t.target, t.from_val AS fromVal, t.to_val AS toVal,
+    SELECT t.id, t.route_id AS routeId, t.type, t.severity, t.target,
+           t.source_id AS role,
+           t.from_val AS fromVal, t.to_val AS toVal,
            t.detected_at AS detectedAt, t.pushed_at AS pushedAt, t.read_at AS readAt,
            r.name AS routeName, r.dep AS routeDep, r.dest AS routeDest, r.altn AS routeAltn
     FROM triggered_alerts t LEFT JOIN routes r ON r.id = t.route_id

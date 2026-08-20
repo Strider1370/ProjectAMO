@@ -81,13 +81,17 @@ function alreadyFired(db, routeId, dedupKey) {
   return !!db.prepare('SELECT 1 FROM triggered_alerts WHERE route_id=? AND dedup_key=? LIMIT 1').get(routeId, dedupKey)
 }
 
-function insertAlert(db, route, c, nowIso) {
+// 다섯 가지가 전부 "울릴 만한 것"이라 등급 구분의 쓸모가 없다. 컬럼은 남기되 고정값을 넣는다.
+const ALERT_SEVERITY = 'ALERT'
+
+function insertAlert(db, route, change, nowIso) {
   return db.prepare(`
     INSERT INTO triggered_alerts (user_id, route_id, type, severity, target, from_val, to_val, source_id, dedup_key, detected_at)
     VALUES (?,?,?,?,?,?,?,?,?,?)
-  `).run(route.user_id, route.id, c.type, c.severity, c.target ?? null,
-    c.from == null ? null : String(c.from), c.to == null ? null : String(c.to),
-    c.sourceId ?? null, c.dedupKey, nowIso).lastInsertRowid
+  `).run(route.user_id, route.id, change.type, ALERT_SEVERITY, change.target ?? null,
+    // from_val은 안 쓴다. to_val에 "어느 미니마가 걸렸는지"를 담는다 — 문구가 그걸로 갈린다.
+    // 역할(출발/도착/교체)은 빈 source_id 컬럼에 담아 알림센터 문구가 읽는다.
+    null, change.bound ?? null, change.role ?? null, change.dedupKey, nowIso).lastInsertRowid
 }
 
 // 활성 비행 1건 평가: 재계산 스냅샷 vs prev diff → triggered_alerts 적재, 스냅샷 갱신.
@@ -95,17 +99,17 @@ function insertAlert(db, route, c, nowIso) {
 export function evaluateFlight({ db, route, briefing, tafByIcao, now = Date.now(), cache = snapshotCache }) {
   const request = buildBriefingRequest(route)
   if (!request) return { skipped: 'no_geometry' }
-  const curr = buildSnapshot(briefing, tafByIcao, request)
+  const curr = buildSnapshot(briefing, tafByIcao, request, userMinima(db, route.user_id))
   const prev = cache.get(route.id) ?? null
   const nowIso = new Date(now).toISOString()
 
   const inserted = []
   if (prev) {
-    const changes = detectChanges(prev, curr, { minima: userMinima(db, route.user_id) })
+    const changes = detectChanges(prev, curr)
     for (const c of changes) {
       if (alreadyFired(db, route.id, c.dedupKey)) continue
       const id = insertAlert(db, route, c, nowIso)
-      inserted.push({ ...c, id, to_val: c.to == null ? null : String(c.to) })
+      inserted.push({ ...c, id })
     }
   }
 

@@ -79,27 +79,35 @@ test('buildSnapshot: 교체공항이 없으면 두 곳만 낸다', () => {
   assert.deepEqual(snap.airports.map((a) => a.role), ['dep', 'dest'])
 })
 
-test('evaluateFlight: 첫 tick=baseline(무발화)·스냅샷 저장, 목적지 하락 tick=CEIL 1건', () => {
+test('evaluateFlight: 새로 걸린 조건만 적재하고 같은 조건은 다시 넣지 않는다', () => {
   const db = createDb(':memory:')
   try {
-    const route = seed(db)
+    const route = seed(db) // 이 조종사의 미니마는 500ft / 1600m
     const cache = new Map()
-    // 1) baseline — 정상(운고 3000)
-    const r1 = evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(3000) }, cache })
-    assert.equal(r1.baseline, true)
-    assert.equal(r1.changes.length, 0)
+    const clear = briefingWith()
+
+    // 1회차 = 기준점, 무발화
+    const first = evaluateFlight({ db, route, briefing: clear, tafByIcao: { RKPC: tafFor(3000) }, cache })
+    assert.equal(first.baseline, true)
+    assert.equal(first.changes.length, 0)
     const stored = db.prepare('SELECT last_briefing_snapshot_id FROM routes WHERE id=?').get(route.id)
     assert.ok(stored.last_briefing_snapshot_id, 'baseline 스냅샷 해시 저장됨')
 
-    // 2) 목적지 운고 400 (< IFR 미니마 500) → CEIL CRITICAL 1건
-    const r2 = evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache })
-    assert.equal(r2.baseline, false)
-    assert.equal(r2.changes.length, 1)
-    assert.equal(r2.changes[0].type, 'CEIL')
-    assert.equal(r2.changes[0].severity, 'CRITICAL')
-    const alerts = db.prepare('SELECT type, severity, route_id FROM triggered_alerts WHERE route_id=?').all(route.id)
-    assert.equal(alerts.length, 1)
-    assert.equal(alerts[0].type, 'CEIL')
+    // 2회차 = 목적지 운고가 내 미니마(500ft) 밑으로 떨어짐
+    const second = evaluateFlight({ db, route, briefing: clear, tafByIcao: { RKPC: tafFor(400) }, cache })
+    assert.equal(second.changes.length, 1)
+    assert.equal(second.changes[0].type, 'MINIMA')
+
+    // 3회차 = 그대로 미니마 밑 — 다시 넣지 않는다
+    const third = evaluateFlight({ db, route, briefing: clear, tafByIcao: { RKPC: tafFor(400) }, cache })
+    assert.equal(third.changes.length, 0)
+
+    const rows = db.prepare('SELECT type, target, severity, to_val FROM triggered_alerts WHERE route_id=?').all(route.id)
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0].type, 'MINIMA')
+    assert.equal(rows[0].target, 'RKPC')
+    assert.equal(rows[0].severity, 'ALERT')
+    assert.ok(rows[0].to_val, '어느 미니마가 걸렸는지가 남아야 문구를 만들 수 있다')
   } finally { db.close() }
 })
 
@@ -108,10 +116,11 @@ test('evaluateFlight: 같은 조건 재발화 dedup — cache 리셋해도 trigg
   try {
     const route = seed(db)
     const cache = new Map()
+    const minima = { ceilingFt: 500, visibilityM: 1600 }
     evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(3000) }, cache }) // baseline
-    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache })  // CEIL 발화
-    cache.set(route.id, buildSnapshot(briefingWith(), { RKPC: tafFor(3000) }, buildBriefingRequest(route))) // prev=정상으로 강제
-    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache })  // 같은 크로싱 재현
+    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache })  // MINIMA 발화
+    cache.set(route.id, buildSnapshot(briefingWith(), { RKPC: tafFor(3000) }, buildBriefingRequest(route), minima)) // prev=정상으로 강제
+    evaluateFlight({ db, route, briefing: briefingWith(), tafByIcao: { RKPC: tafFor(400) }, cache })  // 같은 전이 재현
     assert.equal(db.prepare('SELECT COUNT(*) n FROM triggered_alerts WHERE route_id=?').get(route.id).n, 1)
   } finally { db.close() }
 })
