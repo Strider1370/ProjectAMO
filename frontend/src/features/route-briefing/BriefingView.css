@@ -449,3 +449,17 @@
   border: 1px solid var(--stroke-1); background: var(--bg-1); color: var(--text-2);
   font: inherit; font-weight: var(--fw-bold); cursor: pointer;
 }
+
+/* 알림을 탭해 들어온 사람이 먼저 읽는 줄. 브리핑을 보러 온 사람은 지나쳐 내려간다. */
+.bv-change-strip {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  padding: var(--space-xs) var(--space-s);
+  border-left: 3px solid var(--level-amber);
+  background: var(--level-amber-bg);
+  font-size: var(--fs-200);
+  color: var(--text-1);
+}
+.bv-change-strip-time { margin-left: auto; color: var(--text-3); }
