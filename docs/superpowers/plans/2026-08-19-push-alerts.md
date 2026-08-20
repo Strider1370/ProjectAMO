@@ -12,7 +12,8 @@
 
 - 스펙: [2026-08-17 저장 경로 브리핑·푸시](../specs/2026-08-17-saved-route-briefing-and-push-design.md)의 **3단계 절** · 감시 대상 변경은 [2026-08-18 스펙](../specs/2026-08-18-saved-briefing-and-account-menu-design.md)
 - 선행: [1단계](../status/2026-08-17-saved-route-geometry.status.md) · [2단계](../status/2026-08-18-saved-route-load-without-research.status.md) · [3단계](../status/2026-08-19-saved-briefings-and-account-menu.status.md) — 모두 완료·병합·배포
-- **새 임계값을 정의하지 않는다.** 비행범주는 `flight-category.js`의 `categoryFor()`를 그대로 쓴다(공항별 기본 미니마 내장). 운고·시정 수치는 `taf-window.js`의 `metricsAt()`가 준다.
+- **새 임계값을 정의하지 않는다.** 공항 접근최저치는 `flight-category.js`의 표를, 운고·시정 수치는 `taf-window.js`의 `metricsAt()`를 그대로 쓴다. 미설정 시 기본값(1500ft/5000m)은 이미 화면의 VFR 프리셋이자 이 앱의 IFR 판정선과 같은 값이다.
+- **판정선은 `max(내 미니마, 공항 접근최저치)`.** 둘 다 바닥이라 먼저 걸리는 쪽이 실제 제약이다. 어느 쪽이 걸렸는지는 문구로 갈린다.
 - **폰과 앱 안이 같은 규칙을 쓴다.** 채널별로 규칙을 나누지 않는다.
 - **회복·개선 판정을 만들지 않는다.** 악화 방향의 신규 전이만 본다.
 - **항목별 on/off 설정을 만들지 않는다.**
@@ -60,9 +61,44 @@
 
 ---
 
-### Task 1: 내 시각의 조건 넷을 정확히 읽는다
+### Task 1: 내 시각의 조건을 정확히 읽는다
 
 폰이 울릴 조건의 핵심. 순수 함수라 테스트가 쉽고, 여기가 맞으면 나머지는 배선이다.
+
+#### 판정선은 "내가 갈 수 있느냐"다
+
+고정 IFR선(5000m/1500ft)으로 판정하지 않는다. 그 선은 "공항이 계기비행 상태"라는 사실일 뿐,
+**이 조종사가 갈 수 있느냐**와는 다르다. 대신 **실효 미니마** 하나로 본다.
+
+```
+실효 미니마 = max(내 미니마, 공항 접근최저치)
+```
+
+둘 다 "바닥"이라 **먼저 걸리는 쪽이 실제 제약**이다. 값이 큰 쪽(더 엄격한 쪽)을 쓴다.
+
+- **내 미니마가 더 엄격** — 청주(550m) 가는데 내 기준이 5000m면 5000m에서 울린다. 정상적인 경우다.
+- **공항 최저치가 더 엄격** — 내 기준을 200m로 잡았는데 그 공항 접근최저치가 550m라면,
+  **400m에서 이미 아무도 착륙 못 한다.** 내 기준만 보면 그때 조용해서 **못 가는 걸 갈 수 있다고
+  착각하게 만든다.** 알림이 있는 게 없느니만 못한 상황이다. 이 경우가 이 규칙의 존재 이유다.
+
+**내 미니마를 설정하지 않았으면 VFR 기본값(1500ft / 5000m)을 쓴다.** 그 값이 고정 IFR선과
+정확히 같아서, 미설정 사용자는 예전의 "IFR이면 울린다"와 같은 동작을 얻는다. 그래서 조건을
+하나로 합칠 수 있다 — `IFR`과 `미니마 미만`을 따로 두면 VFR 프리셋(1500ft/5000m)을 쓰는
+사용자에게 **항상 두 알림이 같이 간다.**
+
+**어느 쪽이 걸렸는지는 문구로 갈린다.** 공항 최저치 때문에 걸렸는데 "내 미니마 미만"이라고
+하면 거짓말이 된다.
+
+| 걸린 쪽 | 문구 |
+|---|---|
+| 내 미니마 | `도착 RJBB 내 미니마 미만 예보` |
+| 공항 접근최저치 | `도착 RKTU 접근최저치 미만 예보` — 아무도 못 내린다 |
+| 미설정(VFR 기본) | `도착 RJBB IFR 이하 예보` |
+
+**해외 공항은 접근최저치 자료가 없다**(표에 한국 공항만 있다). 그러면 내 미니마만 적용된다.
+**인천·김포는 운고 최저치가 없다**(`ceilingFt: null`) — 운고는 내 미니마만 걸린다.
+
+#### 그 시각을 정확히 집는다
 
 **두 가지를 함께 고친다** — 둘 다 "그 시각의 상태를 맞게 읽는다"라는 하나의 일이다.
 
@@ -82,31 +118,46 @@
    `scheduler.js:49`의 주석 "timeline엔 wx가 없어"는 **틀렸다** — 필드 이름이 `wx`가 아니라
    `weather`다. 그 함수(`departureTs`)는 Task 2에서 지운다.
 
-**PROB·TEMPO도 발화한다(결정).** 파서가 `PROB30`·`PROB40`·`TEMPO`를 타임라인에 병합하므로
-그대로 조건이 된다. 브리핑 화면이 보여주는 것과 알림이 같아야 하기 때문이다 — 브리핑엔 있는데
-알림이 조용하면 "알림이 안 왔으니 괜찮겠지" 하고 브리핑을 안 보게 된다. 상태 전이 방식이라
-같은 예보로 두 번 울리지는 않는다.
+**PROB·TEMPO도 발화한다(결정).** 파서가 그것을 타임라인에 병합하므로 그대로 조건이 된다.
+브리핑 화면이 보여주는 것과 알림이 같아야 하기 때문이다 — 브리핑엔 있는데 알림이 조용하면
+"알림이 안 왔으니 괜찮겠지" 하고 브리핑을 안 보게 된다. 상태 전이 방식이라 두 번 울리지는 않는다.
 
 **Files:**
-- Modify: `backend/src/briefing/taf-window.js` (제한 있는 조회 + `weatherAt` 노출)
+- Modify: `backend/src/briefing/flight-category.js` (공항 최저치 조회 노출)
+- Modify: `backend/src/briefing/taf-window.js` (제한 있는 조회 + `weatherAt`)
 - Modify: `backend/test/taf-window.test.js`
 - Create: `backend/src/alerts/taf-conditions.js`
 - Create: `backend/test/taf-conditions.test.js`
 
 **Interfaces:**
-- Consumes: `categoryFor({visibilityM, ceilingFt, icao})` from `../briefing/flight-category.js`.
 - Produces:
+  - `airportMinima(icao)` from `flight-category.js` — `{ visibilityM, ceilingFt } | null`.
   - `metricsAt(taf, iso)` — 기존과 같되 **가장 가까운 항목이 30분을 넘게 떨어져 있으면 `null`**.
   - `weatherAt(taf, iso)` — 같은 항목의 병합된 현상 배열. 항목이 없으면 `[]`.
-  - `tafConditionsAt(taf, iso, icao) -> { ifr, ts, fg, sn }`. Task 2가 쓴다.
+  - `tafConditionsAt(taf, iso, icao, userMinima) -> { minima, minimaBound, ts, fg, sn }`
+    - `minima`: 실효 미니마 미만인가 (불리언)
+    - `minimaBound`: `'personal' | 'airport' | 'default' | null` — 어느 쪽이 걸렸는지. 문구가 쓴다
+    - Task 2가 쓴다.
 
-- [ ] **Step 1: 제한 있는 조회에 실패하는 테스트를 쓴다**
+- [ ] **Step 1: 공항 최저치 조회를 노출한다**
+
+`flight-category.js`의 `minimaFor`는 내부 함수다. 알림이 실효 미니마를 계산하려면 그 값이 필요하다.
+**표를 복사하지 않는다** — 복사하면 한쪽만 고쳐져 조용히 갈라진다.
+
+```js
+// 공항 접근최저치. 알림이 실효 미니마(= max(내 미니마, 이 값))를 계산하는 데 쓴다.
+// 표를 복사해 쓰지 말 것 — 한쪽만 고쳐지면 판정이 조용히 갈린다.
+export function airportMinima(icao) {
+  return minimaFor(icao)
+}
+```
+
+- [ ] **Step 2: 제한 있는 조회에 실패하는 테스트를 쓴다**
 
 `backend/test/taf-window.test.js`에 더한다. 그 파일의 기존 `taf` 픽스처 구성 방식을 먼저 읽고 맞춘다.
 
 ```js
 test('metricsAt: 유효기간을 벗어난 시각이면 null — 엉뚱한 시각 값을 조용히 주면 안 된다', () => {
-  // 타임라인이 02:00~04:00만 덮는 TAF
   const t = {
     header: { icao: 'RKSI' },
     timeline: [
@@ -130,7 +181,7 @@ test('weatherAt: 같은 항목의 병합된 현상을 준다', () => {
 })
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [ ] **Step 3: 실패를 확인한다**
 
 ```bash
 npm --prefix backend test -- test/taf-window.test.js
@@ -138,7 +189,7 @@ npm --prefix backend test -- test/taf-window.test.js
 
 Expected: FAIL — `metricsAt`이 `null` 대신 값을 준다
 
-- [ ] **Step 3: 제한 있는 조회를 구현한다**
+- [ ] **Step 4: 제한 있는 조회를 구현한다**
 
 `taf-window.js`의 `metricsAt`을 아래로 바꾸고 `weatherAt`을 더한다.
 
@@ -177,7 +228,7 @@ export function weatherAt(taf, iso) {
 }
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [ ] **Step 5: 통과를 확인한다**
 
 ```bash
 npm --prefix backend test -- test/taf-window.test.js
@@ -187,7 +238,7 @@ npm --prefix backend test
 Expected: 둘 다 PASS. 기존 `metricsAt` 테스트가 유효기간 밖 시각을 쓰면 그 기대를 고친다 —
 **지우지 말고** 새 계약(밖이면 `null`)에 맞춘다.
 
-- [ ] **Step 5: 조건 넷에 실패하는 테스트를 쓴다**
+- [ ] **Step 6: 조건에 실패하는 테스트를 쓴다**
 
 Create `backend/test/taf-conditions.test.js`:
 
@@ -204,8 +255,8 @@ const wx = (raw, { intensity = 'MODERATE', descriptor = null, phenomena = [] } =
   ({ raw, intensity, descriptor, phenomena })
 
 // 타임라인은 파서가 이미 병합해 둔 상태다 — 운고·시정과 현상이 같은 항목에 들어 있다.
-const taf = ({ vis = 9999, ceil = 3000, weather = [] } = {}) => ({
-  header: { icao: 'RKSI' },
+const taf = ({ icao = 'RKTU', vis = 9999, ceil = 3000, weather = [] } = {}) => ({
+  header: { icao },
   timeline: [{
     time: AT,
     visibility: { value: vis, cavok: false },
@@ -214,56 +265,85 @@ const taf = ({ vis = 9999, ceil = 3000, weather = [] } = {}) => ({
   }],
 })
 
-test('운고·시정이 좋으면 아무 조건도 안 걸린다', () => {
-  assert.deepEqual(tafConditionsAt(taf(), AT, 'RKSI'), { ifr: false, ts: false, fg: false, sn: false })
+// RKTU 접근최저치는 550m / 200ft (flight-category.js의 표).
+
+test('미니마를 설정하지 않으면 VFR 기본값(1500ft/5000m)으로 본다', () => {
+  const c = tafConditionsAt(taf({ vis: 3000 }), AT, 'RKTU', null)
+  assert.equal(c.minima, true)
+  assert.equal(c.minimaBound, 'default', '옛 "IFR이면 울린다"와 같은 동작이다')
 })
 
-test('시정이 5000m 미만이면 IFR', () => {
-  assert.equal(tafConditionsAt(taf({ vis: 3000 }), AT, 'RKSI').ifr, true)
+test('내 미니마가 더 엄격하면 내 기준으로 울린다', () => {
+  // 내 기준 5000m, 공항 550m → 실효 5000m. 4000m면 걸린다.
+  const c = tafConditionsAt(taf({ vis: 4000 }), AT, 'RKTU', { visibilityM: 5000, ceilingFt: 1500 })
+  assert.equal(c.minima, true)
+  assert.equal(c.minimaBound, 'personal')
 })
 
-test('운고가 1500ft 미만이면 IFR', () => {
-  assert.equal(tafConditionsAt(taf({ ceil: 800 }), AT, 'RKSI').ifr, true)
+test('공항 최저치가 더 엄격하면 공항 기준으로 울린다 — 못 가는 걸 갈 수 있다고 두면 안 된다', () => {
+  // 내 기준 200m/100ft, 공항 550m/200ft → 실효 550m. 400m면 아무도 못 내린다.
+  const c = tafConditionsAt(taf({ vis: 400 }), AT, 'RKTU', { visibilityM: 200, ceilingFt: 100 })
+  assert.equal(c.minima, true)
+  assert.equal(c.minimaBound, 'airport')
+})
+
+test('둘 다 넘으면 조용하다', () => {
+  const c = tafConditionsAt(taf({ vis: 9999, ceil: 3000 }), AT, 'RKTU', { visibilityM: 5000, ceilingFt: 1500 })
+  assert.equal(c.minima, false)
+  assert.equal(c.minimaBound, null)
+})
+
+test('운고로도 걸린다', () => {
+  const c = tafConditionsAt(taf({ ceil: 800 }), AT, 'RKTU', { visibilityM: 1600, ceilingFt: 1500 })
+  assert.equal(c.minima, true)
+  assert.equal(c.minimaBound, 'personal')
+})
+
+test('해외 공항은 접근최저치 자료가 없어 내 미니마만 적용된다', () => {
+  const c = tafConditionsAt(taf({ icao: 'RJBB', vis: 4000 }), AT, 'RJBB', { visibilityM: 5000, ceilingFt: 1500 })
+  assert.equal(c.minima, true)
+  assert.equal(c.minimaBound, 'personal')
 })
 
 test('뇌전은 수식어로 읽는다 — TSRA도 뇌전이다', () => {
-  const c = tafConditionsAt(taf({ weather: [wx('TSRA', { descriptor: 'TS', phenomena: ['RA'] })] }), AT, 'RKSI')
+  const c = tafConditionsAt(taf({ weather: [wx('TSRA', { descriptor: 'TS', phenomena: ['RA'] })] }), AT, 'RKTU', null)
   assert.equal(c.ts, true)
   assert.equal(c.fg, false)
 })
 
 test('부근(VC)은 발화하지 않는다 — 공항이 아니라 그 주변이다', () => {
-  const c = tafConditionsAt(taf({ weather: [wx('VCTS', { intensity: 'VICINITY', descriptor: 'TS' })] }), AT, 'RKSI')
-  assert.equal(c.ts, false, 'VCTS를 "출발 RKSI 뇌전 예보"라고 알리면 사실과 다르다')
+  const c = tafConditionsAt(taf({ weather: [wx('VCTS', { intensity: 'VICINITY', descriptor: 'TS' })] }), AT, 'RKTU', null)
+  assert.equal(c.ts, false, 'VCTS를 "출발 RKTU 뇌전 예보"라고 알리면 사실과 다르다')
 })
 
 test('FZFG는 안개다 — 수식어가 붙어도 현상은 FG', () => {
-  const c = tafConditionsAt(taf({ weather: [wx('FZFG', { descriptor: 'FZ', phenomena: ['FG'] })] }), AT, 'RKSI')
+  const c = tafConditionsAt(taf({ weather: [wx('FZFG', { descriptor: 'FZ', phenomena: ['FG'] })] }), AT, 'RKTU', null)
   assert.equal(c.fg, true)
 })
 
 test('약한 눈도 눈이다', () => {
-  const c = tafConditionsAt(taf({ weather: [wx('-SN', { intensity: 'LIGHT', phenomena: ['SN'] })] }), AT, 'RKSI')
+  const c = tafConditionsAt(taf({ weather: [wx('-SN', { intensity: 'LIGHT', phenomena: ['SN'] })] }), AT, 'RKTU', null)
   assert.equal(c.sn, true)
   assert.equal(c.ts, false)
 })
 
 test('박무(BR)는 안개가 아니다 — 파서가 저시정에서 합성해 넣는 값이다', () => {
-  const c = tafConditionsAt(taf({ vis: 3000, weather: [wx('BR', { phenomena: ['BR'] })] }), AT, 'RKSI')
+  const c = tafConditionsAt(taf({ vis: 3000, weather: [wx('BR', { phenomena: ['BR'] })] }), AT, 'RKTU', null)
   assert.equal(c.fg, false)
-  assert.equal(c.ifr, true, '시정 때문에 IFR이긴 하다')
 })
 
 test('유효기간 밖 시각이면 아무것도 안 걸린다', () => {
-  assert.deepEqual(tafConditionsAt(taf(), '2026-08-20T09:00:00Z', 'RKSI'), { ifr: false, ts: false, fg: false, sn: false })
+  const c = tafConditionsAt(taf({ vis: 100 }), '2026-08-20T09:00:00Z', 'RKTU', null)
+  assert.deepEqual(c, { minima: false, minimaBound: null, ts: false, fg: false, sn: false })
 })
 
 test('TAF가 없으면 아무것도 안 걸린다 — 없는 것을 위험으로 읽지 않는다', () => {
-  assert.deepEqual(tafConditionsAt(null, AT, 'RKSI'), { ifr: false, ts: false, fg: false, sn: false })
+  const c = tafConditionsAt(null, AT, 'RKTU', null)
+  assert.deepEqual(c, { minima: false, minimaBound: null, ts: false, fg: false, sn: false })
 })
 ```
 
-- [ ] **Step 6: 실패를 확인한다**
+- [ ] **Step 7: 실패를 확인한다**
 
 ```bash
 npm --prefix backend test -- test/taf-conditions.test.js
@@ -271,16 +351,54 @@ npm --prefix backend test -- test/taf-conditions.test.js
 
 Expected: FAIL — `Cannot find module '../src/alerts/taf-conditions.js'`
 
-- [ ] **Step 7: 조건 넷을 구현한다**
+- [ ] **Step 8: 조건을 구현한다**
 
 Create `backend/src/alerts/taf-conditions.js`:
 
 ```js
-// 폰이 울릴 조건 — 그 시각 타임라인 항목에서 상태 넷을 뽑는다.
-// 임계값도, 시간 병합도 새로 만들지 않는다: 비행범주는 flight-category.js가(공항별 기본 미니마
-// 내장), 시각별 운고·시정과 병합된 현상은 taf-window.js가 이미 준다. 여기서는 조합만 한다.
-import { categoryFor } from '../briefing/flight-category.js'
+// 폰이 울릴 조건 — 그 시각 타임라인 항목에서 상태를 뽑는다.
+// 시간 병합도 임계값도 새로 만들지 않는다: 시각별 운고·시정과 병합된 현상은 taf-window.js가,
+// 공항 접근최저치는 flight-category.js가 이미 준다. 여기서는 조합만 한다.
+import { airportMinima } from '../briefing/flight-category.js'
 import { metricsAt, weatherAt } from '../briefing/taf-window.js'
+
+// 내 미니마를 설정하지 않았을 때의 기본. 관제권 VFR 최저치이자 이 앱의 IFR 판정선과 같은 값이라,
+// 미설정 사용자는 "IFR이면 울린다"와 같은 동작을 얻는다.
+const DEFAULT_MINIMA = { visibilityM: 5000, ceilingFt: 1500 }
+
+const num = (v) => (Number.isFinite(v) ? v : null)
+
+// 실효 미니마 = 더 엄격한 쪽. 둘 다 "바닥"이라 먼저 걸리는 쪽이 실제 제약이다.
+// 내 기준이 공항 접근최저치보다 낮으면(더 관대하면) 공항 쪽이 이긴다 — 그 밑에선 아무도
+// 착륙하지 못하는데 내 기준만 보면 조용해서, 못 가는 것을 갈 수 있다고 착각하게 만든다.
+function effectiveMinima(icao, userMinima) {
+  const airport = airportMinima(icao)
+  const personal = {
+    visibilityM: num(userMinima?.visibilityM) ?? DEFAULT_MINIMA.visibilityM,
+    ceilingFt: num(userMinima?.ceilingFt) ?? DEFAULT_MINIMA.ceilingFt,
+  }
+  const isDefault = num(userMinima?.visibilityM) == null && num(userMinima?.ceilingFt) == null
+  return {
+    personal,
+    airport: { visibilityM: num(airport?.visibilityM), ceilingFt: num(airport?.ceilingFt) },
+    isDefault,
+  }
+}
+
+// 어느 쪽이 걸렸는지까지 낸다 — 공항 최저치 때문에 걸렸는데 "내 미니마 미만"이라고 하면
+// 거짓말이 된다. 둘 다 걸리면 더 엄격한 쪽(= 값이 큰 쪽)을 이름으로 삼는다.
+function judgeMinima(metrics, icao, userMinima) {
+  const { personal, airport, isDefault } = effectiveMinima(icao, userMinima)
+  const below = (value, line) => Number.isFinite(value) && Number.isFinite(line) && value < line
+
+  const byPersonal = below(metrics.visibilityM, personal.visibilityM) || below(metrics.ceilingFt, personal.ceilingFt)
+  const byAirport = below(metrics.visibilityM, airport.visibilityM) || below(metrics.ceilingFt, airport.ceilingFt)
+
+  if (!byPersonal && !byAirport) return { minima: false, minimaBound: null }
+  // 공항 최저치가 걸렸다면 그것이 더 엄격한 선이다 — 그 밑은 개인 기준과 무관하게 불가능하다.
+  if (byAirport) return { minima: true, minimaBound: 'airport' }
+  return { minima: true, minimaBound: isDefault ? 'default' : 'personal' }
+}
 
 // 파서가 쪼개 준 구조를 쓴다 — 원문 글자를 정규식으로 훑지 않는다.
 // parse-utils.js는 wx 토큰을 { raw, intensity, descriptor, phenomena }로 나눈다:
@@ -295,13 +413,15 @@ const isVicinity = (w) => w?.intensity === 'VICINITY'
 const hasDescriptor = (list, code) => list.some((w) => !isVicinity(w) && w?.descriptor === code)
 const hasPhenomenon = (list, code) => list.some((w) => !isVicinity(w) && (w?.phenomena ?? []).includes(code))
 
-export function tafConditionsAt(taf, iso, icao = null) {
+const NOTHING = { minima: false, minimaBound: null, ts: false, fg: false, sn: false }
+
+export function tafConditionsAt(taf, iso, icao = null, userMinima = null) {
   const metrics = metricsAt(taf, iso)
   // TAF가 없거나 유효기간 밖이면 판정하지 않는다 — 없는 것을 위험으로 읽으면 오탐이 쌓인다.
-  if (!metrics) return { ifr: false, ts: false, fg: false, sn: false }
+  if (!metrics) return { ...NOTHING }
   const wx = weatherAt(taf, iso)
   return {
-    ifr: metrics.category === 'IFR' || metrics.category === 'LIFR',
+    ...judgeMinima(metrics, icao, userMinima),
     ts: hasDescriptor(wx, 'TS'),
     fg: hasPhenomenon(wx, 'FG'),
     sn: hasPhenomenon(wx, 'SN'),
@@ -311,27 +431,25 @@ export function tafConditionsAt(taf, iso, icao = null) {
 export default { tafConditionsAt }
 ```
 
-`metrics.category`를 그대로 쓰므로 `categoryFor` import는 실제로는 필요 없다 — 지운다.
-
-- [ ] **Step 8: 통과를 확인한다**
+- [ ] **Step 9: 통과를 확인한다**
 
 ```bash
 npm --prefix backend test
 ```
 
-Expected: 전체 PASS (조건 테스트 10건 포함)
+Expected: 전체 PASS (조건 테스트 13건 포함)
 
-- [ ] **Step 9: 커밋**
+- [ ] **Step 10: 커밋**
 
 ```bash
 git status --short
-git add backend/src/briefing/taf-window.js backend/test/taf-window.test.js backend/src/alerts/taf-conditions.js backend/test/taf-conditions.test.js
-git commit -m "feat(alerts): read the four push conditions from the merged timeline"
+git add backend/src/briefing/flight-category.js backend/src/briefing/taf-window.js backend/test/taf-window.test.js backend/src/alerts/taf-conditions.js backend/test/taf-conditions.test.js
+git commit -m "feat(alerts): judge against the stricter of personal and published minima"
 ```
 
 ---
 
-### Task 2: 스냅샷을 조건 넷으로 줄인다
+### Task 2: 스냅샷을 조건으로 줄인다
 
 **Files:**
 - Modify: `backend/src/alerts/scheduler.js` (`buildSnapshot` 및 그 보조 함수들)
@@ -343,7 +461,7 @@ git commit -m "feat(alerts): read the four push conditions from the merged timel
 
 ```js
 {
-  airports: [{ icao, role: 'dep'|'dest'|'altn', ifr, ts, fg, sn }],
+  airports: [{ icao, role: 'dep'|'dest'|'altn', minima, minimaBound, ts, fg, sn }],
   sigmets: [{ key, label }],   // 경로상 SIGMET만. AIRMET은 담지 않는다
 }
 ```
@@ -353,25 +471,26 @@ git commit -m "feat(alerts): read the four push conditions from the merged timel
 `alert-scheduler.test.js`의 `buildSnapshot` 테스트를 아래로 **교체**한다(옛 형태를 기대하는 단언은 지운다).
 
 ```js
-test('buildSnapshot: 공항별 조건 넷과 경로 SIGMET만 낸다', () => {
+test('buildSnapshot: 공항별 조건과 경로 SIGMET만 낸다', () => {
   const request = { departureAirport: 'RKSI', arrivalAirport: 'RKPC', alternateAirport: 'RKPK', etd: ETD, eta: ETA }
   const briefing = { sections: { adverse: { hazards: [
     { source: 'SIGMET', code: 'WS01', validFrom: ETD, encounter: 'on', label: 'SIGMET WS01' },
     { source: 'AIRMET', code: 'WA01', validFrom: ETD, encounter: 'on', label: 'AIRMET WA01' },
     { source: 'SIGMET', code: 'WS02', validFrom: ETD, encounter: 'nearby', label: '옆으로 스침' },
   ] } } }
-  const snap = buildSnapshot(briefing, { RKPC: tafFor(800) }, request)
+  // 미니마 미설정 → VFR 기본값(1500ft/5000m)으로 판정한다.
+  const snap = buildSnapshot(briefing, { RKPC: tafFor(800) }, request, null)
 
   assert.deepEqual(snap.airports.map((a) => a.role), ['dep', 'dest', 'altn'])
-  assert.equal(snap.airports.find((a) => a.role === 'dest').ifr, true, '운고 800ft면 IFR')
-  assert.equal(snap.airports.find((a) => a.role === 'dep').ifr, false, 'TAF 없으면 판정하지 않는다')
+  assert.equal(snap.airports.find((a) => a.role === 'dest').minima, true, '운고 800ft는 기본 1500ft 미만')
+  assert.equal(snap.airports.find((a) => a.role === 'dep').minima, false, 'TAF 없으면 판정하지 않는다')
   // AIRMET은 폰까지 가지 않는다. 경로에 안 걸친 SIGMET도 아니다.
   assert.deepEqual(snap.sigmets.map((s) => s.label), ['SIGMET WS01'])
 })
 
 test('buildSnapshot: 교체공항이 없으면 두 곳만 낸다', () => {
   const request = { departureAirport: 'RKSI', arrivalAirport: 'RKPC', alternateAirport: null, etd: ETD, eta: ETA }
-  const snap = buildSnapshot({ sections: { adverse: { hazards: [] } } }, {}, request)
+  const snap = buildSnapshot({ sections: { adverse: { hazards: [] } } }, {}, request, null)
   assert.deepEqual(snap.airports.map((a) => a.role), ['dep', 'dest'])
 })
 ```
@@ -392,8 +511,9 @@ Expected: FAIL — `snap.airports`가 `undefined`
 import { tafConditionsAt } from './taf-conditions.js'
 
 // composeBriefing 결과 + TAF payload(icao별) + 요청 → diff가 먹는 최소 스냅샷.
-// 공항별로 조건 넷만 들고, 경로 위험은 SIGMET만 담는다(AIRMET은 폰까지 가지 않는다).
-export function buildSnapshot(briefing, tafByIcao, request) {
+// 공항별 조건만 들고, 경로 위험은 SIGMET만 담는다(AIRMET은 폰까지 가지 않는다).
+// userMinima는 evaluateFlight가 users 테이블에서 읽어 넘긴다 — 판정선이 조종사마다 다르다.
+export function buildSnapshot(briefing, tafByIcao, request, userMinima = null) {
   const taf = (icao) => (icao ? tafByIcao?.[icao] ?? null : null)
   const at = [
     { icao: request.departureAirport, role: 'dep', iso: request.etd },
@@ -402,7 +522,7 @@ export function buildSnapshot(briefing, tafByIcao, request) {
   ].filter((entry) => entry.icao)
 
   const airports = at.map(({ icao, role, iso }) => ({
-    icao, role, ...tafConditionsAt(taf(icao), iso, icao),
+    icao, role, ...tafConditionsAt(taf(icao), iso, icao, userMinima),
   }))
 
   // 경로에 실제로 걸치는 SIGMET만(공항경보 제외). hazard-section이 고도·시간 겹침을 이미 적용했다.
@@ -443,7 +563,13 @@ git commit -m "feat(alerts): reduce the watch snapshot to four conditions per ai
 - Produces: `detectChanges(prev, curr)` — 배열. 각 항목:
 
 ```js
-{ type: 'IFR'|'TS'|'FG'|'SN'|'SIGMET', target: '<ICAO>'|'<label>', role: 'dep'|'dest'|'altn'|null, dedupKey: string }
+{
+  type: 'MINIMA'|'TS'|'FG'|'SN'|'SIGMET',
+  target: '<ICAO>'|'<label>',
+  role: 'dep'|'dest'|'altn'|null,
+  bound: 'personal'|'airport'|'default'|null,   // MINIMA일 때만
+  dedupKey: string,
+}
 ```
 
 `severity`·`from`·`to`는 더 이상 만들지 않는다. `plan` 인자(사용자 미니마)도 받지 않는다.
@@ -458,27 +584,28 @@ import assert from 'node:assert/strict'
 
 import { detectChanges } from '../src/alerts/diff.js'
 
-const airport = (over = {}) => ({ icao: 'RKPC', role: 'dest', ifr: false, ts: false, fg: false, sn: false, ...over })
+const airport = (over = {}) => ({ icao: 'RKPC', role: 'dest', minima: false, minimaBound: null, ts: false, fg: false, sn: false, ...over })
 const snap = (airports = [airport()], sigmets = []) => ({ airports, sigmets })
 
 test('없던 조건이 새로 생기면 발화한다', () => {
-  const changes = detectChanges(snap(), snap([airport({ ifr: true })]))
+  const changes = detectChanges(snap(), snap([airport({ minima: true, minimaBound: 'personal' })]))
   assert.equal(changes.length, 1)
-  assert.equal(changes[0].type, 'IFR')
+  assert.equal(changes[0].type, 'MINIMA')
   assert.equal(changes[0].target, 'RKPC')
   assert.equal(changes[0].role, 'dest')
+  assert.equal(changes[0].bound, 'personal', '문구가 어느 미니마인지 말해야 한다')
 })
 
 test('이미 있던 조건은 다시 발화하지 않는다 — 정시 TAF마다 울리면 안 된다', () => {
-  assert.deepEqual(detectChanges(snap([airport({ ifr: true })]), snap([airport({ ifr: true })])), [])
+  assert.deepEqual(detectChanges(snap([airport({ minima: true })]), snap([airport({ minima: true })])), [])
 })
 
 test('조건이 풀리면 아무 말도 하지 않는다 — 회복 알림은 만들지 않는다', () => {
-  assert.deepEqual(detectChanges(snap([airport({ ifr: true })]), snap()), [])
+  assert.deepEqual(detectChanges(snap([airport({ minima: true })]), snap()), [])
 })
 
 test('풀렸다가 다시 걸리면 그때 다시 발화한다', () => {
-  assert.equal(detectChanges(snap(), snap([airport({ ifr: true })])).length, 1)
+  assert.equal(detectChanges(snap(), snap([airport({ minima: true })])).length, 1)
 })
 
 test('네 조건을 각각 본다', () => {
@@ -548,8 +675,8 @@ Expected: FAIL
 // 없던 것이 새로 생겼을 때만 발화한다. 정시 TAF는 6시간마다 나오므로 상태를 비교하지 않으면
 // 같은 뇌전 예보로 하루 네 번 울린다. 회복은 알리지 않는다 — 조용하면 이상없다는 것이 계약이다.
 
-const CONDITIONS = ['ifr', 'ts', 'fg', 'sn']
-const TYPE_OF = { ifr: 'IFR', ts: 'TS', fg: 'FG', sn: 'SN' }
+const CONDITIONS = ['minima', 'ts', 'fg', 'sn']
+const TYPE_OF = { minima: 'MINIMA', ts: 'TS', fg: 'FG', sn: 'SN' }
 
 // 공항이 아니라 **공항+역할**로 짝짓는다. 출발지와 교체공항이 같은 곳일 수 있고(흔한 선택),
 // 공항 코드만으로 묶으면 한쪽 역할이 조용히 사라져 엉뚱한 기준과 비교된다.
@@ -568,6 +695,8 @@ function airportChanges(prev, curr) {
           type: TYPE_OF[key],
           target: now.icao,
           role: now.role ?? null,
+          // 어느 미니마가 걸렸는지. 문구가 "내 미니마 미만"과 "접근최저치 미만"을 가른다.
+          bound: key === 'minima' ? (now.minimaBound ?? null) : null,
           dedupKey: `${TYPE_OF[key]}:${slotOf(now)}`,
         })
       }
@@ -613,7 +742,7 @@ git commit -m "feat(alerts): fire on condition transitions instead of seven judg
 ### Task 4: 적재를 새 판정에 맞춘다
 
 **Files:**
-- Modify: `backend/src/alerts/scheduler.js` (`evaluateFlight`, `insertAlert`, `userMinima` 제거)
+- Modify: `backend/src/alerts/scheduler.js` (`evaluateFlight`, `insertAlert`)
 - Modify: `backend/src/me/alerts.js` (`listNotifications`가 `role`을 내보낸다)
 - Modify: `backend/test/alert-scheduler.test.js`
 - Modify: `backend/test/me-notifications.test.js`
@@ -637,19 +766,20 @@ test('evaluateFlight: 새로 걸린 조건만 적재하고 같은 조건은 다�
     assert.equal(first.baseline, true)
     assert.equal(first.changes.length, 0)
 
-    // 2회차 = 목적지가 IFR로 떨어짐
+    // 2회차 = 목적지가 미니마 밑으로 떨어짐
     const second = evaluateFlight({ db, route, briefing: clear, tafByIcao: { RKPC: tafFor(800) }, cache })
     assert.equal(second.changes.length, 1)
-    assert.equal(second.changes[0].type, 'IFR')
+    assert.equal(second.changes[0].type, 'MINIMA')
 
     // 3회차 = 그대로 IFR — 다시 넣지 않는다
     const third = evaluateFlight({ db, route, briefing: clear, tafByIcao: { RKPC: tafFor(800) }, cache })
     assert.equal(third.changes.length, 0)
 
-    const rows = db.prepare('SELECT type, target, severity FROM triggered_alerts WHERE route_id=?').all(route.id)
+    const rows = db.prepare('SELECT type, target, severity, to_val FROM triggered_alerts WHERE route_id=?').all(route.id)
     assert.equal(rows.length, 1)
-    assert.equal(rows[0].type, 'IFR')
+    assert.equal(rows[0].type, 'MINIMA')
     assert.equal(rows[0].severity, 'ALERT')
+    assert.ok(rows[0].to_val, '어느 미니마가 걸렸는지가 남아야 문구를 만들 수 있다')
   } finally { db.close() }
 })
 ```
@@ -666,9 +796,10 @@ Expected: FAIL
 
 `scheduler.js`에서:
 
-1. `userMinima` 함수를 **지운다**(사용자 미니마는 알림 판정에서 빠진다 — 브리핑 화면에서는 계속 쓰이므로 `users` 컬럼은 남긴다).
-2. `insertAlert`의 값 부분을 새 어휘로 바꾼다.
-3. `evaluateFlight`의 `detectChanges` 호출에서 인자를 뺀다.
+1. `userMinima` 함수는 **남긴다** — 판정선이 조종사마다 다르므로 `buildSnapshot`에 넘겨야 한다.
+2. `insertAlert`의 값 부분을 새 어휘로 바꾼다. **어느 미니마가 걸렸는지는 `to_val`에 담는다** —
+   비어 있던 컬럼이라 스키마를 건드릴 필요가 없다.
+3. `evaluateFlight`가 `buildSnapshot`에 미니마를 넘기고, `detectChanges`에서는 인자를 뺀다.
 
 ```js
 // 다섯 가지가 전부 "울릴 만한 것"이라 등급 구분의 쓸모가 없다. 컬럼은 남기되 고정값을 넣는다.
@@ -679,11 +810,18 @@ function insertAlert(db, route, change, nowIso) {
     INSERT INTO triggered_alerts (user_id, route_id, type, severity, target, from_val, to_val, source_id, dedup_key, detected_at)
     VALUES (?,?,?,?,?,?,?,?,?,?)
   `).run(route.user_id, route.id, change.type, ALERT_SEVERITY, change.target ?? null,
-    null, null, change.role ?? null, change.dedupKey, nowIso).lastInsertRowid
+    // from_val은 안 쓴다. to_val에 "어느 미니마가 걸렸는지"를 담는다 — 문구가 그걸로 갈린다.
+    null, change.bound ?? null, change.role ?? null, change.dedupKey, nowIso).lastInsertRowid
 }
 ```
 
-`evaluateFlight` 안:
+`evaluateFlight` 안 — 스냅샷을 만들 때 그 조종사의 미니마를 넘긴다:
+
+```js
+  const curr = buildSnapshot(briefing, tafByIcao, request, userMinima(db, route.user_id))
+```
+
+그리고 변화 적재:
 
 ```js
     const changes = detectChanges(prev, curr)
@@ -719,6 +857,8 @@ test('listNotifications: 역할을 함께 내보낸다 — 문구가 "도착 RKP
            t.from_val AS fromVal, t.to_val AS toVal,
 ```
 
+`toVal`은 이미 뽑고 있다 — 거기에 "어느 미니마가 걸렸는지"가 담기므로 따로 더할 것이 없다.
+
 - [ ] **Step 5: 통과를 확인한다**
 
 ```bash
@@ -753,7 +893,9 @@ git commit -m "feat(alerts): store transitions without severity tiers"
 ```js
 test('formatAlert: 다섯 종류를 사람 말로 낸다', () => {
   const route = { dep: 'RKSI', dest: 'RKPC', altn: 'RKPK' }
-  assert.match(formatAlert({ type: 'IFR', target: 'RKPC', role: 'dest' }, route), /도착 RKPC.*IFR/)
+  assert.match(formatAlert({ type: 'MINIMA', target: 'RKPC', role: 'dest', bound: 'personal' }, route), /도착 RKPC.*내 미니마 미만/)
+  assert.match(formatAlert({ type: 'MINIMA', target: 'RKTU', role: 'dest', bound: 'airport' }, route), /접근최저치 미만/)
+  assert.match(formatAlert({ type: 'MINIMA', target: 'RKPC', role: 'dest', bound: 'default' }, route), /IFR 이하/)
   assert.match(formatAlert({ type: 'TS', target: 'RKSI', role: 'dep' }, route), /출발 RKSI.*뇌전/)
   assert.match(formatAlert({ type: 'FG', target: 'RKPK', role: 'altn' }, route), /교체 RKPK.*안개/)
   assert.match(formatAlert({ type: 'SN', target: 'RKPC', role: 'dest' }, route), /눈/)
@@ -771,7 +913,7 @@ test('dispatchFlightAlerts: 경로 소유자의 구독으로 푸시한다', asyn
     const sent = []
     const result = await dispatchFlightAlerts(
       db,
-      [{ id: 1, type: 'IFR', target: 'RKPC', role: 'dest' }],
+      [{ id: 1, type: 'MINIMA', target: 'RKPC', role: 'dest', bound: 'personal' }],
       { id: 7, user_id: uid, dep: 'RKSI', dest: 'RKPC' },
       { now: Date.now(), sendPushImpl: async (sub, payload) => { sent.push({ sub, payload }) } },
     )
@@ -831,10 +973,18 @@ import { sendPush } from '../push/send.js'
 const ROLE_KO = { dep: '출발', dest: '도착', altn: '교체' }
 const at = (alert) => (alert.role && ROLE_KO[alert.role] ? `${ROLE_KO[alert.role]} ${alert.target}` : alert.target)
 
+// 어느 미니마가 걸렸는지에 따라 말이 달라진다. 공항 접근최저치 때문에 걸렸는데
+// "내 미니마 미만"이라고 하면 거짓말이 된다 — 그리고 그 경우가 더 무거운 상황이다.
+const MINIMA_KO = {
+  airport: '접근최저치 미만',   // 그 밑에선 아무도 착륙하지 못한다
+  personal: '내 미니마 미만',
+  default: 'IFR 이하',          // 미니마 미설정 — VFR 기본값(1500ft/5000m)으로 판정했다
+}
+
 // 변화 1건 → 통지 한 줄. 담백한 통지체(이모지 미사용, 공식 통지 톤).
 export function formatAlert(alert) {
   switch (alert.type) {
-    case 'IFR': return `${at(alert)} IFR 이하 예보`
+    case 'MINIMA': return `${at(alert)} ${MINIMA_KO[alert.bound] ?? '최저치 미만'} 예보`
     case 'TS': return `${at(alert)} 뇌전 예보`
     case 'FG': return `${at(alert)} 안개 예보`
     case 'SN': return `${at(alert)} 눈 예보`
@@ -1198,12 +1348,20 @@ git commit -m "feat(push): let a pilot turn push alerts on"
 
 ```js
 const ROLE_KO = { dep: '출발', dest: '도착', altn: '교체' }
-// 백엔드 sender.formatAlert 미러. 문구를 고칠 때 두 곳을 함께 고친다.
+// 백엔드 sender.formatAlert 미러. 문구를 고칠 때 두 곳을 함께 고친다 —
+// 다르면 같은 알림이 폰과 앱에서 다르게 읽힌다.
 const at = (n) => (n.role && ROLE_KO[n.role] ? `${ROLE_KO[n.role]} ${n.target}` : (n.target ?? ''))
+
+// 어느 미니마가 걸렸는지는 toVal에 담겨 온다(백엔드 insertAlert).
+const MINIMA_KO = {
+  airport: '접근최저치 미만',
+  personal: '내 미니마 미만',
+  default: 'IFR 이하',
+}
 
 export function formatNotification(n) {
   switch (n.type) {
-    case 'IFR': return `${at(n)} IFR 이하 예보`
+    case 'MINIMA': return `${at(n)} ${MINIMA_KO[n.toVal] ?? '최저치 미만'} 예보`
     case 'TS': return `${at(n)} 뇌전 예보`
     case 'FG': return `${at(n)} 안개 예보`
     case 'SN': return `${at(n)} 눈 예보`
@@ -1367,6 +1525,13 @@ git commit -m "docs: record stage 4 gate results"
 **PROB·TEMPO도 발화한다(결정).** 타임라인이 그것을 병합해 두므로 그대로 조건이 된다.
 브리핑에 보이는 것과 알림이 어긋나면, 알림이 조용한 것을 "괜찮다"로 읽고 브리핑을 안 보게 된다.
 
+**판정선을 개인 미니마로 바꿨다(2026-08-20 결정).** 처음 계획은 고정 IFR선(5000m/1500ft)만 봤다.
+그것은 "공항이 계기비행 상태"라는 사실일 뿐 **이 조종사가 갈 수 있느냐**와 다르다. 대신
+`max(내 미니마, 공항 접근최저치)`로 본다 — 둘 다 바닥이라 먼저 걸리는 쪽이 실제 제약이다.
+**내 기준이 공항 접근최저치보다 관대하면 공항 쪽이 이긴다**: 그 밑에선 아무도 착륙하지 못하는데
+내 기준만 보면 조용해서, 못 가는 것을 갈 수 있다고 착각하게 만든다. 미설정이면 VFR 기본값을
+쓰므로 예전 동작과 같고, 그 값이 IFR선과 같아 조건을 하나로 합칠 수 있었다.
+
 **부근(VC) 판단은 명시적 결정이다.** `VCTS`는 공항이 아니라 주변 5~10 SM의 뇌전이라,
 "출발 RKSI 뇌전 예보"라고 알리면 사실과 다른 말을 하게 된다. 부근까지 알리려면 문구를
 "부근 뇌전"으로 따로 두어야 하고 종류가 하나 늘어난다. 필요해지면 그때 늘린다.
@@ -1377,7 +1542,7 @@ git commit -m "docs: record stage 4 gate results"
 - **항목별 on/off 설정** — 다섯 개뿐이고 전부 비행 가부를 가른다. 끄고 싶은 항목이 생기면 그것은 설정이 필요하다는 뜻이 아니라 목록에서 빼야 한다는 뜻이다.
 - **조용시간(야간 억제)** — 뇌전·안개 소식은 새벽에라도 알아야 아침 계획을 바꿀 수 있다.
 - **감시 창을 ETA까지 연장** — 이륙하면 폰이 비행모드라 볼 방법이 없다.
-- **사용자 미니마를 알림에 되살리기** — 공항별 기본 미니마(`categoryFor`)가 그 역할을 한다. 개인 미니마 설정은 브리핑 화면에서 계속 쓰이므로 컬럼과 화면은 남긴다.
+- **고정 IFR선을 따로 두기** — 미설정 기본값(1500ft/5000m)이 그 선과 같아서, 따로 두면 VFR 프리셋 사용자에게 항상 두 알림이 같이 간다.
 - **`send_no_change_confirm` 컬럼 삭제** — 화면과 API에서만 뺀다. DB 마이그레이션은 범위 밖.
 - **텔레그램 채널 제거** — 관리자용으로 그대로 둔다. 다만 발화 규칙은 새 규칙 하나를 따른다.
 - **알림이 원본 브리핑의 수정을 따라가게 하기** — 등록 시점의 복제본을 감시한다(3단계 결정).
