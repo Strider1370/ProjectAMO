@@ -25,6 +25,44 @@ test.describe('monitoring', () => {
     await expect(operations).toHaveAttribute('aria-selected', 'false')
   })
 
+  test('ground current weather prioritizes METAR SHRA over BKN cloud coverage', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'mobile monitoring is redirected away')
+
+    // 나중에 등록한 route가 먼저 매치된다. 기본 METAR 픽스처를 강수+운량 충돌 사례로 덮는다.
+    await page.route('**/api/metar', (route) => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            content_hash: 'metar-shra-bkn-hash',
+            airports: {
+              RKSI: {
+                header: { issue_time: '2026-08-20T03:00:00.000Z' },
+                observation: {
+                  wind: { raw: '18008KT', speed: 8, direction: 180 },
+                  visibility: { value: 9999, cavok: false },
+                  clouds: [{ amount: 'BKN', base: 2000 }],
+                  weather: [{ raw: 'SHRA', icon_key: 'SHRA' }],
+                  display: { weather: 'SHRA', weather_icon: 'SHRA', clouds: 'BKN020' },
+                  temperature: { air: 22, dewpoint: 19 },
+                  qnh: { value: 1012 },
+                },
+              },
+            },
+          }),
+        })
+      }
+      return route.fallback()
+    })
+
+    await page.goto('/monitoring?mode=ground', { waitUntil: 'load' })
+    const currentWeather = page.getByRole('region', { name: '현재 날씨' })
+    await expect(currentWeather).toBeVisible()
+    await expect(currentWeather.getByText('소나기', { exact: true })).toBeVisible()
+    await expect(currentWeather.getByText('구름많음', { exact: true })).toHaveCount(0)
+    await expect(currentWeather.locator('.weather-icon-wrapper')).toHaveAttribute('title', 'rain')
+  })
+
   test('loads only monitoring-owned weather data without API errors', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'mobile monitoring is redirected away')
 

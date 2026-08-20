@@ -5,6 +5,7 @@ import {
 import { convertWeatherToKorean } from "../utils/visual-mapper";
 import WeatherIcon from "../../../../shared/ui/WeatherIcon.jsx";
 import { computeSunTimes } from "../../../../shared/weather/helpers.js";
+import { resolveWeatherVisual } from "../../../../shared/weather/weather-visual-resolver.js";
 import { WiDaySunny, WiDust, WiHumidity, WiRaindrops, WiSmoke, WiStrongWind } from 'react-icons/wi'
 
 function normalizeDegrees(value) {
@@ -24,18 +25,26 @@ function knotsToMs(knots) {
 }
 
 function resolveCurrentCondition(target) {
-  const weatherText = convertWeatherToKorean(target?.observation?.display?.weather, target?.observation?.clouds);
-  const iconKey = target?.observation?.display?.weather_icon || target?.observation?.weather?.[0]?.icon_key || null;
+  const observation = target?.observation || {};
+  const weatherText = convertWeatherToKorean(
+    observation?.display?.weather,
+    observation?.visibility?.cavok,
+    observation?.clouds || [],
+  );
+  const visual = resolveWeatherVisual(
+    observation,
+    target?.header?.issue_time || target?.header?.observation_time,
+  );
   if (weatherText && weatherText !== "-" && weatherText !== "맑음") {
-    return { summary: weatherText, iconKey };
+    return { summary: weatherText, visual };
   }
 
-  const clouds = Array.isArray(target?.observation?.clouds) ? target.observation.clouds : [];
+  const clouds = Array.isArray(observation?.clouds) ? observation.clouds : [];
   const coverage = clouds.map((cloud) => String(cloud.amount || "").toUpperCase());
-  if (coverage.includes("OVC")) return { summary: "흐림", iconKey: "OVC" };
-  if (coverage.includes("BKN")) return { summary: "구름많음", iconKey: "BKN" };
-  if (coverage.includes("SCT") || coverage.includes("FEW")) return { summary: "구름조금", iconKey: "SCT" };
-  return { summary: "맑음", iconKey: target?.observation?.display?.weather_icon || "NSW" };
+  if (coverage.includes("OVC")) return { summary: "흐림", visual };
+  if (coverage.includes("BKN")) return { summary: "구름많음", visual };
+  if (coverage.includes("SCT") || coverage.includes("FEW")) return { summary: "구름조금", visual };
+  return { summary: "맑음", visual };
 }
 
 function todayForecast(groundForecastData, icao) {
@@ -138,7 +147,7 @@ export default function GroundCurrentWeatherCard({
       </div>
       <div className="ground-current-card-body">
         <div className="ground-current-card-main">
-          <WeatherIcon iconKey={currentCondition.iconKey} className="ground-current-card-icon" alt={currentCondition.summary} />
+          <WeatherIcon visual={currentCondition.visual} className="ground-current-card-icon" alt={currentCondition.summary} />
           <div className="ground-current-card-temp-wrap">
             <div className="ground-current-card-temp" data-current-temperature>{Number.isFinite(tempC) ? `${Math.round(tempC)}°C` : "-"}</div>
             <div className="ground-current-card-feels" data-current-feels>체감 {Number.isFinite(feelsLike?.value) ? `${Math.round(feelsLike.value)}°C` : "-"}</div>
