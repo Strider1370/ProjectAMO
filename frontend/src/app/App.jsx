@@ -21,6 +21,7 @@ import { useLastSeenVersion } from '../features/about/useLastSeenVersion.js'
 import useIsMobile from '../shared/ui/useIsMobile.js'
 import ExitOnDoubleBack from '../shared/ui/ExitOnDoubleBack.jsx'
 import { TimeZoneProvider, useTimeZone } from '../shared/timezone/TimeZoneContext.jsx'
+import { deeplinkFlightId as deeplinkFlightIdFromUrl, consumeDeeplinkFlight } from '../features/notifications/deeplinkFlight.js'
 
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
 const TerminalPage = lazy(() => import('../features/terminal/TerminalPage.jsx'))
@@ -50,11 +51,9 @@ function MainAppShell() {
     const p = new URLSearchParams(window.location.search).get('airport')
     return p ? p.toUpperCase() : null
   })
-  const [deeplinkFlightId, setDeeplinkFlightId] = useState(() => {
-    // 딥링크: ?flight=<routeId> 로 비행 알림 에스컬레이션 화면 바로 열기 (Task 10)
-    const p = new URLSearchParams(window.location.search).get('flight')
-    return p ? Number(p) : null
-  })
+  // 딥링크: ?flight=<routeId> 로 비행 알림 에스컬레이션 화면 바로 열기 (Task 10)
+  // 번호는 deeplinkFlight.js가 페이지 열릴 때 한 번 집어 둔다 — 변경점 띠도 같은 값을 읽는다.
+  const [deeplinkFlightId, setDeeplinkFlightId] = useState(deeplinkFlightIdFromUrl)
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [mobileTask, setMobileTask] = useState('map')
   const [layerCounts, setLayerCounts] = useState({ aviation: 0, met: 0, traffic: 0 })
@@ -154,6 +153,8 @@ function MainAppShell() {
     if (deeplinkFlightId == null) return
     const id = deeplinkFlightId
     setDeeplinkFlightId(null)
+    // 주소에서 지운다 — 안 지우면 새로고침할 때마다 이 비행이 계속 다시 열린다.
+    consumeDeeplinkFlight()
     setActivePanel('route-check')
     ;(async () => {
       try {
