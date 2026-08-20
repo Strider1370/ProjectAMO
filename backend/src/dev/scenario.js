@@ -153,14 +153,16 @@ export function createDevRouter({ db = null } = {}) {
     const changes = detectChanges(cleanBaseline(curr), curr)
 
     const nowIso = new Date().toISOString()
-    const routeCtx = { id: route.id, name: route.name, eta: route.eta }
+    // user_id를 반드시 실어야 한다 — 발송이 이것으로 구독자와 관리자 여부를 찾는다.
+    // 빠뜨리면 알림 행은 쌓이는데 폰도 텔레그램도 조용해서 "안 울린다"로만 보인다.
+    const routeCtx = { id: route.id, user_id: uid, name: route.name, eta: route.eta }
     let fired = 0
     for (const c of changes) {
       if (fired) await new Promise((r) => setTimeout(r, 400)) // 텔레그램 flood 회피
+      // severity는 고정값, to_val에는 "어느 미니마가 걸렸는지"(bound)가 들어간다 — scheduler.js와 같은 어휘.
       const id = db2.prepare(`
         INSERT INTO triggered_alerts (user_id, route_id, type, severity, target, from_val, to_val, source_id, dedup_key, detected_at)
         VALUES (?,?,?,?,?,?,?,?,?,?)
-      // severity는 고정값, to_val에는 "어느 미니마가 걸렸는지"(bound)가 들어간다 — scheduler.js와 같은 어휘.
       `).run(uid, route.id, c.type, 'ALERT', c.target ?? null,
         null, c.bound ?? null,
         c.role ?? 'dev', c.dedupKey, nowIso).lastInsertRowid
