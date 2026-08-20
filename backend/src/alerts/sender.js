@@ -1,6 +1,6 @@
 // #13 알림 발송 seam — diff가 적재한 알림(triggered_alerts 행)을 채널로 내보낸다. 얇게: 문구 포맷 + 채널 분기 하나.
 // 인앱 = 이미 행 저장(무동작, 모든 사용자) · 텔레그램 = 관리자 계정 + env 있으면 sendMessage(딥링크 버튼) · Web Push = 경로 소유자.
-// 과한 추상화 금지(§7): 채널별 클래스/레지스트리 없이 dispatchAlert 한 곳에서 분기.
+// 과한 추상화 금지(§7): 채널별 클래스/레지스트리 없이 dispatchFlightAlerts 한 곳에서 분기.
 import { sendPush } from '../push/send.js'
 
 // Zulu 시각(HHMMZ). 항공 표기 관례상 콜론 없이.
@@ -136,10 +136,4 @@ export async function dispatchFlightAlerts(db, alerts = [], route = {}, deps = {
   return { text, telegram, push, count: alerts.length }
 }
 
-// 단건 편의 래퍼(개별 발송·테스트). 묶음 경로 재사용.
-export async function dispatchAlert(db, alert, route = {}, deps = {}) {
-  const { telegram } = await dispatchFlightAlerts(db, [alert], route, deps)
-  return { text: formatAlert(alert), telegram }
-}
-
-export default { formatAlert, composeMessage, sendTelegram, dispatchFlightAlerts, dispatchAlert }
+export default { formatAlert, composeMessage, sendTelegram, dispatchFlightAlerts }

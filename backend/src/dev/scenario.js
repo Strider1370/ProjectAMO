@@ -10,7 +10,7 @@ import { requireAuth } from '../auth/middleware.js'
 import { buildBriefingRequest, buildSnapshot, runTick, alreadyFired } from '../alerts/scheduler.js'
 import { composeBriefing } from '../briefing/briefing-composer.js'
 import { detectChanges } from '../alerts/diff.js'
-import { dispatchAlert } from '../alerts/sender.js'
+import { dispatchFlightAlerts } from '../alerts/sender.js'
 import { getCached, updateCache, canonicalHash, loadLatest } from '../store.js'
 import { getStats } from '../stats.js'
 import { getRequests, aggregateByPath, getCacheStats } from './instrument.js'
@@ -156,14 +156,13 @@ export function createDevRouter({ db = null } = {}) {
     // user_id를 반드시 실어야 한다 — 발송이 이것으로 구독자와 관리자 여부를 찾는다.
     // 빠뜨리면 알림 행은 쌓이는데 폰도 텔레그램도 조용해서 "안 울린다"로만 보인다.
     const routeCtx = { id: route.id, user_id: uid, name: route.name, eta: route.eta }
-    let fired = 0
     let suppressed = 0
+    const fired = []
     for (const c of changes) {
       // 실제 스케줄러와 같은 중복 방지를 건다. 강제 발화라고 이것까지 건너뛰면 같은 조건이
       // 누를 때마다 쌓여서, 알림센터에 "뇌전 예보"가 두 줄 보이고 엔진을 의심하게 된다.
       // 다시 발화시키려면 [알림 삭제]로 이력을 지우면 된다.
       if (alreadyFired(db2, route.id, c.dedupKey)) { suppressed++; continue }
-      if (fired) await new Promise((r) => setTimeout(r, 400)) // 텔레그램 flood 회피
       // severity는 고정값, to_val에는 "어느 미니마가 걸렸는지"(bound)가 들어간다 — scheduler.js와 같은 어휘.
       const id = db2.prepare(`
         INSERT INTO triggered_alerts (user_id, route_id, type, severity, target, from_val, to_val, source_id, dedup_key, detected_at)
@@ -171,11 +170,14 @@ export function createDevRouter({ db = null } = {}) {
       `).run(uid, route.id, c.type, 'ALERT', c.target ?? null,
         null, c.bound ?? null,
         c.role ?? 'dev', c.dedupKey, nowIso).lastInsertRowid
-      await dispatchAlert(db2, { ...c, id, route_id: route.id, to_val: c.bound ?? null }, routeCtx)
-      fired++
+      fired.push({ ...c, id, route_id: route.id })
     }
+    // 한 비행의 이번 변화를 **한 건으로 묶어** 보낸다(§5B group_wait) — runTick과 같은 호출이다.
+    // 변화마다 따로 보내면 위험기상 셋에 폰이 세 번 울린다. 실제 스케줄러는 안 그러는데
+    // 이 버튼만 그러면, 검증하는 사람이 없는 문제를 보고 진짜 동작을 못 믿게 된다.
+    if (fired.length) await dispatchFlightAlerts(db2, fired, routeCtx)
     res.json({
-      ok: true, routeId: route.id, dep: request.departureAirport, firedCount: fired, suppressed,
+      ok: true, routeId: route.id, dep: request.departureAirport, firedCount: fired.length, suppressed,
       note: suppressed
         ? `이미 발화된 조건 ${suppressed}건은 건너뜀(실제 스케줄러와 같은 규칙). 다시 보려면 [알림 삭제] 후 주입.`
         : '지도·브리핑·알림에 반영됨. [초기화]로 실황 복구.',
