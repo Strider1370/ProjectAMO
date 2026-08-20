@@ -51,6 +51,8 @@
 | `frontend/public/sw.js` | 알림 클릭 → 딥링크 | 수정 |
 | `frontend/src/features/notifications/notificationFormat.js` | 새 종류 문구 | 수정 |
 | `frontend/src/features/personal/PersonalSettingsPanel.jsx` | 감시 선택지, 푸시 스위치, "이상없음" 제거 | 수정 |
+| `frontend/src/features/notifications/pushKey.js` | VAPID 키 변환 (공용) | **신규** |
+| `frontend/src/features/developer/tabs/TriggerTab.jsx` | 지역 정의 → 공용 모듈 | 수정 |
 | `frontend/src/features/personal/usePersonalSettings.js` | 푸시 구독 상태 | 수정 |
 | `frontend/src/features/notifications/FlightAlertDetail.jsx` | 삭제 | **삭제** |
 
@@ -78,6 +80,10 @@ import { tafConditionsAt } from '../src/alerts/taf-conditions.js'
 
 const AT = '2026-08-20T02:00:00Z'
 
+// wx 항목은 parse-utils.js가 낸 모양이다: { raw, intensity, descriptor, phenomena }.
+const wx = (raw, { intensity = 'MODERATE', descriptor = null, phenomena = [] } = {}) =>
+  ({ raw, intensity, descriptor, phenomena })
+
 // timeline은 metricsAt이 운고·시정을 읽는 곳, base/change_groups는 현상(wx)이 있는 곳이다.
 const taf = ({ vis = 9999, ceil = 3000, baseWx = [], groups = [] } = {}) => ({
   header: { icao: 'RKSI' },
@@ -98,23 +104,34 @@ test('운고가 1500ft 미만이면 IFR', () => {
   assert.equal(tafConditionsAt(taf({ ceil: 800 }), AT, 'RKSI').ifr, true)
 })
 
-test('지속 그룹(base)의 현상을 읽는다', () => {
-  const c = tafConditionsAt(taf({ baseWx: [{ raw: 'TSRA' }] }), AT, 'RKSI')
+test('뇌전은 수식어로 읽는다 — TSRA도 뇌전이다', () => {
+  const c = tafConditionsAt(taf({ baseWx: [wx('TSRA', { descriptor: 'TS', phenomena: ['RA'] })] }), AT, 'RKSI')
   assert.equal(c.ts, true)
   assert.equal(c.fg, false)
 })
 
-test('변화 그룹은 그 시각에 걸칠 때만 본다', () => {
-  const inside = [{ start: '2026-08-20T01:00:00Z', end: '2026-08-20T03:00:00Z', wx_touched: true, wx: [{ raw: 'FG' }] }]
-  const outside = [{ start: '2026-08-20T05:00:00Z', end: '2026-08-20T07:00:00Z', wx_touched: true, wx: [{ raw: 'FG' }] }]
-  assert.equal(tafConditionsAt(taf({ groups: inside }), AT, 'RKSI').fg, true)
-  assert.equal(tafConditionsAt(taf({ groups: outside }), AT, 'RKSI').fg, false)
+test('부근(VC)은 발화하지 않는다 — 공항이 아니라 그 주변이다', () => {
+  const c = tafConditionsAt(taf({ baseWx: [wx('VCTS', { intensity: 'VICINITY', descriptor: 'TS' })] }), AT, 'RKSI')
+  assert.equal(c.ts, false, 'VCTS를 "출발 RKSI 뇌전 예보"라고 알리면 사실과 다르다')
 })
 
-test('눈과 뇌전을 가려낸다', () => {
-  const c = tafConditionsAt(taf({ baseWx: [{ raw: '-SN' }] }), AT, 'RKSI')
+test('FZFG는 안개다 — 수식어가 붙어도 현상은 FG', () => {
+  const c = tafConditionsAt(taf({ baseWx: [wx('FZFG', { descriptor: 'FZ', phenomena: ['FG'] })] }), AT, 'RKSI')
+  assert.equal(c.fg, true)
+})
+
+test('약한 눈도 눈이다', () => {
+  const c = tafConditionsAt(taf({ baseWx: [wx('-SN', { intensity: 'LIGHT', phenomena: ['SN'] })] }), AT, 'RKSI')
   assert.equal(c.sn, true)
   assert.equal(c.ts, false)
+})
+
+test('변화 그룹은 그 시각에 걸칠 때만 본다', () => {
+  const fg = [wx('FG', { phenomena: ['FG'] })]
+  const inside = [{ start: '2026-08-20T01:00:00Z', end: '2026-08-20T03:00:00Z', wx_touched: true, wx: fg }]
+  const outside = [{ start: '2026-08-20T05:00:00Z', end: '2026-08-20T07:00:00Z', wx_touched: true, wx: fg }]
+  assert.equal(tafConditionsAt(taf({ groups: inside }), AT, 'RKSI').fg, true)
+  assert.equal(tafConditionsAt(taf({ groups: outside }), AT, 'RKSI').fg, false)
 })
 
 test('TAF가 없으면 아무것도 안 걸린다 — 없는 것을 위험으로 읽지 않는다', () => {
@@ -139,27 +156,34 @@ Expected: FAIL — `Cannot find module '../src/alerts/taf-conditions.js'`
 import { categoryFor } from '../briefing/flight-category.js'
 import { metricsAt } from '../briefing/taf-window.js'
 
-// 현상 코드. TAF 원문 토큰에 이 글자가 들어 있는지로 본다.
-// 세기 접두(+/-)와 소나기(SH) 같은 수식이 붙어도 잡히도록 포함 검사를 쓴다.
-const MATCHERS = {
-  ts: /TS/,
-  fg: /FG/,
-  sn: /SN/,
-}
-
-const wxText = (wx) => (wx ?? []).map((w) => w?.raw ?? w ?? '').join(' ')
+// 파서가 이미 구조화해 준 것을 쓴다 — 원문 글자를 정규식으로 훑지 않는다.
+// parse-utils.js는 wx 토큰을 { raw, intensity, descriptor, phenomena }로 쪼갠다:
+//   TSRA   → descriptor 'TS',  phenomena ['RA']
+//   VCTS   → intensity 'VICINITY', descriptor 'TS'
+//   -SN    → intensity 'LIGHT',    phenomena ['SN']
+//   FZFG   → descriptor 'FZ',      phenomena ['FG']
+// 뇌전은 현상이 아니라 수식어(descriptor)라는 점이 중요하다. /TS/로 원문을 훑으면
+// 이 구분이 사라진다.
+//
+// 부근(VC)은 발화하지 않는다. VCTS는 공항이 아니라 그 주변 5~10 SM의 뇌전이라,
+// "출발 RKSI 뇌전 예보"라고 알리면 사실과 다른 말을 하게 된다. 부근까지 알리려면
+// 문구를 "부근 뇌전"으로 따로 두어야 하고, 그것은 이 단계의 다섯 종류를 늘리는 일이다.
+const isVicinity = (w) => w?.intensity === 'VICINITY'
+const hasDescriptor = (list, code) => list.some((w) => !isVicinity(w) && w?.descriptor === code)
+const hasPhenomenon = (list, code) => list.some((w) => !isVicinity(w) && (w?.phenomena ?? []).includes(code))
 
 // timeline에는 wx가 없다. 현상은 지속 그룹(base)과 그 시각에 걸치는 변화 그룹에서 읽는다.
-function phenomenaTextAt(taf, iso) {
+// 이 방식은 scheduler.js의 기존 departureTs가 쓰던 것과 같다(그 함수는 Task 2에서 지운다).
+function weatherAt(taf, iso) {
   const at = Date.parse(iso)
-  let text = wxText(taf?.base?.wx)
+  const out = [...(taf?.base?.wx ?? [])]
   for (const g of taf?.change_groups ?? []) {
     const start = Date.parse(g?.start)
     const end = Date.parse(g?.end)
     if (!Number.isFinite(start) || !Number.isFinite(end)) continue
-    if (at >= start && at < end && g.wx_touched) text += ` ${wxText(g.wx)}`
+    if (at >= start && at < end && g.wx_touched) out.push(...(g.wx ?? []))
   }
-  return text
+  return out.filter(Boolean)
 }
 
 export function tafConditionsAt(taf, iso, icao = null) {
@@ -167,12 +191,12 @@ export function tafConditionsAt(taf, iso, icao = null) {
   const metrics = metricsAt(taf, iso)
   // 수치를 못 뽑으면 판정하지 않는다 — 없는 것을 위험으로 읽으면 오탐이 쌓인다.
   const category = metrics ? categoryFor({ visibilityM: metrics.visibilityM, ceilingFt: metrics.ceilingFt, icao }) : 'VFR'
-  const text = phenomenaTextAt(taf, iso)
+  const wx = weatherAt(taf, iso)
   return {
     ifr: category === 'IFR' || category === 'LIFR',
-    ts: MATCHERS.ts.test(text),
-    fg: MATCHERS.fg.test(text),
-    sn: MATCHERS.sn.test(text),
+    ts: hasDescriptor(wx, 'TS'),
+    fg: hasPhenomenon(wx, 'FG'),
+    sn: hasPhenomenon(wx, 'SN'),
   }
 }
 
@@ -185,7 +209,7 @@ export default { tafConditionsAt }
 npm --prefix backend test -- test/taf-conditions.test.js
 ```
 
-Expected: PASS (7 tests)
+Expected: PASS (9 tests)
 
 - [ ] **Step 5: 커밋**
 
@@ -360,6 +384,24 @@ test('공항이 다르면 따로 발화한다', () => {
   assert.notEqual(changes[0].dedupKey, changes[1].dedupKey)
 })
 
+test('출발지와 교체공항이 같아도 각각 따로 본다', () => {
+  // 같은 공항을 출발지이자 교체공항으로 쓰는 것은 흔하다. 공항 코드만으로 묶으면
+  // 한쪽이 사라지고, 남은 쪽이 엉뚱한 기준과 비교된다.
+  const before = snap([airport({ icao: 'RKSI', role: 'dep' }), airport({ icao: 'RKSI', role: 'altn' })])
+  const after = snap([airport({ icao: 'RKSI', role: 'dep' }), airport({ icao: 'RKSI', role: 'altn', fg: true })])
+  const changes = detectChanges(before, after)
+  assert.equal(changes.length, 1)
+  assert.equal(changes[0].role, 'altn', '바뀐 것은 교체공항 쪽이다')
+})
+
+test('같은 공항의 두 역할은 중복 방지 키가 다르다', () => {
+  const before = snap([airport({ icao: 'RKSI', role: 'dep' }), airport({ icao: 'RKSI', role: 'altn' })])
+  const after = snap([airport({ icao: 'RKSI', role: 'dep', ts: true }), airport({ icao: 'RKSI', role: 'altn', ts: true })])
+  const changes = detectChanges(before, after)
+  assert.equal(changes.length, 2)
+  assert.notEqual(changes[0].dedupKey, changes[1].dedupKey, '키가 겹치면 한쪽이 삼켜진다')
+})
+
 test('새 SIGMET만 발화한다', () => {
   const before = snap([airport()], [{ key: 'S:1', label: '기존' }])
   const after = snap([airport()], [{ key: 'S:1', label: '기존' }, { key: 'S:2', label: '새 것' }])
@@ -399,15 +441,25 @@ Expected: FAIL
 const CONDITIONS = ['ifr', 'ts', 'fg', 'sn']
 const TYPE_OF = { ifr: 'IFR', ts: 'TS', fg: 'FG', sn: 'SN' }
 
+// 공항이 아니라 **공항+역할**로 짝짓는다. 출발지와 교체공항이 같은 곳일 수 있고(흔한 선택),
+// 공항 코드만으로 묶으면 한쪽 역할이 조용히 사라져 엉뚱한 기준과 비교된다.
+// dedupKey도 같은 이유로 역할을 포함한다 — 안 그러면 두 번째 역할의 진짜 변화가 삼켜진다.
+const slotOf = (a) => `${a.icao}:${a.role ?? ''}`
+
 function airportChanges(prev, curr) {
-  const before = new Map((prev?.airports ?? []).map((a) => [a.icao, a]))
+  const before = new Map((prev?.airports ?? []).map((a) => [slotOf(a), a]))
   const out = []
   for (const now of curr?.airports ?? []) {
-    const then = before.get(now.icao)
-    if (!then) continue // 이 공항의 직전 상태가 없다 — 기준점이 없으므로 판정하지 않는다
+    const then = before.get(slotOf(now))
+    if (!then) continue // 이 자리의 직전 상태가 없다 — 기준점이 없으므로 판정하지 않는다
     for (const key of CONDITIONS) {
       if (now[key] && !then[key]) {
-        out.push({ type: TYPE_OF[key], target: now.icao, role: now.role ?? null, dedupKey: `${TYPE_OF[key]}:${now.icao}` })
+        out.push({
+          type: TYPE_OF[key],
+          target: now.icao,
+          role: now.role ?? null,
+          dedupKey: `${TYPE_OF[key]}:${slotOf(now)}`,
+        })
       }
     }
   }
@@ -452,7 +504,9 @@ git commit -m "feat(alerts): fire on condition transitions instead of seven judg
 
 **Files:**
 - Modify: `backend/src/alerts/scheduler.js` (`evaluateFlight`, `insertAlert`, `userMinima` 제거)
+- Modify: `backend/src/me/alerts.js` (`listNotifications`가 `role`을 내보낸다)
 - Modify: `backend/test/alert-scheduler.test.js`
+- Modify: `backend/test/me-notifications.test.js`
 
 **Interfaces:**
 - Consumes: Task 3의 `detectChanges(prev, curr)`.
@@ -530,7 +584,32 @@ function insertAlert(db, route, change, nowIso) {
     }
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [ ] **Step 4: 알림 피드가 `role`을 내보내게 한다**
+
+역할(출발/도착/교체)은 `source_id` 컬럼에 담기는데, 피드 SQL이 그 컬럼을 뽑지 않는다
+(`backend/src/me/alerts.js:150`). 안 고치면 알림센터가 **"도착 RKPC"를 "RKPC"로만** 보여준다 —
+Task 9의 문구가 `n.role`을 읽기 때문이다.
+
+먼저 실패하는 테스트를 `backend/test/me-notifications.test.js`에 더한다. 그 파일의 기존
+시딩 방식을 먼저 읽고 같은 골격을 쓴다.
+
+```js
+test('listNotifications: 역할을 함께 내보낸다 — 문구가 "도착 RKPC"로 읽히려면 필요하다', () => {
+  // triggered_alerts에 source_id='dest'인 행을 하나 넣고
+  const { notifications } = listNotifications(db, userId)
+  assert.equal(notifications[0].role, 'dest')
+})
+```
+
+그다음 SQL에 한 항목을 더한다.
+
+```js
+    SELECT t.id, t.route_id AS routeId, t.type, t.severity, t.target,
+           t.source_id AS role,
+           t.from_val AS fromVal, t.to_val AS toVal,
+```
+
+- [ ] **Step 5: 통과를 확인한다**
 
 ```bash
 npm --prefix backend test
@@ -538,11 +617,11 @@ npm --prefix backend test
 
 Expected: 전체 PASS
 
-- [ ] **Step 5: 커밋**
+- [ ] **Step 6: 커밋**
 
 ```bash
 git status --short
-git add backend/src/alerts/scheduler.js backend/test/alert-scheduler.test.js
+git add backend/src/alerts/scheduler.js backend/src/me/alerts.js backend/test/alert-scheduler.test.js backend/test/me-notifications.test.js
 git commit -m "feat(alerts): store transitions without severity tiers"
 ```
 
@@ -794,7 +873,8 @@ git commit -m "feat(push): open the flight the notification is about"
 ### Task 7: 감시 창 6/12/24시간
 
 **Files:**
-- Modify: `backend/src/me/alerts.js:13` (검증 범위)
+- Modify: `backend/src/me/alerts.js` — 검증 범위(`:13`)와 **기본값 두 곳**(`:28` `pickActiveFlight`, `:66` INSERT)
+- Modify: `backend/src/db/schema.sql:46` — 컬럼 기본값
 - Modify: `frontend/src/features/personal/PersonalSettingsPanel.jsx:14` (선택지)
 
 기본 2시간은 너무 늦다. 이 알림은 전부 "갈까 말까"를 뒤집는 정보인데, 출발 2시간 전이면 이미 공항으로 가는 중이라 할 수 있는 것이 취소뿐이다.
@@ -805,7 +885,39 @@ git commit -m "feat(push): open the flight the notification is about"
   alertStartMinBeforeEtd: z.number().int().min(360).max(1440).optional(), // 6~24h
 ```
 
-- [ ] **Step 2: 화면 선택지를 바꾼다**
+- [ ] **Step 2: 남아 있는 2시간 기본값 셋을 함께 올린다**
+
+검증 범위만 바꾸면 **명시적으로 값을 안 준 등록은 여전히 2시간짜리**가 된다. 화면이 6/12/24를
+보여주는데 실제로는 2시간인 상태가 조용히 생긴다.
+
+```js
+// backend/src/me/alerts.js — pickActiveFlight
+const startMs = etdMs - (f.alertStartMinBeforeEtd || 360) * 60000
+```
+
+```js
+// backend/src/me/alerts.js — INSERT
+).run(req.session.userId, tpl.name, etd, eta ?? null, payload, alertStartMinBeforeEtd ?? 360, ...)
+```
+
+```sql
+-- backend/src/db/schema.sql:46
+alert_start_min_before_etd INTEGER NOT NULL DEFAULT 360,
+```
+
+**이미 만들어진 DB의 컬럼 기본값은 바뀌지 않는다**(SQLite는 `ALTER TABLE`로 기본값을 못 바꾼다).
+새 서버에만 적용된다 — 그래서 위의 두 코드 기본값이 실질적인 안전망이다.
+
+```js
+test('pickActiveFlight: 감시 시작이 없으면 6시간 전부터 본다', () => {
+  const etd = '2026-08-20T12:00:00Z'
+  const flights = [{ id: 1, etd }] // alertStartMinBeforeEtd 없음
+  assert.ok(pickActiveFlight(flights, Date.parse('2026-08-20T07:00:00Z')), '5시간 전이면 창 안')
+  assert.equal(pickActiveFlight(flights, Date.parse('2026-08-20T05:00:00Z')), null, '7시간 전이면 아직')
+})
+```
+
+- [ ] **Step 3: 화면 선택지를 바꾼다**
 
 ```js
 const WATCH_OPTIONS = [
@@ -817,18 +929,18 @@ const WATCH_OPTIONS = [
 
 기본값이 `120`으로 박힌 곳이 있으면 `360`으로 바꾼다(`useState` 초기값 확인).
 
-- [ ] **Step 3: 빌드와 테스트**
+- [ ] **Step 4: 빌드와 테스트**
 
 ```bash
 npm --prefix backend test
 npm --prefix frontend run build
 ```
 
-- [ ] **Step 4: 커밋**
+- [ ] **Step 5: 커밋**
 
 ```bash
 git status --short
-git add backend/src/me/alerts.js frontend/src/features/personal/PersonalSettingsPanel.jsx
+git add backend/src/me/alerts.js backend/src/db/schema.sql backend/test/alert-active.test.js frontend/src/features/personal/PersonalSettingsPanel.jsx
 git commit -m "feat(alerts): start watching six to twenty-four hours before departure"
 ```
 
@@ -882,7 +994,11 @@ git commit -m "feat(alerts): start watching six to twenty-four hours before depa
     const res = await fetch('/api/me/push/vapid-public-key', { credentials: 'include' })
     if (!res.ok) return { ok: false, reason: 'not_configured' }
     const { key } = await res.json()
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+    // 문자열을 그대로 넘기면 브라우저가 TypeError를 던진다 — Push API는 BufferSource를 받는다.
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key),
+    })
     await fetch('/api/me/push/subscribe', {
       method: 'POST', credentials: 'include',
       headers: { 'content-type': 'application/json' },
@@ -893,9 +1009,22 @@ git commit -m "feat(alerts): start watching six to twenty-four hours before depa
   }, [])
 ```
 
-`applicationServerKey`가 base64url 문자열을 그대로 받는지 확인한다. `developerApi.js`/`TriggerTab.jsx:59`가 변환을 거치면 **같은 방식을 쓴다** — 두 곳이 다르면 한쪽이 조용히 깨진다.
-
 `useEffect`로 `refreshPush()`를 부르고, 훅 반환에 `pushEnabled`·`pushSupported`·`togglePush`를 더한다.
+
+**변환 함수는 새로 쓰지 말고 옮겨 쓴다.** 개발자 탭(`frontend/src/features/developer/tabs/TriggerTab.jsx:8-11`)에 이미 `urlBase64ToUint8Array`가 있다. 그것을 `frontend/src/features/notifications/pushKey.js`로 옮기고 **양쪽이 같이 import** 한다 — 복사해 두면 한쪽만 고쳐져 조용히 갈라진다.
+
+```js
+// frontend/src/features/notifications/pushKey.js
+// VAPID 공개키(base64url) → PushManager.subscribe가 요구하는 Uint8Array.
+// 문자열을 그대로 넘기면 브라우저가 TypeError를 던진다.
+export function urlBase64ToUint8Array(base64) {
+  const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(padded)
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)))
+}
+```
+
+`TriggerTab.jsx`의 지역 정의를 지우고 이 모듈에서 import하도록 바꾼다.
 
 - [ ] **Step 2: 화면에 스위치를 단다**
 
@@ -940,7 +1069,7 @@ npm --prefix backend test
 
 ```bash
 git status --short
-git add frontend/src/features/personal/usePersonalSettings.js frontend/src/features/personal/PersonalSettingsPanel.jsx backend/src/me/alerts.js
+git add frontend/src/features/notifications/pushKey.js frontend/src/features/developer/tabs/TriggerTab.jsx frontend/src/features/personal/usePersonalSettings.js frontend/src/features/personal/PersonalSettingsPanel.jsx backend/src/me/alerts.js
 git commit -m "feat(push): let a pilot turn push alerts on"
 ```
 
@@ -982,7 +1111,8 @@ export const severityLevel = () => 'amber'
 export const severityTag = () => '알림'
 ```
 
-`role`이 알림 피드에 실려 오는지 확인한다 — 백엔드가 `source_id`에 담으므로(`Task 4`), 피드 API가 그것을 `role`로 내보내야 한다. 안 그러면 "도착 RKPC"가 "RKPC"로만 보인다.
+`role`은 Task 4 Step 4에서 피드에 실린다(`t.source_id AS role`). 그것이 없으면 이 문구가
+"도착 RKPC"를 "RKPC"로만 보여주므로, Task 4가 끝난 뒤에 이 태스크를 한다.
 
 - [ ] **Step 2: 변경점을 브리핑 상단 띠로 올린다**
 
@@ -1104,6 +1234,22 @@ git commit -m "docs: record stage 4 gate results"
 - `npm --prefix frontend run build` 성공
 - 관문 A~E 전부 통과 — 특히 **C(실제로 폰이 울린다)**
 - 우리 커밋에 다른 세션의 변경이 섞이지 않았다
+
+## 계획 검토에서 고친 것 (2026-08-20)
+
+리뷰어 검토에서 다섯 가지가 나왔고 모두 반영했다.
+
+| 지적 | 반영 |
+|---|---|
+| `applicationServerKey`에 문자열을 넘겨 `TypeError` | Task 8 — 기존 `urlBase64ToUint8Array`를 공용 모듈로 옮겨 양쪽이 함께 쓴다 |
+| `role`이 알림 피드로 안 넘어와 "도착 RKPC"가 "RKPC"로 | Task 4 Step 4 — `t.source_id AS role` 추가 + 테스트 |
+| 출발지·교체공항이 같으면 상태가 뭉개짐 | Task 3 — 짝짓기와 dedupKey를 `공항:역할`로 |
+| 2시간 기본값이 세 군데 더 있음 | Task 7 Step 2 — 코드 두 곳과 스키마를 360으로 |
+| `/TS/` 정규식이 부근 뇌전(VCTS)을 공항 뇌전으로 읽음 | Task 1 — 정규식 대신 파서 구조(`descriptor`/`phenomena`/`intensity`) 사용, 부근은 발화 안 함 |
+
+**부근(VC) 판단은 명시적 결정이다.** `VCTS`는 공항이 아니라 주변 5~10 SM의 뇌전이라,
+"출발 RKSI 뇌전 예보"라고 알리면 사실과 다른 말을 하게 된다. 부근까지 알리려면 문구를
+"부근 뇌전"으로 따로 두어야 하고 종류가 하나 늘어난다. 필요해지면 그때 늘린다.
 
 ## 이 단계에서 하지 않는 것
 
