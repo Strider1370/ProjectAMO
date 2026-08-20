@@ -56,20 +56,27 @@ test('buildBriefingRequest: enrouteGeometry 폴백 (Phase 0.2 안전망)', () =>
   assert.equal(buildBriefingRequest(mk({ routeForm: form })), null)
 })
 
-test('buildSnapshot: 목적지 운고 수치 + 교체필요 + 경로위험 추출', () => {
-  const db = createDb(':memory:')
-  try {
-    const route = seed(db)
-    const req = buildBriefingRequest(route)
-    const snap = buildSnapshot(
-      briefingWith({ alternateRequired: true, hazards: [{ source: 'SIGMET', code: 'TS', validFrom: ETD, encounter: 'on', label: 'TS' }] }),
-      { RKPC: tafFor(400) }, req,
-    )
-    assert.equal(snap.dest.ceilingFt, 400)
-    assert.equal(snap.dest.alternateRequired, true)
-    assert.equal(snap.hazards.length, 1)
-    assert.equal(snap.hazards[0].isSigmet, true)
-  } finally { db.close() }
+test('buildSnapshot: 공항별 조건과 경로 SIGMET만 낸다', () => {
+  const request = { departureAirport: 'RKSI', arrivalAirport: 'RKPC', alternateAirport: 'RKPK', etd: ETD, eta: ETA }
+  const briefing = briefingWith({ hazards: [
+    { source: 'SIGMET', code: 'WS01', validFrom: ETD, encounter: 'on', label: 'SIGMET WS01' },
+    { source: 'AIRMET', code: 'WA01', validFrom: ETD, encounter: 'on', label: 'AIRMET WA01' },
+    { source: 'SIGMET', code: 'WS02', validFrom: ETD, encounter: 'nearby', label: '옆으로 스침' },
+  ] })
+  // 미니마 미설정 → VFR 기본값(1500ft/5000m)으로 판정한다.
+  const snap = buildSnapshot(briefing, { RKPC: tafFor(800) }, request, null)
+
+  assert.deepEqual(snap.airports.map((a) => a.role), ['dep', 'dest', 'altn'])
+  assert.equal(snap.airports.find((a) => a.role === 'dest').minima, true, '운고 800ft는 기본 1500ft 미만')
+  assert.equal(snap.airports.find((a) => a.role === 'dep').minima, false, 'TAF 없으면 판정하지 않는다')
+  // AIRMET은 폰까지 가지 않는다. 경로에 안 걸친 SIGMET도 아니다.
+  assert.deepEqual(snap.sigmets.map((s) => s.label), ['SIGMET WS01'])
+})
+
+test('buildSnapshot: 교체공항이 없으면 두 곳만 낸다', () => {
+  const request = { departureAirport: 'RKSI', arrivalAirport: 'RKPC', alternateAirport: null, etd: ETD, eta: ETA }
+  const snap = buildSnapshot(briefingWith(), {}, request, null)
+  assert.deepEqual(snap.airports.map((a) => a.role), ['dep', 'dest'])
 })
 
 test('evaluateFlight: 첫 tick=baseline(무발화)·스냅샷 저장, 목적지 하락 tick=CEIL 1건', () => {
