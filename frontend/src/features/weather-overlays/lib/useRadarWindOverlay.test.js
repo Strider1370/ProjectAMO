@@ -16,14 +16,14 @@ test('WISSDOM defaults to the configured 1,524 m height', () => {
   )
 })
 
-test('WISSDOM only renders when radar is enabled and its frame exactly matches', () => {
+test('WISSDOM renders independently of radar when its frame is available', () => {
   assert.deepEqual(
     deriveRadarWindOverlayState({ requestedVisible: true, radarHsrEnabled: true, exactFrameAvailable: false }),
     { requestedVisible: true, effectiveVisible: false },
   )
   assert.deepEqual(
     deriveRadarWindOverlayState({ requestedVisible: true, radarHsrEnabled: false, exactFrameAvailable: true }),
-    { requestedVisible: false, effectiveVisible: false },
+    { requestedVisible: true, effectiveVisible: true },
   )
   assert.deepEqual(
     deriveRadarWindOverlayState({ requestedVisible: true, radarHsrEnabled: true, exactFrameAvailable: true }),

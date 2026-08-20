@@ -860,9 +860,8 @@ const MapView = forwardRef(function MapView({
     tz,
   ])
   const radarWindOverlay = useRadarWindOverlay({
-    radarHsrEnabled: baseWeatherOverlayModel.visibility.radarHsr,
     exactFrameAvailable: (heightM) => hasExactRadarWindFrame({
-      radarFrame: baseWeatherOverlayModel.radarFrame,
+      selectedTimeMs: baseWeatherOverlayModel.selectedWeatherTimeMs,
       wissdomMeta,
       heightM,
     }),

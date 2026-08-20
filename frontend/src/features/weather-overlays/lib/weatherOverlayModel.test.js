@@ -62,6 +62,20 @@ test('uses HSR as the domestic radar frame but only shows WISSDOM when requested
   assert.equal(requested.wissdomFrame.path, '/wissdom.webp')
 })
 
+test('shows requested WISSDOM without the radar layer', () => {
+  const selectedWeatherTimeMs = Date.UTC(2026, 7, 4, 10, 25)
+  const model = buildWeatherOverlayModel({
+    wissdomMeta: { framesByHeight: { 1524: [{ tm: '202608041925', heightM: 1524, path: '/wissdom.webp' }] } },
+    visibility: { radar: false, radarHsr: false },
+    radarWindHeightM: 1524,
+    radarWindRequested: true,
+    selectedWeatherTimeMs,
+  })
+
+  assert.deepEqual(model.weatherTimelineTicks, [selectedWeatherTimeMs])
+  assert.equal(model.wissdomFrame.path, '/wissdom.webp')
+})
+
 test('formatSigwxStamp formats tmfc values as KST labels', () => {
   assert.equal(formatSigwxStamp('202605140300'), '05/14 03:00 KST')
 })
@@ -255,6 +269,26 @@ test('selects only an exact future QPF frame and hides observed radar and motion
   assert.equal(model.radarFrame, null)
   assert.equal(model.radarMotion.dataUrl, null)
   assert.deepEqual(model.forecastTimelineTicks, [Date.UTC(2026, 7, 4, 10, 35), Date.UTC(2026, 7, 4, 10, 45), Date.UTC(2026, 7, 4, 10, 55)])
+})
+
+test('keeps QPF unavailable when the radar layer is off', () => {
+  const validTimeMs = Date.UTC(2026, 7, 4, 10, 45)
+  const model = buildWeatherOverlayModel({
+    qpfMeta: { frames: [{
+      tm: '202608041925',
+      analysisTimeMs: Date.UTC(2026, 7, 4, 10, 25),
+      validTimeMs,
+      leadMinutes: 20,
+      path: '/qpf-20.webp',
+    }] },
+    visibility: { radarHsr: false },
+    nowMs: Date.UTC(2026, 7, 4, 10, 30),
+    selectedWeatherTimeMs: validTimeMs,
+  })
+
+  assert.deepEqual(model.forecastTimelineTicks, [])
+  assert.equal(model.qpfFrame, null)
+  assert.equal(model.qpfStatus, null)
 })
 
 test('never offers a QPF frame whose valid time has already passed', () => {

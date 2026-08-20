@@ -52,14 +52,14 @@ export function collectActiveFrameEntries({
   if (visibility.radarHsr) {
     addAvailabilityEntries(entries, hsrFrames, CADENCE_MS.hsr)
   }
-  if (visibility.radarHsr && wissdomRequested) {
+  if (wissdomRequested) {
     addAvailabilityEntries(entries, wissdomFrames, CADENCE_MS.wissdom)
   }
   if (visibility.radarHci) addAvailabilityEntries(entries, hciFrames, CADENCE_MS.hci)
   if (visibility.satellite) addAvailabilityEntries(entries, satelliteFrames, CADENCE_MS.satellite)
   if (visibility.satelliteVisible) addAvailabilityEntries(entries, satelliteVisibleFrames, CADENCE_MS.satellite)
   if (visibility.lightning) addAvailabilityEntries(entries, lightningFrames, CADENCE_MS.lightning)
-  if (visibility.radarHsr) addAvailabilityEntries(entries, qpfFrames, CADENCE_MS.qpf, 'validTimeMs')
+  if (visibility.radar || visibility.radarHsr) addAvailabilityEntries(entries, qpfFrames, CADENCE_MS.qpf, 'validTimeMs')
   if (visibility.echoTop) addAvailabilityEntries(entries, echoTopFrames, CADENCE_MS.echoTop)
   if (visibility.radarOverseas) addAvailabilityEntries(entries, rainviewerFrames, CADENCE_MS.rainviewer)
   if (visibility.ci || visibility.ctps) addAvailabilityEntries(entries, convectiveFrames, CADENCE_MS.convective)
@@ -267,7 +267,13 @@ export function buildWeatherOverlayModel({
   const satVisibleFrames = normalizeFrames(satVisibleMeta?.frames || [])
   const wissdomFrames = normalizeWissdomFrames(wissdomMeta, radarWindHeightM)
   const qpfFrames = normalizeQpfFrames(qpfMeta, nowMs)
-  const forecastTimelineTicks = [...new Set(qpfFrames.map((frame) => frame.validTimeMs))]
+  const domesticRadarEnabled = Boolean(visibility.radar || visibility.radarHsr)
+  // QPF is a radar-derived forecast, so its future ticks and raster share the
+  // visible domestic radar layer's lifecycle.
+  const qpfEnabled = domesticRadarEnabled
+  const forecastTimelineTicks = qpfEnabled
+    ? [...new Set(qpfFrames.map((frame) => frame.validTimeMs))]
+    : []
   const echoTopFrames = normalizeFrames(echoTopMeta?.frames?.length ? echoTopMeta.frames : [echoTopMeta?.latest])
   const rainviewerFrames = normalizeRainviewerFrames(rainviewerMeta)
   const satelliteFrames = normalizeFrames(satMeta?.frames?.length ? satMeta.frames : [satMeta?.latest])
@@ -284,6 +290,7 @@ export function buildWeatherOverlayModel({
     visibility.echoTop ? echoTopFrames : [],
     (visibility.satellite || visibility.ci || visibility.ctps) ? satelliteFrames : [],
     visibility.lightning ? lightningFrames : [],
+    radarWindRequested ? wissdomFrames : [],
   ])
   // selectedWeatherTimeMs is the unified absolute-time axis; null = live (newest frame).
   // Scrubbing into the forecast (future) zone clamps observed layers to their newest frame.
@@ -295,19 +302,20 @@ export function buildWeatherOverlayModel({
       ? Math.min(Math.max(selectedWeatherTimeMs, firstTickMs), latestTickMs)
       : (weatherTimelineTicks.at(-1) ?? null))
     : null
-  const weatherTimelineVisible = (visibility.radar || visibility.radarHsr || visibility.radarHci || visibility.satelliteVisible || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning) && timelineTicks.length > 0
+  const weatherTimelineVisible = (visibility.radar || visibility.radarHsr || visibility.radarHci || visibility.satelliteVisible || visibility.radarOverseas || visibility.echoTop || visibility.satellite || visibility.ci || visibility.ctps || visibility.lightning || radarWindRequested) && timelineTicks.length > 0
   const observedRadarFrame = pickNearestPreviousFrame(radarFrames, resolvedWeatherTimeMs)
   const hsrFrame = pickNearestPreviousFrame(hsrFrames, resolvedWeatherTimeMs)
   const hciFrame = pickNearestPreviousFrame(hciFrames, resolvedWeatherTimeMs)
-  const domesticRadarEnabled = Boolean(visibility.radar || visibility.radarHsr)
   // 다른 선택과 같은 기준시각(범위 보정 후)을 쓴다 — 보정 전 값과 비교하면 슬라이더가 끝을
   // 넘어간 순간에만 예측이 사라지는 어긋남이 생긴다.
-  const qpfFrame = qpfFrames.find((frame) => frame.validTimeMs === resolvedWeatherTimeMs) || null
+  const qpfFrame = qpfEnabled
+    ? qpfFrames.find((frame) => frame.validTimeMs === resolvedWeatherTimeMs) || null
+    : null
   const selectedRadarFrame = visibility.radarHsr ? hsrFrame : observedRadarFrame
   const radarFrame = qpfFrame ? null : selectedRadarFrame
   const radarDisplayVisible = Boolean(domesticRadarEnabled && radarFrame)
-  const wissdomExactFrame = pickWissdomFrameForRadar(wissdomFrames, selectedRadarFrame)
-  const wissdomAvailable = Boolean(domesticRadarEnabled && !qpfFrame && wissdomExactFrame)
+  const wissdomExactFrame = pickWissdomFrameForRadar(wissdomFrames, { timeMs: resolvedWeatherTimeMs })
+  const wissdomAvailable = Boolean(!qpfFrame && wissdomExactFrame)
   const wissdomFrame = radarWindRequested && wissdomAvailable ? wissdomExactFrame : null
   const rasterLegend = buildRasterLegendModel({
     visibility,
