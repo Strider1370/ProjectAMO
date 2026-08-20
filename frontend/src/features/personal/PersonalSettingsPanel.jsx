@@ -14,12 +14,11 @@ import { formatZAndKst, isoToLocalInputValue, localInputToIso } from './lib/time
 const VFR_PRESET = { ceilingFt: 1500, visibilityM: 5000 }
 // CAT-I 정밀접근 최저치(DH 200ft · RVR 550m).
 const CAT1_PRESET = { ceilingFt: 200, visibilityM: 550 }
+// 2시간 전이면 이미 공항으로 가는 중이라 할 수 있는 것이 취소뿐이다. 계획을 바꿀 수 있는 시간대부터 본다.
 const WATCH_OPTIONS = [
-  { label: '2시간 전', minutes: 120 },
-  { label: '3시간 전', minutes: 180 },
-  { label: '4시간 전', minutes: 240 },
-  { label: '5시간 전', minutes: 300 },
   { label: '6시간 전', minutes: 360 },
+  { label: '12시간 전', minutes: 720 },
+  { label: '24시간 전', minutes: 1440 },
 ]
 
 const useStyles = makeStyles({
@@ -104,7 +103,7 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
   const [templateId, setTemplateId] = useState('')
   const [etdLocal, setEtdLocal] = useState('')
   const [etaLocal, setEtaLocal] = useState('')
-  const [watchMin, setWatchMin] = useState(120)
+  const [watchMin, setWatchMin] = useState(360)
   const [confirmNoChange, setConfirmNoChange] = useState(false)
   const [msg, setMsg] = useState(null)
   const lastAutoEta = useRef('')

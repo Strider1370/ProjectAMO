@@ -10,7 +10,7 @@ const registerSchema = z.object({
   templateId: z.number().int().positive(),
   etd: z.string().min(1),                                   // ISO(UTC)
   eta: z.string().min(1).nullable().optional(),             // 클라 etaCalc 계산값
-  alertStartMinBeforeEtd: z.number().int().min(120).max(360).optional(), // 2~6h
+  alertStartMinBeforeEtd: z.number().int().min(360).max(1440).optional(), // 6~24h
   sendNoChangeConfirm: z.boolean().optional(),
 })
 
@@ -25,7 +25,7 @@ export function pickActiveFlight(flights, nowMs) {
   const inWindow = flights.filter((f) => {
     const etdMs = Date.parse(f.etd)
     if (!Number.isFinite(etdMs)) return false
-    const startMs = etdMs - (f.alertStartMinBeforeEtd || 120) * 60000
+    const startMs = etdMs - (f.alertStartMinBeforeEtd || 360) * 60000
     return nowMs >= startMs && nowMs < etdMs
   })
   if (!inWindow.length) return null
@@ -65,7 +65,7 @@ export function createAlertsRouter({ db = null } = {}) {
     const info = db2.prepare(`
       INSERT INTO routes (user_id, name, etd, eta, payload, alert_enabled, alert_start_min_before_etd, send_no_change_confirm, expires_at, created_at, updated_at)
       VALUES (?,?,?,?,?,1,?,?,?,?,?)
-    `).run(req.session.userId, tpl.name, etd, eta ?? null, payload, alertStartMinBeforeEtd ?? 120, sendNoChangeConfirm ? 1 : 0, expiresAt, now, now)
+    `).run(req.session.userId, tpl.name, etd, eta ?? null, payload, alertStartMinBeforeEtd ?? 360, sendNoChangeConfirm ? 1 : 0, expiresAt, now, now)
     res.status(201).json({ id: info.lastInsertRowid })
   })
 
