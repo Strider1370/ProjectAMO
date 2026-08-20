@@ -10,12 +10,11 @@ import { storage } from '../config.js'
 import { getDb } from '../db/index.js'
 import { pickActiveFlight } from '../me/alerts.js'
 import { composeBriefing } from '../briefing/briefing-composer.js'
-import { metricsAt } from '../briefing/taf-window.js'
+import { tafConditionsAt } from './taf-conditions.js'
 import { detectChanges } from './diff.js'
 import { dispatchFlightAlerts } from './sender.js'
 import { isDemoMode, getEffectiveNow } from '../dev/demo-mode.js'
 
-const RANK = { 약: 1, 중: 2, 심: 3 }
 const DEFAULT_CRUISE_ALT_FT = 9000
 const TICK_MS = 15 * 60 * 1000 // 15분(§5B: 5~15분 갱신 규모). 무거운 KIM/KTG는 소스 주기 캐시에 의존.
 
@@ -48,67 +47,27 @@ export function buildBriefingRequest(route) {
   }
 }
 
-// TAF base/change_groups에서 ETD 시각에 유효한 TS 현상 여부(timeline엔 wx가 없어 base/그룹을 직접 스캔).
-// ponytail: 지속그룹(base)+시간창 그룹만 봄. PROB 확률가중은 데모 범위 밖.
-function departureTs(taf, etdIso) {
-  if (!taf) return false
-  const hasTs = (wx) => (wx ?? []).some((w) => /TS/.test(w?.raw || w || ''))
-  if (hasTs(taf.base?.wx)) return true
-  const etd = Date.parse(etdIso)
-  for (const g of (taf.change_groups ?? [])) {
-    const s = Date.parse(g.start)
-    const e = Date.parse(g.end)
-    if (Number.isFinite(s) && Number.isFinite(e) && etd >= s && etd < e && g.wx_touched && hasTs(g.wx)) return true
-  }
-  return false
-}
+// composeBriefing 결과 + TAF payload(icao별) + 요청 → diff가 먹는 최소 스냅샷.
+// 공항별 조건만 들고, 경로 위험은 SIGMET만 담는다(AIRMET은 폰까지 가지 않는다).
+// userMinima는 evaluateFlight가 users 테이블에서 읽어 넘긴다 — 판정선이 조종사마다 다르다.
+export function buildSnapshot(briefing, tafByIcao, request, userMinima = null) {
+  const taf = (icao) => (icao ? tafByIcao?.[icao] ?? null : null)
+  const at = [
+    { icao: request.departureAirport, role: 'dep', iso: request.etd },
+    { icao: request.arrivalAirport, role: 'dest', iso: request.eta },
+    { icao: request.alternateAirport, role: 'altn', iso: request.eta },
+  ].filter((entry) => entry.icao)
 
-function maxLevel(intervals) {
-  let best = null
-  for (const iv of (intervals ?? [])) if (!best || (RANK[iv.level] ?? 0) > (RANK[best] ?? 0)) best = iv.level
-  return best
-}
-function enrouteLevels(model) {
-  const out = { icing: null, turb: null }
-  for (const el of (model?.elements ?? [])) {
-    if (el.kind === 'icing') out.icing = maxLevel(el.intervals)
-    else if (el.kind === 'turbulence') out.turb = maxLevel(el.intervals)
-  }
-  return out
-}
+  const airports = at.map(({ icao, role, iso }) => ({
+    icao, role, ...tafConditionsAt(taf(icao), iso, icao, userMinima),
+  }))
 
-function airportSnap(taf, iso) {
-  const m = metricsAt(taf, iso) // null이면 TAF 없음 → 수치 null(below()가 false → 오탐 없음)
-  return { ceilingFt: m?.ceilingFt ?? null, visibilityM: m?.visibilityM ?? null }
-}
+  // 경로에 실제로 걸치는 SIGMET만(공항경보 제외). hazard-section이 고도·시간 겹침을 이미 적용했다.
+  const sigmets = (briefing?.sections?.adverse?.hazards ?? [])
+    .filter((h) => h.source === 'SIGMET' && h.encounter === 'on' && !h.airportScope)
+    .map((h) => ({ key: `${h.source}:${h.code}:${h.validFrom}`, label: h.label ?? h.code }))
 
-// composeBriefing 결과 + TAF payload(icao별) + 요청 → diff.js가 먹는 최소 스냅샷.
-export function buildSnapshot(briefing, tafByIcao, request) {
-  const t = (icao) => (icao ? tafByIcao?.[icao] ?? null : null)
-  const dest = {
-    icao: request.arrivalAirport,
-    ...airportSnap(t(request.arrivalAirport), request.eta),
-    alternateRequired: briefing?.sections?.destination?.alternateRequired ?? null,
-  }
-  const dep = {
-    icao: request.departureAirport,
-    ...airportSnap(t(request.departureAirport), request.etd),
-    ts: departureTs(t(request.departureAirport), request.etd),
-  }
-  const altn = request.alternateAirport
-    ? { icao: request.alternateAirport, ...airportSnap(t(request.alternateAirport), request.eta) }
-    : null
-
-  // 경로 위험(공항경보 제외, 경로 조우분만). hazard-section이 고도필터·시간겹침 이미 적용.
-  const hazards = (briefing?.sections?.adverse?.hazards ?? [])
-    .filter((h) => h.encounter === 'on' && !h.airportScope)
-    .map((h) => ({
-      key: `${h.source}:${h.code}:${h.validFrom}`,
-      isSigmet: h.source === 'SIGMET',
-      label: h.label ?? h.code,
-    }))
-
-  return { dep, dest, altn, hazards, enroute: enrouteLevels(briefing?.sections?.enroute?.model) }
+  return { airports, sigmets }
 }
 
 function userMinima(db, userId) {
@@ -118,17 +77,23 @@ function userMinima(db, userId) {
 }
 
 // 이미 발화된 동일 조건(route+dedupKey)이면 재발송 안 함(§5-2 dedup fingerprint).
-function alreadyFired(db, routeId, dedupKey) {
+// export: 개발용 강제 발화(dev/scenario.js)도 같은 판정을 써야 한다 — 거기서만 중복이 쌓이면
+// 엔진이 두 번 울리는 것처럼 보여서, 없는 버그를 쫓게 된다.
+export function alreadyFired(db, routeId, dedupKey) {
   return !!db.prepare('SELECT 1 FROM triggered_alerts WHERE route_id=? AND dedup_key=? LIMIT 1').get(routeId, dedupKey)
 }
 
-function insertAlert(db, route, c, nowIso) {
+// 다섯 가지가 전부 "울릴 만한 것"이라 등급 구분의 쓸모가 없다. 컬럼은 남기되 고정값을 넣는다.
+const ALERT_SEVERITY = 'ALERT'
+
+function insertAlert(db, route, change, nowIso) {
   return db.prepare(`
     INSERT INTO triggered_alerts (user_id, route_id, type, severity, target, from_val, to_val, source_id, dedup_key, detected_at)
     VALUES (?,?,?,?,?,?,?,?,?,?)
-  `).run(route.user_id, route.id, c.type, c.severity, c.target ?? null,
-    c.from == null ? null : String(c.from), c.to == null ? null : String(c.to),
-    c.sourceId ?? null, c.dedupKey, nowIso).lastInsertRowid
+  `).run(route.user_id, route.id, change.type, ALERT_SEVERITY, change.target ?? null,
+    // from_val은 안 쓴다. to_val에 "어느 미니마가 걸렸는지"를 담는다 — 문구가 그걸로 갈린다.
+    // 역할(출발/도착/교체)은 빈 source_id 컬럼에 담아 알림센터 문구가 읽는다.
+    null, change.bound ?? null, change.role ?? null, change.dedupKey, nowIso).lastInsertRowid
 }
 
 // 활성 비행 1건 평가: 재계산 스냅샷 vs prev diff → triggered_alerts 적재, 스냅샷 갱신.
@@ -136,17 +101,17 @@ function insertAlert(db, route, c, nowIso) {
 export function evaluateFlight({ db, route, briefing, tafByIcao, now = Date.now(), cache = snapshotCache }) {
   const request = buildBriefingRequest(route)
   if (!request) return { skipped: 'no_geometry' }
-  const curr = buildSnapshot(briefing, tafByIcao, request)
+  const curr = buildSnapshot(briefing, tafByIcao, request, userMinima(db, route.user_id))
   const prev = cache.get(route.id) ?? null
   const nowIso = new Date(now).toISOString()
 
   const inserted = []
   if (prev) {
-    const changes = detectChanges(prev, curr, { minima: userMinima(db, route.user_id) })
+    const changes = detectChanges(prev, curr)
     for (const c of changes) {
       if (alreadyFired(db, route.id, c.dedupKey)) continue
       const id = insertAlert(db, route, c, nowIso)
-      inserted.push({ ...c, id, to_val: c.to == null ? null : String(c.to) })
+      inserted.push({ ...c, id })
     }
   }
 

@@ -89,7 +89,7 @@ test('#13: routes has alert columns with safe defaults', () => {
   db.prepare("INSERT INTO routes (user_id, created_at, updated_at) VALUES (?, 't', 't')").run(u.id)
   const row = db.prepare('SELECT alert_enabled, alert_start_min_before_etd, altitude_filter_ft FROM routes WHERE user_id=?').get(u.id)
   assert.equal(row.alert_enabled, 0)          // 기존/신규 경로는 감시 off
-  assert.equal(row.alert_start_min_before_etd, 120)
+  assert.equal(row.alert_start_min_before_etd, 360) // 감시 시작 기본 6시간 전
   assert.equal(row.altitude_filter_ft, 4000)
 })
 

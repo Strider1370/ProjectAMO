@@ -1,50 +1,58 @@
-// #13 알림센터 표시 포맷 — 피드 행(type/target/fromVal/toVal + routeDep/Dest/Altn)을 한 줄 문구로.
-// 백엔드 sender.formatAlert 미러(ko): 역할(출발/도착/교체)·전→후·통지체. 심각도 태그는 배지가 담당(문장엔 미포함).
-// 임계 라벨/문구 변경 시 backend/src/alerts/sender.js와 동기화.
+// #13 알림센터 표시 포맷 — 피드 행(type/target/role/toVal)을 한 줄 문구로.
+// 백엔드 sender.formatAlert 미러. 문구를 고칠 때 두 곳을 함께 고친다 —
+// 다르면 같은 알림이 폰과 앱에서 다르게 읽힌다.
 
-// 공항 ICAO → 계획상 역할. 피드가 routeDep/Dest/Altn을 줄 때만, 없으면 ICAO만.
-function airportRole(icao, n) {
-  if (icao && icao === n.routeDep) return '출발'
-  if (icao && icao === n.routeDest) return '도착'
-  if (icao && icao === n.routeAltn) return '교체'
-  return null
+const ROLE_KO = { dep: '출발', dest: '도착', altn: '교체' }
+const at = (n) => (n.role && ROLE_KO[n.role] ? `${ROLE_KO[n.role]} ${n.target}` : (n.target ?? ''))
+
+// 어느 미니마가 걸렸는지는 toVal에 담겨 온다(백엔드 insertAlert).
+const MINIMA_KO = {
+  airport: '접근최저치 미만',
+  personal: '내 미니마 미만',
+  default: 'IFR 이하',
 }
-const at = (icao, n) => { const r = airportRole(icao, n); return r ? `${r} ${icao}` : (icao ?? '') }
-const shift = (from, to, unit = '') => (from != null && from !== '' ? `${from} → ${to}${unit}` : `${to}${unit}`)
 
 export function formatNotification(n) {
-  const t = n.target ?? ''
-  const from = n.fromVal
-  const to = n.toVal
   switch (n.type) {
-    case 'CEIL':
-      return `${at(t, n)} 운고 ${shift(from, to, 'ft')} — 최저운고 기준 미만`
-    case 'VIS':
-      return `${at(t, n)} 시정 ${shift(from, to, 'm')} — 최저시정 기준 미만`
-    case 'ALTERNATE_FLIP':
-      return `${at(t, n)} 교체공항 필요 조건 발생`
-    case 'ENROUTE_HAZARD':
-      return `경로상 신규 위험 (${to ?? t})`
-    case 'ENROUTE_ICE_TURB':
-      return `경로 ${t === 'icing' ? '착빙' : '난류'} ${shift(from, to)} 등급`
-    case 'WX':
-      return `${at(t, n)} 뇌전(TS) 예보`
-    default:
-      return `${at(t, n)} ${n.type}`
+    case 'MINIMA': return `${at(n)} ${MINIMA_KO[n.toVal] ?? '최저치 미만'} 예보`
+    case 'TS': return `${at(n)} 뇌전 예보`
+    case 'FG': return `${at(n)} 안개 예보`
+    case 'SN': return `${at(n)} 눈 예보`
+    case 'SIGMET': return `경로상 신규 SIGMET (${n.target})`
+    default: return `${at(n)} ${n.type}`
   }
 }
 
-// 심각도 → 디자인 헌법 레벨색(§5). CRITICAL/HIGH=red, MEDIUM=amber, 그 외=gray.
-export function severityLevel(severity) {
-  if (severity === 'CRITICAL' || severity === 'HIGH') return 'red'
-  if (severity === 'MEDIUM') return 'amber'
-  return 'gray'
-}
+// 다섯 종류가 전부 "울릴 만한 것"이라 등급이 없다. 색과 글자를 하나로 둔다.
+export const severityLevel = () => 'amber'
+export const severityTag = () => '알림'
 
-// 심각도 → 배지 글자(텔레그램 태그와 동일 어휘). 색은 severityLevel, 글자는 여기.
-const SEV_TAG = { CRITICAL: '위험', HIGH: '주의', MEDIUM: '정보', LOW: '참고', INFO: '참고' }
-export function severityTag(severity) {
-  return SEV_TAG[severity] ?? '알림'
+// 브리핑 상단 변경점 띠에 올릴 줄들. 피드는 최신순이므로 앞에서부터 훑으면 최근 것이 남는다.
+//
+// **같은 문장은 한 번만 낸다.** 같은 조건이 풀렸다 다시 걸리면 행이 또 쌓이고(개발용 강제
+// 발화는 중복 방지도 안 거친다), 그것을 그대로 이으면 "뇌전 예보 · 뇌전 예보"가 된다.
+// 변경점은 무엇이 바뀌었는지의 목록이지 발생 기록이 아니다.
+//
+// 길어지면 한 줄이 아니라 문단이 된다 — 앞의 몇 개만 두고 나머지는 개수로 접는다.
+// 전부 보려면 알림센터가 있다.
+const CHANGE_LINE_LIMIT = 4
+
+export function briefingChangeLines(notifications, flightId) {
+  if (flightId == null) return { lines: [], more: 0, latestAt: null }
+  const mine = (notifications ?? []).filter((n) => n.routeId === flightId)
+  const seen = new Set()
+  const lines = []
+  for (const n of mine) {
+    const text = formatNotification(n)
+    if (seen.has(text)) continue
+    seen.add(text)
+    lines.push(text)
+  }
+  return {
+    lines: lines.slice(0, CHANGE_LINE_LIMIT),
+    more: Math.max(0, lines.length - CHANGE_LINE_LIMIT),
+    latestAt: mine[0]?.detectedAt ?? null,
+  }
 }
 
 export function relTime(iso) {

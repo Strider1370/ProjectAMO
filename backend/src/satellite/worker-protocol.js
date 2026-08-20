@@ -123,6 +123,21 @@ function serializeResult(result) {
   return safe
 }
 
+// 워커가 잰 API 허브 사용량. 부모가 이 숫자로 하루 예산을 집계하므로 엉터리 값을 통과시키면
+// 멀쩡한 열쇠가 막히거나, 반대로 초과를 못 잡는다.
+function serializeApiHubUsage(usage) {
+  if (!Array.isArray(usage)) throw new Error('invalid satellite worker api hub usage')
+  return usage.map((entry) => {
+    if (!isPlainObject(entry)
+      || typeof entry.endpoint !== 'string' || entry.endpoint.length === 0
+      || !Number.isFinite(entry.bytes) || entry.bytes < 0
+      || !Number.isFinite(entry.status)) {
+      throw new Error('invalid satellite worker api hub usage')
+    }
+    return { endpoint: entry.endpoint, bytes: entry.bytes, status: entry.status }
+  })
+}
+
 function assertValidTime(now, errorMessage) {
   const time = Date.parse(now)
   if (typeof now !== 'string' || !Number.isFinite(time) || new Date(time).toISOString() !== now) throw new Error(errorMessage)
@@ -183,7 +198,9 @@ export function successMessage(work) {
     followUps.push(normalizeFollowUp(work.followUps[index]))
   }
 
-  return { ok: true, result: { result, followUps } }
+  // 사용량은 있을 때만 싣는다 — 없으면 필드를 만들지 않아 옛 메시지와 모양이 같다.
+  const apiHubUsage = Object.hasOwn(work, 'apiHubUsage') ? serializeApiHubUsage(work.apiHubUsage) : []
+  return { ok: true, result: { result, followUps, ...(apiHubUsage.length ? { apiHubUsage } : {}) } }
 }
 
 export function failureMessage(error) {

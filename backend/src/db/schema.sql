@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS routes (         -- 저장 경로(= 문의·#13 감�
   payload      TEXT,                         -- 프론트 snapshot 전체(JSON) — 무손실 왕복용(#5)
   eta          TEXT,                         -- #13 목적지 TAF 평가시각(클라 etaCalc 계산값)
   alert_enabled              INTEGER NOT NULL DEFAULT 0,   -- #13 예정비행만 1(=감시 대상). etd 있고 alert_enabled=1
-  alert_start_min_before_etd INTEGER NOT NULL DEFAULT 120, -- 감시 시작(ETD-N분), 2~6h
+  alert_start_min_before_etd INTEGER NOT NULL DEFAULT 360, -- 감시 시작(ETD-N분), 6~24h
   altitude_filter_ft         INTEGER NOT NULL DEFAULT 4000,
   send_no_change_confirm     INTEGER NOT NULL DEFAULT 0,
   confirm_min_before_etd     INTEGER NOT NULL DEFAULT 60,

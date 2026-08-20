@@ -9,6 +9,7 @@ export const MENUS = [
   { id: 'api', label: 'API 사용량', group: 'ops' },
   { id: 'users', label: '이용자', group: 'usage' },
   { id: 'accounts', label: '계정 관리', group: 'usage' },
+  { id: 'alerts', label: '알림 감시', group: 'usage' },
 ]
 
 export const MENU_GROUPS = [

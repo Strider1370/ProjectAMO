@@ -32,3 +32,12 @@ test('pickActiveFlight: 창 진입 전이면 null', () => {
   const flights = [{ id: 1, etd: iso(4), alertStartMinBeforeEtd: 120 }] // 시작은 ETD-2h=2h 뒤
   assert.equal(pickActiveFlight(flights, NOW), null)
 })
+
+// 감시 시작이 안 담긴 등록(구형 행·기본값)이 여전히 2시간이면, 화면은 6/12/24를 보여주는데
+// 실제로는 2시간만 보는 상태가 조용히 생긴다.
+test('pickActiveFlight: 감시 시작이 없으면 6시간 전부터 본다', () => {
+  const etd = '2026-08-20T12:00:00Z'
+  const flights = [{ id: 1, etd }] // alertStartMinBeforeEtd 없음
+  assert.ok(pickActiveFlight(flights, Date.parse('2026-08-20T07:00:00Z')), '5시간 전이면 창 안')
+  assert.equal(pickActiveFlight(flights, Date.parse('2026-08-20T05:00:00Z')), null, '7시간 전이면 아직')
+})

@@ -8,6 +8,7 @@ import {
 } from '../../shared/ui/fluent.js'
 import VerticalProfileChart from './VerticalProfileChart.jsx'
 import BriefingBanner from './BriefingBanner.jsx'
+import BriefingChangeStrip from '../notifications/BriefingChangeStrip.jsx'
 import BriefingSynopsis from './BriefingSynopsis.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -745,6 +746,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
           )}>
           <div className="bv-mobile" ref={containerRef}>
             {etdEtaLine && <Caption1 style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>{etdEtaLine}</Caption1>}
+            <BriefingChangeStrip />
             <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
             {nav}{board}{layerAction}{adverse}{currentDesktop}<BriefingSynopsis />{enroute}{notamSection}{destination}
             <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />
@@ -793,6 +795,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             <Button appearance="secondary" size="small" onClick={onClose}>닫기</Button>
           </div>
         </div>
+        <BriefingChangeStrip />
         <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
         {nav}{board}{layerAction}{adverse}{currentDesktop}<BriefingSynopsis />{enroute}{notamSection}{destination}
         <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />

@@ -10,8 +10,7 @@ const registerSchema = z.object({
   templateId: z.number().int().positive(),
   etd: z.string().min(1),                                   // ISO(UTC)
   eta: z.string().min(1).nullable().optional(),             // 클라 etaCalc 계산값
-  alertStartMinBeforeEtd: z.number().int().min(120).max(360).optional(), // 2~6h
-  sendNoChangeConfirm: z.boolean().optional(),
+  alertStartMinBeforeEtd: z.number().int().min(360).max(1440).optional(), // 6~24h
 })
 
 const patchSchema = z.object({
@@ -25,7 +24,7 @@ export function pickActiveFlight(flights, nowMs) {
   const inWindow = flights.filter((f) => {
     const etdMs = Date.parse(f.etd)
     if (!Number.isFinite(etdMs)) return false
-    const startMs = etdMs - (f.alertStartMinBeforeEtd || 120) * 60000
+    const startMs = etdMs - (f.alertStartMinBeforeEtd || 360) * 60000
     return nowMs >= startMs && nowMs < etdMs
   })
   if (!inWindow.length) return null
@@ -43,7 +42,7 @@ export function createAlertsRouter({ db = null } = {}) {
   router.post('/alerts', (req, res) => {
     const parsed = registerSchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: 'invalid_input' })
-    const { templateId, etd, eta, alertStartMinBeforeEtd, sendNoChangeConfirm } = parsed.data
+    const { templateId, etd, eta, alertStartMinBeforeEtd } = parsed.data
 
     const etdMs = Date.parse(etd)
     if (!Number.isFinite(etdMs) || etdMs <= Date.now()) return res.status(400).json({ error: 'etd_must_be_future' })
@@ -65,7 +64,7 @@ export function createAlertsRouter({ db = null } = {}) {
     const info = db2.prepare(`
       INSERT INTO routes (user_id, name, etd, eta, payload, alert_enabled, alert_start_min_before_etd, send_no_change_confirm, expires_at, created_at, updated_at)
       VALUES (?,?,?,?,?,1,?,?,?,?,?)
-    `).run(req.session.userId, tpl.name, etd, eta ?? null, payload, alertStartMinBeforeEtd ?? 120, sendNoChangeConfirm ? 1 : 0, expiresAt, now, now)
+    `).run(req.session.userId, tpl.name, etd, eta ?? null, payload, alertStartMinBeforeEtd ?? 360, 0, expiresAt, now, now)
     res.status(201).json({ id: info.lastInsertRowid })
   })
 
@@ -148,7 +147,9 @@ export function createAlertsRouter({ db = null } = {}) {
 // 알림센터 피드: 내 발생 알림 최신순(경로명 조인) + 안 읽음 수. 순수 DB 함수(서버 없이 테스트).
 export function listNotifications(db, userId) {
   const notifications = db.prepare(`
-    SELECT t.id, t.route_id AS routeId, t.type, t.severity, t.target, t.from_val AS fromVal, t.to_val AS toVal,
+    SELECT t.id, t.route_id AS routeId, t.type, t.severity, t.target,
+           t.source_id AS role,
+           t.from_val AS fromVal, t.to_val AS toVal,
            t.detected_at AS detectedAt, t.pushed_at AS pushedAt, t.read_at AS readAt,
            r.name AS routeName, r.dep AS routeDep, r.dest AS routeDest, r.altn AS routeAltn
     FROM triggered_alerts t LEFT JOIN routes r ON r.id = t.route_id

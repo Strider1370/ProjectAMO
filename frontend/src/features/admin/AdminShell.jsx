@@ -9,6 +9,7 @@ import ServerResourceScreen from './screens/ServerResourceScreen.jsx'
 import ApiUsageScreen from './screens/ApiUsageScreen.jsx'
 import UsersScreen from './screens/UsersScreen.jsx'
 import AccountsScreen from './screens/AccountsScreen.jsx'
+import AlertWatchScreen from './screens/AlertWatchScreen.jsx'
 import './AdminPage.css'
 
 // 관리자 콘솔 껍데기 — 상단 신호등, 왼쪽 메뉴, 그리고 고른 화면 하나.
@@ -23,6 +24,7 @@ const SCREENS = {
   api: ApiUsageScreen,
   users: UsersScreen,
   accounts: AccountsScreen,
+  alerts: AlertWatchScreen,
 }
 
 const POLL_MS = 5000
