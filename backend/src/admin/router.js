@@ -8,6 +8,7 @@ import { forecastDiskFull } from './disk-forecast.js'
 import { trafficStats, hourlyPattern } from './visits.js'
 import { readTrends } from './trends.js'
 import { readDataHealth } from './data-health.js'
+import { listAlertWatches } from './alert-watches.js'
 import { processHealth } from './process-health.js'
 import { deploymentInfo } from './deployment.js'
 import { readDiskUsage } from './disk-usage.js'
@@ -51,6 +52,8 @@ export function createAdminRouter({ db = null } = {}) {
     backup: lastBackup(config.storage.base_path),
   }))
   router.get('/api-hub-usage', (req, res) => res.json(apiHubUsage.snapshot()))
+  // 알림 감시 목록 — 지금 누가 무엇을 감시받고 있는지. 조용한 이유를 짚는 화면이다.
+  router.get('/alert-watches', (req, res) => res.json({ watches: listAlertWatches(database()) }))
   router.get('/users', (req, res) => res.json(listUsers(database())))
   router.get('/pending', (req, res) => res.json(listPending(database())))
   // id 검증 + 실제 변경 여부 확인(없는 id를 조용히 200 처리하지 않음).
