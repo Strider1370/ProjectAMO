@@ -7,7 +7,7 @@ import { Router } from 'express'
 
 import { getDb } from '../db/index.js'
 import { requireAuth } from '../auth/middleware.js'
-import { buildBriefingRequest, buildSnapshot, runTick } from '../alerts/scheduler.js'
+import { buildBriefingRequest, buildSnapshot, runTick, alreadyFired } from '../alerts/scheduler.js'
 import { composeBriefing } from '../briefing/briefing-composer.js'
 import { detectChanges } from '../alerts/diff.js'
 import { dispatchAlert } from '../alerts/sender.js'
@@ -157,7 +157,12 @@ export function createDevRouter({ db = null } = {}) {
     // 빠뜨리면 알림 행은 쌓이는데 폰도 텔레그램도 조용해서 "안 울린다"로만 보인다.
     const routeCtx = { id: route.id, user_id: uid, name: route.name, eta: route.eta }
     let fired = 0
+    let suppressed = 0
     for (const c of changes) {
+      // 실제 스케줄러와 같은 중복 방지를 건다. 강제 발화라고 이것까지 건너뛰면 같은 조건이
+      // 누를 때마다 쌓여서, 알림센터에 "뇌전 예보"가 두 줄 보이고 엔진을 의심하게 된다.
+      // 다시 발화시키려면 [알림 삭제]로 이력을 지우면 된다.
+      if (alreadyFired(db2, route.id, c.dedupKey)) { suppressed++; continue }
       if (fired) await new Promise((r) => setTimeout(r, 400)) // 텔레그램 flood 회피
       // severity는 고정값, to_val에는 "어느 미니마가 걸렸는지"(bound)가 들어간다 — scheduler.js와 같은 어휘.
       const id = db2.prepare(`
@@ -169,7 +174,12 @@ export function createDevRouter({ db = null } = {}) {
       await dispatchAlert(db2, { ...c, id, route_id: route.id, to_val: c.bound ?? null }, routeCtx)
       fired++
     }
-    res.json({ ok: true, routeId: route.id, dep: request.departureAirport, firedCount: fired, note: '지도·브리핑·알림에 반영됨. [초기화]로 실황 복구.' })
+    res.json({
+      ok: true, routeId: route.id, dep: request.departureAirport, firedCount: fired, suppressed,
+      note: suppressed
+        ? `이미 발화된 조건 ${suppressed}건은 건너뜀(실제 스케줄러와 같은 규칙). 다시 보려면 [알림 삭제] 후 주입.`
+        : '지도·브리핑·알림에 반영됨. [초기화]로 실황 복구.',
+    })
   })
 
   // POST /api/dev/reset → 파일(고정 원본)에서 다시 읽어 store 복구 + 내 발생 알림 삭제.

@@ -77,7 +77,9 @@ function userMinima(db, userId) {
 }
 
 // 이미 발화된 동일 조건(route+dedupKey)이면 재발송 안 함(§5-2 dedup fingerprint).
-function alreadyFired(db, routeId, dedupKey) {
+// export: 개발용 강제 발화(dev/scenario.js)도 같은 판정을 써야 한다 — 거기서만 중복이 쌓이면
+// 엔진이 두 번 울리는 것처럼 보여서, 없는 버그를 쫓게 된다.
+export function alreadyFired(db, routeId, dedupKey) {
   return !!db.prepare('SELECT 1 FROM triggered_alerts WHERE route_id=? AND dedup_key=? LIMIT 1').get(routeId, dedupKey)
 }
 

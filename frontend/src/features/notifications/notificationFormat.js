@@ -27,6 +27,34 @@ export function formatNotification(n) {
 export const severityLevel = () => 'amber'
 export const severityTag = () => '알림'
 
+// 브리핑 상단 변경점 띠에 올릴 줄들. 피드는 최신순이므로 앞에서부터 훑으면 최근 것이 남는다.
+//
+// **같은 문장은 한 번만 낸다.** 같은 조건이 풀렸다 다시 걸리면 행이 또 쌓이고(개발용 강제
+// 발화는 중복 방지도 안 거친다), 그것을 그대로 이으면 "뇌전 예보 · 뇌전 예보"가 된다.
+// 변경점은 무엇이 바뀌었는지의 목록이지 발생 기록이 아니다.
+//
+// 길어지면 한 줄이 아니라 문단이 된다 — 앞의 몇 개만 두고 나머지는 개수로 접는다.
+// 전부 보려면 알림센터가 있다.
+const CHANGE_LINE_LIMIT = 4
+
+export function briefingChangeLines(notifications, flightId) {
+  if (flightId == null) return { lines: [], more: 0, latestAt: null }
+  const mine = (notifications ?? []).filter((n) => n.routeId === flightId)
+  const seen = new Set()
+  const lines = []
+  for (const n of mine) {
+    const text = formatNotification(n)
+    if (seen.has(text)) continue
+    seen.add(text)
+    lines.push(text)
+  }
+  return {
+    lines: lines.slice(0, CHANGE_LINE_LIMIT),
+    more: Math.max(0, lines.length - CHANGE_LINE_LIMIT),
+    latestAt: mine[0]?.detectedAt ?? null,
+  }
+}
+
 export function relTime(iso) {
   const diff = Date.now() - Date.parse(iso)
   if (!Number.isFinite(diff)) return ''
