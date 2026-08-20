@@ -102,9 +102,14 @@ function injectNotam(icao, geometry) {
   }]
   updateCache('notam', notam, canonicalHash(notam))
 }
+// 강제 발화용 가짜 직전 상태 — 모든 조건이 안 걸린 상태. 지금 스냅샷과 비교하면
+// 주입된 악기상이 전부 "새로 생긴 조건"이 되어 한 번에 발화한다.
+// 짝짓기는 공항+역할로 하므로 icao/role을 그대로 남겨야 한다(diff.js slotOf).
 function cleanBaseline(curr) {
-  const clean = (a) => (a ? { ...a, ceilingFt: 9999, visibilityM: 9999, ts: false, alternateRequired: false } : a)
-  return { dep: clean(curr.dep), dest: clean(curr.dest), altn: clean(curr.altn), hazards: [], enroute: { icing: null, turb: null } }
+  return {
+    airports: (curr?.airports ?? []).map((a) => ({ ...a, minima: false, minimaBound: null, ts: false, fg: false, sn: false })),
+    sigmets: [],
+  }
 }
 function currentData() {
   return {
@@ -141,10 +146,11 @@ export function createDevRouter({ db = null } = {}) {
     // 주입된 store로 알림 계산 + 적재 + 발송(알림센터/텔레그램).
     const data = currentData()
     const briefing = composeBriefing(request, data)
-    const curr = buildSnapshot(briefing, mergeAirports(data.taf, data.tafOverseas), request)
     const u = db2.prepare('SELECT min_ceiling_ft, min_visibility_m FROM users WHERE id = ?').get(uid)
     const minima = { ceilingFt: u?.min_ceiling_ft ?? null, visibilityM: u?.min_visibility_m ?? null }
-    const changes = detectChanges(cleanBaseline(curr), curr, { minima })
+    // 판정선은 이제 스냅샷을 만들 때 적용된다 — diff는 상태 전이만 본다.
+    const curr = buildSnapshot(briefing, mergeAirports(data.taf, data.tafOverseas), request, minima)
+    const changes = detectChanges(cleanBaseline(curr), curr)
 
     const nowIso = new Date().toISOString()
     const routeCtx = { id: route.id, name: route.name, eta: route.eta }
@@ -154,10 +160,11 @@ export function createDevRouter({ db = null } = {}) {
       const id = db2.prepare(`
         INSERT INTO triggered_alerts (user_id, route_id, type, severity, target, from_val, to_val, source_id, dedup_key, detected_at)
         VALUES (?,?,?,?,?,?,?,?,?,?)
-      `).run(uid, route.id, c.type, c.severity, c.target ?? null,
-        c.from == null ? null : String(c.from), c.to == null ? null : String(c.to),
-        'dev', c.dedupKey, nowIso).lastInsertRowid
-      await dispatchAlert(db2, { ...c, id, route_id: route.id, to_val: c.to == null ? null : String(c.to) }, routeCtx)
+      // severity는 고정값, to_val에는 "어느 미니마가 걸렸는지"(bound)가 들어간다 — scheduler.js와 같은 어휘.
+      `).run(uid, route.id, c.type, 'ALERT', c.target ?? null,
+        null, c.bound ?? null,
+        c.role ?? 'dev', c.dedupKey, nowIso).lastInsertRowid
+      await dispatchAlert(db2, { ...c, id, route_id: route.id, to_val: c.bound ?? null }, routeCtx)
       fired++
     }
     res.json({ ok: true, routeId: route.id, dep: request.departureAirport, firedCount: fired, note: '지도·브리핑·알림에 반영됨. [초기화]로 실황 복구.' })
