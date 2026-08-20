@@ -3,13 +3,8 @@ import { Dropdown, Option, Checkbox, Button, Input, Badge, MessageBar, MessageBa
 import { useAuth } from '../../auth/AuthContext.jsx'
 import { getRoutes, inject, reset, tick, clearAlerts, setRole, getVapidPublicKey, subscribePush, sendTestPush } from '../developerApi.js'
 import DemoModePanel from '../../admin/DemoModePanel.jsx'
-
-// VAPID 공개키(base64url) → PushManager.subscribe가 요구하는 Uint8Array.
-function urlBase64ToUint8Array(base64) {
-  const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(padded)
-  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)))
-}
+// 개인설정의 푸시 스위치와 같은 변환을 쓴다 — 복사해 두면 한쪽만 고쳐져 조용히 갈라진다.
+import { urlBase64ToUint8Array } from '../../notifications/pushKey.js'
 
 const useStyles = makeStyles({
   body: { display: 'flex', flexDirection: 'column', gap: '16px' },

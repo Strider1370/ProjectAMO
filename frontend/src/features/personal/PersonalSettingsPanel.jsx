@@ -99,12 +99,11 @@ function MinimaTab({ s, minima, saveMinima }) {
   )
 }
 
-function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
+function AlertsTab({ s, templates, flights, registerAlert, deleteAlert, pushEnabled, pushSupported, togglePush }) {
   const [templateId, setTemplateId] = useState('')
   const [etdLocal, setEtdLocal] = useState('')
   const [etaLocal, setEtaLocal] = useState('')
   const [watchMin, setWatchMin] = useState(360)
-  const [confirmNoChange, setConfirmNoChange] = useState(false)
   const [msg, setMsg] = useState(null)
   const lastAutoEta = useRef('')
 
@@ -137,7 +136,6 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
       etd: localInputToIso(etdLocal),
       eta: localInputToIso(etaLocal),
       alertStartMinBeforeEtd: watchMin,
-      sendNoChangeConfirm: confirmNoChange,
     }
     const result = await registerAlert(body)
     if (!result.ok) { setMsg({ intent: 'error', text: result.error }); return }
@@ -147,6 +145,25 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
 
   return (
     <div className={s.tabBody}>
+      {/* 폰으로 받을지부터 정한다 — 등록만 해두고 알림이 안 오면 고장으로 읽힌다. */}
+      <label className={s.checkRow} style={{ marginTop: 0 }}>
+        <input
+          type="checkbox"
+          checked={pushEnabled}
+          disabled={!pushSupported}
+          onChange={async (e) => {
+            const result = await togglePush(e.target.checked)
+            if (!result.ok) {
+              // 조용히 안 켜지면 고장으로 읽힌다 — 거부된 이유를 반드시 말한다.
+              setMsg({ intent: 'error', text: result.reason === 'denied'
+                ? '브라우저에서 알림이 차단돼 있습니다. 주소창 옆 자물쇠에서 알림을 허용하세요.'
+                : '푸시 알림이 서버에 설정돼 있지 않습니다.' })
+            }
+          }}
+        />
+        <span>푸시 알림 받기{!pushSupported && ' (이 브라우저는 지원하지 않습니다)'}</span>
+      </label>
+
       <div className={s.row}>
         <label className={s.field}>
           <span className={s.label}>감시할 브리핑</span>
@@ -177,10 +194,6 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
             </select>
           </label>
         </div>
-        <label className={s.checkRow}>
-          <input type="checkbox" checked={confirmNoChange} onChange={(e) => setConfirmNoChange(e.target.checked)} />
-          <span>변화 없어도 이상없음 확인 알림 받기</span>
-        </label>
       </details>
 
       {msg && <MessageBar intent={msg.intent}><MessageBarBody>{msg.text}</MessageBarBody></MessageBar>}
@@ -217,7 +230,7 @@ function AlertsTab({ s, templates, flights, registerAlert, deleteAlert }) {
 export function PersonalSettingsContent() {
   const s = useStyles()
   const [tab, setTab] = useState('minima')
-  const { minima, templates, flights, saveMinima, registerAlert, deleteAlert } = usePersonalSettings()
+  const { minima, templates, flights, saveMinima, registerAlert, deleteAlert, pushEnabled, pushSupported, togglePush } = usePersonalSettings()
 
   return (
     <>
@@ -226,7 +239,8 @@ export function PersonalSettingsContent() {
         <Tab value="alerts">비행 알림</Tab>
       </TabList>
       {tab === 'minima' && <MinimaTab s={s} minima={minima} saveMinima={saveMinima} />}
-      {tab === 'alerts' && <AlertsTab s={s} templates={templates} flights={flights} registerAlert={registerAlert} deleteAlert={deleteAlert} />}
+      {tab === 'alerts' && <AlertsTab s={s} templates={templates} flights={flights} registerAlert={registerAlert} deleteAlert={deleteAlert}
+        pushEnabled={pushEnabled} pushSupported={pushSupported} togglePush={togglePush} />}
     </>
   )
 }
