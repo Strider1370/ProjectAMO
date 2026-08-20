@@ -1,30 +1,33 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { formatAlert, composeMessage, shouldPush, sendTelegram, dispatchAlert, dispatchFlightAlerts } from '../src/alerts/sender.js'
+import { formatAlert, composeMessage, sendTelegram, dispatchAlert, dispatchFlightAlerts } from '../src/alerts/sender.js'
 import { createDb } from '../src/db/index.js'
 
 const route = { id: 42, name: 'RKSI→RKPC', dep: 'RKSI', dest: 'RKPC', etd: '2026-07-08T10:00:00Z', eta: '2026-07-08T12:10:00Z' }
 const NO_EMOJI = /^[^\p{Extended_Pictographic}]*$/u
 
-test('formatAlert: CEIL 통지 문구(태그·역할·전→후·기준·이모지없음)', () => {
-  const s = formatAlert({ type: 'CEIL', severity: 'CRITICAL', target: 'RKPC', from: 1500, to_val: '400' }, route)
-  assert.match(s, /\[위험\]/)
-  assert.match(s, /도착 RKPC/)          // route.dest=RKPC → 역할 부여
-  assert.match(s, /운고 1500 → 400ft/)  // 전값→후값
-  assert.match(s, /최저운고 기준 미만/)
-  assert.match(s, NO_EMOJI)             // 이모지 미사용
-})
+const mkUser = (db, name, role = 'pilot') => db
+  .prepare('INSERT INTO users (username, password_hash, role, created_at) VALUES (?,?,?,?)')
+  .run(name, 'x', role, new Date().toISOString()).lastInsertRowid
+const mkSub = (db, uid, endpoint) => db
+  .prepare('INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at) VALUES (?,?,?,?,?)')
+  .run(uid, endpoint, 'p', 'a', new Date().toISOString()).lastInsertRowid
 
-test('formatAlert: 타입별 분기(교체·경로위험·출발TS)', () => {
-  assert.match(formatAlert({ type: 'ALTERNATE_FLIP', severity: 'HIGH', target: 'RKPC' }, route), /\[주의\] 도착 RKPC 교체공항 필요 조건 발생/)
-  assert.match(formatAlert({ type: 'ENROUTE_HAZARD', severity: 'HIGH', to: 'TS' }), /\[주의\] 경로상 신규 위험 \(TS\)/)
-  assert.match(formatAlert({ type: 'WX', severity: 'HIGH', target: 'RKSI', to: 'TS' }, route), /\[주의\] 출발 RKSI 뇌전\(TS\) 예보/)
+test('formatAlert: 다섯 종류를 사람 말로 낸다', () => {
+  assert.match(formatAlert({ type: 'MINIMA', target: 'RKPC', role: 'dest', bound: 'personal' }), /도착 RKPC.*내 미니마 미만/)
+  assert.match(formatAlert({ type: 'MINIMA', target: 'RKTU', role: 'dest', bound: 'airport' }), /접근최저치 미만/)
+  assert.match(formatAlert({ type: 'MINIMA', target: 'RKPC', role: 'dest', bound: 'default' }), /IFR 이하/)
+  assert.match(formatAlert({ type: 'TS', target: 'RKSI', role: 'dep' }), /출발 RKSI.*뇌전/)
+  assert.match(formatAlert({ type: 'FG', target: 'RKPK', role: 'altn' }), /교체 RKPK.*안개/)
+  assert.match(formatAlert({ type: 'SN', target: 'RKPC', role: 'dest' }), /눈/)
+  assert.match(formatAlert({ type: 'SIGMET', target: 'SIGMET WS01' }), /SIGMET WS01/)
+  assert.match(formatAlert({ type: 'TS', target: 'RKSI', role: 'dep' }), NO_EMOJI) // 이모지 미사용
 })
 
 test('composeMessage: 제목 + 비행 식별(ETD/ETA Z) + 감지시각', () => {
   const msg = composeMessage(
-    [{ type: 'CEIL', severity: 'CRITICAL', target: 'RKPC', from: 1500, to: 400 }],
+    [{ type: 'MINIMA', target: 'RKPC', role: 'dest', bound: 'personal' }],
     route, { now: Date.parse('2026-07-08T09:32:00Z') },
   )
   assert.match(msg, /^\[경로 예보변화 알림\]/)
@@ -32,12 +35,6 @@ test('composeMessage: 제목 + 비행 식별(ETD/ETA Z) + 감지시각', () => {
   assert.match(msg, /ETD 1000Z · ETA 1210Z/)
   assert.match(msg, /감지 0932Z/)
   assert.match(msg, NO_EMOJI)
-})
-
-test('shouldPush: HIGH/CRITICAL만 즉시 푸시', () => {
-  assert.equal(shouldPush('CRITICAL'), true)
-  assert.equal(shouldPush('HIGH'), true)
-  assert.equal(shouldPush('MEDIUM'), false)
 })
 
 test('sendTelegram: env 없으면 skip', async () => {
@@ -56,30 +53,20 @@ test('sendTelegram: env 있으면 sendMessage POST + 딥링크 버튼', async ()
   assert.equal(captured.body.reply_markup.inline_keyboard[0][0].url, 'https://amo.example/?flight=42')
 })
 
-test('dispatchAlert: MEDIUM은 인앱만(텔레그램 미호출)', async () => {
-  let called = false
-  const fetchImpl = async () => { called = true; return { ok: true, status: 200 } }
-  const env = { TELEGRAM_BOT_TOKEN: 'TOK', TELEGRAM_CHAT_ID: '999' }
-  const res = await dispatchAlert(null, { type: 'ENROUTE_HAZARD', severity: 'MEDIUM', to_val: 'AIRMET' }, route, { fetchImpl, env })
-  assert.equal(res.telegram.skipped, 'in_app_only')
-  assert.equal(called, false)
-})
-
-test('dispatchAlert: HIGH도 관리자 계정만 텔레그램, 일반 사용자는 not_admin', async () => {
+test('텔레그램은 관리자 계정만 — 일반 사용자는 not_admin', async () => {
   const db = createDb(':memory:')
   try {
-    const now = new Date().toISOString()
-    const adminId = db.prepare("INSERT INTO users (username, password_hash, role, created_at) VALUES (?,?, 'admin', ?)").run('adm', 'x', now).lastInsertRowid
-    const pilotId = db.prepare("INSERT INTO users (username, password_hash, role, created_at) VALUES (?,?, 'pilot', ?)").run('pil', 'x', now).lastInsertRowid
+    const adminId = mkUser(db, 'adm', 'admin')
+    const pilotId = mkUser(db, 'pil', 'pilot')
     const env = { TELEGRAM_BOT_TOKEN: 'TOK', TELEGRAM_CHAT_ID: '999' }
-    const alert = { type: 'ALTERNATE_FLIP', severity: 'HIGH', target: 'RKPC' }
+    const alert = { type: 'FG', target: 'RKPC', role: 'dest' }
 
     let adminCalled = false
-    await dispatchAlert(db, alert, { ...route, user_id: adminId }, { env, fetchImpl: async () => { adminCalled = true; return { ok: true, status: 200 } } })
+    await dispatchAlert(db, alert, { ...route, user_id: adminId }, { env, fetchImpl: async () => { adminCalled = true; return { ok: true, status: 200 } }, sendPushImpl: async () => {} })
     assert.equal(adminCalled, true)
 
     let pilotCalled = false
-    const res = await dispatchAlert(db, alert, { ...route, user_id: pilotId }, { env, fetchImpl: async () => { pilotCalled = true; return { ok: true, status: 200 } } })
+    const res = await dispatchAlert(db, alert, { ...route, user_id: pilotId }, { env, fetchImpl: async () => { pilotCalled = true; return { ok: true, status: 200 } }, sendPushImpl: async () => {} })
     assert.equal(pilotCalled, false)
     assert.equal(res.telegram.skipped, 'not_admin')
   } finally { db.close() }
@@ -88,23 +75,69 @@ test('dispatchAlert: HIGH도 관리자 계정만 텔레그램, 일반 사용자�
 test('dispatchFlightAlerts: 한 비행 여러 변화 → 텔레그램 1건(묶음, §5B group_wait)', async () => {
   const db = createDb(':memory:')
   try {
-    const now = new Date().toISOString()
-    const adminId = db.prepare("INSERT INTO users (username, password_hash, role, created_at) VALUES (?,?, 'admin', ?)").run('adm', 'x', now).lastInsertRowid
+    const adminId = mkUser(db, 'adm', 'admin')
     const env = { TELEGRAM_BOT_TOKEN: 'TOK', TELEGRAM_CHAT_ID: '999' }
     const changes = [
-      { type: 'CEIL', severity: 'CRITICAL', target: 'RKPC', to_val: '400' },
-      { type: 'ALTERNATE_FLIP', severity: 'HIGH', target: 'RKPC' },
-      { type: 'ENROUTE_HAZARD', severity: 'MEDIUM', to_val: 'AIRMET' }, // 인앱만 — 묶음 텍스트 제외
+      { type: 'MINIMA', target: 'RKPC', role: 'dest', bound: 'personal' },
+      { type: 'TS', target: 'RKSI', role: 'dep' },
+      { type: 'SIGMET', target: 'SIGMET WS01' },
     ]
     let calls = 0
     let captured = null
     const fetchImpl = async (url, opts) => { calls++; captured = JSON.parse(opts.body); return { ok: true, status: 200 } }
-    const res = await dispatchFlightAlerts(db, changes, { ...route, user_id: adminId }, { env, fetchImpl })
+    const res = await dispatchFlightAlerts(db, changes, { ...route, user_id: adminId }, { env, fetchImpl, sendPushImpl: async () => {} })
     assert.equal(calls, 1) // 3개 변화여도 전송은 1회
-    assert.equal(res.count, 2) // 심각 2개만 푸시 대상
-    assert.match(captured.text, /^\[경로 예보변화 알림\]/) // 제목 헤더
-    assert.match(captured.text, /운고 400ft/)
-    assert.match(captured.text, /교체공항 필요 조건 발생/)
-    assert.doesNotMatch(captured.text, /AIRMET/) // MEDIUM은 텔레그램 문구에서 빠짐
+    assert.equal(res.count, 3) // 심각도로 거르지 않는다 — 판정은 diff가 이미 끝냈다
+    assert.match(captured.text, /^\[경로 예보변화 알림\]/)
+    assert.match(captured.text, /도착 RKPC 내 미니마 미만/)
+    assert.match(captured.text, /출발 RKSI 뇌전/)
+    assert.match(captured.text, /SIGMET WS01/)
+  } finally { db.close() }
+})
+
+test('dispatchFlightAlerts: 경로 소유자의 구독으로 푸시한다', async () => {
+  const db = createDb(':memory:')
+  try {
+    const uid = mkUser(db, 'pilot')
+    mkSub(db, uid, 'https://push.example/1')
+
+    const sent = []
+    const result = await dispatchFlightAlerts(
+      db,
+      [{ id: 1, type: 'MINIMA', target: 'RKPC', role: 'dest', bound: 'personal' }],
+      { id: 7, user_id: uid, dep: 'RKSI', dest: 'RKPC' },
+      { now: Date.now(), sendPushImpl: async (sub, payload) => { sent.push({ sub, payload }) } },
+    )
+
+    assert.equal(result.push.sent, 1)
+    assert.equal(sent[0].sub.endpoint, 'https://push.example/1')
+    assert.match(sent[0].payload.body, /RKPC/)
+    // 탭했을 때 그 비행으로 착지해야 한다.
+    assert.match(sent[0].payload.url, /\?flight=7/)
+  } finally { db.close() }
+})
+
+test('dispatchFlightAlerts: 만료된 구독은 지운다', async () => {
+  const db = createDb(':memory:')
+  try {
+    const uid = mkUser(db, 'pilot')
+    mkSub(db, uid, 'https://push.example/gone')
+
+    const gone = async () => { throw Object.assign(new Error('gone'), { statusCode: 410 }) }
+    const result = await dispatchFlightAlerts(db, [{ id: 1, type: 'FG', target: 'RKPC', role: 'dest' }],
+      { id: 7, user_id: uid }, { now: Date.now(), sendPushImpl: gone })
+
+    assert.equal(result.push.pruned, 1)
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM push_subscriptions').get().n, 0)
+  } finally { db.close() }
+})
+
+test('구독이 없으면 조용히 넘어간다 — 인앱은 이미 저장됐다', async () => {
+  const db = createDb(':memory:')
+  try {
+    const uid = mkUser(db, 'pilot')
+    const result = await dispatchFlightAlerts(db, [{ id: 1, type: 'TS', target: 'RKSI', role: 'dep' }],
+      { id: 7, user_id: uid }, { now: Date.now(), sendPushImpl: async () => {} })
+    assert.equal(result.push.sent, 0)
   } finally { db.close() }
 })
