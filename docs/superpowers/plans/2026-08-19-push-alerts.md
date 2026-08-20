@@ -39,7 +39,9 @@
 
 | 파일 | 책임 | 상태 |
 |---|---|---|
-| `backend/src/alerts/taf-conditions.js` | TAF 한 장 → `{ifr, ts, fg, sn}` (순수) | **신규** |
+| `backend/src/briefing/taf-window.js` | 유효기간 밖이면 null + `weatherAt` | 수정 |
+| `backend/test/taf-window.test.js` | 위 테스트 | 수정 |
+| `backend/src/alerts/taf-conditions.js` | 그 시각 → `{ifr, ts, fg, sn}` (순수) | **신규** |
 | `backend/test/taf-conditions.test.js` | 위 테스트 | **신규** |
 | `backend/src/alerts/diff.js` | 7종 판정 → 상태 전이 + 신규 SIGMET | 전면 교체 |
 | `backend/test/alert-diff.test.js` | 위 테스트 | 전면 교체 |
@@ -58,19 +60,136 @@
 
 ---
 
-### Task 1: TAF 한 장에서 조건 넷을 뽑는다
+### Task 1: 내 시각의 조건 넷을 정확히 읽는다
 
 폰이 울릴 조건의 핵심. 순수 함수라 테스트가 쉽고, 여기가 맞으면 나머지는 배선이다.
 
+**두 가지를 함께 고친다** — 둘 다 "그 시각의 상태를 맞게 읽는다"라는 하나의 일이다.
+
+1. **유효기간 밖을 물으면 `null`을 준다.** 지금 `metricsAt`은 가장 가까운 항목을 거리 제한 없이
+   고른다(`taf-window.js:225-231`). TAF 유효기간을 넘는 시각을 물으면 마지막 항목을 조용히
+   돌려줘 **몇 시간 떨어진 예보로 판정**한다. 감시 시작이 24시간 전이면 그때의 ETA가 유효기간을
+   넘어설 수 있어 실제로 닿는 경로다. 바로 아래 `alternateRequired`는 이미 ±1시간으로 제한한다 —
+   같은 파일에서 여기만 빠져 있다. `metricsAt`은 **알림 스케줄러만 쓰므로**(다른 소비처 없음)
+   고쳐도 브리핑에 파장이 없다.
+
+2. **현상을 타임라인에서 읽는다.** `base.wx`와 변화 그룹을 손으로 훑지 않는다. 파서가 이미
+   시간 단위로 병합한 결과를 `timeline[].weather`에 담아 둔다(`taf-parser.js:359`) — BECMG 누적,
+   TEMPO/PROB 구간 적용, `wx_touched` 판정까지 끝난 상태다. 손으로 훑으면 그것을 다시,
+   더 나쁘게 구현하게 된다(BECMG 누적이 빠진다). 타임라인을 쓰면 **운고·시정과 현상이 같은
+   항목에서 나와** 시각이 어긋나지 않는다.
+
+   `scheduler.js:49`의 주석 "timeline엔 wx가 없어"는 **틀렸다** — 필드 이름이 `wx`가 아니라
+   `weather`다. 그 함수(`departureTs`)는 Task 2에서 지운다.
+
+**PROB·TEMPO도 발화한다(결정).** 파서가 `PROB30`·`PROB40`·`TEMPO`를 타임라인에 병합하므로
+그대로 조건이 된다. 브리핑 화면이 보여주는 것과 알림이 같아야 하기 때문이다 — 브리핑엔 있는데
+알림이 조용하면 "알림이 안 왔으니 괜찮겠지" 하고 브리핑을 안 보게 된다. 상태 전이 방식이라
+같은 예보로 두 번 울리지는 않는다.
+
 **Files:**
+- Modify: `backend/src/briefing/taf-window.js` (제한 있는 조회 + `weatherAt` 노출)
+- Modify: `backend/test/taf-window.test.js`
 - Create: `backend/src/alerts/taf-conditions.js`
 - Create: `backend/test/taf-conditions.test.js`
 
 **Interfaces:**
-- Consumes: `categoryFor({visibilityM, ceilingFt, icao})` from `../briefing/flight-category.js`; `metricsAt(taf, iso)` from `../briefing/taf-window.js`.
-- Produces: `tafConditionsAt(taf, iso, icao) -> { ifr: boolean, ts: boolean, fg: boolean, sn: boolean }`. Task 2가 쓴다.
+- Consumes: `categoryFor({visibilityM, ceilingFt, icao})` from `../briefing/flight-category.js`.
+- Produces:
+  - `metricsAt(taf, iso)` — 기존과 같되 **가장 가까운 항목이 30분을 넘게 떨어져 있으면 `null`**.
+  - `weatherAt(taf, iso)` — 같은 항목의 병합된 현상 배열. 항목이 없으면 `[]`.
+  - `tafConditionsAt(taf, iso, icao) -> { ifr, ts, fg, sn }`. Task 2가 쓴다.
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [ ] **Step 1: 제한 있는 조회에 실패하는 테스트를 쓴다**
+
+`backend/test/taf-window.test.js`에 더한다. 그 파일의 기존 `taf` 픽스처 구성 방식을 먼저 읽고 맞춘다.
+
+```js
+test('metricsAt: 유효기간을 벗어난 시각이면 null — 엉뚱한 시각 값을 조용히 주면 안 된다', () => {
+  // 타임라인이 02:00~04:00만 덮는 TAF
+  const t = {
+    header: { icao: 'RKSI' },
+    timeline: [
+      { time: '2026-08-20T02:00:00Z', visibility: { value: 9999 }, clouds: [], weather: [] },
+      { time: '2026-08-20T03:00:00Z', visibility: { value: 9999 }, clouds: [], weather: [] },
+      { time: '2026-08-20T04:00:00Z', visibility: { value: 9999 }, clouds: [], weather: [] },
+    ],
+  }
+  assert.ok(metricsAt(t, '2026-08-20T03:20:00Z'), '구간 안이면 준다')
+  assert.equal(metricsAt(t, '2026-08-20T09:00:00Z'), null, '5시간 밖이면 주지 않는다')
+})
+
+test('weatherAt: 같은 항목의 병합된 현상을 준다', () => {
+  const wx = [{ raw: 'FG', intensity: 'MODERATE', descriptor: null, phenomena: ['FG'] }]
+  const t = {
+    header: { icao: 'RKSI' },
+    timeline: [{ time: '2026-08-20T03:00:00Z', visibility: { value: 400 }, clouds: [], weather: wx }],
+  }
+  assert.deepEqual(weatherAt(t, '2026-08-20T03:10:00Z'), wx)
+  assert.deepEqual(weatherAt(t, '2026-08-20T09:00:00Z'), [], '유효기간 밖이면 빈 배열')
+})
+```
+
+- [ ] **Step 2: 실패를 확인한다**
+
+```bash
+npm --prefix backend test -- test/taf-window.test.js
+```
+
+Expected: FAIL — `metricsAt`이 `null` 대신 값을 준다
+
+- [ ] **Step 3: 제한 있는 조회를 구현한다**
+
+`taf-window.js`의 `metricsAt`을 아래로 바꾸고 `weatherAt`을 더한다.
+
+```js
+// 타임라인은 유효기간을 시간 단위로 덮는다. 그래서 구간 안이면 가장 가까운 항목이 30분을
+// 넘게 떨어질 수 없다. 30분을 넘으면 유효기간 밖을 물은 것이다 — 그때 마지막 항목을 돌려주면
+// 몇 시간 떨어진 예보로 판정하게 되고, 아무 표시도 남지 않는다.
+const NEAREST_LIMIT_MS = 30 * 60 * 1000
+
+function nearestEntry(taf, iso) {
+  const timeline = taf?.timeline ?? []
+  const target = Date.parse(iso)
+  if (timeline.length === 0 || !Number.isFinite(target)) return null
+  let best = null
+  for (const entry of timeline) {
+    const t = Date.parse(entry.time)
+    if (!Number.isFinite(t)) continue
+    const delta = Math.abs(t - target)
+    if (!best || delta < best.delta) best = { delta, entry }
+  }
+  return best && best.delta <= NEAREST_LIMIT_MS ? best.entry : null
+}
+
+// #13 미니마 판정용 — 그 시각 타임라인 항목의 수치(운고 ft·시정 m·카테고리).
+export function metricsAt(taf, iso) {
+  const entry = nearestEntry(taf, iso)
+  if (!entry) return null
+  const { visibilityM, ceilingFt } = entryMetrics(entry)
+  return { visibilityM, ceilingFt, category: categoryFor({ visibilityM, ceilingFt, icao: taf?.header?.icao }) }
+}
+
+// 그 시각의 병합된 현상. 파서가 BECMG 누적·TEMPO/PROB 구간 적용·wx_touched 판정을 끝낸 결과다.
+// metricsAt과 같은 항목에서 나오므로 운고·시정과 현상의 시각이 어긋나지 않는다.
+export function weatherAt(taf, iso) {
+  return nearestEntry(taf, iso)?.weather ?? []
+}
+```
+
+- [ ] **Step 4: 통과를 확인한다**
+
+```bash
+npm --prefix backend test -- test/taf-window.test.js
+npm --prefix backend test
+```
+
+Expected: 둘 다 PASS. 기존 `metricsAt` 테스트가 유효기간 밖 시각을 쓰면 그 기대를 고친다 —
+**지우지 말고** 새 계약(밖이면 `null`)에 맞춘다.
+
+- [ ] **Step 5: 조건 넷에 실패하는 테스트를 쓴다**
+
+Create `backend/test/taf-conditions.test.js`:
 
 ```js
 import { test } from 'node:test'
@@ -80,16 +199,19 @@ import { tafConditionsAt } from '../src/alerts/taf-conditions.js'
 
 const AT = '2026-08-20T02:00:00Z'
 
-// wx 항목은 parse-utils.js가 낸 모양이다: { raw, intensity, descriptor, phenomena }.
+// 현상은 parse-utils.js가 낸 모양이다: { raw, intensity, descriptor, phenomena }.
 const wx = (raw, { intensity = 'MODERATE', descriptor = null, phenomena = [] } = {}) =>
   ({ raw, intensity, descriptor, phenomena })
 
-// timeline은 metricsAt이 운고·시정을 읽는 곳, base/change_groups는 현상(wx)이 있는 곳이다.
-const taf = ({ vis = 9999, ceil = 3000, baseWx = [], groups = [] } = {}) => ({
+// 타임라인은 파서가 이미 병합해 둔 상태다 — 운고·시정과 현상이 같은 항목에 들어 있다.
+const taf = ({ vis = 9999, ceil = 3000, weather = [] } = {}) => ({
   header: { icao: 'RKSI' },
-  base: { wx: baseWx },
-  change_groups: groups,
-  timeline: [{ time: AT, visibility: { value: vis, cavok: false }, clouds: [{ amount: 'BKN', base: ceil, raw: `BKN${ceil}` }] }],
+  timeline: [{
+    time: AT,
+    visibility: { value: vis, cavok: false },
+    clouds: [{ amount: 'BKN', base: ceil, raw: `BKN${ceil}` }],
+    weather,
+  }],
 })
 
 test('운고·시정이 좋으면 아무 조건도 안 걸린다', () => {
@@ -105,33 +227,35 @@ test('운고가 1500ft 미만이면 IFR', () => {
 })
 
 test('뇌전은 수식어로 읽는다 — TSRA도 뇌전이다', () => {
-  const c = tafConditionsAt(taf({ baseWx: [wx('TSRA', { descriptor: 'TS', phenomena: ['RA'] })] }), AT, 'RKSI')
+  const c = tafConditionsAt(taf({ weather: [wx('TSRA', { descriptor: 'TS', phenomena: ['RA'] })] }), AT, 'RKSI')
   assert.equal(c.ts, true)
   assert.equal(c.fg, false)
 })
 
 test('부근(VC)은 발화하지 않는다 — 공항이 아니라 그 주변이다', () => {
-  const c = tafConditionsAt(taf({ baseWx: [wx('VCTS', { intensity: 'VICINITY', descriptor: 'TS' })] }), AT, 'RKSI')
+  const c = tafConditionsAt(taf({ weather: [wx('VCTS', { intensity: 'VICINITY', descriptor: 'TS' })] }), AT, 'RKSI')
   assert.equal(c.ts, false, 'VCTS를 "출발 RKSI 뇌전 예보"라고 알리면 사실과 다르다')
 })
 
 test('FZFG는 안개다 — 수식어가 붙어도 현상은 FG', () => {
-  const c = tafConditionsAt(taf({ baseWx: [wx('FZFG', { descriptor: 'FZ', phenomena: ['FG'] })] }), AT, 'RKSI')
+  const c = tafConditionsAt(taf({ weather: [wx('FZFG', { descriptor: 'FZ', phenomena: ['FG'] })] }), AT, 'RKSI')
   assert.equal(c.fg, true)
 })
 
 test('약한 눈도 눈이다', () => {
-  const c = tafConditionsAt(taf({ baseWx: [wx('-SN', { intensity: 'LIGHT', phenomena: ['SN'] })] }), AT, 'RKSI')
+  const c = tafConditionsAt(taf({ weather: [wx('-SN', { intensity: 'LIGHT', phenomena: ['SN'] })] }), AT, 'RKSI')
   assert.equal(c.sn, true)
   assert.equal(c.ts, false)
 })
 
-test('변화 그룹은 그 시각에 걸칠 때만 본다', () => {
-  const fg = [wx('FG', { phenomena: ['FG'] })]
-  const inside = [{ start: '2026-08-20T01:00:00Z', end: '2026-08-20T03:00:00Z', wx_touched: true, wx: fg }]
-  const outside = [{ start: '2026-08-20T05:00:00Z', end: '2026-08-20T07:00:00Z', wx_touched: true, wx: fg }]
-  assert.equal(tafConditionsAt(taf({ groups: inside }), AT, 'RKSI').fg, true)
-  assert.equal(tafConditionsAt(taf({ groups: outside }), AT, 'RKSI').fg, false)
+test('박무(BR)는 안개가 아니다 — 파서가 저시정에서 합성해 넣는 값이다', () => {
+  const c = tafConditionsAt(taf({ vis: 3000, weather: [wx('BR', { phenomena: ['BR'] })] }), AT, 'RKSI')
+  assert.equal(c.fg, false)
+  assert.equal(c.ifr, true, '시정 때문에 IFR이긴 하다')
+})
+
+test('유효기간 밖 시각이면 아무것도 안 걸린다', () => {
+  assert.deepEqual(tafConditionsAt(taf(), '2026-08-20T09:00:00Z', 'RKSI'), { ifr: false, ts: false, fg: false, sn: false })
 })
 
 test('TAF가 없으면 아무것도 안 걸린다 — 없는 것을 위험으로 읽지 않는다', () => {
@@ -139,7 +263,7 @@ test('TAF가 없으면 아무것도 안 걸린다 — 없는 것을 위험으로
 })
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [ ] **Step 6: 실패를 확인한다**
 
 ```bash
 npm --prefix backend test -- test/taf-conditions.test.js
@@ -147,53 +271,37 @@ npm --prefix backend test -- test/taf-conditions.test.js
 
 Expected: FAIL — `Cannot find module '../src/alerts/taf-conditions.js'`
 
-- [ ] **Step 3: 최소 구현**
+- [ ] **Step 7: 조건 넷을 구현한다**
+
+Create `backend/src/alerts/taf-conditions.js`:
 
 ```js
-// 폰이 울릴 조건 — 새 TAF 한 장에서 내 시각의 상태 넷을 뽑는다.
-// 임계값을 새로 정의하지 않는다: 비행범주는 flight-category.js가(공항별 기본 미니마 내장),
-// 시각별 운고·시정은 taf-window.js가 이미 판정한다. 여기서는 그것을 조합만 한다.
+// 폰이 울릴 조건 — 그 시각 타임라인 항목에서 상태 넷을 뽑는다.
+// 임계값도, 시간 병합도 새로 만들지 않는다: 비행범주는 flight-category.js가(공항별 기본 미니마
+// 내장), 시각별 운고·시정과 병합된 현상은 taf-window.js가 이미 준다. 여기서는 조합만 한다.
 import { categoryFor } from '../briefing/flight-category.js'
-import { metricsAt } from '../briefing/taf-window.js'
+import { metricsAt, weatherAt } from '../briefing/taf-window.js'
 
-// 파서가 이미 구조화해 준 것을 쓴다 — 원문 글자를 정규식으로 훑지 않는다.
-// parse-utils.js는 wx 토큰을 { raw, intensity, descriptor, phenomena }로 쪼갠다:
-//   TSRA   → descriptor 'TS',  phenomena ['RA']
-//   VCTS   → intensity 'VICINITY', descriptor 'TS'
-//   -SN    → intensity 'LIGHT',    phenomena ['SN']
-//   FZFG   → descriptor 'FZ',      phenomena ['FG']
-// 뇌전은 현상이 아니라 수식어(descriptor)라는 점이 중요하다. /TS/로 원문을 훑으면
-// 이 구분이 사라진다.
+// 파서가 쪼개 준 구조를 쓴다 — 원문 글자를 정규식으로 훑지 않는다.
+// parse-utils.js는 wx 토큰을 { raw, intensity, descriptor, phenomena }로 나눈다:
+//   TSRA → descriptor 'TS', phenomena ['RA']   (뇌전은 현상이 아니라 수식어다)
+//   VCTS → intensity 'VICINITY', descriptor 'TS'
+//   FZFG → descriptor 'FZ', phenomena ['FG']
+//   -SN  → intensity 'LIGHT', phenomena ['SN']
 //
-// 부근(VC)은 발화하지 않는다. VCTS는 공항이 아니라 그 주변 5~10 SM의 뇌전이라,
-// "출발 RKSI 뇌전 예보"라고 알리면 사실과 다른 말을 하게 된다. 부근까지 알리려면
-// 문구를 "부근 뇌전"으로 따로 두어야 하고, 그것은 이 단계의 다섯 종류를 늘리는 일이다.
+// 부근(VC)은 발화하지 않는다. VCTS는 공항이 아니라 주변 5~10 SM의 뇌전이라,
+// "출발 RKSI 뇌전 예보"라고 알리면 사실과 다른 말을 하게 된다.
 const isVicinity = (w) => w?.intensity === 'VICINITY'
 const hasDescriptor = (list, code) => list.some((w) => !isVicinity(w) && w?.descriptor === code)
 const hasPhenomenon = (list, code) => list.some((w) => !isVicinity(w) && (w?.phenomena ?? []).includes(code))
 
-// timeline에는 wx가 없다. 현상은 지속 그룹(base)과 그 시각에 걸치는 변화 그룹에서 읽는다.
-// 이 방식은 scheduler.js의 기존 departureTs가 쓰던 것과 같다(그 함수는 Task 2에서 지운다).
-function weatherAt(taf, iso) {
-  const at = Date.parse(iso)
-  const out = [...(taf?.base?.wx ?? [])]
-  for (const g of taf?.change_groups ?? []) {
-    const start = Date.parse(g?.start)
-    const end = Date.parse(g?.end)
-    if (!Number.isFinite(start) || !Number.isFinite(end)) continue
-    if (at >= start && at < end && g.wx_touched) out.push(...(g.wx ?? []))
-  }
-  return out.filter(Boolean)
-}
-
 export function tafConditionsAt(taf, iso, icao = null) {
-  if (!taf) return { ifr: false, ts: false, fg: false, sn: false }
   const metrics = metricsAt(taf, iso)
-  // 수치를 못 뽑으면 판정하지 않는다 — 없는 것을 위험으로 읽으면 오탐이 쌓인다.
-  const category = metrics ? categoryFor({ visibilityM: metrics.visibilityM, ceilingFt: metrics.ceilingFt, icao }) : 'VFR'
+  // TAF가 없거나 유효기간 밖이면 판정하지 않는다 — 없는 것을 위험으로 읽으면 오탐이 쌓인다.
+  if (!metrics) return { ifr: false, ts: false, fg: false, sn: false }
   const wx = weatherAt(taf, iso)
   return {
-    ifr: category === 'IFR' || category === 'LIFR',
+    ifr: metrics.category === 'IFR' || metrics.category === 'LIFR',
     ts: hasDescriptor(wx, 'TS'),
     fg: hasPhenomenon(wx, 'FG'),
     sn: hasPhenomenon(wx, 'SN'),
@@ -203,20 +311,22 @@ export function tafConditionsAt(taf, iso, icao = null) {
 export default { tafConditionsAt }
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+`metrics.category`를 그대로 쓰므로 `categoryFor` import는 실제로는 필요 없다 — 지운다.
+
+- [ ] **Step 8: 통과를 확인한다**
 
 ```bash
-npm --prefix backend test -- test/taf-conditions.test.js
+npm --prefix backend test
 ```
 
-Expected: PASS (9 tests)
+Expected: 전체 PASS (조건 테스트 10건 포함)
 
-- [ ] **Step 5: 커밋**
+- [ ] **Step 9: 커밋**
 
 ```bash
 git status --short
-git add backend/src/alerts/taf-conditions.js backend/test/taf-conditions.test.js
-git commit -m "feat(alerts): read the four push conditions from a TAF"
+git add backend/src/briefing/taf-window.js backend/test/taf-window.test.js backend/src/alerts/taf-conditions.js backend/test/taf-conditions.test.js
+git commit -m "feat(alerts): read the four push conditions from the merged timeline"
 ```
 
 ---
@@ -1246,6 +1356,16 @@ git commit -m "docs: record stage 4 gate results"
 | 출발지·교체공항이 같으면 상태가 뭉개짐 | Task 3 — 짝짓기와 dedupKey를 `공항:역할`로 |
 | 2시간 기본값이 세 군데 더 있음 | Task 7 Step 2 — 코드 두 곳과 스키마를 360으로 |
 | `/TS/` 정규식이 부근 뇌전(VCTS)을 공항 뇌전으로 읽음 | Task 1 — 정규식 대신 파서 구조(`descriptor`/`phenomena`/`intensity`) 사용, 부근은 발화 안 함 |
+
+이어서 파싱 사슬을 직접 훑어 두 가지를 더 찾아 고쳤다.
+
+| 발견 | 반영 |
+|---|---|
+| `metricsAt`이 유효기간 밖에서도 가장 가까운 항목을 조용히 돌려줌 — 감시 시작 24시간 전이면 실제로 닿는다 | Task 1 — 30분을 넘으면 `null`. 아래 `alternateRequired`가 이미 쓰던 방식이다 |
+| 계획이 `base.wx`+변화 그룹을 손으로 훑어 파서 로직을 다시(더 나쁘게) 구현 — BECMG 누적이 빠짐 | Task 1 — 이미 병합된 `timeline[].weather`를 쓴다. 운고·시정과 같은 항목이라 시각도 어긋나지 않는다 |
+
+**PROB·TEMPO도 발화한다(결정).** 타임라인이 그것을 병합해 두므로 그대로 조건이 된다.
+브리핑에 보이는 것과 알림이 어긋나면, 알림이 조용한 것을 "괜찮다"로 읽고 브리핑을 안 보게 된다.
 
 **부근(VC) 판단은 명시적 결정이다.** `VCTS`는 공항이 아니라 주변 5~10 SM의 뇌전이라,
 "출발 RKSI 뇌전 예보"라고 알리면 사실과 다른 말을 하게 된다. 부근까지 알리려면 문구를
