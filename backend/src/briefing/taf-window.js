@@ -216,9 +216,12 @@ export function buildDestination(taf, etaIso, { alternateTaf = null, alternateIc
   }
 }
 
-// #13 미니마 판정용 — ETA(또는 임의 시각)에 가장 가까운 타임라인 엔트리의 수치(운고 ft·시정 m·카테고리).
-// selectTafAtEta는 display+category만 돌려줘 원시 수치가 없다 → 사용자 미니마 선 비교를 위해 숫자를 노출.
-export function metricsAt(taf, iso) {
+// 타임라인은 유효기간을 시간 단위로 덮는다. 그래서 구간 안이면 가장 가까운 항목이 30분을
+// 넘게 떨어질 수 없다. 30분을 넘으면 유효기간 밖을 물은 것이다 — 그때 마지막 항목을 돌려주면
+// 몇 시간 떨어진 예보로 판정하게 되고, 아무 표시도 남지 않는다.
+const NEAREST_LIMIT_MS = 30 * 60 * 1000
+
+function nearestEntry(taf, iso) {
   const timeline = taf?.timeline ?? []
   const target = Date.parse(iso)
   if (timeline.length === 0 || !Number.isFinite(target)) return null
@@ -229,9 +232,22 @@ export function metricsAt(taf, iso) {
     const delta = Math.abs(t - target)
     if (!best || delta < best.delta) best = { delta, entry }
   }
-  if (!best) return null
-  const { visibilityM, ceilingFt } = entryMetrics(best.entry)
+  return best && best.delta <= NEAREST_LIMIT_MS ? best.entry : null
+}
+
+// #13 미니마 판정용 — ETA(또는 임의 시각)에 가장 가까운 타임라인 엔트리의 수치(운고 ft·시정 m·카테고리).
+// selectTafAtEta는 display+category만 돌려줘 원시 수치가 없다 → 사용자 미니마 선 비교를 위해 숫자를 노출.
+export function metricsAt(taf, iso) {
+  const entry = nearestEntry(taf, iso)
+  if (!entry) return null
+  const { visibilityM, ceilingFt } = entryMetrics(entry)
   return { visibilityM, ceilingFt, category: categoryFor({ visibilityM, ceilingFt, icao: taf?.header?.icao }) }
+}
+
+// 그 시각의 병합된 현상. 파서가 BECMG 누적·TEMPO/PROB 구간 적용·wx_touched 판정을 끝낸 결과다.
+// metricsAt과 같은 항목에서 나오므로 운고·시정과 현상의 시각이 어긋나지 않는다.
+export function weatherAt(taf, iso) {
+  return nearestEntry(taf, iso)?.weather ?? []
 }
 
 // 1-2-3 근사: ETA ±1h 구간에서 운고<2000ft 또는 시정<5000m이면 교체공항 필요.
@@ -254,4 +270,4 @@ export function alternateRequired(taf, etaIso) {
   return { required: false, reason: 'ETA±1h 최저치 충족' }
 }
 
-export default { selectTafAtEta, alternateRequired, metricsAt }
+export default { selectTafAtEta, alternateRequired, metricsAt, weatherAt }

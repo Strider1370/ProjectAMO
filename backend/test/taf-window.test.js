@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { selectTafAtEta, alternateRequired, buildDestination } from '../src/briefing/taf-window.js'
+import { selectTafAtEta, alternateRequired, buildDestination, metricsAt, weatherAt } from '../src/briefing/taf-window.js'
 
 const taf = {
   header: { icao: 'RKPC' },
@@ -79,4 +79,29 @@ test('buildDestination: alternate shows even without TAF (noTaf)', () => {
   const d = buildDestination(richTaf, '2026-06-26T10:00:00Z', { alternateIcao: 'RKPU', flightRule: 'IFR' })
   assert.equal(d.alternate.icao, 'RKPU')
   assert.equal(d.alternate.noTaf, true)
+})
+
+// ── 알림용 시각 조회 — 유효기간 밖을 물으면 조용히 엉뚱한 값을 주면 안 된다 ──
+
+test('metricsAt: 유효기간을 벗어난 시각이면 null — 엉뚱한 시각 값을 조용히 주면 안 된다', () => {
+  const t = {
+    header: { icao: 'RKSI' },
+    timeline: [
+      { time: '2026-08-20T02:00:00Z', visibility: { value: 9999 }, clouds: [], weather: [] },
+      { time: '2026-08-20T03:00:00Z', visibility: { value: 9999 }, clouds: [], weather: [] },
+      { time: '2026-08-20T04:00:00Z', visibility: { value: 9999 }, clouds: [], weather: [] },
+    ],
+  }
+  assert.ok(metricsAt(t, '2026-08-20T03:20:00Z'), '구간 안이면 준다')
+  assert.equal(metricsAt(t, '2026-08-20T09:00:00Z'), null, '5시간 밖이면 주지 않는다')
+})
+
+test('weatherAt: 같은 항목의 병합된 현상을 준다', () => {
+  const wx = [{ raw: 'FG', intensity: 'MODERATE', descriptor: null, phenomena: ['FG'] }]
+  const t = {
+    header: { icao: 'RKSI' },
+    timeline: [{ time: '2026-08-20T03:00:00Z', visibility: { value: 400 }, clouds: [], weather: wx }],
+  }
+  assert.deepEqual(weatherAt(t, '2026-08-20T03:10:00Z'), wx)
+  assert.deepEqual(weatherAt(t, '2026-08-20T09:00:00Z'), [], '유효기간 밖이면 빈 배열')
 })

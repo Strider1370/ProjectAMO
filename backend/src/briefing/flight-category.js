@@ -26,6 +26,12 @@ function minimaFor(icao) {
   return DEFAULT_AIRPORT_MINIMA_RULES[String(icao || '').toUpperCase()] || null
 }
 
+// 공항 접근최저치. 알림이 실효 미니마(= max(내 미니마, 이 값))를 계산하는 데 쓴다.
+// 표를 복사해 쓰지 말 것 — 한쪽만 고쳐지면 판정이 조용히 갈린다.
+export function airportMinima(icao) {
+  return minimaFor(icao)
+}
+
 const RANK = { LIFR: 0, IFR: 1, VFR: 2 }
 
 // 시정 단독 3단계(helpers.js classifyVisibilityCategory 미러): 미니마 미만→LIFR, <5000m→IFR, else VFR.
@@ -75,4 +81,4 @@ export function levelForCategory(category) {
   return 'red' // LIFR
 }
 
-export default { categoryFor, categoryDetail, to3Level, levelForCategory }
+export default { categoryFor, categoryDetail, to3Level, levelForCategory, airportMinima }
