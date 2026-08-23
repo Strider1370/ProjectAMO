@@ -70,7 +70,7 @@ function parseSignedTemperature(value) {
 function resolveWeatherList(weatherNodes) {
   const nodes = toArray(weatherNodes);
   if (nodes.length === 0) {
-    return { value: null, touched: false };
+    return { value: null, touched: false, nsw_flag: false };
   }
 
   let nilAsNsw = false;
@@ -91,10 +91,10 @@ function resolveWeatherList(weatherNodes) {
   }
 
   if (nilAsNsw && parsed.length === 0) {
-    return { value: [], touched: true };
+    return { value: [], touched: true, nsw_flag: true };
   }
 
-  return { value: parsed, touched: true };
+  return { value: parsed, touched: true, nsw_flag: false };
 }
 
 function resolveCloudList(cloudNode) {
@@ -136,7 +136,7 @@ function parseForecastState(forecastNode, isBase = false) {
   let cloudInfo;
 
   if (cavok) {
-    weatherInfo = { value: [], touched: true };
+    weatherInfo = { value: [], touched: true, nsw_flag: false };
     cloudInfo = { value: [], touched: true, nsc_flag: false };
   } else {
     weatherInfo = resolveWeatherList(node?.["iwxxm:weather"]);
@@ -149,6 +149,7 @@ function parseForecastState(forecastNode, isBase = false) {
     wx: weatherInfo.value,
     clouds: cloudInfo.value,
     wx_touched: isBase ? true : weatherInfo.touched,
+    nsw_flag: weatherInfo.nsw_flag,
     clouds_touched: isBase ? true : cloudInfo.touched,
     cavok_flag: cavok,
     nsc_flag: cloudInfo.nsc_flag
@@ -191,6 +192,7 @@ function parseChangeGroups(taf) {
         wx: state.wx,
         clouds: state.clouds,
         wx_touched: state.wx_touched,
+        nsw_flag: state.nsw_flag,
         clouds_touched: state.clouds_touched,
         cavok_flag: state.cavok_flag,
         nsc_flag: state.nsc_flag
@@ -215,6 +217,7 @@ function partialMerge(current, change) {
 
   if (change.wx_touched === true) {
     next.wx = change.wx;
+    next.nsw_flag = change.nsw_flag === true;
     if (!change.cavok_flag) {
       next.cavok_flag = false;
     }
@@ -232,6 +235,7 @@ function partialMerge(current, change) {
     next.vis = 9999;
     next.wx = [];
     next.clouds = [];
+    next.nsw_flag = false;
   }
 
   return next;

@@ -8,7 +8,7 @@ import { metLabel, buildRouteAviationLayerChips } from '../map/layerActions.js'
 import { hazardMapLayers } from './lib/hazardLayers.js'
 import { formatRouteString } from './lib/routePlanner.js'
 import { buildRouteComparison, exposureNm, mergeExposureNm, phenomenonLabelKo } from './lib/routeComparison.js'
-import { computeEtaIso } from './lib/etaCalc.js'
+import { formatFlightDuration } from './lib/etaCalc.js'
 import HazardIcon from './lib/HazardIcon.jsx'
 
 function exposureLabel(hazard) {
@@ -40,20 +40,22 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
     return next
   })
   const previousRouteStringRef = useRef('')
+  const selectedDesign = designs.find((design) => design.id === selectedDesignId)
   // 판정은 비행 설정 단계와 같은 함수를 쓴다 — 자료를 복사해 오면 두 화면이 어긋난다.
   const draftTokens = useMemo(
-    () => (classifyRouteTexts ? classifyRouteTexts(routeString.trim() ? routeString.trim().split(/\s+/) : []) : []),
-    [classifyRouteTexts, routeString],
+    () => (classifyRouteTexts ? classifyRouteTexts(routeString.trim() ? routeString.trim().split(/\s+/) : [], {
+      userWaypoints: (selectedDesign?.draftEditor?.enroute ?? selectedDesign?.enroute)?.userWaypoints ?? [],
+    }) : []),
+    [classifyRouteTexts, routeString, selectedDesign],
   )
   const draftTokenErrors = useMemo(
     () => draftTokens.filter((token) => token.reason).map((token) => token.reason),
     [draftTokens],
   )
-  const selectedDesign = designs.find((design) => design.id === selectedDesignId)
   const appliedRouteString = selectedDesign?.routeString || formatRouteString(selectedDesign?.routeResult) || ''
   const baseDesign = designs.find((design) => design.kind === 'base' || design.id === 'base')
   const baseDistance = Number(baseDesign?.routeResult?.totalDistanceNm ?? baseDesign?.routeResult?.distanceNm)
-  const baseEta = computeEtaIso(etd, baseDistance, tasKt)
+  const baseDuration = formatFlightDuration(baseDistance, tasKt)
   const baseHazards = routeExposure?.hazards ?? []
   const baseTotalHazardExposureNm = Math.round(mergeExposureNm(baseHazards))
   const comparisonById = new Map(buildRouteComparison(baseDesign, designs.filter((design) => design.kind === 'alternative'), { etd, tasKt, weatherSnapshot: baseDesign?.routeExposure?.snapshot }).map((row) => [row.id, row]))
@@ -91,10 +93,10 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
               <span className="rb-route-stat-label"><Route size={16} />총 거리</span>
               <span className="rb-route-stat-value">{Number.isFinite(baseDistance) ? `${Math.round(baseDistance)} NM` : <span className="rb-stat-muted">거리 자료 없음</span>}</span>
             </span>
-            {baseEta && (
+            {baseDuration && (
               <span className="rb-route-stat">
-                <span className="rb-route-stat-label"><Clock size={16} />시간</span>
-                <span className="rb-route-stat-value">{baseEta.slice(11, 16)} UTC</span>
+                <span className="rb-route-stat-label"><Clock size={16} />소요시간</span>
+                <span className="rb-route-stat-value">{baseDuration}</span>
               </span>
             )}
             <span className={`rb-route-stat rb-card-total-exposure${baseHazards.length === 0 ? ' is-zero' : ''}`}>
@@ -123,6 +125,7 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
       {designs.filter((design) => design.kind === 'alternative').map((design) => {
         const selected = design.id === selectedDesignId
         const distance = design.routeResult?.totalDistanceNm ?? design.routeResult?.distanceNm
+        const duration = formatFlightDuration(distance, tasKt)
         const comparison = comparisonById.get(design.id)
         const hazards = [...(design.routeExposure?.hazards ?? [])].sort((a, b) => exposureNm(b) - exposureNm(a))
         const expanded = expandedHazardIds.has(design.id)
@@ -161,9 +164,9 @@ export default function RouteDesignStep({ designs = [], selectedDesignId, routeE
                 </span>
               </span>
               <span className="rb-route-stat">
-                <span className="rb-route-stat-label"><Clock size={16} />시간</span>
+                <span className="rb-route-stat-label"><Clock size={16} />소요시간</span>
                 <span className="rb-route-stat-value">
-                  {comparison?.eta ? `${comparison.eta.slice(11, 16)} UTC` : <span className="rb-stat-muted">시간 자료 없음</span>}
+                  {duration ?? <span className="rb-stat-muted">시간 자료 없음</span>}
                   {comparison?.etaDeltaMinutes ? <span className="rb-route-stat-delta"> ({comparison.etaDeltaMinutes > 0 ? '+' : ''}{comparison.etaDeltaMinutes}분)</span> : null}
                 </span>
               </span>

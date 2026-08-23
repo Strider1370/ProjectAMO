@@ -11,16 +11,32 @@ test.describe('monitoring', () => {
 
     await openMonitoringState(page, 'ops')
 
+    const currentClock = page.getByLabel('현재 시각')
+    await expect(currentClock).toHaveText(/^\d{4}년 \d+월 \d+일 \(.\) \d{2}:\d{2}$/)
+    await expect(currentClock).toHaveCSS('font-size', '28px')
+    await page.getByLabel('화면 제어').click()
     const modeTabs = page.getByRole('tablist', { name: '대시보드 모드' })
     await expect(modeTabs).toBeVisible()
+    await expect(page.getByRole('button', { name: '설정', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '나가기', exact: true })).toBeVisible()
 
     const operations = page.getByRole('tab', { name: '운항', exact: true })
     const ground = page.getByRole('tab', { name: '지상', exact: true })
+    const settingsButton = page.getByRole('button', { name: '설정', exact: true })
+    const exitButton = page.getByRole('button', { name: '나가기', exact: true })
+    await expect(operations).toHaveCSS('white-space', 'nowrap')
+    await expect(ground).toHaveCSS('white-space', 'nowrap')
+    await expect(settingsButton).toHaveCSS('white-space', 'nowrap')
+    await expect(exitButton).toHaveCSS('white-space', 'nowrap')
+    for (const control of [operations, ground, settingsButton, exitButton]) {
+      expect((await control.boundingBox()).width).toBeGreaterThanOrEqual(56)
+    }
     await expect(operations).toHaveAttribute('aria-selected', 'true')
     await expect(ground).toHaveAttribute('aria-selected', 'false')
 
     await ground.click()
     await expect(page).toHaveURL(/\/monitoring\?mode=ground$/)
+    await page.getByLabel('화면 제어').click()
     await expect(ground).toHaveAttribute('aria-selected', 'true')
     await expect(operations).toHaveAttribute('aria-selected', 'false')
   })
@@ -58,6 +74,10 @@ test.describe('monitoring', () => {
     await page.goto('/monitoring?mode=ground', { waitUntil: 'load' })
     const currentWeather = page.getByRole('region', { name: '현재 날씨' })
     await expect(currentWeather).toBeVisible()
+    await expect(currentWeather.getByText('12:00 KST 기준', { exact: true })).toBeVisible()
+    const titleBox = await currentWeather.getByText('현재 날씨', { exact: true }).boundingBox()
+    const dataTimeBox = await currentWeather.getByText('12:00 KST 기준', { exact: true }).boundingBox()
+    expect(dataTimeBox.x).toBeGreaterThan(titleBox.x + titleBox.width)
     await expect(currentWeather.getByText('소나기', { exact: true })).toBeVisible()
     await expect(currentWeather.getByText('구름많음', { exact: true })).toHaveCount(0)
     await expect(currentWeather.locator('.weather-icon-wrapper')).toHaveAttribute('title', 'rain')
@@ -118,6 +138,7 @@ test.describe('monitoring', () => {
     await expect(airportChoices.getByText('청주국제공항(RKTU)', { exact: true })).toHaveCount(0)
     await expect(airportChoices.getByText('인천국제공항(RKSI)', { exact: true })).toBeVisible()
 
+    await page.getByLabel('화면 제어').click()
     await page.getByRole('tab', { name: '지상', exact: true }).click()
     await airportMenu.getByRole('button').click()
     await expect(airportChoices.getByText('청주국제공항(RKTU)', { exact: true })).toHaveCount(0)

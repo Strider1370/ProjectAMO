@@ -1,6 +1,7 @@
 import {
   computeFeelsLikeC,
   computeRelativeHumidity,
+  formatUtc,
 } from "../utils/helpers";
 import { convertWeatherToKorean } from "../utils/visual-mapper";
 import WeatherIcon from "../../../../shared/ui/WeatherIcon.jsx";
@@ -22,6 +23,11 @@ function windDirectionKo(direction) {
 function knotsToMs(knots) {
   if (!Number.isFinite(knots)) return null;
   return knots * 0.514444;
+}
+
+function shortTimestamp(value, tz) {
+  const formatted = formatUtc(value, tz);
+  return formatted.match(/(\d{2}:\d{2}\s(?:KST|UTC))$/)?.[1] || null;
 }
 
 function resolveCurrentCondition(target) {
@@ -138,12 +144,18 @@ export default function GroundCurrentWeatherCard({
   const pm25 = environmentMetric(environment?.pm?.pm25?.value, environment?.pm?.pm25?.grade, "㎍/㎥");
   const uv = environmentMetric(environment?.uv?.value, environment?.uv?.grade);
   const rainfallMm = amosData?.airports?.[icao]?.daily_rainfall?.mm;
+  const dataTime = shortTimestamp(target?.header?.issue_time || target?.header?.observation_time, tz);
 
   return (
     <section className="ground-current-card panel" role="region" aria-label="현재 날씨">
       <div className="ground-current-card-topbar">
-        <span className="ground-current-card-title">현재 날씨</span>
-        <span className="ground-current-card-suntime">☀ 일출 {sunTimes.sunrise} · 일몰 {sunTimes.sunset}</span>
+        <div className="ground-current-card-heading">
+          <span className="ground-current-card-title">현재 날씨</span>
+          {dataTime && <span className="ground-current-card-data-time">{dataTime} 기준</span>}
+        </div>
+        <span className="ground-current-card-suntime">
+          <span>☀ 일출 {sunTimes.sunrise} · 일몰 {sunTimes.sunset}</span>
+        </span>
       </div>
       <div className="ground-current-card-body">
         <div className="ground-current-card-main">

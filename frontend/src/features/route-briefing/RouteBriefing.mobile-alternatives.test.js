@@ -28,3 +28,8 @@ test('alternative routes expose NAVDATA and airway toggles without a collapsed d
   assert.match(layerActions, /'NAVDATA'/)
   assert.doesNotMatch(alternatives, /<details className="rb-hazard-disclosure"><summary>항법 표시<\/summary>/)
 })
+
+test('alternative route token validation includes that route’s custom waypoints', () => {
+  const alternatives = readFileSync(new URL('./RouteAlternativesStep.jsx', import.meta.url), 'utf8')
+  assert.match(alternatives, /classifyRouteTexts\(routeString\.trim\(\) \? routeString\.trim\(\)\.split\(\/\\s\+\/\) : \[\], \{\s*userWaypoints: \(selectedDesign\?\.draftEditor\?\.enroute \?\? selectedDesign\?\.enroute\)\?\.userWaypoints \?\? \[\]/s)
+})

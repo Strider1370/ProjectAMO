@@ -49,3 +49,19 @@ test('GroundCurrentWeatherCard keeps METAR SHRA ahead of BKN cloud coverage', as
   assert.match(html, /title="rain"/)
   assert.doesNotMatch(html, /구름많음/)
 })
+
+test('GroundCurrentWeatherCard displays the METAR header time in the top bar', async () => {
+  const html = await renderGroundCurrentWeatherCard({
+    icao: 'RKSS',
+    metarData: {
+      airports: {
+        RKSS: {
+          header: { issue_time: '2026-08-20T03:00:00.000Z' },
+          observation: { temperature: { air: 22, dewpoint: 19 }, wind: { speed: 8, direction: 180 } },
+        },
+      },
+    },
+  })
+
+  assert.match(html, /12:00 KST 기준/)
+})

@@ -457,7 +457,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 우회안 초안처럼 이 목록과 별개인 글자를 같은 규칙으로 판정해야 하는 곳이 있다.
   // 판정 자료를 그쪽에 넘기지 않고 함수만 내보낸다 — 자료를 복사하면 두 곳이 어긋난다.
   const classifyRouteTexts = useCallback(
-    (texts) => classifyTokens(texts, tokenLookups),
+    (texts, overrides = {}) => classifyTokens(texts, { ...tokenLookups, ...overrides }),
     [tokenLookups],
   )
 

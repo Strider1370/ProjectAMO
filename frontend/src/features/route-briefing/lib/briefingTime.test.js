@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { formatBriefingTime } from './briefingTime.js'
+import { briefingTimeFields, buildBriefingTimeIso, formatBriefingTime } from './briefingTime.js'
 
 test('formatBriefingTime renders compact tz label', () => {
   assert.equal(formatBriefingTime('2026-06-27T11:50:00Z', 'UTC'), '11:50Z')
@@ -13,7 +13,8 @@ test('formatBriefingTime returns dash on invalid input', () => {
   assert.equal(formatBriefingTime('nope', 'KST'), '\u2014')
 })
 
-test('exports only the live briefing formatter', async () => {
-  const module = await import('./briefingTime.js')
-  assert.deepEqual(Object.keys(module), ['formatBriefingTime'])
+test('manual ETA wall-clock fields round-trip in the selected timezone', () => {
+  assert.deepEqual(briefingTimeFields('2026-08-23T02:35:00Z', 'KST'), { year: 2026, month: 8, day: 23, hour: 11, minute: 35 })
+  assert.equal(buildBriefingTimeIso({ year: 2026, month: 8, day: 23, hour: 11, minute: 35 }, 'KST'), '2026-08-23T02:35:00.000Z')
+  assert.equal(buildBriefingTimeIso({ year: 2026, month: 8, day: 23, hour: 11, minute: 35 }, 'UTC'), '2026-08-23T11:35:00.000Z')
 })

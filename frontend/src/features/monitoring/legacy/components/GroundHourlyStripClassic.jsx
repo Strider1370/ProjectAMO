@@ -121,7 +121,7 @@ export default function GroundHourlyStripClassic({ groundForecastData, icao }) {
         <polyline className="ghs-line" points={linePoints} fill="none" />
 
         {slots.map((s, i) => {
-          const src = getWeatherIconSrc(mapGroundForecastIcon(s.icon));
+          const src = getWeatherIconSrc(mapGroundForecastIcon(s.icon, s.time));
           return (
             <g key={`pt-${i}`}>
               <image className="ghs-icon" href={src} x={xs[i] - ICON_SIZE / 2} y={ICON_Y} width={ICON_SIZE} height={ICON_SIZE} />

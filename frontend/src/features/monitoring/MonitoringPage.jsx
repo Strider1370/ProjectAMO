@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { MdSettings } from 'react-icons/md'
 import {
   buildAlertKey,
   clearResolvedAlerts,
@@ -40,6 +41,7 @@ import {
   clearMonitoringSlideImage,
 } from './lib/monitoringSlideshow.js'
 import { canvasScale } from './lib/canvasScale.js'
+import { monitoringClockParts } from './lib/monitoringClock.js'
 import { GROUND_FORECAST_DISPLAY_MODE, GROUND_FORECAST_DISPLAY_MODE_STORAGE_KEY, normalizeGroundForecastDisplayMode } from './lib/groundForecastDisplayMode.js'
 import {
   filterMonitoringAirportChoices,
@@ -112,6 +114,7 @@ export default function MonitoringPage() {
   const [activeAlerts, setActiveAlerts] = useState([])
   const [previewAlerts, setPreviewAlerts] = useState([])
   const [validAlertKeys, setValidAlertKeys] = useState(() => new Set())
+  const controlMenuRef = useRef(null)
   const [showSettings, setShowSettings] = useState(false)
   const [phoneTask, setPhoneTask] = useState('weather')
   const [tafVersion, setTafVersion] = useState(() => localStorage.getItem('taf_view_mode') || 'v2')
@@ -124,6 +127,7 @@ export default function MonitoringPage() {
     readJsonLocalStorage('traffic_altitude_bands', ALL_ALTITUDE_BANDS)
   ))
   const [advisoryFilter, setAdvisoryFilter] = useState(() => loadAdvisoryFilterSettings())
+  const [currentTime, setCurrentTime] = useState(() => new Date())
 
   const [slideshowConfig, setSlideshowConfig] = useState(() => loadMonitoringSlideshowConfig().config)
   const [slideImageBlob, setSlideImageBlob] = useState(null)
@@ -276,6 +280,28 @@ export default function MonitoringPage() {
     logPrefix: '[Monitoring]',
   })
   const data = rawData || {}
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const closeControlMenu = (event) => {
+      const menu = controlMenuRef.current
+      if (!menu?.open) return
+      if (event.type === 'keydown' && event.key !== 'Escape') return
+      if (event.type === 'pointerdown' && menu.contains(event.target)) return
+      menu.removeAttribute('open')
+    }
+
+    document.addEventListener('pointerdown', closeControlMenu)
+    document.addEventListener('keydown', closeControlMenu)
+    return () => {
+      document.removeEventListener('pointerdown', closeControlMenu)
+      document.removeEventListener('keydown', closeControlMenu)
+    }
+  }, [])
 
   useEffect(() => {
     if (!selectedAirport || !alertDefaults) return
@@ -758,49 +784,29 @@ export default function MonitoringPage() {
           </div>
 
           <div className="right-panel-top">
-            <div className="panel-switch dashboard-mode-switch" role="tablist" aria-label="대시보드 모드">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={dashboardMode === 'ops'}
-                className={`panel-switch-btn ${dashboardMode === 'ops' ? 'active' : ''}`}
-                onClick={() => setMode('ops')}
-              >
-                운항
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={dashboardMode === 'ground'}
-                className={`panel-switch-btn ${dashboardMode === 'ground' ? 'active' : ''}`}
-                onClick={() => setMode('ground')}
-              >
-                지상
-              </button>
-            </div>
-            <button
-              className="settings-icon-btn"
-              onClick={() => setShowSettings(true)}
-              title="설정"
-              aria-label="설정"
-            >
-              &#8943;
-            </button>
-            <button
-              type="button"
-              className="monitoring-exit-btn"
-              onClick={leaveMonitoring}
-              title="메인 화면으로 나가기"
-              aria-label="메인 화면으로 나가기"
-            >
-              나가기
-            </button>
+            {(() => {
+              const clock = monitoringClockParts(currentTime, timeZone)
+              const weekdayClass = clock.weekday === '토' ? 'is-saturday' : clock.weekday === '일' ? 'is-sunday' : ''
+              return <time className="monitoring-current-clock" aria-label="현재 시각" dateTime={currentTime.toISOString()}>{clock.date} <span className={`monitoring-current-clock-weekday ${weekdayClass}`.trim()}>({clock.weekday})</span> {clock.time}</time>
+            })()}
           </div>
+
+          <details ref={controlMenuRef} className="monitoring-control-menu">
+            <summary aria-label="화면 제어"><MdSettings aria-hidden="true" /></summary>
+            <div className="monitoring-control-menu-panel">
+              <div className="panel-switch dashboard-mode-switch" role="tablist" aria-label="대시보드 모드">
+                <button type="button" role="tab" aria-selected={dashboardMode === 'ops'} className={`panel-switch-btn ${dashboardMode === 'ops' ? 'active' : ''}`} onClick={() => { setMode('ops'); controlMenuRef.current?.removeAttribute('open') }}>운항</button>
+                <button type="button" role="tab" aria-selected={dashboardMode === 'ground'} className={`panel-switch-btn ${dashboardMode === 'ground' ? 'active' : ''}`} onClick={() => { setMode('ground'); controlMenuRef.current?.removeAttribute('open') }}>지상</button>
+              </div>
+              <button type="button" className="monitoring-control-menu-button" onClick={() => { setShowSettings(true); controlMenuRef.current?.removeAttribute('open') }}>설정</button>
+              <button type="button" className="monitoring-control-menu-button monitoring-exit-btn" onClick={leaveMonitoring}>나가기</button>
+            </div>
+          </details>
 
           <div className="left-panel-body">
             {warningPanel}
             {metarPanel}
-            {dashboardMode === 'ground' && (groundForecastDisplayMode === GROUND_FORECAST_DISPLAY_MODE.CLASSIC ? <GroundForecastClassic groundForecastData={data.groundForecast} icao={selectedAirport} /> : <GroundForecastViewport groundForecastData={data.groundForecast} icao={selectedAirport} />)}
+            {dashboardMode === 'ground' && (groundForecastDisplayMode === GROUND_FORECAST_DISPLAY_MODE.CLASSIC ? <GroundForecastClassic groundForecastData={data.groundForecast} icao={selectedAirport} /> : <GroundForecastViewport groundForecastData={data.groundForecast} icao={selectedAirport} airportMeta={selectedAirportMeta} />)}
             {tafPanel}
           </div>
 

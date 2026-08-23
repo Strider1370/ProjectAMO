@@ -26,7 +26,7 @@ import RouteTokenField from './RouteTokenField.jsx'
 import AltitudeWeatherComparison from './AltitudeWeatherComparison.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { computeEtaIso } from './lib/etaCalc.js'
-import { formatBriefingTime } from './lib/briefingTime.js'
+import { briefingTimeFields, buildBriefingTimeIso, formatBriefingTime } from './lib/briefingTime.js'
 import { buildSavedGeometry } from './lib/routeSaveGeometry.js'
 import { loadNavdata } from './lib/routePlanner.js'
 import './RouteBriefing.css'
@@ -63,7 +63,9 @@ const useStyles = makeStyles({
   draftApply: { flexGrow: 1 },
   toolSection: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
   toolLabel: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, fontWeight: tokens.fontWeightSemibold },
-  performance: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, alignItems: 'end' },
+  performance: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, alignItems: 'start' },
+  etaReadout: { gridColumn: '1 / -1' },
+  etaReset: { alignSelf: 'end' },
   detailToggleRow: { display: 'flex', justifyContent: 'flex-end' },
   // DatePicker/TimePicker 내부 Combobox 기본 min-width(250px)를 눌러 좁은 패널에서 한 줄에 맞춤
   picker: {
@@ -228,6 +230,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     setCruiseAltitudeFt,
     setAlternateAirport,
     setEtd,
+    setEta,
     setTasKt,
     setRouteDraftText,
     setRouteTokenTexts,
@@ -267,11 +270,14 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const stepMotion = hasWorkflowStepTransition ? stepDirection : undefined
 
   const isIfr = routeForm.flightRule === 'IFR'
+  const [etaEditing, setEtaEditing] = useState(false)
   // VFR 왕복(장주·훈련·유람)은 뜬 곳으로 돌아온다 — 반대편에 같은 공항을 고를 수
   // 있어야 한다. IFR은 같은 공항으로 비행계획을 내는 경우가 사실상 없어 그대로 잠근다.
   const departurePickerLock = isIfr ? routeForm.arrivalAirport : null
   const arrivalPickerLock = isIfr ? routeForm.departureAirport : null
-  const etaDisplay = eta ? formatBriefingTime(eta, tz, { withDate: true }).replace('-', '/').replace('Z', ' UTC') : ''
+  const autoEta = computeEtaIso(etd, derived.plannedDistanceNm, tasKt)
+  const etaIso = eta || autoEta
+  const etaDisplay = etaIso ? formatBriefingTime(etaIso, tz, { withDate: true }).replace('-', '/').replace('Z', ' UTC') : ''
   const appliedBase = routeDesigns.find((design) => design.id === 'base')
   // S8: 첫 경로 입력은 지도 맥락을 남기기 위해 항상 half로 시작한다. 사용자가 손수 드래그(detentTouched)했으면 존중하고
   // 자동 전환을 멈춘다(스텝/규칙 전환마다 되돌리면 성가심).
@@ -491,7 +497,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     </>
   )
 
-  const etaIso = eta || computeEtaIso(etd, derived.plannedDistanceNm, tasKt)
   const summaryStrip = (
     <div className={s.summary}>
       <span style={{ color: tokens.colorNeutralForeground3 }}>거리 {routeResult ? `${Math.round(derived.plannedDistanceNm)} NM` : '—'}</span>
@@ -535,6 +540,12 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const w0 = new Date(etdBaseMs + tzOffsetMs)
   const etdWall = new Date(w0.getUTCFullYear(), w0.getUTCMonth(), w0.getUTCDate(), w0.getUTCHours(), w0.getUTCMinutes())
   const setEtdWall = (y, mo, d, h, mi) => setEtd(new Date(Date.UTC(y, mo, d, h, mi) - tzOffsetMs).toISOString())
+  const etaWall = briefingTimeFields(etaIso, tz)
+  const setEtaWall = (y, mo, d, h, mi) => setEta(buildBriefingTimeIso({ year: y, month: mo + 1, day: d, hour: h, minute: mi }, tz))
+  const resetAutomaticEta = () => {
+    if (autoEta) setEta(autoEta)
+    setEtaEditing(false)
+  }
   // ETD·TAS·ETA 입력. 고도는 고도 비교 단계에서만 선택한다.
   const perfFields = (
     <div className={s.performance}>
@@ -548,13 +559,33 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           defaultValue={`${String(etdWall.getHours()).padStart(2, '0')}:${String(etdWall.getMinutes()).padStart(2, '0')}`}
           onTimeChange={(_, data) => data.selectedTime && setEtdWall(etdWall.getFullYear(), etdWall.getMonth(), etdWall.getDate(), data.selectedTime.getHours(), data.selectedTime.getMinutes())} />
       </Field>
-      <Field label="순항속도 (TAS, kt)">
+      {etaEditing ? (
+        <>
+          <Field label={`도착예정일 (${tz})`}>
+            <DatePicker aria-label={`도착예정일 (${tz})`} className={s.picker} value={new Date(etaWall.year, etaWall.month - 1, etaWall.day)}
+              formatDate={(d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`}
+              onSelectDate={(date) => date && setEtaWall(date.getFullYear(), date.getMonth(), date.getDate(), etaWall.hour, etaWall.minute)} />
+          </Field>
+          <Field label={`도착예정시간 (${tz})`}>
+            <TimePicker aria-label={`도착예정시간 (${tz})`} key={etaIso} className={s.picker} freeform hourCycle="h23" increment={5} dateAnchor={new Date(etaWall.year, etaWall.month - 1, etaWall.day, etaWall.hour, etaWall.minute)} defaultSelectedTime={new Date(etaWall.year, etaWall.month - 1, etaWall.day, etaWall.hour, etaWall.minute)}
+              defaultValue={`${String(etaWall.hour).padStart(2, '0')}:${String(etaWall.minute).padStart(2, '0')}`}
+              onTimeChange={(_, data) => data.selectedTime && setEtaWall(etaWall.year, etaWall.month - 1, etaWall.day, data.selectedTime.getHours(), data.selectedTime.getMinutes())} />
+          </Field>
+        </>
+      ) : (
+        <Field label={`추정 도착시각 (${tz})`} className={s.etaReadout}>
+          <Input className={s.ctrl} value={etaDisplay} placeholder="경로 거리·TAS 기준 추정값" readOnly onClick={() => etaIso && setEtaEditing(true)} onFocus={() => etaIso && setEtaEditing(true)} aria-label={`추정 도착시각 (${tz}) 편집`} />
+        </Field>
+      )}
+      <Field label="추정용 순항속도 (TAS, kt)">
         <SpinButton className={s.ctrl} value={Number(tasKt) || 0} min={60} max={600} step={5}
           onChange={(_, d) => { const v = d.value ?? Number(d.displayValue); if (Number.isFinite(v)) setTasKt(v) }} />
       </Field>
-      <Field label={`예상 ETA (${tz})`}>
-        <Input className={s.ctrl} value={etaDisplay} placeholder="경로 검색 후 TAS 기준으로 계산" readOnly />
-      </Field>
+      {etaEditing && (
+        <div className={s.etaReset}>
+          <Button appearance="subtle" size="medium" type="button" onClick={resetAutomaticEta} style={{ minHeight: 'var(--touch-min)' }}>자동 계산으로 되돌리기</Button>
+        </div>
+      )}
     </div>
   )
 
@@ -650,7 +681,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     <>
       <div className="rb-workflow-tabs" role="tablist" aria-label="비행 브리핑 단계">
         {[
-          ['settings', '비행 설정'], ['compare', '경로비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비'],
+          ['settings', '경로 생성'], ['compare', '경로 비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비'],
         ].map(([step, label]) => <button key={step} type="button" role="tab" aria-selected={workflowStep === step} disabled={!workflowAvailability[step]} className={workflowStep === step ? 'is-active' : (!workflowAvailability[step] ? 'is-disabled' : '')} onClick={() => goToWorkflowStep(step)}>{label}</button>)}
       </div>
       {/* 각 단계는 이미 자기 요소로 새로 붙는다 — 방향만 넘기면 등장 애니메이션이 돈다.
@@ -753,7 +784,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
 
   const stepNav = (
     <div className="rb-steps">
-      {[['settings', '비행 설정'], ['compare', '경로비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비']].map(([step, label]) => (
+      {[['settings', '경로 생성'], ['compare', '경로 비교'], ['altitude', '고도 비교'], ['briefing', '브리핑 준비']].map(([step, label]) => (
         <button key={step} type="button" className={`rb-step${workflowStep === step ? ' is-active' : ''}${!workflowAvailability[step] ? ' is-disabled' : ''}`} disabled={!workflowAvailability[step]} onClick={() => goToWorkflowStep(step)}>{label}</button>
       ))}
     </div>
@@ -908,7 +939,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         <MobileSheet
           open
           eyebrow="Flight Plan"
-          title={'경로 확인'}
+          title={'비행 계획'}
           onClose={() => { setDetentTouched(true); setSheetDetent('peek') }}
           detent={sheetDetent}
           onDetentChange={(d) => { setDetentTouched(true); setSheetDetent(d) }}
@@ -923,7 +954,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           <div className="route-check-header">
             <div>
               <div className="route-check-eyebrow">Flight Plan</div>
-              <h2 className="route-check-title">{'경로 확인'}</h2>
+              <h2 className="route-check-title">{'비행 계획'}</h2>
             </div>
             <div className="route-check-header-actions">
               <Badge appearance="tint" color="informative">{routeForm.flightRule}</Badge>

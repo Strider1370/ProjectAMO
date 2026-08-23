@@ -3549,12 +3549,13 @@ label { font-size: 0.9rem; font-weight: 700; }
   font-size: 12px;
 }
 .ghs-time.is-now {
-  fill: #15803d;
   font-weight: 700;
 }
 .ghs-time.is-daybreak {
-  fill: var(--accent, #334155);
   font-weight: 700;
+}
+.ghs-date {
+  fill: #15803d;
 }
 [data-theme="dark"] .ghs-iconband {
   fill: #2d342f;
@@ -3813,6 +3814,18 @@ label { font-size: 0.9rem; font-weight: 700; }
   justify-content: space-between;
   padding: 12px 24px;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, #ffffff);
+}
+
+.ground-current-card-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.ground-current-card-data-time {
+  color: var(--muted);
+  font-size: 0.96rem;
+  font-weight: 500;
 }
 
 .ground-current-card-time {
@@ -4086,6 +4099,12 @@ label { font-size: 0.9rem; font-weight: 700; }
   font-size: 17px;
 }
 
+.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] [data-ground-metric="초미세먼지(PM2.5)"] .ground-current-metric-label {
+  font-size: 15px;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-current-metric-value { font-size:26px; white-space:nowrap; letter-spacing:-0.045em; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-current-metric-numeric { font-size:.58em; letter-spacing:-0.06em; }
 
@@ -4106,12 +4125,15 @@ label { font-size: 0.9rem; font-weight: 700; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg { width:100%; height:425px; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg text { font-size:20px; fill:var(--text); font-weight:700; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-temperature] { font-size:32px; }
+.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-temperature].is-min,
+.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-temperature].is-max { font-weight:400; }
+.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-precipitation-icon] { fill:#2f80ed; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-row="precip-track"] { fill:color-mix(in srgb,var(--line) 75%,white); }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-row="precip-bar"] { fill:#2f80ed; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-row="temp-dot"] { stroke:var(--accent); fill:var(--accent); stroke-width:3; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-temperature].is-max, .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-row="temp-dot"].is-max { fill:#dc2626; stroke:#dc2626; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-temperature].is-min, .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-row="temp-dot"].is-min { fill:#2563eb; stroke:#2563eb; }
-.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-time].is-now, .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-time].is-daybreak { fill:#15803d; }
+.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg [data-hourly-date] { fill:#15803d; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-hourly-svg .ghs-line { stroke:var(--accent); fill:none; stroke-width:3; }
 .ground-weekly-table { width:100%; height:397px; margin-top:26px; border-collapse:collapse; table-layout:fixed; }
 .ground-weekly-table th,.ground-weekly-table td { border:1px solid var(--line); text-align:center; }
@@ -4119,6 +4141,9 @@ label { font-size: 0.9rem; font-weight: 700; }
 .ground-weekly-table [data-weekly-period].is-precip { background:rgba(186,230,253,.72); }
 .ground-weekly-table thead { height:64px; }.ground-weekly-table tbody tr:nth-child(1){height:123px}.ground-weekly-table tbody tr:nth-child(2){height:122px}.ground-weekly-table tbody tr:nth-child(3){height:88px}
 .ground-weekly-table th:first-child { width:72px; font-size:20px; }.ground-weekly-table thead th:not(:first-child){ vertical-align:middle; white-space:nowrap; }.ground-weekly-table thead strong,.ground-weekly-table thead span{display:inline}.ground-weekly-table [data-weekly-weekday]{font-size:22px}.ground-weekly-table [data-weekly-weekday].is-saturday{color:#2563eb}.ground-weekly-table [data-weekly-weekday].is-sunday{color:#dc2626}.ground-weekly-table [data-weekly-date] + [data-weekly-weekday]{margin-left:6px}.ground-weekly-table [data-weekly-date]{font-size:18px}.ground-weekly-table [data-weekly-icon]{display:inline-block;width:68px;height:68px}.ground-weekly-icon.weather-icon-wrapper{width:68px;height:68px;filter:drop-shadow(0 3px 6px rgba(0, 0, 0, 0.16));}.ground-weekly-table [data-weekly-precipitation]{display:block;font-size:20px}.ground-weekly-table [data-weekly-minmax]{font-size:30px;font-weight:800}
+.ground-weekly-table [data-weekly-precipitation]{display:flex;align-items:center;justify-content:center;gap:3px}.ground-weekly-table [data-weekly-precipitation-icon]{width:20px;height:20px;color:#2f80ed}
+.ground-weekly-table [data-weekly-minmax]{font-size:24px;letter-spacing:-.04em;white-space:nowrap}
+.ground-weekly-table .ground-forecast-temp-min{color:#2563eb}
 @keyframes ground-progress { to { width:100%; } }
 @media (prefers-reduced-motion: reduce) { .ground-forecast-layer { transition-duration:0s; } [data-forecast-progress] { width:100%; opacity:.35; animation:none; } }
 

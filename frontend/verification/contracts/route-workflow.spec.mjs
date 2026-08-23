@@ -68,6 +68,40 @@ test.describe('route-workflow', () => {
     await completeWorkflow(page, 'VFR', testInfo.project.name === 'mobile')
   })
 
+  test('calculated ETA opens manual time controls and can return to automatic calculation', async ({ page }, testInfo) => {
+    const isMobile = testInfo.project.name === 'mobile'
+    await openRouteBriefing(page, isMobile)
+    await completeWorkflow(page, 'IFR', isMobile, { stopAtCompare: true })
+
+    const settings = isMobile
+      ? page.getByRole('button', { name: '경로 생성', exact: true })
+      : page.getByRole('tab', { name: '경로 생성', exact: true })
+    await settings.click()
+
+    const etaInput = page.getByRole('textbox', { name: /추정 도착시각 .* 편집/ })
+    await expect(etaInput).toHaveValue(/\d{2}\/\d{2} \d{2}:\d{2}/)
+    await etaInput.click()
+    const resetAutomaticEta = page.getByRole('button', { name: '자동 계산으로 되돌리기', exact: true })
+    await expect(resetAutomaticEta).toBeVisible()
+    const etaDate = page.getByLabel(/도착예정일/)
+    const etaTime = page.getByRole('combobox', { name: /도착예정시간/ })
+    if (!isMobile) {
+      const tas = page.getByRole('spinbutton', { name: '추정용 순항속도 (TAS, kt)' })
+      const [etaDateBox, etaTimeBox, tasBox, resetBox] = await Promise.all([
+        etaDate.boundingBox(), etaTime.boundingBox(), tas.boundingBox(), resetAutomaticEta.boundingBox(),
+      ])
+      expect(etaDateBox.x).toBeLessThan(etaTimeBox.x)
+      expect(Math.abs(etaDateBox.y - etaTimeBox.y)).toBeLessThanOrEqual(8)
+      expect(tasBox.x).toBeLessThan(resetBox.x)
+      expect(Math.abs((tasBox.y + tasBox.height / 2) - (resetBox.y + resetBox.height / 2))).toBeLessThanOrEqual(8)
+    }
+    await etaTime.fill('23:55')
+    await etaTime.press('Tab')
+    await expect(etaTime).toHaveValue('23:55')
+    await resetAutomaticEta.click()
+    await expect(etaInput).toBeVisible()
+  })
+
   test('a route without AIP airway segments still compares weather at the entered altitude', async ({ page }, testInfo) => {
     const isMobile = testInfo.project.name === 'mobile'
     await openRouteBriefing(page, isMobile, {

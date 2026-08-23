@@ -44,6 +44,24 @@ test('AMD + TEMPO + PROB30_TEMPO + 저시정/기상/NSC', () => {
   )
 })
 
+test('명시된 NSW 변화군을 TAC 원문에 보존한다', () => {
+  const taf = {
+    header: { icao: 'RKSI', report_status: 'NORMAL', issued: '2026-08-23T03:00:00Z', valid_start: '2026-08-23T03:00:00Z', valid_end: '2026-08-24T03:00:00Z' },
+    base: { wind: { raw: '18008KT' }, vis: 9999, wx: [{ raw: 'RA', phenomena: ['RA'] }], clouds: [{ raw: 'BKN020' }], cavok_flag: false, nsc_flag: false },
+    change_groups: [
+      { type: 'BECMG', start: '2026-08-23T09:00:00Z', end: '2026-08-23T11:00:00Z', wind: null, vis: null, wx: [], clouds: null, cavok_flag: false, nsc_flag: false, nsw_flag: true },
+    ],
+  }
+
+  assert.equal(
+    buildTafTac(taf),
+    [
+      'TAF RKSI 230300Z 2303/2403 18008KT 9999 RA BKN020',
+      'BECMG 2309/2311 NSW',
+    ].join('\n'),
+  )
+})
+
 test('빈 입력 → null', () => {
   assert.equal(buildTafTac(null), null)
 })

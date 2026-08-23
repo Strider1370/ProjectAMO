@@ -30,6 +30,7 @@ function stateParts(s) {
     for (const weather of (s.wx || []).filter((weather) => weather?.descriptor || weather?.phenomena?.length)) {
       parts.push(tacToken(weather.raw, weatherTokenRole(weather)))
     }
+    if (s.nsw_flag) parts.push(tacToken('NSW'))
     if (s.nsc_flag) parts.push(tacToken('NSC'))
     else for (const cloud of (s.clouds || []).map((c) => c.raw).filter(Boolean)) parts.push(tacToken(cloud, /CB$/.test(cloud) ? 'cloud-cb' : /^(BKN|OVC)/.test(cloud) ? 'ceiling' : 'plain'))
   }
