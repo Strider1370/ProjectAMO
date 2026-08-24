@@ -154,3 +154,20 @@ test('overseas SIGMET labels retain the FIR that scopes its sequence number', ()
   assert.equal(properties.label, 'SIGMET 1 · ZBPE (베이징 FIR) 차폐뇌우')
   assert.equal(properties.fir, 'ZBPE (베이징 FIR)')
 })
+
+// 강풍 AIRMET은 고도도 시정도 없어 chartLine1이 비고, motion.speed_kt는 현상의 이동속도라 0이다.
+// 기호 안에 찍을 풍속은 surface_wind에서만 나온다 — 여기가 끊기면 마름모가 다시 빈 채로 그려진다.
+test('surface wind AIRMET carries the wind speed itself, not the phenomenon motion speed', () => {
+  const geometry = { type: 'Polygon', coordinates: [[[126, 36], [128, 36], [128, 38], [126, 38], [126, 36]]] }
+  const data = advisoryItemsToLabelFeatureCollection({
+    items: [
+      { id: 'sfc-wind', phenomenon_code: 'SFC_WIND', motion: { direction_deg: null, speed_kt: 0 }, surface_wind: { direction_deg: 270, speed_kt: 30 }, geometry },
+      { id: 'sfc-vis', phenomenon_code: 'SFC_VIS', surface_visibility_m: 5000, surface_visibility_causes: ['FG', 'BR'], surface_wind: { direction_deg: null, speed_kt: null }, geometry },
+    ],
+  }, 'airmet')
+
+  assert.equal(data.features[0].properties.windLabel, '30')
+  assert.equal(data.features[0].properties.motionLabel, '')
+  assert.equal(data.features[1].properties.windLabel, '')
+  assert.equal(data.features[1].properties.chartLine1, 'VIS 5000M FG/BR')
+})

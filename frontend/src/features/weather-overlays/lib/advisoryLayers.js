@@ -45,9 +45,57 @@ export function advisorySymbolUrl(kind, phenomenonCode) {
   return `/Symbols/Reference%20Symbols/${folder}/${encodeURIComponent(`${symbolCode}.png`)}`
 }
 const PHENOMENON_ICON_SIZE = 40
-const ADVISORY_MARKER_WIDTH = 176
+// 기호는 정사각형이 아니다 — SFC_VIS는 실제 그림이 140x26으로 5:1에 가깝다. 높이만 40으로
+// 묶으면 납작한 기호가 세로 7px로 쪼그라들어 안 보인다. 가로는 따로, 더 넉넉히 허용한다.
+const PHENOMENON_ICON_MAX_WIDTH = 90
+const ADVISORY_MARKER_WIDTH = 220
 const ADVISORY_MARKER_HEIGHT = 52
 const ADVISORY_ICON_CENTER_X = ADVISORY_MARKER_WIDTH / 2
+
+// 원본 PNG는 파일마다 투명 여백 비율이 제각각이다(SFC_VIS = 150x150 파일에 그림은 140x26,
+// SFC_WIND = 80x80 파일에 그림도 80x80). 파일 크기로 맞추면 여백까지 크기에 포함돼 같은
+// 40px를 줘도 실제 보이는 크기가 5배 넘게 벌어진다 — 불투명 픽셀 범위를 재서 그걸 기준으로 맞춘다.
+const advisoryIconInk = new WeakMap()
+
+function measureIconInk(image) {
+  const cached = advisoryIconInk.get(image)
+  if (cached) return cached
+
+  const full = { x: 0, y: 0, width: image.width, height: image.height }
+  let bounds = full
+
+  try {
+    const probe = document.createElement('canvas')
+    probe.width = image.width
+    probe.height = image.height
+    const probeContext = probe.getContext('2d', { willReadFrequently: true })
+    probeContext.drawImage(image, 0, 0)
+    const { data } = probeContext.getImageData(0, 0, image.width, image.height)
+
+    let minX = image.width
+    let minY = image.height
+    let maxX = -1
+    let maxY = -1
+
+    for (let y = 0; y < image.height; y += 1) {
+      for (let x = 0; x < image.width; x += 1) {
+        // 알파 8 이하는 안티에일리어싱 잔털 — 여백으로 본다.
+        if (data[(y * image.width + x) * 4 + 3] <= 8) continue
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+      }
+    }
+
+    if (maxX >= 0) bounds = { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 }
+  } catch {
+    // 캔버스를 못 읽으면(테스트 환경 등) 파일 전체 크기로 되돌아간다 — 종전 동작.
+  }
+
+  advisoryIconInk.set(image, bounds)
+  return bounds
+}
 
 // 마커는 이동방향·속도를 덧그리므로 현상마다 다른 이미지지만, 합성 재료인 원본 PNG는 같다.
 // markerKey로만 걸러내면 같은 PNG를 현상 수만큼 내려받는다(운영 실측 EMBD_TS.png 63회).
@@ -74,7 +122,8 @@ function ensureAdvisoryMarkerImage(map, feature) {
   const props = feature.properties || {}
   const direction = Number.isFinite(props.motionDirection) ? props.motionDirection : null
   const speed = props.motionLabel || ''
-  const markerKey = `${props.iconKey || 'advisory'}-${direction ?? 'none'}-${speed || 'none'}`
+  const wind = props.windLabel || ''
+  const markerKey = `${props.iconKey || 'advisory'}-${direction ?? 'none'}-${speed || 'none'}${wind ? `-W${wind}` : ''}`
   props.markerKey = markerKey
   if (!props.iconUrl || map.hasImage(markerKey)) return
 
@@ -85,14 +134,32 @@ function ensureAdvisoryMarkerImage(map, feature) {
     canvas.width = ADVISORY_MARKER_WIDTH
     canvas.height = ADVISORY_MARKER_HEIGHT
     const context = canvas.getContext('2d', { alpha: true })
-    const scale = Math.min(PHENOMENON_ICON_SIZE / image.width, PHENOMENON_ICON_SIZE / image.height)
-    const drawWidth = image.width * scale
-    const drawHeight = image.height * scale
-    context.drawImage(image, ADVISORY_ICON_CENTER_X - drawWidth / 2, 6 + (PHENOMENON_ICON_SIZE - drawHeight) / 2, drawWidth, drawHeight)
+    const ink = measureIconInk(image)
+    const scale = Math.min(PHENOMENON_ICON_MAX_WIDTH / ink.width, PHENOMENON_ICON_SIZE / ink.height)
+    const drawWidth = ink.width * scale
+    const drawHeight = ink.height * scale
+    const drawTop = 6 + (PHENOMENON_ICON_SIZE - drawHeight) / 2
+    context.drawImage(
+      image,
+      ink.x, ink.y, ink.width, ink.height,
+      ADVISORY_ICON_CENTER_X - drawWidth / 2, drawTop, drawWidth, drawHeight,
+    )
+
+    // 강풍(SFC_WIND)은 기호 안쪽 정중앙에 풍속을 적는 게 표준 표기다.
+    if (wind) {
+      context.fillStyle = '#1d4ed8'
+      context.font = '700 16px sans-serif'
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.fillText(wind, ADVISORY_ICON_CENTER_X, 6 + PHENOMENON_ICON_SIZE / 2)
+    }
+
+    // 화살표·이동속도는 기호 오른쪽에 붙는다 — 넓은 기호(SFC_VIS 등)와 겹치지 않게 실제 폭을 따라간다.
+    const trailerX = ADVISORY_ICON_CENTER_X + drawWidth / 2 + 14
 
     if (direction != null) {
       context.save()
-      context.translate(ADVISORY_ICON_CENTER_X + 34, 22)
+      context.translate(trailerX, 22)
       context.rotate((direction * Math.PI) / 180)
       context.strokeStyle = '#0f172a'
       context.lineWidth = 2
@@ -111,8 +178,9 @@ function ensureAdvisoryMarkerImage(map, feature) {
     if (speed) {
       context.fillStyle = '#1d4ed8'
       context.font = '700 13px sans-serif'
+      context.textAlign = 'center'
       context.textBaseline = 'middle'
-      context.fillText(speed, ADVISORY_ICON_CENTER_X + 52, 35)
+      context.fillText(speed, trailerX, 38)
     }
 
     map.addImage(markerKey, context.getImageData(0, 0, ADVISORY_MARKER_WIDTH, ADVISORY_MARKER_HEIGHT))
@@ -166,6 +234,13 @@ function formatAltitudeChart(item) {
 function formatSpeedChart(item) {
   const speed = item?.motion?.speed_kt
   return Number.isFinite(speed) && speed > 0 ? `${Math.round(speed)}KT` : ''
+}
+
+// motion.speed_kt(현상 덩어리의 이동속도)와 헷갈리지 말 것 — 이건 지상 풍속 자체다.
+// 기호 안에 들어가므로 단위 없이 노트 숫자만.
+function formatSurfaceWindChart(item) {
+  const speed = item?.surface_wind?.speed_kt
+  return Number.isFinite(speed) && speed > 0 ? String(Math.round(speed)) : ''
 }
 
 // 고도·이동속도가 없는 지상시정(SFC_VIS) 계열은 이게 본론 — "VIS 5000M RA/FG/BR" 식으로.
@@ -326,6 +401,7 @@ export function advisoryItemsToLabelFeatureCollection(payload, kind, tz = 'KST')
           chartLine1: formatAltitudeChart(item) || formatVisibilityChart(item),
           chartLine2: formatIntensityChart(item),
           motionLabel: formatSpeedChart(item),
+          windLabel: formatSurfaceWindChart(item),
           motionDirection: Number.isFinite(item?.motion?.direction_deg) ? item.motion.direction_deg : null,
         },
           geometry: {
