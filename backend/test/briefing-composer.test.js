@@ -198,3 +198,12 @@ test('composeBriefing merges overseas METAR/TAF/SIGMET for overseas routes', () 
   assert.equal(b.sections.destination.taf.category, 'IFR')
   assert.ok(b.sections.adverse.hazards.some((h) => h.source === 'SIGMET' && h.code === 'SEV_TURB'))
 })
+
+// VFR 국지비행: 출발지로 되돌아오면 출발·도착이 같은 공항이다. 실황이 두 번 나오면 안 된다.
+test('composeBriefing merges departure and arrival when they are the same airport', () => {
+  const b = composeBriefing({ ...request, arrivalAirport: 'RKSI', alternateAirport: 'RKPK' }, data)
+  const rksi = b.sections.current.airports.filter((a) => a.icao === 'RKSI')
+  assert.equal(rksi.length, 1)
+  assert.deepEqual(rksi[0].roles, ['departure', 'arrival'])
+  assert.equal(b.sections.current.airports.length, 2) // RKSI(출발/도착) + RKPK(교체)
+})

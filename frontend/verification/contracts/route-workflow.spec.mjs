@@ -54,6 +54,20 @@ async function completeWorkflow(page, rule, isMobile, { stopAtCompare = false, s
   if (!isMobile) await page.getByRole('button', { name: '연직단면도 숨기고 지도 보기', exact: true }).click()
   await page.getByRole('button', { name: '브리핑 준비로', exact: true }).click()
   await expect(page.getByRole('region', { name: '브리핑 준비 요약', exact: true })).toBeVisible()
+
+  // 세부경로 버튼은 예전에 화살표만 바뀌고 아무것도 펼치지 않았다. 실제로 지점 사슬과
+  // 구간 표가 나와야 한다.
+  // 경유점이 없는 경로(직항 픽스처)는 버튼 자체가 없는 게 맞다. 버튼이 있다면
+  // 반드시 내용을 펼쳐야 한다 — 예전 버그는 화살표만 바뀌고 아무것도 안 나오는 것이었다.
+  const detail = page.locator('.rb-prep-detail-btn')
+  if (await detail.count()) {
+    await expect(page.locator('.rb-prep-detail-body')).toHaveCount(0)
+    await detail.click()
+    await expect(page.locator('.rb-prep-chain .fix').first()).toBeVisible()
+    await expect(page.locator('.rb-prep-legs tbody tr').first()).toBeVisible()
+    await detail.click()
+    await expect(page.locator('.rb-prep-detail-body')).toHaveCount(0)
+  }
 }
 
 test.describe('route-workflow', () => {

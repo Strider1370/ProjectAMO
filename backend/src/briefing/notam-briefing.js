@@ -28,6 +28,8 @@ const RESTRICTION_CATEGORIES = new Set(['prohibited', 'restricted', 'danger', 'f
 // 반환: { routeNotams(사실 나열, 정렬됨), routeConflicts(공역제한∩발효중∩경로 통과) }.
 export function matchRouteNotams(items, ctx) {
   const roleByIcao = new Map((ctx.airports ?? []).map((a) => [a.icao, a.role]))
+  // 출발·도착이 같은 공항이면 역할이 여럿 — 제목을 '출발/도착'으로 낼 수 있게 함께 넘긴다.
+  const rolesByIcao = new Map((ctx.airports ?? []).map((a) => [a.icao, a.roles ?? [a.role]]))
   const routeNotams = []
   for (const it of (items ?? [])) {
     if (it?.scope === 'fir') continue // 전국 스코프는 경로 매칭에서 제외(무의미한 전량 매칭)
@@ -82,6 +84,7 @@ export function matchRouteNotams(items, ctx) {
 
       onRoute: interval.entered,
       airportRole,                                  // 'departure'|'arrival'|'alternate'|null
+      airportRoles: airportRole ? rolesByIcao.get(it.location) ?? [airportRole] : null,
       airportIcao: airportRole ? it.location : null,
       routeIntervalNm: interval.entered ? { startNm: interval.startNm, endNm: interval.endNm } : null,
       bandFt,

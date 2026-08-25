@@ -213,7 +213,19 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     lastAppliedDemoNowRef.current = demoNowMs
   }, [demoMode, demoNowMs])
   const [tasKt, setTasKt] = useState(() => getPerformanceForRule(initialRouteForm.flightRule).tasKt)
-  const [eta, setEta] = useState(null)
+  const [eta, setEtaState] = useState(null)
+  // ETA는 사용자가 직접 고쳤을 때만 고정한다. 그 전에는 ETD·거리·TAS 중 무엇이 바뀌든 다시 계산된다.
+  // 값이 있으면 무조건 고정하던 예전 방식은, 경로 검색 한 번으로 ETA가 굳어 ETD를 미루면
+  // 도착이 출발보다 빨라지는 상태를 만들었다(뒤집힌 시간창 → 위험 정보 누락).
+  const [etaUserEdited, setEtaUserEdited] = useState(false)
+  const setEta = (next) => { setEtaUserEdited(true); setEtaState(next) }
+  const clearEtaOverride = () => { setEtaUserEdited(false); setEtaState(null) }
+  const plannedEtaDistanceNm = routeResult?.totalDistanceNm ?? routeResult?.distanceNm ?? null
+  useEffect(() => {
+    if (etaUserEdited) return
+    const next = computeEtaIso(etd, plannedEtaDistanceNm, tasKt)
+    if (next) setEtaState(next)
+  }, [etaUserEdited, etd, tasKt, plannedEtaDistanceNm])
   const [briefing, setBriefing] = useState(null)
   const [briefingLoading, setBriefingLoading] = useState(false)
   const [briefingError, setBriefingError] = useState(null)
@@ -302,7 +314,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setAltitudeComparisonError(null)
     setAltitudeDraftFt(getPerformanceForRule(routeForm.flightRule).altitudeFt)
     setWorkflowStep('settings')
-    setEta(null)
+    clearEtaOverride()
     setRouteError(null)
     setRouteLoading(false)
     setVerticalProfile(null)
@@ -554,12 +566,28 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 이 구분을 놓치면 VFR 경로가 만들어지지 않는다.
   const enrouteTokenText = useMemo(() => {
     const isVfr = routeForm.flightRule === 'VFR'
-    return routeTokens
-      .filter((token) => isVfr
-        ? token.kind !== TOKEN_KINDS.PROCEDURE
-        : token.kind !== TOKEN_KINDS.AIRPORT && token.kind !== TOKEN_KINDS.PROCEDURE)
-      .map((token) => token.text)
-      .join(' ')
+    if (!isVfr) {
+      return routeTokens
+        .filter((token) => token.kind !== TOKEN_KINDS.AIRPORT && token.kind !== TOKEN_KINDS.PROCEDURE)
+        .map((token) => token.text)
+        .join(' ')
+    }
+    // VFR은 모든 구간이 DCT인데 알약에는 DCT가 없다. 그냥 공백으로 이으면 "RKSS RKPC"가 되고
+    // parseVfrDraftText가 통째로 거절한다("DCT만 사용할 수 있습니다") — 공항 두 개만 골라도
+    // 곧바로 빨간 오류가 뜨고, 그 뒤로는 지도에서 무엇을 해도 입력칸이 갱신되지 않는다.
+    const parts = []
+    routeTokens
+      .filter((token) => token.kind !== TOKEN_KINDS.PROCEDURE)
+      .forEach((token) => {
+        if (token.kind === TOKEN_KINDS.DCT) {
+          if (parts.length && parts.at(-1) !== 'DCT') parts.push('DCT')
+          return
+        }
+        if (parts.length && parts.at(-1) !== 'DCT') parts.push('DCT')
+        parts.push(token.text)
+      })
+    if (parts.at(-1) === 'DCT') parts.pop()
+    return parts.join(' ')
   }, [routeTokens, routeForm.flightRule])
 
   const applyRouteDraftRef = useRef(null)
@@ -610,10 +638,29 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // 선택기가 공항을 채우는 순간 이 효과가 돌아 이용자가 친 것을 지우는 일이 있었다.
     if (routeTokenTexts.length > 0) { seededRef.current = true; return }
     seededRef.current = true
-    const enroute = routeDraftText.trim() ? routeDraftText.trim().split(/\s+/) : []
-    setRouteTokenTexts([departure, ...enroute, arrival].filter(Boolean))
+    const draft = routeDraftText.trim() ? routeDraftText.trim().split(/\s+/) : []
+    setRouteTokenTexts(routeForm.flightRule === 'VFR' && draft.length > 0
+      ? draft // VFR rawText는 양 끝 공항까지 포함한 전체 문자열이다
+      : [departure, ...draft, arrival].filter(Boolean))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeForm.departureAirport, routeForm.arrivalAirport, routeDraftText])
+
+  // 지도에서 선을 끌어 경유점을 넣으면 편집기의 문자열은 바뀌지만 알약은 그대로였다 —
+  // 알약을 채우는 위 효과가 seededRef로 딱 한 번만 돌기 때문이다. 그래서 지도로 넣은
+  // WP가 입력칸에 영영 안 나타났다. 알약이 만들어내는 문자열과 실제 문자열이 어긋나면
+  // 실제 문자열 쪽으로 맞춘다(같아지면 멈추므로 서로 밀치지 않는다).
+  const lastSyncedRawTextRef = useRef(null)
+  useEffect(() => {
+    const text = routeDraftText.trim()
+    if (!text || text === lastSyncedRawTextRef.current) return
+    lastSyncedRawTextRef.current = text
+    if (text === enrouteTokenText) return
+    const parts = text.split(/\s+/)
+    setRouteTokenTexts(routeForm.flightRule === 'VFR'
+      ? parts
+      : [routeForm.departureAirport, ...parts, routeForm.arrivalAirport].filter(Boolean))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeDraftText])
 
   useEffect(() => {
     const airport = routeForm.arrivalAirport
@@ -957,15 +1004,29 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const previousEditor = routeEditor
     const dropped = waypoints?.[waypointIndex]
     const commit = async (next) => {
-      const terms = next.slice(1, -1).map((waypoint) => waypoint.named
-        ? { kind: 'fix', id: waypoint.id }
-        : { kind: 'coordinate', coordinate: { lat: waypoint.lat, lon: waypoint.lon } })
+      const middle = next.slice(1, -1)
+      // 이미 번호를 받은 경유점을 좌표로 되돌리면 안 된다. 좌표로 내려보내면 다음 단계가
+      // 처음 보는 지점으로 알고 새 번호를 발급해, 끌 때마다 WP2가 WP3이 되고 WP3이 WP4가 된다.
+      // 신분(WP이름)은 그대로 두고 옮겨진 좌표만 갱신한다.
+      const known = new Map((routeEditor.enroute?.userWaypoints ?? []).map((waypoint) => [waypoint.name, waypoint]))
+      const userWaypoints = (routeEditor.enroute?.userWaypoints ?? []).map((waypoint) => {
+        const moved = middle.find((point) => !point.named && point.id === waypoint.name)
+        return moved ? { ...waypoint, lon: moved.lon, lat: moved.lat } : waypoint
+      })
+      const terms = middle.map((point) => {
+        if (point.named) return { kind: 'fix', id: point.id }
+        const existing = known.get(point.id)
+        return existing
+          ? { kind: 'user-waypoint', id: existing.id, name: existing.name }
+          : { kind: 'coordinate', coordinate: { lat: point.lat, lon: point.lon } }
+      })
       const text = formatVfrDraftText({
         departureAirport: routeForm.departureAirport,
         arrivalAirport: routeForm.arrivalAirport,
-        enroute: { terms, legIntents: Array.from({ length: Math.max(0, terms.length - 1) }, () => ({ kind: 'dct' })) },
+        enroute: { terms, legIntents: Array.from({ length: Math.max(0, terms.length - 1) }, () => ({ kind: 'dct' })), userWaypoints },
       })
-      await previewEditorRoute(text)
+      const preview = await buildEditorPreview({ ...routeEditor, enroute: { ...(routeEditor.enroute ?? {}), userWaypoints } }, text)
+      setRouteEditor(preview.editor)
     }
     if (!dropped || dropped.fixed) return
 
@@ -1066,8 +1127,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
     const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: result })
     const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
-    const searchEta = eta || computeEtaIso(etdIso, result.totalDistanceNm ?? result.distanceNm, tasKt) || null
-    setEta(searchEta)
+    const searchEta = (etaUserEdited && eta) || computeEtaIso(etdIso, result.totalDistanceNm ?? result.distanceNm, tasKt) || null
+    setEtaState(searchEta)
 
     try {
       const baseExposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: searchEta })
@@ -1383,7 +1444,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       const routeGeometry = getCurrentRouteLineString({ routeResult: result, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
       const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: result })
       const etdIso = Number.isFinite(Date.parse(etd)) ? new Date(etd).toISOString().replace('.000Z', 'Z') : null
-      const nextEta = eta || computeEtaIso(etdIso, result.totalDistanceNm ?? result.distanceNm, tasKt) || null
+      const nextEta = (etaUserEdited && eta) || computeEtaIso(etdIso, result.totalDistanceNm ?? result.distanceNm, tasKt) || null
       const exposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: nextEta }).catch((error) => ({ trigger: 'unavailable', hazards: [], error: error.message }))
       const previousBase = routeDesigns.find((design) => design.id === 'base') ?? null
       const base = createRouteDesign({
@@ -1398,7 +1459,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
           : [],
       })
       applyBaseRoute(base)
-      setEta(nextEta)
+      setEtaState(nextEta)
       return true
     } catch (error) {
       setRouteError(error.message)
@@ -2117,7 +2178,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       vfrWaypoints: routeResult.flightRule === 'VFR' ? buildVfrWaypointsFromRouteResult(routeResult, airports) : [],
     })
     const routeModel = buildCommonRouteModel({ routeGeometry, routeResult })
-    const nextEta = eta || computeEtaIso(etd, routeResult.totalDistanceNm ?? routeResult.distanceNm, tasKt) || null
+    const nextEta = (etaUserEdited && eta) || computeEtaIso(etd, routeResult.totalDistanceNm ?? routeResult.distanceNm, tasKt) || null
 
     lastVfrKeyRef.current = `${form.departureAirport ?? ''}>${form.arrivalAirport ?? ''}`
     importedRouteApplyPendingRef.current = true
@@ -2131,7 +2192,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       enroute: preview.editor.enroute,
       routeString: preview.editor.rawText,
     }))
-    setEta(nextEta)
+    setEtaState(nextEta)
     seededRef.current = true
     const importedTokens = preview.editor.rawText.trim().split(/\s+/).filter(Boolean)
     if (matched.star) {
@@ -2490,7 +2551,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // NAVLOG 순항 구간이 빈다. 들고 있으면 그걸 쓰고, 없을 때만 계산한다.
     const routeModel = routeResult?.routeModel ?? buildCommonRouteModel({ routeGeometry, routeResult })
     const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
-    const briefingEta = routeForm.flightRule === 'IFR' ? eta : (eta || computeEtaIso(etdIso, plannedDistanceNm, tasKt) || etdIso)
+    const briefingEta = routeForm.flightRule === 'IFR' ? eta : ((etaUserEdited && eta) || computeEtaIso(etdIso, plannedDistanceNm, tasKt) || etdIso)
     if (!briefingEta || !Number.isFinite(Date.parse(briefingEta))) { setBriefingError('예상 ETA를 입력하세요.'); return }
     setBriefingLoading(true); setBriefingError(null)
     try {
@@ -2654,6 +2715,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setEtd,
       setTasKt: updateTasKt,
       setEta,
+      clearEtaOverride,
       setRouteDraftText: updateRouteDraftText,
       setRouteTokenTexts,
       applyRouteDraft,

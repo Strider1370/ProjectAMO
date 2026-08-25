@@ -19,13 +19,23 @@ import { airports as AIRPORT_LIST, overseasAirports as OVERSEAS_AIRPORTS } from 
 // VHHH 같은 곳일 때 좌표를 못 찾아 태풍·공항 판정이 "확인 불가"로만 나온다.
 const AIRPORT_BY_ICAO = new Map([...AIRPORT_LIST, ...OVERSEAS_AIRPORTS].map((a) => [a.icao, a]))
 
+// VFR 국지비행처럼 출발·도착이 같은 공항일 수 있다. 같은 ICAO는 한 항목으로 합치고
+// roles에 모든 역할을 담는다 — 안 합치면 실황·NOTAM·공항경보가 전부 두 번씩 나온다.
 function airportRoles(request) {
   const roles = [
     { role: 'departure', icao: request.departureAirport },
     { role: 'arrival', icao: request.arrivalAirport },
   ]
   if (request.alternateAirport) roles.push({ role: 'alternate', icao: request.alternateAirport })
-  return roles
+
+  const byIcao = new Map()
+  for (const entry of roles) {
+    if (!entry.icao) continue
+    const seen = byIcao.get(entry.icao)
+    if (seen) seen.roles.push(entry.role)
+    else byIcao.set(entry.icao, { role: entry.role, icao: entry.icao, roles: [entry.role] })
+  }
+  return [...byIcao.values()]
 }
 
 const ROLE_LABEL = { departure: '출발', arrival: '도착', alternate: '교체' }
@@ -143,8 +153,9 @@ export function composeBriefing(request, data) {
 
   const amosByIcao = data?.amos?.airports ?? {}
   const takeoffByIcao = data?.takeoff_fcst?.airports ?? {}
-  const airports = airportRoles(request).map(({ role, icao }) => ({
+  const airports = airportRoles(request).map(({ role, roles, icao }) => ({
     ...summarizeAirport(role, metarByIcao[icao] ?? { header: { icao } }),
+    roles, // 출발·도착이 같은 공항이면 ['departure','arrival'] — 배지를 '출발/도착'으로 합친다
     amos: amosByIcao[icao] ?? null, // ② 도착 행 확장(AMOS 지상실황) — 프론트에서 buildAmosConsoleModel 재사용
     takeoffFcst: takeoffByIcao[icao] ?? null, // ② 출발 행 확장(이륙예보 매시 wd/ws/ta/qnh)
   }))

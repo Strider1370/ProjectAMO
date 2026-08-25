@@ -1107,6 +1107,16 @@ app.post('/api/route-briefing', (req, res) => {
   if (!body.etd || !body.eta) {
     return res.status(400).json({ error: 'etd and eta are required' })
   }
+  // 뒤집힌 비행시간창은 timeWindowsOverlap을 엉뚱하게 좁혀 NOTAM·SIGMET을 조용히 걸러낸다.
+  // 위험 정보가 말없이 사라지느니 거절하는 편이 안전하다.
+  const etdMs = Date.parse(body.etd)
+  const etaMs = Date.parse(body.eta)
+  if (!Number.isFinite(etdMs) || !Number.isFinite(etaMs)) {
+    return res.status(400).json({ error: 'etd and eta must be valid ISO timestamps' })
+  }
+  if (etaMs <= etdMs) {
+    return res.status(400).json({ error: 'eta must be later than etd' })
+  }
   try {
     const data = {
       metar: store.getCached('metar'),

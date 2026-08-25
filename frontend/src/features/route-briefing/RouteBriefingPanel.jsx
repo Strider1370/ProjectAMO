@@ -25,7 +25,8 @@ import RouteAlternativesStep from './RouteAlternativesStep.jsx'
 import RouteTokenField from './RouteTokenField.jsx'
 import AltitudeWeatherComparison from './AltitudeWeatherComparison.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
-import { computeEtaIso } from './lib/etaCalc.js'
+import { computeEtaIso, formatFlightDuration } from './lib/etaCalc.js'
+import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
 import { briefingTimeFields, buildBriefingTimeIso, formatBriefingTime } from './lib/briefingTime.js'
 import { buildSavedGeometry } from './lib/routeSaveGeometry.js'
 import { loadNavdata } from './lib/routePlanner.js'
@@ -66,7 +67,6 @@ const useStyles = makeStyles({
   performance: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, alignItems: 'start' },
   etaReadout: { gridColumn: '1 / -1' },
   etaReset: { alignSelf: 'end' },
-  detailToggleRow: { display: 'flex', justifyContent: 'flex-end' },
   // DatePicker/TimePicker 내부 Combobox 기본 min-width(250px)를 눌러 좁은 패널에서 한 줄에 맞춤
   picker: {
     width: '100%', minWidth: 0,
@@ -231,6 +231,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     setAlternateAirport,
     setEtd,
     setEta,
+    clearEtaOverride,
     setTasKt,
     setRouteDraftText,
     setRouteTokenTexts,
@@ -306,6 +307,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
     <>
       <RouteTokenField
         label={isIfr ? '경로' : '경로 (공항 · FIX · DCT · 좌표)'}
+        hint={isIfr ? null : '지도에서 선을 끌어 지점을 넣으면 경로에 반영됩니다.'}
         placeholder={isIfr ? '예: RKSI BINIL A582 ANDOL RKPC' : '예: RKSI DCT ANDOL DCT RKPC'}
         tokens={routeTokens}
         onChange={setRouteTokenTexts}
@@ -507,30 +509,126 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const selectedAltitudeRow = altitudeComparison?.rows?.find((row) => Number(row.altFt ?? row.altitudeFt) === Number(cruiseAltitudeFt))
   const selectedHazards = selectedAltitudeRow?.hazards ?? []
   const procedureSummary = [selectedSid?.label, selectedStar?.label, selectedIap?.label].filter(Boolean).join(' · ')
+  // 세부경로: routeResult에 legs 키는 없다. 수동 편집 경로는 manualLegs(DCT 포함 전 구간),
+  // 자동 계획 경로는 navpointIds + segments(항공로 구간)로 들고 있다. 지점 사슬은
+  // displaySequence가 이미 ICAO 표기 순서(FIX·항공로 교대)로 만들어 둔 것을 그대로 쓴다.
+  const detailSequence = routeResult?.displaySequence ?? []
+  const airwayNames = new Set([...(routeResult?.routeIds ?? []), 'DCT'])
+  const detailFixCount = detailSequence.filter((token) => !airwayNames.has(token)).length
+  const detailLegs = routeResult?.manualLegs?.length
+    ? routeResult.manualLegs
+    : (routeResult?.navpointIds ?? []).slice(0, -1).map((fromFix, index) => ({
+        id: `leg-${index}`,
+        fromFix,
+        toFix: routeResult.navpointIds[index + 1],
+        routeId: routeResult.segments?.[index]?.routeId ?? null,
+        distanceNm: routeResult.segments?.[index]?.distanceNm,
+      }))
+  // 한 구간이라도 거리를 모르면 누적은 뜻이 없어진다 — 그때는 누적 칸을 통째로 감춘다.
+  const detailHasDistance = detailLegs.length > 0 && detailLegs.every((leg) => Number.isFinite(Number(leg.distanceNm)))
+  const detailRows = detailLegs.reduce((rows, leg) => {
+    const distanceNm = Number(leg.distanceNm)
+    const cumulativeNm = (rows.at(-1)?.cumulativeNm ?? 0) + (Number.isFinite(distanceNm) ? distanceNm : 0)
+    rows.push({ key: leg.id, from: leg.fromFix, to: leg.toFix, distanceNm, via: leg.routeId || 'DCT', cumulativeNm })
+    return rows
+  }, [])
+  const flightDuration = formatFlightDuration(derived.plannedDistanceNm, tasKt)
+  const etdFields = briefingTimeFields(etd, tz)
   const briefingPreparation = (
     <section className="rb-briefing-preparation" aria-label="브리핑 준비 요약">
       <h3>브리핑 준비</h3>
-      <div className="rb-briefing-preparation-grid">
-        <div><span>비행</span><strong>{`${routeForm.departureAirport} → ${routeForm.arrivalAirport}`}</strong><small>{`ETD ${formatBriefingTime(etd, tz)} · ETA ${etaIso ? formatBriefingTime(etaIso, tz) : '—'} · TAS ${tasKt} kt`}</small></div>
-        <div><span>선택 경로</span><strong>{selectedRouteDesign?.name ?? '기본 경로'}</strong><small>{`${Math.round(derived.plannedDistanceNm)} NM${procedureSummary ? ` · ${procedureSummary}` : ''}`}</small></div>
-        <div><span>선택 고도</span><strong>{Number(cruiseAltitudeFt) >= 18000 ? `FL${Math.round(Number(cruiseAltitudeFt) / 100)}` : `${Math.round(Number(cruiseAltitudeFt))} ft`}</strong><small>{selectedAltitudeRow?.wind?.meanComponentKt != null ? `평균 ${windLabel(selectedAltitudeRow.wind.meanComponentKt)}` : '고도 기상 비교 자료 없음'}</small></div>
-        <div><span>교체공항</span><strong>{alternateAirport || '선택 안 함'}</strong><small>{selectedHazards.length ? `주의 기상 ${selectedHazards.map((hazard) => phenomenonLabelKo(hazard.label)).join(' · ')}` : '선택 고도에서 추가 위험기상 없음'}</small></div>
+
+      <div className="rb-prep-hero">
+        <span className="rb-prep-route">
+          {routeForm.departureAirport || '—'}<span className="rb-prep-arrow" aria-label="에서"> → </span>{routeForm.arrivalAirport || '—'}
+        </span>
+        {(AIRPORT_NAME_KO[routeForm.departureAirport] || AIRPORT_NAME_KO[routeForm.arrivalAirport]) && (
+          <span className="rb-prep-names">
+            {(AIRPORT_NAME_KO[routeForm.departureAirport] ?? routeForm.departureAirport ?? '—').replace('국제공항', '').replace('공항', '')}
+            {' → '}
+            {(AIRPORT_NAME_KO[routeForm.arrivalAirport] ?? routeForm.arrivalAirport ?? '—').replace('국제공항', '').replace('공항', '')}
+          </span>
+        )}
       </div>
-      {routeResult && isIfr && (
-        <div className="route-check-result">
-          <div className={s.summary}>
-            <span style={{ color: tokens.colorNeutralForeground3 }}>경로 결과 · 거리 {Math.round(derived.plannedDistanceNm)} NM</span>
-            <Button appearance="subtle" size="small" type="button" aria-expanded={showDetailRoute} onClick={() => setShowDetailRoute((v) => !v)}>
-              {'세부경로'} {showDetailRoute ? '▴' : '▾'}
-            </Button>
-          </div>
-          <div className={s.detailToggleRow}>
-            <span style={{ fontWeight: tokens.fontWeightSemibold }}>ETD {formatBriefingTime(etd, tz)} → ETA {etaIso ? formatBriefingTime(etaIso, tz) : '—'}</span>
-          </div>
-          {/* 적용된 경로를 색깔 글자 줄로 보여주던 자리. 입력칸이 같은 정보를 알약으로
-              이미 보여주므로 없앴다 — 같은 것을 두 번 보여줄 이유가 없다(스펙 결정 3). */}
+
+      <div className="rb-prep-stats">
+        <div>
+          <span className="k">{`출발 ${tz}`}</span>
+          <span className="v">{formatBriefingTime(etd, tz).replace(` ${tz}`, '').replace('Z', '')}</span>
+          <span className="s">{`${etdFields.month}월 ${etdFields.day}일`}</span>
+        </div>
+        <div>
+          <span className="k">{`도착 ${tz}`}</span>
+          <span className="v">{etaIso ? formatBriefingTime(etaIso, tz).replace(` ${tz}`, '').replace('Z', '') : '—'}</span>
+          <span className="s">{flightDuration ? `비행 ${flightDuration}` : '비행시간 계산 불가'}</span>
+        </div>
+        <div>
+          <span className="k">거리</span>
+          <span className="v">{Number.isFinite(derived.plannedDistanceNm) ? Math.round(derived.plannedDistanceNm) : '—'}<span className="unit">NM</span></span>
+          <span className="s">{`TAS ${tasKt} kt`}</span>
+        </div>
+        <div>
+          <span className="k">순항고도</span>
+          <span className="v">{Number(cruiseAltitudeFt) >= 18000 ? `FL${Math.round(Number(cruiseAltitudeFt) / 100)}` : `${Math.round(Number(cruiseAltitudeFt))} ft`}</span>
+          <span className="s">{selectedAltitudeRow?.wind?.meanComponentKt != null ? `평균 ${windLabel(selectedAltitudeRow.wind.meanComponentKt)}` : '고도 기상 비교 자료 없음'}</span>
+        </div>
+      </div>
+
+      <div className="rb-prep-rows">
+        <div className="rb-prep-row">
+          <span className="k">경로</span>
+          <span>
+            <span className="v">{selectedRouteDesign?.name ?? '기본 경로'}</span>
+            {procedureSummary && <span className="s">{procedureSummary}</span>}
+          </span>
+        </div>
+        <div className="rb-prep-row">
+          <span className="k">교체공항</span>
+          <span>
+            <span className="v">{alternateAirport || '선택 안 함'}</span>
+            <span className="s">{selectedHazards.length ? `주의 기상 ${selectedHazards.map((hazard) => phenomenonLabelKo(hazard.label)).join(' · ')}` : '선택 고도에서 추가 위험기상 없음'}</span>
+          </span>
+        </div>
+      </div>
+
+      {detailRows.length > 0 && (
+        <div className="rb-prep-detail">
+          <button type="button" className="rb-prep-detail-btn" aria-expanded={showDetailRoute} onClick={() => setShowDetailRoute((open) => !open)}>
+            <span>{`세부경로 ${detailFixCount}개 지점`}</span>
+            <span className="caret">{showDetailRoute ? '접기 ▴' : '펼치기 ▾'}</span>
+          </button>
+          {showDetailRoute && (
+            <div className="rb-prep-detail-body">
+              <div className="rb-prep-chain">
+                {detailSequence.map((token, index) => (
+                  <span key={`${token}-${index}`}>
+                    {index > 0 && <span className="sep" aria-hidden="true">›</span>}
+                    <span className={`fix${index === 0 || index === detailSequence.length - 1 ? ' port' : airwayNames.has(token) ? ' via' : ''}`}>{token}</span>
+                  </span>
+                ))}
+              </div>
+              <div className="rb-prep-legs-scroll">
+                <table className="rb-prep-legs">
+                  <thead>
+                    <tr><th>구간</th><th>항로</th><th>거리</th>{detailHasDistance && <th>누적</th>}</tr>
+                  </thead>
+                  <tbody>
+                    {detailRows.map((row) => (
+                      <tr key={row.key}>
+                        <td>{`${row.from} → ${row.to}`}</td>
+                        <td>{row.via}</td>
+                        <td>{Number.isFinite(row.distanceNm) ? `${row.distanceNm.toFixed(1)} NM` : '자료 없음'}</td>
+                        {detailHasDistance && <td>{`${row.cumulativeNm.toFixed(1)} NM`}</td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
       {routeResult && !isIfr && summaryStrip}
     </section>
   )
@@ -543,9 +641,12 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   const etaWall = briefingTimeFields(etaIso, tz)
   const setEtaWall = (y, mo, d, h, mi) => setEta(buildBriefingTimeIso({ year: y, month: mo + 1, day: d, hour: h, minute: mi }, tz))
   const resetAutomaticEta = () => {
-    if (autoEta) setEta(autoEta)
+    clearEtaOverride() // 고정을 풀어야 이후 ETD·TAS 변경을 다시 따라간다
     setEtaEditing(false)
   }
+  // 도착이 출발보다 빠르면 뒤집힌 시간창이 서버로 넘어가 NOTAM·SIGMET이 조용히 걸러진다.
+  const etaBeforeEtd = Number.isFinite(Date.parse(etd)) && Number.isFinite(Date.parse(etaIso))
+    && Date.parse(etaIso) <= Date.parse(etd)
   // ETD·TAS·ETA 입력. 고도는 고도 비교 단계에서만 선택한다.
   const perfFields = (
     <div className={s.performance}>
@@ -581,6 +682,11 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         <SpinButton className={s.ctrl} value={Number(tasKt) || 0} min={60} max={600} step={5}
           onChange={(_, d) => { const v = d.value ?? Number(d.displayValue); if (Number.isFinite(v)) setTasKt(v) }} />
       </Field>
+      {etaBeforeEtd && (
+        <div className={s.etaReset}>
+          <MessageBar intent="error"><MessageBarBody>도착예정시각이 출발시각보다 빠르거나 같습니다 — 고쳐야 브리핑을 만들 수 있습니다.</MessageBarBody></MessageBar>
+        </div>
+      )}
       {etaEditing && (
         <div className={s.etaReset}>
           <Button appearance="subtle" size="medium" type="button" onClick={resetAutomaticEta} style={{ minHeight: 'var(--touch-min)' }}>자동 계산으로 되돌리기</Button>
@@ -608,12 +714,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
   // 지도 레이어 토글칩 — VFR 경로 구성 시 웨이포인트/항행시설/항공로를 지도에서 보며 작업.
   // NAVAID+WAYPOINT, RNAV+ATS 항공로는 각각 한 버튼으로 묶여 있다(buildRouteAviationLayerChips).
   const aviationLayerChips = buildRouteAviationLayerChips(aviationVisibility, onToggleAviation)
-  const vfrRouteBuilder = isVfrResult && (
-    <>
-      <p className="rb-vfr-note">지도에서 선을 끌어 지점을 넣으면 경로에 반영됩니다. 그린 선은 확인을 받은 뒤 반영됩니다.</p>
-    </>
-  )
-
   // Briefing inputs (교체공항 / ETD / 순항속도) + 브리핑 생성 trigger. Shared
   // between desktop and mobile. 교체공항 options mirror the 출발/도착 airport
   // source (KNOWN_AIRPORTS) plus a 없음 entry.
@@ -666,14 +766,6 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
           options={[{ value: '', label: '-- 없음 --' }, ...KNOWN_AIRPORTS.filter((ap) => ap !== routeForm.departureAirport && ap !== routeForm.arrivalAirport).map((ap) => ({ value: ap, label: ap }))]} />
       </Field>
       {perfFields}
-    </div>
-  )
-
-  // VFR 전용: ② 경로 다음에 오는 경유점 구성(추가 + 계획고도).
-  const vfrWaypointSection = isVfrResult && (
-    <div className={s.section}>
-      <h3 className={s.sectionTitle}>{'③ 경유점'}</h3>
-      <div className="route-check-result">{vfrRouteBuilder}</div>
     </div>
   )
 
@@ -752,7 +844,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
         {importFeedback}
         {errorBlock}
 
-        {!isIfr && <>{vfrWaypointSection}{briefingCondSection}</>}
+        {!isIfr && briefingCondSection}
 
         {briefingError && <MessageBar intent="error"><MessageBarBody>{briefingError}</MessageBarBody></MessageBar>}
       </form>}

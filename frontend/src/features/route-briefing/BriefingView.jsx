@@ -46,7 +46,9 @@ function hazardIcon(code) {
   return AlertTriangle
 }
 
-const roleLabel = (r) => (r === 'departure' ? '출발' : r === 'arrival' ? '도착' : '교체')
+const ROLE_KO = { departure: '출발', arrival: '도착' }
+// 출발·도착이 같은 공항이면 역할이 여럿이다 — '출발/도착' 한 배지로 낸다.
+const roleLabel = (r) => (Array.isArray(r) ? r : [r]).map((one) => ROLE_KO[one] ?? '교체').join('/')
 
 // 카테고리 배지 — 라벨은 3단계 fold, 색은 심각도(level). MVFR="VFR"(green), IFR=amber, LIFR=red.
 function CatBadge({ category }) {
@@ -312,7 +314,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
           {airports.map((a) => (
             <article className="bv-current-tac-card" key={a.role}>
               <div className="bv-current-tac-head">
-                <span><Badge appearance="tint" color="informative">{roleLabel(a.role)}</Badge> <b>{a.icao} {a.reportType === 'SPECI' ? 'SPECI' : 'METAR'}</b></span>
+                <span><Badge appearance="tint" color="informative">{roleLabel(a.roles ?? a.role)}</Badge> <b>{a.icao} {a.reportType === 'SPECI' ? 'SPECI' : 'METAR'}</b></span>
                 <span className="bv-current-tac-meta">{a.observationTime && <Caption1 style={{ color: 'var(--text-3)' }}>{formatBriefingTime(a.observationTime, tz)}</Caption1>}<CatBadge category={a.category} /></span>
               </div>
               <code className="bv-current-tac-raw">{metarTacSegments(a).map((segment, i) => <span key={i} className={segment.className}>{segment.text}</span>)}</code>
@@ -339,7 +341,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
                   <tr className="bv-cur-row" onClick={() => toggleRole(a.role)}>
                     <td>
                       <div className="bv-cur-airport">
-                        <span className="bv-cur-role"><Badge appearance="tint" color="informative">{roleLabel(a.role)}</Badge> <b>{a.icao}</b></span>
+                        <span className="bv-cur-role"><Badge appearance="tint" color="informative">{roleLabel(a.roles ?? a.role)}</Badge> <b>{a.icao}</b></span>
                         {a.observationTime && (
                           <Caption1 style={{ color: 'var(--text-3)' }}>
                             {formatBriefingTime(a.observationTime, tz)}
@@ -376,7 +378,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
         {activeAirportObj && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 4px' }}>
-              <Body1><b>{activeAirportObj.icao}</b> <Caption1 style={{ color: 'var(--text-3)' }}>{roleLabel(activeAirportObj.role)}</Caption1></Body1>
+              <Body1><b>{activeAirportObj.icao}</b> <Caption1 style={{ color: 'var(--text-3)' }}>{roleLabel(activeAirportObj.roles ?? activeAirportObj.role)}</Caption1></Body1>
               <CatBadge category={activeAirportObj.category} />
             </div>
             <Table size="small" style={{ width: '100%' }}>
@@ -518,7 +520,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
   const notamAirportGroups = ['departure', 'arrival', 'alternate']
     .map((role) => {
       const items = routeNotams.filter((n) => n.airportRole === role)
-      return items.length ? { role, icao: items[0].airportIcao, items } : null
+      return items.length ? { role, roles: items[0].airportRoles ?? [role], icao: items[0].airportIcao, items } : null
     })
     .filter(Boolean)
   const notamRouteGroup = routeNotams.filter((n) => n.onRoute && !n.airportRole) // 어느 공항에도 안 속한 순수 경로 통과
@@ -566,7 +568,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
           const initialItems = criticalItems.length > 0 ? criticalItems : g.items
           return (
             <div key={g.role} className="bv-airport-notam">
-              <div className="bv-notam-grouphead">{roleLabel(g.role)} 공항 {g.icao} <span className="dim">{criticalItems.length > 0 ? '필수 확인 ' + criticalItems.length : g.items.length}</span></div>
+              <div className="bv-notam-grouphead">{roleLabel(g.roles ?? g.role)} 공항 {g.icao} <span className="dim">{criticalItems.length > 0 ? '필수 확인 ' + criticalItems.length : g.items.length}</span></div>
               <div className="notam-cellgrid">{initialItems.map((n) => notamCell(n, true))}</div>
               {open && otherItems.length > 0 && <><div className="bv-notam-grouphead">기타 직접 해당 <span className="dim">{otherItems.length}</span></div><div className="notam-cellgrid">{otherItems.map((n) => notamCell(n, true))}</div></>}
               {criticalItems.length > 0 && otherItems.length > 0 && (

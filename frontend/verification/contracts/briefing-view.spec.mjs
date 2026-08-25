@@ -97,9 +97,11 @@ test.describe('briefing-view', () => {
     const firstLegRow = page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true })
     await expect(firstLegRow.getByRole('cell').first()).toHaveAttribute('rowspan', '2')
     await expect(page.getByRole('row', { name: '웨이포인트 FIXA', exact: true }).locator('.bv-leg-connector')).toHaveCount(0)
-    await expect(firstLegRow.locator('.bv-leg-direction')).toBeVisible()
-    await expect(firstLegRow.locator('.bv-leg-direction')).toHaveCSS('border-left-style', 'solid')
-    await expect(page.getByText(/NOTAM 판정 불가/)).toBeVisible()
+    await expect(firstLegRow.locator('.bv-leg-direction')).toHaveCount(0)
+    // 한 칸에 쌓인 두 값은 가로선으로 갈라 둔다.
+    await expect(firstLegRow.locator('.bv-leg-stack > * + *').first()).toHaveCSS('border-top-style', 'solid')
+    // 위험기상 칸은 기상만 싣는다 — NOTAM은 ⑤ 경로·공항 NOTAM 섹션 몫이다.
+    await expect(page.locator('.bv-main-navlog-table [data-label="위험기상"]').filter({ hasText: /NOTAM/ })).toHaveCount(0)
     await expect(page.getByText('ETA 또는 연료 계산은 포함하지 않습니다.', { exact: true })).toBeVisible()
     // 표/카드 전환은 뷰포트가 아니라 패널 컨테이너 폭(@container briefing)이 정한다.
     // 데스크톱에서도 패널이 좁으면 카드로 떨어지므로 프로젝트 이름으로 분기하지 않는다.
@@ -122,7 +124,8 @@ test.describe('briefing-view', () => {
     const profile = page.getByRole('region', { name: '연직단면도', exact: true })
     const firstLeg = page.getByRole('row', { name: 'FIXA에서 FIXB까지 구간', exact: true })
 
-    await expect(firstLeg.getByRole('cell', { name: '풍향/풍속 자료 없음', exact: true })).toBeVisible()
+    // 바람 칸은 성분과 실제 풍향·풍속을 두 줄로 함께 싣는다 — 예보시간 전에는 벡터가 비어 있다.
+    await expect(firstLeg.locator('[data-label="바람성분 · 풍향/풍속"]')).toContainText('자료 없음')
     await profile.getByRole('button', { name: '다음 예보시간', exact: true }).click()
 
     await expect(profile.getByRole('button', { name: '다음 예보시간', exact: true })).toBeDisabled()

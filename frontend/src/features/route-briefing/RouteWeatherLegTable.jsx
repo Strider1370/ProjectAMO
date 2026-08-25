@@ -58,6 +58,7 @@ function turbulenceChip(summary) {
   return { key: 'turb', label: `난류 ${TURB_KO[summary.peakLevel] ?? summary.peakLevel}`, note: `${totalNm(summary.exposures)}NM`, level }
 }
 
+// 위험기상 칸은 기상만 싣는다. NOTAM은 ⑤ 경로·공항 NOTAM 섹션이 담당한다.
 function hazardChips(leg) {
   const chips = [icingChip(leg.icing), turbulenceChip(leg.turbulence)].filter(Boolean)
   for (const [i, hazard] of (leg.hazards ?? []).entries()) {
@@ -67,15 +68,6 @@ function hazardChips(leg) {
       label: phenomenonKo(hazard.code) || hazard.label || hazard.code,
       note: unknown ? '고도 판정 불가' : `${Math.round(hazard.routeDistanceNm * 10) / 10}NM`,
       level: unknown ? 'gray' : 'red',
-    })
-  }
-  for (const [i, notam] of (leg.notams ?? []).entries()) {
-    chips.push({
-      key: `n${i}`,
-      label: notam.summary ?? notam.id,
-      // warn = 실제 경로 저촉만. 정보성(info)·판정 불가는 회색으로 둔다.
-      note: notam.effect === 'undetermined' ? 'NOTAM 판정 불가' : 'NOTAM',
-      level: notam.effect === 'warn' ? 'red' : 'gray',
     })
   }
   return chips
@@ -105,16 +97,28 @@ function procedureHazardChips(procedure) {
   return [...summaryChips, ...otherChips]
 }
 
+// 구간 데이터 셀은 웨이포인트 행과 엇갈려 두 줄 높이를 이미 차지한다.
+// 짝이 되는 값을 한 칸에 위아래로 쌓아도 표는 더 길어지지 않고, 아낀 가로폭은 위험기상이 가져간다.
 function LegDataCells({ leg, chips }) {
   return <>
-    <TableCell rowSpan={2} data-label="거리">
-      <span className="bv-leg-distance"><i className="bv-leg-direction" aria-hidden="true" />{leg.distanceNm == null ? noData : `${leg.distanceNm} NM`}</span>
+    <TableCell rowSpan={2} data-label="거리 · Bearing">
+      <div className="bv-leg-stack">
+        <span className="bv-leg-distance">{leg.distanceNm == null ? noData : `${leg.distanceNm} NM`}</span>
+        <span>{leg.courseTrueDeg == null ? noData : `${leg.courseTrueDeg}°T`}</span>
+      </div>
     </TableCell>
-    <TableCell rowSpan={2} data-label="Bearing">{leg.courseTrueDeg == null ? noData : `${leg.courseTrueDeg}°T`}</TableCell>
-    <TableCell rowSpan={2} data-label="바람성분" className={leg.wind?.meanComponentKt < 0 ? 'bv-leg-headwind' : 'bv-leg-tailwind'}>{formatWind(leg.wind)}</TableCell>
-    <TableCell rowSpan={2} data-label="풍향/풍속">{formatWindVector(leg.wind)}</TableCell>
-    <TableCell rowSpan={2} data-label="기온">{formatTemp(leg.temp)}</TableCell>
-    <TableCell rowSpan={2} data-label="ISA">{formatIsa(leg.temp)}</TableCell>
+    <TableCell rowSpan={2} data-label="바람성분 · 풍향/풍속">
+      <div className="bv-leg-stack">
+        <span className={leg.wind?.meanComponentKt < 0 ? 'bv-leg-headwind' : 'bv-leg-tailwind'}>{formatWind(leg.wind)}</span>
+        <span>{formatWindVector(leg.wind)}</span>
+      </div>
+    </TableCell>
+    <TableCell rowSpan={2} data-label="기온 · ISA">
+      <div className="bv-leg-stack">
+        <span>{formatTemp(leg.temp)}</span>
+        <span>{formatIsa(leg.temp)}</span>
+      </div>
+    </TableCell>
     <TableCell rowSpan={2} data-label="위험기상">
       {chips.length === 0
         ? <span className="bv-leg-none" aria-label="위험기상 없음">—</span>
@@ -150,9 +154,11 @@ export default function RouteWeatherLegTable({ legs, procedures = [], selectedAl
       <div className="bv-leg-scroll">
         <Table size="small" className="bv-leg-table bv-main-navlog-table">
           <TableHeader><TableRow>
-            <TableHeaderCell>웨이포인트</TableHeaderCell><TableHeaderCell>거리</TableHeaderCell><TableHeaderCell>Bearing</TableHeaderCell>
-            <TableHeaderCell>바람성분</TableHeaderCell><TableHeaderCell>풍향/풍속</TableHeaderCell>
-            <TableHeaderCell>기온</TableHeaderCell><TableHeaderCell>ISA</TableHeaderCell><TableHeaderCell>위험기상</TableHeaderCell>
+            <TableHeaderCell>웨이포인트</TableHeaderCell>
+            <TableHeaderCell><span className="bv-leg-stack"><span>거리</span><span>Bearing</span></span></TableHeaderCell>
+            <TableHeaderCell><span className="bv-leg-stack"><span>바람성분</span><span>풍향/풍속</span></span></TableHeaderCell>
+            <TableHeaderCell><span className="bv-leg-stack"><span>기온</span><span>ISA</span></span></TableHeaderCell>
+            <TableHeaderCell>위험기상</TableHeaderCell>
           </TableRow></TableHeader>
           <TableBody>{navlogRows.map((row, rowIndex) => {
             if (row.kind === 'waypoint') {
@@ -187,7 +193,7 @@ export default function RouteWeatherLegTable({ legs, procedures = [], selectedAl
                     <b>{displayName}</b>
                   </TableCell>
                   <TableCell data-label="거리">{procedure.distanceNm == null ? noData : `${procedure.distanceNm} NM`}</TableCell>
-                  {Array.from({ length: 5 }, (_, index) => <TableCell key={index} className="bv-procedure-empty" aria-hidden="true" />)}
+                  {Array.from({ length: 2 }, (_, index) => <TableCell key={index} className="bv-procedure-empty" aria-hidden="true" />)}
                   <TableCell data-label="위험기상">
                     {chips.length === 0
                       ? <span className="bv-leg-none" aria-label="위험기상 없음">—</span>
@@ -203,9 +209,6 @@ export default function RouteWeatherLegTable({ legs, procedures = [], selectedAl
 
             const { leg, index } = row
             const chips = hazardChips(leg)
-            if (!constraintUnavailable && leg.altitudeConstraint?.status !== 'matched' && leg.altitudeConstraint?.applicability !== 'not_applicable') {
-              chips.push({ key: 'aip', label: 'AIP 고도 제약', note: '확인 불가', level: 'gray' })
-            }
             const interactiveProps = {
               onMouseEnter: () => { if (!pinnedLegKey) highlight(leg, index, false) },
               onMouseLeave: () => { if (!pinnedLegKey) highlight(null) },

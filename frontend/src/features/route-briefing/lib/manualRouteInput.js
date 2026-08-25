@@ -110,10 +110,12 @@ export function formatVfrDraftText({ departureAirport, arrivalAirport, enroute =
   const departure = normalize(departureAirport)
   const arrival = normalize(arrivalAirport)
   if (!departure || !arrival) return ''
+  // VFR은 정의상 모든 구간이 DCT다. 'auto'나 항공로 intent가 섞여 들어오면
+  // formatManualRouteString이 DCT를 안 찍어 "RKSS WP1 DCT RKPC"처럼 붙어버리고,
+  // 그 문자열은 parseVfrDraftText가 거절한다. 여기서 한 번에 DCT로 맞춘다.
   const middle = formatManualRouteString({
     terms: enroute.terms ?? [],
-    connectors: enroute.connectors,
-    legIntents: enroute.legIntents ?? Array.from({ length: Math.max(0, (enroute.terms?.length ?? 0) - 1) }, () => ({ kind: 'dct' })),
+    legIntents: Array.from({ length: Math.max(0, (enroute.terms?.length ?? 0) - 1) }, () => ({ kind: 'dct' })),
     userWaypoints: enroute.userWaypoints ?? [],
   })
   return [departure, middle, arrival].filter(Boolean).join(' DCT ')

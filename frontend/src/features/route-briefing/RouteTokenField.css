@@ -1,5 +1,9 @@
 .rtf { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.rtf-labelrow { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-s); }
 .rtf-label { color: var(--text-2); }
+/* VFR 경유점 안내처럼 라벨 줄 오른쪽 끝에 붙는 보조 문구. 좁아지면 아래로 내려간다. */
+.rtf-hint { color: var(--text-3); font-size: var(--fs-200); font-weight: var(--fw-regular); text-align: right; }
+@media (max-width: 560px) { .rtf-labelrow { flex-wrap: wrap; } .rtf-hint { text-align: left; } }
 
 /* 긴 경로는 접혀서 전부 보여야 한다. 가로 스크롤로 숨으면 무엇을 쳤는지 한눈에 안 보인다. */
 .rtf-box {

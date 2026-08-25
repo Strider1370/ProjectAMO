@@ -1879,38 +1879,117 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   background: var(--bg-2);
 }
 
+/* 브리핑 생성 직전 마지막 확인 화면. 확인해야 할 값은 크게, 설명은 그 아래 한 단계 작게.
+   값 14px·설명 12px로 거의 같던 예전 크기는 무엇이 중요한지 구분되지 않았다. */
+.rb-briefing-preparation { display: flex; flex-direction: column; gap: var(--space-l); }
+
 .rb-briefing-preparation h3 {
-  margin: 0 0 12px;
+  margin: 0;
   color: var(--text-1);
-  font-size: 15px;
+  font-size: var(--fs-400);
+  font-weight: var(--fw-bold);
 }
 
-.rb-briefing-preparation-grid {
+.rb-prep-hero { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-xs) var(--space-l); }
+.rb-prep-route {
+  color: var(--text-1);
+  font-size: 34px;
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.rb-prep-arrow { color: var(--text-3); font-weight: var(--fw-regular); }
+.rb-prep-names { color: var(--text-2); font-size: var(--fs-400); }
+
+/* 브리핑 전에 반드시 맞는지 봐야 하는 네 값 — 출발·도착·거리·고도. */
+.rb-prep-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-xl);
+  background: var(--bg-1);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
 }
-
-.rb-briefing-preparation-grid > div {
+.rb-prep-stats > div {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 3px;
+  padding: var(--space-m) var(--space-l);
+  gap: 1px;
+  border-right: 1px solid var(--stroke-2);
 }
-
-.rb-briefing-preparation-grid span,
-.rb-briefing-preparation-grid small {
-  color: var(--text-3);
-  font-size: 12px;
-}
-
-.rb-briefing-preparation-grid strong {
+.rb-prep-stats > div:last-child { border-right: 0; }
+.rb-prep-stats .k { color: var(--text-3); font-size: 13px; font-weight: var(--fw-semibold); }
+.rb-prep-stats .v {
   color: var(--text-1);
-  font-size: 14px;
+  font-size: 26px;
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
 }
+.rb-prep-stats .v .unit { margin-left: 2px; color: var(--text-2); font-size: var(--fs-300); font-weight: var(--fw-semibold); }
+.rb-prep-stats .s { color: var(--text-2); font-size: var(--fs-300); white-space: nowrap; }
+
+.rb-prep-rows { display: flex; flex-direction: column; gap: var(--space-m); }
+.rb-prep-row { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: var(--space-l); align-items: baseline; }
+.rb-prep-row .k { color: var(--text-3); font-size: var(--fs-300); font-weight: var(--fw-semibold); }
+.rb-prep-row .v { color: var(--text-1); font-size: 19px; font-weight: var(--fw-semibold); line-height: 1.4; }
+.rb-prep-row .s { display: block; margin-top: 2px; color: var(--text-2); font-size: 15px; line-height: 1.5; }
+
+/* 세부경로 — 예전에는 버튼만 남고 펼칠 내용이 없었다. */
+.rb-prep-detail-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-mnudge) var(--space-l);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-xl);
+  background: var(--bg-1);
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: var(--fs-400);
+  font-weight: var(--fw-semibold);
+  text-align: left;
+  cursor: pointer;
+}
+.rb-prep-detail-btn:hover { background: var(--bg-3); }
+.rb-prep-detail-btn[aria-expanded="true"] { border-color: var(--accent); border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+.rb-prep-detail-btn .caret { color: var(--text-3); font-size: var(--fs-300); font-weight: var(--fw-regular); }
+
+.rb-prep-detail-body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-l);
+  gap: var(--space-l);
+  border: 1px solid var(--stroke-1);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  background: var(--bg-2);
+}
+.rb-prep-chain { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-snudge) var(--space-xs); }
+.rb-prep-chain .fix { padding: var(--space-xs) var(--space-mnudge); border-radius: var(--radius-circular); background: var(--bg-4); font-size: 15px; font-weight: var(--fw-semibold); }
+.rb-prep-chain .fix.port { background: var(--accent); color: var(--bg-1); }
+.rb-prep-chain .fix.proc { background: var(--level-gray-bg); color: var(--level-gray); }
+.rb-prep-chain .sep { margin: 0 var(--space-xs); color: var(--text-3); font-size: 13px; }
+
+.rb-prep-legs-scroll { overflow-x: auto; }
+.rb-prep-legs { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+.rb-prep-legs th, .rb-prep-legs td { padding: var(--space-snudge) var(--space-mnudge); border-bottom: 1px solid var(--stroke-2); text-align: right; white-space: nowrap; }
+.rb-prep-legs th { color: var(--text-3); font-size: 13px; font-weight: var(--fw-semibold); }
+.rb-prep-legs th:first-child, .rb-prep-legs td:first-child { text-align: left; font-weight: var(--fw-semibold); }
+.rb-prep-legs tr:last-child td { border-bottom: 0; }
 
 @media (max-width: 560px) {
-  .rb-briefing-preparation-grid { grid-template-columns: 1fr; }
+  .rb-prep-route { font-size: 28px; }
+  .rb-prep-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rb-prep-stats > div:nth-child(2n) { border-right: 0; }
+  .rb-prep-stats > div:nth-child(-n+2) { border-bottom: 1px solid var(--stroke-2); }
+  .rb-prep-row { grid-template-columns: minmax(0, 1fr); gap: 1px; }
 }
 
 /* 「경로 적용」이 있던 자리. 왼쪽에 상태, 오른쪽에 요약. 누를 것이 없어진 자리에

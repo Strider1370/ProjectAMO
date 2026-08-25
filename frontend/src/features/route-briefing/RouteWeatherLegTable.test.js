@@ -11,13 +11,17 @@ test('renders the route weather leg table contract for desktop and mobile', () =
   assert.match(jsx, /buildNavlogRows/)
   assert.match(jsx, /data-testid="route-weather-waypoint"/)
   assert.doesNotMatch(jsx, /bv-leg-connector/)
-  assert.match(jsx, /bv-leg-direction/)
+  // 거리 앞 삼각형 표식은 뺐다 — 방위는 바로 아래 줄에 숫자로 있다.
+  assert.doesNotMatch(jsx, /bv-leg-direction/)
+  // 짝지은 두 값은 가로선으로 가른다.
+  assert.match(jsx, /bv-leg-stack/)
   // 웨이포인트 셀은 아래 화살표 영역과, 구간 데이터 셀은 다음 빈 영역과 세로 병합한다.
   assert.match(jsx, /rowSpan=\{waypointRowSpan\}/)
-  assert.match(jsx, /rowSpan=\{2\} data-label="거리"/)
-  // 성분과 실제 풍향·풍속을 따로, 기온과 ISA 편차도 따로 낸다(상용 EFB 관례).
-  assert.match(jsx, /data-label="풍향\/풍속"/)
-  assert.match(jsx, /data-label="ISA"/)
+  assert.match(jsx, /rowSpan=\{2\} data-label="거리 · Bearing"/)
+  // 짝지은 값은 한 칸에 두 줄로 — 값은 하나도 빼지 않되 열 수를 8에서 5로 줄인다.
+  assert.match(jsx, /data-label="바람성분 · 풍향\/풍속"/)
+  assert.match(jsx, /data-label="기온 · ISA"/)
+  assert.match(jsx, /bv-leg-stack/)
   assert.match(jsx, /data-label="위험기상"/)
   assert.match(jsx, /route-weather-leg-card/)
   assert.match(jsx, /ETA 또는 연료 계산은 포함하지 않습니다/)

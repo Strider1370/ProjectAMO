@@ -8,7 +8,7 @@ import './RouteTokenField.css'
 //
 // 이 부품은 경로를 모른다. 알약을 그리고 글자 목록의 변경을 알릴 뿐이다 — 판정도,
 // 지도도, 서버도 모른다.
-export default function RouteTokenField({ tokens = [], onChange, label, placeholder = '', disabled = false }) {
+export default function RouteTokenField({ tokens = [], onChange, label, placeholder = '', disabled = false, hint = null }) {
   const inputRef = useRef(null)
   const [draft, setDraft] = useState('')
   // 입력칸이 놓인 자리. tokens.length면 맨 끝이다.
@@ -118,7 +118,12 @@ export default function RouteTokenField({ tokens = [], onChange, label, placehol
 
   return (
     <label className="rtf">
-      {label && <span className="rtf-label">{label}</span>}
+      {(label || hint) && (
+        <span className="rtf-labelrow">
+          {label && <span className="rtf-label">{label}</span>}
+          {hint && <span className="rtf-hint">{hint}</span>}
+        </span>
+      )}
       <div className="rtf-box" onMouseDown={moveCaret(tokens.length)}>
         {tokens.slice(0, at).map(renderPill)}
         {/* 알약 사이에 커서가 있고 아직 아무것도 치지 않았을 때만 세로선을 보인다.
