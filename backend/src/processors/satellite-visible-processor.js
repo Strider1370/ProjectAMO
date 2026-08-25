@@ -15,10 +15,10 @@ import config from '../config.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 import { parseSatelliteNC } from '../parsers/satellite-parser.js'
 import { KO_DISPLAY_GRID, displayPixelToSourceIndex } from '../lib/satellite-ko-grid.js'
+import { buildFrameSpecs } from './satellite-processor.js'
 
 const CHANNEL = 'VI006'
 const REGION = 'KO'
-const MAX_FRAMES = 12
 
 // 12비트(0~4095) 반사도. 한낮 표본에서 중앙값이 288, 95%가 1836이었다 — 선형으로 펴면 화면이
 // 거의 검게 나온다. 제곱근에 가까운 감마로 어두운 쪽을 들어올려야 구름 결과 지표가 같이 읽힌다.
@@ -42,6 +42,28 @@ function writeAtomic(file, data) {
   const temp = `${file}.${process.pid}.${Date.now()}.tmp`
   fs.writeFileSync(temp, data)
   fs.renameSync(temp, file)
+}
+
+function snapshotVisiblePublication(target) {
+  const files = new Map()
+  if (fs.existsSync(target.dir)) {
+    for (const filename of fs.readdirSync(target.dir)) {
+      if (/^(?:vis_korea_\d{12}\.webp|visible_meta\.json)$/.test(filename)) {
+        files.set(filename, fs.readFileSync(path.join(target.dir, filename)))
+      }
+    }
+  }
+  return files
+}
+
+function restoreVisiblePublication(target, snapshot) {
+  fs.mkdirSync(target.dir, { recursive: true })
+  for (const filename of fs.readdirSync(target.dir)) {
+    if (/^(?:vis_korea_\d{12}\.webp|visible_meta\.json)$/.test(filename) && !snapshot.has(filename)) {
+      fs.unlinkSync(path.join(target.dir, filename))
+    }
+  }
+  for (const [filename, contents] of snapshot) writeAtomic(path.join(target.dir, filename), contents)
 }
 
 // typ05 API는 요청 시각을 UTC로 받는다(응답 이미지 제목에서 확인).
@@ -90,7 +112,7 @@ export async function renderVisible(parsed) {
   return { buffer: buf, width: outW, height: outH, litPixels: lit, maxLevel }
 }
 
-export async function processSatelliteVisible({ now = new Date(), deps = {} } = {}) {
+export async function processSatelliteVisible({ now = new Date(), fillAll = false, targetTmUtc, deps = {} } = {}) {
   const activeConfig = deps.config || config
   if (!activeConfig.api?.radar_satellite_auth_key) return { saved: false, reason: 'no-auth-key' }
   const root = deps.root || activeConfig.storage.base_path
@@ -98,11 +120,38 @@ export async function processSatelliteVisible({ now = new Date(), deps = {} } = 
   const previous = readJson(target.meta)
 
   const delayMinutes = activeConfig.satellite?.delay_minutes ?? 20
-  const tmUtc = utcTm(new Date(now.getTime() - delayMinutes * 60_000))
+  const tmUtc = targetTmUtc || utcTm(new Date(now.getTime() - delayMinutes * 60_000))
   const tm = kstTmFromUtc(tmUtc)
+  const maxFrames = activeConfig.satellite?.max_frames || 19
+  if (fillAll && !targetTmUtc) {
+    const specs = buildFrameSpecs(tmUtc, maxFrames)
+    const snapshot = snapshotVisiblePublication(target)
+    const results = []
+    try {
+      for (const spec of specs) {
+        const result = await processSatelliteVisible({ now, targetTmUtc: spec.requestTm, deps })
+        if (!['night', 'already-collected'].includes(result.reason) && !result.saved) {
+          throw new Error(`visible satellite frame unavailable: ${spec.requestTm}`)
+        }
+        results.push(result)
+      }
+    } catch (error) {
+      restoreVisiblePublication(target, snapshot)
+      throw error
+    }
+    const latestMeta = readJson(target.meta)
+    const saved = results.some((result) => result.saved)
+    return {
+      saved,
+      frameCount: latestMeta?.frames?.length || 0,
+      tm,
+      ...(saved ? {} : { reason: 'already-collected' }),
+    }
+  }
   // 저장한 프레임뿐 아니라 "확인만 하고 버린" 시각도 기억한다 — 밤 프레임을 기억하지 않으면
   // 저장이 없으니 매 주기마다 같은 20MB대 NetCDF를 다시 받는다.
-  if ((previous?.frames || []).some((frame) => frame.tm === tm) || previous?.lastCheckedTm === tm) {
+  const processedTms = previous?.processedTms || (previous?.lastCheckedTm ? [previous.lastCheckedTm] : [])
+  if ((previous?.frames || []).some((frame) => frame.tm === tm) || processedTms.includes(tm)) {
     return { saved: false, tm, reason: 'already-collected' }
   }
 
@@ -118,7 +167,11 @@ export async function processSatelliteVisible({ now = new Date(), deps = {} } = 
   const rendered = await renderVisible(parsed)
   // 밤에는 볼 것이 없다 — 저장하면 지도에 검은 판이 덮인다. 그림은 버리되 확인한 시각은 남긴다.
   if (rendered.maxLevel < NIGHT_MAX_LEVEL) {
-    const nightMeta = { type: 'GK2A_VISIBLE', ...(previous || {}), lastCheckedTm: tm, updatedAt: new Date().toISOString() }
+    const nightMeta = {
+      type: 'GK2A_VISIBLE', ...(previous || {}), updatedAt: new Date().toISOString(),
+      processedTms: [...new Set([...processedTms, tm])].sort().slice(-maxFrames),
+    }
+    delete nightMeta.lastCheckedTm
     if (!nightMeta.frames) nightMeta.frames = []
     writeAtomic(target.meta, `${JSON.stringify(nightMeta, null, 2)}\n`)
     return { saved: false, tm, reason: 'night', maxLevel: rendered.maxLevel }
@@ -140,8 +193,11 @@ export async function processSatelliteVisible({ now = new Date(), deps = {} } = 
     source: 'KMA GK2A',
   }
   const frames = [...(previous?.frames || []).filter((item) => item.tm !== frame.tm), frame]
-    .sort((a, b) => a.tm.localeCompare(b.tm)).slice(-MAX_FRAMES)
-  const meta = { type: 'GK2A_VISIBLE', updatedAt: new Date().toISOString(), tm, lastCheckedTm: tm, frames, latest: frame }
+    .sort((a, b) => a.tm.localeCompare(b.tm)).slice(-maxFrames)
+  const meta = {
+    type: 'GK2A_VISIBLE', updatedAt: new Date().toISOString(), tm, frames, latest: frame,
+    processedTms: [...new Set([...processedTms, tm])].sort().slice(-maxFrames),
+  }
   writeAtomic(target.meta, `${JSON.stringify(meta, null, 2)}\n`)
 
   const keep = new Set(frames.map((item) => path.basename(item.path)))

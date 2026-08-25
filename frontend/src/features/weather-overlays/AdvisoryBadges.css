@@ -3,7 +3,9 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-s);
+  flex: 0 0 auto;
   font-weight: var(--fw-semibold);
+  white-space: nowrap;
 }
 
 /* 소프트 톤: 연한 배경 + 레벨색 글자/아이콘. Fluent Button 기본을 specificity로 모든 상태에서 덮음. */

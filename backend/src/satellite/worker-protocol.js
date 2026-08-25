@@ -151,6 +151,12 @@ export function assertSatelliteJob(message) {
     throw new Error('invalid satellite worker mode')
   }
   assertValidTime(message.now, 'invalid satellite worker time')
+  if ('fillAll' in message && typeof message.fillAll !== 'boolean') {
+    throw new Error('invalid satellite worker full history flag')
+  }
+  if (message.fillAll === true && message.mode !== 'current') {
+    throw new Error('invalid satellite worker full history flag')
+  }
   const frame = 'frame' in message ? serializeFrame(message.frame, 'invalid satellite worker frame') : undefined
 
   return {
@@ -158,6 +164,7 @@ export function assertSatelliteJob(message) {
     mode: message.mode,
     now: message.now,
     ...(frame ? { frame } : {}),
+    ...(message.fillAll === true ? { fillAll: true } : {}),
   }
 }
 

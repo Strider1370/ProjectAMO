@@ -36,6 +36,24 @@ test('visible work shares the contract but has no deferred work', async () => {
   assert.equal(work.result.type, 'satellite_visible')
 })
 
+test('visible work forwards full-history intent to the processor', async () => {
+  let received
+  await runSatelliteJob({
+    kind: 'satellite_visible',
+    mode: 'current',
+    fillAll: true,
+    now: '2026-08-18T14:10:00.000Z',
+    deps: {
+      processSatelliteVisible: async (options) => {
+        received = options
+        return { saved: true }
+      },
+    },
+  })
+
+  assert.equal(received.fillAll, true)
+})
+
 test('visible processor exposes its one-shot result without changing the legacy result shape', async () => {
   const work = await processSatelliteVisibleJob({
     now: new Date('2026-08-18T14:10:00.000Z'),

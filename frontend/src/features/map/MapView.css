@@ -2035,6 +2035,18 @@
   transform: translateX(-50%);
 }
 
+/* iPad: centered auto-width placement only has half of the map width available.
+   Keep each status chip intact and wrap between chips within the map safe area. */
+@media (min-width: 720px) and (max-width: 1199px) {
+  .advisory-badge-bar {
+    right: 68px;
+    left: 68px;
+    flex-wrap: wrap;
+    justify-content: center;
+    transform: none;
+  }
+}
+
 @media (max-width: 920px) {
   .adsb-timestamp--compact {
     left: 50%;

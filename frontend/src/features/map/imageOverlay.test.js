@@ -99,3 +99,19 @@ test('addOrUpdateImageOverlay preserves its same-slot sibling order when looping
   assert.deepEqual(map.layerOrder, ['radar-layer', 'same-slot-sibling'])
   assert.equal(map.getLayer('radar-layer').source, map.addSourceCalls.at(-1).id)
 })
+
+test('addOrUpdateImageOverlay honors an explicit anchor on installation and replacement', () => {
+  const map = createMap()
+  map.addLayer({ id: 'visible-layer', slot: 'middle' })
+  map.addLayer({ id: 'radar-layer', slot: 'middle' })
+
+  for (const path of ['/data/satellite/ir-a.webp', '/data/satellite/ir-b.webp']) {
+    addOrUpdateImageOverlay(map, {
+      sourceId: 'infrared', layerId: 'infrared-layer',
+      frame: { path, bounds: [[30, 120], [40, 130]] },
+      opacity: 1, beforeId: 'visible-layer',
+    })
+  }
+
+  assert.deepEqual(map.layerOrder, ['infrared-layer', 'visible-layer', 'radar-layer'])
+})

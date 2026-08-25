@@ -1,5 +1,6 @@
 import { syncRasterFrame } from './rasterFrameTransition.js'
 import { normalizeFrame } from './weatherTimeline.js'
+import { SATELLITE_LAYER } from './weatherOverlayLayers.js'
 
 // ponytail: 기상청이 그려주는 합성영상을 임시로 붙여 우리 렌더링과 비교한다.
 //   hsr — 강수강도(mm/h). 우리가 직접 그리는 레이더와 같은 물리량이라 나란히 놓고 볼 수 있다.
@@ -17,9 +18,9 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, Number(value) || 0))
 }
 
-function visibleSatellitePresentation({ radarHsr, visuals = {} }) {
+function visibleSatellitePresentation({ visuals = {} }) {
   return {
-    opacity: radarHsr ? 0.5 : 0.9,
+    opacity: 1,
     rasterPaint: {
       'raster-brightness-min': clamp(visuals.brightness ?? 12, 0, 40) / 100,
       'raster-brightness-max': 1,
@@ -56,7 +57,10 @@ export function syncKmaCompositeLayers(map, { hsrMeta, hciMeta, visibleMeta, qpf
   const visiblePresentation = visibleSatellitePresentation({ radarHsr: visibility.radarHsr, visuals: visibleSatelliteVisuals })
   syncRaster(map, {
     sourceId: VISIBLE_SOURCE, layerId: VISIBLE_LAYER, frame: visibleFrame,
-    beforeLayerId: visibility.radarHsr ? HSR_LAYER : undefined,
+    beforeLayerId: 'kma-radar-overlay',
+    onInstalled: (targetMap) => {
+      if (targetMap.getLayer?.(SATELLITE_LAYER)) targetMap.moveLayer?.(SATELLITE_LAYER, VISIBLE_LAYER)
+    },
     ...visiblePresentation,
     visible: Boolean(visibleFrame), transitionMs: 200,
   })

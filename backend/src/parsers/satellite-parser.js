@@ -271,7 +271,7 @@ async function renderFogImage(irParsed, fogParsed) {
         buf[o] = r;
         buf[o + 1] = g;
         buf[o + 2] = b;
-        buf[o + 3] = 220;
+        buf[o + 3] = 255;
         fogPixelCount++;
       } else {
         // IR grayscale background: colder cloud tops brighter, warmer surfaces darker.
@@ -279,7 +279,7 @@ async function renderFogImage(irParsed, fogParsed) {
         buf[o] = byte;
         buf[o + 1] = byte;
         buf[o + 2] = byte;
-        buf[o + 3] = 200;
+        buf[o + 3] = 255;
       }
     }
   }

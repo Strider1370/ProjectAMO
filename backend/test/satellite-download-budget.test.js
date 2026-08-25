@@ -5,8 +5,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+import config from '../src/config.js'
 import { processSatelliteVisible } from '../src/processors/satellite-visible-processor.js'
-import { needsFogRefetch, processSatellite, writeSatelliteAtomic } from '../src/processors/satellite-processor.js'
+import { buildFrameSpecs, needsFogRefetch, processSatellite, writeSatelliteAtomic } from '../src/processors/satellite-processor.js'
 
 const root = () => fs.mkdtempSync(path.join(os.tmpdir(), 'amo-sat-'))
 
@@ -28,7 +29,7 @@ function depsFor(dataRoot, counter) {
     root: dataRoot,
     config: {
       api: { radar_satellite_auth_key: 'test-key' },
-      satellite: { url: 'https://example.invalid/GK2A/LE1B', delay_minutes: 20, timeout_ms: 1000 },
+      satellite: { url: 'https://example.invalid/GK2A/LE1B', delay_minutes: 20, timeout_ms: 1000, max_frames: 4 },
       storage: { base_path: dataRoot },
     },
     fetchNc: async () => { counter.calls += 1; return Buffer.from('not-really-netcdf') },
@@ -53,6 +54,22 @@ test('a night frame is downloaded once, not on every collection cycle', async ()
   // 다음 관측시각이 오면 다시 받는다 — 상한이 수집 자체를 멈춰서는 안 된다.
   await processSatelliteVisible({ now: new Date(now.getTime() + 10 * 60_000), deps })
   assert.equal(counter.calls, 2)
+})
+
+test('visible full-history work checks each missing timestamp once and retains night checks', async () => {
+  const dataRoot = root(), counter = { calls: 0 }
+  const deps = depsFor(dataRoot, counter)
+  const now = new Date('2026-08-09T16:55:00Z')
+
+  const first = await processSatelliteVisible({ now, fillAll: true, deps })
+  const second = await processSatelliteVisible({ now, fillAll: true, deps })
+
+  assert.equal(first.frameCount, 0)
+  assert.equal(second.reason, 'already-collected')
+  assert.equal(counter.calls, 4)
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dataRoot, 'satellite', 'visible', 'visible_meta.json'), 'utf8')).processedTms, [
+    '202608100100', '202608100110', '202608100120', '202608100130',
+  ])
 })
 
 test('FOG-less frames stop being re-fetched once the attempt cap is reached', () => {
@@ -83,6 +100,7 @@ test('a failed current-frame publish leaves the previous WebP and metadata intac
   await assert.rejects(
     processSatellite({
       now: new Date('2026-08-18T14:10:00.000Z'),
+      mode: 'fog_retry', frame: { requestTm, displayTm: tm, fogAttempts: 0 },
       deps: {
         config: {
           api: { radar_satellite_auth_key: 'test-key' }, storage: { base_path: dataRoot },
@@ -197,6 +215,7 @@ test('stale-file cleanup failure after metadata commit retains the new generatio
 
   const work = await processSatellite({
     now: new Date('2026-08-18T14:10:00.000Z'),
+    mode: 'fog_retry', frame: { requestTm, displayTm: tm, fogAttempts: 0 },
     deps: {
       config: normalConfig(dataRoot), fs: cleanupFailureFs, collectConvective: false,
       renderFrame: async () => {
@@ -226,6 +245,46 @@ test('current mode renders only latest and emits every other missing frame as ba
 
   assert.deepEqual(rendered, ['202608181410'])
   assert.deepEqual(work.followUps.map((job) => job.mode), ['backfill', 'backfill', 'backfill'])
+})
+
+test('an IR-only frame is complete and does not schedule a same-timestamp FOG retry', async () => {
+  const work = await processSatellite({
+    now: new Date('2026-08-18T14:10:00.000Z'),
+    deps: {
+      config: normalConfig(root(), 1), collectConvective: false,
+      renderFrame: async ({ requestTm, displayTm }) => ({
+        tm: displayTm, request_tm_utc: requestTm, path: `/data/satellite/sat_korea_${displayTm}.webp`, fogPixelCount: null,
+      }),
+    },
+  })
+
+  assert.deepEqual(work.followUps, [])
+})
+
+test('full-history satellite work renders the complete missing window without follow-up jobs', async () => {
+  const dataRoot = root(), rendered = []
+  const work = await processSatellite({
+    now: new Date('2026-08-18T14:10:00.000Z'),
+    fillAll: true,
+    deps: {
+      config: normalConfig(dataRoot, 4), collectConvective: false,
+      renderFrame: async ({ requestTm, displayTm }) => {
+        rendered.push(requestTm)
+        return { tm: displayTm, request_tm_utc: requestTm, path: `/data/satellite/sat_korea_${displayTm}.webp`, fogPixelCount: 5 }
+      },
+    },
+  })
+
+  assert.deepEqual(buildFrameSpecs('202608181410', 4).map((frame) => frame.requestTm), [
+    '202608181340', '202608181350', '202608181400', '202608181410',
+  ])
+  assert.deepEqual(rendered, ['202608181340', '202608181350', '202608181400', '202608181410'])
+  assert.deepEqual(work.followUps, [])
+  assert.equal(work.result.frameCount, 4)
+})
+
+test('satellite retention defaults to nineteen ten-minute frames', () => {
+  assert.equal(config.satellite.max_frames, 19)
 })
 
 test('a stale backfill target outside the retained window is not rendered or published', async () => {

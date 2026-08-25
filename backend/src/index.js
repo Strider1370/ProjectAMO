@@ -116,11 +116,12 @@ export async function quiesceCollections(options) {
   await waitForCollectionIdle(options)
 }
 
-export function runSatelliteCollection(kind, { signal } = {}) {
+export function runSatelliteCollection(kind, { signal, fillAll = false } = {}) {
   return satelliteWorkQueue.enqueue({
     kind,
     mode: 'current',
     now: new Date().toISOString(),
+    ...(fillAll ? { fillAll: true } : {}),
   }, { signal })
 }
 
@@ -225,8 +226,8 @@ function buildInitialCollectionJobs({
     ] : []),
     ["rainviewer", rainviewerProcessor.process],
     ...(includeRadarSatellite ? [
-      ['satellite', ({ signal }) => satelliteJob('satellite', { signal })],
-      ['satellite_visible', ({ signal }) => satelliteJob('satellite_visible', { signal })],
+      ['satellite', ({ signal }) => satelliteJob('satellite', { signal, fillAll: true })],
+      ['satellite_visible', ({ signal }) => satelliteJob('satellite_visible', { signal, fillAll: true })],
     ] : []),
     ["ground_forecast", groundForecastProcessor.process],
     ["environment", environmentProcessor.process],

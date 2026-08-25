@@ -63,7 +63,7 @@ export function writeSatelliteAtomic(fsImpl, file, data) {
   }
 }
 
-function buildFrameSpecs(latestRequestTm, frameCount) {
+export function buildFrameSpecs(latestRequestTm, frameCount) {
   const latest = new Date(Date.UTC(
     Number(latestRequestTm.slice(0, 4)), Number(latestRequestTm.slice(4, 6)) - 1,
     Number(latestRequestTm.slice(6, 8)), Number(latestRequestTm.slice(8, 10)), Number(latestRequestTm.slice(10, 12)),
@@ -159,7 +159,7 @@ function context(now, deps) {
   return { activeConfig, fsImpl, satDir, existingMeta, existingFrames, now }
 }
 
-export async function processSatellite({ now = new Date(), mode = 'current', frame, deps = {} } = {}) {
+export async function processSatellite({ now = new Date(), mode = 'current', frame, fillAll = false, deps = {} } = {}) {
   const activeNow = new Date(now)
   const activeConfig = deps.config || config
   if (!activeConfig.api?.radar_satellite_auth_key) throw new Error('Satellite auth key missing (set KMA_RADAR_SATELLITE_AUTH_KEY)')
@@ -172,8 +172,38 @@ export async function processSatellite({ now = new Date(), mode = 'current', fra
     const frameSpecs = buildFrameSpecs(latestFrameSpec.requestTm, frameCount)
     const missing = frameSpecs.filter((spec) => {
       const exists = state.fsImpl.existsSync(path.join(state.satDir, `sat_korea_${spec.displayTm}.webp`)) && state.existingFrames.get(spec.displayTm)
-      return !exists || needsFogRefetch(state.existingFrames.get(spec.displayTm))
+      return !exists
     })
+    if (fillAll) {
+      const snapshots = snapshotFiles(state.fsImpl, state.satDir, missing)
+      try {
+        for (const spec of missing) {
+          const rendered = await renderFrame({ ...state, requestTm: spec.requestTm, displayTm: spec.displayTm, deps })
+          if (!rendered) {
+            restoreFiles(state.fsImpl, snapshots)
+            return { result: { type: 'satellite', saved: false, reason: 'no data available' }, followUps: [] }
+          }
+          state.existingFrames.set(spec.displayTm, withFogAttempt(rendered, state.existingFrames.get(spec.displayTm)))
+        }
+        const meta = publishMeta({ ...state, latestFrameSpec, frameSpecs, updatedAt: activeNow })
+        if (deps.collectConvective !== false) {
+          for (const spec of missing) {
+            try {
+              await (deps.collectConvectiveSatelliteFrame || collectConvectiveSatelliteFrame)({ tm: spec.displayTm, request_tm_utc: spec.requestTm })
+            } catch (error) {
+              console.warn(`satellite: convective collection failed ${spec.requestTm}:`, error.message)
+            }
+          }
+        }
+        return {
+          result: { type: 'satellite', saved: missing.length > 0 || meta.frames.length > 0, frameCount: meta.frames.length, tm: meta.tm, request_tm_utc: meta.request_tm_utc, deferredCount: 0 },
+          followUps: [],
+        }
+      } catch (error) {
+        restoreFiles(state.fsImpl, snapshots)
+        throw error
+      }
+    }
     const immediate = missing.filter((spec) => spec.displayTm === latestFrameSpec.displayTm)
     const snapshots = snapshotFiles(state.fsImpl, state.satDir, immediate)
     let meta
@@ -192,7 +222,6 @@ export async function processSatellite({ now = new Date(), mode = 'current', fra
     }
     const latest = state.existingFrames.get(latestFrameSpec.displayTm)
     const followUps = missing.filter((spec) => spec.displayTm !== latestFrameSpec.displayTm).map((spec) => followUp('backfill', activeNow, spec, 0))
-    if (needsFogRefetch(latest)) followUps.push(followUp('fog_retry', activeNow, { ...latestFrameSpec, fogAttempts: latest.fogAttempts || 0 }, FOG_RETRY_DELAY_MS))
     return { result: { type: 'satellite', saved: immediate.length > 0 || meta.frames.length > 0, frameCount: meta.frames.length, tm: meta.tm, request_tm_utc: meta.request_tm_utc, deferredCount: followUps.filter((job) => job.mode === 'backfill').length }, followUps }
   }
 

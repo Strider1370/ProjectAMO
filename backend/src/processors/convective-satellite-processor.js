@@ -3,7 +3,7 @@ import config from '../config.js'
 import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 import { parseCiNC, parseCtpsNC } from '../parsers/satellite-parser.js'
 import { CI_RENDER_VERSION, CTPS_MIN_FL_OPTIONS, buildCiFeatureCollection, encodeCtpsBinary, normalizeCtps, renderCtpsRgba } from './convective-satellite-model.js'
-import { publishCi, publishCtps, readConvectiveMeta } from './convective-satellite-store.js'
+import { publishCi, publishCompleteConvectiveFrame, publishCtps, readConvectiveMeta } from './convective-satellite-store.js'
 
 function buildCiUrl(requestTm) { return `${config.satellite.fog_url}/${config.satellite.ci_product}/${config.satellite.region}/data?date=${requestTm}&authKey=${config.api.radar_satellite_auth_key}` }
 function buildCtpsUrl(requestTm) { return `${config.flight_category.ctps_url}?date=${requestTm}&authKey=${config.api.radar_satellite_auth_key}` }
@@ -15,7 +15,29 @@ export async function collectConvectiveSatelliteFrame(frame, dependencies = {}) 
   if (!activeConfig.satellite.convective_enabled) return { saved: false, reason: 'disabled' }
   const root = dependencies.root || activeConfig.storage.base_path
   const readMeta = dependencies.readMeta || readConvectiveMeta
-  const existing = readMeta(root)?.frames?.find((item) => item.tm === frame.tm)
+  const stored = readMeta(root)?.frames?.find((item) => item.tm === frame.tm)
+  // A frame is either publishable as a complete CI+CTPS pair or it is rebuilt.
+  // Never extend a legacy/partial entry with a second metadata write.
+  const existing = stored?.ci && stored?.ctps ? stored : null
+  if (!existing) {
+    const [ciResult, ctpsResult] = await Promise.all([
+      (async () => {
+        const parsed = await (dependencies.parseCi || parseCiNC)(await (dependencies.fetchNc || fetchNc)(buildCiUrl(frame.request_tm_utc)))
+        return { geojson: (dependencies.buildCiFeatureCollection || buildCiFeatureCollection)(parsed), renderVersion: CI_RENDER_VERSION }
+      })(),
+      (async () => {
+        const parsed = await (dependencies.parseCtps || parseCtpsNC)(await (dependencies.fetchNc || fetchNc)(buildCtpsUrl(frame.request_tm_utc)))
+        const normalized = normalizeCtps(parsed)
+        const images = {}
+        for (const minFl of CTPS_MIN_FL_OPTIONS) images[minFl] = await (dependencies.renderWebp || renderWebp)(normalized, minFl)
+        return { binary: encodeCtpsBinary(normalized), images }
+      })(),
+    ])
+    await (dependencies.publishCompleteConvectiveFrame || publishCompleteConvectiveFrame)({
+      root, frame, ci: ciResult, ctps: ctpsResult, maxFrames: activeConfig.satellite.convective_max_frames,
+    })
+    return { saved: true, ci: 'fulfilled', ctps: 'fulfilled' }
+  }
   const tasks = []
   if (existing?.ci?.renderVersion !== CI_RENDER_VERSION) tasks.push(['ci', (async () => { const parsed = await (dependencies.parseCi || parseCiNC)(await (dependencies.fetchNc || fetchNc)(buildCiUrl(frame.request_tm_utc))); return (dependencies.publishCi || publishCi)({ root, frame, geojson: buildCiFeatureCollection(parsed), renderVersion: CI_RENDER_VERSION, maxFrames: activeConfig.satellite.convective_max_frames }) })()])
   if (!existing?.ctps) tasks.push(['ctps', (async () => { const parsed = await (dependencies.parseCtps || parseCtpsNC)(await (dependencies.fetchNc || fetchNc)(buildCtpsUrl(frame.request_tm_utc))); const normalized = normalizeCtps(parsed), images = {}; for (const minFl of CTPS_MIN_FL_OPTIONS) images[minFl] = await (dependencies.renderWebp || renderWebp)(normalized, minFl); return (dependencies.publishCtps || publishCtps)({ root, frame, binary: encodeCtpsBinary(normalized), images, maxFrames: activeConfig.satellite.convective_max_frames }) })()])

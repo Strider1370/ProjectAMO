@@ -101,7 +101,8 @@ test('routes infrared, WISSDOM, and QPF through the 200ms raster transition', ()
     { sourceId: 'kma-wissdom-overlay', transitionMs: 200, visible: true },
     { sourceId: 'kma-qpf-overlay', transitionMs: 200, visible: true },
   ])
-  assert.equal(calls[0].opacity, 0.6)
+  assert.equal(calls[0].opacity, 1)
+  assert.equal(calls[0].beforeLayerId, 'gk2a-visible-overlay')
 })
 
 test('syncRasterAndSigwxLayers installs raster overlays and visibility from the weather model', () => {

@@ -89,8 +89,9 @@ export function loadCtpsMask(root) {
   // 최신 프레임에 ctps_<tm>.bin이 없는 경우가 흔하다(실측: 프레임 18개 대 이진 15개).
   // 그때 null을 반환하면 위성 마스크가 조용히 통째로 꺼진다.
   const dir = convectiveDir(root)
-  const frames = (meta.frames?.length ? meta.frames.map((f) => f.tm) : [meta.latest?.tm])
-    .filter(Boolean).sort().reverse()
+  // rawFrames = 완성 여부로 거르기 전 목록. 마스크는 이진 파일만 있으면 되므로 그쪽을 본다.
+  const source = meta.rawFrames?.length ? meta.rawFrames : (meta.frames?.length ? meta.frames : [meta.latest])
+  const frames = source.map((f) => f?.tm).filter(Boolean).sort().reverse()
   // 한 시간 넘게 묵은 구름 판정으로 현재 운고를 지우지 않는다.
   const oldest = tmMinusHours(frames[0], 1)
   const tm = frames.find((t) => t >= oldest && fs.existsSync(path.join(dir, `ctps_${t}.bin`)))

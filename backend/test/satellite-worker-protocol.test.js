@@ -61,6 +61,27 @@ test('only permits current visible satellite jobs', () => {
   )
 })
 
+test('permits full history only for current satellite-family work', () => {
+  assert.deepEqual(
+    assertSatelliteJob({
+      kind: 'satellite_visible',
+      mode: 'current',
+      fillAll: true,
+      now: '2026-08-18T14:10:00.000Z',
+    }),
+    {
+      kind: 'satellite_visible',
+      mode: 'current',
+      fillAll: true,
+      now: '2026-08-18T14:10:00.000Z',
+    },
+  )
+  assert.throws(
+    () => assertSatelliteJob({ kind: 'satellite', mode: 'backfill', fillAll: true, now: '2026-08-18T14:10:00.000Z' }),
+    /invalid satellite worker full history flag/,
+  )
+})
+
 test('returns JSON-safe terminal messages', () => {
   assert.deepEqual(
     successMessage({ result: { saved: true }, followUps: [] }),

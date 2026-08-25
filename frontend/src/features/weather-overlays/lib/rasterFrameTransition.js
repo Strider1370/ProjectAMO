@@ -35,6 +35,11 @@ function layerBeforeId(map, layerId) {
   return index >= 0 ? layers[index + 1]?.id : undefined
 }
 
+function availableBeforeId(map, preferredBeforeId, layerId) {
+  if (preferredBeforeId && map.getLayer?.(preferredBeforeId)) return preferredBeforeId
+  return layerBeforeId(map, layerId)
+}
+
 function waitForSource(map, sourceId) {
   if (map.isSourceLoaded?.(sourceId)) return Promise.resolve(true)
   if (!map.on || !map.off) return Promise.resolve(true)
@@ -74,12 +79,14 @@ export function createRasterFrameTransition(map, {
   opacity,
   rasterPaint = {},
   beforeLayerId,
+  onInstalled,
   transitionMs = 200,
   preload = defaultPreload,
 } = {}) {
   let currentOpacity = opacity
   let currentRasterPaint = rasterPaint
   let currentBeforeLayerId = beforeLayerId
+  let currentOnInstalled = onInstalled
   let generation = 0
   let active = null
   let incoming = null
@@ -93,7 +100,8 @@ export function createRasterFrameTransition(map, {
       map.addSource(active.sourceId, { type: 'image', url: active.frame.path, coordinates })
     }
     if (!map.getLayer?.(layerId)) {
-      map.addLayer(rasterLayer(layerId, active.sourceId, currentOpacity, currentRasterPaint), currentBeforeLayerId)
+      map.addLayer(rasterLayer(layerId, active.sourceId, currentOpacity, currentRasterPaint), availableBeforeId(map, currentBeforeLayerId, layerId))
+      currentOnInstalled?.(map, layerId)
     }
     return true
   }
@@ -151,7 +159,7 @@ export function createRasterFrameTransition(map, {
     try {
       const coordinates = buildImageCoordinates(frame.bounds)
       map.addSource(next.sourceId, { type: 'image', url: frame.path, coordinates })
-      map.addLayer(rasterLayer(next.layerId, next.sourceId, 0, currentRasterPaint), currentBeforeLayerId || layerBeforeId(map, layerId))
+      map.addLayer(rasterLayer(next.layerId, next.sourceId, 0, currentRasterPaint), availableBeforeId(map, currentBeforeLayerId, layerId))
     } catch {
       if (incoming === next) removeResource(map, next.sourceId, next.layerId)
       if (incoming === next) incoming = null
@@ -168,7 +176,8 @@ export function createRasterFrameTransition(map, {
     if (!active) {
       const beforeId = layerBeforeId(map, next.layerId)
       map.removeLayer(next.layerId)
-      map.addLayer(rasterLayer(layerId, next.sourceId, currentOpacity, currentRasterPaint), beforeId || currentBeforeLayerId)
+      map.addLayer(rasterLayer(layerId, next.sourceId, currentOpacity, currentRasterPaint), beforeId || availableBeforeId(map, currentBeforeLayerId, layerId))
+      currentOnInstalled?.(map, layerId)
       map.setLayoutProperty?.(layerId, 'visibility', 'visible')
       active = next
       incoming = null
@@ -187,7 +196,8 @@ export function createRasterFrameTransition(map, {
     const previous = active
     const beforeId = layerBeforeId(map, layerId)
     map.removeLayer(layerId)
-    map.addLayer(rasterLayer(layerId, next.sourceId, currentOpacity, currentRasterPaint), beforeId || currentBeforeLayerId)
+    map.addLayer(rasterLayer(layerId, next.sourceId, currentOpacity, currentRasterPaint), beforeId || availableBeforeId(map, currentBeforeLayerId, layerId))
+    currentOnInstalled?.(map, layerId)
     map.setLayoutProperty?.(layerId, 'visibility', 'visible')
     removeResource(map, previous.sourceId, next.layerId)
     active = next
@@ -207,10 +217,11 @@ export function createRasterFrameTransition(map, {
   }
 
   function updatePresentation(presentation = {}) {
-    const { opacity: nextOpacity, rasterPaint: nextRasterPaint, beforeLayerId: nextBeforeLayerId } = presentation
+    const { opacity: nextOpacity, rasterPaint: nextRasterPaint, beforeLayerId: nextBeforeLayerId, onInstalled: nextOnInstalled } = presentation
     if (Number.isFinite(nextOpacity)) currentOpacity = nextOpacity
     if (nextRasterPaint) currentRasterPaint = nextRasterPaint
     if ('beforeLayerId' in presentation) currentBeforeLayerId = nextBeforeLayerId
+    if ('onInstalled' in presentation) currentOnInstalled = nextOnInstalled
     if (currentBeforeLayerId && map.getLayer?.(layerId) && map.getLayer?.(currentBeforeLayerId)) {
       map.moveLayer?.(layerId, currentBeforeLayerId)
     }

@@ -481,7 +481,8 @@ export function syncRasterAndSigwxLayers(map, model, { syncRaster = syncRasterFr
     sourceId: SATELLITE_SOURCE,
     layerId: SATELLITE_LAYER,
     frame: model.satelliteFrame,
-    opacity: model.visibility.radarHsr ? 0.6 : 0.92,
+    opacity: 1,
+    beforeLayerId: 'gk2a-visible-overlay',
     visible: Boolean(model.visibility.satellite && model.satelliteFrame),
     transitionMs: 200,
   })

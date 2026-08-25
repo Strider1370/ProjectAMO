@@ -239,10 +239,10 @@ export const satellite = {
   fog_product: 'FOG',
   ci_product: 'CI',
   convective_enabled: process.env.SATELLITE_CONVECTIVE_ENABLED !== '0',
-  convective_max_frames: Number(process.env.SATELLITE_CONVECTIVE_MAX_FRAMES || 18),
+  convective_max_frames: Number(process.env.SATELLITE_CONVECTIVE_MAX_FRAMES || 19),
   region: (process.env.SATELLITE_REGION || 'KO').toUpperCase(),
   delay_minutes: 20,
-  max_frames: 18,
+  max_frames: 19,
   timeout_ms: 30000,
   worker_timeout_ms: 180_000,
 }
@@ -367,9 +367,9 @@ export const schedule = {
   // 5분 — 관측 간격은 10분 그대로지만, 늦게 올라온 프레임을 다음 10분까지 기다리지 않고 줍는다.
   // 이미 받은 프레임은 파일 존재 검사로 건너뛰므로 정상 상황의 추가 다운로드는 0.
   satellite_interval: '*/5 * * * *',
-  // 10분 — 가시영상(VI006 KO)은 0.5 km 해상도라 적외의 16배 화소이고, 이 키에서 가장 무거운
-  // 단일 호출이다. 원본 갱신도 10분이라 5분 주기는 절반이 헛걸음이다.
-  satellite_visible_interval: '*/10 * * * *',
+  // 관측 간격은 10분이지만, 늦게 올라온 프레임을 다음 10분까지 기다리지 않도록 5분마다 확인한다.
+  // processedTms가 같은 관측시각의 재다운로드를 막는다.
+  satellite_visible_interval: '*/5 * * * *',
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
   // 네 분석시각을 수집하고, 각 런은 자료 지연을 고려해 1·2시간 뒤 두 번만 재시도한다.
   kim_surface_wind_interval: '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *',

@@ -20,13 +20,13 @@ test('routes HSR, HCI, and visible satellite through the 200ms raster transition
     { sourceId: 'kma-hci-overlay', transitionMs: 200, visible: true },
     { sourceId: 'gk2a-visible-overlay', transitionMs: 200, visible: true },
   ])
-  assert.equal(calls.find((call) => call.sourceId === 'gk2a-visible-overlay').opacity, 0.5)
+  assert.equal(calls.find((call) => call.sourceId === 'gk2a-visible-overlay').opacity, 1)
   assert.deepEqual(calls.find((call) => call.sourceId === 'gk2a-visible-overlay').rasterPaint, {
     'raster-brightness-min': 0.12,
     'raster-brightness-max': 1,
     'raster-contrast': 0,
   })
-  assert.equal(calls.find((call) => call.sourceId === 'gk2a-visible-overlay').beforeLayerId, 'kma-hsr-overlay')
+  assert.equal(calls.find((call) => call.sourceId === 'gk2a-visible-overlay').beforeLayerId, 'kma-radar-overlay')
 })
 
 test('applies the requested visible-satellite brightness and contrast without changing radar priority', () => {
@@ -41,7 +41,7 @@ test('applies the requested visible-satellite brightness and contrast without ch
   })
 
   const visible = calls.find((call) => call.sourceId === 'gk2a-visible-overlay')
-  assert.equal(visible.opacity, 0.9)
+  assert.equal(visible.opacity, 1)
   assert.deepEqual(visible.rasterPaint, {
     'raster-brightness-min': 0.24,
     'raster-brightness-max': 1,

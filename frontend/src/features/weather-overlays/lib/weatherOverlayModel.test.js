@@ -76,6 +76,18 @@ test('shows requested WISSDOM without the radar layer', () => {
   assert.equal(model.wissdomFrame.path, '/wissdom.webp')
 })
 
+test('selects an enabled infrared frame at the current timeline time', () => {
+  const selectedWeatherTimeMs = Date.UTC(2026, 7, 26, 3, 0)
+  const model = buildWeatherOverlayModel({
+    satMeta: { frames: [{ tm: '202608261200', path: '/ir.webp', bounds: [[29.3, 114], [45.8, 138]] }] },
+    visibility: { satellite: true, satelliteVisible: false, radar: false, radarHsr: false },
+    selectedWeatherTimeMs,
+  })
+
+  assert.equal(model.satelliteFrame?.path, '/ir.webp')
+  assert.equal(model.visibility.satellite, true)
+})
+
 test('formatSigwxStamp formats tmfc values as KST labels', () => {
   assert.equal(formatSigwxStamp('202605140300'), '05/14 03:00 KST')
 })

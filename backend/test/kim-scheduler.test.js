@@ -132,14 +132,19 @@ test('satellite schedulers register normal and visible jobs through the shared w
   assert.deepEqual(satelliteJob.calls, ['satellite', 'satellite_visible'])
 })
 
-test('initial satellite collection calls the isolated adapter', async () => {
-  const satelliteJob = async (kind) => { satelliteJob.calls.push(kind); return { saved: true } }
+test('visible satellite availability is checked every five minutes', () => {
+  assert.equal(config.schedule.satellite_visible_interval, '*/5 * * * *')
+})
+
+test('initial satellite collection requests full history through the isolated adapter', async () => {
+  const satelliteJob = async (kind, options) => { satelliteJob.calls.push([kind, options]); return { saved: true } }
   satelliteJob.calls = []
   const jobs = buildInitialCollectionJobs({ includeRadarSatellite: true, satelliteJob })
+  const signal = new AbortController().signal
 
-  await jobs.find(([type]) => type === 'satellite')[1]({ signal: new AbortController().signal })
+  await jobs.find(([type]) => type === 'satellite')[1]({ signal })
 
-  assert.deepEqual(satelliteJob.calls, ['satellite'])
+  assert.deepEqual(satelliteJob.calls, [['satellite', { signal, fillAll: true }]])
 })
 
 test('the long-lived scheduler does not import satellite WASM or image processors', async () => {
