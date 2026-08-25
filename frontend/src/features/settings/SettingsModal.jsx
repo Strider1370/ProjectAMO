@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
-import { FONT_OPTIONS, applyFont, getFontPref } from '../../shared/theme/fontPrefs.js'
 import { TabList, Tab } from '../../shared/ui/fluent.js'
 import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import './SettingsModal.css'
@@ -13,7 +12,6 @@ export default function SettingsModal({ onClose }) {
   const [activeTab, setActiveTab] = useState('display')
   const [timeZone, setTimeZone] = useState(() => localStorage.getItem('time_zone') || 'KST')
   const [language, setLanguage] = useState(() => localStorage.getItem('language') || 'ko')
-  const [fontPref, setFontPref] = useState(() => getFontPref())
 
   function saveToStorage() {
     localStorage.setItem('time_zone', timeZone)
@@ -62,23 +60,8 @@ export default function SettingsModal({ onClose }) {
                     <option value="en">English</option>
                   </select>
                 </label>
-                <label className="settings-row">
-                  <span>글꼴 (테스트)</span>
-                  <select
-                    value={fontPref}
-                    onChange={(e) => { setFontPref(e.target.value); applyFont(e.target.value) }}
-                  >
-                    {FONT_OPTIONS.map((o) => (
-                      <option key={o.id} value={o.id}>{o.label}</option>
-                    ))}
-                  </select>
-                </label>
               </fieldset>
             )}
-            {/* 개인설정은 내 계정으로 옮겼다. 익숙한 자리에서 그냥 사라지면 못 찾는다. */}
-            <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-3)' }}>
-              기상 미니마와 비행 알림은 <strong>왼쪽 아래 프로필 &gt; 내 계정</strong>으로 옮겼습니다.
-            </p>
           </div>
         </div>
 

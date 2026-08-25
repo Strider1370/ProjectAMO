@@ -41,4 +41,24 @@ test.describe('notam-and-settings', () => {
     await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeHidden()
     await expect.poll(() => page.evaluate(() => localStorage.getItem('time_zone'))).toBe('UTC')
   })
+
+  test('renders only active display settings controls', async ({ page }, testInfo) => {
+    await openApp(page)
+
+    if (testInfo.project.name === 'mobile') {
+      await page.getByRole('button', { name: '더보기', exact: true }).click()
+      await page.getByRole('button', { name: '설정', exact: true }).click()
+    } else {
+      const settingsButtons = page.getByRole('button', { name: '설정', exact: true })
+      await settingsButtons.first().click()
+      if (await settingsButtons.count() > 1) await settingsButtons.last().click()
+    }
+    await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible()
+
+    await expect(page.getByRole('combobox', { name: '시간대', exact: true })).toBeVisible()
+    await expect(page.getByRole('combobox', { name: '언어', exact: true })).toBeVisible()
+    await expect(page.getByText('글꼴 (테스트)', { exact: true })).toHaveCount(0)
+    await expect(page.getByText(/기상 미니마와 비행 알림은/)).toHaveCount(0)
+    await page.screenshot({ path: testInfo.outputPath('settings-display-controls.png') })
+  })
 })
