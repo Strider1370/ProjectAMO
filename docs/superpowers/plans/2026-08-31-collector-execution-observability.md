@@ -10,27 +10,29 @@
 
 ## Global Constraints
 
-- 모든 시각은 저장·비교 시 UTC ISO 또는 epoch milliseconds를 사용하고, 화면 표시는 기존 한국어 로케일 formatter를 사용한다.
+- 모든 시각은 저장·비교 시 UTC ISO 또는 epoch milliseconds를 사용하고, 화면 표시는 `TimeZoneProvider`의 선택 timezone을 명시적으로 전달한 formatter로 한다. UTC와 KST를 모두 시험한다.
 - 자료 건강도 `ok/late/stopped/never/quiet/disabled`의 의미와 마지막 정상 스냅샷 보존 계약은 변경하지 않는다.
 - 실행 outcome은 `succeeded`, `failed`, `skipped`, `missed`만 사용한다. `saved:false`는 `succeeded`이며 전역 `degraded`는 만들지 않는다.
 - `last_outcome`은 현재 상태이고 `last_issue`는 최근 이상 사건이다. 복구된 과거 오류를 현재 장애로 표시하지 않는다.
+- 정규 cron, 시작 초기 수집, 수동 수집은 각각 `scheduled`, `startup`, `manual` 출처로 기록한다. watchdog는 `last_scheduled_started_at`만 정규 실행 증거로 사용한다.
 - 새 SQLite 테이블, 실행별 장기 이력, 원본 API 응답, 인증키, 긴 스택 전문을 저장하거나 반환하지 않는다.
 - 시작 상태 파일 쓰기는 최대 30초에 한 번으로 묶고, 기존 완료·실패 통계 저장 동작은 유지한다.
 - PM2 stdout/stderr는 10M 또는 자정 회전, gzip 압축, 회전본 7개 보관을 적용한다.
-- 브라우저 작업은 관리자 계약을 등록하고 Playwright 증거로 검증한다.
+- 브라우저 작업은 관리자 계약을 등록하고 Playwright 증거·axe·전후 캡처·read-only UI review로 검증한다.
 
 ---
 
 ## File Structure
 
-- Create: `backend/src/collector-execution.js` — 활성 수집기 계약, 상태 정규화, 미실행 판정과 watchdog lifecycle만 소유한다.
+- Create: `backend/src/collector-execution.js` — cron 표현식·시간대·기대 간격을 함께 가진 활성 수집기 계약, 상태 정규화, 미실행 판정과 watchdog lifecycle만 소유한다.
 - Modify: `backend/src/stats.js` — 수집기별 `execution` 상태의 초기화·기록·최대 30초 시작 저장 debounce를 소유한다.
 - Modify: `backend/src/index.js` — 모든 정규 cron을 계약 기반 helper로 등록하고 `runWithLock` 시작/종료 기록과 짧은 로그를 연결한다.
 - Modify: `backend/src/admin/data-health.js`, `backend/src/admin/router.js` — 기존 자료 건강도 응답에 활성 수집기 실행 목록을 추가한다.
-- Modify: `frontend/src/features/admin/lib/collectorExecution.js` (create), `menus.js`, `DataCollectionScreen.jsx`, `OverviewScreen.jsx` — 실행 문제의 순수 분류와 표시를 담당한다.
+- Modify: `frontend/src/app/App.jsx`, `frontend/src/features/admin/AdminShell.jsx`, `frontend/src/features/admin/lib/collectorExecution.js` (create), `adminTime.js` (create), `menus.js`, `DataCollectionScreen.jsx`, `OverviewScreen.jsx` — 선택된 표시 시간대와 실행 상태의 순수 분류·표시를 담당한다.
 - Modify: `frontend/verification/contracts/admin-console.spec.mjs`, `docs/policies/verification/contracts.md` — 관리자 콘솔의 브라우저 계약을 등록하고 실행 문제 표시를 검증한다.
 - Create: `deploy/configure-pm2-logrotate.sh` — `ec2-user`의 PM2에 회전을 idempotent하게 설치·설정·검증한다.
 - Modify: `deploy/deploy-vm.sh`, `deploy/deploy-vm-full.sh`, `docs/operations/aws-ec2-manual-deploy.md` — 모든 배포 경로에서 로그 회전 설정과 검증을 보장한다.
+- Create (ignored evidence): `artifacts/responsive-screenshots/collector-execution-observability/<timestamp>/{before,after}/manifest.md` and `review/issues.md` — 관리자 UI 변경 전후 상태와 read-only UI review 결론을 남긴다.
 
 ## Task 1: Bounded execution state and pure watchdog
 
@@ -43,9 +45,10 @@
 
 **Interfaces:**
 
-- Produces `recordStart(type)`, `recordSuccess(type, result, durationMs)`, `recordFailure(type, errorMsg, durationMs)`, `recordSkip(type, reason)`, `recordMissed(type, issue)`, and `getExecutionState(type)` from `stats.js`.
-- Produces `activeCollectorContracts(config)`, `buildCollectorExecution({ contracts, statsTypes, nowMs })`, and `createExecutionWatchdog({ contracts, getStats, recordMissed, now, bootedAtMs })` from `collector-execution.js`.
-- `buildCollectorExecution` returns `{ type, outcome, lastStartedAt, lastFinishedAt, lastIssue, isProblem }[]`; `isProblem` is true only for current `failed` and `missed` outcomes.
+- Produces `recordStart(type, { source })`, `recordSuccess(type, result, durationMs)`, `recordFailure(type, errorMsg, durationMs)`, `recordSkip(type, reason)`, `recordMissed(type, issue)`, `getExecutionState(type)`, and test-only `__setPersistenceForTest({ now, write })` from `stats.js`.
+- Produces `activeCollectorContracts(config)`, `buildCollectorExecution({ contracts, statsTypes, nowMs })`, `checkContractAt(contract, execution, nowMs, bootedAtMs)`, and `createExecutionWatchdog({ contracts, getStats, recordMissed, now, bootedAtMs })` from `collector-execution.js`.
+- Produces `normalizeCollectorIssue({ outcome, code, message, at })`, shared by stats persistence, API output, and PM2 logging.
+- `buildCollectorExecution` returns `{ type, outcome, lastStartedAt, lastFinishedAt, lastIssue, isProblem }[]`; `isProblem` is true only for current `failed` and `missed` outcomes. `skipped` remains a visible status but does not raise the high-priority alert count.
 
 - [ ] **Step 1: Write failing stats execution-state tests**
 
@@ -66,7 +69,22 @@ test('success preserves last issue but clears the current execution problem', ()
 })
 
 test('start writes are coalesced while completion writes remain durable', () => {
-  // Inject a fake timer/writer; 20 starts in 30 seconds must schedule one write.
+  const writes = []
+  const clock = createFakeClock('2026-08-31T00:00:00.000Z')
+  stats.__setPersistenceForTest({ now: clock.now, write: () => writes.push(clock.now()) })
+  for (let n = 0; n < 20; n += 1) stats.recordStart('metar', { source: 'scheduled' })
+  assert.equal(writes.length, 0)
+  clock.advance(30_000)
+  assert.equal(writes.length, 1)
+  stats.recordSuccess('metar', { saved: true }, 15)
+  assert.equal(writes.length, 2)
+})
+
+test('issue normalization removes credentials and line breaks before persistence', () => {
+  const issue = normalizeCollectorIssue({ outcome: 'failed', at: '2026-08-31T00:00:00.000Z', code: 'collector_failed', message: 'GET /x?authKey=secret\nAuthorization: Bearer abcdef' })
+  assert.equal(issue.message.includes('secret'), false)
+  assert.equal(issue.message.includes('abcdef'), false)
+  assert.equal(issue.message.includes('\n'), false)
 })
 ```
 
@@ -83,6 +101,7 @@ Extend `makeTypeEntry()` and old-file migration so every known type gets this sh
 ```js
 execution: {
   last_started_at: null,
+  last_scheduled_started_at: null,
   last_finished_at: null,
   last_outcome: null,
   last_issue: null,
@@ -93,15 +112,15 @@ execution: {
 Implement the following behavior:
 
 ```js
-recordStart(type) // set last_started_at; queue one save no more than once per 30_000 ms
+recordStart(type, { source }) // always set last_started_at; set last_scheduled_started_at only for source='scheduled'; queue one save no more than once per 30_000 ms
 recordSuccess(type, result, durationMs) // set finished/outcome=succeeded; retain last_issue
-recordFailure(type, errorMsg, durationMs) // outcome=failed; last_issue={ outcome:'failed', at, code:'collector_failed', message:errorMsg }
-recordSkip(type, reason) // outcome=skipped; last_issue={ outcome:'skipped', at, code:reason, message:null }
+recordFailure(type, errorMsg, durationMs) // outcome=failed; last_issue=normalizeCollectorIssue({ outcome:'failed', at, code:'collector_failed', message:errorMsg })
+recordSkip(type, reason) // outcome=skipped; last_issue=normalizeCollectorIssue({ outcome:'skipped', at, code:reason, message:null })
 recordMissed(type, issue) // outcome=missed; update last_missed_at and last_issue once per unresolved outage
 getExecutionState(type) // return execution or the null-filled shape
 ```
 
-Keep `last_error`, `recent_runs`, success/failure counters, and their existing public behavior intact. Make the save timer injectable only through a small exported test hook or a factory; do not expose production mutation endpoints.
+`normalizeCollectorIssue` must remove line breaks, cap the message at 240 characters, and replace URL query strings, `authKey`/`serviceKey` assignments, and bearer-token-like values with `[redacted]` before any persistence, API response, or log output. Keep `last_error`, `recent_runs`, success/failure counters, and their existing public behavior intact. Make the save timer injectable only through a small exported test hook or a factory; do not expose production mutation endpoints.
 
 - [ ] **Step 4: Write failing pure monitor tests**
 
@@ -113,7 +132,7 @@ test('watchdog records one missed incident after the grace threshold', () => {
   const recordMissed = (...args) => calls.push(args)
   const watchdog = createExecutionWatchdog({
     contracts: [{ type: 'ground_forecast', maxIntervalMs: 3 * 3600_000, graceMs: 35 * 60_000 }],
-    getStats: () => ({ types: { ground_forecast: { execution: { last_started_at: '2026-08-31T02:30:00.000Z', last_outcome: 'succeeded' } } }),
+    getStats: () => ({ types: { ground_forecast: { execution: { last_scheduled_started_at: '2026-08-31T02:30:00.000Z', last_outcome: 'succeeded' } } }),
     recordMissed,
     bootedAtMs: Date.parse('2026-08-31T02:00:00.000Z'),
   })
@@ -122,14 +141,26 @@ test('watchdog records one missed incident after the grace threshold', () => {
   assert.equal(calls.length, 1)
 })
 
-test('a start after a missed incident resolves the current problem')
-test('boot grace and configured quiet window do not create a missed incident')
-test('disabled optional collector is absent from activeCollectorContracts')
+test('startup and manual starts do not reset the scheduled-start watchdog evidence', () => {
+  const execution = { last_scheduled_started_at: '2026-08-31T02:30:00.000Z', last_started_at: '2026-08-31T05:00:00.000Z' }
+  const result = checkContractAt({ type: 'ground_forecast', maxIntervalMs: 3 * 3600_000, graceMs: 35 * 60_000 }, execution, Date.parse('2026-08-31T06:06:00.000Z'), Date.parse('2026-08-31T02:00:00.000Z'))
+  assert.equal(result.outcome, 'missed')
+})
+
+test('never-started active collector becomes missed after boot interval plus grace', () => {
+  const result = checkContractAt({ type: 'environment', maxIntervalMs: 3600_000, graceMs: 10 * 60_000 }, {}, Date.parse('2026-08-31T01:11:00.000Z'), Date.parse('2026-08-31T00:00:00.000Z'))
+  assert.equal(result.outcome, 'missed')
+})
+
+test('quiet and disabled contracts do not create a missed incident', () => {
+  assert.equal(checkContractAt({ type: 'terminal_flights', quiet: { fromHourKst: 0, toHourKst: 4 }, maxIntervalMs: 60_000, graceMs: 60_000 }, {}, Date.parse('2026-08-31T17:00:00.000Z'), 0), null)
+  assert.deepEqual(activeCollectorContracts({ api: { radar_satellite_auth_key: '' } }).map((c) => c.type).includes('satellite'), false)
+})
 ```
 
 - [ ] **Step 5: Implement contract and watchdog module**
 
-In `backend/src/collector-execution.js`, define a single contract list for every `runWithLock` type that has a cron registration, including optional radar/satellite jobs and KST quiet windows. Use explicit `maxIntervalMs` and `graceMs`; do not parse cron text at runtime.
+In `backend/src/collector-execution.js`, define a single contract list for every `runWithLock` type that has a cron registration, including optional radar/satellite jobs and KST quiet windows. Each contract owns `{ type, expression, cronOptions, maxIntervalMs, graceMs, quiet, enabled(config) }`; do not parse cron text at runtime or duplicate its expression/timezone in `index.js`.
 
 Implement the pure decision boundary:
 
@@ -149,7 +180,7 @@ export function buildCollectorExecution({ contracts, statsTypes, nowMs }) {
 }
 ```
 
-`createExecutionWatchdog().check(nowMs)` must compare UTC epochs, ignore the process boot grace period, ignore a contract's explicit quiet window, call `recordMissed` only when current execution is not already the same unresolved `missed`, and return newly missed types for logging. `start()` owns exactly one 60-second interval and `stop()` clears it for tests/shutdown.
+`createExecutionWatchdog().check(nowMs)` must compare UTC epochs, use `last_scheduled_started_at` (or `bootedAtMs` when null), ignore the process boot grace period and a contract's explicit quiet window, call `recordMissed` only when current execution is not already the same unresolved `missed`, and return newly missed types for logging. `start()` owns exactly one 60-second interval and `stop()` clears it for tests/shutdown.
 
 - [ ] **Step 6: Run backend state and monitor tests**
 
@@ -176,7 +207,8 @@ git commit -m "feat: track bounded collector execution state"
 **Interfaces:**
 
 - Consumes `activeCollectorContracts`, `createExecutionWatchdog`, and stats recording functions from Task 1.
-- Produces `scheduleCollector(type, expression, job, options)` inside `index.js`; each regular cron registration uses it.
+- Produces exported `registerCollectorSchedules({ scheduler, config, runWithLock })`, which consumes each active contract's own expression and timezone exactly once and returns its scheduled type set.
+- Extends `runWithLock(type, job, { source, apiHubCategories, isBlocked, stats: recorder = stats, logger = console })` only with injected recorder/logger seams for tests; production callers continue to use the module defaults.
 - Produces a testable `startCollectorWatchdog()` and returns/stores its stop handle for controlled process shutdown tests.
 
 - [ ] **Step 1: Write failing registration and logging tests**
@@ -184,16 +216,32 @@ git commit -m "feat: track bounded collector execution state"
 Create `backend/test/collector-scheduler.test.js` with a fake scheduler that records every `schedule(expression, callback, options)` call.
 
 ```js
-test('every active collector contract is registered exactly once', () => {
+test('every active collector contract is registered exactly once with its declared expression and timezone', () => {
   const scheduled = registerCollectorSchedules({ scheduler, config: enabledConfig, runWithLock })
-  assert.deepEqual([...scheduled].sort(), activeCollectorContracts(enabledConfig).map((c) => c.type).sort())
+  const contracts = activeCollectorContracts(enabledConfig)
+  assert.deepEqual([...scheduled].sort(), contracts.map((c) => c.type).sort())
+  assert.deepEqual(scheduler.calls.map((call) => [call.expression, call.options]), contracts.map((c) => [c.expression, c.cronOptions]))
 })
 
-test('disabled radar contracts are neither scheduled nor monitored')
+test('disabled radar contracts are neither scheduled nor monitored', () => {
+  const scheduled = registerCollectorSchedules({ scheduler, config: { ...enabledConfig, api: { radar_satellite_auth_key: '' } }, runWithLock })
+  assert.equal(scheduled.has('satellite'), false)
+  assert.equal(scheduler.calls.some((call) => call.type === 'satellite'), false)
+})
 
-test('runWithLock records a start before a key-blocked or lock-held skip')
+test('runWithLock records a start before a key-blocked or lock-held skip', async () => {
+  const calls = []
+  await runWithLock('ground_forecast', async () => ({ saved: true }), { source: 'scheduled', apiHubCategories: ['aviation'], isBlocked: () => true, stats: { recordStart: () => calls.push('start'), recordSkip: () => calls.push('skip') } })
+  assert.deepEqual(calls, ['start', 'skip'])
+})
 
-test('successful collector log is one line and never serializes the processor result object')
+test('successful collector log is one line and never serializes the processor result object', async () => {
+  const lines = []
+  await runWithLock('ground_forecast', async () => ({ saved: true, rawResponse: 'do-not-log' }), { source: 'scheduled', logger: { info: (line) => lines.push(line) } })
+  assert.equal(lines.length, 1)
+  assert.match(lines[0], /outcome=succeeded/)
+  assert.equal(lines[0].includes('rawResponse'), false)
+})
 ```
 
 - [ ] **Step 2: Run scheduler tests and verify failure**
@@ -207,18 +255,21 @@ Expected: FAIL because `registerCollectorSchedules` and the contract-backed sche
 In `backend/src/index.js`, add a local helper whose only job is to consume a known active contract and call the supplied scheduler:
 
 ```js
-function scheduleCollector({ scheduler = cron, activeContracts, type, expression, job, runOptions, cronOptions }) {
-  if (!activeContracts.has(type)) return null
-  scheduledTypes.add(type)
-  return scheduler.schedule(expression, () => runWithLock(type, job, runOptions), cronOptions)
+function scheduleCollector({ scheduler = cron, contract, job, runOptions }) {
+  scheduledTypes.add(contract.type)
+  return scheduler.schedule(
+    contract.expression,
+    () => runWithLock(contract.type, job, { ...runOptions, source: 'scheduled' }),
+    contract.cronOptions,
+  )
 }
 ```
 
-Use it for direct `cron.schedule` calls and pass it into the existing `scheduleKimNwpJob`, `scheduleAirportInfoJob`, `scheduleTakeoffFcstJob`, `scheduleRadarGraphicsJobs`, `scheduleEchoTopJob`, and `scheduleSatelliteJobs` helpers. Preserve each existing timezone object and expression exactly. After registration, assert that the active-contract set equals the scheduled-type set; throw a descriptive startup error listing missing or unexpected types.
+Implement and export `registerCollectorSchedules({ scheduler = cron, config: activeConfig = config, runWithLock: runner = runWithLock })`. It selects `activeCollectorContracts(activeConfig)`, passes each contract object to `scheduleCollector`, and binds its processor job from a type→job map. Move the special KIM, airport, radar graphics, echo-top, and satellite helper registrations behind this function so their expression/timezone come from the contract, not a second local constant. After registration, assert that the active-contract set equals the scheduled-type set; throw a descriptive startup error listing missing or unexpected types.
 
 - [ ] **Step 4: Wire lifecycle recording and watchdog**
 
-At the first line of `runWithLock`, call `stats.recordStart(type)` before API-key and in-flight-lock checks. Keep `recordSkip`, `recordSuccess`, and `recordFailure` as the terminal-state calls.
+At the first line of `runWithLock`, call `stats.recordStart(type, { source })` before API-key and in-flight-lock checks. Scheduled callbacks pass `source: 'scheduled'`; `buildInitialCollectionJobs()` passes `source: 'startup'`; explicit one-shot/manual callers pass `source: 'manual'`. Keep `recordSkip`, `recordSuccess`, and `recordFailure` as the terminal-state calls.
 
 After all normal cron jobs register in `main()`, create and start one watchdog:
 
@@ -244,7 +295,7 @@ Replace `console.log(..., result)` with a formatter that emits only collector ty
 [collector] ground_forecast outcome=missed last_started=2026-08-31T02:30:00.000Z threshold_ms=12900000
 ```
 
-Sanitize line breaks from messages and cap messages at 240 characters. Never log processor response objects, request URLs, headers, API keys, or stack traces.
+Pass all issue details through Task 1's `normalizeCollectorIssue` before logging. Never log processor response objects, request URLs, headers, API keys, or stack traces.
 
 - [ ] **Step 6: Run focused scheduler regression tests**
 
@@ -335,6 +386,10 @@ git commit -m "feat: expose collector execution status to admins"
 
 - Create: `frontend/src/features/admin/lib/collectorExecution.js`
 - Create: `frontend/src/features/admin/lib/collectorExecution.test.js`
+- Create: `frontend/src/features/admin/lib/adminTime.js`
+- Create: `frontend/src/features/admin/lib/adminTime.test.js`
+- Modify: `frontend/src/app/App.jsx`
+- Modify: `frontend/src/features/admin/AdminShell.jsx`
 - Modify: `frontend/src/features/admin/lib/menus.js`
 - Modify: `frontend/src/features/admin/lib/menus.test.js`
 - Modify: `frontend/src/features/admin/screens/DataCollectionScreen.jsx`
@@ -345,8 +400,9 @@ git commit -m "feat: expose collector execution status to admins"
 **Interfaces:**
 
 - Consumes `health.collectorExecution` from Task 3; callers treat missing data as an empty array during rolling deployment.
-- Produces `executionProblems(entries)` and `executionSummary(entries)` from `collectorExecution.js`.
-- `executionProblems` returns only `failed` and `missed` entries, sorted `missed` before `failed` then type; recovered entries are excluded.
+- Produces `executionProblems(entries)` and `executionSummary(entries)` from `collectorExecution.js`; `executionSummary` returns the supplied active-contract order unchanged.
+- Produces `formatAdminExecutionTime(iso, tz)` from `adminTime.js`; it passes `tz` to `Intl.DateTimeFormat` and returns `—` for invalid input.
+- `executionProblems` returns current `failed` and `missed` entries in contract order. `skipped` and recovered entries remain visible in the full execution-status table but do not raise the high-priority count.
 
 - [ ] **Step 1: Write failing pure frontend tests**
 
@@ -361,13 +417,19 @@ test('only current failed and missed outcomes raise an execution problem', () =>
   ])
   assert.deepEqual(problems.map((entry) => entry.type), ['ground_forecast'])
 })
+
+test('skipped and recovered outcomes remain in the status list without raising an alert', () => {
+  const entries = [{ type: 'taf', outcome: 'skipped' }, { type: 'metar', outcome: 'succeeded', lastIssue: { outcome: 'failed' } }]
+  assert.deepEqual(executionSummary(entries).map((entry) => entry.type), ['taf', 'metar'])
+  assert.deepEqual(executionProblems(entries), [])
+})
 ```
 
-Extend `menus.test.js` so the top `수집` signal is red with the number of `failed`/`missed` entries, is green after recovery, and preserves the existing four-signal shape.
+Add `adminTime.test.js` assertions that `formatAdminExecutionTime('2026-08-31T02:30:00.000Z', 'Asia/Seoul')` includes `11:30` and the same input with `UTC` includes `02:30`. Extend `menus.test.js` so the existing `수집` signal keeps its warning tone, reports the number of current `failed`/`missed` entries, is green after recovery, and preserves the existing four-signal shape.
 
 - [ ] **Step 2: Run frontend logic tests and verify failure**
 
-Run: `npm --prefix frontend test -- src/features/admin/lib/collectorExecution.test.js src/features/admin/lib/menus.test.js`
+Run: `npm --prefix frontend test -- src/features/admin/lib/collectorExecution.test.js src/features/admin/lib/adminTime.test.js src/features/admin/lib/menus.test.js`
 
 Expected: FAIL because the execution helper and collector-aware signal logic do not exist.
 
@@ -382,33 +444,37 @@ export const EXECUTION_WORD = {
 
 export function executionProblems(entries = []) {
   return entries.filter((entry) => entry?.outcome === 'missed' || entry?.outcome === 'failed')
-    .slice().sort((a, b) => (a.outcome === 'missed' ? -1 : 1) - (b.outcome === 'missed' ? -1 : 1) || a.type.localeCompare(b.type))
+    .slice()
 }
 ```
 
-Update `topSignals` and `menuBadges` to use this helper while retaining all current stale-data counts and menu behavior when `collectorExecution` is absent.
+Wrap the `/admin` route in the existing `TimeZoneProvider` in `App.jsx`. In `AdminShell.jsx`, read `const { tz } = useTimeZone()` and pass `tz` to the overview and data-collection screens. Implement `formatAdminExecutionTime` with `Intl.DateTimeFormat('ko-KR', { timeZone: tz, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })`. Update `topSignals` and `menuBadges` to use `executionProblems` while retaining all current stale-data counts and menu behavior when `collectorExecution` is absent.
 
 - [ ] **Step 4: Implement compact, accessible UI**
 
-In `DataCollectionScreen.jsx`, add a section before the existing data table:
+Before editing UI, capture the existing desktop administrator overview and data screen into `artifacts/responsive-screenshots/collector-execution-observability/<timestamp>/before/`, write a manifest naming viewport, route, login fixture, and source commit, and record the pre-edit issue statement in `review/issues.md`. Dispatch a read-only UI reviewer to evaluate hierarchy, color meaning, scanability, and accessibility against `docs/policies/design/design-language.md`.
+
+In `DataCollectionScreen.jsx`, add a section before the existing data table containing both a high-priority problem list and a compact full status table:
 
 ```jsx
 <section className="ac-sec ac-flush" aria-labelledby="collector-execution-heading">
   <h2 id="collector-execution-heading">수집 실행 문제 <em>{problems.length}건</em></h2>
-  {/* type, 상태 글자, 마지막 시작/완료, 현재 issue code/message only */}
+  <p>{problems.length ? '실패 또는 미실행 수집기를 확인하세요.' : '현재 실패 또는 미실행 수집기가 없습니다.'}</p>
 </section>
 ```
 
-For an empty problem list, show the existing-style all-clear copy. For a recovered collector, do not put the historical `lastIssue.message` into the problem list. Keep the 33-row data table, its existing filters, and its `lastError` column unchanged. In `OverviewScreen.jsx`, include the same execution-problem entries in the attention area or a clearly labeled compact section, without replacing stale-data attention items.
+The full execution table must show every active collector in contract order with type, textual outcome, last start, last finish, and either current issue code/message or (for recovered `succeeded`) only the `lastIssue.at` timestamp. This makes `skipped` visible without treating normal recovery as active failure. Use `formatAdminExecutionTime(iso, tz)` for every new timestamp. Keep the 33-row data table, its existing filters, and its `lastError` column unchanged. In `OverviewScreen.jsx`, include the same high-priority execution-problem entries in a clearly labeled compact section without replacing stale-data attention items. Reuse existing CSS tokens and semantic status classes; do not introduce new hard-coded colors, sizes, or interaction patterns.
 
 - [ ] **Step 5: Add the administrator browser contract case**
 
-In `admin-console.spec.mjs`, intercept only `**/api/admin/data-health` before navigation in a new test and return an otherwise valid payload containing a `ground_forecast` execution item with `outcome: 'missed'` and `isProblem: true`. Use role/text selectors scoped to the execution section; do not use CSS paths or positional rows.
+In `admin-console.spec.mjs`, intercept only `**/api/admin/data-health` before navigation in a new test and return an otherwise valid payload with contract-order entries for `succeeded`, `failed`, `skipped`, `missed`, and a recovered `succeeded` entry containing `lastIssue.at`. Use role/text selectors scoped to the execution section; do not use CSS paths or positional rows.
 
 ```js
 await expect(page.getByRole('heading', { name: /수집 실행 문제/ })).toBeVisible()
 await expect(page.getByText('ground_forecast', { exact: true })).toBeVisible()
 await expect(page.getByText('미실행', { exact: true })).toBeVisible()
+await expect(page.getByText('건너뜀', { exact: true })).toBeVisible()
+await expect(page.getByText('최근 이상', { exact: true })).toBeVisible()
 ```
 
 Register `admin-console` in the Active contract table in `docs/policies/verification/contracts.md` with desktop viewport, `verification/admin-fixture.mjs` precondition, and `admin-console.spec.mjs` owner. Do not alter unrelated contracts.
@@ -418,11 +484,11 @@ Register `admin-console` in the Active contract table in `docs/policies/verifica
 Run:
 
 ```bash
-npm --prefix frontend test -- src/features/admin/lib/collectorExecution.test.js src/features/admin/lib/menus.test.js
+npm --prefix frontend test -- src/features/admin/lib/collectorExecution.test.js src/features/admin/lib/adminTime.test.js src/features/admin/lib/menus.test.js
 npm run dev:contract -- --grep "관리자 콘솔"
 ```
 
-Expected: all frontend tests pass; Playwright proves a textual `미실행` execution problem is visible to an authenticated administrator.
+After implementation, capture the same states into `artifacts/responsive-screenshots/collector-execution-observability/<timestamp>/after/`, update the manifest and issues review with resolved/unresolved items, run axe in the administrator contract, and obtain a second read-only UI review. Expected: all frontend tests pass; Playwright and screenshots prove textual normal, failed, skipped, missed, and recovered execution states are visible to an authenticated administrator without color-only meaning.
 
 - [ ] **Step 7: Commit the administrator UI**
 
@@ -514,7 +580,7 @@ git commit -m "ops: rotate PM2 logs within a fixed bound"
 
 **Files:**
 
-- Modify: `docs/superpowers/status/2026-08-31-collector-execution-observability.md`
+- Create: `docs/superpowers/status/2026-08-31-collector-execution-observability.md`
 
 **Interfaces:**
 
