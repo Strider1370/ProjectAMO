@@ -73,17 +73,17 @@
 
 정확한 cron 슬롯별 이력·다음 예정 시각 계산은 만들지 않는다. 현재 상태와 마지막 정규 시작 시각이면 이번과 같은 수집기 미실행을 판정하기에 충분하다.
 
-### 3. 새 수집기·산출물의 단일 등록부
+### 3. 새 외부 API 호출의 단일 등록부
 
-새 정기 수집기나 그 산출물을 추가할 때 `locks`, `stats` type 목록, cron 호출, 자료 건강도 카탈로그, 관리자 실행 목록을 각각 수동으로 고치지 않는다. `backend/src/collector-registry.js`의 등록부가 다음을 한 항목으로 소유한다.
+새 외부 API 호출을 추가할 때 API Hub endpoint 이름, 호출량 ledger, 수집기 실행 로그, 관리자 호출 상태를 각각 수동으로 고치지 않는다. `backend/src/api-operation-registry.js`의 등록부가 호출 단위로 다음을 소유한다.
 
-- 수집기 type, processor binding key, cron 식과 시간대, API Hub category 같은 실행 옵션, 최대 기대 간격·유예·비운영 조건
-- 활성화 조건과 관리자 표시명
-- 수집기가 직접 생성하는 자료 제품의 key, 자료 건강도 source/character, 신선도 기준, 저장 메타 경로, 이벤트성 여부
+- 안정적인 operation id, 관리자 표시명, 제공자와 수집기 type(없으면 on-demand)
+- credential category, API Hub 여부, timeout·재시도·허용 override 범위 등 공통 호출 정책
+- URL을 operation으로 해석하는 matcher 또는 명시적 operation id
 
-스케줄러는 활성 등록부에서만 cron과 실행 옵션을 만들고, stats는 기록 대상 type을 동적으로 보장하며, 관리자 `collectorExecution`은 활성 등록부 전체를 그대로 표시한다. 자료 제품은 등록부 메타데이터에서 자료 건강도 카탈로그를 만든다. 하나의 수집기가 여러 제품을 생성하면 그 제품들을 같은 수집기 항목 아래에 선언한다.
+모든 외부 HTTP 호출은 공통 request wrapper에 operation id를 전달한다. wrapper는 등록된 URL matcher와 id가 서로 일치하는지 확인하고, timeout·retry·decode/논리 성공 검증까지 감싼 최종 결과의 시작·성공·실패·지연시간·안전하게 정규화한 오류를 operation별 고정 크기 상태에 기록한다. API Hub 사용량 ledger는 각 실제 HTTP attempt를 wrapper 한 곳에서만 기록하며, credential fingerprint가 판별한 실제 category와 operation 선언 category가 다르면 실패한다. 관리자는 활성 호출 등록부 전체의 현재 상태를 자동으로 받는다. 따라서 새 API는 등록부에 한 줄로 선언하면 로그·상태·관리자 목록에 함께 추가된다.
 
-수집기 구현 자체의 processor 함수는 index의 type→job binding에 남긴다. 제품 선언에는 `store` type 또는 meta 경로의 publication target도 들어간다. 모든 `store.save`와 제품 meta 쓰기는 공용 publication seam을 거쳐 그 target을 검증하며, 제품 파일을 직접 쓰는 기존 processor도 이 seam으로 이관한다. 시작 시 binding 없는 활성 등록부 항목, 등록부 없는 정기 binding, 불완전하거나 중복된 자료 제품 메타데이터, 미등록 publication target은 명시적으로 실패한다. 따라서 새 산출물을 등록부에 넣지 않거나 등록만 하고 processor를 연결하지 않은 변경은 테스트와 시작 검증을 통과하지 못한다.
+수집기 구현의 processor 함수와 cron binding은 index에 남긴다. 반면 등록부 없는 operation id, matcher가 해석하지 못하거나 id와 맞지 않는 외부 URL, 또는 등록부 밖의 raw transport(`fetch`, `http/https.request|get`, `fetchWithTimeout`)는 개발·테스트와 서버 시작에서 명시적으로 실패한다. 자료 파일·카탈로그는 이 요구의 대상이 아니며 기존 구조를 유지한다.
 
 ### 4. 서버 로그와 보존 상한
 
@@ -101,10 +101,10 @@ PM2 로그 회전을 설정한다. stdout와 stderr는 파일이 10MiB에 도달
 
 ### 5. 관리자 콘솔
 
-기존 관리자 자료 수집 화면과 `GET /api/admin/data-health` 응답을 확장한다. 응답에는 자료 행과 별도로 모든 활성 수집기의 `collectorExecution` 목록을 포함한다. 별도 실행 이력 API나 이력 펼침 화면은 만들지 않는다.
+기존 관리자 자료 수집 화면과 `GET /api/admin/data-health` 응답을 확장한다. 응답에는 자료 행과 별도로 모든 활성 수집기의 `collectorExecution`, 모든 등록 API 호출의 `apiOperationExecution` 목록을 포함한다. 별도 실행 이력 API나 이력 펼침 화면은 만들지 않는다.
 
 - 각 수집기 또는 연결된 자료 행에 실행 상태와 마지막 시작·완료 시각을 표시한다.
-- 자료 행에 연결되지 않는 수집기도 `collectorExecution`에서 빠지지 않으며, 실패·미실행은 모두 컴팩트한 실행 문제 목록과 상단 수에 포함한다.
+- 자료 행에 연결되지 않는 수집기도 `collectorExecution`에서 빠지지 않으며, 등록 API 호출도 `apiOperationExecution`에서 빠지지 않는다. 수집기 실패·미실행과 API 호출 실패는 모두 컴팩트한 실행 문제 목록과 상단 수에 포함한다.
 - 현재 문제의 코드와 짧은 메시지, 그리고 복구된 경우에는 가장 최근 이상 시각만 표시한다.
 - 자료 신선도 `ok/late/stopped` 표시는 그대로 유지하며, 실행 상태와 혼합하지 않는다.
 - PM2 로그 보존 기준(회전/압축/7개)을 화면에 복제하지 않는다. 로그 파일은 서버 운영 자료이고 콘솔은 현재 상태를 보여주는 곳이다.
@@ -112,17 +112,17 @@ PM2 로그 회전을 설정한다. stdout와 stderr는 파일이 10MiB에 도달
 ## 오류 처리
 
 - 상태 파일 기록 실패는 수집 자체를 실패시키지 않되, stderr에 `collector_observability_write_failed`로 남긴다.
-- 활성 등록부 항목에 processor binding이 없거나, binding에 등록부 항목이 없거나, 제품 메타데이터가 불완전하면 개발·테스트와 서버 시작에서 명시적으로 실패시킨다. 조용히 관측에서 빠지면 안 된다.
+- 활성 수집기 등록부 항목에 processor binding이 없거나, 등록부 없는 정기 binding이 있거나, API operation id·외부 URL이 등록부에 없으면 개발·테스트와 서버 시작에서 명시적으로 실패시킨다. 조용히 관측에서 빠지면 안 된다.
 - 수동 초기 수집은 시작·완료 상태를 기록하지만, 정규 스케줄 `missed` 상태를 해소하거나 정규 스케줄 미실행의 증거로 취급하지 않는다. 정규 수집의 다음 시작만 그 `missed` 상태를 해소한다.
 
 ## 검증
 
 1. 상태 기록 단위 테스트: start→succeeded, failed, skipped, `saved:false` 성공 처리, 성공 뒤 과거 `last_issue`가 현재 실패로 표시되지 않는지, 새 execution 상태가 수집 횟수에 따라 늘지 않는지 확인한다.
 2. watchdog 단위 테스트: 지상예보처럼 3시간 주기의 수집기가 유예시간을 넘기면 한 번만 `missed`가 되는지, 이후 시작하면 해소되는지, 비운영 시간이 제외되는지 확인한다.
-3. 등록부·publication 테스트: 활성·비활성 설정 조합에서 모든 정규 스케줄 수집기와 processor binding이 정확히 한 등록부 항목에 대응하고, 모든 자료 건강도 제품이 등록부 메타데이터에서 만들어지는지 확인한다. `store` 저장과 meta publication이 미등록 target을 거부하고, type·제품 key·target이 중복되거나 필수 health 메타데이터가 빠지면 시작 검증이 실패하는지 확인한다.
+3. 등록부·API 호출 테스트: 활성·비활성 설정 조합에서 모든 정규 스케줄 수집기와 processor binding이 정확히 한 수집기 등록부 항목에 대응하고, 모든 외부 API URL이 정확히 한 operation으로 해석되는지 확인한다. 중복 operation id, id/URL 불일치, 잘못된 실제 credential category, 미등록 API Hub endpoint, 모든 raw outbound transport를 거부하는지 확인한다. `500→200`, HTTP 200+API 실패 코드, decode 실패에서 attempt ledger와 최종 operation 상태가 각각 맞는지 확인한다.
 4. 수집 wrapper 테스트: 시작 기록이 processor 호출보다 먼저 남고, startup/manual 시작이 `last_scheduled_started_at`을 바꾸지 않는지 확인한다.
 5. 상태 저장 테스트: 시작 기록의 파일 쓰기가 30초 안에 반복 실행 수만큼 늘지 않고, 완료·실패의 기존 통계 저장이 유지되는지 확인한다.
-6. 관리자 API·콘솔 테스트: `missed`와 `failed`가 자료 최신성 상태와 별도로 보이고, 자료 행 밖의 활성 수집기도 `collectorExecution`에 있으며, 관리자 인가 규칙이 유지되는지 확인한다.
+6. 관리자 API·콘솔 테스트: 수집기 `missed`/`failed`와 API 호출 `failed`가 자료 최신성 상태와 별도로 보이고, 자료 행 밖의 활성 수집기와 모든 등록 API 호출이 각각의 execution 목록에 있으며, 관리자 인가 규칙이 유지되는지 확인한다.
 7. Playwright: 관리자 자료 수집 화면에서 정상·실패·건너뜀·미실행·복구 상태와 선택된 시간대의 실행 시각을 브라우저로 확인한다.
 8. 운영 검증: 배포 뒤 지상예보의 다음 정규 실행에서 PM2 로그와 관리자 콘솔 모두 같은 시작·완료·성공 상태를 보이는지, PM2 stdout/stderr가 한 줄 구조화 로그로 회전·압축되고 보관 파일 수가 상한을 넘지 않는지 확인한다.
 

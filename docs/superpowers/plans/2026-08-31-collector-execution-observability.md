@@ -4,7 +4,7 @@
 
 **Goal:** 모든 활성 수집기의 마지막 실행 상태와 미실행을 관리자 콘솔에 표시하고, PM2 로그가 제한된 공간 안에서 원인 추적을 지원하게 한다.
 
-**Architecture:** `backend/src/collector-registry.js`가 정기 수집기, 산출물, cron, 시간대, 건강도 메타데이터의 단일 등록부다. 실행 상태는 기존 `stats/latest.json` 안에서 수집기별 고정 크기 `execution` 객체로 보관하고, `backend/src/collector-execution.js`는 등록부를 소비해 watchdog 판정만 소유한다. `index.js`는 등록부와 type→processor binding을 검증해 cron 등록과 `runWithLock` 기록을 연결하며, 기존 `/api/admin/data-health`는 자료 건강도와 별도로 `collectorExecution` 목록을 내려준다.
+**Architecture:** `backend/src/collector-registry.js`는 정기 수집기의 cron·시간대·실행 조건 정본이고, `backend/src/api-operation-registry.js`는 외부 API 호출의 정본이다. 공통 request wrapper가 등록된 API operation의 시작·성공·실패·시간을 기존 `stats/latest.json`의 고정 크기 상태로 기록한다. `index.js`는 collector binding을 검증해 cron 등록을 연결하고, 기존 `/api/admin/data-health`는 자료 건강도와 별도로 collector 및 API operation 실행 목록을 내려준다.
 
 **Tech Stack:** Node.js 22 ESM, node-cron 3, Express, React 19, node:test, Playwright, PM2/pm2-logrotate, Bash.
 
@@ -15,8 +15,8 @@
 - 실행 outcome은 `succeeded`, `failed`, `skipped`, `missed`만 사용한다. `saved:false`는 `succeeded`이며 전역 `degraded`는 만들지 않는다.
 - `last_outcome`은 현재 상태이고 `last_issue`는 최근 이상 사건이다. 복구된 과거 오류를 현재 장애로 표시하지 않는다.
 - 정규 cron, 시작 초기 수집, 수동 수집은 각각 `scheduled`, `startup`, `manual` 출처로 기록한다. watchdog는 `last_scheduled_started_at`만 정규 실행 증거로 사용한다.
-- 새 정기 수집기나 자료 제품은 등록부에 한 번 선언한다. `index.js`의 cron 호출, `stats.js`의 고정 type 목록, 자료 건강도 카탈로그, 관리자 목록에 별도 수동 항목을 추가하지 않는다.
-- 모든 자료 publication은 등록부 선언과 대조한다. `store.save` 또는 제품 meta 파일을 직접 쓰는 새 코드는 공용 publication seam 밖에서 허용하지 않으며, 미등록 store type·meta 경로는 즉시 실패한다.
+- 새 정기 수집기는 collector 등록부에 한 번 선언한다. 새 외부 API 호출은 API operation 등록부에 한 번 선언한다. 호출량 ledger, 호출 로그, operation 상태, 관리자 목록에 별도 수동 항목을 추가하지 않는다.
+- 외부 HTTP 호출은 공통 request wrapper를 통해서만 실행한다. 미등록 operation id, 해석할 수 없는 외부 URL, wrapper 밖 raw `fetch`는 테스트와 서버 시작에서 실패한다.
 - 새 SQLite 테이블, 실행별 장기 이력, 원본 API 응답, 인증키, 긴 스택 전문을 저장하거나 반환하지 않는다.
 - 시작 상태 파일 쓰기는 최대 30초에 한 번으로 묶고, 기존 완료·실패 통계 저장 동작은 유지한다.
 - PM2 stdout/stderr는 10M 또는 자정 회전, gzip 압축, 회전본 7개 보관을 적용한다.
@@ -26,126 +26,58 @@
 
 ## File Structure
 
-- Create: `backend/src/collector-registry.js` — 정기 수집기·산출물·cron·시간대·health 메타데이터의 단일 등록부를 소유한다.
-- Create: `backend/src/collector-publication.js` — 등록부를 기준으로 store 저장과 meta publication target을 검증하는 공용 seam을 소유한다.
+- Create: `backend/src/collector-registry.js` — 정기 수집기·cron·시간대·실행 조건의 단일 등록부를 소유한다.
+- Create: `backend/src/api-operation-registry.js` — 외부 API operation id·label·provider·credential/matcher의 단일 등록부를 소유한다.
+- Create: `backend/src/lib/request-observability.js` — 등록된 외부 호출의 실행 상태와 안전한 로그/ledger 기록을 소유하는 공용 wrapper를 제공한다.
 - Create: `backend/src/collector-execution.js` — 등록부를 소비한 상태 정규화, 미실행 판정과 watchdog lifecycle만 소유한다.
-- Modify: `backend/src/store.js`, 직접 meta를 쓰는 자료 processor들 — 모든 제품 publication을 등록부 검증 seam으로 통과시킨다.
 - Modify: `backend/src/stats.js` — 등록부 확인형 동적 type 생성, 수집기별 `execution` 상태의 초기화·기록·최대 30초 시작 저장 debounce를 소유한다.
-- Modify: `backend/src/admin/data-health-catalog.js` — 등록부의 제품 메타데이터에서 기존 자료 건강도 카탈로그를 파생한다.
+- Modify: `backend/src/api-hub-usage.js`, `backend/src/lib/fetch-api-hub.js`, `backend/src/api-client.js`, 외부 `fetch`를 쓰는 processor들 — API operation 등록부와 공용 request wrapper를 사용한다.
 - Modify: `backend/src/index.js` — 모든 정규 cron을 등록부 기반 helper로 등록하고 `runWithLock` 시작/종료 기록과 짧은 로그를 연결한다.
 - Modify: `backend/src/admin/data-health.js`, `backend/src/admin/router.js` — 기존 자료 건강도 응답에 활성 수집기 실행 목록을 추가한다.
 - Modify: `frontend/src/app/App.jsx`, `frontend/src/features/admin/AdminShell.jsx`, `frontend/src/features/admin/lib/collectorExecution.js` (create), `adminTime.js` (create), `menus.js`, `DataCollectionScreen.jsx`, `OverviewScreen.jsx` — 선택된 표시 시간대와 실행 상태의 순수 분류·표시를 담당한다.
 - Modify: `frontend/verification/contracts/admin-console.spec.mjs`, `docs/policies/verification/contracts.md` — 관리자 콘솔의 브라우저 계약을 등록하고 실행 문제 표시를 검증한다.
-- Modify: `Architecture.md` — Backend 섹션에 collector registry, publication seam, index의 processor binding 책임을 기록한다.
+- Modify: `Architecture.md` — Backend 섹션에 collector/API operation registry, request wrapper, index의 processor binding 책임을 기록한다.
 - Create: `deploy/configure-pm2-logrotate.sh` — `ec2-user`의 PM2에 회전을 idempotent하게 설치·설정·검증한다.
 - Modify: `deploy/deploy-vm.sh`, `deploy/deploy-vm-full.sh`, `docs/operations/aws-ec2-manual-deploy.md` — 모든 배포 경로에서 로그 회전 설정과 검증을 보장한다.
 - Create (ignored evidence): `artifacts/responsive-screenshots/collector-execution-observability/<timestamp>/{before,after}/manifest.md` and `review/issues.md` — 관리자 UI 변경 전후 상태와 read-only UI review 결론을 남긴다.
 
-## Task 1: Single collector and product registry
+## Task 1: Single collector and external API-operation registries
 
 **Files:**
 
-- Create: `backend/src/collector-registry.js`
-- Create: `backend/src/collector-publication.js`
-- Modify: `backend/src/store.js`
-- Modify: `backend/src/admin/data-health-catalog.js`
-- Modify: `backend/src/stats.js`
-- Create: `backend/test/collector-registry.test.js`
-- Create: `backend/test/collector-publication.test.js`
-- Create: `backend/test/fixtures/data-health-catalog-contract.json`
-- Create: `backend/test/fixtures/data-health-catalog-radar-disabled-contract.json`
-- Modify: `backend/test/data-health-catalog.test.js`
-- Modify: `backend/test/stats.test.js`
+- Create: `backend/src/collector-registry.js`, `backend/src/api-operation-registry.js`, `backend/src/lib/request-observability.js`
+- Modify: `backend/src/index.js`, `backend/src/api-hub-usage.js`, `backend/src/lib/fetch-api-hub.js`, `backend/src/api-client.js`, and every production processor that directly calls external `fetch`
+- Modify: `backend/src/stats.js`, `backend/src/admin/router.js`, `backend/src/admin/data-health.js`
+- Create: `backend/test/collector-registry.test.js`, `backend/test/api-operation-registry.test.js`, `backend/test/request-observability.test.js`
+- Modify: `backend/test/api-hub-usage.test.js`, `backend/test/fetch-api-hub.test.js`, `backend/test/admin-data-health.test.js`, `Architecture.md`
 
 **Interfaces:**
 
-- Produces `COLLECTOR_REGISTRY`, `activeCollectorRegistry(config)`, `collectorByType(type)`, and `assertCollectorRegistry({ registry = COLLECTOR_REGISTRY, activeCollectors, processorBindings })` from `collector-registry.js`.
-- `COLLECTOR_REGISTRY` entry owns `{ type, binding, label, apiHubCategories, schedule(config), enabled(config), products }`; `activeCollectorRegistry(config)` resolves `schedule(config)` to `{ expression, cronOptions, maxIntervalMs, graceMs, quiet }` before returning an active entry. A documented on-demand entry has `schedule: null` and is excluded from cron/watchdog registration.
-- Each `products` item owns `{ key, label, source, character, normalMs, lateMs, stoppedMs, publication, eventDriven, quiet, disabledWhen }`; `publication` is either `{ kind: 'store', type }` or `{ kind: 'meta', path }`. `buildDataHealthCatalog()` derives the existing catalog rows from these product declarations.
-- Produces `assertStorePublication(type)`, `assertMetaPublication(productKey, relativePath)`, and narrow writing wrappers from `collector-publication.js`. `store.js` calls the former; every product meta writer calls the latter before its atomic write.
-- `assertCollectorRegistry` rejects duplicate collector types/product keys/publication targets, absent bindings for active entries, unregistered bindings, invalid source/character references, missing schedule fields, and incomplete product health metadata. Registered-but-disabled bindings are valid.
-- `stats.js` lazily creates a type entry for every registered collector instead of silently dropping an unknown type.
+- `COLLECTOR_REGISTRY` owns `{ type, binding, label, schedule(config), enabled(config) }`; its active resolved entries supply cron/timezone/watchdog fields. It does not own output files or data-health rows.
+- `API_OPERATION_REGISTRY` owns `{ id, label, provider, collectorType, credentialCategory, apiHub, requestPolicy: { timeoutMs, maxRetries, allowedOverrides }, match(url) }`. `resolveApiOperation({ id, url })` requires one exact registered operation and requires an explicit id to match the resolved URL operation; `assertApiOperationRegistry()` rejects duplicate ids, ambiguous matchers, invalid API Hub categories/policies, and missing labels.
+- `requestObservedApi({ operation, url, options, validate })` is the sole outbound request seam. It enforces the operation request policy, records each physical HTTP attempt once in the API Hub ledger, executes decode/logical `validate`, then writes bounded final operation state `{ lastStartedAt, lastFinishedAt, lastOutcome, lastIssue, durationMs }`.
 
-- [ ] **Step 1: Write failing registry parity tests**
+- [ ] **Step 1: Write failing registry and wrapper tests**
 
-Create `backend/test/collector-registry.test.js`:
+Cover: every existing scheduled collector has one registry entry; every existing API Hub endpoint resolves to one operation; an unknown operation, unknown API Hub URL, known-id/wrong-URL pair, duplicate/ambiguous operation, bad policy/category, and every raw outbound transport source bypass each fail. Verify `500→200`, HTTP 200 with an API error code, and decode failure: ledger counts each physical attempt once, while the operation state reports only the final logical result.
 
-```js
-test('registry preserves the fixed legacy data-health contract for representative configurations', () => {
-  const active = activeCollectorRegistry(enabledConfig)
-  assert.ok(active.some((entry) => entry.type === 'ground_forecast'))
-  assert.deepEqual(serializeCatalog(buildDataHealthCatalog(enabledConfig)), readFixture('data-health-catalog-contract.json'))
-  assert.deepEqual(serializeCatalog(buildDataHealthCatalog(radarDisabledConfig)), readFixture('data-health-catalog-radar-disabled-contract.json'))
-})
+- [ ] **Step 2: Add both registries and migrate API Hub labels/matching**
 
-test('registry validator rejects incomplete or duplicate declarations, but permits disabled bindings', () => {
-  assert.throws(() => assertCollectorRegistry({ activeCollectors: [collectorByType('ground_forecast')], processorBindings: {} }), /ground_forecast.*binding/)
-  assert.throws(() => assertCollectorRegistry({ activeCollectors: [], processorBindings: { orphan: async () => ({}) } }), /orphan.*registry/)
-  assert.throws(() => assertCollectorRegistry({ registry: duplicateProductRegistry, activeCollectors: duplicateProductRegistry, processorBindings }), /duplicate.*product/i)
-  assert.doesNotThrow(() => assertCollectorRegistry({ activeCollectors: activeCollectorRegistry(radarDisabledConfig), processorBindings }))
-})
+Move `API_HUB_ENDPOINTS` and `endpointFor(url)` into `api-operation-registry.js`; preserve all current ids and labels. Add non-API-Hub operations for NOAA, KAC, AirKorea, ADS-B, RainViewer, MET Norway and every other existing external host found by `rg`. Give each operation its existing timeout/retry policy, and require every override to be listed in `allowedOverrides`. Keep data-health catalog and storage/publication code unchanged.
 
-test('stats records a declared collector type without a hand-maintained TYPES entry', () => {
-  stats.recordStart('ground_forecast', { source: 'scheduled' })
-  assert.ok(stats.getExecutionState('ground_forecast').last_scheduled_started_at)
-})
+- [ ] **Step 3: Route all external calls through one observable wrapper**
 
-test('unregistered store or meta publication fails before writing', () => {
-  assert.throws(() => assertStorePublication('not_declared'), /not_declared/)
-  assert.throws(() => assertMetaPublication('not_declared', 'new/meta.json'), /not_declared/)
-})
-```
+Refactor `fetch-api-hub.js`, `api-client.js`, direct processor fetches, worker request paths, `ground-forecast-processor`/`adsb-processor` `https.request`, and `backend/server.js` direct external fetch to call `requestObservedApi`. Remove the global API Hub `fetch` monkeypatch: the wrapper owns the sole ledger write and uses an unpatched raw transport, preventing double counting. Require an explicit operation id where URL matching would be ambiguous and reject an id whose matcher does not match the URL. Add an AST/lint guard across `backend/src/**` and `backend/server.js`: `fetch`, `http/https.request|get`, and `fetchWithTimeout` are permitted only inside the wrapper; local loopback/test calls are explicitly allowlisted. This makes a newly added API call fail review/tests unless it has a registry declaration and automatically gives it logs, state, and an admin row.
 
-- [ ] **Step 2: Run registry tests and verify failure**
+- [ ] **Step 4: Make collector scheduling registry-safe and update architecture**
 
-Run: `npm --prefix backend test -- backend/test/collector-registry.test.js backend/test/collector-publication.test.js backend/test/data-health-catalog.test.js backend/test/stats.test.js`
+Move the regular cron expressions/timezones and enable conditions from `index.js` into `COLLECTOR_REGISTRY`; retain processor functions in index's binding map. Validate every active entry/binding pair at startup. Update `Architecture.md` Backend section to describe the collector registry, API-operation registry, and common request wrapper.
 
-Expected: FAIL because no registry/publication seam exists, stats silently ignores unlisted types, and the legacy catalog fixture has not been established.
+- [ ] **Step 5: Run focused regressions and commit**
 
-- [ ] **Step 3: Create the canonical registry and derive catalog rows**
+Run: `npm --prefix backend test -- backend/test/collector-registry.test.js backend/test/api-operation-registry.test.js backend/test/request-observability.test.js backend/test/api-hub-usage.test.js backend/test/fetch-api-hub.test.js backend/test/admin-data-health.test.js`
 
-Move the existing regular cron expressions/timezones and API Hub categories from `index.js`, the 33 data-health product declarations from `data-health-catalog.js`, and the existing store/meta publication targets into `COLLECTOR_REGISTRY`. Preserve every existing value, including KST/UTC options, optional radar/satellite enablement, quiet windows, `statsKey`-equivalent collector relationships, source, character, freshness thresholds, and key-blocking behavior.
-
-Represent one-to-many production explicitly, for example the satellite collector owns both satellite and convective products:
-
-```js
-{
-  type: 'satellite', binding: 'satellite', label: '위성', apiHubCategories: ['radar_satellite'],
-  schedule: (cfg) => ({ expression: cfg.schedule.satellite_interval, cronOptions: undefined, maxIntervalMs: m(10), graceMs: m(10) }),
-  enabled: (cfg) => Boolean(cfg.api?.radar_satellite_auth_key),
-  products: [
-    { key: 'satellite', label: '위성', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), publication: { kind: 'meta', path: 'satellite/sat_meta.json' } },
-    { key: 'convective', label: '대류 CI·CTPS', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), publication: { kind: 'meta', path: 'satellite/convective/convective_meta.json' }, disabledWhen: (cfg) => cfg.satellite?.convective_enabled === false },
-  ],
-}
-```
-
-Keep `SOURCES`, `CHARACTERS`, and pure grouping helpers in `data-health-catalog.js`, but replace its handwritten `CATALOG` array with `buildDataHealthCatalog(COLLECTOR_REGISTRY)`. First capture checked-in JSON fixtures of every current serializable row field (key, label, source, character, statsKey, thresholds, meta, event/quiet/disabled identifiers) and compare representative enabled/radar-disabled configurations against them; do not compare two values derived from the same new registry. Do not put processor functions in the registry; `index.js` owns the type→processor binding map.
-
-- [ ] **Step 4: Route every publication through the registry seam**
-
-Make `store.js` derive its supported types/cache shape from declared `{ kind: 'store' }` targets and call `assertStorePublication(type)` before writing. Inventory every product meta publisher (radar graphics/echo, satellite/fog/visible/convective, KTG, RainViewer, and any other production writer found by `rg`) and replace its direct final meta write with `assertMetaPublication(productKey, relativePath)` plus the existing atomic write. Add a focused source-level guard test that production `backend/src/processors/**` files have no direct `store.save(` or final `*_meta.json` publication outside the approved seam, so a newly added output cannot bypass the check.
-
-The seam validates before filesystem mutation and never changes atomic-write semantics. It accepts only a product's declared target, so a typo, an undeclared new output, or a wrong collector-product relationship fails locally and at server startup.
-
-- [ ] **Step 5: Make stats type creation registry-safe**
-
-Replace the early-return behavior for an unknown stats type with `ensureType(type)`, which creates `makeTypeEntry()` only after `collectorByType(type)` confirms the type is registered. Preserve explicit on-demand exceptions only through a documented registry entry with `schedule: null`. Throw for an unregistered type rather than silently dropping telemetry.
-
-- [ ] **Step 6: Run registry, publication, and catalog regression tests**
-
-Run: `npm --prefix backend test -- backend/test/collector-registry.test.js backend/test/collector-publication.test.js backend/test/data-health-catalog.test.js backend/test/admin-data-health.test.js backend/test/stats.test.js`
-
-Expected: PASS. The catalog remains 33 products until a deliberately declared new product is added, every active scheduled collector has exactly one registry entry, and every store/meta publication is declared before it can write.
-
-- [ ] **Step 7: Commit the registry foundation**
-
-Update `Architecture.md` Backend section before committing: describe `collector-registry.js` as the declaration source, `collector-publication.js` as the publication guard, and `index.js` as the processor-binding/scheduler consumer. The document must no longer describe handwritten cron/type/catalog lists as the extension point.
-
-```bash
-git add Architecture.md backend/src/collector-registry.js backend/src/collector-publication.js backend/src/store.js backend/src/processors backend/src/admin/data-health-catalog.js backend/src/stats.js backend/test/collector-registry.test.js backend/test/collector-publication.test.js backend/test/fixtures/data-health-catalog-contract.json backend/test/fixtures/data-health-catalog-radar-disabled-contract.json backend/test/data-health-catalog.test.js backend/test/stats.test.js
-git commit -m "refactor: centralize collector and product registration"
-```
+Expected: PASS. Existing endpoint labels and API Hub accounting are unchanged; a newly declared API operation appears in operation status without a manual admin/API Hub list edit, while an unregistered external call fails.
 
 ## Task 2: Bounded execution state and pure watchdog
 
@@ -221,7 +153,7 @@ Expected: FAIL because `recordStart`, `getExecutionState`, and the injected writ
 
 - [ ] **Step 3: Add the minimal execution state to `stats.js`**
 
-Extend `makeTypeEntry()` and old-file migration so every known type gets this shape without deleting existing counters:
+Extend `makeTypeEntry()` and old-file migration so every known collector type gets this shape without deleting existing counters. Add a sibling bounded `api_operations` map keyed only by registered API operation id; it uses the same safe issue normalization but no cron/watchdog fields.
 
 ```js
 execution: {
@@ -245,7 +177,7 @@ recordMissed(type, issue) // outcome=missed; update last_missed_at and last_issu
 getExecutionState(type) // return execution or the null-filled shape
 ```
 
-`normalizeCollectorIssue` must remove line breaks, cap the message at 240 characters, and replace URL query strings, `authKey`/`serviceKey` assignments, and bearer-token-like values with `[redacted]` before any persistence, API response, or log output. Keep `last_error`, `recent_runs`, success/failure counters, and their existing public behavior intact. Make the save timer injectable only through a small exported test hook or a factory; do not expose production mutation endpoints.
+`normalizeCollectorIssue` must remove line breaks, cap the message at 240 characters, and replace URL query strings, `authKey`/`serviceKey` assignments, and bearer-token-like values with `[redacted]` before any persistence, API response, or log output. `recordApiOperationStart/Success/Failure` accepts only a registered operation id and writes its bounded state. Keep `last_error`, `recent_runs`, success/failure counters, and their existing public behavior intact. Make the save timer injectable only through a small exported test hook or a factory; do not expose production mutation endpoints.
 
 - [ ] **Step 4: Write failing pure monitor tests**
 
@@ -447,16 +379,14 @@ git commit -m "feat: detect missed collector executions"
 
 - Modify: `backend/src/admin/data-health.js`
 - Modify: `backend/src/admin/router.js`
-- Modify: `backend/src/admin/data-health-catalog.js`
 - Modify: `backend/test/admin-data-health.test.js`
 - Modify: `backend/test/admin.test.js`
-- Modify: `backend/test/data-health-catalog.test.js`
 
 **Interfaces:**
 
-- Consumes `buildCollectorExecution` from Task 2 and `activeCollectorRegistry`/derived `CATALOG` from Task 1.
-- `readDataHealth()` accepts `getCollectorExecution` and returns `collectorExecution` alongside the unchanged `counts`, `rows`, and `groups` fields.
-- `GET /api/admin/data-health` returns the new `collectorExecution` array only to existing admin-authorized callers.
+- Consumes `buildCollectorExecution` and registered API-operation state from Tasks 1–2.
+- `readDataHealth()` accepts `getCollectorExecution` and `getApiOperationExecution`, returning both arrays alongside the unchanged `counts`, `rows`, and `groups` fields.
+- `GET /api/admin/data-health` returns the new execution arrays only to existing admin-authorized callers.
 
 - [ ] **Step 1: Write failing API-shape tests**
 
@@ -477,13 +407,13 @@ test('execution problems are separate from stale-data rows', () => {
 })
 ```
 
-Add to `backend/test/admin.test.js` an authenticated assertion that `collectorExecution` is an array and never appears in a 401 response.
+Add a registered `ground_forecast` API operation failure to the fixture and assert `health.apiOperationExecution` includes its safe error state. Add to `backend/test/admin.test.js` an authenticated assertion that both execution arrays exist and never appear in a 401 response.
 
 - [ ] **Step 2: Run API tests and verify failure**
 
 Run: `npm --prefix backend test -- backend/test/admin-data-health.test.js backend/test/admin.test.js`
 
-Expected: FAIL because `readDataHealth` does not accept or return `collectorExecution`.
+Expected: FAIL because `readDataHealth` does not accept or return execution arrays.
 
 - [ ] **Step 3: Extend `readDataHealth` without changing data-health semantics**
 
@@ -491,25 +421,25 @@ Add an optional injected dependency with a safe default:
 
 ```js
 export function readDataHealth(basePath, {
-  getCached, getStats, getCollectorExecution = () => [], now = Date.now(), sun = {}, cfg = config,
+  getCached, getStats, getCollectorExecution = () => [], getApiOperationExecution = () => [], now = Date.now(), sun = {}, cfg = config,
 }) {
   // existing rows/counts/groups stay byte-for-byte compatible in meaning
-  return { generatedAt: new Date(now).toISOString(), counts, rows, groups, collectorExecution: getCollectorExecution() }
+  return { generatedAt: new Date(now).toISOString(), counts, rows, groups, collectorExecution: getCollectorExecution(), apiOperationExecution: getApiOperationExecution() }
 }
 ```
 
-In `admin/router.js`, pass a closure that builds only active registry entries from the live config and current stats. `readDataHealth` must consume the registry-derived catalog for that same live config, not a second handwritten output list. Do not add a route, database table, query parameter, or non-admin bypass.
+In `admin/router.js`, pass closures that build active collectors and every registered API operation from the live config/current stats. Do not change existing data-health catalog semantics or add a route, database table, query parameter, or non-admin bypass.
 
 - [ ] **Step 4: Run admin API regression suite**
 
-Run: `npm --prefix backend test -- backend/test/admin-data-health.test.js backend/test/admin.test.js backend/test/data-health-catalog.test.js backend/test/collector-registry.test.js`
+Run: `npm --prefix backend test -- backend/test/admin-data-health.test.js backend/test/admin.test.js backend/test/api-operation-registry.test.js backend/test/request-observability.test.js`
 
-Expected: PASS. Confirm catalog row count and legacy `counts` assertions are unchanged.
+Expected: PASS. Confirm legacy data-health `counts` assertions are unchanged and a registered API operation is returned without a handwritten admin list.
 
 - [ ] **Step 5: Commit admin API extension**
 
 ```bash
-git add backend/src/admin/data-health.js backend/src/admin/router.js backend/src/admin/data-health-catalog.js backend/test/admin-data-health.test.js backend/test/admin.test.js backend/test/data-health-catalog.test.js
+git add backend/src/admin/data-health.js backend/src/admin/router.js backend/test/admin-data-health.test.js backend/test/admin.test.js
 git commit -m "feat: expose collector execution status to admins"
 ```
 
@@ -532,10 +462,10 @@ git commit -m "feat: expose collector execution status to admins"
 
 **Interfaces:**
 
-- Consumes `health.collectorExecution` from Task 4; callers treat missing data as an empty array during rolling deployment.
+- Consumes `health.collectorExecution` and `health.apiOperationExecution` from Task 4; callers treat missing data as an empty array during rolling deployment.
 - Produces `executionProblems(entries)` and `executionSummary(entries)` from `collectorExecution.js`; `executionSummary` returns the supplied active-registry order unchanged.
 - Produces `formatAdminExecutionTime(iso, tz)` from `adminTime.js`; it passes `tz` to `Intl.DateTimeFormat` and returns `—` for invalid input.
-- `executionProblems` returns current `failed` and `missed` entries in registry order. `skipped` and recovered entries remain visible in the full execution-status table but do not raise the high-priority count.
+- `executionProblems` returns current failed/missed collectors and failed API operations in registry order. `skipped` and recovered entries remain visible in the full execution-status table but do not raise the high-priority count.
 
 - [ ] **Step 1: Write failing pure frontend tests**
 
@@ -558,7 +488,7 @@ test('skipped and recovered outcomes remain in the status list without raising a
 })
 ```
 
-Add `adminTime.test.js` assertions that `formatAdminExecutionTime('2026-08-31T02:30:00.000Z', 'Asia/Seoul')` includes `11:30` and the same input with `UTC` includes `02:30`. Extend `menus.test.js` so the existing `수집` signal keeps its warning tone, reports the number of current `failed`/`missed` entries, is green after recovery, and preserves the existing four-signal shape.
+Add a failed `ground_forecast` API operation fixture and assert it appears in the same problem count with its registered Korean label. Add `adminTime.test.js` assertions that `formatAdminExecutionTime('2026-08-31T02:30:00.000Z', 'Asia/Seoul')` includes `11:30` and the same input with `UTC` includes `02:30`. Extend `menus.test.js` so the existing `수집` signal keeps its warning tone, reports current collector/API-operation failures, is green after recovery, and preserves the existing four-signal shape.
 
 - [ ] **Step 2: Run frontend logic tests and verify failure**
 
@@ -581,7 +511,7 @@ export function executionProblems(entries = []) {
 }
 ```
 
-Wrap the `/admin` route in the existing `TimeZoneProvider` in `App.jsx`. In `AdminShell.jsx`, read `const { tz } = useTimeZone()` and pass `tz` to the overview and data-collection screens. Implement `formatAdminExecutionTime` with `Intl.DateTimeFormat('ko-KR', { timeZone: tz, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })`. Update `topSignals` and `menuBadges` to use `executionProblems` while retaining all current stale-data counts and menu behavior when `collectorExecution` is absent.
+Wrap the `/admin` route in the existing `TimeZoneProvider` in `App.jsx`. In `AdminShell.jsx`, read `const { tz } = useTimeZone()` and pass `tz` to the overview and data-collection screens. Implement `formatAdminExecutionTime` with `Intl.DateTimeFormat('ko-KR', { timeZone: tz, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })`. Update `topSignals` and `menuBadges` to combine collector and API-operation problems while retaining all current stale-data counts and menu behavior when either array is absent.
 
 - [ ] **Step 4: Implement compact, accessible UI**
 
@@ -596,11 +526,11 @@ In `DataCollectionScreen.jsx`, add a section before the existing data table cont
 </section>
 ```
 
-The full execution table must show every active collector in registry order with type, textual outcome, last start, last finish, and either current issue code/message or (for recovered `succeeded`) only the `lastIssue.at` timestamp. This makes `skipped` visible without treating normal recovery as active failure. Use `formatAdminExecutionTime(iso, tz)` for every new timestamp. Keep the 33-row data table, its existing filters, and its `lastError` column unchanged. In `OverviewScreen.jsx`, include the same high-priority execution-problem entries in a clearly labeled compact section without replacing stale-data attention items. Reuse existing CSS tokens and semantic status classes; do not introduce new hard-coded colors, sizes, or interaction patterns.
+The full execution table must show every active collector in registry order with type, textual outcome, last start, last finish, and either current issue code/message or (for recovered `succeeded`) only the `lastIssue.at` timestamp. Add an adjacent API operation status table showing every registered operation's label/provider, outcome, last start/finish, duration, and safe issue. This makes a newly registered API visible without UI code changes. Use `formatAdminExecutionTime(iso, tz)` for every new timestamp. Keep the 33-row data table, its existing filters, and its `lastError` column unchanged. In `OverviewScreen.jsx`, include the same high-priority collector/API-operation entries in a clearly labeled compact section without replacing stale-data attention items. Reuse existing CSS tokens and semantic status classes; do not introduce new hard-coded colors, sizes, or interaction patterns.
 
 - [ ] **Step 5: Add the administrator browser contract case**
 
-In `admin-console.spec.mjs`, intercept only `**/api/admin/data-health` before navigation in a new test and return an otherwise valid payload with registry-order entries for `succeeded`, `failed`, `skipped`, `missed`, and a recovered `succeeded` entry containing `lastIssue.at`. Use role/text selectors scoped to the execution section; do not use CSS paths or positional rows.
+In `admin-console.spec.mjs`, intercept only `**/api/admin/data-health` before navigation in a new test and return an otherwise valid payload with registry-order collector entries plus a failed registered API operation. Use role/text selectors scoped to the execution section; do not use CSS paths or positional rows.
 
 ```js
 await expect(page.getByRole('heading', { name: /수집 실행 문제/ })).toBeVisible()
@@ -766,7 +696,7 @@ pm2 conf pm2-logrotate
 curl -fsS -b "<admin session cookie>" http://127.0.0.1:3001/api/admin/data-health
 ```
 
-Expected: health is `ok:true`; PM2 app is online; rotation configuration matches Task 6; the authorized data-health response contains `collectorExecution` with active collector types and no credential fields.
+Expected: health is `ok:true`; PM2 app is online; rotation configuration matches Task 6; the authorized data-health response contains `collectorExecution` and `apiOperationExecution` with registered entries and no credential fields.
 
 - [ ] **Step 5: Verify a real scheduled ground forecast run**
 
@@ -775,10 +705,10 @@ At the next configured ground forecast slot, record all three independent observ
 ```bash
 pm2 logs projectamo-backend --lines 120 --nostream | rg '\[collector\] ground_forecast'
 curl -fsS http://127.0.0.1:3001/api/ground-forecast | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const x=JSON.parse(s);console.log(JSON.stringify({fetched_at:x.fetched_at,base_time:x.hourly_status?.base_time}))})"
-curl -fsS -b "<admin session cookie>" http://127.0.0.1:3001/api/admin/data-health | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const x=JSON.parse(s);console.log(x.collectorExecution.find(r=>r.type==='ground_forecast'))})"
+curl -fsS -b "<admin session cookie>" http://127.0.0.1:3001/api/admin/data-health | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const x=JSON.parse(s);console.log({ collector:x.collectorExecution.find(r=>r.type==='ground_forecast'), operation:x.apiOperationExecution.find(r=>r.id==='ground_forecast') })})"
 ```
 
-Expected: the same run has a concise `succeeded` log, a new source `fetched_at`/base time, and `lastStartedAt`/`lastFinishedAt` with `outcome: 'succeeded'` in the admin response.
+Expected: the same run has concise collector and API-operation `succeeded` logs, a new source `fetched_at`/base time, and both `lastStartedAt`/`lastFinishedAt` outcomes in the admin response.
 
 - [ ] **Step 6: Verify the production log-size bound without deleting logs**
 
