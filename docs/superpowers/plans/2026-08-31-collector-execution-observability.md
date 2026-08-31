@@ -16,6 +16,7 @@
 - `last_outcome`은 현재 상태이고 `last_issue`는 최근 이상 사건이다. 복구된 과거 오류를 현재 장애로 표시하지 않는다.
 - 정규 cron, 시작 초기 수집, 수동 수집은 각각 `scheduled`, `startup`, `manual` 출처로 기록한다. watchdog는 `last_scheduled_started_at`만 정규 실행 증거로 사용한다.
 - 새 정기 수집기나 자료 제품은 등록부에 한 번 선언한다. `index.js`의 cron 호출, `stats.js`의 고정 type 목록, 자료 건강도 카탈로그, 관리자 목록에 별도 수동 항목을 추가하지 않는다.
+- 모든 자료 publication은 등록부 선언과 대조한다. `store.save` 또는 제품 meta 파일을 직접 쓰는 새 코드는 공용 publication seam 밖에서 허용하지 않으며, 미등록 store type·meta 경로는 즉시 실패한다.
 - 새 SQLite 테이블, 실행별 장기 이력, 원본 API 응답, 인증키, 긴 스택 전문을 저장하거나 반환하지 않는다.
 - 시작 상태 파일 쓰기는 최대 30초에 한 번으로 묶고, 기존 완료·실패 통계 저장 동작은 유지한다.
 - PM2 stdout/stderr는 10M 또는 자정 회전, gzip 압축, 회전본 7개 보관을 적용한다.
@@ -26,13 +27,16 @@
 ## File Structure
 
 - Create: `backend/src/collector-registry.js` — 정기 수집기·산출물·cron·시간대·health 메타데이터의 단일 등록부를 소유한다.
+- Create: `backend/src/collector-publication.js` — 등록부를 기준으로 store 저장과 meta publication target을 검증하는 공용 seam을 소유한다.
 - Create: `backend/src/collector-execution.js` — 등록부를 소비한 상태 정규화, 미실행 판정과 watchdog lifecycle만 소유한다.
+- Modify: `backend/src/store.js`, 직접 meta를 쓰는 자료 processor들 — 모든 제품 publication을 등록부 검증 seam으로 통과시킨다.
 - Modify: `backend/src/stats.js` — 등록부 확인형 동적 type 생성, 수집기별 `execution` 상태의 초기화·기록·최대 30초 시작 저장 debounce를 소유한다.
 - Modify: `backend/src/admin/data-health-catalog.js` — 등록부의 제품 메타데이터에서 기존 자료 건강도 카탈로그를 파생한다.
 - Modify: `backend/src/index.js` — 모든 정규 cron을 등록부 기반 helper로 등록하고 `runWithLock` 시작/종료 기록과 짧은 로그를 연결한다.
 - Modify: `backend/src/admin/data-health.js`, `backend/src/admin/router.js` — 기존 자료 건강도 응답에 활성 수집기 실행 목록을 추가한다.
 - Modify: `frontend/src/app/App.jsx`, `frontend/src/features/admin/AdminShell.jsx`, `frontend/src/features/admin/lib/collectorExecution.js` (create), `adminTime.js` (create), `menus.js`, `DataCollectionScreen.jsx`, `OverviewScreen.jsx` — 선택된 표시 시간대와 실행 상태의 순수 분류·표시를 담당한다.
 - Modify: `frontend/verification/contracts/admin-console.spec.mjs`, `docs/policies/verification/contracts.md` — 관리자 콘솔의 브라우저 계약을 등록하고 실행 문제 표시를 검증한다.
+- Modify: `Architecture.md` — Backend 섹션에 collector registry, publication seam, index의 processor binding 책임을 기록한다.
 - Create: `deploy/configure-pm2-logrotate.sh` — `ec2-user`의 PM2에 회전을 idempotent하게 설치·설정·검증한다.
 - Modify: `deploy/deploy-vm.sh`, `deploy/deploy-vm-full.sh`, `docs/operations/aws-ec2-manual-deploy.md` — 모든 배포 경로에서 로그 회전 설정과 검증을 보장한다.
 - Create (ignored evidence): `artifacts/responsive-screenshots/collector-execution-observability/<timestamp>/{before,after}/manifest.md` and `review/issues.md` — 관리자 UI 변경 전후 상태와 read-only UI review 결론을 남긴다.
@@ -42,17 +46,24 @@
 **Files:**
 
 - Create: `backend/src/collector-registry.js`
+- Create: `backend/src/collector-publication.js`
+- Modify: `backend/src/store.js`
 - Modify: `backend/src/admin/data-health-catalog.js`
 - Modify: `backend/src/stats.js`
 - Create: `backend/test/collector-registry.test.js`
+- Create: `backend/test/collector-publication.test.js`
+- Create: `backend/test/fixtures/data-health-catalog-contract.json`
+- Create: `backend/test/fixtures/data-health-catalog-radar-disabled-contract.json`
 - Modify: `backend/test/data-health-catalog.test.js`
 - Modify: `backend/test/stats.test.js`
 
 **Interfaces:**
 
-- Produces `COLLECTOR_REGISTRY`, `activeCollectorRegistry(config)`, `collectorByType(type)`, and `assertCollectorRegistry({ activeCollectors, processorBindings })` from `collector-registry.js`.
-- `COLLECTOR_REGISTRY` entry owns `{ type, binding, label, schedule(config), enabled(config), products }`; `activeCollectorRegistry(config)` resolves `schedule(config)` to `{ expression, cronOptions, maxIntervalMs, graceMs, quiet }` before returning an active entry. A documented on-demand entry has `schedule: null` and is excluded from cron/watchdog registration.
-- Each `products` item owns `{ key, label, source, character, normalMs, lateMs, stoppedMs, meta, eventDriven, quiet, disabledWhen }`; `buildDataHealthCatalog()` derives the existing catalog rows from these product declarations.
+- Produces `COLLECTOR_REGISTRY`, `activeCollectorRegistry(config)`, `collectorByType(type)`, and `assertCollectorRegistry({ registry = COLLECTOR_REGISTRY, activeCollectors, processorBindings })` from `collector-registry.js`.
+- `COLLECTOR_REGISTRY` entry owns `{ type, binding, label, apiHubCategories, schedule(config), enabled(config), products }`; `activeCollectorRegistry(config)` resolves `schedule(config)` to `{ expression, cronOptions, maxIntervalMs, graceMs, quiet }` before returning an active entry. A documented on-demand entry has `schedule: null` and is excluded from cron/watchdog registration.
+- Each `products` item owns `{ key, label, source, character, normalMs, lateMs, stoppedMs, publication, eventDriven, quiet, disabledWhen }`; `publication` is either `{ kind: 'store', type }` or `{ kind: 'meta', path }`. `buildDataHealthCatalog()` derives the existing catalog rows from these product declarations.
+- Produces `assertStorePublication(type)`, `assertMetaPublication(productKey, relativePath)`, and narrow writing wrappers from `collector-publication.js`. `store.js` calls the former; every product meta writer calls the latter before its atomic write.
+- `assertCollectorRegistry` rejects duplicate collector types/product keys/publication targets, absent bindings for active entries, unregistered bindings, invalid source/character references, missing schedule fields, and incomplete product health metadata. Registered-but-disabled bindings are valid.
 - `stats.js` lazily creates a type entry for every registered collector instead of silently dropping an unknown type.
 
 - [ ] **Step 1: Write failing registry parity tests**
@@ -60,63 +71,79 @@
 Create `backend/test/collector-registry.test.js`:
 
 ```js
-test('active registry owns every scheduled collector and its data products', () => {
+test('registry preserves the fixed legacy data-health contract for representative configurations', () => {
   const active = activeCollectorRegistry(enabledConfig)
   assert.ok(active.some((entry) => entry.type === 'ground_forecast'))
-  assert.deepEqual(buildDataHealthCatalog().map((row) => row.key), CATALOG.map((row) => row.key))
+  assert.deepEqual(serializeCatalog(buildDataHealthCatalog(enabledConfig)), readFixture('data-health-catalog-contract.json'))
+  assert.deepEqual(serializeCatalog(buildDataHealthCatalog(radarDisabledConfig)), readFixture('data-health-catalog-radar-disabled-contract.json'))
 })
 
-test('missing processor binding and unknown binding are startup errors', () => {
+test('registry validator rejects incomplete or duplicate declarations, but permits disabled bindings', () => {
   assert.throws(() => assertCollectorRegistry({ activeCollectors: [collectorByType('ground_forecast')], processorBindings: {} }), /ground_forecast.*binding/)
   assert.throws(() => assertCollectorRegistry({ activeCollectors: [], processorBindings: { orphan: async () => ({}) } }), /orphan.*registry/)
+  assert.throws(() => assertCollectorRegistry({ registry: duplicateProductRegistry, activeCollectors: duplicateProductRegistry, processorBindings }), /duplicate.*product/i)
+  assert.doesNotThrow(() => assertCollectorRegistry({ activeCollectors: activeCollectorRegistry(radarDisabledConfig), processorBindings }))
 })
 
 test('stats records a declared collector type without a hand-maintained TYPES entry', () => {
   stats.recordStart('ground_forecast', { source: 'scheduled' })
   assert.ok(stats.getExecutionState('ground_forecast').last_scheduled_started_at)
 })
+
+test('unregistered store or meta publication fails before writing', () => {
+  assert.throws(() => assertStorePublication('not_declared'), /not_declared/)
+  assert.throws(() => assertMetaPublication('not_declared', 'new/meta.json'), /not_declared/)
+})
 ```
 
 - [ ] **Step 2: Run registry tests and verify failure**
 
-Run: `npm --prefix backend test -- backend/test/collector-registry.test.js backend/test/data-health-catalog.test.js backend/test/stats.test.js`
+Run: `npm --prefix backend test -- backend/test/collector-registry.test.js backend/test/collector-publication.test.js backend/test/data-health-catalog.test.js backend/test/stats.test.js`
 
-Expected: FAIL because no registry exists and stats silently ignores unlisted types.
+Expected: FAIL because no registry/publication seam exists, stats silently ignores unlisted types, and the legacy catalog fixture has not been established.
 
 - [ ] **Step 3: Create the canonical registry and derive catalog rows**
 
-Move the existing regular cron expressions/timezones from `index.js` and the 33 data-health product declarations from `data-health-catalog.js` into `COLLECTOR_REGISTRY`. Preserve every existing value, including KST/UTC options, optional radar/satellite enablement, quiet windows, `statsKey`-equivalent collector relationships, source, character, and freshness thresholds.
+Move the existing regular cron expressions/timezones and API Hub categories from `index.js`, the 33 data-health product declarations from `data-health-catalog.js`, and the existing store/meta publication targets into `COLLECTOR_REGISTRY`. Preserve every existing value, including KST/UTC options, optional radar/satellite enablement, quiet windows, `statsKey`-equivalent collector relationships, source, character, freshness thresholds, and key-blocking behavior.
 
 Represent one-to-many production explicitly, for example the satellite collector owns both satellite and convective products:
 
 ```js
 {
-  type: 'satellite', binding: 'satellite', label: '위성',
+  type: 'satellite', binding: 'satellite', label: '위성', apiHubCategories: ['radar_satellite'],
   schedule: (cfg) => ({ expression: cfg.schedule.satellite_interval, cronOptions: undefined, maxIntervalMs: m(10), graceMs: m(10) }),
   enabled: (cfg) => Boolean(cfg.api?.radar_satellite_auth_key),
   products: [
-    { key: 'satellite', label: '위성', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/sat_meta.json' },
-    { key: 'convective', label: '대류 CI·CTPS', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/convective/convective_meta.json', disabledWhen: (cfg) => cfg.satellite?.convective_enabled === false },
+    { key: 'satellite', label: '위성', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), publication: { kind: 'meta', path: 'satellite/sat_meta.json' } },
+    { key: 'convective', label: '대류 CI·CTPS', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), publication: { kind: 'meta', path: 'satellite/convective/convective_meta.json' }, disabledWhen: (cfg) => cfg.satellite?.convective_enabled === false },
   ],
 }
 ```
 
-Keep `SOURCES`, `CHARACTERS`, and pure grouping helpers in `data-health-catalog.js`, but replace its handwritten `CATALOG` array with `buildDataHealthCatalog(COLLECTOR_REGISTRY)`. Do not put processor functions in the registry; `index.js` owns the type→processor binding map.
+Keep `SOURCES`, `CHARACTERS`, and pure grouping helpers in `data-health-catalog.js`, but replace its handwritten `CATALOG` array with `buildDataHealthCatalog(COLLECTOR_REGISTRY)`. First capture checked-in JSON fixtures of every current serializable row field (key, label, source, character, statsKey, thresholds, meta, event/quiet/disabled identifiers) and compare representative enabled/radar-disabled configurations against them; do not compare two values derived from the same new registry. Do not put processor functions in the registry; `index.js` owns the type→processor binding map.
 
-- [ ] **Step 4: Make stats type creation registry-safe**
+- [ ] **Step 4: Route every publication through the registry seam**
+
+Make `store.js` derive its supported types/cache shape from declared `{ kind: 'store' }` targets and call `assertStorePublication(type)` before writing. Inventory every product meta publisher (radar graphics/echo, satellite/fog/visible/convective, KTG, RainViewer, and any other production writer found by `rg`) and replace its direct final meta write with `assertMetaPublication(productKey, relativePath)` plus the existing atomic write. Add a focused source-level guard test that production `backend/src/processors/**` files have no direct `store.save(` or final `*_meta.json` publication outside the approved seam, so a newly added output cannot bypass the check.
+
+The seam validates before filesystem mutation and never changes atomic-write semantics. It accepts only a product's declared target, so a typo, an undeclared new output, or a wrong collector-product relationship fails locally and at server startup.
+
+- [ ] **Step 5: Make stats type creation registry-safe**
 
 Replace the early-return behavior for an unknown stats type with `ensureType(type)`, which creates `makeTypeEntry()` only after `collectorByType(type)` confirms the type is registered. Preserve explicit on-demand exceptions only through a documented registry entry with `schedule: null`. Throw for an unregistered type rather than silently dropping telemetry.
 
-- [ ] **Step 5: Run registry and catalog regression tests**
+- [ ] **Step 6: Run registry, publication, and catalog regression tests**
 
-Run: `npm --prefix backend test -- backend/test/collector-registry.test.js backend/test/data-health-catalog.test.js backend/test/admin-data-health.test.js backend/test/stats.test.js`
+Run: `npm --prefix backend test -- backend/test/collector-registry.test.js backend/test/collector-publication.test.js backend/test/data-health-catalog.test.js backend/test/admin-data-health.test.js backend/test/stats.test.js`
 
-Expected: PASS. The catalog remains 33 products until a deliberately declared new product is added, and every active scheduled collector has exactly one registry entry.
+Expected: PASS. The catalog remains 33 products until a deliberately declared new product is added, every active scheduled collector has exactly one registry entry, and every store/meta publication is declared before it can write.
 
-- [ ] **Step 6: Commit the registry foundation**
+- [ ] **Step 7: Commit the registry foundation**
+
+Update `Architecture.md` Backend section before committing: describe `collector-registry.js` as the declaration source, `collector-publication.js` as the publication guard, and `index.js` as the processor-binding/scheduler consumer. The document must no longer describe handwritten cron/type/catalog lists as the extension point.
 
 ```bash
-git add backend/src/collector-registry.js backend/src/admin/data-health-catalog.js backend/src/stats.js backend/test/collector-registry.test.js backend/test/data-health-catalog.test.js backend/test/stats.test.js
+git add Architecture.md backend/src/collector-registry.js backend/src/collector-publication.js backend/src/store.js backend/src/processors backend/src/admin/data-health-catalog.js backend/src/stats.js backend/test/collector-registry.test.js backend/test/collector-publication.test.js backend/test/fixtures/data-health-catalog-contract.json backend/test/fixtures/data-health-catalog-radar-disabled-contract.json backend/test/data-health-catalog.test.js backend/test/stats.test.js
 git commit -m "refactor: centralize collector and product registration"
 ```
 
@@ -131,7 +158,7 @@ git commit -m "refactor: centralize collector and product registration"
 
 **Interfaces:**
 
-- Produces `recordStart(type, { source })`, `recordSuccess(type, result, durationMs)`, `recordFailure(type, errorMsg, durationMs)`, `recordSkip(type, reason)`, `recordMissed(type, issue)`, `getExecutionState(type)`, and test-only `__setPersistenceForTest({ now, write })` from `stats.js`.
+- Produces `recordStart(type, { source })` returning an opaque run context, `recordSuccess(type, result, durationMs, run)`, `recordFailure(type, errorMsg, durationMs, run)`, `recordSkip(type, reason, run)`, `recordMissed(type, issue)`, `getExecutionState(type)`, and test-only `__setPersistenceForTest({ now, write })` from `stats.js`.
 - Consumes `activeCollectorRegistry(config)` from Task 1.
 - Produces `buildCollectorExecution({ collectors, statsTypes, nowMs })`, `checkContractAt(collector, execution, nowMs, bootedAtMs)`, and `createExecutionWatchdog({ collectors, getStats, recordMissed, now, bootedAtMs })` from `collector-execution.js`.
 - Produces `normalizeCollectorIssue({ outcome, code, message, at })`, shared by stats persistence, API output, and PM2 logging.
@@ -143,9 +170,10 @@ Create `backend/test/stats-execution.test.js` with an isolated temporary stats d
 
 ```js
 test('success preserves last issue but clears the current execution problem', () => {
-  stats.recordFailure('ground_forecast', 'upstream_timeout', 1200)
-  stats.recordStart('ground_forecast')
-  stats.recordSuccess('ground_forecast', { saved: false }, 80)
+  const failed = stats.recordStart('ground_forecast', { source: 'scheduled' })
+  stats.recordFailure('ground_forecast', 'upstream_timeout', 1200, failed)
+  const succeeded = stats.recordStart('ground_forecast', { source: 'scheduled' })
+  stats.recordSuccess('ground_forecast', { saved: false }, 80, succeeded)
 
   const execution = stats.getExecutionState('ground_forecast')
   assert.equal(execution.last_outcome, 'succeeded')
@@ -153,6 +181,16 @@ test('success preserves last issue but clears the current execution problem', ()
   assert.equal(execution.last_issue.message, 'upstream_timeout')
   assert.ok(execution.last_started_at)
   assert.ok(execution.last_finished_at)
+})
+
+test('manual success cannot clear an unresolved scheduled missed state', () => {
+  stats.recordMissed('ground_forecast', { code: 'start_overdue' })
+  const manual = stats.recordStart('ground_forecast', { source: 'manual' })
+  stats.recordSuccess('ground_forecast', { saved: true }, 80, manual)
+  assert.equal(stats.getExecutionState('ground_forecast').last_outcome, 'missed')
+  const scheduled = stats.recordStart('ground_forecast', { source: 'scheduled' })
+  stats.recordSuccess('ground_forecast', { saved: true }, 80, scheduled)
+  assert.equal(stats.getExecutionState('ground_forecast').last_outcome, 'succeeded')
 })
 
 test('start writes are coalesced while completion writes remain durable', () => {
@@ -199,10 +237,10 @@ execution: {
 Implement the following behavior:
 
 ```js
-recordStart(type, { source }) // always set last_started_at; set last_scheduled_started_at only for source='scheduled'; queue one save no more than once per 30_000 ms
-recordSuccess(type, result, durationMs) // set finished/outcome=succeeded; retain last_issue
-recordFailure(type, errorMsg, durationMs) // outcome=failed; last_issue=normalizeCollectorIssue({ outcome:'failed', at, code:'collector_failed', message:errorMsg })
-recordSkip(type, reason) // outcome=skipped; last_issue=normalizeCollectorIssue({ outcome:'skipped', at, code:reason, message:null })
+recordStart(type, { source }) // always set last_started_at; set last_scheduled_started_at only for source='scheduled'; return opaque { source, id }; a scheduled start clears an unresolved scheduled missed state; queue one save no more than once per 30_000 ms
+recordSuccess(type, result, durationMs, run) // set finished/outcome=succeeded; retain last_issue, except a startup/manual run must not overwrite unresolved missed
+recordFailure(type, errorMsg, durationMs, run) // same source rule; otherwise outcome=failed and last_issue=normalizeCollectorIssue({ outcome:'failed', at, code:'collector_failed', message:errorMsg })
+recordSkip(type, reason, run) // same source rule; otherwise outcome=skipped and last_issue=normalizeCollectorIssue({ outcome:'skipped', at, code:reason, message:null })
 recordMissed(type, issue) // outcome=missed; update last_missed_at and last_issue once per unresolved outage
 getExecutionState(type) // return execution or the null-filled shape
 ```
@@ -295,7 +333,7 @@ git commit -m "feat: track bounded collector execution state"
 
 - Consumes `activeCollectorRegistry`, `assertCollectorRegistry`, `createExecutionWatchdog`, and stats recording functions from Tasks 1–2.
 - Produces exported `registerCollectorSchedules({ scheduler, config, runWithLock, processorBindings })`, which consumes each active registry entry's own expression and timezone exactly once and returns its scheduled type set.
-- Extends `runWithLock(type, job, { source, apiHubCategories, isBlocked, stats: recorder = stats, logger = console })` only with injected recorder/logger seams for tests; production callers continue to use the module defaults.
+- Extends `runWithLock(type, job, { source, apiHubCategories, isBlocked, stats: recorder = stats, logger = console })` only with injected recorder/logger seams for tests; production callers continue to use the module defaults. `apiHubCategories` comes from the registry entry for scheduled work, not a second type list.
 - Produces a testable `startCollectorWatchdog()` and returns/stores its stop handle for controlled process shutdown tests.
 
 - [ ] **Step 1: Write failing registration and logging tests**
@@ -314,6 +352,12 @@ test('disabled radar collectors are neither scheduled nor monitored', () => {
   const scheduled = registerCollectorSchedules({ scheduler, config: { ...enabledConfig, api: { radar_satellite_auth_key: '' } }, runWithLock, processorBindings })
   assert.equal(scheduled.has('satellite'), false)
   assert.equal(scheduler.calls.some((call) => call.type === 'satellite'), false)
+})
+
+test('registry preserves each collector API Hub category before scheduling', () => {
+  const collectors = activeCollectorRegistry(enabledConfig)
+  assert.deepEqual(collectors.find((c) => c.type === 'ground_forecast').apiHubCategories, ['aviation'])
+  assert.deepEqual(collectors.find((c) => c.type === 'flight_category').apiHubCategories, ['aviation', 'radar_satellite'])
 })
 
 test('runWithLock records a start before a key-blocked or lock-held skip', async () => {
@@ -346,17 +390,17 @@ function scheduleCollector({ scheduler = cron, collector, job, runOptions }) {
   scheduledTypes.add(collector.type)
   return scheduler.schedule(
     collector.schedule.expression,
-    () => runWithLock(collector.type, job, { ...runOptions, source: 'scheduled' }),
+    () => runWithLock(collector.type, job, { ...runOptions, apiHubCategories: collector.apiHubCategories, source: 'scheduled' }),
     collector.schedule.cronOptions,
   )
 }
 ```
 
-Implement and export `registerCollectorSchedules({ scheduler = cron, config: activeConfig = config, runWithLock: runner = runWithLock, processorBindings })`. It selects `activeCollectorRegistry(activeConfig)`, calls `assertCollectorRegistry({ activeCollectors, processorBindings })`, passes each registry entry to `scheduleCollector`, and binds its processor job from the entry's `binding` key. Move the special KIM, airport, radar graphics, echo-top, and satellite helper registrations behind this function so their expression/timezone come from the registry, not a second local constant. After registration, assert that the active-registry set equals the scheduled-type set; throw a descriptive startup error listing missing or unexpected types.
+Implement and export `registerCollectorSchedules({ scheduler = cron, config: activeConfig = config, runWithLock: runner = runWithLock, processorBindings })`. It selects `activeCollectorRegistry(activeConfig)`, calls `assertCollectorRegistry({ activeCollectors, processorBindings })`, passes each registry entry to `scheduleCollector`, and binds its processor job from the entry's `binding` key. `scheduleCollector` passes `collector.apiHubCategories` directly to `runWithLock`; delete the handwritten `AVIATION_KEY`, `RADAR_SATELLITE_KEY`, `KIM_NWP_KEY`, and mixed-key type routing lists after preserving their exact values in registry tests. Move the special KIM, airport, radar graphics, echo-top, and satellite helper registrations behind this function so their expression/timezone come from the registry, not a second local constant. After registration, assert that the active-registry set equals the scheduled-type set; throw a descriptive startup error listing missing or unexpected types.
 
 - [ ] **Step 4: Wire lifecycle recording and watchdog**
 
-At the first line of `runWithLock`, call `stats.recordStart(type, { source })` before API-key and in-flight-lock checks. Scheduled callbacks pass `source: 'scheduled'`; `buildInitialCollectionJobs()` passes `source: 'startup'`; explicit one-shot/manual callers pass `source: 'manual'`. Keep `recordSkip`, `recordSuccess`, and `recordFailure` as the terminal-state calls.
+At the first line of `runWithLock`, call `const run = stats.recordStart(type, { source })` before API-key and in-flight-lock checks. Scheduled callbacks pass `source: 'scheduled'`; `buildInitialCollectionJobs()` passes `source: 'startup'`; explicit one-shot/manual callers pass `source: 'manual'`. Pass that same `run` context to every `recordSkip`, `recordSuccess`, and `recordFailure` terminal call so startup/manual completion cannot overwrite an unresolved scheduled `missed` state.
 
 After all normal cron jobs register in `main()`, create and start one watchdog:
 
@@ -454,7 +498,7 @@ export function readDataHealth(basePath, {
 }
 ```
 
-In `admin/router.js`, pass a closure that builds only active registry entries from the live config and current stats. `readDataHealth` must consume the registry-derived catalog, not a second handwritten output list. Do not add a route, database table, query parameter, or non-admin bypass.
+In `admin/router.js`, pass a closure that builds only active registry entries from the live config and current stats. `readDataHealth` must consume the registry-derived catalog for that same live config, not a second handwritten output list. Do not add a route, database table, query parameter, or non-admin bypass.
 
 - [ ] **Step 4: Run admin API regression suite**
 
@@ -582,7 +626,7 @@ After implementation, capture the same states into `artifacts/responsive-screens
 - [ ] **Step 7: Commit the administrator UI**
 
 ```bash
-git add frontend/src/features/admin frontend/verification/contracts/admin-console.spec.mjs docs/policies/verification/contracts.md
+git add frontend/src/app/App.jsx frontend/src/features/admin frontend/verification/contracts/admin-console.spec.mjs docs/policies/verification/contracts.md
 git commit -m "feat: show collector execution problems in admin"
 ```
 
