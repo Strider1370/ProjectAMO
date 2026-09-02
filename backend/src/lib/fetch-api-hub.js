@@ -1,4 +1,5 @@
 import apiHubUsage from '../api-hub-usage.js'
+import { resolveApiOperation } from '../api-operation-registry.js'
 
 export function createFetchApiHub({ usage = apiHubUsage, fetchImpl = fetch } = {}) {
   return async function fetchApiHub({ credential, url, options = {}, endpoint }) {
@@ -17,40 +18,7 @@ export function createFetchApiHub({ usage = apiHubUsage, fetchImpl = fetch } = {
 export const fetchApiHub = createFetchApiHub()
 
 export function endpointFor(url) {
-  const pathname = url.pathname
-  if (pathname.endsWith('/getMetar')) return 'metar'
-  if (pathname.endsWith('/getTaf')) return 'taf'
-  if (pathname.endsWith('/getWarning')) return 'warning'
-  if (pathname.endsWith('/getSigmet')) return 'sigmet'
-  if (pathname.endsWith('/getAirmet')) return 'airmet'
-  if (pathname.endsWith('/getAirPort')) return 'airport_info'
-  if (pathname.endsWith('/getAirInfo')) return 'takeoff_fcst'
-  if (pathname.includes('amo_sigwx')) return 'sigwx_low'
-  if (pathname.includes('amos.php')) return 'amos'
-  if (pathname.includes('wrn_now')) return 'special_warning'
-  if (pathname.includes('kma_sfctm_uv')) return 'uv'
-  if (pathname.includes('lgt_pnt')) return 'lightning'
-  if (pathname.includes('typ_now')) return 'typhoon_now'
-  if (pathname.includes('typ_lst')) return 'typhoon_list'
-  if (pathname.includes('getVilageFcst') || pathname.includes('getLandFcst')) return 'ground_forecast'
-  // 중기예보는 단기와 다른 서비스라 경로가 따로다. 여기 없으면 이름이 안 붙고,
-  // 이름 없는 호출은 사용량 기록에서 거부되어 중기예보가 통째로 안 들어온다.
-  if (pathname.includes('getMidLandFcst')) return 'mid_land'
-  if (pathname.includes('getMidTa')) return 'mid_ta'
-  if (pathname.includes('kma_sfctm2')) return 'asos_ceiling'
-  if (pathname.includes('nph-sfc_obs_nc_api')) return 'sfc_vis'
-  if (pathname.includes('nph-kim')) return 'kim_grid'
-  if (pathname.includes('amo_nwp_file_down')) return 'ktg'
-  if (pathname.includes('rdr_site_file')) return 'radar_qcd'
-  if (pathname.includes('rdr_cmp_file')) return 'radar_echo'
-  if (pathname.includes('nph-rdr_wis')) return 'radar_wissdom'
-  if (pathname.includes('nph-qpf')) return 'radar_qpf'
-  if (pathname.includes('nph-rdr_cmp1')) return url.searchParams.get('cmp') === 'HCI' ? 'radar_hci' : 'radar_hsr'
-  if (pathname.includes('/GK2A/LE1B/')) return pathname.includes('/VI006/') ? 'satellite_visible' : 'satellite_ir'
-  if (pathname.includes('/GK2A/LE2/FOG/')) return 'satellite_fog'
-  if (pathname.includes('/GK2A/LE2/CI/')) return 'satellite_ci'
-  if (pathname.includes('/GK2A/LE2/CTPS/')) return 'satellite_ctps'
-  return null
+  try { return resolveApiOperation({ url }).id } catch { return null }
 }
 
 let installed = false

@@ -21,6 +21,7 @@
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "cron-parser": "^5.10.0",
     "d3-contour": "^4.0.2",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
