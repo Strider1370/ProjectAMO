@@ -11,3 +11,8 @@ test('active registry exposes each scheduled collector with its schedule', () =>
   assert.equal(new Set(COLLECTOR_REGISTRY.map((collector) => collector.type)).size, COLLECTOR_REGISTRY.length)
   assert.doesNotThrow(() => assertCollectorRegistry(COLLECTOR_REGISTRY, { ...config, api: { ...config.api, radar_satellite_auth_key: 'key' } }))
 })
+
+test('radar graphics follows the scheduler enabled condition as well as the key', () => {
+  const withoutGraphics = activeCollectorRegistry({ ...config, api: { ...config.api, radar_satellite_auth_key: 'key' }, radar_graphics: { ...config.radar_graphics, enabled: false } })
+  assert.equal(withoutGraphics.some((collector) => collector.type === 'wissdom'), false)
+})

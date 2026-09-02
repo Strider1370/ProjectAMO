@@ -2,6 +2,7 @@ const utc = (key) => (config) => ({ expression: config.schedule[key], timezone: 
 const kst = (key) => (config) => ({ expression: config.schedule[key], timezone: 'Asia/Seoul' })
 const enabled = () => true
 const radarEnabled = (config) => Boolean(config.api?.radar_satellite_auth_key)
+const graphicsEnabled = (config) => radarEnabled(config) && config.radar_graphics?.enabled !== false
 
 function collector(type, schedule, isEnabled = enabled) {
   return { type, binding: type, label: type, schedule, enabled: isEnabled }
@@ -19,10 +20,10 @@ export const COLLECTOR_REGISTRY = [
   collector('airport_info', kst('airport_info_interval')),
   collector('takeoff_fcst', kst('takeoff_fcst_interval')),
   collector('asos_ceiling', kst('asos_ceiling_interval')),
-  collector('wissdom', (config) => ({ expression: config.radar_graphics?.interval || '*/10 * * * *', timezone: 'Etc/UTC' }), radarEnabled),
-  collector('qpf', (config) => ({ expression: config.radar_graphics?.interval || '*/10 * * * *', timezone: 'Etc/UTC' }), radarEnabled),
-  collector('hsr', (config) => ({ expression: config.radar_graphics?.interval || '*/10 * * * *', timezone: 'Etc/UTC' }), radarEnabled),
-  collector('hci', (config) => ({ expression: config.radar_graphics?.interval || '*/10 * * * *', timezone: 'Etc/UTC' }), radarEnabled),
+  collector('wissdom', (config) => ({ expression: config.radar_graphics?.interval || '*/10 * * * *', timezone: 'Etc/UTC' }), graphicsEnabled),
+  collector('qpf', (config) => ({ expression: config.radar_graphics?.interval || '*/10 * * * *', timezone: 'Etc/UTC' }), graphicsEnabled),
+  collector('hsr', (config) => ({ expression: config.radar_graphics?.interval || '*/10 * * * *', timezone: 'Etc/UTC' }), graphicsEnabled),
+  collector('hci', (config) => ({ expression: config.radar_graphics?.interval || '*/10 * * * *', timezone: 'Etc/UTC' }), graphicsEnabled),
   collector('echo_top', utc('echo_top_interval'), (config) => radarEnabled(config) && config.radar_echo_top?.enabled !== false),
   collector('satellite', utc('satellite_interval'), radarEnabled),
   collector('satellite_visible', utc('satellite_visible_interval'), radarEnabled),
