@@ -6,11 +6,12 @@
 
 **Architecture:** `backend/src/collector-registry.js`는 정기 수집기의 cron·시간대·실행 조건 정본이고, `backend/src/api-operation-registry.js`는 외부 API 호출의 정본이다. 공통 request wrapper가 등록된 API operation의 시작·성공·실패·시간을 기존 `stats/latest.json`의 고정 크기 상태로 기록한다. `index.js`는 collector binding을 검증해 cron 등록을 연결하고, 기존 `/api/admin/data-health`는 자료 건강도와 별도로 collector 및 API operation 실행 목록을 내려준다.
 
-**Tech Stack:** Node.js 22 ESM, node-cron 3, Express, React 19, node:test, Playwright, PM2/pm2-logrotate, Bash.
+**Tech Stack:** Node.js 22 ESM, node-cron 3, cron-parser, Express, React 19, node:test, Playwright, PM2/pm2-logrotate, Bash.
 
 ## Global Constraints
 
 - 모든 시각은 저장·비교 시 UTC ISO 또는 epoch milliseconds를 사용하고, 화면 표시는 `TimeZoneProvider`의 선택 timezone을 명시적으로 전달한 formatter로 한다. UTC와 KST를 모두 시험한다.
+- API operation의 정상 호출 기준은 연결된 collector 등록부의 cron·시간대·quiet window에서만 파생한다. 정기 호출은 사람용 주기/운영시간과 다음 예정 시각을, on-demand 호출은 `온디맨드`를 표시하며 이 둘을 동일한 미실행 기준으로 판단하지 않는다.
 - 자료 건강도 `ok/late/stopped/never/quiet/disabled`의 의미와 마지막 정상 스냅샷 보존 계약은 변경하지 않는다.
 - 실행 outcome은 `succeeded`, `failed`, `skipped`, `missed`만 사용한다. `saved:false`는 `succeeded`이며 전역 `degraded`는 만들지 않는다.
 - `last_outcome`은 현재 상태이고 `last_issue`는 최근 이상 사건이다. 복구된 과거 오류를 현재 장애로 표시하지 않는다.
@@ -46,6 +47,7 @@
 **Files:**
 
 - Create: `backend/src/collector-registry.js`, `backend/src/api-operation-registry.js`, `backend/src/lib/request-observability.js`
+- Modify: `backend/package.json`, `backend/package-lock.json` — add the cron parser used only to calculate next expected scheduled calls from the collector-owned cron expression/timezone.
 - Modify: `backend/src/index.js`, `backend/src/api-hub-usage.js`, `backend/src/lib/fetch-api-hub.js`, `backend/src/api-client.js`, and every production processor that directly calls external `fetch`
 - Modify: `backend/src/stats.js`, `backend/src/admin/router.js`, `backend/src/admin/data-health.js`
 - Create: `backend/test/collector-registry.test.js`, `backend/test/api-operation-registry.test.js`, `backend/test/request-observability.test.js`
@@ -54,16 +56,17 @@
 **Interfaces:**
 
 - `COLLECTOR_REGISTRY` owns `{ type, binding, label, schedule(config), enabled(config) }`; its active resolved entries supply cron/timezone/watchdog fields. It does not own output files or data-health rows.
-- `API_OPERATION_REGISTRY` owns `{ id, label, provider, collectorType, credentialCategory, apiHub, requestPolicy: { timeoutMs, maxRetries, allowedOverrides }, match(url) }`. `resolveApiOperation({ id, url })` requires one exact registered operation and requires an explicit id to match the resolved URL operation; `assertApiOperationRegistry()` rejects duplicate ids, ambiguous matchers, invalid API Hub categories/policies, and missing labels.
+- `API_OPERATION_REGISTRY` owns `{ id, label, provider, collectorType | null, credentialCategory, apiHub, requestPolicy: { timeoutMs, maxRetries, allowedOverrides }, match(url) }`. `resolveApiOperation({ id, url })` requires one exact registered operation and requires an explicit id to match the resolved URL operation; `assertApiOperationRegistry()` rejects duplicate ids, ambiguous matchers, invalid API Hub categories/policies, missing labels, and a non-null `collectorType` not found in the collector registry.
+- Produces `describeExpectedApiCall(operation, collector, nowMs) -> { kind: 'scheduled', intervalLabel, timezone, operatingHoursLabel, cronExpression, nextExpectedAt } | { kind: 'on_demand', label: '온디맨드' }`. It uses `cron-parser` with the collector declaration's cron expression/timezone, applies the declared quiet window, and owns this calculation once; callers do not parse cron strings or infer an interval from execution history.
 - `requestObservedApi({ operation, url, options, validate })` is the sole outbound request seam. It enforces the operation request policy, records each physical HTTP attempt once in the API Hub ledger, executes decode/logical `validate`, then writes bounded final operation state `{ lastStartedAt, lastFinishedAt, lastOutcome, lastIssue, durationMs }`.
 
 - [ ] **Step 1: Write failing registry and wrapper tests**
 
-Cover: every existing scheduled collector has one registry entry; every existing API Hub endpoint resolves to one operation; an unknown operation, unknown API Hub URL, known-id/wrong-URL pair, duplicate/ambiguous operation, bad policy/category, and every raw outbound transport source bypass each fail. Verify `500→200`, HTTP 200 with an API error code, and decode failure: ledger counts each physical attempt once, while the operation state reports only the final logical result.
+Cover: every existing scheduled collector has one registry entry; every existing API Hub endpoint resolves to one operation; an unknown operation, unknown API Hub URL, known-id/wrong-URL pair, duplicate/ambiguous operation, bad policy/category, and every raw outbound transport source bypass each fail. Verify both a UTC interval schedule and a KST fixed-time/quiet-window schedule yield the correct human label and next expected UTC timestamp, while an on-demand operation has no next timestamp. Verify `500→200`, HTTP 200 with an API error code, and decode failure: ledger counts each physical attempt once, while the operation state reports only the final logical result.
 
-- [ ] **Step 2: Add both registries and migrate API Hub labels/matching**
+- [ ] **Step 2: Add both registries, expected-call calculator, and migrate API Hub labels/matching**
 
-Move `API_HUB_ENDPOINTS` and `endpointFor(url)` into `api-operation-registry.js`; preserve all current ids and labels. Add non-API-Hub operations for NOAA, KAC, AirKorea, ADS-B, RainViewer, MET Norway and every other existing external host found by `rg`. Give each operation its existing timeout/retry policy, and require every override to be listed in `allowedOverrides`. Keep data-health catalog and storage/publication code unchanged.
+Add `cron-parser` with `npm --prefix backend install --package-lock-only` and migrate `API_HUB_ENDPOINTS` and `endpointFor(url)` into `api-operation-registry.js`; preserve all current ids and labels. Add non-API-Hub operations for NOAA, KAC, AirKorea, ADS-B, RainViewer, MET Norway and every other existing external host found by `rg`. Give each operation its existing timeout/retry policy, and require every override to be listed in `allowedOverrides`. Implement `describeExpectedApiCall` using the collector-owned expression/timezone and quiet window. Keep data-health catalog and storage/publication code unchanged.
 
 - [ ] **Step 3: Route all external calls through one observable wrapper**
 
@@ -385,7 +388,7 @@ git commit -m "feat: detect missed collector executions"
 **Interfaces:**
 
 - Consumes `buildCollectorExecution` and registered API-operation state from Tasks 1–2.
-- `readDataHealth()` accepts `getCollectorExecution` and `getApiOperationExecution`, returning both arrays alongside the unchanged `counts`, `rows`, and `groups` fields.
+- `readDataHealth()` accepts `getCollectorExecution` and `getApiOperationExecution`, returning both arrays alongside the unchanged `counts`, `rows`, and `groups` fields. Each API operation row includes registry-derived `expectedCall` rather than a UI-derived cron interpretation.
 - `GET /api/admin/data-health` returns the new execution arrays only to existing admin-authorized callers.
 
 - [ ] **Step 1: Write failing API-shape tests**
@@ -407,7 +410,7 @@ test('execution problems are separate from stale-data rows', () => {
 })
 ```
 
-Add a registered `ground_forecast` API operation failure to the fixture and assert `health.apiOperationExecution` includes its safe error state. Add to `backend/test/admin.test.js` an authenticated assertion that both execution arrays exist and never appear in a 401 response.
+Add a registered `ground_forecast` API operation failure to the fixture and assert `health.apiOperationExecution` includes its safe error state and `{ kind: 'scheduled', timezone, intervalLabel, nextExpectedAt }`. Add an on-demand fixture and assert its `expectedCall` has `kind: 'on_demand'` and no `nextExpectedAt`. Add to `backend/test/admin.test.js` an authenticated assertion that both execution arrays exist and never appear in a 401 response.
 
 - [ ] **Step 2: Run API tests and verify failure**
 
@@ -526,11 +529,11 @@ In `DataCollectionScreen.jsx`, add a section before the existing data table cont
 </section>
 ```
 
-The full execution table must show every active collector in registry order with type, textual outcome, last start, last finish, and either current issue code/message or (for recovered `succeeded`) only the `lastIssue.at` timestamp. Add an adjacent API operation status table showing every registered operation's label/provider, outcome, last start/finish, duration, and safe issue. This makes a newly registered API visible without UI code changes. Use `formatAdminExecutionTime(iso, tz)` for every new timestamp. Keep the 33-row data table, its existing filters, and its `lastError` column unchanged. In `OverviewScreen.jsx`, include the same high-priority collector/API-operation entries in a clearly labeled compact section without replacing stale-data attention items. Reuse existing CSS tokens and semantic status classes; do not introduce new hard-coded colors, sizes, or interaction patterns.
+The full execution table must show every active collector in registry order with type, textual outcome, last start, last finish, and either current issue code/message or (for recovered `succeeded`) only the `lastIssue.at` timestamp. Add an adjacent API operation status table showing every registered operation's label/provider, outcome, last start/finish, duration, safe issue, and `expectedCall`: scheduled calls show the supplied interval label, timezone/operating-hours label, and next expected time; on-demand calls show `온디맨드` and no false next time. This makes a newly registered API visible without UI code changes. Use `formatAdminExecutionTime(iso, tz)` for every new timestamp. Keep the 33-row data table, its existing filters, and its `lastError` column unchanged. In `OverviewScreen.jsx`, include the same high-priority collector/API-operation entries in a clearly labeled compact section without replacing stale-data attention items. Reuse existing CSS tokens and semantic status classes; do not introduce new hard-coded colors, sizes, or interaction patterns.
 
 - [ ] **Step 5: Add the administrator browser contract case**
 
-In `admin-console.spec.mjs`, intercept only `**/api/admin/data-health` before navigation in a new test and return an otherwise valid payload with registry-order collector entries plus a failed registered API operation. Use role/text selectors scoped to the execution section; do not use CSS paths or positional rows.
+In `admin-console.spec.mjs`, intercept only `**/api/admin/data-health` before navigation in a new test and return an otherwise valid payload with registry-order collector entries, a failed scheduled API operation with expected-call data, and an on-demand API operation. Use role/text selectors scoped to the execution section; do not use CSS paths or positional rows.
 
 ```js
 await expect(page.getByRole('heading', { name: /수집 실행 문제/ })).toBeVisible()
@@ -538,6 +541,9 @@ await expect(page.getByText('ground_forecast', { exact: true })).toBeVisible()
 await expect(page.getByText('미실행', { exact: true })).toBeVisible()
 await expect(page.getByText('건너뜀', { exact: true })).toBeVisible()
 await expect(page.getByText('최근 이상', { exact: true })).toBeVisible()
+await expect(page.getByText(/정상 호출: .*분마다/)).toBeVisible()
+await expect(page.getByText(/다음 예정/)).toBeVisible()
+await expect(page.getByText('온디맨드', { exact: true })).toBeVisible()
 ```
 
 Register `admin-console` in the Active contract table in `docs/policies/verification/contracts.md` with desktop viewport, `verification/admin-fixture.mjs` precondition, and `admin-console.spec.mjs` owner. Do not alter unrelated contracts.

@@ -81,6 +81,8 @@
 - credential category, API Hub 여부, timeout·재시도·허용 override 범위 등 공통 호출 정책
 - URL을 operation으로 해석하는 matcher 또는 명시적 operation id
 
+정기 수집기에 속한 API operation은 연결된 collector 등록부에서 시간대·cron·정상 호출 주기·비운영 시간을 파생한다. 관리자 화면은 API별로 `정상 호출: 5분마다 (UTC)`, `정상 호출: 매일 05:00·08:00… (KST)`처럼 사람이 읽을 수 있는 기준과 다음 예정 호출 시각을 함께 표시한다. 직접 사용자 요청·화면 조회처럼 정기 실행이 아닌 operation은 `온디맨드`로 명확히 표시하고, 억지로 지연이나 미실행으로 판정하지 않는다.
+
 모든 외부 HTTP 호출은 공통 request wrapper에 operation id를 전달한다. wrapper는 등록된 URL matcher와 id가 서로 일치하는지 확인하고, timeout·retry·decode/논리 성공 검증까지 감싼 최종 결과의 시작·성공·실패·지연시간·안전하게 정규화한 오류를 operation별 고정 크기 상태에 기록한다. API Hub 사용량 ledger는 각 실제 HTTP attempt를 wrapper 한 곳에서만 기록하며, credential fingerprint가 판별한 실제 category와 operation 선언 category가 다르면 실패한다. 관리자는 활성 호출 등록부 전체의 현재 상태를 자동으로 받는다. 따라서 새 API는 등록부에 한 줄로 선언하면 로그·상태·관리자 목록에 함께 추가된다.
 
 수집기 구현의 processor 함수와 cron binding은 index에 남긴다. 반면 등록부 없는 operation id, matcher가 해석하지 못하거나 id와 맞지 않는 외부 URL, 또는 등록부 밖의 raw transport(`fetch`, `http/https.request|get`, `fetchWithTimeout`)는 개발·테스트와 서버 시작에서 명시적으로 실패한다. 자료 파일·카탈로그는 이 요구의 대상이 아니며 기존 구조를 유지한다.
@@ -122,7 +124,7 @@ PM2 로그 회전을 설정한다. stdout와 stderr는 파일이 10MiB에 도달
 3. 등록부·API 호출 테스트: 활성·비활성 설정 조합에서 모든 정규 스케줄 수집기와 processor binding이 정확히 한 수집기 등록부 항목에 대응하고, 모든 외부 API URL이 정확히 한 operation으로 해석되는지 확인한다. 중복 operation id, id/URL 불일치, 잘못된 실제 credential category, 미등록 API Hub endpoint, 모든 raw outbound transport를 거부하는지 확인한다. `500→200`, HTTP 200+API 실패 코드, decode 실패에서 attempt ledger와 최종 operation 상태가 각각 맞는지 확인한다.
 4. 수집 wrapper 테스트: 시작 기록이 processor 호출보다 먼저 남고, startup/manual 시작이 `last_scheduled_started_at`을 바꾸지 않는지 확인한다.
 5. 상태 저장 테스트: 시작 기록의 파일 쓰기가 30초 안에 반복 실행 수만큼 늘지 않고, 완료·실패의 기존 통계 저장이 유지되는지 확인한다.
-6. 관리자 API·콘솔 테스트: 수집기 `missed`/`failed`와 API 호출 `failed`가 자료 최신성 상태와 별도로 보이고, 자료 행 밖의 활성 수집기와 모든 등록 API 호출이 각각의 execution 목록에 있으며, 관리자 인가 규칙이 유지되는지 확인한다.
+6. 관리자 API·콘솔 테스트: 수집기 `missed`/`failed`와 API 호출 `failed`가 자료 최신성 상태와 별도로 보이고, 자료 행 밖의 활성 수집기와 모든 등록 API 호출이 각각의 execution 목록에 있으며, 정기 API에는 주기·시간대·운영 시간·다음 예정 시각이, 온디맨드 API에는 그 구분이 보이고 관리자 인가 규칙이 유지되는지 확인한다.
 7. Playwright: 관리자 자료 수집 화면에서 정상·실패·건너뜀·미실행·복구 상태와 선택된 시간대의 실행 시각을 브라우저로 확인한다.
 8. 운영 검증: 배포 뒤 지상예보의 다음 정규 실행에서 PM2 로그와 관리자 콘솔 모두 같은 시작·완료·성공 상태를 보이는지, PM2 stdout/stderr가 한 줄 구조화 로그로 회전·압축되고 보관 파일 수가 상한을 넘지 않는지 확인한다.
 
