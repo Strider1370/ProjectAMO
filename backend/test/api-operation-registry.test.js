@@ -62,6 +62,22 @@ test('skips a midnight quiet window and formats fixed and nonuniform schedules w
   assert.equal(nonuniform.cadenceLabel, '01:25, 02:25, 07:25, 08:25, 13:25, 14:25, 19:25, 20:25')
 })
 
+test('Cartesian-expands real airport-info minute and hour fields into actual call times', () => {
+  const airportInfo = API_OPERATION_REGISTRY.find((operation) => operation.id === 'airport_info')
+  const collector = activeCollectorRegistry(config).find((item) => item.type === 'airport_info')
+  const expected = describeExpectedApiCall(airportInfo, collector, Date.parse('2026-08-10T00:00:00.000Z'))
+  assert.equal(expected.cadenceLabel, '06:00, 06:30, 17:00, 17:30')
+})
+
+test('rejects invalid structural types, forbidden on-demand fields, and unknown contract keys', () => {
+  const base = { id: 'invalid-shape', label: 'Valid', provider: 'test', collectorType: null, dataHealthKeys: [], callContract: { kind: 'on_demand' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/shape', requestPolicy: { timeoutMs: 1, maxRetries: 0, allowedOverrides: [] }, match: (url) => url.pathname === '/shape' }
+  assert.throws(() => assertApiOperationRegistry([{ ...base, label: 7 }]), { code: 'invalid_api_operation_registry' })
+  assert.throws(() => assertApiOperationRegistry([{ ...base, provider: null }]), { code: 'invalid_api_operation_registry' })
+  assert.throws(() => assertApiOperationRegistry([{ ...base, apiHub: 'no' }]), { code: 'invalid_api_operation_registry' })
+  assert.throws(() => assertApiOperationRegistry([{ ...base, collectorType: 'metar' }]), { code: 'invalid_api_operation_contract' })
+  assert.throws(() => assertApiOperationRegistry([{ ...base, callContract: { kind: 'on_demand', label: 'forbidden' } }]), { code: 'invalid_api_operation_contract' })
+})
+
 test('preserves current IIAC, NOAA, and collector request contracts', () => {
   const iiac = API_OPERATION_REGISTRY.find((operation) => operation.id === 'iiac_arrivals')
   const noaa = API_OPERATION_REGISTRY.find((operation) => operation.id === 'noaa_metar')
@@ -70,6 +86,10 @@ test('preserves current IIAC, NOAA, and collector request contracts', () => {
   assert.equal(noaa.requestPolicy.timeoutMs, config.noaa.timeout_ms)
   const rainviewer = API_OPERATION_REGISTRY.find((operation) => operation.id === 'rainviewer')
   assert.equal(describeExpectedApiCall(rainviewer, activeCollectorRegistry(config).find((item) => item.type === 'rainviewer'), Date.now()).cronExpression, config.schedule.rainviewer_interval)
+  const graphics = API_OPERATION_REGISTRY.find((operation) => operation.id === 'radar_wissdom')
+  const asos = API_OPERATION_REGISTRY.find((operation) => operation.id === 'asos_ceiling')
+  assert.deepEqual(graphics.requestPolicy, { timeoutMs: 30_000, maxRetries: 0, allowedOverrides: ['signal'] })
+  assert.deepEqual(asos.requestPolicy, { timeoutMs: config.asos_ceiling.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] })
 })
 
 test('reports on-demand APIs without an expected timestamp', () => {

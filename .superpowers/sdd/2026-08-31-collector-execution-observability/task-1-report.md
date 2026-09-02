@@ -62,3 +62,11 @@ Added genuine RED tests for canonical real URL resolution, malformed operation s
 The registry now supplies canonical URLs for each operation and validates that every canonical request maps to exactly one operation; explicit ids must match the same URL. API Hub calls use configured KMA timeout/retry settings; known direct external operations use their current source timeout. NOAA is split by its actual `/metar`, `/taf`, and `/isigmet` endpoints. IIAC uses `*/10 6-19 * * *`. Contract validation now rejects malformed labels/matchers/canonical URLs, categories, policies/overrides, missing collector references, invalid cron/timezone/quiet structures, and missing conditional labels. Expected-call calculation skips quiet-window cron occurrences and displays fixed time lists/nonuniform schedules faithfully.
 
 GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js test/api-hub-usage.test.js test/fetch-api-hub.test.js test/admin-data-health.test.js` — 34 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.
+
+## Review-fix round 2/5
+
+RED command: `npm --prefix backend test -- test/api-operation-registry.test.js`. It failed because `0,30 6,17 * * *` was rendered as `06:0,30, 17:0,30`, structural types/on-demand fields were accepted, and radar-graphics policies incorrectly inherited KMA retry metadata.
+
+Cadence labels now Cartesian-expand comma minute/hour fields. Structural validation now requires string labels/providers, boolean `apiHub`, exact contract keys, no collector or extra fields for on-demand operations, and complete permitted-key checks. API Hub policies are allocated per operation: radar graphics and ASOS use their current single-request 30s/seam policy; QCD, satellite, KIM/KTG, and API-client calls retain their source-specific timeout/retry/override contracts.
+
+GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js test/api-hub-usage.test.js test/fetch-api-hub.test.js test/admin-data-health.test.js` — 36 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.
