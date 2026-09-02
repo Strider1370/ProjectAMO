@@ -27,18 +27,18 @@ test('rejects an explicit id when it does not match the request URL', () => {
 
 test('rejects ambiguous operations and non-on-demand operations without data health rows', () => {
   assert.throws(() => assertApiOperationRegistry([
-    { id: 'one', label: 'One', provider: 'test', collectorType: null, dataHealthKeys: ['metar'], callContract: { kind: 'conditional', label: 'when needed' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/one', requestPolicy: { timeoutMs: 1000, maxRetries: 0, allowedOverrides: [] }, match: () => true },
-    { id: 'two', label: 'Two', provider: 'test', collectorType: null, dataHealthKeys: ['taf'], callContract: { kind: 'conditional', label: 'when needed' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/two', requestPolicy: { timeoutMs: 1000, maxRetries: 0, allowedOverrides: [] }, match: () => true },
+    { id: 'one', label: 'One', provider: 'test', collectorType: null, dataHealthKeys: ['metar'], callContract: { kind: 'conditional', label: 'when needed' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/one', requestPolicy: { timeoutMs: 1000, maxAttempts: 1, allowedOverrides: [] }, match: () => true },
+    { id: 'two', label: 'Two', provider: 'test', collectorType: null, dataHealthKeys: ['taf'], callContract: { kind: 'conditional', label: 'when needed' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/two', requestPolicy: { timeoutMs: 1000, maxAttempts: 1, allowedOverrides: [] }, match: () => true },
   ]), { code: 'ambiguous_api_operation_matcher' })
   assert.throws(() => assertApiOperationRegistry([
-    { id: 'missing-health', label: 'Missing health', provider: 'test', collectorType: null, dataHealthKeys: [], callContract: { kind: 'conditional', label: 'when needed' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/missing', requestPolicy: { timeoutMs: 1000, maxRetries: 0, allowedOverrides: [] }, match: (url) => url.pathname === '/missing' },
+    { id: 'missing-health', label: 'Missing health', provider: 'test', collectorType: null, dataHealthKeys: [], callContract: { kind: 'conditional', label: 'when needed' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/missing', requestPolicy: { timeoutMs: 1000, maxAttempts: 1, allowedOverrides: [] }, match: (url) => url.pathname === '/missing' },
   ]), { code: 'missing_api_operation_data_health_keys' })
 })
 
 test('rejects malformed contract shapes before a registry can be used', () => {
   const base = { id: 'invalid', label: 'Invalid', provider: 'test', collectorType: null, dataHealthKeys: ['metar'], credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/a', match: () => false }
-  assert.throws(() => assertApiOperationRegistry([{ ...base, callContract: { kind: 'cron', expression: 'bad cron', timezone: 'Mars/Olympus' }, requestPolicy: { timeoutMs: 1, maxRetries: 0, allowedOverrides: [] } }]), { code: 'invalid_api_operation_contract' })
-  assert.throws(() => assertApiOperationRegistry([{ ...base, callContract: { kind: 'collector' }, collectorType: 'missing', requestPolicy: { timeoutMs: 1, maxRetries: 0, allowedOverrides: [] } }]), { code: 'unresolved_api_operation_collector' })
+  assert.throws(() => assertApiOperationRegistry([{ ...base, callContract: { kind: 'cron', expression: 'bad cron', timezone: 'Mars/Olympus' }, requestPolicy: { timeoutMs: 1, maxAttempts: 1, allowedOverrides: [] } }]), { code: 'invalid_api_operation_contract' })
+  assert.throws(() => assertApiOperationRegistry([{ ...base, callContract: { kind: 'collector' }, collectorType: 'missing', requestPolicy: { timeoutMs: 1, maxAttempts: 1, allowedOverrides: [] } }]), { code: 'unresolved_api_operation_collector' })
 })
 
 test('uses the next actual KST cron match after a quiet window', () => {
@@ -70,7 +70,7 @@ test('Cartesian-expands real airport-info minute and hour fields into actual cal
 })
 
 test('rejects invalid structural types, forbidden on-demand fields, and unknown contract keys', () => {
-  const base = { id: 'invalid-shape', label: 'Valid', provider: 'test', collectorType: null, dataHealthKeys: [], callContract: { kind: 'on_demand' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/shape', requestPolicy: { timeoutMs: 1, maxRetries: 0, allowedOverrides: [] }, match: (url) => url.pathname === '/shape' }
+  const base = { id: 'invalid-shape', label: 'Valid', provider: 'test', collectorType: null, dataHealthKeys: [], callContract: { kind: 'on_demand' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/shape', requestPolicy: { timeoutMs: 1, maxAttempts: 1, allowedOverrides: [] }, match: (url) => url.pathname === '/shape' }
   assert.throws(() => assertApiOperationRegistry([{ ...base, label: 7 }]), { code: 'invalid_api_operation_registry' })
   assert.throws(() => assertApiOperationRegistry([{ ...base, provider: null }]), { code: 'invalid_api_operation_registry' })
   assert.throws(() => assertApiOperationRegistry([{ ...base, apiHub: 'no' }]), { code: 'invalid_api_operation_registry' })
@@ -88,20 +88,20 @@ test('preserves current IIAC, NOAA, and collector request contracts', () => {
   assert.equal(describeExpectedApiCall(rainviewer, activeCollectorRegistry(config).find((item) => item.type === 'rainviewer'), Date.now()).cronExpression, config.schedule.rainviewer_interval)
   const graphics = API_OPERATION_REGISTRY.find((operation) => operation.id === 'radar_wissdom')
   const asos = API_OPERATION_REGISTRY.find((operation) => operation.id === 'asos_ceiling')
-  assert.deepEqual(graphics.requestPolicy, { timeoutMs: 30_000, maxRetries: 0, allowedOverrides: ['signal'] })
-  assert.deepEqual(asos.requestPolicy, { timeoutMs: config.asos_ceiling.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] })
+  assert.deepEqual(graphics.requestPolicy, { timeoutMs: 30_000, maxAttempts: 1, allowedOverrides: ['signal'] })
+  assert.deepEqual(asos.requestPolicy, { timeoutMs: config.asos_ceiling.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] })
 })
 
 test('preserves direct API Hub transport timeout, attempt, and retry-delay contracts', () => {
   const cases = [
-    ['amos', { timeoutMs: config.amos.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
-    ['lightning', { timeoutMs: 30_000, maxRetries: 2, retryDelayMs: 3_000, allowedOverrides: ['signal'] }],
-    ['typhoon_now', { timeoutMs: 15_000, maxRetries: 0, allowedOverrides: ['signal'] }],
-    ['typhoon_list', { timeoutMs: 15_000, maxRetries: 0, allowedOverrides: ['signal'] }],
-    ['ground_forecast', { timeoutMs: config.ground_forecast.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
-    ['mid_land', { timeoutMs: config.ground_forecast.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
-    ['mid_ta', { timeoutMs: config.ground_forecast.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
-    ['uv', { timeoutMs: config.environment.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
+    ['amos', { timeoutMs: config.amos.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
+    ['lightning', { timeoutMs: 30_000, maxAttempts: 3, retryDelayMs: 3_000, allowedOverrides: ['signal'] }],
+    ['typhoon_now', { timeoutMs: 15_000, maxAttempts: 1, allowedOverrides: ['signal'] }],
+    ['typhoon_list', { timeoutMs: 15_000, maxAttempts: 1, allowedOverrides: ['signal'] }],
+    ['ground_forecast', { timeoutMs: config.ground_forecast.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
+    ['mid_land', { timeoutMs: config.ground_forecast.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
+    ['mid_ta', { timeoutMs: config.ground_forecast.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
+    ['uv', { timeoutMs: config.environment.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
   ]
   for (const [id, policy] of cases) {
     const actual = { ...API_OPERATION_REGISTRY.find((operation) => operation.id === id).requestPolicy }
@@ -110,9 +110,9 @@ test('preserves direct API Hub transport timeout, attempt, and retry-delay contr
   }
 })
 
-test('defines retries as attempts after the first request', () => {
+test('declares Lightning total physical attempts', () => {
   const lightning = API_OPERATION_REGISTRY.find((operation) => operation.id === 'lightning').requestPolicy
-  assert.equal(1 + lightning.maxRetries, 3)
+  assert.equal(lightning.maxAttempts, 3)
 })
 
 test('models the ground and mid self-signed-certificate fallback without enabling it generally', () => {
@@ -131,8 +131,24 @@ test('turns null operations into a controlled registry error', () => {
   assert.throws(() => assertApiOperationRegistry([null]), { code: 'invalid_api_operation_registry' })
 })
 
+test('uses unambiguous total physical maxAttempts for Lightning and ApiClient operations', () => {
+  const lightning = API_OPERATION_REGISTRY.find((operation) => operation.id === 'lightning').requestPolicy
+  const metar = API_OPERATION_REGISTRY.find((operation) => operation.id === 'metar').requestPolicy
+  assert.equal(lightning.maxAttempts, 3)
+  assert.equal(metar.maxAttempts, config.api.max_retries)
+  assert.equal(Object.hasOwn(lightning, 'maxRetries'), false)
+  assert.equal(Object.hasOwn(metar, 'maxRetries'), false)
+})
+
+test('rejects every defined non-object fallback value', () => {
+  const base = { id: 'fallback-shape', label: 'Valid', provider: 'test', collectorType: null, dataHealthKeys: [], callContract: { kind: 'on_demand' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/fallback', requestPolicy: { timeoutMs: 1, maxAttempts: 1, allowedOverrides: [] }, match: (url) => url.pathname === '/fallback' }
+  for (const transportFallback of [null, false, 0, '']) {
+    assert.throws(() => assertApiOperationRegistry([{ ...base, requestPolicy: { ...base.requestPolicy, transportFallback } }]), { code: 'invalid_api_operation_policy' })
+  }
+})
+
 test('rejects unknown top-level, request-policy, and quiet keys and invalid types', () => {
-  const base = { id: 'shape-keys', label: 'Valid', provider: 'test', collectorType: null, dataHealthKeys: [], callContract: { kind: 'on_demand' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/keys', requestPolicy: { timeoutMs: 1, maxRetries: 0, allowedOverrides: [] }, match: (url) => url.pathname === '/keys' }
+  const base = { id: 'shape-keys', label: 'Valid', provider: 'test', collectorType: null, dataHealthKeys: [], callContract: { kind: 'on_demand' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/keys', requestPolicy: { timeoutMs: 1, maxAttempts: 1, allowedOverrides: [] }, match: (url) => url.pathname === '/keys' }
   assert.throws(() => assertApiOperationRegistry([{ ...base, unexpected: true }]), { code: 'invalid_api_operation_registry' })
   assert.throws(() => assertApiOperationRegistry([{ ...base, requestPolicy: { ...base.requestPolicy, extra: true } }]), { code: 'invalid_api_operation_policy' })
   assert.throws(() => assertApiOperationRegistry([{ ...base, id: 7 }]), { code: 'invalid_api_operation_registry' })
