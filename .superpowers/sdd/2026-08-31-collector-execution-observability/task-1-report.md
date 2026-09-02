@@ -78,3 +78,11 @@ RED command: `npm --prefix backend test -- test/api-operation-registry.test.js`.
 Added table-driven policy assertions sourced from the current direct transports: AMOS 12s/no retry, lightning 30s/three total attempts/3s delay, typhoon 15s/no retry, ground and both mid forecasts 15s/no retry, and UV/environment 15s/no retry. `apiHubPolicyFor` now declares each of those branches explicitly. Registry validation now requires exact top-level keys, an exact request-policy schema (including optional numeric retry delay), string ids, valid override element types, and exact numeric quiet-window fields.
 
 GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js test/api-hub-usage.test.js test/fetch-api-hub.test.js test/admin-data-health.test.js` — 38 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.
+
+## Review-fix round 4/5
+
+RED command: `npm --prefix backend test -- test/api-operation-registry.test.js`. It failed because Lightning's metadata treated three total attempts as three retries, ground/mid had no declared certificate fallback, and `assertApiOperationRegistry([null])` leaked a `TypeError`.
+
+`maxRetries` now means retries after the first attempt; Lightning declares two retries, yielding its current three physical attempts. Ground forecast and both mid-forecast operations now carry a tightly typed `transportFallback`: only `SELF_SIGNED_CERT_IN_CHAIN` triggers one additional `https.request` attempt with the existing `rejectUnauthorized: false` and fixed KMA User-Agent. This is declarative registry data only; no generic transport behavior or runtime request path changed. Policy validation validates this exact nested shape, and null/non-object registry entries now raise `invalid_api_operation_registry`.
+
+GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js test/api-hub-usage.test.js test/fetch-api-hub.test.js test/admin-data-health.test.js` — 41 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.

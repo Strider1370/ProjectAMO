@@ -95,7 +95,7 @@ test('preserves current IIAC, NOAA, and collector request contracts', () => {
 test('preserves direct API Hub transport timeout, attempt, and retry-delay contracts', () => {
   const cases = [
     ['amos', { timeoutMs: config.amos.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
-    ['lightning', { timeoutMs: 30_000, maxRetries: 3, retryDelayMs: 3_000, allowedOverrides: ['signal'] }],
+    ['lightning', { timeoutMs: 30_000, maxRetries: 2, retryDelayMs: 3_000, allowedOverrides: ['signal'] }],
     ['typhoon_now', { timeoutMs: 15_000, maxRetries: 0, allowedOverrides: ['signal'] }],
     ['typhoon_list', { timeoutMs: 15_000, maxRetries: 0, allowedOverrides: ['signal'] }],
     ['ground_forecast', { timeoutMs: config.ground_forecast.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
@@ -103,7 +103,32 @@ test('preserves direct API Hub transport timeout, attempt, and retry-delay contr
     ['mid_ta', { timeoutMs: config.ground_forecast.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
     ['uv', { timeoutMs: config.environment.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
   ]
-  for (const [id, policy] of cases) assert.deepEqual(API_OPERATION_REGISTRY.find((operation) => operation.id === id).requestPolicy, policy, id)
+  for (const [id, policy] of cases) {
+    const actual = { ...API_OPERATION_REGISTRY.find((operation) => operation.id === id).requestPolicy }
+    delete actual.transportFallback
+    assert.deepEqual(actual, policy, id)
+  }
+})
+
+test('defines retries as attempts after the first request', () => {
+  const lightning = API_OPERATION_REGISTRY.find((operation) => operation.id === 'lightning').requestPolicy
+  assert.equal(1 + lightning.maxRetries, 3)
+})
+
+test('models the ground and mid self-signed-certificate fallback without enabling it generally', () => {
+  const expected = {
+    trigger: { causeCode: 'SELF_SIGNED_CERT_IN_CHAIN' },
+    transport: { kind: 'https_request', rejectUnauthorized: false, headers: { 'User-Agent': 'KMA-Weather-Dashboard/1.0' } },
+    maxAdditionalAttempts: 1,
+  }
+  for (const id of ['ground_forecast', 'mid_land', 'mid_ta']) {
+    assert.deepEqual(API_OPERATION_REGISTRY.find((operation) => operation.id === id).requestPolicy.transportFallback, expected, id)
+  }
+  assert.equal(API_OPERATION_REGISTRY.find((operation) => operation.id === 'metar').requestPolicy.transportFallback, undefined)
+})
+
+test('turns null operations into a controlled registry error', () => {
+  assert.throws(() => assertApiOperationRegistry([null]), { code: 'invalid_api_operation_registry' })
 })
 
 test('rejects unknown top-level, request-policy, and quiet keys and invalid types', () => {
