@@ -92,6 +92,29 @@ test('preserves current IIAC, NOAA, and collector request contracts', () => {
   assert.deepEqual(asos.requestPolicy, { timeoutMs: config.asos_ceiling.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] })
 })
 
+test('preserves direct API Hub transport timeout, attempt, and retry-delay contracts', () => {
+  const cases = [
+    ['amos', { timeoutMs: config.amos.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
+    ['lightning', { timeoutMs: 30_000, maxRetries: 3, retryDelayMs: 3_000, allowedOverrides: ['signal'] }],
+    ['typhoon_now', { timeoutMs: 15_000, maxRetries: 0, allowedOverrides: ['signal'] }],
+    ['typhoon_list', { timeoutMs: 15_000, maxRetries: 0, allowedOverrides: ['signal'] }],
+    ['ground_forecast', { timeoutMs: config.ground_forecast.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
+    ['mid_land', { timeoutMs: config.ground_forecast.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
+    ['mid_ta', { timeoutMs: config.ground_forecast.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
+    ['uv', { timeoutMs: config.environment.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }],
+  ]
+  for (const [id, policy] of cases) assert.deepEqual(API_OPERATION_REGISTRY.find((operation) => operation.id === id).requestPolicy, policy, id)
+})
+
+test('rejects unknown top-level, request-policy, and quiet keys and invalid types', () => {
+  const base = { id: 'shape-keys', label: 'Valid', provider: 'test', collectorType: null, dataHealthKeys: [], callContract: { kind: 'on_demand' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/keys', requestPolicy: { timeoutMs: 1, maxRetries: 0, allowedOverrides: [] }, match: (url) => url.pathname === '/keys' }
+  assert.throws(() => assertApiOperationRegistry([{ ...base, unexpected: true }]), { code: 'invalid_api_operation_registry' })
+  assert.throws(() => assertApiOperationRegistry([{ ...base, requestPolicy: { ...base.requestPolicy, extra: true } }]), { code: 'invalid_api_operation_policy' })
+  assert.throws(() => assertApiOperationRegistry([{ ...base, id: 7 }]), { code: 'invalid_api_operation_registry' })
+  const scheduled = { ...base, collectorType: null, dataHealthKeys: ['metar'], callContract: { kind: 'cron', expression: '0 6 * * *', timezone: 'Asia/Seoul', quiet: { fromHourKst: '0', toHourKst: 4 } } }
+  assert.throws(() => assertApiOperationRegistry([scheduled]), { code: 'invalid_api_operation_contract' })
+})
+
 test('reports on-demand APIs without an expected timestamp', () => {
   assert.deepEqual(describeExpectedApiCall({ label: 'ADS-B', callContract: { kind: 'on_demand' } }, null, Date.now()), { kind: 'on_demand', label: '온디맨드' })
 })

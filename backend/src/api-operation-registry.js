@@ -28,6 +28,11 @@ function apiHubPolicyFor(id) {
   if (id === 'kim_grid') return { timeoutMs: config.kim_surface_wind.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }
   if (id === 'ktg') return { timeoutMs: config.ktg.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }
   if (id.startsWith('satellite_')) return { timeoutMs: config.satellite.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }
+  if (id === 'amos') return { timeoutMs: config.amos.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }
+  if (id === 'lightning') return { timeoutMs: 30_000, maxRetries: 3, retryDelayMs: 3_000, allowedOverrides: ['signal'] }
+  if (id === 'typhoon_now' || id === 'typhoon_list') return { timeoutMs: 15_000, maxRetries: 0, allowedOverrides: ['signal'] }
+  if (['ground_forecast', 'mid_land', 'mid_ta'].includes(id)) return { timeoutMs: config.ground_forecast.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }
+  if (id === 'uv') return { timeoutMs: config.environment.timeout_ms, maxRetries: 0, allowedOverrides: ['signal'] }
   return { timeoutMs: config.api.timeout_ms, maxRetries: config.api.max_retries, allowedOverrides: ['signal', 'maxRetries', 'retryDelayMs', 'skipApiHeader'] }
 }
 
@@ -49,9 +54,13 @@ const ALLOWED_OVERRIDES = new Set(['signal', 'headers', 'method', 'body', 'maxRe
 export function assertApiOperationRegistry(registry = API_OPERATION_REGISTRY, collectors = COLLECTOR_REGISTRY) {
   const ids = new Set(); const dataKeys = new Set(CATALOG.map((row) => row.key)); const collectorTypes = new Set(collectors.map((item) => item.type))
   for (const operation of registry) {
-    if (!operation?.id || typeof operation.label !== 'string' || !operation.label || typeof operation.provider !== 'string' || !operation.provider || typeof operation.apiHub !== 'boolean' || typeof operation.match !== 'function' || typeof operation.canonicalUrl !== 'string' || !operation.canonicalUrl || !Array.isArray(operation.dataHealthKeys) || (operation.collectorType !== null && typeof operation.collectorType !== 'string') || ids.has(operation.id)) throw registryError('invalid_api_operation_registry')
+    const operationKeys = Object.keys(operation).sort()
+    const requiredOperationKeys = ['apiHub', 'callContract', 'canonicalUrl', 'collectorType', 'credentialCategory', 'dataHealthKeys', 'id', 'label', 'match', 'provider', 'requestPolicy']
+    if (!operation?.id || typeof operation.id !== 'string' || !operation.id || operationKeys.length !== requiredOperationKeys.length || !requiredOperationKeys.every((key, index) => key === operationKeys[index]) || typeof operation.label !== 'string' || !operation.label || typeof operation.provider !== 'string' || !operation.provider || typeof operation.apiHub !== 'boolean' || typeof operation.match !== 'function' || typeof operation.canonicalUrl !== 'string' || !operation.canonicalUrl || !Array.isArray(operation.dataHealthKeys) || (operation.collectorType !== null && typeof operation.collectorType !== 'string') || ids.has(operation.id)) throw registryError('invalid_api_operation_registry')
     ids.add(operation.id)
-    if (!operation.requestPolicy || !Number.isFinite(operation.requestPolicy.timeoutMs) || operation.requestPolicy.timeoutMs <= 0 || !Number.isInteger(operation.requestPolicy.maxRetries) || operation.requestPolicy.maxRetries < 0 || !Array.isArray(operation.requestPolicy.allowedOverrides) || operation.requestPolicy.allowedOverrides.some((key) => !ALLOWED_OVERRIDES.has(key))) throw registryError('invalid_api_operation_policy')
+    const policyKeys = Object.keys(operation.requestPolicy || {}).sort()
+    const requiredPolicyKeys = operation.requestPolicy?.retryDelayMs === undefined ? ['allowedOverrides', 'maxRetries', 'timeoutMs'] : ['allowedOverrides', 'maxRetries', 'retryDelayMs', 'timeoutMs']
+    if (!operation.requestPolicy || policyKeys.length !== requiredPolicyKeys.length || !requiredPolicyKeys.every((key, index) => key === policyKeys[index]) || !Number.isFinite(operation.requestPolicy.timeoutMs) || operation.requestPolicy.timeoutMs <= 0 || !Number.isInteger(operation.requestPolicy.maxRetries) || operation.requestPolicy.maxRetries < 0 || (operation.requestPolicy.retryDelayMs !== undefined && (!Number.isFinite(operation.requestPolicy.retryDelayMs) || operation.requestPolicy.retryDelayMs < 0)) || !Array.isArray(operation.requestPolicy.allowedOverrides) || operation.requestPolicy.allowedOverrides.some((key) => typeof key !== 'string' || !ALLOWED_OVERRIDES.has(key))) throw registryError('invalid_api_operation_policy')
     if (!operation.callContract || !['collector', 'cron', 'conditional', 'on_demand'].includes(operation.callContract.kind)) throw registryError('invalid_api_operation_contract')
     if (operation.apiHub && !['aviation', 'radar_satellite', 'kim_nwp'].includes(operation.credentialCategory)) throw registryError('invalid_api_operation_category')
     if (!operation.apiHub && operation.credentialCategory !== null) throw registryError('invalid_api_operation_category')
@@ -64,7 +73,7 @@ export function assertApiOperationRegistry(registry = API_OPERATION_REGISTRY, co
       if (!exactKeys(operation.callContract.quiet ? ['expression', 'kind', 'quiet', 'timezone'] : ['expression', 'kind', 'timezone']) || typeof operation.callContract.expression !== 'string' || typeof operation.callContract.timezone !== 'string') throw registryError('invalid_api_operation_contract')
       try { CronExpressionParser.parse(operation.callContract.expression, { tz: operation.callContract.timezone }) } catch { throw registryError('invalid_api_operation_contract') }
       const quiet = operation.callContract.quiet
-      if (quiet && (!Number.isInteger(quiet.fromHourKst) || !Number.isInteger(quiet.toHourKst) || quiet.fromHourKst < 0 || quiet.fromHourKst > 23 || quiet.toHourKst < 0 || quiet.toHourKst > 23 || quiet.fromHourKst === quiet.toHourKst)) throw registryError('invalid_api_operation_contract')
+      if (quiet && (Object.keys(quiet).sort().join(',') !== 'fromHourKst,toHourKst' || !Number.isInteger(quiet.fromHourKst) || !Number.isInteger(quiet.toHourKst) || quiet.fromHourKst < 0 || quiet.fromHourKst > 23 || quiet.toHourKst < 0 || quiet.toHourKst > 23 || quiet.fromHourKst === quiet.toHourKst)) throw registryError('invalid_api_operation_contract')
     }
     if (operation.callContract.kind === 'conditional' && (!exactKeys(['kind', 'label']) || typeof operation.callContract.label !== 'string' || !operation.callContract.label)) throw registryError('invalid_api_operation_contract')
     if (operation.callContract.kind === 'on_demand' ? operation.dataHealthKeys.length !== 0 : operation.dataHealthKeys.length === 0) throw registryError('missing_api_operation_data_health_keys')

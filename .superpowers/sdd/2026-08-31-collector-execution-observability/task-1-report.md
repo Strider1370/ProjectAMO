@@ -70,3 +70,11 @@ RED command: `npm --prefix backend test -- test/api-operation-registry.test.js`.
 Cadence labels now Cartesian-expand comma minute/hour fields. Structural validation now requires string labels/providers, boolean `apiHub`, exact contract keys, no collector or extra fields for on-demand operations, and complete permitted-key checks. API Hub policies are allocated per operation: radar graphics and ASOS use their current single-request 30s/seam policy; QCD, satellite, KIM/KTG, and API-client calls retain their source-specific timeout/retry/override contracts.
 
 GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js test/api-hub-usage.test.js test/fetch-api-hub.test.js test/admin-data-health.test.js` — 36 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.
+
+## Review-fix round 3/5
+
+RED command: `npm --prefix backend test -- test/api-operation-registry.test.js`. It failed on the shared API Hub policy for AMOS and on permissive top-level/policy schema handling.
+
+Added table-driven policy assertions sourced from the current direct transports: AMOS 12s/no retry, lightning 30s/three total attempts/3s delay, typhoon 15s/no retry, ground and both mid forecasts 15s/no retry, and UV/environment 15s/no retry. `apiHubPolicyFor` now declares each of those branches explicitly. Registry validation now requires exact top-level keys, an exact request-policy schema (including optional numeric retry delay), string ids, valid override element types, and exact numeric quiet-window fields.
+
+GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js test/api-hub-usage.test.js test/fetch-api-hub.test.js test/admin-data-health.test.js` — 38 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.
