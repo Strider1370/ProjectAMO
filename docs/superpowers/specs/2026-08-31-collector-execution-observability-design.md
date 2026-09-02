@@ -81,7 +81,7 @@
 - credential category, API Hub 여부, timeout·재시도·허용 override 범위 등 공통 호출 정책
 - URL을 operation으로 해석하는 matcher 또는 명시적 operation id
 
-정기 수집기에 속한 API operation은 연결된 collector 등록부에서 시간대·cron·정상 호출 주기·비운영 시간을 파생한다. 관리자 화면은 API별로 `정상 호출: 5분마다 (UTC)`, `정상 호출: 매일 05:00·08:00… (KST)`처럼 사람이 읽을 수 있는 기준과 다음 예정 호출 시각을 함께 표시한다. 직접 사용자 요청·화면 조회처럼 정기 실행이 아닌 operation은 `온디맨드`로 명확히 표시하고, 억지로 지연이나 미실행으로 판정하지 않는다.
+API operation은 `collector`(collector cron을 그대로 사용), 자체 `cron`(collector 내부의 별도 호출 슬롯), `conditional`(조건 충족 시만 호출), `on_demand` 중 하나의 호출 계약을 명시한다. 관리자 화면은 API별로 `정상 호출: 5분마다 (UTC)`, `정상 호출: 매일 05:00·08:00… (KST)`처럼 사람이 읽을 수 있는 기준과 다음 예정 호출 시각을 함께 표시한다. 비균일 cron은 하나의 가짜 간격으로 줄이지 않고 시간 목록·운영 창을 표시한다. `conditional`·직접 사용자 요청·화면 조회 operation은 각각의 사유 또는 `온디맨드`로 명확히 표시하고, 억지로 지연이나 미실행으로 판정하지 않는다.
 
 모든 외부 HTTP 호출은 공통 request wrapper에 operation id를 전달한다. wrapper는 등록된 URL matcher와 id가 서로 일치하는지 확인하고, timeout·retry·decode/논리 성공 검증까지 감싼 최종 결과의 시작·성공·실패·지연시간·안전하게 정규화한 오류를 operation별 고정 크기 상태에 기록한다. API Hub 사용량 ledger는 각 실제 HTTP attempt를 wrapper 한 곳에서만 기록하며, credential fingerprint가 판별한 실제 category와 operation 선언 category가 다르면 실패한다. 관리자는 활성 호출 등록부 전체의 현재 상태를 자동으로 받는다. 따라서 새 API는 등록부에 한 줄로 선언하면 로그·상태·관리자 목록에 함께 추가된다.
 
