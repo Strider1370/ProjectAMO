@@ -79,7 +79,7 @@ function exactExecution(execution) {
     last_scheduled_started_at: typeof source.last_scheduled_started_at === 'string' ? source.last_scheduled_started_at : null,
     last_finished_at: typeof source.last_finished_at === 'string' ? source.last_finished_at : null,
     last_outcome: outcome,
-    last_issue: exactIssue(source.last_issue, COLLECTOR_OUTCOMES),
+    last_issue: outcome ? exactIssue(source.last_issue, COLLECTOR_OUTCOMES) : null,
     last_missed_at: typeof source.last_missed_at === 'string' ? source.last_missed_at : null,
   }
 }
@@ -91,7 +91,7 @@ function exactApiExecution(execution) {
     last_started_at: typeof source.last_started_at === 'string' ? source.last_started_at : null,
     last_finished_at: typeof source.last_finished_at === 'string' ? source.last_finished_at : null,
     last_outcome: outcome,
-    last_issue: exactIssue(source.last_issue, API_OPERATION_OUTCOMES),
+    last_issue: outcome ? exactIssue(source.last_issue, API_OPERATION_OUTCOMES) : null,
   }
 }
 
@@ -112,22 +112,27 @@ export function initFromFile(basePath) {
   if (fs.existsSync(statsFilePath)) {
     try {
       const loaded = JSON.parse(fs.readFileSync(statsFilePath, 'utf8'))
-      if (!loaded.types) loaded.types = {}
+      const loadedTypes = loaded.types && typeof loaded.types === 'object' && !Array.isArray(loaded.types) ? loaded.types : {}
+      const rebuiltTypes = {}
       for (const t of TYPES) {
-        if (!loaded.types[t]) loaded.types[t] = makeTypeEntry()
-        if (!loaded.types[t].error_counts) loaded.types[t].error_counts = {}
-        if (!loaded.types[t].airport_failures) loaded.types[t].airport_failures = {}
-        if (!loaded.types[t].airport_error_counts) loaded.types[t].airport_error_counts = {}
-        if (loaded.types[t].last_success === undefined) loaded.types[t].last_success = null
-        loaded.types[t].execution = exactExecution(loaded.types[t].execution)
+        const previous = loadedTypes[t] && typeof loadedTypes[t] === 'object' ? loadedTypes[t] : {}
+        rebuiltTypes[t] = {
+          ...makeTypeEntry(),
+          ...previous,
+          error_counts: previous.error_counts && typeof previous.error_counts === 'object' ? previous.error_counts : {},
+          airport_failures: previous.airport_failures && typeof previous.airport_failures === 'object' ? previous.airport_failures : {},
+          airport_error_counts: previous.airport_error_counts && typeof previous.airport_error_counts === 'object' ? previous.airport_error_counts : {},
+          execution: exactExecution(previous.execution),
+        }
       }
-      if (!loaded.types.metar.airport_ontime) loaded.types.metar.airport_ontime = {}
-      if (!loaded.types.metar.airport_late) loaded.types.metar.airport_late = {}
+      if (!rebuiltTypes.metar.airport_ontime) rebuiltTypes.metar.airport_ontime = {}
+      if (!rebuiltTypes.metar.airport_late) rebuiltTypes.metar.airport_late = {}
       if (!Array.isArray(loaded.recent_runs)) loaded.recent_runs = []
       const operations = loaded.api_operations && typeof loaded.api_operations === 'object' && !Array.isArray(loaded.api_operations) ? loaded.api_operations : {}
       loaded.api_operations = Object.fromEntries([...API_OPERATION_IDS]
         .filter((id) => operations[id])
-        .map((id) => [id, exactApiExecution(operations[id])]))
+        .map((id) => [id, exactApiExecution(operations[id].execution ?? operations[id])]))
+      loaded.types = rebuiltTypes
       statsData = loaded
     } catch (e) {
       console.warn('[STATS] Failed to load stats file, starting fresh:', e.message)
@@ -202,6 +207,7 @@ export function recordStart(type, { source } = {}) {
   const execution = executionFor(type)
   const at = nowIso()
   const run = { source: source || 'scheduled', id: `${persistence.now()}-${Math.random().toString(36).slice(2)}` }
+  if (!execution) return run
   execution.last_started_at = at
   if (run.source === 'scheduled') {
     execution.last_scheduled_started_at = at

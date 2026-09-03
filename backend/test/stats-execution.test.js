@@ -93,6 +93,14 @@ test('legacy non-registry stats types retain their counters without execution up
   })
 })
 
+test('legacy non-registry stats types support a full start to terminal run', () => {
+  const run = stats.recordStart('radar_echo', { source: 'scheduled' })
+  assert.equal(run.source, 'scheduled')
+  assert.doesNotThrow(() => stats.recordSuccess('radar_echo', { saved: true }, 12, run))
+  assert.equal(stats.getStats().types.radar_echo.total_runs, 1)
+  assert.equal(stats.getStats().types.radar_echo.execution.last_outcome, null)
+})
+
 test('API operation starts use the same coalesced persistence path as collector starts', () => {
   const writes = []
   const clock = createFakeClock('2026-08-31T00:00:00.000Z')
@@ -119,4 +127,21 @@ test('loaded execution state is whitelisted, redacted, and separated by state ki
   assert.equal(collector.last_issue.message.includes('secret'), false)
   assert.deepEqual(stats.getStats().api_operations.metar, { last_started_at: null, last_finished_at: null, last_outcome: null, last_issue: null })
   assert.equal(stats.getStats().api_operations.unknown, undefined)
+})
+
+test('loading drops unknown collector types and restores nested API operation state', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stats-execution-restart-'))
+  fs.mkdirSync(path.join(dir, 'stats'))
+  fs.writeFileSync(path.join(dir, 'stats', 'latest.json'), JSON.stringify({
+    types: { unknown: { execution: { last_issue: { message: 'serviceKey=secret' } } } },
+    api_operations: { metar: { execution: { last_started_at: '2026-08-31T00:00:00.000Z', last_finished_at: '2026-08-31T00:00:01.000Z', last_outcome: 'failed', last_issue: { outcome: 'failed', code: 'api_operation_failed', message: 'upstream timeout', at: '2026-08-31T00:00:01.000Z' } } } },
+  }))
+  stats.initFromFile(dir)
+  assert.equal(stats.getStats().types.unknown, undefined)
+  assert.deepEqual(stats.getStats().api_operations.metar, {
+    last_started_at: '2026-08-31T00:00:00.000Z',
+    last_finished_at: '2026-08-31T00:00:01.000Z',
+    last_outcome: 'failed',
+    last_issue: { outcome: 'failed', code: 'api_operation_failed', message: 'upstream timeout', at: '2026-08-31T00:00:01.000Z' },
+  })
 })
