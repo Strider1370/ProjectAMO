@@ -29,7 +29,6 @@ import terminalFlightProcessor from './processors/terminal-flight-processor.js'
 import overseasForecastProcessor from './processors/overseas-forecast-processor.js'
 import typhoonProcessor from "./processors/typhoon-processor.js";
 import { ensureActiveDataView } from './dev/data-view.js'
-import { installApiHubFetchGuard } from './lib/fetch-api-hub.js'
 import apiHubUsage from './api-hub-usage.js'
 import { runSatelliteWorker } from './satellite/worker-runner.js'
 import { createSatelliteWorkQueue } from './satellite/work-queue.js'
@@ -37,7 +36,6 @@ import { activeCollectorRegistry, assertCollectorRegistry } from './collector-re
 import { createExecutionWatchdog } from './collector-execution.js'
 
 net.setDefaultAutoSelectFamily(false)
-installApiHubFetchGuard()
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.

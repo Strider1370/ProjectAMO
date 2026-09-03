@@ -1,9 +1,9 @@
 import crypto from 'crypto'
 import fs from 'fs'
-import https from 'https'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import config from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -80,32 +80,12 @@ function getAdsbDir() {
   return path.join(config.storage.base_path, "adsb");
 }
 
-async function fetchWithTimeout(url, timeoutMs = config.adsb.timeout_ms) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const headers = buildRequestHeaders()
-    try {
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      if (error?.cause?.code !== "SELF_SIGNED_CERT_IN_CHAIN") {
-        throw error;
-      }
-
-      return await fetchViaHttpsRequest(url, timeoutMs, headers);
-    }
-  } finally {
-    clearTimeout(timer);
-  }
+async function fetchWithTimeout(url) {
+  const response = await requestObservedApi({
+    operation: 'adsb', url, options: { headers: buildRequestHeaders() },
+    validate: async (value) => { if (!value.ok) throw new Error(`HTTP ${value.status}`); await value.json() },
+  })
+  return response.json()
 }
 
 function buildRequestHeaders() {
@@ -113,40 +93,6 @@ function buildRequestHeaders() {
     "User-Agent": "KMA-Weather-Dashboard/1.0",
     "Accept": "application/json",
   }
-}
-
-function fetchViaHttpsRequest(url, timeoutMs, headers) {
-  return new Promise((resolve, reject) => {
-    const request = https.request(url, {
-      method: "GET",
-      rejectUnauthorized: false,
-      headers,
-    }, (response) => {
-      let body = "";
-      response.setEncoding("utf8");
-      response.on("data", (chunk) => {
-        body += chunk;
-      });
-      response.on("end", () => {
-        if ((response.statusCode || 500) >= 400) {
-          reject(new Error(`HTTP ${response.statusCode}`));
-          return;
-        }
-
-        try {
-          resolve(JSON.parse(body));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    });
-
-    request.setTimeout(timeoutMs, () => {
-      request.destroy(new Error("Request timeout"));
-    });
-    request.on("error", reject);
-    request.end();
-  });
 }
 
 function buildUrl() {

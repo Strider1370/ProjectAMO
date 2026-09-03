@@ -1,3 +1,5 @@
+import https from 'node:https'
+
 import apiHubUsage from '../api-hub-usage.js'
 import { resolveApiOperation } from '../api-operation-registry.js'
 import stats from '../stats.js'
@@ -85,6 +87,29 @@ function withTimeout(fetchImpl, url, options, timeoutMs) {
   return fetchImpl(url, { ...options, signal, [REQUEST_OBSERVED]: true }).finally(() => clearTimeout(timer))
 }
 
+function shouldUseFallback(error, policy) {
+  return Boolean(policy.transportFallback) && policy.transportFallback.trigger.causeCode === error?.cause?.code
+}
+
+function httpsFallback(url, policy, signal) {
+  const transport = policy.transportFallback.transport
+  return new Promise((resolve, reject) => {
+    const request = https.request(url, {
+      method: 'GET', rejectUnauthorized: transport.rejectUnauthorized, headers: transport.headers,
+    }, (response) => {
+      const chunks = []
+      response.on('data', (chunk) => chunks.push(chunk))
+      response.on('end', () => resolve(new Response(Buffer.concat(chunks), { status: response.statusCode || 500, headers: response.headers })))
+    })
+    const onAbort = () => request.destroy(signal.reason ?? requestError('api_operation_cancelled'))
+    signal?.addEventListener('abort', onAbort, { once: true })
+    request.setTimeout(policy.timeoutMs, () => request.destroy(requestError('api_operation_timeout')))
+    request.on('error', reject)
+    request.on('close', () => signal?.removeEventListener('abort', onAbort))
+    request.end()
+  })
+}
+
 export function createRequestObservedApi({ usage = apiHubUsage, stats: executionStats = stats, fetchImpl = (...args) => globalThis.fetch(...args), sleep = defaultSleep, resolveOperation = resolveApiOperation } = {}) {
   return async function requestObservedApi({ operation, url, options = {}, validate } = {}) {
     const requestUrl = new URL(url)
@@ -112,7 +137,14 @@ export function createRequestObservedApi({ usage = apiHubUsage, stats: execution
         try {
           if (operation.apiHub) usage.assertAllowed(credential)
           transportStarted = true
-          const upstream = await withTimeout(fetchImpl, requestUrl, fetchOptions, policy.timeoutMs)
+          let upstream
+          try {
+            upstream = await withTimeout(fetchImpl, requestUrl, fetchOptions, policy.timeoutMs)
+          } catch (error) {
+            if (!shouldUseFallback(error, policy)) throw error
+            if (operation.apiHub) await usage.record(credential, { bytes: 0, status: 0, endpoint: operation.id })
+            upstream = await httpsFallback(requestUrl, policy, fetchOptions.signal)
+          }
           const body = await upstream.arrayBuffer()
           transportCompleted = true
           if (operation.apiHub) {

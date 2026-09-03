@@ -1,8 +1,7 @@
-import https from 'https'
 import config from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import store from '../store.js'
 import { latLonToGrid } from '../utils/kma-grid.js'
-import apiHubUsage from '../api-hub-usage.js'
 
 const VILLAGE_BASE_TIMES = [2, 5, 8, 11, 14, 17, 20, 23] // 동네예보 발표시각 (KST)
 const VILLAGE_PUBLISH_DELAY_MIN = 15 // 발표 후 제공까지 버퍼
@@ -80,69 +79,19 @@ function buildJsonUrl(endpoint, params) {
   return `${config.api.base_url}${endpoint}?${searchParams.toString()}`;
 }
 
-async function fetchJson(url, timeoutMs = config.ground_forecast.timeout_ms) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      const body = await response.text();
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${body.slice(0, 200)}`);
-      }
-      return JSON.parse(body);
-    } catch (error) {
-      if (error?.cause?.code !== "SELF_SIGNED_CERT_IN_CHAIN") {
-        throw error;
-      }
-      return await fetchJsonViaHttpsRequest(url, timeoutMs);
-    }
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function fetchJsonViaHttpsRequest(url, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    apiHubUsage.assertAllowed(config.api.auth_key)
-    const request = https.request(url, {
-      method: "GET",
-      rejectUnauthorized: false,
-      headers: {
-        "User-Agent": "KMA-Weather-Dashboard/1.0"
-      }
-    }, (response) => {
-      const chunks = [];
-      response.setEncoding("utf8");
-      response.on("data", (chunk) => {
-        chunks.push(chunk);
-      });
-      response.on("end", async () => {
-        const body = chunks.join('');
-        try {
-          await apiHubUsage.record(config.api.auth_key, { bytes: Buffer.byteLength(body), status: response.statusCode || 500, endpoint: 'ground_forecast' });
-        } catch (error) {
-          reject(error);
-          return;
-        }
-        if ((response.statusCode || 500) >= 400) {
-          reject(new Error(`HTTP ${response.statusCode}: ${body.slice(0, 200)}`));
-          return;
-        }
-        try {
-          resolve(JSON.parse(body));
-        } catch (error) {
-          reject(error);
-        }
-      });
-    });
-
-    request.on("error", reject);
-    request.setTimeout(timeoutMs, () => {
-      request.destroy(new Error(`Timeout after ${timeoutMs}ms`));
-    });
-    request.end();
-  });
+async function fetchJson(url) {
+  const pathname = new URL(url).pathname
+  const operation = pathname.includes('getMidLand') ? 'mid_land' : pathname.includes('getMidTa') ? 'mid_ta' : 'ground_forecast'
+  const response = await requestObservedApi({
+    operation,
+    url,
+    validate: async (value) => {
+      const body = await value.text()
+      if (!value.ok) throw new Error(`HTTP ${value.status}: ${body.slice(0, 200)}`)
+      JSON.parse(body)
+    },
+  })
+  return response.json()
 }
 
 function getResponseItems(payload) {
