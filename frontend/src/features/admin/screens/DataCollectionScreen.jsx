@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
 import { STATUS_TONE, STATUS_WORD, formatAge, formatInterval, formatMs, formatRate } from '../lib/adminFormat.js'
 
@@ -9,6 +10,7 @@ import { STATUS_TONE, STATUS_WORD, formatAge, formatInterval, formatMs, formatRa
 // 근거가 저장돼 있지 않다. 그래서 "언제부터"를 화면에 함께 적는다.
 export default function DataCollectionScreen({ health, now = Date.now() }) {
   const [onlyProblems, setOnlyProblems] = useState(false)
+  const { tz } = useTimeZone()
   if (!health) return null
 
   const broken = health.counts.stopped + health.counts.never
@@ -49,6 +51,7 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                 <th className="ac-r">평균 소요</th>
                 <th className="ac-r">밀림</th>
                 <th>마지막 오류</th>
+                <th>API 실행 · 예정</th>
               </tr>
             </thead>
             <tbody>
@@ -72,6 +75,14 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                     {row.stats?.skips ?? 0}
                   </td>
                   <td className="ac-muted">{row.lastError || '—'}</td>
+                  <td className="ac-muted">
+                    {(row.operations || []).map((operation) => {
+                      const expected = operation.expected
+                      const next = expected?.nextExpectedAt ? new Date(expected.nextExpectedAt).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }) : null
+                      const schedule = expected?.kind === 'scheduled' ? `${expected.cadenceLabel}${expected.operatingHoursLabel ? ` · ${expected.operatingHoursLabel}` : ''}${next ? ` · 다음 ${next}` : ''}` : expected?.label || '—'
+                      return <div className="ac-sub" key={operation.id}>{operation.label} · {operation.outcome === 'succeeded' ? '성공' : operation.outcome === 'failed' ? '실패' : '미실행'} · {schedule}{operation.lastIssue?.message ? ` · ${operation.lastIssue.message}` : ''}</div>
+                    })}
+                  </td>
                 </tr>
               ))}
             </tbody>

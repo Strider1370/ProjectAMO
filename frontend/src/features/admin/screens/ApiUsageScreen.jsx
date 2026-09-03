@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { getApiHubUsage } from '../adminApi.js'
+import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
 // API 사용량.
 //
@@ -12,6 +13,7 @@ const STATUS_WORD = { active: '정상', blocked: '차단됨', unconfigured: '열
 
 export default function ApiUsageScreen() {
   const [usage, setUsage] = useState(null)
+  const { tz } = useTimeZone()
 
   useEffect(() => {
     const load = () => { getApiHubUsage().then(setUsage).catch(() => {}) }
@@ -84,7 +86,7 @@ export default function ApiUsageScreen() {
                   <td className="ac-r n">{endpoint.requests}</td>
                   <td className="ac-r n" style={endpoint.failures > 0 ? { color: 'var(--ac-bad)' } : undefined}>{endpoint.failures}</td>
                   <td className="ac-r ac-muted n">
-                    {endpoint.lastCalledAt ? new Date(endpoint.lastCalledAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                    {endpoint.lastCalledAt ? new Date(endpoint.lastCalledAt).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit' }) : '—'}
                   </td>
                 </tr>
               ))}
@@ -92,6 +94,23 @@ export default function ApiUsageScreen() {
           </table>
         </section>
       ))}
+
+      {usage.onDemandOperations?.length > 0 && (
+        <section className="ac-sec ac-flush">
+          <h2>온디맨드 API<em>호출 시에만 실행</em></h2>
+          <table className="ac-t">
+            <thead><tr><th>API</th><th>상태</th><th className="ac-r">마지막 완료</th><th>최근 원인</th></tr></thead>
+            <tbody>{usage.onDemandOperations.map((operation) => (
+              <tr key={operation.id}>
+                <td className="ac-nm">{operation.label}<div className="ac-sub">{operation.provider}</div></td>
+                <td>{operation.outcome === 'succeeded' ? '성공' : operation.outcome === 'failed' ? '실패' : '미실행'}</td>
+                <td className="ac-r ac-muted">{operation.lastFinishedAt ? new Date(operation.lastFinishedAt).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                <td className="ac-muted">{operation.lastIssue?.message || '—'}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </section>
+      )}
     </>
   )
 }

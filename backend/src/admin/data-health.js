@@ -2,6 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import config from '../config.js'
+import { API_OPERATION_REGISTRY, describeExpectedApiCall } from '../api-operation-registry.js'
+import { activeCollectorRegistry } from '../collector-registry.js'
 import { CATALOG, SOURCES, CHARACTERS } from './data-health-catalog.js'
 import { judge } from './freshness.js'
 
@@ -38,7 +40,27 @@ function isCurrentlyFailing(entry) {
 // getCached(type)와 getStats()를 주입받는다(store.js·stats.js 직접 의존 대신) — basePath만 있으면
 // 순수 함수로 테스트 가능하게. now/sun도 주입 가능(시간 의존 테스트).
 export function readDataHealth(basePath, { getCached, getStats, now = Date.now(), sun = {}, cfg = config }) {
-  const statsTypes = getStats()?.types || {}
+  const statistics = getStats() || {}
+  const statsTypes = statistics.types || {}
+  const operationStats = statistics.api_operations || {}
+  const collectors = new Map(activeCollectorRegistry(cfg).map((collector) => [collector.type, collector]))
+  const operationsFor = (key) => API_OPERATION_REGISTRY
+    .filter((operation) => operation.callContract.kind !== 'on_demand' && operation.dataHealthKeys.includes(key))
+    .map((operation) => {
+      const execution = operationStats[operation.id] || {}
+      return {
+        id: operation.id,
+        label: operation.label,
+        provider: operation.provider,
+        outcome: execution.last_outcome || 'unknown',
+        lastStartedAt: execution.last_started_at || null,
+        lastFinishedAt: execution.last_finished_at || null,
+        lastIssue: execution.last_issue || null,
+        expected: operation.callContract.kind === 'collector' && !collectors.has(operation.collectorType)
+          ? { kind: 'disabled', label: '비활성' }
+          : describeExpectedApiCall(operation, collectors.get(operation.collectorType), now),
+      }
+    })
   const counts = { total: CATALOG.length, ok: 0, late: 0, stopped: 0, quiet: 0, never: 0, disabled: 0 }
 
   const rows = CATALOG.map((row) => {
@@ -75,6 +97,7 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
       activeCount: activeCount(row, getCached),
       failing: isCurrentlyFailing(entry),
       lastError: entry?.last_error ?? null,
+      operations: operationsFor(row.key),
     }
   })
 

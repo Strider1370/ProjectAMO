@@ -130,3 +130,19 @@ test('저장된 자료도 없으면 그때는 자료 없음이다', () => {
   const { rows } = readDataHealth(base(), { getCached: () => null, getStats: statsFor({}), now: NOW })
   assert.equal(rows.find((r) => r.key === 'metar').status, 'never')
 })
+
+test('등록된 비온디맨드 API 실행 상태와 호출 계약을 자료 행에 자동으로 붙인다', () => {
+  const { rows } = readDataHealth(base(), {
+    getCached: () => null,
+    getStats: () => ({ types: {}, api_operations: {
+      metar: { last_started_at: '2026-08-10T10:30:00Z', last_finished_at: '2026-08-10T10:31:00Z', last_outcome: 'failed', last_issue: { code: 'api_operation_failed', message: 'upstream_timeout', at: '2026-08-10T10:31:00Z' } },
+    } }),
+    now: NOW,
+  })
+  const metar = rows.find((row) => row.key === 'metar')
+  const operation = metar.operations.find((item) => item.id === 'metar')
+  assert.equal(operation.outcome, 'failed')
+  assert.equal(operation.lastIssue.message, 'upstream_timeout')
+  assert.equal(operation.expected.kind, 'scheduled')
+  assert.ok(operation.expected.nextExpectedAt)
+})

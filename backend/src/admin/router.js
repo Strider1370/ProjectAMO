@@ -20,6 +20,7 @@ import { demoSession } from '../dev/demo-session.js'
 import { listSnapshots, inspectSnapshot, isValidSnapshotName, nextSnapshotName, RESERVED_LIVE_BACKUP } from '../dev/snapshot-store.js'
 import config from '../config.js'
 import apiHubUsage from '../api-hub-usage.js'
+import { API_OPERATION_REGISTRY, describeExpectedApiCall } from '../api-operation-registry.js'
 
 // /api/admin/* — 전체 requireRole('admin'). db 주입 가능(테스트).
 export function createAdminRouter({ db = null } = {}) {
@@ -51,7 +52,22 @@ export function createAdminRouter({ db = null } = {}) {
     deployment: deploymentInfo(),
     backup: lastBackup(config.storage.base_path),
   }))
-  router.get('/api-hub-usage', (req, res) => res.json(apiHubUsage.snapshot()))
+  router.get('/api-hub-usage', (req, res) => {
+    const snapshot = apiHubUsage.snapshot()
+    const operationStats = stats.getStats().api_operations || {}
+    snapshot.onDemandOperations = API_OPERATION_REGISTRY
+      .filter((operation) => operation.callContract.kind === 'on_demand')
+      .map((operation) => {
+        const execution = operationStats[operation.id] || {}
+        return {
+          id: operation.id, label: operation.label, provider: operation.provider,
+          outcome: execution.last_outcome || 'unknown', lastStartedAt: execution.last_started_at || null,
+          lastFinishedAt: execution.last_finished_at || null, lastIssue: execution.last_issue || null,
+          expected: describeExpectedApiCall(operation, null, Date.now()),
+        }
+      })
+    res.json(snapshot)
+  })
   // 알림 감시 목록 — 지금 누가 무엇을 감시받고 있는지. 조용한 이유를 짚는 화면이다.
   router.get('/alert-watches', (req, res) => res.json({ watches: listAlertWatches(database()) }))
   router.get('/users', (req, res) => res.json(listUsers(database())))
