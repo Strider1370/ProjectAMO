@@ -89,9 +89,10 @@ bash deploy/deploy-vm.sh
 2. **pull한 새 스크립트로 자기 자신을 재시작** (§아래)
 3. `bash deploy/build-frontend.sh` — **새 폴더(`frontend/dist.new`)에 빌드하고 성공했을 때만 `dist`와 교체**
 4. `pm2 restart ecosystem.config.cjs --update-env` + `pm2 save` — **앱 이름이 아니라 설정 파일을 지목**
-5. `sudo nginx -t` · `sudo systemctl reload nginx`
-6. **설정 적용 확인** — 파일의 `NODE_OPTIONS`와 실제 프로세스 값 대조, 다르면 실패
-7. 건강 검사 — **백엔드와 화면 둘 다**
+5. `deploy/configure-pm2-logrotate.sh` — stdout/stderr를 **10MB 또는 자정**마다 회전하고 gzip 압축본 **7개**만 보관하도록 설정·검증
+6. `sudo nginx -t` · `sudo systemctl reload nginx`
+7. **설정 적용 확인** — 파일의 `NODE_OPTIONS`와 실제 프로세스 값 대조, 다르면 실패
+8. 건강 검사 — **백엔드와 화면 둘 다**
 
 ### 건강 검사는 화면까지 본다
 
@@ -187,6 +188,14 @@ PM2 상태:
 ```bash
 pm2 status projectamo-backend
 ```
+
+PM2 로그 회전 설정 확인:
+
+```bash
+pm2 conf pm2-logrotate
+```
+
+`max_size 10M`, `retain 7`, `compress true`, `rotateInterval 0 0 * * *`가 보여야 합니다.
 
 위성 수집 메모리 확인:
 

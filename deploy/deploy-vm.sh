@@ -37,6 +37,9 @@ echo "[deploy] restarting pm2 app from ecosystem.config.cjs..."
 pm2 restart ecosystem.config.cjs --update-env
 pm2 save
 
+echo "[deploy] configuring pm2 log rotation..."
+bash deploy/configure-pm2-logrotate.sh
+
 echo "[deploy] validating nginx..."
 sudo nginx -t
 
