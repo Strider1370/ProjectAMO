@@ -15,6 +15,23 @@ function isQuietAt(quiet, nowMs) {
     : hour >= quiet.fromHourKst || hour < quiet.toHourKst
 }
 
+function kstVirtualMs(epochMs) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date(epochMs)).reduce((result, part) => ({ ...result, [part.type]: part.value }), {})
+  return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second))
+}
+
+function deadlineBaseAfterQuiet(lastScheduledAtMs, nowMs, quiet) {
+  if (!quiet) return lastScheduledAtMs
+  const nowKst = kstVirtualMs(nowMs)
+  const dayMs = 24 * 3600_000
+  let quietEnd = Math.floor(nowKst / dayMs) * dayMs + quiet.toHourKst * 3600_000
+  if (quietEnd > nowKst) quietEnd -= dayMs
+  const lastScheduledKst = kstVirtualMs(lastScheduledAtMs)
+  return lastScheduledKst < quietEnd ? quietEnd : lastScheduledKst
+}
+
 export function buildCollectorExecution({ collectors, statsTypes, nowMs }) {
   return collectors.map((collector) => {
     const execution = statsTypes[collector.type]?.execution ?? EMPTY_EXECUTION
@@ -31,9 +48,11 @@ export function buildCollectorExecution({ collectors, statsTypes, nowMs }) {
 
 export function checkContractAt(collector, execution = {}, nowMs, bootedAtMs) {
   const schedule = collector.schedule
-  if (!schedule?.maxIntervalMs || !schedule?.graceMs || isQuietAt(schedule.quiet, nowMs)) return null
+  if (!Number.isFinite(schedule?.maxIntervalMs) || schedule.maxIntervalMs <= 0 || !Number.isFinite(schedule?.graceMs) || schedule.graceMs < 0 || isQuietAt(schedule.quiet, nowMs)) return null
   const lastScheduledAtMs = Date.parse(execution.last_scheduled_started_at) || bootedAtMs
-  if (nowMs < lastScheduledAtMs + schedule.maxIntervalMs + schedule.graceMs) return null
+  const deadlineBase = deadlineBaseAfterQuiet(lastScheduledAtMs, nowMs, schedule.quiet)
+  const comparisonNow = schedule.quiet ? kstVirtualMs(nowMs) : nowMs
+  if (comparisonNow < deadlineBase + schedule.maxIntervalMs + schedule.graceMs) return null
   return {
     type: collector.type,
     outcome: 'missed',

@@ -33,3 +33,16 @@ test('quiet and disabled registry entries do not create a missed incident', () =
   assert.equal(checkContractAt({ type: 'terminal_flights', schedule: { quiet: { fromHourKst: 0, toHourKst: 4 }, maxIntervalMs: 60_000, graceMs: 60_000 } }, {}, Date.parse('2026-08-31T17:00:00.000Z'), 0), null)
   assert.deepEqual(activeCollectorRegistry({ api: { radar_satellite_auth_key: '' } }).map((collector) => collector.type).includes('satellite'), false)
 })
+
+test('quiet time defers the missed deadline until an eligible interval and grace after reopening', () => {
+  const collector = { type: 'terminal_flights', schedule: { quiet: { fromHourKst: 0, toHourKst: 4 }, maxIntervalMs: 3600_000, graceMs: 10 * 60_000 } }
+  const execution = { last_scheduled_started_at: '2026-08-31T14:00:00.000Z' }
+  assert.equal(checkContractAt(collector, execution, Date.parse('2026-08-31T19:00:00.000Z'), 0), null)
+  assert.equal(checkContractAt(collector, execution, Date.parse('2026-08-31T20:09:00.000Z'), 0), null)
+  assert.equal(checkContractAt(collector, execution, Date.parse('2026-08-31T20:10:00.000Z'), 0).outcome, 'missed')
+})
+
+test('zero grace is a valid missed-start contract', () => {
+  const result = checkContractAt({ type: 'metar', schedule: { maxIntervalMs: 60_000, graceMs: 0 } }, {}, 60_000, 0)
+  assert.equal(result.outcome, 'missed')
+})

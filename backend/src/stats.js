@@ -22,8 +22,16 @@ const EMPTY_EXECUTION = Object.freeze({
   last_issue: null,
   last_missed_at: null,
 })
+const EMPTY_API_EXECUTION = Object.freeze({
+  last_started_at: null,
+  last_finished_at: null,
+  last_outcome: null,
+  last_issue: null,
+})
 const COLLECTOR_TYPES = new Set(COLLECTOR_REGISTRY.map((collector) => collector.type))
 const API_OPERATION_IDS = new Set(API_OPERATION_REGISTRY.map((operation) => operation.id))
+const COLLECTOR_OUTCOMES = new Set(['succeeded', 'failed', 'skipped', 'missed'])
+const API_OPERATION_OUTCOMES = new Set(['succeeded', 'failed'])
 
 const METAR_LIMIT_MIN = { RKSI: 40 }
 const METAR_DEFAULT_LIMIT_MIN = 70
@@ -53,6 +61,40 @@ function makeStatsData() {
   }
 }
 
+function exactIssue(issue, outcomes) {
+  if (!issue || typeof issue !== 'object' || !outcomes.has(issue.outcome)) return null
+  return normalizeCollectorIssue({
+    outcome: issue.outcome,
+    code: typeof issue.code === 'string' ? issue.code : 'unknown',
+    message: issue.message,
+    at: typeof issue.at === 'string' ? issue.at : null,
+  })
+}
+
+function exactExecution(execution) {
+  const source = execution && typeof execution === 'object' ? execution : {}
+  const outcome = COLLECTOR_OUTCOMES.has(source.last_outcome) ? source.last_outcome : null
+  return {
+    last_started_at: typeof source.last_started_at === 'string' ? source.last_started_at : null,
+    last_scheduled_started_at: typeof source.last_scheduled_started_at === 'string' ? source.last_scheduled_started_at : null,
+    last_finished_at: typeof source.last_finished_at === 'string' ? source.last_finished_at : null,
+    last_outcome: outcome,
+    last_issue: exactIssue(source.last_issue, COLLECTOR_OUTCOMES),
+    last_missed_at: typeof source.last_missed_at === 'string' ? source.last_missed_at : null,
+  }
+}
+
+function exactApiExecution(execution) {
+  const source = execution && typeof execution === 'object' ? execution : {}
+  const outcome = API_OPERATION_OUTCOMES.has(source.last_outcome) ? source.last_outcome : null
+  return {
+    last_started_at: typeof source.last_started_at === 'string' ? source.last_started_at : null,
+    last_finished_at: typeof source.last_finished_at === 'string' ? source.last_finished_at : null,
+    last_outcome: outcome,
+    last_issue: exactIssue(source.last_issue, API_OPERATION_OUTCOMES),
+  }
+}
+
 let statsData = makeStatsData()
 
 let statsFilePath = null
@@ -77,13 +119,15 @@ export function initFromFile(basePath) {
         if (!loaded.types[t].airport_failures) loaded.types[t].airport_failures = {}
         if (!loaded.types[t].airport_error_counts) loaded.types[t].airport_error_counts = {}
         if (loaded.types[t].last_success === undefined) loaded.types[t].last_success = null
-        if (!loaded.types[t].execution) loaded.types[t].execution = { ...EMPTY_EXECUTION }
-        else loaded.types[t].execution = { ...EMPTY_EXECUTION, ...loaded.types[t].execution }
+        loaded.types[t].execution = exactExecution(loaded.types[t].execution)
       }
       if (!loaded.types.metar.airport_ontime) loaded.types.metar.airport_ontime = {}
       if (!loaded.types.metar.airport_late) loaded.types.metar.airport_late = {}
       if (!Array.isArray(loaded.recent_runs)) loaded.recent_runs = []
-      if (!loaded.api_operations || typeof loaded.api_operations !== 'object' || Array.isArray(loaded.api_operations)) loaded.api_operations = {}
+      const operations = loaded.api_operations && typeof loaded.api_operations === 'object' && !Array.isArray(loaded.api_operations) ? loaded.api_operations : {}
+      loaded.api_operations = Object.fromEntries([...API_OPERATION_IDS]
+        .filter((id) => operations[id])
+        .map((id) => [id, exactApiExecution(operations[id])]))
       statsData = loaded
     } catch (e) {
       console.warn('[STATS] Failed to load stats file, starting fresh:', e.message)
@@ -144,8 +188,9 @@ function requireCollector(type) {
 }
 
 function executionFor(type) {
+  if (!COLLECTOR_TYPES.has(type)) return null
   const entry = requireCollector(type)
-  entry.execution = { ...EMPTY_EXECUTION, ...entry.execution }
+  entry.execution = exactExecution(entry.execution)
   return entry.execution
 }
 
@@ -168,6 +213,7 @@ export function recordStart(type, { source } = {}) {
 
 function setExecutionCompletion(type, outcome, issue, run) {
   const execution = executionFor(type)
+  if (!execution) return false
   if (unresolvedScheduledMissed(execution, run)) return false
   execution.last_finished_at = nowIso()
   execution.last_outcome = outcome
@@ -192,18 +238,18 @@ export function recordMissed(type, issue = {}) {
 
 function apiOperationEntry(id) {
   if (!API_OPERATION_IDS.has(id)) throw new Error(`unknown_api_operation:${id}`)
-  if (!statsData.api_operations[id]) statsData.api_operations[id] = { execution: { ...EMPTY_EXECUTION } }
+  if (!statsData.api_operations[id]) statsData.api_operations[id] = { ...EMPTY_API_EXECUTION }
   return statsData.api_operations[id]
 }
 
 export function recordApiOperationStart(id) {
-  const execution = apiOperationEntry(id).execution
+  const execution = apiOperationEntry(id)
   execution.last_started_at = nowIso()
-  persistCompletion()
+  queueStartSave()
 }
 
 function recordApiOperationCompletion(id, outcome, message) {
-  const execution = apiOperationEntry(id).execution
+  const execution = apiOperationEntry(id)
   const at = nowIso()
   execution.last_finished_at = at
   execution.last_outcome = outcome

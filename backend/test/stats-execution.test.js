@@ -77,3 +77,46 @@ test('legacy failure fields persist only the normalized issue message', () => {
   assert.equal(recent.error.includes('abcdef'), false)
   assert.equal(Object.keys(entry.error_counts).some((key) => key.includes('\n')), false)
 })
+
+test('legacy non-registry stats types retain their counters without execution updates', () => {
+  assert.doesNotThrow(() => stats.recordSuccess('radar_echo', { saved: true }, 12))
+  const entry = stats.getStats().types.radar_echo
+  assert.equal(entry.total_runs, 1)
+  assert.equal(entry.success, 1)
+  assert.deepEqual(entry.execution, {
+    last_started_at: null,
+    last_scheduled_started_at: null,
+    last_finished_at: null,
+    last_outcome: null,
+    last_issue: null,
+    last_missed_at: null,
+  })
+})
+
+test('API operation starts use the same coalesced persistence path as collector starts', () => {
+  const writes = []
+  const clock = createFakeClock('2026-08-31T00:00:00.000Z')
+  stats.__setPersistenceForTest({ now: clock.now, setTimeout: clock.setTimeout, write: () => writes.push(clock.now()) })
+  stats.recordApiOperationStart('metar')
+  stats.recordApiOperationStart('metar')
+  assert.equal(writes.length, 0)
+  clock.advance(30_000)
+  assert.equal(writes.length, 1)
+  stats.recordApiOperationSuccess('metar')
+  assert.equal(writes.length, 2)
+})
+
+test('loaded execution state is whitelisted, redacted, and separated by state kind', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stats-execution-loaded-'))
+  fs.mkdirSync(path.join(dir, 'stats'))
+  fs.writeFileSync(path.join(dir, 'stats', 'latest.json'), JSON.stringify({
+    types: { metar: { execution: { last_outcome: 'failed', last_issue: { outcome: 'failed', code: 'x', message: 'authKey=secret\nBearer abc', at: '2026-08-31T00:00:00.000Z', injected: true }, injected: true } } },
+    api_operations: { metar: { execution: { last_outcome: 'missed', last_missed_at: 'bad', last_issue: { outcome: 'failed', code: 'x', message: 'serviceKey=secret', at: '2026-08-31T00:00:00.000Z' } } }, unknown: { execution: { last_outcome: 'failed' } } },
+  }))
+  stats.initFromFile(dir)
+  const collector = stats.getExecutionState('metar')
+  assert.deepEqual(Object.keys(collector).sort(), ['last_finished_at', 'last_issue', 'last_missed_at', 'last_outcome', 'last_scheduled_started_at', 'last_started_at'])
+  assert.equal(collector.last_issue.message.includes('secret'), false)
+  assert.deepEqual(stats.getStats().api_operations.metar, { last_started_at: null, last_finished_at: null, last_outcome: null, last_issue: null })
+  assert.equal(stats.getStats().api_operations.unknown, undefined)
+})
