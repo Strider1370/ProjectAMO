@@ -22,6 +22,7 @@ test('active registry resolves partial overrides and exposes watchdog contracts 
   assert.deepEqual(partial.find((collector) => collector.type === 'terminal_flights').schedule, {
     expression: '*/1 4-23 * * *', timezone: 'Asia/Seoul', maxIntervalMs: 60_000, graceMs: 60_000, quiet: { fromHourKst: 0, toHourKst: 4 },
   })
+  assert.equal(partial.find((collector) => collector.type === 'airport_info').schedule.maxIntervalMs, 12.5 * 3600_000)
 })
 
 test('radar graphics follows the scheduler enabled condition as well as the key', () => {
@@ -29,10 +30,22 @@ test('radar graphics follows the scheduler enabled condition as well as the key'
   assert.equal(withoutGraphics.some((collector) => collector.type === 'wissdom'), false)
 })
 
+test('radar graphics watchdog follows the configured scheduler cadence', () => {
+  const graphics = activeCollectorRegistry({
+    api: { radar_satellite_auth_key: 'key' },
+    radar_graphics: { interval: '*/30 * * * *' },
+  }).find((collector) => collector.type === 'wissdom')
+  assert.equal(graphics.schedule.maxIntervalMs, 30 * 60_000)
+  assert.equal(graphics.schedule.graceMs, 10 * 60_000)
+})
+
 test('registry rejects invalid watchdog metadata', () => {
   for (const schedule of [
     { expression: '*/5 * * * *', timezone: 'Etc/UTC', maxIntervalMs: 0, graceMs: -1 },
     { expression: '*/5 * * * *', timezone: 'Etc/UTC', maxIntervalMs: 5 * 60_000, graceMs: 0, quiet: { fromHourKst: 4, toHourKst: 4 } },
+    { expression: 'not cron', timezone: 'Etc/UTC', maxIntervalMs: 5 * 60_000, graceMs: 0 },
+    { expression: '*/5 * * * *', timezone: 'not/a-timezone', maxIntervalMs: 5 * 60_000, graceMs: 0 },
+    null,
   ]) {
     const invalid = [{ type: 'invalid', binding: 'invalid', enabled: () => true, schedule: () => schedule }]
     assert.throws(() => assertCollectorRegistry(invalid), { message: 'invalid_collector_schedule:invalid' })

@@ -1,4 +1,5 @@
 import productionConfig from './config.js'
+import { CronExpressionParser } from 'cron-parser'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -23,6 +24,25 @@ const standardSchedule = {
   notam: [6 * HOUR, 35 * MINUTE], flight_category: [20 * MINUTE, 10 * MINUTE],
 }
 const EARLY_MORNING = { fromHourKst: 0, toHourKst: 4 }
+const graphicsCadenceCache = new Map()
+
+function graphicsSchedule(config) {
+  const expression = config.radar_graphics?.interval || '*/10 * * * *'
+  const cacheKey = `Etc/UTC:${expression}`
+  let maxIntervalMs = graphicsCadenceCache.get(cacheKey)
+  if (!maxIntervalMs) {
+    const parsed = CronExpressionParser.parse(expression, { currentDate: new Date('2024-01-01T00:00:00.000Z'), tz: 'Etc/UTC' })
+    let previousMs = Date.parse(parsed.next().toISOString())
+    maxIntervalMs = 0
+    for (let index = 0; index < 100; index += 1) {
+      const currentMs = Date.parse(parsed.next().toISOString())
+      maxIntervalMs = Math.max(maxIntervalMs, currentMs - previousMs)
+      previousMs = currentMs
+    }
+    graphicsCadenceCache.set(cacheKey, maxIntervalMs)
+  }
+  return { expression, timezone: 'Etc/UTC', maxIntervalMs, graceMs: 10 * MINUTE }
+}
 
 export const COLLECTOR_REGISTRY = [
   ...Object.keys(standardSchedule).map((type) => collector(type, utc(`${scheduleKey[type] || type}_interval`, ...standardSchedule[type]))),
@@ -31,10 +51,10 @@ export const COLLECTOR_REGISTRY = [
   collector('ground_forecast', kst('ground_forecast_interval', 3 * HOUR, 35 * MINUTE)),
   collector('terminal_flights', kst('terminal_flight_interval', MINUTE, MINUTE, EARLY_MORNING)),
   collector('overseas_forecast', kst('overseas_forecast_interval', HOUR, 35 * MINUTE, EARLY_MORNING)),
-  collector('airport_info', kst('airport_info_interval', 13 * HOUR, 35 * MINUTE)),
+  collector('airport_info', kst('airport_info_interval', 12.5 * HOUR, 35 * MINUTE)),
   collector('takeoff_fcst', kst('takeoff_fcst_interval', HOUR, 10 * MINUTE)),
   collector('asos_ceiling', kst('asos_ceiling_interval', HOUR, 10 * MINUTE)),
-  ...['wissdom', 'qpf', 'hsr', 'hci'].map((type) => collector(type, (config) => ({ expression: config.radar_graphics?.interval || '*/10 * * * *', timezone: 'Etc/UTC', maxIntervalMs: 10 * MINUTE, graceMs: 10 * MINUTE }), graphicsEnabled)),
+  ...['wissdom', 'qpf', 'hsr', 'hci'].map((type) => collector(type, graphicsSchedule, graphicsEnabled)),
   collector('echo_top', utc('echo_top_interval', 5 * MINUTE, 10 * MINUTE), (config) => radarEnabled(config) && config.radar_echo_top?.enabled !== false),
   collector('satellite', utc('satellite_interval', 5 * MINUTE, 10 * MINUTE), radarEnabled),
   collector('satellite_visible', utc('satellite_visible_interval', 5 * MINUTE, 10 * MINUTE), radarEnabled),
@@ -55,7 +75,16 @@ function mergeConfig(defaults, override) {
 
 function resolveRegistry(registry, partialConfig) {
   const config = mergeConfig(productionConfig, partialConfig)
-  return registry.filter((item) => item.enabled(config)).map((item) => ({ ...item, schedule: item.schedule(config) }))
+  return registry.filter((item) => item.enabled(config)).map((item) => {
+    let schedule
+    try {
+      schedule = item.schedule(config)
+    } catch {
+      throw new Error(`invalid_collector_schedule:${item.type}`)
+    }
+    if (!validSchedule(schedule)) throw new Error(`invalid_collector_schedule:${item.type}`)
+    return { ...item, schedule }
+  })
 }
 
 export function activeCollectorRegistry(partialConfig = {}) {
@@ -71,12 +100,19 @@ function validQuiet(quiet) {
 }
 
 function validSchedule(schedule) {
-  return isPlainObject(schedule)
-    && typeof schedule.expression === 'string' && schedule.expression.length > 0
-    && typeof schedule.timezone === 'string' && schedule.timezone.length > 0
-    && Number.isFinite(schedule.maxIntervalMs) && schedule.maxIntervalMs > 0
-    && Number.isFinite(schedule.graceMs) && schedule.graceMs >= 0
-    && validQuiet(schedule.quiet)
+  if (!isPlainObject(schedule)
+    || typeof schedule.expression !== 'string' || schedule.expression.length === 0
+    || typeof schedule.timezone !== 'string' || schedule.timezone.length === 0
+    || !Number.isFinite(schedule.maxIntervalMs) || schedule.maxIntervalMs <= 0
+    || !Number.isFinite(schedule.graceMs) || schedule.graceMs < 0
+    || !validQuiet(schedule.quiet)) return false
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: schedule.timezone })
+    CronExpressionParser.parse(schedule.expression, { tz: schedule.timezone })
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function assertCollectorRegistry(registry = COLLECTOR_REGISTRY, config = {}) {
