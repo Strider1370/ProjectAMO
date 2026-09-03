@@ -2,7 +2,7 @@
 import net from 'node:net'
 import config from './config.js'
 import store from './store.js'
-import stats from './stats.js'
+import stats, { normalizeCollectorIssue } from './stats.js'
 import metarProcessor from './processors/metar-processor.js'
 import tafProcessor from './processors/taf-processor.js'
 import warningProcessor from './processors/warning-processor.js'
@@ -33,6 +33,8 @@ import { installApiHubFetchGuard } from './lib/fetch-api-hub.js'
 import apiHubUsage from './api-hub-usage.js'
 import { runSatelliteWorker } from './satellite/worker-runner.js'
 import { createSatelliteWorkQueue } from './satellite/work-queue.js'
+import { activeCollectorRegistry, assertCollectorRegistry } from './collector-registry.js'
+import { createExecutionWatchdog } from './collector-execution.js'
 
 net.setDefaultAutoSelectFamily(false)
 installApiHubFetchGuard()
@@ -41,24 +43,27 @@ installApiHubFetchGuard()
 // so it is intentionally not scheduled here.
 const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
 const activeControllers = new Map()
-const KIM_NWP_CRON_OPTIONS = { timezone: 'Etc/UTC' }
-const AIRPORT_INFO_CRON_OPTIONS = { timezone: 'Asia/Seoul' }
-const AVIATION_KEY = { apiHubCategories: ['aviation'] }
-const RADAR_SATELLITE_KEY = { apiHubCategories: ['radar_satellite'] }
-const KIM_NWP_KEY = { apiHubCategories: ['kim_nwp'] }
-const AVIATION_AND_RADAR_KEYS = { apiHubCategories: ['aviation', 'radar_satellite'] }
 const satelliteWorkQueue = createSatelliteWorkQueue({ runWorker: runSatelliteWorker })
+let collectorWatchdog = null
 
-async function runWithLock(type, job, { apiHubCategories = [], isBlocked = (category) => apiHubUsage.snapshot().keys.find((key) => key.category === category)?.status === 'blocked' } = {}) {
+function safeCollectorLog(type, outcome, fields = {}) {
+  return `[collector] ${type} outcome=${outcome} ${Object.entries(fields)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}=${key === 'message' ? JSON.stringify(value) : value}`)
+    .join(' ')}`
+}
+
+async function runWithLock(type, job, { source = 'manual', apiHubCategories = [], isBlocked = (category) => apiHubUsage.snapshot().keys.find((key) => key.category === category)?.status === 'blocked', stats: recorder = stats, logger = console } = {}) {
+  const run = recorder.recordStart(type, { source })
   if (apiHubCategories.length > 0 && apiHubCategories.every(isBlocked)) {
-    console.warn(`${type}: skipped (API Hub key blocked)`)
-    stats.recordSkip(type, 'api_hub_key_blocked')
+    logger.warn?.(safeCollectorLog(type, 'skipped', { code: 'api_hub_key_blocked' }))
+    recorder.recordSkip(type, 'api_hub_key_blocked', run)
     return { skipped: 'api_hub_key_blocked' }
   }
   if (locks[type]) {
-    console.warn(`${type}: skipped (already running)`);
-    stats.recordSkip(type); // 수집 주기 < 처리시간 신호(관찰 탭)
-    return { skipped: 'already_running' };
+    logger.warn?.(safeCollectorLog(type, 'skipped', { code: 'already_running' }))
+    recorder.recordSkip(type, 'already_running', run)
+    return { skipped: 'already_running' }
   }
 
   locks[type] = true;
@@ -67,16 +72,18 @@ async function runWithLock(type, job, { apiHubCategories = [], isBlocked = (cate
   const t0 = Date.now();
   try {
     const result = await job({ signal: controller.signal });
-    console.log(`[${new Date().toISOString()}] ${type}:`, result);
-    stats.recordSuccess(type, result, Date.now() - t0);
+    const durationMs = Date.now() - t0
+    logger.info?.(safeCollectorLog(type, 'succeeded', { duration_ms: durationMs, ...(typeof result?.saved === 'boolean' ? { saved: result.saved } : {}) }))
+    recorder.recordSuccess(type, result, durationMs, run)
     return result
   } catch (error) {
     if (controller.signal.aborted) {
-      console.warn(`[${new Date().toISOString()}] ${type}: cancelled for data transition`)
-      stats.recordSkip(type)
+      logger.warn?.(safeCollectorLog(type, 'skipped', { code: 'collection_cancelled_for_data_transition' }))
+      recorder.recordSkip(type, 'collection_cancelled_for_data_transition', run)
     } else {
-      console.error(`[${new Date().toISOString()}] ${type} failed:`, error.message);
-      stats.recordFailure(type, error.message, Date.now() - t0);
+      const issue = normalizeCollectorIssue({ outcome: 'failed', code: 'collector_failed', message: error?.message, at: new Date().toISOString() })
+      logger.error?.(safeCollectorLog(type, 'failed', { code: issue.code, message: issue.message }))
+      recorder.recordFailure(type, issue.message, Date.now() - t0, run)
     }
     return undefined
   } finally {
@@ -125,71 +132,57 @@ export function runSatelliteCollection(kind, { signal, fillAll = false } = {}) {
   }, { signal })
 }
 
-function scheduleKimNwpJob(scheduler = cron, enabled = config.kim_nwp?.enabled !== false) {
-  if (!enabled) return null
+const processorBindings = {
+  metar: metarProcessor.processAll, taf: tafProcessor.processAll, warning: warningProcessor.process,
+  kma_special_warning: kmaSpecialWarningProcessor.process, sigmet: sigmetProcessor.process, airmet: airmetProcessor.process,
+  sigwx_low: sigwxLowProcessor.process, amos: amosProcessor.process, lightning: lightningProcessor.process,
+  wissdom: radarGraphicsProcessor.processWissdom, qpf: radarGraphicsProcessor.processQpf, hsr: radarGraphicsProcessor.processHsr, hci: radarGraphicsProcessor.processHci,
+  echo_top: echoTopProcessor.process, rainviewer: rainviewerProcessor.process, kim_surface_wind: kimSurfaceWindProcessor.process,
+  ground_forecast: groundForecastProcessor.process, environment: environmentProcessor.process, airport_info: airportInfoProcessor.process,
+  takeoff_fcst: takeoffForecastProcessor.process, ktg: ktgProcessor.process, flight_category: flightCategoryProcessor.process,
+  asos_ceiling: asosCeilingProcessor.process, notam: notamProcessor.process, metar_overseas: overseasProcessor.processMetar,
+  taf_overseas: overseasProcessor.processTaf, sigmet_overseas: overseasProcessor.processSigmet, terminal_flights: terminalFlightProcessor.process,
+  overseas_forecast: overseasForecastProcessor.process, typhoon: typhoonProcessor.process,
+  satellite: ({ signal }) => runSatelliteCollection('satellite', { signal }),
+  satellite_visible: ({ signal }) => runSatelliteCollection('satellite_visible', { signal }),
+}
+
+function scheduleCollector({ scheduler = cron, collector, job, runOptions = {}, runner = runWithLock, scheduledTypes }) {
+  scheduledTypes.add(collector.type)
   return scheduler.schedule(
-    config.schedule.kim_surface_wind_interval,
-    () => runWithLock("kim_surface_wind", kimSurfaceWindProcessor.process),
-    KIM_NWP_CRON_OPTIONS,
+    collector.schedule.expression,
+    () => runner(collector.type, job, { ...runOptions, apiHubCategories: collector.apiHubCategories, source: 'scheduled' }),
+    collector.schedule.cronOptions,
   )
 }
 
-function scheduleAirportInfoJob(scheduler = cron) {
-  return scheduler.schedule(
-    config.schedule.airport_info_interval,
-    () => runWithLock("airport_info", airportInfoProcessor.process, AVIATION_KEY),
-    AIRPORT_INFO_CRON_OPTIONS,
-  )
+export function registerCollectorSchedules({ scheduler = cron, config: activeConfig = config, runWithLock: runner = runWithLock, processorBindings: bindings = processorBindings } = {}) {
+  const activeCollectors = activeCollectorRegistry(activeConfig)
+  assertCollectorRegistry({ activeCollectors, processorBindings: bindings })
+  const scheduledTypes = new Set()
+  for (const collector of activeCollectors) {
+    scheduleCollector({ scheduler, collector, job: bindings[collector.binding], runner, scheduledTypes })
+  }
+  const activeTypes = new Set(activeCollectors.map((collector) => collector.type))
+  const missing = [...activeTypes].filter((type) => !scheduledTypes.has(type))
+  const unexpected = [...scheduledTypes].filter((type) => !activeTypes.has(type))
+  if (missing.length || unexpected.length) throw new Error(`collector_schedule_mismatch:missing=${missing.join(',') || 'none'} unexpected=${unexpected.join(',') || 'none'}`)
+  return scheduledTypes
 }
 
-function scheduleTakeoffFcstJob(scheduler = cron) {
-  return scheduler.schedule(
-    config.schedule.takeoff_fcst_interval,
-    () => runWithLock("takeoff_fcst", takeoffForecastProcessor.process, AVIATION_KEY),
-    AIRPORT_INFO_CRON_OPTIONS, // fctm이 KST 기반이라 Asia/Seoul
-  )
-}
-
-function radarSatelliteEnabled(activeConfig = config) {
-  return !!activeConfig.api?.radar_satellite_auth_key
-}
-
-function graphicsEnabled(activeConfig = config) {
-  return activeConfig.radar_graphics?.enabled !== false && radarSatelliteEnabled(activeConfig)
-}
-
-function scheduleRadarGraphicsJobs(scheduler = cron, activeConfig = config) {
-  if (!graphicsEnabled(activeConfig)) return []
-  const interval = activeConfig.radar_graphics?.interval || '*/10 * * * *'
-  return [
-    scheduler.schedule(interval, () => runWithLock('wissdom', radarGraphicsProcessor.processWissdom, RADAR_SATELLITE_KEY)),
-    scheduler.schedule(interval, () => runWithLock('qpf', radarGraphicsProcessor.processQpf, RADAR_SATELLITE_KEY)),
-    scheduler.schedule(interval, () => runWithLock('hsr', radarGraphicsProcessor.processHsr, RADAR_SATELLITE_KEY)),
-    scheduler.schedule(interval, () => runWithLock('hci', radarGraphicsProcessor.processHci, RADAR_SATELLITE_KEY)),
-  ]
-}
-
-function scheduleEchoTopJob(scheduler = cron, activeConfig = config) {
-  if (activeConfig.radar_echo_top?.enabled === false || !radarSatelliteEnabled(activeConfig)) return null
-  return scheduler.schedule(
-    activeConfig.schedule?.echo_top_interval || config.schedule.echo_top_interval,
-    () => runWithLock("echo_top", echoTopProcessor.process, RADAR_SATELLITE_KEY),
-  )
-}
-
-function scheduleSatelliteJobs(scheduler = cron, satelliteJob = runSatelliteCollection, activeConfig = config) {
-  if (!radarSatelliteEnabled(activeConfig)) return []
-  const schedule = activeConfig.schedule ?? config.schedule
-  return [
-    scheduler.schedule(
-      schedule.satellite_interval,
-      () => runWithLock('satellite', ({ signal }) => satelliteJob('satellite', { signal }), RADAR_SATELLITE_KEY),
-    ),
-    scheduler.schedule(
-      schedule.satellite_visible_interval,
-      () => runWithLock('satellite_visible', ({ signal }) => satelliteJob('satellite_visible', { signal }), RADAR_SATELLITE_KEY),
-    ),
-  ]
+// Compatibility seam for the radar-graphics processor tests; timing, enablement,
+// timezone, and API Hub categories still come only from the collector registry.
+export function scheduleRadarGraphicsJobs(scheduler = cron, activeConfig = config) {
+  const graphicJobs = new Set([
+    radarGraphicsProcessor.processWissdom,
+    radarGraphicsProcessor.processQpf,
+    radarGraphicsProcessor.processHsr,
+    radarGraphicsProcessor.processHci,
+  ])
+  const scheduledTypes = new Set()
+  return activeCollectorRegistry(activeConfig)
+    .filter((collector) => graphicJobs.has(processorBindings[collector.binding]))
+    .map((collector) => scheduleCollector({ scheduler, collector, job: processorBindings[collector.binding], scheduledTypes }))
 }
 
 // 시작 시점 NOTAM 캐시가 재크롤이 필요할 만큼 오래됐나. 없음/빈것/시각손상은 stale로 간주(크롤).
@@ -203,7 +196,7 @@ function isNotamCacheStale() {
 
 function buildInitialCollectionJobs({
   includeKimNwp = config.kim_nwp?.enabled !== false && config.kim_nwp?.collect_on_startup !== false,
-  includeRadarSatellite = radarSatelliteEnabled(),
+  includeRadarSatellite = activeCollectorRegistry(config).some((collector) => collector.type === 'satellite'),
   includeEchoTop = includeRadarSatellite && config.radar_echo_top?.enabled !== false,
   satelliteJob = runSatelliteCollection,
 } = {}) {
@@ -221,7 +214,7 @@ function buildInitialCollectionJobs({
     ["amos", amosProcessor.process],
     ["lightning", lightningProcessor.process],
     ...(includeRadarSatellite ? [
-      ...(graphicsEnabled() ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
+      ...(activeCollectorRegistry(config).some((collector) => collector.type === 'wissdom') ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
       ...(includeEchoTop ? [["echo_top", echoTopProcessor.process]] : []),
     ] : []),
     ["rainviewer", rainviewerProcessor.process],
@@ -247,6 +240,23 @@ function buildInitialCollectionJobs({
   return jobs
 }
 
+function runOptionsForCollector(type, activeConfig = config, source = 'manual') {
+  const collector = activeCollectorRegistry(activeConfig).find((item) => item.type === type)
+  return { source, apiHubCategories: collector?.apiHubCategories ?? [] }
+}
+
+export function startCollectorWatchdog({ activeConfig = config, watchdogFactory = createExecutionWatchdog } = {}) {
+  collectorWatchdog?.stop()
+  collectorWatchdog = watchdogFactory({
+    collectors: activeCollectorRegistry(activeConfig),
+    getStats: stats.getStats,
+    recordMissed: stats.recordMissed,
+    bootedAtMs: Date.now(),
+  })
+  collectorWatchdog.start()
+  return collectorWatchdog
+}
+
 async function main() {
   ensureActiveDataView()
   store.ensureDirectories(config.storage.base_path);
@@ -263,50 +273,18 @@ async function main() {
 
   console.log("Scheduler started");
 
-  cron.schedule(config.schedule.metar_interval, () => runWithLock("metar", metarProcessor.processAll, AVIATION_KEY));
-  cron.schedule(config.schedule.taf_interval, () => runWithLock("taf", tafProcessor.processAll, AVIATION_KEY));
-  cron.schedule(config.schedule.warning_interval, () => runWithLock("warning", warningProcessor.process, AVIATION_KEY));
-  cron.schedule(config.schedule.warning_interval, () => runWithLock('kma_special_warning', kmaSpecialWarningProcessor.process, AVIATION_KEY));
-  cron.schedule(config.schedule.sigmet_interval, () => runWithLock("sigmet", sigmetProcessor.process, AVIATION_KEY));
-  // 해외(NOAA) — 국내와 같은 주기, 별도 job·별도 저장 파일.
-  cron.schedule(config.schedule.metar_interval, () => runWithLock("metar_overseas", overseasProcessor.processMetar));
-  cron.schedule(config.schedule.taf_interval, () => runWithLock("taf_overseas", overseasProcessor.processTaf));
-  cron.schedule(config.schedule.sigmet_interval, () => runWithLock("sigmet_overseas", overseasProcessor.processSigmet));
-  cron.schedule(config.schedule.airmet_interval, () => runWithLock("airmet", airmetProcessor.process, AVIATION_KEY));
-  cron.schedule(config.schedule.sigwx_low_interval, () => runWithLock("sigwx_low", sigwxLowProcessor.process, AVIATION_KEY));
-  cron.schedule(config.schedule.amos_interval, () => runWithLock("amos", amosProcessor.process, AVIATION_KEY));
-  cron.schedule(config.schedule.lightning_interval, () => runWithLock("lightning", lightningProcessor.process, AVIATION_KEY));
-  cron.schedule(config.schedule.typhoon_interval, () => runWithLock("typhoon", typhoonProcessor.process, AVIATION_KEY));
-  if (radarSatelliteEnabled()) {
-    scheduleRadarGraphicsJobs()
-    scheduleEchoTopJob()
-    // 시작 시 1회: 비어 있는 과거 에코탑 프레임을 채운다. 같은 락을 쓰므로 5분 cron과 겹치지 않는다.
-    if (config.radar_echo_top?.enabled !== false) runWithLock("echo_top", echoTopProcessor.backfill, RADAR_SATELLITE_KEY);
-    // 가시영상은 10분 — 파일이 가장 크고 원본 갱신도 10분이다. 밤 프레임은 수집기가 걸러내되
-    // 확인한 시각을 메타에 남겨 같은 파일을 다시 받지 않는다.
-    scheduleSatelliteJobs()
+  registerCollectorSchedules()
+  if (activeCollectorRegistry(config).some((collector) => collector.type === 'echo_top')) {
+    runWithLock('echo_top', echoTopProcessor.backfill, runOptionsForCollector('echo_top', config, 'manual'))
   } else {
     console.warn('[collection] KMA radar/satellite key disabled — radar and satellite collection skipped.')
   }
-  cron.schedule(config.schedule.rainviewer_interval, () => runWithLock("rainviewer", rainviewerProcessor.process));
-  scheduleKimNwpJob();
-  cron.schedule(config.schedule.ktg_interval, () => runWithLock('ktg', ktgProcessor.process), KIM_NWP_CRON_OPTIONS);
-  // 발표 시각이 KST 기준이라 서버 TZ와 무관하게 Asia/Seoul로 고정.
-  cron.schedule(config.schedule.ground_forecast_interval, () => runWithLock("ground_forecast", groundForecastProcessor.process, AVIATION_KEY), { timezone: 'Asia/Seoul' });
-  cron.schedule(config.schedule.environment_interval, () => runWithLock("environment", environmentProcessor.process, AVIATION_KEY));
-  // 운항시간대 제한은 KST 기준이다. 서버가 UTC로 돌면 시간대를 안 주는 순간 9시간 어긋난다.
-  cron.schedule(config.schedule.terminal_flight_interval, () => runWithLock("terminal_flights", terminalFlightProcessor.process), AIRPORT_INFO_CRON_OPTIONS);
-  cron.schedule(config.schedule.overseas_forecast_interval, () => runWithLock("overseas_forecast", overseasForecastProcessor.process), AIRPORT_INFO_CRON_OPTIONS);
-  scheduleAirportInfoJob();
-  scheduleTakeoffFcstJob();
-  cron.schedule(config.schedule.flight_category_interval, () => runWithLock('flight_category', flightCategoryProcessor.process, AVIATION_AND_RADAR_KEYS))
-  cron.schedule(config.schedule.asos_ceiling_interval, () => runWithLock('asos_ceiling', asosCeilingProcessor.process, AVIATION_KEY), { timezone: 'Asia/Seoul' })
-  cron.schedule(config.schedule.notam_interval, () => runWithLock("notam", notamProcessor.process))
+  startCollectorWatchdog()
 
   // 서버 시작 직후 1회 즉시 수집
   console.log("Running initial data collection...");
   await Promise.allSettled(
-    buildInitialCollectionJobs().map(([type, job]) => runWithLock(type, job, ['wissdom', 'qpf', 'hsr', 'hci', 'echo_top', 'satellite', 'satellite_visible'].includes(type) ? RADAR_SATELLITE_KEY : ['metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'lightning', 'typhoon', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'asos_ceiling'].includes(type) ? AVIATION_KEY : type === 'flight_category' ? AVIATION_AND_RADAR_KEYS : undefined)),
+    buildInitialCollectionJobs().map(([type, job]) => runWithLock(type, job, runOptionsForCollector(type, config, 'startup'))),
   );
   console.log("Initial data collection complete.");
 }
@@ -319,5 +297,5 @@ if (process.argv[1] && (__filename === process.argv[1] || __filename.endsWith(pr
   });
 }
 
-export { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, buildInitialCollectionJobs, main, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleEchoTopJob, scheduleSatelliteJobs, scheduleTakeoffFcstJob, scheduleKimNwpJob }
-export default { AIRPORT_INFO_CRON_OPTIONS, KIM_NWP_CRON_OPTIONS, abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, runSatelliteCollection, runWithLock, scheduleAirportInfoJob, scheduleRadarGraphicsJobs, scheduleEchoTopJob, scheduleSatelliteJobs, scheduleTakeoffFcstJob, scheduleKimNwpJob, waitForCollectionIdle }
+export { buildInitialCollectionJobs, main, processorBindings, runWithLock }
+export default { abortActiveCollections, activeCollectionTypes, buildInitialCollectionJobs, main, quiesceCollections, registerCollectorSchedules, runSatelliteCollection, runWithLock, startCollectorWatchdog, waitForCollectionIdle }

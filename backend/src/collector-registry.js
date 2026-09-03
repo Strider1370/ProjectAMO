@@ -10,8 +10,8 @@ const enabled = () => true
 const radarEnabled = (config) => Boolean(config.api?.radar_satellite_auth_key)
 const graphicsEnabled = (config) => radarEnabled(config) && config.radar_graphics?.enabled !== false
 
-function collector(type, schedule, isEnabled = enabled) {
-  return { type, binding: type, label: type, schedule, enabled: isEnabled }
+function collector(type, schedule, isEnabled = enabled, apiHubCategories = []) {
+  return { type, binding: type, label: type, schedule, enabled: isEnabled, apiHubCategories }
 }
 
 const scheduleKey = { kma_special_warning: 'warning', metar_overseas: 'metar', taf_overseas: 'taf', sigmet_overseas: 'sigmet' }
@@ -33,19 +33,26 @@ function graphicsSchedule(config) {
 }
 
 export const COLLECTOR_REGISTRY = [
-  ...Object.keys(standardSchedule).map((type) => collector(type, utc(`${scheduleKey[type] || type}_interval`, ...standardSchedule[type]))),
+  ...Object.keys(standardSchedule).map((type) => collector(
+    type,
+    utc(`${scheduleKey[type] || type}_interval`, ...standardSchedule[type]),
+    enabled,
+    type === 'flight_category'
+      ? ['aviation', 'radar_satellite']
+      : ['metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'lightning', 'typhoon'].includes(type) ? ['aviation'] : [],
+  )),
   collector('kim_surface_wind', utc('kim_surface_wind_interval', 4 * HOUR, 35 * MINUTE), (config) => config.kim_nwp?.enabled !== false),
   collector('ktg', utc('ktg_interval', 5 * HOUR, 35 * MINUTE)),
-  collector('ground_forecast', kst('ground_forecast_interval', 3 * HOUR, 35 * MINUTE)),
+  collector('ground_forecast', kst('ground_forecast_interval', 3 * HOUR, 35 * MINUTE), enabled, ['aviation']),
   collector('terminal_flights', kst('terminal_flight_interval', MINUTE, MINUTE, EARLY_MORNING)),
   collector('overseas_forecast', kst('overseas_forecast_interval', HOUR, 35 * MINUTE, EARLY_MORNING)),
-  collector('airport_info', kst('airport_info_interval', 12.5 * HOUR, 35 * MINUTE)),
-  collector('takeoff_fcst', kst('takeoff_fcst_interval', HOUR, 10 * MINUTE)),
-  collector('asos_ceiling', kst('asos_ceiling_interval', HOUR, 10 * MINUTE)),
-  ...['wissdom', 'qpf', 'hsr', 'hci'].map((type) => collector(type, graphicsSchedule, graphicsEnabled)),
-  collector('echo_top', utc('echo_top_interval', 5 * MINUTE, 10 * MINUTE), (config) => radarEnabled(config) && config.radar_echo_top?.enabled !== false),
-  collector('satellite', utc('satellite_interval', 5 * MINUTE, 10 * MINUTE), radarEnabled),
-  collector('satellite_visible', utc('satellite_visible_interval', 5 * MINUTE, 10 * MINUTE), radarEnabled),
+  collector('airport_info', kst('airport_info_interval', 12.5 * HOUR, 35 * MINUTE), enabled, ['aviation']),
+  collector('takeoff_fcst', kst('takeoff_fcst_interval', HOUR, 10 * MINUTE), enabled, ['aviation']),
+  collector('asos_ceiling', kst('asos_ceiling_interval', HOUR, 10 * MINUTE), enabled, ['aviation']),
+  ...['wissdom', 'qpf', 'hsr', 'hci'].map((type) => collector(type, graphicsSchedule, graphicsEnabled, ['radar_satellite'])),
+  collector('echo_top', utc('echo_top_interval', 5 * MINUTE, 10 * MINUTE), (config) => radarEnabled(config) && config.radar_echo_top?.enabled !== false, ['radar_satellite']),
+  collector('satellite', utc('satellite_interval', 5 * MINUTE, 10 * MINUTE), radarEnabled, ['radar_satellite']),
+  collector('satellite_visible', utc('satellite_visible_interval', 5 * MINUTE, 10 * MINUTE), radarEnabled, ['radar_satellite']),
 ]
 
 function isPlainObject(value) {
@@ -71,7 +78,7 @@ function resolveRegistry(registry, partialConfig) {
       throw new Error(`invalid_collector_schedule:${item.type}`)
     }
     if (!validSchedule(schedule)) throw new Error(`invalid_collector_schedule:${item.type}`)
-    return { ...item, schedule }
+    return { ...item, schedule: { ...schedule, cronOptions: { timezone: schedule.timezone } } }
   })
 }
 
@@ -103,9 +110,20 @@ function validSchedule(schedule) {
 }
 
 export function assertCollectorRegistry(registry = COLLECTOR_REGISTRY, config = {}) {
+  if (registry?.activeCollectors) {
+    const { activeCollectors, processorBindings } = registry
+    const seen = new Set()
+    for (const item of activeCollectors) {
+      if (!item?.type || !item.binding || !validSchedule(item.schedule) || !Array.isArray(item.apiHubCategories) || seen.has(item.type) || typeof processorBindings?.[item.binding] !== 'function') {
+        throw new Error(`invalid_collector_registration:${item?.type || 'unknown'}`)
+      }
+      seen.add(item.type)
+    }
+    return
+  }
   const ids = new Set()
   for (const item of registry) {
-    if (!item?.type || !item.binding || typeof item.schedule !== 'function' || typeof item.enabled !== 'function' || ids.has(item.type)) {
+    if (!item?.type || !item.binding || typeof item.schedule !== 'function' || typeof item.enabled !== 'function' || !Array.isArray(item.apiHubCategories) || ids.has(item.type)) {
       const error = new Error('invalid_collector_registry')
       error.code = 'invalid_collector_registry'
       throw error

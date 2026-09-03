@@ -3,15 +3,10 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 import config from '../src/config.js'
+import { activeCollectorRegistry } from '../src/collector-registry.js'
 import {
-  AIRPORT_INFO_CRON_OPTIONS,
-  KIM_NWP_CRON_OPTIONS,
   buildInitialCollectionJobs,
   runWithLock,
-  scheduleAirportInfoJob,
-  scheduleEchoTopJob,
-  scheduleKimNwpJob,
-  scheduleSatelliteJobs,
 } from '../src/index.js'
 
 test('blocked API Hub key skips its collection before the processor runs', async () => {
@@ -44,29 +39,15 @@ test('KIM scheduler jobs do not preflight-block a valid 18Z aviation-key run', a
 })
 
 test('KIM NWP scheduler uses UTC for synoptic release retry windows', () => {
-  const calls = []
-  const fakeScheduler = {
-    schedule: (...args) => {
-      calls.push(args)
-      return { stop() {} }
-    },
-  }
-
-  scheduleKimNwpJob(fakeScheduler)
-
-  assert.equal(calls.length, 1)
-  assert.equal(calls[0][0], config.schedule.kim_surface_wind_interval)
-  assert.equal(typeof calls[0][1], 'function')
-  assert.deepEqual(calls[0][2], KIM_NWP_CRON_OPTIONS)
-  assert.deepEqual(KIM_NWP_CRON_OPTIONS, { timezone: 'Etc/UTC' })
+  const collector = activeCollectorRegistry(config).find((item) => item.type === 'kim_surface_wind')
+  assert.equal(collector.schedule.expression, config.schedule.kim_surface_wind_interval)
+  assert.deepEqual(collector.schedule.cronOptions, { timezone: 'Etc/UTC' })
 })
 
 test('KIM NWP scheduler can be disabled without affecting other schedulers', () => {
-  const calls = []
-  const fakeScheduler = { schedule: (...args) => calls.push(args) }
-
-  assert.equal(scheduleKimNwpJob(fakeScheduler, false), null)
-  assert.equal(calls.length, 0)
+  const collectors = activeCollectorRegistry({ kim_nwp: { enabled: false } })
+  assert.equal(collectors.some((item) => item.type === 'kim_surface_wind'), false)
+  assert.equal(collectors.some((item) => item.type === 'metar'), true)
 })
 
 test('initial collection can omit KIM NWP for low-resource startup', () => {
@@ -99,39 +80,6 @@ test('initial collection omits every radar and satellite key consumer when that 
   }
 })
 
-test('Echo Top scheduler can be disabled without registering a cron job', () => {
-  const calls = []
-  const fakeScheduler = { schedule: (...args) => calls.push(args) }
-
-  assert.equal(scheduleEchoTopJob(fakeScheduler, { radar_echo_top: { enabled: false } }), null)
-  assert.equal(calls.length, 0)
-})
-
-test('Echo Top scheduler does not register when the radar and satellite key is unavailable', () => {
-  const calls = []
-  const fakeScheduler = { schedule: (...args) => calls.push(args) }
-
-  assert.equal(scheduleEchoTopJob(fakeScheduler, { radar_echo_top: { enabled: true }, api: { radar_satellite_auth_key: '' } }), null)
-  assert.equal(calls.length, 0)
-})
-
-test('satellite schedulers register normal and visible jobs through the shared worker queue', () => {
-  const calls = []
-  const fakeScheduler = { schedule: (...args) => calls.push(args) }
-  const satelliteJob = async (kind) => { satelliteJob.calls.push(kind); return { saved: true } }
-  satelliteJob.calls = []
-
-  const registrations = scheduleSatelliteJobs(fakeScheduler, satelliteJob)
-
-  assert.equal(registrations.length, 2)
-  assert.deepEqual(calls.map(([interval]) => interval), [config.schedule.satellite_interval, config.schedule.satellite_visible_interval])
-  assert.equal(typeof calls[0][1], 'function')
-  assert.equal(typeof calls[1][1], 'function')
-  calls[0][1]()
-  calls[1][1]()
-  assert.deepEqual(satelliteJob.calls, ['satellite', 'satellite_visible'])
-})
-
 test('visible satellite availability is checked every five minutes', () => {
   assert.equal(config.schedule.satellite_visible_interval, '*/5 * * * *')
 })
@@ -156,20 +104,8 @@ test('the long-lived scheduler does not import satellite WASM or image processor
 })
 
 test('airport info scheduler runs at KST bulletin release and retry times', () => {
-  const calls = []
-  const fakeScheduler = {
-    schedule: (...args) => {
-      calls.push(args)
-      return { stop() {} }
-    },
-  }
-
-  scheduleAirportInfoJob(fakeScheduler)
-
-  assert.equal(calls.length, 1)
-  assert.equal(calls[0][0], config.schedule.airport_info_interval)
-  assert.equal(calls[0][0], '0,30 6,17 * * *')
-  assert.equal(typeof calls[0][1], 'function')
-  assert.deepEqual(calls[0][2], AIRPORT_INFO_CRON_OPTIONS)
-  assert.deepEqual(AIRPORT_INFO_CRON_OPTIONS, { timezone: 'Asia/Seoul' })
+  const collector = activeCollectorRegistry(config).find((item) => item.type === 'airport_info')
+  assert.equal(collector.schedule.expression, config.schedule.airport_info_interval)
+  assert.equal(collector.schedule.expression, '0,30 6,17 * * *')
+  assert.deepEqual(collector.schedule.cronOptions, { timezone: 'Asia/Seoul' })
 })
