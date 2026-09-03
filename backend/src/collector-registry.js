@@ -1,5 +1,5 @@
 import productionConfig from './config.js'
-import { CronExpressionParser } from 'cron-parser'
+import cron from 'node-cron'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -24,24 +24,12 @@ const standardSchedule = {
   notam: [6 * HOUR, 35 * MINUTE], flight_category: [20 * MINUTE, 10 * MINUTE],
 }
 const EARLY_MORNING = { fromHourKst: 0, toHourKst: 4 }
-const graphicsCadenceCache = new Map()
 
 function graphicsSchedule(config) {
   const expression = config.radar_graphics?.interval || '*/10 * * * *'
-  const cacheKey = `Etc/UTC:${expression}`
-  let maxIntervalMs = graphicsCadenceCache.get(cacheKey)
-  if (!maxIntervalMs) {
-    const parsed = CronExpressionParser.parse(expression, { currentDate: new Date('2024-01-01T00:00:00.000Z'), tz: 'Etc/UTC' })
-    let previousMs = Date.parse(parsed.next().toISOString())
-    maxIntervalMs = 0
-    for (let index = 0; index < 100; index += 1) {
-      const currentMs = Date.parse(parsed.next().toISOString())
-      maxIntervalMs = Math.max(maxIntervalMs, currentMs - previousMs)
-      previousMs = currentMs
-    }
-    graphicsCadenceCache.set(cacheKey, maxIntervalMs)
-  }
-  return { expression, timezone: 'Etc/UTC', maxIntervalMs, graceMs: 10 * MINUTE }
+  const match = /^\*\/([1-9]|[1-5]\d) \* \* \* \*$/.exec(expression)
+  if (!match) throw new Error('invalid_graphics_schedule')
+  return { expression, timezone: 'Etc/UTC', maxIntervalMs: Number(match[1]) * MINUTE, graceMs: 10 * MINUTE }
 }
 
 export const COLLECTOR_REGISTRY = [
@@ -108,8 +96,7 @@ function validSchedule(schedule) {
     || !validQuiet(schedule.quiet)) return false
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: schedule.timezone })
-    CronExpressionParser.parse(schedule.expression, { tz: schedule.timezone })
-    return true
+    return cron.validate(schedule.expression)
   } catch {
     return false
   }

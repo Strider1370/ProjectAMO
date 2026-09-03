@@ -39,11 +39,17 @@ test('radar graphics watchdog follows the configured scheduler cadence', () => {
   assert.equal(graphics.schedule.graceMs, 10 * 60_000)
 })
 
+test('registry rejects scheduler-invalid and watchdog-unsafe graphics cron expressions', () => {
+  const validButUnsafeGraphics = { api: { radar_satellite_auth_key: 'key' }, radar_graphics: { interval: '* * 1 1 *' } }
+  assert.throws(() => activeCollectorRegistry(validButUnsafeGraphics), { message: 'invalid_collector_schedule:wissdom' })
+})
+
 test('registry rejects invalid watchdog metadata', () => {
   for (const schedule of [
     { expression: '*/5 * * * *', timezone: 'Etc/UTC', maxIntervalMs: 0, graceMs: -1 },
     { expression: '*/5 * * * *', timezone: 'Etc/UTC', maxIntervalMs: 5 * 60_000, graceMs: 0, quiet: { fromHourKst: 4, toHourKst: 4 } },
     { expression: 'not cron', timezone: 'Etc/UTC', maxIntervalMs: 5 * 60_000, graceMs: 0 },
+    { expression: '0 0 L * *', timezone: 'Etc/UTC', maxIntervalMs: 5 * 60_000, graceMs: 0 },
     { expression: '*/5 * * * *', timezone: 'not/a-timezone', maxIntervalMs: 5 * 60_000, graceMs: 0 },
     null,
   ]) {
