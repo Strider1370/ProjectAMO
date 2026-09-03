@@ -5,6 +5,7 @@
 // 활성 태풍이 없으면 ①이 빈 응답이다 — 정상이며 실패가 아니다.
 import path from 'path'
 import config from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import store from '../store.js'
 import { parseTyphoonText, parseTyphoonList, groupByTyphoonNumber } from '../parsers/typhoon-parser.js'
 import { errorConePolygon, galePolygon, stormPolygon } from '../briefing/typhoon-geometry.js'
@@ -20,16 +21,12 @@ function decode(buffer) {
   }
 }
 
-async function fetchText(url) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
-  try {
-    const response = await fetch(url, { signal: controller.signal })
-    if (!response.ok) throw new Error(`typhoon_http_${response.status}`)
-    return decode(await response.arrayBuffer())
-  } finally {
-    clearTimeout(timer)
-  }
+async function fetchText(url, operation) {
+  const response = await requestObservedApi({
+    operation, url,
+    validate: async (value) => { if (!value.ok) throw new Error(`typhoon_http_${value.status}`) },
+  })
+  return decode(await response.arrayBuffer())
 }
 
 // tm은 현재 UTC 정시. 빠지면 활동 중인 태풍이 있어도 빈 응답이 온다.
@@ -93,7 +90,7 @@ export async function process() {
   const fetched_at = new Date().toISOString()
   let activeRows
   try {
-    activeRows = parseTyphoonText(await fetchText(tracksUrl(currentTm())))
+    activeRows = parseTyphoonText(await fetchText(tracksUrl(currentTm()), 'typhoon_now'))
   } catch (error) {
     // 수집 실패는 "태풍 없음"이 아니다. 직전 스냅샷을 유지하고 상태만 바꾼다.
     const previous = store.loadLatest(dir)
@@ -106,7 +103,7 @@ export async function process() {
   let names = []
   if (activeRows.length > 0) {
     try {
-      names = parseTyphoonList(await fetchText(listUrl()))
+      names = parseTyphoonList(await fetchText(listUrl(), 'typhoon_list'))
     } catch {
       names = []
     }

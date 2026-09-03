@@ -1,14 +1,13 @@
+import { resolveApiOperation } from '../api-operation-registry.js'
+import { requestObservedApi } from './request-observability.js'
+
 /**
- * Wraps fetch() with an AbortController-based timeout.
- * Returns the raw Response — callers decide how to read the body.
+ * Compatibility seam for registered processor transports. The registry owns the
+ * timeout; the retained timeout argument prevents call-site churn while callers
+ * migrate to requestObservedApi directly.
  */
 export async function fetchWithTimeout(url, timeoutMs, { signal } = {}) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const requestSignal = signal ? AbortSignal.any([controller.signal, signal]) : controller.signal
-    return await fetch(url, { signal: requestSignal })
-  } finally {
-    clearTimeout(timer)
-  }
+  void timeoutMs
+  const operation = resolveApiOperation({ url })
+  return requestObservedApi({ operation, url, options: signal ? { signal } : {} })
 }

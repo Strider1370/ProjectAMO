@@ -35,6 +35,7 @@ import { recordRequest, bumpCache } from './src/dev/instrument.js'
 import { createMeRequestsRouter } from './src/me/requests.js'
 import { createForecasterRouter } from './src/forecaster/router.js'
 import adsbProcessor from './src/processors/adsb-processor.js'
+import { requestObservedApi } from './src/lib/request-observability.js'
 import { sampleQueryGrid, classifyVisibility } from './src/processors/flight-category-processor.js'
 import { classifyCeilingFt } from './src/processors/flight-category/ceiling-kim.js'
 import warningTypes from '../shared/warning-types.js'
@@ -739,15 +740,10 @@ app.get('/api/adsb/route/:callsign', async (req, res) => {
   if (now < adsbdbBackoffUntil) { res.json({ route: null }); return }
 
   try {
-    const response = await fetch(`https://api.adsbdb.com/v0/callsign/${callsign}`, {
-      headers: { 'User-Agent': 'ProjectAMO/1.0 (+https://www.projectamo.co.kr)' },
-      signal: AbortSignal.timeout(8000),
+    const response = await requestObservedApi({
+      operation: 'adsbdb_callsign', url: `https://api.adsbdb.com/v0/callsign/${callsign}`,
+      options: { headers: { 'User-Agent': 'ProjectAMO/1.0 (+https://www.projectamo.co.kr)' } },
     })
-    if (response.status === 429) { adsbdbBackoffUntil = now + 60_000; res.json({ route: null }); return }
-    if (!response.ok) {
-      adsbRouteCache.set(callsign, { route: null, expires: now + ADSB_ROUTE_TTL_MS })
-      res.json({ route: null }); return
-    }
     const data = await response.json()
     const fr = data?.response?.flightroute
     let route = null
@@ -759,7 +755,9 @@ app.get('/api/adsb/route/:callsign', async (req, res) => {
     }
     adsbRouteCache.set(callsign, { route, expires: now + ADSB_ROUTE_TTL_MS })
     res.json({ route })
-  } catch {
+  } catch (error) {
+    if (error?.status === 429) adsbdbBackoffUntil = now + 60_000
+    else if (error?.status) adsbRouteCache.set(callsign, { route: null, expires: now + ADSB_ROUTE_TTL_MS })
     res.json({ route: null })
   }
 })

@@ -1,5 +1,6 @@
 import path from 'path'
 import config from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import store from '../store.js'
 import lightningParser from '../parsers/lightning-parser.js'
 
@@ -73,37 +74,12 @@ function buildNationwideLightningUrl(tm) {
   return `${config.api.lightning_url}?${params.toString()}`;
 }
 
-const LIGHTNING_TIMEOUT_MS = 30000;
-const LIGHTNING_MAX_RETRIES = 3;
-const LIGHTNING_RETRY_DELAY_MS = 3000;
-
-async function fetchWithTimeout(url, timeoutMs = LIGHTNING_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    return await response.text();
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 async function fetchWithRetry(url) {
-  let lastError;
-  for (let attempt = 1; attempt <= LIGHTNING_MAX_RETRIES; attempt += 1) {
-    try {
-      return await fetchWithTimeout(url);
-    } catch (err) {
-      lastError = err;
-      if (attempt < LIGHTNING_MAX_RETRIES) {
-        await new Promise((res) => setTimeout(res, LIGHTNING_RETRY_DELAY_MS));
-      }
-    }
-  }
-  throw lastError;
+  const response = await requestObservedApi({
+    operation: 'lightning', url,
+    validate: async (value) => { if (!value.ok) throw new Error(`HTTP ${value.status}`) },
+  })
+  return response.text()
 }
 
 function buildStrikeKey(strike) {

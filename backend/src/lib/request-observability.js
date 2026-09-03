@@ -135,6 +135,11 @@ export function createRequestObservedApi({ usage = apiHubUsage, stats: execution
       if (!finalResponse) throw requestError('api_operation_no_response')
       const response = responseCopy(finalResponse, finalBody)
       if (validate) await validate(response.clone())
+      else if (!response.ok) {
+        const error = new Error(`HTTP ${response.status}`)
+        error.status = response.status
+        throw error
+      }
       executionStats.recordApiOperationSuccess(operation.id)
       return response
     } catch (error) {

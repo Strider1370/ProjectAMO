@@ -7,6 +7,7 @@ import { ctpsIndexForLatLon } from '../lib/ctps-grid.js'
 import { convectiveDir, readConvectiveMeta } from './convective-satellite-store.js'
 import { decodeCtpsRecord } from './convective-satellite-model.js'
 import { createDailyByteBudget } from '../lib/daily-byte-budget.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import { loadKimCeiling, buildCeilingGeoJson, maskCeilingWithCtps, sampleCeilingAt } from './flight-category/ceiling-kim.js'
 import { buildStations } from './flight-category/stations.js'
 import { contours } from 'd3-contour'
@@ -55,8 +56,10 @@ async function fetchSfcVis() {
   const tm = visibilityRequestTm()
   const url = `${config.flight_category.sfc_vis_url}?obs=vs&tm=${tm}&disp=A&authKey=${config.api.auth_key}`
   return withTimeout(async (signal) => {
-    const res = await fetch(url, { signal })
-    if (!res.ok) throw new Error(`sfc_vis HTTP ${res.status}`)
+    const res = await requestObservedApi({
+      operation: 'sfc_vis', url, options: { signal },
+      validate: async (value) => { if (!value.ok) throw new Error(`sfc_vis HTTP ${value.status}`) },
+    })
     const text = await res.text()
     budget.add(Buffer.byteLength(text))
     if (text.includes('data_read: error')) throw new Error('sfc_vis: data_read error')

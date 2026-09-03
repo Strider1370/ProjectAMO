@@ -1,4 +1,5 @@
 import config from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import store from '../store.js'
 import amosParser from '../parsers/amos-parser.js'
 
@@ -28,18 +29,12 @@ function buildAmosUrl(stn, tm) {
   return `${config.api.amos_url}?${params.toString()}`;
 }
 
-async function fetchAmosText(url, timeoutMs = config.amos.timeout_ms) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`AMOS HTTP ${response.status}`);
-    }
-    return response.text();
-  } finally {
-    clearTimeout(timer);
-  }
+async function fetchAmosText(url) {
+  const response = await requestObservedApi({
+    operation: 'amos', url,
+    validate: async (value) => { if (!value.ok) throw new Error(`AMOS HTTP ${value.status}`); },
+  });
+  return response.text();
 }
 
 function emptyDailyRainfall(targetTm, stale) {

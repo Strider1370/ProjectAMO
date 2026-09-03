@@ -1,4 +1,5 @@
 import config from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import store from '../store.js'
 
 // 터미널 사이니지가 다루는 출발공항. 한국공항공사 API는 IATA로 답하므로 ICAO로 바꿔 저장한다.
@@ -89,22 +90,17 @@ async function fetchFlightRows(signal) {
   const params = new URLSearchParams({ numOfRows: '5000', pageNo: '1', _type: 'json' })
   const url = `${config.api.kac_flight_url}?serviceKey=${serviceKey}&${params}`
 
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), config.api.timeout_ms)
-  signal?.addEventListener('abort', () => controller.abort(), { once: true })
-  try {
-    const response = await fetch(url, { signal: controller.signal })
-    const text = await response.text()
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`)
-    const payload = JSON.parse(text)
-    const resultCode = payload?.response?.header?.resultCode
-    if (resultCode && resultCode !== '00') {
-      throw new Error(`KAC ${resultCode}: ${payload?.response?.header?.resultMsg || 'unknown'}`)
-    }
-    return parseItems(payload)
-  } finally {
-    clearTimeout(timer)
-  }
+  const response = await requestObservedApi({
+    operation: 'kac_flights', url, options: signal ? { signal } : {},
+    validate: async (value) => {
+      const text = await value.text()
+      if (!value.ok) throw new Error(`HTTP ${value.status}: ${text.slice(0, 200)}`)
+      const payload = JSON.parse(text)
+      const resultCode = payload?.response?.header?.resultCode
+      if (resultCode && resultCode !== '00') throw new Error(`KAC ${resultCode}: ${payload?.response?.header?.resultMsg || 'unknown'}`)
+    },
+  })
+  return parseItems(await response.json())
 }
 
 function kstDateStamp(date = new Date()) {
@@ -151,19 +147,17 @@ async function fetchIncheonArrivals(signal) {
   const params = new URLSearchParams({
     numOfRows: '2000', pageNo: '1', type: 'json', searchDate: kstDateStamp(),
   })
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), config.api.timeout_ms)
-  signal?.addEventListener('abort', () => controller.abort(), { once: true })
   try {
-    const response = await fetch(`${config.api.iiac_arrivals_url}?serviceKey=${serviceKey}&${params}`, { signal: controller.signal })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const url = `${config.api.iiac_arrivals_url}?serviceKey=${serviceKey}&${params}`
+    const response = await requestObservedApi({
+      operation: 'iiac_arrivals', url, options: signal ? { signal } : {},
+      validate: async (value) => { if (!value.ok) throw new Error(`HTTP ${value.status}`); await value.json() },
+    })
     const payload = await response.json()
     return incheonArrivalLookup([].concat(payload?.response?.body?.items || []))
   } catch {
     // 인천만 못 채울 뿐 나머지 공항은 그대로 나가야 한다.
     return new Map()
-  } finally {
-    clearTimeout(timer)
   }
 }
 

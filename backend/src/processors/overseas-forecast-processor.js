@@ -1,4 +1,5 @@
 import config, { overseasAirports } from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import store from '../store.js'
 import { buildOverseasDaily } from './overseas-daily.js'
 
@@ -99,18 +100,12 @@ async function fetchForecast(airport) {
     lat: airport.lat.toFixed(4),
     lon: airport.lon.toFixed(4),
   })
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), config.api.timeout_ms)
-  try {
-    const response = await fetch(`${MET_NO_URL}?${params}`, {
-      signal: controller.signal,
-      headers: { 'User-Agent': config.met_no.user_agent },
-    })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return extractOverseasSlots(await response.json())
-  } finally {
-    clearTimeout(timer)
-  }
+  const url = `${MET_NO_URL}?${params}`
+  const response = await requestObservedApi({
+    operation: 'met_norway', url, options: { headers: { 'User-Agent': config.met_no.user_agent } },
+    validate: async (value) => { if (!value.ok) throw new Error(`HTTP ${value.status}`); await value.json() },
+  })
+  return extractOverseasSlots(await response.json())
 }
 
 async function process({ signal } = {}) {

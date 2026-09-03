@@ -1,4 +1,5 @@
 import config from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import store from '../store.js'
 import { ASOS_STATIONS as _ASOS_STATIONS } from '../../../shared/asos-stations.js'
 
@@ -86,21 +87,14 @@ export function parseAsosCeiling(text) {
  * Fetch ASOS ceiling data for a given hour (YYYYMMDDHHmm format).
  * Response is EUC-KR encoded.
  */
-async function fetchAsosCeiling(tm, timeoutMs = config.flight_category?.timeout_ms || 30000) {
+async function fetchAsosCeiling(tm) {
   const url = `https://apihub.kma.go.kr/api/typ01/url/kma_sfctm2.php?tm=${tm}&stn=0&authKey=${config.api.auth_key}`
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const response = await fetch(url, { signal: controller.signal })
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
-    const buffer = await response.arrayBuffer()
-    const text = new TextDecoder('euc-kr').decode(Buffer.from(buffer))
-    return text
-  } finally {
-    clearTimeout(timer)
-  }
+  const response = await requestObservedApi({
+    operation: 'asos_ceiling', url,
+    validate: async (value) => { if (!value.ok) throw new Error(`HTTP ${value.status}`) },
+  })
+  const buffer = await response.arrayBuffer()
+  return new TextDecoder('euc-kr').decode(Buffer.from(buffer))
 }
 
 export default {

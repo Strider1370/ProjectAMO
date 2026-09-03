@@ -1,4 +1,5 @@
 import config from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import store from '../store.js'
 
 function formatKstObservationHour(date = new Date()) {
@@ -10,34 +11,31 @@ function formatKstObservationHour(date = new Date()) {
   return `${y}${m}${d}${hh}00`;
 }
 
-async function fetchJson(url, timeoutMs = config.environment.timeout_ms) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    const text = await response.text();
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
-    }
-    return JSON.parse(text);
-  } finally {
-    clearTimeout(timer);
-  }
+function operationForUrl(url) {
+  const target = new URL(url)
+  if (target.hostname === 'air-quality-api.open-meteo.com') return 'open_meteo_air_quality'
+  if (target.hostname === new URL(config.api.airkorea_pm_url).hostname) return 'airkorea_pm'
+  throw new Error('unknown_environment_api_operation')
 }
 
-async function fetchText(url, timeoutMs = config.environment.timeout_ms) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    const text = await response.text();
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
-    }
-    return text;
-  } finally {
-    clearTimeout(timer);
-  }
+async function fetchJson(url) {
+  const response = await requestObservedApi({
+    operation: operationForUrl(url), url,
+    validate: async (value) => {
+      const text = await value.text()
+      if (!value.ok) throw new Error(`HTTP ${value.status}: ${text.slice(0, 200)}`)
+      JSON.parse(text)
+    },
+  })
+  return response.json()
+}
+
+async function fetchText(url) {
+  const response = await requestObservedApi({
+    operation: 'uv', url,
+    validate: async (value) => { if (!value.ok) throw new Error(`HTTP ${value.status}`) },
+  })
+  return response.text()
 }
 
 async function fetchOpenMeteoEnvironment(lat, lon) {
