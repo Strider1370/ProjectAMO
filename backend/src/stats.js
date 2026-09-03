@@ -79,7 +79,7 @@ function exactExecution(execution) {
     last_scheduled_started_at: typeof source.last_scheduled_started_at === 'string' ? source.last_scheduled_started_at : null,
     last_finished_at: typeof source.last_finished_at === 'string' ? source.last_finished_at : null,
     last_outcome: outcome,
-    last_issue: outcome ? exactIssue(source.last_issue, COLLECTOR_OUTCOMES) : null,
+    last_issue: exactIssue(source.last_issue, COLLECTOR_OUTCOMES),
     last_missed_at: typeof source.last_missed_at === 'string' ? source.last_missed_at : null,
   }
 }

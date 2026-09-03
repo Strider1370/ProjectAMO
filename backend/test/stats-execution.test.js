@@ -145,3 +145,19 @@ test('loading drops unknown collector types and restores nested API operation st
     last_issue: { outcome: 'failed', code: 'api_operation_failed', message: 'upstream timeout', at: '2026-08-31T00:00:01.000Z' },
   })
 })
+
+test('scheduled start preserves a historical missed issue across restart', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stats-execution-missed-'))
+  stats.initFromFile(dir)
+  const clock = createFakeClock('2026-08-31T00:00:00.000Z')
+  stats.__setPersistenceForTest({ now: clock.now, setTimeout: clock.setTimeout })
+  stats.recordMissed('metar', { code: 'start_overdue', message: 'previous missed start' })
+  stats.recordStart('metar', { source: 'scheduled' })
+  clock.advance(30_000)
+  stats.initFromFile(dir)
+  const execution = stats.getExecutionState('metar')
+  assert.equal(execution.last_outcome, null)
+  assert.deepEqual(execution.last_issue, {
+    outcome: 'missed', code: 'start_overdue', message: 'previous missed start', at: execution.last_missed_at,
+  })
+})
