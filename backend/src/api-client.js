@@ -1,22 +1,7 @@
 import config from './config.js'
+import { requestObservedApi } from './lib/request-observability.js'
 
 const { api } = config
-
-function sleep(ms, signal) {
-  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms))
-  if (signal.aborted) return Promise.reject(signal.reason)
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort)
-      resolve()
-    }, ms)
-    const onAbort = () => {
-      clearTimeout(timer)
-      reject(signal.reason)
-    }
-    signal.addEventListener('abort', onAbort, { once: true })
-  })
-}
 
 function shouldDecodeEucKr(contentType) {
   return /euc-kr|ks_c_5601|cp949/i.test(contentType || '')
@@ -84,50 +69,25 @@ async function fetchTextWithRetries(url, type, options = {}) {
     )
   )
 
-  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), api.timeout_ms)
-    const signal = options.signal
-      ? AbortSignal.any([controller.signal, options.signal])
-      : controller.signal
+  const requestOptions = { maxAttempts: maxRetries }
+  if (options.signal) requestOptions.signal = options.signal
+  if (options.retryDelayMs !== undefined) requestOptions.retryDelayMs = options.retryDelayMs
+  if (options.skipApiHeader) requestOptions.skipApiHeader = true
 
-    try {
-      const response = await fetch(url, { signal })
-      const body = await responseToText(response)
-
-      if (!response.ok) {
-        const error = new Error(`HTTP ${response.status}: ${body.slice(0, 200)}`)
-        if (response.status < 500 && response.status !== 429) {
-          error.nonRetryable = true
-        }
-        throw error
-      }
-
-      if (!options.skipApiHeader) {
-        const { resultCode, resultMsg } = parseApiHeader(body)
-        if (type === 'sigwx_low' && !/<odmap_ml[\s>]/i.test(body)) {
-          throw new Error('SIGWX LOW payload missing odmap_ml')
-        }
-        if (!isSuccessByType(type, resultCode, resultMsg)) {
-          const error = new Error(`API ${resultCode}: ${resultMsg || 'UNKNOWN_ERROR'}`)
-          if (/유효한 인증키/i.test(resultMsg || '')) {
-            error.nonRetryable = true
-          }
-          throw error
-        }
-      }
-
-      return body
-    } catch (error) {
-      if (options.signal?.aborted) throw options.signal.reason ?? error
-      if (error.nonRetryable || attempt === maxRetries) throw error
-      await sleep(options.retryDelayMs ?? 60 * 1000, options.signal)
-    } finally {
-      clearTimeout(timeout)
-    }
-  }
-
-  throw new Error('Unexpected fetch flow')
+  const response = await requestObservedApi({
+    operation: type === 'kma_special_warning' ? 'special_warning' : type,
+    url,
+    options: requestOptions,
+    validate: async (value) => {
+      const body = await responseToText(value)
+      if (!value.ok) throw new Error(`HTTP ${value.status}: ${body.slice(0, 200)}`)
+      if (options.skipApiHeader) return
+      const { resultCode, resultMsg } = parseApiHeader(body)
+      if (type === 'sigwx_low' && !/<odmap_ml[\s>]/i.test(body)) throw new Error('SIGWX LOW payload missing odmap_ml')
+      if (!isSuccessByType(type, resultCode, resultMsg)) throw new Error(`API ${resultCode}: ${resultMsg || 'UNKNOWN_ERROR'}`)
+    },
+  })
+  return responseToText(response)
 }
 
 export async function fetchApi(type, icao = null, options = {}) {
@@ -219,19 +179,15 @@ export function buildKimGridUrl({
 
 export async function fetchKimGrid(params) {
   const url = buildKimGridUrl(params)
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), config.kim_surface_wind.timeout_ms || api.timeout_ms)
-
-  try {
-    const response = await fetch(url, { signal: controller.signal })
-    const body = await responseToText(response)
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${body.slice(0, 200)}`)
-    }
-    return body
-  } finally {
-    clearTimeout(timeout)
-  }
+  const response = await requestObservedApi({
+    operation: 'kim_grid',
+    url,
+    validate: async (value) => {
+      const body = await responseToText(value)
+      if (!value.ok) throw new Error(`HTTP ${value.status}: ${body.slice(0, 200)}`)
+    },
+  })
+  return responseToText(response)
 }
 
 // ── NOAA Aviation Weather (해외 기상, JSON, 무인증) ─────────────────────────
@@ -241,19 +197,20 @@ const { noaa } = config
 async function fetchNoaaJson(pathname, params) {
   const query = new URLSearchParams({ ...params, format: 'json' })
   const url = `${noaa.base_url}${pathname}?${query.toString()}`
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), noaa.timeout_ms || 20000)
-  try {
-    const response = await fetch(url, { signal: controller.signal })
-    if (!response.ok) {
-      const body = (await response.text()).slice(0, 200)
-      throw new Error(`NOAA HTTP ${response.status}: ${body}`)
-    }
-    const data = await response.json()
-    return Array.isArray(data) ? data : []
-  } finally {
-    clearTimeout(timeout)
-  }
+  const operation = { '/metar': 'noaa_metar', '/taf': 'noaa_taf', '/isigmet': 'noaa_sigmet' }[pathname]
+  const response = await requestObservedApi({
+    operation,
+    url,
+    validate: async (value) => {
+      if (!value.ok) {
+        const body = (await value.text()).slice(0, 200)
+        throw new Error(`NOAA HTTP ${value.status}: ${body}`)
+      }
+      await value.json()
+    },
+  })
+  const data = await response.json()
+  return Array.isArray(data) ? data : []
 }
 
 // ids = ICAO 배열(벌크 다건 1콜). 빈 배열이면 호출 안 함.

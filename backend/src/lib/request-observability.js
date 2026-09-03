@@ -2,6 +2,8 @@ import apiHubUsage from '../api-hub-usage.js'
 import { resolveApiOperation } from '../api-operation-registry.js'
 import stats from '../stats.js'
 
+export const REQUEST_OBSERVED = Symbol('request_observed')
+
 function requestError(code) {
   const error = new Error(code)
   error.code = code
@@ -38,18 +40,52 @@ function responseCopy(response, body) {
   })
 }
 
-async function sleepFor(sleep, ms) {
-  if (ms > 0) await sleep(ms)
+function defaultSleep(ms, signal) {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms))
+  if (signal.aborted) return Promise.reject(signal.reason ?? requestError('api_operation_cancelled'))
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(signal.reason ?? requestError('api_operation_cancelled'))
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
+async function sleepFor(sleep, ms, signal) {
+  if (ms <= 0) return
+  if (!signal || sleep === defaultSleep) return sleep(ms, signal)
+  if (signal.aborted) throw signal.reason ?? requestError('api_operation_cancelled')
+
+  await new Promise((resolve, reject) => {
+    const onAbort = () => {
+      cleanup()
+      reject(signal.reason ?? requestError('api_operation_cancelled'))
+    }
+    const cleanup = () => signal.removeEventListener('abort', onAbort)
+    signal.addEventListener('abort', onAbort, { once: true })
+    Promise.resolve(sleep(ms)).then(() => {
+      cleanup()
+      resolve()
+    }, (error) => {
+      cleanup()
+      reject(error)
+    })
+  })
 }
 
 function withTimeout(fetchImpl, url, options, timeoutMs) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(requestError('api_operation_timeout')), timeoutMs)
   const signal = options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal
-  return fetchImpl(url, { ...options, signal }).finally(() => clearTimeout(timer))
+  return fetchImpl(url, { ...options, signal, [REQUEST_OBSERVED]: true }).finally(() => clearTimeout(timer))
 }
 
-export function createRequestObservedApi({ usage = apiHubUsage, stats: executionStats = stats, fetchImpl = fetch, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), resolveOperation = resolveApiOperation } = {}) {
+export function createRequestObservedApi({ usage = apiHubUsage, stats: executionStats = stats, fetchImpl = (...args) => globalThis.fetch(...args), sleep = defaultSleep, resolveOperation = resolveApiOperation } = {}) {
   return async function requestObservedApi({ operation, url, options = {}, validate } = {}) {
     const requestUrl = new URL(url)
     const operationId = typeof operation === 'string' ? operation : operation?.id
@@ -72,27 +108,27 @@ export function createRequestObservedApi({ usage = apiHubUsage, stats: execution
     try {
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         let transportStarted = false
-        let ledgerRecorded = false
+        let transportCompleted = false
         try {
           if (operation.apiHub) usage.assertAllowed(credential)
           transportStarted = true
           const upstream = await withTimeout(fetchImpl, requestUrl, fetchOptions, policy.timeoutMs)
           const body = await upstream.arrayBuffer()
+          transportCompleted = true
           if (operation.apiHub) {
             await usage.record(credential, { bytes: body.byteLength, status: upstream.status, endpoint: operation.id })
-            ledgerRecorded = true
           }
           finalResponse = upstream
           finalBody = body
-          if (upstream.status >= 500 && attempt < maxAttempts) {
-            await sleepFor(sleep, retryDelayMs)
+          if ((upstream.status >= 500 || upstream.status === 429) && attempt < maxAttempts) {
+            await sleepFor(sleep, retryDelayMs, fetchOptions.signal)
             continue
           }
           break
         } catch (error) {
-          if (operation.apiHub && transportStarted && !ledgerRecorded) await usage.record(credential, { bytes: 0, status: 0, endpoint: operation.id })
+          if (operation.apiHub && transportStarted && !transportCompleted) await usage.record(credential, { bytes: 0, status: 0, endpoint: operation.id })
           if (attempt >= maxAttempts) throw error
-          await sleepFor(sleep, retryDelayMs)
+          await sleepFor(sleep, retryDelayMs, fetchOptions.signal)
         }
       }
 

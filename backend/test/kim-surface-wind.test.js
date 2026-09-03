@@ -211,8 +211,6 @@ test('18Z KIM sends every requested variable with the aviation credential', asyn
   const requests = []
   try {
     config.storage.base_path = root
-    config.api.kim_nwp_auth_key = 'kim-key'
-    config.api.auth_key = 'aviation-key'
     config.kim_surface_wind.bounds = BOUNDS_2X2
     config.kim_nwp.concurrency = 1
     config.kim_nwp.forecast_hours = [0]
@@ -225,7 +223,7 @@ test('18Z KIM sends every requested variable with the aviation credential', asyn
     await processKimNwp({ candidates: [{ tmfc: '2026081818', hf: 0 }] })
 
     assert.ok(requests.length > 0)
-    assert.ok(requests.every((url) => url.searchParams.get('authKey') === 'aviation-key'))
+    assert.ok(requests.every((url) => url.searchParams.get('authKey') === original.aviationCredential))
     const names = new Set(requests.map((url) => url.searchParams.get('name')))
     for (const name of ['u', 'v', 'T', 'hgt', 'rh', 'q', 'w', 'rh_liq', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']) {
       assert.ok(names.has(name), `expected ${name} request`)

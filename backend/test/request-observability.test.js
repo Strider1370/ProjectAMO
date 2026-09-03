@@ -56,6 +56,18 @@ test('records every physical API Hub retry once and reports one final success', 
   assert.deepEqual(testSeams.events.filter(([kind]) => ['start', 'success', 'failure'].includes(kind)), [['start', 'metar'], ['success', 'metar']])
 })
 
+test('retries a throttled API Hub response under the declared operation policy', async () => {
+  const testSeams = seams({ responses: [new Response('slow down', { status: 429 }), new Response('ok', { status: 200 })] })
+
+  const response = await testSeams.requestObservedApi({
+    operation: operation(),
+    url: 'https://apihub.kma.go.kr/api/typ02/openApi/AmmIwxxmService/getMetar?authKey=secret',
+  })
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(testSeams.ledger.map(([, entry]) => entry.status), [429, 200])
+})
+
 test('records a logical validation failure once as the final operation failure', async () => {
   const testSeams = seams({ responses: [new Response('{"resultCode":"99"}', { status: 200 })] })
 
@@ -133,4 +145,25 @@ test('requires the registry to resolve the operation id against the request URL 
     url: 'https://apihub.kma.go.kr/api/typ02/openApi/AmmIwxxmService/getTaf?authKey=secret',
   }), { code: 'api_operation_id_url_mismatch' })
   assert.equal(transportCalls, 0)
+})
+
+test('aborts immediately while waiting between wrapper retries', async () => {
+  const controller = new AbortController()
+  let calls = 0
+  const requestObservedApi = createRequestObservedApi({
+    resolveOperation: ({ id }) => operation({ id, requestPolicy: { timeoutMs: 1_000, maxAttempts: 2, retryDelayMs: 100, allowedOverrides: ['signal'] } }),
+    usage: { assertAllowed() {}, record: async () => {} },
+    stats: { recordApiOperationStart() {}, recordApiOperationSuccess() {}, recordApiOperationFailure() {} },
+    fetchImpl: async () => { calls += 1; throw new Error('upstream_unavailable') },
+  })
+
+  const request = requestObservedApi({
+    operation: 'metar',
+    url: 'https://apihub.kma.go.kr/api/typ02/openApi/AmmIwxxmService/getMetar?authKey=secret',
+    options: { signal: controller.signal },
+  })
+  setTimeout(() => controller.abort(new Error('collection_cancelled')), 10)
+
+  await assert.rejects(request, /collection_cancelled/)
+  assert.equal(calls, 1)
 })

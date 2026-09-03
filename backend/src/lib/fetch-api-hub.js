@@ -1,5 +1,6 @@
 import apiHubUsage from '../api-hub-usage.js'
 import { resolveApiOperation } from '../api-operation-registry.js'
+import { REQUEST_OBSERVED } from './request-observability.js'
 
 export function createFetchApiHub({ usage = apiHubUsage, fetchImpl = fetch } = {}) {
   return async function fetchApiHub({ credential, url, options = {}, endpoint }) {
@@ -28,6 +29,10 @@ export function installApiHubFetchGuard() {
   const rawFetch = globalThis.fetch
   const guardedFetch = createFetchApiHub({ fetchImpl: rawFetch })
   globalThis.fetch = async (input, options) => {
+    if (options?.[REQUEST_OBSERVED]) {
+      const { [REQUEST_OBSERVED]: _, ...rawOptions } = options
+      return rawFetch(input, rawOptions)
+    }
     const url = new URL(input instanceof Request ? input.url : input)
     if (url.hostname !== 'apihub.kma.go.kr' || !url.searchParams.has('authKey')) return rawFetch(input, options)
     const endpoint = endpointFor(url)

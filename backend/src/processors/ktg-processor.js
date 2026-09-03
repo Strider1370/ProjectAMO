@@ -1,5 +1,6 @@
 import { NetCDFReader } from 'netcdfjs'
 import config from '../config.js'
+import { requestObservedApi } from '../lib/request-observability.js'
 import {
   KTG_FORECAST_HOURS,
   addForecastHoursKtg,
@@ -60,17 +61,14 @@ export function selectKtgRunCredential(tmfc) {
 async function fetchKtgFile({ tmfc, ef, credential }) {
   const efStr = String(Number(ef)).padStart(2, '0')
   const url = buildKtgUrl({ tmfc, ef, credential })
-  const timeoutMs = config.ktg?.timeout_ms ?? 60000
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const res = await fetch(url, { signal: controller.signal })
-    if (!res.ok) throw new Error(`KTG API HTTP ${res.status} for tmfc=${tmfc} ef=${efStr}`)
-    const buf = await res.arrayBuffer()
-    return Buffer.from(buf)
-  } finally {
-    clearTimeout(timer)
-  }
+  const response = await requestObservedApi({
+    operation: 'ktg',
+    url,
+    validate: async (value) => {
+      if (!value.ok) throw new Error(`KTG API HTTP ${value.status} for tmfc=${tmfc} ef=${efStr}`)
+    },
+  })
+  return Buffer.from(await response.arrayBuffer())
 }
 
 function parseKtgNetCdf(buffer) {
