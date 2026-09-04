@@ -4,6 +4,7 @@ import path from 'node:path'
 import config from '../config.js'
 import { API_OPERATION_REGISTRY, describeExpectedApiCall } from '../api-operation-registry.js'
 import { activeCollectorRegistry } from '../collector-registry.js'
+import { buildCollectorExecution } from '../collector-execution.js'
 import { CATALOG, SOURCES, CHARACTERS } from './data-health-catalog.js'
 import { judge } from './freshness.js'
 
@@ -55,6 +56,7 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
         outcome: execution.last_outcome || 'unknown',
         lastStartedAt: execution.last_started_at || null,
         lastFinishedAt: execution.last_finished_at || null,
+        durationMs: execution.duration_ms ?? null,
         lastIssue: execution.last_issue || null,
         expected: operation.callContract.kind === 'collector' && !collectors.has(operation.collectorType)
           ? { kind: 'disabled', label: '비활성' }
@@ -105,10 +107,30 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
     id, ...meta, keys: CATALOG.filter((r) => r[field] === id).map((r) => r.key),
   }))
 
+  // 자료 하나에 여러 API가 붙을 수 있고 온디맨드 API는 자료 행 자체가 없다. 따라서 상단
+  // 경고는 자료 행 수가 아니라 등록부의 실패 작업 수로 센다. 마지막 결과가 실패인 작업만
+  // 현재 조치가 필요한 상태다.
+  const apiProblems = API_OPERATION_REGISTRY
+    .filter((operation) => operationStats[operation.id]?.last_outcome === 'failed')
+    .map((operation) => {
+      const execution = operationStats[operation.id]
+      return {
+        id: operation.id, label: operation.label, provider: operation.provider,
+        lastFinishedAt: execution.last_finished_at || null, lastIssue: execution.last_issue || null,
+      }
+    })
+
+  const collectorLabels = new Map(CATALOG.map((row) => [row.statsKey, row.label]))
+  const collectorExecution = buildCollectorExecution({
+    collectors: [...collectors.values()], statsTypes, nowMs: now,
+  }).map((entry) => ({ ...entry, label: collectorLabels.get(entry.type) || entry.type }))
+
   return {
     generatedAt: new Date(now).toISOString(),
     counts,
     rows,
+    apiProblems,
+    collectorExecution,
     groups: { source: group(SOURCES, 'source'), character: group(CHARACTERS, 'character') },
   }
 }

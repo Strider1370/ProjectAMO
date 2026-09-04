@@ -132,7 +132,7 @@ test('저장된 자료도 없으면 그때는 자료 없음이다', () => {
 })
 
 test('등록된 비온디맨드 API 실행 상태와 호출 계약을 자료 행에 자동으로 붙인다', () => {
-  const { rows } = readDataHealth(base(), {
+  const { rows, apiProblems } = readDataHealth(base(), {
     getCached: () => null,
     getStats: () => ({ types: {}, api_operations: {
       metar: { last_started_at: '2026-08-10T10:30:00Z', last_finished_at: '2026-08-10T10:31:00Z', last_outcome: 'failed', last_issue: { code: 'api_operation_failed', message: 'upstream_timeout', at: '2026-08-10T10:31:00Z' } },
@@ -145,4 +145,30 @@ test('등록된 비온디맨드 API 실행 상태와 호출 계약을 자료 행
   assert.equal(operation.lastIssue.message, 'upstream_timeout')
   assert.equal(operation.expected.kind, 'scheduled')
   assert.ok(operation.expected.nextExpectedAt)
+  assert.deepEqual(apiProblems.map((problem) => problem.id), ['metar'])
+})
+
+test('온디맨드 API 실패도 전역 API 경고에 포함한다', () => {
+  const { apiProblems } = readDataHealth(base(), {
+    getCached: () => null,
+    getStats: () => ({ types: {}, api_operations: {
+      adsb: { last_outcome: 'failed', last_finished_at: '2026-08-10T10:31:00Z', last_issue: { message: 'upstream_timeout' } },
+    } }),
+    now: NOW,
+  })
+  assert.deepEqual(apiProblems.map((problem) => problem.id), ['adsb'])
+})
+
+test('watchdog의 현재 수집 미실행은 자료 신선도와 별도로 노출한다', () => {
+  const { collectorExecution } = readDataHealth(base(), {
+    getCached: () => null,
+    getStats: () => ({ types: {
+      ground_forecast: { execution: { last_started_at: '2026-08-10T09:00:00Z', last_finished_at: null, last_outcome: 'missed', last_issue: { code: 'start_overdue' } } },
+    } }),
+    now: NOW,
+  })
+  const ground = collectorExecution.find((entry) => entry.type === 'ground_forecast')
+  assert.equal(ground.label, '지상예보')
+  assert.equal(ground.outcome, 'missed')
+  assert.equal(ground.isProblem, true)
 })

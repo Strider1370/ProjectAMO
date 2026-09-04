@@ -134,7 +134,10 @@ function serializeApiHubUsage(usage) {
       || !Number.isFinite(entry.status)) {
       throw new Error('invalid satellite worker api hub usage')
     }
-    return { endpoint: entry.endpoint, bytes: entry.bytes, status: entry.status }
+    if (Object.hasOwn(entry, 'durationMs') && (!Number.isFinite(entry.durationMs) || entry.durationMs < 0)) {
+      throw new Error('invalid satellite worker api hub usage')
+    }
+    return { endpoint: entry.endpoint, bytes: entry.bytes, status: entry.status, ...(Object.hasOwn(entry, 'durationMs') ? { durationMs: Math.round(entry.durationMs) } : {}) }
   })
 }
 

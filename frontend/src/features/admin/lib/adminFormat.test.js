@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
-  STATUS_TONE, STATUS_WORD, attentionItems, formatAge, formatBytes,
+  EXECUTION_WORD, STATUS_TONE, STATUS_WORD, attentionItems, executionProblems, formatAge, formatBytes,
   formatInterval, formatMs, formatRate, levelTone, percent, trendGroups,
 } from './adminFormat.js'
 
@@ -50,6 +50,16 @@ test('모든 상태에 글자와 색조가 있다 — 색만으로 뜻을 전하
     assert.ok(STATUS_WORD[status], `${status} 글자 없음`)
     assert.ok(STATUS_TONE[status], `${status} 색조 없음`)
   }
+})
+
+test('실행 문제는 현재 실패와 미실행만 고른다', () => {
+  const entries = [
+    { type: 'ground_forecast', outcome: 'missed', isProblem: true },
+    { type: 'metar', outcome: 'succeeded', lastIssue: { outcome: 'failed' }, isProblem: false },
+    { type: 'taf', outcome: 'skipped', isProblem: false },
+  ]
+  assert.deepEqual(executionProblems(entries).map((entry) => entry.type), ['ground_forecast'])
+  assert.equal(EXECUTION_WORD.missed, '미실행')
 })
 
 test('attentionItems는 멈춤·지연만 심각한 순으로 고른다', () => {

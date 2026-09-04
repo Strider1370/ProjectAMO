@@ -50,18 +50,19 @@ test('successMessage: 망가진 사용량은 거부한다 — 엉터리 숫자�
 test('usage-meter: apihub 호출만 재고 나머지는 그대로 흘려보낸다', async () => {
   const calls = []
   const fetchImpl = async (url) => { calls.push(String(url)); return new Response(new ArrayBuffer(64), { status: 200 }) }
-  const meter = createUsageMeter({ fetchImpl })
+  let time = 100
+  const meter = createUsageMeter({ fetchImpl, now: () => time++ })
 
   await meter.fetch('https://apihub.kma.go.kr/api/typ01/url/sat/GK2A/LE1B/IR105/KO/data?date=1&authKey=K')
   await meter.fetch('https://example.com/other')
 
   assert.equal(calls.length, 2, '두 호출 모두 실제로 나간다')
-  assert.deepEqual(meter.take(), [{ endpoint: 'satellite_ir', bytes: 64, status: 200 }])
+  assert.deepEqual(meter.take(), [{ endpoint: 'satellite_ir', bytes: 64, status: 200, durationMs: 1 }])
 })
 
 test('usage-meter: 가시 채널과 안개는 따로 센다', async () => {
   const fetchImpl = async () => new Response(new ArrayBuffer(8), { status: 200 })
-  const meter = createUsageMeter({ fetchImpl })
+  const meter = createUsageMeter({ fetchImpl, now: () => 1 })
   await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE1B/VI006/KO/data?date=1&authKey=K')
   await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE2/FOG/KO/data?date=1&authKey=K')
   assert.deepEqual(meter.take().map((u) => u.endpoint), ['satellite_visible', 'satellite_fog'])
@@ -69,14 +70,14 @@ test('usage-meter: 가시 채널과 안개는 따로 센다', async () => {
 
 test('usage-meter: 실패한 호출도 센다 — 바이트는 이미 나갔다', async () => {
   const fetchImpl = async () => new Response(new ArrayBuffer(16), { status: 500 })
-  const meter = createUsageMeter({ fetchImpl })
+  const meter = createUsageMeter({ fetchImpl, now: () => 1 })
   await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE1B/IR105/KO/data?date=1&authKey=K')
-  assert.deepEqual(meter.take(), [{ endpoint: 'satellite_ir', bytes: 16, status: 500 }])
+  assert.deepEqual(meter.take(), [{ endpoint: 'satellite_ir', bytes: 16, status: 500, durationMs: 0 }])
 })
 
 test('usage-meter: take()는 비우고 준다 — 같은 사용량을 두 번 세면 예산이 부풀려진다', async () => {
   const fetchImpl = async () => new Response(new ArrayBuffer(4), { status: 200 })
-  const meter = createUsageMeter({ fetchImpl })
+  const meter = createUsageMeter({ fetchImpl, now: () => 1 })
   await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE1B/IR105/KO/data?date=1&authKey=K')
   assert.equal(meter.take().length, 1)
   assert.deepEqual(meter.take(), [])
@@ -84,7 +85,7 @@ test('usage-meter: take()는 비우고 준다 — 같은 사용량을 두 번 �
 
 test('usage-meter: 응답 본문은 그대로 읽을 수 있어야 한다 — 재느라 소비하면 수집이 깨진다', async () => {
   const fetchImpl = async () => new Response(new TextEncoder().encode('hello'), { status: 200 })
-  const meter = createUsageMeter({ fetchImpl })
+  const meter = createUsageMeter({ fetchImpl, now: () => 1 })
   const res = await meter.fetch('https://apihub.kma.go.kr/x/GK2A/LE1B/IR105/KO/data?date=1&authKey=K')
   assert.equal(await res.text(), 'hello')
 })
@@ -94,26 +95,28 @@ test('usage-meter: 응답 본문은 그대로 읽을 수 있어야 한다 — �
 test('runSatelliteWorker: 워커가 보고한 사용량을 부모가 장부에 적는다', async () => {
   const { runSatelliteWorker } = await import('../src/satellite/worker-runner.js')
   const recorded = []
+  const executions = []
   const child = fakeChild({
     ok: true,
     result: {
       result: { type: 'satellite', saved: true },
       followUps: [],
       apiHubUsage: [
-        { endpoint: 'satellite_ir', bytes: 2048, status: 200 },
-        { endpoint: 'satellite_fog', bytes: 512, status: 404 },
+        { endpoint: 'satellite_ir', bytes: 2048, status: 200, durationMs: 20 },
+        { endpoint: 'satellite_fog', bytes: 512, status: 404, durationMs: 30 },
       ],
     },
   })
   const work = await runSatelliteWorker(
     { kind: 'satellite', mode: 'current', now: new Date().toISOString() },
-    { forkImpl: () => child, recordUsage: (entry) => recorded.push(entry) },
+    { forkImpl: () => child, recordUsage: (entry) => recorded.push(entry), recordExecution: (entry) => executions.push(entry) },
   )
   assert.equal(work.result.type, 'satellite')
   assert.deepEqual(recorded, [
-    { endpoint: 'satellite_ir', bytes: 2048, status: 200 },
-    { endpoint: 'satellite_fog', bytes: 512, status: 404 },
+    { endpoint: 'satellite_ir', bytes: 2048, status: 200, durationMs: 20 },
+    { endpoint: 'satellite_fog', bytes: 512, status: 404, durationMs: 30 },
   ])
+  assert.deepEqual(executions, recorded)
 })
 
 test('runSatelliteWorker: 사용량이 없으면 아무것도 적지 않는다', async () => {

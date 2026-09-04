@@ -22,9 +22,10 @@ export default function ApiUsageScreen() {
     return () => clearInterval(timer)
   }, [])
 
-  if (!usage?.keys?.length) return null
+  if (!usage) return null
 
-  const busiest = usage.keys.reduce((best, key) => (key.bytes > (best?.bytes ?? -1) ? key : best), null)
+  const keys = usage.keys ?? []
+  const busiest = keys.reduce((best, key) => (key.bytes > (best?.bytes ?? -1) ? key : best), null)
   const share = busiest?.limitBytes ? Math.round((busiest.bytes / busiest.limitBytes) * 100) : 0
 
   return (
@@ -41,7 +42,8 @@ export default function ApiUsageScreen() {
 
       <section className="ac-sec">
         <h2>열쇠별 전송량<em>오늘 · 기상청 API Hub</em></h2>
-        {usage.keys.map((key) => {
+        {keys.length === 0 && <p className="ac-sub">표시할 API Hub 열쇠가 없습니다. 온디맨드 API 실행 결과는 아래에서 확인할 수 있습니다.</p>}
+        {keys.map((key) => {
           const pct = key.limitBytes ? Math.round((key.bytes / key.limitBytes) * 100) : 0
           const tone = pct >= 90 ? 'bad' : pct >= 70 ? 'warn' : null
           return (
@@ -65,7 +67,7 @@ export default function ApiUsageScreen() {
         </p>
       </section>
 
-      {usage.keys.filter((key) => key.endpoints?.length).map((key) => (
+      {keys.filter((key) => key.endpoints?.length).map((key) => (
         <section className="ac-sec ac-flush" key={key.category}>
           <h2>{key.label} — 엔드포인트별<em>오늘</em></h2>
           <table className="ac-t">
@@ -104,7 +106,7 @@ export default function ApiUsageScreen() {
               <tr key={operation.id}>
                 <td className="ac-nm">{operation.label}<div className="ac-sub">{operation.provider}</div></td>
                 <td>{operation.outcome === 'succeeded' ? '성공' : operation.outcome === 'failed' ? '실패' : '미실행'}</td>
-                <td className="ac-r ac-muted">{operation.lastFinishedAt ? new Date(operation.lastFinishedAt).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                <td className="ac-r ac-muted">{operation.lastFinishedAt ? `${new Date(operation.lastFinishedAt).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}${operation.durationMs != null ? ` · ${operation.durationMs}ms` : ''}` : '—'}</td>
                 <td className="ac-muted">{operation.lastIssue?.message || '—'}</td>
               </tr>
             ))}</tbody>

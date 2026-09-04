@@ -221,7 +221,10 @@ ProjectAMO/
 - `backend/src/terrain/terrain-cache.js` -> terrain tile metadata lookup and lazy tile cache.
 - `backend/src/terrain/terrain-sampler.js` -> terrain sampling along route-axis samples.
 - `backend/src/index.js` -> scheduled weather collection jobs, per-type locks, data-transition cancellation controllers, and UTC KIM NWP release-window scheduling.
-- `backend/src/api-client.js` -> upstream KMA/weather API request construction.
+- `backend/src/collector-registry.js` -> active collector schedule, timezone, quiet window, enable condition, and processor binding's single declaration. `index.js` consumes only this registry for scheduled registration and watchdog timing.
+- `backend/src/api-operation-registry.js` -> every outbound API's provider, URL matcher, policy, data-health relationship, and call contract. It calculates the human-readable cadence and the next real scheduled call.
+- `backend/src/lib/request-observability.js` -> the sole outbound HTTP/HTTPS transport seam. It enforces the declared request policy, records each physical API Hub attempt once, persists bounded API operation outcomes, and confines the explicitly declared TLS fallback transport.
+- `backend/src/api-client.js` -> registered KMA/NOAA request construction and payload validation through the common observable transport.
 - `backend/src/store.js` -> in-memory cache and SHA-256 change detection.
 - `backend/src/notam/notam-crawler.js` -> headless Playwright crawler for KOCA 유효 NOTAM KML (site-default 24h window; no date manipulation).
 - `backend/src/parsers/notam-parser.js` -> KML -> structured NOTAM records (Q-code, B/C UTC times, D) schedule text, F)/G) altitude with AGL/AMSL, geometry).

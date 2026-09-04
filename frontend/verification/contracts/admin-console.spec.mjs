@@ -10,6 +10,7 @@ import { expect, test } from '@playwright/test'
 // 계정은 verification/admin-fixture.mjs가 만든다. 없으면 로그인에서 멈추므로,
 // 실패 메시지로 바로 알 수 있게 로그인 단계에서 명시적으로 확인한다.
 const ADMIN = { username: process.env.CONTRACT_ADMIN_USER || 'contract_admin', password: process.env.CONTRACT_ADMIN_PASS || 'contract-pass-1' }
+let adminCookie
 
 const MENUS = [
   ['개요', '.ac-hero'],
@@ -20,12 +21,20 @@ const MENUS = [
   ['계정 관리', 'table.ac-t'],
 ]
 
+const menuButton = (page, label) => page.locator('nav.ac-side').getByRole('button', { name: new RegExp(`^${label}`) })
+
 async function loginAsAdmin(page, request) {
-  const response = await request.post('http://127.0.0.1:3001/api/auth/login', { data: ADMIN })
-  expect(response.status(), '관리자 계정이 없습니다 — verification/admin-fixture.mjs를 먼저 실행하세요').toBe(200)
-  const cookie = response.headers()['set-cookie'].split(';')[0]
-  const [name, value] = cookie.split('=')
-  await page.context().addCookies([{ name, value, domain: '127.0.0.1', path: '/' }])
+  // 이 계약은 세 viewport에서 같은 계정으로 연속 실행된다. 매 테스트 로그인하면 보안상
+  // 의도된 IP당 로그인 제한(15분 10회)을 계약 자체가 밟는다. 한 worker 안에서 발급한
+  // 세션만 재사용하고, 실제 권한 확인은 각 새 브라우저 context에서 계속 수행한다.
+  if (!adminCookie) {
+    const response = await request.post('http://127.0.0.1:3001/api/auth/login', { data: ADMIN })
+    expect(response.status(), '관리자 계정이 없습니다 — verification/admin-fixture.mjs를 먼저 실행하세요').toBe(200)
+    const cookie = response.headers()['set-cookie'].split(';')[0]
+    const [name, value] = cookie.split('=')
+    adminCookie = { name, value }
+  }
+  await page.context().addCookies([{ ...adminCookie, domain: '127.0.0.1', path: '/' }])
 }
 
 test.describe('관리자 콘솔', () => {
@@ -37,7 +46,7 @@ test.describe('관리자 콘솔', () => {
 
   test('여섯 화면이 모두 열린다', async ({ page }, testInfo) => {
     for (const [label, marker] of MENUS) {
-      await page.getByRole('button', { name: label, exact: true }).click()
+      await menuButton(page, label).click()
       await expect(page.locator(marker).first()).toBeVisible()
       await testInfo.attach(`admin-${label}`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
     }
@@ -60,7 +69,7 @@ test.describe('관리자 콘솔', () => {
   })
 
   test('모든 그래프에 y축 눈금과 단위가 있다', async ({ page }) => {
-    await page.getByRole('button', { name: '서버 자원', exact: true }).click()
+    await menuButton(page, '서버 자원').click()
     const chart = page.locator('svg.ac-chart').first()
     await expect(chart).toBeVisible()
     const labels = await chart.locator('text').allTextContents()
@@ -70,10 +79,18 @@ test.describe('관리자 콘솔', () => {
   })
 
   test('상태는 색만이 아니라 글자로도 적힌다', async ({ page }) => {
-    await page.getByRole('button', { name: '자료 수집', exact: true }).click()
+    await menuButton(page, '자료 수집').click()
     const chips = await page.locator('.ac-chip').allTextContents()
     expect(chips.length).toBeGreaterThan(0)
     expect(chips.every((text) => text.trim().length > 0), '빈 상태 표시가 있다').toBe(true)
+  })
+
+  test('자료별 API 실행 결과와 정상 호출 예정이 보인다', async ({ page }) => {
+    await menuButton(page, '자료 수집').click()
+    await expect(page.getByRole('columnheader', { name: 'API 실행 · 예정' })).toBeVisible()
+    await expect(page.locator('table.ac-t tbody .ac-sub').filter({ hasText: /다음|수집 시|비활성/ }).first()).toBeVisible()
+    await menuButton(page, 'API 사용량').click()
+    await expect(page.getByRole('heading', { name: '온디맨드 API' })).toBeVisible()
   })
 
   test('이모지를 쓰지 않는다', async ({ page }) => {

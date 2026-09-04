@@ -29,12 +29,15 @@ export function topSignals({ health, server } = {}) {
   const counts = health?.counts
   const broken = (counts?.stopped ?? 0) + (counts?.never ?? 0)
   const late = counts?.late ?? 0
-  const failing = (health?.rows ?? []).filter((row) => row.failing).length
+  const failing = health?.collectorExecution
+    ? health.collectorExecution.filter((entry) => entry.isProblem).length
+    : (health?.rows ?? []).filter((row) => row.failing).length
+  const apiFailures = health?.apiProblems?.length ?? 0
   const restarts = server?.process?.bootCount ?? 0
   return [
     { id: 'data', label: '자료', tone: broken > 0 ? 'bad' : late > 0 ? 'warn' : 'ok', count: broken || late },
     { id: 'collect', label: '수집', tone: failing > 0 ? 'warn' : 'ok', count: failing },
-    { id: 'api', label: 'API', tone: 'ok', count: 0 },
+    { id: 'api', label: 'API', tone: apiFailures > 0 ? 'bad' : 'ok', count: apiFailures },
     { id: 'server', label: '서버', tone: restarts > RESTART_WARN_THRESHOLD ? 'warn' : 'ok', count: restarts > RESTART_WARN_THRESHOLD ? 1 : 0 },
   ]
 }
@@ -46,6 +49,7 @@ export function menuBadges({ health, pending } = {}) {
   return {
     overview: broken + (counts?.late ?? 0),
     data: broken,
+    api: health?.apiProblems?.length ?? 0,
     accounts: pending?.length ?? 0,
   }
 }

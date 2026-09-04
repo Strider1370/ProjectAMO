@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
-import { STATUS_TONE, STATUS_WORD, formatAge, formatInterval, formatMs, formatRate } from '../lib/adminFormat.js'
+import { EXECUTION_WORD, STATUS_TONE, STATUS_WORD, executionProblems, formatAge, formatInterval, formatMs, formatRate } from '../lib/adminFormat.js'
 
 // 자료 수집 상세 — 34종을 한 표로. 개요에서 "뭐가 이상한가"를 봤다면 여기서 "왜"를 판다.
 //
@@ -17,6 +17,7 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
   const rows = onlyProblems
     ? health.rows.filter((row) => row.status !== 'ok' && row.status !== 'quiet')
     : health.rows
+  const collectorProblems = executionProblems(health.collectorExecution)
   const since = health.rows.find((row) => row.stats?.since)?.stats?.since
 
   return (
@@ -27,6 +28,19 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
           <div className="ac-cap">지연 {health.counts.late}종 · 나머지 {health.counts.ok}종 정상</div>
         </div>
       </div>
+
+      <section className="ac-sec">
+        <h2>수집 실행 문제<em>{collectorProblems.length}건</em></h2>
+        {collectorProblems.length ? (
+          <table className="ac-t"><tbody>{collectorProblems.map((entry) => (
+            <tr key={entry.type}>
+              <td className="ac-nm">{entry.label}</td>
+              <td>{EXECUTION_WORD[entry.outcome] || EXECUTION_WORD.unknown}</td>
+              <td className="ac-muted">{entry.lastIssue?.message || entry.lastIssue?.code || '정기 수집 시작 시각을 확인하세요.'}</td>
+            </tr>
+          ))}</tbody></table>
+        ) : <p className="ac-sub" style={{ padding: '0 22px 16px' }}>현재 실패 또는 미실행 수집기가 없습니다.</p>}
+      </section>
 
       <section className="ac-sec ac-flush">
         <h2>
@@ -80,7 +94,7 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                       const expected = operation.expected
                       const next = expected?.nextExpectedAt ? new Date(expected.nextExpectedAt).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }) : null
                       const schedule = expected?.kind === 'scheduled' ? `${expected.cadenceLabel}${expected.operatingHoursLabel ? ` · ${expected.operatingHoursLabel}` : ''}${next ? ` · 다음 ${next}` : ''}` : expected?.label || '—'
-                      return <div className="ac-sub" key={operation.id}>{operation.label} · {operation.outcome === 'succeeded' ? '성공' : operation.outcome === 'failed' ? '실패' : '미실행'} · {schedule}{operation.lastIssue?.message ? ` · ${operation.lastIssue.message}` : ''}</div>
+                      return <div className="ac-sub" key={operation.id}>{operation.label} · {operation.outcome === 'succeeded' ? '성공' : operation.outcome === 'failed' ? '실패' : '미실행'}{operation.durationMs != null ? ` · ${formatMs(operation.durationMs)}` : ''} · {schedule}{operation.lastIssue?.message ? ` · ${operation.lastIssue.message}` : ''}</div>
                     })}
                   </td>
                 </tr>

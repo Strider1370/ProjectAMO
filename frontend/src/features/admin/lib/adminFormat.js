@@ -21,6 +21,18 @@ export const STATUS_TONE = {
   disabled: 'quiet',
 }
 
+export const EXECUTION_WORD = {
+  succeeded: '성공',
+  failed: '실패',
+  skipped: '건너뜀',
+  missed: '미실행',
+  unknown: '기록 없음',
+}
+
+export function executionProblems(entries = []) {
+  return entries.filter((entry) => entry?.isProblem || entry?.outcome === 'failed' || entry?.outcome === 'missed')
+}
+
 const SEVERITY = { never: 3, stopped: 3, late: 2, quiet: 1, disabled: 1, ok: 0 }
 
 // "6분 / 2시간 / 64일". 분 미만은 "방금" — 초 단위를 보여줘도 판단이 달라지지 않는다.
@@ -100,6 +112,6 @@ export function levelTone(pct) {
 }
 
 export default {
-  STATUS_WORD, STATUS_TONE, formatAge, formatInterval, formatRate, formatMs,
+  STATUS_WORD, STATUS_TONE, EXECUTION_WORD, executionProblems, formatAge, formatInterval, formatRate, formatMs,
   formatBytes, percent, attentionItems, trendGroups, levelTone,
 }

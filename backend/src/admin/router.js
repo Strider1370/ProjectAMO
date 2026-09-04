@@ -62,7 +62,7 @@ export function createAdminRouter({ db = null } = {}) {
         return {
           id: operation.id, label: operation.label, provider: operation.provider,
           outcome: execution.last_outcome || 'unknown', lastStartedAt: execution.last_started_at || null,
-          lastFinishedAt: execution.last_finished_at || null, lastIssue: execution.last_issue || null,
+          lastFinishedAt: execution.last_finished_at || null, durationMs: execution.duration_ms ?? null, lastIssue: execution.last_issue || null,
           expected: describeExpectedApiCall(operation, null, Date.now()),
         }
       })

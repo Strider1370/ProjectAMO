@@ -167,3 +167,24 @@ test('aborts immediately while waiting between wrapper retries', async () => {
   await assert.rejects(request, /collection_cancelled/)
   assert.equal(calls, 1)
 })
+
+test('operation failure logs are concise and redact credentials', async () => {
+  const logs = []
+  const requestObservedApi = createRequestObservedApi({
+    resolveOperation: ({ id }) => operation({ id, requestPolicy: { timeoutMs: 1_000, maxAttempts: 1, allowedOverrides: [] } }),
+    usage: { assertAllowed() {}, record: async () => {} },
+    stats: { recordApiOperationStart() {}, recordApiOperationSuccess() {}, recordApiOperationFailure() {} },
+    fetchImpl: async () => { throw new Error('GET /x?authKey=secret Authorization: Bearer abcdef') },
+    logger: { warn: (message) => logs.push(message) },
+  })
+
+  await assert.rejects(() => requestObservedApi({
+    operation: 'metar',
+    url: 'https://apihub.kma.go.kr/api/typ02/openApi/AmmIwxxmService/getMetar?authKey=secret',
+  }))
+
+  assert.equal(logs.length, 1)
+  assert.match(logs[0], /operation=metar outcome=failed duration_ms=\d+ cause=/)
+  assert.equal(logs[0].includes('secret'), false)
+  assert.equal(logs[0].includes('abcdef'), false)
+})

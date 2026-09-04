@@ -27,6 +27,7 @@ const EMPTY_API_EXECUTION = Object.freeze({
   last_finished_at: null,
   last_outcome: null,
   last_issue: null,
+  duration_ms: null,
 })
 const COLLECTOR_TYPES = new Set(COLLECTOR_REGISTRY.map((collector) => collector.type))
 const API_OPERATION_IDS = new Set(API_OPERATION_REGISTRY.map((operation) => operation.id))
@@ -92,6 +93,7 @@ function exactApiExecution(execution) {
     last_finished_at: typeof source.last_finished_at === 'string' ? source.last_finished_at : null,
     last_outcome: outcome,
     last_issue: outcome ? exactIssue(source.last_issue, API_OPERATION_OUTCOMES) : null,
+    duration_ms: Number.isFinite(source.duration_ms) && source.duration_ms >= 0 ? Math.round(source.duration_ms) : null,
   }
 }
 
@@ -254,17 +256,18 @@ export function recordApiOperationStart(id) {
   queueStartSave()
 }
 
-function recordApiOperationCompletion(id, outcome, message) {
+function recordApiOperationCompletion(id, outcome, message, durationMs) {
   const execution = apiOperationEntry(id)
   const at = nowIso()
   execution.last_finished_at = at
   execution.last_outcome = outcome
+  execution.duration_ms = Number.isFinite(durationMs) && durationMs >= 0 ? Math.round(durationMs) : null
   if (outcome === 'failed') execution.last_issue = normalizeCollectorIssue({ outcome, code: 'api_operation_failed', message, at })
   persistCompletion()
 }
 
-export function recordApiOperationSuccess(id) { recordApiOperationCompletion(id, 'succeeded') }
-export function recordApiOperationFailure(id, errorMsg) { recordApiOperationCompletion(id, 'failed', errorMsg) }
+export function recordApiOperationSuccess(id, durationMs) { recordApiOperationCompletion(id, 'succeeded', null, durationMs) }
+export function recordApiOperationFailure(id, errorMsg, durationMs) { recordApiOperationCompletion(id, 'failed', errorMsg, durationMs) }
 
 function addRecentRun(type, success, error, failedAirports, durationMs, extra = {}) {
   statsData.recent_runs.unshift({

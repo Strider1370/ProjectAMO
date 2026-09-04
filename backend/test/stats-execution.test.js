@@ -125,7 +125,7 @@ test('loaded execution state is whitelisted, redacted, and separated by state ki
   const collector = stats.getExecutionState('metar')
   assert.deepEqual(Object.keys(collector).sort(), ['last_finished_at', 'last_issue', 'last_missed_at', 'last_outcome', 'last_scheduled_started_at', 'last_started_at'])
   assert.equal(collector.last_issue.message.includes('secret'), false)
-  assert.deepEqual(stats.getStats().api_operations.metar, { last_started_at: null, last_finished_at: null, last_outcome: null, last_issue: null })
+  assert.deepEqual(stats.getStats().api_operations.metar, { last_started_at: null, last_finished_at: null, last_outcome: null, last_issue: null, duration_ms: null })
   assert.equal(stats.getStats().api_operations.unknown, undefined)
 })
 
@@ -143,7 +143,17 @@ test('loading drops unknown collector types and restores nested API operation st
     last_finished_at: '2026-08-31T00:00:01.000Z',
     last_outcome: 'failed',
     last_issue: { outcome: 'failed', code: 'api_operation_failed', message: 'upstream timeout', at: '2026-08-31T00:00:01.000Z' },
+    duration_ms: null,
   })
+})
+
+test('API operation completion persists a bounded duration', () => {
+  stats.recordApiOperationStart('metar')
+  stats.recordApiOperationSuccess('metar', 12.7)
+  assert.equal(stats.getStats().api_operations.metar.duration_ms, 13)
+
+  stats.recordApiOperationFailure('metar', 'timeout', -1)
+  assert.equal(stats.getStats().api_operations.metar.duration_ms, null)
 })
 
 test('scheduled start preserves a historical missed issue across restart', () => {

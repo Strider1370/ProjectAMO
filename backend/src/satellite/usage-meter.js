@@ -7,7 +7,7 @@ import { endpointFor } from '../lib/fetch-api-hub.js'
 
 const isApiHub = (url) => url.hostname === 'apihub.kma.go.kr' && url.searchParams.has('authKey')
 
-export function createUsageMeter({ fetchImpl = fetch } = {}) {
+export function createUsageMeter({ fetchImpl = fetch, now = Date.now } = {}) {
   let collected = []
 
   async function measuredFetch(input, options) {
@@ -20,11 +20,12 @@ export function createUsageMeter({ fetchImpl = fetch } = {}) {
     if (!isApiHub(url)) return fetchImpl(input, options)
 
     const endpoint = endpointFor(url)
+    const startedAt = now()
     const upstream = await fetchImpl(input, options)
     // 본문을 여기서 읽어 크기를 재고, 호출측에는 같은 내용의 새 응답을 준다.
     // 안 그러면 재는 쪽이 본문을 먹어버려 수집이 빈 파일을 저장한다.
     const body = await upstream.arrayBuffer()
-    if (endpoint) collected.push({ endpoint, bytes: body.byteLength, status: upstream.status })
+    if (endpoint) collected.push({ endpoint, bytes: body.byteLength, status: upstream.status, durationMs: Math.max(0, now() - startedAt) })
     return new Response(body, { status: upstream.status, statusText: upstream.statusText, headers: upstream.headers })
   }
 

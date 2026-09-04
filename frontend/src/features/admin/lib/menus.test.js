@@ -28,6 +28,19 @@ test('한 번도 수집 안 된 자료도 멈춤과 같이 센다', () => {
   assert.equal(signals.find((s) => s.id === 'data').count, 3)
 })
 
+test('실패한 API 작업은 상단 신호와 API 메뉴 배지로 바로 보인다', () => {
+  const health = { counts: { stopped: 0, never: 0, late: 0 }, rows: [], apiProblems: [{ id: 'metar' }, { id: 'taf' }] }
+  const api = topSignals({ health }).find((signal) => signal.id === 'api')
+  assert.deepEqual(api, { id: 'api', label: 'API', tone: 'bad', count: 2 })
+  assert.equal(menuBadges({ health, pending: [] }).api, 2)
+})
+
+test('watchdog가 감지한 미실행 수집기는 수집 신호에 나타난다', () => {
+  const health = { counts: { stopped: 0, never: 0, late: 0 }, rows: [], collectorExecution: [{ type: 'ground_forecast', outcome: 'missed', isProblem: true }] }
+  const collect = topSignals({ health }).find((signal) => signal.id === 'collect')
+  assert.deepEqual(collect, { id: 'collect', label: '수집', tone: 'warn', count: 1 })
+})
+
 test('재시작이 잦으면 서버 신호가 노랑으로 바뀐다', () => {
   const calm = topSignals({ health: null, server: { process: { bootCount: 3 } } })
   assert.equal(calm.find((s) => s.id === 'server').tone, 'ok')
@@ -48,6 +61,7 @@ test('배지는 이상 건수와 승인 대기 건수를 센다', () => {
   })
   assert.equal(badges.overview, 3)
   assert.equal(badges.data, 2)
+  assert.equal(badges.api, 0)
   assert.equal(badges.accounts, 2)
 })
 
@@ -55,5 +69,6 @@ test('이상이 없으면 배지가 0이라 달리지 않는다', () => {
   const badges = menuBadges({ health: { counts: { stopped: 0, never: 0, late: 0 } }, pending: [] })
   assert.equal(badges.overview, 0)
   assert.equal(badges.data, 0)
+  assert.equal(badges.api, 0)
   assert.equal(badges.accounts, 0)
 })

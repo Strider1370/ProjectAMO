@@ -159,3 +159,14 @@ test('rejects unknown top-level, request-policy, and quiet keys and invalid type
 test('reports on-demand APIs without an expected timestamp', () => {
   assert.deepEqual(describeExpectedApiCall({ label: 'ADS-B', callContract: { kind: 'on_demand' } }, null, Date.now()), { kind: 'on_demand', label: '온디맨드' })
 })
+
+test('scheduled satellite API Hub operations inherit their collector cadence', () => {
+  const collectors = activeCollectorRegistry(config)
+  for (const id of ['satellite_ir', 'satellite_fog', 'satellite_ci', 'satellite_ctps', 'satellite_visible']) {
+    const operation = API_OPERATION_REGISTRY.find((candidate) => candidate.id === id)
+    const collector = collectors.find((candidate) => candidate.type === operation.collectorType)
+    const expected = describeExpectedApiCall(operation, collector, Date.parse('2026-08-10T00:00:00.000Z'))
+    assert.equal(expected.kind, 'scheduled', id)
+    assert.equal(expected.cronExpression, collector.schedule.expression, id)
+  }
+})

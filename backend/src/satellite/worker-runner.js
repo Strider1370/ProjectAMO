@@ -2,6 +2,7 @@ import { fork } from 'node:child_process'
 
 import config, { satellite as satelliteConfig } from '../config.js'
 import apiHubUsage from '../api-hub-usage.js'
+import stats from '../stats.js'
 import { assertSatelliteJob, failureMessage, successMessage } from './worker-protocol.js'
 
 const DEFAULT_KILL_GRACE_MS = 1_000
@@ -58,6 +59,25 @@ function recordApiHubUsage(entry) {
     .catch((error) => console.warn('[satellite] API 사용량 기록 실패:', error?.message))
 }
 
+// 워커는 stats 파일을 공유해 쓰면 부모의 완료 기록을 덮을 수 있어 사용량만 IPC로 보낸다.
+// 부모가 이 한 곳에서 최종 응답 상태를 operation 상태로 옮겨야 위성 API도 콘솔의 실패
+// 경고·마지막 실행 시각에 포함된다.
+function recordApiExecution(entry) {
+  const durationMs = entry.durationMs ?? null
+  try {
+    stats.recordApiOperationStart(entry.endpoint)
+    if (entry.status >= 200 && entry.status < 300) {
+      stats.recordApiOperationSuccess(entry.endpoint, durationMs)
+      console.info(`[api] operation=${entry.endpoint} outcome=succeeded duration_ms=${durationMs ?? 'unknown'}`)
+    } else {
+      stats.recordApiOperationFailure(entry.endpoint, `HTTP ${entry.status}`, durationMs)
+      console.warn(`[api] operation=${entry.endpoint} outcome=failed duration_ms=${durationMs ?? 'unknown'} cause=http_${entry.status}`)
+    }
+  } catch (error) {
+    console.warn(`[satellite] API 실행 상태 기록 실패: ${error?.message}`)
+  }
+}
+
 function validDelay(value, fallback) {
   return Number.isFinite(value) && value >= 0 ? value : fallback
 }
@@ -68,6 +88,7 @@ export function runSatelliteWorker(job, {
   signal,
   killGraceMs = DEFAULT_KILL_GRACE_MS,
   recordUsage = recordApiHubUsage,
+  recordExecution = recordApiExecution,
 } = {}) {
   let safeJob
   try {
@@ -150,7 +171,10 @@ export function runSatelliteWorker(job, {
       exitSeen = true
       if (terminalError) return finish(terminalError)
       if (terminal?.kind === 'success' && code === 0 && exitSignal === null) {
-        for (const entry of terminal.work.apiHubUsage ?? []) recordUsage(entry)
+        for (const entry of terminal.work.apiHubUsage ?? []) {
+          recordUsage(entry)
+          recordExecution(entry)
+        }
         return finish(null, terminal.work)
       }
       if (terminal?.kind === 'failure') return finish(terminal.error)

@@ -1,7 +1,7 @@
 import AttentionList from '../components/AttentionList.jsx'
 import DataGrid from '../components/DataGrid.jsx'
 import { LineChart } from '../components/Chart.jsx'
-import { attentionItems, formatAge, percent } from '../lib/adminFormat.js'
+import { EXECUTION_WORD, attentionItems, executionProblems, formatAge, percent } from '../lib/adminFormat.js'
 
 // 매일 여는 화면. 큰 숫자 하나로 시작하고, 확인이 필요한 것만 문장으로 말한다.
 // 이상이 없는 날은 초록 한 줄이 뜨고 5초 만에 점검이 끝나는 것이 이 화면의 목표다.
@@ -21,6 +21,10 @@ export default function OverviewScreen({ health, server, metrics, onGo }) {
   const series = metrics?.series ?? []
   const forecast = server?.diskForecast
   const broken = health.counts.stopped + health.counts.never
+  const executionProblemsNow = [
+    ...executionProblems(health.collectorExecution),
+    ...(health.apiProblems ?? []).map((entry) => ({ ...entry, type: entry.id, outcome: 'failed', isProblem: true })),
+  ]
 
   const cpuPoints = series.map((row) => row.cpu_pct)
   const peakIndex = cpuPoints.reduce((best, value, i) => (value > (cpuPoints[best] ?? -1) ? i : best), 0)
@@ -56,6 +60,19 @@ export default function OverviewScreen({ health, server, metrics, onGo }) {
       </div>
 
       <AttentionList items={items} onGo={onGo} />
+
+      <section className="ac-sec ac-flush">
+        <h2>실행 문제<em>{executionProblemsNow.length}건</em></h2>
+        {executionProblemsNow.length ? (
+          <table className="ac-t"><tbody>{executionProblemsNow.slice(0, 5).map((entry) => (
+            <tr key={entry.type}>
+              <td className="ac-nm">{entry.label || entry.type}</td>
+              <td>{EXECUTION_WORD[entry.outcome] || EXECUTION_WORD.unknown}</td>
+              <td className="ac-muted">{entry.lastIssue?.message || entry.lastIssue?.code || '실행 상태를 확인하세요.'}</td>
+            </tr>
+          ))}</tbody></table>
+        ) : <p className="ac-sub" style={{ padding: '0 22px 16px' }}>현재 실행 문제는 없습니다.</p>}
+      </section>
 
       <DataGrid health={health} />
 
