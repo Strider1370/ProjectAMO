@@ -25,6 +25,16 @@ test('rejects an explicit id when it does not match the request URL', () => {
   }), { code: 'api_operation_id_url_mismatch' })
 })
 
+test('resolves KMA radar graphic assets through the declared observable transport', () => {
+  const asset = resolveApiOperation({
+    url: 'https://apihub.kma.go.kr/data/rdr/hsr/example.webp',
+  })
+
+  assert.equal(asset.id, 'kma_radar_graphics_asset')
+  assert.equal(asset.apiHub, false)
+  assert.deepEqual(asset.dataHealthKeys, ['radar', 'hci', 'wissdom', 'qpf'])
+})
+
 test('rejects ambiguous operations and non-on-demand operations without data health rows', () => {
   assert.throws(() => assertApiOperationRegistry([
     { id: 'one', label: 'One', provider: 'test', collectorType: null, dataHealthKeys: ['metar'], callContract: { kind: 'conditional', label: 'when needed' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://example.test/one', requestPolicy: { timeoutMs: 1000, maxAttempts: 1, allowedOverrides: [] }, match: () => true },
