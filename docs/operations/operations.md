@@ -100,6 +100,7 @@ Current incremental keys:
 
 - `/data/radar/echo_meta.json`: `no-cache`
 - `/data/radar/rainviewer_meta.json`: `no-cache`
+- `/data/radar/{hsr,hci,wissdom,qpf}/..._meta.json`: `no-cache`
 - `/data/satellite/sat_meta.json`: `no-cache`
 - `/data/sigwx_low/fronts_meta_<tmfc>.json`: `no-cache`
 - `/data/sigwx_low/clouds_meta_<tmfc>.json`: `no-cache`

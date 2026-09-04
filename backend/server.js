@@ -166,6 +166,8 @@ function setGeneratedDataCacheHeaders(res, filePath) {
   if (
     relPath === 'radar/echo_meta.json'
     || relPath === 'radar/echotop/echotop_meta.json'
+    || relPath === 'radar/hsr/hsr_meta.json'
+    || relPath === 'radar/hci/hci_meta.json'
     || relPath === 'radar/wissdom/wissdom_meta.json'
     || relPath === 'radar/qpf/qpf_meta.json'
     || relPath === 'satellite/sat_meta.json'
