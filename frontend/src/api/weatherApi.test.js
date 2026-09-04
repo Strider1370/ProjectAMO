@@ -5,9 +5,11 @@ import { loadChangedWeatherData, loadDeferredWeatherData, loadWeatherData } from
 
 function installFetchRecorder() {
   const calls = []
+  const options = []
   const previousFetch = globalThis.fetch
-  globalThis.fetch = async (url) => {
+  globalThis.fetch = async (url, requestOptions) => {
     calls.push(String(url))
+    options.push(requestOptions)
     return {
       ok: true,
       status: 200,
@@ -19,6 +21,7 @@ function installFetchRecorder() {
   }
   return {
     calls,
+    options,
     restore: () => { globalThis.fetch = previousFetch },
   }
 }
@@ -42,15 +45,25 @@ test('loadWeatherData skips deferred panel-only datasets on first entry', async 
   }
 })
 
-test('loadChangedWeatherData refreshes HSR/HCI from their own metadata changes', async () => {
+test('loadChangedWeatherData bypasses stale browser entries for all KMA radar graphics metadata', async () => {
   const recorder = installFetchRecorder()
   try {
-    const data = await loadChangedWeatherData({ hsrMeta: true, hciMeta: true })
+    const data = await loadChangedWeatherData({ hsrMeta: true, hciMeta: true, wissdomMeta: true, qpfMeta: true })
     assert.ok(data.hsrMeta)
     assert.ok(data.hciMeta)
+    assert.ok(data.wissdomMeta)
+    assert.ok(data.qpfMeta)
     assert.deepEqual(recorder.calls, [
+      '/data/radar/wissdom/wissdom_meta.json',
+      '/data/radar/qpf/qpf_meta.json',
       '/data/radar/hsr/hsr_meta.json',
       '/data/radar/hci/hci_meta.json',
+    ])
+    assert.deepEqual(recorder.options, [
+      { signal: undefined, cache: 'no-store' },
+      { signal: undefined, cache: 'no-store' },
+      { signal: undefined, cache: 'no-store' },
+      { signal: undefined, cache: 'no-store' },
     ])
   } finally {
     recorder.restore()

@@ -1,6 +1,8 @@
 import FALLBACK_AIRPORTS from '../../../shared/airports.js'
 import { ADSB_FETCH_DISABLED } from './adsbApi.js'
 
+const KMA_RADAR_GRAPHICS_META = /^\/data\/radar\/(?:hsr\/hsr_meta|hci\/hci_meta|wissdom\/wissdom_meta|qpf\/qpf_meta)\.json$/
+
 export const AIRPORT_NAME_KO = {
   RKSI: '인천국제공항',
   RKSS: '김포국제공항',
@@ -22,7 +24,10 @@ export const AIRPORT_NAME_KO = {
 async function fetchJson(url, { optional = false, signal } = {}) {
   try {
     const res = typeof fetch === 'function'
-      ? await fetch(url, { signal })
+      // nginx now revalidates these files too.  no-store additionally replaces any
+      // old heuristic cache entry that predates that header, so a live page switches
+      // away from a stale radar timeline as soon as snapshot metadata changes.
+      ? await fetch(url, { signal, ...(KMA_RADAR_GRAPHICS_META.test(url) ? { cache: 'no-store' } : {}) })
       : await fetchJsonWithXhr(url)
     if (!res.ok) throw new Error(`${url} ??HTTP ${res.status}`)
     return res.json()
