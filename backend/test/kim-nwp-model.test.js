@@ -39,7 +39,7 @@ function tempComponent(values, unit = 'K') {
 test('KIM wind levels and forecast hours match this phase scope', () => {
   assert.deepEqual(KIM_NWP_LEVELS.map((level) => level.id), ['1000hPa', '975hPa', '950hPa', '925hPa', '900hPa', '875hPa', '850hPa', '800hPa', '750hPa', '700hPa', '650hPa', '600hPa', '550hPa', '500hPa', '450hPa', '400hPa', '350hPa', '300hPa', '250hPa', '200hPa', '150hPa'])
   assert.deepEqual(KIM_NWP_MOISTURE_LEVEL_IDS, ['1000hPa', '975hPa', '950hPa', '925hPa', '900hPa', '875hPa', '850hPa', '800hPa', '750hPa', '700hPa', '650hPa', '600hPa', '550hPa', '500hPa', '450hPa', '400hPa', '350hPa', '300hPa', '250hPa', '200hPa', '150hPa'])
-  assert.deepEqual(KIM_NWP_FORECAST_HOURS, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+  assert.deepEqual(KIM_NWP_FORECAST_HOURS, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
 })
 
 test('icing levels span 1000-300hPa (matches temp section) but exclude 10m and the always-gated top', () => {

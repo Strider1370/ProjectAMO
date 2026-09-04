@@ -308,8 +308,9 @@ export const kim_nwp = {
   max_runs: Number(process.env.KIM_NWP_MAX_RUNS || 2),
   keep_raw: process.env.KIM_NWP_KEEP_RAW !== '0',
   concurrency: Number(process.env.KIM_NWP_CONCURRENCY || 4),
-  forecast_hours: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-  // 미래 예보 수집 ON: 기본 전체 예보시간 수집. KIM_NWP_SINGLE_FORECAST=1 이면 최근 1스텝만.
+  // API 공개 예상 시각(F005)부터 향후 12시간(F016)만 수집한다.
+  forecast_hours: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+  // KIM_NWP_SINGLE_FORECAST=1 이면 최근 1스텝만.
   single_forecast: process.env.KIM_NWP_SINGLE_FORECAST === '1',
   collect_icing: process.env.KIM_NWP_COLLECT_ICING !== '0',
   collect_on_startup: process.env.KIM_NWP_COLLECT_ON_STARTUP !== '0',
@@ -371,8 +372,8 @@ export const schedule = {
   // processedTms가 같은 관측시각의 재다운로드를 막는다.
   satellite_visible_interval: '*/5 * * * *',
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
-  // 네 분석시각을 수집하고, 각 런은 자료 지연을 고려해 1·2시간 뒤 두 번만 재시도한다.
-  kim_surface_wind_interval: '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *',
+  // 네 분석시각의 KIM 격자는 약 5시간 뒤부터 공개된다. +5h에 시작하고 +6h·+7h에 재시도한다.
+  kim_surface_wind_interval: '12 1,5,6,7,11,12,13,17,18,19,23 * * *',
   // 동네예보 발표 8회(02,05,08,11,14,17,20,23 KST) + 30분 여유. 중기예보(06/18 발표)는 08:30·20:30 슬롯이 받는다.
   ground_forecast_interval: '30 2,5,8,11,14,17,20,23 * * *',
   environment_interval: '10 * * * *',

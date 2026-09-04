@@ -166,8 +166,12 @@ test('resolveKimSurfaceWindCandidates starts with recent synoptic cycles and hf 
   ])
 })
 
-test('KIM NWP scheduler polls all four synoptic release windows and retries twice', () => {
-  assert.equal(config.schedule.kim_surface_wind_interval, '12 0,1,2,6,7,8,12,13,14,18,19,20 * * *')
+test('KIM NWP scheduler starts at expected publication plus five hours and retries twice', () => {
+  assert.equal(config.schedule.kim_surface_wind_interval, '12 1,5,6,7,11,12,13,17,18,19,23 * * *')
+})
+
+test('KIM NWP collects the twelve forecast hours from F005 through F016', () => {
+  assert.deepEqual(config.kim_nwp.forecast_hours, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
 })
 
 test('buildKimGridUrl uses the KMA APIHub KIM cgi endpoint', () => {
