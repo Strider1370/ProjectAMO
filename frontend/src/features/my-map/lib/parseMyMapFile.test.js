@@ -42,6 +42,20 @@ test('폴더 계층과 도형 수를 함께 준다', async () => {
   assert.equal(stats.polygons, 1)
 })
 
+test('xsi 네임스페이스가 빠진 Google Earth KML도 읽는다', async () => {
+  const kml = `<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document xsi:schemaLocation="x"><Placemark><Point><coordinates>127,37,0</coordinates></Point></Placemark></Document></kml>`
+  const { stats } = await parseMyMapFile(new TextEncoder().encode(kml).buffer, 'google-earth.kml')
+  assert.equal(stats.features, 1)
+  assert.equal(stats.points, 1)
+})
+
+test('GeometryCollection을 개별 도형으로 펼쳐 지도에 표시한다', async () => {
+  const kml = `<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><MultiGeometry><LineString><coordinates>127,37,0 128,38,0</coordinates></LineString><LineString><coordinates>128,38,0 129,39,0</coordinates></LineString></MultiGeometry></Placemark></Document></kml>`
+  const { stats } = await parseMyMapFile(new TextEncoder().encode(kml).buffer, 'multi.kml')
+  assert.equal(stats.features, 2)
+  assert.equal(stats.lines, 2)
+})
+
 test('깨진 XML은 조용히 통과하지 않는다', async () => {
   // 해석기는 깨진 문서에도 예외를 던지지 않고 오류 요소를 심는다. 검사하지 않으면
   // "폴더 0개"만 뜨고 실패인 줄 모른다.

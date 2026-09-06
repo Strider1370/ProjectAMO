@@ -22,8 +22,15 @@ async function inflateRaw(bytes) {
   return new Uint8Array(await new Response(stream).arrayBuffer())
 }
 
-// BOM은 TextDecoder('utf-8')가 알아서 떼어낸다.
-const decode = (bytes) => new TextDecoder('utf-8').decode(bytes)
+function decode(bytes) {
+  const head = new TextDecoder('ascii').decode(bytes.subarray(0, 512))
+  const declared = head.match(/encoding\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase()
+  try {
+    return new TextDecoder(declared || 'utf-8').decode(bytes)
+  } catch {
+    return new TextDecoder('utf-8').decode(bytes)
+  }
+}
 
 export async function readKmlFromBuffer(arrayBuffer, fileName = '') {
   if (/\.kml$/i.test(fileName)) return decode(new Uint8Array(arrayBuffer))

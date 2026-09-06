@@ -17,6 +17,26 @@ function fail(stage, message) {
   return error
 }
 
+const KNOWN_NAMESPACES = {
+  xsi: 'http://www.w3.org/2001/XMLSchema-instance',
+  atom: 'http://www.w3.org/2005/Atom',
+  gx: 'http://www.google.com/kml/ext/2.2',
+  kml: 'http://www.opengis.net/kml/2.2',
+}
+
+function repairKnownKmlNamespaces(text) {
+  const missing = Object.entries(KNOWN_NAMESPACES)
+    .filter(([prefix]) => new RegExp(`\\b${prefix}:`).test(text) && !new RegExp(`\\bxmlns:${prefix}\\s*=`).test(text))
+    .map(([prefix, uri]) => `xmlns:${prefix}="${uri}"`)
+  if (missing.length === 0) return text
+  return text.replace(/<kml\b([^>]*)>/i, `<kml$1 ${missing.join(' ')}>`)
+}
+
+function expandGeometryCollections(feature) {
+  if (feature.geometry?.type !== 'GeometryCollection') return [feature]
+  return (feature.geometry.geometries ?? []).map((geometry) => ({ ...feature, geometry }))
+}
+
 function countGeometry(g, out) {
   if (!g) return
   if (g.type === 'GeometryCollection') {
@@ -44,7 +64,7 @@ export async function parseMyMapFile(arrayBuffer, fileName = '') {
   // 검사하지 않으면 "폴더 0개"만 뜨고 실패인 줄 모른다.
   let doc
   try {
-    doc = new DOMParser().parseFromString(text, 'text/xml')
+    doc = new DOMParser().parseFromString(repairKnownKmlNamespaces(text), 'text/xml')
   } catch {
     doc = null
   }
@@ -56,7 +76,10 @@ export async function parseMyMapFile(arrayBuffer, fileName = '') {
 
   let list
   try {
-    list = buildLayerList(kmlWithFolders(doc))
+    list = buildLayerList(kmlWithFolders(doc)).map((layer) => ({
+      ...layer,
+      features: layer.features.flatMap(expandGeometryCollections),
+    }))
   } catch (e) {
     throw fail('도형 변환', e?.message ?? '도형을 변환하지 못했습니다.')
   }
