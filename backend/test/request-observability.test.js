@@ -188,3 +188,18 @@ test('operation failure logs are concise and redact credentials', async () => {
   assert.equal(logs[0].includes('secret'), false)
   assert.equal(logs[0].includes('abcdef'), false)
 })
+
+// 2026-09-06: 장부 쓰기가 어긋나자 이 자리가 호출 실패로 번져 국내 수집이 6시간 40분 멈췄다.
+test('장부 기록이 실패해도 관측 응답은 그대로 돌려준다', async () => {
+  const warnings = []
+  const request = createRequestObservedApi({
+    usage: { assertAllowed: () => {}, record: async () => { throw new Error('ENOENT: rename failed') } },
+    fetchImpl: async () => new Response('METAR RKSI', { status: 200 }),
+    logger: { info: () => {}, warn: (line) => warnings.push(line) },
+  })
+
+  const response = await request({ operation: 'metar', url: 'https://apihub.kma.go.kr/api/typ02/openApi/AmmService/getMetar?authKey=secret' })
+  assert.equal(await response.text(), 'METAR RKSI')
+  assert.match(warnings.join('\n'), /usage_record_failed/)
+  assert.doesNotMatch(warnings.join('\n'), /outcome=failed/)
+})

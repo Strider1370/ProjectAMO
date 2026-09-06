@@ -137,6 +137,12 @@ export function createRequestObservedApi({ usage = apiHubUsage, stats: execution
     const credential = operation.apiHub ? requestUrl.searchParams.get('authKey') : null
     if (operation.apiHub && !credential) throw requestError('missing_api_hub_credential')
 
+    // 장부 적기가 실패해도 호출은 죽이지 않는다. 2026-09-06에 api-hub-usage.json 쓰기가
+    // 어긋나자 이 세 자리가 전부 호출 실패로 번져 국내 수집이 6시간 40분 멈췄다.
+    // 한도 차단은 그대로 산다: record는 파일에 쓰기 전에 메모리 장부부터 올린다.
+    const recordUsage = (entry) => usage.record(credential, entry)
+      .catch((recordError) => logger.warn?.(`[api] operation=${operation.id} usage_record_failed cause=${safeLogValue(messageFor(recordError))}`))
+
     const startedAt = Date.now()
     executionStats.recordApiOperationStart(operation.id)
     let finalResponse
@@ -153,13 +159,13 @@ export function createRequestObservedApi({ usage = apiHubUsage, stats: execution
             upstream = await withTimeout(fetchImpl, requestUrl, fetchOptions, policy.timeoutMs)
           } catch (error) {
             if (!shouldUseFallback(error, policy)) throw error
-            if (operation.apiHub) await usage.record(credential, { bytes: 0, status: 0, endpoint: operation.id })
+            if (operation.apiHub) await recordUsage({ bytes: 0, status: 0, endpoint: operation.id })
             upstream = await httpsFallback(requestUrl, policy, fetchOptions.signal)
           }
           const body = await upstream.arrayBuffer()
           transportCompleted = true
           if (operation.apiHub) {
-            await usage.record(credential, { bytes: body.byteLength, status: upstream.status, endpoint: operation.id })
+            await recordUsage({ bytes: body.byteLength, status: upstream.status, endpoint: operation.id })
           }
           finalResponse = upstream
           finalBody = body
@@ -169,7 +175,7 @@ export function createRequestObservedApi({ usage = apiHubUsage, stats: execution
           }
           break
         } catch (error) {
-          if (operation.apiHub && transportStarted && !transportCompleted) await usage.record(credential, { bytes: 0, status: 0, endpoint: operation.id })
+          if (operation.apiHub && transportStarted && !transportCompleted) await recordUsage({ bytes: 0, status: 0, endpoint: operation.id })
           if (attempt >= maxAttempts) throw error
           await sleepFor(sleep, retryDelayMs, fetchOptions.signal)
         }
