@@ -64,3 +64,17 @@ test('API Hub로 호출하는 모든 엔드포인트에 이름이 붙고, 그 �
     assert.ok(Object.hasOwn(API_HUB_ENDPOINTS, name), `${path} → ${name}: 허용 목록에 없다`)
   }
 })
+
+// 장부 쓰기가 죽었다고 이미 받아온 관측을 버리면 국내 수집이 통째로 멈춘다(2026-09-06).
+test('사용량 기록이 실패해도 받아온 응답은 그대로 돌려준다', async () => {
+  const warnings = []
+  const fetchApiHub = createFetchApiHub({
+    usage: { assertAllowed: () => {}, record: async () => { throw new Error('ENOENT: rename failed') } },
+    fetchImpl: async () => new Response('METAR RKSI', { status: 200 }),
+    logger: { warn: (...args) => warnings.push(args.join(' ')) },
+  })
+
+  const response = await fetchApiHub({ credential: 'key', url: 'https://apihub.kma.go.kr/example', endpoint: 'metar' })
+  assert.equal(await response.text(), 'METAR RKSI')
+  assert.match(warnings.join('\n'), /ENOENT/)
+})

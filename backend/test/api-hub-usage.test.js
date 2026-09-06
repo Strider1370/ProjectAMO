@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { chmod, mkdtemp, readFile, rm } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -88,4 +88,18 @@ test('returns API endpoints sorted by received bytes after restart recovery', as
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+// 2026-09-06: rename 한 번이 어긋난 뒤 실패한 약속이 체인에 남아, 이후 모든 기록이 시도조차 없이
+// 같은 오류로 거절됐다. 국내 수집이 재시작 전까지 6시간 40분 멈췄다.
+test('한 번 쓰기에 실패해도 다음 기록은 다시 저장된다', async () => {
+  await withUsage({ aviation: 'key', radar_satellite: '', kim_nwp: '' }, async (usage, root) => {
+    await chmod(root, 0o500)
+    await assert.rejects(() => usage.record('key', { bytes: 1, status: 200, endpoint: 'metar' }))
+    await chmod(root, 0o700)
+
+    await usage.record('key', { bytes: 2, status: 200, endpoint: 'metar' })
+    const saved = JSON.parse(await readFile(path.join(root, 'api-hub-usage.json'), 'utf8'))
+    assert.equal(Object.values(Object.values(saved.days)[0].keys)[0].bytes, 3)
+  })
 })

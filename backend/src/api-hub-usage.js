@@ -55,6 +55,7 @@ export function createApiHubUsage({ root, keys }) {
   const categoryByFingerprint = new Map(Object.entries(configuredKeys).map(([category, value]) => [fingerprint(value), category]))
   let data = load(filePath)
   let writing = Promise.resolve()
+  let tempSeq = 0
 
   function resolveCategory(credential) {
     const category = credential && categoryByFingerprint.get(fingerprint(credential))
@@ -74,12 +75,21 @@ export function createApiHubUsage({ root, keys }) {
     for (const day of days.slice(2)) delete data.days[day]
   }
 
+  // 쓰기 한 번이 실패해도 줄을 다시 세운다. 예전에는 실패한 약속이 체인에 남아, 그 뒤의 모든
+  // 기록이 시도조차 없이 같은 오류로 거절됐다 — 2026-09-06에 rename 한 번이 어긋난 뒤
+  // 국내 수집 전체가 재시작 전까지 6시간 40분 멈췄다.
+  // 임시 파일 이름도 호출마다 다르게 잡아 다른 쓰기와 바꿔치기가 겹치지 않게 한다.
   function persist() {
-    writing = writing.then(async () => {
+    writing = writing.catch(() => {}).then(async () => {
       fs.mkdirSync(root, { recursive: true })
-      const tempPath = `${filePath}.tmp`
+      const tempPath = `${filePath}.${process.pid}.${++tempSeq}.tmp`
       fs.writeFileSync(tempPath, JSON.stringify(data), 'utf8')
-      fs.renameSync(tempPath, filePath)
+      try {
+        fs.renameSync(tempPath, filePath)
+      } catch (renameError) {
+        fs.rmSync(tempPath, { force: true })
+        throw renameError
+      }
     })
     return writing
   }
