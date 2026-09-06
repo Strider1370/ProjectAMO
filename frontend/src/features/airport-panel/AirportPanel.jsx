@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Cloud, Clock, Gauge, FileText, Info, Moon, ChevronDown } from 'lucide-react'
+import { AlertTriangle, BarChart3, Cloud, Clock, Gauge, FileText, Info, Moon, ChevronDown } from 'lucide-react'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
+import { MODEL_COMPARISON_AIRPORTS } from '../../api/modelComparisonApi.js'
 import { fmtKstShort, formatElevationFt } from './lib/formatters.js'
 import { formatAmosTime } from '../../shared/weather/amosViewModel.js'
 import { computeSunTimes } from '../../shared/weather/helpers.js'
@@ -16,6 +17,7 @@ import MoonSection from './tabs/MoonSection.jsx'
 import WarningCarousel from './WarningCarousel.jsx'
 import { resolveAirportBanner } from './lib/airportBanner.js'
 import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
+import { AirportModelComparisonSection } from '../airport-model-comparison/ModelComparisonSummary.jsx'
 import './AirportPanel.css'
 
 const AIRPORT_HEADER_NAME_KO = {
@@ -29,10 +31,10 @@ const AIRPORT_HEADER_NAME_KO = {
   RKJY: '여수공항',
 }
 
-const FULL_FEATURE_AIRPORTS = new Set(['RKSI', 'RKSS', 'RKPC', 'RKPU', 'RKJY', 'RKJB', 'RKNY', 'RKPK'])
+const FULL_FEATURE_AIRPORTS = new Set(MODEL_COMPARISON_AIRPORTS)
 
 // 섹션·레일 공용 아이콘(§12 — 레일과 제목바가 같은 아이콘으로 묶임)
-const SECTION_ICON = { warn: AlertTriangle, metar: Cloud, taf: Clock, amos: Gauge, notam: FileText, info: Info, moon: Moon }
+const SECTION_ICON = { warn: AlertTriangle, metar: Cloud, taf: Clock, amos: Gauge, 'model-analysis': BarChart3, notam: FileText, info: Info, moon: Moon }
 
 function AirportOperationsStrip({ airport, tz, now = new Date() }) {
   if (airport?.overseas) return null
@@ -159,6 +161,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
     { id: 'metar', label: 'METAR', titleText: metarSpeci ? 'SPECI' : 'METAR', special: metarSpeci, meta: metarTime ? fmtKstShort(metarTime, tz) : '', flightCategory: metarViewModel?.flightCat?.category, badge: metarBadge, node: <MetarTab metar={metar} amosData={amos} icao={icao} airportMeta={airport} /> },
     { id: 'taf', label: 'TAF', titleText: tafAmd ? 'TAF AMD' : 'TAF', special: tafAmd, meta: tafValid, badge: tafBadge, node: <EnhancedTafTab taf={taf} icao={icao} /> },
     isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
+    isFullFeature && { id: 'model-analysis', label: '상세 예보 분석', node: <AirportModelComparisonSection icao={icao} /> },
     { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} /> },
     isFullFeature && { id: 'info', label: '기상정보', node: <AirportInfoTab info={airportInfo} loading={infoLoading} /> },
     // 달빛은 위험이 아니라 계획용 참고값 → 위험도 순서상 맨 끝.
@@ -220,7 +223,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
               <details key={s.id} id={`sec-${s.id}`} className="ap-sec" open>
                 <summary className="ap-sec-head">
                   {Icon && <Icon className="ap-sec-icon" size={20} strokeWidth={2} aria-hidden="true" />}
-                  <span className={`ap-sec-title${s.special ? ' ap-sec-title--special' : ''}`}>{s.titleText || s.label}</span>
+                  <span role="heading" aria-level="2" className={`ap-sec-title${s.special ? ' ap-sec-title--special' : ''}`}>{s.titleText || s.label}</span>
                   {s.meta && <span className="ap-sec-meta">{s.meta}</span>}
                   {s.flightCategory && <span className={`ap-metar-tac-chip ap-metar-tac-chip--${s.flightCategory}`}>{s.flightCategory}</span>}
                   {s.badge && (

@@ -4,6 +4,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { readDataHealth } from '../src/admin/data-health.js'
+import { publishAirportWindow, writeCollectionAttempt } from '../src/airport-model-comparison/store.js'
+import { recordFixture } from './fixtures/airport-model-comparison/records.js'
 
 const NOW = Date.parse('2026-08-10T10:36:00Z')
 const base = () => fs.mkdtempSync(path.join(os.tmpdir(), 'dh-'))
@@ -78,10 +80,10 @@ test('쉬는 시간에는 판정하지 않는다 — KST 새벽 2시의 운항�
   assert.equal(rows.find((r) => r.key === 'terminal_flights').status, 'quiet')
 })
 
-test('묶음 정보는 현재 수집하는 33종을 빠짐없이 담는다', () => {
+test('묶음 정보는 현재 수집하는 36종을 빠짐없이 담는다', () => {
   const { groups } = readDataHealth(base(), { getCached: () => null, getStats: statsFor({}), now: NOW })
-  assert.equal(groups.source.reduce((n, g) => n + g.keys.length, 0), 33)
-  assert.equal(groups.character.reduce((n, g) => n + g.keys.length, 0), 33)
+  assert.equal(groups.source.reduce((n, g) => n + g.keys.length, 0), 36)
+  assert.equal(groups.character.reduce((n, g) => n + g.keys.length, 0), 36)
 })
 
 // last_success는 이 브랜치에서 새로 생긴 항목이다. 그 전에 수집된 자료에는 값이 없으므로,
@@ -171,4 +173,49 @@ test('watchdog의 현재 수집 미실행은 자료 신선도와 별도로 노�
   assert.equal(ground.label, '지상예보')
   assert.equal(ground.outcome, 'missed')
   assert.equal(ground.isProblem, true)
+})
+
+test('모델 health는 성공 pointer와 마지막 시도에서 시각·공항 수·실패 원인을 읽는다', () => {
+  const root = base()
+  for (const [airport_icao, run_at] of [['RKPU', '2026-09-06T00:00:00.000Z'], ['RKSI', '2026-09-06T06:00:00.000Z']]) {
+    const records = recordFixture({ model: 'ecmwf', airport_icao, run_at })
+    publishAirportWindow({ root, model: 'ecmwf', airport_icao, run_at, window: {
+      start_at: records[0].window_start_at,
+      end_at: records[0].window_end_at,
+      forecast_hours: records.map((record) => record.forecast_hour),
+    }, records })
+  }
+  writeCollectionAttempt({ root, model: 'ecmwf', report: {
+    started_at: '2026-09-06T08:10:00.000Z', finished_at: '2026-09-06T08:11:00.000Z',
+    next_check_at: '2026-09-06T08:20:00.000Z', publishedAirports: ['RKPU', 'RKPU'],
+    reusedAirports: ['RKSI', 'RKPU'], failedAirports: ['RKSS', 'RKSS'],
+    errors: [{ airport_icao: 'RKSS', code: 'provider_failed', message: 'provider request failed' }],
+  } })
+
+  const row = readDataHealth(root, {
+    getCached: () => null,
+    getStats: statsFor({ nwp_ecmwf: { last_success: '2026-09-06T08:11:00.000Z' } }),
+    now: Date.parse('2026-09-06T08:12:00.000Z'),
+  }).rows.find((entry) => entry.key === 'nwp_ecmwf')
+
+  assert.equal(row.modelRunAt, null, '공항별 실행이 섞이면 단일 대표 실행을 만들지 않는다')
+  assert.deepEqual(row.airportRuns, [
+    { airportIcao: 'RKSI', modelRunAt: '2026-09-06T06:00:00.000Z' },
+    { airportIcao: 'RKPU', modelRunAt: '2026-09-06T00:00:00.000Z' },
+  ])
+  assert.equal(row.availableAt, '2026-09-06T10:00:00.000Z')
+  assert.equal(row.collectedAt, '2026-09-06T10:20:00.000Z')
+  assert.equal(row.successAirports, 2)
+  assert.equal(row.failedAirports, 1)
+  assert.equal(row.nextCheckAt, '2026-09-06T08:20:00.000Z')
+  assert.deepEqual(row.lastFailure, { airportIcao: 'RKSS', code: 'provider_failed', message: 'provider request failed' })
+})
+
+test('꺼진 모델은 다음 점검을 노출하지 않는다', () => {
+  const row = readDataHealth(base(), {
+    getCached: () => null, getStats: statsFor({}), now: NOW,
+    cfg: { overseas_nwp: { enabled: false } },
+  }).rows.find((entry) => entry.key === 'nwp_icon')
+  assert.equal(row.status, 'disabled')
+  assert.equal(row.nextCheckAt, null)
 })

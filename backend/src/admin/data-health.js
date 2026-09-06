@@ -7,8 +7,10 @@ import { activeCollectorRegistry } from '../collector-registry.js'
 import { buildCollectorExecution } from '../collector-execution.js'
 import { CATALOG, SOURCES, CHARACTERS } from './data-health-catalog.js'
 import { judge } from './freshness.js'
+import { MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-comparison.js'
+import { readAirportComparison, readCollectionAttempt } from '../airport-model-comparison/store.js'
 
-// 관리자 콘솔: 자료 34종의 수집 상태.
+// 관리자 콘솔: 카탈로그에 등록된 자료의 수집 상태.
 //
 // 판정 기준은 stats의 last_success — "마지막으로 수집이 성공한 시각"이다. 내용이 언제 바뀌었는지
 // (store의 fetched_at, meta 파일 mtime)는 참고로만 함께 내려보낸다. SIGMET처럼 위험기상이 없으면
@@ -36,6 +38,31 @@ function activeCount(row, getCached) {
 
 function isCurrentlyFailing(entry) {
   return Boolean(entry?.last_failure && entry.last_failure === entry.last_run)
+}
+
+function comparisonHealth(basePath, model, disabled) {
+  if (!model) return {}
+  const pointers = []
+  for (const airportIcao of MODEL_COMPARISON_AIRPORTS) {
+    const pointer = readAirportComparison({ root: basePath, airport_icao: airportIcao }).models.find((entry) => entry.model === model)
+    if (pointer) pointers.push({ airportIcao, ...pointer })
+  }
+  const attempt = readCollectionAttempt({ root: basePath, model })
+  const successful = new Set([...(attempt?.publishedAirports || []), ...(attempt?.reusedAirports || [])])
+  const failed = new Set(attempt?.failedAirports || [])
+  const values = (field) => [...new Set(pointers.map((pointer) => pointer[field]).filter(Boolean))]
+  const runs = values('run_at')
+  const lastError = attempt?.errors?.at(-1) || null
+  return {
+    modelRunAt: runs.length === 1 ? runs[0] : null,
+    availableAt: values('available_at').sort().at(-1) || null,
+    collectedAt: values('collected_at').sort().at(-1) || null,
+    airportRuns: pointers.map((pointer) => ({ airportIcao: pointer.airportIcao, modelRunAt: pointer.run_at })),
+    successAirports: successful.size,
+    failedAirports: failed.size,
+    nextCheckAt: disabled ? null : attempt?.next_check_at || null,
+    lastFailure: lastError ? { airportIcao: lastError.airport_icao || null, code: lastError.code, message: lastError.message } : null,
+  }
 }
 
 // getCached(type)와 getStats()를 주입받는다(store.js·stats.js 직접 의존 대신) — basePath만 있으면
@@ -100,6 +127,7 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
       failing: isCurrentlyFailing(entry),
       lastError: entry?.last_error ?? null,
       operations: operationsFor(row.key),
+      ...comparisonHealth(basePath, row.comparisonModel, disabled),
     }
   })
 

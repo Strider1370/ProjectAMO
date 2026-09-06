@@ -34,6 +34,7 @@ import { runSatelliteWorker } from './satellite/worker-runner.js'
 import { createSatelliteWorkQueue } from './satellite/work-queue.js'
 import { activeCollectorRegistry, assertCollectorRegistry } from './collector-registry.js'
 import { createExecutionWatchdog } from './collector-execution.js'
+import { collectNwpModel, isNwpCollectionDue, peerComparisonRevision } from './airport-model-comparison/lifecycle.js'
 
 net.setDefaultAutoSelectFamily(false)
 
@@ -52,6 +53,7 @@ function safeCollectorLog(type, outcome, fields = {}) {
 }
 
 async function runWithLock(type, job, { source = 'manual', apiHubCategories = [], isBlocked = (category) => apiHubUsage.snapshot().keys.find((key) => key.category === category)?.status === 'blocked', stats: recorder = stats, logger = console } = {}) {
+  if (['nwp_ecmwf','nwp_icon','nwp_gfs'].includes(type) && !isNwpCollectionDue({model:type.slice(4)})) return {skipped:'nwp_complete_or_disabled'}
   const run = recorder.recordStart(type, { source })
   if (apiHubCategories.length > 0 && apiHubCategories.every(isBlocked)) {
     logger.warn?.(safeCollectorLog(type, 'skipped', { code: 'api_hub_key_blocked' }))
@@ -68,8 +70,10 @@ async function runWithLock(type, job, { source = 'manual', apiHubCategories = []
   const controller = new AbortController()
   activeControllers.set(type, controller)
   const t0 = Date.now();
+  const peerBefore = ['kim_surface_wind','nwp_icon','nwp_gfs'].includes(type) ? peerComparisonRevision() : null
   try {
     const result = await job({ signal: controller.signal });
+    if(type==='kim_surface_wind' && (result?.comparison?.failed || result?.comparison?.failedAirports?.length)) throw new Error('kim_airport_comparison_incomplete')
     const durationMs = Date.now() - t0
     logger.info?.(safeCollectorLog(type, 'succeeded', { duration_ms: durationMs, ...(typeof result?.saved === 'boolean' ? { saved: result.saved } : {}) }))
     recorder.recordSuccess(type, result, durationMs, run)
@@ -87,6 +91,9 @@ async function runWithLock(type, job, { source = 'manual', apiHubCategories = []
   } finally {
     activeControllers.delete(type)
     locks[type] = false;
+    if (peerBefore !== null && peerBefore !== peerComparisonRevision() && isNwpCollectionDue({model:'ecmwf'})) {
+      await runWithLock('nwp_ecmwf', processorBindings.nwp_ecmwf, {source:'manual'})
+    }
   }
 }
 
@@ -131,6 +138,9 @@ export function runSatelliteCollection(kind, { signal, fillAll = false } = {}) {
 }
 
 const processorBindings = {
+  nwp_ecmwf: ({signal}) => collectNwpModel({model:'ecmwf',signal}),
+  nwp_icon: ({signal}) => collectNwpModel({model:'icon',signal}),
+  nwp_gfs: ({signal}) => collectNwpModel({model:'gfs',signal}),
   metar: metarProcessor.processAll, taf: tafProcessor.processAll, warning: warningProcessor.process,
   kma_special_warning: kmaSpecialWarningProcessor.process, sigmet: sigmetProcessor.process, airmet: airmetProcessor.process,
   sigwx_low: sigwxLowProcessor.process, amos: amosProcessor.process, lightning: lightningProcessor.process,
@@ -145,21 +155,24 @@ const processorBindings = {
   satellite_visible: ({ signal }) => runSatelliteCollection('satellite_visible', { signal }),
 }
 
-function scheduleCollector({ scheduler = cron, collector, job, runOptions = {}, runner = runWithLock, scheduledTypes }) {
+function scheduleCollector({ scheduler = cron, collector, job, runOptions = {}, runner = runWithLock, scheduledTypes, isNwpDue = isNwpCollectionDue, now = Date.now, activeConfig = config }) {
   scheduledTypes.add(collector.type)
   return scheduler.schedule(
     collector.schedule.expression,
-    () => runner(collector.type, job, { ...runOptions, apiHubCategories: collector.apiHubCategories, source: 'scheduled' }),
+    () => {
+      if (collector.type.startsWith('nwp_') && !isNwpDue({model:collector.type.slice(4),root:activeConfig.storage.base_path,nowMs:now(),settings:activeConfig.overseas_nwp})) return
+      return runner(collector.type, job, { ...runOptions, apiHubCategories: collector.apiHubCategories, source: 'scheduled' })
+    },
     collector.schedule.cronOptions,
   )
 }
 
-export function registerCollectorSchedules({ scheduler = cron, config: activeConfig = config, runWithLock: runner = runWithLock, processorBindings: bindings = processorBindings } = {}) {
+export function registerCollectorSchedules({ scheduler = cron, config: activeConfig = config, runWithLock: runner = runWithLock, processorBindings: bindings = processorBindings, isNwpDue = isNwpCollectionDue, now = Date.now } = {}) {
   const activeCollectors = activeCollectorRegistry(activeConfig)
   assertCollectorRegistry({ activeCollectors, processorBindings: bindings })
   const scheduledTypes = new Set()
   for (const collector of activeCollectors) {
-    scheduleCollector({ scheduler, collector, job: bindings[collector.binding], runner, scheduledTypes })
+    scheduleCollector({ scheduler, collector, job: bindings[collector.binding], runner, scheduledTypes, isNwpDue, now, activeConfig })
   }
   const activeTypes = new Set(activeCollectors.map((collector) => collector.type))
   const missing = [...activeTypes].filter((type) => !scheduledTypes.has(type))
@@ -193,12 +206,14 @@ function isNotamCacheStale() {
 }
 
 function buildInitialCollectionJobs({
+  includeOverseasNwp = config.overseas_nwp?.enabled !== false,
   includeKimNwp = config.kim_nwp?.enabled !== false && config.kim_nwp?.collect_on_startup !== false,
   includeRadarSatellite = activeCollectorRegistry(config).some((collector) => collector.type === 'satellite'),
   includeEchoTop = includeRadarSatellite && config.radar_echo_top?.enabled !== false,
   satelliteJob = runSatelliteCollection,
 } = {}) {
   const jobs = [
+    ...(includeOverseasNwp && config.overseas_nwp?.enabled !== false ? ['nwp_ecmwf','nwp_icon','nwp_gfs'].map(type=>[type,processorBindings[type]]) : []),
     ["metar", metarProcessor.processAll],
     ["taf", tafProcessor.processAll],
     ["warning", warningProcessor.process],

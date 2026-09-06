@@ -30,6 +30,7 @@ const KmlViewerPage = lazy(() => import('../features/kml-viewer/KmlViewerPage.js
 const DrawSpikePage = lazy(() => import('../features/draw-spike/DrawSpikePage.jsx'))
 const AdminPage = lazy(() => import('../features/admin/AdminPage.jsx'))
 const DeveloperPage = lazy(() => import('../features/developer/DeveloperPage.jsx'))
+const ModelComparisonPage = lazy(() => import('../features/airport-model-comparison/ModelComparisonPage.jsx'))
 
 function formatTimeByTz(ms, tz) {
   const d = tz === 'KST' ? new Date(ms + 9 * 3600 * 1000) : new Date(ms)
@@ -329,6 +330,10 @@ function MainAppShell() {
 }
 
 function App() {
+  const comparisonMatch = window.location.pathname.match(/^\/airport\/([A-Z]{4})\/models\/?$/i)
+  if (comparisonMatch) {
+    return <TimeZoneProvider><Suspense fallback={null}><ModelComparisonPage icao={comparisonMatch[1].toUpperCase()} /></Suspense></TimeZoneProvider>
+  }
   if (/^\/terminal(?:\/[a-z0-9]{4})?\/?$/i.test(window.location.pathname)) {
     return <Suspense fallback={null}><TerminalPage /></Suspense>
   }

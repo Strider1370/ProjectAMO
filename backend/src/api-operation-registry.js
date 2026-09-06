@@ -43,6 +43,19 @@ function apiHubPolicyFor(id) {
 
 export const API_OPERATION_REGISTRY = Object.entries(API_HUB_ENDPOINTS).map(([id, label]) => ({ id, label, provider: 'KMA API Hub', collectorType: collectorById[id] || null, dataHealthKeys: health[id] || ['environment'], callContract: collectorById[id] ? { kind: 'collector' } : { kind: 'conditional', label: '수집 시' }, credentialCategory: category(id), apiHub: true, canonicalUrl: `https://apihub.kma.go.kr${canonicalPaths[id]}`, requestPolicy: apiHubPolicyFor(id), match: (url) => url.hostname === 'apihub.kma.go.kr' && pathMatchers[id](url.pathname) && (id !== 'radar_hsr' || url.searchParams.get('cmp') !== 'HCI') && (id !== 'radar_hci' || url.searchParams.get('cmp') === 'HCI') }))
   .concat([
+    ...[
+      ['open_meteo_ecmwf_meta', 'EC 갱신 메타', 'ecmwf', 'https://api.open-meteo.com/data/ecmwf_ifs025/static/meta.json'],
+      ['open_meteo_icon_meta', 'ICON 갱신 메타', 'icon', 'https://api.open-meteo.com/data/dwd_icon/static/meta.json'],
+      ['open_meteo_ecmwf_single_runs', 'EC 실행 고정 예보', 'ecmwf', 'https://single-runs-api.open-meteo.com/v1/forecast?models=ecmwf_ifs025'],
+      ['open_meteo_icon_single_runs', 'ICON 실행 고정 예보', 'icon', 'https://single-runs-api.open-meteo.com/v1/forecast?models=icon_global'],
+      ['open_meteo_icon_pressure_window', 'ICON 압력면 시간창', 'icon', 'https://api.open-meteo.com/v1/forecast?models=icon_global'],
+      ['nomads_gfs_filter', 'GFS GRIB2 부분추출', 'gfs', 'https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25_1hr.pl'],
+    ].map(([id,label,model,canonicalUrl]) => ({
+      id,label,provider:model === 'gfs' ? 'NOAA NOMADS' : 'Open-Meteo', collectorType:`nwp_${model}`, dataHealthKeys:[`nwp_${model}`],
+      callContract:{kind:'collector'},credentialCategory:null,apiHub:false,canonicalUrl,
+      requestPolicy:{timeoutMs:model === 'gfs' ? 60_000 : 30_000,maxAttempts:1,allowedOverrides:['signal']},
+      match:url=>{ const canonical=new URL(canonicalUrl); return url.protocol === 'https:' && url.hostname === canonical.hostname && url.pathname === canonical.pathname && (!canonical.searchParams.has('models') || url.searchParams.get('models') === canonical.searchParams.get('models')) },
+    })),
     { id: 'adsb', label: 'ADS-B', provider: 'ADS-B Exchange', collectorType: null, dataHealthKeys: [], callContract: { kind: 'on_demand' }, credentialCategory: null, apiHub: false, canonicalUrl: `${config.adsb.url}/point/36.5/127.5/250`, requestPolicy: { ...policy, timeoutMs: config.adsb.timeout_ms, transportFallback: groundForecastFallback }, match: (url) => url.hostname === new URL(config.adsb.url).hostname && url.pathname.startsWith(new URL(config.adsb.url).pathname) },
     { id: 'adsbdb_callsign', label: 'ADS-BDB 항로', provider: 'ADS-BDB', collectorType: null, dataHealthKeys: [], callContract: { kind: 'on_demand' }, credentialCategory: null, apiHub: false, canonicalUrl: 'https://api.adsbdb.com/v0/callsign/TEST', requestPolicy: { ...policy, timeoutMs: 8_000 }, match: (url) => url.hostname === 'api.adsbdb.com' && /^\/v0\/callsign\/[A-Z0-9]+$/i.test(url.pathname) },
     // KMA graphics descriptors point to public image assets under /data/.  They carry no

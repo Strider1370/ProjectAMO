@@ -11,6 +11,37 @@
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+const MODEL_FIXTURE = {
+  nwp_ecmwf: { status: 'ok', modelRunAt: null, airportRuns: [{ airportIcao: 'RKSI', modelRunAt: '2026-09-06T00:00:00.000Z' }, { airportIcao: 'RKPU', modelRunAt: '2026-09-06T06:00:00.000Z' }], availableAt: '2026-09-06T07:09:00.000Z', collectedAt: '2026-09-06T07:20:00.000Z', successAirports: 7, failedAirports: 1, nextCheckAt: '2026-09-06T08:30:00.000Z', lastFailure: { airportIcao: 'RKSS', code: 'provider_failed', message: 'provider request failed' } },
+  nwp_gfs: { status: 'late', modelRunAt: '2026-09-06T00:00:00.000Z', airportRuns: [{ airportIcao: 'RKSI', modelRunAt: '2026-09-06T00:00:00.000Z' }], availableAt: '2026-09-06T05:36:00.000Z', collectedAt: '2026-09-06T05:48:00.000Z', successAirports: 8, failedAirports: 0, nextCheckAt: '2026-09-06T08:40:00.000Z', lastFailure: null },
+  nwp_icon: { status: 'disabled', modelRunAt: null, airportRuns: [], availableAt: null, collectedAt: null, successAirports: 0, failedAirports: 0, nextCheckAt: null, lastFailure: null },
+  kim_nwp: { status: 'ok', modelRunAt: '2026-09-06T00:00:00.000Z', airportRuns: [{ airportIcao: 'RKSI', modelRunAt: '2026-09-06T00:00:00.000Z' }], availableAt: '2026-09-06T05:20:00.000Z', collectedAt: '2026-09-06T05:24:00.000Z', successAirports: 8, failedAirports: 0, nextCheckAt: '2026-09-06T08:50:00.000Z', lastFailure: null },
+}
+
+export async function installAdminDataHealthFixture(page) {
+  await page.route('**/api/admin/data-health', async (route) => {
+    const response = await route.fetch()
+    const health = await response.json()
+    health.rows = health.rows.map((row) => MODEL_FIXTURE[row.key] ? { ...row, ...MODEL_FIXTURE[row.key] } : row)
+    await route.fulfill({ response, json: health })
+  })
+  await page.route('**/api/admin/metrics?*', async (route) => {
+    // Fetch first so the real endpoint still proves the session has admin authority. A fresh
+    // contract server has only one sampler row, so supply a stable two-point series for charts.
+    const response = await route.fetch()
+    const now = Date.now()
+    await route.fulfill({ response, json: {
+      range: new URL(route.request().url()).searchParams.get('range') || '24h',
+      current: { cpuPct: 24, memUsed: 4 * 1024 ** 3, memTotal: 16 * 1024 ** 3, diskUsed: 30 * 1024 ** 3, diskTotal: 100 * 1024 ** 3 },
+      peakCpu: { ts: new Date(now - 60_000).toISOString(), cpu_pct: 24 },
+      series: [
+        { ts: new Date(now - 120_000).toISOString(), cpu_pct: 18, mem_used: 3 * 1024 ** 3, mem_total: 16 * 1024 ** 3, disk_used: 29 * 1024 ** 3, disk_total: 100 * 1024 ** 3 },
+        { ts: new Date(now - 60_000).toISOString(), cpu_pct: 24, mem_used: 4 * 1024 ** 3, mem_total: 16 * 1024 ** 3, disk_used: 30 * 1024 ** 3, disk_total: 100 * 1024 ** 3 },
+      ],
+    } })
+  })
+}
+
 const backendDir = path.resolve(import.meta.dirname, '..', '..', 'backend')
 const { getDb } = await import(pathToFileURL(path.join(backendDir, 'src/db/index.js')).href)
 const { createUser } = await import(pathToFileURL(path.join(backendDir, 'src/db/users.js')).href)

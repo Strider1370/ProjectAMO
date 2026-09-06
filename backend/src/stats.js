@@ -8,6 +8,7 @@ import { API_OPERATION_REGISTRY } from './api-operation-registry.js'
 //  echo_top·satellite·rainviewer·ground_forecast·environment·airport_info·takeoff_fcst·ktg·notam·typhoon도
 //  같은 이유로 빠져 있었다: 등록 안 된 새 수집기 추가 때마다 이 목록을 안 늘려서 실패가 조용히 유실됐다.)
 const TYPES = [
+  'nwp_ecmwf', 'nwp_icon', 'nwp_gfs',
   'metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'radar_echo', 'wissdom', 'qpf', 'hsr', 'hci', 'echo_top',
   'satellite', 'rainviewer', 'amos', 'adsb', 'metar_overseas', 'taf_overseas', 'sigmet_overseas',
   'satellite_visible', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'ktg', 'notam', 'typhoon', 'kim_surface_wind', 'flight_category', 'asos_ceiling', 'terminal_flights', 'overseas_forecast',

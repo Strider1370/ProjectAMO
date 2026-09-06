@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import config from '../src/config.js'
 import { activeCollectorRegistry } from '../src/collector-registry.js'
-import { registerCollectorSchedules, runWithLock, startCollectorWatchdog } from '../src/index.js'
+import { buildInitialCollectionJobs, registerCollectorSchedules, runWithLock, startCollectorWatchdog } from '../src/index.js'
 
 const enabledConfig = {
   ...config,
@@ -24,6 +24,14 @@ function scheduler() {
 function bindingsFor(activeCollectors) {
   return Object.fromEntries(activeCollectors.map((collector) => [collector.binding, async () => ({ saved: true })]))
 }
+
+test('completed NWP cron checks bypass runner and OFF excludes startup jobs', async () => {
+  const fake=scheduler(),collectors=activeCollectorRegistry(enabledConfig),calls=[]
+  registerCollectorSchedules({scheduler:fake,config:enabledConfig,processorBindings:bindingsFor(collectors),runWithLock:async type=>calls.push(type),isNwpDue:()=>false})
+  for(const [i,collector] of collectors.entries()) if(collector.type.startsWith('nwp_')) await fake.calls[i].callback()
+  assert.deepEqual(calls,[])
+  assert.ok(!buildInitialCollectionJobs({includeOverseasNwp:false}).some(([type])=>type.startsWith('nwp_')))
+})
 
 test('every active collector is registered exactly once with its declared expression and timezone', () => {
   const fakeScheduler = scheduler()

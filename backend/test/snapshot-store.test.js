@@ -12,6 +12,9 @@ import {
   loadSnapshot,
   saveSnapshot,
 } from '../src/dev/snapshot-store.js'
+import { buildAirportComparison } from '../src/airport-model-comparison/service.js'
+import { publishAirportWindow } from '../src/airport-model-comparison/store.js'
+import { recordFixture } from './fixtures/airport-model-comparison/records.js'
 
 function tempRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'projectamo-snapshot-'))
@@ -130,6 +133,84 @@ test('inspectSnapshot blocks required directories whose primary payload is missi
 
     assert.ok(report.blockers.includes('metar:latest_missing'))
     assert.ok(report.blockers.includes('radar:metadata_missing'))
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('snapshot captures full observation history and immutable comparison payloads', () => {
+  const root = tempRoot()
+  try {
+    writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-09-06T08:00:00Z' })
+    writeJson(path.join(root, 'metar', 'METAR_01.json'), { fetched_at: 'history' })
+    writeJson(path.join(root, 'amos', 'latest.json'), { fetched_at: '2026-09-06T08:00:00Z' })
+    writeJson(path.join(root, 'amos', 'AMOS_01.json'), { fetched_at: 'history' })
+    writeJson(path.join(root, 'airport_model_comparison', 'icon', 'latest.json'), {
+      model: 'icon', airports: { RKPU: { path: 'runs/202609060000/RKPU/payload.json' } },
+    })
+    writeJson(path.join(root, 'airport_model_comparison', 'icon', 'runs', '202609060000', 'RKPU', 'payload.json'), { marker: 'demo' })
+
+    const result = saveSnapshot(root, 'demo')
+
+    assert.ok(result.saved.includes('airport_model_comparison'))
+    for (const relative of ['metar/METAR_01.json', 'amos/AMOS_01.json', 'airport_model_comparison/icon/runs/202609060000/RKPU/payload.json']) {
+      assert.equal(fs.existsSync(path.join(root, 'snapshots', 'demo', relative)), true, relative)
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('comparison pointer integrity is conditional and confined to the snapshot', () => {
+  const root = tempRoot()
+  try {
+    writeJson(path.join(root, 'snapshots', 'legacy', 'meta.json'), { referenceTime: '2026-09-06T08:00:00Z' })
+    const legacy = inspectSnapshot(root, 'legacy')
+    assert.equal(legacy.blockers.some((item) => item.startsWith('airport_model_comparison:')), false)
+
+    writeJson(path.join(root, 'snapshots', 'broken', 'meta.json'), { referenceTime: '2026-09-06T08:00:00Z' })
+    writeJson(path.join(root, 'snapshots', 'broken', 'airport_model_comparison', 'icon', 'latest.json'), {
+      model: 'icon', airports: {
+        RKPU: { path: 'runs/202609060000/RKPU/missing.json' },
+        RKSI: { path: '/tmp/outside.json' },
+      },
+    })
+    const broken = inspectSnapshot(root, 'broken')
+    assert.ok(broken.blockers.includes('airport_model_comparison:missing_payloads:2'))
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('comparison service reads only the selected live or snapshot root', () => {
+  const root = tempRoot()
+  try {
+    const publish = (temperature, collectedAt) => {
+      const records = recordFixture({ model: 'icon', airport_icao: 'RKPU' }).map((record) => ({
+        ...record, temperature_c: temperature, collected_at: collectedAt,
+      }))
+      publishAirportWindow({ root, model: 'icon', airport_icao: 'RKPU', run_at: records[0].run_at, window: {
+        start_at: records[0].window_start_at, end_at: records[0].window_end_at,
+        forecast_hours: records.map((record) => record.forecast_hour),
+      }, records })
+    }
+    writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-09-06T08:00:00.000Z', airports: {} })
+    publish(23, '2026-09-06T08:00:00.000Z')
+    saveSnapshot(root, 'demo')
+    publish(31, '2026-09-06T08:10:00.000Z')
+
+    const demoRoot = path.join(root, 'snapshots', 'demo')
+    const input = { airport_icao: 'RKPU', nowMs: Date.parse('2026-09-06T08:20:00.000Z') }
+    const demoBefore = buildAirportComparison({ ...input, root: demoRoot, viewRevision: 'demo-a' })
+    const live = buildAirportComparison({ ...input, root, viewRevision: 'live-a' })
+    assert.equal(demoBefore.models[0].records[0].temperature_c, 23)
+    assert.equal(live.models[0].records[0].temperature_c, 31)
+
+    publish(35, '2026-09-06T08:20:00.000Z')
+    const demoAfter = buildAirportComparison({ ...input, root: demoRoot, viewRevision: 'demo-a' })
+    assert.equal(demoAfter.models[0].records[0].temperature_c, 23, 'live collector publication must not leak into demo reads')
+    assert.equal(buildAirportComparison({ ...input, root: demoRoot, viewRevision: 'demo-b' }).models[0].records[0].temperature_c, 23)
+    assert.notEqual(buildAirportComparison({ ...input, root: demoRoot, viewRevision: 'demo-b' }).revision, demoAfter.revision)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }

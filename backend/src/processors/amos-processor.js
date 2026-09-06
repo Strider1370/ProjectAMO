@@ -3,6 +3,14 @@ import { requestObservedApi } from '../lib/request-observability.js'
 import store from '../store.js'
 import amosParser from '../parsers/amos-parser.js'
 
+export function buildAmosHourlySamples(rows) {
+  return rows.filter(row => /^\d{10}00$/.test(row.tm)).map(row => {
+    const tm = row.tm
+    const ms = Date.UTC(+tm.slice(0,4), +tm.slice(4,6)-1, +tm.slice(6,8), +tm.slice(8,10)) - 9*3600000
+    return { observed_at: new Date(ms).toISOString(), observed_tm_kst: tm, daily_total_mm: Number.isFinite(row.rn_raw) && row.rn_raw >= 0 ? row.rn_raw/10 : null, source: 'AMOS' }
+  })
+}
+
 function formatKstMinuteTm(isoOrDate) {
   const base = new Date(isoOrDate || Date.now());
   if (Number.isNaN(base.getTime())) {
@@ -79,6 +87,7 @@ async function process() {
       result.airports[airport.icao] = {
         icao: airport.icao,
         amos_stn: null,
+        hourly_rainfall: [],
         daily_rainfall: emptyDailyRainfall(targetTm, false),
         observation: emptyObservation(),
       };
@@ -97,6 +106,7 @@ async function process() {
       result.airports[airport.icao] = {
         icao: airport.icao,
         amos_stn: stn,
+        hourly_rainfall: buildAmosHourlySamples(rows),
         daily_rainfall: amosParser.pickDailyRainfallAtTime(
           rows,
           targetTm,

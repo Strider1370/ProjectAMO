@@ -9,6 +9,7 @@ export const SOURCES = {
   kma_radar: { label: '레이더·위성키', apiHubCategory: 'radar_satellite' },
   kma_nwp: { label: '수치예보키', apiHubCategory: 'kim_nwp' },
   noaa: { label: 'NOAA', apiHubCategory: null },
+  open_meteo: { label: 'Open-Meteo', apiHubCategory: null },
   kac: { label: '공항공사', apiHubCategory: null },
   external: { label: '기타 외부', apiHubCategory: null },
 }
@@ -40,6 +41,9 @@ const OFF = {
 const anyOf = (...checks) => (c) => checks.some((check) => check(c))
 
 export const CATALOG = [
+  { key: 'nwp_ecmwf', label: 'ECMWF IFS', source: 'open_meteo', character: 'nwp', comparisonModel: 'ecmwf', normalMs: h(6), lateMs: h(10), stoppedMs: h(20), meta: 'airport_model_comparison/ecmwf/latest.json', disabledWhen: c => c.overseas_nwp?.enabled === false },
+  { key: 'nwp_icon', label: 'ICON Global', source: 'open_meteo', character: 'nwp', comparisonModel: 'icon', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'airport_model_comparison/icon/latest.json', disabledWhen: c => c.overseas_nwp?.enabled === false },
+  { key: 'nwp_gfs', label: 'GFS Global', source: 'noaa', character: 'nwp', comparisonModel: 'gfs', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'airport_model_comparison/gfs/latest.json', disabledWhen: c => c.overseas_nwp?.enabled === false },
   { key: 'metar', label: 'METAR 국내', source: 'kma_aviation', character: 'report', normalMs: m(5), lateMs: m(20), stoppedMs: m(40) },
   { key: 'taf', label: 'TAF 국내', source: 'kma_aviation', character: 'report', normalMs: m(10), lateMs: m(30), stoppedMs: h(1) },
   { key: 'sigmet', label: 'SIGMET 국내', source: 'kma_aviation', character: 'hazard', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), eventDriven: true },
@@ -66,7 +70,7 @@ export const CATALOG = [
   { key: 'convective', label: '대류 CI·CTPS', source: 'kma_radar', character: 'observation', statsKey: 'satellite', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/convective/convective_meta.json', disabledWhen: anyOf(OFF.convective, OFF.radarKey),},
   { key: 'flight_category_overlay', label: '비행범주', source: 'kma_radar', character: 'report', statsKey: 'flight_category', normalMs: m(20), lateMs: h(1), stoppedMs: h(2) },
 
-  { key: 'kim_nwp', label: 'KIM 수치예보 격자', source: 'kma_nwp', character: 'nwp', statsKey: 'kim_surface_wind', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/latest.json', disabledWhen: OFF.kimNwp,},
+  { key: 'kim_nwp', label: 'KIM 수치예보 격자', source: 'kma_nwp', character: 'nwp', comparisonModel: 'kim', statsKey: 'kim_surface_wind', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/latest.json', disabledWhen: OFF.kimNwp,},
   { key: 'ktg', label: '난류(KTG)', source: 'kma_nwp', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'ktg/latest.json' },
 
   { key: 'metar_overseas', label: 'METAR 해외', source: 'noaa', character: 'report', normalMs: m(5), lateMs: m(20), stoppedMs: m(40) },
@@ -78,7 +82,7 @@ export const CATALOG = [
 
   { key: 'rainviewer', label: '해외 레이더', source: 'external', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/rainviewer_meta.json' },
   { key: 'overseas_forecast', label: '해외예보', source: 'external', character: 'general', normalMs: h(1), lateMs: h(3), stoppedMs: h(6), quiet: EARLY_MORNING },
-].map((row) => ({ statsKey: row.key, quiet: null, eventDriven: false, meta: null, disabledWhen: null, ...row }))
+].map((row) => ({ statsKey: row.key, quiet: null, eventDriven: false, meta: null, disabledWhen: null, comparisonModel: null, ...row }))
 
 const groupBy = (field, dict) => () =>
   Object.entries(dict).map(([id, meta]) => ({ id, ...meta, rows: CATALOG.filter((r) => r[field] === id) }))

@@ -1,8 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import airports from '../../../shared/airports.js'
+import { MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-comparison.js'
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
+import { collectKimAirportComparison } from '../airport-model-comparison/kim.js'
 import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import store from '../store.js'
 import {
@@ -158,7 +161,7 @@ export function resolveKimIcingComponentRequests({
   }))
 }
 
-function rawComponentFileName({ level, name, variable }) {
+export function rawComponentFileName({ level, name, variable }) {
   if (variable === 'T') return 'T.txt'
   if (variable === 'rh') return 'rh.txt'
   if (variable === 'hgt') return 'hgt.txt'
@@ -612,7 +615,22 @@ export function resolveCollectedForecastHours({ tmfc, nowMs = Date.now(), candid
   return [selectNearestForecastHour({ tmfc, nowMs, candidateHours })]
 }
 
-export async function process({ candidates = resolveKimSurfaceWindCandidates() } = {}) {
+export async function collectKimComparisonIfEligible({ tmfc, forecastHours, credential, signal, root, airports: selectedAirports, single, collectComparison = collectKimAirportComparison }) {
+  if (single || forecastHours.length !== 13) return { skipped: true, reason: 'kim_comparison_requires_13_hours' }
+  try {
+    return await collectComparison({ tmfc, forecastHours, credential, signal, root, airports: selectedAirports })
+  } catch (error) {
+    if (signal?.aborted || error?.name === 'AbortError') throw error
+    return { failed: true, reason: 'kim_airport_comparison_failed', message: error.message }
+  }
+}
+
+export async function process({
+  candidates = resolveKimSurfaceWindCandidates(),
+  signal,
+  collectComparison = collectKimAirportComparison,
+  comparisonAirports = airports.filter(airport => MODEL_COMPARISON_AIRPORTS.includes(airport.icao)),
+} = {}) {
   let lastError = null
 
   for (const candidate of candidates) {
@@ -627,6 +645,7 @@ export async function process({ candidates = resolveKimSurfaceWindCandidates() }
       candidateHours,
       single: config.kim_nwp?.single_forecast !== false,
     })
+    const collectAirportComparison = () => collectKimComparisonIfEligible({ tmfc: candidate.tmfc, forecastHours, credential, signal, root: config.storage.base_path, airports: comparisonAirports, single: config.kim_nwp?.single_forecast !== false, collectComparison })
     if (hasCompleteKimNwpRun({
       latest: readKimNwpLatest(config.storage.base_path),
       index: readKimNwpIndex(config.storage.base_path),
@@ -635,11 +654,13 @@ export async function process({ candidates = resolveKimSurfaceWindCandidates() }
       levels: KIM_NWP_LEVELS,
       collectIcing: config.kim_nwp?.collect_icing !== false,
     })) {
+      const comparison = await collectAirportComparison()
       return {
         type: TYPE,
         skipped: true,
         reason: 'kim_nwp_latest_run_complete',
         tmfc: candidate.tmfc,
+        comparison,
       }
     }
     const entries = []
@@ -728,16 +749,18 @@ export async function process({ candidates = resolveKimSurfaceWindCandidates() }
     })
     cleanupKimNwpRuns({ root: config.storage.base_path, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId })
 
+    const comparison = await collectAirportComparison()
     if (!surfaceGrid) {
       return {
         type: TYPE,
         latestRun: candidate.tmfc,
         skippedLegacySurfaceWind: true,
         reason: 'kim_surface_wind_grid_unavailable',
+        comparison,
       }
     }
     const field = buildKimSurfaceWindFieldFromWindGrid(surfaceGrid)
-    return store.save(TYPE, field)
+    return { ...store.save(TYPE, field), comparison }
   }
 
   throw lastError || new Error('KIM surface wind collection failed')
@@ -758,6 +781,7 @@ export default {
   process,
   buildKimSurfaceWindField,
   collectKimNwpTask,
+  collectKimComparisonIfEligible,
   fetchIcingComponents,
   readSelectedKimNwpField,
   mergeIcingComponentsIntoGrid,

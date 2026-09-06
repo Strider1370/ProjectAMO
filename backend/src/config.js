@@ -308,8 +308,8 @@ export const kim_nwp = {
   max_runs: Number(process.env.KIM_NWP_MAX_RUNS || 2),
   keep_raw: process.env.KIM_NWP_KEEP_RAW !== '0',
   concurrency: Number(process.env.KIM_NWP_CONCURRENCY || 4),
-  // API 공개 예상 시각(F005)부터 향후 12시간(F016)만 수집한다.
-  forecast_hours: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+  // 실제 실행 기준 F000~F012를 지도와 공항 상세 비교에 재사용한다.
+  forecast_hours: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
   // KIM_NWP_SINGLE_FORECAST=1 이면 최근 1스텝만.
   single_forecast: process.env.KIM_NWP_SINGLE_FORECAST === '1',
   collect_icing: process.env.KIM_NWP_COLLECT_ICING !== '0',
@@ -319,6 +319,11 @@ export const kim_nwp = {
   // 비습. rh와 달리 물/빙정 기준 구분이 없어 이슬점과 가강수량을 편향 없이 낸다.
   // rh_liq은 착빙용이라 300hPa 아래만 있고, q는 rh와 같은 21개 층 전부에 붙는다.
   collect_specific_humidity: process.env.KIM_NWP_COLLECT_Q !== '0',
+}
+
+export const overseas_nwp = {
+  enabled: process.env.OVERSEAS_NWP_DISABLED !== '1',
+  max_runs: Number(process.env.OVERSEAS_NWP_MAX_RUNS || 4),
 }
 
 export const notam = {
@@ -348,6 +353,9 @@ export const noaa = {
 }
 
 export const schedule = {
+  nwp_ecmwf_interval: '*/10 * * * *',
+  nwp_icon_interval: '*/10 * * * *',
+  nwp_gfs_interval: '*/10 * * * *',
   notam_interval: '0 */6 * * *', // 6시간 주기(00,06,12,18 UTC)
   metar_interval: '*/5 * * * *',
   // 10분 — 정시 TAF는 6시간 주기지만 AMD(수시 정정)가 예고 없이 나오므로 발표 주기가 아니라 정정 반영 지연으로 정한다.
@@ -487,6 +495,8 @@ export const storage = {
   active_path: path.join(resolveDataPath(process.env.DATA_PATH), '.active-data'),
   max_files_per_category: 10,
   max_files_by_type: {
+    metar: 60,
+    amos: 60,
     lightning: 48,
     sigwx_low: 12,
     flight_category_overlay: 12,
@@ -522,6 +532,7 @@ export default {
   adsb,
   kim_surface_wind,
   kim_nwp,
+  overseas_nwp,
   schedule,
   storage,
   push,

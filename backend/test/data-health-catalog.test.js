@@ -2,9 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { CATALOG, SOURCES, CHARACTERS, bySource } from '../src/admin/data-health-catalog.js'
 
-test('카탈로그는 현재 수집하는 33종이고 키가 중복되지 않는다', () => {
-  assert.equal(CATALOG.length, 33)
-  assert.equal(new Set(CATALOG.map((r) => r.key)).size, 33)
+test('카탈로그는 현재 수집하는 36종이고 키가 중복되지 않는다', () => {
+  assert.equal(CATALOG.length, 36)
+  assert.equal(new Set(CATALOG.map((r) => r.key)).size, 36)
 })
 
 test('모든 행이 알려진 출처·성격에 속한다', () => {
@@ -29,5 +29,5 @@ test('이벤트성 자료 7종이 표시돼 있다', () => {
 test('bySource는 출처 순서대로 묶어 돌려준다', () => {
   const groups = bySource()
   assert.equal(groups[0].id, 'kma_aviation')
-  assert.equal(groups.reduce((n, g) => n + g.rows.length, 0), 33)
+  assert.equal(groups.reduce((n, g) => n + g.rows.length, 0), 36)
 })

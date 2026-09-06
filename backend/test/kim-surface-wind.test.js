@@ -18,6 +18,7 @@ import {
 import {
   buildKimSurfaceWindField,
   collectKimNwpTask,
+  collectKimComparisonIfEligible,
   hasCompleteKimNwpRun,
   mapKimNwpTasksWithConcurrency,
   mergeIcingComponentsIntoGrid,
@@ -170,8 +171,26 @@ test('KIM NWP scheduler starts at expected publication plus five hours and retri
   assert.equal(config.schedule.kim_surface_wind_interval, '12 1,5,6,7,11,12,13,17,18,19,23 * * *')
 })
 
-test('KIM NWP collects the twelve forecast hours from F005 through F016', () => {
-  assert.deepEqual(config.kim_nwp.forecast_hours, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
+test('KIM NWP comparison collects F000 through F012', () => {
+  assert.deepEqual(config.kim_nwp.forecast_hours, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+})
+
+test('comparison failure is reported without throwing into map collection', async () => {
+  const result = await collectKimComparisonIfEligible({ tmfc: '2026090600', forecastHours: Array.from({ length: 13 }, (_, i) => i), root: '/tmp', airports: [], single: false, collectComparison: async () => { throw new Error('supplement unavailable') } })
+  assert.deepEqual(result, { failed: true, reason: 'kim_airport_comparison_failed', message: 'supplement unavailable' })
+})
+
+test('single forecast mode never publishes a comparison window', async () => {
+  let called = false
+  const result = await collectKimComparisonIfEligible({ tmfc: '2026090600', forecastHours: [3], root: '/tmp', airports: [], single: true, collectComparison: async () => { called = true } })
+  assert.equal(called, false)
+  assert.equal(result.reason, 'kim_comparison_requires_13_hours')
+})
+
+test('comparison cancellation propagates out of the collector', async () => {
+  const controller = new AbortController()
+  controller.abort()
+  await assert.rejects(collectKimComparisonIfEligible({ tmfc: '2026090600', forecastHours: Array.from({ length: 13 }, (_, i) => i), root: '/tmp', airports: [], single: false, signal: controller.signal, collectComparison: async () => { throw controller.signal.reason } }), /abort/i)
 })
 
 test('buildKimGridUrl uses the KMA APIHub KIM cgi endpoint', () => {

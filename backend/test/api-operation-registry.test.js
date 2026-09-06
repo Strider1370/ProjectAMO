@@ -10,6 +10,22 @@ import {
 import config from '../src/config.js'
 import { activeCollectorRegistry } from '../src/collector-registry.js'
 
+test('fixed-run model URLs resolve uniquely without KMA credentials and can be disabled', () => {
+  const urls = {
+    open_meteo_ecmwf_meta: 'https://api.open-meteo.com/data/ecmwf_ifs025/static/meta.json',
+    open_meteo_icon_meta: 'https://api.open-meteo.com/data/dwd_icon/static/meta.json',
+    open_meteo_ecmwf_single_runs: 'https://single-runs-api.open-meteo.com/v1/forecast?models=ecmwf_ifs025&run=2026-09-06T00:00',
+    open_meteo_icon_single_runs: 'https://single-runs-api.open-meteo.com/v1/forecast?models=icon_global',
+    open_meteo_icon_pressure_window: 'https://api.open-meteo.com/v1/forecast?models=icon_global',
+    nomads_gfs_filter: 'https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25_1hr.pl?file=gfs.t00z.pgrb2.0p25.f009',
+  }
+  for (const [id,url] of Object.entries(urls)) {
+    const op=resolveApiOperation({url}); assert.equal(op.id,id); assert.equal(op.apiHub,false); assert.equal(op.credentialCategory,null)
+    assert.ok(op.collectorType.startsWith('nwp_'))
+  }
+  assert.ok(!activeCollectorRegistry({overseas_nwp:{enabled:false}}).some(c=>c.type.startsWith('nwp_')))
+})
+
 test('each canonical operation URL resolves to exactly its declared operation', () => {
   for (const operation of API_OPERATION_REGISTRY) {
     const resolved = resolveApiOperation({ url: operation.canonicalUrl })

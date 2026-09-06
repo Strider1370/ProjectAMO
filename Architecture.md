@@ -54,6 +54,8 @@ ProjectAMO/
 
 ### Frontend
 
+- `frontend/src/features/airport-model-comparison/` -> 공항 상세 예보 분석. 공항 패널 요약과 `/airport/:icao/models` 화면이 같은 UTC 유효시각 뷰모델을 사용한다. 표·그래프·기온/RH·조건부 TAF·모델별 운고 상태를 표시하고 활성 화면에서만 저장 자료 API를 갱신한다.
+
 - `frontend/src/main.jsx` -> React root bootstrap; imports app entry CSS.
 - `frontend/src/app/App.jsx` -> app shell state, sidebar/panel composition, selected airport state, and route-level lazy loading for non-main app routes.
 - `frontend/src/app/App.css` -> app shell and layout CSS entry.
@@ -181,6 +183,9 @@ ProjectAMO/
 - `frontend/src/shared/weather/weather-icon-registry.js` -> weather icon asset registry.
 
 ### Backend
+
+- `backend/src/airport-model-comparison/{model,store,service}.js` -> 8개 공항의 KIM/EC/GFS/ICON 13시각 계약, 공항별 불변 구간과 원자적 최신 포인터, 활성 데이터 뷰의 관측/예보 응답을 소유한다. `/api/airport/:icao/model-comparison` GET은 외부 모델을 수집하지 않는다.
+- `backend/src/airport-model-comparison/{kim,open-meteo,gfs,lifecycle}.js` -> 기존 KIM 격자 재사용, Open-Meteo 실행 고정·ICON 보완 자료 검증, NOMADS GFS 수집과 10분 점검을 담당한다. EC 구간은 해당 공항의 완전한 다른 모델 실행을 기준으로 이동한다. `backend/src/parsers/gfs-grib2-parser.js`는 지원 GRIB2 격자·시간·단순 패킹만 검증·판독한다. 수집은 실황 루트에 쓰고, 읽기는 활성 뷰를 따른다.
 
 - `backend/src/dev/data-view.js` -> 실황/시연 활성 데이터 뷰의 단일 interface. 기존 `DATA_PATH`는 수집기가 계속 쓰는 실황 루트이고, `DATA_PATH/.active-data` 심볼릭 링크만 Linux `rename`으로 원자 교체한다. 시연 뷰는 스냅샷 자료를 연결하되 AIP·태풍·지형은 명시적으로 실황에 통과 연결하며, 뷰 메타가 모드·기준시각·revision의 재시작 가능한 단일 진실원이다.
 - `backend/src/dev/demo-session.js` -> 준비 점검을 통과한 스냅샷 뷰 시작과 최신 실황 뷰 종료를 직렬화하고, 포인터 전환 직후 활성 읽기 캐시를 다시 적재한다. 시작·종료는 수집 drain, `_live_backup`, 대용량 복사, 외부 호출을 하지 않는다. 새 스냅샷 캡처만 일관성을 위해 진행 중 수집을 정리한다.

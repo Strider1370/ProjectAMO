@@ -1,9 +1,19 @@
 import crypto from 'node:crypto'
 
 export const KIM_NWP_MODEL = 'KIMG/NE57'
-// 저장소·API 경로가 허용하는 KIM 예보시간 범위. 실제 수집 대상(F005~F016)은 config.kim_nwp에서 정한다.
+export const KIM_AIRPORT_SURFACE_REQUESTS = Object.freeze([
+  { name: 'gust', unit: 'm/s' },
+  { name: 'pr', unit: 'kg/m²/s' },
+  { name: 'prec_acc', unit: 'kg/m²' },
+  { name: 'tcld', unit: '1' }, { name: 'lcld', unit: '1' },
+  { name: 'mcld', unit: '1' }, { name: 'hcld', unit: '1' },
+  { name: 'td2m', unit: 'K' }, { name: 'rh2m', unit: '%' },
+  { name: 'psl', unit: 'Pa' }, { name: 'topo', unit: 'm' },
+].map(request => Object.freeze({ data: 'U', level: 0, ...request })))
+// 저장소·API 경로가 허용하는 KIM 예보시간 범위. 실제 비교 수집 대상(F000~F012)은 config.kim_nwp에서 정한다.
 export const KIM_NWP_FORECAST_HOURS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 export const KIM_NWP_LEVELS = [
+  { id: '10m', label: '10 m', kind: 'height', value: 10, unit: 'm AGL', level: 0, uName: 'u10m', vName: 'v10m' },
   { id: '1000hPa', label: '1000', kind: 'pressure', value: 1000, unit: 'hPa', level: 1000, uName: 'u', vName: 'v' },
   { id: '975hPa', label: '975', kind: 'pressure', value: 975, unit: 'hPa', level: 975, uName: 'u', vName: 'v' },
   { id: '950hPa', label: '950', kind: 'pressure', value: 950, unit: 'hPa', level: 950, uName: 'u', vName: 'v' },

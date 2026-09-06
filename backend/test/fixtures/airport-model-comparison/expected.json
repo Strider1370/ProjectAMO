@@ -1,0 +1,12 @@
+{
+  "kind": "derived_reference",
+  "source": "Approved 2026-09-06 design; artifacts/nwp-live-validation-20260906, independent ecCodes GFS values retained in GFS fixtures",
+  "valid_at": "2026-09-06T09:00:00.000Z",
+  "RKPU": {
+    "ecmwf": { "grid_elevation_m": 95, "height_m": 1474, "cloud_fraction": 0.53, "ceiling_agl_ft": 4524.278215223097 },
+    "gfs": { "ceiling_display_ft": 3680 },
+    "kim": { "ceiling_status": "not_detected_below_limit" },
+    "icon": { "ceiling_status": "not_detected_below_limit" }
+  },
+  "RKSI": { "gfs": { "raw_ceiling_m": 19999.937622070312, "quantization_m": 0.4, "ceiling_status": "no_ceiling" } }
+}

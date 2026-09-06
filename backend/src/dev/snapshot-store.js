@@ -10,9 +10,10 @@ const NAME_RE = /^[a-zA-Z0-9_-]+$/ // 경로 이탈(../) 방지 — 영문/숫�
 // 자동 정리(maxRuns=2)로 6시간 주기로 지워진다 — latest.json만 복사하면 단면 브리핑이 깨지므로 폴더째 복사.
 // radar·satellite도 "latest" 포인터가 latest.json이 아니라 echo_meta.json/sat_meta.json(+rainviewer_meta.json)
 // 이고, 실제 이미지(PNG/WebP) 여러 장이 그 옆에 같이 있어서 마찬가지로 폴더째 복사해야 함(용량은 각각 수백KB~수MB로 작음).
-const FULL_DIR_TYPES = new Set(['kim_nwp', 'ktg', 'radar', 'satellite'])
+// 공항 모델 비교는 latest 포인터가 immutable payload를 참조하고, METAR·AMOS는 과거 3시간 비교에 최근 파일도 필요하다.
+const FULL_DIR_TYPES = new Set(['kim_nwp', 'ktg', 'radar', 'satellite', 'airport_model_comparison', 'metar', 'amos'])
 // latest.json이 없어서 일반 스캔(listCapturableTypes)에 안 걸리지만 캡처해야 하는 디렉터리.
-const EXTRA_CAPTURE_TYPES = new Set(['radar', 'satellite'])
+const EXTRA_CAPTURE_TYPES = new Set(['radar', 'satellite', 'airport_model_comparison'])
 // 이 자료가 빠지면 복원 뒤 해당 종류만 실황으로 남아 서로 다른 시각의 데이터가 섞인다.
 // 태풍은 과거 스냅샷 도입 뒤 추가된 자료라 의도적으로 제외해 최신 자료를 유지한다.
 export const DEMO_REQUIRED_TYPES = Object.freeze([
@@ -201,6 +202,32 @@ function referencedPathExists(snapshotRoot, value) {
   return fs.existsSync(path.join(snapshotRoot, value.slice('/data/'.length)))
 }
 
+function inspectComparisonPointers(snapshotRoot, blockers, summaries) {
+  const comparisonRoot = path.join(snapshotRoot, 'airport_model_comparison')
+  if (!fs.existsSync(comparisonRoot)) return
+  let missing = 0
+  let airportCount = 0
+  for (const modelEntry of fs.readdirSync(comparisonRoot, { withFileTypes: true })) {
+    if (!modelEntry.isDirectory()) continue
+    const modelRoot = path.join(comparisonRoot, modelEntry.name)
+    const latestPath = path.join(modelRoot, 'latest.json')
+    if (!fs.existsSync(latestPath)) continue
+    try {
+      const latest = JSON.parse(fs.readFileSync(latestPath, 'utf8'))
+      for (const pointer of Object.values(latest.airports || {})) {
+        airportCount += 1
+        if (typeof pointer?.path !== 'string' || path.isAbsolute(pointer.path)) { missing += 1; continue }
+        const resolved = path.resolve(modelRoot, pointer.path)
+        if (!resolved.startsWith(modelRoot + path.sep) || !fs.existsSync(resolved)) missing += 1
+      }
+    } catch {
+      blockers.push(`airport_model_comparison:${modelEntry.name}:invalid_latest_json`)
+    }
+  }
+  if (missing) blockers.push(`airport_model_comparison:missing_payloads:${missing}`)
+  summaries.airport_model_comparison = { airportCount }
+}
+
 export function inspectSnapshot(basePath, name) {
   const snapshotRoot = path.join(basePath, 'snapshots', name)
   const blockers = []
@@ -226,6 +253,8 @@ export function inspectSnapshot(basePath, name) {
     }
   }
   const summaries = {}
+
+  inspectComparisonPointers(snapshotRoot, blockers, summaries)
 
   for (const type of types) {
     const latestPath = path.join(snapshotRoot, type, 'latest.json')

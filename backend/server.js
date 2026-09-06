@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import store from './src/store.js'
+import { handleAirportComparison } from './src/airport-model-comparison/service.js'
 import stats from './src/stats.js'
 import config from './src/config.js'
 import { main as startScheduler } from './src/index.js'
@@ -693,6 +694,7 @@ app.get('/api/sigwx-low', (_, res) => sendLatest(res, 'sigwx_low'))
 app.get('/api/lightning', (_, res) => sendLatest(res, 'lightning'))
 app.get('/api/typhoon', (_, res) => sendLatest(res, 'typhoon'))
 app.get('/api/amos', (_, res) => sendLatest(res, 'amos'))
+app.get('/api/airport/:icao/model-comparison', handleAirportComparison)
 app.get('/api/takeoff-fcst', (_, res) => sendLatest(res, 'takeoff_fcst'))
 app.get('/api/notam', (_, res) => sendLatest(res, 'notam'))
 // ADS-B is collected on demand: only refresh adsb.lol when a viewer requests it and
