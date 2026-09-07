@@ -20,7 +20,7 @@ export function cumulativeHourly(values) {
   return values.map(value => {
     if (!finite(value)) complete = false
     if (!complete) return null
-    total += value
+    total = Math.round((total + value) * 1e9) / 1e9
     return total
   })
 }
@@ -165,21 +165,32 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
     rows[kind] = [...observationRows(data, times, kind, effectiveNow), ...MODEL_ORDER.map(model => ({ id: model, label: MODEL_LABELS[model], color: MODEL_COLORS[model], cells: times.map(slot => nwpCell(modelRecords.get(model)?.get(slot), kind, slot, data.airport)) }))]
   }
   const samples = row => row.cells.flatMap(cell => cell?.reports || (cell?.status === 'observation_pending' ? [] : [cell]))
+  // Hourly precipitation is an interval ending at valid_at. Use a common
+  // boundary, not each run's F000 (EC can have a different actual run).
+  const modelStarts = [...modelRecords.values()].filter(records => records.size).map(records => Math.min(...[...records.keys()].map(Date.parse)))
+  const precipitationStartAt = modelStarts.length ? new Date(Math.max(startMs, ...modelStarts)).toISOString() : times[0]
+  const precipitationStartIndex = times.indexOf(precipitationStartAt)
+  const precipitationStartLabel = formatTime(precipitationStartAt, tz)
   const charts = {
     wind: rows.wind.map(row => ({ ...row, points: samples(row).map(cell => cell ? { at: cell.valid_at, value: cell.value, gust: cell.gust, status: cell.status, text: [cell.text, cell.subtext].filter(Boolean).join(' · '), conditionText: cell.conditionText, detail: cell.detail } : { at: null, value: null }) })),
-    precipitation: rows.precipitation.filter(row => MODEL_ORDER.includes(row.id) || row.id === 'amos').map(row => {
-      const cumulative = cumulativeHourly(row.cells.map(cell => cell?.value))
-      return { ...row, points: cumulative.map((value, i) => ({ at: times[i], value, hourly: row.cells[i]?.value, status: row.cells[i]?.status, text: finite(value) ? `누적 ${fmtNumber(value, 1)} mm · 시간당 ${fmtNumber(row.cells[i]?.value, 1)} mm` : `누적 자료 없음 · 시간당 ${row.cells[i]?.text || '자료 없음'}`, detail: row.cells[i]?.detail })) }
+    precipitation: rows.precipitation.map(row => {
+      if (row.id === 'metar' || row.id === 'taf') return { ...row, categorical: true, points: samples(row).map(cell => ({ at: cell?.valid_at, value: null, text: cell?.text, status: cell?.status, conditionText: cell?.conditionText })) }
+      const hasData = row.cells.slice(precipitationStartIndex).some(cell => finite(cell?.value)) || Boolean(row.cells[precipitationStartIndex]?.detail)
+      const tail = precipitationStartIndex < 0 || !hasData ? [] : cumulativeHourly([0, ...row.cells.slice(precipitationStartIndex + 1).map(cell => cell?.value)])
+      const cumulative = times.map((_, i) => i < precipitationStartIndex ? null : tail[i - precipitationStartIndex] ?? null)
+      return { ...row, points: cumulative.map((value, i) => ({ at: times[i], value, hourly: row.cells[i]?.value, status: row.cells[i]?.status, text: finite(value) ? `누적 ${fmtNumber(value, 1)} mm${i === precipitationStartIndex ? ' · 누적 시작' : ` · 시간당 ${fmtNumber(row.cells[i]?.value, 1)} mm`}` : i < precipitationStartIndex ? '누적 시작 전' : `누적 자료 없음 · 시간당 ${row.cells[i]?.text || '자료 없음'}`, detail: row.cells[i]?.detail })) }
     }),
     ceiling: rows.ceiling.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.value ?? null, status: cell?.status, text: cell?.text, conditionText: cell?.conditionText, detail: cell?.detail })) })),
     temperatureRh: rows.temperatureRh.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.temperature ?? null, secondary: cell?.rh ?? null, status: cell?.status, text: cell?.text, detail: cell?.detail })) })),
   }
   const chartEmptyStates = {
     precipitation: (() => {
-      const points = charts.precipitation.flatMap(series => series.points)
+      const points = charts.precipitation.filter(series => !series.categorical).flatMap(series => series.points).filter(point => point.at > precipitationStartAt)
       const values = points.filter(point => finite(point.hourly))
       const missing = points.some(point => point.status && point.status !== 'observation_pending' && !finite(point.hourly))
-      return values.length && !missing && values.every(point => point.hourly === 0) ? '강수량 없음' : null
+      const weather = charts.precipitation.filter(series => series.categorical).flatMap(series => series.points)
+      const wetWeather = weather.some(point => /(?:RA|SN|DZ|SG|PL|GR|GS|UP)/.test([point.text, point.conditionText].filter(Boolean).join(' ')))
+      return values.length && !missing && !wetWeather && values.every(point => point.hourly === 0) ? '강수량 없음' : null
     })(),
     ceiling: (() => {
       const points = charts.ceiling.flatMap(series => series.points)
@@ -204,5 +215,5 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
     { id: 'metar', label: 'METAR 실황', at: (data.observations?.metar || []).filter(item => Date.parse(item.observed_at) <= effectiveNow).sort((a,b) => Date.parse(a.observed_at) - Date.parse(b.observed_at)).at(-1)?.observed_at || null },
     { id: 'taf', label: 'TAF 발표', at: data.observations?.taf?.issued_at || null },
   ]
-  return { airport: data.airport, status: data.status, issues: data.issues || [], effectiveNow, selectedValidAt: selected, selectedOutsideWindow: !times.includes(selected), times, timeLabels: times.map(t => formatTime(t, tz)), rows, charts, chartEmptyStates, summary, modelChips, observationChips }
+  return { airport: data.airport, status: data.status, issues: data.issues || [], effectiveNow, selectedValidAt: selected, selectedOutsideWindow: !times.includes(selected), times, timeLabels: times.map(t => formatTime(t, tz)), rows, charts, chartEmptyStates, precipitationStartAt, precipitationStartLabel, summary, modelChips, observationChips }
 }

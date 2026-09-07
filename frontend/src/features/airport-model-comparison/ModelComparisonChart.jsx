@@ -1,85 +1,106 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import ModelComparisonTooltip from './ModelComparisonTooltip.jsx'
-import { pathSegments } from './modelComparisonViewModel.js'
 import { comparisonDetails } from './modelComparisonDetail.js'
-import { CEILING_CHART_MAX_FT, formatAxisTick, plotChartValue } from './modelComparisonChart.js'
+import { CEILING_CHART_MAX_FT, chartDomain, chartPath, formatAxisTick, humidityColor, plotChartValue } from './modelComparisonChart.js'
 
-const HEIGHT = 250, PAD_Y = 32
-export default function ModelComparisonChart({ series, times, timeLabels, unit, selectedValidAt, secondaryUnit, emptyState }) {
+export default function ModelComparisonChart({ series, times, timeLabels, unit, selectedValidAt, emptyState, cumulativeLabel }) {
   const [detail, setDetail] = useState(null)
   const [hiddenSeries, setHiddenSeries] = useState(() => new Set())
-  const chartRef = useRef(null)
-  const hideTimer = useRef(null)
-  const tooltipId = useId()
+  const [showGust, setShowGust] = useState(true)
+  const chartRef = useRef(null), hideTimer = useRef(null), tooltipId = useId()
   const keepDetail = useCallback(() => clearTimeout(hideTimer.current), [])
   const closeDetail = useCallback(() => { clearTimeout(hideTimer.current); setDetail(null) }, [])
-  const leaveDetail = () => { clearTimeout(hideTimer.current); hideTimer.current = setTimeout(() => setDetail(current => current?.mode === 'hover' ? null : current), 150) }
+  const leaveDetail = () => { clearTimeout(hideTimer.current); hideTimer.current = setTimeout(() => setDetail(d => d?.mode === 'hover' ? null : d), 150) }
   useEffect(() => () => clearTimeout(hideTimer.current), [])
-  const WIDTH = 128 + times.length * 72, PAD_X = 164
-  const start = Date.parse(times[0]), end = Date.parse(times.at(-1))
-  const visibleSeries = series.filter(item => !hiddenSeries.has(item.id))
-  const all = visibleSeries.flatMap(s => s.points.flatMap(p => [p.value, p.gust])).filter(Number.isFinite)
-  const secondary = visibleSeries.flatMap(s => s.points.map(p => p.secondary)).filter(Number.isFinite)
-  const ceilingChart = unit === 'ft'
-  const min = ceilingChart ? 0 : all.length ? Math.min(...all) : 0
-  const max = ceilingChart ? CEILING_CHART_MAX_FT : all.length ? Math.max(...all) : 1
-  const plotValue = value => plotChartValue(value, unit)
-  const xAt = at => PAD_X + (Date.parse(at) - start) / Math.max(1, end - start) * (WIDTH - PAD_X - 36)
-  const yAt = value => HEIGHT - PAD_Y - (value - min) / Math.max(1, max - min) * (HEIGHT - PAD_Y * 2)
-  const ySecondary = value => HEIGHT - PAD_Y - (value - (secondary.length ? Math.min(...secondary) : 0)) / Math.max(1, secondary.length ? Math.max(...secondary) - Math.min(...secondary) : 1) * (HEIGHT - PAD_Y * 2)
-  const selectedX = times.includes(selectedValidAt) ? xAt(selectedValidAt) : null
-  const details = detail ? comparisonDetails(visibleSeries, detail.at, unit) : []
-  const showTime = (event, at, mode) => {
-    keepDetail()
-    const box = event.currentTarget.getBoundingClientRect()
-    setDetail({ at, x: mode === 'hover' ? event.clientX : box.x + box.width / 2, y: mode === 'hover' ? event.clientY : box.y + box.height / 2, anchor: mode === 'focus' ? event.currentTarget : null, mode })
-  }
-  const pointEvents = point => ({
-    onPointerMove: event => { if (event.pointerType !== 'touch') { event.stopPropagation(); showTime(event, point.at, 'hover') } },
-  })
-  const chartTime = event => {
-    const box = chartRef.current.getBoundingClientRect()
-    const x = (event.clientX - box.x) / box.width * WIDTH
-    if (x < PAD_X - 36 || x > WIDTH || !times.length) return null
-    return times.reduce((nearest, time) => Math.abs(xAt(time) - x) < Math.abs(xAt(nearest) - x) ? time : nearest, times[0])
-  }
-  const primaryTicks = [max, (min + max) / 2, min]
-  const secondaryMin = secondary.length ? Math.min(...secondary) : 0, secondaryMax = secondary.length ? Math.max(...secondary) : 100
-  const paths = useMemo(() => visibleSeries.flatMap(s => {
-    const points = s.points.map(p => ({ ...p, x: Number.isFinite(Date.parse(p.at)) ? xAt(p.at) : null }))
-    const primary = pathSegments(points).map((segment, i) => ({ key: `${s.id}-p-${i}`, d: segment.map((p, j) => `${j ? 'L' : 'M'}${p.x},${yAt(plotValue(p.value))}`).join(' '), color: s.color }))
-    const gust = pathSegments(points.map(p => ({ ...p, value: p.gust }))).map((segment, i) => ({ key: `${s.id}-g-${i}`, d: segment.map((p, j) => `${j ? 'L' : 'M'}${p.x},${yAt(plotValue(p.value))}`).join(' '), color: s.color, dash: '5 4' }))
-    const second = pathSegments(points.map(p => ({ ...p, value: secondaryUnit ? p.secondary : null }))).map((segment, i) => ({ key: `${s.id}-s-${i}`, d: segment.map((p, j) => `${j ? 'L' : 'M'}${p.x},${ySecondary(p.value)}`).join(' '), color: s.color, dash: '2 4' }))
-    return [...primary, ...gust, ...second]
-  }), [visibleSeries, start, end, min, max, secondaryUnit, secondary.join(','), unit])
-  const chartMessage = emptyState || (!visibleSeries.length ? '표시할 요소 없음' : null)
-  const toggleSeries = id => { setDetail(null); setHiddenSeries(current => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next }) }
+  const rain = unit === 'mm', ceiling = unit === 'ft', humidity = unit === '%', temperature = unit === '°C'
+  const visible = series.filter(s => !hiddenSeries.has(s.id))
+  const weather = rain ? visible.filter(s => s.categorical) : [], numeric = visible.filter(s => !s.categorical)
+  // Matches the table colgroup; no responsive rescaling of the time-column contract.
+  const width = 128 + times.length * 72, left = 128
+  const height = humidity ? Math.max(170, 66 + visible.length * 30) : 300
+  const top = ceiling ? 48 : 28, bottom = height - 40 - weather.length * 26
+  const start = Date.parse(times[0])
+  const xAt = at => 164 + (Date.parse(at) - start) / 3_600_000 * 72
+  const domain = chartDomain(numeric.flatMap(s => s.points.flatMap(p => [p.value, ...(unit === 'kt' && showGust ? [p.gust] : [])])), unit)
+  const yAt = v => bottom - (plotChartValue(v, unit) - domain.min) / (domain.max - domain.min) * (bottom - top)
+  const ticks = Array.from({ length: Math.round((domain.max - domain.min) / domain.step) + 1 }, (_, i) => Number((domain.min + domain.step * i).toPrecision(10)))
   const focusedTime = () => times.includes(selectedValidAt) ? selectedValidAt : times[0]
-  const moveKeyboardTime = event => {
-    const current = detail?.at || focusedTime()
-    const index = times.indexOf(current)
-    const next = event.key === 'ArrowLeft' ? Math.max(0, index - 1) : event.key === 'ArrowRight' ? Math.min(times.length - 1, index + 1) : event.key === 'Home' ? 0 : event.key === 'End' ? times.length - 1 : null
-    if (next === null) return
-    event.preventDefault()
-    showTime(event, times[next], 'focus')
+  const details = detail ? comparisonDetails(visible, detail.at, unit) : []
+  const chartMessage = !visible.length ? '표시할 요소 없음' : emptyState
+  const showTime = (e, at, mode) => {
+    keepDetail()
+    const box = e.currentTarget.getBoundingClientRect()
+    setDetail({ at, x: mode === 'hover' ? e.clientX : box.x + box.width / 2, y: mode === 'hover' ? e.clientY : box.y + box.height / 2, anchor: mode === 'focus' ? e.currentTarget : null, mode })
   }
+  const pointEvents = p => ({
+    onPointerMove: e => { if (e.pointerType !== 'touch') { e.stopPropagation(); showTime(e, p.at, 'hover') } },
+    onFocus: e => { e.stopPropagation(); showTime(e, p.at, 'focus') },
+  })
+  const chartTime = e => {
+    const box = chartRef.current.getBoundingClientRect(), x = (e.clientX - box.x) / box.width * width
+    if (x < left || x > width || !times.length) return null
+    return times.reduce((nearest, t) => Math.abs(xAt(t) - x) < Math.abs(xAt(nearest) - x) ? t : nearest, times[0])
+  }
+  const moveKeyboardTime = e => {
+    const index = times.indexOf(detail?.at || focusedTime())
+    const next = e.key === 'ArrowLeft' ? Math.max(0, index - 1) : e.key === 'ArrowRight' ? Math.min(times.length - 1, index + 1) : e.key === 'Home' ? 0 : e.key === 'End' ? times.length - 1 : null
+    if (next === null || !times.length) return
+    e.preventDefault(); showTime(e, times[next], 'focus')
+  }
+  const toggleSeries = id => { closeDetail(); setHiddenSeries(current => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next }) }
+  const hasValues = s => s.points.some(p => Number.isFinite(p.value) || Number.isFinite(p.gust) || p.text === 'NSC' || (s.categorical && p.text && !['자료 없음', '관측 전'].includes(p.text)))
+  const plotPoints = s => s.points.map(p => ({ ...p, x: Number.isFinite(Date.parse(p.at)) ? xAt(p.at) : null }))
+  const valid = p => Number.isFinite(Date.parse(p.at))
+  const markLabel = (s, p) => s.label + ' ' + p.at + ', ' + p.value + ' ' + unit + (unit === 'kt' && Number.isFinite(p.gust) ? ', 돌풍 ' + p.gust + ' ' + unit : '')
+  const key = (s, i, suffix = '') => s.id + '-' + i + suffix
   return (
-    <div className="mc-chart-wrap">
-      {chartMessage ? <div className="mc-chart-empty-state" role="status" aria-label={chartMessage}><p>{chartMessage}</p></div> : <svg ref={chartRef} tabIndex="0" onFocus={event => showTime(event, focusedTime(), 'focus')} onBlur={closeDetail} onKeyDown={moveKeyboardTime} onPointerMove={event => { if (event.pointerType === 'touch') return; keepDetail(); const at = chartTime(event); if (at) setDetail({ at, x: event.clientX, y: event.clientY, mode: 'hover' }); else closeDetail() }} onPointerLeave={leaveDetail} onPointerDown={event => event.preventDefault()} className="mc-chart" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="group" aria-label={`모델별 ${unit} 추세 그래프`} aria-describedby={detail ? tooltipId : undefined}>
-        <line x1={PAD_X} y1={HEIGHT - PAD_Y} x2={WIDTH - 36} y2={HEIGHT - PAD_Y} className="mc-axis" />
-        {primaryTicks.map((tick, i) => <text key={`y-${i}`} x={PAD_X - 7} y={PAD_Y + i * (HEIGHT - PAD_Y * 2) / 2 + 4} textAnchor="end" className="mc-axis-label">{formatAxisTick(tick, unit, max)}</text>)}
-        {secondaryUnit && [secondaryMax, (secondaryMin + secondaryMax) / 2, secondaryMin].map((tick, i) => <text key={`ys-${i}`} x={WIDTH - 36 + 7} y={PAD_Y + i * (HEIGHT - PAD_Y * 2) / 2 + 4} className="mc-axis-label">{Math.round(tick)}%</text>)}
-        {selectedX != null && <line x1={selectedX} y1={PAD_Y / 2} x2={selectedX} y2={HEIGHT - PAD_Y} className="mc-selected-line" />}
-        {detail && <line x1={xAt(detail.at)} y1={PAD_Y / 2} x2={xAt(detail.at)} y2={HEIGHT - PAD_Y} className="mc-selected-line" strokeDasharray="3 3" pointerEvents="none" />}
-        {paths.map(path => <path key={path.key} d={path.d} fill="none" stroke={path.color} strokeWidth="2" strokeDasharray={path.dash} />)}
-        {visibleSeries.flatMap(s => s.points.map((point, i) => Number.isFinite(point.value) && Number.isFinite(Date.parse(point.at)) ? point.value > CEILING_CHART_MAX_FT && ceilingChart ? <path key={`${s.id}-${i}`} d={`M${xAt(point.at)},${yAt(CEILING_CHART_MAX_FT) - 7} l7,12 h-14 Z`} fill={s.color} className="mc-chart-point mc-overflow-point" tabIndex="-1" role="img" aria-label={`${s.label} ${point.at}, ${point.value} ${unit} (10,000 ft 이상)`} {...pointEvents(point)} /> : <circle key={`${s.id}-${i}`} cx={xAt(point.at)} cy={yAt(plotValue(point.value))} r="7" fill={s.color} className="mc-chart-point" tabIndex="-1" role="img" aria-label={`${s.label} ${point.at}, ${point.value} ${unit}${Number.isFinite(point.gust) ? `, 돌풍 ${point.gust} ${unit}` : ''}`} {...pointEvents(point)} /> : null))}
-        {visibleSeries.flatMap(s => s.points.map((point, i) => Number.isFinite(point.gust) && Number.isFinite(Date.parse(point.at)) ? <circle key={`${s.id}-gust-${i}`} cx={xAt(point.at)} cy={yAt(plotValue(point.gust))} r="5" fill="#fff" className="mc-chart-point mc-gust-point" style={{ '--point-stroke': s.color }} tabIndex="-1" role="img" aria-label={`${s.label} 돌풍 ${point.at}, ${point.gust} ${unit}`} {...pointEvents(point)} /> : null))}
-        {visibleSeries.flatMap(s => s.points.map((point, i) => point.conditionText && Number.isFinite(Date.parse(point.at)) ? <path key={`${s.id}-condition-${i}`} d={`M${xAt(point.at) - 5},${PAD_Y - 8} l10,0 l-5,8 Z`} fill={s.color} tabIndex="-1" role="img" aria-label={`${s.label} 조건 ${point.at}, ${point.conditionText}`} {...pointEvents(point)}><title>{point.conditionText}</title></path> : null))}
-        {visibleSeries.flatMap(s => s.points.map((point, i) => !Number.isFinite(point.value) && point.status && Number.isFinite(Date.parse(point.at)) ? <rect key={`${s.id}-state-${i}`} x={xAt(point.at) - 4} y={HEIGHT - PAD_Y - 8} width="8" height="8" fill="none" stroke={s.color} strokeWidth="2" className="mc-chart-point mc-state-point" style={{ '--point-stroke': s.color }} tabIndex="-1" role="img" aria-label={`${s.label} ${point.at}, ${point.text || point.status}`} {...pointEvents(point)} /> : null))}
-        {secondaryUnit && visibleSeries.flatMap(s => s.points.map((point, i) => Number.isFinite(point.secondary) && Number.isFinite(Date.parse(point.at)) ? <circle key={`${s.id}-secondary-${i}`} cx={xAt(point.at)} cy={ySecondary(point.secondary)} r="6" fill="#fff" stroke={s.color} strokeWidth="2" className="mc-chart-point mc-secondary-point" style={{ '--point-stroke': s.color }} tabIndex="-1" role="img" aria-label={`${s.label} ${secondaryUnit} ${point.at}, ${point.text || `${point.secondary}%`}`} {...pointEvents(point)} /> : null))}
-        {times.map((time, i) => <text key={time} x={xAt(time)} y={HEIGHT - 8} textAnchor="middle" className="mc-axis-label">{timeLabels?.[i]?.split(' ')[1] || new Date(time).getUTCHours().toString().padStart(2, '0')}</text>)}
-      </svg>}
-      <div className="mc-legend" aria-label="그래프 요소 표시"><span className="mc-legend-help">요소 표시</span>{series.map(s => <button key={s.id} type="button" className="mc-legend-toggle" aria-label={`${s.label} 그래프 표시`} aria-pressed={!hiddenSeries.has(s.id)} onClick={() => toggleSeries(s.id)}><i style={{ '--series-color': s.color }} />{s.label}{s.points.every(p => !Number.isFinite(p.value) && !Number.isFinite(p.gust) && !Number.isFinite(p.secondary)) ? ' (자료 없음)' : ''}</button>)}{series.some(s => s.points.some(p => Number.isFinite(p.gust))) && <span>긴 점선·빈 점 돌풍</span>}{series.some(s => s.points.some(p => p.conditionText)) && <span>▼ TAF 조건 구간</span>}{secondaryUnit && <span>점선 {secondaryUnit}</span>}{ceilingChart && <span>▲ 10,000 ft 이상</span>}</div>
+    <div className={'mc-chart-wrap mc-chart-wrap--' + (rain ? 'rain' : ceiling ? 'ceiling' : humidity ? 'humidity' : temperature ? 'temperature' : 'wind')}>
+      <div className="mc-legend" aria-label="그래프 요소 표시"><span className="mc-legend-help">그래프 표시</span>
+        {series.map(s => <button key={s.id} type="button" className="mc-legend-toggle" aria-label={s.label + ' 그래프 표시'} aria-pressed={!hiddenSeries.has(s.id)} onClick={() => toggleSeries(s.id)}><i style={{ '--series-color': s.color }} />{s.label}{hasValues(s) ? '' : ' (자료 없음)'}</button>)}
+        {unit === 'kt' && <label className="mc-gust-toggle"><input type="checkbox" checked={showGust} onChange={e => { closeDetail(); setShowGust(e.target.checked) }} />돌풍 점선</label>}
+        {humidity && <span className="mc-humidity-scale">RH 0% <i style={{ background: humidityColor(0) }} /><i style={{ background: humidityColor(50) }} /><i style={{ background: humidityColor(100) }} /> 100%</span>}
+      </div>
+      {chartMessage ? <div className="mc-chart-empty-state" role="status" aria-label={chartMessage}><p>{chartMessage}</p></div> :
+        <svg ref={chartRef} tabIndex="0" onFocus={e => showTime(e, focusedTime(), 'focus')} onBlur={closeDetail} onKeyDown={moveKeyboardTime}
+          onPointerMove={e => { if (e.pointerType === 'touch') return; keepDetail(); const at = chartTime(e); if (at) setDetail({ at, x: e.clientX, y: e.clientY, mode: 'hover' }); else closeDetail() }}
+          onPointerLeave={leaveDetail} onPointerDown={e => e.preventDefault()} className="mc-chart" style={{ height }} viewBox={'0 0 ' + width + ' ' + height} preserveAspectRatio="none"
+          role="group" aria-label={'모델별 ' + unit + ' 추세 그래프'} aria-describedby={detail ? tooltipId : undefined}>
+          {!humidity && <>{ticks.map(t => <g key={t}><line x1={left} x2={width} y1={yAt(t)} y2={yAt(t)} className="mc-grid-line" /><text x={left - 12} y={yAt(t) + 4} textAnchor="end" className="mc-axis-label">{formatAxisTick(t, unit, domain.max)}</text></g>)}
+            {times.map(t => <line key={t} x1={xAt(t)} x2={xAt(t)} y1={top} y2={bottom} className="mc-grid-line mc-grid-line--vertical" />)}</>}
+          {ceiling && <text x={left - 12} y="29" textAnchor="end" className="mc-axis-label">NSC</text>}
+          {!rain && !humidity && numeric.map(s => <g key={s.id}>
+            <path d={chartPath(plotPoints(s), yAt, ceiling || s.id === 'taf')} fill="none" stroke={s.color} strokeWidth="2" vectorEffect="non-scaling-stroke" role={ceiling ? 'img' : undefined} aria-label={ceiling ? s.label + ' 운고 계단선' : undefined} />
+            {unit === 'kt' && showGust && <path d={chartPath(plotPoints(s).map(p => ({ ...p, value: p.gust })), yAt, s.id === 'taf')} fill="none" stroke={s.color} strokeWidth="1.5" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />}
+          </g>)}
+          {rain && numeric.flatMap((s, k) => s.points.map((p, i) => {
+            if (!Number.isFinite(p.value) || !valid(p)) return null
+            const bw = Math.min(11, 54 / Math.max(1, numeric.length)), offset = (k - (numeric.length - 1) / 2) * bw
+            return <rect key={key(s,i)} x={xAt(p.at) + offset - bw * .42} y={yAt(p.value)} width={bw * .84} height={Math.max(1, bottom - yAt(p.value))} fill={s.color} className="mc-precipitation-bar" tabIndex="-1" role="img" aria-label={markLabel(s,p)} {...pointEvents(p)} />
+          }))}
+          {!rain && !humidity && numeric.flatMap(s => s.points.map((p, i) => {
+            if (!Number.isFinite(p.value) || !valid(p)) return null
+            return ceiling && p.value > CEILING_CHART_MAX_FT ?
+              <path key={key(s,i)} d={'M' + xAt(p.at) + ',' + (yAt(CEILING_CHART_MAX_FT) - 6) + ' l5,9 h-10 Z'} fill={s.color} className="mc-chart-point mc-overflow-point" tabIndex="-1" role="img" aria-label={s.label + ' ' + p.at + ', ' + p.value + ' ' + unit + ' (10,000 ft 이상)'} {...pointEvents(p)} /> :
+              <circle key={key(s,i)} cx={xAt(p.at)} cy={yAt(p.value)} r={temperature ? 3 : 2} fill={temperature ? 'var(--bg-1, #fff)' : s.color} stroke={s.color} strokeWidth={temperature ? 1.5 : 0} className="mc-chart-point" tabIndex="-1" role="img" aria-label={markLabel(s,p)} {...pointEvents(p)} />
+          }))}
+          {unit === 'kt' && showGust && numeric.flatMap(s => s.points.map((p,i) => Number.isFinite(p.gust) && valid(p) ? <circle key={key(s,i,'-gust')} cx={xAt(p.at)} cy={yAt(p.gust)} r="1.8" fill="var(--bg-1, #fff)" stroke={s.color} strokeWidth="1.2" className="mc-chart-point mc-gust-point" tabIndex="-1" role="img" aria-label={s.label + ' 돌풍 ' + p.at + ', ' + p.gust + ' ' + unit} {...pointEvents(p)} /> : null))}
+          {ceiling && visible.flatMap((s,k) => s.points.map((p,i) => p.text === 'NSC' && valid(p) ? <circle key={key(s,i,'-nsc')} cx={xAt(p.at) + (k - (visible.length - 1) / 2) * 7} cy="25" r="2.3" fill="var(--bg-1, #fff)" stroke={s.color} strokeWidth="1.5" className="mc-nsc-point" tabIndex="-1" role="img" aria-label={s.label + ' ' + p.at + ', NSC'} {...pointEvents(p)} /> : null))}
+          {!rain && !humidity && visible.flatMap(s => s.points.map((p,i) => p.conditionText && valid(p) ? <path key={key(s,i,'-condition')} d={'M' + (xAt(p.at) - 4) + ',8 h8 l-4,6 Z'} fill={s.color} tabIndex="-1" role="img" aria-label={s.label + ' 조건 ' + p.at + ', ' + p.conditionText} {...pointEvents(p)} /> : null))}
+          {weather.map((s,row) => <g key={s.id}><text x={left - 12} y={bottom + 21 + row * 26} textAnchor="end" className="mc-axis-label">{s.id === 'taf' ? 'TAF' : 'METAR'}</text>
+            {s.points.map((p,i) => valid(p) ? <g key={i}>
+              <rect x={xAt(p.at) - 32} y={bottom + 6 + row * 26} width="64" height="21" rx="2" fill="var(--bg-3, #f5f5f5)" tabIndex="-1" role="img" aria-label={s.label + ' 현재날씨 ' + p.at + ', ' + (p.text || '자료 없음') + (p.conditionText ? ' · ' + p.conditionText : '')} {...pointEvents(p)} />
+              <text x={xAt(p.at)} y={bottom + 20 + row * 26} textAnchor="middle" className="mc-weather-band-text" pointerEvents="none">{(['NSW','현상 없음'].includes(p.text) ? '강수 없음' : p.text || '자료 없음') + (p.conditionText ? ' *' : '')}</text>
+            </g> : null)}</g>)}
+          {humidity && visible.map((s,row) => <g key={s.id}><text x={left - 12} y={top + row * 30 + 17} textAnchor="end" className="mc-axis-label" style={{ fill: s.color }}>{s.label}</text>
+            {s.points.map((p,i) => valid(p) && Number.isFinite(p.value) ? <g key={i}>
+              <rect x={xAt(p.at) - 32} y={top + row * 30} width="64" height="24" rx="2" fill={humidityColor(p.value)} className="mc-humidity-cell" tabIndex="-1" role="img" aria-label={markLabel(s,p)} {...pointEvents(p)} />
+              <text x={xAt(p.at)} y={top + row * 30 + 16} textAnchor="middle" className="mc-humidity-value" style={{ fill: p.value > 55 ? '#fff' : 'var(--text-1, #242424)' }} pointerEvents="none">{Math.round(p.value)}</text>
+            </g> : null)}</g>)}
+          {times.includes(selectedValidAt) && <line x1={xAt(selectedValidAt)} y1={top - 8} x2={xAt(selectedValidAt)} y2={height - 40} className="mc-selected-line" pointerEvents="none" />}
+          {detail && <line x1={xAt(detail.at)} y1={top - 8} x2={xAt(detail.at)} y2={height - 40} className="mc-hover-line" strokeDasharray="3 3" pointerEvents="none" />}
+          {times.map((t,i) => <text key={t} x={xAt(t)} y={height - 16} textAnchor="middle" className="mc-axis-label">{timeLabels?.[i]?.split(' ')[1] || new Date(t).getUTCHours().toString().padStart(2,'0')}</text>)}
+        </svg>}
+      <div className="mc-chart-caption">{rain ? <><span>{cumulativeLabel ? cumulativeLabel + ' 이후 누적' : '표시 구간 누적 강수량'}</span><span>METAR·TAF는 현재날씨 · * 조건부 예보는 호버로 확인</span></> : ceiling ? <><span>계단형 운고 · NSC와 결측 구간은 선을 연결하지 않음</span><span>▲ 10,000 ft 이상</span></> : <span>{humidity ? '모든 모델에 동일한 0–100% 색상 눈금' : temperature ? '기온은 점의 높이로 모델 간 차이 비교' : '실선 풍속 · 점선 돌풍 · 공통 풍속 눈금'}</span>}</div>
       {detail && <ModelComparisonTooltip detail={detail} rows={details} label={timeLabels?.[times.indexOf(detail.at)] || detail.at} chartRef={chartRef} onClose={closeDetail} onPointerEnter={keepDetail} onPointerLeave={leaveDetail} tooltipId={tooltipId} />}
     </div>
   )

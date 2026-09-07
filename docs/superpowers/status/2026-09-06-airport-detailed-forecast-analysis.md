@@ -176,3 +176,15 @@
 - 지상일기도 카드를 제거했다. 목업 HTML을 브라우저로 직접 대조해, 연직시계열·단열선도 두 카드만 남기고 1600px 이상에서 440px 우측 고정 패널, 그 미만에서 하단 패널이라는 목업 배치를 적용했다.
 - 단열선도에는 이전/다음과 범위 슬라이더를 복원했다. 모두 공통 선택 유효시각을 바꾸며, 확대 대화상자에서도 같은 슬라이더 상태를 유지한다. 현재 이미지는 목업과 같이 임시 KIM 샘플이고 캡션은 공항·KIM F-hour·선택 시각을 표시한다.
 - 검증: 새 Playwright 계약 desktop/iPad landscape/mobile 6/6 통과, 데스크톱 캡처 `frontend/artifacts/verification/model-comparison-controls/desktop-{legend-toggles,kim-reference-slider}.png`, 집중 Node 15/15, production build와 diff-check 통과.
+
+## 2026-09-08 — 승인 HTML의 요소별 그래프 적용
+
+- 담당: 메인. 사용자가 `artifacts/airport-comparison-recommended.html`의 추천안과 이후 누적 강수·운고 계단선 변경을 승인했다. 실제 React 화면에 적용하며 비교표·공통 시간축·선택 URL·연직 참고 패널의 계약을 유지한다.
+- 바람: 공통 0 기준 눈금, 풍속 실선·돌풍 점선, 작은 표식, 돌풍 토글. 강수: 모델별 누적 막대. 운고: 계단형 선 및 독립 NSC 표식, 결측 연결 금지. 기온: 점과 연결선. RH: 공통 0–100% 색상 띠와 수치.
+- 누적 강수는 화면 구간과 제공된 NWP 구간들의 공통 시작 경계를 사용한다. EC의 실제 Run/F-hour를 바꾸지 않고 동일 경계 이후 시간당 자료만 더한다. 시작값 0은 기준점이며 F000의 직전 시간 강수를 가정하지 않는다. 중간 결측 후에는 합산을 중단하고, 공통 시작 전에 끝난 오래된 모델에는 0을 만들지 않는다. 누적 시작 시각을 KST/UTC 선택에 맞게 표시하며 표에는 시간당 값을 보존한다.
+- METAR·TAF의 강수현상은 별도 띠와 툴팁으로 표시하고 mm로 변환하지 않는다. 실제/조건부 강수현상이 있으면 수치예보가 0이어도 무강수 빈 상태로 덮지 않는다. F000의 구조적 결측은 무강수 판정의 누적 시작 경계 밖으로 처리한다.
+- 운고는 5,000 ft 기본 축으로 표시하고 더 높은 수치가 있으면 기존 10,000 ft 상한과 넘침 표식을 사용한다. 그래프의 숫자·선·막대·색상 띠는 표의 시간 열과 같은 가로 좌표를 사용한다. 그래프 클릭은 선택·크기·시간 열을 바꾸지 않는다.
+- 검증 자료: `frontend/verification/model-comparison-fixture.mjs`의 실제 RKPU 09Z 파생값과 명시적인 가상 시계열. 새 디자인 계약에는 모델별 강수 시점·양, 급격한 풍속 변화와 67 kt 돌풍, 서로 다른 운고/기온/RH를 넣었다. 1920×1080 캡처를 승인 HTML과 직접 비교했다. 로컬 저장자료 API는 HTTP 200 / empty / models=[]이므로 최신 실시간 모델을 통한 검증은 하지 못했다. 운영 서버는 변경하지 않았다.
+- 최종 검증: 집중 Node 21/21, 전체 프런트엔드 1475/1475, production build 성공(기존 번들 크기 경고), `git diff --check` 통과. 관리형 Playwright 48/48 통과(재시도 0, desktop/iPad landscape/mobile, 종료 코드 0). 데스크톱 디자인 계약은 1920×1080으로 검증했으며 실제 캡처를 직접 확인했다. Graphify update 완료.
+- 재현: `npm --prefix frontend test`, `npm --prefix frontend run build`, `PROJECTAMO_COMPARISON_CAPTURE_DIR=/home/john_doe/ProjectAMO/artifacts/verification/approved-chart-design npm --prefix frontend run dev:contract -- --grep airport-model-comparison --retries=0 --max-failures=1`. 로그·검증 명세·각 요소 캡처는 `artifacts/verification/approved-chart-design/`에 보존했다. 현재 요청의 변경은 커밋·푸시·배포하지 않았다.
+- 검증 중 Vite가 `react-dom_client.js`와 `@fluentui_react-components.js`에 `504 Outdated Optimize Dep`를 반환해 화면 진입 전 타임아웃이 발생했다. 브라우저 요청 오류로 원인을 확인하고 해당 테스트 실행을 중단한 뒤, 관리형 서버 종료와 포트 해제를 확인했다. 빌드와 브라우저 실행을 분리하여 다시 검증했다. 앱 코드에 우회 로직을 추가하지 않았다.

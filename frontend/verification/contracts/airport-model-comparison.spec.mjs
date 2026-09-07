@@ -26,6 +26,48 @@ async function noOverflow(page) {
 const temperatureTable=page=>page.getByRole('table',{name:'기온과 상대습도 시간별 비교',exact:true})
 
 test.describe('airport-model-comparison',()=>{
+  test('approved chart design renders cumulative bars, stepped ceilings and humidity bands',async({page},testInfo)=>{
+    if(testInfo.project.name==='desktop') await page.setViewportSize({width:1920,height:1080})
+    await installModelComparisonFixture(page,{transform:payload=>{
+      const phases={kim:0,ecmwf:1,gfs:2,icon:3}
+      const rainfall={kim:[0,0,.3,2.4,7.8,5.1,1.8,.4,0,0,0,0,0],ecmwf:[0,0,0,.2,1.4,4.8,6.2,2.6,.8,.2,0,0,0],gfs:[0,0,0,0,.4,2.1,5.5,9.2,4.6,1.3,.3,0,0],icon:[0,.2,1.2,4.9,6.3,2.7,.8,3.2,1.4,.1,0,0,0]}
+      for(const model of payload.models) model.records.forEach((r,i)=>{
+        const phase=phases[model.model]
+        r.precipitation_mm=i===0?null:rainfall[model.model][i]
+        r.wind_speed_kt=[5,8,24,43,18,10][(i+phase)%6]
+        r.wind_gust_kt=r.wind_speed_kt+24
+        r.ceiling_agl_ft=i===6?null:4200-((i+phase)%5)*800
+        r.ceiling_status=i===6?'no_ceiling':'value'
+        r.temperature_c=28-Math.min(i,8)*.7+phase*.4
+        r.relative_humidity_pct=65+((i+phase)%6)*6
+      })
+      return payload
+    }})
+    await page.goto(`/airport/RKPU/models?valid_at=${encodeURIComponent(SELECTED_TIME)}`)
+    await page.getByRole('button',{name:'요소별 보기',exact:true}).click()
+    const wind=page.getByRole('group',{name:'모델별 kt 추세 그래프',exact:true})
+    await expect(wind.getByText('80 kt',{exact:true})).toBeVisible()
+    await capture(page,testInfo,'approved-wind')
+    await page.getByRole('tab',{name:'강수',exact:true}).click()
+    const rain=page.getByRole('group',{name:'모델별 mm 추세 그래프',exact:true})
+    const sample=rain.getByLabel(/^ECMWF 2026-09-06T09:00:00.000Z,/)
+    await expect(sample).toHaveJSProperty('tagName','rect')
+    await sample.scrollIntoViewIfNeeded();await sample.focus()
+    await expect(page.getByRole('tooltip')).toContainText('누적 0.2 mm')
+    await expect(page.getByText('09.06 15:00 KST 이후 누적',{exact:true})).toBeVisible()
+    await expect(rain.getByLabel(/TAF 현재날씨/).first()).toBeVisible()
+    await capture(page,testInfo,'approved-rain')
+    await page.getByRole('tab',{name:'운고·운량',exact:true}).click()
+    const ceiling=page.getByRole('group',{name:'모델별 ft 추세 그래프',exact:true})
+    await expect(ceiling.getByRole('img',{name:'KIM 운고 계단선',exact:true})).toHaveAttribute('d',/H.*V/)
+    await expect(ceiling.getByLabel(/^GFS 2026-09-06T12:00:00.000Z, NSC$/)).toBeVisible()
+    await capture(page,testInfo,'approved-ceiling')
+    await page.getByRole('tab',{name:'기온·RH',exact:true}).click()
+    const humidity=page.getByRole('region',{name:'상대습도 그래프',exact:true})
+    await expect(humidity.getByLabel(/^ECMWF 2026-09-06T09:00:00.000Z,/)).toHaveJSProperty('tagName','rect')
+    await capture(page,testInfo,'approved-design')
+    await noOverflow(page)
+  })
   test('clicking charts never changes the selection, time columns or chart size',async({page},testInfo)=>{
     await installModelComparisonFixture(page)
     const initial='2026-09-06T04:00:00.000Z'
@@ -207,11 +249,13 @@ test.describe('airport-model-comparison',()=>{
 
   test('all-zero precipitation and all-NSC ceiling use empty graph states',async({page},testInfo)=>{
     await installModelComparisonFixture(page,{transform:payload=>{
+      payload.observations.metar[0].weather=[]
+      payload.observations.taf.change_groups=[]
       payload.observations.amos=[{observed_at:'2026-09-06T08:00:00.000Z',precipitation_mm:0}]
       payload.observations.metar[0].clouds=[]
       payload.observations.taf.base.clouds=[]
       for(const model of payload.models) for(const record of model.records) {
-        record.precipitation_mm=0
+        record.precipitation_mm=record.forecast_hour===0?null:0
         record.ceiling_agl_ft=null
         record.ceiling_status='not_detected_below_limit'
       }
@@ -336,7 +380,7 @@ test.describe('airport-model-comparison',()=>{
     await capture(page,testInfo,'precipitation');await noOverflow(page)
     await expect(page.getByText(/순위|1등|자동 변화 감지/)).toHaveCount(0)
     const references=page.getByRole('complementary',{name:'KIM 연직 참고'})
-    await expect(references).toContainText('현재 공항·실행자료와 연결되지 않음')
+    await expect(references).toContainText('현재 공항 실행자료와 연결되지 않았습니다.')
     for(const image of ['kim_gdps_erly_city_47163_t072_2026070200.png','kim_gdps_skew_47163_s000_2026070200.png']) await expect(references.locator(`img[src$="${image}"]`)).toBeVisible()
     expect(consoleMessages.filter(m=>m.type==='pageerror')).toEqual([])
   })

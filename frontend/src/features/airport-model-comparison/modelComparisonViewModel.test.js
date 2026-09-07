@@ -111,7 +111,7 @@ test('missing TAF retains explicit wind, weather and ceiling rows without invent
     assert.ok(vm.charts[kind].find(series => series.id === 'taf').points.every(point => point.value === null))
   }
   assert.equal(vm.rows.temperatureRh.some(row => row.id === 'taf'), false)
-  assert.equal(vm.charts.precipitation.some(row => row.id === 'taf'), false)
+  assert.equal(vm.charts.precipitation.find(row => row.id === 'taf').categorical, true)
 })
 
 test('a valid past selection remains on the shared axis while an outside-window selection reports zero participating models', () => {
@@ -129,8 +129,38 @@ test('cumulative precipitation and SVG paths stop at the first missing value wit
   assert.deepEqual(pathSegments([{ x: 0, value: 0 }, { x: 1, value: 2 }, { x: 2, value: null }, { x: 3, value: 4 }]), [[{ x: 0, value: 0 }, { x: 1, value: 2 }], [{ x: 3, value: 4 }]])
 })
 
+test('cumulative charts share an interval boundary, tolerate structural F000, and do not bridge later gaps', () => {
+  const data = structuredClone(payload)
+  for (const model of data.models) model.records[0].precipitation_mm = null
+  const vm = buildComparisonViewModel({ data, selectedValidAt: hour(run, -2), tz: 'KST' })
+  assert.equal(vm.precipitationStartAt, run)
+  assert.match(vm.precipitationStartLabel, /09.06 15:00 KST/)
+  const kim = vm.charts.precipitation.find(s => s.id === 'kim').points
+  assert.deepEqual(kim.slice(0, 7).map(p => p.value), [null, null, 0, 0.2, 0.4, null, null])
+  assert.equal(vm.charts.precipitation.find(s => s.id === 'ecmwf').points.at(-1).value, 2.4)
+  assert.equal(vm.rows.precipitation.find(s => s.id === 'kim').cells[2].value, null)
+  const utc = buildComparisonViewModel({ data, tz: 'UTC' })
+  assert.equal(utc.precipitationStartAt, run)
+  assert.match(utc.precipitationStartLabel, /06:00 UTC/)
+})
+
+test('a later model window defines the common accumulation start without model-specific totals', () => {
+  const data = structuredClone(payload)
+  data.models[1].records = data.models[1].records.slice(2)
+  const vm = buildComparisonViewModel({ data })
+  assert.equal(vm.precipitationStartAt, hour(run, 2))
+  for (const s of vm.charts.precipitation.filter(s => ['kim', 'ecmwf', 'gfs', 'icon'].includes(s.id))) {
+    assert.equal(s.points[2].value, 0)
+    assert.equal(s.points[1].value, null)
+  }
+  data.models[0].records = data.models[0].records.slice(0, 1)
+  const stale = buildComparisonViewModel({ data, selectedValidAt: hour(run, -2) })
+  assert.ok(stale.charts.precipitation.find(s => s.id === 'kim').points.every(p => p.value === null))
+})
+
 test('graph empty states distinguish all-zero precipitation and all-NSC ceiling from missing input', () => {
   const data = structuredClone(payload)
+  data.observations.metar[0].weather = []
   data.observations.amos = [{ observed_at: '2026-09-06T08:00:00.000Z', precipitation_mm: 0 }]
   data.observations.metar[0].clouds = []
   data.observations.taf.base.clouds = []
@@ -142,6 +172,10 @@ test('graph empty states distinguish all-zero precipitation and all-NSC ceiling 
   const vm = buildComparisonViewModel({ data, selectedValidAt: hour(run, 12), tz: 'UTC' })
   assert.equal(vm.chartEmptyStates.precipitation, '강수량 없음')
   assert.equal(vm.chartEmptyStates.ceiling, '구름 없음')
+  for (const model of data.models) model.records[0].precipitation_mm = null
+  assert.equal(buildComparisonViewModel({ data }).chartEmptyStates.precipitation, '강수량 없음')
+  data.observations.metar[0].weather = [{ raw: '-RA' }]
+  assert.equal(buildComparisonViewModel({ data }).chartEmptyStates.precipitation, null)
   data.models[0].records[0].ceiling_status = 'missing_input'
   assert.equal(buildComparisonViewModel({ data, selectedValidAt: hour(run, 12), tz: 'UTC' }).chartEmptyStates.ceiling, null)
 })
