@@ -115,7 +115,16 @@
    마지막 열(API 실행·예정)을 아예 못 본다 — 표만 따로 가로로 굴린다. */
 .admin-page .ac-tw { overflow-x: auto; }
 .admin-page table.ac-t { width: 100%; border-collapse: collapse; font-size: var(--ac-t-body); }
-.admin-page .ac-tw table.ac-t { min-width: 1180px; }
+.admin-page .ac-tw table.ac-t { min-width: 1040px; }
+/* 숫자·시각 칸이 좁아서 "16분 / 전"처럼 세 줄로 접히면 행 높이가 세 배가 된다. 가로로는 이미
+   굴러가니 접지 말고 한 줄로 둔다. 긴 글이 들어가는 자료·오류·API 칸만 접히게 남긴다. */
+.admin-page .ac-tw table.ac-t td.ac-r, .admin-page .ac-tw table.ac-t th.ac-r { white-space: nowrap; }
+.admin-page .ac-tw table.ac-t td .ac-sub { white-space: nowrap; }
+.admin-page .ac-tw table.ac-t span.ac-sub { display: inline; margin-left: 3px; }
+/* API 칸만은 접히게 둔다 — 일정 문구가 길어서(여덟 시각 나열) 한 줄로 두면 이 칸 하나가
+   표 전체를 창 밖으로 밀어낸다. 여기만 접으면 표가 화면 안에 들어온다. */
+.admin-page .ac-tw table.ac-t td.ac-ops, .admin-page .ac-tw table.ac-t th.ac-ops { white-space: normal; max-width: 340px; }
+.admin-page .ac-tw table.ac-t td.ac-ops .ac-sub { white-space: normal; }
 .admin-page details.ac-model-health > summary { cursor: pointer; }
 .admin-page details.ac-model-health[open] > summary { margin-bottom: 4px; }
 .admin-page table.ac-t th { text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ac-faint); padding: 9px 22px; border-bottom: 1px solid var(--ac-bd-2); white-space: nowrap; }

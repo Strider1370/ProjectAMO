@@ -62,14 +62,11 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
               <tr>
                 <th>자료</th>
                 <th>상태</th>
-                <th className="ac-r">마지막 성공</th>
-                <th className="ac-r">정상 주기</th>
-                <th className="ac-r">성공률(24h)</th>
-                <th className="ac-r">성공률(누적)</th>
-                <th className="ac-r">평균 소요</th>
-                <th className="ac-r">밀림</th>
+                <th className="ac-r">마지막 성공 · 주기</th>
+                <th className="ac-r">성공률 24H · 누적</th>
+                <th className="ac-r">평균 소요 · 밀림</th>
                 <th>마지막 오류(24H)</th>
-                <th>API 실행 · 예정</th>
+                <th className="ac-ops">API 실행 · 예정</th>
               </tr>
             </thead>
             <tbody>
@@ -95,25 +92,33 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                     )}
                   </td>
                   <td><span className={`ac-chip ac-${STATUS_TONE[row.status]}`}>{STATUS_WORD[row.status]}</span></td>
+                  {/* 짝을 이루는 값은 한 칸에 두 줄로 넣는다. 열이 열 개면 가로로 밀어야 읽히고,
+                      옆으로 흩어진 숫자는 짝지어 보기도 어렵다. 윗줄이 지금, 아랫줄이 배경이다. */}
                   <td className="ac-r">
                     {row.lastSuccessAt ? `${formatAge(now - Date.parse(row.lastSuccessAt))} 전` : '—'}
-                    {row.contentAt && <div className="ac-sub">자료 {formatAge(now - Date.parse(row.contentAt))} 전</div>}
+                    <div className="ac-sub">주기 {formatInterval(row.normalMs)}</div>
+                    {/* 자료 시각은 수집 시각과 다를 때만 적는다 — "받아오긴 했는데 내용이 낡았다"는 신호다. */}
+                    {row.contentAt && formatAge(now - Date.parse(row.contentAt)) !== formatAge(now - Date.parse(row.lastSuccessAt))
+                      && <div className="ac-sub" data-content-age>자료 {formatAge(now - Date.parse(row.contentAt))} 전</div>}
                   </td>
-                  <td className="ac-r ac-muted">{formatInterval(row.normalMs)}</td>
-                  <td className="ac-r" style={row.stats?.recentSuccessRate != null && row.stats.recentSuccessRate < 0.8 ? { color: 'var(--ac-bad)', fontWeight: 600 } : undefined}>
-                    {row.stats?.recentRuns ? formatRate(row.stats.recentSuccessRate) : '—'}
-                    {row.stats?.recentRuns > 0 && <div className="ac-sub">{row.stats.recentRuns}회</div>}
+                  <td className="ac-r">
+                    <span style={row.stats?.recentSuccessRate != null && row.stats.recentSuccessRate < 0.8 ? { color: 'var(--ac-bad)', fontWeight: 600 } : undefined}>
+                      {row.stats?.recentRuns ? formatRate(row.stats.recentSuccessRate) : '—'}
+                    </span>
+                    {row.stats?.recentRuns > 0 && <span className="ac-sub"> {row.stats.recentRuns}회</span>}
+                    <div className="ac-sub">누적 {formatRate(row.stats?.successRate)}</div>
                   </td>
-                  <td className="ac-r ac-muted">{formatRate(row.stats?.successRate)}</td>
-                  <td className="ac-r ac-muted">{formatMs(row.stats?.avgMs)}</td>
-                  <td className="ac-r" style={row.stats?.skips > 0 ? { color: 'var(--ac-warn)', fontWeight: 600 } : undefined}>
-                    {row.stats?.skips ?? 0}
+                  <td className="ac-r ac-muted">
+                    {formatMs(row.stats?.avgMs)}
+                    <div className="ac-sub" style={row.stats?.skips > 0 ? { color: 'var(--ac-warn)', fontWeight: 600 } : undefined}>
+                      밀림 {row.stats?.skips ?? 0}
+                    </div>
                   </td>
                   <td className="ac-muted">
                     {row.stats?.recentLastError || '—'}
-                    {row.stats?.recentLastErrorAt && <div className="ac-sub">{formatAge(now - Date.parse(row.stats.recentLastErrorAt))} 전</div>}
+                    {row.stats?.recentLastErrorAt && <span className="ac-sub"> · {formatAge(now - Date.parse(row.stats.recentLastErrorAt))} 전</span>}
                   </td>
-                  <td className="ac-muted">
+                  <td className="ac-muted ac-ops">
                     {(row.operations || []).map((operation) => {
                       const expected = operation.expected
                       const next = expected?.nextExpectedAt ? new Date(expected.nextExpectedAt).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }) : null
@@ -130,7 +135,7 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
 
         {since && (
           <p className="ac-sub" style={{ padding: '12px 22px 16px' }}>
-            성공률(24H)은 최근 24시간, 그 아래 회차 수는 그동안 실제로 돈 횟수입니다.
+            성공률은 윗줄이 최근 24시간(옆의 회차 수는 그동안 실제로 돈 횟수), 아랫줄이 누적입니다.
             마지막 오류도 최근 24시간 안에 실제로 난 것만 보여줍니다 — 고쳐서 사라진 오류는 하루가 지나면 없어집니다.
             성공률(누적)과 밀림은 집계 시작({new Date(since).toLocaleDateString('ko-KR')}) 이후 전체입니다.
           </p>
