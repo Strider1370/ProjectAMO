@@ -129,6 +129,23 @@ test('cumulative precipitation and SVG paths stop at the first missing value wit
   assert.deepEqual(pathSegments([{ x: 0, value: 0 }, { x: 1, value: 2 }, { x: 2, value: null }, { x: 3, value: 4 }]), [[{ x: 0, value: 0 }, { x: 1, value: 2 }], [{ x: 3, value: 4 }]])
 })
 
+test('graph empty states distinguish all-zero precipitation and all-NSC ceiling from missing input', () => {
+  const data = structuredClone(payload)
+  data.observations.amos = [{ observed_at: '2026-09-06T08:00:00.000Z', precipitation_mm: 0 }]
+  data.observations.metar[0].clouds = []
+  data.observations.taf.base.clouds = []
+  for (const model of data.models) for (const item of model.records) {
+    item.precipitation_mm = 0
+    item.ceiling_agl_ft = null
+    item.ceiling_status = 'not_detected_below_limit'
+  }
+  const vm = buildComparisonViewModel({ data, selectedValidAt: hour(run, 12), tz: 'UTC' })
+  assert.equal(vm.chartEmptyStates.precipitation, '강수량 없음')
+  assert.equal(vm.chartEmptyStates.ceiling, '구름 없음')
+  data.models[0].records[0].ceiling_status = 'missing_input'
+  assert.equal(buildComparisonViewModel({ data, selectedValidAt: hour(run, 12), tz: 'UTC' }).chartEmptyStates.ceiling, null)
+})
+
 test('source chips preserve observation, run, and availability timestamps and KIM uses the approved method label', () => {
   const withMethods = structuredClone(payload)
   withMethods.models.find(model => model.model === 'kim').records.forEach(item => { item.ceiling_method = 'cloud_condensate_estimate' })
@@ -163,7 +180,7 @@ test('details retain model timing, terrain and ceiling evidence and charts inclu
   assert.equal(point.detail.collected_at, hour(run, 1))
   assert.equal(point.detail.ceiling_source_levels[0].selected, true)
   assert.deepEqual(point.detail.field_provenance, item.field_provenance)
-  assert.match(vm.summary.ceiling, /5,000 ft 이하 조건 미검출/)
+  assert.match(vm.summary.ceiling, /ECMWF NSC/)
 })
 
 test('each past METAR report retains its real instant in charts and the hourly cell and future reports are excluded', () => {
@@ -174,4 +191,29 @@ test('each past METAR report retains its real instant in charts and the hourly c
   const reports = vm.rows.wind.find(r => r.id === 'metar').cells.find(Boolean).reports
   assert.deepEqual(reports.map(r => r.valid_at), ['2026-09-06T08:10:00.000Z', '2026-09-06T08:15:00.000Z'])
   assert.deepEqual(vm.charts.wind.find(r => r.id === 'metar').points.filter(p => p.at).map(p => p.at), reports.map(r => r.valid_at))
+})
+
+test('future METAR and AMOS cells are marked as observation-pending instead of missing data', () => {
+  const vm = buildComparisonViewModel({ data: payload, selectedValidAt: hour(run, 12), tz: 'UTC' })
+  const future = hour(run, 3)
+  assert.deepEqual(vm.rows.wind.find(row => row.id === 'metar').cells.find(cell => cell?.slot_at === future), {
+    slot_at: future, valid_at: future, status: 'observation_pending', value: null, text: '관측 전',
+  })
+  assert.deepEqual(vm.rows.precipitation.find(row => row.id === 'amos').cells.find(cell => cell?.slot_at === future), {
+    slot_at: future, valid_at: future, status: 'observation_pending', value: null, text: '관측 전',
+  })
+})
+
+test('ceiling text uses NSC whenever no ceiling is found below 5,000 ft', () => {
+  const data = structuredClone(payload)
+  data.observations.metar[0].nsc_flag = true
+  data.observations.metar[0].clouds = []
+  data.observations.taf.base.clouds = [{ amount: 'SCT', base_ft: 3000 }]
+  const vm = buildComparisonViewModel({ data, selectedValidAt: hour(run, 2), tz: 'UTC' })
+  const metar = vm.rows.ceiling.find(row => row.id === 'metar').cells.find(Boolean)
+  const taf = vm.rows.ceiling.find(row => row.id === 'taf').cells.find(cell => cell?.slot_at === hour(run, 2))
+  const ecmwf = vm.rows.ceiling.find(row => row.id === 'ecmwf').cells.find(cell => cell?.slot_at === hour(run, 2))
+  assert.equal(metar.text, 'NSC')
+  assert.equal(taf.text, 'NSC')
+  assert.equal(ecmwf.text, 'NSC')
 })

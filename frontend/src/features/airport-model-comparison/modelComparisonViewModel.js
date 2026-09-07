@@ -47,8 +47,7 @@ function formatTime(value, tz, includeZone = true) {
 
 function statusText(record) {
   const status = record?.ceiling_status
-  if (status === 'not_detected_below_limit') return `${fmtNumber(record.ceiling_limit_ft ?? 5000)} ft 이하 조건 미검출`
-  if (status === 'no_ceiling') return '운고 없음'
+  if (status === 'not_detected_below_limit' || status === 'no_ceiling') return 'NSC'
   if (status === 'missing_input') return '입력자료 없음'
   if (status === 'outside_run') return '예보 범위 밖'
   return '자료 없음'
@@ -94,16 +93,21 @@ function nwpCell(record, kind, slotAt, airport) {
   return { ...base, value: temperature, rh, temperature, text: `${finite(temperature) ? `${fmtNumber(temperature, 1)}°C` : '자료 없음'} / ${finite(rh) ? `${fmtNumber(rh)}%` : '자료 없음'}`, dewPoint: record.dew_point_c, pressure: record.pressure_msl_hpa }
 }
 
+function observationPendingCell(slotAt, effectiveNow) {
+  if (Date.parse(slotAt) <= effectiveNow) return null
+  return { slot_at: slotAt, valid_at: slotAt, status: 'observation_pending', value: null, text: '관측 전' }
+}
+
 function observationRows(data, times, kind, effectiveNow) {
   const rows = []
   const metars = (data.observations?.metar || []).filter(item => Date.parse(item.observed_at) <= effectiveNow).sort((a, b) => Date.parse(a.observed_at) - Date.parse(b.observed_at))
   if (kind !== 'precipitation') {
     rows.push({ id: 'metar', label: kind === 'temperatureRh' ? 'METAR 계산' : 'METAR', color: MODEL_COLORS.metar, cells: times.map(slot => {
       const reports = metars.filter(item => roundHour(item.observed_at) === slot)
-      if (!reports.length) return null
+      if (!reports.length) return observationPendingCell(slot, effectiveNow)
       const cells = reports.map(item => {
       if (kind === 'wind') return { slot_at: slot, valid_at: item.observed_at, value: item.wind_speed_kt, gust: item.wind_gust_kt, direction: item.wind_direction_deg, text: `${finite(item.wind_direction_deg) ? `${Math.round(item.wind_direction_deg)}°` : 'VRB'} ${fmtNumber(item.wind_speed_kt)} kt`, subtext: finite(item.wind_gust_kt) ? `G ${fmtNumber(item.wind_gust_kt)} kt` : '돌풍 없음', detail: detail(item) }
-      if (kind === 'ceiling') { const cloud = item.clouds?.find(c => ['BKN', 'OVC', 'VV'].includes(c.amount ?? c.coverage) && finite(c.base ?? c.base_ft)); const base = cloud?.base ?? cloud?.base_ft; return { slot_at: slot, valid_at: item.observed_at, value: base ?? null, text: cloud ? `${fmtNumber(base)} ft` : '운고 없음', clouds: item.clouds, detail: detail(item) } }
+      if (kind === 'ceiling') { const cloud = item.clouds?.find(c => ['BKN', 'OVC', 'VV'].includes(c.amount ?? c.coverage) && finite(c.base ?? c.base_ft)); const base = cloud?.base ?? cloud?.base_ft; return { slot_at: slot, valid_at: item.observed_at, value: base ?? null, text: cloud ? `${fmtNumber(base)} ft` : 'NSC', clouds: item.clouds, detail: detail(item) } }
       const rh = computeRelativeHumidity(item.temperature_c, item.dew_point_c)
       return { slot_at: slot, valid_at: item.observed_at, value: item.temperature_c, temperature: item.temperature_c, rh, text: `${finite(item.temperature_c) ? `${fmtNumber(item.temperature_c, 1)}°C` : '자료 없음'} / ${finite(rh) ? `${fmtNumber(rh)}%` : '자료 없음'}`, dewPoint: item.dew_point_c, detail: detail(item) }
       })
@@ -111,7 +115,7 @@ function observationRows(data, times, kind, effectiveNow) {
     }) })
   }
   if (kind === 'precipitation') {
-    rows.push({ id: 'metar', label: 'METAR 현재날씨', color: MODEL_COLORS.metar, cells: times.map(slot => { const reports = metars.filter(x => roundHour(x.observed_at) === slot).map(item => ({ slot_at: slot, valid_at: item.observed_at, value: null, text: item.weather?.map(x => x.raw).filter(Boolean).join(' ') || '현상 없음' })); return reports.length ? { ...reports.at(-1), reports } : null }) })
+    rows.push({ id: 'metar', label: 'METAR 현재날씨', color: MODEL_COLORS.metar, cells: times.map(slot => { const reports = metars.filter(x => roundHour(x.observed_at) === slot).map(item => ({ slot_at: slot, valid_at: item.observed_at, value: null, text: item.weather?.map(x => x.raw).filter(Boolean).join(' ') || '현상 없음' })); return reports.length ? { ...reports.at(-1), reports } : observationPendingCell(slot, effectiveNow) }) })
   }
   const taf = data.observations?.taf
   if (kind !== 'temperatureRh') rows.push({ id: 'taf', label: 'TAF', color: MODEL_COLORS.taf, cells: times.map(slot => {
@@ -128,16 +132,16 @@ function observationRows(data, times, kind, effectiveNow) {
       if (kind === 'wind') return `${type} ${alternate.wind?.direction ?? 'VRB'}° ${alternate.wind?.speed ?? '—'} kt`
       if (kind === 'precipitation') return `${type} ${alternate.wx?.map(x => x.raw).filter(Boolean).join(' ') || 'NSW'}`
       const cloud = alternate.clouds?.find(c => ['BKN', 'OVC', 'VV'].includes(c.amount ?? c.coverage) && finite(c.base ?? c.base_ft))
-      return `${type} ${cloud ? `${fmtNumber(cloud.base ?? cloud.base_ft)} ft` : '운고 없음'}`
+      return `${type} ${cloud ? `${fmtNumber(cloud.base ?? cloud.base_ft)} ft` : 'NSC'}`
     }).join(' · ')
     if (kind === 'wind') return { slot_at: slot, valid_at: slot, value: values.wind?.speed ?? null, gust: values.wind?.gust ?? null, direction: values.wind?.direction ?? null, text: finite(values.wind?.speed) ? `${values.wind.direction ?? 'VRB'}° ${values.wind.speed} kt` : '자료 없음', subtext: finite(values.wind?.gust) ? `G ${fmtNumber(values.wind.gust)} kt` : '돌풍 없음', condition, conditionText: conditionTextFor(kind) }
     if (kind === 'precipitation') return { slot_at: slot, valid_at: slot, value: null, text: values.wx?.map(x => x.raw).filter(Boolean).join(' ') || 'NSW', condition, conditionText: conditionTextFor(kind) }
     const cloud = values.clouds?.find(c => ['BKN', 'OVC', 'VV'].includes(c.amount ?? c.coverage) && finite(c.base ?? c.base_ft)), base = cloud?.base ?? cloud?.base_ft
-    return { slot_at: slot, valid_at: slot, value: base ?? null, text: cloud ? `${fmtNumber(base)} ft` : '운고 없음', condition, conditionText: conditionTextFor(kind), clouds: values.clouds }
+    return { slot_at: slot, valid_at: slot, value: base ?? null, text: cloud ? `${fmtNumber(base)} ft` : 'NSC', condition, conditionText: conditionTextFor(kind), clouds: values.clouds }
   }) })
   if (kind === 'precipitation') {
     const amos = data.observations?.amos || []
-    rows.push({ id: 'amos', label: 'AMOS 실측', color: MODEL_COLORS.amos, cells: times.map(slot => { const item = amos.find(x => x.observed_at === slot); return item ? { slot_at: slot, valid_at: item.observed_at, value: item.precipitation_mm, text: finite(item.precipitation_mm) ? `${fmtNumber(item.precipitation_mm, 1)} mm` : '자료 없음' } : null }) })
+    rows.push({ id: 'amos', label: 'AMOS 실측', color: MODEL_COLORS.amos, cells: times.map(slot => { const item = amos.find(x => x.observed_at === slot); return item ? { slot_at: slot, valid_at: item.observed_at, value: item.precipitation_mm, text: finite(item.precipitation_mm) ? `${fmtNumber(item.precipitation_mm, 1)} mm` : '자료 없음' } : observationPendingCell(slot, effectiveNow) }) })
   }
   return rows
 }
@@ -160,7 +164,7 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
   for (const kind of ['wind', 'precipitation', 'ceiling', 'temperatureRh']) {
     rows[kind] = [...observationRows(data, times, kind, effectiveNow), ...MODEL_ORDER.map(model => ({ id: model, label: MODEL_LABELS[model], color: MODEL_COLORS[model], cells: times.map(slot => nwpCell(modelRecords.get(model)?.get(slot), kind, slot, data.airport)) }))]
   }
-  const samples = row => row.cells.flatMap(cell => cell?.reports || [cell])
+  const samples = row => row.cells.flatMap(cell => cell?.reports || (cell?.status === 'observation_pending' ? [] : [cell]))
   const charts = {
     wind: rows.wind.map(row => ({ ...row, points: samples(row).map(cell => cell ? { at: cell.valid_at, value: cell.value, gust: cell.gust, status: cell.status, text: [cell.text, cell.subtext].filter(Boolean).join(' · '), conditionText: cell.conditionText, detail: cell.detail } : { at: null, value: null }) })),
     precipitation: rows.precipitation.filter(row => MODEL_ORDER.includes(row.id) || row.id === 'amos').map(row => {
@@ -169,6 +173,20 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
     }),
     ceiling: rows.ceiling.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.value ?? null, status: cell?.status, text: cell?.text, conditionText: cell?.conditionText, detail: cell?.detail })) })),
     temperatureRh: rows.temperatureRh.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.temperature ?? null, secondary: cell?.rh ?? null, status: cell?.status, text: cell?.text, detail: cell?.detail })) })),
+  }
+  const chartEmptyStates = {
+    precipitation: (() => {
+      const points = charts.precipitation.flatMap(series => series.points)
+      const values = points.filter(point => finite(point.hourly))
+      const missing = points.some(point => point.status && point.status !== 'observation_pending' && !finite(point.hourly))
+      return values.length && !missing && values.every(point => point.hourly === 0) ? '강수량 없음' : null
+    })(),
+    ceiling: (() => {
+      const points = charts.ceiling.flatMap(series => series.points)
+      const resolved = points.filter(point => finite(point.value) || point.text === 'NSC')
+      const missing = points.some(point => point.status && point.status !== 'observation_pending' && !finite(point.value) && point.text !== 'NSC')
+      return resolved.length && !missing && resolved.every(point => point.text === 'NSC') ? '구름 없음' : null
+    })(),
   }
   const selectedModels = MODEL_ORDER.map(model => modelRecords.get(model)?.get(selected)).filter(Boolean)
   const winds = selectedModels.map(r => r.wind_speed_kt).filter(finite), gusts = selectedModels.map(r => r.wind_gust_kt).filter(finite)
@@ -186,5 +204,5 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
     { id: 'metar', label: 'METAR 실황', at: (data.observations?.metar || []).filter(item => Date.parse(item.observed_at) <= effectiveNow).sort((a,b) => Date.parse(a.observed_at) - Date.parse(b.observed_at)).at(-1)?.observed_at || null },
     { id: 'taf', label: 'TAF 발표', at: data.observations?.taf?.issued_at || null },
   ]
-  return { airport: data.airport, status: data.status, issues: data.issues || [], effectiveNow, selectedValidAt: selected, selectedOutsideWindow: !times.includes(selected), times, timeLabels: times.map(t => formatTime(t, tz)), rows, charts, summary, modelChips, observationChips }
+  return { airport: data.airport, status: data.status, issues: data.issues || [], effectiveNow, selectedValidAt: selected, selectedOutsideWindow: !times.includes(selected), times, timeLabels: times.map(t => formatTime(t, tz)), rows, charts, chartEmptyStates, summary, modelChips, observationChips }
 }

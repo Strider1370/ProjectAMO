@@ -147,6 +147,48 @@ test.describe('airport-model-comparison',()=>{
     await noOverflow(page)
   })
 
+  test('future observations are visibly marked and no-ceiling states use NSC',async({page},testInfo)=>{
+    await installModelComparisonFixture(page)
+    await page.goto(`/airport/RKPU/models?valid_at=${encodeURIComponent(SELECTED_TIME)}`)
+    await page.getByRole('button',{name:'요소별 보기',exact:true}).click()
+    const wind=page.getByRole('table',{name:'지상 바람 시간별 비교',exact:true})
+    const pending=wind.getByRole('cell',{name:'METAR 09.06 18:00 KST 관측 전',exact:true})
+    await expect(pending).toBeVisible()
+    await expect(pending).toHaveCSS('background-color','rgb(71, 85, 105)')
+    await expect(pending).toHaveText('관측 전')
+    await page.getByRole('tab',{name:'운고·운량',exact:true}).click()
+    const ceiling=page.getByRole('table',{name:'운고와 운량 시간별 비교',exact:true})
+    const gfs=ceiling.getByRole('row').filter({has:page.getByRole('rowheader',{name:'GFS',exact:true})})
+    await expect(gfs.locator('td[title*="F004"]')).toContainText('NSC')
+    const metar=ceiling.getByRole('row').filter({has:page.getByRole('rowheader',{name:'METAR',exact:true})})
+    await expect(metar.getByText('NSC',{exact:true})).toBeVisible()
+    await noOverflow(page)
+    await capture(page,testInfo,'nsc-observation-pending')
+  })
+
+  test('all-zero precipitation and all-NSC ceiling use empty graph states',async({page},testInfo)=>{
+    await installModelComparisonFixture(page,{transform:payload=>{
+      payload.observations.amos=[{observed_at:'2026-09-06T08:00:00.000Z',precipitation_mm:0}]
+      payload.observations.metar[0].clouds=[]
+      payload.observations.taf.base.clouds=[]
+      for(const model of payload.models) for(const record of model.records) {
+        record.precipitation_mm=0
+        record.ceiling_agl_ft=null
+        record.ceiling_status='not_detected_below_limit'
+      }
+      return payload
+    }})
+    await page.goto(`/airport/RKPU/models?valid_at=${encodeURIComponent(SELECTED_TIME)}`)
+    await page.getByRole('button',{name:'요소별 보기',exact:true}).click()
+    await page.getByRole('tab',{name:'강수',exact:true}).click()
+    await expect(page.getByRole('status',{name:'강수량 없음',exact:true})).toBeVisible()
+    await expect(page.getByRole('group',{name:'모델별 mm 추세 그래프',exact:true})).toHaveCount(0)
+    await page.getByRole('tab',{name:'운고·운량',exact:true}).click()
+    await expect(page.getByRole('status',{name:'구름 없음',exact:true})).toBeVisible()
+    await expect(page.getByRole('group',{name:'모델별 ft 추세 그래프',exact:true})).toHaveCount(0)
+    await capture(page,testInfo,'empty-precipitation-ceiling')
+  })
+
   test('temperature and RH use vertically separated charts on the same time axis',async({page})=>{
     await installModelComparisonFixture(page)
     await page.goto('/airport/RKPU/models')
@@ -234,7 +276,7 @@ test.describe('airport-model-comparison',()=>{
       await expect(row.locator('td.is-selected')).not.toContainText(method)
       expect((await row.boundingBox()).height).toBeLessThan(250)
     }
-    await expect(ceiling.getByRole('row').filter({has:page.getByRole('rowheader',{name:'GFS',exact:true})}).locator('td[title*="F004"]')).toContainText('운고 없음')
+    await expect(ceiling.getByRole('row').filter({has:page.getByRole('rowheader',{name:'GFS',exact:true})}).locator('td[title*="F004"]')).toContainText('NSC')
     await expect(ceiling.getByRole('row').filter({has:page.getByRole('rowheader',{name:'ICON',exact:true})}).locator('td[title*="F006"]')).toContainText('입력자료 없음')
     const ceilingChart=page.getByRole('group',{name:'모델별 ft 추세 그래프',exact:true})
     await ceilingChart.scrollIntoViewIfNeeded();await ceilingChart.focus()

@@ -5,7 +5,7 @@ import { comparisonDetails } from './modelComparisonDetail.js'
 import { CEILING_CHART_MAX_FT, formatAxisTick, plotChartValue } from './modelComparisonChart.js'
 
 const HEIGHT = 250, PAD_Y = 32
-export default function ModelComparisonChart({ series, times, timeLabels, unit, selectedValidAt, secondaryUnit }) {
+export default function ModelComparisonChart({ series, times, timeLabels, unit, selectedValidAt, secondaryUnit, emptyState }) {
   const [detail, setDetail] = useState(null)
   const chartRef = useRef(null)
   const hideTimer = useRef(null)
@@ -50,6 +50,7 @@ export default function ModelComparisonChart({ series, times, timeLabels, unit, 
     const second = pathSegments(points.map(p => ({ ...p, value: secondaryUnit ? p.secondary : null }))).map((segment, i) => ({ key: `${s.id}-s-${i}`, d: segment.map((p, j) => `${j ? 'L' : 'M'}${p.x},${ySecondary(p.value)}`).join(' '), color: s.color, dash: '2 4' }))
     return [...primary, ...gust, ...second]
   }), [series, start, end, min, max, secondaryUnit, secondary.join(','), unit])
+  if (emptyState) return <div className="mc-chart-wrap mc-chart-wrap--empty" role="status" aria-label={emptyState}><p>{emptyState}</p></div>
   const focusedTime = () => times.includes(selectedValidAt) ? selectedValidAt : times[0]
   const moveKeyboardTime = event => {
     const current = detail?.at || focusedTime()

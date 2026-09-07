@@ -34,7 +34,7 @@ export function comparisonFixture({ scenario='ready', airport_icao='RKPU' }={}) 
       taf:{issued_at:'2026-09-06T05:00:00.000Z',valid_from:'2026-09-06T06:00:00.000Z',valid_to:'2026-09-07T06:00:00.000Z',base:{wind:{direction:30,speed:10,gust:15},wx:[],clouds:[]},change_groups:[{type:'TEMPO',start:'2026-09-06T09:00:00.000Z',end:'2026-09-06T11:00:00.000Z',wind:{direction:40,speed:14,gust:20},wx:[{raw:'RA'}],clouds:[]}]}}}
 }
 
-export async function installModelComparisonFixture(page,{scenario='ready'}={}) {
+export async function installModelComparisonFixture(page,{scenario='ready', transform}={}) {
   let state=scenario,requests=0,effectiveNow=FIXED_NOW
   await page.addInitScript(version=>{localStorage.setItem('amo.tour.v1.done','true');localStorage.setItem('projectamo:lastSeenVersion',version);localStorage.setItem('time_zone','KST')},CURRENT_VERSION)
   await page.route('**/api/demo-mode',route=>route.fulfill({json:{on:true,now:FIXED_NOW}}))
@@ -42,7 +42,8 @@ export async function installModelComparisonFixture(page,{scenario='ready'}={}) 
     requests++
     if(state==='error') return route.fulfill({status:503,json:{error:'fixture_refresh_failed'}})
     const airport_icao=new URL(route.request().url()).pathname.split('/')[3]
-    return route.fulfill({json:{...comparisonFixture({scenario:state,airport_icao}),effective_now:effectiveNow}})
+    const payload={...comparisonFixture({scenario:state,airport_icao}),effective_now:effectiveNow}
+    return route.fulfill({json:transform ? transform(payload) : payload})
   })
   return {setScenario(value){state=value},setNow(value){effectiveNow=value},get requests(){return requests}}
 }

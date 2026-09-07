@@ -162,3 +162,10 @@
 - 자료 기준시각 칩은 가용시각이 없을 때 `이용시각 미기록`으로 표기한다. 결측 텍스트의 대비를 올렸고, 차트는 하나의 키보드 탭 정지점에서 화살표/Home/End로 시각을 이동한다. 클릭은 계속 어떤 상태도 바꾸지 않는다.
 - 참고 패널은 프로젝트 실제 파일인 `briefing-charts/kim_gdps_erly_city_47163_t072_2026070200.png`, `kim_gdps_skew_47163_s000_2026070200.png`, `surf_2026070112.png`를 각각 연직시계열·Skew-T·지상일기도 샘플로 표시한다. 현재 공항/실행자료와 연결되지 않았다는 문구와 원본 샘플 공항·시각을 함께 표시한다.
 - 검증: 집중 Node 시험 14/14, production build 성공, 재사용 개발 서버의 데스크톱 Playwright 계약 11/11 통과(재시도 0), axe WCAG 2A/2AA 위반 0. 실제 RKPU 화면 캡처: `artifacts/airport-model-comparison/audit-fix-desktop-top.png`, `audit-fix-desktop-charts-main-scroll.png`, `audit-fix-desktop-ceiling-final.png`. 마지막 캡처에서 0.13 mm 축, 10,000 ft 상한 삼각 표식, 실제 세 참고 이미지, 운량 보조선 제거를 직접 대조했다.
+
+## 사용자 피드백 반영 — 관측 예정·NSC·무현상 그래프
+
+- 담당: 메인. 미래 METAR와 AMOS의 미발생 시각은 `자료 없음`과 구분해 짙은 회색 `관측 전` 셀로 표시하고, 차트 점에서는 제외했다. 과거 시각의 실제 결측과 모델 입력 결측은 기존대로 각각 `자료 없음`·`입력자료 없음`으로 남긴다.
+- 사용자의 최신 지시에 따라 5,000 ft 이하에 운고가 없는 모든 상태(`not_detected_below_limit`, `no_ceiling`)와 METAR/TAF의 운고 미검출을 `NSC`로 통일했다. NSC 셀은 비어 있는 운량 상세를 열지 않으며, 운량 계층값이 실제로 있을 때만 셀 펼치기를 제공한다.
+- 표시 구간 전체의 유효 강수 수치가 모두 0 mm이면 강수 그래프를 비우고 `강수량 없음`을 표시한다. 모든 해결된 운고가 NSC이면 운고 그래프를 비우고 `구름 없음`을 표시한다. 모델 입력 결측이나 예보 범위 밖이 하나라도 있으면 이 무현상 상태로 축약하지 않는다.
+- 검증: 집중 Node 시험 15/15 통과, Vite production build 성공, Playwright 신규 계약 desktop/iPad landscape/mobile 6/6 통과(재시도 0). 데스크톱 재검증과 실제 캡처는 `frontend/artifacts/verification/airport-model-comparison-nsc-3/desktop-{nsc-observation-pending,empty-precipitation-ceiling-ceiling-chart-0}.png`에 보존했다. `git diff --check` 및 Graphify update 수행.
