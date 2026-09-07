@@ -10,6 +10,17 @@ import {
 import config from '../src/config.js'
 import { activeCollectorRegistry } from '../src/collector-registry.js'
 
+test('overseas schedule labels stay compact while preserving exact cron and next slot', () => {
+  const collectors=activeCollectorRegistry(config)
+  for(const operation of API_OPERATION_REGISTRY.filter(op=>op.collectorType?.startsWith('nwp_'))) {
+    const collector=collectors.find(c=>c.type===operation.collectorType)
+    const expected=describeExpectedApiCall(operation,collector,Date.parse('2026-09-06T06:41:00Z'))
+    assert.equal(expected.cadenceLabel,'실행별 1시간 간격 · 3회')
+    assert.equal(expected.cronExpression,collector.schedule.expression)
+    assert.ok(Date.parse(expected.nextExpectedAt)>Date.parse('2026-09-06T06:41:00Z'))
+  }
+})
+
 test('fixed-run model URLs resolve uniquely without KMA credentials and can be disabled', () => {
   const urls = {
     open_meteo_ecmwf_meta: 'https://api.open-meteo.com/data/ecmwf_ifs025/static/meta.json',

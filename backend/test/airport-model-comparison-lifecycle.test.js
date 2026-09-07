@@ -8,6 +8,16 @@ import { publishAirportWindow, readAirportComparison, readCollectionAttempt } fr
 import { recordFixture } from './fixtures/airport-model-comparison/records.js'
 import { runWithLock } from '../src/index.js'
 const airports=[{icao:'RKPU'}]
+test('failed last retry records the next run slot, measured after collection finishes', async t => {
+  for (const [model, now, next] of [['ecmwf','09:40','13:40'],['icon','06:40','10:40'],['gfs','08:10','12:10']]) {
+    const root=setup(t),nowMs=Date.parse(`2026-09-06T${now}:00Z`)
+    await assert.rejects(()=>collectNwpModel({root,model,airports,nowMs,clock:()=>nowMs+60000,adapter:async()=>{throw new Error('unavailable')}}),/nwp_collection_incomplete/)
+    assert.equal(readCollectionAttempt({root,model}).next_check_at,`2026-09-06T${next}:00.000Z`)
+  }
+  const root=setup(t),nowMs=Date.parse('2026-09-06T23:40:00Z')
+  await assert.rejects(()=>collectNwpModel({root,model:'icon',airports,nowMs,clock:()=>Date.parse('2026-09-07T00:41:00Z'),adapter:async()=>{throw new Error('unavailable')}}),/nwp_collection_incomplete/)
+  assert.equal(readCollectionAttempt({root,model:'icon'}).next_check_at,'2026-09-07T04:40:00.000Z')
+})
 test('KIM base success cannot mask a failed comparison supplement in collector execution',async()=>{
   const events=[]
   const stats={recordStart:()=>({}),recordSuccess:()=>events.push('success'),recordSkip:()=>events.push('skip'),recordFailure:()=>events.push('failure')}

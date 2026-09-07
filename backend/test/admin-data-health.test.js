@@ -207,7 +207,7 @@ test('모델 health는 성공 pointer와 마지막 시도에서 시각·공항 �
   assert.equal(row.collectedAt, '2026-09-06T10:20:00.000Z')
   assert.equal(row.successAirports, 2)
   assert.equal(row.failedAirports, 1)
-  assert.equal(row.nextCheckAt, '2026-09-06T08:20:00.000Z')
+  assert.equal(row.nextCheckAt, '2026-09-06T08:40:00.000Z', 'next check follows the active schedule, not an old attempt timestamp')
   assert.deepEqual(row.lastFailure, { airportIcao: 'RKSS', code: 'provider_failed', message: 'provider request failed' })
 })
 

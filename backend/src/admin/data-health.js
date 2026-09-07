@@ -9,6 +9,7 @@ import { CATALOG, SOURCES, CHARACTERS } from './data-health-catalog.js'
 import { judge } from './freshness.js'
 import { MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-comparison.js'
 import { readAirportComparison, readCollectionAttempt } from '../airport-model-comparison/store.js'
+import { nextNwpCheckAt } from '../airport-model-comparison/lifecycle.js'
 
 // 관리자 콘솔: 카탈로그에 등록된 자료의 수집 상태.
 //
@@ -40,7 +41,7 @@ function isCurrentlyFailing(entry) {
   return Boolean(entry?.last_failure && entry.last_failure === entry.last_run)
 }
 
-function comparisonHealth(basePath, model, disabled) {
+function comparisonHealth(basePath, model, disabled, nowMs, schedule) {
   if (!model) return {}
   const pointers = []
   for (const airportIcao of MODEL_COMPARISON_AIRPORTS) {
@@ -60,7 +61,7 @@ function comparisonHealth(basePath, model, disabled) {
     airportRuns: pointers.map((pointer) => ({ airportIcao: pointer.airportIcao, modelRunAt: pointer.run_at })),
     successAirports: successful.size,
     failedAirports: failed.size,
-    nextCheckAt: disabled ? null : attempt?.next_check_at || null,
+    nextCheckAt: disabled ? null : model === 'kim' ? attempt?.next_check_at || null : nextNwpCheckAt({model,nowMs,schedule}),
     lastFailure: lastError ? { airportIcao: lastError.airport_icao || null, code: lastError.code, message: lastError.message } : null,
   }
 }
@@ -127,7 +128,7 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
       failing: isCurrentlyFailing(entry),
       lastError: entry?.last_error ?? null,
       operations: operationsFor(row.key),
-      ...comparisonHealth(basePath, row.comparisonModel, disabled),
+      ...comparisonHealth(basePath, row.comparisonModel, disabled, now, cfg.schedule),
     }
   })
 

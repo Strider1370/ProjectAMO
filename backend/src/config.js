@@ -353,9 +353,10 @@ export const noaa = {
 }
 
 export const schedule = {
-  nwp_ecmwf_interval: '*/10 * * * *',
-  nwp_icon_interval: '*/10 * * * *',
-  nwp_gfs_interval: '*/10 * * * *',
+  // 실행별 공개 지연 후 첫 시도와 1시간 간격 재시도 2회. 모두 UTC.
+  nwp_ecmwf_interval: '40 1,2,3,7,8,9,13,14,15,19,20,21 * * *',
+  nwp_icon_interval: '40 0,4,5,6,10,11,12,16,17,18,22,23 * * *',
+  nwp_gfs_interval: '10 0,1,2,6,7,8,12,13,14,18,19,20 * * *',
   notam_interval: '0 */6 * * *', // 6시간 주기(00,06,12,18 UTC)
   metar_interval: '*/5 * * * *',
   // 10분 — 정시 TAF는 6시간 주기지만 AMD(수시 정정)가 예고 없이 나오므로 발표 주기가 아니라 정정 반영 지연으로 정한다.

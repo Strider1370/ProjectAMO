@@ -136,7 +136,7 @@ export function describeExpectedApiCall(operation, collector, nowMs) {
   const quiet = schedule.quiet
   while (quiet && (() => { const kstHour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', hour: '2-digit', hourCycle: 'h23' }).format(new Date(next.toISOString()))); return quiet.fromHourKst < quiet.toHourKst ? kstHour >= quiet.fromHourKst && kstHour < quiet.toHourKst : kstHour >= quiet.fromHourKst || kstHour < quiet.toHourKst })()) next = parsed.next()
   const nextExpectedAt = next.toISOString()
-  return { kind: 'scheduled', cadenceLabel: cadenceLabel(schedule.expression), timezone: schedule.timezone, operatingHoursLabel: operatingHoursLabel(schedule.expression, schedule.timezone), cronExpression: schedule.expression, nextExpectedAt }
+  return { kind: 'scheduled', cadenceLabel: schedule.cadenceLabel || cadenceLabel(schedule.expression), timezone: schedule.timezone, operatingHoursLabel: operatingHoursLabel(schedule.expression, schedule.timezone), cronExpression: schedule.expression, nextExpectedAt }
 }
 
 assertApiOperationRegistry()

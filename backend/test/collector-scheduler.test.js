@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { CronExpressionParser } from 'cron-parser'
 
 import config from '../src/config.js'
 import { activeCollectorRegistry } from '../src/collector-registry.js'
@@ -24,6 +25,19 @@ function scheduler() {
 function bindingsFor(activeCollectors) {
   return Object.fromEntries(activeCollectors.map((collector) => [collector.binding, async () => ({ saved: true })]))
 }
+
+test('overseas NWP schedules three hourly slots per run, including midnight retries', () => {
+  const expected = {
+    nwp_ecmwf: ['01:40','02:40','03:40','07:40','08:40','09:40','13:40','14:40','15:40','19:40','20:40','21:40'],
+    nwp_icon: ['00:40','04:40','05:40','06:40','10:40','11:40','12:40','16:40','17:40','18:40','22:40','23:40'],
+    nwp_gfs: ['00:10','01:10','02:10','06:10','07:10','08:10','12:10','13:10','14:10','18:10','19:10','20:10'],
+  }
+  for (const collector of activeCollectorRegistry(enabledConfig).filter(c => c.type in expected)) {
+    const cron = CronExpressionParser.parse(collector.schedule.expression, { currentDate: '2026-09-06T00:00:00Z', tz: collector.schedule.timezone })
+    assert.deepEqual(Array.from({ length: 12 }, () => cron.next().toISOString().slice(11, 16)), expected[collector.type])
+    assert.ok(cron.next().toISOString().startsWith('2026-09-07'), 'no extra polls between collection windows')
+  }
+})
 
 test('completed NWP cron checks bypass runner and OFF excludes startup jobs', async () => {
   const fake=scheduler(),collectors=activeCollectorRegistry(enabledConfig),calls=[]

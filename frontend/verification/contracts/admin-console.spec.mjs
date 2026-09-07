@@ -123,6 +123,31 @@ test.describe('관리자 콘솔', () => {
     await expect(delayed.locator('.ac-model-health')).toContainText('수집시각')
   })
 
+  test('해외 모델 다음 점검은 실제 시간대별 수집 스케줄을 따른다', async ({ page }, testInfo) => {
+    await page.unroute('**/api/admin/data-health')
+    const pending = page.waitForResponse(response => response.url().endsWith('/api/admin/data-health') && response.status() === 200)
+    await page.reload()
+    const health = await (await pending).json()
+    await page.getByRole('navigation').getByRole('button', { name: /^자료 수집/ }).click()
+    for (const [key, minute, hours] of [['nwp_ecmwf',40,[1,2,3]],['nwp_icon',40,[0,4,5]],['nwp_gfs',10,[0,1,2]]]) {
+      const model = health.rows.find(row => row.key === key)
+      const next = new Date(model.nextCheckAt)
+      expect(next.getTime()).toBeGreaterThan(Date.parse(health.generatedAt))
+      expect(next.getUTCMinutes()).toBe(minute)
+      expect(hours).toContain(next.getUTCHours() % 6)
+      const label = model.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const row = page.getByRole('row', { name: new RegExp(`^${label}`) })
+      const display = next.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false })
+      await expect(row.getByText(`다음 점검 ${display}`, { exact:true })).toBeVisible()
+      await expect(row).toContainText('실행별 1시간 간격 · 3회')
+      expect((await row.boundingBox()).height).toBeLessThan(400)
+      if (key === 'nwp_ecmwf') {
+        await row.scrollIntoViewIfNeeded()
+        await testInfo.attach('nwp-schedule-KST', {body:await page.screenshot(),contentType:'image/png'})
+      }
+    }
+  })
+
   test('이모지를 쓰지 않는다', async ({ page }) => {
     const body = await page.locator('.admin-page').innerText()
     expect(body, '어드민 화면에 이모지가 있다').not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u)

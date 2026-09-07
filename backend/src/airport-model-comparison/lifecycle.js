@@ -1,9 +1,14 @@
 import config from '../config.js'
+import { CronExpressionParser } from 'cron-parser'
 import { MODEL_COMPARISON_AIRPORTS } from '../../../shared/airport-model-comparison.js'
 import { HOUR_MS, selectForecastWindow } from './model.js'
 import { readAirportComparison, writeCollectionAttempt, cleanupComparisonRuns, contentRevision } from './store.js'
 
 const REQUEST_DELAY_MS={ecmwf:(7*60+40)*60000,icon:(4*60+40)*60000,gfs:(6*60+10)*60000}
+export function nextNwpCheckAt({model,nowMs,schedule=config.schedule}) {
+  if(!Object.hasOwn(REQUEST_DELAY_MS,model)) throw new Error('invalid_overseas_model')
+  return CronExpressionParser.parse(schedule[`nwp_${model}_interval`], {currentDate:new Date(nowMs),tz:'Etc/UTC'}).next().toISOString()
+}
 export function comparisonAirports(airports=config.airports) { return airports.filter(a=>MODEL_COMPARISON_AIRPORTS.includes(a.icao)) }
 export function expectedNwpRun({model,nowMs}) {
   if(!Object.hasOwn(REQUEST_DELAY_MS,model)) throw new Error('invalid_overseas_model')
@@ -54,7 +59,8 @@ export async function collectNwpModel({model,signal,nowMs=Date.now(),root=config
         errors:[...(report?.errors || []),{code:'invalid_collection_postcondition',message:'complete airport windows were not published'}]}
     }
   }
-  const attempt={...report,started_at,finished_at:new Date(clock?clock():nowMs+Date.now()-wallStarted).toISOString(),target_run_at,next_check_at:new Date((Math.floor(nowMs/600000)+1)*600000).toISOString()}
+  const finishedMs=clock?clock():nowMs+Date.now()-wallStarted
+  const attempt={...report,started_at,finished_at:new Date(finishedMs).toISOString(),target_run_at,next_check_at:nextNwpCheckAt({model,nowMs:finishedMs})}
   writeCollectionAttempt({root,model,report:attempt})
   if(signal?.aborted) signal.throwIfAborted()
   cleanupComparisonRuns({root,model,maxRuns:settings?.max_runs || 4})

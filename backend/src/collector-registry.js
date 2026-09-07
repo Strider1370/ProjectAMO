@@ -6,6 +6,7 @@ const HOUR = 60 * MINUTE
 
 const utc = (key, maxIntervalMs, graceMs, quiet) => (config) => ({ expression: config.schedule[key], timezone: 'Etc/UTC', maxIntervalMs, graceMs, ...(quiet ? { quiet } : {}) })
 const kst = (key, maxIntervalMs, graceMs, quiet) => (config) => ({ expression: config.schedule[key], timezone: 'Asia/Seoul', maxIntervalMs, graceMs, ...(quiet ? { quiet } : {}) })
+const overseasNwpSchedule = (key, graceMs) => (config) => ({ ...utc(key, 6 * HOUR, graceMs)(config), cadenceLabel: '실행별 1시간 간격 · 3회' })
 const enabled = () => true
 const radarEnabled = (config) => Boolean(config.api?.radar_satellite_auth_key)
 const graphicsEnabled = (config) => radarEnabled(config) && config.radar_graphics?.enabled !== false
@@ -42,9 +43,9 @@ export const COLLECTOR_REGISTRY = [
       : ['metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'lightning', 'typhoon'].includes(type) ? ['aviation'] : [],
   )),
   collector('kim_surface_wind', utc('kim_surface_wind_interval', 4 * HOUR, 35 * MINUTE), (config) => config.kim_nwp?.enabled !== false),
-  collector('nwp_ecmwf', utc('nwp_ecmwf_interval', 6 * HOUR, 90 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
-  collector('nwp_icon', utc('nwp_icon_interval', 6 * HOUR, 60 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
-  collector('nwp_gfs', utc('nwp_gfs_interval', 6 * HOUR, 75 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
+  collector('nwp_ecmwf', overseasNwpSchedule('nwp_ecmwf_interval', 90 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
+  collector('nwp_icon', overseasNwpSchedule('nwp_icon_interval', 60 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
+  collector('nwp_gfs', overseasNwpSchedule('nwp_gfs_interval', 75 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
   collector('ktg', utc('ktg_interval', 5 * HOUR, 35 * MINUTE)),
   collector('ground_forecast', kst('ground_forecast_interval', 3 * HOUR, 35 * MINUTE), enabled, ['aviation']),
   collector('terminal_flights', kst('terminal_flight_interval', MINUTE, MINUTE, EARLY_MORNING)),

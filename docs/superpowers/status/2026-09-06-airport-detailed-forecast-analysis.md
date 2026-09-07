@@ -142,3 +142,14 @@
 - 최종 관리형 Playwright **33/33 통과**, 재시도0, desktop/iPad landscape/mobile 전체 완료. log: artifacts/airport-comparison-hover-only-browser.log. 캡처: artifacts/responsive-screenshots/airport-model-comparison/20260907-hover-only/.
 - 메인이 실제 RKPU 자료 화면을 desktop/mobile로 직접 대조했다. 클릭 전후 9개 시간 열과 SVG viewBox, URL이 동일하며 그래프 높이는 각각 344.703125px/250px로 유지됐다. METAR·TAF·4모델의 같은 시각 값 툴팁, 운량/기온 보조값 열기·닫기, pageerror 0을 확인했다. report: artifacts/airport-model-comparison/manual-hover-only-verified.json. 실제 캡처: manual-{desktop,mobile}-{graph-static,graph-hover,cloud-expanded,temperature-expanded}.png.
 - 현재 미해결 구현 문제 없음. 수동 확인용 localhost:5173 서버는 실제 자료 snapshot으로 다시 켜 두었다. 원자료 수집을 추가 실행하거나 기존 backend/data를 교체하지 않았다.
+
+## 사용자 피드백 반영 — 해외 NWP 정기 수집 시간대 조정
+
+- 담당: 메인. 사용자가 KIM 수집 방식과 비교한 변경안을 승인하여 해외 3모델의 10분 상시 점검을 폐지했다. 최신 지시가 승인 계획의 10분 cron 요구를 대체한다.
+- 00Z 실행 기준 ICON 04:40/05:40/06:40, GFS 06:10/07:10/08:10, EC 07:40/08:40/09:40 UTC에 시도한다. 06/12/18Z에도 같은 지연을 적용하며 자정 재시도를 포함해 모델별 하루 12개 정기 슬롯이다. 완전한 실행/구간이면 기존 due 검사로 외부 호출을 생략한다.
+- 세 번째 정기 시도가 실패하면 마지막 성공 자료를 유지하고 다음 실행의 첫 슬롯에서 확인한다. 서버 시작 복구·관리자 수동 호출·peer 변경에 따른 EC 구간 재평가는 유지한다. EC/ICON 실제 가용시각 이후 10분 대기는 제공자 복제 지연 검사이며 정기 재시도 간격과 별개다. KIM 스케줄은 변경하지 않았다.
+- last-attempt의 next_check_at는 수집 종료 후 실제 cron의 다음 슬롯으로 기록한다. 관리자 nextCheckAt는 현재 스케줄에서 계산해 과거 파일의 10분 시각을 재사용하지 않는다. 기존 KIM 행 처리와 OFF의 다음 점검 없음은 보존한다.
+- 관리자 캡처에서 12개 시각이 API별로 반복되어 행이 길어지는 문제를 발견했다. 주기는 '실행별 1시간 간격 · 3회'로 요약하고 실제 cron 및 다음 UTC 시각은 API에 보존했다. 세 viewport에서 모델 행 400px 미만을 검증했다.
+- RED: artifacts/airport-nwp-schedule-red.log, airport-nwp-schedule-label-red.log. 전체 npm test: 백엔드 1,095 통과/1개 기존 레이더 fixture 부재 skip, 프런트엔드 1,466 통과. log: artifacts/airport-nwp-schedule-tests.log.
+- 관리형 Playwright 모델 상세·실제 관리자 API 연결 검증 6/6 통과, 재시도0, desktop/iPad landscape/mobile. UTC 스케줄 계산과 관리자 기존 KST 표시를 직접 대조했다. log: artifacts/airport-nwp-schedule-browser.log. 첫 실패는 중복 내비게이션 선택자, 다음 실패는 UTC 전환 UI가 없는 관리자에 UTC 표시를 기대한 시험 가정이었다. 내비게이션 역할로 범위를 한정하고 실제 화면 계약에 맞췄다.
+- 캡처와 검토 기록: artifacts/responsive-screenshots/airport-model-comparison/20260907-nwp-schedule/. Graphify update 및 diff-check 수행. 운영 배포는 하지 않았다.
