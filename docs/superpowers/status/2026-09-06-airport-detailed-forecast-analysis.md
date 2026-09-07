@@ -195,3 +195,11 @@
 - AWS `/opt/projectamo/current`에서 `bash deploy/deploy-vm.sh` 실행 성공. 기존 서버 `497802f7` 이후의 NSC·그래프 토글·연직 참고 패널 변경도 함께 반영했다. 의존성 변경 없음 확인, 기존 서버 설정 백업 파일 보존. 새 dist 빌드·교체, PM2 설정 적용·로그 회전, nginx 검증·reload 및 backend/site health 통과.
 - 운영 `https://projectamo.co.kr/airport/RKSI/models`를 Playwright 1920×1080으로 직접 검증했다. 화면/API HTTP 200, 실제 저장된 KIM·ECMWF·GFS·ICON 4개 모델 ready(모두 2026-09-07 06Z Run), 브라우저 오류 0. 그래프 클릭 후 URL·크기 유지, 그래프만 모델 토글, 돌풍 토글, 누적 강수·계단 운고 표시, RH 수치 띠 확인. 현재 인천 운고는 전부 NSC여서 `구름 없음` 빈 상태를 확인했으며 수치 계단선·유강수 막대는 앞선 48개 계약의 가상 시계열 검증이 근거다.
 - 배포 직후 서버 HEAD와 origin/main이 `97373807ce36adb3f0cce77e4714d9312cd4789e`로 일치했다. `/api/health` ok, `/api/snapshot-meta` HTTP 200, 공개 API `Cache-Control: no-store` 확인. 증거는 `artifacts/verification/approved-chart-design/{aws-deploy.log,production-smoke.log,production-smoke.json,production-*.png}`에 보존했다. 본 배포 기록은 별도 문서 커밋으로 동기화한다.
+
+### 후속 수정 — 그래프 비율과 METAR 상대습도 겹침
+
+- 담당: 메인. 운영 1920×1080 RKSI 화면에서 SVG 실폭 1138px / viewBox 폭 560, 가로 배율 2.03214·세로 배율 1을 확인했다. `preserveAspectRatio="none"`이 글자와 원형 점을 가로로 늘렸다. METAR 상대습도는 30분 간격에도 1시간 칸 너비를 사용해 겹쳤다.
+- SVG 좌표를 실제 캔버스 폭으로 계산하고 화면 폭 변화를 ResizeObserver로 반영한다. 표 시간 열과의 정렬을 유지하면서 글자·원형 점은 CSS 픽셀 크기를 유지한다. 상대습도와 강수현상 띠는 인접 자료의 실제 시간 간격으로 너비를 제한한다.
+- 6개 시간 열·30분 METAR 재현 계약을 추가했다. 수정 전 배율·점 비율·띠 겹침·리사이즈 검증 실패를 확인했고, 수정 후 desktop/iPad/mobile 3/3 통과했다. 데스크톱 1920→1440 리사이즈 후에도 배율 1:1, 원형 점, 표 열 중심 오차 1px 미만, METAR 띠 겹침 없음 확인. 캡처를 직접 확인했다.
+- 전체 Node 1475/1475, production build, 관리형 Playwright 51/51(재시도 0, 종료 코드 0) 통과. Graphify update와 diff-check 완료. 자료와 캡처·재현 실패/성공 로그는 `artifacts/verification/chart-scale-fix/`에 보존한다.
+- 현재시각+12시간 보장과 F012 수집의 차이를 설명한 뒤 사용자가 `그럼 그냥 놔둬 이거는`으로 기존 동작 유지를 지시했다. 수집 F-hour·저장 자료 계약·표시 시간축은 수정하지 않았다.

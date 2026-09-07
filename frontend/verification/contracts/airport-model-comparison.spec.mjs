@@ -26,6 +26,40 @@ async function noOverflow(page) {
 const temperatureTable=page=>page.getByRole('table',{name:'기온과 상대습도 시간별 비교',exact:true})
 
 test.describe('airport-model-comparison',()=>{
+  test('short horizons preserve chart proportions and separate half-hour METAR humidity cells',async({page},testInfo)=>{
+    if(testInfo.project.name==='desktop') await page.setViewportSize({width:1920,height:1080})
+    await installModelComparisonFixture(page,{transform:payload=>{
+      payload.effective_now='2026-09-06T15:20:00.000Z'
+      payload.observations.metar=['13:00','13:30','14:00','14:30','15:00'].map((at,i)=>({...payload.observations.metar[0],observed_at:`2026-09-06T${at}:00.000Z`,dew_point_c:18+i*.2}))
+      return payload
+    }})
+    await page.goto('/airport/RKPU/models?valid_at=2026-09-06T16%3A00%3A00.000Z')
+    await page.getByRole('button',{name:'요소별 보기',exact:true}).click()
+    await page.getByRole('tab',{name:'기온·RH',exact:true}).click()
+    const temperature=page.getByRole('group',{name:'모델별 °C 추세 그래프',exact:true})
+    const point=temperature.getByLabel(/^KIM 2026-09-06T16:00:00.000Z,/)
+    await expect(point).toBeVisible()
+    async function proportions() {
+      const scale=await temperature.evaluate(el=>{const m=el.getScreenCTM();return {x:m.a,y:m.d}})
+      expect.soft(scale.x).toBeCloseTo(1,2);expect.soft(scale.y).toBeCloseTo(1,2)
+      const box=await point.boundingBox()
+      expect.soft(box.width).toBeCloseTo(box.height,1)
+      const column=await temperatureTable(page).getByRole('button',{pressed:true}).boundingBox()
+      expect.soft(Math.abs(box.x+box.width/2-column.x-column.width/2)).toBeLessThan(1)
+      const humidity=page.getByRole('group',{name:'모델별 % 추세 그래프',exact:true})
+      const observations=await humidity.getByRole('img',{name:/^METAR 계산 /}).all()
+      expect(observations.length).toBe(5)
+      const boxes=await Promise.all(observations.map(cell=>cell.boundingBox()))
+      for(let i=1;i<boxes.length;i++) expect.soft(boxes[i-1].x+boxes[i-1].width).toBeLessThan(boxes[i].x)
+    }
+    await proportions()
+    await capture(page,testInfo,'short-horizon-proportions')
+    if(testInfo.project.name==='desktop') {
+      await page.setViewportSize({width:1440,height:900})
+      await expect.poll(()=>temperature.evaluate(el=>Math.abs(el.getBoundingClientRect().width-el.viewBox.baseVal.width))).toBeLessThan(1)
+      await proportions()
+    }
+  })
   test('approved chart design renders cumulative bars, stepped ceilings and humidity bands',async({page},testInfo)=>{
     if(testInfo.project.name==='desktop') await page.setViewportSize({width:1920,height:1080})
     await installModelComparisonFixture(page,{transform:payload=>{
