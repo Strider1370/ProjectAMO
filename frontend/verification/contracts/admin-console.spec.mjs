@@ -104,11 +104,14 @@ test.describe('관리자 콘솔', () => {
   test('모델 상세는 시각·공항 수·OFF·실패·다음 점검을 구분한다', async ({ page }) => {
     await menuButton(page, '자료 수집').click()
     const ec = page.locator('tr[data-health-key="nwp_ecmwf"]')
-    await expect(ec.getByText('공항별 상이')).toBeVisible()
-    await expect(ec.locator('[data-airport-run="RKSI"]')).toContainText('RKSI')
-    await expect(ec.getByText('성공 7 · 실패 1')).toBeVisible()
+    // 공항별 상세는 접혀 있다 — 접힌 채로도 실행시각·공항 수·실패 건수는 요약에 보여야 한다.
+    await expect(ec.locator('details.ac-model-health > summary')).toContainText('공항별 상이')
+    await expect(ec.locator('details.ac-model-health > summary')).toContainText('공항 7/8')
+    await expect(ec.locator('[data-airport-failed]')).toContainText('실패 1')
+    await expect(ec.getByText('다음 점검')).toBeVisible()          // 접힌 채로도 보인다
+    await ec.locator('details.ac-model-health > summary').click()
+    await expect(ec.locator('[data-airport-run="RKSI"]')).toBeVisible()
     await expect(ec.locator('[data-last-failure]')).toContainText('RKSS · provider request failed')
-    await expect(ec.getByText('다음 점검')).toBeVisible()
     const ecMetaOperation = ec.locator('.ac-sub').filter({ hasText: 'EC 갱신 메타' })
     await expect(ecMetaOperation).toHaveCount(1)
     await expect(ecMetaOperation).toContainText('새 실행 요청 가능')

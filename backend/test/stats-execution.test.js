@@ -174,3 +174,18 @@ test('최근 24시간 성공률은 창 밖 기록에 오염되지 않는다', ()
   assert.equal(summary.totalRuns, 10)          // 누적은 그대로 10건
   assert.equal(summary.successRate, 0.1)       // 누적은 여전히 10%
 })
+
+// 고쳐서 사라진 오류가 「마지막 오류」에 영원히 남으면 안 된다 — 24시간 지나면 비어야 한다.
+test('마지막 오류는 24시간 창 밖으로 나가면 사라진다', () => {
+  const clock = createFakeClock('2026-09-07T10:00:00.000Z')
+  stats.__setPersistenceForTest({ now: clock.now, setTimeout: clock.setTimeout, write: () => {} })
+
+  stats.recordFailure('taf', 'ENOENT: rename 어쩌고', 10)
+  assert.equal(stats.getTypeSummary('taf').recentLastError, 'ENOENT: rename 어쩌고')
+  assert.ok(stats.getTypeSummary('taf').recentLastErrorAt)
+
+  clock.advance(25 * 3600_000)
+  stats.recordSuccess('taf', { saved: true }, 10)
+  assert.equal(stats.getTypeSummary('taf').recentLastError, null)
+  assert.equal(stats.getStats().types.taf.last_error, 'ENOENT: rename 어쩌고')  // 누적 쪽은 그대로
+})

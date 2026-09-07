@@ -5,9 +5,9 @@ import { EXECUTION_WORD, STATUS_TONE, STATUS_WORD, executionProblems, formatAge,
 
 // 자료 수집 상세 — 34종을 한 표로. 개요에서 "뭐가 이상한가"를 봤다면 여기서 "왜"를 판다.
 //
-// 성공률은 24시간 창이 아니라 집계 시작 이후 누적이다. stats가 보관하는 최근 실행 50건은
-// 34종이 함께 쓰는 목록이라 METAR 한 종만으로도 십여 분이면 밀려나서, 시간 창을 계산할
-// 근거가 저장돼 있지 않다. 그래서 "언제부터"를 화면에 함께 적는다.
+// 성공률은 두 가지를 나란히 둔다: 24시간 창(지금 건강한가)과 집계 시작 이후 누적(길게 보면).
+// 열이 열 개라 좁은 화면에서 표가 넘친다 — ac-tw가 표만 가로로 굴린다(창 밖으로 잘리지 않게).
+// 모델 행의 공항별 실행시각은 접어 둔다: 네 행이 각각 열다섯 줄을 펴면 표를 읽을 수 없다.
 export default function DataCollectionScreen({ health, now = Date.now() }) {
   const [onlyProblems, setOnlyProblems] = useState(false)
   const { tz } = useTimeZone()
@@ -57,7 +57,7 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
         {rows.length === 0 ? (
           <p className="ac-sub" style={{ padding: '0 22px 16px' }}>이상한 자료가 없습니다.</p>
         ) : (
-          <table className="ac-t">
+          <div className="ac-tw"><table className="ac-t">
             <thead>
               <tr>
                 <th>자료</th>
@@ -68,7 +68,7 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                 <th className="ac-r">성공률(누적)</th>
                 <th className="ac-r">평균 소요</th>
                 <th className="ac-r">밀림</th>
-                <th>마지막 오류</th>
+                <th>마지막 오류(24H)</th>
                 <th>API 실행 · 예정</th>
               </tr>
             </thead>
@@ -79,15 +79,19 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                     {row.label}
                     {row.eventDriven && row.activeCount != null && <div className="ac-sub">{row.activeCount}건 발효</div>}
                     {row.airportRuns && (
-                      <div className="ac-sub ac-model-health">
-                        <div><b>실행시각</b> {row.modelRunAt ? formatDateTime(row.modelRunAt) : row.airportRuns.length ? '공항별 상이' : '없음'}</div>
+                      <details className="ac-sub ac-model-health">
+                        <summary>
+                          실행 {row.modelRunAt ? formatDateTime(row.modelRunAt) : row.airportRuns.length ? '공항별 상이' : '없음'}
+                          {' · '}공항 {row.successAirports}/{row.successAirports + row.failedAirports}
+                          {row.failedAirports > 0 && <b data-airport-failed> · 실패 {row.failedAirports}</b>}
+                          {/* 다음 점검은 접어두지 않는다 — 계약이 요구하는, 접힌 채로도 보여야 할 운영 정보다. */}
+                          <div>다음 점검 {row.status === 'disabled' ? '없음' : formatDateTime(row.nextCheckAt)}</div>
+                        </summary>
                         {row.airportRuns.map((airport) => <div key={airport.airportIcao} data-airport-run={airport.airportIcao}>{airport.airportIcao} {formatDateTime(airport.modelRunAt)}</div>)}
                         <div><b>가용시각</b> {formatDateTime(row.availableAt)}</div>
                         <div><b>수집시각</b> {formatDateTime(row.collectedAt)}</div>
-                        <div><b>공항 수</b> 성공 {row.successAirports} · 실패 {row.failedAirports}</div>
-                        <div><b>다음 점검</b> {row.status === 'disabled' ? '없음' : formatDateTime(row.nextCheckAt)}</div>
                         {row.lastFailure && <div data-last-failure><b>마지막 실패</b> {row.lastFailure.airportIcao || '전체'} · {row.lastFailure.message || row.lastFailure.code}</div>}
-                      </div>
+                      </details>
                     )}
                   </td>
                   <td><span className={`ac-chip ac-${STATUS_TONE[row.status]}`}>{STATUS_WORD[row.status]}</span></td>
@@ -105,7 +109,10 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                   <td className="ac-r" style={row.stats?.skips > 0 ? { color: 'var(--ac-warn)', fontWeight: 600 } : undefined}>
                     {row.stats?.skips ?? 0}
                   </td>
-                  <td className="ac-muted">{row.lastError || '—'}</td>
+                  <td className="ac-muted">
+                    {row.stats?.recentLastError || '—'}
+                    {row.stats?.recentLastErrorAt && <div className="ac-sub">{formatAge(now - Date.parse(row.stats.recentLastErrorAt))} 전</div>}
+                  </td>
                   <td className="ac-muted">
                     {(row.operations || []).map((operation) => {
                       const expected = operation.expected
@@ -118,13 +125,14 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
 
         {since && (
           <p className="ac-sub" style={{ padding: '12px 22px 16px' }}>
-            성공률과 밀림은 집계 시작({new Date(since).toLocaleDateString('ko-KR')}) 이후 누적입니다.
-            시간 창 기준은 다음 단계에서 따로 쌓습니다.
+            성공률(24H)은 최근 24시간, 그 아래 회차 수는 그동안 실제로 돈 횟수입니다.
+            마지막 오류도 최근 24시간 안에 실제로 난 것만 보여줍니다 — 고쳐서 사라진 오류는 하루가 지나면 없어집니다.
+            성공률(누적)과 밀림은 집계 시작({new Date(since).toLocaleDateString('ko-KR')}) 이후 전체입니다.
           </p>
         )}
       </section>

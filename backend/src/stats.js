@@ -173,12 +173,17 @@ function recentHourKeys(nowMs) {
   return Array.from({ length: HOURLY_WINDOW }, (_, back) => hourKey(nowMs - back * 3600_000))
 }
 
-function bumpHourly(entry, ok) {
+function bumpHourly(entry, ok, error = null) {
   const nowMs = persistence.now()
   if (!entry.hourly || typeof entry.hourly !== 'object') entry.hourly = {}
   const bucket = entry.hourly[hourKey(nowMs)] || { ok: 0, fail: 0 }
-  if (ok) bucket.ok += 1
-  else bucket.fail += 1
+  if (ok) {
+    bucket.ok += 1
+  } else {
+    bucket.fail += 1
+    bucket.err = error
+    bucket.err_at = new Date(nowMs).toISOString()
+  }
   entry.hourly[hourKey(nowMs)] = bucket
   const keep = new Set(recentHourKeys(nowMs))
   for (const key of Object.keys(entry.hourly)) if (!keep.has(key)) delete entry.hourly[key]
@@ -187,13 +192,20 @@ function bumpHourly(entry, ok) {
 function recentWindow(entry, nowMs) {
   let ok = 0
   let fail = 0
+  let lastError = null
+  let lastErrorAt = null
+  // recentHourKeys는 최신 시각부터 나온다 — 처음 만난 오류가 24시간 안의 마지막 오류다.
   for (const key of recentHourKeys(nowMs)) {
     const bucket = entry.hourly?.[key]
     if (!bucket) continue
     ok += bucket.ok || 0
     fail += bucket.fail || 0
+    if (!lastError && bucket.err) {
+      lastError = bucket.err
+      lastErrorAt = bucket.err_at || null
+    }
   }
-  return { runs: ok + fail, rate: ok + fail > 0 ? ok / (ok + fail) : null }
+  return { runs: ok + fail, rate: ok + fail > 0 ? ok / (ok + fail) : null, lastError, lastErrorAt }
 }
 
 function persistCompletion() {
@@ -397,7 +409,7 @@ export function recordFailure(type, errorMsg, durationMs, run) {
   const key = safeError
   entry.error_counts[key] = (entry.error_counts[key] || 0) + 1
 
-  bumpHourly(entry, false)
+  bumpHourly(entry, false, safeError)
   addRecentRun(type, false, safeError, [], durationMs)
   setExecutionCompletion(type, 'failed', issue, run)
   persistCompletion()
@@ -411,7 +423,7 @@ export function getStats() {
 // 목록이라 24시간 같은 시간 창을 계산할 근거가 못 된다(그건 2단계에서 따로 쌓는다).
 export function getTypeSummary(type) {
   const entry = statsData.types[type]
-  const empty = { successRate: null, recentSuccessRate: null, recentRuns: 0, totalRuns: 0, skips: 0, avgMs: null, since: statsData.since, errorCounts: {}, lastError: null }
+  const empty = { successRate: null, recentSuccessRate: null, recentRuns: 0, recentLastError: null, recentLastErrorAt: null, totalRuns: 0, skips: 0, avgMs: null, since: statsData.since, errorCounts: {}, lastError: null }
   if (!entry) return empty
 
   const durations = statsData.recent_runs
@@ -424,6 +436,8 @@ export function getTypeSummary(type) {
     successRate: entry.total_runs > 0 ? entry.success / entry.total_runs : null,
     recentSuccessRate: recent.rate,
     recentRuns: recent.runs,
+    recentLastError: recent.lastError,
+    recentLastErrorAt: recent.lastErrorAt,
     totalRuns: entry.total_runs,
     skips: entry.skips || 0,
     avgMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null,
