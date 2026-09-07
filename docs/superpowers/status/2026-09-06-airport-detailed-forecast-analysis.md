@@ -203,3 +203,4 @@
 - 6개 시간 열·30분 METAR 재현 계약을 추가했다. 수정 전 배율·점 비율·띠 겹침·리사이즈 검증 실패를 확인했고, 수정 후 desktop/iPad/mobile 3/3 통과했다. 데스크톱 1920→1440 리사이즈 후에도 배율 1:1, 원형 점, 표 열 중심 오차 1px 미만, METAR 띠 겹침 없음 확인. 캡처를 직접 확인했다.
 - 전체 Node 1475/1475, production build, 관리형 Playwright 51/51(재시도 0, 종료 코드 0) 통과. Graphify update와 diff-check 완료. 자료와 캡처·재현 실패/성공 로그는 `artifacts/verification/chart-scale-fix/`에 보존한다.
 - 현재시각+12시간 보장과 F012 수집의 차이를 설명한 뒤 사용자가 `그럼 그냥 놔둬 이거는`으로 기존 동작 유지를 지시했다. 수집 F-hour·저장 자료 계약·표시 시간축은 수정하지 않았다.
+- `159fffdf` 커밋·main 푸시 후 AWS fast deploy 완료. 서버 HEAD/origin/main 일치, backend/site health 성공. 운영 RKSI 동일 URL을 Playwright로 다시 열어 SVG 실폭/viewBox 모두 1138px, 가로·세로 배율 1, 원형 점 7.5×7.5px, 실제 METAR 5개 칸 겹침 없음, 브라우저 오류 0을 확인했다. `artifacts/verification/chart-scale-fix/production-verification.json` 및 `production-desktop.png`에 수치와 직접 확인한 화면을 보존했다.
