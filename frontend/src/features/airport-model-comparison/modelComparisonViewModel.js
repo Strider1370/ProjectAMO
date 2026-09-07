@@ -58,12 +58,6 @@ export function methodLabel(method) {
   return ({ model_diagnostic: '모델 자체 운고', cloud_condensate_estimate: '운량·응결물 기반 추정', pressure_level_estimate: '압력면 기반 추정', humidity_based_estimate: '습도 기반 추정' })[method] || '산출 방식 미상'
 }
 
-function cloudPercent(clouds) {
-  if (finite(clouds?.[0])) return clouds[0]
-  const amount = clouds?.find?.(cloud => cloud?.amount || cloud?.coverage)?.amount ?? clouds?.find?.(cloud => cloud?.coverage)?.coverage
-  return ({ FEW: 25, SCT: 50, BKN: 75, OVC: 100, VV: 100 })[amount] ?? null
-}
-
 function detail(record, airport) {
   if (!record) return null
   return {
@@ -173,7 +167,7 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
       const cumulative = cumulativeHourly(row.cells.map(cell => cell?.value))
       return { ...row, points: cumulative.map((value, i) => ({ at: times[i], value, hourly: row.cells[i]?.value, status: row.cells[i]?.status, text: finite(value) ? `누적 ${fmtNumber(value, 1)} mm · 시간당 ${fmtNumber(row.cells[i]?.value, 1)} mm` : `누적 자료 없음 · 시간당 ${row.cells[i]?.text || '자료 없음'}`, detail: row.cells[i]?.detail })) }
     }),
-    ceiling: rows.ceiling.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.value ?? null, secondary: cloudPercent(cell?.clouds), status: cell?.status, text: cell?.detail?.model ? `${cell.text} · 전/저/중/상 ${cell.clouds?.map(v => finite(v) ? `${fmtNumber(v)}%` : '자료 없음').join(' / ') || '자료 없음'}` : cell?.text, conditionText: cell?.conditionText, detail: cell?.detail })) })),
+    ceiling: rows.ceiling.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.value ?? null, status: cell?.status, text: cell?.text, conditionText: cell?.conditionText, detail: cell?.detail })) })),
     temperatureRh: rows.temperatureRh.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.temperature ?? null, secondary: cell?.rh ?? null, status: cell?.status, text: cell?.text, detail: cell?.detail })) })),
   }
   const selectedModels = MODEL_ORDER.map(model => modelRecords.get(model)?.get(selected)).filter(Boolean)

@@ -153,3 +153,12 @@
 - RED: artifacts/airport-nwp-schedule-red.log, airport-nwp-schedule-label-red.log. 전체 npm test: 백엔드 1,095 통과/1개 기존 레이더 fixture 부재 skip, 프런트엔드 1,466 통과. log: artifacts/airport-nwp-schedule-tests.log.
 - 관리형 Playwright 모델 상세·실제 관리자 API 연결 검증 6/6 통과, 재시도0, desktop/iPad landscape/mobile. UTC 스케줄 계산과 관리자 기존 KST 표시를 직접 대조했다. log: artifacts/airport-nwp-schedule-browser.log. 첫 실패는 중복 내비게이션 선택자, 다음 실패는 UTC 전환 UI가 없는 관리자에 UTC 표시를 기대한 시험 가정이었다. 내비게이션 역할로 범위를 한정하고 실제 화면 계약에 맞췄다.
 - 캡처와 검토 기록: artifacts/responsive-screenshots/airport-model-comparison/20260907-nwp-schedule/. Graphify update 및 diff-check 수행. 운영 배포는 하지 않았다.
+
+## 사용자 피드백 반영 — 데스크톱 모델 비교 화면 감사 보완
+
+- 담당: 메인. 데스크톱 화면만 대상으로 감사 지적 1~6을 반영했다. 모바일 동작·배치는 이번 변경 범위에서 재검토하지 않았다.
+- 강수 축은 최대값이 1 mm 미만일 때 두 자리 소수로 표시해 0.13 mm와 0.00 mm를 구분한다. 운고 그래프는 10,000 ft로 표시 상한을 고정하고 초과 원값은 삼각 표식·툴팁 접근성 이름에 보존한다.
+- 운고/운량의 전·저·중·상층 운량 보조선·보조축·툴팁 나열을 제거했다. 표의 운고 셀을 펼칠 때만 해당 정보가 보이며, 운고 그래프는 운고만 비교한다.
+- 자료 기준시각 칩은 가용시각이 없을 때 `이용시각 미기록`으로 표기한다. 결측 텍스트의 대비를 올렸고, 차트는 하나의 키보드 탭 정지점에서 화살표/Home/End로 시각을 이동한다. 클릭은 계속 어떤 상태도 바꾸지 않는다.
+- 참고 패널은 프로젝트 실제 파일인 `briefing-charts/kim_gdps_erly_city_47163_t072_2026070200.png`, `kim_gdps_skew_47163_s000_2026070200.png`, `surf_2026070112.png`를 각각 연직시계열·Skew-T·지상일기도 샘플로 표시한다. 현재 공항/실행자료와 연결되지 않았다는 문구와 원본 샘플 공항·시각을 함께 표시한다.
+- 검증: 집중 Node 시험 14/14, production build 성공, 재사용 개발 서버의 데스크톱 Playwright 계약 11/11 통과(재시도 0), axe WCAG 2A/2AA 위반 0. 실제 RKPU 화면 캡처: `artifacts/airport-model-comparison/audit-fix-desktop-top.png`, `audit-fix-desktop-charts-main-scroll.png`, `audit-fix-desktop-ceiling-final.png`. 마지막 캡처에서 0.13 mm 축, 10,000 ft 상한 삼각 표식, 실제 세 참고 이미지, 운량 보조선 제거를 직접 대조했다.
