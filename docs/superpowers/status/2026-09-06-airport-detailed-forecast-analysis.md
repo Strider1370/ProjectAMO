@@ -169,3 +169,10 @@
 - 사용자의 최신 지시에 따라 5,000 ft 이하에 운고가 없는 모든 상태(`not_detected_below_limit`, `no_ceiling`)와 METAR/TAF의 운고 미검출을 `NSC`로 통일했다. NSC 셀은 비어 있는 운량 상세를 열지 않으며, 운량 계층값이 실제로 있을 때만 셀 펼치기를 제공한다.
 - 표시 구간 전체의 유효 강수 수치가 모두 0 mm이면 강수 그래프를 비우고 `강수량 없음`을 표시한다. 모든 해결된 운고가 NSC이면 운고 그래프를 비우고 `구름 없음`을 표시한다. 모델 입력 결측이나 예보 범위 밖이 하나라도 있으면 이 무현상 상태로 축약하지 않는다.
 - 검증: 집중 Node 시험 15/15 통과, Vite production build 성공, Playwright 신규 계약 desktop/iPad landscape/mobile 6/6 통과(재시도 0). 데스크톱 재검증과 실제 캡처는 `frontend/artifacts/verification/airport-model-comparison-nsc-3/desktop-{nsc-observation-pending,empty-precipitation-ceiling-ceiling-chart-0}.png`에 보존했다. `git diff --check` 및 Graphify update 수행.
+
+## 사용자 피드백 반영 — 그래프 요소 토글·목업 연직 패널 복원
+
+- 담당: 메인. 그래프 범례의 각 출처를 접근 가능한 토글 버튼으로 바꿨다. 토글은 해당 그래프의 선·점·호버 툴팁만 숨기며, 비교표와 선택 유효시각은 바꾸지 않는다. 전부 끄면 `표시할 요소 없음`을 보인다.
+- 지상일기도 카드를 제거했다. 목업 HTML을 브라우저로 직접 대조해, 연직시계열·단열선도 두 카드만 남기고 1600px 이상에서 440px 우측 고정 패널, 그 미만에서 하단 패널이라는 목업 배치를 적용했다.
+- 단열선도에는 이전/다음과 범위 슬라이더를 복원했다. 모두 공통 선택 유효시각을 바꾸며, 확대 대화상자에서도 같은 슬라이더 상태를 유지한다. 현재 이미지는 목업과 같이 임시 KIM 샘플이고 캡션은 공항·KIM F-hour·선택 시각을 표시한다.
+- 검증: 새 Playwright 계약 desktop/iPad landscape/mobile 6/6 통과, 데스크톱 캡처 `frontend/artifacts/verification/model-comparison-controls/desktop-{legend-toggles,kim-reference-slider}.png`, 집중 Node 15/15, production build와 diff-check 통과.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, CloudSun, RefreshCw } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { MODEL_COMPARISON_AIRPORTS } from '../../api/modelComparisonApi.js'
@@ -17,14 +17,30 @@ const SECTIONS = [
 ]
 
 const STATIC_REFERENCES = {
-  profile: { title: '연직시계열', image: '/briefing-charts/kim_gdps_erly_city_47163_t072_2026070200.png', caption: '무안 47163 · KIM 예보 시계열 샘플' },
-  sounding: { title: '단열선도', image: '/briefing-charts/kim_gdps_skew_47163_s000_2026070200.png', caption: '무안 47163 · KIM Skew-T 샘플' },
-  synoptic: { title: '지상일기도', image: '/briefing-charts/surf_2026070112.png', caption: 'KMA 종관 지상분석 샘플 · 01일 12Z' },
+  profile: { title: '연직시계열', description: '시간별 기온·습도·바람의 연직 구조', image: '/briefing-charts/kim_gdps_erly_city_47163_t072_2026070200.png', alt: 'KMA KIM 무안공항 연직시계열 샘플' },
+  sounding: { title: '단열선도', description: '기온·이슬점·상층 바람 및 안정도', image: '/briefing-charts/kim_gdps_skew_47163_s000_2026070200.png', alt: 'KMA KIM 단열선도 샘플' },
 }
 
-function StaticReferenceCard({ kind }) {
-  const reference = STATIC_REFERENCES[kind]
-  return <article className="mc-reference-card"><header><CloudSun size={18} aria-hidden="true" /><div><h3>{reference.title}</h3><p>실제 이미지 · 임시 예시</p></div></header><img src={reference.image} alt={reference.caption} loading="lazy" /><p className="mc-reference-caption">{reference.caption}</p><p className="mc-disconnected">임시 예시 — 현재 공항·실행자료와 연결되지 않음</p></article>
+function TimeStepControl({ times, labels, selectedValidAt, onSelect, readout }) {
+  const index=Math.max(0,times.indexOf(selectedValidAt))
+  return <div className="mc-step-control"><button className="mc-step-button" type="button" aria-label="이전 유효시각" disabled={index===0} onClick={() => onSelect(times[index-1])}>‹</button><input type="range" min="0" max={Math.max(0,times.length-1)} step="1" value={index} aria-label="선택 유효시각" onChange={event => onSelect(times[Number(event.target.value)])}/><button className="mc-step-button" type="button" aria-label="다음 유효시각" disabled={index===times.length-1} onClick={() => onSelect(times[index+1])}>›</button><span className="mc-step-readout">{readout || labels[index]}</span></div>
+}
+
+function AtmosphericSidebar({ vm, onSelect }) {
+  const [openKind,setOpenKind]=useState(null)
+  const dialogRef=useRef(null)
+  const index=Math.max(0,vm.times.indexOf(vm.selectedValidAt))
+  const kim=vm.rows.ceiling.find(row => row.id==='kim')?.cells[index]
+  const readout=`${vm.timeLabels[index]} · KIM ${Number.isFinite(kim?.forecast_hour) ? `F${String(kim.forecast_hour).padStart(3,'0')}` : '자료 없음'}`
+  const caption=`${vm.airport.name} · ${readout} — 임시 예시 이미지이며 현재 공항 실행자료와 연결되지 않았습니다.`
+  useEffect(() => {
+    const dialog=dialogRef.current
+    if (!dialog) return
+    if (openKind && !dialog.open) dialog.showModal()
+    if (!openKind && dialog.open) dialog.close()
+  },[openKind])
+  const reference=openKind ? STATIC_REFERENCES[openKind] : null
+  return <aside className="mc-reference" aria-labelledby="mc-atmospheric-heading"><header className="mc-reference-heading"><h2 id="mc-atmospheric-heading">KIM 연직 참고</h2><span>임시 예시 이미지</span></header>{Object.entries(STATIC_REFERENCES).map(([kind,item]) => <article className="mc-reference-card" key={kind}><header><div><h3>{item.title}</h3><p>{item.description}</p></div></header><button type="button" className="mc-reference-figure" aria-label={`${item.title} 크게 보기`} onClick={() => setOpenKind(kind)}><img src={item.image} alt={item.alt} loading="lazy"/></button><p className="mc-reference-caption">{kind==='profile' ? `${vm.airport.name} · KIM 연직시계열 샘플. 시간축을 조작하면 아래 단열선도의 선택 시각도 함께 바뀝니다.` : caption}</p>{kind==='sounding' && <TimeStepControl times={vm.times} labels={vm.timeLabels} selectedValidAt={vm.selectedValidAt} onSelect={onSelect} readout={readout}/>}</article>)}<dialog ref={dialogRef} className="mc-reference-dialog" aria-labelledby="mc-reference-dialog-title" onClose={() => setOpenKind(null)}>{reference && <><header><div><h2 id="mc-reference-dialog-title">{reference.title}</h2><p>{reference.description}</p></div><button type="button" aria-label="닫기" onClick={() => setOpenKind(null)}>×</button></header><img src={reference.image} alt={reference.alt}/><p>{reference.title==='단열선도' ? caption : `${vm.airport.name} · KIM 연직시계열 샘플`}</p>{reference.title==='단열선도' && <TimeStepControl times={vm.times} labels={vm.timeLabels} selectedValidAt={vm.selectedValidAt} onSelect={onSelect} readout={readout}/>}</>}</dialog></aside>
 }
 
 export default function ModelComparisonPage({ icao }) {
@@ -60,7 +76,7 @@ export default function ModelComparisonPage({ icao }) {
         <section className="mc-model-chips" aria-label="자료별 기준시각">{vm.observationChips.map(chip => <span key={chip.id} className={`mc-model-chip mc-model-chip--${chip.at ? 'available' : 'missing'}`}><b>{chip.label}</b>{chip.at ? ` ${chip.at.slice(5, 16).replace('T', ' ')}Z` : ' 자료 없음'}</span>)}{vm.modelChips.map(chip => <span key={chip.model} className={`mc-model-chip mc-model-chip--${chip.status}`}><b>{chip.label}</b>{chip.run_at ? <><span>Run {chip.run_at.slice(5, 16).replace('T', ' ')}Z</span><span>{chip.available_at ? `이용 ${chip.available_at.slice(5, 16).replace('T', ' ')}Z` : '이용시각 미기록'}</span></> : ' 자료 없음'}</span>)}</section>
         <ModelComparisonSummary summary={vm.summary} />
         <div className="mc-view-controls"><div role="group" aria-label="표시 방식"><button type="button" className={mode === 'all' ? 'is-active' : ''} onClick={() => setMode('all')}>전체 보기</button><button type="button" className={mode === 'single' ? 'is-active' : ''} onClick={() => setMode('single')}>요소별 보기</button></div>{mode === 'single' && <div role="tablist" aria-label="비교 요소">{SECTIONS.map(item => <button type="button" role="tab" aria-selected={section === item.id} className={section === item.id ? 'is-active' : ''} onClick={() => setSection(item.id)} key={item.id}>{item.label}</button>)}</div>}</div>
-        <div className="mc-layout"><div className="mc-sections">{SECTIONS.filter(item => mode === 'all' || item.id === section).map(item => <section className="mc-section" data-section={item.id} key={item.id} aria-labelledby={`mc-${item.id}-title`}><header><div><h2 id={`mc-${item.id}-title`}>{item.title}</h2><p>{item.note}</p></div><span>공통 유효시각 축 · {tz}</span></header><div className="mc-comparison-scroll" role="region" aria-label={`${item.label} 시간축 스크롤`} tabIndex="0"><div className="mc-comparison-canvas" style={{ minWidth: 128 + vm.times.length * 72 }}><ModelComparisonTable section={item.id} rows={vm.rows[item.id]} times={vm.times} timeLabels={vm.timeLabels} selectedValidAt={vm.selectedValidAt} onSelectTime={setSelectedValidAt} />{item.id === 'temperatureRh' ? <><section aria-label="기온 그래프"><h3 className="mc-chart-heading">기온 (°C)</h3><ModelComparisonChart series={vm.charts.temperatureRh} times={vm.times} timeLabels={vm.timeLabels} unit={"°C"} secondaryUnit={undefined} selectedValidAt={vm.selectedValidAt} /></section><section aria-label="상대습도 그래프"><h3 className="mc-chart-heading">상대습도 (%)</h3><ModelComparisonChart series={humiditySeries} times={vm.times} timeLabels={vm.timeLabels} unit={"%"} secondaryUnit={undefined} selectedValidAt={vm.selectedValidAt} /></section></> : <ModelComparisonChart series={vm.charts[item.id]} times={vm.times} timeLabels={vm.timeLabels} unit={item.unit} secondaryUnit={item.secondaryUnit} emptyState={vm.chartEmptyStates[item.id]} selectedValidAt={vm.selectedValidAt} />}</div></div></section>)}</div><aside className="mc-reference" aria-label="임시 참고 자료"><StaticReferenceCard kind="profile" /><StaticReferenceCard kind="sounding" /><StaticReferenceCard kind="synoptic" /></aside></div>
+        <div className="mc-layout"><div className="mc-sections">{SECTIONS.filter(item => mode === 'all' || item.id === section).map(item => <section className="mc-section" data-section={item.id} key={item.id} aria-labelledby={`mc-${item.id}-title`}><header><div><h2 id={`mc-${item.id}-title`}>{item.title}</h2><p>{item.note}</p></div><span>공통 유효시각 축 · {tz}</span></header><div className="mc-comparison-scroll" role="region" aria-label={`${item.label} 시간축 스크롤`} tabIndex="0"><div className="mc-comparison-canvas" style={{ minWidth: 128 + vm.times.length * 72 }}><ModelComparisonTable section={item.id} rows={vm.rows[item.id]} times={vm.times} timeLabels={vm.timeLabels} selectedValidAt={vm.selectedValidAt} onSelectTime={setSelectedValidAt} />{item.id === 'temperatureRh' ? <><section aria-label="기온 그래프"><h3 className="mc-chart-heading">기온 (°C)</h3><ModelComparisonChart series={vm.charts.temperatureRh} times={vm.times} timeLabels={vm.timeLabels} unit={"°C"} secondaryUnit={undefined} selectedValidAt={vm.selectedValidAt} /></section><section aria-label="상대습도 그래프"><h3 className="mc-chart-heading">상대습도 (%)</h3><ModelComparisonChart series={humiditySeries} times={vm.times} timeLabels={vm.timeLabels} unit={"%"} secondaryUnit={undefined} selectedValidAt={vm.selectedValidAt} /></section></> : <ModelComparisonChart series={vm.charts[item.id]} times={vm.times} timeLabels={vm.timeLabels} unit={item.unit} secondaryUnit={item.secondaryUnit} emptyState={vm.chartEmptyStates[item.id]} selectedValidAt={vm.selectedValidAt} />}</div></div></section>)}</div><AtmosphericSidebar vm={vm} onSelect={setSelectedValidAt} /></div>
       </>}
       {!query.loading && !vm && <div className="mc-state">표시할 비교 자료가 없습니다. 공항 패널로 돌아가 다른 공항을 선택할 수 있습니다.</div>}
     </main>

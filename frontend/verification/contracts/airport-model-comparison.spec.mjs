@@ -53,6 +53,26 @@ test.describe('airport-model-comparison',()=>{
     }
   })
 
+  test('legend toggles hide only graph series and preserve the table',async({page},testInfo)=>{
+    await installModelComparisonFixture(page)
+    await page.goto(`/airport/RKPU/models?valid_at=${encodeURIComponent(SELECTED_TIME)}`)
+    await page.getByRole('button',{name:'요소별 보기',exact:true}).click()
+    const chart=page.getByRole('group',{name:'모델별 kt 추세 그래프',exact:true})
+    const kimPoint=chart.getByLabel(/^KIM 2026-09-06T09:00:00.000Z,/)
+    await expect(kimPoint).toBeVisible()
+    const toggle=page.getByRole('button',{name:'KIM 그래프 표시',exact:true})
+    await expect(toggle).toHaveAttribute('aria-pressed','true')
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed','false')
+    await expect(kimPoint).toHaveCount(0)
+    await expect(page.getByRole('table',{name:'지상 바람 시간별 비교',exact:true}).getByRole('rowheader',{name:'KIM',exact:true})).toBeVisible()
+    await expect(chart.getByLabel(/^ECMWF 2026-09-06T09:00:00.000Z,/)).toBeVisible()
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed','true')
+    await expect(chart.getByLabel(/^KIM 2026-09-06T09:00:00.000Z,/)).toBeVisible()
+    await capture(page,testInfo,'legend-toggles')
+  })
+
   test('chart values appear in a floating tooltip on hover and keyboard focus',async({page},testInfo)=>{
     await installModelComparisonFixture(page)
     await page.goto(`/airport/RKPU/models?valid_at=${encodeURIComponent(SELECTED_TIME)}`)
@@ -91,6 +111,25 @@ test.describe('airport-model-comparison',()=>{
     await expect(page).toHaveURL(new RegExp(encodeURIComponent(SELECTED_TIME)))
     await page.getByRole('button',{name:'전체 보기',exact:true}).click()
     await expect(tooltip).toHaveCount(0)
+  })
+
+  test('KIM reference slider follows the shared selected time and opens the matching dialog',async({page},testInfo)=>{
+    await installModelComparisonFixture(page)
+    await page.goto(`/airport/RKPU/models?valid_at=${encodeURIComponent(SELECTED_TIME)}`)
+    const references=page.getByRole('complementary',{name:'KIM 연직 참고'})
+    const slider=references.getByRole('slider',{name:'선택 유효시각',exact:true})
+    const before=await slider.inputValue()
+    await references.getByRole('button',{name:'다음 유효시각',exact:true}).click()
+    await expect(slider).not.toHaveValue(before)
+    await expect(page.getByRole('table',{name:'지상 바람 시간별 비교',exact:true}).getByRole('button',{pressed:true})).toHaveCount(1)
+    const selectedValue=await slider.inputValue()
+    await references.getByRole('button',{name:'단열선도 크게 보기',exact:true}).click()
+    const dialog=page.getByRole('dialog')
+    await expect(dialog).toContainText('단열선도')
+    await expect(dialog.getByRole('slider',{name:'선택 유효시각',exact:true})).toHaveValue(selectedValue)
+    await dialog.getByRole('button',{name:'닫기',exact:true}).click()
+    await expect(dialog).toHaveCount(0)
+    await capture(page,testInfo,'kim-reference-slider')
   })
 
   test('value cells toggle cloud and temperature extras without separate information labels',async({page},testInfo)=>{
@@ -296,9 +335,9 @@ test.describe('airport-model-comparison',()=>{
     await expect(rain.getByRole('row').filter({has:page.getByRole('rowheader',{name:'TAF',exact:true})})).toContainText('TEMPO')
     await capture(page,testInfo,'precipitation');await noOverflow(page)
     await expect(page.getByText(/순위|1등|자동 변화 감지/)).toHaveCount(0)
-    const references=page.getByRole('complementary',{name:'임시 참고 자료'})
+    const references=page.getByRole('complementary',{name:'KIM 연직 참고'})
     await expect(references).toContainText('현재 공항·실행자료와 연결되지 않음')
-    for(const image of ['kim_gdps_erly_city_47163_t072_2026070200.png','kim_gdps_skew_47163_s000_2026070200.png','surf_2026070112.png']) await expect(references.locator(`img[src$="${image}"]`)).toBeVisible()
+    for(const image of ['kim_gdps_erly_city_47163_t072_2026070200.png','kim_gdps_skew_47163_s000_2026070200.png']) await expect(references.locator(`img[src$="${image}"]`)).toBeVisible()
     expect(consoleMessages.filter(m=>m.type==='pageerror')).toEqual([])
   })
 
