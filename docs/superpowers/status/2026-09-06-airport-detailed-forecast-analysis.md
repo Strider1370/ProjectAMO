@@ -188,3 +188,10 @@
 - 최종 검증: 집중 Node 21/21, 전체 프런트엔드 1475/1475, production build 성공(기존 번들 크기 경고), `git diff --check` 통과. 관리형 Playwright 48/48 통과(재시도 0, desktop/iPad landscape/mobile, 종료 코드 0). 데스크톱 디자인 계약은 1920×1080으로 검증했으며 실제 캡처를 직접 확인했다. Graphify update 완료.
 - 재현: `npm --prefix frontend test`, `npm --prefix frontend run build`, `PROJECTAMO_COMPARISON_CAPTURE_DIR=/home/john_doe/ProjectAMO/artifacts/verification/approved-chart-design npm --prefix frontend run dev:contract -- --grep airport-model-comparison --retries=0 --max-failures=1`. 로그·검증 명세·각 요소 캡처는 `artifacts/verification/approved-chart-design/`에 보존했다. 현재 요청의 변경은 커밋·푸시·배포하지 않았다.
 - 검증 중 Vite가 `react-dom_client.js`와 `@fluentui_react-components.js`에 `504 Outdated Optimize Dep`를 반환해 화면 진입 전 타임아웃이 발생했다. 브라우저 요청 오류로 원인을 확인하고 해당 테스트 실행을 중단한 뒤, 관리형 서버 종료와 포트 해제를 확인했다. 빌드와 브라우저 실행을 분리하여 다시 검증했다. 앱 코드에 우회 로직을 추가하지 않았다.
+
+### 커밋·푸시·운영 배포 완료
+
+- 후속 사용자 요청 `커밋 후 푸쉬 그리고 배포`에 따라 메인이 `97373807`을 main에 커밋·푸시했다. 커밋 직전 전체 프런트엔드 테스트 1475/1475 및 diff-check를 다시 통과했다.
+- AWS `/opt/projectamo/current`에서 `bash deploy/deploy-vm.sh` 실행 성공. 기존 서버 `497802f7` 이후의 NSC·그래프 토글·연직 참고 패널 변경도 함께 반영했다. 의존성 변경 없음 확인, 기존 서버 설정 백업 파일 보존. 새 dist 빌드·교체, PM2 설정 적용·로그 회전, nginx 검증·reload 및 backend/site health 통과.
+- 운영 `https://projectamo.co.kr/airport/RKSI/models`를 Playwright 1920×1080으로 직접 검증했다. 화면/API HTTP 200, 실제 저장된 KIM·ECMWF·GFS·ICON 4개 모델 ready(모두 2026-09-07 06Z Run), 브라우저 오류 0. 그래프 클릭 후 URL·크기 유지, 그래프만 모델 토글, 돌풍 토글, 누적 강수·계단 운고 표시, RH 수치 띠 확인. 현재 인천 운고는 전부 NSC여서 `구름 없음` 빈 상태를 확인했으며 수치 계단선·유강수 막대는 앞선 48개 계약의 가상 시계열 검증이 근거다.
+- 배포 직후 서버 HEAD와 origin/main이 `97373807ce36adb3f0cce77e4714d9312cd4789e`로 일치했다. `/api/health` ok, `/api/snapshot-meta` HTTP 200, 공개 API `Cache-Control: no-store` 확인. 증거는 `artifacts/verification/approved-chart-design/{aws-deploy.log,production-smoke.log,production-smoke.json,production-*.png}`에 보존했다. 본 배포 기록은 별도 문서 커밋으로 동기화한다.
