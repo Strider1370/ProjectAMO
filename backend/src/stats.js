@@ -4,12 +4,15 @@ import { COLLECTOR_REGISTRY } from './collector-registry.js'
 import { API_OPERATION_REGISTRY } from './api-operation-registry.js'
 
 // 여기 없는 type은 recordSuccess/Failure가 조용히 버린다(아래 `if (!entry) return`). 새 수집기는 반드시 등록할 것.
-// ('radar'는 실제로 쓰는 키가 'radar_echo'라 여태 한 번도 안 채워졌다 — index.js의 runWithLock 호출과 이름을 맞춤.
+// 'radar_echo'(bin→이미지 변환)와 'adsb'는 뺐다: 전자는 이미지 API 직결로 대체돼 2026-08-15 이후
+// 아무도 안 부르고, 후자는 온디맨드라 수집기가 아니라 api_operations로 집계된다. 남겨두면 옛 실패
+// 기록이 얼어붙은 채 누적 성공률만 갉아먹는다(adsb 938/958 실패가 2026-06-24에 멈춘 채 남아 있었다).
 //  echo_top·satellite·rainviewer·ground_forecast·environment·airport_info·takeoff_fcst·ktg·notam·typhoon도
 //  같은 이유로 빠져 있었다: 등록 안 된 새 수집기 추가 때마다 이 목록을 안 늘려서 실패가 조용히 유실됐다.)
 const TYPES = [
-  'metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'radar_echo', 'wissdom', 'qpf', 'hsr', 'hci', 'echo_top',
-  'satellite', 'rainviewer', 'amos', 'adsb', 'metar_overseas', 'taf_overseas', 'sigmet_overseas',
+  'nwp_ecmwf', 'nwp_icon', 'nwp_gfs',
+  'metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'wissdom', 'qpf', 'hsr', 'hci', 'echo_top',
+  'satellite', 'rainviewer', 'amos', 'metar_overseas', 'taf_overseas', 'sigmet_overseas',
   'satellite_visible', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'ktg', 'notam', 'typhoon', 'kim_surface_wind', 'flight_category', 'asos_ceiling', 'terminal_flights', 'overseas_forecast',
 ]
 const MAX_RECENT_RUNS = 50
@@ -49,6 +52,7 @@ function makeTypeEntry() {
     error_counts: {},
     airport_failures: {},
     skips: 0,
+    hourly: {},
     execution: { ...EMPTY_EXECUTION },
   }
 }
@@ -124,6 +128,7 @@ export function initFromFile(basePath) {
           error_counts: previous.error_counts && typeof previous.error_counts === 'object' ? previous.error_counts : {},
           airport_failures: previous.airport_failures && typeof previous.airport_failures === 'object' ? previous.airport_failures : {},
           airport_error_counts: previous.airport_error_counts && typeof previous.airport_error_counts === 'object' ? previous.airport_error_counts : {},
+          hourly: previous.hourly && typeof previous.hourly === 'object' && !Array.isArray(previous.hourly) ? previous.hourly : {},
           execution: exactExecution(previous.execution),
         }
       }
@@ -153,6 +158,42 @@ function saveToFile() {
 
 function nowIso() {
   return new Date(persistence.now()).toISOString()
+}
+
+// 최근 24시간 성공률용 시간별 칸. 누적 성공률은 5월부터의 합이라 "지금 건강한가"를 못 말한다 —
+// 어제 망가진 자료도 99%로 멀쩡해 보이고, 두 달 전 고친 자료도 88%로 아파 보인다.
+// 칸은 타입당 최대 24개(ISO 시각 앞 13자)라 파일이 커지지 않는다.
+const HOURLY_WINDOW = 24
+
+function hourKey(ms) {
+  return new Date(ms).toISOString().slice(0, 13)
+}
+
+function recentHourKeys(nowMs) {
+  return Array.from({ length: HOURLY_WINDOW }, (_, back) => hourKey(nowMs - back * 3600_000))
+}
+
+function bumpHourly(entry, ok) {
+  const nowMs = persistence.now()
+  if (!entry.hourly || typeof entry.hourly !== 'object') entry.hourly = {}
+  const bucket = entry.hourly[hourKey(nowMs)] || { ok: 0, fail: 0 }
+  if (ok) bucket.ok += 1
+  else bucket.fail += 1
+  entry.hourly[hourKey(nowMs)] = bucket
+  const keep = new Set(recentHourKeys(nowMs))
+  for (const key of Object.keys(entry.hourly)) if (!keep.has(key)) delete entry.hourly[key]
+}
+
+function recentWindow(entry, nowMs) {
+  let ok = 0
+  let fail = 0
+  for (const key of recentHourKeys(nowMs)) {
+    const bucket = entry.hourly?.[key]
+    if (!bucket) continue
+    ok += bucket.ok || 0
+    fail += bucket.fail || 0
+  }
+  return { runs: ok + fail, rate: ok + fail > 0 ? ok / (ok + fail) : null }
 }
 
 function persistCompletion() {
@@ -334,6 +375,7 @@ export function recordSuccess(type, result, durationMs, run) {
     }
   }
 
+  bumpHourly(entry, true)
   addRecentRun(type, true, null, failedAirports, durationMs)
   setExecutionCompletion(type, 'succeeded', null, run)
   persistCompletion()
@@ -355,6 +397,7 @@ export function recordFailure(type, errorMsg, durationMs, run) {
   const key = safeError
   entry.error_counts[key] = (entry.error_counts[key] || 0) + 1
 
+  bumpHourly(entry, false)
   addRecentRun(type, false, safeError, [], durationMs)
   setExecutionCompletion(type, 'failed', issue, run)
   persistCompletion()
@@ -368,15 +411,19 @@ export function getStats() {
 // 목록이라 24시간 같은 시간 창을 계산할 근거가 못 된다(그건 2단계에서 따로 쌓는다).
 export function getTypeSummary(type) {
   const entry = statsData.types[type]
-  const empty = { successRate: null, totalRuns: 0, skips: 0, avgMs: null, since: statsData.since, errorCounts: {}, lastError: null }
+  const empty = { successRate: null, recentSuccessRate: null, recentRuns: 0, totalRuns: 0, skips: 0, avgMs: null, since: statsData.since, errorCounts: {}, lastError: null }
   if (!entry) return empty
 
   const durations = statsData.recent_runs
     .filter((r) => r.type === type && Number.isFinite(r.duration_ms))
     .map((r) => r.duration_ms)
 
+  const recent = recentWindow(entry, persistence.now())
+
   return {
     successRate: entry.total_runs > 0 ? entry.success / entry.total_runs : null,
+    recentSuccessRate: recent.rate,
+    recentRuns: recent.runs,
     totalRuns: entry.total_runs,
     skips: entry.skips || 0,
     avgMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null,

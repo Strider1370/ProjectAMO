@@ -177,11 +177,12 @@ export function buildKimGridUrl({
   return `${api.kim_grid_url}?${params.toString()}`
 }
 
-export async function fetchKimGrid(params) {
+export async function fetchKimGrid({ signal, ...params }) {
   const url = buildKimGridUrl(params)
   const response = await requestObservedApi({
     operation: 'kim_grid',
     url,
+    options: { signal },
     validate: async (value) => {
       const body = await responseToText(value)
       if (!value.ok) throw new Error(`HTTP ${value.status}: ${body.slice(0, 200)}`)

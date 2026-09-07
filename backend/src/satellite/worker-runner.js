@@ -25,6 +25,15 @@ function hasOnlyKeys(value, keys) {
     && keys.every((key) => Object.hasOwn(value, key))
 }
 
+// 워커가 실제로 보낼 수 있는 실패 메시지는 failureMessage가 만드는 세 가지뿐이다(일반·시간초과·취소).
+// 예전에는 그중 '일반' 하나하고만 대조해서, 워커가 제대로 보고한 시간초과·취소를 규약 위반으로
+// 되던졌다 — 진짜 이유가 지워지고 화면엔 "invalid ... terminal message"만 남았다(2026-09-07 기준 86건).
+const CANONICAL_FAILURES = new Set([
+  new Error(),
+  workerError('SatelliteWorkerTimeoutError', ''),
+  workerError('AbortError', ''),
+].map((error) => JSON.stringify(failureMessage(error))))
+
 function decodeTerminalMessage(message) {
   if (!hasOnlyKeys(message, ['ok', 'result']) && !hasOnlyKeys(message, ['ok', 'error'])) {
     throw workerError('SatelliteWorkerProtocolError', 'invalid satellite worker terminal message')
@@ -39,8 +48,7 @@ function decodeTerminalMessage(message) {
   }
 
   if (message.ok === false && hasOnlyKeys(message, ['ok', 'error'])) {
-    const expected = failureMessage(new Error())
-    if (JSON.stringify(message) !== JSON.stringify(expected)) {
+    if (!CANONICAL_FAILURES.has(JSON.stringify(message))) {
       throw workerError('SatelliteWorkerProtocolError', 'invalid satellite worker terminal message')
     }
     return { kind: 'failure', error: workerError(message.error.name, message.error.message) }

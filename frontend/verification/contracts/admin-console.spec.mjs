@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { installAdminDataHealthFixture } from '../admin-fixture.mjs'
 
 // 관리자 콘솔 브라우저 계약.
 //
@@ -40,8 +41,15 @@ async function loginAsAdmin(page, request) {
 test.describe('관리자 콘솔', () => {
   test.beforeEach(async ({ page, request }) => {
     await loginAsAdmin(page, request)
+    await installAdminDataHealthFixture(page)
     await page.goto('/admin')
     await expect(page.locator('.ac-shell')).toBeVisible()
+  })
+
+  test.afterEach(async ({ page }) => {
+    // AdminShell polls while the page is open. Let any authenticated route.fetch() finish before
+    // Playwright disposes its APIResponse with the browser context.
+    await page.unrouteAll({ behavior: 'wait' })
   })
 
   test('여섯 화면이 모두 열린다', async ({ page }, testInfo) => {
@@ -91,6 +99,53 @@ test.describe('관리자 콘솔', () => {
     await expect(page.locator('table.ac-t tbody .ac-sub').filter({ hasText: /다음|수집 시|비활성/ }).first()).toBeVisible()
     await menuButton(page, 'API 사용량').click()
     await expect(page.getByRole('heading', { name: '온디맨드 API' })).toBeVisible()
+  })
+
+  test('모델 상세는 시각·공항 수·OFF·실패·다음 점검을 구분한다', async ({ page }) => {
+    await menuButton(page, '자료 수집').click()
+    const ec = page.locator('tr[data-health-key="nwp_ecmwf"]')
+    await expect(ec.getByText('공항별 상이')).toBeVisible()
+    await expect(ec.locator('[data-airport-run="RKSI"]')).toContainText('RKSI')
+    await expect(ec.getByText('성공 7 · 실패 1')).toBeVisible()
+    await expect(ec.locator('[data-last-failure]')).toContainText('RKSS · provider request failed')
+    await expect(ec.getByText('다음 점검')).toBeVisible()
+    const ecMetaOperation = ec.locator('.ac-sub').filter({ hasText: 'EC 갱신 메타' })
+    await expect(ecMetaOperation).toHaveCount(1)
+    await expect(ecMetaOperation).toContainText('새 실행 요청 가능')
+
+    const off = page.locator('tr[data-health-key="nwp_icon"]')
+    await expect(off.getByText('꺼둠', { exact: true })).toBeVisible()
+    await expect(off.locator('.ac-model-health').getByText('다음 점검 없음')).toBeVisible()
+
+    const delayed = page.locator('tr[data-health-key="nwp_gfs"]')
+    await expect(delayed.getByText('지연')).toBeVisible()
+    await expect(delayed.locator('.ac-model-health')).toContainText('가용시각')
+    await expect(delayed.locator('.ac-model-health')).toContainText('수집시각')
+  })
+
+  test('해외 모델 다음 점검은 실제 시간대별 수집 스케줄을 따른다', async ({ page }, testInfo) => {
+    await page.unroute('**/api/admin/data-health')
+    const pending = page.waitForResponse(response => response.url().endsWith('/api/admin/data-health') && response.status() === 200)
+    await page.reload()
+    const health = await (await pending).json()
+    await page.getByRole('navigation').getByRole('button', { name: /^자료 수집/ }).click()
+    for (const [key, minute, hours] of [['nwp_ecmwf',40,[1,2,3]],['nwp_icon',40,[0,4,5]],['nwp_gfs',10,[0,1,2]]]) {
+      const model = health.rows.find(row => row.key === key)
+      const next = new Date(model.nextCheckAt)
+      expect(next.getTime()).toBeGreaterThan(Date.parse(health.generatedAt))
+      expect(next.getUTCMinutes()).toBe(minute)
+      expect(hours).toContain(next.getUTCHours() % 6)
+      const label = model.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const row = page.getByRole('row', { name: new RegExp(`^${label}`) })
+      const display = next.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false })
+      await expect(row.getByText(`다음 점검 ${display}`, { exact:true })).toBeVisible()
+      await expect(row).toContainText('실행별 1시간 간격 · 3회')
+      expect((await row.boundingBox()).height).toBeLessThan(400)
+      if (key === 'nwp_ecmwf') {
+        await row.scrollIntoViewIfNeeded()
+        await testInfo.attach('nwp-schedule-KST', {body:await page.screenshot(),contentType:'image/png'})
+      }
+    }
   })
 
   test('이모지를 쓰지 않는다', async ({ page }) => {

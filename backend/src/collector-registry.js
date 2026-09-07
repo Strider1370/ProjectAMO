@@ -6,6 +6,7 @@ const HOUR = 60 * MINUTE
 
 const utc = (key, maxIntervalMs, graceMs, quiet) => (config) => ({ expression: config.schedule[key], timezone: 'Etc/UTC', maxIntervalMs, graceMs, ...(quiet ? { quiet } : {}) })
 const kst = (key, maxIntervalMs, graceMs, quiet) => (config) => ({ expression: config.schedule[key], timezone: 'Asia/Seoul', maxIntervalMs, graceMs, ...(quiet ? { quiet } : {}) })
+const overseasNwpSchedule = (key, graceMs) => (config) => ({ ...utc(key, 6 * HOUR, graceMs)(config), cadenceLabel: '실행별 1시간 간격 · 3회' })
 const enabled = () => true
 const radarEnabled = (config) => Boolean(config.api?.radar_satellite_auth_key)
 const graphicsEnabled = (config) => radarEnabled(config) && config.radar_graphics?.enabled !== false
@@ -42,6 +43,9 @@ export const COLLECTOR_REGISTRY = [
       : ['metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'lightning', 'typhoon'].includes(type) ? ['aviation'] : [],
   )),
   collector('kim_surface_wind', utc('kim_surface_wind_interval', 4 * HOUR, 35 * MINUTE), (config) => config.kim_nwp?.enabled !== false),
+  collector('nwp_ecmwf', overseasNwpSchedule('nwp_ecmwf_interval', 90 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
+  collector('nwp_icon', overseasNwpSchedule('nwp_icon_interval', 60 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
+  collector('nwp_gfs', overseasNwpSchedule('nwp_gfs_interval', 75 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
   collector('ktg', utc('ktg_interval', 5 * HOUR, 35 * MINUTE)),
   collector('ground_forecast', kst('ground_forecast_interval', 3 * HOUR, 35 * MINUTE), enabled, ['aviation']),
   collector('terminal_flights', kst('terminal_flight_interval', MINUTE, MINUTE, EARLY_MORNING)),
@@ -78,7 +82,11 @@ function resolveRegistry(registry, partialConfig) {
       throw new Error(`invalid_collector_schedule:${item.type}`)
     }
     if (!validSchedule(schedule)) throw new Error(`invalid_collector_schedule:${item.type}`)
-    return { ...item, schedule: { ...schedule, cronOptions: { timezone: schedule.timezone } } }
+    // recoverMissedExecutions: node-cron 3.x는 1초짜리 타이머로 시각을 감시하는데, 그 초에
+    // 이벤트 루프가 막혀 있으면 그 회차를 조용히 버린다(scheduler.js의 `i === 0 || autorecover`).
+    // 끄면 로그도 오류도 없이 수집이 통째로 사라진다 — 2026-09-07에 34종 전부가 하루 10~15%씩,
+    // NOTAM은 6시간 주기라 반나절 구멍이 났다. 켜면 늦게라도 그 회차를 실행한다.
+    return { ...item, schedule: { ...schedule, cronOptions: { timezone: schedule.timezone, recoverMissedExecutions: true } } }
   })
 }
 

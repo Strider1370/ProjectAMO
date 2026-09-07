@@ -14,13 +14,13 @@ test('active registry resolves partial overrides and exposes watchdog contracts 
   const partial = activeCollectorRegistry({ api: { radar_satellite_auth_key: '' } })
   assert.equal(partial.some((collector) => collector.type === 'satellite'), false)
   assert.deepEqual(partial.find((collector) => collector.type === 'ground_forecast').schedule, {
-    expression: '30 2,5,8,11,14,17,20,23 * * *', timezone: 'Asia/Seoul', maxIntervalMs: 3 * 3600_000, graceMs: 35 * 60_000, cronOptions: { timezone: 'Asia/Seoul' },
+    expression: '30 2,5,8,11,14,17,20,23 * * *', timezone: 'Asia/Seoul', maxIntervalMs: 3 * 3600_000, graceMs: 35 * 60_000, cronOptions: { timezone: 'Asia/Seoul', recoverMissedExecutions: true },
   })
   assert.deepEqual(partial.find((collector) => collector.type === 'ktg').schedule, {
-    expression: '25 1,2,7,8,13,14,19,20 * * *', timezone: 'Etc/UTC', maxIntervalMs: 5 * 3600_000, graceMs: 35 * 60_000, cronOptions: { timezone: 'Etc/UTC' },
+    expression: '25 1,2,7,8,13,14,19,20 * * *', timezone: 'Etc/UTC', maxIntervalMs: 5 * 3600_000, graceMs: 35 * 60_000, cronOptions: { timezone: 'Etc/UTC', recoverMissedExecutions: true },
   })
   assert.deepEqual(partial.find((collector) => collector.type === 'terminal_flights').schedule, {
-    expression: '*/1 4-23 * * *', timezone: 'Asia/Seoul', maxIntervalMs: 60_000, graceMs: 60_000, quiet: { fromHourKst: 0, toHourKst: 4 }, cronOptions: { timezone: 'Asia/Seoul' },
+    expression: '*/1 4-23 * * *', timezone: 'Asia/Seoul', maxIntervalMs: 60_000, graceMs: 60_000, quiet: { fromHourKst: 0, toHourKst: 4 }, cronOptions: { timezone: 'Asia/Seoul', recoverMissedExecutions: true },
   })
   assert.equal(partial.find((collector) => collector.type === 'airport_info').schedule.maxIntervalMs, 12.5 * 3600_000)
 })

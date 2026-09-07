@@ -19,6 +19,9 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
     : health.rows
   const collectorProblems = executionProblems(health.collectorExecution)
   const since = health.rows.find((row) => row.stats?.since)?.stats?.since
+  const formatDateTime = (value) => value
+    ? new Date(value).toLocaleString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+    : '없음'
 
   return (
     <>
@@ -61,6 +64,7 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                 <th>상태</th>
                 <th className="ac-r">마지막 성공</th>
                 <th className="ac-r">정상 주기</th>
+                <th className="ac-r">성공률(24h)</th>
                 <th className="ac-r">성공률(누적)</th>
                 <th className="ac-r">평균 소요</th>
                 <th className="ac-r">밀림</th>
@@ -70,10 +74,21 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.key}>
+                <tr key={row.key} data-health-key={row.key}>
                   <td className="ac-nm">
                     {row.label}
                     {row.eventDriven && row.activeCount != null && <div className="ac-sub">{row.activeCount}건 발효</div>}
+                    {row.airportRuns && (
+                      <div className="ac-sub ac-model-health">
+                        <div><b>실행시각</b> {row.modelRunAt ? formatDateTime(row.modelRunAt) : row.airportRuns.length ? '공항별 상이' : '없음'}</div>
+                        {row.airportRuns.map((airport) => <div key={airport.airportIcao} data-airport-run={airport.airportIcao}>{airport.airportIcao} {formatDateTime(airport.modelRunAt)}</div>)}
+                        <div><b>가용시각</b> {formatDateTime(row.availableAt)}</div>
+                        <div><b>수집시각</b> {formatDateTime(row.collectedAt)}</div>
+                        <div><b>공항 수</b> 성공 {row.successAirports} · 실패 {row.failedAirports}</div>
+                        <div><b>다음 점검</b> {row.status === 'disabled' ? '없음' : formatDateTime(row.nextCheckAt)}</div>
+                        {row.lastFailure && <div data-last-failure><b>마지막 실패</b> {row.lastFailure.airportIcao || '전체'} · {row.lastFailure.message || row.lastFailure.code}</div>}
+                      </div>
+                    )}
                   </td>
                   <td><span className={`ac-chip ac-${STATUS_TONE[row.status]}`}>{STATUS_WORD[row.status]}</span></td>
                   <td className="ac-r">
@@ -81,9 +96,11 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                     {row.contentAt && <div className="ac-sub">자료 {formatAge(now - Date.parse(row.contentAt))} 전</div>}
                   </td>
                   <td className="ac-r ac-muted">{formatInterval(row.normalMs)}</td>
-                  <td className="ac-r" style={row.stats?.successRate != null && row.stats.successRate < 0.8 ? { color: 'var(--ac-bad)', fontWeight: 600 } : undefined}>
-                    {formatRate(row.stats?.successRate)}
+                  <td className="ac-r" style={row.stats?.recentSuccessRate != null && row.stats.recentSuccessRate < 0.8 ? { color: 'var(--ac-bad)', fontWeight: 600 } : undefined}>
+                    {row.stats?.recentRuns ? formatRate(row.stats.recentSuccessRate) : '—'}
+                    {row.stats?.recentRuns > 0 && <div className="ac-sub">{row.stats.recentRuns}회</div>}
                   </td>
+                  <td className="ac-r ac-muted">{formatRate(row.stats?.successRate)}</td>
                   <td className="ac-r ac-muted">{formatMs(row.stats?.avgMs)}</td>
                   <td className="ac-r" style={row.stats?.skips > 0 ? { color: 'var(--ac-warn)', fontWeight: 600 } : undefined}>
                     {row.stats?.skips ?? 0}
@@ -93,8 +110,9 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                     {(row.operations || []).map((operation) => {
                       const expected = operation.expected
                       const next = expected?.nextExpectedAt ? new Date(expected.nextExpectedAt).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }) : null
-                      const schedule = expected?.kind === 'scheduled' ? `${expected.cadenceLabel}${expected.operatingHoursLabel ? ` · ${expected.operatingHoursLabel}` : ''}${next ? ` · 다음 ${next}` : ''}` : expected?.label || '—'
-                      return <div className="ac-sub" key={operation.id}>{operation.label} · {operation.outcome === 'succeeded' ? '성공' : operation.outcome === 'failed' ? '실패' : '미실행'}{operation.durationMs != null ? ` · ${formatMs(operation.durationMs)}` : ''} · {schedule}{operation.lastIssue?.message ? ` · ${operation.lastIssue.message}` : ''}</div>
+                      const nextLabel = row.airportRuns ? '새 실행 요청 가능' : '다음'
+                      const schedule = expected?.kind === 'scheduled' ? `${expected.cadenceLabel}${expected.operatingHoursLabel ? ` · ${expected.operatingHoursLabel}` : ''}${next ? ` · ${nextLabel} ${next}` : ''}` : expected?.label || '—'
+                      return <div className="ac-sub" key={operation.id}>{operation.label} · {operation.outcome === 'succeeded' ? '성공' : operation.outcome === 'failed' ? '실패' : '미실행'}{operation.durationMs != null ? ` · ${formatMs(operation.durationMs)}` : ''} · {schedule}{operation.outcome !== 'succeeded' && operation.lastIssue?.message ? ` · ${operation.lastIssue.message}` : ''}</div>
                     })}
                   </td>
                 </tr>

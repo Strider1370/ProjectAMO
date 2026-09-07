@@ -161,6 +161,11 @@ ProjectAMO 현재값 `sub=1429,1441,1633,1609` = 119.0~136.0E / 30.0~44.0N, 205 
 | surface stress | Northward Turbulent Surface Stress | `tauv` | surface | Pa | 3자리 |
 | 지형 | topography | `topo` | surface | m | 1자리 |
 
+공항 상세 비교는 KIM 실행의 F000~F012를 사용한다. 지도 격자와 같은 실행·예보시각의
+`u10m`, `v10m`, `t2m`, `cld`, `tqc`, `tqi`, `hgt`를 재사용하고, 단일면 `gust`, `pr`,
+`prec_acc`, `tcld`, `lcld`, `mcld`, `hcld`, `td2m`, `rh2m`, `psl`, `topo`만 보충한다.
+저장소/API가 허용하는 예보시간 범위 F000~F016은 유지된다.
+
 ### 3.3 지역모델 (KIMR / R030), 국지모델 (KIML / L010)
 
 **지역과 국지의 변수 목록은 완전히 동일하다.** 전구와 달리 **변수명이 대문자**다.

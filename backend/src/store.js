@@ -191,8 +191,8 @@ export function loadLatest(dir) {
   }
 }
 
-export function loadRecent(type, limit = 12) {
-  const dir = getTypeDir(config.storage.base_path, type)
+export function loadRecent(type, limit = 12, { root = config.storage.base_path } = {}) {
+  const dir = getTypeDir(root, type)
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir)
     .filter((n) => n.endsWith('.json') && n !== 'latest.json')
