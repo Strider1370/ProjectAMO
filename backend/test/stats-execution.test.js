@@ -78,27 +78,14 @@ test('legacy failure fields persist only the normalized issue message', () => {
   assert.equal(Object.keys(entry.error_counts).some((key) => key.includes('\n')), false)
 })
 
-test('legacy non-registry stats types retain their counters without execution updates', () => {
+// radar_echo(폐기)·adsb(온디맨드)를 TYPES에서 빼면서 등록부 밖 타입은 하나도 남지 않았다.
+// 남은 보호장치는 "모르는 타입은 조용히 무시한다" 하나뿐이라 그것만 지킨다.
+test('등록되지 않은 타입은 조용히 무시된다', () => {
+  assert.doesNotThrow(() => stats.recordStart('radar_echo', { source: 'scheduled' }))
   assert.doesNotThrow(() => stats.recordSuccess('radar_echo', { saved: true }, 12))
-  const entry = stats.getStats().types.radar_echo
-  assert.equal(entry.total_runs, 1)
-  assert.equal(entry.success, 1)
-  assert.deepEqual(entry.execution, {
-    last_started_at: null,
-    last_scheduled_started_at: null,
-    last_finished_at: null,
-    last_outcome: null,
-    last_issue: null,
-    last_missed_at: null,
-  })
-})
-
-test('legacy non-registry stats types support a full start to terminal run', () => {
-  const run = stats.recordStart('radar_echo', { source: 'scheduled' })
-  assert.equal(run.source, 'scheduled')
-  assert.doesNotThrow(() => stats.recordSuccess('radar_echo', { saved: true }, 12, run))
-  assert.equal(stats.getStats().types.radar_echo.total_runs, 1)
-  assert.equal(stats.getStats().types.radar_echo.execution.last_outcome, null)
+  assert.doesNotThrow(() => stats.recordFailure('adsb', 'boom', 12))
+  assert.equal(stats.getStats().types.radar_echo, undefined)
+  assert.equal(stats.getStats().types.adsb, undefined)
 })
 
 test('API operation starts use the same coalesced persistence path as collector starts', () => {
@@ -170,4 +157,20 @@ test('scheduled start preserves a historical missed issue across restart', () =>
   assert.deepEqual(execution.last_issue, {
     outcome: 'missed', code: 'start_overdue', message: 'previous missed start', at: execution.last_missed_at,
   })
+})
+
+// 누적 성공률은 5월부터의 합이라 지금 상태를 못 말한다 — 24시간 창이 그걸 대신한다.
+test('최근 24시간 성공률은 창 밖 기록에 오염되지 않는다', () => {
+  const clock = createFakeClock('2026-09-07T10:00:00.000Z')
+  stats.__setPersistenceForTest({ now: clock.now, setTimeout: clock.setTimeout, write: () => {} })
+
+  for (let n = 0; n < 9; n += 1) stats.recordFailure('metar', 'boom', 10)   // 하루 전 실패 9건
+  clock.advance(25 * 3600_000)
+  stats.recordSuccess('metar', { saved: true }, 10)                          // 오늘 성공 1건
+
+  const summary = stats.getTypeSummary('metar')
+  assert.equal(summary.recentRuns, 1)
+  assert.equal(summary.recentSuccessRate, 1)
+  assert.equal(summary.totalRuns, 10)          // 누적은 그대로 10건
+  assert.equal(summary.successRate, 0.1)       // 누적은 여전히 10%
 })

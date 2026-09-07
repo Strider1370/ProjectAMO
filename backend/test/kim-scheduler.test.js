@@ -41,7 +41,7 @@ test('KIM scheduler jobs do not preflight-block a valid 18Z aviation-key run', a
 test('KIM NWP scheduler uses UTC for synoptic release retry windows', () => {
   const collector = activeCollectorRegistry(config).find((item) => item.type === 'kim_surface_wind')
   assert.equal(collector.schedule.expression, config.schedule.kim_surface_wind_interval)
-  assert.deepEqual(collector.schedule.cronOptions, { timezone: 'Etc/UTC' })
+  assert.deepEqual(collector.schedule.cronOptions, { timezone: 'Etc/UTC', recoverMissedExecutions: true })
 })
 
 test('KIM NWP scheduler can be disabled without affecting other schedulers', () => {
@@ -107,5 +107,5 @@ test('airport info scheduler runs at KST bulletin release and retry times', () =
   const collector = activeCollectorRegistry(config).find((item) => item.type === 'airport_info')
   assert.equal(collector.schedule.expression, config.schedule.airport_info_interval)
   assert.equal(collector.schedule.expression, '0,30 6,17 * * *')
-  assert.deepEqual(collector.schedule.cronOptions, { timezone: 'Asia/Seoul' })
+  assert.deepEqual(collector.schedule.cronOptions, { timezone: 'Asia/Seoul', recoverMissedExecutions: true })
 })

@@ -94,3 +94,27 @@ RED command: `npm --prefix backend test -- test/api-operation-registry.test.js`.
 All registry request policies now use only `maxAttempts`, meaning total physical attempts including the first. Lightning declares `maxAttempts: 3`; API-client operations map their current `config.api.max_retries` total-attempt setting directly to `maxAttempts`. No `maxRetries` field or override alias remains in the registry. Fallback validation now treats absence strictly as `undefined`; every other defined fallback must be a non-array object matching the exact typed fallback schema, so null/false/zero/empty-string values fail with a controlled policy error.
 
 GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js test/api-hub-usage.test.js test/fetch-api-hub.test.js test/admin-data-health.test.js` — 43 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.
+
+## Task 1A corrective — watchdog registry contract
+
+RED command: `npm --prefix backend test -- test/collector-registry.test.js`. It failed because active schedules did not expose `maxIntervalMs`/`graceMs`; the invalid-metadata case also reached the default registry instead of the supplied test registry.
+
+`activeCollectorRegistry(partialConfig)` now deep-merges partial overrides with production configuration, so an `api` override preserves schedules and unrelated enablement. Every active collector exposes validated watchdog fields. The contracts retain the actual nonuniform scheduler gaps (KTG five hours, KIM four hours), the KST three-hour ground-forecast interval and 35-minute grace, and the terminal/overseas early-morning quiet window. Invalid intervals, grace, or quiet shapes fail with `invalid_collector_schedule:<type>`.
+
+GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js` — 20 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.
+
+## Task 1A corrective — review fix round 1/5
+
+RED command: `npm --prefix backend test -- test/collector-registry.test.js`. It failed on the three reported boundaries: `airport_info` exposed 13h rather than its actual 12.5h maximum gap, `*/30` radar graphics retained a 10-minute maximum, and malformed cron/timezone schedules were accepted instead of failing with `invalid_collector_schedule:invalid`.
+
+Registry resolution now validates active schedules at the boundary using `cron-parser` plus the runtime timezone validator and normalizes malformed schedule callbacks to the established controlled error. Radar graphics samples the configured UTC cron cadence to derive its maximum interval (cached across the four graphics collectors), preserving configured valid cron behavior. Airport-info now declares the exact 17:30→06:00 12.5-hour longest gap.
+
+GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js` — 21 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.
+
+## Task 1A corrective — review fix round 2/5
+
+RED command: `npm --prefix backend test -- test/collector-registry.test.js`. It failed because `cron-parser` accepted node-cron-invalid `0 0 L * *`, and a valid node-cron expression limited to 1 January (`* * 1 1 *`) sampled only minute-to-minute intervals and silently received a one-minute watchdog maximum.
+
+Resolved schedule validation now calls `node-cron.validate`, the same grammar used by the scheduler. Graphics interval overrides are deliberately restricted to exact `*/N * * * *` UTC cadence expressions (N=1–59), for which `N` minutes is a provable maximum gap; valid but watchdog-unsafe calendar cron overrides now fail at the registry boundary with the established controlled schedule error rather than creating false missed incidents.
+
+GREEN command: `npm --prefix backend test -- test/collector-registry.test.js test/api-operation-registry.test.js` — 22 passing, 0 failing. `git diff --check` passed; `graphify update .` completed.

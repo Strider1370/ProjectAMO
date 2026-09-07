@@ -82,7 +82,11 @@ function resolveRegistry(registry, partialConfig) {
       throw new Error(`invalid_collector_schedule:${item.type}`)
     }
     if (!validSchedule(schedule)) throw new Error(`invalid_collector_schedule:${item.type}`)
-    return { ...item, schedule: { ...schedule, cronOptions: { timezone: schedule.timezone } } }
+    // recoverMissedExecutions: node-cron 3.x는 1초짜리 타이머로 시각을 감시하는데, 그 초에
+    // 이벤트 루프가 막혀 있으면 그 회차를 조용히 버린다(scheduler.js의 `i === 0 || autorecover`).
+    // 끄면 로그도 오류도 없이 수집이 통째로 사라진다 — 2026-09-07에 34종 전부가 하루 10~15%씩,
+    // NOTAM은 6시간 주기라 반나절 구멍이 났다. 켜면 늦게라도 그 회차를 실행한다.
+    return { ...item, schedule: { ...schedule, cronOptions: { timezone: schedule.timezone, recoverMissedExecutions: true } } }
   })
 }
 

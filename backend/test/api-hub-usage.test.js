@@ -19,7 +19,7 @@ test('aggregates categories that share one key and resets at KST midnight', asyn
   await withUsage({ aviation: 'same-key', radar_satellite: 'same-key', kim_nwp: 'kim-key' }, async (usage) => {
     const beforeMidnight = Date.parse('2026-08-09T14:59:59Z')
     await usage.record('same-key', { bytes: 125, status: 200, endpoint: 'metar', now: beforeMidnight })
-    await usage.record('same-key', { bytes: 75, status: 200, endpoint: 'radar_echo', now: beforeMidnight })
+    await usage.record('same-key', { bytes: 75, status: 200, endpoint: 'radar_hsr', now: beforeMidnight })
 
     const before = usage.snapshot({ now: beforeMidnight })
     assert.equal(before.keys.find((key) => key.category === 'aviation').bytes, 200)

@@ -169,3 +169,26 @@ test('a real worker process returns a safe terminal failure and exits for an inv
     error: { name: 'SatelliteWorkerError', message: 'satellite worker failed' },
   }])
 })
+
+// 워커가 제대로 보고한 시간초과·취소가 규약 위반으로 뭉개지면 안 된다 — 진짜 이유가 지워진다.
+test('워커가 보고한 시간초과·취소를 그대로 돌려준다', async () => {
+  for (const [name, message] of [
+    ['SatelliteWorkerTimeoutError', 'satellite worker timed out'],
+    ['SatelliteWorkerCancelledError', 'satellite worker cancelled'],
+    ['SatelliteWorkerError', 'satellite worker failed'],
+  ]) {
+    const child = fakeChild()
+    const run = runSatelliteWorker(job, { forkImpl: () => child, timeoutMs: 100 })
+    child.emit('message', { ok: false, error: { name, message } })
+    child.emit('exit', 1, null)
+    await assert.rejects(run, (error) => error.name === name && error.message === message)
+  }
+})
+
+test('워커가 아닌 모양의 실패 메시지는 여전히 규약 위반이다', async () => {
+  const child = fakeChild()
+  const run = runSatelliteWorker(job, { forkImpl: () => child, timeoutMs: 100 })
+  child.emit('message', { ok: false, error: { name: 'TypeError', message: 'boom' } })
+  child.emit('exit', 1, null)
+  await assert.rejects(run, /invalid satellite worker terminal message/)
+})
