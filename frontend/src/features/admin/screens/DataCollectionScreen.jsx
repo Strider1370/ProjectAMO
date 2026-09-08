@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
 import { EXECUTION_WORD, STATUS_TONE, STATUS_WORD, executionProblems, formatAge, formatInterval, formatMs, formatRate } from '../lib/adminFormat.js'
+import { apiOperationSummary } from '../lib/apiOperationSummary.js'
+import ApiExecutionDialog from './ApiExecutionDialog.jsx'
 
 // 자료 수집 상세 — 34종을 한 표로. 개요에서 "뭐가 이상한가"를 봤다면 여기서 "왜"를 판다.
 //
@@ -10,6 +12,7 @@ import { EXECUTION_WORD, STATUS_TONE, STATUS_WORD, executionProblems, formatAge,
 // 모델 행의 공항별 실행시각은 접어 둔다: 네 행이 각각 열다섯 줄을 펴면 표를 읽을 수 없다.
 export default function DataCollectionScreen({ health, now = Date.now() }) {
   const [onlyProblems, setOnlyProblems] = useState(false)
+  const [detailKey, setDetailKey] = useState(null)
   const { tz } = useTimeZone()
   if (!health) return null
 
@@ -57,7 +60,8 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
         {rows.length === 0 ? (
           <p className="ac-sub" style={{ padding: '0 22px 16px' }}>이상한 자료가 없습니다.</p>
         ) : (
-          <div className="ac-tw"><table className="ac-t">
+          <div className="ac-tw ac-collection-scroll" role="region" aria-label="자료 수집 목록" tabIndex={0}><table className="ac-t ac-collection-table">
+            <colgroup>{[200,72,132,128,120,148,240].map((width,index)=><col key={index} style={{width}} />)}</colgroup>
             <thead>
               <tr>
                 <th>자료</th>
@@ -114,18 +118,15 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                       밀림 {row.stats?.skips ?? 0}
                     </div>
                   </td>
-                  <td className="ac-muted">
-                    {row.stats?.recentLastError || '—'}
+                  <td className="ac-muted ac-error-cell">
+                    {row.stats?.recentLastError ? <button type="button" className="ac-error-preview" aria-label={`${row.label} 마지막 오류 보기`} onClick={() => setDetailKey(row.key)}>{row.stats.recentLastError}</button> : '—'}
                     {row.stats?.recentLastErrorAt && <span className="ac-sub"> · {formatAge(now - Date.parse(row.stats.recentLastErrorAt))} 전</span>}
                   </td>
                   <td className="ac-muted ac-ops">
-                    {(row.operations || []).map((operation) => {
-                      const expected = operation.expected
-                      const next = expected?.nextExpectedAt ? new Date(expected.nextExpectedAt).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }) : null
-                      const nextLabel = row.airportRuns ? '새 실행 요청 가능' : '다음'
-                      const schedule = expected?.kind === 'scheduled' ? `${expected.cadenceLabel}${expected.operatingHoursLabel ? ` · ${expected.operatingHoursLabel}` : ''}${next ? ` · ${nextLabel} ${next}` : ''}` : expected?.label || '—'
-                      return <div className="ac-sub" key={operation.id}>{operation.label} · {operation.outcome === 'succeeded' ? '성공' : operation.outcome === 'failed' ? '실패' : '미실행'}{operation.durationMs != null ? ` · ${formatMs(operation.durationMs)}` : ''} · {schedule}{operation.outcome !== 'succeeded' && operation.lastIssue?.message ? ` · ${operation.lastIssue.message}` : ''}</div>
-                    })}
+                    {(() => {
+                      const summary = apiOperationSummary(row.operations)
+                      return <><div className="ac-api-result">{summary.result}</div><div className="ac-sub">{summary.nextAt ? `다음 예정 ${formatDateTime(summary.nextAt)} ${tz}` : summary.fallback}</div>{row.operations?.length > 0 && <button type="button" className="ac-api-open" onClick={() => setDetailKey(row.key)}>실행 상세 보기</button>}</>
+                    })()}
                   </td>
                 </tr>
               ))}
@@ -141,6 +142,7 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
           </p>
         )}
       </section>
+      <ApiExecutionDialog row={health.rows.find(row=>row.key===detailKey) || null} onClose={()=>setDetailKey(null)} formatDateTime={formatDateTime} tz={tz} />
     </>
   )
 }

@@ -142,6 +142,38 @@
 .admin-page .ac-act { color: var(--ac-link); font-weight: 600; cursor: pointer; }
 .admin-page .ac-sub { font-size: 11px; color: var(--ac-faint); margin-top: 2px; }
 
+/* Bounded data list and API details: long diagnostics must not size the rows. */
+.admin-page .ac-collection-scroll { max-height: min(640px, 65dvh); overflow: auto; overscroll-behavior: contain; }
+.admin-page .ac-collection-scroll:focus-visible { outline: 2px solid var(--ac-link); outline-offset: 2px; }
+.admin-page .ac-collection-scroll table.ac-collection-table { table-layout: fixed; min-width: 1040px; }
+.admin-page table.ac-collection-table th { position: sticky; top: 0; z-index: 1; background: var(--ac-sf); }
+.admin-page table.ac-collection-table td, .admin-page table.ac-collection-table th { padding: 12px; vertical-align: top; }
+.admin-page table.ac-collection-table td.ac-nm, .admin-page table.ac-collection-table td.ac-nm .ac-sub { white-space: normal; overflow-wrap: anywhere; }
+.admin-page .ac-collection-scroll details.ac-model-health { max-height: 240px; overflow: auto; }
+.admin-page .ac-collection-scroll td.ac-ops .ac-sub { font-size: 11px; color: var(--ac-dim); }
+.admin-page .ac-api-result { color: var(--ac-tx); font-size: 12px; line-height: 1.5; }
+.admin-page .ac-api-open, .admin-page .ac-error-preview { font: inherit; color: var(--ac-link); background: none; border: 0; padding: 4px 0; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.admin-page .ac-api-open { font-size: 12px; margin-top: 4px; min-height: 28px; }
+.admin-page .ac-error-preview { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-page .ac-error-cell>span.ac-sub { display: block; margin-left: 0; }
+.admin-page .ac-api-dialog { box-sizing: border-box; width: min(900px, 94vw); max-width: 94vw; max-height: 85dvh; padding: 0; border: 1px solid var(--ac-bd); border-radius: var(--ac-r); background: var(--ac-sf); color: var(--ac-tx); }
+.admin-page .ac-api-dialog::backdrop { background: rgb(15 23 42 / .55); }
+.admin-page .ac-api-dialog>header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; border-bottom: 1px solid var(--ac-bd); }
+.admin-page .ac-api-dialog h2 { font-size: 16px; margin: 0; }
+.admin-page .ac-api-dialog header button { min-height: 44px; padding: 0 16px; background: var(--ac-sf); color: var(--ac-tx); border: 1px solid var(--ac-bd); border-radius: var(--ac-r-sm); cursor: pointer; }
+.admin-page .ac-api-detail-scroll { box-sizing: border-box; max-height: min(480px, 60dvh); overflow: auto; overscroll-behavior: contain; padding: 16px; }
+.admin-page .ac-api-detail-scroll:focus-visible { outline: 2px solid var(--ac-link); outline-offset: -2px; }
+.admin-page .ac-api-schedule { font-size: 12px; margin: 0 0 16px; }
+.admin-page .ac-api-detail-table { table-layout: fixed; width: 100%; border-collapse: collapse; font-size: 12px; }
+.admin-page .ac-api-detail-table caption { text-align: left; font-weight: 600; padding-bottom: 8px; }
+.admin-page .ac-api-detail-table th, .admin-page .ac-api-detail-table td { text-align: left; padding: 12px 8px; vertical-align: top; border-bottom: 1px solid var(--ac-bd); overflow-wrap: anywhere; }
+.admin-page .ac-api-detail-table th { position: sticky; top: -16px; background: var(--ac-sf); }
+.admin-page .ac-api-detail-table small { display: block; margin-top: 4px; color: var(--ac-dim); }
+.admin-page .ac-api-error, .admin-page .ac-api-issue { overflow-wrap: anywhere; white-space: pre-wrap; }
+.admin-page .ac-api-error { margin-bottom: 16px; padding: 12px; background: var(--ac-bad-bg); }
+.admin-page .ac-api-error h3 { font-size: 13px; margin: 0 0 8px; }
+.admin-page .ac-api-error p { font-size: 12px; margin: 0; }
+
 /* 게이지·막대 */
 .admin-page .ac-gauges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
 .admin-page .ac-gauge .ac-gl2 { font-size: 11.5px; color: var(--ac-faint); }

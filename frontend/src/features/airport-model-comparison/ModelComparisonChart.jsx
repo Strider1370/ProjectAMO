@@ -66,7 +66,7 @@ export default function ModelComparisonChart({ series, times, timeLabels, unit, 
   const hasValues = s => s.points.some(p => Number.isFinite(p.value) || Number.isFinite(p.gust) || p.text === 'NSC' || (s.categorical && p.text && !['자료 없음', '관측 전'].includes(p.text)))
   const plotPoints = s => s.points.map(p => ({ ...p, x: Number.isFinite(Date.parse(p.at)) ? xAt(p.at) : null }))
   const valid = p => Number.isFinite(Date.parse(p.at))
-  const markLabel = (s, p) => s.label + ' ' + p.at + ', ' + p.value + ' ' + unit + (unit === 'kt' && Number.isFinite(p.gust) ? ', 돌풍 ' + p.gust + ' ' + unit : '')
+  const markLabel = (s, p) => s.label + ' ' + p.at + ', ' + p.value + ' ' + unit + (unit === 'kt' && Number.isFinite(p.gust) ? ', Gust ' + p.gust + ' ' + unit : '')
   const key = (s, i, suffix = '') => s.id + '-' + i + suffix
   return (
     <div ref={wrapRef} className={'mc-chart-wrap mc-chart-wrap--' + (rain ? 'rain' : ceiling ? 'ceiling' : humidity ? 'humidity' : temperature ? 'temperature' : 'wind')}>
@@ -98,13 +98,12 @@ export default function ModelComparisonChart({ series, times, timeLabels, unit, 
               <path key={key(s,i)} d={'M' + xAt(p.at) + ',' + (yAt(CEILING_CHART_MAX_FT) - 6) + ' l5,9 h-10 Z'} fill={s.color} className="mc-chart-point mc-overflow-point" tabIndex="-1" role="img" aria-label={s.label + ' ' + p.at + ', ' + p.value + ' ' + unit + ' (10,000 ft 이상)'} {...pointEvents(p)} /> :
               <circle key={key(s,i)} cx={xAt(p.at)} cy={yAt(p.value)} r={temperature ? 3 : 2} fill={temperature ? 'var(--bg-1, #fff)' : s.color} stroke={s.color} strokeWidth={temperature ? 1.5 : 0} className="mc-chart-point" tabIndex="-1" role="img" aria-label={markLabel(s,p)} {...pointEvents(p)} />
           }))}
-          {unit === 'kt' && showGust && numeric.flatMap(s => s.points.map((p,i) => Number.isFinite(p.gust) && valid(p) ? <circle key={key(s,i,'-gust')} cx={xAt(p.at)} cy={yAt(p.gust)} r="1.8" fill="var(--bg-1, #fff)" stroke={s.color} strokeWidth="1.2" className="mc-chart-point mc-gust-point" tabIndex="-1" role="img" aria-label={s.label + ' 돌풍 ' + p.at + ', ' + p.gust + ' ' + unit} {...pointEvents(p)} /> : null))}
+            {unit === 'kt' && showGust && numeric.flatMap(s => s.points.map((p,i) => Number.isFinite(p.gust) && valid(p) ? <circle key={key(s,i,'-gust')} cx={xAt(p.at)} cy={yAt(p.gust)} r="1.8" fill="var(--bg-1, #fff)" stroke={s.color} strokeWidth="1.2" className="mc-chart-point mc-gust-point" tabIndex="-1" role="img" aria-label={s.label + ' Gust ' + p.at + ', ' + p.gust + ' ' + unit} {...pointEvents(p)} /> : null))}
           {ceiling && visible.flatMap((s,k) => s.points.map((p,i) => p.text === 'NSC' && valid(p) ? <circle key={key(s,i,'-nsc')} cx={xAt(p.at) + (k - (visible.length - 1) / 2) * 7} cy="25" r="2.3" fill="var(--bg-1, #fff)" stroke={s.color} strokeWidth="1.5" className="mc-nsc-point" tabIndex="-1" role="img" aria-label={s.label + ' ' + p.at + ', NSC'} {...pointEvents(p)} /> : null))}
-          {!rain && !humidity && visible.flatMap(s => s.points.map((p,i) => p.conditionText && valid(p) ? <path key={key(s,i,'-condition')} d={'M' + (xAt(p.at) - 4) + ',8 h8 l-4,6 Z'} fill={s.color} tabIndex="-1" role="img" aria-label={s.label + ' 조건 ' + p.at + ', ' + p.conditionText} {...pointEvents(p)} /> : null))}
           {weather.map((s,row) => <g key={s.id}><text x={left - 12} y={bottom + 21 + row * 26} textAnchor="end" className="mc-axis-label">{s.id === 'taf' ? 'TAF' : 'METAR'}</text>
             {s.points.map((p,i) => valid(p) ? <g key={i}>
-              <rect x={xAt(p.at) - bandWidth(s,i) / 2} y={bottom + 6 + row * 26} width={bandWidth(s,i)} height="21" rx="2" fill="var(--bg-3, #f5f5f5)" tabIndex="-1" role="img" aria-label={s.label + ' 현재날씨 ' + p.at + ', ' + (p.text || '자료 없음') + (p.conditionText ? ' · ' + p.conditionText : '')} {...pointEvents(p)} />
-              <text x={xAt(p.at)} y={bottom + 20 + row * 26} textAnchor="middle" className="mc-weather-band-text" pointerEvents="none">{(['NSW','현상 없음'].includes(p.text) ? '강수 없음' : p.text || '자료 없음') + (p.conditionText ? ' *' : '')}</text>
+              <rect x={xAt(p.at) - bandWidth(s,i) / 2} y={bottom + 6 + row * 26} width={bandWidth(s,i)} height="21" rx="2" fill="var(--bg-3, #f5f5f5)" tabIndex="-1" role="img" aria-label={s.label + ' 현재날씨 ' + p.at + ', ' + (p.text || '자료 없음')} {...pointEvents(p)} />
+              <text x={xAt(p.at)} y={bottom + 20 + row * 26} textAnchor="middle" className="mc-weather-band-text" pointerEvents="none">{(['NSW','현상 없음'].includes(p.text) ? '강수 없음' : p.text || '자료 없음')}</text>
             </g> : null)}</g>)}
           {humidity && visible.map((s,row) => <g key={s.id}><text x={left - 12} y={top + row * 30 + 17} textAnchor="end" className="mc-axis-label" style={{ fill: s.color }}>{s.label}</text>
             {s.points.map((p,i) => valid(p) && Number.isFinite(p.value) ? <g key={i}>
@@ -115,7 +114,7 @@ export default function ModelComparisonChart({ series, times, timeLabels, unit, 
           {detail && <line x1={xAt(detail.at)} y1={top - 8} x2={xAt(detail.at)} y2={height - 40} className="mc-hover-line" strokeDasharray="3 3" pointerEvents="none" />}
           {times.map((t,i) => <text key={t} x={xAt(t)} y={height - 16} textAnchor="middle" className="mc-axis-label">{timeLabels?.[i]?.split(' ')[1] || new Date(t).getUTCHours().toString().padStart(2,'0')}</text>)}
         </svg>}
-      <div className="mc-chart-caption">{rain ? <><span>{cumulativeLabel ? cumulativeLabel + ' 이후 누적' : '표시 구간 누적 강수량'}</span><span>METAR·TAF는 현재날씨 · * 조건부 예보는 호버로 확인</span></> : ceiling ? <><span>계단형 운고 · NSC와 결측 구간은 선을 연결하지 않음</span><span>▲ 10,000 ft 이상</span></> : <span>{humidity ? '모든 모델에 동일한 0–100% 색상 눈금' : temperature ? '기온은 점의 높이로 모델 간 차이 비교' : '실선 풍속 · 점선 돌풍 · 공통 풍속 눈금'}</span>}</div>
+      <div className="mc-chart-caption">{rain ? <><span>{cumulativeLabel ? cumulativeLabel + ' 이후 누적' : '표시 구간 누적 강수량'}</span><span>METAR·TAF는 현재날씨</span></> : ceiling ? <><span>계단형 운고 · NSC와 결측 구간은 선을 연결하지 않음</span><span>▲ 10,000 ft 이상</span></> : <span>{humidity ? '모든 모델에 동일한 0–100% 색상 눈금' : temperature ? '기온은 점의 높이로 모델 간 차이 비교' : '실선 풍속 · 점선 돌풍 · 공통 풍속 눈금'}</span>}</div>
       {detail && <ModelComparisonTooltip detail={detail} rows={details} label={timeLabels?.[times.indexOf(detail.at)] || detail.at} chartRef={chartRef} onClose={closeDetail} onPointerEnter={keepDetail} onPointerLeave={leaveDetail} tooltipId={tooltipId} />}
     </div>
   )

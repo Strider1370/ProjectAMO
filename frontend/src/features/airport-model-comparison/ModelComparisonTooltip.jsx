@@ -41,7 +41,6 @@ export default function ModelComparisonTooltip({ detail, rows, label, chartRef, 
     {rows.map(row => <div className="mc-tooltip-row" key={row.id}>
       <span><i className="mc-series-key" style={{ '--series-color': row.color }} /><strong>{row.label}</strong></span><span>{row.value}</span>
       {row.metadata && <small>{row.metadata}</small>}
-      {row.conditionText && <small>{row.conditionText}</small>}
     </div>)}
   </div>, document.body)
 }

@@ -86,7 +86,7 @@ function detail(record, airport) {
 function nwpCell(record, kind, slotAt, airport) {
   if (!record) return { slot_at: slotAt, valid_at: slotAt, status: 'outside_run', value: null, text: '예보 범위 밖' }
   const base = { slot_at: slotAt, valid_at: record.valid_at, run_at: record.run_at, forecast_hour: record.forecast_hour, model: record.model, detail: detail(record, airport), status: 'value' }
-  if (kind === 'wind') return { ...base, value: record.wind_speed_kt, gust: record.wind_gust_kt, direction: record.wind_direction_deg, text: `${finite(record.wind_direction_deg) ? `${Math.round(record.wind_direction_deg)}°` : '풍향 자료 없음'} ${fmtNumber(record.wind_speed_kt)} kt`, subtext: finite(record.wind_gust_kt) ? `G ${fmtNumber(record.wind_gust_kt)} kt` : '돌풍 자료 없음' }
+  if (kind === 'wind') return { ...base, value: record.wind_speed_kt, gust: record.wind_gust_kt, direction: record.wind_direction_deg, text: `${finite(record.wind_direction_deg) ? `${Math.round(record.wind_direction_deg)}°` : '풍향 자료 없음'} ${fmtNumber(record.wind_speed_kt)} kt`, subtext: finite(record.wind_gust_kt) ? `Gust ${fmtNumber(record.wind_gust_kt)} kt` : null }
   if (kind === 'precipitation') return { ...base, value: record.precipitation_mm, text: finite(record.precipitation_mm) ? `${fmtNumber(record.precipitation_mm, 1)} mm` : '자료 없음' }
   if (kind === 'ceiling') return { ...base, value: record.ceiling_agl_ft, status: finite(record.ceiling_agl_ft) ? 'value' : record.ceiling_status || 'missing_input', text: finite(record.ceiling_agl_ft) ? `${fmtNumber(record.ceiling_agl_ft)} ft` : statusText(record), method: methodLabel(record.ceiling_method), clouds: [record.cloud_total_pct, record.cloud_low_pct, record.cloud_mid_pct, record.cloud_high_pct] }
   const temperature = record.temperature_c, rh = record.relative_humidity_pct
@@ -106,7 +106,7 @@ function observationRows(data, times, kind, effectiveNow) {
       const reports = metars.filter(item => roundHour(item.observed_at) === slot).slice(-1)
       if (!reports.length) return observationPendingCell(slot, effectiveNow)
       const cells = reports.map(item => {
-      if (kind === 'wind') return { slot_at: slot, valid_at: item.observed_at, value: item.wind_speed_kt, gust: item.wind_gust_kt, direction: item.wind_direction_deg, text: `${finite(item.wind_direction_deg) ? `${Math.round(item.wind_direction_deg)}°` : 'VRB'} ${fmtNumber(item.wind_speed_kt)} kt`, subtext: finite(item.wind_gust_kt) ? `G ${fmtNumber(item.wind_gust_kt)} kt` : '돌풍 없음', detail: detail(item) }
+      if (kind === 'wind') return { slot_at: slot, valid_at: item.observed_at, value: item.wind_speed_kt, gust: item.wind_gust_kt, direction: item.wind_direction_deg, text: `${finite(item.wind_direction_deg) ? `${Math.round(item.wind_direction_deg)}°` : 'VRB'} ${fmtNumber(item.wind_speed_kt)} kt`, subtext: finite(item.wind_gust_kt) ? `Gust ${fmtNumber(item.wind_gust_kt)} kt` : null, detail: detail(item) }
       if (kind === 'ceiling') { const cloud = item.clouds?.find(c => ['BKN', 'OVC', 'VV'].includes(c.amount ?? c.coverage) && finite(c.base ?? c.base_ft)); const base = cloud?.base ?? cloud?.base_ft; return { slot_at: slot, valid_at: item.observed_at, value: base ?? null, text: cloud ? `${fmtNumber(base)} ft` : 'NSC', clouds: item.clouds, detail: detail(item) } }
       const rh = computeRelativeHumidity(item.temperature_c, item.dew_point_c)
       return { slot_at: slot, valid_at: item.observed_at, value: item.temperature_c, temperature: item.temperature_c, rh, text: `${finite(item.temperature_c) ? `${fmtNumber(item.temperature_c, 1)}°C` : '자료 없음'} / ${finite(rh) ? `${fmtNumber(rh)}%` : '자료 없음'}`, dewPoint: item.dew_point_c, detail: detail(item) }
@@ -123,21 +123,13 @@ function observationRows(data, times, kind, effectiveNow) {
     if (Date.parse(slot) < Date.parse(taf.valid_from) || Date.parse(slot) >= Date.parse(taf.valid_to)) return null
     const groups = taf.change_groups || []
     const persistent = groups.filter(g => (g.type === 'FM' && Date.parse(g.start) <= Date.parse(slot)) || (g.type === 'BECMG' && Date.parse(g.end || g.start) <= Date.parse(slot)))
-    const conditional = groups.filter(g => g.type !== 'FM' && Date.parse(g.start) <= Date.parse(slot) && Date.parse(slot) < Date.parse(g.end))
+    const temporary = groups.filter(g => !['FM', 'BECMG'].includes(g.type) && Date.parse(g.start) <= Date.parse(slot) && Date.parse(slot) < Date.parse(g.end))
     const merge = (base, change) => ({ ...base, ...Object.fromEntries(Object.entries(change || {}).filter(([key, value]) => value != null && !['type', 'start', 'end'].includes(key))), wind: change?.wind ?? base?.wind, clouds: change?.clouds_touched === false ? base?.clouds : change?.clouds ?? base?.clouds, wx: change?.wx_touched === false ? base?.wx : change?.wx ?? base?.wx })
-    const values = persistent.reduce(merge, taf.base || {})
-    const condition = [...persistent.slice(-1), ...conditional].map(g => g.type).join(' + ') || null
-    const conditionalValues = conditional.map(group => ({ type: `${group.type} ${group.start}–${group.end}`, values: merge(values, group) }))
-    const conditionTextFor = kind => conditionalValues.map(({ type, values: alternate }) => {
-      if (kind === 'wind') return `${type} ${alternate.wind?.direction ?? 'VRB'}° ${alternate.wind?.speed ?? '—'} kt`
-      if (kind === 'precipitation') return `${type} ${alternate.wx?.map(x => x.raw).filter(Boolean).join(' ') || 'NSW'}`
-      const cloud = alternate.clouds?.find(c => ['BKN', 'OVC', 'VV'].includes(c.amount ?? c.coverage) && finite(c.base ?? c.base_ft))
-      return `${type} ${cloud ? `${fmtNumber(cloud.base ?? cloud.base_ft)} ft` : 'NSC'}`
-    }).join(' · ')
-    if (kind === 'wind') return { slot_at: slot, valid_at: slot, value: values.wind?.speed ?? null, gust: values.wind?.gust ?? null, direction: values.wind?.direction ?? null, text: finite(values.wind?.speed) ? `${values.wind.direction ?? 'VRB'}° ${values.wind.speed} kt` : '자료 없음', subtext: finite(values.wind?.gust) ? `G ${fmtNumber(values.wind.gust)} kt` : '돌풍 없음', condition, conditionText: conditionTextFor(kind) }
-    if (kind === 'precipitation') return { slot_at: slot, valid_at: slot, value: null, text: values.wx?.map(x => x.raw).filter(Boolean).join(' ') || 'NSW', condition, conditionText: conditionTextFor(kind) }
+    const values = temporary.reduce(merge, persistent.reduce(merge, taf.base || {}))
+    if (kind === 'wind') return { slot_at: slot, valid_at: slot, value: values.wind?.speed ?? null, gust: values.wind?.gust ?? null, direction: values.wind?.direction ?? null, text: finite(values.wind?.speed) ? `${values.wind.direction ?? 'VRB'}° ${values.wind.speed} kt` : '자료 없음', subtext: finite(values.wind?.gust) ? `Gust ${fmtNumber(values.wind.gust)} kt` : null }
+    if (kind === 'precipitation') return { slot_at: slot, valid_at: slot, value: null, text: values.wx?.map(x => x.raw).filter(Boolean).join(' ') || 'NSW' }
     const cloud = values.clouds?.find(c => ['BKN', 'OVC', 'VV'].includes(c.amount ?? c.coverage) && finite(c.base ?? c.base_ft)), base = cloud?.base ?? cloud?.base_ft
-    return { slot_at: slot, valid_at: slot, value: base ?? null, text: cloud ? `${fmtNumber(base)} ft` : 'NSC', condition, conditionText: conditionTextFor(kind), clouds: values.clouds }
+    return { slot_at: slot, valid_at: slot, value: base ?? null, text: cloud ? `${fmtNumber(base)} ft` : 'NSC', clouds: values.clouds }
   }) })
   if (kind === 'precipitation') {
     const amos = data.observations?.amos || []
@@ -172,15 +164,15 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
   const precipitationStartIndex = times.indexOf(precipitationStartAt)
   const precipitationStartLabel = formatTime(precipitationStartAt, tz)
   const charts = {
-    wind: rows.wind.map(row => ({ ...row, points: samples(row).map(cell => cell ? { at: cell.valid_at, value: cell.value, gust: cell.gust, status: cell.status, text: [cell.text, cell.subtext].filter(Boolean).join(' · '), conditionText: cell.conditionText, detail: cell.detail } : { at: null, value: null }) })),
+    wind: rows.wind.map(row => ({ ...row, points: samples(row).map(cell => cell ? { at: cell.valid_at, value: cell.value, gust: cell.gust, status: cell.status, text: [cell.text, cell.subtext].filter(Boolean).join(' · '), detail: cell.detail } : { at: null, value: null }) })),
     precipitation: rows.precipitation.map(row => {
-      if (row.id === 'metar' || row.id === 'taf') return { ...row, categorical: true, points: samples(row).map(cell => ({ at: cell?.valid_at, value: null, text: cell?.text, status: cell?.status, conditionText: cell?.conditionText })) }
+      if (row.id === 'metar' || row.id === 'taf') return { ...row, categorical: true, points: samples(row).map(cell => ({ at: cell?.valid_at, value: null, text: cell?.text, status: cell?.status })) }
       const hasData = row.cells.slice(precipitationStartIndex).some(cell => finite(cell?.value)) || Boolean(row.cells[precipitationStartIndex]?.detail)
       const tail = precipitationStartIndex < 0 || !hasData ? [] : cumulativeHourly([0, ...row.cells.slice(precipitationStartIndex + 1).map(cell => cell?.value)])
       const cumulative = times.map((_, i) => i < precipitationStartIndex ? null : tail[i - precipitationStartIndex] ?? null)
       return { ...row, points: cumulative.map((value, i) => ({ at: times[i], value, hourly: row.cells[i]?.value, status: row.cells[i]?.status, text: finite(value) ? `누적 ${fmtNumber(value, 1)} mm${i === precipitationStartIndex ? ' · 누적 시작' : ` · 시간당 ${fmtNumber(row.cells[i]?.value, 1)} mm`}` : i < precipitationStartIndex ? '누적 시작 전' : `누적 자료 없음 · 시간당 ${row.cells[i]?.text || '자료 없음'}`, detail: row.cells[i]?.detail })) }
     }),
-    ceiling: rows.ceiling.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.value ?? null, status: cell?.status, text: cell?.text, conditionText: cell?.conditionText, detail: cell?.detail })) })),
+    ceiling: rows.ceiling.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.value ?? null, status: cell?.status, text: cell?.text, detail: cell?.detail })) })),
     temperatureRh: rows.temperatureRh.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.temperature ?? null, secondary: cell?.rh ?? null, status: cell?.status, text: cell?.text, detail: cell?.detail })) })),
     humidity: rows.temperatureRh.map(row => ({ ...row, points: row.cells.map((cell, i) => ({
       at: times[i], value: cell?.rh ?? null, status: cell?.status,
@@ -195,7 +187,7 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
       const values = points.filter(point => finite(point.hourly))
       const missing = points.some(point => point.status && point.status !== 'observation_pending' && !finite(point.hourly))
       const weather = charts.precipitation.filter(series => series.categorical).flatMap(series => series.points)
-      const wetWeather = weather.some(point => /(?:RA|SN|DZ|SG|PL|GR|GS|UP)/.test([point.text, point.conditionText].filter(Boolean).join(' ')))
+      const wetWeather = weather.some(point => /(?:RA|SN|DZ|SG|PL|GR|GS|UP)/.test(point.text || ''))
       return values.length && !missing && !wetWeather && values.every(point => point.hourly === 0) ? '강수량 없음' : null
     })(),
     ceiling: (() => {
@@ -212,7 +204,21 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
     valid_at: selected,
     valid_at_label: formatTime(selected, tz),
     modelCount: selectedModels.length,
-    wind: `${selectedModels.length}개 모델 · 풍속 ${range(winds)} kt${gusts.length ? ` · 돌풍 ${range(gusts)} kt` : ' · 돌풍 자료 없음'}`,
+    compact: {
+      windRange: winds.length ? range(winds) : null,
+      gustRange: gusts.length ? range(gusts) : null,
+      models: MODEL_ORDER.map(model => {
+        const r = modelRecords.get(model)?.get(selected)
+        return {
+          id: model, label: MODEL_LABELS[model], color: MODEL_COLORS[model],
+          precipitation: finite(r?.precipitation_mm) ? fmtNumber(r.precipitation_mm, 1) : r ? '자료 없음' : '예보 범위 밖',
+          ceiling: finite(r?.ceiling_agl_ft) ? fmtNumber(r.ceiling_agl_ft) : r ? statusText(r) : '예보 범위 밖',
+          precipitationMissing: !finite(r?.precipitation_mm),
+          ceilingMissing: !finite(r?.ceiling_agl_ft) && (!r || statusText(r) !== 'NSC'),
+        }
+      }),
+    },
+    wind: `${selectedModels.length}개 모델 · 풍속 ${range(winds)} kt${gusts.length ? ` · Gust ${range(gusts)} kt` : ''}`,
     precipitation: MODEL_ORDER.map(model => { const r = modelRecords.get(model)?.get(selected); return `${MODEL_LABELS[model]} ${finite(r?.precipitation_mm) ? `${fmtNumber(r.precipitation_mm, 1)} mm` : '자료 없음'}` }).join(' · '),
     ceiling: MODEL_ORDER.map(model => { const r = modelRecords.get(model)?.get(selected); return `${MODEL_LABELS[model]} ${finite(r?.ceiling_agl_ft) ? `${fmtNumber(r.ceiling_agl_ft)} ft` : r ? statusText(r) : '예보 범위 밖'}` }).join(' · '),
   }

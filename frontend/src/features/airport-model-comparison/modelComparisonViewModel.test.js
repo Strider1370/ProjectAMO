@@ -85,6 +85,20 @@ test('firstForecastHour rounds the effective clock to the current or next UTC ho
   assert.equal(firstForecastHour(Date.parse('2026-09-06T14:20:00Z')), '2026-09-06T15:00:00.000Z')
 })
 
+test('compact summary keeps model order, zero rain, NSC and missing values distinct', () => {
+  const vm = buildComparisonViewModel({ data: payload, selectedValidAt: hour(run, 0) })
+  assert.equal(vm.summary.compact.windRange, '8–8')
+  assert.equal(vm.summary.compact.gustRange, '12–12')
+  assert.deepEqual(vm.summary.compact.models.map(m => m.id), ['kim', 'ecmwf', 'gfs', 'icon'])
+  assert.equal(vm.summary.compact.models[0].precipitation, '0.0')
+  assert.equal(vm.summary.compact.models[1].ceiling, 'NSC')
+  const missing = buildComparisonViewModel({ data: { ...payload, models: [] }, selectedValidAt: run })
+  assert.equal(missing.summary.compact.windRange, null)
+  assert.equal(missing.summary.compact.gustRange, null)
+  assert.equal(missing.summary.compact.models[0].precipitation, '예보 범위 밖')
+  assert.equal(missing.summary.compact.models[0].ceiling, '예보 범위 밖')
+})
+
 test('view model shares one UTC axis, preserves actual METAR time, and retains EC F18', () => {
   const vm = buildComparisonViewModel({ data: payload, selectedValidAt: hour(run, 12), tz: 'KST' })
   assert.equal(vm.times.at(-1), hour(run, 12))
@@ -106,17 +120,43 @@ test('temperature and RH stay paired, TAF is excluded, and summary counts comple
   assert.deepEqual(vm.rows.precipitation.slice(0, 3).map(row => row.id), ['metar', 'taf', 'amos'])
 })
 
-test('TAF conditional groups merge over the base state and remain labelled', () => {
+test('TAF temporary periods display one active value and restore the prevailing value afterwards', () => {
   const conditional = structuredClone(payload)
   conditional.observations.taf.change_groups = [{ type: 'TEMPO', start: hour(run, 2), end: hour(run, 4), wx: [{ raw: 'RA' }], wx_touched: true }]
   const vm = buildComparisonViewModel({ data: conditional, selectedValidAt: hour(run, 2), tz: 'UTC' })
   const wind = vm.rows.wind.find(row => row.id === 'taf').cells.find(cell => cell?.slot_at === hour(run, 2))
   const rain = vm.rows.precipitation.find(row => row.id === 'taf').cells.find(cell => cell?.slot_at === hour(run, 2))
   assert.equal(wind.value, 9)
-  assert.equal(wind.condition, 'TEMPO')
-  assert.equal(rain.text, 'NSW')
-  assert.equal(rain.condition, 'TEMPO')
-  assert.match(rain.conditionText, /RA/)
+  assert.equal(rain.text, 'RA')
+  assert.equal(rain.conditionText, undefined)
+  const later = vm.rows.precipitation.find(row => row.id === 'taf').cells.find(cell => cell?.slot_at === hour(run, 4))
+  assert.equal(later.text, 'NSW')
+})
+
+test('TAF wind, weather and ceiling each switch a single value at BECMG, TEMPO and FM boundaries', () => {
+  const data=structuredClone(payload)
+  data.observations.taf={issued_at:run,valid_from:run,valid_to:hour(run,24),base:{wind:{direction:30,speed:10},wx:[],clouds:[]},change_groups:[
+    {type:'BECMG',start:hour(run,3),end:hour(run,5),wind:{direction:80,speed:20},wx:[{raw:'RA'}],clouds:[{amount:'BKN',base:500}]},
+    {type:'TEMPO',start:hour(run,6),end:hour(run,8),wind:{direction:100,speed:30},wx:[{raw:'SN'}],clouds:[{amount:'BKN',base:200}]},
+    {type:'FM',start:hour(run,9),wind:{direction:20,speed:5},wx:[],clouds:[]},
+  ]}
+  const vm=buildComparisonViewModel({data})
+  for(const [hf,speed,weather,ceiling] of [[3,10,'NSW','NSC'],[5,20,'RA','500 ft'],[6,30,'SN','200 ft'],[8,20,'RA','500 ft'],[9,5,'NSW','NSC']]) {
+    const cell=kind=>vm.rows[kind].find(row=>row.id==='taf').cells.find(cell=>cell?.slot_at===hour(run,hf))
+    assert.equal(cell('wind').value,speed)
+    assert.equal(cell('precipitation').text,weather)
+    assert.equal(cell('ceiling').text,ceiling)
+    for(const kind of ['wind','precipitation','ceiling']) assert.equal(cell(kind).conditionText,undefined)
+  }
+})
+
+test('wind omits absent gusts and spells available gusts in full', () => {
+  const vm = buildComparisonViewModel({ data: payload })
+  const metar = vm.rows.wind.find(row => row.id === 'metar').cells.find(Boolean)
+  const kim = vm.rows.wind.find(row => row.id === 'kim').cells.find(cell => cell?.forecast_hour === 1)
+  assert.equal(metar.subtext, null)
+  assert.equal(kim.subtext, 'Gust 13 kt')
+  assert.doesNotMatch(vm.charts.wind.find(row => row.id === 'metar').points.find(point => point.at).text, /돌풍 없음|돌풍 자료 없음/)
 })
 
 test('missing TAF retains explicit wind, weather and ceiling rows without inventing values', () => {
@@ -227,7 +267,7 @@ test('details retain model timing, terrain and ceiling evidence and charts inclu
     field_provenance: { wind_gust_kt: { source_variable: 'gust', source_unit: 'm/s', method: 'converted', missing_reason: null } } })
   const vm = buildComparisonViewModel({ data })
   const point = vm.charts.wind.find(s => s.id === 'kim').points.find(p => p.at === item.valid_at)
-  assert.match(point.text, /G 15 kt/)
+  assert.match(point.text, /Gust 15 kt/)
   assert.equal(point.detail.temporal_method, 'native_hourly')
   assert.equal(point.detail.airport_icao, 'RKSI')
   assert.equal(point.detail.grid_elevation_difference_m, 19.52)
