@@ -25,13 +25,34 @@ const record = (model, runAt, forecastHour, values = {}) => ({
 
 const run = '2026-09-06T06:00:00.000Z'
 const ecRun = '2026-09-06T00:00:00.000Z'
+
+test('humidity uses only on-the-hour observations and leaves missing or future slots empty', () => {
+  const data = { ...payload, effective_now: '2026-09-06T15:50:00.000Z', observations: { metar: [
+    { observed_at: '2026-09-06T13:00:00.000Z', temperature_c: 23, dew_point_c: 18 },
+    { observed_at: '2026-09-06T14:30:00.000Z', temperature_c: 20, dew_point_c: 20 },
+    ...['15:00', '15:12', '15:17', '15:44'].map((time,i) => ({ observed_at: `2026-09-06T${time}:00.000Z`, temperature_c: 19+i, dew_point_c: 19 })),
+    { observed_at: '2026-09-06T16:00:00.000Z', temperature_c: 22, dew_point_c: 22 },
+  ] } }
+  const vm = buildComparisonViewModel({ data })
+  const humidity = vm.charts.humidity.find(row => row.id === 'metar')
+  assert.deepEqual(humidity.points.map(point => point.at), vm.times)
+  const byHour = new Map(humidity.points.map(point => [point.at, point]))
+  assert.equal(humidity.points.filter(point => Number.isFinite(point.value)).length, 2)
+  assert.equal(byHour.get('2026-09-06T14:00:00.000Z').value, null)
+  assert.equal(byHour.get('2026-09-06T15:00:00.000Z').value, 100)
+  assert.equal(byHour.get('2026-09-06T15:00:00.000Z').observed_at, '2026-09-06T15:00:00.000Z')
+  assert.equal(byHour.get('2026-09-06T16:00:00.000Z').value, null)
+  assert.equal(byHour.get('2026-09-06T16:00:00.000Z').status, 'observation_pending')
+  assert.equal(vm.charts.temperatureRh.find(row => row.id === 'metar').points.filter(point => Number.isFinite(point.value)).length, 2)
+})
+
 const payload = {
   airport: { icao: 'RKSI', name: '인천국제공항' },
   effective_now: '2026-09-06T08:20:00.000Z',
   status: 'ready',
   issues: [],
   observations: {
-    metar: [{ observed_at: '2026-09-06T08:10:00.000Z', wind_speed_kt: 7, wind_gust_kt: null, temperature_c: 22, dew_point_c: 18, clouds: [{ amount: 'SCT', base_ft: 3000 }], weather: [{ raw: '-RA' }] }],
+    metar: [{ observed_at: '2026-09-06T08:00:00.000Z', wind_speed_kt: 7, wind_gust_kt: null, temperature_c: 22, dew_point_c: 18, clouds: [{ amount: 'SCT', base_ft: 3000 }], weather: [{ raw: '-RA' }] }],
     amos: [{ observed_at: '2026-09-06T08:00:00.000Z', precipitation_mm: 0.4 }],
     taf: { issued_at: '2026-09-06T05:00:00.000Z', valid_from: run, valid_to: hour(run, 24), base: { wind: { direction: 220, speed: 9 }, clouds: [{ amount: 'BKN', base_ft: 2500 }], wx: [] }, change_groups: [] },
   },
@@ -67,7 +88,7 @@ test('firstForecastHour rounds the effective clock to the current or next UTC ho
 test('view model shares one UTC axis, preserves actual METAR time, and retains EC F18', () => {
   const vm = buildComparisonViewModel({ data: payload, selectedValidAt: hour(run, 12), tz: 'KST' })
   assert.equal(vm.times.at(-1), hour(run, 12))
-  assert.equal(vm.rows.wind.find(row => row.id === 'metar').cells.find(Boolean).valid_at, '2026-09-06T08:10:00.000Z')
+  assert.equal(vm.rows.wind.find(row => row.id === 'metar').cells.find(Boolean).valid_at, '2026-09-06T08:00:00.000Z')
   assert.equal(vm.rows.wind.find(row => row.id === 'ecmwf').cells.at(-1).forecast_hour, 18)
   assert.match(vm.timeLabels[0], /KST/)
   const utc = buildComparisonViewModel({ data: payload, selectedValidAt: hour(run, 12), tz: 'UTC' })
@@ -185,7 +206,7 @@ test('source chips preserve observation, run, and availability timestamps and KI
   withMethods.models.find(model => model.model === 'kim').records.forEach(item => { item.ceiling_method = 'cloud_condensate_estimate' })
   const vm = buildComparisonViewModel({ data: withMethods, selectedValidAt: hour(run, 2), tz: 'UTC' })
   assert.deepEqual(vm.observationChips.map(chip => chip.id), ['metar', 'taf'])
-  assert.equal(vm.observationChips[0].at, '2026-09-06T08:10:00.000Z')
+  assert.equal(vm.observationChips[0].at, '2026-09-06T08:00:00.000Z')
   assert.equal(vm.modelChips[0].available_at, '2026-09-06T08:00:00.000Z')
   assert.equal(vm.rows.ceiling.find(row => row.id === 'kim').cells.find(cell => cell?.slot_at === hour(run, 2)).method, '운량·응결물 기반 추정')
 })
@@ -217,14 +238,18 @@ test('details retain model timing, terrain and ceiling evidence and charts inclu
   assert.match(vm.summary.ceiling, /ECMWF NSC/)
 })
 
-test('each past METAR report retains its real instant in charts and the hourly cell and future reports are excluded', () => {
+test('only on-the-hour METAR reports appear in every chart and table', () => {
   const data = structuredClone(payload)
   data.observations.metar.push({ ...data.observations.metar[0], observed_at: '2026-09-06T08:15:00.000Z', wind_speed_kt: 10 })
   data.observations.metar.push({ ...data.observations.metar[0], observed_at: '2026-09-06T08:30:00.000Z', wind_speed_kt: 15 })
   const vm = buildComparisonViewModel({ data })
   const reports = vm.rows.wind.find(r => r.id === 'metar').cells.find(Boolean).reports
-  assert.deepEqual(reports.map(r => r.valid_at), ['2026-09-06T08:10:00.000Z', '2026-09-06T08:15:00.000Z'])
+  assert.deepEqual(reports.map(r => r.valid_at), ['2026-09-06T08:00:00.000Z'])
   assert.deepEqual(vm.charts.wind.find(r => r.id === 'metar').points.filter(p => p.at).map(p => p.at), reports.map(r => r.valid_at))
+  for (const kind of ['wind', 'ceiling', 'temperatureRh', 'precipitation', 'humidity']) {
+    assert.ok(vm.charts[kind].find(row => row.id === 'metar').points.every(point => !point.at || Date.parse(point.at) % 3_600_000 === 0))
+  }
+  assert.equal(vm.observationChips[0].at, '2026-09-06T08:00:00.000Z')
 })
 
 test('future METAR and AMOS cells are marked as observation-pending instead of missing data', () => {

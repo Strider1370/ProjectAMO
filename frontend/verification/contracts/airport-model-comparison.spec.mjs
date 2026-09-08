@@ -26,7 +26,7 @@ async function noOverflow(page) {
 const temperatureTable=page=>page.getByRole('table',{name:'기온과 상대습도 시간별 비교',exact:true})
 
 test.describe('airport-model-comparison',()=>{
-  test('short horizons preserve chart proportions and separate half-hour METAR humidity cells',async({page},testInfo)=>{
+  test('short horizons preserve chart proportions and align hourly METAR humidity cells',async({page},testInfo)=>{
     if(testInfo.project.name==='desktop') await page.setViewportSize({width:1920,height:1080})
     await installModelComparisonFixture(page,{transform:payload=>{
       payload.effective_now='2026-09-06T15:20:00.000Z'
@@ -48,7 +48,7 @@ test.describe('airport-model-comparison',()=>{
       expect.soft(Math.abs(box.x+box.width/2-column.x-column.width/2)).toBeLessThan(1)
       const humidity=page.getByRole('group',{name:'모델별 % 추세 그래프',exact:true})
       const observations=await humidity.getByRole('img',{name:/^METAR 계산 /}).all()
-      expect(observations.length).toBe(5)
+      expect(observations.length).toBe(3)
       const boxes=await Promise.all(observations.map(cell=>cell.boundingBox()))
       for(let i=1;i<boxes.length;i++) expect.soft(boxes[i-1].x+boxes[i-1].width).toBeLessThan(boxes[i].x)
     }
@@ -59,6 +59,31 @@ test.describe('airport-model-comparison',()=>{
       await expect.poll(()=>temperature.evaluate(el=>Math.abs(el.getBoundingClientRect().width-el.viewBox.baseVal.width))).toBeLessThan(1)
       await proportions()
     }
+  })
+  test('only on-the-hour METAR observations populate humidity cells with readable labels',async({page},testInfo)=>{
+    if(testInfo.project.name==='desktop') await page.setViewportSize({width:1920,height:1080})
+    await installModelComparisonFixture(page,{transform:payload=>{
+      payload.effective_now='2026-09-06T15:50:00.000Z'
+      payload.observations.metar=['13:00','14:00','14:48','15:00','15:12','15:17','15:44'].map(at=>({...payload.observations.metar[0],observed_at:`2026-09-06T${at}:00.000Z`,temperature_c:at.endsWith(':00')?19:30,dew_point_c:19}))
+      return payload
+    }})
+    await page.goto('/airport/RKNY/models?valid_at=2026-09-06T16%3A00%3A00.000Z')
+    await page.getByRole('button',{name:'요소별 보기',exact:true}).click()
+    await page.getByRole('tab',{name:'기온·RH',exact:true}).click()
+    const humidity=page.getByRole('group',{name:'모델별 % 추세 그래프',exact:true})
+    const observations=humidity.getByRole('img',{name:/^METAR 계산 /})
+    await expect(observations).toHaveCount(3)
+    for(const at of ['13:00','14:00','15:00']) {
+      const cell=humidity.getByRole('img',{name:`METAR 계산 2026-09-06T${at}:00.000Z, 100 %`,exact:true})
+      const fits=await cell.evaluate(el=>{const r=el.getBoundingClientRect(),t=el.nextElementSibling.getBoundingClientRect();return t.left>=r.left && t.right<=r.right})
+      expect(fits).toBe(true)
+    }
+    await expect(humidity.getByRole('img',{name:/^METAR 계산 2026-09-06T16/})).toHaveCount(0)
+    const sample=humidity.getByRole('img',{name:'METAR 계산 2026-09-06T15:00:00.000Z, 100 %',exact:true})
+    await sample.focus()
+    await expect(page.getByRole('tooltip')).toContainText('관측 09.07 00:00 KST')
+    await page.keyboard.press('Escape')
+    await capture(page,testInfo,'hourly-humidity')
   })
   test('approved chart design renders cumulative bars, stepped ceilings and humidity bands',async({page},testInfo)=>{
     if(testInfo.project.name==='desktop') await page.setViewportSize({width:1920,height:1080})

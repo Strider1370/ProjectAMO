@@ -29,7 +29,7 @@ export function comparisonFixture({ scenario='ready', airport_icao='RKPU' }={}) 
   })
   return {airport:{icao:airport_icao,name:airport_icao==='RKPU'?'울산공항':'인천국제공항',lat:sample.airport.lat,lon:sample.airport.lon,elevation_ft:43},effective_now:FIXED_NOW,revision:`fixture-${scenario}`,
     models:scenario==='empty'?[]:scenario==='partial'?models.filter(m=>m.model==='ecmwf'):models,status:scenario==='empty'?'empty':scenario==='partial'?'partial':'ready',issues:scenario==='partial'?[{model:'icon',code:'last_collection_failed'}]:[],
-    observations:{metar:[{source:'METAR',observed_at:'2026-09-06T08:10:00.000Z',temperature_c:23,dew_point_c:18,wind_direction_deg:30,wind_speed_kt:9,wind_gust_kt:12,clouds:[],weather:[{raw:'-RA'}]}],
+    observations:{metar:[{source:'METAR',observed_at:'2026-09-06T08:00:00.000Z',temperature_c:23,dew_point_c:18,wind_direction_deg:30,wind_speed_kt:9,wind_gust_kt:12,clouds:[],weather:[{raw:'-RA'}]}],
       amos:[{observed_at:'2026-09-06T07:00:00.000Z',precipitation_mm:0.2},{observed_at:'2026-09-06T08:00:00.000Z',precipitation_mm:0.4}],
       taf:{issued_at:'2026-09-06T05:00:00.000Z',valid_from:'2026-09-06T06:00:00.000Z',valid_to:'2026-09-07T06:00:00.000Z',base:{wind:{direction:30,speed:10,gust:15},wx:[],clouds:[]},change_groups:[{type:'TEMPO',start:'2026-09-06T09:00:00.000Z',end:'2026-09-06T11:00:00.000Z',wind:{direction:40,speed:14,gust:20},wx:[{raw:'RA'}],clouds:[]}]}}}
 }

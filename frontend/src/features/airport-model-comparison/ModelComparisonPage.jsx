@@ -55,7 +55,7 @@ export default function ModelComparisonPage({ icao }) {
   const selected = selectedValidAt || firstForecastHour(effectiveNow)
   const vm = useMemo(() => query.data ? buildComparisonViewModel({ data: query.data, nowMs: effectiveNow, selectedValidAt: selected, tz }) : null, [query.data, effectiveNow, selected, tz])
 
-  const humiditySeries = useMemo(() => vm?.charts.temperatureRh.map(row => ({ ...row, points: row.points.map(point => ({ ...point, value: point.secondary, secondary: undefined })) })) || [], [vm])
+  const humiditySeries = vm?.charts.humidity || []
 
   useEffect(() => {
     if (!vm) return

@@ -204,3 +204,11 @@
 - 전체 Node 1475/1475, production build, 관리형 Playwright 51/51(재시도 0, 종료 코드 0) 통과. Graphify update와 diff-check 완료. 자료와 캡처·재현 실패/성공 로그는 `artifacts/verification/chart-scale-fix/`에 보존한다.
 - 현재시각+12시간 보장과 F012 수집의 차이를 설명한 뒤 사용자가 `그럼 그냥 놔둬 이거는`으로 기존 동작 유지를 지시했다. 수집 F-hour·저장 자료 계약·표시 시간축은 수정하지 않았다.
 - `159fffdf` 커밋·main 푸시 후 AWS fast deploy 완료. 서버 HEAD/origin/main 일치, backend/site health 성공. 운영 RKSI 동일 URL을 Playwright로 다시 열어 SVG 실폭/viewBox 모두 1138px, 가로·세로 배율 1, 원형 점 7.5×7.5px, 실제 METAR 5개 칸 겹침 없음, 브라우저 오류 0을 확인했다. `artifacts/verification/chart-scale-fix/production-verification.json` 및 `production-desktop.png`에 수치와 직접 확인한 화면을 보존했다.
+
+### 후속 수정 — 상대습도는 표와 같은 1시간 칸
+
+- 담당: 메인. 사용자가 제시한 운영 RKNY URL에 Playwright로 접속해 09:12Z·09:17Z 관측의 칸 폭 약 10.84px보다 `100` 숫자 폭 18px가 커서 다시 겹치는 것을 확인했다. 앞선 수정은 30분 간격의 사각형 충돌만 검증해, 더 짧은 간격의 숫자 충돌을 놓쳤다.
+- 최신 사용자 지시 `관측값은 1시간 고정만 사용해, 정시관측만`을 반영했다. 비교 화면의 모든 METAR 표·그래프와 자료 기준시각은 정시 관측만 사용한다. 상대습도는 시간별 표의 셀을 그대로 사용하며, 30분·비정기 관측으로 정시 결측을 대신 채우지 않는다. 없는 시간과 미래 시간은 빈칸이며 앞선 값을 복사하거나 보간하지 않는다. 호버에는 실제 관측 시각을 함께 표시한다. AMOS는 기존 정시 매칭을 유지하며, 예보 구간과 수집기는 유지한다.
+- Node 회귀 검증은 한 시간의 여러 관측, 정시 없이 30분 관측만 있는 시간, 미래 자료 제외, 정시 값·원시각 보존 및 모든 METAR 요소의 정시 필터를 확인한다. 브라우저에는 운영 사례와 같은 5분 간격 자료를 넣되 비정기 값과 정시 값을 다르게 만들어, 정시 3개 값만 표현되고 세 자리 수가 칸 안에 들어가는지 확인한다. 증거 위치: `artifacts/verification/rkny-humidity-labels/`.
+- 최종 검증: 전체 Node 1476/1476, production build, 관리형 Playwright 54/54(재시도 0, 종료 코드 0), diff-check·Graphify update 완료. 양양 저장 실자료에 적용한 결과는 07Z 73%, 08Z 78%, 09Z 100%, 이후 관측 전 빈칸이다. `on-hour-contracts.log`와 `real-data-hourly-result.json`에 근거를 보존했다.
+- 배포 접속 문제: 공개 HTTPS 화면/API는 정상이나 `3.34.113.37:22` SSH 연결이 두 차례 시간 초과됐다. 사용자에게 SSH 허용 IP/접속 제한 변경 여부를 확인 요청했다. 이 변경의 운영 배포는 아직 수행하지 못했다.

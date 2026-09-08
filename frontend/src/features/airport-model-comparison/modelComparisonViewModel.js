@@ -100,10 +100,10 @@ function observationPendingCell(slotAt, effectiveNow) {
 
 function observationRows(data, times, kind, effectiveNow) {
   const rows = []
-  const metars = (data.observations?.metar || []).filter(item => Date.parse(item.observed_at) <= effectiveNow).sort((a, b) => Date.parse(a.observed_at) - Date.parse(b.observed_at))
+  const metars = (data.observations?.metar || []).filter(item => Date.parse(item.observed_at) <= effectiveNow && Date.parse(item.observed_at) % HOUR_MS === 0).sort((a, b) => Date.parse(a.observed_at) - Date.parse(b.observed_at))
   if (kind !== 'precipitation') {
     rows.push({ id: 'metar', label: kind === 'temperatureRh' ? 'METAR 계산' : 'METAR', color: MODEL_COLORS.metar, cells: times.map(slot => {
-      const reports = metars.filter(item => roundHour(item.observed_at) === slot)
+      const reports = metars.filter(item => roundHour(item.observed_at) === slot).slice(-1)
       if (!reports.length) return observationPendingCell(slot, effectiveNow)
       const cells = reports.map(item => {
       if (kind === 'wind') return { slot_at: slot, valid_at: item.observed_at, value: item.wind_speed_kt, gust: item.wind_gust_kt, direction: item.wind_direction_deg, text: `${finite(item.wind_direction_deg) ? `${Math.round(item.wind_direction_deg)}°` : 'VRB'} ${fmtNumber(item.wind_speed_kt)} kt`, subtext: finite(item.wind_gust_kt) ? `G ${fmtNumber(item.wind_gust_kt)} kt` : '돌풍 없음', detail: detail(item) }
@@ -182,6 +182,12 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
     }),
     ceiling: rows.ceiling.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.value ?? null, status: cell?.status, text: cell?.text, conditionText: cell?.conditionText, detail: cell?.detail })) })),
     temperatureRh: rows.temperatureRh.map(row => ({ ...row, points: samples(row).map(cell => ({ at: cell?.valid_at || null, value: cell?.temperature ?? null, secondary: cell?.rh ?? null, status: cell?.status, text: cell?.text, detail: cell?.detail })) })),
+    humidity: rows.temperatureRh.map(row => ({ ...row, points: row.cells.map((cell, i) => ({
+      at: times[i], value: cell?.rh ?? null, status: cell?.status,
+      observed_at: row.id === 'metar' && finite(cell?.rh) ? cell.valid_at : undefined,
+      text: [cell?.text || '자료 없음', row.id === 'metar' && finite(cell?.rh) ? `관측 ${formatTime(cell.valid_at, tz)}` : null].filter(Boolean).join(' · '),
+      detail: cell?.detail,
+    })) })),
   }
   const chartEmptyStates = {
     precipitation: (() => {
@@ -212,7 +218,7 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
   }
   const modelChips = MODEL_ORDER.map(model => { const source = (data.models || []).find(x => x.model === model); return { model, label: MODEL_LABELS[model], run_at: source?.run_at || null, available_at: source?.available_at || source?.records?.[0]?.available_at || null, status: source ? 'available' : 'missing' } })
   const observationChips = [
-    { id: 'metar', label: 'METAR 실황', at: (data.observations?.metar || []).filter(item => Date.parse(item.observed_at) <= effectiveNow).sort((a,b) => Date.parse(a.observed_at) - Date.parse(b.observed_at)).at(-1)?.observed_at || null },
+    { id: 'metar', label: 'METAR 실황', at: (data.observations?.metar || []).filter(item => Date.parse(item.observed_at) <= effectiveNow && Date.parse(item.observed_at) % HOUR_MS === 0).sort((a,b) => Date.parse(a.observed_at) - Date.parse(b.observed_at)).at(-1)?.observed_at || null },
     { id: 'taf', label: 'TAF 발표', at: data.observations?.taf?.issued_at || null },
   ]
   return { airport: data.airport, status: data.status, issues: data.issues || [], effectiveNow, selectedValidAt: selected, selectedOutsideWindow: !times.includes(selected), times, timeLabels: times.map(t => formatTime(t, tz)), rows, charts, chartEmptyStates, precipitationStartAt, precipitationStartLabel, summary, modelChips, observationChips }
