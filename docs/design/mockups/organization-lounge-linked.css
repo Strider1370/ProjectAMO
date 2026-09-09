@@ -1,0 +1,78 @@
+/* 기관 라운지 독립 시안: 정보 카드 ↔ 지도 ↔ 연직단면도 연결. */
+.linked-title{border:0;background:none;padding:0;color:inherit;text-align:left;font:inherit;font-weight:650;cursor:pointer;min-height:32px}
+.linked-title:hover{text-decoration:underline;text-underline-offset:4px}
+[data-link-container].linked-active{background:var(--level-amber-bg);box-shadow:inset 3px 0 var(--level-amber)}
+.compact-warning[data-link-id]{cursor:pointer;border-radius:var(--radius-sm);padding:4px;margin-left:-4px}
+.compact-warning.linked-active{background:var(--level-amber-bg);outline:2px solid var(--level-amber)}
+.linked-card{display:block;width:100%;padding:var(--space-s) var(--space-m);margin-top:var(--space-s);border:1px dashed var(--accent);border-radius:var(--radius-md);background:var(--bg-2);color:var(--text-1);text-align:left;min-height:44px}
+.linked-card strong{font-size:var(--fs-300);font-weight:600;display:block}
+.linked-card small{display:block;color:var(--text-3);margin-top:2px}
+.linked-note-detail{display:block;font-size:var(--fs-200);line-height:1.6;margin-top:var(--space-xs);white-space:pre-line}
+.linked-card.linked-active{background:var(--accent-soft);border-style:solid;box-shadow:inset 3px 0 var(--accent)}
+.linked-note-actions{display:flex;gap:var(--space-s);align-items:center;justify-content:flex-end;margin-top:var(--space-s)}
+.linked-note-actions .btn{font-size:var(--fs-200)}
+.linked-shape-list{margin-top:var(--space-s)}
+.map-link{cursor:pointer;--link-color:var(--level-amber)}
+.map-link .link-geometry{fill:transparent;fill-opacity:.045;stroke:transparent;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:all}
+.map-link.user-link{--link-color:var(--accent)}
+.map-link.user-link .link-geometry{fill:var(--accent);fill-opacity:.045;stroke:var(--accent);stroke-dasharray:6 4}
+.map-link.user-link .link-geometry.open-shape{fill:none}
+.map-link .shape-tag{display:none;pointer-events:none}
+.map-link.user-link .shape-tag{display:block}
+.map-link.linked-active .link-geometry,.map-link:focus-visible .link-geometry{stroke:var(--link-color);stroke-width:4;fill:var(--link-color);fill-opacity:.17}
+.map-link.linked-active .link-geometry.open-shape{fill:none}
+.map-link.linked-active .shape-tag{display:block}
+.map-link .shape-tag rect{fill:white;stroke:var(--link-color);stroke-width:1;vector-effect:non-scaling-stroke}
+.map-link .shape-tag text{fill:var(--link-color);font-size:13px;font-weight:650}
+.map.no-wx .weather-link:not(.linked-active){visibility:hidden}
+.link-overlays .link-geometry{transition:fill-opacity .12s,stroke-width .12s}
+.map-link .link-hit{fill:none;stroke:transparent;stroke-width:20;vector-effect:non-scaling-stroke;pointer-events:stroke}
+.link-summary{position:absolute;left:var(--space-m);right:var(--space-m);bottom:36px;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:var(--space-s);padding:var(--space-s) var(--space-m);background:var(--bg-1);border:1px solid var(--stroke-1);border-radius:var(--radius-md);font-size:var(--fs-200)}
+.link-summary .btn{font-size:var(--fs-200);flex-shrink:0}
+.link-summary[hidden]{display:none}
+.link-summary strong{display:block;font-weight:650}
+.link-summary span{color:var(--text-3)}
+.profile{position:relative}
+.profile-link-status{position:absolute;top:2px;right:var(--space-s);max-width:85%;font-size:11px;color:var(--accent);background:rgba(255,255,255,.95);padding:2px 5px;pointer-events:none}
+.profile-target{cursor:pointer;--link-color:var(--accent)}
+.profile-target.weather-profile{--link-color:var(--level-amber)}
+.profile-target .profile-band{fill:var(--link-color);fill-opacity:.1;stroke:var(--link-color);stroke-width:2;opacity:0;pointer-events:none;vector-effect:non-scaling-stroke}
+.profile-target.position-only .profile-band{stroke-dasharray:5 4;fill-opacity:.035}
+.profile-target.linked-active .profile-band{opacity:1}
+.profile-target .profile-tick{stroke:var(--link-color);stroke-width:3;vector-effect:non-scaling-stroke}
+.profile-target .profile-hit{fill:transparent;pointer-events:all}
+.profile-target.linked-active .profile-tick{stroke-width:5}
+.link-instructions{font-size:var(--fs-200);color:var(--text-3);margin-top:var(--space-s)}
+dialog.annotation-dialog{width:min(1180px,calc(100% - 32px))}
+.annotation-editor{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(270px,1fr);gap:var(--space-xl);align-items:start}
+.annotation-tools{display:flex;flex-wrap:wrap;gap:var(--space-xs);margin-bottom:var(--space-s)}
+.annotation-tools .btn{padding:6px 10px;font-size:var(--fs-200)}
+.annotation-tools .btn[aria-pressed="true"]{background:var(--accent);color:white;border-color:var(--accent)}
+.annotation-canvas{position:relative;height:390px;background:#e9eff2;border:1px solid var(--stroke-1);border-radius:var(--radius-md);overflow:hidden;touch-action:none}
+.annotation-canvas>svg{width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+.annotation-canvas .draft-shape{fill:var(--accent);fill-opacity:.1;stroke:var(--accent);stroke-width:3;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none}
+.annotation-canvas .draft-shape.open-shape{fill:none}
+.annotation-canvas .draft-point{fill:white;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none}
+.annotation-canvas .draft-cursor{stroke:var(--accent);stroke-width:1;vector-effect:non-scaling-stroke;pointer-events:none}
+.annotation-form{display:grid;gap:var(--space-m)}
+.annotation-editor .annotation-form textarea{min-height:96px}
+.annotation-altitude{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-s)}
+.annotation-result{padding:var(--space-s) var(--space-m);background:var(--accent-soft);border:1px solid var(--stroke-2);border-radius:var(--radius-md);font-size:var(--fs-200);color:var(--accent)}
+.annotation-result p{margin-top:var(--space-xs);color:var(--text-3)}
+.annotation-error{color:var(--level-red);font-size:var(--fs-200);min-height:20px}
+.annotation-bottom{display:flex;align-items:center;gap:var(--space-s);justify-content:space-between;margin-top:var(--space-s)}
+.annotation-bottom .btn{font-size:var(--fs-200)}
+.annotation-legend{color:var(--text-3);font-size:var(--fs-200);margin-top:var(--space-s)}
+.layout-map .linked-card{padding:6px 8px}
+.layout-map .linked-card strong{font-size:var(--fs-200)}
+.layout-map .linked-card small{font-size:11px}
+.layout-map .present-notes .briefing-side{min-height:0;overflow:hidden}
+.layout-map .briefing-side>.side-section:first-child,.layout-map .briefing-side>.side-materials{flex-shrink:0}
+.layout-map .briefing-side>.side-section:nth-child(2){min-height:0;overflow:auto;flex:1}
+.layout-map .briefing-side>.side-materials{margin-top:0}
+.layout-map .briefing-side>.side-section:nth-child(2)>.spread{position:sticky;top:-8px;background:var(--bg-1);z-index:1;padding:4px 0}
+.annotation-list-row{display:grid;grid-template-columns:1fr auto;gap:var(--space-s);align-items:center}
+.annotation-list-row .linked-card{margin-top:0}
+.annotation-list-row+.annotation-list-row{margin-top:var(--space-s)}
+@media(min-width:720px) and (max-width:1199px){.annotation-editor{gap:var(--space-l);grid-template-columns:minmax(0,1.5fr) minmax(265px,1fr)}.annotation-canvas{height:350px}.linked-title{min-height:44px}.linked-card{min-height:44px}}
+@media(prefers-reduced-motion:reduce){.link-overlays .link-geometry{transition:none}}

@@ -1,0 +1,427 @@
+# 기관 라운지·합동 브리핑 구현 계획 — 실행 검증 결과 반영본
+
+## 1. 목표·검증 현황·디자인 기준
+
+기관 관리자가 실제 예정비행·자료를 저장하면, 다른 조종사가 이를 조회하고 기존 기상 브리핑과 합동 발표에서 사용하는 기능을 구현한다. 이 계획은 앞선 구현 계획을 대체한다.
+
+### 현재 확인한 사실
+
+| 항목 | 확인 수준 |
+|---|---|
+| 개인 경로 저장·복원, DB, 브리핑, 도형 생성의 기반 코드 | 관련 기존 테스트 77개 통과 |
+| 저장 METAR·TAF → 공항 브리핑 | 실제 로컬 파일과 광주→여수 시험 경로로 생성 확인 |
+| 지형 → 연직단면도 | 표본 349개 모두 지형값 조회, 경고 없음 |
+| 수치예보 단면 로더 | 12개 고도층 반환 확인. 반환 자체가 시간 적합성·모든 값의 유효성을 보장하지 않음 |
+| 예보 시각 문제 | 9월 10일 요청에 8월 23일 예보를 선택하고 `available: true`를 반환하는 사례 재현 |
+| SIGMET·AIRMET·낙뢰 발생 자료 | 로컬 최신 파일이 빈 목록이어서 실제 발생 자료 연결은 미검증 |
+| 최신 외부 수집 → HTTP API → 브라우저 | 미검증. 현재 확인한 로컬 기상 자료는 8월 23~25일 자료 |
+| 기관 권한·파일 공유·브리핑 회차 | 아직 없는 기능이며 새로 구현해야 함 |
+
+기존 테스트 통과와 과거 저장 자료를 이용한 실행을 신규 기관 기능의 완료 증거로 사용하지 않는다. 최신 자료와 실제 발생 사례를 이용한 통합 검증은 공개 전 필수 조건이다.
+
+### 디자인 적용
+
+다음 파일을 구현 기준으로 사용한다.
+
+- [설계안](2026-09-09-organization-lounge-and-joint-briefing-plan.md)
+- [최신 HTML 시안](../mockups/2026-09-09-organization-lounge.html): 연결된 CSS·JS 포함.
+
+**HTML의 레이아웃과 상호작용을 실제 React 화면에 반영해야 한다.**
+
+- 공통 상단은 기관명·메뉴·날짜·사용자 정보를 56px 한 줄로 배치한다.
+- 홈의 별도 제목 줄은 없앤다. 기관 소식 오른쪽에 합동 브리핑 준비 버튼을 둔다.
+- 홈은 소식 → 공항 가로 요약 → 지도와 알림·예정비행 순서다. 지도와 우측 패널의 하단을 맞춘다.
+- 최근 자료는 기관 소식 서랍에서 제공한다. 자료를 닫으면 서랍과 기존 초점으로 돌아온다.
+- 예정비행·자료함·준비·발표·설정은 HTML의 각 화면 구성을 따른다.
+- 발표는 **B 기본·A/B 전환 제공**으로 확정한다.
+- 데스크톱과 iPad 가로를 대상으로 하며 주요 터치 영역은 44px 이상으로 유지한다.
+
+HTML의 예시 기상, SVG 지도, 하드코딩된 사용자, 메모리 저장, 모형 PDF는 실제 데이터·Mapbox·인증·DB·PDF 뷰어로 교체한다.
+
+## 2. 선행 보완: 실제 데이터의 사용 가능 여부를 판정한다
+
+### 2.1 예보 시각·수치값 검사
+
+현재 `loadRouteCrossSection()`의 `available`은 기관 브리핑에서 그대로 성공 기준으로 사용할 수 없다.
+
+기관 전용 `validateOrganizationCrossSection()`을 추가해 다음을 검사한다.
+
+- 요청 ETD와 경유지별 예보 선택 규칙에서 파생한 요청 시각.
+- KIM·KTG 각각의 실제 제공 유효시각 범위.
+- 선택한 자료의 발표시각·유효시각과 요청 시각의 관계.
+- 경로 표본과 고도층별 실제 유효값 존재 여부.
+- 바람·기온·착빙·난류 등 변수별 누락.
+
+검사 결과는 다음 상태로 통일한다.
+
+```js
+{
+  status: 'available' | 'partial' | 'out_of_range' | 'unavailable',
+  requestedTime: 'UTC ISO',
+  selectedValidTime: 'UTC ISO 또는 null',
+  coverage: { from: 'UTC ISO', to: 'UTC ISO' },
+  missingVariables: [],
+  reason: null
+}
+```
+
+- 제공 시각 범위 안에서는 기존 시각 선택 규칙을 사용하고 선택 시각을 표시한다.
+- 범위 밖 요청을 오래된 예보로 조용히 대체하지 않는다.
+- 일부 변수·구간만 누락되면 해당 부분을 빈 영역과 상태 안내로 표시한다.
+- 사용할 수 없는 모델 자료로 위험 없음·난류 없음 등의 요약을 만들지 않는다.
+- 과거 ETD를 현재로 바꾸지 않는다. 사용자가 별도 조회 시각을 선택할 수 있게 한다.
+
+검증된 단면 결과를 `composeBriefing()`의 기존 `enrouteCrossSection` 입력으로 주입한다. **지도·단면도·기상 요약이 같은 자료 선택을 사용해야 한다.**
+
+사용 불가 결과도 `{ available: false }` 객체로 명시적으로 전달해 composer가 내부에서 다른 자료를 다시 로드하지 않도록 한다.
+
+기존 개인 브리핑의 동작 변경은 이 단계에 섞지 않는다. 기관 서비스에서 엄격한 검사를 먼저 적용한다.
+
+### 2.2 낙뢰 수집 범위
+
+현재 낙뢰 payload에는 일부 실패한 조회 구간을 충분히 판별할 정보가 없다. 수집기를 보완해 성공한 조회 시간 구간을 UTC로 저장한다.
+
+- `nationwide.strikes`와 함께 성공 조회 구간·공간 범위·기준시각을 제공한다.
+- 기존 정상 관측과 성공 조회 구간을 유지하면서 누락 구간을 재수집한다.
+- 요청 시간창 전체가 확인됐을 때만 `0건`을 확정한다.
+- 불완전한 경우 확인된 건수와 `일부 자료 누락`을 함께 표시한다.
+- 기존 payload에 범위 정보가 없으면 `관측 범위 미확인`으로 처리한다.
+- 건수 계산의 실제 시간창을 표시한다. 수집 지연을 현재시각으로 숨기지 않는다.
+
+### 2.3 위험기상과 사용자 도형의 공간 판정
+
+기존 `evaluateHorizontalExposure()`는 경로 주변 30NM와 하나의 거리 구간을 사용한다. 이를 사용자 도형의 실제 교차 판정으로 재사용하지 않는다.
+
+- 기존 기상 위험 판정은 유지한다.
+- 사용자 도형과 경로의 실제 교차·재진입·반복 통과를 계산하는 `projectOrganizationAnnotations()`를 새로 작성한다.
+- 자동 기상의 기존 영향 구간과 사용자 도형의 실제 교차 구간은 다른 필드로 관리한다.
+- 지도 표시용 픽셀 좌표나 HTML의 근사 샘플링을 운영 계산에 사용하지 않는다.
+
+## 3. 기관 저장·권한·API와 실제 브리핑 연결
+
+### 3.1 모듈과 화면 진입
+
+- 프런트엔드에 `features/organization-lounge`, 백엔드에 `src/organizations`를 추가한다.
+- 기존 `App.jsx`의 lazy-loading 방식과 인증·시간대 Provider를 재사용한다.
+- `/lounge/:orgId` 아래 홈·비행·자료·알림·브리핑·설정을 제공한다.
+- `/lounge`는 소속 기관을 조회한다. 복수 소속은 선택하고 소속 없음은 빈 상태로 표시한다.
+- 일반 기관 기상 브리핑은 `/?orgId=…&orgFlightId=…`로 기존 메인 지도에 진입한다. 개인용 `?flight=…`와 구분한다.
+- 합동 발표는 `/lounge/:orgId/briefings/:sessionId/present`로 분리한다.
+- 직접 URL, 새로고침, 뒤로가기, 인증 만료를 처리한다.
+
+### 3.2 저장 모델
+
+현재 `better-sqlite3`, `createDb()`, 세션 인증을 재사용한다. 기관 데이터는 개인 `routes`와 별도 테이블에 저장한다.
+
+| 데이터 | 저장 방식 |
+|---|---|
+| 기관·회원관계 | 기관 설정, 활성 회원, 기관별 역할 |
+| 관심대상 | 공항 ICAO 또는 권역 GeoJSON, 낙뢰 조회 조건 |
+| 공지 | 제목·본문·게시기간·작성자·버전 |
+| 예정비행 | 기관·담당자·ETD/ETA·상태·현재 버전 |
+| 비행 버전 | 경로 스냅샷·단면 요청 재료·작성 블록·도형·자료 버전 연결 |
+| 공유자료·자료 버전 | 메타데이터와 불변 파일·지도·경로 버전 |
+| 브리핑 회차 | 순서·공통 안내·공통 자료·버전 |
+| 발표 run | 시작자·실제로 사용한 버전·시작·종료시각 |
+| 기관 알림·개인 상태 | 사건·기관 확인, 개인 읽음·숨김 |
+
+모든 시각은 UTC ISO로 저장한다. 날짜별 조회는 선택 시간대의 날짜를 UTC 범위로 변환한다.
+
+변경 요청에는 `expectedVersion`을 포함한다. 서버는 기관·권한·현재 버전을 확인하고 트랜잭션 안에서 새 버전을 저장한다. 충돌은 `409 version_conflict`로 반환하며 작성 중인 입력을 보존한다.
+
+원본 개인 경로 수정·삭제, 자료 교체 이후에도 기존 비행과 종료 기록은 사용한 버전을 유지한다. 기관 저장 실패를 localStorage 저장 성공으로 대체하지 않는다.
+
+### 3.3 권한
+
+`requireAuth` 뒤에 신규 `requireOrganizationMember`를 적용한다. 요청마다 사용자 활성 상태와 기관 회원관계를 DB에서 확인한다.
+
+- 일반 회원: 조회, 본인 자료 관리, 본인 담당 비행의 글·도형·자료 연결, 발표 실행.
+- 비행계획 관리자: 예정비행 계획, 브리핑 회차·순서·공통 자료, 공지 관리.
+- 기관 관리자: 위 기능과 구성원·역할·기관 설정 관리.
+- 서비스 관리자: 기관과 최초 기관 관리자 생성.
+
+회원 추가는 기존 계정을 지정하는 방식으로 시작한다. 마지막 기관 관리자 제거는 막는다. 파일·썸네일·과거 버전에도 같은 권한을 적용한다.
+
+### 3.4 API
+
+`/api/organizations/:orgId` 아래에 다음 API를 추가한다.
+
+| 경로 | 기능 |
+|---|---|
+| `/settings`, `/members` | 기관 설정·회원 관리 |
+| `/interests`, `/notices` | 관심대상·공지 CRUD |
+| `/flights` | 날짜별 조회·등록·편집·취소 |
+| `/flights/:id/annotations` | 글·도형 작성·수정·삭제 |
+| `/materials`와 버전별 원본·썸네일 경로 | 자료 CRUD·파일 열람 |
+| `/situation` | 실제 관심 공항·권역 기상과 자료 상태 |
+| `/alerts`와 상태 변경 경로 | 기관 확인·개인 읽음·30분 숨김 |
+| `/briefings` | 회차·순서·공통 자료 |
+| `/briefings/:id/runs` | 발표 시작·사용 버전 적용·종료 |
+| `/flights/:id/weather-briefing` | 저장 비행을 이용한 실제 브리핑 생성 |
+
+별도로 `GET /api/me/organizations`, 서비스 관리자용 기관 생성 API를 추가한다.
+
+변경 요청은 허용된 출처와 쿠키 인증을 검사한다. 파일 요청도 인증하며 공개 `/data`로 우회할 수 없게 한다.
+
+### 3.5 기존 코드와 신규 코드의 구분
+
+| 기존 함수·컴포넌트 | 적용 |
+|---|---|
+| `normalizeRouteSnapshot()` | 기존 경로를 기관 등록 입력으로 정규화 |
+| `buildSavedBriefingInputs()` / `buildSavedRouteResult()` | 저장 선·마커 복원 |
+| `buildVerticalProfileRequest()` | 절차·경유점·고도 요청 재료 생성 |
+| `MapView.loadRouteBriefing()` / `openSavedBriefing()` | 경로 복원은 재사용하되 기관 모드의 조회 공급자를 분리(3.7절) |
+| `composeBriefing()` | 공항·위험기상·경로 기상 요약 |
+| `buildVerticalProfile()` | 실제 지형과 계획고도 단면 |
+| `loadRouteCrossSection()` | 실제 KIM·KTG 단면 로딩 |
+| `VerticalProfileChart` | 단면 표시와 다중 구간 강조 확장 |
+| 기존 공항 뷰모델·지도 레이어 | 기상 표시 재사용 |
+
+다음은 **새로 구현할 함수**다.
+
+- `requireOrganizationMember`
+- `buildOrganizationBriefingRequest`
+- `validateOrganizationCrossSection`
+- `evaluateOrganizationSituation`
+- `projectOrganizationAnnotations`
+- `buildOrganizationBriefingBundle`
+
+프런트엔드 코드를 백엔드에서 import하지 않는다. 공유가 필요한 순수 변환만 루트 `shared`로 분리한다.
+
+### 3.6 브리핑 조합 서비스의 핵심 코드
+
+다음은 구현할 서비스의 구조다. 기존 함수와 새 어댑터를 구분하고, 동기 함수의 예외도 부분 실패로 처리한다.
+
+```js
+// 신규 함수. org/member 검사와 비행 버전 조회를 완료한 뒤 호출한다.
+async function buildOrganizationBriefingBundle(flight, overrides, deps) {
+  const request = buildOrganizationBriefingRequest(flight, overrides)
+  const snapshot = deps.readWeatherSnapshot()
+
+  const [profileResult, nwpResult] = await Promise.allSettled([
+    Promise.resolve().then(() =>
+      buildVerticalProfile(request, deps.terrainSampler)
+    ),
+    Promise.resolve().then(() =>
+      loadRouteCrossSection({
+        root: snapshot.dataRoot,
+        routeGeometry: request.routeGeometry,
+        body: request,
+      })
+    ),
+  ])
+
+  const validated = validateOrganizationCrossSection({
+    request,
+    result: nwpResult,
+    sourceState: snapshot.sourceState,
+  })
+
+  // 반드시 객체를 전달한다.
+  // null이면 composer가 dataRoot에서 다시 읽는 기존 경로를 탈 수 있다.
+  const acceptedSection = validated.composerInput
+    ?? { available: false, crossSection: null, turbulence: null }
+
+  const briefing = composeBriefing(request, {
+    ...snapshot.weather,
+    now: snapshot.effectiveNowMs,
+    dataRoot: snapshot.dataRoot,
+    enrouteCrossSection: acceptedSection,
+    notam: null,
+    airspaceZones: [],
+  })
+
+  deps.assertDataContextUnchanged(snapshot.contextRevision)
+
+  return {
+    flightRevision: flight.version,
+    briefing: selectOrganizationWeatherSections(briefing),
+    verticalProfile:
+      profileResult.status === 'fulfilled' ? profileResult.value : null,
+    crossSection: validated.displayData,
+    // 신규 어댑터: 검증 결과와 원본 snapshot에서 정확한 지도 자료 식별자를 만든다.
+    mapDataSelection: buildOrganizationMapDataSelection(snapshot, validated),
+    componentStatus: {
+      terrain: terrainResultStatus(profileResult),
+      nwp: validated.status,
+    },
+    linkedItems: projectOrganizationAnnotations({
+      annotations: flight.annotations,
+      routeGeometry: request.routeGeometry,
+    }),
+    provenance: snapshot.provenance,
+  }
+}
+```
+
+부가 규칙:
+
+- 등록 시 경로 스냅샷과 정규화한 절차·단면 요청 재료를 함께 저장한다.
+- 좌표선이 없는 구형 경로는 등록 전에 기존 편집기에서 복원·확인한다.
+- 조회용 시각·고도 변경은 서버가 허용한 필드만 적용하며 공유 비행에는 저장하지 않는다.
+- 자료 문맥이 계산 중 변경되면 결과를 섞지 않고 한 번 재시도한다.
+- 프런트 API에 `AbortSignal`과 요청 식별자를 추가해 이전 비행의 늦은 응답을 버린다.
+- 기관 자동 분석에는 기상만 사용한다. 사용자가 올린 NOTAM 발췌는 작성 자료로 표시한다.
+- 기존 개인 브리핑의 NOTAM과 개인 저장 동작은 유지한다.
+
+### 3.7 일반 기관 브리핑의 조회 공급자 분리
+
+현재 `frontend/src/features/route-briefing/useRouteBriefing.js`의 `openSavedBriefing()`은 경로 복원 뒤 `fetchRouteBriefing()`과 `fetchVerticalProfile()`·`fetchCrossSection()`을 직접 호출한다. 예보 시각 변경과 브리핑 재생성에도 별도 조회 경로가 있다. 이 흐름을 그대로 사용하면 기관 서비스의 검증 결과를 개인용 API 결과가 덮어쓸 수 있다.
+
+- `applySavedRouteState()` 등 경로 복원과 기상 조회를 분리한다. 기관 모드는 공유 비행의 저장된 절차·단면 요청 재료를 사용한다.
+- `MapView.loadRouteBriefing()`에 개인/기관 문맥을 명시적으로 전달한다. 기관 문맥에는 `orgId`, `flightId`, `flightVersion`을 포함하고 서버가 권한과 버전을 검증한다.
+- 최초 진입, 재시도, 조회 시각·고도 변경, 예보 시각 선택 변경, 재생성은 하나의 조회 공급자를 통한다. 기관 공급자는 `/api/organizations/:orgId/flights/:id/weather-briefing`만 사용한다.
+- 기관 응답의 `briefing`, `verticalProfile`, `crossSection`, `componentStatus`, `mapDataSelection`, `linkedItems`, `provenance`를 같은 요청 식별자로 함께 적용한다. 기존 개인용 후속 effect가 별도 단면 요청을 보내거나 상태를 덮어쓰지 않도록 기관 모드에서는 해당 경로를 비활성화한다.
+- 기관 API 실패 시 기관 상태·재시도를 제공한다. 개인 API로 fallback하지 않는다. 공유 비행에 대한 변경과 조회용 override는 계속 구분한다.
+- 개인 공급자는 기존 개인 API·NOTAM·저장 흐름을 유지한다. 기관↔개인 전환 시 진행 요청을 취소하고 이전 문맥의 응답을 버린다.
+
+다음은 새로 만들 프런트엔드 공급자 인터페이스의 예시다. `fetchOrganizationBriefing()`과 `personalBriefingProvider` 어댑터를 구현하며, 기존 훅의 모든 조회 호출부를 이 인터페이스에 연결한다.
+
+```js
+function createBriefingProvider(context) {
+  if (context.kind === 'organization') {
+    return {
+      load: ({ overrides, signal }) => fetchOrganizationBriefing({
+        orgId: context.orgId,
+        flightId: context.flightId,
+        flightVersion: context.flightVersion,
+        overrides,
+        signal,
+      }),
+    }
+  }
+  return personalBriefingProvider
+}
+```
+
+## 4. 홈·자료·도형·합동 발표 구현
+
+### 4.1 실제 홈 데이터와 알림
+
+기관별로 외부 기상 API를 새로 호출하지 않는다. 현재 수집기가 저장한 payload를 평가한다.
+
+| 화면 데이터 | 실제 입력 |
+|---|---|
+| 공항 관측 | `metar.airports[icao]` |
+| 공항 예보 | `taf.airports[icao]` |
+| 공항경보 | `warning.airports[icao].warnings`와 유효기간 |
+| SIGMET·AIRMET | 각 `items`의 ID·geometry·유효기간 |
+| 낙뢰 | `lightning.nationwide.strikes`와 보강한 관측 범위 |
+| 지도 기상 | 기존 레이더·위성 메타데이터와 Mapbox 어댑터 |
+| 변경·지연 | snapshot-meta와 기존 자료 상태 판정 |
+
+- 낙뢰 기본값은 최근 30분·공항 반경 10km다.
+- SIGMET·AIRMET은 유효기간과 관심 권역의 실제 교차를 검사한다.
+- 데이터 지연·누락·미제공은 정상 또는 0건과 구분한다.
+- 홈과 알림은 같은 `evaluateOrganizationSituation()` 결과를 사용한다.
+- 평가기는 60초마다 실행하고 원본 변경 외에 시간 경과로 인한 만료도 반영한다.
+- 특보는 원본 사건 ID 기준으로 갱신한다. 낙뢰는 같은 관심대상의 연속 발생을 하나의 사건으로 갱신한다.
+- 불완전한 데이터만으로 기존 사건을 해소하지 않는다.
+- 기관 확인 이후 내용이 변경되면 갱신 표시를 제공한다.
+- 개인 숨김은 홈의 유효 위험기상을 제거하지 않는다.
+- 시연 자료는 실제 기관 알림 이력에 기록하지 않는다.
+
+### 4.2 공유자료와 기관 소식
+
+파일은 공개 기상 경로 밖의 `ORGANIZATION_FILES_PATH`에 저장한다. 운영 기본값은 `/opt/projectamo/shared/organization-files`다.
+
+- PDF·JPEG·PNG·WebP·KML·KMZ와 저장 경로를 지원한다.
+- 파일당 25MiB, KMZ 해제 결과 100MiB를 기본 상한으로 둔다.
+- 이미지 검증은 기존 `sharp`를 사용한다.
+- PDF는 `pdfjs-dist`를 추가해 실제 문서 검증·페이지 이동·확대를 구현한다. worker를 자체 배포한다.
+- KML·KMZ 변환은 기존 파서의 순수 부분을 공유하고 서버에서도 검증한다. 외부 NetworkLink·원격 리소스를 자동 로드하지 않는다.
+- 원본·썸네일·Range 요청·과거 버전 모두 기관 권한을 검사한다.
+- 글은 제목·본문·이미지·PDF·링크 블록으로 저장하며 임의 HTML을 실행하지 않는다.
+- 업로드 실패 시 임시 파일을 정리하고 기존 자료 버전을 유지한다.
+
+기관 소식 서랍은 실제 공지·최근 자료를 조회한다. 뷰어를 닫으면 목록·스크롤·초점을 복원하고, 전체 자료함·브리핑 준비로 이동할 수 있게 한다.
+
+### 4.3 사용자 도형과 연동 강조
+
+저장 형식은 WGS84 GeoJSON을 사용한다. 원은 중심 좌표와 미터 단위 반경을 정본으로 저장한다. 고도는 선택적 `ft AMSL` 하한·상한이다.
+
+- 점·선·다각형·원·글만 작성하는 흐름을 지원한다.
+- 사용자 도형은 점선과 작성 출처로 자동 기상과 구분한다.
+- 경로의 원본 선분과 도형을 교차시켜 누적 NM 구간을 계산한다.
+- 왕복·재진입·동일 지점 반복 통과를 모두 보존한다.
+- 점·선의 일치 판정은 1m의 수치 오차 허용 범위만 사용한다. 넓은 주변 위험 구간을 만들지 않는다.
+- 경로 밖 도형은 지도만 강조한다.
+- 고도 미지정은 단면도에서 위치만 표시하고 해당 상태를 명시한다.
+
+`VerticalProfileChart`에는 기존 단일 강조와 호환되는 다중 구간·고도 범위·선택 콜백을 추가한다.
+
+선택 상태는 `preview`와 `pinned`로 분리한다. 호버 종료 시 고정 선택으로 돌아가고, A/B 전환은 유지하며 비행 전환은 초기화한다. 대화상자가 열렸을 때 Esc는 대화상자를 먼저 닫는다.
+
+`MapView`가 지도 생성과 스타일 수명을 소유하고, 기관 어댑터가 기관 레이어·이벤트를 설치·정리한다. 레이아웃 전환 시 지도 크기를 갱신한다.
+
+### 4.4 합동 브리핑
+
+- 준비 화면에서 실제 예정비행·순서·공통 자료를 저장한다.
+- 발표 시작 시 사용할 회차·비행·자료 버전을 고정한 run을 만든다.
+- B 기본·A/B 전환, 이전·다음 비행, 지도·단면도·자료 확대와 복귀를 구현한다.
+- 표시 중인 bundle과 새로 준비한 bundle을 분리한다.
+- 기관 데이터는 30초, 기상 데이터는 60초 간격으로 변경을 확인한다.
+- 새 자료는 발표자가 적용할 때만 화면과 run의 사용 버전에 반영한다.
+- 단면 실패 시 지도·작성 자료를 유지하고 해당 영역에 상태·재시도를 제공한다.
+- 발표 run은 독립적이며 시작자만 적용·종료한다. 다른 사용자의 화면을 원격 제어하지 않는다.
+- 종료 기록에는 사용 버전과 자료 기준시각을 보존한다. 당시 기상 전체 재현은 제공하지 않는다.
+
+### 4.5 지도 자료 선택과 발표 중 갱신 고정
+
+표시 bundle을 유지하는 것만으로 기존 지도의 자료가 고정되지는 않는다. 현재 `MapView`의 `useNwpOverlays()`는 자체 선택 상태를 소유하고, `useKimSurfaceWind()`는 snapshot 변경에 따라 모델 선택을 갱신한다. `backend/server.js`의 KTG 지도 조회는 `latest.tmfc`를 읽는다. 폴링만 중지해도 고도 변경이나 지도 재생성 시 최신 자료를 읽을 수 있으므로 다음 계약을 구현한다.
+
+- 기관 지도에는 외부에서 제어하는 `mapDataSelection`과 `live`/`pinned` 자료 모드를 추가한다. 홈은 `live`, 발표는 `pinned`를 사용한다. 일반 기관 브리핑도 표시 중인 bundle의 NWP 선택을 따르고, 재조회 완료 시 함께 교체한다. 개인 지도 기본 동작은 유지한다.
+- 신규 `buildOrganizationMapDataSelection()`은 KIM·KTG별 발표차수(run/tmfc), 유효시각·예보시간(hf), 사용 가능한 고도·변수, 원본 revision과 frame/리소스 식별자를 반환한다. 모델별 시각은 독립적으로 보존하며, 경유지별 단면 선택 규칙과 평면 지도가 표시하는 한 시각을 구분해 표시한다.
+- 지도 선택은 단면 검증 결과에서 파생한다. `latest`를 다시 읽어 추정하지 않는다. 사용할 수 없는 모델은 지도에서도 상태를 표시하고 오래된 값이나 다른 run으로 대체하지 않는다.
+- KTG 지도 API에 정확한 `tmfc` 조회를 추가하고 저장된 해당 run을 읽게 한다. 기존 개인용 요청에서만 현재의 latest 기본값을 유지한다. KIM 및 다른 지도 요청·캐시 키도 run·유효시각·고도·변수·revision을 포함해 다른 자료가 섞이지 않게 한다.
+- `pinned`에서는 snapshot poller의 최신 선택 전환을 막는다. 최신 자료의 존재는 별도로 감지해 갱신 표시만 띄운다. 고도 변경, A/B 전환, 확대·복귀, 지도 스타일 재생성 후에도 고정된 자료 식별자로 다시 조회한다.
+- 발표에 켠 레이더·위성 등 비모델 기상 레이어도 frame 시각과 revision을 고정한다. 자료 식별자를 고정할 수 없는 레이어는 발표에서 실시간으로 조용히 갱신하지 않고 미지원 상태로 표시한다.
+- 새 bundle과 지도 리소스를 준비한 뒤 발표자의 적용 동작으로 표시 상태를 함께 교체한다. 늦은 지도 응답은 bundle 식별자로 거부한다. 일부 레이어가 실패하면 이전 bundle을 유지하거나 새 bundle의 해당 레이어를 명시적으로 비우며, 이전 지도와 새 단면을 섞지 않는다.
+- 원본 보존 기간을 넘겨 고정 frame이 삭제된 경우 해당 레이어의 자료 만료를 표시하고 재조회를 안내한다. 발표 run에 저장한 식별자는 자료 출처 기록이며, 당시 기상 전체 보관·재현 기능을 의미하지 않는다.
+
+## 5. 구현 단계·검증·공개 조건
+
+### 단계별 완료 기준
+
+| 단계 | 구현 내용 | 완료 증거 |
+|---|---|---|
+| 0 | 재사용 코드 계약 테스트, 예보 범위 검사, 낙뢰 범위 보강, 도형 교차 함수 | 오래된 예보·부분 누락·다중 교차 회귀 테스트 통과 |
+| 1 | 기관 DB·권한·회원 관리·HTML 공통 셸 | 두 계정의 기관 공유와 타 기관 접근 차단 |
+| 2 | 예정비행·불변 버전·기관 조회 공급자·실제 브리핑 연결 | 최초 진입과 시각·고도 변경 모두 기관 검증 bundle을 사용 |
+| 3 | 파일·자료함·작성 블록·도형·연동 강조 | 새로고침·다른 계정에서도 저장 자료와 도형 유지 |
+| 4 | 준비·발표 A/B·지도 run/frame 고정·갱신 적용·종료 기록 | 지도·단면·요약의 자료 선택을 유지하고 적용 시 함께 교체 |
+| 5 | 기관 홈·관심대상·실제 상황 평가·알림·소식 | 최신 HTML 배치에서 실제 기관·기상 데이터 사용 |
+| 6 | 통합·시각·운영 검증 | 아래 공개 조건 충족 |
+
+최신 외부 자료를 당장 확보하지 못하더라도 저장 자료와 명시적 fixture로 개발은 진행한다. 최신 외부 연동 검증을 통과하기 전에는 운영 공개 완료로 표시하지 않는다.
+
+### 필수 검증
+
+- **예보 범위:** 9월 10일 요청과 8월 23일 자료가 정상 단면으로 표시되지 않는지, KIM·KTG의 서로 다른 유효시각, 변수·고도층 누락.
+- **기관 조회 분기:** 오래된 예보 fixture로 기관 딥링크 최초 진입·시각/고도 변경·재생성·재시도를 확인한다. 개인용 브리핑·단면 API가 호출되지 않고 기관 상태가 유지되는지, 기관↔개인 전환 후 늦은 응답이 덮어쓰지 않는지 검증한다.
+- **발표 지도 고정:** 새 run 수집 → 적용 전 기존 지도·단면 유지 → 고도 변경·A/B 전환·확대·스타일 재생성 → 적용 후 일괄 변경을 브라우저에서 확인한다. KIM·KTG의 서로 다른 시각, 비모델 frame, 정확한 KTG tmfc 조회, 고정 자료 만료·부분 실패·늦은 지도 응답도 검증한다.
+- **낙뢰:** 완전한 0건, 부분 누락 0건, 일부 확인된 관측, 조회 경계·반경·중복·재수집.
+- **특보:** 실제 발생 자료와 fixture를 각각 사용해 유효기간·취소·권역 교차·만료 확인.
+- **기관 권한:** 타 기관 ID·파일 URL, 탈퇴, 비활성 계정, 역할별 편집, 버전 충돌.
+- **경로·자료 보존:** 원본 수정·삭제, 자료 교체, 반복 경로, 이전 버전과 종료 기록.
+- **부분 실패:** 단면·파일·API 실패, 늦은 응답, 기관 전환 중 요청, 데이터 문맥 변경.
+- **화면:** 서랍·뷰어 초점 복귀, A/B 전환, 터치·키보드, 긴 주의사항, 도형 작성·삭제.
+- **기존 기능 회귀:** 개인 경로 저장·복원, 기상 브리핑·NOTAM·지도 레이어.
+
+### HTML 반영 검증
+
+1920×1080, 1180×820, 1024×768에서 Chromium·WebKit으로 캡처한다.
+
+홈, 예정비행 상세, 공유자료, 준비, 발표 A/B, 기관 소식, 도형 편집을 HTML과 대조한다. 고정 fixture로 배치·상호작용을 비교하고, 실제 저장 자료로 데이터 연동을 별도 확인한다.
+
+### 운영 공개 조건
+
+- 최신 수집 자료 → 실제 HTTP API → 로그인한 기관 화면까지 검증한다.
+- 실제 발생 SIGMET·AIRMET·낙뢰 사례를 확보해 표시 결과를 대조한다. 현재 사건이 없으면 출처·시각이 보존된 실제 과거 발생 자료로 별도 검증한다.
+- 공개 API 경로로 비공개 파일을 우회 열람할 수 없어야 한다.
+- DB와 비공개 파일 백업·복원 절차를 확인한다.
+- 새 의존성을 포함하므로 전체 배포 절차를 사용한다.
+- 평가 실패·자료 누락·업로드 실패·버전 충돌을 관찰할 수 있게 한다.
+- 관련 단위 테스트·브라우저 계약과 최종 `npm run check`를 통과한다.
+
+고급 권역 해설·강수 이동 예측·공식 NOTAM 연동·연료 및 성능 계산·외부 알림 발송·당시 기상 전체 재현·모바일 UI는 이번 범위에서 제외한다.
