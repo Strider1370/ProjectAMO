@@ -77,6 +77,7 @@ import {
   LIGHTNING_BLINK_INTERVAL_MS,
 } from '../weather-overlays/lib/lightningLayers.js'
 import {
+  disposeLightningFrameSync,
   MET_LAYERS,
   RADAR_RAINRATE_LEGEND,
   installWeatherOverlayLayers,
@@ -84,6 +85,8 @@ import {
   syncLightningLayers,
   syncRasterAndSigwxLayers,
 } from '../weather-overlays/lib/weatherOverlayLayers.js'
+import { disposeRasterFrameTransitions } from '../weather-overlays/lib/rasterFrameTransition.js'
+import { removeRainviewerLayers } from '../weather-overlays/lib/rainviewerLayers.js'
 import { syncTerrainHazardLayer, terrainHazardAltitudeItems } from '../weather-overlays/lib/terrainHazardLayer.js'
 import {
   buildWeatherOverlayModel,
@@ -1372,8 +1375,6 @@ const MapView = forwardRef(function MapView({
       if (resizeFrame) cancelAnimationFrame(resizeFrame)
       routeInteractionCleanup?.()
       if (import.meta.env.DEV) delete map.getContainer().__projectamoMap
-      map.remove()
-      mapRef.current = null
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1864,6 +1865,20 @@ const MapView = forwardRef(function MapView({
   useEffect(() => {
     onLayerCountsChange?.({ aviation: aviationActiveCount, met: metActiveCount, traffic: trafficVisible ? 1 : 0 })
   }, [aviationActiveCount, metActiveCount, trafficVisible, onLayerCountsChange])
+
+  // Map init is declared before every overlay hook, so destroying the Mapbox
+  // instance in that effect's cleanup races later cleanup and pending image
+  // transitions. Keep destruction last: all overlay cleanups can still use the
+  // live map, then pending frame work is cancelled before map.remove().
+  useEffect(() => () => {
+    const map = mapRef.current
+    if (!map) return
+    disposeRasterFrameTransitions(map)
+    disposeLightningFrameSync(map)
+    removeRainviewerLayers(map)
+    map.remove()
+    if (mapRef.current === map) mapRef.current = null
+  }, [])
 
   // ???? Render ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 

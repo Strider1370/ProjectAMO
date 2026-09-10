@@ -14,7 +14,8 @@ import UpdatesModal from '../features/about/UpdatesModal.jsx'
 import SearchPalette from '../features/search/SearchPalette.jsx'
 import useTour from '../features/onboarding/useTour.js'
 import TourOverlay from '../features/onboarding/TourOverlay.jsx'
-import { organizationRequest } from '../features/organization-lounge/api.js'
+import { organizationRequest, startPreviewSession } from '../features/organization-lounge/api.js'
+import PreviewMode from '../features/organization-lounge/PreviewMode.jsx'
 import { listSavedRoutes } from '../features/route-briefing/lib/routeStore.js'
 import { buildSearchCatalog } from '../features/map/layerActions.js'
 import { mergeAdvisoryPayloads, mergeAirportPayloads } from '../api/weatherApi.js'
@@ -69,6 +70,7 @@ function MainAppShell() {
   const isMobile = useIsMobile()
   const { weatherData, requestDeferredWeatherData } = useWeatherPolling()
   const { hasUpdate, markSeen, isFirstVisit } = useLastSeenVersion()
+  const previewMode = new URLSearchParams(window.location.search).get('orgId') === 'preview'
   const tourAirportPoint = useCallback((icao) => mapRef.current?.getAirportPoint(icao) ?? null, [])
   const tourFocusAirport = useCallback((icao) => mapRef.current?.flyToAirport(icao), [])
   const tour = useTour({ isMobile, isFirstVisit, markSeen, getAirportPoint: tourAirportPoint })
@@ -175,13 +177,14 @@ function MainAppShell() {
     const params = new URLSearchParams(window.location.search)
     const orgId = params.get('orgId')
     const flightId = params.get('orgFlightId')
-    if (!orgId || !flightId || authLoading) return
-    if (!user) { setAuthOpen(true); return }
+    if (!orgId || !flightId || (authLoading && orgId !== 'preview')) return
+    if (!user && orgId !== 'preview') { setAuthOpen(true); return }
     const controller = new AbortController()
     setOrganizationEntryError(null)
     setOrganizationEntryLoading(true)
     setActivePanel('route-check')
-    organizationRequest(orgId, `/flights/${encodeURIComponent(flightId)}`, { signal: controller.signal })
+    const ready = orgId === 'preview' ? startPreviewSession({ signal: controller.signal }) : Promise.resolve()
+    ready.then(() => organizationRequest(orgId, `/flights/${encodeURIComponent(flightId)}`, { signal: controller.signal }))
       .then(({ flight }) => {
         if (controller.signal.aborted) return
         if (!flight?.snapshot) throw new Error('기관 비행의 저장 경로가 없습니다.')
@@ -242,6 +245,7 @@ function MainAppShell() {
 
   return (
     <div className={`app ${isSidebarExpanded ? 'sidebar-is-expanded' : ''}`}>
+      {previewMode && <PreviewMode compact />}
       <Sidebar
         activePanel={activePanel}
         onPanelToggle={togglePanel}
@@ -250,7 +254,7 @@ function MainAppShell() {
         hasUpdate={hasUpdate}
         layerCounts={layerCounts}
         onSearchOpen={() => setSearchOpen(true)}
-        onProfileClick={() => (user ? setAccountOpen(true) : setAuthOpen(true))}
+        onProfileClick={() => previewMode ? window.location.assign('/') : (user ? setAccountOpen(true) : setAuthOpen(true))}
         onHelp={tour.restart}
       />
       <main className="map-shell">
@@ -312,7 +316,7 @@ function MainAppShell() {
           onSearch={() => setSearchOpen(true)}
           onSettings={() => togglePanel('settings')}
           onUpdates={() => togglePanel('updates')}
-          onAccount={() => setAuthOpen(true)}
+          onAccount={() => previewMode ? window.location.assign('/') : setAuthOpen(true)}
           hasUpdate={hasUpdate}
         />
       )}

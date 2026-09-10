@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { File as FileIcon, FileImage, Map, Plus, Route, Upload } from 'lucide-react'
-import { organizationRequest } from '../api.js'
+import { organizationApiUrl, organizationRequest, organizationResourceUrl } from '../api.js'
 import { Badge, Button, Dialog, EmptyState, PageHeading } from '../components.jsx'
 import PdfViewer from '../PdfViewer.jsx'
 import OrganizationMap from '../OrganizationMap.jsx'
@@ -39,7 +39,7 @@ export default function MaterialsScreen({ orgId, route, data, user, navigate, re
     <PageHeading title="공유자료" description="기관의 문서, 현장도, 지도와 경로를 함께 보관합니다." action={<Button onClick={() => setUploadOpen(true)}><Plus size={18} /> 자료 등록</Button>} />
     <div className="ol-toolbar"><div className="ol-segments" aria-label="자료 종류">{[['all', '전체'], ['document', '문서·이미지'], ['map', '지도'], ['route', '경로']].map(([id, label]) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</div><label className="ol-search"><span className="ol-visually-hidden">자료 제목 검색</span><input type="search" placeholder="자료 제목 검색" value={query} onChange={(event) => setQuery(event.target.value)} /></label></div>
     {visible.length ? <div className="ol-material-grid">{visible.map((material) => { const kind = kindOf(material); const Icon = icons[kind] || FileIcon; return <article key={material.id} className="ol-material-card">
-      <button type="button" className="ol-material-thumb" onClick={() => navigate('materials', material.id)}>{material.thumbnailAvailable ? <img src={`/api/organizations/${encodeURIComponent(orgId)}/materials/${encodeURIComponent(material.id)}/versions/${encodeURIComponent(material.version)}/thumbnail`} alt="" /> : <Icon size={36} />}</button>
+      <button type="button" className="ol-material-thumb" onClick={() => navigate('materials', material.id)}>{material.thumbnailAvailable ? <img src={organizationApiUrl(orgId, `/materials/${encodeURIComponent(material.id)}/versions/${encodeURIComponent(material.version)}/thumbnail`)} alt="" /> : <Icon size={36} />}</button>
       <div><Badge>{kind.toUpperCase()}</Badge><h2>{material.title}</h2><p>{material.description || material.originalName || '기관 공유자료'}</p><small>{material.authorName || '기관 구성원'} · {(material.updatedAt || '').slice(0, 10)}</small></div>
     </article> })}</div> : <EmptyState title="조건에 맞는 자료가 없습니다.">파일을 등록하거나 검색 조건을 바꿔 보세요.</EmptyState>}
     {selected && <MaterialDialog material={selected} materials={data.materials} orgId={orgId} canEdit={['admin', 'planner'].includes(data.organization?.role) || String(selected.ownerUserId) === String(user?.id)} onClose={() => navigate('materials')} onUpdated={() => { reload(); navigate('materials') }} />}
@@ -57,8 +57,8 @@ export function MaterialDialog({ material, materials = [], orgId, canEdit, onClo
   const [replaceOpen, setReplaceOpen] = useState(false); const [error, setError] = useState(''); const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   useEffect(() => { setShown(material); setReplaceOpen(false) }, [material])
-  const fallbackUrl = `/api/organizations/${encodeURIComponent(orgId)}/materials/${encodeURIComponent(shown.id)}/versions/${encodeURIComponent(shown.version)}/original`
-  const fileUrl = shown.fileUrl || fallbackUrl
+  const fallbackPath = `/materials/${encodeURIComponent(shown.id)}/versions/${encodeURIComponent(shown.version)}/original`
+  const fileUrl = organizationResourceUrl(orgId, shown.fileUrl, fallbackPath)
   const features = shown.metadata?.geojson?.type === 'FeatureCollection' ? shown.metadata.geojson.features : shown.metadata?.geojson?.type === 'Feature' ? [shown.metadata.geojson] : []
   const mapAnnotations = features.filter((feature) => feature?.geometry).map((feature, index) => ({ id: `${shown.id}-${shown.version}-${index}`, title: feature.properties?.name || feature.properties?.title || shown.title, sourceKind: 'material', geometry: feature.geometry }))
   async function loadVersion(version) {

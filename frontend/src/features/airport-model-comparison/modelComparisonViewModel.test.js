@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 import {
   buildComparisonViewModel,
   cumulativeHourly,
+  directionRange,
   firstForecastHour,
+  formatDirectionRange,
   pathSegments,
 } from './modelComparisonViewModel.js'
 
@@ -315,4 +317,26 @@ test('ceiling text uses NSC whenever no ceiling is found below 5,000 ft', () => 
   assert.equal(metar.text, 'NSC')
   assert.equal(taf.text, 'NSC')
   assert.equal(ecmwf.text, 'NSC')
+})
+
+test('wind direction range takes the short arc across north and reads as aviation degrees', () => {
+  assert.deepEqual(directionRange([250, 290, 270]), { from: 250, to: 290, span: 40 })
+  // 350°와 010°는 20° 차이다. 단순 최소-최대라면 010–350°(340°)로 뒤집힌다.
+  assert.deepEqual(directionRange([350, 10]), { from: 350, to: 10, span: 20 })
+  assert.deepEqual(directionRange([270, 270.4]), { from: 270, to: 270, span: 0 })
+  assert.equal(directionRange([null, undefined, NaN]), null)
+  assert.equal(formatDirectionRange(directionRange([250, 290])), '250–290°')
+  assert.equal(formatDirectionRange(directionRange([350, 10])), '350–010°')
+  assert.equal(formatDirectionRange(directionRange([0])), '360°')
+  assert.equal(formatDirectionRange(null), null)
+})
+
+test('summary reports the model wind direction spread alongside speed', () => {
+  const data = structuredClone(payload)
+  const directions = { kim: 250, ecmwf: 290, gfs: 270, icon: 260 }
+  for (const model of data.models) for (const item of model.records) item.wind_direction_deg = directions[model.model]
+  const vm = buildComparisonViewModel({ data, selectedValidAt: hour(run, 2), tz: 'UTC' })
+  assert.match(vm.summary.wind, /풍향 250–290°/)
+  assert.match(vm.summary.wind, /풍속 /)
+  assert.equal(vm.summary.compact.directionRange, '250–290°')
 })

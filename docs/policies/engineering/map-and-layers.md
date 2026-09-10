@@ -8,10 +8,6 @@ Changing `MapView.jsx`, Mapbox lifecycle, overlays, sources/layers, visibility, 
 
 Use the design policy for visual-only layout, and the data/time policy for collector or timestamp semantics that do not write to the map.
 
-## Re-check trigger
-
-Re-check the policy index before editing when a feature gains a persistent map resource, a style-reload dependency, or a cross-feature composition requirement.
-
 ## Ownership
 
 `MapView.jsx` owns Mapbox creation, basemap/style readiness, `styleRevision`, and high-level composition. New feature data shaping, persistent sources/layers, interaction handlers, and visibility sync belong in that feature's adapter or `useXOverlay` hook. Do not add new feature state or bare `useEffect` calls to `MapView.jsx`.

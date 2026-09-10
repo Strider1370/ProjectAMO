@@ -14,6 +14,7 @@ export const RAINVIEWER_COVERAGE_LAYER = 'rainviewer-coverage'
 
 // 원본 레이더 해상도가 한계라 더 확대해도 선명해지지 않는다. 넘어가면 있는 타일을 늘려 쓴다(오버줌).
 const MAX_ZOOM = 7
+const radarTileUrls = new WeakMap()
 
 // RainViewer 색상표 2(Universal Blue)의 공식 dBZ↔색상 표에서 뽑은 대표 구간(높음→낮음).
 // 출처: https://www.rainviewer.com/api/color-schemes.html (2026-07-14 확인)
@@ -64,6 +65,11 @@ function addRasterLayer(map, { sourceId, layerId, url, opacity }) {
  * 커버리지가 없으면 "비 없음"과 "레이더 없음"이 똑같이 투명해 보인다(몽골·인도네시아 등 실제로 레이더 없음).
  */
 export function syncRainviewerLayers(map, { meta, frame, visible }) {
+  if (!visible) {
+    setMapLayerVisible(map, RAINVIEWER_COVERAGE_LAYER, false)
+    setMapLayerVisible(map, RAINVIEWER_LAYER, false)
+    return false
+  }
   const covUrl = coverageUrl(meta)
   const radUrl = tileUrl(meta, frame)
 
@@ -74,6 +80,7 @@ export function syncRainviewerLayers(map, { meta, frame, visible }) {
     return false
   }
 
+  const radarSourceExists = Boolean(map.getSource(RAINVIEWER_SOURCE))
   addRasterLayer(map, {
     sourceId: RAINVIEWER_COVERAGE_SOURCE,
     layerId: RAINVIEWER_COVERAGE_LAYER,
@@ -89,9 +96,21 @@ export function syncRainviewerLayers(map, { meta, frame, visible }) {
 
   // 프레임 교체는 타일 주소만 갈아끼운다. 레이어를 지웠다 다시 만들면 slot 순서가 흔들리고 깜빡인다.
   const source = map.getSource(RAINVIEWER_SOURCE)
-  if (source?.setTiles) source.setTiles([radUrl])
+  if (!radarSourceExists) radarTileUrls.set(map, radUrl)
+  else if (source?.setTiles && radarTileUrls.get(map) !== radUrl) {
+    source.setTiles([radUrl])
+    radarTileUrls.set(map, radUrl)
+  }
 
   setMapLayerVisible(map, RAINVIEWER_COVERAGE_LAYER, visible)
   setMapLayerVisible(map, RAINVIEWER_LAYER, visible)
   return true
+}
+
+export function removeRainviewerLayers(map) {
+  if (map.getLayer?.(RAINVIEWER_LAYER)) map.removeLayer(RAINVIEWER_LAYER)
+  if (map.getLayer?.(RAINVIEWER_COVERAGE_LAYER)) map.removeLayer(RAINVIEWER_COVERAGE_LAYER)
+  if (map.getSource?.(RAINVIEWER_SOURCE)) map.removeSource(RAINVIEWER_SOURCE)
+  if (map.getSource?.(RAINVIEWER_COVERAGE_SOURCE)) map.removeSource(RAINVIEWER_COVERAGE_SOURCE)
+  radarTileUrls.delete(map)
 }

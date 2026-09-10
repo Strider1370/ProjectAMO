@@ -6,8 +6,6 @@ Vite + React aviation weather dashboard with a Node/Express weather data backend
 
 ```text
 ProjectAMO/
-  .claude/
-    agents/                  -> Claude subagent roster (researcher/implementer/reviewer, model-tiered)
   frontend/
     public/
       data/                    -> runtime GeoJSON, NAVDATA, and procedure data
@@ -256,7 +254,7 @@ ProjectAMO/
 
 - `frontend/src/main.jsx` imports only the app entry files.
 - Frontend layout sizing should use `frontend/src/app/layout/layoutTokens.css` for shared shell, panel, and breakpoint values before adding new fixed pixel widths.
-- Frontend UI, CSS, layout, and responsive work should follow `docs/policies/design/design-language.md` (the design constitution, single source of truth) for tokens, color, typography, operational UX priorities, review workflow, and proposal-first structural change rules.
+- Frontend UI, CSS, layout, and responsive work should follow `docs/policies/design/design-language.md` (the design constitution, single source of truth) for tokens, color, typography, responsive behavior, accessibility, and operational UX priorities.
 - `frontend/src/app/*` may import `api/`, `features/`, and `shared/`.
 - `frontend/src/features/*` may import `api/`, `shared/`, and local feature siblings when a UI flow requires it.
 - `frontend/src/shared/*` must stay frontend-only and must not import from `app/` or `features/`.
@@ -275,4 +273,3 @@ ProjectAMO/
 - AMOS frontend wind rendering treats current normalized `amos.runways[0]` as the 2-minute wind group and `amos.runways[1]` as the 10-minute wind group; runway-side semantics only apply to visibility and RVR until the backend parser is renamed.
 - Raw terrain sources and generated terrain tiles stay under the backend data root at `terrain/`; locally this is `backend/data/terrain/`, while the production EC2 VM uses `DATA_PATH=/opt/projectamo/shared/data`, so runtime tiles must be under `/opt/projectamo/shared/data/terrain/tiles/`.
 - Frontend requests vertical profile JSON instead of reading DEM files.
-- Responsive layout work must include screenshot evidence for every affected panel/tab state. Store each capture pass under a timestamped folder such as `artifacts/responsive-screenshots/<phase>/<YYYY-MM-DD_HHMM_label>/`, include a short README/manifest with capture time, branch/commit, viewport matrix, capture method, and verification commands, then collect visual QA findings under that folder's `review/issues.md`. Review findings with read-only QA/design subagents before applying focused CSS fixes as a batch.

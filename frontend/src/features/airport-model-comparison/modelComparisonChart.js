@@ -1,10 +1,13 @@
 import { pathSegments } from './modelComparisonViewModel.js'
 
-export const CEILING_CHART_MAX_FT = 10_000
+// 저운고 해상도를 지키려고 단계형 축을 쓴다. 5,000 ft 축에서 400 ft 운고가 읽히는 게
+// 25,000 ft 축에 모두 밀어넣는 것보다 운항 판단에 쓸모 있다.
+export const CEILING_CHART_TIERS = Object.freeze([5_000, 10_000, 25_000])
+export const CEILING_CHART_MAX_FT = 25_000
 
 export function chartDomain(values, unit) {
   if (unit === 'ft') {
-    const max = values.some(value => Number.isFinite(value) && value > 5000) ? CEILING_CHART_MAX_FT : 5000
+    const max = CEILING_CHART_TIERS.find(tier => !values.some(value => Number.isFinite(value) && value > tier)) ?? CEILING_CHART_MAX_FT
     return { min: 0, max, step: max / 5 }
   }
   if (unit === '%') return { min: 0, max: 100, step: 20 }
@@ -28,9 +31,9 @@ export function humidityColor(value) {
   return `rgb(${Math.round(239 - 199 * t)}, ${Math.round(243 - 163 * t)}, ${Math.round(245 - 138 * t)})`
 }
 
-export function plotChartValue(value, unit) {
+export function plotChartValue(value, unit, max = CEILING_CHART_MAX_FT) {
   if (!Number.isFinite(value)) return value
-  return unit === 'ft' ? Math.min(value, CEILING_CHART_MAX_FT) : value
+  return unit === 'ft' ? Math.min(value, max) : value
 }
 
 export function formatAxisTick(value, unit, domainMax) {

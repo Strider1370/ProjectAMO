@@ -204,3 +204,30 @@
 - 캡처/기록: `artifacts/organization-lounge/map-panels-{desktop,ipad}-{aviation,weather,my-map}.png`, `map-panels-browser-result.json`, `map-only-{desktop,ipad}-{hidden,restored}.png`, `map-only-browser-result.json`. 테스트와 브라우저는 한 CPU 코어/nice 10으로 순차 실행했다.
 - 최종 `npm run check` 통과: backend 1,132 + frontend 1,528 = 2,660 tests passed, 기존 skip 1, frontend production build 성공. 기존 500kB chunk 경고는 남아 있다. 로그: `artifacts/organization-lounge/map-controls-npm-check.log`.
 - 이번 요청의 남은 구현 작업 없음. 외부 최신 수집 데이터로의 재확인은 별도이며, 이번 검증 결과를 최신 실황 검증으로 취급하지 않는다.
+
+### 2026-09-11 — 비구성원·비로그인 사용자의 라운지 미리보기
+
+- 요청: 기관 선택/미가입 안내 화면에서 ‘미리보기 체험’을 눌러 로컬 관리자가 보던 예시를 조회하고 직접 조작할 수 있도록 제공.
+- 주 담당: 체험 서버·예시 데이터·통합 검증. 화면 담당(sol/medium): 진입·API 연결·기존 브리핑·개인 저장 경계. 독립 리뷰(astra/high): 권한·세션·자료 URL·초기화 동시성. 최대 동시 작업은 주 담당 포함 3개.
+- `/lounge/preview/home`은 기존 라운지 화면을 재사용한다. 비행/자료/관심대상 편집, 내 비행 공유, 발표 준비·발표, 지도 조작은 실제 서버 처리를 사용한다. 기관 및 기상 브리핑 링크의 식별자 `preview`는 하위 자료 뷰어·확대 발표까지 유지한다.
+- `/api/lounge-preview`는 실제 로그인 세션 미들웨어 **앞**에 종결 라우터로 연결했다. 별도 HttpOnly/SameSite=Strict/path 제한 무작위 쿠키가 브라우저별 in-memory DB와 전용 임시 파일 디렉터리를 식별한다. 실제 로그인 세션·기관 DB를 읽거나 복제하지 않는다. 기존 기관 라우터와 개인 경로 라우터에 체험 DB를 명시적으로 주입해 불변 버전·자료 검증·소유권 검사를 재사용한다.
+- 공개 예시는 `preview-samples.json`의 허용 필드만 정적으로 정리했다. 기존 김포–제주, 김해–김포, 청주–제주 자동 생성 기하/절차와 관심 공항 3개·관심 구역 2개·공지 3개·합동 브리핑 3개를 포함한다. 계정명·소유자 식별자·실제 기관 파일 경로/비공개 데이터는 복사하지 않았다. PDF는 기존 합성 두 쪽 예시를 재생성했으며 편집 가능한 운항 인계 문서를 추가했다.
+- 운항일은 체험 시작일 KST로 배치하며 기상 관측/예보 시각·AIRAC 출처는 조작하지 않는다. 실제 저장 기상을 조회하고 누락·지연을 계속 표시한다. 예시 경로는 실운항 승인 경로를 의미하지 않는다.
+- 체험은 2시간 절대 만료이며 초기화 시 해당 브라우저의 DB·파일을 다시 생성한다. 세션 최대 24개, 동시 생성 4개, 분당 요청 180개, 세션 쓰기 200회·누적 요청 본문 32MiB·DB 16MiB 제한. chunked 쓰기는 크기 우회 방지를 위해 거부한다. 만료 정리에서 진행 중 비동기 작업을 기다리며 초기화 중 새 CRUD를 막는다. 서버 재시작 시 체험 상태는 유지되지 않는다.
+- 독립 리뷰 지적 수정: Content-Length 없는 업로드 한도 우회, 초기화/연결 종료의 비동기 DB 종료 경합, 발표 확대 시 숫자 기관 ID로 되돌아가는 자료 URL, 메인 브리핑 개인 저장의 실제 계정/로컬 저장소 폴백. 관련 HTTP 및 frontend 회귀 테스트를 추가했다.
+- 실제 오늘 날짜의 예시 브리핑에서 기존 `weightedWind`가 단면 예보의 axis 누락 시 예외를 내는 문제를 발견했다. 축 누락은 바람 null·구간 timeStatus unavailable로 처리하고 공식 위험기상과 경로 구간은 유지하는 회귀 테스트를 추가했다.
+- WebKit에서 지도 종료 중 래스터 전환이 남는 오류를 발견해 오버레이 정리 후 map.remove를 실행하고 래스터/낙뢰 전환 작업을 먼저 취소하도록 보완했다. 개발 서버 재시작 뒤 PDF 번들에 504 Outdated Optimize Dep가 발생한 경우 생성 캐시 `frontend/node_modules/.vite`를 지우고 재시작했다(소스 변경 아님).
+- 지도 종료 보완의 최종 범위: 래스터 source 대기의 fallback 타이머·이벤트 리스너를 취소하고, RainViewer 비표시 상태에서 source를 만들지 않으며 동일 URL의 반복 setTiles를 방지한다. map.remove 전에 RainViewer 레이어/source를 제거해 진행 중 TileJSON 요청을 정리한다. 독립 리뷰에서 최종 수정의 추가 차단 이슈가 없음을 확인했다.
+- 실제 HTTP 경계 테스트 6개 통과: 익명 CRUD/방문자 격리, 불변 버전 충돌, 비공개 파일·Range 요청, 위조/다른 세션/기관 접근 거부, Origin·만료·용량, 개인 저장 경로 격리, 연결 종료 중 초기화 경합, chunked 쓰기 거부. 로그 `artifacts/organization-lounge/preview-http-tests.log`.
+- 최종 화면 검증 통과: Chromium 1600×1000(비로그인), WebKit 1180×820(로그인한 기관 미가입자)에서 진입 버튼, 예시 비행 3개·관심 공항 3개·합동 브리핑 3개, 비행 편집/초기화, PDF 2쪽 넘기기를 확인했다. 데스크톱에서는 실제 발표 시작·B 기본/A/B 전환·PDF 확대·발표 종료·기존 기상 브리핑 HTTP 200과 화면 표시도 확인했다. 실제 기관 `/api/organizations/` 요청, pageerror, 최종 resourceErrors는 모두 0이다.
+- Fixture와 실제 데이터 구분: 로컬 AUTO_ADMIN_LOGIN 환경의 로그인 조회만 비로그인/미가입 응답으로 대체했다. 비행·공지·PDF는 공개 체험용 합성/정적 예시이며, 미리보기 CRUD·발표·파일·기상 API는 실제 개발 서버에 요청했다. 기상은 자동수집이 중지된 서버의 저장 자료로 확인했으며 최신 외부 수집 검증은 아니다. 예보 범위 누락 시 기존 브리핑에 ‘위험 판단 제한’이 표시되는 것을 확인했다.
+- 화면 증거: `artifacts/organization-lounge/preview-browser-result.json`, `preview-browser.log`, `verify-preview.mjs`, `preview-{desktop,ipad}-{home,edited,material,briefings}.png`, `preview-desktop-presentation.png`, `preview-desktop-expanded-pdf.png`, `preview-desktop-weather-briefing.png`.
+- 최종 `npm run check` 통과: backend 1,140 + frontend 1,537 = 2,677 tests passed, 기존 skip 1, production build 성공. 기존 500kB chunk 크기 경고는 유지된다. 로그 `artifacts/organization-lounge/preview-npm-check.log`. 모든 테스트·브라우저·빌드는 CPU 1코어/nice 10으로 순차 실행했다.
+- 이번 미리보기 요청의 남은 구현 작업 없음. 개발 서버에 반영했으며 이번 후속 변경은 아직 커밋/푸시하지 않았다. 앞선 라운지 구현은 46812147로 origin/main에 푸시 완료 상태다. 다른 작업의 변경은 보존했다.
+
+### 2026-09-11 — v0.4.0 및 전체 세션 변경 통합
+
+- 사용자 요청으로 앱 버전을 0.3.0에서 0.4.0으로 올리고 라운지·비행 공유·공유자료·합동 발표·지도 조작·미리보기의 사용자용 업데이트 내역을 추가했다. frontend package/lockfile/CURRENT_VERSION 일치를 확인했다.
+- 이어진 명시적 요청에 따라 미리보기뿐 아니라 다른 세션의 공항 모델 비교 개선, 개발 문서 보관 경로 이동, 작업 도구 설정 정리와 저장소에서 제외 해제된 그래프 자료까지 현재 전체 변경을 커밋·푸시 범위에 포함했다.
+- 전체 변경 상태의 최종 `npm run check` 재실행 통과: backend 1,140, frontend 1,537, 총 2,677 통과/기존 skip 1, production build 성공. 로그 `artifacts/organization-lounge/v0.4.0-all-changes-check.log`. 기존 chunk 크기 경고 외 실패 없음. CPU 1코어/nice 10으로 순차 실행했다.
+- AGENTS.md와 CLAUDE.md 동일성을 확인했다. 이동된 문서 3개의 Markdown 줄바꿈은 뒤 공백 대신 역슬래시로 보존해 staged diff 공백 검사도 통과했다. 앞 절의 ‘미커밋/미푸시’는 당시 상태이며 이번 통합에서 포함한다.

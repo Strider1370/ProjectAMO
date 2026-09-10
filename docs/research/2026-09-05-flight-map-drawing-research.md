@@ -2,7 +2,7 @@
 
 **작성일:** 2026-09-05
 **성격:** 조사 기록. 스펙이 아니다. 조각 3~6의 스펙을 쓸 때 근거로 쓴다.
-**선행 자료:** [구글어스 작성 기능 전수 조사](../superpowers/status/2026-08-16-google-earth-authoring-survey.md) · [KML 표출 스파이크 설계](../superpowers/specs/2026-08-12-kml-viewer-spike-design.md) · [KML 스파이크 실측 기록](../superpowers/status/2026-08-12-kml-viewer-spike-findings.md) · [내 지도 설계](../superpowers/specs/2026-08-14-my-map-design.md) · [지역(폴리곤) 기상 브리핑 구현 참조](../design/proposals/2026-07-05-area-briefing-reference.md) ← **조각 5의 원 설계**
+**선행 자료:** [구글어스 작성 기능 전수 조사](../archive/development/status/2026-08-16-google-earth-authoring-survey.md) · [KML 표출 스파이크 설계](../archive/development/specs/2026-08-12-kml-viewer-spike-design.md) · [KML 스파이크 실측 기록](../archive/development/status/2026-08-12-kml-viewer-spike-findings.md) · [내 지도 설계](../archive/development/specs/2026-08-14-my-map-design.md) · [지역(폴리곤) 기상 브리핑 구현 참조](../design/proposals/2026-07-05-area-briefing-reference.md) ← **조각 5의 원 설계**
 
 ## 확정된 전제
 
@@ -35,7 +35,7 @@
 
 그래서 **책임의 위치를 옮긴다.** 우리가 "이게 정답"이라고 하는 대신, 조종사나 소속 기관이 자기 책임으로 관리하는 자료를 우리 판정 엔진에 태운다. 우리는 판정하고, 자료의 정확성은 자료를 넣은 사람이 진다.
 
-이 방향은 [KML 스파이크 설계](../superpowers/specs/2026-08-12-kml-viewer-spike-design.md)에 이미 적혀 있던 것과 같다 — *"우리는 기상기관이다. … 이용자가 준비한 자료를 그대로 보여주는 역할을 맡으면 그 부담이 사라지고, 우리는 기상이라는 본업에 집중할 수 있다."*
+이 방향은 [KML 스파이크 설계](../archive/development/specs/2026-08-12-kml-viewer-spike-design.md)에 이미 적혀 있던 것과 같다 — *"우리는 기상기관이다. … 이용자가 준비한 자료를 그대로 보여주는 역할을 맡으면 그 부담이 사라지고, 우리는 기상이라는 본업에 집중할 수 있다."*
 
 ### 따라오는 요구
 
@@ -57,7 +57,7 @@
 | 5 | 지역 기상 브리핑 | 구역을 고르면 기상이 나옴 | 3 |
 | 6 | 조직 단위 알림 감시 | 내 구역에 위험기상 들어오면 알림 | 4·5 |
 
-1·2번은 [조직 계정과 경로 공유 스펙](../superpowers/specs/2026-09-05-organization-accounts-and-route-sharing-design.md)으로 분리됨.
+1·2번은 [조직 계정과 경로 공유 스펙](../archive/development/specs/2026-09-05-organization-accounts-and-route-sharing-design.md)으로 분리됨.
 
 ### 자료 종류와 연동 지도
 
@@ -182,7 +182,7 @@
 - **CalTopo의 스냅** — 도로·강·기존 도형에 자동으로 붙는다. 우리는 공항·항행표지·픽스·항로에 붙이면 된다.
 - **CalTopo의 버퍼** — 선·점 둘레로 일정 거리 띠. "경로 좌우 5NM"이 회랑 도구보다 범용적.
 - **ForeFlight의 Content Pack** — 배포 꾸러미 모델.
-- **구글어스 웹판의 자동 스타일 물려받기** — [조사 문서](../superpowers/status/2026-08-16-google-earth-authoring-survey.md)가 "반드시 베껴야 한다"고 지목.
+- **구글어스 웹판의 자동 스타일 물려받기** — [조사 문서](../archive/development/status/2026-08-16-google-earth-authoring-survey.md)가 "반드시 베껴야 한다"고 지목.
 
 ### 우리가 이미 이긴 것
 
@@ -242,7 +242,7 @@ ForeFlight는 사용자 KML의 고도를 버린다. 그래서 내보낼 때 **�
 
 ## 5-C. 뺄 것 — 근거 있는 제외
 
-[구글어스 작성 기능 전수 조사](../superpowers/status/2026-08-16-google-earth-authoring-survey.md)가 실물 해부로 지목한 것들. 조각 3에서 만들지 않는다.
+[구글어스 작성 기능 전수 조사](../archive/development/status/2026-08-16-google-earth-authoring-survey.md)가 실물 해부로 지목한 것들. 조각 3에서 만들지 않는다.
 
 | 뺄 것 | 왜 |
 | --- | --- |

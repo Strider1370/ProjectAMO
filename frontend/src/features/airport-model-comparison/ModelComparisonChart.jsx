@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import ModelComparisonTooltip from './ModelComparisonTooltip.jsx'
 import { comparisonDetails } from './modelComparisonDetail.js'
-import { CEILING_CHART_MAX_FT, chartDomain, chartPath, formatAxisTick, humidityColor, plotChartValue } from './modelComparisonChart.js'
+import { chartDomain, chartPath, formatAxisTick, humidityColor, plotChartValue } from './modelComparisonChart.js'
 
 export default function ModelComparisonChart({ series, times, timeLabels, unit, selectedValidAt, emptyState, cumulativeLabel }) {
   const [detail, setDetail] = useState(null)
@@ -36,8 +36,14 @@ export default function ModelComparisonChart({ series, times, timeLabels, unit, 
     const gaps = [i > 0 ? at - Date.parse(s.points[i - 1].at) : NaN, i + 1 < s.points.length ? Date.parse(s.points[i + 1].at) - at : NaN]
     return Math.min(3_600_000, ...gaps.filter(gap => Number.isFinite(gap) && gap > 0)) / 3_600_000 * 64 * scale
   }
+  // 히트맵은 칸이 곧 시각이라 관통선이 칸을 갈라놓는다. 대신 그 시각의 칸 열을 테두리로 감싼다.
+  const columnOutline = at => {
+    const index = times.indexOf(at)
+    const band = index >= 0 && visible[0]?.points?.[index] ? bandWidth(visible[0], index) : 64 * scale
+    return { x: xAt(at) - band / 2 - 2, y: top - 4, width: band + 4, height: visible.length * 30 + 2, rx: 3 }
+  }
   const domain = chartDomain(numeric.flatMap(s => s.points.flatMap(p => [p.value, ...(unit === 'kt' && showGust ? [p.gust] : [])])), unit)
-  const yAt = v => bottom - (plotChartValue(v, unit) - domain.min) / (domain.max - domain.min) * (bottom - top)
+  const yAt = v => bottom - (plotChartValue(v, unit, domain.max) - domain.min) / (domain.max - domain.min) * (bottom - top)
   const ticks = Array.from({ length: Math.round((domain.max - domain.min) / domain.step) + 1 }, (_, i) => Number((domain.min + domain.step * i).toPrecision(10)))
   const focusedTime = () => times.includes(selectedValidAt) ? selectedValidAt : times[0]
   const details = detail ? comparisonDetails(visible, detail.at, unit) : []
@@ -94,8 +100,8 @@ export default function ModelComparisonChart({ series, times, timeLabels, unit, 
           }))}
           {!rain && !humidity && numeric.flatMap(s => s.points.map((p, i) => {
             if (!Number.isFinite(p.value) || !valid(p)) return null
-            return ceiling && p.value > CEILING_CHART_MAX_FT ?
-              <path key={key(s,i)} d={'M' + xAt(p.at) + ',' + (yAt(CEILING_CHART_MAX_FT) - 6) + ' l5,9 h-10 Z'} fill={s.color} className="mc-chart-point mc-overflow-point" tabIndex="-1" role="img" aria-label={s.label + ' ' + p.at + ', ' + p.value + ' ' + unit + ' (10,000 ft 이상)'} {...pointEvents(p)} /> :
+            return ceiling && p.value > domain.max ?
+              <path key={key(s,i)} d={'M' + xAt(p.at) + ',' + (yAt(domain.max) - 6) + ' l5,9 h-10 Z'} fill={s.color} className="mc-chart-point mc-overflow-point" tabIndex="-1" role="img" aria-label={s.label + ' ' + p.at + ', ' + p.value + ' ' + unit + ' (' + domain.max.toLocaleString('ko-KR') + ' ft 이상)'} {...pointEvents(p)} /> :
               <circle key={key(s,i)} cx={xAt(p.at)} cy={yAt(p.value)} r={temperature ? 3 : 2} fill={temperature ? 'var(--bg-1, #fff)' : s.color} stroke={s.color} strokeWidth={temperature ? 1.5 : 0} className="mc-chart-point" tabIndex="-1" role="img" aria-label={markLabel(s,p)} {...pointEvents(p)} />
           }))}
             {unit === 'kt' && showGust && numeric.flatMap(s => s.points.map((p,i) => Number.isFinite(p.gust) && valid(p) ? <circle key={key(s,i,'-gust')} cx={xAt(p.at)} cy={yAt(p.gust)} r="1.8" fill="var(--bg-1, #fff)" stroke={s.color} strokeWidth="1.2" className="mc-chart-point mc-gust-point" tabIndex="-1" role="img" aria-label={s.label + ' Gust ' + p.at + ', ' + p.gust + ' ' + unit} {...pointEvents(p)} /> : null))}
@@ -110,11 +116,15 @@ export default function ModelComparisonChart({ series, times, timeLabels, unit, 
               <rect x={xAt(p.at) - bandWidth(s,i) / 2} y={top + row * 30} width={bandWidth(s,i)} height="24" rx="2" fill={humidityColor(p.value)} className="mc-humidity-cell" tabIndex="-1" role="img" aria-label={markLabel(s,p)} {...pointEvents(p)} />
               <text x={xAt(p.at)} y={top + row * 30 + 16} textAnchor="middle" className="mc-humidity-value" style={{ fill: p.value > 55 ? '#fff' : 'var(--text-1, #242424)' }} pointerEvents="none">{Math.round(p.value)}</text>
             </g> : null)}</g>)}
-          {times.includes(selectedValidAt) && <line x1={xAt(selectedValidAt)} y1={top - 8} x2={xAt(selectedValidAt)} y2={height - 40} className="mc-selected-line" pointerEvents="none" />}
-          {detail && <line x1={xAt(detail.at)} y1={top - 8} x2={xAt(detail.at)} y2={height - 40} className="mc-hover-line" strokeDasharray="3 3" pointerEvents="none" />}
+          {times.includes(selectedValidAt) && (humidity
+            ? <rect {...columnOutline(selectedValidAt)} className="mc-selected-column" pointerEvents="none" />
+            : <line x1={xAt(selectedValidAt)} y1={top - 8} x2={xAt(selectedValidAt)} y2={height - 40} className="mc-selected-line" pointerEvents="none" />)}
+          {detail && (humidity
+            ? <rect {...columnOutline(detail.at)} className="mc-hover-column" strokeDasharray="3 3" pointerEvents="none" />
+            : <line x1={xAt(detail.at)} y1={top - 8} x2={xAt(detail.at)} y2={height - 40} className="mc-hover-line" strokeDasharray="3 3" pointerEvents="none" />)}
           {times.map((t,i) => <text key={t} x={xAt(t)} y={height - 16} textAnchor="middle" className="mc-axis-label">{timeLabels?.[i]?.split(' ')[1] || new Date(t).getUTCHours().toString().padStart(2,'0')}</text>)}
         </svg>}
-      <div className="mc-chart-caption">{rain ? <><span>{cumulativeLabel ? cumulativeLabel + ' 이후 누적' : '표시 구간 누적 강수량'}</span><span>METAR·TAF는 현재날씨</span></> : ceiling ? <><span>계단형 운고 · NSC와 결측 구간은 선을 연결하지 않음</span><span>▲ 10,000 ft 이상</span></> : <span>{humidity ? '모든 모델에 동일한 0–100% 색상 눈금' : temperature ? '기온은 점의 높이로 모델 간 차이 비교' : '실선 풍속 · 점선 돌풍 · 공통 풍속 눈금'}</span>}</div>
+      <div className="mc-chart-caption">{rain ? <><span>{cumulativeLabel ? cumulativeLabel + ' 이후 누적' : '표시 구간 누적 강수량'}</span><span>METAR·TAF는 현재날씨</span></> : ceiling ? <><span>계단형 운고 · NSC와 결측 구간은 선을 연결하지 않음</span><span>{'▲ ' + domain.max.toLocaleString('ko-KR') + ' ft 이상'}</span></> : <span>{humidity ? '모든 모델에 동일한 0–100% 색상 눈금' : temperature ? '기온은 점의 높이로 모델 간 차이 비교' : '실선 풍속 · 점선 돌풍 · 공통 풍속 눈금'}</span>}</div>
       {detail && <ModelComparisonTooltip detail={detail} rows={details} label={timeLabels?.[times.indexOf(detail.at)] || detail.at} chartRef={chartRef} onClose={closeDetail} onPointerEnter={keepDetail} onPointerLeave={leaveDetail} tooltipId={tooltipId} />}
     </div>
   )

@@ -3,7 +3,7 @@
 상태: 조사 완료 · 2026-07-05 · 실측 기반
 
 MVP 범위 문서: `korean_airlines_international_mvp_data_scope.md`(해외 50공항·FIR 20·항로 100·순항 WPT 500).
-구현 계획: `docs/superpowers/plans/overseas-noaa-integration.md`.
+구현 계획: `docs/archive/development/plans/overseas-noaa-integration.md`.
 
 ## 현재 파이프라인 (조사)
 - METAR/TAF/SIGMET/AIRMET/경보 = **전부 기상청(apihub.kma.go.kr, IWXXM XML), 국내 전용**.

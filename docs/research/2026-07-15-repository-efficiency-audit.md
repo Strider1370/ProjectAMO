@@ -258,7 +258,7 @@ root `package-lock.json`은 다른 작업으로 이미 dirty 상태다. lockfile
 
 #### 실행 fixture가 plan archive 아래 있음
 
-- 현재: `docs/superpowers/plans/fixtures/`
+- 현재: `docs/archive/development/plans/fixtures/`
 - 규모: 10개, 409,707 bytes
 - live caller: `frontend/scripts/route-import-capture.mjs:11`, `route-import-real-files-capture.mjs:11`
 
@@ -268,18 +268,18 @@ root `package-lock.json`은 다른 작업으로 이미 dirty 상태다. lockfile
 
 archive 가능:
 
-- `docs/superpowers/status/2026-07-07-dev-mode-console-status.md`
-- `docs/superpowers/status/cleanup-dead-code-and-stale-docs.status.md`
+- `docs/archive/development/status/2026-07-07-dev-mode-console-status.md`
+- `docs/archive/development/status/cleanup-dead-code-and-stale-docs.status.md`
 
 조건부 archive/move:
 
 - `overseas-weather-noaa.md`: live Playwright 후속 내용을 활성 계획으로 옮긴 뒤 archive
 - `overseas-data-research.md`: `docs/research/`로 이동하고 두 inbound plan reference 갱신
-- root `status.md`: 아직 사용자 환경 검증 checklist가 있으므로 삭제하지 말고 `docs/superpowers/status/2026-07-07-route-forecast-alert.status.md`로 이동
+- root `status.md`: 아직 사용자 환경 검증 checklist가 있으므로 삭제하지 말고 `docs/archive/development/status/2026-07-07-route-forecast-alert.status.md`로 이동
 
 완료 plan 이동:
 
-- `tasks/design-system-phase1/plan.md` → `docs/superpowers/archive/plans/2026-06-28-design-system-phase1.md`
+- `tasks/design-system-phase1/plan.md` → `docs/archive/development/archive/plans/2026-06-28-design-system-phase1.md`
 
 #### production public에 있는 design prototype
 
@@ -287,7 +287,7 @@ archive 가능:
 - source importer는 없지만 세 문서가 작동 프로토타입으로 참조한다.
 - `/api/*` relative fetch와 `/logo3_01.png`를 사용해 Vite public origin을 전제로 한다.
 
-static reference로 강등할지 먼저 결정해야 한다. 작동형이면 public에 유지하거나 새 origin/base를 구성한다. 정적 참고본이면 비작동 참고 자료임을 명시하고 문서 참조 세 곳을 갱신한 뒤 `docs/superpowers/specs/refs/`로 이동한다.
+static reference로 강등할지 먼저 결정해야 한다. 작동형이면 public에 유지하거나 새 origin/base를 구성한다. 정적 참고본이면 비작동 참고 자료임을 명시하고 문서 참조 세 곳을 갱신한 뒤 `docs/archive/development/specs/refs/`로 이동한다.
 
 ### 4.8 전체 테스트와 CI 진입점 부재
 

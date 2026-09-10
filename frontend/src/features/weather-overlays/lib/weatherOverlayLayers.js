@@ -571,3 +571,8 @@ export function syncLightningLayers(map, model) {
   setLightningVisibility(map, model.visibility.lightning)
   setLightningBlinkState(map, model.visibility.lightning && model.blinkLightning && model.lightningBlinkOff)
 }
+
+export function disposeLightningFrameSync(map) {
+  lightningFrameSyncs.get(map)?.cancel()
+  lightningFrameSyncs.delete(map)
+}

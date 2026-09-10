@@ -61,6 +61,9 @@
 .mc-axis-label{font-size:11px}
 .mc-selected-line{stroke-width:1;opacity:.6;vector-effect:non-scaling-stroke}
 .mc-hover-line{stroke:var(--accent,#334155);stroke-width:1;vector-effect:non-scaling-stroke}
+.mc-selected-column,.mc-hover-column{fill:none;stroke:var(--accent,#334155);vector-effect:non-scaling-stroke}
+.mc-selected-column{stroke-width:2}
+.mc-hover-column{stroke-width:1}
 .mc-chart-point,.mc-nsc-point{vector-effect:non-scaling-stroke}
 .mc-weather-band-text,.mc-humidity-value{font-size:10px;fill:var(--text-3,#616161)}
 .mc-chart-caption{display:flex;justify-content:space-between;gap:var(--space-m,12px);padding:var(--space-s,8px) var(--space-l,16px);border-top:1px solid var(--stroke-2,#e0e0e0);color:var(--text-3,#616161);font-size:var(--fs-200,12px);position:sticky;left:0;box-sizing:border-box;width:100cqw;max-width:100cqw;flex-wrap:wrap}

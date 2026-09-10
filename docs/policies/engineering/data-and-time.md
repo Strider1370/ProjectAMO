@@ -8,10 +8,6 @@ Changing timestamps, KMA/KIM data, parser contracts, snapshots, caches, collecto
 
 Pure presentation work without time/data semantics belongs to design; map rendering belongs to map and layers.
 
-## Re-check trigger
-
-Re-check the policy index when a change crosses parser, store, collector, API, or user-facing formatter boundaries.
-
 ## Time contract
 
 - Store and compare instants as UTC or epoch values.

@@ -12,6 +12,7 @@ export function ModelComparisonSummary({ summary, compact = false }) {
       <section className="mc-summary-metric" aria-label="바람 요약">
         <h2>바람 <span>모델 범위</span></h2>
         <div className={`mc-summary-wind${summary.compact.windRange ? '' : ' mc-summary-missing'}`}>{summary.compact.windRange || '자료 없음'}{summary.compact.windRange && <span> kt</span>}</div>
+        {summary.compact.directionRange && <div className="mc-summary-gust">풍향 <strong>{summary.compact.directionRange}</strong></div>}
         {summary.compact.gustRange && <div className="mc-summary-gust">Gust <strong>{summary.compact.gustRange} kt</strong></div>}
       </section>
       {[{ key: 'precipitation', title: '강수량', unit: 'mm · 시간당' }, { key: 'ceiling', title: '운고', unit: 'ft AGL' }].map(item => (

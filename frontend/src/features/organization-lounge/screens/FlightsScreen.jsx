@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Edit3, FilePlus2, Plane, Plus, Save, StickyNote } from 'lucide-react'
 import { listSavedRoutes } from '../../route-briefing/lib/routeStore.js'
 import { briefingTimeFields } from '../../route-briefing/lib/briefingTime.js'
-import { organizationRequest } from '../api.js'
+import { listPreviewSavedRoutes, organizationRequest } from '../api.js'
 import { buildOrganizationFlightDraft, localInputToIso } from '../flightDraft.js'
 import ShareFlightDialog from '../ShareFlightDialog.jsx'
 import OrganizationMap from '../OrganizationMap.jsx'
@@ -46,7 +46,12 @@ export default function FlightsScreen({ orgId, route, data, tz, user, navigate, 
 function FlightForm({ orgId, data, user, busy, setBusy, tz, onClose, onSaved }) {
   const [routes, setRoutes] = useState([])
   const [error, setError] = useState('')
-  useEffect(() => { listSavedRoutes({ kind: 'route' }).then(setRoutes).catch((reason) => setError(reason.message)) }, [])
+  useEffect(() => {
+    const loadRoutes = orgId === 'preview'
+      ? () => listPreviewSavedRoutes().then((items) => items.filter((item) => item.kind !== 'briefing'))
+      : () => listSavedRoutes({ kind: 'route' })
+    loadRoutes().then(setRoutes).catch((reason) => setError(reason.message))
+  }, [orgId])
   async function submit(event) {
     event.preventDefault(); setBusy(true); setError('')
     const values = new FormData(event.currentTarget)
@@ -60,7 +65,7 @@ function FlightForm({ orgId, data, user, busy, setBusy, tz, onClose, onSaved }) 
   }
   return <Dialog title="예정비행 등록" onClose={onClose}><form className="ol-form" onSubmit={submit}>
     <label className="ol-full">비행명<input name="name" required /></label>
-    <label className="ol-full">개인 저장 경로<select name="routeId" required><option value="">경로 선택</option>{routes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+    <label className="ol-full">{orgId === 'preview' ? '체험용 저장 경로' : '개인 저장 경로'}<select name="routeId" required><option value="">경로 선택</option>{routes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
     <label>출발시각 · {tz}<input name="etd" type="datetime-local" required /></label>
     <label>도착시각 · {tz}<input name="eta" type="datetime-local" required /></label>
     <label>계획고도 · ft AMSL<input name="altitude" type="number" min="500" max="60000" step="100" required /></label>

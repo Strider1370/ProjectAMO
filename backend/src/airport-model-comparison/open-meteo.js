@@ -13,7 +13,9 @@ const SURFACE_FIELDS = Object.freeze([
   'temperature_2m', 'relative_humidity_2m', 'dew_point_2m', 'pressure_msl',
   'cloud_cover', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high',
 ])
-const LEVELS = Object.freeze({ ecmwf: [1000, 925, 850, 700], icon: [1000, 975, 950, 925, 900, 850] })
+// 25,000 ft(약 400 hPa)까지 덮는 제공자별 최대 집합. EC IFS는 저층에 1000/925/850만 있어
+// 975·950·900을 요청할 수 없다(제공 안 함). ICON은 875·800·750까지 있어 저층 해상도가 더 촘촘하다.
+const LEVELS = Object.freeze({ ecmwf: [1000, 925, 850, 700, 600, 500, 400], icon: [1000, 975, 950, 925, 900, 875, 850, 800, 750, 700, 600, 500, 400] })
 const MODEL_NAMES = Object.freeze({ ecmwf: 'ecmwf_ifs025', icon: 'icon_global' })
 const META_DIRECTORIES = Object.freeze({ ecmwf: 'ecmwf_ifs025', icon: 'dwd_icon' })
 const GRID_MATCH_DEGREES = Object.freeze({ ecmwf: 0.2, icon: 0.12 })

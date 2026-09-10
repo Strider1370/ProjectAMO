@@ -25,6 +25,25 @@ export function cumulativeHourly(values) {
   })
 }
 
+// 풍향은 0/360을 넘나들어 단순 최소-최대가 뒤집힌다(350°와 10°는 20° 차이지 340° 차이가 아니다).
+// 값들 사이의 가장 넓은 빈 구간을 찾아, 그 바깥쪽 호를 모델 간 풍향 범위로 쓴다.
+export function directionRange(values) {
+  const degrees = [...new Set(values.filter(finite).map(value => Math.round(value) % 360))].sort((a, b) => a - b)
+  if (!degrees.length) return null
+  if (degrees.length === 1) return { from: degrees[0], to: degrees[0], span: 0 }
+  const gaps = degrees.map((degree, i) => i ? degree - degrees[i - 1] : degree + 360 - degrees.at(-1))
+  const widest = gaps.indexOf(Math.max(...gaps))
+  const from = degrees[widest], to = degrees[(widest - 1 + degrees.length) % degrees.length]
+  return { from, to, span: (to - from + 360) % 360 }
+}
+
+// 항공 표기대로 세 자리로 채우고, 정북은 0이 아니라 360으로 읽는다.
+export function formatDirectionRange(range) {
+  if (!range) return null
+  const degree = value => String(value === 0 ? 360 : value).padStart(3, '0')
+  return range.span === 0 ? `${degree(range.from)}°` : `${degree(range.from)}–${degree(range.to)}°`
+}
+
 export function pathSegments(points) {
   const segments = []
   let current = []
@@ -199,6 +218,7 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
   }
   const selectedModels = MODEL_ORDER.map(model => modelRecords.get(model)?.get(selected)).filter(Boolean)
   const winds = selectedModels.map(r => r.wind_speed_kt).filter(finite), gusts = selectedModels.map(r => r.wind_gust_kt).filter(finite)
+  const directions = formatDirectionRange(directionRange(selectedModels.map(r => r.wind_direction_deg)))
   const range = values => values.length ? `${fmtNumber(Math.min(...values))}–${fmtNumber(Math.max(...values))}` : '자료 없음'
   const summary = {
     valid_at: selected,
@@ -206,6 +226,7 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
     modelCount: selectedModels.length,
     compact: {
       windRange: winds.length ? range(winds) : null,
+      directionRange: directions,
       gustRange: gusts.length ? range(gusts) : null,
       models: MODEL_ORDER.map(model => {
         const r = modelRecords.get(model)?.get(selected)
@@ -218,7 +239,7 @@ export function buildComparisonViewModel({ data, nowMs, selectedValidAt, tz = 'K
         }
       }),
     },
-    wind: `${selectedModels.length}개 모델 · 풍속 ${range(winds)} kt${gusts.length ? ` · Gust ${range(gusts)} kt` : ''}`,
+    wind: `${selectedModels.length}개 모델 · 풍향 ${directions || '자료 없음'} · 풍속 ${range(winds)} kt${gusts.length ? ` · Gust ${range(gusts)} kt` : ''}`,
     precipitation: MODEL_ORDER.map(model => { const r = modelRecords.get(model)?.get(selected); return `${MODEL_LABELS[model]} ${finite(r?.precipitation_mm) ? `${fmtNumber(r.precipitation_mm, 1)} mm` : '자료 없음'}` }).join(' · '),
     ceiling: MODEL_ORDER.map(model => { const r = modelRecords.get(model)?.get(selected); return `${MODEL_LABELS[model]} ${finite(r?.ceiling_agl_ft) ? `${fmtNumber(r.ceiling_agl_ft)} ft` : r ? statusText(r) : '예보 범위 밖'}` }).join(' · '),
   }

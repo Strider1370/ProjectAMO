@@ -1,6 +1,14 @@
 import { MODEL_COMPARISON_AIRPORTS, MODEL_ORDER } from '../../../shared/airport-model-comparison.js'
 
 export const HOUR_MS = 3_600_000
+// 운고 탐색 상한. ASOS 경로의 NSC 상한(asos-ceiling-processor.js NSC_CEILING_FT)과 같은 25,000 ft.
+// CEILING_STRICT_FT 아래에서는 못 쓰는 층 하나만 있어도 missing_input으로 막는다(저운고를 놓칠 수 없다).
+// 그 위의 못 쓰는 층은 evidence에 unusable로 남기고 건너뛴다 — NSC가 보장하는 5,000 ft 아래 판정은 그대로다.
+export const CEILING_LIMIT_FT = 25_000
+export const CEILING_STRICT_FT = 5_000
+// 상한을 5,000 ft에서 늘리기 전에 발행된 스냅샷도 계속 읽히게 둔다(부분 실패 시 마지막
+// 정상 스냅샷 유지 계약). 모든 런이 한 바퀴 돌아 교체되면 5000은 빼도 된다.
+export const ACCEPTED_CEILING_LIMITS_FT = Object.freeze([CEILING_LIMIT_FT, 5000])
 export const CEILING_METHODS = Object.freeze({ kim: 'cloud_condensate_estimate', ecmwf: 'humidity_based_estimate', gfs: 'model_diagnostic', icon: 'pressure_level_estimate' })
 export const WEATHER_FIELDS = Object.freeze(['wind_direction_deg', 'wind_speed_kt', 'wind_gust_kt', 'precipitation_mm', 'temperature_c', 'relative_humidity_pct', 'dew_point_c', 'pressure_msl_hpa', 'cloud_total_pct', 'cloud_low_pct', 'cloud_mid_pct', 'cloud_high_pct', 'ceiling_agl_ft', 'visibility_m'])
 
@@ -31,16 +39,17 @@ export function estimateCeiling({ model, grid_elevation_m, layers }) {
   assertComparisonIdentity({ model })
   if (model === 'gfs') throw new Error('gfs_requires_model_diagnostic')
   const evidence = []
-  const result = (status, value = null) => ({ ceiling_agl_ft: value, ceiling_method: CEILING_METHODS[model], ceiling_status: status, ceiling_limit_ft: 5000, ceiling_source_levels: evidence })
+  const result = (status, value = null) => ({ ceiling_agl_ft: value, ceiling_method: CEILING_METHODS[model], ceiling_status: status, ceiling_limit_ft: CEILING_LIMIT_FT, ceiling_source_levels: evidence })
   if (!Number.isFinite(grid_elevation_m) || !Array.isArray(layers) || !layers.length) return result('missing_input')
   // Unknown layer heights cannot safely be ordered below a candidate ceiling.
   if (layers.some(l => !Number.isFinite(l.height_m))) return result('missing_input')
   const ordered = layers.map(l => ({ ...l, agl_m: l.height_m - grid_elevation_m })).sort((a,b) => a.agl_m-b.agl_m)
   for (const layer of ordered) {
     const agl_ft = layer.agl_m / .3048
-    if (layer.agl_m < 30 || agl_ft > 5000) continue
-    evidence.push({ ...layer, agl_ft, selected: false })
-    if (!Number.isFinite(layer.cloud_fraction) || layer.cloud_fraction < 0 || layer.cloud_fraction > 1 || (model === 'kim' && (!Number.isFinite(layer.tqc_kgkg) || !Number.isFinite(layer.tqi_kgkg)))) return result('missing_input')
+    if (layer.agl_m < 30 || agl_ft > CEILING_LIMIT_FT) continue
+    const unusable = !Number.isFinite(layer.cloud_fraction) || layer.cloud_fraction < 0 || layer.cloud_fraction > 1 || (model === 'kim' && (!Number.isFinite(layer.tqc_kgkg) || !Number.isFinite(layer.tqi_kgkg)))
+    evidence.push({ ...layer, agl_ft, selected: false, ...(unusable ? { unusable: true } : {}) })
+    if (unusable) { if (agl_ft <= CEILING_STRICT_FT) return result('missing_input'); continue }
     if (layer.cloud_fraction > .5 && (model !== 'kim' || Math.max(0, layer.tqc_kgkg) + Math.max(0, layer.tqi_kgkg) > 1e-6)) {
       evidence.at(-1).selected = true
       return result('value', agl_ft)
@@ -74,7 +83,7 @@ export function validateAirportRecords({ airport_icao, model, run_at, window, re
       if (!Number.isFinite(value)) throw new Error(`invalid_record_field:${key}`)
       if ((key.endsWith('_pct') && (value < 0 || value > 100)) || (key === 'wind_direction_deg' && (value < 0 || value > 360)) || (['wind_speed_kt','wind_gust_kt','precipitation_mm','visibility_m','ceiling_agl_ft'].includes(key) && value < 0) || (key === 'pressure_msl_hpa' && value <= 0)) throw new Error(`invalid_record_field:${key}`)
     }
-    if (r.ceiling_method !== CEILING_METHODS[model] || !['value','not_detected_below_limit','no_ceiling','missing_input','outside_run'].includes(r.ceiling_status) || (r.ceiling_status === 'value') !== Number.isFinite(r.ceiling_agl_ft) || !Array.isArray(r.ceiling_source_levels) || (model !== 'gfs' && r.ceiling_limit_ft !== 5000) || (model === 'gfs' && r.ceiling_limit_ft !== null && !Number.isFinite(r.ceiling_limit_ft))) throw new Error('invalid_ceiling_state')
+    if (r.ceiling_method !== CEILING_METHODS[model] || !['value','not_detected_below_limit','no_ceiling','missing_input','outside_run'].includes(r.ceiling_status) || (r.ceiling_status === 'value') !== Number.isFinite(r.ceiling_agl_ft) || !Array.isArray(r.ceiling_source_levels) || (model !== 'gfs' && !ACCEPTED_CEILING_LIMITS_FT.includes(r.ceiling_limit_ft)) || (model === 'gfs' && r.ceiling_limit_ft !== null && !Number.isFinite(r.ceiling_limit_ft))) throw new Error('invalid_ceiling_state')
     if (r.forecast_hour === 0 && ['wind_gust_kt','precipitation_mm'].some(key => r[key] !== null || r.field_provenance[key].missing_reason !== 'structural_f000')) throw new Error('invalid_structural_f000')
     return r
   })

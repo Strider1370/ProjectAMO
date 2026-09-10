@@ -10,7 +10,7 @@ const SOUNDING_SAMPLES = Array.from({ length: 13 }, (_, index) => {
     image: `/briefing-charts/_kim_gdps_skew_47113_s${String(hour).padStart(3, '0')}_2026090712.png`,
   }
 })
-const KINDS = [{ id: 'profile', label: '연직시계열' }, { id: 'sounding', label: '단열선도' }]
+const KINDS = [{ id: 'sounding', label: '단열선도' }, { id: 'profile', label: '연직시계열' }]
 
 function SampleTimeControl({ index, onSelect, label }) {
   return <div className="mc-step-control">
@@ -23,7 +23,7 @@ function SampleTimeControl({ index, onSelect, label }) {
 
 export default function AtmosphericReference() {
   const { tz } = useTimeZone()
-  const [kind, setKind] = useState('profile')
+  const [kind, setKind] = useState('sounding')
   const [sampleIndex, setSampleIndex] = useState(0)
   const [open, setOpen] = useState(false)
   const dialogRef = useRef(null)

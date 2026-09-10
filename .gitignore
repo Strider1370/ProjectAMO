@@ -8,10 +8,6 @@ korea3sec.bin
 korea3sec.bin.Z
 artifacts/
 .artifacts/
-# graphify code knowledge graph artifacts
-graphify-out/
-.graphify/
-
 # local browser sessions and ad-hoc verification output
 .playwright-cli/
 output/
@@ -19,8 +15,6 @@ debug.log
 frontend/debug.log
 scripts/__pycache__/
 
-# brainstorming working artifacts
-.superpowers/
 .worktrees/
 .env.bak-*
 backups/

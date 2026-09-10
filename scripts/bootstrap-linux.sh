@@ -27,7 +27,6 @@ echo "== installing Playwright browser =="
 npx --prefix frontend playwright install --with-deps chromium
 
 echo "== git config =="
-git config core.hooksPath .githooks
 git config core.autocrlf false
 git config core.eol lf
 

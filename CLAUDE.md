@@ -1,60 +1,41 @@
-# ProjectAMO agent entrypoint
+# ProjectAMO
 
-`AGENTS.md` (Codex) and `CLAUDE.md` (Claude) are the same document. Change both together. Both names are case-sensitive on Linux — keep `CLAUDE.md` uppercase or Claude Code will not load it.
+Vite + React aviation weather dashboard with a Node/Express backend.
+`AGENTS.md` and `CLAUDE.md` contain the same project reference; keep them identical.
 
-Read [the policy index](docs/policies/index.md) and the relevant `Architecture.md` section before editing. Follow the index's matching detailed policy; for ambiguous work, read up to two and re-check routing if exploration crosses a boundary.
+## Environment and commands
 
-Fallback when policy routing or a hook is unavailable: use `Architecture.md` and [the policy index](docs/policies/index.md); hooks never replace these documents.
+- Linux only (including WSL). Node version: `.nvmrc`; package manager: npm.
+- Fresh clone: `bash scripts/bootstrap-linux.sh`.
+- Development servers: `npm run dev:serve` (backend 3001, frontend 5173).
+- Server readiness check with automatic cleanup: `npm run dev:verify`.
+- Tests: `npm test`; frontend build: `npm run build`; both: `npm run check`.
+- Browser contract: `npm run dev:contract -- --grep <contract-id>`.
+- Source files use UTF-8 and LF. Playwright screenshot baselines are Linux-only.
+- Temporary output belongs under ignored `artifacts/` or `.artifacts/`.
 
-## Workflow
+## Project references
 
-Process is owned by the superpowers skills. **Invoke a matching skill directly — do not ask for approval first.** If there is any chance a skill applies, invoke it.
+- [Architecture](Architecture.md): directories, module ownership, and import boundaries.
+- [Engineering and design references](docs/policies/index.md): data, time, maps, UI, and verification contracts.
+- [Local servers and screenshots](docs/operations/dev-server-and-capture.md).
+- [Operations and deployment](docs/operations/operations.md).
 
-### Feature pipeline — the user decides when it runs
+## Important contracts
 
-There is no size threshold and no checklist. The user judges whether a piece of work warrants the pipeline. When the user calls for this workflow, run every step in order and skip none. Invoking `brainstorming` means the pipeline is on. Otherwise, just do the work.
+- Store and compare instants as UTC or epoch values; parse source times in their documented timezone and honor the selected display timezone.
+- Preserve the last usable snapshot when collection partially fails; validate upstream data at the boundary.
+- Use the existing design tokens and preserve accessibility and responsive behavior.
+- Backend code does not import frontend code. Frontend shared modules stay frontend-only.
+- Production data lives at `/opt/projectamo/shared/data`. Dependency changes require `deploy/deploy-vm-full.sh`; the fast deploy does not install dependencies.
 
-1. **`brainstorming`** — settle requirements, alternatives, and design in conversation, then write the spec to `docs/superpowers/specs/`. **The user reviews the spec themselves — do not dispatch a reviewer subagent for it.** Proceed only on explicit approval.
-2. **`writing-plans`** — decompose the approved spec into an executable plan under `docs/superpowers/plans/`.
-3. **Plan review** — dispatch the `reviewer` subagent with both the plan and the approved spec, plus the policies routed by [the policy index](docs/policies/index.md). It checks that every requirement maps to a task, that no task invents a user-affecting decision absent from the spec, and that the named files and interfaces actually exist. Resolve the findings, then obtain explicit user approval.
-4. **Implement** — `subagent-driven-development` when the work is large or main-session context is already tight; continuity then comes from the plan and status files rather than the chat history. `executing-plans` when it fits inline with checkpoints. Use `test-driven-development` inside either path.
-5. **`verification-before-completion`** — run the real thing, the app or the browser contract, and show its output. An embedded preview is not evidence. No completion claim without it.
-6. **`systematic-debugging`** — the moment anything fails, at any step above. Root cause, not the symptom; return to the failed step rather than patching around it.
-7. **`finishing-a-development-branch`** — finish, commit, push, or PR requests.
+## Working preferences
 
-### Outside the pipeline
-
-`systematic-debugging`, `verification-before-completion`, and `test-driven-development` apply to any work, pipeline or not. `requesting-code-review` / `receiving-code-review` cover review cycles on implemented code. `using-git-worktrees` and `dispatching-parallel-agents` cover isolation and independent parallel work.
-
-Task packet documents live under `docs/superpowers/{specs,plans,status}/`.
-
-## Environment
-
-This is a Linux-only project. The repository lives in Linux at `~/ProjectAMO` (WSL Ubuntu today, any Linux host tomorrow). Run `git`, `npm`, `node`, and `graphify` from a Linux shell only — never from `cmd.exe`, PowerShell, or a Windows-side tool.
-
-- After a fresh clone, run `bash scripts/bootstrap-linux.sh` once before anything else — it pins the Node version, installs dependencies with `npm ci`, fetches the Playwright browser, and sets `core.hooksPath` / line-ending git config.
-- Commands and docs use `npm`, `bash`, `curl`, `ss`, and `~/.ssh/...` — no PowerShell, no `.cmd`/`.exe` binaries, no `C:\` paths.
-- Playwright snapshot baselines are Linux-only (`*-linux.png`).
-
-## Always
-
-- **Ponytail on every coding task** — implementation, fixes, refactors, reviews, technical design. Make the smallest safe change *after* understanding the flow. It never waives investigation, tests, security, accessibility, or validation at trust boundaries.
-- **Graphify before broad code reading** — when `graphify-out/graph.json` exists, run `graphify query "<question>"`; use `path`/`explain` to narrow relationships. Graph results guide exploration and never replace tests or browser verification. Run `graphify update .` after code changes. This applies to subagents too — include it in every subagent prompt involving code exploration.
-- State material assumptions and make the smallest approved change.
-- Read [encoding safety](docs/policies/encoding-safety.md) before edits touching Korean or other non-ASCII text.
-- Browser-visible work requires Playwright evidence, not an embedded preview: [browser verification](docs/policies/verification/browser-verification.md), [the contract registry](docs/policies/verification/contracts.md), and [the dev-server procedure](docs/operations/dev-server-and-capture.md).
-- Keep temporary outputs in ignored artifact locations; remove only files the current task created.
-- Update architecture or policy documents only when they no longer describe reality.
-
-## graphify
-
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
-
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- Carry implementation and fix requests through to completion and relevant verification within the authorized scope.
+- Make reasonable assumptions for routine, reversible decisions; ask when missing information materially affects correctness, scope, or authorization.
+- Follow existing project patterns and keep changes focused on the request.
+- Match verification to the affected behavior and report any checks you could not complete.
+- Respond in Korean. Lead with the result, then briefly explain meaningful changes, verification, and remaining issues.
+- Before requesting approval, complete preparation that is already authorized and present a concrete, reviewable result.
+- Explicit user instructions take precedence over conflicting skill guidelines, subject to higher-priority instructions and actual permission boundaries. If a skill causes a pause or deviation, identify the file and relevant rule, distinguish explicit requirements from your interpretation, and continue unaffected authorized work.
+- Avoid repetitive transitions, stock phrases, and boilerplate warnings about hypothetical risks. Use lists when they improve readability.

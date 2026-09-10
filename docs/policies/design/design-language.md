@@ -1,25 +1,9 @@
 # ProjectAMO 디자인 헌법 (Design Language)
 
 > **이 문서는 ProjectAMO 디자인 규칙의 유일한 출처(single source of truth)다.**
-> 모든 UI·CSS·레이아웃·반응형·디자인 작업 전에 이 문서를 먼저 읽고 그대로 따른다.
-> 구(舊) `docs/ui-responsive-guidelines.md`는 이 문서로 **통합되어 삭제**되었다(§6·§7이 그 내용).
-> `docs/research/*`, `docs/superpowers/specs/refs/*`는 **참고자료이며 규칙이 아니다.** 날짜별 `docs/superpowers/specs|plans/*`는 **과거 기록**이다.
+> `docs/research/*`, `docs/archive/development/specs/refs/*`는 **참고자료이며 규칙이 아니다.** 날짜별 `docs/archive/development/specs|plans/*`는 **과거 기록**이다.
 
-## Policy routing
-
-Back to the [policy index](../index.md).
-
-## Applies when
-
-Creating or changing UI, CSS, layout, responsive behavior, or browser-visible interaction.
-
-## Does not apply when
-
-Use the engineering policies for data/collector or Mapbox ownership that has no UI or layout boundary.
-
-## Re-check trigger
-
-Re-check the policy index when a task changes responsive structure, a feature boundary, or requires browser verification.
+관련 문서: [엔지니어링·디자인 문서 안내](../index.md).
 
 ---
 
@@ -123,7 +107,7 @@ Re-check the policy index when a task changes responsive structure, a feature bo
 
 - **개발·테스트 우선순위: iPad Safari(가로) ≥ 데스크톱 > 폰 > 안드로이드.** 반응형·QA는 iPad 가로(대략 1024×768 / 1180×820)를 1급 표면으로 본다.
 - **배포 형태 = 네이티브 앱 아님 → 웹앱 + PWA.** 홈화면 설치(앱 아이콘·전체화면) + iOS 웹푸시(iOS는 홈화면 추가 시에만 동작 — #13 알림 온보딩에 반영). 앱스토어 배포가 정말 필요해지면 Capacitor로 현 React 앱을 래핑(먼 미래 옵션), Swift 재작성은 지양.
-- ⚠️ **현재 갭: 태블릿(iPad) 반응형이 아직 미대응.** 지금 반응형은 데스크톱·폰(≤719) 위주이고 태블릿 가로 표면은 별도 검토 필요. 구조 변경은 헌법 §6-D(제안·승인 후 구현) 원칙을 따른다.
+- ⚠️ **현재 갭: 태블릿(iPad) 반응형이 아직 미대응.** 지금 반응형은 데스크톱·폰(≤719) 위주이고 태블릿 가로 표면은 별도 검토 필요.
 
 ---
 
@@ -198,27 +182,11 @@ ProjectAMO는 마케팅 사이트가 아니라 운영 도구다. UI는 조종사
 - 페이지 가로 스크롤 = 실패.
 - 패널 내부 가로 스크롤은 본질적으로 2차원인 콘텐츠(빽빽한 표, 다일 예보 그리드)의 폴백으로만 허용. 더 명확한 구조가 있으면 그쪽 제안.
 
-## 7. 워크플로우 (구 ui-responsive-guidelines 흡수)
+## 7. 사용성 기준
 
-**보이는 UI 작업 절차:** (1) 관련 상태·뷰포트 캡처 → (2) 편집 전 이슈 기록 → (3) 기계적 깨짐 vs 운영 명료성 문제 분리 → (4) read-only 리뷰어로 점검 → (5) 이슈 수집 후에만 집중 수정 → (6) 재캡처·상태 갱신.
-반응형 작업은 영향받는 패널/탭 상태마다 **스크린샷 증거** 필수. `artifacts/responsive-screenshots/<phase>/<YYYY-MM-DD_HHMM_label>/`에 저장 + 짧은 manifest + `review/issues.md`.
+- 핵심 상태와 경보를 빠르게 찾고 읽을 수 있어야 한다.
+- 컨트롤은 보이고, 닿을 수 있으며, 동작이 명확해야 한다. 클릭 가로채기·숨은 상태·오버플로를 피한다.
+- 타이포·색·강조·그룹핑은 항공 기상 정보를 빠르게 읽는 데 기여해야 한다.
+- 화면마다 개별 값을 늘리기보다 공유 토큰으로 일관성을 유지한다.
 
-**리뷰어 질문:**
-- *UI QA:* 핵심 상태를 몇 초 안에 찾나? · 압박 속 읽기 어려운 값/라벨/경보? · 컨트롤이 보이고 닿고 명확한가? · 클릭 가로채기·숨은 상태·오버플로? · 지도가 주 읽기를 압도하지 않나?
-- *디자인:* 밀도가 운영 도구다운가? · 타이포가 스캔을 돕나? · 색·강조·그룹핑이 기능적인가? · 간격 폴리시 문제인가 정보구조 문제인가? · 더 강한 구조 변경이 속도·이해를 높이나?
-- *스펙:* 승인 범위 안인가? · 미승인 구조 행동을 넣었나? · 제안이 승인 전 구현됐나?
-
-### Proposal-First 규칙 (구조 변경)
-새 모바일 작업탭 모델, map/data 모드 분리, drawer→sheet 전환, 풀스크린 스텝 흐름 등 **인터랙션 아키텍처 변경은 기본 미실행.** 캡처·분석·결함 식별·운영자 중심 제안서·기대 효과 정리까지만 하고, **사용자 명시 승인 후** 구현한다.
-
----
-
-## 8. 적용 로드맵
-- **준비:** 헌법 확정(=이 문서) · Pretendard 자체 호스팅 · 토큰 단일 소스 구축 · lint 가드레일 · 기준선 캡처.
-- **계획:** 파일럿 1개 기능 전환으로 패턴 확립 · 컴포넌트 매핑(Fluent vs bespoke) · 마이그레이션 순서(브리핑=견본 → 공항패널 → 날씨오버레이 → 지도 chrome → 모니터링).
-- **실행:** 기능 단위 루프(캡처 → 토큰/Fluent 교체 → 스크린샷 회귀 → AA → build/test → 머지). spec→구현→리뷰.
-
-## 9. 작업 후 유지
-- 파일 이동·역할 변경·새 규칙·작업 흐름 변경 시 이 문서와 `Architecture.md` 갱신.
-- 드리프트(개별 화면이 토큰과 어긋남) 발견 시 → 개별 수정 말고 **토큰에 반영**.
-- 줄을 더하기 전에 뺄 줄이 있는지 확인. 빠르게 스캔되게 유지.
+검증 명령과 지원 뷰포트는 [브라우저 계약](../verification/contracts.md), 캡처 도구는 [개발 서버 안내](../../operations/dev-server-and-capture.md)에 있다.

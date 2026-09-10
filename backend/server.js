@@ -1,3 +1,4 @@
+import { createOrganizationPreviewRouter } from './src/organizations/preview-router.js'
 import { createOrganizationWeatherDependencies } from './src/briefing/organization-runtime.js'
 import { createMeOrganizationsRouter, createAdminOrganizationsRouter, createOrganizationRouter } from './src/organizations/router.js'
 import { requireTrustedMutationOrigin } from './src/organizations/middleware.js'
@@ -112,6 +113,14 @@ if (process.env.NODE_ENV !== 'test') {
     app.use(cors({ origin: process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173', credentials: true }))
   }
   app.use(cookieParser()) // 익명 방문자 쿠키(amo.vid) 파싱 — sessionMiddleware 앞. 관리자 콘솔
+  app.use('/api/lounge-preview', createOrganizationPreviewRouter({
+    briefingDependencies: organizationWeatherDependencies, situationDependencies: organizationWeatherDependencies,
+    trustedMutationOrigin: requireTrustedMutationOrigin({
+      allowedOrigins: process.env.NODE_ENV === 'production'
+        ? [process.env.FRONTEND_ORIGIN].filter(Boolean)
+        : [process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173', 'http://localhost:5173'],
+    }),
+  }))
   app.use(sessionMiddleware())
   app.use(visitTracker(getDb)) // 방문 추적(비로그인 포함). /api·/data 제외.
 

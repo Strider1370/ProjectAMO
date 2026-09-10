@@ -3,6 +3,17 @@
 import { formatVfrDraftText } from './manualRouteInput.js'
 const KEY = 'projectamo.savedRoutes.v1'
 const API = '/api/me/routes'
+const PREVIEW_API = '/api/lounge-preview/saved-routes'
+
+function previewContext() {
+  if (typeof window === 'undefined') return false
+  const params = new URLSearchParams(window.location.search)
+  return params.get('orgId') === 'preview' || /^\/lounge\/preview(?:\/|$)/.test(window.location.pathname)
+}
+
+function savedRoutesApi() {
+  return previewContext() ? PREVIEW_API : API
+}
 
 function read() {
   try {
@@ -99,11 +110,13 @@ export function normalizeRouteSnapshot(snapshot = {}) {
 
 // snapshot: { routeForm, vfrWaypoints, cruiseAltitudeFt, alternateAirport, etd }
 async function listAllSavedRoutes() {
+  const preview = previewContext()
   try {
-    const res = await fetch(API, { credentials: 'include' })
+    const res = await fetch(savedRoutesApi(), { credentials: 'include' })
     if (res.ok) return (await res.json()).routes.sort(bySavedDesc) // 로그인 → 서버
+    if (preview) return []
     // 401(게스트)·기타 → 로컬 폴백
-  } catch { /* 서버 불가 → 로컬 */ }
+  } catch { if (preview) return [] /* 체험 자료는 개인 로컬 저장소와 섞지 않는다. */ }
   return read().sort(bySavedDesc)
 }
 
@@ -118,17 +131,19 @@ export async function listSavedRoutes({ kind } = {}) {
 
 export async function saveRoute(name, snapshot) {
   const normalizedSnapshot = normalizeRouteSnapshot(snapshot)
+  const preview = previewContext()
   try {
-    const res = await fetch(API, {
+    const res = await fetch(savedRoutesApi(), {
       method: 'POST',
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name, snapshot: normalizedSnapshot }),
     })
     if (res.ok) return await res.json() // 로그인 → 서버 저장
+    if (preview) return null
     if (res.status !== 401) return null // 로그인 상태 서버 거부(용량 등) → 실패(로컬 저장 안 함)
     // 401 → 게스트: 아래 로컬 폴백
-  } catch { /* 네트워크 오류 → 로컬 */ }
+  } catch { if (preview) return null /* 체험 실패 시 개인 로컬 저장소로 폴백하지 않는다. */ }
   const routes = read()
   const entry = { id: `r${Date.now()}`, name: name || '이름 없는 경로', savedAt: Date.now(), ...normalizedSnapshot }
   routes.push(entry)
@@ -137,10 +152,12 @@ export async function saveRoute(name, snapshot) {
 }
 
 export async function deleteSavedRoute(id) {
+  const preview = previewContext()
   try {
-    const res = await fetch(`${API}/${id}`, { method: 'DELETE', credentials: 'include' })
+    const res = await fetch(`${savedRoutesApi()}/${id}`, { method: 'DELETE', credentials: 'include' })
     if (res.ok) return // 로그인 → 서버 삭제
+    if (preview) return
     if (res.status !== 401) return // 로그인 상태 서버 응답 → 로컬 건드리지 않음
-  } catch { /* 네트워크 → 로컬 */ }
+  } catch { if (preview) return /* 체험 실패 시 개인 로컬 저장소로 폴백하지 않는다. */ }
   write(read().filter((r) => r.id !== id))
 }

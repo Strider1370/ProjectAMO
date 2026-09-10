@@ -11,11 +11,14 @@ test('sub-millimetre precipitation axis keeps the precision needed to compare mo
 })
 
 test('ceiling chart caps only its plotted position while preserving the real value elsewhere', () => {
-  assert.equal(CEILING_CHART_MAX_FT, 10_000)
+  assert.equal(CEILING_CHART_MAX_FT, 25_000)
   assert.equal(plotChartValue(3_655, 'ft'), 3_655)
   assert.equal(plotChartValue(33_849, 'ft'), CEILING_CHART_MAX_FT)
+  assert.equal(plotChartValue(33_849, 'ft', 10_000), 10_000)
   assert.deepEqual(chartDomain([2400, 4524], 'ft'), { min: 0, max: 5000, step: 1000 })
-  assert.deepEqual(chartDomain([2400, 33849], 'ft'), { min: 0, max: 10000, step: 2000 })
+  assert.deepEqual(chartDomain([2400, 8200], 'ft'), { min: 0, max: 10000, step: 2000 })
+  assert.deepEqual(chartDomain([2400, 12400], 'ft'), { min: 0, max: 25000, step: 5000 })
+  assert.deepEqual(chartDomain([2400, 33849], 'ft'), { min: 0, max: 25000, step: 5000 })
 })
 
 test('wind includes zero and the largest gust; temperature keeps negative values; RH uses a fixed scale', () => {

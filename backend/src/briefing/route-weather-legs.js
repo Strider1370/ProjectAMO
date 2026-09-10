@@ -195,7 +195,7 @@ function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection
     turbulence: { peakLevel: turbulenceSummary.highestGrade, exposures: exposures(turbulenceSummary) },
     hazards: legHazards,
     notams,
-    timeStatus: legHazards.find((hazard) => hazard.timeStatus !== 'matched')?.timeStatus ?? 'matched',
+    timeStatus: !weatherAxis?.samples?.length ? 'unavailable' : (legHazards.find((hazard) => hazard.timeStatus !== 'matched')?.timeStatus ?? 'matched'),
     altitudeConstraint: constraintFor(segment, constraint, sourceCycle),
   }
 }

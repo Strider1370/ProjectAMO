@@ -1,0 +1,1717 @@
+{
+  "collect.js": {
+    "mtime": 1786257690.930987,
+    "ast_hash": "3f053aa6fd175b3fc72917dbcb8edc20",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1788361377.1574378,
+    "ast_hash": "668370140b0e4253fe72f4b116512045",
+    "semantic_hash": ""
+  },
+  "scripts/audit-notam-priority.mjs": {
+    "mtime": 1784823752.667366,
+    "ast_hash": "94fbc96855c892109ab0ac5bb9013e8a",
+    "semantic_hash": ""
+  },
+  "scripts/audit-terminal-airlines.mjs": {
+    "mtime": 1785765011.5204446,
+    "ast_hash": "074cee2d4742f16ffa916f02d742f03a",
+    "semantic_hash": ""
+  },
+  "scripts/audit-terminal-destinations.mjs": {
+    "mtime": 1785758764.8139312,
+    "ast_hash": "445fd321de5c5c56cc06af3786315cb2",
+    "semantic_hash": ""
+  },
+  "scripts/measure-motion-accuracy.mjs": {
+    "mtime": 1785142484.5143573,
+    "ast_hash": "97b89116f4fd71af87a02d3288e5a412",
+    "semantic_hash": ""
+  },
+  "scripts/measure-route-payload.js": {
+    "mtime": 1784823752.6683328,
+    "ast_hash": "f88a275da3b082bce628e6cb9c1a1d1b",
+    "semantic_hash": ""
+  },
+  "scripts/probe-radar-qcd-sites.mjs": {
+    "mtime": 1785142484.5143573,
+    "ast_hash": "e7a5c5644d549ab4c44790ed66a79628",
+    "semantic_hash": ""
+  },
+  "server.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "98596c9e5295e130ff98533f2e0f8407",
+    "semantic_hash": ""
+  },
+  "src/admin/data-health-catalog.js": {
+    "mtime": 1786878371.577399,
+    "ast_hash": "0e13723484591dda59287018678bc097",
+    "semantic_hash": ""
+  },
+  "src/admin/data-health.js": {
+    "mtime": 1786377267.2692108,
+    "ast_hash": "43e4862c228636cb42897d43c81d1bf1",
+    "semantic_hash": ""
+  },
+  "src/admin/db-backup.js": {
+    "mtime": 1786376018.724964,
+    "ast_hash": "dcb492fea2f9669f70347335d48d0500",
+    "semantic_hash": ""
+  },
+  "src/admin/deployment.js": {
+    "mtime": 1786377483.131502,
+    "ast_hash": "0effbc0f5d53fa24fcbd8a272cb610ea",
+    "semantic_hash": ""
+  },
+  "src/admin/disk-forecast.js": {
+    "mtime": 1786370686.5836785,
+    "ast_hash": "a6342da6e388ec083b67ce6734a2cc21",
+    "semantic_hash": ""
+  },
+  "src/admin/disk-usage.js": {
+    "mtime": 1785142484.5143573,
+    "ast_hash": "747f522ae5bdb6df73247c73c28cebe0",
+    "semantic_hash": ""
+  },
+  "src/admin/freshness.js": {
+    "mtime": 1786370686.583758,
+    "ast_hash": "4181d8b0bdd3cbddb8457ddf60d30d7d",
+    "semantic_hash": ""
+  },
+  "src/admin/metrics.js": {
+    "mtime": 1784823752.66928,
+    "ast_hash": "e6da0b24d8b2223b310c10c94c8d1305",
+    "semantic_hash": ""
+  },
+  "src/admin/process-health.js": {
+    "mtime": 1786376414.7236967,
+    "ast_hash": "79eb8a5554b391ed1b381a4f169963d7",
+    "semantic_hash": ""
+  },
+  "src/admin/router.js": {
+    "mtime": 1787243446.430361,
+    "ast_hash": "6f1fc1a128662630cba6509b1fe08be5",
+    "semantic_hash": ""
+  },
+  "src/admin/trends.js": {
+    "mtime": 1785142484.5143573,
+    "ast_hash": "29be71eaed9380917e7288591344a36d",
+    "semantic_hash": ""
+  },
+  "src/admin/visits.js": {
+    "mtime": 1786370686.5840333,
+    "ast_hash": "9b723861d14916e4d00af8e0f31a1f52",
+    "semantic_hash": ""
+  },
+  "src/alerts/diff.js": {
+    "mtime": 1787243446.430361,
+    "ast_hash": "fabd9b5a8e05e16c21dc70fbb4025e87",
+    "semantic_hash": ""
+  },
+  "src/alerts/ops-alerts.js": {
+    "mtime": 1786444627.0987394,
+    "ast_hash": "667136e726c55cc39016e01608cc4e14",
+    "semantic_hash": ""
+  },
+  "src/alerts/ops-rules.js": {
+    "mtime": 1786377279.4234962,
+    "ast_hash": "90879fde49fffcbdf95d9e0ae13c1198",
+    "semantic_hash": ""
+  },
+  "src/alerts/scheduler.js": {
+    "mtime": 1787243446.430361,
+    "ast_hash": "ea327a6f3c6dc70ae2953bbe82ffa917",
+    "semantic_hash": ""
+  },
+  "src/alerts/sender.js": {
+    "mtime": 1787243446.430361,
+    "ast_hash": "fe0c6a71ef3de5ea89fb09d687aa6dae",
+    "semantic_hash": ""
+  },
+  "src/api-client.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "559bb51918e0476748650bd8d2052d02",
+    "semantic_hash": ""
+  },
+  "src/api-hub-usage.js": {
+    "mtime": 1788361546.1414337,
+    "ast_hash": "71df71751008b9fecbfe0505ae8a6156",
+    "semantic_hash": ""
+  },
+  "src/auth/forecaster-airports.js": {
+    "mtime": 1784823752.6698475,
+    "ast_hash": "fcc117fc6d12899cf70668e19b312b93",
+    "semantic_hash": ""
+  },
+  "src/auth/middleware.js": {
+    "mtime": 1784823752.6704724,
+    "ast_hash": "d3a105713964b8d020f708938a7150c8",
+    "semantic_hash": ""
+  },
+  "src/auth/router.js": {
+    "mtime": 1785142484.5143573,
+    "ast_hash": "9ebe2ef96411a25bd64ad226ed44986e",
+    "semantic_hash": ""
+  },
+  "src/auth/session.js": {
+    "mtime": 1784823752.6704724,
+    "ast_hash": "66b29a4fe5189423d20cdf8f6f85ac30",
+    "semantic_hash": ""
+  },
+  "src/auth/validation.js": {
+    "mtime": 1784823752.6704724,
+    "ast_hash": "3c7e444b2198d1f56b386669c4c1a36b",
+    "semantic_hash": ""
+  },
+  "src/briefing/aip-airway-constraints.js": {
+    "mtime": 1784823752.6704724,
+    "ast_hash": "4eb830c7e3b24a7580befbefe1fe708f",
+    "semantic_hash": ""
+  },
+  "src/briefing/airport-summary.js": {
+    "mtime": 1784823752.6709557,
+    "ast_hash": "5e57e1cb98e8a4350d1fefcd782a7412",
+    "semantic_hash": ""
+  },
+  "src/briefing/airspace-zones.js": {
+    "mtime": 1785142484.5143573,
+    "ast_hash": "c8d8f368d4acbc8bd38673800f7fffe5",
+    "semantic_hash": ""
+  },
+  "src/briefing/altitude-weather-comparison.js": {
+    "mtime": 1786763241.7857363,
+    "ast_hash": "168272f07758d6c5addb6aa79c854825",
+    "semantic_hash": ""
+  },
+  "src/briefing/briefing-composer.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "1f6d32925ceb9306f5b94fb3a3ddddcd",
+    "semantic_hash": ""
+  },
+  "src/briefing/briefing-provenance.js": {
+    "mtime": 1784823752.6709557,
+    "ast_hash": "100a82951c54b5839866f000c14ddb98",
+    "semantic_hash": ""
+  },
+  "src/briefing/confidence.js": {
+    "mtime": 1784823752.6709557,
+    "ast_hash": "1703384d3c6591d32ee96ba388c72dcb",
+    "semantic_hash": ""
+  },
+  "src/briefing/cross-section-sampler.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "47d73eec1179a6130a97407fa80c922e",
+    "semantic_hash": ""
+  },
+  "src/briefing/enroute-cross-section.js": {
+    "mtime": 1787093613.8449118,
+    "ast_hash": "eef9d5e205232f56e36f06437effd5d6",
+    "semantic_hash": ""
+  },
+  "src/briefing/enroute-model.js": {
+    "mtime": 1786763146.0737412,
+    "ast_hash": "cc8feaf3ce96c0d880fe142491214407",
+    "semantic_hash": ""
+  },
+  "src/briefing/flight-category.js": {
+    "mtime": 1787243446.430361,
+    "ast_hash": "93441fdb2e0d5b53b126e67ca4560853",
+    "semantic_hash": ""
+  },
+  "src/briefing/geo-time-match.js": {
+    "mtime": 1785142484.5143573,
+    "ast_hash": "533e8f2bd458bff8e3afd7ba4d1add04",
+    "semantic_hash": ""
+  },
+  "src/briefing/hazard-exposure.js": {
+    "mtime": 1785168376.1768649,
+    "ast_hash": "566d2091d0b59458fff4912345e6dcd2",
+    "semantic_hash": ""
+  },
+  "src/briefing/hazard-matcher.js": {
+    "mtime": 1784823752.6709557,
+    "ast_hash": "b3200fd9b79e8ee74b56e46909a6dc75",
+    "semantic_hash": ""
+  },
+  "src/briefing/hazard-section.js": {
+    "mtime": 1785168386.248862,
+    "ast_hash": "c33f1e1fe09f9277e86004543357be64",
+    "semantic_hash": ""
+  },
+  "src/briefing/notam-briefing.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "e5721c82eb6f568ae5c498471b1de2a9",
+    "semantic_hash": ""
+  },
+  "src/briefing/planned-altitude.js": {
+    "mtime": 1784823752.6709557,
+    "ast_hash": "fdbc9261050b97902564e4abb3127195",
+    "semantic_hash": ""
+  },
+  "src/briefing/profile-composer.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "ed2c2ebeb36967e964495edbcaadb8fd",
+    "semantic_hash": ""
+  },
+  "src/briefing/route-axis.js": {
+    "mtime": 1784823752.6709557,
+    "ast_hash": "e768ddf8ca7d1842dbc5d19735dc3661",
+    "semantic_hash": ""
+  },
+  "src/briefing/route-exposure.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "ffc7545f81aecf1da738ed98c8f4c966",
+    "semantic_hash": ""
+  },
+  "src/briefing/route-weather-legs.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "6c69b7943218c4ea8f37cf45c2cdb8d9",
+    "semantic_hash": ""
+  },
+  "src/briefing/schedule-window.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "22ce203ce352923827a9bba6ae06c98c",
+    "semantic_hash": ""
+  },
+  "src/briefing/taf-window.js": {
+    "mtime": 1787243446.430361,
+    "ast_hash": "bc0b3a798ee2c047a43a25f14fe1cff4",
+    "semantic_hash": ""
+  },
+  "src/briefing/typhoon-briefing.js": {
+    "mtime": 1785936080.420968,
+    "ast_hash": "7dddaa5cd751c7d2de7ae66301acc638",
+    "semantic_hash": ""
+  },
+  "src/briefing/typhoon-geometry.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "f358790f948da826121e33b68653f1d3",
+    "semantic_hash": ""
+  },
+  "src/briefing/vertical-profile.js": {
+    "mtime": 1784823752.6709557,
+    "ast_hash": "a51834a9e015445f3740768a1f1cbbbe",
+    "semantic_hash": ""
+  },
+  "src/config.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "e7374d0b0a24962c48b057595c196d61",
+    "semantic_hash": ""
+  },
+  "src/db/create-user.js": {
+    "mtime": 1784823752.6709557,
+    "ast_hash": "1f8a5c2dcf815a78caceeb3138350599",
+    "semantic_hash": ""
+  },
+  "src/db/index.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "e778d6d61a7c45926d3c90e8ffc9786f",
+    "semantic_hash": ""
+  },
+  "src/db/schema.sql": {
+    "mtime": 1787243446.430361,
+    "ast_hash": "71b25b3f990b0b000a805240fba1adfe",
+    "semantic_hash": ""
+  },
+  "src/db/users.js": {
+    "mtime": 1784823752.6722934,
+    "ast_hash": "03a36f4979b9f7646a63acaf3043df9d",
+    "semantic_hash": ""
+  },
+  "src/dev/data-view.js": {
+    "mtime": 1785244941.4945624,
+    "ast_hash": "e5bff417b2717b0ddac42aff3b64f3a8",
+    "semantic_hash": ""
+  },
+  "src/dev/demo-mode.js": {
+    "mtime": 1785242943.1991184,
+    "ast_hash": "cf233e2dad36e7eb2b64a8f05fd9024e",
+    "semantic_hash": ""
+  },
+  "src/dev/demo-session.js": {
+    "mtime": 1785242943.1991184,
+    "ast_hash": "3500f573303d5725f7ce4ac8867a74ba",
+    "semantic_hash": ""
+  },
+  "src/dev/instrument.js": {
+    "mtime": 1784823752.6728947,
+    "ast_hash": "5e966fb1b669773483ba2b4cfa1f6212",
+    "semantic_hash": ""
+  },
+  "src/dev/scenario.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "91ce8c129c9b1e25e05bd2b1fbf2aecb",
+    "semantic_hash": ""
+  },
+  "src/dev/snapshot-store.js": {
+    "mtime": 1786718808.8856192,
+    "ast_hash": "b701d6988d9455fcb27c50eb11b0d705",
+    "semantic_hash": ""
+  },
+  "src/forecaster/router.js": {
+    "mtime": 1784823752.6728947,
+    "ast_hash": "933556a3563f8802745ef5afa07294f9",
+    "semantic_hash": ""
+  },
+  "src/index.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "277ee7620e32b6053056a3f3cded7345",
+    "semantic_hash": ""
+  },
+  "src/lib/ctps-grid.js": {
+    "mtime": 1784823752.6728947,
+    "ast_hash": "3d3209d144f8c5f2fc179e9bf7804385",
+    "semantic_hash": ""
+  },
+  "src/lib/ctps-grid.test.js": {
+    "mtime": 1784823752.6738977,
+    "ast_hash": "2eaef938a7360e37d1541761eee72013",
+    "semantic_hash": ""
+  },
+  "src/lib/daily-byte-budget.js": {
+    "mtime": 1785586513.1573203,
+    "ast_hash": "cefa9a884169a73dc34700af72f7aa69",
+    "semantic_hash": ""
+  },
+  "src/lib/daily-byte-budget.test.js": {
+    "mtime": 1785586503.1213229,
+    "ast_hash": "81adf4a0c1d09d011127f17ae2709225",
+    "semantic_hash": ""
+  },
+  "src/lib/echo-top-grid.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "37501e401698f3f0cb2c3b9678c91750",
+    "semantic_hash": ""
+  },
+  "src/lib/fetch-api-hub.js": {
+    "mtime": 1788361546.1454337,
+    "ast_hash": "aef818dd203a5c2dbe1e13b5d70b5d54",
+    "semantic_hash": ""
+  },
+  "src/lib/fetchWithTimeout.js": {
+    "mtime": 1785860708.1175766,
+    "ast_hash": "b5a65f7d7e1fe0c8495793ac79b4358b",
+    "semantic_hash": ""
+  },
+  "src/lib/idw.js": {
+    "mtime": 1784823752.6738977,
+    "ast_hash": "a9697e5d86c3404f1ab861bf001131df",
+    "semantic_hash": ""
+  },
+  "src/lib/idw.test.js": {
+    "mtime": 1784823752.6738977,
+    "ast_hash": "fea416860a7644e9c001d2749ad82c63",
+    "semantic_hash": ""
+  },
+  "src/lib/kma-graphics-projection.js": {
+    "mtime": 1786718808.889619,
+    "ast_hash": "451f180798738d7646b37688bbb5d708",
+    "semantic_hash": ""
+  },
+  "src/lib/kma-radar-graphics.js": {
+    "mtime": 1786027407.9622335,
+    "ast_hash": "b56b6d800f8503d65babdec450899bfe",
+    "semantic_hash": ""
+  },
+  "src/lib/lcc-projection.js": {
+    "mtime": 1785584702.0577514,
+    "ast_hash": "e3c75ac28edd2dce8e19e5d7b24acb8a",
+    "semantic_hash": ""
+  },
+  "src/lib/satellite-ko-grid.js": {
+    "mtime": 1784823752.6738977,
+    "ast_hash": "23efa40d8d19748fd32f53757cc78772",
+    "semantic_hash": ""
+  },
+  "src/lib/satellite-ko-grid.test.js": {
+    "mtime": 1784890488.1832798,
+    "ast_hash": "19a0e9506681eab5d12b5df558611098",
+    "semantic_hash": ""
+  },
+  "src/me/alerts.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "045b2cca7d962d3444e67d173224ad8a",
+    "semantic_hash": ""
+  },
+  "src/me/presets.js": {
+    "mtime": 1784823752.6745064,
+    "ast_hash": "4726f73e77d40e26a2f971327bd2a61a",
+    "semantic_hash": ""
+  },
+  "src/me/push.js": {
+    "mtime": 1784823752.6745064,
+    "ast_hash": "bae102795eb028f79c04eeaead1f1ac8",
+    "semantic_hash": ""
+  },
+  "src/me/requests.js": {
+    "mtime": 1784823752.6745064,
+    "ast_hash": "e2ea95b4909723f6293f6f0625bb3e07",
+    "semantic_hash": ""
+  },
+  "src/me/routes.js": {
+    "mtime": 1787093613.8454926,
+    "ast_hash": "537924e8bc37ceabb9b63813cf11b1cc",
+    "semantic_hash": ""
+  },
+  "src/notam/notam-crawler.js": {
+    "mtime": 1784823752.6745064,
+    "ast_hash": "5c00c450c3c78676dc98f2a0380f50a8",
+    "semantic_hash": ""
+  },
+  "src/notam/notam-geometry.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "f036350c6cdd49b59c06a58516c44b81",
+    "semantic_hash": ""
+  },
+  "src/notam/notam-position-text.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "d17e9eb3734cee33345b43b9276a05ab",
+    "semantic_hash": ""
+  },
+  "src/parsers/airmet-parser.js": {
+    "mtime": 1784823752.6745064,
+    "ast_hash": "7e0b240eae5bf7331659176e944f67f4",
+    "semantic_hash": ""
+  },
+  "src/parsers/airport-info-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "1851676f66fce693e90ab5eaa147171b",
+    "semantic_hash": ""
+  },
+  "src/parsers/amos-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "7d107964287074930ebca36456056a83",
+    "semantic_hash": ""
+  },
+  "src/parsers/iwxxm-advisory-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "6dade8f9d8b19f53624ed8c0e117f3d4",
+    "semantic_hash": ""
+  },
+  "src/parsers/kim-grid-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "96f7d7b37c15d2dacee8fa95de359dc3",
+    "semantic_hash": ""
+  },
+  "src/parsers/kma-special-warning-parser.js": {
+    "mtime": 1785758764.8139312,
+    "ast_hash": "e16dc947b3bf3b4593f9f98a6552fbb8",
+    "semantic_hash": ""
+  },
+  "src/parsers/lightning-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "640f5f974b138810953f36133e2ca25f",
+    "semantic_hash": ""
+  },
+  "src/parsers/metar-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "3c96d761f95aadebd5892599f7b137fb",
+    "semantic_hash": ""
+  },
+  "src/parsers/metar-parser.test.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "1bce211bdc25b611925a2567713d0cfe",
+    "semantic_hash": ""
+  },
+  "src/parsers/noaa-metar-parser.js": {
+    "mtime": 1785409621.9766254,
+    "ast_hash": "2b7d35cbb94d392dced60a8150215d33",
+    "semantic_hash": ""
+  },
+  "src/parsers/noaa-metar-parser.test.js": {
+    "mtime": 1785409677.6923432,
+    "ast_hash": "6760b9b9e91304b332ee81ab24b30fd4",
+    "semantic_hash": ""
+  },
+  "src/parsers/noaa-sigmet-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "a6b2553cf43c9190ad5a286dcf4240bf",
+    "semantic_hash": ""
+  },
+  "src/parsers/noaa-sigmet-parser.test.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "f9dd35d8afc1e06be4a1bff5d2ce5506",
+    "semantic_hash": ""
+  },
+  "src/parsers/noaa-taf-parser.js": {
+    "mtime": 1785414397.7551641,
+    "ast_hash": "67693937c798a1015101f716d7e28230",
+    "semantic_hash": ""
+  },
+  "src/parsers/noaa-taf-parser.test.js": {
+    "mtime": 1785414421.9748828,
+    "ast_hash": "eb8c22256a73329e4facf6b2f4ab6f69",
+    "semantic_hash": ""
+  },
+  "src/parsers/notam-parser.js": {
+    "mtime": 1785173474.399443,
+    "ast_hash": "9b684e709e02ece5f7079217c1eeeac1",
+    "semantic_hash": ""
+  },
+  "src/parsers/parse-utils.js": {
+    "mtime": 1785409516.448355,
+    "ast_hash": "45879d5be4ecccb3e2058b8f6e161504",
+    "semantic_hash": ""
+  },
+  "src/parsers/parse-utils.test.js": {
+    "mtime": 1785409767.512337,
+    "ast_hash": "7904c2bb13a31c1e40c99cc1a8b8835d",
+    "semantic_hash": ""
+  },
+  "src/parsers/radar-echo-parser.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "3714684b71a8e982065aca203856bc90",
+    "semantic_hash": ""
+  },
+  "src/parsers/radar-qcd-parser.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "8bf7ca5a58d88ff91df0d23e95e4b7d1",
+    "semantic_hash": ""
+  },
+  "src/parsers/satellite-parser.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "120c041202181192fc853385fb5aff86",
+    "semantic_hash": ""
+  },
+  "src/parsers/satellite-parser.test.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "4ddb631ea0af6ff272809f49b8b94d31",
+    "semantic_hash": ""
+  },
+  "src/parsers/sfc-grid-parser.js": {
+    "mtime": 1785597917.118608,
+    "ast_hash": "6d2d5fc02685dcd7c391134a0e8a3733",
+    "semantic_hash": ""
+  },
+  "src/parsers/sfc-grid-parser.test.js": {
+    "mtime": 1785584684.0097556,
+    "ast_hash": "d44355aa2568b5fd0c15c821688512b1",
+    "semantic_hash": ""
+  },
+  "src/parsers/sigmet-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "181b80b6a8a956fd76b9c867306c3d9f",
+    "semantic_hash": ""
+  },
+  "src/parsers/sigwx-cloud-overlay.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "b5744fa463fddecd725151b788a73a47",
+    "semantic_hash": ""
+  },
+  "src/parsers/sigwx-front-overlay.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "8c6cd36c0bd6f1c2db2996708e662c0c",
+    "semantic_hash": ""
+  },
+  "src/parsers/sigwx-low-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "e5a3b5a1b344b7b7bc22bc87bd77436b",
+    "semantic_hash": ""
+  },
+  "src/parsers/tac-annotation.js": {
+    "mtime": 1785407493.3524923,
+    "ast_hash": "90d90040b2b8b2537fee7ba5db047790",
+    "semantic_hash": ""
+  },
+  "src/parsers/tac-annotation.test.js": {
+    "mtime": 1785407535.9844894,
+    "ast_hash": "58f38363df27c9c85c8aa342ae59d1cc",
+    "semantic_hash": ""
+  },
+  "src/parsers/taf-parser.js": {
+    "mtime": 1787482913.090612,
+    "ast_hash": "4110a004aa21a106315266bab785a230",
+    "semantic_hash": ""
+  },
+  "src/parsers/takeoff-forecast-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "2c5dcfb294cea34f9b28ac11bd437285",
+    "semantic_hash": ""
+  },
+  "src/parsers/typhoon-parser.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "ff4d3b386f9969d7c02d76aa8099c44a",
+    "semantic_hash": ""
+  },
+  "src/parsers/warning-parser.js": {
+    "mtime": 1784823752.6754138,
+    "ast_hash": "1d45ae52f738b8856f31a77f37dce2ae",
+    "semantic_hash": ""
+  },
+  "src/processors/adsb-processor.js": {
+    "mtime": 1785242902.2871299,
+    "ast_hash": "b0b4d51a03ce1a3ff282013db18c157f",
+    "semantic_hash": ""
+  },
+  "src/processors/airmet-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "28cede7d88faaf8a7e2f3b2f62a2e245",
+    "semantic_hash": ""
+  },
+  "src/processors/airport-info-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "c08465ebec6117422695edca3bb7798a",
+    "semantic_hash": ""
+  },
+  "src/processors/amos-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "39443c81b1791b286e44ea3a311f23e6",
+    "semantic_hash": ""
+  },
+  "src/processors/asos-ceiling-processor.js": {
+    "mtime": 1785765141.8244164,
+    "ast_hash": "333193b1f3ae551efe178664e6b281fb",
+    "semantic_hash": ""
+  },
+  "src/processors/asos-ceiling-processor.test.js": {
+    "mtime": 1785765037.1444395,
+    "ast_hash": "9fd2a2ab2dd3fe56f32c25f21c454de7",
+    "semantic_hash": ""
+  },
+  "src/processors/convective-satellite-model.js": {
+    "mtime": 1784890488.1832798,
+    "ast_hash": "fc04c3d883bb7cbd456bc464cf133a11",
+    "semantic_hash": ""
+  },
+  "src/processors/convective-satellite-model.test.js": {
+    "mtime": 1784890488.1832798,
+    "ast_hash": "f40a5545f51287022d7f86e2686c07f5",
+    "semantic_hash": ""
+  },
+  "src/processors/convective-satellite-processor.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "8bc5d3431fcafbb6584baf6125e7a02a",
+    "semantic_hash": ""
+  },
+  "src/processors/convective-satellite-processor.test.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "b04aea8d160631c19abd86fb25a2fc74",
+    "semantic_hash": ""
+  },
+  "src/processors/convective-satellite-store.js": {
+    "mtime": 1787679452.3683932,
+    "ast_hash": "7d817a56486f917606157b70958c40ea",
+    "semantic_hash": ""
+  },
+  "src/processors/convective-satellite-store.test.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "1567543e9bce46497960c76992848e70",
+    "semantic_hash": ""
+  },
+  "src/processors/echo-top-model.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "c4938fa082e6913c744cabd684d55470",
+    "semantic_hash": ""
+  },
+  "src/processors/echo-top-processor.js": {
+    "mtime": 1785243123.7750707,
+    "ast_hash": "d57b69685b5fc026d7c46380bc004fcb",
+    "semantic_hash": ""
+  },
+  "src/processors/echo-top-store.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "8977203d255e6315ef6f90dc15a0223a",
+    "semantic_hash": ""
+  },
+  "src/processors/environment-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "f7d6538370d99b2cb95aa1d2457382f2",
+    "semantic_hash": ""
+  },
+  "src/processors/flight-category-processor.js": {
+    "mtime": 1787679452.368799,
+    "ast_hash": "5335d59515e4a4eafc2596b92ddc7fb0",
+    "semantic_hash": ""
+  },
+  "src/processors/flight-category-processor.test.js": {
+    "mtime": 1785765050.9604368,
+    "ast_hash": "7189ef8eaa37fcc08725020cfde58e67",
+    "semantic_hash": ""
+  },
+  "src/processors/flight-category/ceiling-kim.js": {
+    "mtime": 1785765170.452409,
+    "ast_hash": "82b45fe90da4d9359dacd43d008a9eea",
+    "semantic_hash": ""
+  },
+  "src/processors/flight-category/ceiling-kim.test.js": {
+    "mtime": 1785765105.200425,
+    "ast_hash": "f307dc62fd627b77f165197e094f8e5a",
+    "semantic_hash": ""
+  },
+  "src/processors/flight-category/stations.js": {
+    "mtime": 1785765141.8244164,
+    "ast_hash": "375498a2869f4db4c4fbc3cd7b8293db",
+    "semantic_hash": ""
+  },
+  "src/processors/flight-category/stations.test.js": {
+    "mtime": 1785765050.9564369,
+    "ast_hash": "29b9dcb57b5250d7fc9cf3372084ec21",
+    "semantic_hash": ""
+  },
+  "src/processors/ground-forecast-processor.js": {
+    "mtime": 1786257690.930987,
+    "ast_hash": "bf29c42bb1231b0820f871e4c6d47b62",
+    "semantic_hash": ""
+  },
+  "src/processors/kim-cloud-threshold.js": {
+    "mtime": 1785685483.3280864,
+    "ast_hash": "35ab9bad1c112e1ec3fc73816eb3a6ea",
+    "semantic_hash": ""
+  },
+  "src/processors/kim-forecast-hour.js": {
+    "mtime": 1785245376.8384407,
+    "ast_hash": "32dddbb5a6eeecf71e3047fd377d1c6a",
+    "semantic_hash": ""
+  },
+  "src/processors/kim-nwp-model.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "8401e5ad01057dd5bd52336ba2d68a21",
+    "semantic_hash": ""
+  },
+  "src/processors/kim-nwp-store.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "9c33f54dc9a10e1e7a7dbf99bf54b16e",
+    "semantic_hash": ""
+  },
+  "src/processors/kim-run-credential.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "9c40707e9a83776f44632a29a4acd9eb",
+    "semantic_hash": ""
+  },
+  "src/processors/kim-surface-wind-processor.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "d76f227ef32f6e6842774c05c57886d9",
+    "semantic_hash": ""
+  },
+  "src/processors/kma-special-warning-processor.js": {
+    "mtime": 1785758764.8139312,
+    "ast_hash": "58027e49125db9890294999a09429e92",
+    "semantic_hash": ""
+  },
+  "src/processors/ktg-model.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "d2f4d7d11a5f70f542a2996c40da30db",
+    "semantic_hash": ""
+  },
+  "src/processors/ktg-processor.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "fce15c42e5733fbc406a85b39b2e1424",
+    "semantic_hash": ""
+  },
+  "src/processors/ktg-store.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "84ed9f7ba4bfe574cc7614125f7b93d2",
+    "semantic_hash": ""
+  },
+  "src/processors/lightning-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "63f5caf3464509e5ff92da2166ce5d93",
+    "semantic_hash": ""
+  },
+  "src/processors/metar-processor.js": {
+    "mtime": 1785240939.199676,
+    "ast_hash": "a0bf90830a2401009d69179a77448cbe",
+    "semantic_hash": ""
+  },
+  "src/processors/notam-processor.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "0bcefc18676c0b7bd96a4dd3f4ef2e1a",
+    "semantic_hash": ""
+  },
+  "src/processors/overseas-daily.js": {
+    "mtime": 1785844862.418376,
+    "ast_hash": "f7fe9bf917442b368b516232361a57ea",
+    "semantic_hash": ""
+  },
+  "src/processors/overseas-forecast-processor.js": {
+    "mtime": 1785844893.6583686,
+    "ast_hash": "7d7838563e356c718dd7d1627c7255b8",
+    "semantic_hash": ""
+  },
+  "src/processors/overseas-weather-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "6648a385a2aa0bae25d646dc39631756",
+    "semantic_hash": ""
+  },
+  "src/processors/radar-echo-processor.js": {
+    "mtime": 1785860708.1175766,
+    "ast_hash": "4f0410dc23a9a2543bea563f6c66d2df",
+    "semantic_hash": ""
+  },
+  "src/processors/radar-graphics-processor.js": {
+    "mtime": 1786265360.6236181,
+    "ast_hash": "1cb6e6ba0e4290b21cde3f480db3941a",
+    "semantic_hash": ""
+  },
+  "src/processors/rainviewer-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "5de53120d446b867ea402a01208f4dcc",
+    "semantic_hash": ""
+  },
+  "src/processors/satellite-processor.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "ef544cd06b0035d710d308fab8e6b672",
+    "semantic_hash": ""
+  },
+  "src/processors/satellite-visible-processor.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "6e028b3a83a9cdbddef4a04bb59bcbeb",
+    "semantic_hash": ""
+  },
+  "src/processors/sigmet-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "f2a6ebddc489a03ba1c4521e61170624",
+    "semantic_hash": ""
+  },
+  "src/processors/sigwx-low-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "2a365d731afbb4d5c9f61697d8dcac1c",
+    "semantic_hash": ""
+  },
+  "src/processors/taf-previous.js": {
+    "mtime": 1785231502.2407005,
+    "ast_hash": "ac86b3874a11acbaad8d6d69ab7c58cd",
+    "semantic_hash": ""
+  },
+  "src/processors/taf-processor.js": {
+    "mtime": 1785240939.199676,
+    "ast_hash": "eb5a1ec315efc84bee95ac9548d40d0f",
+    "semantic_hash": ""
+  },
+  "src/processors/takeoff-forecast-processor.js": {
+    "mtime": 1785240939.199676,
+    "ast_hash": "fff850277a00912e7f221c0bac8771c1",
+    "semantic_hash": ""
+  },
+  "src/processors/terminal-flight-processor.js": {
+    "mtime": 1785758764.8139312,
+    "ast_hash": "da1ce05179123636f62bac45e1dfbeff",
+    "semantic_hash": ""
+  },
+  "src/processors/typhoon-processor.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "61c6b0b00f88462b14cac79e2c1ae349",
+    "semantic_hash": ""
+  },
+  "src/processors/warning-processor.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "e21d03a11570572bcd71af897e327367",
+    "semantic_hash": ""
+  },
+  "src/push/send.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "3a5f08405f2f3a755b2840f79b64cf45",
+    "semantic_hash": ""
+  },
+  "src/serializers/metar-tac.js": {
+    "mtime": 1784823752.677067,
+    "ast_hash": "523e27d58ee2e51bba10f5c18461cbfb",
+    "semantic_hash": ""
+  },
+  "src/serializers/tac-presentation.js": {
+    "mtime": 1785407515.2603617,
+    "ast_hash": "f024ce851d6a3aeffea0bb08025d2afc",
+    "semantic_hash": ""
+  },
+  "src/serializers/taf-tac.js": {
+    "mtime": 1787482913.098612,
+    "ast_hash": "473c722f45c4fd07b43902a6322b6e64",
+    "semantic_hash": ""
+  },
+  "src/stats.js": {
+    "mtime": 1786370686.5840333,
+    "ast_hash": "d5e2e0f50ab130df48c238a7de8bef44",
+    "semantic_hash": ""
+  },
+  "src/store.js": {
+    "mtime": 1785758764.8139312,
+    "ast_hash": "168af0314bd8d793fbb5d5733394057d",
+    "semantic_hash": ""
+  },
+  "src/terrain/terrain-cache.js": {
+    "mtime": 1784823752.6791005,
+    "ast_hash": "0bae802ce27a18eb6f863fb12c38606f",
+    "semantic_hash": ""
+  },
+  "src/terrain/terrain-rgb-tiles.js": {
+    "mtime": 1785685469.0560896,
+    "ast_hash": "679826e34d0cbdc25f9a9d7b0b23c0a0",
+    "semantic_hash": ""
+  },
+  "src/terrain/terrain-sampler.js": {
+    "mtime": 1784823752.6797724,
+    "ast_hash": "30ed5f26bed1bc2c4a0064ec0fc8dcfc",
+    "semantic_hash": ""
+  },
+  "src/utils/kma-grid.js": {
+    "mtime": 1784823752.6797724,
+    "ast_hash": "425ada1531c804759ba2e5f9d9d3f546",
+    "semantic_hash": ""
+  },
+  "test/admin-data-health.test.js": {
+    "mtime": 1786878406.613397,
+    "ast_hash": "32f99b0a04e1282a4b2e93f17b99921d",
+    "semantic_hash": ""
+  },
+  "test/admin-disk-usage.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "561da77ae9b47211467c52fd481496fe",
+    "semantic_hash": ""
+  },
+  "test/admin-metrics.test.js": {
+    "mtime": 1784823752.6797724,
+    "ast_hash": "eb7b1705a4a4f8eb342c93a1917cd3fe",
+    "semantic_hash": ""
+  },
+  "test/admin-process-health.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "204cab8700a5c02f5357e8f992c6358c",
+    "semantic_hash": ""
+  },
+  "test/admin-trends.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "370aec2b7d205ac5de1cc398d1c4b175",
+    "semantic_hash": ""
+  },
+  "test/admin-visits.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "27182c908f98e41ad6b563294aeaff0d",
+    "semantic_hash": ""
+  },
+  "test/admin.test.js": {
+    "mtime": 1786370686.5840333,
+    "ast_hash": "01cc62f946ff549ec9aa4be6c5e320dd",
+    "semantic_hash": ""
+  },
+  "test/adsb-demo-mode.test.js": {
+    "mtime": 1785243123.7790706,
+    "ast_hash": "2c7b8baa6167d26c9fbf39e643c2d79c",
+    "semantic_hash": ""
+  },
+  "test/adsb-processor.test.js": {
+    "mtime": 1784909842.9463358,
+    "ast_hash": "4aef6e85890bfe2bd1def0bfbd72d900",
+    "semantic_hash": ""
+  },
+  "test/adsb-scheduler.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "cc619b77013888485d579e0ffa4c557e",
+    "semantic_hash": ""
+  },
+  "test/aip-airway-constraints.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "dc295f4d68e2f3d0ebd690f22c7054bc",
+    "semantic_hash": ""
+  },
+  "test/airport-info-processor.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "b0c06bd1ca984912852414c76ad10430",
+    "semantic_hash": ""
+  },
+  "test/airport-summary-tac.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "b0ebf4a062a15c92470e237bdcee1612",
+    "semantic_hash": ""
+  },
+  "test/airport-summary.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "ee72b7ffa79eeca682a3c5cad56d5317",
+    "semantic_hash": ""
+  },
+  "test/airspace-zones.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "e77c080b1f6e17f28d4c9bda03a54fe7",
+    "semantic_hash": ""
+  },
+  "test/alert-active.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "ac58d30493c6f8e082db0f556cfe77dd",
+    "semantic_hash": ""
+  },
+  "test/alert-diff.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "e336cedde49d8688d24258435a9124c5",
+    "semantic_hash": ""
+  },
+  "test/alert-scheduler.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "33c2cb48575135cd956b9f2947482349",
+    "semantic_hash": ""
+  },
+  "test/alert-sender.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "7a54b8883fc9fd55e45f67e4331dae3b",
+    "semantic_hash": ""
+  },
+  "test/altitude-weather-comparison.test.js": {
+    "mtime": 1786763262.4137356,
+    "ast_hash": "808436e5ad773dfd5ba59b9b706b8485",
+    "semantic_hash": ""
+  },
+  "test/api-cache-policy.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "d32e28d892fb278624abed6db2f26183",
+    "semantic_hash": ""
+  },
+  "test/api-client-abort.test.js": {
+    "mtime": 1785240983.8756633,
+    "ast_hash": "c53499c5d9b7656d381c840ebd1c450d",
+    "semantic_hash": ""
+  },
+  "test/api-hub-usage.test.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "0cc2f9a31daef13631fa2aaff2d1a4f8",
+    "semantic_hash": ""
+  },
+  "test/auth.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "d527cf9863e4cc9f9f7748b1a23770e7",
+    "semantic_hash": ""
+  },
+  "test/briefing-composer.test.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "b3002b4870cf7323b8ca7bf4bbaed8bd",
+    "semantic_hash": ""
+  },
+  "test/briefing-provenance.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "33a8b2e05ffb89af0dc25c97392aa0b6",
+    "semantic_hash": ""
+  },
+  "test/collection-quiesce.test.js": {
+    "mtime": 1787074229.5563378,
+    "ast_hash": "97fac3982aaefebb72d28e4c19bb277f",
+    "semantic_hash": ""
+  },
+  "test/collector-cancellation.test.js": {
+    "mtime": 1785240983.8780847,
+    "ast_hash": "c2f3bca176f800cb7829cd3ec51e43da",
+    "semantic_hash": ""
+  },
+  "test/compression.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "8c9a49ab0a546191762e3745d6a90c31",
+    "semantic_hash": ""
+  },
+  "test/confidence.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "a096195d996504ae1aec7bf6c8fc21d2",
+    "semantic_hash": ""
+  },
+  "test/convective-satellite-api.test.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "cf00c4922f4e689c843d18b8d5ad7ae2",
+    "semantic_hash": ""
+  },
+  "test/cross-section-route.test.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "d21ce3a7ed01f9e4e40b549f072fe942",
+    "semantic_hash": ""
+  },
+  "test/cross-section-sampler.test.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "fc10bf06f2bf2dbbcd8473795e2e34bc",
+    "semantic_hash": ""
+  },
+  "test/data-health-catalog.test.js": {
+    "mtime": 1786878535.2973933,
+    "ast_hash": "192f25391df87c82ccc905c4234d3c41",
+    "semantic_hash": ""
+  },
+  "test/data-view.test.js": {
+    "mtime": 1785244921.7705672,
+    "ast_hash": "f6ac0b26d2091313bcecd33e3856fd1d",
+    "semantic_hash": ""
+  },
+  "test/db-backup.test.js": {
+    "mtime": 1786375978.9729733,
+    "ast_hash": "c646de9bc7611cb12df6f39573e33e92",
+    "semantic_hash": ""
+  },
+  "test/db.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "cd128f604f231cadc94419eabe1c531a",
+    "semantic_hash": ""
+  },
+  "test/demo-session.test.js": {
+    "mtime": 1785243064.087087,
+    "ast_hash": "249104b640dc94bd0af14d711b4a8520",
+    "semantic_hash": ""
+  },
+  "test/deployment.test.js": {
+    "mtime": 1786370686.5840333,
+    "ast_hash": "59720ff0de064e7cfb30fedaee681b77",
+    "semantic_hash": ""
+  },
+  "test/disk-forecast.test.js": {
+    "mtime": 1786370686.5851793,
+    "ast_hash": "e985c9c92ec3585f36936df124147fdd",
+    "semantic_hash": ""
+  },
+  "test/echo-top-api.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "d79a578acc2bfd6a797127777c4b29ed",
+    "semantic_hash": ""
+  },
+  "test/echo-top-grid.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "46e8c0364395c7742b3deafa37f9eeef",
+    "semantic_hash": ""
+  },
+  "test/echo-top-model.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "c33ca6ba5d6c49b025110e2b999a0fcc",
+    "semantic_hash": ""
+  },
+  "test/echo-top-processor.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "7e5a12e0ba7120c602b034ce4ac6030a",
+    "semantic_hash": ""
+  },
+  "test/echo-top-store.test.js": {
+    "mtime": 1785142484.5160685,
+    "ast_hash": "a74b3d707686cb8209892f860a92cdec",
+    "semantic_hash": ""
+  },
+  "test/enroute-model.test.js": {
+    "mtime": 1786763113.465743,
+    "ast_hash": "b04df8bece1c3c3e09bdb8a93451aa13",
+    "semantic_hash": ""
+  },
+  "test/fetch-api-hub.test.js": {
+    "mtime": 1786378402.2763946,
+    "ast_hash": "c80286e75b679642036a0c84d38d5698",
+    "semantic_hash": ""
+  },
+  "test/fixtures/briefing-trace.js": {
+    "mtime": 1784823752.6807473,
+    "ast_hash": "eb9ff8943e8a69660d16fb8171007eca",
+    "semantic_hash": ""
+  },
+  "test/fixtures/met-no-rjtt.json": {
+    "mtime": 1785758764.8139312,
+    "ast_hash": "4784441510a0bce0505e32ea9b90d22c",
+    "semantic_hash": ""
+  },
+  "test/fixtures/notam-geometry-truth-2026-07-26.json": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "acee3c09c9ee3025709a746fa4f828c4",
+    "semantic_hash": ""
+  },
+  "test/fixtures/sfc-grid-samples.json": {
+    "mtime": 1785584661.489761,
+    "ast_hash": "cbdb0fec1cd66673b8ff0e667f4610b3",
+    "semantic_hash": ""
+  },
+  "test/flight-category.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "7fb1071ad44628098487220c2692b1e6",
+    "semantic_hash": ""
+  },
+  "test/freshness.test.js": {
+    "mtime": 1786370686.5851793,
+    "ast_hash": "5ffc57af9326d8fce0f1b82d1da20226",
+    "semantic_hash": ""
+  },
+  "test/geo-time-match.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "0eb2c577104905772da7baa5ee97f177",
+    "semantic_hash": ""
+  },
+  "test/ground-forecast-hourly.test.js": {
+    "mtime": 1785843549.0433438,
+    "ast_hash": "7b6adcfb0fcebf645a3499a466c44f6e",
+    "semantic_hash": ""
+  },
+  "test/hazard-exposure.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "68bfb7eb8ac2591eb5d4a706f371a3da",
+    "semantic_hash": ""
+  },
+  "test/hazard-matcher.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "a119d93408203056036981a6923ff067",
+    "semantic_hash": ""
+  },
+  "test/hazard-section.test.js": {
+    "mtime": 1785168444.8235254,
+    "ast_hash": "4b6e95698c2b6f02cb6dd2362c359dc4",
+    "semantic_hash": ""
+  },
+  "test/historical-weather-frames.test.js": {
+    "mtime": 1785234365.2239048,
+    "ast_hash": "3ade6bee4e0d0ebfed2e9fb8e77a5bb4",
+    "semantic_hash": ""
+  },
+  "test/kim-cloud-api.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "db97f31cea5d01e57a736ad04a6406a3",
+    "semantic_hash": ""
+  },
+  "test/kim-field-cache.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "874b73bcd8f748fbd78392989ffc43c6",
+    "semantic_hash": ""
+  },
+  "test/kim-forecast-hour.test.js": {
+    "mtime": 1785245320.610457,
+    "ast_hash": "0ff8f85a6e90f25a44177cdebec7a54d",
+    "semantic_hash": ""
+  },
+  "test/kim-hgt-merge.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "a6b45fa7436dbf24b198fd2995757ae2",
+    "semantic_hash": ""
+  },
+  "test/kim-icing-api.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "2a934886490d655a54368d91ae271792",
+    "semantic_hash": ""
+  },
+  "test/kim-nwp-model.test.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "fad274ae97008381fa772f5c66343f42",
+    "semantic_hash": ""
+  },
+  "test/kim-nwp-store.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "3baceb91d6a0a820c15afb227dbd8b58",
+    "semantic_hash": ""
+  },
+  "test/kim-run-credential.test.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "7d08cfe0c48940979ef7ea4a6e908fec",
+    "semantic_hash": ""
+  },
+  "test/kim-scheduler.test.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "850a6d1c1a94aa5b391304274bb261f6",
+    "semantic_hash": ""
+  },
+  "test/kim-server-index.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "e508bdc54f5e3e6c971a6104802e090c",
+    "semantic_hash": ""
+  },
+  "test/kim-single-forecast.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "9f11226cdc4115a9324bcc0475fb9a8a",
+    "semantic_hash": ""
+  },
+  "test/kim-surface-wind.test.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "8c15f51a4e0a2c9e59198ff2c07bb5ab",
+    "semantic_hash": ""
+  },
+  "test/kma-grid.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "23fed9ac7cb9e0f4fe5b59f43ef09b4d",
+    "semantic_hash": ""
+  },
+  "test/kma-radar-graphics.test.js": {
+    "mtime": 1786020224.880295,
+    "ast_hash": "8bcd5477681982923955f671a4198ed4",
+    "semantic_hash": ""
+  },
+  "test/kma-special-warning-parser.test.js": {
+    "mtime": 1785758764.8139312,
+    "ast_hash": "99c42817722e399890f1b822e6c91e63",
+    "semantic_hash": ""
+  },
+  "test/ktg-processor.test.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "3c204c9e24c84b8986d885530d5fc178",
+    "semantic_hash": ""
+  },
+  "test/me-alerts-delete.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "8f1d73dfb0eed6f0bb2272e0f634c5d0",
+    "semantic_hash": ""
+  },
+  "test/me-minima.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "5f58fbf72f0cc0e9ad676723dccf1f03",
+    "semantic_hash": ""
+  },
+  "test/me-notifications.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "07f72b7e832b81d616687201e114330e",
+    "semantic_hash": ""
+  },
+  "test/me-routes.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "76a7e1fd3b6565a88df30d8e50084122",
+    "semantic_hash": ""
+  },
+  "test/metar-tac.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "6400471d1875b0949a5d5eb68ebbd9eb",
+    "semantic_hash": ""
+  },
+  "test/network-family.test.js": {
+    "mtime": 1785929166.5450108,
+    "ast_hash": "8abd9c76772a70d7db6bbb89f5d66c4f",
+    "semantic_hash": ""
+  },
+  "test/noaa-metar-parser.test.js": {
+    "mtime": 1785333410.3156347,
+    "ast_hash": "95c8d7497cd842f1942e1f892e0fed21",
+    "semantic_hash": ""
+  },
+  "test/notam-briefing.test.js": {
+    "mtime": 1785173610.9354084,
+    "ast_hash": "7d4c4e8485f6f4ab2b00930099323a8b",
+    "semantic_hash": ""
+  },
+  "test/notam-crawler.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "fa720fa2009318ce6688a5b76d6f1559",
+    "semantic_hash": ""
+  },
+  "test/notam-geometry.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "7d99202ebbfbf3a840724210885fdc85",
+    "semantic_hash": ""
+  },
+  "test/notam-parser.test.js": {
+    "mtime": 1785173579.7644403,
+    "ast_hash": "40b7a635fc0ef21f60136eba07500811",
+    "semantic_hash": ""
+  },
+  "test/notam-position-text.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "435a693a43e1c4bcf1236a542d6454b5",
+    "semantic_hash": ""
+  },
+  "test/notam-position-truth.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "46d052cafb5cf5defc40092742e3394a",
+    "semantic_hash": ""
+  },
+  "test/notam-processor.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "0263cce3a274f53c7a1b5cbd63877b16",
+    "semantic_hash": ""
+  },
+  "test/notam-store.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "6293e111f102f4c2286177f70e53d9a5",
+    "semantic_hash": ""
+  },
+  "test/ops-alerts.test.js": {
+    "mtime": 1786444641.9193876,
+    "ast_hash": "e9b13acccc6a7171d8fbeee49c0aa73b",
+    "semantic_hash": ""
+  },
+  "test/ops-rules.test.js": {
+    "mtime": 1786377291.7486596,
+    "ast_hash": "928715bfdcf6f934f6bac6f33648ef70",
+    "semantic_hash": ""
+  },
+  "test/overseas-config.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "3df21004cc3ee5fcfa2f34a0d72d0a40",
+    "semantic_hash": ""
+  },
+  "test/overseas-daily.test.js": {
+    "mtime": 1785844867.4023747,
+    "ast_hash": "88b42d1552b2d02509b5ffef8902d6b6",
+    "semantic_hash": ""
+  },
+  "test/overseas-forecast-processor.test.js": {
+    "mtime": 1785844437.7264743,
+    "ast_hash": "936599635df571b218f9865d7baa3d28",
+    "semantic_hash": ""
+  },
+  "test/parse-utils.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "a5c763c89d7f6505eeed47be21a747e1",
+    "semantic_hash": ""
+  },
+  "test/planned-altitude.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "1d8af8e50c4687096b8b1fb248126f54",
+    "semantic_hash": ""
+  },
+  "test/radar-graphics-processor.test.js": {
+    "mtime": 1786265389.4116116,
+    "ast_hash": "0d2a24abbaf4e59ca7d5a31ebf2100df",
+    "semantic_hash": ""
+  },
+  "test/radar-qcd-parser.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "7f58a42cec71942464bedb4dcedf31c6",
+    "semantic_hash": ""
+  },
+  "test/rainviewer-processor.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "43f49a4d747420307c4128c5453828f3",
+    "semantic_hash": ""
+  },
+  "test/requests-flow.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "2837aa103c9ec87c8f447af1a41ac7ab",
+    "semantic_hash": ""
+  },
+  "test/route-briefing-integration.test.js": {
+    "mtime": 1787139573.1348007,
+    "ast_hash": "87374de898d695322fff286fc71662ea",
+    "semantic_hash": ""
+  },
+  "test/route-exposure.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "2e9c8823cfaa72849bfcc097a305803a",
+    "semantic_hash": ""
+  },
+  "test/route-weather-legs.test.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "058699365c2efcae9ebf195b0e2c7658",
+    "semantic_hash": ""
+  },
+  "test/satellite-download-budget.test.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "69b7efd966829dab3f85d9ba3bb7521f",
+    "semantic_hash": ""
+  },
+  "test/schedule-window.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "56d83b93d4fe0ab798cfeb62c2b36da7",
+    "semantic_hash": ""
+  },
+  "test/snapshot-meta-cache.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "b508f4ee346b96f94e5397a96d646f2b",
+    "semantic_hash": ""
+  },
+  "test/snapshot-store.test.js": {
+    "mtime": 1785235939.6594644,
+    "ast_hash": "6dacb04210450caf10b18ec3b36f8ce9",
+    "semantic_hash": ""
+  },
+  "test/stats-last-success.test.js": {
+    "mtime": 1786370686.5852482,
+    "ast_hash": "6700fb288d8ff49591d507d0a0bdea0d",
+    "semantic_hash": ""
+  },
+  "test/stats-summary.test.js": {
+    "mtime": 1786370686.5852823,
+    "ast_hash": "cdc75e45d1a5e9821445703885278cf4",
+    "semantic_hash": ""
+  },
+  "test/stats.test.js": {
+    "mtime": 1786257690.930987,
+    "ast_hash": "3eb259444986fa04e1734bd3dec87aa0",
+    "semantic_hash": ""
+  },
+  "test/store-data-view.test.js": {
+    "mtime": 1785243467.3349733,
+    "ast_hash": "49ce4c722d6f2744c37835735f6925c2",
+    "semantic_hash": ""
+  },
+  "test/taf-previous.test.js": {
+    "mtime": 1785231485.2767053,
+    "ast_hash": "570bdc3500718e788b65212f715f52fd",
+    "semantic_hash": ""
+  },
+  "test/taf-tac.test.js": {
+    "mtime": 1787482890.3746169,
+    "ast_hash": "7dcb2bdcd8bd476128b9d0ca164bfa36",
+    "semantic_hash": ""
+  },
+  "test/taf-window.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "e10dfdbd61a6fb5ab82e4f2e2f28b633",
+    "semantic_hash": ""
+  },
+  "test/takeoff-forecast-parser.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "c0179d0f5c28e923ea142cf986d46ac7",
+    "semantic_hash": ""
+  },
+  "test/terminal-flight-processor.test.js": {
+    "mtime": 1785758764.8139312,
+    "ast_hash": "9df925e67dabb642adb6190a02a1054a",
+    "semantic_hash": ""
+  },
+  "test/terrain-rgb-tiles.test.js": {
+    "mtime": 1785685511.5520797,
+    "ast_hash": "b10118de59e392432a9e53e23415d41c",
+    "semantic_hash": ""
+  },
+  "test/typhoon-briefing-wiring.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "2aa216408b6a71250ac06f9541729471",
+    "semantic_hash": ""
+  },
+  "test/typhoon-briefing.test.js": {
+    "mtime": 1785935554.8355036,
+    "ast_hash": "74535ce8a74f4c346cee70ec108ee269",
+    "semantic_hash": ""
+  },
+  "test/typhoon-geometry.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "2f35b85fb461f369f23bdad3a9d99cb9",
+    "semantic_hash": ""
+  },
+  "test/typhoon-parser.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "dac4101d477cbe41d5331ad0ac7bc45c",
+    "semantic_hash": ""
+  },
+  "test/typhoon-processor.test.js": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "f2ba03b93a390d2bb3b01d7bd4587c0f",
+    "semantic_hash": ""
+  },
+  "test/vertical-profile.test.js": {
+    "mtime": 1787074232.1535916,
+    "ast_hash": "f695469f591671a3ed3972bec8511e50",
+    "semantic_hash": ""
+  },
+  "test/vfr-leg-terrain.test.js": {
+    "mtime": 1784823752.6821203,
+    "ast_hash": "eb3faaaca26ac30c82f5d4e326cb3e2f",
+    "semantic_hash": ""
+  },
+  "test/visit-hours.test.js": {
+    "mtime": 1786370686.5853152,
+    "ast_hash": "3c2200882087ca67158a1fbfeb60b875",
+    "semantic_hash": ""
+  },
+  "test/fixtures/typhoon-hinnamnor.txt": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "dce9ea91c633b0d4791b86ececf96177",
+    "semantic_hash": ""
+  },
+  "test/fixtures/typhoon-multi-2018.txt": {
+    "mtime": 1785142484.5200684,
+    "ast_hash": "d9d5da99c73d496b6722caf07c65a4bf",
+    "semantic_hash": ""
+  },
+  "src/admin/alert-watches.js": {
+    "mtime": 1787243446.430361,
+    "ast_hash": "0f32ab24215119da3f2d6d84097e1732",
+    "semantic_hash": ""
+  },
+  "src/alerts/taf-conditions.js": {
+    "mtime": 1787243446.430361,
+    "ast_hash": "3d754d7372a95f2208e679ada7c4cd65",
+    "semantic_hash": ""
+  },
+  "src/api-operation-registry.js": {
+    "mtime": 1788386675.1186526,
+    "ast_hash": "cf7877eebdafdea7031a937cef48c023",
+    "semantic_hash": ""
+  },
+  "src/briefing/navlog-nwp-patch.js": {
+    "mtime": 1787139551.6268053,
+    "ast_hash": "3ba1b19f60c6ab93a58996648c1663d0",
+    "semantic_hash": ""
+  },
+  "src/collector-registry.js": {
+    "mtime": 1788362378.453409,
+    "ast_hash": "3d88991e30dba638bc6d515364511cbf",
+    "semantic_hash": ""
+  },
+  "src/parsers/taf-parser.test.js": {
+    "mtime": 1787482947.242605,
+    "ast_hash": "9e21d836740d1c153dedec863048a001",
+    "semantic_hash": ""
+  },
+  "src/satellite/usage-meter.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "1ce9e7bf0291e4f18b4b621bb9246b42",
+    "semantic_hash": ""
+  },
+  "src/satellite/work-queue.js": {
+    "mtime": 1787074229.5535924,
+    "ast_hash": "eefec65665e56deb17d8698aa4dd23b2",
+    "semantic_hash": ""
+  },
+  "src/satellite/worker-entry.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "d477f7e169dd870735f4da3265562e33",
+    "semantic_hash": ""
+  },
+  "src/satellite/worker-jobs.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "6327290c98ee5c98295ae6a3b0423efb",
+    "semantic_hash": ""
+  },
+  "src/satellite/worker-protocol.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "debd4c82b3386459212730854819ac9e",
+    "semantic_hash": ""
+  },
+  "src/satellite/worker-runner.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "f4fc0a359eb1b3d5088ad202c22240a0",
+    "semantic_hash": ""
+  },
+  "test/admin-alert-watches.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "5d7dd29903c8cb599fef7326d2bec639",
+    "semantic_hash": ""
+  },
+  "test/api-operation-registry.test.js": {
+    "mtime": 1788386648.9826503,
+    "ast_hash": "513cd94b931a7801469554d2056a9e9c",
+    "semantic_hash": ""
+  },
+  "test/collector-registry.test.js": {
+    "mtime": 1788362328.6934106,
+    "ast_hash": "afbb8644d3afad8573557f9a6935db8f",
+    "semantic_hash": ""
+  },
+  "test/me-routes-briefing-limit.test.js": {
+    "mtime": 1787093613.8454926,
+    "ast_hash": "3c513151370167c77de6df34a783109b",
+    "semantic_hash": ""
+  },
+  "test/navlog-nwp-patch.test.js": {
+    "mtime": 1787139539.662808,
+    "ast_hash": "7e5e44ff326bb6c32be63f02e3735fa2",
+    "semantic_hash": ""
+  },
+  "test/nwp-time-rules.test.js": {
+    "mtime": 1787093613.8455935,
+    "ast_hash": "8a12027ce4a466d92d59f28f50b059b1",
+    "semantic_hash": ""
+  },
+  "test/satellite-render-alpha.test.js": {
+    "mtime": 1787679328.8696945,
+    "ast_hash": "222188fd5eed8595ba1a334525956283",
+    "semantic_hash": ""
+  },
+  "test/satellite-usage-report.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "5f29c2f72dcdec04f6cd6498b8f6e9f4",
+    "semantic_hash": ""
+  },
+  "test/satellite-work-queue.test.js": {
+    "mtime": 1787074229.5563378,
+    "ast_hash": "5a1e3b1b63dc500d7c171f49c79e03fa",
+    "semantic_hash": ""
+  },
+  "test/satellite-worker-entry.test.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "905771c79d9602d62f5942807d79c892",
+    "semantic_hash": ""
+  },
+  "test/satellite-worker-protocol.test.js": {
+    "mtime": 1787679328.8560486,
+    "ast_hash": "10e91fa152ce12d8bd6b5935140c8f09",
+    "semantic_hash": ""
+  },
+  "test/satellite-worker-runner.test.js": {
+    "mtime": 1787074229.5563378,
+    "ast_hash": "ee13ea7202da468e8e3c7260a8215b76",
+    "semantic_hash": ""
+  },
+  "test/taf-conditions.test.js": {
+    "mtime": 1787243446.4337647,
+    "ast_hash": "28d443ac6317436c5b0ad9ed46872081",
+    "semantic_hash": ""
+  }
+}

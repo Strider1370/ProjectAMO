@@ -232,3 +232,19 @@ test('buildRouteWeatherLegs: SID가 출발공항을 이미 품었으면 공항 �
   assert.equal(result.legs.filter((leg) => leg.from === 'RKSI').length, 0, '그룹이 품었으면 별도 줄을 만들지 않는다')
   assert.equal(result.legs.at(-1).to, 'RJBB', '도착공항은 절차가 없으니 여전히 붙는다')
 })
+
+test('missing forecast axis keeps route legs and official hazards without inventing wind or matched time', () => {
+  const result = buildRouteWeatherLegs({
+    routeModel: { enRouteSegments: [{ id: 'A-B', fromFix: 'A', toFix: 'B', startNm: 0, endNm: 20, alignmentStatus: 'aligned' }] },
+    selectedCruiseAltitudeFt: 19000, crossSection: null, turbulence: null,
+    hazards: [{ source: 'SIGMET', code: 'TURB', routeIntervalNm: { startNm: 1, endNm: 19 }, altitudeExposure: { status: 'unknown' }, timeStatus: 'matched' }],
+  })
+  assert.equal(result.legs.length, 1)
+  assert.equal(result.legs[0].distanceNm, 20)
+  assert.equal(result.legs[0].wind, null)
+  assert.equal(result.legs[0].temp, null)
+  assert.equal(result.legs[0].icing.peakLevel, null)
+  assert.equal(result.legs[0].turbulence.peakLevel, null)
+  assert.equal(result.legs[0].timeStatus, 'unavailable')
+  assert.equal(result.legs[0].hazards[0].code, 'TURB')
+})

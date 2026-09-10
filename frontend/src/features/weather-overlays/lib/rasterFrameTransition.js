@@ -41,36 +41,41 @@ function availableBeforeId(map, preferredBeforeId, layerId) {
 }
 
 function waitForSource(map, sourceId) {
-  if (map.isSourceLoaded?.(sourceId)) return Promise.resolve(true)
-  if (!map.on || !map.off) return Promise.resolve(true)
-  return new Promise((resolve) => {
-    let fallbackTimer = null
-    const cleanup = () => {
-      map.off('sourcedata', onSourceData)
-      map.off('error', onError)
-      if (fallbackTimer) clearTimeout(fallbackTimer)
-    }
-    const onSourceData = (event) => {
-      if (event?.sourceId !== sourceId) return
-      if (event?.isSourceLoaded === false) return
-      cleanup()
-      resolve(true)
-    }
-    const onError = (event) => {
-      if (event?.sourceId !== sourceId) return
-      cleanup()
-      resolve(false)
-    }
-    map.on('sourcedata', onSourceData)
-    map.on('error', onError)
-    // Browsers have already decoded the image in preload. Some Mapbox image
-    // sources do not emit sourcedata again after being added, so keep the
-    // previous-frame error path briefly, then commit the known-good preload.
-    fallbackTimer = setTimeout(() => {
-      cleanup()
-      resolve(Boolean(map.getSource?.(sourceId)))
-    }, 100)
-  })
+  if (map.isSourceLoaded?.(sourceId) || !map.on || !map.off) {
+    return { promise: Promise.resolve(true), cancel() {} }
+  }
+  let fallbackTimer = null
+  let settled = false
+  let resolveWait
+  const promise = new Promise((resolve) => { resolveWait = resolve })
+  const cleanup = () => {
+    map.off('sourcedata', onSourceData)
+    map.off('error', onError)
+    if (fallbackTimer) clearTimeout(fallbackTimer)
+    fallbackTimer = null
+  }
+  const finish = (value) => {
+    if (settled) return
+    settled = true
+    cleanup()
+    resolveWait(value)
+  }
+  const onSourceData = (event) => {
+    if (event?.sourceId !== sourceId) return
+    if (event?.isSourceLoaded === false) return
+    finish(true)
+  }
+  const onError = (event) => {
+    if (event?.sourceId !== sourceId) return
+    finish(false)
+  }
+  map.on('sourcedata', onSourceData)
+  map.on('error', onError)
+  // Browsers have already decoded the image in preload. Some Mapbox image
+  // sources do not emit sourcedata again after being added, so keep the
+  // previous-frame error path briefly, then commit the known-good preload.
+  fallbackTimer = setTimeout(() => finish(Boolean(map.getSource?.(sourceId))), 100)
+  return { promise, cancel: () => finish(false) }
 }
 
 export function createRasterFrameTransition(map, {
@@ -92,6 +97,7 @@ export function createRasterFrameTransition(map, {
   let incoming = null
   let timer = null
   let pending = null
+  let cancelSourceWait = null
 
   function restoreActive() {
     if (!active) return false
@@ -108,6 +114,8 @@ export function createRasterFrameTransition(map, {
 
   function cancel() {
     generation += 1
+    cancelSourceWait?.()
+    cancelSourceWait = null
     if (timer) clearTimeout(timer)
     timer = null
     if (incoming) removeResource(map, incoming.sourceId, incoming.layerId)
@@ -166,7 +174,10 @@ export function createRasterFrameTransition(map, {
       return false
     }
 
-    const sourceLoaded = await waitForSource(map, next.sourceId)
+    const sourceWait = waitForSource(map, next.sourceId)
+    cancelSourceWait = sourceWait.cancel
+    const sourceLoaded = await sourceWait.promise
+    if (cancelSourceWait === sourceWait.cancel) cancelSourceWait = null
     if (requestGeneration !== generation || !sourceLoaded) {
       if (incoming === next) removeResource(map, next.sourceId, next.layerId)
       if (incoming === next) incoming = null
@@ -251,4 +262,11 @@ export function syncRasterFrame(map, options) {
   }
   void transition.sync(options.frame, options.visible)
   return transition
+}
+
+export function disposeRasterFrameTransitions(map) {
+  const transitions = transitionsByMap.get(map)
+  if (!transitions) return
+  transitions.forEach((transition) => transition.dispose())
+  transitionsByMap.delete(map)
 }

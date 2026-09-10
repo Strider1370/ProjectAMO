@@ -1,6 +1,25 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { normalizeRouteSnapshot, entryKind } from './routeStore.js'
+import { deleteSavedRoute, entryKind, listSavedRoutes, normalizeRouteSnapshot, saveRoute } from './routeStore.js'
+
+async function withPreviewStorageMocks(fetchMock, run) {
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window')
+  const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  const fetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch')
+  let localStorageAccesses = 0
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: { location: { pathname: '/', search: '?orgId=preview' } } })
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+    getItem() { localStorageAccesses += 1; throw new Error('preview must not read localStorage') },
+    setItem() { localStorageAccesses += 1; throw new Error('preview must not write localStorage') },
+  } })
+  Object.defineProperty(globalThis, 'fetch', { configurable: true, value: fetchMock })
+  try { await run(() => localStorageAccesses) } finally {
+    for (const [key, descriptor] of [['window', windowDescriptor], ['localStorage', storageDescriptor], ['fetch', fetchDescriptor]]) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor)
+      else delete globalThis[key]
+    }
+  }
+}
 
 test('normalizeRouteSnapshot migrates legacy inputs without losing VFR waypoint fields', () => {
   const snapshot = normalizeRouteSnapshot({
@@ -130,4 +149,43 @@ test('entryKind: kind가 없으면 경로로 본다', () => {
   assert.equal(entryKind({ kind: 'route' }), 'route')
   assert.equal(entryKind({}), 'route')
   assert.equal(entryKind(null), 'route')
+})
+
+test('미리보기 저장 경로 GET·POST·DELETE는 체험 API만 사용한다', async () => {
+  const calls = []
+  await withPreviewStorageMocks(async (url, options = {}) => {
+    const method = options.method || 'GET'
+    calls.push([url, method])
+    return { ok: true, json: async () => method === 'GET' ? { routes: [] } : { id: 9, name: '체험 경로' } }
+  }, async (localStorageAccesses) => {
+    assert.deepEqual(await listSavedRoutes(), [])
+    assert.equal((await saveRoute('체험 경로', {})).id, 9)
+    await deleteSavedRoute(9)
+    assert.equal(localStorageAccesses(), 0)
+  })
+  assert.deepEqual(calls, [
+    ['/api/lounge-preview/saved-routes', 'GET'],
+    ['/api/lounge-preview/saved-routes', 'POST'],
+    ['/api/lounge-preview/saved-routes/9', 'DELETE'],
+  ])
+})
+
+test('미리보기 저장 API 오류와 401은 개인 localStorage로 폴백하지 않는다', async () => {
+  const calls = []
+  await withPreviewStorageMocks(async (url, options = {}) => {
+    const method = options.method || 'GET'
+    calls.push([url, method])
+    if (method === 'DELETE') throw new Error('network unavailable')
+    return { ok: false, status: 401, json: async () => ({}) }
+  }, async (localStorageAccesses) => {
+    assert.deepEqual(await listSavedRoutes(), [])
+    assert.equal(await saveRoute('저장 실패', {}), null)
+    assert.equal(await deleteSavedRoute(9), undefined)
+    assert.equal(localStorageAccesses(), 0)
+  })
+  assert.deepEqual(calls, [
+    ['/api/lounge-preview/saved-routes', 'GET'],
+    ['/api/lounge-preview/saved-routes', 'POST'],
+    ['/api/lounge-preview/saved-routes/9', 'DELETE'],
+  ])
 })

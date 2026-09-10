@@ -35,9 +35,23 @@ test('unknown lower cloud cannot be skipped; irrelevant upper missing cloud does
   const lower = { ...layer, pressure_hpa: 925, height_m: 500, cloud_fraction: null }
   assert.equal(estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [lower, layer] }).ceiling_status, 'missing_input')
   assert.equal(estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [layer, { ...lower, height_m: 1600 }] }).ceiling_status, 'value')
-  assert.equal(estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [{ ...layer, height_m: 2000 }] }).ceiling_status, 'not_detected_below_limit')
+  assert.equal(estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [{ ...layer, height_m: 8000 }] }).ceiling_status, 'not_detected_below_limit')
   assert.equal(estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [{ ...layer, height_m: 100 }] }).ceiling_status, 'not_detected_below_limit')
   assert.equal(estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [{ ...lower, height_m: null }, layer] }).ceiling_status, 'missing_input')
+})
+
+test('search reaches 25,000 ft and only the band below 5,000 ft treats a bad layer as fatal', () => {
+  const at = (height_m, extra = {}) => ({ ...layer, height_m, ...extra })
+  const high = estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [at(2000)] })
+  assert.equal(high.ceiling_status, 'value')
+  assert.ok(Math.abs(high.ceiling_agl_ft - 6250) < 1)
+  assert.equal(estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [at(7700)] }).ceiling_status, 'value')
+  assert.equal(estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [at(7800)] }).ceiling_status, 'not_detected_below_limit')
+  // 5,000 ft 위의 못 쓰는 층은 건너뛰되 증거에 남기고, 더 위의 운고를 그대로 살린다.
+  const gap = estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [at(2000, { cloud_fraction: null }), at(5000)] })
+  assert.equal(gap.ceiling_status, 'value')
+  assert.equal(gap.ceiling_source_levels[0].unusable, true)
+  assert.equal(estimateCeiling({ model: 'icon', grid_elevation_m: 95, layers: [at(1400, { cloud_fraction: null }), at(5000)] }).ceiling_status, 'missing_input')
 })
 
 

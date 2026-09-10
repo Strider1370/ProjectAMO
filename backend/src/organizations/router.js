@@ -104,8 +104,12 @@ export function createOrganizationRouter({
   briefingDependencies = {},
   situationDependencies = {},
   filesPath,
+  runOperation = (operation) => operation(),
 } = {}) {
   const router = Router()
+  const asyncRoute = (handler) => (req, res) => Promise.resolve()
+    .then(() => runOperation(() => handler(req, res)))
+    .catch((error) => handleOrganizationError(res, error))
   const database = () => db || getDb()
   const member = requireOrganizationMember({ db })
   const materials = createMaterialsHandlers({ database, filesPath })

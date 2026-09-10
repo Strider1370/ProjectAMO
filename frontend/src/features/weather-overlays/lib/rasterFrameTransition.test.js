@@ -207,3 +207,27 @@ test('style cleanup during preload cannot commit and same frame restores without
   await restored
   assert.equal(preloadCount, 2)
 })
+
+test('dispose cancels the source fallback timer before the map is removed', async () => {
+  const map = createMap()
+  const getSource = map.getSource.bind(map)
+  let removed = false
+  let readsAfterRemoval = 0
+  map.getSource = (id) => {
+    if (removed) readsAfterRemoval += 1
+    return getSource(id)
+  }
+  const transition = createRasterFrameTransition(map, {
+    sourceId: 'radar-source', layerId: 'radar-layer', opacity: 0.88, transitionMs: 0,
+    preload: async () => undefined,
+  })
+
+  const sync = transition.sync(firstFrame, true)
+  await waitFor(() => map.getSource('radar-source--incoming-1'))
+  transition.dispose()
+  removed = true
+  await sync
+  await new Promise((resolve) => setTimeout(resolve, 120))
+
+  assert.equal(readsAfterRemoval, 0)
+})

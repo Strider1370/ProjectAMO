@@ -1,6 +1,6 @@
 # ProjectAMO Dev Server and Capture Procedure
 
-Use this guide whenever a task requires opening the local backend, opening the frontend, or running Playwright screenshots against the local app.
+Commands for local backend/frontend servers and Playwright screenshots.
 
 This is a Linux-only project (WSL Ubuntu or any Linux host). After a fresh clone or a Node version change, reinstall before running anything:
 
@@ -17,7 +17,7 @@ Symptoms of a stale install: `Cannot find module`, an `@esbuild/*` or `@rollup/*
 - Frontend: `http://127.0.0.1:5173`
 - Frontend app URL for Playwright: `PROJECTAMO_URL=http://127.0.0.1:5173`
 
-Use `npm run dev:serve` for persistent development and `npm run dev:test` for fixed-data verification.
+Use `npm run dev:serve` for persistent development. `npm run dev:test` disables automatic collection; fixed-data fixtures are provided by the browser contract runner.
 
 Playwright contracts use a separate managed path. `npm run dev:contract -- --grep <contract-id>` checks that 3001 and 5173 are free, then Playwright owns the verification backend and frontend. It does not reuse or stop a human-run server.
 
@@ -47,7 +47,7 @@ Start both servers and keep them running:
 npm run dev:serve
 ```
 
-Use `dev:serve` only when the user explicitly wants the app left running for manual/browser work. For automated screenshots or smoke checks, use `dev:smoke` or `dev:screenshots` so the launcher starts, verifies, runs the task, and cleans up in one bounded command.
+`dev:serve` leaves servers running for manual/browser work. `dev:smoke` and `dev:screenshots` start servers, verify readiness, run the task, and clean up automatically.
 
 Run responsive smoke with managed servers:
 
@@ -95,7 +95,7 @@ Expected backend health content includes:
 
 ## Playwright Capture
 
-Use the managed launcher before creating one-off screenshot scripts: `npm run dev:smoke`, or `npm run dev:screenshots` with the phase/label variables set as shown above.
+Managed screenshot commands: `npm run dev:smoke`, or `npm run dev:screenshots` with the phase/label variables set as shown above.
 
 If servers are already running and verified, the lower-level frontend scripts can still be used directly with `PROJECTAMO_URL=http://127.0.0.1:5173` set, calling `npm run smoke:responsive --prefix frontend` or `npm run screenshots:responsive --prefix frontend`.
 
@@ -107,11 +107,9 @@ For UI states that the baseline script does not cover, write or run focused Play
 artifacts/responsive-screenshots/<phase>/<YYYY-MM-DD_HHMM_label>/
 ```
 
-Include a short README or manifest with the capture time, branch/commit, viewport matrix, capture method, and verification commands when the capture is part of responsive/UI work.
-
 ## Known Failure Modes
 
-- `node: command not found` in a script, hook, or any non-interactive shell. nvm loads from `~/.bashrc` below its non-interactive guard, so only interactive shells see it. `node`, `npm`, `npx`, `graphify`, and `graphify-mcp` are symlinked into `/usr/local/bin` to cover every shell; if a new tool is missing, symlink it the same way. Re-run the symlinks after `nvm use` switches versions.
+- `node: command not found` in a script, hook, or any non-interactive shell. nvm loads from `~/.bashrc` below its non-interactive guard, so only interactive shells see it. `node`, `npm`, and `npx` are symlinked into `/usr/local/bin` to cover every shell; if a new tool is missing, symlink it the same way. Re-run the symlinks after `nvm use` switches versions.
 - `5173` is already in use: because `--strictPort` is required, the frontend will fail instead of moving ports. Find and stop the existing ProjectAMO frontend or reuse it after verifying it serves the current workspace.
 - Backend starts but upstream data collection logs `fetch failed`: this is not a readiness blocker by itself. The server is considered ready when `/api/health` returns success; live external API refresh may still fail because of network/API availability.
 - Stopping only the parent process may leave child node processes behind. Clean up by checking the listening ports above and stopping the owning process for `3001` and `5173`.

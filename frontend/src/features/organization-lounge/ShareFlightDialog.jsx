@@ -3,7 +3,7 @@ import { Plane } from 'lucide-react'
 
 import { listSavedRoutes, entryKind } from '../route-briefing/lib/routeStore.js'
 import { localInputToIso } from './flightDraft.js'
-import { shareSavedFlight } from './api.js'
+import { listPreviewSavedRoutes, shareSavedFlight } from './api.js'
 import { Button, Dialog, EmptyState } from './components.jsx'
 import {
   buildShareFlightBody, organizationFlightHref, organizationFromMembership, shareFlightDefaults,
@@ -38,7 +38,8 @@ export default function ShareFlightDialog({ orgId = '', memberships = [], source
     if (source) return undefined
     let active = true
     setLoading(true)
-    listSavedRoutes().then((saved) => {
+    const loadRoutes = () => orgId === 'preview' ? listPreviewSavedRoutes() : listSavedRoutes()
+    loadRoutes().then((saved) => {
       if (!active) return
       setItems(saved)
       if (saved.length) {
@@ -47,7 +48,7 @@ export default function ShareFlightDialog({ orgId = '', memberships = [], source
       }
     }).catch((reason) => { if (active) setError(errorMessage(reason)) }).finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [source, tz])
+  }, [source, tz, orgId])
 
   function selectSource(id) {
     setSelectedId(id)
@@ -82,9 +83,9 @@ export default function ShareFlightDialog({ orgId = '', memberships = [], source
 
   return <Dialog title="내 비행을 기관에 공유" onClose={onClose}><form className="ol-form" onSubmit={submit}>
     {!orgId && <label className="ol-full">공유 대상 기관<select value={selectedOrgId} onChange={(event) => setSelectedOrgId(event.target.value)} required><option value="">기관 선택</option>{memberships.map((membership) => { const organization = organizationFromMembership(membership); return organization && <option key={organization.id} value={organization.id}>{organization.name}</option> })}</select></label>}
-    {!source && <label className="ol-full">개인 저장 자료<select value={selectedId} onChange={(event) => selectSource(event.target.value)} required><option value="">저장 자료 선택</option>{items.map((item) => <option key={item.id} value={item.id}>{item.name} · {entryKind(item) === 'briefing' ? '브리핑' : '경로'}</option>)}</select></label>}
-    {loading && <p className="ol-caption ol-full" role="status">개인 저장 자료를 불러오는 중…</p>}
-    {!loading && !items.length && <div className="ol-full"><EmptyState title="공유할 개인 저장 자료가 없습니다.">경로나 브리핑을 먼저 저장한 뒤 다시 시도하세요.</EmptyState></div>}
+    {!source && <label className="ol-full">{orgId === 'preview' ? '체험용 저장 자료' : '개인 저장 자료'}<select value={selectedId} onChange={(event) => selectSource(event.target.value)} required><option value="">저장 자료 선택</option>{items.map((item) => <option key={item.id} value={item.id}>{item.name} · {entryKind(item) === 'briefing' ? '브리핑' : '경로'}</option>)}</select></label>}
+    {loading && <p className="ol-caption ol-full" role="status">{orgId === 'preview' ? '체험용' : '개인'} 저장 자료를 불러오는 중…</p>}
+    {!loading && !items.length && <div className="ol-full"><EmptyState title="공유할 저장 자료가 없습니다.">저장 자료를 새로 확인한 뒤 다시 시도하세요.</EmptyState></div>}
     <label className="ol-full">비행명<input name="name" key={`name:${selectedId}`} defaultValue={defaults.name} /></label>
     <label>출발시각 · {tz}<input name="etd" type="datetime-local" key={`etd:${selectedId}`} defaultValue={defaults.etd} required /></label>
     <label>도착시각 · {tz}<input name="eta" type="datetime-local" key={`eta:${selectedId}`} defaultValue={defaults.eta} required /></label>

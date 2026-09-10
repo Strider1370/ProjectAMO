@@ -6,7 +6,8 @@ import {
 import { useAuth } from '../auth/AuthContext.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import VerticalProfileChart from '../route-briefing/VerticalProfileChart.jsx'
-import { organizationRequest } from './api.js'
+import { organizationRequest, organizationResourceUrl } from './api.js'
+import PreviewMode from './PreviewMode.jsx'
 import { formatTime } from './components.jsx'
 import OrganizationMap from './OrganizationMap.jsx'
 import { OrganizationDocument } from './OrganizationDocument.jsx'
@@ -125,7 +126,7 @@ function PresentationMaterialViewer({ orgId, material }) {
   if (version == null) return <div className="op-empty">고정된 자료 버전이 없어 발표 중 열 수 없습니다.</div>
   if (error) return <div className="op-empty" role="alert">고정 자료를 열 수 없습니다. {error}</div>
   if (!resolved) return <div className="op-empty" role="status"><LoaderCircle className="ol-spin" /> 고정 자료 v{version}을 여는 중…</div>
-  const url = resolved.fileUrl || `/api/organizations/${encodeURIComponent(orgId)}/materials/${encodeURIComponent(materialId)}/versions/${encodeURIComponent(version)}/original`
+  const url = organizationResourceUrl(orgId, resolved.fileUrl, `/materials/${encodeURIComponent(materialId)}/versions/${encodeURIComponent(version)}/original`)
   const mime = resolved.mimeType || resolved.mime_type || ''
   const geojson = resolved.metadata?.geojson
   const features = geojson?.type === 'FeatureCollection' ? geojson.features : geojson?.type === 'Feature' ? [geojson] : []
@@ -141,7 +142,7 @@ function PresentationMaterialViewer({ orgId, material }) {
   return <div className="op-empty"><strong>{resolved.title || `자료 ${materialId}`}</strong><a href={url} target="_blank" rel="noreferrer">고정 원본 열기</a></div>
 }
 
-function ExpandedPane({ type, bundle, session, run, flight, activeItemId, onSelectItem, onClose }) {
+function ExpandedPane({ orgId, type, bundle, session, run, flight, activeItemId, onSelectItem, onClose }) {
   const dialogRef = useRef(null)
   const materials = materialReferences(session, run, flight, bundle)
   const [selectedMaterialKey, setSelectedMaterialKey] = useState(null)
@@ -160,9 +161,9 @@ function ExpandedPane({ type, bundle, session, run, flight, activeItemId, onSele
   return <dialog ref={dialogRef} className="op-expanded" aria-label="발표 자료 확대" onCancel={(event) => { event.preventDefault(); onClose() }}>
     <header><strong>{type === 'map' ? '평면 기상 지도' : type === 'profile' ? '연직단면도' : '참고자료'}</strong><button type="button" onClick={onClose}><Minimize2 size={18} /> 발표 배치로 복귀</button></header>
     <div className="op-expanded-body">
-      {type === 'map' && <OrganizationMap orgId={run?.orgId} bundle={bundle} dataMode="pinned" selectedItemId={activeItemId} onSelectItem={onSelectItem} />}
+      {type === 'map' && <OrganizationMap orgId={orgId} bundle={bundle} dataMode="pinned" selectedItemId={activeItemId} onSelectItem={onSelectItem} />}
       {type === 'profile' && <ProfilePanel bundle={bundle} activeItemId={activeItemId} onSelectItem={onSelectItem} />}
-      {type === 'materials' && <div className="op-expanded-materials"><nav aria-label="참고자료 목록">{materials.map((material) => { const key = `${material.materialId}:${material.materialVersion}`; return <button type="button" key={key} aria-current={key === `${selectedMaterial?.materialId}:${selectedMaterial?.materialVersion}` ? 'true' : undefined} onClick={() => setSelectedMaterialKey(key)}><strong>{material.title || `기관 자료 ${material.materialId}`}</strong><small>불변 버전 v{material.materialVersion ?? '미지정'}</small></button> })}</nav><div className="op-expanded-material-view">{selectedMaterial ? <PresentationMaterialViewer orgId={run.orgId} material={selectedMaterial} /> : <div className="op-empty">연결된 참고자료가 없습니다.</div>}</div></div>}
+      {type === 'materials' && <div className="op-expanded-materials"><nav aria-label="참고자료 목록">{materials.map((material) => { const key = `${material.materialId}:${material.materialVersion}`; return <button type="button" key={key} aria-current={key === `${selectedMaterial?.materialId}:${selectedMaterial?.materialVersion}` ? 'true' : undefined} onClick={() => setSelectedMaterialKey(key)}><strong>{material.title || `기관 자료 ${material.materialId}`}</strong><small>불변 버전 v{material.materialVersion ?? '미지정'}</small></button> })}</nav><div className="op-expanded-material-view">{selectedMaterial ? <PresentationMaterialViewer orgId={orgId} material={selectedMaterial} /> : <div className="op-empty">연결된 참고자료가 없습니다.</div>}</div></div>}
     </div>
   </dialog>
 }
@@ -176,7 +177,7 @@ export default function OrganizationPresentation({ orgId, sessionId, onExit }) {
   const [pinnedItemId, setPinnedItemId] = useState(null)
   const [previewItemId, setPreviewItemId] = useState(null)
   const activeItemId = previewItemId || pinnedItemId
-  const owner = presentation.run && String(presentation.run.startedBy) === String(user?.id)
+  const owner = orgId === 'preview' || (presentation.run && String(presentation.run.startedBy) === String(user?.id))
   const weather = presentationWeatherState(presentation.currentBundle)
   const mapSelection = presentationMapDataSelection(presentation.currentBundle)
   const candidateId = presentation.currentCandidate?.bundleId
@@ -218,6 +219,7 @@ export default function OrganizationPresentation({ orgId, sessionId, onExit }) {
     {...{ tz, activeItemId, pinnedItemId }} onPreview={setPreviewItemId} onClearPreview={() => setPreviewItemId(null)} onPin={selectItem} onExpandMaterials={() => setExpanded('materials')} />
 
   return <main className="organization-presentation">
+    {orgId === 'preview' && <PreviewMode compact />}
     <header className="op-topbar"><div><strong>{presentation.run.pinnedSnapshot?.briefing?.name || presentation.session?.name || '합동 브리핑'}</strong><small>{presentation.run.status === 'ended' ? `종료 · ${formatTime(presentation.run.endedAt, tz, true)}` : `발표 run #${presentation.run.id} · 시작 ${formatTime(presentation.run.startedAt, tz)}`}</small></div>
       <div className="op-nav"><button type="button" onClick={() => presentation.move(-1)} aria-label="이전 비행"><ArrowLeft /></button><span>{presentation.currentIndex + 1} / {presentation.flights.length}</span><button type="button" onClick={() => presentation.move(1)} aria-label="다음 비행"><ArrowRight /></button>
         <button type="button" disabled={!owner || presentation.busy} onClick={async () => { if (await presentation.end()) onExit?.() }}><X size={18} /> 발표 종료</button></div></header>
@@ -229,6 +231,6 @@ export default function OrganizationPresentation({ orgId, sessionId, onExit }) {
     {!presentation.currentBundle ? <section className="op-waiting" role="status"><LoaderCircle className="ol-spin" /><strong>첫 표시 bundle을 준비하고 있습니다.</strong><button type="button" onClick={presentation.prepareCurrent}>다시 준비</button></section>
       : <div className={`op-grid is-${layout}`}>{map}{profile}{notes}</div>}
     <footer className="op-footer"><span className={weather.limited ? 'is-limited' : ''}>{weather.label}</span><span>{modelTimes.join(' · ') || '모델 유효시각 없음'}</span><span>bundle {appliedId?.slice(0, 12) || '--'} · 비행 v{presentation.currentFlight.version}</span><span>종료 기록은 사용 버전과 출처를 보존하며 당시 기상 전체 재현은 제공하지 않습니다.</span></footer>
-    {expanded && presentation.currentBundle && <ExpandedPane type={expanded} bundle={presentation.currentBundle} session={presentation.session} run={presentation.run} flight={presentation.currentFlight} activeItemId={activeItemId} onSelectItem={selectItem} onClose={() => setExpanded(null)} />}
+    {expanded && presentation.currentBundle && <ExpandedPane orgId={orgId} type={expanded} bundle={presentation.currentBundle} session={presentation.session} run={presentation.run} flight={presentation.currentFlight} activeItemId={activeItemId} onSelectItem={selectItem} onClose={() => setExpanded(null)} />}
   </main>
 }

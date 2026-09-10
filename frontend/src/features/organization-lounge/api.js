@@ -17,7 +17,32 @@ async function request(url, { method = 'GET', body, signal, headers = {} } = {})
 }
 
 export function organizationRequest(orgId, path = '', options) {
-  return request(`/api/organizations/${encodeURIComponent(orgId)}${path}`, options)
+  return request(organizationApiUrl(orgId, path), options)
+}
+
+export function organizationApiUrl(orgId, path = '') {
+  const prefix = orgId === 'preview'
+    ? '/api/lounge-preview/organizations/1'
+    : `/api/organizations/${encodeURIComponent(orgId)}`
+  return `${prefix}${path}`
+}
+
+export function organizationResourceUrl(orgId, providedUrl, fallbackPath) {
+  if (orgId !== 'preview') return providedUrl || organizationApiUrl(orgId, fallbackPath)
+  if (!providedUrl) return organizationApiUrl(orgId, fallbackPath)
+  return providedUrl.replace(/\/api\/organizations\/[^/]+/, '/api/lounge-preview/organizations/1')
+}
+
+export function startPreviewSession(options) {
+  return request('/api/lounge-preview/session', { ...options, method: 'POST' })
+}
+
+export function resetPreviewSession(options) {
+  return request('/api/lounge-preview/reset', { ...options, method: 'POST' })
+}
+
+export function listPreviewSavedRoutes(options) {
+  return request('/api/lounge-preview/saved-routes', options).then((result) => Array.isArray(result?.routes) ? result.routes : [])
 }
 
 export function listOrganizations(options) {

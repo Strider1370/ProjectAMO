@@ -1,3 +1,5 @@
+import { CEILING_LIMIT_FT } from '../../../src/airport-model-comparison/model.js'
+
 export function recordFixture({ model = 'icon', run_at = '2026-09-06T06:00:00.000Z', airport_icao = 'RKPU', offset = 0 } = {}) {
   const start = new Date(Date.parse(run_at) + offset * 3600000).toISOString()
   const end = new Date(Date.parse(start) + 12 * 3600000).toISOString()
@@ -8,7 +10,7 @@ export function recordFixture({ model = 'icon', run_at = '2026-09-06T06:00:00.00
     requested_lat: 35.5935, requested_lon: 129.3518, grid_lat: 35.6, grid_lon: 129.4, grid_elevation_m: 95,
     selection_method: 'nearest_grid', temporal_method: 'native_hourly', ...values,
     wind_gust_kt: offset+i === 0 ? null : 12, precipitation_mm: offset+i === 0 ? null : 0,
-    ceiling_method: { kim: 'cloud_condensate_estimate', ecmwf: 'humidity_based_estimate', gfs: 'model_diagnostic', icon: 'pressure_level_estimate' }[model], ceiling_status: 'not_detected_below_limit', ceiling_limit_ft: 5000, ceiling_source_levels: [],
+    ceiling_method: { kim: 'cloud_condensate_estimate', ecmwf: 'humidity_based_estimate', gfs: 'model_diagnostic', icon: 'pressure_level_estimate' }[model], ceiling_status: 'not_detected_below_limit', ceiling_limit_ft: CEILING_LIMIT_FT, ceiling_source_levels: [],
     field_provenance: Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { source_variable: key, source_unit: 'test', method: 'provider_value', missing_reason: offset+i === 0 && ['wind_gust_kt', 'precipitation_mm'].includes(key) ? 'structural_f000' : value === null ? 'not_provided' : null }])), source_payload_revision: 'synthetic-test-v1',
   }))
 }

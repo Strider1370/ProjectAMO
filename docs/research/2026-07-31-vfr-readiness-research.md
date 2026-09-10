@@ -319,7 +319,7 @@
 
 - IFR: 항로/픽스 문자열 입력 (`DCT GONAX DCT`)
 - VFR: 지도 드래그 + `vfrWaypoints` 배열, 웨이포인트별 고도 수동 입력. `buildManualVfrRoute()` (`profile-composer.js:264-319`)
-- 계획 문서 `docs/superpowers/archive/plans/2026-07-18-vfr-single-draft-route-editor.md`가 목표한 **"단일 문자열 기준으로 텍스트·지도 편집을 하나로 묶는 구조"는 미구현**. 현재는 문자열과 웨이포인트 배열이 따로 놀아 동기화 문제 소지가 있습니다.
+- 계획 문서 `docs/archive/development/archive/plans/2026-07-18-vfr-single-draft-route-editor.md`가 목표한 **"단일 문자열 기준으로 텍스트·지도 편집을 하나로 묶는 구조"는 미구현**. 현재는 문자열과 웨이포인트 배열이 따로 놀아 동기화 문제 소지가 있습니다.
 
 ### 6.3 기상·지도 레이어 (총 19종)
 

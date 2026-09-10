@@ -8,10 +8,6 @@ Adding, changing, or reviewing any data layer that contributes to an en-route br
 
 Pure map display without route comparison belongs to map and layers. Airport-only or terminal-procedure material does not become en-route data unless the feature explicitly defines that range.
 
-## Re-check trigger
-
-Re-check the policy index when the work also changes source collection, timestamps, map rendering, or a user-facing briefing view.
-
 ## Common route contract
 
 - Use the versioned common `routeModel`; do not rebuild distance positions or infer route segments in an individual source layer.

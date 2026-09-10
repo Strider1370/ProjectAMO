@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listSavedRoutes } from '../route-briefing/lib/routeStore.js'
-import { organizationRequest } from './api.js'
+import { listPreviewSavedRoutes, organizationApiUrl, organizationRequest } from './api.js'
 import PdfViewer from './PdfViewer.jsx'
 import { Button, EmptyState } from './components.jsx'
 
@@ -11,7 +11,7 @@ export function OrganizationDocument({ orgId, blocks = [] }) {
     if (block.kind === 'text') return <p key={index} style={{ whiteSpace: 'pre-wrap' }}>{text}</p>
     if (block.kind === 'link') return /^https?:\/\//i.test(block.url || '') ? <p key={index}><a href={block.url} target="_blank" rel="noreferrer">{text || block.url}</a></p> : null
     if (['image', 'pdf'].includes(block.kind) && block.materialId && block.materialVersion) {
-      const url = `/api/organizations/${encodeURIComponent(orgId)}/materials/${encodeURIComponent(block.materialId)}/versions/${encodeURIComponent(block.materialVersion)}/original`
+      const url = organizationApiUrl(orgId, `/materials/${encodeURIComponent(block.materialId)}/versions/${encodeURIComponent(block.materialVersion)}/original`)
       return block.kind === 'pdf' ? <PdfViewer key={index} url={url} title={text || '첨부 문서'} /> : <figure key={index}><img className="ol-image-viewer" src={url} alt={text || '기관 첨부 이미지'} /><figcaption>{text}</figcaption></figure>
     }
     return null
@@ -47,7 +47,14 @@ export function OrganizationRouteMaterialEditor({ orgId, onSaved }) {
   const [routes, setRoutes] = useState([])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  useEffect(() => { let active = true; listSavedRoutes({ kind: 'route' }).then(value => { if (active) setRoutes(value) }).catch(reason => { if (active) setError(reason.message) }); return () => { active = false } }, [])
+  useEffect(() => {
+    let active = true
+    const loadRoutes = orgId === 'preview'
+      ? () => listPreviewSavedRoutes().then((items) => items.filter((item) => item.kind !== 'briefing'))
+      : () => listSavedRoutes({ kind: 'route' })
+    loadRoutes().then(value => { if (active) setRoutes(value) }).catch(reason => { if (active) setError(reason.message) })
+    return () => { active = false }
+  }, [orgId])
   async function save(event) {
     event.preventDefault(); setBusy(true); setError('')
     const values = new FormData(event.currentTarget)

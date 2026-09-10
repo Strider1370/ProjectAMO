@@ -100,7 +100,7 @@ function windVector(uMs, vMs) {
 export function weightedWind(levels, axis, altitudeFt, weights, includeZeroWeight = true) {
   const values = []
   const vectors = []
-  const samples = axis.samples ?? []
+  const samples = axis?.samples ?? []
   for (const [index, sample] of samples.entries()) {
     if (!includeZeroWeight && !(weights[index] > 0)) continue
     const u = interpolate(levels, altitudeFt, index, 'u')

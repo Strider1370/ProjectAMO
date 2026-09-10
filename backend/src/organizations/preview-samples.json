@@ -1,0 +1,4419 @@
+{
+  "flights": [
+    {
+      "name": "김포–제주 자동 생성 비행",
+      "snapshot": {
+        "version": 3,
+        "kind": "route",
+        "base": {
+          "id": "base",
+          "name": "기본 경로",
+          "kind": "base",
+          "routeForm": {
+            "flightRule": "IFR",
+            "departureAirport": "RKSS",
+            "entryFix": "BULTI",
+            "exitFix": "DOTOL",
+            "arrivalAirport": "RKPC",
+            "routeType": "ALL"
+          },
+          "procedureIds": {
+            "sid": "RKSS-SID-BULTI2T",
+            "star": "RKPC-STAR-DOTOL2P",
+            "iapKey": "RKPC-IAP-YUMIN-RWY07-REP"
+          },
+          "enroute": {
+            "terms": [
+              {
+                "kind": "fix",
+                "id": "BULTI"
+              },
+              {
+                "kind": "fix",
+                "id": "MEKIL"
+              },
+              {
+                "kind": "fix",
+                "id": "GONAX"
+              },
+              {
+                "kind": "fix",
+                "id": "BEDES"
+              },
+              {
+                "kind": "fix",
+                "id": "ELPOS"
+              },
+              {
+                "kind": "fix",
+                "id": "MANGI"
+              },
+              {
+                "kind": "fix",
+                "id": "DALSU"
+              },
+              {
+                "kind": "fix",
+                "id": "NULDI"
+              },
+              {
+                "kind": "fix",
+                "id": "DOTOL"
+              }
+            ],
+            "legIntents": [
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              }
+            ],
+            "userWaypoints": [],
+            "nextWaypointNumber": 1
+          },
+          "routeString": "BULTI Y711 MEKIL Y711 GONAX Y711 BEDES Y711 ELPOS Y711 MANGI Y711 DALSU Y711 NULDI Y711 DOTOL"
+        },
+        "alternatives": [],
+        "selectedAlternativeId": null,
+        "cruiseAltitudeFt": 19000,
+        "etd": "2026-09-10T11:30:00.000Z",
+        "eta": "2026-09-10T12:40:00.000Z",
+        "tasKt": 280,
+        "profileRequest": {
+          "flightRule": "IFR",
+          "plannedCruiseAltitudeFt": 19000,
+          "procedureContext": {
+            "entryFix": null,
+            "exitFix": null,
+            "procedures": [
+              {
+                "id": "RKSS-SID-BULTI2T",
+                "type": "SID",
+                "fixes": [
+                  {
+                    "id": "RWY14L",
+                    "lon": 126.7782778,
+                    "lat": 37.5707083,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "TD040",
+                    "lon": 126.6926944,
+                    "lat": 37.6341667,
+                    "legDistanceNm": 5.58,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 2000,
+                      "raw": "+2 000"
+                    }
+                  },
+                  {
+                    "id": "TD050",
+                    "lon": 126.5936389,
+                    "lat": 37.5614167,
+                    "legDistanceNm": 6.4,
+                    "altitude": {
+                      "maxFt": 5000,
+                      "minFt": null,
+                      "raw": "-5 000"
+                    }
+                  },
+                  {
+                    "id": "TD100",
+                    "lon": 126.5725556,
+                    "lat": 37.4052222,
+                    "legDistanceNm": 9.4,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "TD120",
+                    "lon": 126.5946389,
+                    "lat": 37.3235556,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": "-12 000 / +10 000"
+                    }
+                  },
+                  {
+                    "id": "TD130",
+                    "lon": 126.6280278,
+                    "lat": 37.2223889,
+                    "legDistanceNm": 6.3,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 13000,
+                      "raw": "+13 000"
+                    }
+                  },
+                  {
+                    "id": "TD180",
+                    "lon": 126.6953056,
+                    "lat": 37.0176111,
+                    "legDistanceNm": 12.7,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": "+FL 180"
+                    }
+                  },
+                  {
+                    "id": "TD200",
+                    "lon": 126.7331389,
+                    "lat": 36.9023889,
+                    "legDistanceNm": 7.1,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": "+FL 200"
+                    }
+                  },
+                  {
+                    "id": "BULTI",
+                    "lon": 126.8249167,
+                    "lat": 36.7228611,
+                    "legDistanceNm": 11.6,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "RKPC-STAR-DOTOL2P",
+                "type": "STAR",
+                "fixes": [
+                  {
+                    "id": "DOTOL",
+                    "lon": 126.6101667,
+                    "lat": 34.2542778,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "CHUJA",
+                    "lon": 126.5833889,
+                    "lat": 33.9964722,
+                    "legDistanceNm": 15.5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC726",
+                    "lon": 126.4984444,
+                    "lat": 33.9089444,
+                    "legDistanceNm": 6.7,
+                    "altitude": {
+                      "maxFt": 9000,
+                      "minFt": null,
+                      "raw": "-9000"
+                    }
+                  },
+                  {
+                    "id": "BIROM",
+                    "lon": 126.3860556,
+                    "lat": 33.79275,
+                    "legDistanceNm": 8.9,
+                    "altitude": {
+                      "maxFt": 7000,
+                      "minFt": 7000,
+                      "raw": "@7000"
+                    }
+                  },
+                  {
+                    "id": "MANBA",
+                    "lon": 126.3233333,
+                    "lat": 33.72775,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": 9000,
+                      "minFt": 9000,
+                      "raw": "@9000"
+                    }
+                  },
+                  {
+                    "id": "PC621",
+                    "lon": 126.2246944,
+                    "lat": 33.7409444,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC622",
+                    "lon": 126.1257222,
+                    "lat": 33.7295556,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC623",
+                    "lon": 126.0350556,
+                    "lat": 33.6945,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC624",
+                    "lon": 125.9606111,
+                    "lat": 33.6388611,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC625",
+                    "lon": 125.9088333,
+                    "lat": 33.5675278,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC626",
+                    "lon": 125.8841389,
+                    "lat": 33.4866389,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "DAKPI",
+                    "lon": 125.8886389,
+                    "lat": 33.40325,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC628",
+                    "lon": 125.9218056,
+                    "lat": 33.3245556,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PIMIK",
+                    "lon": 125.98075,
+                    "lat": 33.2573333,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "YUMIN",
+                    "lon": 126.2209722,
+                    "lat": 33.4571389,
+                    "legDistanceNm": 17,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 4000,
+                      "raw": "+4000"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "YUMIN-RWY07-REP",
+                "type": "IAP",
+                "fixes": [
+                  {
+                    "id": "YUMIN",
+                    "lon": 126.2209722,
+                    "lat": 33.4571389,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 4000,
+                      "raw": "+4000"
+                    }
+                  },
+                  {
+                    "id": "LIMSO",
+                    "lon": 126.3086111,
+                    "lat": 33.4175,
+                    "legDistanceNm": 4.99,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 2900,
+                      "raw": "+2900"
+                    }
+                  },
+                  {
+                    "id": "D5.3 ICJU",
+                    "lon": 126.3815556,
+                    "lat": 33.4551389,
+                    "legDistanceNm": 4.3,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 1800,
+                      "raw": "+1800"
+                    }
+                  },
+                  {
+                    "id": "D2.6 ICJU",
+                    "lon": 126.4275833,
+                    "lat": 33.4788333,
+                    "legDistanceNm": 2.71,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 910,
+                      "raw": "+910"
+                    }
+                  },
+                  {
+                    "id": "D1.3 ICJU",
+                    "lon": 126.4496667,
+                    "lat": 33.4902222,
+                    "legDistanceNm": 1.3,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "THR RWY 07",
+                    "lon": 126.4684722,
+                    "lat": 33.4998806,
+                    "legDistanceNm": 1.11,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 87,
+                      "raw": "THR ELEV 87"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "sampleSpacingMeters": 250
+        },
+        "routeGeometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.7782778,
+              37.5707083
+            ],
+            [
+              126.6926944,
+              37.6341667
+            ],
+            [
+              126.5936389,
+              37.5614167
+            ],
+            [
+              126.5725556,
+              37.4052222
+            ],
+            [
+              126.5946389,
+              37.3235556
+            ],
+            [
+              126.6280278,
+              37.2223889
+            ],
+            [
+              126.6953056,
+              37.0176111
+            ],
+            [
+              126.7331389,
+              36.9023889
+            ],
+            [
+              126.8249167,
+              36.7228611
+            ],
+            [
+              126.825,
+              36.72277777777778
+            ],
+            [
+              126.83138888888888,
+              36.55611111111111
+            ],
+            [
+              126.83777777777777,
+              36.38638888888889
+            ],
+            [
+              126.81222222222222,
+              36.15138888888889
+            ],
+            [
+              126.78527777777778,
+              35.90277777777778
+            ],
+            [
+              126.74222222222222,
+              35.503055555555555
+            ],
+            [
+              126.70166666666667,
+              35.125277777777775
+            ],
+            [
+              126.6275,
+              34.42055555555555
+            ],
+            [
+              126.61027777777777,
+              34.25416666666667
+            ],
+            [
+              126.6101667,
+              34.2542778
+            ],
+            [
+              126.5833889,
+              33.9964722
+            ],
+            [
+              126.4984444,
+              33.9089444
+            ],
+            [
+              126.3860556,
+              33.79275
+            ],
+            [
+              126.3233333,
+              33.72775
+            ],
+            [
+              126.2246944,
+              33.7409444
+            ],
+            [
+              126.1257222,
+              33.7295556
+            ],
+            [
+              126.0350556,
+              33.6945
+            ],
+            [
+              125.9606111,
+              33.6388611
+            ],
+            [
+              125.9088333,
+              33.5675278
+            ],
+            [
+              125.8841389,
+              33.4866389
+            ],
+            [
+              125.8886389,
+              33.40325
+            ],
+            [
+              125.9218056,
+              33.3245556
+            ],
+            [
+              125.98075,
+              33.2573333
+            ],
+            [
+              126.2209722,
+              33.4571389
+            ],
+            [
+              126.3086111,
+              33.4175
+            ],
+            [
+              126.3815556,
+              33.4551389
+            ],
+            [
+              126.4275833,
+              33.4788333
+            ],
+            [
+              126.4496667,
+              33.4902222
+            ],
+            [
+              126.4684722,
+              33.4998806
+            ]
+          ]
+        },
+        "enrouteGeometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.7906,
+              37.5586
+            ],
+            [
+              126.825,
+              36.72277777777778
+            ],
+            [
+              126.83138888888888,
+              36.55611111111111
+            ],
+            [
+              126.83777777777777,
+              36.38638888888889
+            ],
+            [
+              126.81222222222222,
+              36.15138888888889
+            ],
+            [
+              126.78527777777778,
+              35.90277777777778
+            ],
+            [
+              126.74222222222222,
+              35.503055555555555
+            ],
+            [
+              126.70166666666667,
+              35.125277777777775
+            ],
+            [
+              126.6275,
+              34.42055555555555
+            ],
+            [
+              126.61027777777777,
+              34.25416666666667
+            ],
+            [
+              126.4929,
+              33.5104
+            ]
+          ]
+        },
+        "routeModel": {
+          "schemaVersion": 1,
+          "routeAxis": {
+            "totalDistanceNm": 325.62,
+            "vertices": [
+              {
+                "coordinate": [
+                  126.7782778,
+                  37.5707083
+                ],
+                "distanceNm": 0
+              },
+              {
+                "coordinate": [
+                  126.6926944,
+                  37.6341667
+                ],
+                "distanceNm": 5.58
+              },
+              {
+                "coordinate": [
+                  126.5936389,
+                  37.5614167
+                ],
+                "distanceNm": 12
+              },
+              {
+                "coordinate": [
+                  126.5725556,
+                  37.4052222
+                ],
+                "distanceNm": 21.43
+              },
+              {
+                "coordinate": [
+                  126.5946389,
+                  37.3235556
+                ],
+                "distanceNm": 26.45
+              },
+              {
+                "coordinate": [
+                  126.6280278,
+                  37.2223889
+                ],
+                "distanceNm": 32.73
+              },
+              {
+                "coordinate": [
+                  126.6953056,
+                  37.0176111
+                ],
+                "distanceNm": 45.44
+              },
+              {
+                "coordinate": [
+                  126.7331389,
+                  36.9023889
+                ],
+                "distanceNm": 52.59
+              },
+              {
+                "coordinate": [
+                  126.8249167,
+                  36.7228611
+                ],
+                "distanceNm": 64.24
+              },
+              {
+                "coordinate": [
+                  126.825,
+                  36.72277777777778
+                ],
+                "distanceNm": 64.24
+              },
+              {
+                "coordinate": [
+                  126.83138888888888,
+                  36.55611111111111
+                ],
+                "distanceNm": 74.25
+              },
+              {
+                "coordinate": [
+                  126.83777777777777,
+                  36.38638888888889
+                ],
+                "distanceNm": 84.45
+              },
+              {
+                "coordinate": [
+                  126.81222222222222,
+                  36.15138888888889
+                ],
+                "distanceNm": 98.61
+              },
+              {
+                "coordinate": [
+                  126.78527777777778,
+                  35.90277777777778
+                ],
+                "distanceNm": 113.6
+              },
+              {
+                "coordinate": [
+                  126.74222222222222,
+                  35.503055555555555
+                ],
+                "distanceNm": 137.69
+              },
+              {
+                "coordinate": [
+                  126.70166666666667,
+                  35.125277777777775
+                ],
+                "distanceNm": 160.46
+              },
+              {
+                "coordinate": [
+                  126.6275,
+                  34.42055555555555
+                ],
+                "distanceNm": 202.93
+              },
+              {
+                "coordinate": [
+                  126.61027777777777,
+                  34.25416666666667
+                ],
+                "distanceNm": 212.95
+              },
+              {
+                "coordinate": [
+                  126.6101667,
+                  34.2542778
+                ],
+                "distanceNm": 212.96
+              },
+              {
+                "coordinate": [
+                  126.5833889,
+                  33.9964722
+                ],
+                "distanceNm": 228.5
+              },
+              {
+                "coordinate": [
+                  126.4984444,
+                  33.9089444
+                ],
+                "distanceNm": 235.24
+              },
+              {
+                "coordinate": [
+                  126.3860556,
+                  33.79275
+                ],
+                "distanceNm": 244.19
+              },
+              {
+                "coordinate": [
+                  126.3233333,
+                  33.72775
+                ],
+                "distanceNm": 249.2
+              },
+              {
+                "coordinate": [
+                  126.2246944,
+                  33.7409444
+                ],
+                "distanceNm": 254.18
+              },
+              {
+                "coordinate": [
+                  126.1257222,
+                  33.7295556
+                ],
+                "distanceNm": 259.17
+              },
+              {
+                "coordinate": [
+                  126.0350556,
+                  33.6945
+                ],
+                "distanceNm": 264.17
+              },
+              {
+                "coordinate": [
+                  125.9606111,
+                  33.6388611
+                ],
+                "distanceNm": 269.17
+              },
+              {
+                "coordinate": [
+                  125.9088333,
+                  33.5675278
+                ],
+                "distanceNm": 274.17
+              },
+              {
+                "coordinate": [
+                  125.8841389,
+                  33.4866389
+                ],
+                "distanceNm": 279.18
+              },
+              {
+                "coordinate": [
+                  125.8886389,
+                  33.40325
+                ],
+                "distanceNm": 284.19
+              },
+              {
+                "coordinate": [
+                  125.9218056,
+                  33.3245556
+                ],
+                "distanceNm": 289.2
+              },
+              {
+                "coordinate": [
+                  125.98075,
+                  33.2573333
+                ],
+                "distanceNm": 294.21
+              },
+              {
+                "coordinate": [
+                  126.2209722,
+                  33.4571389
+                ],
+                "distanceNm": 311.21
+              },
+              {
+                "coordinate": [
+                  126.3086111,
+                  33.4175
+                ],
+                "distanceNm": 316.2
+              },
+              {
+                "coordinate": [
+                  126.3815556,
+                  33.4551389
+                ],
+                "distanceNm": 320.5
+              },
+              {
+                "coordinate": [
+                  126.4275833,
+                  33.4788333
+                ],
+                "distanceNm": 323.21
+              },
+              {
+                "coordinate": [
+                  126.4496667,
+                  33.4902222
+                ],
+                "distanceNm": 324.51
+              },
+              {
+                "coordinate": [
+                  126.4684722,
+                  33.4998806
+                ],
+                "distanceNm": 325.62
+              }
+            ]
+          },
+          "enRouteSegments": [
+            {
+              "id": "Y711-002",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "BULTI",
+              "toFix": "MEKIL",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 64.24,
+              "endNm": 74.25,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-003",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "MEKIL",
+              "toFix": "GONAX",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 74.25,
+              "endNm": 84.45,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-004",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "GONAX",
+              "toFix": "BEDES",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 84.45,
+              "endNm": 98.61,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-005",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "BEDES",
+              "toFix": "ELPOS",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 98.61,
+              "endNm": 113.6,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-006",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "ELPOS",
+              "toFix": "MANGI",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 113.6,
+              "endNm": 137.69,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-007",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "MANGI",
+              "toFix": "DALSU",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 137.69,
+              "endNm": 160.46,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-008",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "DALSU",
+              "toFix": "NULDI",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 160.46,
+              "endNm": 202.93,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-009",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "NULDI",
+              "toFix": "DOTOL",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 202.93,
+              "endNm": 212.95,
+              "alignmentStatus": "aligned"
+            }
+          ],
+          "enRouteRange": {
+            "startNm": 64.24,
+            "endNm": 212.95,
+            "status": "aligned"
+          },
+          "terminalRanges": {
+            "departure": {
+              "startNm": 0,
+              "endNm": 64.24
+            },
+            "arrival": {
+              "startNm": 212.95,
+              "endNm": 325.62
+            }
+          },
+          "graphConnectionStatus": "manual"
+        },
+        "routeMarkers": [
+          {
+            "label": "RKSS",
+            "lon": 126.7906,
+            "lat": 37.5586,
+            "kind": "AIRPORT",
+            "id": "marker:AIRPORT:RKSS:126.790600:37.558600:0"
+          },
+          {
+            "label": "BULTI",
+            "lon": 126.825,
+            "lat": 36.72277777777778,
+            "kind": "FIX",
+            "id": "marker:FIX:BULTI:126.825000:36.722778:0"
+          },
+          {
+            "label": "MEKIL",
+            "lon": 126.83138888888888,
+            "lat": 36.55611111111111,
+            "kind": "FIX",
+            "id": "marker:FIX:MEKIL:126.831389:36.556111:0"
+          },
+          {
+            "label": "GONAX",
+            "lon": 126.83777777777777,
+            "lat": 36.38638888888889,
+            "kind": "FIX",
+            "id": "marker:FIX:GONAX:126.837778:36.386389:0"
+          },
+          {
+            "label": "BEDES",
+            "lon": 126.81222222222222,
+            "lat": 36.15138888888889,
+            "kind": "FIX",
+            "id": "marker:FIX:BEDES:126.812222:36.151389:0"
+          },
+          {
+            "label": "ELPOS",
+            "lon": 126.78527777777778,
+            "lat": 35.90277777777778,
+            "kind": "FIX",
+            "id": "marker:FIX:ELPOS:126.785278:35.902778:0"
+          },
+          {
+            "label": "MANGI",
+            "lon": 126.74222222222222,
+            "lat": 35.503055555555555,
+            "kind": "FIX",
+            "id": "marker:FIX:MANGI:126.742222:35.503056:0"
+          },
+          {
+            "label": "DALSU",
+            "lon": 126.70166666666667,
+            "lat": 35.125277777777775,
+            "kind": "FIX",
+            "id": "marker:FIX:DALSU:126.701667:35.125278:0"
+          },
+          {
+            "label": "NULDI",
+            "lon": 126.6275,
+            "lat": 34.42055555555555,
+            "kind": "FIX",
+            "id": "marker:FIX:NULDI:126.627500:34.420556:0"
+          },
+          {
+            "label": "DOTOL",
+            "lon": 126.61027777777777,
+            "lat": 34.25416666666667,
+            "kind": "FIX",
+            "id": "marker:FIX:DOTOL:126.610278:34.254167:0"
+          },
+          {
+            "label": "RKPC",
+            "lon": 126.4929,
+            "lat": 33.5104,
+            "kind": "AIRPORT",
+            "id": "marker:AIRPORT:RKPC:126.492900:33.510400:0"
+          }
+        ],
+        "airacCycle": "2026-06-25",
+        "alternateAirport": null,
+        "nwpTimeSelection": null
+      },
+      "profileRequest": {
+        "flightRule": "IFR",
+        "plannedCruiseAltitudeFt": 19000,
+        "procedureContext": {
+          "entryFix": null,
+          "exitFix": null,
+          "procedures": [
+            {
+              "id": "RKSS-SID-BULTI2T",
+              "type": "SID",
+              "fixes": [
+                {
+                  "id": "RWY14L",
+                  "lon": 126.7782778,
+                  "lat": 37.5707083,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "TD040",
+                  "lon": 126.6926944,
+                  "lat": 37.6341667,
+                  "legDistanceNm": 5.58,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 2000,
+                    "raw": "+2 000"
+                  }
+                },
+                {
+                  "id": "TD050",
+                  "lon": 126.5936389,
+                  "lat": 37.5614167,
+                  "legDistanceNm": 6.4,
+                  "altitude": {
+                    "maxFt": 5000,
+                    "minFt": null,
+                    "raw": "-5 000"
+                  }
+                },
+                {
+                  "id": "TD100",
+                  "lon": 126.5725556,
+                  "lat": 37.4052222,
+                  "legDistanceNm": 9.4,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "TD120",
+                  "lon": 126.5946389,
+                  "lat": 37.3235556,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": "-12 000 / +10 000"
+                  }
+                },
+                {
+                  "id": "TD130",
+                  "lon": 126.6280278,
+                  "lat": 37.2223889,
+                  "legDistanceNm": 6.3,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 13000,
+                    "raw": "+13 000"
+                  }
+                },
+                {
+                  "id": "TD180",
+                  "lon": 126.6953056,
+                  "lat": 37.0176111,
+                  "legDistanceNm": 12.7,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": "+FL 180"
+                  }
+                },
+                {
+                  "id": "TD200",
+                  "lon": 126.7331389,
+                  "lat": 36.9023889,
+                  "legDistanceNm": 7.1,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": "+FL 200"
+                  }
+                },
+                {
+                  "id": "BULTI",
+                  "lon": 126.8249167,
+                  "lat": 36.7228611,
+                  "legDistanceNm": 11.6,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                }
+              ]
+            },
+            {
+              "id": "RKPC-STAR-DOTOL2P",
+              "type": "STAR",
+              "fixes": [
+                {
+                  "id": "DOTOL",
+                  "lon": 126.6101667,
+                  "lat": 34.2542778,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "CHUJA",
+                  "lon": 126.5833889,
+                  "lat": 33.9964722,
+                  "legDistanceNm": 15.5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC726",
+                  "lon": 126.4984444,
+                  "lat": 33.9089444,
+                  "legDistanceNm": 6.7,
+                  "altitude": {
+                    "maxFt": 9000,
+                    "minFt": null,
+                    "raw": "-9000"
+                  }
+                },
+                {
+                  "id": "BIROM",
+                  "lon": 126.3860556,
+                  "lat": 33.79275,
+                  "legDistanceNm": 8.9,
+                  "altitude": {
+                    "maxFt": 7000,
+                    "minFt": 7000,
+                    "raw": "@7000"
+                  }
+                },
+                {
+                  "id": "MANBA",
+                  "lon": 126.3233333,
+                  "lat": 33.72775,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": 9000,
+                    "minFt": 9000,
+                    "raw": "@9000"
+                  }
+                },
+                {
+                  "id": "PC621",
+                  "lon": 126.2246944,
+                  "lat": 33.7409444,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC622",
+                  "lon": 126.1257222,
+                  "lat": 33.7295556,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC623",
+                  "lon": 126.0350556,
+                  "lat": 33.6945,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC624",
+                  "lon": 125.9606111,
+                  "lat": 33.6388611,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC625",
+                  "lon": 125.9088333,
+                  "lat": 33.5675278,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC626",
+                  "lon": 125.8841389,
+                  "lat": 33.4866389,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "DAKPI",
+                  "lon": 125.8886389,
+                  "lat": 33.40325,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC628",
+                  "lon": 125.9218056,
+                  "lat": 33.3245556,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PIMIK",
+                  "lon": 125.98075,
+                  "lat": 33.2573333,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "YUMIN",
+                  "lon": 126.2209722,
+                  "lat": 33.4571389,
+                  "legDistanceNm": 17,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 4000,
+                    "raw": "+4000"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "YUMIN-RWY07-REP",
+              "type": "IAP",
+              "fixes": [
+                {
+                  "id": "YUMIN",
+                  "lon": 126.2209722,
+                  "lat": 33.4571389,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 4000,
+                    "raw": "+4000"
+                  }
+                },
+                {
+                  "id": "LIMSO",
+                  "lon": 126.3086111,
+                  "lat": 33.4175,
+                  "legDistanceNm": 4.99,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 2900,
+                    "raw": "+2900"
+                  }
+                },
+                {
+                  "id": "D5.3 ICJU",
+                  "lon": 126.3815556,
+                  "lat": 33.4551389,
+                  "legDistanceNm": 4.3,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 1800,
+                    "raw": "+1800"
+                  }
+                },
+                {
+                  "id": "D2.6 ICJU",
+                  "lon": 126.4275833,
+                  "lat": 33.4788333,
+                  "legDistanceNm": 2.71,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 910,
+                    "raw": "+910"
+                  }
+                },
+                {
+                  "id": "D1.3 ICJU",
+                  "lon": 126.4496667,
+                  "lat": 33.4902222,
+                  "legDistanceNm": 1.3,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "THR RWY 07",
+                  "lon": 126.4684722,
+                  "lat": 33.4998806,
+                  "legDistanceNm": 1.11,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 87,
+                    "raw": "THR ELEV 87"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "sampleSpacingMeters": 250,
+        "routeGeometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              126.7782778,
+              37.5707083
+            ],
+            [
+              126.6926944,
+              37.6341667
+            ],
+            [
+              126.5936389,
+              37.5614167
+            ],
+            [
+              126.5725556,
+              37.4052222
+            ],
+            [
+              126.5946389,
+              37.3235556
+            ],
+            [
+              126.6280278,
+              37.2223889
+            ],
+            [
+              126.6953056,
+              37.0176111
+            ],
+            [
+              126.7331389,
+              36.9023889
+            ],
+            [
+              126.8249167,
+              36.7228611
+            ],
+            [
+              126.825,
+              36.72277777777778
+            ],
+            [
+              126.83138888888888,
+              36.55611111111111
+            ],
+            [
+              126.83777777777777,
+              36.38638888888889
+            ],
+            [
+              126.81222222222222,
+              36.15138888888889
+            ],
+            [
+              126.78527777777778,
+              35.90277777777778
+            ],
+            [
+              126.74222222222222,
+              35.503055555555555
+            ],
+            [
+              126.70166666666667,
+              35.125277777777775
+            ],
+            [
+              126.6275,
+              34.42055555555555
+            ],
+            [
+              126.61027777777777,
+              34.25416666666667
+            ],
+            [
+              126.6101667,
+              34.2542778
+            ],
+            [
+              126.5833889,
+              33.9964722
+            ],
+            [
+              126.4984444,
+              33.9089444
+            ],
+            [
+              126.3860556,
+              33.79275
+            ],
+            [
+              126.3233333,
+              33.72775
+            ],
+            [
+              126.2246944,
+              33.7409444
+            ],
+            [
+              126.1257222,
+              33.7295556
+            ],
+            [
+              126.0350556,
+              33.6945
+            ],
+            [
+              125.9606111,
+              33.6388611
+            ],
+            [
+              125.9088333,
+              33.5675278
+            ],
+            [
+              125.8841389,
+              33.4866389
+            ],
+            [
+              125.8886389,
+              33.40325
+            ],
+            [
+              125.9218056,
+              33.3245556
+            ],
+            [
+              125.98075,
+              33.2573333
+            ],
+            [
+              126.2209722,
+              33.4571389
+            ],
+            [
+              126.3086111,
+              33.4175
+            ],
+            [
+              126.3815556,
+              33.4551389
+            ],
+            [
+              126.4275833,
+              33.4788333
+            ],
+            [
+              126.4496667,
+              33.4902222
+            ],
+            [
+              126.4684722,
+              33.4998806
+            ]
+          ]
+        }
+      },
+      "durationMinutes": 70
+    },
+    {
+      "name": "김해–김포 자동 생성 비행",
+      "snapshot": {
+        "version": 3,
+        "kind": "route",
+        "base": {
+          "id": "base",
+          "name": "기본 경로",
+          "kind": "base",
+          "routeForm": {
+            "flightRule": "IFR",
+            "departureAirport": "RKPK",
+            "entryFix": "KALOD",
+            "exitFix": "GUKDO",
+            "arrivalAirport": "RKSS",
+            "routeType": "ALL"
+          },
+          "procedureIds": {
+            "sid": "RKPK-SID-OPONO3KALOD",
+            "star": "RKSS-STAR-GUKDO2T",
+            "iapKey": "RKSS-IAP-BUMSI-RWY32L-REP"
+          },
+          "enroute": {
+            "terms": [
+              {
+                "kind": "fix",
+                "id": "KALOD"
+              },
+              {
+                "kind": "fix",
+                "id": "TGU"
+              },
+              {
+                "kind": "fix",
+                "id": "BITUX"
+              },
+              {
+                "kind": "fix",
+                "id": "TEBEX"
+              },
+              {
+                "kind": "fix",
+                "id": "BASEM"
+              },
+              {
+                "kind": "fix",
+                "id": "ENSAL"
+              },
+              {
+                "kind": "fix",
+                "id": "GUKDO"
+              }
+            ],
+            "legIntents": [
+              {
+                "kind": "airway",
+                "routeId": "Y782"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y782"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Z53"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Z53"
+              },
+              {
+                "kind": "airway",
+                "routeId": "G585"
+              },
+              {
+                "kind": "airway",
+                "routeId": "G585"
+              }
+            ],
+            "userWaypoints": [],
+            "nextWaypointNumber": 1
+          },
+          "routeString": "KALOD Y782 TGU Y782 BITUX Z53 TEBEX Z53 BASEM G585 ENSAL G585 GUKDO"
+        },
+        "alternatives": [],
+        "selectedAlternativeId": null,
+        "cruiseAltitudeFt": 22000,
+        "etd": "2026-09-10T12:30:00.000Z",
+        "eta": "2026-09-10T13:09:00.000Z",
+        "tasKt": 280,
+        "profileRequest": {
+          "flightRule": "IFR",
+          "plannedCruiseAltitudeFt": 22000,
+          "procedureContext": {
+            "entryFix": null,
+            "exitFix": null,
+            "procedures": [
+              {
+                "id": "RKPK-SID-OPONO3KALOD",
+                "type": "SID",
+                "fixes": [
+                  {
+                    "id": "RWY18L",
+                    "lon": 128.7295,
+                    "lat": 35.3067222,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "OPONO",
+                    "lon": 128.7295,
+                    "lat": 35.3067222,
+                    "legDistanceNm": 0,
+                    "altitude": {
+                      "maxFt": 5000,
+                      "minFt": 5000,
+                      "raw": "@5000"
+                    }
+                  },
+                  {
+                    "id": "KALOD",
+                    "lon": 128.7740278,
+                    "lat": 35.5033611,
+                    "legDistanceNm": 11.98,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 5000,
+                      "raw": "+5000"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "RKSS-STAR-GUKDO2T",
+                "type": "STAR",
+                "fixes": [
+                  {
+                    "id": "GUKDO",
+                    "lon": 127.6396944,
+                    "lat": 37.0196944,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 16000,
+                      "raw": "+FL160"
+                    }
+                  },
+                  {
+                    "id": "GT044",
+                    "lon": 127.5512778,
+                    "lat": 37.1708056,
+                    "legDistanceNm": 10,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "DT038",
+                    "lon": 127.4443056,
+                    "lat": 37.2303333,
+                    "legDistanceNm": 6.2,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "DT034",
+                    "lon": 127.3550833,
+                    "lat": 37.2798333,
+                    "legDistanceNm": 5.2,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "BUMSI",
+                    "lon": 127.1693333,
+                    "lat": 37.2528333,
+                    "legDistanceNm": 9,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 8000,
+                      "raw": "+8000"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "BUMSI-RWY32L-REP",
+                "type": "IAP",
+                "fixes": [
+                  {
+                    "id": "BUMSI",
+                    "lon": 127.1693333,
+                    "lat": 37.2528333,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 8000,
+                      "raw": "+8000"
+                    }
+                  },
+                  {
+                    "id": "PUDUB",
+                    "lon": 127.0601667,
+                    "lat": 37.3406944,
+                    "legDistanceNm": 7.42,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 5500,
+                      "raw": "+5500"
+                    }
+                  },
+                  {
+                    "id": "WONKO",
+                    "lon": 126.9855556,
+                    "lat": 37.4005556,
+                    "legDistanceNm": 5.06,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 4000,
+                      "raw": "+4000"
+                    }
+                  },
+                  {
+                    "id": "DT009",
+                    "lon": 126.9321111,
+                    "lat": 37.4433611,
+                    "legDistanceNm": 3.62,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 2800,
+                      "raw": "+2800"
+                    }
+                  },
+                  {
+                    "id": "DT007",
+                    "lon": 126.9081944,
+                    "lat": 37.4624722,
+                    "legDistanceNm": 1.62,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 2300,
+                      "raw": "+2300"
+                    }
+                  },
+                  {
+                    "id": "DT006",
+                    "lon": 126.8880556,
+                    "lat": 37.4785833,
+                    "legDistanceNm": 1.36,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 2000,
+                      "raw": "+2000"
+                    }
+                  },
+                  {
+                    "id": "D1.0 IKMO",
+                    "lon": 126.8133333,
+                    "lat": 37.5382222,
+                    "legDistanceNm": 5.05,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "THR RWY 32L",
+                    "lon": 126.8010306,
+                    "lat": 37.5480083,
+                    "legDistanceNm": 0.83,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 41,
+                      "raw": "+41"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "sampleSpacingMeters": 250
+        },
+        "routeGeometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              128.7295,
+              35.3067222
+            ],
+            [
+              128.7295,
+              35.3067222
+            ],
+            [
+              128.7740278,
+              35.5033611
+            ],
+            [
+              128.7738888888889,
+              35.50333333333333
+            ],
+            [
+              128.59083333333334,
+              35.80972222222222
+            ],
+            [
+              128.03,
+              36.27916666666667
+            ],
+            [
+              127.99138888888889,
+              36.561388888888885
+            ],
+            [
+              127.95277777777778,
+              36.843611111111116
+            ],
+            [
+              127.79638888888888,
+              36.931666666666665
+            ],
+            [
+              127.63972222222223,
+              37.01972222222222
+            ],
+            [
+              127.6396944,
+              37.0196944
+            ],
+            [
+              127.5512778,
+              37.1708056
+            ],
+            [
+              127.4443056,
+              37.2303333
+            ],
+            [
+              127.3550833,
+              37.2798333
+            ],
+            [
+              127.1693333,
+              37.2528333
+            ],
+            [
+              127.0601667,
+              37.3406944
+            ],
+            [
+              126.9855556,
+              37.4005556
+            ],
+            [
+              126.9321111,
+              37.4433611
+            ],
+            [
+              126.9081944,
+              37.4624722
+            ],
+            [
+              126.8880556,
+              37.4785833
+            ],
+            [
+              126.8133333,
+              37.5382222
+            ],
+            [
+              126.8010306,
+              37.5480083
+            ]
+          ]
+        },
+        "enrouteGeometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              128.9382,
+              35.1795
+            ],
+            [
+              128.7738888888889,
+              35.50333333333333
+            ],
+            [
+              128.59083333333334,
+              35.80972222222222
+            ],
+            [
+              128.03,
+              36.27916666666667
+            ],
+            [
+              127.99138888888889,
+              36.561388888888885
+            ],
+            [
+              127.95277777777778,
+              36.843611111111116
+            ],
+            [
+              127.79638888888888,
+              36.931666666666665
+            ],
+            [
+              127.63972222222223,
+              37.01972222222222
+            ],
+            [
+              126.7906,
+              37.5586
+            ]
+          ]
+        },
+        "routeModel": {
+          "schemaVersion": 1,
+          "routeAxis": {
+            "totalDistanceNm": 179.54,
+            "vertices": [
+              {
+                "coordinate": [
+                  128.7295,
+                  35.3067222
+                ],
+                "distanceNm": 0
+              },
+              {
+                "coordinate": [
+                  128.7295,
+                  35.3067222
+                ],
+                "distanceNm": 0
+              },
+              {
+                "coordinate": [
+                  128.7740278,
+                  35.5033611
+                ],
+                "distanceNm": 12.01
+              },
+              {
+                "coordinate": [
+                  128.7738888888889,
+                  35.50333333333333
+                ],
+                "distanceNm": 12.01
+              },
+              {
+                "coordinate": [
+                  128.59083333333334,
+                  35.80972222222222
+                ],
+                "distanceNm": 32.46
+              },
+              {
+                "coordinate": [
+                  128.03,
+                  36.27916666666667
+                ],
+                "distanceNm": 71.65
+              },
+              {
+                "coordinate": [
+                  127.99138888888889,
+                  36.561388888888885
+                ],
+                "distanceNm": 88.7
+              },
+              {
+                "coordinate": [
+                  127.95277777777778,
+                  36.843611111111116
+                ],
+                "distanceNm": 105.74
+              },
+              {
+                "coordinate": [
+                  127.79638888888888,
+                  36.931666666666665
+                ],
+                "distanceNm": 114.93
+              },
+              {
+                "coordinate": [
+                  127.63972222222223,
+                  37.01972222222222
+                ],
+                "distanceNm": 124.12
+              },
+              {
+                "coordinate": [
+                  127.6396944,
+                  37.0196944
+                ],
+                "distanceNm": 124.12
+              },
+              {
+                "coordinate": [
+                  127.5512778,
+                  37.1708056
+                ],
+                "distanceNm": 134.13
+              },
+              {
+                "coordinate": [
+                  127.4443056,
+                  37.2303333
+                ],
+                "distanceNm": 140.37
+              },
+              {
+                "coordinate": [
+                  127.3550833,
+                  37.2798333
+                ],
+                "distanceNm": 145.57
+              },
+              {
+                "coordinate": [
+                  127.1693333,
+                  37.2528333
+                ],
+                "distanceNm": 154.59
+              },
+              {
+                "coordinate": [
+                  127.0601667,
+                  37.3406944
+                ],
+                "distanceNm": 162.01
+              },
+              {
+                "coordinate": [
+                  126.9855556,
+                  37.4005556
+                ],
+                "distanceNm": 167.07
+              },
+              {
+                "coordinate": [
+                  126.9321111,
+                  37.4433611
+                ],
+                "distanceNm": 170.69
+              },
+              {
+                "coordinate": [
+                  126.9081944,
+                  37.4624722
+                ],
+                "distanceNm": 172.3
+              },
+              {
+                "coordinate": [
+                  126.8880556,
+                  37.4785833
+                ],
+                "distanceNm": 173.67
+              },
+              {
+                "coordinate": [
+                  126.8133333,
+                  37.5382222
+                ],
+                "distanceNm": 178.71
+              },
+              {
+                "coordinate": [
+                  126.8010306,
+                  37.5480083
+                ],
+                "distanceNm": 179.54
+              }
+            ]
+          },
+          "enRouteSegments": [
+            {
+              "id": "Y782-008",
+              "kind": "airway",
+              "routeId": "Y782",
+              "fromFix": "KALOD",
+              "toFix": "TGU",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 12.01,
+              "endNm": 32.46,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y782-007",
+              "kind": "airway",
+              "routeId": "Y782",
+              "fromFix": "TGU",
+              "toFix": "BITUX",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 32.46,
+              "endNm": 71.65,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Z53-001",
+              "kind": "airway",
+              "routeId": "Z53",
+              "fromFix": "BITUX",
+              "toFix": "TEBEX",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 71.65,
+              "endNm": 88.7,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Z53-002",
+              "kind": "airway",
+              "routeId": "Z53",
+              "fromFix": "TEBEX",
+              "toFix": "BASEM",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 88.7,
+              "endNm": 105.74,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "G585-005",
+              "kind": "airway",
+              "routeId": "G585",
+              "fromFix": "BASEM",
+              "toFix": "ENSAL",
+              "routeType": "ATS",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 105.74,
+              "endNm": 114.93,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "G585-004",
+              "kind": "airway",
+              "routeId": "G585",
+              "fromFix": "ENSAL",
+              "toFix": "GUKDO",
+              "routeType": "ATS",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 114.93,
+              "endNm": 124.12,
+              "alignmentStatus": "aligned"
+            }
+          ],
+          "enRouteRange": {
+            "startNm": 12.01,
+            "endNm": 124.12,
+            "status": "aligned"
+          },
+          "terminalRanges": {
+            "departure": {
+              "startNm": 0,
+              "endNm": 12.01
+            },
+            "arrival": {
+              "startNm": 124.12,
+              "endNm": 179.54
+            }
+          },
+          "graphConnectionStatus": "manual"
+        },
+        "routeMarkers": [
+          {
+            "label": "RKPK",
+            "lon": 128.9382,
+            "lat": 35.1795,
+            "kind": "AIRPORT",
+            "id": "marker:AIRPORT:RKPK:128.938200:35.179500:0"
+          },
+          {
+            "label": "KALOD",
+            "lon": 128.7738888888889,
+            "lat": 35.50333333333333,
+            "kind": "FIX",
+            "id": "marker:FIX:KALOD:128.773889:35.503333:0"
+          },
+          {
+            "label": "TGU",
+            "lon": 128.59083333333334,
+            "lat": 35.80972222222222,
+            "kind": "FIX",
+            "id": "marker:FIX:TGU:128.590833:35.809722:0"
+          },
+          {
+            "label": "BITUX",
+            "lon": 128.03,
+            "lat": 36.27916666666667,
+            "kind": "FIX",
+            "id": "marker:FIX:BITUX:128.030000:36.279167:0"
+          },
+          {
+            "label": "TEBEX",
+            "lon": 127.99138888888889,
+            "lat": 36.561388888888885,
+            "kind": "FIX",
+            "id": "marker:FIX:TEBEX:127.991389:36.561389:0"
+          },
+          {
+            "label": "BASEM",
+            "lon": 127.95277777777778,
+            "lat": 36.843611111111116,
+            "kind": "FIX",
+            "id": "marker:FIX:BASEM:127.952778:36.843611:0"
+          },
+          {
+            "label": "ENSAL",
+            "lon": 127.79638888888888,
+            "lat": 36.931666666666665,
+            "kind": "FIX",
+            "id": "marker:FIX:ENSAL:127.796389:36.931667:0"
+          },
+          {
+            "label": "GUKDO",
+            "lon": 127.63972222222223,
+            "lat": 37.01972222222222,
+            "kind": "FIX",
+            "id": "marker:FIX:GUKDO:127.639722:37.019722:0"
+          },
+          {
+            "label": "RKSS",
+            "lon": 126.7906,
+            "lat": 37.5586,
+            "kind": "AIRPORT",
+            "id": "marker:AIRPORT:RKSS:126.790600:37.558600:0"
+          }
+        ],
+        "airacCycle": "2026-06-25",
+        "alternateAirport": null,
+        "nwpTimeSelection": null
+      },
+      "profileRequest": {
+        "flightRule": "IFR",
+        "plannedCruiseAltitudeFt": 22000,
+        "procedureContext": {
+          "entryFix": null,
+          "exitFix": null,
+          "procedures": [
+            {
+              "id": "RKPK-SID-OPONO3KALOD",
+              "type": "SID",
+              "fixes": [
+                {
+                  "id": "RWY18L",
+                  "lon": 128.7295,
+                  "lat": 35.3067222,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "OPONO",
+                  "lon": 128.7295,
+                  "lat": 35.3067222,
+                  "legDistanceNm": 0,
+                  "altitude": {
+                    "maxFt": 5000,
+                    "minFt": 5000,
+                    "raw": "@5000"
+                  }
+                },
+                {
+                  "id": "KALOD",
+                  "lon": 128.7740278,
+                  "lat": 35.5033611,
+                  "legDistanceNm": 11.98,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 5000,
+                    "raw": "+5000"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "RKSS-STAR-GUKDO2T",
+              "type": "STAR",
+              "fixes": [
+                {
+                  "id": "GUKDO",
+                  "lon": 127.6396944,
+                  "lat": 37.0196944,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 16000,
+                    "raw": "+FL160"
+                  }
+                },
+                {
+                  "id": "GT044",
+                  "lon": 127.5512778,
+                  "lat": 37.1708056,
+                  "legDistanceNm": 10,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "DT038",
+                  "lon": 127.4443056,
+                  "lat": 37.2303333,
+                  "legDistanceNm": 6.2,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "DT034",
+                  "lon": 127.3550833,
+                  "lat": 37.2798333,
+                  "legDistanceNm": 5.2,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "BUMSI",
+                  "lon": 127.1693333,
+                  "lat": 37.2528333,
+                  "legDistanceNm": 9,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 8000,
+                    "raw": "+8000"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "BUMSI-RWY32L-REP",
+              "type": "IAP",
+              "fixes": [
+                {
+                  "id": "BUMSI",
+                  "lon": 127.1693333,
+                  "lat": 37.2528333,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 8000,
+                    "raw": "+8000"
+                  }
+                },
+                {
+                  "id": "PUDUB",
+                  "lon": 127.0601667,
+                  "lat": 37.3406944,
+                  "legDistanceNm": 7.42,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 5500,
+                    "raw": "+5500"
+                  }
+                },
+                {
+                  "id": "WONKO",
+                  "lon": 126.9855556,
+                  "lat": 37.4005556,
+                  "legDistanceNm": 5.06,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 4000,
+                    "raw": "+4000"
+                  }
+                },
+                {
+                  "id": "DT009",
+                  "lon": 126.9321111,
+                  "lat": 37.4433611,
+                  "legDistanceNm": 3.62,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 2800,
+                    "raw": "+2800"
+                  }
+                },
+                {
+                  "id": "DT007",
+                  "lon": 126.9081944,
+                  "lat": 37.4624722,
+                  "legDistanceNm": 1.62,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 2300,
+                    "raw": "+2300"
+                  }
+                },
+                {
+                  "id": "DT006",
+                  "lon": 126.8880556,
+                  "lat": 37.4785833,
+                  "legDistanceNm": 1.36,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 2000,
+                    "raw": "+2000"
+                  }
+                },
+                {
+                  "id": "D1.0 IKMO",
+                  "lon": 126.8133333,
+                  "lat": 37.5382222,
+                  "legDistanceNm": 5.05,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "THR RWY 32L",
+                  "lon": 126.8010306,
+                  "lat": 37.5480083,
+                  "legDistanceNm": 0.83,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 41,
+                    "raw": "+41"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "sampleSpacingMeters": 250,
+        "routeGeometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              128.7295,
+              35.3067222
+            ],
+            [
+              128.7295,
+              35.3067222
+            ],
+            [
+              128.7740278,
+              35.5033611
+            ],
+            [
+              128.7738888888889,
+              35.50333333333333
+            ],
+            [
+              128.59083333333334,
+              35.80972222222222
+            ],
+            [
+              128.03,
+              36.27916666666667
+            ],
+            [
+              127.99138888888889,
+              36.561388888888885
+            ],
+            [
+              127.95277777777778,
+              36.843611111111116
+            ],
+            [
+              127.79638888888888,
+              36.931666666666665
+            ],
+            [
+              127.63972222222223,
+              37.01972222222222
+            ],
+            [
+              127.6396944,
+              37.0196944
+            ],
+            [
+              127.5512778,
+              37.1708056
+            ],
+            [
+              127.4443056,
+              37.2303333
+            ],
+            [
+              127.3550833,
+              37.2798333
+            ],
+            [
+              127.1693333,
+              37.2528333
+            ],
+            [
+              127.0601667,
+              37.3406944
+            ],
+            [
+              126.9855556,
+              37.4005556
+            ],
+            [
+              126.9321111,
+              37.4433611
+            ],
+            [
+              126.9081944,
+              37.4624722
+            ],
+            [
+              126.8880556,
+              37.4785833
+            ],
+            [
+              126.8133333,
+              37.5382222
+            ],
+            [
+              126.8010306,
+              37.5480083
+            ]
+          ]
+        }
+      },
+      "durationMinutes": 39
+    },
+    {
+      "name": "청주–제주 자동 생성 비행",
+      "snapshot": {
+        "version": 3,
+        "kind": "route",
+        "base": {
+          "id": "base",
+          "name": "기본 경로",
+          "kind": "base",
+          "routeForm": {
+            "flightRule": "IFR",
+            "departureAirport": "RKTU",
+            "entryFix": "BULTI",
+            "exitFix": "DOTOL",
+            "arrivalAirport": "RKPC",
+            "routeType": "ALL"
+          },
+          "procedureIds": {
+            "sid": "RKTU-SID-BUKIL2-BULTI",
+            "star": "RKPC-STAR-DOTOL2P",
+            "iapKey": "RKPC-IAP-YUMIN-RWY07-REP"
+          },
+          "enroute": {
+            "terms": [
+              {
+                "kind": "fix",
+                "id": "BULTI"
+              },
+              {
+                "kind": "fix",
+                "id": "MEKIL"
+              },
+              {
+                "kind": "fix",
+                "id": "GONAX"
+              },
+              {
+                "kind": "fix",
+                "id": "BEDES"
+              },
+              {
+                "kind": "fix",
+                "id": "ELPOS"
+              },
+              {
+                "kind": "fix",
+                "id": "MANGI"
+              },
+              {
+                "kind": "fix",
+                "id": "DALSU"
+              },
+              {
+                "kind": "fix",
+                "id": "NULDI"
+              },
+              {
+                "kind": "fix",
+                "id": "DOTOL"
+              }
+            ],
+            "legIntents": [
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              },
+              {
+                "kind": "airway",
+                "routeId": "Y711"
+              }
+            ],
+            "userWaypoints": [],
+            "nextWaypointNumber": 1
+          },
+          "routeString": "BULTI Y711 MEKIL Y711 GONAX Y711 BEDES Y711 ELPOS Y711 MANGI Y711 DALSU Y711 NULDI Y711 DOTOL"
+        },
+        "alternatives": [],
+        "selectedAlternativeId": null,
+        "cruiseAltitudeFt": 21000,
+        "etd": "2026-09-10T13:30:00.000Z",
+        "eta": "2026-09-10T14:46:00.000Z",
+        "tasKt": 280,
+        "profileRequest": {
+          "flightRule": "IFR",
+          "plannedCruiseAltitudeFt": 21000,
+          "procedureContext": {
+            "entryFix": null,
+            "exitFix": null,
+            "procedures": [
+              {
+                "id": "RKTU-SID-BUKIL2-BULTI",
+                "type": "SID",
+                "fixes": [
+                  {
+                    "id": "RWY24R",
+                    "lon": 127.511125,
+                    "lat": 36.725106,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "raw": null,
+                      "minFt": null,
+                      "maxFt": null
+                    }
+                  },
+                  {
+                    "id": "BUKIL",
+                    "lon": 127.642694,
+                    "lat": 36.806444,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "raw": null,
+                      "minFt": null,
+                      "maxFt": null
+                    }
+                  },
+                  {
+                    "id": "TUTAE",
+                    "lon": 127.5415,
+                    "lat": 36.912333,
+                    "legDistanceNm": 8,
+                    "altitude": {
+                      "raw": "+6 000",
+                      "minFt": 6000,
+                      "maxFt": null
+                    }
+                  },
+                  {
+                    "id": "BULTI",
+                    "lon": 126.824917,
+                    "lat": 36.722861,
+                    "legDistanceNm": 20.3,
+                    "altitude": {
+                      "raw": "@6 000",
+                      "minFt": 6000,
+                      "maxFt": 6000
+                    }
+                  },
+                  {
+                    "id": "OWING",
+                    "lon": 127.245667,
+                    "lat": 36.728833,
+                    "legDistanceNm": 12.29,
+                    "altitude": {
+                      "raw": "+6 000",
+                      "minFt": 6000,
+                      "maxFt": null
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "RKPC-STAR-DOTOL2P",
+                "type": "STAR",
+                "fixes": [
+                  {
+                    "id": "DOTOL",
+                    "lon": 126.6101667,
+                    "lat": 34.2542778,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "CHUJA",
+                    "lon": 126.5833889,
+                    "lat": 33.9964722,
+                    "legDistanceNm": 15.5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC726",
+                    "lon": 126.4984444,
+                    "lat": 33.9089444,
+                    "legDistanceNm": 6.7,
+                    "altitude": {
+                      "maxFt": 9000,
+                      "minFt": null,
+                      "raw": "-9000"
+                    }
+                  },
+                  {
+                    "id": "BIROM",
+                    "lon": 126.3860556,
+                    "lat": 33.79275,
+                    "legDistanceNm": 8.9,
+                    "altitude": {
+                      "maxFt": 7000,
+                      "minFt": 7000,
+                      "raw": "@7000"
+                    }
+                  },
+                  {
+                    "id": "MANBA",
+                    "lon": 126.3233333,
+                    "lat": 33.72775,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": 9000,
+                      "minFt": 9000,
+                      "raw": "@9000"
+                    }
+                  },
+                  {
+                    "id": "PC621",
+                    "lon": 126.2246944,
+                    "lat": 33.7409444,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC622",
+                    "lon": 126.1257222,
+                    "lat": 33.7295556,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC623",
+                    "lon": 126.0350556,
+                    "lat": 33.6945,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC624",
+                    "lon": 125.9606111,
+                    "lat": 33.6388611,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC625",
+                    "lon": 125.9088333,
+                    "lat": 33.5675278,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC626",
+                    "lon": 125.8841389,
+                    "lat": 33.4866389,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "DAKPI",
+                    "lon": 125.8886389,
+                    "lat": 33.40325,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PC628",
+                    "lon": 125.9218056,
+                    "lat": 33.3245556,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "PIMIK",
+                    "lon": 125.98075,
+                    "lat": 33.2573333,
+                    "legDistanceNm": 5,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "YUMIN",
+                    "lon": 126.2209722,
+                    "lat": 33.4571389,
+                    "legDistanceNm": 17,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 4000,
+                      "raw": "+4000"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "YUMIN-RWY07-REP",
+                "type": "IAP",
+                "fixes": [
+                  {
+                    "id": "YUMIN",
+                    "lon": 126.2209722,
+                    "lat": 33.4571389,
+                    "legDistanceNm": null,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 4000,
+                      "raw": "+4000"
+                    }
+                  },
+                  {
+                    "id": "LIMSO",
+                    "lon": 126.3086111,
+                    "lat": 33.4175,
+                    "legDistanceNm": 4.99,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 2900,
+                      "raw": "+2900"
+                    }
+                  },
+                  {
+                    "id": "D5.3 ICJU",
+                    "lon": 126.3815556,
+                    "lat": 33.4551389,
+                    "legDistanceNm": 4.3,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 1800,
+                      "raw": "+1800"
+                    }
+                  },
+                  {
+                    "id": "D2.6 ICJU",
+                    "lon": 126.4275833,
+                    "lat": 33.4788333,
+                    "legDistanceNm": 2.71,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 910,
+                      "raw": "+910"
+                    }
+                  },
+                  {
+                    "id": "D1.3 ICJU",
+                    "lon": 126.4496667,
+                    "lat": 33.4902222,
+                    "legDistanceNm": 1.3,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": null,
+                      "raw": null
+                    }
+                  },
+                  {
+                    "id": "THR RWY 07",
+                    "lon": 126.4684722,
+                    "lat": 33.4998806,
+                    "legDistanceNm": 1.11,
+                    "altitude": {
+                      "maxFt": null,
+                      "minFt": 87,
+                      "raw": "THR ELEV 87"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "sampleSpacingMeters": 250
+        },
+        "routeGeometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.511125,
+              36.725106
+            ],
+            [
+              127.642694,
+              36.806444
+            ],
+            [
+              127.5415,
+              36.912333
+            ],
+            [
+              126.824917,
+              36.722861
+            ],
+            [
+              127.245667,
+              36.728833
+            ],
+            [
+              126.825,
+              36.72277777777778
+            ],
+            [
+              126.83138888888888,
+              36.55611111111111
+            ],
+            [
+              126.83777777777777,
+              36.38638888888889
+            ],
+            [
+              126.81222222222222,
+              36.15138888888889
+            ],
+            [
+              126.78527777777778,
+              35.90277777777778
+            ],
+            [
+              126.74222222222222,
+              35.503055555555555
+            ],
+            [
+              126.70166666666667,
+              35.125277777777775
+            ],
+            [
+              126.6275,
+              34.42055555555555
+            ],
+            [
+              126.61027777777777,
+              34.25416666666667
+            ],
+            [
+              126.6101667,
+              34.2542778
+            ],
+            [
+              126.5833889,
+              33.9964722
+            ],
+            [
+              126.4984444,
+              33.9089444
+            ],
+            [
+              126.3860556,
+              33.79275
+            ],
+            [
+              126.3233333,
+              33.72775
+            ],
+            [
+              126.2246944,
+              33.7409444
+            ],
+            [
+              126.1257222,
+              33.7295556
+            ],
+            [
+              126.0350556,
+              33.6945
+            ],
+            [
+              125.9606111,
+              33.6388611
+            ],
+            [
+              125.9088333,
+              33.5675278
+            ],
+            [
+              125.8841389,
+              33.4866389
+            ],
+            [
+              125.8886389,
+              33.40325
+            ],
+            [
+              125.9218056,
+              33.3245556
+            ],
+            [
+              125.98075,
+              33.2573333
+            ],
+            [
+              126.2209722,
+              33.4571389
+            ],
+            [
+              126.3086111,
+              33.4175
+            ],
+            [
+              126.3815556,
+              33.4551389
+            ],
+            [
+              126.4275833,
+              33.4788333
+            ],
+            [
+              126.4496667,
+              33.4902222
+            ],
+            [
+              126.4684722,
+              33.4998806
+            ]
+          ]
+        },
+        "enrouteGeometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.500289,
+              36.71556
+            ],
+            [
+              126.825,
+              36.72277777777778
+            ],
+            [
+              126.83138888888888,
+              36.55611111111111
+            ],
+            [
+              126.83777777777777,
+              36.38638888888889
+            ],
+            [
+              126.81222222222222,
+              36.15138888888889
+            ],
+            [
+              126.78527777777778,
+              35.90277777777778
+            ],
+            [
+              126.74222222222222,
+              35.503055555555555
+            ],
+            [
+              126.70166666666667,
+              35.125277777777775
+            ],
+            [
+              126.6275,
+              34.42055555555555
+            ],
+            [
+              126.61027777777777,
+              34.25416666666667
+            ],
+            [
+              126.4929,
+              33.5104
+            ]
+          ]
+        },
+        "routeModel": {
+          "schemaVersion": 1,
+          "routeAxis": {
+            "totalDistanceNm": 354.14,
+            "vertices": [
+              {
+                "coordinate": [
+                  127.511125,
+                  36.725106
+                ],
+                "distanceNm": 0
+              },
+              {
+                "coordinate": [
+                  127.642694,
+                  36.806444
+                ],
+                "distanceNm": 7.99
+              },
+              {
+                "coordinate": [
+                  127.5415,
+                  36.912333
+                ],
+                "distanceNm": 16
+              },
+              {
+                "coordinate": [
+                  126.824917,
+                  36.722861
+                ],
+                "distanceNm": 52.27
+              },
+              {
+                "coordinate": [
+                  127.245667,
+                  36.728833
+                ],
+                "distanceNm": 72.52
+              },
+              {
+                "coordinate": [
+                  126.825,
+                  36.72277777777778
+                ],
+                "distanceNm": 92.77
+              },
+              {
+                "coordinate": [
+                  126.83138888888888,
+                  36.55611111111111
+                ],
+                "distanceNm": 102.78
+              },
+              {
+                "coordinate": [
+                  126.83777777777777,
+                  36.38638888888889
+                ],
+                "distanceNm": 112.97
+              },
+              {
+                "coordinate": [
+                  126.81222222222222,
+                  36.15138888888889
+                ],
+                "distanceNm": 127.14
+              },
+              {
+                "coordinate": [
+                  126.78527777777778,
+                  35.90277777777778
+                ],
+                "distanceNm": 142.12
+              },
+              {
+                "coordinate": [
+                  126.74222222222222,
+                  35.503055555555555
+                ],
+                "distanceNm": 166.21
+              },
+              {
+                "coordinate": [
+                  126.70166666666667,
+                  35.125277777777775
+                ],
+                "distanceNm": 188.98
+              },
+              {
+                "coordinate": [
+                  126.6275,
+                  34.42055555555555
+                ],
+                "distanceNm": 231.45
+              },
+              {
+                "coordinate": [
+                  126.61027777777777,
+                  34.25416666666667
+                ],
+                "distanceNm": 241.48
+              },
+              {
+                "coordinate": [
+                  126.6101667,
+                  34.2542778
+                ],
+                "distanceNm": 241.49
+              },
+              {
+                "coordinate": [
+                  126.5833889,
+                  33.9964722
+                ],
+                "distanceNm": 257.02
+              },
+              {
+                "coordinate": [
+                  126.4984444,
+                  33.9089444
+                ],
+                "distanceNm": 263.77
+              },
+              {
+                "coordinate": [
+                  126.3860556,
+                  33.79275
+                ],
+                "distanceNm": 272.72
+              },
+              {
+                "coordinate": [
+                  126.3233333,
+                  33.72775
+                ],
+                "distanceNm": 277.72
+              },
+              {
+                "coordinate": [
+                  126.2246944,
+                  33.7409444
+                ],
+                "distanceNm": 282.71
+              },
+              {
+                "coordinate": [
+                  126.1257222,
+                  33.7295556
+                ],
+                "distanceNm": 287.7
+              },
+              {
+                "coordinate": [
+                  126.0350556,
+                  33.6945
+                ],
+                "distanceNm": 292.69
+              },
+              {
+                "coordinate": [
+                  125.9606111,
+                  33.6388611
+                ],
+                "distanceNm": 297.69
+              },
+              {
+                "coordinate": [
+                  125.9088333,
+                  33.5675278
+                ],
+                "distanceNm": 302.7
+              },
+              {
+                "coordinate": [
+                  125.8841389,
+                  33.4866389
+                ],
+                "distanceNm": 307.71
+              },
+              {
+                "coordinate": [
+                  125.8886389,
+                  33.40325
+                ],
+                "distanceNm": 312.72
+              },
+              {
+                "coordinate": [
+                  125.9218056,
+                  33.3245556
+                ],
+                "distanceNm": 317.73
+              },
+              {
+                "coordinate": [
+                  125.98075,
+                  33.2573333
+                ],
+                "distanceNm": 322.73
+              },
+              {
+                "coordinate": [
+                  126.2209722,
+                  33.4571389
+                ],
+                "distanceNm": 339.73
+              },
+              {
+                "coordinate": [
+                  126.3086111,
+                  33.4175
+                ],
+                "distanceNm": 344.73
+              },
+              {
+                "coordinate": [
+                  126.3815556,
+                  33.4551389
+                ],
+                "distanceNm": 349.02
+              },
+              {
+                "coordinate": [
+                  126.4275833,
+                  33.4788333
+                ],
+                "distanceNm": 351.73
+              },
+              {
+                "coordinate": [
+                  126.4496667,
+                  33.4902222
+                ],
+                "distanceNm": 353.03
+              },
+              {
+                "coordinate": [
+                  126.4684722,
+                  33.4998806
+                ],
+                "distanceNm": 354.14
+              }
+            ]
+          },
+          "enRouteSegments": [
+            {
+              "id": "Y711-002",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "BULTI",
+              "toFix": "MEKIL",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 92.77,
+              "endNm": 102.78,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-003",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "MEKIL",
+              "toFix": "GONAX",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 102.78,
+              "endNm": 112.97,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-004",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "GONAX",
+              "toFix": "BEDES",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 112.97,
+              "endNm": 127.14,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-005",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "BEDES",
+              "toFix": "ELPOS",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 127.14,
+              "endNm": 142.12,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-006",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "ELPOS",
+              "toFix": "MANGI",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 142.12,
+              "endNm": 166.21,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-007",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "MANGI",
+              "toFix": "DALSU",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 166.21,
+              "endNm": 188.98,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-008",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "DALSU",
+              "toFix": "NULDI",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 188.98,
+              "endNm": 231.45,
+              "alignmentStatus": "aligned"
+            },
+            {
+              "id": "Y711-009",
+              "kind": "airway",
+              "routeId": "Y711",
+              "fromFix": "NULDI",
+              "toFix": "DOTOL",
+              "routeType": "RNAV",
+              "sourceCycle": null,
+              "source": null,
+              "startNm": 231.45,
+              "endNm": 241.48,
+              "alignmentStatus": "aligned"
+            }
+          ],
+          "enRouteRange": {
+            "startNm": 92.77,
+            "endNm": 241.48,
+            "status": "aligned"
+          },
+          "terminalRanges": {
+            "departure": {
+              "startNm": 0,
+              "endNm": 92.77
+            },
+            "arrival": {
+              "startNm": 241.48,
+              "endNm": 354.14
+            }
+          },
+          "graphConnectionStatus": "manual"
+        },
+        "routeMarkers": [
+          {
+            "label": "RKTU",
+            "lon": 127.500289,
+            "lat": 36.71556,
+            "kind": "AIRPORT",
+            "id": "marker:AIRPORT:RKTU:127.500289:36.715560:0"
+          },
+          {
+            "label": "BULTI",
+            "lon": 126.825,
+            "lat": 36.72277777777778,
+            "kind": "FIX",
+            "id": "marker:FIX:BULTI:126.825000:36.722778:0"
+          },
+          {
+            "label": "MEKIL",
+            "lon": 126.83138888888888,
+            "lat": 36.55611111111111,
+            "kind": "FIX",
+            "id": "marker:FIX:MEKIL:126.831389:36.556111:0"
+          },
+          {
+            "label": "GONAX",
+            "lon": 126.83777777777777,
+            "lat": 36.38638888888889,
+            "kind": "FIX",
+            "id": "marker:FIX:GONAX:126.837778:36.386389:0"
+          },
+          {
+            "label": "BEDES",
+            "lon": 126.81222222222222,
+            "lat": 36.15138888888889,
+            "kind": "FIX",
+            "id": "marker:FIX:BEDES:126.812222:36.151389:0"
+          },
+          {
+            "label": "ELPOS",
+            "lon": 126.78527777777778,
+            "lat": 35.90277777777778,
+            "kind": "FIX",
+            "id": "marker:FIX:ELPOS:126.785278:35.902778:0"
+          },
+          {
+            "label": "MANGI",
+            "lon": 126.74222222222222,
+            "lat": 35.503055555555555,
+            "kind": "FIX",
+            "id": "marker:FIX:MANGI:126.742222:35.503056:0"
+          },
+          {
+            "label": "DALSU",
+            "lon": 126.70166666666667,
+            "lat": 35.125277777777775,
+            "kind": "FIX",
+            "id": "marker:FIX:DALSU:126.701667:35.125278:0"
+          },
+          {
+            "label": "NULDI",
+            "lon": 126.6275,
+            "lat": 34.42055555555555,
+            "kind": "FIX",
+            "id": "marker:FIX:NULDI:126.627500:34.420556:0"
+          },
+          {
+            "label": "DOTOL",
+            "lon": 126.61027777777777,
+            "lat": 34.25416666666667,
+            "kind": "FIX",
+            "id": "marker:FIX:DOTOL:126.610278:34.254167:0"
+          },
+          {
+            "label": "RKPC",
+            "lon": 126.4929,
+            "lat": 33.5104,
+            "kind": "AIRPORT",
+            "id": "marker:AIRPORT:RKPC:126.492900:33.510400:0"
+          }
+        ],
+        "airacCycle": "2026-06-25",
+        "alternateAirport": null,
+        "nwpTimeSelection": null
+      },
+      "profileRequest": {
+        "flightRule": "IFR",
+        "plannedCruiseAltitudeFt": 21000,
+        "procedureContext": {
+          "entryFix": null,
+          "exitFix": null,
+          "procedures": [
+            {
+              "id": "RKTU-SID-BUKIL2-BULTI",
+              "type": "SID",
+              "fixes": [
+                {
+                  "id": "RWY24R",
+                  "lon": 127.511125,
+                  "lat": 36.725106,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "raw": null,
+                    "minFt": null,
+                    "maxFt": null
+                  }
+                },
+                {
+                  "id": "BUKIL",
+                  "lon": 127.642694,
+                  "lat": 36.806444,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "raw": null,
+                    "minFt": null,
+                    "maxFt": null
+                  }
+                },
+                {
+                  "id": "TUTAE",
+                  "lon": 127.5415,
+                  "lat": 36.912333,
+                  "legDistanceNm": 8,
+                  "altitude": {
+                    "raw": "+6 000",
+                    "minFt": 6000,
+                    "maxFt": null
+                  }
+                },
+                {
+                  "id": "BULTI",
+                  "lon": 126.824917,
+                  "lat": 36.722861,
+                  "legDistanceNm": 20.3,
+                  "altitude": {
+                    "raw": "@6 000",
+                    "minFt": 6000,
+                    "maxFt": 6000
+                  }
+                },
+                {
+                  "id": "OWING",
+                  "lon": 127.245667,
+                  "lat": 36.728833,
+                  "legDistanceNm": 12.29,
+                  "altitude": {
+                    "raw": "+6 000",
+                    "minFt": 6000,
+                    "maxFt": null
+                  }
+                }
+              ]
+            },
+            {
+              "id": "RKPC-STAR-DOTOL2P",
+              "type": "STAR",
+              "fixes": [
+                {
+                  "id": "DOTOL",
+                  "lon": 126.6101667,
+                  "lat": 34.2542778,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "CHUJA",
+                  "lon": 126.5833889,
+                  "lat": 33.9964722,
+                  "legDistanceNm": 15.5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC726",
+                  "lon": 126.4984444,
+                  "lat": 33.9089444,
+                  "legDistanceNm": 6.7,
+                  "altitude": {
+                    "maxFt": 9000,
+                    "minFt": null,
+                    "raw": "-9000"
+                  }
+                },
+                {
+                  "id": "BIROM",
+                  "lon": 126.3860556,
+                  "lat": 33.79275,
+                  "legDistanceNm": 8.9,
+                  "altitude": {
+                    "maxFt": 7000,
+                    "minFt": 7000,
+                    "raw": "@7000"
+                  }
+                },
+                {
+                  "id": "MANBA",
+                  "lon": 126.3233333,
+                  "lat": 33.72775,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": 9000,
+                    "minFt": 9000,
+                    "raw": "@9000"
+                  }
+                },
+                {
+                  "id": "PC621",
+                  "lon": 126.2246944,
+                  "lat": 33.7409444,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC622",
+                  "lon": 126.1257222,
+                  "lat": 33.7295556,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC623",
+                  "lon": 126.0350556,
+                  "lat": 33.6945,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC624",
+                  "lon": 125.9606111,
+                  "lat": 33.6388611,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC625",
+                  "lon": 125.9088333,
+                  "lat": 33.5675278,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC626",
+                  "lon": 125.8841389,
+                  "lat": 33.4866389,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "DAKPI",
+                  "lon": 125.8886389,
+                  "lat": 33.40325,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PC628",
+                  "lon": 125.9218056,
+                  "lat": 33.3245556,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "PIMIK",
+                  "lon": 125.98075,
+                  "lat": 33.2573333,
+                  "legDistanceNm": 5,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "YUMIN",
+                  "lon": 126.2209722,
+                  "lat": 33.4571389,
+                  "legDistanceNm": 17,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 4000,
+                    "raw": "+4000"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "YUMIN-RWY07-REP",
+              "type": "IAP",
+              "fixes": [
+                {
+                  "id": "YUMIN",
+                  "lon": 126.2209722,
+                  "lat": 33.4571389,
+                  "legDistanceNm": null,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 4000,
+                    "raw": "+4000"
+                  }
+                },
+                {
+                  "id": "LIMSO",
+                  "lon": 126.3086111,
+                  "lat": 33.4175,
+                  "legDistanceNm": 4.99,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 2900,
+                    "raw": "+2900"
+                  }
+                },
+                {
+                  "id": "D5.3 ICJU",
+                  "lon": 126.3815556,
+                  "lat": 33.4551389,
+                  "legDistanceNm": 4.3,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 1800,
+                    "raw": "+1800"
+                  }
+                },
+                {
+                  "id": "D2.6 ICJU",
+                  "lon": 126.4275833,
+                  "lat": 33.4788333,
+                  "legDistanceNm": 2.71,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 910,
+                    "raw": "+910"
+                  }
+                },
+                {
+                  "id": "D1.3 ICJU",
+                  "lon": 126.4496667,
+                  "lat": 33.4902222,
+                  "legDistanceNm": 1.3,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": null,
+                    "raw": null
+                  }
+                },
+                {
+                  "id": "THR RWY 07",
+                  "lon": 126.4684722,
+                  "lat": 33.4998806,
+                  "legDistanceNm": 1.11,
+                  "altitude": {
+                    "maxFt": null,
+                    "minFt": 87,
+                    "raw": "THR ELEV 87"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "sampleSpacingMeters": 250,
+        "routeGeometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.511125,
+              36.725106
+            ],
+            [
+              127.642694,
+              36.806444
+            ],
+            [
+              127.5415,
+              36.912333
+            ],
+            [
+              126.824917,
+              36.722861
+            ],
+            [
+              127.245667,
+              36.728833
+            ],
+            [
+              126.825,
+              36.72277777777778
+            ],
+            [
+              126.83138888888888,
+              36.55611111111111
+            ],
+            [
+              126.83777777777777,
+              36.38638888888889
+            ],
+            [
+              126.81222222222222,
+              36.15138888888889
+            ],
+            [
+              126.78527777777778,
+              35.90277777777778
+            ],
+            [
+              126.74222222222222,
+              35.503055555555555
+            ],
+            [
+              126.70166666666667,
+              35.125277777777775
+            ],
+            [
+              126.6275,
+              34.42055555555555
+            ],
+            [
+              126.61027777777777,
+              34.25416666666667
+            ],
+            [
+              126.6101667,
+              34.2542778
+            ],
+            [
+              126.5833889,
+              33.9964722
+            ],
+            [
+              126.4984444,
+              33.9089444
+            ],
+            [
+              126.3860556,
+              33.79275
+            ],
+            [
+              126.3233333,
+              33.72775
+            ],
+            [
+              126.2246944,
+              33.7409444
+            ],
+            [
+              126.1257222,
+              33.7295556
+            ],
+            [
+              126.0350556,
+              33.6945
+            ],
+            [
+              125.9606111,
+              33.6388611
+            ],
+            [
+              125.9088333,
+              33.5675278
+            ],
+            [
+              125.8841389,
+              33.4866389
+            ],
+            [
+              125.8886389,
+              33.40325
+            ],
+            [
+              125.9218056,
+              33.3245556
+            ],
+            [
+              125.98075,
+              33.2573333
+            ],
+            [
+              126.2209722,
+              33.4571389
+            ],
+            [
+              126.3086111,
+              33.4175
+            ],
+            [
+              126.3815556,
+              33.4551389
+            ],
+            [
+              126.4275833,
+              33.4788333
+            ],
+            [
+              126.4496667,
+              33.4902222
+            ],
+            [
+              126.4684722,
+              33.4998806
+            ]
+          ]
+        }
+      },
+      "durationMinutes": 76
+    }
+  ],
+  "interests": [
+    {
+      "kind": "airport",
+      "name": "김포",
+      "icao": "RKSS",
+      "geometry": null,
+      "lightningRadiusKm": 10,
+      "lightningWindowMinutes": 30
+    },
+    {
+      "kind": "airport",
+      "name": "김해",
+      "icao": "RKPK",
+      "geometry": null,
+      "lightningRadiusKm": 10,
+      "lightningWindowMinutes": 30
+    },
+    {
+      "kind": "airport",
+      "name": "제주",
+      "icao": "RKPC",
+      "geometry": null,
+      "lightningRadiusKm": 10,
+      "lightningWindowMinutes": 30
+    },
+    {
+      "kind": "region",
+      "name": "서해안 항로 관심 구역",
+      "icao": null,
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.8,
+              34.3
+            ],
+            [
+              126.9,
+              34.3
+            ],
+            [
+              127,
+              36.7
+            ],
+            [
+              126.4,
+              37.1
+            ],
+            [
+              125.8,
+              36.7
+            ],
+            [
+              125.8,
+              34.3
+            ]
+          ]
+        ]
+      },
+      "lightningRadiusKm": null,
+      "lightningWindowMinutes": null
+    },
+    {
+      "kind": "region",
+      "name": "제주 접근 관심 구역",
+      "icao": null,
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              125.8,
+              32.9
+            ],
+            [
+              127.5,
+              32.9
+            ],
+            [
+              127.5,
+              34.2
+            ],
+            [
+              125.8,
+              34.2
+            ],
+            [
+              125.8,
+              32.9
+            ]
+          ]
+        ]
+      },
+      "lightningRadiusKm": null,
+      "lightningWindowMinutes": null
+    }
+  ],
+  "notices": [
+    {
+      "title": "비행 종료 후 운항일지 작성",
+      "body": "복귀 후 비행 시간을 기록하고 다음 조에 전달할 특이사항을 공유 비행의 주의사항에 남겨 주세요."
+    },
+    {
+      "title": "훈련 공역 참고자료 확인",
+      "body": "이번 주 훈련 비행 전 자료함의 공역 참고자료를 확인해 주세요. 최신 NOTAM과 실제 기상은 별도로 조회해야 합니다."
+    },
+    {
+      "title": "야간 비행 합동 브리핑 안내",
+      "body": "오늘 21:30 브리핑실에서 진행합니다. 각 조종사는 출발 전 비행계획과 참고자료를 기관 라운지에 공유해 주세요."
+    }
+  ],
+  "briefings": [
+    {
+      "name": "김해–김포 운항 브리핑",
+      "flightIndexes": [
+        1
+      ],
+      "blocks": [
+        {
+          "kind": "speaker-notes",
+          "flightId": 2,
+          "body": "[예시] RKPK → RKSS\n자동 생성한 출발·도착 절차와 항공로를 함께 확인합니다. 계획고도 22,000 ft.\n발표 순서: 비행계획 → 기상 요약 → 지도·단면 → 운항 참고사항."
+        }
+      ]
+    },
+    {
+      "name": "야간 운항 종합 브리핑",
+      "flightIndexes": [
+        0,
+        1,
+        2
+      ],
+      "blocks": [
+        {
+          "kind": "speaker-notes",
+          "flightId": 1,
+          "body": "[예시] RKSS → RKPC\n자동 생성한 출발·도착 절차와 항공로를 함께 확인합니다. 계획고도 19,000 ft.\n발표 순서: 비행계획 → 기상 요약 → 지도·단면 → 운항 참고사항."
+        },
+        {
+          "kind": "speaker-notes",
+          "flightId": 2,
+          "body": "[예시] RKPK → RKSS\n자동 생성한 출발·도착 절차와 항공로를 함께 확인합니다. 계획고도 22,000 ft.\n발표 순서: 비행계획 → 기상 요약 → 지도·단면 → 운항 참고사항."
+        },
+        {
+          "kind": "speaker-notes",
+          "flightId": 3,
+          "body": "[예시] RKTU → RKPC\n자동 생성한 출발·도착 절차와 항공로를 함께 확인합니다. 계획고도 21,000 ft.\n발표 순서: 비행계획 → 기상 요약 → 지도·단면 → 운항 참고사항."
+        }
+      ]
+    },
+    {
+      "name": "제주 노선 합동 브리핑",
+      "flightIndexes": [
+        0,
+        2
+      ],
+      "blocks": [
+        {
+          "kind": "speaker-notes",
+          "flightId": 1,
+          "body": "[예시] RKSS → RKPC\n자동 생성한 출발·도착 절차와 항공로를 함께 확인합니다. 계획고도 19,000 ft.\n발표 순서: 비행계획 → 기상 요약 → 지도·단면 → 운항 참고사항."
+        },
+        {
+          "kind": "speaker-notes",
+          "flightId": 3,
+          "body": "[예시] RKTU → RKPC\n자동 생성한 출발·도착 절차와 항공로를 함께 확인합니다. 계획고도 21,000 ft.\n발표 순서: 비행계획 → 기상 요약 → 지도·단면 → 운항 참고사항."
+        }
+      ]
+    }
+  ]
+}

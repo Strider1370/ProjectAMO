@@ -15,6 +15,8 @@ const fixtureDir = new URL('./fixtures/airport-model-comparison/', import.meta.u
 const read = name => JSON.parse(fs.readFileSync(new URL(name, fixtureDir), 'utf8'))
 const airport = { icao: 'RKSI', lat: 37.46, lon: 126.44, elevation_m: 7 }
 const run_at = '2026-09-06T00:00:00.000Z'
+// single-runs 응답에 없어 일반 예보 API가 채워주는 기압면. LEVELS.icon에서 1000/925/850을 뺀 나머지다.
+const SUPPLEMENT_LEVELS = [975, 950, 900, 875, 800, 750, 700, 600, 500, 400]
 const window = {
   start_at: '2026-09-06T06:00:00.000Z', end_at: '2026-09-06T18:00:00.000Z',
   forecast_hours: Array.from({ length: 13 }, (_, i) => i + 6),
@@ -35,6 +37,8 @@ test('builds a batched run-fixed UTC request through F18', () => {
   assert.equal(url.searchParams.get('elevation'), 'nan,nan')
   assert.equal(url.searchParams.get('forecast_hours'), '19')
   assert.match(url.searchParams.get('hourly'), /cloud_cover_700hPa/)
+  // 25,000 ft(약 400 hPa)까지 요청해야 5,000 ft 위 운고를 NSC로 접지 않는다.
+  for (const level of [600, 500, 400]) assert.match(url.searchParams.get('hourly'), new RegExp(`geopotential_height_${level}hPa`))
 })
 
 test('normalizes the real EC fixture to F6-F18 and preserves first-slot precipitation', () => {
@@ -98,7 +102,7 @@ test('missing pressure-level cloud cover remains missing input instead of becomi
 test('requires stable ICON metadata and exact numeric overlap', () => {
   const single = read('open-meteo-icon-rksi-f000-f012-synthetic.json')
   const general = structuredClone(single)
-  for (const level of [975, 950, 900]) for (const prefix of ['cloud_cover', 'geopotential_height']) general.hourly[`${prefix}_${level}hPa`].fill(0)
+  for (const level of SUPPLEMENT_LEVELS) for (const prefix of ['cloud_cover', 'geopotential_height']) general.hourly[`${prefix}_${level}hPa`].fill(0)
   const iconWindow = { start_at: run_at, end_at: '2026-09-06T12:00:00.000Z', forecast_hours: Array.from({ length: 13 }, (_, i) => i) }
   const merge = overrides => mergeIconPressureWindow({ single, general, airport, window: iconWindow, run_at, metaBefore: { last_run_initialisation_time: 1788652800 }, metaAfter: { last_run_initialisation_time: 1788652800 }, ...overrides })
   assert.equal(merge().hourly.time.length, 13)
@@ -122,7 +126,7 @@ test('publishes a valid ICON airport when a sibling supplement has an invalid un
   const makePayload = (gridLon, badUnit = false) => {
     const value = read('open-meteo-icon-rksi-f000-f012-synthetic.json')
     value.longitude = gridLon
-    for (const level of [975, 950, 900]) for (const prefix of ['cloud_cover', 'geopotential_height']) value.hourly[`${prefix}_${level}hPa`].fill(0)
+    for (const level of SUPPLEMENT_LEVELS) for (const prefix of ['cloud_cover', 'geopotential_height']) value.hourly[`${prefix}_${level}hPa`].fill(0)
     if (badUnit) value.hourly_units.cloud_cover_975hPa = 'fraction'
     return value
   }
