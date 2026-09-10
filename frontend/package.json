@@ -9,8 +9,11 @@
   "packageManager": "npm@10.9.8",
   "scripts": {
     "dev": "vite",
+    "fonts:generate": "node scripts/generate-font-css.mjs",
+    "fonts:check": "node scripts/generate-font-css.mjs --check",
+    "prebuild": "npm run fonts:check",
     "build": "NODE_ENV=production vite build",
-    "test": "node --test",
+    "test": "npm run fonts:check && node --test",
     "dev:contract": "node verification/port-guard.mjs && playwright test",
     "dev:contract:fast": "CONTRACT_REUSE_SERVER=1 playwright test --project=desktop --retries=0",
     "smoke:responsive": "node scripts/responsive-smoke.mjs",

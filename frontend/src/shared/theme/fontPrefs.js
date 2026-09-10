@@ -1,6 +1,6 @@
 // 임시 글꼴 테스트 토글. 후보 폰트를 "고를 때만" lazy 로드(dynamic-subset)하고
 // --app-font / body에 적용 + localStorage 저장. 테스트 기간 팀 투표용 — 결정 후 제거 예정.
-// 기본(GOV)은 main.jsx에서 자체 호스팅됨. 주의: 자체 폰트 하드코딩 컴포넌트는 글꼴 통일 전까지 안 바뀜.
+// GOV와 Wanted는 자체 호스팅. 기존에 저장한 다른 후보 선택은 그대로 유지한다.
 const KEY = 'font_pref'
 // 임시: Wanted Sans를 기본으로 통일해 비교 중(투표 후 확정). 설정에서 글꼴 일괄 변경 가능.
 const DEFAULT_ID = 'wanted'
@@ -10,11 +10,22 @@ export const FONT_OPTIONS = [
   { id: 'gov', label: 'Pretendard GOV (정부표준)', stack: "'Pretendard GOV', system-ui, sans-serif" },
   { id: 'noto', label: 'Noto Sans KR', stack: "'Noto Sans KR', system-ui, sans-serif", css: 'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap' },
   { id: 'gothic', label: 'Gothic A1', stack: "'Gothic A1', system-ui, sans-serif", css: 'https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;700&display=swap' },
-  { id: 'wanted', label: 'Wanted Sans', stack: "'Wanted Sans Variable', system-ui, sans-serif", css: 'https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@latest/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css' },
+  { id: 'wanted', label: 'Wanted Sans', stack: "'Wanted Sans Variable', system-ui, sans-serif", load: () => import('../../assets/fonts/wanted-sans/1.0.3/WantedSansVariable.css') },
   { id: 'plex', label: 'IBM Plex Sans KR', stack: "'IBM Plex Sans KR', system-ui, sans-serif", css: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap' },
 ]
 
+const fontLoads = new Map()
+
 function ensureFontLoaded(opt) {
+  if (opt?.load) {
+    if (!fontLoads.has(opt.id)) {
+      fontLoads.set(opt.id, opt.load().catch(error => {
+        fontLoads.delete(opt.id)
+        console.warn(`Font stylesheet could not be loaded: ${opt.id}`, error)
+      }))
+    }
+    return
+  }
   if (!opt?.css) return
   const linkId = `fontpref-${opt.id}`
   if (document.getElementById(linkId)) return
