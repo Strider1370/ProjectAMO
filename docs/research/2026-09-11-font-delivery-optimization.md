@@ -90,3 +90,12 @@
 - Chromium 1600×1000·WebKit 1180×820 각각 기본 Wanted의 메인·라운지·공항 모델 비교·모니터링·터미널·기상 브리핑 6개 화면과 저장된 gov의 메인 1개 화면, 합계 14개 표면을 확인했다. 폰트 파일 실패·FontFace 오류·pageerror 모두 0. 원래 선호가 보존되고 gov에서는 Wanted CSS/woff2 요청이 0이었다. 터미널의 기존 Google Fonts만 별도 관측됐으며 공통 화면의 외부 폰트 요청은 없었다.
 - 그림과 기상 상태는 자동수집을 끈 로컬 자료로 확인했다. 폰트 전송/표현 검증이며 최신 기상 검증은 아니다. 브라우저·빌드·검사는 CPU 한 코어/nice 10에서 순차 실행했고 임시 preview 서버는 종료했다.
 - 최종 npm run check 통과: backend 1,140 + frontend 1,538 = 2,678 통과, 기존 skip 1. production build 성공, 기존 큰 JS chunk 경고 유지. 증거 `artifacts/font-study/npm-check.log`, `implementation-browser-result.json`, `implementation-browser.log`, `after-*.png`, `build-after.json`.
+
+### 운영 배포 — 2026-09-11
+
+- 사용자 ‘커밋 후 푸쉬 후 배포’ 승인에 따라 구현 커밋 `12ce14b6`을 main에 푸시하고 AWS `/opt/projectamo/current`에서 `deploy/deploy-vm-full.sh`를 실행했다. 의존성 설치, 새 디렉터리 빌드·교체, PM2 설정 재적용, nginx 검사·reload, backend/site health가 모두 통과했다. 기존 npm audit 경고(backend 8, frontend 5)와 큰 JS chunk 경고는 남아 있으며 이번 폰트 변경으로 의존성을 업그레이드하지 않았다.
+- 운영 Node 실제 실행 파일은 `/opt/projectamo/runtime/node-v22.23.1-linux-x64/bin/node`, PM2 backend 상태는 online이다. 서버에서도 `fonts:check` 통과, 배포 자산 woff 0 / woff2 812개를 확인했다.
+- 공개 HTTPS의 HTML·health·메인 CSS·Wanted CSS·양쪽 폰트 표본·공개 OFL 모두 200. 메인 CSS 725,504 B 및 Wanted CSS 46,394 B는 로컬 빌드와 같았다. CSS는 text/css, 폰트는 font/woff2이며 해시 자산은 `public, max-age=31536000, immutable`, HTML은 no-cache, health는 no-store다.
+- 배포 로그 `artifacts/font-study/aws-deploy.log`, 서버 확인 `deployed-server-result.txt`, 공개 HTTP 확인 `deployed-http-result.json`에 보관했다. 운영 데이터는 변경하지 않았으며 이 배포 확인을 모든 기상자료의 최신성 검증으로 취급하지 않는다.
+- 공개 HTTPS Chromium 데스크톱·WebKit iPad 가로에서 각 Wanted의 메인/기관 미리보기/김포 모델 비교와 gov의 메인, 합계 8개 화면을 실제 서버 응답으로 확인했다. 인증·기상·폰트 mock 없이 최초 방문 안내 플래그만 설정했다. 최종 실행의 외부 폰트 요청·폰트 실패·FontFace 오류·pageerror는 모두 0이며 gov에서 Wanted CSS/파일 요청은 없었다. Wanted 폰트는 동일 출처 자산으로 로드됐다. 결과 `deployed-browser-result.json`, 로그 `deployed-browser.log`, 캡처 `deployed-*.png`.
+- 첫 공개 브라우저 검사는 같은 탭에서 화면을 연속 이동할 때 WebKit의 이전 지도 요청에 access-control 형태 오류가 기록됐다. 화면별 새 탭으로 분리한 재검사에서는 오류가 0이었다. 앱 코드는 변경하지 않았으며 첫 로그도 `deployed-browser-first-attempt.log`에 남겼다. 기관 미리보기의 비행/공지 내용은 예시 데이터이고 기상 API는 운영 응답이다. 지도 타일 전체 로딩이나 기상자료 정확성 검증을 폰트 검사 결과에 포함하지 않는다.
