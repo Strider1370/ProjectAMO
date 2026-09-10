@@ -1,3 +1,4 @@
+import OrganizationBriefingStatus from '../route-briefing/OrganizationBriefingStatus.jsx'
 import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { ChartSpline, House } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
@@ -338,6 +339,9 @@ function updateRangeRingHighlight(map, highlightRingRadiusKm, lightningBlinkOff,
 const MapView = forwardRef(function MapView({
   activePanel,
   mobileTask = 'map',
+  dataMode = 'live',
+  mapDataSelection = null,
+  onMapLifecycle,
   airports = [],
   metarData = null,
   echoMeta = null,
@@ -409,6 +413,9 @@ const MapView = forwardRef(function MapView({
   const { on: demoMode, nowMs: demoNowMs } = useDemoMode()
   const [isStyleReady, setIsStyleReady] = useState(false)
   const [styleRevision, setStyleRevision] = useState(0)
+  useEffect(() => {
+    if (mapRef.current && isStyleReady) onMapLifecycle?.({ map: mapRef.current, styleRevision })
+  }, [isStyleReady, styleRevision, onMapLifecycle])
   const [aviationVisibility, setAviationVisibility] = useState(initAviationVisibility)
   const availableMetLayers = useMemo(() => (
     metLayerIds === null ? MET_LAYERS : MET_LAYERS.filter((layer) => metLayerIds.includes(layer.id))
@@ -474,6 +481,29 @@ const MapView = forwardRef(function MapView({
   const [routeBriefingMapMode, setRouteBriefingMapMode] = useState(false)
   const routeBriefing = useRouteBriefing({ activePanel, airports, metarData, demoMode, demoNowMs, enabled: enableRouteBriefing })
   const { user: authUser } = useAuth()
+  const organizationAuthRef = useRef(authUser?.id ?? null)
+  useEffect(() => {
+    const previous = organizationAuthRef.current
+    organizationAuthRef.current = authUser?.id ?? null
+    if (routeBriefing.state.briefingContext?.kind === 'organization' && previous !== (authUser?.id ?? null)) {
+      routeBriefing.actions.handleRouteReset()
+    }
+  }, [authUser?.id])
+
+  const leaveOrganizationBriefing = () => {
+    routeBriefing.actions.handleRouteReset()
+    const url = new URL(window.location.href)
+    url.searchParams.delete('orgId')
+    url.searchParams.delete('orgFlightId')
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+  }
+
+  const returnToOrganizationFlight = () => {
+    const context = routeBriefing.state.briefingContext
+    if (context?.kind !== 'organization') return
+    leaveOrganizationBriefing()
+    window.location.assign(`/lounge/${encodeURIComponent(context.orgId)}/flights/${encodeURIComponent(context.flightId)}`)
+  }
 
   // 브리핑 저장 — 이름을 묻고 저장한 뒤 결과를 알린다. 저장 직후가 이 기능이 어디 있는지
   // 알려줄 유일한 자리다(메뉴를 아무리 잘 놓아도 안 찾아보면 못 찾는다).
@@ -602,13 +632,17 @@ const MapView = forwardRef(function MapView({
   const { routePreviewModel } = routeBriefing
   const flightCategory = useFlightCategory(enableFlightCategory)
   const fcPopupRef = useRef(null)
+  const organizationBundle = routeBriefing.state.organizationBundle
+  const organizationMapSelection = useMemo(() => organizationBundle?.mapDataSelection
+    ? { ...organizationBundle.mapDataSelection, bundleId: organizationBundle.bundleId }
+    : null, [organizationBundle])
   const {
     windField, windRendererOptions, temperatureField, cloudField, icingField, ktgGrid,
     windStatus, tempStatus, cloudStatus, icingStatus, turbulenceStatus,
     lowPower, cloudMaxSpread,
     altLevelsFt, selectedAltFt, setSelectedAltFt,
     sliderLevels, sliderTimes, sliderAvailability, nwpSelection, setNwpSelection,
-  } = useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpacity, windFlowTrail, windFlowWidth, timelineSelectedMs: weatherTimelineSelectedMs })
+  } = useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpacity, windFlowTrail, windFlowWidth, timelineSelectedMs: weatherTimelineSelectedMs, dataMode: routeBriefing.state.briefingContext?.kind === 'organization' ? 'pinned' : dataMode, mapDataSelection: organizationMapSelection ?? mapDataSelection })
 
   useEffect(() => { onSelectRef.current = onAirportSelect }, [onAirportSelect])
 
@@ -1328,12 +1362,16 @@ const MapView = forwardRef(function MapView({
 
     mapRef.current = map
     // ponytail: DEV 전용 디버그 훅 — Playwright/콘솔에서 카메라 정밀 제어용. 프로덕션 빌드엔 미포함.
-    if (import.meta.env.DEV) window.__map = map
+    if (import.meta.env.DEV) {
+      window.__map = map
+      map.getContainer().__projectamoMap = map
+    }
     return () => {
       resizeObserver.disconnect()
       window.removeEventListener('resize', resizeMap)
       if (resizeFrame) cancelAnimationFrame(resizeFrame)
       routeInteractionCleanup?.()
+      if (import.meta.env.DEV) delete map.getContainer().__projectamoMap
       map.remove()
       mapRef.current = null
     }
@@ -1832,6 +1870,8 @@ const MapView = forwardRef(function MapView({
   return (
     <div
       className="map-view-wrapper"
+      data-wind-run={windField?.time?.tmfc ?? undefined}
+      data-wind-revision={windField?.revision ?? windField?.content_hash ?? undefined}
       data-mobile-layer-panel={activePanel === 'aviation' || activePanel === 'met' ? 'true' : undefined}
       data-mobile-task={mobileTask}
       data-route-briefing-map-mode={activePanel === 'route-check' && routeBriefingMapMode ? 'true' : 'false'}
@@ -1933,7 +1973,7 @@ const MapView = forwardRef(function MapView({
         />
       )}
 
-      <TimelineRail
+      {dataMode !== 'pinned' && <TimelineRail
         pastTicksMs={weatherTimelineTicks}
         nwpTimes={sliderTimes}
         forecastTicksMs={forecastTimelineTicks}
@@ -1943,7 +1983,7 @@ const MapView = forwardRef(function MapView({
         onPlayPause={toggleWeatherTimelinePlay}
         referenceNowMs={demoMode ? demoNowMs : null}
         availableFrameEntries={timelineAvailableFrameEntries}
-      />
+      />}
       <QpfStatusCard status={weatherOverlayModel.qpfStatus} tz={tz} />
 
       {/* 브리핑 패널을 닫아도 경로는 지도에 남는다 — 패널을 다시 열지 않고도 지울 수
@@ -2043,7 +2083,15 @@ const MapView = forwardRef(function MapView({
 
       {activePanel === 'route-check' && (
         <>
-          {!routeBriefing.state.briefing && (
+          {!routeBriefing.state.briefing && routeBriefing.state.briefingContext?.kind === 'organization' && (
+            <OrganizationBriefingStatus
+              loading={routeBriefing.state.briefingLoading}
+              error={routeBriefing.state.briefingError}
+              onRetry={routeBriefing.actions.reloadOrganizationBriefing}
+              onBack={returnToOrganizationFlight}
+            />
+          )}
+          {!routeBriefing.state.briefing && routeBriefing.state.briefingContext?.kind !== 'organization' && (
             <>
               <Suspense fallback={null}>
                 <RouteBriefingPanel
@@ -2080,7 +2128,7 @@ const MapView = forwardRef(function MapView({
                   ...sigmetItems.map((item) => ({ ...item, kind: 'sigmet' })),
                   ...airmetItems.map((item) => ({ ...item, kind: 'airmet' })),
                 ]}
-                onClose={() => routeBriefing.actions.setBriefing(null)}
+                onClose={routeBriefing.state.briefingContext?.kind === 'organization' ? returnToOrganizationFlight : () => routeBriefing.actions.setBriefing(null)}
                 onOpenProfile={routeBriefing.actions.handleVerticalProfileRequest}
                 onFocus={focusBriefingSection}
                 metVisibility={metVisibility}
@@ -2093,7 +2141,11 @@ const MapView = forwardRef(function MapView({
                 onRetryNwpTimeRefresh={routeBriefing.actions.retryNwpTimeRefresh}
                 nwpTimeSelection={routeBriefing.state.nwpTimeSelection}
                 onSetWaypointNwpOffset={routeBriefing.actions.handleSetWaypointNwpOffset}
-                onSaveBriefing={handleSaveBriefing}
+                organizationContext={routeBriefing.state.briefingContext}
+                organizationBundle={routeBriefing.state.organizationBundle}
+                organizationError={routeBriefing.state.briefingError}
+                onOrganizationReload={routeBriefing.actions.reloadOrganizationBriefing}
+                onSaveBriefing={routeBriefing.state.briefingContext?.kind === 'organization' ? null : handleSaveBriefing}
                 routeSnapshot={{
                   routeForm: routeBriefing.state.routeForm,
                   vfrWaypoints: routeBriefing.state.vfrWaypoints,

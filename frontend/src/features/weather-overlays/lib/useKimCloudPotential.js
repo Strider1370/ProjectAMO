@@ -17,7 +17,10 @@ function isAbortError(error) {
 
 export function makeKimCloudSelectionKey(selection) {
   if (!selection?.tmfc || !selection?.level || !Number.isFinite(Number(selection.hf))) return null
-  return `${selection.tmfc}:${Number(selection.hf)}:${selection.level}:cloud`
+  const base = `${selection.tmfc}:${Number(selection.hf)}:${selection.level}`
+  return selection.mode === 'pinned'
+    ? `${selection.bundleId || 'bundle'}:${base}:${selection.revision || 'missing-revision'}:cloud`
+    : `${base}:cloud`
 }
 
 export function selectCloudFallbackSelection(index, currentSelection, nowMs = null) {
@@ -37,7 +40,7 @@ export function canRequestKimCloudField(index, selection) {
   return !!(index && selection && selectKimNwpAvailability(index, selection))
 }
 
-export function useKimCloudPotential(enabled, selection, setSelection) {
+export function useKimCloudPotential(enabled, selection, setSelection, { dataMode = 'live' } = {}) {
   const [cloudField, setCloudField] = useState(null)
   const [cloudFieldKey, setCloudFieldKey] = useState(null)
   const [cloudIndex, setCloudIndex] = useState(null)
@@ -46,12 +49,20 @@ export function useKimCloudPotential(enabled, selection, setSelection) {
   const cacheRef = useRef(new Map())
   const requestTokenRef = useRef(0)
   const metaHashRef = useRef(null)
-  const snapshotMeta = useKimSnapshotMeta(enabled)
+  const pinned = dataMode === 'pinned'
+  const snapshotMeta = useKimSnapshotMeta(enabled && !pinned)
   const [refreshToken, setRefreshToken] = useState(0)
 
   useEffect(() => {
     if (!enabled) {
       setStatus('idle')
+      return undefined
+    }
+    if (pinned) {
+      setCloudIndex(null)
+      setCloudField(null)
+      setCloudFieldKey(null)
+      setStatus(selection?.revision ? 'loading' : 'unsupported')
       return undefined
     }
     const controller = new AbortController()
@@ -83,12 +94,12 @@ export function useKimCloudPotential(enabled, selection, setSelection) {
       cancelled = true
       controller.abort()
     }
-  }, [enabled, refreshToken])
+  }, [enabled, refreshToken, pinned, selection?.bundleId, selection?.revision])
 
   useEffect(() => {
     if (!enabled || !selection) return undefined
-    if (!cloudIndex) return undefined
-    if (!canRequestKimCloudField(cloudIndex, selection)) {
+    if (!pinned && !cloudIndex) return undefined
+    if (!pinned && !canRequestKimCloudField(cloudIndex, selection)) {
       setCloudField(null)
       setCloudFieldKey(null)
       setStatus('unavailable')
@@ -128,10 +139,10 @@ export function useKimCloudPotential(enabled, selection, setSelection) {
 
     loadField()
     return () => controller.abort()
-  }, [enabled, selection?.tmfc, selection?.hf, selection?.level, cloudIndex])
+  }, [enabled, pinned, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId, cloudIndex])
 
   useEffect(() => {
-    if (!enabled || !snapshotMeta) return
+    if (!enabled || pinned || !snapshotMeta) return
     const nextHash = getKimCloudSnapshotHash(snapshotMeta)
     if (!nextHash) return
     if (nextHash !== metaHashRef.current) {
@@ -139,7 +150,7 @@ export function useKimCloudPotential(enabled, selection, setSelection) {
       cacheRef.current.clear()
       setRefreshToken((value) => value + 1)
     }
-  }, [enabled, snapshotMeta])
+  }, [enabled, pinned, snapshotMeta])
 
   const normalized = normalizeKimNwpIndex(cloudIndex)
   return {

@@ -43,6 +43,7 @@ export function normalizeRouteSnapshot(snapshot = {}) {
     tasKt: snapshot.tasKt,
     etaPolicy: snapshot.etaPolicy,
     // 재검색 없이 복원하기 위한 기하 — 백엔드 buildBriefingRequest가 최상위에서 읽는다.
+    profileRequest: snapshot.profileRequest ?? null,
     routeGeometry: snapshot.routeGeometry ?? null,
     enrouteGeometry: snapshot.enrouteGeometry ?? null,
     // 백엔드가 NAVLOG 구간표·절차 그룹을 만드는 재료. 좌표선은 routeGeometry에만 있다.

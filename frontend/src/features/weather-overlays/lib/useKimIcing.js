@@ -17,7 +17,10 @@ function isAbortError(error) {
 
 export function makeKimIcingSelectionKey(selection) {
   if (!selection?.tmfc || !selection?.level || !Number.isFinite(Number(selection.hf))) return null
-  return `${selection.tmfc}:${Number(selection.hf)}:${selection.level}:icing`
+  const base = `${selection.tmfc}:${Number(selection.hf)}:${selection.level}`
+  return selection.mode === 'pinned'
+    ? `${selection.bundleId || 'bundle'}:${base}:${selection.revision || 'missing-revision'}:icing`
+    : `${base}:icing`
 }
 
 export function selectIcingFallbackSelection(index, currentSelection, nowMs = null) {
@@ -37,7 +40,7 @@ export function canRequestKimIcingField(index, selection) {
   return !!(index && selection && selectKimNwpAvailability(index, selection))
 }
 
-export function useKimIcing(enabled, selection, setSelection) {
+export function useKimIcing(enabled, selection, setSelection, { dataMode = 'live' } = {}) {
   const [icingField, setIcingField] = useState(null)
   const [icingFieldKey, setIcingFieldKey] = useState(null)
   const [icingIndex, setIcingIndex] = useState(null)
@@ -46,12 +49,20 @@ export function useKimIcing(enabled, selection, setSelection) {
   const cacheRef = useRef(new Map())
   const requestTokenRef = useRef(0)
   const metaHashRef = useRef(null)
-  const snapshotMeta = useKimSnapshotMeta(enabled)
+  const pinned = dataMode === 'pinned'
+  const snapshotMeta = useKimSnapshotMeta(enabled && !pinned)
   const [refreshToken, setRefreshToken] = useState(0)
 
   useEffect(() => {
     if (!enabled) {
       setStatus('idle')
+      return undefined
+    }
+    if (pinned) {
+      setIcingIndex(null)
+      setIcingField(null)
+      setIcingFieldKey(null)
+      setStatus(selection?.revision ? 'loading' : 'unsupported')
       return undefined
     }
     const controller = new AbortController()
@@ -83,12 +94,12 @@ export function useKimIcing(enabled, selection, setSelection) {
       cancelled = true
       controller.abort()
     }
-  }, [enabled, refreshToken])
+  }, [enabled, refreshToken, pinned, selection?.bundleId, selection?.revision])
 
   useEffect(() => {
     if (!enabled || !selection) return undefined
-    if (!icingIndex) return undefined
-    if (!canRequestKimIcingField(icingIndex, selection)) {
+    if (!pinned && !icingIndex) return undefined
+    if (!pinned && !canRequestKimIcingField(icingIndex, selection)) {
       setIcingField(null)
       setIcingFieldKey(null)
       setStatus('unavailable')
@@ -128,10 +139,10 @@ export function useKimIcing(enabled, selection, setSelection) {
 
     loadField()
     return () => controller.abort()
-  }, [enabled, selection?.tmfc, selection?.hf, selection?.level, icingIndex])
+  }, [enabled, pinned, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId, icingIndex])
 
   useEffect(() => {
-    if (!enabled || !snapshotMeta) return
+    if (!enabled || pinned || !snapshotMeta) return
     const nextHash = getKimIcingSnapshotHash(snapshotMeta)
     if (!nextHash) return
     if (nextHash !== metaHashRef.current) {
@@ -139,7 +150,7 @@ export function useKimIcing(enabled, selection, setSelection) {
       cacheRef.current.clear()
       setRefreshToken((value) => value + 1)
     }
-  }, [enabled, snapshotMeta])
+  }, [enabled, pinned, snapshotMeta])
 
   const normalized = normalizeKimNwpIndex(icingIndex)
   return {

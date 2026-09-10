@@ -14,6 +14,7 @@ import UpdatesModal from '../features/about/UpdatesModal.jsx'
 import SearchPalette from '../features/search/SearchPalette.jsx'
 import useTour from '../features/onboarding/useTour.js'
 import TourOverlay from '../features/onboarding/TourOverlay.jsx'
+import { organizationRequest } from '../features/organization-lounge/api.js'
 import { listSavedRoutes } from '../features/route-briefing/lib/routeStore.js'
 import { buildSearchCatalog } from '../features/map/layerActions.js'
 import { mergeAdvisoryPayloads, mergeAirportPayloads } from '../api/weatherApi.js'
@@ -23,6 +24,7 @@ import ExitOnDoubleBack from '../shared/ui/ExitOnDoubleBack.jsx'
 import { TimeZoneProvider, useTimeZone } from '../shared/timezone/TimeZoneContext.jsx'
 import { deeplinkFlightId as deeplinkFlightIdFromUrl, consumeDeeplinkFlight } from '../features/notifications/deeplinkFlight.js'
 
+const OrganizationLoungePage = lazy(() => import('../features/organization-lounge/OrganizationLoungePage.jsx'))
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
 const TerminalPage = lazy(() => import('../features/terminal/TerminalPage.jsx'))
 const DesignTestPage = lazy(() => import('../features/design-test/DesignTestPage.jsx'))
@@ -44,7 +46,9 @@ function formatTimeByTz(ms, tz) {
 
 function MainAppShell() {
   const { tz } = useTimeZone()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const [organizationEntryError, setOrganizationEntryError] = useState(null)
+  const [organizationEntryLoading, setOrganizationEntryLoading] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [activePanel, setActivePanel] = useState(null)
   const [selectedAirport, setSelectedAirport] = useState(() => {
@@ -166,6 +170,29 @@ function MainAppShell() {
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deeplinkFlightId])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const orgId = params.get('orgId')
+    const flightId = params.get('orgFlightId')
+    if (!orgId || !flightId || authLoading) return
+    if (!user) { setAuthOpen(true); return }
+    const controller = new AbortController()
+    setOrganizationEntryError(null)
+    setOrganizationEntryLoading(true)
+    setActivePanel('route-check')
+    organizationRequest(orgId, `/flights/${encodeURIComponent(flightId)}`, { signal: controller.signal })
+      .then(({ flight }) => {
+        if (controller.signal.aborted) return
+        if (!flight?.snapshot) throw new Error('기관 비행의 저장 경로가 없습니다.')
+        return mapRef.current?.loadRouteBriefing?.({ ...flight.snapshot, etd: flight.etd, eta: flight.eta }, {
+          kind: 'organization', orgId, flightId: flight.id, flightVersion: flight.version,
+        })
+      })
+      .catch((error) => { if (!controller.signal.aborted) setOrganizationEntryError(error.message) })
+      .finally(() => { if (!controller.signal.aborted) setOrganizationEntryLoading(false) })
+    return () => controller.abort()
+  }, [user?.id, authLoading])
 
   // Cmd/Ctrl+K → 검색 팔레트 (사이드바 검색 아이콘과 동일).
   useEffect(() => {
@@ -293,6 +320,10 @@ function MainAppShell() {
         <MobileTaskBar activeTask={mobileTask} onSelect={selectMobileTask} hasUpdate={hasUpdate} />
       )}
 
+      {(organizationEntryLoading || organizationEntryError) && <div role={organizationEntryError ? 'alert' : 'status'} style={{ position: 'fixed', top: 12, left: 90, zIndex: 1500, padding: 12, background: 'var(--bg-1)', border: '1px solid var(--stroke-1)', borderRadius: 'var(--radius-md)' }}>
+        {organizationEntryError || '기관 비행을 불러오는 중…'}
+        {organizationEntryError && <a href={window.location.pathname + window.location.search}>다시 시도</a>}
+      </div>}
       <div className="utc-bar">{formatTimeByTz(nowMs, tz)}</div>
       <ExitOnDoubleBack />
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
@@ -330,6 +361,9 @@ function MainAppShell() {
 }
 
 function App() {
+  if (/^\/lounge(?:\/|$)/.test(window.location.pathname)) {
+    return <TimeZoneProvider><AuthProvider><Suspense fallback={<p role="status">기관 라운지를 불러오는 중…</p>}><OrganizationLoungePage /></Suspense></AuthProvider></TimeZoneProvider>
+  }
   const comparisonMatch = window.location.pathname.match(/^\/airport\/([A-Z]{4})\/models\/?$/i)
   if (comparisonMatch) {
     return <TimeZoneProvider><Suspense fallback={null}><ModelComparisonPage icao={comparisonMatch[1].toUpperCase()} /></Suspense></TimeZoneProvider>

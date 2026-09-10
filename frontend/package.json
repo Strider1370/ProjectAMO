@@ -35,6 +35,7 @@
     "geomagnetism": "^0.2.0",
     "lucide-react": "^0.468.0",
     "mapbox-gl": "^3.23.0",
+    "pdfjs-dist": "^6.3.289",
     "polylabel": "^2.1.0",
     "pretendard-gov": "^1.3.9",
     "project-kma": "file:..",

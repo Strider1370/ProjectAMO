@@ -31,6 +31,11 @@ server {
     proxy_set_header X-Forwarded-Proto $scheme;
   }
 
+  # SQLite and private organization files must never bypass application authorization.
+  location ~* "^/data/(?:backups|organization-files)(?:/|$)|^/data/.*\.(?:db|sqlite|sqlite3)(?:-(?:wal|shm|journal))?$" {
+    return 404;
+  }
+
   location /data/ {
     alias /opt/projectamo/shared/data/.active-data/;
     try_files $uri @projectamo_data_backend;

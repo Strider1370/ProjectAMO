@@ -36,6 +36,16 @@ function ensureColumns(database) {
     if (!userCols.includes('min_visibility_m')) database.exec('ALTER TABLE users ADD COLUMN min_visibility_m INTEGER')
     if (!userCols.includes('last_active_at')) database.exec('ALTER TABLE users ADD COLUMN last_active_at TEXT') // 관리자 콘솔 "활성 사용자" — 로그인 시각 기준
   }
+
+  if (tableExists('organization_briefing_runs')) {
+    const runCols = database.prepare('PRAGMA table_info(organization_briefing_runs)').all().map((c) => c.name)
+    if (!runCols.includes('active_flight_id')) database.exec('ALTER TABLE organization_briefing_runs ADD COLUMN active_flight_id INTEGER')
+  }
+
+  if (tableExists('organization_alerts')) {
+    const alertCols = database.prepare('PRAGMA table_info(organization_alerts)').all().map((c) => c.name)
+    if (!alertCols.includes('acknowledged_version')) database.exec('ALTER TABLE organization_alerts ADD COLUMN acknowledged_version INTEGER')
+  }
 }
 
 // 스키마 적용된 연결 생성. dbPath=':memory:'면 테스트용 인메모리.

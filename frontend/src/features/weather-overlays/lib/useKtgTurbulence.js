@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchKtgGrid, fetchKtgIndex } from '../../../api/weatherApi.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
+import { pinnedKtgLevels, pinnedKtgSelection, pinnedModel } from '../../organization-lounge/lib/pinnedMapDataSelection.js'
 
 const DEFAULT_ALT_FT = 3000
 
@@ -8,7 +9,7 @@ function isAbortError(error) {
   return error?.name === 'AbortError'
 }
 
-export function useKtgTurbulence(enabled, selection) {
+export function useKtgTurbulence(enabled, selection, { dataMode = 'live', mapDataSelection = null } = {}) {
   const [altLevelsFt, setAltLevelsFt] = useState([])
   const [selectedAltFt, setSelectedAltFtState] = useState(DEFAULT_ALT_FT)
   const [hours, setHours] = useState([])
@@ -19,25 +20,37 @@ export function useKtgTurbulence(enabled, selection) {
   const cacheRef = useRef(new Map())
   const requestTokenRef = useRef(0)
 
-  const snapshot = useKimSnapshotMeta(enabled)
+  const pinned = dataMode === 'pinned'
+  const snapshot = useKimSnapshotMeta(enabled && !pinned)
   const ktgHash = snapshot?.ktg?.hash ?? null
+  const exactPinned = pinned ? pinnedKtgSelection(mapDataSelection, { altFt: selectedAltFt }) : null
 
   // 예보시간: 메인 타임라인이 세팅한 공유 selection.hf를 읽음(NWP와 시간축 공유).
   // 그 hf가 KTG에 없거나 selection이 없으면 nearest 기본값으로.
   const availableHfs = hours.map((h) => Number(h.hf))
   const selHf = Number(selection?.hf)
-  const effectiveHf = Number.isFinite(selHf) && availableHfs.includes(selHf) ? selHf : defaultHf
+  const effectiveHf = pinned ? exactPinned?.hf : (Number.isFinite(selHf) && availableHfs.includes(selHf) ? selHf : defaultHf)
 
   // Invalidate grid cache when backend data changes.
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || pinned) return
     cacheRef.current.clear()
-  }, [enabled, ktgHash])
+  }, [enabled, pinned, ktgHash])
 
   // Fetch index to get available altitude levels.
   useEffect(() => {
     if (!enabled) {
       setStatus('idle')
+      return undefined
+    }
+    if (pinned) {
+      const levels = pinnedKtgLevels(mapDataSelection)
+      const model = pinnedModel(mapDataSelection, 'ktg')
+      setAltLevelsFt(levels)
+      setHours(model?.validTime ? [{ tmfc: model.tmfc, hf: model.hf, validTime: model.validTime }] : [])
+      setDefaultHf(Number.isFinite(Number(model?.hf)) ? Number(model.hf) : null)
+      setSelectedAltFtState((previous) => levels.includes(previous) ? previous : (levels[0] ?? previous))
+      setStatus(levels.length && model?.tmfc ? 'loading' : 'unsupported')
       return undefined
     }
     const controller = new AbortController()
@@ -68,12 +81,20 @@ export function useKtgTurbulence(enabled, selection) {
     }
     loadIndex()
     return () => { cancelled = true; controller.abort() }
-  }, [enabled, ktgHash])
+  }, [enabled, pinned, ktgHash, mapDataSelection?.bundleId])
 
   // Fetch grid for selected altitude + effective forecast hour.
   useEffect(() => {
     if (!enabled || !selectedAltFt || effectiveHf == null) return undefined
-    const key = `ktg:${selectedAltFt}:${effectiveHf}`
+    if (pinned && !exactPinned) {
+      setKtgGrid(null)
+      setKtgGridKey(null)
+      setStatus('unsupported')
+      return undefined
+    }
+    const key = pinned
+      ? `ktg:${exactPinned.bundleId}:${exactPinned.tmfc}:${selectedAltFt}:${effectiveHf}:${exactPinned.revision}`
+      : `ktg:${selectedAltFt}:${effectiveHf}`
     if (cacheRef.current.has(key)) {
       setKtgGrid(cacheRef.current.get(key))
       setKtgGridKey(key)
@@ -87,7 +108,7 @@ export function useKtgTurbulence(enabled, selection) {
       setStatus((prev) => (prev === 'ready' ? 'refreshing' : 'loading'))
       setKtgGridKey(null)
       try {
-        const data = await fetchKtgGrid({ altFt: selectedAltFt, hf: effectiveHf }, { signal: controller.signal })
+        const data = await fetchKtgGrid(pinned ? exactPinned : { altFt: selectedAltFt, hf: effectiveHf }, { signal: controller.signal })
         if (requestTokenRef.current !== token || controller.signal.aborted) return
         cacheRef.current.set(key, data)
         setKtgGrid(data)
@@ -102,7 +123,7 @@ export function useKtgTurbulence(enabled, selection) {
     }
     loadGrid()
     return () => controller.abort()
-  }, [enabled, selectedAltFt, effectiveHf])
+  }, [enabled, pinned, selectedAltFt, effectiveHf, exactPinned?.tmfc, exactPinned?.revision, exactPinned?.bundleId])
 
   function setSelectedAltFt(altFt) {
     setSelectedAltFtState(altFt)

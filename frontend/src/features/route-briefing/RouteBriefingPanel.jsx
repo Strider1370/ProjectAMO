@@ -28,6 +28,7 @@ import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { computeEtaIso, formatFlightDuration } from './lib/etaCalc.js'
 import { AIRPORT_NAME_KO } from '../../api/weatherApi.js'
 import { briefingTimeFields, buildBriefingTimeIso, formatBriefingTime } from './lib/briefingTime.js'
+import { buildSavedProfileRequest } from './lib/verticalProfileRequest.js'
 import { buildSavedGeometry } from './lib/routeSaveGeometry.js'
 import { loadNavdata } from './lib/routePlanner.js'
 import './RouteBriefing.css'
@@ -385,6 +386,7 @@ export default function RouteBriefingPanel({ state, refs = {}, derived, actions,
       cruiseAltitudeFt, tasKt, etd,
       eta: eta || null, // 사용자가 고친 ETA를 지킨다. 없으면 로드 때 거리·TAS로 계산.
       routeGeometry, enrouteGeometry, routeModel, routeMarkers, airacCycle,
+      profileRequest: buildSavedProfileRequest({ routeGeometry, routeModel, routeResult: base?.routeResult ?? routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints, plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) }),
       alternateAirport: alternateAirport || null,
       nwpTimeSelection: state.nwpTimeSelection ?? null,
       selectedAlternativeId: selectedRouteDesignId === 'base' ? null : selectedRouteDesignId,

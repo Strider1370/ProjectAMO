@@ -137,3 +137,254 @@ CREATE TABLE IF NOT EXISTS alerts_sent (
   sent_at TEXT NOT NULL,
   PRIMARY KEY (kind, subject)
 );
+
+-- 기관 라운지. 개인 routes와 분리하고, 변경 가능한 본체는 current_version만 가리킨다.
+-- 실제 비행/자료/회차 내용은 *_versions에 append-only로 보존한다.
+CREATE TABLE IF NOT EXISTS organizations (
+  id              INTEGER PRIMARY KEY,
+  name            TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 200),
+  settings        TEXT NOT NULL DEFAULT '{}',
+  version         INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+  created_by      INTEGER NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS organization_members (
+  organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id          INTEGER NOT NULL REFERENCES users(id),
+  role             TEXT NOT NULL CHECK (role IN ('admin','planner','member')),
+  status           TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive')),
+  version          INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+  created_at       TEXT NOT NULL,
+  updated_at       TEXT NOT NULL,
+  PRIMARY KEY (organization_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS organization_interests (
+  id                       INTEGER PRIMARY KEY,
+  organization_id          INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  kind                     TEXT NOT NULL CHECK (kind IN ('airport','region')),
+  name                     TEXT NOT NULL,
+  icao                     TEXT CHECK (icao IS NULL OR length(icao) = 4),
+  geometry                 TEXT,
+  lightning_radius_km      REAL CHECK (lightning_radius_km IS NULL OR lightning_radius_km BETWEEN 1 AND 500),
+  lightning_window_minutes INTEGER CHECK (lightning_window_minutes IS NULL OR lightning_window_minutes BETWEEN 5 AND 240),
+  version                  INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+  created_by               INTEGER NOT NULL REFERENCES users(id),
+  created_at               TEXT NOT NULL,
+  updated_at               TEXT NOT NULL,
+  CHECK ((kind = 'airport' AND icao IS NOT NULL AND geometry IS NULL)
+      OR (kind = 'region' AND icao IS NULL AND geometry IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS organization_notices (
+  id              INTEGER PRIMARY KEY,
+  organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  current_version INTEGER NOT NULL DEFAULT 1 CHECK (current_version >= 1),
+  deleted_at      TEXT,
+  created_by      INTEGER NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS organization_notice_versions (
+  notice_id       INTEGER NOT NULL REFERENCES organization_notices(id) ON DELETE CASCADE,
+  version         INTEGER NOT NULL CHECK (version >= 1),
+  title           TEXT NOT NULL,
+  body            TEXT NOT NULL,
+  starts_at       TEXT,
+  ends_at         TEXT,
+  created_by      INTEGER NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL,
+  PRIMARY KEY (notice_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS organization_flights (
+  id              INTEGER PRIMARY KEY,
+  organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  assigned_user_id INTEGER REFERENCES users(id),
+  current_version INTEGER NOT NULL DEFAULT 1 CHECK (current_version >= 1),
+  status          TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','cancelled','completed')),
+  created_by      INTEGER NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS organization_flight_versions (
+  flight_id       INTEGER NOT NULL REFERENCES organization_flights(id) ON DELETE CASCADE,
+  version         INTEGER NOT NULL CHECK (version >= 1),
+  name            TEXT NOT NULL,
+  etd             TEXT NOT NULL,
+  eta             TEXT NOT NULL,
+  snapshot        TEXT NOT NULL,
+  profile_request TEXT NOT NULL,
+  blocks          TEXT NOT NULL DEFAULT '[]',
+  annotations     TEXT NOT NULL DEFAULT '[]',
+  material_refs   TEXT NOT NULL DEFAULT '[]',
+  created_by      INTEGER NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL,
+  PRIMARY KEY (flight_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS organization_materials (
+  id              INTEGER PRIMARY KEY,
+  organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  owner_user_id   INTEGER NOT NULL REFERENCES users(id),
+  current_version INTEGER NOT NULL DEFAULT 1 CHECK (current_version >= 1),
+  deleted_at      TEXT,
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS organization_material_versions (
+  material_id          INTEGER NOT NULL REFERENCES organization_materials(id) ON DELETE CASCADE,
+  version              INTEGER NOT NULL CHECK (version >= 1),
+  kind                 TEXT NOT NULL CHECK (kind IN ('pdf','image','map','route','document')),
+  title                TEXT NOT NULL,
+  description          TEXT NOT NULL DEFAULT '',
+  source_label         TEXT,
+  mime_type            TEXT,
+  original_name        TEXT,
+  storage_key          TEXT,
+  thumbnail_storage_key TEXT,
+  size_bytes           INTEGER CHECK (size_bytes IS NULL OR size_bytes >= 0),
+  content_hash         TEXT,
+  metadata             TEXT NOT NULL DEFAULT '{}',
+  blocks               TEXT NOT NULL DEFAULT '[]',
+  created_by           INTEGER NOT NULL REFERENCES users(id),
+  created_at           TEXT NOT NULL,
+  PRIMARY KEY (material_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS organization_briefings (
+  id              INTEGER PRIMARY KEY,
+  organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  current_version INTEGER NOT NULL DEFAULT 1 CHECK (current_version >= 1),
+  status          TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','ready','archived')),
+  created_by      INTEGER NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS organization_briefing_versions (
+  briefing_id    INTEGER NOT NULL REFERENCES organization_briefings(id) ON DELETE CASCADE,
+  version        INTEGER NOT NULL CHECK (version >= 1),
+  name           TEXT NOT NULL,
+  scheduled_at   TEXT,
+  flight_refs    TEXT NOT NULL DEFAULT '[]',
+  material_refs  TEXT NOT NULL DEFAULT '[]',
+  blocks         TEXT NOT NULL DEFAULT '[]',
+  created_by     INTEGER NOT NULL REFERENCES users(id),
+  created_at     TEXT NOT NULL,
+  PRIMARY KEY (briefing_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS organization_briefing_runs (
+  id                 INTEGER PRIMARY KEY,
+  organization_id    INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  briefing_id        INTEGER NOT NULL REFERENCES organization_briefings(id),
+  briefing_version   INTEGER NOT NULL,
+  status             TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','ended')),
+  started_by         INTEGER NOT NULL REFERENCES users(id),
+  active_flight_id   INTEGER REFERENCES organization_flights(id),
+  pinned_snapshot    TEXT NOT NULL,
+  applied_snapshot   TEXT NOT NULL,
+  version            INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+  started_at         TEXT NOT NULL,
+  updated_at         TEXT NOT NULL,
+  ended_at           TEXT,
+  FOREIGN KEY (briefing_id, briefing_version)
+    REFERENCES organization_briefing_versions(briefing_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS organization_briefing_run_candidates (
+  run_id          INTEGER NOT NULL REFERENCES organization_briefing_runs(id) ON DELETE CASCADE,
+  bundle_id       TEXT NOT NULL,
+  flight_id       INTEGER NOT NULL REFERENCES organization_flights(id),
+  flight_version  INTEGER NOT NULL,
+  payload         TEXT NOT NULL,
+  created_at      TEXT NOT NULL,
+  PRIMARY KEY (run_id, bundle_id),
+  FOREIGN KEY (flight_id, flight_version)
+    REFERENCES organization_flight_versions(flight_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS organization_briefing_run_events (
+  run_id          INTEGER NOT NULL REFERENCES organization_briefing_runs(id) ON DELETE CASCADE,
+  sequence        INTEGER NOT NULL CHECK (sequence >= 1),
+  kind            TEXT NOT NULL CHECK (kind IN ('applied','ended')),
+  run_version     INTEGER NOT NULL CHECK (run_version >= 2),
+  flight_id       INTEGER REFERENCES organization_flights(id),
+  bundle_id       TEXT,
+  payload         TEXT NOT NULL,
+  actor_user_id   INTEGER NOT NULL REFERENCES users(id),
+  created_at      TEXT NOT NULL,
+  PRIMARY KEY (run_id, sequence)
+);
+
+CREATE TABLE IF NOT EXISTS organization_alerts (
+  id              INTEGER PRIMARY KEY,
+  organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  event_key       TEXT NOT NULL,
+  kind            TEXT NOT NULL CHECK (kind IN ('airport_warning','sigmet','airmet','lightning')),
+  interest_id     INTEGER REFERENCES organization_interests(id) ON DELETE SET NULL,
+  payload         TEXT NOT NULL,
+  source_revision TEXT,
+  version         INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+  acknowledged_by INTEGER REFERENCES users(id),
+  acknowledged_at TEXT,
+  acknowledged_version INTEGER,
+  active          INTEGER NOT NULL DEFAULT 1,
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL,
+  UNIQUE (organization_id, event_key)
+);
+
+CREATE TABLE IF NOT EXISTS organization_alert_user_states (
+  organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  alert_id         INTEGER NOT NULL REFERENCES organization_alerts(id) ON DELETE CASCADE,
+  user_id          INTEGER NOT NULL REFERENCES users(id),
+  read_at          TEXT,
+  hidden_until     TEXT,
+  updated_at       TEXT NOT NULL,
+  PRIMARY KEY (alert_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_members_user ON organization_members(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_org_interests_org ON organization_interests(organization_id, kind);
+CREATE INDEX IF NOT EXISTS idx_org_notices_org ON organization_notices(organization_id, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_org_flights_org_status ON organization_flights(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_org_flight_versions_etd ON organization_flight_versions(etd);
+CREATE INDEX IF NOT EXISTS idx_org_materials_org ON organization_materials(organization_id, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_org_briefings_org ON organization_briefings(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_org_runs_briefing ON organization_briefing_runs(briefing_id, status);
+CREATE INDEX IF NOT EXISTS idx_org_run_candidates_flight ON organization_briefing_run_candidates(run_id, flight_id, flight_version);
+CREATE INDEX IF NOT EXISTS idx_org_run_events_flight ON organization_briefing_run_events(run_id, flight_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_org_alerts_org_active ON organization_alerts(organization_id, active, updated_at);
+
+-- 변경 이력/발표 후보는 새 행으로만 확장한다. 본체의 current_version 포인터만 변경 가능하다.
+CREATE TRIGGER IF NOT EXISTS immutable_organization_flight_versions_update
+BEFORE UPDATE ON organization_flight_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_flight_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_flight_versions_delete
+BEFORE DELETE ON organization_flight_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_flight_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_notice_versions_update
+BEFORE UPDATE ON organization_notice_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_notice_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_notice_versions_delete
+BEFORE DELETE ON organization_notice_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_notice_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_material_versions_update
+BEFORE UPDATE ON organization_material_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_material_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_material_versions_delete
+BEFORE DELETE ON organization_material_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_material_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_briefing_versions_update
+BEFORE UPDATE ON organization_briefing_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_briefing_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_briefing_versions_delete
+BEFORE DELETE ON organization_briefing_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_briefing_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_run_candidates_update
+BEFORE UPDATE ON organization_briefing_run_candidates BEGIN SELECT RAISE(ABORT, 'immutable_organization_run_candidate'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_run_candidates_delete
+BEFORE DELETE ON organization_briefing_run_candidates BEGIN SELECT RAISE(ABORT, 'immutable_organization_run_candidate'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_run_events_update
+BEFORE UPDATE ON organization_briefing_run_events BEGIN SELECT RAISE(ABORT, 'immutable_organization_run_event'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_run_events_delete
+BEFORE DELETE ON organization_briefing_run_events BEGIN SELECT RAISE(ABORT, 'immutable_organization_run_event'); END;

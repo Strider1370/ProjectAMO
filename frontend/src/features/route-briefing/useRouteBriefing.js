@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchVerticalProfile, fetchCrossSection, fetchNwpTimeRefresh, fetchRouteBriefing, fetchRouteExposure, fetchRouteExposureBatch, fetchAltitudeComparison } from '../../api/briefingApi.js'
+import { createBriefingProvider, createBriefingRequestGate } from './lib/briefingProvider.js'
+import { fetchVerticalProfile, fetchCrossSection, fetchNwpTimeRefresh, fetchRouteExposure, fetchRouteExposureBatch, fetchAltitudeComparison } from '../../api/briefingApi.js'
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
 import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavdata, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
 import { classifyTokens, errorCount, findProcedureByToken, isProcedureText, procedureFixCoordinates, procedureFixIds, procedureTokenForms, tokenGeometry, TOKEN_KINDS } from './lib/routeTokens.js'
@@ -8,7 +9,7 @@ import { calcVfrDistance, inlineImportedProcedureGeometry } from './lib/routePre
 import { computeEtaIso } from './lib/etaCalc.js'
 import { getPerformanceForRule, setPerformanceForRule } from './lib/aircraftProfiles.js'
 import { initialBearingDeg, magneticCourse, nearestVfrCruiseAltitude } from './lib/altitude.js'
-import { buildCrossSectionRequest, buildRouteProfileMarkersPayload, buildVerticalProfileRequest } from './lib/verticalProfileRequest.js'
+import { buildCrossSectionRequest, buildRouteProfileMarkersPayload, buildVerticalProfileRequest, buildSavedProfileRequest } from './lib/verticalProfileRequest.js'
 import { rebaseNwpTimeSelection, setWaypointNwpOffset } from './lib/nwpTimeSelection.js'
 import { mergeNavlogNwpPatch } from './lib/nwpTimeRefresh.js'
 import { buildSavedGeometry } from './lib/routeSaveGeometry.js'
@@ -65,6 +66,12 @@ function importNoticesAfterProcedureMatch(notices, unknownNames, procedures) {
 // 보수적으로 밀집지역 기준(1,000ft)을 항상 적용한다.
 
 export function useRouteBriefing({ activePanel, airports = [], metarData = null, demoMode = false, demoNowMs = null, enabled = true }) {
+  const [briefingContext, setBriefingContext] = useState(null)
+  const briefingContextRef = useRef(null)
+  const [organizationBundle, setOrganizationBundle] = useState(null)
+  const organizationGateRef = useRef(createBriefingRequestGate())
+  const organizationOverridesRef = useRef({})
+  useEffect(() => () => organizationGateRef.current.cancel(), [])
   const [routeEditor, setRouteEditor] = useState(() => emptyEditorForContext(initialRouteForm))
   const routeForm = routeEditor.routeForm
   const selectedSid = routeEditor.procedures.sid
@@ -192,6 +199,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
   const lastAppliedDemoNowRef = useRef(null)
   useEffect(() => {
+    if (briefingContextRef.current?.kind === 'organization') return
     if (!demoMode) {
       if (lastAppliedDemoNowRef.current !== null) {
         const liveNow = new Date()
@@ -302,6 +310,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   function clearRouteDisplay({ clearEditor = true } = {}) {
     routeSearchRequestRef.current += 1
     routeExposureRequestRef.current += 1
+    routeSearchRequestRef.current += 1
+    vfrPreviewRequestRef.current += 1
+    draftPreviewRequestRef.current += 1
     altitudeComparisonRequestRef.current += 1
     verticalProfileRequestRef.current += 1
     setRouteResult(null)
@@ -598,6 +609,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const importedRouteApplyPendingRef = useRef(false)
 
   useEffect(() => {
+    if (briefingContextRef.current?.kind === 'organization') return
     if (errorCount(routeTokens) > 0) return
     // en-route 알약을 다 지우면 지도가 옛 경로를 그대로 들고 있었다 — 입력창은 'RKSS RKPK'인데
     // 지도는 여전히 지운 지점을 거쳐 갔다. 지운 뒤 같은 지점을 다시 쳐도 "이미 적용했다"는
@@ -688,7 +700,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }, [selectedStar, iapData])
 
   useEffect(() => {
-    if (verticalProfile) {
+    if (verticalProfile && briefingContextRef.current?.kind !== 'organization') {
       setVerticalProfileStale(true)
     }
   }, [selectedSid, selectedStar, selectedIapKey, appliedVfrWaypoints])
@@ -969,6 +981,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   function handleRouteReset() {
+    switchBriefingContext(null)
     // A saved-route load can still be awaiting procedure/exposure data when the
     // user resets. Mark it stale before clearing so it cannot restore the old
     // route after this fresh-start transition.
@@ -1678,6 +1691,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   async function requestAltitudeComparison(plannedAltitudeFt = cruiseAltitudeFt) {
+    if (briefingContextRef.current?.kind === 'organization') {
+      return loadOrganizationBundle({ cruiseAltitudeFt: Number(plannedAltitudeFt) })
+    }
     const design = selectedAppliedDesign
     const designResult = design?.routeResult ?? routeResult
     const designSid = design?.procedures?.sid ?? selectedSid
@@ -1750,6 +1766,12 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   function selectCruiseAltitude(value) {
+    if (briefingContextRef.current?.kind === 'organization') {
+      updateCruiseAltitudeFt(value)
+      setAltitudeDraftFt(value)
+      loadOrganizationBundle({ cruiseAltitudeFt: Number(value) })
+      return
+    }
     updateCruiseAltitudeFt(value)
     setAltitudeDraftFt(value)
     setBriefing(null)
@@ -1780,6 +1802,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   function goToWorkflowStep(step) {
+    if (briefingContextRef.current?.kind === 'organization' && step !== 'briefing') return
     if (step === 'briefing') {
       continueToBriefing()
       return
@@ -1807,6 +1830,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // VFR starts with an editable direct route. Changing only the airports is
   // the one case that resets it; map and list edits keep the same waypoints.
   useEffect(() => {
+    if (briefingContextRef.current?.kind === 'organization') return
     if (routeForm.flightRule !== 'VFR') { lastVfrKeyRef.current = ''; return }
     const dep = routeForm.departureAirport
     const arr = routeForm.arrivalAirport
@@ -1844,6 +1868,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 거친 뒤에 나와야 하므로, 경로만 불러온 상태에서 브리핑을 띄우면 사용자가 정한 적 없는
   // 고도로 판단 화면이 뜬다. 브리핑까지 여는 것은 openSavedBriefing이 맡는다.
   async function loadSavedRouteIntoEditor(saved) {
+    switchBriefingContext(null)
     const inputs = buildSavedBriefingInputs(saved)
     if (!inputs.ok) { await loadSavedRoute(saved); return null }
     const resetVersion = routeResetVersionRef.current
@@ -1906,67 +1931,121 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
   // 저장된 브리핑을 연다 — 경로 상태를 얹고 브리핑까지 만들어 브리핑 단계로 데려간다.
   // 고도가 확정된 저장분에만 쓴다.
-  async function openSavedBriefing(saved, { etd } = {}) {
-    const inputs = buildSavedBriefingInputs(saved, { etd })
-    if (!inputs.ok) return loadSavedRoute(saved, { autoBriefing: true })
-    if (!inputs.etd || !inputs.eta) { setBriefingError('저장된 브리핑에 ETD/ETA가 없습니다.'); return }
+  function switchBriefingContext(context) {
+    organizationGateRef.current.cancel()
+    routeResetVersionRef.current += 1
+    verticalProfileRequestRef.current += 1
+    routeExposureRequestRef.current += 1
+    routeSearchRequestRef.current += 1
+    vfrPreviewRequestRef.current += 1
+    draftPreviewRequestRef.current += 1
+    altitudeComparisonRequestRef.current += 1
+    legTerrainRequestRef.current += 1
+    briefingContextRef.current = context
+    setBriefingContext(context)
+    setOrganizationBundle(null)
+    organizationOverridesRef.current = {}
+    setBriefing(null)
+    setCrossSection(null)
+    setVerticalProfile(null)
+    setAutoBriefingPending(false)
+    setAutoRecommendRequested(false)
+    setAutoApplyPending(false)
+  }
 
+  async function loadOrganizationBundle(overrides = {}) {
+    const context = briefingContextRef.current
+    if (context?.kind !== 'organization') return null
+    organizationOverridesRef.current = { ...organizationOverridesRef.current, ...overrides }
+    const request = organizationGateRef.current.begin()
+    setBriefingLoading(true)
+    setBriefingError(null)
+    setVerticalProfileLoading(true)
+    try {
+      const bundle = await createBriefingProvider(context).load({
+        overrides: organizationOverridesRef.current, signal: request.signal,
+      })
+      if (!request.isCurrent()) return null
+      // One React batch publishes every validated component from this request.
+      setOrganizationBundle(bundle)
+      if (organizationOverridesRef.current.etd) setEtd(organizationOverridesRef.current.etd)
+      if (organizationOverridesRef.current.cruiseAltitudeFt != null) {
+        setCruiseAltitudeFt(Number(organizationOverridesRef.current.cruiseAltitudeFt))
+        setAltitudeDraftFt(Number(organizationOverridesRef.current.cruiseAltitudeFt))
+      }
+      if ('nwpTimeSelection' in organizationOverridesRef.current) setNwpTimeSelection(organizationOverridesRef.current.nwpTimeSelection)
+      setBriefing(bundle.briefing)
+      setVerticalProfile(bundle.verticalProfile ?? null)
+      setCrossSection(bundle.crossSection ?? { available: false })
+      setVerticalProfileError(bundle.componentStatus?.verticalProfile?.reason ?? null)
+      setVerticalProfileStale(false)
+      setWorkflowStep('briefing')
+      return bundle
+    } catch (error) {
+      if (!request.isCurrent()) return null
+      setBriefingError(error.message || '기관 브리핑 조회 실패')
+      return null
+    } finally {
+      if (request.isCurrent()) {
+        setBriefingLoading(false)
+        setVerticalProfileLoading(false)
+        setCrossSectionHourLoading(false)
+      }
+    }
+  }
+
+  async function openSavedBriefing(saved, options = {}) {
+    const context = options.kind === 'organization' ? options : options.context ?? null
+    switchBriefingContext(context)
+    const inputs = buildSavedBriefingInputs(saved, { etd: options.etd })
+    if (!inputs.ok) {
+      if (context?.kind === 'organization') { setBriefingError('기관 비행의 저장 경로가 없습니다.'); return }
+      return loadSavedRoute(saved, { autoBriefing: true })
+    }
+    if (!inputs.etd || !inputs.eta) { setBriefingError('저장된 브리핑에 ETD/ETA가 없습니다.'); return }
     const resetVersion = routeResetVersionRef.current
     setBriefingLoading(true)
     setBriefingError(null)
     try {
       const applied = await applySavedRouteState(inputs, resetVersion)
       if (resetVersion !== routeResetVersionRef.current) return
-      const plannedCruiseAltitudeFt = inputs.cruiseAltitudeFt || DEFAULT_CRUISE_ALTITUDE_FT
-      // 요청은 정상 브리핑 생성(handleGenerateBriefing)과 같은 생성기로 만든다 — 손으로 짜면
-      // procedureContext처럼 조용히 빠지는 것이 생긴다. 구간 모델과 마커는 routeResult가
-      // 들고 다니므로 생성기가 알아서 저장분을 쓴다.
-      const profileRequest = buildVerticalProfileRequest({
-        routeGeometry: inputs.routeGeometry,
-        routeModel: inputs.routeModel,
-        routeResult: applied.routeResult,
-        selectedSid: applied.procedures.sid,
-        selectedStar: applied.procedures.star,
-        selectedIap: applied.selectedIap,
-        vfrWaypoints: [],
-        plannedCruiseAltitudeFt,
-      })
-      const result = await fetchRouteBriefing({
-        ...profileRequest,
-        departureAirport: inputs.departureAirport,
-        arrivalAirport: inputs.arrivalAirport,
-        alternateAirport: inputs.alternateAirport,
-        etd: inputs.etd,
-        eta: inputs.eta,
-        ...(inputs.nwpTimeSelection ? { nwpTimeSelection: inputs.nwpTimeSelection } : {}),
-      })
-      if (resetVersion !== routeResetVersionRef.current) return
-      setBriefing(result)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: inputs.routeGeometry.coordinates, maxZoom: 8 })
       setWorkflowStep('briefing')
-      // 연직단면도·단면 자료. 정상 경로도 브리핑 뒤에 따로 받는다 — 없어도 브리핑은 성립한다.
-      try {
-        const [profile, cs] = await Promise.all([
-          fetchVerticalProfile(profileRequest),
-          fetchCrossSection(buildCrossSectionRequest({
-            routeGeometry: inputs.routeGeometry,
-            etd: inputs.etd,
-            routeMarkers: inputs.routeMarkers,
-            ...(inputs.nwpTimeSelection ? { nwpTimeSelection: inputs.nwpTimeSelection } : {}),
-          })).catch(() => null),
-        ])
-        if (resetVersion === routeResetVersionRef.current) { setVerticalProfile(profile); setCrossSection(cs) }
-      } catch { /* optional */ }
-    } catch (err) {
-      setBriefingError(err.message)
+      if (context?.kind === 'organization') {
+        await loadOrganizationBundle(options.etd ? { etd: options.etd } : {})
+        return
+      }
+      const profileRequest = buildVerticalProfileRequest({
+        routeGeometry: inputs.routeGeometry, routeModel: inputs.routeModel,
+        routeResult: applied.routeResult, selectedSid: applied.procedures.sid,
+        selectedStar: applied.procedures.star, selectedIap: applied.selectedIap,
+        vfrWaypoints: [], plannedCruiseAltitudeFt: inputs.cruiseAltitudeFt || DEFAULT_CRUISE_ALTITUDE_FT,
+      })
+      const request = organizationGateRef.current.begin()
+      const bundle = await createBriefingProvider(null).load({
+        request: { ...profileRequest, departureAirport: inputs.departureAirport,
+          arrivalAirport: inputs.arrivalAirport, alternateAirport: inputs.alternateAirport,
+          etd: inputs.etd, eta: inputs.eta, nwpTimeSelection: inputs.nwpTimeSelection ?? undefined },
+        profileRequest,
+        crossSectionRequest: buildCrossSectionRequest({ routeGeometry: inputs.routeGeometry,
+          etd: inputs.etd, routeMarkers: inputs.routeMarkers, nwpTimeSelection: inputs.nwpTimeSelection ?? undefined }),
+        signal: request.signal,
+      })
+      if (!request.isCurrent() || resetVersion !== routeResetVersionRef.current) return
+      setBriefing(bundle.briefing)
+      setVerticalProfile(bundle.verticalProfile)
+      setCrossSection(bundle.crossSection)
+    } catch (error) {
+      if (resetVersion === routeResetVersionRef.current) setBriefingError(error.message)
     } finally {
-      setBriefingLoading(false)
+      if (resetVersion === routeResetVersionRef.current) setBriefingLoading(false)
     }
   }
 
   // 불러오기: restore saved inputs, re-search, then overlay saved VFR waypoints.
   // opts.autoBriefing=true → 경로검색 완료(routeResult) 후 아래 effect가 브리핑을 자동 생성.
   async function loadSavedRoute(saved, opts = {}) {
+    switchBriefingContext(null)
     const resetVersion = routeResetVersionRef.current
     saved = normalizeRouteSnapshot(saved)
     if (!saved?.base?.routeForm && !saved?.routeForm) return
@@ -2285,6 +2364,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   async function reloadCrossSectionForNwpSelection({ routeGeometry, nextSelection, tmfc = crossSection?.run?.tmfc, hf } = {}) {
+    if (briefingContextRef.current?.kind === 'organization') {
+      return loadOrganizationBundle({ nwpTimeSelection: nextSelection })
+    }
     if (!routeGeometry || !nextSelection) return null
     const requestId = ++verticalProfileRequestRef.current
     setCrossSectionHourLoading(true)
@@ -2321,6 +2403,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   async function retryNwpTimeRefresh() {
+    if (briefingContextRef.current?.kind === 'organization') return loadOrganizationBundle()
     const failed = failedNwpTimeRefreshRef.current
     if (!failed) return
     const refreshed = await reloadCrossSectionForNwpSelection(failed)
@@ -2349,6 +2432,11 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     crossSection: existingCrossSection = null,
     openWindow = true,
   } = {}) {
+    if (briefingContextRef.current?.kind === 'organization') {
+      const bundle = await loadOrganizationBundle({ cruiseAltitudeFt: Number(requestedAltitudeFt) })
+      if (bundle) setVerticalProfileWindowOpen(openWindow)
+      return
+    }
     const routeGeometry = getCurrentRouteLineString({
       routeResult,
       vfrWaypoints: appliedVfrWaypoints,
@@ -2469,7 +2557,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   // 연직단면도 "생성"과 무관 — 고도를 정하는 그 자리에서 지형 여유를 보게 한다.
   const legTerrainRequestRef = useRef(0)
   useEffect(() => {
-    if (routeResult?.flightRule !== 'VFR' || appliedVfrWaypoints.length < 2) {
+    if (briefingContextRef.current?.kind === 'organization' || routeResult?.flightRule !== 'VFR' || appliedVfrWaypoints.length < 2) {
       setVfrLegTerrain({})
       return undefined
     }
@@ -2515,6 +2603,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       kind: 'briefing',
       cruiseAltitudeFt, tasKt, etd: etdIso, eta,
       routeGeometry, enrouteGeometry, routeModel, routeMarkers, airacCycle,
+      profileRequest: buildSavedProfileRequest({ routeGeometry, routeModel, routeResult: base?.routeResult ?? routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints: appliedVfrWaypoints, plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) }),
       // 웨이포인트별 NWP 시각 규칙. 경로 저장이 이미 담는 값이라 여기서 빠뜨리면
       // 브리핑만 시각 규칙이 날아간다. 해석하지 않고 그대로 옮긴다.
       nwpTimeSelection: nwpTimeSelection ?? null,
@@ -2545,6 +2634,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   async function handleGenerateBriefing() {
+    if (briefingContextRef.current?.kind === 'organization') {
+      return loadOrganizationBundle({ etd, cruiseAltitudeFt: Number(cruiseAltitudeFt), nwpTimeSelection })
+    }
+    const contextVersion = routeResetVersionRef.current
     const routeGeometry = getCurrentRouteLineString({ routeResult, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
     if (!routeGeometry) { setBriefingError('먼저 경로를 검색하세요.'); return }
     // 저장분에서 불러온 경로는 구간 모델을 이미 들고 있다 — 다시 계산하면 segments가 없어
@@ -2553,42 +2646,30 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     const etdIso = new Date(etd).toISOString().replace('.000Z', 'Z')
     const briefingEta = routeForm.flightRule === 'IFR' ? eta : ((etaUserEdited && eta) || computeEtaIso(etdIso, plannedDistanceNm, tasKt) || etdIso)
     if (!briefingEta || !Number.isFinite(Date.parse(briefingEta))) { setBriefingError('예상 ETA를 입력하세요.'); return }
+    const request = organizationGateRef.current.begin()
     setBriefingLoading(true); setBriefingError(null)
     try {
-      const result = await fetchRouteBriefing({
-        ...buildVerticalProfileRequest({
-          routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap,
-          vfrWaypoints: appliedVfrWaypoints,
-          plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
-        }),
-        departureAirport: routeForm.departureAirport,
-        arrivalAirport: routeForm.arrivalAirport,
-        alternateAirport: alternateAirport || null,
-        etd: etdIso,
-        eta: briefingEta,
-        ...(nwpTimeSelection ? { nwpTimeSelection } : {}),
+      const profileRequest = buildVerticalProfileRequest({
+        routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap,
+        vfrWaypoints: appliedVfrWaypoints,
+        plannedCruiseAltitudeFt: Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT,
       })
-      setBriefing(result)
+      const bundle = await createBriefingProvider(null).load({
+        request: { ...profileRequest, departureAirport: routeForm.departureAirport,
+          arrivalAirport: routeForm.arrivalAirport, alternateAirport: alternateAirport || null,
+          etd: etdIso, eta: briefingEta, nwpTimeSelection: nwpTimeSelection ?? undefined },
+        profileRequest,
+        crossSectionRequest: buildCrossSectionRequest({ routeGeometry, etd: etdIso,
+          routeMarkers: currentProfileMarkers(), nwpTimeSelection: nwpTimeSelection ?? undefined }),
+        signal: request.signal,
+      })
+      if (!request.isCurrent() || contextVersion !== routeResetVersionRef.current) return
+      setBriefing(bundle.briefing)
+      setVerticalProfile(bundle.verticalProfile)
+      setCrossSection(bundle.crossSection)
       setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: routeGeometry.coordinates, maxZoom: 8 })
-      // also load profile + cross-section so ④ can render the inline 단면도 (best-effort)
-      try {
-        const plannedCruiseAltitudeFt = Number(cruiseAltitudeFt) || DEFAULT_CRUISE_ALTITUDE_FT
-        const [profile, cs] = await Promise.all([
-          fetchVerticalProfile(buildVerticalProfileRequest({
-            routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap, vfrWaypoints: appliedVfrWaypoints, plannedCruiseAltitudeFt,
-          })),
-          fetchCrossSection(buildCrossSectionRequest({
-            routeGeometry,
-            etd: etdIso,
-            routeMarkers: currentProfileMarkers(),
-            ...(nwpTimeSelection ? { nwpTimeSelection } : {}),
-          })).catch(() => null),
-        ])
-        setVerticalProfile(profile)
-        setCrossSection(cs)
-      } catch { /* inline 단면도 optional */ }
-    } catch (err) { setBriefingError(err.message) }
-    finally { setBriefingLoading(false) }
+    } catch (err) { if (request.isCurrent() && contextVersion === routeResetVersionRef.current) setBriefingError(err.message) }
+    finally { if (request.isCurrent() && contextVersion === routeResetVersionRef.current) setBriefingLoading(false) }
   }
 
   const workflowAvailability = {
@@ -2600,6 +2681,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
 
   return {
     state: {
+      briefingContext,
+      organizationBundle,
       routeForm,
       routeResult,
       routeError,
@@ -2701,6 +2784,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       saveCurrentBriefing,
       suggestedBriefingName,
       openSavedBriefing,
+      reloadOrganizationBriefing: loadOrganizationBundle,
       importRouteFromFile,
       applyImportedPath,
       cancelImportChoice,

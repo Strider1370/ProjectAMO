@@ -1,3 +1,9 @@
+import { createOrganizationWeatherDependencies } from './src/briefing/organization-runtime.js'
+import { createMeOrganizationsRouter, createAdminOrganizationsRouter, createOrganizationRouter } from './src/organizations/router.js'
+import { requireTrustedMutationOrigin } from './src/organizations/middleware.js'
+import { refreshAllOrganizationSituations } from './src/organizations/situation.js'
+import { publicDataGuard } from './src/lib/public-data-guard.js'
+import { readExactKtgMapGrid, readExactKimMapGrid, readExactWeatherFrame } from './src/briefing/pinned-map-resources.js'
 import express from 'express'
 import compression from 'compression'
 import crypto from 'node:crypto'
@@ -83,6 +89,10 @@ ensureActiveDataView()
 const DATA_ROOT = config.storage.active_path
 const LIVE_DATA_ROOT = config.storage.base_path
 const terrainSampler = createDefaultTerrainSampler(DATA_ROOT)
+const organizationWeatherDependencies = createOrganizationWeatherDependencies({
+  dataRoot: DATA_ROOT, readWeather: readLatest, getDataContext: getActiveDataContext,
+  getNow: getEffectiveNow, terrainSampler,
+})
 const renderTerrainRgbTile = createTerrainRgbTiler({ terrainRoot: path.join(DATA_ROOT, 'terrain') })
 const KIM_ICING_REQUIRED_VARIABLES = ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']
 const SNAPSHOT_META_CACHE_TTL_MS = 5000
@@ -188,7 +198,7 @@ app.use('/data', (req, res, next) => {
   if (/^\/radar\/echotop\/echotop_\d{12}\.bin$/i.test(req.path)) return res.status(404).end()
   next()
 })
-app.use('/data', express.static(DATA_ROOT, { setHeaders: setGeneratedDataCacheHeaders }))
+app.use('/data', publicDataGuard, express.static(DATA_ROOT, { setHeaders: setGeneratedDataCacheHeaders }))
 function isImmutableKimFieldRequest(req) {
   return /^\/kim\/(?:wind|temp|cloud|icing)\/field$/i.test(req.path)
 }
@@ -237,6 +247,18 @@ app.use('/api', (req, res, next) => {
 // #7 인증 라우터 (공개 날씨 API와 분리). register/login/logout/me. 세션과 동일하게 실서버에서만.
 if (process.env.NODE_ENV !== 'test') {
   app.use('/api/auth', createAuthRouter())
+  const organizationMutationOrigin = requireTrustedMutationOrigin({
+    allowedOrigins: process.env.NODE_ENV === 'production'
+      ? [process.env.FRONTEND_ORIGIN].filter(Boolean)
+      : [process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173', 'http://localhost:5173'],
+  })
+  app.use('/api/me/organizations', createMeOrganizationsRouter())
+  app.use('/api/admin/organizations', createAdminOrganizationsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
+  app.use('/api/organizations', createOrganizationRouter({
+    trustedMutationOrigin: organizationMutationOrigin,
+    briefingDependencies: organizationWeatherDependencies,
+    situationDependencies: organizationWeatherDependencies,
+  }))
   app.use('/api/me', createMeRouter()) // 내 프리셋(로그인 필요, 자기 것만)
   app.use('/api/me', createRoutesRouter()) // 내 저장 경로
   app.use('/api/me', createAlertsRouter()) // #13 예정 비행(알림) 등록·관리
@@ -623,6 +645,12 @@ function sendKimField(req, res, { type, buildFn, errorLabel }) {
       hf: Number(req.query.hf),
       level: String(req.query.level || ''),
     }
+    if (req.query.revision !== undefined) {
+      const exact = readExactKimMapGrid(DATA_ROOT, { ...selection, revision: req.query.revision })
+      setNoStore(res)
+      if (exact.status !== 200) return res.status(exact.status).json({ error: exact.error })
+      return res.json({ ...buildFn(exact.grid), revision: exact.revision })
+    }
     // Early 304: (tmfc, hf, level) uniquely identifies an immutable KIM field — no need to read the grid.
     const etagSeed = `kim-${type}:${selection.tmfc}:${selection.hf}:${selection.level}`
     const etag = etagOf(etagSeed)
@@ -667,6 +695,12 @@ function sendKimWindField(req, res, { allowDefault = false } = {}) {
       return
     }
 
+    if (req.query.revision !== undefined) {
+      const exact = readExactKimMapGrid(DATA_ROOT, { ...selection, revision: req.query.revision })
+      setNoStore(res)
+      if (exact.status !== 200) return res.status(exact.status).json({ error: exact.error })
+      return res.json({ ...buildKimSurfaceWindFieldFromWindGrid(exact.grid), revision: exact.revision })
+    }
     const etagSeed = `kim-wind:${selection.tmfc}:${selection.hf}:${selection.level}`
     const etag = etagOf(etagSeed)
     if (requestHasMatchingEtag(req, etag)) {
@@ -814,7 +848,19 @@ app.get('/api/ktg/index', (_req, res) => {
   res.status(503).json({ error: 'ktg index unavailable' })
 })
 
+app.get('/api/weather/frame/:kind/:name', (req, res) => {
+  const result = readExactWeatherFrame(DATA_ROOT, { ...req.params, revision: req.query.revision })
+  setNoStore(res)
+  if (result.status !== 200) return res.status(result.status).json({ error: result.error })
+  res.type(result.contentType).send(result.bytes)
+})
+
 app.get('/api/ktg/grid', (req, res) => {
+  if (req.query.tmfc !== undefined) {
+    const result = readExactKtgMapGrid(DATA_ROOT, req.query)
+    setNoStore(res)
+    return res.status(result.status).json(result.data ?? { error: result.error })
+  }
   const altFt = Number(req.query.altFt) || 3000
   const latest = readKtgLatest(DATA_ROOT)
   if (!latest) {
@@ -1323,6 +1369,18 @@ if (process.env.NODE_ENV !== 'test') {
   recordBoot(config.storage.base_path) // 관리자 콘솔: 재시작 횟수 집계
   startDailyBackup(getDb(), config.storage.base_path, { cron }) // DB 백업: 매일 03:10 KST
   startOpsAlerts(getDb(), { cron }) // 운영 알림: 5분마다 대규모 장애 판정 → 텔레그램
+
+  let organizationEvaluationRunning = false
+  const organizationTimer = setInterval(async () => {
+    if (organizationEvaluationRunning || isDemoMode()) return
+    organizationEvaluationRunning = true
+    try {
+      const results = await refreshAllOrganizationSituations(getDb(), organizationWeatherDependencies)
+      for (const result of results) if (result.status === 'rejected') console.error('[organization] situation evaluation failed:', result.reason?.message)
+    } catch (error) { console.error('[organization] situation evaluation failed:', error.message) }
+    finally { organizationEvaluationRunning = false }
+  }, 60_000)
+  organizationTimer.unref()
 
   startAlertScheduler(getDb()) // #13 경로 예보변화 알림: 활성 예정비행 15분 재브리핑 → diff → 알림 적재
 

@@ -32,6 +32,7 @@
     "helmet": "^8.2.0",
     "netcdfjs": "^4.0.0",
     "node-cron": "^3.0.3",
+    "pdfjs-dist": "^6.3.289",
     "playwright": "^1.61.1",
     "project-kma": "file:..",
     "sharp": "^0.33.5",

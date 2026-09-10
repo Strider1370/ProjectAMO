@@ -16,7 +16,7 @@ test('요일×시각으로 묶어 낸다', () => {
   // 2026-08-10은 월요일
   db.prepare('INSERT INTO visit_hours (day,hour,n) VALUES (?,?,?)').run('2026-08-10', 8, 5)
   db.prepare('INSERT INTO visit_hours (day,hour,n) VALUES (?,?,?)').run('2026-08-17', 8, 3)
-  const { cells } = hourlyPattern(db, { weeks: 52 })
+  const { cells } = hourlyPattern(db, { weeks: 52, now: Date.parse('2026-08-18T00:00:00Z') })
   const mon8 = cells.find((c) => c.dow === 0 && c.hour === 8)
   assert.equal(mon8.n, 8, '같은 요일·시각은 합산한다')
 })
@@ -24,7 +24,7 @@ test('요일×시각으로 묶어 낸다', () => {
 test('2주 미만이면 ready가 거짓이다', () => {
   const db = createDb(':memory:')
   db.prepare('INSERT INTO visit_hours (day,hour,n) VALUES (?,?,?)').run('2026-08-10', 8, 1)
-  const out = hourlyPattern(db, { weeks: 4 })
+  const out = hourlyPattern(db, { weeks: 4, now: Date.parse('2026-08-18T00:00:00Z') })
   assert.equal(out.ready, false)
   assert.equal(out.days, 1)
 })

@@ -159,9 +159,15 @@ function sampleLevelValuesForRules({ samples, segments, readGrid }) {
 }
 
 // 경로의 KIM/KTG 단면 필드를 로드한다. KIM run이 없으면 { available: false }.
-export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
-  const latest = readKimNwpLatest(root)
-  if (!latest?.latestRun) return { available: false, reason: 'kim run unavailable' }
+export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRevision = '', allowPartialModels = false }) {
+  let latest = readKimNwpLatest(root)
+  const kimAvailable = Boolean(latest?.latestRun)
+  if (!latest?.latestRun) {
+    const fallback = allowPartialModels ? readKtgLatest(root) : null
+    if (!fallback?.tmfc) return { available: false, reason: 'kim run unavailable' }
+    // A missing KIM file must not prevent independent KTG sampling for organizations.
+    latest = { latestRun: fallback.tmfc }
+  }
   const index = readKimNwpIndex(root)
   const tmfc = String(body.tmfc || latest.latestRun)
   // 압력면 바람(u/v) 데이터가 실제로 있는 시각만 후보로 삼는다.
@@ -188,7 +194,7 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
     baseTime: selectedKimTime?.validTime,
     candidateTimes,
   })
-  const kimBundleKey = `${root}|${tmfc}|${hf}|${latest.content_hash ?? latest.updated_at ?? ''}`
+  const kimBundleKey = `${root}|${tmfc}|${hf}|${latest.content_hash ?? latest.updated_at ?? ''}|${cacheRevision}`
 
   const axis = buildRouteAxis(routeGeometry, body.sampleSpacingMeters ?? 250)
   const ruleMarkers = body.nwpTimeSelection && Array.isArray(body.routeMarkers)
@@ -252,11 +258,12 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
         : null
     })
   }
-  const ktgBundleKey = ktgLatest && `${root}|${ktgLatest.tmfc}|${ktgHf}|${ktgLatest.updated_at ?? ktgIndex?.fetched_at ?? ''}`
+  const ktgBundleKey = ktgLatest && `${root}|${ktgLatest.tmfc}|${ktgHf}|${ktgLatest.updated_at ?? ktgIndex?.fetched_at ?? ''}|${cacheRevision}`
   const ktgCoords = ktgLatest ? cachedGrid('ktg', ktgBundleKey, 'coords', () =>
     readKtgCoords({ root, tmfc: ktgLatest.tmfc, hf: ktgHf })) : null
   const turbulence = buildKtgCrossSection({
     axis,
+    restrictToGrid: allowPartialModels,
     coords: ktgCoords,
     altLevelsFt: ktgIndex?.altLevelsFt ?? [],
     sourceForSample: timeRules
@@ -271,10 +278,10 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {} }) {
 
   // 사용자가 단면도에서 다른 예보시간(hf)을 골라볼 수 있도록, 바람 자료가 실제로 있는 시각 목록을 함께 내려준다.
   return {
-    available: true, axis, crossSection, turbulence, totalDistanceNm: axis.totalDistanceNm,
+    available: kimAvailable || Boolean(turbulence?.available), axis, crossSection: kimAvailable ? crossSection : null, turbulence, totalDistanceNm: axis.totalDistanceNm,
     timeRules,
     nwpTimeAvailability,
-    availableTimes: candidateTimes.map((time) => selectClosestForecastTime({
+    availableTimes: !kimAvailable ? [] : candidateTimes.map((time) => selectClosestForecastTime({
       tmfc,
       targetMs: 0,
       candidateTimes: [time],

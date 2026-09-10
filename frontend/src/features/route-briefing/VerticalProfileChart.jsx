@@ -5,6 +5,7 @@ import { buildCloudContourModel } from './lib/cloudContour.js'
 import { buildNwpTimeRail } from './lib/nwpTimeSelection.js'
 import { formatBriefingTime } from './lib/briefingTime.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
+import { buildLinkedProfileBands } from './lib/linkedProfileBands.js'
 
 const ADVISORY_ICON_PX = 32 // 평면도 기호의 ~2배. 단면도 맨 앞에 그림.
 
@@ -212,6 +213,9 @@ export default function VerticalProfileChart({
   nwpTimeSelection = null,
   onSetWaypointNwpOffset = null,
   highlightRangeNm = null, // NAVLOG에서 가리킨 구간 {startNm, endNm, pinned}
+  linkedItems = [],
+  activeLinkedItemId = null,
+  onSelectLinkedItem = null,
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
@@ -346,6 +350,14 @@ export default function VerticalProfileChart({
     if (!(right > left)) return null
     return { left, right, pinned: Boolean(highlightRangeNm.pinned) }
   })()
+  const linkedProfileBands = buildLinkedProfileBands({
+    linkedItems,
+    maxDistance,
+    yMax,
+    xFor,
+    yFor,
+    activeItemId: activeLinkedItemId,
+  })
   const yTickInterval = yMax <= 10000 ? 2000 : yMax <= 20000 ? 3000 : yMax <= 40000 ? 5000 : 10000
   const yTicks = Array.from({ length: Math.floor(yMax / yTickInterval) + 1 }, (_, i) => i * yTickInterval)
     .filter(v => v <= yMax && (!Number.isFinite(selectedCruiseAltitudeFt) || Math.abs(v - selectedCruiseAltitudeFt) > yTickInterval * 0.4))
@@ -723,6 +735,26 @@ export default function VerticalProfileChart({
             <line x1={legBand.right} x2={legBand.right} y1={padding.top} y2={padding.top + plotHeight} />
           </g>
         )}
+        {linkedProfileBands.map((band) => (
+          <g
+            key={band.key}
+            className={`vertical-profile-linked-band${band.positionOnly ? ' is-position-only' : ''}${band.active ? ' is-active' : ''}`}
+            role={onSelectLinkedItem ? 'button' : undefined}
+            tabIndex={onSelectLinkedItem ? 0 : undefined}
+            aria-label={`${band.title} · ${band.positionOnly ? '위치만 연결, 고도 미지정' : '고도 범위 연결'}`}
+            onClick={onSelectLinkedItem ? () => onSelectLinkedItem(band.itemKey) : undefined}
+            onKeyDown={onSelectLinkedItem ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onSelectLinkedItem(band.itemKey)
+              }
+            } : undefined}
+          >
+            <rect className="vertical-profile-linked-hit" x={band.x - 4} y={padding.top} width={band.width + 8} height={plotHeight} />
+            <rect className="vertical-profile-linked-area" x={band.x} y={band.y} width={band.width} height={band.height} />
+            <line className="vertical-profile-linked-tick" x1={band.x} x2={band.x + band.width} y1={padding.top + plotHeight - 2} y2={padding.top + plotHeight - 2} />
+          </g>
+        ))}
         {todMarker && (
           <g>
             <text

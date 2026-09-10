@@ -277,8 +277,9 @@ export async function fetchKimNwpIndex(options = {}) {
   return fetchJson('/api/kim/wind/index', options)
 }
 
-export async function fetchKimNwpField({ tmfc, hf, level }, options = {}) {
+export async function fetchKimNwpField({ tmfc, hf, level, revision }, options = {}) {
   const params = new URLSearchParams({ tmfc, hf: String(hf), level })
+  if (revision) params.set('revision', revision)
   return fetchJson(`/api/kim/wind/field?${params.toString()}`, options)
 }
 
@@ -286,8 +287,9 @@ export async function fetchKimTemperatureIndex(options = {}) {
   return fetchJson('/api/kim/temp/index', options)
 }
 
-export async function fetchKimTemperatureField({ tmfc, hf, level }, options = {}) {
+export async function fetchKimTemperatureField({ tmfc, hf, level, revision }, options = {}) {
   const params = new URLSearchParams({ tmfc, hf: String(hf), level })
+  if (revision) params.set('revision', revision)
   return fetchJson(`/api/kim/temp/field?${params.toString()}`, options)
 }
 
@@ -295,8 +297,9 @@ export async function fetchKimCloudPotentialIndex(options = {}) {
   return fetchJson('/api/kim/cloud/index', options)
 }
 
-export async function fetchKimCloudPotentialField({ tmfc, hf, level }, options = {}) {
+export async function fetchKimCloudPotentialField({ tmfc, hf, level, revision }, options = {}) {
   const params = new URLSearchParams({ tmfc, hf: String(hf), level })
+  if (revision) params.set('revision', revision)
   return fetchJson(`/api/kim/cloud/field?${params.toString()}`, options)
 }
 
@@ -304,8 +307,9 @@ export async function fetchKimIcingIndex(options = {}) {
   return fetchJson('/api/kim/icing/index', options)
 }
 
-export async function fetchKimIcingField({ tmfc, hf, level }, options = {}) {
+export async function fetchKimIcingField({ tmfc, hf, level, revision }, options = {}) {
   const params = new URLSearchParams({ tmfc, hf: String(hf), level })
+  if (revision) params.set('revision', revision)
   return fetchJson(`/api/kim/icing/field?${params.toString()}`, options)
 }
 
@@ -313,9 +317,12 @@ export async function fetchKtgIndex(options = {}) {
   return fetchJson('/api/ktg/index', options)
 }
 
-export async function fetchKtgGrid({ altFt, hf }, options = {}) {
-  const hfParam = Number.isFinite(Number(hf)) ? `&hf=${Number(hf)}` : ''
-  return fetchJson(`/api/ktg/grid?altFt=${altFt}${hfParam}`, options)
+export async function fetchKtgGrid({ altFt, hf, tmfc, revision }, options = {}) {
+  const params = new URLSearchParams({ altFt: String(altFt) })
+  if (Number.isFinite(Number(hf))) params.set('hf', String(Number(hf)))
+  if (tmfc) params.set('tmfc', tmfc)
+  if (revision) params.set('revision', revision)
+  return fetchJson(`/api/ktg/grid?${params}`, options)
 }
 
 export async function fetchSigwxFrontMeta(tmfc) {

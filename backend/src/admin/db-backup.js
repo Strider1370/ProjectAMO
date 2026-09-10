@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { backupAssetsPath, backupOrganizationFiles, organizationFilesRoot } from './organization-backup-files.js'
 
 // SQLite 백업. 계정·방문 기록·지표가 전부 projectamo.db 한 파일에 들어 있는데 지금까지
 // 백업 수단이 없었다.
@@ -50,20 +51,28 @@ export function lastBackup(basePath) {
 // keep개만 남기고 오래된 것부터 지운다.
 function prune(basePath, keep) {
   for (const old of listBackups(basePath).slice(keep)) {
-    try { fs.unlinkSync(old.path) } catch { /* 이미 없으면 그만 */ }
+    try { fs.unlinkSync(old.path); fs.rmSync(backupAssetsPath(old.path), { recursive: true, force: true }) } catch { /* 이미 없으면 그만 */ }
   }
 }
 
 // db는 better-sqlite3 연결. 실패는 던지지 않고 null을 돌려준다 — 백업이 안 됐다고
 // 서버가 죽으면 백업이 없는 것보다 나쁘다. 대신 호출 측이 로그를 남긴다.
-export function backupDatabase(db, basePath, { keep = 7, now = Date.now() } = {}) {
+export function backupDatabase(db, basePath, { keep = 7, now = Date.now(), filesRoot = organizationFilesRoot() } = {}) {
   const dir = backupDir(basePath)
   try {
     fs.mkdirSync(dir, { recursive: true })
     const target = path.join(dir, `${PREFIX}${stamp(now)}.db`)
     // 같은 분에 두 번 부르면 VACUUM INTO가 "이미 있다"로 실패한다. 먼저 치운다.
     try { fs.unlinkSync(target) } catch { /* 없으면 그만 */ }
+    fs.rmSync(backupAssetsPath(target), { recursive: true, force: true })
     db.exec(`VACUUM INTO '${target.replace(/'/g, "''")}'`)
+    try {
+      backupOrganizationFiles(target, filesRoot)
+    } catch (error) {
+      fs.rmSync(target, { force: true })
+      fs.rmSync(backupAssetsPath(target), { recursive: true, force: true })
+      throw error
+    }
     prune(basePath, keep)
     const stat = fs.statSync(target)
     return { name: path.basename(target), path: target, bytes: stat.size, at: stat.mtime.toISOString() }

@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { Share2, X } from 'lucide-react'
 
 import {
   TabList, Tab, Button, Menu, MenuTrigger, MenuPopover, MenuList, MenuItem, SplitButton, makeStyles, tokens,
 } from '../../shared/ui/fluent.js'
 import { useAuth } from '../auth/AuthContext.jsx'
+import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { PersonalSettingsContent } from '../personal/PersonalSettingsPanel.jsx'
 import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import { listSavedRoutes, deleteSavedRoute } from '../route-briefing/lib/routeStore.js'
 import { isSavedEtdPast } from '../route-briefing/lib/savedRouteBriefing.js'
 import { MAX_SAVED_BRIEFINGS } from './accountLimits.js'
+import { listOrganizations } from '../organization-lounge/api.js'
+import ShareFlightDialog from '../organization-lounge/ShareFlightDialog.jsx'
 import '../settings/SettingsModal.css'
 
 const ROLE_LABEL_KO = { admin: '관리자', pilot: '조종사', forecaster: '예보관' }
@@ -17,7 +20,7 @@ const ROLE_LABEL_KO = { admin: '관리자', pilot: '조종사', forecaster: '예
 const useStyles = makeStyles({
   list: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS },
   row: {
-    display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS,
+    display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, flexWrap: 'wrap',
     padding: tokens.spacingVerticalS, border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
   },
@@ -29,6 +32,7 @@ const useStyles = makeStyles({
   empty: { padding: tokens.spacingVerticalXXL, textAlign: 'center', color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200, lineHeight: '1.6' },
   notice: { fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3, marginBottom: tokens.spacingVerticalS },
   head: { display: 'flex', alignItems: 'baseline', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalM },
+  actions: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS, flexWrap: 'wrap' },
 })
 
 function relativeTime(ts) {
@@ -49,7 +53,7 @@ const hhmmZ = (iso) => {
 
 // 저장한 브리핑 한 줄. 여는 시각은 갈라지는 버튼 하나로 고른다 — 나란한 버튼 둘은 5줄이면
 // 10개가 되고 둘이 비슷하게 생겨 잘못 누르기 쉽다. 기본값은 상황에 맞게 자동으로 정해진다.
-function BriefingRow({ entry, watched, onOpen, onDelete }) {
+function BriefingRow({ entry, watched, onOpen, onShare, onDelete, canShare }) {
   const s = useStyles()
   const past = isSavedEtdPast(entry)
   const savedEtd = hhmmZ(entry.etd)
@@ -75,38 +79,40 @@ function BriefingRow({ entry, watched, onOpen, onDelete }) {
         )}
       </span>
 
-      {/* SplitButton이라야 주 동작과 화살표가 갈린다. MenuButton은 버튼 전체가 메뉴를 여는
-          단일 버튼이라 화살표만 따로 누를 수 없다. */}
-      <Menu positioning="below-end">
-        <MenuTrigger disableButtonEnhancement>
-          {(triggerProps) => (
-            <SplitButton
-              appearance="primary"
-              size="small"
-              menuButton={triggerProps}
-              primaryActionButton={{
-                onClick: () => onOpen(entry, past ? { etd: new Date().toISOString() } : undefined),
-              }}
-            >
-              열기
-            </SplitButton>
-          )}
-        </MenuTrigger>
-        <MenuPopover>
-          <MenuList>
-            <MenuItem onClick={() => onOpen(entry, { etd: new Date().toISOString() })}>지금 시각으로 열기</MenuItem>
-            <MenuItem
-              disabled={past}
-              onClick={() => onOpen(entry)}
-              title={past ? '저장된 출발시각이 지나 예보가 없습니다' : undefined}
-            >
-              {savedEtd ? `저장된 시각으로 열기 (${savedEtd})` : '저장된 시각으로 열기'}
-            </MenuItem>
-          </MenuList>
-        </MenuPopover>
-      </Menu>
-
-      <Button size="small" onClick={() => onDelete(entry)} aria-label={`${entry.name} 삭제`}>삭제</Button>
+      <span className={s.actions}>
+        {/* SplitButton이라야 주 동작과 화살표가 갈린다. MenuButton은 버튼 전체가 메뉴를 여는
+            단일 버튼이라 화살표만 따로 누를 수 없다. */}
+        <Menu positioning="below-end">
+          <MenuTrigger disableButtonEnhancement>
+            {(triggerProps) => (
+              <SplitButton
+                appearance="primary"
+                size="small"
+                menuButton={triggerProps}
+                primaryActionButton={{
+                  onClick: () => onOpen(entry, past ? { etd: new Date().toISOString() } : undefined),
+                }}
+              >
+                열기
+              </SplitButton>
+            )}
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              <MenuItem onClick={() => onOpen(entry, { etd: new Date().toISOString() })}>지금 시각으로 열기</MenuItem>
+              <MenuItem
+                disabled={past}
+                onClick={() => onOpen(entry)}
+                title={past ? '저장된 출발시각이 지나 예보가 없습니다' : undefined}
+              >
+                {savedEtd ? `저장된 시각으로 열기 (${savedEtd})` : '저장된 시각으로 열기'}
+              </MenuItem>
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+        <Button size="small" appearance="subtle" icon={<Share2 />} disabled={!canShare} title={!canShare ? '참여 중인 기관이 없습니다' : undefined} onClick={() => onShare(entry)}>기관에 공유</Button>
+        <Button size="small" onClick={() => onDelete(entry)} aria-label={`${entry.name} 삭제`}>삭제</Button>
+      </span>
     </div>
   )
 }
@@ -117,8 +123,13 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
   useCloseOnBackButton(true, onClose)
   const s = useStyles()
   const { user, logout } = useAuth()
+  const { tz } = useTimeZone()
   const [activeTab, setActiveTab] = useState('briefings')
   const [briefings, setBriefings] = useState([])
+  const [memberships, setMemberships] = useState([])
+  const [membershipsLoaded, setMembershipsLoaded] = useState(false)
+  const [organizationError, setOrganizationError] = useState('')
+  const [sharing, setSharing] = useState(null)
   // 어느 브리핑이 알림 감시 중인지. 감시 행은 등록 시점의 복제본이라 sourceBriefingId로만
   // 원본을 가리킨다 — 그게 없으면 삭제할 때 "알림도 끝났겠지"라는 오해를 못 막는다.
   const [watched, setWatched] = useState(() => new Set())
@@ -137,6 +148,19 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
 
   useEffect(() => { refresh() }, [refresh])
 
+  useEffect(() => {
+    if (!user) { setMemberships([]); setMembershipsLoaded(true); return undefined }
+    const controller = new AbortController()
+    setMembershipsLoaded(false)
+    setOrganizationError('')
+    listOrganizations({ signal: controller.signal }).then((result) => {
+      setMemberships(Array.isArray(result?.organizations) ? result.organizations : [])
+    }).catch((reason) => {
+      if (reason.name !== 'AbortError') setOrganizationError(reason.message || '기관 목록을 불러오지 못했습니다.')
+    }).finally(() => { if (!controller.signal.aborted) setMembershipsLoaded(true) })
+    return () => controller.abort()
+  }, [user?.id])
+
   function handleOpen(entry, options) {
     onClose()
     onOpenBriefing?.(entry, options)
@@ -154,7 +178,7 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
   }
 
   return (
-    <div className="settings-overlay" onClick={onClose}>
+    <div className="settings-overlay" onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="settings-header">
           <h2>내 계정</h2>
@@ -188,6 +212,9 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
                   </div>
                 )}
 
+                {organizationError && <div className={s.notice} role="alert">{organizationError} 기관 공유는 잠시 후 다시 시도하세요.</div>}
+                {membershipsLoaded && !organizationError && memberships.length === 0 && <div className={s.notice}>참여 중인 기관이 없어 아직 비행을 공유할 수 없습니다.</div>}
+
                 {briefings.length === 0 ? (
                   <div className={s.empty}>
                     저장한 브리핑이 없습니다.<br />
@@ -201,6 +228,8 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
                         entry={entry}
                         watched={watched.has(entry.id)}
                         onOpen={handleOpen}
+                        onShare={setSharing}
+                        canShare={membershipsLoaded && memberships.length > 0 && !organizationError}
                         onDelete={handleDelete}
                       />
                     ))}
@@ -216,6 +245,7 @@ export default function AccountPanel({ onClose, onOpenBriefing }) {
           <button className="settings-btn-reset" onClick={async () => { await logout(); onClose() }}>로그아웃</button>
         </div>
       </div>
+      {sharing && <ShareFlightDialog source={sharing} memberships={memberships} tz={tz} onClose={() => setSharing(null)} />}
     </div>
   )
 }

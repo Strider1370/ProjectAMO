@@ -13,14 +13,17 @@ import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
 
 function selectionKey(selection) {
   if (!selection?.tmfc || !selection?.level || !Number.isFinite(Number(selection.hf))) return null
-  return `${selection.tmfc}:${Number(selection.hf)}:${selection.level}:T`
+  const base = `${selection.tmfc}:${Number(selection.hf)}:${selection.level}`
+  return selection.mode === 'pinned'
+    ? `${selection.bundleId || 'bundle'}:${base}:${selection.revision || 'missing-revision'}:T`
+    : `${base}:T`
 }
 
 function isAbortError(error) {
   return error?.name === 'AbortError'
 }
 
-export function useKimTemperature(enabled, selection, setSelection) {
+export function useKimTemperature(enabled, selection, setSelection, { dataMode = 'live' } = {}) {
   const [temperatureField, setTemperatureField] = useState(null)
   const [temperatureFieldKey, setTemperatureFieldKey] = useState(null)
   const [temperatureIndex, setTemperatureIndex] = useState(null)
@@ -29,12 +32,20 @@ export function useKimTemperature(enabled, selection, setSelection) {
   const cacheRef = useRef(new Map())
   const requestTokenRef = useRef(0)
   const metaHashRef = useRef(null)
-  const snapshotMeta = useKimSnapshotMeta(enabled)
+  const pinned = dataMode === 'pinned'
+  const snapshotMeta = useKimSnapshotMeta(enabled && !pinned)
   const [refreshToken, setRefreshToken] = useState(0)
 
   useEffect(() => {
     if (!enabled) {
       setStatus('idle')
+      return undefined
+    }
+    if (pinned) {
+      setTemperatureIndex(null)
+      setTemperatureField(null)
+      setTemperatureFieldKey(null)
+      setStatus(selection?.revision ? 'loading' : 'unsupported')
       return undefined
     }
     const controller = new AbortController()
@@ -64,11 +75,11 @@ export function useKimTemperature(enabled, selection, setSelection) {
       cancelled = true
       controller.abort()
     }
-  }, [enabled, refreshToken])
+  }, [enabled, refreshToken, pinned, selection?.bundleId, selection?.revision])
 
   useEffect(() => {
     if (!enabled || !selection) return undefined
-    if (temperatureIndex && !selectKimNwpAvailability(temperatureIndex, selection)) {
+    if (!pinned && temperatureIndex && !selectKimNwpAvailability(temperatureIndex, selection)) {
       setTemperatureField(null)
       setStatus('unavailable')
       return undefined
@@ -107,10 +118,10 @@ export function useKimTemperature(enabled, selection, setSelection) {
 
     loadField()
     return () => controller.abort()
-  }, [enabled, selection?.tmfc, selection?.hf, selection?.level, temperatureIndex])
+  }, [enabled, pinned, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId, temperatureIndex])
 
   useEffect(() => {
-    if (!enabled || !snapshotMeta) return
+    if (!enabled || pinned || !snapshotMeta) return
     const baseMeta = snapshotMeta?.kimNwp || snapshotMeta?.kim_nwp || null
     const nextHash = baseMeta?.variables?.T?.hash || baseMeta?.hash || null
     if (!nextHash) return
@@ -119,7 +130,7 @@ export function useKimTemperature(enabled, selection, setSelection) {
       cacheRef.current.clear()
       setRefreshToken((value) => value + 1)
     }
-  }, [enabled, snapshotMeta])
+  }, [enabled, pinned, snapshotMeta])
 
   const normalized = normalizeKimNwpIndex(temperatureIndex)
   return {

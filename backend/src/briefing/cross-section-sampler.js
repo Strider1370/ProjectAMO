@@ -101,7 +101,7 @@ function nearestKtgIndex(coordsLat, coordsLon, targetLat, targetLon) {
 // Builds turbulence cross-section from pre-loaded KTG coords + per-altitude grids.
 // coords: { lat[], lon[], ny, nx }
 // loadAltGrid: (altFt) => { ktg: float[] } | null
-export function buildKtgCrossSection({ axis, coords, altLevelsFt, loadAltGrid, sourceForSample = null }) {
+export function buildKtgCrossSection({ axis, coords, altLevelsFt, loadAltGrid, sourceForSample = null, restrictToGrid = false }) {
   if (!coords || !Array.isArray(coords.lat) || !altLevelsFt?.length) {
     return { available: false }
   }
@@ -109,7 +109,27 @@ export function buildKtgCrossSection({ axis, coords, altLevelsFt, loadAltGrid, s
   if (samples.length === 0) return { available: false }
 
   // Pre-compute nearest grid index per route sample (shared across altitudes)
-  const nearestIdx = samples.map((s) => nearestKtgIndex(coords.lat, coords.lon, s.lat, s.lon))
+  const boundary = []
+  if (restrictToGrid && coords.nx >= 2 && coords.ny >= 2) {
+    const add = index => boundary.push([coords.lon[index], coords.lat[index]])
+    for (let x = 0; x < coords.nx; x++) add(x)
+    for (let y = 1; y < coords.ny; y++) add(y * coords.nx + coords.nx - 1)
+    for (let x = coords.nx - 2; x >= 0; x--) add((coords.ny - 1) * coords.nx + x)
+    for (let y = coords.ny - 2; y > 0; y--) add(y * coords.nx)
+  }
+  function insideGrid(x, y) {
+    if (!restrictToGrid) return true
+    if (boundary.length < 4 || !boundary.flat().every(Number.isFinite)) return false
+    let inside = false
+    for (let i = 0, j = boundary.length - 1; i < boundary.length; j = i++) {
+      const [xi, yi] = boundary[i], [xj, yj] = boundary[j]
+      const cross = (x - xi) * (yj - yi) - (y - yi) * (xj - xi)
+      if (Math.abs(cross) < 1e-9 && x >= Math.min(xi, xj) - 1e-9 && x <= Math.max(xi, xj) + 1e-9 && y >= Math.min(yi, yj) - 1e-9 && y <= Math.max(yi, yj) + 1e-9) return true
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside
+    }
+    return inside
+  }
+  const nearestIdx = samples.map((s) => insideGrid(s.lon, s.lat) ? nearestKtgIndex(coords.lat, coords.lon, s.lat, s.lon) : -1)
 
   const levels = []
   for (const altFt of altLevelsFt) {

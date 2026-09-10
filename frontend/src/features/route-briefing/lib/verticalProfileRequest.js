@@ -145,4 +145,11 @@ export function buildVerticalProfileRequest({
     sampleSpacingMeters: 250,
   }
 }
+
+// The saved snapshot already owns geometry/model/markers. Preserve procedure and
+// waypoint altitude inputs without doubling the personal route payload size.
+export function buildSavedProfileRequest(input) {
+  const { routeGeometry, routeModel, routeMarkers, candidateCruiseAltitudesFt, ...request } = buildVerticalProfileRequest(input)
+  return request
+}
 import { buildCommonRouteModel } from '../../../../../shared/route-model.js'

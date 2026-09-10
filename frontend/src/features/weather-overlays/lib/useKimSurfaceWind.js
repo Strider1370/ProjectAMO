@@ -70,7 +70,10 @@ export function normalizeKimNwpIndex(index, nowMs = null) {
 
 function selectionKey(selection) {
   if (!selection?.tmfc || !selection?.level || !Number.isFinite(Number(selection.hf))) return null
-  return `${selection.tmfc}:${Number(selection.hf)}:${selection.level}`
+  const base = `${selection.tmfc}:${Number(selection.hf)}:${selection.level}`
+  return selection.mode === 'pinned'
+    ? `${selection.bundleId || 'bundle'}:${base}:${selection.revision || 'missing-revision'}`
+    : base
 }
 
 export function getKimNwpFieldForSelection(field, fieldKey, selection, suffix = '') {
@@ -84,7 +87,7 @@ function isAbortError(error) {
   return error?.name === 'AbortError'
 }
 
-export function useKimSurfaceWind(enabled, controlledSelection = null, onSelectionChange = null) {
+export function useKimSurfaceWind(enabled, controlledSelection = null, onSelectionChange = null, { dataMode = 'live' } = {}) {
   const [windField, setWindField] = useState(null)
   const [windIndex, setWindIndex] = useState(null)
   const [internalSelection, setInternalSelection] = useState(null)
@@ -97,13 +100,22 @@ export function useKimSurfaceWind(enabled, controlledSelection = null, onSelecti
   const cacheRef = useRef(new Map())
   const requestTokenRef = useRef(0)
   const metaHashRef = useRef(null)
-  const snapshotMeta = useKimSnapshotMeta(enabled)
+  const pinned = dataMode === 'pinned'
+  const snapshotMeta = useKimSnapshotMeta(enabled && !pinned)
   const selection = controlledSelection || internalSelection
   const setSelection = onSelectionChange || setInternalSelection
 
   useEffect(() => {
     if (!enabled) {
       setStatus('idle')
+      return undefined
+    }
+    if (pinned) {
+      setWindIndex(null)
+      setWindField(null)
+      setWindFieldKey(null)
+      setMeta(selection ? { hash: selection.revision, tmfc: selection.tmfc, hf: selection.hf } : null)
+      setStatus(selection?.revision ? 'loading' : 'unsupported')
       return undefined
     }
 
@@ -160,7 +172,7 @@ export function useKimSurfaceWind(enabled, controlledSelection = null, onSelecti
       cancelled = true
       controller.abort()
     }
-  }, [enabled, refreshToken])
+  }, [enabled, refreshToken, pinned, selection?.bundleId, selection?.revision])
 
   useEffect(() => {
     if (!enabled || !selection) return undefined
@@ -207,10 +219,10 @@ export function useKimSurfaceWind(enabled, controlledSelection = null, onSelecti
 
     loadField()
     return () => controller.abort()
-  }, [enabled, selection?.tmfc, selection?.hf, selection?.level])
+  }, [enabled, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId])
 
   useEffect(() => {
-    if (!enabled || !snapshotMeta) return
+    if (!enabled || pinned || !snapshotMeta) return
     const baseMeta = snapshotMeta?.kimNwp || snapshotMeta?.kim_nwp || snapshotMeta?.kimSurfaceWind || snapshotMeta?.kim_surface_wind || null
     const nextMeta = baseMeta?.variables?.uv?.hash
       ? { ...baseMeta, hash: baseMeta.variables.uv.hash }
@@ -223,7 +235,7 @@ export function useKimSurfaceWind(enabled, controlledSelection = null, onSelecti
     } else {
       setMeta(nextMeta)
     }
-  }, [enabled, snapshotMeta])
+  }, [enabled, pinned, snapshotMeta])
 
   const normalized = normalizeKimNwpIndex(windIndex)
 

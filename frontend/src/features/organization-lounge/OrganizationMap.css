@@ -1,0 +1,136 @@
+.organization-map {
+  position: relative;
+  width: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  background: var(--bg-3);
+}
+
+.organization-map > .map-view-wrapper {
+  position: absolute;
+  inset: 0;
+}
+
+.organization-map__layer-buttons {
+  position: absolute;
+  z-index: 25;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.organization-map__layer-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 14%);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-200);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.organization-map__layer-buttons button[aria-expanded='true'] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-1));
+}
+
+.organization-map__layer-buttons small {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-3);
+  font-size: var(--fs-100);
+}
+
+.organization-map .map-view-wrapper .layer-drawer {
+  top: 64px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 112px);
+}
+
+.ol-map-controls-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-200);
+  cursor: pointer;
+}
+
+/* Keep the map mounted so camera, selected layers and personal files survive.
+   Retain error/demo notices and the map provider's attribution. */
+.organization-map[data-controls='hidden'] > .organization-map__layer-buttons,
+.organization-map[data-controls='hidden'] > .organization-map__selection,
+.organization-map[data-controls='hidden'] .map-view-wrapper > :not(.map-view):not(.map-view-error):not(.demo-mode-badge),
+.organization-map[data-controls='hidden'] .mapboxgl-ctrl-group {
+  display: none;
+}
+
+.organization-map__status,
+.organization-map__selection {
+  position: absolute;
+  z-index: 8;
+  left: 12px;
+  max-width: calc(100% - 24px);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-1) 94%, transparent);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 14%);
+}
+
+.organization-map__status {
+  top: 12px;
+  padding: 8px 12px;
+  color: var(--text-2);
+  font-size: var(--fs-200);
+}
+
+.organization-map__selection {
+  bottom: 34px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 4px 4px 12px;
+}
+
+.organization-map__selection span,
+.organization-map__selection strong,
+.organization-map__selection small {
+  display: block;
+  min-width: 0;
+}
+
+.organization-map__selection small { color: var(--text-3); }
+
+.organization-map__selection button {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.organization-map[data-data-mode='pinned'] .map-bottom-control-dock { display: none; }
+
+@media (pointer: coarse) {
+  .organization-map__selection button { min-width: 44px; min-height: 44px; }
+}

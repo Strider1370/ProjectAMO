@@ -6,9 +6,24 @@ import { useKimIcing } from './useKimIcing.js'
 import { useKtgTurbulence } from './useKtgTurbulence.js'
 import { getCloudPotentialMaxSpread } from './cloudPotentialField.js'
 import { pickNearestNwp } from './timelineRailModel.js'
+import {
+  pinnedKimLevels,
+  pinnedKimSelection,
+  pinnedModel,
+} from '../../organization-lounge/lib/pinnedMapDataSelection.js'
 
-export function useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpacity, windFlowTrail, windFlowWidth, timelineSelectedMs = null }) {
+export function useNwpOverlays({
+  enableWindOverlay,
+  metVisibility,
+  windFlowOpacity,
+  windFlowTrail,
+  windFlowWidth,
+  timelineSelectedMs = null,
+  dataMode = 'live',
+  mapDataSelection = null,
+}) {
   const [nwpSelection, setNwpSelection] = useState(null)
+  const pinned = dataMode === 'pinned'
 
   const windEnabled = enableWindOverlay && metVisibility.wind
   const tempEnabled = enableWindOverlay && metVisibility.temp
@@ -17,11 +32,30 @@ export function useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpaci
   const turbulenceEnabled = enableWindOverlay && metVisibility.turbulence
   const anyKimActive = windEnabled || tempEnabled || cloudEnabled || icingEnabled
 
-  const kimSurfaceWind = useKimSurfaceWind(windEnabled, nwpSelection, setNwpSelection)
-  const kimTemperature = useKimTemperature(tempEnabled, nwpSelection, setNwpSelection)
-  const kimCloudPotential = useKimCloudPotential(cloudEnabled, nwpSelection, setNwpSelection)
-  const kimIcing = useKimIcing(icingEnabled, nwpSelection, setNwpSelection)
-  const ktgTurbulence = useKtgTurbulence(turbulenceEnabled, nwpSelection)
+  useEffect(() => {
+    if (!pinned) return
+    setNwpSelection((previous) => {
+      const next = pinnedKimSelection(mapDataSelection, { level: previous?.level })
+      if (!next) return null
+      return previous?.bundleId === next.bundleId
+        && previous?.tmfc === next.tmfc
+        && Number(previous?.hf) === Number(next.hf)
+        && previous?.level === next.level
+        && previous?.revision === next.revision ? previous : next
+    })
+  }, [pinned, mapDataSelection])
+
+  const pinOptions = { dataMode, mapDataSelection }
+  const pinnedLevel = nwpSelection?.level
+  const windSelection = pinned ? pinnedKimSelection(mapDataSelection, { level: pinnedLevel, variable: 'wind' }) : nwpSelection
+  const temperatureSelection = pinned ? pinnedKimSelection(mapDataSelection, { level: pinnedLevel, variable: 'temperature' }) : nwpSelection
+  const cloudSelection = pinned ? pinnedKimSelection(mapDataSelection, { level: pinnedLevel, variable: 'cloud' }) : nwpSelection
+  const icingSelection = pinned ? pinnedKimSelection(mapDataSelection, { level: pinnedLevel, variable: 'icing' }) : nwpSelection
+  const kimSurfaceWind = useKimSurfaceWind(windEnabled, windSelection, setNwpSelection, pinOptions)
+  const kimTemperature = useKimTemperature(tempEnabled, temperatureSelection, setNwpSelection, pinOptions)
+  const kimCloudPotential = useKimCloudPotential(cloudEnabled, cloudSelection, setNwpSelection, pinOptions)
+  const kimIcing = useKimIcing(icingEnabled, icingSelection, setNwpSelection, pinOptions)
+  const ktgTurbulence = useKtgTurbulence(turbulenceEnabled, nwpSelection, pinOptions)
 
   const windRendererOptions = useMemo(() => ({
     ...(kimSurfaceWind.lowPower
@@ -53,21 +87,30 @@ export function useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpaci
       : kimSurfaceWind.windIndex
 
   // 메인 타임라인이 예보시각을 소유: 활성 예보 레이어(KIM 우선, 없으면 난류)의 시간 목록.
-  const sliderTimes = anyKimActive
+  const pinnedKimModel = pinnedModel(mapDataSelection, 'kim')
+  const sliderTimes = pinned && anyKimActive
+    ? (pinnedKimModel?.validTime ? [{ tmfc: pinnedKimModel.tmfc, hf: pinnedKimModel.hf, validTime: pinnedKimModel.validTime }] : [])
+    : anyKimActive
     ? nwpSliderSource.availableTimes
     : (turbulenceEnabled ? ktgTurbulence.availableTimes : [])
 
   // 메인 타임라인 스크럽(절대시각) → 가장 가까운 예보시간(hf)으로 공유 selection 갱신.
   // NWP·난류가 함께 그 예보시각으로 따라감. 라이브(selectedMs=null)면 기본 예보시각 유지.
   useEffect(() => {
-    if (!Number.isFinite(timelineSelectedMs)) return
+    if (pinned || !Number.isFinite(timelineSelectedMs)) return
     const nearest = pickNearestNwp(sliderTimes, timelineSelectedMs)
     if (!nearest) return
     setNwpSelection((prev) => {
       if (prev && Number(prev.hf) === Number(nearest.hf)) return prev
       return prev ? { ...prev, hf: Number(nearest.hf) } : { hf: Number(nearest.hf) }
     })
-  }, [timelineSelectedMs, sliderTimes])
+  }, [pinned, timelineSelectedMs, sliderTimes])
+
+  const pinnedVariable = metVisibility.icing ? 'icing' : metVisibility.cloud ? 'cloud' : metVisibility.temp ? 'temperature' : 'wind'
+  const pinnedSliderLevels = pinnedKimLevels(mapDataSelection)
+    .filter((id) => /^\d+(?:\.\d+)?hPa$/.test(id) && pinnedKimSelection(mapDataSelection, { level: id, variable: pinnedVariable }))
+    .map((id) => ({ id, kind: 'pressure', value: Number.parseFloat(id) }))
+  const pinnedAvailability = Object.fromEntries(pinnedSliderLevels.map(({ id }) => [id, { [String(pinnedKimModel?.hf)]: true }]))
 
   return {
     // map sync
@@ -91,9 +134,9 @@ export function useNwpOverlays({ enableWindOverlay, metVisibility, windFlowOpaci
     selectedAltFt: ktgTurbulence.selectedAltFt,
     setSelectedAltFt: ktgTurbulence.setSelectedAltFt,
     // NWP 레벨 레일은 KIM 활성 시에만(난류는 자체 고도 레일 사용). 시간축은 메인 타임라인 공유.
-    sliderLevels: anyKimActive ? nwpSliderSource.availableLevels : [],
+    sliderLevels: anyKimActive ? (pinned ? pinnedSliderLevels : nwpSliderSource.availableLevels) : [],
     sliderTimes,
-    sliderAvailability: nwpSliderIndex?.availability,
+    sliderAvailability: pinned ? pinnedAvailability : nwpSliderIndex?.availability,
     nwpSelection,
     setNwpSelection,
   }

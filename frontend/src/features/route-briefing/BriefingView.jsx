@@ -56,7 +56,7 @@ function CatBadge({ category }) {
   return <Badge appearance="filled" style={{ backgroundColor: catColorOf(category), color: '#fff' }}>{c}</Badge>
 }
 
-export default function BriefingView({ briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeRefreshError = null, onRetryNwpTimeRefresh = null, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null }) {
+export default function BriefingView({ organizationContext = null, organizationBundle = null, organizationError = null, onOrganizationReload = null, briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeRefreshError = null, onRetryNwpTimeRefresh = null, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null }) {
   const isMobile = useIsMobile()
   const { tz } = useTimeZone()
   const { nowMs } = useDemoMode()
@@ -139,6 +139,14 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
 
   if (!briefing) return null
   const { meta, summary, sections } = briefing
+  const organizationStatuses = { ...organizationBundle?.componentStatus, ...organizationBundle?.componentStatus?.models }
+  delete organizationStatuses.models
+  const organizationWeatherIncomplete = Boolean(organizationContext && (
+    !organizationBundle ||
+    Object.values(organizationStatuses).some((value) => (value?.status ?? value) !== 'available') ||
+    (!organizationStatuses.kim && !organizationStatuses.nwp) ||
+    (sections.current?.airports ?? []).some((airport) => !airport.metar)
+  ))
   const mapLayerIds = hazardMapLayers(briefing) // 위험현상 → 켤 지도 레이어 id
   const rawWinds = buildRawWindsTable(crossSection, verticalProfile) // ④ 상층바람 원자료 표
   const airports = sections.current.airports
@@ -170,7 +178,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
 
   const board = (
     <div className="bv-board">
-      {summary.map((s) => <Badge key={s.key} appearance="tint" color={LEVEL_BADGE[s.level] || 'subtle'}>{s.label}</Badge>)}
+      {summary.map((s) => <Badge key={s.key} appearance="tint" color={s.key === 'hazard' && organizationWeatherIncomplete && s.level === 'green' ? 'warning' : LEVEL_BADGE[s.level] || 'subtle'}>{s.key === 'hazard' && organizationWeatherIncomplete ? '위험 판단 제한' : s.label}</Badge>)}
     </div>
   )
 
@@ -237,7 +245,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
           {hazards.length > 0 && <Caption1 style={{ color: 'var(--text-3)' }}>{hazards.length}건 · 심각도순</Caption1>}
         </div>
         {hazards.length === 0
-          ? <Body1 style={{ color: 'var(--text-3)' }}>경로·시간에 걸린 위험기상 없음</Body1>
+          ? <Body1 style={{ color: 'var(--text-3)' }}>{organizationWeatherIncomplete ? '일부 기상자료를 확인할 수 없어 위험 여부를 확정할 수 없습니다.' : '경로·시간에 걸린 위험기상 없음'}</Body1>
           : hazards.map(hazardRow)}
       </Card>
     </section>
@@ -407,7 +415,7 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
         <Subtitle2 as="h3">④ 노선·공역</Subtitle2>
         <Body1>계획고도 <b style={{ fontVariantNumeric: 'tabular-nums' }}>{sections.enroute.plannedCruiseAltitudeFt}ft</b></Body1>
         {sections.enroute.encounters.length === 0
-          ? <Body1 style={{ color: 'var(--text-3)' }}>계획고도에서 조우하는 위험 없음</Body1>
+          ? <Body1 style={{ color: 'var(--text-3)' }}>{organizationWeatherIncomplete ? '예보 범위와 누락 자료를 확인해야 합니다. 계획고도의 위험 여부를 확정할 수 없습니다.' : '계획고도에서 조우하는 위험 없음'}</Body1>
           : sections.enroute.encounters.map((h, i) => (
               <Body1 key={i}>
                 <b>{phenomenonKo(h.code) || h.label}</b>
@@ -748,10 +756,11 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
           )}>
           <div className="bv-mobile" ref={containerRef}>
             {etdEtaLine && <Caption1 style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>{etdEtaLine}</Caption1>}
-            <BriefingChangeStrip />
-            <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
+            {organizationError && <MessageBar intent="warning"><MessageBarBody>기상자료를 갱신하지 못했습니다. 마지막 조회 결과를 표시합니다. <Button size="small" onClick={() => onOrganizationReload?.()}>다시 시도</Button></MessageBarBody></MessageBar>}
+        {!organizationContext && <BriefingChangeStrip />}
+            <BriefingBanner banner={organizationWeatherIncomplete && briefing.banner?.worst?.category === 'VFR' ? { ...briefing.banner, worst: null } : briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
             {nav}{board}{layerAction}{adverse}{currentDesktop}<BriefingSynopsis />{enroute}{notamSection}{destination}
-            <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />
+            {!organizationContext && <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />}
           </div>
         </MobileSheet>
         {xsectionFull && verticalProfile && (
@@ -797,10 +806,11 @@ export default function BriefingView({ briefing, verticalProfile = null, crossSe
             <Button appearance="secondary" size="small" onClick={onClose}>닫기</Button>
           </div>
         </div>
-        <BriefingChangeStrip />
-        <BriefingBanner banner={briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
+        {organizationError && <MessageBar intent="warning"><MessageBarBody>기상자료를 갱신하지 못했습니다. 마지막 조회 결과를 표시합니다. <Button size="small" onClick={() => onOrganizationReload?.()}>다시 시도</Button></MessageBarBody></MessageBar>}
+        {!organizationContext && <BriefingChangeStrip />}
+        <BriefingBanner banner={organizationWeatherIncomplete && briefing.banner?.worst?.category === 'VFR' ? { ...briefing.banner, worst: null } : briefing.banner} routeConflicts={routeConflicts} unresolved={unresolvedNotams} onJump={jumpTo} />
         {nav}{board}{layerAction}{adverse}{currentDesktop}<BriefingSynopsis />{enroute}{notamSection}{destination}
-        <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />
+        {!organizationContext && <ForecasterInquiry snapshot={routeSnapshot} disabled={!routeSnapshot} />}
       </div>
     </div>
   )

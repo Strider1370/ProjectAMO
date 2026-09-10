@@ -1,6 +1,6 @@
 import {
   Cloud, FileText, Layers, Settings,
-  Menu, Monitor, HelpCircle, History, Search, FileWarning, User, Radio, Map
+  Menu, Monitor, HelpCircle, History, Search, FileWarning, User, Radio, Map, Building2
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CURRENT_VERSION } from '../../features/about/changelog.js'
@@ -11,6 +11,7 @@ import useHasHover from '../../shared/ui/useHasHover.js'
 import './Sidebar.css'
 
 const topItems = [
+  { label: '기관 라운지', icon: Building2, href: '/lounge' },
   { label: '항공정보',         icon: Layers, active: true },
   { label: '기상정보',         icon: Cloud },
   { label: '내 지도',          icon: Map },

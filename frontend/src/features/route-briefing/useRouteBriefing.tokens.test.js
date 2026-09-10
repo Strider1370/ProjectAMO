@@ -60,5 +60,6 @@ test('airport-only IFR setup clears stale route state without searching for an e
 })
 
 test('briefing request carries procedure context and route markers for procedure NAVLOG', () => {
-  assert.match(source, /fetchRouteBriefing\(\{\s*\.\.\.buildVerticalProfileRequest\(/s)
+  assert.match(source, /const profileRequest = buildVerticalProfileRequest\(\{\s*routeGeometry, routeModel, routeResult, selectedSid, selectedStar, selectedIap,/s)
+  assert.match(source, /createBriefingProvider\(null\)\.load\(\{\s*request: \{ \.\.\.profileRequest,/s)
 })

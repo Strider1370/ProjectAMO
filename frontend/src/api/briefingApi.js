@@ -1,6 +1,7 @@
-async function postJson(url, payload) {
+async function postJson(url, payload, { signal } = {}) {
   const response = await fetch(url, {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
@@ -13,30 +14,30 @@ async function postJson(url, payload) {
   return data
 }
 
-export function fetchVerticalProfile(payload) {
-  return postJson('/api/vertical-profile', payload)
+export function fetchVerticalProfile(payload, options) {
+  return postJson('/api/vertical-profile', payload, options)
 }
 
-export function fetchCrossSection(payload) {
-  return postJson('/api/briefing/cross-section', payload)
+export function fetchCrossSection(payload, options) {
+  return postJson('/api/briefing/cross-section', payload, options)
 }
 
-export function fetchNwpTimeRefresh(payload) {
-  return postJson('/api/briefing/nwp-time-refresh', payload)
+export function fetchNwpTimeRefresh(payload, options) {
+  return postJson('/api/briefing/nwp-time-refresh', payload, options)
 }
 
-export function fetchRouteBriefing(payload) {
-  return postJson('/api/route-briefing', payload)
+export function fetchRouteBriefing(payload, options) {
+  return postJson('/api/route-briefing', payload, options)
 }
 
-export function fetchRouteExposure(payload) {
-  return postJson('/api/briefing/route-exposure', payload)
+export function fetchRouteExposure(payload, options) {
+  return postJson('/api/briefing/route-exposure', payload, options)
 }
 
-export function fetchRouteExposureBatch(payload) {
-  return postJson('/api/briefing/route-exposure/batch', payload)
+export function fetchRouteExposureBatch(payload, options) {
+  return postJson('/api/briefing/route-exposure/batch', payload, options)
 }
 
-export function fetchAltitudeComparison(payload) {
-  return postJson('/api/briefing/altitudes', payload)
+export function fetchAltitudeComparison(payload, options) {
+  return postJson('/api/briefing/altitudes', payload, options)
 }

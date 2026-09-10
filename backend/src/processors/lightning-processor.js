@@ -60,6 +60,67 @@ function buildBackfillTms(baseTm, windowMinutes = LIGHTNING_HISTORY_WINDOW_MINUT
   return tms;
 }
 
+function tmWindow(tm, stepMinutes = config.lightning.itv_minutes) {
+  const to = kstTmToUtcDate(tm)
+  return { from: new Date(to.getTime() - stepMinutes * 60_000).toISOString(), to: to.toISOString() }
+}
+
+function priorCoversTm(coverage, tm, stepMinutes = config.lightning.itv_minutes) {
+  const expected = tmWindow(tm, stepMinutes)
+  return (coverage?.successfulWindows ?? []).some((window) => {
+    const from = new Date(window.from).getTime()
+    const to = new Date(window.to).getTime()
+    return Number.isFinite(from) && Number.isFinite(to)
+      && from <= new Date(expected.from).getTime() && to >= new Date(expected.to).getTime()
+  })
+}
+
+function mergeCoverageWindows(windows) {
+  const ordered = windows.map((window) => ({ from: new Date(window.from).getTime(), to: new Date(window.to).getTime() }))
+    .filter((window) => Number.isFinite(window.from) && Number.isFinite(window.to) && window.from < window.to)
+    .sort((a, b) => a.from - b.from)
+  const merged = []
+  for (const window of ordered) {
+    const prior = merged.at(-1)
+    if (prior && window.from <= prior.to) prior.to = Math.max(prior.to, window.to)
+    else merged.push({ ...window })
+  }
+  return merged.map((window) => ({ from: new Date(window.from).toISOString(), to: new Date(window.to).toISOString() }))
+}
+
+export function buildLightningCoverage({
+  baseTm,
+  successfulTms = [],
+  failedTms = [],
+  previousCoverage = null,
+  windowMinutes = LIGHTNING_HISTORY_WINDOW_MINUTES,
+  stepMinutes = config.lightning.itv_minutes,
+} = {}) {
+  const expectedTms = buildBackfillTms(baseTm, windowMinutes, stepMinutes)
+  const successful = new Set(successfulTms)
+  for (const tm of expectedTms) if (priorCoversTm(previousCoverage, tm, stepMinutes)) successful.add(tm)
+  const successfulWindows = mergeCoverageWindows(expectedTms.filter((tm) => successful.has(tm)).map((tm) => tmWindow(tm, stepMinutes)))
+  const expectedFrom = tmWindow(expectedTms[0], stepMinutes).from
+  const expectedTo = tmWindow(expectedTms.at(-1), stepMinutes).to
+  const coveredCount = expectedTms.filter((tm) => successful.has(tm)).length
+  const failed = new Set(failedTms.map((value) => typeof value === 'string' ? value : value.tm))
+  return {
+    status: coveredCount === expectedTms.length ? 'complete' : coveredCount > 0 ? 'partial' : 'unknown',
+    referenceTime: kstTmToUtcDate(baseTm).toISOString(),
+    from: expectedFrom,
+    to: expectedTo,
+    successfulWindows,
+    failedWindows: expectedTms.filter((tm) => failed.has(tm)).map((tm) => ({ tm, ...tmWindow(tm, stepMinutes) })),
+    expectedWindowCount: expectedTms.length,
+    successfulWindowCount: coveredCount,
+    spatial: {
+      kind: 'circle',
+      center: [Number(config.lightning.nationwide?.lon), Number(config.lightning.nationwide?.lat)],
+      radiusKm: Number(config.lightning.nationwide?.range_km),
+    },
+  }
+}
+
 function buildNationwideLightningUrl(tm) {
   const nationwide = config.lightning.nationwide || {};
   const params = new URLSearchParams({
@@ -174,7 +235,7 @@ function emptyNationwidePayload() {
   };
 }
 
-function buildLightningResult(tm, strikes, extraQuery = {}) {
+function buildLightningResult(tm, strikes, extraQuery = {}, coverage = null) {
   const airports = buildAirportPayloads(strikes);
   return {
     type: "lightning",
@@ -190,6 +251,7 @@ function buildLightningResult(tm, strikes, extraQuery = {}) {
     nationwide: {
       summary: summarize(strikes),
       strikes,
+      coverage: coverage ?? { status: 'unknown', from: null, to: null, successfulWindows: [], failedWindows: [] },
     },
   };
 }
@@ -230,11 +292,14 @@ async function process() {
   const previous = store.loadLatest(path.join(config.storage.base_path, "lightning"));
   const nowMs = Date.now();
 
-  // 현재 기준 최대 60분 이전까지 window 목록 생성
-  const tms = [];
+  // 최근 창은 지연 도착을 위해 다시 읽고, 과거 coverage의 누락 창도 함께 복구한다.
+  const recentTms = [];
   for (let i = INCREMENTAL_LOOKBACK_STEPS - 1; i >= 0; i--) {
-    tms.push(shiftKstTm(baseTm, -i * config.lightning.itv_minutes));
+    recentTms.push(shiftKstTm(baseTm, -i * config.lightning.itv_minutes));
   }
+  const expectedTms = buildBackfillTms(baseTm)
+  const missingTms = expectedTms.filter((tm) => !priorCoversTm(previous?.nationwide?.coverage, tm))
+  const tms = [...new Set([...missingTms, ...recentTms])].sort()
 
   const merged = new Map();
   for (const strike of mergeRecentStrikes(previous?.nationwide?.strikes || [], [], nowMs)) {
@@ -242,6 +307,7 @@ async function process() {
   }
 
   const failedTms = [];
+  const successfulTms = [];
   let fetchedCount = 0;
 
   for (const tm of tms) {
@@ -252,6 +318,7 @@ async function process() {
         if (!Number.isFinite(timeMs) || timeMs < nowMs - LIGHTNING_HISTORY_WINDOW_MINUTES * 60 * 1000) continue;
         merged.set(buildStrikeKey(strike), strike);
       }
+      successfulTms.push(tm);
       fetchedCount++;
     } catch {
       failedTms.push(tm);
@@ -264,7 +331,8 @@ async function process() {
 
   const mergedStrikes = Array.from(merged.values())
     .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-  const result = buildLightningResult(baseTm, mergedStrikes);
+  const coverage = buildLightningCoverage({ baseTm, successfulTms, failedTms, previousCoverage: previous?.nationwide?.coverage })
+  const result = buildLightningResult(baseTm, mergedStrikes, {}, coverage);
   const saveResult = store.save("lightning", result);
   return {
     ...buildProcessResponse(result, saveResult, failedTms.length ? { nationwide: `${failedTms.length}/${tms.length} windows failed` } : {}),
@@ -278,6 +346,7 @@ async function processBackfill() {
   const tms = buildBackfillTms(baseTm, LIGHTNING_HISTORY_WINDOW_MINUTES, LIGHTNING_BACKFILL_STEP_MINUTES);
   const merged = new Map();
   const failedTms = [];
+  const successfulTms = [];
   const nowMs = Date.now();
 
   for (const tm of tms) {
@@ -286,6 +355,7 @@ async function processBackfill() {
       for (const strike of mergeRecentStrikes([], strikes, nowMs)) {
         merged.set(buildStrikeKey(strike), strike);
       }
+      successfulTms.push(tm);
     } catch (error) {
       failedTms.push({ tm, error: error.message || "Unknown error" });
     }
@@ -296,11 +366,12 @@ async function processBackfill() {
   }
 
   const mergedNationwideStrikes = mergeRecentStrikes([], Array.from(merged.values()), nowMs);
+  const coverage = buildLightningCoverage({ baseTm, successfulTms, failedTms, stepMinutes: LIGHTNING_BACKFILL_STEP_MINUTES })
   const result = buildLightningResult(baseTm, mergedNationwideStrikes, {
     backfill: true,
     backfill_from_tm: tms[0] || null,
     backfill_to_tm: tms[tms.length - 1] || null,
-  });
+  }, coverage);
   const saveResult = store.save("lightning", result);
 
   return {
