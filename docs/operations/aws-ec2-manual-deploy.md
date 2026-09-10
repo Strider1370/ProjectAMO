@@ -37,6 +37,20 @@ ssh -i ~/.ssh/key.pem ec2-user@3.34.113.37
 cd /opt/projectamo/current
 ```
 
+## 2.4 Node 런타임 확인
+
+프로젝트의 `.nvmrc`와 package engines를 배포 전에 확인한다. 2026-09-11
+v0.4.0 배포에서는 Amazon Linux 패키지의 Node 22.22.2가 요구 버전보다
+낮아 공식 Node 22.23.1 Linux x64 배포본을 SHA-256 검증 후
+`/opt/projectamo/runtime/node-v22.23.1-linux-x64`에 설치했다.
+`/usr/local/bin/{node,npm,npx}`가 이 런타임을 가리키며 npm은 10.9.8이다.
+기존 OS 패키지를 제거하지 않았다.
+
+PM2 재시작 뒤 셸의 `node --version`뿐 아니라 backend PID의
+`/proc/<pid>/exe`와 PM2 `node_version`을 확인한다. 현재 systemd PM2 서비스의
+PATH에는 `/usr/local/bin`이 포함되어 있다. 이후 런타임 교체 시 이 경로와
+서비스 재기동 후 실제 실행 파일도 함께 확인한다.
+
 ## 2.5 .env 필수 항목 (운영)
 
 `.env`는 `/opt/projectamo/current/.env`에 있으며 **커밋하지 않는다**(참고: `backend/.env.example`).

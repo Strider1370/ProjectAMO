@@ -231,3 +231,16 @@
 - 이어진 명시적 요청에 따라 미리보기뿐 아니라 다른 세션의 공항 모델 비교 개선, 개발 문서 보관 경로 이동, 작업 도구 설정 정리와 저장소에서 제외 해제된 그래프 자료까지 현재 전체 변경을 커밋·푸시 범위에 포함했다.
 - 전체 변경 상태의 최종 `npm run check` 재실행 통과: backend 1,140, frontend 1,537, 총 2,677 통과/기존 skip 1, production build 성공. 로그 `artifacts/organization-lounge/v0.4.0-all-changes-check.log`. 기존 chunk 크기 경고 외 실패 없음. CPU 1코어/nice 10으로 순차 실행했다.
 - AGENTS.md와 CLAUDE.md 동일성을 확인했다. 이동된 문서 3개의 Markdown 줄바꿈은 뒤 공백 대신 역슬래시로 보존해 staged diff 공백 검사도 통과했다. 앞 절의 ‘미커밋/미푸시’는 당시 상태이며 이번 통합에서 포함한다.
+
+### 2026-09-11 — AWS 운영 배포
+
+- 전체 세션 변경은 `8f671ef2`로 origin/main에 푸시했다. 사용자 배포 요청에 따라 운영 지침을 읽고 `ec2-user@3.34.113.37`, `/opt/projectamo/current`에서 `deploy/deploy-vm-full.sh`를 실행했다. 코드·의존성·프런트엔드 v0.4.0 배포 및 PM2/nginx 검증 완료.
+- 기존 운영 revision은 `d6af3fe4`였다. 서버의 기존 `.env` 백업 파일은 유지했다. DB는 실행 중 WAL을 단순 복사하지 않고 VACUUM INTO로 `/opt/projectamo/shared/deploy-backups/v0.4.0-20260910T161007Z/projectamo.db`에 저장했다. 같은 디렉터리에 기존 nginx·ecosystem 설정과 revision을 보관했다.
+- 운영 Node 22.22.2가 `.nvmrc`/engines보다 낮아 공식 Node 22.23.1 배포본을 SHA-256 검증 후 별도 runtime 디렉터리에 설치했다. npm 10.9.8, 실제 backend `/proc/<pid>/exe`와 PM2 node_version 일치 확인. 기존 OS 패키지는 보존했다. 운영 runbook에 경로를 기록했다.
+- nginx에 DB·WAL·백업·기관 파일 `/data` 우회 접근 차단을 반영했다. 실제 공개 URL의 404 및 비인증 기관 API/쿠키 없는 미리보기 API의 401을 확인했다. 기관 테이블 16개 및 SQLite quick_check=ok, PM2 online·동일 PID/재시작 횟수 유지 확인.
+- 운영 화면 검증에서 PDF worker가 HTTP 200/application/octet-stream으로 제공되어 모듈 로딩이 실패했다. nginx의 일반 assets location보다 앞에 mjs MIME location을 추가해 application/javascript로 수정했다. 운영 설정과 저장소 예제를 함께 반영했고 nginx -t 및 실제 응답·PDF 넘기기로 검증했다.
+- 공개 HTTPS의 비로그인 Chromium 데스크톱·WebKit iPad에서 예시 3비행/3공항/3합동 브리핑, 편집·PDF 넘기기·초기화 확인. 데스크톱 발표 시작/종료·B 기본/A/B 전환·자료 확대와 기존 기상 브리핑 HTTP 200/화면도 통과했다. 인증을 포함해 API 응답을 mock하지 않았다. 실제 기관 API 호출 및 pageerror/resourceErrors 없음. 발표 직후 초기화는 진행 중 요청 때문에 409를 한 차례 반환했고 작업 종료 뒤 재시도하여 201과 초기 상태 복원을 확인했다(동시성 보호의 의도된 동작).
+- 운영 실제 데이터: RKSS/RKPC METAR 2026-09-10 16:00Z 및 위성 메타 16:11Z 수집 자료를 화면/HTTP로 확인했다. 일부 예보는 누락되어 ‘위험 판단 제한’ 표시를 유지했다. 레거시 echo_meta의 레이더는 2026-08-15 자료였으므로 모든 기상자료가 최신이라고 판정하지 않았다. 합성 예시는 비행·공지·PDF 입력이며 기상은 운영 서버 자료다. 수집기를 수동으로 실행하거나 운영 시연 모드를 변경하지 않았다.
+- 캐시 검증: health/비공개 API no-store, snapshot-meta 및 영상 메타 no-cache, 정적 번들 1년 immutable, 실제 레이더/위성 프레임 10800초 immutable. 운영 문서의 API 전체 no-store 설명은 기존 서버의 snapshot-meta/ETag 재검증 예외를 반영하도록 수정했다.
+- 증거: `artifacts/organization-lounge/v0.4.0-aws-deploy.log`, `aws-http-result.json`, `aws-frames-result.json`, `aws-snapshot-meta.json`, `aws-preview-browser-result.json`, `aws-preview-browser.log`, `aws-preview-*.png`. 로컬 임시 증거는 ignored artifacts에 유지한다.
+- 배포 스크립트의 PM2 설정·로그 회전·nginx·backend/site health 검사는 모두 통과했다. 위성 worker는 점검 순간 0개였고 SIGWX JSON 이력 24개를 확인했다. 정상/가시광 수집 한 주기 전체 및 24시간 메모리 추적은 이번 배포 점검에서 수행하지 않았다. npm ci의 기존 dependency audit 경고는 배포 로그에 보존했으며 의존성을 임의로 변경하지 않았다.

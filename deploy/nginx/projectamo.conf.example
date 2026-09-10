@@ -59,6 +59,13 @@ server {
     add_header Cache-Control "public, max-age=10800, immutable";
   }
 
+  # PDF.js workers are ES modules; browsers reject application/octet-stream.
+  location ~* "^/assets/.*\.mjs$" {
+    types { application/javascript mjs; }
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+  }
+
   location ~* "^/(data/navdata/|data/.*\.(geojson|topojson)|Symbols/|assets/)" {
     try_files $uri =404;
     add_header Cache-Control "public, max-age=31536000, immutable";

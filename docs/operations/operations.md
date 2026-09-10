@@ -87,7 +87,9 @@ Current incremental keys:
 
 ### API
 
-- `/api/*`: `Cache-Control: no-store`
+- Private/session APIs and health: `Cache-Control: no-store`.
+- `/api/snapshot-meta` uses `no-cache`; public weather endpoints using ETag
+  revalidation may also use `no-cache`. Verify the endpoint's implemented policy.
 
 ### Generated overlay frames
 

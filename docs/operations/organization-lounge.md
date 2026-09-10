@@ -8,6 +8,8 @@
 
 PDF.js가 backend/frontend 의존성에 추가되므로 배포 시 `deploy/deploy-vm-full.sh`를 사용한다. `deploy/nginx/projectamo.conf.example`의 `/data` DB·백업·기관 파일 차단 설정도 반영한다. 이 문서와 구현은 배포 실행을 의미하지 않는다.
 
+PDF worker의 `/assets/*.mjs`는 `application/javascript`로 제공해야 한다. nginx 기본 MIME 목록에 mjs가 없으면 파일이 HTTP 200이어도 브라우저가 PDF 모듈 로드를 거부한다. 예제 설정의 mjs 전용 location을 일반 assets 정규식 location보다 앞에 두고, 배포 후 실제 응답 Content-Type과 PDF 쪽 넘기기를 확인한다.
+
 ## 개인 비행을 기관에 공유
 
 1. 기존 개인 화면에서 비행경로 또는 브리핑을 저장한다.
