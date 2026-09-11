@@ -48,6 +48,11 @@ test('pinned model without immutable resource revision is unsupported', () => {
   assert.equal(pinnedModelStatus(unsafe, 'kim').status, 'unsupported')
 })
 
+test('out-of-range pinned models remain selectable when their immutable revision exists', () => {
+  const selection = { bundleId: 'bundle-a', kim: { status: 'out_of_range', tmfc: '2026091006', hf: 3, levelIds: ['850hPa'], resources: { wind: [{ levelId: '850hPa', revision: 'wind-revision' }] } } }
+  assert.equal(pinnedKimSelection(selection).revision, 'wind-revision')
+})
+
 test('only exact byte-addressed frames are returned', () => {
   assert.equal(pinnedFrameDescriptors(selection).length, 1)
   assert.equal(pinnedFrameDescriptors({ frames: { radar: { status: 'available', url: '/latest.png' } } }).length, 0)

@@ -11,7 +11,7 @@ import { writeKtgCoords, writeKtgGrid } from '../src/processors/ktg-store.js'
 
 const request = { etd: '2026-09-10T10:00:00Z', nwpTimeSelection: { baseTime: '2026-09-10T10:00:00Z' } }
 
-test('organization NWP validation refuses stale model substitution', () => {
+test('organization NWP validation keeps an out-of-range model payload for presentation', () => {
   const result = validateOrganizationCrossSection({ request, result: {
     available: true,
     availableTimes: [{ validTime: '2026-09-09T09:00:00Z' }, { validTime: '2026-09-09T12:00:00Z' }],
@@ -19,10 +19,11 @@ test('organization NWP validation refuses stale model substitution', () => {
     turbulence: { levels: [] },
   } })
   assert.equal(result.status, 'out_of_range')
-  assert.deepEqual(result.composerInput, { available: false, crossSection: null, turbulence: null })
+  assert.equal(result.composerInput.available, true)
+  assert.equal(result.displayData.run.validTime, '2026-09-09T12:00:00Z')
 })
 
-test('organization NWP validation keeps valid KIM while explicitly removing out-of-range KTG', () => {
+test('organization NWP validation keeps both model payloads when KTG is out of range', () => {
   const values = [{ u: 1, v: 2, t: -5, icing: 0 }, { u: 1, v: 2, t: -5, icing: 0 }]
   const completeRequest = { ...request, plannedCruiseAltitudeFt: 10000,
     routeGeometry: { type: 'LineString', coordinates: [[126, 37], [127, 36]] } }
@@ -37,8 +38,8 @@ test('organization NWP validation keeps valid KIM while explicitly removing out-
   assert.equal(result.modelStatus.kim.status, 'available')
   assert.equal(result.modelStatus.ktg.status, 'out_of_range')
   assert.equal(result.composerInput.available, true)
-  assert.deepEqual(result.composerInput.turbulence, { available: false, levels: [], run: null })
-  assert.deepEqual(result.displayData.turbulence, { available: false, levels: [], run: null })
+  assert.equal(result.composerInput.turbulence.run.validTime, '2026-09-09T12:00:00Z')
+  assert.equal(result.displayData.turbulence.run.validTime, '2026-09-09T12:00:00Z')
 })
 
 test('organization NWP validation keeps valid KTG when KIM is unavailable', () => {

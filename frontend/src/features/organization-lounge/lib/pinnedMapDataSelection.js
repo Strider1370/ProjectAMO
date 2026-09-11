@@ -1,4 +1,4 @@
-const USABLE = new Set(['available', 'partial'])
+const USABLE = new Set(['available', 'partial', 'out_of_range'])
 
 function finiteInteger(value) {
   const parsed = Number(value)

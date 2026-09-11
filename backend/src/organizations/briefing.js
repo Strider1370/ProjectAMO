@@ -143,8 +143,6 @@ export function validateOrganizationCrossSection({ request, result, sourceState 
     && (raw.crossSection?.levels ?? []).every((level) => (level.values ?? []).length === expectedSamples)
   const ktgSamplesCovered = Number.isSafeInteger(expectedSamples) && expectedSamples >= 2
     && (raw.turbulence?.levels ?? []).every((level) => (level.values ?? []).length === expectedSamples)
-  const emptyKim = { ...(raw.crossSection ?? {}), available: false, run: null, levels: [] }
-  const emptyKtg = { available: false, run: null, levels: [] }
   if (!raw.available && !ktgUsable) {
     return {
       status: 'unavailable', requestedTime, selectedValidTime: null,
@@ -153,32 +151,13 @@ export function validateOrganizationCrossSection({ request, result, sourceState 
         kim: { status: 'unavailable', coverage },
         ktg: { status: ktgOutside ? 'out_of_range' : 'unavailable', coverage: ktgCoverage },
       },
+      // There is no model payload to draw in this case. The terrain/profile
+      // panel is built independently and remains available to presentation.
       composerInput: EMPTY_SECTION, displayData: null,
     }
   }
   const kimOutside = !raw.available || outside || !selectedValidTime
     || selectedValidTime < coverage.from || selectedValidTime > coverage.to
-  if (kimOutside) {
-    const composerInput = ktgUsable
-      ? { ...raw, available: true, crossSection: emptyKim, turbulence: raw.turbulence }
-      : EMPTY_SECTION
-    const missingVariables = ['wind', 'temperature', 'icing', ...(!ktgUsable ? ['turbulence'] : [])]
-    return {
-      status: 'out_of_range', requestedTime, selectedValidTime, coverage,
-      missingVariables, reason: 'requested_time_outside_model_coverage', composerInput,
-      modelStatus: {
-        kim: { status: 'out_of_range', coverage, run: null },
-        ktg: { status: ktgOutside ? 'out_of_range' : ktgUsable
-          ? (inspected.turbulence.complete && axisCovered && ktgSamplesCovered && altitudeCovered.ktg ? 'available' : 'partial') : 'unavailable',
-          coverage: ktgCoverage, run: ktgUsable ? raw.turbulence?.run ?? null : null },
-      },
-      displayData: {
-        ...emptyKim, turbulence: ktgUsable ? raw.turbulence : emptyKtg,
-        availableTimes: [], timeRules: null, nwpTimeAvailability: null,
-        status: 'out_of_range', requestedTime, selectedValidTime, coverage, ktgCoverage, missingVariables,
-      },
-    }
-  }
   const missingVariables = Object.entries(inspected).filter(([, state]) => !state.any).map(([name]) => name)
   const incompleteVariables = Object.entries(inspected).filter(([, state]) => state.any && !state.complete).map(([name]) => name)
   const ruleIncomplete = (raw.timeRules?.segments ?? []).some((segment) => !segment?.kim?.validTime || !segment?.ktg?.validTime)
@@ -186,25 +165,32 @@ export function validateOrganizationCrossSection({ request, result, sourceState 
     || !axisCovered || !kimSamplesCovered || !altitudeCovered.kim
   const ktgIncomplete = !inspected.turbulence.complete || ruleIncomplete
     || !axisCovered || !ktgSamplesCovered || !altitudeCovered.ktg
-  const status = ktgOutside ? 'out_of_range'
+  const status = kimOutside || ktgOutside ? 'out_of_range'
     : missingVariables.length || incompleteVariables.length || ruleIncomplete || kimIncomplete || ktgIncomplete ? 'partial' : 'available'
-  const reason = ktgOutside ? 'requested_time_outside_ktg_coverage'
+  const reason = kimOutside ? 'requested_time_outside_model_coverage'
+    : ktgOutside ? 'requested_time_outside_ktg_coverage'
     : status === 'partial' ? (!axisCovered || !kimSamplesCovered || !ktgSamplesCovered || !altitudeCovered.kim || !altitudeCovered.ktg
       ? 'model_coverage_incomplete' : 'model_values_incomplete') : null
   const normalizedMissing = ktgOutside && !missingVariables.includes('turbulence') ? [...missingVariables, 'turbulence'] : missingVariables
-  const composerInput = ktgOutside ? { ...raw, turbulence: emptyKtg } : raw
+  // A presentation should keep drawing the selected model payload even when
+  // its requested time, altitude, or route coverage is incomplete. The status
+  // still tells the audience which parts are outside coverage; it no longer
+  // erases the whole cross-section or substitutes another model time.
+  const composerInput = raw.available
+    ? raw
+    : { ...raw, available: true, crossSection: { ...(raw.crossSection ?? {}), available: false, run: null, levels: [] } }
   return {
     status, requestedTime, selectedValidTime, coverage, missingVariables: normalizedMissing, incompleteVariables, reason,
     modelStatus: {
-      kim: { status: kimIncomplete ? 'partial' : 'available', coverage, run: raw.crossSection?.run ?? null,
-        reason: kimIncomplete ? reason : null },
+      kim: { status: kimOutside ? 'out_of_range' : kimIncomplete ? 'partial' : 'available', coverage, run: raw.crossSection?.run ?? null,
+        reason: kimOutside || kimIncomplete ? reason : null },
       ktg: { status: ktgOutside ? 'out_of_range' : ktgIncomplete ? 'partial' : 'available', coverage: ktgCoverage,
-        run: ktgOutside ? null : raw.turbulence?.run ?? null, reason: ktgOutside ? 'requested_time_outside_ktg_coverage' : ktgIncomplete ? reason : null },
+        run: raw.turbulence?.run ?? null, reason: ktgOutside ? 'requested_time_outside_ktg_coverage' : ktgIncomplete ? reason : null },
     },
     composerInput,
     displayData: {
-      ...composerInput.crossSection,
-      turbulence: composerInput.turbulence,
+      ...(raw.crossSection ?? { available: false, run: null, levels: [] }),
+      turbulence: raw.turbulence ?? { available: false, run: null, levels: [] },
       availableTimes: raw.availableTimes,
       timeRules: raw.timeRules,
       nwpTimeAvailability: raw.nwpTimeAvailability,
@@ -233,7 +219,7 @@ function withExactModelResources(selection, snapshot, validated) {
   const root = snapshot?.dataRoot
   if (!root) return selection
   const kim = selection.kim
-  if (kim && ['available', 'partial'].includes(kim.status)) {
+  if (kim && ['available', 'partial', 'out_of_range'].includes(kim.status)) {
     const levels = validated.displayData?.levels ?? []
     const levelIds = levels.map((level) => `${Number(level.pressure)}hPa`)
       .filter((level) => /^\d+hPa$/.test(level))
@@ -253,7 +239,7 @@ function withExactModelResources(selection, snapshot, validated) {
     } }
   }
   const ktg = selection.ktg
-  if (ktg && ['available', 'partial'].includes(ktg.status)) {
+  if (ktg && ['available', 'partial', 'out_of_range'].includes(ktg.status)) {
     const altLevelsFt = (validated.displayData?.turbulence?.levels ?? []).map((level) => Number(level.altFt)).filter(Number.isFinite)
     const resources = altLevelsFt.flatMap((altFt) => {
       const result = readExactKtgMapGrid(root, { tmfc: ktg.tmfc, hf: ktg.hf, altFt })

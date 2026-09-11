@@ -76,6 +76,7 @@ function ProfilePanel({ bundle, activeItemId, onSelectItem, onExpand }) {
       onSelectLinkedItem={onSelectItem}
       enableDragScroll
       hideMeta
+      allowMissingTerrain
     />
   </section>
 }

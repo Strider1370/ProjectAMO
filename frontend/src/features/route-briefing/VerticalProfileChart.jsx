@@ -216,6 +216,7 @@ export default function VerticalProfileChart({
   linkedItems = [],
   activeLinkedItemId = null,
   onSelectLinkedItem = null,
+  allowMissingTerrain = false,
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
@@ -261,7 +262,7 @@ export default function VerticalProfileChart({
     }))
     .filter((point) => Number.isFinite(point.elevationFt))
 
-  if (terrainPoints.length === 0) {
+  if (terrainPoints.length === 0 && !allowMissingTerrain) {
     return (
       <div className="vertical-profile-empty">
         {'\ud45c\uc2dc\ud560 \uc9c0\ud615\uace0\ub3c4 \uc0d8\ud50c\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.'}
@@ -321,8 +322,10 @@ export default function VerticalProfileChart({
   const nwpBaseTimeLabel = formatBriefingTime(nwpTimeSelection?.baseTime ?? crossSection?.run?.validTime, tz)
   const yFor = (altitudeFt) => padding.top + plotHeight - (altitudeFt / yMax) * plotHeight
   const terrainSvgPoints = terrainPoints.map((point) => ({ x: xFor(point.distanceNm), y: yFor(point.elevationFt) }))
-  const terrainLine = buildPath(terrainSvgPoints)
-  const terrainArea = `${terrainLine} L ${xFor(terrainPoints[terrainPoints.length - 1].distanceNm).toFixed(1)} ${yFor(0).toFixed(1)} L ${xFor(terrainPoints[0].distanceNm).toFixed(1)} ${yFor(0).toFixed(1)} Z`
+  const terrainLine = terrainSvgPoints.length ? buildPath(terrainSvgPoints) : ''
+  const terrainArea = terrainSvgPoints.length
+    ? `${terrainLine} L ${xFor(terrainPoints[terrainPoints.length - 1].distanceNm).toFixed(1)} ${yFor(0).toFixed(1)} L ${xFor(terrainPoints[0].distanceNm).toFixed(1)} ${yFor(0).toFixed(1)} Z`
+    : ''
   const selectedProfile = candidateProfiles.find((candidate) => candidate.plannedCruiseAltitudeFt === selectedCandidateAltitudeFt)
     ?? profile.flightPlan
   const selectedProcedure = selectedProfile?.profile ?? flightProfile

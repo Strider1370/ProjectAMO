@@ -244,3 +244,10 @@
 - 캐시 검증: health/비공개 API no-store, snapshot-meta 및 영상 메타 no-cache, 정적 번들 1년 immutable, 실제 레이더/위성 프레임 10800초 immutable. 운영 문서의 API 전체 no-store 설명은 기존 서버의 snapshot-meta/ETag 재검증 예외를 반영하도록 수정했다.
 - 증거: `artifacts/organization-lounge/v0.4.0-aws-deploy.log`, `aws-http-result.json`, `aws-frames-result.json`, `aws-snapshot-meta.json`, `aws-preview-browser-result.json`, `aws-preview-browser.log`, `aws-preview-*.png`. 로컬 임시 증거는 ignored artifacts에 유지한다.
 - 배포 스크립트의 PM2 설정·로그 회전·nginx·backend/site health 검사는 모두 통과했다. 위성 worker는 점검 순간 0개였고 SIGWX JSON 이력 24개를 확인했다. 정상/가시광 수집 한 주기 전체 및 24시간 메모리 추적은 이번 배포 점검에서 수행하지 않았다. npm ci의 기존 dependency audit 경고는 배포 로그에 보존했으며 의존성을 임의로 변경하지 않았다.
+
+### 2026-09-11 — 합동 브리핑 연직단면 표시 정책 변경
+
+- 사용자 요청에 따라 모델 자료의 유효시각·고도층·변수 범위가 발표 비행과 맞지 않더라도, 합동 발표에서 이미 선택해 고정한 단면 payload는 숨기지 않고 표시한다. 발표 지도는 동일한 run·유효시각·frame·revision을 계속 사용하며 최신 자료로 자동 대체하지 않는다.
+- `out_of_range`와 `partial`은 자료 품질 상태로만 남긴다. 해당 상태의 불변 KIM·KTG resource가 있으면 지도 선택에도 전달하고, 존재하지 않는 레이어만 비운다. 따라서 오래된 자료를 정상 또는 위험 없음으로 판정하지 않으면서 발표 흐름은 끊지 않는다.
+- 지형 표고 표본이 없을 때도 경로와 계획고도가 있는 연직 프로파일은 표시한다. 지형선만 생략하며, 개인 기상 브리핑의 기존 지형 누락 처리에는 영향을 주지 않는다. profile 자체가 생성되지 않은 경우에는 임의 차트를 만들 수 없으므로 기존 상태 화면을 유지한다.
+- 변경 파일: `backend/src/organizations/briefing.js`, `frontend/src/features/organization-lounge/OrganizationPresentation.jsx`, `frontend/src/features/organization-lounge/lib/pinnedMapDataSelection.js`, `frontend/src/features/route-briefing/VerticalProfileChart.jsx` 및 관련 회귀 테스트. fixture 기반 targeted test 28개와 production build는 통과했다. 최신 외부 기상자료를 다시 수집해 확인한 검증은 이번 변경에 포함하지 않았다.
