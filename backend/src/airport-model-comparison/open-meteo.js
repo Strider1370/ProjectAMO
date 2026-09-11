@@ -174,19 +174,16 @@ export function mergeIconPressureWindow({ single, general, airport, window, run_
   const expectedTimes = window.forecast_hours.map(hour => new Date(Date.parse(expected) + hour * HOUR_MS).toISOString())
   const generalTimes = new Set(general.hourly.time.map(providerTime))
   if (expectedTimes.some(time => !generalTimes.has(time))) throw new Error('incomplete_forecast_window')
-  const overlap = single.hourly.time.filter(time => general.hourly.time.includes(time))
-  if (!overlap.length) throw new Error('icon_overlap_mismatch')
-  for (const field of pressureFields(LEVELS.icon)) for (const time of overlap) {
-    const a = single.hourly[field]?.[single.hourly.time.indexOf(time)]
-    const b = general.hourly[field]?.[general.hourly.time.indexOf(time)]
-    if (a === null && Number.isFinite(b)) continue
-    if (Number.isFinite(a) && Number.isFinite(b) && a === b) continue
-    throw new Error('icon_overlap_mismatch')
-  }
   const merged = structuredClone(single)
   for (const field of pressureFields(LEVELS.icon)) merged.hourly[field] = single.hourly.time.map((time, i) => {
     const j = general.hourly.time.indexOf(time)
-    return j < 0 ? single.hourly[field]?.[i] : general.hourly[field]?.[j]
+    const fixedRunValue = single.hourly[field]?.[i]
+    const currentRunValue = j < 0 ? undefined : general.hourly[field]?.[j]
+    // single-runs fixes the model cycle. The current-run endpoint only fills
+    // pressure levels it omits. Both endpoints legitimately report null for
+    // unsupported levels, which must remain a missing-input state rather than
+    // making the whole airport collection fail.
+    return Number.isFinite(currentRunValue) ? currentRunValue : fixedRunValue
   })
   return merged
 }

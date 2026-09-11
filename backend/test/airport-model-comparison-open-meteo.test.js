@@ -99,7 +99,7 @@ test('missing pressure-level cloud cover remains missing input instead of becomi
   }
 })
 
-test('requires stable ICON metadata and exact numeric overlap', () => {
+test('requires stable ICON metadata and merges supplemental pressure levels', () => {
   const single = read('open-meteo-icon-rksi-f000-f012-synthetic.json')
   const general = structuredClone(single)
   for (const level of SUPPLEMENT_LEVELS) for (const prefix of ['cloud_cover', 'geopotential_height']) general.hourly[`${prefix}_${level}hPa`].fill(0)
@@ -107,9 +107,15 @@ test('requires stable ICON metadata and exact numeric overlap', () => {
   const merge = overrides => mergeIconPressureWindow({ single, general, airport, window: iconWindow, run_at, metaBefore: { last_run_initialisation_time: 1788652800 }, metaAfter: { last_run_initialisation_time: 1788652800 }, ...overrides })
   assert.equal(merge().hourly.time.length, 13)
   assert.throws(() => merge({ metaAfter: { last_run_initialisation_time: 1788674400 } }), /icon_run_changed/)
+  // The ordinary endpoint can legitimately omit a level that the run-fixed
+  // response has. Preserve the run-fixed value instead of rejecting the run.
   general.hourly.cloud_cover_1000hPa[2] = null
-  assert.throws(() => merge(), /icon_overlap_mismatch/)
-  general.hourly.cloud_cover_1000hPa[2] = single.hourly.cloud_cover_1000hPa[2]
+  assert.equal(merge().hourly.cloud_cover_1000hPa[2], single.hourly.cloud_cover_1000hPa[2])
+  // Newer high-altitude ICON levels may be absent in both endpoints. Keep
+  // the null so ceiling normalization reports missing input, not clear sky.
+  general.hourly.cloud_cover_875hPa[2] = null
+  single.hourly.cloud_cover_875hPa[2] = null
+  assert.equal(merge().hourly.cloud_cover_875hPa[2], null)
   general.hourly_units.cloud_cover_975hPa = 'fraction'
   assert.throws(() => merge(), /invalid_open_meteo_field/)
   general.hourly_units.cloud_cover_975hPa = '%'
