@@ -75,11 +75,22 @@ function ensureCanPatchFlight(req, flight, body) {
   if (unknown.length) throw new OrganizationError(403, 'organization_forbidden')
 }
 
-export function createMeOrganizationsRouter({ db = null } = {}) {
+export function createMeOrganizationsRouter({ db = null, trustedMutationOrigin = requireTrustedMutationOrigin() } = {}) {
   const router = Router()
   const database = () => db || getDb()
   router.use(requireAuth)
   router.get('/', (req, res) => res.json({ organizations: listUserOrganizations(database(), req.session.userId) }))
+  router.post('/', trustedMutationOrigin, asyncRoute((req, res) => {
+    // 라운지를 만든 사람은 즉시 관리자다. 기관 서비스 관리자가 별도로
+    // 구성원을 등록해야만 시험할 수 있던 초기 진입 장벽을 없앤다.
+    const organization = createOrganization(database(), {
+      name: req.body?.name,
+      settings: req.body?.settings,
+      adminUserId: req.session.userId,
+      actorUserId: req.session.userId,
+    })
+    res.status(201).json({ organization: { ...organization, role: 'admin' } })
+  }))
   return router
 }
 

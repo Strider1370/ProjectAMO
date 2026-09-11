@@ -9,7 +9,7 @@ import sharp from 'sharp'
 
 import { createDb } from '../src/db/index.js'
 import { createBriefing, createFlight, createOrganization, putMember, updateBriefing, updateFlight } from '../src/organizations/repository.js'
-import { createOrganizationRouter } from '../src/organizations/router.js'
+import { createMeOrganizationsRouter, createOrganizationRouter } from '../src/organizations/router.js'
 import { organizationTestPdf } from '../../scripts/lib/organization-test-pdf.mjs'
 
 function user(db, username) {
@@ -20,6 +20,38 @@ function user(db, username) {
 function listen(app) {
   return new Promise((resolve) => { const server = app.listen(0, '127.0.0.1', () => resolve(server)) })
 }
+
+test('active users can create a prototype lounge and become its administrator', async () => {
+  const db = createDb(':memory:')
+  const owner = user(db, 'pilot')
+  const app = express()
+  app.use(express.json())
+  app.use((req, _res, next) => { req.session = { userId: Number(req.get('x-user-id')), role: 'pilot' }; next() })
+  app.use('/api/me/organizations', createMeOrganizationsRouter({ db, trustedMutationOrigin: (req, res, next) => {
+    if (!req.get('origin')) return res.status(403).json({ error: 'invalid_origin' })
+    return next()
+  } }))
+  const server = await listen(app)
+  const base = `http://127.0.0.1:${server.address().port}`
+  try {
+    let response = await fetch(`${base}/api/me/organizations`, {
+      method: 'POST', headers: { origin: base, 'x-user-id': String(owner), 'content-type': 'application/json' }, body: JSON.stringify({ name: '주말 비행 모임', adminUserId: 999 }),
+    })
+    assert.equal(response.status, 201)
+    const organization = (await response.json()).organization
+    assert.equal(organization.name, '주말 비행 모임')
+    assert.equal(organization.role, 'admin')
+    response = await fetch(`${base}/api/me/organizations`, { headers: { 'x-user-id': String(owner) } })
+    const memberships = (await response.json()).organizations
+    assert.equal(memberships.length, 1)
+    assert.equal(memberships[0].id, organization.id)
+    assert.equal(memberships[0].role, 'admin')
+    response = await fetch(`${base}/api/me/organizations`, {
+      method: 'POST', headers: { 'x-user-id': String(owner), 'content-type': 'application/json' }, body: JSON.stringify({ name: 'origin 없음' }),
+    })
+    assert.equal(response.status, 403)
+  } finally { await new Promise((resolve) => server.close(resolve)) }
+})
 
 test('organization HTTP routes re-check active membership, enforce Origin, and authorize every private Range request', async () => {
   const db = createDb(':memory:')

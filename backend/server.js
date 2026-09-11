@@ -261,7 +261,7 @@ if (process.env.NODE_ENV !== 'test') {
       ? [process.env.FRONTEND_ORIGIN].filter(Boolean)
       : [process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173', 'http://localhost:5173'],
   })
-  app.use('/api/me/organizations', createMeOrganizationsRouter())
+  app.use('/api/me/organizations', createMeOrganizationsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
   app.use('/api/admin/organizations', createAdminOrganizationsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
   app.use('/api/organizations', createOrganizationRouter({
     trustedMutationOrigin: organizationMutationOrigin,

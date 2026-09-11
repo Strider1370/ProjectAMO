@@ -50,7 +50,7 @@ export function listOrganizations(options) {
 }
 
 export function createOrganization(body, options) {
-  return request('/api/admin/organizations', { ...options, method: 'POST', body })
+  return request('/api/me/organizations', { ...options, method: 'POST', body })
 }
 
 export function shareSavedFlight(orgId, body, options) {

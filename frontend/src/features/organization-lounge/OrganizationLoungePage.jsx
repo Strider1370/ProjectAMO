@@ -3,7 +3,7 @@ import { Building2, ChevronLeft, LoaderCircle, LogIn, UserRound } from 'lucide-r
 import { useAuth } from '../auth/AuthContext.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import Sidebar from '../../app/layout/Sidebar.jsx'
-import { listOrganizations, organizationRequest, startPreviewSession } from './api.js'
+import { createOrganization, listOrganizations, organizationRequest, startPreviewSession } from './api.js'
 import PreviewMode from './PreviewMode.jsx'
 import HomeScreen from './screens/HomeScreen.jsx'
 import FlightsScreen from './screens/FlightsScreen.jsx'
@@ -32,7 +32,17 @@ function go(path, replace = false) {
 
 function asList(result, key) { return Array.isArray(result?.[key]) ? result[key] : [] }
 
-function OrganizationPicker({ organizations, onSelect, onPreview }) {
+function OrganizationPicker({ organizations, onSelect, onPreview, onCreate }) {
+  const [name, setName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const submit = async (event) => {
+    event.preventDefault()
+    const trimmed = name.trim()
+    if (!trimmed || creating) return
+    setCreating(true); setCreateError('')
+    try { await onCreate(trimmed) } catch (error) { setCreateError(error.message) } finally { setCreating(false) }
+  }
   return <main className="ol-entry">
     <section className="ol-entry-card" aria-labelledby="ol-entry-title">
       <Building2 size={28} aria-hidden="true" />
@@ -45,7 +55,12 @@ function OrganizationPicker({ organizations, onSelect, onPreview }) {
             <span aria-hidden="true">→</span>
           </button>
         })}
-      </div> : <div className="ol-empty"><strong>참여 중인 기관이 없습니다.</strong><p>기관 관리자가 구성원으로 등록한 뒤 이용할 수 있습니다.</p></div>}
+      </div> : <div className="ol-empty"><strong>참여 중인 라운지가 없습니다.</strong><p>직접 라운지를 만들어 비행·자료·합동 브리핑을 바로 시험할 수 있습니다.</p></div>}
+      <form className="ol-create-lounge" onSubmit={submit}>
+        <label htmlFor="ol-new-lounge-name">새 라운지 이름</label>
+        <div><input id="ol-new-lounge-name" value={name} onChange={(event) => setName(event.target.value)} maxLength="100" placeholder="예: 주말 비행 모임" required /><button type="submit" className="ol-button" disabled={creating}>{creating ? '만드는 중…' : '내 라운지 만들기'}</button></div>
+        {createError && <p role="alert">{createError}</p>}
+      </form>
       <button type="button" className="ol-button" onClick={onPreview}>미리보기 체험</button>
       <a className="ol-button ol-button-secondary" href="/"><ChevronLeft size={17} /> 지도로 돌아가기</a>
     </section>
@@ -138,7 +153,12 @@ export default function OrganizationLoungePage() {
 
   if ((authLoading && !preview) || (pickerLoading && !route.orgId) || (preview && !previewSession && !error)) return <div className="ol-loading" role="status"><LoaderCircle className="ol-spin" /> 기관 라운지를 불러오는 중…</div>
   if (!route.orgId && !user) return <main className="ol-entry"><section className="ol-entry-card"><LogIn size={28} /><h1>기관 라운지</h1><p>로그인 없이 예시 비행과 자료를 직접 편집하며 기능을 체험할 수 있습니다.</p><button type="button" className="ol-button" onClick={() => go('/lounge/preview/home')}>미리보기 체험</button><a className="ol-button ol-button-secondary" href="/">지도에서 로그인</a></section></main>
-  if (!route.orgId) return <OrganizationPicker organizations={organizations} onSelect={(id) => go(`/lounge/${encodeURIComponent(id)}`)} onPreview={() => go('/lounge/preview/home')} />
+  if (!route.orgId) return <OrganizationPicker organizations={organizations} onSelect={(id) => go(`/lounge/${encodeURIComponent(id)}`)} onPreview={() => go('/lounge/preview/home')} onCreate={async (name) => {
+    const result = await createOrganization({ name })
+    const organization = result.organization
+    setOrganizations((current) => [...current, organization])
+    go(`/lounge/${encodeURIComponent(organization.id)}/home`)
+  }} />
   if (!loungeUser) return <main className="ol-entry"><section className="ol-entry-card"><LogIn size={28} /><h1>{preview ? '미리보기를 시작할 수 없습니다.' : '로그인이 필요합니다.'}</h1><p>{error || '기관 자료는 구성원 권한을 확인한 뒤 제공합니다.'}</p><a className="ol-button" href={preview ? '/lounge/preview/home' : '/'}>{preview ? '다시 시도' : '지도에서 로그인'}</a></section></main>
   if (route.section === 'briefings' && route.action === 'present') return <OrganizationPresentation orgId={route.orgId} sessionId={route.itemId} onExit={() => navigate('briefings', route.itemId)} />
 
