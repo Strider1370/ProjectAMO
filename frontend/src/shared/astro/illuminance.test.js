@@ -65,6 +65,35 @@ describe('야간 배경광', () => {
 })
 
 describe('illuminanceAt', () => {
+  it('USNO 원문 예제의 박명 조도를 재현한다 (겉보기 고도를 재보정하지 않음)', () => {
+    // Circular 171 Figure 3: 1987-05-11 22:15 UT, 58°N 4°W, SK=1.
+    // 천체 위치 알고리즘 차이를 허용하되, SunCalc 굴절이 남으면 약 0.0484 lx로 실패한다.
+    const r = illuminanceAt(new Date('1987-05-11T22:15:00Z'), 58, -4)
+    assert.ok(Math.abs(r.sun / 0.0278 - 1) < 0.05, `박명 태양 조도 ${r.sun}`)
+    assert.ok(Math.abs(r.moon / 0.0317 - 1) < 0.01, `달 조도 ${r.moon}`)
+  })
+
+  it('월출·월몰의 낮은 고도에서 굴절은 한 번만 적용한다', () => {
+    // SunCalc 2.0.1의 겉보기 고도를 수치 역산한 기하학적 고도 fixture.
+    // USNO 함수에는 기하학적 고도를, 표시용 반환값에는 겉보기 고도를 사용한다.
+    for (const [iso, geometric, apparent] of [
+      ['2026-07-29T10:54:00Z', 0.5971957429785226, 1.003121548281488],
+      ['2026-07-29T20:42:00Z', 0.7199205977135912, 1.1119738848257803],
+      ['2026-07-29T15:00:00Z', 30.260266355296338, 30.28906805849913],
+    ]) {
+      const r = illuminanceAt(new Date(iso), RKSI.lat, RKSI.lon)
+      const expected = moonIlluminance(geometric, (180 - r.phaseAngle) * Math.PI / 180)
+      assert.ok(Math.abs(r.moon - expected) < 1e-10, `${iso}: ${r.moon} vs ${expected}`)
+      assert.ok(Math.abs(r.moonAlt - apparent) < 1e-8, `표시 고도 ${r.moonAlt}`)
+    }
+  })
+
+  it('달의 지평선 차단 조건도 USNO 함수 입력인 기하학적 고도를 기준으로 한다', () => {
+    const r = illuminanceAt(new Date('2026-07-29T10:49:00Z'), RKSI.lat, RKSI.lon)
+    assert.ok(r.moonAlt > 0, '굴절 때문에 겉보기 중심은 지평선 위')
+    assert.equal(r.moon, 0) // 기하학적 중심은 약 -0.259°.
+  })
+
   // ⚠️ 회귀 방지: suncalc 2.x는 고도를 도(°)로 준다. rad→deg 변환을 넣으면 여기서 터진다.
   it('고도는 항상 ±90° 안 (단위 함정 회귀 방지)', () => {
     for (let h = 0; h < 24 * 40; h += 7) {

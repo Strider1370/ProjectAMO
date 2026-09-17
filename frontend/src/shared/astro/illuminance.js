@@ -3,8 +3,8 @@ import { getPosition, getMoonPosition, getMoonIllumination, getTimes, getMoonTim
 
 // 야간 지면 조도 — USNO Circular 171 (Janiczek & DeYoung 1987).
 // 계수는 원문 부록 BASIC 리스팅에서 전사(행 1030 / 1090-1120 / 1130 / 2160-2250).
-// 독립 검증: Krisciunas & Schaefer 1991 (PASP 103, 1033)과 보름달 0.5% 차이.
-// 설계 스펙: docs/superpowers/specs/2026-07-14-moonlight-illuminance.md
+// K&S91과의 보름달 0.5% 대조는 대기권 밖 밝기에 한정되며 지면 조도 정확도가 아니다.
+// 설계 스펙: docs/archive/development/archive/specs/2026-07-14-moonlight-illuminance.md
 //
 // ⚠️ suncalc 2.x는 getPosition·getMoonPosition 모두 고도/방위각을 **도(°)** 로 반환한다.
 //    1.x는 라디안이었고 웹 예제 대부분이 1.x 기준이라 rad→deg 변환을 덧붙이기 쉬운데,
@@ -14,7 +14,25 @@ const DEG = Math.PI / 180
 
 export const SKY = { CLEAR: 1, THIN_CLOUD: 2, AVERAGE_CLOUD: 3, DARK_STRATUS: 10 }
 
-/** 대기 굴절 보정: 참고도(°) → 겉보기 고도(°). USNO 2160-2190 */
+/**
+ * SunCalc 2.x의 겉보기 고도(°) → 기하학적 고도(°).
+ * suncalc/index.js astroRefraction의 h + R(h)를 역산한다. h<0에서는 R(0)을 쓴다.
+ * USNO에 넣기 전에 라이브러리의 굴절을 제거해 USNO 보정만 한 번 적용한다.
+ * SunCalc의 굴절 구현이 바뀌면 이 변환과 경계 fixture도 함께 점검해야 한다.
+ */
+function geometricAlt(apparentDeg) {
+  let geometric = apparentDeg
+  for (let i = 0; i < 16; i += 1) {
+    const h = Math.max(0, geometric) * DEG
+    const refraction = 0.0002967 / Math.tan(h + 0.00312536 / (h + 0.08901179)) / DEG
+    const next = apparentDeg - refraction
+    if (Math.abs(next - geometric) < 1e-10) return next
+    geometric = next
+  }
+  return geometric
+}
+
+/** 대기 굴절 보정: 기하학적 고도(°) → 겉보기 고도(°). USNO 2160-2190 */
 function apparentAlt(h) {
   if (h < -5 / 6) return h
   return h + 1 / Math.tan((h + 8.59 / (h + 4.42)) * DEG) / 60
@@ -32,13 +50,14 @@ function attenuation(haDeg) {
   )
 }
 
-/** 태양 조도 (lux). 133775 lx = 대기권 밖 태양 조도. USNO 1030 */
+/** 태양 조도 (lux), 입력은 기하학적 고도(°). 133775 lx = 대기권 밖 조도. USNO 1030 */
 export function sunIlluminance(altDeg, sk = SKY.CLEAR) {
   return (133775 * attenuation(apparentAlt(altDeg))) / sk
 }
 
 /**
  * 달 조도 (lux). USNO 1090-1120
+ * @param altDeg 굴절 보정 전 기하학적 고도(°). 중심 고도 ≤0이면 0으로 처리한다.
  * @param psiRad 이각(elongation) = π − 위상각. 보름 π, 삭 0.
  *   ⚠️ 위상각을 그대로 넣으면 보름달에서 0이 나온다.
  */
@@ -62,8 +81,8 @@ export function illuminanceAt(date, lat, lon, sk = SKY.CLEAR) {
 
   const fraction = ill.fraction
   const phaseAngle = Math.acos(Math.min(1, Math.max(-1, 2 * fraction - 1))) // rad, 0=보름
-  const sun = sunIlluminance(sunPos.altitude, sk)
-  const moon = moonIlluminance(moonPos.altitude, Math.PI - phaseAngle, sk)
+  const sun = sunIlluminance(geometricAlt(sunPos.altitude), sk)
+  const moon = moonIlluminance(geometricAlt(moonPos.altitude), Math.PI - phaseAngle, sk)
   const sky = nightSkyIlluminance(sk)
 
   return {
