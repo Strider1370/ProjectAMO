@@ -17,8 +17,14 @@ if [ "${PROJECTAMO_DEPLOY_LOCK_TEST:-}" = "1" ]; then
       ;;
   esac
 fi
-exec 9>"${deploy_lock_file}"
-flock -n 9 || { echo "[deploy-full] another deployment is already running" >&2; exit 1; }
+# The self re-exec inherits FD 9. Keep its existing open-file description so
+# the first process does not release the lock between the two script versions.
+if [ "${PROJECTAMO_DEPLOY_REEXEC:-}" = "1" ]; then
+  flock -n 9 || { echo "[deploy-full] deployment lock was not inherited" >&2; exit 1; }
+else
+  exec 9>"${deploy_lock_file}"
+  flock -n 9 || { echo "[deploy-full] another deployment is already running" >&2; exit 1; }
+fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"

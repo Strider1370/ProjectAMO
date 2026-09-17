@@ -17,8 +17,15 @@ if [ "${PROJECTAMO_DEPLOY_LOCK_TEST:-}" = "1" ]; then
       ;;
   esac
 fi
-exec 9>"${deploy_lock_file}"
-flock -n 9 || { echo "[deploy] another deployment is already running" >&2; exit 1; }
+# `exec bash` below inherits FD 9. Reopening it after the re-exec releases the
+# original lock before the new descriptor is acquired, which makes a single
+# deploy reject itself. Re-lock the inherited open-file description instead.
+if [ "${PROJECTAMO_DEPLOY_REEXEC:-}" = "1" ]; then
+  flock -n 9 || { echo "[deploy] deployment lock was not inherited" >&2; exit 1; }
+else
+  exec 9>"${deploy_lock_file}"
+  flock -n 9 || { echo "[deploy] another deployment is already running" >&2; exit 1; }
+fi
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"

@@ -44,6 +44,17 @@ for deploy_script in deploy-vm.sh deploy-vm-full.sh; do
   test ! -e "$marker_file"
 done
 
+# The scripts update themselves after pull. Their re-exec must retain the
+# original lock descriptor, otherwise the new script rejects its own deploy.
+for deploy_script in deploy-vm.sh deploy-vm-full.sh; do
+  set +e
+  PROJECTAMO_DEPLOY_REEXEC=1 bash "$repo_root/deploy/$deploy_script" >/dev/null 2>&1
+  status=$?
+  set -e
+  test "$status" -ne 0 # FD 9 is absent in this direct invocation.
+done
+
+
 # The test-only route must reject arbitrary paths before the redirection that
 # opens a lock file.  This keeps an inherited test variable from creating or
 # truncating a caller-selected path.
