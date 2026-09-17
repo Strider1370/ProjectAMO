@@ -25,7 +25,7 @@
     "test:backend": "npm --prefix backend test",
     "test:frontend": "npm --prefix frontend test",
     "test:shared": "node --test shared/*.test.js",
-    "test:offline": "npm run test:shared && node --test scripts/projectamo-dev.test.mjs scripts/installation-contract.test.mjs && node --test deploy/test-nginx-rate-limit.mjs && bash deploy/test-deploy-lock.sh && bash deploy/test-build-frontend-retention.sh",
+    "test:offline": "npm run test:shared && node --test scripts/projectamo-dev.test.mjs scripts/installation-contract.test.mjs && node --test deploy/test-nginx-rate-limit.mjs && bash deploy/test-deploy-lock.sh && bash deploy/test-atomic-exchange.sh && bash deploy/test-build-frontend-retention.sh",
     "test:python:unittest": "python3 -m unittest discover -s scripts -p 'test_aip_enr*_poc.py'",
     "test:python:main": "python3 scripts/test_build_aip_change_candidates.py && python3 scripts/test_inspect_airac_amendment.py",
     "test:prototype": "npm --prefix prototypes/destination-weather-comparison run build && npm --prefix prototypes/destination-weather-comparison run test:sites",

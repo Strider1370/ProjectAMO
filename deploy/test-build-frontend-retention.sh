@@ -12,7 +12,7 @@ trap cleanup EXIT
 make_fixture() {
   local fixture_root="$1"
   mkdir -p "$fixture_root/deploy" "$fixture_root/frontend/dist/assets" "$fixture_root/bin"
-  cp "$repo_root/deploy/build-frontend.sh" "$fixture_root/deploy/"
+  cp "$repo_root/deploy/build-frontend.sh" "$repo_root/deploy/atomic-exchange.py" "$fixture_root/deploy/"
   printf 'old index\n' > "$fixture_root/frontend/dist/index.html"
   printf 'old lazy chunk\n' > "$fixture_root/frontend/dist/assets/old-lazy.js"
   cat > "$fixture_root/bin/npm" <<'EOF'
@@ -40,41 +40,16 @@ printf 'new index\n' > "$out_dir/index.html"
 printf 'new lazy chunk\n' > "$out_dir/assets/new-lazy.js"
 EOF
   chmod +x "$fixture_root/bin/npm"
-cat > "$fixture_root/bin/mv" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-/bin/mv "$@"
-
-# The build script probes support with `mv --exchange --help`.  That probe is
-# not a directory exchange, so count only an invocation whose first argument
-# is --exchange and which is not the two-argument help invocation.
-if [ "${1:-}" = '--exchange' ] \
-  && ! { [ "$#" -eq 2 ] && [ "$1" = '--exchange' ] && [ "$2" = '--help' ]; }; then
-  root="${PROJECTAMO_BUILD_TEST_ROOT:?}"
-  lazy="${PROJECTAMO_EXPECTED_LAZY:?}"
-  test -f "$root/frontend/dist/index.html"
-  test -f "$root/frontend/dist/assets/$lazy" || test -f "$root/frontend/dist.previous/assets/$lazy"
-  printf 'index-and-prior-lazy-available\n' >> "$root/swap-observations"
-fi
-EOF
-  chmod +x "$fixture_root/bin/mv"
 }
 
 run_build() {
   local fixture_root="$1"
-  local expected_lazy="$2"
-  : > "$fixture_root/swap-observations"
-  PATH="$fixture_root/bin:$PATH" \
-    PROJECTAMO_BUILD_TEST_ROOT="$fixture_root" \
-    PROJECTAMO_EXPECTED_LAZY="$expected_lazy" \
-    bash "$fixture_root/deploy/build-frontend.sh" >/dev/null
-  test "$(wc -l < "$fixture_root/swap-observations")" -eq 2
+  PATH="$fixture_root/bin:$PATH" bash "$fixture_root/deploy/build-frontend.sh" >/dev/null
 }
 
 fixture_root="$scratch_dir/first"
 make_fixture "$fixture_root"
-run_build "$fixture_root" old-lazy.js
+run_build "$fixture_root"
 
 test "$(<"$fixture_root/frontend/dist/index.html")" = 'new index'
 test "$(<"$fixture_root/frontend/dist.previous/assets/old-lazy.js")" = 'old lazy chunk'
@@ -84,7 +59,7 @@ test ! -e "$fixture_root/frontend/dist.new"
 # Retention is intentionally bounded: the next successful build replaces the
 # prior generation rather than accumulating every historical release.
 printf 'older lazy chunk\n' > "$fixture_root/frontend/dist.previous/assets/older-lazy.js"
-run_build "$fixture_root" new-lazy.js
+run_build "$fixture_root"
 test "$(<"$fixture_root/frontend/dist.previous/assets/new-lazy.js")" = 'new lazy chunk'
 test ! -e "$fixture_root/frontend/dist.previous/assets/older-lazy.js"
 

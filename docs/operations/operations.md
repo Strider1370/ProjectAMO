@@ -123,7 +123,7 @@ Current incremental keys:
 - Hashed frontend build assets: `public, max-age=31536000, immutable`
 - `index.html`: `no-cache`
 - Navdata / geojson / topojson / symbols: `public, max-age=31536000, immutable`
-- `deploy/build-frontend.sh` builds `frontend/dist.new` first and verifies `index.html`. It then uses same-filesystem atomic directory exchanges so `dist/index.html` is never absent and `dist.previous` always retains the immediately prior lazy assets; nginx may fall back to that directory for a missing immutable `/assets/` request only, so an already-open tab can load one old lazy chunk after deployment. It never serves a previous `index.html` or runtime data. The next successful deployment replaces the retained generation, so a tab older than one deployment must reload. This is a static deployment contract; verify the installed nginx configuration before relying on it.
+- `deploy/build-frontend.sh` builds `frontend/dist.new` first and verifies `index.html`. It then uses Linux `renameat2` same-filesystem atomic directory exchanges so `dist/index.html` is never absent and `dist.previous` always retains the immediately prior lazy assets; nginx may fall back to that directory for a missing immutable `/assets/` request only, so an already-open tab can load one old lazy chunk after deployment. It never serves a previous `index.html` or runtime data. The next successful deployment replaces the retained generation, so a tab older than one deployment must reload. This is a static deployment contract; verify the installed nginx configuration before relying on it.
 
 ## PM2
 

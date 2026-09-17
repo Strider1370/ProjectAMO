@@ -11,7 +11,7 @@
 #   걸려 죽었다. 스왑 2GB가 받쳐 주므로 한도를 올려 준다. 이래도 계속 죽으면 빌드를 서버
 #   밖으로 빼야 한다(로컬 빌드 또는 CI).
 #
-#   교체는 GNU mv의 Linux renameat2(RENAME_EXCHANGE)를 쓴다. dist와
+#   교체는 Linux renameat2(RENAME_EXCHANGE)를 쓴다. dist와
 #   dist.previous를 먼저 교환하면 이전 index/asset 세트가 계속 둘 중 하나에
 #   남고, 새 staging과 dist를 교환하면 어느 이름도 비는 순간이 없다.
 set -euo pipefail
@@ -34,10 +34,12 @@ NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}" \
 
 echo "[build] swapping in the new build..."
 
-if [ -d "${DIST}" ] && ! mv --exchange --help >/dev/null 2>&1; then
-  echo "[build] GNU mv --exchange 지원이 필요하다 — 기존 dist를 유지한다" >&2
-  exit 1
-fi
+atomic_exchange() {
+  # Amazon Linux 2023's coreutils 8.32 lacks `mv --exchange`, but its glibc
+  # exposes the same Linux renameat2 syscall. Keep this as one operation;
+  # two ordinary renames can make index.html briefly disappear from nginx.
+  python3 "${SCRIPT_DIR}/atomic-exchange.py" "$1" "$2"
+}
 
 # A first deployment from an old layout has no dist.previous yet. Make a
 # complete same-filesystem copy before touching dist, so the two atomic
@@ -54,11 +56,11 @@ if [ -d "${DIST}" ] && [ -e "${PREVIOUS}" ]; then
   # one nginx still has a complete index at dist and the just-current lazy
   # chunks at dist.previous; after the second, dist is the new build and
   # dist.previous is exactly the immediately preceding build.
-  mv --exchange -T "${DIST}" "${PREVIOUS}"
-  if ! mv --exchange -T "${STAGING}" "${DIST}"; then
+  atomic_exchange "${DIST}" "${PREVIOUS}"
+  if ! atomic_exchange "${STAGING}" "${DIST}"; then
     # Do not leave a rare second-rename failure serving the older retained
     # generation: restore the original live dist before reporting failure.
-    mv --exchange -T "${DIST}" "${PREVIOUS}" || true
+    atomic_exchange "${DIST}" "${PREVIOUS}" || true
     exit 1
   fi
   rm -rf "${STAGING}"
