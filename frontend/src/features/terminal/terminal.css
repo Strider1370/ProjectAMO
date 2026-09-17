@@ -595,7 +595,7 @@ body { min-height: 100vh; overflow: hidden; }
 
 /* 2안·3안의 현재 날씨는 같은 정보 구조를 쓴다. 큰 배경은 상태의 분위기만 보태고,
    실제 판단은 항상 수치·라벨·상태 문구로 한다. */
-.tw-current-weather--terminal { position: relative; grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; gap: 4px; overflow: hidden; padding: 22px var(--terminal-safe-side) 18px; background: #f2f7ff; isolation: isolate; }
+.tw-current-weather--terminal { position: relative; grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; row-gap: 12px; column-gap: 4px; overflow: hidden; padding: 22px var(--terminal-safe-side) 18px; background: #f2f7ff; isolation: isolate; }
 .tw-current-weather--terminal::before,
 .tw-current-weather--terminal::after { position: absolute; z-index: -1; content: ""; pointer-events: none; }
 .tw-current-weather--terminal::before { top: -112px; right: -86px; width: 330px; height: 330px; border-radius: 50%; background: #ffd866; opacity: .22; box-shadow: -118px 156px 0 40px rgb(255 255 255 / 38%); }
@@ -609,13 +609,14 @@ body { min-height: 100vh; overflow: hidden; }
 .tw-current-weather--terminal .tw-current-local-clock,
 .tw-current-weather--terminal .tw-current-weather-main,
 .tw-current-weather--terminal .tw-current-metrics { position: relative; z-index: 1; }
+.tw-current-weather--terminal .tw-current-city { margin-bottom: 22px; }
 .tw-current-weather--terminal .tw-current-city strong { font-size: 48px; }
 .tw-current-weather--terminal .tw-current-local-clock { margin: 0; color: var(--terminal-text-secondary); font-size: 21px; font-weight: 700; }
 .tw-current-weather--terminal .tw-current-local-clock time { margin-left: 14px; font-family: var(--terminal-font-time); }
 .tw-current-weather--terminal .tw-current-weather-main { align-self: center; gap: 46px; padding-left: 22px; }
 .tw-current-weather--terminal .tw-current-weather-icon,
 .tw-current-weather--terminal .tw-current-weather-icon img { width: 122px; height: 122px; flex-basis: 122px; }
-.tw-current-weather--terminal .tw-current-weather-temp { margin-top: 4px; font-size: 94px; }
+.tw-current-weather--terminal .tw-current-weather-temp { margin-top: 8px; font-size: 94px; }
 .tw-current-weather--terminal .tw-current-weather-temp small { font-size: 34px; }
 .tw-current-weather--terminal .tw-current-weather-detail { margin-top: 6px; font-size: 27px; }
 .tw-current-weather--terminal .tw-current-gap { margin: 6px 0 0; color: #2f6fd6; font-size: 22px; font-weight: 800; line-height: 1.25; }

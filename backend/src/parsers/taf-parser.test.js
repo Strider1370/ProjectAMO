@@ -13,6 +13,12 @@ test('IWXXM no-significant-weather 변화군을 NSW TAC으로 재구성한다', 
         <iwxxm:validPeriod><gml:TimePeriod><gml:beginPosition>2026-08-23T03:00:00Z</gml:beginPosition><gml:endPosition>2026-08-24T03:00:00Z</gml:endPosition></gml:TimePeriod></iwxxm:validPeriod>
         <iwxxm:baseForecast><iwxxm:MeteorologicalAerodromeForecast>
           <iwxxm:weather xlink:href="https://codes.example/RA"/>
+          <iwxxm:temperature><iwxxm:AerodromeAirTemperatureForecast>
+            <iwxxm:maximumAirTemperature uom="Cel">25</iwxxm:maximumAirTemperature>
+            <iwxxm:maximumAirTemperatureTime><gml:TimeInstant><gml:timePosition>2026-08-23T15:00:00Z</gml:timePosition></gml:TimeInstant></iwxxm:maximumAirTemperatureTime>
+            <iwxxm:minimumAirTemperature uom="Cel">-3</iwxxm:minimumAirTemperature>
+            <iwxxm:minimumAirTemperatureTime><gml:TimeInstant><gml:timePosition>2026-08-24T00:00:00Z</gml:timePosition></gml:TimeInstant></iwxxm:minimumAirTemperatureTime>
+          </iwxxm:AerodromeAirTemperatureForecast></iwxxm:temperature>
         </iwxxm:MeteorologicalAerodromeForecast></iwxxm:baseForecast>
         <iwxxm:changeForecast><iwxxm:MeteorologicalAerodromeForecast changeIndicator="BECOMING">
           <iwxxm:phenomenonTime><gml:TimePeriod><gml:beginPosition>2026-08-23T09:00:00Z</gml:beginPosition><gml:endPosition>2026-08-23T11:00:00Z</gml:endPosition></gml:TimePeriod></iwxxm:phenomenonTime>
@@ -24,4 +30,5 @@ test('IWXXM no-significant-weather 변화군을 NSW TAC으로 재구성한다', 
 
   assert.equal(taf.change_groups[0].nsw_flag, true)
   assert.match(buildTafTac(taf), /BECMG 2309\/2311 NSW/)
+  assert.match(buildTafTac(taf), /TX25\/2315Z TNM03\/2400Z/)
 })

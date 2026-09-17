@@ -19,7 +19,7 @@ const useStyles = makeStyles({
 
 const ROLE_KO = { pilot: '조종사', forecaster: '예보관', admin: '관리자' }
 
-// ① 조작 탭 — 시나리오 주입/복구, 스케줄러 발화, 딥링크 생성, 역할 전환. store만 in-memory로 건드림(파일 미변경).
+// ① 조작 탭 — 서버 capability가 명시적으로 허용한 테스트 인스턴스에서만 mount된다.
 export default function TriggerTab() {
   const s = useStyles()
   const { user, refresh } = useAuth()
@@ -89,16 +89,16 @@ export default function TriggerTab() {
 
       <div className={s.row}>
         <Button appearance="primary" disabled={busy || !routeId}
-          onClick={() => run(() => inject(Number(routeId), scenario), (d) => `주입 완료: ${d.dep} — 알림 ${d.firedCount}건 발화.`)}>
-          🌩 악기상 주입
+          onClick={() => run(() => inject(Number(routeId), scenario), (d) => `시나리오 적용: ${d.dep} — 이 계정 알림 ${d.firedCount}건 처리.`)}>
+          🌩 시나리오 적용
         </Button>
         <Button appearance="outline" disabled={busy}
-          onClick={() => run(reset, (d) => `초기화 — 실황 복구(${(d.restored ?? []).join(', ') || '없음'}) + 알림 ${d.deletedAlerts ?? 0}건 삭제.`)}>
-          ↺ 초기화 (실황 복구)
+          onClick={() => run(reset, (d) => `기준 실황으로 되돌림(${(d.restored ?? []).join(', ') || '없음'}) · 내 테스트 알림 ${d.deletedAlerts ?? 0}건 정리.`)}>
+          ↺ 기준 실황으로 되돌리기
         </Button>
         <Button disabled={busy}
-          onClick={() => run(tick, (d) => `스케줄러 tick — 평가 ${d.evaluated}건, 발화 ${d.fired}건.`)}>
-          ⏱ 스케줄러 즉시 발화
+          onClick={() => run(tick, (d) => `현재 실제 시각으로 자동 평가 ${d.evaluated}건 실행 · 발화 ${d.fired}건.`)}>
+          ⏱ 전체 자동 평가 실행
         </Button>
         <Button appearance="subtle" disabled={busy}
           onClick={() => run(clearAlerts, (d) => `알림 ${d.deleted}건 삭제(데이터는 유지).`)}>
@@ -107,8 +107,7 @@ export default function TriggerTab() {
       </div>
 
       <div className={s.hint}>
-        <b>즉시 발화 흐름:</b> ① [스케줄러 즉시 발화]로 baseline → ② [악기상 주입] → ③ 다시 [스케줄러 즉시 발화]하면
-        실제 스케줄러가 변경을 감지해 발화(15분 대기 없이). 주입 버튼은 별도로도 알림을 바로 발화합니다.
+        시나리오 적용은 선택한 비행과 이 계정의 알림에 영향을 줍니다. 전체 자동 평가는 실제 현재 시각으로 모든 사용자의 선택 대상 비행을 평가하며, 발송 가능한 알림 경로를 사용합니다. 기준 실황으로 되돌리기는 테스트 오버레이와 내 테스트 알림을 정리합니다.
       </div>
 
       {/* 시연 모드 + 데이터 스냅샷 — 관리자 콘솔(/admin)과 같은 컴포넌트 재사용(배포 서버에서도 써야 해서 백엔드는 /api/admin/*). */}

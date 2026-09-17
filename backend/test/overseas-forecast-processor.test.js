@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { extractOverseasSlots, symbolToIcon } from '../src/processors/overseas-forecast-processor.js'
+import { activeCollectionTypes, abortActiveCollections, runWithLock } from '../src/index.js'
+import { extractOverseasSlots, process, symbolToIcon } from '../src/processors/overseas-forecast-processor.js'
 
 // 2026-08-03 도쿄 하네다(RJTT) 좌표로 받은 MET Norway 실제 응답.
 const HANEDA = JSON.parse(readFileSync(new URL('./fixtures/met-no-rjtt.json', import.meta.url), 'utf8'))
@@ -101,4 +102,108 @@ test('기본으로 3일치(72칸)까지 담는다', () => {
     data: { instant: { details: { air_temperature: 20 } } },
   }))
   assert.equal(extractOverseasSlots({ properties: { timeseries } }).length, 72)
+})
+
+const airport = (icao) => ({ icao, lat: 35, lon: 129 })
+const hourly = [{ date: '20260912', time: '1200', temp: 22, icon: 'sun' }]
+
+test('취소된 수집은 빈 자료나 부분 자료를 게시하지 않는다', async () => {
+  for (const abortAt of ['before', 'after-first']) {
+    const controller = new AbortController()
+    let saves = 0
+    if (abortAt === 'before') controller.abort(new Error('transition'))
+    await assert.rejects(process({
+      signal: controller.signal,
+      airportsToCollect: [airport('RJAA'), airport('RJBB')],
+      fetchAirportForecast: async () => hourly,
+      wait: async () => {
+        if (abortAt === 'after-first') controller.abort(new Error('transition'))
+      },
+      dataStore: {
+        getLiveCached: () => ({ airports: { RJAA: { icao: 'RJAA', hourly } } }),
+        save: () => { saves += 1; return { saved: true } },
+      },
+    }), /transition/)
+    assert.equal(saves, 0)
+  }
+})
+
+test('기본 MET Norway 전송도 진행 중 취소 신호를 받고 게시하지 않는다', async () => {
+  const originalFetch = globalThis.fetch
+  const controller = new AbortController()
+  let requestSignal
+  let saves = 0
+  globalThis.fetch = async (_url, { signal }) => new Promise((_resolve, reject) => {
+    requestSignal = signal
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+  })
+
+  try {
+    const collecting = process({
+      signal: controller.signal,
+      airportsToCollect: [airport('RJAA')],
+      wait: async () => {},
+      dataStore: {
+        getLiveCached: () => ({ airports: { RJAA: { icao: 'RJAA', hourly } } }),
+        save: () => { saves += 1; return { saved: true } },
+      },
+    })
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.ok(requestSignal, 'MET Norway 전송에 취소 신호가 전달되어야 한다')
+
+    controller.abort(new Error('transport cancelled'))
+    await assert.rejects(collecting, /transport cancelled/)
+    assert.equal(saves, 0)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('정상 부분 성공은 실패 공항의 마지막 live 자료를 stale로 보존해 게시한다', async () => {
+  let saved
+  const previous = { icao: 'RJBB', hourly, daily: [] }
+  const result = await process({
+    airportsToCollect: [airport('RJAA'), airport('RJBB')],
+    fetchAirportForecast: async ({ icao }) => {
+      if (icao === 'RJBB') throw new Error('provider failed')
+      return hourly
+    },
+    wait: async () => {},
+    dataStore: {
+      getLiveCached: () => ({ airports: { RJBB: previous } }),
+      save: (_type, payload) => { saved = payload; return { saved: true } },
+    },
+  })
+  assert.equal(result.saved, true)
+  assert.deepEqual(result.failed, ['RJBB'])
+  assert.equal(saved.airports.RJAA.icao, 'RJAA')
+  assert.deepEqual(saved.airports.RJBB, { ...previous, _stale: true })
+})
+
+test('상위 실행 경계는 해외 예보 취소를 skip 통계로 남기고 lock을 해제한다', async () => {
+  const events = []
+  const recorder = {
+    recordStart: () => ({ started: true }),
+    recordSkip: (_type, reason) => events.push(['skip', reason]),
+    recordSuccess: () => events.push(['success']),
+    recordFailure: () => events.push(['failure']),
+  }
+  let started
+  const ready = new Promise((resolve) => { started = resolve })
+  const running = runWithLock('overseas_forecast', ({ signal }) => process({
+    signal,
+    airportsToCollect: [airport('RJAA')],
+    fetchAirportForecast: (_airport, { signal: requestSignal }) => new Promise((_resolve, reject) => {
+      started()
+      requestSignal.addEventListener('abort', () => reject(requestSignal.reason), { once: true })
+    }),
+    wait: async () => {},
+    dataStore: { getLiveCached: () => null, save: () => ({ saved: true }) },
+  }), { stats: recorder, logger: { info() {}, warn() {}, error() {} } })
+  await ready
+  assert.deepEqual(activeCollectionTypes(), ['overseas_forecast'])
+  await abortActiveCollections()
+  await running
+  assert.deepEqual(events, [['skip', 'collection_cancelled_for_data_transition']])
+  assert.deepEqual(activeCollectionTypes(), [])
 })

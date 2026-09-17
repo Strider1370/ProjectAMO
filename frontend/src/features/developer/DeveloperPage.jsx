@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TabList, Tab, MessageBar, MessageBarBody, Spinner, Link, makeStyles, tokens } from '../../shared/ui/fluent.js'
-import { getHealth } from './developerApi.js'
+import { getRuntimeCapabilities } from '../admin/adminApi.js'
 import TriggerTab from './tabs/TriggerTab.jsx'
 import ObserveTab from './tabs/ObserveTab.jsx'
 
@@ -16,13 +16,13 @@ const useStyles = makeStyles({
 export default function DeveloperPage() {
   const s = useStyles()
   const [tab, setTab] = useState('trigger')
-  const [testMode, setTestMode] = useState(null) // null=확인중
+  const [testMutations, setTestMutations] = useState(null) // null=확인중
 
   useEffect(() => {
-    getHealth().then((d) => setTestMode(!!d.testMode)).catch(() => setTestMode(false))
+    getRuntimeCapabilities().then((d) => setTestMutations(d.testMutations)).catch(() => setTestMutations(false))
   }, [])
 
-  if (testMode === null) return <div className={s.page}><Spinner label="확인 중…" /></div>
+  if (testMutations === null) return <div className={s.page}><Spinner label="확인 중…" /></div>
 
   return (
     <div className={s.page}>
@@ -31,11 +31,10 @@ export default function DeveloperPage() {
         <span className={s.sub}>조작 + 관찰 · 테스트 인스턴스 전용</span>
       </div>
 
-      {!testMode ? (
+      {!testMutations ? (
         <MessageBar intent="warning">
           <MessageBarBody>
-            테스트 인스턴스에서만 동작합니다. <code>npm run dev:test</code>로 서버를 띄운 뒤 다시 접속하세요.
-            (일반 모드에선 주입이 자동수집에 되돌려져 무의미하므로 백엔드가 dev API를 아예 열지 않습니다.)
+            이 환경에서는 테스트 조작이 허용되지 않았습니다. 시연 모드는 관리자 콘솔의 “시연 모드”에서 사용할 수 있습니다.
           </MessageBarBody>
         </MessageBar>
       ) : (

@@ -3,6 +3,7 @@ import apiClient from '../api-client.js'
 import store from '../store.js'
 import metarParser from '../parsers/metar-parser.js'
 import { buildMetarTacPresentation } from '../serializers/metar-tac.js'
+import { collectionResult } from '../collector-execution.js'
 
 async function processAll({ signal } = {}) {
   const result = {
@@ -24,6 +25,9 @@ async function processAll({ signal } = {}) {
         // 국내 IWXXM은 원문 TAC가 없음 → 파싱 결과로 재구성해 채움(외국은 이미 raw_text 보유)
         if (parsed.header) { const tac = buildMetarTacPresentation(parsed); parsed.header.raw_text = tac?.text ?? null; parsed.header.tac = tac }
         result.airports[airport.icao] = parsed;
+      } else {
+        failedAirports.push(airport.icao)
+        airportErrors[airport.icao] = 'parse_null'
       }
     } catch (error) {
       if (signal?.aborted) throw signal.reason ?? error
@@ -32,7 +36,8 @@ async function processAll({ signal } = {}) {
     }
   }
 
-  if (failedAirports.length > 0) {
+  const freshAirportCount = Object.keys(result.airports).length
+  if (freshAirportCount > 0 && failedAirports.length > 0) {
     store.mergeWithPrevious(result, "metar", failedAirports);
   }
 
@@ -46,7 +51,11 @@ async function processAll({ signal } = {}) {
     }
   }
 
-  const saveResult = store.save("metar", result);
+  const outcome = freshAirportCount === 0 ? 'failed' : (failedAirports.length > 0 ? 'partial' : 'complete')
+  const collection = collectionResult(outcome, outcome === 'failed' ? null : result, {
+    reason: outcome === 'failed' ? 'no_usable_metar_reports' : null,
+  })
+  const saveResult = store.publishCollection("metar", collection);
   return {
     type: "metar",
     saved: saveResult.saved,
@@ -54,7 +63,8 @@ async function processAll({ signal } = {}) {
     total: Object.keys(result.airports).length,
     failedAirports,
     airportErrors,
-    airportObsTimes
+    airportObsTimes,
+    collection,
   };
 }
 

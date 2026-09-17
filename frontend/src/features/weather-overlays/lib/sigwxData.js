@@ -44,6 +44,20 @@ function normalizeText(value) {
   return String(value || '').replace(/&#10;/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+function chartMarker(item) {
+  const contour = String(item?.contour_name || '').toLowerCase()
+  const name = String(item?.item_name || '').toLowerCase()
+  const kind = contour === 'sfc_wind' && name === 'wind_strong' ? 'wind'
+    : contour === 'cld' && name === 'cloud' && Number(item?.item_type) === 4 ? 'cloud-label'
+    : Number(item?.item_type) === 7 && ['moderate_turbulence', 'severe_turbulence'].includes(name)
+      ? `turbulence-${name.startsWith('severe') ? 'severe' : 'moderate'}` : null
+  if (!kind) return null
+  const text = kind === 'wind' ? normalizeText(item?.label)
+    : String(item?.label || '').replace(/&#(?:10|x0*a);/gi, '\n').replace(/\r\n?/g, '\n')
+      .split('\n').map(line => line.trim()).filter(Boolean).join('\n')
+  return text || kind.startsWith('turbulence-') ? { id: `sigwx-${kind}-${encodeURIComponent(text)}`, kind, text } : null
+}
+
 function fpvPointToLngLat(x, y, source) {
   const width = Number(source?.fpv_safe_bound_width)
   const height = Number(source?.fpv_safe_bound_height)
@@ -103,8 +117,6 @@ function chaikinPass(points, isClosed) {
 
   if (!isClosed) {
     next.push(points[points.length - 1])
-  } else if (next.length > 0) {
-    next.push(next[0])
   }
 
   return next
@@ -116,7 +128,8 @@ function smoothSigwxCoords(coords, tension = 0, isClosed = false) {
   }
 
   const iterations = Math.max(1, Math.min(3, Math.round(1 + (2 * Math.max(0, Math.min(1, tension))))))
-  let current = isClosed ? [...coords, coords[0]] : [...coords]
+  let current = [...coords]
+  if (isClosed && current[0][0] === current.at(-1)[0] && current[0][1] === current.at(-1)[1]) current.pop()
   for (let i = 0; i < iterations; i += 1) {
     current = chaikinPass(current, isClosed)
   }
@@ -124,18 +137,24 @@ function smoothSigwxCoords(coords, tension = 0, isClosed = false) {
 }
 
 function labelPosition(item, source, coords) {
+  // The coupled turbulence graphic is centered on the symbol, not its text box.
+  if (chartMarker(item)?.kind.startsWith('turbulence-')) {
+    const point = item?.fpv_points?.[0]
+    return fpvPointToLngLat(point?.x, point?.y, source) || coords[0] || null
+  }
   const rect = item?.rect_label
   if (rect && Number.isFinite(rect.left) && Number.isFinite(rect.top) && Number.isFinite(rect.width) && Number.isFinite(rect.height)) {
     return fpvPointToLngLat(rect.left + rect.width / 2, rect.top + rect.height / 2, source) || centerOfCoords(coords)
   }
 
   const fpvPoints = Array.isArray(item?.fpv_points) ? item.fpv_points.filter((point) => Number.isFinite(point?.x) && Number.isFinite(point?.y)) : []
-  if (fpvPoints.length === 0) return centerOfCoords(coords)
+  const pointSymbol = [7, 8].includes(Number(item?.item_type))
+  if (fpvPoints.length === 0) return pointSymbol ? coords[0] || null : centerOfCoords(coords)
 
   const labelPos = Number(item?.label_pos_pt)
   const anchor = Number.isInteger(labelPos) && labelPos >= 0 && labelPos < fpvPoints.length
     ? fpvPoints[labelPos]
-    : {
+    : pointSymbol ? fpvPoints[0] : {
         x: fpvPoints.reduce((sum, point) => sum + point.x, 0) / fpvPoints.length,
         y: fpvPoints.reduce((sum, point) => sum + point.y, 0) / fpvPoints.length,
       }
@@ -223,6 +242,7 @@ function needsPath(item) {
 }
 
 function iconFileName(item) {
+  if (String(item?.item_name || '').toLowerCase() === 'wind_strong') return null
   const candidates = [
     item?.icon_name,
     ...(Array.isArray(item?.icon_tokens) ? item.icon_tokens : []),
@@ -297,6 +317,7 @@ function lineTypeForMapbox(item) {
 
 function featureProperties(item, index) {
   const fileName = iconFileName(item)
+  const marker = chartMarker(item)
   const label = sigwxLabel(item)
   const altitudeParts = sigwxAltitudeParts(item)
   return {
@@ -310,10 +331,13 @@ function featureProperties(item, index) {
     colorBack: item?.color_back || '#a78bfa',
     lineWidth: Number(item?.line_width) || 2,
     lineType: lineTypeForMapbox(item),
-    isFill: Boolean(item?.is_fill || item?.is_close),
-    iconKey: fileName ? `sigwx-${fileName}` : '',
+    isFill: Boolean(item?.is_fill),
+    iconKey: marker?.id || (fileName ? `sigwx-${fileName}` : ''),
     iconUrl: fileName ? sigwxAssetUrl(fileName) : '',
-    iconScale: String(item?.contour_name || '').toLowerCase() === 'freezing_level' ? 0.6 : 0.52,
+    markerKind: marker?.kind || '',
+    markerText: marker?.text || '',
+    iconScale: marker ? 1 : String(item?.contour_name || '').toLowerCase() === 'freezing_level' ? 0.6
+      : ['rain', 'rain_kor', 'shower_rain'].includes(String(item?.item_name || '').toLowerCase()) ? 0.3 : 0.52,
     filterKey: getSigwxFilterKey(item?.contour_name, item),
     overlayRole: overlayRoleForItem(item),
     chipText: contourChipText(item),
@@ -344,6 +368,8 @@ function contourChipTone(item) {
 
 function shouldRenderTextChip(item) {
   const contour = String(item?.contour_name || '').toLowerCase()
+  if (getSigwxFilterKey(contour, item) === 'turbulence') return false
+  if (contour === 'sfc_vis' && !normalizeText(item?.label)) return false
   if (needsLabelMarker(item) && iconFileName(item)) return false
   return contour === 'freezing_level'
     || contour === 'sfc_vis'
@@ -360,6 +386,10 @@ function shouldRenderArrowLabel(item) {
 
 function shouldRenderGenericLabel(item) {
   const contour = String(item?.contour_name || '').toLowerCase()
+  if (chartMarker(item)) return false
+  if (getSigwxFilterKey(contour, item) === 'turbulence' && !normalizeText(item?.label)) return false
+  // item_name/text_label fallbacks name the object, not text authored on the chart.
+  if (['sfc_wind', 'sfc_vis', 'cld'].includes(contour) && !normalizeText(item?.label)) return false
   if (shouldRenderTextChip(item) || shouldRenderArrowLabel(item)) return false
   if (contour === 'font_line' || contour === 'pressure') return normalizeText(item?.label || item?.text_label).length > 0
   return true
@@ -402,6 +432,42 @@ function buildPathGeometry(coords, closed, tension = 0) {
   return null
 }
 
+function coupleVisibilitySymbolRows(entries) {
+  // The feed has no set ID. Only couple this recognizable three-symbol row
+  // immediately following a labelled visibility area, using chart coordinates
+  // (never current map zoom or screen-space proximity).
+  const names = ['rain', 'widespread_fog', 'widespread_mist']
+  entries.forEach((area, index) => {
+    const rect = area.item.rect_label
+    if (area.contour !== 'sfc_vis' || !area.closed || !normalizeText(area.item.label)
+      || !rect || ![rect.left, rect.top, rect.width, rect.height].every(Number.isFinite)) return
+    const row = entries.slice(index + 1, index + 4)
+    if (row.length !== 3 || !row.every((entry, i) => entry.contour === 'sfc_vis'
+      && Number(entry.item.item_type) === 7 && String(entry.item.item_name).toLowerCase() === names[i]
+      && !normalizeText(entry.item.label) && entry.labelPoint && !entry.symbolSetHidden)) return
+    const points = row.map(entry => entry.item.fpv_points?.[0])
+    const end = row[1].item.fpv_points?.[1]
+    if (!points.every(p => Number.isFinite(p?.x) && Number.isFinite(p?.y)) || !Number.isFinite(end?.x)) return
+    const size = Math.abs(end.x - points[1].x)
+    if (!(size > 0) || points.some(p => Math.abs(p.y - points[1].y) > size * 0.5)
+      || points.slice(1).some((p, i) => p.x <= points[i].x || p.x - points[i].x > size * 3)
+      || Math.abs(points[1].x - (rect.left + rect.width / 2)) > size * 2
+      || points[1].y < rect.top + rect.height || points[1].y - (rect.top + rect.height) > size * 3) return
+    row.forEach((entry, i) => {
+      entry.groupKey = area.groupKey
+      entry.groupLabel = area.groupLabel
+      entry.properties = { ...entry.properties, groupKey: area.groupKey, groupLabel: area.groupLabel }
+      entry.symbolSetHidden = i !== 1
+    })
+    // The middle symbol's original geographic anchor stays unchanged.
+    row[1].properties = {
+      ...row[1].properties,
+      iconKey: 'sigwx-visibility-rain-fog-mist-v1', iconUrl: '', iconScale: 1,
+      markerKind: 'visibility-set', markerText: '', symbolMembers: row.map(entry => entry.properties.id),
+    }
+  })
+}
+
 export function sigwxLowToMapboxData(payload, options = {}) {
   const source = payload?.source || payload
   const items = Array.isArray(payload?.items) ? payload.items : []
@@ -439,9 +505,11 @@ export function sigwxLowToMapboxData(payload, options = {}) {
       },
     }
 
-    registerGroup(groups, enriched)
     return enriched
   })
+
+  coupleVisibilitySymbolRows(enrichedItems)
+  enrichedItems.forEach(entry => registerGroup(groups, entry))
 
   const groupList = [...groups.values()].map((group) => ({
     ...group,
@@ -463,6 +531,7 @@ export function sigwxLowToMapboxData(payload, options = {}) {
   const textChipFeatures = []
 
   enrichedItems.forEach((entry) => {
+    if (entry.symbolSetHidden) return
     if (entry.coords.length === 0) return
     if (!visibleGroupKeys.has(entry.groupKey)) return
 
@@ -510,14 +579,16 @@ export function sigwxLowToMapboxData(payload, options = {}) {
       })
     }
 
-    if (needsLabelMarker(item) && labelPoint && properties.iconKey && properties.iconUrl) {
+    if ((needsLabelMarker(item) || properties.markerKind) && labelPoint && properties.iconKey && (properties.iconUrl || properties.markerKind)) {
       iconFeatures.push({
         type: 'Feature',
         id: `${properties.id}-icon`,
         properties,
         geometry: { type: 'Point', coordinates: labelPoint },
       })
-      iconImages.set(properties.iconKey, properties.iconUrl)
+      iconImages.set(properties.iconKey, properties.markerKind
+        ? { id: properties.iconKey, kind: properties.markerKind, text: properties.markerText }
+        : { id: properties.iconKey, url: properties.iconUrl })
     }
   })
 
@@ -528,7 +599,7 @@ export function sigwxLowToMapboxData(payload, options = {}) {
     icons: { type: 'FeatureCollection', features: iconFeatures },
     arrowLabels: { type: 'FeatureCollection', features: arrowLabelFeatures },
     textChips: { type: 'FeatureCollection', features: textChipFeatures },
-    iconImages: [...iconImages.entries()].map(([id, url]) => ({ id, url })),
+    iconImages: [...iconImages.values()],
     groups: groupList,
   }
 }

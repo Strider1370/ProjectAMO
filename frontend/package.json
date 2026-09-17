@@ -15,7 +15,7 @@
     "build": "NODE_ENV=production vite build",
     "test": "npm run fonts:check && node --test",
     "dev:contract": "node verification/port-guard.mjs && playwright test",
-    "dev:contract:fast": "CONTRACT_REUSE_SERVER=1 playwright test --project=desktop --retries=0",
+    "dev:contract:fast": "CONTRACT_REUSE_SERVER=1 CONTRACT_DATA_PATH=${DATA_PATH:-../backend/data} playwright test --project=desktop --retries=0",
     "smoke:responsive": "node scripts/responsive-smoke.mjs",
     "screenshots:responsive": "node scripts/responsive-screenshots.mjs",
     "capture:monitoring-ground-signage": "node scripts/monitoring-ground-signage-capture.mjs",

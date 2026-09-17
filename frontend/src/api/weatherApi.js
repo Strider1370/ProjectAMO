@@ -30,7 +30,7 @@ async function fetchJson(url, { optional = false, signal } = {}) {
       ? await fetch(url, { signal, ...(KMA_RADAR_GRAPHICS_META.test(url) ? { cache: 'no-store' } : {}) })
       : await fetchJsonWithXhr(url)
     if (!res.ok) throw new Error(`${url} ??HTTP ${res.status}`)
-    return res.json()
+    return await res.json()
   } catch (error) {
     if (optional === 'preserve') return undefined
     if (optional) return null
@@ -70,8 +70,8 @@ function normalizeAirports(airports) {
 
 // Overseas airport navdata is used only for map/search metadata.
 // Weather payloads remain separate as metarOverseas/tafOverseas/sigmetOverseas.
-async function loadOverseasAirportList() {
-  const data = await fetchJson('/data/navdata/airports-overseas.json', { optional: true })
+async function loadOverseasAirportList({ signal } = {}) {
+  const data = await fetchJson('/data/navdata/airports-overseas.json', { optional: true, signal })
   if (!data || typeof data !== 'object') return []
   return Object.values(data)
     .filter((a) => a && Number.isFinite(a.coordinates?.lat) && Number.isFinite(a.coordinates?.lon))
@@ -140,9 +140,17 @@ export function buildSnapshotMetaFromData(data = {}) {
     rainviewerMeta: data.rainviewerMeta?.tm ? { tm: data.rainviewerMeta.tm } : null,
     satMeta: data.satMeta?.tm ? { tm: data.satMeta.tm } : null,
     satVisibleMeta: data.satVisibleMeta?.tm ? { tm: data.satVisibleMeta.tm } : null,
+    convectiveMeta: buildFrameHashEntry(data.convectiveMeta),
     sigwxFrontMeta: buildOverlayMetaEntry(data.sigwxFrontMeta),
     sigwxCloudMeta: buildOverlayMetaEntry(data.sigwxCloudMeta),
   }
+}
+
+function buildFrameHashEntry(meta) {
+  const tm = meta?.tm
+  const hash = meta?.content_hash || meta?.hash
+  if (!tm && !hash) return null
+  return { ...(tm ? { tm } : {}), ...(hash ? { hash } : {}) }
 }
 
 function buildGraphicsMetaEntry(meta) {
@@ -165,7 +173,8 @@ function buildOverlayMetaEntry(meta) {
   }
 }
 
-export async function loadWeatherData() {
+export async function loadWeatherData({ signal } = {}) {
+  const optionalJson = (url) => fetchJson(url, { optional: true, signal })
   const [
     airports, metar, taf, amos, warning, kmaSpecialWarning,
     sigmet, airmet, lightning,
@@ -173,33 +182,33 @@ export async function loadWeatherData() {
     groundForecast, notam, overseasAirports,
     metarOverseas, tafOverseas, sigmetOverseas,
   ] = await Promise.all([
-    fetchJson('/api/airports', { optional: true }),
-    fetchJson('/api/metar', { optional: true }),
-    fetchJson('/api/taf', { optional: true }),
-    fetchJson('/api/amos', { optional: true }),
-    fetchJson('/api/warning', { optional: true }),
-    fetchJson('/api/kma-special-warning', { optional: true }),
-    fetchJson('/api/sigmet', { optional: true }),
-    fetchJson('/api/airmet', { optional: true }),
-    fetchJson('/api/lightning', { optional: true }),
-    fetchJson('/data/radar/wissdom/wissdom_meta.json', { optional: true }),
-    fetchJson('/data/radar/qpf/qpf_meta.json', { optional: true }),
-    fetchJson('/data/radar/hsr/hsr_meta.json', { optional: true }),
-    fetchJson('/data/radar/hci/hci_meta.json', { optional: true }),
-    fetchJson('/data/radar/echotop/echotop_meta.json', { optional: true }),
-    fetchJson('/data/radar/rainviewer_meta.json', { optional: true }),
-    fetchJson('/data/satellite/sat_meta.json', { optional: true }),
-    fetchJson('/data/satellite/visible/visible_meta.json', { optional: true }),
-    fetchJson('/data/satellite/convective/convective_meta.json', { optional: true }),
-    fetchJson('/api/sigwx-low', { optional: true }),
-    fetchJson('/api/sigwx-front-meta', { optional: true }),
-    fetchJson('/api/sigwx-cloud-meta', { optional: true }),
-    fetchJson('/api/ground-forecast', { optional: true }),
-    fetchJson('/api/notam', { optional: true }),
-    loadOverseasAirportList(),
-    fetchJson('/api/metar-overseas', { optional: true }),
-    fetchJson('/api/taf-overseas', { optional: true }),
-    fetchJson('/api/sigmet-overseas', { optional: true }),
+    optionalJson('/api/airports'),
+    optionalJson('/api/metar'),
+    optionalJson('/api/taf'),
+    optionalJson('/api/amos'),
+    optionalJson('/api/warning'),
+    optionalJson('/api/kma-special-warning'),
+    optionalJson('/api/sigmet'),
+    optionalJson('/api/airmet'),
+    optionalJson('/api/lightning'),
+    optionalJson('/data/radar/wissdom/wissdom_meta.json'),
+    optionalJson('/data/radar/qpf/qpf_meta.json'),
+    optionalJson('/data/radar/hsr/hsr_meta.json'),
+    optionalJson('/data/radar/hci/hci_meta.json'),
+    optionalJson('/data/radar/echotop/echotop_meta.json'),
+    optionalJson('/data/radar/rainviewer_meta.json'),
+    optionalJson('/data/satellite/sat_meta.json'),
+    optionalJson('/data/satellite/visible/visible_meta.json'),
+    optionalJson('/data/satellite/convective/convective_meta.json'),
+    optionalJson('/api/sigwx-low'),
+    optionalJson('/api/sigwx-front-meta'),
+    optionalJson('/api/sigwx-cloud-meta'),
+    optionalJson('/api/ground-forecast'),
+    optionalJson('/api/notam'),
+    loadOverseasAirportList({ signal }),
+    optionalJson('/api/metar-overseas'),
+    optionalJson('/api/taf-overseas'),
+    optionalJson('/api/sigmet-overseas'),
   ])
 
   return {
@@ -238,16 +247,16 @@ export async function loadWeatherData() {
 }
 
 const DEFERRED_WEATHER_FETCHERS = {
-  sigwxLowHistory: () => fetchJson('/api/sigwx-low-history', { optional: true }),
-  groundOverview: () => fetchJson('/api/ground-overview', { optional: true }),
-  environment: () => fetchJson('/api/environment', { optional: true }),
-  airportInfo: () => fetchJson('/api/airport-info', { optional: true }),
-  adsb: () => (ADSB_FETCH_DISABLED ? Promise.resolve(null) : fetchJson('/api/adsb', { optional: true })),
+  sigwxLowHistory: (options) => fetchJson('/api/sigwx-low-history', { optional: true, ...options }),
+  groundOverview: (options) => fetchJson('/api/ground-overview', { optional: true, ...options }),
+  environment: (options) => fetchJson('/api/environment', { optional: true, ...options }),
+  airportInfo: (options) => fetchJson('/api/airport-info', { optional: true, ...options }),
+  adsb: (options) => (ADSB_FETCH_DISABLED ? Promise.resolve(null) : fetchJson('/api/adsb', { optional: true, ...options })),
 }
 
-export async function loadDeferredWeatherData(keys = []) {
+export async function loadDeferredWeatherData(keys = [], { signal } = {}) {
   const uniqueKeys = [...new Set(keys)].filter((key) => DEFERRED_WEATHER_FETCHERS[key])
-  const values = await Promise.all(uniqueKeys.map((key) => DEFERRED_WEATHER_FETCHERS[key]()))
+  const values = await Promise.all(uniqueKeys.map((key) => DEFERRED_WEATHER_FETCHERS[key]({ signal })))
   return Object.fromEntries(uniqueKeys.map((key, index) => [key, values[index]]))
 }
 
@@ -265,8 +274,8 @@ export async function fetchEchoTopPoint({ tm, lat, lon }, { signal } = {}) {
   return fetchJson(`/api/radar/echo-top-point?${params.toString()}`, { signal })
 }
 
-export async function fetchSnapshotMeta() {
-  return fetchJson('/api/snapshot-meta', { optional: true })
+export async function fetchSnapshotMeta({ signal } = {}) {
+  return fetchJson('/api/snapshot-meta', { optional: true, signal })
 }
 
 export async function fetchKimSurfaceWind() {
@@ -341,56 +350,56 @@ function includesDeferredKey(deferredKeys, key) {
   return deferredKeys.has?.(key) || false
 }
 
-export async function loadChangedWeatherData(changes, { deferredKeys = 'all' } = {}) {
+export async function loadChangedWeatherData(changes, { deferredKeys = 'all', signal } = {}) {
   const fetches = []
   const keys = []
+  const preserveJson = (url) => fetchJson(url, { optional: 'preserve', signal })
 
-  if (changes.metar) { fetches.push(fetchJson('/api/metar', { optional: 'preserve' })); keys.push('metar') }
-  if (changes.metarOverseas) { fetches.push(fetchJson('/api/metar-overseas', { optional: 'preserve' })); keys.push('metarOverseas') }
-  if (changes.taf) { fetches.push(fetchJson('/api/taf', { optional: 'preserve' })); keys.push('taf') }
-  if (changes.tafOverseas) { fetches.push(fetchJson('/api/taf-overseas', { optional: 'preserve' })); keys.push('tafOverseas') }
-  if (changes.warning) { fetches.push(fetchJson('/api/warning', { optional: 'preserve' })); keys.push('warning') }
-  if (changes.kmaSpecialWarning) { fetches.push(fetchJson('/api/kma-special-warning', { optional: 'preserve' })); keys.push('kmaSpecialWarning') }
-  if (changes.sigmet) { fetches.push(fetchJson('/api/sigmet', { optional: 'preserve' })); keys.push('sigmet') }
-  if (changes.sigmetOverseas) { fetches.push(fetchJson('/api/sigmet-overseas', { optional: 'preserve' })); keys.push('sigmetOverseas') }
-  if (changes.airmet) { fetches.push(fetchJson('/api/airmet', { optional: 'preserve' })); keys.push('airmet') }
+  if (changes.metar) { fetches.push(preserveJson('/api/metar')); keys.push('metar') }
+  if (changes.metarOverseas) { fetches.push(preserveJson('/api/metar-overseas')); keys.push('metarOverseas') }
+  if (changes.taf) { fetches.push(preserveJson('/api/taf')); keys.push('taf') }
+  if (changes.tafOverseas) { fetches.push(preserveJson('/api/taf-overseas')); keys.push('tafOverseas') }
+  if (changes.warning) { fetches.push(preserveJson('/api/warning')); keys.push('warning') }
+  if (changes.kmaSpecialWarning) { fetches.push(preserveJson('/api/kma-special-warning')); keys.push('kmaSpecialWarning') }
+  if (changes.sigmet) { fetches.push(preserveJson('/api/sigmet')); keys.push('sigmet') }
+  if (changes.sigmetOverseas) { fetches.push(preserveJson('/api/sigmet-overseas')); keys.push('sigmetOverseas') }
+  if (changes.airmet) { fetches.push(preserveJson('/api/airmet')); keys.push('airmet') }
   if (changes.sigwxLow) {
-    fetches.push(fetchJson('/api/sigwx-low', { optional: 'preserve' }))
+    fetches.push(preserveJson('/api/sigwx-low'))
     keys.push('sigwxLow')
     if (includesDeferredKey(deferredKeys, 'sigwxLowHistory')) {
-      fetches.push(fetchJson('/api/sigwx-low-history', { optional: 'preserve' }))
+      fetches.push(preserveJson('/api/sigwx-low-history'))
       keys.push('sigwxLowHistory')
     }
-    fetches.push(fetchJson('/api/sigwx-front-meta', { optional: 'preserve' }))
+    fetches.push(preserveJson('/api/sigwx-front-meta'))
     keys.push('sigwxFrontMeta')
-    fetches.push(fetchJson('/api/sigwx-cloud-meta', { optional: 'preserve' }))
+    fetches.push(preserveJson('/api/sigwx-cloud-meta'))
     keys.push('sigwxCloudMeta')
   }
   if (!changes.sigwxLow && changes.sigwxFrontMeta) {
-    fetches.push(fetchJson('/api/sigwx-front-meta', { optional: 'preserve' }))
+    fetches.push(preserveJson('/api/sigwx-front-meta'))
     keys.push('sigwxFrontMeta')
   }
   if (!changes.sigwxLow && changes.sigwxCloudMeta) {
-    fetches.push(fetchJson('/api/sigwx-cloud-meta', { optional: 'preserve' }))
+    fetches.push(preserveJson('/api/sigwx-cloud-meta'))
     keys.push('sigwxCloudMeta')
   }
-  if (changes.amos) { fetches.push(fetchJson('/api/amos', { optional: 'preserve' })); keys.push('amos') }
-  if (changes.notam) { fetches.push(fetchJson('/api/notam', { optional: 'preserve' })); keys.push('notam') }
-  if (changes.lightning) { fetches.push(fetchJson('/api/lightning', { optional: 'preserve' })); keys.push('lightning') }
-  if (!ADSB_FETCH_DISABLED && changes.adsb && includesDeferredKey(deferredKeys, 'adsb')) { fetches.push(fetchJson('/api/adsb', { optional: 'preserve' })); keys.push('adsb') }
-  if (changes.groundForecast) { fetches.push(fetchJson('/api/ground-forecast', { optional: 'preserve' })); keys.push('groundForecast') }
-  if (changes.groundOverview && includesDeferredKey(deferredKeys, 'groundOverview')) { fetches.push(fetchJson('/api/ground-overview', { optional: 'preserve' })); keys.push('groundOverview') }
-  if (changes.environment && includesDeferredKey(deferredKeys, 'environment')) { fetches.push(fetchJson('/api/environment', { optional: 'preserve' })); keys.push('environment') }
-  if (changes.wissdomMeta) { fetches.push(fetchJson('/data/radar/wissdom/wissdom_meta.json', { optional: 'preserve' })); keys.push('wissdomMeta') }
-  if (changes.qpfMeta) { fetches.push(fetchJson('/data/radar/qpf/qpf_meta.json', { optional: 'preserve' })); keys.push('qpfMeta') }
-  if (changes.hsrMeta) { fetches.push(fetchJson('/data/radar/hsr/hsr_meta.json', { optional: 'preserve' })); keys.push('hsrMeta') }
-  if (changes.hciMeta) { fetches.push(fetchJson('/data/radar/hci/hci_meta.json', { optional: 'preserve' })); keys.push('hciMeta') }
-  if (changes.echoTopMeta) { fetches.push(fetchJson('/data/radar/echotop/echotop_meta.json', { optional: 'preserve' })); keys.push('echoTopMeta') }
-  if (changes.rainviewerMeta) { fetches.push(fetchJson('/data/radar/rainviewer_meta.json', { optional: 'preserve' })); keys.push('rainviewerMeta') }
-  if (changes.satMeta) { fetches.push(fetchJson('/data/satellite/sat_meta.json', { optional: 'preserve' })); keys.push('satMeta') }
-  if (changes.satVisibleMeta) { fetches.push(fetchJson('/data/satellite/visible/visible_meta.json', { optional: 'preserve' })); keys.push('satVisibleMeta') }
-  if (changes.convectiveMeta) { fetches.push(fetchJson('/data/satellite/convective/convective_meta.json', { optional: 'preserve' })); keys.push('convectiveMeta') }
-  if (changes.airportInfo && includesDeferredKey(deferredKeys, 'airportInfo')) { fetches.push(fetchJson('/api/airport-info', { optional: 'preserve' })); keys.push('airportInfo') }
+  if (changes.amos) { fetches.push(preserveJson('/api/amos')); keys.push('amos') }
+  if (changes.lightning) { fetches.push(preserveJson('/api/lightning')); keys.push('lightning') }
+  if (!ADSB_FETCH_DISABLED && changes.adsb && includesDeferredKey(deferredKeys, 'adsb')) { fetches.push(preserveJson('/api/adsb')); keys.push('adsb') }
+  if (changes.groundForecast) { fetches.push(preserveJson('/api/ground-forecast')); keys.push('groundForecast') }
+  if (changes.groundOverview && includesDeferredKey(deferredKeys, 'groundOverview')) { fetches.push(preserveJson('/api/ground-overview')); keys.push('groundOverview') }
+  if (changes.environment && includesDeferredKey(deferredKeys, 'environment')) { fetches.push(preserveJson('/api/environment')); keys.push('environment') }
+  if (changes.wissdomMeta) { fetches.push(preserveJson('/data/radar/wissdom/wissdom_meta.json')); keys.push('wissdomMeta') }
+  if (changes.qpfMeta) { fetches.push(preserveJson('/data/radar/qpf/qpf_meta.json')); keys.push('qpfMeta') }
+  if (changes.hsrMeta) { fetches.push(preserveJson('/data/radar/hsr/hsr_meta.json')); keys.push('hsrMeta') }
+  if (changes.hciMeta) { fetches.push(preserveJson('/data/radar/hci/hci_meta.json')); keys.push('hciMeta') }
+  if (changes.echoTopMeta) { fetches.push(preserveJson('/data/radar/echotop/echotop_meta.json')); keys.push('echoTopMeta') }
+  if (changes.rainviewerMeta) { fetches.push(preserveJson('/data/radar/rainviewer_meta.json')); keys.push('rainviewerMeta') }
+  if (changes.satMeta) { fetches.push(preserveJson('/data/satellite/sat_meta.json')); keys.push('satMeta') }
+  if (changes.satVisibleMeta) { fetches.push(preserveJson('/data/satellite/visible/visible_meta.json')); keys.push('satVisibleMeta') }
+  if (changes.convectiveMeta) { fetches.push(preserveJson('/data/satellite/convective/convective_meta.json')); keys.push('convectiveMeta') }
+  if (changes.airportInfo && includesDeferredKey(deferredKeys, 'airportInfo')) { fetches.push(preserveJson('/api/airport-info')); keys.push('airportInfo') }
 
   const results = await Promise.all(fetches)
   const out = {}

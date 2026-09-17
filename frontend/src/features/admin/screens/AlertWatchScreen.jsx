@@ -18,13 +18,25 @@ const routeLabel = (w) => (w.departureAirport && w.arrivalAirport
   ? `${w.departureAirport} → ${w.arrivalAirport}`
   : w.name || '—')
 
-export default function AlertWatchScreen() {
+const EVALUATION_REASON = {
+  another_route_for_same_user_is_selected: '같은 사용자의 더 이른 비행이 자동 평가 중',
+  outside_configured_window: '설정한 감시 시작 시각 전',
+  etd_passed: 'ETD 경과',
+  invalid_or_missing_etd: 'ETD를 확인할 수 없음',
+  automatic_evaluation_paused_in_demo_mode: '시연 중 자동 평가는 일시 중지',
+}
+
+export default function AlertWatchScreen({ adminQuery }) {
   const [watches, setWatches] = useState([])
+  const [evaluation, setEvaluation] = useState(null)
   const [error, setError] = useState(false)
 
   const load = useCallback(() => {
-    getAlertWatches().then((d) => { setWatches(d.watches || []); setError(false) }).catch(() => setError(true))
-  }, [])
+    getAlertWatches(adminQuery).then((result) => {
+      if (!result.query.current) return
+      setWatches(result.data.watches || []); setEvaluation(result.data.evaluation || null); setError(false)
+    }).catch(() => setError(true))
+  }, [adminQuery])
   useEffect(() => { load() }, [load])
 
   const count = (status) => watches.filter((w) => w.status === status).length
@@ -38,6 +50,12 @@ export default function AlertWatchScreen() {
 
       {error && <p className="ac-sub" style={{ padding: '0 22px 16px' }}>목록을 불러오지 못했습니다.</p>}
 
+      {evaluation && <p className="ac-sub" style={{ padding: '0 22px 12px' }}>
+        자동 평가: {evaluation.currentSelection?.state === 'paused_demo' ? '시연 중 일시 중지' : `${evaluation.currentSelection?.selectedItems ?? 0}개 비행 · ${evaluation.currentSelection?.selectedUsers ?? 0}명 선택`}
+        {' · '}설정 창 안 {evaluation.configured?.itemsInConfiguredWindow ?? 0}개 / 등록 {evaluation.configured?.registeredItems ?? 0}개
+        {evaluation.lastCompletedEvaluation?.at ? ` · 마지막 완료 ${hhmmZ(evaluation.lastCompletedEvaluation.at)}` : ' · 마지막 완료 기록 없음'}
+      </p>}
+
       {!error && watches.length === 0 ? (
         <p className="ac-sub" style={{ padding: '0 22px 16px' }}>등록된 비행 알림이 없습니다.</p>
       ) : (
@@ -45,7 +63,8 @@ export default function AlertWatchScreen() {
           <table className="ac-t">
             <thead>
               <tr>
-                <th>상태</th>
+                <th>설정 상태</th>
+                <th>자동 평가</th>
                 <th>조종사</th>
                 <th>비행</th>
                 <th>ETD</th>
@@ -58,6 +77,9 @@ export default function AlertWatchScreen() {
               {watches.map((w) => (
                 <tr key={w.id}>
                   <td><span className={`ac-chip ac-${STATUS_TONE[w.status] || 'quiet'}`}>{STATUS_KO[w.status] || w.status}</span></td>
+                  <td className={w.evaluation?.currentlySelectedForAutomaticEvaluation ? '' : 'ac-muted'}>
+                    {w.evaluation?.currentlySelectedForAutomaticEvaluation ? '이번 주기에 평가' : EVALUATION_REASON[w.evaluation?.exclusionReason] || '평가 여부 미확인'}
+                  </td>
                   <td className="ac-nm">{w.username}</td>
                   <td>{routeLabel(w)}</td>
                   <td className="n">{hhmmZ(w.etd)}</td>

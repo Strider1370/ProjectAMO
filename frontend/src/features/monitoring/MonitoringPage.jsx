@@ -277,6 +277,7 @@ export default function MonitoringPage() {
     ),
     intervalMs,
     initialErrorMode: 'state',
+    initialRetryDelayMs: 30_000,
     logPrefix: '[Monitoring]',
   })
   const data = rawData || {}

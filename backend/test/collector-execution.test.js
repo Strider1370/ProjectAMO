@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { activeCollectorRegistry } from '../src/collector-registry.js'
-import { checkContractAt, createExecutionWatchdog } from '../src/collector-execution.js'
+import { checkContractAt, collectionResult, createExecutionWatchdog, validateCollectionResult } from '../src/collector-execution.js'
 
 test('watchdog records one missed incident after the grace threshold', () => {
   const calls = []
@@ -45,4 +45,17 @@ test('quiet time defers the missed deadline until an eligible interval and grace
 test('zero grace is a valid missed-start contract', () => {
   const result = checkContractAt({ type: 'metar', schedule: { maxIntervalMs: 60_000, graceMs: 0 } }, {}, 60_000, 0)
   assert.equal(result.outcome, 'missed')
+})
+
+test('collection result contract publishes only source-confirmed empty data', () => {
+  const empty = collectionResult('empty', { airports: {} }, { normalEmpty: true })
+  assert.equal(validateCollectionResult(empty, ['complete', 'empty', 'failed']).outcome, 'empty')
+  assert.throws(
+    () => collectionResult('empty', { airports: {} }),
+    { message: 'empty_collection_requires_source_confirmation' },
+  )
+  assert.throws(
+    () => validateCollectionResult(empty, ['complete', 'failed']),
+    { message: 'unsupported_collection_outcome:empty' },
+  )
 })

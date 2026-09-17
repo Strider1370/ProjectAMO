@@ -5,6 +5,12 @@ const COOKIE = 'amo.vid'
 const ONLINE_MS = 5 * 60 * 1000
 const RETAIN_MS = 90 * 24 * 60 * 60 * 1000 // 90일 후 오래된 방문자 정리(무한 증가 방지)
 const VISIT_DAYS_RETAIN_MS = 400 * 24 * 60 * 60 * 1000 // 월별 추이가 몇 달치는 보이게 넉넉히
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+
+function kstDayStartIso(now) {
+  const kstDate = new Date(now + KST_OFFSET_MS).toISOString().slice(0, 10)
+  return new Date(Date.parse(`${kstDate}T00:00:00.000Z`) - KST_OFFSET_MS).toISOString()
+}
 
 export function recordVisit(db, visitorId) {
   const now = new Date().toISOString()
@@ -28,13 +34,44 @@ function activeUserCounts(db) {
   return { last7d: count(7), last30d: count(30) }
 }
 
-export function trafficStats(db) {
-  const since = new Date(Date.now() - ONLINE_MS).toISOString()
+export function trafficStats(db, { now = Date.now() } = {}) {
+  const since = new Date(now - ONLINE_MS).toISOString()
   const online = db.prepare('SELECT COUNT(*) n FROM visits WHERE last_seen >= ?').get(since).n
   const total = db.prepare('SELECT COUNT(*) n FROM visits').get().n
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const byHour = db.prepare("SELECT substr(last_seen,12,2) hh, COUNT(*) n FROM visits WHERE last_seen >= ? GROUP BY hh").all(today.toISOString())
-  return { online, total, byHour, activeUsers: activeUserCounts(db) }
+  // visits.last_seen is UTC. Shift both the KST calendar-day boundary and the
+  // hour label so byHour matches the established visit_hours KST convention.
+  const byHour = db.prepare("SELECT strftime('%H', datetime(last_seen, '+9 hours')) hh, COUNT(*) n FROM visits WHERE last_seen >= ? GROUP BY hh").all(kstDayStartIso(now))
+  return {
+    online, total, byHour, activeUsers: activeUserCounts(db),
+    measurement: {
+      generatedAt: new Date().toISOString(),
+      visitors: {
+        // total/online은 요청 횟수가 아니라 cookie visitor_id의 distinct count다.
+        unit: 'unique_browser_cookie_visitor_ids',
+        identityScope: 'anonymous_or_authenticated_browser_cookie',
+        total: { period: 'rolling_retained_population', retentionMs: RETAIN_MS },
+        online: { period: 'rolling_last_seen_window', durationMs: ONLINE_MS },
+      },
+      hourlyRequests: {
+        unit: 'request_events',
+        timezone: 'Asia/Seoul',
+        businessDay: 'Asia/Seoul_calendar_day',
+        retentionMs: VISIT_DAYS_RETAIN_MS,
+        appliesTo: 'hourly',
+      },
+      byHour: {
+        unit: 'unique_browser_cookie_visitor_ids_at_last_seen',
+        timezone: 'Asia/Seoul',
+        businessDay: 'Asia/Seoul_calendar_day',
+        period: 'current_calendar_day',
+      },
+      activeUsers: {
+        unit: 'authenticated_user_accounts',
+        identityScope: 'users.last_active_at',
+        windows: { last7dMs: 7 * 86400e3, last30dMs: 30 * 86400e3 },
+      },
+    },
+  }
 }
 
 // 방문 집계. 운영에선 nginx가 페이지(HTML)를 직접 서빙해 백엔드에 안 오므로, 프론트가 로드 때
@@ -72,7 +109,13 @@ export function hourlyPattern(db, { weeks = 4, now = Date.now() } = {}) {
   }
 
   const days = new Set(rows.map((r) => r.day)).size
-  return { days, ready: days >= READY_DAYS, cells }
+  return {
+    days, ready: days >= READY_DAYS, cells,
+    measurement: {
+      unit: 'request_events', timezone: 'Asia/Seoul', businessDay: 'Asia/Seoul_calendar_day',
+      retentionMs: VISIT_DAYS_RETAIN_MS, readinessRequiredDistinctDays: READY_DAYS,
+    },
+  }
 }
 
 export default { recordVisit, trafficStats, hourlyPattern, visitTracker }

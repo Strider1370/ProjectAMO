@@ -14,6 +14,57 @@ function safeFile(root, key) {
   return path.join(root, key)
 }
 
+function readManifest(databasePath) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(backupAssetsPath(databasePath), 'manifest.json'), 'utf8'))
+  if (!manifest || manifest.version !== 1 || !/^[a-f0-9]{64}$/.test(manifest.databaseSha256) || !Array.isArray(manifest.files)) {
+    throw new Error('Backup manifest is invalid')
+  }
+  const keys = new Set()
+  for (const file of manifest.files) {
+    if (!file || typeof file !== 'object') throw new Error('Backup manifest is invalid')
+    safeFile('', file.key)
+    if (!/^[a-f0-9]{64}$/.test(file.sha256) || file.sha256 !== file.key.split('.')[0]
+      || !Number.isSafeInteger(file.bytes) || file.bytes < 0 || keys.has(file.key)) {
+      throw new Error('Backup manifest is invalid')
+    }
+    keys.add(file.key)
+  }
+  return manifest
+}
+
+// A published backup has a DB commit marker plus its complete manifest.  The
+// expensive byte-by-byte verification happens before publication and again
+// when restoring; status/list reads only need to distinguish a committed
+// generation from a staging directory.
+export function isPublishedOrganizationBackup(databasePath) {
+  try {
+    if (!fs.statSync(databasePath).isFile()) return false
+    const assets = backupAssetsPath(databasePath)
+    if (!fs.existsSync(assets)) return isLegacyBackupDatabase(databasePath)
+    if (!fs.statSync(assets).isDirectory()) return false
+    readManifest(databasePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Backups made before organization-file attachments were introduced consist of
+// a VACUUM-created SQLite file only.  Keep accepting those completed units,
+// while still rejecting the arbitrary/truncated .db files that must not become
+// a completion marker merely because an assets directory is absent.
+function isLegacyBackupDatabase(databasePath) {
+  let database
+  try {
+    database = new Database(databasePath, { readonly: true, fileMustExist: true })
+    return database.prepare('PRAGMA quick_check').pluck().get() === 'ok'
+  } catch {
+    return false
+  } finally {
+    database?.close()
+  }
+}
+
 // Read references from the SQLite snapshot, so concurrent uploads cannot make the
 // backup database refer to a file omitted by a preceding live-directory scan.
 export function backupOrganizationFiles(databasePath, filesRoot = organizationFilesRoot()) {
@@ -35,20 +86,28 @@ export function backupOrganizationFiles(databasePath, filesRoot = organizationFi
   return files.length
 }
 
+// Verify the complete unit before it is published and before it is restored.
+// Keeping this here makes the writer and the restore consumer agree on the
+// exact manifest/hash contract.
+export function verifyOrganizationBackup(databasePath) {
+  const manifest = readManifest(databasePath)
+  const database = fs.readFileSync(databasePath)
+  if (hash(database) !== manifest.databaseSha256) throw new Error('Backup database integrity mismatch')
+  const assets = backupAssetsPath(databasePath)
+  const files = manifest.files.map(file => {
+    const bytes = fs.readFileSync(safeFile(assets, file.key))
+    if (hash(bytes) !== file.sha256 || bytes.length !== file.bytes) throw new Error(`Backup file integrity mismatch: ${file.key}`)
+    return { key: file.key, bytes }
+  })
+  return { database, files }
+}
+
 // Restore into new destinations only; production switching remains an explicit
 // deployment operation after inspecting this restored copy.
 export function restoreOrganizationBackup(databasePath, { targetDatabase, targetFiles }) {
   if (!targetDatabase || !targetFiles) throw new Error('Both restore destinations are required')
   if (fs.existsSync(targetDatabase) || fs.existsSync(targetFiles)) throw new Error('Restore destinations must not exist')
-  const assets = backupAssetsPath(databasePath)
-  const manifest = JSON.parse(fs.readFileSync(path.join(assets, 'manifest.json'), 'utf8'))
-  const database = fs.readFileSync(databasePath)
-  if (manifest.version !== 1 || hash(database) !== manifest.databaseSha256) throw new Error('Backup database integrity mismatch')
-  const validated = manifest.files.map(file => {
-    const bytes = fs.readFileSync(safeFile(assets, file.key))
-    if (hash(bytes) !== file.sha256 || bytes.length !== file.bytes) throw new Error(`Backup file integrity mismatch: ${file.key}`)
-    return { key: file.key, bytes }
-  })
+  const { database, files: validated } = verifyOrganizationBackup(databasePath)
   fs.mkdirSync(path.dirname(targetDatabase), { recursive: true })
   fs.mkdirSync(targetFiles, { recursive: true, mode: 0o700 })
   try {

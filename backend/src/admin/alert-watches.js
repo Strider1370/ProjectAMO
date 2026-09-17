@@ -3,6 +3,8 @@
 // 감시중인 것만 보여주면 "왜 알림이 안 오지?"에 답할 수 없다. 등록됐지만 아직 창 밖인 것과
 // 이미 끝난 것까지 같이 내야, 조용한 이유가 "이상없음"인지 "아직 안 봄"인지 갈린다.
 
+import { selectAlertEvaluationTargets } from '../alerts/evaluation-targets.js'
+
 // 감시 시작 기본값. me/alerts.js의 등록 기본값과 같은 값이다 — 여기만 다르면 화면이 거짓말을 한다.
 const DEFAULT_START_MIN = 360
 
@@ -20,7 +22,10 @@ const STATUS_ORDER = { watching: 0, pending: 1, ended: 2, unknown: 3 }
 
 const safeJson = (s) => { try { return JSON.parse(s) } catch { return null } }
 
-export function listAlertWatches(db, now = Date.now()) {
+export function readAlertWatches(db, now = Date.now(), {
+  automaticEvaluationPaused = false,
+  lastEvaluation = null,
+} = {}) {
   const rows = db.prepare(`
     SELECT r.id, r.name, r.etd, r.eta, r.alert_start_min_before_etd, r.payload, r.expires_at,
            u.id AS userId, u.username,
@@ -30,9 +35,24 @@ export function listAlertWatches(db, now = Date.now()) {
     WHERE r.alert_enabled = 1
   `).all()
 
-  return rows.map((r) => {
+  const selectedIds = new Set(selectAlertEvaluationTargets(rows, now).map((row) => row.id))
+  const watches = rows.map((r) => {
     // 공항은 저장 payload가 유일한 출처다 — routes의 dep/dest 컬럼은 등록 경로가 채우지 않는다.
     const form = safeJson(r.payload)?.base?.routeForm ?? safeJson(r.payload)?.routeForm ?? {}
+    const status = watchStatus(r, now)
+    const selected = selectedIds.has(r.id)
+    const evaluation = {
+      // configuredWindow은 설정된 ETD 창의 상태이고, 실제 평가 선택 여부와 같은 뜻이 아니다.
+      configuredWindow: status === 'watching',
+      currentlySelectedForAutomaticEvaluation: !automaticEvaluationPaused && selected,
+      selectionPolicy: 'one_earliest_route_per_user_within_configured_window',
+      automaticEvaluationState: automaticEvaluationPaused ? 'paused_demo' : 'eligible',
+      exclusionReason: automaticEvaluationPaused ? 'automatic_evaluation_paused_in_demo_mode'
+        : !selected && status === 'watching' ? 'another_route_for_same_user_is_selected'
+          : status === 'pending' ? 'outside_configured_window'
+            : status === 'ended' ? 'etd_passed'
+              : status === 'unknown' ? 'invalid_or_missing_etd' : null,
+    }
     return {
       id: r.id,
       userId: r.userId,
@@ -43,13 +63,40 @@ export function listAlertWatches(db, now = Date.now()) {
       etd: r.etd,
       eta: r.eta,
       startMinBeforeEtd: r.alert_start_min_before_etd || DEFAULT_START_MIN,
-      status: watchStatus(r, now),
+      status,
       alertCount: r.alertCount,
       // 구독이 없으면 알림 행은 쌓여도 폰은 조용하다. 관리자가 이걸 봐야 원인을 짚는다.
       pushSubscribed: r.pushCount > 0,
       expiresAt: r.expires_at,
+      evaluation,
     }
   }).sort((a, b) => (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) || (Date.parse(a.etd) - Date.parse(b.etd)))
+
+  const selected = watches.filter((watch) => watch.evaluation.currentlySelectedForAutomaticEvaluation)
+  return {
+    watches,
+    evaluation: {
+      generatedAt: new Date(now).toISOString(),
+      configured: {
+        registeredItems: watches.length,
+        itemsInConfiguredWindow: watches.filter((watch) => watch.evaluation.configuredWindow).length,
+      },
+      currentSelection: {
+        state: automaticEvaluationPaused ? 'paused_demo' : 'eligible',
+        selectedUsers: new Set(selected.map((watch) => watch.userId)).size,
+        selectedItems: selected.length,
+        policy: 'one_earliest_route_per_user_within_configured_window',
+      },
+      // 마지막 tick은 실제 실행 결과이며, currentSelection과 혼동하지 않는다.
+      lastCompletedEvaluation: lastEvaluation,
+    },
+  }
 }
 
-export default { listAlertWatches, watchStatus }
+// 기존 모듈 소비자는 배열을 받는다. HTTP DTO는 readAlertWatches로 명시 메타데이터를
+// 함께 내보내되, 이 호환 adapter가 기존 테스트/호출자를 깨지 않게 한다.
+export function listAlertWatches(db, now = Date.now(), options = {}) {
+  return readAlertWatches(db, now, options).watches
+}
+
+export default { listAlertWatches, readAlertWatches, watchStatus }

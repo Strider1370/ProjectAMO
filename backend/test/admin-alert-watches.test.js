@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { createDb } from '../src/db/index.js'
-import { listAlertWatches, watchStatus } from '../src/admin/alert-watches.js'
+import { listAlertWatches, readAlertWatches, watchStatus } from '../src/admin/alert-watches.js'
 
 const NOW = Date.parse('2026-08-21T12:00:00Z')
 const at = (h) => new Date(NOW + h * 3600 * 1000).toISOString()
@@ -75,5 +75,27 @@ test('listAlertWatches: 감시가 꺼진 경로는 목록에 없다 — 더는 �
     const rid = seed(db, { username: 'off', etd: at(1) })
     db.prepare('UPDATE routes SET alert_enabled=0 WHERE id=?').run(rid)
     assert.deepEqual(listAlertWatches(db, NOW), [])
+  } finally { db.close() }
+})
+
+test('감시 DTO는 configured window와 사용자당 실제 선택 후보·demo pause를 구분한다', () => {
+  const db = createDb(':memory:')
+  try {
+    const firstId = seed(db, { username: 'same-user', etd: at(1) })
+    const userId = db.prepare('SELECT user_id FROM routes WHERE id=?').get(firstId).user_id
+    const now = new Date(NOW).toISOString()
+    const secondId = db.prepare(`INSERT INTO routes (user_id, name, etd, payload, alert_enabled, alert_start_min_before_etd, created_at, updated_at)
+      VALUES (?,?,?,?,1,?,?,?)`).run(userId, 'later route', at(2), JSON.stringify({ routeForm: {} }), 360, now, now).lastInsertRowid
+
+    const live = readAlertWatches(db, NOW)
+    assert.equal(live.evaluation.configured.itemsInConfiguredWindow, 2)
+    assert.equal(live.evaluation.currentSelection.selectedUsers, 1)
+    assert.equal(live.evaluation.currentSelection.selectedItems, 1)
+    assert.equal(live.watches.find((watch) => watch.id === firstId).evaluation.currentlySelectedForAutomaticEvaluation, true)
+    assert.equal(live.watches.find((watch) => watch.id === secondId).evaluation.exclusionReason, 'another_route_for_same_user_is_selected')
+
+    const paused = readAlertWatches(db, NOW, { automaticEvaluationPaused: true })
+    assert.equal(paused.evaluation.currentSelection.state, 'paused_demo')
+    assert.equal(paused.watches.every((watch) => watch.evaluation.currentlySelectedForAutomaticEvaluation === false), true)
   } finally { db.close() }
 })

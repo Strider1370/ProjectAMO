@@ -3,7 +3,10 @@ import base from './playwright.config.js'
 
 export default defineConfig({
   ...base,
-  grep: /organization-/,
+  testMatch: [
+    'organization-briefing.spec.mjs',
+    'organization-presentation.spec.mjs',
+  ],
   projects: ['chromium', 'webkit'].flatMap(browserName => [
     { name: `organization-${browserName}-desktop`, use: { browserName, viewport: { width: 1920, height: 1080 } } },
     { name: `organization-${browserName}-ipad`, use: { browserName, viewport: { width: 1180, height: 820 }, hasTouch: true } },

@@ -4105,14 +4105,36 @@ label { font-size: 0.9rem; font-weight: 700; }
   white-space: nowrap;
 }
 
+/* iPad 가로폭에서는 3열 metric 카드의 실제 텍스트 폭이 좁다. PM 명칭은 숫자 단위와
+   함께 읽히는 한 단위이므로 줄바꿈해 값 줄과 겹치지 않게 두 항목 모두 한 줄로 맞춘다. */
+@media (max-width: 1100px) {
+  .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] [data-ground-metric="미세먼지(PM10)"] .ground-current-metric-label,
+  .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] [data-ground-metric="초미세먼지(PM2.5)"] .ground-current-metric-label,
+  .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-current-card-metrics > .ground-current-metric:nth-child(4) .ground-current-metric-label,
+  .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-current-card-metrics > .ground-current-metric:nth-child(5) .ground-current-metric-label {
+    min-width: 0;
+    font-size: 14px;
+    letter-spacing: -0.06em;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+}
+
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-current-metric-value { font-size:26px; white-space:nowrap; letter-spacing:-0.045em; }
 .dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-current-metric-numeric { font-size:.58em; letter-spacing:-0.06em; }
 
-.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .left-panel-body { display:grid; grid-template-rows:326px 522px; gap:12px; align-content:start; }
-.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .left-panel-body > .warning-banner { display:none; }
+.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .left-panel-body { display:grid; grid-template-rows:326px 507px; gap:12px; align-content:start; }
+/* 일반 monitoring 토큰의 32px top/row gap은 1920 signage의 측정 고정 좌표를 밀어낸다.
+   signage는 별도 고정 캔버스이므로 이 모드에서만 legacy chrome 간격을 보존한다. */
+.dashboard-root[data-dashboard-mode="ground"] { padding:16px 20px; row-gap:12px; }
+.dashboard-root[data-dashboard-mode="ground"] .left-panel-header,
+.dashboard-root[data-dashboard-mode="ground"] .right-panel-top { min-height:46px; }
+/* 경보가 있을 때만 독립 행을 확보한다. 숨기면 실제 발효 경보와 아래 고정 signage 행의
+   기준점이 함께 사라져 운항자가 경보를 확인할 수 없다. */
+.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .left-panel-body:has(> .warning-banner) { grid-template-rows:104px 326px 507px; }
 .dashboard-root[data-dashboard-mode="ground"] .left-panel-body > .ground-forecast-viewport { min-height:0; }
 .ground-forecast-viewport { position:relative; height:507px; padding:0; overflow:hidden; }
-.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-forecast-viewport { height:522px; }
+.dashboard-root[data-dashboard-mode="ground"][data-ground-forecast-display-mode="signage"] .ground-forecast-viewport { height:507px; }
 .ground-forecast-viewport-header { height:65px; display:flex; align-items:center; gap:22px; padding:0 28px; }
 .ground-forecast-viewport-header > [data-forecast-metadata] { margin-left:auto; font-size:17px; color:var(--muted); }
 .ground-forecast-title { display:flex; flex-direction:column; font-size:22px; color:var(--muted); font-weight:600; }

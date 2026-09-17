@@ -45,11 +45,23 @@ export function signupTrend(db, granularity = 'day') {
 }
 
 export function readTrends(db, granularity = 'day') {
+  const selected = ['day', 'week', 'month'].includes(granularity) ? granularity : 'day'
   return {
-    granularity,
-    visits: visitTrend(db, granularity),
-    newVisitors: newVisitorTrend(db, granularity),
-    signups: signupTrend(db, granularity),
+    granularity: selected,
+    visits: visitTrend(db, selected),
+    newVisitors: newVisitorTrend(db, selected),
+    signups: signupTrend(db, selected),
+    measurement: {
+      timezone: 'UTC',
+      businessDay: 'UTC_calendar_day',
+      granularity: selected,
+      // visit_days는 browser cookie 기준의 일별 unique이며, request-event heatmap과 다르다.
+      visits: { unit: 'unique_browser_cookie_visitor_ids_per_utc_day', retentionMs: 400 * 24 * 60 * 60 * 1000 },
+      // visits 표는 90일 후 정리된다. 월 차트의 6개월 선택창은 요청 범위일 뿐,
+      // 90일보다 오래된 신규 방문자를 완전하게 재구성한다는 뜻이 아니다.
+      newVisitors: { unit: 'first_seen_browser_cookie_visitor_ids_per_utc_day', retentionMs: 90 * 24 * 60 * 60 * 1000, historicalCompleteness: 'limited_to_retained_visits' },
+      signups: { unit: 'new_authenticated_user_accounts_per_utc_day', retentionMs: null },
+    },
   }
 }
 

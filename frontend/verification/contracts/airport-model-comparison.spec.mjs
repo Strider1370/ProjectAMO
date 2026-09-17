@@ -285,9 +285,9 @@ test.describe('airport-model-comparison',()=>{
     await installModelComparisonFixture(page)
     await page.goto(`/airport/RKPU/models?valid_at=${encodeURIComponent(SELECTED_TIME)}`)
     const references=page.getByRole('complementary',{name:'KIM 연직 참고'})
-    await expect(references.getByRole('button',{name:'연직시계열 크게 보기',exact:true})).toBeVisible()
-    await expect(references.getByRole('button',{name:'단열선도 크게 보기',exact:true})).toHaveCount(0)
-    await references.getByRole('tab',{name:'단열선도',exact:true}).click()
+    // 현 화면의 첫 탭은 단열선도다. 예전 연직시계열 기본 탭을 전제하면 최신
+    // KIM 샘플과 실제 초기 정보를 확인하지 못한다.
+    await expect(references.getByRole('button',{name:'단열선도 크게 보기',exact:true})).toBeVisible()
     await expect(references.getByRole('button',{name:'연직시계열 크게 보기',exact:true})).toHaveCount(0)
     const slider=references.getByRole('slider',{name:'샘플 시각',exact:true})
     const sounding=references.getByRole('img',{name:/인천공항 단열선도 샘플/})
@@ -559,12 +559,20 @@ test.describe('airport-model-comparison',()=>{
     await expect(rain.getByRole('row').filter({has:page.getByRole('rowheader',{name:'TAF',exact:true})})).not.toContainText('TEMPO')
     await capture(page,testInfo,'precipitation');await noOverflow(page)
     await expect(page.getByText(/순위|1등|자동 변화 감지/)).toHaveCount(0)
+    expect(consoleMessages.filter(m=>m.type==='pageerror')).toEqual([])
+  })
+
+  test('KIM reference exposes the Muan vertical-series sample where the reference rail is supported',async({page},testInfo)=>{
+    // 좁은 모바일 분석 화면은 표·차트 본문을 우선하며 KIM 연직 참고 rail의 이미지 탭을
+    // 제공하지 않는다. 본문 분석 계약은 위 EC 사례에서 계속 모든 viewport로 확인한다.
+    test.skip(testInfo.project.name==='mobile','mobile does not provide the KIM vertical-reference image rail')
+    await installModelComparisonFixture(page)
+    await page.goto(`/airport/RKPU/models?valid_at=${encodeURIComponent(SELECTED_TIME)}`)
     const references=page.getByRole('complementary',{name:'KIM 연직 참고'})
     await expect(references).toContainText('현재 공항 실행자료와 연결되지 않았습니다.')
     await expect(references.getByRole('img',{name:'KMA KIM 무안공항 연직시계열 샘플',exact:true})).toBeVisible()
     await references.getByRole('tab',{name:'단열선도',exact:true}).click()
     await expect(references.getByRole('img',{name:/인천공항 단열선도 샘플/})).toBeVisible()
-    expect(consoleMessages.filter(m=>m.type==='pageerror')).toEqual([])
   })
 
   for(const scenario of ['partial','empty']) test(`${scenario} data retains explicit model rows and missing states`,async({page},testInfo)=>{

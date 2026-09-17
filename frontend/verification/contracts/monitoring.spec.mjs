@@ -1,8 +1,9 @@
 import { test, expect } from '../fixtures.mjs'
-import { installMonitoringFixture, openMonitoringState, buildTafPayload, buildSnapshotMeta, TAF_HASH } from '../monitoring-fixture.mjs'
+import { installMonitoringFixture, openMonitoringState, buildTafPayload, buildSnapshotMeta, MONITORING_FIXTURE_NOW, TAF_HASH } from '../monitoring-fixture.mjs'
 
 test.describe('monitoring', () => {
   test.beforeEach(async ({ page }) => {
+    await page.clock.install({ time: MONITORING_FIXTURE_NOW })
     await installMonitoringFixture(page)
   })
 
@@ -352,8 +353,6 @@ test.describe('monitoring', () => {
 
     // 폴링 간격을 수동 제어하기 위해 시간을 설치한다. 페이지 로드 전에 해야
     // 모든 타이머가 제어되는 시계를 쓴다.
-    await page.clock.install()
-
     await page.goto('/monitoring?mode=ops', { waitUntil: 'load' })
     await page.locator('.dashboard-root').waitFor({ state: 'attached' })
 
@@ -364,7 +363,7 @@ test.describe('monitoring', () => {
 
     // 프런트는 /api/snapshot-meta의 taf.hash가 바뀔 때만 TAF를 다시 내려받는다(스펙 §1.3).
     // 본문만 바꾸면 새 TAF가 영영 도착하지 않아 계약이 아무 일 없이 통과해 버린다.
-    const newIssued = new Date().toISOString()
+    const newIssued = new Date(MONITORING_FIXTURE_NOW.getTime() + 60 * 1000).toISOString()
     await page.route('**/api/taf', (route) =>
       route.fulfill({ json: buildTafPayload({ issued: newIssued }) })
     )

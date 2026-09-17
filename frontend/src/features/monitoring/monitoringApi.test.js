@@ -4,6 +4,7 @@ import {
   buildMonitoringSnapshot,
   detectMonitoringSnapshotChanges,
   loadChangedMonitoringData,
+  loadMonitoringData,
   loadMonitoringInitialData,
 } from './monitoringApi.js'
 
@@ -73,4 +74,22 @@ test('monitoring polling preserves an optional payload after a transient fetch f
   const changed = await loadChangedMonitoringData({ lightning: true })
 
   assert.equal(changed.lightning, undefined)
+})
+
+test('monitoring optional JSON decode failures become empty data instead of rejecting its bundle', async (t) => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (url) => ({
+    ok: true,
+    status: 200,
+    json: async () => {
+      if (String(url) === '/api/metar') throw new SyntaxError('truncated JSON')
+      return { content_hash: String(url), airports: [] }
+    },
+  })
+  t.after(() => { globalThis.fetch = originalFetch })
+
+  const data = await loadMonitoringData()
+
+  assert.equal(data.metar, null)
+  assert.ok(data.taf)
 })

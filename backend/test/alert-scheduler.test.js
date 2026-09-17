@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { createDb } from '../src/db/index.js'
-import { buildBriefingRequest, buildSnapshot, evaluateFlight, cleanupExpired, runTick } from '../src/alerts/scheduler.js'
+import { buildBriefingRequest, buildSnapshot, evaluateFlight, cleanupExpired, getLastAlertEvaluation, runTick } from '../src/alerts/scheduler.js'
 
 const ETD = '2026-07-08T10:00:00Z'
 const ETA = '2026-07-08T12:00:00Z'
@@ -195,4 +195,7 @@ test('runTick: 기하 없는 경로를 세어서 반환한다', async () => {
   const result = await runTick(db, now)
   assert.equal(result.skipped, 1)
   assert.equal(result.evaluated, 0)
+  assert.equal(result.selectedUsers, 1)
+  assert.equal(result.selectedItems, 1)
+  assert.deepEqual(getLastAlertEvaluation(), result, '마지막 실제 tick 결과는 현재 선택 후보와 별도로 보존한다')
 })

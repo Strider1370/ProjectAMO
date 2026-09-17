@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
-import { EXECUTION_WORD, STATUS_TONE, STATUS_WORD, executionProblems, formatAge, formatInterval, formatMs, formatRate } from '../lib/adminFormat.js'
+import { EXECUTION_WORD, STATUS_TONE, STATUS_WORD, eventMeasurementLabel, executionProblems, formatAge, formatInterval, formatMs, formatRate } from '../lib/adminFormat.js'
 import { apiOperationSummary } from '../lib/apiOperationSummary.js'
 import ApiExecutionDialog from './ApiExecutionDialog.jsx'
 
@@ -78,7 +78,8 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                 <tr key={row.key} data-health-key={row.key}>
                   <td className="ac-nm">
                     {row.label}
-                    {row.eventDriven && row.activeCount != null && <div className="ac-sub">{row.activeCount}건 발효</div>}
+                    {row.eventDriven && <div className="ac-sub">{eventMeasurementLabel(row.eventMeasurement)}</div>}
+                    {row.provenance && <div className="ac-sub">표시 자료: {row.provenance.display?.source === 'active_demo_snapshot' ? `시연 스냅샷${row.provenance.display.snapshotName ? ` (${row.provenance.display.snapshotName})` : ''}` : row.provenance.display?.source === 'active_live_view' ? '실황 활성 뷰' : '출처 확인 중'} · 수집 상태: {row.provenance.liveCollection?.healthStatus === 'unknown' ? '기록 없음' : row.provenance.liveCollection?.healthStatus || '확인 중'}</div>}
                     {row.airportRuns && (
                       <details className="ac-sub ac-model-health">
                         <summary>

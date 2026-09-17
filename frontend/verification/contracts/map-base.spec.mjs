@@ -1,5 +1,7 @@
 import { test, expect } from '../fixtures.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
+import { RADAR_LAYER, RADAR_SOURCE, SATELLITE_LAYER, SATELLITE_SOURCE } from '../../src/features/weather-overlays/lib/weatherOverlayLayers.js'
+import { VISIBLE_LAYER, VISIBLE_SOURCE } from '../../src/features/weather-overlays/lib/kmaCompositeLayers.js'
 
 async function installRadarMotionFixture(page) {
   const observedAtMs = Date.UTC(2026, 4, 14, 3, 5)
@@ -66,19 +68,30 @@ test.describe('map-base', () => {
       if (await button.getAttribute('aria-pressed') !== 'true') await button.click()
       await expect(button).toHaveAttribute('aria-pressed', 'true')
     }
-    const stack = async () => page.evaluate(() => {
+    const stackIds = [
+      { id: SATELLITE_LAYER, source: SATELLITE_SOURCE },
+      { id: VISIBLE_LAYER, source: VISIBLE_SOURCE },
+      { id: RADAR_LAYER, source: RADAR_SOURCE },
+    ]
+    const stack = async () => page.evaluate((ids) => {
       if (!window.__map.isStyleLoaded()) return []
       const layers = window.__map.getStyle().layers
-      return ['kma-satellite-overlay', 'gk2a-visible-overlay', 'kma-radar-overlay'].map((id) => {
+      return ids.map(({ id, source }) => {
         const index = layers.findIndex((layer) => layer.id === id)
-        return { id, index, opacity: index >= 0 ? layers[index].paint?.['raster-opacity'] : undefined }
+        return {
+          id,
+          source: index >= 0 ? layers[index].source : null,
+          expectedSource: source,
+          index,
+          visible: index >= 0 && (layers[index].layout?.visibility ?? 'visible') === 'visible',
+        }
       })
-    })
+    }, stackIds)
     await page.waitForTimeout(1000)
     expect(await stack()).toEqual([
-      { id: 'kma-satellite-overlay', index: expect.any(Number), opacity: 1 },
-      { id: 'gk2a-visible-overlay', index: expect.any(Number), opacity: 1 },
-      { id: 'kma-radar-overlay', index: expect.any(Number), opacity: 0.88 },
+      { id: SATELLITE_LAYER, source: SATELLITE_SOURCE, expectedSource: SATELLITE_SOURCE, index: expect.any(Number), visible: true },
+      { id: VISIBLE_LAYER, source: VISIBLE_SOURCE, expectedSource: VISIBLE_SOURCE, index: expect.any(Number), visible: true },
+      { id: RADAR_LAYER, source: RADAR_SOURCE, expectedSource: RADAR_SOURCE, index: expect.any(Number), visible: true },
     ])
     const before = await stack()
     expect(before[0].index).toBeLessThan(before[1].index)
@@ -89,7 +102,7 @@ test.describe('map-base', () => {
       const layers = await stack()
       return layers.length === 3
         && layers[0].index >= 0 && layers[0].index < layers[1].index && layers[1].index < layers[2].index
-        && layers[0].opacity === 1 && layers[1].opacity === 1 && layers[2].opacity === 0.88
+        && layers.every((layer) => layer.visible && layer.source === layer.expectedSource)
     }).toBe(true)
     const after = await stack()
     expect(after[0].index).toBeLessThan(after[1].index)
@@ -149,7 +162,10 @@ test.describe('map-base', () => {
     await page.screenshot({ path: testInfo.outputPath('ipad-advisory-badges.png') })
   })
 
-  test('changes the selected base map', async ({ page }) => {
+  test('changes the selected base map', async ({ page }, testInfo) => {
+    // 모바일 지도 task는 간편한 기본 지도와 레이어 진입만 제공한다. 지형 선택기는
+    // 데스크톱/iPad의 지도 선택 surface에만 있으므로 그 지원 범위에서 검증한다.
+    test.skip(testInfo.project.name === 'mobile', 'mobile does not provide the terrain basemap selector')
     // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
     // 임의의 큰 값을 넣으면 오히려 패널이 떠서 사이드바를 덮는다. 릴리스마다 깨지지 않도록
     // 소스의 상수를 그대로 쓴다.
@@ -196,6 +212,8 @@ test.describe('map-base', () => {
   })
 
   test('keeps CI and CTPS independent through a basemap replacement', async ({ page }, testInfo) => {
+    // CTPS의 FL/card 제어와 basemap 교체 조합은 모바일 지도 task에 노출되지 않는다.
+    test.skip(testInfo.project.name === 'mobile', 'mobile does not provide the CTPS/basemap control surface')
     // lastSeenVersion은 CURRENT_VERSION과 "같아야" 업데이트 패널이 안 뜬다(hasUpdate = 다름).
     await page.addInitScript((version) => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
     await installConvectiveFixture(page)

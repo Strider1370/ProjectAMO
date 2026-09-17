@@ -16,6 +16,18 @@ function ddhh(iso) {
   return `${p(d.getUTCDate())}${p(d.getUTCHours())}`
 }
 
+function temperatureToken(prefix, temperature) {
+  if (!temperature?.time || !Number.isFinite(temperature.value)) return null
+  const time = ddhh(temperature.time)
+  if (!time) return null
+
+  const rounded = Math.round(temperature.value)
+  const value = rounded < 0 || (rounded === 0 && temperature.value < 0)
+    ? `M${String(Math.abs(rounded)).padStart(2, '0')}`
+    : String(rounded).padStart(2, '0')
+  return tacToken(`${prefix}${value}/${time}Z`)
+}
+
 // base 또는 change_group 의 본문. null(=미변경) 필드는 생략, 존재하는 것만.
 import { tacDisplayLine, tacPresentation, tacToken, weatherTokenRole } from './tac-presentation.js'
 
@@ -59,7 +71,11 @@ export function buildTafTacPresentation(parsed) {
     tacToken(ddhhmmZ(h.issued), 'time'),
     tacToken(`${ddhh(h.valid_start)}/${ddhh(h.valid_end)}`, 'validity'),
   ]
-  const lines = [tacDisplayLine([...headParts, ...stateParts(parsed.base)], { slotTime: slotTime(h.valid_start) })]
+  const temperatures = [
+    temperatureToken('TX', h.temperatures?.max),
+    temperatureToken('TN', h.temperatures?.min),
+  ].filter(Boolean)
+  const lines = [tacDisplayLine([...headParts, ...stateParts(parsed.base), ...temperatures], { slotTime: slotTime(h.valid_start) })]
   for (const group of parsed.change_groups || []) {
     const prefix = groupHead(group).split(' ').map((text, index) => tacToken(text, index === 0 ? 'change' : 'validity'))
     lines.push(tacDisplayLine([...prefix, ...stateParts(group)], { slotTime: slotTime(group.start) }))

@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import Database from 'better-sqlite3'
-import { backupDatabase } from '../src/admin/db-backup.js'
+import { backupDatabase, lastBackup, listBackups } from '../src/admin/db-backup.js'
 import { restoreOrganizationBackup, backupAssetsPath } from '../src/admin/organization-backup-files.js'
 
 function fixture(t) {
@@ -54,4 +54,25 @@ test('missing original fails the backup, corrupted backup refuses restoration be
   const failed = backupDatabase(db, root, { filesRoot, now: Date.now() + 60000 })
   assert.match(failed.error, /ENOENT/)
   assert.equal(failed.path, undefined)
+})
+
+test('누락·손상된 첨부 파일은 staging에서 거부되고 이전 완료 backup을 보존한다', t => {
+  const { db, root, filesRoot, keys } = fixture(t)
+  const now = Date.parse('2026-08-11T03:00:00Z')
+  const previous = backupDatabase(db, root, { filesRoot, now })
+  const corrupted = backupDatabase(db, root, {
+    filesRoot,
+    now: now + 60_000,
+    onStage(stage, { stagedDatabase }) {
+      if (stage === 'assets-written') fs.writeFileSync(path.join(`${stagedDatabase}.assets`, keys[0]), 'corrupted during staging')
+    },
+  })
+  assert.match(corrupted.error, /integrity mismatch/)
+  assert.deepEqual(listBackups(root).map(backup => backup.path), [previous.path])
+  assert.equal(lastBackup(root).path, previous.path)
+
+  fs.unlinkSync(path.join(filesRoot, keys[1]))
+  const missing = backupDatabase(db, root, { filesRoot, now: now + 120_000 })
+  assert.match(missing.error, /ENOENT/)
+  assert.deepEqual(listBackups(root).map(backup => backup.path), [previous.path])
 })

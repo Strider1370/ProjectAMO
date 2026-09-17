@@ -39,7 +39,7 @@ async function process() {
     })
   )
 
-  const previous = store.getCached('airport_info')
+  const previous = store.getLiveCached('airport_info')
   if (previous?.airports) {
     for (const icao of failed) {
       if (!airports[icao] && previous.airports[icao]) {

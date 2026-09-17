@@ -16,6 +16,8 @@ async function openRoutePanel(page, isMobile) {
   }, CURRENT_VERSION)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: isMobile ? '브리핑' : '비행 전 브리핑', exact: true }).click()
+  // 모바일은 처음에는 공항 선택만 보여 준다. 실제 상세 노출을 거쳐야 공용 토큰 편집기가 열린다.
+  if (isMobile) await page.getByRole('button', { name: /^절차·시간 입력 더보기/ }).click()
   await expect(page.locator('.rtf-box')).toBeVisible()
 }
 
@@ -161,7 +163,9 @@ test.describe('route-token-input', () => {
 
   test('picking a SID writes it into the field', async ({ page }, testInfo) => {
     const isMobile = testInfo.project.name === 'mobile'
-    test.skip(isMobile, '모바일 SID 칸은 점진 노출 뒤에 있어 별도 경로가 필요하다')
+    // 이 case는 desktop Fluent combobox와 option의 연결을 검증한다. mobile은 PickerField
+    // 버튼/목록을 쓰므로 같은 locator 계약을 적용할 수 없다.
+    test.skip(isMobile, 'mobile SID uses PickerField rather than the desktop Fluent combobox asserted here')
     await openRoutePanel(page, isMobile)
     await enterRouteTokens(page, ['RKSI'])
 
@@ -195,8 +199,8 @@ test.describe('route-token-input', () => {
   // 토큰만으로 경로를 만들어도 뒷단계(고도비교·연직단면도)까지 이어져야 한다. 선택기를
   // 쓰지 않고 공항까지 치는 것이 실제 사용 방식이고, 계약은 그 길을 지켜야 한다.
   test('a route typed entirely as tokens reaches altitude comparison and the profile', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile', '모바일 단계 이동은 route-workflow가 덮는다')
-    await openRoutePanel(page, false)
+    const isMobile = testInfo.project.name === 'mobile'
+    await openRoutePanel(page, isMobile)
     await enterRouteTokens(page, ['RKSI', 'ANDOL', 'RKPK'])
 
     // 거리가 나오면 경로가 실제로 계산된 것이다.
@@ -205,10 +209,10 @@ test.describe('route-token-input', () => {
     await page.getByRole('button', { name: '경로비교로', exact: true }).click()
     await page.getByRole('button', { name: '기본 경로로 고도 비교', exact: true }).click()
     await page.getByRole('spinbutton', { name: '계획 순항고도 (ft)', exact: true }).fill('9000')
-    await page.getByRole('button', { name: '고도 비교', exact: true }).click()
+    await page.getByRole('button', { name: isMobile ? '고도 비교 실행' : '고도 비교', exact: true }).click()
 
     // 비교 카드가 뜬다.
-    await expect(page.getByText('9,000 ft', { exact: false }).first()).toBeVisible()
+    await expect(page.getByText(isMobile ? 'FL90' : '9,000 ft', { exact: false }).first()).toBeVisible()
     // 연직단면도는 창으로 바로 열린다(데스크톱). 창이 안 열리는 구성에서는 여는 버튼이
     // 남으므로 둘 중 하나가 있으면 된다 — 어느 쪽이든 단면도에 닿을 수 있다는 뜻이다.
     const profileWindow = page.getByText('연직단면도', { exact: true }).first()
@@ -219,8 +223,7 @@ test.describe('route-token-input', () => {
   test('auto-generate puts its whole route into the field', async ({ page }, testInfo) => {
     // 목록이 경로의 원본이므로, 자동 생성 결과가 목록에 들어가지 않으면 지도에는 있는데
     // 글자로는 없는 상태가 된다.
-    test.skip(testInfo.project.name === 'mobile', '모바일 자동 생성은 점진 노출 뒤에 있다')
-    await openRoutePanel(page, false)
+    await openRoutePanel(page, testInfo.project.name === 'mobile')
     // route-fixture가 맞춰둔 조합을 쓴다(route-workflow와 같은 RKSS→RKPK).
     await enterRouteTokens(page, ['RKSS', 'RKPK'])
 
@@ -246,8 +249,7 @@ test.describe('route-token-input', () => {
 
   test('the alternatives step edits its route with pills too', async ({ page }, testInfo) => {
     // 같은 일을 두 화면에서 다르게 하면 배울 것이 두 가지가 된다.
-    test.skip(testInfo.project.name === 'mobile', '모바일 대안 단계는 route-workflow가 덮는다')
-    await openRoutePanel(page, false)
+    await openRoutePanel(page, testInfo.project.name === 'mobile')
     await enterRouteTokens(page, ['RKSI', 'ANDOL', 'RKPK'])
     await page.getByRole('button', { name: '경로비교로', exact: true }).click()
 
@@ -264,8 +266,7 @@ test.describe('route-token-input', () => {
   test('deleting a fix and typing it back draws the route again', async ({ page }, testInfo) => {
     // 중복 방지가 "마지막에 적용한 것"만 보고 판단하면, 지웠다 다시 친 같은 지점을
     // 이미 적용했다고 보고 건너뛴다 — 선이 돌아오지 않는다.
-    test.skip(testInfo.project.name === 'mobile', '모바일 단계 이동은 route-workflow가 덮는다')
-    await openRoutePanel(page, false)
+    await openRoutePanel(page, testInfo.project.name === 'mobile')
     await enterRouteTokens(page, ['RKSS', 'ANDOL', 'RKPK'])
 
     // 거리 글자로 판단하면 안 된다 — 지우고도 옛 거리가 남아 있어 시험이 통과해버린다.

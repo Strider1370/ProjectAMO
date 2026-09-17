@@ -10,6 +10,7 @@ export const MENUS = [
   { id: 'users', label: '이용자', group: 'usage' },
   { id: 'accounts', label: '계정 관리', group: 'usage' },
   { id: 'alerts', label: '알림 감시', group: 'usage' },
+  { id: 'demo', label: '시연 모드', group: 'ops' },
 ]
 
 export const MENU_GROUPS = [
@@ -25,7 +26,15 @@ export function menusIn(group) {
 // 재시작 임계는 10회 — 정상 배포로도 몇 번은 오르지만, 그보다 잦으면 뭔가 죽고 있다는 뜻이다.
 export const RESTART_WARN_THRESHOLD = 10
 
-export function topSignals({ health, server } = {}) {
+export function topSignals({ health, server, queryState } = {}) {
+  if (queryState === 'loading' || queryState === 'error') {
+    return [
+      { id: 'data', label: '자료', tone: 'quiet', count: 0 },
+      { id: 'collect', label: '수집', tone: 'quiet', count: 0 },
+      { id: 'api', label: 'API', tone: 'quiet', count: 0 },
+      { id: 'server', label: '서버', tone: 'quiet', count: 0 },
+    ]
+  }
   const counts = health?.counts
   const broken = (counts?.stopped ?? 0) + (counts?.never ?? 0)
   const late = counts?.late ?? 0

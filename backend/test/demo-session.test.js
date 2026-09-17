@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import { createDemoSession } from '../src/dev/demo-session.js'
 import { createDataViewManager } from '../src/dev/data-view.js'
-import { DEMO_REQUIRED_TYPES, inspectSnapshot, saveSnapshot } from '../src/dev/snapshot-store.js'
+import { DEMO_REQUIRED_TYPES, inspectSnapshot, nextSnapshotName, saveSnapshot } from '../src/dev/snapshot-store.js'
 
 const DEMO_NOW = '2026-07-22T10:00:00.000Z'
 
@@ -29,6 +29,7 @@ function harness() {
   const snapshots = {
     inspectSnapshot: () => ({ ready: true, blockers: [], warnings: [], types: ['metar', 'sigmet'] }),
     saveSnapshot: (_root, name) => ({ saved: [name], referenceTime: DEMO_NOW }),
+    nextSnapshotName: () => 'snapshot-1',
   }
   const session = createDemoSession({
     basePath: '/live',
@@ -63,6 +64,29 @@ test('demo switching never drains collectors while snapshot capture still does',
   calls.length = 0
   await session.captureSnapshot('new-snapshot')
   assert.deepEqual(calls, ['drain'])
+})
+
+test('concurrent automatic captures allocate names only inside the serialized capture boundary', async () => {
+  const calls = []
+  let sequence = 0
+  const session = createDemoSession({
+    basePath: '/live',
+    activePath: '/active',
+    views: { current: () => ({ mode: 'live' }) },
+    snapshots: {
+      nextSnapshotName: () => `snapshot-${sequence + 1}`,
+      saveSnapshot: (_root, name) => {
+        sequence += 1
+        calls.push(name)
+        return { name, saved: [name], referenceTime: DEMO_NOW }
+      },
+    },
+    drain: async () => {},
+  })
+
+  const [first, second] = await Promise.all([session.captureSnapshot(), session.captureSnapshot()])
+  assert.deepEqual(calls, ['snapshot-1', 'snapshot-2'])
+  assert.deepEqual([first.name, second.name], ['snapshot-1', 'snapshot-2'])
 })
 
 test('startDemo refuses an incomplete snapshot before changing the view', async () => {
@@ -146,6 +170,42 @@ test('filesystem session leaves live files untouched and immediately returns to 
 
     await session.stopDemo()
     assert.equal(JSON.parse(fs.readFileSync(path.join(activePath, 'metar', 'latest.json'))).marker, 'live-during-demo')
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('recapturing an active snapshot name switches data, reference time, and generation together', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'projectamo-demo-generation-'))
+  const activePath = path.join(root, '.active-data')
+  try {
+    writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-07-22T10:00:00.000Z', marker: 'first' })
+    const views = createDataViewManager({ basePath: root, activePath, passthrough: [] })
+    const session = createDemoSession({
+      basePath: root,
+      activePath,
+      views,
+      snapshots: {
+        inspectSnapshot: () => ({ ready: true, blockers: [], warnings: [], types: ['metar'] }),
+        nextSnapshotName,
+        saveSnapshot,
+      },
+      reloadActive: () => {},
+      drain: async () => {},
+    })
+
+    const firstSave = await session.captureSnapshot('demo')
+    await session.startDemo('demo')
+    assert.equal(JSON.parse(fs.readFileSync(path.join(activePath, 'metar', 'latest.json'))).marker, 'first')
+
+    writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-07-22T11:00:00.000Z', marker: 'second' })
+    const secondSave = await session.captureSnapshot('demo')
+    const context = session.status()
+
+    assert.notEqual(firstSave.generation, secondSave.generation)
+    assert.equal(JSON.parse(fs.readFileSync(path.join(activePath, 'metar', 'latest.json'))).marker, 'second')
+    assert.equal(context.now, '2026-07-22T11:00:00.000Z')
+    assert.equal(context.revision, secondSave.revision)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }

@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { createHash } from 'node:crypto'
 
 import { getDb } from '../db/index.js'
 import { requireRole } from '../auth/middleware.js'
@@ -8,7 +9,7 @@ import { forecastDiskFull } from './disk-forecast.js'
 import { trafficStats, hourlyPattern } from './visits.js'
 import { readTrends } from './trends.js'
 import { readDataHealth } from './data-health.js'
-import { listAlertWatches } from './alert-watches.js'
+import { readAlertWatches } from './alert-watches.js'
 import { processHealth } from './process-health.js'
 import { deploymentInfo } from './deployment.js'
 import { readDiskUsage } from './disk-usage.js'
@@ -16,43 +17,80 @@ import { lastBackup } from './db-backup.js'
 import store from '../store.js'
 import stats from '../stats.js'
 import { recordDemoEvent, getDemoEvents } from '../dev/demo-mode.js'
+import { getActiveDataContext } from '../dev/data-view.js'
+import { getLastAlertEvaluation } from '../alerts/scheduler.js'
 import { demoSession } from '../dev/demo-session.js'
-import { listSnapshots, inspectSnapshot, isValidSnapshotName, nextSnapshotName, RESERVED_LIVE_BACKUP } from '../dev/snapshot-store.js'
+import { listSnapshots, inspectSnapshot, isValidSnapshotName, RESERVED_LIVE_BACKUP } from '../dev/snapshot-store.js'
 import config from '../config.js'
 import apiHubUsage from '../api-hub-usage.js'
 import { API_OPERATION_REGISTRY, describeExpectedApiCall } from '../api-operation-registry.js'
+import { adminRequestKey, createAdminQueryState, setAdminQueryHeaders } from './query-state.js'
 
 // /api/admin/* — 전체 requireRole('admin'). db 주입 가능(테스트).
 export function createAdminRouter({ db = null } = {}) {
   const router = Router()
   const database = () => db || getDb()
+  const queryState = createAdminQueryState()
   router.use(requireRole('admin'))
 
-  router.get('/metrics', (req, res) => res.json(readMetrics(database(), String(req.query.range || '24h'))))
-  router.get('/traffic', (req, res) => res.json({
+  // 조회별로 독립적으로 실패를 기록한다. 한 endpoint의 실패가 다른 endpoint의
+  // 마지막 정상 payload를 비우지 않으므로 콘솔은 부분 성공을 보존할 수 있다.
+  const read = (endpoint, handler) => (req, res) => {
+    const suppliedScope = req.get('X-Admin-Request-Generation-Scope')
+    // Older clients did not send a page-lifetime token. Keep their ordering
+    // isolated per authenticated session without reflecting its identifier.
+    const sessionScope = req.sessionID
+      ? `session:${createHash('sha256').update(req.sessionID).digest('base64url')}`
+      : 'legacy'
+    const request = queryState.begin({
+      endpoint,
+      requestKey: adminRequestKey(req, endpoint),
+      requestGeneration: req.get('X-Admin-Request-Generation'),
+      requestScope: suppliedScope || sessionScope,
+      exposeRequestScope: Boolean(suppliedScope),
+    })
+    Promise.resolve()
+      .then(() => handler(req))
+      .then((payload) => {
+        setAdminQueryHeaders(res, queryState.succeed(request, payload))
+        res.json(payload)
+      })
+      .catch((error) => {
+        const state = queryState.fail(request, error)
+        setAdminQueryHeaders(res, state)
+        res.status(503).json({ error: 'admin_query_failed', query: state })
+      })
+  }
+
+  router.get('/metrics', read('metrics', (req) => readMetrics(database(), String(req.query.range || '24h'))))
+  router.get('/traffic', read('traffic', () => ({
     ...trafficStats(database()),
     hourly: hourlyPattern(database()),
-  }))
-  router.get('/trends', (req, res) => {
+  })))
+  router.get('/trends', read('trends', (req) => {
     const granularity = ['day', 'week', 'month'].includes(req.query.granularity) ? req.query.granularity : 'day'
-    res.json(readTrends(database(), granularity))
-  })
-  router.get('/data-health', (req, res) => {
-    const health = readDataHealth(config.storage.active_path, { getCached: store.getCached, getStats: stats.getStats })
+    return readTrends(database(), granularity)
+  }))
+  router.get('/data-health', read('data-health', () => {
+    const health = readDataHealth(config.storage.active_path, {
+      getCached: store.getCached,
+      getStats: stats.getStats,
+      activeDataContext: getActiveDataContext(),
+    })
     health.rows = health.rows.map((row) => ({ ...row, stats: stats.getTypeSummary(row.statsKey) }))
-    res.json(health)
-  })
+    return health
+  }))
   // 서버 전산자원 탭: 재시작 횟수/가동시간/힙 메모리 + 폴더별 디스크 사용량 + 최근 실패 로그.
   // 디스크만 캐시(5분) — 나머지는 계산이 가벼워 매 요청 그대로.
-  router.get('/server-health', (req, res) => res.json({
+  router.get('/server-health', read('server-health', () => ({
     process: processHealth(),
     disk: readDiskUsage(config.storage.base_path),
     recentErrors: (stats.getStats().recent_runs || []).filter((r) => !r.success).slice(0, 20),
     diskForecast: forecastDiskFull(readMetrics(database(), '7d').series),
     deployment: deploymentInfo(),
     backup: lastBackup(config.storage.base_path),
-  }))
-  router.get('/api-hub-usage', (req, res) => {
+  })))
+  router.get('/api-hub-usage', read('api-hub-usage', () => {
     const snapshot = apiHubUsage.snapshot()
     const operationStats = stats.getStats().api_operations || {}
     snapshot.onDemandOperations = API_OPERATION_REGISTRY
@@ -66,12 +104,18 @@ export function createAdminRouter({ db = null } = {}) {
           expected: describeExpectedApiCall(operation, null, Date.now()),
         }
       })
-    res.json(snapshot)
-  })
+    return snapshot
+  }))
   // 알림 감시 목록 — 지금 누가 무엇을 감시받고 있는지. 조용한 이유를 짚는 화면이다.
-  router.get('/alert-watches', (req, res) => res.json({ watches: listAlertWatches(database()) }))
-  router.get('/users', (req, res) => res.json(listUsers(database())))
-  router.get('/pending', (req, res) => res.json(listPending(database())))
+  router.get('/alert-watches', read('alert-watches', () => {
+    const activeContext = getActiveDataContext()
+    return readAlertWatches(database(), Date.now(), {
+      automaticEvaluationPaused: activeContext.mode === 'demo',
+      lastEvaluation: getLastAlertEvaluation(),
+    })
+  }))
+  router.get('/users', read('users', () => listUsers(database())))
+  router.get('/pending', read('pending', () => listPending(database())))
   // id 검증 + 실제 변경 여부 확인(없는 id를 조용히 200 처리하지 않음).
   function setStatus(status) {
     return (req, res) => {
@@ -86,16 +130,16 @@ export function createAdminRouter({ db = null } = {}) {
 
   // 직접 ON/OFF는 실황 백업을 건너뛸 수 있으므로 제공하지 않는다.
   // 시작은 snapshot/load, 종료는 demo-mode/revert 두 원자적 동작으로만 수행한다.
-  router.get('/demo-mode', (req, res) => res.json(demoSession.status()))
+  router.get('/demo-mode', read('demo-mode', () => demoSession.status()))
   // 디버깅용 — 버튼 눌렀을 때 실제로 뭐가 됐는지 콘솔에서 바로 확인(SSH로 pm2 로그 뒤질 필요 없이).
-  router.get('/demo-mode/log', (req, res) => res.json({ events: getDemoEvents() }))
+  router.get('/demo-mode/log', read('demo-mode-log', () => ({ events: getDemoEvents() })))
 
-  router.get('/snapshot/list', (req, res) => res.json({
+  router.get('/snapshot/list', read('snapshot-list', () => ({
     snapshots: listSnapshots(config.storage.base_path).map((snapshot) => ({
       ...snapshot,
       inspection: inspectSnapshot(config.storage.base_path, snapshot.name),
     })),
-  }))
+  })))
   router.get('/snapshot/:name/inspect', (req, res) => {
     if (!isValidSnapshotName(req.params.name)) return res.status(400).json({ error: 'invalid_name' })
     res.json(inspectSnapshot(config.storage.base_path, req.params.name))
@@ -104,15 +148,17 @@ export function createAdminRouter({ db = null } = {}) {
   // name 생략하면 "snapshot-N"으로 순번 자동 부여(스냅샷이 하나뿐이어도 이름 때문에 헷갈리지 않게).
   router.post('/snapshot/save', async (req, res) => {
     const requested = req.body?.name
-    const name = requested ? requested : nextSnapshotName(config.storage.base_path)
-    if (!isValidSnapshotName(name) || name === RESERVED_LIVE_BACKUP) {
+    const name = requested || null
+    // 자동 이름은 drain과 같은 session 경계에서 정한다. 여기서 미리 계산하면
+    // 동시에 들어온 두 요청이 같은 snapshot-N을 선택할 수 있다.
+    if (name && (!isValidSnapshotName(name) || name === RESERVED_LIVE_BACKUP)) {
       recordDemoEvent('save-failed', `이름 거부: ${JSON.stringify(requested)}`)
       return res.status(400).json({ error: 'invalid_name', hint: '영문/숫자/-/_ 만 가능' })
     }
     try {
-      const { saved, referenceTime } = await demoSession.captureSnapshot(name)
-      recordDemoEvent('save', `${name} — ${saved.length}개 항목, 기준시각 ${referenceTime}`)
-      res.json({ ok: true, name, saved, referenceTime, inspection: inspectSnapshot(config.storage.base_path, name) })
+      const savedSnapshot = await demoSession.captureSnapshot(name)
+      recordDemoEvent('save', `${savedSnapshot.name} — ${savedSnapshot.saved.length}개 항목, 기준시각 ${savedSnapshot.referenceTime}`)
+      res.json({ ok: true, ...savedSnapshot, inspection: inspectSnapshot(config.storage.base_path, savedSnapshot.name) })
     } catch (error) {
       recordDemoEvent('save-failed', error.message)
       res.status(error.message.startsWith('collection_drain_timeout') ? 503 : 500).json({ error: 'snapshot_save_failed' })

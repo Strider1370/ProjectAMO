@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-scratch_dir="$(mktemp -d)"
+scratch_dir="$(mktemp -d /tmp/projectamo-deploy-lock-test.XXXXXX)"
 holder_pid=""
 cleanup() {
   if [ -n "$holder_pid" ]; then
@@ -13,7 +13,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-lock_file="/tmp/projectamo-deploy.lock"
+# Keep the offline test away from the lock that serializes real deployments.
+# The deploy entrypoints retain that path as their default; this test injects a
+# unique lock path only to exercise the same mutual-exclusion contract.
+lock_file="$scratch_dir/deploy.lock"
 marker_file="$scratch_dir/commands-ran"
 mkdir -p "$scratch_dir/bin"
 
@@ -32,11 +35,27 @@ sleep 0.1
 
 for deploy_script in deploy-vm.sh deploy-vm-full.sh; do
   set +e
-  PATH="$scratch_dir/bin:$PATH" PROJECTAMO_DEPLOY_TEST_MARKER="$marker_file" \
-    bash "$repo_root/deploy/$deploy_script" >/dev/null 2>&1
+  PATH="$scratch_dir/bin:$PATH" PROJECTAMO_DEPLOY_LOCK_FILE="$lock_file" PROJECTAMO_DEPLOY_TEST_MARKER="$marker_file" \
+    PROJECTAMO_DEPLOY_LOCK_TEST=1 bash "$repo_root/deploy/$deploy_script" >/dev/null 2>&1
   status=$?
   set -e
 
   test "$status" -ne 0
+  test ! -e "$marker_file"
+done
+
+# The test-only route must reject arbitrary paths before the redirection that
+# opens a lock file.  This keeps an inherited test variable from creating or
+# truncating a caller-selected path.
+unsafe_lock_file="$scratch_dir/not-an-allowed-lock"
+for deploy_script in deploy-vm.sh deploy-vm-full.sh; do
+  set +e
+  PATH="$scratch_dir/bin:$PATH" PROJECTAMO_DEPLOY_LOCK_FILE="$unsafe_lock_file" PROJECTAMO_DEPLOY_TEST_MARKER="$marker_file" \
+    PROJECTAMO_DEPLOY_LOCK_TEST=1 bash "$repo_root/deploy/$deploy_script" >/dev/null 2>&1
+  status=$?
+  set -e
+
+  test "$status" -ne 0
+  test ! -e "$unsafe_lock_file"
   test ! -e "$marker_file"
 done

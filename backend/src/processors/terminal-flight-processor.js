@@ -303,7 +303,7 @@ async function process({ signal } = {}) {
   const kacArrivalClockFor = arrivalClockLookup(rows)
   // 인천행은 인천공항공사 값을 먼저 쓴다. 그 공항을 운영하는 쪽이 정확하다.
   // 이번 회차에 인천을 안 불렀으면 직전 값을 그대로 쓴다. 인천행만 잠깐 비는 것보다 낫다.
-  const previousSnapshot = store.getCached('terminal_flights')
+  const previousSnapshot = store.getLiveCached('terminal_flights')
   // 이전 탑승구는 더 이상 화면에 쓰지 않는다. 공항공사 API도 값 하나에 `탑승구 변경`이라는
   // 상태 단어를 따로 주는 구조이고, 화면은 그 단어로 바뀐 사실을 알린다.
   // 필요해지면 아래 두 줄을 되살리면 된다. previousGateLookup은 그대로 두고 테스트도 유지한다.

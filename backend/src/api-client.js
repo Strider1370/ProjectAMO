@@ -50,7 +50,7 @@ function isSuccessByType(type, resultCode, resultMsg) {
   if (type === 'sigwx_low') return true
   if (resultCode == null) return false
   if (resultCode === '00') return true
-  if (type === 'warning' && resultCode === '03' && /NO_DATA/i.test(resultMsg || '')) return true
+  if (type === 'warning' && resultCode === '03') return true
   if (type === 'airport_info' && resultCode === '03') return true
   if (type === 'takeoff_fcst' && resultCode === '03') return true // 발표 없음(빈 자료)도 정상 취급
   return false

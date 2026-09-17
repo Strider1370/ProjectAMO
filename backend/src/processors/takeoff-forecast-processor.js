@@ -32,7 +32,7 @@ async function process({ signal } = {}) {
   signal?.throwIfAborted()
 
   // 실패/공백은 이전 캐시로 stale 유지(airport_info 패턴).
-  const previous = store.getCached('takeoff_fcst')
+  const previous = store.getLiveCached('takeoff_fcst')
   if (previous?.airports) {
     for (const icao of failed) {
       if (!airports[icao] && previous.airports[icao]) {

@@ -8,6 +8,8 @@ Run a focused contract with `npm run dev:contract -- --grep <id>`. The command c
 
 desktop 한 종, 재시도 없음, 이미 떠 있는 서버 재사용(`CONTRACT_REUSE_SERVER=1`). 실측상 태풍 계약 12개가 재시도 포함 5.9분 → 재시도 없이 2.2분이고, 서버 재사용까지 하면 한 건은 30초 안쪽이다.
 
+fast 실행의 `CONTRACT_DATA_PATH`는 재사용할 backend의 `DATA_PATH`와 같아야 한다. package script는 현재 `DATA_PATH`를 전달하고, 값이 없으면 기본 `backend/data`를 사용한다. 기본 `dev:contract`는 매번 ignored artifacts 아래 고유 data root를 만들어 runner와 backend에 함께 전달하고 종료 때 정리한다. 테스트 계정 fixture는 실제 테스트 시작 뒤 그 격리 DB에만 설치되므로 `--list`나 테스트 탐색은 DB를 열지 않는다.
+
 **병합 전 검증은 `dev:contract`를 쓴다.** 세 뷰포트 전부, 매번 새 서버에서 시작한다.
 
 ### 계약을 쓸 때 지킬 것
@@ -17,6 +19,15 @@ desktop 한 종, 재시도 없음, 이미 떠 있는 서버 재사용(`CONTRACT_
 - 이름만으로 찾지 말고 소유 패널·클래스로 범위를 좁힌다.
 - 같은 종류가 여러 개일 수 있으면(태풍 2개, 패널 2개) 반드시 대상을 지정한다.
 - 지도 소스의 데이터를 단언할 때 `querySourceFeatures`를 쓰지 않는다. 그것은 이미 그려진 타일을 읽어 `setData` 직후를 반영하지 못한다. `getSource(id).serialize().data`를 본다.
+
+### 현 화면과 플랫폼 범위
+
+- 지도 계약은 제품의 현재 source/layer 상수로 대상 ID를 잡고, style 교체 뒤에는 source·layer 존재, 가시성, 쌓임 순서를 확인한다. Mapbox 내부 paint 직렬화값은 구현 세부사항이므로 opacity의 정확 문자열을 계약으로 고정하지 않는다.
+- 설정은 모바일 `더보기 → 설정`, 접힌 데스크톱은 설정 유틸리티 메뉴를 연 뒤 그 안의 `설정`으로 들어간다. 같은 접근성 이름의 첫 버튼을 곧바로 모달 진입점이라고 가정하지 않는다.
+- `CHANGELOG[0]`과 `CURRENT_VERSION`으로 새 릴리스 모달을 확인한다. 특정 과거 버전 문자열을 최신 릴리스의 대용으로 쓰지 않는다.
+- `/monitoring`은 벽걸이 전용이며 모바일 폭에서는 메인으로 redirect한다. monitoring visual 계약의 mobile 프로젝트는 이 제품 정책을 명시적으로 skip한다.
+- 모바일은 토큰/알약 route 입력 표면을 제공하지 않는다. `route-token-input`의 mobile 프로젝트는 skip하고, 제공되는 단계형 브리핑 흐름은 `route-workflow`에서 검증한다.
+- reduced-motion은 전환을 사실상 0초로 줄이되 정보 회전 자체를 멈추게 하는 계약이 아니다. 엔진별 `0s`/미세 시간 직렬화 차이는 수치 범위로 비교한다.
 
 ### 사파리 엔진(`ipad-safari`)
 
@@ -31,7 +42,7 @@ WebKit 실행에는 시스템 라이브러리가 필요하다(`sudo npx playwrig
 | Contract | Features / owners | Viewports | Preconditions | Spec | Owner | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | `responsive-baseline` | app shell and release notice; `App.jsx`, `UpdatesModal.jsx`, layout, `MapView.jsx` | desktop, iPad landscape, mobile | local app only; no route/weather fixture | `frontend/verification/contracts/responsive-baseline.spec.mjs` | frontend | active — release notice coverage added and passed 2026-08-15 |
-| `map-base` | `MapView.jsx`, basemap switcher, weather overlays | desktop, iPad landscape, mobile | local map style/assets; no route/weather fixture | `frontend/verification/contracts/map-base.spec.mjs` | frontend | active — passed 2026-07-19 |
+| `map-base` | `MapView.jsx`, basemap switcher, weather overlays | desktop, iPad landscape, mobile | local map style/assets; no route/weather fixture. Mobile verifies its exposed 기본 지도/기상 레이어 only; 지형 선택·CI/CTPS+basemap 조합은 desktop/iPad surface | `frontend/verification/contracts/map-base.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `satellite-assets` | isolated satellite publication contract; IR/FOG, VI006, CI, CTPS overlay assets | desktop, iPad landscape, mobile | deterministic satellite metadata and image/GeoJSON fixtures | `frontend/verification/contracts/satellite-assets.spec.mjs` | backend + frontend | active — validates all four published satellite asset families remain browser-loadable |
 | `monitoring` | `MonitoringPage.jsx` | desktop, iPad landscape | local monitoring data; mobile is redirected away from /monitoring | `frontend/verification/contracts/monitoring.spec.mjs` | frontend | active — passed 2026-07-28 |
 | `admin-console` | 관리자 자료 상태·API 사용량·서버 상태 | desktop, iPad landscape, mobile | verification admin fixture | `frontend/verification/contracts/admin-console.spec.mjs` | backend + frontend | active — API 실행 결과·다음 정상 호출 확인 포함 |
@@ -41,7 +52,7 @@ WebKit 실행에는 시스템 라이브러리가 필요하다(`sudo npx playwrig
 | `taf-amd-severity-escalation` | AMD TAF severity; `AlertPanel.jsx`, alert-triggers.js | desktop, iPad landscape | `buildTafPayload({ reportStatus: 'AMENDMENT' })` escalates from warning to critical | `frontend/verification/contracts/monitoring.spec.mjs` in `an AMD worsening alert sorts above a regular one` | frontend | active — passed 2026-07-28 (4 passed, 2 skipped) |
 | `taf-replacement-not-stacking` | TAF alert row replacement; `alert-engine.js`, lifecycle with issued key | desktop, iPad landscape | `page.clock.install()` + `runFor(61s)` triggers polling; hash change detected; new row replaces old by issued time comparison | `frontend/verification/contracts/monitoring.spec.mjs` in `a new TAF replaces the previous TAF alert row instead of stacking` | frontend | active — passed 2026-07-28 (4 passed, 2 skipped) |
 | `airport-panel` | `AirportPanel.jsx` | desktop, iPad landscape, mobile | RKSI must be in the local airport list; no live weather assertion | `frontend/verification/contracts/airport-panel.spec.mjs` | frontend | active — passed 2026-07-19 |
-| `airport-model-comparison` | 공항 패널 → 상세 예보 분석, 공통 시각·기온/RH·모델 운고·부분/빈자료·갱신 실패·셀 펼침·호버 툴팁·그래프 클릭 무변경 | desktop, iPad landscape, mobile | `model-comparison-fixture.mjs`: 고정 now, RKPU09Z 실자료 값 + 명시적 synthetic 13시간 | `frontend/verification/contracts/airport-model-comparison.spec.mjs` | backend + frontend | active — 2026-09-07: 전체 관련51/51, 사용자 피드백 반영 후 분석 화면33/33 통과 |
+| `airport-model-comparison` | 공항 패널 → 상세 예보 분석, 공통 시각·기온/RH·모델 운고·부분/빈자료·갱신 실패·셀 펼침·호버 툴팁·그래프 클릭 무변경 | desktop, iPad landscape, mobile | `model-comparison-fixture.mjs`: 고정 now, RKPU09Z 실자료 값 + 명시적 synthetic 13시간. Mobile verifies the analysis body; KIM 연직 참고 rail의 무안 이미지 탭은 desktop/iPad surface only | `frontend/verification/contracts/airport-model-comparison.spec.mjs` | backend + frontend | active — 2026-09-07: 전체 관련51/51, 사용자 피드백 반영 후 분석 화면33/33 통과 |
 | `notam-and-settings` | `NotamPanel.jsx`, `SettingsModal.jsx` | desktop, iPad landscape, mobile | local app state only; mobile has settings but no NOTAM entry | `frontend/verification/contracts/notam-and-settings.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `route-import` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed `rksi-rkpk-multi.gpx` fixture; local airport/navdata | `frontend/verification/contracts/route-import.spec.mjs` | frontend | active — passed 2026-07-19 |
 | `route-workflow` | `RouteBriefingPanel.jsx`, `useRouteBriefing.js` | desktop, iPad landscape, mobile | committed navdata; `route-fixture.mjs` intercepts exposure, altitude, profile, cross-section, briefing APIs | `frontend/verification/contracts/route-workflow.spec.mjs` | frontend | active — passed 2026-08-15 (토큰 입력으로 전환 후 재확인) |

@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures.mjs'
+import { CHANGELOG, CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
 test.describe('responsive-baseline', () => {
   test('an unseen release opens its latest notes once', async ({ page }) => {
@@ -12,9 +13,10 @@ test.describe('responsive-baseline', () => {
 
     const dialog = page.getByRole('dialog', { name: '업데이트 소식', exact: true })
     await expect(dialog).toBeVisible()
-    await expect(dialog.getByRole('button', { name: /v0\.3\.0/ })).toHaveAttribute('aria-expanded', 'true')
+    const latest = CHANGELOG[0]
+    await expect(dialog.getByRole('button', { name: new RegExp(`v${latest.version}`) })).toHaveAttribute('aria-expanded', 'true')
     await expect(dialog.getByRole('listitem')).not.toHaveCount(0)
-    expect(await page.evaluate(() => localStorage.getItem('projectamo:lastSeenVersion'))).toBe('0.3.0')
+    expect(await page.evaluate(() => localStorage.getItem('projectamo:lastSeenVersion'))).toBe(CURRENT_VERSION)
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await expect(dialog).toHaveCount(0)

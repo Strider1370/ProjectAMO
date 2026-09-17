@@ -19,6 +19,7 @@ const MAX_RECENT_RUNS = 50
 const START_SAVE_INTERVAL_MS = 30_000
 const EMPTY_EXECUTION = Object.freeze({
   last_started_at: null,
+  last_start_source: null,
   last_scheduled_started_at: null,
   last_finished_at: null,
   last_outcome: null,
@@ -81,6 +82,7 @@ function exactExecution(execution) {
   const outcome = COLLECTOR_OUTCOMES.has(source.last_outcome) ? source.last_outcome : null
   return {
     last_started_at: typeof source.last_started_at === 'string' ? source.last_started_at : null,
+    last_start_source: typeof source.last_start_source === 'string' ? source.last_start_source : null,
     last_scheduled_started_at: typeof source.last_scheduled_started_at === 'string' ? source.last_scheduled_started_at : null,
     last_finished_at: typeof source.last_finished_at === 'string' ? source.last_finished_at : null,
     last_outcome: outcome,
@@ -264,6 +266,7 @@ export function recordStart(type, { source } = {}) {
   const run = { source: source || 'scheduled', id: `${persistence.now()}-${Math.random().toString(36).slice(2)}` }
   if (!execution) return run
   execution.last_started_at = at
+  execution.last_start_source = run.source
   if (run.source === 'scheduled') {
     execution.last_scheduled_started_at = at
     if (execution.last_outcome === 'missed') execution.last_outcome = null
@@ -423,7 +426,13 @@ export function getStats() {
 // 목록이라 24시간 같은 시간 창을 계산할 근거가 못 된다(그건 2단계에서 따로 쌓는다).
 export function getTypeSummary(type) {
   const entry = statsData.types[type]
-  const empty = { successRate: null, recentSuccessRate: null, recentRuns: 0, recentLastError: null, recentLastErrorAt: null, totalRuns: 0, skips: 0, avgMs: null, since: statsData.since, errorCounts: {}, lastError: null }
+  const period = {
+    kind: 'stats_lifetime_since_reset',
+    startedAt: statsData.since,
+    endedAt: new Date(persistence.now()).toISOString(),
+  }
+  const empty = { successRate: null, recentSuccessRate: null, recentRuns: 0, recentLastError: null, recentLastErrorAt: null, totalRuns: 0, skips: 0, avgMs: null, since: statsData.since, errorCounts: {}, lastError: null,
+    executionCounters: { period, collectorRuns: 0, successfulRuns: 0, failedRuns: 0, skippedAttempts: 0 } }
   if (!entry) return empty
 
   const durations = statsData.recent_runs
@@ -444,6 +453,15 @@ export function getTypeSummary(type) {
     since: statsData.since,
     errorCounts: entry.error_counts || {},
     lastError: entry.last_error ?? null,
+    // totalRuns/skip의 과거 이름을 보존하되, 서로 다른 실제 단위를 하나의
+    // "이벤트 수"로 읽지 않도록 새 DTO에는 run/attempt/failure를 분리한다.
+    executionCounters: {
+      period,
+      collectorRuns: entry.total_runs,
+      successfulRuns: entry.success,
+      failedRuns: entry.failure,
+      skippedAttempts: entry.skips || 0,
+    },
   }
 }
 

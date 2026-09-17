@@ -227,6 +227,12 @@ const UNKNOWN = '확인 중'
 // 한국 시각 기준 시차(분). fixture가 쓰는 세 시간대만 담는다.
 const ZONE_OFFSET_MINUTES = Object.freeze({ KST: 0, JST: 0, CST: -60 })
 
+// 고정 simulation 표본 밖의 실제 KAC 목적지는 destination fixture에 없을 수 있다.
+// 이 목록은 "시차를 아는 목적지"만 명시한다. 나머지는 현지 시각을 꾸며내지 않고 숨긴다.
+const FEED_DESTINATION_TIME_ZONES = Object.freeze({
+  PEK: 'CST',
+})
+
 /** 목적지 현지 시각은 기준 한국 시각에서 계산한다. 고정값을 두면 데이터가 바뀌어도 낡은 시각이 남는다. */
 function localClockFrom(kstClock, localZone) {
   const offset = ZONE_OFFSET_MINUTES[localZone]
@@ -304,7 +310,7 @@ function destinationFromFeed(row) {
     ...(known || {
       // 도착 시각이 있다는 건 한국공항공사가 그 공항의 도착 기록을 가졌다는 뜻, 곧 국내 공항이다.
       // 김해-인천처럼 국제선으로 분류되지만 목적지가 한국인 편도 여기서 걸러진다.
-      localZone: row.arrivalKst || !row.international ? 'KST' : null,
+      localZone: row.arrivalKst || !row.international ? 'KST' : (FEED_DESTINATION_TIME_ZONES[row.destinationIata] ?? null),
       current: { icon: null, temp: null, feels: UNKNOWN, humidity: UNKNOWN, wind: UNKNOWN },
       forecast: [],
     }),

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
+import { readDisplayPreferences, saveDisplayPreferences } from '../../shared/settings/displayPreferences.js'
 import { TabList, Tab } from '../../shared/ui/fluent.js'
 import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import './SettingsModal.css'
@@ -10,17 +11,32 @@ export default function SettingsModal({ onClose }) {
   useCloseOnBackButton(true, onClose)
   const { setTz } = useTimeZone()
   const [activeTab, setActiveTab] = useState('display')
-  const [timeZone, setTimeZone] = useState(() => localStorage.getItem('time_zone') || 'KST')
-  const [language, setLanguage] = useState(() => localStorage.getItem('language') || 'ko')
+  const [preferences] = useState(readDisplayPreferences)
+  const [timeZone, setTimeZone] = useState(preferences.timeZone)
+  const [language, setLanguage] = useState(preferences.language)
+  const [saveError, setSaveError] = useState('')
+  const [retryCloses, setRetryCloses] = useState(false)
 
-  function saveToStorage() {
-    localStorage.setItem('time_zone', timeZone)
-    localStorage.setItem('language', language)
-    setTz(timeZone)
+  function saveToStorage({ closeWhenSaved = false } = {}) {
+    const result = saveDisplayPreferences({ timeZone, language })
+    // storage write가 일부 또는 전부 실패해도 이 세션의 표시 시간대는 적용한다.
+    setTz(result.timeZone)
+    setTimeZone(result.timeZone)
+    setLanguage(result.language)
+    if (!result.ok) {
+      setSaveError('설정을 이 기기에 저장하지 못했습니다. 현재 세션에는 적용되어 있으며 다시 시도할 수 있습니다.')
+      setRetryCloses(closeWhenSaved)
+      return false
+    }
+    setSaveError('')
+    setRetryCloses(false)
+    if (closeWhenSaved) onClose()
+    return true
   }
   function handleApply() { saveToStorage() }
-  function handleSave() { saveToStorage(); onClose() }
-  function handleReset() { setTimeZone('KST'); setLanguage('ko') }
+  function handleSave() { saveToStorage({ closeWhenSaved: true }) }
+  function handleRetry() { saveToStorage({ closeWhenSaved: retryCloses }) }
+  function handleReset() { setTimeZone('KST'); setLanguage('ko'); setSaveError('') }
 
   return (
     <div className="settings-overlay" onClick={onClose}>
@@ -64,6 +80,13 @@ export default function SettingsModal({ onClose }) {
             )}
           </div>
         </div>
+
+        {saveError && (
+          <div className="settings-save-error" role="alert">
+            <span>{saveError}</span>
+            <button type="button" onClick={handleRetry}>다시 시도</button>
+          </div>
+        )}
 
         <div className="settings-footer">
           <button className="settings-btn-reset" onClick={handleReset}>초기화</button>

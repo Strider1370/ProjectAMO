@@ -202,6 +202,33 @@
   border-top: 1px solid var(--stroke-2);
 }
 
+.settings-save-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
+  margin: 0 var(--space-xl);
+  padding: var(--space-s) var(--space-m);
+  border: 1px solid var(--level-red);
+  border-radius: var(--radius-md);
+  background: var(--level-red-bg);
+  color: var(--level-red);
+  font-size: var(--fs-200);
+}
+
+.settings-save-error button {
+  min-height: var(--touch-min);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  color: inherit;
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  padding: 0 var(--space-m);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .settings-btn-reset {
   background: none;
   border: 1px solid var(--stroke-1);

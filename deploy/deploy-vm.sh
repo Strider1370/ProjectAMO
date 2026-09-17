@@ -1,7 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-exec 9>/tmp/projectamo-deploy.lock
+deploy_lock_file="/tmp/projectamo-deploy.lock"
+# The override exists solely for deploy/test-deploy-lock.sh.  Do not let an
+# inherited environment redirect a real deployment's lock (or create a file)
+# elsewhere: test locks are unique, /tmp-local directories made by mktemp.
+if [ "${PROJECTAMO_DEPLOY_LOCK_TEST:-}" = "1" ]; then
+  candidate_lock_file="${PROJECTAMO_DEPLOY_LOCK_FILE:-}"
+  case "${candidate_lock_file}" in
+    /tmp/projectamo-deploy-lock-test.[[:alnum:]][[:alnum:]][[:alnum:]][[:alnum:]][[:alnum:]][[:alnum:]]/deploy.lock)
+      deploy_lock_file="${candidate_lock_file}"
+      ;;
+    *)
+      echo "[deploy] invalid test deployment lock path" >&2
+      exit 2
+      ;;
+  esac
+fi
+exec 9>"${deploy_lock_file}"
 flock -n 9 || { echo "[deploy] another deployment is already running" >&2; exit 1; }
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,8 +40,8 @@ if [ "${PROJECTAMO_DEPLOY_REEXEC:-}" != "1" ]; then
   exec bash "${BASH_SOURCE[0]}" "$@"
 fi
 
-# 관리자 콘솔의 "배포 시각"이 읽는 파일. git 파일 수정시각에 기대는 것보다 정확하다.
-date -Iseconds > .deployed-at
+source deploy/deploy-common.sh
+
 echo "[deploy] building frontend..."
 bash deploy/build-frontend.sh
 
@@ -49,9 +65,10 @@ sudo systemctl reload nginx
 # pm2 재시작 직후엔 backend가 아직 부팅 중이라 즉시 curl은 실패(exit 7)한다. 준비될 때까지 재시도.
 # 설정이 실제로 걸렸는지 확인한다. 파일만 보고 "됐겠지" 하다가 한 달을 놓쳤다.
 echo "[deploy] verifying process options..."
-expected_opts="$(node -p "require('./ecosystem.config.cjs').apps[0].env.NODE_OPTIONS || ''")"
+app_name="$(projectamo_ecosystem_app_name)"
+expected_opts="$(projectamo_ecosystem_node_options "${app_name}")"
+app_pid="$(projectamo_pm2_online_pid)"
 if [ -n "${expected_opts}" ]; then
-  app_pid="$(pm2 jlist | node -p "JSON.parse(require('fs').readFileSync(0,'utf8'))[0].pid")"
   actual_opts="$(tr '\0' '\n' < "/proc/${app_pid}/environ" | sed -n 's/^NODE_OPTIONS=//p')"
   if [ "${actual_opts}" = "${expected_opts}" ]; then
     echo "[deploy] NODE_OPTIONS applied: ${actual_opts}"
@@ -80,5 +97,8 @@ else
   echo "[deploy] site returned ${site_code} — 화면이 정상적으로 나오지 않는다" >&2
   exit 1
 fi
+
+echo "[deploy] recording successful deployment..."
+projectamo_write_success_marker .deployed-at
 
 echo "[deploy] done"

@@ -10,6 +10,14 @@ const artifactDir = path.join(rootDir, 'artifacts', 'verification')
 // 실행마다 백엔드+vite를 새로 띄우는 30초 이상을 아낀다. 기본값은 지금까지와 같은 false —
 // 병합 전 검증은 매번 깨끗한 서버에서 시작해야 하므로 그 동작을 바꾸지 않는다.
 const reuseServer = process.env.CONTRACT_REUSE_SERVER === '1'
+const explicitDataPath = process.env.CONTRACT_DATA_PATH
+if (reuseServer && !explicitDataPath) {
+  throw new Error('CONTRACT_REUSE_SERVER=1 requires CONTRACT_DATA_PATH matching the reused backend')
+}
+const contractDataPath = path.resolve(explicitDataPath || path.join(artifactDir, 'data', `${process.pid}-${Date.now()}`))
+process.env.CONTRACT_DATA_PATH = contractDataPath
+process.env.DATA_PATH = contractDataPath
+if (!explicitDataPath) process.env.CONTRACT_DATA_PATH_OWNED = '1'
 
 export default defineConfig({
   testDir: './verification/contracts',
@@ -19,9 +27,13 @@ export default defineConfig({
   retries: 1,
   forbidOnly: !!process.env.CI,
   failOnFlakyTests: true,
+  globalTeardown: './verification/contract-data-teardown.mjs',
   reporter: [['html', { outputFolder: path.join(artifactDir, 'html-report'), open: 'never' }], ['list']],
   use: {
     baseURL: 'http://127.0.0.1:5173',
+    // route fixture는 browser 요청을 소유한다. public/sw.js가 먼저 제어하면 WebKit에서
+    // fixture POST가 backend로 새어 격리 DEM의 503을 받으므로 계약 실행에서는 막는다.
+    serviceWorkers: 'block',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -43,7 +55,7 @@ export default defineConfig({
     {
       command: 'node server.js',
       cwd: path.join(rootDir, 'backend'),
-      env: { ...process.env, DISABLE_COLLECTION: '1' },
+      env: { ...process.env, DATA_PATH: contractDataPath, DISABLE_COLLECTION: '1', ENABLE_TEST_MUTATIONS: '1' },
       url: 'http://127.0.0.1:3001/api/health',
       reuseExistingServer: reuseServer,
       timeout: 60_000,

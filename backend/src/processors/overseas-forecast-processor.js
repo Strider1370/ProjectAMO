@@ -94,7 +94,7 @@ export function extractOverseasSlots(payload, hours = 72) {
   }).filter((slot) => slot && slot.temp != null)
 }
 
-async function fetchForecast(airport) {
+async function fetchForecast(airport, { signal } = {}) {
   // TOS: 식별 가능한 User-Agent 필수(없으면 403), 좌표는 소수점 4자리까지.
   const params = new URLSearchParams({
     lat: airport.lat.toFixed(4),
@@ -102,14 +102,37 @@ async function fetchForecast(airport) {
   })
   const url = `${MET_NO_URL}?${params}`
   const response = await requestObservedApi({
-    operation: 'met_norway', url, options: { headers: { 'User-Agent': config.met_no.user_agent } },
+    operation: 'met_norway', url, options: { headers: { 'User-Agent': config.met_no.user_agent }, signal },
     validate: async (value) => { if (!value.ok) throw new Error(`HTTP ${value.status}`); await value.json() },
   })
   return extractOverseasSlots(await response.json())
 }
 
-async function process({ signal } = {}) {
-  const previous = store.getCached('overseas_forecast')
+function delay(ms, signal) {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms))
+  signal.throwIfAborted()
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(signal.reason ?? new Error('overseas forecast collection cancelled'))
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
+async function process({
+  signal,
+  airportsToCollect = overseasAirports,
+  fetchAirportForecast = fetchForecast,
+  wait = delay,
+  dataStore = store,
+} = {}) {
+  signal?.throwIfAborted()
+  const previous = dataStore.getLiveCached('overseas_forecast')
   const result = {
     type: 'overseas_forecast',
     fetched_at: new Date().toISOString(),
@@ -118,26 +141,29 @@ async function process({ signal } = {}) {
   }
   const failed = []
 
-  for (const airport of overseasAirports) {
-    if (signal?.aborted) break
+  for (const airport of airportsToCollect) {
+    signal?.throwIfAborted()
     try {
-      const hourly = await fetchForecast(airport)
+      const hourly = await fetchAirportForecast(airport, { signal })
+      signal?.throwIfAborted()
       if (hourly.length === 0) throw new Error('empty forecast')
       // 해외공항 자료에 시차가 없어 한국 시각 기준으로 오전·오후를 나눈다.
       // 시차 1시간(베이징)까지는 경계 칸 하나만 어긋난다. 시차가 큰 목적지가 늘면
       // 공항 자료에 시차를 채우고 buildOverseasDaily에 offsetMinutes로 넘긴다.
       result.airports[airport.icao] = { icao: airport.icao, hourly, daily: buildOverseasDaily(hourly) }
     } catch (error) {
+      if (signal?.aborted) throw signal.reason ?? error
       failed.push(airport.icao)
       // 한 공항이 실패해도 이전 값을 남긴다. 승객 화면에서 예보가 통째로 사라지는 편이 더 나쁘다.
       const stale = previous?.airports?.[airport.icao]
       if (stale) result.airports[airport.icao] = { ...stale, _stale: true }
     }
     // TOS: 요청을 한꺼번에 몰지 말고 고르게 분산할 것.
-    await new Promise((resolve) => setTimeout(resolve, 120))
+    await wait(120, signal)
   }
 
-  const saveResult = store.save('overseas_forecast', result)
+  signal?.throwIfAborted()
+  const saveResult = dataStore.save('overseas_forecast', result)
   return {
     saved: saveResult.saved,
     airports: Object.keys(result.airports).length,

@@ -15,6 +15,10 @@ test('누적 성공률과 표본 수를 낸다', () => {
   assert.equal(s.totalRuns, 3)
   assert.ok(Math.abs(s.successRate - 2 / 3) < 1e-9)
   assert.equal(s.avgMs, 200) // 100·300·200의 평균
+  assert.deepEqual(s.executionCounters, {
+    period: { kind: 'stats_lifetime_since_reset', startedAt: s.since, endedAt: s.executionCounters.period.endedAt },
+    collectorRuns: 3, successfulRuns: 2, failedRuns: 1, skippedAttempts: 0,
+  })
   assert.equal(s.lastError, 'boom')
   assert.ok(s.since)
 })

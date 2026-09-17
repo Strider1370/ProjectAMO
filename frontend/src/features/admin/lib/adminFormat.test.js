@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   EXECUTION_WORD, STATUS_TONE, STATUS_WORD, attentionItems, executionProblems, formatAge, formatBytes,
-  formatInterval, formatMs, formatRate, levelTone, percent, trendGroups,
+  eventMeasurementLabel, formatInterval, formatMs, formatRate, levelTone, percent, trendGroups,
 } from './adminFormat.js'
 
 test('formatAge는 사람이 읽는 경과 시간을 만든다', () => {
@@ -40,9 +40,14 @@ test('formatBytes는 단위를 올린다', () => {
   assert.equal(formatBytes(NaN), '—')
 })
 
-test('percent는 0으로 나누지 않는다', () => {
+test('percent는 측정 불가를 0으로 바꾸지 않는다', () => {
   assert.equal(percent(1, 2), 50)
-  assert.equal(percent(5, 0), 0)
+  assert.equal(percent(5, 0), null)
+})
+
+test('이벤트 측정은 실제 0과 집계 불가를 구분한다', () => {
+  assert.equal(eventMeasurementLabel({ availability: 'available', count: 0, unit: 'deduplicated_nationwide_strikes' }), '0건 · 전국 중복 제거 낙뢰')
+  assert.equal(eventMeasurementLabel({ availability: 'unavailable', count: null }), '집계 정보 없음')
 })
 
 test('모든 상태에 글자와 색조가 있다 — 색만으로 뜻을 전하지 않는다', () => {

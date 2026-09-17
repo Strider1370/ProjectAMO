@@ -4,12 +4,12 @@ import assert from 'node:assert/strict'
 import { MENUS, menuBadges, menusIn, topSignals } from './menus.js'
 
 test('메뉴 구성 — 로그는 아직 없다', () => {
-  assert.deepEqual(MENUS.map((m) => m.id), ['overview', 'data', 'server', 'api', 'users', 'accounts', 'alerts'])
+  assert.deepEqual(MENUS.map((m) => m.id), ['overview', 'data', 'server', 'api', 'users', 'accounts', 'alerts', 'demo'])
   assert.equal(MENUS.some((m) => m.id === 'logs'), false, '로그는 3단계다')
 })
 
 test('메뉴는 운영과 이용 두 묶음으로 나뉜다', () => {
-  assert.equal(menusIn('ops').length, 4)
+  assert.equal(menusIn('ops').length, 5)
   assert.equal(menusIn('usage').length, 3) // 이용자·계정 관리·알림 감시
   assert.equal(menusIn('ops').length + menusIn('usage').length, MENUS.length)
 })

@@ -164,3 +164,35 @@ test('loadChangedWeatherData refreshes convective metadata independently', async
     recorder.restore()
   }
 })
+
+test('optional JSON decode failures preserve healthy initial siblings and changed last-good data', async (t) => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (url) => ({
+    ok: true,
+    status: 200,
+    json: async () => {
+      if (String(url) === '/api/metar') throw new SyntaxError('truncated JSON')
+      return { content_hash: `${url}-hash` }
+    },
+  })
+  t.after(() => { globalThis.fetch = originalFetch })
+
+  const initial = await loadWeatherData()
+  const changed = await loadChangedWeatherData({ metar: true, taf: true })
+
+  assert.equal(initial.metar, null)
+  assert.ok(initial.taf)
+  assert.equal(changed.metar, undefined)
+  assert.ok(changed.taf)
+})
+
+test('main periodic loader never polls NOTAM without an explicit refresh', async () => {
+  const recorder = installFetchRecorder()
+  try {
+    const changed = await loadChangedWeatherData({ notam: true })
+    assert.deepEqual(changed, {})
+    assert.deepEqual(recorder.calls, [])
+  } finally {
+    recorder.restore()
+  }
+})

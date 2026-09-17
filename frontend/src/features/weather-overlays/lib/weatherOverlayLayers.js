@@ -33,6 +33,7 @@ import {
   syncWissdomLayer,
 } from './wissdomLayers.js'
 import { syncRasterFrame } from './rasterFrameTransition.js'
+import { createSigwxMarkerImage } from './sigwxMarkerImages.js'
 
 export { QPF_LAYER, QPF_SOURCE, WISSDOM_LAYER, WISSDOM_SOURCE }
 
@@ -42,8 +43,10 @@ export const RADAR_SOURCE = 'kma-radar-overlay'
 export const RADAR_LAYER = 'kma-radar-overlay'
 export const SIGWX_SOURCE = 'kma-sigwx-overlay'
 export const SIGWX_LAYER = 'kma-sigwx-overlay'
+export const SIGWX_FRONT_ZOOM_LAYERS = [SIGWX_LAYER, `${SIGWX_LAYER}-standard`, `${SIGWX_LAYER}-detail`]
 export const SIGWX_CLOUD_SOURCE = 'kma-sigwx-cloud-overlay'
 export const SIGWX_CLOUD_LAYER = 'kma-sigwx-cloud-overlay'
+export const SIGWX_CLOUD_ZOOM_LAYERS = [SIGWX_CLOUD_LAYER, `${SIGWX_CLOUD_LAYER}-standard`, `${SIGWX_CLOUD_LAYER}-detail`]
 export const SIGWX_POLYGON_SOURCE = 'kma-sigwx-low-polygons'
 export const SIGWX_POLYGON_LAYER = 'kma-sigwx-low-polygons'
 export const SIGWX_POLYGON_OUTLINE_LAYER = 'kma-sigwx-low-polygons-outline'
@@ -73,8 +76,8 @@ export const WEATHER_OVERLAY_SOURCE_IDS = [
   QPF_SOURCE,
   RAINVIEWER_SOURCE,
   RAINVIEWER_COVERAGE_SOURCE,
-  SIGWX_SOURCE,
-  SIGWX_CLOUD_SOURCE,
+  ...SIGWX_FRONT_ZOOM_LAYERS,
+  ...SIGWX_CLOUD_ZOOM_LAYERS,
   SIGWX_POLYGON_SOURCE,
   SIGWX_LINE_SOURCE,
   SIGWX_LABEL_SOURCE,
@@ -96,8 +99,8 @@ export const WEATHER_OVERLAY_LAYER_IDS = [
   QPF_LAYER,
   RAINVIEWER_LAYER,
   RAINVIEWER_COVERAGE_LAYER,
-  SIGWX_LAYER,
-  SIGWX_CLOUD_LAYER,
+  ...SIGWX_FRONT_ZOOM_LAYERS,
+  ...SIGWX_CLOUD_ZOOM_LAYERS,
   ...SIGWX_VECTOR_LAYERS,
   LIGHTNING_GROUND_LAYER,
   LIGHTNING_CLOUD_LAYER,
@@ -194,13 +197,13 @@ const EMPTY_GEOJSON = { type: 'FeatureCollection', features: [] }
 const pendingMapImages = new WeakMap()
 const addedMapImages = new WeakMap()
 const loadedMapImages = new Map()
-const sigwxIconUrlsById = new Map()
+const sigwxImagesById = new Map()
 const styleImageMissingBoundMaps = new WeakSet()
 const lightningFrameSyncs = new WeakMap()
 
 function registerSigwxIconImages(images = []) {
-  images.forEach(({ id, url }) => {
-    if (id && url) sigwxIconUrlsById.set(id, url)
+  images.forEach((image) => {
+    if (image.id && (image.url || image.kind)) sigwxImagesById.set(image.id, image)
   })
 }
 
@@ -209,10 +212,16 @@ export function bindSigwxStyleImageMissing(map) {
   styleImageMissingBoundMaps.add(map)
   map.on('styleimagemissing', (event) => {
     const id = event?.id
-    const url = sigwxIconUrlsById.get(id)
-    if (!url) return
-    ensureMapImage(map, { id, url })
+    const image = sigwxImagesById.get(id)
+    if (image) ensureSigwxImage(map, image)
   })
+}
+
+function ensureSigwxImage(map, image) {
+  if (!image.kind) return ensureMapImage(map, image)
+  if (map.hasImage(image.id)) return
+  const data = createSigwxMarkerImage(image)
+  if (data && !map.hasImage(image.id)) map.addImage(image.id, data, { pixelRatio: 2 })
 }
 
 export function ensureMapImage(map, { id, url }) {
@@ -305,11 +314,18 @@ export function buildSigwxDashArrayExpression() {
     'match',
     ['get', 'lineType'],
     '2', ['literal', [8, 6]],
-    '3', ['literal', [10, 6]],
+    '3', ['match', ['get', 'filterKey'],
+      'turbulence', ['literal', [2.5, 1.5]],
+      ['literal', [10, 6]],
+    ],
     '4', ['literal', [10, 4, 2, 4]],
     '5', ['literal', [14, 8]],
     '6', ['literal', [16, 6]],
-    '7', ['literal', [12, 4, 2, 4, 2, 4]],
+    // Dash lengths are multiples of line width: rain uses a compact dash-dot-dot.
+    '7', ['match', ['get', 'itemName'],
+      'rain', ['literal', [3, 1, 0.5, 1, 0.5, 1]],
+      ['literal', [12, 4, 2, 4, 2, 4]],
+    ],
     '8', ['literal', [18, 6]],
     '301', ['literal', [10, 6]],
     '302', ['literal', [10, 6]],
@@ -332,7 +348,7 @@ export function addOrUpdateSigwxLowLayers(map, data, { loadIcons = true } = {}) 
   addOrUpdateGeoJsonSource(map, SIGWX_TEXT_CHIP_SOURCE, data?.textChips || EMPTY_GEOJSON)
 
   if (loadIcons) {
-    data?.iconImages?.forEach((image) => ensureMapImage(map, image))
+    data?.iconImages?.forEach((image) => ensureSigwxImage(map, image))
   }
 
   if (!map.getLayer(SIGWX_POLYGON_LAYER)) {
@@ -343,7 +359,7 @@ export function addOrUpdateSigwxLowLayers(map, data, { loadIcons = true } = {}) 
       slot: 'top',
       paint: {
         'fill-color': ['coalesce', ['get', 'colorBack'], '#a78bfa'],
-        'fill-opacity': 0.12,
+        'fill-opacity': ['case', ['boolean', ['get', 'isFill'], false], 0.12, 0],
       },
     })
   }
@@ -476,6 +492,41 @@ export function setSigwxLowVisibility(map, isVisible) {
   SIGWX_VECTOR_LAYERS.forEach((layerId) => setMapLayerVisible(map, layerId, isVisible))
 }
 
+function sigwxOverlayFrame(meta, frame = meta?.latest) {
+  if (!frame?.path) return null
+  // The API returns a metadata envelope. Revision the image URL as the same
+  // forecast time can be amended or regenerated with a newer renderer.
+  const revision = [meta.render_version || frame.render_version, meta.source_hash || meta.updated_at].filter(Boolean).join(':')
+  return revision ? {
+    ...frame,
+    path: `${frame.path}${frame.path.includes('?') ? '&' : '?'}v=${encodeURIComponent(revision)}`,
+  } : frame
+}
+
+function syncSigwxZoomLayers(map, meta, visible, layerIds, opacity) {
+  const variants = meta?.latest?.variants
+  const hasVariants = Array.isArray(variants) && variants.length === 3
+    && variants.every((variant, index) => variant?.id === ['overview', 'standard', 'detail'][index]
+      && variant.path && Number.isFinite(variant.minzoom) && Number.isFinite(variant.maxzoom)
+      && variant.minzoom < variant.maxzoom)
+  layerIds.forEach((id, index) => {
+    const variant = hasVariants ? variants[index] : null
+    const frame = hasVariants ? sigwxOverlayFrame(meta, { ...meta.latest, ...variant })
+      : index === 0 ? sigwxOverlayFrame(meta) : null
+    const installed = addOrUpdateImageOverlay(map, { sourceId: id, layerId: id, frame, opacity })
+    if (installed) map.setLayerZoomRange(id, variant?.minzoom ?? 0, variant?.maxzoom ?? 24)
+    setMapLayerVisible(map, id, Boolean(installed && visible))
+  })
+}
+
+export function syncSigwxFrontLayers(map, meta, visible) {
+  syncSigwxZoomLayers(map, meta, visible, SIGWX_FRONT_ZOOM_LAYERS, 0.85)
+}
+
+export function syncSigwxCloudLayers(map, meta, visible) {
+  syncSigwxZoomLayers(map, meta, visible, SIGWX_CLOUD_ZOOM_LAYERS, 0.95)
+}
+
 export function syncRasterAndSigwxLayers(map, model, { syncRaster = syncRasterFrame } = {}) {
   syncRaster(map, {
     sourceId: SATELLITE_SOURCE,
@@ -500,23 +551,11 @@ export function syncRasterAndSigwxLayers(map, model, { syncRaster = syncRasterFr
     frame: model.rainviewerFrame,
     visible: !!model.visibility.radarOverseas,
   })
-  const hasSigwx = addOrUpdateImageOverlay(map, {
-    sourceId: SIGWX_SOURCE,
-    layerId: SIGWX_LAYER,
-    frame: model.selectedSigwxFrontMeta,
-    opacity: 0.85,
-  })
-  const hasSigwxCloud = addOrUpdateImageOverlay(map, {
-    sourceId: SIGWX_CLOUD_SOURCE,
-    layerId: SIGWX_CLOUD_LAYER,
-    frame: model.selectedSigwxCloudMeta,
-    opacity: 0.65,
-  })
+  syncSigwxFrontLayers(map, model.selectedSigwxFrontMeta, model.visibility.sigwx && model.showVisibleSigwxFrontOverlay)
+  syncSigwxCloudLayers(map, model.selectedSigwxCloudMeta, model.visibility.sigwx && model.showVisibleSigwxCloudOverlay)
 
   addOrUpdateSigwxLowLayers(map, model.sigwxLowMapData, { loadIcons: model.visibility.sigwx })
   setMapLayerVisible(map, RADAR_LAYER, hasRadar && model.visibility.radar)
-  setMapLayerVisible(map, SIGWX_LAYER, hasSigwx && model.visibility.sigwx && model.showVisibleSigwxFrontOverlay)
-  setMapLayerVisible(map, SIGWX_CLOUD_LAYER, hasSigwxCloud && model.visibility.sigwx && model.showVisibleSigwxCloudOverlay)
   setSigwxLowVisibility(map, model.visibility.sigwx)
 }
 

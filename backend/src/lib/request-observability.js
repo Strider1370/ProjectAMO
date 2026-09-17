@@ -90,34 +90,88 @@ async function sleepFor(sleep, ms, signal) {
   })
 }
 
-function withTimeout(fetchImpl, url, options, timeoutMs) {
+function requestDeadline(signal, timeoutMs) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(requestError('api_operation_timeout')), timeoutMs)
-  const signal = options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal
-  return fetchImpl(url, { ...options, signal, [REQUEST_OBSERVED]: true }).finally(() => clearTimeout(timer))
+  const onAbort = () => controller.abort(signal.reason ?? requestError('api_operation_cancelled'))
+  if (signal) {
+    if (signal.aborted) onAbort()
+    else signal.addEventListener('abort', onAbort, { once: true })
+  }
+  return {
+    signal: controller.signal,
+    cleanup() {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
+    },
+  }
+}
+
+function withinDeadline(operation, signal) {
+  if (signal.aborted) return Promise.reject(signal.reason ?? requestError('api_operation_cancelled'))
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      cleanup()
+      reject(signal.reason ?? requestError('api_operation_cancelled'))
+    }
+    const cleanup = () => signal.removeEventListener('abort', onAbort)
+    signal.addEventListener('abort', onAbort, { once: true })
+    Promise.resolve().then(operation).then((value) => {
+      cleanup()
+      resolve(value)
+    }, (error) => {
+      cleanup()
+      reject(error)
+    })
+  })
+}
+
+async function withTimeout(fetchImpl, url, options, timeoutMs) {
+  const deadline = requestDeadline(options.signal, timeoutMs)
+  try {
+    const upstream = await withinDeadline(() => fetchImpl(url, { ...options, signal: deadline.signal, [REQUEST_OBSERVED]: true }), deadline.signal)
+    const body = await withinDeadline(() => upstream.arrayBuffer(), deadline.signal)
+    return { upstream, body }
+  } finally {
+    deadline.cleanup()
+  }
 }
 
 function shouldUseFallback(error, policy) {
   return Boolean(policy.transportFallback) && policy.transportFallback.trigger.causeCode === error?.cause?.code
 }
 
-function httpsFallback(url, policy, signal) {
+async function httpsFallback(url, policy, signal) {
   const transport = policy.transportFallback.transport
-  return new Promise((resolve, reject) => {
-    const request = https.request(url, {
-      method: 'GET', rejectUnauthorized: transport.rejectUnauthorized, headers: transport.headers,
-    }, (response) => {
-      const chunks = []
-      response.on('data', (chunk) => chunks.push(chunk))
-      response.on('end', () => resolve(new Response(Buffer.concat(chunks), { status: response.statusCode || 500, headers: response.headers })))
+  const deadline = requestDeadline(signal, policy.timeoutMs)
+  let onAbort
+  try {
+    return await new Promise((resolve, reject) => {
+      let settled = false
+      const settle = (callback, value) => {
+        if (settled) return
+        settled = true
+        callback(value)
+      }
+      const request = https.request(url, {
+        method: 'GET', rejectUnauthorized: transport.rejectUnauthorized, headers: transport.headers,
+      }, (response) => {
+        const chunks = []
+        response.on('data', (chunk) => chunks.push(chunk))
+        response.once('error', (error) => settle(reject, error))
+        response.once('aborted', () => settle(reject, requestError('api_operation_cancelled')))
+        response.once('end', () => settle(resolve, new Response(Buffer.concat(chunks), { status: response.statusCode || 500, headers: response.headers })))
+      })
+      onAbort = () => request.destroy(deadline.signal.reason ?? requestError('api_operation_cancelled'))
+      if (deadline.signal.aborted) onAbort()
+      else deadline.signal.addEventListener('abort', onAbort, { once: true })
+      request.once('error', (error) => settle(reject, error))
+      request.end()
     })
-    const onAbort = () => request.destroy(signal.reason ?? requestError('api_operation_cancelled'))
-    signal?.addEventListener('abort', onAbort, { once: true })
-    request.setTimeout(policy.timeoutMs, () => request.destroy(requestError('api_operation_timeout')))
-    request.on('error', reject)
-    request.on('close', () => signal?.removeEventListener('abort', onAbort))
-    request.end()
-  })
+  } finally {
+    if (onAbort) deadline.signal.removeEventListener('abort', onAbort)
+    deadline.cleanup()
+  }
 }
 
 export function createRequestObservedApi({ usage = apiHubUsage, stats: executionStats = stats, fetchImpl = (...args) => globalThis.fetch(...args), sleep = defaultSleep, resolveOperation = resolveApiOperation, logger = console } = {}) {
@@ -155,14 +209,15 @@ export function createRequestObservedApi({ usage = apiHubUsage, stats: execution
           if (operation.apiHub) usage.assertAllowed(credential)
           transportStarted = true
           let upstream
+          let body
           try {
-            upstream = await withTimeout(fetchImpl, requestUrl, fetchOptions, policy.timeoutMs)
+            ({ upstream, body } = await withTimeout(fetchImpl, requestUrl, fetchOptions, policy.timeoutMs))
           } catch (error) {
             if (!shouldUseFallback(error, policy)) throw error
             if (operation.apiHub) await recordUsage({ bytes: 0, status: 0, endpoint: operation.id })
             upstream = await httpsFallback(requestUrl, policy, fetchOptions.signal)
+            body = await upstream.arrayBuffer()
           }
-          const body = await upstream.arrayBuffer()
           transportCompleted = true
           if (operation.apiHub) {
             await recordUsage({ bytes: body.byteLength, status: upstream.status, endpoint: operation.id })

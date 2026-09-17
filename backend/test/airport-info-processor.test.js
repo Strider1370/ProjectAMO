@@ -41,7 +41,7 @@ test('airport info processor keeps previous airport info for missing airports du
   const originalAirports = config.airports
   const originalFetchAirportInfo = apiClient.fetchAirportInfo
   const originalParse = airportInfoParser.parse
-  const originalGetCached = store.getCached
+  const originalGetLiveCached = store.getLiveCached
   const originalSave = store.save
   const previousRkss = { icao: 'RKSS', tm: '2026-05-21 06:00:00.0', title: 'Previous RKSS' }
   let savedPayload
@@ -52,7 +52,7 @@ test('airport info processor keeps previous airport info for missing airports du
     if (icao === 'RKSI') return { icao: 'RKSI', tm: '2026-05-21 17:00:00.0', title: 'New RKSI' }
     return null
   }
-  store.getCached = (type) => type === 'airport_info'
+  store.getLiveCached = (type) => type === 'airport_info'
     ? { airports: { RKSS: previousRkss } }
     : null
   store.save = (_type, payload) => {
@@ -71,7 +71,7 @@ test('airport info processor keeps previous airport info for missing airports du
     config.airports = originalAirports
     apiClient.fetchAirportInfo = originalFetchAirportInfo
     airportInfoParser.parse = originalParse
-    store.getCached = originalGetCached
+    store.getLiveCached = originalGetLiveCached
     store.save = originalSave
   }
 })

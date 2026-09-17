@@ -33,7 +33,7 @@ import apiHubUsage from './api-hub-usage.js'
 import { runSatelliteWorker } from './satellite/worker-runner.js'
 import { createSatelliteWorkQueue } from './satellite/work-queue.js'
 import { activeCollectorRegistry, assertCollectorRegistry } from './collector-registry.js'
-import { createExecutionWatchdog } from './collector-execution.js'
+import { createExecutionWatchdog, validateCollectionResult } from './collector-execution.js'
 import { collectNwpModel, isNwpCollectionDue, peerComparisonRevision } from './airport-model-comparison/lifecycle.js'
 
 net.setDefaultAutoSelectFamily(false)
@@ -52,7 +52,7 @@ function safeCollectorLog(type, outcome, fields = {}) {
     .join(' ')}`
 }
 
-async function runWithLock(type, job, { source = 'manual', apiHubCategories = [], isBlocked = (category) => apiHubUsage.snapshot().keys.find((key) => key.category === category)?.status === 'blocked', stats: recorder = stats, logger = console } = {}) {
+async function runWithLock(type, job, { source = 'manual', apiHubCategories = [], resultOutcomes, isBlocked = (category) => apiHubUsage.snapshot().keys.find((key) => key.category === category)?.status === 'blocked', stats: recorder = stats, logger = console } = {}) {
   if (['nwp_ecmwf','nwp_icon','nwp_gfs'].includes(type) && !isNwpCollectionDue({model:type.slice(4)})) return {skipped:'nwp_complete_or_disabled'}
   const run = recorder.recordStart(type, { source })
   if (apiHubCategories.length > 0 && apiHubCategories.every(isBlocked)) {
@@ -73,6 +73,15 @@ async function runWithLock(type, job, { source = 'manual', apiHubCategories = []
   const peerBefore = ['kim_surface_wind','nwp_icon','nwp_gfs'].includes(type) ? peerComparisonRevision() : null
   try {
     const result = await job({ signal: controller.signal });
+    if (result?.collection) {
+      const collection = validateCollectionResult(result.collection, resultOutcomes)
+      if (collection.outcome === 'failed') {
+        const issue = normalizeCollectorIssue({ outcome: 'failed', code: collection.reason, message: collection.reason, at: new Date().toISOString() })
+        logger.error?.(safeCollectorLog(type, 'failed', { code: issue.code, message: issue.message }))
+        recorder.recordFailure(type, issue.message, Date.now() - t0, run)
+        return result
+      }
+    }
     if(type==='kim_surface_wind' && (result?.comparison?.failed || result?.comparison?.failedAirports?.length)) throw new Error('kim_airport_comparison_incomplete')
     const durationMs = Date.now() - t0
     logger.info?.(safeCollectorLog(type, 'succeeded', { duration_ms: durationMs, ...(typeof result?.saved === 'boolean' ? { saved: result.saved } : {}) }))
@@ -161,7 +170,7 @@ function scheduleCollector({ scheduler = cron, collector, job, runOptions = {}, 
     collector.schedule.expression,
     () => {
       if (collector.type.startsWith('nwp_') && !isNwpDue({model:collector.type.slice(4),root:activeConfig.storage.base_path,nowMs:now(),settings:activeConfig.overseas_nwp})) return
-      return runner(collector.type, job, { ...runOptions, apiHubCategories: collector.apiHubCategories, source: 'scheduled' })
+      return runner(collector.type, job, { ...runOptions, apiHubCategories: collector.apiHubCategories, resultOutcomes: collector.resultOutcomes, source: 'scheduled' })
     },
     collector.schedule.cronOptions,
   )
@@ -255,7 +264,7 @@ function buildInitialCollectionJobs({
 
 function runOptionsForCollector(type, activeConfig = config, source = 'manual') {
   const collector = activeCollectorRegistry(activeConfig).find((item) => item.type === type)
-  return { source, apiHubCategories: collector?.apiHubCategories ?? [] }
+  return { source, apiHubCategories: collector?.apiHubCategories ?? [], resultOutcomes: collector?.resultOutcomes }
 }
 
 export function startCollectorWatchdog({ activeConfig = config, watchdogFactory = createExecutionWatchdog } = {}) {

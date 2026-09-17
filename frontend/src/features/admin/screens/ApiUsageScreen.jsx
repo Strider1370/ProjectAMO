@@ -11,16 +11,16 @@ import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 const gb = (bytes) => (bytes / 1024 ** 3).toFixed(2)
 const STATUS_WORD = { active: '정상', blocked: '차단됨', unconfigured: '열쇠 없음' }
 
-export default function ApiUsageScreen() {
+export default function ApiUsageScreen({ adminQuery }) {
   const [usage, setUsage] = useState(null)
   const { tz } = useTimeZone()
 
   useEffect(() => {
-    const load = () => { getApiHubUsage().then(setUsage).catch(() => {}) }
+    const load = () => { getApiHubUsage(adminQuery).then((result) => { if (result.query.current) setUsage(result.data) }).catch(() => {}) }
     load()
     const timer = setInterval(load, 5000)
     return () => clearInterval(timer)
-  }, [])
+  }, [adminQuery])
 
   if (!usage) return null
 

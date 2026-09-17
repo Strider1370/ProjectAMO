@@ -52,6 +52,22 @@ test.after(async () => {
   }
 })
 
+test('SIGWX zoom images use revisioned static-image caching', async () => {
+  const baseUrl = await getServerBaseUrl()
+  const dir = path.join(sharedRoot, 'sigwx_low')
+  fs.mkdirSync(dir, { recursive: true })
+  for (const suffix of ['', '_standard', '_detail']) {
+    for (const kind of ['fronts', 'clouds']) {
+    const name = `${kind}_2026072205${suffix}.png`
+    fs.writeFileSync(path.join(dir, name), 'fixture')
+    const response = await fetch(`${baseUrl}/data/sigwx_low/${name}?v=zoom-v4`)
+    assert.equal(response.status, 200)
+    assert.match(response.headers.get('cache-control'), /max-age=10800, immutable/)
+    await response.arrayBuffer()
+    }
+  }
+})
+
 test('static configuration API uses revalidation cache instead of no-store', async () => {
   const baseUrl = await getServerBaseUrl()
   const first = await fetch(`${baseUrl}/api/warning-types`)
@@ -85,4 +101,5 @@ test('unallowlisted API responses keep no-store default', async () => {
   const response = await fetch(`${baseUrl}/api/health`)
   assert.equal(response.status, 200)
   assert.match(response.headers.get('cache-control'), /no-store/)
+  assert.deepEqual((await response.json()).capabilities, { testMutations: false })
 })

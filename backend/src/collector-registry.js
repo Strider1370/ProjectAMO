@@ -1,8 +1,11 @@
 import productionConfig from './config.js'
 import cron from 'node-cron'
+import { COLLECTION_OUTCOMES } from './collector-execution.js'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
+const STANDARD_RESULT_OUTCOMES = ['complete', 'partial', 'failed']
+const EMPTY_ALLOWED_RESULT_OUTCOMES = [...STANDARD_RESULT_OUTCOMES, 'empty']
 
 const utc = (key, maxIntervalMs, graceMs, quiet) => (config) => ({ expression: config.schedule[key], timezone: 'Etc/UTC', maxIntervalMs, graceMs, ...(quiet ? { quiet } : {}) })
 const kst = (key, maxIntervalMs, graceMs, quiet) => (config) => ({ expression: config.schedule[key], timezone: 'Asia/Seoul', maxIntervalMs, graceMs, ...(quiet ? { quiet } : {}) })
@@ -11,8 +14,8 @@ const enabled = () => true
 const radarEnabled = (config) => Boolean(config.api?.radar_satellite_auth_key)
 const graphicsEnabled = (config) => radarEnabled(config) && config.radar_graphics?.enabled !== false
 
-function collector(type, schedule, isEnabled = enabled, apiHubCategories = []) {
-  return { type, binding: type, label: type, schedule, enabled: isEnabled, apiHubCategories }
+function collector(type, schedule, isEnabled = enabled, apiHubCategories = [], resultOutcomes = STANDARD_RESULT_OUTCOMES) {
+  return { type, binding: type, label: type, schedule, enabled: isEnabled, apiHubCategories, resultOutcomes }
 }
 
 const scheduleKey = { kma_special_warning: 'warning', metar_overseas: 'metar', taf_overseas: 'taf', sigmet_overseas: 'sigmet' }
@@ -41,6 +44,7 @@ export const COLLECTOR_REGISTRY = [
     type === 'flight_category'
       ? ['aviation', 'radar_satellite']
       : ['metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'lightning', 'typhoon'].includes(type) ? ['aviation'] : [],
+    type === 'warning' ? EMPTY_ALLOWED_RESULT_OUTCOMES : STANDARD_RESULT_OUTCOMES,
   )),
   collector('kim_surface_wind', utc('kim_surface_wind_interval', 4 * HOUR, 35 * MINUTE), (config) => config.kim_nwp?.enabled !== false),
   collector('nwp_ecmwf', overseasNwpSchedule('nwp_ecmwf_interval', 90 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
@@ -58,6 +62,12 @@ export const COLLECTOR_REGISTRY = [
   collector('satellite', utc('satellite_interval', 5 * MINUTE, 10 * MINUTE), radarEnabled, ['radar_satellite']),
   collector('satellite_visible', utc('satellite_visible_interval', 5 * MINUTE, 10 * MINUTE), radarEnabled, ['radar_satellite']),
 ]
+
+export function resultOutcomesForCollector(type) {
+  const collector = COLLECTOR_REGISTRY.find((item) => item.type === type)
+  if (!collector) throw new Error(`unknown_collector:${type}`)
+  return collector.resultOutcomes
+}
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -117,12 +127,19 @@ function validSchedule(schedule) {
   }
 }
 
+function validResultOutcomes(resultOutcomes) {
+  return resultOutcomes === undefined || (Array.isArray(resultOutcomes)
+    && resultOutcomes.length > 0
+    && new Set(resultOutcomes).size === resultOutcomes.length
+    && resultOutcomes.every((outcome) => COLLECTION_OUTCOMES.includes(outcome)))
+}
+
 export function assertCollectorRegistry(registry = COLLECTOR_REGISTRY, config = {}) {
   if (registry?.activeCollectors) {
     const { activeCollectors, processorBindings } = registry
     const seen = new Set()
     for (const item of activeCollectors) {
-      if (!item?.type || !item.binding || !validSchedule(item.schedule) || !Array.isArray(item.apiHubCategories) || seen.has(item.type) || typeof processorBindings?.[item.binding] !== 'function') {
+      if (!item?.type || !item.binding || !validSchedule(item.schedule) || !Array.isArray(item.apiHubCategories) || !validResultOutcomes(item.resultOutcomes) || seen.has(item.type) || typeof processorBindings?.[item.binding] !== 'function') {
         throw new Error(`invalid_collector_registration:${item?.type || 'unknown'}`)
       }
       seen.add(item.type)
@@ -131,7 +148,7 @@ export function assertCollectorRegistry(registry = COLLECTOR_REGISTRY, config = 
   }
   const ids = new Set()
   for (const item of registry) {
-    if (!item?.type || !item.binding || typeof item.schedule !== 'function' || typeof item.enabled !== 'function' || !Array.isArray(item.apiHubCategories) || ids.has(item.type)) {
+    if (!item?.type || !item.binding || typeof item.schedule !== 'function' || typeof item.enabled !== 'function' || !Array.isArray(item.apiHubCategories) || !validResultOutcomes(item.resultOutcomes) || ids.has(item.type)) {
       const error = new Error('invalid_collector_registry')
       error.code = 'invalid_collector_registry'
       throw error

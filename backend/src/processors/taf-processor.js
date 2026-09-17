@@ -4,6 +4,7 @@ import store from '../store.js'
 import tafParser from '../parsers/taf-parser.js'
 import { buildTafTacPresentation } from '../serializers/taf-tac.js'
 import { attachPrevious } from './taf-previous.js'
+import { collectionResult } from '../collector-execution.js'
 
 async function processAll({ signal } = {}) {
   const result = {
@@ -25,6 +26,9 @@ async function processAll({ signal } = {}) {
         // 국내 IWXXM은 원문 TAF가 없음 → base+change_groups로 재구성해 채움
         if (parsed.header) { const tac = buildTafTacPresentation(parsed); parsed.header.raw_text = tac?.text ?? null; parsed.header.tac = tac }
         result.airports[airport.icao] = parsed;
+      } else {
+        failedAirports.push(airport.icao)
+        airportErrors[airport.icao] = 'parse_null'
       }
     } catch (error) {
       if (signal?.aborted) throw signal.reason ?? error
@@ -33,23 +37,31 @@ async function processAll({ signal } = {}) {
     }
   }
 
-  if (failedAirports.length > 0) {
+  const freshAirportCount = Object.keys(result.airports).length
+  if (freshAirportCount > 0 && failedAirports.length > 0) {
     store.mergeWithPrevious(result, "taf", failedAirports);
   }
 
   // 직전 TAF를 previous 칸에 보관한다(스펙 §11). mergeWithPrevious 뒤에 두어야
   // 수신 실패로 직전 것이 채워진 공항이 "같은 issued 재수신" 갈래를 탄다.
   // previous는 result 안에 들어가므로 저장·재시작 복원이 자동으로 된다.
-  result.airports = attachPrevious(result.airports, store.getCached("taf")?.airports);
+  if (freshAirportCount > 0) {
+    result.airports = attachPrevious(result.airports, store.getLiveCached("taf")?.airports);
+  }
 
-  const saveResult = store.save("taf", result);
+  const outcome = freshAirportCount === 0 ? 'failed' : (failedAirports.length > 0 ? 'partial' : 'complete')
+  const collection = collectionResult(outcome, outcome === 'failed' ? null : result, {
+    reason: outcome === 'failed' ? 'no_usable_taf_reports' : null,
+  })
+  const saveResult = store.publishCollection("taf", collection);
   return {
     type: "taf",
     saved: saveResult.saved,
     filePath: saveResult.filePath || null,
     total: Object.keys(result.airports).length,
     failedAirports,
-    airportErrors
+    airportErrors,
+    collection,
   };
 }
 

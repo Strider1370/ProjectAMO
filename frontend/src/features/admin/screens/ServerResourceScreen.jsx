@@ -1,5 +1,6 @@
 import { LineChart } from '../components/Chart.jsx'
 import { formatAge, formatBytes, levelTone, percent } from '../lib/adminFormat.js'
+import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
 // 서버 자원. 게이지와 추이는 기존 화면에서 이어받고, 여기에 세 가지를 더한다 —
 // 디스크가 며칠 남았는지, 지금 돌고 있는 버전이 뭔지, 인증서가 언제 만료되는지.
@@ -12,9 +13,16 @@ const CERT_WARN_DAYS = 14
 // 하루가 넘도록 백업이 없으면 정기 백업이 안 돌고 있다는 뜻이다(예정 주기 24시간 + 여유).
 const BACKUP_STALE_MS = 30 * 3_600_000
 
-const timeLabel = (iso) => new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+const timeLabel = (iso, tz) => new Date(iso).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })
 
 function Gauge({ label, value, sub }) {
+  if (!Number.isFinite(value)) return (
+    <div className="ac-gauge">
+      <div className="ac-gl2">{label}</div>
+      <div className="ac-gv n">—</div>
+      <div className="ac-gs">{sub || '측정할 수 없음'}</div>
+    </div>
+  )
   const tone = levelTone(value)
   return (
     <div className="ac-gauge">
@@ -39,7 +47,12 @@ function DiskRow({ entry, total }) {
 const RANGES = [['1h', '1시간'], ['24h', '24시간'], ['7d', '7일']]
 const RANGE_LABEL = { '1h': '1시간', '24h': '24시간', '7d': '7일' }
 
+export function formatRecentErrorTime(iso, tz) {
+  return new Date(iso).toLocaleString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul' })
+}
+
 export default function ServerResourceScreen({ server, metrics, range = '24h', onRange }) {
+  const { tz } = useTimeZone()
   if (!server || !metrics?.current) return null
 
   const current = metrics.current
@@ -49,6 +62,9 @@ export default function ServerResourceScreen({ server, metrics, range = '24h', o
   const top = disk.slice(0, DISK_TOP_N)
   const rest = disk.slice(DISK_TOP_N)
   const forecast = server.diskForecast
+  const metric = current.metricContract
+  const rootFs = metric?.filesystems?.root
+  const dataFs = metric?.filesystems?.data
   const cert = server.deployment?.cert
   const cpuPoints = series.map((row) => row.cpu_pct)
   const peakIndex = cpuPoints.reduce((best, value, i) => (value > (cpuPoints[best] ?? -1) ? i : best), 0)
@@ -65,20 +81,21 @@ export default function ServerResourceScreen({ server, metrics, range = '24h', o
           </div>
         </h2>
         <div className="ac-gauges">
-          <Gauge label="CPU" value={Math.round(current.cpuPct)} sub="" />
+          <Gauge label="1분 부하 / 논리 CPU" value={metric?.cpu?.validity === 'available' ? Math.round(metric.cpu.value) : null} sub={metric?.cpu?.validity === 'available' ? `${metric.cpu.loadAverage1m.toFixed(2)} loadavg ÷ ${metric.cpu.logicalCpuCount} 논리 CPU (100% 상한)` : '호스트/컨테이너 측정 불가'} />
           <Gauge
             label="메모리"
             value={percent(current.memUsed, current.memTotal)}
             sub={`${(current.memUsed / 1024 ** 3).toFixed(1)} / ${(current.memTotal / 1024 ** 3).toFixed(1)} GB`}
           />
           <Gauge
-            label="디스크"
-            value={percent(current.diskUsed, current.diskTotal)}
-            sub={`${(current.diskUsed / 1024 ** 3).toFixed(1)} / ${(current.diskTotal / 1024 ** 3).toFixed(1)} GB${
+            label="루트 파일시스템"
+            value={percent(rootFs?.usedBytes, rootFs?.totalBytes)}
+            sub={rootFs?.validity === 'available' ? `${(rootFs.usedBytes / 1024 ** 3).toFixed(1)} / ${(rootFs.totalBytes / 1024 ** 3).toFixed(1)} GB${
               forecast ? ` · 하루 ${formatBytes(forecast.perDayBytes)} 증가 → 약 ${forecast.daysLeft}일 남음` : ''
-            }`}
+            }` : '루트 파일시스템 측정 불가'}
           />
         </div>
+        <p className="ac-sub">데이터 경로 파일시스템: {dataFs?.validity === 'available' ? `${formatBytes(dataFs.usedBytes)} / ${formatBytes(dataFs.totalBytes)} (${dataFs.path})` : '측정 불가'}. 추이 차트의 디스크는 루트 파일시스템만 기록합니다.</p>
         {series.length > 1 && (
           <>
             <LineChart
@@ -86,17 +103,17 @@ export default function ServerResourceScreen({ server, metrics, range = '24h', o
               max={100}
               unit="%"
               xUnit={RANGE_LABEL[range] ?? range}
-              xLabels={[timeLabel(series[0].ts), timeLabel(series[series.length - 1].ts)]}
-              hoverLabels={series.map((row) => timeLabel(row.ts))}
-              peak={{ index: peakIndex, value: cpuPoints[peakIndex], color: CPU_COLOR, text: `피크 ${Math.round(cpuPoints[peakIndex])}% · ${timeLabel(series[peakIndex].ts)}` }}
+              xLabels={[timeLabel(series[0].ts, tz), timeLabel(series[series.length - 1].ts, tz)]}
+              hoverLabels={series.map((row) => timeLabel(row.ts, tz))}
+              peak={{ index: peakIndex, value: cpuPoints[peakIndex], color: CPU_COLOR, text: `피크 ${Math.round(cpuPoints[peakIndex])}% · ${timeLabel(series[peakIndex].ts, tz)} ${tz}` }}
               series={[
-                { label: 'CPU', color: CPU_COLOR, points: cpuPoints },
+                { label: '1분 부하/논리 CPU', color: CPU_COLOR, points: cpuPoints },
                 { label: '메모리', color: MEM_COLOR, points: series.map((row) => percent(row.mem_used, row.mem_total)) },
                 { label: '디스크', color: DISK_COLOR, dashed: true, points: series.map((row) => percent(row.disk_used, row.disk_total)) },
               ]}
             />
             <div className="ac-clg">
-              <span><i style={{ background: CPU_COLOR }} />CPU</span>
+              <span><i style={{ background: CPU_COLOR }} />1분 부하/논리 CPU</span>
               <span><i style={{ background: MEM_COLOR }} />메모리</span>
               <span><i style={{ background: DISK_COLOR }} />디스크</span>
             </div>
@@ -176,7 +193,7 @@ export default function ServerResourceScreen({ server, metrics, range = '24h', o
                 <tr key={`${error.type}-${error.time}-${i}`}>
                   <td className="ac-nm">{error.type}</td>
                   <td className="ac-muted">{error.error}</td>
-                  <td className="ac-r ac-muted n">{new Date(error.time).toLocaleString('ko-KR')}</td>
+                  <td className="ac-r ac-muted n">{formatRecentErrorTime(error.time, tz)}</td>
                 </tr>
               ))}
             </tbody>

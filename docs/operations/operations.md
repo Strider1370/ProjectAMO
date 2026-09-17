@@ -94,7 +94,10 @@ Current incremental keys:
 ### Generated overlay frames
 
 - `/data/radar/echo_korea_<tm>.png`: `public, max-age=10800, immutable`
+- `/data/radar/echotop/echotop_<tm>.webp`: `public, max-age=10800, immutable`
+- `/data/radar/wissdom/wissdom_<height>_<tm>(_legend)?.webp` and `/data/radar/qpf/qpf_<tm>_p<lead>(_legend)?.webp`: `public, max-age=10800, immutable`
 - `/data/satellite/sat_korea_<tm>.webp|png`: `public, max-age=10800, immutable`
+- `/data/satellite/convective/ci_<tm>.geojson` and `ctps_<tm>_(all|fl###).webp`: `public, max-age=10800, immutable`
 - `/data/sigwx_low/fronts_<tmfc>.png`: `public, max-age=10800, immutable`
 - `/data/sigwx_low/clouds_<tmfc>.png`: `public, max-age=10800, immutable`
 
@@ -103,15 +106,24 @@ Current incremental keys:
 - `/data/radar/echo_meta.json`: `no-cache`
 - `/data/radar/rainviewer_meta.json`: `no-cache`
 - `/data/radar/{hsr,hci,wissdom,qpf}/..._meta.json`: `no-cache`
+- `/data/radar/echotop/echotop_meta.json`: `no-cache`
 - `/data/satellite/sat_meta.json`: `no-cache`
+- `/data/satellite/convective/convective_meta.json`: `no-cache`
 - `/data/sigwx_low/fronts_meta_<tmfc>.json`: `no-cache`
 - `/data/sigwx_low/clouds_meta_<tmfc>.json`: `no-cache`
+
+### Server-only generated data
+
+- `ctps_<tm>.bin` and `echotop_<tm>.bin` are raw composites for the backend point APIs, not browser assets. nginx must return `404` for exactly `/data/satellite/convective/ctps_<tm>.bin` and `/data/radar/echotop/echotop_<tm>.bin` before its `/data/` alias.
+- Do not replace those exact rules with a blanket `.bin` denial: terrain tiles and any future binary format need their own consumer and exposure review.
+- The nginx direct alias resolves through `$DATA_PATH/.active-data`; validate the same deny, frame, and metadata behavior after a live/demo view switch when applying configuration on a VM. The committed example and `deploy/test-nginx-rate-limit.mjs` are static checks, not proof that an installed production nginx loaded it.
 
 ### Frontend/static assets served by nginx
 
 - Hashed frontend build assets: `public, max-age=31536000, immutable`
 - `index.html`: `no-cache`
 - Navdata / geojson / topojson / symbols: `public, max-age=31536000, immutable`
+- `deploy/build-frontend.sh` builds `frontend/dist.new` first and verifies `index.html`. It then uses same-filesystem atomic directory exchanges so `dist/index.html` is never absent and `dist.previous` always retains the immediately prior lazy assets; nginx may fall back to that directory for a missing immutable `/assets/` request only, so an already-open tab can load one old lazy chunk after deployment. It never serves a previous `index.html` or runtime data. The next successful deployment replaces the retained generation, so a tab older than one deployment must reload. This is a static deployment contract; verify the installed nginx configuration before relying on it.
 
 ## PM2
 
@@ -151,6 +163,8 @@ deploy/deploy-vm-full.sh # use when package manifests or lockfiles changed
 
 `deploy/deploy-vm.sh` is the fast path and is valid only when backend and frontend package manifests and lockfiles have not changed. Dependency changes require `deploy/deploy-vm-full.sh`; the fast path intentionally performs no dependency installation.
 
+Both deploy entrypoints update `.deployed-at` only after build/dependency sync, PM2 restart, nginx validation/reload, configured-process validation, and backend/site health checks have all passed. The update is an atomic same-directory replacement, so a failed run retains the previous successful timestamp. Process validation selects the sole configured ecosystem app by name, requires its PM2 state to be `online` with a live PID, and never treats the first `pm2 jlist` entry as the API process.
+
 ## nginx Notes
 
 - Expose only nginx publicly.
@@ -180,6 +194,7 @@ location /api/ {
 - PM2 app name and start command are fixed
 - nginx reverse proxy is configured
 - nginx cache headers for frontend static assets are configured
+- nginx `/data/` deny rules cover CTPS/Echo Top raw composites without blocking published WebP/GeoJSON or unrelated binary consumers
 - `/api/*` rate limit policy is configured
 
 ### After deploy
@@ -187,8 +202,9 @@ location /api/ {
 - `curl http://127.0.0.1:3001/api/health`
 - `curl http://127.0.0.1:3001/api/snapshot-meta`
 - Verify `/api/*` returns `Cache-Control: no-store`
-- Verify radar/satellite/SIGWX frame files return `max-age=10800, immutable`
-- Verify meta JSON returns `no-cache`
+- Verify radar/satellite/SIGWX, CTPS/Echo Top, WISSDOM/QPF frame files return `max-age=10800, immutable`
+- Verify overlay meta JSON, including `echotop_meta.json` and `convective_meta.json`, returns `no-cache`
+- Verify direct CTPS/Echo Top raw binary URLs and DB/organization-file URLs return `404`, while their point APIs and published WebP/GeoJSON remain available
 - Verify `SIGWX_LOW` history keeps at least 2 days of snapshots
 - Verify `pm2 restart` preserves service using existing `latest.json`
 - During one normal and one visible satellite collection, verify at most one

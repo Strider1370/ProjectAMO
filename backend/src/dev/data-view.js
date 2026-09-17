@@ -31,15 +31,14 @@ function replaceSymlink(activePath, targetPath) {
 }
 
 function publishDirectory(stage, destination) {
-  const prior = `${destination}.prior-${process.pid}-${Date.now()}`
-  if (fs.existsSync(destination)) fs.renameSync(destination, prior)
-  try {
-    fs.renameSync(stage, destination)
-    fs.rmSync(prior, { recursive: true, force: true })
-  } catch (error) {
-    if (!fs.existsSync(destination) && fs.existsSync(prior)) fs.renameSync(prior, destination)
-    throw error
-  }
+  fs.mkdirSync(path.dirname(destination), { recursive: true })
+  if (fs.existsSync(destination)) throw new Error('active_data_view_generation_exists')
+  fs.renameSync(stage, destination)
+}
+
+function legacyGeneration(snapshotPath) {
+  const stat = fs.statSync(snapshotPath)
+  return `legacy-${stat.dev}-${stat.ino}-${Math.round(stat.mtimeMs)}`
 }
 
 export function createDataViewManager({
@@ -84,7 +83,6 @@ export function createDataViewManager({
   function activateDemo(name) {
     if (!SNAPSHOT_NAME.test(String(name || ''))) throw new Error('invalid_snapshot_name')
     const existing = current()
-    if (existing.mode === 'demo' && existing.name === name) return existing
 
     const snapshotPath = path.join(basePath, 'snapshots', name)
     const snapshotResolved = fs.existsSync(snapshotPath) ? fs.realpathSync(snapshotPath) : null
@@ -98,9 +96,23 @@ export function createDataViewManager({
     const snapshotMeta = readJson(path.join(snapshotResolved, 'meta.json'))
     const referenceTime = snapshotMeta?.referenceTime
     if (!Number.isFinite(Date.parse(referenceTime))) throw new Error('snapshot_reference_time_missing')
+    const generation = typeof snapshotMeta?.generation === 'string' && /^[a-zA-Z0-9_-]+$/.test(snapshotMeta.generation)
+      ? snapshotMeta.generation
+      : legacyGeneration(snapshotResolved)
+    if (existing.mode === 'demo' && existing.name === name && existing.generation === generation) return existing
 
     fs.mkdirSync(viewsPath, { recursive: true })
-    const destination = path.join(viewsPath, name)
+    // name별 가변 view를 교체하지 않는다. 활성 포인터가 가리키는 view는 generation에
+    // 고정되어 있어, 같은 이름의 새 snapshot 게시가 기존 active 자료를 바꾸지 못한다.
+    const destination = path.join(viewsPath, name, generation)
+    if (fs.existsSync(destination)) {
+      const viewMeta = readJson(path.join(destination, '.view.json'))
+      if (!viewMeta || viewMeta.mode !== 'demo' || viewMeta.name !== name || viewMeta.generation !== generation) {
+        throw new Error('active_data_view_generation_invalid')
+      }
+      replaceSymlink(activePath, destination)
+      return contextFromPointer()
+    }
     const stage = `${destination}.stage-${process.pid}-${Date.now()}`
     fs.rmSync(stage, { recursive: true, force: true })
     fs.mkdirSync(stage, { recursive: true })
@@ -118,7 +130,8 @@ export function createDataViewManager({
         mode: 'demo',
         name,
         referenceTime: new Date(referenceTime).toISOString(),
-        revision: `demo:${name}:${new Date(referenceTime).toISOString()}`,
+        generation,
+        revision: snapshotMeta?.revision || `demo:${name}:${generation}`,
       }
       fs.writeFileSync(path.join(stage, '.view.json'), `${JSON.stringify(meta, null, 2)}\n`, 'utf8')
       publishDirectory(stage, destination)

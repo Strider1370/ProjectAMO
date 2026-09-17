@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { detectSnapshotChanges } from './snapshotMeta.js'
+import { buildSnapshotMetaFromData } from '../api/weatherApi.js'
 
 test('detectSnapshotChanges tracks domestic and overseas weather separately', () => {
   const prev = {
@@ -89,6 +90,16 @@ test('detectSnapshotChanges detects a same-time convective partial update by has
   const prev = { convectiveMeta: { tm: '202607231200', hash: 'ci-only' } }
   const next = { convectiveMeta: { tm: '202607231200', hash: 'ci-and-ctps' } }
   assert.equal(detectSnapshotChanges(prev, next).convectiveMeta, true)
+})
+
+test('main snapshot builder retains convective identity after a successful load', () => {
+  const saved = buildSnapshotMetaFromData({
+    convectiveMeta: { tm: '202607231200', content_hash: 'ci-and-ctps' },
+  })
+  const latest = { convectiveMeta: { tm: '202607231200', hash: 'ci-and-ctps' } }
+
+  assert.deepEqual(saved.convectiveMeta, latest.convectiveMeta)
+  assert.equal(detectSnapshotChanges(saved, latest).convectiveMeta, false)
 })
 
 test('a data-view revision change invalidates every polled weather source', () => {

@@ -5,6 +5,40 @@ const EMPTY_EXECUTION = Object.freeze({
   last_issue: null,
 })
 
+// A collector has to distinguish a usable empty response from a failed run.
+// Keep this tiny contract independent from scheduler/statistics ownership so
+// processors and the publication store can share it without a dependency on
+// the server bootstrap.
+export const COLLECTION_OUTCOMES = Object.freeze(['complete', 'partial', 'empty', 'failed'])
+
+export function collectionResult(outcome, data = null, { normalEmpty = false, reason = null } = {}) {
+  if (!COLLECTION_OUTCOMES.includes(outcome)) throw new Error(`invalid_collection_outcome:${outcome}`)
+  if (outcome === 'failed') {
+    if (data !== null) throw new Error('failed_collection_cannot_publish_data')
+    return { outcome, data: null, normalEmpty: false, reason: reason || 'collection_failed' }
+  }
+  if (data === null || typeof data !== 'object') throw new Error(`collection_outcome_requires_data:${outcome}`)
+  if (outcome === 'empty' && !normalEmpty) throw new Error('empty_collection_requires_source_confirmation')
+  if (outcome !== 'empty' && normalEmpty) throw new Error('normal_empty_only_applies_to_empty_outcome')
+  return { outcome, data, normalEmpty, reason }
+}
+
+export function validateCollectionOutcome(outcome, allowedOutcomes = COLLECTION_OUTCOMES) {
+  if (!COLLECTION_OUTCOMES.includes(outcome) || !Array.isArray(allowedOutcomes) || !allowedOutcomes.includes(outcome)) {
+    throw new Error(`unsupported_collection_outcome:${outcome}`)
+  }
+  return outcome
+}
+
+export function validateCollectionResult(result, allowedOutcomes = COLLECTION_OUTCOMES) {
+  const normalized = collectionResult(result?.outcome, result?.data, {
+    normalEmpty: result?.normalEmpty,
+    reason: result?.reason,
+  })
+  validateCollectionOutcome(normalized.outcome, allowedOutcomes)
+  return normalized
+}
+
 function isQuietAt(quiet, nowMs) {
   if (!quiet) return false
   const hour = Number(new Intl.DateTimeFormat('en-US', {
@@ -39,8 +73,18 @@ export function buildCollectorExecution({ collectors, statsTypes, nowMs }) {
       type: collector.type,
       outcome: execution.last_outcome ?? 'unknown',
       lastStartedAt: execution.last_started_at,
+      lastStartSource: execution.last_start_source ?? null,
       lastFinishedAt: execution.last_finished_at,
       lastIssue: execution.last_issue,
+      provenance: {
+        source: 'live_collector_statistics',
+        schedule: {
+          expression: collector.schedule.expression,
+          timezone: collector.schedule.timezone,
+          maxIntervalMs: collector.schedule.maxIntervalMs,
+          graceMs: collector.schedule.graceMs,
+        },
+      },
       isProblem: execution.last_outcome === 'failed' || execution.last_outcome === 'missed',
     }
   })

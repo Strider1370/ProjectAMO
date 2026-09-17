@@ -133,7 +133,7 @@ test.describe('route-import', () => {
     })).toBeGreaterThan(1)
   })
 
-  test('replaces exact FPL procedure fix sequences with SID and STAR tokens', async ({ page }, testInfo) => {
+  test('replaces exact FPL procedure fix sequences with selected SID and STAR', async ({ page }, testInfo) => {
     await page.addInitScript((version) => {
       localStorage.setItem('amo.tour.v1.done', 'true')
       localStorage.setItem('projectamo:lastSeenVersion', version)
@@ -152,12 +152,21 @@ test.describe('route-import', () => {
       buffer: Buffer.from(fplWithProcedureSequences()),
     })
 
-    await expect(page.locator('.rtf-pill').filter({ hasText: 'BULTI2Q' })).toHaveCount(1)
-    await expect(page.locator('.rtf-pill').filter({ hasText: 'DOTOL2P' })).toHaveCount(1)
+    // 절차는 경로 문자열 알약이 아니라 위의 SID/STAR 선택기에 표시한다. 절차를
+    // 알약으로 다시 넣으면 실제 en-route 문자열과 두 번째 원본이 생긴다.
+    const selectedProcedure = async (label, name) => {
+      if (testInfo.project.name === 'mobile') {
+        await expect(page.getByRole('button', { name: new RegExp(`${label} ${name}`) })).toBeVisible()
+      } else {
+        await expect(page.getByRole('combobox', { name: label, exact: true })).toContainText(name)
+      }
+    }
+    await selectedProcedure('SID', 'BULTI2Q')
+    await selectedProcedure('STAR', 'DOTOL2P')
     await expect(page.locator('.rtf-pill').filter({ hasText: 'QD040' })).toHaveCount(0)
     await expect(page.locator('.rtf-pill').filter({ hasText: 'CHUJA' })).toHaveCount(0)
     const tokenTexts = await page.locator('.rtf-pill').allTextContents()
-    expect(tokenTexts.indexOf('DOTOL2P')).toBeLessThan(tokenTexts.indexOf('VTF:'))
+    expect(tokenTexts.indexOf('DOTOL')).toBeLessThan(tokenTexts.indexOf('VTF:'))
     await expect(page.getByText('DCT FIX를 찾을 수 없습니다.', { exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '경로비교로', exact: true })).toBeEnabled()
     await expect.poll(() => page.evaluate(() => {

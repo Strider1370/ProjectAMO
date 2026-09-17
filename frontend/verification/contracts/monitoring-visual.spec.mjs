@@ -1,8 +1,10 @@
 import { test, expect } from '../fixtures.mjs'
-import { installMonitoringFixture, openMonitoringState } from '../monitoring-fixture.mjs'
+import { installMonitoringFixture, MONITORING_FIXTURE_NOW, openMonitoringState } from '../monitoring-fixture.mjs'
 
 test.describe('monitoring visual', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', '모바일 폭은 벽걸이 전용 /monitoring을 메인으로 되돌린다(App.jsx 정책).')
+    await page.clock.install({ time: MONITORING_FIXTURE_NOW })
     await installMonitoringFixture(page)
   })
 

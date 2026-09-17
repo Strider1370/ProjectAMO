@@ -1,8 +1,8 @@
-// 개발/테스트 인스턴스 전용(§검증) — DISABLE_COLLECTION(cron off)으로 데이터가 고정된 환경에서 자유 조작.
+// 개발/테스트 인스턴스 전용(§검증) — ENABLE_TEST_MUTATIONS=1로 명시 허용한 환경에서만 조작.
 //  inject: store 캐시(메모리)에만 가상 악기상을 얹는다. 파일(latest.json)은 안 건드림 → 운영/원본 안전.
 //          cron이 꺼져 있어 되덮이지 않고 유지됨. 지도·브리핑·알림이 그대로 반응.
 //  reset : 파일에서 다시 읽어(loadLatest) 실황(고정 원본)으로 복구 + 발생 알림 삭제.
-// 마운트는 server.js에서 NODE_ENV!=='production'일 때만. requireAuth로 자기 경로만.
+// server.js의 별도 gate가 non-production·명시 DATA_PATH를 확인하고, requireAuth가 인증을 강제한다.
 import { Router } from 'express'
 
 import { getDb } from '../db/index.js'
@@ -235,7 +235,7 @@ export function createDevRouter({ db = null } = {}) {
 
   // POST /api/dev/role { role } → 내 계정 role 임시 전환(테스트 모드 전용, 권한별 UI/API 검증용).
   // DB role + (예보관이면) airports 갱신 + req.session.role 즉시 반영 → requireRole이 바로 새 role로 판정.
-  // 이 라우터 자체가 DISABLE_COLLECTION에서만 마운트되므로 운영엔 존재하지 않음.
+  // 이 라우터 자체가 server.js의 test mutation gate를 통과할 때만 마운트된다.
   router.post('/role', (req, res) => {
     const { role } = req.body ?? {}
     if (!DEV_ROLES.includes(role)) return res.status(400).json({ error: 'invalid_role', hint: `role은 ${DEV_ROLES.join('/')} 중 하나.` })

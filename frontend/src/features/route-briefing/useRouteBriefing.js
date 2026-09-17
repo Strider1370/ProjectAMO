@@ -1244,6 +1244,9 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   function updateSelectedDesignDraftText(rawText) {
+    // 자동 적용은 입력 이벤트와 같은 turn에 시작할 수 있다. 이 순간부터 앞선
+    // batch 결과는 더 이상 현재 초안을 설명하지 않으므로 늦게 돌아와도 버린다.
+    routeExposureRequestRef.current += 1
     setRouteDesigns((designs) => designs.map((design) => design.id !== selectedRouteDesignId || design.kind !== 'alternative' ? design : {
       ...design,
       draftEditor: { ...(design.draftEditor ?? { enroute: design.enroute, requestVersion: 0 }), rawText, preview: null, error: null },
@@ -1359,20 +1362,29 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setRouteDesigns((designs) => designs.map((design) => design.id !== selectedRouteDesignId ? design : { ...design, draftEditor: null, pendingEdit: null }))
   }
 
-  async function applySelectedDesignDraft({ designId = selectedRouteDesignId, draft: draftOverride } = {}) {
+  async function applySelectedDesignDraft(input = {}) {
+    // RouteDesignStep의 토큰 입력은 최신 문자열을 바로 넘긴다. map confirmation은
+    // 기존처럼 { designId, draft }를 넘긴다. 두 호출을 같은 버전 gate로 묶는다.
+    const isDraftText = typeof input === 'string'
+    const { designId = selectedRouteDesignId, draft: draftOverride } = isDraftText
+      ? { designId: selectedRouteDesignId, draft: { rawText: input } }
+      : input
     const design = routeDesigns.find((item) => item.id === designId)
-    let draft = draftOverride ?? design?.draftEditor
+    const requestId = ++routeExposureRequestRef.current
+    let draft = draftOverride ? { ...(design?.draftEditor ?? {}), ...draftOverride, ...(isDraftText ? { preview: null } : {}) } : design?.draftEditor
     if (!design || design.kind !== 'alternative' || !draft) return null
     if (!draft.preview) {
       try {
         const preview = await buildEditorPreview(createRouteEditor({ routeForm: design.routeForm, procedures: design.procedures, enroute: draft.enroute, rawText: draft.rawText }), draft.rawText)
         draft = { ...draft, rawText: preview.editor.rawText, enroute: preview.editor.enroute, preview: preview.result, previewWaypoints: preview.result.flightRule === 'VFR' ? buildVfrWaypointsFromRouteResult(preview.result, airports) : [] }
       } catch (error) {
+        if (requestId !== routeExposureRequestRef.current) return null
         setRouteDesigns((designs) => designs.map((item) => item.id !== design.id ? item : { ...item, draftEditor: { ...item.draftEditor, error: error.message } }))
         setRouteError(error.message)
         return null
       }
     }
+    if (requestId !== routeExposureRequestRef.current) return null
     const routeGeometry = getCurrentRouteLineString({ routeResult: draft.preview, vfrWaypoints: draft.previewWaypoints, selectedSid: design.procedures.sid, selectedStar: design.procedures.star, selectedIap: iapData?.iapRoutes?.[design.procedures.iapKey] })
     if (!routeGeometry) {
       const error = '적용할 경로 선을 만들지 못했습니다.'
@@ -1391,6 +1403,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
         return geometry ? { id: item.id, routeGeometry: geometry, routeModel: item.routeModel, etd, eta: computeEtaIso(etd, item.routeResult?.totalDistanceNm ?? item.routeResult?.distanceNm, tasKt) } : null
       }).filter(Boolean)
       const batch = await fetchRouteExposureBatch({ routes })
+      if (requestId !== routeExposureRequestRef.current) return updated
       const activeExposure = batch.results.find((entry) => entry.id === activeAppliedDesignId)
       if (activeExposure) setRouteExposure({ ...activeExposure, snapshot: batch.snapshot })
       setRouteDesigns((designs) => designs.map((item) => {
@@ -1614,11 +1627,35 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     setSelectedRouteDesignId(id)
   }
 
-  function duplicateSelectedRouteDesign() {
+  async function duplicateSelectedRouteDesign() {
     const next = duplicateRouteDesign(routeDesigns, selectedRouteDesignId)
     if (next.designs === routeDesigns) return
     setRouteDesigns(next.designs)
     setSelectedRouteDesignId(next.selectedId)
+    const requestId = ++routeExposureRequestRef.current
+    // 복제 직후에도 두 경로는 비교 대상이다. 자동 선택으로 바로 편집기에 들어가는
+    // 현재 UX에서는 별도 '적용' 동작이 없으므로, 여기서 한 번의 batch로 비교 자료를
+    // 채우지 않으면 새 우회안이 이전 경로의 노출 결과만 들고 있게 된다.
+    try {
+      const routes = next.designs.map((design) => {
+        const geometry = design.routeModel?.routeGeometry
+        return geometry ? {
+          id: design.id,
+          routeGeometry: geometry,
+          routeModel: design.routeModel,
+          etd,
+          eta: computeEtaIso(etd, design.routeResult?.totalDistanceNm ?? design.routeResult?.distanceNm, tasKt),
+        } : null
+      }).filter(Boolean)
+      const batch = await fetchRouteExposureBatch({ routes })
+      if (requestId !== routeExposureRequestRef.current) return
+      const activeExposure = batch.results.find((entry) => entry.id === activeAppliedDesignId)
+      if (activeExposure) setRouteExposure({ ...activeExposure, snapshot: batch.snapshot })
+      setRouteDesigns((designs) => designs.map((design) => {
+        const result = batch.results.find((entry) => entry.id === design.id)
+        return result ? { ...design, routeExposure: { ...result, snapshot: batch.snapshot } } : design
+      }))
+    } catch { /* The editable copy remains usable if comparison data is temporarily unavailable. */ }
   }
 
   function removeSelectedRouteDesign() {

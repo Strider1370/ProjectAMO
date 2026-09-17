@@ -2,6 +2,7 @@ import AttentionList from '../components/AttentionList.jsx'
 import DataGrid from '../components/DataGrid.jsx'
 import { LineChart } from '../components/Chart.jsx'
 import { EXECUTION_WORD, attentionItems, executionProblems, formatAge, percent } from '../lib/adminFormat.js'
+import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 
 // 매일 여는 화면. 큰 숫자 하나로 시작하고, 확인이 필요한 것만 문장으로 말한다.
 // 이상이 없는 날은 초록 한 줄이 뜨고 5초 만에 점검이 끝나는 것이 이 화면의 목표다.
@@ -9,17 +10,21 @@ const CPU_COLOR = '#3d5a80'
 const MEM_COLOR = '#a9701d'
 const DISK_COLOR = '#6d28d9'
 
-function timeLabel(iso) {
-  return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+function timeLabel(iso, tz) {
+  return new Date(iso).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })
 }
 
 export default function OverviewScreen({ health, server, metrics, onGo }) {
+  const { tz } = useTimeZone()
   if (!health) return null
 
   const items = attentionItems(health.rows)
   const current = metrics?.current
   const series = metrics?.series ?? []
   const forecast = server?.diskForecast
+  const rootFs = current?.metricContract?.filesystems?.root
+  const rootDiskPct = percent(rootFs?.usedBytes, rootFs?.totalBytes)
+  const memoryPct = percent(current?.memUsed, current?.memTotal)
   const broken = health.counts.stopped + health.counts.never
   const executionProblemsNow = [
     ...executionProblems(health.collectorExecution),
@@ -45,11 +50,11 @@ export default function OverviewScreen({ health, server, metrics, onGo }) {
         </div>
         <div className="ac-side">
           <div>
-            <div className="ac-v n">{current ? percent(current.diskUsed, current.diskTotal) : '—'}<s>%</s></div>
-            <div className="ac-l">디스크{forecast ? ` · 약 ${forecast.daysLeft}일 남음` : ''}</div>
+            <div className="ac-v n">{rootDiskPct ?? '—'}<s>%</s></div>
+            <div className="ac-l">루트 파일시스템{rootFs?.validity === 'unknown' ? ' · 측정 불가' : forecast ? ` · 약 ${forecast.daysLeft}일 남음` : ''}</div>
           </div>
           <div>
-            <div className="ac-v n">{current ? percent(current.memUsed, current.memTotal) : '—'}<s>%</s></div>
+            <div className="ac-v n">{memoryPct ?? '—'}<s>%</s></div>
             <div className="ac-l">메모리</div>
           </div>
           <div>
@@ -81,7 +86,7 @@ export default function OverviewScreen({ health, server, metrics, onGo }) {
           <h2>
             시스템
             <em className="n">
-              CPU {Math.round(current?.cpuPct ?? 0)}% · 메모리 {current ? percent(current.memUsed, current.memTotal) : 0}% · 디스크 {current ? percent(current.diskUsed, current.diskTotal) : 0}%
+              1분 부하 {current?.metricContract?.cpu?.validity === 'available' ? `${Math.round(current.metricContract.cpu.value)}%` : '측정 불가'} · 메모리 {memoryPct ?? '측정 불가'}{memoryPct != null ? '%' : ''} · 루트 {rootDiskPct ?? '측정 불가'}{rootDiskPct != null ? '%' : ''}
             </em>
           </h2>
           {series.length > 1 ? (
@@ -90,18 +95,18 @@ export default function OverviewScreen({ health, server, metrics, onGo }) {
                 height={190}
                 max={100}
                 unit="%"
-                xUnit="24시간"
-                xLabels={[timeLabel(series[0].ts), timeLabel(series[series.length - 1].ts)]}
-                hoverLabels={series.map((row) => timeLabel(row.ts))}
-                peak={{ index: peakIndex, value: cpuPoints[peakIndex], color: CPU_COLOR, text: `피크 ${Math.round(cpuPoints[peakIndex])}% · ${timeLabel(series[peakIndex].ts)}` }}
+                xUnit={metrics?.time?.requestedRange?.id === '7d' ? '7일' : metrics?.time?.requestedRange?.id === '1h' ? '1시간' : '24시간'}
+                xLabels={[timeLabel(series[0].ts, tz), timeLabel(series[series.length - 1].ts, tz)]}
+                hoverLabels={series.map((row) => timeLabel(row.ts, tz))}
+                peak={{ index: peakIndex, value: cpuPoints[peakIndex], color: CPU_COLOR, text: `피크 ${Math.round(cpuPoints[peakIndex])}% · ${timeLabel(series[peakIndex].ts, tz)} ${tz}` }}
                 series={[
-                  { label: 'CPU', color: CPU_COLOR, points: cpuPoints },
+                { label: '1분 부하/논리 CPU', color: CPU_COLOR, points: cpuPoints },
                   { label: '메모리', color: MEM_COLOR, points: series.map((row) => percent(row.mem_used, row.mem_total)) },
                   { label: '디스크', color: DISK_COLOR, dashed: true, points: series.map((row) => percent(row.disk_used, row.disk_total)) },
                 ]}
               />
               <div className="ac-clg">
-                <span><i style={{ background: CPU_COLOR }} />CPU</span>
+                <span><i style={{ background: CPU_COLOR }} />1분 부하/논리 CPU</span>
                 <span><i style={{ background: MEM_COLOR }} />메모리</span>
                 <span><i style={{ background: DISK_COLOR }} />디스크</span>
               </div>

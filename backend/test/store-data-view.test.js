@@ -36,6 +36,7 @@ test('live publication cannot replace the active demo cache', async () => {
     })
 
     assert.equal(store.getCached('sigmet').items[0].id, 'demo')
+    assert.equal(store.getLiveCached('sigmet').items[0].id, 'live-new')
     assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'sigmet', 'latest.json'))).items[0].id, 'live-new')
   } finally {
     delete process.env.DATA_PATH

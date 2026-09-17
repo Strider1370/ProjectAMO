@@ -5,6 +5,7 @@ import { CronExpressionParser } from 'cron-parser'
 import config from '../src/config.js'
 import { activeCollectorRegistry } from '../src/collector-registry.js'
 import { buildInitialCollectionJobs, registerCollectorSchedules, runWithLock, startCollectorWatchdog } from '../src/index.js'
+import { collectionResult } from '../src/collector-execution.js'
 
 const enabledConfig = {
   ...config,
@@ -110,6 +111,24 @@ test('runWithLock records a start before a key-blocked or lock-held skip', async
     stats: { recordStart: () => calls.push('start'), recordSkip: () => calls.push('skip') },
   })
   assert.deepEqual(calls, ['start', 'skip'])
+})
+
+test('failed collection result is recorded as a failed execution without publishing a success', async () => {
+  const calls = []
+  const result = await runWithLock('metar', async () => ({
+    saved: false,
+    collection: collectionResult('failed', null, { reason: 'no_usable_metar_reports' }),
+  }), {
+    resultOutcomes: ['complete', 'partial', 'failed'],
+    stats: {
+      recordStart: () => ({ run: 'metar' }),
+      recordFailure: (_type, reason) => calls.push(['failed', reason]),
+      recordSuccess: () => calls.push(['succeeded']),
+    },
+    logger: { error: () => {} },
+  })
+  assert.equal(result.collection.outcome, 'failed')
+  assert.deepEqual(calls, [['failed', 'no_usable_metar_reports']])
 })
 
 test('successful collector log is one line and never serializes the processor result object', async () => {

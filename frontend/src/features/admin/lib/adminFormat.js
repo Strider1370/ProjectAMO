@@ -75,7 +75,19 @@ export function formatBytes(bytes) {
 }
 
 export function percent(used, total) {
-  return total > 0 ? Math.round((used / total) * 100) : 0
+  return Number.isFinite(used) && Number.isFinite(total) && total > 0 ? Math.round((used / total) * 100) : null
+}
+
+export function eventMeasurementLabel(measurement) {
+  if (!measurement || measurement.availability !== 'available' || !Number.isFinite(measurement.count)) return '집계 정보 없음'
+  const units = {
+    deduplicated_nationwide_strikes: '전국 중복 제거 낙뢰',
+    parsed_airport_warning_records: '공항 경보 기록',
+    parsed_supported_airport_special_warning_records: '지원 공항 특보 기록',
+    payload_event_items: '현재 자료 항목',
+    payload_typhoons: '현재 태풍',
+  }
+  return `${measurement.count}건 · ${units[measurement.unit] || '이벤트 기록'}`
 }
 
 // 확인이 필요한 것만, 심각한 순으로. 쉬는 시간과 정상은 화면에 올리지 않는다 —
@@ -113,5 +125,5 @@ export function levelTone(pct) {
 
 export default {
   STATUS_WORD, STATUS_TONE, EXECUTION_WORD, executionProblems, formatAge, formatInterval, formatRate, formatMs,
-  formatBytes, percent, attentionItems, trendGroups, levelTone,
+  formatBytes, percent, eventMeasurementLabel, attentionItems, trendGroups, levelTone,
 }

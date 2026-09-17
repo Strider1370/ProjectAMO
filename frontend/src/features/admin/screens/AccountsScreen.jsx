@@ -11,11 +11,11 @@ const STATUS_TONE = { pending: 'warn', active: 'ok', rejected: 'bad' }
 
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('ko-KR') : '—')
 
-export default function AccountsScreen({ pending = [], onChanged }) {
+export default function AccountsScreen({ pending = [], onChanged, adminQuery }) {
   const [users, setUsers] = useState([])
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  const load = useCallback(() => { getUsers().then(setUsers).catch(() => {}) }, [])
+  const load = useCallback(() => { getUsers(adminQuery).then((result) => { if (result.query.current) setUsers(result.data) }).catch(() => {}) }, [adminQuery])
   useEffect(() => { load() }, [load])
 
   const act = async (fn, id) => {

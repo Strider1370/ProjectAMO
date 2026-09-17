@@ -13,6 +13,28 @@ function getItems(doc) {
   return toArray(doc?.response?.body?.items?.item || doc?.body?.items?.item || doc?.items?.item);
 }
 
+function getApiHeader(doc) {
+  const header = doc?.response?.header || doc?.header;
+  const rawCode = text(header?.resultCode);
+  return {
+    // fast-xml-parser coerces `00`/`03` to numbers by default. Restore the
+    // documented two-character KMA code before applying the collection rule.
+    resultCode: rawCode == null ? null : rawCode.padStart(2, '0'),
+    resultMsg: text(header?.resultMsg),
+  };
+}
+
+class WarningUpstreamError extends Error {
+  constructor(resultCode, resultMsg) {
+    const code = resultCode || 'MISSING_RESULT_CODE';
+    const message = resultMsg || 'UNKNOWN_ERROR';
+    super(`warning_upstream_error:${code}:${message}`);
+    this.name = 'WarningUpstreamError';
+    this.resultCode = code;
+    this.resultMsg = message;
+  }
+}
+
 function decodeXmlEntities(value) {
   if (typeof value !== "string") {
     return value;
@@ -53,7 +75,11 @@ function resolveWarningType(rawType) {
 
 function parse(xmlString) {
   const document = parser.parse(xmlString);
-  const items = getItems(document);
+  const { resultCode, resultMsg } = getApiHeader(document);
+  if (resultCode !== '00' && resultCode !== '03') {
+    throw new WarningUpstreamError(resultCode, resultMsg);
+  }
+  const items = resultCode === '03' ? [] : getItems(document);
 
   const result = {
     type: "AIRPORT_WARNINGS",
@@ -112,8 +138,17 @@ function parse(xmlString) {
     });
   }
 
+  // KMA's documented no-data result is the only empty publication that this
+  // collector may accept. A successful-looking 00 response with no usable
+  // airport entries is kept distinct so the processor can retain last-good
+  // data instead of publishing an accidental empty snapshot.
+  Object.defineProperty(result, 'normalEmpty', {
+    value: resultCode === '03',
+    enumerable: false,
+  });
+
   return result;
 }
 
-export { parse }
+export { parse, WarningUpstreamError }
 export default { parse }

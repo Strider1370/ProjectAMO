@@ -2,6 +2,7 @@
 // 배포 서버에서도 쓸 수 있어야 해서 인증(requireRole admin)은 라우터 쪽에서 걸고, 여기는 순수 파일 로직만.
 import fs from 'node:fs'
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { initFromFiles, loadLatest } from '../store.js'
 
 const SNAPSHOT_EXCLUDE = new Set(['snapshots', 'stats']) // 캡처 대상에서 제외(메타/재귀 방지)
@@ -42,9 +43,42 @@ export const DEMO_REQUIRED_TYPES = Object.freeze([
 // 스냅샷 로드 직전 실황을 자동 백업해두는 예약 이름 — 목록에 노출 안 함, "되돌리기" 전용.
 export const RESERVED_LIVE_BACKUP = '_live_backup'
 const ADSB_REFERENCE_TOLERANCE_MS = 30 * 60 * 1000
+const GENERATIONS_DIR = '.generations'
 
 export function isValidSnapshotName(name) {
   return typeof name === 'string' && NAME_RE.test(name)
+}
+
+function snapshotsRoot(basePath) {
+  return path.resolve(basePath, 'snapshots')
+}
+
+function isDescendantPath(root, target) {
+  return target.startsWith(`${root}${path.sep}`)
+}
+
+// Keep every public snapshot-name consumer behind the same lexical boundary.
+// Do not decode or normalize user input: a name is either the established
+// [a-zA-Z0-9_-]+ form or it is rejected before it can select a filesystem path.
+function snapshotPath(basePath, name) {
+  if (!isValidSnapshotName(name)) return null
+  const root = snapshotsRoot(basePath)
+  const target = path.resolve(root, name)
+  return isDescendantPath(root, target) ? target : null
+}
+
+// Snapshot pointers are symlinks in the new generation format.  Resolve them
+// before reading so a valid-looking name cannot point outside snapshots.
+function existingSnapshotPath(basePath, name) {
+  const target = snapshotPath(basePath, name)
+  if (!target) return null
+  try {
+    const root = fs.realpathSync(snapshotsRoot(basePath))
+    const resolved = fs.realpathSync(target)
+    return isDescendantPath(root, resolved) ? resolved : null
+  } catch {
+    return null
+  }
 }
 
 // data/ 아래 latest.json이 있는 디렉터리 + EXTRA_CAPTURE_TYPES(다른 이름의 meta 파일을 쓰는 곳)가 캡처 대상.
@@ -67,19 +101,24 @@ function copyTypeInto(basePath, type, destDir) {
 }
 
 function readSnapshotMeta(basePath, name) {
+  const snapshotRoot = existingSnapshotPath(basePath, name)
+  if (!snapshotRoot) return { savedAt: null, referenceTime: null, generation: null, revision: null }
   try {
-    return JSON.parse(fs.readFileSync(path.join(basePath, 'snapshots', name, 'meta.json'), 'utf8'))
+    return JSON.parse(fs.readFileSync(path.join(snapshotRoot, 'meta.json'), 'utf8'))
   } catch {
-    return { savedAt: null, referenceTime: null } // 메타 없는 구버전 스냅샷
+    return { savedAt: null, referenceTime: null, generation: null, revision: null } // 메타 없는 구버전 스냅샷
   }
 }
 
 // 저장 순서(savedAt)대로 정렬해 반환 — 화면에서 1./2./3. 번호를 매길 때 그대로 순번이 된다.
 export function listSnapshots(basePath) {
-  const dir = path.join(basePath, 'snapshots')
+  const dir = snapshotsRoot(basePath)
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && e.name !== RESERVED_LIVE_BACKUP)
+    // 새 스냅샷은 불변 generation을 가리키는 symlink다. 기존 디렉터리 형식도
+    // 그대로 읽어 외부 repair 도구와 기존 이름 UX를 호환한다.
+    .filter((e) => (e.isDirectory() || e.isSymbolicLink())
+      && e.name !== RESERVED_LIVE_BACKUP && existingSnapshotPath(basePath, e.name))
     .map((e) => ({ name: e.name, ...readSnapshotMeta(basePath, e.name) }))
     .sort((a, b) => (a.savedAt || '').localeCompare(b.savedAt || ''))
 }
@@ -96,12 +135,13 @@ export function nextSnapshotName(basePath) {
 }
 
 export function hasLiveBackup(basePath) {
-  return fs.existsSync(path.join(basePath, 'snapshots', RESERVED_LIVE_BACKUP))
+  return Boolean(existingSnapshotPath(basePath, RESERVED_LIVE_BACKUP))
 }
 
 export function discardLiveBackup(basePath) {
-  const dir = path.join(basePath, 'snapshots', RESERVED_LIVE_BACKUP)
-  const existed = fs.existsSync(dir)
+  const dir = snapshotPath(basePath, RESERVED_LIVE_BACKUP)
+  if (!dir) return false
+  const existed = pathEntryExists(dir)
   fs.rmSync(dir, { recursive: true, force: true })
   return existed
 }
@@ -123,15 +163,52 @@ function replaceDirectory(srcDir, destDir) {
   }
 }
 
-function publishPreparedDirectory(stageDir, destDir) {
-  const prior = `${destDir}.prior-${process.pid}-${Date.now()}`
-  if (fs.existsSync(destDir)) fs.renameSync(destDir, prior)
+function pathEntryExists(target) {
   try {
-    fs.renameSync(stageDir, destDir)
-    fs.rmSync(prior, { recursive: true, force: true })
-  } catch (error) {
-    if (!fs.existsSync(destDir) && fs.existsSync(prior)) fs.renameSync(prior, destDir)
-    throw error
+    fs.lstatSync(target)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function snapshotGenerationRoot(basePath, name) {
+  const root = snapshotsRoot(basePath)
+  const generationRoot = path.resolve(root, GENERATIONS_DIR, name)
+  if (!isDescendantPath(root, generationRoot)) throw new Error('invalid_snapshot_name')
+  return generationRoot
+}
+
+function newGeneration() {
+  return `${Date.now()}-${process.pid}-${randomUUID()}`
+}
+
+// 공개 snapshot 이름은 하나의 symlink로만 교체한다. 따라서 name 아래의 자료와
+// meta.json은 항상 같은 immutable generation을 가리킨다.
+function publishSnapshotGeneration(basePath, name, generationPath) {
+  const snapshotsPath = snapshotsRoot(basePath)
+  const pointerPath = snapshotPath(basePath, name)
+  if (!pointerPath) throw new Error('invalid_snapshot_name')
+  const nextPath = `${pointerPath}.next-${process.pid}-${randomUUID()}`
+  const generationRoot = snapshotGenerationRoot(basePath, name)
+  fs.symlinkSync(path.relative(snapshotsPath, generationPath), nextPath, 'dir')
+  try {
+    if (pathEntryExists(pointerPath) && !fs.lstatSync(pointerPath).isSymbolicLink()) {
+      // 한 번만 필요한 레거시 migration이다. 이동에 실패하면 원래 디렉터리를
+      // 복구하고, 새 generation은 아직 공개하지 않는다.
+      const legacyPath = path.join(generationRoot, `legacy-${newGeneration()}`)
+      fs.renameSync(pointerPath, legacyPath)
+      try {
+        fs.renameSync(nextPath, pointerPath)
+      } catch (error) {
+        if (!pathEntryExists(pointerPath) && pathEntryExists(legacyPath)) fs.renameSync(legacyPath, pointerPath)
+        throw error
+      }
+      return
+    }
+    fs.renameSync(nextPath, pointerPath)
+  } finally {
+    fs.rmSync(nextPath, { recursive: true, force: true })
   }
 }
 
@@ -149,9 +226,13 @@ function referenceTimeFor(basePath) {
   return metar?.fetched_at || new Date().toISOString()
 }
 
-export function saveSnapshot(basePath, name) {
-  const destBase = path.join(basePath, 'snapshots', name)
-  const stageBase = `${destBase}.capture-${process.pid}-${Date.now()}`
+export function saveSnapshot(basePath, name, { beforePublish } = {}) {
+  if (!snapshotPath(basePath, name)) throw new Error('invalid_snapshot_name')
+  const generation = newGeneration()
+  const generationRoot = snapshotGenerationRoot(basePath, name)
+  const generationPath = path.join(generationRoot, generation)
+  const stageBase = path.join(generationRoot, `.capture-${generation}`)
+  fs.mkdirSync(generationRoot, { recursive: true })
   fs.rmSync(stageBase, { recursive: true, force: true })
   const saved = []
   try {
@@ -160,9 +241,18 @@ export function saveSnapshot(basePath, name) {
       saved.push(type)
     }
     const referenceTime = referenceTimeFor(basePath)
-    fs.writeFileSync(path.join(stageBase, 'meta.json'), JSON.stringify({ savedAt: new Date().toISOString(), referenceTime }, null, 2))
-    publishPreparedDirectory(stageBase, destBase)
-    return { saved, referenceTime }
+    const savedAt = new Date().toISOString()
+    const revision = `snapshot:${name}:${generation}`
+    fs.writeFileSync(path.join(stageBase, 'meta.json'), JSON.stringify({ savedAt, referenceTime, generation, revision }, null, 2))
+    beforePublish?.({ stageBase, generation, generationPath })
+    fs.renameSync(stageBase, generationPath)
+    try {
+      publishSnapshotGeneration(basePath, name, generationPath)
+    } catch (error) {
+      fs.rmSync(generationPath, { recursive: true, force: true })
+      throw error
+    }
+    return { name, saved, referenceTime, savedAt, generation, revision }
   } finally {
     fs.rmSync(stageBase, { recursive: true, force: true })
   }
@@ -172,8 +262,8 @@ export function saveSnapshot(basePath, name) {
 // 자체이거나, 이미 시연 모드라 실황이 아니라 "다른 스냅샷 데이터"인 경우에 true로 넘겨야 한다 —
 // 안 그러면 두 번째 스냅샷을 로드할 때 첫 번째 스냅샷 데이터가 _live_backup을 덮어써서 원래 실황을 영영 잃는다.
 export function loadSnapshot(basePath, name, { skipBackup = false } = {}) {
-  const srcBase = path.join(basePath, 'snapshots', name)
-  if (!fs.existsSync(srcBase)) return null
+  const srcBase = existingSnapshotPath(basePath, name)
+  if (!srcBase) return null
 
   if (!skipBackup) saveSnapshot(basePath, RESERVED_LIVE_BACKUP)
 
@@ -229,10 +319,10 @@ function inspectComparisonPointers(snapshotRoot, blockers, summaries) {
 }
 
 export function inspectSnapshot(basePath, name) {
-  const snapshotRoot = path.join(basePath, 'snapshots', name)
+  const snapshotRoot = existingSnapshotPath(basePath, name)
   const blockers = []
   const warnings = []
-  if (!isValidSnapshotName(name) || !fs.existsSync(snapshotRoot)) {
+  if (!snapshotRoot) {
     return { ready: false, blockers: ['snapshot_not_found'], warnings, referenceTime: null, types: [], summaries: {} }
   }
 
@@ -323,6 +413,8 @@ export function inspectSnapshot(basePath, name) {
     warnings,
     referenceTime: meta.referenceTime,
     savedAt: meta.savedAt,
+    generation: meta.generation ?? null,
+    revision: meta.revision ?? null,
     types,
     summaries,
   }

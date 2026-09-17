@@ -20,6 +20,7 @@ Vite + React aviation weather dashboard with a Node/Express backend.
 - [Engineering and design references](docs/policies/index.md): data, time, maps, UI, and verification contracts.
 - [Local servers and screenshots](docs/operations/dev-server-and-capture.md).
 - [Operations and deployment](docs/operations/operations.md).
+- [Repository-wide refactoring](docs/refactoring/README.md): when continuing this effort, read its progress record first, then resume the next recorded task; keep task and verification records current.
 
 ## Important contracts
 

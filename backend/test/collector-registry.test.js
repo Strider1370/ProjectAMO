@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { activeCollectorRegistry, assertCollectorRegistry, COLLECTOR_REGISTRY } from '../src/collector-registry.js'
+import { activeCollectorRegistry, assertCollectorRegistry, COLLECTOR_REGISTRY, resultOutcomesForCollector } from '../src/collector-registry.js'
 import config from '../src/config.js'
 
 test('active registry resolves partial overrides and exposes watchdog contracts from the real schedules', () => {
@@ -23,6 +23,8 @@ test('active registry resolves partial overrides and exposes watchdog contracts 
     expression: '*/1 4-23 * * *', timezone: 'Asia/Seoul', maxIntervalMs: 60_000, graceMs: 60_000, quiet: { fromHourKst: 0, toHourKst: 4 }, cronOptions: { timezone: 'Asia/Seoul', recoverMissedExecutions: true },
   })
   assert.equal(partial.find((collector) => collector.type === 'airport_info').schedule.maxIntervalMs, 12.5 * 3600_000)
+  assert.deepEqual(resultOutcomesForCollector('metar'), ['complete', 'partial', 'failed'])
+  assert.deepEqual(resultOutcomesForCollector('warning'), ['complete', 'partial', 'failed', 'empty'])
 })
 
 test('radar graphics follows the scheduler enabled condition as well as the key', () => {

@@ -37,7 +37,6 @@ export function detectSnapshotChanges(prev, next) {
     groundOverview: hashesDiffer(prev?.groundOverview || prev?.ground_overview, next?.groundOverview || next?.ground_overview),
     environment: hashesDiffer(prev?.environment, next?.environment),
     airportInfo: hashesDiffer(prev?.airportInfo, next?.airportInfo),
-    echoMeta: framesDiffer(prev?.echoMeta, next?.echoMeta),
     hsrMeta: graphicsMetaDiffer(prev?.hsrMeta || prev?.hsr, next?.hsrMeta || next?.hsr),
     hciMeta: graphicsMetaDiffer(prev?.hciMeta || prev?.hci, next?.hciMeta || next?.hci),
     wissdomMeta: graphicsMetaDiffer(prev?.wissdomMeta || prev?.wissdom, next?.wissdomMeta || next?.wissdom),
@@ -49,8 +48,6 @@ export function detectSnapshotChanges(prev, next) {
     convectiveMeta: framesDiffer(prev?.convectiveMeta, next?.convectiveMeta) || hashesDiffer(prev?.convectiveMeta, next?.convectiveMeta),
     sigwxFrontMeta: overlayMetaDiffer(prev?.sigwxFrontMeta, next?.sigwxFrontMeta),
     sigwxCloudMeta: overlayMetaDiffer(prev?.sigwxCloudMeta, next?.sigwxCloudMeta),
-    flightCategory: hashesDiffer(prev?.flightCategory, next?.flightCategory),
-    ktg: hashesDiffer(prev?.ktg, next?.ktg),
   }
   if (prev?.viewRevision !== next?.viewRevision) {
     for (const key of Object.keys(changes)) changes[key] = true

@@ -7,6 +7,8 @@ import { buildMetarTacPresentation } from './serializers/metar-tac.js'
 import { buildTafTacPresentation } from './serializers/taf-tac.js'
 import { annotateMetarTac, annotateTafTac } from './parsers/tac-annotation.js'
 import { pickPrimaryWeatherIcon } from './parsers/parse-utils.js'
+import { validateCollectionResult } from './collector-execution.js'
+import { resultOutcomesForCollector } from './collector-registry.js'
 
 const TYPES = ['metar', 'taf', 'warning', 'kma_special_warning', 'lightning', 'sigmet', 'airmet', 'sigwx_low', 'amos', 'adsb', 'kim_surface_wind', 'ground_forecast', 'ground_overview', 'environment', 'airport_info', 'takeoff_fcst', 'flight_category_overlay', 'asos_ceiling', 'notam', 'metar_overseas', 'taf_overseas', 'sigmet_overseas', 'typhoon', 'terminal_flights', 'overseas_forecast']
 const FILE_PREFIX = {
@@ -108,8 +110,17 @@ function formatSigwxLowFileLabel(tmfc) {
   return normalized
 }
 
+let temporaryWriteSequence = 0
+
 function writeJson(filePath, data) {
-  fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8')
+  const temporaryPath = `${filePath}.${process.pid}.${temporaryWriteSequence += 1}.tmp`
+  try {
+    fs.writeFileSync(temporaryPath, `${JSON.stringify(data, null, 2)}\n`, 'utf8')
+    fs.renameSync(temporaryPath, filePath)
+  } catch (error) {
+    try { fs.unlinkSync(temporaryPath) } catch {}
+    throw error
+  }
 }
 
 function readJsonSafe(filePath) {
@@ -165,9 +176,9 @@ function cleanupSigwxLowOverlayFiles(dir) {
   )
 
   const overlayPatterns = [
-    /^fronts_(\d{10})\.png$/,
+    /^fronts_(\d{10})(?:_standard|_detail)?\.png$/,
     /^fronts_meta_(\d{10})\.json$/,
-    /^clouds_(\d{10})\.png$/,
+    /^clouds_(\d{10})(?:_standard|_detail)?\.png$/,
     /^clouds_meta_(\d{10})\.json$/,
   ]
 
@@ -206,7 +217,7 @@ function canonicalize(value) {
   if (value && typeof value === 'object') {
     const out = {}
     for (const key of Object.keys(value).sort()) {
-      if (key === 'fetched_at' || key === 'type' || key === '_stale' || key === 'content_hash') continue
+      if (key === 'fetched_at' || key === 'type' || key === 'content_hash') continue
       out[key] = canonicalize(value[key])
     }
     return out
@@ -251,6 +262,12 @@ export function updateLiveCache(type, data, hash) {
 
 export function getCached(type) {
   return cache[type]?.prev_data ?? null
+}
+
+// Collectors merge and derive only from the live publication cache. User-facing
+// reads continue to use getCached(), which follows the active live/demo view.
+export function getLiveCached(type) {
+  return liveCache[type]?.prev_data ?? null
 }
 
 function resetCache(target) {
@@ -330,6 +347,17 @@ export function save(type, data) {
   return { saved: true, filePath }
 }
 
+// Collection processors must publish through this boundary when their source
+// can distinguish a usable empty response from a failed/undecodable run.
+// A failed result intentionally does not refresh latest, history, cache, or
+// content hash; callers retain the last successful publication.
+export function publishCollection(type, result) {
+  const normalized = validateCollectionResult(result, resultOutcomesForCollector(type))
+  if (normalized.outcome === 'failed') return { saved: false, reason: normalized.reason, outcome: normalized.outcome }
+  const published = save(type, normalized.data)
+  return { ...published, outcome: normalized.outcome }
+}
+
 export { cache, liveCache }
 
 export default {
@@ -344,6 +372,8 @@ export default {
   mergeWithPrevious,
   updateCache,
   getCached,
+  getLiveCached,
+  publishCollection,
   initActiveFromFiles,
   initLiveFromFiles,
   initFromFiles,

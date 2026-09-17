@@ -23,13 +23,17 @@ const META_SAT_TM = '2026-07-23T11:20:00Z'
 const META_SIGWX_FRONT = 'hash-001'
 const META_SIGWX_CLOUD = 'hash-002'
 
+// Node에서 fixture를 만들 때와 브라우저에서 화면을 그릴 때 같은 instant를 쓴다.
+// TAF 유효창·경보·일출 계산이 실행 시각에 따라 흔들리면 visual baseline이 oracle이 될 수 없다.
+export const MONITORING_FIXTURE_NOW = new Date('2026-07-26T03:00:00.000Z')
+
 // TAF 픽스처. 계약이 상태를 바꿔 가며 재사용한다. route.fetch()는 페이지 라우트를 거치지 않고
 // 실제 백엔드로 나가므로, 응답을 받아 고치는 대신 본문을 여기서 완결해 만든다.
 export const TAF_HASH = HASH_TAF
 
-export function buildTafPayload({ reportStatus = 'NORMAL', issued = null } = {}) {
+export function buildTafPayload({ reportStatus = 'NORMAL', issued = null, now = MONITORING_FIXTURE_NOW } = {}) {
   const hourMs = 3600000
-  const iso = (offsetHours) => new Date(Date.now() + offsetHours * hourMs).toISOString()
+  const iso = (offsetHours) => new Date(now.getTime() + offsetHours * hourMs).toISOString()
   const slot = (offsetHours, over = {}) => ({
     time: iso(offsetHours),
     wind: { speed: 10, raw: '27010KT' },
@@ -165,7 +169,7 @@ function fulfill(route, json) {
   return route.fulfill({ contentType: 'application/json', body: JSON.stringify(json) })
 }
 
-export async function installMonitoringFixture(page) {
+export async function installMonitoringFixture(page, { now = MONITORING_FIXTURE_NOW, warning: warningOverride } = {}) {
   // Mock all monitoring APIs with stable responses
   await page.route('**/api/airports', (route) => {
     if (route.request().method() === 'GET') {
@@ -225,7 +229,7 @@ export async function installMonitoringFixture(page) {
     fulfill(route, { content_hash: HASH_METAR_OVERSEAS, airports: {} })
   })
 
-  await page.route('**/api/taf', (route) => fulfill(route, buildTafPayload()))
+  await page.route('**/api/taf', (route) => fulfill(route, buildTafPayload({ now })))
 
   await page.route('**/api/taf-overseas', (route) => {
     fulfill(route, { content_hash: HASH_TAF_OVERSEAS, airports: {} })
@@ -236,9 +240,10 @@ export async function installMonitoringFixture(page) {
     fulfill(route, { content_hash: HASH_AMOS, airports: {} })
   })
 
+  const warning = warningOverride ?? { content_hash: HASH_WARNING, airports: {} }
   await page.route('**/api/warning', (route) => {
     // warning-parser.js가 내는 parsed 결과도 `airports`가 최상위 키다.
-    fulfill(route, { content_hash: HASH_WARNING, airports: {} })
+    fulfill(route, warning)
   })
 
   await page.route('**/api/notam', (route) => {

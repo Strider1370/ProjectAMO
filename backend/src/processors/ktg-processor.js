@@ -8,10 +8,12 @@ import {
   buildKtgGrid,
 } from './ktg-model.js'
 import {
+  clearKtgHfCompletion,
   cleanupKtgRuns,
-  readKtgCoords,
+  isKtgHfComplete,
   readKtgIndex,
   readKtgLatest,
+  writeKtgHfCompletion,
   writeKtgCoords,
   writeKtgGrid,
   writeKtgIndex,
@@ -86,10 +88,14 @@ function parseKtgNetCdf(buffer) {
 
 // Fetch+parse+write one forecast hour (coords + per-altitude grids).
 // Returns { hf, validTime, altLevelsFt } or throws on fetch/parse failure.
-async function collectKtgHf({ root, tmfc, hf, fetchedAt, credential }) {
-  const buffer = await fetchKtgFile({ tmfc, ef: hf, credential })
-  const { lat, lon, alt, ktg, nz, ny, nx } = parseKtgNetCdf(buffer)
+async function collectKtgHf({ root, tmfc, hf, fetchedAt, credential, fetchFile = fetchKtgFile, parseFile = parseKtgNetCdf }) {
+  const buffer = await fetchFile({ tmfc, ef: hf, credential })
+  const { lat, lon, alt, ktg, nz, ny, nx } = parseFile(buffer)
   const validTime = addForecastHoursKtg(tmfc, hf)
+
+  // A prior marker cannot certify a write that we are about to replace.
+  // It is restored only after every grid below has reached disk.
+  clearKtgHfCompletion({ root, tmfc, hf })
 
   // coords.json — shared across all altitude levels for this hf
   writeKtgCoords({ root, tmfc, hf, coords: buildKtgCoords({ ny, nx, lat, lon }) })
@@ -101,20 +107,26 @@ async function collectKtgHf({ root, tmfc, hf, fetchedAt, credential }) {
     const ktgSlice = ktg.slice(sliceStart, sliceStart + ny * nx)
     writeKtgGrid({ root, grid: buildKtgGrid({ tmfc, hf, altFt, validTime, ny, nx, ktgSlice, fetchedAt }) })
   }
-  return { hf, validTime, altLevelsFt: Array.from(alt) }
+  const altLevelsFt = Array.from(alt)
+  writeKtgHfCompletion({ root, tmfc, hf, altLevelsFt })
+  return { hf, validTime, altLevelsFt }
 }
 
-export async function process() {
-  const root = config.storage.base_path
-  const candidates = resolveKtgCandidates()
-  const forecastHours = config.ktg?.forecast_hours ?? KTG_FORECAST_HOURS
-  const single = config.ktg?.single_forecast !== false
+export async function process({
+  root = config.storage.base_path,
+  candidates = resolveKtgCandidates(),
+  forecastHours = config.ktg?.forecast_hours ?? KTG_FORECAST_HOURS,
+  single = config.ktg?.single_forecast !== false,
+  nowMs = () => Date.now(),
+  fetchFile = fetchKtgFile,
+  parseFile = parseKtgNetCdf,
+} = {}) {
 
   for (const tmfc of candidates) {
     const credential = selectKtgRunCredential(tmfc)
     // single: 최근 1스텝만. multi: 미래예보 전체 hf.
     const hfs = single
-      ? [selectNearestForecastHour({ tmfc, nowMs: Date.now(), candidateHours: forecastHours })]
+      ? [selectNearestForecastHour({ tmfc, nowMs: nowMs(), candidateHours: forecastHours })]
       : forecastHours
 
     const fetchedAt = new Date().toISOString()
@@ -123,13 +135,14 @@ export async function process() {
     let fetchedAny = false
 
     for (const hf of hfs) {
-      // 이미 디스크에 있는 hf는 재다운로드 안 함(coords.json 존재 = 수집완료). → cron 반복 시 API 낭비 0.
-      if (readKtgCoords({ root, tmfc, hf })) {
+      // A coordinate file is written before grids.  Treat an hf as complete
+      // only when every expected, readable grid is present as well.
+      if (isKtgHfComplete({ root, tmfc, hf })) {
         collected.push({ hf, validTime: addForecastHoursKtg(tmfc, hf) })
         continue
       }
       try {
-        const r = await collectKtgHf({ root, tmfc, hf, fetchedAt, credential })
+        const r = await collectKtgHf({ root, tmfc, hf, fetchedAt, credential, fetchFile, parseFile })
         collected.push({ hf: r.hf, validTime: r.validTime })
         altLevelsFt = r.altLevelsFt
         fetchedAny = true
@@ -145,7 +158,7 @@ export async function process() {
     altLevelsFt = altLevelsFt ?? readKtgIndex(root)?.altLevelsFt ?? []
 
     // 기본 "최신" 뷰 = 확보된 hf 중 nearest(현재시각에 가장 가까운 예보시각).
-    const nearestHf = selectNearestForecastHour({ tmfc, nowMs: Date.now(), candidateHours: collected.map((c) => c.hf) })
+    const nearestHf = selectNearestForecastHour({ tmfc, nowMs: nowMs(), candidateHours: collected.map((c) => c.hf) })
     const nearest = collected.find((c) => c.hf === nearestHf) ?? collected[0]
 
     // 신규 다운로드가 하나도 없고 이미 이 tmfc 전체가 있으면 스킵(idempotent).

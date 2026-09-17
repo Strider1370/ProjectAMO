@@ -2,13 +2,14 @@
 import fs from 'fs'
 import path from 'path'
 import sharp from 'sharp'
+import { SIGWX_ZOOM_LEVELS as ZOOM_LEVELS } from './sigwx-overlay-zoom.js'
 
 const DEG2RAD = Math.PI / 180;
 const OUTPUT_WIDTH = 1400;
 const PADDING_RATIO = 0.06;
 const SAMPLE_OFFSET = 56;
 const SAMPLE_REPEAT = 132;
-const RENDER_VERSION = "sigwx-front-overlay-trial-v2";
+const RENDER_VERSION = "sigwx-front-overlay-zoom-v4";
 
 function lonToMercatorX(lon) {
   return (lon * Math.PI) / 180;
@@ -29,11 +30,12 @@ function classifyFrontType(item) {
   if (itemName === "fl_cold") return "cold";
   if (itemName === "fl_worm") return "warm";
   if (itemName === "fl_occl") return "occluded";
+  if (itemName === "fl_stat") return "stationary";
   return null;
 }
 
 function getFrontColor(frontType) {
-  if (frontType === "cold") return "#2563eb";
+  if (frontType === "cold" || frontType === "stationary") return "#2563eb";
   if (frontType === "warm") return "#dc2626";
   if (frontType === "occluded") return "#7c3aed";
   return "#ffffff";
@@ -168,6 +170,11 @@ function samplePolyline(points, offset = SAMPLE_OFFSET, repeat = SAMPLE_REPEAT) 
 }
 
 function createSymbolSvg(frontType, color, index) {
+  if (frontType === "stationary") {
+    // Cold triangles and warm semicircles alternate on opposite sides.
+    const type = index % 2 === 0 ? "cold" : "warm";
+    return createSymbolSvg(type, getFrontColor(type), index);
+  }
   if (frontType === "cold") {
     return `<path d="M0 0 L40 0 L22 26 Z" fill="${color}" stroke="none" />`;
   }
@@ -209,35 +216,47 @@ async function renderSigwxFrontOverlay(sigwxLow, dataRoot, canonicalHash) {
     smoothedPoints: smoothPolyline(item.lat_lngs.map(([lat, lon]) => projectPoint(lat, lon, boundsMerc, width, height))),
   }));
 
-  const svgParts = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-    `<rect width="100%" height="100%" fill="transparent" />`,
-  ];
-
-  for (const item of projected) {
-    const pathD = quadraticPathFromPoints(item.smoothedPoints);
-    if (!pathD) continue;
-    svgParts.push(`<path d="${escapeXml(pathD)}" fill="none" stroke="${item.color}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />`);
-
-    const samples = samplePolyline(item.smoothedPoints);
-    samples.forEach((sample, index) => {
-      const symbol = createSymbolSvg(item.frontType, item.color, index);
-      if (!symbol) return;
-      svgParts.push(`<g transform="translate(${sample.x.toFixed(2)} ${sample.y.toFixed(2)}) rotate(${sample.angle.toFixed(2)})">${symbol}</g>`);
-    });
-  }
-
-  svgParts.push(`</svg>`);
-  const svg = svgParts.join("");
-  const pngBuffer = await sharp(Buffer.from(svg)).png({ compressionLevel: 3 }).toBuffer();
-
   const dir = path.join(dataRoot, "sigwx_low");
   fs.mkdirSync(dir, { recursive: true });
   const tmfc = sigwxLow?.tmfc || "latest";
-  const filename = `fronts_${tmfc}.png`;
-  const metaFilename = `fronts_meta_${tmfc}.json`;
-  const fullPath = path.join(dir, filename);
-  fs.writeFileSync(fullPath, pngBuffer);
+  const variants = [];
+  for (const level of ZOOM_LEVELS) {
+    // Mapbox's 512px Mercator world defines the on-screen size at each reference zoom.
+    const screenWidth = 512 * (2 ** level.reference_zoom) * (boundsMerc.maxX - boundsMerc.minX) / (2 * Math.PI);
+    const pixelsPerSvgUnit = screenWidth / width;
+    const symbolScale = 20 / (40 * pixelsPerSvgUnit);
+    const strokeWidth = 1.5 / pixelsPerSvgUnit;
+    const repeat = 64 / pixelsPerSvgUnit;
+    const svgParts = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+      `<rect width="100%" height="100%" fill="transparent" />`,
+    ];
+
+    for (const item of projected) {
+      const pathD = quadraticPathFromPoints(item.smoothedPoints);
+      if (!pathD) continue;
+      svgParts.push(`<path d="${escapeXml(pathD)}" fill="none" stroke="${item.color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" />`);
+      if (item.frontType === "stationary") {
+        svgParts.push(`<path d="${escapeXml(pathD)}" fill="none" stroke="${getFrontColor('warm')}" stroke-width="${strokeWidth}" stroke-dasharray="${repeat} ${repeat}" stroke-dashoffset="-${repeat}" stroke-linejoin="round" />`);
+      }
+
+      const samples = samplePolyline(item.smoothedPoints, repeat * SAMPLE_OFFSET / SAMPLE_REPEAT, repeat);
+      samples.forEach((sample, index) => {
+        const symbol = createSymbolSvg(item.frontType, item.color, index);
+        if (!symbol) return;
+        svgParts.push(`<g transform="translate(${sample.x.toFixed(2)} ${sample.y.toFixed(2)}) rotate(${sample.angle.toFixed(2)}) scale(${symbolScale})">${symbol}</g>`);
+      });
+    }
+
+    svgParts.push(`</svg>`);
+    const svg = svgParts.join("");
+    // Render detail directly from SVG at higher resolution, not by enlarging a PNG.
+    const density = 72 * Math.max(1, Math.min(4096 / Math.max(width, height), screenWidth * 1.5 / width));
+    const { data, info } = await sharp(Buffer.from(svg), { density }).png({ compressionLevel: 3 }).toBuffer({ resolveWithObject: true });
+    const filename = level.id === 'overview' ? `fronts_${tmfc}.png` : `fronts_${tmfc}_${level.id}.png`;
+    fs.writeFileSync(path.join(dir, filename), data);
+    variants.push({ ...level, path: `/data/sigwx_low/${filename}`, width: info.width, height: info.height });
+  }
 
   const south = mercatorYToLat(boundsMerc.minY);
   const north = mercatorYToLat(boundsMerc.maxY);
@@ -253,18 +272,19 @@ async function renderSigwxFrontOverlay(sigwxLow, dataRoot, canonicalHash) {
     latest: {
       tmfc,
       render_version: RENDER_VERSION,
-      path: `/data/sigwx_low/${filename}`,
+      path: variants[0].path,
       bounds: [
         [south, west],
         [north, east],
       ],
-      width,
-      height,
+      width: variants[0].width,
+      height: variants[0].height,
       frontCount: projected.length,
+      variants,
     },
   };
 
-  fs.writeFileSync(path.join(dir, metaFilename), `${JSON.stringify(meta, null, 2)}\n`, "utf8");
+  fs.writeFileSync(path.join(dir, `fronts_meta_${tmfc}.json`), `${JSON.stringify(meta, null, 2)}\n`, "utf8");
   return meta;
 }
 

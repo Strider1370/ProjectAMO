@@ -1,10 +1,10 @@
 import { fetchSnapshotMeta as fetchCurrentSnapshotMeta } from '../../api/weatherApi.js'
 
-async function fetchJson(url, { optional = false } = {}) {
+async function fetchJson(url, { optional = false, signal } = {}) {
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal })
     if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`)
-    return res.json()
+    return await res.json()
   } catch (error) {
     if (optional === 'preserve') return undefined
     if (optional) return null
@@ -33,17 +33,17 @@ const MONITORING_DATA_FETCHERS = {
   satVisibleMeta: { url: '/data/satellite/visible/visible_meta.json', optional: true },
 }
 
-async function loadMonitoringEntries(keys, optional = true) {
+async function loadMonitoringEntries(keys, optional = true, { signal } = {}) {
   const uniqueKeys = [...new Set(keys)].filter((key) => MONITORING_DATA_FETCHERS[key])
   const values = await Promise.all(uniqueKeys.map((key) => {
     const entry = MONITORING_DATA_FETCHERS[key]
-    return fetchJson(entry.url, { optional: optional === 'preserve' ? 'preserve' : entry.optional })
+    return fetchJson(entry.url, { optional: optional === 'preserve' ? 'preserve' : entry.optional, signal })
   }))
   return Object.fromEntries(uniqueKeys.map((key, index) => [key, values[index]]))
 }
 
-export async function loadMonitoringData() {
-  const data = await loadMonitoringEntries(Object.keys(MONITORING_DATA_FETCHERS))
+export async function loadMonitoringData({ signal } = {}) {
+  const data = await loadMonitoringEntries(Object.keys(MONITORING_DATA_FETCHERS), true, { signal })
   return {
     ...data,
     airports: data.airports || [],
@@ -51,25 +51,25 @@ export async function loadMonitoringData() {
   }
 }
 
-export async function loadMonitoringAlertDefaults() {
-  return fetchJson('/api/alert-defaults')
+export async function loadMonitoringAlertDefaults({ signal } = {}) {
+  return fetchJson('/api/alert-defaults', { signal })
 }
 
-export async function fetchMonitoringSnapshotMeta() {
-  return fetchCurrentSnapshotMeta()
+export async function fetchMonitoringSnapshotMeta({ signal } = {}) {
+  return fetchCurrentSnapshotMeta({ signal })
 }
 
-export async function loadChangedMonitoringData(changes) {
+export async function loadChangedMonitoringData(changes, { signal } = {}) {
   const changedKeys = Object.keys(MONITORING_DATA_FETCHERS)
     .filter((key) => changes[key])
-  const changed = await loadMonitoringEntries(changedKeys, 'preserve')
+  const changed = await loadMonitoringEntries(changedKeys, 'preserve', { signal })
   return Object.fromEntries(Object.entries(changed).map(([key, value]) => [key, value ?? undefined]))
 }
 
-export async function loadMonitoringInitialData() {
+export async function loadMonitoringInitialData({ signal } = {}) {
   const [data, alertDefaults] = await Promise.all([
-    loadMonitoringData(),
-    loadMonitoringAlertDefaults(),
+    loadMonitoringData({ signal }),
+    loadMonitoringAlertDefaults({ signal }),
   ])
   return { data, alertDefaults }
 }

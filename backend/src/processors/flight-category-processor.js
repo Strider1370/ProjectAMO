@@ -296,10 +296,10 @@ export async function process() {
     if (classifyVisibility(visGrid[i]) === 'missing') missing++
   }
 
-  const asos = store.getCached('asos_ceiling')
+  const asos = store.getLiveCached('asos_ceiling')
   let stations = []
   try {
-    stations = buildStations({ asos, amos: store.getCached('amos'), kimCeiling, ctpsMask })
+    stations = buildStations({ asos, amos: store.getLiveCached('amos'), kimCeiling, ctpsMask })
   } catch (e) {
     // 지점은 부가 정보다. 여기서 죽으면 시정·운고 면까지 같이 사라진다.
     console.warn('flight-cat: 지점 조립 실패 —', e.message)

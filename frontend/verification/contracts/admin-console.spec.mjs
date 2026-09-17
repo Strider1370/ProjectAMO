@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { installAdminDataHealthFixture } from '../admin-fixture.mjs'
+import { installAdminDataHealthFixture, prepareAdminAccounts } from '../admin-fixture.mjs'
 
 // 관리자 콘솔 브라우저 계약.
 //
@@ -8,8 +8,8 @@ import { installAdminDataHealthFixture } from '../admin-fixture.mjs'
 // 적히는가, 그리고 모든 그래프에 y축 눈금과 단위가 있는가(축 없는 그래프가 다시 새어 들어오면
 // 여기서 걸린다).
 //
-// 계정은 verification/admin-fixture.mjs가 만든다. 없으면 로그인에서 멈추므로,
-// 실패 메시지로 바로 알 수 있게 로그인 단계에서 명시적으로 확인한다.
+// 실제 테스트가 시작된 뒤 격리 DATA_PATH에 계정을 만든다. 파일 탐색과 --list는
+// 이 모듈을 import해도 DB를 열거나 스키마를 변경하지 않는다.
 const ADMIN = { username: process.env.CONTRACT_ADMIN_USER || 'contract_admin', password: process.env.CONTRACT_ADMIN_PASS || 'contract-pass-1' }
 let adminCookie
 
@@ -39,6 +39,10 @@ async function loginAsAdmin(page, request) {
 }
 
 test.describe('관리자 콘솔', () => {
+  test.beforeAll(async () => {
+    await prepareAdminAccounts()
+  })
+
   test.beforeEach(async ({ page, request }) => {
     await loginAsAdmin(page, request)
     await installAdminDataHealthFixture(page)

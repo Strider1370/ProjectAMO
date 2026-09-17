@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getDemoMode, revertDemoMode, listSnapshots, saveSnapshot, loadSnapshot, getDemoModeLog } from './adminApi.js'
+import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import './AdminPage.css'
 
-function fmtDateTime(iso) {
+function fmtDateTime(iso, tz) {
   if (!iso) return '—'
   const d = new Date(iso)
-  const date = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
-  return `${date} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return new Intl.DateTimeFormat('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(d)
 }
 
 function readinessText(inspection) {
@@ -29,6 +29,7 @@ function readinessText(inspection) {
 // 따로 노는 버튼이었던 이전 버전이 헷갈린다는 피드백으로 단순화함.
 // 관리자 콘솔(/admin)과 개발자 콘솔(/dev) 둘 다에서 씀 — 백엔드는 /api/admin/*(admin 전용, 배포 서버에서도 항상 마운트).
 export default function DemoModePanel() {
+  const { tz } = useTimeZone()
   const [demoStatus, setDemoStatus] = useState({ on: false, now: null, hasLiveBackup: false })
   const [snapshots, setSnapshots] = useState([])
   const [events, setEvents] = useState([])
@@ -85,7 +86,7 @@ export default function DemoModePanel() {
         <>
           <p className="admin-empty">
             지금 시연 데이터 뷰를 읽는 상태입니다 — 실황 수집은 별도 경로에서 계속되고, 지도에 "시연용 모드" 배지 표시,
-            브리핑 기준 "지금" 시각은 <b>{fmtDateTime(demoStatus.now)}</b>로 고정.
+            브리핑 기준 "지금" 시각은 <b>{fmtDateTime(demoStatus.now, tz)} {tz}</b>로 고정.
           </p>
           <button type="button" className="admin-btn-reject" disabled={busy} style={{ marginBottom: 12 }}
             onClick={() => run('시연 종료 처리 중', revertDemoMode, (d) => d.note)}>
@@ -98,8 +99,8 @@ export default function DemoModePanel() {
                 {snapshots.map((snap) => (
                   <button key={snap.name} type="button" className="admin-btn-approve" disabled={busy || !snap.inspection?.ready}
                     style={{ marginRight: 6, marginBottom: 6 }}
-                    onClick={() => run(`${snap.name}로 전환 중`, () => loadSnapshot(snap.name), (d) => `전환됨: ${d.name} (기준시각 ${fmtDateTime(d.now)})`)}>
-                    {snap.name} — {fmtDateTime(snap.referenceTime)} · {readinessText(snap.inspection)}
+                    onClick={() => run(`${snap.name}로 전환 중`, () => loadSnapshot(snap.name), (d) => `전환됨: ${d.name} (기준시각 ${fmtDateTime(d.now, tz)} ${tz})`)}>
+                    {snap.name} — {fmtDateTime(snap.referenceTime, tz)} {tz} · {readinessText(snap.inspection)}
                   </button>
                 ))}
               </div>
@@ -120,8 +121,8 @@ export default function DemoModePanel() {
                 {snapshots.map((snap, i) => (
                   <li key={snap.name} style={{ marginBottom: 6 }}>
                     <button type="button" className="admin-btn-approve" disabled={busy || !snap.inspection?.ready}
-                      onClick={() => run(`${snap.name} 시연 시작 중`, () => loadSnapshot(snap.name), (d) => `시연 시작: ${d.name} (기준시각 ${fmtDateTime(d.now)})`)}>
-                      {busy ? '⏳ 처리 중…' : `${i + 1}. ▶ 시연 시작 — 기준시각 ${fmtDateTime(snap.referenceTime)} · ${readinessText(snap.inspection)}`}
+                      onClick={() => run(`${snap.name} 시연 시작 중`, () => loadSnapshot(snap.name), (d) => `시연 시작: ${d.name} (기준시각 ${fmtDateTime(d.now, tz)} ${tz})`)}>
+                      {busy ? '⏳ 처리 중…' : `${i + 1}. ▶ 시연 시작 — 기준시각 ${fmtDateTime(snap.referenceTime, tz)} ${tz} · ${readinessText(snap.inspection)}`}
                     </button>
                   </li>
                 ))}
@@ -146,7 +147,7 @@ export default function DemoModePanel() {
             {events.map((e, i) => (
               <li key={i} className="admin-empty" style={{ fontFamily: 'monospace', fontSize: 12, marginBottom: 4 }}>
                 <span style={{ color: e.action.includes('failed') ? 'var(--level-red)' : 'inherit' }}>
-                  [{fmtDateTime(e.at)}] {e.action}: {e.detail}
+                  [{fmtDateTime(e.at, tz)} {tz}] {e.action}: {e.detail}
                 </span>
               </li>
             ))}

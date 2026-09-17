@@ -399,7 +399,7 @@ function App() {
     return <Suspense fallback={null}><DrawSpikePage /></Suspense>
   }
   if (window.location.pathname === '/admin') {
-    return <Suspense fallback={null}><AuthProvider><AdminPage /></AuthProvider></Suspense>
+    return <Suspense fallback={null}><TimeZoneProvider><AuthProvider><AdminPage /></AuthProvider></TimeZoneProvider></Suspense>
   }
   if (window.location.pathname === '/dev' && import.meta.env.DEV) {
     // 개발자 콘솔 — 개발 빌드에서만. 운영 빌드(npm run build)에선 이 코드가 제거되어 접근 불가.

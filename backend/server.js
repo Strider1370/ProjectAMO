@@ -39,6 +39,8 @@ import { createRoutesRouter } from './src/me/routes.js'
 import { createAlertsRouter } from './src/me/alerts.js'
 import { createPushRouter } from './src/me/push.js'
 import { createDevRouter } from './src/dev/scenario.js'
+import { mountTestMutationApi } from './src/dev/test-mutation-gate.js'
+import { createHealthStatus } from './src/health.js'
 import { recordRequest, bumpCache } from './src/dev/instrument.js'
 import { createMeRequestsRouter } from './src/me/requests.js'
 import { createForecasterRouter } from './src/forecaster/router.js'
@@ -178,7 +180,7 @@ function setGeneratedDataCacheHeaders(res, filePath) {
     return
   }
 
-  if (/^sigwx_low\/(?:fronts|clouds)_\d{10}\.png$/i.test(relPath)) {
+  if (/^sigwx_low\/(?:fronts|clouds)_\d{10}(?:_standard|_detail)?\.png$/i.test(relPath)) {
     res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
     return
   }
@@ -275,10 +277,9 @@ if (process.env.NODE_ENV !== 'test') {
   app.use('/api/me', createMeRequestsRouter()) // 조종사 문의 생성/상태
   app.use('/api/forecaster', createForecasterRouter()) // 예보관 문의 대기열(담당공항만)
   app.use('/api/admin', createAdminRouter()) // 관리자 콘솔(requireRole admin)
-  if (process.env.DISABLE_COLLECTION) {
-    // 테스트 인스턴스(cron off)에서만 마운트 — 일반 모드에선 주입이 readLatest/cron에 되돌려져 무의미하므로 아예 노출 안 함.
-    app.use('/api/dev', createDevRouter()) // 개발 전용: 가상 악기상 주입/초기화
-  }
+  // 테스트 변경 API는 수집 on/off와 별도다. non-production, 명시 플래그,
+  // 명시 DATA_PATH를 모두 요구하고 라우터 내부에서 다시 인증한다.
+  mountTestMutationApi(app, createDevRouter)
 }
 
 function readLatest(type) {
@@ -1131,7 +1132,7 @@ app.get('/api/sigwx-low-fronts', (req, res) => sendSigwxOverlayMeta(req, res, 'f
 app.get('/api/sigwx-low-clouds', (req, res) => sendSigwxOverlayMeta(req, res, 'clouds'))
 
 app.get('/api/stats', (_req, res) => res.json(stats.getStats()))
-app.get('/api/health', (_req, res) => res.json({ ok: true, uptime: process.uptime(), testMode: !!process.env.DISABLE_COLLECTION }))
+app.get('/api/health', (_req, res) => res.json(createHealthStatus()))
 // 지도의 "시연용 모드" 배지 + 프런트의 "지금" 기준용 — 누구나 조회 가능(로그인 불필요).
 // 켜고 끄기·스냅샷 선택은 /api/admin/*(관리자 전용).
 app.get('/api/demo-mode', (_req, res) => {

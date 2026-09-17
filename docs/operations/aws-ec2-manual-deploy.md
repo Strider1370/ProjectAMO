@@ -133,7 +133,8 @@ vite는 빌드를 시작할 때 결과물 폴더를 먼저 비운다. nginx는 �
 빌드가 돌다가 vite가 `SIGABRT`로 중단됐고, 그 순간부터 운영 사이트가 404였다.
 
 지금은 `deploy/build-frontend.sh`가 새 폴더에 빌드하고 **`index.html`이 실제로 만들어졌을 때만**
-폴더 이름을 바꾼다. 빌드가 죽으면 이전 화면이 그대로 서빙된다.
+같은 파일시스템의 원자적 디렉터리 교환으로 반영한다. 빌드가 죽으면 기존 화면이 그대로 서빙되고,
+교환 중에도 `dist/index.html`과 직전 빌드의 lazy chunk는 각각 `dist`/`dist.previous`에서 계속 제공된다.
 
 같은 스크립트가 Node 힙 한도를 `--max-old-space-size=1536`으로 올린다(스왑 2GB가 받친다).
 필요하면 환경변수로 덮어쓸 수 있다:
@@ -173,10 +174,12 @@ bash deploy/deploy-vm-full.sh
 3. `npm --prefix backend ci`
 4. `npm --prefix frontend ci`
 5. `bash deploy/build-frontend.sh` (fast deploy와 같은 방식 — 성공 시에만 교체)
-5. `pm2 restart projectamo-backend --update-env`
-6. `sudo nginx -t`
-7. `sudo systemctl reload nginx`
-8. `curl http://127.0.0.1:3001/api/health`
+6. `pm2 restart ecosystem.config.cjs --update-env` + `pm2 save`
+7. `deploy/configure-pm2-logrotate.sh`
+8. `sudo nginx -t` + `sudo systemctl reload nginx`
+9. configured PM2 app의 `online` 상태·PID와 실제 `NODE_OPTIONS` 대조
+10. backend와 화면 health check
+11. 위 검증이 모두 통과한 뒤 `.deployed-at`을 원자적으로 갱신
 
 실제 사례:
 

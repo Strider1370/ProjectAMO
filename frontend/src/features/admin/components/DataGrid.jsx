@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { STATUS_TONE, STATUS_WORD, formatAge } from '../lib/adminFormat.js'
+import { STATUS_TONE, STATUS_WORD, eventMeasurementLabel, formatAge } from '../lib/adminFormat.js'
 
 // 자료 34종 격자.
 //
@@ -32,8 +32,8 @@ function Tile({ row, now }) {
           <span className="ac-st">{STATUS_WORD[row.status]}</span>
         )}
       </div>
-      {row.eventDriven && row.activeCount != null && (
-        <div className="ac-sub n">{row.activeCount}건 발효</div>
+      {row.eventDriven && (
+        <div className="ac-sub n">{eventMeasurementLabel(row.eventMeasurement)}</div>
       )}
     </div>
   )

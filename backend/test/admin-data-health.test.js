@@ -219,3 +219,53 @@ test('꺼진 모델은 다음 점검을 노출하지 않는다', () => {
   assert.equal(row.status, 'disabled')
   assert.equal(row.nextCheckAt, null)
 })
+
+test('활성 demo 표시 자료와 live collector 통계를 provenance로 분리한다', () => {
+  const row = readDataHealth(base(), {
+    getCached: (key) => key === 'metar' ? { fetched_at: '2026-08-01T00:00:00Z' } : null,
+    getStats: statsFor({ metar: { last_success: '2026-08-10T10:33:00Z', last_run: '2026-08-10T10:33:00Z' } }),
+    now: NOW,
+    activeDataContext: { mode: 'demo', name: 'briefing-demo', revision: 'demo:1', referenceTime: '2026-08-01T00:00:00Z' },
+  }).rows.find((entry) => entry.key === 'metar')
+
+  assert.equal(row.provenance.display.source, 'active_demo_snapshot')
+  assert.equal(row.provenance.display.snapshotName, 'briefing-demo')
+  assert.equal(row.provenance.liveCollection.source, 'live_collector_statistics')
+  assert.equal(row.provenance.liveCollection.lastSuccessfulAt, '2026-08-10T10:33:00Z')
+  assert.equal(row.provenance.compatibilityStatus.basis, 'live_collector_statistics')
+})
+
+test('낙뢰 eventMeasurement는 공항 수가 아닌 전국 중복 제거 strike와 기간을 낸다', () => {
+  const row = readDataHealth(base(), {
+    getCached: (key) => key === 'lightning' ? {
+      fetched_at: '2026-08-10T10:35:00Z', history_window_minutes: 60,
+      airports: { RKSI: {}, RKPK: {} },
+      nationwide: { summary: { total_count: 1 }, strikes: [{ id: 'same-strike' }], coverage: { status: 'partial', from: '2026-08-10T09:35:00Z', to: '2026-08-10T10:35:00Z', successfulWindows: ['a'], failedWindows: ['b'] } },
+    } : null,
+    getStats: statsFor({ lightning: { last_success: '2026-08-10T10:35:00Z' } }),
+    now: NOW,
+  }).rows.find((entry) => entry.key === 'lightning')
+
+  assert.equal(row.activeCount, 1, '호환 필드도 공항 coverage가 아닌 strike 수를 사용한다')
+  assert.deepEqual(row.eventMeasurement.period, { kind: 'rolling_history_window', minutes: 60, from: '2026-08-10T09:35:00Z', to: '2026-08-10T10:35:00Z' })
+  assert.equal(row.eventMeasurement.unit, 'deduplicated_nationwide_strikes')
+  assert.equal(row.eventMeasurement.coverage.failedWindows, 1)
+})
+
+test('warning 계열은 계산 근거가 없을 때 0이 아닌 null과 unavailable을 낸다', () => {
+  const rows = readDataHealth(base(), {
+    getCached: (key) => ({
+      warning: { fetched_at: '2026-08-10T10:35:00Z', airports: {} },
+      kma_special_warning: { fetched_at: '2026-08-10T10:35:00Z', airports: { RKSI: {} } },
+    })[key] ?? null,
+    getStats: statsFor({ warning: { last_success: '2026-08-10T10:35:00Z' }, kma_special_warning: { last_success: '2026-08-10T10:35:00Z' } }),
+    now: NOW,
+  }).rows
+
+  for (const key of ['warning', 'kma_special_warning']) {
+    const row = rows.find((entry) => entry.key === key)
+    assert.equal(row.activeCount, null)
+    assert.equal(row.eventMeasurement.availability, 'unavailable')
+    assert.equal(row.eventMeasurement.count, null)
+  }
+})

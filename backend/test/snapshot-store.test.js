@@ -9,6 +9,7 @@ import {
   discardLiveBackup,
   hasLiveBackup,
   inspectSnapshot,
+  listSnapshots,
   loadSnapshot,
   saveSnapshot,
 } from '../src/dev/snapshot-store.js'
@@ -46,6 +47,72 @@ test('saveSnapshot replaces a stale reserved backup with current files', () => {
     saveSnapshot(root, RESERVED_LIVE_BACKUP)
     const restored = JSON.parse(fs.readFileSync(path.join(root, 'snapshots', RESERVED_LIVE_BACKUP, 'metar', 'latest.json')))
     assert.equal(restored.fetched_at, '2026-07-28T09:40:00Z')
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('same snapshot name publishes one new immutable generation without changing the prior generation', () => {
+  const root = tempRoot()
+  try {
+    writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-07-28T09:40:00Z', marker: 'first' })
+    const first = saveSnapshot(root, 'demo')
+    const firstPath = fs.realpathSync(path.join(root, 'snapshots', 'demo'))
+
+    writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-07-28T10:40:00Z', marker: 'second' })
+    const second = saveSnapshot(root, 'demo')
+    const secondPath = fs.realpathSync(path.join(root, 'snapshots', 'demo'))
+
+    assert.notEqual(first.generation, second.generation)
+    assert.notEqual(firstPath, secondPath)
+    assert.equal(fs.lstatSync(path.join(root, 'snapshots', 'demo')).isSymbolicLink(), true)
+    assert.equal(JSON.parse(fs.readFileSync(path.join(firstPath, 'metar', 'latest.json'))).marker, 'first')
+    assert.equal(JSON.parse(fs.readFileSync(path.join(secondPath, 'metar', 'latest.json'))).marker, 'second')
+    assert.deepEqual(listSnapshots(root).map((snapshot) => snapshot.name), ['demo'])
+    assert.equal(JSON.parse(fs.readFileSync(path.join(secondPath, 'meta.json'))).revision, second.revision)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('a failed snapshot staging publish leaves the prior public generation intact', () => {
+  const root = tempRoot()
+  try {
+    writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-07-28T09:40:00Z', marker: 'stable' })
+    saveSnapshot(root, 'demo')
+    const priorPath = fs.realpathSync(path.join(root, 'snapshots', 'demo'))
+
+    writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: '2026-07-28T10:40:00Z', marker: 'failed' })
+    assert.throws(() => saveSnapshot(root, 'demo', {
+      beforePublish: () => { throw new Error('staging_failed') },
+    }), /staging_failed/)
+
+    assert.equal(fs.realpathSync(path.join(root, 'snapshots', 'demo')), priorPath)
+    assert.equal(JSON.parse(fs.readFileSync(path.join(priorPath, 'metar', 'latest.json'))).marker, 'stable')
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('public snapshot operations reject traversal, separator, encoding variants, and outside pointers', () => {
+  const root = tempRoot()
+  try {
+    writeJson(path.join(root, 'metar', 'latest.json'), { fetched_at: 'live', marker: 'live' })
+    writeJson(path.join(root, 'outside', 'metar', 'latest.json'), { fetched_at: 'outside', marker: 'outside' })
+    fs.mkdirSync(path.join(root, 'snapshots'), { recursive: true })
+    fs.symlinkSync('../outside', path.join(root, 'snapshots', 'foreign'))
+
+    const invalidNames = ['../outside', '/tmp/outside', 'demo/child', 'demo\\child', '%2e%2e%2foutside', '']
+    for (const name of invalidNames) {
+      assert.equal(loadSnapshot(root, name, { skipBackup: true }), null, name)
+      assert.deepEqual(inspectSnapshot(root, name).blockers, ['snapshot_not_found'], name)
+      assert.throws(() => saveSnapshot(root, name), /invalid_snapshot_name/, name)
+    }
+
+    assert.equal(loadSnapshot(root, 'foreign', { skipBackup: true }), null)
+    assert.deepEqual(inspectSnapshot(root, 'foreign').blockers, ['snapshot_not_found'])
+    assert.equal(listSnapshots(root).some((snapshot) => snapshot.name === 'foreign'), false)
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'metar', 'latest.json'))).marker, 'live')
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }

@@ -1,6 +1,8 @@
 // 임시 글꼴 테스트 토글. 후보 폰트를 "고를 때만" lazy 로드(dynamic-subset)하고
 // --app-font / body에 적용 + localStorage 저장. 테스트 기간 팀 투표용 — 결정 후 제거 예정.
 // GOV와 Wanted는 자체 호스팅. 기존에 저장한 다른 후보 선택은 그대로 유지한다.
+import { readStoredValue, writeStoredValue } from '../settings/storage.js'
+
 const KEY = 'font_pref'
 // 임시: Wanted Sans를 기본으로 통일해 비교 중(투표 후 확정). 설정에서 글꼴 일괄 변경 가능.
 const DEFAULT_ID = 'wanted'
@@ -37,17 +39,20 @@ function ensureFontLoaded(opt) {
 }
 
 export function getFontPref() {
-  return localStorage.getItem(KEY) || DEFAULT_ID
+  const { value } = readStoredValue(KEY)
+  return FONT_OPTIONS.some(opt => opt.id === value) ? value : DEFAULT_ID
 }
 
-export function applyFont(id) {
-  const opt = FONT_OPTIONS.find((o) => o.id === id) || FONT_OPTIONS[0]
+export function applyFont(id, { persist = true } = {}) {
+  const opt = FONT_OPTIONS.find((o) => o.id === id) || FONT_OPTIONS.find((o) => o.id === DEFAULT_ID)
   ensureFontLoaded(opt)
   document.documentElement.style.setProperty('--app-font', opt.stack)
   document.body.style.fontFamily = opt.stack
-  localStorage.setItem(KEY, opt.id)
+  if (persist) writeStoredValue(KEY, opt.id)
+  return opt.id
 }
 
 export function loadStoredFont() {
-  applyFont(getFontPref())
+  // 부트 중 unknown 값이나 저장소 실패를 고쳐 쓰지 않는다. 기본 글꼴만 세션에 적용한다.
+  return applyFont(getFontPref(), { persist: false })
 }

@@ -509,7 +509,7 @@ async function process() {
   const requestCaches = buildRequestCaches();
   const tmFc = getLatestMidTmfc(new Date(result.fetched_at));
   const villageBase = getLatestVillageBase(new Date(result.fetched_at));
-  const previous = store.getCached("ground_forecast");
+  const previous = store.getLiveCached("ground_forecast");
   const airportErrors = {};
   const failedAirports = [];
 

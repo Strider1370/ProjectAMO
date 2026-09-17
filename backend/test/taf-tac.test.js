@@ -62,6 +62,42 @@ test('명시된 NSW 변화군을 TAC 원문에 보존한다', () => {
   )
 })
 
+test('IWXXM 최고·최저기온을 TX/TN TAC 그룹으로 재구성한다', () => {
+  const taf = {
+    header: {
+      icao: 'RKSI',
+      report_status: 'NORMAL',
+      issued: '2026-09-10T11:00:00Z',
+      valid_start: '2026-09-10T12:00:00Z',
+      valid_end: '2026-09-11T18:00:00Z',
+      temperatures: {
+        max: { value: 25, time: '2026-09-11T05:00:00Z' },
+        min: { value: -0.4, time: '2026-09-10T20:00:00Z' },
+      },
+    },
+    base: { wind: { raw: '04007KT' }, vis: 9999, wx: [], clouds: [], cavok_flag: true, nsc_flag: false },
+    change_groups: [],
+  }
+
+  assert.equal(
+    buildTafTac(taf),
+    'TAF RKSI 101100Z 1012/1118 04007KT CAVOK TX25/1105Z TNM00/1020Z',
+  )
+})
+
+test('값과 시각이 모두 유효한 기온 그룹만 재구성한다', () => {
+  const taf = {
+    header: {
+      icao: 'RKSI', issued: '2026-09-10T11:00:00Z', valid_start: '2026-09-10T12:00:00Z', valid_end: '2026-09-11T18:00:00Z',
+      temperatures: { max: { value: 0, time: '2026-09-11T05:00:00Z' }, min: { value: -3, time: null } },
+    },
+    base: { wind: null, vis: 9999, wx: [], clouds: [], cavok_flag: false, nsc_flag: true },
+    change_groups: [],
+  }
+
+  assert.equal(buildTafTac(taf), 'TAF RKSI 101100Z 1012/1118 9999 NSC TX00/1105Z')
+})
+
 test('빈 입력 → null', () => {
   assert.equal(buildTafTac(null), null)
 })

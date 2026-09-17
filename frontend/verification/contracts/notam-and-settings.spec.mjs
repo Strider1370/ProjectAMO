@@ -13,6 +13,19 @@ async function openApp(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' })
 }
 
+async function openSettings(page, isMobile) {
+  if (isMobile) {
+    await page.getByRole('button', { name: '더보기', exact: true }).click()
+    await page.getByRole('button', { name: '설정', exact: true }).click()
+  } else {
+    // 접힌 데스크톱 사이드바의 첫 설정 버튼은 유틸리티 메뉴를 여는 동작이다.
+    // 메뉴 안의 설정 항목이 SettingsModal의 실제 진입점이다.
+    await page.locator('.sidebar-collapsed-utility > .sidebar-icon-button[aria-label="설정"]').click()
+    await page.getByRole('group', { name: '알림, 도움말 및 앱 설정' }).getByRole('button', { name: '설정', exact: true }).click()
+  }
+  await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible()
+}
+
 test.describe('notam-and-settings', () => {
   test('toggles the NOTAM map master switch on desktop surfaces', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile', 'NOTAM has no mobile entry in the current More menu; mobile settings is covered below.')
@@ -29,10 +42,7 @@ test.describe('notam-and-settings', () => {
   test('saves the selected time zone', async ({ page }, testInfo) => {
     await openApp(page)
 
-    if (testInfo.project.name === 'mobile') {
-      await page.getByRole('button', { name: '더보기', exact: true }).click()
-    }
-    await page.getByRole('button', { name: '설정', exact: true }).click()
+    await openSettings(page, testInfo.project.name === 'mobile')
 
     const timeZone = page.getByRole('combobox', { name: '시간대', exact: true })
     await expect(timeZone).toBeVisible()
@@ -45,15 +55,7 @@ test.describe('notam-and-settings', () => {
   test('renders only active display settings controls', async ({ page }, testInfo) => {
     await openApp(page)
 
-    if (testInfo.project.name === 'mobile') {
-      await page.getByRole('button', { name: '더보기', exact: true }).click()
-      await page.getByRole('button', { name: '설정', exact: true }).click()
-    } else {
-      const settingsButtons = page.getByRole('button', { name: '설정', exact: true })
-      await settingsButtons.first().click()
-      if (await settingsButtons.count() > 1) await settingsButtons.last().click()
-    }
-    await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible()
+    await openSettings(page, testInfo.project.name === 'mobile')
 
     await expect(page.getByRole('combobox', { name: '시간대', exact: true })).toBeVisible()
     await expect(page.getByRole('combobox', { name: '언어', exact: true })).toBeVisible()

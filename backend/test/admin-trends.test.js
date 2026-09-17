@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import { createDb } from '../src/db/index.js'
 import { recordVisit } from '../src/admin/visits.js'
-import { bucketByDay, visitTrend, newVisitorTrend, signupTrend } from '../src/admin/trends.js'
+import { bucketByDay, visitTrend, newVisitorTrend, signupTrend, readTrends } from '../src/admin/trends.js'
 
 test('bucketByDay: day는 그대로, week는 일요일 시작으로, month는 YYYY-MM으로 묶는다', () => {
   const rows = [
@@ -50,4 +50,14 @@ test('signupTrend: users.created_at 날짜별 집계', () => {
   const trend = signupTrend(db, 'day')
   const today = now.slice(0, 10)
   assert.equal(trend.find((t) => t.period === today)?.n, 2)
+})
+
+test('trend DTO는 UTC business day와 방문자·신규 방문자 보관 한계를 명시한다', () => {
+  const db = createDb(':memory:')
+  const out = readTrends(db, 'month')
+  assert.equal(out.measurement.timezone, 'UTC')
+  assert.equal(out.measurement.businessDay, 'UTC_calendar_day')
+  assert.equal(out.measurement.visits.unit, 'unique_browser_cookie_visitor_ids_per_utc_day')
+  assert.equal(out.measurement.newVisitors.retentionMs, 90 * 24 * 60 * 60 * 1000)
+  assert.equal(out.measurement.newVisitors.historicalCompleteness, 'limited_to_retained_visits')
 })

@@ -159,8 +159,8 @@ test.describe('ground-signage', () => {
     closeTo(await fontSize(forecast.locator('[data-forecast-title="hourly"]')), 24)
     closeTo(await fontSize(forecast.locator('[data-forecast-metadata]')), 17)
     closeTo(await forecast.locator('[data-forecast-progress]').evaluate((element) => element.getBoundingClientRect().height), 4)
-    await expect(forecast.locator('[data-forecast-metadata]')).toHaveText('운서동 동네예보 14시')
-    await expect(forecast.locator('[data-forecast-metadata]')).not.toContainText(/short|mid_land|mid_ta|tmFc|base_time|발표|단기예보/)
+    await expect(forecast.locator('[data-forecast-metadata]')).toHaveText('운서동 동네예보 14시 발표')
+    await expect(forecast.locator('[data-forecast-metadata]')).not.toContainText(/short|mid_land|mid_ta|tmFc|base_time|단기예보/)
 
     await pauseProgress(page)
     const progress = forecast.locator('[data-forecast-progress]')
@@ -177,7 +177,7 @@ test.describe('ground-signage', () => {
     await page.clock.runFor(12_000)
     await expect(forecast.locator('[data-forecast-title="weekly"]')).toHaveAttribute('aria-current', 'true')
     await expect(forecast.locator('[data-forecast-title="hourly"]')).toHaveCount(0)
-    await expect(forecast.locator('[data-forecast-metadata]')).toHaveText('중기예보 06시')
+    await expect(forecast.locator('[data-forecast-metadata]')).toHaveText('중기예보 06시 발표')
     const fadeTiming = await forecast.locator('.ground-forecast-layer').first().evaluate((element) => element.getAnimations().find((animation) => animation.effect?.getKeyframes?.().some((frame) => Object.hasOwn(frame, 'opacity')))?.effect?.getTiming().duration)
     expect(fadeTiming).toBe(350)
     await forecast.locator('.ground-forecast-layer').evaluateAll((layers) => layers.forEach((layer) => layer.getAnimations().filter((animation) => animation.effect?.getKeyframes?.().some((frame) => Object.hasOwn(frame, 'opacity'))).forEach((animation) => animation.finish())))
@@ -211,13 +211,15 @@ test.describe('ground-signage', () => {
     })
     expect(Math.max(...tableLayout.widths) - Math.min(...tableLayout.widths)).toBeLessThanOrEqual(1)
     expect(new Set(tableLayout.rowTops.map(Math.round)).size).toBe(4)
-    for (const inset of tableLayout.inset) closeTo(inset, 28)
+    for (const inset of tableLayout.inset.slice(0, 2)) closeTo(inset, 28)
+    // 507px 고정 signage 행에서는 주간 표의 세로 리듬을 우선해 하단 여백이 12px이다.
+    closeTo(tableLayout.inset[2], 12)
     closeTo(tableLayout.headerGap, 26)
     closeTo(await weekly.locator('[data-weekly-icon]').first().evaluate((element) => Number.parseFloat(getComputedStyle(element).width)), 68)
-    closeTo(await fontSize(weekly.locator('[data-weekly-weekday]').first()), 24)
+    closeTo(await fontSize(weekly.locator('[data-weekly-weekday]').first()), 22)
     closeTo(await fontSize(weekly.locator('[data-weekly-date]').first()), 18)
     closeTo(await fontSize(weekly.locator('[data-weekly-precipitation]').first()), 20)
-    closeTo(await fontSize(weekly.locator('[data-weekly-minmax]').first()), 30)
+    closeTo(await fontSize(weekly.locator('[data-weekly-minmax]').first()), 24)
   })
 
   test('ground-signage preserves empty and partial frames', async ({ page }) => {
@@ -232,11 +234,11 @@ test.describe('ground-signage', () => {
     closeBox(await box(forecast), { x: 20, y: 412, width: 1015, height: 507 })
     await expect(forecast.locator('[data-hourly-column]')).toHaveCount(8)
     await expect(forecast.locator('[data-forecast-title="hourly"]')).toHaveText('시간별 예보')
-    await expect(forecast.locator('[data-forecast-metadata]')).toHaveText('운서동 동네예보 14시')
+    await expect(forecast.locator('[data-forecast-metadata]')).toHaveText('운서동 동네예보 14시 발표')
     await page.clock.runFor(12_000)
     await expect(forecast.locator('[data-weekly-column]')).toHaveCount(6)
     await expect(forecast.locator('[data-forecast-title="weekly"]')).toHaveText('주간 예보')
-    await expect(forecast.locator('[data-forecast-metadata]')).toHaveText('중기예보 -')
+    await expect(forecast.locator('[data-forecast-metadata]')).toHaveText('중기예보 - 발표')
     await expect(forecast.getByText('-', { exact: true }).first()).toBeVisible()
   })
 
@@ -255,7 +257,9 @@ test.describe('ground-signage', () => {
     await openGround(page)
     const forecast = page.getByRole('region', { name: '지상 예보' })
     const transition = await forecast.locator('.ground-forecast-layer').first().evaluate((element) => getComputedStyle(element).transitionDuration)
-    expect(transition).toBe('0s')
+    // 브라우저는 reduced-motion의 사실상 0초 전환을 1e-05s로 직렬화할 수 있다.
+    // 회전 자체가 계속되는지는 아래 clock 검증이 별도로 지킨다.
+    expect(Number.parseFloat(transition)).toBeLessThanOrEqual(0.001)
     const progress = forecast.locator('[data-forecast-progress]')
     expect(await progress.evaluate((element) => Number.parseFloat(getComputedStyle(element).opacity))).toBeLessThan(1)
     closeTo(await progress.evaluate((element) => element.getBoundingClientRect().width), await progress.evaluate((element) => element.parentElement.getBoundingClientRect().width))

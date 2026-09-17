@@ -15,19 +15,19 @@ import { trendGroups } from '../lib/adminFormat.js'
 const GRANULARITIES = [['day', '일별'], ['week', '주별'], ['month', '월별']]
 const SERIES_COLORS = ['#1c1b1a', '#8b7355', '#2f7d5e']
 
-export default function UsersScreen() {
+export default function UsersScreen({ adminQuery }) {
   const [traffic, setTraffic] = useState(null)
   const [trends, setTrends] = useState(null)
   const [granularity, setGranularity] = useState('day')
 
   useEffect(() => {
-    const load = () => { getTraffic().then(setTraffic).catch(() => {}) }
+    const load = () => { getTraffic(adminQuery).then((result) => { if (result.query.current) setTraffic(result.data) }).catch(() => {}) }
     load()
     const timer = setInterval(load, 5000)
     return () => clearInterval(timer)
   }, [])
 
-  useEffect(() => { getTrends(granularity).then(setTrends).catch(() => {}) }, [granularity])
+  useEffect(() => { getTrends(granularity, adminQuery).then((result) => { if (result.query.current) setTrends(result.data) }).catch(() => {}) }, [adminQuery, granularity])
 
   const groups = trendGroups(trends)
   const max = Math.max(10, ...groups.flatMap((group) => group.values))
@@ -42,7 +42,7 @@ export default function UsersScreen() {
       <div className="ac-hero">
         <div>
           <div className="ac-big n">{traffic?.total ?? '—'}</div>
-          <div className="ac-cap">총 방문자 · 현재 접속 {traffic?.online ?? 0}명</div>
+          <div className="ac-cap">저장된 브라우저 방문자 · 최근 5분 내 방문 {traffic?.online ?? '—'}</div>
         </div>
         <div className="ac-side">
           <div>
@@ -57,7 +57,7 @@ export default function UsersScreen() {
       </div>
 
       <section className="ac-sec">
-        <h2>이용 시간대<em>최근 4주 · 요일 × 시각(KST)</em></h2>
+        <h2>이용 시간대<em>요청 횟수 · KST 영업일 · 최근 4주</em></h2>
         {traffic?.hourly?.ready ? (
           <>
             <HourHeatmap cells={traffic.hourly.cells} />
@@ -90,9 +90,9 @@ export default function UsersScreen() {
         </h2>
 
         <div className="ac-stats" style={{ marginBottom: 18 }}>
-          <div><div className="ac-sv n">{totals[0]}</div><div className="ac-sl">총 접속(재방문 포함)</div></div>
-          <div><div className="ac-sv n">{totals[1]}</div><div className="ac-sl">신규 방문자</div></div>
-          <div><div className="ac-sv n">{totals[2]}</div><div className="ac-sl">신규 가입</div></div>
+          <div><div className="ac-sv n">{totals[0]}</div><div className="ac-sl">일별 고유 브라우저 방문(UTC)</div></div>
+          <div><div className="ac-sv n">{totals[1]}</div><div className="ac-sl">첫 방문 브라우저(UTC · 90일 보존)</div></div>
+          <div><div className="ac-sv n">{totals[2]}</div><div className="ac-sl">신규 인증 계정(UTC)</div></div>
         </div>
 
         {groups.length > 0 ? (
@@ -106,8 +106,8 @@ export default function UsersScreen() {
               highlight={groups[busiest] ? { index: busiest, value: groups[busiest].values[0] } : null}
             />
             <div className="ac-clg">
-              <span><i style={{ background: SERIES_COLORS[0], width: 12, height: 12, borderRadius: 3 }} />총 접속</span>
-              <span><i style={{ background: SERIES_COLORS[1], width: 12, height: 12, borderRadius: 3 }} />신규 방문자</span>
+              <span><i style={{ background: SERIES_COLORS[0], width: 12, height: 12, borderRadius: 3 }} />일별 고유 브라우저 방문</span>
+              <span><i style={{ background: SERIES_COLORS[1], width: 12, height: 12, borderRadius: 3 }} />첫 방문 브라우저</span>
               <span><i style={{ background: SERIES_COLORS[2], width: 12, height: 12, borderRadius: 3 }} />신규 가입</span>
             </div>
           </>

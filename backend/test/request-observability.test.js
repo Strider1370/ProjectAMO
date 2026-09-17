@@ -41,6 +41,39 @@ function seams({ responses = [], error } = {}) {
   }
 }
 
+function observedRequest({ fetchImpl, policy = { timeoutMs: 1_000, maxAttempts: 1, allowedOverrides: ['signal'] }, sleep } = {}) {
+  const ledger = []
+  const events = []
+  const requestObservedApi = createRequestObservedApi({
+    usage: {
+      assertAllowed() {},
+      record: async (credential, entry) => ledger.push([credential, entry]),
+    },
+    stats: {
+      recordApiOperationStart: (id) => events.push(['start', id]),
+      recordApiOperationSuccess: (id) => events.push(['success', id]),
+      recordApiOperationFailure: (id, message) => events.push(['failure', id, message]),
+    },
+    fetchImpl,
+    resolveOperation: ({ id, url }) => operation({ id, canonicalUrl: url.toString(), requestPolicy: policy }),
+    sleep: sleep || (async () => {}),
+    logger: { info() {}, warn() {} },
+  })
+  return { ledger, events, requestObservedApi }
+}
+
+function requestArgs(options = {}) {
+  return {
+    operation: 'metar',
+    url: 'https://apihub.kma.go.kr/api/typ02/openApi/AmmIwxxmService/getMetar?authKey=secret',
+    options,
+  }
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 test('records every physical API Hub retry once and reports one final success', async () => {
   const testSeams = seams({ responses: [new Response('retry', { status: 500 }), new Response('ok', { status: 200 })] })
 
@@ -91,6 +124,126 @@ test('records every retried transport failure as a zero-byte physical API Hub at
 
   assert.deepEqual(testSeams.ledger.map(([, entry]) => [entry.status, entry.bytes]), [[0, 0], [0, 0]])
   assert.deepEqual(testSeams.events.filter(([kind]) => ['start', 'success', 'failure'].includes(kind)), [['start', 'metar'], ['failure', 'metar', 'socket_timeout']])
+})
+
+test('keeps the declared deadline while waiting for response headers', async () => {
+  let seenSignal
+  const testSeams = observedRequest({
+    policy: { timeoutMs: 20, maxAttempts: 1, allowedOverrides: ['signal'] },
+    fetchImpl: (_url, { signal }) => {
+      seenSignal = signal
+      return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
+    },
+  })
+
+  await assert.rejects(testSeams.requestObservedApi(requestArgs()), { code: 'api_operation_timeout' })
+  assert.equal(seenSignal.aborted, true)
+  assert.deepEqual(testSeams.ledger.map(([, entry]) => [entry.status, entry.bytes]), [[0, 0]])
+  assert.deepEqual(testSeams.events.filter(([kind]) => ['start', 'success', 'failure'].includes(kind)), [['start', 'metar'], ['failure', 'metar', 'api_operation_timeout']])
+})
+
+test('keeps the declared deadline through a stalled response body even when the body ignores abort', async () => {
+  let seenSignal
+  const testSeams = observedRequest({
+    policy: { timeoutMs: 20, maxAttempts: 1, allowedOverrides: ['signal'] },
+    fetchImpl: async (_url, { signal }) => {
+      seenSignal = signal
+      return {
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers(),
+        arrayBuffer: async () => {
+          await wait(80)
+          return new Uint8Array([1, 2, 3]).buffer
+        },
+      }
+    },
+  })
+
+  await assert.rejects(testSeams.requestObservedApi(requestArgs()), { code: 'api_operation_timeout' })
+  assert.equal(seenSignal.aborted, true)
+  assert.deepEqual(testSeams.ledger.map(([, entry]) => [entry.status, entry.bytes]), [[0, 0]])
+  assert.deepEqual(testSeams.events.filter(([kind]) => ['start', 'success', 'failure'].includes(kind)), [['start', 'metar'], ['failure', 'metar', 'api_operation_timeout']])
+})
+
+test('keeps the declared deadline through a partial response body', async () => {
+  let calls = 0
+  let partialRead = false
+  const testSeams = observedRequest({
+    policy: { timeoutMs: 20, maxAttempts: 1, allowedOverrides: ['signal'] },
+    fetchImpl: async (_url, { signal }) => {
+      calls += 1
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array([1, 2, 3]))
+          partialRead = true
+          signal.addEventListener('abort', () => controller.error(signal.reason), { once: true })
+        },
+      })
+      return new Response(body, { status: 200 })
+    },
+  })
+
+  await assert.rejects(testSeams.requestObservedApi(requestArgs()), { code: 'api_operation_timeout' })
+  assert.equal(calls, 1)
+  assert.equal(partialRead, true)
+  assert.deepEqual(testSeams.ledger.map(([, entry]) => [entry.status, entry.bytes]), [[0, 0]])
+  assert.deepEqual(testSeams.events.filter(([kind]) => ['start', 'success', 'failure'].includes(kind)), [['start', 'metar'], ['failure', 'metar', 'api_operation_timeout']])
+})
+
+test('propagates an external abort while reading a body without starting another retry', async () => {
+  const controller = new AbortController()
+  let calls = 0
+  const testSeams = observedRequest({
+    policy: { timeoutMs: 1_000, maxAttempts: 2, retryDelayMs: 10, allowedOverrides: ['signal'] },
+    fetchImpl: async (_url, { signal }) => {
+      calls += 1
+      return {
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers(),
+        arrayBuffer: () => new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true })),
+      }
+    },
+  })
+
+  const request = testSeams.requestObservedApi(requestArgs({ signal: controller.signal }))
+  setTimeout(() => controller.abort(new Error('collection_cancelled')), 10)
+  await assert.rejects(request, /collection_cancelled/)
+
+  assert.equal(calls, 1)
+  assert.deepEqual(testSeams.ledger.map(([, entry]) => [entry.status, entry.bytes]), [[0, 0]])
+  assert.deepEqual(testSeams.events.filter(([kind]) => ['start', 'success', 'failure'].includes(kind)), [['start', 'metar'], ['failure', 'metar', 'collection_cancelled']])
+})
+
+test('preserves a normal large body and cleans up its deadline timer and external listener', async () => {
+  const source = new AbortController()
+  let listenersAdded = 0
+  let listenersRemoved = 0
+  const signal = {
+    get aborted() { return source.signal.aborted },
+    get reason() { return source.signal.reason },
+    addEventListener(...args) { listenersAdded += 1; return source.signal.addEventListener(...args) },
+    removeEventListener(...args) { listenersRemoved += 1; return source.signal.removeEventListener(...args) },
+  }
+  const body = new Uint8Array(1024 * 1024)
+  let deadlineSignal
+  const testSeams = observedRequest({
+    policy: { timeoutMs: 30, maxAttempts: 1, allowedOverrides: ['signal'] },
+    fetchImpl: async (_url, options) => {
+      deadlineSignal = options.signal
+      await wait(5)
+      return new Response(body, { status: 200 })
+    },
+  })
+
+  const response = await testSeams.requestObservedApi(requestArgs({ signal }))
+  assert.equal((await response.arrayBuffer()).byteLength, body.byteLength)
+  assert.deepEqual(testSeams.ledger.map(([, entry]) => [entry.status, entry.bytes]), [[200, body.byteLength]])
+  assert.equal(listenersAdded, 1)
+  assert.equal(listenersRemoved, 1)
+  await wait(35)
+  assert.equal(deadlineSignal.aborted, false)
 })
 
 test('rejects options not declared by the operation request policy before transport', async () => {

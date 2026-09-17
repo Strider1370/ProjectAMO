@@ -8,7 +8,7 @@ import crypto from 'node:crypto'
 import store from '../store.js'
 import { storage } from '../config.js'
 import { getDb } from '../db/index.js'
-import { pickActiveFlight } from '../me/alerts.js'
+import { selectAlertEvaluationTargets } from './evaluation-targets.js'
 import { composeBriefing } from '../briefing/briefing-composer.js'
 import { tafConditionsAt } from './taf-conditions.js'
 import { detectChanges } from './diff.js'
@@ -21,6 +21,7 @@ const TICK_MS = 15 * 60 * 1000 // 15분(§5B: 5~15분 갱신 규모). 무거운 
 // 인메모리 prev 스냅샷 캐시(§5B: 수백 KB, 인메모리로 충분).
 // ponytail: 재시작 생존이 필요하면 routes에 last_snapshot_json 컬럼 추가. 데모/단일 프로세스엔 불필요.
 const snapshotCache = new Map() // routeId → 최소 스냅샷
+let lastEvaluation = null
 
 const safeJson = (s) => { try { return JSON.parse(s) } catch { return null } }
 const hashOf = (obj) => crypto.createHash('sha256').update(JSON.stringify(obj)).digest('hex').slice(0, 16)
@@ -129,17 +130,14 @@ function mergeAirports(a, b) {
 // 활성 감시 대상: alert_enabled 비행을 사용자별로 묶어 pickActiveFlight(사용자당 1건, §11.2).
 export function activeFlights(db, now = Date.now()) {
   const rows = db.prepare('SELECT * FROM routes WHERE alert_enabled=1').all()
-  const byUser = new Map()
-  for (const r of rows) {
-    if (!byUser.has(r.user_id)) byUser.set(r.user_id, [])
-    byUser.get(r.user_id).push(r)
-  }
-  const out = []
-  for (const list of byUser.values()) {
-    const active = pickActiveFlight(list.map((r) => ({ id: r.id, etd: r.etd, alertStartMinBeforeEtd: r.alert_start_min_before_etd })), now)
-    if (active) out.push(list.find((r) => r.id === active.id))
-  }
-  return out
+  return selectAlertEvaluationTargets(rows, now)
+}
+
+// 마지막 실제 tick의 관측값이다. 현재 시간창에서 재계산한 후보와 달리, 이 값은
+// 실제 스케줄러/수동 tick이 완료한 뒤에만 갱신된다. 프로세스 재시작 뒤 null은
+// "평가 0건"이 아니라 "이 프로세스에서는 아직 관측 없음"을 뜻한다.
+export function getLastAlertEvaluation() {
+  return lastEvaluation ? { ...lastEvaluation } : null
 }
 
 // ETD+유예(expires_at) 지난 예정비행 정리(§11.1 자동삭제).
@@ -180,11 +178,14 @@ export function recompute(route) {
 
 // export: 개발용 즉시 발화(dev/scenario.js /tick)가 15분 대기 없이 1회 평가할 때 재사용. { evaluated, fired } 반환.
 export async function runTick(db, now = Date.now()) {
+  const startedAt = new Date(now).toISOString()
   cleanupExpired(db, now)
   let evaluated = 0
   let fired = 0
   let skipped = 0
-  for (const route of activeFlights(db, now)) {
+  const targets = activeFlights(db, now)
+  let failed = 0
+  for (const route of targets) {
     try {
       const res = recompute(route)
       // 저장 payload에 경로 기하가 없으면 브리핑을 재구성할 수 없다. 조용히 넘기지 않는다 —
@@ -199,11 +200,26 @@ export async function runTick(db, now = Date.now()) {
       // §5B group_wait: 이 비행의 이번 변화들을 텔레그램 1건으로 묶어 발송(인앱은 이미 행 저장).
       if (changes?.length) { await dispatchFlightAlerts(db, changes, route, { now }); fired += changes.length }
     } catch (err) {
+      failed++
       console.error(`[alert-scheduler] route ${route.id} 평가 실패:`, err.message)
     }
   }
   if (skipped) console.warn(`[alert-scheduler] ${skipped}개 경로를 기하 없음으로 건너뜀`)
-  return { evaluated, fired, skipped }
+  const result = {
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    selectedUsers: new Set(targets.map((route) => route.user_id)).size,
+    selectedItems: targets.length,
+    evaluatedItems: evaluated,
+    skippedItems: skipped,
+    failedItems: failed,
+    fired,
+    // 기존 runTick 호출자 호환 필드.
+    evaluated,
+    skipped,
+  }
+  lastEvaluation = result
+  return result
 }
 
 // 등록 직후 baseline 1회(diff 기준 확보). 이후 인터벌.

@@ -2,8 +2,13 @@ import { test, expect } from '@playwright/test'
 
 test.use({ viewport: { width: 1920, height: 1080 } })
 
+// Node fixture 시각과 page 시각을 함께 고정한다. 운항편의 예정 시각, 시간별 예보의
+// 날짜 경계, 국제선 현지 시각은 서로 다른 "오늘"을 기준으로 계산하면 안 된다.
+const TERMINAL_FIXTURE_NOW = new Date('2026-08-03T04:55:00.000Z') // KST 13:55
+
 test.beforeEach(async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'terminal signage has one fixed 1920x1080 contract')
+  await page.clock.install({ time: TERMINAL_FIXTURE_NOW })
 
   const airports = [
     ['RKSS', '김포국제공항'],
@@ -66,12 +71,12 @@ const liveFlight = ({
 const routeTerminalFeed = async (page, rows) => {
   await page.unroute('**/api/terminal-flights')
   await page.route('**/api/terminal-flights', (route) => route.fulfill({
-    json: { fetched_at: new Date().toISOString(), airports: { RKSS: rows } },
+    json: { fetched_at: TERMINAL_FIXTURE_NOW.toISOString(), airports: { RKSS: rows } },
   }))
 }
 
 const routeZeroPrecipForecast = async (page) => {
-  const now = new Date()
+  const now = new Date(TERMINAL_FIXTURE_NOW)
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const hourly = Array.from({ length: 72 }, (_, index) => {
     const at = new Date(midnight)
@@ -164,7 +169,7 @@ test('terminal-signage 3안 항공편 패널은 노선 제목 없이 표를 바�
 
 test('terminal-signage 3안 운항 상태는 주간 예보의 오른쪽 기준선 안에 둔다', async ({ page }) => {
   await routeTerminalFeed(page, [
-    liveFlight({ flight: 'LJ461', airlineKorean: '진에어', airlineEnglish: 'JIN AIR', destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '09:20' }),
+    liveFlight({ flight: 'LJ461', airlineKorean: '진에어', airlineEnglish: 'JIN AIR', destinationIata: 'CJU', destinationIcao: 'RKPC', destinationKorean: '제주', destinationEnglish: 'JEJU', scheduled: '14:20' }),
   ])
   await routeZeroPrecipForecast(page)
   await page.goto('/terminal/rkss?view=rail&autoplay=0')
@@ -311,20 +316,26 @@ test('terminal-signage 3안 현재날씨는 아이콘부터 왼쪽 여백을 채
 })
 
 test('terminal-signage 3안은 주정보와 보조 문구 사이를 충분히 띄운다', async ({ page }) => {
+  // 국내 목적지는 상단 KST 시계와 중복되는 현지 시각을 표시하지 않는다. 이 간격은
+  // 현지 시각 surface가 실제로 존재하는 국제선으로 확인한다.
+  await routeTerminalFeed(page, [
+    liveFlight({ flight: 'JL094', airlineKorean: '일본항공', airlineEnglish: 'JAPAN AIRLINES', destinationIata: 'KIX', destinationIcao: 'RJBB', destinationKorean: '오사카/간사이', destinationEnglish: 'OSAKA KANSAI', scheduled: '14:20' }),
+  ])
   await page.goto('/terminal/rkss?view=rail&autoplay=0')
-  await expect(page.getByTestId('option-three')).toBeVisible()
-  await page.locator('.tw-current-city').evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)))
+  const screen = page.getByTestId('option-three')
+  await expect(screen).toBeVisible()
+  await screen.locator('.tw-current-city').evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)))
 
-  const gaps = await page.evaluate(() => {
+  const gaps = await screen.evaluate((screen) => {
     const vertical = (top, bottom) => bottom.getBoundingClientRect().top - top.getBoundingClientRect().bottom
-    const detail = document.querySelector('.tw-flight-number-detail')
-    const metric = document.querySelector('.ww-middle .tw-current-metrics > div')
-    const weather = document.querySelector('.tw-current-weather-body')
+    const detail = screen.querySelector('.tw-flight-number-detail')
+    const metric = screen.querySelector('.ww-middle .tw-current-metrics > div')
+    const weather = screen.querySelector('.tw-current-weather-body')
 
     return {
       airline: vertical(detail.querySelector('strong'), detail.querySelector('small')),
       metric: vertical(metric.querySelector('dt'), metric.querySelector('dd')),
-      localClock: vertical(document.querySelector('.tw-current-city'), document.querySelector('.tw-current-local-clock')),
+      localClock: vertical(screen.querySelector('.tw-current-city'), screen.querySelector('.tw-current-local-clock')),
       observation: vertical(weather.querySelector('.tw-current-weather-title'), weather.querySelector('.tw-current-weather-temp')),
     }
   })
@@ -620,6 +631,10 @@ test('terminal-signage renders the live KAC flight feed instead of the fixture',
   await expect(international.locator('.board-forecast time').first()).toHaveText('16시')
   await expect(international.locator('.board-forecast strong').first()).toHaveText('31°C')
   await expect(international.locator('.destination-name')).toHaveText('베이징 서우두')
+  // 해외 목적지만 현지 기준과 시간대를 별도로 내보낸다. 국내 목적지는 상단 KST
+  // 시계와 중복되므로 같은 chrome을 만들지 않는다.
+  await expect(international.locator('.current-weather-clock')).toContainText('현지 시각')
+  await expect(international.locator('.current-weather-clock')).toContainText('CST')
 
   // 도착 시각을 아는 국내선은 그대로 보여준다.
   const domestic = activePage.locator('[data-flight-key*="-TW717-"]')
@@ -627,6 +642,7 @@ test('terminal-signage renders the live KAC flight feed instead of the fixture',
   // 시각 앞에 붙는 라벨은 스펙 5.1이 정한 `도착`이다. 시각 자체는 그대로 나와야 한다.
   await expect(domestic.locator('.arrival-time-caption')).toHaveText('도착')
   await expect(domestic.locator('.arrival-time-value')).toContainText('15:10')
+  await expect(domestic.locator('.current-weather-clock')).toHaveCount(0)
 
   // 기준 시각 표기는 화면에서 내렸다(상단 시계와 성격이 겹쳤다). 푸터에는 출처만 남는다.
   await expect(page.locator('.screen-footer-note')).toHaveText('한국공항공사 실시간 운항정보')

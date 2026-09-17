@@ -110,7 +110,7 @@ test('loaded execution state is whitelisted, redacted, and separated by state ki
   }))
   stats.initFromFile(dir)
   const collector = stats.getExecutionState('metar')
-  assert.deepEqual(Object.keys(collector).sort(), ['last_finished_at', 'last_issue', 'last_missed_at', 'last_outcome', 'last_scheduled_started_at', 'last_started_at'])
+  assert.deepEqual(Object.keys(collector).sort(), ['last_finished_at', 'last_issue', 'last_missed_at', 'last_outcome', 'last_scheduled_started_at', 'last_start_source', 'last_started_at'])
   assert.equal(collector.last_issue.message.includes('secret'), false)
   assert.deepEqual(stats.getStats().api_operations.metar, { last_started_at: null, last_finished_at: null, last_outcome: null, last_issue: null, duration_ms: null })
   assert.equal(stats.getStats().api_operations.unknown, undefined)

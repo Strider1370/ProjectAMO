@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
+import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 
-import { getDataHealth, getMetrics, getPending, getServerHealth } from './adminApi.js'
+import { createAdminQueryClient, getDataHealth, getMetrics, getPending, getServerHealth } from './adminApi.js'
 import { MENUS, MENU_GROUPS, menuBadges, menusIn, topSignals } from './lib/menus.js'
 import OverviewScreen from './screens/OverviewScreen.jsx'
 import DataCollectionScreen from './screens/DataCollectionScreen.jsx'
@@ -10,6 +11,7 @@ import ApiUsageScreen from './screens/ApiUsageScreen.jsx'
 import UsersScreen from './screens/UsersScreen.jsx'
 import AccountsScreen from './screens/AccountsScreen.jsx'
 import AlertWatchScreen from './screens/AlertWatchScreen.jsx'
+import DemoScreen from './screens/DemoScreen.jsx'
 import './AdminPage.css'
 
 // 관리자 콘솔 껍데기 — 상단 신호등, 왼쪽 메뉴, 그리고 고른 화면 하나.
@@ -25,26 +27,47 @@ const SCREENS = {
   users: UsersScreen,
   accounts: AccountsScreen,
   alerts: AlertWatchScreen,
+  demo: DemoScreen,
 }
 
 const POLL_MS = 5000
 
 export default function AdminShell() {
+  const { tz } = useTimeZone()
   const [menu, setMenu] = useState('overview')
   const [range, setRange] = useState('24h') // 시스템 리소스 기간 — 서버 자원 화면이 바꾼다
   const [health, setHealth] = useState(null)
   const [server, setServer] = useState(null)
   const [metrics, setMetrics] = useState(null)
   const [pending, setPending] = useState([])
+  const [queryStatus, setQueryStatus] = useState({ state: 'loading', lastSuccessAt: null, failedAt: null, stale: false })
+  const queries = useRef(null)
+  if (!queries.current) queries.current = createAdminQueryClient()
 
   const refresh = useCallback(async () => {
     const [h, s, m, p] = await Promise.allSettled([
-      getDataHealth(), getServerHealth(), getMetrics(range), getPending(),
+      getDataHealth(queries.current), getServerHealth(queries.current), getMetrics(range, queries.current), getPending(queries.current),
     ])
-    if (h.status === 'fulfilled') setHealth(h.value)
-    if (s.status === 'fulfilled') setServer(s.value)
-    if (m.status === 'fulfilled') setMetrics(m.value)
-    if (p.status === 'fulfilled') setPending(p.value)
+    const successful = [h, s, m, p].filter((result) => result.status === 'fulfilled' && result.value.query.current)
+    if (h.status === 'fulfilled' && h.value.query.current) setHealth(h.value.data)
+    if (s.status === 'fulfilled' && s.value.query.current) setServer(s.value.data)
+    if (m.status === 'fulfilled' && m.value.query.current) setMetrics(m.value.data)
+    if (p.status === 'fulfilled' && p.value.query.current) setPending(p.value.data)
+    const failed = [h, s, m, p].filter((result) => result.status === 'rejected' && result.reason.query?.current !== false)
+    if (successful.length) {
+      const lastSuccessAt = successful.map((result) => result.value.query.lastSuccessAt).filter(Boolean).sort().at(-1) || new Date().toISOString()
+      setQueryStatus({ state: failed.length ? 'stale' : 'ready', lastSuccessAt, failedAt: failed[0]?.reason.query?.failedAt ?? null, stale: failed.length > 0 })
+    } else if (failed.length) {
+      const prior = failed.find((result) => result.reason.lastGood)?.reason
+      if (prior?.lastGood) {
+        // 서버가 보존한 마지막 정상 값도 첫 화면 재진입에서 다시 쓸 수 있다.
+        if (prior.lastGood.rows) setHealth(prior.lastGood)
+        if (prior.lastGood.current) setMetrics(prior.lastGood)
+        setQueryStatus((current) => ({ ...current, state: 'stale', stale: true, failedAt: prior.query?.failedAt ?? new Date().toISOString() }))
+      } else {
+        setQueryStatus({ state: 'error', lastSuccessAt: null, failedAt: failed[0].reason.query?.failedAt ?? new Date().toISOString(), stale: false })
+      }
+    }
   }, [range])
 
   useEffect(() => {
@@ -55,7 +78,8 @@ export default function AdminShell() {
 
   const Screen = SCREENS[menu]
   const badges = menuBadges({ health, pending })
-  const signals = topSignals({ health, server })
+  const signals = topSignals({ health, server, queryState: queryStatus.state })
+  const formatTime = (value) => new Date(value).toLocaleTimeString('ko-KR', { timeZone: tz === 'UTC' ? 'UTC' : 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })
 
   return (
     <div className="admin-page">
@@ -70,8 +94,11 @@ export default function AdminShell() {
               {signal.count > 0 && <b>{signal.count}</b>}
             </span>
           ))}
-          <span className="ac-right n">
-            {health?.generatedAt ? `${new Date(health.generatedAt).toLocaleTimeString('ko-KR')} 갱신` : '불러오는 중'}
+          <span className={`ac-right n ac-query-${queryStatus.state}`} role={queryStatus.state === 'error' ? 'alert' : 'status'}>
+            {queryStatus.state === 'loading' && '운영 상태를 불러오는 중'}
+            {queryStatus.state === 'error' && '운영 상태를 아직 불러오지 못했습니다'}
+            {queryStatus.state === 'stale' && `이전 정상 자료 표시 · ${queryStatus.lastSuccessAt ? formatTime(queryStatus.lastSuccessAt) : '시각 미확인'} ${tz} 갱신`}
+            {queryStatus.state === 'ready' && `${queryStatus.lastSuccessAt ? formatTime(queryStatus.lastSuccessAt) : health?.generatedAt ? formatTime(health.generatedAt) : '방금'} ${tz} 갱신`}
           </span>
         </div>
 
@@ -109,6 +136,8 @@ export default function AdminShell() {
               onChanged={refresh}
               range={range}
               onRange={setRange}
+              adminQuery={queries.current}
+              queryStatus={queryStatus}
             />
           </main>
         </div>
