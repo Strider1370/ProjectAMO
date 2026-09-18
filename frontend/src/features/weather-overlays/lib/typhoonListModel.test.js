@@ -68,6 +68,14 @@ test('시각을 한국시각 일/시로 적는다', () => {
   assert.equal(formatTrackTime(null), '')
 })
 
+test('요약과 예보 행은 선택한 UTC 시간대를 따른다', () => {
+  const stamp = '2026-07-25T18:00:00.000Z'
+  assert.equal(formatTrackTime(stamp, 'UTC'), '25일 18시')
+  const [item] = buildTyphoonListItems([{ ...typhoon(11), rows: [{ validAt: stamp, forecast: true }] }], 'UTC')
+  assert.equal(item.trackRows[0].timeLabel, '25일 18시')
+  assert.equal(item.key, '2022-11')
+})
+
 test('시각별 행이 현재와 예보를 구분한다', () => {
   const current = { forecast: false, validAt: '2026-07-25T18:00:00.000Z', lat: 22.5, lon: 115.1, maxWindMs: 39, pressureHpa: 960, dir: 'NW', speedKmh: 18, gale: { radiusKm: 280, exceptionDir: 'SW', exceptionRadiusKm: 180 }, storm: null, errorRadiusKm: 0, location: '중국 홍콩 동북동쪽 약 120 km 부근 해상' }
   const later = { forecast: true, validAt: '2026-07-26T06:00:00.000Z', lat: 23.8, lon: 114, maxWindMs: 24, pressureHpa: 990, dir: 'NW', speedKmh: 16, gale: { radiusKm: 220, exceptionDir: 'SW', exceptionRadiusKm: 120 }, storm: null, errorRadiusKm: 40, location: '중국 홍콩 북쪽 약 180 km 부근 육상' }

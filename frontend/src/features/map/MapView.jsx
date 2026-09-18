@@ -2065,6 +2065,9 @@ const MapView = forwardRef(function MapView({
           status={typhoonOverlay.status}
           selected={typhoonOverlay.selected}
           onSelect={typhoonOverlay.select}
+          hiddenKeys={typhoonOverlay.hiddenKeys}
+          onToggleTyphoon={typhoonOverlay.toggleTyphoon}
+          timeZone={tz}
           onFocus={(item) => mapRef.current?.flyTo({ center: [item.center.lon, item.center.lat], zoom: 5 })}
           onClose={() => { toggleMet('typhoon'); onOpenMetPanel?.() }}
         />

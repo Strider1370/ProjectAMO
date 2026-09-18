@@ -83,14 +83,42 @@ export function judgementPolygon(row) {
   return ringPolygon(row, row.gale, errorKm)
 }
 
-// 예보 시점별 오차원의 합집합 = 화면의 예상경로 부채꼴.
+// 인접 시점 사이의 중심(대권 경로)과 반경을 보간해 연속된 확률 영역을 만든다.
+// 짧은 구간의 원 두 개만 감싸므로 꺾이는 경로 전체를 convex hull로 메우지 않는다.
+// 결측 반경은 연결을 끊는다. 0은 알려진 중심 위치로서 다음 원과 연결할 수 있다.
 export function errorConePolygon(rows = []) {
-  let cone = null
+  const parts = []
+  let previous = null
+  const outline = (row) => row.errorRadiusKm === 0
+    ? [[row.lon, row.lat]]
+    : turf.circle([row.lon, row.lat], row.errorRadiusKm, { steps: DEFAULT_STEPS, units: 'kilometers' }).geometry.coordinates[0].slice(0, -1)
   for (const row of rows) {
-    if (!Number.isFinite(row?.errorRadiusKm) || row.errorRadiusKm <= 0) continue
-    const circle = turf.circle([row.lon, row.lat], row.errorRadiusKm, { steps: DEFAULT_STEPS, units: 'kilometers' })
-    cone = cone ? turf.union(turf.featureCollection([cone, circle])) : circle
+    if (!Number.isFinite(row?.errorRadiusKm) || row.errorRadiusKm < 0
+      || !Number.isFinite(row.lat) || !Number.isFinite(row.lon)) {
+      previous = null
+      continue
+    }
+    const end = outline(row)
+    if (row.errorRadiusKm > 0) parts.push(turf.polygon([[...end, end[0]]]))
+    if (previous) {
+      const start = [previous.lon, previous.lat]
+      const finish = [row.lon, row.lat]
+      const distance = turf.distance(start, finish)
+      const bearing = turf.bearing(start, finish)
+      const steps = Math.max(1, Math.ceil(distance / 50))
+      let before = outline(previous)
+      for (let i = 1; i <= steps; i++) {
+        const fraction = i / steps
+        const [lon, lat] = turf.destination(start, distance * fraction, bearing).geometry.coordinates
+        const after = i === steps ? end : outline({ lon, lat, errorRadiusKm: previous.errorRadiusKm + (row.errorRadiusKm - previous.errorRadiusKm) * fraction })
+        const bridge = turf.convex(turf.featureCollection([...before, ...after].map((coordinate) => turf.point(coordinate))))
+        if (bridge) parts.push(bridge)
+        before = after
+      }
+    }
+    previous = row
   }
+  const cone = parts.length > 1 ? turf.union(turf.featureCollection(parts)) : parts[0]
   return cone ? roundGeometry(cone.geometry) : null
 }
 

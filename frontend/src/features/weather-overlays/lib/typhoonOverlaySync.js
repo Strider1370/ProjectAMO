@@ -10,7 +10,7 @@ import { syncTyphoonLayers } from './typhoonLayers.js'
 
 // 강도 숫자 심볼이 원형 표식 위에 놓인다. 두 레이어 모두 화면에 보이고 포인터를 받을 수
 // 있으므로, 한쪽만 대상으로 삼으면 위쪽 심볼에서 hover가 끊긴다.
-const POINTS_LAYERS = ['typhoon-points-strength', 'typhoon-points-circle']
+const POINTS_LAYERS = ['typhoon-points-strength', 'typhoon-points-circle', 'typhoon-current-ring']
 
 export function typhoonPopupHtml(row, number, name, timeZone = 'KST') {
   const text = (value) => value == null || value === '' ? '—' : escapeHtml(String(value))
@@ -28,13 +28,20 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
   // 패널의 시각 행과 지도 지점을 잇는 선택 상태. 어느 쪽에서 골라도 같은 값이 된다.
   // pinned = 클릭으로 고정한 것. 마우스가 떠나도 풀리지 않는다.
   const [selected, setSelected] = useState(null)
+  const [hiddenKeys, setHiddenKeys] = useState([])
+
+  const toggleTyphoon = useCallback((key) => {
+    setHiddenKeys((previous) => previous.includes(key) ? previous.filter((value) => value !== key) : [...previous, key])
+    setSelected((previous) => key.endsWith(`-${previous?.number}`) ? null : previous)
+  }, [])
 
   const select = useCallback((next) => {
+    if (next && (snapshot?.typhoons ?? []).some((typhoon) => typhoon.number === next.number && hiddenKeys.includes(`${typhoon.year}-${typhoon.number}`))) return
     setSelected((prev) => {
       if (next === null) return prev?.pinned ? prev : null
       return next
     })
-  }, [])
+  }, [hiddenKeys, snapshot])
 
   // 레이어를 켜기 전에도 받아둔다. 타일 배지가 활성 태풍 수를 보여줘야 하기 때문이다(스펙 §9.2).
   useEffect(() => {
@@ -59,8 +66,8 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
   // 끌어다 쓰지 않는다 — 기존 오버레이 훅은 전부 이렇게 직접 가드한다.
   useEffect(() => {
     const map = mapRef.current
-    if (map && isStyleReady) syncTyphoonLayers(map, { typhoons: snapshot?.typhoons ?? [], visible, selected })
-  }, [mapRef, isStyleReady, styleRevision, snapshot, visible, selected])
+    if (map && isStyleReady) syncTyphoonLayers(map, { typhoons: snapshot?.typhoons ?? [], visible, selected, hiddenKeys })
+  }, [mapRef, isStyleReady, styleRevision, snapshot, visible, selected, hiddenKeys])
 
   // 지도 → 패널. 경로 지점에 마우스를 올리면 패널의 해당 시각 행이 밝아진다.
   useEffect(() => {
@@ -145,7 +152,7 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
         map.off('mouseleave', layer, onLeave)
       }
     }
-  }, [mapRef, isStyleReady, styleRevision, visible, snapshot, timeZone])
+  }, [mapRef, isStyleReady, styleRevision, visible, snapshot, timeZone, hiddenKeys])
 
   return {
     snapshot,
@@ -153,6 +160,8 @@ export function useTyphoonOverlay({ mapRef, isStyleReady, styleRevision, visible
     status: snapshot?.status ?? 'unknown',
     selected,
     select,
+    hiddenKeys,
+    toggleTyphoon,
   }
 }
 

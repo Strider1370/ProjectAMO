@@ -75,19 +75,43 @@ test('부채꼴은 예보 시점 오차원을 모두 감싼다', () => {
   assert.ok(cone)
   assert.ok(turf.booleanPointInPolygon(turf.point([126, 32]), cone))
   assert.ok(turf.booleanPointInPolygon(turf.point([127, 34]), cone))
-  // 오차반경 0인 분석 지점은 원이 만들어지지 않으므로 부채꼴에 들지 않는다.
-  assert.ok(!turf.booleanPointInPolygon(turf.point([125, 30]), cone))
+  // 현재 중심에서 시작하는 뾰족한 끝과 첫 예보 사이도 연결된다.
+  assert.ok(turf.booleanPointInPolygon(turf.point([125, 30]), cone))
+  assert.ok(turf.booleanPointInPolygon(turf.midpoint([125, 30], [126, 32]), cone))
   // 마지막 지점 주변 100km는 오차원(140km) 안이다.
   assert.ok(turf.booleanPointInPolygon(turf.destination([127, 34], 100, 90, { units: 'kilometers' }), cone))
 })
 
-test('예보 원들이 떨어져 있으면 MultiPolygon이 된다', () => {
+test('떨어진 예보 원 사이도 반경을 보간한 하나의 영역으로 연결된다', () => {
   const cone = errorConePolygon([
     { lat: 30, lon: 125, errorRadiusKm: 60 },
     { lat: 34, lon: 127, errorRadiusKm: 140 },
   ])
-  // 부채꼴은 Polygon일 수도 MultiPolygon일 수도 있다. 소비자는 둘 다 처리해야 한다.
-  assert.ok(['Polygon', 'MultiPolygon'].includes(cone.type))
+  assert.equal(cone.type, 'Polygon')
+  const middle = turf.midpoint([125, 30], [127, 34])
+  assert.ok(inside(cone, middle))
+  assert.ok(inside(cone, turf.destination(middle, 90, 110)))
+  assert.ok(!inside(cone, turf.destination(middle, 160, 110)))
+})
+
+test('굴곡 안쪽을 전체 convex hull로 메우지 않는다', () => {
+  const cone = errorConePolygon([
+    { lat: 25, lon: 125, errorRadiusKm: 40 },
+    { lat: 30, lon: 125, errorRadiusKm: 50 },
+    { lat: 30, lon: 130, errorRadiusKm: 60 },
+  ])
+  assert.ok(!inside(cone, turf.point([127, 28])))
+})
+
+test('결측 예보 반경을 건너뛰어 연결하지 않는다', () => {
+  const cone = errorConePolygon([
+    { lat: 25, lon: 125, errorRadiusKm: 40 },
+    { lat: 28, lon: 125, errorRadiusKm: null },
+    { lat: 31, lon: 125, errorRadiusKm: 60 },
+  ])
+  assert.equal(cone.type, 'MultiPolygon')
+  assert.ok(!inside(cone, turf.point([125, 28])))
+  assert.equal(errorConePolygon([{ ...CENTER, errorRadiusKm: 0 }]), null)
 })
 
 test('오차반경이 전부 결측이면 부채꼴이 없다', () => {

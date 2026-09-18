@@ -22,10 +22,10 @@ export function windKmh(maxWindMs) {
 }
 
 // "26일 03시" — 통보문과 같은 한국시각 표기.
-export function formatTrackTime(iso) {
+export function formatTrackTime(iso, timeZone = 'KST') {
   if (!iso || Number.isNaN(Date.parse(iso))) return ''
   const parts = new Intl.DateTimeFormat('ko-KR', {
-    timeZone: 'Asia/Seoul', day: '2-digit', hour: '2-digit', hour12: false,
+    timeZone: timeZone === 'UTC' ? 'UTC' : 'Asia/Seoul', day: '2-digit', hour: '2-digit', hour12: false,
   }).formatToParts(new Date(iso))
   const get = (type) => parts.find((p) => p.type === type)?.value ?? ''
   return `${Number(get('day'))}일 ${get('hour')}시`
@@ -47,7 +47,7 @@ export function formatRadius(ring) {
 }
 
 // 태풍 하나의 시각별 행 — 통보문 표와 같은 구성.
-export function buildTrackRows(typhoon) {
+export function buildTrackRows(typhoon, timeZone = 'KST') {
   return (typhoon?.rows ?? []).map((row, index) => {
     const isCurrent = row === typhoon.current
       || (row.validAt === typhoon.current?.validAt && Boolean(row.forecast) === Boolean(typhoon.current?.forecast))
@@ -57,7 +57,7 @@ export function buildTrackRows(typhoon) {
     isCurrent,
     // 분석 행이 여러 개다. 그중 가장 최근 하나만 "현재"이고 나머지는 지나온 관측이다.
     kindLabel: row.forecast ? '예상' : (isCurrent ? '현재' : '관측'),
-    timeLabel: formatTrackTime(row.validAt),
+    timeLabel: formatTrackTime(row.validAt, timeZone),
     validAt: row.validAt,
     intensity: intensityOf(row.maxWindMs),
     maxWindMs: row.maxWindMs ?? null,
@@ -77,12 +77,13 @@ export function buildTrackRows(typhoon) {
   })
 }
 
-export function buildTyphoonListItems(typhoons = []) {
+export function buildTyphoonListItems(typhoons = [], timeZone = 'KST') {
   const colors = assignTyphoonColors(typhoons.map((t) => t.number))
   return typhoons.map((typhoon) => {
-    const rows = buildTrackRows(typhoon)
+    const rows = buildTrackRows(typhoon, timeZone)
     return {
     number: typhoon.number,
+    key: `${typhoon.year}-${typhoon.number}`,
     color: colors[typhoon.number],
     // 이름은 typ_lst에서 온다. 못 받았으면 번호만 쓴다.
     title: typhoon.name ? `${typhoon.number}호 태풍 ${typhoon.name}` : `${typhoon.number}호 태풍`,

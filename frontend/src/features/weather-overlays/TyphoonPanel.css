@@ -5,7 +5,7 @@
   /* 태풍을 켜면 레이어 패널이 닫히므로 그 자리를 그대로 쓴다.
      시각 표가 들어가 좁으면 글자가 세로로 쪼개진다 — 넉넉히 준다. */
   left: 12px;
-  width: min(760px, calc(100vw - 24px));
+  width: min(700px, calc(100% - 2 * var(--panel-inset)));
   overflow-x: hidden;
 }
 
@@ -31,17 +31,22 @@
 }
 
 .typhoon-panel__item {
-  margin: var(--space-s) var(--space-m);
-  padding: var(--space-s) var(--space-m);
-  border-top: 1px solid var(--border-1, rgba(148, 163, 184, 0.28));
+  margin: 0;
+  padding: var(--space-m) var(--space-l);
 }
 
 .typhoon-panel__tabs {
   display: flex;
-  gap: var(--space-xs);
-  padding: var(--space-s) var(--space-m) 0;
+  flex-wrap: wrap;
+  gap: var(--space-s);
+  padding: var(--space-s) var(--space-l);
   border-bottom: 1px solid var(--stroke-2);
 }
+
+.typhoon-panel__tab { display: flex; border-radius: var(--radius-md); border: 1px solid var(--stroke-2); }
+.typhoon-panel__tab.is-active { background: var(--bg-4); border-color: var(--accent); }
+.typhoon-panel__tab.is-hidden .typhoon-panel__tab-swatch { background: var(--text-disabled) !important; }
+.typhoon-panel__tab.is-hidden > button:first-child { color: var(--text-3); }
 
 .typhoon-panel__tabs button {
   display: inline-flex;
@@ -50,10 +55,10 @@
   min-height: var(--touch-min);
   padding: 0 var(--space-m);
   border: 0;
-  border-bottom: 2px solid transparent;
   background: transparent;
-  color: var(--text-3);
+  color: var(--text-1);
   font: inherit;
+  font-size: var(--fs-400);
   cursor: pointer;
 }
 
@@ -63,28 +68,43 @@
   border-radius: var(--radius-circular);
 }
 
-.typhoon-panel__tabs button.is-active {
-  border-bottom-color: var(--accent);
-  color: var(--text-1);
+.typhoon-panel__tab.is-active > button:first-child {
   font-weight: var(--fw-semibold);
 }
 
+.typhoon-panel__tabs .typhoon-panel__visibility { min-width: var(--touch-min); justify-content: center; padding: var(--space-s); }
+.typhoon-panel__tabs button:hover { background: var(--bg-4); }
+.typhoon-panel button:focus-visible, .typhoon-track__row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .typhoon-panel__summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-s);
   color: var(--text-2);
   margin-top: var(--space-m);
   font-size: var(--fs-400);
 }
 
-.typhoon-panel__summary span { display: grid; gap: var(--space-xxs); }
-.typhoon-panel__summary b { color: var(--text-3); font-size: var(--fs-300); font-weight: var(--fw-medium); }
-.typhoon-panel__summary-location { grid-column: 1 / -1; font-size: var(--fs-400); }
+.typhoon-panel__primary-metrics { display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 1.1fr); gap: var(--space-l); margin: 0; }
+.typhoon-panel__primary-metrics > div { min-width: 0; }
+.typhoon-panel__primary-metrics > div + div { border-left: 1px solid var(--stroke-2); padding-left: var(--space-l); }
+.typhoon-panel__primary-metrics dt { color: var(--text-3); font-size: var(--fs-300); line-height: var(--lh-300); }
+.typhoon-panel__primary-metrics dd { display: flex; align-items: baseline; gap: var(--space-xs); margin: 0; white-space: nowrap; }
+.typhoon-panel__primary-metrics strong { color: var(--text-1); font-size: var(--fs-700); line-height: var(--lh-700); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
+.typhoon-panel__primary-metrics small { font-size: var(--fs-300); }
+.typhoon-panel__summary-location { margin: 0; font-size: var(--fs-400); line-height: var(--lh-400); }
+
+.typhoon-panel__legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs) var(--space-l); margin-top: var(--space-m); color: var(--text-2); font-size: var(--fs-300); }
+.typhoon-panel__legend-keys { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-m); }
+.typhoon-panel__legend-keys > span { display: inline-flex; align-items: center; gap: var(--space-xs); white-space: nowrap; }
+.typhoon-panel__legend i { display: inline-block; width: var(--space-l); height: var(--space-m); border: 1px solid var(--icing-3); }
+.typhoon-panel__legend .typhoon-panel__legend-cone { border: 1px dashed var(--level-amber); background: var(--level-amber-bg); }
+.typhoon-panel__legend-gale { background: color-mix(in srgb, var(--icing-2) 25%, transparent); }
+.typhoon-panel__legend-storm { background: color-mix(in srgb, var(--icing-3) 35%, transparent); }
+.typhoon-panel__legend small { color: var(--text-3); font-size: var(--fs-300); }
 
 .typhoon-panel__details {
-  margin-top: var(--space-xl);
-  padding-top: var(--space-l);
+  margin-top: var(--space-s);
+  padding-top: var(--space-xs);
   border-top: 1px solid var(--stroke-2);
 }
 
@@ -92,6 +112,22 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.typhoon-panel__count {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-s);
+  padding: var(--space-xxs) var(--space-s);
+  border-radius: var(--radius-sm);
+  background: var(--bg-4);
+  color: var(--text-2);
+  font-size: var(--fs-200);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-300);
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .typhoon-panel__body { flex: 1 1 auto; min-width: 0; }
@@ -103,12 +139,14 @@
 
 .typhoon-panel__focus {
   flex: 0 0 auto;
-  padding: 4px 8px;
-  font-size: 15px;
+  min-height: var(--touch-min);
+  padding: var(--space-xs) var(--space-s);
+  font-size: var(--fs-300);
   border: 1px solid var(--border-1, rgba(148, 163, 184, 0.5));
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   cursor: pointer;
+  color: var(--text-1);
 }
 
 .typhoon-panel__collapse {
@@ -134,18 +172,12 @@
   border-radius: 0;
 }
 
-.typhoon-panel__head {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
 .typhoon-panel__close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--touch-min);
+  height: var(--touch-min);
   margin-left: 6px;
   border: none;
   border-radius: 6px;
@@ -160,7 +192,7 @@
   width: 100%;
   margin-top: 8px;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: var(--fs-400);
 }
 
 .typhoon-track th {
@@ -182,34 +214,28 @@
 
 .typhoon-panel__head {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-s);
   align-items: center;
-}
-
-.typhoon-panel__head::before {
-  content: '';
-  flex: 0 0 3px;
-  width: 3px;
-  height: 32px;
-  background: var(--typhoon-color);
+  border-left: 3px solid var(--typhoon-color);
+  padding-left: var(--space-s);
 }
 
 .typhoon-panel__name { flex: 0 1 auto; min-width: 0; font-size: var(--fs-500); }
 
 .typhoon-panel__issued {
   flex: 1 1 auto;
-  margin-left: 6px;
   color: var(--text-3);
-  font-size: 13px;
+  font-size: var(--fs-300);
   font-weight: 400;
 }
 
 .typhoon-track { table-layout: fixed; }
 
-.typhoon-track th:nth-child(1) { width: 108px; }
-.typhoon-track th:nth-child(2) { width: 54px; }
-.typhoon-track th:nth-child(3) { width: 88px; }
-.typhoon-track th:nth-child(4) { width: 94px; }
+.typhoon-track th:nth-child(1) { width: 7em; }
+.typhoon-track th:nth-child(2) { width: 2.5em; }
+.typhoon-track th:nth-child(3) { width: 4.75em; }
+.typhoon-track th:nth-child(4) { width: 5.5em; }
 
 /* 시각 칸이 좁으면 "24일 03시"가 한 글자씩 세로로 쪼개진다. */
 .typhoon-track__time { white-space: nowrap; }
@@ -217,11 +243,11 @@
 .typhoon-track th,
 .typhoon-track td { white-space: nowrap; }
 
-.typhoon-track__where {
+.typhoon-track .typhoon-track__where {
   white-space: normal;
   overflow-wrap: anywhere;
   color: var(--text-3);
-  font-size: 14px;
+  font-size: var(--fs-400);
 }
 
 .typhoon-track__now {
@@ -284,3 +310,18 @@
 .typhoon-popup__rows span:last-child { color: #6b7280; }
 
 .typhoon-track__kind { margin-left: 5px; }
+
+@media (max-width: 719px) {
+  .typhoon-panel__head { display: grid; grid-template-columns: 1fr auto; }
+  .typhoon-panel__issued { grid-column: 1; grid-row: 2; }
+  .typhoon-panel__focus { grid-column: 2; grid-row: 1 / 3; }
+  .typhoon-panel__primary-metrics { gap: var(--space-s); }
+  .typhoon-panel__primary-metrics > div + div { padding-left: var(--space-s); }
+  .typhoon-track, .typhoon-track tbody { display: block; }
+  .typhoon-track thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .typhoon-track__row { display: grid; grid-template-columns: auto 1fr 1fr; gap: var(--space-xs) var(--space-s); padding: var(--space-s) 0; border-bottom: 1px solid var(--stroke-2); }
+  .typhoon-track td { padding: 0; white-space: normal; }
+  .typhoon-track__time, .typhoon-track__where { grid-column: 1 / -1; }
+  .typhoon-track td[data-label]::before { content: attr(data-label) ' '; color: var(--text-3); font-size: var(--fs-300); }
+  .typhoon-track__time { font-weight: var(--fw-semibold); }
+}

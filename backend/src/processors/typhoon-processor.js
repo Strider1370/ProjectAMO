@@ -58,8 +58,7 @@ export function buildSnapshot({ activeRows, names = [], fetched_at }) {
     const current = latestAnalysis(rows)
     if (!current) continue
     const named = nameByNumber.get(number)
-    // 부채꼴은 예보 시점만 감싼다. 분석 시점의 오차반경은 0이라 어차피 원이 없다.
-    const forecast = rows.filter((row) => row.forecast)
+    const forecast = rows.filter((row) => row.forecast).sort((a, b) => a.validAt.localeCompare(b.validAt))
     typhoons.push({
       number,
       year: current.year,
@@ -76,7 +75,8 @@ export function buildSnapshot({ activeRows, names = [], fetched_at }) {
         geometry: { gale: galePolygon(row), storm: stormPolygon(row) },
       })),
       geometry: {
-        cone: errorConePolygon(forecast),
+        // 현재 중심에서 시작한다. 분석 위치의 0은 예보 반경 결측을 대체하는 값이 아니다.
+        cone: errorConePolygon(current.forecast ? forecast : [{ ...current, errorRadiusKm: 0 }, ...forecast]),
         gale: galePolygon(current),
         storm: stormPolygon(current),
       },

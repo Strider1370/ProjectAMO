@@ -23,6 +23,7 @@ export default function MobileSheet({
   open,
   eyebrow,
   title,
+  titleExtra,
   onClose,
   headerExtra,
   peekContent,
@@ -193,7 +194,7 @@ export default function MobileSheet({
           <div className="mobile-sheet-header">
             <div className="mobile-sheet-titles">
               {eyebrow && <div className="mobile-sheet-eyebrow">{eyebrow}</div>}
-              <div className="mobile-sheet-title">{title}</div>
+              <div className="mobile-sheet-title">{title}{titleExtra}</div>
             </div>
             {headerExtra && <div className="mobile-sheet-header-extra">{headerExtra}</div>}
           </div>
