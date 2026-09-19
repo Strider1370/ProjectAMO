@@ -10,6 +10,7 @@ export const QUOTA_WARN_PCT = 90
 export const DISK_WARN_DAYS = 7
 export const RESTART_WINDOW_MS = 3_600_000
 export const RESTART_WARN_COUNT = 5
+export const CERTIFICATE_WARNING_DAYS = [1, 7, 14, 30]
 
 const isDown = (status) => status === 'stopped' || status === 'never'
 // 판정에서 빼는 상태 — 쉬는 시간(정상적으로 안 받는 시간)과 꺼둠(일부러 끈 것).
@@ -69,13 +70,36 @@ export function restartWarning(recentBoots = [], now = Date.now(), windowMs = RE
   return { kind: 'restarts', subject: '', count: inWindow }
 }
 
+export function publicSiteWarnings(site, now = Date.now()) {
+  if (!site) return []
+  const warnings = []
+  const tls = site.tls
+  if (!tls?.ok || !tls.authorized) {
+    warnings.push({ kind: 'site_tls', subject: '', error: tls?.error ?? tls?.authorizationError ?? '인증서 검증 실패' })
+  }
+
+  const expiresAt = Date.parse(tls?.notAfter ?? '')
+  if (Number.isFinite(expiresAt)) {
+    const daysLeft = Math.floor((expiresAt - now) / 86_400_000)
+    const threshold = CERTIFICATE_WARNING_DAYS.find((day) => daysLeft <= day)
+    if (threshold !== undefined) warnings.push({ kind: 'cert_expiring', subject: String(threshold), daysLeft, notAfter: new Date(expiresAt).toISOString() })
+  }
+
+  // 인증서 검증 자체가 실패한 경우에는 TLS 경고 한 통만 보낸다.
+  if (tls?.ok && tls.authorized && !site.health?.ok) {
+    warnings.push({ kind: 'site_health', subject: '', status: site.health?.status ?? null, error: site.health?.error ?? null })
+  }
+  return warnings
+}
+
 // 즉시 보낼 것들(①②③). ④는 하루 한 번이라 따로 부른다.
-export function immediateAlerts({ health, usage, forecast, recentBoots, now = Date.now() } = {}) {
+export function immediateAlerts({ health, usage, forecast, recentBoots, site, now = Date.now() } = {}) {
   return [
     ...sourceOutages(health),
     ...quotaWarnings(usage),
     diskWarning(forecast),
     restartWarning(recentBoots, now),
+    ...publicSiteWarnings(site, now),
   ].filter(Boolean)
 }
 
@@ -90,6 +114,12 @@ export function renderAlert(alert) {
       return { title: `디스크 여유 ${alert.daysLeft}일`, body: '지금 증가 속도면 곧 가득 찹니다. 오래된 자료를 정리하세요.' }
     case 'restarts':
       return { title: `서버 재시작 반복 ${alert.count}회`, body: '한 시간 안에 여러 번 재시작됐습니다. 로그를 확인하세요.' }
+    case 'site_tls':
+      return { title: '공개 HTTPS 인증서 오류', body: `projectamo.co.kr TLS 검증에 실패했습니다. ${alert.error}` }
+    case 'cert_expiring':
+      return { title: `HTTPS 인증서 ${alert.daysLeft}일 후 만료`, body: `인증서 만료 시각: ${alert.notAfter}` }
+    case 'site_health':
+      return { title: '공개 HTTPS 상태 오류', body: alert.status ? `/api/health 응답: HTTP ${alert.status}` : `/api/health 요청 실패: ${alert.error ?? '알 수 없는 오류'}` }
     default:
       return { title: 'ProjectAMO 운영 알림', body: '' }
   }
@@ -108,6 +138,7 @@ export function renderDailySummary(rows, now = Date.now()) {
 
 export default {
   sourceOutages, longStopped, quotaWarnings, diskWarning, restartWarning,
+  publicSiteWarnings,
   immediateAlerts, renderAlert, renderDailySummary,
   LONG_STOP_MS, QUOTA_WARN_PCT, DISK_WARN_DAYS, RESTART_WINDOW_MS, RESTART_WARN_COUNT,
 }

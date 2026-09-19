@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   diskWarning, immediateAlerts, longStopped, quotaWarnings,
-  renderDailySummary, restartWarning, sourceOutages,
+  publicSiteWarnings, renderAlert, renderDailySummary, restartWarning, sourceOutages,
 } from '../src/alerts/ops-rules.js'
 
 const NOW = Date.parse('2026-08-11T00:00:00Z')
@@ -103,6 +103,24 @@ test('재시작은 한 시간에 5회 이상일 때만 경고한다', () => {
 
 test('immediateAlerts는 해당 없으면 빈 배열이다 — 조용한 날엔 한 통도 안 간다', () => {
   assert.deepEqual(immediateAlerts({ health: health(['ok', 'ok']), usage: { keys: [] }, forecast: { daysLeft: 41 }, recentBoots: [], now: NOW }), [])
+})
+
+test('공개 인증서는 30·14·7·1일 임계값마다 한 번의 사건으로 만든다', () => {
+  const site = { tls: { ok: true, authorized: true, notAfter: new Date(NOW + 13 * 86_400_000).toISOString() }, health: { ok: true, status: 200 } }
+  const [warning] = publicSiteWarnings(site, NOW)
+  assert.deepEqual(warning.kind, 'cert_expiring')
+  assert.equal(warning.subject, '14')
+  assert.match(renderAlert(warning).title, /13일/)
+})
+
+test('공개 TLS 검증 실패는 API 상태 오류와 중복 발송하지 않는다', () => {
+  const warnings = publicSiteWarnings({ tls: { ok: true, authorized: false, authorizationError: 'CERT_HAS_EXPIRED' }, health: { ok: false, error: 'fetch failed' } }, NOW)
+  assert.deepEqual(warnings.map((warning) => warning.kind), ['site_tls'])
+})
+
+test('유효한 TLS 뒤의 공개 health 오류는 별도 사건으로 알린다', () => {
+  const warnings = publicSiteWarnings({ tls: { ok: true, authorized: true, notAfter: new Date(NOW + 60 * 86_400_000).toISOString() }, health: { ok: false, status: 503 } }, NOW)
+  assert.deepEqual(warnings.map((warning) => warning.kind), ['site_health'])
 })
 
 // 일부러 꺼둔 자료(에코탑을 플래그로 끈 것 등)는 멈춘 것이 아니다.

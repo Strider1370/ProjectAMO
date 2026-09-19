@@ -215,3 +215,17 @@ location /api/ {
 - User-facing policy: keep serving the last stored `latest.json` payload.
 - Operational meaning: restart or upstream collection failure should not blank the UI immediately.
 - Follow-up enhancement, if needed: extend `/api/health` with a `degraded` state when recent collection failures accumulate.
+
+## Operations Telegram Alerts
+
+In production, the backend runs an operations check every five minutes when
+`TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are configured. It sends the existing
+data-source, quota, disk, and restart alerts plus a public `https://projectamo.co.kr`
+TLS and `/api/health` check. Certificate-expiry alerts occur at 30, 14, 7, and 1
+days remaining; a persistent certificate warning is not repeated until it reaches
+the next threshold or the certificate is renewed. Set `OPS_MONITOR_ORIGIN` only
+when the public HTTPS origin differs from the default.
+
+This check runs inside the backend process. It cannot notify about an EC2 or
+backend process that is completely down, so use an independent external monitor
+when that coverage is required.

@@ -45,6 +45,25 @@ test('같은 사건이 이어지는 동안 다시 보내지 않는다 — 5분�
   assert.equal(sent.length, 1, '첫 번째만 나가야 한다')
 })
 
+test('인증서 만료 경고는 같은 임계값에서 매일 반복하지 않는다', async () => {
+  const db = createDb(':memory:')
+  const { sent, send } = spy()
+  const site = { tls: { ok: true, authorized: true, notAfter: new Date(NOW + 13 * 86_400_000).toISOString() }, health: { ok: true } }
+  const state = { ...stateWith(['ok', 'ok']), site }
+  await runOnce(db, { now: NOW, send, state })
+  await runOnce(db, { now: NOW + 86_400_000, send, state })
+  assert.equal(sent.length, 1)
+  assert.match(sent[0], /HTTPS 인증서/)
+})
+
+test('공개 사이트 probe 결과가 운영 알림 상태에 포함된다', async () => {
+  const db = createDb(':memory:')
+  const { collectState } = await import('../src/alerts/ops-alerts.js')
+  const site = { tls: { ok: true, authorized: true, notAfter: '2026-12-18T10:49:06.000Z' }, health: { ok: true, status: 200 } }
+  const state = await collectState(db, NOW, { probeSite: async () => site })
+  assert.equal(state.site, site)
+})
+
 test('해소됐다가 재발하면 다시 보낸다', async () => {
   const db = createDb(':memory:')
   const { sent, send } = spy()

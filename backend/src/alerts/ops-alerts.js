@@ -8,6 +8,7 @@ import { readMetrics } from '../admin/metrics.js'
 import { processHealth } from '../admin/process-health.js'
 import { sendTelegram } from './sender.js'
 import { immediateAlerts, longStopped, renderAlert, renderDailySummary } from './ops-rules.js'
+import { probePublicSite } from './public-site.js'
 
 // 운영 알림 — 판정(ops-rules.js)과 발송(sender.js)을 잇고, 같은 사건을 두 번 보내지 않게 한다.
 //
@@ -41,27 +42,29 @@ function clearSent(db, kind, subject) {
 function shouldSend(db, alert, nowMs) {
   const at = lastSent(db, alert.kind, alert.subject)
   if (!at) return true
-  if (alert.kind === 'source_down') return false
+  if (alert.kind === 'source_down' || alert.kind === 'cert_expiring') return false
   return nowMs - Date.parse(at) >= REPEAT_AFTER_MS
 }
 
 // 지금 상태를 모아 판정 입력으로 만든다.
-export function collectState(db, now = Date.now()) {
+export async function collectState(db, now = Date.now(), { probeSite = probePublicSite } = {}) {
   const health = readDataHealth(config.storage.active_path, {
     getCached: store.getCached, getStats: stats.getStats, now,
   })
+  const site = await probeSite()
   return {
     health,
     usage: apiHubUsage.snapshot({ now }),
     forecast: forecastDiskFull(readMetrics(db, '7d').series),
     recentBoots: processHealth().recentBoots ?? [],
+    site,
     now,
   }
 }
 
 // 한 바퀴. 보낸 알림 목록을 돌려준다(테스트·로그용).
-export async function runOnce(db, { now = Date.now(), send = sendTelegram, state = null } = {}) {
-  const input = state ?? collectState(db, now)
+export async function runOnce(db, { now = Date.now(), send = sendTelegram, state = null, probeSite } = {}) {
+  const input = state ?? await collectState(db, now, { ...(probeSite ? { probeSite } : {}) })
   const sentNow = []
 
   const alerts = immediateAlerts(input)
