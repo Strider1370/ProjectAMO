@@ -7,14 +7,14 @@
 
 ## 1. API 주소
 
-### 사용할 주소 (표준화, typ06)
+### 사용 주소 (표준화, typ06)
 
 ```
 격자영역: https://apihub.kma.go.kr/api/typ06/cgi-bin/url/nph-kim_nc_xy_txt2_std
 임의지점: https://apihub.kma.go.kr/api/typ06/cgi-bin/url/nph-kim_nc_pt_txt2_std
 ```
 
-### 구 주소 (typ01) — 언젠가 닫힐 예정
+### 구 주소 (typ01) — 사용 중단, 언젠가 닫힐 예정
 
 ```
 격자영역: https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph-kim_nc_xy_txt2
@@ -23,17 +23,34 @@
 
 구 주소 문서에 명시: **2026.7.1. 이후 표준화 자료(NC)와 동일한 데이터 사용.**
 2026-08-08 실측으로 두 주소의 응답이 완전히 일치함을 확인했다(아래 5절).
+2026-09-21 재확인: `tmfc=2026092000` 격자 응답이 두 주소 모두 1312바이트로 동일.
+
+**2026-09-21 typ06로 전환했다.** `backend/src/config.js`의 `kim_grid_url` 기본값과
+`backend/src/api-operation-registry.js`의 `kim_grid` 경로를 `_std`로 바꿨다.
+되돌리려면 `KIM_GRID_API_URL` 환경변수로 구 주소를 지정하면 된다.
+
+전환 근거: 자료가 동일하고 추가 활용신청이 필요 없으며, 실측에서 typ01이 불안정했다.
+실제 수집 영역(`sub=1429,1441,1633,1609`, 205x169)으로 각각 호출한 결과 typ01은
+6회 중 2회가 **HTTP 504 / 빈 응답**이었고 typ06는 전부 정상이었다.
+`kim_grid`는 `maxAttempts: 1`이라(`api-operation-registry.js`) 실패가 곧 해당 변수·시간의 결측이다.
 
 ### 인증키 주의
 
-typ06는 typ01과 **별도 활용신청**이 필요하다. 실측 결과:
+**2026-09-21 재실측으로 갱신.** 이전(2026-08-08)에는 typ06가 KIM 키로 403이라
+"별도 활용신청 필요"로 적혀 있었으나, 현재는 KIM 전용 키로 typ06 격자·지점 모두 정상이다.
 
 | 주소 | `KMA_KIM_NWP_AUTH_KEY` | `KMA_AVIATION_AUTH_KEY` |
 |---|---|---|
-| typ01 (구) | 정상 | (미확인) |
-| typ06 (표준화) | **403 "활용신청이 필요한 API 입니다"** | 정상 |
+| typ01 격자 (구) | 정상 | 정상 |
+| typ01 지점 (구) | **403** | (미확인) |
+| typ06 격자 `_std` | 정상 | 정상 |
+| typ06 지점 `_std` | 정상 | (미확인) |
 
-즉 typ06로 옮기려면 항공 키를 쓰거나, KIM 키로 typ06 활용신청을 추가로 해야 한다.
+즉 typ06로 옮기는 데 추가 활용신청은 필요 없다. 반대로 **임의지점 조회는 typ01이 막혀 있어
+typ06를 써야 한다.**
+
+실측 조건: `tmfc=2026092000`, 격자는 `data=U&name=t2m&level=0&sub=1429,1441,1436,1448`,
+지점은 `data=P&name=T,q&lat=35.1&lon=126.8`.
 
 ---
 

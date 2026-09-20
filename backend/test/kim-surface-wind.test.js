@@ -203,7 +203,7 @@ test('buildKimGridUrl uses the KMA APIHub KIM cgi endpoint', () => {
     sub: '1429,1441,1633,1609',
   })
 
-  assert.ok(url.startsWith('https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph-kim_nc_xy_txt2?'))
+  assert.ok(url.startsWith('https://apihub.kma.go.kr/api/typ06/cgi-bin/url/nph-kim_nc_xy_txt2_std?'))
   assert.ok(url.includes('group=KIMG'))
   assert.ok(url.includes('nwp=NE57'))
   assert.ok(url.includes('name=u10m'))

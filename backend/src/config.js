@@ -87,7 +87,7 @@ export const api = {
   radar_graphics_url: process.env.RADAR_GRAPHICS_API_URL || 'https://apihub.kma.go.kr/api/typ03/cgi/rdr',
   airkorea_pm_url: process.env.AIRKOREA_PM_URL || 'https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty',
   kma_uv_url: process.env.KMA_UV_URL || 'https://apihub.kma.go.kr/api/typ01/url/kma_sfctm_uv.php',
-  kim_grid_url: process.env.KIM_GRID_API_URL || 'https://apihub.kma.go.kr/api/typ01/cgi-bin/url/nph-kim_nc_xy_txt2',
+  kim_grid_url: process.env.KIM_GRID_API_URL || 'https://apihub.kma.go.kr/api/typ06/cgi-bin/url/nph-kim_nc_xy_txt2_std',
   typhoon_now_url: process.env.TYPHOON_NOW_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_now.php',
   typhoon_list_url: process.env.TYPHOON_LIST_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_lst.php',
   // 인천국제공항공사 항공기 운항 현황 상세 조회. 한국공항공사는 인천을 운영하지 않아
