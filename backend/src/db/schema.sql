@@ -129,6 +129,53 @@ CREATE INDEX IF NOT EXISTS idx_alerts_user ON triggered_alerts(user_id, detected
 CREATE INDEX IF NOT EXISTS idx_alerts_dedup ON triggered_alerts(route_id, dedup_key);
 CREATE INDEX IF NOT EXISTS idx_pushsub_user ON push_subscriptions(user_id);
 
+-- 개인 지도는 기관 공유본과 분리한다. snapshot은 가져온 KML 원문 메타데이터의
+-- 중복 키·배열 순서를 잃지 않도록 JSON 하나로 보관하고, 목록용 수치만 별도 열에 둔다.
+CREATE TABLE IF NOT EXISTS personal_maps (
+  id           TEXT PRIMARY KEY,
+  owner_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  revision     INTEGER NOT NULL CHECK (revision >= 1),
+  snapshot     TEXT NOT NULL,
+  byte_length  INTEGER NOT NULL CHECK (byte_length >= 0),
+  item_count   INTEGER NOT NULL CHECK (item_count >= 0),
+  group_count  INTEGER NOT NULL CHECK (group_count >= 0),
+  created_at   TEXT NOT NULL,
+  updated_at   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_personal_maps_owner_updated ON personal_maps(owner_id, updated_at DESC);
+
+-- 기관 지도는 개인 원본을 참조하되 FK를 두지 않는다. 개인 지도를 삭제해도 이미
+-- 발표한 불변 버전의 snapshot과 당시 원본 식별자는 남아 있어야 한다.
+CREATE TABLE IF NOT EXISTS organization_maps (
+  id                INTEGER PRIMARY KEY,
+  organization_id   INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  publisher_user_id INTEGER NOT NULL REFERENCES users(id),
+  current_version   INTEGER NOT NULL DEFAULT 1 CHECK (current_version >= 1),
+  deleted_at        TEXT,
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS organization_map_versions (
+  map_id                      INTEGER NOT NULL REFERENCES organization_maps(id) ON DELETE CASCADE,
+  version                     INTEGER NOT NULL CHECK (version >= 1),
+  source_personal_map_id      TEXT,
+  source_personal_revision    INTEGER,
+  name                        TEXT NOT NULL,
+  note                        TEXT NOT NULL DEFAULT '',
+  snapshot                    TEXT NOT NULL,
+  byte_length                 INTEGER NOT NULL CHECK (byte_length >= 0),
+  item_count                  INTEGER NOT NULL CHECK (item_count >= 0),
+  group_count                 INTEGER NOT NULL CHECK (group_count >= 0),
+  created_by                  INTEGER NOT NULL REFERENCES users(id),
+  created_at                  TEXT NOT NULL,
+  PRIMARY KEY (map_id, version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_maps_current ON organization_maps(organization_id, deleted_at, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_org_map_versions_source ON organization_map_versions(source_personal_map_id);
+
 -- 운영 알림 발송 기록(중복 방지, 90일 보관). 5분마다 판정하므로 이게 없으면 같은 사건으로
 -- 하루 288번 울린다. kind+subject가 하나의 "사건"이고, 사건이 끝나면(조건 해소) 기록을 지운다.
 CREATE TABLE IF NOT EXISTS alerts_sent (
@@ -376,6 +423,10 @@ CREATE TRIGGER IF NOT EXISTS immutable_organization_material_versions_update
 BEFORE UPDATE ON organization_material_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_material_version'); END;
 CREATE TRIGGER IF NOT EXISTS immutable_organization_material_versions_delete
 BEFORE DELETE ON organization_material_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_material_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_map_versions_update
+BEFORE UPDATE ON organization_map_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_map_version'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_organization_map_versions_delete
+BEFORE DELETE ON organization_map_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_map_version'); END;
 CREATE TRIGGER IF NOT EXISTS immutable_organization_briefing_versions_update
 BEFORE UPDATE ON organization_briefing_versions BEGIN SELECT RAISE(ABORT, 'immutable_organization_briefing_version'); END;
 CREATE TRIGGER IF NOT EXISTS immutable_organization_briefing_versions_delete

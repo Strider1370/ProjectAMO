@@ -457,7 +457,7 @@ export function addVfrWaypointLayers(map) {
   }
 }
 
-export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComparisonRef = { current: false }, onDesignWaypointDrop = { current: null }) {
+export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComparisonRef = { current: false }, onDesignWaypointDrop = { current: null }, canInteract = () => true) {
   let draggingIdx = -1
   let beforeDrag = null
   let designDrag = null
@@ -491,6 +491,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
   }
 
   const beginDesignLineDrag = (e, { snapToNavpoint = true } = {}) => {
+    if (!canInteract()) return
     if (!isComparisonRef.current || designDrag) return
     const feature = e.features?.[0]
     const properties = feature?.properties ?? {}
@@ -512,6 +513,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
   }
 
   const beginDesignDrag = (e) => {
+    if (!canInteract()) return
     if (!isComparisonRef.current) return
     if (designDrag) return
     const feature = e.features?.[0]
@@ -538,6 +540,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
   // 터치가 그대로 지도로 흘러가 지도만 움직였다. dragPan.disable()은 이미 여기서
   // 부르므로, 시작만 잡히면 끄는 동작은 손가락에서도 그대로 동작한다.
   const beginWaypointDrag = (e) => {
+    if (!canInteract()) return
     const wpIdx = e.features[0].properties.wpIndex
     // 끌 수 없는 점(출발·도착 공항)이면 터치를 삼키지 않고 지도로 넘긴다 — 안 그러면
     // 공항 표시에 손가락이 닿는 것만으로 지도가 굳는다.
@@ -552,6 +555,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
   map.on('touchstart', VFR_WP_HIT, beginWaypointDrag)
 
   const beginLineInsertDrag = (e) => {
+    if (!canInteract()) return
     if (isComparisonRef.current) return
     if (vfrWaypointsRef.current.length < 2) return
     // 넓힌 잡기 원이 이겨야 한다 — 경유점을 짚었는데 선 위에 새 점이 끼어들면 안 된다.
@@ -647,7 +651,7 @@ export function bindVfrInteractions(map, vfrWaypointsRef, onWaypointDrop, isComp
   map.on('touchcancel', cancelDesignDrag)
 }
 
-export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
+export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef, canInteract = () => true) {
   const documentRef = map.getContainer().ownerDocument
   const windowRef = documentRef.defaultView
   const status = document.createElement('div')
@@ -700,6 +704,7 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
   }
 
   map.on('click', (event) => {
+    if (!canInteract()) return
     if (modeRef.current === 'click-add') addPointRef.current?.([event.lngLat.lng, event.lngLat.lat])
   })
 
@@ -707,6 +712,7 @@ export function bindIfrClickInteraction(map, modeRef, addPointRef, statusRef) {
   // 지도만 끌려 다녔다. 마우스와 터치를 같은 핸들러에 함께 건다(위 웨이포인트 드래그와 같은 방식).
   let drawing = null
   const beginDraw = (event) => {
+    if (!canInteract()) return
     if (modeRef.current !== 'draw') return
     // 두 손가락은 확대·축소로 넘긴다.
     if (event.points && event.points.length > 1) return

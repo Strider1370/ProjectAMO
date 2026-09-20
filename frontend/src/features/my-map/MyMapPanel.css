@@ -1,191 +1,187 @@
-/* 항공정보·기상정보 패널과 같은 언어를 쓴다 — 둥근 모서리 12px, 1.5px 테두리,
-   켜진 것은 accent 테두리 + accent 8% 배경. 다만 폴더가 101줄이라 그것까지 전부
-   카드로 칠하면 화면이 파란 벽이 된다. 그래서 파일 줄만 카드로 두고, 폴더 줄은
-   체크 표시와 hover 배경만으로 같은 느낌을 낸다. */
-
-/* 기본 --panel-overlay-sm(≤320px)보다 넓어야 한다. 폴더가 101줄이고 이름이
-   'RKTA-RKNY YANGYANG'처럼 길어서, 좁으면 이름이 잘리고 개수와 붙는다.
-   .dev-layer-panel과 특이도가 같으면 CSS 순서에 밀리므로, NotamPanel과 같은
-   방식으로 접두를 붙여 확실히 이긴다. */
-.map-view-wrapper .layer-drawer.my-map-panel { width: var(--panel-overlay-md); }
+.map-view-wrapper .layer-drawer.my-map-panel,
 .my-map-panel { width: var(--panel-overlay-md); }
 
-.my-map-header-actions { display: flex; align-items: center; gap: 8px; }
+.my-map-panel { display: flex; flex-direction: column; color: var(--text-1); }
+.map-view-wrapper .layer-drawer.my-map-panel { height: calc(100% - var(--space-xl)); }
+.my-map-panel .sr-only, .mobile-sheet .sr-only {
+  position: absolute; inline-size: var(--space-xxs); block-size: var(--space-xxs);
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.my-map-panel-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-s);
+  padding: var(--panel-padding-md); border-bottom: 1px solid var(--stroke-2);
+}
+.my-map-panel-header h1 { margin: var(--space-xxs) 0 0; font-size: var(--fs-500); line-height: var(--lh-500); font-weight: var(--fw-semibold); }
+.my-map-panel-header p, .my-map-mobile-subtitle { display: block; margin: var(--space-xxs) 0 0; color: var(--text-3); font-size: var(--fs-200); line-height: var(--lh-200); font-weight: var(--fw-regular); }
+.my-map-header-actions, .my-map-library-actions, .my-map-view-actions, .my-map-detail-heading { display: flex; align-items: center; gap: var(--space-xs); }
+.my-map-header-actions { flex: 0 0 auto; }
+.my-map-panel-content { min-width: 0; }
+.my-map-panel .my-map-panel-content { display: block; flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+.my-map-panel .my-map-panel-content.is-viewer { display: flex; flex-direction: column; overflow: hidden; }
+.my-map-panel-content.is-viewer > .my-map-viewer { flex: 1 1 auto; min-height: 0; }
+.my-map-viewer { display: grid; grid-template-rows: minmax(0, 1.1fr) minmax(0, 0.9fr); height: 100%; min-height: 0; }
+.my-map-viewer-list { min-height: 0; overflow-y: auto; padding-right: var(--space-xxs); }
 
-.my-map-intro { margin: 0 0 10px; font-size: 13px; line-height: 1.55; color: var(--text-2); }
-.my-map-hint { margin: 8px 0 0; font-size: 12px; color: var(--text-3); }
+.my-map-file-input { display: none; }
+.my-map-status, .my-map-error, .my-map-notice, .my-map-empty {
+  margin: var(--space-s) 0; padding: var(--space-s); border-radius: var(--radius-md);
+  font-size: var(--fs-200); line-height: var(--lh-200);
+}
+.my-map-storage { display: grid; gap: var(--space-xs); margin-bottom: var(--space-s); }
+.my-map-storage-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xs); margin: 0; padding: var(--space-xs) var(--space-s); border-radius: var(--radius-md); color: var(--text-3); background: var(--bg-2); font-size: var(--fs-200); line-height: var(--lh-200); }
+.my-map-storage-row > span { flex: 1 1 10rem; }
+.my-map-storage-row small { margin-left: auto; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.my-map-storage-synced { color: var(--level-green); background: var(--level-green-bg); }
+.my-map-storage-offline, .my-map-storage-pending { color: var(--text-2); }
+.my-map-storage-error, .my-map-storage-conflict { color: var(--level-red); background: var(--level-red-bg); }
+.my-map-storage-conflict { color: var(--level-amber); background: var(--level-amber-bg); }
+.my-map-storage-draft { color: var(--text-2); background: var(--level-gray-bg); }
+.my-map-storage-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); width: 100%; }
+.my-map-storage .my-map-primary-button, .my-map-storage .my-map-secondary-button { min-height: var(--touch-min); font-size: var(--fs-200); }
+.my-map-guest-maps { padding: var(--space-s); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-1); }
+.my-map-guest-maps > p { margin: 0 0 var(--space-xs); color: var(--text-2); font-size: var(--fs-200); font-weight: var(--fw-medium); }
+.my-map-guest-maps ul { display: grid; gap: var(--space-xs); list-style: none; margin: 0; padding: 0; }
+.my-map-guest-maps li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); padding-top: var(--space-xs); border-top: 1px solid var(--stroke-2); }
+.my-map-guest-maps li > span { display: grid; min-width: 0; gap: var(--space-xxs); }
+.my-map-guest-maps strong, .my-map-guest-maps small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.my-map-guest-maps small { color: var(--text-3); font-size: var(--fs-200); }
+.my-map-status { display: flex; align-items: center; gap: var(--space-xs); color: var(--text-2); background: var(--bg-3); }
+.my-map-error { color: var(--level-red); background: var(--level-red-bg); }
+.my-map-notice { color: var(--text-2); background: var(--level-gray-bg); }
+.my-map-empty { color: var(--text-3); background: var(--bg-2); }
+.my-map-spin { animation: my-map-spin var(--motion-slow) linear infinite; }
+@keyframes my-map-spin { to { transform: rotate(1turn); } }
 
-/* 브리핑의 경로 불러오기 네모와 같은 모양. 다른 점 하나 — 여기서는 네모 자체가
-   버튼이라 눌러도 파일 선택창이 뜬다. */
-.my-map-dropzone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 150px;
-  padding: 20px;
-  border: 1.5px dashed rgba(148, 163, 184, 0.55);
-  border-radius: 12px;
-  background: var(--bg-2);
-  color: var(--text-3);
-  font-family: inherit;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+.my-map-library-actions, .my-map-view-actions { justify-content: space-between; margin-bottom: var(--space-s); }
+.my-map-library-actions { justify-content: flex-start; }
+.my-map-primary-button, .my-map-secondary-button, .my-map-header-button, .my-map-icon-button,
+.my-map-tree-caret, .my-map-tree-name, .my-map-document-open {
+  font: inherit; color: var(--text-1); cursor: pointer;
 }
-.my-map-dropzone:hover,
-.my-map-dropzone.is-drag-over {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-1));
+.my-map-primary-button, .my-map-secondary-button, .my-map-header-button {
+  display: inline-flex; min-height: var(--touch-min); align-items: center; justify-content: center; gap: var(--space-xs);
+  padding: 0 var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1);
+  font-size: var(--fs-300); line-height: var(--lh-300); font-weight: var(--fw-medium);
 }
-.my-map-dropzone-icon { display: flex; opacity: 0.8; }
-.my-map-dropzone-text { font-size: 13px; line-height: 1.6; }
+.my-map-primary-button { border-color: var(--accent); background: var(--accent); color: var(--bg-1); }
+.my-map-header-button { border: 0; background: transparent; color: var(--text-2); }
+.my-map-primary-button:hover { background: var(--text-2); }
+.my-map-secondary-button:hover, .my-map-header-button:hover { border-color: var(--stroke-strong); background: var(--bg-3); }
+.my-map-icon-button {
+  display: inline-flex; flex: 0 0 var(--touch-min); width: var(--touch-min); min-height: var(--touch-min);
+  align-items: center; justify-content: center; padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text-2);
+}
+.my-map-icon-button:hover, .my-map-icon-button[aria-pressed='true'] { background: var(--level-gray-bg); color: var(--accent); }
+.my-map-delete-button:hover { color: var(--level-red); background: var(--level-red-bg); }
+.my-map-primary-button:focus-visible, .my-map-secondary-button:focus-visible, .my-map-header-button:focus-visible,
+.my-map-icon-button:focus-visible, .my-map-tree-caret:focus-visible, .my-map-tree-name:focus-visible, .my-map-document-open:focus-visible,
+.my-map-search input:focus-visible { outline: 2px solid var(--accent); outline-offset: var(--space-xxs); }
 
-.my-map-ghost {
-  display: flex; align-items: center; justify-content: center; gap: 4px;
-  width: 100%; margin: 0 0 10px; padding: 8px 10px;
-  border: 1.5px solid rgba(148, 163, 184, 0.4);
-  border-radius: 12px;
-  background: var(--bg-1);
-  color: var(--text-2);
-  font-family: inherit; font-size: 13px;
-  cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
-}
-.my-map-ghost:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-1));
-}
-
-.my-map-note { margin: 6px 0; font-size: 13px; color: var(--text-3); }
-.my-map-busy { display: flex; align-items: center; gap: 8px; }
-.my-map-error {
-  margin: 6px 0; padding: 8px 10px; border-radius: 10px;
-  border: 1.5px solid color-mix(in srgb, #dc2626 40%, transparent);
-  background: color-mix(in srgb, #dc2626 8%, var(--bg-1));
-  color: #b91c1c; font-size: 13px; white-space: pre-wrap;
-}
-
-/* 대기 단계가 바뀔 때와 오류가 뜰 때. 오류는 지도가 정상으로 보이는 채로 실패한 경우가 있어
-   (파일 보관 실패) 눈이 한 번 붙잡혀야 한다. */
-.my-map-busy,
-.my-map-error { animation: my-map-note-in var(--motion-base) var(--motion-enter); }
-@keyframes my-map-note-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
-}
-
-.my-map-section { margin-top: 14px; }
-
-/* 켜짐 표시. 항공 타일의 ✓와 같은 뜻을 작은 네모로 낸다. */
-.my-map-mark {
-  display: flex; align-items: center; justify-content: center;
-  flex: 0 0 14px; width: 14px; height: 14px;
-  border: 1.5px solid rgba(148, 163, 184, 0.6);
-  border-radius: 4px;
-  color: var(--bg-1);
-  transition: background var(--motion-fast) var(--motion-enter), border-color var(--motion-fast) var(--motion-enter);
-}
-.is-active .my-map-mark,
-[aria-pressed='true'] .my-map-mark {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-/* 체크 자체도 배경과 같이 반응한다. 체크는 켜졌을 때만 DOM에 있으므로 transition이 아니라
-   등장 애니메이션을 쓴다 — 없던 요소는 전환할 시작 상태가 없다.
-   '전체 켜기'는 폴더 101개를 한 번에 뒤집으므로 120ms를 넘기면 안 된다. 길어지면 파도친다. */
-.my-map-mark svg { animation: my-map-check-in var(--motion-fast) var(--motion-enter); }
-@keyframes my-map-check-in {
-  from { opacity: 0; transform: scale(0.6); }
-  to { opacity: 1; transform: none; }
-}
-
-/* --- 내 파일: 개수가 적으니 타일과 같은 카드로 --- */
-.my-map-files { list-style: none; margin: 0; padding: 0; }
-.my-map-file-card {
-  display: flex; align-items: center; gap: 2px;
-  margin-bottom: 6px; padding: 2px 6px 2px 8px;
-  border: 1.5px solid rgba(148, 163, 184, 0.4);
-  border-radius: 12px;
-  background: var(--bg-1);
-  transition: border-color 120ms ease, background 120ms ease;
-}
-.my-map-file-card.is-active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-1));
-}
-.my-map-file-toggle {
-  display: flex; align-items: center; gap: 8px;
-  flex: 1; min-width: 0; padding: 8px 0;
-  border: 0; background: none; color: inherit;
-  font-family: inherit; font-size: 13.5px; text-align: left; cursor: pointer;
-}
-.my-map-file-card.is-active .my-map-file-toggle { color: var(--accent); }
-.my-map-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.my-map-file-size { margin-left: auto; color: var(--text-3); font-variant-numeric: tabular-nums; }
-.my-map-remove {
-  display: flex; align-items: center; flex: 0 0 auto;
-  border: 0; background: none; padding: 4px; border-radius: 6px;
-  color: var(--text-3); cursor: pointer;
-}
-.my-map-remove:hover { color: #b91c1c; background: color-mix(in srgb, #dc2626 10%, transparent); }
-
-/* --- 폴더: 찾기 상자는 목록 위에 고정한다 (접기로는 101줄이 안 줄어든다) --- */
-.my-map-search { position: sticky; top: 0; z-index: 1; padding: 2px 0 8px; background: var(--bg-1); }
+.my-map-search { display: block; margin: var(--space-s) 0; }
 .my-map-search input {
-  width: 100%; box-sizing: border-box; padding: 7px 10px;
-  border: 1.5px solid rgba(148, 163, 184, 0.4); border-radius: 10px;
-  background: var(--bg-2); color: inherit;
-  font-family: inherit; font-size: 13px;
+  width: 100%; min-height: var(--touch-min); box-sizing: border-box; padding: 0 var(--space-m);
+  border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-2);
+  color: var(--text-1); font: inherit; font-size: var(--fs-300);
 }
-.my-map-search input:focus { outline: none; border-color: var(--accent); }
+.my-map-section-heading { display: flex; justify-content: space-between; margin: var(--space-m) 0 var(--space-xs); color: var(--text-3); font-size: var(--fs-200); font-weight: var(--fw-semibold); }
+.my-map-section-heading small { font-weight: var(--fw-regular); font-variant-numeric: tabular-nums; }
+.my-map-files, .my-map-files ul, .my-map-tree { list-style: none; margin: 0; padding: 0; }
+.my-map-library-section:first-child .my-map-section-heading { margin-top: 0; }
+.my-map-library-status { display: flex; align-items: center; gap: var(--space-xs); margin: var(--space-m) 0 0; padding: var(--space-s); border-top: 1px solid var(--stroke-2); color: var(--text-3); font-size: var(--fs-200); }
+.my-map-document-row {
+  display: flex; align-items: center; gap: var(--space-xxs); margin-bottom: var(--space-xs);
+  border: 1px solid var(--stroke-2); border-radius: var(--radius-lg); background: var(--bg-1);
+}
+.my-map-document-row:hover { border-color: var(--stroke-strong); }
+.my-map-document-open { display: flex; flex: 1 1 auto; min-width: 0; min-height: var(--touch-min); align-items: center; gap: var(--space-s); padding: var(--space-xs); border: 0; background: transparent; text-align: left; }
+.my-map-document-icon { display: grid; flex: 0 0 auto; width: var(--touch-min); height: var(--touch-min); place-items: center; border-radius: var(--radius-md); background: var(--level-gray-bg); color: var(--accent); }
+.my-map-document-copy { display: grid; min-width: 0; gap: var(--space-xxs); }
+.my-map-document-copy strong, .my-map-document-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.my-map-document-copy strong { font-size: var(--fs-300); font-weight: var(--fw-semibold); }
+.my-map-document-copy small { color: var(--text-3); font-size: var(--fs-200); }
 
-.my-map-tree { list-style: none; margin: 0; padding: 0; }
-.my-map-tree-file {
-  margin: 10px 0 4px; color: var(--text-3);
-  font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+.my-map-tree { border-top: 1px solid var(--stroke-2); }
+.my-map-tree-row, .my-map-more-row {
+  display: flex; min-width: 0; align-items: center; gap: var(--space-xxs);
+  padding-left: calc(var(--tree-depth) * var(--space-l)); border-bottom: 1px solid var(--stroke-2);
 }
-.my-map-row {
-  display: flex; align-items: center; gap: 2px;
-  border-radius: 8px;
-  transition: background 120ms ease;
+.my-map-tree-row:hover, .my-map-tree-row.is-selected { background: var(--level-gray-bg); }
+.my-map-tree-row.is-hidden { color: var(--text-3); }
+.my-map-tree-caret {
+  display: inline-flex; flex: 0 0 var(--touch-min); width: var(--touch-min); min-height: var(--touch-min);
+  align-items: center; justify-content: center; padding: 0; border: 0; background: transparent;
 }
-.my-map-row:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
-.my-map-row.is-off .my-map-row-name { color: var(--text-3); }
-.my-map-caret {
-  display: flex; align-items: center; justify-content: center;
-  flex: 0 0 16px; width: 16px; height: 22px;
-  border: 0; background: none; padding: 0;
-  color: var(--text-3); cursor: pointer;
+.my-map-tree-caret:disabled { cursor: default; }
+.my-map-tree-name {
+  display: flex; flex: 1 1 auto; min-width: 0; min-height: var(--touch-min); align-items: center; gap: var(--space-xs);
+  padding: 0; border: 0; background: transparent; text-align: left; font-size: var(--fs-300);
 }
-.my-map-caret.is-hidden { visibility: hidden; }
-/* 펼침 표시는 아이콘 교체가 아니라 회전이다. 폴더 101개를 접었다 폈다 하는 화면에서
-   '방금 내가 연 줄'을 짚어준다. */
-.my-map-caret svg { transition: transform var(--motion-fast) var(--motion-enter); }
-.my-map-caret.is-open svg { transform: rotate(90deg); }
-.my-map-row-toggle {
-  display: flex; align-items: center; gap: 7px;
-  flex: 1; min-width: 0; padding: 4px 0;
-  border: 0; background: none; color: inherit;
-  font-family: inherit; font-size: 13.5px; text-align: left; cursor: pointer;
+.my-map-tree-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.my-map-tree-name small { margin-left: auto; color: var(--text-3); font-size: var(--fs-200); font-variant-numeric: tabular-nums; }
+.my-map-item-kind { display: inline-flex; flex: 0 0 var(--space-l); width: var(--space-l); justify-content: center; color: var(--text-3); }
+.my-map-more-row { padding-top: var(--space-xs); padding-bottom: var(--space-xs); }
+.my-map-fit-button { display: none; }
+.my-map-group-row:hover .my-map-fit-button, .my-map-group-row .my-map-fit-button:focus-visible { display: inline-flex; }
+
+.my-map-detail { min-block-size: 0; margin-top: var(--space-l); padding: var(--space-l) var(--space-xxs) 0 0; border-top: 1px solid var(--stroke-1); overflow-y: auto; }
+.my-map-detail-heading { justify-content: space-between; }
+.my-map-kind { display: inline-flex; align-items: center; gap: var(--space-xs); color: var(--text-2); font-size: var(--fs-200); }
+.my-map-detail h2 { margin: var(--space-s) 0; font-size: var(--fs-500); line-height: var(--lh-500); font-weight: var(--fw-semibold); overflow-wrap: anywhere; }
+.my-map-detail-facts, .my-map-summary-list { display: grid; margin: 0; }
+.my-map-detail-facts > div, .my-map-summary-list > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-s); padding: var(--space-xs) 0; border-bottom: 1px solid var(--stroke-2); }
+.my-map-detail-facts dt, .my-map-summary-list dt { color: var(--text-3); font-size: var(--fs-200); }
+.my-map-detail-facts dd, .my-map-summary-list dd { margin: 0; font-size: var(--fs-200); overflow-wrap: anywhere; }
+.is-empty { color: var(--text-3); font-style: italic; }
+.my-map-description { margin: var(--space-m) 0; color: var(--text-2); font-size: var(--fs-300); line-height: var(--lh-300); white-space: pre-wrap; overflow-wrap: anywhere; }
+.my-map-description-heading { margin: var(--space-m) 0 var(--space-xs); font-size: var(--fs-300); line-height: var(--lh-300); }
+.my-map-description-disclosure { margin-top: var(--space-m); }
+.my-map-description-disclosure summary { min-height: var(--touch-min); display: flex; align-items: center; cursor: pointer; font-size: var(--fs-300); font-weight: var(--fw-medium); }
+.my-map-metadata { margin-top: var(--space-l); }
+.my-map-metadata h3 { margin: 0 0 var(--space-xs); font-size: var(--fs-300); line-height: var(--lh-300); }
+.my-map-source-path { margin: 0 0 var(--space-s); color: var(--text-3); font-size: var(--fs-200); overflow-wrap: anywhere; }
+.my-map-source-warning, .my-map-metadata-empty { margin: var(--space-s) 0; color: var(--text-3); font-size: var(--fs-200); line-height: var(--lh-200); }
+.my-map-source-warning { padding: var(--space-s); border-radius: var(--radius-md); background: var(--level-amber-bg); color: var(--level-amber); }
+.my-map-metadata-disclosure { margin-top: var(--space-m); }
+.my-map-metadata-disclosure summary { min-height: var(--touch-min); display: flex; align-items: center; cursor: pointer; font-size: var(--fs-300); font-weight: var(--fw-medium); }
+.my-map-metadata-table { margin-top: var(--space-s); border-top: 1px solid var(--stroke-2); }
+.my-map-metadata-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-s); padding: var(--space-xs) 0; border-bottom: 1px solid var(--stroke-2); font-size: var(--fs-200); line-height: var(--lh-200); }
+.my-map-metadata-row [role='rowheader'] { color: var(--text-3); overflow-wrap: anywhere; }
+.my-map-metadata-row [role='cell'] { white-space: pre-wrap; overflow-wrap: anywhere; }
+.my-map-detail-edit { width: 100%; margin-top: var(--space-l); }
+
+@media (max-width: 719px) {
+  .my-map-panel .my-map-panel-content, .my-map-panel .my-map-panel-content.is-viewer { display: block; overflow: visible; }
+  .my-map-viewer { display: block; height: auto; }
+  .my-map-viewer-list, .my-map-detail { overflow: visible; max-block-size: none; }
+  .my-map-panel-content { padding-bottom: var(--space-xl); }
+  .my-map-header-actions .my-map-header-button { min-width: var(--touch-min); padding: 0 var(--space-s); }
+  .my-map-fit-button { display: inline-flex; }
 }
-.my-map-row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.my-map-count {
-  flex: 0 0 auto; padding-left: 6px;
-  color: var(--text-3); font-size: 12.5px; font-variant-numeric: tabular-nums;
-}
-/* 101줄에 101번 반복되는 버튼이라 평소에는 숨기고 그 줄에 손이 갈 때만 보인다. */
-.my-map-goto {
-  display: flex; align-items: center; justify-content: center;
-  flex: 0 0 20px; width: 20px; height: 22px;
-  border: 0; background: none; padding: 0; border-radius: 6px;
-  color: var(--text-3); cursor: pointer; opacity: 0;
-}
-.my-map-row:hover .my-map-goto { opacity: 1; }
-.my-map-goto:hover { color: var(--accent); }
-.my-map-goto:focus-visible { opacity: 1; }
+
+/* 변환 미리보기·내보내기 대화상자 */
+.my-map-preview-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); gap: var(--space-xs); margin: var(--space-m) 0 0; padding: 0; list-style: none; }
+.my-map-preview-counts li { display: flex; flex-direction: column; gap: 2px; padding: var(--space-s); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-2); }
+.my-map-preview-counts strong { font-size: var(--fs-400); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
+.my-map-preview-counts span { color: var(--text-3); font-size: var(--fs-200); }
+.my-map-preview-warnings { margin: var(--space-m) 0 0; padding: var(--space-s) var(--space-s) var(--space-s) var(--space-l); border-radius: var(--radius-md); background: var(--level-amber-bg); color: var(--level-amber); font-size: var(--fs-200); line-height: var(--lh-200); }
+.my-map-preview-warnings li + li { margin-top: var(--space-xs); }
+.my-map-preview-paths { margin: var(--space-s) 0 0; padding-left: var(--space-l); color: var(--text-3); font-size: var(--fs-200); line-height: var(--lh-200); overflow-wrap: anywhere; }
+.my-map-preview-scope { display: flex; flex-direction: column; gap: var(--space-xs); margin: 0; padding: 0; border: 0; }
+.my-map-preview-scope legend { padding: 0; color: var(--text-3); font-size: var(--fs-200); }
+.my-map-preview-scope label { display: flex; align-items: center; gap: var(--space-xs); min-height: var(--touch-min); font-size: var(--fs-300); }
+.my-map-preview-scope select { min-height: var(--touch-min); margin-left: var(--space-l); padding: 0 var(--space-s); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-1); }
+.my-map-preview-note { margin: var(--space-m) 0 0; color: var(--text-3); font-size: var(--fs-200); line-height: var(--lh-200); }
+
+/* 기존 그리기 자료 이전 안내 */
+.my-map-migrate-notice { display: flex; flex-direction: column; gap: var(--space-s); margin-bottom: var(--space-s); padding: var(--space-s); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-2); }
+.my-map-migrate-notice p { margin: 0; color: var(--text-2); font-size: var(--fs-200); line-height: var(--lh-200); }
+.my-map-migrate-notice button { align-self: flex-start; }
+
+/* 안내·오류 닫기 */
+.my-map-status, .my-map-error, .my-map-notice { position: relative; padding-right: calc(var(--space-l) + var(--space-m)); }
+.my-map-message-close { position: absolute; top: var(--space-xs); right: var(--space-xs); display: flex; align-items: center; justify-content: center; width: var(--space-l); height: var(--space-l); border: 0; border-radius: var(--radius-sm); background: transparent; color: inherit; opacity: 0.7; cursor: pointer; }
+.my-map-message-close:hover { opacity: 1; background: rgb(0 0 0 / 0.06); }
+.my-map-message-close:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+
+/* 보기 화면의 동작 줄: 표시 토글과 추가하기는 왼쪽에 묶고 위치 이동만 오른쪽에 둔다. */
+.my-map-view-action-group { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }

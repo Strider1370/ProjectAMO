@@ -377,6 +377,7 @@ const MapView = forwardRef(function MapView({
   onOpenRoutePanel,
   onOpenCustomAreaPanel,
   onOpenMetPanel,
+  onOpenMyMapPanel,
   enableWindOverlay = true,
   metLayerIds = null,
   showRadarWindControl = true,
@@ -403,6 +404,7 @@ const MapView = forwardRef(function MapView({
   const [showKoreaHome, setShowKoreaHome] = useState(false)
   const tourHomeRef = useRef(null) // 온보딩: 공항 확대 전 홈 뷰 저장(resetView 복귀용)
   const onSelectRef = useRef(onAirportSelect)
+  const myMapControlRef = useRef(null)
   const tooltipTimerRef = useRef(null)
   const tooltipIcaoRef = useRef(null)
   const [hoveredAirportIcao, setHoveredAirportIcao] = useState(null)
@@ -449,6 +451,7 @@ const MapView = forwardRef(function MapView({
   useEffect(() => {
     if (isMobile) return undefined
     function onArrowKeyDown(event) {
+      if (myMapControlRef.current?.mode === 'edit') return
       if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
       const target = event.target
       if (target?.closest?.('input, textarea, select, [contenteditable="true"]')) return
@@ -583,6 +586,11 @@ const MapView = forwardRef(function MapView({
   // loadRouteBriefing: 딥링크 '전체 브리핑 보기'가 저장경로를 route-briefing 훅으로 로드+브리핑 자동생성(§검증).
   useImperativeHandle(ref, () => ({
     setLayerOn, switchBasemap,
+    requestMapNavigation: (next) => {
+      const control = myMapControlRef.current
+      if (!control || control.mode !== 'edit') { next(); return true }
+      return control.requestNavigation(() => { control.finishEditing(); next() })
+    },
     // 컨테이너 크기가 그대로여도 다시 그려야 할 때가 있다 — 모니터링의 고정 캔버스는 컨테이너를
     // 1920px 좌표계에 붙박아 두고 화면 배율만 바꾸므로 mapbox의 ResizeObserver가 영영 발동하지 않는다.
     resizeMap: () => mapRef.current?.resize(),
@@ -1328,8 +1336,8 @@ const MapView = forwardRef(function MapView({
       installRoutePreviewLayers(map)
       if (!vfrInteractionsBound) {
         vfrInteractionsBound = true
-        bindVfrInteractions(map, vfrWaypointsRef, vfrWaypointDropRef, isComparisonRef, designWaypointDropRef)
-        routeInteractionCleanup = bindIfrClickInteraction(map, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef)
+        bindVfrInteractions(map, vfrWaypointsRef, vfrWaypointDropRef, isComparisonRef, designWaypointDropRef, () => myMapControlRef.current?.mode !== 'edit')
+        routeInteractionCleanup = bindIfrClickInteraction(map, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, () => myMapControlRef.current?.mode !== 'edit')
         // Procedure waypoint name on hover, in the original label style (small
         // colored text beside the dot) — reveal only the hovered fix's label.
         const procWpRoleFilter = ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp'], ['==', ['get', 'role'], 'iap-wp']]
@@ -1391,6 +1399,7 @@ const MapView = forwardRef(function MapView({
       // click + cursor on all interactive layers
       ...AIRPORT_INTERACTIVE_LAYERS.flatMap((layerId) => [
         bindLayerEvent(map, 'click', layerId, (e) => {
+          if (myMapControlRef.current?.mode === 'edit') return
           const icao = e.features?.[0]?.properties?.icao
           if (!icao) return
           // Touch fires no mouseleave, so clear the hover tooltip on selection.
@@ -1553,7 +1562,13 @@ const MapView = forwardRef(function MapView({
   }, [rasterAndSigwxModel])
 
   // 이용자가 올린 KML/KMZ. 상태와 레이어 배선은 전부 features/my-map/ 안에 있다.
-  const myMap = useMyMap(mapRef, isStyleReady)
+  const myMap = useMyMap(mapRef, isStyleReady, styleRevision, {
+    onOpenPanel: onOpenMyMapPanel,
+    panelOpen: activePanel === 'my-map',
+    interactionBusy: activePanel === 'custom-area' || activePanel === 'route-check',
+    priorityLayers: AIRPORT_INTERACTIVE_LAYERS,
+  })
+  myMapControlRef.current = myMap
 
   // ponytail: 기상청 합성영상(HSR·수상체) 임시 비교용 동기화.
   useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => {
@@ -2231,9 +2246,7 @@ const MapView = forwardRef(function MapView({
         </Suspense>
       )}
 
-      {activePanel === 'my-map' && (
-        <MyMapPanel myMap={myMap} />
-      )}
+      <MyMapPanel myMap={myMap} onClose={onClosePanel} open={activePanel === 'my-map'} />
 
       {activePanel === 'aviation' && (
         <AviationLayerPanel

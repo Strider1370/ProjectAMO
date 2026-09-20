@@ -46,3 +46,26 @@ test('보관소가 없으면 읽기·지우기도 조용히 실패한다', async
   assert.equal(read.buffer, null)
   assert.equal((await deleteMyMapFile('a')).ok, false)
 })
+
+test('DB를 열지 못하면 삭제를 되돌려 원본 목록을 남긴다', async () => {
+  const store = new Map([['my_map_files', JSON.stringify({ version: 1, files: [
+    { id: 'a', name: '맥케이.kmz', size: 10, addedAt: 1 },
+    { id: 'b', name: '공역.kmz', size: 20, addedAt: 2 },
+  ] })]])
+  globalThis.window = { localStorage: {
+    getItem: (key) => store.get(key) ?? null,
+    setItem: (key, value) => { store.set(key, value) },
+  } }
+  globalThis.indexedDB = { open: () => {
+    const request = { result: null, error: new Error('열 수 없음'), onerror: null, onsuccess: null, onupgradeneeded: null }
+    queueMicrotask(() => request.onerror?.())
+    return request
+  } }
+  try {
+    assert.equal((await deleteMyMapFile('a')).ok, false)
+    assert.deepEqual(listMyMapFiles().map((file) => file.id), ['a', 'b'])
+  } finally {
+    delete globalThis.window
+    delete globalThis.indexedDB
+  }
+})

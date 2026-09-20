@@ -1,241 +1,473 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import mapboxgl from 'mapbox-gl'
-import { isLayerVisible } from './lib/kmlFolderTree.js'
-import { LINE_PAINT, FILL_PAINT, CIRCLE_PAINT, LABEL_LAYOUT, LABEL_PAINT, labelHaloFor } from './lib/kmlPaint.js'
-import { parseMyMapFile } from './lib/parseMyMapFile.js'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useAuth } from '../auth/AuthContext.jsx'
+import { importMapDocument } from './lib/importMapDocument.js'
 import { listMyMapFiles, saveMyMapFile, loadMyMapFile, deleteMyMapFile } from './lib/myMapStore.js'
+import { createMapDocument, copyMapDocument, newMapId, initialMapVisibility, scopeId } from './lib/mapDocument.js'
+import { createMapPersistence, GUEST_MAP_SCOPE } from './lib/mapPersistence.js'
+import { previewMapConversion, convertImportedMap, exportMapKml } from './lib/mapKmlCodec.js'
+import { convertDrawSpike, readDrawSpikeState, readMigratedIds, writeMigratedIds } from './lib/importDrawSpike.js'
+import { buildDocumentOverlay, effectiveHiddenGroups, itemBounds, MY_MAP_LAYER_IDS, syncDocumentOverlay, removeDocumentOverlay, restackDocumentOverlay } from './lib/mapDocumentOverlay.js'
+import useMyMapEditor from './useMyMapEditor.js'
+import { syncEditorOverlay, removeEditorOverlay } from './lib/mapEditorOverlay.js'
+import { bindEditorInteraction } from './lib/mapEditorInteraction.js'
 
-const SRC = 'my-map-src'
-// 기상 위험기상·낙뢰는 'top'에 있다. 이용자 지도는 그 아래여야 한다 — 조종사는
-// 기상을 보러 왔고, 자기 지도는 그 기상을 어디에 놓고 볼지 알려주는 바탕이다.
-const SLOT = 'middle'
-const TERRAIN_LAYER = 'terrain-hazard-shade'
-
-// 면 → 선 → 점 → 이름표. 전역으로 이 순서를 지켜야 점이 면에 가리지 않는다.
-// 이름표는 Point에만 붙인다 — 도형 묶음은 하위 도형마다 쪼개지면서 속성이 복제되므로,
-// 필터가 없으면 지점 하나가 이름표 수백 개가 된다.
-const LAYER_DEFS = [
-  { kind: 'fill', type: 'fill', geom: ['==', ['geometry-type'], 'Polygon'], paint: FILL_PAINT },
-  { kind: 'line', type: 'line', geom: ['in', ['geometry-type'], ['literal', ['LineString', 'Polygon']]], paint: LINE_PAINT },
-  { kind: 'circle', type: 'circle', geom: ['==', ['geometry-type'], 'Point'], paint: CIRCLE_PAINT },
-  { kind: 'label', type: 'symbol', geom: ['==', ['geometry-type'], 'Point'], paint: LABEL_PAINT, layout: LABEL_LAYOUT },
-]
-const LYR = (kind) => `my-map-${kind}`
-
-// 지도 카메라는 CSS가 아니라 JS 인자로 움직여서 App.css의 전역 안전망이 닿지 않는다.
-// 판정 방식은 useKimSurfaceWind.js의 getLowPowerState와 같다.
-function prefersReducedMotion() {
-  if (typeof window === 'undefined') return false
-  return !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+const VIEW_KEY = 'projectamo.my-map.view.v1'
+const viewKey = (key) => key === GUEST_MAP_SCOPE ? VIEW_KEY : `${VIEW_KEY}:${key}`
+function readView(key) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(viewKey(key)) || '{}')
+    if (!raw || typeof raw !== 'object') return {}
+    return {
+      currentId: typeof raw.currentId === 'string' ? raw.currentId : null,
+      ...Object.fromEntries(['visibleIds', 'hiddenGroups', 'hiddenItems', 'initialized'].map((key) => [key, Array.isArray(raw[key]) ? raw[key].filter((id) => typeof id === 'string') : []])),
+    }
+  } catch { return {} }
 }
+const toggle = (values, id) => { const next = new Set(values); if (next.has(id)) next.delete(id); else next.add(id); return next }
+const documentStub = (file) => ({ id: file.id, name: file.name, kind: 'imported', loaded: false, groups: [], items: [], source: { fileName: file.name }, file })
 
-function boundsOf(features) {
-  const bounds = new mapboxgl.LngLatBounds()
-  let any = false
-  const walk = (c) => { if (typeof c[0] === 'number') { bounds.extend([c[0], c[1]]); any = true } else c.forEach(walk) }
-  const geom = (g) => {
-    if (!g) return
-    if (g.type === 'GeometryCollection') g.geometries?.forEach(geom)
-    else if (g.coordinates) walk(g.coordinates)
-  }
-  for (const f of features) geom(f.geometry)
-  return any ? bounds : null
-}
-
-export default function useMyMap(mapRef, isStyleReady) {
-  const [files, setFiles] = useState(() => listMyMapFiles())
-  const [activeFileIds, setActiveFileIds] = useState(() => new Set())
-  const [layersByFile, setLayersByFile] = useState(() => new Map())
-  const [hidden, setHidden] = useState(() => new Set())
+export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPanel, panelOpen = false, interactionBusy = false, priorityLayers = [] } = {}) {
+  const { user, loading: authLoading } = useAuth()
+  const scopeKey = authLoading ? null : user?.id != null ? `account:${user.id}` : GUEST_MAP_SCOPE
+  const scopeRef = useRef(scopeKey); scopeRef.current = scopeKey
+  const persistence = useRef(null)
+  const [loadedScope, setLoadedScope] = useState(null)
+  const [storage, setStorage] = useState({ ready: false, account: false, states: {}, drafts: {}, guestMaps: [], error: null })
+  const [documents, setDocuments] = useState([])
+  const [view, setView] = useState({})
+  const [pendingRestore, setPendingRestore] = useState(null)
+  const [currentId, setCurrentId] = useState(view.currentId ?? null)
+  const [selectedId, setSelectedId] = useState(null)
+  const [mode, setMode] = useState(view.currentId ? 'view' : 'library')
+  const [visibleIds, setVisibleIds] = useState(() => new Set(view.visibleIds ?? []))
+  const [hiddenGroups, setHiddenGroups] = useState(() => new Set(view.hiddenGroups ?? []))
+  const [hiddenItems, setHiddenItems] = useState(() => new Set(view.hiddenItems ?? []))
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState(null)
-  const stateRef = useRef({ activeFileIds, layersByFile, hidden })
-  stateRef.current = { activeFileIds, layersByFile, hidden }
-
-  // 켜진 파일의 도형을 모아 소스와 레이어를 다시 만든다.
-  const rebuild = useCallback(() => {
-    const map = mapRef.current
-    if (!map || !isStyleReady) return
-    const { activeFileIds: active, layersByFile: byFile, hidden: hiddenSet } = stateRef.current
-
-    const features = []
-    const visibleFolderIds = []
-    for (const fileId of active) {
-      const list = byFile.get(fileId)
-      if (!list) continue
-      for (const layer of list) {
-        if (isLayerVisible(list, layer.id, hiddenSet)) visibleFolderIds.push(layer.id)
-        for (const f of layer.features) {
-          features.push({
-            ...f,
-            properties: {
-              ...f.properties,
-              __file: fileId,
-              __folder: layer.id,
-              // 글자색은 파일 것을 쓰고, 뒤에 깔리는 후광만 읽히도록 반대로 둔다.
-              __labelHalo: labelHaloFor(f.properties?.['label-color']),
-            },
-          })
-        }
-      }
-    }
-
-    const data = { type: 'FeatureCollection', features }
-    if (map.getSource(SRC)) {
-      map.getSource(SRC).setData(data)
-    } else {
-      map.addSource(SRC, { type: 'geojson', data })
-    }
-    for (const def of LAYER_DEFS) {
-      const id = LYR(def.kind)
-      const filter = ['all', def.geom, ['in', ['get', '__folder'], ['literal', visibleFolderIds]]]
-      if (map.getLayer(id)) { map.setFilter(id, filter); continue }
-      map.addLayer({
-        id, type: def.type, source: SRC, slot: SLOT, filter, paint: def.paint,
-        ...(def.layout ? { layout: def.layout } : {}),
-      })
-    }
-  }, [mapRef, isStyleReady])
-
-  useEffect(() => { rebuild() }, [rebuild, activeFileIds, layersByFile, hidden])
-
-  // 지형 근접도 'middle'이라, 나중에 켜면 이용자 지도를 덮는다. 스타일이 바뀔 때마다
-  // 순서를 다시 잡는다 — 기상 > 내 지도 > 지형 근접.
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map) return undefined
-    const restack = () => {
-      if (!map.getLayer(TERRAIN_LAYER) || !map.getLayer(LYR('fill'))) return
-      const ids = map.getStyle()?.layers?.map((l) => l.id) ?? []
-      if (ids.indexOf(TERRAIN_LAYER) > ids.indexOf(LYR('fill'))) {
-        map.moveLayer(TERRAIN_LAYER, LYR('fill'))
-      }
-    }
-    map.on('styledata', restack)
-    return () => { map.off('styledata', restack) }
-  }, [mapRef])
-
-  // 카메라는 움직여서 간다. 순간이동하면 어디로 얼마나 왔는지를 이용자가 스스로 다시 맞춰야 한다.
-  // 앱의 다른 카메라 이동(MapView.jsx)은 이미 500~800ms다 — 여기만 0이었다.
-  const fitTo = useCallback((features) => {
-    const map = mapRef.current
-    const bounds = boundsOf(features)
-    if (map && bounds) map.fitBounds(bounds, { padding: 60, duration: prefersReducedMotion() ? 0 : 700 })
-  }, [mapRef])
-
-  const openFile = useCallback(async (fileId, arrayBuffer, fileName) => {
-    setError(null)
-    let parsed
-    try {
-      setBusy('지도 내용 해석 중… 파일이 크면 시간이 걸릴 수 있습니다')
-      parsed = await parseMyMapFile(arrayBuffer, fileName)
-    } catch (e) {
-      setBusy(null)
-      setError(`${e?.stage ?? '파일 읽기'} 단계에서 실패: ${e?.message ?? e}`)
-      return null
-    }
-    setBusy('지도에 올리는 중…')
-    setLayersByFile((prev) => new Map(prev).set(fileId, parsed.list))
-    setActiveFileIds((prev) => new Set(prev).add(fileId))
-    setBusy(null)
-    return parsed
+  const [notice, setNotice] = useState(null)
+  // 기존 /draw 자료를 아직 옮기지 않았는지. 이전 기록은 계정 키별로 따로 둔다.
+  const [drawSpike, setDrawSpike] = useState({ pending: 0 })
+  const [drawRevision, setDrawRevision] = useState(0)
+  const initialized = useRef(new Set(view.initialized ?? []))
+  const pending = useRef(new Map()), removed = useRef(new Set()), openSequence = useRef(0)
+  const displayIntent = useRef(new Map([...visibleIds].map((id) => [id, true])))
+  const setDocumentVisible = useCallback((id, on) => {
+    displayIntent.current.set(id, on)
+    setVisibleIds((previous) => { const next = new Set(previous); if (on) next.add(id); else next.delete(id); return next })
   }, [])
+  const operations = useRef(new Map())
+  const beginOperation = useCallback((message) => {
+    const token = Symbol()
+    operations.current.set(token, message)
+    setBusy(message)
+    return () => {
+      operations.current.delete(token)
+      setBusy([...operations.current.values()].at(-1) ?? null)
+    }
+  }, [])
+  const state = useRef(null)
+  state.current = { documents, currentId, selectedId, mode, visibleIds, hiddenGroups, hiddenItems, panelOpen, interactionBusy, onOpenPanel, priorityLayers }
+  const wasPanelOpen = useRef(panelOpen)
+  useEffect(() => {
+    if (wasPanelOpen.current && !panelOpen) openSequence.current += 1
+    wasPanelOpen.current = panelOpen
+  }, [panelOpen])
+
+  const replaceDocument = useCallback((next) => {
+    setDocuments((previous) => previous.map((doc) => doc.id === next.id ? next : doc))
+    persistence.current?.save(next)
+  }, [])
+  const editing = useMyMapEditor({
+    document: documents.find((doc) => doc.id === currentId), active: loadedScope === scopeKey && mode === 'edit', selectedId, scopeKey,
+    onDocumentChange: replaceDocument, onSelect: setSelectedId, onExit: () => setMode('view'), onError: setError,
+  })
+  const editRef = useRef(editing)
+  editRef.current = { ...editing, documentId: currentId }
+
+  useEffect(() => {
+    if (!scopeKey || loadedScope !== scopeKey) return
+    try { localStorage.setItem(viewKey(scopeKey), JSON.stringify({ currentId, visibleIds: [...visibleIds], hiddenGroups: [...hiddenGroups], hiddenItems: [...hiddenItems], initialized: [...initialized.current] })) } catch { /* Preferences are independent from source-file saving. */ }
+  }, [currentId, visibleIds, hiddenGroups, hiddenItems, scopeKey, loadedScope])
+
+  const installDocument = useCallback((document) => {
+    if (removed.current.has(document.id)) return null
+    const loaded = { ...document, loaded: document.loaded !== false }
+    setDocuments((previous) => previous.some((d) => d.id === loaded.id) ? previous.map((d) => d.id === loaded.id ? loaded : d) : [...previous, loaded])
+    if (loaded.loaded && !initialized.current.has(loaded.id)) {
+      initialized.current.add(loaded.id)
+      const defaults = initialMapVisibility(loaded)
+      setHiddenGroups((previous) => new Set([...previous, ...defaults.groups]))
+      setHiddenItems((previous) => new Set([...previous, ...defaults.items]))
+    }
+    return loaded
+  }, [])
+
+  useLayoutEffect(() => {
+    const restored = scopeKey ? readView(scopeKey) : {}
+    setView(restored); setLoadedScope(scopeKey)
+    setDocuments(scopeKey ? listMyMapFiles(scopeKey).map(documentStub) : [])
+    setCurrentId(restored.currentId ?? null); setSelectedId(null); setMode(restored.currentId ? 'view' : 'library')
+    setVisibleIds(new Set(restored.visibleIds ?? [])); setHiddenGroups(new Set(restored.hiddenGroups ?? [])); setHiddenItems(new Set(restored.hiddenItems ?? []))
+    initialized.current = new Set(restored.initialized ?? [])
+    displayIntent.current = new Map((restored.visibleIds ?? []).map((id) => [id, true]))
+    pending.current = new Map(); removed.current = new Set(); openSequence.current += 1
+    operations.current.clear(); setBusy(null); setError(null); setNotice(null); setPendingRestore(null)
+    const account = Boolean(scopeKey && scopeKey !== GUEST_MAP_SCOPE)
+    setStorage({ ready: false, account, states: {}, drafts: {}, guestMaps: [], error: null })
+    if (!scopeKey) { persistence.current = null; return undefined }
+    const session = createMapPersistence({ scopeKey, account,
+      onInstall: installDocument,
+      onAck: (id, ack) => setDocuments((previous) => previous.map((doc) => doc.id !== id ? doc : ack.isCurrent ? { ...ack.document, loaded: true } : { ...doc, revision: ack.document.revision, createdAt: ack.document.createdAt })),
+      onState: (id, value) => setStorage((previous) => ({ ...previous, states: { ...previous.states, [id]: value } })),
+      onDrafts: (drafts) => setStorage((previous) => ({ ...previous, drafts })),
+      onGuestMaps: (guestMaps) => setStorage((previous) => ({ ...previous, guestMaps })),
+      onError: (message) => setStorage((previous) => ({ ...previous, error: message })),
+    })
+    persistence.current = session
+    void session.start().then(() => { if (persistence.current === session) setStorage((previous) => ({ ...previous, ready: true })) }).catch((failure) => { if (persistence.current === session) setStorage((previous) => ({ ...previous, ready: true, error: failure.message })) })
+    return () => { session.dispose(); if (persistence.current === session) persistence.current = null }
+  }, [scopeKey, installDocument])
+
+  const ensureLoaded = useCallback(async (id) => {
+    const existing = state.current.documents.find((d) => d.id === id)
+    if (!existing) return null
+    if (existing.loaded !== false) return existing
+    if (pending.current.has(id)) return pending.current.get(id)
+    const task = (async () => {
+      const owner = scopeRef.current, session = persistence.current
+      const finish = beginOperation('보관한 지도 여는 중…'); setError(null)
+      try {
+        if (existing.kind === 'personal') return await session?.load(id)
+        const saved = await loadMyMapFile(id, owner)
+        if (!saved.ok) throw new Error('보관한 원본 파일을 찾지 못했습니다. 파일을 다시 열어주세요.')
+        const document = await importMapDocument(saved.buffer, existing.source.fileName, { id })
+        if (scopeRef.current !== owner) return null
+        return installDocument({ ...document, file: existing.file })
+      } catch (e) { if (scopeRef.current === owner && e.name !== 'AbortError') setError((e.stage ? e.stage + ': ' : '') + e.message); return null }
+      finally { pending.current.delete(id); finish() }
+    })()
+    pending.current.set(id, task)
+    return task
+  }, [installDocument, beginOperation])
+
+  useEffect(() => {
+    const ids = new Set([view.currentId, ...(view.visibleIds ?? [])].filter(Boolean))
+    for (const id of ids) if (documents.some((doc) => doc.id === id && doc.loaded === false)) void ensureLoaded(id)
+  }, [ensureLoaded, view, documents])
+
+  const fitItems = useCallback((items, { onlyOutside = false } = {}) => {
+    const map = mapRef.current
+    if (!map) return
+    const bounds = items.map(itemBounds).filter(Boolean)
+    if (!bounds.length) return
+    const box = [[Math.min(...bounds.map((b) => b[0][0])), Math.min(...bounds.map((b) => b[0][1]))], [Math.max(...bounds.map((b) => b[1][0])), Math.max(...bounds.map((b) => b[1][1]))]]
+    const center = [(box[0][0] + box[1][0]) / 2, (box[0][1] + box[1][1]) / 2]
+    const panel = document.querySelector('.my-map-panel')?.getBoundingClientRect()
+    const canvas = map.getCanvas().getBoundingClientRect(), point = map.project(center)
+    const covered = panel && point.x + canvas.left < panel.right && point.y + canvas.top > panel.top && point.y + canvas.top < panel.bottom
+    if (onlyOutside && map.getBounds().contains(center) && !covered) return
+    const mobile = canvas.width < 720
+    map.fitBounds(box, { padding: { top: 72, bottom: 110, left: mobile ? 36 : Math.min((panel?.width ?? 0) + 40, canvas.width * 0.45), right: 40 }, maxZoom: 12, duration: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 0 : 500 })
+  }, [mapRef])
+
+  const openDocument = useCallback(async (id) => {
+    const seq = ++openSequence.current
+    const wasVisible = displayIntent.current.get(id) === true
+    setDocumentVisible(id, true)
+    setCurrentId(id); setMode('view'); setSelectedId(null)
+    const doc = await ensureLoaded(id)
+    if (!doc || seq !== openSequence.current) return
+    if (!wasVisible && displayIntent.current.get(id) === true) fitItems(doc.items)
+  }, [ensureLoaded, fitItems, setDocumentVisible])
 
   const addFile = useCallback(async (file) => {
     if (!file) return
-    setError(null)
-    setBusy('파일 읽는 중…')
-    let buffer
+    const owner = scopeRef.current
+    const seq = ++openSequence.current, id = newMapId()
+    const finish = beginOperation('지도 내용 해석 중…'); setError(null); setNotice(null)
     try {
-      buffer = await file.arrayBuffer()
-    } catch (e) {
-      setBusy(null)
-      setError(`파일 읽기 단계에서 실패: ${e?.message ?? e}`)
-      return
-    }
-    const saved = await saveMyMapFile(file)
-    // 보관에 실패해도 이번에 연 파일은 보여준다. 보관 실패가 표시 실패가 되면 안 된다.
-    const entry = saved.ok
-      ? saved.entry
-      : { id: `tmp-${file.name}-${file.size}`, name: file.name, size: file.size, addedAt: 0 }
-    if (!saved.ok) setError('파일을 보관하지 못했습니다. 이번에는 볼 수 있지만 다음에 다시 올려야 합니다.')
-    setFiles((prev) => (prev.some((f) => f.id === entry.id) ? prev : [...prev, entry]))
-    const parsed = await openFile(entry.id, buffer, file.name)
-    if (parsed) fitTo(parsed.list.flatMap((l) => l.features))
-  }, [openFile, fitTo])
+      const buffer = await file.arrayBuffer()
+      const document = await importMapDocument(buffer, file.name, { id })
+      const saved = await saveMyMapFile(file, { id, scopeKey: owner })
+      if (scopeRef.current !== owner) return
+      if (!saved.ok) setNotice('이 파일을 기기에 보관하지 못했습니다. 현재는 볼 수 있지만 다시 열 때 원본 파일이 필요합니다.')
+      installDocument({ ...document, file: saved.entry ?? { id, name: file.name, size: file.size, addedAt: 0 } })
+      setDocumentVisible(id, true)
+      if (seq === openSequence.current) { setCurrentId(id); setMode('view'); setSelectedId(null); fitItems(document.items) }
+    } catch (e) { if (scopeRef.current === owner) setError((e.stage ? e.stage + ': ' : '') + e.message) }
+    finally { finish() }
+  }, [fitItems, installDocument, beginOperation, setDocumentVisible])
 
-  const toggleFile = useCallback(async (id) => {
-    const { activeFileIds: active, layersByFile: byFile } = stateRef.current
-    if (active.has(id)) {
-      setActiveFileIds((prev) => { const next = new Set(prev); next.delete(id); return next })
-      return
-    }
-    if (byFile.has(id)) {
-      setActiveFileIds((prev) => new Set(prev).add(id))
-      return
-    }
-    setBusy('보관한 파일 여는 중…')
-    const loaded = await loadMyMapFile(id)
-    if (!loaded.ok) {
-      setBusy(null)
-      setError('보관한 파일을 찾지 못했습니다. 다시 올려주세요.')
-      return
-    }
-    const entry = files.find((f) => f.id === id)
-    const parsed = await openFile(id, loaded.buffer, entry?.name ?? '')
-    if (parsed) fitTo(parsed.list.flatMap((l) => l.features))
-  }, [files, openFile, fitTo])
+  const toggleDocument = useCallback(async (id) => {
+    if (removed.current.has(id)) return
+    const on = displayIntent.current.get(id) !== true
+    setDocumentVisible(id, on)
+    if (on) await ensureLoaded(id)
+  }, [ensureLoaded, setDocumentVisible])
 
-  const removeFile = useCallback(async (id) => {
-    await deleteMyMapFile(id)
-    setFiles((prev) => prev.filter((f) => f.id !== id))
-    setActiveFileIds((prev) => { const next = new Set(prev); next.delete(id); return next })
-    setLayersByFile((prev) => { const next = new Map(prev); next.delete(id); return next })
+  const removeDocument = useCallback(async (id) => {
+    const owner = scopeRef.current
+    const existing = state.current.documents.find((d) => d.id === id)
+    if (!existing) return
+    if (existing.kind === 'personal') {
+      try { if (!await persistence.current?.remove(existing)) return }
+      catch (failure) { if (scopeRef.current === owner) setError(failure.message); return }
+    }
+    if (existing.file?.addedAt) {
+      const result = await deleteMyMapFile(id, owner)
+      if (!result.ok) { setError('보관한 파일을 삭제하지 못했습니다. 다시 시도하세요.'); return }
+    }
+    if (scopeRef.current !== owner) return
+    removed.current.add(id)
+    setDocuments((previous) => previous.filter((d) => d.id !== id))
+    setDocumentVisible(id, false)
+    setHiddenGroups((previous) => new Set([...previous].filter((key) => !key.startsWith(id + ':'))))
+    setHiddenItems((previous) => new Set([...previous].filter((key) => !key.startsWith(id + ':'))))
+    initialized.current.delete(id)
+    if (state.current.currentId === id) { setCurrentId(null); setSelectedId(null); setMode('library') }
+  }, [setDocumentVisible])
+
+  const draftPending = useRef(null), draftTimer = useRef(null), activeDraftIds = useRef(new Set())
+  const flushDraft = useCallback(() => {
+    clearTimeout(draftTimer.current)
+    const pendingDraft = draftPending.current
+    draftPending.current = null
+    if (pendingDraft) void pendingDraft.session.writeDraft(pendingDraft.id, pendingDraft.value)
   }, [])
-
-  const toggleFolder = useCallback((folderId) => {
-    setHidden((prev) => {
-      const next = new Set(prev)
-      if (next.has(folderId)) next.delete(folderId)
-      else next.add(folderId)
-      return next
-    })
-  }, [])
-
-  // 켜진 파일의 폴더를 한 번에 끄고 켠다. 폴더가 101개라 하나씩 누르게 두면 안 된다.
-  const setAllFolders = useCallback((on) => {
-    const { activeFileIds: active, layersByFile: byFile } = stateRef.current
-    if (on) { setHidden(new Set()); return }
-    const next = new Set()
-    for (const fileId of active) {
-      for (const layer of byFile.get(fileId) ?? []) next.add(layer.id)
-    }
-    setHidden(next)
-  }, [])
-
-  // 꺼져 있던 폴더면 켜면서 옮긴다 — 옮겨갔는데 아무것도 없으면 뜻이 없다.
-  const flyToFolder = useCallback((folderId) => {
-    const { layersByFile: byFile } = stateRef.current
-    for (const list of byFile.values()) {
-      const layer = list.find((l) => l.id === folderId)
-      if (!layer) continue
-      setHidden((prev) => {
-        const next = new Set(prev)
-        next.delete(folderId)
-        let p = layer.parentId
-        const byId = new Map(list.map((l) => [l.id, l]))
-        while (p) { next.delete(p); p = byId.get(p)?.parentId ?? null }
-        return next
-      })
-      const prefix = `${layer.path.join('/')}/`
-      const own = list.filter((l) => l.id === folderId || l.path.join('/').startsWith(prefix))
-      fitTo(own.flatMap((l) => l.features))
+  useEffect(() => () => { flushDraft(); activeDraftIds.current.clear() }, [scopeKey, flushDraft])
+  useEffect(() => {
+    if (loadedScope !== scopeKey || !persistence.current) return
+    if (mode !== 'edit') {
+      flushDraft()
+      for (const id of activeDraftIds.current) void persistence.current.writeDraft(id, null)
+      activeDraftIds.current.clear()
       return
     }
-  }, [fitTo])
+    if (!currentId) return
+    for (const id of activeDraftIds.current) if (id !== currentId) { void persistence.current.writeDraft(id, null); activeDraftIds.current.delete(id) }
+    if (draftPending.current && draftPending.current.id !== currentId) flushDraft()
+    const { draft, geometryEdit, targetGroupId } = editing.editor
+    const doc = documents.find((entry) => entry.id === currentId)
+    if (!doc) return
+    const unfinished = Boolean(geometryEdit || draft?.coordinates.length)
+    if (!unfinished && !activeDraftIds.current.has(currentId)) return
+    let value = null
+    if (unfinished) {
+      const base = geometryEdit ? doc.items.find((item) => item.id === geometryEdit.itemId) : null
+      value = { id: currentId, documentRevision: doc.revision, draft, geometryEdit, targetGroupId, baseGeometry: base?.geometry ?? null, baseDefinition: base?.definition ?? null }
+      activeDraftIds.current.add(currentId)
+    } else activeDraftIds.current.delete(currentId)
+    draftPending.current = { session: persistence.current, id: currentId, value }
+    clearTimeout(draftTimer.current)
+    if (unfinished) draftTimer.current = setTimeout(flushDraft, 250)
+    else flushDraft()
+  }, [editing.editor, currentId, mode, documents, scopeKey, loadedScope, flushDraft])
+  useEffect(() => {
+    const flush = () => flushDraft()
+    window.addEventListener('pagehide', flush)
+    return () => window.removeEventListener('pagehide', flush)
+  }, [flushDraft])
+  useEffect(() => {
+    const reconnect = () => {
+      const session = persistence.current
+      for (const [id, value] of Object.entries(storage.states)) if (value.state === 'offline') void session?.retry(id).catch((failure) => { if (persistence.current === session) setError(failure.message) })
+    }
+    window.addEventListener('online', reconnect)
+    return () => window.removeEventListener('online', reconnect)
+  }, [storage.states])
+  useEffect(() => {
+    const beforeUnload = (event) => {
+      const unfinished = Boolean(editRef.current.editor.geometryEdit || editRef.current.editor.draft?.coordinates.length)
+      const pendingSave = Object.values(storage.states).some((value) => !['synced', 'localOnly'].includes(value.state) || value.error)
+      if (!unfinished && !pendingSave) return
+      flushDraft(); event.preventDefault(); event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', beforeUnload)
+    return () => window.removeEventListener('beforeunload', beforeUnload)
+  }, [storage.states, flushDraft])
+  useEffect(() => {
+    if (!pendingRestore || mode !== 'edit' || pendingRestore.id !== currentId) return
+    const result = editing.restoreEditorDraft(pendingRestore)
+    if (result.ok) {
+      persistence.current?.consumeDraft(currentId)
+    }
+    setPendingRestore(null)
+  }, [pendingRestore, mode, currentId])
 
-  return {
-    files, activeFileIds, layersByFile, hidden, busy, error,
-    addFile, toggleFile, removeFile, toggleFolder, setAllFolders, flyToFolder,
+  const selectItem = useCallback((id) => {
+    const doc = state.current.documents.find((d) => d.id === state.current.currentId)
+    const item = doc?.items.find((i) => i.id === id)
+    if (!item) return
+    setSelectedId(id); fitItems([item], { onlyOutside: true })
+  }, [fitItems])
+  const toggleGroup = useCallback((id) => setHiddenGroups((previous) => toggle(previous, scopeId(state.current.currentId, id))), [])
+  const toggleItem = useCallback((id) => setHiddenItems((previous) => toggle(previous, scopeId(state.current.currentId, id))), [])
+  const setAllVisible = useCallback((on) => {
+    const doc = state.current.documents.find((d) => d.id === state.current.currentId)
+    if (!doc) return
+    const update = (previous, ids) => { const next = new Set(previous); for (const id of ids) if (on) next.delete(scopeId(doc.id, id)); else next.add(scopeId(doc.id, id)); return next }
+    setHiddenGroups((previous) => update(previous, doc.groups.map((g) => g.id)))
+    setHiddenItems((previous) => update(previous, doc.items.map((i) => i.id)))
+    if (on) setDocumentVisible(doc.id, true)
+  }, [setDocumentVisible])
+  const fitDocument = useCallback(() => fitItems(state.current.documents.find((d) => d.id === state.current.currentId)?.items ?? []), [fitItems])
+  const fitGroup = useCallback((id) => {
+    const doc = state.current.documents.find((d) => d.id === state.current.currentId)
+    if (!doc) return
+    const children = new Set([id])
+    let size
+    do { size = children.size; doc.groups.forEach((g) => { if (children.has(g.parentId)) children.add(g.id) }) } while (children.size !== size)
+    fitItems(doc.items.filter((i) => children.has(i.groupId)))
+  }, [fitItems])
+
+  useEffect(() => {
+    if (!scopeKey) { setDrawSpike({ pending: 0 }); return }
+    const saved = readDrawSpikeState()
+    const migrated = readMigratedIds(scopeKey)
+    setDrawSpike({ pending: (saved?.features ?? []).filter((feature) => feature?.id != null && !migrated.has(String(feature.id))).length })
+  }, [scopeKey, drawRevision])
+
+  const data = useMemo(() => buildDocumentOverlay(documents), [documents])
+  const hidden = useMemo(() => effectiveHiddenGroups(documents, hiddenGroups), [documents, hiddenGroups])
+  useEffect(() => {
+    if (!isStyleReady || !mapRef.current) return
+    const hiddenForPreview = new Set(hiddenItems)
+    if (editing.editor.geometryEdit) hiddenForPreview.add(scopeId(currentId, editing.editor.geometryEdit.itemId))
+    syncDocumentOverlay(mapRef.current, { data, visibleIds, hiddenGroups: hidden, hiddenItems: hiddenForPreview, selectedKey: selectedId ? scopeId(currentId, selectedId) : null })
+  }, [mapRef, isStyleReady, styleRevision, data, visibleIds, hidden, hiddenItems, currentId, selectedId, editing.editor.geometryEdit?.itemId])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return
+    if (mode === 'edit' && panelOpen) syncEditorOverlay(map, editing.editor)
+    else removeEditorOverlay(map)
+  }, [mapRef, isStyleReady, styleRevision, mode, panelOpen, editing.editor])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady || mode !== 'edit' || !panelOpen) return undefined
+    return bindEditorInteraction(map, () => editRef.current)
+  }, [mapRef, isStyleReady, styleRevision, mode, panelOpen])
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !isStyleReady) return undefined
+    const click = (event) => {
+      if (state.current.interactionBusy || state.current.mode === 'edit') return
+      const priority = state.current.priorityLayers.filter((id) => map.getLayer(id))
+      if (priority.length && map.queryRenderedFeatures(event.point, { layers: priority }).length) return
+      const layers = MY_MAP_LAYER_IDS.filter((id) => map.getLayer(id))
+      if (!layers.length) return
+      const hit = map.queryRenderedFeatures(event.point, { layers })[0]
+      if (!hit) { if (state.current.panelOpen) setSelectedId(null); return }
+      const { __file: docId, itemId } = hit.properties
+      if (!docId || !itemId) return
+      openSequence.current += 1
+      setCurrentId(docId); setMode('view'); setSelectedId(itemId)
+      state.current.onOpenPanel?.()
+    }
+    map.on('click', click)
+    const restack = () => restackDocumentOverlay(map)
+    map.on('styledata', restack)
+    return () => { map.off('click', click); map.off('styledata', restack) }
+  }, [mapRef, isStyleReady, styleRevision])
+  useEffect(() => {
+    const map = mapRef.current
+    return () => { if (map?.isStyleLoaded()) { removeEditorOverlay(map); removeDocumentOverlay(map) } }
+  }, [mapRef])
+
+  // 안내와 오류는 직전 동작의 결과다. 다음 화면으로 넘어가면 지운다.
+  // 그대로 두면 편집 화면까지 따라와 언제 생긴 말인지 알 수 없게 된다.
+  const clearMessages = () => { setError(null); setNotice(null) }
+  const navigate = (next) => editing.requestNavigation(() => { clearMessages(); return next() })
+  const saveCopy = async (id, { open = true } = {}) => {
+    const doc = state.current.documents.find((entry) => entry.id === id)
+    if (!doc || doc.loaded === false) return null
+    const session = persistence.current
+    const copy = copyMapDocument(doc, { name: `${doc.name} 복구 사본` })
+    installDocument(copy); session.save(copy); setDocumentVisible(copy.id, true)
+    await session.flushRecovery(copy.id)
+    if (session !== persistence.current) return null
+    if (open) { setCurrentId(copy.id); setSelectedId(null); setMode('view') }
+    return copy
   }
+  const runStorageAction = async (action) => {
+    const session = persistence.current
+    try { return await action(session) }
+    catch (failure) { if (persistence.current === session && failure.name !== 'AbortError') setError(failure.message); return null }
+  }
+  return { documents, currentId, selectedId, mode, visibleIds, hiddenGroups, hiddenItems, busy, error, notice, storage, drawSpike, ...editing,
+    dismissMessages: clearMessages,
+    retrySave: (id) => runStorageAction((session) => session.retry(id)),
+    copyConflict: (id) => navigate(() => runStorageAction(() => saveCopy(id))),
+    openServerVersion: (id) => navigate(() => runStorageAction(async (session) => {
+      if (!await saveCopy(id, { open: false })) return
+      const document = await session.openServer(id)
+      if (document && persistence.current === session) { setCurrentId(id); setSelectedId(null); setMode('view'); setNotice('이전 변경은 복구 사본에 보관하고 계정의 최신 지도를 열었습니다.') }
+    })),
+    restoreDraft: (id) => navigate(() => runStorageAction(async (session) => {
+      const record = storage.drafts[id]
+      if (!record) return
+      const seq = ++openSequence.current
+      const document = await ensureLoaded(id)
+      if (session !== persistence.current || seq !== openSequence.current || document?.kind !== 'personal' || document.loaded === false) return
+      setCurrentId(id); setMode('edit'); setPendingRestore(record)
+    })),
+    discardRecoveredDraft: (id) => runStorageAction((session) => session.discardDraft(id)),
+    importGuestMap: (id) => navigate(() => runStorageAction(async (session) => {
+      const guest = await session.guestDocument(id)
+      if (!guest || persistence.current !== session) return
+      const copy = copyMapDocument(guest)
+      installDocument(copy); session.save(copy); setDocumentVisible(copy.id, true); setCurrentId(copy.id); setMode('view'); setSelectedId(null)
+      setNotice('비로그인 지도를 개인 사본으로 가져왔습니다. 기기의 원본은 남아 있습니다.')
+    })),
+    importDrawSpike: () => navigate(() => runStorageAction(async (session) => {
+      if (!storage.ready) return null
+      const scope = scopeRef.current
+      const migrated = readMigratedIds(scope)
+      const result = convertDrawSpike(readDrawSpikeState(), { skipIds: migrated })
+      if (!result.document.items.length) { setDrawRevision((value) => value + 1); setNotice('이전할 새 그리기 자료가 없습니다.'); return null }
+      installDocument(result.document); session.save(result.document); setDocumentVisible(result.document.id, true)
+      // 저장을 확인한 뒤에만 이전 기록을 남긴다. 실패하면 /draw 원본으로 다시 시도할 수 있다.
+      await session.flushRecovery(result.document.id)
+      if (session !== persistence.current) return null
+      writeMigratedIds(scope, new Set([...migrated, ...result.migratedIds]))
+      setDrawRevision((value) => value + 1)
+      setCurrentId(result.document.id); setSelectedId(null); setMode('view')
+      setNotice([`그리기 자료 ${result.counts.converted}개를 개인 지도로 옮겼습니다. 기존 그리기의 원본은 그대로 남아 있습니다.`, ...result.warnings].join(' '))
+      return result.document
+    })),
+    previewConversion: (id) => runStorageAction(async () => {
+      const document = await ensureLoaded(id)
+      if (!document || document.loaded === false) { setError('지도를 먼저 열어주세요.'); return null }
+      return { id: document.id, name: document.name, kind: document.kind, ...previewMapConversion(document) }
+    }),
+    convertDocument: (id, { name } = {}) => navigate(() => runStorageAction(async (session) => {
+      if (!storage.ready) return null
+      const source = await ensureLoaded(id)
+      if (!source || source.loaded === false) { setError('지도를 먼저 열어주세요.'); return null }
+      const copy = convertImportedMap(source, { name })
+      installDocument(copy); session.save(copy); setDocumentVisible(copy.id, true)
+      await session.flushRecovery(copy.id)
+      if (session !== persistence.current) return null
+      setCurrentId(copy.id); setSelectedId(null); setMode('view')
+      setNotice('개인 편집본을 만들었습니다. 가져온 원본은 그대로 남아 있습니다.')
+      return copy
+    })),
+    exportDocument: (id, scope = {}) => runStorageAction(async () => {
+      const document = await ensureLoaded(id)
+      if (!document || document.loaded === false) { setError('지도를 먼저 열어주세요.'); return null }
+      return { fileName: `${String(document.name || '내 지도').replace(/[\\/:*?"<>|]/g, '_')}.kml`, kml: exportMapKml(document, scope) }
+    }),
+    createDocument: (name) => navigate(() => {
+      if (!storage.ready) return
+      const doc = createMapDocument(name)
+      installDocument(doc); persistence.current.save(doc); setDocumentVisible(doc.id, true); setCurrentId(doc.id); setSelectedId(null); setMode('edit')
+    }),
+    startEditing: (id = currentId) => navigate(() => {
+      const doc = state.current.documents.find((entry) => entry.id === id)
+      if (doc?.kind !== 'personal' || doc.loaded === false) { setError('개인 지도를 먼저 열어주세요.'); return }
+      setCurrentId(id); setMode('edit')
+    }),
+    addFile: (file) => navigate(() => addFile(file)), openDocument: (id) => navigate(() => openDocument(id)),
+    toggleDocument, removeDocument, selectItem, clearSelection: () => setSelectedId(null),
+    showLibrary: () => navigate(() => { openSequence.current += 1; setMode('library'); setSelectedId(null) }),
+    toggleGroup, toggleItem, setAllVisible, fitGroup, fitDocument }
 }

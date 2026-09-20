@@ -51,7 +51,7 @@ function MainAppShell() {
   const [organizationEntryError, setOrganizationEntryError] = useState(null)
   const [organizationEntryLoading, setOrganizationEntryLoading] = useState(false)
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const [activePanel, setActivePanel] = useState(null)
+  const [activePanel, setActivePanelRaw] = useState(null)
   const [selectedAirport, setSelectedAirport] = useState(() => {
     // 딥링크: ?airport=RKSI 로 공항패널 바로 열기 (공유 링크 + Playwright 캡처용)
     const p = new URLSearchParams(window.location.search).get('airport')
@@ -63,10 +63,16 @@ function MainAppShell() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [mobileTask, setMobileTask] = useState('map')
   const [layerCounts, setLayerCounts] = useState({ aviation: 0, met: 0, traffic: 0 })
-  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchOpen, setSearchOpenRaw] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const mapRef = useRef(null)
+  const requestNavigation = useCallback((next) => {
+    if (mapRef.current?.requestMapNavigation) return mapRef.current.requestMapNavigation(next)
+    next(); return true
+  }, [])
+  const setActivePanel = useCallback((next) => requestNavigation(() => setActivePanelRaw(next)), [requestNavigation])
+  const setSearchOpen = useCallback((next) => next ? requestNavigation(() => setSearchOpenRaw(next)) : setSearchOpenRaw(next), [requestNavigation])
   const isMobile = useIsMobile()
   const { weatherData, requestDeferredWeatherData } = useWeatherPolling()
   const { hasUpdate, markSeen, isFirstVisit } = useLastSeenVersion()
@@ -237,10 +243,12 @@ function MainAppShell() {
 
   // Map the mobile task switcher onto the existing activePanel mechanism.
   function selectMobileTask(task) {
-    setMobileTask(task)
-    setSelectedAirport(null) // switching tasks dismisses the airport detail panel
-    if (task === 'route') setActivePanel('route-check')
-    else setActivePanel((cur) => (['aviation', 'met', 'route-check'].includes(cur) ? null : cur))
+    requestNavigation(() => {
+      setMobileTask(task)
+      setSelectedAirport(null)
+      if (task === 'route') setActivePanelRaw('route-check')
+      else setActivePanelRaw((cur) => (['aviation', 'met', 'route-check', 'my-map'].includes(cur) ? null : cur))
+    })
   }
 
   return (
@@ -254,8 +262,9 @@ function MainAppShell() {
         hasUpdate={hasUpdate}
         layerCounts={layerCounts}
         onSearchOpen={() => setSearchOpen(true)}
-        onProfileClick={() => previewMode ? window.location.assign('/') : (user ? setAccountOpen(true) : setAuthOpen(true))}
-        onHelp={tour.restart}
+        onNavigate={(href) => requestNavigation(() => window.location.assign(href))}
+        onProfileClick={() => requestNavigation(() => previewMode ? window.location.assign('/') : (user ? setAccountOpen(true) : setAuthOpen(true)))}
+        onHelp={() => requestNavigation(tour.restart)}
       />
       <main className="map-shell">
         <MapView
@@ -293,6 +302,7 @@ function MainAppShell() {
           onOpenRoutePanel={() => setActivePanel('route-check')}
           onOpenCustomAreaPanel={() => setActivePanel('custom-area')}
           onOpenMetPanel={() => setActivePanel('met')}
+          onOpenMyMapPanel={() => { setMobileTask('map'); setActivePanel('my-map') }}
         />
       </main>
       <AirportPanel
@@ -314,6 +324,7 @@ function MainAppShell() {
       {isMobile && mobileTask === 'more' && !selectedAirport && (
         <MobileMoreMenu
           onSearch={() => setSearchOpen(true)}
+          onMyMap={() => { setMobileTask('map'); setActivePanel('my-map') }}
           onSettings={() => togglePanel('settings')}
           onUpdates={() => togglePanel('updates')}
           onAccount={() => previewMode ? window.location.assign('/') : setAuthOpen(true)}

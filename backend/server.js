@@ -36,6 +36,7 @@ import { recordBoot } from './src/admin/process-health.js'
 import { getDb } from './src/db/index.js'
 import { createMeRouter } from './src/me/presets.js'
 import { createRoutesRouter } from './src/me/routes.js'
+import { createMyMapsRouter } from './src/maps/router.js'
 import { createAlertsRouter } from './src/me/alerts.js'
 import { createPushRouter } from './src/me/push.js'
 import { createDevRouter } from './src/dev/scenario.js'
@@ -105,7 +106,10 @@ app.disable('x-powered-by')
 app.set('trust proxy', true)
 // 보안 헤더. CSP·CORP·COEP는 끔 — 지도 타일/`/data` 이미지의 교차출처 로딩을 깨지 않기 위함(그건 nginx/프론트가 담당).
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false, crossOriginEmbedderPolicy: false }))
-app.use(express.json({ limit: '1mb' }))
+const defaultJsonParser = express.json({ limit: '1mb' })
+// Maps parse after session/authentication setup with their own measured payload limit.
+// Keep the existing request limit for all other APIs.
+app.use((req, res, next) => /^\/api\/me\/maps(?:\/|$)/.test(req.path) ? next() : defaultJsonParser(req, res, next))
 app.use(compression())
 
 // #7 인증: (개발) CORS credentials + 세션. 공개 API는 saveUninitialized:false라 세션쿠키 안 생김.
@@ -264,6 +268,7 @@ if (process.env.NODE_ENV !== 'test') {
       : [process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173', 'http://localhost:5173'],
   })
   app.use('/api/me/organizations', createMeOrganizationsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
+  app.use('/api/me/maps', createMyMapsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
   app.use('/api/admin/organizations', createAdminOrganizationsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
   app.use('/api/organizations', createOrganizationRouter({
     trustedMutationOrigin: organizationMutationOrigin,

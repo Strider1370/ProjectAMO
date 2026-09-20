@@ -60,7 +60,7 @@ const PANEL_MAP = {
   설정:            'settings',
 }
 
-function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick, onHelp }) {
+function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUpdate, layerCounts, onSearchOpen, onProfileClick, onHelp, onNavigate }) {
   const { user } = useAuth()
   const hasHover = useHasHover()
   const [isUtilityOpen, setIsUtilityOpen] = useState(false)
@@ -126,7 +126,7 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
           {topItems.filter((item) => hasHover || !item.pointerOnly).map((item) => {
             const panelId = PANEL_MAP[item.label]
             const handleClick = item.href
-              ? () => window.location.assign(item.href)
+              ? () => onNavigate ? onNavigate(item.href) : window.location.assign(item.href)
               : panelId ? () => onPanelToggle(panelId) : undefined
             return (
               <SidebarButton

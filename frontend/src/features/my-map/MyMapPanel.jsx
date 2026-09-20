@@ -1,242 +1,290 @@
-import { useMemo, useRef, useState } from 'react'
-import { Check, ChevronRight, Crosshair, Plus, X } from 'lucide-react'
-import { Spinner } from '../../shared/ui/fluent.js'
-import { isLayerVisible } from './lib/kmlFolderTree.js'
-import { visibleRows, hasChildren, toggleExpanded, totalFeatures } from './lib/folderView.js'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ChevronDown, ChevronRight, Crosshair, Eye, EyeOff, FileUp,
+  Folder, LoaderCircle, MapPinned, Plus, Trash2, X,
+} from 'lucide-react'
+import { Button, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle } from '../../shared/ui/fluent.js'
+import useIsMobile from '../../shared/ui/useIsMobile.js'
+import MobileSheet from '../../shared/ui/MobileSheet.jsx'
+import MyMapDetail from './MyMapDetail.jsx'
+import MyMapFileActions from './MyMapFileActions.jsx'
+import MyMapEditor from './MyMapEditor.jsx'
+import MyMapStorageStatus from './MyMapStorageStatus.jsx'
+import {
+  buildMapPanelTree, documentGroupCount, documentItemCount, documentScopedId,
+  filterMapPanelTree, flattenMapPanelRows, selectedItemReveal,
+} from './lib/mapPanelRows.js'
 import './MyMapPanel.css'
 
-const mb = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`)
+const ITEMS_PER_PAGE = 120
 
-export default function MyMapPanel({ myMap }) {
-  const fileInputRef = useRef(null)
-  const [expanded, setExpanded] = useState(() => new Set())
-  const [query, setQuery] = useState('')
-  const [dragOver, setDragOver] = useState(false)
-  const [addOpen, setAddOpen] = useState(false)
+function sourceLabel(document) {
+  if (document.kind === 'personal') return '개인 지도'
+  if (document.kind === 'organization') return '기관 지도'
+  return '가져온 지도'
+}
 
-  const { files, activeFileIds, layersByFile, hidden, busy, error } = myMap
+function mapItemIcon(kind) {
+  return kind === 'point' ? '●' : kind === 'line' ? '━' : kind === 'polygon' ? '⬠' : kind === 'circle' ? '○' : '◇'
+}
 
-  // 파일이 하나도 없으면 올리는 네모가 늘 열려 있다. 하나라도 생기면 접고
-  // '파일 추가'로 다시 연다 — 목록이 주인공이 되어야 한다.
-  const dropOpen = files.length === 0 || addOpen
+function documentVisible(document, visibleIds) {
+  return visibleIds?.has?.(document.id) ?? false
+}
 
-  const openPicker = () => fileInputRef.current?.click()
-  const takeFile = (file) => {
-    if (!file) return
-    setAddOpen(false)
-    myMap.addFile(file)
+function groupVisible(document, groupId, hiddenGroups) {
+  const byId = new Map((document.groups ?? []).map((group) => [group.id, group]))
+  const seen = new Set()
+  let currentId = groupId
+  while (currentId && !seen.has(currentId)) {
+    if (hiddenGroups?.has?.(documentScopedId(document.id, currentId))) return false
+    seen.add(currentId)
+    currentId = byId.get(currentId)?.parentId ?? null
   }
+  return true
+}
 
-  const activeFiles = useMemo(
-    () => files.filter((f) => activeFileIds.has(f.id) && layersByFile.has(f.id)),
-    [files, activeFileIds, layersByFile],
+function selectedItem(document, selectedId) {
+  return document?.items?.find((item) => item.id === selectedId) ?? null
+}
+
+function RemoveDocumentDialog({ document, onClose, onConfirm }) {
+  const imported = document?.kind === 'imported'
+  return (
+    <Dialog open={Boolean(document)} onOpenChange={(_, data) => { if (!data.open) onClose() }}>
+      <DialogSurface>
+        <DialogBody>
+          <DialogTitle>{imported ? '원본 파일을 삭제할까요?' : '지도를 삭제할까요?'}</DialogTitle>
+          <DialogContent>
+            <p><strong>{document?.name}</strong> · {documentItemCount(document ?? {}).toLocaleString()}개 항목</p>
+            <p>{imported ? '이 파일의 지도 표시와 원본 항목을 모두 제거합니다.' : '삭제한 지도는 되돌릴 수 없습니다.'}</p>
+          </DialogContent>
+          <DialogActions>
+            <Button appearance="secondary" onClick={onClose}>취소</Button>
+            <Button appearance="primary" onClick={() => { if (document) onConfirm(document.id); onClose() }}>삭제</Button>
+          </DialogActions>
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
   )
+}
 
-  // 켜진 파일들의 폴더를 파일 순서대로 이어 붙인다.
-  const rows = useMemo(() => {
-    const out = []
-    for (const file of activeFiles) {
-      const list = layersByFile.get(file.id)
-      // 파일 머리글은 여러 파일을 켰을 때만 — 하나뿐이면 위 목록과 겹친다.
-      if (activeFiles.length > 1) out.push({ kind: 'file', file, list })
-      for (const layer of visibleRows(list, { expanded, query })) {
-        out.push({ kind: 'folder', file, list, layer })
-      }
-    }
-    return out
-  }, [activeFiles, layersByFile, expanded, query])
+function Library({ myMap, storageReady, onPickFile, onRemove, onCreate }) {
+  const [query, setQuery] = useState('')
+  const documents = myMap.documents ?? []
+  const visibleDocuments = documents.filter((document) => document.name?.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+  const sections = [
+    { kind: 'personal', label: '개인 지도' },
+    { kind: 'imported', label: '가져온 지도' },
+    { kind: 'organization', label: '기관 지도' },
+  ].map((section) => ({ ...section, documents: visibleDocuments.filter((document) => document.kind === section.kind) }))
+  return (
+    <>
+      <div className="my-map-library-actions">
+        <button type="button" className="my-map-secondary-button" disabled={!storageReady} onClick={onPickFile}><FileUp size={16} aria-hidden="true" /> 파일 가져오기</button>
+        {typeof myMap.createDocument === 'function' && <button type="button" className="my-map-primary-button" disabled={!storageReady} onClick={onCreate}><Plus size={16} aria-hidden="true" /> 새 지도</button>}
+      </div>
+      {myMap.drawSpike?.pending > 0 && typeof myMap.importDrawSpike === 'function' && (
+        <div className="my-map-migrate-notice" role="status" data-testid="my-map-draw-migrate">
+          <p>기존 그리기에 아직 옮기지 않은 도형 {myMap.drawSpike.pending.toLocaleString()}개가 있습니다. 원본은 그대로 두고 개인 지도로 사본을 만듭니다.</p>
+          <button type="button" className="my-map-secondary-button" disabled={!storageReady} onClick={() => myMap.importDrawSpike()}>그리기 자료 가져오기</button>
+        </div>
+      )}
+      <label className="my-map-search" htmlFor="my-map-library-search">
+        <span className="sr-only">지도 검색</span>
+        <input id="my-map-library-search" type="search" placeholder="지도 이름 검색" value={query} onChange={(event) => setQuery(event.target.value)} />
+      </label>
+      <section className="my-map-library" aria-label="내 지도 목록">
+        <ul className="my-map-files" data-testid="my-map-files">
+          {sections.map((section) => section.documents.length > 0 && <li key={section.kind} className="my-map-library-section"><div className="my-map-section-heading"><span>{section.label}</span><small>{section.documents.length}</small></div><ul>{section.documents.map((document) => {
+            const visible = documentVisible(document, myMap.visibleIds)
+            return <li className="my-map-document-row" key={document.id}>
+              <button type="button" className="my-map-document-open" onClick={() => myMap.openDocument?.(document.id)}>
+                <span className="my-map-document-icon"><MapPinned size={18} aria-hidden="true" /></span>
+                <span className="my-map-document-copy">
+                  <strong>{document.name || '이름 없는 지도'}</strong>
+                  <small>{sourceLabel(document)} · {documentItemCount(document).toLocaleString()}개 항목</small>
+                </span>
+              </button>
+              <button type="button" className="my-map-icon-button" aria-label={`${document.name} ${visible ? '숨기기' : '표시하기'}`} aria-pressed={visible} onClick={() => myMap.toggleDocument?.(document.id)}>
+                {visible ? <Eye size={18} /> : <EyeOff size={18} />}
+              </button>
+              {typeof myMap.removeDocument === 'function' && <button type="button" className="my-map-icon-button my-map-delete-button" aria-label={`${document.name} 삭제`} onClick={() => onRemove(document)}><Trash2 size={17} /></button>}
+            </li>
+          })}</ul></li>)}
+        </ul>
+        {!documents.length && <p className="my-map-empty">KML 또는 KMZ 파일을 가져와 내 지도에서 확인하세요.</p>}
+        {documents.length > 0 && !visibleDocuments.length && <p className="my-map-empty">맞는 지도가 없습니다.</p>}
+        {documents.length > 0 && <p className="my-map-library-status"><Eye size={15} aria-hidden="true" />{documents.filter((document) => documentVisible(document, myMap.visibleIds)).length}개 지도를 지도에 표시 중</p>}
+      </section>
+    </>
+  )
+}
 
-  // 헤더의 'N개 켜짐'은 지금 지도에 실제로 그려지는 폴더 수다.
-  const shownFolders = useMemo(() => {
-    let n = 0
-    for (const file of activeFiles) {
-      const list = layersByFile.get(file.id)
-      for (const layer of list) if (isLayerVisible(list, layer.id, hidden)) n += 1
-    }
-    return n
-  }, [activeFiles, layersByFile, hidden])
+function Viewer({ document, myMap }) {
+  const [query, setQuery] = useState('')
+  const [expanded, setExpanded] = useState(() => new Set())
+  const [revealed, setRevealed] = useState({})
+  const selectedRowRef = useRef(null)
+  const tree = useMemo(() => buildMapPanelTree(document), [document])
+  const rows = useMemo(() => flattenMapPanelRows(filterMapPanelTree(tree, query), {
+    expanded, query, revealed, itemLimit: ITEMS_PER_PAGE,
+  }), [tree, query, expanded, revealed])
+  const selected = selectedItem(document, myMap.selectedId)
+  const allVisible = (document.items ?? []).every((item) => (
+    groupVisible(document, item.groupId, myMap.hiddenGroups)
+    && !myMap.hiddenItems?.has?.(documentScopedId(document.id, item.id))
+  ))
+
+  useEffect(() => {
+    if (!selected) return
+    const reveal = selectedItemReveal(document, selected.id, ITEMS_PER_PAGE)
+    if (!reveal) return
+    setQuery('')
+    setExpanded((previous) => new Set([...previous, ...reveal.expanded]))
+    setRevealed((previous) => ({ ...previous, [reveal.parentId]: Math.max(previous[reveal.parentId] ?? 0, reveal.revealed) }))
+  }, [document, selected])
+
+  // Native scrollIntoView can also move the map wrapper or page. Selection should
+  // only reveal its row inside this panel's own scroller.
+  useEffect(() => {
+    const row = selectedRowRef.current
+    // The tree has its own scroll region.  Scrolling the drawer body here hid
+    // the search and list above the detail when a map selection arrived.
+    const scroller = row?.closest('.my-map-viewer-list')
+    if (!row || !scroller) return
+    const rowBox = row.getBoundingClientRect()
+    const scrollBox = scroller.getBoundingClientRect()
+    if (rowBox.top < scrollBox.top) scroller.scrollTop += rowBox.top - scrollBox.top
+    else if (rowBox.bottom > scrollBox.bottom) scroller.scrollTop += rowBox.bottom - scrollBox.bottom
+  }, [myMap.selectedId, rows])
+
+  const toggleExpanded = (id) => setExpanded((previous) => {
+    const next = new Set(previous)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
+  const showMore = (parentId) => setRevealed((previous) => ({ ...previous, [parentId]: (previous[parentId] ?? ITEMS_PER_PAGE) + ITEMS_PER_PAGE }))
 
   return (
-    <div className="dev-layer-panel layer-drawer my-map-panel" aria-label="내 지도">
-      <div className="layer-drawer-header">
-        <div>
-          <div className="layer-drawer-eyebrow">내 지도</div>
-          <div className="layer-drawer-title">내가 만든 지도</div>
-        </div>
-        {/* 닫기 버튼은 두지 않는다 — 항공정보·기상정보 패널과 같이 사이드바 아이콘을
-            다시 눌러 닫는다. 버튼을 하나 더 두면 제목이 두 줄로 밀린다. */}
-        {activeFiles.length > 0 && (
-          <div className="my-map-header-actions">
-            <button
-              type="button"
-              className="layer-sheet-clear"
-              onClick={() => myMap.setAllFolders(shownFolders === 0)}
-            >
-              {shownFolders === 0 ? '전체 켜기' : '전체 끄기'}
-            </button>
-            <span className="layer-drawer-status">{shownFolders.toLocaleString()}개 켜짐</span>
+    <div className="my-map-viewer">
+      <div className="my-map-viewer-list">
+        {document.source?.warnings?.length > 0 && <p className="my-map-source-warning" role="status">원본 파일 일부를 읽지 못했습니다. 표시 가능한 항목만 안전하게 보여 줍니다.</p>}
+        <div className="my-map-view-actions">
+          <div className="my-map-view-action-group">
+            <button type="button" className="my-map-secondary-button" onClick={() => myMap.setAllVisible?.(!allVisible)}>{allVisible ? '전체 숨기기' : '전체 표시'}</button>
+            {document.kind === 'personal' && typeof myMap.startEditing === 'function' && <button type="button" className="my-map-primary-button" onClick={() => myMap.startEditing()}><Plus size={16} aria-hidden="true" /> 추가하기</button>}
           </div>
-        )}
+          <button type="button" className="my-map-icon-button" aria-label="지도 전체 위치로 이동" onClick={() => myMap.fitDocument?.()}><Crosshair size={18} /></button>
+        </div>
+        <label className="my-map-search" htmlFor="my-map-search-input">
+          <span className="sr-only">항목과 폴더 검색</span>
+          <input id="my-map-search-input" data-testid="my-map-search" type="search" placeholder="항목 또는 폴더 이름 검색" value={query} onChange={(event) => setQuery(event.target.value)} />
+        </label>
+        <ul className="my-map-tree" data-testid="my-map-tree" aria-label="지도 폴더와 항목">
+          {rows.map((row) => {
+          if (row.type === 'more') return (
+            <li key={`more-${row.parentId}`} className="my-map-more-row" style={{ '--tree-depth': row.depth }}>
+              <button type="button" className="my-map-secondary-button" onClick={() => showMore(row.parentId)}>더 보기 · {row.remaining.toLocaleString()}개 남음</button>
+            </li>
+          )
+          if (row.type === 'group' || row.type === 'ungrouped') {
+            const group = row.node.group
+            const visible = row.type === 'ungrouped' || groupVisible(document, group.id, myMap.hiddenGroups)
+            const hasChildren = row.node.children.length > 0 || row.node.items.length > 0
+            return (
+              <li key={`group-${row.id}`} className={`my-map-tree-row my-map-group-row${visible ? '' : ' is-hidden'}`} style={{ '--tree-depth': row.depth }}>
+                <button type="button" className="my-map-tree-caret" disabled={!hasChildren} aria-label={row.open ? '폴더 접기' : '폴더 펼치기'} aria-expanded={hasChildren ? row.open : undefined} onClick={() => toggleExpanded(row.id)}>
+                  {hasChildren && (row.open ? <ChevronDown size={17} /> : <ChevronRight size={17} />)}
+                </button>
+                <button type="button" className="my-map-tree-name" onClick={() => hasChildren && toggleExpanded(row.id)}>
+                  <Folder size={16} aria-hidden="true" /><span>{group?.name || '그룹 없는 항목'}</span><small>{row.node.itemCount.toLocaleString()}</small>
+                </button>
+                {group && <button type="button" className="my-map-icon-button" aria-label={`${group.name} ${visible ? '숨기기' : '표시하기'}`} aria-pressed={visible} onClick={() => myMap.toggleGroup?.(group.id)}>{visible ? <Eye size={17} /> : <EyeOff size={17} />}</button>}
+                {group && <button type="button" className="my-map-icon-button my-map-fit-button" aria-label={`${group.name} 위치로 이동`} onClick={() => myMap.fitGroup?.(group.id)}><Crosshair size={16} /></button>}
+              </li>
+            )
+          }
+          const item = row.item
+          const visible = groupVisible(document, item.groupId, myMap.hiddenGroups) && !myMap.hiddenItems?.has?.(documentScopedId(document.id, item.id))
+          const itemIsSelected = myMap.selectedId === item.id
+          return (
+            <li ref={itemIsSelected ? selectedRowRef : null} key={`item-${item.id}`} className={`my-map-tree-row my-map-item-row${itemIsSelected ? ' is-selected' : ''}${visible ? '' : ' is-hidden'}`} style={{ '--tree-depth': row.depth }}>
+              <button type="button" className="my-map-tree-name" aria-pressed={itemIsSelected} onClick={() => myMap.selectItem?.(item.id)}>
+                <span className="my-map-item-kind" aria-hidden="true">{mapItemIcon(item.kind)}</span><span>{item.name || '이름 없는 항목'}</span>
+              </button>
+              <button type="button" className="my-map-icon-button" aria-label={`${item.name} ${visible ? '숨기기' : '표시하기'}`} aria-pressed={visible} onClick={() => myMap.toggleItem?.(item.id)}>{visible ? <Eye size={17} /> : <EyeOff size={17} />}</button>
+            </li>
+          )
+          })}
+        </ul>
+        {!rows.length && <p className="my-map-empty">검색 결과가 없습니다.</p>}
       </div>
-
-      <div className="layer-drawer-body">
-        <input
-          ref={fileInputRef}
-          data-testid="my-map-file"
-          type="file"
-          accept=".kml,.kmz"
-          style={{ display: 'none' }}
-          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; takeFile(f) }}
-        />
-
-        {dropOpen && (
-          <>
-            {/* 설명은 처음 쓰는 사람에게만 필요하다. 파일이 생기면 목록에 자리를 내준다. */}
-            {files.length === 0 && (
-              <p className="my-map-intro">
-                구글어스에서 직접 만든 지도를 불러와 우리 지도 위에 겹쳐 봅니다.
-                훈련공역, 절차, 즐겨찾는 지점 같은 직접 그린 요소를 그대로 볼 수 있습니다.
-              </p>
-            )}
-            <button
-              type="button"
-              data-testid="my-map-dropzone"
-              className={`my-map-dropzone${dragOver ? ' is-drag-over' : ''}`}
-              onClick={openPicker}
-              onDragEnter={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragOver={(e) => e.preventDefault()}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); takeFile(e.dataTransfer.files?.[0]) }}
-            >
-              <span className="my-map-dropzone-icon" aria-hidden="true"><Plus size={22} strokeWidth={1.8} /></span>
-              <span className="my-map-dropzone-text">
-                {'KML · KMZ 파일을 여기에 끌어다 놓거나'}
-                <br />
-                {'눌러서 고르세요'}
-              </span>
-            </button>
-            {files.length === 0 && (
-              <p className="my-map-hint">비행경로를 불러오려면 ‘비행 전 브리핑’을 쓰세요.</p>
-            )}
-            {addOpen && (
-              <button type="button" className="my-map-ghost" onClick={() => setAddOpen(false)}>취소</button>
-            )}
-          </>
-        )}
-
-        {!dropOpen && (
-          <button type="button" data-testid="my-map-add" className="my-map-ghost" onClick={() => setAddOpen(true)}>
-            <Plus size={14} strokeWidth={2.2} aria-hidden="true" />
-            {' 파일 추가'}
-          </button>
-        )}
-
-        {/* key={busy} — 단계가 바뀔 때마다 다시 붙어 등장 애니메이션이 다시 돈다.
-            글자만 갈아치우면 큰 파일에서 몇 초씩 멈춰 보인다. 도는 표시가 '살아 있음'을 맡는다. */}
-        {busy && (
-          <p className="my-map-note my-map-busy" key={busy} role="status">
-            <Spinner size="tiny" />
-            <span>{busy}</span>
-          </p>
-        )}
-        {error && <p className="my-map-error" role="alert">{error}</p>}
-
-        {files.length > 0 && (
-          <section className="my-map-section">
-            <div className="layer-tile-group-title">내 파일</div>
-            <ul className="my-map-files" data-testid="my-map-files">
-              {files.map((f) => {
-                const on = activeFileIds.has(f.id)
-                return (
-                  <li key={f.id} className={`my-map-file-card${on ? ' is-active' : ''}`}>
-                    <button
-                      type="button"
-                      className="my-map-file-toggle"
-                      aria-pressed={on}
-                      onClick={() => myMap.toggleFile(f.id)}
-                    >
-                      <span className="my-map-mark" aria-hidden="true">{on && <Check size={12} strokeWidth={3} />}</span>
-                      <span className="my-map-file-name">{f.name}</span>
-                      <span className="my-map-file-size">{mb(f.size)}</span>
-                    </button>
-                    <button type="button" className="my-map-remove" aria-label={`${f.name} 지우기`}
-                      onClick={() => myMap.removeFile(f.id)}>
-                      <X size={13} strokeWidth={2.2} />
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        )}
-
-        {rows.length > 0 && (
-          <section className="my-map-section">
-            <div className="layer-tile-group-title">폴더</div>
-            <div className="my-map-search">
-              <input
-                data-testid="my-map-search"
-                type="search"
-                placeholder="폴더 이름으로 찾기"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <ul className="my-map-tree" data-testid="my-map-tree">
-              {rows.map((row) => {
-                if (row.kind === 'file') {
-                  return <li key={`h-${row.file.id}`} className="my-map-tree-file">{row.file.name}</li>
-                }
-                const { layer, list, file } = row
-                const effective = isLayerVisible(list, layer.id, hidden)
-                const openable = hasChildren(list, layer.id)
-                const open = expanded.has(layer.id)
-                // 하위까지 합쳐 센다 — 직접 것만 세면 제일 큰 폴더가 비어 보인다.
-                const count = totalFeatures(list, layer.id)
-                return (
-                  <li
-                    key={`${file.id}-${layer.id}`}
-                    className={`my-map-row${effective ? '' : ' is-off'}`}
-                    style={{ paddingLeft: `${4 + layer.depth * 13}px` }}
-                  >
-                    <button
-                      type="button"
-                      className={`my-map-caret${openable ? '' : ' is-hidden'}${open ? ' is-open' : ''}`}
-                      aria-label={open ? '접기' : '펼치기'}
-                      onClick={() => setExpanded((prev) => toggleExpanded(prev, layer.id))}
-                    >
-                      {/* 아이콘을 바꿔 끼우지 않고 하나를 돌린다 — 교체는 애니메이션이 붙을 수 없다.
-                          줄 목록 자체의 높이는 건드리지 않는다. 폴더 하나에 수백 줄이 딸려 나온다. */}
-                      <ChevronRight size={13} strokeWidth={2.2} />
-                    </button>
-                    <button
-                      type="button"
-                      className="my-map-row-toggle"
-                      aria-pressed={effective}
-                      onClick={() => myMap.toggleFolder(layer.id)}
-                    >
-                      <span className="my-map-mark" aria-hidden="true">{effective && <Check size={11} strokeWidth={3} />}</span>
-                      <span className="my-map-row-name">{layer.name}</span>
-                    </button>
-                    <span className="my-map-count">{count > 0 ? count.toLocaleString() : ''}</span>
-                    {count > 0 && (
-                      <button
-                        type="button"
-                        className="my-map-goto"
-                        aria-label={`${layer.name} 위치로 이동`}
-                        title="이 폴더 위치로 이동"
-                        onClick={() => myMap.flyToFolder(layer.id)}
-                      >
-                        <Crosshair size={12} strokeWidth={2} />
-                      </button>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        )}
-      </div>
+      <MyMapDetail item={selected} groupName={selected?.groupId ? document.groups?.find((group) => group.id === selected.groupId)?.name : '그룹 없는 항목'} onClose={() => myMap.clearSelection?.()} onEdit={document.kind === 'personal' && typeof myMap.startEditing === 'function' ? () => myMap.startEditing() : undefined} />
     </div>
+  )
+}
+
+export default function MyMapPanel({ myMap, onClose = () => {}, open = true }) {
+  const isMobile = useIsMobile()
+  const fileInputRef = useRef(null)
+  const [removeTarget, setRemoveTarget] = useState(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [newName, setNewName] = useState('')
+  const documents = myMap.documents ?? []
+  const document = documents.find((entry) => entry.id === myMap.currentId) ?? null
+  const storageReady = myMap.storage?.ready !== false
+  const library = myMap.mode === 'library' || !document
+  const title = library ? '내 지도' : document.name || '이름 없는 지도'
+  const subtitle = library ? '지도 목록' : `${sourceLabel(document)} · ${documentGroupCount(document)}개 폴더 · ${documentItemCount(document).toLocaleString()}개 항목`
+  const contentClass = `my-map-panel-content${!library && myMap.mode === 'view' ? ' is-viewer' : ''}`
+
+  const takeFile = (file) => {
+    if (!file || !storageReady) return
+    myMap.addFile?.(file)
+  }
+  const headerActions = !library && myMap.mode !== 'edit' && (
+    <>
+      <button type="button" className="my-map-header-button" onClick={() => myMap.showLibrary?.()}>목록</button>
+      <MyMapFileActions myMap={myMap} document={document} />
+    </>
+  )
+  const body = (
+    <>
+      <input ref={fileInputRef} data-testid="my-map-file" type="file" accept=".kml,.kmz" className="my-map-file-input" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; takeFile(file) }} />
+      <MyMapStorageStatus storage={myMap.storage} documentId={document?.id} onRetry={myMap.retrySave} onCopyConflict={myMap.copyConflict} onOpenServerVersion={myMap.openServerVersion} onRestoreDraft={myMap.restoreDraft} onDiscardDraft={myMap.discardRecoveredDraft} onImportGuest={myMap.importGuestMap} />
+      {myMap.busy && <p className="my-map-status" role="status"><LoaderCircle size={16} className="my-map-spin" aria-hidden="true" />{myMap.busy}</p>}
+      {myMap.error && <p className="my-map-error" role="alert">{myMap.error}<button type="button" className="my-map-message-close" aria-label="오류 알림 닫기" onClick={() => myMap.dismissMessages?.()}><X size={15} /></button></p>}
+      {myMap.notice && <p className="my-map-notice" role="status">{myMap.notice}<button type="button" className="my-map-message-close" aria-label="안내 닫기" onClick={() => myMap.dismissMessages?.()}><X size={15} /></button></p>}
+      {library ? <Library myMap={myMap} storageReady={storageReady} onPickFile={() => storageReady && fileInputRef.current?.click()} onRemove={setRemoveTarget} onCreate={() => setCreateOpen(true)} /> : myMap.mode === 'edit' ? <MyMapEditor myMap={myMap} document={document} /> : <Viewer document={document} myMap={myMap} />}
+    </>
+  )
+  const closePanel = () => {
+    if (myMap.mode !== 'edit') { onClose(); return }
+    const leave = () => { myMap.finishEditing?.(); onClose() }
+    if (typeof myMap.requestNavigation === 'function') myMap.requestNavigation(leave)
+    else leave()
+  }
+
+  return (
+    <>
+      {open && (isMobile ? (
+        <MobileSheet open eyebrow="내 지도" title={title} titleExtra={<span className="my-map-mobile-subtitle">{subtitle}</span>} onClose={closePanel} headerExtra={headerActions}>
+          <div className={contentClass}>{body}</div>
+        </MobileSheet>
+      ) : (
+        <aside className="dev-layer-panel layer-drawer my-map-panel" aria-label="내 지도">
+          <header className="my-map-panel-header">
+            <div><div className="layer-drawer-eyebrow">내 지도</div><h1>{title}</h1><p>{subtitle}</p></div>
+            <div className="my-map-header-actions">{headerActions}<button type="button" className="my-map-icon-button" aria-label="내 지도 닫기" onClick={closePanel}><X size={18} /></button></div>
+          </header>
+          <div className={`layer-drawer-body ${contentClass}`}>{body}</div>
+        </aside>
+      ))}
+      <RemoveDocumentDialog document={removeTarget} onClose={() => setRemoveTarget(null)} onConfirm={(id) => myMap.removeDocument?.(id)} />
+      <Dialog open={createOpen} onOpenChange={(_, data) => setCreateOpen(data.open)}><DialogSurface><DialogBody><DialogTitle>새 지도</DialogTitle><DialogContent><label className="my-map-editor-field"><span>지도 이름</span><input autoFocus disabled={!storageReady} value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="예: 훈련 공역" /></label></DialogContent><DialogActions><Button appearance="secondary" onClick={() => setCreateOpen(false)}>취소</Button><Button appearance="primary" disabled={!storageReady || !newName.trim()} onClick={() => { myMap.createDocument?.(newName.trim()); setNewName(''); setCreateOpen(false) }}>만들기</Button></DialogActions></DialogBody></DialogSurface></Dialog>
+      <Dialog open={Boolean(myMap.editor?.exitPending)}><DialogSurface><DialogBody><DialogTitle>진행 중인 작업이 있습니다</DialogTitle><DialogContent><p>그냥 나가면 현재 미완성 도형이나 적용 전 형태 수정은 버려집니다. 이미 완료한 항목은 남습니다.</p></DialogContent><DialogActions><Button appearance="primary" onClick={() => myMap.continueEditing?.()}>계속 그리기</Button><Button appearance="secondary" onClick={() => myMap.discardAndExit?.()}>그냥 나가기</Button></DialogActions></DialogBody></DialogSurface></Dialog>
+    </>
   )
 }
