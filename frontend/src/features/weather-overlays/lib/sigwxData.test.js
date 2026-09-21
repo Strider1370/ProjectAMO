@@ -127,3 +127,25 @@ test('symbols are not grouped without a clear labelled, adjacent chart row', () 
     assert.ok(!data.iconImages.some(i => i.kind === 'visibility-set'))
   }
 })
+
+// 운영 2026-09-21 11UTC 차트의 화산 항목 — 줄바꿈이 "&#13;&#10;" 문자 참조로 온다.
+test('volcanic eruption label keeps its two chart lines in a box without leaking character references', () => {
+  const data = sigwxLowToMapboxData({
+    source: { map_range_mode: 'normal', fpv_safe_bound_width: 704.4, fpv_safe_bound_height: 694.06 },
+    items: [{
+      id: 'va', item_type: 7, contour_name: 'volcanic_ash', item_name: 'volcanic_ash',
+      label: 'SAKURAJIMA&#13;&#10;31.6N,130.7E', icon_name: 'volcanic_ash.png', icon_tokens: ['volcanic_ash'],
+      rect_label: { left: 446.8, top: 470.0, width: 77.4, height: 28.5 },
+      fpv_points: [{ x: 485.5, y: 457.8 }, { x: 485.5, y: 457.8 }],
+      lat_lngs: [[31.414, 130.65], [31.414, 130.65]],
+    }],
+  })
+  const label = data.labels.features[0].properties
+  assert.equal(label.label, 'SAKURAJIMA\n31.6N,130.7E')
+  assert.equal(label.labelBoxed, true)
+  assert.equal(label.labelOffsetY, 0)
+  assert.doesNotMatch(data.icons.features[0].properties.label, /&#/)
+  // 기호는 제 좌표(31.4N)에, 글상자는 그 아래에 — 상자가 기호를 덮지 않는다.
+  assert.deepEqual(data.icons.features[0].geometry.coordinates, [130.65, 31.414])
+  assert.ok(data.labels.features[0].geometry.coordinates[1] < 31.414)
+})

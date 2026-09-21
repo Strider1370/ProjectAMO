@@ -296,6 +296,7 @@ export function createSigwxChipImage({ fill, stroke }) {
 export function ensureSigwxChipImages(map) {
   const images = [
     { id: 'sigwx-chip-neutral', fill: 'rgba(255,255,255,0.96)', stroke: '#111827' },
+    { id: 'sigwx-chip-plain', fill: 'rgba(255,255,255,0.9)', stroke: 'rgba(255,255,255,0.9)' },
     { id: 'sigwx-chip-green', fill: 'rgba(236, 253, 245, 0.96)', stroke: '#16a34a' },
     { id: 'sigwx-chip-blue', fill: 'rgba(239, 246, 255, 0.96)', stroke: '#2563eb' },
     { id: 'sigwx-chip-orange', fill: 'rgba(255, 247, 237, 0.96)', stroke: '#ea580c' },
@@ -419,11 +420,15 @@ export function addOrUpdateSigwxLowLayers(map, data, { loadIcons = true } = {}) 
         'text-field': ['get', 'label'],
         'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
         'text-size': 11,
-        'text-offset': [0, 1.1],
+        'text-offset': ['case', ['==', ['get', 'labelOffsetY'], 0], ['literal', [0, 0]], ['literal', [0, 1.1]]],
         'text-allow-overlap': false,
+        // 화산 분화 라벨은 AMO 차트처럼 흰 글상자에 담는다.
+        'icon-image': ['case', ['boolean', ['get', 'labelBoxed'], false], 'sigwx-chip-plain', ''],
+        'icon-text-fit': 'both',
+        'icon-text-fit-padding': [3, 5, 3, 5],
       },
       paint: {
-        'text-color': '#2d1b69',
+        'text-color': '#111827',
         'text-halo-color': '#ffffff',
         'text-halo-width': 1.5,
       },
@@ -464,10 +469,14 @@ export function addOrUpdateSigwxLowLayers(map, data, { loadIcons = true } = {}) 
           'green', 'sigwx-chip-green',
           'blue', 'sigwx-chip-blue',
           'orange', 'sigwx-chip-orange',
+          'plain', 'sigwx-chip-plain',
           'sigwx-chip-neutral',
         ],
         'icon-text-fit': 'both',
         'icon-text-fit-padding': [5, 7, 5, 7],
+        // 글자만 겹침을 허용하면 배경 상자가 공항 기호와 부딪힐 때 라벨이 통째로 숨는다.
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
         'text-field': ['get', 'chipText'],
         'text-font': ['Noto Sans CJK JP Bold', 'Arial Unicode MS Bold'],
         'text-size': 12,

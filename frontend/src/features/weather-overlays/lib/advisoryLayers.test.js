@@ -67,6 +67,10 @@ test('advisory marker layers retain their shared interior point data', () => {
   assert.equal(feature.properties.motionDirection, 90)
   assert.equal(feature.properties.markerKey, 'sigmet-TURB-90-15KT')
 
+  // 광역에서 기호가 구역을 넘칠 만큼 커지지 않게 — 줌 6 이하에서 줄고, 차트 글자는 줌 4.5부터.
+  const icon = map.getLayer(ADVISORY_LAYER_DEFS.sigmet.iconLayerId)
+  assert.deepEqual(icon.layout['icon-size'], ['interpolate', ['linear'], ['zoom'], 3, 0.4, 4.5, 0.6, 6, 1])
+  assert.equal(map.getLayer(ADVISORY_LAYER_DEFS.sigmet.textLayerId).minzoom, 4.5)
 })
 
 test('frequent thunderstorm uses the shared thunderstorm symbol', () => {
@@ -166,7 +170,7 @@ test('surface wind AIRMET carries the wind speed itself, not the phenomenon moti
     ],
   }, 'airmet')
 
-  assert.equal(data.features[0].properties.windLabel, '30')
+  assert.equal(data.features[0].properties.windLabel, '270/30KT')
   assert.equal(data.features[0].properties.motionLabel, '')
   assert.equal(data.features[1].properties.windLabel, '')
   assert.equal(data.features[1].properties.chartLine1, 'VIS 5000M FG/BR')

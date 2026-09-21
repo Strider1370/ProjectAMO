@@ -40,8 +40,15 @@ export function sigwxAssetUrl(fileName) {
   return `${SIGWX_SYMBOL_BASE}/${String(fileName).split('/').map(encodeURIComponent).join('/')}`
 }
 
+// 차트 편집기는 줄바꿈을 "&#13;&#10;"(CRLF) 문자 참조로 보낸다 — 한 줄로 접을 땐 공백으로 본다.
 function normalizeText(value) {
-  return String(value || '').replace(/&#10;/g, ' ').replace(/\s+/g, ' ').trim()
+  return String(value || '').replace(/&#(?:10|13|x0*a|x0*d);/gi, ' ').replace(/\s+/g, ' ').trim()
+}
+
+// 지도에 그대로 적을 라벨은 줄바꿈을 살린다(화산 "SAKURAJIMA / 31.6N,130.7E").
+function multilineText(value) {
+  return String(value || '').replace(/&#(?:13|x0*d);/gi, '').replace(/&#(?:10|x0*a);/gi, '\n').replace(/\r\n?/g, '\n')
+    .split('\n').map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n')
 }
 
 function chartMarker(item) {
@@ -52,9 +59,7 @@ function chartMarker(item) {
     : Number(item?.item_type) === 7 && ['moderate_turbulence', 'severe_turbulence'].includes(name)
       ? `turbulence-${name.startsWith('severe') ? 'severe' : 'moderate'}` : null
   if (!kind) return null
-  const text = kind === 'wind' ? normalizeText(item?.label)
-    : String(item?.label || '').replace(/&#(?:10|x0*a);/gi, '\n').replace(/\r\n?/g, '\n')
-      .split('\n').map(line => line.trim()).filter(Boolean).join('\n')
+  const text = kind === 'wind' ? normalizeText(item?.label) : multilineText(item?.label)
   return text || kind.startsWith('turbulence-') ? { id: `sigwx-${kind}-${encodeURIComponent(text)}`, kind, text } : null
 }
 
@@ -337,7 +342,8 @@ function featureProperties(item, index) {
     markerKind: marker?.kind || '',
     markerText: marker?.text || '',
     iconScale: marker ? 1 : String(item?.contour_name || '').toLowerCase() === 'freezing_level' ? 0.6
-      : ['rain', 'rain_kor', 'shower_rain'].includes(String(item?.item_name || '').toLowerCase()) ? 0.3 : 0.52,
+      // 안개·박무도 비처럼 차트 기호 칸(약 17px)에 맞춰 작게 — 0.52면 두 기호가 겹친다.
+      : ['rain', 'rain_kor', 'shower_rain', 'widespread_fog', 'widespread_mist'].includes(String(item?.item_name || '').toLowerCase()) ? 0.3 : 0.52,
     filterKey: getSigwxFilterKey(item?.contour_name, item),
     overlayRole: overlayRoleForItem(item),
     chipText: contourChipText(item),
@@ -360,7 +366,8 @@ function contourChipText(item) {
 function contourChipTone(item) {
   const filterKey = getSigwxFilterKey(item?.contour_name, item)
   if (filterKey === 'freezing') return 'neutral'
-  if (filterKey === 'visibility') return 'green'
+  // AMO 차트는 저시정 구역 라벨("LCA 5000M")을 색 없는 검은 글자로 적는다.
+  if (filterKey === 'visibility') return 'plain'
   if (filterKey === 'icing') return 'blue'
   if (filterKey === 'turbulence') return 'orange'
   return 'neutral'
@@ -550,10 +557,17 @@ export function sigwxLowToMapboxData(payload, options = {}) {
     }
 
     if (labelPoint && shouldRenderGenericLabel(item)) {
+      const hasRectLabel = [item?.rect_label?.left, item?.rect_label?.top].every(Number.isFinite)
       labelFeatures.push({
         type: 'Feature',
         id: `${properties.id}-label`,
-        properties,
+        properties: {
+          ...properties,
+          label: multilineText(item?.label) || properties.label,
+          // rect_label 중심은 이미 글상자 자리다 — 기호 아래로 한 번 더 내리지 않는다.
+          labelOffsetY: hasRectLabel ? 0 : 1.1,
+          labelBoxed: String(item?.item_name || '').toLowerCase() === 'volcanic_ash',
+        },
         geometry: { type: 'Point', coordinates: labelPoint },
       })
     }
@@ -580,11 +594,15 @@ export function sigwxLowToMapboxData(payload, options = {}) {
     }
 
     if ((needsLabelMarker(item) || properties.markerKind) && labelPoint && properties.iconKey && (properties.iconUrl || properties.markerKind)) {
+      // 글상자(rect_label)가 따로 있는 그림 기호(화산 등)는 기호를 제 좌표에 두고 글은 상자 자리에 둔다.
+      // 둘 다 상자 중심에 찍으면 흰 글상자가 기호를 덮는다.
+      const symbolPoint = !properties.markerKind && Number(item?.item_type) === 7
+        && [item?.rect_label?.left, item?.rect_label?.top].every(Number.isFinite) ? coords[0] : null
       iconFeatures.push({
         type: 'Feature',
         id: `${properties.id}-icon`,
         properties,
-        geometry: { type: 'Point', coordinates: labelPoint },
+        geometry: { type: 'Point', coordinates: symbolPoint || labelPoint },
       })
       iconImages.set(properties.iconKey, properties.markerKind
         ? { id: properties.iconKey, kind: properties.markerKind, text: properties.markerText }

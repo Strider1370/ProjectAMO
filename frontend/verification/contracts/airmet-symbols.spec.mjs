@@ -85,8 +85,8 @@ test.describe('AIRMET surface phenomena symbols', () => {
     const wind = await markerInk(page, 'SFC_WIND')
     const vis = await markerInk(page, 'SFC_VIS')
 
-    // 풍속 30KT가 기호 안 숫자로 전달됐는가. motion.speed_kt는 0이라 여기 오면 안 된다.
-    expect(wind.windLabel).toBe('30')
+    // 풍향·풍속 270/30KT가 기호 안 글자로 전달됐는가. motion.speed_kt는 0이라 여기 오면 안 된다.
+    expect(wind.windLabel).toBe('270/30KT')
     expect(vis.windLabel).toBe('')
     expect(vis.chartLine1).toBe('VIS 5000M FG/BR')
 

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { distanceNm, pathLengthNm, areaKm2, trueBearing, magneticBearing, declinationAt } from './geo.js'
-import { formatCoordinate } from '../custom-area/coordFormat.js'
+import { formatCoordinate, parseCoordinate } from '../custom-area/coordFormat.js'
 
 const SEOUL = [126.978, 37.5665]
 const BUSAN = [129.075, 35.1796]
@@ -46,4 +46,12 @@ test('formatCoordinate: 형식별 반구·자리수', () => {
   assert.equal(formatCoordinate(-126.978, 'dd', 'lng'), 'W126.97800°')
   assert.equal(formatCoordinate(37.5, 'ddm', 'lat'), "N37°30.000'")
   assert.equal(formatCoordinate(37.5, 'dms', 'lat'), 'N37°30\'00.0"')
+})
+
+test('parseCoordinate: DD는 숫자 전체를 요구하고 DMS·DDM 방향과 범위를 확인한다', () => {
+  assert.equal(parseCoordinate('37.5665', 'dd', 'lat'), 37.5665)
+  assert.throws(() => parseCoordinate('37north', 'dd', 'lat'), /숫자/)
+  assert.equal(parseCoordinate("N37°34'00\"", 'dms', 'lat'), 37 + 34 / 60)
+  assert.equal(parseCoordinate("E126°58.680'", 'ddm', 'lng'), 126 + 58.68 / 60)
+  assert.throws(() => parseCoordinate("W126°58.680'", 'ddm', 'lat'), /N\/S/)
 })

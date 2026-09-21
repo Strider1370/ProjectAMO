@@ -5,6 +5,8 @@ const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
   removeNSPrefix: false,
+  // 일련번호 "E01"을 지수 표기 숫자로 읽어 NaN이 되는 것을 막는다(D01·F01은 멀쩡해서 E계열만 깨졌다).
+  numberParseOptions: { hex: true, leadingZeros: true, eNotation: false },
   isArray: (name) => [
     "item",
     "iwxxm:member",

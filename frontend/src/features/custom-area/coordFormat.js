@@ -33,8 +33,14 @@ function resolveSign(dirA, dirB, axis) {
 }
 
 function parseDD(raw, axis) {
-  const n = parseFloat(raw)
-  if (isNaN(n) || Math.abs(n) > AXIS_MAX[axis]) {
+  const value = String(raw ?? '').trim()
+  // parseFloat('37north')처럼 앞부분만 읽으면 지도 위 위치가 조용히 바뀐다.
+  // 십진수 입력은 숫자 전체여야 한다.
+  if (!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(value)) {
+    throw new Error(`${AXIS_LABEL[axis]}는 -${AXIS_MAX[axis]} ~ ${AXIS_MAX[axis]} 사이 숫자여야 합니다.`)
+  }
+  const n = Number(value)
+  if (!Number.isFinite(n) || Math.abs(n) > AXIS_MAX[axis]) {
     throw new Error(`${AXIS_LABEL[axis]}는 -${AXIS_MAX[axis]} ~ ${AXIS_MAX[axis]} 사이 숫자여야 합니다.`)
   }
   return n

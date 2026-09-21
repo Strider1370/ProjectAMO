@@ -48,9 +48,18 @@ const PHENOMENON_ICON_SIZE = 40
 // 기호는 정사각형이 아니다 — SFC_VIS는 실제 그림이 140x26으로 5:1에 가깝다. 높이만 40으로
 // 묶으면 납작한 기호가 세로 7px로 쪼그라들어 안 보인다. 가로는 따로, 더 넉넉히 허용한다.
 const PHENOMENON_ICON_MAX_WIDTH = 90
+const WIND_ICON_SIZE = 48
 const ADVISORY_MARKER_WIDTH = 220
 const ADVISORY_MARKER_HEIGHT = 52
 const ADVISORY_ICON_CENTER_X = ADVISORY_MARKER_WIDTH / 2
+
+// 기호는 픽셀 크기가 고정이라 줌을 뺄수록 구역보다 커져 서로 겹친다. 기본 줌(6)부터는 원래 크기,
+// 넓게 볼수록 줄인다. 차트 글자(고도·추세)는 광역에서 읽을 수 없이 겹치므로 줌 4.5부터만 보인다.
+const ADVISORY_ICON_SIZE_BY_ZOOM = ['interpolate', ['linear'], ['zoom'], 3, 0.4, 4.5, 0.6, 6, 1]
+const ADVISORY_TEXT_MIN_ZOOM = 4.5
+const ADVISORY_TEXT_SIZE_BY_ZOOM = ['interpolate', ['linear'], ['zoom'], ADVISORY_TEXT_MIN_ZOOM, 10, 6, 12]
+// 글자는 기호 아래에 붙는다 — 기호가 줄어드는 만큼 간격(em)도 줄인다(줌 4.5: 0.6배 기호, 10px 글자).
+const ADVISORY_TEXT_OFFSET_BY_ZOOM = ['interpolate', ['linear'], ['zoom'], ADVISORY_TEXT_MIN_ZOOM, ['literal', [0, 1.7]], 6, ['literal', [0, 2.3]]]
 
 // 원본 PNG는 파일마다 투명 여백 비율이 제각각이다(SFC_VIS = 150x150 파일에 그림은 140x26,
 // SFC_WIND = 80x80 파일에 그림도 80x80). 파일 크기로 맞추면 여백까지 크기에 포함돼 같은
@@ -135,7 +144,9 @@ function ensureAdvisoryMarkerImage(map, feature) {
     canvas.height = ADVISORY_MARKER_HEIGHT
     const context = canvas.getContext('2d', { alpha: true })
     const ink = measureIconInk(image)
-    const scale = Math.min(PHENOMENON_ICON_MAX_WIDTH / ink.width, PHENOMENON_ICON_SIZE / ink.height)
+    // 풍향/풍속 글자가 들어가는 강풍 마름모는 조금 키운다(캔버스 높이 52 안에 들어간다).
+    const iconSize = wind ? WIND_ICON_SIZE : PHENOMENON_ICON_SIZE
+    const scale = Math.min(PHENOMENON_ICON_MAX_WIDTH / ink.width, iconSize / ink.height)
     const drawWidth = ink.width * scale
     const drawHeight = ink.height * scale
     const drawTop = 6 + (PHENOMENON_ICON_SIZE - drawHeight) / 2
@@ -148,9 +159,13 @@ function ensureAdvisoryMarkerImage(map, feature) {
     // 강풍(SFC_WIND)은 기호 안쪽 정중앙에 풍속을 적는 게 표준 표기다.
     if (wind) {
       context.fillStyle = '#1d4ed8'
-      context.font = '700 16px sans-serif'
+      context.font = '700 11px sans-serif'
       context.textAlign = 'center'
       context.textBaseline = 'middle'
+      context.strokeStyle = '#ffffff'
+      context.lineWidth = 3
+      context.lineJoin = 'round'
+      context.strokeText(wind, ADVISORY_ICON_CENTER_X, 6 + PHENOMENON_ICON_SIZE / 2)
       context.fillText(wind, ADVISORY_ICON_CENTER_X, 6 + PHENOMENON_ICON_SIZE / 2)
     }
 
@@ -236,11 +251,14 @@ function formatSpeedChart(item) {
   return Number.isFinite(speed) && speed > 0 ? `${Math.round(speed)}KT` : ''
 }
 
-// motion.speed_kt(현상 덩어리의 이동속도)와 헷갈리지 말 것 — 이건 지상 풍속 자체다.
-// 기호 안에 들어가므로 단위 없이 노트 숫자만.
+// motion.speed_kt(현상 덩어리의 이동속도)와 헷갈리지 말 것 — 이건 지상 풍향·풍속 자체다.
+// AMO AIRMET 차트처럼 마름모 안에 "050/30KT"로 적는다. 풍향이 없으면 풍속만.
 function formatSurfaceWindChart(item) {
   const speed = item?.surface_wind?.speed_kt
-  return Number.isFinite(speed) && speed > 0 ? String(Math.round(speed)) : ''
+  if (!Number.isFinite(speed) || speed <= 0) return ''
+  const direction = item?.surface_wind?.direction_deg
+  const speedText = `${Math.round(speed)}KT`
+  return Number.isFinite(direction) ? `${String(Math.round(direction) % 360).padStart(3, '0')}/${speedText}` : speedText
 }
 
 // 고도·이동속도가 없는 지상시정(SFC_VIS) 계열은 이게 본론 — "VIS 5000M RA/FG/BR" 식으로.
@@ -478,7 +496,7 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
       slot: 'top',
       layout: {
         'icon-image': ['get', 'markerKey'],
-        'icon-size': 1.0,
+        'icon-size': ADVISORY_ICON_SIZE_BY_ZOOM,
         'icon-anchor': 'center',
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
@@ -495,6 +513,7 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
       type: 'symbol',
       source: labelSourceId,
       slot: 'top',
+      minzoom: ADVISORY_TEXT_MIN_ZOOM,
       layout: {
         'text-field': [
           'case',
@@ -505,9 +524,9 @@ export function addAdvisoryLayers(map, kind, featureData, labelData) {
           ['concat', ['get', 'chartLine1'], '\n', ['get', 'chartLine2']],
         ],
         'text-font': ['Noto Sans CJK JP Bold'],
-        'text-size': 12,
+        'text-size': ADVISORY_TEXT_SIZE_BY_ZOOM,
         'text-anchor': 'top',
-        'text-offset': [0, 2.3],
+        'text-offset': ADVISORY_TEXT_OFFSET_BY_ZOOM,
         'text-justify': 'center',
         'text-allow-overlap': true,
         'text-ignore-placement': true,
