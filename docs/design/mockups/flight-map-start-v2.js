@@ -1,0 +1,51 @@
+// Reuses the original prototype's geometry tools, item properties, groups,
+// undo/redo, selection, drawing canvas and exit guard.
+let importPhase='pick', importedName='', importExample=false;
+const originalToolPanel=toolPanel, originalGroupList=groupList, originalEditor=editor;
+const originalRender=render;
+const head=(title,back=true,extra='')=>'<div class="panel-head">'+(back?'<button class="back" data-action="library">'+icon('back')+'내 지도</button>':'')+'<div class="start-head"><h1>'+title+'</h1>'+extra+'</div></div>';
+const emptyMap=()=>({id:uid('map'),name:'이름 없는 지도',kind:'personal',visible:true,updated:'방금',groups:[]});
+function createEmpty(){const m=emptyMap();m.groups.push({id:'ungrouped-'+m.id,name:'그룹 없는 항목',visible:true,collapsed:false,items:[]});maps.push(m);current=m.id;history=[];future=[];beginEdit();persist()}
+function startCards(){return '<p class="start-intro">비행에 필요한 지점과 경로를<br>나만의 지도에 모아 보세요.</p><div class="start-choices"><button class="start-choice" data-v2="create"><div class="choice-drawing"><svg viewBox="0 0 128 60" aria-hidden="true"><path d="M9 47 44 15 81 37 116 10" stroke="#657e98" stroke-width="2" fill="none"/><path d="m79 54 16-22 25 19z" fill="#d2dfeb" stroke="#657e98"/><circle cx="9" cy="47" r="5" fill="#334155"/><circle cx="44" cy="15" r="5" fill="white" stroke="#334155" stroke-width="2"/><circle cx="81" cy="37" r="5" fill="white" stroke="#334155" stroke-width="2"/></svg></div><span class="choice-title">새 지도 그리기'+icon('chevron')+'</span><span class="choice-copy">점·선·면·원으로 필요한 정보를<br>지도 위에 직접 표시합니다.</span></button><button class="start-choice" data-v2="import"><div class="choice-drawing"><div class="choice-document">KML</div></div><span class="choice-title">파일 불러오기'+icon('chevron')+'</span><span class="choice-copy">가지고 있는 KML·KMZ 파일을<br>지도 위에서 확인합니다.</span></button></div>'}
+library=function(){
+ if(!maps.length)return head('내 지도',false)+'<div class="panel-scroll">'+startCards()+'</div>';
+ return head('내 지도',false)+'<div class="panel-scroll"><div class="library-actions"><button class="btn primary" data-v2="create">'+icon('plus')+'새 지도</button><button class="btn" data-v2="import">'+icon('upload')+'파일 불러오기</button></div>'+maps.map(m=>'<article class="library-card"><div class="card-top">'+icon(m.kind==='personal'?'edit':'map')+'<button class="library-open" data-action="open-map" data-id="'+m.id+'"><strong>'+esc(m.name)+'</strong><span>'+count(m)+'개 항목 · '+(m.kind==='personal'?'직접 만든 지도':'가져온 파일')+'</span></button>'+eye(m.visible,'map-visible','data-id="'+m.id+'"',m.name)+'</div></article>').join('')+'</div>';
+};
+function importScreen(){
+ if(importPhase==='pick')return head('파일 불러오기')+'<div class="panel-scroll"><p class="start-intro">KML·KMZ 파일을 지도 위에 펼쳐 보세요.</p><div class="dropzone" id="file-drop">'+icon('upload')+'<strong>파일을 여기에 놓으세요</strong><p>KML 또는 KMZ · 파일 1개</p><button class="btn primary" data-v2="choose">파일 선택</button></div><input type="file" accept=".kml,.kmz" id="pick-file" hidden><p id="file-error" class="error" role="alert"></p></div>';
+ return head('파일 불러오기')+'<div class="panel-scroll"><div class="file-preview"><div class="row">'+icon('map')+'<div><h2>'+esc(importedName)+'</h2><p>'+(importExample?'화면 검토용 예시 · 1개 폴더 · 3개 항목':'선택한 파일 · 분석 결과는 제품에서 표시')+'</p></div></div></div>'+(!importExample?'<p class="small-copy">이 시안은 실제 파일을 분석하지 않습니다. 아래에서 열리는 지도는 화면 검토용 예시입니다.</p>':'')+'<div class="file-actions"><button class="btn primary full" data-v2="open-file">지도에서 보기</button><button class="btn ghost full" data-v2="import">다른 파일 선택</button></div><p class="small-copy">내용을 확인한 뒤 필요한 경우<br>수정 가능한 사본을 만들 수 있습니다.</p></div>';
+}
+toolPanel=function(){let html=originalToolPanel();const dom=document.createElement('div');dom.innerHTML=html;if(tool!=='point')dom.querySelector('.tool-options label')?.remove();if(active().groups.length===1)dom.querySelector('.destination')?.remove();if(!tool){const n=document.createElement('p');n.className='small-copy';n.style.margin='12px 0 0';n.textContent='도구를 선택한 뒤 지도에서 위치를 누르세요.';dom.firstElementChild.append(n)}return dom.innerHTML};
+groupList=function(){if(mode==='edit'&&!count(active())&&active().groups.length===1)return '<div class="start-empty">'+icon('point')+'아직 표시한 항목이 없습니다.<br>위에서 도구를 골라 시작하세요.</div>';return originalGroupList()};
+editor=function(){const dom=document.createElement('div');dom.innerHTML=originalEditor();const title=dom.querySelector('h1');title.innerHTML='<button class="name-button" data-action="rename-map" aria-label="지도 이름 변경">'+esc(active().name)+icon('edit')+'</button>';if(!count(active()))dom.querySelector('[data-action="multi"]')?.remove();dom.querySelector('.panel-bottom').innerHTML=icon('check')+'완료한 항목은 자동으로 저장됩니다.';return dom.innerHTML};
+viewer=function(){const m=active(),personal=m.kind==='personal';return head(esc(m.name),true,btn('','map-menu','more','','aria-label="지도 관리"'))+'<div class="tools"><p class="small-copy" style="margin:0 0 12px">'+count(m)+'개 항목 · '+(personal?'내가 만든 지도':'가져온 파일 · 원본 보기')+'</p><div class="actions">'+(personal?btn('지도 편집','edit','edit','primary'):'<button class="btn primary" data-v2="copy-file">'+icon('copy')+'사본 만들어 편집</button>')+btn('전체 위치','fit-map','fit')+'</div></div><div class="panel-scroll">'+(count(m)>6?'<div class="search">'+icon('search')+'<input id="search" aria-label="항목 검색" placeholder="항목 이름 검색" value="'+esc(query)+'"></div>':'')+groupList()+'</div>'+detail()};
+const oldDetail=detail;detail=function(){return oldDetail().replace('내 지도로 복사','사본 만들어 편집')};
+function loungeScreen(){return head('기관 라운지',false)+'<div class="panel-scroll"><span class="eyebrow-v2">공유자료 / 지도</span><h2>기관 지도</h2><p class="small-copy">기관에서 함께 쓰는 지도는 여기에서 등록하고 관리합니다.</p><div class="lounge-card"><strong>지도 자료 등록</strong><p>KML·KMZ 파일을 업로드하거나<br>내가 만든 지도를 선택합니다.</p><button class="btn primary" data-v2="lounge-upload">'+icon('upload')+'지도 등록</button></div><p class="small-copy">등록한 자료의 버전 교체와 삭제도 기관 라운지에서 처리합니다.</p></div>'}
+render=function(){if(mode==='import'||mode==='lounge'){const savedMode=mode;mode='library';originalRender();mode=savedMode;$('#panel').innerHTML=mode==='import'?importScreen():loungeScreen();$('#panel').setAttribute('aria-label',mode==='import'?'파일 불러오기':'기관 라운지')}else originalRender();$('.breadcrumb').innerHTML='<strong>ProjectAMO</strong><span>내 지도 · 화면 흐름 시안</span>';$('#app').dataset.screen=mode;$('#review-sample').hidden=mode!=='import';};
+function loadExample(){const m=emptyMap();m.name=importedName;m.kind='imported';m.groups=[{id:uid('folder'),name:'참고 지점과 구역',visible:true,collapsed:false,items:[shape(uid('point'),'point','보고지점 A',[460,315],{note:'화면 검토용 지점입니다.'}),shape(uid('line'),'line','참고 경로',[[460,315],[580,420],[620,570]]),shape(uid('polygon'),'polygon','참고 구역',[[550,470],[700,470],[670,600],[580,620]],{metadata:clone(metadataSamples[0])})]}];maps.push(m);current=m.id;mode='view';query='';selected=null;persist();render();fitShapes(entries().map(e=>e.s))}
+function enterImport(){mode='import';tool=null;selected=null;importPhase='pick';render()}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-v2],[data-action]');if(!b)return;const v=b.dataset.v2,a=b.dataset.action;
+ if(!v&&!['new-map','confirm-delete-map','help','reset','share','confirm-share','import-info'].includes(a))return;
+ e.preventDefault();e.stopImmediatePropagation();
+ if(v==='create'||a==='new-map'){guardExit(createEmpty);return}
+ if(v==='import'||a==='import-info'){closeDialog();guardExit(enterImport);return}
+ if(v==='choose'){$('#pick-file').click();return}
+ if(v==='sample'){importedName='비행 참고지도.kmz';importExample=true;importPhase='ready';render();return}
+ if(v==='open-file'){loadExample();return}
+ if(v==='copy-file'){openDialog('편집할 사본 만들기','<p>원본 파일은 유지하고 개인 사본을 만듭니다.</p><p class="small-copy">실제 파일의 변환·제외 항목과 경고는 이 단계에서 확인합니다.</p>',btn('취소','close-dialog')+btn('사본 만들기','copy-map','copy','primary'));return}
+ if(v==='reset'||a==='reset'){guardExit(()=>{closeDialog();maps=[];current=null;mode='library';selected=null;tool=null;draft=[];history=[];future=[];$('#toast').textContent='';persist();render()});return}
+ if(v==='lounge'){guardExit(()=>{tool=null;mode='lounge';render()});return}
+ if(v==='home'){guardExit(()=>{tool=null;mode='library';render()});return}
+ if(v==='lounge-upload'){openDialog('기관 지도 등록','<div class="stack"><button class="btn" data-v2="lounge-file">'+icon('upload')+'KML/KMZ 파일 업로드</button><button class="btn" data-v2="lounge-personal">'+icon('map')+'내 지도에서 선택</button></div>',btn('취소','close-dialog'));return}
+ if(v==='lounge-file'||v==='lounge-personal'){closeDialog();toast('기관 라운지 등록 흐름입니다. 이번 시안에는 진입 위치만 표시합니다.');return}
+ if(a==='confirm-delete-map'){closeDialog();maps=maps.filter(m=>m.id!==current);current=maps[0]?.id;mode='library';selected=null;tool=null;history=[];future=[];persist();render();return}
+},true);
+function acceptFile(file){if(!file||!/^.+\.(kml|kmz)$/i.test(file.name)){const error=$('#file-error');if(error)error.textContent='KML 또는 KMZ 파일을 선택하세요.';return}importedName=file.name;importExample=false;importPhase='ready';render()}
+document.addEventListener('change',e=>{if(e.target.id==='pick-file')acceptFile(e.target.files[0])});
+document.addEventListener('dragover',e=>{if(mode!=='import')return;e.preventDefault();$('#file-drop')?.classList.add('drag')});
+document.addEventListener('drop',e=>{if(mode!=='import')return;e.preventDefault();if(e.dataTransfer.files.length!==1){const error=$('#file-error');if(error)error.textContent='파일은 한 번에 하나씩 선택하세요.';else toast('파일은 한 번에 하나씩 선택하세요.');return}acceptFile(e.dataTransfer.files[0])});
+$('.topbar').innerHTML='<div class="breadcrumb"></div><div class="review-controls"><span>디자인 검토용</span><button class="btn" id="review-sample" data-v2="sample" hidden>파일 예시 보기</button><button class="btn" data-v2="reset">빈 상태로 초기화</button></div>';
+$('.rail').innerHTML='<div class="brand">'+icon('plane')+'</div><button class="iconbtn" data-v2="home" aria-label="내 지도">'+icon('map')+'</button><button class="iconbtn" data-v2="lounge" aria-label="기관 라운지">'+icon('building')+'</button><div class="railspace"></div>';
+$('.footer').innerHTML='<span>화면 검토용 · 도형·좌표는 예시</span><span class="footer-extra">실제 파일 분석·서버 저장 없음</span><span id="coords"></span>';
+$('.legend')?.remove();
+maps=[];current=null;mode='library';selected=null;tool=null;history=[];future=[];render();

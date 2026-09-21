@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Copy, Download, FilePlus2, MoreHorizontal } from 'lucide-react'
+import { Copy, Download, FilePlus2, MoreHorizontal, Trash2 } from 'lucide-react'
 import MapConversionDialog, { PreviewSummary } from './MapConversionDialog.jsx'
 import { previewMapConversion } from './lib/mapKmlCodec.js'
 import { Button, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Menu, MenuButton, MenuItem, MenuList, MenuPopover, MenuTrigger } from '../../shared/ui/fluent.js'
@@ -19,7 +19,7 @@ function DuplicateDialog({ open, source, onClose, onDuplicate }) {
   }
   return <Dialog open={open} onOpenChange={(_, data) => { if (!data.open && !pending) onClose() }}><DialogSurface><DialogBody>
     <DialogTitle>지도 복제</DialogTitle><DialogContent>
-      <p>숨긴 항목을 포함해 {source?.items?.length ?? 0}개 항목을 새 개인 지도로 복사합니다. 원본 지도와 기관 공유본은 그대로 유지됩니다.</p>
+      <p>숨긴 항목을 포함해 {source?.items?.length ?? 0}개 항목을 새 개인 지도로 복사합니다. 원본 지도는 그대로 유지됩니다.</p>
       <label className="my-map-editor-field"><span>사본 이름</span><input autoFocus maxLength={200} disabled={pending} value={name} onChange={(event) => setName(event.target.value)} /></label>
       {error && <p className="my-map-error" role="alert">{error}</p>}
     </DialogContent><DialogActions><Button appearance="secondary" disabled={pending} onClick={onClose}>취소</Button><Button appearance="primary" disabled={pending || !name.trim()} onClick={duplicate}>{pending ? '복제 중…' : '복제하기'}</Button></DialogActions>
@@ -68,7 +68,7 @@ function ExportDialog({ open, document: source, preview, selectedId, onClose, on
   )
 }
 
-export default function MyMapFileActions({ myMap, document: source }) {
+export default function MyMapFileActions({ myMap, document: source, onRemove }) {
   const [dialog, setDialog] = useState(null)
   const [preview, setPreview] = useState(null)
   const canConvert = source?.kind === 'imported' && typeof myMap.convertDocument === 'function'
@@ -98,7 +98,8 @@ export default function MyMapFileActions({ myMap, document: source }) {
     canDuplicate && { key: 'duplicate', icon: <Copy size={16} />, label: '지도 복제', run: () => setDialog('duplicate') },
     canConvert && { key: 'convert', icon: <FilePlus2 size={16} />, label: '편집본으로 가져오기', run: () => openDialog('convert') },
     canExport && { key: 'export', icon: <Download size={16} />, label: 'KML로 내보내기', run: () => openDialog('export') },
-  ].filter(Boolean), [canDuplicate, canConvert, canExport, openDialog])
+    onRemove && { key: 'remove', icon: <Trash2 size={16} />, label: '지도 삭제', run: onRemove },
+  ].filter(Boolean), [canDuplicate, canConvert, canExport, openDialog, onRemove])
   if (!items.length) return null
 
   return (

@@ -16,13 +16,13 @@ function StorageAction({ children, onClick, primary = false }) {
   return <button type="button" className={primary ? 'my-map-primary-button' : 'my-map-secondary-button'} onClick={onClick}>{children}</button>
 }
 
-export default function MyMapStorageStatus({ storage, documentId, onRetry, onCopyConflict, onOpenServerVersion, onRestoreDraft, onDiscardDraft, onImportGuest }) {
+export default function MyMapStorageStatus({ storage, documentId, onRetry, onCopyConflict, onOpenServerVersion, onRestoreDraft, onDiscardDraft, onImportGuest, showGuestMaps = true }) {
   if (!storage) return null
   const state = documentId ? storage.states?.[documentId] : null
   const draft = documentId ? storage.drafts?.[documentId] : null
   const stateMessage = messageFor(state?.state, storage.account)
   const errorMessage = state?.error?.message ?? storage.error
-  const guestMaps = storage.account ? (storage.guestMaps ?? []) : []
+  const guestMaps = storage.account && showGuestMaps ? (storage.guestMaps ?? []) : []
 
   return <section className="my-map-storage" aria-label="지도 저장 상태">
     {!storage.ready && <p className="my-map-storage-row my-map-storage-pending" role="status"><FileClock size={15} aria-hidden="true" />내 지도 저장소를 준비하고 있습니다.</p>}

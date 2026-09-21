@@ -1,3 +1,4 @@
+import { createPersonalMap, openExtraTools, openGroupForm, importMapFile, deleteCurrentMap } from './my-map-helpers.mjs'
 import { test, expect } from '../fixtures.mjs'
 import { CURRENT_VERSION } from '../../src/features/about/changelog.js'
 
@@ -5,9 +6,7 @@ async function startMap(page, name) {
   await page.addInitScript((version) => { localStorage.setItem('amo.tour.v1.done', 'true'); localStorage.setItem('projectamo:lastSeenVersion', version) }, CURRENT_VERSION)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: '내 지도', exact: true }).click()
-  await page.getByRole('button', { name: '새 지도', exact: true }).click()
-  await page.getByRole('textbox', { name: '지도 이름', exact: true }).fill(name)
-  await page.getByRole('button', { name: '만들기', exact: true }).click()
+  await createPersonalMap(page, name)
   await page.waitForFunction(() => window.__map?.getLayer('my-map-edit-line'))
   await page.evaluate(() => window.__map.jumpTo({ center: [127, 37], zoom: 8 }))
 }
@@ -96,10 +95,12 @@ test('my-map 작성 전범위: 좌표 오류·다중 이동·항목 삽입 드�
   test.setTimeout(120000)
   await startMap(page, '그룹 작업 검증')
   for (const name of ['A', 'B']) {
+    await openGroupForm(page)
     await page.getByRole('textbox', { name: '새 그룹 이름', exact: true }).fill(name)
     await page.getByRole('button', { name: '그룹 추가', exact: true }).click()
   }
   const group = (name) => page.locator('.my-map-editor-group').filter({ has: page.getByRole('button', { name: new RegExp(`^${name} \\d+$`) }) })
+  await openExtraTools(page)
   await page.getByRole('button', { name: '좌표 여러 줄 입력', exact: true }).click()
   const bulk = page.getByRole('region', { name: '좌표 여러 줄 입력', exact: true })
   await bulk.getByRole('combobox', { name: '대상 그룹' }).selectOption({ label: 'A' })
@@ -248,8 +249,10 @@ test('my-map 그룹 보완: 새 그룹 묶기·순서 메뉴·해제·다중 드
   test.skip(testInfo.project.name !== 'desktop', '데스크톱 그룹 편집 계약')
   test.setTimeout(120000)
   await startMap(page, '그룹 보완 검증')
+  await openGroupForm(page)
   await page.getByRole('textbox', { name: '새 그룹 이름', exact: true }).fill('A')
   await page.getByRole('button', { name: '그룹 추가', exact: true }).click()
+  await openExtraTools(page)
   await page.getByRole('button', { name: '좌표 여러 줄 입력', exact: true }).click()
   const bulk = page.getByRole('region', { name: '좌표 여러 줄 입력', exact: true })
   await bulk.getByRole('combobox', { name: '대상 그룹' }).selectOption({ label: 'A' })
@@ -301,9 +304,11 @@ test('my-map 그룹 보완: 긴 목록 드래그 자동 스크롤·접힌 그룹
   test.setTimeout(90000)
   await startMap(page, '긴 그룹 검증')
   for (const name of ['A', 'B']) {
+    await openGroupForm(page)
     await page.getByRole('textbox', { name: '새 그룹 이름', exact: true }).fill(name)
     await page.getByRole('button', { name: '그룹 추가', exact: true }).click()
   }
+  await openExtraTools(page)
   await page.getByRole('button', { name: '좌표 여러 줄 입력', exact: true }).click()
   const bulk = page.getByRole('region', { name: '좌표 여러 줄 입력', exact: true })
   await bulk.getByRole('combobox', { name: '대상 그룹' }).selectOption({ label: 'A' })

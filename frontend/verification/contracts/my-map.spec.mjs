@@ -1,3 +1,4 @@
+import { createPersonalMap, openExtraTools, openGroupForm, importMapFile, deleteCurrentMap } from './my-map-helpers.mjs'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from '../fixtures.mjs'
@@ -73,7 +74,7 @@ async function openMyMap(page) {
 }
 
 async function loadFixture(page) {
-  await page.getByTestId('my-map-file').setInputFiles(KMZ)
+  await importMapFile(page, KMZ)
   await expect(page.getByTestId('my-map-tree')).toBeVisible()
 }
 
@@ -218,7 +219,7 @@ test('my-map 실제 KMZ의 논리 항목·가변 공역 상세·대량 표시', 
   let cumulative = 0
   for (const file of files) {
     const started = Date.now()
-    await page.getByTestId('my-map-file').setInputFiles(file.path)
+    await importMapFile(page, file.path)
     cumulative += file.count
     await expect.poll(() => sourceCount(page), { timeout: 45000 }).toBe(cumulative)
     await page.getByTestId('my-map-search').fill(file.name)
@@ -257,9 +258,7 @@ test('my-map 새 지도 작성·형태 취소·미완성 이탈', async ({ page 
   test.skip(testInfo.project.name !== 'desktop', '작성 기본 흐름은 데스크톱에서 검증')
   test.setTimeout(90000)
   await openMyMap(page)
-  await page.getByRole('button', { name: '새 지도', exact: true }).click()
-  await page.getByLabel('지도 이름', { exact: true }).fill('작성 검증 지도')
-  await page.getByRole('button', { name: '만들기', exact: true }).click()
+  await createPersonalMap(page, '작성 검증 지도')
   await expect(page.getByRole('region', { name: '내 지도 편집', exact: true })).toBeVisible()
   await page.waitForFunction(() => window.__map?.getLayer('my-map-edit-line'))
   await page.evaluate(() => window.__map.jumpTo({ center: [127,37], zoom: 7 }))
@@ -296,10 +295,7 @@ test('my-map 새 지도 작성·형태 취소·미완성 이탈', async ({ page 
   await expect.poll(() => sourceCount(page)).toBe(3)
   await page.getByRole('button', { name: '내 지도', exact: true }).click()
   await expect(page.locator('.my-map-panel')).toContainText('3개 항목')
-  await page.getByRole('button', { name: '기관에 공유', exact: true }).click()
-  await expect(page.getByRole('dialog')).toContainText('로그인하면 소속 기관에 지도를 공유')
-  await expect(page.getByRole('dialog').getByRole('button', { name: '이 버전 공유', exact: true })).toBeDisabled()
-  await page.getByRole('dialog').getByRole('button', { name: '취소', exact: true }).click()
+  await expect(page.getByRole('button', { name: '기관에 공유', exact: true })).toHaveCount(0)
   await expect.poll(() => sourceCount(page)).toBe(3)
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('authoring-return-to-view.png') })
 })
@@ -307,15 +303,14 @@ test('my-map 새 지도 작성·형태 취소·미완성 이탈', async ({ page 
 test('my-map 그룹 삭제 뒤 그룹 없는 항목의 보기·편집 순서 유지', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', '데스크톱 그룹 정렬 회귀')
   await openMyMap(page)
-  await page.getByRole('button', { name: '새 지도', exact: true }).click()
-  await page.getByLabel('지도 이름', { exact: true }).fill('그룹 정렬 검증')
-  await page.getByRole('button', { name: '만들기', exact: true }).click()
+  await createPersonalMap(page, '그룹 정렬 검증')
   await page.waitForFunction(() => window.__map?.getLayer('my-map-edit-line'))
   await page.getByRole('button', { name: '점', exact: true }).click()
   await page.locator('.mapboxgl-canvas').click({ position: { x: 740, y: 280 } })
   await expect.poll(() => sourceCount(page)).toBe(1)
   await page.getByRole('button', { name: '← 항목 목록', exact: true }).click()
   for (const name of ['a', 'b', 'c']) {
+    await openGroupForm(page)
     await page.getByRole('textbox', { name: '새 그룹 이름', exact: true }).fill(name)
     await page.getByRole('button', { name: '그룹 추가', exact: true }).click()
   }
@@ -332,9 +327,7 @@ test('my-map 기기 저장·새로고침·미완성 초안 재개', async ({ pag
   test.skip(testInfo.project.name !== 'desktop', '데스크톱 작성 복구 흐름')
   test.setTimeout(90000)
   await openMyMap(page)
-  await page.getByRole('button', { name: '새 지도', exact: true }).click()
-  await page.getByLabel('지도 이름', { exact: true }).fill('기기 복구 지도')
-  await page.getByRole('button', { name: '만들기', exact: true }).click()
+  await createPersonalMap(page, '기기 복구 지도')
   await page.waitForFunction(() => window.__map?.getLayer('my-map-edit-line'))
   await page.evaluate(() => window.__map.jumpTo({ center: [127, 37], zoom: 7 }))
   await page.getByRole('button', { name: '점', exact: true }).click()
@@ -381,9 +374,7 @@ test('my-map 계정 자동저장·별도 계정 격리·다시 열기', async ({
     return route.fulfill({ json: { document } })
   })
   await openMyMap(page)
-  await page.getByRole('button', { name: '새 지도', exact: true }).click()
-  await page.getByLabel('지도 이름', { exact: true }).fill('첫 계정의 지도')
-  await page.getByRole('button', { name: '만들기', exact: true }).click()
+  await createPersonalMap(page, '첫 계정의 지도')
   await page.waitForFunction(() => window.__map?.getLayer('my-map-edit-line'))
   await page.getByRole('button', { name: '점', exact: true }).click()
   await page.locator('.mapboxgl-canvas').click({ position: { x: 760, y: 300 } })
@@ -391,7 +382,7 @@ test('my-map 계정 자동저장·별도 계정 격리·다시 열기', async ({
   await expect(page.getByRole('region', { name: '지도 저장 상태' })).toContainText('계정에 저장됨')
   accountId = 202
   await page.reload({ waitUntil: 'domcontentloaded' }); await enterMyMap(page)
-  await expect(page.getByRole('button', { name: '새 지도', exact: true })).toBeEnabled()
+  await expect(page.getByRole('button', { name: /^(새 지도 그리기|새 지도)$/ })).toBeEnabled()
   await expect(page.locator(PANEL_ROOT)).not.toContainText('첫 계정의 지도')
   await expect.poll(() => sourceCount(page)).toBe(0)
   accountId = 101
@@ -456,6 +447,7 @@ test('my-map 기존 그리기 자료 이전·중복 방지·원본 보존', asyn
   })
   await openMyMap(page)
 
+  await page.getByRole('button', { name: '이전 자료', exact: true }).click()
   const banner = page.getByTestId('my-map-draw-migrate')
   await expect(banner).toContainText('3개')
   await banner.getByRole('button', { name: '그리기 자료 가져오기', exact: true }).click()
@@ -490,9 +482,7 @@ test('my-map 선 모양·아이콘·이름 항상 표시가 지도에 실제로 
   test.skip(testInfo.project.name !== 'desktop', '데스크톱 편집 스타일 반영')
   test.setTimeout(120000)
   await openMyMap(page)
-  await page.getByRole('button', { name: '새 지도', exact: true }).click()
-  await page.getByLabel('지도 이름', { exact: true }).fill('스타일 확인')
-  await page.getByRole('button', { name: '만들기', exact: true }).click()
+  await createPersonalMap(page, '스타일 확인')
   await page.waitForFunction(() => window.__map?.getLayer('my-map-edit-line'))
   await page.evaluate(() => window.__map.jumpTo({ center: [127, 37], zoom: 8 }))
 
@@ -564,6 +554,7 @@ test('my-map 로그인 상태에서 그리기 이전본이 계정 저장을 통�
     ] }))
   })
   await openMyMap(page)
+  await page.getByRole('button', { name: '이전 자료', exact: true }).click()
   await page.getByTestId('my-map-draw-migrate').getByRole('button', { name: '그리기 자료 가져오기', exact: true }).click()
 
   // 고급 도형이 있어도 계정 저장이 거부되지 않는다.
@@ -576,6 +567,6 @@ test('my-map 로그인 상태에서 그리기 이전본이 계정 저장을 통�
 
   // 이전 안내는 다음 화면으로 넘어가면 사라진다.
   await expect(page.locator(PANEL)).toContainText('개인 지도로 옮겼습니다')
-  await page.getByRole('button', { name: '추가하기', exact: true }).click()
+  await page.getByRole('button', { name: '지도 편집', exact: true }).click()
   await expect(page.locator(PANEL)).not.toContainText('개인 지도로 옮겼습니다')
 })
