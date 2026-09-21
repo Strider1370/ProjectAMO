@@ -30,7 +30,7 @@ function apiHubPolicyFor(id) {
   if (id === 'asos_ceiling') return { timeoutMs: config.asos_ceiling.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }
   if (id === 'radar_qcd') return { timeoutMs: config.radar_echo_top.timeout_ms, maxAttempts: 1 + config.radar_echo_top.retry, allowedOverrides: ['signal'] }
   if (id === 'sfc_vis') return { timeoutMs: 30_000, maxAttempts: 1, allowedOverrides: ['signal'] }
-  if (id === 'kim_grid') return { timeoutMs: config.kim_surface_wind.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }
+  if (id === 'kim_grid') return { timeoutMs: config.kim_surface_wind.timeout_ms, maxAttempts: 2, retryDelayMs: 2_000, allowedOverrides: ['signal'] }
   if (id === 'ktg') return { timeoutMs: config.ktg.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }
   if (id.startsWith('satellite_')) return { timeoutMs: config.satellite.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }
   if (id === 'amos') return { timeoutMs: config.amos.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }

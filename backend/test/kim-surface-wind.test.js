@@ -7,6 +7,7 @@ import test from 'node:test'
 import { parseKimGridText } from '../src/parsers/kim-grid-parser.js'
 import { buildKimGridUrl } from '../src/api-client.js'
 import config from '../src/config.js'
+import { readKimNwpIndex, readKimNwpLatest, readKimNwpManifest, writeKimNwpLatest, writeKimNwpManifest } from '../src/processors/kim-nwp-store.js'
 import {
   KIM_NWP_ICING_LEVEL_IDS,
   KIM_NWP_LEVELS,
@@ -29,6 +30,7 @@ import {
   resolveKimSurfaceWindCandidates,
   selectLegacySurfaceWindGrid,
   shouldPublishKimNwpRun,
+  shouldReplaceKimNwpLatest,
   resolveKimTemperatureComponentRequest,
   process as processKimNwp,
 } from '../src/processors/kim-surface-wind-processor.js'
@@ -819,4 +821,100 @@ test('mapKimNwpTasksWithConcurrency stops scheduling after a required task failu
   )
 
   assert.deepEqual(started, [1, 2])
+})
+
+test('shouldReplaceKimNwpLatest keeps a complete run from being replaced by a partial one', () => {
+  const complete = { usable: true, complete: true }
+  const partial = { usable: true, complete: false }
+  const runId = 'KIMG_NE57_2026092106'
+  const previousLatestRunId = 'KIMG_NE57_2026091806'
+  assert.equal(shouldReplaceKimNwpLatest({ complete: true, previousLatestRunId, runId, previousManifest: complete }), true)
+  assert.equal(shouldReplaceKimNwpLatest({ complete: false, previousLatestRunId, runId, previousManifest: complete }), false)
+  assert.equal(shouldReplaceKimNwpLatest({ complete: false, previousLatestRunId, runId, previousManifest: partial }), true)
+  assert.equal(shouldReplaceKimNwpLatest({ complete: false, previousLatestRunId: null, runId, previousManifest: null }), true)
+  assert.equal(shouldReplaceKimNwpLatest({ complete: false, previousLatestRunId: runId, runId, previousManifest: complete }), true)
+})
+
+async function withKimProcessHarness(respond, body) {
+  const original = {
+    basePath: config.storage.base_path,
+    bounds: config.kim_surface_wind.bounds,
+    concurrency: config.kim_nwp.concurrency,
+    forecastHours: config.kim_nwp.forecast_hours,
+    keepRaw: config.kim_nwp.keep_raw,
+  }
+  const root = await mkdtemp(path.join(os.tmpdir(), 'projectamo-kim-partial-'))
+  const originalFetch = globalThis.fetch
+  try {
+    config.storage.base_path = root
+    config.kim_surface_wind.bounds = BOUNDS_2X2
+    config.kim_nwp.concurrency = 1
+    config.kim_nwp.forecast_hours = [0]
+    config.kim_nwp.keep_raw = false
+    globalThis.fetch = async (url) => new Response(respond(new URL(url)))
+    await body(root)
+  } finally {
+    globalThis.fetch = originalFetch
+    config.storage.base_path = original.basePath
+    config.kim_surface_wind.bounds = original.bounds
+    config.kim_nwp.concurrency = original.concurrency
+    config.kim_nwp.forecast_hours = original.forecastHours
+    config.kim_nwp.keep_raw = original.keepRaw
+    await rm(root, { recursive: true, force: true })
+  }
+}
+
+const GRID_2X2_TEXT = '# variable = grid, unit = 1, level = 0, i = 2, j = 2\n# j = 1\n1 2\n# j = 2\n3 4\n'
+const failWindAt1000 = (url) => (url.searchParams.get('name') === 'u' && url.searchParams.get('level') === '1000'
+  ? 'Variable not found'
+  : GRID_2X2_TEXT)
+
+test('one failed KIM wind request does not stop the remaining levels', async () => {
+  await withKimProcessHarness(failWindAt1000, async (root) => {
+    await processKimNwp({ candidates: [{ tmfc: '2026092106', hf: 0 }] })
+
+    const index = readKimNwpIndex(root)
+    const collected = Object.keys(index.availability)
+    assert.equal(collected.includes('1000hPa'), false)
+    assert.equal(collected.length, KIM_NWP_LEVELS.length - 1)
+    assert.ok(collected.includes('150hPa'), 'levels after the failed one are still collected')
+    const manifest = readKimNwpManifest(root, 'KIMG_NE57_2026092106')
+    assert.equal(manifest.complete, false)
+    assert.equal(manifest.failedTaskCount, 1)
+  })
+})
+
+test('a partial KIM run does not replace a complete run that is already served', async () => {
+  await withKimProcessHarness(failWindAt1000, async (root) => {
+    const servedRunId = 'KIMG_NE57_2026091806'
+    writeKimNwpManifest(root, { type: 'kim_nwp_manifest', model: 'KIMG/NE57', tmfc: '2026091806', runId: servedRunId, usable: true, complete: true, gridCount: 22, expectedGridCount: 22 })
+    writeKimNwpLatest(root, { type: 'kim_nwp_latest', model: 'KIMG/NE57', latestRun: '2026091806', latestRunId: servedRunId, indexPath: 'kim_nwp/index.json' })
+
+    await assert.rejects(
+      () => processKimNwp({ candidates: [{ tmfc: '2026092106', hf: 0 }] }),
+      { code: 'kim_nwp_run_incomplete' },
+    )
+
+    assert.equal(readKimNwpLatest(root).latestRunId, servedRunId)
+    assert.equal(readKimNwpManifest(root, servedRunId).complete, true, 'served run survives cleanup')
+    const partial = readKimNwpManifest(root, 'KIMG_NE57_2026092106')
+    assert.equal(partial.gridCount, KIM_NWP_LEVELS.length - 1, 'partial run stays on disk to be resumed')
+  })
+})
+
+test('the partial KIM run is published once the missing grid is collected', async () => {
+  let failing = true
+  await withKimProcessHarness((url) => (failing ? failWindAt1000(url) : GRID_2X2_TEXT), async (root) => {
+    const servedRunId = 'KIMG_NE57_2026091806'
+    writeKimNwpManifest(root, { type: 'kim_nwp_manifest', model: 'KIMG/NE57', tmfc: '2026091806', runId: servedRunId, usable: true, complete: true, gridCount: 22, expectedGridCount: 22 })
+    writeKimNwpLatest(root, { type: 'kim_nwp_latest', model: 'KIMG/NE57', latestRun: '2026091806', latestRunId: servedRunId, indexPath: 'kim_nwp/index.json' })
+    await assert.rejects(() => processKimNwp({ candidates: [{ tmfc: '2026092106', hf: 0 }] }), { code: 'kim_nwp_run_incomplete' })
+
+    failing = false
+    await processKimNwp({ candidates: [{ tmfc: '2026092106', hf: 0 }] })
+
+    assert.equal(readKimNwpLatest(root).latestRunId, 'KIMG_NE57_2026092106')
+    assert.equal(readKimNwpManifest(root, 'KIMG_NE57_2026092106').complete, true)
+    assert.equal(readKimNwpManifest(root, servedRunId), null, 'the older run is cleaned up after the new one completes')
+  })
 })

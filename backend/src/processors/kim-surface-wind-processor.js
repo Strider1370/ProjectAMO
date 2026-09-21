@@ -27,6 +27,7 @@ import {
   readKimNwpGridSafe,
   readKimNwpIndex,
   readKimNwpLatest,
+  readKimNwpManifest,
   resolveKimNwpGridPath,
   resolveKimNwpRunDir,
   writeKimNwpGrid,
@@ -581,6 +582,15 @@ export function shouldPublishKimNwpRun({ entries, expectedGridCount }) {
   return entries.every((entry) => entry.variables?.includes('u') && entry.variables?.includes('v'))
 }
 
+// An incomplete run may be published only while nothing complete is being served.
+// Replacing a complete run with a partial one drops every level and hour the partial
+// run has not reached yet; keep serving the complete run until the new one catches up.
+export function shouldReplaceKimNwpLatest({ complete, previousLatestRunId, runId, previousManifest }) {
+  if (complete) return true
+  if (!previousLatestRunId || previousLatestRunId === runId) return true
+  return !(previousManifest?.usable === true && previousManifest.complete !== false)
+}
+
 export function hasCompleteKimNwpRun({
   latest,
   index,
@@ -673,7 +683,11 @@ export async function process({
     const latestRunId = buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: candidate.tmfc })
     const expectedGridCount = forecastHours.length * KIM_NWP_LEVELS.length
 
+    // A single upstream failure must not stop the remaining tasks: the failed grid is
+    // retried on the next run (incremental retry), while every other grid still lands.
+    let failedTaskCount = 0
     await mapKimNwpTasksWithConcurrency(tasks, config.kim_nwp?.concurrency || 4, async (task) => {
+      signal?.throwIfAborted()
       try {
         const { grid, lastError: taskError } = await collectKimNwpTask({
           task,
@@ -694,11 +708,13 @@ export async function process({
         if (grid.level?.id === '10m' && Number(grid.hf) === 0) surfaceGrid = grid
       } catch (error) {
         lastError = error
-        throw error
+        if (signal?.aborted || error?.name === 'AbortError') throw error
+        failedTaskCount += 1
       }
     }).catch((error) => {
       lastError = error
     })
+    signal?.throwIfAborted()
 
     if (!shouldPublishKimNwpRun({ entries, expectedGridCount })) {
       writeKimNwpManifest(config.storage.base_path, {
@@ -735,8 +751,22 @@ export async function process({
       complete,
       gridCount: entries.length,
       expectedGridCount,
+      failedTaskCount,
       updated_at: new Date().toISOString(),
     })
+    const previousLatestRunId = readKimNwpLatest(config.storage.base_path)?.latestRunId || null
+    if (!shouldReplaceKimNwpLatest({
+      complete,
+      previousLatestRunId,
+      runId: latestRunId,
+      previousManifest: previousLatestRunId ? readKimNwpManifest(config.storage.base_path, previousLatestRunId) : null,
+    })) {
+      // Keep the partial run on disk so the next collection resumes it; drop older partials.
+      cleanupKimNwpRuns({ root: config.storage.base_path, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId })
+      const error = new Error(`kim_nwp_run_incomplete ${entries.length}/${expectedGridCount}; serving ${previousLatestRunId}`)
+      error.code = 'kim_nwp_run_incomplete'
+      throw error
+    }
     writeKimNwpIndex(config.storage.base_path, index)
     writeKimNwpLatest(config.storage.base_path, {
       type: 'kim_nwp_latest',
