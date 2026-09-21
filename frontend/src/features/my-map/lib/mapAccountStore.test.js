@@ -91,6 +91,17 @@ test('계정 지도 API는 세션 쿠키·취소 신호와 계약 경로를 사�
   assert.deepEqual(JSON.parse(calls[3].init.body), { expectedRevision: 2, snapshot: { id: 'a b' } })
 })
 
+test('저장 개수와 용량 제한을 구분해 안내한다', async () => {
+  await assert.rejects(
+    () => createMap({ id: 'second' }, { fetchImpl: async () => json({ error: 'map_limit_exceeded', limit: 'documents' }, 413) }),
+    (error) => error.message.includes('지도 1개만'),
+  )
+  await assert.rejects(
+    () => createMap({ id: 'big' }, { fetchImpl: async () => json({ error: 'map_too_large', limit: 'request_bytes' }, 413) }),
+    (error) => error.message.includes('5MB'),
+  )
+})
+
 test('413과 revision conflict는 호출자가 분기할 수 있는 오류로 변환한다', async () => {
   const tooLarge = async () => json({ error: 'map_too_large' }, 413)
   await assert.rejects(

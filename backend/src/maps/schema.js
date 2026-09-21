@@ -1,6 +1,6 @@
-export const MAX_DOCUMENT_BYTES = 32 * 1024 * 1024
-export const MAX_ACCOUNT_BYTES = 256 * 1024 * 1024
-export const MAX_DOCUMENTS = 100
+export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024
+export const MAX_ACCOUNT_BYTES = MAX_DOCUMENT_BYTES
+export const MAX_DOCUMENTS = 1
 export const MAX_ITEMS = 10000
 export const MAX_GROUPS = 2000
 export const MAX_COORDINATES = 1000000

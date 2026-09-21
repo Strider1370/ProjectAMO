@@ -3,8 +3,10 @@ const RECOVERY_DB = 'projectamo-my-map-account-v1'
 const COMPLETED = 'completed'
 const DRAFTS = 'drafts'
 
-const errorMessage = (status, code) => {
-  if (status === 413) return '지도 저장 용량 한도를 초과했습니다.'
+const errorMessage = (status, code, limit) => {
+  if (status === 413 && limit === 'documents') return '계정에는 지도 1개만 저장할 수 있습니다. 기존 지도를 수정하거나 삭제한 뒤 다시 시도하세요.'
+  if (status === 413 && (code === 'map_too_large' || limit === 'account_bytes')) return '계정 지도 저장 한도는 5MB입니다. 지도 내용을 줄인 뒤 다시 시도하세요.'
+  if (status === 413) return '지도 항목 또는 좌표 수 한도를 초과했습니다.'
   if (code === 'revision_conflict') return '다른 변경이 먼저 저장되었습니다. 자동으로 덮어쓰지 않았습니다.'
   if (status === 401 || status === 403) return '계정 권한을 확인할 수 없습니다.'
   return '지도 저장 요청을 처리하지 못했습니다.'
@@ -12,7 +14,7 @@ const errorMessage = (status, code) => {
 
 export class MapAccountError extends Error {
   constructor({ status = 0, code = 'map_request_failed', currentRevision = null, details = null } = {}) {
-    super(errorMessage(status, code))
+    super(errorMessage(status, code, details?.limit))
     this.name = 'MapAccountError'
     this.status = status
     this.code = code

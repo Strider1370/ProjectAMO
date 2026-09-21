@@ -121,10 +121,10 @@ test('인증 뒤 maps 전용 parser는 malformed JSON을 400 invalid_json으로 
   } finally { await new Promise((resolve) => server.close(resolve)); db.close() }
 })
 
-test('32MiB 문서와 계정 256MiB/100개 한도를 넘기지 않고 PUT은 기존 크기를 제외한다', async () => {
+test('5MiB 문서와 계정 1개 한도를 넘기지 않고 PUT은 기존 크기를 제외한다', async () => {
   const { db, app } = makeServer(); const owner = user(db, 'maps_quota'); const server = await listen(app)
   try {
-    const oversized = snapshot('oversized'); oversized.items[0].description = 'x'.repeat(32 * 1024 * 1024)
+    const oversized = snapshot('oversized'); oversized.items[0].description = 'x'.repeat(5 * 1024 * 1024)
     let response = await request(server, '/', owner, 'POST', { snapshot: oversized })
     assert.equal(response.status, 413)
     const now = new Date().toISOString()
@@ -140,8 +140,11 @@ test('32MiB 문서와 계정 256MiB/100개 한도를 넘기지 않고 PUT은 기
     const countOwner = user(db, 'maps_count')
     const insert = db.prepare(`INSERT INTO personal_maps (id, owner_id, name, revision, snapshot, byte_length, item_count, group_count, created_at, updated_at)
       VALUES (?,?,?,?,?,?,?,?,?,?)`)
-    for (let index = 0; index < 100; index += 1) insert.run(`count-${index}`, countOwner, 'old', 1, '{}', 2, 0, 0, now, now)
+    insert.run('count-0', countOwner, 'old', 1, '{}', 2, 0, 0, now, now)
     response = await request(server, '/', countOwner, 'POST', { snapshot: snapshot('count-over') })
     assert.equal(response.status, 413); assert.deepEqual(await response.json(), { error: 'map_limit_exceeded', limit: 'documents' })
+    assert.equal((await request(server, '/count-0', countOwner, 'DELETE')).status, 200)
+    assert.equal((await request(server, '/', countOwner, 'POST', { snapshot: snapshot('after-delete') })).status, 201)
+    assert.equal((await request(server, '/after-delete', countOwner, 'PUT', { expectedRevision: 1, snapshot: snapshot('after-delete') })).status, 200)
   } finally { await new Promise((resolve) => server.close(resolve)); db.close() }
 })

@@ -1,10 +1,11 @@
-import { MAX_ACCOUNT_BYTES, MAX_DOCUMENT_BYTES } from './schema.js'
 import { OrganizationError, integerId, nowIso, optionalText, requireText } from '../organizations/common.js'
 
 // 기관 quota는 공유 중단된 지도의 불변 버전까지 포함한다. 삭제 뒤 곧바로 같은
 // 용량을 다시 발표해 history 저장소를 우회하지 못하게 하며, 13.45MiB 원본도 약 19개
 // 버전(초기 포함)은 보관할 수 있다.
-export const MAX_ORGANIZATION_VERSION_BYTES = MAX_ACCOUNT_BYTES
+// 개인 계정 제한과 별도로 유지한다. 기존 기관 자료의 버전 정책은 변경하지 않는다.
+export const MAX_ORGANIZATION_VERSION_BYTES = 256 * 1024 * 1024
+const MAX_DOCUMENT_BYTES = 32 * 1024 * 1024
 
 function mapId(value) {
   return integerId(value, 'mapId')

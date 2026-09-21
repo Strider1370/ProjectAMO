@@ -27,7 +27,7 @@ function mapId(value) {
 }
 
 // server.js는 이 경로만 전역 1MiB JSON parser에서 건너뛰고 세션 뒤에 마운트한다.
-// 따라서 인증·활성 계정 검사를 통과한 요청에만 32MiB 전용 parser가 실행된다.
+// 따라서 인증·활성 계정 검사를 통과한 요청에만 5MiB 전용 parser가 실행된다.
 export function createMyMapsRouter({ db = null, trustedMutationOrigin = requireTrustedMutationOrigin() } = {}) {
   const router = Router()
   const database = () => db || getDb()
