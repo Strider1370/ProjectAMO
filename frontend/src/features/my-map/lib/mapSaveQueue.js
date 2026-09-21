@@ -39,7 +39,7 @@ export function createMapSaveQueue({ transport, writeRecovery = async () => true
       record.timer = null
     }
     const run = () => { record.timer = null; drive(record) }
-    record.timer = setTimeout(run, immediate ? 0 : delayMs)
+    record.timer = setTimeout(run, Math.max(immediate ? 0 : delayMs, (record.retryAt ?? 0) - Date.now()))
   }
   const drive = async (record) => {
     if (disposed || record.cancelled || record.conflict || record.inFlight || record.generation <= record.ackGeneration) return
@@ -78,11 +78,13 @@ export function createMapSaveQueue({ transport, writeRecovery = async () => true
       if (disposed || record.cancelled || requestEpoch !== epoch || error?.name === 'AbortError') return
       record.inFlight = null
       record.error = error
+      if (error?.status === 429) record.retryAt = Date.now() + Math.max(1, Math.min(3600, Number(error.retryAfterSeconds) || 60)) * 1000
       record.state = error?.status === 409 || error?.code === 'revision_conflict' ? 'conflict' : offline(error) ? 'offline' : 'error'
       record.conflict = record.state === 'conflict'
       queueRecovery(record, record.document)
       notify(record, record.state, error)
       settleWaiters(record)
+      if (error?.status === 429) schedule(record)
     } finally {
       finishRequest()
     }

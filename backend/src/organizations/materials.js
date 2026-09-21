@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 
 import config from '../config.js'
-import { parseOrganizationMapMaterial } from '../lib/organization-kml.js'
+import { parseOrganizationMapMaterialAsync } from '../lib/organization-kml-async.js'
+import { assertMapGrowth, reserveMaterialBytes, materialWriteBytes } from '../maps/storage-budget.js'
 import {
   OrganizationError,
   assertVersion,
@@ -145,7 +146,7 @@ async function validateFile(file) {
     } catch { throw new OrganizationError(400, 'invalid_pdf') }
     finally { await loadingTask?.destroy?.() }
   } else {
-    try { imageMetadata = parseOrganizationMapMaterial(file.buffer, mimeType) }
+    try { imageMetadata = await parseOrganizationMapMaterialAsync(file.buffer, mimeType) }
     catch (error) {
       const reason = String(error?.message ?? '').replace(/^invalid_map_material:/, '') || 'invalid_map_material'
       throw new OrganizationError(400, 'invalid_map_material', { reason })
@@ -249,6 +250,13 @@ function sendPrivateFile(req, res, root, key, mimeType, originalName) {
   return fs.createReadStream(filePath).pipe(res)
 }
 
+let writingMaterial = false
+const guardedWrite = handler => async (req,res) => {
+  if (writingMaterial) { res.set('Retry-After','2'); throw new OrganizationError(429,'material_write_busy') }
+  writingMaterial=true
+  try { return await handler(req,res) } finally { writingMaterial=false }
+}
+
 export function createMaterialsHandlers({ database, filesPath } = {}) {
   const root = materialRoot(filesPath)
   return {
@@ -260,20 +268,24 @@ export function createMaterialsHandlers({ database, filesPath } = {}) {
         WHERE m.organization_id=? AND m.deleted_at IS NULL ORDER BY m.updated_at DESC,m.id DESC`).all(req.organization.id)
       res.json({ materials: rows.map(rowToMaterial) })
     },
-    async create(req, res) {
+    create: guardedWrite(async (req, res) => {
       const { fields, file: rawFile } = requestUpload(req)
       const file = rawFile ? await validateFile(rawFile) : null
       if (!file && !['document', 'route'].includes(fields.kind)) throw new OrganizationError(400, 'file_required')
       const db = database()
       const kind = kindFor(file?.mimeType, fields)
-      const metadata = { ...(file?.metadata ?? {}), ...(parseOrganizationJsonField(fields.metadata, {}, 'metadata') ?? {}) }
+      const metadata = kind === 'map' ? file.metadata : { ...(file?.metadata ?? {}), ...(parseOrganizationJsonField(fields.metadata, {}, 'metadata') ?? {}) }
       const content = validateOrganizationMaterialContent(db, req.organization.id, {
         kind, metadata, blocks: parseOrganizationJsonField(fields.blocks, [], 'blocks'),
       })
-      const saved = file ? await persistFile(root, file) : {}
+      const byteGrowth = materialWriteBytes(file,content)
+      const release = reserveMaterialBytes(db,req.organization.id,byteGrowth,root)
+      let saved = {}
+      try { saved = file ? await persistFile(root,file) : {} } catch(error) { release(); throw error }
       const now = nowIso()
       let material
       try { material = db.transaction(() => {
+        release(); assertMapGrowth(db,byteGrowth,{orgId:req.organization.id,location:root})
         const info = db.prepare(`INSERT INTO organization_materials
           (organization_id,owner_user_id,created_at,updated_at) VALUES (?,?,?,?)`)
           .run(req.organization.id, req.session.userId, now, now)
@@ -287,13 +299,13 @@ export function createMaterialsHandlers({ database, filesPath } = {}) {
           file?.buffer.length ?? null, saved.contentHash ?? null,
           JSON.stringify(content.metadata), JSON.stringify(content.blocks), req.session.userId, now)
         return rowToMaterial(materialRow(db, req.organization.id, info.lastInsertRowid))
-      })() } catch (error) { cleanupCreatedFiles(saved.createdPaths); throw error }
+      })() } catch (error) { cleanupCreatedFiles(saved.createdPaths); throw error } finally { release() }
       res.status(201).json({ material })
-    },
+    }),
     get(req, res) {
       res.json({ material: rowToMaterial(materialRow(database(), req.organization.id, req.params.materialId, req.query.version)) })
     },
-    async update(req, res) {
+    update: guardedWrite(async (req, res) => {
       const db = database()
       const currentRow = materialRow(db, req.organization.id, req.params.materialId, null, { includeDeleted: false })
       if (!canEdit(req, currentRow)) throw new OrganizationError(403, 'organization_forbidden')
@@ -301,20 +313,24 @@ export function createMaterialsHandlers({ database, filesPath } = {}) {
       assertVersion(currentRow.version, fields.expectedVersion)
       const file = rawFile ? await validateFile(rawFile) : null
       const kind = file ? kindFor(file.mimeType, fields) : fields.kind ?? currentRow.kind
-      const metadata = {
+      const metadata = kind === 'map' ? (file?.metadata ?? json(currentRow.metadata, {})) : {
         ...json(currentRow.metadata, {}), ...(file?.metadata ?? {}),
         ...(fields.metadata === undefined ? {} : parseOrganizationJsonField(fields.metadata, {}, 'metadata')),
       }
       const blocks = fields.blocks === undefined
         ? json(currentRow.blocks, []) : parseOrganizationJsonField(fields.blocks, [], 'blocks')
       const content = validateOrganizationMaterialContent(db, req.organization.id, { kind, metadata, blocks })
-      const saved = file ? await persistFile(root, file) : {
+      const byteGrowth = materialWriteBytes(file,content,currentRow)
+      const release = reserveMaterialBytes(db,req.organization.id,byteGrowth,root)
+      let saved = {}
+      try { saved = file ? await persistFile(root, file) : {
         storageKey: currentRow.storage_key, thumbnailKey: currentRow.thumbnail_storage_key, contentHash: currentRow.content_hash,
-      }
+      } } catch(error) { release(); throw error }
       const next = currentRow.version + 1
       const now = nowIso()
       let material
       try { material = db.transaction(() => {
+        release(); assertMapGrowth(db,byteGrowth,{orgId:req.organization.id,location:root})
         db.prepare(`INSERT INTO organization_material_versions
           (material_id,version,kind,title,description,source_label,mime_type,original_name,storage_key,
            thumbnail_storage_key,size_bytes,content_hash,metadata,blocks,created_by,created_at)
@@ -330,9 +346,9 @@ export function createMaterialsHandlers({ database, filesPath } = {}) {
           .run(next, now, currentRow.id, req.organization.id, currentRow.version)
         if (changed.changes !== 1) throw new OrganizationError(409, 'version_conflict')
         return rowToMaterial(materialRow(db, req.organization.id, currentRow.id))
-      })() } catch (error) { cleanupCreatedFiles(saved.createdPaths); throw error }
+      })() } catch (error) { cleanupCreatedFiles(saved.createdPaths); throw error } finally { release() }
       res.json({ material })
-    },
+    }),
     remove(req, res) {
       const db = database()
       const row = materialRow(db, req.organization.id, req.params.materialId, null, { includeDeleted: false })

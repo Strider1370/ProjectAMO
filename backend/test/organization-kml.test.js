@@ -52,3 +52,9 @@ test('existing real KML fixture can be parsed without loading remote content', (
   assert.deepEqual(result.warnings, ['ignored_resource_reference'])
   assert.equal(JSON.stringify(result.geojson).includes('http://aim.koca.go.kr'), false)
 })
+
+test('KMZ rejects executable-named attachments and fake raster content', () => {
+  const mime = 'application/vnd.google-earth.kmz'
+  assert.throws(() => parseOrganizationMapMaterial(zipKml({name:'payload.exe'}),mime), /zip_attachment_type/)
+  assert.throws(() => parseOrganizationMapMaterial(zipKml({name:'payload.png'}),mime), /zip_attachment_content/)
+})

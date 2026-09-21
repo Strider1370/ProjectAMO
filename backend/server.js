@@ -110,7 +110,7 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false,
 const defaultJsonParser = express.json({ limit: '1mb' })
 // Maps parse after session/authentication setup with their own measured payload limit.
 // Keep the existing request limit for all other APIs.
-app.use((req, res, next) => /^\/api\/(?:me\/maps|organizations\/[^/]+\/maps)(?:\/|$)/.test(req.path) ? next() : defaultJsonParser(req, res, next))
+app.use((req, res, next) => /^\/api\/(?:me\/maps|organizations\/[^/]+\/(?:maps|materials))(?:\/|$)/.test(req.path) ? next() : defaultJsonParser(req, res, next))
 app.use(compression())
 
 // #7 인증: (개발) CORS credentials + 세션. 공개 API는 saveUninitialized:false라 세션쿠키 안 생김.

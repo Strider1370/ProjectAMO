@@ -1,3 +1,4 @@
+import { assertMapGrowth } from './storage-budget.js'
 import { OrganizationError, integerId, nowIso, optionalText, requireText } from '../organizations/common.js'
 
 // 기관 quota는 공유 중단된 지도의 불변 버전까지 포함한다. 삭제 뒤 곧바로 같은
@@ -79,6 +80,7 @@ function organizationUsage(db, organizationId) {
 }
 
 function assertOrganizationQuota(db, organizationId, addedBytes) {
+  assertMapGrowth(db,Number(addedBytes))
   if (Number(addedBytes) > MAX_DOCUMENT_BYTES) throw new OrganizationError(413, 'map_too_large', { limit: 'document_bytes' })
   if (Number(organizationUsage(db, organizationId).bytes) + Number(addedBytes) > MAX_ORGANIZATION_VERSION_BYTES) {
     throw new OrganizationError(413, 'organization_map_limit_exceeded', { limit: 'organization_version_bytes' })

@@ -4,6 +4,8 @@ const COMPLETED = 'completed'
 const DRAFTS = 'drafts'
 
 const errorMessage = (status, code, limit) => {
+  if (status === 429) return '저장 요청이 많습니다. 잠시 후 다시 저장합니다.'
+  if (status === 507 || code === 'map_storage_full') return '서버 지도 저장 공간이 부족합니다. 변경 내용은 이 기기에 보관됩니다.'
   if (status === 413 && limit === 'documents') return '계정에는 지도 1개만 저장할 수 있습니다. 기존 지도를 수정하거나 삭제한 뒤 다시 시도하세요.'
   if (status === 413 && (code === 'map_too_large' || limit === 'account_bytes')) return '계정 지도 저장 한도는 5MB입니다. 지도 내용을 줄인 뒤 다시 시도하세요.'
   if (status === 413) return '지도 항목 또는 좌표 수 한도를 초과했습니다.'
@@ -13,13 +15,14 @@ const errorMessage = (status, code, limit) => {
 }
 
 export class MapAccountError extends Error {
-  constructor({ status = 0, code = 'map_request_failed', currentRevision = null, details = null } = {}) {
+  constructor({ status = 0, code = 'map_request_failed', currentRevision = null, details = null, retryAfterSeconds = null } = {}) {
     super(errorMessage(status, code, details?.limit))
     this.name = 'MapAccountError'
     this.status = status
     this.code = code
     this.currentRevision = Number.isSafeInteger(currentRevision) ? currentRevision : null
     this.details = details
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
@@ -33,7 +36,7 @@ async function request(path, init = {}, { signal, fetchImpl = globalThis.fetch }
   }
   let body = null
   try { body = await response.json() } catch { /* non-JSON failures still have an HTTP status */ }
-  if (!response.ok) throw new MapAccountError({ status: response.status, code: body?.error, currentRevision: body?.currentRevision, details: body })
+  if (!response.ok) throw new MapAccountError({ status: response.status, code: body?.error, currentRevision: body?.currentRevision, details: body, retryAfterSeconds: Number(response.headers.get('retry-after')) || body?.retryAfterSeconds })
   return body
 }
 

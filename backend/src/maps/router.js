@@ -1,4 +1,6 @@
+import { createMapWriteGuard } from './request-guard.js'
 import express, { Router } from 'express'
+import { MapStorageError } from './storage-budget.js'
 
 import { requireAuth } from '../auth/middleware.js'
 import { getDb } from '../db/index.js'
@@ -9,7 +11,7 @@ import { MapSchemaError, MAX_DOCUMENT_BYTES, validateMapDocument } from './schem
 export const mapsJsonParser = express.json({ limit: MAX_DOCUMENT_BYTES, strict: true })
 
 function sendError(res, error) {
-  if (error instanceof MapSchemaError || error instanceof MapRepositoryError) {
+  if (error instanceof MapStorageError || error instanceof MapSchemaError || error instanceof MapRepositoryError) {
     return res.status(error.status ?? 400).json({ error: error.code, ...(error.details ? error.details : {}) })
   }
   return res.status(500).json({ error: 'map_operation_failed' })
@@ -33,13 +35,15 @@ export function createMyMapsRouter({ db = null, trustedMutationOrigin = requireT
   const database = () => db || getDb()
   router.use(requireAuth)
   router.use((req, res, next) => activeAccount(database, req, res, next))
-  router.use(mapsJsonParser)
+  router.use((req,res,next) => ['GET','HEAD','OPTIONS'].includes(req.method) ? next() : trustedMutationOrigin(req,res,next))
+  router.use(createMapWriteGuard())
+  router.use((req,res,next) => ['GET','HEAD','OPTIONS'].includes(req.method) ? next() : mapsJsonParser(req,res,next))
 
   router.get('/', (req, res) => {
     try { res.json({ maps: listMyMaps(database(), req.session.userId) }) } catch (error) { sendError(res, error) }
   })
 
-  router.post('/', trustedMutationOrigin, (req, res) => {
+  router.post('/', (req, res) => {
     try {
       const validated = validateMapDocument(req.body?.snapshot)
       const document = createMyMap(database(), req.session.userId, validated)
@@ -51,7 +55,7 @@ export function createMyMapsRouter({ db = null, trustedMutationOrigin = requireT
     try { res.json({ document: getMyMap(database(), req.session.userId, mapId(req.params.id)) }) } catch (error) { sendError(res, error) }
   })
 
-  router.put('/:id', trustedMutationOrigin, (req, res) => {
+  router.put('/:id', (req, res) => {
     try {
       const id = mapId(req.params.id)
       const expectedRevision = assertExpectedRevision(req.body?.expectedRevision)
@@ -62,7 +66,7 @@ export function createMyMapsRouter({ db = null, trustedMutationOrigin = requireT
     } catch (error) { sendError(res, error) }
   })
 
-  router.delete('/:id', trustedMutationOrigin, (req, res) => {
+  router.delete('/:id', (req, res) => {
     try {
       deleteMyMap(database(), req.session.userId, mapId(req.params.id))
       res.json({ ok: true })

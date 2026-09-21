@@ -1,3 +1,4 @@
+import { createMapWriteGuard } from './request-guard.js'
 import express, { Router } from 'express'
 
 import { getDb } from '../db/index.js'
@@ -24,7 +25,9 @@ export function createOrganizationMapsRouter({ db = null, trustedMutationOrigin 
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next()
     return trustedMutationOrigin(req, res, next)
   })
-  router.use('/:orgId/maps', express.json({ limit: '1mb', strict: true }))
+  router.use('/:orgId/maps', createMapWriteGuard({maxBodyBytes:1024*1024}))
+  const parseBody = express.json({ limit: '1mb', strict: true, inflate: false })
+  router.use('/:orgId/maps', (req,res,next) => ['GET','HEAD','OPTIONS'].includes(req.method) ? next() : parseBody(req,res,next))
 
   router.get('/:orgId/maps', asyncRoute((req, res) => {
     res.json({ maps: listOrganizationMaps(database(), req.organizationId) })

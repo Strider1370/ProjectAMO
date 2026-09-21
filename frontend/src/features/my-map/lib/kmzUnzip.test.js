@@ -41,3 +41,21 @@ test('kml 항목이 없는 zip은 한국어 오류로 거부한다', async () =>
   bytes.set(new TextEncoder().encode('doc.txt'), cenOffset + 46)
   await assert.rejects(() => readKmlFromBuffer(bytes.buffer, 'nokml.kmz'), /KML/)
 })
+
+test('DTD and external entities are rejected before XML parsing', async () => {
+  const data=new TextEncoder().encode('<!DOCTYPE kml [<!ENTITY x SYSTEM "file:///secret">]><kml/>')
+  await assert.rejects(()=>readKmlFromBuffer(data.buffer,'unsafe.kml'),/DTD/)
+})
+
+test('declared and actual expansion bounds both reject compressed bombs', async () => {
+  const {deflateRawSync}=await import('node:zlib')
+  const raw=Buffer.from('A'.repeat(8*1024*1024)),packed=deflateRawSync(raw),name=Buffer.from('doc.kml')
+  const l=Buffer.alloc(30),c=Buffer.alloc(46),e=Buffer.alloc(22)
+  l.writeUInt32LE(0x04034b50);l.writeUInt16LE(8,8);l.writeUInt16LE(name.length,26)
+  c.writeUInt32LE(0x02014b50);c.writeUInt16LE(8,10);c.writeUInt32LE(packed.length,20);c.writeUInt32LE(raw.length,24);c.writeUInt16LE(name.length,28)
+  e.writeUInt32LE(0x06054b50);e.writeUInt16LE(1,8);e.writeUInt16LE(1,10);e.writeUInt32LE(46+name.length,12);e.writeUInt32LE(30+name.length+packed.length,16)
+  const make=()=>toArrayBuffer(Buffer.concat([l,name,packed,c,name,e]))
+  await assert.rejects(()=>readKmlFromBuffer(make(),'bomb.kmz'),/크기/)
+  c.writeUInt32LE(10,24)
+  await assert.rejects(()=>readKmlFromBuffer(make(),'lying-bomb.kmz'),/크기/)
+})

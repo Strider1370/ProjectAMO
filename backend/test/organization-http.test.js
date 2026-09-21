@@ -149,6 +149,22 @@ test('organization HTTP routes re-check active membership, enforce Origin, and a
     })
     assert.equal(response.status, 201)
     const mapMaterial = (await response.json()).material
+    response = await fetch(`${base}/api/organizations/${first.id}/materials/${mapMaterial.id}`, {
+      method: 'PATCH', headers: {origin:base,'x-user-id':String(admin),'content-type':'application/json'},
+      body: JSON.stringify({expectedVersion:mapMaterial.version,metadata:{geojson:{type:'FeatureCollection',features:[]}}}),
+    })
+    assert.equal(response.status,200)
+    assert.deepEqual((await response.json()).material.metadata.geojson,mapMaterial.metadata.geojson)
+    // Removed materials and old versions must still consume quota.
+    db.prepare('UPDATE organization_materials SET deleted_at=? WHERE id=?').run(new Date().toISOString(),mapMaterial.id)
+    db.prepare(`INSERT INTO organization_material_versions (material_id,version,kind,title,size_bytes,created_by,created_at)
+      SELECT material_id,3,kind,title,?,created_by,created_at FROM organization_material_versions WHERE material_id=? AND version=1`).run(100*1024*1024,mapMaterial.id)
+    response = await fetch(`${base}/api/organizations/${first.id}/materials`, {
+      method:'POST',headers:{origin:base,'x-user-id':String(admin),'content-type':'application/vnd.google-earth.kml+xml','x-file-name':'quota.kml','x-material-title':'quota'},body:kml,
+    })
+    assert.equal(response.status,413)
+    assert.equal((await response.json()).error,'organization_material_storage_full')
+
     assert.equal(mapMaterial.metadata.featureCount, 1)
     assert.deepEqual(mapMaterial.metadata.geojson.features[0].geometry.coordinates, [126.4, 37.4, 0])
 

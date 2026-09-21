@@ -211,3 +211,22 @@ test('ACK revision은 최신 로컬 문서의 복구본에 병합하고 서버 �
   assert.equal(writes.at(-1).revision, 1)
   assert.equal(writes.at(-1).title, 'local newest value')
 })
+
+test('429 retry delay also applies to new edits and explicit retry', async () => {
+  let attempts=0
+  const queue=createMapSaveQueue({delayMs:0,transport:{create:async document=>{
+    attempts++
+    if(attempts===1) throw Object.assign(new Error('limited'),{status:429,retryAfterSeconds:1})
+    return {...document,revision:1}
+  },update:async()=>{throw Error('unexpected')}}})
+  try {
+    queue.enqueue({id:'limited',revision:0,name:'first'})
+    await new Promise(resolve=>setTimeout(resolve,30))
+    queue.enqueue({id:'limited',revision:0,name:'latest'})
+    const pending=queue.retry('limited')
+    await new Promise(resolve=>setTimeout(resolve,30))
+    assert.equal(attempts,1)
+    assert.equal((await pending).name,'latest')
+    assert.equal(attempts,2)
+  } finally { queue.dispose() }
+})

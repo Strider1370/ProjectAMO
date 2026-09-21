@@ -1,3 +1,4 @@
+import { MapStorageError } from '../maps/storage-budget.js'
 import crypto from 'node:crypto'
 
 export const ORGANIZATION_ROLES = Object.freeze(['admin', 'planner', 'member'])
@@ -82,7 +83,7 @@ export function assertVersion(current, expected) {
 }
 
 export function handleOrganizationError(res, error) {
-  if (error instanceof OrganizationError) {
+  if (error instanceof OrganizationError || error instanceof MapStorageError) {
     return res.status(error.status).json({ error: error.code, ...(error.details ? { details: error.details } : {}) })
   }
   if (error?.code === 'SQLITE_CONSTRAINT_FOREIGNKEY') return res.status(400).json({ error: 'invalid_reference' })

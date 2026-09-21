@@ -2,7 +2,7 @@ import zlib from 'node:zlib'
 import { XMLParser, XMLValidator } from 'fast-xml-parser'
 import { kinks, polygon } from '@turf/turf'
 
-const MAX_EXPANDED = 100 * 1024 * 1024
+const MAX_EXPANDED = 32 * 1024 * 1024
 const MAX_POINTS = 50000
 const many = value => value == null ? [] : Array.isArray(value) ? value : [value]
 const invalid = reason => { throw new Error(`invalid_map_material:${reason}`) }
@@ -25,20 +25,28 @@ function extractKml(zip) {
     const offset = zip.readUInt32LE(cursor + 42)
     if (cursor + 46 + nameSize + extraSize + commentSize > end) invalid('zip_entry_bounds')
     const name = zip.subarray(cursor + 46, cursor + 46 + nameSize).toString('utf8').replace(/\\/g, '/')
+    if (!/\/$|\.(?:kml|png|jpe?g|gif|webp)$/i.test(name)) invalid('zip_attachment_type')
     if (flags & 1 || ![0, 8].includes(method) || name.startsWith('/') || /^[a-z]:/i.test(name) || name.split('/').includes('..')) invalid('zip_path_or_method')
     total += size
-    if (total > MAX_EXPANDED) invalid('zip_expanded_size')
+    if (total > MAX_EXPANDED || size > compressedSize * 200 + 65536) invalid('zip_expanded_size')
     if (offset + 30 > zip.length || zip.readUInt32LE(offset) !== 0x04034b50) invalid('zip_offset')
     const localNameSize = zip.readUInt16LE(offset + 26), localExtraSize = zip.readUInt16LE(offset + 28)
     if (zip.subarray(offset + 30, offset + 30 + localNameSize).toString('utf8').replace(/\\/g, '/') !== name || zip.readUInt16LE(offset + 8) !== method) invalid('zip_header_mismatch')
     const start = offset + 30 + localNameSize + localExtraSize
     if (start + compressedSize > cursor) invalid('zip_data_bounds')
-    if (/\.kml$/i.test(name)) {
+    if (!name.endsWith('/')) {
       const compressed = zip.subarray(start, start + compressedSize)
       const bytes = method === 0 ? compressed : zlib.inflateRawSync(compressed, { maxOutputLength: Math.min(MAX_EXPANDED, size + 1) })
       if (bytes.length !== size) invalid('zip_size_mismatch')
       if (zlib.crc32(bytes) !== zip.readUInt32LE(cursor + 16)) invalid('zip_checksum')
-      candidates.push({ name, bytes })
+      if (/\.kml$/i.test(name)) candidates.push({ name, bytes })
+      else {
+        const valid = /\.png$/i.test(name) ? bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+          : /\.jpe?g$/i.test(name) ? bytes[0]===255 && bytes[1]===216 && bytes[2]===255
+          : /\.gif$/i.test(name) ? /^GIF8[79]a$/.test(bytes.subarray(0,6).toString())
+          : /\.webp$/i.test(name) && bytes.subarray(0,4).toString()==='RIFF' && bytes.subarray(8,12).toString()==='WEBP'
+        if (!valid) invalid('zip_attachment_content')
+      }
     }
     cursor += 46 + nameSize + extraSize + commentSize
   }
@@ -48,11 +56,12 @@ function extractKml(zip) {
 }
 
 export function parseOrganizationMapMaterial(buffer, mimeType = 'application/vnd.google-earth.kml+xml') {
+  if (buffer.length > 25 * 1024 * 1024) invalid('file_size')
   const text = mimeType.endsWith('kmz') ? extractKml(buffer) : buffer.toString('utf8')
   if (/<!DOCTYPE|<!ENTITY/i.test(text) || XMLValidator.validate(text) !== true) invalid('xml')
   const parsed = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true, parseTagValue: false, processEntities: false }).parse(text)
   if (!parsed.kml) invalid('kml_root')
-  let points = 0
+  let points = 0, segmentComparisons = 0
   function coordinates(value, minimum) {
     const raw = typeof value === 'object' ? value?.['#text'] : value
     if (typeof raw !== 'string') invalid('coordinates_missing')
@@ -72,7 +81,8 @@ export function parseOrganizationMapMaterial(buffer, mimeType = 'application/vnd
     if (result[0][0] !== result.at(-1)[0] || result[0][1] !== result.at(-1)[1]) invalid('ring_not_closed')
     return result
   }
-  function geometry(node) {
+  function geometry(node, depth = 0) {
+    if (depth > 32) invalid('geometry_depth')
     if (node.Point) {
       const list = coordinates(node.Point.coordinates, 1)
       if (list.length !== 1) invalid('point_count')
@@ -81,10 +91,13 @@ export function parseOrganizationMapMaterial(buffer, mimeType = 'application/vnd
     if (node.LineString) return [{ type: 'LineString', coordinates: coordinates(node.LineString.coordinates, 2) }]
     if (node.Polygon) {
       const rings = [ring(node.Polygon.outerBoundaryIs), ...many(node.Polygon.innerBoundaryIs).map(ring)]
+      const edges = rings.reduce((count, ring) => count + ring.length - 1, 0)
+      segmentComparisons += edges * edges
+      if (edges > 2000 || segmentComparisons > 2000000) invalid('polygon_complexity')
       if (kinks(polygon(rings)).features.length) invalid('polygon_self_intersection')
       return [{ type: 'Polygon', coordinates: rings }]
     }
-    if (node.MultiGeometry) return many(node.MultiGeometry).flatMap(multi => Object.entries(multi).flatMap(([key, value]) => many(value).flatMap(item => geometry({ [key]: item }))))
+    if (node.MultiGeometry) return many(node.MultiGeometry).flatMap(multi => Object.entries(multi).flatMap(([key, value]) => many(value).flatMap(item => geometry({ [key]: item }, depth + 1))))
     return []
   }
   const features = []

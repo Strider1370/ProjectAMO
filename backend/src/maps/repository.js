@@ -1,3 +1,4 @@
+import { assertMapGrowth } from './storage-budget.js'
 import { MAX_ACCOUNT_BYTES, MAX_DOCUMENT_BYTES, MAX_DOCUMENTS, MapSchemaError } from './schema.js'
 
 export class MapRepositoryError extends Error {
@@ -64,6 +65,7 @@ export function createMyMap(db, ownerId, validated) {
     const document = withServerFields(validated.document, { revision: 1, createdAt: now, updatedAt: now })
     const { snapshot, bytes } = serializeDocument(document)
     assertQuota(accountUsage(db, ownerId), bytes)
+    assertMapGrowth(db,bytes)
     db.prepare(`INSERT INTO personal_maps (id, owner_id, name, revision, snapshot, byte_length, item_count, group_count, created_at, updated_at)
       VALUES (?,?,?,?,?,?,?,?,?,?)`).run(document.id, ownerId, document.name, 1, snapshot, bytes, validated.itemCount, validated.groupCount, now, now)
     return document
@@ -80,6 +82,7 @@ export function updateMyMap(db, ownerId, id, expectedRevision, validated) {
     const document = withServerFields(validated.document, { revision, createdAt: prior.created_at, updatedAt: now })
     const { snapshot, bytes } = serializeDocument(document)
     assertQuota(accountUsage(db, ownerId), bytes, prior.byte_length)
+    assertMapGrowth(db,bytes-prior.byte_length)
     const result = db.prepare(`UPDATE personal_maps SET name=?, revision=?, snapshot=?, byte_length=?, item_count=?, group_count=?, updated_at=?
       WHERE id=? AND owner_id=? AND revision=?`).run(document.name, revision, snapshot, bytes, validated.itemCount, validated.groupCount, now, id, ownerId, expectedRevision)
     if (!result.changes) {

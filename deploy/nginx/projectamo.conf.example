@@ -23,7 +23,7 @@ server {
   # Personal map JSON includes the original KML properties and compound geometries.
   # Match backend/src/maps/schema.js without increasing unrelated API limits.
   location ~ ^/api/me/maps(?:/|$) {
-    client_max_body_size 32m;
+    client_max_body_size 5m;
     limit_req zone=projectamo_api burst=60 nodelay;
     proxy_pass http://127.0.0.1:3001;
     proxy_http_version 1.1;

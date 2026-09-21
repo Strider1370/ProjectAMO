@@ -1,3 +1,4 @@
+import { assertMapFileSize } from './lib/kmzUnzip.js'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { importMapDocument } from './lib/importMapDocument.js'
@@ -190,6 +191,7 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
     const seq = open ? ++openSequence.current : null, id = prepared?.source.id ?? newMapId()
     const finish = beginOperation('지도 내용 해석 중…'); setError(null); setNotice(null)
     try {
+      assertMapFileSize(file)
       const document = prepared?.source ?? await importMapDocument(await file.arrayBuffer(), file.name, { id })
       if (scopeRef.current !== owner) return null
       const saved = await saveMyMapFile(file, { id, scopeKey: owner })
@@ -507,6 +509,7 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
       setCurrentId(id); setMode('edit')
     }),
     inspectFile: async (file) => {
+      assertMapFileSize(file)
       const owner = scopeRef.current
       if (!storage.ready || !owner) return null
       if (!/\.(kml|kmz)$/i.test(file.name)) throw new Error('KML 또는 KMZ 파일을 선택하세요.')

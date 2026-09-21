@@ -1,73 +1,66 @@
-// KMZ는 KML을 담은 zip이다. 라이브러리를 새로 들이지 않고 브라우저·Node 양쪽에
-// 내장된 DecompressionStream으로 푼다. zip 전체를 다루지 않고 "항목 하나 꺼내기"만
-// 한다 — KMZ는 doc.kml 하나가 본체이고 나머지는 아이콘이라 그걸로 충분하다.
-const EOCD_SIG = 0x06054b50
-const CEN_SIG = 0x02014b50
-const LOC_SIG = 0x04034b50
-const STORED = 0
-const DEFLATED = 8
-
-// 끝쪽의 EOCD(중앙 디렉터리 끝 표시)를 뒤에서부터 찾는다. zip 주석이 붙을 수 있어
-// 위치가 고정이 아니다. 주석 최대 길이가 64KB라 그만큼만 거슬러 올라간다.
-function findEocd(view, length) {
-  const floor = Math.max(0, length - 22 - 65535)
-  for (let i = length - 22; i >= floor; i -= 1) {
-    if (view.getUint32(i, true) === EOCD_SIG) return i
-  }
-  return -1
-}
-
-async function inflateRaw(bytes) {
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
-  return new Uint8Array(await new Response(stream).arrayBuffer())
-}
-
+const EOCD_SIG = 0x06054b50, CEN_SIG = 0x02014b50, LOC_SIG = 0x04034b50
+export const MAX_MAP_FILE_BYTES = 25 * 1024 * 1024
+export const MAX_KML_BYTES = 32 * 1024 * 1024
+const invalid = (message = '압축 파일이 손상되었거나 지원하지 않는 KML/KMZ 형식입니다.') => { throw new Error(message) }
+const tooLarge = () => invalid('지도 파일 또는 압축 해제 크기가 허용 범위를 초과했습니다.')
+export function assertMapFileSize(file) { if (file.size > MAX_MAP_FILE_BYTES) tooLarge() }
 function decode(bytes) {
-  const head = new TextDecoder('ascii').decode(bytes.subarray(0, 512))
-  const declared = head.match(/encoding\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase()
-  try {
-    return new TextDecoder(declared || 'utf-8').decode(bytes)
-  } catch {
-    return new TextDecoder('utf-8').decode(bytes)
-  }
+  const declared = new TextDecoder('ascii').decode(bytes.subarray(0,512)).match(/encoding\s*=\s*["']([^"']+)["']/i)?.[1]
+  let text
+  try { text = new TextDecoder(declared || 'utf-8').decode(bytes) } catch { text = new TextDecoder().decode(bytes) }
+  if (/<!DOCTYPE|<!ENTITY/i.test(text)) invalid('외부 엔티티 또는 DTD가 포함된 KML은 열 수 없습니다.')
+  return text
 }
-
-export async function readKmlFromBuffer(arrayBuffer, fileName = '') {
-  if (/\.kml$/i.test(fileName)) return decode(new Uint8Array(arrayBuffer))
-
-  const bytes = new Uint8Array(arrayBuffer)
-  const view = new DataView(arrayBuffer)
-  const eocd = findEocd(view, bytes.length)
-  if (eocd < 0) throw new Error('압축 파일을 열 수 없습니다. KMZ 또는 KML 파일인지 확인하세요.')
-
-  const count = view.getUint16(eocd + 10, true)
-  let p = view.getUint32(eocd + 16, true)
-  let found = null
-  for (let i = 0; i < count; i += 1) {
-    if (view.getUint32(p, true) !== CEN_SIG) break
-    const method = view.getUint16(p + 10, true)
-    const compressedSize = view.getUint32(p + 20, true)
-    const nameLength = view.getUint16(p + 28, true)
-    const extraLength = view.getUint16(p + 30, true)
-    const commentLength = view.getUint16(p + 32, true)
-    const localOffset = view.getUint32(p + 42, true)
-    const name = decode(bytes.subarray(p + 46, p + 46 + nameLength))
-    // doc.kml이 있으면 그것을, 없으면 처음 만난 .kml을 쓴다.
-    if (/\.kml$/i.test(name) && (!found || /(^|\/)doc\.kml$/i.test(name))) {
-      found = { name, method, compressedSize, localOffset }
-      if (/(^|\/)doc\.kml$/i.test(name)) break
+async function inflateRaw(bytes, limit) {
+  const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader()
+  const chunks=[]; let size=0
+  try {
+    for (;;) {
+      const {done,value}=await reader.read()
+      if(done) break
+      size+=value.byteLength
+      if(size>limit) { await reader.cancel(); tooLarge() }
+      chunks.push(value)
     }
-    p += 46 + nameLength + extraLength + commentLength
+  } finally { reader.releaseLock() }
+  const result=new Uint8Array(size); let offset=0
+  for(const chunk of chunks) { result.set(chunk,offset);offset+=chunk.length }
+  return result
+}
+export async function readKmlFromBuffer(arrayBuffer, fileName = '') {
+  if(arrayBuffer.byteLength>MAX_MAP_FILE_BYTES) tooLarge()
+  const bytes=new Uint8Array(arrayBuffer)
+  if(/\.kml$/i.test(fileName)) return decode(bytes)
+  const view=new DataView(arrayBuffer)
+  let end=-1
+  for(let i=bytes.length-22;i>=Math.max(0,bytes.length-65557);i--) {
+    if(view.getUint32(i,true)===EOCD_SIG) {end=i;break}
   }
-  if (!found) throw new Error('압축 파일 안에서 KML을 찾지 못했습니다.')
-
-  // 지역 헤더는 이름·부가필드 길이가 중앙 디렉터리와 다를 수 있어 여기서 다시 읽는다.
-  const lo = found.localOffset
-  if (view.getUint32(lo, true) !== LOC_SIG) throw new Error('압축 파일이 손상되었습니다.')
-  const dataStart = lo + 30 + view.getUint16(lo + 26, true) + view.getUint16(lo + 28, true)
-  const data = bytes.subarray(dataStart, dataStart + found.compressedSize)
-
-  if (found.method === STORED) return decode(data)
-  if (found.method === DEFLATED) return decode(await inflateRaw(data))
-  throw new Error(`지원하지 않는 압축 방식입니다 (${found.method}).`)
+  if(end<0 || view.getUint16(end+4,true) || view.getUint16(end+6,true) || end+22+view.getUint16(end+20,true)!==bytes.length) invalid()
+  const count=view.getUint16(end+10,true)
+  if(!count || count>1000) invalid('압축 파일의 항목 수가 허용 범위를 초과했습니다.')
+  let cursor=view.getUint32(end+16,true), found=null, total=0
+  for(let i=0;i<count;i++) {
+    if(cursor+46>end || view.getUint32(cursor,true)!==CEN_SIG) invalid()
+    const flags=view.getUint16(cursor+8,true),method=view.getUint16(cursor+10,true)
+    const compressed=view.getUint32(cursor+20,true),expanded=view.getUint32(cursor+24,true)
+    const nameSize=view.getUint16(cursor+28,true),extra=view.getUint16(cursor+30,true),comment=view.getUint16(cursor+32,true),offset=view.getUint32(cursor+42,true)
+    if(cursor+46+nameSize+extra+comment>end) invalid()
+    const name=new TextDecoder().decode(bytes.subarray(cursor+46,cursor+46+nameSize)).replace(/\\/g,'/')
+    if(flags&1 || ![0,8].includes(method) || name.startsWith('/') || /^[a-z]:/i.test(name) || name.split('/').includes('..')) invalid()
+    if(!/\/$|\.(?:kml|png|jpe?g|gif|webp)$/i.test(name)) invalid('KML/KMZ 안에 허용되지 않는 부속 파일이 있습니다.')
+    total+=expanded
+    if(total>MAX_KML_BYTES || expanded>compressed*200+65536) tooLarge()
+    if(offset+30>cursor || view.getUint32(offset,true)!==LOC_SIG || view.getUint16(offset+8,true)!==method) invalid()
+    const localNameSize=view.getUint16(offset+26,true),start=offset+30+localNameSize+view.getUint16(offset+28,true)
+    if(start+compressed>cursor || start>cursor) invalid()
+    if(new TextDecoder().decode(bytes.subarray(offset+30,offset+30+localNameSize)).replace(/\\/g,'/')!==name) invalid()
+    if(/\.kml$/i.test(name) && (!found || /(^|\/)doc\.kml$/i.test(name))) found={start,compressed,expanded,method}
+    cursor+=46+nameSize+extra+comment
+  }
+  if(!found) invalid('압축 파일 안에서 KML을 찾지 못했습니다.')
+  const data=bytes.subarray(found.start,found.start+found.compressed)
+  const result=found.method===0 ? data : await inflateRaw(data,Math.min(MAX_KML_BYTES,found.expanded,found.compressed*200+65536))
+  if(result.byteLength!==found.expanded) invalid()
+  return decode(result)
 }

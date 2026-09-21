@@ -1,4 +1,5 @@
-import { Router } from 'express'
+import { createMapWriteGuard } from '../maps/request-guard.js'
+import express, { Router } from 'express'
 
 import { requireAuth, requireRole } from '../auth/middleware.js'
 import { getDb } from '../db/index.js'
@@ -223,6 +224,9 @@ export function createOrganizationRouter({
     res.json({ ok: true })
   }))
 
+  router.use('/:orgId/materials', createMapWriteGuard({maxBytes:50*1024*1024,maxBodyBytes:26*1024*1024,maxConcurrent:2}))
+  const parseMaterialBody = express.json({limit:'1mb',inflate:false})
+  router.use('/:orgId/materials', (req,res,next) => ['GET','HEAD','OPTIONS'].includes(req.method) ? next() : parseMaterialBody(req,res,next))
   router.get('/:orgId/materials', asyncRoute(materials.list))
   router.post('/:orgId/materials', materials.readUpload, asyncRoute(materials.create))
   router.get('/:orgId/materials/:materialId', asyncRoute(materials.get))
