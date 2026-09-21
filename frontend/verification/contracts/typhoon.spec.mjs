@@ -344,7 +344,18 @@ test('태풍 두쥐안의 연속 확률 영역과 강풍 영역을 함께 표시
   expect(metricLayout.every((cell) => cell.fits && cell.valueSize >= 28)).toBe(true)
   expect(metricLayout[0].width).toBeLessThan(metricLayout[1].width)
   expect(metricLayout[1].width).toBeLessThan(metricLayout[2].width)
-  if (testInfo.project.name !== 'mobile') expect((await panel.boundingBox()).width).toBeCloseTo(700, 0)
+  if (testInfo.project.name !== 'mobile') {
+    expect((await panel.boundingBox()).width).toBeCloseTo(780, 0)
+    // 위치 문구가 줄바꿈되면 행 높이가 달라진다. 데스크톱·태블릿에서는 한 줄이어야 한다.
+    const wrapped = await panel.locator('td.typhoon-track__where').evaluateAll((cells) => cells
+      .filter((cell) => {
+        const range = document.createRange()
+        range.selectNodeContents(cell)
+        return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size > 1
+      })
+      .map((cell) => cell.textContent))
+    expect(wrapped).toEqual([])
+  }
   expect(await panel.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   const output = path.resolve(dir, '../../../artifacts/responsive-screenshots/typhoon')
@@ -352,7 +363,7 @@ test('태풍 두쥐안의 연속 확률 영역과 강풍 영역을 함께 표시
   await page.mouse.move(0, 0)
   await page.evaluate((mobile) => {
     const map = window.__map
-    map.fitBounds([[132, 20], [164, 48]], { padding: mobile ? { top: 35, bottom: 360, left: 20, right: 20 } : { top: 50, bottom: 60, left: 780, right: 35 }, duration: 0 })
+    map.fitBounds([[132, 20], [164, 48]], { padding: mobile ? { top: 35, bottom: 360, left: 20, right: 20 } : { top: 50, bottom: 60, left: 860, right: 35 }, duration: 0 })
   }, testInfo.project.name === 'mobile')
   await expect.poll(() => page.evaluate(() => window.__map?.isMoving())).toBe(false)
   await expect.poll(() => page.evaluate(() => window.__map?.areTilesLoaded()), { timeout: 20_000 }).toBe(true)

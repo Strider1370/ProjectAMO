@@ -3,9 +3,11 @@
    .map-view-wrapper .layer-drawer 규칙을 이기려 동일 접두 + .typhoon-panel 로 특이도 확보. */
 .map-view-wrapper .layer-drawer.typhoon-panel {
   /* 태풍을 켜면 레이어 패널이 닫히므로 그 자리를 그대로 쓴다.
-     시각 표가 들어가 좁으면 글자가 세로로 쪼개진다 — 넉넉히 준다. */
+     시각 표가 들어가 좁으면 글자가 세로로 쪼개진다 — 넉넉히 준다.
+     위치 칸은 기상청 문구("대만 타이베이 남남동쪽 약 1100 km 부근 해상")가
+     한 줄에 들어가야 행마다 높이가 들쭉날쭉하지 않다. */
   left: 12px;
-  width: min(700px, calc(100% - 2 * var(--panel-inset)));
+  width: min(780px, calc(100% - 2 * var(--panel-inset)));
   overflow-x: hidden;
 }
 
