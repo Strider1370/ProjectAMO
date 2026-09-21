@@ -10,6 +10,7 @@ import { buildDocumentOverlay, effectiveHiddenGroups, itemBounds, MY_MAP_LAYER_I
 import useMyMapEditor from './useMyMapEditor.js'
 import { syncEditorOverlay, removeEditorOverlay } from './lib/mapEditorOverlay.js'
 import { bindEditorInteraction } from './lib/mapEditorInteraction.js'
+import { createOrganizationMapSession, shareOrganizationMap, updateOrganizationMap, stopOrganizationMap } from './lib/mapOrganizationStore.js'
 
 const VIEW_KEY = 'projectamo.my-map.view.v1'
 const viewKey = (key) => key === GUEST_MAP_SCOPE ? VIEW_KEY : `${VIEW_KEY}:${key}`
@@ -31,6 +32,9 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
   const scopeKey = authLoading ? null : user?.id != null ? `account:${user.id}` : GUEST_MAP_SCOPE
   const scopeRef = useRef(scopeKey); scopeRef.current = scopeKey
   const persistence = useRef(null)
+  const organizationSession = useRef(null)
+  const organizationRequest = useRef(null)
+  const [sharing, setSharing] = useState({ memberships: [], ready: false, error: null })
   const [loadedScope, setLoadedScope] = useState(null)
   const [storage, setStorage] = useState({ ready: false, account: false, states: {}, drafts: {}, guestMaps: [], error: null })
   const [documents, setDocuments] = useState([])
@@ -128,6 +132,37 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
     return () => { session.dispose(); if (persistence.current === session) persistence.current = null }
   }, [scopeKey, installDocument])
 
+  useLayoutEffect(() => {
+    setSharing({ memberships: [], ready: false, error: null })
+    if (!scopeKey || scopeKey === GUEST_MAP_SCOPE) return undefined
+    const controller = new AbortController()
+    organizationRequest.current = controller
+    const session = createOrganizationMapSession({
+      onInstall: installDocument,
+      onMemberships: (memberships) => setSharing((prior) => ({ ...prior, memberships })),
+      onError: (error) => setSharing((prior) => ({ ...prior, error })),
+      onRemove: (id) => {
+        setDocuments((prior) => prior.filter((doc) => doc.id !== id))
+        setDocumentVisible(id, false)
+        initialized.current.delete(id)
+        if (state.current.currentId === id) { setCurrentId(null); setSelectedId(null); setMode('library') }
+      },
+    })
+    organizationSession.current = session
+    const refresh = () => {
+      setSharing((prior) => ({ ...prior, error: null }))
+      void session.refresh().then(() => { if (organizationSession.current === session) setSharing((prior) => ({ ...prior, ready: true })) })
+    }
+    refresh()
+    const timer = setInterval(refresh, 30000)
+    window.addEventListener('focus', refresh)
+    return () => {
+      clearInterval(timer); window.removeEventListener('focus', refresh)
+      session.dispose(); controller.abort()
+      if (organizationSession.current === session) { organizationSession.current = null; organizationRequest.current = null }
+    }
+  }, [scopeKey, installDocument, setDocumentVisible])
+
   const ensureLoaded = useCallback(async (id) => {
     const existing = state.current.documents.find((d) => d.id === id)
     if (!existing) return null
@@ -138,6 +173,7 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
       const finish = beginOperation('보관한 지도 여는 중…'); setError(null)
       try {
         if (existing.kind === 'personal') return await session?.load(id)
+        if (existing.kind === 'organization') return await organizationSession.current?.load(id)
         const saved = await loadMyMapFile(id, owner)
         if (!saved.ok) throw new Error('보관한 원본 파일을 찾지 못했습니다. 파일을 다시 열어주세요.')
         const document = await importMapDocument(saved.buffer, existing.source.fileName, { id })
@@ -175,15 +211,16 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
     const wasVisible = displayIntent.current.get(id) === true
     setDocumentVisible(id, true)
     setCurrentId(id); setMode('view'); setSelectedId(null)
-    const doc = await ensureLoaded(id)
+    const existing = state.current.documents.find((doc) => doc.id === id)
+    const doc = existing?.kind === 'organization' ? await organizationSession.current?.load(id, { applyLatest: true }) : await ensureLoaded(id)
     if (!doc || seq !== openSequence.current) return
     if (!wasVisible && displayIntent.current.get(id) === true) fitItems(doc.items)
   }, [ensureLoaded, fitItems, setDocumentVisible])
 
-  const addFile = useCallback(async (file) => {
+  const addFile = useCallback(async (file, { open = true } = {}) => {
     if (!file) return
     const owner = scopeRef.current
-    const seq = ++openSequence.current, id = newMapId()
+    const seq = open ? ++openSequence.current : null, id = newMapId()
     const finish = beginOperation('지도 내용 해석 중…'); setError(null); setNotice(null)
     try {
       const buffer = await file.arrayBuffer()
@@ -191,9 +228,10 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
       const saved = await saveMyMapFile(file, { id, scopeKey: owner })
       if (scopeRef.current !== owner) return
       if (!saved.ok) setNotice('이 파일을 기기에 보관하지 못했습니다. 현재는 볼 수 있지만 다시 열 때 원본 파일이 필요합니다.')
-      installDocument({ ...document, file: saved.entry ?? { id, name: file.name, size: file.size, addedAt: 0 } })
-      setDocumentVisible(id, true)
-      if (seq === openSequence.current) { setCurrentId(id); setMode('view'); setSelectedId(null); fitItems(document.items) }
+      const installed = installDocument({ ...document, file: saved.entry ?? { id, name: file.name, size: file.size, addedAt: 0 } })
+      if (open) setDocumentVisible(id, true)
+      if (open && seq === openSequence.current) { setCurrentId(id); setMode('view'); setSelectedId(null); fitItems(document.items) }
+      return installed
     } catch (e) { if (scopeRef.current === owner) setError((e.stage ? e.stage + ': ' : '') + e.message) }
     finally { finish() }
   }, [fitItems, installDocument, beginOperation, setDocumentVisible])
@@ -209,6 +247,7 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
     const owner = scopeRef.current
     const existing = state.current.documents.find((d) => d.id === id)
     if (!existing) return
+    if (existing.kind === 'organization') { setError('기관 지도는 공유 중단 메뉴를 이용하세요.'); return }
     if (existing.kind === 'personal') {
       try { if (!await persistence.current?.remove(existing)) return }
       catch (failure) { if (scopeRef.current === owner) setError(failure.message); return }
@@ -376,7 +415,11 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
   // 안내와 오류는 직전 동작의 결과다. 다음 화면으로 넘어가면 지운다.
   // 그대로 두면 편집 화면까지 따라와 언제 생긴 말인지 알 수 없게 된다.
   const clearMessages = () => { setError(null); setNotice(null) }
-  const navigate = (next) => editing.requestNavigation(() => { clearMessages(); return next() })
+  const navigate = (next) => {
+    let result
+    const accepted = editing.requestNavigation(() => { clearMessages(); result = next() })
+    return accepted ? result ?? true : false
+  }
   const saveCopy = async (id, { open = true } = {}) => {
     const doc = state.current.documents.find((entry) => entry.id === id)
     if (!doc || doc.loaded === false) return null
@@ -393,7 +436,74 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
     try { return await action(session) }
     catch (failure) { if (persistence.current === session && failure.name !== 'AbortError') setError(failure.message); return null }
   }
-  return { documents, currentId, selectedId, mode, visibleIds, hiddenGroups, hiddenItems, busy, error, notice, storage, drawSpike, ...editing,
+  const saveNewPersonalMap = async (session, copy) => {
+    if (!session || session !== persistence.current) return null
+    installDocument(copy); session.save(copy); setDocumentVisible(copy.id, true)
+    // The copy already exists in memory. A storage failure must offer retry for this
+    // copy, not encourage creating another copy through the conversion dialog.
+    try { await session.flushRecovery(copy.id) }
+    catch (failure) { if (session === persistence.current) setError(failure.message) }
+    if (session !== persistence.current) return null
+    setCurrentId(copy.id); setSelectedId(null); setMode('view')
+    return copy
+  }
+  return { documents, currentId, selectedId, mode, accountScope: scopeKey, visibleIds, hiddenGroups, hiddenItems, busy, error, notice, storage, drawSpike, sharing: { ...sharing, userId: user?.id }, ...editing,
+    refreshOrganizationMaps: () => {
+      setSharing((prior) => ({ ...prior, error: null }))
+      return organizationSession.current?.refresh()
+    },
+    prepareSharing: (id) => runStorageAction(async () => {
+      if (id) await ensureLoaded(id)
+      await organizationSession.current?.refresh()
+      return true
+    }),
+    applyOrganizationVersion: (id) => navigate(() => runStorageAction(async () => {
+      const doc = await organizationSession.current?.load(id, { applyLatest: true })
+      if (doc) { setSelectedId(null); setNotice(`${doc.organization.version}판을 적용했습니다.`) }
+      return doc
+    })),
+    copyOrganizationMap: (id) => navigate(() => runStorageAction(async (session) => {
+      const doc = await ensureLoaded(id)
+      if (!doc || doc.kind !== 'organization' || !session || persistence.current !== session) return null
+      const copy = copyMapDocument(doc, { name: `${doc.name} 사본` })
+      installDocument(copy); session.save(copy); setDocumentVisible(copy.id, true)
+      await session.flushRecovery(copy.id)
+      if (persistence.current !== session) return null
+      setCurrentId(copy.id); setSelectedId(null); setMode('edit')
+      setNotice('개인 사본을 만들었습니다. 기관 공유본은 그대로 유지됩니다.')
+      return copy
+    })),
+    publishMap: (id, { organizationId, sharedId = null, expectedSharedVersion, name, note }) => navigate(() => runStorageAction(async (session) => {
+      const sharedSession = organizationSession.current, controller = organizationRequest.current
+      if (!storage.account || !session || !sharedSession || !controller) throw new Error('기관 공유는 로그인 후 사용할 수 있습니다.')
+      const source = await ensureLoaded(id)
+      if (source?.kind !== 'personal') throw new Error('공유할 개인 지도를 먼저 열어주세요.')
+      const finish = beginOperation('저장 확인 후 기관에 공유하는 중…')
+      try {
+        const saved = await session.flush(id)
+        if (session !== persistence.current || controller.signal.aborted) return null
+        if (!saved || saved.revision < 1) throw new Error('계정 저장을 완료한 뒤 공유할 수 있습니다.')
+        const input = { personalMapId: id, expectedPersonalRevision: saved.revision, name, note }
+        const options = { signal: controller.signal }
+        const result = sharedId == null ? await shareOrganizationMap(organizationId, input, options)
+          : await updateOrganizationMap(organizationId, sharedId, { ...input, expectedSharedVersion }, options)
+        if (session !== persistence.current || sharedSession !== organizationSession.current) return null
+        await sharedSession.refresh()
+        if (session !== persistence.current) return null
+        setNotice(`${result.name} · ${result.version}판을 기관에 공유했습니다.`)
+        return result
+      } finally { finish() }
+    })),
+    stopSharingMap: (id) => runStorageAction(async () => {
+      const doc = state.current.documents.find((entry) => entry.id === id), session = organizationSession.current, controller = organizationRequest.current
+      if (!doc?.organization || !session || !controller) return null
+      await stopOrganizationMap(doc.organization.organizationId, doc.organization.mapId, { signal: controller.signal })
+      if (session !== organizationSession.current) return null
+      await session.refresh()
+      if (session !== organizationSession.current) return null
+      setNotice('기관 공유를 중단했습니다. 개인 지도와 이미 만든 개인 사본은 남아 있습니다.')
+      return true
+    }),
     dismissMessages: clearMessages,
     retrySave: (id) => runStorageAction((session) => session.retry(id)),
     copyConflict: (id) => navigate(() => runStorageAction(() => saveCopy(id))),
@@ -439,16 +549,35 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
       if (!document || document.loaded === false) { setError('지도를 먼저 열어주세요.'); return null }
       return { id: document.id, name: document.name, kind: document.kind, ...previewMapConversion(document) }
     }),
-    convertDocument: (id, { name } = {}) => navigate(() => runStorageAction(async (session) => {
+    prepareFileConversion: (file) => runStorageAction(async () => {
+      if (!storage.ready) return null
+      const source = await addFile(file, { open: false })
+      return source ? { source, preview: previewMapConversion(source) } : null
+    }),
+    duplicateDocument: (id, { name } = {}) => navigate(() => runStorageAction(async (session) => {
       if (!storage.ready) return null
       const source = await ensureLoaded(id)
-      if (!source || source.loaded === false) { setError('지도를 먼저 열어주세요.'); return null }
-      const copy = convertImportedMap(source, { name })
-      installDocument(copy); session.save(copy); setDocumentVisible(copy.id, true)
-      await session.flushRecovery(copy.id)
-      if (session !== persistence.current) return null
-      setCurrentId(copy.id); setSelectedId(null); setMode('view')
-      setNotice('개인 편집본을 만들었습니다. 가져온 원본은 그대로 남아 있습니다.')
+      if (!source || source.kind !== 'personal' || session !== persistence.current) return null
+      if (typeof name !== 'string' || !name.trim() || name.trim().length > 200) throw new Error('지도 이름은 1~200자로 입력하세요.')
+      return saveNewPersonalMap(session, copyMapDocument(source, { name: name.trim(), flatten: false }))
+    })),
+    convertDocument: (id, { name, targetId = null } = {}) => navigate(() => runStorageAction(async (session) => {
+      if (!storage.ready) return null
+      const source = await ensureLoaded(id)
+      if (!source || source.loaded === false || source.kind !== 'imported' || session !== persistence.current) return null
+      if (targetId != null) {
+        if (state.current.currentId !== targetId || state.current.mode !== 'edit') throw new Error('추가할 개인 지도를 다시 편집 상태로 열어주세요.')
+        const result = editRef.current.appendImportedDocument(source)
+        if (!result.ok) return null
+        try { await session.flushRecovery(targetId) }
+        catch (failure) { if (session === persistence.current) setError(failure.message) }
+        if (session !== persistence.current) return null
+        setNotice('자료를 추가하고 선택했습니다. 가져온 원본은 지도 목록에 남아 있습니다.')
+        return result.document
+      }
+      if (typeof name !== 'string' || !name.trim() || name.trim().length > 200) throw new Error('지도 이름은 1~200자로 입력하세요.')
+      const copy = await saveNewPersonalMap(session, convertImportedMap(source, { name: name.trim() }))
+      if (copy) setNotice('개인 편집본을 만들었습니다. 가져온 원본은 그대로 남아 있습니다.')
       return copy
     })),
     exportDocument: (id, scope = {}) => runStorageAction(async () => {
@@ -468,6 +597,6 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
     }),
     addFile: (file) => navigate(() => addFile(file)), openDocument: (id) => navigate(() => openDocument(id)),
     toggleDocument, removeDocument, selectItem, clearSelection: () => setSelectedId(null),
-    showLibrary: () => navigate(() => { openSequence.current += 1; setMode('library'); setSelectedId(null) }),
+    showLibrary: () => navigate(() => { openSequence.current += 1; setMode('library'); setSelectedId(null); void organizationSession.current?.refresh() }),
     toggleGroup, toggleItem, setAllVisible, fitGroup, fitDocument }
 }

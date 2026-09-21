@@ -58,7 +58,18 @@ export function bindEditorInteraction(map, read) {
   const click = (event) => {
     if (suppressClick) return
     const actions = read()
-    if (actions.editor.activeTool) { actions.addDraftPoint(coordinate(event)); return }
+    if (actions.editor.activeTool) {
+      const draft = actions.editor.draft
+      if (draft?.kind === 'polygon' && draft.coordinates.length >= 3) {
+        const first = map.project(draft.coordinates[0])
+        if (Math.hypot(event.point.x - first.x, event.point.y - first.y) <= 10) {
+          actions.finishDraft()
+          return
+        }
+      }
+      actions.addDraftPoint(coordinate(event))
+      return
+    }
     if (actions.editor.geometryEdit) return
     const hit = query(event.point, MY_MAP_LAYER_IDS).find((f) => f.properties.__file === actions.documentId)
     if (hit) {

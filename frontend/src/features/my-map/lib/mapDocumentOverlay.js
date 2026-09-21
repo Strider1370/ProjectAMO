@@ -36,16 +36,18 @@ function documentFeatures(document) {
     const style = { ...DEFAULT_MAP_STYLE, ...item.style }
     const source = item.source?.properties ?? {}
     const imported = document.kind === 'imported'
-    const color = imported ? source.stroke ?? source['icon-color'] ?? style.color : style.color
+    // The importer normalizes ordinary KML and restores authored styles into item.style.
+    // source.properties is archival: it must not override later personal edits.
+    const color = item.style?.color ?? (imported ? source.stroke ?? source['icon-color'] : null) ?? style.color
     const props = {
       __file: document.id, __folder: scopeId(document.id, item.groupId), __item: scopeId(document.id, item.id), itemId: item.id,
-      name: item.name, color, fill: imported ? source.fill ?? style.fillColor : style.fillColor,
-      width: imported ? source['stroke-width'] ?? style.width : style.width,
-      opacity: imported ? source['stroke-opacity'] ?? style.opacity : style.opacity,
-      fillOpacity: imported ? source['fill-opacity'] ?? style.fillOpacity : style.fillOpacity,
+      name: item.name, color, fill: item.style?.fillColor ?? (imported ? source.fill : null) ?? style.fillColor,
+      width: item.style?.width ?? (imported ? source['stroke-width'] : null) ?? style.width,
+      opacity: item.style?.opacity ?? (imported ? source['stroke-opacity'] : null) ?? style.opacity,
+      fillOpacity: item.style?.fillOpacity ?? (imported ? source['fill-opacity'] : null) ?? style.fillOpacity,
       pointSize: style.pointSize, dash: style.dash ?? 'solid',
       icon: style.icon ?? 'dot', iconGlyph: ICON_GLYPH[style.icon] ?? '',
-      labelVisible: item.label?.visible !== false && (!imported || source['label-opacity'] !== 0 && source['label-scale'] !== 0),
+      labelVisible: item.label?.visible ?? (!imported || source['label-opacity'] !== 0 && source['label-scale'] !== 0),
       labelSize: item.label?.size ?? 12, labelAlways: item.label?.always === true,
       labelColor: imported ? source['label-color'] ?? '#242424' : '#242424',
       __labelHalo: labelHaloFor(imported ? source['label-color'] : '#242424'),

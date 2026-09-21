@@ -135,7 +135,7 @@ export function createMapPersistence({ scopeKey, account = false, onInstall, onA
     },
     async flush(id) {
       if (blocked.has(id)) throw blocked.get(id)
-      if (queue) return queue.flush(id)
+      if (queue) return (await queue.flush(id)) ?? documents.get(id) ?? null
       const result = await localWrites.get(id)
       if (result?.ok === false) throw result.error ?? new Error('기기에 저장하지 못했습니다.')
       return documents.get(id)

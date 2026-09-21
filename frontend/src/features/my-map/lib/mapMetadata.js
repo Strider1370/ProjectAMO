@@ -102,7 +102,7 @@ export function descriptionMetadata(description, { DOMParserImpl = globalThis.DO
 
   return {
     descriptionRaw: { '@type': 'html', value: description.value },
-    descriptionText: text(doc.body?.textContent ?? doc.textContent),
+    descriptionText: text(doc.body?.textContent ?? doc.documentElement?.textContent ?? doc.textContent),
     descriptionNarrativeText: narrativeText(doc),
     entries: tableEntries(doc),
     warnings,

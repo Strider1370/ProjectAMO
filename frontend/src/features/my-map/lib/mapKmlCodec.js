@@ -107,6 +107,9 @@ function styleKml(item, index) {
 
 function descriptionFor(item) {
   const raw = item.source?.descriptionRaw
+  // Keep untouched original HTML, but export the current memo after an edit (including
+  // an intentional empty memo). The original stays independently in marker.source.
+  if (typeof item.description === 'string' && item.description !== item.source?.descriptionText) return item.description
   if (typeof raw === 'string') return raw
   if (raw?.['@type'] === 'html' && typeof raw.value === 'string') return raw.value
   return item.description ?? ''
@@ -194,7 +197,7 @@ export function exportMapKml(document, options = {}) {
   const marker = {
     version: VERSION,
     name: document?.name ?? '내 지도',
-    ungroupedOrder: ungroupedAt,
+    ungroupedOrder: document.ungroupedOrder ?? Math.max(-1, ...docRoots.map((group) => group.order)) + 1,
     source: document?.source ?? null,
     folderCount: scope.groups.length,
     itemCount: scope.items.length,
@@ -230,8 +233,8 @@ const ISSUE_TEXT = {
   htmlDescription: (count) => `${count}개 항목의 원문 HTML 설명은 보존되지만 화면에는 안전한 글·표로만 표시됩니다.`,
 }
 
-export function previewMapConversion(document) {
-  const items = document?.items ?? []
+export function previewMapConversion(document, options = {}) {
+  const { items, groups } = selectedScope(document, options)
   const issues = new Map()
   const flag = (code, item) => {
     if (!issues.has(code)) issues.set(code, { code, count: 0, samples: [] })
@@ -254,11 +257,11 @@ export function previewMapConversion(document) {
   const list = [...issues.values()]
   return {
     itemCount: items.length,
-    groupCount: document?.groups?.length ?? 0,
+    groupCount: groups.length,
     includedCount: included,
     convertedCount: converted,
     excludedCount: excluded,
-    groups: (document?.groups ?? []).map((group) => ({ id: group.id, path: groupPath(document, group.id) })),
+    groups: groups.map((group) => ({ id: group.id, path: groupPath(document, group.id) })),
     issues: list,
     warnings: list.map((issue) => ISSUE_TEXT[issue.code](issue.count)),
   }

@@ -23,6 +23,7 @@ export function parseBulkCoordinateRows(text, { format = 'dd', coordinateOrder =
     const [name, first, second] = values.length >= 3 ? values : ['', values[0], values[1]]
     try {
       if (values.length < 2) throw new Error('이름(선택), 좌표 2개를 탭으로 구분하세요.')
+      if (values.length > 3) throw new Error('이름(선택)과 좌표 2개만 입력하세요.')
       if (!first || !second) throw new Error('좌표 값이 비어 있습니다.')
       const [latRaw, lngRaw] = coordinateOrder === 'lat-lng' ? [first, second] : [second, first]
       return { line: index + 1, raw, name, coordinate: [parsePart(lngRaw, format, 'lng'), parsePart(latRaw, format, 'lat')], error: null }

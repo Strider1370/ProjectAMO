@@ -37,6 +37,7 @@ import { getDb } from './src/db/index.js'
 import { createMeRouter } from './src/me/presets.js'
 import { createRoutesRouter } from './src/me/routes.js'
 import { createMyMapsRouter } from './src/maps/router.js'
+import { createOrganizationMapsRouter } from './src/maps/organization-router.js'
 import { createAlertsRouter } from './src/me/alerts.js'
 import { createPushRouter } from './src/me/push.js'
 import { createDevRouter } from './src/dev/scenario.js'
@@ -109,7 +110,7 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false,
 const defaultJsonParser = express.json({ limit: '1mb' })
 // Maps parse after session/authentication setup with their own measured payload limit.
 // Keep the existing request limit for all other APIs.
-app.use((req, res, next) => /^\/api\/me\/maps(?:\/|$)/.test(req.path) ? next() : defaultJsonParser(req, res, next))
+app.use((req, res, next) => /^\/api\/(?:me\/maps|organizations\/[^/]+\/maps)(?:\/|$)/.test(req.path) ? next() : defaultJsonParser(req, res, next))
 app.use(compression())
 
 // #7 인증: (개발) CORS credentials + 세션. 공개 API는 saveUninitialized:false라 세션쿠키 안 생김.
@@ -269,6 +270,7 @@ if (process.env.NODE_ENV !== 'test') {
   })
   app.use('/api/me/organizations', createMeOrganizationsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
   app.use('/api/me/maps', createMyMapsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
+  app.use('/api/organizations', createOrganizationMapsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
   app.use('/api/admin/organizations', createAdminOrganizationsRouter({ trustedMutationOrigin: organizationMutationOrigin }))
   app.use('/api/organizations', createOrganizationRouter({
     trustedMutationOrigin: organizationMutationOrigin,

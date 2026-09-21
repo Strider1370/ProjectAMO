@@ -52,7 +52,7 @@ test('circle retains definition and closed generated geometry, invalid geometry 
 test('flattened copies use unique sibling order and retain original visibility', () => {
   const original = { ...createMapDocument(), kind: 'imported', groups: [{ id:'a', name:'A', parentId:null, order:0, sourceVisibility:false }, { id:'b', name:'B', parentId:'a', order:0 }] }
   const copied = copyMapDocument(original)
-  assert.deepEqual(copied.groups.map((group) => group.order), [0,1])
+  assert.deepEqual(copied.groups.map((group) => group.order), [1,2])
   assert.deepEqual(copied.groups.map((group) => group.sourceVisibility), [false,null])
   assert.equal(copied.ungroupedOrder, 0)
 })

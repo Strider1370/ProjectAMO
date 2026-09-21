@@ -140,20 +140,28 @@ export function groupDisplayOrder(document) {
 }
 
 export function ungroupedRank(document, fallback) {
-  return Number.isSafeInteger(document?.ungroupedOrder) ? Math.max(0, document.ungroupedOrder) : fallback
+  if (!Number.isSafeInteger(document?.ungroupedOrder)) return fallback
+  const groups = document?.groups ?? [], ids = new Set(groups.map((group) => group.id))
+  // order is a sort key shared with the ungrouped block, not a current array index.
+  // Deleting a group intentionally leaves gaps in these keys.
+  return groups.filter((group) => !ids.has(group.parentId) && group.order < document.ungroupedOrder).length
 }
 
 export function copyMapDocument(source, { name = `${source.name} 사본`, flatten = source.kind !== 'personal' } = {}) {
   const result = createMapDocument(name)
   const groupIds = new Map(source.groups.map((g) => [g.id, newMapId()]))
   const display = flatten ? groupDisplayOrder(source) : null
-  result.groups = source.groups.map((g, index) => ({ id: groupIds.get(g.id), name: flatten ? groupPath(source, g.id).join(' / ') : g.name, parentId: flatten ? null : groupIds.get(g.parentId) ?? null, order: flatten ? display.order.get(g.id) ?? index : g.order, sourceVisibility: g.sourceVisibility ?? null }))
-  result.items = source.items.map((item) => ({ ...copyJson(item), id: newMapId(), groupId: groupIds.get(item.groupId) ?? null }))
-  result.source = source.source ? copyJson(source.source) : null
   const rank = ungroupedRank(source, Number.MAX_SAFE_INTEGER)
   result.ungroupedOrder = flatten
-    ? (rank >= display.rootStart.length ? result.groups.length : display.rootStart[rank])
+    ? (rank >= display.rootStart.length ? source.groups.length : display.rootStart[rank])
     : source.ungroupedOrder ?? source.groups.length
+  result.groups = source.groups.map((g, index) => {
+    const position = flatten ? display.order.get(g.id) ?? index : g.order
+    return { id: groupIds.get(g.id), name: flatten ? groupPath(source, g.id).join(' / ') : g.name, parentId: flatten ? null : groupIds.get(g.parentId) ?? null,
+      order: flatten && position >= result.ungroupedOrder ? position + 1 : position, sourceVisibility: g.sourceVisibility ?? null }
+  })
+  result.items = source.items.map((item) => ({ ...copyJson(item), id: newMapId(), groupId: groupIds.get(item.groupId) ?? null }))
+  result.source = source.source ? copyJson(source.source) : null
   return result
 }
 
@@ -169,6 +177,20 @@ export function moveMapItems(document, itemIds, targetGroupId, beforeId = null) 
   target.splice(position < 0 ? target.length : position, 0, ...selected.map((item) => ({ ...item, groupId: targetGroupId })))
   const orders = new Map(target.map((item, order) => [item.id, { ...item, order }]))
   return { ...document, items: [...others.filter((item) => item.groupId !== targetGroupId), ...orders.values()] }
+}
+
+/** Append an independent flattened copy; existing blocks and the virtual block stay put. */
+export function appendMapDocument(document, source) {
+  if (document.kind !== 'personal') throw new Error('개인 지도에만 자료를 추가할 수 있습니다.')
+  const copy = copyMapDocument(source, { flatten: true })
+  const groupOffset = Math.max(document.ungroupedOrder ?? 0, ...document.groups.map((group) => group.order)) + 1
+  const groups = [...copy.groups].sort((a, b) => a.order - b.order).map((group, index) => ({ ...group, order: groupOffset + index }))
+  const ungroupedOffset = Math.max(-1, ...document.items.filter((item) => item.groupId == null).map((item) => item.order)) + 1
+  let ungroupedIndex = 0
+  const items = [...copy.items].sort((a, b) => a.order - b.order).map((item) => item.groupId == null ? { ...item, order: ungroupedOffset + ungroupedIndex++ } : item)
+  return { ...document, groups: [...document.groups, ...groups], items: [...document.items, ...items],
+    source: { ...document.source, imports: [...(document.source?.imports ?? []), { sourceAssetId: source.id, documentName: source.name, source: copy.source }] },
+  }
 }
 
 export function isGroupHidden(document, groupId, hiddenGroups) {

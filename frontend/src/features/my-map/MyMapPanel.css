@@ -185,3 +185,8 @@
 
 /* 보기 화면의 동작 줄: 표시 토글과 추가하기는 왼쪽에 묶고 위치 이동만 오른쪽에 둔다. */
 .my-map-view-action-group { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
+.my-map-sharing { margin: 0 0 12px; }
+.my-map-sharing-actions, .my-map-sharing-refresh, .my-map-sharing-update { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.my-map-sharing-refresh { justify-content: space-between; margin-bottom: 8px; color: var(--text-3); }
+.my-map-sharing-update { justify-content: space-between; padding: 10px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 8px; }
+.my-map-sharing .my-map-preview-note { margin: 0 0 8px; }

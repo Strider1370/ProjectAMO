@@ -218,7 +218,7 @@ export async function importMapDocument(arrayBuffer, fileName = '', { id } = {})
       geometry: reserved ? reservedGeometries[index] : feature?.geometry ?? null,
       definition: marker?.definition ?? null,
       style: marker?.style ?? normalizedStyle(properties),
-      label: marker?.label ?? { visible: true, size: 12, always: false },
+      label: marker?.label ?? { visible: properties['label-opacity'] !== 0 && properties['label-scale'] !== 0, size: 12, always: false },
       altitude: marker?.altitude ?? { floorFt: null, ceilingFt: null, datum: 'MSL' },
       source: marker ? marker.source : {
         sourceAssetId,

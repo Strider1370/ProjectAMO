@@ -43,7 +43,7 @@ function altitudeText(altitude) {
   return `${floor.text} – ${ceiling.text} ft · ${altitude.datum || 'MSL'}`
 }
 
-export default function MyMapDetail({ item, groupName, onClose, onEdit }) {
+export default function MyMapDetail({ item, groupName, onClose, onEdit, onCopy }) {
   if (!item) return null
   const kind = KIND[item.kind] ?? KIND.compound
   const altitude = altitudeText(item.altitude)
@@ -63,10 +63,12 @@ export default function MyMapDetail({ item, groupName, onClose, onEdit }) {
         {altitude && <div><dt>고도</dt><dd>{altitude}</dd></div>}
       </dl>
       {!item.source && item.description && <p className="my-map-description">{item.description}</p>}
+      {item.source && item.description !== item.source.descriptionText && <section aria-label="사용자 메모"><h3>사용자 메모</h3><p className="my-map-description">{item.description || '작성한 메모가 없습니다.'}</p></section>}
       <MapMetadataDetails source={item.source} />
       {typeof onEdit === 'function' && (
         <button type="button" className="my-map-primary-button my-map-detail-edit" onClick={onEdit}>이 항목 수정</button>
       )}
+      {typeof onCopy === 'function' && <button type="button" className="my-map-primary-button my-map-detail-edit" onClick={onCopy}>내 지도로 복사</button>}
     </section>
   )
 }

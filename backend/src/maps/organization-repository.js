@@ -1,5 +1,5 @@
 import { MAX_ACCOUNT_BYTES, MAX_DOCUMENT_BYTES } from './schema.js'
-import { OrganizationError, integerId, nowIso, optionalText } from '../organizations/common.js'
+import { OrganizationError, integerId, nowIso, optionalText, requireText } from '../organizations/common.js'
 
 // 기관 quota는 공유 중단된 지도의 불변 버전까지 포함한다. 삭제 뒤 곧바로 같은
 // 용량을 다시 발표해 history 저장소를 우회하지 못하게 하며, 13.45MiB 원본도 약 19개
@@ -95,7 +95,7 @@ function sourceVersion(db, ownerId, input) {
 
 export function listOrganizationMaps(db, organizationId) {
   return db.prepare(`SELECT m.id,m.organization_id,m.publisher_user_id,m.current_version,m.deleted_at,m.created_at,m.updated_at,
-      v.version,v.source_personal_map_id,v.source_personal_revision,v.name,v.note,v.snapshot,v.byte_length,v.item_count,v.group_count,v.created_by,v.created_at AS version_created_at
+      v.version,v.source_personal_map_id,v.source_personal_revision,v.name,v.note,v.item_count,v.group_count,v.created_at AS version_created_at
     FROM organization_maps m JOIN organization_map_versions v ON v.map_id=m.id AND v.version=m.current_version
     WHERE m.organization_id=? AND m.deleted_at IS NULL ORDER BY m.updated_at DESC,m.id DESC`).all(organizationId).map(versionSummary)
 }
@@ -109,6 +109,7 @@ export function createOrganizationMap(db, organizationId, publisherUserId, input
   const create = db.transaction(() => {
     const source = sourceVersion(db, publisherUserId, input)
     const note = optionalText(input?.note, 'note', 2000)
+    const name = requireText(input?.name ?? parseSnapshot({ snapshot: source.snapshot }).name, 'name', 200)
     assertOrganizationQuota(db, organizationId, source.bytes)
     const now = nowIso()
     const info = db.prepare(`INSERT INTO organization_maps (organization_id,publisher_user_id,current_version,created_at,updated_at)
@@ -116,7 +117,7 @@ export function createOrganizationMap(db, organizationId, publisherUserId, input
     db.prepare(`INSERT INTO organization_map_versions
       (map_id,version,source_personal_map_id,source_personal_revision,name,note,snapshot,byte_length,item_count,group_count,created_by,created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(info.lastInsertRowid, 1, source.id, source.revision,
-      parseSnapshot({ snapshot: source.snapshot }).name, note, source.snapshot, source.bytes, source.itemCount, source.groupCount, publisherUserId, now)
+      name, note, source.snapshot, source.bytes, source.itemCount, source.groupCount, publisherUserId, now)
     return versionDetail(currentRow(db, organizationId, info.lastInsertRowid))
   })
   return create()
@@ -131,13 +132,14 @@ export function createOrganizationMapVersion(db, organizationId, mapIdValue, act
     if (Number(current.current_version) !== expected) throw new OrganizationError(409, 'shared_version_conflict', { currentVersion: Number(current.current_version) })
     const source = sourceVersion(db, actorUserId, input)
     const note = optionalText(input?.note, 'note', 2000)
+    const name = requireText(input?.name ?? parseSnapshot({ snapshot: source.snapshot }).name, 'name', 200)
     assertOrganizationQuota(db, organizationId, source.bytes)
     const version = Number(current.current_version) + 1
     const now = nowIso()
     db.prepare(`INSERT INTO organization_map_versions
       (map_id,version,source_personal_map_id,source_personal_revision,name,note,snapshot,byte_length,item_count,group_count,created_by,created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, version, source.id, source.revision,
-      parseSnapshot({ snapshot: source.snapshot }).name, note, source.snapshot, source.bytes, source.itemCount, source.groupCount, actorUserId, now)
+      name, note, source.snapshot, source.bytes, source.itemCount, source.groupCount, actorUserId, now)
     const changed = db.prepare(`UPDATE organization_maps SET current_version=?,updated_at=?
       WHERE id=? AND organization_id=? AND current_version=? AND deleted_at IS NULL`).run(version, now, id, organizationId, expected)
     if (!changed.changes) {

@@ -35,6 +35,15 @@ test('같은 revision의 미저장 복구본도 dirty로 다시 저장한다', a
   f.session.dispose()
 })
 
+test('변경하지 않은 저장본도 공유용 flush에서 확정 문서와 revision을 반환한다', async () => {
+  const original = doc('a', 3)
+  const f = fixture({ local: [{ id: 'a', document: original, dirty: false }], summaries: [{ id: 'a', revision: 3 }] })
+  await f.session.start()
+  assert.deepEqual(await f.session.flush('a'), original)
+  assert.equal(f.requests.length, 0)
+  f.session.dispose()
+})
+
 test('새 서버 revision과 충돌한 복구본은 새 편집 후에도 재전송하지 않는다', async () => {
   const f = fixture({ local: [{ id: 'a', document: doc('a', 3), dirty: true }], summaries: [{ id: 'a', revision: 4 }] })
   await f.session.start()

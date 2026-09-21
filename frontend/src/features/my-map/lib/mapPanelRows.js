@@ -1,3 +1,5 @@
+import { ungroupedRank } from './mapDocument.js'
+
 const byOrder = (a, b) => (a.order ?? 0) - (b.order ?? 0) || String(a.name ?? '').localeCompare(String(b.name ?? ''))
 
 export function documentScopedId(documentId, id) {
@@ -85,7 +87,7 @@ export function buildMapPanelTree(document) {
   }
   roots.sort((a, b) => byOrder(a.group, b.group)).forEach(count)
   if (ungrouped.length) {
-    roots.push({ type: 'ungrouped', id: '__ungrouped__', children: [], items: ungrouped, itemCount: ungrouped.length })
+    roots.splice(ungroupedRank(document, roots.length), 0, { type: 'ungrouped', id: '__ungrouped__', children: [], items: ungrouped, itemCount: ungrouped.length })
   }
   return roots
 }

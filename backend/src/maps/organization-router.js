@@ -34,7 +34,7 @@ export function createOrganizationMapsRouter({ db = null, trustedMutationOrigin 
     res.status(201).json({ map })
   }))
   router.get('/:orgId/maps/:id/versions/:version', asyncRoute((req, res) => {
-    res.json({ map: getOrganizationMap(database(), req.organizationId, req.params.id, req.params.version) })
+    res.json({ map: getOrganizationMap(database(), req.organizationId, req.params.id, Number(req.params.version)) })
   }))
   router.post('/:orgId/maps/:id/versions', asyncRoute((req, res) => {
     const map = createOrganizationMapVersion(database(), req.organizationId, req.params.id, req.session.userId, req.organizationMember.role, req.body ?? {})

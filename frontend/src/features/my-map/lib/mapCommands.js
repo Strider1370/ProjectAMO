@@ -1,4 +1,4 @@
-import { createMapItem, newMapId, validateItem, moveMapItems, circleGeometry } from './mapDocument.js'
+import { createMapItem, newMapId, validateItem, moveMapItems, circleGeometry, appendMapDocument } from './mapDocument.js'
 
 const requireGroup = (doc, id) => {
   if (id != null && !doc.groups.some((group) => group.id === id)) throw new Error('그룹을 찾지 못했습니다.')
@@ -42,6 +42,7 @@ export function applyMapCommand(document, command) {
   let next = document
   switch (command.type) {
     case 'rename': next = { ...document, name: requireName(command.name) }; break
+    case 'appendDocument': next = appendMapDocument(document, command.source); break
     case 'addItems': {
       const ids = new Set(document.items.map((item) => item.id))
       const offsets = new Map()
@@ -85,10 +86,14 @@ export function applyMapCommand(document, command) {
       const ids = new Set(command.ids)
       next = { ...document, items: document.items.map((item) => ids.has(item.id) ? patchItem(item, { style: command.patch }) : item) }; break
     }
-    case 'createGroup': {
+    case 'createGroup':
+    case 'groupItems': {
       const id = command.id ?? newMapId()
       if (document.groups.some((g) => g.id === id)) throw new Error('그룹 식별자가 중복됩니다.')
-      next = { ...document, groups: [...document.groups, { id, name: requireName(command.name), parentId: null, sourceVisibility: null, order: Math.max(document.ungroupedOrder ?? 0, ...document.groups.map((g) => g.order)) + 1 }] }; break
+      if (command.type === 'groupItems' && (!command.ids?.length || command.ids.some((itemId) => !document.items.some((item) => item.id === itemId)))) throw new Error('묶을 항목을 선택하세요.')
+      next = { ...document, groups: [...document.groups, { id, name: requireName(command.name), parentId: null, sourceVisibility: null, order: Math.max(document.ungroupedOrder ?? 0, ...document.groups.map((g) => g.order)) + 1 }] }
+      if (command.type === 'groupItems') next = moveMapItems(next, command.ids, id)
+      break
     }
     case 'renameGroup': {
       requireGroup(document, command.id)
@@ -106,13 +111,14 @@ export function applyMapCommand(document, command) {
     }
     case 'moveGroup': {
       requireGroup(document, command.id)
-      if (command.id === command.beforeGroupId) return document
+      const before = command.beforeGroupId === '__ungrouped__' ? null : command.beforeGroupId
+      if (command.beforeGroupId != null && command.id === before) return document
       const groups = [...document.groups, { id: null, order: document.ungroupedOrder ?? document.groups.length }].sort((a, b) => a.order - b.order)
       const moved = groups.find((group) => group.id === command.id)
       const remaining = groups.filter((group) => group.id !== command.id)
-      const before = command.beforeGroupId === '__ungrouped__' ? null : command.beforeGroupId
       const position = command.beforeGroupId == null ? remaining.length : remaining.findIndex((group) => group.id === before)
       remaining.splice(position < 0 ? remaining.length : position, 0, moved)
+      if (remaining.every((group, index) => group.id === groups[index].id)) return document
       next = { ...document, groups: remaining.filter((group) => group.id !== null).map((group) => ({ ...group, order: remaining.indexOf(group) })), ungroupedOrder: remaining.findIndex((group) => group.id === null) }; break
     }
     case 'groupLabels': {

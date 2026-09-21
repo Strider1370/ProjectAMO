@@ -206,6 +206,17 @@ export default function useMyMapEditor({ document, active, selectedId, scopeKey,
     },
     undoEdit: () => travelHistory('undo'), redoEdit: () => travelHistory('redo'),
     createGroup: (name) => { const id = newMapId(); const result = commit({ type: 'createGroup', id, name }); return { ...result, id } },
+    groupSelectedItems: (ids, name) => { const id = newMapId(); const result = commit({ type: 'groupItems', id, ids, name }); return { ...result, id } },
+    appendImportedDocument: (source) => {
+      if (unfinished()) return failure(new Error('진행 중인 그리기 또는 형태 수정을 먼저 마쳐주세요.'))
+      const previousIds = new Set(state.current.document.items.map((item) => item.id))
+      const result = commit({ type: 'appendDocument', source })
+      if (!result.ok) return result
+      const document = state.current.document
+      changeEditor({ pane: 'list', activeTool: null, draft: null, selectionMode: true, selectionIds: new Set(document.items.filter((item) => !previousIds.has(item.id)).map((item) => item.id)) })
+      state.current.onSelect(null)
+      return { ...result, document }
+    },
     renameGroup: (id, name) => commit({ type: 'renameGroup', id, name }),
     ungroup: (id) => commit({ type: 'ungroup', id }), deleteGroup: (id) => commit({ type: 'deleteGroup', id }),
     moveItems: (ids, options) => commit({ type: 'moveItems', ids, ...options }), moveGroup: (id, options) => commit({ type: 'moveGroup', id, ...options }),

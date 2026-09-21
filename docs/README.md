@@ -10,3 +10,4 @@
 - [Archive](archive/): historical drafts and handoffs; not a current implementation source.
 
 - [내 지도 구현 중단 기록·재개 안내 (2026-09-20)](design/proposals/2026-09-20-flight-map-resume.md) — 사용자 요청으로 일시 중단, 다음 작업 시작점.
+- AI Copilot: [챗봇·MCP 설계안](design/proposals/2026-09-21-ai-copilot-chatbot-v2.md) · [구현 계획·진행 기록](design/proposals/2026-09-21-ai-copilot-implementation-plan.md) — 공항 도구부터 MCP·실사용 채팅·경로·개인 기능까지의 구현 순서와 검증 기준. [최초 명세](design/proposals/2026-09-21-ai-copilot-tool-spec.md)는 논의 기록으로 보존.

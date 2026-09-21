@@ -20,6 +20,13 @@ const sourceCount = (page) => page.evaluate(() => {
   return src ? (src.serialize().data.features?.length ?? 0) : -1
 })
 
+const savedPersonalMap = (page, name) => page.evaluate(async (name) => {
+  const db = await new Promise((resolve) => { const request = indexedDB.open('projectamo-my-map-account-v1'); request.onsuccess = () => resolve(request.result) })
+  const rows = await new Promise((resolve) => { const request = db.transaction('completed').objectStore('completed').getAll(); request.onsuccess = () => resolve(request.result) })
+  db.close()
+  return rows.map((row) => row.document.document ?? row.document).find((document) => document.name === name) ?? null
+}, name)
+
 // 폴더를 끄면 소스에서 도형이 빠지는 게 아니라 레이어 필터에서 그 폴더가 빠진다.
 // 그래서 "지금 실제로 그려지는 도형 수"는 소스 × 필터로 구해야 한다.
 const drawnCount = (page) => page.evaluate(() => {
@@ -225,6 +232,25 @@ test('my-map 실제 KMZ의 논리 항목·가변 공역 상세·대량 표시', 
     await testInfo.attach(`${file.name}-load-time`, { body: String(Date.now() - started), contentType: 'text/plain' })
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`${file.name}-detail.png`) })
   }
+
+  // 실제 공역 속성이 개인 편집본·사본까지 바이트 값(0/false/긴 문자열)을 잃지 않고 간다.
+  await page.getByTestId('my-map-file-menu').click()
+  await page.getByRole('menuitem', { name: '편집본으로 가져오기', exact: true }).click()
+  const convert = page.getByRole('dialog', { name: '편집본으로 가져오기', exact: true })
+  await convert.getByRole('textbox', { name: '편집본 이름', exact: true }).fill('실제 공역 편집본')
+  await expect(convert.getByRole('button', { name: '편집본 만들기', exact: true })).toBeEnabled({ timeout: 45000 })
+  await convert.getByRole('button', { name: '편집본 만들기', exact: true }).click()
+  await expect(page.locator(PANEL_ROOT)).toContainText('실제 공역 편집본')
+  const personal = await savedPersonalMap(page, '실제 공역 편집본')
+  const cheongju = personal.items.find((item) => item.name === 'CHEONGJU')
+  expect(cheongju.source.metadataEntries.find((entry) => entry.key === 'DistVertUpper_Val')?.value).toBe('5000')
+  await page.getByTestId('my-map-file-menu').click()
+  await page.getByRole('menuitem', { name: '지도 복제', exact: true }).click()
+  const duplicate = page.getByRole('dialog', { name: '지도 복제', exact: true })
+  await duplicate.getByRole('textbox', { name: '사본 이름', exact: true }).fill('실제 공역 사본')
+  await duplicate.getByRole('button', { name: '복제하기', exact: true }).click()
+  const copy = await savedPersonalMap(page, '실제 공역 사본')
+  expect(copy.items.find((item) => item.name === 'CHEONGJU').source).toEqual(cheongju.source)
 })
 
 test('my-map 새 지도 작성·형태 취소·미완성 이탈', async ({ page }, testInfo) => {
@@ -270,7 +296,36 @@ test('my-map 새 지도 작성·형태 취소·미완성 이탈', async ({ page 
   await expect.poll(() => sourceCount(page)).toBe(3)
   await page.getByRole('button', { name: '내 지도', exact: true }).click()
   await expect(page.locator('.my-map-panel')).toContainText('3개 항목')
+  await page.getByRole('button', { name: '기관에 공유', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('로그인하면 소속 기관에 지도를 공유')
+  await expect(page.getByRole('dialog').getByRole('button', { name: '이 버전 공유', exact: true })).toBeDisabled()
+  await page.getByRole('dialog').getByRole('button', { name: '취소', exact: true }).click()
+  await expect.poll(() => sourceCount(page)).toBe(3)
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('authoring-return-to-view.png') })
+})
+
+test('my-map 그룹 삭제 뒤 그룹 없는 항목의 보기·편집 순서 유지', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', '데스크톱 그룹 정렬 회귀')
+  await openMyMap(page)
+  await page.getByRole('button', { name: '새 지도', exact: true }).click()
+  await page.getByLabel('지도 이름', { exact: true }).fill('그룹 정렬 검증')
+  await page.getByRole('button', { name: '만들기', exact: true }).click()
+  await page.waitForFunction(() => window.__map?.getLayer('my-map-edit-line'))
+  await page.getByRole('button', { name: '점', exact: true }).click()
+  await page.locator('.mapboxgl-canvas').click({ position: { x: 740, y: 280 } })
+  await expect.poll(() => sourceCount(page)).toBe(1)
+  await page.getByRole('button', { name: '← 항목 목록', exact: true }).click()
+  for (const name of ['a', 'b', 'c']) {
+    await page.getByRole('textbox', { name: '새 그룹 이름', exact: true }).fill(name)
+    await page.getByRole('button', { name: '그룹 추가', exact: true }).click()
+  }
+  await page.getByRole('combobox', { name: 'a 그룹 순서', exact: true }).selectOption('__ungrouped__')
+  await expect(page.locator('.my-map-editor-group-name')).toHaveText(['a 0', '그룹 없는 항목 1', 'b 0', 'c 0'])
+  await page.getByRole('button', { name: 'a 그룹 삭제', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: '삭제', exact: true }).click()
+  await expect(page.locator('.my-map-editor-group-name')).toHaveText(['그룹 없는 항목 1', 'b 0', 'c 0'])
+  await page.getByRole('button', { name: '편집 마침', exact: true }).click()
+  await expect(page.locator('.my-map-group-row .my-map-tree-name > span')).toHaveText(['그룹 없는 항목', 'b', 'c'])
 })
 
 test('my-map 기기 저장·새로고침·미완성 초안 재개', async ({ page }, testInfo) => {
@@ -379,7 +434,10 @@ test('my-map 변환 미리보기·개인 편집본·KML 내보내기', async ({ 
   await expect(exportDialog).toContainText('숨긴 항목도 범위에 들어가면 함께 내보냅니다')
   await exportDialog.getByRole('radio', { name: '선택한 폴더', exact: false }).check()
   await expect(exportDialog.getByLabel('내보낼 폴더', { exact: true })).toBeVisible()
+  await exportDialog.getByRole('combobox', { name: '내보낼 폴더', exact: true }).selectOption({ label: '공역' })
+  await expect(exportDialog.locator('.my-map-preview-counts strong')).toHaveText(['1', '1', '0', '0'])
   await exportDialog.getByRole('radio', { name: '지도 전체', exact: true }).check()
+  await expect(exportDialog.locator('.my-map-preview-counts strong')).toHaveText(['3', '3', '0', '0'])
   const download = page.waitForEvent('download')
   await exportDialog.getByRole('button', { name: '내보내기', exact: true }).click()
   const file = await download

@@ -6,6 +6,7 @@ test('일괄 DD 입력은 엄격히 숫자를 확인하고 위도·경도 순서
   assert.deepEqual(parseBulkCoordinateRows('서울\t37.5665\t126.9780').at(0).coordinate, [126.978, 37.5665])
   assert.match(parseBulkCoordinateRows('37oops,126.9').at(0).error, /십진수/)
   assert.deepEqual(parseBulkCoordinateRows('126.9780,37.5665', { coordinateOrder: 'lng-lat' }).at(0).coordinate, [126.978, 37.5665])
+  assert.match(parseBulkCoordinateRows('서울\t37.5665\t126.9780\t추가 값').at(0).error, /2개만/)
 })
 
 test('빈 좌표와 같거나 역전된 고도는 완료 값으로 만들지 않는다', () => {
