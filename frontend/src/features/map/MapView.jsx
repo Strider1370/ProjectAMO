@@ -579,13 +579,15 @@ const MapView = forwardRef(function MapView({
   const { filters: trafficFilters, setFilters: setTrafficFilters, resetFilters: resetTrafficFilters } = useTrafficFilters()
   const [basemapId, setBasemapId] = useState('standard')
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
-  // 강수를 켤 때 자동으로 끈 FIR인지 기억한다(끌 때 그것만 되돌린다).
-  const surfaceChartFirSuppressedRef = useRef(false)
+  // 강수를 켤 때 자동으로 끈 FIR 레이어(국내·해외 묶음)를 기억한다(끌 때 그것만 되돌린다).
+  const surfaceChartFirSuppressedRef = useRef([])
   function applySurfaceChartFir(chartOn) {
-    const firVisible = !!aviationVisibility.fir
-    const next = firAfterSurfaceChartChange({ chartOn, firVisible, suppressed: surfaceChartFirSuppressedRef.current })
-    surfaceChartFirSuppressedRef.current = next.suppressed
-    if (next.firVisible !== firVisible) setAviationVisibility((prev) => ({ ...prev, fir: next.firVisible }))
+    const next = firAfterSurfaceChartChange({ chartOn, visibility: aviationVisibility, groupIds: AVIATION_PANEL_MERGE_GROUPS.fir, suppressedIds: surfaceChartFirSuppressedRef.current })
+    surfaceChartFirSuppressedRef.current = next.suppressedIds
+    if (next.visibility !== aviationVisibility) {
+      const changes = Object.fromEntries(AVIATION_PANEL_MERGE_GROUPS.fir.map((id) => [id, next.visibility[id]]))
+      setAviationVisibility((prev) => ({ ...prev, ...changes }))
+    }
   }
 
   // 레이어 켜기(끄지 않음) — ref(검색, 화면 밖)와 in-map 패널(브리핑/경로) 공용. 패널이 쓰는 setter 재사용.
@@ -1233,7 +1235,7 @@ const MapView = forwardRef(function MapView({
   ])
 
   function toggleAviation(id) {
-    if (id === 'fir') surfaceChartFirSuppressedRef.current = firSuppressionAfterUserToggle()
+    if (AVIATION_PANEL_MERGE_GROUPS.fir.includes(id)) surfaceChartFirSuppressedRef.current = firSuppressionAfterUserToggle()
     setAviationVisibility((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
