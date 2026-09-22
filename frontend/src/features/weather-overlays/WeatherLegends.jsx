@@ -3,6 +3,7 @@ import useIsMobile from '../../shared/ui/useIsMobile.js'
 import { RAINVIEWER_LEGEND } from './lib/rainviewerLayers.js'
 import { WISSDOM_WIND_LEGEND } from './lib/weatherOverlayLayers.js'
 import { entriesLeftToRight } from './lib/legendOrder.js'
+import { QPF_LEGEND } from './lib/rasterLegendModel.js'
 
 function HLegend({ title, entries = [], reverse = false, note = null }) {
   const cells = entriesLeftToRight(entries, reverse)
@@ -75,6 +76,9 @@ function WeatherLegends({
   ciLegendVisible = false,
   ctpsLegendVisible = false,
   echoTopLegendVisible = false,
+  surfaceChartLegendVisible = false,
+  surfaceChartLegendEntries = [],
+  surfaceChartLegendNote = null,
   radarReferenceTimeMs,
   lightningReferenceTimeMs,
   radarWindLegendVisible = false,
@@ -140,9 +144,8 @@ function WeatherLegends({
         </div>
       )}
       {qpfLegendVisible && (
-        <div className="qpf-api-legend" aria-label="MAPLE 초단기 강수예측 범례">
-          <div className="qpf-api-legend__title">초단기 강수예측 · MAPLE</div>
-          <img src={qpfLegendPath} alt="MAPLE 초단기 강수예측 범례" />
+        <div className="rainrate-legend" aria-label="MAPLE 초단기 강수예측 범례">
+          <HLegend title="초단기 강수예측 · MAPLE · mm/h" entries={QPF_LEGEND} />
         </div>
       )}
       {/* 해외 레이더(RainViewer): 우리는 픽셀만 받고 숫자가 없다 → mm/h 눈금을 붙이면 오독을 부른다.
@@ -334,7 +337,7 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible) return null
+  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible && !surfaceChartLegendVisible) return null
 
   // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
   if (!isMobile && !bottomDock) return panel
@@ -363,6 +366,7 @@ function WeatherLegends({
       entries: flightCategoryStationBands,
       note: '흰 테두리 = 관측이 모델보다 낮음',
     },
+    surfaceChartLegendVisible && { key: 'surfaceChart', title: '강수 · KIM · mm/3h', entries: surfaceChartLegendEntries, note: surfaceChartLegendNote },
     windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
     temperatureLegendVisible && { key: 'temp', title: '기온 · °C', entries: temperatureLegendEntries },
     cloudLegendVisible && { key: 'cloud', title: '습도 · T-Td °C', entries: cloudLegendEntries },
@@ -387,10 +391,7 @@ function WeatherLegends({
           <HLegend title="WISSDOM · m/s" entries={WISSDOM_WIND_LEGEND} note={wissdomNote} />
         )}
         {qpfLegendVisible && (
-          <div className="qpf-api-legend" aria-label="MAPLE 초단기 강수예측 범례">
-            <div className="qpf-api-legend__title">초단기 강수예측 · MAPLE</div>
-            <img src={qpfLegendPath} alt="MAPLE 초단기 강수예측 범례" />
-          </div>
+          <HLegend title="초단기 강수예측 · MAPLE · mm/h" entries={QPF_LEGEND} />
         )}
         {flightCategoryLegendVisible && (
           <div className="flight-category-legend-controls">

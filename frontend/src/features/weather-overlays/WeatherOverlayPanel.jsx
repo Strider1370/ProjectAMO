@@ -1,15 +1,16 @@
 import {
   Radar, Satellite, Zap, Wind, Thermometer, Droplets,
   Snowflake, Activity, Eye, AlertTriangle, AlertOctagon, CloudFog, Globe, Cloud, CloudLightning, Mountain,
-  Tornado, Sun, CloudHail,
+  Tornado, Sun, CloudRain,
 } from 'lucide-react'
+import RainSnowIcon from './RainSnowIcon.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 
 // Representative icon per weather layer for the tile grid (legend-like).
 const WEATHER_TILE_ICON = {
   radarHsr: Radar,
-  radarHci: CloudHail,  // 수상체 = 비/눈/우박 구분
+  radarHci: RainSnowIcon,  // 수상체 = 비/눈 등 강수 형태 구분
   radarOverseas: Globe, // 해외 = Globe (SIGMET(해외)와 동일 규칙)
   echoTop: Mountain,
   satellite: Satellite,
@@ -17,6 +18,7 @@ const WEATHER_TILE_ICON = {
   ci: CloudLightning,
   ctps: Cloud,
   lightning: Zap,
+  surfaceChart: CloudRain,
   wind: Wind,
   temp: Thermometer,
   cloud: Droplets,
@@ -47,9 +49,12 @@ function WeatherOverlayPanel({
   terrainAltitudeFt = 3000,
   visibleSatelliteVisuals = { brightness: 12, contrast: 0 },
   onVisibleSatelliteVisualsChange,
+  surfaceChartNote = null,
 }) {
   // WISSDOM 높이 선택은 세로 고도 레일(RadarWindVerticalRail)이 맡는다 — 이 패널은 켬/끔만 다룬다.
   const isMobile = useIsMobile()
+  // 버튼은 누르면 바뀔 표시를 보여 준다: 바람깃 상태면 '애니메이션', 애니메이션 상태면 '바람깃'.
+  const surfaceChartWindActionLabel = visibility.surfaceChartWind === 'flow' ? '바람깃' : '애니메이션'
   const echoTopEnabled = import.meta.env.VITE_ECHO_TOP_ENABLED !== '0'
   const TEMP_HIDDEN_LAYER_IDS = []
   // 순서는 손이 자주 가는 순서 — 이 패널은 경보 표시가 아니라 켬/끔 스위치라, 매번 만지는
@@ -62,7 +67,7 @@ function WeatherOverlayPanel({
       ids: ['radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'satelliteVisible', 'ci', 'ctps'].filter((id) => echoTopEnabled || id !== 'echoTop'),
     },
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'typhoon'] },
-    { id: 'nwp', title: '수치모델', ids: showWind ? ['wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'] : [] },
+    { id: 'nwp', title: '수치모델', ids: showWind ? ['surfaceChart', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'] : [] },
     { id: 'terrain', title: '지형', ids: ['terrainHazard'] },
   ]
   const layerLabels = {
@@ -75,6 +80,7 @@ function WeatherOverlayPanel({
     ci: '대류 가능성',
     ctps: '운정고도',
     lightning: '낙뢰',
+    surfaceChart: '강수',
     wind: '바람',
     temp: '기온',
     cloud: '습도',
@@ -89,7 +95,7 @@ function WeatherOverlayPanel({
     ceiling: '운고',
     terrainHazard: '지형 근접',
   }
-  const visibleLayers = layers.filter((layer) => showWind || !['wind', 'temp', 'cloud', 'icing'].includes(layer.id))
+  const visibleLayers = layers.filter((layer) => showWind || !['surfaceChart', 'wind', 'temp', 'cloud', 'icing'].includes(layer.id))
   const activeCount = visibleLayers.filter((layer) => visibility[layer.id] && !isLayerDisabled(layer.id)).length
   const layerById = new Map(visibleLayers.map((layer) => [layer.id, layer]))
 
@@ -110,6 +116,19 @@ function WeatherOverlayPanel({
               >
                 레이더 바람장 (WISSDOM)
               </button>
+            )}
+            {group.id === 'nwp' && visibility.surfaceChart && (
+              <button
+                type="button"
+                className="layer-tile-group-title-action"
+                onClick={() => onToggle('surfaceChartWind')}
+                aria-label={`강수 레이어의 바람을 ${surfaceChartWindActionLabel}으로 표시`}
+              >
+                {surfaceChartWindActionLabel}
+              </button>
+            )}
+            {group.id === 'nwp' && visibility.surfaceChart && surfaceChartNote && (
+              <p className="layer-tile-group-title-note">{surfaceChartNote}</p>
             )}
           </div>
           <div className="layer-tile-grid">

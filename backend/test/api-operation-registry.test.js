@@ -207,3 +207,14 @@ test('scheduled satellite API Hub operations inherit their collector cadence', (
     assert.equal(expected.cronExpression, collector.schedule.expression, id)
   }
 })
+
+test('KIM surface chart calls share the KIM grid URL but are told apart by the chart area', () => {
+  const url = (sub) => new URL(`https://apihub.kma.go.kr/api/typ06/cgi-bin/url/nph-kim_nc_xy_txt2_std?group=KIMG&nwp=NE57&map=S&sub=${sub}&authKey=x`)
+  const chart = resolveApiOperation({ url: url(config.kim_surface_chart.sub) })
+  assert.equal(chart.id, 'kim_grid_chart')
+  assert.equal(chart.credentialCategory, 'radar_satellite')
+  assert.equal(chart.collectorType, 'kim_surface_chart')
+  assert.equal(chart.requestPolicy.timeoutMs, config.kim_surface_chart.timeout_ms)
+  assert.equal(resolveApiOperation({ url: url(config.kim_surface_wind.sub) }).id, 'kim_grid')
+  assert.throws(() => resolveApiOperation({ id: 'kim_grid', url: url(config.kim_surface_chart.sub) }), /mismatch/)
+})

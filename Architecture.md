@@ -114,6 +114,10 @@ ProjectAMO/
 - `frontend/src/features/weather-overlays/lib/useKimCloudPotential.js` -> KIM cloud-potential index/field hook using shared pressure-level selection, field cache, cloud variable-hash refresh, and stale-selection guards.
 - `frontend/src/features/weather-overlays/lib/useKimCloudPotential.test.js` -> KIM cloud-potential selection, cache-key, snapshot-hash, and request-guard helper tests.
 - `frontend/src/features/weather-overlays/lib/windField.js` -> KIM selected wind field decoding, interpolation sampler, shared kt color ramp, and metadata label helpers.
+- `frontend/src/features/weather-overlays/lib/useKimSurfaceChart.js` -> KIM surface chart (isobars, H/L, 3-hour precip, wind barbs/particles) overlay hook: latest-run fetch on snapshot-meta change, timeline/pinned-run frame selection, pixel-spaced barb selection on moveend, layer sync, and its own wind particle renderer instance with zoom-scaled speed.
+- `frontend/src/features/weather-overlays/lib/surfaceChartModel.js` -> pure surface chart rules: run/frame selection within 1.5 h, timeline times, frame URLs, barb icon/direction and screen-spaced barb points.
+- `frontend/src/features/weather-overlays/lib/surfaceChartLayers.js` -> surface chart Mapbox source/layer IDs, installation, basemap-dependent palette, and visibility sync.
+- `frontend/src/features/weather-overlays/lib/surfaceChartLegend.js` -> 3-hour precip legend entries built from `shared/kim-surface-chart.js`.
 - `frontend/src/features/weather-overlays/lib/windOverlaySync.js` -> wind overlay renderer lifecycle adapter, WebGL-first selection, Canvas fallback, and Mapbox event sync.
 - `frontend/src/features/weather-overlays/lib/temperatureField.js` -> KIM temperature field decoding, Kelvin-to-Celsius display conversion, sampler, and fixed Celsius color ramp.
 - `frontend/src/features/weather-overlays/lib/temperatureOverlaySync.js` -> temperature Canvas raster generation and Mapbox image overlay lifecycle sync.
@@ -236,6 +240,8 @@ ProjectAMO/
 - `backend/src/parsers/*` -> per-type raw response parsers.
 - `backend/src/processors/*` -> per-type normalized data processors.
 - `backend/src/processors/kim-surface-wind-processor.js` -> KIM scheduled job/lock orchestrator for multi-level NWP wind, Temp, moisture-level RH, and config-gated icing-variable collection with complete-run skip checks; publishes partial successful runs to canonical `DATA_PATH/kim_nwp/` while preserving the legacy surface-wind cache, then retries incompleteness on later schedules.
+- `backend/src/processors/kim-surface-chart-processor.js` -> KIM surface chart collector: newest released run's +3/+6/+9/+12 h psl, prec_acc, u10m, v10m over the wide chart area on the radar/satellite key (`kim_grid_chart` operation), all-or-nothing staged run publication under `DATA_PATH/kim_surface_chart/`, and two-run retention.
+- `backend/src/lib/kim-surface-chart.js` -> pure surface chart computation: pressure coarsening and Gaussian smoothing, isobars, CycloneDetector + TempestExtremes H/L detection, Web Mercator 3-hour precip PNG, and 0.25° wind field.
 - `backend/src/processors/kim-nwp-store.js` -> canonical `DATA_PATH/kim_nwp/` store helpers for safe path resolution, atomic manifest/grid/index/latest writes, reads, usable-run manifest checks, and run retention.
 - `backend/src/processors/kim-nwp-model.js` -> KIM NWP levels/forecast hours/moisture/icing levels, per-variable scaled grid builder, compact index filtering with per-variable hashes, and wind/temperature/dewpoint-spread/icing renderer-compatible field conversion.
 - `backend/test/kim-scheduler.test.js` -> scheduler wiring tests for UTC KIM NWP release-window cron behavior and startup KIM collection gating.

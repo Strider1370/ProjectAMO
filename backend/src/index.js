@@ -16,6 +16,7 @@ import radarGraphicsProcessor from './processors/radar-graphics-processor.js'
 import echoTopProcessor from './processors/echo-top-processor.js'
 import rainviewerProcessor from './processors/rainviewer-processor.js'
 import kimSurfaceWindProcessor from './processors/kim-surface-wind-processor.js'
+import kimSurfaceChartProcessor from './processors/kim-surface-chart-processor.js'
 import groundForecastProcessor from './processors/ground-forecast-processor.js'
 import environmentProcessor from './processors/environment-processor.js'
 import airportInfoProcessor from './processors/airport-info-processor.js'
@@ -40,7 +41,7 @@ net.setDefaultAutoSelectFamily(false)
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
-const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
+const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, kim_surface_chart: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
 const activeControllers = new Map()
 const satelliteWorkQueue = createSatelliteWorkQueue({ runWorker: runSatelliteWorker })
 let collectorWatchdog = null
@@ -155,6 +156,7 @@ const processorBindings = {
   sigwx_low: sigwxLowProcessor.process, amos: amosProcessor.process, lightning: lightningProcessor.process,
   wissdom: radarGraphicsProcessor.processWissdom, qpf: radarGraphicsProcessor.processQpf, hsr: radarGraphicsProcessor.processHsr, hci: radarGraphicsProcessor.processHci,
   echo_top: echoTopProcessor.process, rainviewer: rainviewerProcessor.process, kim_surface_wind: kimSurfaceWindProcessor.process,
+  kim_surface_chart: kimSurfaceChartProcessor.process,
   ground_forecast: groundForecastProcessor.process, environment: environmentProcessor.process, airport_info: airportInfoProcessor.process,
   takeoff_fcst: takeoffForecastProcessor.process, ktg: ktgProcessor.process, flight_category: flightCategoryProcessor.process,
   asos_ceiling: asosCeilingProcessor.process, notam: notamProcessor.process, metar_overseas: overseasProcessor.processMetar,
@@ -219,6 +221,7 @@ function buildInitialCollectionJobs({
   includeKimNwp = config.kim_nwp?.enabled !== false && config.kim_nwp?.collect_on_startup !== false,
   includeRadarSatellite = activeCollectorRegistry(config).some((collector) => collector.type === 'satellite'),
   includeEchoTop = includeRadarSatellite && config.radar_echo_top?.enabled !== false,
+  includeKimSurfaceChart = includeKimNwp && activeCollectorRegistry(config).some((collector) => collector.type === 'kim_surface_chart'),
   satelliteJob = runSatelliteCollection,
 } = {}) {
   const jobs = [
@@ -254,6 +257,8 @@ function buildInitialCollectionJobs({
   ]
   if (includeKimNwp) jobs.splice(10, 0, ["kim_surface_wind", kimSurfaceWindProcessor.process])
   if (config.ktg?.collect_on_startup !== false) jobs.push(["ktg", ktgProcessor.process])
+  // 이미 발행한 런이 최신이면 공개 여부만 한 장으로 확인하고 건너뛴다.
+  if (includeKimSurfaceChart) jobs.push(['kim_surface_chart', kimSurfaceChartProcessor.process])
   if (config.flight_category?.collect_on_startup !== false) jobs.push(["flight_category", flightCategoryProcessor.process])
   if (config.asos_ceiling?.collect_on_startup !== false) jobs.push(["asos_ceiling", asosCeilingProcessor.process])
   // NOTAM 시작 크롤: 명시적으로 끄지 않았고(collect_on_startup) 캐시가 오래됐을 때만.

@@ -267,7 +267,7 @@ export function geoBoundaryPresentation({ basemapId, metVisibility = {}, enableW
   const hasRasterWeather = !!(metVisibility.radar || metVisibility.radarHsr || metVisibility.radarHci || metVisibility.radarOverseas || metVisibility.satellite || metVisibility.satelliteVisible)
   const hasNwpOverlay = !!(
     enableWindOverlay
-    && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)
+    && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing || metVisibility.surfaceChart)
   )
   return {
     visible: basemapId === 'dark' || hasRasterWeather || hasNwpOverlay,

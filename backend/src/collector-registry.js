@@ -47,6 +47,8 @@ export const COLLECTOR_REGISTRY = [
     type === 'warning' ? EMPTY_ALLOWED_RESULT_OUTCOMES : STANDARD_RESULT_OUTCOMES,
   )),
   collector('kim_surface_wind', utc('kim_surface_wind_interval', 4 * HOUR, 35 * MINUTE), (config) => config.kim_nwp?.enabled !== false),
+  // 지상 일기도는 레이더·위성 키로 받는다(KIM 키는 기존 수집으로 하루 한도에 닿는다).
+  collector('kim_surface_chart', utc('kim_surface_chart_interval', 6 * HOUR, 35 * MINUTE), (config) => config.kim_nwp?.enabled !== false && config.kim_surface_chart?.enabled !== false && radarEnabled(config), ['radar_satellite']),
   collector('nwp_ecmwf', overseasNwpSchedule('nwp_ecmwf_interval', 90 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
   collector('nwp_icon', overseasNwpSchedule('nwp_icon_interval', 60 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
   collector('nwp_gfs', overseasNwpSchedule('nwp_gfs_interval', 75 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),

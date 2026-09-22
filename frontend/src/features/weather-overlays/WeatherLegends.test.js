@@ -42,9 +42,21 @@ test('WISSDOM uses its existing panel button and is not automatic with HSR', () 
 
 test('all hooks run before the no-visible-legend return', () => {
   const effect = source.indexOf('useEffect(() =>')
-  const emptyReturn = source.indexOf('&& !echoTopLegendVisible) return null')
+  const emptyReturn = source.indexOf('&& !surfaceChartLegendVisible) return null')
   assert.ok(effect >= 0)
   assert.ok(emptyReturn > effect)
+})
+
+test('renders the surface chart precip legend with its note', async () => {
+  // MapView는 지도 범례를 하단 독으로 그린다(bottomDock={!isMobile}).
+  const html = await renderLegends({
+    bottomDock: true,
+    surfaceChartLegendVisible: true,
+    surfaceChartLegendEntries: [{ label: '0.5', color: 'rgb(163, 199, 242)' }, { label: '80', color: 'rgb(248, 0, 0)' }],
+    surfaceChartLegendNote: '등압선 2 hPa 간격(굵은 선 4 hPa) · 3시간 누적',
+  })
+  assert.match(html, /강수 · KIM · mm\/3h/)
+  assert.match(html, /등압선 2 hPa 간격/)
 })
 
 test('horizontal legends preserve ascending ramps and reverse only descending sources', () => {
@@ -88,6 +100,10 @@ test('QPF API legend appears only for the exact MAPLE forecast frame', async () 
   assert.equal(hidden, '')
   assert.match(visible, /초단기 강수예측/)
   assert.match(visible, /MAPLE/)
-  assert.match(visible, /src="\/api\/qpf\/legend\.png"/)
+  // 기상청 세로 범례 그림 대신 같은 색의 가로 범례를 그린다.
+  assert.doesNotMatch(visible, /<img/)
+  assert.match(visible, /mm\/h/)
+  assert.match(visible, /rgb\(0, 200, 255\)/)
+  assert.match(visible, /rgb\(51, 51, 51\)/)
   assert.doesNotMatch(visible, /레이더 관측|QPF.{0,12}관측|관측.{0,12}QPF/)
 })

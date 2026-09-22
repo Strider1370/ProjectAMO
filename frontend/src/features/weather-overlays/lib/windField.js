@@ -213,3 +213,14 @@ function formatWindLevelLabel(field) {
   if (level.unit === 'm') return `${level.value}m`
   return level.label || level.id
 }
+
+// 입자는 한 프레임에 경위도 고정량(u × speedFactor × 0.002°)만큼 움직인다. 한반도를 확대해 보는
+// 기존 바람 레이어에는 맞지만, 동아시아 전체를 멀리서 보면 꼬리가 몇 픽셀로 줄어 점처럼 보인다.
+// zoomSpeedReference를 주면 그 줌보다 멀리 볼수록 속도를 두 배씩 올려 화면상 꼬리 길이를 유지한다.
+export function effectiveWindSpeedFactor(map, options = {}) {
+  const base = options.speedFactor ?? 0.45
+  const reference = options.zoomSpeedReference
+  const zoom = map?.getZoom?.()
+  if (!Number.isFinite(reference) || !Number.isFinite(zoom)) return base
+  return base * 2 ** Math.max(0, reference - zoom)
+}

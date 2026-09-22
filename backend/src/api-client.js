@@ -177,10 +177,11 @@ export function buildKimGridUrl({
   return `${api.kim_grid_url}?${params.toString()}`
 }
 
-export async function fetchKimGrid({ signal, ...params }) {
+// operation: 기존 KIM 수집은 'kim_grid', 지상 일기도는 'kim_grid_chart'(요청 영역 sub로 구분, 레이더·위성 키).
+export async function fetchKimGrid({ signal, operation = 'kim_grid', ...params }) {
   const url = buildKimGridUrl(params)
   const response = await requestObservedApi({
-    operation: 'kim_grid',
+    operation,
     url,
     options: { signal },
     validate: async (value) => {

@@ -24,6 +24,7 @@ const MET_META = {
   ci: { label: '대류 가능성', aliases: ['대류', '대류 가능성', 'ci', 'convective'] },
   ctps: { label: '구름 꼭대기', aliases: ['구름 꼭대기', 'ctps', 'cloud top'] },
   lightning: { label: '낙뢰', aliases: ['번개', 'lightning'] },
+  surfaceChart: { label: '강수', aliases: ['강수 예측', '예상강수', '일기도', '지상일기도', '등압선', '기압', '고기압', '저기압', '예상강수', '바람깃', 'surface chart', 'isobar'] },
   wind: { label: '바람', aliases: ['wind', '풍속'] },
   temp: { label: '기온', aliases: ['온도', 'temp'] },
   cloud: { label: '습기', aliases: ['수분', 'moisture', '구름'] },

@@ -13,7 +13,7 @@ const TYPES = [
   'nwp_ecmwf', 'nwp_icon', 'nwp_gfs',
   'metar', 'taf', 'warning', 'kma_special_warning', 'sigmet', 'airmet', 'sigwx_low', 'lightning', 'wissdom', 'qpf', 'hsr', 'hci', 'echo_top',
   'satellite', 'rainviewer', 'amos', 'metar_overseas', 'taf_overseas', 'sigmet_overseas',
-  'satellite_visible', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'ktg', 'notam', 'typhoon', 'kim_surface_wind', 'flight_category', 'asos_ceiling', 'terminal_flights', 'overseas_forecast',
+  'satellite_visible', 'ground_forecast', 'environment', 'airport_info', 'takeoff_fcst', 'ktg', 'notam', 'typhoon', 'kim_surface_wind', 'kim_surface_chart', 'flight_category', 'asos_ceiling', 'terminal_flights', 'overseas_forecast',
 ]
 const MAX_RECENT_RUNS = 50
 const START_SAVE_INTERVAL_MS = 30_000

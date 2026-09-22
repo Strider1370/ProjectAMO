@@ -80,10 +80,10 @@ test('쉬는 시간에는 판정하지 않는다 — KST 새벽 2시의 운항�
   assert.equal(rows.find((r) => r.key === 'terminal_flights').status, 'quiet')
 })
 
-test('묶음 정보는 현재 수집하는 36종을 빠짐없이 담는다', () => {
+test('묶음 정보는 현재 수집하는 37종을 빠짐없이 담는다', () => {
   const { groups } = readDataHealth(base(), { getCached: () => null, getStats: statsFor({}), now: NOW })
-  assert.equal(groups.source.reduce((n, g) => n + g.keys.length, 0), 36)
-  assert.equal(groups.character.reduce((n, g) => n + g.keys.length, 0), 36)
+  assert.equal(groups.source.reduce((n, g) => n + g.keys.length, 0), 37)
+  assert.equal(groups.character.reduce((n, g) => n + g.keys.length, 0), 37)
 })
 
 // last_success는 이 브랜치에서 새로 생긴 항목이다. 그 전에 수집된 자료에는 값이 없으므로,

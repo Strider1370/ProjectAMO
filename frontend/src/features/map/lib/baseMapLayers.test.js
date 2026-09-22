@@ -36,7 +36,7 @@ test('HSR or HCI shows common boundaries and satellite selects yellow', () => {
 })
 
 test('geo boundaries show on every basemap when NWP overlays are active', () => {
-  for (const layerId of ['wind', 'temp', 'cloud', 'icing']) {
+  for (const layerId of ['wind', 'temp', 'cloud', 'icing', 'surfaceChart']) {
     assert.equal(
       shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { [layerId]: true } }),
       true,

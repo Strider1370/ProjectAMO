@@ -185,6 +185,12 @@ function setGeneratedDataCacheHeaders(res, filePath) {
     return
   }
 
+  // KIM 지상 일기도 런 폴더는 발행 뒤 바뀌지 않는다(같은 런을 다시 받으면 폴더째 교체되고 latest.json이 바뀐다).
+  if (/^kim_surface_chart\/runs\/KIMG_NE57_\d{10}\/hf\d{3}\/(?:isobars|centers|wind)\.json$|^kim_surface_chart\/runs\/KIMG_NE57_\d{10}\/hf\d{3}\/precip3h\.png$/i.test(relPath)) {
+    res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
+    return
+  }
+
   if (/^sigwx_low\/(?:fronts|clouds)_\d{10}(?:_standard|_detail)?\.png$/i.test(relPath)) {
     res.setHeader('Cache-Control', 'public, max-age=10800, immutable')
     return
@@ -228,6 +234,7 @@ function isRevalidatedApiRequest(req) {
     || /^\/sigwx-low-history$/i.test(req.path)
     || /^\/radar\/echo-meta$/i.test(req.path)
     || /^\/radar\/(?:wissdom|qpf)-meta$/i.test(req.path)
+    || /^\/kim\/surface-chart$/i.test(req.path)
     || /^\/satellite\/meta$/i.test(req.path)
     || /^\/sigwx-(?:front|cloud)-meta$/i.test(req.path)
     || /^\/sigwx-low-(?:fronts|clouds)$/i.test(req.path)
@@ -480,6 +487,11 @@ function buildKimSurfaceWindEntry() {
   }
 }
 
+function buildKimSurfaceChartEntry() {
+  const latest = readJsonFileSafe(snapshotMetaLatest('kim_surface_chart'))
+  return latest ? { hash: latest.content_hash || store.canonicalHash(latest), latestRun: latest.latestRun || null, updated_at: latest.updated_at || null } : null
+}
+
 function buildConvectiveSnapshotEntry() {
   const meta = readJsonFileSafe(snapshotMetaFile('satellite', 'convective', 'convective_meta.json'))
   return meta ? { hash: store.canonicalHash(meta), tm: meta.tm || null } : null
@@ -509,6 +521,7 @@ const SNAPSHOT_SOURCES = [
   { keys: ['adsb'], files: [snapshotMetaLatest('adsb')], build: () => buildHashEntry('adsb') },
   { keys: ['kimNwp', 'kim_nwp'], files: [snapshotMetaFile('kim_nwp', 'index.json'), snapshotMetaFile('kim_nwp', 'latest.json')], build: buildKimNwpSnapshotEntry },
   { keys: ['kimSurfaceWind', 'kim_surface_wind'], files: [snapshotMetaLatest('kim_surface_wind')], build: buildKimSurfaceWindEntry },
+  { keys: ['kimSurfaceChart'], files: [snapshotMetaLatest('kim_surface_chart')], build: buildKimSurfaceChartEntry },
   { keys: ['groundForecast', 'ground_forecast'], files: [snapshotMetaLatest('ground_forecast')], build: () => buildHashEntry('ground_forecast') },
   { keys: ['groundOverview', 'ground_overview'], files: [snapshotMetaLatest('ground_overview')], build: () => buildHashEntry('ground_overview') },
   { keys: ['environment'], files: [snapshotMetaLatest('environment')], build: () => buildHashEntry('environment') },
@@ -1055,6 +1068,11 @@ app.get('/api/radar/echo-meta', (_req, res) =>
 
 app.get('/api/radar/echo-top-meta', (_req, res) =>
   sendJsonFile(res, path.join(DATA_ROOT, 'radar', 'echotop', 'echotop_meta.json')),
+)
+
+// KIM 지상 일기도 최신 런 목록. 시각별 파일은 /data/kim_surface_chart/runs/<runId>/ 아래(런마다 바뀌지 않음).
+app.get('/api/kim/surface-chart', (_req, res) =>
+  sendJsonFile(res, path.join(DATA_ROOT, 'kim_surface_chart', 'latest.json')),
 )
 
 app.get('/api/radar/wissdom-meta', (_req, res) =>

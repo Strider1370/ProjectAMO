@@ -100,6 +100,7 @@ Current incremental keys:
 - `/data/satellite/convective/ci_<tm>.geojson` and `ctps_<tm>_(all|fl###).webp`: `public, max-age=10800, immutable`
 - `/data/sigwx_low/fronts_<tmfc>.png`: `public, max-age=10800, immutable`
 - `/data/sigwx_low/clouds_<tmfc>.png`: `public, max-age=10800, immutable`
+- `/data/kim_surface_chart/runs/KIMG_NE57_<tmfc>/hf<NNN>/{isobars,centers,wind}.json` and `precip3h.png`: `public, max-age=10800, immutable`. GeoJSON is stored as `.json` because the `/data/*.geojson` rule serves frontend static files. The run list is served by `GET /api/kim/surface-chart` (`no-cache`, ETag), not by the `/data/` alias.
 
 ### Generated metadata
 

@@ -12,7 +12,8 @@ const NAME_RE = /^[a-zA-Z0-9_-]+$/ // 경로 이탈(../) 방지 — 영문/숫�
 // radar·satellite도 "latest" 포인터가 latest.json이 아니라 echo_meta.json/sat_meta.json(+rainviewer_meta.json)
 // 이고, 실제 이미지(PNG/WebP) 여러 장이 그 옆에 같이 있어서 마찬가지로 폴더째 복사해야 함(용량은 각각 수백KB~수MB로 작음).
 // 공항 모델 비교는 latest 포인터가 immutable payload를 참조하고, METAR·AMOS는 과거 3시간 비교에 최근 파일도 필요하다.
-const FULL_DIR_TYPES = new Set(['kim_nwp', 'ktg', 'radar', 'satellite', 'airport_model_comparison', 'metar', 'amos'])
+// kim_surface_chart도 latest.json이 runs/<runId>/ 밑의 시각별 그림·GeoJSON을 가리킨다.
+const FULL_DIR_TYPES = new Set(['kim_nwp', 'kim_surface_chart', 'ktg', 'radar', 'satellite', 'airport_model_comparison', 'metar', 'amos'])
 // latest.json이 없어서 일반 스캔(listCapturableTypes)에 안 걸리지만 캡처해야 하는 디렉터리.
 const EXTRA_CAPTURE_TYPES = new Set(['radar', 'satellite', 'airport_model_comparison'])
 // 이 자료가 빠지면 복원 뒤 해당 종류만 실황으로 남아 서로 다른 시각의 데이터가 섞인다.

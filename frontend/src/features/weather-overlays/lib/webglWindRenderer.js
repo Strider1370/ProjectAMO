@@ -3,6 +3,7 @@ import {
   createDownsampledWindField,
   createWindFieldSampler,
   decodeWindComponent,
+  effectiveWindSpeedFactor,
   getWindFieldMeanSpeed,
 } from './windField.js'
 
@@ -12,6 +13,7 @@ const DEFAULTS = {
   lowPowerCap: 800,
   maxAge: 80,
   speedFactor: 0.45,
+  zoomSpeedReference: null,
   frameCap: 30,
   speedOpacity: 0.35,
   sampleStep: 4,
@@ -440,6 +442,7 @@ export class WebGLWindRenderer {
     if (!this.windField) return
     const bounds = getParticleBounds(this.map, this.windField)
     if (!bounds) return
+    const speedFactor = effectiveWindSpeedFactor(this.map, this.options)
     for (const particle of this.particles) {
       const vector = this.sampler.sample(particle.lon, particle.lat)
       if (
@@ -454,8 +457,8 @@ export class WebGLWindRenderer {
       particle.prevLon = particle.lon
       particle.prevLat = particle.lat
       particle.speed = vector.speed
-      const nextLon = particle.lon + vector.u * this.options.speedFactor * 0.002
-      const nextLat = particle.lat + vector.v * this.options.speedFactor * 0.002
+      const nextLon = particle.lon + vector.u * speedFactor * 0.002
+      const nextLat = particle.lat + vector.v * speedFactor * 0.002
       if (!containsPoint(bounds, nextLon, nextLat)) {
         this.reseedParticle(particle, bounds)
         continue

@@ -36,5 +36,7 @@ test('MapView passes QPF metadata to the overlay model and its ticks to playback
   assert.match(source, /qpfMeta = null/)
   assert.match(source, /buildWeatherOverlayModel\(\{[\s\S]*?\n\s*qpfMeta,/)
   assert.match(source, /const \{[\s\S]*?forecastTimelineTicks,[\s\S]*?\} = weatherOverlayModel/)
-  assert.match(source, /useTimelinePlayback\(\{[\s\S]*?nwpTimes: sliderTimes,[\s\S]*?qpfTimesMs: forecastTimelineTicks,/)
+  // KIM 레이어가 없으면 일기도 시각으로 채운 NWP 시각 목록을 쓴다(timelineNwpTimes).
+  assert.match(source, /useTimelinePlayback\(\{[\s\S]*?nwpTimes: timelineNwpTimes,[\s\S]*?qpfTimesMs: forecastTimelineTicks,/)
+  assert.match(source, /const timelineNwpTimes = sliderTimes\.length \? sliderTimes : surfaceChart\.times/)
 })

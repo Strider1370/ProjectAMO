@@ -59,3 +59,14 @@ test('registry rejects invalid watchdog metadata', () => {
     assert.throws(() => assertCollectorRegistry(invalid), { message: 'invalid_collector_schedule:invalid' })
   }
 })
+
+test('KIM surface chart runs on the radar/satellite key and stops with it or with KIM', () => {
+  const withKey = { ...config, api: { ...config.api, radar_satellite_auth_key: 'key' } }
+  const chart = activeCollectorRegistry(withKey).find((collector) => collector.type === 'kim_surface_chart')
+  assert.deepEqual(chart.apiHubCategories, ['radar_satellite'])
+  assert.equal(chart.schedule.expression, config.schedule.kim_surface_chart_interval)
+  assert.equal(chart.schedule.timezone, 'Etc/UTC')
+  assert.ok(!activeCollectorRegistry({ ...config, api: { ...config.api, radar_satellite_auth_key: '' } }).some((collector) => collector.type === 'kim_surface_chart'))
+  assert.ok(!activeCollectorRegistry({ ...withKey, kim_nwp: { ...config.kim_nwp, enabled: false } }).some((collector) => collector.type === 'kim_surface_chart'))
+  assert.ok(!activeCollectorRegistry({ ...withKey, kim_surface_chart: { ...config.kim_surface_chart, enabled: false } }).some((collector) => collector.type === 'kim_surface_chart'))
+})

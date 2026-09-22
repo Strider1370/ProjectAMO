@@ -294,6 +294,28 @@ export const kim_surface_wind = {
   },
 }
 
+// KIM 지상 일기도(등압선·H/L·3시간 강수·지상바람). 기존 KIM 수집과 달리 동아시아 넓은 영역을 받는다.
+// 표시 영역보다 사방 margin_deg 넓게 받아야 가장자리 근처의 약한 H/L을 판정할 수 있다
+// (docs/design/proposals/2026-09-22-kim-surface-chart.md). KIM 격자 번호는 [1,1]부터: x = 경도×12+1, y = (위도+90)×12+1.
+const kimSurfaceChartView = { lonMin: 95, lonMax: 165, latMin: 15, latMax: 55 }
+const kimSurfaceChartMarginDeg = 6
+const kimGridIndex = (lon, lat) => [Math.round(lon * 12) + 1, Math.round((lat + 90) * 12) + 1]
+const [chartXMin, chartYMin] = kimGridIndex(kimSurfaceChartView.lonMin - kimSurfaceChartMarginDeg, kimSurfaceChartView.latMin - kimSurfaceChartMarginDeg)
+const [chartXMax, chartYMax] = kimGridIndex(kimSurfaceChartView.lonMax + kimSurfaceChartMarginDeg, kimSurfaceChartView.latMax + kimSurfaceChartMarginDeg)
+
+export const kim_surface_chart = {
+  enabled: process.env.KIM_SURFACE_CHART_DISABLED !== '1',
+  view: kimSurfaceChartView,
+  margin_deg: kimSurfaceChartMarginDeg,
+  sub: `${chartXMin},${chartYMin},${chartXMax},${chartYMax}`,
+  grid: { lonMin: (chartXMin - 1) / 12, latMin: (chartYMin - 1) / 12 - 90, nx: chartXMax - chartXMin + 1, ny: chartYMax - chartYMin + 1, step: 1 / 12 },
+  forecast_hours: [3, 6, 9, 12],
+  // 한 장 약 8 MB라 기존 KIM 격자(30초)보다 길게 둔다.
+  timeout_ms: Number(process.env.KIM_SURFACE_CHART_TIMEOUT_MS || 60000),
+  concurrency: 2,
+  max_runs: 2,
+}
+
 export const ktg = {
   max_runs: Number(process.env.KTG_MAX_RUNS || 2),
   timeout_ms: Number(process.env.KTG_TIMEOUT_MS || 60000),
@@ -383,6 +405,8 @@ export const schedule = {
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
   // 네 분석시각의 KIM 격자는 약 5시간 뒤부터 공개된다. +5h에 시작하고 +6h·+7h에 재시도한다.
   kim_surface_wind_interval: '12 1,5,6,7,11,12,13,17,18,19,23 * * *',
+  // 일기도는 같은 공개 시각대에 돌되 기존 KIM 대형 수집(12분)과 겹치지 않게 분을 뗀다.
+  kim_surface_chart_interval: '42 1,5,6,7,11,12,13,17,18,19,23 * * *',
   // 동네예보 발표 8회(02,05,08,11,14,17,20,23 KST) + 30분 여유. 중기예보(06/18 발표)는 08:30·20:30 슬롯이 받는다.
   ground_forecast_interval: '30 2,5,8,11,14,17,20,23 * * *',
   environment_interval: '10 * * * *',
@@ -532,6 +556,7 @@ export default {
   satellite,
   adsb,
   kim_surface_wind,
+  kim_surface_chart,
   kim_nwp,
   overseas_nwp,
   schedule,

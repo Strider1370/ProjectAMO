@@ -177,6 +177,7 @@ export const MET_LAYERS = [
   { id: 'ci', label: '대류 가능성', color: '#F6C945' },
   { id: 'ctps', label: '구름 꼭대기', color: '#7E22CE' },
   { id: 'lightning', label: 'Lightning', color: '#facc15' },
+  { id: 'surfaceChart', label: '강수', color: '#1e293b' },
   { id: 'wind', label: 'Wind', color: '#22c55e' },
   { id: 'temp', label: 'Temp', color: '#ef4444' },
   { id: 'cloud', label: 'Moisture', color: 'rgba(49, 124, 62, 0.7)' },

@@ -55,6 +55,9 @@ import EchoTopCard from '../weather-overlays/EchoTopCard.jsx'
 import QpfStatusCard from '../weather-overlays/QpfStatusCard.jsx'
 import TyphoonPanel from '../weather-overlays/TyphoonPanel.jsx'
 import { useTyphoonOverlay } from '../weather-overlays/lib/typhoonOverlaySync.js'
+import { useKimSurfaceChart } from '../weather-overlays/lib/useKimSurfaceChart.js'
+import { firAfterSurfaceChartChange, firSuppressionAfterUserToggle } from '../weather-overlays/lib/surfaceChartFirPolicy.js'
+import { PRECIP_3H_LEGEND, SURFACE_CHART_LEGEND_NOTE } from '../weather-overlays/lib/surfaceChartLegend.js'
 import { syncKmaCompositeLayers } from '../weather-overlays/lib/kmaCompositeLayers.js'
 import WeatherPointInspector from '../weather-overlays/WeatherPointInspector.jsx'
 import { useConvectiveOverlay } from '../weather-overlays/lib/useConvectiveOverlay.js'
@@ -576,9 +579,18 @@ const MapView = forwardRef(function MapView({
   const { filters: trafficFilters, setFilters: setTrafficFilters, resetFilters: resetTrafficFilters } = useTrafficFilters()
   const [basemapId, setBasemapId] = useState('standard')
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
+  // 강수를 켤 때 자동으로 끈 FIR인지 기억한다(끌 때 그것만 되돌린다).
+  const surfaceChartFirSuppressedRef = useRef(false)
+  function applySurfaceChartFir(chartOn) {
+    const firVisible = !!aviationVisibility.fir
+    const next = firAfterSurfaceChartChange({ chartOn, firVisible, suppressed: surfaceChartFirSuppressedRef.current })
+    surfaceChartFirSuppressedRef.current = next.suppressed
+    if (next.firVisible !== firVisible) setAviationVisibility((prev) => ({ ...prev, fir: next.firVisible }))
+  }
 
   // 레이어 켜기(끄지 않음) — ref(검색, 화면 밖)와 in-map 패널(브리핑/경로) 공용. 패널이 쓰는 setter 재사용.
   function setLayerOn(id, kind) {
+    if (kind === 'met' && id === 'surfaceChart' && !metVisibility.surfaceChart) applySurfaceChartFir(true)
     if (kind === 'met') setMetVisibility((prev) => (prev[id] ? prev : getNextMetVisibility(prev, id, { lowPower })))
     else if (kind === 'aviation') setAviationVisibility((prev) => (prev[id] ? prev : { ...prev, [id]: true }))
     else if (kind === 'traffic') setTrafficVisible(true)
@@ -947,11 +959,31 @@ const MapView = forwardRef(function MapView({
   const typhoonOverlay = useTyphoonOverlay({
     mapRef, isStyleReady, styleRevision, visible: enableTyphoonOverlay && metVisibility.typhoon, timeZone: tz, enabled: enableTyphoonOverlay,
   })
+  // 등압선·기압중심과 강수는 항상 함께 보이고, 바람은 바람깃과 애니메이션 중 하나다.
+  const surfaceChartShow = useMemo(() => ({
+    isobars: true,
+    precip: true,
+    barbs: metVisibility.surfaceChartWind !== 'flow',
+    flow: metVisibility.surfaceChartWind === 'flow',
+  }), [metVisibility.surfaceChartWind])
+  const surfaceChart = useKimSurfaceChart({
+    mapRef, isStyleReady, styleRevision,
+    visible: enableWindOverlay && !!metVisibility.surfaceChart,
+    show: surfaceChartShow,
+    targetMs: weatherTimelineSelectedMs,
+    dataMode: routeBriefing.state.briefingContext?.kind === 'organization' ? 'pinned' : dataMode,
+    mapDataSelection: organizationMapSelection ?? mapDataSelection,
+    basemapId,
+    lowPower,
+    tz,
+  })
+  // 일기도만 켜져 있으면 타임라인의 미래 눈금을 일기도 시각(3시간 간격)으로 채운다. KIM 레이어가 켜져 있으면 그 시각을 쓴다.
+  const timelineNwpTimes = sliderTimes.length ? sliderTimes : surfaceChart.times
   const radarWindEffectiveVisible = radarWindOverlay.effectiveVisible
   const timelineAvailableFrameEntries = useMemo(() => [
     ...weatherOverlayModel.activeFrameEntries,
-    ...nwpAvailabilityEntries(sliderTimes),
-  ], [sliderTimes, weatherOverlayModel.activeFrameEntries])
+    ...nwpAvailabilityEntries(timelineNwpTimes),
+  ], [timelineNwpTimes, weatherOverlayModel.activeFrameEntries])
   const {
     radarFrames,
     satelliteFrames,
@@ -994,6 +1026,8 @@ const MapView = forwardRef(function MapView({
 
   const timestampEntries = useMemo(() => {
     const entries = []
+    if (enableWindOverlay && metVisibility.surfaceChart)
+      entries.push({ key: 'surfaceChart', label: '강수', issueLabel: surfaceChart.issueLabel, validLabel: surfaceChart.validLabel })
     if (enableWindOverlay && metVisibility.wind)
       entries.push({ key: 'wind', label: '바람', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
     if (enableWindOverlay && metVisibility.temp)
@@ -1028,6 +1062,7 @@ const MapView = forwardRef(function MapView({
     return entries
   }, [
     enableWindOverlay,
+    metVisibility.surfaceChart, surfaceChart.issueLabel, surfaceChart.validLabel,
     metVisibility.wind, metVisibility.temp, metVisibility.cloud,
     metVisibility.icing, metVisibility.turbulence, metVisibility.visibility, metVisibility.ceiling, metVisibility.sigwx,
     nwpIssueLabel, nwpValidLabel, ktgIssueLabel, ktgValidLabel,
@@ -1065,7 +1100,7 @@ const MapView = forwardRef(function MapView({
     isPlaying: weatherTimelinePlaying,
     speed: weatherTimelineSpeed,
     pastTicksMs: weatherTimelineTicks,
-    nwpTimes: sliderTimes,
+    nwpTimes: timelineNwpTimes,
     qpfTimesMs: forecastTimelineTicks,
     setSelectedMs: setWeatherTimelineSelectedMs,
   })
@@ -1198,6 +1233,7 @@ const MapView = forwardRef(function MapView({
   ])
 
   function toggleAviation(id) {
+    if (id === 'fir') surfaceChartFirSuppressedRef.current = firSuppressionAfterUserToggle()
     setAviationVisibility((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
@@ -1205,6 +1241,7 @@ const MapView = forwardRef(function MapView({
     // 태풍을 켜면 목록 패널이 뜬다. 레이어 패널을 열어둔 채로 두면 모바일에서 두 시트가
     // 완전히 겹쳐 목록에 손이 닿지 않는다 — 레이어 패널을 닫아 목록을 드러낸다.
     if (id === 'typhoon' && !metVisibility.typhoon) onClosePanel?.()
+    if (id === 'surfaceChart') applySurfaceChartFir(!metVisibility.surfaceChart)
     setMetVisibility((prev) => {
       return getNextMetVisibility(prev, id, { lowPower })
     })
@@ -1224,10 +1261,12 @@ const MapView = forwardRef(function MapView({
   }
 
   function clearAviationLayers() {
+    surfaceChartFirSuppressedRef.current = firSuppressionAfterUserToggle()
     setAviationVisibility(AVIATION_WFS_LAYERS.reduce((acc, l) => { acc[l.id] = false; return acc }, {}))
   }
 
   function clearMetLayers() {
+    if (metVisibility.surfaceChart) applySurfaceChartFir(false)
     setMetVisibility((prev) => {
       const next = { ...prev }
       availableMetLayers.forEach((l) => { next[l.id] = false })
@@ -1936,6 +1975,9 @@ const MapView = forwardRef(function MapView({
           radarOverseasLegendVisible={radarOverseasLegendVisible}
           rainviewerOutOfRange={rainviewerOutOfRange}
           echoTopOutOfRange={metVisibility.echoTop && !weatherOverlayModel.echoTopFrame}
+          surfaceChartLegendVisible={enableWindOverlay && !!metVisibility.surfaceChart && !!surfaceChart.frame}
+          surfaceChartLegendEntries={PRECIP_3H_LEGEND}
+          surfaceChartLegendNote={SURFACE_CHART_LEGEND_NOTE}
           lightningLegendVisible={lightningLegendVisible}
           blinkLightning={blinkLightning}
           onBlinkLightningChange={setBlinkLightning}
@@ -2005,7 +2047,7 @@ const MapView = forwardRef(function MapView({
 
       {dataMode !== 'pinned' && <TimelineRail
         pastTicksMs={weatherTimelineTicks}
-        nwpTimes={sliderTimes}
+        nwpTimes={timelineNwpTimes}
         forecastTicksMs={forecastTimelineTicks}
         selectedMs={weatherTimelineSelectedMs}
         isPlaying={weatherTimelinePlaying}
@@ -2312,6 +2354,7 @@ const MapView = forwardRef(function MapView({
           isLayerDisabled={isMetLayerDisabled}
           getLayerBadge={metLayerBadge}
           showWind={enableWindOverlay}
+          surfaceChartNote={surfaceChart.unavailableReason}
           showRadarWindControl={showRadarWindControl}
           windStatus={windStatus}
           tempStatus={tempStatus}

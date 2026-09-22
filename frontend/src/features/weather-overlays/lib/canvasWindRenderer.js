@@ -1,6 +1,7 @@
 import {
   createDownsampledWindField,
   createWindFieldSampler,
+  effectiveWindSpeedFactor,
   getWindFieldMeanSpeed,
   pickWindSpeedColor,
 } from './windField.js'
@@ -11,6 +12,7 @@ const DEFAULTS = {
   lowPowerCap: 800,
   maxAge: 80,
   speedFactor: 0.45,
+  zoomSpeedReference: null,
   frameCap: 30,
   speedOpacity: 0.35,
   sampleStep: 3,
@@ -256,14 +258,15 @@ export class CanvasWindRenderer {
     this.ctx.globalAlpha = 0.78
     const bounds = getParticleBounds(this.map, this.windField)
     if (!bounds) return
+    const speedFactor = effectiveWindSpeedFactor(this.map, this.options)
 
     for (const particle of this.particles) {
       const vector = this.sampler.sample(particle.lon, particle.lat)
       if (!vector) continue
 
       const from = this.map.project([particle.lon, particle.lat])
-      const nextLon = particle.lon + vector.u * this.options.speedFactor * 0.002
-      const nextLat = particle.lat + vector.v * this.options.speedFactor * 0.002
+      const nextLon = particle.lon + vector.u * speedFactor * 0.002
+      const nextLat = particle.lat + vector.v * speedFactor * 0.002
       if (!containsPoint(bounds, particle.lon, particle.lat) || !containsPoint(bounds, nextLon, nextLat)) continue
       const to = this.map.project([nextLon, nextLat])
 
@@ -281,6 +284,7 @@ export class CanvasWindRenderer {
     if (!this.ctx || !this.windField) return
     const bounds = getParticleBounds(this.map, this.windField)
     if (!bounds) return
+    const speedFactor = effectiveWindSpeedFactor(this.map, this.options)
     this.ctx.globalCompositeOperation = 'destination-in'
     this.ctx.fillStyle = `rgba(0, 0, 0, ${clamp(this.options.trailPersistence, 0.55, 0.94)})`
     this.ctx.fillRect(0, 0, this.width, this.height)
@@ -296,8 +300,8 @@ export class CanvasWindRenderer {
       }
 
       const from = this.map.project([particle.lon, particle.lat])
-      const nextLon = particle.lon + vector.u * this.options.speedFactor * 0.002
-      const nextLat = particle.lat + vector.v * this.options.speedFactor * 0.002
+      const nextLon = particle.lon + vector.u * speedFactor * 0.002
+      const nextLat = particle.lat + vector.v * speedFactor * 0.002
       if (!containsPoint(bounds, nextLon, nextLat)) {
         Object.assign(particle, makeParticle(bounds, this.options.maxAge))
         continue

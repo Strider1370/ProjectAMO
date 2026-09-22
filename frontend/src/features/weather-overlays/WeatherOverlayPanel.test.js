@@ -12,3 +12,12 @@ test('Echo Top button is controlled by the Vite feature flag', () => {
   assert.match(source, /echoTopEnabled/)
   assert.ok(source.includes("filter((id) => echoTopEnabled || id !== 'echoTop')"))
 })
+
+test('surface chart wind display is one title button that names the other mode', () => {
+  assert.match(source, /surfaceChart: '강수'/)
+  assert.match(source, /surfaceChart: CloudRain/)
+  assert.ok(source.includes("visibility.surfaceChartWind === 'flow' ? '바람깃' : '애니메이션'"))
+  assert.ok(source.includes("group.id === 'nwp' && visibility.surfaceChart && ("))
+  assert.ok(source.includes("onToggle('surfaceChartWind')"))
+  assert.doesNotMatch(source, /surface-chart-controls/)
+})
