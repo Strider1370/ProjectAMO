@@ -2,8 +2,8 @@
 // 입력은 넓은 수집 영역의 KIM 1/12° 격자이고, 출력은 표시 영역(view)으로 자른다.
 // 근거와 기준값: docs/design/proposals/2026-09-22-kim-surface-chart.md
 //  - 등압선: WPC Unified Surface Analysis Manual(4 hPa 기본, 2 hPa 보조), marching squares(@turf/turf)
-//  - H/L: CycloneDetector(Prantl et al. 2022)의 가장 안쪽 닫힌 등압선 + 면적 필터로 후보를 뽑고,
-//         TempestExtremes의 closed contour 기준(대권거리 6° 안에서 1 hPa)으로 확인한다. 표고 필터는 두지 않는다.
+//  - H/L: 그린 등압선과 같은 장에서 CycloneDetector(Prantl et al. 2022)의 가장 안쪽 닫힌 등압선 + 면적 필터로
+//         찾는다(WPC: H/L은 닫힌 등압선으로 둘러싸인 극값). 표고 필터는 두지 않는다.
 import * as turf from '@turf/turf'
 import sharp from 'sharp'
 
@@ -13,20 +13,16 @@ export const KIM_MISSING_VALUE = -99999
 
 export const SURFACE_CHART_RULES = Object.freeze({
   coarseStep: 3, // 1/12° → 0.25°
-  gaussianSigmaCells: 2, // 0.5° — H/L 판정용
-  // 등압선은 사람이 그린 일기도처럼 완만해야 해서 더 세게 평활하고, 격자 모서리를 다듬고, 작은 고리를 뺀다.
-  isobarSigmaCells: 6, // 1.5°
+  // 사람이 그린 일기도처럼 완만하게 세게 평활한다. 등압선과 H/L이 같은 장을 쓴다.
+  gaussianSigmaCells: 6, // 1.5°
   isobarChaikinPasses: 2,
   isobarMinLoopDeg: 1.5,
   isobarSimplifyDeg: 0.01,
   isobarStepHpa: 2,
   majorStepHpa: 4,
-  closedContourDeltaHpa: 1,
-  closedContourDistDeg: 6,
   candidateAreaKm2: 10_000,
   parentAreaMultiple: 100,
   maxCentersPerKind: 20,
-  centerPressureRadiusDeg: 1,
   windStepDeg: 0.25,
   precipImageWidth: 1400,
   precipImageHeight: 1000,
@@ -203,33 +199,6 @@ export function buildIsobars(field, view, { points = pointGrid(field), rules = S
   return turf.featureCollection(features)
 }
 
-// TempestExtremes closed contour: 중심에서 채워 나가 기준값(중심 ± delta)을 넘기 전에
-// 거리 한계나 격자 경계에 닿으면 닫히지 않은 것이다.
-export function hasClosedContour(field, kind, i0, j0, { deltaHpa, distDeg }) {
-  const center = field.values[j0 * field.nx + i0]
-  const lon0 = lonOf(field, i0)
-  const lat0 = latOf(field, j0)
-  const inside = kind === 'L' ? (value) => value < center + deltaHpa : (value) => value > center - deltaHpa
-  const seen = new Uint8Array(field.nx * field.ny)
-  const stack = [[i0, j0]]
-  seen[j0 * field.nx + i0] = 1
-  while (stack.length) {
-    const [i, j] = stack.pop()
-    for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const x = i + a
-      const y = j + b
-      if (x < 0 || y < 0 || x >= field.nx || y >= field.ny) return false
-      const index = y * field.nx + x
-      if (seen[index]) continue
-      seen[index] = 1
-      if (!inside(field.values[index])) continue
-      if (greatCircleDeg(lon0, lat0, lonOf(field, x), latOf(field, y)) > distDeg) return false
-      stack.push([x, y])
-    }
-  }
-  return true
-}
-
 function aabbAreaKm2(bbox) {
   const midLat = (bbox[1] + bbox[3]) / 2
   const width = greatCircleDeg(bbox[0], midLat, bbox[2], midLat) * 111.2
@@ -237,16 +206,15 @@ function aabbAreaKm2(bbox) {
   return width * height
 }
 
+// 지도에 그리는 것과 같은 닫힌 등압선. 수집 영역 경계에서 열린 선과, 그릴 때 버리는 작은 고리는 뺀다.
 function closedRings(field, points, rules) {
   const lines = turf.isolines(points, isobarLevels(field, rules.isobarStepHpa), { zProperty: 'p' })
   const rings = []
   for (const feature of lines.features) for (const line of feature.geometry.coordinates) {
-    const first = line[0]
-    const last = line[line.length - 1]
-    // 수집 영역 경계에서 열린 등압선은 닫힌 계가 아니므로 후보에서 뺀다.
-    if (line.length < 4 || Math.hypot(first[0] - last[0], first[1] - last[1]) > 1e-9) continue
+    if (!isClosedLine(line)) continue
     const polygon = turf.polygon([line])
     const bbox = turf.bbox(polygon)
+    if (Math.max(bbox[2] - bbox[0], bbox[3] - bbox[1]) < (rules.isobarMinLoopDeg || 0)) continue
     rings.push({ level: feature.properties.p, polygon, bbox, area: aabbAreaKm2(bbox), sample: line[0] })
   }
   return rings
@@ -259,22 +227,45 @@ function ringContains(outer, inner) {
     && turf.booleanPointInPolygon(turf.point(inner.sample), outer.polygon)
 }
 
-function rawCenterPressure(psl, kind, lon, lat, radiusDeg) {
-  const ci = Math.round((lon - psl.lonMin) / psl.step)
-  const cj = Math.round((lat - psl.latMin) / psl.step)
-  const radius = Math.round(radiusDeg / psl.step)
+// 닫힌 등압선 안의 극값. 등압선 값보다 더 멀리 떨어진 쪽(낮으면 L, 높으면 H)이 그 계의 종류다.
+function ringExtreme(field, ring) {
+  let low = { value: Infinity }
+  let high = { value: -Infinity }
+  for (let j = 0; j < field.ny; j += 1) {
+    const lat = latOf(field, j)
+    if (lat < ring.bbox[1] || lat > ring.bbox[3]) continue
+    for (let i = 0; i < field.nx; i += 1) {
+      const lon = lonOf(field, i)
+      if (lon < ring.bbox[0] || lon > ring.bbox[2]) continue
+      if (!turf.booleanPointInPolygon([lon, lat], ring.polygon)) continue
+      const value = field.values[j * field.nx + i]
+      if (value < low.value) low = { value, i, j }
+      if (value > high.value) high = { value, i, j }
+    }
+  }
+  if (!Number.isFinite(low.value)) return null
+  const kind = ring.level - low.value > high.value - ring.level ? 'L' : 'H'
+  return { kind, extreme: kind === 'L' ? low : high }
+}
+
+// 닫힌 등압선 안 원자료(1/12°)의 극값(hPa). 평활화로 얕아지기 전의 중심기압이다.
+function rawRingExtreme(psl, ring, kind) {
   let best = kind === 'L' ? Infinity : -Infinity
-  for (let b = -radius; b <= radius; b += 1) for (let a = -radius; a <= radius; a += 1) {
-    const x = ci + a
-    const y = cj + b
-    if (x < 0 || y < 0 || x >= psl.nx || y >= psl.ny) continue
-    const value = psl.values[y * psl.nx + x] / 100
+  const i0 = Math.max(0, Math.floor((ring.bbox[0] - psl.lonMin) / psl.step))
+  const i1 = Math.min(psl.nx - 1, Math.ceil((ring.bbox[2] - psl.lonMin) / psl.step))
+  const j0 = Math.max(0, Math.floor((ring.bbox[1] - psl.latMin) / psl.step))
+  const j1 = Math.min(psl.ny - 1, Math.ceil((ring.bbox[3] - psl.latMin) / psl.step))
+  for (let j = j0; j <= j1; j += 1) for (let i = i0; i <= i1; i += 1) {
+    if (!turf.booleanPointInPolygon([psl.lonMin + i * psl.step, psl.latMin + j * psl.step], ring.polygon)) continue
+    const value = psl.values[j * psl.nx + i] / 100
     best = kind === 'L' ? Math.min(best, value) : Math.max(best, value)
   }
   return best
 }
 
-// CycloneDetector 후보(가장 안쪽 닫힌 등압선, 면적 미만은 부모로 승격) → 안쪽 극값 → TE 닫힘 확인.
+// H/L은 지도에 그린 등압선과 같은 장에서 찾는다(WPC: 닫힌 등압선으로 둘러싸인 기압 극값).
+// 후보는 CycloneDetector처럼 가장 안쪽 닫힌 등압선이고, 면적 미만은 바깥 등압선으로 올린다.
+// 기호는 그 등압선 안 극값 자리에 두고, 중심기압은 같은 등압선 안 원자료 극값으로 적는다.
 export function detectPressureCenters(field, psl, view, { points = pointGrid(field), rules = SURFACE_CHART_RULES } = {}) {
   const rings = closedRings(field, points, rules)
   for (const ring of rings) {
@@ -292,33 +283,17 @@ export function detectPressureCenters(field, psl, view, { points = pointGrid(fie
 
   const centers = []
   for (const ring of candidates) {
-    let low = { value: Infinity }
-    let high = { value: -Infinity }
-    for (let j = 0; j < field.ny; j += 1) {
-      const lat = latOf(field, j)
-      if (lat < ring.bbox[1] || lat > ring.bbox[3]) continue
-      for (let i = 0; i < field.nx; i += 1) {
-        const lon = lonOf(field, i)
-        if (lon < ring.bbox[0] || lon > ring.bbox[2]) continue
-        if (!turf.booleanPointInPolygon([lon, lat], ring.polygon)) continue
-        const value = field.values[j * field.nx + i]
-        if (value < low.value) low = { value, i, j }
-        if (value > high.value) high = { value, i, j }
-      }
-    }
-    if (!Number.isFinite(low.value)) continue
-    const kind = ring.level - low.value > high.value - ring.level ? 'L' : 'H'
-    const extreme = kind === 'L' ? low : high
-    const lon = lonOf(field, extreme.i)
-    const lat = latOf(field, extreme.j)
+    const found = ringExtreme(field, ring)
+    if (!found) continue
+    const lon = lonOf(field, found.extreme.i)
+    const lat = latOf(field, found.extreme.j)
     if (!isInView(view, lon, lat)) continue
-    if (!hasClosedContour(field, kind, extreme.i, extreme.j, { deltaHpa: rules.closedContourDeltaHpa, distDeg: rules.closedContourDistDeg })) continue
     centers.push({
-      kind,
+      kind: found.kind,
       lon: Math.round(lon * 100) / 100,
       lat: Math.round(lat * 100) / 100,
-      pressureHpa: Math.round(rawCenterPressure(psl, kind, lon, lat, rules.centerPressureRadiusDeg)),
-      smoothedHpa: extreme.value,
+      pressureHpa: Math.round(rawRingExtreme(psl, ring, found.kind)),
+      smoothedHpa: found.extreme.value,
     })
   }
   // GEMPAK HILO처럼 종류별 표시 개수에 상한을 둔다. 강한 계부터 남긴다.
@@ -404,9 +379,9 @@ export function buildWindField(u, v, view, rules = SURFACE_CHART_RULES) {
 export async function buildSurfaceChartFrame({ psl, precNow, precPrev = null, u, v, view, rules = SURFACE_CHART_RULES }) {
   assertSeaLevelPressure(psl)
   const pressure = buildPressureField(psl, rules)
-  const isobarField = buildPressureField(psl, { ...rules, gaussianSigmaCells: rules.isobarSigmaCells ?? rules.gaussianSigmaCells })
-  const isobars = buildIsobars(isobarField, view, { rules })
-  const centers = detectPressureCenters(pressure, psl, view, { rules })
+  const points = pointGrid(pressure)
+  const isobars = buildIsobars(pressure, view, { points, rules })
+  const centers = detectPressureCenters(pressure, psl, view, { points, rules })
   const precip = await buildPrecipImage(precNow, precPrev, view, rules)
   const wind = buildWindField(u, v, view, rules)
   return { isobars, centers: turf.featureCollection(centers.map(({ lon, lat, ...rest }) => turf.point([lon, lat], rest))), precip, wind }

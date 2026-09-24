@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createBriefingProvider, createBriefingRequestGate } from './lib/briefingProvider.js'
 import { fetchVerticalProfile, fetchCrossSection, fetchNwpTimeRefresh, fetchRouteExposure, fetchRouteExposureBatch, fetchAltitudeComparison } from '../../api/briefingApi.js'
 import { getProcedures, KNOWN_AIRPORTS } from './lib/procedureData.js'
-import { buildBriefingRoute, buildManualIfrRoute, buildManualVfrRoute, buildVfrRoute, canBuildBriefingRoutePath, formatRouteString, loadIapData, loadNavdata, loadNavpoints, loadOverseasLinks, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
+import { buildBriefingRoute, buildVfrRoute, canBuildBriefingRoutePath, loadIapData, loadNavdata, loadNavpoints, loadRouteDirectionMetadata, resolveNearestNavpoint } from './lib/routePlanner.js'
 import { classifyTokens, errorCount, findProcedureByToken, isProcedureText, procedureFixCoordinates, procedureFixIds, procedureTokenForms, tokenGeometry, TOKEN_KINDS } from './lib/routeTokens.js'
-import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString, parseVfrDraftText } from './lib/manualRouteInput.js'
+import { formatCoordinateToken, formatManualRouteString, formatVfrDraftText, parseManualRouteString } from './lib/manualRouteInput.js'
 import { calcVfrDistance, inlineImportedProcedureGeometry } from './lib/routePreview.js'
 import { computeEtaIso } from './lib/etaCalc.js'
 import { getPerformanceForRule, setPerformanceForRule } from './lib/aircraftProfiles.js'
@@ -16,8 +16,12 @@ import { buildSavedGeometry } from './lib/routeSaveGeometry.js'
 import { defaultBriefingName } from './lib/briefingName.js'
 import { saveRoute } from './lib/routeStore.js'
 import { buildCommonRouteModel } from '../../../../shared/route-model.js'
-import { recommendProcedures } from './lib/recommendProcedures.js'
+import { prepareRouteDraft, buildEditorPreview as buildSharedEditorPreview, buildAppliedRouteInputs } from './lib/routePlanning.js'
 import { createRouteDesign, duplicateRouteDesign, removeRouteDesign, snapshotRouteDesign } from './lib/routeDesigns.js'
+import { buildAppliedCopilotContext } from './lib/copilotContext.js'
+import { previewCopilotRouteSettings } from './lib/copilotRouteSettings.js'
+import { generatedRouteAction, prepareGeneratedRoute } from './lib/copilotGeneratedRoute.js'
+import { prepareCopilotSavedRoute, validateSavedRouteBundle } from './lib/copilotSavedRoute.js'
 import { normalizeRouteSnapshot } from './lib/routeStore.js'
 import { buildSavedBriefingInputs, buildSavedRouteResult } from './lib/savedRouteBriefing.js'
 import { resolveDemoEtd, selectEffectiveEtd } from './lib/demoTime.js'
@@ -228,6 +232,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   const [etaUserEdited, setEtaUserEdited] = useState(false)
   const setEta = (next) => { setEtaUserEdited(true); setEtaState(next) }
   const clearEtaOverride = () => { setEtaUserEdited(false); setEtaState(null) }
+  const initialCopilotConditions = useRef({ cruiseAltitudeFt, tasKt })
   const plannedEtaDistanceNm = routeResult?.totalDistanceNm ?? routeResult?.distanceNm ?? null
   useEffect(() => {
     if (etaUserEdited) return
@@ -719,7 +724,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       }
     }
 
-    recommendProcedures({
+    prepareRouteDraft({
       routeForm,
       sidOptions,
       starOptions,
@@ -728,47 +733,22 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       isFirInMode,
       isFirExitMode,
       effectiveRouteType,
-      loadOverseasLinks,
-      buildBriefingRoute,
-    }).then(async (best) => {
+    }).then((generatedEditor) => {
       if (cancelled || resetVersion !== routeResetVersionRef.current) return
-      if (!best) {
-        // 추천할 절차를 못 찾았다 — 초안이 안 생기므로 자동 적용도 취소한다.
-        setAutoRecommendRequested(false)
+      setAutoRecommendRequested(false)
+      if (!generatedEditor) {
         setAutoApplyPending(false)
         return
       }
-
-      const nextForm = {
-        ...routeForm,
-        entryFix: best.entryFix ?? routeForm.entryFix,
-        exitFix: best.exitFix ?? routeForm.exitFix,
-      }
-      try {
-        const result = await buildBriefingRoute({
-          ...nextForm,
-          routeType: effectiveRouteType,
-        })
-        if (cancelled || resetVersion !== routeResetVersionRef.current) return
-        const generatedEditor = await buildEditorPreview(
-          createRouteEditor({
-            routeForm: { ...nextForm, routeType: effectiveRouteType },
-            procedures: { sid: best.sid ?? null, star: best.star ?? null, iapKey: best.iapKey ?? null },
-          }),
-          formatRouteString(result),
-        )
-        if (cancelled || resetVersion !== routeResetVersionRef.current) return
-        setRouteEditor(generatedEditor.editor)
-        setRouteError(null)
+      setRouteEditor(generatedEditor.editor)
+      setRouteError(null)
+    }).catch((error) => {
+      if (!cancelled && resetVersion === routeResetVersionRef.current) {
         setAutoRecommendRequested(false)
-      } catch (error) {
-        if (!cancelled && resetVersion === routeResetVersionRef.current) {
-          setAutoRecommendRequested(false)
-          setAutoApplyPending(false) // 생성이 실패했으면 적용까지 이어가지 않는다.
-          setRouteError(error.message)
-        }
+        setAutoApplyPending(false)
+        setRouteError(error.message)
       }
-    }).catch(() => {})
+    })
 
     return () => {
       cancelled = true
@@ -1010,6 +990,129 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     autoSearchRef.current = false
   }
 
+  const copilotEditorStateRef = useRef(null)
+  copilotEditorStateRef.current = {
+      organization: briefingContextRef.current?.kind === 'organization', routeForm, routeEditor, routeTokenTexts,
+      cruiseAltitudeFt, tasKt, etd, eta, alternateAirport, nwpTimeSelection, selectedRouteDesignId,
+      hasConditionEdits: etdUserEdited || etaUserEdited || cruiseAltitudeFt !== initialCopilotConditions.current.cruiseAltitudeFt
+        || tasKt !== initialCopilotConditions.current.tasKt,
+      designs: routeDesigns.map(({ id, routeForm, routeModel, routeString, enroute, draftEditor, pendingEdit }) =>
+        ({ id, routeForm, routeModel, routeString, enroute, draftEditor, pendingEdit })),
+  }
+  function getCopilotEditorRevision() {
+    if (briefingContextRef.current?.kind === 'organization') throw new Error('ORGANIZATION_CONTEXT_UNSUPPORTED')
+    return JSON.stringify([routeResetVersionRef.current, copilotEditorStateRef.current])
+  }
+  function previewCopilotSettings(action) {
+    return previewCopilotRouteSettings(copilotEditorStateRef.current, action)
+  }
+
+  async function previewCopilotSavedRoute(bundle, revision) {
+    if (getCopilotEditorRevision() !== revision) throw new Error('ROUTE_SETTINGS_CHANGED')
+    const prepared = await prepareCopilotSavedRoute(bundle)
+    if (getCopilotEditorRevision() !== revision) throw new Error('ROUTE_SETTINGS_CHANGED')
+    const screen = copilotEditorStateRef.current
+    const conditions = { etd: prepared.saved.etd ?? screen.etd, eta: prepared.saved.eta ?? null,
+      cruiseAltitudeFt: prepared.saved.cruiseAltitudeFt ?? screen.cruiseAltitudeFt,
+      tasKt: prepared.saved.tasKt ?? screen.tasKt }
+    // Retained values are also checked: a saved ETA without ETD must not create
+    // an inverted window against the screen's current departure time.
+    validateSavedRouteBundle({ ...bundle, entry: { ...bundle.entry, ...conditions } })
+    return { ...prepared, revision, conditions }
+  }
+
+  function applyCopilotSavedRoute(prepared) {
+    if (getCopilotEditorRevision() !== prepared.revision) throw new Error('ROUTE_SETTINGS_CHANGED')
+    validateSavedRouteBundle(prepared.bundle)
+    const { saved, designs } = prepared
+    const selected = designs.find((design) => design.id === saved.selectedAlternativeId) ?? designs[0]
+    // All async reads/validation are complete. This synchronous commit only
+    // replaces editor state; it never saves a route or a performance profile.
+    handleRouteReset()
+    setAutoApplyPending(false)
+    const form = selected.routeForm
+    lastVfrKeyRef.current = `${form.departureAirport}>${form.arrivalAirport}`
+    importedRouteApplyPendingRef.current = true
+    skipImportedTokenReapplyRef.current = true
+    applyBaseRoute(selected)
+    setRouteDesigns(designs)
+    setHiddenRouteDesignIds(new Set())
+    setIapData(prepared.iapCatalogs?.[selected.id] ?? prepared.iapData)
+    seededRef.current = true
+    const raw = selected.routeString.trim()
+    lastSyncedRawTextRef.current = raw
+    lastAppliedTokenTextRef.current = raw
+    const tokens = raw ? raw.split(/\s+/) : []
+    setRouteTokenTexts(form.flightRule === 'VFR' && tokens.length ? tokens : [form.departureAirport,
+      selected.procedures.sid?.name, ...tokens, selected.procedures.star?.name, form.arrivalAirport].filter(Boolean))
+    if (saved.etd != null) setEtd(new Date(saved.etd).toISOString())
+    if (saved.eta != null) setEta(new Date(saved.eta).toISOString())
+    else clearEtaOverride()
+    if (saved.cruiseAltitudeFt != null) setCruiseAltitudeFt(saved.cruiseAltitudeFt)
+    setAltitudeDraftFt(prepared.conditions.cruiseAltitudeFt)
+    if (saved.tasKt != null) setTasKt(saved.tasKt)
+    setAlternateAirport(saved.alternateAirport ?? '')
+    setNwpTimeSelection(saved.nwpTimeSelection ?? null)
+    const geometry = selected.routeModel?.routeGeometry ?? selected.routeResult?.previewGeojson?.features?.find((f) => f.geometry?.type === 'LineString')?.geometry
+    if (geometry) setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: geometry.coordinates, maxZoom: 8 })
+    return { status: 'imported', routeHash: prepared.bundle.routeHash, mode: prepared.mode }
+  }
+
+  function applyCopilotSettings(action, expectedRevision) {
+    const preview = previewCopilotSettings(action)
+    if (preview.revision !== expectedRevision) throw new Error('ROUTE_SETTINGS_CHANGED')
+    // Explicit user action only. Keep this as a draft: no planner, route apply,
+    // weather generation or writes to the user's saved performance profile.
+    handleRouteReset()
+    setAutoApplyPending(false)
+    importedRouteApplyPendingRef.current = false
+    skipImportedTokenReapplyRef.current = false
+    seededRef.current = true
+    lastAppliedTokenTextRef.current = ''
+    setRouteEditor(emptyEditorForContext({ ...initialRouteForm, flightRule: preview.next.flightRule,
+      departureAirport: preview.fields.departureAirport, arrivalAirport: preview.fields.arrivalAirport }))
+    setRouteTokenTexts([preview.fields.departureAirport, preview.fields.arrivalAirport])
+    setCruiseAltitudeFt(preview.next.cruiseAltitudeFt)
+    setAltitudeDraftFt(preview.next.cruiseAltitudeFt)
+    if (preview.fields.etd) setEtd(preview.fields.etd)
+    if (preview.fields.eta) setEta(preview.fields.eta)
+    setAlternateAirport('')
+    return { status: 'prefilled', fields: preview.next }
+  }
+
+  async function previewCopilotGeneratedRoute(bundle) {
+    const preview = previewCopilotSettings(generatedRouteAction(bundle))
+    const prepared = await prepareGeneratedRoute(bundle)
+    // Confirmation uses this BEFORE-load revision. A concurrent user edit can
+    // never be acknowledged on their behalf by an async catalog load.
+    return { ...prepared, revision: preview.revision, replacesExisting: preview.requiresConfirmation }
+  }
+
+  function applyCopilotGeneratedRoute(prepared) {
+    const { bundle, revision, iapData } = prepared
+    const action = generatedRouteAction(bundle)
+    applyCopilotSettings(action, revision)
+    const { plan, request } = bundle
+    const { editor } = plan
+    setTasKt(plan.flight.tasKt)
+    setIapData(iapData)
+    // Import exact stored geometry/model; do not search again or transfer the
+    // stored weather assessment into the editable/current route workflow.
+    importedRouteApplyPendingRef.current = true
+    skipImportedTokenReapplyRef.current = true
+    applyBaseRoute(createRouteDesign({ routeForm: editor.routeForm, procedures: editor.procedures,
+      routeResult: plan.routeResult, routeModel: request.routeModel,
+      routeExposure: { trigger: 'unavailable', hazards: [] }, enroute: editor.enroute, routeString: editor.rawText }))
+    const tokens = editor.rawText.trim().split(/\s+/)
+    seededRef.current = true
+    lastSyncedRawTextRef.current = editor.rawText.trim()
+    lastAppliedTokenTextRef.current = tokens.join(' ')
+    setRouteTokenTexts([plan.flight.departureAirport, editor.procedures.sid?.name, ...tokens,
+      editor.procedures.star?.name, plan.flight.arrivalAirport].filter(Boolean))
+    setFitBoundsRequest({ id: ++fitBoundsRequestRef.current, coordinates: request.routeGeometry.coordinates, maxZoom: 8 })
+    return { status: 'imported', resultHash: bundle.resultHash }
+  }
+
   async function handleVfrWaypointDrop({ waypoints, previousWaypoints, waypointIndex }) {
     // Comparison editing is design-scoped; the legacy global VFR binder must
     // never mutate the base route from a line/blank-map interaction.
@@ -1198,32 +1301,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
   }
 
   async function buildEditorPreview(editor, text, pendingIntent = null) {
-    const currentEnroute = editor.enroute
-    const userWaypoints = [...(currentEnroute?.userWaypoints ?? [])]
-    const parsed = editor.routeForm.flightRule === 'VFR'
-      ? parseVfrDraftText(text, { departureAirport: editor.routeForm.departureAirport, arrivalAirport: editor.routeForm.arrivalAirport, userWaypoints }).enroute
-      : parseManualRouteString(text, { flightRule: editor.routeForm.flightRule, userWaypoints })
-    let nextWaypointNumber = currentEnroute?.nextWaypointNumber ?? 1
-    const terms = parsed.terms.map((term) => {
-      if (term.kind !== 'coordinate') return term
-      const waypoint = { id: `user-wp-${nextWaypointNumber}`, name: `WP${nextWaypointNumber}`, lon: term.coordinate.lon, lat: term.coordinate.lat }
-      nextWaypointNumber += 1
-      userWaypoints.push(waypoint)
-      return { kind: 'user-waypoint', id: waypoint.id, name: waypoint.name }
-    })
-    const enroute = { terms, legIntents: parsed.legIntents, userWaypoints, nextWaypointNumber }
-    const result = editor.routeForm.flightRule === 'VFR'
-      ? (enroute.terms.length === 0
-          ? await buildVfrRoute(editor.routeForm)
-          : await buildManualVfrRoute({ departureAirport: editor.routeForm.departureAirport, arrivalAirport: editor.routeForm.arrivalAirport, enroute, userWaypoints }))
-      : await buildManualIfrRoute({ departureAirport: editor.routeForm.departureAirport, arrivalAirport: editor.routeForm.arrivalAirport, routeType: editor.routeForm.routeType || effectiveRouteType, enroute, userWaypoints })
-    const appliedEnroute = result.resolvedEnroute ? { ...result.resolvedEnroute, userWaypoints, nextWaypointNumber } : enroute
-    return {
-      editor: createRouteEditor({ ...editor, enroute: appliedEnroute, rawText: editor.routeForm.flightRule === 'VFR'
-        ? formatVfrDraftText({ departureAirport: editor.routeForm.departureAirport, arrivalAirport: editor.routeForm.arrivalAirport, enroute: appliedEnroute })
-        : formatManualRouteString(appliedEnroute), preview: result, pendingIntent }),
-      result,
-    }
+    return buildSharedEditorPreview(editor, text, effectiveRouteType, pendingIntent)
   }
 
   async function previewEditorRoute(text, pendingIntent = null) {
@@ -1436,6 +1514,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     // 오타를 건너뛰고 나머지로 경로를 만들면, 이용자가 의도한 적 없는 경로가 멀쩡한 모습으로
     // 화면에 남는다 — 판단에 쓰는 화면에서 그것이 가장 위험하다.
     if (errorCount(routeTokens) > 0) return
+    const requestId = ++routeSearchRequestRef.current
     setRouteLoading(true)
     setRouteError(null)
     try {
@@ -1444,34 +1523,22 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       let result = usePreview ? routeEditor.preview : null
       let appliedEnroute = currentEnroute
       if (!result) {
-        const userWaypoints = [...(currentEnroute?.userWaypoints ?? [])]
-        const parsed = routeForm.flightRule === 'VFR'
-          ? parseVfrDraftText(routeText, { departureAirport: routeForm.departureAirport, arrivalAirport: routeForm.arrivalAirport, userWaypoints }).enroute
-          : parseManualRouteString(routeText, { flightRule: routeForm.flightRule, userWaypoints })
-        let nextWaypointNumber = currentEnroute?.nextWaypointNumber ?? 1
-        const terms = parsed.terms.map((term) => {
-          if (term.kind !== 'coordinate') return term
-          const waypoint = { id: `user-wp-${nextWaypointNumber}`, name: `WP${nextWaypointNumber}`, lon: term.coordinate.lon, lat: term.coordinate.lat }
-          nextWaypointNumber += 1
-          userWaypoints.push(waypoint)
-          return { kind: 'user-waypoint', id: waypoint.id, name: waypoint.name }
-        })
-        const enroute = { terms, legIntents: parsed.legIntents, userWaypoints, nextWaypointNumber }
-        result = routeForm.flightRule === 'VFR'
-          ? (enroute.terms.length === 0
-              ? await buildVfrRoute(routeForm)
-              : await buildManualVfrRoute({ departureAirport: routeForm.departureAirport, arrivalAirport: routeForm.arrivalAirport, enroute, userWaypoints }))
-          : await buildManualIfrRoute({ departureAirport: routeForm.departureAirport, arrivalAirport: routeForm.arrivalAirport, routeType: effectiveRouteType, enroute, userWaypoints })
-        appliedEnroute = result.resolvedEnroute ? { ...result.resolvedEnroute, userWaypoints, nextWaypointNumber } : enroute
+        const preview = await buildSharedEditorPreview({
+          ...routeEditor, routeForm: { ...routeForm, routeType: effectiveRouteType },
+        }, routeText, effectiveRouteType)
+        result = preview.result
+        appliedEnroute = preview.editor.enroute
       }
+      if (requestId !== routeSearchRequestRef.current) return false
       const appliedVfrWaypoints = result.flightRule === 'VFR'
         ? buildVfrWaypointsFromRouteResult(result, airports)
         : []
-      const routeGeometry = getCurrentRouteLineString({ routeResult: result, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap })
-      const routeModel = buildCommonRouteModel({ routeGeometry, routeResult: result })
-      const etdIso = Number.isFinite(Date.parse(etd)) ? new Date(etd).toISOString().replace('.000Z', 'Z') : null
-      const nextEta = (etaUserEdited && eta) || computeEtaIso(etdIso, result.totalDistanceNm ?? result.distanceNm, tasKt) || null
+      const { routeGeometry, routeModel, etd: etdIso, eta: nextEta } = buildAppliedRouteInputs({
+        routeResult: result, vfrWaypoints: appliedVfrWaypoints, selectedSid, selectedStar, selectedIap,
+        etd, eta: etaUserEdited ? eta : null, tasKt, cruiseAltitudeFt,
+      })
       const exposure = await fetchRouteExposure({ routeGeometry, routeModel, etd: etdIso, eta: nextEta }).catch((error) => ({ trigger: 'unavailable', hazards: [], error: error.message }))
+      if (requestId !== routeSearchRequestRef.current) return false
       const previousBase = routeDesigns.find((design) => design.id === 'base') ?? null
       const base = createRouteDesign({
         routeForm: { ...routeForm, routeType: effectiveRouteType },
@@ -1488,10 +1555,10 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       setEtaState(nextEta)
       return true
     } catch (error) {
-      setRouteError(error.message)
+      if (requestId === routeSearchRequestRef.current) setRouteError(error.message)
       return false
     } finally {
-      setRouteLoading(false)
+      if (requestId === routeSearchRequestRef.current) setRouteLoading(false)
     }
   }
 
@@ -2803,6 +2870,18 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       magCourseDeg,
     },
     actions: {
+      getCopilotEditorRevision,
+      previewCopilotSavedRoute,
+      applyCopilotSavedRoute,
+      previewCopilotSettings,
+      applyCopilotSettings,
+      previewCopilotGeneratedRoute,
+      applyCopilotGeneratedRoute,
+      getAppliedCopilotContext: () => buildAppliedCopilotContext({
+        scope: briefingContextRef.current?.kind, design: selectedAppliedDesign, routeResult,
+        vfrWaypoints: appliedVfrWaypoints, selectedSid: appliedProcedures.sid, selectedStar: appliedProcedures.star,
+        selectedIap: appliedIap, etd, eta, cruiseAltitudeFt, alternateAirport, nwpTimeSelection,
+      }),
       updateRouteField,
       handleDepartureAirportChange,
       handleArrivalAirportChange,

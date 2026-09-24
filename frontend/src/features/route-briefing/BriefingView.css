@@ -460,3 +460,13 @@
   color: var(--text-1);
 }
 .bv-change-strip-time { margin-left: auto; color: var(--text-3); }
+.bv-frozen-notice {
+  margin: var(--space-m) 0;
+  padding: var(--space-m);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: var(--fs-200);
+  overflow-wrap: anywhere;
+}

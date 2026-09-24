@@ -1,8 +1,12 @@
 import { fetchOrganizationBriefing } from '../../organization-lounge/api.js'
 import { fetchRouteBriefing, fetchVerticalProfile, fetchCrossSection } from '../../../api/briefingApi.js'
+import { fetchCopilotResult } from './copilotResult.js'
 
 // Selection is explicit: organization failures never retry through personal APIs.
 export function createBriefingProvider(context, dependencies = {}) {
+  if (context?.kind === 'copilot') {
+    return { load: ({ signal }) => (dependencies.copilot ?? fetchCopilotResult)(context.reference, { signal }) }
+  }
   if (context?.kind === 'organization') {
     return { load: ({ overrides, signal }) => (dependencies.organization ?? fetchOrganizationBriefing)({
       ...context, overrides, signal,

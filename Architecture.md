@@ -22,17 +22,20 @@ ProjectAMO/
         notam/                 -> NOTAM panel, GeoJSON adapter, map layers, filters, and popups
         weather-overlays/      -> radar/satellite/lightning/SIGWX/advisory overlays
         route-briefing/        -> route search and procedure/navpoint lookup
+        copilot/               -> owner-scoped LLM chat, floating 기상이 window, trusted evidence cards and explicit screen actions
         airport-panel/         -> airport detail drawer, tabs, and view models
         search/                -> 공항+기능 통합 검색 팔레트 + 공유 레이어 액션 레지스트리
         developer/             -> `/dev` 개발자 콘솔(조작+관찰), 테스트 인스턴스(dev:test) 전용 — EntryPoints §11
         onboarding/            -> 첫 사용자 코치마크 투어(스포트라이트+툴팁, 의존성 0). 데스크톱 자동 1회 + 도움말 재실행
+        intro/                 -> `/intro` 소개 페이지(주소로만 진입, 첫 화면 아님). 실제 화면 캡처·영상 자산, sticky 고정 구간 스크롤 연출(외부 라이브러리 없음), 최신 인천 METAR 한 줄
       shared/
         ui/                    -> frontend-only reusable UI
         weather/               -> frontend-only weather display helpers
   backend/
     data/                    -> local development data root; terrain source/tiles live here when DATA_PATH is unset
     src/
-      briefing/               -> route-axis, planned altitude profile, and vertical profile composition
+      ai/                     -> injected-reader weather/briefing tools, owner-bound references/context registration, local read-only MCP/worker executor, bounded chat runner and server-only OpenAI Responses adapter; no collection
+      briefing/               -> route-axis, planned altitude profile, vertical profile composition and shared altitude comparison service
       auth/                   -> authentication and session routes
       db/                     -> database access and schema helpers
       admin/                  -> administration routes and services
@@ -44,7 +47,7 @@ ProjectAMO/
       parsers/                 -> upstream raw response parsers
       processors/              -> normalized data transformers
   scripts/                     -> local preprocessing helpers such as terrain tile generation
-  shared/                      -> backend/frontend common constants
+  shared/                      -> backend/frontend common constants, contracts, and environment-independent route calculations
   docs/                        -> operations, deployment, and route briefing architecture notes
 ```
 
@@ -142,7 +145,10 @@ ProjectAMO/
 - `frontend/src/features/route-briefing/lib/routePlanner.js` -> loads domestic `enroute.json`, derives the route graph in memory, merges optional overseas route data, and keeps the route-confirmation result contract stable.
 - `frontend/src/features/route-briefing/useRouteBriefing.js` -> route briefing state, async transitions/lifecycle cancellation, route search, vertical profile orchestration, and delegation of IFR procedure selection to `recommendProcedures`.
 - `frontend/src/features/route-briefing/lib/demoTime.js` -> 시연 모드의 기준시각을 새 경로 ETD에 적용하는 순수 전환 규칙. 사용자가 ETD를 직접 수정하기 전에는 스냅샷 전환을 따라가고, 직접 수정한 값은 주기적 상태 조회가 덮어쓰지 않는다.
-- `frontend/src/features/route-briefing/lib/recommendProcedures.js` -> injected-I/O IFR procedure recommendation owner.
+- `frontend/src/features/route-briefing/lib/recommendProcedures.js` -> compatibility export of the shared injected-I/O IFR procedure selection.
+- `frontend/src/features/route-briefing/lib/routePlanning.js` -> browser adapter for shared draft normalization and applied route inputs. Resolves the requested airport's procedure data before automatic generation; React cancellation, user confirmation and map state remain in `useRouteBriefing`.
+- Root `shared/route-planning/` -> environment-independent navdata provider factory, airway graph/planner, procedure selection, editor normalization, procedure geometry, profile payloads and ETA estimate. `planRoute` composes domestic IFR recommendation → editable route → applied geometry/model/profile. Neither browser APIs nor backend/frontend modules are imported here. `aircraftPerformance.js` contains defaults only; localStorage remains in the frontend adapter.
+- `backend/src/briefing/route-planning-provider.js` -> read-only domestic navdata file snapshot, content identity and publication-scoped provider. Checks file identities around capture; old plans keep their captured files, graph and IAP while a new provider can load a new publication. This module starts no server or collector.
 - `frontend/src/features/route-briefing/lib/briefingViewModel.js` -> pure briefing display-transform owner.
 - `frontend/src/features/route-briefing/RouteBriefingPanel.jsx` -> route-check panel UI for IFR/VFR form, route result, VFR altitude editing, and vertical profile controls.
 - `frontend/src/features/route-briefing/VerticalProfileWindow.jsx` -> vertical profile modal shell.
@@ -258,13 +264,19 @@ ProjectAMO/
 
 ## Reference Structure
 
+- `backend/src/ai/access.js` -> app-only operator-funded OpenAI provider (`OPENAI_API_KEY`), default-OFF account preferences, SQLite-backed five-question allowance per KST calendar day, and persistent request-ID reservations. Router authenticates owners; runner validates input/conversation/replay before consuming one allowance per user turn, regardless of internal model/tool calls. Settings updates cancel active chats and invalidate conversations without resetting usage. `frontend/src/features/copilot/CopilotLabs.jsx` owns the key-free Settings → Labs toggle; chat displays remaining quota. MCP has no access to the operator key or private settings. Legacy `credentials.js`/`ai_credentials` are retained for historical data compatibility but are not wired into the app.
+
+- `backend/src/me/route-reader.js` -> session-owned saved input reads shared by personal REST and app-only copilot tools. `backend/src/ai/saved-route-tools.js` keeps private route payloads outside model context and revalidates owner/expiry/content before UI fetch; never attached to anonymous MCP workers.
+- `shared/copilot-ui-actions.js` -> closed app navigation contract. `backend/src/ai/ui-actions.js` prepares user-click airport/weather actions only; `frontend/src/features/copilot/uiActions.js` validates current capabilities, calls existing App/MapView setters and reads committed selection state before showing a receipt. No MCP execution, URLs or weather-availability inference.
+- `backend/src/me/alert-service.js` -> shared personal monitoring registration/cancellation for account REST and AI confirmation; preserves saved originals and FK notification history. `backend/src/ai/alert-tools.js` only exposes list/prepare to chat, while authenticated `/api/ai/confirm` owns execution and the SQLite `ai_confirmations` journal. Business writes and replay receipts commit together; the model and MCP cannot call confirmation.
+
 - `frontend/src/main.jsx` imports only the app entry files.
 - Frontend layout sizing should use `frontend/src/app/layout/layoutTokens.css` for shared shell, panel, and breakpoint values before adding new fixed pixel widths.
 - Frontend UI, CSS, layout, and responsive work should follow `docs/policies/design/design-language.md` (the design constitution, single source of truth) for tokens, color, typography, responsive behavior, accessibility, and operational UX priorities.
 - `frontend/src/app/*` may import `api/`, `features/`, and `shared/`.
 - `frontend/src/features/*` may import `api/`, `shared/`, and local feature siblings when a UI flow requires it.
 - `frontend/src/shared/*` must stay frontend-only and must not import from `app/` or `features/`.
-- Root `shared/` is for backend/frontend common constants; do not mix it with `frontend/src/shared/`.
+- Root `shared/` is for backend/frontend common constants, versioned contracts and environment-independent domain calculations; do not mix it with `frontend/src/shared/`. Shared route planning takes injected readers: HTTP, filesystem, storage, React and Mapbox belong to their environment adapters. Backend code must not import frontend source. Publication replacement creates a new provider rather than clearing graph/procedure/IAP caches separately.
 - Terminal schedule selection keeps `RKSS`, `RKPC`, and `RKPK` within the 30-minute reference window. For low-frequency `RKPU`, `RKNY`, `RKJY`, and `RKJB`, it first selects the two-hour window, then appends later verified departures in chronological order until three same-day flights are selected or the schedule is exhausted; it never crosses into the next day or fabricates a flight.
 - Terminal schedule frames order the selected destination queues by descending flight count with first-schedule order as the tie breaker. Each frame consumes one flight from up to three live destinations first, then fills spare slots from the largest remaining queue; every `flightKey` appears exactly once and the cycle uses `ceil(totalFlights / 3)` frames.
 - Terminal destination forecasts copy the destination fixture per selected flight and relabel its five display hours from that flight's scheduled arrival hour; shared weather fixtures are not mutated.

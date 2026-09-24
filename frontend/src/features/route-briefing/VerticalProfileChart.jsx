@@ -285,7 +285,8 @@ export default function VerticalProfileChart({
     .map((marker, index) => ({ ...marker, key: `${marker.label}-${index}` }))
   const markerLabels = assignMarkerLanes(visibleMarkers, provisionalX)
   const markerLaneCount = Math.max(1, ...markerLabels.map((marker) => marker.lane + 1))
-  const railEnabled = Boolean(onSetWaypointNwpOffset && visibleMarkers.length > 1)
+  // Frozen results still display their time rules, without exposing edit controls.
+  const railEnabled = Boolean((onSetWaypointNwpOffset || nwpTimeSelection) && visibleMarkers.length > 1)
   // 시간선의 44px 클릭 영역과 기존 웨이포인트 이름 블록은 겹치면 안 된다.
   // 이름표는 클릭 영역이 끝나는 바로 다음 행에서 시작한다.
   const waypointLabelBandOffset = railEnabled ? 36 : 0
@@ -696,10 +697,10 @@ export default function VerticalProfileChart({
             const y = padding.top + plotHeight + 13
             return <g key={segment.startWaypointId}>
               <line className={`vertical-profile-nwp-rail-line is-offset-${segment.offsetHours}`} x1={x1} x2={x2} y1={y} y2={y} />
-              <rect x={x1} y={y - 22} width={Math.max(1, x2 - x1)} height={44} fill="transparent" role="button" tabIndex={0}
+              {onSetWaypointNwpOffset && <rect x={x1} y={y - 22} width={Math.max(1, x2 - x1)} height={44} fill="transparent" role="button" tabIndex={0}
                 aria-label={`${segment.startWaypointLabel}부터 NWP 시간 설정`}
                 onClick={(event) => { event.stopPropagation(); setEditingNwpSegment(segment) }}
-                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingNwpSegment(segment) } }} />
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingNwpSegment(segment) } }} />}
               <circle cx={x1} cy={y} r={4} className="vertical-profile-nwp-rail-point" />
               {segment.showLabel && <text x={x1 + 4} y={y - 5} className="vertical-profile-nwp-rail-label" pointerEvents="none">{segment.offsetHours === 0 ? `기준 ${nwpBaseTimeLabel}` : `+${segment.offsetHours}h`}</text>}
             </g>
@@ -809,7 +810,9 @@ export default function VerticalProfileChart({
           onClick={() => { onSetWaypointNwpOffset(editingNwpSegment.startWaypointId, offsetHours === 0 ? null : offsetHours); setEditingNwpSegment(null) }}>{offsetHours === 0 ? '기준' : `+${offsetHours}h`}</button>)}</div>
         <button type="button" onClick={() => setEditingNwpSegment(null)}>닫기</button>
       </div>}
-      {railEnabled && <p className="vertical-profile-nwp-hint">{'\uc544\ub798 \ud0c0\uc784\ub77c\uc778\uc758 \uad6c\uac04\uc744 \ub20c\ub7ec \ud574\ub2f9 \uc9c0\uc810\ubd80\ud130 NWP \uc2dc\uac04\ub300\ub97c \ubcc0\uacbd\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.'}</p>}
+      {railEnabled && <p className="vertical-profile-nwp-hint">{onSetWaypointNwpOffset
+        ? '\uc544\ub798 \ud0c0\uc784\ub77c\uc778\uc758 \uad6c\uac04\uc744 \ub20c\ub7ec \ud574\ub2f9 \uc9c0\uc810\ubd80\ud130 NWP \uc2dc\uac04\ub300\ub97c \ubcc0\uacbd\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.'
+        : '보관 결과에 적용된 NWP 시간 규칙입니다. 이 화면에서는 변경할 수 없습니다.'}</p>}
       {scrollable && (
         <svg
           className="vertical-profile-axis-overlay"

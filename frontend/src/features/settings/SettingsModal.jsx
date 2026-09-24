@@ -5,6 +5,7 @@ import { readDisplayPreferences, saveDisplayPreferences } from '../../shared/set
 import { TabList, Tab } from '../../shared/ui/fluent.js'
 import { useCloseOnBackButton } from '../../shared/ui/useCloseOnBackButton.js'
 import './SettingsModal.css'
+import CopilotLabs from '../copilot/CopilotLabs.jsx'
 
 // 공항별 미니마는 AIP/설비 기반 고정값 → 코드 상수(DEFAULT_AIRPORT_MINIMA_RULES)로 관리, 사용자 편집 UI 폐기.
 export default function SettingsModal({ onClose }) {
@@ -56,9 +57,11 @@ export default function SettingsModal({ onClose }) {
             onTabSelect={(_, data) => setActiveTab(data.value)}
           >
             <Tab value="display">표시 설정</Tab>
+            <Tab value="labs">실험실</Tab>
           </TabList>
 
           <div className="settings-body">
+            {activeTab === 'labs' && <CopilotLabs />}
             {activeTab === 'display' && (
               <fieldset className="settings-section">
                 <legend>표시 설정</legend>
@@ -88,11 +91,11 @@ export default function SettingsModal({ onClose }) {
           </div>
         )}
 
-        <div className="settings-footer">
+        {activeTab === 'display' && <div className="settings-footer">
           <button className="settings-btn-reset" onClick={handleReset}>초기화</button>
           <button className="settings-btn-apply" onClick={handleApply}>적용</button>
           <button className="settings-btn-save" onClick={handleSave}>저장</button>
-        </div>
+        </div>}
       </div>
     </div>
   )

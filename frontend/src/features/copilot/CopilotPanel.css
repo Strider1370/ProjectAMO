@@ -1,0 +1,70 @@
+.copilot-launcher { position: fixed; right: var(--space-xxl); bottom: calc(var(--app-bottom-bar) + var(--space-xxl)); z-index: 120; width: var(--copilot-launcher-size); height: var(--copilot-launcher-size); border-radius: var(--radius-circular); border: 1px solid var(--stroke-1); background: var(--bg-1); box-shadow: 0 2px 8px #0002; cursor: pointer; padding: var(--space-xs); }
+.copilot-launcher img { width: 100%; height: 100%; object-fit: contain; }
+.copilot-busy-dot { position: absolute; right: 2px; top: 2px; width: 10px; height: 10px; border-radius: var(--radius-circular); background: var(--accent); border: 2px solid var(--bg-1); }
+.copilot-window { position: fixed; z-index: 119; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--stroke-1); border-radius: var(--radius-xl); background: var(--bg-1); box-shadow: 0 4px 20px #0002; color: var(--text-1); font-size: var(--fs-300); line-height: var(--lh-300); }
+.copilot-window[hidden], .copilot-mobile-host[hidden] { display: none; }
+.copilot-window button, .copilot-mobile-host button { font: inherit; color: var(--text-1); min-width: var(--touch-min); min-height: var(--touch-min); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-1); cursor: pointer; }
+.copilot-window button:disabled, .copilot-mobile-host button:disabled { color: var(--text-3); cursor: default; }
+.copilot-window :focus-visible, .copilot-launcher:focus-visible, .copilot-mobile-host :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.copilot-header { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-s); border-bottom: 1px solid var(--stroke-2); }
+.copilot-drag { display: flex; align-items: center; flex: 1; min-width: 0; gap: var(--space-s); cursor: move; touch-action: none; user-select: none; min-height: var(--touch-min); }
+.copilot-drag img, .copilot-mobile-avatar { width: 36px; height: 36px; object-fit: contain; }
+.copilot-drag small { display: block; color: var(--text-3); font-size: var(--fs-100); }
+.copilot-context { display: flex; flex-wrap: wrap; gap: var(--space-s); align-items: center; padding: var(--space-s) var(--space-m); font-size: var(--fs-200); border-bottom: 1px solid var(--stroke-2); }
+.copilot-context label { display: flex; align-items: center; min-height: var(--touch-min); gap: var(--space-xs); }
+.copilot-context span { color: var(--text-3); }
+.copilot-thread { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-l); background: var(--bg-2); }
+.copilot-welcome { margin: var(--space-xl) 0; color: var(--text-2); }
+.copilot-welcome > img { width: 64px; height: 64px; object-fit: contain; }
+.copilot-welcome h2 { font-size: var(--fs-400); margin: var(--space-m) 0; }
+.copilot-disclosure { font-size: var(--fs-200); color: var(--text-3); }
+.copilot-message { display: flex; align-items: flex-start; gap: var(--space-s); margin: var(--space-l) 0; }
+.copilot-message > img { width: 28px; height: 28px; object-fit: contain; }
+.copilot-message.user { justify-content: flex-end; }
+.copilot-message-body { min-width: 0; max-width: 90%; }
+.copilot-bubble { white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--stroke-2); border-radius: var(--radius-xl); background: var(--bg-1); padding: var(--space-m); }
+.copilot-message.user .copilot-bubble { color: var(--bg-1); background: var(--accent); border-color: var(--accent); }
+.copilot-fact { border: 1px solid var(--stroke-2); border-radius: var(--radius-md); padding: var(--space-s); margin-top: var(--space-s); background: var(--bg-1); font-size: var(--fs-200); overflow-wrap: anywhere; }
+.copilot-fact summary { cursor: pointer; min-height: var(--touch-min); align-content: center; }
+.copilot-fact p { margin: var(--space-s) 0; }
+.copilot-source-code { color: var(--text-3); }
+.copilot-settings-fields { margin: var(--space-s) 0; }
+.copilot-settings-fields > div { display: flex; flex-wrap: wrap; gap: var(--space-s); margin: var(--space-xs) 0; }
+.copilot-settings-fields dt { color: var(--text-3); }
+.copilot-settings-fields dd { margin: 0; overflow-wrap: anywhere; }
+.copilot-settings-confirm { margin-top: var(--space-s); padding-top: var(--space-s); border-top: 1px solid var(--stroke-1); }
+.copilot-message-context { margin: 0 0 var(--space-xs); color: var(--text-3); font-size: var(--fs-200); overflow-wrap: anywhere; }
+.copilot-context-choice { border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1); padding: var(--space-m); }
+.copilot-context-choice h3 { font-size: var(--fs-300); margin: 0 0 var(--space-s); }
+.copilot-context-choice p { font-size: var(--fs-200); margin: var(--space-s) 0; overflow-wrap: anywhere; }
+.copilot-context-options { display: grid; gap: var(--space-s); margin-top: var(--space-m); }
+.copilot-altitudes table { width: 100%; border-collapse: collapse; font-size: var(--fs-200); table-layout: fixed; }
+.copilot-altitudes caption { text-align: left; font-weight: var(--fw-semibold); margin-bottom: var(--space-s); }
+.copilot-altitudes th, .copilot-altitudes td { text-align: left; vertical-align: top; border-bottom: 1px solid var(--stroke-2); padding: var(--space-s) var(--space-xs); overflow-wrap: anywhere; }
+.copilot-altitudes th:first-child { width: 42%; }
+.copilot-altitudes small, .copilot-altitudes td span { display: block; font-size: inherit; font-weight: var(--fw-regular); margin-top: var(--space-xs); }
+.copilot-result-state { display: block; color: var(--level-amber); font-size: var(--fs-200); margin-top: var(--space-xs); }
+.copilot-composer { flex-shrink: 0; padding: var(--space-m); border-top: 1px solid var(--stroke-2); background: var(--bg-1); }
+.copilot-input-label { display: block; font-size: var(--fs-200); margin-bottom: var(--space-xs); }
+.copilot-composer textarea { box-sizing: border-box; display: block; width: 100%; resize: none; font: inherit; color: var(--text-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); padding: var(--space-s); background: var(--bg-1); }
+.copilot-send-row { display: flex; gap: var(--space-s); align-items: center; justify-content: space-between; margin-top: var(--space-s); }
+.copilot-send-row > span { font-size: var(--fs-100); color: var(--text-3); }
+.copilot-send-row > button { padding: 0 var(--space-l); }
+.copilot-mobile-host { position: fixed; inset: 0 0 calc(var(--mobile-task-bar-h) + env(safe-area-inset-bottom, 0px)); z-index: 119; pointer-events: none; }
+.copilot-mobile-host > .mobile-sheet { pointer-events: auto; }
+.copilot-mobile-host .mobile-sheet-body { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.copilot-mobile-host .mobile-sheet-footer { padding: 0; }
+.copilot-mobile-avatar { vertical-align: middle; margin-left: var(--space-s); }
+@media (max-width: 719px) {
+  .copilot-launcher { right: var(--space-l); bottom: calc(var(--mobile-task-bar-h) + var(--space-l) + env(safe-area-inset-bottom, 0px)); }
+  /* Keep the launcher in its agreed bottom-right position, reserving its touch
+     area in map-owned sheet actions. Chat's composer owns its separate inset.
+     :has means disabled/unavailable chat leaves existing sheet layout intact. */
+  .app:has(> .copilot-launcher) .map-shell .mobile-sheet-footer {
+    box-sizing: border-box;
+    min-height: calc(var(--copilot-launcher-size) + var(--space-l));
+    padding-right: calc(var(--copilot-launcher-size) + var(--space-l) + var(--space-s));
+  }
+  .copilot-composer textarea { font-size: var(--fs-400); }
+  .copilot-composer { padding-right: calc(var(--copilot-launcher-size) + var(--space-l) + var(--space-s)); }
+}

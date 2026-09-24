@@ -136,7 +136,7 @@ export function composeBriefing(request, data) {
       })),
     }),
   })
-  const aipConstraints = attachActiveAipConstraints({ dataRoot: data?.dataRoot, routeModel: request.routeModel })
+  const aipConstraints = data?.aipConstraints ?? attachActiveAipConstraints({ dataRoot: data?.dataRoot, routeModel: request.routeModel })
 
   // 경로상 NOTAM(사실 나열) + 경로 저촉(공역제한 계열 ∩ 발효중 ∩ 계획고도 통과). scope:'fir' 제외.
   const { routeNotams, routeConflicts: notamConflicts } = matchRouteNotams(data?.notam?.items ?? [], {

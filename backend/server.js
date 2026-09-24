@@ -54,6 +54,7 @@ import warningTypes from '../shared/warning-types.js'
 import alertDefaults from '../shared/alert-defaults.js'
 import { buildVerticalProfile } from './src/briefing/vertical-profile.js'
 import { composeBriefing } from './src/briefing/briefing-composer.js'
+import { executeBriefing } from './src/briefing/briefing-service.js'
 import { loadAirspaceZoneItems } from './src/briefing/airspace-zones.js'
 import { createDefaultTerrainSampler } from './src/terrain/terrain-sampler.js'
 import { createTerrainRgbTiler } from './src/terrain/terrain-rgb-tiles.js'
@@ -76,13 +77,17 @@ import { readKtgLatest, readKtgIndex, readKtgCoords, readKtgGridSafe } from './s
 import { loadRouteCrossSection } from './src/briefing/enroute-cross-section.js'
 import { buildNavlogNwpPatch } from './src/briefing/navlog-nwp-patch.js'
 import { buildRouteExposure } from './src/briefing/route-exposure.js'
-import { attachActiveAipConstraints } from './src/briefing/aip-airway-constraints.js'
-import { buildAltitudeCandidates, buildAltitudeWeatherComparison } from './src/briefing/altitude-weather-comparison.js'
-import { buildRouteAxis } from './src/briefing/route-axis.js'
+import { executeAltitudeComparison } from './src/briefing/altitude-service.js'
 import { ctpsIndexForLatLon } from './src/lib/ctps-grid.js'
 import { decodeCtpsRecord } from './src/processors/convective-satellite-model.js'
 import { echoTopIndexForLatLon } from './src/lib/echo-top-grid.js'
 import { decodeEchoTopRecord } from './src/processors/echo-top-model.js'
+import { createAiRouter } from './src/ai/router.js'
+import { createWorkerExecutor } from './src/ai/worker-executor.js'
+import { createAiAccess } from './src/ai/access.js'
+import { outputTokenBudget } from './src/ai/output-budget.js'
+import { createSavedRouteTools } from './src/ai/saved-route-tools.js'
+import { createAlertTools } from './src/ai/alert-tools.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // libvips(sharp) 연산 캐시 끔 — 레이더/위성/오버레이 PNG 생성 시 네이티브 메모리가 안 줄고 쌓이는 것 방지. #메모리
@@ -110,7 +115,7 @@ app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false,
 const defaultJsonParser = express.json({ limit: '1mb' })
 // Maps parse after session/authentication setup with their own measured payload limit.
 // Keep the existing request limit for all other APIs.
-app.use((req, res, next) => /^\/api\/(?:me\/maps|organizations\/[^/]+\/(?:maps|materials))(?:\/|$)/.test(req.path) ? next() : defaultJsonParser(req, res, next))
+app.use((req, res, next) => /^\/api\/(?:ai|me\/maps|organizations\/[^/]+\/(?:maps|materials))(?:\/|$)/.test(req.path) ? next() : defaultJsonParser(req, res, next))
 app.use(compression())
 
 // #7 인증: (개발) CORS credentials + 세션. 공개 API는 saveUninitialized:false라 세션쿠키 안 생김.
@@ -270,6 +275,20 @@ app.use('/api', (req, res, next) => {
 // #7 인증 라우터 (공개 날씨 API와 분리). register/login/logout/me. 세션과 동일하게 실서버에서만.
 if (process.env.NODE_ENV !== 'test') {
   app.use('/api/auth', createAuthRouter())
+  const aiEnabled = process.env.AMO_AI_ENABLED === '1'
+  const aiExecutor = createWorkerExecutor({ dataRoot: DATA_ROOT,
+    procedureRoot: path.join(__dirname, '../frontend/public/data/navdata/procedures'),
+    navdata: aiEnabled ? readJsonFileSafe(path.join(__dirname, '../frontend/public/data/navdata/enroute.json')) : null })
+  app.use('/api/ai', createAiRouter({
+    executor: aiExecutor, enabled: aiEnabled, available: () => !isDemoMode(),
+    personalRoutes: createSavedRouteTools({ database: getDb, executor: aiExecutor }),
+    personalAlerts: createAlertTools({ database: getDb }),
+    maxOutputTokens: aiEnabled ? outputTokenBudget(process.env.AMO_AI_MAX_OUTPUT_TOKENS) : 1600,
+    access: createAiAccess({ database: getDb, apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.AMO_AI_MODEL, reasoningEffort: process.env.AMO_AI_REASONING_EFFORT }),
+    allowedOrigins: process.env.NODE_ENV === 'production' ? [process.env.FRONTEND_ORIGIN].filter(Boolean)
+      : [process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173', 'http://localhost:5173'],
+  }))
   const organizationMutationOrigin = requireTrustedMutationOrigin({
     allowedOrigins: process.env.NODE_ENV === 'production'
       ? [process.env.FRONTEND_ORIGIN].filter(Boolean)
@@ -1183,47 +1202,18 @@ app.post('/api/vertical-profile', (req, res) => {
 })
 
 app.post('/api/route-briefing', (req, res) => {
-  const body = req.body || {}
-  if (!body.departureAirport || !body.arrivalAirport || !body.routeGeometry?.coordinates?.length) {
-    return res.status(400).json({ error: 'departureAirport, arrivalAirport, routeGeometry are required' })
-  }
-  if (!body.etd || !body.eta) {
-    return res.status(400).json({ error: 'etd and eta are required' })
-  }
-  // 뒤집힌 비행시간창은 timeWindowsOverlap을 엉뚱하게 좁혀 NOTAM·SIGMET을 조용히 걸러낸다.
-  // 위험 정보가 말없이 사라지느니 거절하는 편이 안전하다.
-  const etdMs = Date.parse(body.etd)
-  const etaMs = Date.parse(body.eta)
-  if (!Number.isFinite(etdMs) || !Number.isFinite(etaMs)) {
-    return res.status(400).json({ error: 'etd and eta must be valid ISO timestamps' })
-  }
-  if (etaMs <= etdMs) {
-    return res.status(400).json({ error: 'eta must be later than etd' })
-  }
   try {
-    const data = {
-      metar: store.getCached('metar'),
-      metarOverseas: store.getCached('metar_overseas'),
-      taf: store.getCached('taf'),
-      tafOverseas: store.getCached('taf_overseas'),
-      sigmet: store.getCached('sigmet'),
-      sigmetOverseas: store.getCached('sigmet_overseas'),
-      airmet: store.getCached('airmet'),
-      warning: store.getCached('warning'),
-      amos: store.getCached('amos'),
-      takeoff_fcst: store.getCached('takeoff_fcst'),
-      notam: store.getCached('notam'),
-      typhoon: store.getCached('typhoon'),
-      airspaceZones: loadAirspaceZoneItems(),
-      dataRoot: DATA_ROOT, // composeBriefing이 enroute 단면 모델을 직접 로드(이전엔 여기서 사후 mutate)
-      now: getEffectiveNow().getTime(), // 시연 모드면 스냅샷 기준시각으로 고정(실제 현재시각 아님)
-    }
-    const briefing = composeBriefing(body, data)
+    const { briefing } = executeBriefing(req.body || {}, {
+      readCached: (kind) => store.getCached(kind),
+      readAirspaceZones: loadAirspaceZoneItems,
+      dataRoot: DATA_ROOT,
+      weatherNow: () => getEffectiveNow().getTime(),
+    })
 
     res.set('Cache-Control', 'no-store')
     res.json(briefing)
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(err.status === 400 ? 400 : 500).json({ error: err.message })
   }
 })
 
@@ -1290,50 +1280,11 @@ app.post('/api/briefing/altitudes', (req, res) => {
     return res.status(400).json({ error: 'routeGeometry and routeModel required' })
   }
   try {
-    const axis = buildRouteAxis(body.routeGeometry)
-    const aip = attachActiveAipConstraints({ dataRoot: DATA_ROOT, routeModel: body.routeModel })
-    const crossSectionResult = loadRouteCrossSection({ root: DATA_ROOT, routeGeometry: body.routeGeometry, body })
-    const candidateResult = buildAltitudeCandidates({
-      routeSegments: aip.segments,
-      plannedCruiseAltitudeFt: body.plannedCruiseAltitudeFt,
-      crossSection: crossSectionResult.crossSection,
-    })
-    const hazards = [
-      ...(store.getCached('sigmet')?.items ?? []).map((item) => ({ source: 'SIGMET', item })),
-      ...(store.getCached('sigmet_overseas')?.items ?? []).map((item) => ({ source: 'SIGMET', item })),
-      ...(store.getCached('airmet')?.items ?? []).map((item) => ({ source: 'AIRMET', item })),
-    ]
-    const flightPlanProfiles = Object.fromEntries(candidateResult.candidates.flatMap((candidate) => {
-      if (candidate.status !== 'valid' && candidate.status !== 'input_only') return []
-      try {
-        const profile = buildVerticalProfile({ ...body, plannedCruiseAltitudeFt: candidate.altitudeFt }, terrainSampler).flightPlan.profile
-        return [[candidate.altitudeFt, profile]]
-      } catch {
-        return []
-      }
-    }))
-    const rows = buildAltitudeWeatherComparison({
-      candidates: candidateResult.candidates,
-      crossSection: crossSectionResult.crossSection,
-      turbulence: crossSectionResult.turbulence,
-      axis,
-      hazards,
-      notams: store.getCached('notam')?.items ?? [],
-      etd: body.etd,
-      eta: body.eta,
-      flightPlanProfiles,
+    const comparison = executeAltitudeComparison(body, {
+      dataRoot: DATA_ROOT, readCached: (kind) => store.getCached(kind), terrainSampler,
     })
     setNoStore(res)
-    res.json({
-      constraints: { ...candidateResult.constraints, provenance: aip.provenance },
-      rows,
-      crossSectionRun: crossSectionResult.crossSection?.run ?? null,
-      // availableTimes까지 같이 실어야 이 응답을 재사용하는 고도비교 단면도에서도
-      // 예보시각 앞뒤 이동이 뜬다(빠지면 목록이 비어 버튼이 통째로 사라진다).
-      crossSection: crossSectionResult.available
-        ? { ...crossSectionResult.crossSection, turbulence: crossSectionResult.turbulence, availableTimes: crossSectionResult.availableTimes }
-        : null,
-    })
+    res.json(comparison)
   } catch (error) {
     res.status(400).json({ error: error.message || 'altitude comparison failed' })
   }

@@ -2,18 +2,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { createDb } from '../src/db/index.js'
+import { cancelPersonalAlert } from '../src/me/alert-service.js'
 
 const now = new Date().toISOString()
 
-// DELETE /api/me/alerts/:id의 실제 로직(하드 삭제 시도 → FK로 막히면 감시만 끄기)을
-// 라우터 없이 같은 SQL로 재현해 검증한다. 라우터는 requireAuth(세션) 배선이 있어
-// 이 파일의 다른 테스트들처럼 DB 계층만 순수하게 확인한다.
+// Exercise the same service as both the account router and AI confirmation.
 function deleteOrDisable(db, id, userId) {
-  try {
-    db.prepare('DELETE FROM routes WHERE id=? AND user_id=? AND alert_enabled=1').run(id, userId)
-  } catch {
-    db.prepare('UPDATE routes SET alert_enabled=0, updated_at=? WHERE id=? AND user_id=?').run(new Date().toISOString(), id, userId)
-  }
+  return cancelPersonalAlert(db, userId, id)
 }
 
 test('감시 취소: 알림 이력이 없으면 실제로 삭제된다', () => {

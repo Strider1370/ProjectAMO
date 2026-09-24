@@ -12,7 +12,6 @@ import {
   buildWindField,
   detectPressureCenters,
   greatCircleDeg,
-  hasClosedContour,
   precipColor,
   toChartGrid,
 } from '../src/lib/kim-surface-chart.js'
@@ -60,7 +59,7 @@ test('a closed high is reported as H', () => {
   assert.equal(centers[0].pressureHpa, 1022)
 })
 
-test('a shallow bump that never closes by 1 hPa is not a center', () => {
+test('a shallow bump with no drawn closed isobar is not a center', () => {
   const psl = pressureGrid([{ lon: 130, lat: 38, deltaPa: -60, radiusDeg: 2 }])
   assert.deepEqual(detectPressureCenters(buildPressureField(psl), psl, VIEW), [])
 })
@@ -76,15 +75,34 @@ test('a pressure gradient that runs off the collection edge creates no edge cent
   assert.deepEqual(detectPressureCenters(buildPressureField(psl), psl, VIEW), [])
 })
 
-test('closed contour test fails when the rise reaches the distance limit first', () => {
-  const psl = pressureGrid([{ lon: 130, lat: 38, deltaPa: -600, radiusDeg: 8 }])
+test('a broad high whose drawn isobar closes is H even though it is shallow near the middle', () => {
+  // 6° 떨어져도 0.7 hPa만 낮은 넓은 고기압. 그린 1014 hPa 등압선이 닫히므로 H다.
+  const psl = pressureGrid([{ lon: 130, lat: 38, deltaPa: 350, radiusDeg: 9 }])
+  const centers = detectPressureCenters(buildPressureField(psl), psl, VIEW)
+  assert.deepEqual(centers.map((center) => center.kind), ['H'])
+  assert.ok(Math.abs(centers[0].lon - 130) <= 0.5 && Math.abs(centers[0].lat - 38) <= 0.5)
+})
+
+test('an extreme with no drawn closed isobar gets no symbol', () => {
+  // 1012.5 hPa 위에 1.5 hPa 솟은 고기압: 평활 뒤 1014 hPa에 닿지 않아 닫힌 등압선이 그려지지 않는다.
+  const psl = pressureGrid([{ lon: 130, lat: 38, deltaPa: 150, radiusDeg: 3 }], 101_250)
+  assert.deepEqual(detectPressureCenters(buildPressureField(psl), psl, VIEW), [])
+})
+
+test('the symbol sits at the extreme of the drawn field and reports the raw central pressure', () => {
+  // 넓은 저기압 가장자리 쪽에 작은 깊은 핵이 있다. 평활한 장의 극값은 핵에서 벗어나고, 원자료 극값은 핵이다.
+  const psl = pressureGrid([{ lon: 128, lat: 38, deltaPa: -1_200, radiusDeg: 4 }, { lon: 129, lat: 38.6, deltaPa: -300, radiusDeg: 0.4 }])
   const field = buildPressureField(psl)
+  const [center] = detectPressureCenters(field, psl, VIEW)
   let best = { value: Infinity }
   field.values.forEach((value, index) => { if (value < best.value) best = { value, index } })
-  const i = best.index % field.nx
-  const j = Math.floor(best.index / field.nx)
-  assert.equal(hasClosedContour(field, 'L', i, j, { deltaHpa: 1, distDeg: 6 }), true)
-  assert.equal(hasClosedContour(field, 'L', i, j, { deltaHpa: 1, distDeg: 1 }), false)
+  const lon = field.lonMin + (best.index % field.nx) * field.step
+  const lat = field.latMin + Math.floor(best.index / field.nx) * field.step
+  assert.equal(center.kind, 'L')
+  assert.ok(Math.abs(center.lon - lon) < 0.01 && Math.abs(center.lat - lat) < 0.01)
+  let raw = Infinity
+  for (const value of psl.values) raw = Math.min(raw, value / 100)
+  assert.equal(center.pressureHpa, Math.round(raw))
 })
 
 test('isobars stay inside the view and mark every 4 hPa line as major', () => {

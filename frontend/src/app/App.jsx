@@ -24,6 +24,8 @@ import useIsMobile from '../shared/ui/useIsMobile.js'
 import ExitOnDoubleBack from '../shared/ui/ExitOnDoubleBack.jsx'
 import { TimeZoneProvider, useTimeZone } from '../shared/timezone/TimeZoneContext.jsx'
 import { deeplinkFlightId as deeplinkFlightIdFromUrl, consumeDeeplinkFlight } from '../features/notifications/deeplinkFlight.js'
+import CopilotPanel from '../features/copilot/CopilotPanel.jsx'
+import { createUiActionExecutor } from '../features/copilot/uiActions.js'
 
 const OrganizationLoungePage = lazy(() => import('../features/organization-lounge/OrganizationLoungePage.jsx'))
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
@@ -34,6 +36,7 @@ const DrawSpikePage = lazy(() => import('../features/draw-spike/DrawSpikePage.js
 const AdminPage = lazy(() => import('../features/admin/AdminPage.jsx'))
 const DeveloperPage = lazy(() => import('../features/developer/DeveloperPage.jsx'))
 const ModelComparisonPage = lazy(() => import('../features/airport-model-comparison/ModelComparisonPage.jsx'))
+const IntroPage = lazy(() => import('../features/intro/IntroPage.jsx'))
 
 function formatTimeByTz(ms, tz) {
   const d = tz === 'KST' ? new Date(ms + 9 * 3600 * 1000) : new Date(ms)
@@ -75,6 +78,19 @@ function MainAppShell() {
   const setSearchOpen = useCallback((next) => next ? requestNavigation(() => setSearchOpenRaw(next)) : setSearchOpenRaw(next), [requestNavigation])
   const isMobile = useIsMobile()
   const { weatherData, requestDeferredWeatherData } = useWeatherPolling()
+  const copilotUiState = useRef(null)
+  copilotUiState.current = { ownerId: user?.id, airport: selectedAirport, panel: activePanel, airports: weatherData?.airports }
+  const applyCopilotUiAction = useMemo(() => createUiActionExecutor({
+    getState: () => ({ ...mapRef.current?.getCopilotUiState?.(), ...copilotUiState.current }),
+    apply: (action) => {
+      // The executor checks edit mode, owner and supported targets before this
+      // synchronous navigation. No pending map-edit confirmation can apply later.
+      setSelectedAirport(action.type === 'open_airport' ? action.target : null)
+      setActivePanelRaw(action.type === 'open_airport' ? null : 'met')
+      if (action.type === 'enable_weather_layer') mapRef.current.setLayerOn(action.target, 'met')
+      setMobileTask('map')
+    },
+  }), [])
   const { hasUpdate, markSeen, isFirstVisit } = useLastSeenVersion()
   const previewMode = new URLSearchParams(window.location.search).get('orgId') === 'preview'
   const tourAirportPoint = useCallback((icao) => mapRef.current?.getAirportPoint(icao) ?? null, [])
@@ -341,6 +357,46 @@ function MainAppShell() {
       </div>}
       <div className="utc-bar">{formatTimeByTz(nowMs, tz)}</div>
       <ExitOnDoubleBack />
+      <CopilotPanel user={user} airport={selectedAirport} timezone={tz === 'UTC' ? 'UTC' : 'Asia/Seoul'} isMobile={isMobile}
+        onUiAction={applyCopilotUiAction}
+        getRouteContext={() => mapRef.current?.getAppliedCopilotContext?.() ?? null}
+        onPreviewSavedRoute={(reference) => {
+          if (!mapRef.current?.previewCopilotSavedRoute) throw new Error('MAP_NOT_READY')
+          return mapRef.current.previewCopilotSavedRoute(reference)
+        }}
+        onApplySavedRoute={async (prepared) => {
+          if (!mapRef.current?.applyCopilotSavedRoute) throw new Error('MAP_NOT_READY')
+          const result = await mapRef.current.applyCopilotSavedRoute(prepared)
+          setSelectedAirport(null)
+          setActivePanelRaw('route-check')
+          if (isMobile) setMobileTask('route')
+          return result
+        }}
+        onPreviewRouteSettings={(action) => {
+          if (!mapRef.current?.previewCopilotRouteSettings) throw new Error('MAP_NOT_READY')
+          return mapRef.current.previewCopilotRouteSettings(action)
+        }}
+        onApplyRouteSettings={(action, revision) => {
+          if (!mapRef.current?.applyCopilotRouteSettings) throw new Error('MAP_NOT_READY')
+          const result = mapRef.current.applyCopilotRouteSettings(action, revision)
+          setSelectedAirport(null)
+          setActivePanelRaw('route-check')
+          if (isMobile) setMobileTask('route')
+          return result
+        }}
+        onOpenResult={async (reference) => {
+          if (!mapRef.current?.openCopilotResult) throw new Error('MAP_NOT_READY')
+          await mapRef.current.openCopilotResult(reference)
+          setSelectedAirport(null)
+          setActivePanelRaw('route-check')
+          if (isMobile) setMobileTask('route')
+        }}
+        mobileBlocked={Boolean(selectedAirport || activePanel || mobileTask !== 'map')}
+        onLogin={() => setAuthOpen(true)}
+        onOpenRequest={(show) => requestNavigation(() => {
+          if (isMobile) { setSelectedAirport(null); setActivePanelRaw(null); setMobileTask('map') }
+          show()
+        })} />
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
       {accountOpen && (
         <AccountPanel
@@ -376,6 +432,10 @@ function MainAppShell() {
 }
 
 function App() {
+  // 소개 페이지는 아직 첫 화면이 아니다. 주소로만 들어온다.
+  if (/^\/intro\/?$/.test(window.location.pathname)) {
+    return <Suspense fallback={null}><IntroPage /></Suspense>
+  }
   if (/^\/lounge(?:\/|$)/.test(window.location.pathname)) {
     return <TimeZoneProvider><AuthProvider><Suspense fallback={<p role="status">기관 라운지를 불러오는 중…</p>}><OrganizationLoungePage /></Suspense></AuthProvider></TimeZoneProvider>
   }

@@ -13,8 +13,8 @@ export function createInitialMetVisibility(layerIds, overrides = {}) {
     radarHsr: true,
     windFlow: true,
     windSpeed: true,
-    // 강수(KIM 지상 일기도) 레이어의 바람 표시는 애니메이션과 바람깃 중 하나다. 애니메이션이 기본이다.
-    surfaceChartWind: 'flow',
+    // 강수(KIM 지상 일기도) 레이어의 바람 표시는 바람깃과 애니메이션 중 하나다. 값을 읽을 수 있는 바람깃이 기본이다.
+    surfaceChartWind: 'barbs',
     ...overrides,
   }
 }
@@ -83,11 +83,6 @@ export function getNextMetVisibility(prev, id, { lowPower = false } = {}) {
       ctps: nextCtps,
       windFlow: nextCtps ? false : prev.windFlow,
     }
-  }
-  // 저사양 기기에서는 기존 바람 레이어처럼 입자 애니메이션 대신 바람깃으로 켠다.
-  if (id === 'surfaceChart') {
-    const nextSurfaceChart = !prev.surfaceChart
-    return { ...prev, surfaceChart: nextSurfaceChart, ...(nextSurfaceChart && lowPower ? { surfaceChartWind: 'barbs' } : {}) }
   }
   // 수치모델 제목 옆 버튼: 바람깃 ↔ 애니메이션 전환
   if (id === 'surfaceChartWind') {

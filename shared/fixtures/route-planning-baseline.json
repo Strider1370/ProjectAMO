@@ -1,0 +1,225 @@
+{
+  "description": "Pre-extraction browser calculation baseline. Original recommendation -> editor normalization -> applied geometry/model/profile; fixed committed navdata and wind, no weather collection.",
+  "cases": [
+    {
+      "input": {
+        "routeForm": {
+          "flightRule": "IFR",
+          "departureAirport": "RKSS",
+          "arrivalAirport": "RKPC",
+          "entryFix": "",
+          "exitFix": "",
+          "routeType": "ALL"
+        },
+        "metarData": {
+          "airports": {
+            "RKSS": {
+              "observation": {
+                "wind": {
+                  "direction": 270
+                }
+              }
+            },
+            "RKPC": {
+              "observation": {
+                "wind": {
+                  "direction": 270
+                }
+              }
+            }
+          }
+        },
+        "etd": "2026-09-23T12:03:00Z",
+        "tasKt": 450,
+        "cruiseAltitudeFt": 31000
+      },
+      "expected": {
+        "publicationId": "2026-06-25",
+        "routeForm": {
+          "flightRule": "IFR",
+          "departureAirport": "RKSS",
+          "arrivalAirport": "RKPC",
+          "entryFix": "BULTI",
+          "exitFix": "DOTOL",
+          "routeType": "ALL"
+        },
+        "routeString": "BULTI Y711 MEKIL Y711 GONAX Y711 BEDES Y711 ELPOS Y711 MANGI Y711 DALSU Y711 NULDI Y711 DOTOL",
+        "sid": "RKSS-SID-BULTI2T",
+        "star": "RKPC-STAR-DOTOL2M",
+        "iapKey": "RKPC-IAP-DUKAL-RWY25-REP",
+        "distanceNm": 148.3,
+        "totalDistanceNm": 243.55,
+        "eta": "2026-09-23T12:35:28.400Z",
+        "editorHash": "58545d43bbccdefb9c6d02c79d16a2d37e43c23284f538f2b381faaffedb4f63",
+        "geometryHash": "9535848171ff6ec8bede05f2c9c0da678448afcaf84f8499f9805f14dc832ad8",
+        "modelHash": "d2eca25e41d746503d28e52b703df23bc2767435269f8e25f7eab0e21ebe3cf5",
+        "profileHash": "56b8eb1c44d74f7fe6bfb1cb64220fce313e840f50cfeaebba2ee61e030d50e6"
+      }
+    },
+    {
+      "input": {
+        "routeForm": {
+          "flightRule": "IFR",
+          "departureAirport": "RKPC",
+          "arrivalAirport": "RKSS",
+          "entryFix": "",
+          "exitFix": "",
+          "routeType": "ALL"
+        },
+        "metarData": {
+          "airports": {
+            "RKPC": {
+              "observation": {
+                "wind": {
+                  "direction": 90
+                }
+              }
+            },
+            "RKSS": {
+              "observation": {
+                "wind": {
+                  "direction": 90
+                }
+              }
+            }
+          }
+        },
+        "etd": "2026-09-23T12:03:00Z",
+        "tasKt": 450,
+        "cruiseAltitudeFt": 31000
+      },
+      "expected": {
+        "publicationId": "2026-06-25",
+        "routeForm": {
+          "flightRule": "IFR",
+          "departureAirport": "RKPC",
+          "arrivalAirport": "RKSS",
+          "entryFix": "KAMIT",
+          "exitFix": "OLMEN",
+          "routeType": "ALL"
+        },
+        "routeString": "KAMIT Y722 SAMUL Y722 MAKSA Y722 ATASO Y722 PEBRI Y722 GUNKU Y722 OLMEN",
+        "sid": "RKPC-SID-KAMIT2E",
+        "star": "RKSS-STAR-OLMEN2U",
+        "iapKey": "RKSS-IAP-DOKDO-RWY14L-REP",
+        "distanceNm": 149.3,
+        "totalDistanceNm": 246.31,
+        "eta": "2026-09-23T12:35:50.480Z",
+        "editorHash": "1867d23e7c1714d33b8c6ee4b3c3b52a15d25d690032b7cd18a33fb87f50374e",
+        "geometryHash": "1ebc0081b53cb66f69c638d4dfa22954dddb7f1e0da6afbcc4071f57c88903e0",
+        "modelHash": "cc5ec386a98e7d1b749f92d0ef337b36e96787236412eedfa05e0acc38c9c11c",
+        "profileHash": "1069238d387a595cc473bbe094a3226b0719ba17c45059fcee5a1febb39a052b"
+      }
+    },
+    {
+      "input": {
+        "routeForm": {
+          "flightRule": "IFR",
+          "departureAirport": "RKSI",
+          "arrivalAirport": "RKPK",
+          "entryFix": "",
+          "exitFix": "",
+          "routeType": "ALL"
+        },
+        "metarData": {
+          "airports": {
+            "RKSI": {
+              "observation": {
+                "wind": {
+                  "direction": 180
+                }
+              }
+            },
+            "RKPK": {
+              "observation": {
+                "wind": {
+                  "direction": 180
+                }
+              }
+            }
+          }
+        },
+        "etd": "2026-09-23T12:03:00Z",
+        "tasKt": 450,
+        "cruiseAltitudeFt": 31000
+      },
+      "expected": {
+        "publicationId": "2026-06-25",
+        "routeForm": {
+          "flightRule": "IFR",
+          "departureAirport": "RKSI",
+          "arrivalAirport": "RKPK",
+          "entryFix": "OSPOT",
+          "exitFix": "KALOD",
+          "routeType": "ALL"
+        },
+        "routeString": "OSPOT A582 VASLI A582 MAKDU A582 BITUX A582 TGU A582 KALOD",
+        "sid": "RKSI-SID-OSPOT2H",
+        "star": "RKPK-STAR-GAYHA3KALOD",
+        "iapKey": "RKPK-IAP-GAYHA-RWY18-CIRCLING-REP",
+        "distanceNm": 106.5,
+        "totalDistanceNm": 184.83,
+        "eta": "2026-09-23T12:27:38.640Z",
+        "editorHash": "62e898bf223e0a020aeac9c09830e66d7745ea105b47c8ed3beb4b2a479ff9a5",
+        "geometryHash": "818b890c96550327a6177155ba4b8ba9db1e7d3ad6882c267b4fd595c8cef5c4",
+        "modelHash": "da712075990a31a9d97f72b94c6c4b82108aa0902a9c9b51dbc810bc09009260",
+        "profileHash": "0be1f4c2a757e655c16abac8da41deb6e40d8f63f2d1bfa28ed9bf565f679fc3"
+      }
+    },
+    {
+      "input": {
+        "routeForm": {
+          "flightRule": "IFR",
+          "departureAirport": "RKSS",
+          "arrivalAirport": "RKPC",
+          "entryFix": "",
+          "exitFix": "",
+          "routeType": "ALL"
+        },
+        "metarData": {
+          "airports": {
+            "RKSS": {
+              "observation": {
+                "wind": {
+                  "direction": null
+                }
+              }
+            },
+            "RKPC": {
+              "observation": {
+                "wind": {
+                  "direction": null
+                }
+              }
+            }
+          }
+        },
+        "etd": "2026-09-23T12:03:00Z",
+        "tasKt": 450,
+        "cruiseAltitudeFt": 31000
+      },
+      "expected": {
+        "publicationId": "2026-06-25",
+        "routeForm": {
+          "flightRule": "IFR",
+          "departureAirport": "RKSS",
+          "arrivalAirport": "RKPC",
+          "entryFix": "BULTI",
+          "exitFix": "DOTOL",
+          "routeType": "ALL"
+        },
+        "routeString": "BULTI Y711 MEKIL Y711 GONAX Y711 BEDES Y711 ELPOS Y711 MANGI Y711 DALSU Y711 NULDI Y711 DOTOL",
+        "sid": "RKSS-SID-BULTI2U",
+        "star": "RKPC-STAR-DOTOL2P",
+        "iapKey": "RKPC-IAP-YUMIN-RWY07-REP",
+        "distanceNm": 148.3,
+        "totalDistanceNm": 243.55,
+        "eta": "2026-09-23T12:35:28.400Z",
+        "editorHash": "d2e8b6fa3a56b8371271b1057195b44f73653f9a6dfdc50d1e30247826c97cdf",
+        "geometryHash": "d5e947c5c851b934b3be6d82ad5554c431e70f8eea634565827567d0c7bdc006",
+        "modelHash": "d4b30aa46e2f861bc0717e38f4bdd5d6a62b5873277aa749702d810aa9e34538",
+        "profileHash": "c825423a7c5656de9cf7a50189b2d4511f83eddef765c1bd0a2a3e5307f602b2"
+      }
+    }
+  ]
+}

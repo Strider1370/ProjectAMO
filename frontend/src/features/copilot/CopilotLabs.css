@@ -1,0 +1,15 @@
+.copilot-labs { min-width: 0; display: grid; gap: var(--space-m); font-size: var(--fs-300); line-height: var(--lh-300); }
+.copilot-labs h3, .copilot-labs p { margin: 0; overflow-wrap: anywhere; }
+.copilot-labs h3 { font-size: var(--fs-400); }
+.copilot-labs p { color: var(--text-2); }
+.copilot-labs form { display: grid; gap: var(--space-s); }
+.copilot-labs input[type="password"], .copilot-labs button {
+  box-sizing: border-box; min-width: 0; width: 100%; min-height: var(--touch-min);
+  padding: var(--space-s) var(--space-m); font: inherit; color: var(--text-1);
+  border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1);
+}
+.copilot-labs button { cursor: pointer; background: var(--bg-3); }
+.copilot-labs button:disabled { cursor: default; color: var(--text-3); }
+.copilot-labs-toggle { display: flex; align-items: center; gap: var(--space-s); min-height: var(--touch-min); }
+.copilot-labs-toggle input { accent-color: var(--accent); }
+.copilot-labs [role="alert"] { color: var(--level-red); }

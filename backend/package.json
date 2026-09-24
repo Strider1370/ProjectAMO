@@ -13,6 +13,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@turf/simplify": "^7.3.5",
     "@turf/turf": "^7.3.5",
     "bcrypt": "^6.0.0",

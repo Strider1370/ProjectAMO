@@ -1,0 +1,209 @@
+/* 소개 페이지(/intro). 앱 전역 스타일과 섞이지 않도록 모든 규칙을 .intro 안으로 한정한다. */
+.intro{
+  color-scheme: light;
+  position:fixed; inset:0; overflow-y:auto; overflow-x:hidden;
+  background:var(--white); color:var(--ink); font-family:var(--sans); font-size:17px; line-height:1.65;
+  -webkit-font-smoothing:antialiased; letter-spacing:-.005em; word-break:keep-all; overflow-wrap:break-word;
+  --white:#FFFFFF; --grey:#F3F5F7; --grey-2:#E8ECF0; --navy:#0E1A2B; --slate:#1E293B; /* color-lint-ignore: 소개 페이지 전용 짙은 띠·콜아웃 색(디자인 규칙 예외 페이지) */
+  --line:#DCE2E8; --line-2:#C5CED8;
+  --ink:#0F1722; --muted:#4F5B69; --dim:#8491A1;
+  --blue:#2A5F97; --btn:var(--accent);
+  --vfr:#1F9D55; --mvfr:#2F6FE0; --ifr:#D63F2E; --lifr:#A83AA8;
+  --amber:#B26B00; --hl:#FFE7A3;
+  --r-sm:4px; --r:6px; --r-lg:8px;
+  --sans:"Pretendard GOV", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono:ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --gutter:clamp(16px, 4vw, 56px);
+  --head:64px;
+  --ease:cubic-bezier(.22,.8,.2,1);
+}
+.intro a{color:inherit}
+.intro :focus-visible{outline:2px solid var(--blue); outline-offset:3px; border-radius:var(--r-sm)}
+.intro .wrap{max-width:1320px; margin-inline:auto; padding-inline:var(--gutter)}
+.intro .band{position:relative}
+.intro .band.grey{background:var(--grey)}
+.intro .band.navy{background:var(--navy); color:#E9EEF4}
+/* header + local nav */
+.intro .top{position:sticky; top:env(safe-area-inset-top, 0px); z-index:50; background:rgba(255,255,255,.96); border-bottom:1px solid var(--line); backdrop-filter:saturate(1.4) blur(8px)}
+.intro .top-in{height:var(--head); display:flex; align-items:center; gap:28px; transition:height .3s var(--ease)}
+.intro .top.scrolled .top-in{height:54px}
+.intro .top.scrolled .lnav-ind{bottom:-8px}
+.intro .top{transition:box-shadow .3s}
+.intro .top.scrolled{box-shadow:0 1px 0 var(--line), 0 6px 18px -12px rgba(15,23,42,.25)}
+.intro .lockup{display:flex; align-items:baseline; gap:10px; white-space:nowrap; text-decoration:none}
+.intro .lockup b{font-size:18px; font-weight:800; letter-spacing:-.02em}
+.intro .lockup span{font-size:13px; color:var(--muted)}
+.intro .lnav{display:flex; gap:4px; margin-left:auto}
+.intro .lnav a{text-decoration:none; font-size:15.5px; color:var(--muted); padding:8px 10px; border-radius:var(--r); position:relative; white-space:nowrap}
+.intro .lnav a:hover{color:var(--ink); background:var(--grey)}
+.intro .lnav a.on{color:var(--ink); font-weight:600}
+.intro .lnav{position:relative}
+.intro .lnav-ind{position:absolute; bottom:-13px; height:2px; background:var(--ink); left:0; width:0; opacity:0; transition:left .45s var(--ease), width .45s var(--ease), opacity .2s}
+.intro .btn{font:inherit; font-weight:600; font-size:15px; border:0; cursor:pointer; border-radius:var(--r); padding:11px 18px; display:inline-flex; align-items:center; gap:8px; text-decoration:none; transition:background .15s ease; white-space:nowrap}
+.intro .btn-primary{background:var(--btn); color:#fff}
+.intro .btn-primary:hover{background:var(--slate)}
+.intro .btn-line{background:var(--white); color:var(--ink); box-shadow:inset 0 0 0 1px var(--line-2)}
+.intro .btn-line:hover{background:var(--grey)}
+.intro .btn-sm{padding:8px 14px; font-size:14px}
+.intro .btn .arr{width:15px; height:15px; transition:transform .3s var(--ease)}
+.intro .btn:hover .arr{transform:translateX(3px)}
+.intro .btn-white{background:#fff; color:var(--slate)}
+.intro .btn-white:hover{background:var(--grey-2)}
+/* browser frame for real screenshots */
+.intro .frame{position:relative; background:#fff; border:1px solid var(--line-2); border-radius:var(--r-lg); overflow:hidden}
+.intro .frame-bar{height:30px; display:flex; align-items:center; gap:6px; padding:0 12px; background:var(--grey); border-bottom:1px solid var(--line)}
+.intro .frame-bar i{width:9px; height:9px; border-radius:50%; background:var(--line-2)}
+.intro .frame-bar span{margin:0 auto; font-size:12px; color:var(--dim); background:#fff; border:1px solid var(--line); border-radius:var(--r-sm); padding:1px 40px; transform:translateX(-18px)}
+.intro .frame img, .intro .frame video{display:block; width:100%; aspect-ratio:16/10; object-fit:cover}
+/* callouts on screenshots */
+.intro .co{position:absolute; left:0; right:0; top:30px; bottom:0; pointer-events:none}
+.intro .pt{position:absolute; left:var(--x); top:var(--y); width:0; height:0}
+.intro .pt i{position:absolute; left:-7px; top:-7px; width:14px; height:14px; border-radius:50%; background:var(--blue); box-shadow:0 0 0 3px #fff, 0 0 0 4px rgba(42,95,151,.35)}
+.intro .pt i::after{content:""; position:absolute; inset:-6px; border-radius:50%; border:2px solid var(--blue); opacity:0; animation:ring 2.4s var(--ease) infinite}
+@keyframes intro-ring{0%{transform:scale(.6); opacity:.7}100%{transform:scale(1.8); opacity:0}}
+.intro .pt em{position:absolute; left:18px; top:-16px; white-space:nowrap; font-style:normal; font-size:14px; font-weight:600; color:#fff; background:var(--slate); padding:6px 11px; border-radius:var(--r)}
+.intro .pt[data-side="left"] em{left:auto; right:18px}
+.intro .pt[data-side="up"] em{left:50%; top:auto; bottom:20px; transform:translateX(-50%)}
+@media (prefers-reduced-motion: reduce){
+.intro .pt i::after{animation:none}
+}
+/* hero */
+.intro .hero{overflow:hidden}
+.intro .hero .wrap{padding-top:clamp(56px, 8vw, 104px)}
+.intro h1{font-size:clamp(40px, 5.4vw, 78px); line-height:1.12; letter-spacing:-.04em; font-weight:800; margin:0 0 22px; max-width:13em; text-wrap:balance}
+.intro .lede{font-size:clamp(17px, 1.4vw, 20px); color:var(--muted); max-width:34em; margin:0 0 32px}
+.intro .actions{display:flex; gap:10px; flex-wrap:wrap}
+.intro .news{margin:12px 0 0; font-size:15px; color:var(--muted)}
+.intro .live{display:inline-flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin:32px 0 0; padding:10px 16px; border:1px solid var(--line); border-radius:var(--r-lg); font-size:15px; color:var(--muted); font-variant-numeric:tabular-nums; background:#fff}
+.intro .live b{color:var(--ink); font-weight:700}
+.intro .live span{display:inline-flex; align-items:center; gap:14px}
+.intro .live span::before{content:""; width:1px; height:14px; background:var(--line-2)}
+.intro .live .cat{font-size:12.5px; font-weight:700; color:#fff; background:var(--vfr); padding:2px 8px; border-radius:var(--r-sm)}
+.intro .dot{width:8px; height:8px; border-radius:50%; background:var(--vfr); position:relative; flex:none}
+.intro .dot::after{content:""; position:absolute; inset:-4px; border-radius:50%; border:2px solid var(--vfr); opacity:0; animation:ring 2s var(--ease) infinite}
+.intro .news b{color:var(--ink); font-weight:600; margin-right:6px}
+.intro .hero-shot{margin-top:clamp(48px, 6vw, 80px); width:calc(100% + 10vw); margin-bottom:-12%; perspective:1800px}
+.intro .tilt{transform-origin:50% 0}
+.intro .hero-shot .frame{box-shadow:0 24px 48px -32px rgba(15,23,42,.35)}
+/* feature layout */
+.intro .wrap.feature, .intro #airport .wrap{max-width:1760px}
+.intro .feature{display:grid; grid-template-columns:minmax(260px, 26%) 1fr; gap:clamp(28px, 3.5vw, 64px); align-items:center; padding-block:120px}
+.intro h2{font-size:clamp(30px, 3.2vw, 48px); line-height:1.25; letter-spacing:-.035em; font-weight:700; margin:0 0 16px; text-wrap:balance}
+.intro .copy p{color:var(--muted); margin:0 0 24px; max-width:30em; font-size:clamp(17px, 1.3vw, 19px)}
+.intro .navy .copy p{color:#A9B6C6}
+.intro .stage{width:100%; display:grid; justify-items:center; gap:16px}
+.intro .stage > *{width:100%}
+.intro.motion .feature{height:100vh; padding-block:calc(var(--head) + 12px) 12px}
+.intro.motion .fit{width:min(100%, calc((100vh - var(--head) - 70px) * 1.52))}
+.intro.motion #brief .fit{width:min(100%, calc((100vh - var(--head) - 130px) * 1.52))}
+/* 1. layer stack */
+.intro .legend{list-style:none; padding:0; margin:0; display:grid; gap:10px}
+.intro .legend li{display:flex; align-items:center; gap:12px; font-size:16.5px; transition:opacity .25s}
+.intro .legend i{width:24px; height:12px; border-radius:2px; flex:none}
+.intro.motion .legend li{opacity:.35}
+.intro.motion .legend li.on{opacity:1; font-weight:600}
+.intro .layers-stage{perspective:2200px; display:grid; place-items:center}
+.intro .stack{position:relative; aspect-ratio:16/10; transform-style:preserve-3d}
+.intro .layer{position:absolute; inset:0; transform-style:preserve-3d}
+.intro .layer img, .intro .layer video{display:block; width:100%; height:100%; object-fit:cover; border-radius:var(--r-lg); outline:1px solid var(--line-2)}
+.intro .seq{position:absolute; inset:0}
+.intro .seq img{position:absolute; inset:0; opacity:0; transition:opacity 1.1s ease}
+.intro .seq img.on{opacity:1}
+.intro .seq img:first-child{position:relative}
+.intro .stamp{position:absolute; left:50%; top:12px; transform:translateX(-50%); background:rgba(15,23,42,.82); color:#fff; font-size:13px; font-weight:600; padding:3px 10px; border-radius:var(--r-sm); font-variant-numeric:tabular-nums; pointer-events:none}
+.intro .plane-label{position:absolute; left:calc(100% + 16px); top:44%; white-space:nowrap; font-size:14px; font-weight:600; display:none; align-items:center; gap:8px}
+.intro .plane-label::before{content:""; width:24px; height:1px; background:var(--line-2)}
+.intro.motion .plane-label{display:flex; opacity:0}
+/* airport pair */
+.intro .pair-head{max-width:760px; padding-block:120px 36px}
+.intro .pair-head p{color:var(--muted); margin:0; font-size:clamp(17px, 1.3vw, 19px)}
+.intro .pair{display:grid; grid-template-columns:1fr 1fr; gap:32px; padding-bottom:120px}
+.intro .pair figure{margin:0; display:grid; gap:12px}
+.intro .pair figcaption{font-size:16px; color:var(--muted)}
+.intro .pair figcaption b{color:var(--ink); font-weight:600; margin-right:6px}
+/* briefing tabs (app vocabulary) */
+.intro .tabs{display:flex; border-bottom:1px solid var(--line-2); gap:4px; overflow-x:auto}
+.intro .tabs span{font-variant-numeric:tabular-nums; font-size:15.5px; padding:10px 14px; color:var(--dim); white-space:nowrap; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .2s, border-color .2s}
+.intro .tabs span.on{color:var(--ink); font-weight:600; border-color:var(--ink)}
+.intro:not(.motion) .tabs span{color:var(--muted)}
+.intro .flow{position:relative}
+.intro .flow > .frame{position:absolute; inset:0}
+.intro .flow > .frame:first-child{position:relative}
+/* AI */
+.intro .ai-note{display:inline-block; font-size:14px; color:#C8D2DE; border:1px solid #33455C; border-radius:var(--r-sm); padding:3px 10px; margin-bottom:0}
+.intro .ai{display:grid; gap:14px}
+.intro .chat{background:#fff; color:var(--ink); border-radius:var(--r-lg); padding:22px; display:grid; gap:14px}
+.intro .bubble{max-width:88%; padding:12px 16px; border-radius:var(--r-lg); font-size:16.5px; line-height:1.7}
+.intro .bubble.q{justify-self:end; background:var(--btn); color:#fff; min-height:1.7em}
+.intro .bubble.a{background:var(--grey)}
+.intro .bubble.a p{margin:0}
+.intro .bubble.a p + p{margin-top:6px}
+.intro .cite{font-size:14px; color:var(--muted); margin-top:10px}
+.intro .src{background:#fff; color:var(--ink); border-radius:var(--r-lg); padding:16px 22px}
+.intro .src h3{margin:0 0 6px; font-size:13px; color:var(--muted); font-weight:600}
+.intro .src pre{margin:0; font-family:var(--mono); font-size:14.5px; line-height:1.8; white-space:pre-wrap}
+.intro .hl{border-radius:2px; padding:0 2px; transition:background .3s, box-shadow .3s}
+.intro .hl.lit{background:var(--hl); box-shadow:0 0 0 1px #E3BE45}
+.intro:not(.motion) .hl{background:var(--hl)}
+/* alerts */
+.intro .alerts-vis{position:relative; padding-bottom:30px}
+.intro .alerts-vis > .frame{width:82%}
+.intro .phone{position:absolute; right:0; top:48px; width:min(290px, 40%); background:#111827; border-radius:28px; padding:11px} /* color-lint-ignore: 휴대폰 기기 테두리 그림 */
+.intro .phone-screen{background:linear-gradient(180deg,#3B5573,#1C2B3F); border-radius:19px; padding:26px 10px 14px; display:grid; gap:8px; align-content:start; min-height:420px}
+.intro .lock{text-align:center; color:#fff; margin-bottom:6px}
+.intro .lock-date{font-size:13px; opacity:.85}
+.intro .lock-time{font-size:52px; font-weight:700; letter-spacing:-.03em; line-height:1.1; font-variant-numeric:tabular-nums}
+.intro .notis{display:grid}
+.intro .noti{overflow:hidden}
+.intro .noti-in{margin-bottom:8px; background:rgba(255,255,255,.94); border-radius:14px; padding:10px 12px; font-size:14px; line-height:1.55; box-shadow:0 4px 14px -6px rgba(0,0,0,.35)}
+.intro .app-icon{width:16px; height:16px; border-radius:4px; background:var(--slate); flex:none; position:relative}
+.intro .app-icon::after{content:""; position:absolute; inset:4px; border-radius:50%; border:1.6px solid #8CCBEA}
+.intro .app-icon.tg{background:#2AABEE}
+.intro .app-icon.tg::after{border-color:#fff}
+.intro .when{margin-left:auto}
+.intro .phone-tag{font-size:11.5px; color:rgba(255,255,255,.6); text-align:center; margin-bottom:2px}
+.intro .noti small{display:flex; align-items:center; gap:6px; color:var(--dim); font-size:11.5px; margin-bottom:3px}
+.intro .noti b{font-weight:600}
+/* sources */
+.intro .sources{padding-block:120px}
+.intro .sources > p{color:var(--muted); margin:0 0 36px; max-width:36em; font-size:clamp(17px, 1.3vw, 19px)}
+.intro .src-table{width:100%; border-collapse:collapse; font-size:16.5px}
+.intro .src-table th, .intro .src-table td{text-align:left; padding:13px 0; border-top:1px solid var(--line); vertical-align:top}
+.intro .src-table th{width:34%; font-weight:600; padding-right:24px}
+.intro .src-table td{color:var(--muted)}
+/* CTA band + footer */
+.intro .cta{background:var(--slate); color:#fff}
+.intro .cta .wrap{display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; padding-block:64px}
+.intro .cta h2{margin:0 0 6px; color:#fff}
+.intro .cta p{margin:0; color:#B8C4D2; font-size:18px}
+.intro .cta .btn{font-size:16px; padding:14px 24px}
+.intro footer{background:var(--grey); font-size:14px; color:var(--muted)}
+.intro .foot-bottom{padding-block:36px 40px; display:grid; gap:4px; font-size:15px}
+.intro .foot-name{font-size:18px; font-weight:800; color:var(--ink); letter-spacing:-.02em; margin-bottom:2px}
+/* enter transition */
+.intro .enter{position:fixed; inset:0; z-index:80; background:var(--grey); display:grid; place-items:center; padding:var(--gutter)}
+.intro .enter .frame{width:min(100%, 1400px)}
+@media (max-width: 1099px){
+.intro .lnav{display:none}
+.intro .top .btn{margin-left:auto}
+}
+@media (max-width: 899px){
+.intro .lockup span{display:none}
+.intro .feature{grid-template-columns:1fr; padding-block:72px}
+.intro .pair{grid-template-columns:1fr}
+.intro .alerts-vis > .frame{width:100%}
+.intro .phone{position:relative; top:0; width:250px; margin:-50px 0 0 auto}
+.intro .hero-shot{width:100%; margin-bottom:0}
+}
+@media (prefers-reduced-motion: reduce){
+.intro .btn, .intro .hl, .intro .legend li, .intro .tabs span{transition:none}
+}
+.intro [hidden]{display:none!important}
+.intro .enter{clip-path:circle(0 at var(--cx, 50%) var(--cy, 50%)); transition:clip-path .8s var(--ease)}
+.intro .enter.open{clip-path:circle(150% at var(--cx, 50%) var(--cy, 50%))}
+.intro .hero-anim{animation:intro-rise .9s var(--ease) both}
+@keyframes intro-rise{from{opacity:0; transform:translateY(28px)}to{opacity:1; transform:none}}
+/* 고정 구간: 높이만큼 스크롤하는 동안 안쪽이 화면에 붙어 있다. 연출을 끈 환경에서는 일반 흐름이다. */
+.intro.motion .pin{position:relative}
+.intro.motion .pin > .wrap.feature{position:sticky; top:0}
+@media (prefers-reduced-motion: reduce){ .intro .hero-anim{animation:none} .intro .enter{transition:none} }

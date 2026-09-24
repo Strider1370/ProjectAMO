@@ -1,4 +1,5 @@
 import OrganizationBriefingStatus from '../route-briefing/OrganizationBriefingStatus.jsx'
+import { createSavedRouteHandoff } from '../copilot/savedRouteHandoff.js'
 import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { ChartSpline, House } from 'lucide-react'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
@@ -143,12 +144,14 @@ import {
 import { syncTokenPreviewLayers } from '../route-briefing/lib/tokenPreviewLayers.js'
 import { legCoordinates, syncLegHighlight } from '../route-briefing/lib/legHighlight.js'
 import { useRouteBriefing } from '../route-briefing/useRouteBriefing.js'
+import { useCopilotResult } from '../route-briefing/useCopilotResult.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import AirportTooltip from './AirportTooltip.jsx'
 import './MapView.css'
 
 const RouteBriefingPanel = lazy(() => import('../route-briefing/RouteBriefingPanel.jsx'))
 const VerticalProfileWindow = lazy(() => import('../route-briefing/VerticalProfileWindow.jsx'))
+const CopilotResultView = lazy(() => import('../route-briefing/CopilotResultView.jsx'))
 const BriefingView = lazy(() => import('../route-briefing/BriefingView.jsx'))
 
 // ???? Constants ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -490,6 +493,16 @@ const MapView = forwardRef(function MapView({
   const [routeBriefingMapMode, setRouteBriefingMapMode] = useState(false)
   const routeBriefing = useRouteBriefing({ activePanel, airports, metarData, demoMode, demoNowMs, enabled: enableRouteBriefing })
   const { user: authUser } = useAuth()
+  const copilotLive = useRef(null)
+  const copilotAuthEpoch = useRef({ id: null, version: 0 })
+  if (copilotAuthEpoch.current.id !== (authUser?.id ?? null)) {
+    copilotAuthEpoch.current = { id: authUser?.id ?? null, version: copilotAuthEpoch.current.version + 1 }
+  }
+  copilotLive.current = { owner: authUser?.id ? `${authUser.id}:${copilotAuthEpoch.current.version}` : null, actions: routeBriefing.actions }
+  const savedRouteHandoff = useMemo(() => createSavedRouteHandoff({ current: () => ({ ...copilotLive.current,
+    mapEditing: myMapControlRef.current?.mode === 'edit' }) }), [])
+  const copilotResult = useCopilotResult({ ownerId: authUser?.id, routeState: routeBriefing.state, activePanel,
+    ready: isStyleReady, canOpen: () => myMapControlRef.current?.mode !== 'edit' })
   const organizationAuthRef = useRef(authUser?.id ?? null)
   useEffect(() => {
     const previous = organizationAuthRef.current
@@ -600,6 +613,12 @@ const MapView = forwardRef(function MapView({
   // loadRouteBriefing: 딥링크 '전체 브리핑 보기'가 저장경로를 route-briefing 훅으로 로드+브리핑 자동생성(§검증).
   useImperativeHandle(ref, () => ({
     setLayerOn, switchBasemap,
+    getCopilotUiState: () => ({ ready: isStyleReady, editing: myMapControlRef.current?.mode === 'edit',
+      organization: routeBriefing.state.briefingContext?.kind === 'organization', layers: { ...metVisibility },
+      supportedLayers: availableMetLayers.filter(({ id }) => id !== 'notam' && !isMetLayerDisabled(id)
+        && (enableWindOverlay || !['surfaceChart', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'].includes(id))
+        && (enableTyphoonOverlay || id !== 'typhoon')
+        && (import.meta.env.VITE_ECHO_TOP_ENABLED !== '0' || id !== 'echoTop')).map(({ id }) => id) }),
     requestMapNavigation: (next) => {
       const control = myMapControlRef.current
       if (!control || control.mode !== 'edit') { next(); return true }
@@ -609,6 +628,26 @@ const MapView = forwardRef(function MapView({
     // 1920px 좌표계에 붙박아 두고 화면 배율만 바꾸므로 mapbox의 ResizeObserver가 영영 발동하지 않는다.
     resizeMap: () => mapRef.current?.resize(),
     loadRouteBriefing: (saved, options) => routeBriefing.actions.openSavedBriefing(saved, options),
+    getAppliedCopilotContext: () => copilotResult.getContext() ?? routeBriefing.actions.getAppliedCopilotContext(),
+    openCopilotResult: (reference) => copilotResult.open(reference),
+    previewCopilotSavedRoute: (reference) => savedRouteHandoff.prepare(reference),
+    applyCopilotSavedRoute: async (prepared) => {
+      const result = await savedRouteHandoff.apply(prepared)
+      copilotResult.close()
+      return result
+    },
+    previewCopilotRouteSettings: (action) => {
+      if (!authUser?.id) throw new Error('AUTH_REQUIRED')
+      if (myMapControlRef.current?.mode === 'edit') throw new Error('MAP_EDIT_ACTIVE')
+      return routeBriefing.actions.previewCopilotSettings(action)
+    },
+    applyCopilotRouteSettings: (action, revision) => {
+      if (!authUser?.id) throw new Error('AUTH_REQUIRED')
+      if (myMapControlRef.current?.mode === 'edit') throw new Error('MAP_EDIT_ACTIVE')
+      const result = routeBriefing.actions.applyCopilotSettings(action, revision)
+      copilotResult.close()
+      return result
+    },
     // 온보딩 투어용: 실제 공항 좌표를 써야 스포트라이트가 마커 위에 정확히 얹혀 클릭이 마커에 맞는다.
     // 공항 → 화면 픽셀(스포트라이트 위치). 데이터/지도 준비 전엔 null(오버레이가 대기).
     getAirportPoint: (icao) => {
@@ -644,7 +683,8 @@ const MapView = forwardRef(function MapView({
       map.flyTo(home ? { ...home, duration: 600 } : { center: MAP_CONFIG.center, zoom: MAP_CONFIG.zoom, duration: 600 })
     },
   }))
-  const { routeResult, fitBoundsRequest } = routeBriefing.state
+  const routeResult = copilotResult.bundle?.routeResult ?? routeBriefing.state.routeResult
+  const { fitBoundsRequest } = routeBriefing.state
   const [highlightedLeg, setHighlightedLeg] = useState(null) // NAVLOG 표에서 가리킨 구간
   const flyToKorea = () => {
     const map = mapRef.current
@@ -654,7 +694,7 @@ const MapView = forwardRef(function MapView({
   }
   const { vfrWaypointsRef, hideTimerRef, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, vfrWaypointDropRef, designWaypointDropRef, isComparisonRef } = routeBriefing.refs
   const { setHoveredWpInfo } = routeBriefing.actions
-  const { routePreviewModel } = routeBriefing
+  const routePreviewModel = copilotResult.bundle?.routePreviewModel ?? routeBriefing.routePreviewModel
   const flightCategory = useFlightCategory(enableFlightCategory)
   const fcPopupRef = useRef(null)
   const organizationBundle = routeBriefing.state.organizationBundle
@@ -1377,8 +1417,8 @@ const MapView = forwardRef(function MapView({
       installRoutePreviewLayers(map)
       if (!vfrInteractionsBound) {
         vfrInteractionsBound = true
-        bindVfrInteractions(map, vfrWaypointsRef, vfrWaypointDropRef, isComparisonRef, designWaypointDropRef, () => myMapControlRef.current?.mode !== 'edit')
-        routeInteractionCleanup = bindIfrClickInteraction(map, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, () => myMapControlRef.current?.mode !== 'edit')
+        bindVfrInteractions(map, vfrWaypointsRef, vfrWaypointDropRef, isComparisonRef, designWaypointDropRef, () => !copilotResult.activeRef.current && myMapControlRef.current?.mode !== 'edit')
+        routeInteractionCleanup = bindIfrClickInteraction(map, mapInteractionModeRef, mapInteractionActionRef, mapInteractionStatusRef, () => !copilotResult.activeRef.current && myMapControlRef.current?.mode !== 'edit')
         // Procedure waypoint name on hover, in the original label style (small
         // colored text beside the dot) — reveal only the hovered fix's label.
         const procWpRoleFilter = ['any', ['==', ['get', 'role'], 'sid-wp'], ['==', ['get', 'role'], 'star-wp'], ['==', ['get', 'role'], 'iap-wp']]
@@ -2158,7 +2198,18 @@ const MapView = forwardRef(function MapView({
         />
       )}
 
-      {activePanel === 'route-check' && (
+      {activePanel === 'route-check' && copilotResult.bundle && <Suspense fallback={null}>
+        <CopilotResultView key={`${authUser?.id}:${copilotResult.bundle.resultHash}`} bundle={copilotResult.bundle} onClose={copilotResult.close}
+          onPreviewEdit={async (bundle) => ({ ...await routeBriefing.actions.previewCopilotGeneratedRoute(bundle), ownerId: authUser?.id })}
+          onApplyEdit={(prepared) => {
+            if (!authUser?.id || prepared.ownerId !== authUser.id) throw new Error('AUTH_REQUIRED')
+            if (myMapControlRef.current?.mode === 'edit') throw new Error('MAP_EDIT_ACTIVE')
+            if (prepared.resultHash !== copilotResult.bundle?.resultHash) throw new Error('RESULT_IDENTITY_MISMATCH')
+            routeBriefing.actions.applyCopilotGeneratedRoute(prepared)
+            copilotResult.close()
+          }} />
+      </Suspense>}
+      {activePanel === 'route-check' && !copilotResult.bundle && (
         <>
           {!routeBriefing.state.briefing && routeBriefing.state.briefingContext?.kind === 'organization' && (
             <OrganizationBriefingStatus
@@ -2265,7 +2316,7 @@ const MapView = forwardRef(function MapView({
         </button>
       )}
 
-      {routeBriefing.state.verticalProfileWindowOpen && (
+      {routeBriefing.state.verticalProfileWindowOpen && !copilotResult.bundle && (
         <Suspense fallback={null}>
           <VerticalProfileWindow
             profile={routeBriefing.state.verticalProfile}

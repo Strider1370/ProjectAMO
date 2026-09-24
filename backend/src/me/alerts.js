@@ -3,8 +3,8 @@ import { z } from 'zod'
 
 import { getDb } from '../db/index.js'
 import { requireAuth } from '../auth/middleware.js'
+import { ALERT_EXPIRE_MS, registerPersonalAlert, cancelPersonalAlert } from './alert-service.js'
 
-const EXPIRE_MS = 3 * 60 * 60 * 1000 // ETD+3h 유예 후 자동삭제 대상(스케줄러가 정리)
 
 const registerSchema = z.object({
   templateId: z.number().int().positive(),
@@ -42,30 +42,13 @@ export function createAlertsRouter({ db = null } = {}) {
   router.post('/alerts', (req, res) => {
     const parsed = registerSchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: 'invalid_input' })
-    const { templateId, etd, eta, alertStartMinBeforeEtd } = parsed.data
-
-    const etdMs = Date.parse(etd)
-    if (!Number.isFinite(etdMs) || etdMs <= Date.now()) return res.status(400).json({ error: 'etd_must_be_future' })
-    if (eta && Date.parse(eta) <= etdMs) return res.status(400).json({ error: 'eta_after_etd' })
-
-    const db2 = database()
-    const tpl = db2.prepare('SELECT name, payload FROM routes WHERE id = ? AND user_id = ?').get(templateId, req.session.userId)
-    if (!tpl) return res.status(404).json({ error: 'template_not_found' })
-
-    const { n } = db2.prepare('SELECT COUNT(*) n FROM routes WHERE user_id = ?').get(req.session.userId)
-    if (n >= 100) return res.status(400).json({ error: 'too_many_routes' })
-
-    const now = new Date().toISOString()
-    const expiresAt = new Date(etdMs + EXPIRE_MS).toISOString()
-    // 감시 행은 등록 시점의 복제본이다. 원본을 가리켜 두면 계정 목록에 '알림 감시중'을 띄우고
-    // 삭제할 때 정직하게 안내할 수 있다 — 원본을 지워도 감시는 계속 돈다(복제라 독립).
-    const sourceSnapshot = (() => { try { return JSON.parse(tpl.payload) } catch { return {} } })()
-    const payload = JSON.stringify({ ...sourceSnapshot, sourceBriefingId: templateId })
-    const info = db2.prepare(`
-      INSERT INTO routes (user_id, name, etd, eta, payload, alert_enabled, alert_start_min_before_etd, send_no_change_confirm, expires_at, created_at, updated_at)
-      VALUES (?,?,?,?,?,1,?,?,?,?,?)
-    `).run(req.session.userId, tpl.name, etd, eta ?? null, payload, alertStartMinBeforeEtd ?? 360, 0, expiresAt, now, now)
-    res.status(201).json({ id: info.lastInsertRowid })
+    try { res.status(201).json(registerPersonalAlert(database(), req.session.userId, parsed.data)) }
+    catch (error) {
+      if (['etd_must_be_future', 'eta_after_etd', 'template_not_found', 'too_many_routes'].includes(error.code)) {
+        return res.status(error.status).json({ error: error.code })
+      }
+      throw error
+    }
   })
 
   router.get('/alerts', (req, res) => {
@@ -103,7 +86,7 @@ export function createAlertsRouter({ db = null } = {}) {
     const etdMs = Date.parse(etd)
     if (!Number.isFinite(etdMs)) return res.status(400).json({ error: 'invalid_input' })
     const eta = 'eta' in patch.data ? patch.data.eta : row.eta
-    const expiresAt = new Date(etdMs + EXPIRE_MS).toISOString()
+    const expiresAt = new Date(etdMs + ALERT_EXPIRE_MS).toISOString()
     db2.prepare('UPDATE routes SET etd=?, eta=?, expires_at=?, updated_at=? WHERE id=? AND user_id=?')
       .run(etd, eta ?? null, expiresAt, new Date().toISOString(), id, req.session.userId)
     res.json({ ok: true })
@@ -112,16 +95,7 @@ export function createAlertsRouter({ db = null } = {}) {
   router.delete('/alerts/:id', (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_input' })
-    const db2 = database()
-    try {
-      db2.prepare('DELETE FROM routes WHERE id=? AND user_id=? AND alert_enabled=1').run(id, req.session.userId)
-    } catch {
-      // 이미 발송된 알림 기록(triggered_alerts)이 이 경로를 참조 중이면 삭제가 막힌다(FK).
-      // 그 기록은 알림센터에서 계속 보여야 하므로 지우지 않고, 대신 감시만 끈다 — 활성 목록에서
-      // 사라지고 새 알림도 더는 안 오는 건 사용자가 기대하는 "삭제"와 결과가 같다.
-      db2.prepare('UPDATE routes SET alert_enabled=0, updated_at=? WHERE id=? AND user_id=?')
-        .run(new Date().toISOString(), id, req.session.userId)
-    }
+    cancelPersonalAlert(database(), req.session.userId, id)
     res.json({ ok: true })
   })
 

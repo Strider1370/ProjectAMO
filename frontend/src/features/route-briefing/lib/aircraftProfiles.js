@@ -1,9 +1,7 @@
 const LAST_KEY = 'amo_last_perf'
 
-export const DEFAULT_PERFORMANCE_BY_RULE = {
-  IFR: { tasKt: 450, altitudeFt: 31000 },
-  VFR: { tasKt: 120, altitudeFt: 5500 },
-}
+import { DEFAULT_PERFORMANCE_BY_RULE } from '../../../../../shared/route-planning/aircraftPerformance.js'
+export { DEFAULT_PERFORMANCE_BY_RULE }
 
 function memStore() {
   const m = new Map()

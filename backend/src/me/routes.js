@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { getDb } from '../db/index.js'
 import { requireAuth } from '../auth/middleware.js'
+import { createOwnedRouteReader, routeEntry } from './route-reader.js'
 
 const MAX_ROUTES = 100
 // 브리핑은 고도까지 확정된 한 번의 비행이라 몇 개면 충분하다. 자동 삭제가 없고(같은 노선을
@@ -25,24 +26,16 @@ const createSchema = z.object({
 })
 
 // DB 행 → 프론트 엔트리({id,name,savedAt,...snapshot}) 복원.
-function toEntry(row) {
-  let snapshot = {}
-  try { snapshot = JSON.parse(row.payload || '{}') } catch { /* 손상 시 빈 스냅샷 */ }
-  return { id: row.id, name: row.name, savedAt: Date.parse(row.created_at) || 0, ...snapshot }
-}
-
 // 내 저장 경로 CRUD. 모든 쿼리 session.userId로만 필터(클라 id 불신). requireAuth 필수.
 export function createRoutesRouter({ db = null } = {}) {
   const router = Router()
   const database = () => db || getDb()
+  const reader = createOwnedRouteReader(database)
 
   router.use(requireAuth)
 
   router.get('/routes', (req, res) => {
-    const rows = database()
-      .prepare('SELECT id, name, created_at, payload FROM routes WHERE user_id = ? ORDER BY created_at DESC')
-      .all(req.session.userId)
-    res.json({ routes: rows.map(toEntry) })
+    res.json({ routes: reader.list(req.session.userId).map(routeEntry) })
   })
 
   router.post('/routes', (req, res) => {
@@ -66,7 +59,7 @@ export function createRoutesRouter({ db = null } = {}) {
       .prepare('INSERT INTO routes (user_id, name, etd, payload, created_at, updated_at) VALUES (?,?,?,?,?,?)')
       .run(req.session.userId, name, etd, snapshotJson, now, now)
     const row = db2.prepare('SELECT id, name, created_at, payload FROM routes WHERE id = ?').get(info.lastInsertRowid)
-    res.status(201).json(toEntry(row))
+    res.status(201).json(routeEntry(row))
   })
 
   router.delete('/routes/:id', (req, res) => {

@@ -7,6 +7,7 @@
 
   --app-bottom-bar: 24px;
   --mobile-task-bar-h: 60px;
+  --copilot-launcher-size: 60px;
   --sidebar-collapsed: 56px;
   --sidebar-expanded: clamp(260px, 16vw, 280px);
 

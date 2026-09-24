@@ -53,6 +53,22 @@ CREATE TABLE IF NOT EXISTS routes (         -- 저장 경로(= 문의·#13 감�
   updated_at   TEXT NOT NULL
 );
 
+-- AI confirmation journal: pending review is not an alert mutation. The receipt
+-- commits in the SAME transaction as the mutation, surviving lost responses and
+-- process restarts. No route FK: a receipt must outlive a cancelled monitoring row.
+CREATE TABLE IF NOT EXISTS ai_confirmations (
+  token_hash   TEXT PRIMARY KEY,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  proposal     TEXT NOT NULL,
+  target_hash  TEXT NOT NULL,
+  state        TEXT NOT NULL CHECK (state IN ('pending','executed','cancelled')),
+  result       TEXT,
+  expires_at   TEXT NOT NULL,
+  created_at   TEXT NOT NULL,
+  completed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ai_confirmations_user ON ai_confirmations(user_id, created_at);
+
 CREATE TABLE IF NOT EXISTS requests (       -- 조종사→예보관 문의
   id                  INTEGER PRIMARY KEY,
   pilot_id            INTEGER NOT NULL REFERENCES users(id),
@@ -439,3 +455,32 @@ CREATE TRIGGER IF NOT EXISTS immutable_organization_run_events_update
 BEFORE UPDATE ON organization_briefing_run_events BEGIN SELECT RAISE(ABORT, 'immutable_organization_run_event'); END;
 CREATE TRIGGER IF NOT EXISTS immutable_organization_run_events_delete
 BEFORE DELETE ON organization_briefing_run_events BEGIN SELECT RAISE(ABORT, 'immutable_organization_run_event'); END;
+-- Account-owned experimental chatbot credentials. Ciphertext only; no shared-key fallback.
+CREATE TABLE IF NOT EXISTS ai_credentials (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
+  encrypted_key TEXT,
+  revision INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL
+);
+
+-- Operator-funded chatbot preferences and persistent KST-day request allowance.
+-- Legacy ai_credentials is retained but not read by the app's operator mode.
+CREATE TABLE IF NOT EXISTS ai_settings (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
+  revision INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ai_daily_usage (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0 CHECK (used BETWEEN 0 AND 5),
+  PRIMARY KEY (user_id, day)
+);
+CREATE TABLE IF NOT EXISTS ai_question_requests (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  request_id TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, request_id)
+);

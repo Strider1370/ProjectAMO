@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProjectAMO · 오른쪽 플로팅 대화창 시안</title>
+<style>
+@import url('../../../frontend/src/shared/theme/tokens.css');
+:root{--accent:#334155;--text-1:#242424;--text-3:#616161;--stroke-1:#d1d1d1;--stroke-2:#e0e0e0;--bg-1:#fff;--bg-2:#fafafa;--bg-3:#f5f5f5;--level-amber:#92400e;--level-amber-bg:#fdecc8}
+*{box-sizing:border-box}body{margin:0;background:#edf0f3;color:var(--text-1);font:14px/1.5 'Pretendard GOV',Pretendard,system-ui,sans-serif}button,textarea{font:inherit}button{cursor:pointer;min-height:36px;padding:7px 12px;border:1px solid var(--stroke-1);border-radius:6px;background:white;color:var(--accent)}button:hover{background:var(--bg-3)}button:disabled{opacity:.45;cursor:not-allowed}button[aria-pressed=true],.primary{background:var(--accent);border-color:var(--accent);color:white}button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}a{color:var(--accent)}[hidden]{display:none!important}.toolbar{background:white;border-bottom:1px solid var(--stroke-1);padding:16px 24px}.topline{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.title{font-size:17px;font-weight:650;margin:0}.sub{color:var(--text-3);font-size:12px;margin:5px 0 0}.tag{font-size:11px;border:1px solid var(--stroke-1);border-radius:4px;padding:4px 8px;white-space:nowrap}.controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:14px}.control{display:flex;align-items:center;gap:8px}.control-label{font-size:12px;color:var(--text-3)}.segmented{display:flex;gap:3px;background:var(--bg-3);padding:3px;border-radius:8px}.segmented button{border:0;font-size:12px}.readout{font-size:12px;color:var(--text-3);margin-left:auto}.workspace{max-width:1648px;padding:18px 24px 0;margin:auto}.canvas-frame{width:100%;overflow:hidden;background:white;border:1px solid var(--stroke-1);box-shadow:0 3px 14px #3341550a;position:relative}.screen{width:1600px;height:1000px;position:absolute;left:0;top:0;transform-origin:top left;background:var(--bg-3)}.screen>img{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.caption{display:flex;justify-content:space-between;gap:16px;align-items:start;color:var(--text-3);font-size:12px;padding:12px 0 20px}.caption p{margin:0;max-width:880px}.caption a{white-space:nowrap}.below{max-width:1648px;padding:0 24px 24px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.finding{background:white;border:1px solid var(--stroke-2);border-radius:8px;padding:16px}.finding h2{font-size:13px;margin:0 0 6px}.finding p{font-size:12px;color:var(--text-3);margin:0}.finding strong{color:var(--accent)}
+.chat{position:absolute;left:56px;top:586px;width:744px;height:390px;display:flex;flex-direction:column;background:#f6f8fa;border-top:1px solid #cbd5e1;border-right:1px solid #dbe2e9;overflow:hidden}.chat-head{display:flex;align-items:center;gap:9px;padding:9px 14px;background:#fff;border-bottom:1px solid #e1e7ee;flex-shrink:0;min-height:48px}.ai-icon{width:26px;height:26px;display:grid;place-items:center;border-radius:6px;background:var(--accent);color:white;font-size:10px;font-weight:600}.chat-title{font-weight:600;font-size:13px}.chat-title small{font-weight:400;color:var(--text-3);font-size:11px;margin-left:8px}.chat-tools{margin-left:auto;display:flex;gap:5px}.chat-tools button{border:0;min-width:32px;min-height:32px;padding:3px 8px;font-size:12px}.log{overflow:auto;overscroll-behavior:contain;flex:1;min-height:0;padding:12px 18px;scrollbar-gutter:stable}.thread{display:flex;flex-direction:column;gap:12px;max-width:760px;margin:auto}.message{max-width:96%;display:flex;gap:8px}.message.user{align-self:flex-end;max-width:92%}.avatar{flex-shrink:0;width:24px;height:24px;border-radius:7px;background:white;border:1px solid #dbe2e9;font-size:9px;display:grid;place-items:center;margin-top:2px}.message-body{min-width:0}.byline{font-size:10px;color:var(--text-3);margin-bottom:4px}.bubble{font-size:13px;line-height:1.6;background:white;border:1px solid #dbe2e9;border-radius:0 10px 10px 10px;padding:10px 12px;overflow-wrap:anywhere}.user .bubble{background:#e8eef5;border-color:#d5dee9;border-radius:10px 0 10px 10px;color:#25394b;padding:8px 12px}.bubble p{margin:0}.bubble p+p{margin-top:8px}.facts{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.fact{padding:5px 8px;background:var(--bg-2);border:1px solid var(--stroke-2);border-radius:4px;font-size:11px}.fact strong{margin-left:6px;font-weight:600}.fact.missing{background:var(--level-amber-bg);color:var(--level-amber);border-color:transparent}.actions{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}.actions button{min-height:28px;padding:4px 8px;font-size:11px}.source{font-size:10px;color:var(--text-3);margin-top:7px}.composer{border-top:1px solid #e1e7ee;padding:8px 14px 9px;background:white;flex-shrink:0}.context{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-3);margin-bottom:6px}.context strong{font-weight:500;color:var(--accent)}.input-line{display:flex;gap:8px;align-items:end;border:1px solid #c8d2df;border-radius:7px;padding:5px}.input-line:focus-within{border-color:var(--accent)}textarea{border:0;resize:none;flex:1;min-width:0;height:34px;padding:6px;font-size:12px;line-height:20px;background:transparent}textarea:focus-visible{outline:0}.send{min-height:32px;min-width:32px;padding:3px;font-size:17px}.footnote{font-size:10px;color:var(--text-3);margin-top:4px}.side .chat{border-top:0;border-right:1px solid #cbd5e1}.side .chat-title small{display:none}.side .log{padding:16px 12px}.side .message{max-width:100%}.side .context{flex-wrap:wrap}.side .bubble{font-size:13px}.side .facts{flex-direction:column}.side .fact{display:flex;justify-content:space-between}.screen.tablet .chat-title small{display:none}.screen.tablet .message{max-width:100%}.screen.tablet .log{padding:12px}.screen.tablet .facts{gap:5px}.screen.tablet .context{flex-wrap:wrap}.screen.tablet .footnote{font-size:9px}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.notification{margin:0;color:var(--text-3);font-size:12px;min-height:18px}.load-error{position:absolute;top:10px;left:20px;background:white;border:1px solid var(--stroke-1);padding:14px;z-index:2}
+@media(max-width:719px){.toolbar{padding:12px}.title{font-size:15px}.controls{gap:10px}.control{flex-wrap:wrap}.readout{margin-left:0;width:100%}.workspace{padding:12px 8px 0}.caption{flex-direction:column;gap:8px;padding:10px 4px}.below{grid-template-columns:1fr;padding:0 12px 16px}.tag{display:none}.control-label{width:40px}.controls button{min-height:44px}.sub{font-size:11px}}
+.chat{border:1px solid #cbd5e1;border-radius:14px;box-shadow:0 8px 24px #26344524;z-index:3}.chat-head{padding:9px 10px 9px 14px;gap:6px}.drag-handle{display:flex;align-items:center;gap:9px;flex:1;min-width:0;cursor:grab;touch-action:none;user-select:none;border-radius:5px;padding:4px 0}.drag-handle:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.chat.dragging .drag-handle{cursor:grabbing}.chat.dragging{user-select:none}.chat-title{font-size:14px}.chat-title small{display:block;margin:2px 0 0;font-size:10px}.chat-tools{gap:2px}.chat-tools button{min-width:34px;min-height:36px}.log{padding:16px 14px}.thread{gap:18px}.message{max-width:100%}.user{padding-left:30px}.bubble{font-size:13px;padding:11px 12px}.facts{gap:5px}.source{margin-top:10px}.composer{padding:10px 12px 12px}.context{flex-wrap:wrap;margin-bottom:8px}.input-line{background:var(--bg-2)}textarea{height:40px;font-size:13px}.send{min-width:38px;min-height:38px}.footnote{margin-top:7px}.launcher{position:absolute;right:24px;bottom:40px;z-index:4;display:flex;align-items:center;gap:8px;border-radius:999px;min-height:48px;padding:10px 18px;background:var(--accent);border-color:var(--accent);color:white;box-shadow:0 3px 12px #26344520;font-size:13px;font-weight:600}.launcher:hover,.launcher[aria-expanded=true]{background:#424f61}.launcher svg{width:20px;height:20px}.screen.tablet .chat-title small{display:block}.screen.tablet .footnote{font-size:10px}.screen.tablet .chat-tools button{min-width:44px;min-height:44px}.screen.tablet .send{min-width:44px;min-height:44px}.screen.tablet textarea{font-size:16px}.screen.tablet .bubble{font-size:14px}
+.ai-icon{width:34px;height:34px;background:transparent;border-radius:0;flex-shrink:0}.avatar{width:28px;height:28px;border:0;border-radius:0;background:transparent}.gisang-image{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}.launcher .gisang-image{width:28px;height:28px;flex-shrink:0}
+.launcher{width:56px;height:56px;min-height:56px;padding:8px;border-radius:50%;justify-content:center;background:white;border-color:#cbd5e1;color:var(--accent)}.launcher:hover,.launcher[aria-expanded=true]{background:#f1f5f9}.launcher .gisang-image{width:38px;height:38px}
+</style>
+</head>
+<body>
+<header class="toolbar">
+ <div class="topline"><div><h1 class="title">오른쪽 아래, 필요할 때만 여는 대화창.</h1><p class="sub">실제 프로젝트 원본 화면 위에 떠 있는 창 · 지도를 줄이거나 자료 패널을 밀지 않습니다.</p></div><span class="tag">FLOATING CHAT · ACTUAL APP CAPTURE</span></div>
+ <div class="controls">
+  <div class="control"><span class="control-label">화면</span><div class="segmented"><button data-scene="airport" aria-pressed="true">김포 공항</button><button data-scene="briefing" aria-pressed="false">김포 → 제주 브리핑</button></div></div>
+  <div class="control"><span class="control-label">대화창</span><div class="segmented"><button data-mode="closed" aria-pressed="false">접기</button><button data-mode="open" aria-pressed="true">열기</button></div><button id="reset-position">오른쪽 아래로</button></div>
+  <div class="control"><span class="control-label">크기</span><div class="segmented"><button data-device="desktop" aria-pressed="true">1600px</button><button data-device="tablet" aria-pressed="false">iPad 1024px</button></div></div>
+  <div class="readout" id="readout"></div>
+ </div>
+</header>
+<main>
+ <div class="workspace">
+  <div class="canvas-frame" id="frame"><div class="screen" id="screen">
+   <img id="capture" src="assets/ai-copilot-ui/airport-original.png" alt="크기와 위치를 바꾸지 않은 실제 ProjectAMO 김포 공항 원본 캡처.">
+   <p class="load-error" id="load-error" hidden>캡처 파일을 찾지 못했습니다. HTML과 assets/ai-copilot-ui 폴더를 함께 열어 주세요.</p>
+   <section class="chat" id="chat" role="dialog" aria-modal="false" aria-labelledby="chat-title">
+    <header class="chat-head"><div class="drag-handle" id="drag-handle" role="button" tabindex="0" aria-label="대화창 이동. 드래그 또는 방향키로 이동, Home 키로 오른쪽 아래 복원"><span class="ai-icon"><img class="gisang-image" src="../../../frontend/public/gisang-i/clear_3_avatar.png" alt="기상이" draggable="false"></span><div class="chat-title" id="chat-title">기상 어시스턴트 <small>상단을 잡고 옮길 수 있어요</small></div></div><div class="chat-tools"><button id="resize-chat" aria-label="대화창 크게 보기" aria-pressed="false">⤢</button><button id="close-chat" aria-label="대화 접기">−</button></div></header>
+    <div class="log" id="log" role="region" aria-label="대화 내역" tabindex="0"><div class="thread" id="thread"></div></div>
+    <form class="composer" id="composer"><div class="context"><span>질문 대상 <strong id="context-label">김포국제공항 · RKSS</strong></span><span>선택 화면</span></div><div class="input-line"><label class="sr-only" for="message">예시 질문 입력</label><textarea id="message" rows="1" maxlength="1000" placeholder="이 자료에 대해 질문하세요"></textarea><button class="send primary" type="submit" aria-label="예시 질문 전송">↑</button></div><div class="footnote">LLM 미연결 · 아래 대화만 조작 가능하며 지도·자료는 캡처입니다.</div></form>
+   </section>
+   <button class="launcher" id="launcher" aria-expanded="true" aria-controls="chat" title="대화 접기"><img class="gisang-image" src="../../../frontend/public/gisang-i/clear_3_avatar.png" alt="" draggable="false"><span id="launcher-label" class="sr-only">대화 접기</span></button>
+  </div></div>
+  <div class="caption"><p id="caption"></p><a id="original-link" href="assets/ai-copilot-ui/airport-original.png" target="_blank" rel="noopener">변경 전 원본 캡처 ↗</a></div>
+  <p class="notification" id="notification" role="status"></p>
+ </div>
+ <section class="below" aria-label="플로팅 대화창 사용 방식">
+  <article class="finding"><h2>01 · 화면은 그대로, 대화창만 위에</h2><p>지도와 오른쪽 자료의 <strong>위치·크기를 바꾸지 않습니다.</strong> 배경을 어둡게 하는 막이나 전체 화면 클릭 차단도 없습니다.</p></article>
+  <article class="finding"><h2>02 · 읽는 부분을 가리면 옮기기</h2><p>기본 위치는 <strong>오른쪽 아래</strong>. 헤더를 잡고 이동하거나 방향키로 옮기세요. 확대 버튼으로 대화를 넓혀 읽고, 버튼 한 번으로 원래 위치에 돌려놓을 수 있습니다.</p></article>
+  <article class="finding"><h2>03 · 접어도 대화는 남아 있습니다</h2><p>접으면 작은 <strong>AI 대화 버튼</strong>만 남습니다. 대화·입력 중인 질문·스크롤 위치는 유지합니다. 이 시안의 배경은 캡처이고, 대화만 조작 가능합니다.</p></article>
+ </section>
+</main>
+<script>
+(() => {
+ const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+ const avatarHtml='<span class="avatar" aria-hidden="true"><img class="gisang-image" src="../../../frontend/public/gisang-i/clear_3_avatar.png" alt="" draggable="false"></span>';
+ let scene='airport',mode='open',device='desktop',expanded=false,position=null,drag=null;
+ const conversations={airport:null,briefing:null},drafts={airport:'',briefing:''},scrolls={airport:0,briefing:0};
+ const texts={airport:{question:'김포 자료가 비어 있는데, 지금 기상을 판단할 수 있어?',answer:'현재 화면의 자료만으로는 판단하기 어렵습니다.',detail:'METAR·TAF·AMOS가 비어 있습니다. “공항경보 없음”만으로 다른 기상 조건까지 양호하다고 볼 수는 없습니다.',context:'김포국제공항 · RKSS',chips:['METAR · 자료 없음','TAF · 자료 없음']},briefing:{question:'이 김포–제주 브리핑에서 먼저 확인할 점은?',answer:'출발·도착 관측자료의 누락부터 확인해야 합니다.',detail:'경로와 계획고도는 표시돼 있지만 METAR 원문은 없습니다. 이 캡처의 “위험기상 없음”을 전체 경로에 대한 안전 판단으로 해석하지 않습니다.',context:'RKSS → RKPC · 28,000 ft',chips:['RKSS · METAR 없음','RKPC · METAR 없음']}};
+ function seed(){const t=texts[scene];$('#thread').innerHTML=`<article class="message user"><div class="message-body"><div class="bubble">${t.question}</div></div></article><article class="message">${avatarHtml}<div class="message-body"><div class="byline">기상 어시스턴트 · 작성된 예시 답변</div><div class="bubble"><p><strong>${t.answer}</strong></p><p>${t.detail}</p><div class="facts">${t.chips.map(c=>`<span class="fact missing">${c}</span>`).join('')}</div><div class="source">로컬 테스트 서버 캡처 기준 · 실제 LLM 응답 아님</div></div></div></article>`;}
+ function fit(){const w=device==='desktop'?1600:1024,h=device==='desktop'?1000:768;const scale=$('#frame').clientWidth/w;$('#screen').style.transform=`scale(${scale})`;$('#frame').style.height=`${h*scale}px`;}
+ function dimensions(){const w=device==='desktop'?1600:1024,h=device==='desktop'?1000:768;return {w,h,cw:expanded?480:400,ch:Math.min(expanded?680:560,h-116)};}
+ function place(){const {w,h,cw,ch}=dimensions();const wanted=position||{x:w-cw-24,y:h-ch-104};const x=Math.max(68,Math.min(w-cw-16,wanted.x)),y=Math.max(16,Math.min(h-ch-100,wanted.y));if(position)position={x,y};Object.assign($('#chat').style,{left:`${x}px`,top:`${y}px`,width:`${cw}px`,height:`${ch}px`});}
+ function setOpen(open,focus=false){mode=open?'open':'closed';update();if(focus)(open?$('#message'):$('#launcher')).focus();}
+ function update(){
+  const desktop=device==='desktop',w=desktop?1600:1024,h=desktop?1000:768;
+  $('#screen').style.width=`${w}px`;$('#screen').style.height=`${h}px`;$('#screen').className=`screen ${device} ${mode}`;
+  const src=`assets/ai-copilot-ui/${scene}-${desktop?'original':'tablet-original'}.png`;
+  if($('#capture').getAttribute('src')!==src)$('#capture').src=src;
+  $('#capture').alt=`크기와 위치를 바꾸지 않은 실제 ProjectAMO ${scene==='airport'?'김포 공항':'김포 제주 브리핑'} ${device} 원본 캡처.`;
+  $('#chat').hidden=mode==='closed';
+  $('#launcher').setAttribute('aria-expanded',String(mode==='open'));$('#launcher-label').textContent=mode==='open'?'대화 접기':'AI 대화';
+  $('#launcher').title=mode==='open'?'대화 접기':'기상이에게 질문하기';
+  $('#resize-chat').setAttribute('aria-pressed',String(expanded));$('#resize-chat').setAttribute('aria-label',expanded?'대화창 기본 크기로':'대화창 크게 보기');
+  place();
+  $('#context-label').textContent=texts[scene].context;
+  $('#original-link').href=`assets/ai-copilot-ui/${scene}-${desktop?'original':'tablet-original'}.png`;
+  $('#readout').textContent=mode==='closed'?'원래 화면 그대로 · 버튼만 표시':`${dimensions().cw} × ${dimensions().ch}px 플로팅 창 · 배경 변화 없음`;
+  $('#caption').textContent='지도·자료는 리사이즈하지 않은 실제 앱 원본 캡처입니다. 오른쪽 아래 버튼으로 대화를 열고 닫아 보세요. 헤더 드래그·방향키로 이동, ⤢ 버튼으로 크기 변경, Esc로 접기가 가능합니다. 로컬 테스트 서버는 기상자료가 비어 있으며, 대화는 고정 예시입니다.';
+  $$('[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===scene)));
+  $$('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+  $$('[data-device]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.device===device)));
+  fit();
+ }
+ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.scene){conversations[scene]=$('#thread').innerHTML;drafts[scene]=$('#message').value;scrolls[scene]=$('#log').scrollTop;scene=b.dataset.scene;if(conversations[scene])$('#thread').innerHTML=conversations[scene];else seed();$('#message').value=drafts[scene];$('#log').scrollTop=scrolls[scene];}
+  if(b.dataset.mode)mode=b.dataset.mode;
+  if(b.dataset.device){device=b.dataset.device;position=null;}
+  if(b.dataset.scene||b.dataset.mode||b.dataset.device)update();
+ });
+ $('#close-chat').onclick=()=>setOpen(false,true);
+ $('#launcher').onclick=()=>setOpen(mode!=='open',true);
+ $('#resize-chat').onclick=()=>{expanded=!expanded;update();};
+ $('#reset-position').onclick=()=>{position=null;update();$('#notification').textContent='대화창을 오른쪽 아래로 돌려놓았습니다.';};
+ const handle=$('#drag-handle');
+ handle.addEventListener('pointerdown',e=>{if(e.button!==0||!e.isPrimary)return;const rect=$('#chat').getBoundingClientRect();drag={id:e.pointerId,startX:e.clientX,startY:e.clientY,x:parseFloat($('#chat').style.left),y:parseFloat($('#chat').style.top),scale:rect.width/dimensions().cw};handle.setPointerCapture(e.pointerId);$('#chat').classList.add('dragging');});
+ handle.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;position={x:drag.x+(e.clientX-drag.startX)/drag.scale,y:drag.y+(e.clientY-drag.startY)/drag.scale};place();});
+ function finishDrag(e){if(!drag||e.pointerId!==drag.id)return;drag=null;$('#chat').classList.remove('dragging');}
+ handle.addEventListener('pointerup',finishDrag);handle.addEventListener('pointercancel',finishDrag);handle.addEventListener('lostpointercapture',finishDrag);
+ handle.addEventListener('keydown',e=>{if(e.key==='Home'){e.preventDefault();position=null;place();return;}const deltas={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(!deltas[e.key])return;e.preventDefault();const step=e.shiftKey?40:16;position={x:parseFloat($('#chat').style.left)+deltas[e.key][0]*step,y:parseFloat($('#chat').style.top)+deltas[e.key][1]*step};place();});
+ $('#chat').addEventListener('keydown',e=>{if(e.key==='Escape'&&!e.isComposing){e.preventDefault();setOpen(false,true);}});
+ $('#composer').onsubmit=e=>{e.preventDefault();const text=$('#message').value.trim();if(!text)return;const user=document.createElement('article');user.className='message user';const bubble=document.createElement('div');bubble.className='bubble';bubble.textContent=text;user.append(bubble);$('#thread').append(user);const reply=document.createElement('article');reply.className='message';reply.innerHTML=avatarHtml+'<div class="bubble"><strong>대화 UI 동작 예시입니다.</strong><p>이 시안은 실제 LLM에 연결되지 않았습니다. 입력한 질문은 서버에 전송하지 않습니다.</p></div>';$('#thread').append(reply);$('#message').value='';$('#log').scrollTop=$('#log').scrollHeight;$('#notification').textContent='예시 응답을 추가했습니다. 실제 LLM 응답이 아닙니다.';};
+ $('#message').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('#composer').requestSubmit();}};
+ $('#capture').onerror=()=>$('#load-error').hidden=false;$('#capture').onload=()=>$('#load-error').hidden=true;
+ new ResizeObserver(fit).observe($('#frame'));seed();update();
+})();
+</script>
+</body>
+</html>

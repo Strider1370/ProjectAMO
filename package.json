@@ -14,6 +14,8 @@
     "dev:no-nwp": "node scripts/projectamo-dev.mjs serve:no-nwp",
     "dev:contract": "npm --prefix frontend run dev:contract --",
     "dev:verify": "node scripts/projectamo-dev.mjs verify",
+    "ai:mcp": "node backend/ai-mcp-dev.js",
+    "ai:mcp:fixture": "node backend/ai-mcp-dev.js --fixture",
     "dev:smoke": "node scripts/projectamo-dev.mjs smoke",
     "dev:screenshots": "node scripts/projectamo-dev.mjs screenshots",
     "dev:ground-signage-capture": "node scripts/projectamo-dev.mjs ground-signage-capture",

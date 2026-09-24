@@ -8,23 +8,22 @@ test('initial MET visibility turns on only the domestic radar', () => {
     createInitialMetVisibility(['radarHsr', 'radarHci', 'lightning']),
     {
       radarHsr: true, radarHci: false, lightning: false, windFlow: true, windSpeed: true,
-      surfaceChartWind: 'flow',
+      surfaceChartWind: 'barbs',
     },
   )
 })
 
-test('surface chart starts with the animation and the title button swaps animation and barbs', () => {
+test('surface chart starts with barbs and the title button swaps barbs and animation', () => {
   const initial = createInitialMetVisibility(['surfaceChart', 'wind', 'temp'])
   assert.equal(initial.surfaceChart, false)
   const on = getNextMetVisibility({ ...initial, wind: true }, 'surfaceChart')
   assert.equal(on.surfaceChart, true)
   assert.equal(on.wind, true)
-  assert.equal(on.surfaceChartWind, 'flow')
-  const barbs = getNextMetVisibility(on, 'surfaceChartWind')
-  assert.equal(barbs.surfaceChartWind, 'barbs')
-  assert.equal(getNextMetVisibility(barbs, 'surfaceChartWind').surfaceChartWind, 'flow')
-  assert.equal(barbs.surfaceChart, true, 'switching the wind display keeps the chart on')
-  assert.equal(getNextMetVisibility(initial, 'surfaceChart', { lowPower: true }).surfaceChartWind, 'barbs', 'low power devices start with barbs')
+  assert.equal(on.surfaceChartWind, 'barbs')
+  const flow = getNextMetVisibility(on, 'surfaceChartWind')
+  assert.equal(flow.surfaceChartWind, 'flow')
+  assert.equal(getNextMetVisibility(flow, 'surfaceChartWind').surfaceChartWind, 'barbs')
+  assert.equal(flow.surfaceChart, true, 'switching the wind display keeps the chart on')
 })
 
 // 국내/해외 레이더는 상호배타. toggleMet과 setLayerOn(검색·브리핑 딥링크)이 모두 이 함수를 지나므로
