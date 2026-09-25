@@ -223,7 +223,8 @@ export const radar_echo_top = {
   // 프레임이 없어 레이어가 늘 숨는다. 실측 결과 QCD는 5분 지연으로도 전부 내려온다(여유 5분).
   delay_minutes: 10,
   max_frames: 36,     // 3시간 보존 — 레이더(radar_echo.max_images)와 같은 시간 범위.
-  enabled: process.env.RADAR_ECHO_TOP_ENABLED !== '0',
+  // 사용하지 않는 기능. 켜면 시작 시 3시간치 원자료(GB 단위)를 받으므로 =1일 때만 켠다.
+  enabled: process.env.RADAR_ECHO_TOP_ENABLED === '1',
 }
 
 // 해외 레이더 — RainViewer 메타(목차) JSON만 수집. 타일은 브라우저가 CDN에서 직접 받는다(프록시 금지).

@@ -618,7 +618,7 @@ const MapView = forwardRef(function MapView({
       supportedLayers: availableMetLayers.filter(({ id }) => id !== 'notam' && !isMetLayerDisabled(id)
         && (enableWindOverlay || !['surfaceChart', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'].includes(id))
         && (enableTyphoonOverlay || id !== 'typhoon')
-        && (import.meta.env.VITE_ECHO_TOP_ENABLED !== '0' || id !== 'echoTop')).map(({ id }) => id) }),
+        && (import.meta.env.VITE_ECHO_TOP_ENABLED === '1' || id !== 'echoTop')).map(({ id }) => id) }),
     requestMapNavigation: (next) => {
       const control = myMapControlRef.current
       if (!control || control.mode !== 'edit') { next(); return true }

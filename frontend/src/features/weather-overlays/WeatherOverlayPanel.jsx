@@ -55,7 +55,7 @@ function WeatherOverlayPanel({
   const isMobile = useIsMobile()
   // 버튼은 누르면 바뀔 표시를 보여 준다: 바람깃 상태면 '애니메이션', 애니메이션 상태면 '바람깃'.
   const surfaceChartWindActionLabel = visibility.surfaceChartWind === 'flow' ? '바람깃' : '애니메이션'
-  const echoTopEnabled = import.meta.env.VITE_ECHO_TOP_ENABLED !== '0'
+  const echoTopEnabled = import.meta.env.VITE_ECHO_TOP_ENABLED === '1'
   const TEMP_HIDDEN_LAYER_IDS = []
   // 순서는 손이 자주 가는 순서 — 이 패널은 경보 표시가 아니라 켬/끔 스위치라, 매번 만지는
   // 관측(레이더·위성)이 먼저다. 위험기상은 한 번 켜두면 유지되는 성격이라 그다음,
