@@ -4,9 +4,9 @@ import assert from 'node:assert/strict'
 // Test helper functions that mirror the component's logic
 const SEVERITY_LABEL = {
   0: { code: 'NIL', ko: '없음' },
-  1: { code: 'LGT', ko: '약함' },
-  2: { code: 'MOD', ko: '보통' },
-  3: { code: 'SVR', ko: '심함' },
+  1: { code: 'LGT', ko: 'LIGHT' },
+  2: { code: 'MOD', ko: 'MODERATE' },
+  3: { code: 'SVR', ko: 'SEVERE' },
 }
 
 function severityBadge(grade) {
@@ -17,9 +17,9 @@ function severityBadge(grade) {
 
 test('severityBadge returns correct codes for each grade', () => {
   assert.deepEqual(severityBadge(0), { code: 'NIL', ko: '없음' })
-  assert.deepEqual(severityBadge(1), { code: 'LGT', ko: '약함' })
-  assert.deepEqual(severityBadge(2), { code: 'MOD', ko: '보통' })
-  assert.deepEqual(severityBadge(3), { code: 'SVR', ko: '심함' })
+  assert.deepEqual(severityBadge(1), { code: 'LGT', ko: 'LIGHT' })
+  assert.deepEqual(severityBadge(2), { code: 'MOD', ko: 'MODERATE' })
+  assert.deepEqual(severityBadge(3), { code: 'SVR', ko: 'SEVERE' })
 })
 
 test('severityBadge handles null and undefined gracefully', () => {
@@ -35,8 +35,8 @@ test('severityBadge handles non-existent grades with default', () => {
 })
 
 test('severityBadge coerces string grades to numbers', () => {
-  assert.deepEqual(severityBadge('1'), { code: 'LGT', ko: '약함' })
-  assert.deepEqual(severityBadge('2'), { code: 'MOD', ko: '보통' })
+  assert.deepEqual(severityBadge('1'), { code: 'LGT', ko: 'LIGHT' })
+  assert.deepEqual(severityBadge('2'), { code: 'MOD', ko: 'MODERATE' })
 })
 
 test('hazard encounter distinction: on vs nearby', () => {

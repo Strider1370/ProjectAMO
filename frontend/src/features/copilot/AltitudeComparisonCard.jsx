@@ -1,6 +1,6 @@
 const STATES = { valid: 'AIP 조건 일치', input_only: '입력 고도 · 조건 미확인', input_invalid: 'AIP 조건 불일치' }
 const PROFILES = { applied: '계획 프로파일 적용', cruise_fallback: '프로파일 없음 · 순항고도 기준', not_assessed: '비교 제외' }
-const GRADES = { none: '없음', light: '약', moderate: '보통', severe: '강' }
+const GRADES = { 0: '없음', 1: 'LIGHT', 2: 'MODERATE', 3: 'SEVERE', none: '없음', light: 'LIGHT', moderate: 'MODERATE', severe: 'SEVERE' }
 
 function grade(value) {
   if (value?.status !== 'available' || value.highestGrade == null) return '자료 없음'

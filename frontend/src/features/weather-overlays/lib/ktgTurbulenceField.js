@@ -1,7 +1,7 @@
 export const KTG_COLOR_RAMP = [
-  { label: 'LGT', ktgMin: 0.3, ktgMax: 0.475, color: 'rgba(100,210,100,0.85)' },
-  { label: 'MOD', ktgMin: 0.475, ktgMax: 0.75, color: 'rgba(255,195,0,0.9)' },
-  { label: 'SEV', ktgMin: 0.75, ktgMax: 1.0, color: 'rgba(255,55,55,0.9)' },
+  { label: 'LIGHT', ktgMin: 0.3, ktgMax: 0.475, color: 'rgba(100,210,100,0.85)' },
+  { label: 'MODERATE', ktgMin: 0.475, ktgMax: 0.75, color: 'rgba(255,195,0,0.9)' },
+  { label: 'SEVERE', ktgMin: 0.75, ktgMax: 1.0, color: 'rgba(255,55,55,0.9)' },
 ]
 
 // Returns [r, g, b, a] or null (transparent) for a KTG value.

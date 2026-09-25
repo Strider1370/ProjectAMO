@@ -33,6 +33,8 @@ import RouteWeatherLegTable from './RouteWeatherLegTable.jsx'
 import './BriefingView.css'
 
 const LEVEL_BADGE = { green: 'success', amber: 'warning', red: 'danger', gray: 'subtle' }
+// The enroute model keeps its internal 약/중/심 levels; users see the standard severity words.
+const SEVERITY_DISPLAY = { '약': 'LIGHT', '중': 'MODERATE', '심': 'SEVERE' }
 const FIELDS = [['바람', 'wind'], ['시정', 'visibility'], ['RVR', 'rvr'], ['운고', 'ceiling'], ['기온/노점', 'temp'], ['현상', 'weather'], ['QNH', 'qnh']]
 const NOTAM_CAT_LABEL = Object.fromEntries(NOTAM_CATEGORIES.map((c) => [c.id, c.label]))
 
@@ -426,8 +428,8 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
             ))}
         {sections.enroute.model?.elements?.length > 0 && (
           <div className="bv-ribbon-legend" aria-label="난기류 강도 범례">
-            <span><i style={{ background: 'var(--turb-mod)' }} />중(MOD)</span>
-            <span><i style={{ background: 'var(--level-red)' }} />심(SEV)</span>
+            <span><i style={{ background: 'var(--turb-mod)' }} />MODERATE</span>
+            <span><i style={{ background: 'var(--level-red)' }} />SEVERE</span>
           </div>
         )}
         {sections.enroute.model?.elements?.length > 0 && (
@@ -439,13 +441,13 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
                 <div key={i} className="bv-ribbon-row">
                   <div className="bv-ribbon-head">
                     <span className="bv-ribbon-label">{el.label}</span>
-                    {worst && <span className="bv-ribbon-cap">{worst.level} {worst.startNm}–{worst.endNm}NM</span>}
+                    {worst && <span className="bv-ribbon-cap">{SEVERITY_DISPLAY[worst.level] ?? worst.level} {worst.startNm}–{worst.endNm}NM</span>}
                   </div>
                   <div className="bv-ribbon">
                     {el.intervals.map((iv, j) => (
                       <span key={j} className={`bv-seg ${iv.level === '심' ? 'sev' : 'mod'}`}
                         style={{ left: `${Math.max(0, (iv.startNm / total) * 100)}%`, width: `${Math.max(1.5, ((iv.endNm - iv.startNm) / total) * 100)}%` }}
-                        title={`${iv.level} ${iv.startNm}–${iv.endNm}NM`} />
+                        title={`${SEVERITY_DISPLAY[iv.level] ?? iv.level} ${iv.startNm}–${iv.endNm}NM`} />
                     ))}
                   </div>
                 </div>

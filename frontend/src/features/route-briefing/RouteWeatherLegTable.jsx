@@ -3,7 +3,8 @@ import { phenomenonKo } from '../../shared/weather/phenomenonKo.js'
 import { buildNavlogRows } from './lib/navlogRows.js'
 
 const noData = '자료 없음'
-const TURB_KO = { light: '약', moderate: '중', severe: '심' }
+// Icing grades (1-3) and KTG turbulence levels share the standard aviation severity words.
+const SEVERITY = { 1: 'LIGHT', 2: 'MODERATE', 3: 'SEVERE', light: 'LIGHT', moderate: 'MODERATE', severe: 'SEVERE' }
 
 // 같은 FIX 쌍이 두 번 나올 수 있으므로 순번까지 넣어야 줄이 고유해진다.
 const legKey = (leg, index) => `${leg.from}-${leg.to}-${index}`
@@ -42,20 +43,22 @@ function formatIsa(temp) {
   return temp.isaDevC > 0 ? `ISA+${temp.isaDevC}` : temp.isaDevC < 0 ? `ISA${temp.isaDevC}` : 'ISA'
 }
 
+// Exposures also carry the no-hazard share of a leg (icing 0 / turbulence none); count only real hazard.
 function totalNm(exposures) {
-  return Math.round(exposures.reduce((sum, item) => sum + item.distanceNm, 0) * 10) / 10
+  const hazardous = exposures.filter((item) => item.level !== 0 && item.level !== '0' && item.level !== 'none')
+  return Math.round(hazardous.reduce((sum, item) => sum + item.distanceNm, 0) * 10) / 10
 }
 
 // 노출 요약 → 칩. peakLevel이 없으면(=해당 없음) 칩을 만들지 않는다.
 function icingChip(summary) {
   if (!summary?.peakLevel) return null
-  return { key: 'icing', label: `착빙 ${summary.peakLevel}`, note: `${totalNm(summary.exposures)}NM`, level: Number(summary.peakLevel) >= 3 ? 'red' : 'amber' }
+  return { key: 'icing', label: `착빙 ${SEVERITY[summary.peakLevel] ?? summary.peakLevel}`, note: `${totalNm(summary.exposures)}NM`, level: Number(summary.peakLevel) >= 3 ? 'red' : 'amber' }
 }
 
 function turbulenceChip(summary) {
   if (!summary?.peakLevel) return null
   const level = summary.peakLevel === 'severe' ? 'red' : summary.peakLevel === 'moderate' ? 'amber' : 'gray'
-  return { key: 'turb', label: `난류 ${TURB_KO[summary.peakLevel] ?? summary.peakLevel}`, note: `${totalNm(summary.exposures)}NM`, level }
+  return { key: 'turb', label: `난류 ${SEVERITY[summary.peakLevel] ?? summary.peakLevel}`, note: `${totalNm(summary.exposures)}NM`, level }
 }
 
 // 위험기상 칸은 기상만 싣는다. NOTAM은 ⑤ 경로·공항 NOTAM 섹션이 담당한다.

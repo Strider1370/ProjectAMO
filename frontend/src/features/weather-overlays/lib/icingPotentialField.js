@@ -2,9 +2,9 @@ export const ICING_FIELD_LABEL = 'Icing Potential'
 
 export const ICING_COLOR_RAMP = [
   { grade: 0, label: 'None', color: 'rgba(0, 0, 0, 0)', alpha: 0 },
-  { grade: 1, label: 'Trace potential', color: 'rgba(172, 199, 255, 1)', alpha: 1 },
-  { grade: 2, label: 'Moderate potential', color: 'rgba(107, 136, 205, 1)', alpha: 1 },
-  { grade: 3, label: 'Severe potential', color: 'rgba(56, 61, 111, 1)', alpha: 1 },
+  { grade: 1, label: 'LIGHT', color: 'rgba(172, 199, 255, 1)', alpha: 1 },
+  { grade: 2, label: 'MODERATE', color: 'rgba(107, 136, 205, 1)', alpha: 1 },
+  { grade: 3, label: 'SEVERE', color: 'rgba(56, 61, 111, 1)', alpha: 1 },
 ]
 
 const TRANSPARENT_ICING = ICING_COLOR_RAMP[0]

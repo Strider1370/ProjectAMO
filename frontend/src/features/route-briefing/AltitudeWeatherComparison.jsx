@@ -38,9 +38,9 @@ function warningMessages(row) {
 
 const SEVERITY_LABEL = {
   0: { code: 'NIL', ko: '없음' },
-  1: { code: 'LGT', ko: '약함' },
-  2: { code: 'MOD', ko: '보통' },
-  3: { code: 'SVR', ko: '심함' },
+  1: { code: 'LGT', ko: 'LIGHT' },
+  2: { code: 'MOD', ko: 'MODERATE' },
+  3: { code: 'SVR', ko: 'SEVERE' },
 }
 
 function severityBadge(grade) {
