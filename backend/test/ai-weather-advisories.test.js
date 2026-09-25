@@ -136,3 +136,13 @@ test('advisories: large pages are bounded by bytes and can be followed without l
   assert.equal(ids.length, 25)
   assert.equal(new Set(ids).size, 25)
 })
+
+test('advisories: a not-yet-valid next advisory is excluded from a current query even when its issue time is later', async () => {
+  // KMA records the next SIGMET with issue_time = valid_from; before then it is simply not active.
+  const upcoming = item('next', { issue_time: '2026-09-23T13:00:00Z', valid_from: '2026-09-23T13:00:00Z', valid_to: '2026-09-23T17:00:00Z' })
+  const r = await getWeatherAdvisories({}, setup({ sigmet: snapshot('sigmet', [item('ice'), upcoming]) }).context)
+  assert.deepEqual(r.data.items.map((i) => i.sourceId), ['ice'])
+  const counts = r.data.summary.find((s) => s.kind === 'sigmet')
+  assert.equal(counts.unassessedCount, 0)
+  assert.equal(counts.excludedByTimeCount, 1)
+})

@@ -21,9 +21,9 @@ import { fileURLToPath } from 'node:url'
 if (!process.argv.includes('--live')) throw new Error('Use --live to authorize paid API calls with public weather data')
 const countArg = process.argv.find((arg) => arg.startsWith('--count='))
 const count = Number(countArg?.split('=')[1] ?? 1)
-if (!Number.isInteger(count) || count < 1 || count > 10) throw new Error('count must be 1..10')
+if (!Number.isInteger(count) || count < 1 || count > 20) throw new Error('count must be 1..20')
 const start = Number(process.argv.find((arg) => arg.startsWith('--start='))?.split('=')[1] ?? 1)
-if (!Number.isInteger(start) || start < 1 || start > 10) throw new Error('start must be 1..10')
+if (!Number.isInteger(start) || start < 1 || start > 20) throw new Error('start must be 1..20')
 const maxOutputTokens = outputTokenBudget(process.argv.find((arg) => arg.startsWith('--max-output-tokens='))?.split('=')[1]
   ?? process.env.AMO_AI_MAX_OUTPUT_TOKENS)
 const provider = createOpenAIProvider({ apiKey: process.env.OPENAI_API_KEY, model: process.env.AMO_AI_MODEL,
@@ -94,7 +94,7 @@ if (finalSuite) {
       'src/ai/tools/get-route-briefing.js', 'src/ai/tool-registry.js', 'ai-chat-eval.js']
       .map(name => [name, digest(fs.readFileSync(new URL(name, import.meta.url), 'utf8'))])) }
 }
-const conversation = conversations.create(owner)
+let conversation = conversations.create(owner)
 const toolCalls = [], modelToolCalls = [], providerDiagnostics = []
 const run = createChatRunner({ now, conversations, maxOutputTokens, personalRoutesEnabled: finalSuite, provider: { async complete(input) {
   try { const response = await provider.complete(input); modelToolCalls.push(...(response.toolCalls ?? []).map(({ name, arguments: args }) => ({ name, input: args })));
@@ -164,12 +164,36 @@ const finalQuestions = [
   '다른 새 비행이야. 서울에서 제주로 가는데 공항·출발일시·고도·속도·비행규칙은 아직 미정이야. 이전 비행 조건은 가져다 쓰지 마.',
   '처음 질문을 다시 조회해 줘. 김포공항 2026년 9월 24일 00시03분부터 01시30분 KST까지 관측과 예보, 자료 시각과 누락 범위를 알려줘.',
 ]
-const questions = finalSuite ? finalQuestions : createSuite ? createQuestions : settingsSuite ? settingsQuestions : adversarial ? advisoryQuestions : process.argv.includes('--suite=boundaries') ? boundaryQuestions : standardQuestions
+// Everyday user phrasing grouped by tool family; newConversation starts a fresh thread.
+const realisticSuite = process.argv.includes('--suite=realistic')
+const realisticQuestions = [
+  { message: '김포 지금 날씨 어때?', newConversation: true },
+  '제주는?',
+  '3시간 뒤쯤 김해 도착인데 날씨 어때?',
+  '광주, 여수, 울산 한꺼번에 보여줘',
+  '인천 TAF 원문 보여줘',
+  'BR이 뭐야?',
+  '서울 날씨 알려줘',
+  { message: '지금 SIGMET 있어?', newConversation: true },
+  'AIRMET은?',
+  '제주 가는 길에 착빙 있어?',
+  '내일 새벽 3시 기준으로는?',
+  { message: '김포에서 제주 가는 경로 만들어서 날씨 봐줘', newConversation: true },
+  'IFR, 내일 오전 10시 출발, FL250, 450kt',
+  'FL250이랑 FL290 비교해줘',
+  '착빙 있는 구간 자세히 알려줘',
+  { message: '레이더 켜줘', newConversation: true },
+  '제주공항 화면 열어줘',
+  '경로 설정에 김포→김해 IFR FL200 넣어줘',
+  'VFR로 BULTI 경유해서 넣어줘',
+]
+const questions = realisticSuite ? realisticQuestions : finalSuite ? finalQuestions : createSuite ? createQuestions : settingsSuite ? settingsQuestions : adversarial ? advisoryQuestions : process.argv.includes('--suite=boundaries') ? boundaryQuestions : standardQuestions
 try {
   if (finalSuite) console.log(JSON.stringify({ type: 'expected-before-model', questions, expected: finalExpected }))
   if (start > questions.length) throw new Error('start exceeds suite length')
   for (const [index, question] of (process.argv.includes('--prepare-only') ? [] : questions.slice(start - 1, start - 1 + count)).entries()) {
-    const { message, displayTimezone = 'Asia/Seoul' } = typeof question === 'string' ? { message: question } : question
+    const { message, displayTimezone = 'Asia/Seoul', newConversation = false } = typeof question === 'string' ? { message: question } : question
+    if (newConversation && index > 0) conversation = conversations.create(owner)
     toolCalls.length = 0
     modelToolCalls.length = 0
     providerDiagnostics.length = 0
@@ -183,7 +207,7 @@ try {
       modelToolCalls: structuredClone(modelToolCalls),
       maxOutputTokens, providerDiagnostics: structuredClone(providerDiagnostics),
       reasoningEffort: process.env.AMO_AI_REASONING_EFFORT, frozenTime: fixedTime, displayTimezone,
-      suite: finalSuite ? 'final' : createSuite ? 'route-create' : settingsSuite ? 'route-settings' : adversarial ? 'synthetic-advisories' : process.argv.includes('--suite=boundaries') ? 'boundaries' : 'standard',
+      suite: realisticSuite ? 'realistic' : finalSuite ? 'final' : createSuite ? 'route-create' : settingsSuite ? 'route-settings' : adversarial ? 'synthetic-advisories' : process.argv.includes('--suite=boundaries') ? 'boundaries' : 'standard',
       evidence: result.cards.map((card) => ({ tool: card.tool, status: card.result.status,
         reference: card.result.reference, issues: card.result.issues, data: card.result.data,
         sources: card.result.sources, coverage: card.result.coverage })) }))

@@ -35,8 +35,11 @@ test('Responses adapter uses server-only auth, stateless request, bounded tools 
     { role: 'assistant', content: '', providerItems: result.providerItems },
     { role: 'tool', toolCallId: 'call_1', content: '{"status":"partial"}' },
   ] })
-  assert.deepEqual(requests[1].body.input.slice(2, 4), output)
-  assert.equal(requests[1].body.input.at(-1).type, 'function_call_output')
+  assert.deepEqual(requests[1].body.input.slice(1, 3), output)
+  assert.equal(requests[1].body.input.at(-2).type, 'function_call_output')
+  // The per-call context (server clock) goes last so the stable prefix stays cacheable.
+  assert.equal(requests[1].body.input.at(-1).role, 'developer')
+  assert.equal(requests[0].body.input[0].role, 'user')
 })
 
 test('strict transport represents optional inputs as nullable; decoder never drops unknown fields', () => {

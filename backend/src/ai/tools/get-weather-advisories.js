@@ -18,12 +18,13 @@ function project(item, kind, query, weatherNow) {
   const validityKnown = from && to && Date.parse(from) < Date.parse(to)
   const futureIssue = issued && Date.parse(issued) > weatherNow
   let timeStatus = 'unknown'
-  if (validityKnown && !futureIssue) {
+  if (validityKnown) {
     const matches = query.at
       ? Date.parse(from) <= Date.parse(query.at) && Date.parse(query.at) < Date.parse(to)
       : Date.parse(from) < Date.parse(query.window.end) && Date.parse(to) > Date.parse(query.window.start)
+    // Outside the requested time it is not relevant, whatever its issue time says.
     if (!matches) return null
-    timeStatus = query.at ? 'active' : 'overlap'
+    if (!futureIssue) timeStatus = query.at ? 'active' : 'overlap'
   }
   const result = {
     id: `${kind}:${item.id}`, sourceId: item.id, kind, validFrom: from, validTo: to, issuedAt: issued,

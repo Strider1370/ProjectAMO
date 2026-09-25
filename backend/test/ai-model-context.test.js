@@ -97,7 +97,8 @@ test('route and saved-current briefings scope airport changes identically withou
     assert.deepEqual(taf.windowProjection.omittedChanges, [{ index: 1, type: 'BECMG', reason: 'starts_after_request' }])
     assert.equal(projected.coverage[0].state, 'partial')
     assert.equal(projected.data.enroute.weatherAvailable, false)
-    assert.deepEqual(projected.issues, input.issues)
+    // Gaps are never dropped; standing caveats only gain a mention-on-request note.
+    assert.deepEqual(projected.issues.map((issue) => issue.code), input.issues.map((issue) => issue.code))
     assert.deepEqual(projected.sources, input.sources)
   }
   assert.deepEqual(input, original)
@@ -119,4 +120,34 @@ test('local clock conversion is deterministic at midnight; impossible dates and 
   for (const conflicting of [ { usePreviousWindow: true }, { hoursFromNow: 1 }, { window: { start: '2026-09-23T15:03:00Z', end: '2026-09-23T16:30:00Z' } } ]) {
     assert.equal(CHAT_TOOLS.get_airport_weather.schema.safeParse({ ...input, ...conflicting }).success, false)
   }
+})
+
+test('standing coverage caveats are kept but marked as mention-on-request; real warning gaps are not', () => {
+  const advisory = modelToolResult('get_weather_advisories', { status: 'partial', data: { items: [] },
+    issues: [{ code: 'SOURCE_COVERAGE_UNVERIFIED', reason: 'x' }, { code: 'UNASSESSED_VALIDITY', count: 1 }] }, 'UTC')
+  assert.equal(advisory.issues[0].code, 'SOURCE_COVERAGE_UNVERIFIED')
+  assert.match(advisory.issues[0].note, /only if the user asks/)
+  assert.equal(advisory.issues[1].note, undefined)
+  const airports = modelToolResult('get_airport_weather', { status: 'ok', coverage: [], issues: [], data: { airports: [
+    { icao: 'RKSS', warnings: { status: 'unknown', items: [], unassessedCount: 0 } },
+    { icao: 'RKPC', warnings: { status: 'unknown', items: [], unassessedCount: 1 } },
+    { icao: 'RKPK', warnings: { status: 'failed', items: [], unassessedCount: 0 } },
+  ] } }, 'UTC')
+  assert.equal(airports.data.airports[0].warnings.status, 'unknown')
+  assert.match(airports.data.airports[0].warnings.note, /only if the user asks/)
+  assert.equal(airports.data.airports[1].warnings.note, undefined)
+  assert.equal(airports.data.airports[2].warnings.note, undefined)
+})
+
+test('startsInHours lets the server compute a future airport window instead of the model', () => {
+  const now = Date.parse('2026-09-25T12:40:00Z')
+  const later = resolveAirportWindow({ airports: ['김해'], startsInHours: 3 }, { now, timezone: 'Asia/Seoul' })
+  assert.deepEqual(later.window, { start: '2026-09-25T15:40:00.000Z', end: '2026-09-25T16:40:00.000Z' })
+  assert.equal(later.startsInHours, undefined)
+  const longer = resolveAirportWindow({ airports: ['김해'], startsInHours: 3, hoursFromNow: 2 }, { now, timezone: 'Asia/Seoul' })
+  assert.equal(longer.window.end, '2026-09-25T17:40:00.000Z')
+  const schema = CHAT_TOOLS.get_airport_weather.schema
+  assert.equal(schema.safeParse({ airports: ['김해'], startsInHours: 3, hoursFromNow: 2 }).success, true)
+  assert.equal(schema.safeParse({ airports: ['김해'], startsInHours: 3, localWindow: { start: '2026-09-26T00:00', end: '2026-09-26T01:00' } }).success, false)
+  assert.equal(schema.safeParse({ airports: ['김해'], startsInHours: 0 }).success, false)
 })

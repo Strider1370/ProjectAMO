@@ -34,12 +34,24 @@ export function modelContext(value, timezone) {
 // Reduce the model's temporal matching workload. Never remove unresolved groups,
 // or prior FM/BECMG transitions that may establish the requested conditions.
 // The full UTC result remains in the UI card. Removed groups are accounted for.
+// Collectors never attest completeness, so these caveats are on every result. Keep
+// them, but stop the model from repeating them as if they were this lookup's gap.
+const STANDING_NOTE = 'Standing limitation present on every result, not a gap in this lookup. Mention it only if the user asks whether something is definitely absent.'
+function markStandingCaveats(value) {
+  if (!Array.isArray(value?.issues) || !value.issues.some((issue) => issue?.code === 'SOURCE_COVERAGE_UNVERIFIED')) return value
+  return { ...value, issues: value.issues.map((issue) => issue?.code === 'SOURCE_COVERAGE_UNVERIFIED' ? { ...issue, note: STANDING_NOTE } : issue) }
+}
+
 export function modelToolResult(tool, result, timezone) {
   const airportDigest = tool === 'get_airport_weather' || tool === 'get_route_briefing'
     || (tool === 'get_my_saved_route' && result.data?.mode === 'current_briefing')
-  if (!airportDigest || !Array.isArray(result.data?.airports)) return modelContext(result, timezone)
-  const value = structuredClone(result)
+  if (!airportDigest || !Array.isArray(result.data?.airports)) return modelContext(markStandingCaveats(result), timezone)
+  const value = structuredClone(markStandingCaveats(result))
   for (const airport of value.data.airports) {
+    // unknown without unassessed items only means the collector did not attest completeness.
+    if (airport.warnings?.status === 'unknown' && !airport.warnings.unassessedCount && !airport.warnings.items?.length) {
+      airport.warnings.note = STANDING_NOTE
+    }
     const coverage = value.coverage?.find((item) => item.icao === airport.icao)
     const start = Date.parse(coverage?.requested?.start), end = Date.parse(coverage?.requested?.end)
     if (!airport.taf || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue
@@ -62,13 +74,13 @@ export function modelToolResult(tool, result, timezone) {
     }).sort((a, b) => Date.parse(a.effectiveBy) - Date.parse(b.effectiveBy))
     airport.taf.windowProjection = { requested: coverage.requested, omittedChangeCount: omitted.length, omittedChanges: omitted,
       completedPermanentChanges,
-      note: 'base is the INITIAL forecast, not the window-start state. Apply completedPermanentChanges chronologically before describing any overlapping transition; keep fields not changed. An earlier BECMG/FM is not undone by base. Unknown timings remain unresolved. Full report remains in the source card.' }
+      note: 'base is the INITIAL forecast, not the window-start state. Apply completedPermanentChanges chronologically before describing any overlapping transition; keep fields not changed. An earlier BECMG/FM is not undone by base. If the prior state cannot be established, describe the target and its uncertainty without inventing the prior state. Describe transitions and probabilities, not an invented exact change time. omittedChanges do not apply to the requested window. Full report remains in the source card.' }
   }
   return modelContext(value, timezone)
 }
 
 export function resolveAirportWindow(args, { previousWindow, now, timezone }) {
-  const { hoursFromNow = 1, window, localWindow, usePreviousWindow, ...rest } = args
+  const { hoursFromNow = 1, startsInHours = 0, window, localWindow, usePreviousWindow, ...rest } = args
   let selected = window
   if (usePreviousWindow) {
     if (!previousWindow) throw Object.assign(new Error('PREVIOUS_WINDOW_REQUIRED'), { code: 'PREVIOUS_WINDOW_REQUIRED' })
@@ -76,7 +88,8 @@ export function resolveAirportWindow(args, { previousWindow, now, timezone }) {
   } else if (localWindow) {
     selected = { start: localToUtc(localWindow.start, timezone), end: localToUtc(localWindow.end, timezone) }
   }
-  return { ...rest, window: selected ?? { start: new Date(now).toISOString(), end: new Date(now + hoursFromNow * 3600_000).toISOString() } }
+  const start = now + startsInHours * 3600_000
+  return { ...rest, window: selected ?? { start: new Date(start).toISOString(), end: new Date(start + hoursFromNow * 3600_000).toISOString() } }
 }
 
 export function localToUtc(value, timezone) {
