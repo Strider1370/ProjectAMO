@@ -248,3 +248,30 @@ test('missing forecast axis keeps route legs and official hazards without invent
   assert.equal(result.legs[0].timeStatus, 'unavailable')
   assert.equal(result.legs[0].hazards[0].code, 'TURB')
 })
+
+test('legs read weather at the flight-plan profile altitude while still labelling the cruise altitude', () => {
+  const level = (altFt, fields) => ({ altFt, values: [0, 1, 2].map((i) => ({ distanceNm: i * 10, altFt, ...fields })) })
+  const input = {
+    routeModel: { enRouteSegments: [
+      { id: 'A-B', fromFix: 'A', toFix: 'B', startNm: 0, endNm: 10, alignmentStatus: 'aligned' },
+      { id: 'B-C', fromFix: 'B', toFix: 'C', startNm: 10, endNm: 20, alignmentStatus: 'aligned' },
+    ] },
+    weatherAxis: axis,
+    selectedCruiseAltitudeFt: 25000,
+    crossSection: { levels: [level(3000, { icing: 1, t: 5, u: 5, v: 0 }), level(25000, { icing: 0, t: -30, u: 40, v: 0 })] },
+  }
+  // Climbing from 3,000 ft at the start to cruise by 10 NM.
+  const flightPlanProfile = { points: [{ distanceNm: 0, altitudeFt: 3000 }, { distanceNm: 10, altitudeFt: 25000 }, { distanceNm: 20, altitudeFt: 25000 }] }
+  const [climb, cruise] = buildRouteWeatherLegs({ ...input, flightPlanProfile }).legs
+  assert.equal(climb.icing.peakLevel, 1)
+  assert.equal(climb.temp.meanC, 5)
+  assert.equal(climb.temp.isaDevC, -4)
+  assert.equal(climb.wind.meanComponentKt, 10)
+  assert.equal(cruise.icing.peakLevel, 0)
+  assert.equal(cruise.temp.meanC, -30)
+  assert.equal(climb.selectedAltitudeFt, 25000)
+  // Without a profile the old constant-cruise behaviour is kept.
+  const [flat] = buildRouteWeatherLegs(input).legs
+  assert.equal(flat.icing.peakLevel, 0)
+  assert.equal(flat.temp.meanC, -30)
+})

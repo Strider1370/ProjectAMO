@@ -183,6 +183,7 @@ export function composeBriefing(request, data) {
     procedureContext: request.procedureContext,
     weatherAxis: loaded?.axis,
     selectedCruiseAltitudeFt: cruiseAltitudeFt,
+    flightPlanProfile,
     crossSection: loaded?.crossSection,
     turbulence: loaded?.turbulence,
     hazards: adverse.hazards,

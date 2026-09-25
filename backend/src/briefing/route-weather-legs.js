@@ -1,4 +1,5 @@
 import {
+  altitudeAtProfileDistance,
   exposureSummary,
   sampleWeights,
   weightedTemperature,
@@ -114,7 +115,7 @@ function dedupeProcedurePoints(points) {
   })
 }
 
-function buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams }) {
+function buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, flightPlanProfile, crossSection, turbulence, hazards, routeNotams }) {
   const routeCoordinates = routeGeometry?.coordinates
   if (!Array.isArray(routeCoordinates) || routeCoordinates.length < 2) return []
   const departure = endpointMarker(routeMarkers, 0)
@@ -137,7 +138,7 @@ function buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, w
       const to = positioned[index + 1]
       return buildLeg({
         segment: { kind: 'dct', fromFix: from.id, toFix: to.id, startNm: from.distanceNm, endNm: to.distanceNm, alignmentStatus: 'aligned' },
-        weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint: null, sourceCycle: null,
+        weatherAxis, selectedCruiseAltitudeFt, flightPlanProfile, crossSection, turbulence, hazards, routeNotams, constraint: null, sourceCycle: null,
       })
     }).filter((leg) => leg.distanceNm > 0)
     return [{
@@ -154,18 +155,21 @@ function buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, w
   })
 }
 
-function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint, sourceCycle }) {
+function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, flightPlanProfile, crossSection, turbulence, hazards, routeNotams, constraint, sourceCycle }) {
   if (segment.alignmentStatus !== 'aligned' || !Number.isFinite(segment.startNm) || !Number.isFinite(segment.endNm)) {
     return unavailableLeg(segment, selectedCruiseAltitudeFt, sourceCycle)
   }
   const range = { startNm: segment.startNm, endNm: segment.endNm }
   const weights = legWeights(weatherAxis, range)
-  const wind = weightedWind(crossSection?.levels ?? [], weatherAxis, selectedCruiseAltitudeFt, weights, false)
-  const icingSummary = exposureSummary(crossSection?.levels, weatherAxis, selectedCruiseAltitudeFt, 'icing', weights, (value) => value, false)
+  // Weather is read where the aircraft actually is (climb/descent profile); the label stays the cruise altitude.
+  const wind = weightedWind(crossSection?.levels ?? [], weatherAxis, selectedCruiseAltitudeFt, weights, false, flightPlanProfile)
+  const icingSummary = exposureSummary(crossSection?.levels, weatherAxis, selectedCruiseAltitudeFt, 'icing', weights, (value) => value, false, flightPlanProfile)
   const maxTurbulenceAltitude = Math.max(...(turbulence?.levels ?? []).map((level) => Number(level.altFt)).filter(Number.isFinite), -Infinity)
-  const turbulenceSummary = selectedCruiseAltitudeFt > maxTurbulenceAltitude
+  const legTopAltitudeFt = Math.max(...(weatherAxis?.samples ?? []).flatMap((sample, index) => weights[index] > 0
+    ? [altitudeAtProfileDistance(flightPlanProfile, sample.distanceNm, selectedCruiseAltitudeFt)] : []), -Infinity)
+  const turbulenceSummary = (Number.isFinite(legTopAltitudeFt) ? legTopAltitudeFt : selectedCruiseAltitudeFt) > maxTurbulenceAltitude
     ? { status: 'unavailable', highestGrade: null, exposureNmByGrade: {} }
-    : exposureSummary(turbulence?.levels, weatherAxis, selectedCruiseAltitudeFt, 'ktg', weights, (value) => KTG_LEVELS[ktgIntensity(value)], false)
+    : exposureSummary(turbulence?.levels, weatherAxis, selectedCruiseAltitudeFt, 'ktg', weights, (value) => KTG_LEVELS[ktgIntensity(value)], false, flightPlanProfile)
   const legHazards = (hazards ?? []).flatMap((hazard) => {
     const interval = intervalFor(hazard)
     if (hazard.airportScope || hazard.altitudeExposure?.status === 'clear' || overlapNm(range, interval) <= OVERLAP_EPSILON_NM) return []
@@ -190,7 +194,7 @@ function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection
     selectedAltitudeFt: Number(selectedCruiseAltitudeFt) || null,
     alignmentStatus: 'aligned',
     wind: wind && { meanComponentKt: wind.averageKt, minComponentKt: wind.minKt, maxComponentKt: wind.maxKt, directionDeg: wind.directionDeg, speedKt: wind.speedKt },
-    temp: weightedTemperature(crossSection?.levels ?? [], weatherAxis, selectedCruiseAltitudeFt, weights, false),
+    temp: weightedTemperature(crossSection?.levels ?? [], weatherAxis, selectedCruiseAltitudeFt, weights, false, flightPlanProfile),
     icing: { peakLevel: icingSummary.highestGrade, exposures: exposures(icingSummary) },
     turbulence: { peakLevel: turbulenceSummary.highestGrade, exposures: exposures(turbulenceSummary) },
     hazards: legHazards,
@@ -229,13 +233,13 @@ function buildTerminalLegs({ segments, groups, routeGeometry, routeMarkers, deps
   return legs
 }
 
-export function buildRouteWeatherLegs({ routeModel, routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards = [], routeNotams = [], aipConstraints } = {}) {
+export function buildRouteWeatherLegs({ routeModel, routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, flightPlanProfile = null, crossSection, turbulence, hazards = [], routeNotams = [], aipConstraints } = {}) {
   const segments = [...(routeModel?.enRouteSegments ?? [])].sort((a, b) => (a.startNm ?? Infinity) - (b.startNm ?? Infinity))
   const constraints = new Map((aipConstraints?.segments ?? []).map((entry) => [entry.id, entry]))
   const sourceCycle = aipConstraints?.provenance?.publicationId ?? null
-  const deps = { weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint: null, sourceCycle: null }
-  const groups = buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams })
-  const enrouteLegs = segments.map((segment) => buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, crossSection, turbulence, hazards, routeNotams, constraint: constraints.get(segment.id), sourceCycle }))
+  const deps = { weatherAxis, selectedCruiseAltitudeFt, flightPlanProfile, crossSection, turbulence, hazards, routeNotams, constraint: null, sourceCycle: null }
+  const groups = buildProcedureGroups({ routeGeometry, routeMarkers, procedureContext, weatherAxis, selectedCruiseAltitudeFt, flightPlanProfile, crossSection, turbulence, hazards, routeNotams })
+  const enrouteLegs = segments.map((segment) => buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, flightPlanProfile, crossSection, turbulence, hazards, routeNotams, constraint: constraints.get(segment.id), sourceCycle }))
   const terminalLegs = buildTerminalLegs({ segments, groups, routeGeometry, routeMarkers, deps })
   return {
     legs: [...enrouteLegs, ...terminalLegs].sort((a, b) => (a.startNm ?? Infinity) - (b.startNm ?? Infinity)),

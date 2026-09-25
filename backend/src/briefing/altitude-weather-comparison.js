@@ -97,14 +97,15 @@ function windVector(uMs, vMs) {
   return { directionDeg: directionDeg === 0 ? 360 : directionDeg, speedKt }
 }
 
-export function weightedWind(levels, axis, altitudeFt, weights, includeZeroWeight = true) {
+export function weightedWind(levels, axis, altitudeFt, weights, includeZeroWeight = true, flightPlanProfile = null) {
   const values = []
   const vectors = []
   const samples = axis?.samples ?? []
   for (const [index, sample] of samples.entries()) {
     if (!includeZeroWeight && !(weights[index] > 0)) continue
-    const u = interpolate(levels, altitudeFt, index, 'u')
-    const v = interpolate(levels, altitudeFt, index, 'v')
+    const sampleAltitudeFt = altitudeAtProfileDistance(flightPlanProfile, sample.distanceNm, altitudeFt)
+    const u = interpolate(levels, sampleAltitudeFt, index, 'u')
+    const v = interpolate(levels, sampleAltitudeFt, index, 'v')
     if (!u || !v) continue
     const rad = sample.bearingDeg * Math.PI / 180
     values.push({ value: (u.value * Math.sin(rad) + v.value * Math.cos(rad)) * MS_TO_KT, weight: weights[index] })
@@ -151,7 +152,7 @@ function categoricalAt(levels, altitudeFt, sampleIndex, field) {
   return choices.sort((a, b) => Math.abs(a.altitudeFt - altitudeFt) - Math.abs(b.altitudeFt - altitudeFt))[0].value
 }
 
-function altitudeAtProfileDistance(profile, distanceNm, fallbackAltitudeFt) {
+export function altitudeAtProfileDistance(profile, distanceNm, fallbackAltitudeFt) {
   const points = [...(profile?.points ?? [])]
     .filter((point) => Number.isFinite(Number(point?.distanceNm)) && Number.isFinite(Number(point?.altitudeFt)))
     .sort((a, b) => Number(a.distanceNm) - Number(b.distanceNm))
@@ -202,14 +203,15 @@ export function isaTemperatureC(altitudeFt) {
   return altitudeFt >= 36089 ? -56.5 : 15 - 1.98 * (altitudeFt / 1000)
 }
 
-export function weightedTemperature(levels, axis, altitudeFt, weights, includeZeroWeight = true) {
+export function weightedTemperature(levels, axis, altitudeFt, weights, includeZeroWeight = true, flightPlanProfile = null) {
   const values = []
-  for (const [index] of (axis?.samples ?? []).entries()) {
+  for (const [index, sample] of (axis?.samples ?? []).entries()) {
     if (!includeZeroWeight && !(weights[index] > 0)) continue
+    const sampleAltitudeFt = altitudeAtProfileDistance(flightPlanProfile, sample.distanceNm, altitudeFt)
     // 단면 샘플러가 내보내는 키는 소문자 t이고 이미 섭씨다(cross-section-sampler의 nullableC).
     // 대문자 'T' + 켈빈 변환은 원본 격자 필드명을 그대로 쓴 것이라 항상 null이 됐다.
-    const value = interpolate(levels, altitudeFt, index, 't')
-    if (value) values.push({ value: value.value, weight: weights[index] })
+    const value = interpolate(levels, sampleAltitudeFt, index, 't')
+    if (value) values.push({ value: value.value, weight: weights[index], isaDev: value.value - isaTemperatureC(sampleAltitudeFt) })
   }
   if (!values.length) return null
   const totalWeight = values.reduce((sum, item) => sum + item.weight, 0)
@@ -220,7 +222,10 @@ export function weightedTemperature(levels, axis, altitudeFt, weights, includeZe
     meanC: Math.round(average),
     minC: Math.round(Math.min(...values.map((item) => item.value))),
     maxC: Math.round(Math.max(...values.map((item) => item.value))),
-    isaDevC: Math.round(average - isaTemperatureC(altitudeFt)),
+    // 상승·강하 구간은 표본마다 고도가 달라 ISA 기준도 표본별로 잡는다.
+    isaDevC: Math.round(totalWeight > 0
+      ? values.reduce((sum, item) => sum + item.isaDev * item.weight, 0) / totalWeight
+      : values.reduce((sum, item) => sum + item.isaDev, 0) / values.length),
   }
 }
 

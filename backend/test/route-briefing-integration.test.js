@@ -77,9 +77,8 @@ test('integration: briefing includes route weather legs from one injected cross-
     samples: [{ distanceNm: 0, bearingDeg: 90 }, { distanceNm: 10, bearingDeg: 90 }, { distanceNm: 20, bearingDeg: 90 }],
   }
   const crossSection = {
-    levels: [
-      { altFt: 9000, values: [{ altFt: 9000, u: 10, v: 0, T: 273.15, icing: 0 }, { altFt: 9000, u: 20, v: 0, T: 274.15, icing: 1 }, { altFt: 9000, u: 30, v: 0, T: 275.15, icing: 1 }] },
-    ],
+    // Legs read weather along the climb/descent profile, so the fixture spans the ground too.
+    levels: [0, 9000].map((altFt) => ({ altFt, values: [{ altFt, u: 10, v: 0, T: 273.15, icing: 0 }, { altFt, u: 20, v: 0, T: 274.15, icing: 1 }, { altFt, u: 30, v: 0, T: 275.15, icing: 1 }] })),
   }
   const briefing = composeBriefing({
     ...request,
