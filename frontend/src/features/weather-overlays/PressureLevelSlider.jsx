@@ -7,16 +7,21 @@ import LevelSliderPanel from './LevelSliderPanel.jsx'
 
 export default function PressureLevelSlider({ levels = [], activeValue, onSelect }) {
   const orderedLevels = useMemo(
-    () => [...levels].filter((level) => level?.kind === 'pressure').sort((a, b) => Number(a.value) - Number(b.value)),
+    () => [
+      ...levels.filter((level) => level?.kind === 'pressure').sort((a, b) => Number(a.value) - Number(b.value)),
+      ...levels.filter((level) => level?.kind === 'height').sort((a, b) => Number(b.value) - Number(a.value)),
+    ],
     [levels],
   )
 
-  const items = orderedLevels.map((level) => ({
-    id: level.id,
-    primary: formatPressureFlightLevel(level.value),
-    secondary: `${level.value} hPa`,
-    major: isMajorPressureLevel(level),
-  }))
+  const items = orderedLevels.map((level) => level.kind === 'height'
+    ? { id: level.id, primary: level.id === '10m' ? '지상' : level.label, secondary: `${level.value} m AGL`, major: true }
+    : {
+      id: level.id,
+      primary: formatPressureFlightLevel(level.value),
+      secondary: `${level.value} hPa`,
+      major: isMajorPressureLevel(level),
+    })
 
-  return <LevelSliderPanel items={items} activeValue={activeValue} onSelect={onSelect} ariaLabel="KIM 등압면 고도" />
+  return <LevelSliderPanel items={items} activeValue={activeValue} onSelect={onSelect} ariaLabel="KIM 고도" />
 }

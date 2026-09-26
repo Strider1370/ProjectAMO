@@ -110,7 +110,7 @@ function NwpSliderBar({
         </div>
       )}
       {showLevelSlider && selectedLevel && (
-        <PressureLevelSlider levels={availableLevels} activeValue={activeSelection.level} onSelect={selectLevel} />
+        <PressureLevelSlider levels={availableLevels} activeValue={selectedLevel.id} onSelect={selectLevel} />
       )}
     </>
   )
