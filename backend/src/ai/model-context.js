@@ -1,4 +1,5 @@
 import { isAbsoluteIsoInstant } from './contracts.js'
+import { airportBriefing, AIRPORT_BRIEFING_NOTE } from './digests/airport-briefing.js'
 
 export function displayInstant(value, timezone) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: timezone,
@@ -42,7 +43,27 @@ function markStandingCaveats(value) {
   return { ...value, issues: value.issues.map((issue) => issue?.code === 'SOURCE_COVERAGE_UNVERIFIED' ? { ...issue, note: STANDING_NOTE } : issue) }
 }
 
-export function modelToolResult(tool, result, timezone) {
+// Airport questions get code-made conclusions instead of the structured TAF, so
+// the model phrases rather than interprets. The full result stays in the UI card.
+function airportBriefingResult(result, timezone, { includeRaw = false } = {}) {
+  const nowMs = Date.parse(result.reference?.effectiveNow) || Date.now()
+  const airports = result.data.airports.map((airport) => {
+    const requested = result.coverage?.find((item) => item.icao === airport.icao)?.requested
+    const window = requested ?? { start: new Date(nowMs).toISOString(), end: new Date(nowMs + 3_600_000).toISOString() }
+    const briefing = airportBriefing(airport, window, { nowMs, timezone })
+    // Report text only when the user asked for it; otherwise the answer uses the conclusions.
+    if (includeRaw) briefing.reportText = { metar: airport.metar?.raw ?? null, taf: airport.taf?.raw ?? null }
+    return { icao: airport.icao, briefing }
+  })
+  const { schemaVersion, status, reference, error } = result
+  // Standing collector caveats and raw availability are card details, not answer content.
+  const issues = (result.issues ?? []).filter((issue) => !['SOURCE_COVERAGE_UNVERIFIED', 'RAW_UNAVAILABLE'].includes(issue?.code))
+  return modelContext({ schemaVersion, status, reference, ...(error ? { error } : {}), issues,
+    data: { note: AIRPORT_BRIEFING_NOTE, airports } }, timezone)
+}
+
+export function modelToolResult(tool, result, timezone, options = {}) {
+  if (tool === 'get_airport_weather' && Array.isArray(result.data?.airports)) return airportBriefingResult(result, timezone, options)
   const airportDigest = tool === 'get_airport_weather' || tool === 'get_route_briefing'
     || (tool === 'get_my_saved_route' && result.data?.mode === 'current_briefing')
   if (!airportDigest || !Array.isArray(result.data?.airports)) return modelContext(markStandingCaveats(result), timezone)

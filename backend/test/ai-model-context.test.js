@@ -42,7 +42,7 @@ test('TAF projection excludes known outside-window changes but retains permanent
     { index: 5, type: 'PROB30', semantics: 'probabilistic', start: '2026-09-23T12:30:00Z', end: '2026-09-23T14:00:00Z' },
   ]
   const original = { data: { airports: [{ icao: 'RKSS', taf: { changes } }] }, coverage: [{ icao: 'RKSS', requested: { start: '2026-09-23T12:00:00Z', end: '2026-09-23T13:00:00Z' } }] }
-  const result = modelToolResult('get_airport_weather', original, 'UTC')
+  const result = modelToolResult('get_route_briefing', original, 'UTC')
   assert.deepEqual(result.data.airports[0].taf.changes.map((c) => c.index), [0, 1, 4, 5])
   assert.deepEqual(result.data.airports[0].taf.windowProjection.omittedChanges.map((c) => c.index), [2, 3])
   assert.deepEqual(result.data.airports[0].taf.windowProjection.completedPermanentChanges.map(c => c.index), [0, 1])
@@ -77,6 +77,7 @@ test('advisory local times convert without changing pure MCP input contract; con
 })
 
 test('route and saved-current briefings scope airport changes identically without losing raw evidence, coverage or gaps', () => {
+  // App airport questions use the code-made briefing instead (ai-airport-briefing.test.js).
   const input = {
     data: { mode: 'current_briefing', savedRoute: { id: 7 }, flight: { etd: '2026-09-23T12:03:00Z' },
       airports: [{ icao: 'RKSS', taf: { base: { cavok: true }, changes: [
@@ -88,7 +89,7 @@ test('route and saved-current briefings scope airport changes identically withou
     issues: [{ code: 'SOURCE_COVERAGE_UNVERIFIED' }], sources: [{ kind: 'taf', status: 'available' }],
   }
   const original = structuredClone(input)
-  for (const tool of ['get_airport_weather', 'get_route_briefing', 'get_my_saved_route']) {
+  for (const tool of ['get_route_briefing', 'get_my_saved_route']) {
     const projected = modelToolResult(tool, input, 'Asia/Seoul')
     const taf = projected.data.airports[0].taf
     assert.deepEqual(taf.changes.map(c => c.index), [0, 2])
@@ -128,7 +129,7 @@ test('standing coverage caveats are kept but marked as mention-on-request; real 
   assert.equal(advisory.issues[0].code, 'SOURCE_COVERAGE_UNVERIFIED')
   assert.match(advisory.issues[0].note, /only if the user asks/)
   assert.equal(advisory.issues[1].note, undefined)
-  const airports = modelToolResult('get_airport_weather', { status: 'ok', coverage: [], issues: [], data: { airports: [
+  const airports = modelToolResult('get_route_briefing', { status: 'ok', coverage: [], issues: [], data: { airports: [
     { icao: 'RKSS', warnings: { status: 'unknown', items: [], unassessedCount: 0 } },
     { icao: 'RKPC', warnings: { status: 'unknown', items: [], unassessedCount: 1 } },
     { icao: 'RKPK', warnings: { status: 'failed', items: [], unassessedCount: 0 } },

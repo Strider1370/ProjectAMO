@@ -23,6 +23,9 @@
 .copilot-message.user { justify-content: flex-end; }
 .copilot-message-body { min-width: 0; max-width: 90%; }
 .copilot-bubble { white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--stroke-2); border-radius: var(--radius-xl); background: var(--bg-1); padding: var(--space-m); }
+.copilot-bubble-lines { white-space: normal; }
+.copilot-bubble-lines p { margin: 0; white-space: pre-wrap; }
+.copilot-bubble-lines p + p { margin-top: var(--space-s); }
 .copilot-message.user .copilot-bubble { color: var(--bg-1); background: var(--accent); border-color: var(--accent); }
 .copilot-fact { border: 1px solid var(--stroke-2); border-radius: var(--radius-md); padding: var(--space-s); margin-top: var(--space-s); background: var(--bg-1); font-size: var(--fs-200); overflow-wrap: anywhere; }
 .copilot-fact summary { cursor: pointer; min-height: var(--touch-min); align-content: center; }
@@ -68,3 +71,15 @@
   .copilot-composer textarea { font-size: var(--fs-400); }
   .copilot-composer { padding-right: calc(var(--copilot-launcher-size) + var(--space-l) + var(--space-s)); }
 }
+.copilot-raw { display: grid; gap: var(--space-s); margin-top: var(--space-s); }
+.copilot-raw-report { margin: 0; border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-1); padding: var(--space-s) var(--space-m); }
+.copilot-raw-report figcaption { font-size: var(--fs-100); color: var(--text-3); margin-bottom: var(--space-xs); }
+.copilot-raw-report pre { margin: 0; font-family: Consolas, Menlo, monospace; font-size: var(--fs-200); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-1); }
+.copilot-raw-line { display: block; }
+.copilot-raw-line + .copilot-raw-line { padding-left: 2ch; }
+.copilot-raw .ap-metar-tac-hl { border-radius: var(--radius-md); padding: 0 3px; font-weight: var(--fw-bold); }
+.copilot-raw .ap-metar-tac-hl--level-ifr { background: var(--level-amber-bg); color: var(--level-amber); }
+.copilot-raw .ap-metar-tac-hl--level-lifr,
+.copilot-raw .ap-metar-tac-hl--wind { background: var(--level-red-bg); color: var(--level-red); }
+.copilot-raw .ap-metar-tac-hl--precip { background: rgba(186, 230, 253, .72); color: #0c4a6e; } /* color-lint-ignore: same precipitation tint as the airport panel */
+.copilot-raw .ap-metar-tac-hl--special { background: var(--level-red-bg); color: var(--level-red); outline: 2px dashed var(--level-red); outline-offset: -1px; }

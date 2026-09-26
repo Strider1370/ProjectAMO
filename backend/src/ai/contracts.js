@@ -180,6 +180,8 @@ const cloudSchema = z.object({
   raw: nullableString,
 }).strict()
 
+const rawLinesSchema = z.array(z.array(z.object({ text: z.string(), role: z.string() }).strict())).nullable()
+
 const metarDigestSchema = z.object({
   sourceId: z.string(),
   reportType: nullableString,
@@ -226,6 +228,7 @@ const metarDigestSchema = z.object({
   }).strict(),
   rawKind: z.enum(['original', 'reconstructed', 'unavailable']),
   raw: nullableString,
+  rawLines: rawLinesSchema,
   missingFields: z.array(z.string()),
 }).strict()
 
@@ -268,6 +271,7 @@ const tafDigestSchema = z.object({
   sampleSemantics: z.literal('parser-merged-samples'),
   rawKind: z.enum(['original', 'reconstructed', 'unavailable']),
   raw: nullableString,
+  rawLines: rawLinesSchema,
   missingFields: z.array(z.string()),
 }).strict()
 

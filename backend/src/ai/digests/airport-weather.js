@@ -2,6 +2,7 @@ import { ceilingFromClouds } from '../../briefing/airport-summary.js'
 import { categoryDetail, categoryFor } from '../../briefing/flight-category.js'
 import { buildMetarTac } from '../../serializers/metar-tac.js'
 import { buildTafTac } from '../../serializers/taf-tac.js'
+import { annotateMetarTac, annotateTafTac } from '../../parsers/tac-annotation.js'
 
 function finite(value) {
   return Number.isFinite(value) ? value : null
@@ -105,9 +106,13 @@ function rawFor(report, kind, includeRaw, issues, icao) {
     })
   }
 
+  // Token roles let the chat card colour the report with the airport-panel rules.
+  const annotated = includeRaw && raw ? (kind === 'metar' ? annotateMetarTac(raw) : annotateTafTac(raw)) : null
   return {
     rawKind,
     raw: includeRaw ? raw : null,
+    rawLines: annotated ? annotated.display_lines.map((line) => line.tokens
+      .filter((token) => token.role !== 'separator').map(({ text: value, role }) => ({ text: value, role }))) : null,
   }
 }
 

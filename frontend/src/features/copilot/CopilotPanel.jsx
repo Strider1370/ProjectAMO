@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import { useCopilot } from './useCopilot.js'
 import { floatingWindow, formatCopilotTime } from './floatingWindow.js'
@@ -10,6 +10,8 @@ import RoutePlanCard from './RoutePlanCard.jsx'
 import SavedRoutesCard from './SavedRoutesCard.jsx'
 import FlightAlertCard from './FlightAlertCard.jsx'
 import UiActionCard from './UiActionCard.jsx'
+import RawReportCard from './RawReportCard.jsx'
+import { answerParagraphs } from './answerText.js'
 import { validBriefingRef } from '../route-briefing/lib/copilotResult.js'
 import './CopilotPanel.css'
 
@@ -226,7 +228,11 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
         {message.role === 'assistant' && <img src={AVATAR} alt="기상이" />}
         <div className="copilot-message-body">
           {message.contextLabel && <p className="copilot-message-context">{message.contextBoundary ? '새 대화 기준' : '질문 기준'}: {message.contextLabel}</p>}
-          <div className="copilot-bubble">{message.text}</div>
+          {/* Spaced paragraphs; the newline text between them keeps the bubble text equal to the answer's words. */}
+          <div className={`copilot-bubble${message.role === 'assistant' ? ' copilot-bubble-lines' : ''}`}>{message.role === 'assistant'
+            ? answerParagraphs(message.text)
+              .map((line, i) => <Fragment key={i}>{i ? '\n' : ''}<p>{line}</p></Fragment>)
+            : message.text}</div>
           {(message.cards ?? []).map((card, index) => card.tool === 'request_ui_action'
             ? <UiActionCard key={`${user?.id}:${index}`} result={card.result} state={uiActions[`${message.id}:${index}`]}
               onApply={onUiAction ? (action) => void applyUiAction(`${message.id}:${index}`, action) : null} />
@@ -248,9 +254,11 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
                 {validBriefingRef(card.result.reference?.briefingRef) && <FactCard card={card} timezone={message.displayTimezone ?? timezone}
                   resultAction={resultAction} onOpenResult={onOpenResult ? openStoredResult : null}
                   onRequery={() => { chat.setDraft(`저장 경로 ID ${card.result.data?.savedRoute?.id}를 현재 자료로 다시 브리핑해 줘`); input.current?.focus() }} />}</div>
-            : <FactCard key={`${user?.id}:${index}`} card={card} timezone={message.displayTimezone ?? timezone}
-            resultAction={resultAction} onOpenResult={onOpenResult ? openStoredResult : null}
-            onRequery={() => { setAttachContext(true); chat.setDraft('현재 적용된 경로를 최신 자료로 다시 브리핑해 줘'); input.current?.focus() }} />)}
+            : <Fragment key={`${user?.id}:${index}`}>
+              {card.tool === 'get_airport_weather' && <RawReportCard result={card.result} />}
+              <FactCard card={card} timezone={message.displayTimezone ?? timezone}
+                resultAction={resultAction} onOpenResult={onOpenResult ? openStoredResult : null}
+                onRequery={() => { setAttachContext(true); chat.setDraft('현재 적용된 경로를 최신 자료로 다시 브리핑해 줘'); input.current?.focus() }} /></Fragment>)}
           {message.status && message.status !== 'completed' && <span className="copilot-result-state">{message.status === 'cancelled' ? '중지됨' : '응답 미완료'}</span>}
         </div>
       </article>)}</div>
