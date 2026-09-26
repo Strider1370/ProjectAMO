@@ -7,6 +7,8 @@ import { API_HUB_ENDPOINTS } from './api-operation-registry.js'
 
 export const API_HUB_LIMIT_BYTES = 5_000_000_000
 export const API_HUB_THRESHOLD_BYTES = 4_750_000_000
+const RESET_RETRY_WINDOW_MS = 60 * 60 * 1000
+const RESET_RETRY_INTERVAL_MS = 5 * 60 * 1000
 
 export const API_HUB_KEY_CATEGORIES = {
   aviation: '항공·일반',
@@ -30,6 +32,21 @@ function kstDay(now = Date.now()) {
 function nextKstMidnight(now = Date.now()) {
   const day = kstDay(now)
   return new Date(`${day}T15:00:00.000Z`).toISOString()
+}
+
+function kstDayStart(now) {
+  return Date.parse(`${kstDay(now)}T00:00:00+09:00`)
+}
+
+function activeBlockReason(record, now) {
+  if (record?.blockedReason !== 'upstream_403') return record?.blockedReason ?? null
+  // KMA may still return 403 at KST midnight. Retry during the first hour so
+  // one early 403 cannot hold the newly reset key for the entire day.
+  const elapsed = now - kstDayStart(now)
+  const last403At = Date.parse(record.last403At || record.lastCalledAt)
+  if (elapsed < RESET_RETRY_WINDOW_MS && Number.isFinite(last403At)
+    && now - last403At >= RESET_RETRY_INTERVAL_MS) return null
+  return 'upstream_403'
 }
 
 function fingerprint(value) {
@@ -97,7 +114,7 @@ export function createApiHubUsage({ root, keys }) {
   function assertAllowed(credential, { now = Date.now() } = {}) {
     resolveCategory(credential)
     const current = data.days[kstDay(now)]?.keys?.[fingerprint(credential)]
-    if (current?.blockedReason) throw error('api_hub_budget_blocked')
+    if (activeBlockReason(current, now)) throw error('api_hub_budget_blocked')
   }
 
   async function record(credential, { bytes, status, endpoint, now = Date.now() }) {
@@ -119,8 +136,14 @@ export function createApiHubUsage({ root, keys }) {
     else endpointItem.failures += 1
     endpointItem.lastCalledAt = calledAt
     item.endpoints[endpoint] = endpointItem
-    if (Number(status) === 403) item.blockedReason = 'upstream_403'
-    else if (item.bytes >= API_HUB_THRESHOLD_BYTES) item.blockedReason = 'daily_budget'
+    if (item.bytes >= API_HUB_THRESHOLD_BYTES) item.blockedReason = 'daily_budget'
+    else if (Number(status) === 403) {
+      item.blockedReason = 'upstream_403'
+      item.last403At = calledAt
+    } else if (Number(status) >= 200 && Number(status) < 400 && item.blockedReason === 'upstream_403') {
+      item.blockedReason = null
+      item.last403At = null
+    }
     trimDays()
     await persist()
   }
@@ -134,6 +157,7 @@ export function createApiHubUsage({ root, keys }) {
         const credential = configuredKeys[category]
         const id = credential ? fingerprint(credential) : null
         const record = id ? (dayData[id] || emptyRecord()) : emptyRecord()
+        const blockedReason = activeBlockReason(record, now)
         return {
           category,
           label,
@@ -146,8 +170,8 @@ export function createApiHubUsage({ root, keys }) {
           successes: record.successes,
           failures: record.failures,
           lastCalledAt: record.lastCalledAt,
-          status: credential ? (record.blockedReason ? 'blocked' : 'active') : 'unconfigured',
-          blockedReason: record.blockedReason,
+          status: credential ? (blockedReason ? 'blocked' : 'active') : 'unconfigured',
+          blockedReason,
           resetsAt: nextKstMidnight(now),
           endpoints: Object.entries(record.endpoints)
             .map(([endpoint, value]) => ({ label: API_HUB_ENDPOINTS[endpoint], ...value }))
