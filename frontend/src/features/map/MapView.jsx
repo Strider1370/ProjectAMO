@@ -394,6 +394,7 @@ const MapView = forwardRef(function MapView({
   showAdvisoryBadges = true,
   showGeolocateControl = true,
   showWeatherLegends = true,
+  showActiveWeatherSummary = true,
   rangeRingRadiiKm = null,
   highlightRingRadiusKm = null,
 }, ref) {
@@ -2011,7 +2012,7 @@ const MapView = forwardRef(function MapView({
 
       {error && <div className="map-view-error" role="alert">{error}</div>}
 
-      {activePanel === null && metActiveCount > 0 && (
+      {showActiveWeatherSummary && activePanel === null && metActiveCount > 0 && (
         <button type="button" className="active-weather-summary" onClick={onOpenMetPanel}
           title={activeMetLabels.join(' · ')} aria-label={`기상 ${metActiveCount}개 켜짐: ${activeMetLabels.join(', ')}. 기상정보 열기`}>
           <strong>기상 {metActiveCount}개 켜짐</strong>

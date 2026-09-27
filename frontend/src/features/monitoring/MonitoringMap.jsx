@@ -86,6 +86,7 @@ function MonitoringMap({
         showAdvisoryBadges={false}
         showGeolocateControl={false}
         showWeatherLegends={legendsOpen}
+        showActiveWeatherSummary={false}
         rangeRingRadiiKm={[8, 16, 32]}
         highlightRingRadiusKm={highlightRingRadiusKm}
         airports={weather?.airports || []}

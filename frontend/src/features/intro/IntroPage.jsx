@@ -1,8 +1,9 @@
-// 소개 페이지(/intro). 아직 첫 화면으로 쓰지 않고 주소로만 들어온다.
+// 소개 페이지(/, /intro).
 // 스크롤 연출은 외부 라이브러리 없이 고정(sticky) 구간의 진행률로 그린다(lib/scrollTimeline.js).
 import { useEffect, useRef, useState } from 'react'
 
 import { buildLiveObservation } from './lib/liveObservation.js'
+import { rememberDashboardEntry } from './introEntry.js'
 import { approach, clamp01, easeInOut, easeOut, lerp, pinnedProgress, segment, stepIndex } from './lib/scrollTimeline.js'
 import './IntroPage.css'
 
@@ -306,14 +307,15 @@ export default function IntroPage() {
   }, [motion])
 
   // 대시보드 열기: 누른 자리에서 원이 퍼진 뒤 대시보드로 이동한다.
-  const enterDashboard = (event) => {
+  const enterDashboard = (event, skipFuture = false) => {
+    rememberDashboardEntry({ skipFuture, localStorage: window.localStorage, sessionStorage: window.sessionStorage })
     const rect = event.currentTarget.getBoundingClientRect()
     const overlay = rootRef.current.querySelector('.enter')
     overlay.style.setProperty('--cx', `${rect.left + rect.width / 2}px`)
     overlay.style.setProperty('--cy', `${rect.top + rect.height / 2}px`)
     setEntering(true)
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    window.setTimeout(() => window.location.assign('/'), reduce ? 0 : 750)
+    window.setTimeout(() => window.location.assign('/dashboard'), reduce ? 0 : 750)
   }
 
   const scrollToId = (event, id) => {
@@ -350,6 +352,7 @@ export default function IntroPage() {
               <button className="btn btn-primary" type="button" onClick={enterDashboard}>대시보드 열기<Arrow /></button>
               <a className="btn btn-line" href="#gis" onClick={(event) => scrollToId(event, 'gis')}>기능 살펴보기</a>
             </div>
+            <button className="skip-intro hero-anim" type="button" onClick={(event) => enterDashboard(event, true)} style={{ animationDelay: '.22s' }}>다음부터 이 화면 보지 않기</button>
             {live && (
               <p className="live hero-anim" style={{ animationDelay: '.27s', '--vfr': live.color }}>
                 <i className="dot" aria-hidden="true" />

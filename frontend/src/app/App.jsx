@@ -26,6 +26,7 @@ import { TimeZoneProvider, useTimeZone } from '../shared/timezone/TimeZoneContex
 import { deeplinkFlightId as deeplinkFlightIdFromUrl, consumeDeeplinkFlight } from '../features/notifications/deeplinkFlight.js'
 import CopilotPanel from '../features/copilot/CopilotPanel.jsx'
 import { createUiActionExecutor } from '../features/copilot/uiActions.js'
+import { shouldShowIntro } from '../features/intro/introEntry.js'
 
 const OrganizationLoungePage = lazy(() => import('../features/organization-lounge/OrganizationLoungePage.jsx'))
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
@@ -432,8 +433,10 @@ function MainAppShell() {
 }
 
 function App() {
-  // 소개 페이지는 아직 첫 화면이 아니다. 주소로만 들어온다.
   if (/^\/intro\/?$/.test(window.location.pathname)) {
+    return <Suspense fallback={null}><IntroPage /></Suspense>
+  }
+  if (shouldShowIntro(window.location, window.localStorage, window.sessionStorage)) {
     return <Suspense fallback={null}><IntroPage /></Suspense>
   }
   if (/^\/lounge(?:\/|$)/.test(window.location.pathname)) {
