@@ -1,23 +1,18 @@
 import { getWeatherIconSrc } from '../../../../shared/weather/weather-icon-registry.js'
 import { computeSunTimes } from '../../../../shared/weather/helpers.js'
 import { mapGroundForecastIcon } from './GroundForecastPanel.jsx'
-import { createTemperatureScale, forecastColumnCenter, precipitationBar, selectHourlyForecastSlots } from '../utils/groundForecastViewModel.js'
+import { createTemperatureScale, forecastColumnCenter, groundForecastSlotStamp, precipitationBar, selectHourlyForecastSlots } from '../utils/groundForecastViewModel.js'
 
 const W = 1015, H = 430, LEFT = 28, RIGHT = 987, TEMP_TOP = 200, TEMP_BOTTOM = 270, TEMP_LABEL_TOP = 182, PRECIP_TOP = 290, PRECIP_BOTTOM = 370
 const ICON_BAND_TOP = 76, ICON_BAND_HEIGHT = 80
-const hour = (time) => time ? `${Number(String(time).slice(0, 2))}시` : '-'
 const isPrecipitationIcon = (icon) => ['rain', 'shower', 'snow', 'sleet'].includes(icon)
-const dateLabel = (date) => {
-  const day = Number(String(date || '').slice(6, 8))
-  return Number.isFinite(day) ? `${day}일` : null
-}
 const slotDate = (slot) => {
   const value = String(slot?.date ?? '')
   if (!/^\d{8}$/.test(value)) return new Date()
   return new Date(Date.UTC(Number(value.slice(0, 4)), Number(value.slice(4, 6)) - 1, Number(value.slice(6, 8)), 3))
 }
 
-export default function GroundHourlyStrip({ airport, airportMeta }) {
+export default function GroundHourlyStrip({ airport, airportMeta, timeZone = 'KST' }) {
   const slots = selectHourlyForecastSlots(airport?.hourly || [])
   const center = (index) => forecastColumnCenter(index, { start: LEFT, end: RIGHT, count: 8 })
   const scale = createTemperatureScale(slots, { top: TEMP_TOP, bottom: TEMP_BOTTOM })
@@ -53,12 +48,14 @@ export default function GroundHourlyStrip({ airport, airportMeta }) {
     {slots.map((slot, index) => {
       const x = center(index), y = scale(slot?.temp), rain = precipitationBar(slot?.rainProb, { top: PRECIP_TOP, bottom: PRECIP_BOTTOM })
       const value = Number.isFinite(slot?.rainProb) ? rain.value : '-'
-      const changed = index > 0 && slot?.date !== slots[index - 1]?.date
-      const date = dateLabel(slot?.date)
+      const stamp = groundForecastSlotStamp(slot, timeZone)
+      const previousStamp = groundForecastSlotStamp(slots[index - 1], timeZone)
+      const changed = index > 0 && stamp?.dateKey !== previousStamp?.dateKey
+      const date = stamp?.dayLabel
       const extreme = slot?.temp === maximumTemperature ? 'is-max' : slot?.temp === minimumTemperature ? 'is-min' : ''
       return <g key={index} data-hourly-column={index} data-center-x={x}>
         {(index === 0 || changed) && date ? <text className="ghs-date" data-hourly-date x={x} y="28" textAnchor="middle">{date}</text> : null}
-        <text className={`ghs-time${index === 0 ? ' is-now' : ''}${changed ? ' is-daybreak' : ''}`} data-hourly-row="time" data-hourly-time x={x} y="60" textAnchor="middle">{hour(slot?.time)}</text>
+        <text className={`ghs-time${index === 0 ? ' is-now' : ''}${changed ? ' is-daybreak' : ''}`} data-hourly-row="time" data-hourly-time x={x} y="60" textAnchor="middle">{stamp?.hourLabel || '-'}</text>
         {slot ? <image data-hourly-row="icon" data-hourly-icon href={getWeatherIconSrc(mapGroundForecastIcon(slot.icon, slot.time, computeSunTimes(airportMeta?.lat, airportMeta?.lon, slotDate(slot), 'KST')))} x={x - 34} y="82" width="68" height="68" /> : <text x={x} y="124" textAnchor="middle">-</text>}
         {y != null && <><circle className={`ghs-dot ${extreme}`} data-hourly-row="temp-dot" data-hourly-dot cx={x} cy={y} r="6" /><text className={`ghs-temp ${extreme}`} data-hourly-row="temp-label" data-hourly-temperature x={x} y={Math.max(y - 18, TEMP_LABEL_TOP)} textAnchor="middle">{slot.temp}°C</text></>}
         <rect data-hourly-row="precip-bar" x={x - 12} y={rain.y} width="24" height={rain.height} />

@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { distanceNm, pathLengthNm, trueBearing, magneticBearing, ringPolygon } from './geo.js'
 
-// 측정 도구(좌표/거리/반경/방위/고도) 공용 오버레이. 폴리곤은 별도(usePolygonDraw).
+// 내 지도의 간편 측정과 독립 연직단면도 선 지정에 쓰는 공용 오버레이.
 // 한 번에 한 도구만 활성이며, 지도 클릭 핸들러는 활성 도구가 측정 도구일 때만 동작한다.
-export const MEASURE_TOOLS = ['coordinate', 'distance', 'radius', 'bearing', 'elevation']
+export const MEASURE_TOOLS = ['coordinate', 'distance', 'profile', 'radius', 'bearing', 'elevation']
 const MEASURE_SET = new Set(MEASURE_TOOLS)
 const ACCENT = '#2563eb'
 const SRC = 'mt-measure'
@@ -32,7 +32,9 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
   const [coord, setCoord] = useState(null)          // {lng,lat}
   const [distance, setDistance] = useState(null)    // {totalNm, segsNm:[], count}
   const [distanceDone, setDistanceDone] = useState(false)
+  const [lineCoordinates, setLineCoordinates] = useState(null)
   const [bearingInfo, setBearingInfo] = useState(null) // {mn,tn,nm}
+  const [bearingCoordinates, setBearingCoordinates] = useState(null)
   const [center, setCenter] = useState(null)        // {lng,lat}
   const [rings, setRings] = useState([])            // [nm,...]
   const [elevation, setElevation] = useState(null)  // {ft, loading, error, lng, lat}
@@ -69,7 +71,7 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
     if (tool === 'elevation' && st.point) {
       features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: st.point }, properties: {} })
     }
-    if (tool === 'distance') {
+    if (tool === 'distance' || tool === 'profile') {
       const coords = st.mouse ? [...st.verts, st.mouse] : [...st.verts]
       if (coords.length >= 2) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} })
       for (const v of st.verts) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: v }, properties: {} })
@@ -124,9 +126,9 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
         st.point = p; setCoord({ lng: p[0], lat: p[1] }); render()
       } else if (tool === 'elevation') {
         st.point = p; render(); fetchElevation(p)
-      } else if (tool === 'distance') {
+      } else if (tool === 'distance' || tool === 'profile') {
         // 완료 상태에서 다시 클릭하면 새 측정 시작.
-        if (st.done) { st.verts = []; st.mouse = null; st.done = false; setDistanceDone(false) }
+        if (st.done) { st.verts = []; st.mouse = null; st.done = false; setDistanceDone(false); setLineCoordinates(null) }
         // 더블클릭(두 번째 클릭 detail>=2)으로 완료 — 데스크톱용. 터치는 패널 "측정 완료" 버튼 사용.
         if (e.originalEvent.detail >= 2 && st.verts.length >= 2) { finishDistance(); return }
         st.verts.push(p); syncDistance(); render()
@@ -164,7 +166,7 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
         render()
         return
       }
-      if (tool !== 'distance' && tool !== 'bearing') return
+      if (tool !== 'distance' && tool !== 'profile' && tool !== 'bearing') return
       if (st.verts.length === 0 || st.done) return
       if (tool === 'bearing' && st.verts.length >= 2) return
       st.mouse = [e.lngLat.lng, e.lngLat.lat]
@@ -194,19 +196,18 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
   // 도구 전환 시 진행 상태 초기화 (새 도구는 깨끗하게 시작).
   useEffect(() => {
     stRef.current = { verts: [], mouse: null, center: null, rings: [], point: null, done: false, dragging: false, dragRadius: 0 }
-    setCoord(null); setDistance(null); setDistanceDone(false); setBearingInfo(null); setCenter(null); setRings([]); setElevation(null)
+    setCoord(null); setDistance(null); setDistanceDone(false); setLineCoordinates(null); setBearingInfo(null); setBearingCoordinates(null); setCenter(null); setRings([]); setElevation(null)
     render()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool])
 
-  // 패널 열림 + 도구 선택 시 커서를 십자(모드 표시). 어떤 도구든 적용 — 폴리곤 포함.
-  // dcz(거리)·dragPan(반경)은 측정 도구만 관리한다. 폴리곤의 커서/더블클릭은 usePolygonDraw가 자체 관리.
+  // 활성 도구에 십자 커서를 적용하고 거리·단면도의 더블클릭 확대를 잠시 끈다.
   useEffect(() => {
     if (!map) return undefined
     const active = panelOpen && !!activeTool
     map.getCanvas().style.cursor = active ? 'crosshair' : ''
     if (MEASURE_SET.has(activeTool)) {
-      if (active && activeTool === 'distance') map.doubleClickZoom.disable(); else map.doubleClickZoom.enable()
+      if (active && (activeTool === 'distance' || activeTool === 'profile')) map.doubleClickZoom.disable(); else map.doubleClickZoom.enable()
       if (active && activeTool === 'radius') map.dragPan.disable(); else map.dragPan.enable()
     }
     return () => {
@@ -228,13 +229,14 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
     const st = stRef.current
     if (st.verts.length < 2) return
     st.done = true; st.mouse = null
-    setDistanceDone(true); syncDistance(); render()
+    setDistanceDone(true); setLineCoordinates(st.verts.map((point) => [...point])); syncDistance(); render()
   }
   function syncBearing() {
     const v = stRef.current.verts
-    if (v.length < 2) { setBearingInfo(null); return }
+    if (v.length < 2) { setBearingInfo(null); setBearingCoordinates(null); return }
     const [a, b] = v
     setBearingInfo({ mn: magneticBearing(a, b), tn: trueBearing(a, b), nm: distanceNm(a, b) })
+    setBearingCoordinates([[...a], [...b]])
   }
 
   async function fetchElevation(p) {
@@ -253,7 +255,7 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
   // ── 패널이 호출하는 액션들 ────────────────────────────────────────────
   function clear() {
     stRef.current = { verts: [], mouse: null, center: null, rings: [], point: null, done: false, dragging: false, dragRadius: 0 }
-    setCoord(null); setDistance(null); setDistanceDone(false); setBearingInfo(null); setCenter(null); setRings([]); setElevation(null)
+    setCoord(null); setDistance(null); setDistanceDone(false); setLineCoordinates(null); setBearingInfo(null); setBearingCoordinates(null); setCenter(null); setRings([]); setElevation(null)
     render()
   }
   function undoVertex() {
@@ -278,7 +280,7 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
   }
 
   return {
-    coord, distance, distanceDone, bearingInfo, center, rings, elevation,
+    coord, distance, distanceDone, lineCoordinates, bearingInfo, bearingCoordinates, center, rings, elevation,
     clear, undoVertex, finishDistance, addRing, removeRing,
   }
 }

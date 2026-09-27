@@ -4,14 +4,7 @@
 // format only has to be maintained in one place.
 
 import './AirportPanel.css'
-
-export function fmtBulletinTime(tm) {
-  if (!tm) return '—'
-  // "2026-05-07 06:00:00.0" → "2026년 05월 07일 06시"
-  const m = tm.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2})/)
-  if (!m) return tm
-  return `${m[1]}년 ${m[2]}월 ${m[3]}일 ${m[4]}시`
-}
+import { fmtBulletinTime } from './airportInfoTime.js'
 
 // 원문이 "○ ... ○ ..."를 줄바꿈 없이 이어 붙여 보내는 경우가 있어, ○ 항목 단위로 줄을 분리하고
 // "○ (주제어)" 형식의 괄호 부분(항상 같은 형식)을 굵게 강조한다.
@@ -34,7 +27,7 @@ export function BulletText({ text, className }) {
   )
 }
 
-export default function AirportInfoDocument({ info }) {
+export default function AirportInfoDocument({ info, tz = 'KST' }) {
   if (!info) return null
 
   const showSel3 = info.sel_val3 && info.sel_val3.trim()
@@ -49,7 +42,7 @@ export default function AirportInfoDocument({ info }) {
 
       <h2 className="ap-info-title">{info.title || '—'}</h2>
 
-      <p className="ap-info-date">[ {fmtBulletinTime(info.tm)} 발표 ]</p>
+      <p className="ap-info-date">[ {fmtBulletinTime(info.tm, tz)} 발표 ]</p>
 
       {info.summary && (
         <p className="ap-info-summary">{info.summary}</p>

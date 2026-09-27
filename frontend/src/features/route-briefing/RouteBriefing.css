@@ -958,6 +958,14 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   font-weight: 700;
 }
 
+.vertical-profile-window-status {
+  margin: 0;
+  padding: 8px 16px;
+  color: var(--text-2);
+  background: var(--bg-2);
+  font-size: 12px;
+}
+
 .vertical-profile-window-close {
   flex: 0 0 auto;
   height: 32px;

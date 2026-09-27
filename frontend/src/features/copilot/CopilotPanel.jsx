@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import { useCopilot } from './useCopilot.js'
 import { floatingWindow, formatCopilotTime } from './floatingWindow.js'
@@ -63,13 +63,19 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
   const registerContext = useMemo(() => createContextRegistration(), [user?.id])
   const preparation = useRef(null)
   const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
-  const launcher = useRef(null), input = useRef(null), thread = useRef(null), drag = useRef(null)
-  const scroll = useRef({ top: 0, follow: true })
+  const launcher = useRef(null), input = useRef(null), thread = useRef(null), drag = useRef(null), answerSpace = useRef(null)
+  const scroll = useRef({ top: 0, follow: true, manual: false, seenAnswerId: null, anchoredAnswerId: null })
   // Restore the thread position only when the thread mounts (window reopened); an inline
   // ref ran on every render and threw the reader back to a stale position.
   const threadRef = useCallback((node) => { thread.current = node; if (node) node.scrollTop = scroll.current.top }, [])
   const size = floatingWindow(viewport, expanded, position)
   function close() { setOpen(false); launcher.current?.focus() }
+  function releaseAnswerScroll() {
+    if (!scroll.current.anchoredAnswerId) return
+    scroll.current.anchoredAnswerId = null
+    scroll.current.follow = false
+    scroll.current.manual = true
+  }
   async function applyUiAction(cardId, action) {
     if (uiActionPending.current || !onUiAction) return
     uiActionPending.current = true
@@ -143,9 +149,36 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
     setPreparing(false); setContextChoice(null); setContextError(null); setResultAction(null); setSettingsAction(null); setShownStretch(null)
     return () => { preparation.current?.abort() }
   }, [user?.id])
-  useEffect(() => {
-    if (thread.current && scroll.current.follow) thread.current.scrollTop = thread.current.scrollHeight
-  }, [chat.messages, chat.busy, open, contextChoice])
+  useLayoutEffect(() => {
+    const node = thread.current
+    const space = answerSpace.current
+    if (!node || !space || !open) return
+    const latest = chat.messages.at(-1)
+    if (latest?.role !== 'assistant' || contextChoice) {
+      space.style.height = '0px'
+      scroll.current.anchoredAnswerId = null
+      if (scroll.current.follow) node.scrollTop = node.scrollHeight
+      scroll.current.top = node.scrollTop
+      return
+    }
+    const isNewAnswer = scroll.current.seenAnswerId !== latest.id
+    scroll.current.seenAnswerId = latest.id
+    if ((isNewAnswer && scroll.current.follow) || scroll.current.anchoredAnswerId === latest.id) {
+      const answers = node.querySelectorAll('.copilot-message.assistant')
+      const answer = answers[answers.length - 1]
+      if (answer) {
+        space.style.height = '0px'
+        const answerTop = node.scrollTop + answer.getBoundingClientRect().top - node.getBoundingClientRect().top - 12
+        space.style.height = `${Math.max(0, answerTop - (node.scrollHeight - node.clientHeight))}px`
+        node.scrollTop = answerTop
+        scroll.current.top = node.scrollTop
+        scroll.current.anchoredAnswerId = latest.id
+      }
+    } else if (scroll.current.follow) {
+      node.scrollTop = node.scrollHeight
+      scroll.current.top = node.scrollTop
+    }
+  }, [chat.messages, chat.busy, open, contextChoice, size.height])
   useEffect(() => { if (contextChoice && open) choiceHeading.current?.focus() }, [contextChoice, open])
   async function submitContext(candidate, submittedMessage, displayTimezone, signal) {
     const selected = structuredClone(candidate)
@@ -164,6 +197,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
     if (chat.busy || preparation.current || contextChoice) return
     if (!retry && chat.status?.quota?.remaining === 0) return
     scroll.current.follow = true
+    scroll.current.manual = false
     if (retry) return chat.send(null, timezone, true)
     const submittedMessage = chat.draft
     if (!submittedMessage.trim()) return
@@ -232,7 +266,11 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
       {chat.conversationContext?.label && <span>최근 질문 기준: {chat.conversationContext.label}</span>}</div>
     <div className="copilot-thread" role="log" aria-label="기상이 대화 내역" aria-live="polite"
       ref={threadRef}
-      onScroll={(event) => { const node = event.currentTarget; scroll.current = { top: node.scrollTop, follow: node.scrollHeight - node.scrollTop - node.clientHeight < 50 } }}>
+      onScroll={(event) => { const node = event.currentTarget; scroll.current.top = node.scrollTop; if (!scroll.current.anchoredAnswerId && !scroll.current.manual) scroll.current.follow = node.scrollHeight - node.scrollTop - node.clientHeight < 50 }}
+      onWheel={releaseAnswerScroll}
+      onTouchStart={releaseAnswerScroll}
+      onPointerDown={releaseAnswerScroll}
+      onKeyDown={releaseAnswerScroll}>
       {!chat.messages.length && <div className="copilot-welcome"><img src={AVATAR} alt="" /><h2>무엇을 확인해 볼까요?</h2>
         <p>공항 관측·예보와 SIGMET·AIRMET을 확인하고, 자료의 뜻과 부족한 부분을 설명해 드려요.</p>
         <p className="copilot-disclosure">전송한 질문과 필요한 기상·경로 자료는 OpenAI API로 전달됩니다. 내 저장 경로를 요청하면 해당 후보의 이름·비행 조건도 포함됩니다.</p></div>}
@@ -304,6 +342,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
           : `요청을 완료하지 못했어요. (${chat.error})`}</p>
         {chat.retryable && <button type="button" disabled={chat.busy} onClick={() => void send(true)}>같은 요청 다시 확인</button>}
         <button type="button" disabled={chat.busy || preparing} onClick={() => { setContextChoice(null); setSettingsAction(null); setUiActions({}); chat.reset() }}>새 대화</button></div>}
+      <div ref={answerSpace} aria-hidden="true" />
     </div>
   </>
   if (!chat.status?.enabled) return null

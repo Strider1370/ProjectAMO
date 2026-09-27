@@ -3,7 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useAuth } from '../auth/AuthContext.jsx'
 import { importMapDocument } from './lib/importMapDocument.js'
 import { listMyMapFiles, saveMyMapFile, loadMyMapFile, deleteMyMapFile } from './lib/myMapStore.js'
-import { createMapDocument, copyMapDocument, newMapId, initialMapVisibility, scopeId } from './lib/mapDocument.js'
+import { createMapDocument, createMapItem, copyMapDocument, newMapId, initialMapVisibility, scopeId } from './lib/mapDocument.js'
+import { applyMapCommand } from './lib/mapCommands.js'
 import { createMapPersistence, GUEST_MAP_SCOPE } from './lib/mapPersistence.js'
 import { previewMapConversion, convertImportedMap, exportMapKml } from './lib/mapKmlCodec.js'
 import { convertDrawSpike, readDrawSpikeState, readMigratedIds, writeMigratedIds } from './lib/importDrawSpike.js'
@@ -417,6 +418,28 @@ export default function useMyMap(mapRef, isStyleReady, styleRevision, { onOpenPa
     return copy
   }
   return { documents, currentId, selectedId, mode, accountScope: scopeKey, visibleIds, hiddenGroups, hiddenItems, busy, error, notice, storage, drawSpike, ...editing,
+    saveMeasurement: (kind, data) => navigate(() => {
+      if (!storage.ready || !persistence.current) { setError('지도를 저장할 준비가 되지 않았습니다.'); return { ok: false } }
+      try {
+        const item = kind === 'point'
+          ? createMapItem('point', { type: 'Point', coordinates: data.coordinates }, { name: data.name ?? '측정 지점' })
+          : kind === 'line'
+            ? createMapItem('line', { type: 'LineString', coordinates: data.coordinates }, { name: data.name ?? '측정 선' })
+            : kind === 'circle'
+              ? createMapItem('circle', null, { name: data.name ?? '측정 원', definition: { center: data.center, radiusNm: data.radiusNm } })
+              : null
+        if (!item) throw new Error('저장할 측정 결과가 없습니다.')
+        const current = state.current.documents.find((entry) => entry.id === state.current.currentId && entry.kind === 'personal' && entry.loaded !== false)
+        const base = current ?? createMapDocument('측정 결과')
+        const next = applyMapCommand(base, { type: 'addItems', items: [item] })
+        if (current) replaceDocument(next)
+        else { installDocument(next); persistence.current.save(next) }
+        setDocumentVisible(next.id, true)
+        setCurrentId(next.id); setSelectedId(item.id); setMode('view')
+        setNotice(`${item.name}을(를) 내 지도에 저장했습니다.`)
+        return { ok: true }
+      } catch (failure) { setError(failure.message); return { ok: false, error: failure.message } }
+    }),
     dismissMessages: clearMessages,
     retrySave: (id) => runStorageAction((session) => session.retry(id)),
     copyConflict: (id) => navigate(() => runStorageAction(() => saveCopy(id))),

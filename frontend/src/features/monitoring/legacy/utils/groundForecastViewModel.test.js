@@ -5,7 +5,9 @@ import * as groundForecastViewModel from './groundForecastViewModel.js'
 import {
   createTemperatureScale,
   forecastColumnCenter,
+  formatGroundForecastIssue,
   formatGroundForecastMeta,
+  groundForecastSlotStamp,
   nextGroundForecastView,
   precipitationBar,
   selectHourlyForecastSlots,
@@ -65,11 +67,20 @@ test('precipitation bars clamp to the 0-100 percent band', () => {
   assert.deepEqual(precipitationBar(100, { top: 290, bottom: 370 }), { value: 100, y: 290, height: 80 })
 })
 
-test('hourly metadata includes the airport 읍면동 and only the village issue hour', () => {
-  const label = formatGroundForecastMeta({ hourly_status: { base_time: '1400' }, tmFc: '202608100600' }, 'RKJB', 'hourly')
-  assert.equal(label, '망운면 동네예보 14시 발표')
-  assert.equal(formatGroundForecastMeta({ hourly_status: { base_time: '1400' }, tmFc: '202608100600' }, 'RKJB', 'weekly'), '중기예보 06시 발표')
-  assert.doesNotMatch(label, /중기예보|mid|short|tmFc|08\/10/i)
+test('ground forecast issue times convert KST source values to the selected timezone', () => {
+  const airport = { hourly_status: { base_date: '20260810', base_time: '1400' }, tmFc: '202608100600' }
+  const label = formatGroundForecastMeta(airport, 'RKJB', 'hourly')
+  assert.equal(label, '망운면 동네예보 08/10 14:00 KST 발표')
+  assert.equal(formatGroundForecastMeta(airport, 'RKJB', 'weekly'), '중기예보 08/10 06:00 KST 발표')
+  assert.equal(formatGroundForecastMeta(airport, 'RKJB', 'hourly', 'UTC'), '망운면 동네예보 08/10 05:00 UTC 발표')
+  assert.equal(formatGroundForecastMeta(airport, 'RKJB', 'weekly', 'UTC'), '중기예보 08/09 21:00 UTC 발표')
+  assert.equal(formatGroundForecastIssue('202608100600', 'UTC'), '08/09 21:00 UTC')
+})
+
+test('hourly forecast valid slots keep the correct day after UTC conversion', () => {
+  const slot = { date: '20260810', time: '0000' }
+  assert.deepEqual(groundForecastSlotStamp(slot, 'KST'), { dateKey: '2026-08-10', dayLabel: '10일', hourLabel: '0시' })
+  assert.deepEqual(groundForecastSlotStamp(slot, 'UTC'), { dateKey: '2026-08-09', dayLabel: '9일', hourLabel: '15시' })
 })
 
 test('metadata keeps the active source and falls back when an airport has no 읍면동 mapping', () => {

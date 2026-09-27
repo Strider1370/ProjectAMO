@@ -142,6 +142,11 @@ export function formatUtcTmfcStamp(value, tz = 'KST') {
   return formatEpochStamp(parseUtcTmfcToMs(value), tz)
 }
 
+function formatSigwxValidStamp(tmfc, tz = 'KST') {
+  const issueMs = parseUtcTmfcToMs(tmfc)
+  return formatEpochStamp(issueMs == null ? null : issueMs + 4 * 60 * 60 * 1000, tz)
+}
+
 export function formatAdvisoryPanelLabel(item, kind) {
   const base = kind === 'sigmet' ? 'SIGMET' : 'AIRMET'
   const sequence = item?.sequence_number ? ` ${item.sequence_number}` : ''
@@ -519,8 +524,8 @@ export function buildWeatherOverlayModel({
       label: formatReferenceTimeLabel(resolvedLightningReferenceTimeMs - band.max * 60 * 1000, tz),
     })),
     radarReferenceTimeMs: radarReferenceTimeMs ?? Date.now(),
-    sigwxIssueLabel: formatSigwxStamp(selectedSigwxEntry?.fetched_at, tz),
-    sigwxValidLabel: formatSigwxStamp(selectedSigwxEntry?.tmfc, tz),
+    sigwxIssueLabel: formatUtcTmfcStamp(selectedSigwxEntry?.tmfc, tz),
+    sigwxValidLabel: formatSigwxValidStamp(selectedSigwxEntry?.tmfc, tz),
     nwpIssueLabel: formatUtcTmfcStamp(nwpSelection?.tmfc ?? null, tz),
     nwpSelection,
     nwpValidLabel: (() => {

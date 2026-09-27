@@ -1,5 +1,5 @@
 import {
-  Cloud, FileText, Layers, Settings,
+  FileText, Settings,
   Menu, Monitor, HelpCircle, History, Search, FileWarning, User, Radio, Map, Building2
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -11,14 +11,12 @@ import useHasHover from '../../shared/ui/useHasHover.js'
 import './Sidebar.css'
 
 const topItems = [
-  { label: '기관 라운지', icon: Building2, href: '/lounge' },
-  { label: '항공정보',         icon: Layers, active: true },
-  { label: '기상정보',         icon: Cloud },
-  { label: '내 지도',          icon: Map },
-  { label: 'ADS-B',           icon: Radio },
-  { label: 'NOTAM',            icon: FileWarning },
-  { label: '상황판',           icon: Monitor, href: '/monitoring', pointerOnly: true }, // 벽걸이 전용 — 터치 기기에서는 감춘다
   { label: '비행 전 브리핑',   icon: FileText },
+  { label: '내 지도',          icon: Map },
+  { label: '기관 라운지', icon: Building2, href: '/lounge' },
+  { label: 'NOTAM',            icon: FileWarning },
+  { label: 'ADS-B',           icon: Radio },
+  { label: '상황판',           icon: Monitor, href: '/monitoring', pointerOnly: true }, // 벽걸이 전용 — 터치 기기에서는 감춘다
 ]
 
 const bottomItems = [
@@ -50,9 +48,7 @@ function SidebarButton({ item, isExpanded, onClick }) {
 }
 
 const PANEL_MAP = {
-  항공정보:        'aviation',
   '내 지도':        'my-map',
-  기상정보:        'met',
   'ADS-B':         'traffic',
   NOTAM:           'notam',
   '비행 전 브리핑': 'route-check',
@@ -72,9 +68,7 @@ function Sidebar({ activePanel, onPanelToggle, isExpanded, onExpandToggle, hasUp
   // 켜진 레이어 수 배지(모바일과 동일 정보). ponytail: 축소 시 점만, 확장 시 숫자 — 36px 레일에 숫자 욱여넣지 않음.
   const counts = layerCounts || { aviation: 0, met: 0, traffic: 0 }
   const badgeFor = (label) =>
-    label === '항공정보' ? counts.aviation || undefined
-    : label === '기상정보' ? counts.met || undefined
-    : label === 'ADS-B' ? counts.traffic || undefined
+    label === 'ADS-B' ? counts.traffic || undefined
     : undefined
   const renderBottomItem = (item) => {
     const panelId = PANEL_MAP[item.label]

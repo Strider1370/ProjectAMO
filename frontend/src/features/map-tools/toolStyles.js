@@ -2,8 +2,12 @@ import { makeStyles } from '../../shared/ui/fluent.js'
 
 // 지도 도구 패널/본문 공용 스타일. Fluent 토큰만 사용(디자인 헌법).
 export const toolStyles = makeStyles({
+  panelEmbedded: {
+    display: 'flex', flexDirection: 'column', gap: 'var(--space-s)',
+    padding: 'var(--space-s) 0', fontFamily: 'var(--font-base)',
+  },
   panel: {
-    // 런처 버튼(top:12, right:66/12) 바로 아래 — 오른쪽 위에서 뜬다(버튼과 시선 일치).
+    // 데스크톱 지도 정보 버튼 아래 위치는 App.css에서 지정한다.
     position: 'absolute', top: '66px', right: '12px', zIndex: 8,
     display: 'flex', flexDirection: 'column', gap: 'var(--space-s)',
     width: '280px', padding: 'var(--space-m)',

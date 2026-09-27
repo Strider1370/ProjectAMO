@@ -89,3 +89,14 @@ test('실제 소스 시각도 UTC 설정에 맞춰 변환한다', () => {
   assert.equal(out.ceiling, '15:00')
   assert.equal(out.stations, '13:00')
 })
+
+test('지도 시각 카드에 날짜와 시간대를 포함해 자정을 넘는 자료를 구분한다', () => {
+  const kst = legendStamps(sourcedTimes, true, null, 'KST')
+  assert.equal(kst.visibilityFull, '08/01 23:50 KST')
+  assert.equal(kst.ceilingFull, '08/02 00:00 KST')
+  assert.equal(kst.stationsFull, '08/01 22:00 KST')
+
+  const utc = legendStamps(sourcedTimes, true, null, 'UTC')
+  assert.equal(utc.visibilityFull, '08/01 14:50 UTC')
+  assert.equal(utc.ceilingFull, '08/01 15:00 UTC')
+})

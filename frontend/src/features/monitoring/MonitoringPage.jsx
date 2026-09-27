@@ -463,7 +463,7 @@ export default function MonitoringPage() {
   function slideContentFor(target) {
     switch (slideIdFor(target)) {
       case 'wxinfo':
-        return <MonitoringWxInfoSlide info={selectedAirportInfo} />
+        return <MonitoringWxInfoSlide info={selectedAirportInfo} timeZone={timeZone} />
       case 'image':
         return slideshow.imageUrl
           ? <img className="monitoring-slide-overlay-image" src={slideshow.imageUrl} alt="" />
@@ -807,7 +807,7 @@ export default function MonitoringPage() {
           <div className="left-panel-body">
             {warningPanel}
             {metarPanel}
-            {dashboardMode === 'ground' && (groundForecastDisplayMode === GROUND_FORECAST_DISPLAY_MODE.CLASSIC ? <GroundForecastClassic groundForecastData={data.groundForecast} icao={selectedAirport} /> : <GroundForecastViewport groundForecastData={data.groundForecast} icao={selectedAirport} airportMeta={selectedAirportMeta} />)}
+            {dashboardMode === 'ground' && (groundForecastDisplayMode === GROUND_FORECAST_DISPLAY_MODE.CLASSIC ? <GroundForecastClassic groundForecastData={data.groundForecast} icao={selectedAirport} timeZone={timeZone} /> : <GroundForecastViewport groundForecastData={data.groundForecast} icao={selectedAirport} airportMeta={selectedAirportMeta} timeZone={timeZone} />)}
             {tafPanel}
           </div>
 

@@ -26,11 +26,29 @@ function isThreeHourSlot(slot) {
   return /^\d{2}$/.test(hourText) && Number(hourText) % 3 === 0
 }
 
-function issueHour(value, format) {
+export function formatGroundForecastIssue(value, tz = 'KST') {
   const text = String(value ?? '')
-  if (!text.trim()) return null
-  const hour = format === 'compact' ? text.slice(8, 10) : text.padStart(4, '0').slice(0, 2)
-  return /^\d{2}$/.test(hour) ? `${hour}시` : null
+  if (!/^\d{10}(\d{2})?$/.test(text)) return null
+  const ms = Date.UTC(+text.slice(0, 4), +text.slice(4, 6) - 1, +text.slice(6, 8), +text.slice(8, 10) - 9, text.length === 12 ? +text.slice(10, 12) : 0)
+  if (!Number.isFinite(ms)) return null
+  const date = new Date(ms + (tz === 'UTC' ? 0 : 9 * 3600_000))
+  const two = (number) => String(number).padStart(2, '0')
+  return `${two(date.getUTCMonth() + 1)}/${two(date.getUTCDate())} ${two(date.getUTCHours())}:${two(date.getUTCMinutes())} ${tz === 'UTC' ? 'UTC' : 'KST'}`
+}
+
+export function groundForecastSlotStamp(slot, tz = 'KST') {
+  const date = String(slot?.date ?? '')
+  const time = String(slot?.time ?? '')
+  if (!/^\d{8}$/.test(date) || !/^\d{4}$/.test(time)) return null
+  const ms = Date.UTC(+date.slice(0, 4), +date.slice(4, 6) - 1, +date.slice(6, 8), +time.slice(0, 2) - 9, +time.slice(2, 4))
+  if (!Number.isFinite(ms)) return null
+  const display = new Date(ms + (tz === 'UTC' ? 0 : 9 * 3600_000))
+  const two = (number) => String(number).padStart(2, '0')
+  return {
+    dateKey: `${display.getUTCFullYear()}-${two(display.getUTCMonth() + 1)}-${two(display.getUTCDate())}`,
+    dayLabel: `${display.getUTCDate()}일`,
+    hourLabel: `${display.getUTCHours()}시`,
+  }
 }
 
 export function selectHourlyForecastSlots(hourly) {
@@ -73,9 +91,10 @@ export function precipitationBar(value, { top, bottom }) {
   return { value: percent, y: bottom - height, height }
 }
 
-export function formatGroundForecastMeta(airportForecast, icao, activeView) {
-  const village = issueHour(airportForecast?.hourly_status?.base_time, 'base')
-  const mid = issueHour(airportForecast?.tmFc, 'compact')
+export function formatGroundForecastMeta(airportForecast, icao, activeView, tz = 'KST') {
+  const hourly = airportForecast?.hourly_status
+  const village = formatGroundForecastIssue(`${hourly?.base_date || ''}${hourly?.base_time || ''}`, tz)
+  const mid = formatGroundForecastIssue(airportForecast?.tmFc, tz)
   if (activeView === GROUND_FORECAST_VIEW.WEEKLY) return `중기예보 ${mid ?? '-'} 발표`
   const location = GROUND_FORECAST_LOCATION_LABELS[icao]
   return `${location ? `${location} ` : ''}동네예보 ${village ?? '-'} 발표`

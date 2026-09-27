@@ -235,3 +235,26 @@
 .my-map-editor-list-actions form { flex-basis: 100%; }
 .my-map-editor-empty { padding: var(--space-xl) var(--space-l); text-align: center; font-size: var(--fs-200); color: var(--text-3); line-height: 1.8; }
 @media (max-width: 719px) { .my-map-start-choice { padding: var(--space-l); } .my-map-choice-drawing { height: 46px; } }
+/* 저장할 도형과 일시적인 측정을 같은 진입점에서 구분한다. */
+.my-map-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.my-map-mode-tabs button {
+  padding: 9px 10px;
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.my-map-mode-tabs button.is-active {
+  border-color: var(--accent);
+  background: var(--bg-1);
+  color: var(--accent);
+  font-weight: 700;
+}

@@ -3,8 +3,8 @@ import { mobilePressureSliderBounds } from './lib/pressureSliderLayout.js'
 import LevelSlider from './LevelSlider.jsx'
 
 // Vertical level slider anchored top-right of the map (KIM, 난류, 운정고도 all share this).
-// On mobile there's no room for tick labels, so it collapses to a fixed-position strip
-// measured against the basemap switcher and nav controls instead of flowing in the rail stack.
+// On mobile there's no room for tick labels, so it occupies the gap between
+// the top controls and whichever bottom-right control begins first.
 export default function LevelSliderPanel({ items, activeValue, onSelect, ariaLabel }) {
   const wrapperRef = useRef(null)
   const [mobileBounds, setMobileBounds] = useState(null)
@@ -20,9 +20,12 @@ export default function LevelSliderPanel({ items, activeValue, onSelect, ariaLab
       }
       const basemap = wrapper.querySelector('.basemap-switcher-toggle')
       const navigation = wrapper.querySelector('.mapboxgl-ctrl-geolocate') || wrapper.querySelector('.mapboxgl-ctrl-zoom-in')
+      const basemapRect = basemap?.getBoundingClientRect()
+      const navigationRect = navigation?.getBoundingClientRect()
+      const lowerTop = Math.min(basemapRect?.top ?? Infinity, navigationRect?.top ?? Infinity)
       setMobileBounds(mobilePressureSliderBounds(
-        basemap?.getBoundingClientRect(),
-        navigation?.getBoundingClientRect(),
+        { bottom: 64 },
+        Number.isFinite(lowerTop) ? { top: lowerTop, left: navigationRect?.left, width: navigationRect?.width } : null,
         { viewportWidth: window.innerWidth },
       ))
     }

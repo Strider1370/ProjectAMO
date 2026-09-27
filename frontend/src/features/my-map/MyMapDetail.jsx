@@ -1,5 +1,6 @@
 import { MapPin, Route, CircleDot, Shapes, X } from 'lucide-react'
 import MapMetadataDetails, { metadataValue } from './MapMetadataDetails.jsx'
+import { distanceNm, magneticBearing, pathLengthNm, trueBearing } from '../map-tools/geo.js'
 
 const KIND = {
   point: { label: '지점', Icon: MapPin },
@@ -43,11 +44,18 @@ function altitudeText(altitude) {
   return `${floor.text} – ${ceiling.text} ft · ${altitude.datum || 'MSL'}`
 }
 
-export default function MyMapDetail({ item, groupName, onClose, onEdit, onCopy }) {
+export default function MyMapDetail({ item, groupName, onClose, onEdit, onCopy, onOpenLineProfile }) {
   if (!item) return null
   const kind = KIND[item.kind] ?? KIND.compound
   const altitude = altitudeText(item.altitude)
   const coordinates = item.kind === 'point' ? pointCoordinateText(item.geometry?.coordinates) : null
+  const lineCoordinates = item.geometry?.type === 'LineString' ? item.geometry.coordinates : null
+  const lineLegCount = Array.isArray(lineCoordinates) ? Math.max(0, lineCoordinates.length - 1) : 0
+  const lineLegs = Array.isArray(lineCoordinates) ? lineCoordinates.slice(1, 9).map((point, index) => ({
+    distance: distanceNm(lineCoordinates[index], point),
+    true: trueBearing(lineCoordinates[index], point),
+    magnetic: magneticBearing(lineCoordinates[index], point),
+  })) : []
   const Icon = kind.Icon
   return (
     <section className="my-map-detail" aria-label={`${item.name || '이름 없는 항목'} 상세`}>
@@ -60,11 +68,14 @@ export default function MyMapDetail({ item, groupName, onClose, onEdit, onCopy }
         {groupName && <div><dt>그룹</dt><dd>{groupName}</dd></div>}
         <div><dt>형태</dt><dd>{geometryText(item)}</dd></div>
         {coordinates && <div><dt>위치</dt><dd>{coordinates}</dd></div>}
+        {lineLegs.length > 0 && <div><dt>총 거리</dt><dd>{pathLengthNm(lineCoordinates).toFixed(1)} NM</dd></div>}
+        {lineLegs.length > 0 && <div><dt>구간</dt><dd>{lineLegs.map((leg, index) => <div key={index}>{index + 1}: {leg.distance.toFixed(1)} NM · 진북 {Math.round(leg.true)}° · 자북 {Math.round(leg.magnetic)}°</div>)}{lineLegCount > 8 && <div>외 {lineLegCount - 8}개 구간</div>}</dd></div>}
         {altitude && <div><dt>고도</dt><dd>{altitude}</dd></div>}
       </dl>
       {!item.source && item.description && <p className="my-map-description">{item.description}</p>}
       {item.source && item.description !== item.source.descriptionText && <section aria-label="사용자 메모"><h3>사용자 메모</h3><p className="my-map-description">{item.description || '작성한 메모가 없습니다.'}</p></section>}
       <MapMetadataDetails source={item.source} />
+      {lineLegs.length > 0 && typeof onOpenLineProfile === 'function' && <button type="button" className="my-map-primary-button my-map-detail-edit" onClick={() => onOpenLineProfile(lineCoordinates)}>연직단면도 보기</button>}
       {typeof onEdit === 'function' && (
         <button type="button" className="my-map-primary-button my-map-detail-edit" onClick={onEdit}>이 항목 수정</button>
       )}

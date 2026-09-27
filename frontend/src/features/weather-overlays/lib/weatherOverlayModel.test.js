@@ -97,6 +97,17 @@ test('formatUtcTmfcStamp converts KIM/KTG UTC tmfc values to the display timezon
   assert.equal(formatUtcTmfcStamp('202605140300', 'KST'), '05/14 12:00 KST')
 })
 
+test('SIGWX uses the UTC chart cycle for issue time and its four-hour-later valid time', () => {
+  const chart = { tmfc: '2026092617', fetched_at: '2026-09-26T17:05:00Z', items: [] }
+  const kst = buildWeatherOverlayModel({ sigwxLowData: chart, tz: 'KST' })
+  assert.equal(kst.sigwxIssueLabel, '09/27 02:00 KST')
+  assert.equal(kst.sigwxValidLabel, '09/27 06:00 KST')
+
+  const utc = buildWeatherOverlayModel({ sigwxLowData: chart, tz: 'UTC' })
+  assert.equal(utc.sigwxIssueLabel, '09/26 17:00 UTC')
+  assert.equal(utc.sigwxValidLabel, '09/26 21:00 UTC')
+})
+
 test('buildWeatherOverlayModel formats KIM/KTG tmfc values as UTC source times', () => {
   const model = buildWeatherOverlayModel({
     echoMeta: null,

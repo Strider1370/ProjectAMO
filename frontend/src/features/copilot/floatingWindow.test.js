@@ -2,12 +2,16 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { floatingWindow, formatCopilotTime } from './floatingWindow.js'
 
-test('floating window matches preview size and clamps drag without modifying viewport', () => {
+test('desktop window fills the available height above its launcher; tablet stays compact', () => {
   const viewport = { width: 1440, height: 900 }
   const size = floatingWindow(viewport, false)
   assert.equal(size.width, 400)
-  assert.equal(size.height, 560)
+  assert.equal(size.height, 772)
+  assert.equal(size.y, 16)
+  assert.equal(size.y + size.height, 788)
   assert.equal(floatingWindow(viewport, true).width, 480)
+  assert.equal(floatingWindow(viewport, true).height, 772)
+  assert.equal(floatingWindow({ width: 1194, height: 834 }, false).height, 560)
   const moved = floatingWindow({ width: 1024, height: 768 }, true, { x: 5000, y: -5000 })
   assert.equal(moved.y, 16)
   assert.ok(moved.x + moved.width <= 1024 - 16)

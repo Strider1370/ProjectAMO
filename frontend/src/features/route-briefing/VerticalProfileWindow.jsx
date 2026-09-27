@@ -18,6 +18,8 @@ export default function VerticalProfileWindow({
   crossSectionHourLoading = false,
   nwpTimeSelection = null,
   onSetWaypointNwpOffset,
+  statusMessage = null,
+  allowMissingTerrain = false,
   placement = 'bottom',
 }) {
   const [layers, toggle] = useCrossSectionLayers()
@@ -52,6 +54,7 @@ export default function VerticalProfileWindow({
           </div>
           <CrossSectionToggles layers={layers} onToggle={toggle} />
         </>}
+        {statusMessage && <p className="vertical-profile-window-status" role="status">{statusMessage}</p>}
         <VerticalProfileChart
           profile={profile}
           crossSection={crossSection}
@@ -64,6 +67,7 @@ export default function VerticalProfileWindow({
           metaTrailing={placement === 'mobile-full' ? forecastHourNav : null}
           nwpTimeSelection={nwpTimeSelection}
           onSetWaypointNwpOffset={onSetWaypointNwpOffset}
+          allowMissingTerrain={allowMissingTerrain}
         />
       </section>
     </div>

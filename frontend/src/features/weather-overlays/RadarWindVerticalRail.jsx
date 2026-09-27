@@ -27,7 +27,8 @@ export default function RadarWindVerticalRail({
   if (!source) return null
 
   return (
-    <>
+    <div className="vertical-level-rail-item">
+      <span className="vertical-level-rail-label">{source === 'kim' ? 'KIM' : 'WISSDOM'}</span>
       {kimActive && radarWindActive && (
         <select aria-label="세로 고도 레일 자료원" value={source} onChange={(event) => setPreferredSource(event.target.value)}>
           <option value="kim">KIM · {selection?.level ?? ''}</option>
@@ -55,6 +56,6 @@ export default function RadarWindVerticalRail({
           ariaLabel="WISSDOM 높이"
         />
       )}
-    </>
+    </div>
   )
 }

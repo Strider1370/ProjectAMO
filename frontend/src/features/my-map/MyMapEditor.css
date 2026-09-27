@@ -69,3 +69,25 @@
 .my-map-editor-fieldset input[type='number'] { max-width: 8rem; }
 /* 값이 짧은 칸은 이름과 나란히 둔다. 한 줄에 하나씩 쌓으면 패널이 끝없이 길어진다. */
 .my-map-editor-fieldset label:not(.my-map-editor-check) { grid-template-columns: minmax(5rem, auto) minmax(0, 1fr); align-items: center; gap: var(--space-s); }
+.my-map-coordinate-add {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.my-map-coordinate-add > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.my-map-coordinate-add input,
+.my-map-coordinate-add select {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+}
+
+.my-map-draft-measure { color: var(--text-2); font-size: var(--fs-200); }

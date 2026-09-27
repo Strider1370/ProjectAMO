@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs'
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8')
 const sidebar = read('../../app/layout/Sidebar.jsx')
-const mobile = read('../../app/layout/MobileMapOverlay.jsx')
+const mobileMore = read('../../app/layout/MobileMoreMenu.jsx')
+const mapControls = read('../../app/layout/MapInfoControls.jsx')
 const mapView = read('../map/MapView.jsx')
 const metPanel = read('../weather-overlays/WeatherOverlayPanel.jsx')
 
@@ -14,9 +15,9 @@ test('사이드바에 항적 항목과 패널 연결이 있다', () => {
   assert.match(sidebar, /counts\.traffic/)
 })
 
-test('모바일 지도 버튼에 항적이 있다', () => {
-  assert.match(mobile, /activePanel === 'traffic'/)
-  assert.match(mobile, /trafficCount/)
+test('모바일 ADS-B는 더보기에 있고 지도 정보 버튼에는 없다', () => {
+  assert.match(mobileMore, /label: 'ADS-B'/)
+  assert.doesNotMatch(mapControls, /activePanel === 'traffic'/)
 })
 
 test('기상 패널에는 항적이 남아 있지 않다', () => {

@@ -16,6 +16,23 @@ function hhmmInTz(date, tz) {
   }
 }
 
+function fullStampInTz(date, tz) {
+  const format = (zone) => new Intl.DateTimeFormat('en-GB', {
+    timeZone: zone, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(date)
+  let parts
+  let label = tz
+  try {
+    parts = format(tz === 'KST' ? 'Asia/Seoul' : tz)
+  } catch {
+    parts = format('Asia/Seoul')
+    label = 'KST'
+  }
+  if (label === 'Asia/Seoul') label = 'KST'
+  const get = (type) => parts.find((part) => part.type === type)?.value
+  return `${get('month')}/${get('day')} ${get('hour')}:${get('minute')} ${label}`
+}
+
 /** `YYYYMMDDHH[mm]`(UTC)를 Date로. 형식이 아니면 null. */
 function parseUtcTm(tm) {
   if (typeof tm !== 'string' || tm.length < 10) return null
@@ -38,7 +55,7 @@ function parseKstTm(tm) {
  * kim.validTime은 UTC(ISO)다. 모두 tz로 맞춰 내보낸다.
  */
 export function legendStamps(sources, hasData, computedAt, tz = 'KST') {
-  if (!hasData) return { visibility: NO_DATA, ceiling: NO_DATA, stations: NO_DATA, stationCount: 0 }
+  if (!hasData) return { visibility: NO_DATA, ceiling: NO_DATA, stations: NO_DATA, visibilityFull: NO_DATA, ceilingFull: NO_DATA, stationsFull: NO_DATA, stationCount: 0 }
 
   const visDate = parseKstTm(sources?.visibility?.tm) || (computedAt ? new Date(computedAt) : null)
   const kimValidDate = sources?.kim?.validTime ? new Date(sources.kim.validTime) : null
@@ -50,10 +67,14 @@ export function legendStamps(sources, hasData, computedAt, tz = 'KST') {
   const stnDate = parseKstTm(stnTm)
 
   const fmt = (d) => (d && !Number.isNaN(d.getTime()) ? hhmmInTz(d, tz) : NO_DATA)
+  const fmtFull = (d) => (d && !Number.isNaN(d.getTime()) ? fullStampInTz(d, tz) : NO_DATA)
   return {
     visibility: fmt(visDate),
     ceiling: fmt(kimDate),
     stations: fmt(stnDate),
+    visibilityFull: fmtFull(visDate),
+    ceilingFull: fmtFull(kimDate),
+    stationsFull: fmtFull(stnDate),
     stationCount: (sources?.stations?.asos ?? 0) + (sources?.stations?.amos ?? 0),
   }
 }

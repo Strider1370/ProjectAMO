@@ -9,8 +9,10 @@ export function buildVerticalProfile(payload, terrainSampler) {
     payload,
   )
   const terrainResult = terrainSampler.sampleAxis(axis)
-  const flightPlan = buildFlightPlanProfile(payload, axis, terrainResult)
-  const candidateProfiles = [...new Set(payload.candidateCruiseAltitudesFt ?? [])]
+  // A map-drawn line has no flight plan or cruise altitude. Keep its terrain
+  // and weather axis without inventing a climb/descent path.
+  const flightPlan = payload.terrainOnly ? null : buildFlightPlanProfile(payload, axis, terrainResult)
+  const candidateProfiles = payload.terrainOnly ? [] : [...new Set(payload.candidateCruiseAltitudesFt ?? [])]
     .map(Number)
     .filter((altitudeFt) => Number.isFinite(altitudeFt) && altitudeFt > 0)
     .map((altitudeFt) => buildFlightPlanProfile({

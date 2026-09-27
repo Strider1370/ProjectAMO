@@ -13,6 +13,7 @@ import MyMapEditor, { DocumentNameField } from './MyMapEditor.jsx'
 import MyMapStorageStatus from './MyMapStorageStatus.jsx'
 import MyMapLibrary from './MyMapLibrary.jsx'
 import MyMapImportPanel from './MyMapImportPanel.jsx'
+import MapToolsPanel from '../map-tools/MapToolsPanel.jsx'
 import {
   buildMapPanelTree, documentGroupCount, documentItemCount, documentScopedId,
   filterMapPanelTree, flattenMapPanelRows, selectedItemReveal,
@@ -68,7 +69,7 @@ function RemoveDocumentDialog({ document, onClose, onConfirm }) {
   )
 }
 
-function Viewer({ document, myMap, onConvert }) {
+function Viewer({ document, myMap, onConvert, onOpenLineProfile }) {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState(() => new Set())
   const [revealed, setRevealed] = useState({})
@@ -169,12 +170,12 @@ function Viewer({ document, myMap, onConvert }) {
         </ul>
         {!rows.length && <p className="my-map-empty">검색 결과가 없습니다.</p>}
       </div>
-      <MyMapDetail item={selected} groupName={selected?.groupId ? document.groups?.find((group) => group.id === selected.groupId)?.name : '그룹 없는 항목'} onClose={() => myMap.clearSelection?.()} onEdit={document.kind === 'personal' && typeof myMap.startEditing === 'function' ? () => myMap.startEditing() : undefined}  />
+      <MyMapDetail item={selected} groupName={selected?.groupId ? document.groups?.find((group) => group.id === selected.groupId)?.name : '그룹 없는 항목'} onClose={() => myMap.clearSelection?.()} onEdit={document.kind === 'personal' && typeof myMap.startEditing === 'function' ? () => myMap.startEditing() : undefined} onOpenLineProfile={onOpenLineProfile} />
     </div>
   )
 }
 
-export default function MyMapPanel({ myMap, onClose = () => {}, open = true }) {
+export default function MyMapPanel({ myMap, onClose = () => {}, open = true, measureOpen = false, onMeasureOpenChange, measure, measureTool, onMeasureToolChange, onOpenLineProfile }) {
   const isMobile = useIsMobile()
   const fileInputRef = useRef(null)
   const fileIntent = useRef('view'), importSequence = useRef(0)
@@ -188,10 +189,13 @@ export default function MyMapPanel({ myMap, onClose = () => {}, open = true }) {
   const document = documents.find((entry) => entry.id === myMap.currentId) ?? null
   const storageReady = myMap.storage?.ready !== false
   const library = myMap.mode === 'library' || !document
-  const title = fileScreen ? '파일 불러오기' : library ? '내 지도' : document.name || '이름 없는 지도'
+  const title = measureOpen ? '간편 측정' : fileScreen ? '파일 불러오기' : library ? '내 지도' : document.name || '이름 없는 지도'
   const editing = !library && myMap.mode === 'edit'
+  useEffect(() => {
+    if (editing && measureOpen) onMeasureOpenChange?.(false)
+  }, [editing, measureOpen, onMeasureOpenChange])
   const titleContent = editing ? <DocumentNameField value={document.name} onRename={myMap.renameDocument} /> : title
-  const subtitle = fileScreen || library || myMap.mode === 'edit' ? null : `${sourceLabel(document)} · ${documentGroupCount(document)}개 폴더 · ${documentItemCount(document).toLocaleString()}개 항목`
+  const subtitle = measureOpen || fileScreen || library || myMap.mode === 'edit' ? null : `${sourceLabel(document)} · ${documentGroupCount(document)}개 폴더 · ${documentItemCount(document).toLocaleString()}개 항목`
   const contentClass = `my-map-panel-content${!fileScreen && !library && myMap.mode === 'view' ? ' is-viewer' : ''}${myMap.mode === 'edit' ? ' is-editor' : ''}`
   useEffect(() => {
     importSequence.current += 1; setImportPreview(null); setFileDrag(false); setFileError(''); setFileScreen(false); setPrepared(null); setInspecting(false); setOpening(false); setShowLegacy(false)
@@ -250,7 +254,7 @@ export default function MyMapPanel({ myMap, onClose = () => {}, open = true }) {
     if (sequence === importSequence.current) setImportPreview(preview ? { source: document, preview } : null)
   }
   const hasLegacy = myMap.drawSpike?.pending > 0 || (myMap.storage?.guestMaps?.length ?? 0) > 0
-  const headerActions = editing ? <button type="button" className="my-map-primary-button" onClick={() => myMap.finishEditing()}>편집 마침</button> : !fileScreen && !library && (
+  const headerActions = measureOpen ? null : editing ? <button type="button" className="my-map-primary-button" onClick={() => myMap.finishEditing()}>편집 마침</button> : !fileScreen && !library && (
     <>
       <button type="button" className="my-map-header-button" onClick={() => myMap.showLibrary?.()}>목록</button>
       <MyMapFileActions myMap={myMap} document={document} onRemove={() => setRemoveTarget(document)} />
@@ -258,15 +262,24 @@ export default function MyMapPanel({ myMap, onClose = () => {}, open = true }) {
   )
   const body = (
     <>
+      {!editing && <div className="my-map-mode-tabs" role="tablist" aria-label="내 지도 모드">
+        <button type="button" role="tab" aria-selected={!measureOpen} className={!measureOpen ? 'is-active' : ''} onClick={() => onMeasureOpenChange?.(false)}>저장 지도</button>
+        <button type="button" role="tab" aria-selected={measureOpen} className={measureOpen ? 'is-active' : ''} onClick={() => { setFileScreen(false); onMeasureOpenChange?.(true) }}>간편 측정</button>
+      </div>}
+      {myMap.error && <p className="my-map-error" role="alert">{myMap.error}<button type="button" className="my-map-message-close" aria-label="오류 알림 닫기" onClick={() => myMap.dismissMessages?.()}><X size={15} /></button></p>}
+      {myMap.notice && <p className="my-map-notice" role="status">{myMap.notice}<button type="button" className="my-map-message-close" aria-label="안내 닫기" onClick={() => myMap.dismissMessages?.()}><X size={15} /></button></p>}
+      <MyMapStorageStatus showGuestMaps={showLegacy} storage={myMap.storage} documentId={document?.id} onRetry={myMap.retrySave} onCopyConflict={myMap.copyConflict} onOpenServerVersion={myMap.openServerVersion} onRestoreDraft={myMap.restoreDraft} onDiscardDraft={myMap.discardRecoveredDraft} onImportGuest={myMap.importGuestMap} />
+      {myMap.busy && <p className="my-map-status" role="status"><LoaderCircle size={16} className="my-map-spin" aria-hidden="true" />{myMap.busy}</p>}
+      {measureOpen && !editing ? <MapToolsPanel activeTool={measureTool} setActiveTool={onMeasureToolChange} measure={measure} onSave={(kind, data) => {
+        const result = myMap.saveMeasurement?.(kind, data)
+        if (result?.ok) onMeasureOpenChange?.(false)
+      }} /> : <>
       <input ref={fileInputRef} data-testid="my-map-file" type="file" accept=".kml,.kmz" className="my-map-file-input" onChange={(event) => { const file = event.target.files?.[0], intent = fileIntent.current; fileIntent.current = 'view'; event.target.value = ''; takeFile(file, intent) }} />
       {fileDrag && <p className="my-map-notice" role="status">KML/KMZ 파일을 놓아 {myMap.mode === 'edit' ? '현재 지도에 추가' : '열기'}</p>}
       {fileError && <p className="my-map-error" role="alert">{fileError}</p>}
-      <MyMapStorageStatus showGuestMaps={showLegacy} storage={myMap.storage} documentId={document?.id} onRetry={myMap.retrySave} onCopyConflict={myMap.copyConflict} onOpenServerVersion={myMap.openServerVersion} onRestoreDraft={myMap.restoreDraft} onDiscardDraft={myMap.discardRecoveredDraft} onImportGuest={myMap.importGuestMap} />
-      {myMap.busy && <p className="my-map-status" role="status"><LoaderCircle size={16} className="my-map-spin" aria-hidden="true" />{myMap.busy}</p>}
-      {myMap.error && <p className="my-map-error" role="alert">{myMap.error}<button type="button" className="my-map-message-close" aria-label="오류 알림 닫기" onClick={() => myMap.dismissMessages?.()}><X size={15} /></button></p>}
-      {myMap.notice && <p className="my-map-notice" role="status">{myMap.notice}<button type="button" className="my-map-message-close" aria-label="안내 닫기" onClick={() => myMap.dismissMessages?.()}><X size={15} /></button></p>}
       {showLegacy && library && myMap.drawSpike?.pending > 0 && <div className="my-map-migrate-notice" data-testid="my-map-draw-migrate"><p>기존 그리기 자료 {myMap.drawSpike.pending}개를 사본으로 가져옵니다. 원본은 유지됩니다.</p><button type="button" className="my-map-secondary-button" disabled={!storageReady} onClick={() => myMap.importDrawSpike()}>그리기 자료 가져오기</button></div>}
-      {fileScreen ? <MyMapImportPanel prepared={prepared} loading={inspecting} opening={opening} ready={storageReady} onPick={() => pickFile('view')} onOpen={openPrepared} onReset={resetFile} /> : library ? <MyMapLibrary documents={documents} myMap={myMap} ready={storageReady} onImport={openFileScreen} onCreate={() => myMap.createDocument('이름 없는 지도')} /> : myMap.mode === 'edit' ? <MyMapEditor myMap={myMap} document={document} onImport={() => pickFile('convert')} /> : <Viewer document={document} myMap={myMap} onConvert={convertCurrent} />}
+      {fileScreen ? <MyMapImportPanel prepared={prepared} loading={inspecting} opening={opening} ready={storageReady} onPick={() => pickFile('view')} onOpen={openPrepared} onReset={resetFile} /> : library ? <MyMapLibrary documents={documents} myMap={myMap} ready={storageReady} onImport={openFileScreen} onCreate={() => myMap.createDocument('이름 없는 지도')} /> : myMap.mode === 'edit' ? <MyMapEditor myMap={myMap} document={document} onImport={() => pickFile('convert')} /> : <Viewer document={document} myMap={myMap} onConvert={convertCurrent} onOpenLineProfile={onOpenLineProfile} />}
+      </>}
     </>
   )
   const closePanel = () => {

@@ -84,6 +84,23 @@ test('buildVerticalProfile returns null terrain samples without crashing', () =>
   assert.deepEqual(profile.warnings, ['No terrain elevation for sample 0'])
 })
 
+test('map-drawn line returns a terrain profile without a fabricated flight path', () => {
+  const profile = buildVerticalProfile({
+    routeGeometry: { type: 'LineString', coordinates: [[126, 37], [126.05, 37]] },
+    terrainOnly: true,
+    routeMarkers: [{ label: '시작', lon: 126, lat: 37 }, { label: '끝', lon: 126.05, lat: 37 }],
+  }, {
+    sampleAxis(axis) {
+      return { terrain: { unit: 'm', values: axis.samples.map((sample) => ({ index: sample.index, elevationM: 100 })) }, warnings: [] }
+    },
+  })
+
+  assert.equal(profile.flightPlan, null)
+  assert.deepEqual(profile.candidateProfiles, [])
+  assert.equal(profile.markers.length, 2)
+  assert.ok(profile.axis.totalDistanceNm > 0)
+})
+
 test('buildVerticalProfile returns a climb and descent profile for each requested candidate altitude', () => {
   const profile = buildVerticalProfile({
     flightRule: 'IFR',

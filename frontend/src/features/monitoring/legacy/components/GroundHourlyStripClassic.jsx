@@ -1,5 +1,6 @@
 import { getWeatherIconSrc } from "../../../../shared/weather/weather-icon-registry.js";
-import { mapGroundForecastIcon, isPrecipitationIcon, formatIssuedAt } from "./GroundForecastClassicPanel";
+import { mapGroundForecastIcon, isPrecipitationIcon } from "./GroundForecastClassicPanel";
+import { formatGroundForecastIssue, groundForecastSlotStamp } from '../utils/groundForecastViewModel.js'
 
 const W = 720;
 const H = 172;
@@ -14,18 +15,6 @@ const BAR_MAX = 30;
 const BAR_W = 18;
 const AXIS_Y = 166;
 
-function hourLabel(time) {
-  const h = Number(String(time || "").slice(0, 2));
-  return Number.isFinite(h) ? `${h}시` : "-";
-}
-
-function dateChip(date) {
-  if (!date) return null;
-  const d = Number(String(date).slice(6, 8));
-  if (!Number.isFinite(d)) return null;
-  return `${d}일`;
-}
-
 // 수집기는 기상청 원본대로 1시간 간격 24개를 담는다. 이 띠는 24시간을 한눈에 보여주는
 // 용도라 3시간 간격 8칸으로 솎아 쓴다. 도착지 예보처럼 촘촘한 값이 필요한 화면은 원본을 쓴다.
 const DISPLAY_STEP_HOURS = 3;
@@ -34,12 +23,12 @@ function everyThirdHour(slots) {
   return slots.filter((slot) => Number(String(slot?.time).slice(0, 2)) % DISPLAY_STEP_HOURS === 0);
 }
 
-export default function GroundHourlyStripClassic({ groundForecastData, icao }) {
+export default function GroundHourlyStripClassic({ groundForecastData, icao, timeZone = 'KST' }) {
   const airport = groundForecastData?.airports?.[icao] || null;
   const slots = everyThirdHour(airport?.hourly || []);
   if (slots.length === 0) return null;
 
-  const issuedAt = formatIssuedAt(`${airport?.hourly_status?.base_date || ""}${airport?.hourly_status?.base_time || ""}`);
+  const issuedAt = formatGroundForecastIssue(`${airport?.hourly_status?.base_date || ""}${airport?.hourly_status?.base_time || ""}`, timeZone);
 
   const n = slots.length;
   const step = n > 1 ? (W - PAD_L - PAD_R) / (n - 1) : 0;
@@ -149,9 +138,10 @@ export default function GroundHourlyStripClassic({ groundForecastData, icao }) {
 
         {slots.map((s, i) => {
           const prev = slots[i - 1];
-          const changed = prev && s.date && s.date !== prev.date;
-          const dc = dateChip(s.date);
-          const label = (i === 0 || changed) && dc ? `${dc} ${hourLabel(s.time)}` : hourLabel(s.time);
+          const stamp = groundForecastSlotStamp(s, timeZone);
+          const previousStamp = groundForecastSlotStamp(prev, timeZone);
+          const changed = prev && stamp?.dateKey !== previousStamp?.dateKey;
+          const label = (i === 0 || changed) && stamp ? `${stamp.dayLabel} ${stamp.hourLabel}` : stamp?.hourLabel || '-';
           return (
             <text
               key={`ax-${i}`}

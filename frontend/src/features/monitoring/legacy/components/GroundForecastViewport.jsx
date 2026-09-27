@@ -4,7 +4,7 @@ import { scheduleGroundForecastAdvance } from '../utils/groundForecastTimer.js'
 import GroundHourlyStrip from './GroundHourlyStrip.jsx'
 import GroundForecastPanel from './GroundForecastPanel.jsx'
 
-export default function GroundForecastViewport({ groundForecastData, icao, airportMeta }) {
+export default function GroundForecastViewport({ groundForecastData, icao, airportMeta, timeZone = 'KST' }) {
   const [activeView, setActiveView] = useState(GROUND_FORECAST_VIEW.HOURLY)
   const airport = groundForecastData?.airports?.[icao] || null
   useEffect(() => scheduleGroundForecastAdvance(() => setActiveView((view) => nextGroundForecastView(view)), window), [activeView])
@@ -13,10 +13,10 @@ export default function GroundForecastViewport({ groundForecastData, icao, airpo
   return <section className="ground-forecast-viewport panel" role="region" aria-label="지상 예보" style={{ '--ground-forecast-cycle-ms': `${GROUND_FORECAST_CYCLE_MS}ms`, '--ground-forecast-fade-ms': `${GROUND_FORECAST_FADE_MS}ms` }}>
     <header className="ground-forecast-viewport-header">
       <span className="ground-forecast-title is-active" data-forecast-title={activeView} aria-current="true">{title}</span>
-      <span data-forecast-metadata>{formatGroundForecastMeta(airport, icao, activeView)}</span>
+      <span data-forecast-metadata>{formatGroundForecastMeta(airport, icao, activeView, timeZone)}</span>
     </header>
     <div className="ground-forecast-progress-track"><span key={activeView} data-forecast-progress /></div>
-    <div className={`ground-forecast-layer${active('hourly') ? ' is-active' : ''}`} data-forecast-view="hourly" aria-hidden={active('hourly') ? 'false' : 'true'} inert={active('hourly') ? undefined : 'true'}><GroundHourlyStrip airport={airport} airportMeta={airportMeta} /></div>
+    <div className={`ground-forecast-layer${active('hourly') ? ' is-active' : ''}`} data-forecast-view="hourly" aria-hidden={active('hourly') ? 'false' : 'true'} inert={active('hourly') ? undefined : 'true'}><GroundHourlyStrip airport={airport} airportMeta={airportMeta} timeZone={timeZone} /></div>
     <div className={`ground-forecast-layer${active('weekly') ? ' is-active' : ''}`} data-forecast-view="weekly" aria-hidden={active('weekly') ? 'false' : 'true'} inert={active('weekly') ? undefined : 'true'}><GroundForecastPanel airport={airport} /></div>
   </section>
 }

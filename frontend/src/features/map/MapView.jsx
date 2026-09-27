@@ -24,8 +24,9 @@ import { addAdsbLayers, bindAdsbHover, createAdsbGeoJSON, createAdsbTrailGeoJSON
 import { registerAircraftImages } from '../aviation-layers/aircraftIconImages.js'
 import { registerAirlineLogos } from '../aviation-layers/airlineLogoImages.js'
 import AviationLayerPanel from '../aviation-layers/AviationLayerPanel.jsx'
-import MapToolsPanel from '../map-tools/MapToolsPanel.jsx'
-import { useMapTools } from '../map-tools/useMapTools.js'
+import MapProfilePanel from '../map-tools/MapProfilePanel.jsx'
+import { useMeasureOverlay } from '../map-tools/useMeasureOverlay.js'
+import { useMapLineProfile } from '../map-tools/useMapLineProfile.js'
 import NotamPanel from '../notam/NotamPanel.jsx'
 import { updateNotamLayerData, setNotamVisibility, setNotamCategoryFilter as applyNotamCategoryFilter, notamPopupHtml, notamsAtPoint, addNotamHighlight, setNotamHighlight, geometryBounds } from '../notam/lib/notamLayers.js'
 import TrafficPanel from '../traffic/TrafficPanel.jsx'
@@ -106,7 +107,6 @@ import {
 } from '../weather-overlays/lib/flightCategoryLayers.js'
 import { escapeHtml } from '../../shared/ui/escapeHtml.js'
 import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
-import MapToolsLauncher from '../map-tools/MapToolsLauncher.jsx'
 import { createOneShotNotifier } from './lib/createOneShotNotifier.js'
 import { setLayerVisibility, resetLazyGeoJsonSources } from './lib/mapLayerUtils.js'
 import { bindLayerEvent, cleanupAll } from './lib/mapStyleSync.js'
@@ -381,7 +381,6 @@ const MapView = forwardRef(function MapView({
   onClosePanel,
   onOpenNotamPanel,
   onOpenRoutePanel,
-  onOpenCustomAreaPanel,
   onOpenMetPanel,
   onOpenMyMapPanel,
   enableWindOverlay = true,
@@ -391,7 +390,6 @@ const MapView = forwardRef(function MapView({
   enableTyphoonOverlay = true,
   enableRouteBriefing = true,
   initialMetVisibility = null,
-  showMapTools = true,
   showBasemapSwitcher = true,
   showAdvisoryBadges = true,
   showGeolocateControl = true,
@@ -410,6 +408,9 @@ const MapView = forwardRef(function MapView({
   const [showKoreaHome, setShowKoreaHome] = useState(false)
   const tourHomeRef = useRef(null) // 온보딩: 공항 확대 전 홈 뷰 저장(resetView 복귀용)
   const onSelectRef = useRef(onAirportSelect)
+  const mapToolDrawingRef = useRef(false)
+  const [myMapMeasureOpen, setMyMapMeasureOpen] = useState(false)
+  const [measureTool, setMeasureTool] = useState('coordinate')
   const myMapControlRef = useRef(null)
   const tooltipTimerRef = useRef(null)
   const tooltipIcaoRef = useRef(null)
@@ -435,7 +436,6 @@ const MapView = forwardRef(function MapView({
   const [visibleSatelliteVisuals, setVisibleSatelliteVisuals] = useState({ brightness: 12, contrast: 0 })
   const [showFlightCategoryMissing, setShowFlightCategoryMissing] = useState(false)
   const [showFlightCategoryStations, setShowFlightCategoryStations] = useState(true)
-  const [timestampOpen, setTimestampOpen] = useState(true)
   const [weatherLegendOpen, setWeatherLegendOpen] = useState(false)
   const [weatherLegendPanelHeight, setWeatherLegendPanelHeight] = useState(0)
   const [terrainAltitudeFt, setTerrainAltitudeFt] = useState(3000)
@@ -1081,11 +1081,11 @@ const MapView = forwardRef(function MapView({
     if (enableWindOverlay && metVisibility.turbulence)
       entries.push({ key: 'turbulence', label: '난류', issueLabel: ktgIssueLabel, validLabel: ktgValidLabel })
     if (metVisibility.visibility)
-      entries.push({ key: 'visibility', label: '시정', issueLabel: fcStamps.visibility })
+      entries.push({ key: 'visibility', label: '시정', issueLabel: fcStamps.visibilityFull, timeLabel: '관측' })
     if (metVisibility.ceiling)
-      entries.push({ key: 'ceiling', label: '운고', issueLabel: fcStamps.ceiling })
+      entries.push({ key: 'ceiling', label: '운고', issueLabel: fcStamps.ceilingFull, timeLabel: '유효' })
     if (showFlightCategoryStations && (metVisibility.visibility || metVisibility.ceiling))
-      entries.push({ key: 'fcStations', label: '관측지점', issueLabel: fcStamps.stations })
+      entries.push({ key: 'fcStations', label: '관측지점', issueLabel: fcStamps.stationsFull, timeLabel: '관측' })
     if (metVisibility.sigwx) {
       const entryCount = sigwxHistoryEntries.length
       entries.push({
@@ -1309,6 +1309,7 @@ const MapView = forwardRef(function MapView({
 
   function clearMetLayers() {
     if (metVisibility.surfaceChart) applySurfaceChartFir(false)
+    radarWindOverlay.setRequestedVisible(false)
     setMetVisibility((prev) => {
       const next = { ...prev }
       availableMetLayers.forEach((l) => { next[l.id] = false })
@@ -1480,7 +1481,7 @@ const MapView = forwardRef(function MapView({
       // click + cursor on all interactive layers
       ...AIRPORT_INTERACTIVE_LAYERS.flatMap((layerId) => [
         bindLayerEvent(map, 'click', layerId, (e) => {
-          if (myMapControlRef.current?.mode === 'edit') return
+          if (myMapControlRef.current?.mode === 'edit' || mapToolDrawingRef.current) return
           const icao = e.features?.[0]?.properties?.icao
           if (!icao) return
           // Touch fires no mouseleave, so clear the hover tooltip on selection.
@@ -1646,7 +1647,7 @@ const MapView = forwardRef(function MapView({
   const myMap = useMyMap(mapRef, isStyleReady, styleRevision, {
     onOpenPanel: onOpenMyMapPanel,
     panelOpen: activePanel === 'my-map',
-    interactionBusy: activePanel === 'custom-area' || activePanel === 'route-check',
+    interactionBusy: (activePanel === 'my-map' && myMapMeasureOpen) || activePanel === 'map-profile' || activePanel === 'route-check',
     priorityLayers: AIRPORT_INTERACTIVE_LAYERS,
   })
   myMapControlRef.current = myMap
@@ -1690,13 +1691,18 @@ const MapView = forwardRef(function MapView({
   // 활성화 NOTAM과 매칭된 군작전구역에 빗금 — 켜진 구역과 평상시 구역을 구분한다.
   useMoaActivation(mapRef, isStyleReady, styleRevision, notamData)
 
-  // 패널 표시 여부와 무관하게 항상 호출 — activePanel이 'custom-area'가 아닐 때도 draw
-  // 컨트롤/완성된 폴리곤이 지도에 남아있어야 하고(패널 닫기/탭 전환에 폴리곤이 사라지면 안 됨),
-  // 다른 탭을 보는 중에도 지도 위 폴리곤 클릭으로 패널을 자동으로 열 수 있어야 한다.
-  const mapTools = useMapTools(mapRef, isStyleReady, {
-    panelOpen: activePanel === 'custom-area',
-    onFeatureSelect: onOpenCustomAreaPanel,
-  })
+  const measurementActive = activePanel === 'my-map' && myMapMeasureOpen
+  const profileDrawingActive = activePanel === 'map-profile'
+  const measure = useMeasureOverlay(isStyleReady ? mapRef.current : null,
+    profileDrawingActive ? 'profile' : measurementActive ? measureTool : null,
+    profileDrawingActive || measurementActive)
+  useEffect(() => {
+    mapToolDrawingRef.current = measurementActive || profileDrawingActive
+  }, [measurementActive, profileDrawingActive])
+  const mapLineProfile = useMapLineProfile()
+  useEffect(() => {
+    if (routeBriefing.state.verticalProfileWindowOpen) mapLineProfile.setIsOpen(false)
+  }, [routeBriefing.state.verticalProfileWindowOpen, mapLineProfile.setIsOpen])
 
   useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
     if (!enableWindOverlay) return
@@ -1906,9 +1912,6 @@ const MapView = forwardRef(function MapView({
     return false
   }
 
-  // 그리기 런처 표시 여부 — 베이스맵 버튼 위치가 여기에 따라 갈린다.
-  const mapToolsVisible = showMapTools && (!isMobile || mobileTask === 'map' || mobileTask === 'route')
-
   function metLayerBadge(id) {
     if (id === 'sigmet') return sigmetCount
     if (id === 'airmet') return airmetCount
@@ -1957,7 +1960,14 @@ const MapView = forwardRef(function MapView({
     if (merged) return merged.some((id) => aviationVisibility[id])
     return !Object.values(AVIATION_PANEL_MERGE_GROUPS).some((ids) => ids.includes(layer.id)) && aviationVisibility[layer.id]
   }).length
-  const metActiveCount = availableMetLayers.filter((l) => metVisibility[l.id] && !isMetLayerDisabled(l.id)).length
+  const activeMetLayers = availableMetLayers.filter((l) => l.id !== 'notam' && metVisibility[l.id] && !isMetLayerDisabled(l.id))
+  const activeMetLabels = activeMetLayers.map((layer) => ({
+    wind: '바람', temp: '기온', cloud: '습도', icing: '착빙', turbulence: '난류',
+    radarOverseas: '해외 레이더', lightning: '낙뢰', satellite: '적외영상',
+    ctps: '운정고도', sigmet: 'SIGMET(국내)',
+  })[layer.id] || layer.label)
+  if (showRadarWindControl && radarWindOverlay.requestedVisible) activeMetLabels.push('레이더 바람장')
+  const metActiveCount = activeMetLabels.length
   useEffect(() => {
     onLayerCountsChange?.({ aviation: aviationActiveCount, met: metActiveCount, traffic: trafficVisible ? 1 : 0 })
   }, [aviationActiveCount, metActiveCount, trafficVisible, onLayerCountsChange])
@@ -1986,6 +1996,7 @@ const MapView = forwardRef(function MapView({
       data-mobile-layer-panel={activePanel === 'aviation' || activePanel === 'met' ? 'true' : undefined}
       data-mobile-task={mobileTask}
       data-route-briefing-map-mode={activePanel === 'route-check' && routeBriefingMapMode ? 'true' : 'false'}
+      style={{ '--legend-popover-height': `${weatherLegendPanelHeight}px` }}
     >
       <div ref={mapContainerRef} className="map-view" />
 
@@ -2000,11 +2011,17 @@ const MapView = forwardRef(function MapView({
 
       {error && <div className="map-view-error" role="alert">{error}</div>}
 
-      <div
-        className={`map-bottom-control-dock${timestampOpen ? ' is-timestamp-open' : ''}${weatherLegendOpen ? ' is-legend-open' : ''}`}
-        style={{ '--legend-popover-height': `${weatherLegendPanelHeight}px` }}
-      >
-        <WeatherLayerTimestampBar entries={timestampEntries} tz={tz} isOpen={timestampOpen} onOpenChange={setTimestampOpen} />
+      {activePanel === null && metActiveCount > 0 && (
+        <button type="button" className="active-weather-summary" onClick={onOpenMetPanel}
+          title={activeMetLabels.join(' · ')} aria-label={`기상 ${metActiveCount}개 켜짐: ${activeMetLabels.join(', ')}. 기상정보 열기`}>
+          <strong>기상 {metActiveCount}개 켜짐</strong>
+          <span>{activeMetLabels.join(' · ')}</span>
+        </button>
+      )}
+
+      <WeatherLayerTimestampBar entries={timestampEntries} />
+
+      <div className={`map-bottom-control-dock${weatherLegendOpen ? ' is-legend-open' : ''}`}>
 
         {showWeatherLegends && (
           <WeatherLegends
@@ -2139,22 +2156,33 @@ const MapView = forwardRef(function MapView({
         />
         {enableWindOverlay && metVisibility.turbulence && altLevelsFt.length > 1 && (
           // 트랙 위쪽(index 0)이 위 화살표가 가는 방향 — 고도가 높은 쪽이 맨 위로 오게 내림차순.
-          <LevelSliderPanel
-            items={[...altLevelsFt].sort((a, b) => b - a).map((ft) => ({ id: ft, primary: `${ft.toLocaleString()} ft` }))}
-            activeValue={altLevelsFt.includes(selectedAltFt) ? selectedAltFt : altLevelsFt[0]}
-            onSelect={setSelectedAltFt}
-            ariaLabel="난류 고도"
-          />
+          <div className="vertical-level-rail-item">
+            <span className="vertical-level-rail-label">난류</span>
+            <LevelSliderPanel
+              items={[...altLevelsFt].sort((a, b) => b - a).map((ft) => ({ id: ft, primary: `${ft.toLocaleString()} ft` }))}
+              activeValue={altLevelsFt.includes(selectedAltFt) ? selectedAltFt : altLevelsFt[0]}
+              onSelect={setSelectedAltFt}
+              ariaLabel="난류 고도"
+            />
+          </div>
         )}
         {metVisibility.terrainHazard && (
-          <LevelSliderPanel
-            items={terrainHazardAltitudeItems()}
-            activeValue={terrainAltitudeFt}
-            onSelect={setTerrainAltitudeFt}
-            ariaLabel="지형 근접 기준 고도"
-          />
+          <div className="vertical-level-rail-item">
+            <span className="vertical-level-rail-label">지형 근접</span>
+            <LevelSliderPanel
+              items={terrainHazardAltitudeItems()}
+              activeValue={terrainAltitudeFt}
+              onSelect={setTerrainAltitudeFt}
+              ariaLabel="지형 근접 기준 고도"
+            />
+          </div>
         )}
-        <ConvectiveOverlayControls ctpsVisible={metVisibility.ctps} minFl={convectiveOverlay.minFl} onMinFlChange={convectiveOverlay.setMinFl} />
+        {metVisibility.ctps && (
+          <div className="vertical-level-rail-item">
+            <span className="vertical-level-rail-label">운정고도</span>
+            <ConvectiveOverlayControls ctpsVisible minFl={convectiveOverlay.minFl} onMinFlChange={convectiveOverlay.setMinFl} />
+          </div>
+        )}
       </div>
       <ConvectiveOverlayCard selection={convectiveOverlay.selection} tz={tz} />
       <EchoTopCard selection={echoTopOverlay.selection} tz={tz} />
@@ -2181,20 +2209,13 @@ const MapView = forwardRef(function MapView({
 
       <SigwxLegendDialog isOpen={sigwxLegendOpen} onClose={toggleSigwxLegend} />
 
-      {mapToolsVisible && <MapToolsLauncher
-        isOpen={activePanel === 'custom-area'}
-        onToggle={() => (activePanel === 'custom-area' ? onClosePanel?.() : onOpenCustomAreaPanel?.())}
-      />}
-
       {showBasemapSwitcher && (
         <BasemapSwitcher
           basemapId={basemapId}
           isOpen={basemapMenuOpen}
           onOpenChange={setBasemapMenuOpen}
           onSwitchBasemap={switchBasemap}
-          /* 그리기 버튼은 모바일에서 지도·경로 작업 중에만 뜬다. 없을 때는 그 자리를
-             비워둘 이유가 없으므로 베이스맵을 오른쪽 끝으로 붙인다. */
-          atRightEdge={!mapToolsVisible}
+          atRightEdge
         />
       )}
 
@@ -2342,7 +2363,29 @@ const MapView = forwardRef(function MapView({
         </Suspense>
       )}
 
-      <MyMapPanel myMap={myMap} onClose={onClosePanel} open={activePanel === 'my-map'} />
+      {mapLineProfile.isOpen && (
+        <Suspense fallback={null}>
+          <VerticalProfileWindow
+            profile={mapLineProfile.profile}
+            crossSection={mapLineProfile.crossSection}
+            isOpen={mapLineProfile.isOpen}
+            onClose={() => mapLineProfile.setIsOpen(false)}
+            onSelectForecastHour={mapLineProfile.selectForecastHour}
+            crossSectionHourLoading={mapLineProfile.hourLoading}
+            statusMessage={mapLineProfile.warning}
+            allowMissingTerrain
+            placement={isMobile ? 'mobile-full' : 'bottom'}
+          />
+        </Suspense>
+      )}
+
+      <MyMapPanel myMap={myMap} onClose={onClosePanel} open={activePanel === 'my-map'}
+        measureOpen={myMapMeasureOpen} onMeasureOpenChange={setMyMapMeasureOpen}
+        measure={measure} measureTool={measureTool} onMeasureToolChange={setMeasureTool}
+        onOpenLineProfile={(coordinates) => {
+          routeBriefing.actions.setVerticalProfileWindowOpen(false)
+          mapLineProfile.openLine(coordinates)
+        }} />
 
       {activePanel === 'aviation' && (
         <AviationLayerPanel
@@ -2353,15 +2396,12 @@ const MapView = forwardRef(function MapView({
         />
       )}
 
-      {activePanel === 'custom-area' && (
-        <MapToolsPanel
-          activeTool={mapTools.activeTool}
-          setActiveTool={mapTools.setActiveTool}
-          polygon={mapTools.polygon}
-          measure={mapTools.measure}
-          onClose={onClosePanel}
-        />
-      )}
+      {profileDrawingActive && <MapProfilePanel measure={measure} onClose={onClosePanel}
+        onOpenProfile={() => {
+          routeBriefing.actions.setVerticalProfileWindowOpen(false)
+          mapLineProfile.openLine(measure.lineCoordinates)
+        }}
+        loading={mapLineProfile.loading} error={mapLineProfile.error} warning={mapLineProfile.warning} />}
 
       {hasHover && hoveredAirportIcao && (() => {
         const hoveredMetar = metarData?.airports?.[hoveredAirportIcao] || null

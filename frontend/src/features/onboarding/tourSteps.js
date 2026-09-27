@@ -20,15 +20,15 @@ export const TOUR_STEPS = [
   },
   {
     id: 'met',
-    target: '[aria-label="기상정보"]',
+    target: '[aria-label="기상정보"], [aria-label="기상정보 레이어"]',
     revealSelector: '.layer-tile-groups', // 열린 기상 레이어 패널(동시 하나만 열림)
     text: '기상정보를 눌러 레이더·위성·바람 오버레이를 켜 보세요. 다 보시면 다음을 누르세요.',
   },
   {
     id: 'aviation',
-    target: '[aria-label="항공정보"]',
+    target: '[aria-label="항공정보"], [aria-label="항공정보 레이어"]',
     revealSelector: '.layer-tile-groups', // 열린 항공 레이어 패널
-    text: '항공정보를 눌러 공역·항로·ADS-B 레이어를 살펴보세요. 다 보시면 다음을 누르세요.',
+    text: '항공정보를 눌러 공역·항로 레이어를 살펴보세요. 다 보시면 다음을 누르세요.',
   },
   {
     id: 'route',

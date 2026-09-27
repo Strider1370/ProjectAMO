@@ -54,12 +54,18 @@
   font-family: var(--app-font, system-ui, sans-serif);
 }
 
-/* 그리기 버튼이 없을 때(모바일 대부분)는 그 자리를 비워둘 이유가 없다. */
-.basemap-switcher.is-right-edge { right: 12px; }
+/* 지도 모드는 줌 조작 버튼 아래, 타임라인 위에 둔다. */
+.basemap-switcher.is-right-edge {
+  top: auto;
+  right: 12px;
+  bottom: 40px;
+}
+.basemap-switcher.is-right-edge .basemap-switcher-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
 
-/* 모바일에서는 그리기 런처가 존재하더라도 좌측 레이어 열 아래로 내려가므로(app/App.css의
-   같은 719px 중단점) 우측 상단이 비어 있다. atRightEdge는 런처의 존재만 보고 위치는 보지
-   않아 66px을 계속 비워두고 있었다. 12px은 아래 줌·현위치 컨트롤과 같은 여백. */
+/* 모바일은 같은 우측 여백을 사용한다. */
 @media (max-width: 719px) {
   .basemap-switcher { right: 12px; }
 }
@@ -89,36 +95,6 @@
     min-width: var(--touch-min);
     min-height: var(--touch-min);
   }
-}
-
-/* 지도 도구 런처 — 우측 끝. 항공/기상 레이어 버튼과 같은 형식(아이콘 + '그리기' 라벨, 흰 채움). */
-.map-tools-launcher {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 7;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  /* 데스크톱: 베이스맵 버튼(46px, radius 6)과 같은 크기·모서리로 나란히 정렬. */
-  width: 46px;
-  height: 46px;
-  padding: 0;
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
-  color: var(--accent);
-  font-family: var(--font-base, system-ui, sans-serif);
-  font-size: var(--fs-200);
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.map-tools-launcher:hover {
-  border-color: var(--accent);
 }
 
 .map-bottom-controls {
@@ -155,13 +131,6 @@
   border-color: var(--accent);
 }
 
-/* 열린 경로 확인 패널 바로 오른쪽의 지도 영역에 둔다. */
-.map-tools-launcher.is-open {
-  border-color: var(--accent, #2563eb);
-  background: var(--accent, #2563eb);
-  color: #ffffff;
-}
-
 /* 측정 도구 지도 위 라벨(거리/방위/반경). DOM 마커라 폰트 의존 없음. */
 .mt-label {
   padding: 1px 6px;
@@ -176,6 +145,17 @@
   font-variant-numeric: tabular-nums;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
   pointer-events: none;
+}
+
+@media (max-width: 719px) {
+  .map-view-wrapper .map-profile-panel {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: min(32vh, 240px);
+  }
 }
 
 .basemap-switcher-thumb {
@@ -1357,12 +1337,12 @@
 .map-view-wrapper .mapboxgl-ctrl-bottom-right > .mapboxgl-ctrl:has(.mapboxgl-ctrl-compass) {
   grid-column: 3;
   grid-row: 2;
-  transform: translateY(-32px);
+  transform: translateY(-86px);
 }
 .map-view-wrapper .mapboxgl-ctrl-bottom-right > .mapboxgl-ctrl:has(.mapboxgl-ctrl-geolocate) {
   grid-column: 3;
   grid-row: 1;
-  transform: translateY(-32px);
+  transform: translateY(-86px);
 }
 
 /* Keep Mapbox attribution in the desktop time bar: the logo remains required,
@@ -2009,24 +1989,25 @@
 .advisory-badge-bar {
   position: absolute;
   top: 14px;
-  left: 50%;
-  z-index: 5;
+  right: 12px;
+  z-index: 7;
   display: flex;
   align-items: center;
-  gap: 10px;
-  transform: translateX(-50%);
+  justify-content: flex-end;
+  gap: 8px;
 }
 
-/* iPad: centered auto-width placement only has half of the map width available.
-   Keep each status chip intact and wrap between chips within the map safe area. */
-@media (min-width: 720px) and (max-width: 1199px) {
-  .advisory-badge-bar {
-    right: 68px;
-    left: 68px;
-    flex-wrap: wrap;
-    justify-content: center;
-    transform: none;
-  }
+@media (min-width: 720px) and (max-width: 1699px) {
+  .advisory-badge-bar { gap: 5px; }
+  .advisory-badge-bar .advisory-chip { gap: 4px; padding-inline: 8px; font-size: 11px; }
+  .advisory-badge-bar .advisory-chip-label { display: none; }
+  .advisory-badge-bar .advisory-chip-short-label { display: inline; }
+  .advisory-badge-bar .advisory-chip > svg:first-child { display: none; }
+}
+
+@media (min-width: 720px) and (max-width: 999px) {
+  .advisory-badge-bar { gap: 4px; }
+  .advisory-badge-bar .advisory-chip { gap: 3px; padding-inline: 5px; font-size: 11px; }
 }
 
 @media (max-width: 920px) {
@@ -2063,149 +2044,230 @@
     transform: translateX(-50%);
   }
 
-  /* S1: mobile drops the centered placement — it collided with the left
-     layer-button column (z60, ~64px) and the right basemap thumbnail (z7),
-     clipping/overlapping chips at 390px. Constrain to the safe gutter
-     between them and wrap instead of horizontal-scrolling. */
   .advisory-badge-bar {
     left: 68px;
-    right: 58px;
-    transform: none;
-    max-width: none;
-    flex-wrap: wrap;
-    justify-content: center;
-    overflow-x: visible;
+    right: 12px;
+    gap: 4px;
+    overflow: hidden;
   }
+  .advisory-badge-bar .advisory-chip { gap: 3px; padding-inline: 5px; font-size: 10px; }
+  .advisory-badge-bar .advisory-chip-label { display: none; }
+  .advisory-badge-bar .advisory-chip-short-label { display: inline; font-size: 9px; }
+  .advisory-badge-bar .advisory-chip > svg:first-child { display: none; }
 }
 
-/* ── Weather Layer Timestamp Bar ───────────────────────────── */
-/* ICAO: meteorological data issue/valid time, clearly shown. One panel, one row per active forecast
-   layer, bottom-left above the timeline. High contrast over the map (legibility > subtlety). */
-.layer-timestamp-bar {
+/* 자료 시각은 패널과 범례가 닫혀 있어도 지도 상단에서 확인할 수 있다. */
+.weather-time-card {
   position: absolute;
-  left: 14px;
-  bottom: 64px;
-  z-index: 5;
-  padding: 8px 10px;
-  border: 0.5px solid rgba(51, 65, 85, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12);
-  pointer-events: none;
+  top: 12px;
+  left: 50%;
+  z-index: 6;
+  width: max-content;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 10px;
+  background: rgba(215, 231, 240, 0.78);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(10px) saturate(130%);
+  color: var(--text-1);
   font-family: var(--app-font, system-ui, sans-serif);
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+}
+
+.weather-time-card__heading,
+.weather-time-card__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+}
+
+.weather-time-card__heading > strong {
+  color: var(--accent);
+  font-size: 12px;
 }
 
 .layer-timestamp-header {
   display: flex;
   align-items: center;
   gap: 2px;
-  margin-bottom: 2px;
-  color: var(--text-3);
+  color: var(--text-2);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 700;
 }
 
-.layer-timestamp-content {
-  font-variant-numeric: tabular-nums;
+.weather-time-card__content {
+  margin-top: 2px;
 }
 
-.layer-timestamp-toggle {
+.weather-time-card__times {
+  display: flex;
+  gap: 12px;
+}
+
+.weather-time-card__times > span {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.weather-time-card__times small {
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.weather-time-card__times strong {
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.weather-time-card .layer-timestamp-history-arrow { width: 18px; height: 20px; }
+
+@media (min-width: 1100px) {
+  .app:not(.sidebar-is-expanded) .map-view-wrapper:has(.weather-time-card) .qpf-status-card,
+  .app:not(.sidebar-is-expanded) .map-view-wrapper:has(.weather-time-card) .route-map-interaction-status {
+    top: 104px;
+  }
+  .app:not(.sidebar-is-expanded) .map-view-wrapper:has(.weather-time-card):has(.qpf-status-card) .route-map-interaction-status {
+    top: 184px;
+  }
+}
+
+@media (min-width: 1300px) {
+  .app.sidebar-is-expanded .map-view-wrapper:has(.weather-time-card) .qpf-status-card,
+  .app.sidebar-is-expanded .map-view-wrapper:has(.weather-time-card) .route-map-interaction-status {
+    top: 104px;
+  }
+  .app.sidebar-is-expanded .map-view-wrapper:has(.weather-time-card):has(.qpf-status-card) .route-map-interaction-status {
+    top: 184px;
+  }
+}
+
+.active-weather-summary {
+  position: absolute;
+  top: 76px;
+  left: 12px;
+  z-index: 5;
+  display: grid;
+  gap: 3px;
+  width: fit-content;
+  max-width: var(--panel-overlay-sm);
+  padding: 8px 10px;
+  border: 1px solid var(--stroke-1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.14);
+  color: var(--text-1);
+  cursor: pointer;
+  text-align: left;
+}
+
+.active-weather-summary strong {
   flex: none;
+  color: var(--accent);
+  font-size: 12px;
 }
 
-/* 시간과 범례는 하나의 흐름 도크에서 상태별로 같은 순서를 유지한다.
-   시간 패널이 열리면 그 실제 폭 다음에 범례가 오고, 접히면 두 토글이 나란히 놓인다. */
+.active-weather-summary span {
+  min-width: 0;
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* 범례는 지도 좌측 하단에 고정한다. 열린 범례의 실제 높이만큼 정보 패널을 줄인다. */
 .map-bottom-control-dock {
   position: absolute;
   left: 14px;
   bottom: calc(38px + var(--space-s));
-  z-index: 5;
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-s);
+  z-index: 6;
   pointer-events: none;
 }
 
-.map-bottom-control-dock > * {
-  pointer-events: auto;
-}
+.map-bottom-control-dock:empty { display: none; }
+.map-bottom-control-dock > * { pointer-events: auto; }
 
-.map-bottom-control-dock .layer-timestamp-bar,
-.map-bottom-control-dock .layer-timestamp-dock,
-.map-bottom-control-dock .layer-timestamp-toggle,
 .map-bottom-control-dock .map-legend-mobile-dock,
 .map-bottom-control-dock .map-legend-desktop-dock {
   position: relative;
-  left: auto;
   right: auto;
   bottom: auto;
+  left: auto;
+  width: auto;
   z-index: auto;
 }
 
-.map-bottom-control-dock .layer-timestamp-bar {
-  position: absolute;
-  left: 0;
-  bottom: 100%;
-  width: max-content;
-  margin-bottom: var(--space-xs);
-  pointer-events: none;
-  transform: translateY(12px);
-  opacity: 0;
-  visibility: hidden;
-  transition: transform 200ms ease, opacity 200ms ease, visibility 200ms;
-}
-
-.map-bottom-control-dock .layer-timestamp-bar.is-open {
-  pointer-events: auto;
-  transform: translateY(0);
-  opacity: 1;
-  visibility: visible;
-}
-
-/* Both popovers share the same baseline. When both are open, put the time
-   panel above the measured legend panel instead of letting their surfaces overlap. */
-.map-bottom-control-dock.is-timestamp-open.is-legend-open .layer-timestamp-bar {
-  bottom: calc(100% + var(--legend-popover-height) + var(--space-s));
-}
-
-/* The legend card shares the dock's left edge whenever the time control exists,
-   whether the legend opens alone or the two cards are stacked. */
-.map-bottom-control-dock:has(.layer-timestamp-dock) .map-legends-bottom {
-  right: auto;
-  left: calc(-100% - var(--space-s));
-}
-
-.map-bottom-control-dock .map-legend-mobile-dock,
-.map-bottom-control-dock .map-legend-desktop-dock {
-  width: auto;
-}
-
 .map-bottom-control-dock .map-legends-bottom {
+  right: auto;
+  left: 0;
   width: min(72vw, 300px);
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
 }
 
-.map-bottom-control-dock.is-timestamp-open .map-legend-mobile-dock,
-.map-bottom-control-dock.is-timestamp-open .map-legend-desktop-dock {
-  align-self: flex-end;
+@media (min-width: 720px) {
+  .app.map-controls-visible .map-view-wrapper[data-mobile-layer-panel='true'] .layer-drawer {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100% - 176px - var(--legend-popover-height, 0px));
+  }
+
+  .map-view-wrapper[data-mobile-layer-panel='true'] .layer-drawer-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
 }
 
-.layer-timestamp-times {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* 좁은 지도에서 시각 카드는 범례 위로 내려 두어 정보 패널과 겹치지 않는다. */
+@media (min-width: 720px) and (max-width: 1299px) {
+  .app.sidebar-is-expanded .map-view-wrapper .weather-time-card {
+    top: auto;
+    bottom: calc(100px + var(--legend-popover-height, 0px));
+    left: 14px;
+    width: max-content;
+    max-width: min(360px, calc(100% - 28px));
+    transform: none;
+  }
+
+  .app.sidebar-is-expanded.map-controls-visible .map-view-wrapper[data-mobile-layer-panel='true'] .layer-drawer {
+    max-height: calc(100% - 272px - var(--legend-popover-height, 0px));
+  }
 }
 
-.layer-timestamp-cell {
-  display: block;
-  color: var(--text-2);
-  font-size: 12px;
-  white-space: nowrap;
+@media (min-width: 720px) and (max-width: 1099px) {
+  .app:not(.sidebar-is-expanded) .map-view-wrapper .weather-time-card {
+    top: auto;
+    bottom: calc(100px + var(--legend-popover-height, 0px));
+    left: 14px;
+    width: max-content;
+    max-width: min(360px, calc(100% - 28px));
+    transform: none;
+  }
+
+  .app:not(.sidebar-is-expanded).map-controls-visible .map-view-wrapper[data-mobile-layer-panel='true'] .layer-drawer {
+    max-height: calc(100% - 272px - var(--legend-popover-height, 0px));
+  }
 }
 
-.layer-timestamp-label {
-  margin-right: 4px;
-  color: var(--text-3);
-  font-weight: 400;
+@media (max-width: 719px) {
+  .weather-time-card {
+    top: auto;
+    right: auto;
+    bottom: calc(100px + var(--legend-popover-height, 0px));
+    left: 14px;
+    width: max-content;
+    max-width: min(300px, calc(100% - 88px));
+    transform: none;
+  }
+  .weather-time-card__times strong { font-size: 11px; }
+  .active-weather-summary { display: none; }
 }
 
 .adsb-loading {
@@ -2565,8 +2627,25 @@
 .route-map-interaction-confirm-apply:hover { filter: brightness(0.94); }
 .route-map-interaction-confirm-cancel { background: color-mix(in srgb, var(--bg-1) 82%, var(--level-amber-bg)) !important; }
 
-.vertical-level-rail-stack { position:absolute; right:12px; top:63px; z-index:6; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; }
-.vertical-level-rail-stack > * { pointer-events:auto; }
+.vertical-level-rail-stack { position:absolute; right:12px; top:63px; z-index:6; display:flex; flex-direction:row; gap:8px; align-items:flex-start; pointer-events:none; }
+.vertical-level-rail-item { display:flex; flex-direction:column; align-items:center; gap:6px; width:116px; pointer-events:auto; }
+.vertical-level-rail-item > select { max-width:100%; }
+.vertical-level-rail-label { display:none; max-width:100%; overflow:hidden; color:var(--text-1); font-size:10px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 3px #fff; }
+.vertical-level-rail-stack:has(> .vertical-level-rail-item:nth-child(2)) .vertical-level-rail-label { display:block; }
+
+@media (min-width:1100px) {
+  .app:not(.sidebar-is-expanded) .map-view-wrapper .weather-time-card { right:12px; left:auto; transform:none; }
+  .app:not(.sidebar-is-expanded) .map-view-wrapper .advisory-badge-bar { right:auto; left:50%; transform:translateX(-50%); }
+  .app:not(.sidebar-is-expanded) .vertical-level-rail-stack { top:108px; }
+  .app:not(.sidebar-is-expanded) .vertical-level-rail-stack .pressure-level-slider__track { height:clamp(160px, calc(100vh - 434px), 400px); min-height:0; }
+}
+
+@media (min-width:1300px) {
+  .app.sidebar-is-expanded .map-view-wrapper .weather-time-card { right:12px; left:auto; transform:none; }
+  .app.sidebar-is-expanded .map-view-wrapper .advisory-badge-bar { right:auto; left:50%; transform:translateX(-50%); }
+  .app.sidebar-is-expanded .vertical-level-rail-stack { top:108px; }
+  .app.sidebar-is-expanded .vertical-level-rail-stack .pressure-level-slider__track { height:clamp(160px, calc(100vh - 434px), 400px); min-height:0; }
+}
 .qpf-status-card { position:absolute; top:var(--space-m); left:50%; z-index:6; display:grid; gap:2px; width:max-content; max-width:min(360px, calc(100% - 2 * var(--space-m))); padding:var(--space-s) var(--space-m); border:1px solid var(--stroke-1); border-radius:var(--radius-lg); background:rgba(255,255,255,.96); color:var(--text-1); font-size:var(--fs-200); line-height:var(--lh-200); box-shadow:0 2px 8px rgba(15,23,42,.16); transform:translateX(-50%); pointer-events:none; }
 .qpf-status-card strong { font-size:var(--fs-300); line-height:var(--lh-300); }
 .qpf-status-card span { overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
@@ -2645,6 +2724,22 @@
   .pressure-level-slider__tick span { display: none; }
   .pressure-level-slider__value { right: calc(50% + 14px); font-size: var(--fs-200); }
   .pressure-level-slider__value small { font-size: var(--fs-100); }
+
+  .vertical-level-rail-item { width: 56px; }
+  .vertical-level-rail-stack:has(> .vertical-level-rail-item:nth-child(2)) {
+    top: 64px;
+    height: min(400px, calc(100% - 259px - var(--legend-popover-height, 0px)));
+  }
+  .vertical-level-rail-stack:has(> .vertical-level-rail-item:nth-child(2)) .vertical-level-rail-item {
+    height: 100%;
+    min-height: 0;
+  }
+  .vertical-level-rail-stack:has(> .vertical-level-rail-item:nth-child(2)) .pressure-level-slider.is-mobile-measured {
+    position: relative;
+    top: auto;
+    right: auto;
+    height: calc(100% - 18px);
+  }
 }
 
 /* ASOS 관측지점 말풍선 — 공항 마커 툴팁과 같은 모양(사용자 요청).

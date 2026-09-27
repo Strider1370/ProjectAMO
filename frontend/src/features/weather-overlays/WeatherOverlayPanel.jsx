@@ -95,8 +95,9 @@ function WeatherOverlayPanel({
     ceiling: '운고',
     terrainHazard: '지형 근접',
   }
-  const visibleLayers = layers.filter((layer) => showWind || !['surfaceChart', 'wind', 'temp', 'cloud', 'icing'].includes(layer.id))
+  const visibleLayers = layers.filter((layer) => layer.id !== 'notam' && (showWind || !['surfaceChart', 'wind', 'temp', 'cloud', 'icing'].includes(layer.id)))
   const activeCount = visibleLayers.filter((layer) => visibility[layer.id] && !isLayerDisabled(layer.id)).length
+    + (showRadarWindControl && radarWindRequested ? 1 : 0)
   const layerById = new Map(visibleLayers.map((layer) => [layer.id, layer]))
 
   // 데스크톱·모바일 공통 타일 그리드 (버튼식 토글).

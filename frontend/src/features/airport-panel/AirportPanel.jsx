@@ -163,7 +163,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
     isFullFeature && { id: 'amos', label: 'AMOS', meta: amos ? formatAmosTime(amos?.daily_rainfall?.observed_tm_kst || amos?.observation?.observed_tm_kst, tz) : '', node: <AmosBoardTab amos={amos} metar={metar} airportMeta={airport} /> },
     isFullFeature && { id: 'model-analysis', label: '상세 예보 분석', node: <AirportModelComparisonSection icao={icao} /> },
     { id: 'notam', label: 'NOTAM', node: <NotamTab notam={weatherData?.notam || null} icao={icao} /> },
-    isFullFeature && { id: 'info', label: '기상정보', node: <AirportInfoTab info={airportInfo} loading={infoLoading} /> },
+    isFullFeature && { id: 'info', label: '기상정보', node: <AirportInfoTab info={airportInfo} loading={infoLoading} tz={tz} /> },
     // 달빛은 위험이 아니라 계획용 참고값 → 위험도 순서상 맨 끝.
     // 국내 공항만(해외는 KST 앵커·고위도 가드가 검증되지 않음). 상류 데이터는 불필요 — 좌표만 쓴다.
     !airport?.overseas && Number.isFinite(airport?.lat) && Number.isFinite(airport?.lon)

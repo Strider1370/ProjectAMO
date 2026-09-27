@@ -1,12 +1,15 @@
-// The approved preview uses 400×560, or 480×680 expanded. Clamp the floating
-// window, never the map/panel viewport. Keyboard moves reuse the same geometry.
+// On desktop, fill the available height above the launcher. Keep the compact
+// floating size on tablet, and clamp keyboard/pointer movement to the viewport.
 export function floatingWindow(viewport, expanded, position = null) {
   const width = Math.min(expanded ? 480 : 400, Math.max(280, viewport.width - 32))
-  const height = Math.min(expanded ? 680 : 560, Math.max(240, viewport.height - 116))
+  const desktop = viewport.width >= 1200
+  const height = desktop
+    ? Math.max(240, viewport.height - 128)
+    : Math.min(expanded ? 680 : 560, Math.max(240, viewport.height - 116))
   const x = position?.x ?? viewport.width - width - 24
-  const y = position?.y ?? viewport.height - height - 100
+  const y = position?.y ?? (desktop ? 16 : viewport.height - height - 100)
   return { width, height, x: Math.max(16, Math.min(viewport.width - width - 16, x)),
-    y: Math.max(16, Math.min(viewport.height - height - 84, y)) }
+    y: Math.max(16, Math.min(viewport.height - height - (desktop ? 112 : 84), y)) }
 }
 
 export function formatCopilotTime(value, timezone, { year = false } = {}) {

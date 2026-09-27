@@ -1,4 +1,5 @@
 import WeatherIcon from "../../../../shared/ui/WeatherIcon.jsx";
+import { formatGroundForecastIssue } from '../utils/groundForecastViewModel.js'
 
 export function mapGroundForecastIcon(icon) {
   switch (icon) {
@@ -28,13 +29,6 @@ function getDayTitle(day, index) {
   if (index === 0) return `내일(${weekday})`;
   if (index === 1) return `모레(${weekday})`;
   return weekday;
-}
-
-// 기상청 발표시각(YYYYMMDDHH…) → "08/04 05시".
-export function formatIssuedAt(compact) {
-  const text = String(compact || "");
-  if (text.length < 10) return null;
-  return `${text.slice(4, 6)}/${text.slice(6, 8)} ${text.slice(8, 10)}시`;
 }
 
 function getWeekdayTone(day) {
@@ -69,12 +63,12 @@ function renderPeriod(period) {
 // 소스별 지연 문구("일부 소스 지연: mid_land, mid_ta")는 일부러 빼놨다. 조종사가 내부 소스
 // 이름을 봐도 할 수 있는 일이 없고, 예보를 못 믿게만 만든다. 그 정보는 source_status로 그대로
 // 내려오니 관리자 콘솔에서 볼 것 — 여기 다시 넣지 말 것.
-export default function GroundForecastClassicPanel({ groundForecastData, icao }) {
+export default function GroundForecastClassicPanel({ groundForecastData, icao, timeZone = 'KST' }) {
   const airportForecast = groundForecastData?.airports?.[icao] || null;
   const allDays = Array.isArray(airportForecast?.forecast) ? airportForecast.forecast : [];
   const days = allDays.filter((day) => !day.isToday);
-  const shortIssuedAt = formatIssuedAt(airportForecast?.source_status?.short?.announce_time);
-  const midIssuedAt = formatIssuedAt(airportForecast?.tmFc);
+  const shortIssuedAt = formatGroundForecastIssue(airportForecast?.source_status?.short?.announce_time, timeZone);
+  const midIssuedAt = formatGroundForecastIssue(airportForecast?.tmFc, timeZone);
 
   if (days.length === 0) {
     return (

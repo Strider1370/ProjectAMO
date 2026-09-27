@@ -4,7 +4,7 @@ import MapView from '../features/map/MapView.jsx'
 import useWeatherPolling from './useWeatherPolling.js'
 import Sidebar from './layout/Sidebar.jsx'
 import MobileTaskBar from './layout/MobileTaskBar.jsx'
-import MobileMapOverlay from './layout/MobileMapOverlay.jsx'
+import MapInfoControls from './layout/MapInfoControls.jsx'
 import MobileMoreMenu from './layout/MobileMoreMenu.jsx'
 import SettingsModal from '../features/settings/SettingsModal.jsx'
 import AuthModal from '../features/auth/AuthModal.jsx'
@@ -263,12 +263,12 @@ function MainAppShell() {
       setMobileTask(task)
       setSelectedAirport(null)
       if (task === 'route') setActivePanelRaw('route-check')
-      else setActivePanelRaw((cur) => (['aviation', 'met', 'route-check', 'my-map'].includes(cur) ? null : cur))
+      else setActivePanelRaw((cur) => (['aviation', 'met', 'map-profile', 'route-check', 'my-map', 'traffic'].includes(cur) ? null : cur))
     })
   }
 
   return (
-    <div className={`app ${isSidebarExpanded ? 'sidebar-is-expanded' : ''}`}>
+    <div className={`app ${isSidebarExpanded ? 'sidebar-is-expanded' : ''} ${mobileTask === 'map' && !selectedAirport ? 'map-controls-visible' : ''}`}>
       {previewMode && <PreviewMode compact />}
       <Sidebar
         activePanel={activePanel}
@@ -316,7 +316,6 @@ function MainAppShell() {
           onClosePanel={() => { setActivePanel(null); setMobileTask('map') }}
           onOpenNotamPanel={() => setActivePanel('notam')}
           onOpenRoutePanel={() => setActivePanel('route-check')}
-          onOpenCustomAreaPanel={() => setActivePanel('custom-area')}
           onOpenMetPanel={() => setActivePanel('met')}
           onOpenMyMapPanel={() => { setMobileTask('map'); setActivePanel('my-map') }}
         />
@@ -328,19 +327,20 @@ function MainAppShell() {
         onRequestDeferredWeatherData={requestDeferredWeatherData}
       />
 
-      {isMobile && mobileTask === 'map' && !selectedAirport && (
-        <MobileMapOverlay
+      {mobileTask === 'map' && !selectedAirport && (
+        <MapInfoControls
+          mobile={isMobile}
           activePanel={activePanel}
           onToggle={togglePanel}
           aviationCount={layerCounts.aviation}
           metCount={layerCounts.met}
-          trafficCount={layerCounts.traffic}
         />
       )}
       {isMobile && mobileTask === 'more' && !selectedAirport && (
         <MobileMoreMenu
           onSearch={() => setSearchOpen(true)}
           onMyMap={() => { setMobileTask('map'); setActivePanel('my-map') }}
+          onTraffic={() => { setMobileTask('map'); setActivePanel('traffic') }}
           onSettings={() => togglePanel('settings')}
           onUpdates={() => togglePanel('updates')}
           onAccount={() => previewMode ? window.location.assign('/') : setAuthOpen(true)}

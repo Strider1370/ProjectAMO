@@ -311,8 +311,11 @@ export default function VerticalProfileChart({
     ...allFlightProfiles.flatMap((candidate) => candidate.points.map((point) => point.altitudeFt)),
     0,
   )
+  const modelTopFt = !Number.isFinite(cruiseAltitudeFt)
+    ? Math.max(0, ...(crossSection?.levels ?? []).map((level) => Number.isFinite(level.altFt) ? level.altFt : pressureToFallbackFt(level.pressure)))
+    : 0
   const headroomFt = Number.isFinite(cruiseAltitudeFt) ? getAltitudeHeadroomFt(cruiseAltitudeFt) : 5000
-  const yMax = Math.max(1000, Math.ceil((profileCeilingFt + headroomFt) / 1000) * 1000)
+  const yMax = Math.max(1000, Math.ceil((Math.max(profileCeilingFt, modelTopFt) + headroomFt) / 1000) * 1000)
   const xFor = (distanceNm) => padding.left + (distanceNm / maxDistance) * plotWidth
   const nwpRail = railEnabled
     ? buildNwpTimeRail(visibleMarkers, nwpTimeSelection ?? { waypointOverrides: [] }).map((segment) => ({
@@ -567,7 +570,7 @@ export default function VerticalProfileChart({
           <span>{'\uc9c0\ud615\uace0\ub3c4'}</span>
           <strong>{formatFt(terrainMaxFt)}</strong>
         </span>
-        {!onSelectCandidateAltitude && <span className="vertical-profile-meta-item">
+        {!onSelectCandidateAltitude && Number.isFinite(selectedCruiseAltitudeFt) && <span className="vertical-profile-meta-item">
           <span>{'\uc120\ud0dd \uc21c\ud56d\uace0\ub3c4'}</span>
           <strong>{formatFt(selectedCruiseAltitudeFt)}</strong>
         </span>}

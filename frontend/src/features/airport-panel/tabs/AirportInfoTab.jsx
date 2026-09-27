@@ -1,7 +1,8 @@
-import AirportInfoDocument, { BulletText, fmtBulletinTime } from '../AirportInfoDocument.jsx'
+import AirportInfoDocument, { BulletText } from '../AirportInfoDocument.jsx'
+import { fmtBulletinTime } from '../airportInfoTime.js'
 import { Spinner } from '../../../shared/ui/fluent.js'
 
-export default function AirportInfoTab({ info, loading = false }) {
+export default function AirportInfoTab({ info, loading = false, tz = 'KST' }) {
   // 오는 중과 원래 없는 것이 같은 회색 글자 한 줄이면 구분할 수 없다. 기상 브리핑에서
   // '자료 없음'과 '아직 안 옴'을 섞으면 판단이 달라진다 — 대기는 도는 표시로 못박는다.
   if (!info) {
@@ -29,7 +30,7 @@ export default function AirportInfoTab({ info, loading = false }) {
         <div className="ap-info-peek">
           <div className="ap-info-peek-head">
             {info.summary && <p className="ap-info-peek-title">{info.summary}</p>}
-            <p className="ap-info-peek-time">[ {fmtBulletinTime(info.tm)} 발표 ]</p>
+            <p className="ap-info-peek-time">[ {fmtBulletinTime(info.tm, tz)} 발표 ]</p>
           </div>
           {hasForecast && <h3 className="ap-info-section-head">▶ 위험 기상예보</h3>}
           <BulletText text={peekText} className="ap-info-peek-outlook" />
@@ -39,7 +40,7 @@ export default function AirportInfoTab({ info, loading = false }) {
 
       <details className="ap-info-raw" open={defaultOpen}>
         <summary className="ap-info-raw-summary">공식 문서 원문 보기</summary>
-        <AirportInfoDocument info={info} />
+        <AirportInfoDocument info={info} tz={tz} />
       </details>
     </div>
   )

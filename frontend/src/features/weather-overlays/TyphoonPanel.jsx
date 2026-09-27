@@ -100,7 +100,7 @@ export default function TyphoonPanel({
           <div className="typhoon-panel__head">
             <strong className="typhoon-panel__name">{item.title}</strong>
             {item.analyzedAt && (
-              <span className="typhoon-panel__issued">{formatTrackTime(item.analyzedAt, timeZone)} 발표 · {timeZone}</span>
+              <span className="typhoon-panel__issued">{formatTrackTime(item.analyzedAt, timeZone)} 분석 · {timeZone}</span>
             )}
             <button type="button" className="typhoon-panel__focus" onClick={() => { if (hidden) onToggleTyphoon?.(item.key); onFocus?.(item) }}>
               지도에서 보기

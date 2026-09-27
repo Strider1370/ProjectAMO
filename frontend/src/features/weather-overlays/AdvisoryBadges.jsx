@@ -104,9 +104,11 @@ function AdvisoryBadges({
         size="medium"
         shape="circular"
         className={`advisory-chip advisory-chip--${item.tone}${isOpen ? ' is-open' : ''}`}
+        aria-label={`${item.label} ${item.count}건`}
       >
         <AlertTriangle size={15} aria-hidden="true" />
-        {item.label}
+        <span className="advisory-chip-label">{item.label}</span>
+        <span className="advisory-chip-short-label" aria-hidden="true">{item.key === 'sigwxLow' ? 'SIGWX' : item.label}</span>
         <CounterBadge className="advisory-ct" appearance="filled" color={TONE_COLOR[item.tone]} count={item.count} size="small" />
         <ChevronDown size={14} className="advisory-chip-caret" aria-hidden="true" />
       </Button>

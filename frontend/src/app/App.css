@@ -70,6 +70,86 @@ optgroup {
   text-align: center;
 }
 
+.mobile-map-layer-btns {
+  position: fixed;
+  top: 12px;
+  left: calc(var(--active-sidebar-width) + 12px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-map-layer-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 54px;
+  min-height: 52px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--accent);
+  font-size: var(--fs-200);
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+}
+
+.mobile-map-layer-btn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.mobile-map-layer-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: var(--fs-200);
+  font-weight: 800;
+  line-height: 1;
+  border: 1.5px solid #ffffff;
+}
+
+.mobile-map-layer-btn.is-active .mobile-map-layer-count {
+  background: var(--bg-1);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+@media (min-width: 720px) {
+  .mobile-map-layer-btns {
+    flex-direction: row;
+  }
+
+  .app.map-controls-visible .map-view-wrapper .layer-drawer {
+    top: 76px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+    max-height: calc(100% - 88px);
+  }
+
+  .app.map-controls-visible .map-view-wrapper .map-profile-panel {
+    top: 76px;
+    left: 12px;
+    right: auto;
+    max-height: calc(100% - 88px);
+  }
+}
+
 /* ── Mobile shell (≤719px): task bar replaces the sidebar; map is a task. ── */
 @media (max-width: 719px) {
   .app {
@@ -86,100 +166,21 @@ optgroup {
     display: none;
   }
 
-  /* On-map layer entry points (sidebar is hidden). */
+  /* 지도 정보 버튼은 모바일에서도 지도 왼쪽 위에 세로로 둔다. */
   .mobile-map-layer-btns {
-    position: fixed;
     top: 10px;
     left: 12px;
-    z-index: 60;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
   }
 
   .mobile-map-layer-btn {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    width: 52px;
-    min-height: 52px;
-    border: 1px solid rgba(148, 163, 184, 0.5);
+    width: 72px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    color: var(--accent);
-    font-size: var(--fs-200);
-    font-weight: 800;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
-    cursor: pointer;
-  }
-
-  /* 'ADS-B'는 두 글자 한글 라벨보다 길어 52px 안에서 두 줄로 깨진다. 이 버튼만 살짝 줄인다. */
-  .mobile-map-layer-btn--adsb > span:not(.mobile-map-layer-count) {
-    font-size: var(--fs-100);
-    letter-spacing: -0.02em;
-    white-space: nowrap;
-  }
-
-  .mobile-map-layer-btn.is-active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #ffffff;
-  }
-
-  .mobile-map-layer-count {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background: var(--accent);
-    color: #ffffff;
-    font-size: var(--fs-200);
-    font-weight: 800;
-    line-height: 1;
-    border: 1.5px solid #ffffff;
-  }
-
-  .mobile-map-layer-btn.is-active .mobile-map-layer-count {
-    background: var(--bg-1);
-    color: var(--accent);
-    border-color: var(--accent);
-  }
-
-  /* 그리기 런처를 항공/기상 레이어 열 아래로 이동(기상 버튼 밑). 외형은 공용 기본 스타일과 동일.
-     top = 10 + 52 + 8 + 52 + 8. */
-  .map-tools-launcher {
-    top: 130px;
-    left: 12px;
-    right: auto;
-    width: 52px;
-    height: 52px;
-    border-radius: 12px;
-    z-index: 60;
-  }
-
-  .map-view-wrapper[data-mobile-task='route'] .map-tools-launcher {
-    top: 10px;
   }
 
   /* A full-detent mobile sheet owns the whole surface — hide the map chrome
      (layer chips, basemap switcher) that would otherwise sit on top. */
   .amo-sheet-full .mobile-map-layer-btns,
-  .amo-sheet-full .basemap-switcher,
-  .amo-sheet-full .map-tools-launcher {
-    display: none;
-  }
-
-  /* 항공/기상 레이어 시트가 열린 동안에는 지도 도구가 시트와 겹치지 않도록 숨긴다. */
-  .map-view-wrapper[data-mobile-layer-panel='true'] .map-tools-launcher {
+  .amo-sheet-full .basemap-switcher {
     display: none;
   }
 

@@ -6,7 +6,7 @@ import { fitScale } from './lib/fitScale.js'
 // panel size depends on the monitor. Rather than pick a font size that is wrong for most of those
 // combinations, lay the document out at full panel width and scale it to fill whatever room there
 // is — always as large as it can be without clipping.
-export default function MonitoringWxInfoSlide({ info }) {
+export default function MonitoringWxInfoSlide({ info, timeZone = 'KST' }) {
   const boxRef = useRef(null)
   const contentRef = useRef(null)
   const [scale, setScale] = useState(1)
@@ -71,7 +71,7 @@ export default function MonitoringWxInfoSlide({ info }) {
         ref={contentRef}
         style={{ transform: `scale(${scale})` }}
       >
-        <AirportInfoDocument info={info} />
+        <AirportInfoDocument info={info} tz={timeZone} />
       </div>
     </div>
   )
