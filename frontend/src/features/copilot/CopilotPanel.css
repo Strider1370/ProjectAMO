@@ -83,3 +83,20 @@
 .copilot-raw .ap-metar-tac-hl--wind { background: var(--level-red-bg); color: var(--level-red); }
 .copilot-raw .ap-metar-tac-hl--precip { background: rgba(186, 230, 253, .72); color: #0c4a6e; } /* color-lint-ignore: same precipitation tint as the airport panel */
 .copilot-raw .ap-metar-tac-hl--special { background: var(--level-red-bg); color: var(--level-red); outline: 2px dashed var(--level-red); outline-offset: -1px; }
+
+.copilot-brief { margin-top: var(--space-s); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-1); padding: var(--space-s) var(--space-m); font-size: var(--fs-200); }
+.copilot-brief-flight { margin: 0 0 var(--space-s); font-weight: var(--fw-bold); overflow-wrap: anywhere; }
+.copilot-brief-section + .copilot-brief-section { border-top: 1px solid var(--stroke-2); margin-top: var(--space-s); padding-top: var(--space-s); }
+.copilot-brief-section h4 { margin: 0 0 var(--space-xs); font-size: var(--fs-200); color: var(--text-2); }
+.copilot-brief-section ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-xs); }
+.copilot-brief-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-xs) var(--space-s); }
+.copilot-brief-level { flex: none; border-radius: var(--radius-md); padding: 0 var(--space-xs); font-size: var(--fs-100); font-weight: var(--fw-bold); }
+.copilot-brief-text { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+.copilot-brief-경고 .copilot-brief-level { background: var(--level-red-bg); color: var(--level-red); }
+.copilot-brief-주의 .copilot-brief-level { background: var(--level-amber-bg); color: var(--level-amber); }
+.copilot-brief-참고 .copilot-brief-level, .copilot-brief-바람 .copilot-brief-level { background: var(--bg-3); color: var(--text-2); }
+.copilot-brief-참고 .copilot-brief-text { color: var(--text-3); }
+.copilot-brief-quiet, .copilot-brief-gaps { margin: 0; color: var(--text-3); }
+.copilot-brief-gaps { margin-top: var(--space-s); font-size: var(--fs-100); }
+.copilot-brief-shown { font-size: var(--fs-100); font-weight: var(--fw-bold); color: var(--accent); }
+.copilot-brief-item:has(.copilot-brief-shown) { background: var(--bg-2); border-radius: var(--radius-md); }

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import { useCopilot } from './useCopilot.js'
 import { floatingWindow, formatCopilotTime } from './floatingWindow.js'
@@ -11,6 +11,7 @@ import SavedRoutesCard from './SavedRoutesCard.jsx'
 import FlightAlertCard from './FlightAlertCard.jsx'
 import UiActionCard from './UiActionCard.jsx'
 import RawReportCard from './RawReportCard.jsx'
+import RouteBriefCard from './RouteBriefCard.jsx'
 import { answerParagraphs } from './answerText.js'
 import { validBriefingRef } from '../route-briefing/lib/copilotResult.js'
 import './CopilotPanel.css'
@@ -21,7 +22,7 @@ const TOOL_LABELS = { get_airport_weather: '공항 관측·예보', get_weather_
 function FactCard({ card, timezone, onOpenResult, onRequery, resultAction }) {
   const { result } = card
   const opening = resultAction?.opening
-  const error = resultAction?.ref === result.reference?.briefingRef ? resultAction?.error : null
+  const error = resultAction && resultAction.ref === result.reference?.briefingRef && !resultAction.stretch ? resultAction.error : null
   return <details className="copilot-fact">
     <summary>{TOOL_LABELS[card.tool] ?? '조회 자료'} · {result.status === 'ok' ? '조회됨' : '일부 미확인'}</summary>
     <p>기준 {formatCopilotTime(result.reference?.effectiveNow, timezone)}</p>
@@ -52,6 +53,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
   const [contextChoice, setContextChoice] = useState(null)
   const choiceHeading = useRef(null)
   const [resultAction, setResultAction] = useState(null)
+  const [shownStretch, setShownStretch] = useState(null) // { ref, key } pinned on the map from a brief card
   const [settingsAction, setSettingsAction] = useState(null)
   const [uiActions, setUiActions] = useState({})
   const uiActionPending = useRef(false)
@@ -63,6 +65,9 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
   const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
   const launcher = useRef(null), input = useRef(null), thread = useRef(null), drag = useRef(null)
   const scroll = useRef({ top: 0, follow: true })
+  // Restore the thread position only when the thread mounts (window reopened); an inline
+  // ref ran on every render and threw the reader back to a stale position.
+  const threadRef = useCallback((node) => { thread.current = node; if (node) node.scrollTop = scroll.current.top }, [])
   const size = floatingWindow(viewport, expanded, position)
   function close() { setOpen(false); launcher.current?.focus() }
   async function applyUiAction(cardId, action) {
@@ -103,14 +108,21 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
       if (owner === resultOwner.current) setSettingsAction({ cardId, stage: 'error', error: failure.code ?? failure.message ?? 'ROUTE_SETTINGS_UNAVAILABLE' })
     } finally { settingsPending.current = false }
   }
-  async function openStoredResult(reference) {
+  // A pinned stretch keeps the desktop chat open so the user can step through stretches.
+  async function openStoredResult(reference, options = {}) {
     const owner = resultOwner.current
-    setResultAction({ ref: reference.briefingRef, opening: true, error: null })
+    // stretch: opened from a brief card row, so its error shows on that card, not the fact card.
+    const stretch = Boolean(options.highlight)
+    setResultAction({ ref: reference.briefingRef, opening: true, error: null, stretch })
     try {
-      await onOpenResult(reference)
-      if (owner === resultOwner.current) { setResultAction(null); close() }
+      await onOpenResult(reference, options)
+      if (owner === resultOwner.current) {
+        setResultAction(null)
+        setShownStretch(options.highlight ? { ref: reference.briefingRef, key: options.stretchKey } : null)
+        if (!options.highlight || isMobile) close()
+      }
     } catch (failure) {
-      if (owner === resultOwner.current) setResultAction({ ref: reference.briefingRef, opening: false,
+      if (owner === resultOwner.current) setResultAction({ ref: reference.briefingRef, opening: false, stretch,
         error: failure.code ?? failure.message ?? 'RESULT_UNAVAILABLE' })
     }
   }
@@ -128,7 +140,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
   useEffect(() => { if (!chat.status?.enabled) setOpen(false) }, [chat.status?.enabled])
   useEffect(() => {
     preparation.current?.abort(); preparation.current = null
-    setPreparing(false); setContextChoice(null); setContextError(null); setResultAction(null); setSettingsAction(null)
+    setPreparing(false); setContextChoice(null); setContextError(null); setResultAction(null); setSettingsAction(null); setShownStretch(null)
     return () => { preparation.current?.abort() }
   }, [user?.id])
   useEffect(() => {
@@ -219,7 +231,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
       <span>{attachContext ? airport ?? '선택 공항 없음' : '화면 맥락 제외'} · {timezone === 'UTC' ? 'UTC' : 'KST'}</span>
       {chat.conversationContext?.label && <span>최근 질문 기준: {chat.conversationContext.label}</span>}</div>
     <div className="copilot-thread" role="log" aria-label="기상이 대화 내역" aria-live="polite"
-      ref={(node) => { thread.current = node; if (node) node.scrollTop = scroll.current.top }}
+      ref={threadRef}
       onScroll={(event) => { const node = event.currentTarget; scroll.current = { top: node.scrollTop, follow: node.scrollHeight - node.scrollTop - node.clientHeight < 50 } }}>
       {!chat.messages.length && <div className="copilot-welcome"><img src={AVATAR} alt="" /><h2>무엇을 확인해 볼까요?</h2>
         <p>공항 관측·예보와 SIGMET·AIRMET을 확인하고, 자료의 뜻과 부족한 부분을 설명해 드려요.</p>
@@ -256,6 +268,12 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
                   onRequery={() => { chat.setDraft(`저장 경로 ID ${card.result.data?.savedRoute?.id}를 현재 자료로 다시 브리핑해 줘`); input.current?.focus() }} />}</div>
             : <Fragment key={`${user?.id}:${index}`}>
               {card.tool === 'get_airport_weather' && <RawReportCard result={card.result} />}
+              {card.tool === 'get_route_briefing' && <RouteBriefCard result={card.result}
+                opening={resultAction?.opening && resultAction.ref === card.result.reference?.briefingRef}
+                error={resultAction && resultAction.ref === card.result.reference?.briefingRef && resultAction.stretch ? resultAction.error : null}
+                onShowStretch={onOpenResult && validBriefingRef(card.result.reference?.briefingRef) && card.result.reference.resultHash
+                  ? (highlight, stretchKey) => void openStoredResult(card.result.reference, { highlight, stretchKey }) : null}
+                shownKey={shownStretch?.ref === card.result.reference?.briefingRef ? shownStretch.key : null} />}
               <FactCard card={card} timezone={message.displayTimezone ?? timezone}
                 resultAction={resultAction} onOpenResult={onOpenResult ? openStoredResult : null}
                 onRequery={() => { setAttachContext(true); chat.setDraft('현재 적용된 경로를 최신 자료로 다시 브리핑해 줘'); input.current?.focus() }} /></Fragment>)}

@@ -42,6 +42,44 @@ export function legCoordinates(previewGeojson, from, to) {
   return coordinates.slice(low, high + 1)
 }
 
+const EARTH_RADIUS_NM = 3440.065
+function distanceNm(a, b) {
+  const rad = Math.PI / 180
+  const dLat = (b[1] - a[1]) * rad, dLon = (b[0] - a[0]) * rad
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2
+  return 2 * EARTH_RADIUS_NM * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+const between = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+
+// previewGeojson + 경로 누적거리(NM) 범위 → 그 범위의 좌표 배열. 여러 구간을 묶은 범위나
+// FIX 이름이 없는 범위(예: 강하 중 난류 구간)를 자를 때 쓴다. 못 자르면 [].
+export function rangeCoordinates(previewGeojson, startNm, endNm) {
+  const line = (previewGeojson?.features ?? []).find((feature) => feature.properties?.role === 'route-preview-line')
+  const coordinates = line?.geometry?.coordinates
+  if (!Array.isArray(coordinates) || coordinates.length < 2 || !Number.isFinite(startNm) || !Number.isFinite(endNm) || endNm <= startNm) return []
+  const out = []
+  let travelled = 0
+  for (let index = 1; index < coordinates.length; index += 1) {
+    const a = coordinates[index - 1], b = coordinates[index]
+    const length = distanceNm(a, b)
+    const from = travelled, to = travelled + length
+    if (to >= startNm && from <= endNm && length > 0) {
+      if (!out.length) out.push(between(a, b, Math.max(0, (startNm - from) / length)))
+      if (to <= endNm) out.push(b)
+      else { out.push(between(a, b, (endNm - from) / length)); break }
+    }
+    travelled = to
+  }
+  return out.length > 1 ? out : []
+}
+
+// 강조 대상 → 좌표. FIX 이름으로 자르고(NAVLOG 한 줄, 여러 구간 묶음), 이름이 없거나
+// 못 찾으면 거리(NM) 범위로 자른다.
+export function legHighlightCoordinates(previewGeojson, highlight) {
+  const byFix = highlight?.from && highlight?.to ? legCoordinates(previewGeojson, highlight.from, highlight.to) : []
+  return byFix.length > 1 ? byFix : rangeCoordinates(previewGeojson, Number(highlight?.startNm), Number(highlight?.endNm))
+}
+
 export function addLegHighlightLayer(map) {
   if (!map.getSource(LEG_HL_SOURCE)) {
     map.addSource(LEG_HL_SOURCE, { type: 'geojson', data: emptyGeoJSON })

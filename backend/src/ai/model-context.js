@@ -1,6 +1,7 @@
 import { isAbsoluteIsoInstant } from './contracts.js'
 import { airportBriefing, AIRPORT_BRIEFING_NOTE } from './digests/airport-briefing.js'
 import { altitudeComparisonSummary } from './digests/altitude-summary.js'
+import { ROUTE_BRIEF_NOTE } from './digests/route-brief.js'
 
 export function displayInstant(value, timezone) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: timezone,
@@ -71,7 +72,21 @@ function altitudeSummaryResult(result, timezone) {
     data: { summary: altitudeComparisonSummary(result.data, reference), detailSections: result.data.detailSections } }, timezone)
 }
 
+// Route questions get the code-made brief (built once in the tool) instead of the
+// structured enroute payload; highlight ranges are for the card, not the model.
+function routeBriefingResult(result, timezone) {
+  const { schemaVersion, status, reference, error } = result
+  const data = result.data
+  const strip = (items) => (items ?? []).map(({ highlight: _highlight, ...item }) => item)
+  const brief = { note: ROUTE_BRIEF_NOTE, ...data.brief, speak: strip(data.brief.speak), cardOnly: strip(data.brief.cardOnly) }
+  const issues = (result.issues ?? []).filter((issue) => !['SOURCE_COVERAGE_UNVERIFIED', 'RAW_UNAVAILABLE'].includes(issue?.code))
+  return modelContext({ schemaVersion, status, reference, ...(error ? { error } : {}), issues, data: {
+    brief, departure: data.brief.departure, arrival: data.brief.arrival, ...(data.routePlan ? { routePlan: data.routePlan } : {}),
+    notamCount: data.notamCount, detailSections: data.detailSections } }, timezone)
+}
+
 export function modelToolResult(tool, result, timezone, options = {}) {
+  if (tool === 'get_route_briefing' && result.data?.brief) return routeBriefingResult(result, timezone)
   if (tool === 'get_airport_weather' && Array.isArray(result.data?.airports)) return airportBriefingResult(result, timezone, options)
   if (tool === 'compare_route_altitudes' && Array.isArray(result.data?.rows)) return altitudeSummaryResult(result, timezone)
   const airportDigest = tool === 'get_airport_weather' || tool === 'get_route_briefing'

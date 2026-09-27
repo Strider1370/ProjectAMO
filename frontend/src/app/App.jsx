@@ -384,9 +384,9 @@ function MainAppShell() {
           if (isMobile) setMobileTask('route')
           return result
         }}
-        onOpenResult={async (reference) => {
+        onOpenResult={async (reference, options) => {
           if (!mapRef.current?.openCopilotResult) throw new Error('MAP_NOT_READY')
-          await mapRef.current.openCopilotResult(reference)
+          await mapRef.current.openCopilotResult(reference, options)
           setSelectedAirport(null)
           setActivePanelRaw('route-check')
           if (isMobile) setMobileTask('route')

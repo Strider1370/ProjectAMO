@@ -12,7 +12,7 @@ export function useCopilotResult({ ownerId, routeState, activePanel, ready, canO
     routeState.selectedRouteDesignId, routeState.activeAppliedDesignId, routeState.etd, routeState.eta,
     routeState.cruiseAltitudeFt, routeState.nwpTimeSelection, routeState.briefingContext,
     routeState.selectedSid, routeState.selectedStar, routeState.selectedIapKey])
-  current.current = { ownerId, screenKey, ready, activePanel, canOpen }
+  current.current = { ownerId, screenKey, ready, activePanel, canOpen, bundle }
   activeRef.current = Boolean(bundle)
   function close() { gate.current.cancel(); activeRef.current = false; setBundle(null) }
   useEffect(() => { close() }, [ownerId, screenKey])
@@ -24,7 +24,15 @@ export function useCopilotResult({ ownerId, routeState, activePanel, ready, canO
     previousPanel.current = activePanel
   }, [activePanel])
   useEffect(() => () => gate.current.cancel(), [])
-  async function open(reference) {
+  // options.highlight: a stretch {from, to, startNm, endNm} to pin on the map and profile.
+  async function open(reference, { highlight = null } = {}) {
+    const shown = current.current.bundle
+    if (shown && shown.reference?.briefingRef === reference?.briefingRef && shown.resultHash === reference?.resultHash) {
+      // Same stored result already open: only move the highlight, no reload.
+      const next = { ...shown, highlight }
+      setBundle(next)
+      return next
+    }
     if (!current.current.ready) throw new Error('MAP_NOT_READY')
     if (!current.current.canOpen()) throw new Error('MAP_EDIT_ACTIVE')
     if (!current.current.ownerId) throw new Error('AUTH_REQUIRED')
@@ -39,8 +47,9 @@ export function useCopilotResult({ ownerId, routeState, activePanel, ready, canO
     if (!request.isCurrent() || start.ownerId !== current.current.ownerId || start.screenKey !== current.current.screenKey
       || start.activePanel !== current.current.activePanel
       || !current.current.ready || !current.current.canOpen()) throw new Error('RESULT_OPEN_CANCELLED')
-    setBundle(value)
-    return value
+    const next = { ...value, highlight }
+    setBundle(next)
+    return next
   }
   return { bundle, open, close, activeRef, getContext: () => copilotResultContext(bundle) }
 }

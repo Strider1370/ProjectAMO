@@ -58,7 +58,7 @@ function CatBadge({ category }) {
   return <Badge appearance="filled" style={{ backgroundColor: catColorOf(category), color: '#fff' }}>{c}</Badge>
 }
 
-export default function BriefingView({ frozenNotice = null, organizationContext = null, organizationBundle = null, organizationError = null, onOrganizationReload = null, briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeRefreshError = null, onRetryNwpTimeRefresh = null, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null }) {
+export default function BriefingView({ frozenNotice = null, organizationContext = null, organizationBundle = null, organizationError = null, onOrganizationReload = null, briefing, verticalProfile = null, crossSection = null, advisories = [], onClose, onOpenProfile, onFocus, metVisibility, onToggleMetLayer, onEnterMapMode, onHighlightLeg, onSelectForecastHour, crossSectionHourLoading = false, nwpTimeRefreshError = null, onRetryNwpTimeRefresh = null, nwpTimeSelection = null, onSetWaypointNwpOffset = null, routeSnapshot = null, onSaveBriefing = null, externalHighlight = null }) {
   const isMobile = useIsMobile()
   const { tz } = useTimeZone()
   const { nowMs } = useDemoMode()
@@ -99,6 +99,14 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   const onHighlightLegRef = useRef(onHighlightLeg)
   onHighlightLegRef.current = onHighlightLeg
   useEffect(() => () => onHighlightLegRef.current?.(null), [])
+  // A stretch chosen outside the table (기상이 브리핑 카드) pins like a NAVLOG row.
+  useEffect(() => {
+    if (!externalHighlight) return
+    const leg = { ...externalHighlight, key: `external:${externalHighlight.startNm}-${externalHighlight.endNm}`, pinned: true }
+    setPinnedLeg(leg)
+    setActiveLeg(leg)
+    onHighlightLegRef.current?.(leg)
+  }, [externalHighlight])
 
   const hasEnroute = Boolean(briefing?.sections?.enroute)
   const hasNotam = (briefing?.routeNotams ?? []).length > 0

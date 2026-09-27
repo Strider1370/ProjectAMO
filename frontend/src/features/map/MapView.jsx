@@ -142,7 +142,7 @@ import {
   syncVfrWaypointData,
 } from '../route-briefing/lib/routePreviewSync.js'
 import { syncTokenPreviewLayers } from '../route-briefing/lib/tokenPreviewLayers.js'
-import { legCoordinates, syncLegHighlight } from '../route-briefing/lib/legHighlight.js'
+import { legHighlightCoordinates, syncLegHighlight } from '../route-briefing/lib/legHighlight.js'
 import { useRouteBriefing } from '../route-briefing/useRouteBriefing.js'
 import { useCopilotResult } from '../route-briefing/useCopilotResult.js'
 import { useAuth } from '../auth/AuthContext.jsx'
@@ -629,7 +629,7 @@ const MapView = forwardRef(function MapView({
     resizeMap: () => mapRef.current?.resize(),
     loadRouteBriefing: (saved, options) => routeBriefing.actions.openSavedBriefing(saved, options),
     getAppliedCopilotContext: () => copilotResult.getContext() ?? routeBriefing.actions.getAppliedCopilotContext(),
-    openCopilotResult: (reference) => copilotResult.open(reference),
+    openCopilotResult: (reference, options) => copilotResult.open(reference, options),
     previewCopilotSavedRoute: (reference) => savedRouteHandoff.prepare(reference),
     applyCopilotSavedRoute: async (prepared) => {
       const result = await savedRouteHandoff.apply(prepared)
@@ -772,7 +772,7 @@ const MapView = forwardRef(function MapView({
     if (!map || !isStyleReady) return
     const coordinates = highlightedLeg?.coordinates?.length > 1
       ? highlightedLeg.coordinates
-      : highlightedLeg ? legCoordinates(routeResult?.previewGeojson, highlightedLeg.from, highlightedLeg.to) : []
+      : highlightedLeg ? legHighlightCoordinates(routeResult?.previewGeojson, highlightedLeg) : []
     syncLegHighlight(map, coordinates, { pinned: Boolean(highlightedLeg?.pinned) })
   }, [highlightedLeg, routeResult, isStyleReady, styleRevision])
 
@@ -2200,6 +2200,7 @@ const MapView = forwardRef(function MapView({
 
       {activePanel === 'route-check' && copilotResult.bundle && <Suspense fallback={null}>
         <CopilotResultView key={`${authUser?.id}:${copilotResult.bundle.resultHash}`} bundle={copilotResult.bundle} onClose={copilotResult.close}
+          onHighlightLeg={setHighlightedLeg}
           onPreviewEdit={async (bundle) => ({ ...await routeBriefing.actions.previewCopilotGeneratedRoute(bundle), ownerId: authUser?.id })}
           onApplyEdit={(prepared) => {
             if (!authUser?.id || prepared.ownerId !== authUser.id) throw new Error('AUTH_REQUIRED')

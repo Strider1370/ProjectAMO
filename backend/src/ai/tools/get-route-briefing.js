@@ -4,6 +4,8 @@ import { getAirportWeather } from './get-airport-weather.js'
 import { createDataContext } from '../data-context.js'
 import { modelTimeCoverage } from '../model-time-coverage.js'
 import { executeAltitudeComparison } from '../../briefing/altitude-service.js'
+import { routeWeatherSummary } from '../digests/route-summary.js'
+import { buildRouteBrief } from '../digests/route-brief.js'
 
 const hash = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const list = (items, cap = 10) => ({ items: (items ?? []).slice(0, cap), total: (items ?? []).length })
@@ -105,6 +107,11 @@ export async function getRouteBriefing(input, context) {
           legCount: briefing.sections.enroute.legs.length, aipStatus: briefing.provenance.aip.status, modelTimeCoverage: modelCoverage,
           plannedAltitudeWeather,
           weatherScope: 'Whole route including terminals, using the requested altitude and applied profile when available. Preserve profileStatus and input validity. Grade 0 is the reported model grade, not a safety/absence finding. hazards are advisory matches, not grid icing/turbulence.' },
+        // One code-made pre-flight brief for the chat answer, the card and the map highlight.
+        brief: buildRouteBrief({
+          flight: { ...briefing.meta, plannedCruiseAltitudeFt: request.plannedCruiseAltitudeFt, distanceNm: request.routeModel?.routeAxis?.totalDistanceNm ?? null },
+          airports: airportResult.data.airports, routeSummary: routeWeatherSummary(briefing),
+          nowMs: Date.parse(effectiveNow), timezone: context.displayTimezone }),
         detailSections: Object.keys(sections),
         assessment: 'Facts only; missing or unverified sources must not be described as clear or safe.',
         ...(selection.plan ? { routePlan: { flight: selection.plan.flight, assumptions: selection.plan.assumptions,

@@ -7,7 +7,7 @@ import AltitudeComparisonCard from '../copilot/AltitudeComparisonCard.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { formatBriefingTime } from './lib/briefingTime.js'
 
-export default function CopilotResultView({ bundle, onClose, onPreviewEdit, onApplyEdit }) {
+export default function CopilotResultView({ bundle, onClose, onPreviewEdit, onApplyEdit, onHighlightLeg }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const [edit, setEdit] = useState(null)
   const { tz } = useTimeZone()
@@ -49,7 +49,8 @@ export default function CopilotResultView({ bundle, onClose, onPreviewEdit, onAp
   return <>
     <BriefingView briefing={bundle.briefing} verticalProfile={bundle.verticalProfile} crossSection={bundle.crossSection}
       advisories={bundle.advisories} nwpTimeSelection={bundle.request.nwpTimeSelection} frozenNotice={notice}
-      onClose={onClose} onOpenProfile={bundle.verticalProfile ? () => setProfileOpen(true) : undefined} />
+      onClose={onClose} onOpenProfile={bundle.verticalProfile ? () => setProfileOpen(true) : undefined}
+      onHighlightLeg={onHighlightLeg} externalHighlight={bundle.highlight ?? null} />
     <VerticalProfileWindow profile={bundle.verticalProfile} crossSection={bundle.crossSection} advisories={bundle.advisories}
       nwpTimeSelection={bundle.request.nwpTimeSelection} isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
   </>

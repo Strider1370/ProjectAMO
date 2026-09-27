@@ -416,6 +416,63 @@ test.describe('copilot-route', () => {
     await expect(page.getByRole('region', { name: '챗봇 보관 결과' })).toHaveCount(0)
   })
 
+  test('route brief card pins a multi-leg stretch and an NM-only stretch on the map and profile', async ({ page }, info) => {
+    const fixture = JSON.parse(fs.readFileSync(new URL('../../../backend/fixtures/ai/gimpo-jeju.json', import.meta.url)))
+    const runtime = createLocalRuntime({ dataRoot: '/nonexistent-copilot-contract', fixture, readSnapshot: () => ({ snapshot: null }) })
+    const card = await runtime.call('get_route_briefing', { fixture_id: fixture.id }, 'test')
+    const stored = runtime.getResult(card.reference.briefingRef, 'test')
+    stored.verticalProfile = buildVerticalProfile(stored.request, { sampleAxis: axis => ({
+      terrain: { unit: 'm', values: axis.samples.map(({ index }) => ({ index, elevationM: 100 })) }, warnings: [],
+    }) })
+    // The fixture has no model grids, so give the server-made brief two hazardous stretches.
+    const legs = stored.briefing.sections.enroute.legs
+    const first = legs.find((leg) => leg.from === 'MANGI'), last = legs.find((leg) => leg.to === 'NULDI')
+    card.data.brief.speak = [
+      { section: '항로', level: '주의', text: '순항 MANGI→NULDI: 착빙 MODERATE 20NM', highlight: { from: 'MANGI', to: 'NULDI', startNm: first.startNm, endNm: last.endNm } },
+      { section: '항로', level: '주의', text: '난류 MODERATE 강하 중', highlight: { startNm: 20, endNm: 45 } },
+      { section: '항로', level: '바람', text: '순항 FL310 평균 정풍 9kt' },
+    ]
+    const calculations = []
+    await page.route('**/api/ai/results/*', (route) => route.fulfill({ json: stored }))
+    await page.route(/\/api\/(route-briefing|vertical-profile|briefing\/(cross-section|altitudes|nwp-time-refresh))$/, (route) => {
+      calculations.push(route.request().url()); return route.fulfill({ status: 500, json: { error: 'MUST_NOT_RECALCULATE' } })
+    })
+    await setup(page, { cards: [{ tool: 'get_route_briefing', result: card }] })
+    await page.route('**/api/ai/chat', async (route) => {
+      const body = route.request().postDataJSON()
+      await route.fulfill({ json: { requestId: body.requestId, revision: body.revision + 1, status: 'completed',
+        text: '김포 출발 시간대는 예보가 확인되지 않아요.\n순항 MANGI→NULDI 구간에 착빙 MODERATE 20NM, 강하 중 난류 MODERATE가 있어요. 순항 FL310 평균 정풍은 9kt예요.',
+        cards: [{ tool: 'get_route_briefing', result: card }], context: body.context, displayTimezone: body.displayTimezone } })
+    })
+    await page.getByRole('button', { name: '기상이에게 질문하기' }).click()
+    await page.getByLabel('기상이에게 질문', { exact: true }).fill('경로 브리핑 해줘')
+    await page.getByRole('button', { name: '전송', exact: true }).click()
+    const brief = page.getByRole('region', { name: '비행 전 브리핑' })
+    await expect(brief.getByRole('heading', { level: 4 })).toHaveText(['출발', '항로', '도착'])
+    const highlighted = () => page.evaluate(() => window.__map?.getSource('navlog-leg-highlight')?.serialize()?.data?.features?.[0]?.geometry?.coordinates ?? [])
+    await expect.poll(() => page.evaluate(() => Boolean(window.__map?.isStyleLoaded?.()))).toBe(true)
+    await brief.getByRole('button', { name: '지도·단면에서 보기' }).first().click()
+    await expect(page.getByRole('region', { name: '챗봇 보관 결과' })).toBeVisible()
+    // The row the user pressed stays in view in the chat thread.
+    if (info.project.name !== 'mobile') await expect(brief.getByRole('status')).toHaveText('지도·단면에 표시 중')
+    await expect.poll(highlighted).not.toEqual([])
+    const fixLine = await highlighted()
+    const mangi = fixture.request.routeMarkers.find((m) => m.id.includes(':MANGI:'))
+    expect(fixLine[0][0]).toBeCloseTo(Number(mangi.lon ?? mangi.id.split(':')[3]), 4)
+    await expect(page.locator('.vertical-profile-leg-band.is-pinned').first()).toBeAttached()
+    if (info.project.name !== 'mobile') {
+      // Desktop keeps the chat open to step through stretches.
+      await expect(page.locator('#copilot-window')).toBeVisible()
+      await page.screenshot({ path: info.outputPath('copilot-brief-stretch.png') })
+      // The shown row turns into a status, so the other stretch is now the only button.
+      await expect(brief.getByRole('button', { name: '지도·단면에서 보기' })).toHaveCount(1)
+      await expect(brief.getByRole('status')).toBeInViewport()
+      await brief.getByRole('button', { name: '지도·단면에서 보기' }).click()
+      await expect.poll(async () => (await highlighted())[0]?.[1]).not.toBe(fixLine[0][1])
+    }
+    expect(calculations).toEqual([])
+  })
+
   test('opens the identical stored briefing and route without any latest-weather calculation', async ({ page }, info) => {
     const fixture = JSON.parse(fs.readFileSync(new URL('../../../backend/fixtures/ai/gimpo-jeju.json', import.meta.url)))
     fixture.request.nwpTimeSelection = { baseTime: fixture.request.etd,
