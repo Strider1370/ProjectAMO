@@ -223,5 +223,8 @@ test('altitude comparison is hidden until a briefing exists, then uses the same 
   assert.equal(seen[1].tools.some((tool) => tool.name === 'compare_route_altitudes'), true)
   assert.equal(executed[1].args.briefing_ref, briefingRef)
   assert.deepEqual(value.cards[1].result.data.rows, rows)
-  assert.deepEqual(JSON.parse(seen[2].messages.at(-1).content).data.rows, rows)
+  // The card keeps the rows; the model reads the code-made summary of the same rows.
+  const modelView = JSON.parse(seen[2].messages.at(-1).content).data
+  assert.equal(modelView.rows, undefined)
+  assert.equal(modelView.summary.statusForAll, '공시 항로고도와 대조 안 됨')
 })

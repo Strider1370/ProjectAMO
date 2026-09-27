@@ -1,5 +1,6 @@
 import { isAbsoluteIsoInstant } from './contracts.js'
 import { airportBriefing, AIRPORT_BRIEFING_NOTE } from './digests/airport-briefing.js'
+import { altitudeComparisonSummary } from './digests/altitude-summary.js'
 
 export function displayInstant(value, timezone) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: timezone,
@@ -62,8 +63,17 @@ function airportBriefingResult(result, timezone, { includeRaw = false } = {}) {
     data: { note: AIRPORT_BRIEFING_NOTE, airports } }, timezone)
 }
 
+// Altitude questions get code-computed exposures and differences; the table stays in the card.
+function altitudeSummaryResult(result, timezone) {
+  const { schemaVersion, status, reference, error } = result
+  const issues = (result.issues ?? []).filter((issue) => issue?.code !== 'SOURCE_COVERAGE_UNVERIFIED')
+  return modelContext({ schemaVersion, status, reference, ...(error ? { error } : {}), issues,
+    data: { summary: altitudeComparisonSummary(result.data, reference), detailSections: result.data.detailSections } }, timezone)
+}
+
 export function modelToolResult(tool, result, timezone, options = {}) {
   if (tool === 'get_airport_weather' && Array.isArray(result.data?.airports)) return airportBriefingResult(result, timezone, options)
+  if (tool === 'compare_route_altitudes' && Array.isArray(result.data?.rows)) return altitudeSummaryResult(result, timezone)
   const airportDigest = tool === 'get_airport_weather' || tool === 'get_route_briefing'
     || (tool === 'get_my_saved_route' && result.data?.mode === 'current_briefing')
   if (!airportDigest || !Array.isArray(result.data?.airports)) return modelContext(markStandingCaveats(result), timezone)

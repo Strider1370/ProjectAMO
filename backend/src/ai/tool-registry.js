@@ -46,7 +46,7 @@ export const CHAT_TOOLS = Object.freeze({
   get_briefing_detail: { schema: BriefingDetailInputSchema,
     description: 'Read a stored briefing section without recalculating. Stored briefings are immutable; a current briefing needs a new call. Fetch enroute detail only when segment-level facts are needed. Use briefing_ref, section and optional cursor/limit (1–20). enroute contains a summary followed by individual enroute/procedure leg records, without coordinates. Follow nextCursor for remaining items; a partial page is not the full route.' },
   compare_route_altitudes: { schema: AltitudeComparisonInputSchema,
-    description: 'Compare 2–5 distinct requested altitudes in feet on an existing briefing_ref. Uses the SAME captured weather/AIP/run/route/time. Explain each altitude status in plain words, never the raw label: valid = matches the published airway altitudes; input_only = not checked against them; input_invalid = not a published airway altitude. If all altitudes share a status, say it once. Keep data gaps. Lead with a plain comparison per hazard: which altitude has less exposure and by roughly how much (e.g. FL290 has about 90NM less icing than FL250; turbulence is the same). This states facts, not a recommendation. Whole-route weather comparison, not altitude recommendation or safety ranking. No coordinates or new time inputs.' },
+    description: 'Compare 2–5 distinct requested altitudes in feet on an existing briefing_ref. Uses the SAME captured weather/AIP/run/route/time. Whole-route weather comparison, not an altitude recommendation. No coordinates or new time inputs.' },
 })
 
 export function chatToolDefinitions(names = Object.keys(CHAT_TOOLS)) {
