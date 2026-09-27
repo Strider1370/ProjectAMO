@@ -85,3 +85,11 @@ test('the model reads the brief without highlight ranges; the card keeps them', 
   assert.deepEqual(projected.data.brief.gaps.slice(0, 1), ['출발 공항 자료 없음'])
   assert.deepEqual(projected.issues, [])
 })
+
+test('plan distances are named: whole route vs the route-text stretch used for ETA', () => {
+  const projected = modelToolResult('plan_route', { schemaVersion: '1', status: 'ok', reference: {}, issues: [],
+    data: { planningState: 'planned', routeText: 'BULTI Y711 DOTOL', distanceNm: 243.55, geometryDistanceNm: 311.32 } }, 'Asia/Seoul')
+  assert.equal(projected.data.distance, '전체 311NM(SID·STAR·접근 포함), 이 중 경로 문자열 구간 244NM(ETA 추정에 사용)')
+  assert.equal(projected.data.distanceNm, undefined)
+  assert.equal(projected.data.geometryDistanceNm, undefined)
+})

@@ -85,7 +85,19 @@ function routeBriefingResult(result, timezone) {
     notamCount: data.notamCount, detailSections: data.detailSections } }, timezone)
 }
 
+// Two plan distances look alike; name them so the answer quotes the right one.
+// ETA from TAS uses the route-text distance only (shared/route-planning/planRoute.js).
+function planRouteResult(result, timezone) {
+  const { distanceNm, geometryDistanceNm, ...data } = result.data
+  const round = (value) => Math.round(value)
+  const distance = Number.isFinite(geometryDistanceNm)
+    ? `전체 ${round(geometryDistanceNm)}NM(SID·STAR·접근 포함)${Number.isFinite(distanceNm) ? `, 이 중 경로 문자열 구간 ${round(distanceNm)}NM(ETA 추정에 사용)` : ''}`
+    : Number.isFinite(distanceNm) ? `경로 문자열 구간 ${round(distanceNm)}NM` : null
+  return modelContext(markStandingCaveats({ ...result, data: { ...data, ...(distance ? { distance } : {}) } }), timezone)
+}
+
 export function modelToolResult(tool, result, timezone, options = {}) {
+  if (tool === 'plan_route' && result.data?.planningState === 'planned') return planRouteResult(result, timezone)
   if (tool === 'get_route_briefing' && result.data?.brief) return routeBriefingResult(result, timezone)
   if (tool === 'get_airport_weather' && Array.isArray(result.data?.airports)) return airportBriefingResult(result, timezone, options)
   if (tool === 'compare_route_altitudes' && Array.isArray(result.data?.rows)) return altitudeSummaryResult(result, timezone)
