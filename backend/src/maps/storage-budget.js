@@ -4,6 +4,9 @@ import path from 'node:path'
 export const MAX_ALL_MAP_BYTES = 500 * 1024 * 1024
 export const MAX_MATERIAL_ORG_BYTES = 100 * 1024 * 1024
 export const MIN_FREE_BYTES = 3 * 1024 ** 3
+// 미리보기 체험 공간은 작은 임시 디스크(/tmp, 운영 VM은 약 1GB tmpfs)에 세션당 32MB 한도로만 쓴다.
+// 운영 자료용 3GB 여유 기준을 그대로 걸면 체험 자체가 시작되지 않으므로 작은 여유만 남긴다.
+export const PREVIEW_MIN_FREE_BYTES = 64 * 1024 ** 2
 const pending = new WeakMap()
 export class MapStorageError extends Error {
   constructor(code, status = 413) { super(code); this.code = code; this.status = status }
@@ -16,23 +19,23 @@ export function storageUsage(db, orgId = null) {
     (SELECT COALESCE(SUM(byte_length),0) FROM organization_map_versions) +
     (SELECT COALESCE(SUM(${materialBytes}),0) FROM organization_material_versions) AS bytes`).get().bytes
 }
-export function assertDiskSpace(location, growth, statfs = fs.statfsSync) {
+export function assertDiskSpace(location, growth, statfs = fs.statfsSync, minFreeBytes = MIN_FREE_BYTES) {
   if (growth <= 0 || !location || location === ':memory:') return
   let target = path.resolve(location)
   while (!fs.existsSync(target) && path.dirname(target) !== target) target = path.dirname(target)
   const stat = statfs(target)
-  if (Number(stat.bavail) * Number(stat.bsize) - growth < MIN_FREE_BYTES) throw new MapStorageError('map_storage_low_disk', 507)
+  if (Number(stat.bavail) * Number(stat.bsize) - growth < minFreeBytes) throw new MapStorageError('map_storage_low_disk', 507)
 }
-export function assertMapGrowth(db, growth, { orgId = null, location = db.name } = {}) {
+export function assertMapGrowth(db, growth, { orgId = null, location = db.name, minFreeBytes = MIN_FREE_BYTES } = {}) {
   if (growth <= 0) return
   const reservations = pending.get(db) ?? new Map()
   const reserved = [...reservations.values()].reduce((a,b) => a+b,0)
   if (Number(storageUsage(db)) + reserved + growth > MAX_ALL_MAP_BYTES) throw new MapStorageError('map_storage_full')
   if (orgId != null && Number(storageUsage(db,orgId)) + (reservations.get(orgId) ?? 0) + growth > MAX_MATERIAL_ORG_BYTES) throw new MapStorageError('organization_material_storage_full')
-  assertDiskSpace(location, growth + reserved)
+  assertDiskSpace(location, growth + reserved, undefined, minFreeBytes)
 }
-export function reserveMaterialBytes(db, orgId, bytes, location) {
-  assertMapGrowth(db,bytes,{orgId,location})
+export function reserveMaterialBytes(db, orgId, bytes, location, minFreeBytes = MIN_FREE_BYTES) {
+  assertMapGrowth(db,bytes,{orgId,location,minFreeBytes})
   let reservations=pending.get(db)
   if (!reservations) { reservations=new Map(); pending.set(db,reservations) }
   reservations.set(orgId,(reservations.get(orgId)??0)+bytes)

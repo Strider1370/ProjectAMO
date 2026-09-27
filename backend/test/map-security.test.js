@@ -1,9 +1,10 @@
+import fs from 'node:fs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { createDb } from '../src/db/index.js'
 import { createMapWriteGuard } from '../src/maps/request-guard.js'
-import { assertMapGrowth, assertDiskSpace, reserveMaterialBytes, MAX_MATERIAL_ORG_BYTES, MIN_FREE_BYTES } from '../src/maps/storage-budget.js'
+import { assertMapGrowth, assertDiskSpace, reserveMaterialBytes, MAX_MATERIAL_ORG_BYTES, MIN_FREE_BYTES, PREVIEW_MIN_FREE_BYTES } from '../src/maps/storage-budget.js'
 import { parseOrganizationMapMaterial } from '../src/lib/organization-kml.js'
 import { parseOrganizationMapMaterialAsync } from '../src/lib/organization-kml-async.js'
 
@@ -48,6 +49,17 @@ test('low disk blocks growth but permits shrink; equality preserves 3GiB free',(
  assert.throws(()=>assertDiskSpace('.',1,()=>({bavail:MIN_FREE_BYTES,bsize:1})),{code:'map_storage_low_disk'})
  assert.doesNotThrow(()=>assertDiskSpace('.',1,()=>({bavail:MIN_FREE_BYTES+1,bsize:1})))
  assert.doesNotThrow(()=>assertDiskSpace('.',-1,()=>{throw Error('must not check')}))
+})
+test('lounge preview keeps a small free-space floor on its temporary disk',()=>{
+ // 운영 VM의 /tmp는 약 1GB tmpfs다. 3GiB 기준을 쓰면 미리보기 예시 자료조차 만들 수 없다.
+ const tmpfs=()=>({bavail:950*1024**2,bsize:1})
+ assert.throws(()=>assertDiskSpace('.',1024,tmpfs),{code:'map_storage_low_disk'})
+ assert.doesNotThrow(()=>assertDiskSpace('.',1024,tmpfs,PREVIEW_MIN_FREE_BYTES))
+ assert.throws(()=>assertDiskSpace('.',1,()=>({bavail:PREVIEW_MIN_FREE_BYTES,bsize:1}),PREVIEW_MIN_FREE_BYTES),{code:'map_storage_low_disk'})
+ const seed=fs.readFileSync(new URL('../src/organizations/preview-seed.js',import.meta.url),'utf8')
+ const router=fs.readFileSync(new URL('../src/organizations/preview-router.js',import.meta.url),'utf8')
+ assert.match(seed,/minFreeBytes: PREVIEW_MIN_FREE_BYTES/)
+ assert.match(router,/minFreeBytes: PREVIEW_MIN_FREE_BYTES/)
 })
 test('complex polygon rejected before quadratic intersection work',()=>{
  const n=12000,pts=Array.from({length:n},(_,i)=>[127+Math.cos(i/n*Math.PI*2),37+Math.sin(i/n*Math.PI*2)].join(','));pts.push(pts[0])

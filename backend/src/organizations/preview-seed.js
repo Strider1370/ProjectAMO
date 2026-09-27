@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import { createOrganization, createFlight, createInterest, createNotice, createBriefing, putMember } from './repository.js'
 import { createMaterialsHandlers } from './materials.js'
+import { PREVIEW_MIN_FREE_BYTES } from '../maps/storage-budget.js'
 
 // Deliberately published examples only. Never read/copy a real organization's DB.
 const samples = JSON.parse(fs.readFileSync(new URL('./preview-samples.json', import.meta.url), 'utf8'))
@@ -15,7 +16,7 @@ export async function seedOrganizationPreview(db, filesPath, now = Date.now()) {
   }
   const organization = createOrganization(db, { name: '기관 라운지 미리보기', adminUserId: 1, actorUserId: 1 })
   putMember(db, organization.id, 2, { role: 'member', status: 'active' })
-  const handlers = createMaterialsHandlers({ database: () => db, filesPath })
+  const handlers = createMaterialsHandlers({ database: () => db, filesPath, minFreeBytes: PREVIEW_MIN_FREE_BYTES })
   const material = async (body, headers = {}) => {
     let result
     await handlers.create({ body, headers, organization: { id: organization.id }, session: { userId: 1 } }, {

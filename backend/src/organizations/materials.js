@@ -257,7 +257,7 @@ const guardedWrite = handler => async (req,res) => {
   try { return await handler(req,res) } finally { writingMaterial=false }
 }
 
-export function createMaterialsHandlers({ database, filesPath } = {}) {
+export function createMaterialsHandlers({ database, filesPath, minFreeBytes } = {}) {
   const root = materialRoot(filesPath)
   return {
     readUpload: rawUpload,
@@ -279,13 +279,13 @@ export function createMaterialsHandlers({ database, filesPath } = {}) {
         kind, metadata, blocks: parseOrganizationJsonField(fields.blocks, [], 'blocks'),
       })
       const byteGrowth = materialWriteBytes(file,content)
-      const release = reserveMaterialBytes(db,req.organization.id,byteGrowth,root)
+      const release = reserveMaterialBytes(db,req.organization.id,byteGrowth,root,minFreeBytes)
       let saved = {}
       try { saved = file ? await persistFile(root,file) : {} } catch(error) { release(); throw error }
       const now = nowIso()
       let material
       try { material = db.transaction(() => {
-        release(); assertMapGrowth(db,byteGrowth,{orgId:req.organization.id,location:root})
+        release(); assertMapGrowth(db,byteGrowth,{orgId:req.organization.id,location:root,minFreeBytes})
         const info = db.prepare(`INSERT INTO organization_materials
           (organization_id,owner_user_id,created_at,updated_at) VALUES (?,?,?,?)`)
           .run(req.organization.id, req.session.userId, now, now)
@@ -321,7 +321,7 @@ export function createMaterialsHandlers({ database, filesPath } = {}) {
         ? json(currentRow.blocks, []) : parseOrganizationJsonField(fields.blocks, [], 'blocks')
       const content = validateOrganizationMaterialContent(db, req.organization.id, { kind, metadata, blocks })
       const byteGrowth = materialWriteBytes(file,content,currentRow)
-      const release = reserveMaterialBytes(db,req.organization.id,byteGrowth,root)
+      const release = reserveMaterialBytes(db,req.organization.id,byteGrowth,root,minFreeBytes)
       let saved = {}
       try { saved = file ? await persistFile(root, file) : {
         storageKey: currentRow.storage_key, thumbnailKey: currentRow.thumbnail_storage_key, contentHash: currentRow.content_hash,
@@ -330,7 +330,7 @@ export function createMaterialsHandlers({ database, filesPath } = {}) {
       const now = nowIso()
       let material
       try { material = db.transaction(() => {
-        release(); assertMapGrowth(db,byteGrowth,{orgId:req.organization.id,location:root})
+        release(); assertMapGrowth(db,byteGrowth,{orgId:req.organization.id,location:root,minFreeBytes})
         db.prepare(`INSERT INTO organization_material_versions
           (material_id,version,kind,title,description,source_label,mime_type,original_name,storage_key,
            thumbnail_storage_key,size_bytes,content_hash,metadata,blocks,created_by,created_at)

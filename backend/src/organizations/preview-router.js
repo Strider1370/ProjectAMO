@@ -8,6 +8,7 @@ import { createRoutesRouter } from '../me/routes.js'
 import { createOrganizationRouter } from './router.js'
 import { requireTrustedMutationOrigin } from './middleware.js'
 import { PREVIEW_USER, seedOrganizationPreview } from './preview-seed.js'
+import { PREVIEW_MIN_FREE_BYTES } from '../maps/storage-budget.js'
 
 const COOKIE = 'amo.lounge-preview'
 const COOKIE_PATH = '/api/lounge-preview'
@@ -61,7 +62,7 @@ export function createOrganizationPreviewRouter({
       const organization = await seedOrganizationPreview(db, filesPath, now())
       const entry = { db, filesPath, organization, expiresAt: now() + ttlMs, active: 0, pending: 0, requests: 0, windowStart: now(), writes: 0, uploadedBytes: 0 }
       entry.router = createOrganizationRouter({
-        db, filesPath, trustedMutationOrigin, briefingDependencies, situationDependencies,
+        db, filesPath, minFreeBytes: PREVIEW_MIN_FREE_BYTES, trustedMutationOrigin, briefingDependencies, situationDependencies,
         runOperation: async (operation) => {
           entry.pending += 1
           try { return await operation() } finally { entry.pending -= 1 }

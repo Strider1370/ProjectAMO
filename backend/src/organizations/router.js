@@ -116,6 +116,7 @@ export function createOrganizationRouter({
   briefingDependencies = {},
   situationDependencies = {},
   filesPath,
+  minFreeBytes,
   runOperation = (operation) => operation(),
 } = {}) {
   const router = Router()
@@ -124,7 +125,7 @@ export function createOrganizationRouter({
     .catch((error) => handleOrganizationError(res, error))
   const database = () => db || getDb()
   const member = requireOrganizationMember({ db })
-  const materials = createMaterialsHandlers({ database, filesPath })
+  const materials = createMaterialsHandlers({ database, filesPath, minFreeBytes })
 
   router.use((req, res, next) => {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next()
