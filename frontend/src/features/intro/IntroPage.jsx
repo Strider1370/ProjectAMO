@@ -11,7 +11,6 @@ import imgMain from './assets/main.webp'
 import imgHumid0 from './assets/humid-0.webp'
 import imgHumid1 from './assets/humid-1.webp'
 import imgHumid2 from './assets/humid-2.webp'
-import imgHumid3 from './assets/humid-3.webp'
 import imgPrecip from './assets/precip.webp'
 import imgTurb0 from './assets/turb-0.webp'
 import imgTurb1 from './assets/turb-1.webp'
@@ -38,13 +37,13 @@ const NAV = [['gis', '기상정보'], ['airport', '공항'], ['brief', '브리�
 // 고정 구간 길이(화면 높이의 배수). 길수록 같은 연출을 천천히 스크롤한다.
 const PIN_SCREENS = { gis: 4.8, brief: 4.2, custom: 3, ai: 3.8, alerts: 3.2 }
 
-// 캡처 시각(2026-09-23 로컬·운영 서버 화면) 기준 레이어 시퀀스
+// 캡처 시각(2026-09-28 운영 서버 화면) 기준 레이어 시퀀스
 const LAYERS = [
   { key: 'base', label: '기본 지도', frames: [[imgMain, null]] },
-  { key: 'humid', label: '습도', frames: [[imgHumid0, '23:00 KST'], [imgHumid1, '00:00 KST'], [imgHumid2, '02:00 KST'], [imgHumid3, '03:00 KST']], alt: 'KIM 습도 예보' },
+  { key: 'humid', label: '습도', frames: [[imgHumid0, '01:00 KST'], [imgHumid1, '02:00 KST'], [imgHumid2, '03:00 KST']], alt: 'KIM 습도 예보' },
   { key: 'precip', label: '강수와 등압선', video: videoPrecip, poster: imgPrecip, alt: 'KIM 지상일기도: 강수, 등압선, 바람 입자' },
-  { key: 'turb', label: '난류', frames: [[imgTurb0, '21:00 KST'], [imgTurb1, '00:00 KST'], [imgTurb2, '03:00 KST']], alt: 'KTG 난류 예보' },
-  { key: 'sat', label: '적외 위성', frames: [[imgSat0, '19:30 KST'], [imgSat1, '20:30 KST'], [imgSat2, '21:30 KST'], [imgSat3, '22:30 KST']], alt: '적외 위성 영상' },
+  { key: 'turb', label: '난류', frames: [[imgTurb0, '03:00 KST'], [imgTurb1, '06:00 KST'], [imgTurb2, '09:00 KST']], alt: 'KTG 난류 예보' },
+  { key: 'sat', label: '적외 위성', frames: [[imgSat0, '21:30 KST'], [imgSat1, '22:30 KST'], [imgSat2, '23:30 KST'], [imgSat3, '00:30 KST']], alt: '적외 위성 영상' },
 ]
 // 목록은 위에서부터(맨 위 레이어 먼저) 보여 준다.
 const LEGEND = [
@@ -362,13 +361,13 @@ export default function IntroPage() {
                 {live.details.map((detail) => <span key={detail}>{detail}</span>)}
               </p>
             )}
-            <p className="news hero-anim" style={{ animationDelay: '.36s' }}><b>v0.4.0</b>기관 라운지와 합동 브리핑이 추가됐어요. 2026년 9월 11일</p>
+            <p className="news hero-anim" style={{ animationDelay: '.36s' }}><b>v0.5.0</b>내 지도 작성과 KIM 지상일기도가 추가됐어요. 2026년 9월 28일</p>
             <div className="hero-shot hero-anim" style={{ animationDelay: '.35s' }}>
               <div className="tilt">
                 <Frame title="ProjectAMO">
                   <img src={imgMain} alt="ProjectAMO 지도 화면: 국내 공항 비행 등급과 FIR 경계" />
                   <div className="co" id="co-hero">
-                    <Callout x="1.8%" y="23%">기상정보와 항공정보 레이어</Callout>
+                    <Callout x="15.8%" y="3.7%">기상정보와 항공정보 레이어</Callout>
                     <Callout x="45.6%" y="37.8%">마커 색으로 공항 비행 등급을 표시해요</Callout>
                     <Callout x="37.3%" y="56.4%" side="left">인천 FIR 경계와 공역</Callout>
                   </div>
@@ -447,9 +446,9 @@ export default function IntroPage() {
                 <Frame id="br-5" title="연직단면도">
                   <img src={imgProfile} alt="경로 연직단면도" />
                   <div className="co">
-                    <Callout x="69%" y="63.2%">강하 시작점(TOD) 자동 표시</Callout>
+                    <Callout x="67.8%" y="64.9%">강하 시작점(TOD) 자동 표시</Callout>
                     <Callout x="45%" y="66.5%">계획 순항고도 31,000ft</Callout>
-                    <Callout x="30%" y="77.4%">0°C 등온선</Callout>
+                    <Callout x="30%" y="76.5%">0°C 등온선</Callout>
                   </div>
                 </Frame>
               </div>
@@ -554,7 +553,7 @@ export default function IntroPage() {
         <div className="wrap foot-bottom">
           <b className="foot-name">ProjectAMO</b>
           <span>통합형 항공기상정보 브리핑 플랫폼</span>
-          <span>현재 버전 v0.4.0, 2026년 9월 11일 업데이트</span>
+          <span>현재 버전 v0.5.0, 2026년 9월 28일 업데이트</span>
         </div>
       </footer>
 
