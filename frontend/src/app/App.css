@@ -135,6 +135,11 @@ optgroup {
     flex-direction: row;
   }
 
+  /* 왼쪽 패널(z-index 6)이 열려 있으면 버튼을 그 아래로 내린다. */
+  .mobile-map-layer-btns.is-below-panel {
+    z-index: 5;
+  }
+
   .app.map-controls-visible .map-view-wrapper .layer-drawer {
     top: 76px;
     left: 12px;
