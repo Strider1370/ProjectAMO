@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { msToKt, windBarbFeathers, windDirectionFromUV, isothermSegments, pressureToFallbackFt } from './lib/crossSectionGrid.js'
 import { advisorySymbolUrl } from '../weather-overlays/lib/advisoryLayers.js'
 import { buildCloudContourModel } from './lib/cloudContour.js'
@@ -220,6 +220,10 @@ export default function VerticalProfileChart({
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
+  // 단면도가 두 개(패널·크게 보기) 떠도 서로의 clipPath/filter를 참조하지 않도록 id를 인스턴스마다 나눈다.
+  const svgIdPrefix = `cs-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
+  const clipId = `${svgIdPrefix}-clip`
+  const blurId = `${svgIdPrefix}-blur`
   const dragRef = useRef(null)
   const [containerWidth, setContainerWidth] = useState(0)
   const [editingNwpSegment, setEditingNwpSegment] = useState(null)
@@ -621,19 +625,19 @@ export default function VerticalProfileChart({
         aria-label="Vertical profile"
       >
         <defs>
-          <clipPath id="cs-clip">
+          <clipPath id={clipId}>
             <rect x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} />
           </clipPath>
-          <filter id="cs-blur" x="-5%" y="-5%" width="110%" height="110%">
+          <filter id={blurId} x="-5%" y="-5%" width="110%" height="110%">
             <feGaussianBlur stdDeviation="4" />
           </filter>
         </defs>
         <rect className="vertical-profile-plot" x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} />
-        <g clipPath="url(#cs-clip)">
+        <g clipPath={`url(#${clipId})`}>
           {turbulenceCells.map((cell) => (
             <rect key={cell.key} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={cell.fill} />
           ))}
-          <g filter={layers.moisture && shadingCells.length > 0 ? 'url(#cs-blur)' : undefined}>
+          <g filter={layers.moisture && shadingCells.length > 0 ? `url(#${blurId})` : undefined}>
             {shadingCells.map((cell) => (
               <rect key={cell.key} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={cell.fill} />
             ))}

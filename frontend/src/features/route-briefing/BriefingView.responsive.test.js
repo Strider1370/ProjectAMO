@@ -111,3 +111,11 @@ test('feeds the hovered/pinned NAVLOG leg into the vertical profile', () => {
   assert.match(chart, /highlightRangeNm/)
   assert.match(chart, /vertical-profile-leg-band/)
 })
+
+test('keeps each vertical profile chart on its own SVG clip and blur ids', () => {
+  // 브리핑 패널과 크게 보기 창에 단면도가 함께 뜨면 고정 id가 겹쳐 큰 차트가 작은 차트 폭으로 잘린다.
+  assert.match(profileChartJsx, /useId\(\)/)
+  assert.match(profileChartJsx, /<clipPath id=\{clipId\}>/)
+  assert.match(profileChartJsx, /clipPath=\{`url\(#\$\{clipId\}\)`\}/)
+  assert.doesNotMatch(profileChartJsx, /id="cs-(clip|blur)"|url\(#cs-(clip|blur)\)/)
+})
