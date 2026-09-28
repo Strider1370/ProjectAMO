@@ -29,7 +29,7 @@ function AccountLabs() {
     {!settings && !error && <p role="status">설정 불러오는 중…</p>}
     {settings && <>
       {!settings.configured && <p role="alert">지금은 기상이를 사용할 수 없어요.</p>}
-      {settings.quota && <p>오늘 남은 질문 {settings.quota.remaining}/{settings.quota.limit}</p>}
+      {settings.quota && <p>{settings.quota.unlimited ? '관리자 계정은 질문 횟수 제한이 없어요.' : `오늘 남은 질문 ${settings.quota.remaining}/${settings.quota.limit}`}</p>}
       <label className="copilot-labs-toggle">
         <input type="checkbox" role="switch" checked={settings.enabled} disabled={busy || (!settings.enabled && !settings.configured)}
           onChange={(event) => void update({ enabled: event.target.checked })} />기상이 켜기

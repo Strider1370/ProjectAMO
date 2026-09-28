@@ -11,11 +11,18 @@ export function createAiAccess({ database, apiKey, model, reasoningEffort, now =
   providerFactory = createOpenAIProvider }) {
   const db = () => typeof database === 'function' ? database() : database
   const provider = providerFactory({ apiKey, model, reasoningEffort })
+  // Admin accounts ask without a daily cap; their questions are still counted.
+  const unlimited = (userId) => db().prepare('SELECT role FROM users WHERE id=?').get(userId)?.role === 'admin'
   function quota(userId) {
     const time = now()
     const day = new Date(time + KST_OFFSET).toISOString().slice(0, 10)
-    const used = db().prepare('SELECT used FROM ai_daily_usage WHERE user_id=? AND day=?').get(userId, day)?.used ?? 0
-    return { day, timezone: 'Asia/Seoul', limit: DAILY_LIMIT, used, remaining: Math.max(0, DAILY_LIMIT - used),
+    const free = unlimited(userId)
+    // ai_daily_usage is capped at 5 by the schema, so admin questions are counted from the request log.
+    const dayStart = new Date(Math.floor((time + KST_OFFSET) / DAY_MS) * DAY_MS - KST_OFFSET).toISOString()
+    const used = free
+      ? db().prepare('SELECT COUNT(*) AS n FROM ai_question_requests WHERE user_id=? AND started_at>=?').get(userId, dayStart).n
+      : db().prepare('SELECT used FROM ai_daily_usage WHERE user_id=? AND day=?').get(userId, day)?.used ?? 0
+    return { day, timezone: 'Asia/Seoul', limit: free ? null : DAILY_LIMIT, used, remaining: free ? null : Math.max(0, DAILY_LIMIT - used), unlimited: free,
       resetsAt: new Date((Math.floor((time + KST_OFFSET) / DAY_MS) + 1) * DAY_MS - KST_OFFSET).toISOString() }
   }
   function settings(userId) {
@@ -46,10 +53,12 @@ export function createAiAccess({ database, apiKey, model, reasoningEffort, now =
           fail('QUESTION_ALREADY_STARTED', 409)
         }
         const current = quota(userId)
-        db().prepare('INSERT OR IGNORE INTO ai_daily_usage(user_id, day, used) VALUES (?, ?, 0)').run(userId, current.day)
-        const changed = db().prepare('UPDATE ai_daily_usage SET used=used+1 WHERE user_id=? AND day=? AND used<?')
-          .run(userId, current.day, DAILY_LIMIT)
-        if (!changed.changes) fail('DAILY_QUESTION_LIMIT', 429)
+        if (!current.unlimited) {
+          db().prepare('INSERT OR IGNORE INTO ai_daily_usage(user_id, day, used) VALUES (?, ?, 0)').run(userId, current.day)
+          const changed = db().prepare('UPDATE ai_daily_usage SET used=used+1 WHERE user_id=? AND day=? AND used<?')
+            .run(userId, current.day, DAILY_LIMIT)
+          if (!changed.changes) fail('DAILY_QUESTION_LIMIT', 429)
+        }
         db().prepare('INSERT INTO ai_question_requests(user_id, request_id, started_at) VALUES (?, ?, ?)')
           .run(userId, requestId, new Date(now()).toISOString())
         return quota(userId)

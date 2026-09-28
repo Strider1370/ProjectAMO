@@ -97,6 +97,20 @@ test('five per account, persistent across reopen/connections and toggle, KST mid
   assert.equal(access.consume(1, randomUUID()).remaining, 4)
 })
 
+test('admin accounts have no daily cap but are still counted; pilots keep five', (t) => {
+  const db = database(); t.after(() => db.close())
+  db.prepare("UPDATE users SET role='admin' WHERE id=2").run()
+  const access = service(db, { now: () => Date.parse('2026-09-24T03:00:00Z') })
+  access.update(1, { enabled: true }); access.update(2, { enabled: true })
+  for (let i = 0; i < 7; i++) access.consume(2, randomUUID())
+  assert.deepEqual([access.quota(2).used, access.quota(2).remaining, access.quota(2).limit, access.quota(2).unlimited], [7, null, null, true])
+  const replay = randomUUID(); access.consume(2, replay)
+  assert.throws(() => access.consume(2, replay), { code: 'QUESTION_ALREADY_STARTED' })
+  for (let i = 0; i < 5; i++) access.consume(1, randomUUID())
+  assert.throws(() => access.consume(1, randomUUID()), { code: 'DAILY_QUESTION_LIMIT' })
+  assert.equal(access.quota(1).unlimited, false)
+})
+
 test('HTTP quota is charged only after validation, replay is free even at zero; reset/other device cannot bypass', async (t) => {
   const app = await api(t)
   assert.equal((await app.request('/status', undefined, null)).body.enabled, false)
