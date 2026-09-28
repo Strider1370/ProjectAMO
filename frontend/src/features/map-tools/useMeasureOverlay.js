@@ -72,11 +72,12 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
       features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: st.point }, properties: {} })
     }
     if (tool === 'distance' || tool === 'profile') {
-      const coords = st.mouse ? [...st.verts, st.mouse] : [...st.verts]
+      // 단면도 경로는 클릭으로 확정한 점만 잇는다. 거리 측정만 커서 미리보기를 쓴다.
+      const coords = tool === 'distance' && st.mouse ? [...st.verts, st.mouse] : [...st.verts]
       if (coords.length >= 2) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} })
       for (const v of st.verts) features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: v }, properties: {} })
       if (st.verts.length >= 1) {
-        const shown = st.mouse ? [...st.verts, st.mouse] : st.verts
+        const shown = tool === 'distance' && st.mouse ? [...st.verts, st.mouse] : st.verts
         const total = pathLengthNm(shown)
         if (shown.length >= 2) labels.push({ lnglat: shown[shown.length - 1], text: `Σ ${fmtNm(total)}` })
       }
@@ -166,7 +167,7 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
         render()
         return
       }
-      if (tool !== 'distance' && tool !== 'profile' && tool !== 'bearing') return
+      if (tool !== 'distance' && tool !== 'bearing') return
       if (st.verts.length === 0 || st.done) return
       if (tool === 'bearing' && st.verts.length >= 2) return
       st.mouse = [e.lngLat.lng, e.lngLat.lat]
@@ -227,9 +228,11 @@ export function useMeasureOverlay(map, activeTool, panelOpen) {
   }
   function finishDistance() {
     const st = stRef.current
-    if (st.verts.length < 2) return
+    if (st.verts.length < 2) return null
     st.done = true; st.mouse = null
-    setDistanceDone(true); setLineCoordinates(st.verts.map((point) => [...point])); syncDistance(); render()
+    const coordinates = st.verts.map((point) => [...point])
+    setDistanceDone(true); setLineCoordinates(coordinates); syncDistance(); render()
+    return coordinates
   }
   function syncBearing() {
     const v = stRef.current.verts

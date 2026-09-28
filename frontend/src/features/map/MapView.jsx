@@ -2400,8 +2400,10 @@ const MapView = forwardRef(function MapView({
 
       {profileDrawingActive && <MapProfilePanel measure={measure} onClose={onClosePanel}
         onOpenProfile={(altitudeFt) => {
+          const coordinates = measure.finishDistance()
+          if (!coordinates) return
           routeBriefing.actions.setVerticalProfileWindowOpen(false)
-          mapLineProfile.openLine(measure.lineCoordinates, altitudeFt)
+          mapLineProfile.openLine(coordinates, altitudeFt)
         }}
         loading={mapLineProfile.loading} error={mapLineProfile.error} warning={mapLineProfile.warning} />}
 

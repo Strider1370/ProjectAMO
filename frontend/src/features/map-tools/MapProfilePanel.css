@@ -1,0 +1,377 @@
+.map-profile-panel {
+  position: absolute;
+  top: 66px;
+  right: 12px;
+  z-index: 8;
+  width: 320px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 78px);
+  overflow-y: auto;
+  padding: 0 var(--space-l) var(--space-l);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--bg-1) 96%, transparent);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+  color: var(--text-1);
+  font-family: var(--font-base);
+  backdrop-filter: blur(8px);
+}
+
+.map-profile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  min-height: 64px;
+  border-bottom: 1px solid var(--stroke-2);
+}
+
+.map-profile-header-icon {
+  display: grid;
+  flex: 0 0 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg-1));
+  color: var(--accent);
+}
+
+.map-profile-header-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.map-profile-header-copy strong {
+  font-size: var(--fs-300);
+  font-weight: var(--fw-semibold);
+}
+
+.map-profile-header-copy small {
+  color: var(--text-3);
+  font-size: var(--fs-200);
+}
+
+.map-profile-close {
+  display: grid;
+  flex: 0 0 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-3);
+}
+
+.map-profile-close:hover,
+.map-profile-close:focus-visible {
+  background: var(--bg-3);
+}
+
+.map-profile-altitude {
+  padding-top: var(--space-l);
+}
+
+.map-profile-field-heading,
+.map-profile-route-heading,
+.map-profile-distance-summary,
+.map-profile-segments > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-s);
+}
+
+.map-profile-field-heading {
+  margin-bottom: var(--space-s);
+}
+
+.map-profile-field-heading label,
+.map-profile-route-heading strong {
+  font-size: var(--fs-200);
+  font-weight: var(--fw-semibold);
+}
+
+.map-profile-field-heading > span {
+  color: var(--text-3);
+  font-size: var(--fs-100);
+}
+
+.map-profile-altitude-control {
+  display: flex;
+  align-items: stretch;
+  height: var(--touch-min);
+  overflow: hidden;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-xl);
+  background: var(--bg-1);
+}
+
+.map-profile-altitude-control:focus-within {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.map-profile-altitude-control.is-invalid {
+  border-color: var(--level-red);
+}
+
+.map-profile-altitude-control input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 var(--space-m);
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-1);
+  font-size: var(--fs-300);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.map-profile-altitude-control > span {
+  display: grid;
+  flex: 0 0 var(--touch-min);
+  place-items: center;
+  border-left: 1px solid var(--stroke-2);
+  background: var(--bg-2);
+  color: var(--text-3);
+  font-size: var(--fs-200);
+}
+
+.map-profile-error,
+.map-profile-status {
+  margin: var(--space-s) 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-200);
+  line-height: var(--lh-200);
+}
+
+.map-profile-error,
+.map-profile-status.is-error {
+  color: var(--level-red);
+}
+
+.map-profile-route {
+  margin-top: var(--space-l);
+  padding-top: var(--space-l);
+  border-top: 1px solid var(--stroke-2);
+}
+
+.map-profile-route-heading {
+  align-items: center;
+}
+
+.map-profile-state {
+  padding: var(--space-xxs) var(--space-s);
+  border-radius: var(--radius-circular);
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg-1));
+  color: var(--accent);
+  font-size: var(--fs-100);
+  font-weight: var(--fw-semibold);
+}
+
+.map-profile-state.is-done {
+  background: var(--level-green-bg);
+  color: var(--level-green);
+}
+
+.map-profile-hint {
+  margin: var(--space-s) 0 0;
+  color: var(--text-3);
+  font-size: var(--fs-200);
+  line-height: var(--lh-200);
+}
+
+.map-profile-progress {
+  display: flex;
+  margin: var(--space-l) 0 var(--space-s);
+}
+
+.map-profile-progress-step {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-s);
+  min-width: 0;
+  color: var(--text-3);
+  font-size: var(--fs-100);
+}
+
+.map-profile-progress-step::before {
+  position: absolute;
+  top: 5px;
+  left: -50%;
+  z-index: 0;
+  width: 100%;
+  border-top: 2px solid var(--stroke-1);
+  content: '';
+}
+
+.map-profile-progress-step:first-child::before {
+  display: none;
+}
+
+.map-profile-progress-step.is-selected::before {
+  border-color: var(--accent);
+}
+
+.map-profile-progress-dot {
+  position: relative;
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--stroke-1);
+  border-radius: var(--radius-circular);
+  background: var(--bg-1);
+}
+
+.map-profile-progress-dot.is-selected {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.map-profile-progress-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-profile-progress-step:first-child .map-profile-progress-label,
+.map-profile-progress-step:last-child .map-profile-progress-label {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+}
+
+.map-profile-distance {
+  margin-top: var(--space-l);
+  padding-top: var(--space-m);
+  border-top: 1px solid var(--stroke-2);
+}
+
+.map-profile-distance-summary > span {
+  color: var(--text-3);
+  font-size: var(--fs-200);
+}
+
+.map-profile-distance-summary > strong {
+  font-size: var(--fs-400);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.map-profile-details-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  min-height: 32px;
+  padding: var(--space-xs) 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--fs-200);
+  text-align: left;
+}
+
+.map-profile-segments {
+  display: grid;
+  gap: var(--space-s);
+  max-height: 136px;
+  overflow-y: auto;
+  padding: var(--space-s) var(--space-m);
+  border-radius: var(--radius-lg);
+  background: var(--bg-3);
+  color: var(--text-2);
+  font-size: var(--fs-200);
+}
+
+.map-profile-segments strong {
+  color: var(--text-1);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.map-profile-actions {
+  display: flex;
+  gap: var(--space-s);
+  margin-top: var(--space-l);
+}
+
+.map-profile-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-m);
+  border-radius: var(--radius-xl);
+  font-size: var(--fs-200);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+.map-profile-secondary {
+  border: 1px solid var(--stroke-1);
+  background: var(--bg-1);
+  color: var(--text-2);
+}
+
+.map-profile-secondary:hover {
+  background: var(--bg-3);
+}
+
+.map-profile-primary {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg-1);
+}
+
+.map-profile-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 84%, var(--text-1));
+}
+
+.map-profile-primary:disabled {
+  border-color: var(--stroke-2);
+  background: var(--bg-3);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+.map-profile-panel button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 719px) {
+  .map-view-wrapper .map-profile-panel {
+    top: auto;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+    max-height: min(56dvh, calc(100% - 88px));
+  }
+
+  .map-profile-close {
+    flex-basis: var(--touch-min);
+    height: var(--touch-min);
+  }
+
+  .map-profile-actions {
+    position: sticky;
+    bottom: calc(-1 * var(--space-l));
+    z-index: 1;
+    margin-right: calc(-1 * var(--space-l));
+    margin-left: calc(-1 * var(--space-l));
+    padding: var(--space-s) var(--space-l) var(--space-l);
+    border-top: 1px solid var(--stroke-2);
+    background: var(--bg-1);
+  }
+}

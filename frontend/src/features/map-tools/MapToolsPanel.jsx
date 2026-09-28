@@ -40,14 +40,14 @@ function CoordinateBody({ s, coord, clear, onSave }) {
   )
 }
 
-export function DistanceBody({ s, distance, distanceDone, lineCoordinates, undoVertex, finishDistance, clear, profileMode = false, onOpenProfile, profileAltitudeValid = true, profileLoading, profileError, profileWarning, onSave }) {
+export function DistanceBody({ s, distance, distanceDone, lineCoordinates, undoVertex, finishDistance, clear, onSave }) {
   const count = distance?.count ?? 0
   return (
     <>
       <span className={s.hint}>
         {distanceDone
-          ? profileMode ? '선이 완성됐습니다. 단면도를 열거나 지도를 눌러 새 선을 시작하세요.' : '측정 완료. 지도를 다시 클릭하면 새 측정을 시작합니다.'
-          : `지도를 클릭해 점을 이어 찍으세요. 끝내려면 "${profileMode ? '선 완료' : '측정 완료'}"(또는 더블클릭).`}
+          ? '측정 완료. 지도를 다시 클릭하면 새 측정을 시작합니다.'
+          : '지도를 클릭해 점을 이어 찍으세요. 끝내려면 "측정 완료"(또는 더블클릭).'}
       </span>
       {count >= 2 && (
         <div className={s.coordSection}>
@@ -57,11 +57,8 @@ export function DistanceBody({ s, distance, distanceDone, lineCoordinates, undoV
           ))}
         </div>
       )}
-      {!distanceDone && count >= 2 && <Button appearance="primary" onClick={finishDistance}>{profileMode ? '선 완료' : '측정 완료'}</Button>}
-      {profileMode && distanceDone && <Button appearance="primary" disabled={profileLoading || !profileAltitudeValid} onClick={onOpenProfile}>{profileLoading ? '단면도 불러오는 중…' : '연직단면도 열기'}</Button>}
-      {!profileMode && distanceDone && lineCoordinates && <Button appearance="secondary" onClick={() => onSave?.('line', { coordinates: lineCoordinates, name: '측정 선' })}>선으로 저장</Button>}
-      {profileMode && profileError && <span className={s.coordError} role="alert">{profileError}</span>}
-      {profileMode && profileWarning && <span className={s.status}>{profileWarning}</span>}
+      {!distanceDone && count >= 2 && <Button appearance="primary" onClick={finishDistance}>측정 완료</Button>}
+      {distanceDone && lineCoordinates && <Button appearance="secondary" onClick={() => onSave?.('line', { coordinates: lineCoordinates, name: '측정 선' })}>선으로 저장</Button>}
       {!distanceDone && count >= 1 && <Button appearance="secondary" onClick={undoVertex}>마지막 점 취소</Button>}
       {count > 0 && <Button appearance="secondary" onClick={clear}>{distanceDone ? '새로 재기' : '지우기'}</Button>}
     </>

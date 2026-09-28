@@ -147,17 +147,6 @@
   pointer-events: none;
 }
 
-@media (max-width: 719px) {
-  .map-view-wrapper .map-profile-panel {
-    top: auto;
-    bottom: 12px;
-    left: 12px;
-    right: 12px;
-    width: auto;
-    max-height: min(32vh, 240px);
-  }
-}
-
 .basemap-switcher-thumb {
   display: block;
   width: 36px;
