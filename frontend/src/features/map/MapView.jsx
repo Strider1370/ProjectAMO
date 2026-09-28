@@ -2368,6 +2368,7 @@ const MapView = forwardRef(function MapView({
         <Suspense fallback={null}>
           <VerticalProfileWindow
             profile={mapLineProfile.profile}
+            referenceAltitudeFt={mapLineProfile.referenceAltitudeFt}
             crossSection={mapLineProfile.crossSection}
             isOpen={mapLineProfile.isOpen}
             onClose={() => mapLineProfile.setIsOpen(false)}
@@ -2398,9 +2399,9 @@ const MapView = forwardRef(function MapView({
       )}
 
       {profileDrawingActive && <MapProfilePanel measure={measure} onClose={onClosePanel}
-        onOpenProfile={() => {
+        onOpenProfile={(altitudeFt) => {
           routeBriefing.actions.setVerticalProfileWindowOpen(false)
-          mapLineProfile.openLine(measure.lineCoordinates)
+          mapLineProfile.openLine(measure.lineCoordinates, altitudeFt)
         }}
         loading={mapLineProfile.loading} error={mapLineProfile.error} warning={mapLineProfile.warning} />}
 

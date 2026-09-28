@@ -201,6 +201,7 @@ function WindBarb({ cx, cy, u, v }) {
 
 export default function VerticalProfileChart({
   profile,
+  referenceAltitudeFt = null,
   crossSection = null,
   layers = {},
   advisories = [],
@@ -241,7 +242,7 @@ export default function VerticalProfileChart({
   }, [])
   const samples = profile?.axis?.samples ?? []
   const terrainValues = profile?.terrain?.values ?? []
-  const cruiseAltitudeFt = profile?.flightPlan?.plannedCruiseAltitudeFt
+  const cruiseAltitudeFt = profile?.flightPlan?.plannedCruiseAltitudeFt ?? referenceAltitudeFt
   const markers = profile?.markers ?? []
   const flightProfile = profile?.flightPlan?.profile ?? null
   const candidateProfiles = profile?.candidateProfiles ?? []
@@ -312,6 +313,7 @@ export default function VerticalProfileChart({
     : [{ altitudeFt: cruiseAltitudeFt, points: procedurePoints }]
   const profileCeilingFt = Math.max(
     terrainMaxFt,
+    referenceAltitudeFt ?? 0,
     ...allFlightProfiles.flatMap((candidate) => candidate.points.map((point) => point.altitudeFt)),
     0,
   )
@@ -337,7 +339,7 @@ export default function VerticalProfileChart({
   const selectedProfile = candidateProfiles.find((candidate) => candidate.plannedCruiseAltitudeFt === selectedCandidateAltitudeFt)
     ?? profile.flightPlan
   const selectedProcedure = selectedProfile?.profile ?? flightProfile
-  const selectedCruiseAltitudeFt = selectedProfile?.plannedCruiseAltitudeFt ?? cruiseAltitudeFt
+  const selectedCruiseAltitudeFt = referenceAltitudeFt ?? selectedProfile?.plannedCruiseAltitudeFt ?? cruiseAltitudeFt
   const tod = selectedProcedure?.tod
   const todMarker = tod && Number.isFinite(tod.distanceNm) && tod.distanceNm >= 0 && tod.distanceNm <= maxDistance
     ? { ...tod, x: xFor(tod.distanceNm), y: yFor(selectedCruiseAltitudeFt) }
@@ -575,7 +577,7 @@ export default function VerticalProfileChart({
           <strong>{formatFt(terrainMaxFt)}</strong>
         </span>
         {!onSelectCandidateAltitude && Number.isFinite(selectedCruiseAltitudeFt) && <span className="vertical-profile-meta-item">
-          <span>{'\uc120\ud0dd \uc21c\ud56d\uace0\ub3c4'}</span>
+          <span>{referenceAltitudeFt != null ? '설정 고도' : '\uc120\ud0dd \uc21c\ud56d\uace0\ub3c4'}</span>
           <strong>{formatFt(selectedCruiseAltitudeFt)}</strong>
         </span>}
         {layers.cloud && crossSection && <span className="vertical-profile-meta-item cs-cloud-meta">
@@ -739,6 +741,10 @@ export default function VerticalProfileChart({
             />
           ) : null
         })}
+        {Number.isFinite(referenceAltitudeFt) && (
+          <path className="vertical-profile-procedure-line vertical-profile-reference-line"
+            d={`M ${xFor(0)} ${yFor(referenceAltitudeFt)} L ${xFor(maxDistance)} ${yFor(referenceAltitudeFt)}`} />
+        )}
         {legBand && (
           <g className={`vertical-profile-leg-band${legBand.pinned ? ' is-pinned' : ''}`} aria-hidden="true">
             <rect x={legBand.left} y={padding.top} width={legBand.right - legBand.left} height={plotHeight} />

@@ -10,7 +10,7 @@ test('map-line-profile: 지도에서 그린 선으로 비행경로 없이 연직
     terrainRequests.push(payload)
     const coordinates = payload.routeGeometry.coordinates
     await route.fulfill({ json: {
-      axis: { totalDistanceNm: 12, samples: coordinates.map(([lon, lat], index) => ({ index, lon, lat, distanceNm: index * 6 })) },
+      axis: { totalDistanceNm: (coordinates.length - 1) * 6, samples: coordinates.map(([lon, lat], index) => ({ index, lon, lat, distanceNm: index * 6 })) },
       terrain: { unit: 'm', values: coordinates.map((_, index) => ({ index, elevationM: 100 + index * 20 })) },
       markers: payload.routeMarkers.map((marker, index) => ({ ...marker, distanceNm: index * 6 })),
       flightPlan: null,
@@ -34,9 +34,12 @@ test('map-line-profile: 지도에서 그린 선으로 비행경로 없이 연직
     localStorage.setItem('amo.tour.v1.done', 'true')
     localStorage.setItem('projectamo:lastSeenVersion', version)
   }, CURRENT_VERSION)
-  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('button', { name: '지도 도구' })).toHaveCount(0)
   await page.getByRole('button', { name: '연직단면도', exact: true }).click()
+  const altitudeInput = page.getByRole('spinbutton', { name: '설정 고도 (ft)' })
+  await expect(altitudeInput).toHaveValue('10000')
+  await altitudeInput.fill('12000')
   if (testInfo.project.name === 'desktop') {
     const buttonBox = await page.getByRole('button', { name: '항공정보', exact: true }).boundingBox()
     const panelBox = await page.locator('.map-profile-panel').boundingBox()
@@ -46,12 +49,12 @@ test('map-line-profile: 지도에서 그린 선으로 비행경로 없이 연직
   await page.waitForFunction(() => window.__map?.getSource('mt-measure'))
   if (testInfo.project.name === 'mobile') {
     await page.evaluate(() => {
-      for (const [lng, lat] of [[126.5, 37], [127, 37.2], [127.5, 37.1]]) {
+      for (const [lng, lat] of [[126.5, 37], [127, 37.2], [127.5, 37.1], [128, 37.3]]) {
         window.__map.fire('click', { lngLat: { lng, lat }, originalEvent: { detail: 1 } })
       }
     })
   } else {
-    for (const position of [{ x: 320, y: 460 }, { x: 390, y: 520 }, { x: 470, y: 580 }]) {
+    for (const position of [{ x: 320, y: 460 }, { x: 390, y: 520 }, { x: 470, y: 580 }, { x: 540, y: 620 }]) {
       await page.locator('.mapboxgl-canvas').click({ position })
     }
   }
@@ -64,11 +67,19 @@ test('map-line-profile: 지도에서 그린 선으로 비행경로 없이 연직
   expect(dialogBox.y).toBeLessThan(page.viewportSize().height - 120)
   expect(dialogBox.y + dialogBox.height).toBeGreaterThan(0)
   await expect(dialog.locator('.vertical-profile-chart svg').first()).toBeVisible()
+  const referenceLine = dialog.locator('.vertical-profile-reference-line')
+  await expect(referenceLine).toHaveCount(1)
+  expect(await referenceLine.evaluate((element) => getComputedStyle(element).stroke)).not.toBe('none')
+  await expect(dialog).toContainText('설정 고도')
+  await expect(dialog).toContainText('12,000 ft')
+  expect(await dialog.locator('.vertical-profile-marker-label').allTextContents()).toEqual(['시작', 'WP1', 'WP2', '끝'])
+  expect(await dialog.locator('.vertical-profile-axis-label').allTextContents()).not.toContain('50000')
   await expect(dialog).not.toContainText('선택 순항고도')
   expect(terrainRequests).toHaveLength(1)
   expect(terrainRequests[0].terrainOnly).toBe(true)
   expect(terrainRequests[0].plannedCruiseAltitudeFt).toBeUndefined()
-  expect(terrainRequests[0].routeGeometry.coordinates).toHaveLength(3)
+  expect(terrainRequests[0].routeGeometry.coordinates).toHaveLength(4)
+  expect(terrainRequests[0].routeMarkers.map((marker) => marker.label)).toEqual(['시작', 'WP1', 'WP2', '끝'])
   expect(weatherRequests).toHaveLength(1)
   await dialog.getByRole('button', { name: '다음 예보시간' }).click()
   await expect.poll(() => weatherRequests.length).toBe(2)

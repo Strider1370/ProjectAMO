@@ -40,7 +40,7 @@ function CoordinateBody({ s, coord, clear, onSave }) {
   )
 }
 
-export function DistanceBody({ s, distance, distanceDone, lineCoordinates, undoVertex, finishDistance, clear, profileMode = false, onOpenProfile, profileLoading, profileError, profileWarning, onSave }) {
+export function DistanceBody({ s, distance, distanceDone, lineCoordinates, undoVertex, finishDistance, clear, profileMode = false, onOpenProfile, profileAltitudeValid = true, profileLoading, profileError, profileWarning, onSave }) {
   const count = distance?.count ?? 0
   return (
     <>
@@ -58,7 +58,7 @@ export function DistanceBody({ s, distance, distanceDone, lineCoordinates, undoV
         </div>
       )}
       {!distanceDone && count >= 2 && <Button appearance="primary" onClick={finishDistance}>{profileMode ? '선 완료' : '측정 완료'}</Button>}
-      {profileMode && distanceDone && <Button appearance="primary" disabled={profileLoading} onClick={onOpenProfile}>{profileLoading ? '단면도 불러오는 중…' : '연직단면도 열기'}</Button>}
+      {profileMode && distanceDone && <Button appearance="primary" disabled={profileLoading || !profileAltitudeValid} onClick={onOpenProfile}>{profileLoading ? '단면도 불러오는 중…' : '연직단면도 열기'}</Button>}
       {!profileMode && distanceDone && lineCoordinates && <Button appearance="secondary" onClick={() => onSave?.('line', { coordinates: lineCoordinates, name: '측정 선' })}>선으로 저장</Button>}
       {profileMode && profileError && <span className={s.coordError} role="alert">{profileError}</span>}
       {profileMode && profileWarning && <span className={s.status}>{profileWarning}</span>}

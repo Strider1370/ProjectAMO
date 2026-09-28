@@ -9,7 +9,7 @@ function geometryForLine(coordinates) {
 function markersForLine(coordinates) {
   return coordinates.map(([lon, lat], index) => ({
     id: `drawn-point-${index}`,
-    label: index === 0 ? '시작' : index === coordinates.length - 1 ? '끝' : `점 ${index + 1}`,
+    label: index === 0 ? '시작' : index === coordinates.length - 1 ? '끝' : `WP${index}`,
     lon, lat, kind: 'WAYPOINT',
   }))
 }
@@ -22,14 +22,18 @@ export function useMapLineProfile() {
   const [hourLoading, setHourLoading] = useState(false)
   const [error, setError] = useState(null)
   const [warning, setWarning] = useState(null)
+  const [referenceAltitudeFt, setReferenceAltitudeFt] = useState(null)
   const geometryRef = useRef(null)
   const requestRef = useRef(null)
 
   useEffect(() => () => requestRef.current?.abort(), [])
 
-  async function openLine(coordinates) {
+  async function openLine(coordinates, altitudeFt = null) {
     const routeGeometry = geometryForLine(coordinates)
     if (!routeGeometry) { setError('지도에서 두 점 이상을 이어 선을 완성해 주세요.'); return false }
+    if (altitudeFt !== null && (!Number.isInteger(altitudeFt) || altitudeFt < 500 || altitudeFt > 50000)) {
+      setError('500~50,000 ft 사이의 고도를 입력해 주세요.'); return false
+    }
     requestRef.current?.abort()
     const controller = new AbortController()
     requestRef.current = controller
@@ -50,6 +54,7 @@ export function useMapLineProfile() {
       return false
     }
     setProfile(terrainResult.value)
+    setReferenceAltitudeFt(altitudeFt)
     setCrossSection(weatherResult.status === 'fulfilled' ? weatherResult.value : null)
     if (weatherResult.status === 'rejected') setWarning('기상 단면 자료를 불러오지 못해 지형 단면만 표시합니다.')
     setIsOpen(true)
@@ -73,5 +78,5 @@ export function useMapLineProfile() {
     }
   }
 
-  return { profile, crossSection, isOpen, setIsOpen, loading, hourLoading, error, warning, openLine, selectForecastHour }
+  return { profile, crossSection, referenceAltitudeFt, isOpen, setIsOpen, loading, hourLoading, error, warning, openLine, selectForecastHour }
 }

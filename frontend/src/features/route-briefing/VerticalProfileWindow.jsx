@@ -8,6 +8,7 @@ function formatFlightLevel(value) {
 
 export default function VerticalProfileWindow({
   profile,
+  referenceAltitudeFt = null,
   crossSection,
   isOpen,
   onClose,
@@ -58,6 +59,7 @@ export default function VerticalProfileWindow({
         {statusMessage && <p className="vertical-profile-window-status" role="status">{statusMessage}</p>}
         <VerticalProfileChart
           profile={profile}
+          referenceAltitudeFt={referenceAltitudeFt}
           crossSection={crossSection}
           layers={layers}
           advisories={advisories}
