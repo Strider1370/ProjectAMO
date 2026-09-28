@@ -1,5 +1,6 @@
 import VerticalProfileChart from './VerticalProfileChart.jsx'
 import { useCrossSectionLayers, CrossSectionToggles, ForecastHourNav } from './crossSectionLayers.jsx'
+import './RouteBriefing.css'
 
 function formatFlightLevel(value) {
   return value >= 10000 ? `FL${Math.round(value / 100)}` : `${Math.round(value).toLocaleString()} ft`
