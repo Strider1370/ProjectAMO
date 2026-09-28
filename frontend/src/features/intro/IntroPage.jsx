@@ -476,7 +476,7 @@ export default function IntroPage() {
             <div className="copy">
               <h2 id="ai-title" style={{ color: '#fff' }}>궁금한 건 AI에게 물어보세요</h2>
               <p>"오후에 인천 착륙 괜찮을까?"라고 물으면 METAR와 TAF를 근거로 답하고, 참고한 전문을 함께 보여드려요.</p>
-              <span className="ai-note">개발 중인 기능이에요. 아래 대화는 예시예요.</span>
+              <span className="ai-note">로그인 후 설정 &gt; 실험실에서 기상이를 켜고 직접 써볼 수 있어요. 아래 대화는 사용 예시예요.</span>
             </div>
             <div className="stage">
               <div className="ai fit">
