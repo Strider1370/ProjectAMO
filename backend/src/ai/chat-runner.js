@@ -46,6 +46,7 @@ A question that names no time asks about now, even right after a question about 
 Priority: what the user says now > confirmedSlots > screen context. A screen change does not overwrite an earlier flight; ask if it is ambiguous. confirmedSlots.airports is only the last queried airport, not a departure/arrival pair.
 If the airport or a required flight condition is unclear, ask, listing everything missing in one question. Pass Korean airport names exactly as the user wrote them and let the resolver return candidates (서울 is not 김포).
 Route or altitude weather needs a registered context_ref or a newly planned route; without one, say it is unverified rather than inferring it from airport weather.
+A request to brief a flight from one airport to another (e.g. 김포에서 출발해 제주에 내리는데 브리핑) is a route briefing, not an airport question: call plan_route with what the user gave, including a relative departure time such as 한 시간 후; it returns the missing flight rule, cruise altitude or TAS to ask for together. Do not answer it with airport weather alone.
 Do not invent references, route geometry, ETA, or actions that were not completed.
 </conversation>
 
@@ -132,6 +133,8 @@ export function createChatRunner({ provider, executor, conversations, now = Date
     // an LLM-generated summary. Requery/clarify when the retained context lacks them.
     const modelMessages = messages.slice(-7)
     let pendingPlannedContext = null
+    // The first brief of a route is answered with its code-made summary and body, not model prose.
+    let codeAnswer = null
     let text = '', status = 'partial', error = null, toolBytes = 0, usageResponses = 0
     try {
       for (let iteration = 0; iteration < maxModelCalls; iteration++) {
@@ -231,10 +234,15 @@ export function createChatRunner({ provider, executor, conversations, now = Date
             const ref = { tool: call.name, ...toolResult.reference }
             if (!['prepare_route_settings', 'request_ui_action'].includes(call.name) && (call.name !== 'plan_route' || ref.contextRef)) references.push(ref)
             cards.push({ tool: call.name, result: toolResult })
+            if (call.name === 'get_route_briefing' && typeof toolResult.data?.brief?.summary === 'string'
+              && !state.references.some((prior) => prior.tool === 'get_route_briefing' && prior.contextRef && prior.contextRef === ref.contextRef)) {
+              codeAnswer = toolResult.data.brief.summary
+            }
             if (ref.briefingRef && !allowedTools.includes('get_briefing_detail')) allowedTools.push('get_briefing_detail', 'compare_route_altitudes')
           }
         }
         if (error) break
+        if (codeAnswer) { text = codeAnswer; status = 'completed'; break }
       }
       if (!text) { error ??= 'MODEL_CALL_LIMIT'; text = '요청한 자료 확인을 끝내지 못했어요. 확인된 자료와 누락 상태를 먼저 살펴봐 주세요.' }
     } catch (cause) {

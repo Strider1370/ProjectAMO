@@ -201,6 +201,12 @@ export function composeBriefing(request, data) {
     legs: routeWeatherLegs.legs,
     procedures: routeWeatherLegs.procedures,
     aipConstraints,
+    // 상승·순항·강하 구분용 고도 선(단면도와 같은 계획 프로파일). 만들지 못하면 null.
+    profile: flightPlanProfile ? {
+      points: (flightPlanProfile.points ?? []).map(({ distanceNm, altitudeFt }) => ({ distanceNm, altitudeFt })),
+      todNm: flightPlanProfile.tod?.distanceNm ?? null,
+      vfr: Boolean(flightPlanProfile.model?.vfrWaypointAltitudes),
+    } : null,
   }
 
   const summary = [

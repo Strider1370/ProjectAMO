@@ -4,10 +4,25 @@ import { getAirportWeather } from './get-airport-weather.js'
 import { createDataContext } from '../data-context.js'
 import { modelTimeCoverage } from '../model-time-coverage.js'
 import { executeAltitudeComparison } from '../../briefing/altitude-service.js'
-import { routeWeatherSummary } from '../digests/route-summary.js'
+import { routeWeatherSummary, procedureName } from '../digests/route-summary.js'
 import { buildRouteBrief } from '../digests/route-brief.js'
 
 const hash = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
+const PROCEDURE_LABEL = { SID: '출발 절차', STAR: '도착 절차', IAP: '접근 절차' }
+
+// Folded "경로 상세" of the brief: route text, procedures with runway, data date.
+function routeDetails(enroute, plan) {
+  const procedures = (enroute?.procedures ?? []).map((p) => {
+    const runway = p.type === 'SID' && /^RWY/.test(p.legs?.[0]?.from ?? '') ? p.legs[0].from : null
+    return { label: PROCEDURE_LABEL[p.type] ?? p.type, name: `${procedureName(p) ?? p.id}${runway ? ` (${runway})` : ''}` }
+  })
+  return {
+    routeText: plan?.editor?.rawText ?? null,
+    procedures,
+    publicationId: plan?.publicationId ?? null,
+    basis: plan ? '절차·활주로는 최근 METAR 바람으로 자동 선택했어요. 운항 허가나 안전 판정이 아니에요.' : null,
+  }
+}
 const list = (items, cap = 10) => ({ items: (items ?? []).slice(0, cap), total: (items ?? []).length })
 
 // Each leg is a pageable item. A whole enroute section includes procedure
@@ -109,7 +124,9 @@ export async function getRouteBriefing(input, context) {
           weatherScope: 'Whole route including terminals, using the requested altitude and applied profile when available. Preserve profileStatus and input validity. Grade 0 is the reported model grade, not a safety/absence finding. hazards are advisory matches, not grid icing/turbulence.' },
         // One code-made pre-flight brief for the chat answer, the card and the map highlight.
         brief: buildRouteBrief({
-          flight: { ...briefing.meta, plannedCruiseAltitudeFt: request.plannedCruiseAltitudeFt, distanceNm: request.routeModel?.routeAxis?.totalDistanceNm ?? null },
+          flight: { ...briefing.meta, plannedCruiseAltitudeFt: request.plannedCruiseAltitudeFt, distanceNm: request.routeModel?.routeAxis?.totalDistanceNm ?? null,
+            tasKt: selection.plan?.flight?.tasKt ?? null, etaBasis: selection.plan?.assumptions?.etaBasis ?? null },
+          details: routeDetails(briefing.sections.enroute, selection.plan), modelTimeStatus: modelCoverage.status,
           airports: airportResult.data.airports, routeSummary: routeWeatherSummary(briefing),
           nowMs: Date.parse(effectiveNow), timezone: context.displayTimezone }),
         detailSections: Object.keys(sections),

@@ -163,7 +163,7 @@ test('worker initializes a live planner and carries the generated context throug
   assert.deepEqual(stored.plan.editor.routeForm.departureAirport, 'RKSS')
 })
 
-test('chat can plan then brief in three calls, retains the generated flight without replacing screen context', async () => {
+test('chat plans then briefs in two calls with the code-made summary, retains the generated flight without replacing screen context', async () => {
   const runtime = makeRuntime()
   const conversations = createConversationStore({ now })
   const created = conversations.create('alice')
@@ -174,23 +174,26 @@ test('chat can plan then brief in three calls, retains the generated flight with
   } }, provider: { async complete(input) {
     seen.push(structuredClone({ ...input, signal: undefined }))
     if (seen.length === 1) return call('plan_route', { ...complete, displayTimezone: 'UTC' })
-    if (seen.length === 2 || seen.length === 4) return call('get_route_briefing', { context_ref: input.context.confirmedSlots.plannedRoute.value.contextRef })
+    if (seen.length === 2 || seen.length === 3) return call('get_route_briefing', { context_ref: input.context.confirmedSlots.plannedRoute.value.contextRef })
     return { text: '계산된 경로의 브리핑입니다. 자료 미확인 범위가 있습니다.' }
   } } })
   const request = { conversationId: created.conversationId, revision: 0, requestId: randomUUID(), message: '김포 제주 IFR FL310 TAS450 9월23일21시3분 경로와 브리핑',
     displayTimezone: 'Asia/Seoul', context: { airport: 'RKSI', contextRef: null, revision: null } }
   const response = await run(request, 'alice')
   assert.equal(response.status, 'completed')
-  assert.equal(response.modelCalls, 3)
+  // The first brief of this route is the code-made summary; no third model call.
+  assert.equal(response.modelCalls, 2)
   assert.equal(response.toolCalls, 2)
+  assert.equal(response.text, response.cards[1].result.data.brief.summary)
   assert.equal(executed[0].args.displayTimezone, 'Asia/Seoul')
   assert.equal(response.cards[0].result.data.flight.etd, '2026-09-23T12:03:00.000Z')
   assert.equal(seen[0].tools.some((t) => t.name === 'get_route_briefing'), false)
   assert.equal(seen[1].tools.some((t) => t.name === 'get_route_briefing'), true)
-  assert.deepEqual(seen[2].tools, [])
   assert.deepEqual(response.context, request.context)
   const followup = await run({ ...request, revision: 1, requestId: randomUUID(), message: '이 경로 다시 브리핑' }, 'alice')
   assert.equal(followup.status, 'completed')
+  // The same route again is a follow-up: the model answers.
+  assert.equal(followup.text, '계산된 경로의 브리핑입니다. 자료 미확인 범위가 있습니다.')
   assert.equal(executed[2].args.context_ref, executed[1].args.context_ref)
   assert.equal(seen[3].context.confirmedSlots.plannedRoute.value.flight.departureAirport, 'RKSS')
 })

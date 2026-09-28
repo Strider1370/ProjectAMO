@@ -46,6 +46,17 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
   mobileBlocked, onOpenRequest, onLogin, getRouteContext, onOpenResult, onPreviewRouteSettings, onApplyRouteSettings,
   onPreviewSavedRoute, onApplySavedRoute, onUiAction }) {
   const chat = useCopilot(user?.id)
+  // The first message that briefed each route shows it open; later answers about it fold it.
+  const firstBriefMessage = useMemo(() => {
+    const first = new Map()
+    for (const message of chat.messages) {
+      for (const card of message.cards ?? []) {
+        const ref = card.tool === 'get_route_briefing' ? card.result?.reference?.contextRef : null
+        if (ref && !first.has(ref)) first.set(ref, message.id)
+      }
+    }
+    return first
+  }, [chat.messages])
   const [open, setOpen] = useState(false), [expanded, setExpanded] = useState(false)
   const [position, setPosition] = useState(null), [attachContext, setAttachContext] = useState(true)
   const [mobileDetent, setMobileDetent] = useState('full')
@@ -242,7 +253,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
     } finally { if (preparation.current === controller) { preparation.current = null; setPreparing(false) } }
   }
   const composer = contextChoice ? null : <form className="copilot-composer" onSubmit={(event) => { event.preventDefault(); void send() }}>
-    {chat.status?.quota && <p role="status">오늘 남은 질문 {chat.status.quota.remaining}/{chat.status.quota.limit} · 한국 시간 자정 초기화</p>}
+    {chat.status?.quota && <p role="status">{chat.status.quota.unlimited ? `오늘 질문 ${chat.status.quota.used}회 · 관리자 제한 없음` : `오늘 남은 질문 ${chat.status.quota.remaining}/${chat.status.quota.limit} · 한국 시간 자정 초기화`}</p>}
     {!user ? <button type="button" onClick={onLogin}>로그인하고 질문하기</button>
       : !chat.status?.ready ? <p role="status">{chat.status?.reason === 'PROVIDER_NOT_CONFIGURED' ? '서버의 LLM 연결 설정이 필요해요.' : '현재 대화 서비스를 사용할 수 없어요.'}</p>
         : <>
@@ -293,7 +304,9 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
               onConfirm={() => void prepareRouteSettings(`${message.id}:${index}`, settingsAction.action, settingsAction.preview)}
               onCancel={() => setSettingsAction(null)} />
             : card.tool === 'plan_route'
-              ? <RoutePlanCard key={`${user?.id}:${index}`} result={card.result} timezone={message.displayTimezone ?? timezone} />
+              // A planned route shown in the brief's "경로 상세" is not repeated as its own card.
+              ? (card.result.data?.planningState === 'planned' && message.cards.some((c) => c.tool === 'get_route_briefing' && c.result.data?.brief?.header)
+                ? null : <RoutePlanCard key={`${user?.id}:${index}`} result={card.result} timezone={message.displayTimezone ?? timezone} />)
             : ['list_my_flight_alerts', 'prepare_flight_alert'].includes(card.tool)
               ? <FlightAlertCard key={`${user?.id}:${index}`} result={card.result} timezone={message.displayTimezone ?? timezone}
                 onQuestion={(text) => { chat.setDraft(text); input.current?.focus() }} />
@@ -307,6 +320,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
             : <Fragment key={`${user?.id}:${index}`}>
               {card.tool === 'get_airport_weather' && <RawReportCard result={card.result} />}
               {card.tool === 'get_route_briefing' && <RouteBriefCard result={card.result}
+                collapsed={Boolean(card.result.reference?.contextRef) && firstBriefMessage.get(card.result.reference.contextRef) !== message.id}
                 opening={resultAction?.opening && resultAction.ref === card.result.reference?.briefingRef}
                 error={resultAction && resultAction.ref === card.result.reference?.briefingRef && resultAction.stretch ? resultAction.error : null}
                 onShowStretch={onOpenResult && validBriefingRef(card.result.reference?.briefingRef) && card.result.reference.resultHash

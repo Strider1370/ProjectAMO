@@ -85,18 +85,39 @@
 .copilot-raw .ap-metar-tac-hl--special { background: var(--level-red-bg); color: var(--level-red); outline: 2px dashed var(--level-red); outline-offset: -1px; }
 
 .copilot-brief { margin-top: var(--space-s); border: 1px solid var(--stroke-2); border-radius: var(--radius-md); background: var(--bg-1); padding: var(--space-s) var(--space-m); font-size: var(--fs-200); }
-.copilot-brief-flight { margin: 0 0 var(--space-s); font-weight: var(--fw-bold); overflow-wrap: anywhere; }
-.copilot-brief-section + .copilot-brief-section { border-top: 1px solid var(--stroke-2); margin-top: var(--space-s); padding-top: var(--space-s); }
-.copilot-brief-section h4 { margin: 0 0 var(--space-xs); font-size: var(--fs-200); color: var(--text-2); }
-.copilot-brief-section ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-xs); }
-.copilot-brief-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-xs) var(--space-s); }
-.copilot-brief-level { flex: none; border-radius: var(--radius-md); padding: 0 var(--space-xs); font-size: var(--fs-100); font-weight: var(--fw-bold); }
-.copilot-brief-text { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
-.copilot-brief-경고 .copilot-brief-level { background: var(--level-red-bg); color: var(--level-red); }
-.copilot-brief-주의 .copilot-brief-level { background: var(--level-amber-bg); color: var(--level-amber); }
-.copilot-brief-참고 .copilot-brief-level, .copilot-brief-바람 .copilot-brief-level { background: var(--bg-3); color: var(--text-2); }
-.copilot-brief-참고 .copilot-brief-text { color: var(--text-3); }
-.copilot-brief-quiet, .copilot-brief-gaps { margin: 0; color: var(--text-3); }
-.copilot-brief-gaps { margin-top: var(--space-s); font-size: var(--fs-100); }
+/* Header: route line, then labelled facts. */
+.copilot-brief-title { margin: 0 0 var(--space-xs); font-weight: var(--fw-bold); overflow-wrap: anywhere; }
+.copilot-brief-header dl, .copilot-brief-details dl { margin: 0; display: grid; gap: 2px; }
+.copilot-brief-header dl > div, .copilot-brief-details dl > div { display: grid; grid-template-columns: 5.5em 1fr; gap: var(--space-s); }
+.copilot-brief-header dt, .copilot-brief-details dt { color: var(--text-3); }
+.copilot-brief-header dd, .copilot-brief-details dd { margin: 0; overflow-wrap: anywhere; }
+.copilot-brief-note { color: var(--text-3); }
+.copilot-brief-details { margin-top: var(--space-xs); }
+.copilot-brief-details summary { cursor: pointer; color: var(--accent); font-size: var(--fs-100); font-weight: var(--fw-bold); min-height: 28px; align-content: center; }
+.copilot-brief-details p { margin: var(--space-xs) 0 0; color: var(--text-3); font-size: var(--fs-100); }
+/* Sections: 출발 / 항로 (by flight phase) / 도착. */
+.copilot-brief-section { border-top: 1px solid var(--stroke-2); margin-top: var(--space-s); padding-top: var(--space-s); }
+.copilot-brief-section h4 { margin: 0 0 var(--space-xs); font-size: var(--fs-200); color: var(--text-1); }
+.copilot-brief-phase h5 { margin: var(--space-s) 0 2px; font-size: var(--fs-100); font-weight: var(--fw-bold); color: var(--text-3); }
+.copilot-brief-section ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.copilot-brief-status { margin: 0; color: var(--text-2); }
+/* One hazard row: colour bar and badge carry the severity, the kind leads. */
+.copilot-brief-row { display: grid; grid-template-columns: 4.4em minmax(0, 1fr) auto; align-items: center; gap: var(--space-s);
+  border-left: 3px solid var(--stroke-2); border-radius: var(--radius-sm, 4px); padding: 3px var(--space-s) 3px 6px; }
+.copilot-brief-kind { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-100); font-weight: var(--fw-bold); color: var(--text-2); }
+.copilot-brief-body { min-width: 0; display: grid; }
+.copilot-brief-line { overflow-wrap: anywhere; }
+.copilot-brief-severity { margin-right: 6px; font-size: var(--fs-100); }
+.copilot-brief-meta { font-size: var(--fs-100); color: var(--text-3); overflow-wrap: anywhere; }
+.copilot-brief-경고 { border-left-color: var(--level-red); background: var(--level-red-bg); }
+.copilot-brief-경고 .copilot-brief-kind, .copilot-brief-경고 .copilot-brief-severity { color: var(--level-red); }
+.copilot-brief-주의 { border-left-color: var(--level-amber); background: var(--level-amber-bg); }
+.copilot-brief-주의 .copilot-brief-kind, .copilot-brief-주의 .copilot-brief-severity { color: var(--level-amber); }
+.copilot-brief-참고 .copilot-brief-line, .copilot-brief-참고 .copilot-brief-severity { color: var(--text-3); }
+.copilot-brief-바람 { border-left-color: transparent; }
+.copilot-window .copilot-brief-show { min-width: 0; min-height: 30px; padding: 0 var(--space-s); font-size: var(--fs-100); color: var(--accent); }
+.copilot-mobile-host .copilot-brief-show { min-height: var(--touch-min); }
+.copilot-brief-gaps { margin: var(--space-s) 0 0; color: var(--text-3); font-size: var(--fs-100); }
 .copilot-brief-shown { font-size: var(--fs-100); font-weight: var(--fw-bold); color: var(--accent); }
-.copilot-brief-item:has(.copilot-brief-shown) { background: var(--bg-2); border-radius: var(--radius-md); }
+.copilot-brief-row:has(.copilot-brief-shown) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.copilot-brief-again > summary { cursor: pointer; color: var(--accent); font-weight: var(--fw-bold); min-height: var(--touch-min); align-content: center; }

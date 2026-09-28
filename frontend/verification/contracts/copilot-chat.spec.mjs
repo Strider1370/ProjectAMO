@@ -427,10 +427,12 @@ test.describe('copilot-route', () => {
     // The fixture has no model grids, so give the server-made brief two hazardous stretches.
     const legs = stored.briefing.sections.enroute.legs
     const first = legs.find((leg) => leg.from === 'MANGI'), last = legs.find((leg) => leg.to === 'NULDI')
-    card.data.brief.speak = [
-      { section: '항로', level: '주의', text: '순항 MANGI→NULDI: 착빙 MODERATE 20NM', highlight: { from: 'MANGI', to: 'NULDI', startNm: first.startNm, endNm: last.endNm } },
-      { section: '항로', level: '주의', text: '난류 MODERATE 강하 중', highlight: { startNm: 20, endNm: 45 } },
-      { section: '항로', level: '바람', text: '순항 FL310 평균 정풍 9kt' },
+    card.data.brief.body.enroute.quiet = null
+    card.data.brief.body.enroute.phases = [
+      { phase: '순항', label: '순항 FL310', wind: '평균 정풍 9kt', items: [{ kind: 'icing', label: '착빙', severity: 'MODERATE', level: '주의', where: 'MANGI→NULDI', procedure: null,
+        position: `출발 ${Math.round(first.startNm)}~${Math.round(last.endNm)}NM`, amount: '20NM', note: null, highlight: { from: 'MANGI', to: 'NULDI', startNm: first.startNm, endNm: last.endNm } }] },
+      { phase: '강하', label: '강하', wind: null, items: [{ kind: 'turbulence', label: '난류', severity: 'MODERATE', level: '주의', where: 'DOTOL 부근', procedure: null,
+        position: '출발 20~45NM', amount: null, note: '10,000ft 이하', highlight: { startNm: 20, endNm: 45 } }] },
     ]
     const calculations = []
     await page.route('**/api/ai/results/*', (route) => route.fulfill({ json: stored }))
@@ -448,13 +450,14 @@ test.describe('copilot-route', () => {
     await page.getByLabel('기상이에게 질문', { exact: true }).fill('경로 브리핑 해줘')
     await page.getByRole('button', { name: '전송', exact: true }).click()
     const brief = page.getByRole('region', { name: '비행 전 브리핑' })
-    await expect(brief.getByRole('heading', { level: 4 })).toHaveText(['출발', '항로', '도착'])
+    await expect(brief.getByRole('heading', { level: 4 })).toHaveText([/^출발 · /, '항로', /^도착 · /])
+    await expect(brief.getByRole('heading', { level: 5 })).toHaveText(['순항 FL310', '강하'])
     const highlighted = () => page.evaluate(() => window.__map?.getSource('navlog-leg-highlight')?.serialize()?.data?.features?.[0]?.geometry?.coordinates ?? [])
     await expect.poll(() => page.evaluate(() => Boolean(window.__map?.isStyleLoaded?.()))).toBe(true)
-    await brief.getByRole('button', { name: '지도·단면에서 보기' }).first().click()
+    await brief.getByRole('button', { name: /지도·단면에서 보기$/ }).first().click()
     await expect(page.getByRole('region', { name: '챗봇 보관 결과' })).toBeVisible()
     // The row the user pressed stays in view in the chat thread.
-    if (info.project.name !== 'mobile') await expect(brief.getByRole('status')).toHaveText('지도·단면에 표시 중')
+    if (info.project.name !== 'mobile') await expect(brief.getByRole('status')).toHaveText('표시 중')
     await expect.poll(highlighted).not.toEqual([])
     const fixLine = await highlighted()
     const mangi = fixture.request.routeMarkers.find((m) => m.id.includes(':MANGI:'))
@@ -465,9 +468,9 @@ test.describe('copilot-route', () => {
       await expect(page.locator('#copilot-window')).toBeVisible()
       await page.screenshot({ path: info.outputPath('copilot-brief-stretch.png') })
       // The shown row turns into a status, so the other stretch is now the only button.
-      await expect(brief.getByRole('button', { name: '지도·단면에서 보기' })).toHaveCount(1)
+      await expect(brief.getByRole('button', { name: /지도·단면에서 보기$/ })).toHaveCount(1)
       await expect(brief.getByRole('status')).toBeInViewport()
-      await brief.getByRole('button', { name: '지도·단면에서 보기' }).click()
+      await brief.getByRole('button', { name: /지도·단면에서 보기$/ }).click()
       await expect.poll(async () => (await highlighted())[0]?.[1]).not.toBe(fixLine[0][1])
     }
     expect(calculations).toEqual([])

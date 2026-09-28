@@ -78,7 +78,9 @@ function routeBriefingResult(result, timezone) {
   const { schemaVersion, status, reference, error } = result
   const data = result.data
   const strip = (items) => (items ?? []).map(({ highlight: _highlight, ...item }) => item)
-  const brief = { note: ROUTE_BRIEF_NOTE, ...data.brief, speak: strip(data.brief.speak), cardOnly: strip(data.brief.cardOnly) }
+  // body/details are the rendered card; the model reads the same items from speak/cardOnly.
+  const { body: _body, details: _details, ...briefFacts } = data.brief
+  const brief = { note: ROUTE_BRIEF_NOTE, ...briefFacts, speak: strip(data.brief.speak), cardOnly: strip(data.brief.cardOnly) }
   const issues = (result.issues ?? []).filter((issue) => !['SOURCE_COVERAGE_UNVERIFIED', 'RAW_UNAVAILABLE'].includes(issue?.code))
   return modelContext({ schemaVersion, status, reference, ...(error ? { error } : {}), issues, data: {
     brief, departure: data.brief.departure, arrival: data.brief.arrival, ...(data.routePlan ? { routePlan: data.routePlan } : {}),
