@@ -18,25 +18,23 @@ function AccountLabs() {
     try {
       const value = await copilotRequest('/settings', body)
       setSettings(value); notifyLabsChanged()
-      setMessage(value.enabled ? '기상이를 켰어요.' : '기상이를 껐어요. 진행 중인 요청도 중단합니다.')
+      setMessage(value.enabled ? '기상이를 켰어요.' : '기상이를 껐어요.')
     } catch { setError('저장하지 못했어요. 로그인 상태와 서버 연결을 확인한 뒤 다시 시도해주세요.') }
     finally { setBusy(false) }
   }
   return <div className="copilot-labs" aria-busy={busy}>
     <h3>기상이 · 실험실</h3>
-    <p>로그인 사용자에게 하루 5회 제공되는 LLM 챗봇입니다. 개인 API 키 입력 없이 사용하며, API 비용은 운영자가 부담합니다. 기본은 꺼짐입니다.</p>
-    <p>질문과 필요한 공항·경로 자료가 OpenAI에 전달됩니다. 한국 시간 자정에 사용 횟수가 초기화됩니다.</p>
+    <p>공항 METAR·TAF와 비행 경로의 기상을 물어볼 수 있는 AI 챗봇이에요. 시험 중인 기능이니 답변은 원문 자료와 함께 확인해 주세요.</p>
+    <p>하루 5번까지 질문할 수 있고, 횟수는 한국 시간 자정에 초기화돼요. 질문과 관련 공항·경로 자료는 답변을 만들기 위해 OpenAI로 전달돼요.</p>
     {!settings && !error && <p role="status">설정 불러오는 중…</p>}
     {settings && <>
-      <p>연결: OpenAI · {settings.model || '모델 미설정'}{settings.reasoningEffort ? ` · 추론 ${settings.reasoningEffort}` : ''}</p>
-      {!settings.configured && <p role="alert">서버의 LLM 연결 설정이 필요합니다. 운영자에게 문의해주세요.</p>}
+      {!settings.configured && <p role="alert">지금은 기상이를 사용할 수 없어요.</p>}
       {settings.quota && <p>오늘 남은 질문 {settings.quota.remaining}/{settings.quota.limit}</p>}
       <label className="copilot-labs-toggle">
         <input type="checkbox" role="switch" checked={settings.enabled} disabled={busy || (!settings.enabled && !settings.configured)}
           onChange={(event) => void update({ enabled: event.target.checked })} />기상이 켜기
       </label>
-      <p>켜면 우측 하단에 기상이 버튼이 나타납니다. 끄면 대화는 초기화되지만 사용 횟수는 유지됩니다.</p>
-      <p>메시지 하나당 1회이며 후속 질문도 포함됩니다. AI 호출 시작 후에는 오류·중지 여부와 관계없이 차감됩니다. 켜기만 해서는 차감되지 않습니다.</p>
+      <p>켜면 화면 오른쪽 아래에 기상이 버튼이 나타나요.</p>
     </>}
     {message && <p role="status">{message}</p>}
     {error && <p role="alert">{error}</p>}
@@ -45,5 +43,5 @@ function AccountLabs() {
 
 export default function CopilotLabs() {
   const { user } = useAuth()
-  return user ? <AccountLabs key={user.id} /> : <div className="copilot-labs"><h3>기상이 · 실험실</h3><p>로그인 후 기상이를 켜면 하루 5회 질문할 수 있어요. 개인 API 키는 필요하지 않습니다. 기본은 꺼짐입니다.</p></div>
+  return user ? <AccountLabs key={user.id} /> : <div className="copilot-labs"><h3>기상이 · 실험실</h3><p>로그인하면 기상이를 켜고 하루 5번까지 질문할 수 있어요.</p></div>
 }

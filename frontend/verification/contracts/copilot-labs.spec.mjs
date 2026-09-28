@@ -52,7 +52,7 @@ test.describe('copilot-chat-labs', () => {
     await expect(toggle).not.toBeChecked()
     await expect(toggle).toBeEnabled()
     await expect(page.locator('.copilot-labs input[type="password"]')).toHaveCount(0)
-    await expect(page.locator('.copilot-labs')).toContainText('API 비용은 운영자가 부담')
+    await expect(page.locator('.copilot-labs')).toContainText('하루 5번까지 질문')
     await expect(page.locator('.copilot-labs')).toContainText('오늘 남은 질문 5/5')
     await toggle.click()
     await expect(toggle).toBeChecked()
@@ -80,7 +80,7 @@ test.describe('copilot-chat-labs', () => {
     await setup(context, { loggedIn: false })
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await openLabs(page, info.project.name === 'mobile')
-    await expect(page.locator('.copilot-labs')).toContainText('로그인 후')
+    await expect(page.locator('.copilot-labs')).toContainText('로그인하면')
     await expect(page.locator('.copilot-labs input')).toHaveCount(0)
     await expect(page.getByRole('button', { name: '기상이에게 질문하기' })).toHaveCount(0)
   })
@@ -90,7 +90,7 @@ test.describe('copilot-chat-labs', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await openLabs(page, info.project.name === 'mobile')
     await expect(page.getByRole('switch', { name: '기상이 켜기' })).toBeDisabled()
-    await expect(page.locator('.copilot-labs [role="alert"]')).toContainText('서버의 LLM 연결 설정')
+    await expect(page.locator('.copilot-labs [role="alert"]')).toContainText('지금은 기상이를 사용할 수 없어요')
   })
 
   test('fifth question shows 0/5, preserves the answer, blocks new sends across reload', async ({ page, context }, info) => {
