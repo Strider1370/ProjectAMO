@@ -60,6 +60,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   const isFullFeature = FULL_FEATURE_AIRPORTS.has(icao)
   const airportInfo = weatherData?.airportInfo?.airports?.[icao] || null
   const bodyRef = useRef(null)
+  const tabsRef = useRef(null)
   const [activeSection, setActiveSection] = useState('warn')
   const [infoRequested, setInfoRequested] = useState(false)
   const [headerUsesWeather, setHeaderUsesWeather] = useState(false)
@@ -88,6 +89,18 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
   useEffect(() => {
     if (isFullFeature && !airportInfo) onRequestDeferredWeatherData?.(['airportInfo'])
   }, [icao, isFullFeature, airportInfo, onRequestDeferredWeatherData])
+
+  // 모바일 하단 탭 줄은 옆으로 넘어가므로, 현재 섹션 탭이 가려지면 보이는 자리로 민다.
+  useEffect(() => {
+    const nav = tabsRef.current
+    const tab = nav?.querySelector('.airport-panel-tab.is-active')
+    if (!tab || nav.scrollWidth <= nav.clientWidth) return
+    const left = tab.getBoundingClientRect().left - nav.getBoundingClientRect().left + nav.scrollLeft
+    const right = left + tab.offsetWidth
+    if (left < nav.scrollLeft || right > nav.scrollLeft + nav.clientWidth) {
+      nav.scrollTo?.({ left: left - (nav.clientWidth - tab.offsetWidth) / 2, behavior: 'smooth' })
+    }
+  }, [activeSection])
 
   // 스크롤스파이: 현재 섹션 레일 하이라이트 + 기상정보 섹션 진입 시 지연 로드
   useEffect(() => {
@@ -196,7 +209,7 @@ function AirportPanel({ airport, weatherData, onClose, onRequestDeferredWeatherD
       </header>
 
       <div className="airport-panel-main">
-        <nav className="airport-panel-tabs" aria-label="섹션 이동">
+        <nav className="airport-panel-tabs" aria-label="섹션 이동" ref={tabsRef}>
           {sections.map((s) => {
             const Icon = SECTION_ICON[s.id]
             return (

@@ -2529,11 +2529,21 @@
     box-shadow: 0 -3px 14px rgba(15, 23, 42, 0.08);
   }
 
+  /* 탭이 많아 한 줄에 다 안 들어가면 옆으로 넘긴다(글자 겹침 방지). */
+  .airport-panel-tabs {
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .airport-panel-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
   .airport-panel-tab {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 1 0 auto;
+    min-width: 56px;
     min-height: var(--touch-min);
-    padding: 4px 6px;
+    padding: 4px 10px;
     justify-content: center;
     font-size: var(--fs-200);
     white-space: nowrap;

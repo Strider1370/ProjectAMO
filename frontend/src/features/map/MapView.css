@@ -2033,11 +2033,13 @@
     transform: translateX(-50%);
   }
 
+  /* 왼쪽 레이어 버튼 열과 같은 폭을 오른쪽에도 비워 두고 그 사이 가운데에 둔다. 넘치면 다음 줄로. */
   .advisory-badge-bar {
     left: 68px;
-    right: 12px;
+    right: 68px;
     gap: 4px;
-    overflow: hidden;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   .advisory-badge-bar .advisory-chip { gap: 3px; padding-inline: 5px; font-size: 10px; }
   .advisory-badge-bar .advisory-chip-label { display: none; }

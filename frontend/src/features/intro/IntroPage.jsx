@@ -97,6 +97,7 @@ export default function IntroPage() {
   const rootRef = useRef(null)
   const [live, setLive] = useState(null)
   const [motion, setMotion] = useState(false)
+  const [compact, setCompact] = useState(false)
   const [activeNav, setActiveNav] = useState(null)
   const [scrolled, setScrolled] = useState(false)
   const [entering, setEntering] = useState(false)
@@ -111,13 +112,18 @@ export default function IntroPage() {
     return () => controller.abort()
   }, [])
 
-  // 넓은 화면이고 움직임 줄이기를 켜지 않았을 때만 스크롤 연출을 쓴다.
+  // 움직임 줄이기를 켜지 않았으면 스크롤 연출을 쓴다. 좁은 화면(compact)은 그림 영역만 화면에 붙인다.
   useEffect(() => {
-    const query = window.matchMedia('(min-width: 900px) and (prefers-reduced-motion: no-preference)')
-    const update = () => setMotion(query.matches)
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: no-preference)')
+    const compactQuery = window.matchMedia('(max-width: 899px)')
+    const update = () => { setMotion(motionQuery.matches); setCompact(compactQuery.matches) }
     update()
-    query.addEventListener('change', update)
-    return () => query.removeEventListener('change', update)
+    motionQuery.addEventListener('change', update)
+    compactQuery.addEventListener('change', update)
+    return () => {
+      motionQuery.removeEventListener('change', update)
+      compactQuery.removeEventListener('change', update)
+    }
   }, [])
 
   // 시간대 캡처를 서서히 바꾸고, 영상은 보일 때만 재생한다.
@@ -184,11 +190,14 @@ export default function IntroPage() {
     const stack = $('#gis .stack')
     const layers = $$('#gis .layer')
     const layerLabels = $$('#gis .plane-label')
+    const layerNow = $('#gis .now')
     const legend = $$('#gis .legend li')
     const pairSecond = $('.pair figure:last-child')
     const pairEl = $('.pair')
     const briefFrames = [1, 2, 3, 4, 5].map((n) => $(`#br-${n}`))
+    const briefTabStrip = $('#brief .tabs')
     const briefTabs = $$('#brief .tabs span')
+    let briefTabShown = -1
     const briefCallouts4 = $$('#br-4 .pt')
     const briefCallouts5 = $$('#br-5 .pt')
     const customFrames = [$('#cu-1'), $('#cu-2')]
@@ -199,7 +208,16 @@ export default function IntroPage() {
     const notis = $$('.noti').reverse() // 오래된 알림부터 도착해 위에 쌓인다
     const notiHeights = notis.map((noti) => noti.scrollHeight)
 
-    const pinned = Object.keys(PIN_SCREENS).map((id) => ({ id, element: root.querySelector(`#${id}`), shown: -1 }))
+    const pinned = Object.keys(PIN_SCREENS).map((id) => {
+      const element = root.querySelector(`#${id}`)
+      return { id, element, copy: element.querySelector('.copy'), stage: element.querySelector('.stage'), shown: -1 }
+    })
+    // 좁은 화면에서는 설명이 먼저 지나간 뒤 그림 영역이 붙는다. 그만큼 늦게 시작한다.
+    const leadOf = (pin) => {
+      if (!compact) return 0
+      const gap = parseFloat(getComputedStyle(pin.copy.parentElement).rowGap) || 0
+      return pin.copy.offsetTop + pin.copy.offsetHeight + gap - (parseFloat(getComputedStyle(pin.stage).top) || 0)
+    }
     // 연출이 바꾼 인라인 속성만 기록해 두었다가 끌 때 되돌린다(React가 넣은 스타일은 건드리지 않는다).
     const touched = new Set()
     const css = (element, props) => { touched.add(element); Object.assign(element.style, props) }
@@ -214,14 +232,18 @@ export default function IntroPage() {
         const appear = segment(p, 0, 0.22)
         const collapse = easeInOut(segment(p, 0.3, 0.5))
         css(stack, { transform: `rotateX(${56 * (1 - collapse)}deg) rotateZ(${-34 * (1 - collapse)}deg) scale(${lerp(0.7, 1, collapse)})` })
+        const zStep = compact ? stack.offsetWidth * 0.12 : 110
+        let top = 0
         // 레이어는 기본 지도(0) 위로 습도, 강수, 난류, 위성(4) 순서다. 합친 뒤 위성부터 한 장씩 걷어 낸다.
         const peelRanges = [null, null, [0.84, 0.92], [0.7, 0.78], [0.56, 0.64]]
         layers.forEach((layer, index) => {
           const shown = index === 0 ? 1 : segment(appear, (index - 1) / 4, index / 4)
           const peeled = peelRanges[index] ? segment(p, ...peelRanges[index]) : 0
-          css(layer, { opacity: shown * (1 - peeled), transform: `translateZ(${(index - 2) * 110 * (1 - collapse)}px)` })
+          if (shown * (1 - peeled) > 0.5) top = index
+          css(layer, { opacity: shown * (1 - peeled), transform: `translateZ(${(index - 2) * zStep * (1 - collapse)}px)` })
           css(layerLabels[index], { opacity: shown * (1 - segment(collapse, 0, 0.3)) })
         })
+        if (layerNow.textContent !== LAYERS[top].label) layerNow.textContent = LAYERS[top].label
         if (p < 0.22) {
           const count = 1 + Math.floor(appear * 4.99)
           setOn(legend, (index) => 4 - index < count)
@@ -241,6 +263,11 @@ export default function IntroPage() {
         popIn(briefCallouts5, segment(p, 0.84, 0.94))
         const tab = stepIndex(p, BRIEF_STEPS)
         setOn(briefTabs, (index) => index === tab)
+        // 좁은 화면에서는 탭 줄이 잘리므로 지금 단계 탭이 보이게 옆으로 민다.
+        if (compact && tab !== briefTabShown) {
+          briefTabShown = tab
+          briefTabStrip.scrollTo({ left: briefTabs[tab].offsetLeft - briefTabStrip.offsetLeft - 16, behavior: 'smooth' })
+        }
       },
       custom(p) {
         const e = easeInOut(segment(p, 0.3, 0.65))
@@ -273,7 +300,8 @@ export default function IntroPage() {
       const viewport = root.clientHeight
       let moving = false
       for (const pin of pinned) {
-        const target = pinnedProgress(top, pin.element.offsetTop, pin.element.offsetHeight, viewport)
+        const lead = leadOf(pin)
+        const target = pinnedProgress(top - lead, pin.element.offsetTop, pin.element.offsetHeight - lead, viewport)
         const next = pin.shown < 0 ? target : approach(pin.shown, target)
         if (next !== pin.shown) { pin.shown = next; render[pin.id](next) }
         if (next !== target) moving = true
@@ -303,7 +331,7 @@ export default function IntroPage() {
       touched.forEach((element) => { element.style.opacity = ''; element.style.transform = ''; element.style.height = '' })
       question.textContent = QUESTION
     }
-  }, [motion])
+  }, [motion, compact])
 
   // 대시보드 열기: 누른 자리에서 원이 퍼진 뒤 대시보드로 이동한다.
   const enterDashboard = (event, skipFuture = false) => {
@@ -324,7 +352,12 @@ export default function IntroPage() {
     root.scrollTo({ top: target, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
   }
 
-  const pinStyle = (id) => (motion ? { height: `${PIN_SCREENS[id] * 100}vh` } : undefined)
+  // 연출이 없으면 단계 탭 대신 창 제목으로 단계를 알린다.
+  const briefTitle = (index) => (motion ? '비행 계획' : BRIEF_TABS[index])
+  const pinStyle = (id) => {
+    if (!motion) return undefined
+    return compact ? { '--pin': PIN_SCREENS[id] } : { height: `${PIN_SCREENS[id] * 100}vh` }
+  }
   const navIndex = NAV.findIndex(([id]) => id === activeNav)
 
   return (
@@ -387,6 +420,7 @@ export default function IntroPage() {
               </ul>
             </div>
             <div className="stage">
+              <p className="now" aria-hidden="true">{LAYERS[0].label}</p>
               <div className="layers-stage">
                 <div className="stack fit">
                   {LAYERS.map((layer) => (
@@ -433,9 +467,9 @@ export default function IntroPage() {
                 {BRIEF_TABS.map((tab, index) => <span key={tab} className={index === 0 ? 'on' : undefined}>{tab}</span>)}
               </div>
               <div className="flow fit">
-                <Frame id="br-1" title="비행 계획"><LoopVideo src={videoRoute} poster={imgRoute} label="출발, 도착 공항을 입력하고 경로를 자동 생성하는 화면" /></Frame>
-                <Frame id="br-2" title="비행 계획"><img src={imgCompare} alt="경로 비교: 총 거리 240NM, 소요시간 32분" /></Frame>
-                <Frame id="br-3" title="비행 계획"><img src={imgPrep} alt="브리핑 준비: 출발, 도착 시각과 순항고도" /></Frame>
+                <Frame id="br-1" title={briefTitle(0)}><LoopVideo src={videoRoute} poster={imgRoute} label="출발, 도착 공항을 입력하고 경로를 자동 생성하는 화면" /></Frame>
+                <Frame id="br-2" title={briefTitle(1)}><img src={imgCompare} alt="경로 비교: 총 거리 240NM, 소요시간 32분" /></Frame>
+                <Frame id="br-3" title={briefTitle(2)}><img src={imgPrep} alt="브리핑 준비: 출발, 도착 시각과 순항고도" /></Frame>
                 <Frame id="br-4" title="비행 전 브리핑">
                   <img src={imgResult} alt="RKSI에서 RKPC 비행 전 브리핑 결과" />
                   <div className="co">
