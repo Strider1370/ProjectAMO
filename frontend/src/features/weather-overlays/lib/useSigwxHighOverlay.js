@@ -5,7 +5,8 @@ import { selectHazardFill } from './wafsHazardFill.js'
 import { installHighLayers, removeHighLayers, HIGH_LAYERS } from './sigwxHighLayers.js'
 import { HIGH_DEFAULT_FILTER, HIGH_HOUR_MS, highStamp, highTimelineEntries, pickHighFrame } from './sigwxHighModel.js'
 
-const ROOT = '/data/sigwx-high/'
+// /data/는 운영 nginx가 수집 자료 폴더로 보내므로, 빌드에 포함된 고정 샘플은 따로 둔다.
+const ROOT = '/samples/sigwx-high/'
 const requests = new Map()
 function readSample(file) {
   if (!requests.has(file)) requests.set(file, fetch(ROOT + file).then(response => {

@@ -153,7 +153,7 @@ test('HIGH details expose overlapping hazards and heights without duplicating ti
   await renderLegends({})
   const { default: Details } = await viteServer.ssrLoadModule('/src/features/weather-overlays/SigwxHighDetails.jsx')
   const { WAFS_CHART_PALETTES } = await viteServer.ssrLoadModule('/src/features/weather-overlays/lib/wafsChartPalette.js')
-  const frame = JSON.parse(fs.readFileSync(path.join(frontendRoot, 'public/data/sigwx-high/frame-00.json'), 'utf8'))
+  const frame = JSON.parse(fs.readFileSync(path.join(frontendRoot, 'public/samples/sigwx-high/frame-00.json'), 'utf8'))
   const items = frame.features.filter(f => f.properties.role === 'boundary' && ['TURBULENCE', 'AIRFRAME_ICING'].includes(f.properties.phenomenon)).slice(0, 2).map(f => f.properties)
   const model = { selection: { key: 'sample', items, activeId: items[0].objectId }, frame,
     picked: { ms: Date.UTC(2026, 8, 29) }, palette: WAFS_CHART_PALETTES.light, clearSelection() {}, choose() {} }

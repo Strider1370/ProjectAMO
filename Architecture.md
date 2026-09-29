@@ -100,7 +100,7 @@ ProjectAMO/
 - `frontend/src/features/weather-overlays/WeatherLegends.jsx` -> radar/satellite/weather/wind/temperature legend UI, including exact-frame WISSDOM and MAPLE QPF API legends alongside KST/UTC labels.
 - `frontend/src/features/weather-overlays/SigwxLegendDialog.jsx` -> SIGWX legend dialog.
 - `frontend/src/features/weather-overlays/lib/useSigwxHighOverlay.js` -> SIGWX HIGH 고정 샘플의 지연 로딩·필터·지도 수명주기·클릭 선택. `sigwxHighModel.js`는 원본 시각을 보존하며 T+6~48의 15장을 현재 UTC 타임라인에 48시간 주기로 반복 배치한다. `sigwxHighLayers.js`는 Mapbox 리소스 설치/해제를, `SigwxHighDetails.jsx`는 겹친 현상 선택 및 고도/시각 정보창을 소유한다. 기상 메뉴의 기존 SIGWX는 SIGWX LOW로 표시한다.
-- `frontend/public/data/sigwx-high/` -> 공개 IWXXM 2025-2 고정 샘플 한 회차(2026-08-02 12Z). 작은 index와 15개 개별 프레임으로 나누어 활성화 시 필요한 자료만 로드한다. 실시간 수집 없음. `scripts/wafs-sigwx-samples.py`가 로컬 XML로 이 자산과 개발 분석용 전체 fixture를 생성한다.
+- `frontend/public/samples/sigwx-high/` -> 공개 IWXXM 2025-2 고정 샘플 한 회차(2026-08-02 12Z). 작은 index와 15개 개별 프레임으로 나누어 활성화 시 필요한 자료만 로드한다. 실시간 수집 없음. 운영 nginx는 `/data/`를 수집 자료 폴더로 보내므로 빌드에 포함되는 이 샘플은 `/samples/` 아래에 둔다. `scripts/wafs-sigwx-samples.py`가 로컬 XML로 이 자산과 개발 분석용 전체 fixture를 생성한다.
 - `frontend/src/features/weather-overlays/lib/wafsChartRenderer.js` -> SIGWX HIGH의 곡선 장식·제트·기호·라벨·클릭 판별. `wafsHazardFill.js`는 항공 벡터 아래 난류/착빙 면을, `wafsChartPalette.js`는 밝은/어두운 지도와 범례의 색을 소유한다. 원본 C2 spline 변환은 `scripts/wafs-sigwx-preview.py`; 참조 차트 검증은 추가 과제. `WafsSigwxSample.jsx`는 과거 개발 실험용이며 현재 MapView에서 마운트하지 않는다.
 - `frontend/src/features/weather-overlays/SigwxHistoryBar.jsx` -> SIGWX history controls.
 - `frontend/src/features/weather-overlays/AdvisoryBadges.jsx` -> 상시 위험 요약 칩 바: SIGMET/AIRMET은 레이어 토글과 무관하게 활성(count>0) 시 상시 표시 + 공항경보 칩(`warnedAirports`). 칩 클릭 → 해당 레이어 ON + 상세 리스트(SIGMET/AIRMET) 또는 경보 공항 리스트(클릭 시 공항 선택).

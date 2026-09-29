@@ -181,7 +181,7 @@ def audit(records):
     (FIXTURES / 'wafs-sigwx-series.json').write_text(json.dumps({'frames': frames}, ensure_ascii=False, separators=(',', ':')) + '\n')
     # Runtime demo loads a small index and individual frames from public assets.
     # Preserve the first reviewed run and all original source timestamps.
-    public = ROOT / 'frontend/public/data/sigwx-high'
+    public = ROOT / 'frontend/public/samples/sigwx-high'
     public.mkdir(parents=True, exist_ok=True)
     sample_frames = [f for f in frames if f['metadata']['baseTime'] == runs[0]['baseTime']]
     entries = []

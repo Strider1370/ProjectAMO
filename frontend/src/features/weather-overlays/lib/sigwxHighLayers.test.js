@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import { installHighLayers, removeHighLayers, HIGH_LAYERS, HIGH_SOURCE } from './sigwxHighLayers.js'
 import { HAZARD_LAYER, HAZARD_SOURCE } from './wafsHazardFill.js'
 import { WAFS_CHART_PALETTES } from './wafsChartPalette.js'
-const frame = JSON.parse(fs.readFileSync(new URL('../../../../public/data/sigwx-high/frame-00.json', import.meta.url)))
+const frame = JSON.parse(fs.readFileSync(new URL('../../../../public/samples/sigwx-high/frame-00.json', import.meta.url)))
 
 test('HIGH installs below aviation fills, restores after style changes and removes only its own resources', () => {
   const layers = new Map([['airport', { id: 'airport', slot: 'top' }]])

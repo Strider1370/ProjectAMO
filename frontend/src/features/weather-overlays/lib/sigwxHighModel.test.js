@@ -6,7 +6,7 @@ import { WAFS_CHART_PALETTES, wafsChartPalette } from './wafsChartPalette.js'
 import { OUTLINE_BASEMAP_PALETTES } from '../../map/lib/outlineBasemapStyle.js'
 import { buildOrderedTimes, nextPlaybackTime } from './useTimelineRail.js'
 
-const root = new URL('../../../../public/data/sigwx-high/', import.meta.url)
+const root = new URL('../../../../public/samples/sigwx-high/', import.meta.url)
 const index = JSON.parse(fs.readFileSync(new URL('index.json', root), 'utf8'))
 
 test('dark legend previews use the selected ocean background and unchanged map fill colors', () => {
