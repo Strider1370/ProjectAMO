@@ -239,7 +239,8 @@ function buildInitialCollectionJobs({
     ["amos", amosProcessor.process],
     ["lightning", lightningProcessor.process],
     ...(includeRadarSatellite ? [
-      ...(activeCollectorRegistry(config).some((collector) => collector.type === 'wissdom') ? [['wissdom', radarGraphicsProcessor.processWissdom], ['qpf', radarGraphicsProcessor.processQpf], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
+      ...(activeCollectorRegistry(config).some((collector) => collector.type === 'wissdom') ? [['wissdom', radarGraphicsProcessor.processWissdom], ['hsr', radarGraphicsProcessor.processHsr], ['hci', radarGraphicsProcessor.processHci]] : []),
+      ...(activeCollectorRegistry(config).some((collector) => collector.type === 'qpf') ? [['qpf', radarGraphicsProcessor.processQpf]] : []),
       ...(includeEchoTop ? [["echo_top", echoTopProcessor.process]] : []),
     ] : []),
     ["rainviewer", rainviewerProcessor.process],

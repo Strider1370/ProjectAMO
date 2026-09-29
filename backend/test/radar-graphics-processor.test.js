@@ -98,9 +98,10 @@ test('does not register graphics collectors without an enabled backend credentia
   const scheduler = { schedule: (...args) => { scheduled.push(args); return args } }
   assert.deepEqual(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: false }, api: { radar_satellite_auth_key: 'key' } }), [])
   assert.deepEqual(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true }, api: { radar_satellite_auth_key: '' } }), [])
-  // WISSDOM · QPF · HSR · 수상체 넷을 같은 주기로 건다.
-  assert.equal(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true }, api: { radar_satellite_auth_key: 'key' } }).length, 4)
-  assert.equal(scheduled.length, 4)
+  // WISSDOM · HSR · 수상체 셋을 같은 주기로 건다. QPF는 따로 켰을 때만 넷째로 붙는다.
+  assert.equal(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true }, api: { radar_satellite_auth_key: 'key' } }).length, 3)
+  assert.equal(scheduleRadarGraphicsJobs(scheduler, { radar_graphics: { enabled: true, qpf_enabled: true }, api: { radar_satellite_auth_key: 'key' } }).length, 4)
+  assert.equal(scheduled.length, 7)
 })
 
 test('uses one lagged QPF analysis timestamp for every lead and retains only its configured assets', async () => {

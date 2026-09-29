@@ -37,6 +37,7 @@ const OFF = {
   kimSurfaceChart: (c) => c.kim_surface_chart?.enabled === false,
   convective: (c) => c.satellite?.convective_enabled === false,
   graphics: (c) => c.radar_graphics?.enabled === false,
+  qpf: (c) => c.radar_graphics?.qpf_enabled !== true,
   radarKey: (c) => !c.api?.radar_satellite_auth_key,
 }
 const anyOf = (...checks) => (c) => checks.some((check) => check(c))
@@ -65,7 +66,7 @@ export const CATALOG = [
   { key: 'echo_top', label: '에코탑(재산출)', source: 'kma_radar', character: 'observation', normalMs: m(5), lateMs: m(20), stoppedMs: m(40), meta: 'radar/echotop/echotop_meta.json', disabledWhen: anyOf(OFF.echoTop, OFF.radarKey),},
   { key: 'hci', label: '합성 HCI', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/hci/hci_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
   { key: 'wissdom', label: 'WISSDOM', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/wissdom/wissdom_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
-  { key: 'qpf', label: 'QPF', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/qpf/qpf_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.radarKey),},
+  { key: 'qpf', label: 'QPF', source: 'kma_radar', character: 'nwp', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'radar/qpf/qpf_meta.json', disabledWhen: anyOf(OFF.graphics, OFF.qpf, OFF.radarKey),},
   { key: 'satellite', label: '위성', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/sat_meta.json', disabledWhen: OFF.radarKey,},
   { key: 'satellite_visible', label: '위성 가시', source: 'kma_radar', character: 'observation', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), quiet: NIGHT, meta: 'satellite/visible/visible_meta.json', disabledWhen: OFF.radarKey,},
   { key: 'convective', label: '대류 CI·CTPS', source: 'kma_radar', character: 'observation', statsKey: 'satellite', normalMs: m(10), lateMs: m(30), stoppedMs: h(1), meta: 'satellite/convective/convective_meta.json', disabledWhen: anyOf(OFF.convective, OFF.radarKey),},

@@ -201,6 +201,8 @@ export const radar_graphics = {
   wissdom_heights_m: KMA_GRAPHIC_WISSDOM_HEIGHTS_M,
   initial_wissdom_height_m: 1524,
   qpf_lead_minutes: KMA_GRAPHIC_QPF_LEAD_MINUTES,
+  // QPF(초단기 강수예측)는 쓰지 않아 기본 꺼짐. =1일 때만 수집한다.
+  qpf_enabled: process.env.RADAR_QPF_ENABLED === '1',
   image_zoom_level: KMA_GRAPHIC_DEFAULT_ZOOM_LEVEL,
   frame_step_minutes: 5,
   delay_minutes: 10,

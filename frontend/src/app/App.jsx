@@ -27,6 +27,7 @@ import { deeplinkFlightId as deeplinkFlightIdFromUrl, consumeDeeplinkFlight } fr
 import CopilotPanel from '../features/copilot/CopilotPanel.jsx'
 import { createUiActionExecutor } from '../features/copilot/uiActions.js'
 import { shouldShowIntro } from '../features/intro/introEntry.js'
+import { QPF_ENABLED } from '../features/weather-overlays/lib/qpfLayers.js'
 
 const OrganizationLoungePage = lazy(() => import('../features/organization-lounge/OrganizationLoungePage.jsx'))
 const MonitoringPage = lazy(() => import('../features/monitoring/MonitoringPage.jsx'))
@@ -292,7 +293,7 @@ function MainAppShell() {
           metarData={mapMetarData}
           echoMeta={weatherData?.echoMeta || null}
           wissdomMeta={weatherData?.wissdomMeta || null}
-          qpfMeta={weatherData?.qpfMeta || null}
+          qpfMeta={QPF_ENABLED ? weatherData?.qpfMeta || null : null}
           hsrMeta={weatherData?.hsrMeta || null}
           hciMeta={weatherData?.hciMeta || null}
           satVisibleMeta={weatherData?.satVisibleMeta || null}
