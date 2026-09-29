@@ -42,7 +42,7 @@ test('WISSDOM uses its existing panel button and is not automatic with HSR', () 
 
 test('all hooks run before the no-visible-legend return', () => {
   const effect = source.indexOf('useEffect(() =>')
-  const emptyReturn = source.indexOf('&& !surfaceChartLegendVisible) return null')
+  const emptyReturn = source.indexOf('&& !surfaceChartLegendVisible && !supplementalContent) return null')
   assert.ok(effect >= 0)
   assert.ok(emptyReturn > effect)
 })
@@ -106,4 +106,75 @@ test('QPF API legend appears only for the exact MAPLE forecast frame', async () 
   assert.match(visible, /rgb\(0, 200, 255\)/)
   assert.match(visible, /rgb\(51, 51, 51\)/)
   assert.doesNotMatch(visible, /레이더 관측|QPF.{0,12}관측|관측.{0,12}QPF/)
+})
+
+test('HIGH uses its own compact upper key while model icing stays in the bottom legend', async () => {
+  const bottom = await renderLegends({ bottomDock: true,
+    icingLegendVisible: true, icingLegendEntries: [{ label: '모델 착빙', color: '#ACC7FF' }] })
+  assert.match(bottom, /착빙 · 잠재성/)
+  assert.doesNotMatch(bottom, /SIGWX HIGH/)
+  const { default: HighLegend } = await viteServer.ssrLoadModule('/src/features/weather-overlays/SigwxHighLegend.jsx')
+  const { default: TimeCard } = await viteServer.ssrLoadModule('/src/features/weather-overlays/WeatherLayerTimestampBar.jsx')
+  const { WAFS_CHART_PALETTES } = await viteServer.ssrLoadModule('/src/features/weather-overlays/lib/wafsChartPalette.js')
+  const props = { enabled: true, filter: { TURBULENCE: true, AIRFRAME_ICING: true }, palette: WAFS_CHART_PALETTES.light }
+  const upper = renderToStaticMarkup(createElement(TimeCard, { entries: [{ key: 'wind', label: '바람', issueLabel: '09/29 12:00 UTC' }] }, createElement(HighLegend, props)))
+  assert.match(upper, /SIGWX HIGH 난류·착빙 범례/)
+  assert.match(upper, /난류/)
+  assert.match(upper, /착빙/)
+  assert.match(upper, /MOD 중간/)
+  assert.match(upper, /SEV 강함/)
+  assert.doesNotMatch(upper, /hlegend-bar/)
+  const filtered = renderToStaticMarkup(createElement(HighLegend, { ...props, filter: { TURBULENCE: true } }))
+  assert.doesNotMatch(filtered, />착빙</)
+  assert.equal(renderToStaticMarkup(createElement(HighLegend, { ...props, enabled: false })), '')
+  assert.equal(renderToStaticMarkup(createElement(HighLegend, { ...props, filter: {} })), '')
+})
+
+test('the existing legend dock holds source times and HIGH without adding another toggle', async () => {
+  await renderLegends({})
+  const { default: TimeCard } = await viteServer.ssrLoadModule('/src/features/weather-overlays/WeatherLayerTimestampBar.jsx')
+  const { default: HighLegend } = await viteServer.ssrLoadModule('/src/features/weather-overlays/SigwxHighLegend.jsx')
+  const { WAFS_CHART_PALETTES } = await viteServer.ssrLoadModule('/src/features/weather-overlays/lib/wafsChartPalette.js')
+  const supplementalContent = createElement(TimeCard, {
+    embedded: true,
+    entries: [{ key: 'sigwxHigh', label: 'SIGWX HIGH', issueLabel: '08/02 12:00 UTC', note: '현재 기상 자료가 아닙니다.' }],
+  }, createElement(HighLegend, { enabled: true, filter: { TURBULENCE: true }, palette: WAFS_CHART_PALETTES.dark }))
+  // With no other legends, HIGH alone still exposes the existing dock.
+  const markup = await renderLegends({ bottomDock: true, supplementalContent, sampleWarning: true, open: true })
+  assert.match(markup, /weather-time-card--embedded/)
+  assert.match(markup, /현재 기상 자료가 아닙니다/)
+  assert.match(markup, /SIGWX HIGH 난류·착빙 범례/)
+  assert.match(markup, /HIGH 현재 자료 아님/)
+  assert.equal((markup.match(/<button/g) || []).length, 1)
+  assert.match(markup, /aria-expanded="true"/)
+})
+
+test('HIGH details expose overlapping hazards and heights without duplicating timestamp card', async () => {
+  await renderLegends({})
+  const { default: Details } = await viteServer.ssrLoadModule('/src/features/weather-overlays/SigwxHighDetails.jsx')
+  const { WAFS_CHART_PALETTES } = await viteServer.ssrLoadModule('/src/features/weather-overlays/lib/wafsChartPalette.js')
+  const frame = JSON.parse(fs.readFileSync(path.join(frontendRoot, 'public/data/sigwx-high/frame-00.json'), 'utf8'))
+  const items = frame.features.filter(f => f.properties.role === 'boundary' && ['TURBULENCE', 'AIRFRAME_ICING'].includes(f.properties.phenomenon)).slice(0, 2).map(f => f.properties)
+  const model = { selection: { key: 'sample', items, activeId: items[0].objectId }, frame,
+    picked: { ms: Date.UTC(2026, 8, 29) }, palette: WAFS_CHART_PALETTES.light, clearSelection() {}, choose() {} }
+  const html = renderToStaticMarkup(createElement(Details, { model, tz: 'UTC' }))
+  assert.match(html, /겹친 현상 선택/)
+  assert.doesNotMatch(html, /원본 발표|원본 유효|표시 시각/)
+  assert.doesNotMatch(html, /지점 자료/)
+  assert.match(html, /난류 영역/)
+  assert.match(html, /현상의 고도 범위/)
+  assert.match(html, /aria-pressed="true"/)
+  assert.match(html, /하한/)
+  assert.match(html, /상한/)
+  assert.equal(renderToStaticMarkup(createElement(Details, { model: { ...model, selection: null }, tz: 'UTC' })), '')
+})
+
+test('SIGWX HIGH timestamp card shows issue and valid time labels', async () => {
+  await renderLegends({})
+  const { default: TimeCard } = await viteServer.ssrLoadModule('/src/features/weather-overlays/WeatherLayerTimestampBar.jsx')
+  const html = renderToStaticMarkup(createElement(TimeCard, { entries: [{ key: 'sigwxHigh', label: 'SIGWX HIGH · 고정 샘플',
+    issueLabel: '2026-08-02 16:30 UTC', timeLabel: '발표', validLabel: '2026-08-02 18:00 UTC', validTimeLabel: '유효' }] }))
+  assert.match(html, /<small>발표<\/small>/)
+  assert.match(html, /<small>유효<\/small>/)
+  assert.doesNotMatch(html, /<small>표시<\/small>|원본 유효|48시간 주기 반복/)
 })

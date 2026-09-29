@@ -186,7 +186,8 @@ export const MET_LAYERS = [
   { id: 'sigmet', label: 'SIGMET', color: ADVISORY_LAYER_DEFS.sigmet.color },
   { id: 'sigmet_intl', label: 'SIGMET(해외)', color: ADVISORY_LAYER_DEFS.sigmet_intl.color },
   { id: 'airmet', label: 'AIRMET', color: ADVISORY_LAYER_DEFS.airmet.color },
-  { id: 'sigwx', label: 'SIGWX', color: '#a78bfa' },
+  { id: 'sigwx', label: 'SIGWX LOW', color: '#a78bfa' },
+  { id: 'sigwxHigh', label: 'SIGWX HIGH', color: '#7037bd' },
   { id: 'typhoon', label: '태풍', color: '#dc2626' },   // TYPHOON_PALETTE[0]과 같은 값
   { id: 'visibility', label: '시정', color: '#f97316' },
   { id: 'ceiling', label: '운고', color: '#dc2626' },

@@ -282,7 +282,7 @@ test.describe('레이더 WISSDOM 및 MAPLE QPF', () => {
     await selectTimeline(page, QPF_30)
     const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
     await mapChoice.click()
-    await page.getByRole('menuitemradio', { name: /^단색/ }).click()
+    await page.getByRole('menuitemradio', { name: /^남색/ }).click()
     await mapChoice.click()
     await page.getByRole('menuitemradio', { name: /^위성/ }).click()
     await expect.poll(() => layerState(page, 'kma-qpf-overlay')).toMatchObject({ visibility: 'visible', sourceCount: 1 })

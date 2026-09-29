@@ -79,6 +79,13 @@ npm run dev:serve
 
 `dev:serve` leaves servers running for manual/browser work. `dev:smoke` and `dev:screenshots` start servers, verify readiness, run the task, and clean up automatically.
 
+If Windows cannot reach a WSL server through `localhost`/`127.0.0.1`, start with
+`PROJECTAMO_FRONTEND_HOST=0.0.0.0 npm run dev:serve` and open
+`http://<WSL-IP>:5173` using the address from `hostname -I`. Only the frontend
+binding changes; Vite proxies API requests to the backend on WSL loopback.
+Verify from Windows (for example, `curl.exe`) as well as inside WSL before
+reporting the URL as reachable. The default frontend binding stays loopback-only.
+
 Run responsive smoke with managed servers:
 
 ```

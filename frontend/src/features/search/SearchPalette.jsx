@@ -60,7 +60,7 @@ export default function SearchPalette({ open, onClose, catalog, onRun }) {
             ref={inputRef}
             appearance="filled-lighter"
             size="large"
-            placeholder="공항·기능 검색 (예: 레이더, 인천, 단색)"
+            placeholder="공항·기능 검색 (예: 레이더, 인천, 위성)"
             value={query}
             onChange={(_, d) => setQuery(d.value)}
           />

@@ -29,6 +29,7 @@ import AlertPanel from './legacy/components/alerts/AlertPanel'
 import AlertSound from './legacy/components/alerts/AlertSound'
 import Settings from './legacy/components/alerts/Settings'
 import MonitoringMap from './MonitoringMap.jsx'
+import { knownBasemapId } from '../map/mapConfig.js'
 import MonitoringSlideOverlay from './MonitoringSlideOverlay.jsx'
 import MonitoringWxInfoSlide from './MonitoringWxInfoSlide.jsx'
 import { useMonitoringSlideshow } from './useMonitoringSlideshow.js'
@@ -121,7 +122,7 @@ export default function MonitoringPage() {
   const [groundForecastDisplayMode, setGroundForecastDisplayMode] = useState(() => normalizeGroundForecastDisplayMode(localStorage.getItem(GROUND_FORECAST_DISPLAY_MODE_STORAGE_KEY)))
   const [timeZone, setTimeZone] = useState(() => localStorage.getItem('time_zone') || 'KST')
   const [mapTheme, setMapTheme] = useState(() => localStorage.getItem('map_theme') || 'light')
-  const [basemapId, setBasemapId] = useState(() => localStorage.getItem('map_basemap_monitoring') || 'standard')
+  const [basemapId, setBasemapId] = useState(() => knownBasemapId(localStorage.getItem('map_basemap_monitoring')))
   const [trafficCallsignFilter, setTrafficCallsignFilter] = useState(() => localStorage.getItem('traffic_callsign_filter') || '')
   const [trafficAltitudeBands, setTrafficAltitudeBands] = useState(() => (
     readJsonLocalStorage('traffic_altitude_bands', ALL_ALTITUDE_BANDS)
@@ -513,7 +514,7 @@ export default function MonitoringPage() {
     loadMonitoringAlertDefaults().then((defaults) => setAlertDefaults({ ...defaults }))
     setTimeZone(localStorage.getItem('time_zone') || 'KST')
     setMapTheme(localStorage.getItem('map_theme') || 'light')
-    setBasemapId(localStorage.getItem('map_basemap_monitoring') || 'standard')
+    setBasemapId(knownBasemapId(localStorage.getItem('map_basemap_monitoring')))
     setAdvisoryFilter(loadAdvisoryFilterSettings())
     setGroundForecastDisplayMode(normalizeGroundForecastDisplayMode(localStorage.getItem(GROUND_FORECAST_DISPLAY_MODE_STORAGE_KEY)))
   }

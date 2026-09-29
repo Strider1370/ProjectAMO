@@ -16,7 +16,7 @@ export default function MapInfoControls({ activePanel, onToggle, aviationCount =
           aria-label={mobile ? '항공정보 레이어' : '항공정보'}
         >
           <Layers size={20} strokeWidth={2} />
-          <span>{mobile ? '항공정보' : '항공'}</span>
+          <span>항공정보</span>
           {aviationCount > 0 && <span className="mobile-map-layer-count">{aviationCount}</span>}
         </button>
         <button
@@ -26,7 +26,7 @@ export default function MapInfoControls({ activePanel, onToggle, aviationCount =
           aria-label={mobile ? '기상정보 레이어' : '기상정보'}
         >
           <Cloud size={20} strokeWidth={2} />
-          <span>{mobile ? '기상정보' : '기상'}</span>
+          <span>기상정보</span>
           {metCount > 0 && <span className="mobile-map-layer-count">{metCount}</span>}
         </button>
         <button
@@ -36,7 +36,7 @@ export default function MapInfoControls({ activePanel, onToggle, aviationCount =
           aria-label="연직단면도"
         >
           <ChartSpline size={20} strokeWidth={2} />
-          <span>{mobile ? '연직단면도' : '단면도'}</span>
+          <span>연직단면도</span>
         </button>
       </div>
     </>

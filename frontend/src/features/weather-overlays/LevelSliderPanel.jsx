@@ -13,18 +13,22 @@ export default function LevelSliderPanel({ items, activeValue, onSelect, ariaLab
     const wrapper = wrapperRef.current?.closest('.map-view-wrapper')
     if (!wrapper) return undefined
 
+    const resizeObserver = new ResizeObserver(() => measure())
     const measure = () => {
       if (!window.matchMedia('(max-width: 719px)').matches) {
         setMobileBounds(null)
         return
       }
+      // The mobile time card is docked at bottom-left; it must not push the
+      // right-hand altitude rail below the bottom controls when expanded.
+      const topBoundary = 64
       const basemap = wrapper.querySelector('.basemap-switcher-toggle')
       const navigation = wrapper.querySelector('.mapboxgl-ctrl-geolocate') || wrapper.querySelector('.mapboxgl-ctrl-zoom-in')
       const basemapRect = basemap?.getBoundingClientRect()
       const navigationRect = navigation?.getBoundingClientRect()
       const lowerTop = Math.min(basemapRect?.top ?? Infinity, navigationRect?.top ?? Infinity)
       setMobileBounds(mobilePressureSliderBounds(
-        { bottom: 64 },
+        { bottom: topBoundary },
         Number.isFinite(lowerTop) ? { top: lowerTop, left: navigationRect?.left, width: navigationRect?.width } : null,
         { viewportWidth: window.innerWidth },
       ))
@@ -34,7 +38,6 @@ export default function LevelSliderPanel({ items, activeValue, onSelect, ariaLab
     const animationFrame = window.requestAnimationFrame(measure)
     const observer = new MutationObserver(measure)
     observer.observe(wrapper, { childList: true, subtree: true })
-    const resizeObserver = new ResizeObserver(measure)
     resizeObserver.observe(wrapper)
     window.addEventListener('resize', measure)
     return () => {

@@ -372,24 +372,6 @@ export function addAviationWfsLayers(map) {
 
     const visibility = layer.defaultVisible ? 'visible' : 'none'
 
-    if (layer.maskLayerId && !map.getLayer(layer.maskLayerId)) {
-      map.addLayer({
-        id: layer.maskLayerId,
-        type: 'fill',
-        source: layer.sourceId,
-        slot: 'top',
-        filter: roleFilter('outside-mask', POLYGON_FILTER),
-        paint: {
-          'fill-color': '#1f78a8',
-          'fill-opacity': 0.22,
-          'fill-outline-color': 'rgba(0,0,0,0)',
-        },
-        layout: {
-          visibility,
-        },
-      })
-    }
-
     if (layer.fillLayerId && !map.getLayer(layer.fillLayerId)) {
       map.addLayer({
         id: layer.fillLayerId,

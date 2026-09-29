@@ -20,8 +20,7 @@ test('geoLayerInZoomRange: 확대 단계별로 받아야 할 경계 레이어', 
   assert.equal(geoLayerInZoomRange(byId['geo-sido'], GEO_SIGUNGU_MIN_ZOOM - 0.1), true)
 })
 
-test('geo boundaries show on dark basemap and raster weather overlays', () => {
-  assert.equal(shouldShowGeoBoundaries({ basemapId: 'dark', metVisibility: {} }), true)
+test('geo boundaries show with raster weather overlays', () => {
   assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { radar: true } }), true)
   assert.equal(shouldShowGeoBoundaries({ basemapId: 'standard', metVisibility: { satellite: true } }), true)
   // 해외 레이더도 래스터 오버레이 — 국경선이 있어야 대비가 산다
@@ -57,4 +56,12 @@ test('geo boundaries ignore NWP toggles when NWP overlays are disabled', () => {
     }),
     false,
   )
+})
+
+test('outline basemap draws weather-time boundaries in its light coast color', () => {
+  assert.equal(geoBoundaryPresentation({ basemapId: 'outline', metVisibility: {} }).visible, false)
+  assert.equal(geoBoundaryPresentation({ basemapId: 'outline', metVisibility: { radarHsr: true } }).color, '#7fa3c7')
+  assert.equal(geoBoundaryPresentation({ basemapId: 'outline', metVisibility: { satellite: true } }).color, '#facc15')
+  assert.equal(geoBoundaryPresentation({ basemapId: 'outline-green', metVisibility: { radarHsr: true } }).color, '#72c08e')
+  assert.equal(geoBoundaryPresentation({ basemapId: 'outline-slate', metVisibility: { radarHsr: true } }).color, '#9ba8b8')
 })

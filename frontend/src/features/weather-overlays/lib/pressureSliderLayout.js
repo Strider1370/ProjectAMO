@@ -13,3 +13,10 @@ export function mobilePressureSliderBounds(basemapRect, navigationRect, { gap = 
   }
   return bounds
 }
+
+// Card/rail rectangles are viewport coordinates. Return map-relative offsets.
+export function sigwxRailLayout({ mapRect, cardRect, sliderRects = [], lowerTop = mapRect.bottom - 100 }) {
+  const top = Math.max(108, Math.ceil((cardRect?.bottom ?? mapRect.top) - mapRect.top) + 12)
+  const clearance = sliderRects.length ? Math.ceil(mapRect.right - Math.min(...sliderRects.map(rect => rect.left))) + 12 : 12
+  return { top, clearance, trackHeight: Math.max(40, Math.min(400, Math.floor(lowerTop - mapRect.top - top - 64))) }
+}

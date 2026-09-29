@@ -68,11 +68,11 @@ test('does not touch the map when the chart was never turned on', () => {
   assert.equal(map.layers.size, 0)
 })
 
-test('isobars switch to light lines on dark and satellite basemaps', () => {
+test('isobars switch to light lines on outline and satellite basemaps', () => {
   const map = fakeMap()
   syncSurfaceChartLayers(map, { visible: true, show: ALL, frame: FRAME, basemapId: 'standard' })
   assert.equal(map.layers.get(SURFACE_CHART_ISOBAR_LAYER).paint['line-color'], SURFACE_CHART_COLORS.light.isobar)
-  syncSurfaceChartLayers(map, { visible: true, show: ALL, frame: FRAME, basemapId: 'dark' })
+  syncSurfaceChartLayers(map, { visible: true, show: ALL, frame: FRAME, basemapId: 'outline' })
   assert.equal(map.layers.get(SURFACE_CHART_ISOBAR_LAYER).paint['line-color'], SURFACE_CHART_COLORS.dark.isobar)
   syncSurfaceChartLayers(map, { visible: true, show: ALL, frame: FRAME, basemapId: 'satellite' })
   assert.equal(map.layers.get(SURFACE_CHART_ISOBAR_LAYER).paint['line-color'], SURFACE_CHART_COLORS.dark.isobar)

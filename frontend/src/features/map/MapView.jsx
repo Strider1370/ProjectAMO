@@ -12,7 +12,7 @@ import circle from '@turf/circle'
 import { point } from '@turf/helpers'
 import { MAP_CONFIG, BASEMAP_OPTIONS } from './mapConfig.js'
 import { addAviationWfsLayers } from '../aviation-layers/addAviationWfsLayers.js'
-import { AVIATION_PANEL_MERGE_GROUPS, AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
+import { AVIATION_PANEL_MERGE_GROUPS, AVIATION_WFS_LAYERS, applyFirColor, firColorForBasemap } from '../aviation-layers/aviationWfsLayers.js'
 import { useFirTickOverlay } from '../aviation-layers/useFirTickOverlay.js'
 import { useMoaActivation } from '../aviation-layers/useMoaActivation.js'
 import {
@@ -40,6 +40,9 @@ import { SIGWX_FILTER_OPTIONS } from '../weather-overlays/lib/sigwxData.js'
 import AdvisoryBadges from '../weather-overlays/AdvisoryBadges.jsx'
 import AdsbTimestamp from '../weather-overlays/AdsbTimestamp.jsx'
 import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
+import SigwxHighDetails from '../weather-overlays/SigwxHighDetails.jsx'
+import { useSigwxHighOverlay } from '../weather-overlays/lib/useSigwxHighOverlay.js'
+import SigwxHighLegend from '../weather-overlays/SigwxHighLegend.jsx'
 import TimelineRail from '../weather-overlays/TimelineRail.jsx'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
 import useRadarWindOverlay, { deriveRadarWindRailActive, hasExactRadarWindFrame } from '../weather-overlays/lib/useRadarWindOverlay.js'
@@ -49,6 +52,7 @@ import { legendStamps } from '../weather-overlays/lib/flightCategoryLegend.js'
 import WeatherOverlayPanel from '../weather-overlays/WeatherOverlayPanel.jsx'
 import useMyMap from '../my-map/useMyMap.js'
 import MyMapPanel from '../my-map/MyMapPanel.jsx'
+import VerticalLevelRailStack from '../weather-overlays/VerticalLevelRailStack.jsx'
 import RadarWindVerticalRail from '../weather-overlays/RadarWindVerticalRail.jsx'
 import LevelSliderPanel from '../weather-overlays/LevelSliderPanel.jsx'
 import ConvectiveOverlayControls from '../weather-overlays/ConvectiveOverlayControls.jsx'
@@ -1021,12 +1025,20 @@ const MapView = forwardRef(function MapView({
     tz,
   })
   // 일기도만 켜져 있으면 타임라인의 미래 눈금을 일기도 시각(3시간 간격)으로 채운다. KIM 레이어가 켜져 있으면 그 시각을 쓴다.
+  const sigwxHigh = useSigwxHighOverlay({
+    mapRef, isStyleReady, styleRevision, enabled: !!metVisibility.sigwxHigh,
+    selectedMs: weatherTimelineSelectedMs, basemapId, tz,
+    priorityLayers: AIRPORT_INTERACTIVE_LAYERS,
+    canPick: () => myMapControlRef.current?.mode !== 'edit' && !mapToolDrawingRef.current,
+    pausePlayback: () => { if (weatherTimelinePlaying) toggleWeatherTimelinePlay() },
+  })
   const timelineNwpTimes = sliderTimes.length ? sliderTimes : surfaceChart.times
   const radarWindEffectiveVisible = radarWindOverlay.effectiveVisible
   const timelineAvailableFrameEntries = useMemo(() => [
     ...weatherOverlayModel.activeFrameEntries,
     ...nwpAvailabilityEntries(timelineNwpTimes),
-  ], [timelineNwpTimes, weatherOverlayModel.activeFrameEntries])
+    ...sigwxHigh.entries,
+  ], [timelineNwpTimes, weatherOverlayModel.activeFrameEntries, sigwxHigh.entries])
   const {
     radarFrames,
     satelliteFrames,
@@ -1067,6 +1079,10 @@ const MapView = forwardRef(function MapView({
     [flightCategory.sources, flightCategory.hasData, flightCategory.computedAt, tz],
   )
 
+  const highTicks = sigwxHigh.entries.map(entry => entry.ms)
+  const combinedPastTicks = [...weatherTimelineTicks, ...highTicks.filter(ms => ms <= Date.now())]
+  const combinedForecastTicks = [...forecastTimelineTicks, ...highTicks.filter(ms => ms > Date.now())]
+
   const timestampEntries = useMemo(() => {
     const entries = []
     if (enableWindOverlay && metVisibility.surfaceChart)
@@ -1091,7 +1107,7 @@ const MapView = forwardRef(function MapView({
       const entryCount = sigwxHistoryEntries.length
       entries.push({
         key: 'sigwx',
-        label: `SIGWX-L · ${entryCount ? sigwxHistoryIndex + 1 : 0}/${entryCount}`,
+        label: `SIGWX LOW · ${entryCount ? sigwxHistoryIndex + 1 : 0}/${entryCount}`,
         issueLabel: sigwxIssueLabel,
         validLabel: sigwxValidLabel,
         history: entryCount > 1 ? {
@@ -1102,9 +1118,10 @@ const MapView = forwardRef(function MapView({
         } : null,
       })
     }
+    if (sigwxHigh.timestamp) entries.push(sigwxHigh.timestamp)
     return entries
   }, [
-    enableWindOverlay,
+    enableWindOverlay, sigwxHigh.timestamp,
     metVisibility.surfaceChart, surfaceChart.issueLabel, surfaceChart.validLabel,
     metVisibility.wind, metVisibility.temp, metVisibility.cloud,
     metVisibility.icing, metVisibility.turbulence, metVisibility.visibility, metVisibility.ceiling, metVisibility.sigwx,
@@ -1128,6 +1145,7 @@ const MapView = forwardRef(function MapView({
     turbulence: enableWindOverlay && metVisibility.turbulence,
   }), [enableWindOverlay, metVisibility.cloud, metVisibility.icing, metVisibility.temp, metVisibility.turbulence, metVisibility.wind])
   const weatherPointInspector = useWeatherPointInspector({
+    shouldSkipClick: sigwxHigh.shouldSkipLowerPriorityClick,
     mapRef,
     isStyleReady,
     enabled: Object.values(weatherPointVisibility).some(Boolean),
@@ -1142,9 +1160,9 @@ const MapView = forwardRef(function MapView({
   useTimelinePlayback({
     isPlaying: weatherTimelinePlaying,
     speed: weatherTimelineSpeed,
-    pastTicksMs: weatherTimelineTicks,
+    pastTicksMs: combinedPastTicks,
     nwpTimes: timelineNwpTimes,
-    qpfTimesMs: forecastTimelineTicks,
+    qpfTimesMs: combinedForecastTicks,
     setSelectedMs: setWeatherTimelineSelectedMs,
   })
 
@@ -1687,7 +1705,9 @@ const MapView = forwardRef(function MapView({
   }, [lightningLayerModel, highlightRingRadiusKm, metVisibility.lightning, blinkLightning])
 
   // FIR 경계 틱(지오메트리 렌더 + moveend 재생성) — 스크롤 후 틱 이탈 방지.
-  useFirTickOverlay(mapRef, isStyleReady, styleRevision)
+  const firColor = firColorForBasemap(basemapId)
+  useFirTickOverlay(mapRef, isStyleReady, styleRevision, firColor)
+  useStyleSyncedEffect(mapRef, isStyleReady, styleRevision, (map) => applyFirColor(map, firColor), [firColor])
 
   // 활성화 NOTAM과 매칭된 군작전구역에 빗금 — 켜진 구역과 평상시 구역을 구분한다.
   useMoaActivation(mapRef, isStyleReady, styleRevision, notamData)
@@ -1893,7 +1913,9 @@ const MapView = forwardRef(function MapView({
     setBasemapId(id)
     setBasemapMenuOpen(false)
     setIsStyleReady(false)
-    map.setStyle(option.style, { config: { basemap: option.config } })
+    // diff:false — 비슷한 스타일끼리(윤곽 → 녹색 윤곽 등)는 Mapbox가 차이만 고치고 style.load를
+    // 내지 않는다. 그러면 앱이 올린 레이어(FIR·공항·기상)가 지워진 채 다시 올라오지 않는다.
+    map.setStyle(option.style, { diff: false, ...(option.config ? { config: { basemap: option.config } } : {}) })
   }
 
   function isMetLayerDisabled(id) {
@@ -1918,6 +1940,7 @@ const MapView = forwardRef(function MapView({
     if (id === 'airmet') return airmetCount
     if (id === 'lightning') return lightningCount
     if (id === 'sigwx') return sigwxCount
+    if (id === 'sigwxHigh') return sigwxHigh.count
     if (id === 'typhoon') return typhoonOverlay.typhoons.length
     return null
   }
@@ -1992,6 +2015,7 @@ const MapView = forwardRef(function MapView({
   return (
     <div
       className="map-view-wrapper"
+      data-basemap={basemapId}
       data-wind-run={windField?.time?.tmfc ?? undefined}
       data-wind-revision={windField?.revision ?? windField?.content_hash ?? undefined}
       data-mobile-layer-panel={activePanel === 'aviation' || activePanel === 'met' ? 'true' : undefined}
@@ -2000,6 +2024,8 @@ const MapView = forwardRef(function MapView({
       style={{ '--legend-popover-height': `${weatherLegendPanelHeight}px` }}
     >
       <div ref={mapContainerRef} className="map-view" />
+
+      <SigwxHighDetails model={sigwxHigh} />
 
       {demoMode && <div className="demo-mode-badge">시연용 모드</div>}
 
@@ -2020,12 +2046,20 @@ const MapView = forwardRef(function MapView({
         </button>
       )}
 
-      <WeatherLayerTimestampBar entries={timestampEntries} />
+      {!isMobile && <WeatherLayerTimestampBar entries={timestampEntries}>
+        <SigwxHighLegend enabled={!!metVisibility.sigwxHigh} filter={sigwxHigh.filter} palette={sigwxHigh.palette} />
+      </WeatherLayerTimestampBar>}
 
       <div className={`map-bottom-control-dock${weatherLegendOpen ? ' is-legend-open' : ''}`}>
 
         {showWeatherLegends && (
           <WeatherLegends
+          supplementalContent={isMobile && timestampEntries.some(entry => entry.issueLabel && entry.issueLabel !== '-') ? (
+            <WeatherLayerTimestampBar entries={timestampEntries} embedded>
+              <SigwxHighLegend enabled={!!metVisibility.sigwxHigh} filter={sigwxHigh.filter} palette={sigwxHigh.palette} />
+            </WeatherLayerTimestampBar>
+          ) : null}
+          sampleWarning={isMobile && !!metVisibility.sigwxHigh}
           radarLegendVisible={radarLegendVisible}
           hsrLegendVisible={weatherOverlayModel.hsrLegendVisible}
           hciLegendVisible={weatherOverlayModel.hciLegendVisible}
@@ -2106,9 +2140,9 @@ const MapView = forwardRef(function MapView({
       )}
 
       {dataMode !== 'pinned' && <TimelineRail
-        pastTicksMs={weatherTimelineTicks}
+        pastTicksMs={combinedPastTicks}
         nwpTimes={timelineNwpTimes}
-        forecastTicksMs={forecastTimelineTicks}
+        forecastTicksMs={combinedForecastTicks}
         selectedMs={weatherTimelineSelectedMs}
         isPlaying={weatherTimelinePlaying}
         onScrub={scrubWeatherTimeline}
@@ -2143,7 +2177,7 @@ const MapView = forwardRef(function MapView({
         </div>
       )}
 
-      <div className="vertical-level-rail-stack">
+      <VerticalLevelRailStack>
         <RadarWindVerticalRail
           kimActive={enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)}
           levels={sliderLevels}
@@ -2184,7 +2218,7 @@ const MapView = forwardRef(function MapView({
             <ConvectiveOverlayControls ctpsVisible minFl={convectiveOverlay.minFl} onMinFlChange={convectiveOverlay.setMinFl} />
           </div>
         )}
-      </div>
+      </VerticalLevelRailStack>
       <ConvectiveOverlayCard selection={convectiveOverlay.selection} tz={tz} />
       <EchoTopCard selection={echoTopOverlay.selection} tz={tz} />
       {metVisibility.typhoon && (
@@ -2450,6 +2484,8 @@ const MapView = forwardRef(function MapView({
           onClearAll={clearMetLayers}
           onBlinkLightningChange={setBlinkLightning}
           isLayerDisabled={isMetLayerDisabled}
+          sigwxHighFilter={sigwxHigh.filter}
+          onSigwxHighFilterChange={sigwxHigh.toggleType}
           getLayerBadge={metLayerBadge}
           showWind={enableWindOverlay}
           surfaceChartNote={surfaceChart.unavailableReason}

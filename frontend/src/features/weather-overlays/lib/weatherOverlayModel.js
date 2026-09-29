@@ -434,7 +434,7 @@ export function buildWeatherOverlayModel({
   // 상단 SIGMET 칩은 국내(KMA)만 카운트. 해외(NOAA)는 기상레이어 패널의 'SIGMET(해외)' 토글로만 표시.
   const domesticSigmetCount = sigmetItems.filter((i) => i.source !== 'NOAA').length
   const advisoryBadgeItems = [
-    visibility.sigwx ? { key: 'sigwxLow', label: 'SIGWX_LOW', count: sigwxGroups.length, tone: 'sigwx' } : null,
+    visibility.sigwx ? { key: 'sigwxLow', label: 'SIGWX LOW', count: sigwxGroups.length, tone: 'sigwx' } : null,
     domesticSigmetCount > 0 ? { key: 'sigmet', label: 'SIGMET', count: domesticSigmetCount, tone: 'sigmet' } : null,
     airmetItems.length > 0 ? { key: 'airmet', label: 'AIRMET', count: airmetItems.length, tone: 'airmet' } : null,
   ].filter(Boolean)

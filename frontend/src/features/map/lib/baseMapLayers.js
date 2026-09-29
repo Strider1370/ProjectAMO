@@ -1,5 +1,6 @@
 import { setMapLayerVisible, addLazyGeoJsonSource, ensureGeoJsonSourceLoaded } from './mapLayerUtils.js'
 import { buildAirportStationMarkerModel } from './airportStationModel.js'
+import { OUTLINE_BASEMAP_PALETTES } from './outlineBasemapStyle.js'
 
 export const AIRPORT_SOURCE_ID = 'kma-weather-airports'
 export const AIRPORT_CIRCLE_LAYER = 'kma-weather-airports-circle'
@@ -270,7 +271,9 @@ export function geoBoundaryPresentation({ basemapId, metVisibility = {}, enableW
     && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing || metVisibility.surfaceChart)
   )
   return {
-    visible: basemapId === 'dark' || hasRasterWeather || hasNwpOverlay,
-    color: metVisibility.satellite || metVisibility.satelliteVisible ? '#facc15' : GEO_BOUNDARY_COLOR,
+    visible: hasRasterWeather || hasNwpOverlay,
+    color: metVisibility.satellite || metVisibility.satelliteVisible
+      ? '#facc15'
+      : OUTLINE_BASEMAP_PALETTES[basemapId]?.coast ?? GEO_BOUNDARY_COLOR,
   }
 }

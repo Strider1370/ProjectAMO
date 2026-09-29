@@ -182,13 +182,13 @@ export async function startServers() {
     [
       path.join(rootDir, 'frontend', 'node_modules', 'vite', 'bin', 'vite.js'),
     '--host',
-    '127.0.0.1',
+    process.env.PROJECTAMO_FRONTEND_HOST || '127.0.0.1',
     '--port',
     '5173',
     '--strictPort',
     ],
     path.join(rootDir, 'frontend'),
-    /Local:\s+http:\/\/127\.0\.0\.1:5173\//,
+    /Local:\s+http:\/\/(?:127\.0\.0\.1|localhost):5173\//,
   )
 
   return { backend, frontend }

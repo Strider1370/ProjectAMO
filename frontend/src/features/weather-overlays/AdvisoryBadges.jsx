@@ -5,7 +5,7 @@ import {
 } from '../../shared/ui/fluent.js'
 import './AdvisoryBadges.css'
 
-const PANEL_TITLE = { sigwxLow: 'SIGWX_LOW', sigmet: 'SIGMET', airmet: 'AIRMET', warning: '공항경보' }
+const PANEL_TITLE = { sigwxLow: 'SIGWX LOW', sigmet: 'SIGMET', airmet: 'AIRMET', warning: '공항경보' }
 // Fluent CounterBadge 색(헌법 의미색 대응): SIGMET/공항경보=danger(red). AIRMET은 CSS로 솔리드 앰버 보정.
 const TONE_COLOR = { sigwx: 'important', sigmet: 'danger', airmet: 'warning', warning: 'danger' }
 const TONE_HEX = { sigwx: '#6d28d9', sigmet: 'var(--level-red)', airmet: 'var(--level-amber)', warning: 'var(--level-red)' }
@@ -108,7 +108,7 @@ function AdvisoryBadges({
       >
         <AlertTriangle size={15} aria-hidden="true" />
         <span className="advisory-chip-label">{item.label}</span>
-        <span className="advisory-chip-short-label" aria-hidden="true">{item.key === 'sigwxLow' ? 'SIGWX' : item.label}</span>
+        <span className="advisory-chip-short-label" aria-hidden="true">{item.key === 'sigwxLow' ? 'SIGWX LOW' : item.label}</span>
         <CounterBadge className="advisory-ct" appearance="filled" color={TONE_COLOR[item.tone]} count={item.count} size="small" />
         <ChevronDown size={14} className="advisory-chip-caret" aria-hidden="true" />
       </Button>

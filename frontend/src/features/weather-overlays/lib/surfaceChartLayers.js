@@ -1,6 +1,7 @@
 // KIM 지상 일기도 Mapbox 소스·레이어 설치와 동기화. 데이터 모양은 surfaceChartModel.js가 정한다.
 import { addOrUpdateImageOverlay } from '../../map/imageOverlay.js'
 import { addOrUpdateGeoJsonSource, setMapLayerVisible } from '../../map/lib/mapLayerUtils.js'
+import { OUTLINE_BASEMAP_PALETTES } from '../../map/lib/outlineBasemapStyle.js'
 
 export const SURFACE_CHART_PRECIP_SOURCE = 'kim-surface-chart-precip'
 export const SURFACE_CHART_PRECIP_LAYER = 'kim-surface-chart-precip'
@@ -37,7 +38,7 @@ const FONT = ['Open Sans Bold']
 const EMPTY = { type: 'FeatureCollection', features: [] }
 
 export function surfaceChartPalette(basemapId) {
-  return basemapId === 'dark' || basemapId === 'satellite' ? SURFACE_CHART_COLORS.dark : SURFACE_CHART_COLORS.light
+  return basemapId === 'satellite' || basemapId in OUTLINE_BASEMAP_PALETTES ? SURFACE_CHART_COLORS.dark : SURFACE_CHART_COLORS.light
 }
 
 function addLayerOnce(map, layer) {

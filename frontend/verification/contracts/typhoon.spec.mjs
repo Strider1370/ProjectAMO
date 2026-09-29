@@ -143,7 +143,7 @@ test('수집 실패는 태풍 없음과 구분해 표시한다', async ({ page }
 test('베이스맵을 두 번 바꿔도 레이어가 남는다', async ({ page }, testInfo) => {
   await openTyphoon(page, testInfo, snapshot)
   const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
-  await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^단색/ }).click()
+  await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^남색/ }).click()
   await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^기본/ }).click()
   await expect.poll(async () => (await page.evaluate(typhoonLayerIds)).includes('typhoon-track-line')).toBe(true)
 })
@@ -298,7 +298,7 @@ test('태풍별 표시 설정은 전체 토글과 베이스맵 전환 뒤에도 
   await tile.click()
   await expect(toggle).toHaveAttribute('aria-pressed', 'false')
   const mapChoice = page.getByRole('button', { name: /지도 선택$/ })
-  await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^단색/ }).click()
+  await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^남색/ }).click()
   await mapChoice.click(); await page.getByRole('menuitemradio', { name: /^기본/ }).click()
   await expect.poll(sourceNumbers).toContain(20)
   await expect.poll(sourceNumbers).not.toContain(19)

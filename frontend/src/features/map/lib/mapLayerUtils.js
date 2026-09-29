@@ -80,7 +80,6 @@ export function setLayerVisibility(map, layer, isVisible) {
     layer.fillLayerId,
     layer.activeFillLayerId,
     layer.activeLineLayerId,
-    layer.maskLayerId,
     layer.hoverLayerId,
     layer.pointMaskLayerId,
     layer.pointLayerId,

@@ -4,7 +4,7 @@ import {
   savePersonalSettings,
   clearPersonalSettings,
 } from "../../utils/alerts";
-import { BASEMAP_OPTIONS } from "../../../../map/mapConfig.js";
+import { BASEMAP_OPTIONS, knownBasemapId } from "../../../../map/mapConfig.js";
 import {
   SIGMET_FILTER_GROUPS,
   AIRMET_FILTER_GROUPS,
@@ -154,7 +154,7 @@ export default function Settings({
   const [localTimeZone, setLocalTimeZone] = useState(timeZone || "KST");
   const [localMapTheme, setLocalMapTheme] = useState(mapTheme || localStorage.getItem("map_theme") || "light");
   const [localGroundForecastDisplayMode, setLocalGroundForecastDisplayMode] = useState(groundForecastDisplayMode || localStorage.getItem("ground_forecast_display_mode") || "signage");
-  const [localBasemapId, setLocalBasemapId] = useState(basemapId || localStorage.getItem("map_basemap_monitoring") || "standard");
+  const [localBasemapId, setLocalBasemapId] = useState(knownBasemapId(basemapId || localStorage.getItem("map_basemap_monitoring")));
   const [localTrafficCallsignFilter, setLocalTrafficCallsignFilter] = useState(trafficCallsignFilter || "");
   const [localTrafficAltitudeBands, setLocalTrafficAltitudeBands] = useState(trafficAltitudeBands || []);
   const [localAdvisoryFilter, setLocalAdvisoryFilter] = useState(

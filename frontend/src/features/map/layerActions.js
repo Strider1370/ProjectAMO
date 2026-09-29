@@ -33,7 +33,8 @@ const MET_META = {
   sigmet: { label: 'SIGMET(국내)', aliases: ['시그멧', '국내시그멧'] },
   sigmet_intl: { label: 'SIGMET(해외)', aliases: ['해외시그멧', '국제시그멧', 'overseas sigmet'] },
   airmet: { label: 'AIRMET', aliases: ['에어멧'] },
-  sigwx: { label: 'SIGWX', aliases: ['시그윅스', '악기상'] },
+  sigwx: { label: 'SIGWX LOW', aliases: ['시그윅스', '악기상', '저고도 SIGWX'] },
+  sigwxHigh: { label: 'SIGWX HIGH', aliases: ['WAFS', 'WIFS', '고고도 SIGWX', '시그윅스 고고도'] },
   typhoon: { label: '태풍', aliases: ['태풍', 'typhoon', '타이푼'] },
   visibility: { label: '시정', aliases: ['시정', 'visibility', '가시거리'] },
   ceiling: { label: '운고', aliases: ['운고', 'ceiling', '운저'] },
@@ -80,8 +81,10 @@ export const AVIATION_ACTIONS = AVIATION_WFS_LAYERS.map((l) => ({
 // D. 베이스맵 변경 — 위성은 '위성영상'(기상)과 구분해 '위성 지도'로 표시
 const BASEMAP_META = {
   standard: { label: '기본 (지도)', aliases: ['standard', '표준'] },
-  dark: { label: '단색 (지도)', aliases: ['회색', 'monochrome', 'dark'] },
   satellite: { label: '위성 지도', aliases: ['위성지도', '위성배경', 'satellite'] },
+  outline: { label: '남색 (지도)', aliases: ['남색', '윤곽', '선지도', '야간', '관제', 'outline'] },
+  'outline-green': { label: '녹색 (지도)', aliases: ['녹색', '초록', '레이더스코프', 'green'] },
+  'outline-slate': { label: '회청 (지도)', aliases: ['회청', '회청색', '회색', 'slate'] },
 }
 export const BASEMAP_ACTIONS = BASEMAP_OPTIONS.map((o) => ({
   id: o.id, type: 'basemap',

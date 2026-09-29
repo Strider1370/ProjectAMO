@@ -11,6 +11,7 @@ export function useWeatherPointInspector({
   validLabel,
   turbulenceIssueLabel,
   turbulenceValidLabel,
+  shouldSkipClick,
 }) {
   const [selection, setSelection] = useState(null)
   const samplers = useMemo(() => createWeatherPointSamplers(fields), [fields])
@@ -23,6 +24,7 @@ export function useWeatherPointInspector({
     }
 
     function onMapClick(event) {
+      if (shouldSkipClick?.(event)) { setSelection(null); return }
       const { lng, lat } = event.lngLat
       const rows = buildWeatherPointRows({
         lon: lng,
@@ -42,7 +44,7 @@ export function useWeatherPointInspector({
 
     map.on('click', onMapClick)
     return () => map.off?.('click', onMapClick)
-  }, [enabled, fields, isStyleReady, issueLabel, mapRef, samplers, turbulenceIssueLabel, turbulenceValidLabel, validLabel, visibility])
+  }, [shouldSkipClick, enabled, fields, isStyleReady, issueLabel, mapRef, samplers, turbulenceIssueLabel, turbulenceValidLabel, validLabel, visibility])
 
   return { selection, clearSelection: () => setSelection(null) }
 }

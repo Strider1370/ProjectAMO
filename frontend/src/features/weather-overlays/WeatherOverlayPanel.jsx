@@ -3,6 +3,8 @@ import {
   Snowflake, Activity, Eye, AlertTriangle, AlertOctagon, CloudFog, Globe, Cloud, CloudLightning, Mountain,
   Tornado, Sun, CloudRain,
 } from 'lucide-react'
+import { HIGH_TYPES } from './lib/sigwxHighModel.js'
+import './SigwxHigh.css'
 import RainSnowIcon from './RainSnowIcon.jsx'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
@@ -30,6 +32,7 @@ const WEATHER_TILE_ICON = {
   sigmet_intl: Globe,
   airmet: AlertOctagon,
   sigwx: CloudFog,
+  sigwxHigh: CloudLightning,
   typhoon: Tornado,
   terrainHazard: Mountain,
 }
@@ -50,6 +53,8 @@ function WeatherOverlayPanel({
   visibleSatelliteVisuals = { brightness: 12, contrast: 0 },
   onVisibleSatelliteVisualsChange,
   surfaceChartNote = null,
+  sigwxHighFilter = {},
+  onSigwxHighFilterChange,
 }) {
   // WISSDOM 높이 선택은 세로 고도 레일(RadarWindVerticalRail)이 맡는다 — 이 패널은 켬/끔만 다룬다.
   const isMobile = useIsMobile()
@@ -66,7 +71,7 @@ function WeatherOverlayPanel({
       title: '레이더/위성',
       ids: ['radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'satelliteVisible', 'ci', 'ctps'].filter((id) => echoTopEnabled || id !== 'echoTop'),
     },
-    { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'typhoon'] },
+    { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'sigwxHigh', 'typhoon'] },
     { id: 'nwp', title: '수치모델', ids: showWind ? ['surfaceChart', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'] : [] },
     { id: 'terrain', title: '지형', ids: ['terrainHazard'] },
   ]
@@ -89,7 +94,8 @@ function WeatherOverlayPanel({
     sigmet: 'SIGMET(국내)',
     sigmet_intl: 'SIGMET(해외)',
     airmet: 'AIRMET',
-    sigwx: 'SIGWX',
+    sigwx: 'SIGWX LOW',
+    sigwxHigh: 'SIGWX HIGH',
     typhoon: '태풍',
     visibility: '시정',
     ceiling: '운고',
@@ -157,6 +163,13 @@ function WeatherOverlayPanel({
               )
             })}
           </div>
+          {group.id === 'hazards' && visibility.sigwxHigh && <details className="sigwx-high-filters">
+            <summary>SIGWX HIGH 표시 요소 · 고정 샘플</summary>
+            <div>{HIGH_TYPES.map(type => <label key={type.id}>
+              <input type="checkbox" checked={!!sigwxHighFilter[type.id]} onChange={() => onSigwxHighFilterChange?.(type.id)} />{type.label}
+            </label>)}</div>
+            <p className="sigwx-high-note">T+6~T+48 · 3시간 간격 15장 · 하단 타임라인으로 재생</p>
+          </details>}
           {group.id === 'terrain' && visibility.terrainHazard && (
             <p className="terrain-hazard-note">
               기준 고도는 오른쪽 고도 레일에서 고릅니다 (지금 <strong>{terrainAltitudeFt.toLocaleString()} ft</strong>).<br />

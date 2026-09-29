@@ -52,7 +52,6 @@ export const AVIATION_WFS_LAYERS = [
     nameKo: 'FIR',
     nameEn: 'FIR',
     sourceId: 'wfs-fir',
-    maskLayerId: 'wfs-fir-outside-mask',
     fillLayerId: 'wfs-fir-fill',
     lineLayerId: 'wfs-fir-line',
     tickLayerId: 'wfs-fir-ticks',
@@ -64,11 +63,12 @@ export const AVIATION_WFS_LAYERS = [
     shareJson: true,
     fillRole: 'incheon-fir',
     lineRole: 'incheon-fir-boundary',
-    color: '#1485d4',
+    // 기상 레이어를 가리지 않도록 채도 낮은 회청색·가는 선. 밝은/어두운 배경지도 모두에서 읽히는 중간 밝기.
+    color: '#6b7a90',
     defaultVisible: true,
     fillOpacity: 0,
-    lineOpacity: 0.9,
-    lineWidth: 2,
+    lineOpacity: 0.75,
+    lineWidth: 1.2,
     // 틱은 useFirTickOverlay가 지오메트리로 렌더(wfs-fir-ticks). 간격은 화면 픽셀.
     tickLayerId: 'wfs-fir-ticks',
     tickSpacing: 42,
@@ -442,15 +442,38 @@ export const AVIATION_WFS_LAYERS = [
     // 라벨은 인천 FIR과 동일: 지정 좌표의 point(role external-label)를 addFirLabelLayer가 code/이름 포맷으로 렌더.
     externalLabelLayerId: 'aviation-overseas-fir-labels',
     dataUrl: '/data/fir-overseas.geojson',
-    color: '#1485d4',
+    // 기상 레이어를 가리지 않도록 채도 낮은 회청색·가는 선. 밝은/어두운 배경지도 모두에서 읽히는 중간 밝기.
+    color: '#6b7a90',
     defaultVisible: true,
     fillOpacity: 0,
-    lineOpacity: 0.9,
-    lineWidth: 2,
+    lineOpacity: 0.75,
+    lineWidth: 1.2,
   },
 ]
 
 // A single mobile panel tile controls each domestic/overseas pair.
+// FIR 선·틱·라벨 색. 기본은 레이어 설정의 회청색인데, 어두운 위성 지도에서는
+// 선이 묻힌다 — 위성 배경에서만 밝은 색으로 바꾼다.
+export const FIR_COLOR_ON_GRAY = '#e2e8f0'
+const FIR_GRAY_BASEMAPS = new Set(['satellite'])
+const FIR_LAYER_IDS = new Set(['fir', 'overseas-fir'])
+
+export function firColorForBasemap(basemapId) {
+  return FIR_GRAY_BASEMAPS.has(basemapId) ? FIR_COLOR_ON_GRAY : AVIATION_WFS_LAYERS.find((l) => l.id === 'fir').color
+}
+
+export function applyFirColor(map, color) {
+  for (const layer of AVIATION_WFS_LAYERS) {
+    if (!FIR_LAYER_IDS.has(layer.id)) continue
+    for (const id of [layer.lineLayerId, layer.tickLayerId]) {
+      if (id && map.getLayer(id)) map.setPaintProperty(id, 'line-color', color)
+    }
+    for (const id of [layer.externalLabelLayerId, layer.internalLabelLayerId]) {
+      if (id && map.getLayer(id)) map.setPaintProperty(id, 'text-color', color)
+    }
+  }
+}
+
 export const AVIATION_PANEL_MERGE_GROUPS = {
   airport: ['airport', 'overseas-airport'],
   fir: ['fir', 'overseas-fir'],

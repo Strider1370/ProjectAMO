@@ -1,0 +1,530 @@
+{
+  "sample": true,
+  "cycleHours": 48,
+  "frames": [
+    {
+      "file": "frame-00.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+06.xml",
+      "sourceSha256": "5626d6b27bfe7e10ada0d1a714df8ee72b39085cada284d7828b96ff666f745f",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-02T18:00:00Z",
+      "counts": {
+        "CLOUD": 20,
+        "TROPOPAUSE": 7,
+        "JETSTREAM": 6,
+        "TURBULENCE": 10,
+        "AIRFRAME_ICING": 31,
+        "TROPICAL_CYCLONE": 2,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 60,
+        "TROPOPAUSE": 20,
+        "JETSTREAM": 36,
+        "TURBULENCE": 35,
+        "AIRFRAME_ICING": 130,
+        "TROPICAL_CYCLONE": 3,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 6,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-02T18:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+06.xml"
+    },
+    {
+      "file": "frame-01.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+09.xml",
+      "sourceSha256": "ad417e31b1be513de43a925fc94949760e92dcec366a0ff19fcbf437f6d8e919",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-02T21:00:00Z",
+      "counts": {
+        "CLOUD": 18,
+        "TROPOPAUSE": 8,
+        "JETSTREAM": 5,
+        "TURBULENCE": 10,
+        "AIRFRAME_ICING": 34,
+        "TROPICAL_CYCLONE": 2,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 65,
+        "TROPOPAUSE": 19,
+        "JETSTREAM": 36,
+        "TURBULENCE": 32,
+        "AIRFRAME_ICING": 130,
+        "TROPICAL_CYCLONE": 3,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 9,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-02T21:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+09.xml"
+    },
+    {
+      "file": "frame-02.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+12.xml",
+      "sourceSha256": "6fa2dd2eee75bfaa5d2aa73114b845fb99a38d0811d1b8d487de7e375b1c3006",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-03T00:00:00Z",
+      "counts": {
+        "CLOUD": 22,
+        "TROPOPAUSE": 8,
+        "JETSTREAM": 6,
+        "TURBULENCE": 10,
+        "AIRFRAME_ICING": 30,
+        "TROPICAL_CYCLONE": 2,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 56,
+        "TROPOPAUSE": 19,
+        "JETSTREAM": 38,
+        "TURBULENCE": 33,
+        "AIRFRAME_ICING": 131,
+        "TROPICAL_CYCLONE": 3,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 12,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-03T00:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+12.xml"
+    },
+    {
+      "file": "frame-03.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+15.xml",
+      "sourceSha256": "78eb0a65f2b37e242763cdafeb44f4dcb29b55f8d50aa58fae1ad3d210f07149",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-03T03:00:00Z",
+      "counts": {
+        "CLOUD": 19,
+        "TROPOPAUSE": 8,
+        "JETSTREAM": 6,
+        "TURBULENCE": 7,
+        "AIRFRAME_ICING": 32,
+        "TROPICAL_CYCLONE": 2,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 54,
+        "TROPOPAUSE": 18,
+        "JETSTREAM": 42,
+        "TURBULENCE": 36,
+        "AIRFRAME_ICING": 125,
+        "TROPICAL_CYCLONE": 3,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 15,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-03T03:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+15.xml"
+    },
+    {
+      "file": "frame-04.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+18.xml",
+      "sourceSha256": "303770312f2b33e122a0ce473bc9c49faffd8c0af4586e41169bd7cf6fae3c3c",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-03T06:00:00Z",
+      "counts": {
+        "CLOUD": 15,
+        "TROPOPAUSE": 8,
+        "JETSTREAM": 9,
+        "TURBULENCE": 11,
+        "AIRFRAME_ICING": 31,
+        "TROPICAL_CYCLONE": 2,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 46,
+        "TROPOPAUSE": 19,
+        "JETSTREAM": 45,
+        "TURBULENCE": 41,
+        "AIRFRAME_ICING": 124,
+        "TROPICAL_CYCLONE": 3,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 18,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-03T06:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+18.xml"
+    },
+    {
+      "file": "frame-05.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+21.xml",
+      "sourceSha256": "015c44b9085be6fd855f9d92bd02ef0572a12058695aa917550502aea8a4c80a",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-03T09:00:00Z",
+      "counts": {
+        "CLOUD": 17,
+        "TROPOPAUSE": 7,
+        "JETSTREAM": 11,
+        "TURBULENCE": 10,
+        "AIRFRAME_ICING": 26,
+        "TROPICAL_CYCLONE": 2,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 51,
+        "TROPOPAUSE": 21,
+        "JETSTREAM": 47,
+        "TURBULENCE": 35,
+        "AIRFRAME_ICING": 112,
+        "TROPICAL_CYCLONE": 3,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 21,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-03T09:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+21.xml"
+    },
+    {
+      "file": "frame-06.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+24.xml",
+      "sourceSha256": "b48392fe4b7ffbfadc70fb8ca7ddd7bd62867d46038b78f7184d5512c7ece808",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-03T12:00:00Z",
+      "counts": {
+        "CLOUD": 20,
+        "TROPOPAUSE": 7,
+        "JETSTREAM": 9,
+        "TURBULENCE": 12,
+        "AIRFRAME_ICING": 27,
+        "TROPICAL_CYCLONE": 2,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 45,
+        "TROPOPAUSE": 19,
+        "JETSTREAM": 46,
+        "TURBULENCE": 40,
+        "AIRFRAME_ICING": 118,
+        "TROPICAL_CYCLONE": 3,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 24,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-03T12:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+24.xml"
+    },
+    {
+      "file": "frame-07.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+27.xml",
+      "sourceSha256": "1b8e6f78df113c1f63b52c16c54478495a810c08f7214cb264af2b781f1c5d75",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-03T15:00:00Z",
+      "counts": {
+        "CLOUD": 24,
+        "TROPOPAUSE": 6,
+        "JETSTREAM": 8,
+        "TURBULENCE": 10,
+        "AIRFRAME_ICING": 30,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 51,
+        "TROPOPAUSE": 16,
+        "JETSTREAM": 44,
+        "TURBULENCE": 38,
+        "AIRFRAME_ICING": 128,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 27,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-03T15:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+27.xml"
+    },
+    {
+      "file": "frame-08.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+30.xml",
+      "sourceSha256": "2c5c0864eebdd501018b3091ad9626bf255aa09fbe55e265f9a02a4de99f7c44",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-03T18:00:00Z",
+      "counts": {
+        "CLOUD": 23,
+        "TROPOPAUSE": 6,
+        "JETSTREAM": 8,
+        "TURBULENCE": 11,
+        "AIRFRAME_ICING": 22,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 54,
+        "TROPOPAUSE": 18,
+        "JETSTREAM": 51,
+        "TURBULENCE": 38,
+        "AIRFRAME_ICING": 118,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 30,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-03T18:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+30.xml"
+    },
+    {
+      "file": "frame-09.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+33.xml",
+      "sourceSha256": "0823c5fc05f0d090288865c270c75eac07441e1bfc1e1a5f5f75531aded00dfb",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-03T21:00:00Z",
+      "counts": {
+        "CLOUD": 18,
+        "TROPOPAUSE": 8,
+        "JETSTREAM": 8,
+        "TURBULENCE": 14,
+        "AIRFRAME_ICING": 22,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 51,
+        "TROPOPAUSE": 19,
+        "JETSTREAM": 45,
+        "TURBULENCE": 39,
+        "AIRFRAME_ICING": 113,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 33,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-03T21:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+33.xml"
+    },
+    {
+      "file": "frame-10.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+36.xml",
+      "sourceSha256": "f92bb749df676ea4dad9feef7501396e1d99548affc5ebc57797de5646142ecf",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-04T00:00:00Z",
+      "counts": {
+        "CLOUD": 15,
+        "TROPOPAUSE": 7,
+        "JETSTREAM": 9,
+        "TURBULENCE": 11,
+        "AIRFRAME_ICING": 34,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 50,
+        "TROPOPAUSE": 19,
+        "JETSTREAM": 44,
+        "TURBULENCE": 37,
+        "AIRFRAME_ICING": 126,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 36,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-04T00:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+36.xml"
+    },
+    {
+      "file": "frame-11.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+39.xml",
+      "sourceSha256": "6c710e770b3d21071176bf9d64152dbb642cc03974d32d32387abe0987f36f73",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-04T03:00:00Z",
+      "counts": {
+        "CLOUD": 15,
+        "TROPOPAUSE": 8,
+        "JETSTREAM": 11,
+        "TURBULENCE": 13,
+        "AIRFRAME_ICING": 29,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 57,
+        "TROPOPAUSE": 20,
+        "JETSTREAM": 44,
+        "TURBULENCE": 48,
+        "AIRFRAME_ICING": 114,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 39,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-04T03:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+39.xml"
+    },
+    {
+      "file": "frame-12.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+42.xml",
+      "sourceSha256": "457abdff6ab2e02f2c78b9b75bfdade1676d32f75f5ee579f9c9a67b4b4f1bdf",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-04T06:00:00Z",
+      "counts": {
+        "CLOUD": 12,
+        "TROPOPAUSE": 6,
+        "JETSTREAM": 12,
+        "TURBULENCE": 13,
+        "AIRFRAME_ICING": 24,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 47,
+        "TROPOPAUSE": 19,
+        "JETSTREAM": 50,
+        "TURBULENCE": 46,
+        "AIRFRAME_ICING": 110,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 42,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-04T06:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+42.xml"
+    },
+    {
+      "file": "frame-13.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+45.xml",
+      "sourceSha256": "f935cb5b060f589a6a05c43207ef98f0d2a4fb9a75db6b9f531ca948d525f7e6",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-04T09:00:00Z",
+      "counts": {
+        "CLOUD": 13,
+        "TROPOPAUSE": 6,
+        "JETSTREAM": 12,
+        "TURBULENCE": 12,
+        "AIRFRAME_ICING": 25,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 49,
+        "TROPOPAUSE": 19,
+        "JETSTREAM": 44,
+        "TURBULENCE": 40,
+        "AIRFRAME_ICING": 124,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 45,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-04T09:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+45.xml"
+    },
+    {
+      "file": "frame-14.json",
+      "sourceUrl": "https://aviationweather.gov/data/products/sigwx/sample/sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+48.xml",
+      "sourceSha256": "7e5845c0f376ed1651e3f401a7648861b3a753951be734ef54cf4ea34fd7ec2b",
+      "bounds": [
+        75,
+        -20,
+        170,
+        70
+      ],
+      "baseTime": "2026-08-02T12:00:00Z",
+      "issueTime": "2026-08-02T17:00:00Z",
+      "validTime": "2026-08-04T12:00:00Z",
+      "counts": {
+        "CLOUD": 17,
+        "TROPOPAUSE": 6,
+        "JETSTREAM": 12,
+        "TURBULENCE": 15,
+        "AIRFRAME_ICING": 26,
+        "VOLCANO": 5
+      },
+      "sourceCounts": {
+        "CLOUD": 47,
+        "TROPOPAUSE": 19,
+        "JETSTREAM": 58,
+        "TURBULENCE": 42,
+        "AIRFRAME_ICING": 125,
+        "VOLCANO": 9
+      },
+      "geometryMode": "C2 clamped spline; chord-length lon/lat parameters; normalized endpoint tangents; full hazard rings retained for selected fill; reference-chart validation pending",
+      "forecastHour": 48,
+      "frameId": "2026-08-02T12:00:00Z/2026-08-04T12:00:00Z",
+      "sourceFile": "sigwx_iwxxm_KKCI_schema-2025-2_20260802_12Z_T+48.xml"
+    }
+  ]
+}

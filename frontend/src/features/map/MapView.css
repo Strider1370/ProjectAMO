@@ -2258,6 +2258,17 @@
     transform: none;
   }
   .weather-time-card__times strong { font-size: 11px; }
+  .weather-time-card .layer-timestamp-layer-arrow,
+  .weather-time-card .layer-timestamp-history-arrow { min-width: var(--touch-min); min-height: var(--touch-min); }
+  .weather-time-card__times { flex-wrap: wrap; gap: var(--space-xs); }
+  .weather-time-card__heading { flex-wrap: wrap; }
+  .map-view-wrapper .weather-time-card--embedded {
+    position: static; width: 100%; max-width: none; padding: 0; border: 0;
+    background: transparent; box-shadow: none; backdrop-filter: none; transform: none;
+  }
+  .map-view-wrapper .map-legends-bottom { max-height: 45dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .map-legend-toggle { min-height: var(--touch-min); }
+  .map-legend-sample-warning { color: var(--level-amber); font-size: var(--fs-100); }
   .active-weather-summary { display: none; }
 }
 
@@ -2767,4 +2778,46 @@
   color: var(--text-3);
   font-size: 15px;
   line-height: 1;
+}
+
+/* Match the upper-right time card on dark/imagery maps, even before hover. */
+.map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .pressure-level-slider {
+  border-color: rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-lg);
+  background: rgba(215, 231, 240, 0.78);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+  backdrop-filter: blur(10px) saturate(130%);
+}
+.map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .pressure-level-slider:hover,
+.map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .pressure-level-slider:has(.pressure-level-slider__track:focus-visible) {
+  background: rgba(215, 231, 240, 0.9);
+}
+/* Source labels sit above the shared rail surface. */
+.map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .vertical-level-rail-label {
+  padding: var(--space-xxs) var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: rgba(215, 231, 240, 0.94);
+  text-shadow: none;
+}
+
+/* Extend the shared surface leftward; keep the track axis in its old position. */
+@media (min-width: 720px) {
+  .map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .vertical-level-rail-item,
+  .map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .pressure-level-slider {
+    width: 136px;
+  }
+  .map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .pressure-level-slider__track {
+    margin-left: 42px;
+  }
+}
+@media (max-width: 719px) {
+  .map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .vertical-level-rail-item {
+    width: 96px;
+  }
+  .map-view-wrapper:is([data-basemap^='outline'], [data-basemap='dark'], [data-basemap='satellite']) .pressure-level-slider.is-mobile-measured {
+    width: 96px;
+    padding-left: 40px;
+    box-sizing: border-box;
+  }
 }

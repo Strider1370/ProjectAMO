@@ -13,7 +13,9 @@ function HLegend({ title, entries = [], reverse = false, note = null }) {
       <div className="hlegend-title">{title}</div>
       <div className="hlegend-bar" aria-hidden="true">
         {cells.map((e, i) => (
-          <span key={i} className="hlegend-cell" style={{ backgroundColor: e.color }} />
+          <span key={i} className="hlegend-cell" style={{ backgroundColor: e.background || e.color }}>
+            {e.background && <span style={{ display: 'block', width: '100%', height: '100%', backgroundColor: e.color }} />}
+          </span>
         ))}
       </div>
       <div className="hlegend-labels" aria-hidden="true">
@@ -88,6 +90,8 @@ function WeatherLegends({
   open: controlledOpen,
   onOpenChange,
   onOpenPanelHeightChange,
+  supplementalContent = null,
+  sampleWarning = false,
 }) {
   const isMobile = useIsMobile()
   const bottomPanelRef = useRef(null)
@@ -337,7 +341,7 @@ function WeatherLegends({
     }
   }, [onOpenPanelHeightChange, open])
 
-  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible && !surfaceChartLegendVisible) return null
+  if (!radarLegendVisible && !hsrLegendVisible && !hciLegendVisible && !qpfLegendVisible && !radarOverseasLegendVisible && !lightningLegendVisible && !flightCategoryLegendVisible && !windSpeedLegendVisible && !temperatureLegendVisible && !cloudLegendVisible && !icingLegendVisible && !turbulenceLegendVisible && !ciLegendVisible && !ctpsLegendVisible && !echoTopLegendVisible && !surfaceChartLegendVisible && !supplementalContent) return null
 
   // 모바일과 데스크톱 지도 모드 모두 하단(타임라인 위) 가로 범례 바를 사용한다.
   if (!isMobile && !bottomDock) return panel
@@ -384,6 +388,7 @@ function WeatherLegends({
   return (
     <div className={`map-legend-mobile-dock${bottomDock ? ' map-legend-desktop-dock' : ''}`}>
       <div ref={bottomPanelRef} className={`map-legends-bottom${open ? ' is-open' : ''}`} aria-hidden={!open}>
+        {supplementalContent}
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
         ))}
@@ -414,7 +419,8 @@ function WeatherLegends({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        범례 <span className="map-legend-toggle-caret" aria-hidden="true">{open ? '▾' : '▴'}</span>
+        범례 {sampleWarning && <span className="map-legend-sample-warning">HIGH 현재 자료 아님</span>}
+        <span className="map-legend-toggle-caret" aria-hidden="true">{open ? '▾' : '▴'}</span>
       </button>
     </div>
   )

@@ -12,7 +12,7 @@ import { loadGeoJsonOnce } from '../map/lib/mapLayerUtils.js'
 const TICK_SOURCE = 'wfs-fir-ticks-src'
 const TICK_LAYER = 'wfs-fir-ticks' // setLayerVisibility(mapLayerUtils)가 이 id로 FIR과 함께 토글
 const TICK_LEN = 7 // 화면 픽셀 — 획 길이(기존 아이콘 스트로크와 동일 체감)
-const TICK_WIDTH = 1.8
+const TICK_WIDTH = 1.2
 const MIN_LEG_KM = 3 // 이보다 짧은 세그먼트(=휴전선·해안선 추적선)엔 틱을 안 찍는다. 아래 설명 참조.
 const EMPTY = { type: 'FeatureCollection', features: [] }
 
@@ -74,7 +74,7 @@ function buildTicks(map, lines) {
   return { type: 'FeatureCollection', features }
 }
 
-export function useFirTickOverlay(mapRef, isStyleReady, styleRevision) {
+export function useFirTickOverlay(mapRef, isStyleReady, styleRevision, color) {
   const fir = AVIATION_WFS_LAYERS.find((l) => l.id === 'fir')
   const [lines, setLines] = useState(null)
 
@@ -127,4 +127,10 @@ export function useFirTickOverlay(mapRef, isStyleReady, styleRevision) {
     map.on('moveend', regen)
     return () => { map.off('moveend', regen) }
   }, [mapRef, isStyleReady, styleRevision, lines, fir.color, fir.lineOpacity, fir.defaultVisible])
+
+  // 배경지도가 바뀌면 틱 색만 바꾼다(레이어를 다시 만들 필요 없음).
+  useEffect(() => {
+    const map = mapRef.current
+    if (map?.getLayer(TICK_LAYER) && color) map.setPaintProperty(TICK_LAYER, 'line-color', color)
+  }, [mapRef, color, lines, isStyleReady, styleRevision])
 }

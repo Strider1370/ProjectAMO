@@ -4,9 +4,9 @@ function SigwxLegendDialog({ isOpen, onClose }) {
   if (!isOpen) return null
 
   return (
-    <div className="sigwx-legend-modal" role="dialog" aria-modal="false" aria-label="SIGWX legend">
+    <div className="sigwx-legend-modal" role="dialog" aria-modal="false" aria-label="SIGWX LOW 범례">
       <div className="sigwx-legend-header">
-        <div className="sigwx-legend-title">SIGWX Legend</div>
+        <div className="sigwx-legend-title">SIGWX LOW 범례</div>
         <button type="button" className="sigwx-legend-close" onClick={onClose}>×</button>
       </div>
       <div className="sigwx-legend-table">

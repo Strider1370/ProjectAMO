@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import { MET_LAYERS } from '../weather-overlays/lib/weatherOverlayLayers.js'
 import { AVIATION_WFS_LAYERS } from '../aviation-layers/aviationWfsLayers.js'
-import { BASEMAP_OPTIONS } from './mapConfig.js'
+import { BASEMAP_OPTIONS, knownBasemapId } from './mapConfig.js'
 import {
   MET_ACTIONS, TRAFFIC_ACTIONS, AVIATION_ACTIONS, BASEMAP_ACTIONS,
   buildSearchCatalog, matchSearch,
@@ -76,3 +76,9 @@ test('빈 질의는 빈 결과', () => {
 })
 
 function ALL() { return buildSearchCatalog([]) }
+
+test('unknown saved basemap ids fall back to the default basemap', () => {
+  assert.equal(knownBasemapId('dark'), 'standard')
+  assert.equal(knownBasemapId(null), 'standard')
+  assert.equal(knownBasemapId('outline-slate'), 'outline-slate')
+})

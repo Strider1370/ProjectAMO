@@ -1,13 +1,15 @@
+import { OUTLINE_BASEMAP_PALETTES, createOutlineBasemapStyle } from './lib/outlineBasemapStyle.js'
+
 export const MAP_CONFIG = {
   center: [127.5, 36.5],
   zoom: 6,
-  minZoom: 3,
+  minZoom: 2,
   maxZoom: 16,
-  // 해외 확장: 한국~일본·중국·동남아(필리핀/태국/싱가포르)까지 아우르는 아시아 범위.
-  // 이전 국내 전용 바운즈 [[116,26],[139,44]]에서 확장.
+  // Double the previous [90,-5]..[155,50] extent in Mercator space (one zoom
+  // step), keeping its center and a finite navigation limit across the date line.
   maxBounds: [
-    [90, -5],
-    [155, 50],
+    [57.5, -34.225309],
+    [187.5, 66.2589],
   ],
 }
 
@@ -35,32 +37,28 @@ export const BASEMAP_OPTIONS = [
     },
   },
   {
-    id: 'dark',
-    label: '단색',
-    thumbnail: '/basemap-thumbs/dark.png',
-    style: 'mapbox://styles/mapbox/standard',
-    config: {
-      showPlaceLabels: false,
-      showPedestrianRoads: false,
-      showPointOfInterestLabels: false,
-      showRoadLabels: false,
-      show3dObjects: false,
-      show3dBuildings: false,
-      show3dTrees: false,
-      show3dLandmarks: false,
-      showIndoorLabels: false,
-      showAdminBoundaries: true,
-      lightPreset: 'day',
-      theme: 'monochrome',
-      font: 'Noto Sans CJK JP',
-      colorLand: '#747672',
-      colorWater: '#5f6364',
-      colorGreenspace: '#686e66',
-      colorAdminBoundaries: '#d2d5d0',
-      colorRoads: 'hsla(0, 0%, 72%, 0.2)',
-      colorMotorways: 'hsla(0, 0%, 78%, 0.2)',
-      colorTrunks: 'hsla(0, 0%, 75%, 0.2)',
-    },
+    // 어두운 바탕에 해안선·경계선만 — Standard가 아니라 basemap config가 없다.
+    id: 'outline',
+    label: '남색',
+    thumbnail: '/basemap-thumbs/outline.png',
+    style: createOutlineBasemapStyle(OUTLINE_BASEMAP_PALETTES.outline),
+    config: null,
+  },
+  {
+    // 남색과 같은 구성의 어두운 초록 계열.
+    id: 'outline-green',
+    label: '녹색',
+    thumbnail: '/basemap-thumbs/outline-green.png',
+    style: createOutlineBasemapStyle(OUTLINE_BASEMAP_PALETTES['outline-green']),
+    config: null,
+  },
+  {
+    // 남색과 같은 구성의 회청색(채도 약 20%).
+    id: 'outline-slate',
+    label: '회청',
+    thumbnail: '/basemap-thumbs/outline-slate.png',
+    style: createOutlineBasemapStyle(OUTLINE_BASEMAP_PALETTES['outline-slate']),
+    config: null,
   },
   {
     id: 'satellite',
@@ -79,3 +77,8 @@ export const BASEMAP_OPTIONS = [
     },
   },
 ]
+
+// 저장된 배경지도 id가 지금 목록에 없으면(예: 없앤 '단색' dark) 기본으로 돌린다.
+export function knownBasemapId(id) {
+  return BASEMAP_OPTIONS.some((option) => option.id === id) ? id : BASEMAP_OPTIONS[0].id
+}
