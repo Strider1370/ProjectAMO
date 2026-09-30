@@ -67,6 +67,7 @@ export default function VerticalProfileWindow({
           candidateAltitudes={candidateAltitudes}
           onSelectCandidateAltitude={placement === 'mobile-full' ? undefined : onSelectCandidateAltitude}
           enableDragScroll={placement === 'mobile-full'}
+          fitHeight={placement === 'mobile-full'}
           metaTrailing={placement === 'mobile-full' ? forecastHourNav : null}
           nwpTimeSelection={nwpTimeSelection}
           onSetWaypointNwpOffset={onSetWaypointNwpOffset}

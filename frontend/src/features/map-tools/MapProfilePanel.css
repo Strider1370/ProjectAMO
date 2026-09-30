@@ -348,6 +348,8 @@
   outline-offset: 2px;
 }
 
+/* 폰: 지도를 눌러 점을 찍어야 하므로 패널을 얇은 하단 막대로 줄인다.
+   머리글 한 줄, 고도는 한 줄 입력, 경로는 안내 한 줄(상태·진행 막대는 안내 문장이 대신한다), 버튼은 손가락 크기 유지. */
 @media (max-width: 719px) {
   .map-view-wrapper .map-profile-panel {
     top: auto;
@@ -356,22 +358,39 @@
     left: 12px;
     width: auto;
     max-width: none;
-    max-height: min(56dvh, calc(100% - 88px));
+    max-height: min(45dvh, calc(100% - 88px));
+    padding: 0 var(--space-m) var(--space-m);
   }
+
+  .map-profile-header { min-height: 48px; }
+  .map-profile-header-icon { flex-basis: 28px; height: 28px; }
+  .map-profile-header-copy small { display: none; }
 
   .map-profile-close {
     flex-basis: var(--touch-min);
     height: var(--touch-min);
+    margin-right: calc(-1 * var(--space-s));
   }
 
-  .map-profile-actions {
-    position: sticky;
-    bottom: calc(-1 * var(--space-l));
-    z-index: 1;
-    margin-right: calc(-1 * var(--space-l));
-    margin-left: calc(-1 * var(--space-l));
-    padding: var(--space-s) var(--space-l) var(--space-l);
-    border-top: 1px solid var(--stroke-2);
-    background: var(--bg-1);
+  .map-profile-altitude {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-s);
+    padding-top: var(--space-s);
   }
+  .map-profile-field-heading { flex: 1; margin: 0; }
+  .map-profile-field-heading > span { display: none; }
+  .map-profile-altitude-control { flex: 0 0 140px; }
+  .map-profile-altitude .map-profile-error { flex-basis: 100%; }
+
+  .map-profile-route { margin-top: var(--space-s); padding-top: var(--space-s); }
+  .map-profile-route-heading, .map-profile-progress { display: none; }
+  .map-profile-hint { margin: 0; }
+  /* 경로가 준비되면 안내 문장 대신 거리와 버튼이 상태를 말한다. */
+  .map-profile-route:has(.map-profile-distance) .map-profile-hint { display: none; }
+  .map-profile-route:has(.map-profile-distance) .map-profile-distance { margin-top: 0; padding-top: 0; border-top: 0; }
+  .map-profile-distance { margin-top: var(--space-xs); padding-top: var(--space-xs); }
+
+  .map-profile-actions { margin-top: var(--space-s); }
 }

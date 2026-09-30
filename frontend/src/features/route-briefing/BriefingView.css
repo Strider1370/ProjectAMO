@@ -431,6 +431,9 @@
 }
 .bv-xfull-rotate .vertical-profile-chart-body,
 .bv-xfull-rotate .vertical-profile-plot-scroll { flex: 1 1 auto; min-height: 0; overflow-y: hidden; }
+/* 그림 영역이 남은 높이를 물려받아야 아래쪽 거리축이 잘리지 않는다. */
+.bv-xfull-rotate .vertical-profile-chart-body { display: flex; flex-direction: column; }
+.bv-xfull-rotate .vertical-profile-plot-scroll { flex: 1 1 0; }
 .bv-xfull-rotate .vertical-profile-plot-svg { height: 100% !important; }
 .bv-xfull-close {
   position: static; z-index: 2; border-radius: 999px;

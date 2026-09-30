@@ -218,6 +218,8 @@ export default function VerticalProfileChart({
   activeLinkedItemId = null,
   onSelectLinkedItem = null,
   allowMissingTerrain = false,
+  // 전체 화면(폰 가로 보기)에서는 칸 높이에 맞춰 그린다. 고정 높이로 그리면 비율을 지키느라 좌우가 빈다.
+  fitHeight = false,
 }) {
   // 차트가 놓인 컨테이너(하단 바/패널) 실제 폭을 측정해 그 폭을 채운다.
   const containerRef = useRef(null)
@@ -227,6 +229,7 @@ export default function VerticalProfileChart({
   const blurId = `${svgIdPrefix}-blur`
   const dragRef = useRef(null)
   const [containerWidth, setContainerWidth] = useState(0)
+  const [containerHeight, setContainerHeight] = useState(0)
   const [editingNwpSegment, setEditingNwpSegment] = useState(null)
   const [nwpMissingNoticeDismissed, setNwpMissingNoticeDismissed] = useState(false)
   const { tz } = useTimeZone()
@@ -236,6 +239,8 @@ export default function VerticalProfileChart({
     const ro = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect?.width
       if (w) setContainerWidth(w)
+      const h = entries[0]?.contentRect?.height
+      if (h) setContainerHeight(h)
     })
     ro.observe(el)
     return () => ro.disconnect()
@@ -275,7 +280,7 @@ export default function VerticalProfileChart({
     )
   }
 
-  const height = 380
+  const height = fitHeight && containerHeight >= 240 ? Math.round(containerHeight) : 380
   const basePadding = { top: 26, right: 58, left: 80 }
   const maxDistance = Math.max(profile.axis.totalDistanceNm || 0, samples[samples.length - 1].distanceNm || 0.1)
   // 컨테이너 폭을 채우되 항로가 길면 전체 거리를 유지한다. 장거리 항로는 차트 안에서 가로 이동한다.

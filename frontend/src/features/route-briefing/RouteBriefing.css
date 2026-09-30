@@ -1178,9 +1178,14 @@ button.vfr-waypoint-altitude-pill:focus-visible {
     overflow-y: hidden;
   }
   .vertical-profile-window.is-mobile-full .vertical-profile-plot-scroll { touch-action: none; }
+  /* 그림 영역이 남은 높이를 물려받게 세로 flex로 둔다. 그렇지 않으면 그림이 원래 높이(380px)로 커져
+     아래쪽 거리축·지점 이름이 잘린다. */
   .vertical-profile-window.is-mobile-full .vertical-profile-chart-body {
+    display: flex;
     flex: 1 1 auto;
+    flex-direction: column;
   }
+  .vertical-profile-window.is-mobile-full .vertical-profile-plot-scroll { flex: 1 1 0; }
   .vertical-profile-window.is-mobile-full .vertical-profile-plot-svg {
     height: 100% !important;
   }
