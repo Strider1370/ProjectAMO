@@ -475,7 +475,8 @@ CREATE TABLE IF NOT EXISTS ai_settings (
 CREATE TABLE IF NOT EXISTS ai_daily_usage (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   day TEXT NOT NULL,
-  used INTEGER NOT NULL DEFAULT 0 CHECK (used BETWEEN 0 AND 5),
+  -- 하루 한도는 코드(ai/access.js DAILY_LIMIT)가 지킨다. 한도를 바꿀 때 표를 다시 만들지 않도록 음수만 막는다.
+  used INTEGER NOT NULL DEFAULT 0 CHECK (used >= 0),
   PRIMARY KEY (user_id, day)
 );
 CREATE TABLE IF NOT EXISTS ai_question_requests (

@@ -25,7 +25,7 @@ function AccountLabs() {
   return <div className="copilot-labs" aria-busy={busy}>
     <h3>기상이 · 실험실</h3>
     <p>공항 METAR·TAF와 비행 경로의 기상을 물어볼 수 있는 AI 챗봇이에요. 시험 중인 기능이니 답변은 원문 자료와 함께 확인해 주세요.</p>
-    <p>하루 5번까지 질문할 수 있고, 횟수는 한국 시간 자정에 초기화돼요. 질문과 관련 공항·경로 자료는 답변을 만들기 위해 OpenAI로 전달돼요.</p>
+    <p>하루 10번까지 질문할 수 있고, 횟수는 한국 시간 자정에 초기화돼요. 질문과 관련 공항·경로 자료는 답변을 만들기 위해 OpenAI로 전달돼요.</p>
     {!settings && !error && <p role="status">설정 불러오는 중…</p>}
     {settings && <>
       {!settings.configured && <p role="alert">지금은 기상이를 사용할 수 없어요.</p>}
@@ -43,5 +43,5 @@ function AccountLabs() {
 
 export default function CopilotLabs() {
   const { user } = useAuth()
-  return user ? <AccountLabs key={user.id} /> : <div className="copilot-labs"><h3>기상이 · 실험실</h3><p>로그인하면 기상이를 켜고 하루 5번까지 질문할 수 있어요.</p></div>
+  return user ? <AccountLabs key={user.id} /> : <div className="copilot-labs"><h3>기상이 · 실험실</h3><p>로그인하면 기상이를 켜고 하루 10번까지 질문할 수 있어요.</p></div>
 }

@@ -48,12 +48,31 @@ function ensureColumns(database) {
   }
 }
 
+// 기상이 하루 질문 수 표는 처음에 "0~5"로 묶여 있었다. SQLite는 CHECK를 고칠 수 없어서
+// 옛 제약이 남은 표만 새 표로 옮겨 만든다(기록 보존). 이미 옮긴 DB나 새 DB에서는 아무 일도 하지 않는다.
+function relaxAiDailyUsageCap(database) {
+  const table = database.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='ai_daily_usage'").get()
+  if (!table?.sql?.includes('BETWEEN 0 AND 5')) return
+  database.transaction(() => {
+    database.exec(`CREATE TABLE ai_daily_usage_new (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      day TEXT NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0 CHECK (used >= 0),
+      PRIMARY KEY (user_id, day)
+    )`)
+    database.exec('INSERT INTO ai_daily_usage_new(user_id, day, used) SELECT user_id, day, used FROM ai_daily_usage')
+    database.exec('DROP TABLE ai_daily_usage')
+    database.exec('ALTER TABLE ai_daily_usage_new RENAME TO ai_daily_usage')
+  })()
+}
+
 // 스키마 적용된 연결 생성. dbPath=':memory:'면 테스트용 인메모리.
 export function createDb(dbPath) {
   const database = new Database(dbPath)
   database.pragma('journal_mode = WAL')
   database.pragma('foreign_keys = ON') // REFERENCES 강제(better-sqlite3 기본 off)
   ensureColumns(database) // 기존 DB 누락 컬럼 먼저 채움(아래 schema 인덱스가 참조) — 신규 DB에선 no-op
+  relaxAiDailyUsageCap(database)
   database.exec(schema)
   return database
 }

@@ -52,7 +52,7 @@ test.describe('copilot-chat-labs', () => {
     await expect(toggle).not.toBeChecked()
     await expect(toggle).toBeEnabled()
     await expect(page.locator('.copilot-labs input[type="password"]')).toHaveCount(0)
-    await expect(page.locator('.copilot-labs')).toContainText('하루 5번까지 질문')
+    await expect(page.locator('.copilot-labs')).toContainText('하루 10번까지 질문')
     await expect(page.locator('.copilot-labs')).toContainText('오늘 남은 질문 5/5')
     await toggle.click()
     await expect(toggle).toBeChecked()

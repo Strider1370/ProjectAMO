@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { createOpenAIProvider } from './providers/openai.js'
 
-const DAILY_LIMIT = 5
+const DAILY_LIMIT = 10
 const DAY_MS = 86_400_000
 const KST_OFFSET = 9 * 3_600_000
 const fail = (code, status) => { throw Object.assign(new Error(code), { code, status }) }
@@ -17,7 +17,7 @@ export function createAiAccess({ database, apiKey, model, reasoningEffort, now =
     const time = now()
     const day = new Date(time + KST_OFFSET).toISOString().slice(0, 10)
     const free = unlimited(userId)
-    // ai_daily_usage is capped at 5 by the schema, so admin questions are counted from the request log.
+    // Admin questions skip ai_daily_usage, so they are counted from the request log.
     const dayStart = new Date(Math.floor((time + KST_OFFSET) / DAY_MS) * DAY_MS - KST_OFFSET).toISOString()
     const used = free
       ? db().prepare('SELECT COUNT(*) AS n FROM ai_question_requests WHERE user_id=? AND started_at>=?').get(userId, dayStart).n

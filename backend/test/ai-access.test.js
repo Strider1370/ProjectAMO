@@ -49,6 +49,9 @@ async function api(t, { provider, ...options } = {}) {
   return { access, db, calls, request, question }
 }
 
+// 계정당 하루 질문 한도(backend/src/ai/access.js DAILY_LIMIT).
+const LIMIT = 10
+
 test('operator preferences default OFF, never accept/echo personal keys, never read legacy ciphertext', (t) => {
   const db = database(); t.after(() => db.close())
   db.prepare('INSERT INTO ai_credentials(user_id,enabled,encrypted_key,updated_at) VALUES (1,1,?,?)').run('legacy-ciphertext', 'now')
@@ -69,7 +72,7 @@ test('operator preferences default OFF, never accept/echo personal keys, never r
   assert.equal(unavailable.update(1, { enabled: false }).enabled, false)
 })
 
-test('five per account, persistent across reopen/connections and toggle, KST midnight resets independently of display timezone', (t) => {
+test('ten per account, persistent across reopen/connections and toggle, KST midnight resets independently of display timezone', (t) => {
   const directory = mkdtempSync(path.join(tmpdir(), 'amo-quota-'))
   t.after(() => rmSync(directory, { recursive: true, force: true }))
   const file = path.join(directory, 'quota.db')
@@ -77,12 +80,12 @@ test('five per account, persistent across reopen/connections and toggle, KST mid
   let db = database(file)
   let access = service(db, { now: () => time })
   access.update(1, { enabled: true }); access.update(2, { enabled: true })
-  const ids = Array.from({ length: 5 }, () => randomUUID())
+  const ids = Array.from({ length: LIMIT }, () => randomUUID())
   for (const id of ids) access.consume(1, id)
   assert.equal(access.quota(1).remaining, 0)
   assert.equal(access.quota(1).day, '2026-09-24')
   assert.equal(access.quota(1).resetsAt, '2026-09-24T15:00:00.000Z')
-  assert.equal(access.quota(2).remaining, 5)
+  assert.equal(access.quota(2).remaining, LIMIT)
   assert.throws(() => access.consume(1, randomUUID()), { code: 'DAILY_QUESTION_LIMIT' })
   assert.throws(() => access.consume(1, ids[0]), { code: 'QUESTION_ALREADY_STARTED' })
   db.close(); db = database(file); t.after(() => db.close())
@@ -92,12 +95,12 @@ test('five per account, persistent across reopen/connections and toggle, KST mid
   const peer = database(file); t.after(() => peer.close())
   assert.throws(() => service(peer, { now: () => time }).consume(1, randomUUID()), { code: 'DAILY_QUESTION_LIMIT' })
   time++
-  assert.equal(access.quota(1).remaining, 5)
+  assert.equal(access.quota(1).remaining, LIMIT)
   assert.throws(() => access.consume(1, ids[0]), { code: 'QUESTION_ALREADY_STARTED' })
-  assert.equal(access.consume(1, randomUUID()).remaining, 4)
+  assert.equal(access.consume(1, randomUUID()).remaining, LIMIT - 1)
 })
 
-test('admin accounts have no daily cap but are still counted; pilots keep five', (t) => {
+test('admin accounts have no daily cap but are still counted; pilots keep ten', (t) => {
   const db = database(); t.after(() => db.close())
   db.prepare("UPDATE users SET role='admin' WHERE id=2").run()
   const access = service(db, { now: () => Date.parse('2026-09-24T03:00:00Z') })
@@ -106,13 +109,15 @@ test('admin accounts have no daily cap but are still counted; pilots keep five',
   assert.deepEqual([access.quota(2).used, access.quota(2).remaining, access.quota(2).limit, access.quota(2).unlimited], [7, null, null, true])
   const replay = randomUUID(); access.consume(2, replay)
   assert.throws(() => access.consume(2, replay), { code: 'QUESTION_ALREADY_STARTED' })
-  for (let i = 0; i < 5; i++) access.consume(1, randomUUID())
+  for (let i = 0; i < LIMIT; i++) access.consume(1, randomUUID())
   assert.throws(() => access.consume(1, randomUUID()), { code: 'DAILY_QUESTION_LIMIT' })
   assert.equal(access.quota(1).unlimited, false)
 })
 
 test('HTTP quota is charged only after validation, replay is free even at zero; reset/other device cannot bypass', async (t) => {
-  const app = await api(t)
+  // 질문 사이에 1분씩 흘려 분당 요청 제한(30회)이 아니라 하루 한도만 시험한다.
+  let clock = Date.parse('2026-09-24T03:00:00Z')
+  const app = await api(t, { now: () => clock })
   assert.equal((await app.request('/status', undefined, null)).body.enabled, false)
   assert.equal((await app.request('/settings', undefined, null)).status, 401)
   assert.equal((await app.request('/chat', {}, null)).status, 401)
@@ -121,7 +126,7 @@ test('HTTP quota is charged only after validation, replay is free even at zero; 
   await app.request('/settings', { enabled: true })
   await app.request('/settings', { enabled: true }, 2)
   let last
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < LIMIT; i++) {
     last = await app.question()
     if (i === 0) {
       assert.equal((await app.request('/chat', { ...last, message: '' })).status, 400)
@@ -132,17 +137,18 @@ test('HTTP quota is charged only after validation, replay is free even at zero; 
     }
     const result = await app.request('/chat', last)
     assert.equal(result.body.status, 'completed')
-    assert.equal(result.body.quota.remaining, 4 - i)
-    assert.equal((await app.request('/chat', last)).body.quota.remaining, 4 - i)
+    assert.equal(result.body.quota.remaining, LIMIT - 1 - i)
+    assert.equal((await app.request('/chat', last)).body.quota.remaining, LIMIT - 1 - i)
     assert.equal(app.calls.length, i + 1)
+    clock += 61_000
   }
   assert.equal((await app.request('/status')).body.enabled, true) // history/launcher remain visible
   const extra = await app.question()
   assert.equal((await app.request('/chat', extra)).body.error, 'DAILY_QUESTION_LIMIT')
   assert.equal((await app.request('/chat', extra)).body.error, 'DAILY_QUESTION_LIMIT') // rejection releases conversation lock
   assert.equal((await app.request('/chat', last)).body.status, 'completed')
-  assert.equal(app.calls.length, 5)
-  assert.equal(app.access.quota(2).remaining, 5)
+  assert.equal(app.calls.length, LIMIT)
+  assert.equal(app.access.quota(2).remaining, LIMIT)
   await app.request('/settings', { enabled: false }); await app.request('/settings', { enabled: true })
   assert.equal((await app.request('/chat', await app.question())).body.error, 'DAILY_QUESTION_LIMIT')
 })
@@ -185,7 +191,7 @@ test('daily rejection releases the conversation for KST next day, without anothe
   let time = Date.parse('2026-09-24T14:59:59.999Z')
   const app = await api(t, { now: () => time })
   await app.request('/settings', { enabled: true })
-  for (let i = 0; i < 5; i++) app.access.consume(1, randomUUID())
+  for (let i = 0; i < LIMIT; i++) app.access.consume(1, randomUUID())
   const input = await app.question()
   assert.equal((await app.request('/chat', input)).body.error, 'DAILY_QUESTION_LIMIT')
   assert.equal(app.calls.length, 0)
@@ -193,7 +199,7 @@ test('daily rejection releases the conversation for KST next day, without anothe
   const result = await app.request('/chat', input)
   assert.equal(result.body.status, 'completed')
   assert.equal(result.body.quota.day, '2026-09-25')
-  assert.equal(result.body.quota.remaining, 4)
+  assert.equal(result.body.quota.remaining, LIMIT - 1)
   assert.equal(app.calls.length, 1)
 })
 
