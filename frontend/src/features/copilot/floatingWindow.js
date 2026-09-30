@@ -1,13 +1,15 @@
-// On desktop, fill the available height above the launcher. Keep the compact
-// floating size on tablet, and clamp keyboard/pointer movement to the viewport.
+// Desktop opens at a moderate size just above the launcher; 크게 보기 fills the height.
+// Keep the compact floating size on tablet, and clamp keyboard/pointer movement to the viewport.
+export const DESKTOP_HEIGHT = 600
 export function floatingWindow(viewport, expanded, position = null) {
   const width = Math.min(expanded ? 480 : 400, Math.max(280, viewport.width - 32))
   const desktop = viewport.width >= 1200
+  const full = Math.max(240, viewport.height - 128)
   const height = desktop
-    ? Math.max(240, viewport.height - 128)
+    ? (expanded ? full : Math.min(full, DESKTOP_HEIGHT))
     : Math.min(expanded ? 680 : 560, Math.max(240, viewport.height - 116))
   const x = position?.x ?? viewport.width - width - 24
-  const y = position?.y ?? (desktop ? 16 : viewport.height - height - 100)
+  const y = position?.y ?? (desktop ? viewport.height - 112 - height : viewport.height - height - 100)
   return { width, height, x: Math.max(16, Math.min(viewport.width - width - 16, x)),
     y: Math.max(16, Math.min(viewport.height - height - (desktop ? 112 : 84), y)) }
 }

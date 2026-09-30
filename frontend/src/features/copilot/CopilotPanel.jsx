@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Bookmark, Layers, PlaneLanding, Route, TriangleAlert } from 'lucide-react'
 import MobileSheet from '../../shared/ui/MobileSheet.jsx'
 import { useCopilot } from './useCopilot.js'
 import { floatingWindow, formatCopilotTime } from './floatingWindow.js'
@@ -17,6 +18,22 @@ import { validBriefingRef } from '../route-briefing/lib/copilotResult.js'
 import './CopilotPanel.css'
 
 const AVATAR = '/gisang-i/clear_3_avatar.png'
+// 빈 창 소개. 기상이 도구(backend/src/ai/tool-registry.js)가 실제로 하는 일을 영역별로 한 줄씩.
+// 영역 기호는 예시 질문에도 같이 붙여 어느 영역 질문인지 보이게 한다.
+const CAPABILITIES = [
+  { Icon: PlaneLanding, title: '공항 기상', text: 'METAR·TAF·공항경보, 원하는 시각으로' },
+  { Icon: TriangleAlert, title: '위험기상', text: '발효 중인 SIGMET·AIRMET' },
+  { Icon: Route, title: '경로 브리핑', text: '구간별 착빙·난류·맞바람, 고도 비교' },
+  { Icon: Bookmark, title: '내 비행', text: '저장 경로 재브리핑, 비행 알림 등록' },
+  { Icon: Layers, title: '화면 조작', text: '공항 패널 열기, 기상 레이어 켜기' },
+]
+// 누르면 바로 보내는 예시 질문.
+const EXAMPLE_QUESTIONS = [
+  { Icon: PlaneLanding, text: '제주 3시간 뒤 날씨 어때?' },
+  { Icon: TriangleAlert, text: '지금 SIGMET 있어?' },
+  { Icon: Route, text: '김포→제주 경로 브리핑해 줘' },
+  { Icon: Bookmark, text: '내 저장 경로 보여 줘' },
+]
 const TOOL_LABELS = { get_airport_weather: '공항 관측·예보', get_weather_advisories: 'SIGMET·AIRMET',
   get_route_briefing: '경로 브리핑', get_briefing_detail: '브리핑 근거', compare_route_altitudes: '고도 비교', get_my_saved_route: '저장 경로 재브리핑' }
 function FactCard({ card, timezone, onOpenResult, onRequery, resultAction }) {
@@ -165,6 +182,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
     const space = answerSpace.current
     if (!node || !space || !open) return
     const latest = chat.messages.at(-1)
+    if (!latest && !contextChoice) { space.style.height = '0px'; node.scrollTop = 0; scroll.current.top = 0; return }
     if (latest?.role !== 'assistant' || contextChoice) {
       space.style.height = '0px'
       scroll.current.anchoredAnswerId = null
@@ -204,13 +222,13 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
       ...selected, startNewConversation: startsContextConversation(chat.conversationContext, selected),
     })
   }
-  async function send(retry = false) {
+  async function send(retry = false, question = null) {
     if (chat.busy || preparation.current || contextChoice) return
     if (!retry && chat.status?.quota?.remaining === 0) return
     scroll.current.follow = true
     scroll.current.manual = false
     if (retry) return chat.send(null, timezone, true)
-    const submittedMessage = chat.draft
+    const submittedMessage = question ?? chat.draft
     if (!submittedMessage.trim()) return
     // Freeze the selected screen at send, never while a provider request runs.
     const controller = new AbortController()
@@ -253,7 +271,6 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
     } finally { if (preparation.current === controller) { preparation.current = null; setPreparing(false) } }
   }
   const composer = contextChoice ? null : <form className="copilot-composer" onSubmit={(event) => { event.preventDefault(); void send() }}>
-    {chat.status?.quota && <p role="status">{chat.status.quota.unlimited ? `오늘 질문 ${chat.status.quota.used}회 · 관리자 제한 없음` : `오늘 남은 질문 ${chat.status.quota.remaining}/${chat.status.quota.limit} · 한국 시간 자정 초기화`}</p>}
     {!user ? <button type="button" onClick={onLogin}>로그인하고 질문하기</button>
       : !chat.status?.ready ? <p role="status">{chat.status?.reason === 'PROVIDER_NOT_CONFIGURED' ? '서버의 LLM 연결 설정이 필요해요.' : '현재 대화 서비스를 사용할 수 없어요.'}</p>
         : <>
@@ -265,16 +282,17 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && !isMobile) { event.preventDefault(); if (!chat.busy) void send() }
             }} />
-          <div className="copilot-send-row"><span>AI 답변 · 자료 시각과 누락을 확인하세요</span>
+          <div className="copilot-send-row">
+            <label className="copilot-context"><input type="checkbox" checked={attachContext} disabled={preparing || Boolean(contextChoice)} onChange={(event) => setAttachContext(event.target.checked)} />현재 화면 연결
+              <span>{attachContext ? airport ?? '선택 공항 없음' : '화면 맥락 제외'} · {timezone === 'UTC' ? 'UTC' : 'KST'}</span></label>
+            {chat.status?.quota && <span className="copilot-quota" role="status" title={chat.status.quota.unlimited ? undefined : '한국 시간 자정에 초기화'}>
+            {chat.status.quota.unlimited ? `오늘 질문 ${chat.status.quota.used}회 · 제한 없음` : `오늘 남은 질문 ${chat.status.quota.remaining}/${chat.status.quota.limit}`}</span>}
             {chat.busy || preparing ? <button type="button" onClick={() => chat.busy ? void chat.cancel() : preparation.current?.abort()}>중지</button>
               : <button type="submit" disabled={!chat.draft.trim() || Boolean(contextChoice) || chat.status?.quota?.remaining === 0}>전송</button>}</div>
-          {chat.status?.quota?.remaining === 0 && <p>오늘 질문 5회를 모두 사용했어요. 한국 시간 자정 이후 다시 이용해주세요.</p>}
+          {chat.status?.quota?.remaining === 0 && <p>오늘 질문 {chat.status.quota.limit}회를 모두 사용했어요. 한국 시간 자정 이후 다시 이용해주세요.</p>}
         </>}
   </form>
   const body = <>
-    <div className="copilot-context"><label><input type="checkbox" checked={attachContext} disabled={preparing || Boolean(contextChoice)} onChange={(event) => setAttachContext(event.target.checked)} />현재 화면 연결</label>
-      <span>{attachContext ? airport ?? '선택 공항 없음' : '화면 맥락 제외'} · {timezone === 'UTC' ? 'UTC' : 'KST'}</span>
-      {chat.conversationContext?.label && <span>최근 질문 기준: {chat.conversationContext.label}</span>}</div>
     <div className="copilot-thread" role="log" aria-label="기상이 대화 내역" aria-live="polite"
       ref={threadRef}
       onScroll={(event) => { const node = event.currentTarget; scroll.current.top = node.scrollTop; if (!scroll.current.anchoredAnswerId && !scroll.current.manual) scroll.current.follow = node.scrollHeight - node.scrollTop - node.clientHeight < 50 }}
@@ -282,9 +300,19 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
       onTouchStart={releaseAnswerScroll}
       onPointerDown={releaseAnswerScroll}
       onKeyDown={releaseAnswerScroll}>
-      {!chat.messages.length && <div className="copilot-welcome"><img src={AVATAR} alt="" /><h2>무엇을 확인해 볼까요?</h2>
-        <p>공항 관측·예보와 SIGMET·AIRMET을 확인하고, 자료의 뜻과 부족한 부분을 설명해 드려요.</p>
-        <p className="copilot-disclosure">전송한 질문과 필요한 기상·경로 자료는 OpenAI API로 전달됩니다. 내 저장 경로를 요청하면 해당 후보의 이름·비행 조건도 포함됩니다.</p></div>}
+      {!chat.messages.length && <div className="copilot-welcome">
+        <header className="copilot-welcome-head"><img src={AVATAR} alt="" />
+          <div><h2>안녕하세요, 항공기상 AI 챗봇 기상이예요.</h2>
+            <p>ProjectAMO의 관측·예보 자료를 직접 찾아 읽고 답해 드려요.</p></div></header>
+        <ul className="copilot-capabilities">{CAPABILITIES.map(({ Icon, title, text }) => <li key={title}>
+          <Icon size={16} strokeWidth={1.8} aria-hidden="true" /><strong>{title}</strong><span>{text}</span></li>)}</ul>
+        <h3 className="copilot-examples-title" id="copilot-examples-title">예시 질문</h3>
+        <div className="copilot-examples" aria-labelledby="copilot-examples-title">
+          {EXAMPLE_QUESTIONS.map(({ Icon, text }) => <button key={text} type="button"
+            disabled={!user || !chat.status?.ready || chat.busy || preparing || chat.status?.quota?.remaining === 0}
+            onClick={() => void send(false, text)}><Icon size={14} strokeWidth={2} aria-hidden="true" />{text}</button>)}
+        </div>
+        <p className="copilot-disclosure">기상이는 틀릴 수 있어요. 비행 결정은 공식 원문과 브리핑으로 확인해 주세요.</p></div>}
       <div hidden={Boolean(contextChoice)}>{chat.messages.map((message) => <article className={`copilot-message ${message.role}`} key={message.id}>
         {message.role === 'assistant' && <img src={AVATAR} alt="기상이" />}
         <div className="copilot-message-body">
@@ -351,7 +379,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
       </section>}
       {contextError && <p role="alert">적용 경로를 연결하지 못했어요. ({contextError}) 경로 입력을 확인하거나 ‘현재 화면 연결’을 해제해 주세요.</p>}
       {chat.error && <div role="alert"><p>{chat.error === 'DAILY_QUESTION_LIMIT'
-        ? '오늘 질문 5회를 모두 사용했어요. 한국 시간 자정에 초기화됩니다.'
+        ? `오늘 질문 ${chat.status?.quota?.limit ?? 10}회를 모두 사용했어요. 한국 시간 자정에 초기화됩니다.`
         : chat.error === 'QUESTION_ALREADY_STARTED' ? '이미 시작한 요청입니다. 중복 API 호출을 막았어요. 필요하면 새 질문으로 보내주세요.'
           : `요청을 완료하지 못했어요. (${chat.error})`}</p>
         {chat.retryable && <button type="button" disabled={chat.busy} onClick={() => void send(true)}>같은 요청 다시 확인</button>}
@@ -380,7 +408,7 @@ export default function CopilotPanel({ user, airport, timezone = 'Asia/Seoul', i
           onPointerDown={(event) => { if (event.button !== 0) return; event.currentTarget.setPointerCapture(event.pointerId); drag.current = { id: event.pointerId, x: event.clientX - size.x, y: event.clientY - size.y } }}
           onPointerMove={(event) => { if (drag.current?.id === event.pointerId) setPosition({ x: event.clientX - drag.current.x, y: event.clientY - drag.current.y }) }}
           onPointerUp={() => { drag.current = null }} onPointerCancel={() => { drag.current = null }}>
-          <img src={AVATAR} alt="" /><div><strong>기상이</strong><small>항공 기상 어시스턴트</small></div></div>
+          <img src={AVATAR} alt="" /><strong>기상이</strong><span className="copilot-ai-tag">AI</span></div>
         <button type="button" title="기본 위치" aria-label="대화창 기본 위치로" onClick={() => setPosition(null)}>↺</button>
         <button type="button" title="크기 변경" aria-label={expanded ? '대화창 기본 크기로' : '대화창 크게 보기'} aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>⤢</button>
         <button type="button" aria-label="기상이 창 접기" onClick={close}>−</button>
