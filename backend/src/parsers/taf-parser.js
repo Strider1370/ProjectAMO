@@ -279,38 +279,39 @@ function hourRange(startIso, endIso) {
   return out;
 }
 
+function temperatureTimeText(node) {
+  return text(node?.["gml:TimeInstant"]?.["gml:timePosition"] ?? node?.["gml:timePosition"] ?? node);
+}
+
+// 30시간 TAF는 기온군이 TN TX TN처럼 셋일 수 있고, IWXXM은 이를 temperature 블록 두 개로 싣는다.
+// 블록마다 최고·최저를 모두 읽어 시각 순서로 모은다(같은 군이 두 블록에 반복되면 하나만 남긴다).
+// max/min은 그중 첫 최고·최저이고, groups는 원문 순서대로 모든 기온군이다.
 function parseTemperatureHeader(taf, baseForecastNode, issued) {
-  const tempBlock =
-    baseForecastNode?.["iwxxm:temperature"]?.["iwxxm:AerodromeAirTemperatureForecast"] ||
-    taf?.["iwxxm:temperature"]?.["iwxxm:AerodromeAirTemperatureForecast"] ||
-    {};
-  const maxNode = tempBlock["iwxxm:maximumAirTemperature"] ?? taf?.["iwxxm:maximumAirTemperature"];
-  const minNode = tempBlock["iwxxm:minimumAirTemperature"] ?? taf?.["iwxxm:minimumAirTemperature"];
-
-  const maxTimeNode =
-    tempBlock?.["iwxxm:maximumAirTemperatureTime"]?.["gml:TimeInstant"]?.["gml:timePosition"] ??
-    tempBlock?.["iwxxm:maximumAirTemperatureTime"]?.["gml:timePosition"] ??
-    taf?.["iwxxm:maximumAirTemperatureTime"];
-
-  const minTimeNode =
-    tempBlock?.["iwxxm:minimumAirTemperatureTime"]?.["gml:TimeInstant"]?.["gml:timePosition"] ??
-    tempBlock?.["iwxxm:minimumAirTemperatureTime"]?.["gml:timePosition"] ??
-    taf?.["iwxxm:minimumAirTemperatureTime"];
-
   const anchor = issued ? new Date(issued) : new Date();
-  const maxTimeRaw = text(maxTimeNode);
-  const minTimeRaw = text(minTimeNode);
+  const blocks = [...toArray(baseForecastNode?.["iwxxm:temperature"]), ...toArray(taf?.["iwxxm:temperature"])]
+    .map((node) => node?.["iwxxm:AerodromeAirTemperatureForecast"])
+    .filter(Boolean);
+  // 예전 형식: 기온 요소가 TAF 바로 아래에 있다.
+  if (!blocks.length && taf) blocks.push(taf);
 
-  return {
-    max: {
-      value: parseSignedTemperature(maxNode),
-      time: maxTimeRaw ? resolveDdhh(lastToken(maxTimeRaw), anchor) : null
-    },
-    min: {
-      value: parseSignedTemperature(minNode),
-      time: minTimeRaw ? resolveDdhh(lastToken(minTimeRaw), anchor) : null
+  const groups = [];
+  for (const block of blocks) {
+    for (const [type, name] of [["max", "maximum"], ["min", "minimum"]]) {
+      const value = parseSignedTemperature(block[`iwxxm:${name}AirTemperature`]);
+      const timeRaw = temperatureTimeText(block[`iwxxm:${name}AirTemperatureTime`]);
+      const time = timeRaw ? resolveDdhh(lastToken(timeRaw), anchor) : null;
+      if (value === null && !time) continue;
+      if (groups.some((group) => group.type === type && group.value === value && group.time === time)) continue;
+      groups.push({ type, value, time });
     }
+  }
+  groups.sort((a, b) => (a.time ?? "\uffff").localeCompare(b.time ?? "\uffff"));
+
+  const first = (type) => {
+    const group = groups.find((item) => item.type === type);
+    return { value: group?.value ?? null, time: group?.time ?? null };
   };
+  return { max: first("max"), min: first("min"), groups };
 }
 
 function parse(xmlString) {

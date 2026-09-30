@@ -71,10 +71,11 @@ export function buildTafTacPresentation(parsed) {
     tacToken(ddhhmmZ(h.issued), 'time'),
     tacToken(`${ddhh(h.valid_start)}/${ddhh(h.valid_end)}`, 'validity'),
   ]
-  const temperatures = [
-    temperatureToken('TX', h.temperatures?.max),
-    temperatureToken('TN', h.temperatures?.min),
-  ].filter(Boolean)
+  // 기온군이 여럿이면(TN TX TN) 시각 순서대로 모두 쓴다.
+  const temperatures = (h.temperatures?.groups?.length
+    ? h.temperatures.groups.map((group) => temperatureToken(group.type === 'max' ? 'TX' : 'TN', group))
+    : [temperatureToken('TX', h.temperatures?.max), temperatureToken('TN', h.temperatures?.min)]
+  ).filter(Boolean)
   const lines = [tacDisplayLine([...headParts, ...stateParts(parsed.base), ...temperatures], { slotTime: slotTime(h.valid_start) })]
   for (const group of parsed.change_groups || []) {
     const prefix = groupHead(group).split(' ').map((text, index) => tacToken(text, index === 0 ? 'change' : 'validity'))
