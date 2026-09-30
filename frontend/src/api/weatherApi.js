@@ -13,7 +13,6 @@ export const AIRPORT_NAME_KO = {
   RKTH: '포항경주공항',
   RKJB: '무안국제공항',
   RKJJ: '광주공항',
-  RKJK: '군산공항',
   RKJY: '여수공항',
   RKNW: '원주공항',
   RKPS: '사천공항',

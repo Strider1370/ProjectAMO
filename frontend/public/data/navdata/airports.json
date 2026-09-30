@@ -17,15 +17,6 @@
     "runwayHdg": 40,
     "source": "OurAirports / AD 1.3"
   },
-  "RKJK": {
-    "airportUse": "joint",
-    "amosStn": null,
-    "coordinates": { "lat": 35.903801, "lon": 126.615997 },
-    "id": "RKJK",
-    "name": "Gunsan Airport",
-    "runwayHdg": 180,
-    "source": "OurAirports / AD 1.3"
-  },
   "RKJY": {
     "airportUse": "civil",
     "amosStn": 167,

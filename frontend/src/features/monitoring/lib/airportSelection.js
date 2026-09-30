@@ -1,4 +1,4 @@
-const MILITARY_AIRFIELDS = new Set(['RKTU', 'RKTN', 'RKTH', 'RKJJ', 'RKJK', 'RKNW', 'RKPS'])
+const MILITARY_AIRFIELDS = new Set(['RKTU', 'RKTN', 'RKTH', 'RKJJ', 'RKNW', 'RKPS'])
 
 export function isMonitoringSelectableAirport(icao) {
   return typeof icao === 'string' && !MILITARY_AIRFIELDS.has(icao)

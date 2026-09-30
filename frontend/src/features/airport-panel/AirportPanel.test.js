@@ -26,7 +26,6 @@ test('domestic airports carry official elevation in feet', () => {
     RKTH: 75,
     RKJB: 52,
     RKJJ: 49,
-    RKJK: 29,
     RKJY: 52,
     RKNW: 330,
     RKPS: 26,

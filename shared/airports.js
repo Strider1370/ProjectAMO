@@ -8,7 +8,6 @@ export default [
   { icao: "RKTH", name: "Pohang Gyeongju Airport",          nameKo: "포항경주공항",    lat: 35.987955,  lon: 129.420383,  elevation_ft:  75, runway_hdg: 100, amos_stn: null },
   { icao: "RKJB", name: "Muan International Airport",       nameKo: "무안국제공항",    lat: 34.9914,    lon: 126.3828,    elevation_ft:  52, runway_hdg:  10, amos_stn: 163  },
   { icao: "RKJJ", name: "Gwangju Airport",                  nameKo: "광주공항",        lat: 35.123173,  lon: 126.805444,  elevation_ft:  49, runway_hdg:  40, amos_stn: null },
-  { icao: "RKJK", name: "Gunsan Airport",                   nameKo: "군산공항",        lat: 35.903801,  lon: 126.615997,  elevation_ft:  29, runway_hdg: 180, amos_stn: null },
   { icao: "RKJY", name: "Yeosu Airport",                    nameKo: "여수공항",        lat: 34.8424,    lon: 127.6162,    elevation_ft:  52, runway_hdg: 170, amos_stn: 167  },
   { icao: "RKNW", name: "Wonju Airport",                    nameKo: "원주공항",        lat: 37.437113,  lon: 127.960051,  elevation_ft: 330, runway_hdg:  50, amos_stn: null },
   { icao: "RKPS", name: "Sacheon Airport",                  nameKo: "사천공항",        lat: 35.088591,  lon: 128.071747,  elevation_ft:  26, runway_hdg:  10, amos_stn: null },

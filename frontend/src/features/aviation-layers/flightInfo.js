@@ -25,7 +25,7 @@ export const TYPE_NAMES_KO = {
 // Korean airport names (ICAO). Foreign airports fall back to the city name from adsbdb.
 export const AIRPORT_NAMES_KO = {
   RKSI: '인천', RKSS: '김포', RKPC: '제주', RKPK: '김해', RKTU: '청주', RKTN: '대구',
-  RKJB: '무안', RKNY: '양양', RKJK: '군산', RKPS: '사천', RKTH: '포항경주', RKNW: '원주',
+  RKJB: '무안', RKNY: '양양', RKPS: '사천', RKTH: '포항경주', RKNW: '원주',
   RKJJ: '광주', RKPU: '울산', RKJY: '여수', RKTL: '울진', RKSM: '서울(공군)',
   RJAA: '나리타', RJTT: '하네다', RJBB: '간사이', RJGG: '주부', RJCC: '신치토세', RJFF: '후쿠오카',
   ROAH: '나하', RJSA: '아오모리', RJOA: '히로시마', RJAH: '이바라키', ROIG: '이시가키', RJFK: '가고시마',

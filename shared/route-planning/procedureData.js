@@ -25,11 +25,9 @@ const PROCEDURE_FILES = [
   { airport: 'RKPS', type: 'STAR', file: 'rkps-star-procedures.json' },
   { airport: 'RKJJ', type: 'SID', file: 'rkjj-sid-procedures.json' },
   { airport: 'RKJJ', type: 'STAR', file: 'rkjj-star-procedures.json' },
-  { airport: 'RKJK', type: 'SID', file: 'rkjk-sid-procedures.json' },
-  { airport: 'RKJK', type: 'STAR', file: 'rkjk-star-procedures.json' },
 ]
 
-export const KNOWN_AIRPORTS = ['RKSI', 'RKSS', 'RKPC', 'RKPK', 'RKJB', 'RKNY', 'RKJY', 'RKPU', 'RKTH', 'RKTU', 'RKNW', 'RKPS', 'RKJJ', 'RKJK']
+export const KNOWN_AIRPORTS = ['RKSI', 'RKSS', 'RKPC', 'RKPK', 'RKJB', 'RKNY', 'RKJY', 'RKPU', 'RKTH', 'RKTU', 'RKNW', 'RKPS', 'RKJJ']
 
 export function createProcedureLoader(readJson) {
   async function getProcedures(airport, type) {

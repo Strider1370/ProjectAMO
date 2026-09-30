@@ -6,7 +6,7 @@ const dataRoot = new URL('../../../../public/data/navdata/procedures/', import.m
 const readJson = (name) => readFile(new URL(name, dataRoot), 'utf8').then(JSON.parse)
 const AIRPORTS = {
   rkth: [10, 6, 2], rktu: [6, 2, 2], rknw: [5, 4, 3],
-  rkps: [11, 12, 4], rkjj: [8, 7, 3], rkjk: [0, 0, 2],
+  rkps: [11, 12, 4], rkjj: [8, 7, 3],
 }
 
 test('terminal procedure data preserves record counts, provenance, and STAR-to-IAP continuity', async () => {

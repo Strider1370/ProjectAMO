@@ -14,7 +14,6 @@ const DEFAULT_AIRPORT_MINIMA_RULES = {
   RKTH: { visibilityM: 550, ceilingFt: 200 },
   RKJB: { visibilityM: 550, ceilingFt: 200 },
   RKJJ: { visibilityM: 550, ceilingFt: 200 },
-  RKJK: { visibilityM: 550, ceilingFt: 200 },
   RKJY: { visibilityM: 550, ceilingFt: 200 },
   RKNW: { visibilityM: 550, ceilingFt: 200 },
   RKPS: { visibilityM: 550, ceilingFt: 200 },
