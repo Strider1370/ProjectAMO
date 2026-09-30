@@ -1,5 +1,6 @@
 import FALLBACK_AIRPORTS from '../../../shared/airports.js'
 import { ADSB_FETCH_DISABLED } from './adsbApi.js'
+import { versionedAsset } from '../shared/versionedAsset.js'
 
 const KMA_RADAR_GRAPHICS_META = /^\/data\/radar\/(?:hsr\/hsr_meta|hci\/hci_meta|wissdom\/wissdom_meta|qpf\/qpf_meta)\.json$/
 
@@ -70,7 +71,7 @@ function normalizeAirports(airports) {
 // Overseas airport navdata is used only for map/search metadata.
 // Weather payloads remain separate as metarOverseas/tafOverseas/sigmetOverseas.
 async function loadOverseasAirportList({ signal } = {}) {
-  const data = await fetchJson('/data/navdata/airports-overseas.json', { optional: true, signal })
+  const data = await fetchJson(versionedAsset('/data/navdata/airports-overseas.json'), { optional: true, signal })
   if (!data || typeof data !== 'object') return []
   return Object.values(data)
     .filter((a) => a && Number.isFinite(a.coordinates?.lat) && Number.isFinite(a.coordinates?.lon))

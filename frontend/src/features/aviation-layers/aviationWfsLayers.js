@@ -1,3 +1,5 @@
+import { versionedAsset } from '../../shared/versionedAsset.js'
+
 // TMA 라벨 원본이 로마자 도시명뿐("TMA GWANGJU") — 지도 표기만 한글로 치환. 그 외 정보는 그대로 영문.
 // 같은 도시 TMA라도 실제로는 고도대별 하위구역(AREA T01~T09 등, 국토부 AIP ENR 1.4 기준)이
 // 여러 개 겹쳐있는 게 정상 — 이름만 같아 다 똑같아 보이던 걸 구역코드+고도로 구분되게 한다.
@@ -46,6 +48,7 @@ function areaLabelField(koText, codeField, ceilingField, floorField) {
 
 // 이 레이어들은 공유 레이어 레지스트리(features/map/layerActions.js)에 연동됨.
 // id 추가/삭제 시 layerActions.test.js 커버리지 테스트가 동기화를 강제한다.
+// 배포마다 새로 받도록 자료 주소에 빌드 값을 붙인다(shared/versionedAsset.js).
 export const AVIATION_WFS_LAYERS = [
   {
     id: 'fir',
@@ -449,7 +452,7 @@ export const AVIATION_WFS_LAYERS = [
     lineOpacity: 0.75,
     lineWidth: 1.2,
   },
-]
+].map((layer) => (layer.dataUrl ? { ...layer, dataUrl: versionedAsset(layer.dataUrl) } : layer))
 
 // A single mobile panel tile controls each domestic/overseas pair.
 // FIR 선·틱·라벨 색. 기본은 레이어 설정의 회청색인데, 어두운 위성 지도에서는
