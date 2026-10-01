@@ -2,12 +2,14 @@
 // 규칙: 아래 OWNERSHIP에서 '주인' FIR 영역을, 침범한 이웃들에서 잘라낸다(polygon difference).
 //   → 이웃 경계선이 주인 FIR 내부를 가로지르던 선이 사라지고, 주인 FIR이 한 덩어리로 남는다.
 // 재실행: node scripts/clip-overseas-fir-overlaps.mjs
+// 순서: generate_overseas_fir.mjs(VATSIM 원본) → 이 스크립트(원본의 겹침 정리) → airspace-kmz-to-geojson.py(KMZ 경계에
+//       맞춰 지도 파일 fir-overseas.geojson 생성). 지도 파일을 직접 고치지 않는다.
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { difference, featureCollection } from '@turf/turf'
 
-const P = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../frontend/public/data/fir-overseas.geojson')
+const P = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'data/fir-overseas-vatsim.geojson')
 
 // 주인 FIR → 이 영역을 잘라낼 이웃들. (nearest-centroid로 확인한 소유권과 사용자 지정 반영)
 const OWNERSHIP = [

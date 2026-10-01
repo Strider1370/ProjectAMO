@@ -3,6 +3,8 @@
 // 라이선스: CC-BY-SA-4.0 — 상업 사용 가능, 단 출처 표기 필수(지도 attribution). 파생물 동일 라이선스.
 // 출력: frontend/public/data/fir-overseas.geojson  (인천 FIR처럼 경계선+라벨로 표시)
 // 재생성: node scripts/generate_overseas_fir.mjs
+// ⚠️ 이 스크립트는 VATSIM 원본(scripts/data/fir-overseas-vatsim.geojson)만 만든다. 지도에 쓰는 파일은
+//    국토부 공역 KMZ 경계에 맞춰 scripts/airspace-kmz-to-geojson.py가 만든다. 원본을 다시 만들면 그것도 돌릴 것.
 // ⚠️ 재생성 시 수동 보정 유실 주의: ZSHA/ZYSH 공유 경계(N38~38.25, E120~124)는 VAT-Spy
 //    원본이 부정확(대각선이 122.28E까지 과도하게 늘어짐)해서 AIP 실측 좌표
 //    (124,38)→(123,38.25)→(120,38.25)로 수동 스냅해뒀음(2026-07-07). 재생성하면 이 보정이
@@ -13,7 +15,9 @@ import { fileURLToPath } from 'url'
 import { union } from '@turf/union'
 
 const SRC = 'https://raw.githubusercontent.com/vatsimnetwork/vatspy-data-project/master/Boundaries.geojson'
-const OUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../frontend/public/data/fir-overseas.geojson')
+// 원본만 쓴다. 지도 파일(frontend/public/data/fir-overseas.geojson)은 KMZ 경계에 맞춘 뒤
+// scripts/airspace-kmz-to-geojson.py가 만든다.
+const OUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'data/fir-overseas-vatsim.geojson')
 
 // 대상 FIR(국내 RKRR 제외 — fir.geojson이 이미 인천 FIR을 그림). id → 표시명.
 // ⚠️ 프놈펜 FIR 코드는 VDPF(공항코드 VDPP 아님).
