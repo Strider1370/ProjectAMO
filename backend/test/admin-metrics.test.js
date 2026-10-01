@@ -1,6 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import Database from 'better-sqlite3'
+
 import { createDb } from '../src/db/index.js'
 import { sampleOnce, readMetrics, currentResources } from '../src/admin/metrics.js'
 
@@ -38,4 +43,24 @@ test('metrics 기간 DTO는 UTC 기준 range와 7일 보관을 구조화한다',
   assert.equal(out.time.timestampStandard, 'UTC_ISO_8601')
   assert.equal(out.time.retention.durationMs, 604800000)
   assert.equal(out.time.dataFilesystemHistory, 'not_collected')
+})
+
+test('sampleOnce records the backend process memory split into rss, heap and external', () => {
+  const db = createDb(':memory:')
+  sampleOnce(db, { memoryUsage: () => ({ rss: 300e6, heapUsed: 90e6, heapTotal: 120e6, external: 150e6 }) })
+  const [row] = readMetrics(db, '24h').series
+  assert.deepEqual([row.proc_rss, row.proc_heap_used, row.proc_heap_total, row.proc_external], [300e6, 90e6, 120e6, 150e6])
+})
+
+test('an existing metrics table gains the process memory columns on startup', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amo-metrics-'))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  const file = path.join(dir, 'old.db')
+  const old = new Database(file)
+  old.exec('CREATE TABLE metrics (ts TEXT NOT NULL, cpu_pct REAL, mem_used INTEGER, mem_total INTEGER, disk_used INTEGER, disk_total INTEGER)')
+  old.close()
+  const db = createDb(file)
+  t.after(() => db.close())
+  const cols = db.prepare('PRAGMA table_info(metrics)').all().map((c) => c.name)
+  for (const col of ['proc_rss', 'proc_heap_used', 'proc_heap_total', 'proc_external']) assert.ok(cols.includes(col), col)
 })

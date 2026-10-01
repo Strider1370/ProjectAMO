@@ -84,7 +84,9 @@ CREATE TABLE IF NOT EXISTS requests (       -- 조종사→예보관 문의
 
 CREATE TABLE IF NOT EXISTS metrics (        -- 리소스 시계열(60초 샘플, 7일 보관). 관리자 콘솔
   ts         TEXT NOT NULL,
-  cpu_pct    REAL, mem_used INTEGER, mem_total INTEGER, disk_used INTEGER, disk_total INTEGER
+  cpu_pct    REAL, mem_used INTEGER, mem_total INTEGER, disk_used INTEGER, disk_total INTEGER,
+  -- 백엔드 프로세스 자신의 메모리(process.memoryUsage). 서버 전체 메모리가 늘 때 백엔드인지, 힙인지 버퍼인지 가린다.
+  proc_rss INTEGER, proc_heap_used INTEGER, proc_heap_total INTEGER, proc_external INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS visits (         -- 익명 포함 방문 추적. 관리자 콘솔

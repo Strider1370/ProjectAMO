@@ -8,6 +8,11 @@ import { useTimeZone } from '../../../shared/timezone/TimeZoneContext.jsx'
 const CPU_COLOR = '#3d5a80'
 const MEM_COLOR = '#a9701d'
 const DISK_COLOR = '#6d28d9'
+// 백엔드 프로세스 메모리 차트: RSS는 서버 메모리와 같은 계열, 힙·외부는 구분되는 색.
+const RSS_COLOR = MEM_COLOR
+const HEAP_COLOR = '#3d5a80'
+const EXTERNAL_COLOR = '#2f855a' // color-lint-ignore: 관리자 차트 계열 구분색
+const MB = 1024 ** 2
 const DISK_TOP_N = 6
 const CERT_WARN_DAYS = 14
 // 하루가 넘도록 백업이 없으면 정기 백업이 안 돌고 있다는 뜻이다(예정 주기 24시간 + 여유).
@@ -67,6 +72,9 @@ export default function ServerResourceScreen({ server, metrics, range = '24h', o
   const dataFs = metric?.filesystems?.data
   const cert = server.deployment?.cert
   const cpuPoints = series.map((row) => row.cpu_pct)
+  // 프로세스 메모리는 이 기능 배포 뒤부터 쌓인다. 그 전 행은 값이 없어 차트에서 뺀다.
+  const procRows = series.filter((row) => Number.isFinite(row.proc_rss))
+  const procMax = Math.max(200, Math.ceil(Math.max(...procRows.map((row) => row.proc_rss / MB), 0) / 100) * 100)
   const peakIndex = cpuPoints.reduce((best, value, i) => (value > (cpuPoints[best] ?? -1) ? i : best), 0)
 
   return (
@@ -119,6 +127,29 @@ export default function ServerResourceScreen({ server, metrics, range = '24h', o
             </div>
           </>
         )}
+        {procRows.length > 1 && (
+          <>
+            <h3 className="ac-sub" style={{ marginTop: 24 }}>백엔드 프로세스 메모리 (MB)</h3>
+            <LineChart
+              height={200}
+              max={procMax}
+              unit="MB"
+              xUnit={RANGE_LABEL[range] ?? range}
+              xLabels={[timeLabel(procRows[0].ts, tz), timeLabel(procRows[procRows.length - 1].ts, tz)]}
+              hoverLabels={procRows.map((row) => timeLabel(row.ts, tz))}
+              series={[
+                { label: 'RSS', color: RSS_COLOR, points: procRows.map((row) => row.proc_rss / MB) },
+                { label: '힙 사용', color: HEAP_COLOR, points: procRows.map((row) => row.proc_heap_used / MB) },
+                { label: '힙 밖(외부)', color: EXTERNAL_COLOR, points: procRows.map((row) => row.proc_external / MB) },
+              ]}
+            />
+            <div className="ac-clg">
+              <span><i style={{ background: RSS_COLOR }} />RSS(운영체제가 본 전체)</span>
+              <span><i style={{ background: HEAP_COLOR }} />힙 사용(JS 객체)</span>
+              <span><i style={{ background: EXTERNAL_COLOR }} />힙 밖(버퍼·이미지 자료)</span>
+            </div>
+          </>
+        )}
       </section>
 
       <div className="ac-two-eq">
@@ -134,8 +165,8 @@ export default function ServerResourceScreen({ server, metrics, range = '24h', o
               <div className="ac-sl">이번 가동시간</div>
             </div>
             <div>
-              <div className="ac-sv n">{formatBytes(server.process.heapUsed)}</div>
-              <div className="ac-sl">메모리 사용 (전체 {formatBytes(server.process.heapTotal)})</div>
+              <div className="ac-sv n">{formatBytes(server.process.rss)}</div>
+              <div className="ac-sl">메모리 RSS (JS 힙 {formatBytes(server.process.heapUsed)})</div>
             </div>
           </div>
           <table className="ac-t" style={{ marginTop: 18 }}>

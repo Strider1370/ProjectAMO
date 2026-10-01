@@ -59,10 +59,12 @@ export function currentResources({
   }
 }
 
-export function sampleOnce(db) {
-  const r = currentResources(); const now = new Date().toISOString()
-  db.prepare('INSERT INTO metrics (ts,cpu_pct,mem_used,mem_total,disk_used,disk_total) VALUES (?,?,?,?,?,?)')
-    .run(now, r.cpuPct, r.memUsed, r.memTotal, r.diskUsed, r.diskTotal)
+// 샘플러는 백엔드 안에서 돈다 — process.memoryUsage()가 곧 백엔드 프로세스 메모리다.
+// rss(운영체제가 본 전체) · heapUsed/heapTotal(JS 객체) · external(Buffer·ArrayBuffer 등 힙 밖 자료).
+export function sampleOnce(db, { memoryUsage = () => process.memoryUsage() } = {}) {
+  const r = currentResources(); const now = new Date().toISOString(); const mem = memoryUsage()
+  db.prepare('INSERT INTO metrics (ts,cpu_pct,mem_used,mem_total,disk_used,disk_total,proc_rss,proc_heap_used,proc_heap_total,proc_external) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .run(now, r.cpuPct, r.memUsed, r.memTotal, r.diskUsed, r.diskTotal, mem.rss, mem.heapUsed, mem.heapTotal, mem.external)
   db.prepare('DELETE FROM metrics WHERE ts < ?').run(new Date(Date.now() - RETAIN_MS).toISOString())
 }
 
@@ -70,7 +72,7 @@ export function readMetrics(db, range = '24h', { now = Date.now(), current = cur
   const selectedRange = WINDOW[range] ? range : '24h'
   const durationMs = WINDOW[selectedRange]
   const since = new Date(now - durationMs).toISOString()
-  const series = db.prepare('SELECT ts,cpu_pct,mem_used,mem_total,disk_used,disk_total FROM metrics WHERE ts >= ? ORDER BY ts').all(since)
+  const series = db.prepare('SELECT ts,cpu_pct,mem_used,mem_total,disk_used,disk_total,proc_rss,proc_heap_used,proc_heap_total,proc_external FROM metrics WHERE ts >= ? ORDER BY ts').all(since)
   const peakCpu = series.reduce((m, r) => (r.cpu_pct > (m?.cpu_pct ?? -1) ? r : m), series[0] ?? { cpu_pct: 0 })
   return {
     range: selectedRange,

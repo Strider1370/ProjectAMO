@@ -42,6 +42,13 @@ function ensureColumns(database) {
     if (!runCols.includes('active_flight_id')) database.exec('ALTER TABLE organization_briefing_runs ADD COLUMN active_flight_id INTEGER')
   }
 
+  if (tableExists('metrics')) {
+    const metricCols = database.prepare('PRAGMA table_info(metrics)').all().map((c) => c.name)
+    for (const col of ['proc_rss', 'proc_heap_used', 'proc_heap_total', 'proc_external']) {
+      if (!metricCols.includes(col)) database.exec(`ALTER TABLE metrics ADD COLUMN ${col} INTEGER`)
+    }
+  }
+
   if (tableExists('organization_alerts')) {
     const alertCols = database.prepare('PRAGMA table_info(organization_alerts)').all().map((c) => c.name)
     if (!alertCols.includes('acknowledged_version')) database.exec('ALTER TABLE organization_alerts ADD COLUMN acknowledged_version INTEGER')
