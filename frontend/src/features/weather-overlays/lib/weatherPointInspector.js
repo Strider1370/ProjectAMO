@@ -137,14 +137,16 @@ function ktgColor(value) {
 function buildTurbulenceRow(field, sampler, metadata) {
   const value = sampler.sample(metadata.lon, metadata.lat)
   if (!Number.isFinite(value)) return null
+  const band = field.product === 'GKTG' ? gktgBand(value) : null
+  if (field.product === 'GKTG' && (!band || band.min === 0)) return null
   return {
     key: 'turbulence',
     label: '난류',
-    value: `${field.product === 'GKTG' ? gktgBand(value)?.label : ktgLabel(value)} · ${fixed(value, 3)}`,
+    value: `${field.product === 'GKTG' ? band.label : ktgLabel(value)} · ${fixed(value, 3)}`,
     detail: field.product === 'GKTG' ? 'GKTG 강도' : 'KTG 강도',
     altitude: field.product === 'GKTG' ? formatAltitude(field) : Number.isFinite(Number(field.altFt)) ? `${field.altFt} ft` : '—',
     geopotentialHeight: field.product === 'GKTG' ? geopotentialHeightLabel(field, metadata.lon, metadata.lat) : null,
-    color: field.product === 'GKTG' ? gktgBand(value)?.color : ktgColor(value),
+    color: field.product === 'GKTG' ? band.color : ktgColor(value),
     ...metadata.time,
   }
 }

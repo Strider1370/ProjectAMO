@@ -70,3 +70,22 @@ test('weather point placement flips left only when the right edge would clip', (
   assert.equal(chooseWeatherPointPlacement(1100, 1259), 'left')
   assert.equal(chooseWeatherPointPlacement(80, 1259), 'right')
 })
+
+test('GKTG NIL and missing points produce no inspector rows; LGT starts at the float32 boundary', () => {
+  for (const value of [0, Math.fround(.149999), null, Math.fround(.15), Math.fround(.22), Math.fround(.34)]) {
+    const gktgFields = { ktgGrid: { product: 'GKTG', grid: fields.ktgGrid.grid, level: { value: 500, unit: 'hPa' }, gktg: Array(4).fill(value) } }
+    const rows = buildWeatherPointRows({ lon: 127, lat: 37, visibility: { turbulence: true }, fields: gktgFields, samplers: createWeatherPointSamplers(gktgFields) })
+    if (value === null || value < .15) assert.deepEqual(rows, [])
+    else {
+      assert.equal(rows.length, 1)
+      assert.match(rows[0].value, /^(LGT|MOD|SEV) · /)
+      assert.equal(rows[0].altitude, '500 hPa')
+    }
+  }
+})
+
+test('a GKTG NIL point keeps the inspector rows of other active weather layers', () => {
+  const gktgFields = { ...fields, ktgGrid: { product: 'GKTG', grid: fields.ktgGrid.grid, gktg: [0, 0, 0, 0] } }
+  const rows = buildWeatherPointRows({ lon: 127, lat: 37, visibility: { wind: true, turbulence: true }, fields: gktgFields, samplers: createWeatherPointSamplers(gktgFields) })
+  assert.deepEqual(rows.map(row => row.key), ['wind'])
+})
