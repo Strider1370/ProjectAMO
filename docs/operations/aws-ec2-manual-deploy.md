@@ -51,6 +51,16 @@ PM2 재시작 뒤 셸의 `node --version`뿐 아니라 backend PID의
 PATH에는 `/usr/local/bin`이 포함되어 있다. 이후 런타임 교체 시 이 경로와
 서비스 재기동 후 실제 실행 파일도 함께 확인한다.
 
+### GKTG Python 런타임
+
+GKTG 계산에는 Python 3.12 이상이 필요하다. Amazon Linux 2023의 기본 Python 3.9는 유지하고 지원 버전을 추가 설치한다:
+
+```bash
+sudo dnf install -y python3.12 python3.12-pip
+```
+
+full deploy는 지원 인터프리터를 찾아 `/opt/projectamo/shared/venvs/kim-gktg`에 고정 NumPy/Numba 의존성을 설치한다. `KIM_GKTG_PYTHON`·`NUMBA_CACHE_DIR`는 PM2 설정 파일에서 적용하며, 설치 실패 시 빌드/재시작/배포 성공 마커 갱신을 진행하지 않는다. [GKTG 운영 안내](kim-gktg.md)를 함께 확인한다.
+
 ## 2.5 .env 필수 항목 (운영)
 
 `.env`는 `/opt/projectamo/current/.env`에 있으며 **커밋하지 않는다**(참고: `backend/.env.example`).
@@ -173,7 +183,7 @@ bash deploy/deploy-vm-full.sh
 2. pull한 새 스크립트로 자기 자신을 재시작
 3. `npm --prefix backend ci`
 4. `npm --prefix frontend ci`
-5. `bash deploy/build-frontend.sh` (fast deploy와 같은 방식 — 성공 시에만 교체)
+5. GKTG Python venv·고정 의존성 설치 후 `bash deploy/build-frontend.sh` (fast deploy와 같은 방식 — 성공 시에만 교체)
 6. `pm2 restart ecosystem.config.cjs --update-env` + `pm2 save`
 7. `deploy/configure-pm2-logrotate.sh`
 8. `sudo nginx -t` + `sudo systemctl reload nginx`

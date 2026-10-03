@@ -60,3 +60,13 @@ test('only exact byte-addressed frames are returned', () => {
   assert.equal(pinnedFrameStatus(selection, 'satellite').status, 'unsupported')
   assert.equal(pinnedFrameStatus({ frames: { satellite: { status: 'unavailable', reason: 'frame_stale' } } }, 'satellite').status, 'unavailable')
 })
+
+test('GKTG pinning selects its own exact run, hour, pressure and revision', () => {
+  const selection = { bundleId: 'gktg-bundle', models: { gktg: { status: 'available', tmfc: '2026091006', hf: 6, product: 'GKTG', levelIds: ['500hPa'], resources: { gktg: [{ levelId: '500hPa', revision: 'immutable-gktg' }] } } } }
+  const pinned = pinnedKimSelection(selection, { level: '500hPa', variable: 'gktg' })
+  assert.equal(pinned.tmfc, '2026091006')
+  assert.equal(pinned.hf, 6)
+  assert.equal(pinned.revision, 'immutable-gktg')
+  assert.equal(pinnedModelStatus(selection, 'gktg').status, 'available')
+  assert.equal(pinnedKimSelection({ ...selection, models: {} }, { variable: 'gktg' }), null)
+})

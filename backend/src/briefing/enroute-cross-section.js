@@ -2,7 +2,8 @@
 // /api/briefing/cross-section 라우트와 route-briefing enroute 모델 요약이 공유한다.
 // (이전에 server.js에 두 벌로 중복돼 있던 로딩 로직을 통합한 것.)
 import config from '../config.js'
-import { buildCrossSection, buildKtgCrossSection, gridIndexFor } from './cross-section-sampler.js'
+import { loadGktgCrossSection } from './gktg-cross-section.js'
+import { buildCrossSection, gridIndexFor } from './cross-section-sampler.js'
 import { buildRouteAxis } from './route-axis.js'
 import { distanceAlongRouteNm } from './profile-composer.js'
 import { selectClosestForecastTime } from '../processors/kim-forecast-hour.js'
@@ -14,8 +15,7 @@ import {
   filterKimNwpIndexForVariables,
   icingGradeFor,
 } from '../processors/kim-nwp-model.js'
-import { readKimNwpGrid, readKimNwpIndex, readKimNwpLatest } from '../processors/kim-nwp-store.js'
-import { readKtgLatest, readKtgIndex, readKtgCoords, readKtgGridSafe } from '../processors/ktg-store.js'
+import { readKimNwpGrid, readKimNwpIndex, readKimNwpLatest, readKimGktgLatest } from '../processors/kim-nwp-store.js'
 import { buildNwpTimeSegments, normalizeNwpTimeSelection } from '../../../shared/nwp-time-selection.js'
 
 const KIM_ICING_REQUIRED_VARIABLES = ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']
@@ -163,7 +163,7 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRev
   let latest = readKimNwpLatest(root)
   const kimAvailable = Boolean(latest?.latestRun)
   if (!latest?.latestRun) {
-    const fallback = allowPartialModels ? readKtgLatest(root) : null
+    const fallback = allowPartialModels ? readKimGktgLatest(root) : null
     if (!fallback?.tmfc) return { available: false, reason: 'kim run unavailable' }
     // A missing KIM file must not prevent independent KTG sampling for organizations.
     latest = { latestRun: fallback.tmfc }
@@ -238,43 +238,7 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRev
     loadLevel,
   })
 
-  // KTG run 시각은 KIM과 다를 수 있으므로 같은 hf가 아니라 KIM의 실제 유효시각과 가장 가까운 자료를 고른다.
-  const ktgLatest = readKtgLatest(root)
-  const ktgIndex = ktgLatest ? readKtgIndex(root) : null
-  const ktgHours = ktgIndex?.hours ?? (ktgLatest ? [{ hf: ktgLatest.hf, validTime: ktgLatest.validTime }] : [])
-  const kimValidMs = Date.parse(selectedKimTime?.validTime)
-  const selectedKtgTime = ktgLatest ? selectClosestForecastTime({
-    tmfc: ktgLatest.tmfc,
-    targetMs: Number.isFinite(kimValidMs) ? kimValidMs : referenceMs,
-    candidateTimes: ktgHours,
-  }) : null
-  const ktgHf = selectedKtgTime?.hf ?? ktgLatest?.hf
-  const ktgValidTime = selectedKtgTime?.validTime ?? ktgLatest?.validTime
-  if (timeRules && ktgLatest) {
-    timeRules.segments.forEach((segment) => {
-      const targetMs = Date.parse(segment.kim?.validTime)
-      segment.ktg = Number.isFinite(targetMs)
-        ? selectClosestForecastTime({ tmfc: ktgLatest.tmfc, targetMs, candidateTimes: ktgHours })
-        : null
-    })
-  }
-  const ktgBundleKey = ktgLatest && `${root}|${ktgLatest.tmfc}|${ktgHf}|${ktgLatest.updated_at ?? ktgIndex?.fetched_at ?? ''}|${cacheRevision}`
-  const ktgCoords = ktgLatest ? cachedGrid('ktg', ktgBundleKey, 'coords', () =>
-    readKtgCoords({ root, tmfc: ktgLatest.tmfc, hf: ktgHf })) : null
-  const turbulence = buildKtgCrossSection({
-    axis,
-    restrictToGrid: allowPartialModels,
-    coords: ktgCoords,
-    altLevelsFt: ktgIndex?.altLevelsFt ?? [],
-    sourceForSample: timeRules
-      ? (sample) => ruleForDistance(timeRules.segments, sample.distanceNm)?.ktg?.hf ?? null
-      : null,
-    loadAltGrid: (altFt, sourceHf) => {
-      if (timeRules) return readKtgGridSafe({ root, tmfc: ktgLatest?.tmfc, hf: sourceHf, altFt })
-      return cachedGrid('ktg', ktgBundleKey, altFt, () => readKtgGridSafe({ root, tmfc: ktgLatest?.tmfc, hf: ktgHf, altFt }))
-    },
-  })
-  if (ktgLatest) turbulence.run = { tmfc: ktgLatest.tmfc, hf: ktgHf, validTime: ktgValidTime }
+  const turbulence = loadGktgCrossSection({ root, axis, validTime: selectedKimTime?.validTime, timeRules })
 
   // 사용자가 단면도에서 다른 예보시간(hf)을 골라볼 수 있도록, 바람 자료가 실제로 있는 시각 목록을 함께 내려준다.
   return {

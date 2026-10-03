@@ -79,8 +79,10 @@ import { CLOUD_POTENTIAL_COLOR_RAMP } from '../weather-overlays/lib/cloudPotenti
 import { destroyCloudPotentialOverlay, syncCloudPotentialOverlay } from '../weather-overlays/lib/cloudPotentialOverlaySync.js'
 import { ICING_COLOR_RAMP } from '../weather-overlays/lib/icingPotentialField.js'
 import { destroyIcingPotentialOverlay, syncIcingPotentialOverlay } from '../weather-overlays/lib/icingPotentialOverlaySync.js'
+import { GKTG_BANDS } from '../../../../shared/gktg.js'
 import { KTG_COLOR_RAMP } from '../weather-overlays/lib/ktgTurbulenceField.js'
-import { destroyKtgTurbulenceOverlay, syncKtgTurbulenceOverlay } from '../weather-overlays/lib/ktgTurbulenceOverlaySync.js'
+const GKTG_COLOR_RAMP = GKTG_BANDS.slice(1)
+import { destroyGktgOverlay as destroyKtgTurbulenceOverlay, syncGktgOverlay as syncKtgTurbulenceOverlay } from '../weather-overlays/lib/gktgOverlaySync.js'
 import { createInitialMetVisibility, getNextMetVisibility } from '../weather-overlays/lib/metLayerVisibility.js'
 import {
   LIGHTNING_BLINK_INTERVAL_MS,
@@ -2098,7 +2100,8 @@ const MapView = forwardRef(function MapView({
           icingLegendVisible={!!(enableWindOverlay && metVisibility.icing && icingField)}
           icingLegendEntries={ICING_COLOR_RAMP}
           turbulenceLegendVisible={!!(enableWindOverlay && metVisibility.turbulence && ktgGrid)}
-          turbulenceLegendEntries={KTG_COLOR_RAMP}
+          turbulenceProduct={ktgGrid?.product === 'GKTG' ? 'GKTG' : 'KTG'}
+          turbulenceLegendEntries={ktgGrid?.product === 'GKTG' ? GKTG_COLOR_RAMP : KTG_COLOR_RAMP}
           ciLegendVisible={!!metVisibility.ci}
           ctpsLegendVisible={!!metVisibility.ctps}
           echoTopLegendVisible={!!metVisibility.echoTop}
@@ -2179,7 +2182,7 @@ const MapView = forwardRef(function MapView({
 
       <VerticalLevelRailStack>
         <RadarWindVerticalRail
-          kimActive={enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing)}
+          kimActive={enableWindOverlay && (metVisibility.wind || metVisibility.temp || metVisibility.cloud || metVisibility.icing || metVisibility.turbulence)}
           levels={sliderLevels}
           times={sliderTimes}
           selection={nwpSelection}
@@ -2189,16 +2192,11 @@ const MapView = forwardRef(function MapView({
           radarWindHeightM={radarWindOverlay.heightM}
           onRadarWindHeightChange={radarWindOverlay.setHeightM}
         />
-        {enableWindOverlay && metVisibility.turbulence && altLevelsFt.length > 1 && (
-          // 트랙 위쪽(index 0)이 위 화살표가 가는 방향 — 고도가 높은 쪽이 맨 위로 오게 내림차순.
+        {(dataMode === 'pinned' || routeBriefing.state.briefingContext?.kind === 'organization') && enableWindOverlay && metVisibility.turbulence && ktgGrid?.product !== 'GKTG' && altLevelsFt.length > 1 && (
           <div className="vertical-level-rail-item">
-            <span className="vertical-level-rail-label">난류</span>
-            <LevelSliderPanel
-              items={[...altLevelsFt].sort((a, b) => b - a).map((ft) => ({ id: ft, primary: `${ft.toLocaleString()} ft` }))}
-              activeValue={altLevelsFt.includes(selectedAltFt) ? selectedAltFt : altLevelsFt[0]}
-              onSelect={setSelectedAltFt}
-              ariaLabel="난류 고도"
-            />
+            <span className="vertical-level-rail-label">난류(KTG 보관)</span>
+            <LevelSliderPanel items={[...altLevelsFt].sort((a, b) => b - a).map(ft => ({ id: ft, primary: `${ft.toLocaleString()} ft` }))}
+              activeValue={selectedAltFt} onSelect={setSelectedAltFt} ariaLabel="보관 KTG 고도" />
           </div>
         )}
         {metVisibility.terrainHazard && (

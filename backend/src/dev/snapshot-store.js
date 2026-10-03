@@ -26,7 +26,6 @@ export const DEMO_REQUIRED_TYPES = Object.freeze([
   'environment',
   'ground_forecast',
   'kim_nwp',
-  'ktg',
   'lightning',
   'metar',
   'metar_overseas',
@@ -407,6 +406,19 @@ export function inspectSnapshot(basePath, name) {
       blockers.push(`${type}:invalid_latest_json`)
     }
   }
+
+  const gktgPointer = path.join(snapshotRoot, 'kim_nwp', 'derived', 'gktg', 'latest.json')
+  if (fs.existsSync(gktgPointer)) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(gktgPointer, 'utf8'))
+      if (!manifest.complete || !manifest.entries?.length) blockers.push('kim_gktg:incomplete_manifest')
+      for (const entry of manifest.entries || []) {
+        const field = path.join(snapshotRoot, 'kim_nwp', 'runs', manifest.runId, 'normalized', `hf${String(entry.hf).padStart(3, '0')}`, entry.levelId, 'gktg', `${entry.revision}.json`)
+        if (!fs.existsSync(field)) blockers.push(`kim_gktg:missing_field:${entry.hf}:${entry.levelId}`)
+      }
+      summaries.kim_gktg = { latestRun: manifest.tmfc, revision: manifest.revision, fields: manifest.entries?.length || 0 }
+    } catch { blockers.push('kim_gktg:invalid_manifest') }
+  } else if (types.includes('kim_nwp')) warnings.push('kim_gktg:legacy_snapshot_without_gktg')
 
   return {
     ready: blockers.length === 0,

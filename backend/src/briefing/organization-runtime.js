@@ -2,8 +2,7 @@ import { describeWeatherFrame } from './pinned-map-resources.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
-import { readKimNwpIndex, readKimNwpLatest, resolveKimNwpRunDir } from '../processors/kim-nwp-store.js'
-import { readKtgIndex, readKtgLatest, resolveKtgRunDir } from '../processors/ktg-store.js'
+import { readKimNwpIndex, readKimNwpLatest, resolveKimNwpRunDir, readKimGktgIndex, readKimGktgLatest } from '../processors/kim-nwp-store.js'
 import { loadRouteCrossSection } from './enroute-cross-section.js'
 
 const TYPES = ['metar', 'taf', 'warning', 'sigmet', 'airmet', 'lightning', 'amos', 'takeoff_fcst', 'typhoon', 'metar_overseas', 'taf_overseas', 'sigmet_overseas']
@@ -18,16 +17,16 @@ export function organizationModelStorageRevision(dataRoot, sourceState) {
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       const filename = path.join(directory, entry.name)
       if (entry.isDirectory()) visit(filename)
-      else if (['grid.json', 'coords.json'].includes(entry.name)) {
+      else if (['grid.json', 'coords.json'].includes(entry.name) || /gktg\/[a-f0-9]+\.json$/.test(filename)) {
         const stat = safeRead(() => fs.statSync(filename, { bigint: true }))
         files.push([filename, ...(stat ? [stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs].map(String) : ['missing'])])
       }
     }
   }
   const kim = sourceState?.kim?.latest ?? safeRead(() => readKimNwpLatest(dataRoot))
-  const ktg = sourceState?.ktg?.latest ?? safeRead(() => readKtgLatest(dataRoot))
+  const ktg = sourceState?.ktg?.latest ?? safeRead(() => readKimGktgLatest(dataRoot))
   if (kim?.latestRun) visit(path.join(resolveKimNwpRunDir({ root: dataRoot, model: kim.model || 'KIMG/NE57', tmfc: kim.latestRun }), 'normalized'))
-  if (ktg?.tmfc) visit(resolveKtgRunDir({ root: dataRoot, tmfc: ktg.tmfc }))
+  if (ktg?.tmfc) visit(path.join(resolveKimNwpRunDir({ root: dataRoot, model: 'KIMG/NE57', tmfc: ktg.tmfc }), 'normalized'))
   return digest(files)
 }
 
@@ -37,7 +36,7 @@ export function createOrganizationWeatherDependencies({ dataRoot, readWeather, g
     const weather = Object.fromEntries(TYPES.map((type) => [type, readWeather(type)]))
     const sourceState = {
       kim: { index: safeRead(() => readKimNwpIndex(dataRoot)), latest: safeRead(() => readKimNwpLatest(dataRoot)) },
-      ktg: { index: safeRead(() => readKtgIndex(dataRoot)), latest: safeRead(() => readKtgLatest(dataRoot)) },
+      ktg: { index: safeRead(() => { const index = readKimGktgIndex(dataRoot); return index && { ...index, hours: index.times } }), latest: safeRead(() => readKimGktgLatest(dataRoot)) },
     }
     const frameMetadata = Object.fromEntries(['radar/echo_meta.json', 'satellite/sat_meta.json'].map((name) => [name,
       safeRead(() => JSON.parse(fs.readFileSync(path.join(dataRoot, name), 'utf8'))),

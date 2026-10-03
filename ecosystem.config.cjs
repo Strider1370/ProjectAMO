@@ -14,6 +14,8 @@ module.exports = {
         BACKEND_HOST: '127.0.0.1',
         BACKEND_PORT: 3001,
         DATA_PATH: '/opt/projectamo/shared/data',
+        KIM_GKTG_PYTHON: '/opt/projectamo/shared/venvs/kim-gktg/bin/python',
+        NUMBA_CACHE_DIR: '/opt/projectamo/shared/data/.numba-cache',
       },
     },
   ],

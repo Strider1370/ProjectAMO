@@ -44,14 +44,21 @@ ProjectAMO/
       forecaster/             -> forecaster tools and routes
       dev/                    -> test-instance development scenarios and instrumentation
       terrain/                 -> terrain tile cache and DEM sampling
+      turbulence/              -> offline experiment result helpers; not the live turbulence store
       parsers/                 -> upstream raw response parsers
       processors/              -> normalized data transformers
-  scripts/                     -> local preprocessing helpers such as terrain tile generation
+    python/kim_turbulence/     -> operational selected24 → CAT/MWT → GKTG calculation, coefficients, pinned NumPy/Numba dependencies
+  scripts/                     -> local preprocessing helpers such as terrain tile generation and offline Fortran parity verification
   shared/                      -> backend/frontend common constants, contracts, and environment-independent route calculations
   docs/                        -> operations, deployment, and route briefing architecture notes
 ```
 
 ## File Roles
+
+- `backend/python/kim_turbulence/` → 실제 TURB 선택 24종 → CAT/MWT → GKTG의 단일 Python 계산 구현. `calculate.py`가 한 예보시각의 21층을 계산하며 NumPy/Numba만 사용한다. `scripts/turbulence/`의 계산 모듈 링크도 이 구현을 검사한다. `verify_python_port.py`·`fortran_runtime.py`는 원본 Fortran을 따로 실행하는 오프라인 대조 도구다. 실험 CLI는 과학 검증용이며 실시간 지도/API/수집에 연결하지 않는다.
+- `backend/src/processors/kim-gktg-processor.js` → 기존 KIM 입력 재사용, 레이더·위성 키의 누락 입력 수집, Python 자식 실행, 입력 변경/취소/불완전 회차 처리. F000–F012 전체가 완전할 때 공통 `kim-nwp-store.js`의 `kim_nwp/derived/gktg/latest.json`을 게시한다. `scripts/collect-kim-gktg.mjs`도 같은 processor를 호출한다. 환경·키 배분·보존은 [GKTG 운영 안내](docs/operations/kim-gktg.md)에 있다.
+- `shared/gktg.js` → 지도·연직단면·브리핑·고도 비교가 공유하는 0.15/0.22/0.34 강도 기준과 원본 색상.
+- `frontend/src/features/weather-overlays/lib/useKimGktg.js`·`gktgOverlaySync.js` → 기존 난류 버튼의 KIM 공통 기압층/시각/revision 선택과 지도 렌더링·스타일 복구. 기관의 과거 KTG 고정 자료는 제품 식별자에 따라 기존 읽기/색상 계약을 보존한다.
 
 ### Frontend
 
@@ -225,7 +232,7 @@ ProjectAMO/
 - `backend/src/briefing/geo-time-match.js` -> point-in-polygon, route∩polygon (horizontal), route∩polygon distance interval (`routeIntervalInGeometry`), and time-window overlap helpers for hazard matching.
 - `backend/src/briefing/planned-altitude.js` -> planned climb/cruise/descent altitude-by-distance model and advisory FL band -> ft conversion.
 - `backend/src/briefing/hazard-matcher.js` -> classifies a hazard as encounter `on`/`nearby` from planned altitude vs FL band (3D vertical match).
-- `backend/src/briefing/enroute-model.js` -> samples KIM/KTG cross-section at the planned altitude and emits moderate+ icing/turbulence intervals (the ④ enroute model summary).
+- `backend/src/briefing/enroute-model.js` -> samples KIM/GKTG cross-sections at the planned altitude and emits moderate+ icing/turbulence intervals (the ④ enroute model summary). `gktg-cross-section.js` reads exact GKTG hours and same-input geometric heights from the common KIM store; missing neighbors and altitudes outside native support are not extrapolated. Archived KTG remains identified separately.
 - `backend/src/briefing/route-weather-legs.js` -> aggregates selected-altitude weather, hazards, route NOTAM state, and original AIP constraints for each common en-route segment; returns facts and data state only.
 - `backend/src/briefing/enroute-cross-section.js` -> shared KIM pressure-level + KTG low-altitude cross-section loader (`loadRouteCrossSection`); used by both `POST /api/briefing/cross-section` and the route-briefing enroute model.
 - `backend/src/briefing/airport-summary.js` -> single-airport METAR -> flight category + threshold-flagged display fields + 원문 METAR 재구성(IWXXM라 원본 없음 → display 토큰으로 TAC 재조립, CAVOK 처리).

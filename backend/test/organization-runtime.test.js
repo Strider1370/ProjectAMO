@@ -1,3 +1,4 @@
+import { seedGktg } from './gktg-fixture.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -30,26 +31,21 @@ test('same-run grid replacement invalidates organization cross-section cache and
   } finally { fs.rmSync(root, { recursive: true, force: true }) }
 })
 
-test('actual KTG-only files survive the runtime loader and organization bundle boundary', async () => {
+test('GKTG-only files survive runtime, institution pinning and reject coordinates outside coverage', async () => {
   fs.mkdirSync('artifacts', { recursive: true })
   const root = fs.mkdtempSync(path.resolve('artifacts/organization-ktg-only-'))
   const tmfc = '2026091000'
   try {
-    for (const hf of [9, 12]) {
-      writeKtgCoords({ root, tmfc, hf, coords: { ny: 2, nx: 2, lat: [35, 35, 36, 36], lon: [126, 127, 126, 127] } })
-      for (const altFt of [3000, 6000]) writeKtgGrid({ root, grid: { tmfc, hf, altFt, validTime: `2026-09-10T${String(hf).padStart(2, '0')}:00:00Z`, ktg: [.2, .2, .2, .2] } })
-    }
-    writeKtgIndex(root, { tmfc, hours: [9, 12].map(hf => ({ hf, validTime: `2026-09-10T${String(hf).padStart(2, '0')}:00:00Z` })), altLevelsFt: [3000, 6000] })
-    writeKtgLatest(root, { tmfc, hf: 9, validTime: '2026-09-10T09:00:00Z' })
+    seedGktg(root, { tmfc, hours: [9, 12], value: .2, grid: { nx: 2, ny: 2, lonMin: 126, lonMax: 127, latMin: 35, latMax: 36 } })
     const deps = createOrganizationWeatherDependencies({ dataRoot: root, readWeather: () => null, getDataContext: () => ({ mode: 'live', revision: 'test' }), getNow: () => new Date('2026-09-10T09:00:00Z'), terrainSampler: {} })
     const flight = { id: 1, orgId: 1, version: 1, name: 'KTG-only', etd: '2026-09-10T09:00:00Z', eta: '2026-09-10T09:30:00Z', snapshot: { routeGeometry: { type: 'LineString', coordinates: [[126.1, 35.1], [126.5, 35.5]] }, cruiseAltitudeFt: 3500 }, profileRequest: { plannedCruiseAltitudeFt: 3500 }, annotations: [] }
     const bundle = await buildOrganizationBriefingBundle(flight, {}, { ...deps, buildVerticalProfile: () => ({}), composeBriefing: () => ({}) })
     assert.ok(['available', 'partial'].includes(bundle.componentStatus.models.ktg.status), JSON.stringify(bundle.componentStatus))
     assert.ok(['unavailable', 'out_of_range'].includes(bundle.componentStatus.models.kim.status))
     assert.ok(bundle.crossSection.turbulence.levels.length > 0)
-    assert.equal(bundle.mapDataSelection.models.ktg.tmfc, tmfc)
+    assert.equal(bundle.mapDataSelection.models.gktg.tmfc, tmfc)
     const outside = await buildOrganizationBriefingBundle({ ...flight, snapshot: { ...flight.snapshot, routeGeometry: { type: 'LineString', coordinates: [[0, 0], [.1, .1]] } } }, {}, { ...deps, buildVerticalProfile: () => ({}), composeBriefing: () => ({}) })
     assert.equal(outside.componentStatus.models.ktg.status, 'unavailable')
-    assert.equal(outside.crossSection?.turbulence?.levels?.length ?? 0, 0)
+    assert.equal(outside.crossSection?.turbulence?.available ?? false, false)
   } finally { fs.rmSync(root, { recursive: true, force: true }) }
 })

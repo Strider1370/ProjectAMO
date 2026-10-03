@@ -1,3 +1,4 @@
+import { gktgBand } from '../../../../shared/gktg.js'
 import { useEffect, useId, useRef, useState } from 'react'
 import { msToKt, windBarbFeathers, windDirectionFromUV, isothermSegments, pressureToFallbackFt } from './lib/crossSectionGrid.js'
 import { advisorySymbolUrl } from '../weather-overlays/lib/advisoryLayers.js'
@@ -400,18 +401,23 @@ export default function VerticalProfileChart({
     const turb = crossSection?.turbulence
     if (!turb?.available || !layers.turbulence || !turb.levels?.length) return []
     const cells = []
-    for (const lvl of turb.levels) {
-      const yTop = yFor(lvl.altFt + 500)
-      const yBot = yFor(Math.max(0, lvl.altFt - 500))
+    for (const [li, lvl] of turb.levels.entries()) {
       for (let vi = 0; vi < lvl.values.length - 1; vi++) {
-        const color = ktgColor(lvl.values[vi].ktg)
+        const upperValue = turb.levels[li + 1]?.values?.[vi]?.gktg
+        const nativeBand = Number.isFinite(lvl.values[vi].gktg) && Number.isFinite(upperValue) ? gktgBand(Math.max(lvl.values[vi].gktg, upperValue)) : null
+        const color = turb.product === 'GKTG' ? (nativeBand?.min ? nativeBand.color : null) : ktgColor(lvl.values[vi].ktg)
+        const sampleAlt = lvl.values[vi].altFt ?? lvl.altFt
+        const nextAlt = turb.levels[li + 1]?.values?.[vi]?.altFt
+        if (turb.product === 'GKTG' && (!Number.isFinite(sampleAlt) || !Number.isFinite(nextAlt))) continue
+        const ySampleTop = yFor(turb.product === 'GKTG' ? Math.max(sampleAlt, nextAlt) : sampleAlt + 500)
+        const ySampleBot = yFor(turb.product === 'GKTG' ? Math.min(sampleAlt, nextAlt) : Math.max(0, sampleAlt - 500))
         if (!color) continue
         cells.push({
           key: `turb-${lvl.altFt}-${vi}`,
           x: xFor(lvl.values[vi].distanceNm),
-          y: yTop,
+          y: ySampleTop,
           w: xFor(lvl.values[vi + 1].distanceNm) - xFor(lvl.values[vi].distanceNm),
-          h: yBot - yTop,
+          h: ySampleBot - ySampleTop,
           fill: color,
         })
       }

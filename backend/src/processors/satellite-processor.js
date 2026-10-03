@@ -83,9 +83,12 @@ async function fetchNC(activeConfig, url, deps) {
 
 async function renderFrame({ activeConfig, fsImpl, satDir, requestTm, displayTm, deps }) {
   if (deps.renderFrame) return deps.renderFrame({ satDir, requestTm, displayTm })
+  // 기상청 API는 안개 요청을 30초 붙잡았다 504로 끊기도 한다(2026-10-03 운영 실험). 안개가 실패해도
+  // 적외 장은 살린다 — 안개가 아직 없을 때(404)와 같이 적외만으로 완결된 장으로 저장한다.
+  // 적외 실패는 그대로 작업 실패다.
   const [irBuffer, fogBuffer] = await Promise.all([
     fetchNC(activeConfig, buildIrUrl(activeConfig, requestTm), deps),
-    fetchNC(activeConfig, buildFogUrl(activeConfig, requestTm), deps),
+    fetchNC(activeConfig, buildFogUrl(activeConfig, requestTm), deps).catch(() => null),
   ])
   if (!irBuffer) return null
   const irParsed = await (deps.parseSatelliteNC || parseSatelliteNC)(irBuffer)

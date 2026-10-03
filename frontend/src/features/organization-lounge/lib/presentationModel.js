@@ -69,6 +69,7 @@ export function mapSelectionModels(mapDataSelection) {
   const models = mapDataSelection.models || {
     kim: mapDataSelection.kim,
     ktg: mapDataSelection.ktg,
+    gktg: mapDataSelection.gktg,
   }
   return Object.entries(models).filter(([, model]) => model)
 }

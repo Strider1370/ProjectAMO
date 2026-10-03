@@ -11,6 +11,7 @@ export function modelTimeCoverage(request, model) {
     : requested.some((time) => time < start || time > end) ? 'outside_available_frames' : 'within_available_frames',
     availableStart: start == null ? null : new Date(start).toISOString(),
     availableEnd: end == null ? null : new Date(end).toISOString(),
-    selectedKimRun: model?.crossSection?.run ?? null, selectedKtgRun: model?.turbulence?.run ?? null,
-    note: 'KIM frame range only; does not prove spatial, altitude or KTG time coverage.' }
+    selectedKimRun: model?.crossSection?.run ?? null, selectedKtgRun: model?.turbulence?.product === 'GKTG' ? null : model?.turbulence?.run ?? null,
+    selectedGktgRun: model?.turbulence?.product === 'GKTG' ? model.turbulence.run ?? null : null,
+    note: 'KIM frame range only; does not prove spatial, altitude or turbulence time coverage.' }
 }

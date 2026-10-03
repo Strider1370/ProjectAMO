@@ -13,8 +13,8 @@ export function pinnedModel(mapDataSelection, key) {
   return modelFrom(mapDataSelection, key)
 }
 
-export function pinnedKimLevels(mapDataSelection) {
-  const model = modelFrom(mapDataSelection, 'kim')
+export function pinnedKimLevels(mapDataSelection, variable = 'wind') {
+  const model = modelFrom(mapDataSelection, variable === 'gktg' ? 'gktg' : 'kim')
   return (model?.levelIds || model?.levels?.map((item) => item.id || item.level || item) || []).map(String)
 }
 
@@ -38,7 +38,7 @@ function resourceEntries(resources, variable) {
 }
 
 export function pinnedKimSelection(mapDataSelection, { level = null, variable = 'wind' } = {}) {
-  const model = modelFrom(mapDataSelection, 'kim')
+  const model = modelFrom(mapDataSelection, variable === 'gktg' ? 'gktg' : 'kim')
   if (!model || !USABLE.has(model.status || 'available')) return null
   const levels = model.levelIds || model.levels?.map((item) => item.id || item.level || item) || []
   const selectedLevel = levels.includes(level) ? level : levels[0] || model.level || null
@@ -87,7 +87,7 @@ export function pinnedModelStatus(mapDataSelection, key) {
   const model = modelFrom(mapDataSelection, key)
   if (!model) return { status: 'unsupported', reason: 'selection_missing' }
   if (!USABLE.has(model.status || 'available')) return { status: model.status, reason: model.reason || null }
-  const selected = key === 'kim' ? pinnedKimSelection(mapDataSelection) : pinnedKtgSelection(mapDataSelection)
+  const selected = key === 'kim' || key === 'gktg' ? pinnedKimSelection(mapDataSelection, { variable: key === 'gktg' ? 'gktg' : 'wind' }) : pinnedKtgSelection(mapDataSelection)
   return selected ? { status: model.status || 'available', reason: null } : {
     status: 'unsupported',
     reason: 'immutable_resource_revision_missing',

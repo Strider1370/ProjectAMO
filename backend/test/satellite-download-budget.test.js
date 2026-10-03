@@ -319,3 +319,27 @@ test('a failed FOG retry does not attach a follow-up descriptor to its thrown er
     return /FOG retry failed/.test(error.message)
   })
 })
+
+// 기상청 API는 안개 요청을 30초 붙잡았다 504로 끊기도 한다(2026-10-03 운영 실험). 그때 멀쩡한 적외 장까지
+// 버리면 안 된다. 안개가 없을 때(404)와 똑같이 적외만으로 완결된 장으로 저장하고, 다시 받으러 오지 않는다.
+test('a FOG request that stalls still saves the IR frame as a completed IR-only frame', async () => {
+  const dataRoot = root()
+  const hdf = Buffer.alloc(1200); hdf.set([0x89, 0x48, 0x44, 0x46])
+  const work = await processSatellite({
+    now: new Date('2026-10-03T05:30:00Z'),
+    deps: {
+      config: normalConfig(dataRoot), collectConvective: false,
+      fetchWithTimeout: async (url) => {
+        if (url.includes('/FOG/')) throw new Error('api_operation_timeout')
+        return { ok: true, arrayBuffer: async () => hdf }
+      },
+      parseSatelliteNC: async () => ({}),
+      renderFogImage: async (_ir, fog) => ({ pngBuffer: Buffer.from('png'), bounds: [[0, 0], [1, 1]], width: 1, height: 1, fogPixelCount: fog?.fogData ? 5 : 0 }),
+      sharp: () => ({ webp: () => ({ toBuffer: async () => Buffer.from('webp') }) }),
+    },
+  })
+  assert.equal(work.result.saved, true, '안개가 멈춰도 적외 장은 저장한다')
+  const meta = JSON.parse(fs.readFileSync(path.join(dataRoot, 'satellite', 'sat_meta.json'), 'utf8'))
+  assert.equal(meta.latest.fogPixelCount, null, '안개 없이 그린 장')
+  assert.deepEqual(work.followUps, [], '같은 시각 안개를 다시 받으러 오지 않는다')
+})

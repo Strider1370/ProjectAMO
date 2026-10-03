@@ -1,3 +1,4 @@
+import { gktgBand } from '../../../../../shared/gktg.js'
 import { createCloudPotentialSampler, pickCloudPotentialColor } from './cloudPotentialField.js'
 import { createIcingPotentialSampler, pickIcingColor } from './icingPotentialField.js'
 import { createTemperatureFieldSampler, pickTemperatureColor } from './temperatureField.js'
@@ -110,7 +111,7 @@ function buildIcingRow(field, sampler, metadata) {
 
 function createKtgSampler(field) {
   const grid = field?.grid
-  if (!field || !grid || !Array.isArray(field.ktg)) return { sample: () => null }
+  if (!field || !grid || !Array.isArray(field.gktg || field.ktg)) return { sample: () => null }
   const dx = (grid.lonMax - grid.lonMin) / Math.max(1, grid.nx - 1)
   const dy = (grid.latMax - grid.latMin) / Math.max(1, grid.ny - 1)
   return {
@@ -119,7 +120,7 @@ function createKtgSampler(field) {
       const x = Math.round((lon - grid.lonMin) / dx)
       const y = Math.round((lat - grid.latMin) / dy)
       if (x < 0 || y < 0 || x >= grid.nx || y >= grid.ny) return null
-      return field.ktg[y * grid.nx + x]
+      return (field.gktg || field.ktg)[y * grid.nx + x]
     },
   }
 }
@@ -139,10 +140,11 @@ function buildTurbulenceRow(field, sampler, metadata) {
   return {
     key: 'turbulence',
     label: '난류',
-    value: `${ktgLabel(value)} · ${fixed(value, 3)}`,
-    detail: 'KTG 강도',
-    altitude: Number.isFinite(Number(field.altFt)) ? `${field.altFt} ft` : '—',
-    color: ktgColor(value),
+    value: `${field.product === 'GKTG' ? gktgBand(value)?.label : ktgLabel(value)} · ${fixed(value, 3)}`,
+    detail: field.product === 'GKTG' ? 'GKTG 강도' : 'KTG 강도',
+    altitude: field.product === 'GKTG' ? formatAltitude(field) : Number.isFinite(Number(field.altFt)) ? `${field.altFt} ft` : '—',
+    geopotentialHeight: field.product === 'GKTG' ? geopotentialHeightLabel(field, metadata.lon, metadata.lat) : null,
+    color: field.product === 'GKTG' ? gktgBand(value)?.color : ktgColor(value),
     ...metadata.time,
   }
 }

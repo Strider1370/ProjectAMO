@@ -54,6 +54,10 @@ npm --prefix backend ci
 echo "[deploy-full] installing frontend dependencies..."
 npm --prefix frontend ci
 
+echo "[deploy-full] installing GKTG Python dependencies..."
+bash scripts/setup-gktg-python.sh /opt/projectamo/shared/venvs/kim-gktg
+mkdir -p /opt/projectamo/shared/data/.numba-cache
+
 echo "[deploy-full] building frontend..."
 bash deploy/build-frontend.sh
 

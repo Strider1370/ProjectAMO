@@ -1,3 +1,6 @@
+import { readKimGktgManifest, readKimGktgField, resolveKimNwpRunDir } from '../processors/kim-nwp-store.js'
+import fs from 'node:fs'
+import path from 'node:path'
 import { organizationMapWeather } from './map-weather.js'
 import { composeBriefing } from '../briefing/briefing-composer.js'
 import { loadRouteCrossSection } from '../briefing/enroute-cross-section.js'
@@ -207,7 +210,7 @@ export function buildOrganizationMapDataSelection(snapshot, validated) {
     mode: 'pinned',
     contextRevision: snapshot?.contextRevision ?? null,
     kim: kimRun ? { tmfc: kimRun.tmfc, hf: kimRun.hf, validTime: kimRun.validTime, status: validated.modelStatus?.kim?.status ?? validated.status } : null,
-    ktg: ktgRun ? { tmfc: ktgRun.tmfc, hf: ktgRun.hf, validTime: ktgRun.validTime, status: validated.modelStatus?.ktg?.status ?? validated.status } : null,
+    ktg: ktgRun ? { tmfc: ktgRun.tmfc, hf: ktgRun.hf, validTime: ktgRun.validTime, product: ktgRun.product, revision: ktgRun.revision, status: validated.modelStatus?.ktg?.status ?? validated.status } : null,
     frames: map.frames ?? null,
     radar: map.frames?.radar ?? map.radar ?? null,
     satellite: map.frames?.satellite ?? map.satellite ?? null,
@@ -237,6 +240,27 @@ function withExactModelResources(selection, snapshot, validated) {
       wind: forVariable('wind'), temp: forVariable('temp'), cloud: forVariable('cloud'),
       icing: forVariable('icing', (levelId) => icingLevels.has(levelId)),
     } }
+  }
+  if (selection.ktg?.product === 'GKTG') {
+    const model = selection.ktg
+    const manifest = readKimGktgManifest(root, model.tmfc, model.revision)
+    const resources = (manifest?.entries || []).filter(entry => entry.hf === model.hf).flatMap(entry => {
+      const level = { id: entry.levelId }
+      const revision = entry.revision
+      if (!revision) return []
+      try {
+        readKimGktgField({ root, tmfc: model.tmfc, hf: model.hf, levelId: level.id, revision })
+        return [{ levelId: level.id, revision, resourceId: `/api/kim/gktg/field?tmfc=${model.tmfc}&hf=${model.hf}&level=${level.id}&revision=${revision}` }]
+      } catch { return [] }
+    })
+    selection.gktg = { ...model, levelIds: resources.map(r => r.levelId), resources: { gktg: resources } }
+    if (selection.kim) {
+      selection.kim.resources.gktg = resources
+      fs.writeFileSync(path.join(resolveKimNwpRunDir({ root, model: 'KIMG/NE57', tmfc: selection.kim.tmfc }), 'pins.json'), JSON.stringify({ reason: 'organization_briefing' }))
+    }
+    fs.writeFileSync(path.join(resolveKimNwpRunDir({ root, model: 'KIMG/NE57', tmfc: model.tmfc }), 'pins.json'), JSON.stringify({ reason: 'organization_briefing', revision: model.revision }))
+    selection.models = { kim: selection.kim, gktg: selection.gktg }
+    return selection
   }
   const ktg = selection.ktg
   if (ktg && ['available', 'partial', 'out_of_range'].includes(ktg.status)) {

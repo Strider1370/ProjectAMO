@@ -8,6 +8,8 @@
 - Data storage: VM local disk at `/opt/projectamo/shared/data`
 - Backend bind: `127.0.0.1`
 
+KIM 난류는 공통 `kim_nwp` 저장소의 GKTG를 사용한다. Python 환경·발표회차별 키 배분·실패 처리·보존 정책은 [GKTG 운영 안내](kim-gktg.md)를 따른다. 최초 Python 의존성 설치는 full deploy가 필요하다.
+
 Terrain runtime path:
 
 - PM2 sets `DATA_PATH=/opt/projectamo/shared/data`.
@@ -37,7 +39,7 @@ Current behavior:
 
 - 수집기는 기존 `DATA_PATH` 실황 루트에 계속 게시한다.
 - 준비 점검을 통과한 스냅샷으로 만든 뷰를 `DATA_PATH/.active-data`에 원자적으로 연결하고, 서버·브라우저의 유효 현재시각도 그 뷰의 기준시각에서 파생한다.
-- 준비 점검은 핵심 자료 21종, 레이더 36장, 위성 18장, 참조 파일, KIM/KTG 인덱스와 ADS-B 시각 오차 30분 이하를 요구한다.
+- 준비 점검은 핵심 자료 목록, 레이더 36장, 위성 18장, 참조 파일, KIM 인덱스와 GKTG 불변 필드, ADS-B 시각 오차 30분 이하를 검사한다. 과거 GKTG가 없는 스냅샷은 경고로 구분하며 보관된 KTG를 새 GKTG로 바꾸지 않는다.
 - 과거 스냅샷이 소유하지 않는 검증된 AIP·이후 추가 자료(현재는 태풍)·정적 지형은 실황 루트로 명시적으로 통과 연결한다.
 - 시작은 외부 API, 수집 drain, `_live_backup`, 스냅샷 복사를 수행하지 않는다.
 

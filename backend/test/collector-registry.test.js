@@ -16,8 +16,8 @@ test('active registry resolves partial overrides and exposes watchdog contracts 
   assert.deepEqual(partial.find((collector) => collector.type === 'ground_forecast').schedule, {
     expression: '30 2,5,8,11,14,17,20,23 * * *', timezone: 'Asia/Seoul', maxIntervalMs: 3 * 3600_000, graceMs: 35 * 60_000, cronOptions: { timezone: 'Asia/Seoul', recoverMissedExecutions: true },
   })
-  assert.deepEqual(partial.find((collector) => collector.type === 'ktg').schedule, {
-    expression: '25 1,2,7,8,13,14,19,20 * * *', timezone: 'Etc/UTC', maxIntervalMs: 5 * 3600_000, graceMs: 35 * 60_000, cronOptions: { timezone: 'Etc/UTC', recoverMissedExecutions: true },
+  assert.deepEqual(partial.find((collector) => collector.type === 'kim_gktg').schedule, {
+    expression: config.schedule.kim_gktg_interval, timezone: 'Etc/UTC', maxIntervalMs: 4 * 3600_000, graceMs: 35 * 60_000, cronOptions: { timezone: 'Etc/UTC', recoverMissedExecutions: true },
   })
   assert.deepEqual(partial.find((collector) => collector.type === 'terminal_flights').schedule, {
     expression: '*/1 4-23 * * *', timezone: 'Asia/Seoul', maxIntervalMs: 60_000, graceMs: 60_000, quiet: { fromHourKst: 0, toHourKst: 4 }, cronOptions: { timezone: 'Asia/Seoul', recoverMissedExecutions: true },

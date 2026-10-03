@@ -51,4 +51,6 @@ if [[ "$credential_helper" == *"/mnt/"* ]]; then
   echo "  git config --global credential.helper store" >&2
 fi
 
+bash scripts/setup-gktg-python.sh
+
 echo "bootstrap complete."

@@ -403,6 +403,16 @@ export function buildKimNwpGrid({ model = KIM_NWP_MODEL, tmfc, hf, level, compon
   }
 }
 
+export function buildKimGktgFieldFromGrid(grid, { gktg, revision, inputRevision, algorithm, engineRevision }) {
+  if (grid?.level?.kind !== 'pressure' || !Array.isArray(gktg) || gktg.length !== grid.grid.nx * grid.grid.ny
+    || !gktg.some(Number.isFinite) || gktg.some(v => v !== null && (!Number.isFinite(v) || v < 0 || v > 1.5))) throw new Error('Invalid GKTG field')
+  if (!grid.variables?.hgt) throw new Error('GKTG requires same-input height')
+  return { type: 'kim_nwp_gktg', product: 'GKTG', model: grid.model, grid: grid.grid,
+    time: { tmfc: grid.tmfc, hf: grid.hf, validTime: grid.validTime }, level: grid.level,
+    encoding: 'float32-json-v1', scale: 1, offset: 0, units: { gktg: 'm⅔ s⁻¹' }, gktg,
+    ...geopotentialHeightPayload(grid), revision, inputRevision, algorithm, engineRevision }
+}
+
 export function buildKimIcingFieldFromGrid(grid) {
   const variables = grid?.variables || {}
   const required = ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']

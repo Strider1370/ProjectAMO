@@ -5,6 +5,7 @@ import {
   weightedTemperature,
   weightedWind,
 } from './altitude-weather-comparison.js'
+import { gktgIntensity } from '../../../shared/gktg.js'
 import { ktgIntensity } from '../processors/ktg-model.js'
 import { distanceMeters } from './route-axis.js'
 
@@ -167,9 +168,9 @@ function buildLeg({ segment, weatherAxis, selectedCruiseAltitudeFt, flightPlanPr
   const maxTurbulenceAltitude = Math.max(...(turbulence?.levels ?? []).map((level) => Number(level.altFt)).filter(Number.isFinite), -Infinity)
   const legTopAltitudeFt = Math.max(...(weatherAxis?.samples ?? []).flatMap((sample, index) => weights[index] > 0
     ? [altitudeAtProfileDistance(flightPlanProfile, sample.distanceNm, selectedCruiseAltitudeFt)] : []), -Infinity)
-  const turbulenceSummary = (Number.isFinite(legTopAltitudeFt) ? legTopAltitudeFt : selectedCruiseAltitudeFt) > maxTurbulenceAltitude
+  const turbulenceSummary = turbulence?.product !== 'GKTG' && (Number.isFinite(legTopAltitudeFt) ? legTopAltitudeFt : selectedCruiseAltitudeFt) > maxTurbulenceAltitude
     ? { status: 'unavailable', highestGrade: null, exposureNmByGrade: {} }
-    : exposureSummary(turbulence?.levels, weatherAxis, selectedCruiseAltitudeFt, 'ktg', weights, (value) => KTG_LEVELS[ktgIntensity(value)], false, flightPlanProfile)
+    : exposureSummary(turbulence?.levels, weatherAxis, selectedCruiseAltitudeFt, turbulence?.product === 'GKTG' ? 'gktg' : 'ktg', weights, (value) => KTG_LEVELS[turbulence.product === 'GKTG' ? gktgIntensity(value) : ktgIntensity(value)], false, flightPlanProfile)
   const legHazards = (hazards ?? []).flatMap((hazard) => {
     const interval = intervalFor(hazard)
     if (hazard.airportScope || hazard.altitudeExposure?.status === 'clear' || overlapNm(range, interval) <= OVERLAP_EPSILON_NM) return []

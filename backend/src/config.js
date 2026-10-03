@@ -319,6 +319,14 @@ export const kim_surface_chart = {
   max_runs: 2,
 }
 
+export const kim_gktg = {
+  enabled: process.env.KIM_GKTG_DISABLED !== '1',
+  python: process.env.KIM_GKTG_PYTHON || path.resolve(__dirname, '../../.venvs/kim-gktg/bin/python'),
+  calculation_timeout_ms: Number(process.env.KIM_GKTG_TIMEOUT_MS || 120000),
+  cache_path: process.env.NUMBA_CACHE_DIR || path.join(resolveDataPath(process.env.DATA_PATH), '.numba-cache'),
+  collect_on_startup: process.env.KIM_GKTG_COLLECT_ON_STARTUP !== '0',
+}
+
 export const ktg = {
   max_runs: Number(process.env.KTG_MAX_RUNS || 2),
   timeout_ms: Number(process.env.KTG_TIMEOUT_MS || 60000),
@@ -405,6 +413,7 @@ export const schedule = {
   // 관측 간격은 10분이지만, 늦게 올라온 프레임을 다음 10분까지 기다리지 않도록 5분마다 확인한다.
   // processedTms가 같은 관측시각의 재다운로드를 막는다.
   satellite_visible_interval: '*/5 * * * *',
+  kim_gktg_interval: '35 1,2,5,6,7,8,11,12,13,14,17,18,19,20,23 * * *',
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
   // 네 분석시각의 KIM 격자는 약 5시간 뒤부터 공개된다. +5h에 시작하고 +6h·+7h에 재시도한다.
   kim_surface_wind_interval: '12 1,5,6,7,11,12,13,17,18,19,23 * * *',
@@ -550,6 +559,7 @@ export default {
   flight_category,
   asos_ceiling,
   ktg,
+  kim_gktg,
   lightning,
   amos,
   radar_echo,

@@ -19,7 +19,7 @@ trap cleanup EXIT
 
 make_fixture() {
   local fixture_root="$1"
-  mkdir -p "$fixture_root/deploy" "$fixture_root/bin"
+  mkdir -p "$fixture_root/deploy" "$fixture_root/bin" "$fixture_root/scripts"
   cp "$repo_root/deploy/deploy-vm.sh" "$repo_root/deploy/deploy-vm-full.sh" "$repo_root/deploy/deploy-common.sh" "$fixture_root/deploy/"
 
   cat > "$fixture_root/ecosystem.config.cjs" <<'EOF'
@@ -47,6 +47,18 @@ EOF
 #!/usr/bin/env bash
 printf '%s\n' npm >> "$PROJECTAMO_DEPLOY_FIXTURE_LOG"
 exit 0
+EOF
+  cat > "$fixture_root/scripts/setup-gktg-python.sh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' gktg-python >> "$PROJECTAMO_DEPLOY_FIXTURE_LOG"
+[ "${PROJECTAMO_DEPLOY_FIXTURE_FAILURE:-}" != python ]
+EOF
+  cat > "$fixture_root/bin/mkdir" <<'EOF'
+#!/usr/bin/env bash
+if [ "$*" = '-p /opt/projectamo/shared/data/.numba-cache' ]; then
+  exit 0
+fi
+exec /usr/bin/mkdir "$@"
 EOF
   cat > "$fixture_root/bin/pm2" <<'EOF'
 #!/usr/bin/env bash
@@ -144,6 +156,8 @@ for deploy_script in deploy-vm.sh deploy-vm-full.sh; do
     run_fixture "$deploy_script" "$failure" 1
   done
 done
+
+run_fixture deploy-vm-full.sh python 1
 
 # Keep the held-lock contract fully isolated from the operational default lock.
 lock_file="$lock_scratch_dir/deploy.lock"

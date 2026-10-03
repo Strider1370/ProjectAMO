@@ -206,6 +206,7 @@ export function readDataHealth(basePath, { getCached, getStats, now = Date.now()
       key: row.key,
       statsKey: row.statsKey, // Task 7이 통계를 붙일 때 쓴다 — 저장 키와 다른 행이 셋 있다
       label: row.label,
+      derivedCalculation: row.key === 'kim_gktg' ? (() => { try { return JSON.parse(fs.readFileSync(path.join(basePath, 'kim_nwp/derived/gktg/last-attempt.json'), 'utf8')) } catch { return null } })() : null,
       source: row.source,
       character: row.character,
       status,

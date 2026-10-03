@@ -27,7 +27,8 @@ export function buildBriefingProvenance({ routeModel, aipConstraints, hazards, e
       status: enrouteModel ? 'available' : 'unavailable',
       reason: enrouteModel ? null : 'cross_section_unavailable',
       kimRun: enrouteModel?.runs?.kim ?? null,
-      ktgRun: enrouteModel?.runs?.ktg ?? null,
+      ktgRun: enrouteModel?.runs?.ktg?.product === 'GKTG' ? null : enrouteModel?.runs?.ktg ?? null,
+      gktgRun: enrouteModel?.runs?.ktg?.product === 'GKTG' ? enrouteModel.runs.ktg : null,
     },
   }
 }

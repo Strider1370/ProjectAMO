@@ -648,6 +648,7 @@ export async function process({
       tmfc: candidate.tmfc,
       kimCredential: config.api.kim_nwp_auth_key,
       aviationCredential: config.api.auth_key,
+      radarCredential: config.api.radar_satellite_auth_key,
     })
     const candidateHours = config.kim_nwp?.forecast_hours || KIM_NWP_FORECAST_HOURS
     const forecastHours = resolveCollectedForecastHours({

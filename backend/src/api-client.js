@@ -180,6 +180,7 @@ export function buildKimGridUrl({
 // operation: 기존 KIM 수집은 'kim_grid', 지상 일기도는 'kim_grid_chart'(요청 영역 sub로 구분, 레이더·위성 키).
 export async function fetchKimGrid({ signal, operation = 'kim_grid', ...params }) {
   const url = buildKimGridUrl(params)
+  if (operation === 'kim_grid' && (['ps', 'hpbl'].includes(params.name) || (params.name === 'w' && [250, 200, 150].includes(Number(params.level))))) operation = 'kim_grid_gktg'
   const response = await requestObservedApi({
     operation,
     url,

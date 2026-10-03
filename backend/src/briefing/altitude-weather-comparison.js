@@ -1,6 +1,7 @@
 import { evaluateHorizontalExposure, evaluateTimeStatus, evaluateAltitudeExposure, hazardBandFt } from './hazard-exposure.js'
 import { notamBandToFt } from './notam-briefing.js'
 import { routeIntervalInGeometry, timeWindowsOverlap } from './geo-time-match.js'
+import { gktgIntensity } from '../../../shared/gktg.js'
 import { ktgIntensity } from '../processors/ktg-model.js'
 
 const RESTRICTION_CATEGORIES = new Set(['prohibited', 'restricted', 'danger', 'firing'])
@@ -149,6 +150,15 @@ function categoricalAt(levels, altitudeFt, sampleIndex, field) {
     return { value, altitudeFt: sampleAltitude }
   }).filter((choice) => choice.value != null && Number.isFinite(choice.altitudeFt))
   if (!choices.length) return null
+  if (field === 'gktg') {
+    const ordered = levels.map(level => ({ value: level.values?.[sampleIndex]?.gktg, altitudeFt: level.values?.[sampleIndex]?.altFt })).filter(choice => Number.isFinite(choice.altitudeFt)).sort((a, b) => a.altitudeFt - b.altitudeFt)
+    if (!ordered.length || altitudeFt < ordered[0].altitudeFt || altitudeFt > ordered.at(-1).altitudeFt) return null
+    const exact = ordered.find(choice => choice.altitudeFt === altitudeFt)
+    if (exact) return exact.value ?? null
+    const upper = ordered.findIndex(choice => choice.altitudeFt > altitudeFt)
+    const lo = ordered[upper - 1]?.value, hi = ordered[upper]?.value
+    return Number.isFinite(lo) && Number.isFinite(hi) ? Math.max(lo, hi) : null
+  }
   return choices.sort((a, b) => Math.abs(a.altitudeFt - altitudeFt) - Math.abs(b.altitudeFt - altitudeFt))[0].value
 }
 
@@ -184,6 +194,8 @@ export function exposureSummary(levels, axis, altitudeFt, field, weights, transf
   for (const [index, sample] of axis.samples.entries()) {
     if (!includeZeroWeight && !(weights[index] > 0)) continue
     const plannedAltitudeFt = altitudeAtProfileDistance(flightPlanProfile, sample.distanceNm, altitudeFt)
+    const choices = levels.map(level => ({ altitude: level.values?.[index]?.altFt ?? level.altFt, value: level.values?.[index]?.[field] })).filter(choice => Number.isFinite(choice.altitude)).sort((a, b) => a.altitude - b.altitude)
+    if (field === 'ktg' && (!choices.length || plannedAltitudeFt < choices[0].altitude || plannedAltitudeFt > choices.at(-1).altitude)) continue
     const rawGrade = categoricalAt(levels, plannedAltitudeFt, index, field)
     const grade = rawGrade == null ? null : transform(rawGrade)
     if (grade == null) continue
@@ -281,7 +293,7 @@ export function buildAltitudeWeatherComparison({ candidates = [], crossSection, 
       weatherStatus,
       wind,
       icing: { summary: exposureSummary(crossSection?.levels, axis, candidate.altitudeFt, 'icing', weights, (value) => value, true, flightPlanProfile) },
-      turbulence: { summary: exposureSummary(turbulence?.levels, axis, candidate.altitudeFt, 'ktg', weights, ktgIntensity, true, flightPlanProfile) },
+      turbulence: { summary: exposureSummary(turbulence?.levels, axis, candidate.altitudeFt, turbulence?.product === 'GKTG' ? 'gktg' : 'ktg', weights, turbulence?.product === 'GKTG' ? gktgIntensity : ktgIntensity, true, flightPlanProfile) },
       hazards: matchHazards(hazards, axis, candidate.altitudeFt, etd, eta),
       notams: matchNotams(notams, axis, candidate.altitudeFt, etd, eta),
     }

@@ -68,12 +68,14 @@ import {
   filterKimNwpIndexForVariables,
 } from './src/processors/kim-nwp-model.js'
 import {
+  readKimGktgIndex,
+  readKimGktgLatest,
+  readKimGktgField,
   readKimNwpGrid,
   readKimNwpIndex,
   readKimNwpLatest,
   validateKimNwpSelection,
 } from './src/processors/kim-nwp-store.js'
-import { readKtgLatest, readKtgIndex, readKtgCoords, readKtgGridSafe } from './src/processors/ktg-store.js'
 import { loadRouteCrossSection } from './src/briefing/enroute-cross-section.js'
 import { buildNavlogNwpPatch } from './src/briefing/navlog-nwp-patch.js'
 import { buildRouteExposure } from './src/briefing/route-exposure.js'
@@ -456,6 +458,7 @@ function buildKimNwpSnapshotEntry() {
       T: { hash: tempIndex ? store.canonicalHash(tempIndex) : null },
       cloud: { hash: cloudIndex ? store.canonicalHash(cloudIndex) : null },
       icing: { hash: icingIndex ? store.canonicalHash(icingIndex) : null },
+      gktg: { hash: readKimGktgLatest(DATA_ROOT)?.revision || null },
     },
   }
 }
@@ -516,10 +519,6 @@ function buildConvectiveSnapshotEntry() {
   return meta ? { hash: store.canonicalHash(meta), tm: meta.tm || null } : null
 }
 
-function buildKtgSnapshotEntry() {
-  const ktgLatest = readKtgLatest(DATA_ROOT)
-  return ktgLatest ? { hash: store.canonicalHash(ktgLatest), tmfc: ktgLatest.tmfc || null } : null
-}
 
 // snapshot-meta의 단일 소스 테이블 — payload와 캐시키가 모두 여기서 파생된다(두 목록 표류 제거).
 // keys: 출력 키(이중 키는 둘 다) · files: mtime로 캐시 무효화할 정적 파일 · build: 소스별 차이를 숨긴 thunk.
@@ -538,7 +537,7 @@ const SNAPSHOT_SOURCES = [
   { keys: ['lightning'], files: [snapshotMetaLatest('lightning')], build: () => buildHashEntry('lightning') },
   { keys: ['typhoon'], files: [snapshotMetaLatest('typhoon')], build: () => buildHashEntry('typhoon') },
   { keys: ['adsb'], files: [snapshotMetaLatest('adsb')], build: () => buildHashEntry('adsb') },
-  { keys: ['kimNwp', 'kim_nwp'], files: [snapshotMetaFile('kim_nwp', 'index.json'), snapshotMetaFile('kim_nwp', 'latest.json')], build: buildKimNwpSnapshotEntry },
+  { keys: ['kimNwp', 'kim_nwp'], files: [snapshotMetaFile('kim_nwp', 'index.json'), snapshotMetaFile('kim_nwp', 'latest.json'), snapshotMetaFile('kim_nwp', 'derived', 'gktg', 'latest.json')], build: buildKimNwpSnapshotEntry },
   { keys: ['kimSurfaceWind', 'kim_surface_wind'], files: [snapshotMetaLatest('kim_surface_wind')], build: buildKimSurfaceWindEntry },
   { keys: ['kimSurfaceChart'], files: [snapshotMetaLatest('kim_surface_chart')], build: buildKimSurfaceChartEntry },
   { keys: ['groundForecast', 'ground_forecast'], files: [snapshotMetaLatest('ground_forecast')], build: () => buildHashEntry('ground_forecast') },
@@ -561,7 +560,6 @@ const SNAPSHOT_SOURCES = [
   { keys: ['sigwxFrontMeta'], files: [], build: () => buildSigwxOverlaySnapshotEntry('fronts') },
   { keys: ['sigwxCloudMeta'], files: [], build: () => buildSigwxOverlaySnapshotEntry('clouds') },
   { keys: ['flightCategory'], files: [snapshotMetaLatest('flight_category_overlay')], build: () => buildHashEntry('flight_category_overlay') },
-  { keys: ['ktg'], files: [snapshotMetaLatest('ktg')], build: buildKtgSnapshotEntry },
 ]
 
 function buildSnapshotMetaCacheKey() {
@@ -883,19 +881,22 @@ app.get('/api/kim/icing/index', (_req, res) => sendKimIndex(res, {
 app.get('/api/kim/icing/field', (req, res) =>
   sendKimField(req, res, { type: 'icing', buildFn: buildKimIcingFieldFromGrid, errorLabel: 'invalid kim icing selection' })
 )
-app.get('/api/ktg/index', (_req, res) => {
-  const latest = readKtgLatest(DATA_ROOT)
-  const index = latest ? readKtgIndex(DATA_ROOT) : null
-  if (latest && index) {
-    setNoStore(res)
-    // hours: 확보된 예보시간 전체(슬라이더용). 구버전 index엔 없으므로 latest 단일 hf로 대체.
-    const hours = index.hours ?? [{ hf: latest.hf, validTime: latest.validTime }]
-    res.json({ tmfc: latest.tmfc, hf: latest.hf, validTime: latest.validTime, hours, altLevelsFt: index.altLevelsFt ?? [] })
-    return
-  }
-  setNoStore(res)
-  res.status(503).json({ error: 'ktg index unavailable' })
+app.get('/api/kim/gktg/index', (_req, res) => {
+  const index = readKimGktgIndex(DATA_ROOT)
+  if (!index) return res.status(503).json({ error: 'kim gktg index unavailable' })
+  sendRevalidatedJson(res, index, index.revision)
 })
+app.get('/api/kim/gktg/field', (req, res) => {
+  try {
+    const field = readKimGktgField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), levelId: String(req.query.level || ''), revision: req.query.revision })
+    sendImmutableJson(res, field, `kim-gktg:${field.time.tmfc}:${field.time.hf}:${field.level.id}:${field.revision}`)
+  } catch (error) {
+    setNoStore(res)
+    res.status(error.code === 'ENOENT' ? 404 : 400).json({ error: error.message })
+  }
+})
+
+app.get('/api/ktg/index', (_req, res) => res.status(410).json({ error: 'KTG replaced by /api/kim/gktg/index' }))
 
 app.get('/api/weather/frame/:kind/:name', (req, res) => {
   const result = readExactWeatherFrame(DATA_ROOT, { ...req.params, revision: req.query.revision })
@@ -910,37 +911,8 @@ app.get('/api/ktg/grid', (req, res) => {
     setNoStore(res)
     return res.status(result.status).json(result.data ?? { error: result.error })
   }
-  const altFt = Number(req.query.altFt) || 3000
-  const latest = readKtgLatest(DATA_ROOT)
-  if (!latest) {
-    setNoStore(res)
-    res.status(503).json({ error: 'ktg data unavailable' })
-    return
-  }
-  // hf 지정 시 해당 예보시간, 없으면 최신(nearest). 없는 hf 요청은 최신으로 폴백.
-  const index = readKtgIndex(DATA_ROOT)
-  const hours = index?.hours ?? [{ hf: latest.hf, validTime: latest.validTime }]
-  const requestedHf = Number(req.query.hf)
-  const match = Number.isFinite(requestedHf) ? hours.find((h) => h.hf === requestedHf) : null
-  const hf = match ? match.hf : latest.hf
-  const validTime = match ? match.validTime : latest.validTime
-  const coords = readKtgCoords({ root: DATA_ROOT, tmfc: latest.tmfc, hf })
-  const gridData = readKtgGridSafe({ root: DATA_ROOT, tmfc: latest.tmfc, hf, altFt })
-  if (!coords || !gridData) {
-    setNoStore(res)
-    res.status(503).json({ error: `ktg grid unavailable for ${altFt}ft hf=${hf}` })
-    return
-  }
-  let latMin = Infinity; let latMax = -Infinity; let lonMin = Infinity; let lonMax = -Infinity
-  for (const v of coords.lat) { if (v < latMin) latMin = v; if (v > latMax) latMax = v }
-  for (const v of coords.lon) { if (v < lonMin) lonMin = v; if (v > lonMax) lonMax = v }
   setNoStore(res)
-  res.json({
-    altFt,
-    grid: { ny: coords.ny, nx: coords.nx, latMin, latMax, lonMin, lonMax },
-    ktg: gridData.ktg,
-    run: { tmfc: latest.tmfc, hf, validTime },
-  })
+  return res.status(410).json({ error: 'KTG replaced by /api/kim/gktg/field; only exact archive selectors remain supported' })
 })
 
 app.get('/api/ground-forecast', (_, res) => sendLatest(res, 'ground_forecast'))

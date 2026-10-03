@@ -1,7 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
+import { createHash, randomUUID } from 'node:crypto'
 
-import { KIM_NWP_FORECAST_HOURS, KIM_NWP_LEVELS } from './kim-nwp-model.js'
+import { KIM_NWP_FORECAST_HOURS, KIM_NWP_LEVELS, KIM_NWP_MODEL, buildKimNwpIndex } from './kim-nwp-model.js'
 
 const ROOT_DIR = 'kim_nwp'
 
@@ -142,10 +144,106 @@ export function cleanupKimNwpRuns({ root, maxRuns, latestRunId }) {
   })
   const keep = new Set(completeRuns.slice(0, limit))
   if (latestRunId) keep.add(latestRunId)
+  const derivedLatest = readKimGktgLatest(root)
+  if (derivedLatest?.runId) keep.add(derivedLatest.runId)
+  // Partial calculations and institution-pinned runs must survive base retention.
+  for (const runId of listKimNwpRuns(root)) {
+    const dir = path.join(runsDir, runId)
+    const attemptFile = path.join(dir, 'derived', 'gktg', 'last-attempt.json')
+    const attempt = fs.existsSync(attemptFile) ? readJson(attemptFile) : null
+    if (attempt?.outcome === 'running' || (attempt?.outcome === 'partial' && Date.now() - Date.parse(attempt.completed_at) < 24 * 3600000)
+      || fs.existsSync(path.join(dir, 'pins.json'))) keep.add(runId)
+  }
   for (const runId of listKimNwpRuns(root)) {
     if (keep.has(runId)) continue
     fs.rmSync(path.join(runsDir, runId), { recursive: true, force: true })
   }
+}
+
+function validateGktgRevision(revision) {
+  if (!/^[a-f0-9]{20,64}$/.test(String(revision || ''))) throw new Error('Invalid GKTG revision')
+}
+
+export function resolveKimGktgFieldPath({ root, tmfc, hf, levelId, revision }) {
+  validateGktgRevision(revision)
+  validateKimNwpSelection({ tmfc, hf, levelId })
+  if (!levelId.endsWith('hPa')) throw new Error('GKTG requires a pressure level')
+  return path.join(path.dirname(resolveKimNwpGridPath({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId })), 'gktg', `${revision}.json`)
+}
+
+export function readKimGktgLatest(root) {
+  const file = path.join(resolveKimNwpRoot(root), 'derived', 'gktg', 'latest.json')
+  return fs.existsSync(file) ? readJson(file) : null
+}
+
+export function readKimGktgManifest(root, tmfc, revision) {
+  validateGktgRevision(revision)
+  const file = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'derived', 'gktg', revision, 'manifest.json')
+  return fs.existsSync(file) ? readJson(file) : null
+}
+
+export function writeKimGktgAttempt(root, tmfc, attempt) {
+  writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'derived', 'gktg', 'last-attempt.json'), attempt)
+  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'derived', 'gktg', 'last-attempt.json'), attempt)
+}
+
+function gktgContentHash(field) {
+  return createHash('sha256').update(JSON.stringify([field.time, field.level.id, field.grid, field.gktg, field.geopotentialHeight, field.geopotentialHeightEncoding, field.inputRevision, field.engineRevision || null])).digest('hex')
+}
+
+export function writeKimGktgField(root, field) {
+  field = { ...field, content_hash: gktgContentHash(field) }
+  const file = resolveKimGktgFieldPath({ root, tmfc: field.time.tmfc, hf: field.time.hf, levelId: field.level.id, revision: field.revision })
+  if (fs.existsSync(file)) {
+    let existing
+    let validExisting = false
+    try {
+      existing = readJson(file)
+      validExisting = existing.content_hash === gktgContentHash(existing)
+    } catch {}
+    if (validExisting) {
+      if (!isDeepStrictEqual(existing, field)) throw new Error('GKTG immutable field collision')
+      return file
+    }
+    // Quarantine damaged bytes; a valid immutable result is never overwritten.
+    fs.renameSync(file, `${file}.corrupt-${Date.now()}-${randomUUID()}`)
+  }
+  writeJsonAtomic(file, field)
+  return file
+}
+
+export function readKimGktgField({ root, tmfc, hf, levelId, revision }) {
+  const latest = readKimGktgLatest(root)
+  const selectedRevision = revision || (latest?.tmfc === tmfc ? latest.entries?.find(entry => entry.hf === Number(hf) && entry.levelId === levelId)?.revision : null)
+  if (!selectedRevision) throw new Error('GKTG revision unavailable for requested run')
+  const field = readJson(resolveKimGktgFieldPath({ root, tmfc, hf, levelId, revision: selectedRevision }))
+  if (field.time?.tmfc !== tmfc || field.time?.hf !== Number(hf) || field.level?.id !== levelId || field.revision !== selectedRevision
+    || field.gktg?.length !== field.grid.nx * field.grid.ny || field.content_hash !== gktgContentHash(field)) throw new Error('Corrupt GKTG immutable field')
+  return field
+}
+
+export function publishKimGktgRun(root, manifest) {
+  validateGktgRevision(manifest.revision)
+  const levels = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
+  if (!manifest.expectedHours?.length || !manifest.expectedHours.every(hf => levels.every(level =>
+    manifest.entries?.some(entry => entry.hf === hf && entry.levelId === level.id)))) {
+    throw new Error('Incomplete GKTG run cannot be published')
+  }
+  for (const entry of manifest.entries) {
+    const field = readKimGktgField({ root, tmfc: manifest.tmfc, hf: entry.hf, levelId: entry.levelId, revision: entry.revision })
+    if (field.inputRevision !== entry.inputRevision || field.gktg.length !== field.grid.nx * field.grid.ny) throw new Error('Invalid GKTG published field')
+  }
+  const payload = { ...manifest, type: 'kim_gktg_manifest', complete: true, usable: true, runId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: manifest.tmfc }) }
+  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: manifest.tmfc }), 'derived', 'gktg', manifest.revision, 'manifest.json'), payload)
+  writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'derived', 'gktg', 'latest.json'), payload)
+  return payload
+}
+
+export function readKimGktgIndex(root) {
+  const manifest = readKimGktgLatest(root)
+  if (!manifest?.complete) return null
+  const index = buildKimNwpIndex({ tmfc: manifest.tmfc, entries: manifest.entries })
+  return { ...index, type: 'kim_nwp_gktg_index', product: 'GKTG', revision: manifest.revision, algorithm: manifest.algorithm }
 }
 
 export default {

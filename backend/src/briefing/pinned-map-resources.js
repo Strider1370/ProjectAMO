@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { readKtgCoords, readKtgGridSafe } from '../processors/ktg-store.js'
-import { readKimNwpGrid, validateKimNwpSelection } from '../processors/kim-nwp-store.js'
+import { readKimNwpGrid, validateKimNwpSelection, readKimGktgField } from '../processors/kim-nwp-store.js'
 
 export function mapResourceRevision(...values) {
   return createHash('sha256').update(JSON.stringify(values)).digest('hex')
@@ -69,4 +69,13 @@ export function readExactKimMapGrid(root, { tmfc, hf, level, revision } = {}) {
   const actualRevision = mapResourceRevision(grid)
   if (revision && actualRevision !== revision) return { status: 410, error: 'map_revision_expired' }
   return { status: 200, grid, revision: actualRevision }
+}
+
+export function readExactGktgMapField(root, { tmfc, hf, level, revision } = {}) {
+  try {
+    const field = readKimGktgField({ root, tmfc, hf: Number(hf), levelId: level, revision })
+    return { status: 200, field, revision: field.revision }
+  } catch (error) {
+    return { status: error.code === 'ENOENT' ? 410 : 400, error: error.code === 'ENOENT' ? 'gktg_resource_expired' : 'invalid_gktg_selection' }
+  }
 }

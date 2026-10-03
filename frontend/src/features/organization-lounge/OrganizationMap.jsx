@@ -75,7 +75,7 @@ export default function OrganizationMap({
   const hasPinnedSelection = Boolean(selection.pinnedItemId)
   const pinnedSelection = presentationMapDataSelection(bundle)
   const pinnedStatuses = dataMode === 'pinned' && pinnedSelection
-    ? [pinnedModelStatus(pinnedSelection, 'kim'), pinnedModelStatus(pinnedSelection, 'ktg')]
+    ? [pinnedModelStatus(pinnedSelection, 'kim'), pinnedModelStatus(pinnedSelection, pinnedSelection?.models?.gktg || pinnedSelection?.gktg ? 'gktg' : 'ktg')]
     : []
   const unsupportedModels = pinnedStatuses.filter((item) => item.status === 'unsupported').length
   const unavailableFrames = dataMode === 'pinned' && pinnedSelection

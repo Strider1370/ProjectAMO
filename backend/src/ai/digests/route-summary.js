@@ -165,7 +165,7 @@ function profileIntervals(enroute, phases, cruise) {
       where: entry ? `${entry.leg.from} 부근` : '경로 위', procedure: entry?.procedure ?? null,
       startNm: interval.startNm, endNm: interval.endNm, amount: null, lengthNm: interval.endNm - interval.startNm,
       // Only worth saying when the flight also goes above the KTG top.
-      note: element.kind === 'turbulence' && cruise > KTG_TOP_FT ? `${KTG_TOP_FT.toLocaleString('en-US')}ft 이하` : null,
+      note: element.kind === 'turbulence' && enroute?.model?.runs?.ktg?.product !== 'GKTG' && cruise > KTG_TOP_FT ? `${KTG_TOP_FT.toLocaleString('en-US')}ft 이하` : null,
       highlight: { startNm: interval.startNm, endNm: interval.endNm },
     })
   }))
@@ -233,8 +233,8 @@ export function routeWeatherSummary(briefing) {
   const runs = enroute.model?.runs ?? {}
   const coverage = []
   if (!enroute.model) coverage.push('경로 수치모델 자료 없음')
-  if (enroute.model && !runs.ktg) coverage.push('난류(KTG) 자료 없음')
-  else if (enroute.model && cruise > KTG_TOP_FT) coverage.push(`${altitudeText(KTG_TOP_FT)} 위(순항 포함)는 난류 자료 없음`)
+  if (enroute.model && !runs.ktg) coverage.push('난류(GKTG) 자료 없음')
+  else if (enroute.model && runs.ktg?.product !== 'GKTG' && cruise > KTG_TOP_FT) coverage.push(`${altitudeText(KTG_TOP_FT)} 위(순항 포함)는 난류 자료 없음`)
   return {
     available: Boolean(enroute.model),
     items: [...advisories, ...hazards],

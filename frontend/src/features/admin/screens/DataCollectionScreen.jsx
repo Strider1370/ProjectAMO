@@ -78,6 +78,10 @@ export default function DataCollectionScreen({ health, now = Date.now() }) {
                 <tr key={row.key} data-health-key={row.key}>
                   <td className="ac-nm">
                     {row.label}
+                    {row.derivedCalculation && <div className="ac-sub" data-derived-calculation>
+                      계산 {row.derivedCalculation.outcome === 'complete' ? '완료' : row.derivedCalculation.outcome === 'running' ? '진행 중' : '입력 대기 또는 일부 실패'} · {row.derivedCalculation.fields ?? 0}/{(row.derivedCalculation.expectedHours?.length || 13) * 21}층
+                      {row.derivedCalculation.failures?.length > 0 && <details><summary>미완료 {row.derivedCalculation.failures.length}개 시각</summary>{row.derivedCalculation.failures.map(failure => <div key={failure.hf}>F{String(failure.hf).padStart(3, '0')}: {failure.reason}</div>)}</details>}
+                    </div>}
                     {row.eventDriven && <div className="ac-sub">{eventMeasurementLabel(row.eventMeasurement)}</div>}
                     {row.provenance && <div className="ac-sub">표시 자료: {row.provenance.display?.source === 'active_demo_snapshot' ? `시연 스냅샷${row.provenance.display.snapshotName ? ` (${row.provenance.display.snapshotName})` : ''}` : row.provenance.display?.source === 'active_live_view' ? '실황 활성 뷰' : '출처 확인 중'} · 수집 상태: {row.provenance.liveCollection?.healthStatus === 'unknown' ? '기록 없음' : row.provenance.liveCollection?.healthStatus || '확인 중'}</div>}
                     {row.airportRuns && (

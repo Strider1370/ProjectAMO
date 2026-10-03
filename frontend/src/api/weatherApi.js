@@ -322,6 +322,16 @@ export async function fetchKimIcingField({ tmfc, hf, level, revision }, options 
   return fetchJson(`/api/kim/icing/field?${params.toString()}`, options)
 }
 
+export async function fetchKimGktgIndex(options = {}) {
+  return fetchJson('/api/kim/gktg/index', options)
+}
+
+export async function fetchKimGktgField({ tmfc, hf, level, revision }, options = {}) {
+  const params = new URLSearchParams({ tmfc, hf: String(hf), level })
+  if (revision) params.set('revision', revision)
+  return fetchJson(`/api/kim/gktg/field?${params.toString()}`, options)
+}
+
 export async function fetchKtgIndex(options = {}) {
   return fetchJson('/api/ktg/index', options)
 }

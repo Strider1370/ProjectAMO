@@ -20,6 +20,8 @@
     "dev:screenshots": "node scripts/projectamo-dev.mjs screenshots",
     "dev:ground-signage-capture": "node scripts/projectamo-dev.mjs ground-signage-capture",
     "demo:repair-weather": "node scripts/repair-demo-weather.mjs",
+    "collect:gktg": "node scripts/collect-kim-gktg.mjs",
+    "experiment:turbulence": "node scripts/collect-kim-turbulence-experiment.mjs",
     "install:browsers:chromium": "npx --prefix frontend playwright install --with-deps chromium",
     "install:browsers:webkit": "npx --prefix frontend playwright install --with-deps webkit",
     "install:prototype": "npm --prefix prototypes/destination-weather-comparison ci",

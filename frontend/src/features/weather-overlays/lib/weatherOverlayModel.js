@@ -534,8 +534,8 @@ export function buildWeatherOverlayModel({
       if (!Number.isFinite(base) || !Number.isFinite(hf)) return '-'
       return formatSigwxStamp(new Date(base + hf * 3600000).toISOString(), tz)
     })(),
-    ktgIssueLabel: formatUtcTmfcStamp(ktgGrid?.run?.tmfc ?? null, tz),
-    ktgValidLabel: formatSigwxStamp(ktgGrid?.run?.validTime ?? null, tz),
+    ktgIssueLabel: formatUtcTmfcStamp((ktgGrid?.time || ktgGrid?.run)?.tmfc ?? null, tz),
+    ktgValidLabel: formatSigwxStamp((ktgGrid?.time || ktgGrid?.run)?.validTime ?? null, tz),
     blinkLightning,
     lightningBlinkOff,
     lightningReferenceTimeMs: resolvedLightningReferenceTimeMs,

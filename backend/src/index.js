@@ -21,7 +21,7 @@ import groundForecastProcessor from './processors/ground-forecast-processor.js'
 import environmentProcessor from './processors/environment-processor.js'
 import airportInfoProcessor from './processors/airport-info-processor.js'
 import takeoffForecastProcessor from './processors/takeoff-forecast-processor.js'
-import ktgProcessor from './processors/ktg-processor.js'
+import kimGktgProcessor from './processors/kim-gktg-processor.js'
 import flightCategoryProcessor from './processors/flight-category-processor.js'
 import asosCeilingProcessor from './processors/asos-ceiling-processor.js'
 import notamProcessor from './processors/notam-processor.js'
@@ -41,7 +41,7 @@ net.setDefaultAutoSelectFamily(false)
 
 // ADS-B is collected on demand by the /api/adsb route (only when a viewer is watching),
 // so it is intentionally not scheduled here.
-const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, kim_surface_chart: false, ktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
+const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, kim_surface_chart: false, kim_gktg: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
 const activeControllers = new Map()
 const satelliteWorkQueue = createSatelliteWorkQueue({ runWorker: runSatelliteWorker })
 let collectorWatchdog = null
@@ -83,10 +83,16 @@ async function runWithLock(type, job, { source = 'manual', apiHubCategories = []
         return result
       }
     }
+    if (type === 'kim_gktg' && result?.collection?.outcome === 'partial') {
+      recorder.recordSkip(type, result.collection.reason || 'kim_gktg_input_waiting', run)
+      logger.info?.(safeCollectorLog(type, 'partial', { fields: result.fields || 0 }))
+      return result
+    }
     if(type==='kim_surface_wind' && (result?.comparison?.failed || result?.comparison?.failedAirports?.length)) throw new Error('kim_airport_comparison_incomplete')
     const durationMs = Date.now() - t0
     logger.info?.(safeCollectorLog(type, 'succeeded', { duration_ms: durationMs, ...(typeof result?.saved === 'boolean' ? { saved: result.saved } : {}) }))
     recorder.recordSuccess(type, result, durationMs, run)
+    if (type === 'kim_surface_wind' && config.kim_gktg?.enabled !== false) await runWithLock('kim_gktg', kimGktgProcessor.process, { source: 'kim_base_completed' })
     return result
   } catch (error) {
     if (controller.signal.aborted) {
@@ -158,7 +164,7 @@ const processorBindings = {
   echo_top: echoTopProcessor.process, rainviewer: rainviewerProcessor.process, kim_surface_wind: kimSurfaceWindProcessor.process,
   kim_surface_chart: kimSurfaceChartProcessor.process,
   ground_forecast: groundForecastProcessor.process, environment: environmentProcessor.process, airport_info: airportInfoProcessor.process,
-  takeoff_fcst: takeoffForecastProcessor.process, ktg: ktgProcessor.process, flight_category: flightCategoryProcessor.process,
+  takeoff_fcst: takeoffForecastProcessor.process, kim_gktg: kimGktgProcessor.process, flight_category: flightCategoryProcessor.process,
   asos_ceiling: asosCeilingProcessor.process, notam: notamProcessor.process, metar_overseas: overseasProcessor.processMetar,
   taf_overseas: overseasProcessor.processTaf, sigmet_overseas: overseasProcessor.processSigmet, terminal_flights: terminalFlightProcessor.process,
   overseas_forecast: overseasForecastProcessor.process, typhoon: typhoonProcessor.process,
@@ -257,7 +263,7 @@ function buildInitialCollectionJobs({
     ['overseas_forecast', overseasForecastProcessor.process],
   ]
   if (includeKimNwp) jobs.splice(10, 0, ["kim_surface_wind", kimSurfaceWindProcessor.process])
-  if (config.ktg?.collect_on_startup !== false) jobs.push(["ktg", ktgProcessor.process])
+  if (config.kim_gktg?.collect_on_startup !== false) jobs.push(["kim_gktg", kimGktgProcessor.process])
   // 이미 발행한 런이 최신이면 공개 여부만 한 장으로 확인하고 건너뛴다.
   if (includeKimSurfaceChart) jobs.push(['kim_surface_chart', kimSurfaceChartProcessor.process])
   if (config.flight_category?.collect_on_startup !== false) jobs.push(["flight_category", flightCategoryProcessor.process])

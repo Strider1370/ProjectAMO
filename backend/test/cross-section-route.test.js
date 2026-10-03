@@ -206,7 +206,7 @@ test('cross-section reuses same-revision grids and clears them on latest revisio
   }
 })
 
-test('cross-section selects KIM closest to ETD and KTG closest to the selected valid time', async () => {
+test('cross-section selects KIM closest to ETD and never falls back to archived KTG', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'kim-cross-section-etd-'))
   const level = KIM_NWP_LEVELS.find((entry) => entry.id === '850hPa')
   const tmfc = '2026072200'
@@ -292,12 +292,8 @@ test('cross-section selects KIM closest to ETD and KTG closest to the selected v
       hf: 9,
       validTime: '2026-07-22T09:00:00.000Z',
     })
-    assert.deepEqual(result.turbulence.run, {
-      tmfc: ktgTmfc,
-      hf: 6,
-      validTime: '2026-07-22T12:00:00.000Z',
-    })
-    assert.equal(result.turbulence.available, true)
+    assert.equal(result.turbulence.product, 'GKTG')
+    assert.equal(result.turbulence.available, false)
   } finally {
     clearRouteCrossSectionCache()
     await rm(root, { recursive: true, force: true })

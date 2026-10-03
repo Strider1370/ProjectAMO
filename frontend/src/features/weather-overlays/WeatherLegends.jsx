@@ -35,7 +35,7 @@ const CTPS_LEGEND = [{ label: '< FL100', color: '#16A34A' }, { label: 'FL100–1
 const ECHO_TOP_LEGEND = CTPS_LEGEND
 
 function ConvectiveLegend({ title, entries, note }) {
-  return <div className="temperature-legend convective-legend" aria-label={title + ' 범례'}><div className="temperature-legend-title">{title}</div><div className="temperature-legend-scale">{entries.map((entry) => <div key={entry.label} className="temperature-legend-row"><span className="temperature-legend-label">{entry.label}</span><span className="temperature-legend-swatch" style={{ backgroundColor: entry.color }} aria-hidden="true" /></div>)}</div><div className="convective-legend__note">{note}</div></div>
+  return <div className="temperature-legend convective-legend" aria-label={title + ' 범례'}><div className="temperature-legend-title">{title}</div><div className="temperature-legend-scale">{entries.map((entry) => <div key={entry.label} className="temperature-legend-row"><span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span><span className="temperature-legend-swatch" style={{ backgroundColor: entry.color }} aria-hidden="true" /></div>)}</div><div className="convective-legend__note">{note}</div></div>
 }
 
 function WeatherLegends({
@@ -75,6 +75,7 @@ function WeatherLegends({
   icingLegendEntries = [],
   turbulenceLegendVisible,
   turbulenceLegendEntries = [],
+  turbulenceProduct = 'GKTG',
   ciLegendVisible = false,
   ctpsLegendVisible = false,
   echoTopLegendVisible = false,
@@ -131,7 +132,7 @@ function WeatherLegends({
           <div className="rainrate-legend-scale">
             {radarRainrateLegend.map((entry) => (
               <div key={entry.label} className="rainrate-legend-row">
-                <span className="rainrate-legend-label">{entry.label}</span>
+                <span className="rainrate-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
                 <span
                   className="rainrate-legend-swatch"
                   style={{ backgroundColor: entry.color }}
@@ -168,7 +169,7 @@ function WeatherLegends({
               <div className="rainrate-legend-scale">
                 {RAINVIEWER_LEGEND.map((entry) => (
                   <div key={entry.label} className="rainrate-legend-row">
-                    <span className="rainrate-legend-label">{entry.label}</span>
+                    <span className="rainrate-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
                     <span
                       className="rainrate-legend-swatch"
                       style={{ backgroundColor: entry.color }}
@@ -206,7 +207,7 @@ function WeatherLegends({
           <div className="lightning-time-legend-scale">
             {lightningLegendEntries.map((entry) => (
               <div key={entry.iconId} className="lightning-time-legend-row">
-                <span className="lightning-time-legend-label">{entry.label}</span>
+                <span className="lightning-time-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
                 <span
                   className="lightning-time-legend-swatch"
                   style={{ backgroundColor: entry.color }}
@@ -233,7 +234,7 @@ function WeatherLegends({
           <div className="wind-speed-legend-scale">
             {windSpeedLegendEntries.map((entry) => (
               <div key={entry.label} className="wind-speed-legend-row">
-                <span className="wind-speed-legend-label">{entry.label}</span>
+                <span className="wind-speed-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
                 <span
                   className="wind-speed-legend-swatch"
                   style={{ backgroundColor: entry.color }}
@@ -250,7 +251,7 @@ function WeatherLegends({
           <div className="temperature-legend-scale">
             {temperatureLegendEntries.map((entry) => (
               <div key={entry.label} className="temperature-legend-row">
-                <span className="temperature-legend-label">{entry.label}</span>
+                <span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
                 <span
                   className="temperature-legend-swatch"
                   style={{ backgroundColor: entry.color }}
@@ -267,7 +268,7 @@ function WeatherLegends({
           <div className="temperature-legend-scale">
             {cloudLegendEntries.map((entry) => (
               <div key={entry.label} className="temperature-legend-row">
-                <span className="temperature-legend-label">{entry.label}</span>
+                <span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
                 <span
                   className="temperature-legend-swatch"
                   style={{ backgroundColor: entry.color }}
@@ -284,7 +285,7 @@ function WeatherLegends({
           <div className="temperature-legend-scale">
             {icingLegendEntries.map((entry) => (
               <div key={entry.label} className="temperature-legend-row">
-                <span className="temperature-legend-label">{entry.label}</span>
+                <span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
                 <span
                   className="temperature-legend-swatch"
                   style={{ backgroundColor: entry.color }}
@@ -308,12 +309,12 @@ function WeatherLegends({
         <ConvectiveLegend title="에코탑(재산출)" entries={ECHO_TOP_LEGEND} note="재산출 · 18 dBZ · MSL — KMA 공식 ETOP 아님" />
       ))}
       {turbulenceLegendVisible && (
-        <div className="temperature-legend" aria-label="Turbulence legend">
-          <div className="temperature-legend-title">Turbulence</div>
+        <div className="temperature-legend" aria-label={`${turbulenceProduct} 난류 범례`}>
+          <div className="temperature-legend-title">{turbulenceProduct}</div>
           <div className="temperature-legend-scale">
             {turbulenceLegendEntries.map((entry) => (
               <div key={entry.label} className="temperature-legend-row">
-                <span className="temperature-legend-label">{entry.label}</span>
+                <span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
                 <span
                   className="temperature-legend-swatch"
                   style={{ backgroundColor: entry.color }}
@@ -375,7 +376,7 @@ function WeatherLegends({
     temperatureLegendVisible && { key: 'temp', title: '기온 · °C', entries: temperatureLegendEntries },
     cloudLegendVisible && { key: 'cloud', title: '습도 · T-Td °C', entries: cloudLegendEntries },
     icingLegendVisible && { key: 'icing', title: '착빙 · 잠재성', entries: icingLegendEntries },
-    turbulenceLegendVisible && { key: 'turb', title: '난류 · 강도', entries: turbulenceLegendEntries },
+    turbulenceLegendVisible && { key: 'turb', title: `난류 · ${turbulenceProduct}`, entries: turbulenceLegendEntries, note: turbulenceProduct === 'GKTG' ? 'LGT 0.15–<0.22 · MOD 0.22–<0.34 · SEV ≥0.34' : 'LGT 0.30–<0.475 · MOD 0.475–<0.75 · SEV ≥0.75' },
     ciLegendVisible && { key: 'ci', title: '대류 가능성 · 위성', entries: CI_LEGEND },
     ctpsLegendVisible && { key: 'ctps', title: '구름 꼭대기 · FL', entries: CTPS_LEGEND },
     // 이 하단 독이 데스크톱·모바일 모두에서 실제로 렌더되는 범례다(MapView가 bottomDock={!isMobile}).

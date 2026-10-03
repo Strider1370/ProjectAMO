@@ -1,3 +1,4 @@
+import { gktgIntensity } from '../../../shared/gktg.js'
 import { ktgIntensity } from '../processors/ktg-model.js'
 import { loadRouteCrossSection } from './enroute-cross-section.js'
 
@@ -37,26 +38,27 @@ function altitudeAtProfileDistance(profile, distanceNm, fallbackAltitudeFt) {
 // 각 거리 샘플에서 계획고도 alt(d)에 해당하는 값을 두 기압면 사이에서 구한다.
 // mode 'worst': 위험 등급(착빙/난류) → 두 레벨 중 큰 값. mode 'interp': 연속값(바람/기온) → 선형 보간.
 // nullOutside: 계획고도가 레벨 커버리지 밖이면 null(저고도 한정 KTG용).
-function seriesAtAltitude(levels, totalDistanceNm, cruiseAltitudeFt, pick, { flightPlanProfile = null, mode = 'interp', nullOutside = false } = {}) {
+function seriesAtAltitude(levels, totalDistanceNm, cruiseAltitudeFt, pick, { flightPlanProfile = null, mode = 'interp', nullOutside = false, strictMissing = false } = {}) {
   const sorted = sortedLevels(levels)
   if (sorted.length === 0) return []
-  const minAlt = sorted[0].altFt
-  const maxAlt = sorted[sorted.length - 1].altFt
   const n = sorted[0].values.length
   const out = []
   for (let i = 0; i < n; i += 1) {
     const d = sorted[0].values[i]?.distanceNm
     const alt = altitudeAtProfileDistance(flightPlanProfile, d, cruiseAltitudeFt)
-    if (nullOutside && (alt < minAlt || alt > maxAlt)) { out.push({ distanceNm: d, value: null }); continue }
-    let lo = sorted[0]
-    let hi = sorted[sorted.length - 1]
-    for (let k = 0; k < sorted.length - 1; k += 1) {
-      if (sorted[k].altFt <= alt && alt <= sorted[k + 1].altFt) { lo = sorted[k]; hi = sorted[k + 1]; break }
+    const local = sorted.map(level => ({ ...level, altFt: Number.isFinite(level.values[i]?.altFt) ? level.values[i].altFt : level.altFt })).filter(level => Number.isFinite(level.altFt)).sort((a, b) => a.altFt - b.altFt)
+    const minAlt = local[0]?.altFt
+    const maxAlt = local.at(-1)?.altFt
+    if (!local.length || (nullOutside && (alt < minAlt || alt > maxAlt))) { out.push({ distanceNm: d, value: null }); continue }
+    let lo = local[0]
+    let hi = local[local.length - 1]
+    for (let k = 0; k < local.length - 1; k += 1) {
+      if (local[k].altFt <= alt && alt <= local[k + 1].altFt) { lo = local[k]; hi = local[k + 1]; break }
     }
     const vLo = pick(lo.values[i])
     const vHi = pick(hi.values[i])
     let val
-    if (vLo == null && vHi == null) {
+    if ((strictMissing && (vLo == null || vHi == null)) || (vLo == null && vHi == null)) {
       val = null
     } else if (mode === 'worst') {
       val = Math.max(vLo ?? -Infinity, vHi ?? -Infinity)
@@ -98,7 +100,7 @@ function thresholdIntervals(series, classify) {
 // 임계값은 실측 분포 기반의 보수적 근사 — 추후 튜닝 대상.
 function classifyIcing(g) { return g >= 3 ? '심' : g >= 2 ? '중' : null }
 // KTG 강도는 저장소 단일 진실원(ktg-model.js: 약<0.475, 중<0.75, 심≥0.75)을 따른다. 약(LGT)은 제외.
-function classifyKtg(v) { const i = ktgIntensity(v); return i >= 3 ? '심' : i >= 2 ? '중' : null }
+function classifyKtg(v, product) { const i = product === 'GKTG' ? gktgIntensity(v) : ktgIntensity(v); return i >= 3 ? '심' : i >= 2 ? '중' : null }
 
 export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceNm, cruiseAltitudeFt, flightPlanProfile = null }) {
   const elements = []
@@ -113,8 +115,8 @@ export function summarizeEnrouteModel({ crossSection, turbulence, totalDistanceN
   const ktg = turbulence?.levels ?? []
   if (ktg.length) {
     const turb = thresholdIntervals(
-      seriesAtAltitude(ktg, totalDistanceNm, cruiseAltitudeFt, (e) => e?.ktg, { flightPlanProfile, mode: 'worst', nullOutside: true }),
-      classifyKtg,
+      seriesAtAltitude(ktg, totalDistanceNm, cruiseAltitudeFt, (e) => e?.ktg, { flightPlanProfile, mode: 'worst', nullOutside: true, strictMissing: turbulence.product === 'GKTG' }),
+      value => classifyKtg(value, turbulence.product),
     )
     if (turb.length) elements.push({ kind: 'turbulence', label: '난류', intervals: turb })
   }

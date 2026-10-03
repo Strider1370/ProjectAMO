@@ -28,7 +28,9 @@ WebKit is intentionally separate because only selected Safari/organization contr
 npm run install:browsers:webkit
 ```
 
-Python/GIS generation is outside every npm install and normal test gate. In a reviewed, writable data environment, make a local virtual environment and install only the tools needed by the selected generator:
+The bootstrap also creates `.venvs/kim-gktg` and installs the pinned operational GKTG NumPy/Numba dependencies. To set up only this runtime, run `bash scripts/setup-gktg-python.sh`; `KIM_GKTG_PYTHON` selects another interpreter. See [GKTG operations](kim-gktg.md). Python scientific parity checks are separate from the normal npm test gate.
+
+GIS generation remains outside npm installation and the normal test gate. In a reviewed, writable data environment, make a separate local virtual environment and install only the tools needed by the selected generator:
 
 ```
 python3 -m venv .artifacts/gis-venv

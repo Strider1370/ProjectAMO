@@ -40,5 +40,5 @@ test('MapView passes QPF metadata to the overlay model and its ticks to playback
   // QPF 예보 시각은 SIGWX HIGH의 앞으로 올 시각과 합쳐(combinedForecastTicks) 재생에 넘긴다.
   assert.match(source, /const combinedForecastTicks = \[\.\.\.forecastTimelineTicks,/)
   assert.match(source, /useTimelinePlayback\(\{[\s\S]*?nwpTimes: timelineNwpTimes,[\s\S]*?qpfTimesMs: combinedForecastTicks,/)
-  assert.match(source, /const timelineNwpTimes = sliderTimes\.length \? sliderTimes : surfaceChart\.times/)
+  assert.match(source, /const timelineNwpTimes =[\s\S]*?sliderTimes\.length \? sliderTimes : surfaceChart\.times/)
 })

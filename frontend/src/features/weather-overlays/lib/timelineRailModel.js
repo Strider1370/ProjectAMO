@@ -111,7 +111,10 @@ export function buildTimelineDomain({
   const now = finite(nowMs) ? nowMs : Date.now()
   const past = pastTicksMs.filter(finite)
   const future = [...nwpTimesMs, ...qpfTimesMs].filter(finite)
-  const earliest = past.length ? Math.min(...past) : now
+  // Archived NWP frames also belong to the selectable domain, even when all
+  // observation layers are off. Otherwise the rail visually clamps an exact
+  // historical field selection to today's start while the map uses its date.
+  const earliest = Math.min(now, ...past, ...future)
   const latest = future.length ? Math.max(...future) : now
   return {
     startMs: Math.min(now - pastWindowMs, earliest),

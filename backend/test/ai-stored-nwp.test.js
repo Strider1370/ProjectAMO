@@ -34,7 +34,7 @@ test('stored briefing and chained altitude result retain exact sampled frames an
     const context = runtime.registerContext({ schemaVersion: 1, revision: 'nwp-rules', scope: 'personal', request }, 'alice')
     assert.equal(context.status, 'ok')
     const digest = await runtime.call('get_route_briefing', { context_ref: context.contextRef }, 'alice')
-    assert.equal(digest.status, 'partial')
+    assert.equal(digest.status, 'partial', JSON.stringify(digest.error || {}))
     const bundle = runtime.getResult(digest.reference.briefingRef, 'alice')
     assert.equal(bundle.status, 'ok')
     const model = loadRouteCrossSection({ root, routeGeometry: bundle.request.routeGeometry, body: bundle.request })
