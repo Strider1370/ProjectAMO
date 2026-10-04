@@ -104,7 +104,7 @@
 .mc-summary-model{display:flex;align-items:center;gap:var(--space-snudge,6px);font-size:var(--fs-200,12px);color:var(--text-3,#616161);white-space:nowrap}
 .mc-summary-model .mc-series-key{margin:0;flex-shrink:0}
 .mc-summary-value{display:block;font-size:var(--fs-700,28px);line-height:var(--lh-700,36px);margin-top:var(--space-s,8px)}
-.mc-summary-missing{font-size:var(--fs-200,12px);font-weight:400;color:var(--text-3,#616161);overflow-wrap:anywhere}
+.mc-summary-missing{font-size:var(--fs-200,12px);font-weight:400;color:var(--text-3,#616161);word-break:keep-all;overflow-wrap:anywhere}
 .mc-panel-entry{container-type:inline-size;min-width:0;width:100%}
 .mc-panel-summary-time{display:flex;align-items:baseline;gap:var(--space-s,8px);font-size:var(--fs-200,12px)}
 .mc-panel-summary-time>span{color:var(--text-3,#616161)}
@@ -114,7 +114,7 @@
 .mc-panel-entry .mc-summary-metric+.mc-summary-metric{border-left:0;border-top:1px solid var(--stroke-2,#e0e0e0)}
 .mc-panel-entry .mc-summary-value{font-size:var(--fs-600,24px)}
 .mc-panel-entry .mc-summary-missing{font-size:var(--fs-200,12px)}
-@container(min-width:560px){.mc-panel-entry .mc-summary--compact{grid-template-columns:repeat(2,minmax(0,1fr))}.mc-panel-entry .mc-summary-metric:first-child{grid-column:1/-1}.mc-panel-entry .mc-summary-metric:last-child{border-left:1px solid var(--stroke-2,#e0e0e0)}}
-@container(min-width:800px){.mc-panel-entry .mc-summary--compact{grid-template-columns:.6fr 1.2fr 1.2fr}.mc-panel-entry .mc-summary-metric:first-child{grid-column:auto}.mc-panel-entry .mc-summary-metric+.mc-summary-metric{border-top:0;border-left:1px solid var(--stroke-2,#e0e0e0)}}
+/* 넓은 패널: 바람은 왼쪽, 강수량·운고는 오른쪽에 두 줄. 세 칸으로 나누면 모델 4개 값이 좁아져 줄이 어긋났다. */
+@container(min-width:560px){.mc-panel-entry .mc-summary--compact{grid-template-columns:minmax(10rem,.6fr) minmax(0,1.4fr)}.mc-panel-entry .mc-summary-metric:first-child{grid-row:1/span 2;border-right:1px solid var(--stroke-2,#e0e0e0)}.mc-panel-entry .mc-summary-metric:nth-child(2){border-top:0}}
 @media(max-width:979px){.mc-summary--compact{grid-template-columns:1fr}.mc-summary-metric+.mc-summary-metric{border-left:0;border-top:1px solid var(--stroke-2,#e0e0e0)}}
 @media(max-width:719px){.mc-page-head--compact{display:flex;align-items:flex-start;gap:var(--space-s,8px)}.mc-page-identity{gap:var(--space-xs,4px)}.mc-page-identity h1{font-size:var(--fs-500,20px);gap:var(--space-xs,4px) var(--space-s,8px)}.mc-page-identity h1 .mc-page-subtitle{border:0;padding:0;width:100%;font-size:var(--fs-200,12px)}.mc-page-head--compact .mc-timezone{margin:0;flex-shrink:0}.mc-header-controls{gap:var(--space-s,8px)}.mc-header-controls .mc-toolbar{display:flex}.mc-header-controls .mc-view-controls{width:100%}.mc-source-line{margin-top:var(--space-s,8px);gap:var(--space-s,8px)}.mc-run-info{width:100%}.mc-summary-metric{padding:var(--space-m,12px)}.mc-summary-value{font-size:var(--fs-600,24px)}}

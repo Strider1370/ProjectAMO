@@ -468,8 +468,11 @@ test.describe('airport-model-comparison',()=>{
       const wind=await summary.getByRole('region',{name:'바람 요약',exact:true}).boundingBox()
       const rain=await summary.getByRole('region',{name:'강수량 요약',exact:true}).boundingBox()
       const ceiling=await summary.getByRole('region',{name:'운고 요약',exact:true}).boundingBox()
+      // 바람은 왼쪽, 강수량·운고는 오른쪽에 위아래 두 줄로 놓는다.
       expect(Math.abs(wind.y-rain.y)).toBeLessThan(2)
-      expect(Math.abs(rain.y-ceiling.y)).toBeLessThan(2)
+      expect(rain.x).toBeGreaterThan(wind.x+wind.width-2)
+      expect(Math.abs(rain.x-ceiling.x)).toBeLessThan(2)
+      expect(ceiling.y).toBeGreaterThanOrEqual(rain.y+rain.height-1)
     }
     if(captureRoot) {
       await fs.mkdir(captureRoot,{recursive:true})
