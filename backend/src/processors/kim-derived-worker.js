@@ -2,26 +2,24 @@
 //
 // 백엔드 안에서 돌 때는 격자 수백 장을 읽고 검증하는 동안 이벤트 루프가 100초 넘게 막혀 사이트 요청이
 // 504로 끝났다(2026-10-04). 자식은 낮은 CPU 우선순위와 자기 힙 한도로 돌고, 끝나면 종료해 쓴 메모리를
-// 모두 운영체제에 돌려준다. 메모리가 작은 서버라 자식은 한 번에 하나만 띄운다.
+// 모두 운영체제에 돌려준다. 메모리가 작은 서버라 위성 워커와 같은 순번(heavyChildGate)을 받아 한 번에 하나만 띄운다.
 import { fork } from 'node:child_process'
 import os from 'node:os'
 
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
+import { heavyChildGate } from '../lib/heavy-child-gate.js'
 import { KIM_DERIVED_JOBS, errorPayload, restoreError } from './kim-derived-worker-entry.js'
 
 const ENTRY = new URL('./kim-derived-worker-entry.js', import.meta.url)
 // 취소를 받은 자식이 Python 계산을 끝내고 'cancelled'를 기록할 시간.
 const DEFAULT_KILL_GRACE_MS = 10_000
 
-let queue = Promise.resolve()
-
 const isPlainObject = (value) => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype
 
-export function runKimDerivedWorker(kind, options = {}) {
-  const run = queue.then(() => runOnce(kind, options))
-  queue = run.catch(() => {})
-  return run
+export function runKimDerivedWorker(kind, { gate = heavyChildGate, ...options } = {}) {
+  if (!KIM_DERIVED_JOBS.includes(kind)) return Promise.reject(new Error('invalid kim derived worker job'))
+  return gate.run(() => runOnce(kind, options), { signal: options.signal })
 }
 
 function runOnce(kind, {

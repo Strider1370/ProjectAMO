@@ -3,6 +3,7 @@ import { fork } from 'node:child_process'
 import config, { satellite as satelliteConfig } from '../config.js'
 import apiHubUsage from '../api-hub-usage.js'
 import stats from '../stats.js'
+import { heavyChildGate } from '../lib/heavy-child-gate.js'
 import { assertSatelliteJob, failureMessage, successMessage } from './worker-protocol.js'
 
 const DEFAULT_KILL_GRACE_MS = 1_000
@@ -90,7 +91,17 @@ function validDelay(value, fallback) {
   return Number.isFinite(value) && value >= 0 ? value : fallback
 }
 
-export function runSatelliteWorker(job, {
+// KIM 파생 계산 워커와 같은 순번을 받은 뒤에 띄운다. 기다리는 시간은 워커 제한 시간에 넣지 않는다.
+export function runSatelliteWorker(job, { gate = heavyChildGate, ...options } = {}) {
+  try {
+    assertSatelliteJob(job)
+  } catch (error) {
+    return Promise.reject(error)
+  }
+  return gate.run(() => runSatelliteWorkerProcess(job, options), { signal: options.signal })
+}
+
+function runSatelliteWorkerProcess(job, {
   forkImpl = fork,
   timeoutMs = satelliteConfig.worker_timeout_ms,
   signal,
