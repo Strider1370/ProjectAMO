@@ -71,6 +71,9 @@ export const CSS_VARS = {
   '--icing-1': '#ACC7FF',
   '--icing-2': '#6B88CD',
   '--icing-3': '#383D6F',
+  '--icing-pattern-1': '#1D4ED8',
+  '--icing-pattern-2': '#1640B8',
+  '--icing-pattern-3': '#102B85',
   '--turb-light': '#64D264',
   '--turb-mod': '#FFC300',
   '--turb-sev': '#FF3737',
@@ -105,5 +108,6 @@ export const color = {
   cat: { vfr: C['--cat-vfr'], mvfr: C['--cat-mvfr'], ifr: C['--cat-ifr'], lifr: C['--cat-lifr'] },
   // icing[grade]: 0=투명(없음), 1~3
   icing: [null, C['--icing-1'], C['--icing-2'], C['--icing-3']],
+  icingPattern: [null, C['--icing-pattern-1'], C['--icing-pattern-2'], C['--icing-pattern-3']],
   turb: { light: C['--turb-light'], mod: C['--turb-mod'], sev: C['--turb-sev'] },
 }

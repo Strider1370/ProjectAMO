@@ -10,6 +10,7 @@ import {
   selectKimNwpAvailability,
 } from './useKimSurfaceWind.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
+import { pressureKimIndex } from './cloudIcingModel.js'
 
 function selectionKey(selection) {
   if (!selection?.tmfc || !selection?.level || !Number.isFinite(Number(selection.hf))) return null
@@ -23,7 +24,7 @@ function isAbortError(error) {
   return error?.name === 'AbortError'
 }
 
-export function useKimTemperature(enabled, selection, setSelection, { dataMode = 'live' } = {}) {
+export function useKimTemperature(enabled, selection, setSelection, { dataMode = 'live', pressureOnly = false } = {}) {
   const [temperatureField, setTemperatureField] = useState(null)
   const [temperatureFieldKey, setTemperatureFieldKey] = useState(null)
   const [temperatureIndex, setTemperatureIndex] = useState(null)
@@ -54,7 +55,8 @@ export function useKimTemperature(enabled, selection, setSelection, { dataMode =
     async function loadIndex() {
       setStatus((prev) => (prev === 'ready' ? 'refreshing' : 'loading'))
       try {
-        const index = await fetchKimTemperatureIndex({ signal: controller.signal })
+        const rawIndex = await fetchKimTemperatureIndex({ signal: controller.signal })
+        const index = pressureOnly ? pressureKimIndex(rawIndex) : rawIndex
         if (cancelled) return
         setTemperatureIndex(index)
         setSelection?.((prev) => selectFallbackKimNwpSelection(index, prev) || null)
@@ -75,10 +77,16 @@ export function useKimTemperature(enabled, selection, setSelection, { dataMode =
       cancelled = true
       controller.abort()
     }
-  }, [enabled, refreshToken, pinned, selection?.bundleId, selection?.revision])
+  }, [enabled, refreshToken, pinned, selection?.bundleId, selection?.revision, pressureOnly])
 
   useEffect(() => {
     if (!enabled || !selection) return undefined
+    if (pressureOnly && !/^\d+(?:\.\d+)?hPa$/.test(selection.level)) {
+      setTemperatureField(null)
+      setTemperatureFieldKey(null)
+      setStatus('unavailable')
+      return undefined
+    }
     if (!pinned && temperatureIndex && !selectKimNwpAvailability(temperatureIndex, selection)) {
       setTemperatureField(null)
       setStatus('unavailable')
@@ -118,7 +126,7 @@ export function useKimTemperature(enabled, selection, setSelection, { dataMode =
 
     loadField()
     return () => controller.abort()
-  }, [enabled, pinned, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId, temperatureIndex])
+  }, [enabled, pinned, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId, temperatureIndex, pressureOnly])
 
   useEffect(() => {
     if (!enabled || pinned || !snapshotMeta) return

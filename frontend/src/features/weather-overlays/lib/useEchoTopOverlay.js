@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { syncEchoTopLayer } from './echoTopLayers.js'
 
-export function useEchoTopOverlay({ mapRef, isStyleReady, styleRevision, visible, frame, fetchPoint }) {
+export function useEchoTopOverlay({ mapRef, isStyleReady, styleRevision, inspectionEnabled, visible, frame, fetchPoint }) {
   const [selection, setSelection] = useState(null)
   const [point, setPoint] = useState(null)
   const requestTokenRef = useRef(0)
@@ -13,15 +13,15 @@ export function useEchoTopOverlay({ mapRef, isStyleReady, styleRevision, visible
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !isStyleReady) return undefined
+    if (!map || !isStyleReady || !inspectionEnabled || !visible) return undefined
     const onClick = (event) => setPoint({ lng: event.lngLat.lng, lat: event.lngLat.lat, mapPoint: event.point })
     map.on('click', onClick)
     return () => map.off?.('click', onClick)
-  }, [mapRef, isStyleReady])
+  }, [mapRef, isStyleReady, inspectionEnabled, visible])
 
   useEffect(() => {
     // OFF이거나 이 시각에 프레임이 없으면 값도 함께 사라져야 한다(UI 계약: Toggle off, No matching frame).
-    if (!visible || !frame?.tm || !fetchPoint) {
+    if (!inspectionEnabled || !visible || !frame?.tm || !fetchPoint) {
       requestTokenRef.current += 1
       setPoint(null)
       setSelection(null)
@@ -41,8 +41,8 @@ export function useEchoTopOverlay({ mapRef, isStyleReady, styleRevision, visible
         setSelection(null)
       })
     return () => controller.abort()
-  }, [visible, frame, point, fetchPoint])
+  }, [visible, frame, point, fetchPoint, inspectionEnabled])
 
   const clearSelection = () => { requestTokenRef.current += 1; setPoint(null); setSelection(null) }
-  return { selection, clearSelection }
+  return { selection: inspectionEnabled ? selection : null, clearSelection }
 }

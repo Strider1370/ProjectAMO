@@ -327,6 +327,14 @@ export const kim_gktg = {
   collect_on_startup: process.env.KIM_GKTG_COLLECT_ON_STARTUP !== '0',
 }
 
+// 권계면·제트: GKTG 가상환경(NumPy)을 함께 쓰고, 100·70 hPa 추가 입력은 레이더·위성 키로 받는다.
+export const kim_tropopause = {
+  enabled: process.env.KIM_TROPOPAUSE_DISABLED !== '1',
+  python: process.env.KIM_TROPOPAUSE_PYTHON || process.env.KIM_GKTG_PYTHON || path.resolve(__dirname, '../../.venvs/kim-gktg/bin/python'),
+  calculation_timeout_ms: Number(process.env.KIM_TROPOPAUSE_TIMEOUT_MS || 120000),
+  collect_on_startup: process.env.KIM_TROPOPAUSE_COLLECT_ON_STARTUP !== '0',
+}
+
 export const ktg = {
   max_runs: Number(process.env.KTG_MAX_RUNS || 2),
   timeout_ms: Number(process.env.KTG_TIMEOUT_MS || 60000),
@@ -414,6 +422,7 @@ export const schedule = {
   // processedTms가 같은 관측시각의 재다운로드를 막는다.
   satellite_visible_interval: '*/5 * * * *',
   kim_gktg_interval: '35 1,2,5,6,7,8,11,12,13,14,17,18,19,20,23 * * *',
+  kim_tropopause_interval: '35 1,2,5,6,7,8,11,12,13,14,17,18,19,20,23 * * *',
   ktg_interval: '25 1,2,7,8,13,14,19,20 * * *',
   // 네 분석시각의 KIM 격자는 약 5시간 뒤부터 공개된다. +5h에 시작하고 +6h·+7h에 재시도한다.
   kim_surface_wind_interval: '12 1,5,6,7,11,12,13,17,18,19,23 * * *',
@@ -560,6 +569,7 @@ export default {
   asos_ceiling,
   ktg,
   kim_gktg,
+  kim_tropopause,
   lightning,
   amos,
   radar_echo,

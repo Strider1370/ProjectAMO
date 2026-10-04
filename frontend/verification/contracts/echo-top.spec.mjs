@@ -131,6 +131,7 @@ async function revealLegends(page, testInfo) {
 
 async function closePanelAndClickMap(page, testInfo) {
   await panelToggle(page, testInfo).click()
+  await page.getByRole('button', { name: '지점 정보', exact: true }).click()
   const canvas = page.locator('.mapboxgl-canvas').first()
   await expect(canvas).toBeVisible()
   // 모바일 뷰포트에서는 고정 좌표가 캔버스 밖으로 나간다 — 실제 크기의 가운데를 누른다.

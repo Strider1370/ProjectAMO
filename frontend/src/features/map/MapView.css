@@ -2329,6 +2329,14 @@
   gap: 16px;
 }
 
+.cloud-icing-controls { margin: 12px 0 0; padding: 8px 12px; border: 1px solid var(--stroke-2); border-radius: var(--radius-md); min-width: 0; }
+.cloud-icing-controls legend { font-size: 12px; font-weight: 600; color: var(--text-2); padding: 0 4px; }
+.cloud-icing-controls__toggles { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.cloud-icing-controls label { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 44px; font-size: 13px; cursor: pointer; }
+.cloud-icing-controls input { accent-color: var(--accent); }
+.cloud-icing-controls small { color: var(--text-3); font-size: 11px; }
+.cloud-icing-controls p { color: var(--text-3); font-size: 12px; margin: 4px 0; }
+
 .layer-tile-group-title {
   display: flex;
   align-items: center;

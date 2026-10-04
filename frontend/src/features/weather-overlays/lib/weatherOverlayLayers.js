@@ -34,6 +34,7 @@ import {
 } from './wissdomLayers.js'
 import { syncRasterFrame } from './rasterFrameTransition.js'
 import { createSigwxMarkerImage } from './sigwxMarkerImages.js'
+import { ICING_OUTLINE_COLOR, ICING_PRESENTATION, cloudSpreadColor } from '../../../shared/weather/cloudIcingPresentation.js'
 
 export { QPF_LAYER, QPF_SOURCE, WISSDOM_LAYER, WISSDOM_SOURCE }
 
@@ -179,17 +180,19 @@ export const MET_LAYERS = [
   { id: 'lightning', label: 'Lightning', color: '#facc15' },
   { id: 'surfaceChart', label: '강수', color: '#1e293b' },
   { id: 'wind', label: 'Wind', color: '#22c55e' },
-  { id: 'temp', label: 'Temp', color: '#ef4444' },
-  { id: 'cloud', label: 'Moisture', color: 'rgba(49, 124, 62, 0.7)' },
-  { id: 'icing', label: 'Icing Potential', color: 'rgba(220, 75, 116, 0.74)' },
+  { id: 'cloudIcing', label: '구름·착빙', color: ICING_OUTLINE_COLOR },
+  { id: 'temp', label: '등온선', color: '#242424' },
+  { id: 'cloud', label: '구름층 추정', color: cloudSpreadColor(1.5) },
+  { id: 'icing', label: '착빙', color: ICING_PRESENTATION[1].fillColor },
   { id: 'turbulence', label: 'Turbulence', color: 'rgba(251, 146, 60, 0.85)' },
+  { id: 'tropopause', label: '권계면·제트', color: '#1c5cab' },
   { id: 'sigmet', label: 'SIGMET', color: ADVISORY_LAYER_DEFS.sigmet.color },
   { id: 'sigmet_intl', label: 'SIGMET(해외)', color: ADVISORY_LAYER_DEFS.sigmet_intl.color },
   { id: 'airmet', label: 'AIRMET', color: ADVISORY_LAYER_DEFS.airmet.color },
   { id: 'sigwx', label: 'SIGWX LOW', color: '#a78bfa' },
   { id: 'sigwxHigh', label: 'SIGWX HIGH', color: '#7037bd' },
   { id: 'typhoon', label: '태풍', color: '#dc2626' },   // TYPHOON_PALETTE[0]과 같은 값
-  { id: 'visibility', label: '시정', color: '#f97316' },
+  { id: 'visibility', label: '시정·운고', color: '#f97316' },
   { id: 'ceiling', label: '운고', color: '#dc2626' },
   { id: 'terrainHazard', label: '지형 근접', color: '#dc2626' },
   { id: 'notam', label: 'NOTAM', color: '#334155' },

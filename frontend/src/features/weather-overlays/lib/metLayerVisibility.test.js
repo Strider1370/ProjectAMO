@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createInitialMetVisibility, getNextMetVisibility } from './metLayerVisibility.js'
+import { createInitialMetVisibility, getNextMetVisibility, clearMetVisibility } from './metLayerVisibility.js'
 
 test('initial MET visibility turns on only the domestic radar', () => {
   assert.deepEqual(
@@ -11,6 +11,31 @@ test('initial MET visibility turns on only the domestic radar', () => {
       surfaceChartWind: 'barbs',
     },
   )
+})
+
+test('시정·운고는 기본 OFF이고 이전 개별 선택도 통합 보기로 복원한다', () => {
+  const ids = ['visibility', 'ceiling']
+  const initial = createInitialMetVisibility(ids)
+  assert.equal(initial.visibility, false)
+  assert.equal(initial.ceiling, false)
+  for (const saved of [{ visibility: true }, { ceiling: true }, { visibility: false, ceiling: true }]) {
+    const restored = createInitialMetVisibility(ids, saved)
+    assert.equal(restored.visibility, true)
+    assert.equal(restored.ceiling, true)
+  }
+})
+
+test('시정·운고 버튼과 이전 운고 액션은 둘을 함께 토글하고 전체 해제도 함께 끈다', () => {
+  for (const id of ['visibility', 'ceiling']) {
+    const before = { visibility: false, ceiling: false, wind: true, turbulence: false }
+    const enabled = getNextMetVisibility(before, id)
+    assert.deepEqual(enabled, { ...before, visibility: true, ceiling: true })
+    assert.deepEqual(getNextMetVisibility(enabled, id), before)
+    const cleared = clearMetVisibility(enabled, ['visibility'])
+    assert.equal(cleared.visibility, false)
+    assert.equal(cleared.ceiling, false)
+    assert.equal(cleared.wind, false)
+  }
 })
 
 test('surface chart starts with barbs and the title button swaps barbs and animation', () => {
@@ -84,14 +109,14 @@ test('getNextMetVisibility keeps wind flow off in low power mode', () => {
   )
 })
 
-test('getNextMetVisibility adds icing to NWP mutual exclusion', () => {
+test('icing coexists with cloud and temperature while disabling wind', () => {
   assert.deepEqual(
     getNextMetVisibility(
       { wind: true, temp: true, cloud: true, icing: false, windFlow: true, windSpeed: true },
       'icing',
       { lowPower: false },
     ),
-    { wind: false, temp: false, cloud: false, icing: true, turbulence: false, ctps: false, windFlow: false, windSpeed: true },
+    { wind: false, temp: true, cloud: true, icing: true, turbulence: false, ctps: false, windFlow: false, windSpeed: true },
   )
 
   assert.equal(
@@ -102,6 +127,31 @@ test('getNextMetVisibility adds icing to NWP mutual exclusion', () => {
     ).icing,
     false,
   )
+})
+
+test('combined view restores child settings across wind and parent toggles', () => {
+  const initial = createInitialMetVisibility(['wind', 'temp', 'cloud', 'icing', 'cloudIcing'])
+  const opened = getNextMetVisibility(initial, 'cloudIcing')
+  assert.equal(opened.temp && opened.cloud && opened.icing && opened.cloudIcing, true)
+  assert.equal(getNextMetVisibility(opened, 'temp'), opened, 'legacy temperature enable is idempotent')
+  const configured = getNextMetVisibility(opened, 'cloud')
+  const wind = getNextMetVisibility(configured, 'wind')
+  assert.equal(wind.cloudIcing || wind.temp || wind.cloud || wind.icing, false)
+  const restored = getNextMetVisibility(wind, 'cloudIcing')
+  assert.equal(restored.temp, true)
+  assert.equal(restored.cloud, false)
+  assert.equal(restored.icing, true)
+  const closed = getNextMetVisibility(restored, 'cloudIcing')
+  assert.equal(closed.temp || closed.cloud || closed.icing || closed.cloudIcing, false)
+  assert.equal(getNextMetVisibility(closed, 'cloudIcing').temp, true)
+})
+
+test('legacy child states and parent-only deep links initialize consistently', () => {
+  const ids = ['temp', 'cloud', 'icing', 'cloudIcing']
+  assert.equal(createInitialMetVisibility(ids, { cloud: true }).cloudIcing, true)
+  const parent = createInitialMetVisibility(ids, { cloudIcing: true })
+  assert.equal(parent.temp && parent.cloud && parent.icing, true)
+  assert.equal(createInitialMetVisibility(ids, null).cloudIcing, false)
 })
 
 // 오른쪽 세로 슬라이더 자리는 하나뿐 — KIM(바람 등) ↔ 난류 ↔ 운정고도(ctps)는 서로 배타적이다.
@@ -144,4 +194,31 @@ test('KIM, 난류, 운정고도는 세로 슬라이더 자리를 두고 서로 �
     ),
     { wind: false, temp: false, cloud: false, icing: false, turbulence: true, ctps: false, windFlow: false, windSpeed: false },
   )
+})
+
+test('both child faces off keeps contours and survives parent, primary view and all-off', () => {
+  const ids = ['cloudIcing', 'temp', 'cloud', 'icing', 'wind', 'ctps', 'turbulence']
+  const initial = createInitialMetVisibility(ids, { cloudIcing: true })
+  const none = getNextMetVisibility(getNextMetVisibility(initial, 'cloud'), 'icing')
+  assert.equal(none.cloud || none.icing, false)
+  assert.equal(none.cloudIcing && none.temp, true)
+  for (const closed of [getNextMetVisibility(none, 'cloudIcing'), getNextMetVisibility(none, 'wind'), getNextMetVisibility(none, 'ctps'), getNextMetVisibility(none, 'turbulence'), clearMetVisibility(none, ids)]) {
+    assert.equal(closed.cloudIcing || closed.temp, false)
+    const restored = getNextMetVisibility(closed, 'cloudIcing')
+    assert.equal(restored.cloud || restored.icing, false)
+    assert.equal(restored.cloudIcing && restored.temp, true)
+    assert.equal(restored.wind || restored.ctps || restored.turbulence, false)
+  }
+})
+
+test('version 2 uses the explicit parent and normalizes legacy temperature/detail flags', () => {
+  const ids = ['cloudIcing', 'temp', 'cloud', 'icing']
+  const legacy = createInitialMetVisibility(ids, { temp: true, cloudIcingDetail: true })
+  assert.equal(legacy.cloudIcing && legacy.temp, true)
+  assert.equal(legacy.cloudIcingDetail, false)
+  const inactive = createInitialMetVisibility(ids, { cloudIcingPresentationVersion: 2, cloudIcing: false, temp: true, cloud: true })
+  assert.equal(inactive.temp || inactive.cloud || inactive.cloudIcing, false)
+  const contoursOnly = createInitialMetVisibility(ids, { cloudIcingPresentationVersion: 2, cloudIcing: true, temp: false, cloud: false, icing: false })
+  assert.equal(contoursOnly.cloudIcing && contoursOnly.temp, true)
+  assert.equal(contoursOnly.cloud || contoursOnly.icing, false)
 })

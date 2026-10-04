@@ -1,0 +1,12 @@
+.cloud-icing-legend { display: flex; flex-wrap: wrap; gap: var(--space-s); padding: var(--space-s); background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); color: var(--text-2); font-size: var(--fs-200); }
+.cloud-icing-legend-section { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-s); }
+.cloud-icing-legend-section strong { font-weight: var(--fw-semibold); }
+.cloud-icing-legend-section span { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.cloud-icing-legend-section i { display: inline-block; width: 28px; height: 18px; flex-shrink: 0; }
+.cloud-icing-legend-section small { font-size: inherit; color: var(--text-3); }
+.cloud-icing-legend-section .cloud-icing-legend-line { height: 0; border-top: 1.5px dashed var(--text-3); }
+.cloud-icing-legend-section .cloud-icing-legend-line.is-zero { border-top: 2px solid var(--text-1); }
+.map-right-legends > .cloud-icing-legend { max-width: 320px; }
+
+.cloud-icing-legend.is-compact { padding: 0; border: 0; border-radius: 0; background: transparent; flex-direction: column; align-items: flex-start; }
+.cloud-icing-legend.is-map .cloud-icing-legend-line { border-color: var(--level-red); }

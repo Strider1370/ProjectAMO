@@ -53,6 +53,7 @@ export const COLLECTOR_REGISTRY = [
   collector('nwp_icon', overseasNwpSchedule('nwp_icon_interval', 60 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
   collector('nwp_gfs', overseasNwpSchedule('nwp_gfs_interval', 75 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
   collector('kim_gktg', utc('kim_gktg_interval', 4 * HOUR, 35 * MINUTE), config => config.kim_nwp?.enabled !== false && config.kim_gktg?.enabled !== false),
+  collector('kim_tropopause', utc('kim_tropopause_interval', 4 * HOUR, 35 * MINUTE), config => config.kim_nwp?.enabled !== false && config.kim_tropopause?.enabled !== false),
   collector('ground_forecast', kst('ground_forecast_interval', 3 * HOUR, 35 * MINUTE), enabled, ['aviation']),
   collector('terminal_flights', kst('terminal_flight_interval', MINUTE, MINUTE, EARLY_MORNING)),
   collector('overseas_forecast', kst('overseas_forecast_interval', HOUR, 35 * MINUTE, EARLY_MORNING)),

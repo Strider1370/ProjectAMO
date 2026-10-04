@@ -112,6 +112,7 @@ test('turbulence uses compact dashes without changing other dashed boundaries', 
 test('weather overlay exports keep MET panel metadata intact', () => {
   assert.equal(MET_LAYERS.find((layer) => layer.id === 'sigmet')?.label, 'SIGMET')
   assert.equal(MET_LAYERS.find((layer) => layer.id === 'adsb'), undefined)
+  assert.equal(MET_LAYERS.find((layer) => layer.id === 'icing').color, '#ACC7FF', 'legacy icing chips retain the shared A grade color')
   assert.equal(RADAR_RAINRATE_LEGEND[0].label, '150')
   assert.equal(RADAR_RAINRATE_LEGEND.at(-1).label, '0.0')
 })

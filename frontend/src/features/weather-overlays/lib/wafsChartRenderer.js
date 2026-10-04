@@ -1,15 +1,12 @@
-import { windParts, nearestTangent, createBoundaryPatterns, isSelectableHazard, insideArea, nearBoundary } from './wafsChartGeometry.js'
+import { nearestTangent, createBoundaryPatterns, isSelectableHazard, insideArea, nearBoundary } from './wafsChartGeometry.js'
 import { CSS_VARS } from '../../../shared/theme/tokens.js'
+import { outlinedStroke, jetBarb as barb } from './jetSymbols.js'
 
 import { chartColor, WAFS_CHART_PALETTES } from './wafsChartPalette.js'
 
 const ASSETS = import.meta.glob('../assets/wafs/*.svg', { eager: true, query: '?url', import: 'default' })
 const FONT = `11px ${CSS_VARS['--font-base']}`
 
-function outlinedStroke(ctx, ink, width, palette) {
-  ctx.strokeStyle = palette.halo; ctx.lineWidth = width + 1.6; ctx.stroke()
-  ctx.strokeStyle = ink; ctx.lineWidth = width; ctx.stroke()
-}
 function cloudBoundary(ctx, samples, ink, palette) {
   ctx.beginPath()
   for (let i = 1; i < samples.length; i++) {
@@ -29,28 +26,6 @@ function arrow(ctx, p, angle, palette) {
   ctx.beginPath(); ctx.moveTo(1, 0); ctx.lineTo(-15, -6); ctx.lineTo(-12, 0); ctx.lineTo(-15, 6); ctx.closePath()
   ctx.strokeStyle = palette.halo; ctx.lineWidth = 2; ctx.stroke()
   ctx.fillStyle = palette.ink; ctx.fill(); ctx.restore()
-}
-
-function barb(ctx, p, angle, speed, latitude, palette) {
-  const parts = windParts(speed)
-  if (!parts) return
-  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(angle)
-  // Barbs lie on the poleward side: left of flow in the northern hemisphere.
-  const side = latitude >= 0 ? -1 : 1
-  const length = Math.max(34, parts.pennants * 10 + parts.full * 6 + parts.half * 6 + 8)
-  ctx.beginPath(); ctx.moveTo(-length / 2, 0); ctx.lineTo(length / 2, 0)
-  outlinedStroke(ctx, palette.ink, 2.2, palette)
-  let x = -length / 2
-  for (let i = 0; i < parts.pennants; i++) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 5, side * 15); ctx.lineTo(x + 9, 0); ctx.closePath()
-    ctx.strokeStyle = palette.halo; ctx.lineWidth = 1.8; ctx.stroke(); ctx.fillStyle = palette.ink; ctx.fill(); x += 11
-  }
-  for (let i = 0; i < parts.full + parts.half; i++) {
-    const half = i >= parts.full
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - (half ? 3 : 6), side * (half ? 8 : 15))
-    outlinedStroke(ctx, palette.ink, 1.7, palette); x += 6
-  }
-  ctx.restore()
 }
 
 function loadSymbol(url) {

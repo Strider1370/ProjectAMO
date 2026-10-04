@@ -143,45 +143,42 @@ async function screenshotStation(page, [lon, lat], name) {
 }
 
 test.describe('flight-category-overlay', () => {
-  test('시정을 켜면 면이 나오고 끄면 사라진다', async ({ page }, testInfo) => {
+  test('시정·운고 버튼은 두 레이어를 함께 켜고 끈다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
+    await expect(page.locator('.layer-drawer-status')).toHaveText('2개 켜짐')
 
     const canvas = page.locator('.mapboxgl-canvas').first()
     await expect(canvas).toBeVisible()
     await panelToggle(page, testInfo).click()
     await assertLayerRendering(page, FC_VIS_SOURCE, [FC_VIS_LAYER], true)
+    await assertLayerRendering(page, FC_CEIL_SOURCE, [FC_CEIL_FILL_LAYER, FC_CEIL_LINE_LAYER], true)
+    await expect(page.getByRole('button', { name: '시정', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '운고', exact: true })).toHaveCount(0)
 
     await panelToggle(page, testInfo).click()
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
+    await expect(page.locator('.layer-drawer-status')).toHaveText('1개 켜짐')
     await panelToggle(page, testInfo).click()
     await assertLayerRendering(page, FC_VIS_SOURCE, [FC_VIS_LAYER], false)
+    await assertLayerRendering(page, FC_CEIL_SOURCE, [FC_CEIL_FILL_LAYER, FC_CEIL_LINE_LAYER], false)
   })
 
-  test('운고는 윤곽선으로 나오고 시정과 구분된다 (운고 단독)', async ({ page }, testInfo) => {
+  test('시정·운고 범례는 면과 윤곽선의 단위·표시 방식을 구분한다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '운고', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
 
-    const canvas = page.locator('.mapboxgl-canvas').first()
-    await panelToggle(page, testInfo).click()
-    await assertLayerRendering(page, FC_CEIL_SOURCE, [FC_CEIL_FILL_LAYER, FC_CEIL_LINE_LAYER], true)
-    // 운고 단독 상태 — 위 스와치 행 없이 하위 옵션 버튼만 있는 것이 정상이다(범례 없음이 아니다).
-  })
-
-  test('시정과 운고를 함께 켜면 채움과 윤곽선이 겹쳐 보인다', async ({ page }, testInfo) => {
-    await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
-    await page.getByRole('button', { name: '운고', exact: true }).click()
-
-    const canvas = page.locator('.mapboxgl-canvas').first()
-    await panelToggle(page, testInfo).click()
+    await revealLegends(page, testInfo)
     await assertLayerRendering(page, FC_VIS_SOURCE, [FC_VIS_LAYER], true)
     await assertLayerRendering(page, FC_CEIL_SOURCE, [FC_CEIL_FILL_LAYER, FC_CEIL_LINE_LAYER], true)
+    await expect(page.getByText('시정 · km', { exact: true })).toBeVisible()
+    await expect(page.getByText('운고 · m', { exact: true })).toBeVisible()
+    await expect(page.getByText('옅은 채움·윤곽선 = 운고 · 색 없음 = 기준 충족 또는 자료 없음', { exact: true })).toBeVisible()
   })
 
   test('자료없음 표시는 기본이 꺼짐이고 켜면 화면이 바뀐다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await revealLegends(page, testInfo)
 
     const missing = page.getByRole('button', { name: /자료없음 표시/ })
@@ -195,7 +192,7 @@ test.describe('flight-category-overlay', () => {
 
   test('관측지점은 기본이 켜짐이고 개수를 적는다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await revealLegends(page, testInfo)
 
     const stations = page.getByRole('button', { name: /관측지점/ })
@@ -217,7 +214,7 @@ test.describe('flight-category-overlay', () => {
   // 있지만 sky_clear도 아니고 ceiling_ft도 결측이라 toStationFeatures가 걸러낸다.
   test('결측 지점(fx_missing)은 소스에 도형으로 들어오지 않는다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await panelToggle(page, testInfo).click()
 
     const found = await page.evaluate(([lon, lat, sourceId]) => {
@@ -233,7 +230,7 @@ test.describe('flight-category-overlay', () => {
 
   test('지도를 누르면 말풍선이 뜨고 자료 없는 항목은 "자료 없음"으로 적힌다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await panelToggle(page, testInfo).click()
 
     const canvas = page.locator('.mapboxgl-canvas').first()
@@ -261,7 +258,7 @@ test.describe('flight-category-overlay', () => {
   // 보인다"는 반박이 가능해서 두 밴드를 각각 하나씩 찍는다.
   test('모델보다 낮은 관측 지점은 흰 테두리로 표시된다 — severe(빨강) 채움', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await panelToggle(page, testInfo).click()
     // fx_severe_ring — 운고 800ft(severe), model_ceiling_ft=null이면 결측 임계값 미만
     // 조건 없이 바로 테두리 대상이 된다(stationMarkerStyle의 modelBand==='missing' 분기).
@@ -272,7 +269,7 @@ test.describe('flight-category-overlay', () => {
 
   test('모델보다 낮은 관측 지점은 흰 테두리로 표시된다 — caution(주황) 채움', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await panelToggle(page, testInfo).click()
     // fx_caution_ring — 운고 2,000ft(caution), model_ceiling_ft 3,500ft(high)로 차이가
     // 200ft를 넘어 테두리 대상이 된다(stationMarkerStyle의 lowerByBand 분기).
@@ -286,7 +283,7 @@ test.describe('flight-category-overlay', () => {
   // 직접 읽는다 — assertLayerRendering과 같은 원칙(window.__map에서 직접 확인).
   test('초록(fill=good) 관측지점이 실제로 소스에 들어온다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await panelToggle(page, testInfo).click()
 
     expect(await stationFill(page, [127.9, 37.6]), "fx_good은 fill='good'이어야 한다").toBe('good')
@@ -304,7 +301,7 @@ test.describe('flight-category-overlay', () => {
   // 소스에서 그대로 읽어 좌표를 픽셀로 바꾼다 — 값을 다시 손으로 안 적는다.
   test('점을 누르면 그 관측소의 말풍선이 뜨고 이름·운고·시정이 보인다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await panelToggle(page, testInfo).click()
 
     const canvas = page.locator('.mapboxgl-canvas').first()
@@ -335,7 +332,7 @@ test.describe('flight-category-overlay', () => {
   // 점 팝업"이라는 반박이 가능해진다).
   test('관측지점 위를 누르면 점 팝업이 뜨고 면 팝업(추세 줄)은 뜨지 않는다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await panelToggle(page, testInfo).click()
 
     const canvas = page.locator('.mapboxgl-canvas').first()
@@ -349,10 +346,10 @@ test.describe('flight-category-overlay', () => {
   })
 
   // WeatherLegends.jsx의 station key — Task 5 Part A. 게이트는 지점 층이 실제로 켜지는
-  // 조건과 같다(showFlightCategoryStations && (시정 또는 운고)). 시정만 켜고 확인한다.
+  // 조건과 같다(showFlightCategoryStations && (시정 또는 운고)). 통합 보기를 켜고 확인한다.
   test('범례에 관측지점 키(빨강·주황·초록·흰 테두리)가 나온다', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
     await revealLegends(page, testInfo)
 
     const key = page.locator('.hlegend').filter({ has: page.locator('.hlegend-title', { hasText: '관측지점' }) })
@@ -374,13 +371,16 @@ test.describe('flight-category-overlay', () => {
   // 값으로 뭉개짐"도 잡는다.
   test('층별 시각 표시줄이 시정 관측·운고 유효 시각을 보여준다 (배선 검증)', async ({ page }, testInfo) => {
     await openWeatherPanel(page, testInfo)
-    await page.getByRole('button', { name: '시정', exact: true }).click()
-    await page.getByRole('button', { name: '운고', exact: true }).click()
-    await panelToggle(page, testInfo).click()
+    await page.getByRole('button', { name: '시정·운고', exact: true }).click()
+    if (testInfo.project.name === 'mobile') await revealLegends(page, testInfo)
+    else await panelToggle(page, testInfo).click()
 
-    const bar = page.locator('.layer-timestamp-bar')
+    const bar = page.getByLabel('기상자료 시각', { exact: true })
     const header = bar.locator('.layer-timestamp-header span').first()
-    const issueCell = bar.locator('.layer-timestamp-cell').first()
+    const issueCell = bar.locator('.weather-time-card__times > span').first()
+    await expect(bar).toBeVisible()
+    const previous = bar.getByRole('button', { name: '이전 기상 레이어' })
+    for (let i = 0; i < 10 && await previous.isEnabled(); i++) await previous.click()
 
     await expect(header).toHaveText('시정')
     await expect(issueCell).toContainText('관측')

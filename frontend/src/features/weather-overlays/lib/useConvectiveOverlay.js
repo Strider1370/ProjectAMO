@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { queryCiAtPoint, syncConvectiveLayers } from './convectiveLayers.js'
 import { canApplyConvectiveResponse, makeConvectiveRequestKey } from './convectiveSelectionModel.js'
 
-export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, ciVisible, ctpsVisible, ciFrame, ctpsFrame, fetchCtpsPoint, timeZone }) {
+export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, inspectionEnabled, ciVisible, ctpsVisible, ciFrame, ctpsFrame, fetchCtpsPoint, timeZone }) {
   const [minFl, setMinFl] = useState('all')
   const [selection, setSelection] = useState(null)
   const [point, setPoint] = useState(null)
@@ -16,14 +16,14 @@ export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, ciVi
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !isStyleReady) return undefined
+    if (!map || !isStyleReady || !inspectionEnabled || (!ciVisible && !ctpsVisible)) return undefined
     const onClick = (event) => setPoint({ lng: event.lngLat.lng, lat: event.lngLat.lat, mapPoint: event.point })
     map.on('click', onClick)
     return () => map.off?.('click', onClick)
-  }, [mapRef, isStyleReady])
+  }, [mapRef, isStyleReady, inspectionEnabled, ciVisible, ctpsVisible])
 
   useEffect(() => {
-    if (!ciVisible && !ctpsVisible) {
+    if (!inspectionEnabled || (!ciVisible && !ctpsVisible)) {
       requestTokenRef.current += 1
       currentKeyRef.current = null
       setPoint(null)
@@ -53,7 +53,7 @@ export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, ciVi
         setSelection(ciSelection ? { lng: point.lng, lat: point.lat, point: point.mapPoint, ci: ciSelection, ctps: null } : null)
       })
     return () => controller.abort()
-  }, [mapRef, point, minFl, ciVisible, ctpsVisible, ciFrame, ctpsFrame, fetchCtpsPoint, timeZone])
+  }, [mapRef, point, minFl, ciVisible, ctpsVisible, ciFrame, ctpsFrame, fetchCtpsPoint, timeZone, inspectionEnabled])
 
   const clearSelection = () => {
     requestTokenRef.current += 1
@@ -62,5 +62,5 @@ export function useConvectiveOverlay({ mapRef, isStyleReady, styleRevision, ciVi
     setSelection(null)
   }
 
-  return { minFl, setMinFl, selection, clearSelection }
+  return { minFl, setMinFl, selection: inspectionEnabled ? selection : null, clearSelection }
 }

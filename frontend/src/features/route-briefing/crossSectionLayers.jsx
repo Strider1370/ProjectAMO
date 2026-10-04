@@ -1,30 +1,32 @@
-import { useState } from 'react'
+import { toggleCrossSectionLayer, showCrossSectionTurbulence, restoreCrossSectionLayers, CROSS_SECTION_TOGGLE_GROUPS } from './lib/crossSectionLayerState.js'
+export { CROSS_SECTION_TOGGLE_GROUPS }
+import { useEffect, useRef, useState } from 'react'
+import ProfileLegend from './ProfileLegend.jsx'
 import { formatNwpTimeTick } from '../weather-overlays/NwpSliderBarModel.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 
 // 연직단면도 레이어 토글 — VerticalProfileWindow와 BriefingView 인라인이 공유.
 export const CROSS_SECTION_TOGGLES = [
-  ['temp', '기온'],
-  ['moisture', '습도'],
-  ['cloud', '구름'],
+  ['temp', '등온선'],
+  ['moisture', '구름층 추정'],
+  ['cloud', '모델 구름량 윤곽'],
   ['icing', '착빙'],
   ['wind', '바람'],
   ['turbulence', '난류'],
+  ['tropopause', '권계면·제트'],
   ['advisories', 'SIGMET/AIRMET'],
 ]
 
-const DEFAULT_LAYERS = { temp: true, wind: true, icing: false, moisture: true, cloud: true, turbulence: false, advisories: true }
+const DEFAULT_LAYERS = { temp: true, wind: true, icing: true, moisture: true, cloud: false, turbulence: false, tropopause: true, advisories: true }
 
 export function useCrossSectionLayers(initial = DEFAULT_LAYERS) {
-  const [layers, setLayers] = useState(initial)
-  const toggle = (key) => setLayers((prev) => {
-    const next = { ...prev, [key]: !prev[key] }
-    // icing↔moisture 상호배제(같은 영역 색 충돌).
-    if (key === 'icing' && next.icing) next.moisture = false
-    if (key === 'moisture' && next.moisture) next.icing = false
-    return next
-  })
-  return [layers, toggle]
+  const [state, setState] = useState(() => ({ layers: initial, restore: null }))
+  const toggle = key => setState(prev => toggleCrossSectionLayer(prev, key))
+  return [state.layers, toggle, {
+    turbulenceView: !!state.restore,
+    showTurbulence: () => setState(showCrossSectionTurbulence),
+    restoreLayers: () => setState(restoreCrossSectionLayers),
+  }]
 }
 
 // KIM 예보시각 앞뒤 이동. 큰 창(VerticalProfileWindow)과 브리핑 인라인 단면도가 같이 쓴다 —
@@ -50,17 +52,52 @@ export function ForecastHourNav({ crossSection, onSelect, loading = false }) {
   )
 }
 
+function ToggleMenu({ label, items, layers, onToggle, onClose }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const close = event => { if (!ref.current?.contains(event.target)) onClose() }
+    const escape = event => { if (event.key === 'Escape') onClose() }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', escape)
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape) }
+  }, [onClose])
+  return <div ref={ref} className="cs-toggle-menu" role="group" aria-label={`${label} 세부 항목`}>
+    {items.map(([key, text]) => <label key={key}><input type="checkbox" checked={!!layers[key]} onChange={() => onToggle(key)} />{text}</label>)}
+  </div>
+}
+
 // keys 주면 그 레이어만 노출(데이터 없는 토글 숨김용). 기본은 전체.
-export function CrossSectionToggles({ layers, onToggle, keys, trailing = null, compact = false, inline = false }) {
-  const items = keys ? CROSS_SECTION_TOGGLES.filter(([k]) => keys.includes(k)) : CROSS_SECTION_TOGGLES
+// legend면 범례를 버튼 줄 오른쪽에 함께 둔다(좁으면 다음 줄로 넘어감). 이때 차트에는 legendInToolbar를 넘겨 중복을 막는다.
+export function CrossSectionToggles({ layers, onToggle, keys, trailing = null, compact = false, inline = false, legend = false }) {
+  const [open, setOpen] = useState(null)
+  const allowed = key => !keys || keys.includes(key)
+  const groups = CROSS_SECTION_TOGGLE_GROUPS.map(group => group.map(item => item.children
+    ? { ...item, children: item.children.filter(([k]) => allowed(k)) }
+    : item).filter(item => item.children ? item.children.length : allowed(item.key))).filter(group => group.length)
+  const isOn = item => item.children ? item.children.some(([k]) => layers[k]) : !!layers[item.key]
+  const toggle = item => {
+    if (!item.children) return onToggle(item.key)
+    const on = item.children.filter(([k]) => layers[k]).map(([k]) => k)
+    const keysToFlip = on.length ? on : item.defaults.filter(k => item.children.some(([c]) => c === k))
+    keysToFlip.forEach(k => onToggle(k))
+  }
   return (
     <div className={`cross-section-toggles${inline ? ' is-inline' : ''}`} role="group" aria-label="레이어">
-      <span className="cross-section-toggle-group">
-        {items.map(([k, label]) => (
-          <button key={k} type="button" className={`cs-toggle${layers[k] ? ' is-on' : ''}`} aria-label={label} aria-pressed={layers[k]} onClick={() => onToggle(k)}>{compact && k === 'advisories' ? <>SIGMET/<br />AIRMET</> : label}</button>
-        ))}
-      </span>
+      {groups.map((group, gi) => <span key={gi} className="cross-section-toggle-group">
+        {group.map(item => {
+          const menu = item.children ?? item.options
+          return <span key={item.id} className={`cs-toggle-split${menu ? ' has-menu' : ''}`}>
+            <button type="button" className={`cs-toggle${isOn(item) ? ' is-on' : ''}`} aria-label={item.label} aria-pressed={isOn(item)} onClick={() => toggle(item)}>
+              {compact && item.id === 'advisories' ? <>SIGMET/<br />AIRMET</> : item.label}
+            </button>
+            {menu && <button type="button" className={`cs-toggle cs-toggle-caret${isOn(item) ? ' is-on' : ''}`} aria-label={`${item.label} 세부 항목`} aria-expanded={open === item.id} onClick={() => setOpen(open === item.id ? null : item.id)}>▾</button>}
+            {menu && open === item.id && <ToggleMenu label={item.label} items={menu} layers={layers} onToggle={onToggle} onClose={() => setOpen(null)} />}
+          </span>
+        })}
+      </span>)}
+      {legend && <ProfileLegend layers={layers} inline />}
       {trailing}
     </div>
   )
 }
+

@@ -3,6 +3,7 @@
 // (이전에 server.js에 두 벌로 중복돼 있던 로딩 로직을 통합한 것.)
 import config from '../config.js'
 import { loadGktgCrossSection } from './gktg-cross-section.js'
+import { loadTropopauseCrossSection } from './tropopause-cross-section.js'
 import { buildCrossSection, gridIndexFor } from './cross-section-sampler.js'
 import { buildRouteAxis } from './route-axis.js'
 import { distanceAlongRouteNm } from './profile-composer.js'
@@ -239,10 +240,11 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRev
   })
 
   const turbulence = loadGktgCrossSection({ root, axis, validTime: selectedKimTime?.validTime, timeRules })
+  const tropopause = loadTropopauseCrossSection({ root, axis, validTime: selectedKimTime?.validTime, timeRules })
 
   // 사용자가 단면도에서 다른 예보시간(hf)을 골라볼 수 있도록, 바람 자료가 실제로 있는 시각 목록을 함께 내려준다.
   return {
-    available: kimAvailable || Boolean(turbulence?.available), axis, crossSection: kimAvailable ? crossSection : null, turbulence, totalDistanceNm: axis.totalDistanceNm,
+    available: kimAvailable || Boolean(turbulence?.available), axis, crossSection: kimAvailable ? crossSection : null, turbulence, tropopause, totalDistanceNm: axis.totalDistanceNm,
     timeRules,
     nwpTimeAvailability,
     availableTimes: !kimAvailable ? [] : candidateTimes.map((time) => selectClosestForecastTime({

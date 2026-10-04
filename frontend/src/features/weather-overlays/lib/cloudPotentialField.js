@@ -1,12 +1,7 @@
-export const CLOUD_POTENTIAL_COLOR_RAMP = [
-  { min: 0, max: 1, label: '0-1C', color: 'rgba(24, 96, 44, 0.68)', alpha: 0.68 },
-  { min: 1, max: 2, label: '1-2C', color: 'rgba(49, 124, 62, 0.58)', alpha: 0.58 },
-  { min: 2, max: 3, label: '2-3C', color: 'rgba(85, 150, 85, 0.48)', alpha: 0.48 },
-  { min: 3, max: 4, label: '3-4C', color: 'rgba(132, 176, 124, 0.36)', alpha: 0.36 },
-  { min: 4, max: 5, label: '4-5C', color: 'rgba(163, 195, 151, 0.28)', alpha: 0.28 },
-  { min: 5, max: 6, label: '5-6C', color: 'rgba(188, 209, 174, 0.22)', alpha: 0.22 },
-]
-const TRANSPARENT_CLOUD_POTENTIAL = { min: 6, max: Infinity, label: 'Dry', color: 'rgba(24, 96, 44, 0)', alpha: 0 }
+import { cloudSpreadColor } from '../../../shared/weather/cloudIcingPresentation.js'
+
+export const CLOUD_POTENTIAL_COLOR_RAMP = Array.from({ length: 6 }, (_, i) => ({ min: i, max: i + 1, label: `${i}–${i + 1}°C`, color: cloudSpreadColor(i + .5, 6), alpha: [.58, .50, .42, .34, .28, .22][i] }))
+const TRANSPARENT_CLOUD_POTENTIAL = { min: 6, max: Infinity, label: 'Dry', color: 'rgba(0,0,0,0)', alpha: 0 }
 
 export function decodeScaledValue(value, field) {
   if (!Number.isFinite(value) || value === -32768) return null
@@ -29,7 +24,7 @@ export function getCloudPotentialMaxSpread(field) {
 }
 
 export function pickCloudPotentialColor(value, field = null) {
-  const spread = Number(value)
+  const spread = value == null ? NaN : Number(value)
   if (!Number.isFinite(spread)) return TRANSPARENT_CLOUD_POTENTIAL
   const maxSpread = getCloudPotentialMaxSpread(field)
   if (spread > maxSpread) return TRANSPARENT_CLOUD_POTENTIAL

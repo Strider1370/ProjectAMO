@@ -86,6 +86,10 @@
   --icing-1: #ACC7FF;
   --icing-2: #6B88CD;
   --icing-3: #383D6F;
+  /* 회색 구름 위에 겹치는 착빙 점무늬 */
+  --icing-pattern-1: #1D4ED8;
+  --icing-pattern-2: #1640B8;
+  --icing-pattern-3: #102B85;
   --turb-light: #64D264;
   --turb-mod: #FFC300;
   --turb-sev: #FF3737;

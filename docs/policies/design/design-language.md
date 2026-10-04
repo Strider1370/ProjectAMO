@@ -190,3 +190,7 @@ ProjectAMO는 마케팅 사이트가 아니라 운영 도구다. UI는 조종사
 - 화면마다 개별 값을 늘리기보다 공유 토큰으로 일관성을 유지한다.
 
 검증 명령과 지원 뷰포트는 [브라우저 계약](../verification/contracts.md), 캡처 도구는 [개발 서버 안내](../../operations/dev-server-and-capture.md)에 있다.
+
+### KIM 구름·착빙 표현
+
+A안은 기존 T−Td 회색 구름 위에 착빙 LGT/MOD/SEV를 불투명 파랑 면으로 표시한다. 등급 면색은 `color.icing`, 흰 점은 모든 등급에서 동일한 기준 간격 9px·반지름 0.85px이며 전 등급 합집합의 최외각만 윤곽선으로 표시한다. 제품 공통 정의는 `frontend/src/shared/weather/cloudIcingPresentation.js`다. 지도 조작은 기존 범례 옆 구름·착빙 두 버튼으로 제한한다. 지도 0°C 실선·−20°C 파선 및 라벨은 빨간색 `color.level.red`로 고정하고 단면 온도 조작은 유지한다. 상세 결과는 [A안 구현 보고](../../design/proposals/2026-10-03-kim-cloud-icing-a-implementation.md)를 따른다.

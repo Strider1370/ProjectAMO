@@ -981,12 +981,23 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 
 .cross-section-toggles {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--stroke-2);
 }
 .cross-section-toggle-group, .vertical-profile-toolbar-group, .vertical-profile-toolbar-actions { display: inline-flex; gap: 4px; align-items: center; }
+.cross-section-toggle-group + .cross-section-toggle-group { padding-left: 8px; margin-left: 4px; border-left: 1px solid var(--stroke-1); }
+.cs-toggle-split { position: relative; display: inline-flex; }
+.cs-toggle-split.has-menu > .cs-toggle:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.cs-toggle-split .cs-toggle-caret { padding: 4px 6px; border-left-width: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.cs-toggle-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; display: grid; gap: 6px; min-width: 160px;
+  padding: 8px 10px; background: var(--bg-1); border: 1px solid var(--stroke-1); border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  font-size: 12px; color: var(--text-1); white-space: nowrap;
+}
+.cs-toggle-menu label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .vertical-profile-toolbar-actions { gap: 25px; margin-left: auto; }
 
 .cs-toggle {
@@ -1007,8 +1018,10 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 }
 
 .cs-isotherm {
-  stroke: rgba(100, 130, 160, 0.7);
+  /* 지도 등온선과 같은 빨강. 0°C는 굵은 실선, −20°C(선택 −10°C)는 가는 점선. */
+  stroke: var(--level-red);
   stroke-width: 1.5;
+  stroke-dasharray: 6 4;
   fill: none;
 }
 
@@ -1024,9 +1037,12 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 .cs-cloud-meta strong { color: #0369a1; }
 
 .cs-isotherm-zero {
-  stroke: rgba(220, 60, 60, 0.85);
-  stroke-width: 2.5;
+  stroke: var(--level-red);
+  stroke-width: 2.8;
+  stroke-dasharray: none;
 }
+
+.cs-temperature-detail { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; font-size: 12px; color: var(--text-2); }
 
 .cs-wind-barb {
   stroke: rgba(30, 30, 80, 0.7);
@@ -1047,13 +1063,13 @@ button.vfr-waypoint-altitude-pill:focus-visible {
 
 .cs-isotherm-label {
   font-size: 11px;
-  fill: rgba(100, 130, 160, 0.9);
+  fill: var(--level-red);
   font-family: monospace;
   dominant-baseline: middle;
 }
 
 .cs-isotherm-label-zero {
-  fill: rgba(220, 60, 60, 0.9);
+  fill: var(--level-red);
   font-weight: bold;
 }
 
@@ -2036,3 +2052,31 @@ button.vfr-waypoint-altitude-pill:focus-visible {
   font-size: 12px;
   animation: route-check-error-in var(--motion-base) var(--motion-enter);
 }
+
+
+/* 권계면·제트: 성층권 면(권계면 위, 연보라)과 경계선, 등풍속선(80 kt 굵게, 20 kt 간격 가늘게, 진한 녹색)과 제트 핵(J). */
+.cs-isotach { fill: none; stroke: #1b5e20; stroke-linecap: round; stroke-linejoin: round; }
+.cs-stratosphere { fill: rgba(124, 58, 237, 0.10); stroke: none; }
+.cs-tropopause { fill: none; stroke: #6d28d9; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.cs-tropopause-label {
+  fill: #5b21b6; font-size: 11px; font-weight: 700;
+  paint-order: stroke; stroke: #ffffff; stroke-width: 3px; stroke-linejoin: round;
+}
+.cs-isotach.is-major { stroke-width: 2; }
+.cs-isotach-label { fill: #1b5e20; font-size: 10px; font-weight: 700; paint-order: stroke; stroke: #ffffff; stroke-width: 3px; stroke-linejoin: round; }
+.cs-jet-core circle { fill: #1b5e20; stroke: #ffffff; stroke-width: 1.5; }
+.cs-jet-core .cs-jet-core-mark { fill: #ffffff; font-size: 9px; font-weight: 800; }
+.cs-jet-core rect { fill: #ffffff; stroke: #1b5e20; stroke-width: 1; }
+.cs-jet-core text:not(.cs-jet-core-mark) { fill: #1b5e20; font-size: 11px; font-weight: 700; }
+.cs-no-data rect { stroke: none; }
+.cs-no-data text { fill: #64748b; font-size: 11px; font-weight: 600; }
+.profile-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 6px 10px; border: 1px solid var(--stroke-1); border-radius: 6px; background: var(--bg-1); color: var(--text-2); font-size: 12px; }
+.profile-legend > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.profile-legend b { display: inline-flex; align-items: center; gap: 3px; font-weight: 400; }
+.profile-legend i { display: inline-block; width: 18px; height: 12px; flex-shrink: 0; }
+.profile-legend i.is-line { height: 0; border-top: 2px solid; }
+.profile-legend i.is-strat { background: rgba(124, 58, 237, 0.10); border-bottom: 1.6px solid #6d28d9; }
+.profile-legend i.is-core { width: 14px; height: 14px; border-radius: 50%; background: #1b5e20; color: #fff; font-size: 9px; font-weight: 800; font-style: normal; line-height: 14px; text-align: center; }
+.profile-legend i.is-box { border: 1.5px dashed; }
+.profile-legend.is-inline { margin-left: auto; padding: 0; border: 0; background: transparent; }
+.cross-section-toggles.is-inline { flex-wrap: nowrap; }

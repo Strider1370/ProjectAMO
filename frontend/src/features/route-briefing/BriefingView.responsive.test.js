@@ -57,11 +57,13 @@ test('shares the forecast-hour nav between the profile window and the briefing i
   assert.doesNotMatch(jsx, /aria-label="이전 예보시간"/)
 })
 
-test('wires the default-on cloud contour layer through the shared profile state', () => {
+test('cloud estimate and icing default on together while model cloud contours remain optional', () => {
   const shared = readFileSync(new URL('./crossSectionLayers.jsx', import.meta.url), 'utf8')
-  assert.match(shared, /\['cloud', '구름'\]/)
-  assert.match(shared, /cloud: true/)
-  assert.match(jsx, /cloud: true/)
+  assert.match(shared, /\['cloud', '모델 구름량 윤곽'\]/)
+  assert.match(shared, /cloud: false/)
+  assert.match(shared, /icing: true, moisture: true/)
+  assert.match(jsx, /cloud: false/)
+  assert.match(jsx, /icing: true,[\s\S]*moisture: true/)
   assert.match(profileChartJsx, /data-testid="kim-cloud-contours"/)
   assert.match(profileChartJsx, /className="cs-cloud-contour"/)
   assert.match(profileChartJsx, /fill="none"/)

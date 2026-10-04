@@ -1,3 +1,6 @@
+import CloudIcingMapControls from '../weather-overlays/CloudIcingMapControls.jsx'
+import WeatherPointInfoControl from '../weather-overlays/WeatherPointInfoControl.jsx'
+import { useWeatherPointInspection } from '../weather-overlays/lib/useWeatherPointInspection.js'
 import OrganizationBriefingStatus from '../route-briefing/OrganizationBriefingStatus.jsx'
 import { createSavedRouteHandoff } from '../copilot/savedRouteHandoff.js'
 import { forwardRef, lazy, Suspense, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
@@ -43,6 +46,8 @@ import SigwxLegendDialog from '../weather-overlays/SigwxLegendDialog.jsx'
 import SigwxHighDetails from '../weather-overlays/SigwxHighDetails.jsx'
 import { useSigwxHighOverlay } from '../weather-overlays/lib/useSigwxHighOverlay.js'
 import SigwxHighLegend from '../weather-overlays/SigwxHighLegend.jsx'
+import { useTropopauseJetOverlay } from '../weather-overlays/lib/useTropopauseJetOverlay.js'
+import TropopauseJetLegend from '../weather-overlays/TropopauseJetLegend.jsx'
 import TimelineRail from '../weather-overlays/TimelineRail.jsx'
 import { useTimelineRail, useTimelinePlayback } from '../weather-overlays/lib/useTimelineRail.js'
 import useRadarWindOverlay, { deriveRadarWindRailActive, hasExactRadarWindFrame } from '../weather-overlays/lib/useRadarWindOverlay.js'
@@ -73,17 +78,16 @@ import WeatherLayerTimestampBar from '../weather-overlays/WeatherLayerTimestampB
 import { useNwpOverlays } from '../weather-overlays/lib/useNwpOverlays.js'
 import { destroyWindOverlay, syncWindOverlay } from '../weather-overlays/lib/windOverlaySync.js'
 import { WIND_SPEED_COLOR_RAMP } from '../weather-overlays/lib/windField.js'
-import { CELSIUS_TEMPERATURE_COLOR_RAMP } from '../weather-overlays/lib/temperatureField.js'
-import { destroyTemperatureOverlay, syncTemperatureOverlay } from '../weather-overlays/lib/temperatureOverlaySync.js'
+import { destroyTemperatureContourOverlay as destroyTemperatureOverlay, syncTemperatureContourOverlay as syncTemperatureOverlay } from '../weather-overlays/lib/temperatureContourOverlay.js'
 import { CLOUD_POTENTIAL_COLOR_RAMP } from '../weather-overlays/lib/cloudPotentialField.js'
 import { destroyCloudPotentialOverlay, syncCloudPotentialOverlay } from '../weather-overlays/lib/cloudPotentialOverlaySync.js'
 import { ICING_COLOR_RAMP } from '../weather-overlays/lib/icingPotentialField.js'
-import { destroyIcingPotentialOverlay, syncIcingPotentialOverlay } from '../weather-overlays/lib/icingPotentialOverlaySync.js'
+import { destroyIcingPatternOverlay as destroyIcingPotentialOverlay, syncIcingPatternOverlay as syncIcingPotentialOverlay } from '../weather-overlays/lib/icingPatternOverlay.js'
 import { GKTG_BANDS } from '../../../../shared/gktg.js'
 import { KTG_COLOR_RAMP } from '../weather-overlays/lib/ktgTurbulenceField.js'
 const GKTG_COLOR_RAMP = GKTG_BANDS.slice(1)
 import { destroyGktgOverlay as destroyKtgTurbulenceOverlay, syncGktgOverlay as syncKtgTurbulenceOverlay } from '../weather-overlays/lib/gktgOverlaySync.js'
-import { createInitialMetVisibility, getNextMetVisibility } from '../weather-overlays/lib/metLayerVisibility.js'
+import { createInitialMetVisibility, getNextMetVisibility, clearMetVisibility } from '../weather-overlays/lib/metLayerVisibility.js'
 import {
   LIGHTNING_BLINK_INTERVAL_MS,
 } from '../weather-overlays/lib/lightningLayers.js'
@@ -400,6 +404,7 @@ const MapView = forwardRef(function MapView({
   showAdvisoryBadges = true,
   showGeolocateControl = true,
   showWeatherLegends = true,
+  onWeatherLegendPanelHeightChange,
   showActiveWeatherSummary = true,
   rangeRingRadiiKm = null,
   highlightRingRadiusKm = null,
@@ -445,6 +450,7 @@ const MapView = forwardRef(function MapView({
   const [showFlightCategoryStations, setShowFlightCategoryStations] = useState(true)
   const [weatherLegendOpen, setWeatherLegendOpen] = useState(false)
   const [weatherLegendPanelHeight, setWeatherLegendPanelHeight] = useState(0)
+  useEffect(() => { onWeatherLegendPanelHeightChange?.(weatherLegendPanelHeight) }, [onWeatherLegendPanelHeightChange, weatherLegendPanelHeight])
   const [terrainAltitudeFt, setTerrainAltitudeFt] = useState(3000)
   const [blinkLightning, setBlinkLightning] = useState(false)
   const [lightningBlinkOff, setLightningBlinkOff] = useState(false)
@@ -621,7 +627,7 @@ const MapView = forwardRef(function MapView({
   useImperativeHandle(ref, () => ({
     setLayerOn, switchBasemap,
     getCopilotUiState: () => ({ ready: isStyleReady, editing: myMapControlRef.current?.mode === 'edit',
-      organization: routeBriefing.state.briefingContext?.kind === 'organization', layers: { ...metVisibility },
+      organization: routeBriefing.state.briefingContext?.kind === 'organization', layers: Object.fromEntries(availableMetLayers.map(({ id }) => [id, !!metVisibility[id]])),
       supportedLayers: availableMetLayers.filter(({ id }) => id !== 'notam' && !isMetLayerDisabled(id)
         && (enableWindOverlay || !['surfaceChart', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'].includes(id))
         && (enableTyphoonOverlay || id !== 'typhoon')
@@ -993,14 +999,19 @@ const MapView = forwardRef(function MapView({
     selectedSigwxCloudMeta, effectiveLightningReferenceTimeMs,
     nwpSelection, ktgGrid, demoNowMs, tz,
   ])
+  const weatherPointInspection = useWeatherPointInspection({
+    visibility: metVisibility, enableWindOverlay, controlsVisible: showWeatherLegends,
+  })
   const convectiveOverlay = useConvectiveOverlay({
     mapRef, isStyleReady, styleRevision,
+    inspectionEnabled: weatherPointInspection.enabled,
     ciVisible: metVisibility.ci, ctpsVisible: metVisibility.ctps,
     ciFrame: weatherOverlayModel.ciFrame, ctpsFrame: weatherOverlayModel.ctpsFrame,
     fetchCtpsPoint: fetchConvectiveCtpsPoint, timeZone: tz,
   })
   const echoTopOverlay = useEchoTopOverlay({
     mapRef, isStyleReady, styleRevision,
+    inspectionEnabled: weatherPointInspection.enabled,
     visible: metVisibility.echoTop,
     frame: weatherOverlayModel.echoTopFrame,
     fetchPoint: fetchEchoTopPoint,
@@ -1034,7 +1045,11 @@ const MapView = forwardRef(function MapView({
     canPick: () => myMapControlRef.current?.mode !== 'edit' && !mapToolDrawingRef.current,
     pausePlayback: () => { if (weatherTimelinePlaying) toggleWeatherTimelinePlay() },
   })
-  const timelineNwpTimes = sliderTimes.length ? sliderTimes : surfaceChart.times
+  const tropopauseJetEnabled = enableWindOverlay && !!metVisibility.tropopause
+  // 개발 서버에서는 저장된 권계면·제트 사례를 범례의 버튼으로 바꿔 볼 수 있다.
+  const [tropopauseCaseKey, setTropopauseCaseKey] = useState(null)
+  const tropopauseJet = useTropopauseJetOverlay({ mapRef, isStyleReady, styleRevision, enabled: tropopauseJetEnabled, selectedMs: weatherTimelineSelectedMs, tz, caseKey: tropopauseCaseKey, listCases: import.meta.env.DEV })
+  const timelineNwpTimes = sliderTimes.length ? sliderTimes : surfaceChart.times?.length ? surfaceChart.times : tropopauseJet.times
   const radarWindEffectiveVisible = radarWindOverlay.effectiveVisible
   const timelineAvailableFrameEntries = useMemo(() => [
     ...weatherOverlayModel.activeFrameEntries,
@@ -1091,12 +1106,10 @@ const MapView = forwardRef(function MapView({
       entries.push({ key: 'surfaceChart', label: '강수', issueLabel: surfaceChart.issueLabel, validLabel: surfaceChart.validLabel })
     if (enableWindOverlay && metVisibility.wind)
       entries.push({ key: 'wind', label: '바람', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
-    if (enableWindOverlay && metVisibility.temp)
-      entries.push({ key: 'temp', label: '기온', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
-    if (enableWindOverlay && metVisibility.cloud)
-      entries.push({ key: 'cloud', label: '습도', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
-    if (enableWindOverlay && metVisibility.icing)
-      entries.push({ key: 'icing', label: '착빙', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel })
+    if (enableWindOverlay && (metVisibility.temp || metVisibility.cloud || metVisibility.icing))
+      entries.push({ key: 'cloudIcing', label: '구름·착빙', issueLabel: nwpIssueLabel, validLabel: nwpValidLabel,
+        note: tempStatus === 'error' ? '등온선 자료 오류' : ['unavailable', 'unsupported'].includes(tempStatus) ? (dataMode === 'pinned' ? '등온선 고정 자료 없음' : '등온선 자료 없음') : tempStatus === 'loading' ? '등온선 자료 로딩 중' : null,
+        noteTone: tempStatus === 'error' ? 'warning' : undefined })
     if (enableWindOverlay && metVisibility.turbulence)
       entries.push({ key: 'turbulence', label: '난류', issueLabel: ktgIssueLabel, validLabel: ktgValidLabel })
     if (metVisibility.visibility)
@@ -1121,9 +1134,10 @@ const MapView = forwardRef(function MapView({
       })
     }
     if (sigwxHigh.timestamp) entries.push(sigwxHigh.timestamp)
+    if (tropopauseJet.timestamp) entries.push(tropopauseJet.timestamp)
     return entries
   }, [
-    enableWindOverlay, sigwxHigh.timestamp,
+    enableWindOverlay, sigwxHigh.timestamp, tropopauseJet.timestamp, tempStatus, dataMode,
     metVisibility.surfaceChart, surfaceChart.issueLabel, surfaceChart.validLabel,
     metVisibility.wind, metVisibility.temp, metVisibility.cloud,
     metVisibility.icing, metVisibility.turbulence, metVisibility.visibility, metVisibility.ceiling, metVisibility.sigwx,
@@ -1150,7 +1164,7 @@ const MapView = forwardRef(function MapView({
     shouldSkipClick: sigwxHigh.shouldSkipLowerPriorityClick,
     mapRef,
     isStyleReady,
-    enabled: Object.values(weatherPointVisibility).some(Boolean),
+    enabled: weatherPointInspection.enabled && Object.values(weatherPointVisibility).some(Boolean),
     visibility: weatherPointVisibility,
     fields: weatherPointFields,
     issueLabel: nwpIssueLabel,
@@ -1332,9 +1346,7 @@ const MapView = forwardRef(function MapView({
     if (metVisibility.surfaceChart) applySurfaceChartFir(false)
     radarWindOverlay.setRequestedVisible(false)
     setMetVisibility((prev) => {
-      const next = { ...prev }
-      availableMetLayers.forEach((l) => { next[l.id] = false })
-      return next
+      return clearMetVisibility(prev, availableMetLayers.map(layer => layer.id))
     })
   }
 
@@ -1748,39 +1760,41 @@ const MapView = forwardRef(function MapView({
   ])
 
   useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
-    if (!enableWindOverlay) return
-    syncTemperatureOverlay(map, {
-      temperatureField,
-      isVisible: metVisibility.temp,
-    })
-  }, destroyTemperatureOverlay, [
-    enableWindOverlay,
-    temperatureField,
-    metVisibility.temp,
-  ])
-
-  useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
-    if (!enableWindOverlay) return
     syncCloudPotentialOverlay(map, {
       cloudPotentialField: cloudField,
-      isVisible: metVisibility.cloud,
+      isVisible: enableWindOverlay && metVisibility.cloudIcing && metVisibility.cloud,
     })
   }, destroyCloudPotentialOverlay, [
     enableWindOverlay,
     cloudField,
     metVisibility.cloud,
+    metVisibility.cloudIcing,
   ])
 
   useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
-    if (!enableWindOverlay) return
     syncIcingPotentialOverlay(map, {
       icingField,
-      isVisible: metVisibility.icing,
+      isVisible: enableWindOverlay && metVisibility.cloudIcing && metVisibility.icing,
+      basemapId,
     })
   }, destroyIcingPotentialOverlay, [
     enableWindOverlay,
     icingField,
     metVisibility.icing,
+    metVisibility.cloudIcing,
+    basemapId,
+  ])
+
+  useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
+    syncTemperatureOverlay(map, {
+      temperatureField,
+      isVisible: enableWindOverlay && metVisibility.cloudIcing,
+    })
+  }, destroyTemperatureOverlay, [
+    enableWindOverlay,
+    temperatureField,
+    metVisibility.temp,
+    metVisibility.cloudIcing,
   ])
 
   useWeatherFieldOverlay(mapRef, isStyleReady, styleRevision, (map) => {
@@ -1812,6 +1826,8 @@ const MapView = forwardRef(function MapView({
     metVisibility.temp,
     metVisibility.cloud,
     metVisibility.icing,
+    metVisibility.cloudIcing,
+    basemapId,
   ])
 
   // ???? Sync ADS-B ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
@@ -1921,6 +1937,7 @@ const MapView = forwardRef(function MapView({
   }
 
   function isMetLayerDisabled(id) {
+    if (id === 'cloudIcing') return !enableWindOverlay
     if (id === 'wind') return !enableWindOverlay || (windStatus === 'error' && !windField)
     if (id === 'temp') return !enableWindOverlay || ((tempStatus === 'error' || tempStatus === 'unavailable') && !temperatureField)
     if (id === 'cloud') {
@@ -1986,9 +2003,9 @@ const MapView = forwardRef(function MapView({
     if (merged) return merged.some((id) => aviationVisibility[id])
     return !Object.values(AVIATION_PANEL_MERGE_GROUPS).some((ids) => ids.includes(layer.id)) && aviationVisibility[layer.id]
   }).length
-  const activeMetLayers = availableMetLayers.filter((l) => l.id !== 'notam' && metVisibility[l.id] && !isMetLayerDisabled(l.id))
+  const activeMetLayers = availableMetLayers.filter((l) => l.id !== 'notam' && !['temp', 'cloud', 'icing', 'ceiling'].includes(l.id) && metVisibility[l.id] && !isMetLayerDisabled(l.id))
   const activeMetLabels = activeMetLayers.map((layer) => ({
-    wind: '바람', temp: '기온', cloud: '습도', icing: '착빙', turbulence: '난류',
+    wind: '바람', cloudIcing: '구름·착빙', temp: '기온', cloud: '구름층 추정', icing: '착빙', turbulence: '난류',
     radarOverseas: '해외 레이더', lightning: '낙뢰', satellite: '적외영상',
     ctps: '운정고도', sigmet: 'SIGMET(국내)',
   })[layer.id] || layer.label)
@@ -2050,6 +2067,7 @@ const MapView = forwardRef(function MapView({
 
       {!isMobile && <WeatherLayerTimestampBar entries={timestampEntries}>
         <SigwxHighLegend enabled={!!metVisibility.sigwxHigh} filter={sigwxHigh.filter} palette={sigwxHigh.palette} />
+        <TropopauseJetLegend enabled={tropopauseJetEnabled} cases={tropopauseJet.cases} caseKey={tropopauseJet.caseKey} onSelectCase={setTropopauseCaseKey} />
       </WeatherLayerTimestampBar>}
 
       <div className={`map-bottom-control-dock${weatherLegendOpen ? ' is-legend-open' : ''}`}>
@@ -2059,6 +2077,7 @@ const MapView = forwardRef(function MapView({
           supplementalContent={isMobile && timestampEntries.some(entry => entry.issueLabel && entry.issueLabel !== '-') ? (
             <WeatherLayerTimestampBar entries={timestampEntries} embedded>
               <SigwxHighLegend enabled={!!metVisibility.sigwxHigh} filter={sigwxHigh.filter} palette={sigwxHigh.palette} />
+              <TropopauseJetLegend enabled={tropopauseJetEnabled} cases={tropopauseJet.cases} caseKey={tropopauseJet.caseKey} onSelectCase={setTropopauseCaseKey} />
             </WeatherLayerTimestampBar>
           ) : null}
           sampleWarning={isMobile && !!metVisibility.sigwxHigh}
@@ -2079,7 +2098,9 @@ const MapView = forwardRef(function MapView({
           onBlinkLightningChange={setBlinkLightning}
           flightCategoryLegendVisible={!!(metVisibility.visibility || metVisibility.ceiling)}
           flightCategoryVisibilityOn={!!metVisibility.visibility}
+          flightCategoryCeilingOn={!!metVisibility.ceiling}
           flightCategoryBands={FLIGHT_CATEGORY_LEGEND_BANDS}
+          flightCategoryCeilingBands={FLIGHT_CATEGORY_STATION_LEGEND_BANDS.slice(0, 2)}
           flightCategoryStationLegendVisible={showFlightCategoryStations && !!(metVisibility.visibility || metVisibility.ceiling)}
           flightCategoryStationBands={FLIGHT_CATEGORY_STATION_LEGEND_BANDS}
           flightCategoryStationCount={flightCategory.hasData ? fcStamps.stationCount : null}
@@ -2094,7 +2115,6 @@ const MapView = forwardRef(function MapView({
           windSpeedLegendVisible={!!(enableWindOverlay && metVisibility.wind && metVisibility.windSpeed && windField)}
           windSpeedLegendEntries={WIND_SPEED_COLOR_RAMP}
           temperatureLegendVisible={!!(enableWindOverlay && metVisibility.temp && temperatureField)}
-          temperatureLegendEntries={CELSIUS_TEMPERATURE_COLOR_RAMP}
           cloudLegendVisible={!!(enableWindOverlay && metVisibility.cloud && cloudField)}
           cloudLegendEntries={CLOUD_POTENTIAL_COLOR_RAMP.filter((entry) => entry.max <= cloudMaxSpread)}
           icingLegendVisible={!!(enableWindOverlay && metVisibility.icing && icingField)}
@@ -2116,6 +2136,13 @@ const MapView = forwardRef(function MapView({
             onOpenPanelHeightChange={setWeatherLegendPanelHeight}
           />
         )}
+        {showWeatherLegends && enableWindOverlay && metVisibility.cloudIcing && <CloudIcingMapControls
+          visibility={metVisibility} onToggle={toggleMet} level={nwpSelection?.level}
+          statuses={{ cloud: cloudStatus, icing: icingStatus }}
+        />}
+        {showWeatherLegends && weatherPointInspection.available && <WeatherPointInfoControl
+          enabled={weatherPointInspection.enabled} onToggle={weatherPointInspection.toggle}
+        />}
       </div>
 
       {showAdvisoryBadges && (
@@ -2474,6 +2501,8 @@ const MapView = forwardRef(function MapView({
 
       {activePanel === 'met' && (
         <WeatherOverlayPanel
+          cloudIcingStatuses={{ temp: tempStatus, cloud: cloudStatus, icing: icingStatus }}
+          selectedKimLevel={nwpSelection?.level}
           layers={availableMetLayers}
           visibility={metVisibility}
           blinkLightning={blinkLightning}

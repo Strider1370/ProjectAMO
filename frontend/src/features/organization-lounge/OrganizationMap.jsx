@@ -12,6 +12,7 @@ import useOrganizationMapLayers from './hooks/useOrganizationMapLayers.js'
 import './OrganizationMap.css'
 
 const EMPTY_ANNOTATIONS = Object.freeze([])
+const PINNED_MET_LAYER_IDS = Object.freeze(['wind', 'cloudIcing', 'turbulence'])
 
 
 export default function OrganizationMap({
@@ -31,6 +32,7 @@ export default function OrganizationMap({
   const [mapLifecycle, setMapLifecycle] = useState({ map: null, styleRevision: 0 })
   const [frameFailures, setFrameFailures] = useState({})
   const [activePanel, setActivePanel] = useState(null)
+  const [legendPanelHeight, setLegendPanelHeight] = useState(0)
   const [layerCounts, setLayerCounts] = useState({})
   const live = dataMode === 'live'
   const layerWeather = useOrganizationMapLayers(live)
@@ -86,14 +88,15 @@ export default function OrganizationMap({
 
   return <div
     className={`organization-map ${className}`.trim()}
-    style={style}
+    style={{ ...style, '--organization-legend-height': `${legendPanelHeight}px` }}
     data-org-id={orgId}
     data-data-mode={dataMode}
     data-controls={showControls ? 'visible' : 'hidden'}
     data-route={routeAvailable ? 'available' : 'empty'}
   >
     <MapView
-      activePanel={live ? activePanel : null}
+      metLayerIds={live ? null : PINNED_MET_LAYER_IDS}
+      activePanel={showControls ? activePanel : null}
       {...organizationMapWeatherProps({ bundle, situation, dataMode, layerWeather })}
       onClosePanel={() => setActivePanel(null)}
       onOpenNotamPanel={() => setActivePanel('notam')}
@@ -104,20 +107,21 @@ export default function OrganizationMap({
       enableTyphoonOverlay={live}
       showMapTools={false}
       showAdvisoryBadges={false}
-      showWeatherLegends={live}
+      showWeatherLegends={showControls}
+      onWeatherLegendPanelHeightChange={setLegendPanelHeight}
       showGeolocateControl={false}
-      showRadarWindControl={live}
+      showRadarWindControl={live && showControls}
       initialMetVisibility={dataMode === 'pinned' ? { radarHsr: false, wind: true } : undefined}
       dataMode={dataMode}
       mapDataSelection={pinnedSelection}
       onMapLifecycle={handleMapLifecycle}
     />
-    {live && <div className="organization-map__layer-buttons" role="group" aria-label="지도 패널">
-      {[
+    {showControls && <div className="organization-map__layer-buttons" role="group" aria-label="지도 패널">
+      {(live ? [
         { id: 'aviation', label: '항공정보', Icon: Layers },
         { id: 'met', label: '기상정보', Icon: Cloud },
         { id: 'my-map', label: '내 지도', Icon: Map },
-      ].map(({ id, label, Icon }) => <button key={id} type="button"
+      ] : [{ id: 'met', label: '기상표시', Icon: Cloud }]).map(({ id, label, Icon }) => <button key={id} type="button"
         aria-label={label} aria-expanded={activePanel === id}
         onClick={() => setActivePanel((current) => current === id ? null : id)}>
         <Icon size={18} aria-hidden="true" /><span>{label}</span>

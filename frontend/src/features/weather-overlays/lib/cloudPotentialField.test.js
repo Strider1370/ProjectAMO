@@ -22,8 +22,8 @@ test('decodes spread and cloud potential sentinel values', () => {
   assert.equal(decodeCloudPotentialValue(-32768, FIELD), null)
 })
 
-test('cloud potential ramp marks moist areas green by dewpoint spread and dry areas transparent', () => {
-  assert.equal(CLOUD_POTENTIAL_COLOR_RAMP[0].label, '0-1C')
+test('cloud potential ramp marks moist areas gray by dewpoint spread and dry areas transparent', () => {
+  assert.equal(CLOUD_POTENTIAL_COLOR_RAMP[0].label, '0–1°C')
   assert.match(CLOUD_POTENTIAL_COLOR_RAMP[0].color, /^rgba\(/)
   assert.equal(pickCloudPotentialColor(0.5, { level: { id: '700hPa' } }).alpha > pickCloudPotentialColor(3.5, { level: { id: '700hPa' } }).alpha, true)
   assert.equal(pickCloudPotentialColor(4.5, { level: { id: '700hPa' } }).alpha, 0)

@@ -146,13 +146,13 @@ test.describe('route-workflow', () => {
     const profile = page.getByRole('dialog', { name: '연직단면도', exact: true })
     await expect(profile).toBeVisible()
     await expect(profile.getByText('연직단면도', { exact: true })).toBeVisible()
-    for (const label of ['이전 비교 고도', '다음 비교 고도', '이전 예보시간', '다음 예보시간', '닫기', '기온', '습도', '착빙', '바람', '난류', 'SIGMET/AIRMET']) {
+    for (const label of ['이전 비교 고도', '다음 비교 고도', '이전 예보시간', '다음 예보시간', '닫기', '구름·착빙', '등온선', '바람', '권계면·제트', '난류', 'SIGMET/AIRMET']) {
       await expect(profile.getByRole('button', { name: label, exact: true })).toBeVisible()
     }
-    expect(await profile.locator('.cross-section-toggle-group').evaluate((node) => {
+    expect(await profile.locator('.cross-section-toggle-group').evaluateAll((nodes) => nodes.length > 0 && nodes.every((node) => {
       const style = getComputedStyle(node)
       return style.display === 'inline-flex' && style.flexWrap === 'nowrap' && node.scrollWidth <= node.clientWidth
-    })).toBe(true)
+    }))).toBe(true)
   })
 
   test('alternative route edits issue one batch exposure request without another single request', async ({ page }, testInfo) => {

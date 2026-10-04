@@ -111,7 +111,9 @@ test('QPF API legend appears only for the exact MAPLE forecast frame', async () 
 test('HIGH uses its own compact upper key while model icing stays in the bottom legend', async () => {
   const bottom = await renderLegends({ bottomDock: true,
     icingLegendVisible: true, icingLegendEntries: [{ label: '모델 착빙', color: '#ACC7FF' }] })
-  assert.match(bottom, /착빙 · 잠재성/)
+  assert.match(bottom, /구름·착빙 범례/)
+  assert.match(bottom, /LGT/)
+  assert.match(bottom, /background-color:#ACC7FF/)
   assert.doesNotMatch(bottom, /SIGWX HIGH/)
   const { default: HighLegend } = await viteServer.ssrLoadModule('/src/features/weather-overlays/SigwxHighLegend.jsx')
   const { default: TimeCard } = await viteServer.ssrLoadModule('/src/features/weather-overlays/WeatherLayerTimestampBar.jsx')

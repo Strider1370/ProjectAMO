@@ -1,0 +1,62 @@
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--text-1); background: var(--bg-2); font: var(--fs-300)/1.5 var(--app-font); }
+main { max-width: 1680px; margin: auto; padding: var(--space-xl); }
+h1 { font-size: var(--fs-700); letter-spacing: -.04em; margin: var(--space-xs) 0; }
+p { margin: 0; color: var(--text-3); }
+header { display: flex; justify-content: space-between; gap: var(--space-l); align-items: start; margin-bottom: var(--space-l); }
+.eyebrow { font-size: var(--fs-200); font-weight: var(--fw-semibold); color: var(--text-3); }
+.status { white-space: nowrap; border: 1px solid var(--stroke-1); border-radius: var(--radius-md); padding: var(--space-xs) var(--space-s); background: var(--bg-1); font-size: var(--fs-200); }
+button, select { font: inherit; color: inherit; min-height: var(--touch-min); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1); padding: var(--space-xs) var(--space-m); }
+button { cursor: pointer; }
+button:disabled { color: var(--text-disabled); cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"] { color: var(--bg-1); background: var(--accent); border-color: var(--accent); }
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-m) var(--space-l); padding: var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: var(--bg-1); }
+.toolbar label, .toolbar-group { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-s); }
+.toolbar-group > span { color: var(--text-3); font-size: var(--fs-200); }
+.layer-switch { min-height: var(--touch-min); }
+input { accent-color: var(--accent); }
+.source-info { padding: var(--space-s) var(--space-xs); min-height: 50px; font-size: var(--fs-200); }
+.source-info strong { color: var(--text-1); }
+.comparison-actions { display: flex; justify-content: space-between; align-items: center; gap: var(--space-m); margin: var(--space-s) 0 var(--space-m); }
+.comparison-actions p { font-size: var(--fs-200); }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-l); }
+.cards.show-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cards.show-single { grid-template-columns: 1fr; }
+.show-single .figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.show-single .figures.single-view { grid-template-columns: 1fr; }
+.show-single .card-actions label { display: none; }
+.comparison-buttons { display: flex; flex-wrap: wrap; gap: var(--space-s); }
+.card { min-width: 0; border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: var(--bg-1); overflow: hidden; }
+.card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.card-head { padding: var(--space-m); border-bottom: 1px solid var(--stroke-2); }
+.card-title { display: flex; justify-content: space-between; align-items: center; gap: var(--space-s); }
+.card h2 { margin: 0; font-size: var(--fs-400); }
+.card-head p { margin-top: var(--space-xs); min-height: 36px; font-size: var(--fs-200); }
+.card-actions { display: flex; gap: var(--space-m); align-items: center; margin-top: var(--space-s); }
+.card-actions label { display: flex; align-items: center; gap: var(--space-xs); min-height: var(--touch-min); }
+.card-actions button { margin-left: auto; }
+.figure { margin: 0; position: relative; overflow: hidden; }
+.figure + .figure { border-top: 1px solid var(--stroke-2); }
+.figure figcaption { font-size: var(--fs-200); color: var(--text-3); padding: var(--space-xs) var(--space-m); background: var(--bg-2); }
+.figure svg { width: 100%; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-s) var(--space-m); padding: var(--space-s) var(--space-m); font-size: var(--fs-200); border-top: 1px solid var(--stroke-2); }
+.legend span { display: inline-flex; gap: var(--space-xs); align-items: center; }
+.legend svg { width: 32px; height: 18px; overflow: visible; }
+.legend .cloud-key { width: 24px; height: 14px; background: rgba(145,145,145,.5); }
+.card-foot { padding: var(--space-s) var(--space-m); background: var(--bg-2); color: var(--text-3); font-size: var(--fs-200); }
+.data-note { margin-top: var(--space-l); padding: var(--space-m); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); background: var(--bg-1); font-size: var(--fs-200); }
+dialog { width: min(1440px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: var(--space-l); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); overflow: auto; }
+dialog::backdrop { background: rgba(36,36,36,.55); }
+#close-dialog { display: block; margin-left: auto; margin-bottom: var(--space-m); }
+#zoom-content .card { border: 0; }
+#zoom-content .figures { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--space-m); }
+svg .outline { fill: none; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+svg .contour { fill: none; stroke: var(--text-3); stroke-width: 1.2; stroke-dasharray: 5 3; vector-effect: non-scaling-stroke; }
+svg .contour.zero { stroke: var(--text-1); stroke-width: 2; stroke-dasharray: none; }
+svg .contour.halo { stroke: var(--bg-1); stroke-width: 4; }
+svg text { font-family: var(--app-font); }
+svg .temperature-label { fill: var(--text-2); paint-order: stroke; stroke: var(--bg-1); stroke-width: 3; stroke-linejoin: round; }
+@media(max-width:1199px) { .cards { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media(max-width:719px) { .show-single .figures { grid-template-columns: 1fr; } }
+@media(max-width:719px) { main { padding: var(--space-m); } header { display: block; } h1 { font-size: var(--fs-600); } .status { display: inline-block; margin-top: var(--space-s); } .cards, .cards.show-pair { grid-template-columns: 1fr; } .comparison-actions { align-items: start; flex-direction: column; } .toolbar { gap: var(--space-s); } .toolbar label { max-width: 100%; } select { max-width: 100%; } .toolbar-group { width: 100%; } #zoom-content .figures { grid-template-columns: 1fr; } }

@@ -181,6 +181,7 @@ export function buildKimGridUrl({
 export async function fetchKimGrid({ signal, operation = 'kim_grid', ...params }) {
   const url = buildKimGridUrl(params)
   if (operation === 'kim_grid' && (['ps', 'hpbl'].includes(params.name) || (params.name === 'w' && [250, 200, 150].includes(Number(params.level))))) operation = 'kim_grid_gktg'
+  if (operation === 'kim_grid' && ['T', 'hgt', 'u', 'v'].includes(params.name) && [100, 70].includes(Number(params.level))) operation = 'kim_grid_trop'
   const response = await requestObservedApi({
     operation,
     url,

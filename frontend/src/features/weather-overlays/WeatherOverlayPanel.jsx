@@ -1,7 +1,7 @@
 import {
   Radar, Satellite, Zap, Wind, Thermometer, Droplets,
   Snowflake, Activity, Eye, AlertTriangle, AlertOctagon, CloudFog, Globe, Cloud, CloudLightning, Mountain,
-  Tornado, Sun, CloudRain,
+  Tornado, Sun, CloudRain, ArrowUpToLine,
 } from 'lucide-react'
 import { HIGH_TYPES } from './lib/sigwxHighModel.js'
 import './SigwxHigh.css'
@@ -24,8 +24,10 @@ const WEATHER_TILE_ICON = {
   wind: Wind,
   temp: Thermometer,
   cloud: Droplets,
+  cloudIcing: Cloud,
   icing: Snowflake,
   turbulence: Activity,
+  tropopause: ArrowUpToLine,
   visibility: Eye,
   ceiling: CloudFog,
   sigmet: AlertTriangle,
@@ -55,6 +57,8 @@ function WeatherOverlayPanel({
   surfaceChartNote = null,
   sigwxHighFilter = {},
   onSigwxHighFilterChange,
+  cloudIcingStatuses = {},
+  selectedKimLevel = null,
 }) {
   // WISSDOM 높이 선택은 세로 고도 레일(RadarWindVerticalRail)이 맡는다 — 이 패널은 켬/끔만 다룬다.
   const isMobile = useIsMobile()
@@ -72,7 +76,7 @@ function WeatherOverlayPanel({
       ids: ['radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'lightning', 'satellite', 'satelliteVisible', 'ci', 'ctps'].filter((id) => echoTopEnabled || id !== 'echoTop'),
     },
     { id: 'hazards', title: '위험기상', ids: ['sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'sigwxHigh', 'typhoon'] },
-    { id: 'nwp', title: '수치모델', ids: showWind ? ['surfaceChart', 'wind', 'temp', 'cloud', 'icing', 'turbulence', 'visibility', 'ceiling'] : [] },
+    { id: 'nwp', title: '수치모델', ids: showWind ? ['surfaceChart', 'wind', 'cloudIcing', 'turbulence', 'tropopause', 'visibility'] : [] },
     { id: 'terrain', title: '지형', ids: ['terrainHazard'] },
   ]
   const layerLabels = {
@@ -88,20 +92,22 @@ function WeatherOverlayPanel({
     surfaceChart: '강수',
     wind: '바람',
     temp: '기온',
-    cloud: '습도',
+    cloud: '구름층 추정',
+    cloudIcing: '구름·착빙',
     icing: '착빙',
     turbulence: '난류',
+    tropopause: '권계면·제트',
     sigmet: 'SIGMET(국내)',
     sigmet_intl: 'SIGMET(해외)',
     airmet: 'AIRMET',
     sigwx: 'SIGWX LOW',
     sigwxHigh: 'SIGWX HIGH',
     typhoon: '태풍',
-    visibility: '시정',
+    visibility: '시정·운고',
     ceiling: '운고',
     terrainHazard: '지형 근접',
   }
-  const visibleLayers = layers.filter((layer) => layer.id !== 'notam' && (showWind || !['surfaceChart', 'wind', 'temp', 'cloud', 'icing'].includes(layer.id)))
+  const visibleLayers = layers.filter((layer) => layer.id !== 'notam' && !['temp', 'cloud', 'icing', 'ceiling'].includes(layer.id) && (showWind || !['surfaceChart', 'wind', 'cloudIcing', 'tropopause', 'visibility'].includes(layer.id)))
   const activeCount = visibleLayers.filter((layer) => visibility[layer.id] && !isLayerDisabled(layer.id)).length
     + (showRadarWindControl && radarWindRequested ? 1 : 0)
   const layerById = new Map(visibleLayers.map((layer) => [layer.id, layer]))

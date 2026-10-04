@@ -46,5 +46,5 @@ export function useWeatherPointInspector({
     return () => map.off?.('click', onMapClick)
   }, [shouldSkipClick, enabled, fields, isStyleReady, issueLabel, mapRef, samplers, turbulenceIssueLabel, turbulenceValidLabel, validLabel, visibility])
 
-  return { selection, clearSelection: () => setSelection(null) }
+  return { selection: enabled ? selection : null, clearSelection: () => setSelection(null) }
 }

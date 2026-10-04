@@ -1,6 +1,10 @@
-import { gktgBand } from '../../../../shared/gktg.js'
+import { ICING_PRESENTATION, ICING_OUTLINE_COLOR, ICING_OUTLINE_WIDTH, ICING_BACKGROUND_OPACITY, ICING_DOTS, icingPatternSpacing, BASIC_ISOTHERMS, DETAIL_ISOTHERMS } from '../../shared/weather/cloudIcingPresentation.js'
+import { buildProfileCloudIcing, buildProfileTurbulenceCells } from './lib/cloudIcingProfile.js'
+import ProfileLegend from './ProfileLegend.jsx'
 import { useEffect, useId, useRef, useState } from 'react'
 import { msToKt, windBarbFeathers, windDirectionFromUV, isothermSegments, pressureToFallbackFt } from './lib/crossSectionGrid.js'
+import { buildTropopauseProfileLayers } from './lib/tropopauseProfile.js'
+import { buildProfileNoDataAreas } from './lib/profileNoData.js'
 import { advisorySymbolUrl } from '../weather-overlays/lib/advisoryLayers.js'
 import { buildCloudContourModel } from './lib/cloudContour.js'
 import { buildNwpTimeRail } from './lib/nwpTimeSelection.js'
@@ -52,15 +56,6 @@ function assignMarkerLanes(markers, xFor) {
   })
 }
 
-function icingColor(g) {
-  return ['rgba(0,0,0,0)', 'rgba(120,180,255,0.35)', 'rgba(120,120,255,0.5)', 'rgba(150,80,220,0.6)'][Math.max(0, Math.min(3, Math.round(g)))]
-}
-function ktgColor(ktg) {
-  if (ktg == null || ktg < 0.3) return null
-  if (ktg < 0.475) return 'rgba(100,210,100,0.40)'
-  if (ktg < 0.75)  return 'rgba(255,195,0,0.55)'
-  return 'rgba(255,55,55,0.65)'
-}
 function chainSegments(segs) {
   if (segs.length === 0) return []
   const key = (p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`
@@ -116,21 +111,6 @@ function catmullRomPath(pts, maxPoints = 40) {
     d.push(`C ${(p1.x + (p2.x - p0.x) / 6).toFixed(1)} ${(p1.y + (p2.y - p0.y) / 6).toFixed(1)},${(p2.x - (p3.x - p1.x) / 6).toFixed(1)} ${(p2.y - (p3.y - p1.y) / 6).toFixed(1)},${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`)
   }
   return d.join(' ')
-}
-
-// Same thresholds as map cloud layer (cloudPotentialField.js)
-const SPREAD_COLOR_RAMP = [
-  [0, 1, 'rgba(24,96,44,0.68)'],
-  [1, 2, 'rgba(49,124,62,0.58)'],
-  [2, 3, 'rgba(85,150,85,0.48)'],
-  [3, 4, 'rgba(132,176,124,0.36)'],
-  [4, 5, 'rgba(163,195,151,0.28)'],
-  [5, 6, 'rgba(188,209,174,0.22)'],
-]
-function moistureColor(spread, maxSpread = 4) {
-  if (!Number.isFinite(spread) || spread > maxSpread) return 'rgba(0,0,0,0)'
-  const entry = SPREAD_COLOR_RAMP.find(([min, max]) => spread >= min && spread < max)
-  return entry ? entry[2] : 'rgba(0,0,0,0)'
 }
 
 // Ray-casting point-in-polygon for GeoJSON polygon ring [[lon, lat], ...]
@@ -204,6 +184,7 @@ export default function VerticalProfileChart({
   profile,
   referenceAltitudeFt = null,
   crossSection = null,
+  legendInToolbar = false,
   layers = {},
   advisories = [],
   selectedCandidateAltitudeFt = null,
@@ -397,63 +378,14 @@ export default function VerticalProfileChart({
     : { status: 'unavailable', partial: false, threshold: null, chains: [] }
   const cloudPaths = layers.cloud ? cloudContour.chains.map((chain) => buildPath(chain.map((point) => ({ x: xFor(point.distanceNm), y: yFor(point.altFt) })))).filter(Boolean) : []
   const altFor = (lvl) => Number.isFinite(lvl.altFt) ? lvl.altFt : pressureToFallbackFt(lvl.pressure)
-  const turbulenceCells = (() => {
-    const turb = crossSection?.turbulence
-    if (!turb?.available || !layers.turbulence || !turb.levels?.length) return []
-    const cells = []
-    for (const [li, lvl] of turb.levels.entries()) {
-      for (let vi = 0; vi < lvl.values.length - 1; vi++) {
-        const upperValue = turb.levels[li + 1]?.values?.[vi]?.gktg
-        const nativeBand = Number.isFinite(lvl.values[vi].gktg) && Number.isFinite(upperValue) ? gktgBand(Math.max(lvl.values[vi].gktg, upperValue)) : null
-        const color = turb.product === 'GKTG' ? (nativeBand?.min ? nativeBand.color : null) : ktgColor(lvl.values[vi].ktg)
-        const sampleAlt = lvl.values[vi].altFt ?? lvl.altFt
-        const nextAlt = turb.levels[li + 1]?.values?.[vi]?.altFt
-        if (turb.product === 'GKTG' && (!Number.isFinite(sampleAlt) || !Number.isFinite(nextAlt))) continue
-        const ySampleTop = yFor(turb.product === 'GKTG' ? Math.max(sampleAlt, nextAlt) : sampleAlt + 500)
-        const ySampleBot = yFor(turb.product === 'GKTG' ? Math.min(sampleAlt, nextAlt) : Math.max(0, sampleAlt - 500))
-        if (!color) continue
-        cells.push({
-          key: `turb-${lvl.altFt}-${vi}`,
-          x: xFor(lvl.values[vi].distanceNm),
-          y: ySampleTop,
-          w: xFor(lvl.values[vi + 1].distanceNm) - xFor(lvl.values[vi].distanceNm),
-          h: ySampleBot - ySampleTop,
-          fill: color,
-        })
-      }
-    }
-    return cells
-  })()
-  const shadingCells = (() => {
-    if (!crossSection || (!layers.icing && !layers.moisture)) return []
-    const cells = []
-    for (let li = 0; li < csLevels.length - 1; li += 1) {
-      const lvl = csLevels[li]
-      const lvlNext = csLevels[li + 1]
-      const yA = yFor(altFor(lvl))
-      const yB = yFor(altFor(lvlNext))
-      const yTop = Math.min(yA, yB)
-      const yBot = Math.max(yA, yB)
-      for (let vi = 0; vi < lvl.values.length - 1; vi += 1) {
-        const v = lvl.values[vi]
-        const vNext = lvl.values[vi + 1]
-        const xLeft = xFor(v.distanceNm)
-        const xRight = xFor(vNext.distanceNm)
-        const maxSpread = lvl.pressure === 500 ? 6 : 4
-        // 착빙을 켠 구간은 착빙만 칠한다. 착빙 값이 없는 면을 습수 색으로 메우면
-        // 착빙 없음과 습윤이 같은 색으로 보여 단면을 오독하게 된다.
-        const fill = layers.icing
-          ? (v.icing != null ? icingColor(v.icing) : null)
-          : layers.moisture && v.spread != null
-            ? moistureColor(v.spread, maxSpread)
-            : null
-        if (fill && fill !== 'rgba(0,0,0,0)') {
-          cells.push({ key: `${li}-${vi}`, x: xLeft, y: yTop, w: xRight - xLeft, h: yBot - yTop, fill })
-        }
-      }
-    }
-    return cells
-  })()
+  const turbulenceCells = layers.turbulence ? buildProfileTurbulenceCells(crossSection?.turbulence).map(cell => ({
+    key: cell.key, x: xFor(cell.fromNm), y: yFor(cell.topFt),
+    w: xFor(cell.toNm) - xFor(cell.fromNm), h: yFor(cell.bottomFt) - yFor(cell.topFt), fill: cell.fill,
+  })) : []
+  const shading = buildProfileCloudIcing(csLevels, xFor, yFor, altFor)
+  const upperAir = buildTropopauseProfileLayers({ crossSection, xFor, yFor, altFor, yMax })
+  // 100·70 hPa 상층 바람이 있으면 자료 상한도 그만큼 올라간다.
+  const noDataAreas = crossSection ? buildProfileNoDataAreas({ levels: [...csLevels, ...(layers.tropopause ? crossSection.tropopause?.upperLevels ?? [] : [])], xFor, yFor, altFor, yMax, plotLeft: padding.left, plotRight: padding.left + plotWidth }) : []
   const tempIsotherms = (() => {
     if (!crossSection || csLevels.length < 2) return []
     const sampleCount = csLevels[0]?.values?.length ?? 0
@@ -467,8 +399,8 @@ export default function VerticalProfileChart({
     const minT = Math.min(...finiteTs)
     const maxT = Math.max(...finiteTs)
     const result = []
-    for (let t = Math.ceil(minT / 10) * 10; t <= maxT; t += 10) {
-      if (!layers.temp && t !== 0) continue
+    for (const t of layers.temp ? (layers.temperatureDetail ? DETAIL_ISOTHERMS : BASIC_ISOTHERMS) : []) {
+      if (t < minT || t > maxT) continue
       result.push({ level: t, bold: t === 0, chains: chainSegments(isothermSegments(cells, t)) })
     }
     return result
@@ -582,15 +514,9 @@ export default function VerticalProfileChart({
 
   return (
     <div className="vertical-profile-chart">
+      {crossSection && !legendInToolbar && <ProfileLegend layers={layers} />}
       {!hideMeta && <div className="vertical-profile-meta">
-        <span className="vertical-profile-meta-item">
-          <span>{'\uc9c0\ud615\uace0\ub3c4'}</span>
-          <strong>{formatFt(terrainMaxFt)}</strong>
-        </span>
-        {!onSelectCandidateAltitude && Number.isFinite(selectedCruiseAltitudeFt) && <span className="vertical-profile-meta-item">
-          <span>{referenceAltitudeFt != null ? '설정 고도' : '\uc120\ud0dd \uc21c\ud56d\uace0\ub3c4'}</span>
-          <strong>{formatFt(selectedCruiseAltitudeFt)}</strong>
-        </span>}
+        {/* 지형고도·설정 고도는 차트(검은 지형, 세로축의 설정 고도 표기)로 읽으므로 글줄로 반복하지 않는다. */}
         {layers.cloud && crossSection && <span className="vertical-profile-meta-item cs-cloud-meta">
           <span>구름 윤곽</span>
           <strong>{cloudContour.status === 'detected'
@@ -638,6 +564,13 @@ export default function VerticalProfileChart({
         aria-label="Vertical profile"
       >
         <defs>
+          {ICING_PRESENTATION.slice(1).map(p => {
+            const spacing = icingPatternSpacing(p)
+            return <pattern key={p.grade} id={`${svgIdPrefix}-icing-${p.grade}`} width={spacing} height={spacing} patternUnits="userSpaceOnUse">
+              <rect width={spacing} height={spacing} fill={p.fillColor} fillOpacity={ICING_BACKGROUND_OPACITY} />
+              <circle cx={spacing / 2} cy={spacing / 2} r={ICING_DOTS.radius} fill={ICING_DOTS.color} fillOpacity={ICING_DOTS.opacity} />
+            </pattern>
+          })}
           <clipPath id={clipId}>
             <rect x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} />
           </clipPath>
@@ -646,20 +579,38 @@ export default function VerticalProfileChart({
           </filter>
         </defs>
         <rect className="vertical-profile-plot" x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} />
+        {noDataAreas.length > 0 && <defs><pattern id={`${svgIdPrefix}-no-data`} width={8} height={8} patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width={8} height={8} fill="#f8fafc" /><line x1={0} y1={0} x2={0} y2={8} stroke="#cbd5e1" strokeWidth={2} /></pattern></defs>}
+        {noDataAreas.map(area => <g key={area.key} className="cs-no-data"><rect x={area.x} y={area.y} width={area.w} height={area.h} fill={`url(#${svgIdPrefix}-no-data)`} /><title>{area.label}</title>
+          {area.w > 120 && area.h > 18 && <text x={area.labelX} y={area.labelY}>{area.label}</text>}</g>)}
         <g clipPath={`url(#${clipId})`}>
           {turbulenceCells.map((cell) => (
             <rect key={cell.key} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={cell.fill} />
           ))}
-          <g filter={layers.moisture && shadingCells.length > 0 ? `url(#${blurId})` : undefined}>
-            {shadingCells.map((cell) => (
-              <rect key={cell.key} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={cell.fill} />
-            ))}
-          </g>
+          {layers.moisture && <g data-testid="kim-cloud-shading" filter={shading.cloud.length > 0 ? `url(#${blurId})` : undefined}>
+            {shading.cloud.map(cell => <rect key={cell.key} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={cell.fill} />)}
+          </g>}
+          {layers.icing && <g data-testid="kim-icing-patterns">
+            {shading.icing.map(cell => <rect key={cell.key} x={cell.x} y={cell.y} width={cell.w} height={cell.h} fill={`url(#${svgIdPrefix}-icing-${cell.grade})`} />)}
+            {shading.outlines.map((d, i) => <path key={i} d={d} data-testid="kim-icing-outer-outline" fill="none" stroke={ICING_OUTLINE_COLOR} strokeWidth={ICING_OUTLINE_WIDTH} vectorEffect="non-scaling-stroke" />)}
+          </g>}
           {tempIsotherms.flatMap(({ level, bold, chains }) =>
             chains.map((pts, ci) => (
               <path key={`t${level}-${ci}`} d={catmullRomPath(pts)} className={bold ? 'cs-isotherm cs-isotherm-zero' : 'cs-isotherm'} />
             ))
           )}
+          {layers.tropopause && <g data-testid="upper-air-layers" aria-label="권계면·제트(등풍속선과 제트 핵)">
+            {upperAir.isotachs.map(({ kt, width, major, chains }) => chains.map((pts, ci) => <path key={`iso${kt}-${ci}`} d={catmullRomPath(pts)} className={major ? 'cs-isotach is-major' : 'cs-isotach'} strokeWidth={width}><title>{`풍속 ${kt} kt`}</title></path>))}
+            {upperAir.isotachLabels.map(l => <text key={`isl-${l.text}-${l.x.toFixed(0)}`} className="cs-isotach-label" x={l.x} y={l.y + 4} textAnchor="middle">{l.text}</text>)}
+            {upperAir.tropopause.areas.map((pts, ci) => <path key={`strat-${ci}`} d={`${pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} Z`} className="cs-stratosphere"><title>권계면 위(성층권)</title></path>)}
+            {upperAir.tropopause.chains.map((pts, ci) => <path key={`trop-${ci}`} d={catmullRomPath(pts)} className="cs-tropopause" />)}
+            {upperAir.tropopause.labels.map(l => <text key={`tl-${l.x.toFixed(0)}`} className="cs-tropopause-label" x={l.x} y={l.y - 8} textAnchor="middle">{l.text}</text>)}
+            {upperAir.tropopause.aboveLabel && <text className="cs-tropopause-label" x={upperAir.tropopause.aboveLabel.x} y={padding.top + 12} textAnchor="middle">{upperAir.tropopause.aboveLabel.text}</text>}
+            {upperAir.jetCores.map(core => <g key={`core-${core.x.toFixed(0)}-${core.y.toFixed(0)}`} className="cs-jet-core">
+              <circle cx={core.x} cy={core.y} r={6} /><text className="cs-jet-core-mark" x={core.x} y={core.y + 3.5} textAnchor="middle">J</text>
+              <rect x={core.x + 10} y={core.y - 22} width={core.text.length * 6.6 + 10} height={18} rx={2} />
+              <text x={core.x + 15} y={core.y - 9}>{core.text}</text><title>{`제트 핵 ${core.text}`}</title>
+            </g>)}
+          </g>}
           {layers.cloud && cloudPaths.length > 0 && <g data-testid="kim-cloud-contours" aria-label="KIM CLD 구름 윤곽">
             {cloudPaths.map((path, index) => <path key={`cld-${index}`} d={path} className="cs-cloud-contour" fill="none"><title>{`KIM CLD ${cloudContour.threshold} 구름 윤곽`}</title></path>)}
           </g>}

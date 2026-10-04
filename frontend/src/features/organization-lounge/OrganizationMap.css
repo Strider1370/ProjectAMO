@@ -129,8 +129,17 @@
   cursor: pointer;
 }
 
-.organization-map[data-data-mode='pinned'] .map-bottom-control-dock { display: none; }
+.organization-map[data-data-mode='pinned'] .map-bottom-control-dock { bottom: var(--space-m); }
+.organization-map[data-data-mode='pinned'][data-controls='visible'] .organization-map__status { top: 64px; }
 
 @media (pointer: coarse) {
   .organization-map__selection button { min-width: 44px; min-height: 44px; }
+}
+
+/* Keep the linked-item card above the actual open legend, including the face buttons. */
+.organization-map[data-controls='visible']:has(.map-bottom-control-dock:not(:empty)) .organization-map__selection {
+  bottom: calc(38px + var(--space-s) + var(--touch-min) + var(--space-s) + var(--organization-legend-height, 0px));
+}
+.organization-map[data-data-mode='pinned'][data-controls='visible']:has(.map-bottom-control-dock:not(:empty)) .organization-map__selection {
+  bottom: calc(var(--space-m) + var(--touch-min) + var(--space-s) + var(--organization-legend-height, 0px));
 }

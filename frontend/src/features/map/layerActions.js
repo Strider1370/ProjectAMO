@@ -26,18 +26,20 @@ const MET_META = {
   lightning: { label: '낙뢰', aliases: ['번개', 'lightning'] },
   surfaceChart: { label: '강수', aliases: ['강수 예측', '예상강수', '일기도', '지상일기도', '등압선', '기압', '고기압', '저기압', '예상강수', '바람깃', 'surface chart', 'isobar'] },
   wind: { label: '바람', aliases: ['wind', '풍속'] },
-  temp: { label: '기온', aliases: ['온도', 'temp'] },
-  cloud: { label: '습기', aliases: ['수분', 'moisture', '구름'] },
+  cloudIcing: { label: '구름·착빙', aliases: ['구름 착빙', '구름과 착빙', 'cloud icing'] },
+  temp: { label: '등온선', aliases: ['기온', '온도', 'temp', 'isotherm'] },
+  cloud: { label: '구름층 추정', aliases: ['습도', '습기', '수분', 'moisture', '구름'] },
   icing: { label: '착빙', aliases: ['icing'] },
   turbulence: { label: '난류', aliases: ['turbulence'] },
+  tropopause: { label: '권계면·제트', aliases: ['권계면', '대류권계면', 'tropopause', 'trop', '제트', '제트기류', 'jet', 'jet stream'] },
   sigmet: { label: 'SIGMET(국내)', aliases: ['시그멧', '국내시그멧'] },
   sigmet_intl: { label: 'SIGMET(해외)', aliases: ['해외시그멧', '국제시그멧', 'overseas sigmet'] },
   airmet: { label: 'AIRMET', aliases: ['에어멧'] },
   sigwx: { label: 'SIGWX LOW', aliases: ['시그윅스', '악기상', '저고도 SIGWX'] },
   sigwxHigh: { label: 'SIGWX HIGH', aliases: ['WAFS', 'WIFS', '고고도 SIGWX', '시그윅스 고고도'] },
   typhoon: { label: '태풍', aliases: ['태풍', 'typhoon', '타이푼'] },
-  visibility: { label: '시정', aliases: ['시정', 'visibility', '가시거리'] },
-  ceiling: { label: '운고', aliases: ['운고', 'ceiling', '운저'] },
+  visibility: { label: '시정·운고', aliases: ['시정', 'visibility', '가시거리', '운고', 'ceiling', '운저'] },
+  ceiling: { label: '시정·운고', aliases: ['운고', 'ceiling', '운저'] },
   terrainHazard: { label: '지형 근접', aliases: ['지형', '표고', '산', 'terrain', 'hazard advisor', '지형근접'] },
 }
 export const MET_ACTIONS = MET_LAYERS.map((l) => ({
@@ -138,7 +140,8 @@ export function buildSearchCatalog(airports = []) {
         data: a,
       }
     })
-  return [...airportEntries, ...ALL_ACTIONS]
+  // 운고의 호환 액션은 유지하되 검색에서는 통합 버튼 하나로 안내한다.
+  return [...airportEntries, ...ALL_ACTIONS.filter(action => !(action.type === 'met' && action.id === 'ceiling'))]
 }
 
 // 부분일치 검색. label/aliases에 query가 들어가면 매치. 접두 일치를 위로 정렬.

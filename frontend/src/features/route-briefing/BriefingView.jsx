@@ -82,12 +82,11 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
   const hazardCodes = (briefing?.sections?.adverse?.hazards ?? []).map((h) => h.code)
   const modelKinds = new Set((briefing?.sections?.enroute?.model?.elements ?? []).map((e) => e.kind))
   const hazHas = (codes) => codes.some((c) => hazardCodes.includes(c))
-  // 기온·습도·바람·SIGMET/AIRMET은 항상 기본 ON. 착빙·난류는 해당 현상이 있을 때만.
-  const icingOn = hazHas(['SEV_ICE', 'MOD_ICE']) || modelKinds.has('icing')
+  // 구름층 추정·착빙·등온선은 함께 기본 ON. 난류는 해당 현상이 있을 때만.
   const [xLayers, toggleXLayer] = useCrossSectionLayers({
-    temp: true, wind: true, cloud: true, advisories: true,
-    icing: icingOn,
-    moisture: !icingOn, // 착빙과 습도는 같은 영역을 칠해 색이 겹친다 — 착빙이 켜지면 습도는 양보.
+    temp: true, wind: true, cloud: false, advisories: true,
+    icing: true, tropopause: true,
+    moisture: true,
     turbulence: hazHas(['SEV_TURB', 'MOD_TURB']) || modelKinds.has('turbulence'),
   })
   const onFocusRef = useRef(onFocus)
@@ -158,7 +157,7 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
     (sections.current?.airports ?? []).some((airport) => !airport.metar)
   ))
   const weatherIncomplete = organizationWeatherIncomplete || Boolean(frozenNotice)
-  const mapLayerIds = hazardMapLayers(briefing) // 위험현상 → 켤 지도 레이어 id
+  const mapLayerIds = [...new Set(hazardMapLayers(briefing).map(id => ['temp', 'cloud', 'icing'].includes(id) ? 'cloudIcing' : id))]
   const rawWinds = buildRawWindsTable(crossSection, verticalProfile) // ④ 상층바람 원자료 표
   const airports = sections.current.airports
   const activeAirportObj = airports.find((a) => a.role === activeAirport) ?? airports[0]
@@ -477,9 +476,9 @@ export default function BriefingView({ frozenNotice = null, organizationContext 
             </div>
             {verticalProfile && (
               <>
-                <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} />
+                <CrossSectionToggles layers={xLayers} onToggle={toggleXLayer} legend />
                 <div className={`bv-xsection${isMobile ? ' bv-xsection-scroll' : ''}`}>
-                  <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} advisories={advisories} highlightRangeNm={activeLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} />
+                  <VerticalProfileChart profile={verticalProfile} crossSection={crossSection} layers={xLayers} legendInToolbar advisories={advisories} highlightRangeNm={activeLeg} nwpTimeSelection={nwpTimeSelection} onSetWaypointNwpOffset={onSetWaypointNwpOffset} />
                 </div>
               </>
             )}

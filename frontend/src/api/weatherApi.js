@@ -326,6 +326,20 @@ export async function fetchKimGktgIndex(options = {}) {
   return fetchJson('/api/kim/gktg/index', options)
 }
 
+export async function fetchKimTropopauseIndex(options = {}) {
+  return fetchJson('/api/kim/tropopause/index', options)
+}
+
+export async function fetchKimTropopauseRuns(options = {}) {
+  return fetchJson('/api/kim/tropopause/runs', options)
+}
+
+export async function fetchKimTropopauseField({ tmfc, hf, revision }, options = {}) {
+  const params = new URLSearchParams({ tmfc, hf: String(hf) })
+  if (revision) params.set('revision', revision)
+  return fetchJson(`/api/kim/tropopause/field?${params.toString()}`, options)
+}
+
 export async function fetchKimGktgField({ tmfc, hf, level, revision }, options = {}) {
   const params = new URLSearchParams({ tmfc, hf: String(hf), level })
   if (revision) params.set('revision', revision)

@@ -63,6 +63,7 @@ export function syncCloudPotentialOverlay(map, model = {}) {
   }
 
   if (!map.getLayer?.(CLOUD_POTENTIAL_IMAGE_LAYER_ID)) {
+    const before = ['kim-icing-pattern-layer', 'kim-temperature-zero-halo', 'kim-temperature-zero-line'].find(id => map.getLayer?.(id))
     map.addLayer?.({
       id: CLOUD_POTENTIAL_IMAGE_LAYER_ID,
       type: 'raster',
@@ -70,7 +71,7 @@ export function syncCloudPotentialOverlay(map, model = {}) {
       slot: 'middle',
       layout: { visibility: 'visible' },
       paint: { 'raster-opacity': 0.82, 'raster-fade-duration': 0, 'raster-resampling': 'linear' },
-    })
+    }, before)
   }
   setVisible(map, true)
   return state

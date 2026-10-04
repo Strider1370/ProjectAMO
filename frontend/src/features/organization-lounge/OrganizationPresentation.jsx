@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
+import { useCrossSectionLayers, CrossSectionToggles } from '../route-briefing/crossSectionLayers.jsx'
 import VerticalProfileChart from '../route-briefing/VerticalProfileChart.jsx'
 import { organizationRequest, organizationResourceUrl } from './api.js'
 import PreviewMode from './PreviewMode.jsx'
@@ -57,7 +58,7 @@ function SelectionCard({ item, tz, activeItemId, pinnedItemId, onPreview, onClea
   </button>
 }
 
-function ProfilePanel({ bundle, activeItemId, onSelectItem, onExpand }) {
+function ProfilePanel({ bundle, activeItemId, onSelectItem, onExpand, profileLayers }) {
   const state = presentationWeatherState(bundle)
   const linkedItems = organizationLinkedItems({ bundle })
   if (!bundle?.verticalProfile) return <section className="op-panel op-profile-panel">
@@ -67,10 +68,13 @@ function ProfilePanel({ bundle, activeItemId, onSelectItem, onExpand }) {
   return <section className="op-panel op-profile-panel">
     <PanelTitle title="연직단면도" onExpand={onExpand} />
     {state.limited && <div className="op-limited">자료 일부가 누락되어 위험 없음으로 판단할 수 없습니다.</div>}
+    <CrossSectionToggles layers={profileLayers.layers} onToggle={profileLayers.toggle} keys={bundle.advisories?.length ? undefined : ['temp','moisture','cloud','icing','wind','turbulence']} legend />
     <VerticalProfileChart
       profile={bundle.verticalProfile}
       crossSection={bundle.crossSection}
-      layers={{ wind: true, temp: true, moisture: true, icing: true, turbulence: true, cloud: true }}
+      advisories={bundle.advisories ?? []}
+      layers={profileLayers.layers}
+      legendInToolbar
       linkedItems={linkedItems}
       activeLinkedItemId={activeItemId}
       onSelectLinkedItem={onSelectItem}
@@ -143,7 +147,7 @@ function PresentationMaterialViewer({ orgId, material }) {
   return <div className="op-empty"><strong>{resolved.title || `자료 ${materialId}`}</strong><a href={url} target="_blank" rel="noreferrer">고정 원본 열기</a></div>
 }
 
-function ExpandedPane({ orgId, type, bundle, session, run, flight, activeItemId, onSelectItem, onClose }) {
+function ExpandedPane({ orgId, type, bundle, session, run, flight, activeItemId, onSelectItem, onClose, profileLayers }) {
   const dialogRef = useRef(null)
   const materials = materialReferences(session, run, flight, bundle)
   const [selectedMaterialKey, setSelectedMaterialKey] = useState(null)
@@ -163,7 +167,7 @@ function ExpandedPane({ orgId, type, bundle, session, run, flight, activeItemId,
     <header><strong>{type === 'map' ? '평면 기상 지도' : type === 'profile' ? '연직단면도' : '참고자료'}</strong><button type="button" onClick={onClose}><Minimize2 size={18} /> 발표 배치로 복귀</button></header>
     <div className="op-expanded-body">
       {type === 'map' && <OrganizationMap orgId={orgId} bundle={bundle} dataMode="pinned" selectedItemId={activeItemId} onSelectItem={onSelectItem} />}
-      {type === 'profile' && <ProfilePanel bundle={bundle} activeItemId={activeItemId} onSelectItem={onSelectItem} />}
+      {type === 'profile' && <ProfilePanel profileLayers={profileLayers} bundle={bundle} activeItemId={activeItemId} onSelectItem={onSelectItem} />}
       {type === 'materials' && <div className="op-expanded-materials"><nav aria-label="참고자료 목록">{materials.map((material) => { const key = `${material.materialId}:${material.materialVersion}`; return <button type="button" key={key} aria-current={key === `${selectedMaterial?.materialId}:${selectedMaterial?.materialVersion}` ? 'true' : undefined} onClick={() => setSelectedMaterialKey(key)}><strong>{material.title || `기관 자료 ${material.materialId}`}</strong><small>불변 버전 v{material.materialVersion ?? '미지정'}</small></button> })}</nav><div className="op-expanded-material-view">{selectedMaterial ? <PresentationMaterialViewer orgId={orgId} material={selectedMaterial} /> : <div className="op-empty">연결된 참고자료가 없습니다.</div>}</div></div>}
     </div>
   </dialog>
@@ -175,6 +179,8 @@ export default function OrganizationPresentation({ orgId, sessionId, onExit }) {
   const presentation = useOrganizationPresentation({ orgId, sessionId })
   const [layout, setLayout] = useState('map')
   const [expanded, setExpanded] = useState(null)
+  const [layers, toggle, view] = useCrossSectionLayers({ wind: true, temp: true, moisture: true, icing: true, turbulence: true, cloud: true, advisories: true })
+  const profileLayers = { layers, toggle, view }
   const [pinnedItemId, setPinnedItemId] = useState(null)
   const [previewItemId, setPreviewItemId] = useState(null)
   const activeItemId = previewItemId || pinnedItemId
@@ -215,7 +221,7 @@ export default function OrganizationPresentation({ orgId, sessionId, onExit }) {
     selectedItemId={activeItemId}
     onSelectItem={selectItem}
   /></section>
-  const profile = <ProfilePanel bundle={presentation.currentBundle} activeItemId={activeItemId} onSelectItem={selectItem} onExpand={() => setExpanded('profile')} />
+  const profile = <ProfilePanel profileLayers={profileLayers} bundle={presentation.currentBundle} activeItemId={activeItemId} onSelectItem={selectItem} onExpand={() => setExpanded('profile')} />
   const notes = <NotesPanel bundle={presentation.currentBundle} session={presentation.session} run={presentation.run} flight={presentation.currentFlight}
     {...{ tz, activeItemId, pinnedItemId }} onPreview={setPreviewItemId} onClearPreview={() => setPreviewItemId(null)} onPin={selectItem} onExpandMaterials={() => setExpanded('materials')} />
 
@@ -232,6 +238,6 @@ export default function OrganizationPresentation({ orgId, sessionId, onExit }) {
     {!presentation.currentBundle ? <section className="op-waiting" role="status"><LoaderCircle className="ol-spin" /><strong>첫 표시 bundle을 준비하고 있습니다.</strong><button type="button" onClick={presentation.prepareCurrent}>다시 준비</button></section>
       : <div className={`op-grid is-${layout}`}>{map}{profile}{notes}</div>}
     <footer className="op-footer"><span className={weather.limited ? 'is-limited' : ''}>{weather.label}</span><span>{modelTimes.join(' · ') || '모델 유효시각 없음'}</span><span>bundle {appliedId?.slice(0, 12) || '--'} · 비행 v{presentation.currentFlight.version}</span><span>종료 기록은 사용 버전과 출처를 보존하며 당시 기상 전체 재현은 제공하지 않습니다.</span></footer>
-    {expanded && presentation.currentBundle && <ExpandedPane orgId={orgId} type={expanded} bundle={presentation.currentBundle} session={presentation.session} run={presentation.run} flight={presentation.currentFlight} activeItemId={activeItemId} onSelectItem={selectItem} onClose={() => setExpanded(null)} />}
+    {expanded && presentation.currentBundle && <ExpandedPane profileLayers={profileLayers} orgId={orgId} type={expanded} bundle={presentation.currentBundle} session={presentation.session} run={presentation.run} flight={presentation.currentFlight} activeItemId={activeItemId} onSelectItem={selectItem} onClose={() => setExpanded(null)} />}
   </main>
 }

@@ -77,6 +77,15 @@ test('빈 질의는 빈 결과', () => {
 
 function ALL() { return buildSearchCatalog([]) }
 
+test('시정·운고·ceiling 검색은 통합 레이어 액션 하나로 안내한다', () => {
+  for (const query of ['시정', '운고', '운저', 'visibility', 'ceiling']) {
+    const hits = matchSearch(ALL(), query).filter(action => action.type === 'met')
+    assert.equal(hits.length, 1)
+    assert.equal(hits[0].id, 'visibility')
+    assert.equal(hits[0].label, '시정·운고')
+  }
+})
+
 test('unknown saved basemap ids fall back to the default basemap', () => {
   assert.equal(knownBasemapId('dark'), 'standard')
   assert.equal(knownBasemapId(null), 'standard')

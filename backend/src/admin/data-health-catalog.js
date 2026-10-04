@@ -75,6 +75,7 @@ export const CATALOG = [
   { key: 'kim_nwp', label: 'KIM 수치예보 격자', source: 'kma_nwp', character: 'nwp', comparisonModel: 'kim', statsKey: 'kim_surface_wind', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/latest.json', disabledWhen: OFF.kimNwp,},
   { key: 'kim_surface_chart', label: 'KIM 지상 일기도', source: 'kma_nwp', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_surface_chart/latest.json', disabledWhen: anyOf(OFF.kimNwp, OFF.kimSurfaceChart, OFF.radarKey),},
   { key: 'kim_gktg', label: '난류(GKTG)', source: 'kma_radar', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/derived/gktg/latest.json', disabledWhen: c => c.kim_nwp?.enabled === false || c.kim_gktg?.enabled === false },
+  { key: 'kim_tropopause', label: '권계면·제트', source: 'kma_radar', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/derived/tropopause/latest.json', disabledWhen: c => c.kim_nwp?.enabled === false || c.kim_tropopause?.enabled === false },
 
   { key: 'metar_overseas', label: 'METAR 해외', source: 'noaa', character: 'report', normalMs: m(5), lateMs: m(20), stoppedMs: m(40) },
   { key: 'taf_overseas', label: 'TAF 해외', source: 'noaa', character: 'report', normalMs: m(10), lateMs: m(30), stoppedMs: h(1) },

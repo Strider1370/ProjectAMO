@@ -18,7 +18,7 @@ export default function MapProfilePanel({ measure, onClose, onOpenProfile, loadi
   const [altitudeInput, setAltitudeInput] = useState('10000')
   const [detailsOpen, setDetailsOpen] = useState(false)
   const altitudeFt = Number(altitudeInput)
-  const altitudeValid = altitudeInput !== '' && Number.isInteger(altitudeFt) && altitudeFt >= 500 && altitudeFt <= 50000
+  const altitudeValid = altitudeInput !== '' && Number.isInteger(altitudeFt) && altitudeFt >= 500 && altitudeFt <= 60000
   const count = measure.distance?.count ?? 0
   const done = measure.distanceDone
   const steps = routeSteps(count, done)
@@ -41,16 +41,16 @@ export default function MapProfilePanel({ measure, onClose, onOpenProfile, loadi
       <div className="map-profile-altitude">
         <div className="map-profile-field-heading">
           <label htmlFor="map-profile-altitude-input">설정 고도</label>
-          <span>500~50,000 ft</span>
+          <span>500~60,000 ft</span>
         </div>
         <div className={`map-profile-altitude-control${altitudeValid ? '' : ' is-invalid'}`}>
-          <input id="map-profile-altitude-input" type="number" min="500" max="50000" step="100"
+          <input id="map-profile-altitude-input" type="number" min="500" max="60000" step="100"
             inputMode="numeric" value={altitudeInput} aria-label="설정 고도 (ft)"
             aria-invalid={!altitudeValid} aria-describedby={altitudeValid ? undefined : 'map-profile-altitude-error'}
             onChange={(event) => setAltitudeInput(event.target.value)} />
           <span aria-hidden="true">ft</span>
         </div>
-        {!altitudeValid && <p className="map-profile-error" id="map-profile-altitude-error" role="alert">500~50,000 ft 사이의 고도를 입력해 주세요.</p>}
+        {!altitudeValid && <p className="map-profile-error" id="map-profile-altitude-error" role="alert">500~60,000 ft 사이의 고도를 입력해 주세요.</p>}
       </div>
 
       <div className="map-profile-route">

@@ -1,3 +1,4 @@
+import CloudIcingLegend from './CloudIcingLegend.jsx'
 import { useEffect, useRef, useState } from 'react'
 import useIsMobile from '../../shared/ui/useIsMobile.js'
 import { RAINVIEWER_LEGEND } from './lib/rainviewerLayers.js'
@@ -53,7 +54,9 @@ function WeatherLegends({
   onBlinkLightningChange,
   flightCategoryLegendVisible = false,
   flightCategoryVisibilityOn = false,
+  flightCategoryCeilingOn = false,
   flightCategoryBands = [],
+  flightCategoryCeilingBands = [],
   flightCategoryStationLegendVisible = false,
   flightCategoryStationBands = [],
   flightCategoryStationCount = null,
@@ -245,57 +248,7 @@ function WeatherLegends({
           </div>
         </div>
       )}
-      {temperatureLegendVisible && (
-        <div className="temperature-legend" aria-label="Temperature legend">
-          <div className="temperature-legend-title">C</div>
-          <div className="temperature-legend-scale">
-            {temperatureLegendEntries.map((entry) => (
-              <div key={entry.label} className="temperature-legend-row">
-                <span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
-                <span
-                  className="temperature-legend-swatch"
-                  style={{ backgroundColor: entry.color }}
-                  aria-hidden="true"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {cloudLegendVisible && (
-        <div className="temperature-legend" aria-label="Dewpoint spread legend">
-          <div className="temperature-legend-title">T-Td C</div>
-          <div className="temperature-legend-scale">
-            {cloudLegendEntries.map((entry) => (
-              <div key={entry.label} className="temperature-legend-row">
-                <span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
-                <span
-                  className="temperature-legend-swatch"
-                  style={{ backgroundColor: entry.color }}
-                  aria-hidden="true"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {icingLegendVisible && (
-        <div className="temperature-legend" aria-label="Icing potential legend">
-          <div className="temperature-legend-title">Icing Potential</div>
-          <div className="temperature-legend-scale">
-            {icingLegendEntries.map((entry) => (
-              <div key={entry.label} className="temperature-legend-row">
-                <span className="temperature-legend-label">{entry.label}{entry.range ? ` ${entry.range}` : ''}</span>
-                <span
-                  className="temperature-legend-swatch"
-                  style={{ backgroundColor: entry.color }}
-                  aria-hidden="true"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} mode="map" cloudEntries={cloudLegendEntries} />
       {ciLegendVisible && <ConvectiveLegend title="대류 가능성" entries={CI_LEGEND} note="위성 기반 대류 발생 가능성 참고 — 레이더 실황·위험등급 아님" />}
       {ctpsLegendVisible && <ConvectiveLegend title="구름 꼭대기" entries={CTPS_LEGEND} note="CTH 기반 높이 — 위험등급 아님" />}
       {echoTopLegendVisible && (echoTopOutOfRange ? (
@@ -362,7 +315,11 @@ function WeatherLegends({
       entries: showFlightCategoryMissing
         ? [...flightCategoryBands, { label: '자료 없음', color: '#9ca3af' }]
         : flightCategoryBands,
-      note: '색 없음 = 기준 충족 또는 자료 없음',
+      note: '채움 = 시정 · 색 없음 = 기준 충족 또는 자료 없음',
+    },
+    flightCategoryCeilingOn && {
+      key: 'fcCeiling', title: '운고 · m', entries: flightCategoryCeilingBands,
+      note: '옅은 채움·윤곽선 = 운고 · 색 없음 = 기준 충족 또는 자료 없음',
     },
     // 점 색의 뜻(빨강·주황·초록)과 흰 테두리(관측이 모델보다 낮음)를 알려준다.
     // 게이트는 지점 층이 실제로 그려지는 조건(showFlightCategoryStations && (시정 또는 운고))과 같다.
@@ -373,9 +330,6 @@ function WeatherLegends({
     },
     surfaceChartLegendVisible && { key: 'surfaceChart', title: '강수 · KIM · mm/3h', entries: surfaceChartLegendEntries, note: surfaceChartLegendNote },
     windSpeedLegendVisible && { key: 'wind', title: '바람 · kt', entries: windSpeedLegendEntries },
-    temperatureLegendVisible && { key: 'temp', title: '기온 · °C', entries: temperatureLegendEntries },
-    cloudLegendVisible && { key: 'cloud', title: '습도 · T-Td °C', entries: cloudLegendEntries },
-    icingLegendVisible && { key: 'icing', title: '착빙 · 잠재성', entries: icingLegendEntries },
     turbulenceLegendVisible && { key: 'turb', title: `난류 · ${turbulenceProduct}`, entries: turbulenceLegendEntries, note: turbulenceProduct === 'GKTG' ? 'LGT 0.15–<0.22 · MOD 0.22–<0.34 · SEV ≥0.34' : 'LGT 0.30–<0.475 · MOD 0.475–<0.75 · SEV ≥0.75' },
     ciLegendVisible && { key: 'ci', title: '대류 가능성 · 위성', entries: CI_LEGEND },
     ctpsLegendVisible && { key: 'ctps', title: '구름 꼭대기 · FL', entries: CTPS_LEGEND },
@@ -390,6 +344,7 @@ function WeatherLegends({
     <div className={`map-legend-mobile-dock${bottomDock ? ' map-legend-desktop-dock' : ''}`}>
       <div ref={bottomPanelRef} className={`map-legends-bottom${open ? ' is-open' : ''}`} aria-hidden={!open}>
         {supplementalContent}
+        <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} cloudEntries={cloudLegendEntries} mode="map" compact />
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
         ))}

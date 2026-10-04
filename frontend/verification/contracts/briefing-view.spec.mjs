@@ -108,9 +108,9 @@ test.describe('briefing-view', () => {
     await expect(page.getByTestId('route-weather-leg-card')).toHaveCount(2)
     await expect(page.locator('.bv-main-navlog-table [data-label="위험기상"]').first()).toBeVisible()
 
-    // 연직단면도는 기온·습도·바람·SIGMET/AIRMET이 켜진 채로 열린다.
+    // 연직단면도는 구름·착빙·등온선·바람·권계면·제트·SIGMET/AIRMET이 켜진 채로 열린다.
     await expect(page.locator('.cs-toggle').first()).toBeVisible()
-    for (const label of ['기온', '습도', '바람', 'SIGMET/AIRMET']) {
+    for (const label of ['구름·착빙', '등온선', '바람', '권계면·제트', 'SIGMET/AIRMET']) {
       await expect(page.locator('.cs-toggle[aria-pressed="true"]').filter({ hasText: label }).first()).toBeVisible()
     }
     expect(requests.crossSection.bodies.length).toBeGreaterThan(0)
@@ -199,30 +199,34 @@ test.describe('briefing-view', () => {
     await expect(fullscreen.getByRole('button', { name: '닫기', exact: true })).toBeVisible()
     await expect(fullscreen.getByRole('button', { name: '이전 예보시간', exact: true })).toBeVisible()
     await expect(fullscreen.getByRole('button', { name: '다음 예보시간', exact: true })).toBeVisible()
-    for (const label of ['기온', '습도', '구름', '착빙', '바람', '난류', 'SIGMET/AIRMET']) {
+    for (const label of ['구름·착빙', '등온선', '바람', '권계면·제트', '난류', 'SIGMET/AIRMET']) {
       await expect(fullscreen.getByRole('button', { name: label, exact: true })).toBeVisible()
     }
 
-    const temperature = fullscreen.getByRole('button', { name: '기온', exact: true })
+    const temperature = fullscreen.getByRole('button', { name: '등온선', exact: true })
     await temperature.click()
     await expect(temperature).toHaveAttribute('aria-pressed', 'false')
     await fullscreen.getByRole('button', { name: '닫기', exact: true }).click()
-    await expect(page.locator('.bv-leg-briefing').getByRole('button', { name: '기온', exact: true })).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.locator('.bv-leg-briefing').getByRole('button', { name: '등온선', exact: true })).toHaveAttribute('aria-pressed', 'false')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   })
 
   test('shows two outline-only KIM CLD cloud regions and toggles them', async ({ page }, testInfo) => {
     await createBriefing(page)
     const profile = page.getByRole('region', { name: '연직단면도', exact: true })
-    const cloudToggle = profile.getByRole('button', { name: '구름', exact: true })
-    await expect(cloudToggle).toHaveAttribute('aria-pressed', 'true')
+    // 모델 구름량 윤곽은 '구름·착빙 ▾' 메뉴의 하위 항목이다(기본 꺼짐).
+    await profile.getByRole('button', { name: '구름·착빙 세부 항목', exact: true }).click()
+    const cloudToggle = profile.getByRole('checkbox', { name: '모델 구름량 윤곽', exact: true })
+    await expect(cloudToggle).not.toBeChecked()
+    await cloudToggle.check()
     const contours = profile.getByTestId('kim-cloud-contours')
     await expect(contours).toBeVisible()
     await expect(contours.locator('path.cs-cloud-contour')).toHaveCount(2)
     await expect(profile.getByText('KIM CLD ≥ 0.6 윤곽 · 일부 결측', { exact: true })).toBeVisible()
     expect(await contours.locator('path.cs-cloud-contour').evaluateAll((paths) => paths.every((path) => path.getAttribute('fill') === 'none' && getComputedStyle(path).fill === 'none'))).toBe(true)
-    await cloudToggle.click(); await expect(profile.getByTestId('kim-cloud-contours')).toHaveCount(0)
-    await cloudToggle.click(); await expect(profile.getByTestId('kim-cloud-contours')).toBeVisible()
+    await cloudToggle.uncheck(); await expect(profile.getByTestId('kim-cloud-contours')).toHaveCount(0)
+    await cloudToggle.check(); await expect(profile.getByTestId('kim-cloud-contours')).toBeVisible()
+    await page.keyboard.press('Escape')
     const screenshotTarget = testInfo.project.name === 'mobile'
       ? await (async () => {
           await page.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()

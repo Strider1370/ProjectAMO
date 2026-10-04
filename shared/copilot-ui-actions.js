@@ -2,7 +2,7 @@
 // React props, map expressions or setters. The UI owns labels and capability checks.
 export const COPILOT_MET_LAYER_IDS = Object.freeze([
   'radarHsr', 'radarHci', 'radarOverseas', 'echoTop', 'satellite', 'satelliteVisible',
-  'ci', 'ctps', 'lightning', 'surfaceChart', 'wind', 'temp', 'cloud', 'icing',
+  'ci', 'ctps', 'lightning', 'surfaceChart', 'wind', 'cloudIcing', 'temp', 'cloud', 'icing',
   'turbulence', 'sigmet', 'sigmet_intl', 'airmet', 'sigwx', 'typhoon',
   'visibility', 'ceiling', 'terrainHazard',
 ])

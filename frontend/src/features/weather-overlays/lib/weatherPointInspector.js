@@ -80,7 +80,7 @@ function buildCloudRow(field, sampler, metadata) {
   if (!Number.isFinite(value)) return null
   return {
     key: 'cloud',
-    label: '습도',
+    label: '구름층 추정',
     value: `${fixed(value, 1)} °C`,
     detail: '이슬점 편차 (T−Td)',
     altitude: formatAltitude(field),

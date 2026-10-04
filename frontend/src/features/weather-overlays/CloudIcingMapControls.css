@@ -1,0 +1,11 @@
+.map-bottom-control-dock { display: flex; align-items: center; gap: var(--space-s); }
+.cloud-icing-map-controls { display: flex; align-items: center; gap: var(--space-s); pointer-events: auto; }
+.cloud-icing-map-controls > .map-legend-toggle { min-height: var(--touch-min); white-space: nowrap; box-shadow: none; font-family: var(--app-font); }
+.cloud-icing-map-controls > .map-legend-toggle.is-open { background: var(--accent); color: var(--bg-1); border-color: var(--accent); }
+.cloud-icing-map-controls > .map-legend-toggle:disabled { background: var(--bg-2); color: var(--text-disabled); border-color: var(--stroke-2); cursor: default; }
+.cloud-icing-map-controls button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cloud-icing-map-status { font-size: var(--fs-100); max-width: 72px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 719px) {
+  .map-bottom-control-dock:has(.cloud-icing-map-controls, .weather-point-info-toggle) { bottom: calc(38px + var(--space-s) + var(--touch-min) + var(--space-s)); }
+  .cloud-icing-map-controls > .map-legend-toggle { padding-inline: var(--space-s); }
+}

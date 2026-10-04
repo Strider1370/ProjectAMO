@@ -7,6 +7,7 @@ import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
 import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { collectionResult } from '../collector-execution.js'
+import { selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours, decodeComponent, buildKimGktgFieldFromGrid } from './kim-nwp-model.js'
 import { readKimNwpLatest, readKimNwpGrid, readKimGktgField, resolveKimNwpRunDir, resolveKimGktgFieldPath, writeKimGktgField, writeKimGktgAttempt, publishKimGktgRun } from './kim-nwp-store.js'
 
@@ -51,8 +52,13 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
   let text
   if (fs.existsSync(file)) text = fs.readFileSync(file, 'utf8')
   else {
-    const credential = config.api.radar_satellite_auth_key
-    if (!credential || credential === config.api.kim_nwp_auth_key || credential === config.api.auth_key) throw new Error('gktg_radar_credential_unavailable')
+    const credential = selectKimRunCredential({
+      tmfc,
+      kimCredential: config.api.kim_nwp_auth_key,
+      aviationCredential: config.api.auth_key,
+      radarCredential: config.api.radar_satellite_auth_key,
+    })
+    if (!credential) throw new Error('gktg_run_credential_unavailable')
     text = await fetchGrid({ data: level ? 'P' : 'U', name, level, tmfc, hf: requestedHf, sub: config.kim_surface_wind.sub, credential, signal })
   }
   const values = validateGktgSupplement(text, { name, level, tmfc, hf: requestedHf, grid })

@@ -69,6 +69,9 @@ import {
 } from './src/processors/kim-nwp-model.js'
 import {
   readKimGktgIndex,
+  readKimTropopauseIndex,
+  readKimTropopauseField,
+  listKimTropopauseFields,
   readKimGktgLatest,
   readKimGktgField,
   readKimNwpGrid,
@@ -896,6 +899,25 @@ app.get('/api/kim/gktg/field', (req, res) => {
   }
 })
 
+app.get('/api/kim/tropopause/index', (_req, res) => {
+  const index = readKimTropopauseIndex(DATA_ROOT)
+  if (!index) return res.status(503).json({ error: 'kim tropopause index unavailable' })
+  sendRevalidatedJson(res, index, index.revision)
+})
+app.get('/api/kim/tropopause/runs', (_req, res) => {
+  setNoStore(res)
+  res.json({ type: 'kim_nwp_tropopause_runs', fields: listKimTropopauseFields(DATA_ROOT) })
+})
+app.get('/api/kim/tropopause/field', (req, res) => {
+  try {
+    const field = readKimTropopauseField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), revision: req.query.revision })
+    sendImmutableJson(res, field, `kim-tropopause:${field.time.tmfc}:${field.time.hf}:${field.revision}`)
+  } catch (error) {
+    setNoStore(res)
+    res.status(error.code === 'ENOENT' ? 404 : 400).json({ error: error.message })
+  }
+})
+
 app.get('/api/ktg/index', (_req, res) => res.status(410).json({ error: 'KTG replaced by /api/kim/gktg/index' }))
 
 app.get('/api/weather/frame/:kind/:name', (req, res) => {
@@ -1276,7 +1298,7 @@ app.post('/api/briefing/cross-section', (req, res) => {
     if (!model.available) return res.status(503).json({ error: 'kim run unavailable' })
 
     setNoStore(res)
-    res.json({ ...model.crossSection, turbulence: model.turbulence, availableTimes: model.availableTimes, timeRules: model.timeRules, nwpTimeAvailability: model.nwpTimeAvailability })
+    res.json({ ...model.crossSection, turbulence: model.turbulence, tropopause: model.tropopause, availableTimes: model.availableTimes, timeRules: model.timeRules, nwpTimeAvailability: model.nwpTimeAvailability })
   } catch (error) {
     res.status(400).json({ error: error.message || 'cross-section failed' })
   }
@@ -1308,7 +1330,7 @@ app.post('/api/briefing/nwp-time-refresh', (req, res) => {
     const enroute = briefing.sections.enroute
     setNoStore(res)
     res.json({
-      crossSection: { ...crossSectionResult.crossSection, turbulence: crossSectionResult.turbulence, availableTimes: crossSectionResult.availableTimes },
+      crossSection: { ...crossSectionResult.crossSection, turbulence: crossSectionResult.turbulence, tropopause: crossSectionResult.tropopause, availableTimes: crossSectionResult.availableTimes },
       navlogNwpPatch: buildNavlogNwpPatch({ legs: enroute.legs, procedures: enroute.procedures }),
       timeRules: crossSectionResult.timeRules,
       nwpTimeAvailability: crossSectionResult.nwpTimeAvailability,

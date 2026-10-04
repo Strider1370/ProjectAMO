@@ -31,8 +31,8 @@ export function useMapLineProfile() {
   async function openLine(coordinates, altitudeFt = null) {
     const routeGeometry = geometryForLine(coordinates)
     if (!routeGeometry) { setError('지도에서 두 점 이상을 이어 선을 완성해 주세요.'); return false }
-    if (altitudeFt !== null && (!Number.isInteger(altitudeFt) || altitudeFt < 500 || altitudeFt > 50000)) {
-      setError('500~50,000 ft 사이의 고도를 입력해 주세요.'); return false
+    if (altitudeFt !== null && (!Number.isInteger(altitudeFt) || altitudeFt < 500 || altitudeFt > 60000)) {
+      setError('500~60,000 ft 사이의 고도를 입력해 주세요.'); return false
     }
     requestRef.current?.abort()
     const controller = new AbortController()

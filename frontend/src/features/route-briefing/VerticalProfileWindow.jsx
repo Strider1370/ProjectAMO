@@ -54,7 +54,7 @@ export default function VerticalProfileWindow({
             {forecastHourNav}
             <button type="button" className="vertical-profile-window-close" onClick={onClose} aria-label="연직단면도 숨기고 지도 보기">{'지도 보기'}</button>
           </div>
-          <CrossSectionToggles layers={layers} onToggle={toggle} />
+          <CrossSectionToggles layers={layers} onToggle={toggle} legend />
         </>}
         {statusMessage && <p className="vertical-profile-window-status" role="status">{statusMessage}</p>}
         <VerticalProfileChart
@@ -62,6 +62,7 @@ export default function VerticalProfileWindow({
           referenceAltitudeFt={referenceAltitudeFt}
           crossSection={crossSection}
           layers={layers}
+          legendInToolbar={placement !== 'mobile-full'}
           advisories={advisories}
           selectedCandidateAltitudeFt={selectedCandidateAltitudeFt}
           candidateAltitudes={candidateAltitudes}

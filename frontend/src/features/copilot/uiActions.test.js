@@ -13,7 +13,8 @@ const initial = () => ({ ownerId: 1, airports: [{ icao: 'RKSS' }], ready: true,
 // 기상이가 켜지 않는 레이어: notam(기상 레이어 아님), sigwxHigh(현재 예보가 아닌 과거 고정 샘플이라
 // "지금 고층 SIGWX"를 물었을 때 켜 주면 옛 자료를 현재처럼 보여 주게 된다).
 // kimTurbulence 역시 과거 자료의 미보정 원시 지수를 보여 주는 수동 시험 레이어다.
-const NOT_FOR_COPILOT = ['notam', 'sigwxHigh', 'kimTurbulence']
+// tropopause: 기상이 연계는 후속 과제(2026-10-04 권계면·제트 계획 §7 이후).
+const NOT_FOR_COPILOT = ['notam', 'sigwxHigh', 'kimTurbulence', 'tropopause']
 test('every copilot weather action resolves through the existing layer registry', () => {
   assert.deepEqual([...COPILOT_MET_LAYER_IDS].sort(), MET_ACTIONS.filter((x) => !NOT_FOR_COPILOT.includes(x.id)).map((x) => x.id).sort())
 })
