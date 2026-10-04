@@ -124,7 +124,6 @@ import { useAirportWarningOverlay } from './lib/useAirportWarningOverlay.js'
 import {
   AIRPORT_CIRCLE_LAYER,
   AIRPORT_INTERACTIVE_LAYERS,
-  AIRPORT_STATION_CENTER_LAYER,
   AIRPORT_SOURCE_ID,
   addAirportLayers,
   addGeoBoundaryLayers,
@@ -1530,8 +1529,10 @@ const MapView = forwardRef(function MapView({
         bindLayerEvent(map, 'mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer' }),
         bindLayerEvent(map, 'mouseleave', layerId, () => { map.getCanvas().style.cursor = '' }),
       ]),
-      // tooltip via mousemove — avoids adjacent-airport cancel race condition
-      bindLayerEvent(map, 'mousemove', AIRPORT_STATION_CENTER_LAYER, (e) => {
+      // tooltip via mousemove — avoids adjacent-airport cancel race condition.
+      // 관측 기호 이미지는 48px 정사각형이라 그 칸이 바람깃 쪽까지 덮는다. 기호 크기와 같은
+      // 투명 원 레이어에만 반응하게 해 원 위에서만 툴팁을 띄운다.
+      bindLayerEvent(map, 'mousemove', AIRPORT_CIRCLE_LAYER, (e) => {
         const icao = e.features?.[0]?.properties?.icao
         const coords = e.features?.[0]?.geometry?.coordinates
         if (!icao || !coords) return
@@ -1543,7 +1544,7 @@ const MapView = forwardRef(function MapView({
           setTooltipPos({ x, y })
         }
       }),
-      bindLayerEvent(map, 'mouseleave', AIRPORT_STATION_CENTER_LAYER, () => {
+      bindLayerEvent(map, 'mouseleave', AIRPORT_CIRCLE_LAYER, () => {
         tooltipIcaoRef.current = null
         clearTimeout(tooltipTimerRef.current)
         tooltipTimerRef.current = setTimeout(() => {
