@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { spawnSync, fork } from 'node:child_process'
 import config from '../src/config.js'
 import { KIM_NWP_LEVELS, addForecastHours } from '../src/processors/kim-nwp-model.js'
 import { writeKimNwpGrid, listKimTropopauseFields, readKimTropopauseIndex, readKimTropopauseLatest, readKimTropopauseField, writeKimTropopauseField, publishKimTropopauseRun, cleanupKimNwpRuns } from '../src/processors/kim-nwp-store.js'
@@ -127,6 +127,29 @@ test('an unchanged published run is skipped without rereading; a rewritten input
   fs.rmSync(path.join(root, `kim_nwp/runs/KIMG_NE57_${TMFC}/derived/tropopause/hf000/${revision}.json`))
   assert.equal((await run()).collection.outcome, 'complete')
   assert.equal(calculations, 2)
+})
+
+test('the child-process worker computes from the shared data and fetches supplements only through the parent', { skip: !fs.existsSync(config.kim_tropopause.python) && 'tropopause Python environment unavailable' }, async t => {
+  const root = temporary(t)
+  seedBase(root)
+  fs.writeFileSync(path.join(root, 'kim_nwp/latest.json'), JSON.stringify({ latestRun: TMFC }))
+  const { runKimDerivedWorker } = await import('../src/processors/kim-derived-worker.js')
+  const requests = []
+  const result = await runKimDerivedWorker('kim_tropopause', {
+    workerConfig: { timeout_ms: 120_000, max_old_space_mb: 512, nice: 10 },
+    setPriority: () => {},
+    forkImpl: (entry, args, options) => fork(entry, args, { ...options, env: { ...process.env, DATA_PATH: root, KMA_KIM_NWP_AUTH_KEY: 'kim-key' } }),
+    fetchGrid: async request => { requests.push(request); return supplementText(request) },
+  })
+  assert.equal(result.type, 'kim_tropopause')
+  assert.equal(result.tmfc, TMFC)
+  assert.equal(requests.length, 8)
+  assert.ok(requests.every(r => r.credential === 'kim-key' && r.signal instanceof AbortSignal))
+  // 자식이 실제 Python까지 불렀다: 이 고정 격자는 경위도 간격이 달라(3°×3.5°) Python 입력 검사에서 거절된다.
+  // 기본 격자가 없는 나머지 시각과 함께 실패로 남아 게시하지 않는다.
+  assert.match(result.failures.find(f => f.hf === 0).reason, /tropopause_python_failed.*grid must be square/s)
+  assert.equal(result.fields, 0)
+  assert.equal(result.collection.outcome, 'partial')
 })
 
 test('a missing run key or a wrong supplement leaves the run partial', async t => {

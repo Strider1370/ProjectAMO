@@ -335,6 +335,15 @@ export const kim_tropopause = {
   collect_on_startup: process.env.KIM_TROPOPAUSE_COLLECT_ON_STARTUP !== '0',
 }
 
+// GKTG·권계면은 별도 Node 자식 프로세스에서 하나씩 돈다. 백엔드 이벤트 루프를 막지 않게 하고(2026-10-04
+// 100초 넘는 멈춤), 낮은 CPU 우선순위·힙 한도로 사이트 요청이 먼저 자원을 쓰게 한다.
+// 제한 시간은 13개 시각 × Python 계산 제한(기본 120초)에 준비·검증 여유를 더한 값이다.
+export const kim_derived_worker = {
+  timeout_ms: Number(process.env.KIM_DERIVED_WORKER_TIMEOUT_MS || 45 * 60_000),
+  max_old_space_mb: Number(process.env.KIM_DERIVED_WORKER_HEAP_MB || 1024),
+  nice: Number(process.env.KIM_DERIVED_WORKER_NICE || 10),
+}
+
 export const ktg = {
   max_runs: Number(process.env.KTG_MAX_RUNS || 2),
   timeout_ms: Number(process.env.KTG_TIMEOUT_MS || 60000),
@@ -570,6 +579,7 @@ export default {
   ktg,
   kim_gktg,
   kim_tropopause,
+  kim_derived_worker,
   lightning,
   amos,
   radar_echo,

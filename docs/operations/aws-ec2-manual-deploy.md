@@ -224,16 +224,18 @@ pm2 conf pm2-logrotate
 
 `max_size 10M`, `retain 7`, `compress true`, `rotateInterval 0 0 * * *`가 보여야 합니다.
 
-위성 수집 메모리 확인:
+위성·KIM 파생 계산 메모리 확인:
 
 ```bash
 pgrep -af 'backend/src/satellite/worker-entry.js' || true
+pgrep -af 'backend/src/processors/kim-derived-worker-entry.js' || true
 ps -o pid,ppid,rss,etimes,args -C node
 curl -fsS http://127.0.0.1:3001/api/snapshot-meta
 ```
 
 PM2 backend는 장기 실행 API/스케줄러이고, IR/FOG·CI/CTPS·VI006 위성 수집은
-작업마다 별도 Node 자식 프로세스로 실행된다. 수집 중에는 자식 PID가 하나만
+작업마다 별도 Node 자식 프로세스로 실행된다. KIM GKTG·권계면도 같은 방식이다(:12 기본 수집 뒤, :35).
+수집 중에는 종류마다 자식 PID가 하나만
 보여야 하며, 완료 뒤에는 없어져야 한다. 자식 종료 뒤 부모 RSS가 작업마다 계속
 누적되는지 24시간 동안 기록한다. PM2 재시작은 이 구조의 기본 해결책이 아니다.
 
