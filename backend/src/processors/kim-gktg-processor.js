@@ -3,13 +3,14 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { setImmediate as nextTurn } from 'node:timers/promises'
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
 import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { collectionResult } from '../collector-execution.js'
 import { selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours, decodeComponent, buildKimGktgFieldFromGrid } from './kim-nwp-model.js'
-import { readKimNwpLatest, readKimNwpGrid, readKimGktgField, resolveKimNwpRunDir, resolveKimGktgFieldPath, writeKimGktgField, writeKimGktgAttempt, publishKimGktgRun } from './kim-nwp-store.js'
+import { readKimNwpLatest, readKimNwpGrid, readKimGktgField, readKimGktgLatest, resolveKimNwpRunDir, resolveKimGktgFieldPath, writeKimGktgField, writeKimGktgAttempt, publishKimGktgRun, fingerprintKimNwpBase, fingerprintKimGktgOutputs } from './kim-nwp-store.js'
 
 const engineDir = fileURLToPath(new URL('../../python/kim_turbulence/', import.meta.url))
 const pressures = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
@@ -93,8 +94,20 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
   const failures = []
   const baseRevisions = new Map()
   const engine = engineRevision()
+  // 입력 격자·계산 코드·게시 결과가 지난 게시와 같으면 다시 읽지 않고 끝낸다. 모두 다시 읽어 확인하면
+  // 백엔드가 100초 넘게 다른 요청을 받지 못했다(2026-10-04).
+  const baseFingerprint = fingerprintKimNwpBase({ root, tmfc, hours: forecastHours })
+  const previous = readKimGktgLatest(root)
+  if (baseFingerprint && previous?.complete && previous.tmfc === tmfc && previous.algorithm === GKTG_ALGORITHM && previous.engineRevision === engine
+    && previous.baseFingerprint === baseFingerprint && String(previous.expectedHours) === String(forecastHours)
+    && previous.outputFingerprint && previous.outputFingerprint === fingerprintKimGktgOutputs(root, previous)) {
+    return { type: 'kim_gktg', tmfc, fields: previous.entries.length, revision: previous.revision, failures: [], saved: false, unchanged: true,
+      collection: collectionResult('complete', { fields: previous.entries.length, expectedFields: forecastHours.length * pressures.length }) }
+  }
   writeKimGktgAttempt(root, tmfc, { tmfc, started_at: new Date().toISOString(), outcome: 'running', expectedHours: forecastHours })
   for (const hf of forecastHours) {
+    // 시각마다 한 번 이벤트 루프에 양보해 계산 중에도 API 요청을 처리한다.
+    await nextTurn()
     if (signal?.aborted) {
       writeKimGktgAttempt(root, tmfc, { tmfc, outcome: 'cancelled', expectedHours: forecastHours, fields: entries.length, completed_at: new Date().toISOString() })
       signal.throwIfAborted()
@@ -147,6 +160,7 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
   // complete publication until every captured hour still matches its inputs.
   for (const [hf, captured] of baseRevisions) {
     if (failures.some(failure => failure.hf === hf)) continue
+    await nextTurn()
     try {
       const current = pressures.map(level => readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id }))
       if (baseRevision(current) !== captured) throw new Error('kim_gktg_base_changed')
@@ -157,7 +171,7 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
   }
   const complete = failures.length === 0
   let published = null
-  if (complete) published = publishKimGktgRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: GKTG_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, fetched_at: new Date().toISOString() })
+  if (complete) published = publishKimGktgRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: GKTG_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() })
   writeKimGktgAttempt(root, tmfc, { tmfc, outcome: complete ? 'complete' : 'partial', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() })
   return { type: 'kim_gktg', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete,
     collection: collectionResult(complete ? 'complete' : 'partial', { fields: entries.length, expectedFields: forecastHours.length * pressures.length }, complete ? {} : { reason: 'kim_gktg_incomplete' }) }

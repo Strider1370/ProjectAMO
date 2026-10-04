@@ -161,6 +161,24 @@ export function cleanupKimNwpRuns({ root, maxRuns, latestRunId }) {
   }
 }
 
+// 파일 크기·수정 시각·inode만으로 만든 지문. 내용을 읽지 않아 수백 개 격자도 수 ms에 끝난다.
+// 저장은 모두 임시 파일 + rename이라 내용이 바뀌면 inode·수정 시각이 함께 바뀐다. 파일이 없으면 null.
+function statFingerprint(files) {
+  const parts = []
+  for (const file of files) {
+    let stat
+    try { stat = fs.statSync(file) } catch { return null }
+    parts.push(`${file}:${stat.ino}:${stat.size}:${stat.mtimeMs}`)
+  }
+  return createHash('sha256').update(parts.join('\n')).digest('hex').slice(0, 20)
+}
+
+// 파생 계산(GKTG·권계면)의 입력인 기압면 기본 격자 전체의 지문. 지난 게시와 같으면 다시 계산·검증하지 않는다.
+export function fingerprintKimNwpBase({ root, tmfc, hours }) {
+  const levels = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
+  return statFingerprint(hours.flatMap(hf => levels.map(level => resolveKimNwpGridPath({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id }))))
+}
+
 function validateGktgRevision(revision) {
   if (!/^[a-f0-9]{20,64}$/.test(String(revision || ''))) throw new Error('Invalid GKTG revision')
 }
@@ -234,10 +252,16 @@ export function publishKimGktgRun(root, manifest) {
     const field = readKimGktgField({ root, tmfc: manifest.tmfc, hf: entry.hf, levelId: entry.levelId, revision: entry.revision })
     if (field.inputRevision !== entry.inputRevision || field.gktg.length !== field.grid.nx * field.grid.ny) throw new Error('Invalid GKTG published field')
   }
-  const payload = { ...manifest, type: 'kim_gktg_manifest', complete: true, usable: true, runId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: manifest.tmfc }) }
+  const payload = { ...manifest, type: 'kim_gktg_manifest', complete: true, usable: true, runId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: manifest.tmfc }),
+    outputFingerprint: fingerprintKimGktgOutputs(root, manifest) }
   writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: manifest.tmfc }), 'derived', 'gktg', manifest.revision, 'manifest.json'), payload)
   writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'derived', 'gktg', 'latest.json'), payload)
   return payload
+}
+
+// 게시한 결과 파일의 지문. 손상·삭제되면 달라져 다음 실행이 건너뛰지 않고 다시 확인·복구한다.
+export function fingerprintKimGktgOutputs(root, { tmfc, entries }) {
+  return statFingerprint(entries.map(entry => resolveKimGktgFieldPath({ root, tmfc, hf: entry.hf, levelId: entry.levelId, revision: entry.revision })))
 }
 
 export function readKimGktgIndex(root) {
@@ -312,6 +336,12 @@ export function writeKimTropopauseUpper(root, upper) {
   return file
 }
 
+// 게시한 지도 결과와 단면용 상층 파일의 지문(GKTG와 같은 용도).
+export function fingerprintKimTropopauseOutputs(root, { tmfc, entries }) {
+  return statFingerprint(entries.flatMap(entry => [resolveKimTropopauseFieldPath({ root, tmfc, hf: entry.hf, revision: entry.revision }),
+    resolveKimTropopauseUpperPath({ root, tmfc, hf: entry.hf, revision: entry.revision })]))
+}
+
 export function readKimTropopauseUpper({ root, tmfc, hf, revision }) {
   const upper = readJson(resolveKimTropopauseUpperPath({ root, tmfc, hf, revision }))
   if (upper.tmfc !== tmfc || upper.hf !== Number(hf) || upper.revision !== revision) throw new Error('Corrupt tropopause upper levels')
@@ -337,7 +367,8 @@ export function publishKimTropopauseRun(root, manifest) {
     const field = readKimTropopauseField({ root, tmfc: manifest.tmfc, hf: entry.hf, revision: entry.revision })
     if (field.inputRevision !== entry.inputRevision) throw new Error('Invalid tropopause published field')
   }
-  const payload = { ...manifest, type: 'kim_tropopause_manifest', complete: true, usable: true, runId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: manifest.tmfc }) }
+  const payload = { ...manifest, type: 'kim_tropopause_manifest', complete: true, usable: true, runId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: manifest.tmfc }),
+    outputFingerprint: fingerprintKimTropopauseOutputs(root, manifest) }
   writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: manifest.tmfc }), 'derived', 'tropopause', manifest.revision, 'manifest.json'), payload)
   writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'derived', 'tropopause', 'latest.json'), payload)
   return payload

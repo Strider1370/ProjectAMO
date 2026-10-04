@@ -101,6 +101,34 @@ test('processor fetches only 100/70 hPa T, hgt, u and v with the run key, caches
   assert.ok(Math.abs(section.upperLevels[1].altFt - isa(70).h * 3.28084) < 1)
 })
 
+test('an unchanged published run is skipped without rereading; a rewritten input or missing output reruns it', async t => {
+  const root = temporary(t)
+  seedBase(root)
+  const saved = config.api.kim_nwp_auth_key
+  config.api.kim_nwp_auth_key = 'kim-key'
+  t.after(() => { config.api.kim_nwp_auth_key = saved })
+  let calculations = 0
+  const run = () => collect({ root, tmfc: TMFC, forecastHours: [0], fetchGrid: async request => supplementText(request),
+    calculate: async () => { calculations++; return fakeResult() } })
+  const first = await run()
+  assert.equal(first.collection.outcome, 'complete')
+  assert.ok(readKimTropopauseLatest(root).baseFingerprint)
+  const skipped = await run()
+  assert.equal(skipped.unchanged, true)
+  assert.equal(skipped.collection.outcome, 'complete')
+  assert.equal(skipped.revision, first.revision)
+  // 같은 값으로 다시 쓴 격자도 지문이 달라져 다시 확인한다(결과가 있으면 계산은 하지 않는다).
+  seedBase(root)
+  assert.equal((await run()).unchanged, undefined)
+  assert.equal(calculations, 1)
+  assert.equal((await run()).unchanged, true)
+  // 게시된 결과가 사라지면 건너뛰지 않고 다시 계산한다.
+  const { revision } = readKimTropopauseLatest(root).entries[0]
+  fs.rmSync(path.join(root, `kim_nwp/runs/KIMG_NE57_${TMFC}/derived/tropopause/hf000/${revision}.json`))
+  assert.equal((await run()).collection.outcome, 'complete')
+  assert.equal(calculations, 2)
+})
+
 test('a missing run key or a wrong supplement leaves the run partial', async t => {
   const root = temporary(t)
   seedBase(root)

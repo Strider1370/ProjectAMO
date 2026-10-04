@@ -3,6 +3,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { setImmediate as nextTurn } from 'node:timers/promises'
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
 import { parseKimGridText } from '../parsers/kim-grid-parser.js'
@@ -10,7 +11,7 @@ import { collectionResult } from '../collector-execution.js'
 import { selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours } from './kim-nwp-model.js'
 import { decodeGktgInput } from './kim-gktg-processor.js'
-import { readKimNwpLatest, readKimNwpGrid, readKimTropopauseField, readKimTropopauseUpper, resolveKimNwpRunDir, writeKimTropopauseField, writeKimTropopauseUpper, writeKimTropopauseAttempt, publishKimTropopauseRun } from './kim-nwp-store.js'
+import { readKimNwpLatest, readKimNwpGrid, readKimTropopauseField, readKimTropopauseUpper, readKimTropopauseLatest, resolveKimNwpRunDir, writeKimTropopauseField, writeKimTropopauseUpper, writeKimTropopauseAttempt, publishKimTropopauseRun, fingerprintKimNwpBase, fingerprintKimTropopauseOutputs } from './kim-nwp-store.js'
 
 // 권계면 판정에는 150 hPa 위의 기온·고도가 필요하다. 기본 KIM 수집은 150 hPa까지이므로
 // 100·70 hPa의 T·hgt를 이 processor가 추가로 받는다. 같은 두 층의 u·v는 연직단면의 상층 등풍속선용이며
@@ -100,8 +101,19 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
     writeKimTropopauseAttempt(root, tmfc, { tmfc, outcome: 'cancelled', expectedHours: forecastHours, fields: entries.length, completed_at: new Date().toISOString() })
     signal.throwIfAborted()
   }
+  // 입력 격자·계산 코드·게시 결과가 지난 게시와 같으면 다시 읽지 않고 끝낸다(GKTG와 같은 이유).
+  const baseFingerprint = fingerprintKimNwpBase({ root, tmfc, hours: forecastHours })
+  const previous = readKimTropopauseLatest(root)
+  if (baseFingerprint && previous?.complete && previous.tmfc === tmfc && previous.algorithm === TROPOPAUSE_ALGORITHM && previous.engineRevision === engine
+    && previous.baseFingerprint === baseFingerprint && String(previous.expectedHours) === String(forecastHours)
+    && previous.outputFingerprint && previous.outputFingerprint === fingerprintKimTropopauseOutputs(root, previous)) {
+    return { type: 'kim_tropopause', tmfc, fields: previous.entries.length, revision: previous.revision, failures: [], saved: false, unchanged: true,
+      collection: collectionResult('complete', { fields: previous.entries.length, expectedFields: forecastHours.length }) }
+  }
   writeKimTropopauseAttempt(root, tmfc, { tmfc, started_at: new Date().toISOString(), outcome: 'running', expectedHours: forecastHours })
   for (const hf of forecastHours) {
+    // 시각마다 한 번 이벤트 루프에 양보해 계산 중에도 API 요청을 처리한다.
+    await nextTurn()
     if (signal?.aborted) cancelled()
     let stage
     try {
@@ -155,6 +167,7 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
   // 계산 중 기본 수집기가 입력을 바꿨으면 그 시각은 게시하지 않는다.
   for (const [hf, captured] of baseRevisions) {
     if (failures.some(failure => failure.hf === hf)) continue
+    await nextTurn()
     try {
       const current = pressures.map(level => readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id }))
       if (baseRevision(current) !== captured) throw new Error('kim_tropopause_base_changed')
@@ -165,7 +178,7 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
   }
   const complete = failures.length === 0
   let published = null
-  if (complete) published = publishKimTropopauseRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: TROPOPAUSE_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, fetched_at: new Date().toISOString() })
+  if (complete) published = publishKimTropopauseRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: TROPOPAUSE_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() })
   writeKimTropopauseAttempt(root, tmfc, { tmfc, outcome: complete ? 'complete' : 'partial', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() })
   return { type: 'kim_tropopause', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete,
     collection: collectionResult(complete ? 'complete' : 'partial', { fields: entries.length, expectedFields: forecastHours.length }, complete ? {} : { reason: 'kim_tropopause_incomplete' }) }
