@@ -72,6 +72,7 @@ ProjectAMO/
 - `frontend/src/app/useWeatherPolling.js` -> exports `useSnapshotPolling`, the shared initial-load + in-flight-guarded snapshot-meta polling lifecycle (used by both the main app and `/monitoring`), plus the default `useWeatherPolling()` main-app profile wrapper (deferred panel-data loading, 60s interval).
 - `frontend/src/app/snapshotMeta.js` -> snapshot-meta comparison helpers (main-app profile).
 - `frontend/src/app/pollingData.js` -> `mergePollingData`/`hasIncompletePollingData`: periodic-refresh merge that keeps the last known value for a key on fetch failure (`undefined`) while accepting HTTP 200 JSON `null` as a real empty value.
+- `frontend/src/features/map/lib/useAirportWarningOverlay.js` → 기존 공항 경보 스냅샷의 UTC 발효·만료와 요약 칩을 연결한다. `airportWarningModel.js`가 활성 공항/라벨을 계산하고 `airportWarningLayers.js`가 공통 공항 소스의 공항 기호 크기에 맞추고 선택 고리와 작은 간격을 둔 C안 빨간 외곽 고리(흰 후광 없음, 고정 고리와 1초 주기의 확산·소멸 원, 동작 줄이기·숨겨진 탭에서는 고정 고리만 표시)를 소유한다. 기본 지도·상황판에서 같은 레이어를 사용하며 추가 수집은 없다.
 - `frontend/src/app/layout/Sidebar.jsx` -> sidebar item definitions and panel toggle UI (desktop/tablet; hidden at <=719px in favor of the mobile task bar).
 - `frontend/src/app/layout/Sidebar.css` -> sidebar styles.
 - `frontend/src/app/layout/MobileTaskBar.jsx` -> mobile (<=719px) bottom task switcher (지도/브리핑/더보기) that replaces the sidebar; drives `mobileTask` in `App.jsx`.

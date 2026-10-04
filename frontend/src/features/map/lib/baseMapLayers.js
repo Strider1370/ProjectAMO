@@ -1,6 +1,8 @@
 import { setMapLayerVisible, addLazyGeoJsonSource, ensureGeoJsonSourceLoaded } from './mapLayerUtils.js'
 import { buildAirportStationMarkerModel } from './airportStationModel.js'
 import { OUTLINE_BASEMAP_PALETTES } from './outlineBasemapStyle.js'
+import { addAirportWarningLayers, AIRPORT_WARNING_LAYER_IDS, AIRPORT_WARNING_RING_LAYER } from './airportWarningLayers.js'
+import { airportStateRingRadius, AIRPORT_STATE_RING_WIDTH, AIRPORT_STATION_ICON_SIZE } from './airportMarkerSizing.js'
 
 export const AIRPORT_SOURCE_ID = 'kma-weather-airports'
 export const AIRPORT_CIRCLE_LAYER = 'kma-weather-airports-circle'
@@ -12,6 +14,7 @@ export const AIRPORT_CEILING_LAYER = 'kma-weather-airports-ceiling'
 export const AIRPORT_LABEL_LAYER = 'kma-weather-airports-label'
 export const AIRPORT_INTERACTIVE_LAYERS = [
   AIRPORT_CIRCLE_LAYER,
+  AIRPORT_WARNING_RING_LAYER,
   AIRPORT_STATION_CENTER_LAYER,
   AIRPORT_WIND_LAYER,
   AIRPORT_VISIBILITY_LAYER,
@@ -33,6 +36,7 @@ export const BASE_MAP_SOURCE_IDS = [
   ...GEO_LAYERS.map((layer) => layer.sourceId),
 ]
 export const BASE_MAP_LAYER_IDS = [
+  ...AIRPORT_WARNING_LAYER_IDS,
   AIRPORT_CIRCLE_LAYER,
   AIRPORT_STATION_CENTER_LAYER,
   AIRPORT_WIND_LAYER,
@@ -43,7 +47,8 @@ export const BASE_MAP_LAYER_IDS = [
   ...GEO_LAYERS.map((layer) => layer.layerId),
 ]
 
-export function createAirportGeoJSON(airports, metarData = null) {
+export function createAirportGeoJSON(airports, metarData = null, warnedAirports = [], selectedAirport = null) {
+  const warned = new Set(warnedAirports)
   return {
     type: 'FeatureCollection',
     features: airports
@@ -59,6 +64,8 @@ export function createAirportGeoJSON(airports, metarData = null) {
           properties: {
             icao: a.icao,
             name: a.nameKo || a.name || a.icao,
+            warningActive: warned.has(a.icao),
+            selected: a.icao === selectedAirport,
             ...markerModel,
           },
           geometry: { type: 'Point', coordinates: [a.lon, a.lat] },
@@ -69,18 +76,21 @@ export function createAirportGeoJSON(airports, metarData = null) {
 
 export function addAirportLayers(map, data) {
   if (!map.getSource(AIRPORT_SOURCE_ID)) {
-    map.addSource(AIRPORT_SOURCE_ID, { type: 'geojson', data })
+    // ICAO 문자열 id는 타일 변환 과정에서 보존되지 않는다. 선택 상태가 실제 공항에 연결되게 승격한다.
+    map.addSource(AIRPORT_SOURCE_ID, { type: 'geojson', data, promoteId: 'icao' })
   }
+  // 공항 기호 → 선택 고리 → 경보 고리가 서로 겹치지 않게 배치한다.
+  addAirportWarningLayers(map, AIRPORT_SOURCE_ID, map.getLayer(AIRPORT_CIRCLE_LAYER) ? AIRPORT_CIRCLE_LAYER : undefined)
   if (!map.getLayer(AIRPORT_CIRCLE_LAYER)) {
     map.addLayer({
       id: AIRPORT_CIRCLE_LAYER, type: 'circle', source: AIRPORT_SOURCE_ID, slot: 'top', minzoom: 0,
       paint: {
-        'circle-radius': ['case', ['boolean', ['feature-state', 'selected'], false], 12, 10],
+        'circle-radius': airportStateRingRadius(),
         'circle-color': '#ffffff',
         'circle-opacity': 0,
-        'circle-stroke-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#2563eb', '#2563eb'],
-        'circle-stroke-width': ['case', ['boolean', ['feature-state', 'selected'], false], 3, 0],
-        'circle-stroke-opacity': ['case', ['boolean', ['feature-state', 'selected'], false], 0.95, 0],
+        'circle-stroke-color': '#2563eb',
+        'circle-stroke-width': ['case', ['boolean', ['get', 'selected'], false], AIRPORT_STATE_RING_WIDTH, 0],
+        'circle-stroke-opacity': ['case', ['boolean', ['get', 'selected'], false], 0.95, 0],
       },
     })
   }
@@ -89,12 +99,7 @@ export function addAirportLayers(map, data) {
       id: AIRPORT_STATION_CENTER_LAYER, type: 'symbol', source: AIRPORT_SOURCE_ID, slot: 'top', minzoom: 0,
       layout: {
         'icon-image': ['get', 'stationIconId'],
-        'icon-size': [
-          'interpolate', ['linear'], ['zoom'],
-          5, 0.78,
-          8, 0.92,
-          12, 1.0,
-        ],
+        'icon-size': AIRPORT_STATION_ICON_SIZE,
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
       },

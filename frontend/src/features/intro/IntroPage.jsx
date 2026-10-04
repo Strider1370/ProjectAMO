@@ -394,7 +394,7 @@ export default function IntroPage() {
                 {live.details.map((detail) => <span key={detail}>{detail}</span>)}
               </p>
             )}
-            <p className="news hero-anim" style={{ animationDelay: '.36s' }}><b>v0.5.0</b>내 지도 작성과 KIM 지상일기도가 추가됐어요. 2026년 9월 28일</p>
+            <p className="news hero-anim" style={{ animationDelay: '.36s' }}><b>v0.5.1</b>권계면·제트 레이어와 구름·착빙 표시가 추가됐어요. 2026년 10월 4일</p>
             <div className="hero-shot hero-anim" style={{ animationDelay: '.35s' }}>
               <div className="tilt">
                 <Frame title="ProjectAMO">
@@ -587,7 +587,7 @@ export default function IntroPage() {
         <div className="wrap foot-bottom">
           <b className="foot-name">ProjectAMO</b>
           <span>통합형 항공기상정보 브리핑 플랫폼</span>
-          <span>현재 버전 v0.5.0, 2026년 9월 28일 업데이트</span>
+          <span>현재 버전 v0.5.1, 2026년 10월 4일 업데이트</span>
         </div>
       </footer>
 

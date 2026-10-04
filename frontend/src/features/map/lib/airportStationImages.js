@@ -1,4 +1,5 @@
 import { getWeatherIconSrc } from '../../../shared/weather/weather-icon-registry.js'
+import { AIRPORT_STATION_RADIUS, AIRPORT_STATION_HALO_WIDTH } from './airportMarkerSizing.js'
 import {
   AIRPORT_CATEGORY_COLORS,
   AIRPORT_CATEGORY_UNKNOWN_COLOR,
@@ -62,7 +63,7 @@ function createStationImage(color, skyCover) {
   return createCanvasImage((context, size) => {
     const centerX = size / 2
     const centerY = size / 2
-    const strokeRadius = 7
+    const strokeRadius = AIRPORT_STATION_RADIUS
     const fillRadius = 5.8
 
     context.lineCap = 'round'
@@ -71,7 +72,7 @@ function createStationImage(color, skyCover) {
     context.beginPath()
     context.arc(centerX, centerY, strokeRadius, 0, Math.PI * 2)
     context.strokeStyle = '#ffffff'
-    context.lineWidth = 4
+    context.lineWidth = AIRPORT_STATION_HALO_WIDTH
     context.stroke()
 
     context.beginPath()

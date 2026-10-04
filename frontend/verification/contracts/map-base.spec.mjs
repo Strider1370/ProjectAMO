@@ -143,18 +143,12 @@ test.describe('map-base', () => {
 
     await expect(page.getByRole('button', { name: /SIGMET/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /AIRMET/ })).toBeVisible()
-    const measurement = await warning.evaluate((chip) => {
-      const walker = document.createTreeWalker(chip, NodeFilter.SHOW_TEXT)
-      let text = null
-      let candidate = null
-      while ((candidate = walker.nextNode())) {
-        if (candidate.textContent.trim() === '공항경보') {
-          text = candidate
-          break
-        }
-      }
+    // 태블릿은 축약 라벨을 표시한다. 숨겨진 데스크톱 라벨을 측정하지 않는다.
+    const visibleLabel = warning.locator('.advisory-chip-label:visible, .advisory-chip-short-label:visible')
+    await expect(visibleLabel).toHaveText('공항경보')
+    const measurement = await visibleLabel.evaluate((label) => {
       const range = document.createRange()
-      range.selectNodeContents(text)
+      range.selectNodeContents(label)
       return { lineCount: range.getClientRects().length }
     })
 

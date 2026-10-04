@@ -120,6 +120,7 @@ import BasemapSwitcher from './basemapSwitcher/BasemapSwitcher.jsx'
 import { createOneShotNotifier } from './lib/createOneShotNotifier.js'
 import { setLayerVisibility, resetLazyGeoJsonSources } from './lib/mapLayerUtils.js'
 import { bindLayerEvent, cleanupAll } from './lib/mapStyleSync.js'
+import { useAirportWarningOverlay } from './lib/useAirportWarningOverlay.js'
 import {
   AIRPORT_CIRCLE_LAYER,
   AIRPORT_INTERACTIVE_LAYERS,
@@ -363,6 +364,7 @@ const MapView = forwardRef(function MapView({
   onMapLifecycle,
   airports = [],
   metarData = null,
+  warningData = null,
   echoMeta = null,
   wissdomMeta = null,
   qpfMeta = null,
@@ -382,8 +384,6 @@ const MapView = forwardRef(function MapView({
   sigwxCloudMeta = null,
   notamData = null,
   selectedAirport,
-  warnedAirports = [],
-  warningLabels = {},
   onAirportSelect,
   onStyleReady,
   onRequestDeferredWeatherData,
@@ -900,9 +900,13 @@ const MapView = forwardRef(function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeBriefing.state.briefing, isStyleReady])
 
+  const { warnedAirports, warningLabels } = useAirportWarningOverlay({
+    mapRef, isStyleReady, styleRevision, airports, warningData,
+    nowMs: demoMode ? demoNowMs : null,
+  })
   const airportGeoJSON = useMemo(
-    () => createAirportGeoJSON(airports, metarData),
-    [airports, metarData],
+    () => createAirportGeoJSON(airports, metarData, warnedAirports, selectedAirport),
+    [airports, metarData, warnedAirports, selectedAirport],
   )
   const airportWeatherImageIds = useMemo(
     () => [...new Set(airportGeoJSON.features.map((feature) => feature.properties.weatherIconId).filter(Boolean))],
@@ -1907,19 +1911,6 @@ const MapView = forwardRef(function MapView({
       cancelled = true
     }
   }, [airportGeoJSON, airportWeatherImageIds, isStyleReady, styleRevision])
-
-  // ???? Sync airport selected state ??????????????????????????????????????????????????????????????????????????????????????
-
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !isStyleReady || !map.getSource(AIRPORT_SOURCE_ID)) return
-    airportGeoJSON.features.forEach((f) => {
-      map.setFeatureState(
-        { source: AIRPORT_SOURCE_ID, id: f.properties.icao },
-        { selected: f.properties.icao === selectedAirport },
-      )
-    })
-  }, [airportGeoJSON, selectedAirport, isStyleReady, styleRevision])
 
   // ???? Layer panel helpers ??????????????????????????????????????????????????????????????????????????????????????????????????????
 

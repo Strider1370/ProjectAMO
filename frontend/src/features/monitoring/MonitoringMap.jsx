@@ -91,6 +91,7 @@ function MonitoringMap({
         highlightRingRadiusKm={highlightRingRadiusKm}
         airports={weather?.airports || []}
         metarData={weather?.metar || null}
+        warningData={weather?.warning || null}
         hsrMeta={weather?.hsrMeta || null}
         hciMeta={weather?.hciMeta || null}
         satVisibleMeta={weather?.satVisibleMeta || null}
