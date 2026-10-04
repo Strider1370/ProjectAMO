@@ -2117,6 +2117,7 @@ const MapView = forwardRef(function MapView({
           temperatureLegendVisible={!!(enableWindOverlay && metVisibility.temp && temperatureField)}
           cloudLegendVisible={!!(enableWindOverlay && metVisibility.cloud && cloudField)}
           cloudLegendEntries={CLOUD_POTENTIAL_COLOR_RAMP.filter((entry) => entry.max <= cloudMaxSpread)}
+          cloudIcingLevelId={nwpSelection?.level}
           icingLegendVisible={!!(enableWindOverlay && metVisibility.icing && icingField)}
           icingLegendEntries={ICING_COLOR_RAMP}
           turbulenceLegendVisible={!!(enableWindOverlay && metVisibility.turbulence && ktgGrid)}

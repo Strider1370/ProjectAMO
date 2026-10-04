@@ -10,3 +10,22 @@
 
 .cloud-icing-legend.is-compact { padding: 0; border: 0; border-radius: 0; background: transparent; flex-direction: column; align-items: flex-start; }
 .cloud-icing-legend.is-map .cloud-icing-legend-line { border-color: var(--level-red); }
+
+/* 지도 범례(is-map): 레이어 하나에 한 줄, 레이더 범례와 같은 막대 형식. */
+.cloud-icing-legend.is-map { display: grid; gap: 6px; font-size: var(--fs-100); }
+.cloud-icing-legend.is-map .cil-title { font-weight: var(--fw-bold); color: var(--text-2); letter-spacing: 0.02em; }
+.cloud-icing-legend.is-map { min-width: 0; }
+.cloud-icing-legend.is-map .cil-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.cloud-icing-legend.is-map .cil-row > * { white-space: nowrap; }
+.cloud-icing-legend.is-map .cil-row > small { white-space: normal; }
+.cloud-icing-legend.is-map .cil-name { min-width: 38px; font-weight: var(--fw-semibold); color: var(--text-1); }
+.cloud-icing-legend.is-map .cil-item { display: inline-flex; align-items: center; gap: 4px; }
+.cloud-icing-legend.is-map .cil-item i { display: inline-block; width: 18px; height: 12px; flex-shrink: 0; }
+.cloud-icing-legend.is-map .cil-item i.cloud-icing-legend-line { height: 0; border-top: 1.5px dashed; }
+.cloud-icing-legend.is-map .cil-item i.cloud-icing-legend-line.is-zero { border-top: 2.5px solid; }
+.cloud-icing-legend.is-map .cil-scale { display: inline-grid; gap: 2px; width: 96px; }
+.cloud-icing-legend.is-map .cil-bar { display: flex; height: 12px; border: 1px solid rgba(17, 24, 39, 0.25); border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-1); }
+.cloud-icing-legend.is-map .cil-bar span { flex: 1 1 0; }
+.cloud-icing-legend.is-map .cil-ticks { display: flex; justify-content: space-between; font-size: 0.5rem; line-height: 1; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.cloud-icing-legend.is-map small { font-size: inherit; color: var(--text-3); }
+.cloud-icing-legend.is-map.is-compact { display: grid; }

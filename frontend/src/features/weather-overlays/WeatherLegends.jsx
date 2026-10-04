@@ -74,6 +74,7 @@ function WeatherLegends({
   temperatureLegendEntries = [],
   cloudLegendVisible,
   cloudLegendEntries = [],
+  cloudIcingLevelId = null,
   icingLegendVisible,
   icingLegendEntries = [],
   turbulenceLegendVisible,
@@ -248,7 +249,7 @@ function WeatherLegends({
           </div>
         </div>
       )}
-      <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} mode="map" cloudEntries={cloudLegendEntries} />
+      <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} mode="map" cloudEntries={cloudLegendEntries} levelId={cloudIcingLevelId} />
       {ciLegendVisible && <ConvectiveLegend title="대류 가능성" entries={CI_LEGEND} note="위성 기반 대류 발생 가능성 참고 — 레이더 실황·위험등급 아님" />}
       {ctpsLegendVisible && <ConvectiveLegend title="구름 꼭대기" entries={CTPS_LEGEND} note="CTH 기반 높이 — 위험등급 아님" />}
       {echoTopLegendVisible && (echoTopOutOfRange ? (
@@ -344,7 +345,7 @@ function WeatherLegends({
     <div className={`map-legend-mobile-dock${bottomDock ? ' map-legend-desktop-dock' : ''}`}>
       <div ref={bottomPanelRef} className={`map-legends-bottom${open ? ' is-open' : ''}`} aria-hidden={!open}>
         {supplementalContent}
-        <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} cloudEntries={cloudLegendEntries} mode="map" compact />
+        <CloudIcingLegend cloud={cloudLegendVisible} icing={icingLegendVisible} temperature={temperatureLegendVisible} cloudEntries={cloudLegendEntries} levelId={cloudIcingLevelId} mode="map" compact />
         {mobileLegends.map((l) => (
           <HLegend key={l.key} title={l.title} entries={l.entries} reverse={l.reverse} note={l.note} />
         ))}
