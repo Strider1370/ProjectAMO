@@ -1,8 +1,10 @@
 // Operator identity from callsign. The first three letters of an ADS-B callsign are
 // the ICAO airline designator (KAL123 -> KAL = Korean Air).
 
-// Korean carriers we ship a transparent logo for (public/Symbols/airlines/{ICAO}.svg).
-// Logos: Wikimedia Commons (PD-textlogo). Trademarks of their owners, used for identification only.
+// Korean carriers we ship a transparent logo for (public/Symbols/airlines/).
+// Logos: Wikimedia Commons (PD-textlogo), except TWB: official Trinity Airways brand guide.
+// TWB source: https://guide.trinityairways.com/image/logo_horizontal.svg
+// Trademarks of their owners, used for identification only.
 export const AIRLINE_LOGOS = new Set(['KAL', 'AAR', 'JJA', 'TWB', 'ESR', 'ABL', 'ASV', 'APZ', 'EOK', 'JNA', 'XUM', 'PTA', 'AIH'])
 
 export const AIRLINE_NAMES = {
@@ -31,5 +33,7 @@ export function airlineLogoId(callsign) {
 }
 
 export function airlineLogoFile(icao) {
+  // New URL bypasses the immutable cache of the former T'way logo.
+  if (icao === 'TWB') return 'TWB-trinity.svg'
   return `${icao}.svg`
 }
