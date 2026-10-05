@@ -16,6 +16,7 @@ import { fetchWithTimeout } from '../lib/fetchWithTimeout.js'
 import { parseSatelliteNC } from '../parsers/satellite-parser.js'
 import { KO_DISPLAY_GRID, displayPixelToSourceIndex } from '../lib/satellite-ko-grid.js'
 import { buildFrameSpecs } from './satellite-processor.js'
+import { maxSolarElevationDeg } from '../lib/solar-elevation.js'
 
 const CHANNEL = 'VI006'
 const REGION = 'KO'
@@ -29,6 +30,12 @@ const GAMMA = 2.0
 // 프레임이 평균 21, 최대 27(255 만점)의 균일한 잡음이었다. "0인 화소가 하나도 없다"로는 못 거른다.
 // 낮이면 구름이든 지표든 어딘가는 반드시 밝으므로, 화면에서 가장 밝은 값으로 판정한다.
 const NIGHT_MAX_LEVEL = 40
+
+// 받기 전에 거르는 밤. 영상 영역 어디에서도 해가 이 고도보다 낮으면(시민박명 끝) 반사광이 없어
+// 받아도 위 판정에서 버려진다. 한 장 11.5MB를 밤새 받다 레이더·위성 키가 하루 한도에 걸려
+// 야간 적외·레이더 수집까지 멈췄다(2026-10-04 22:16 KST). 고층 구름의 늦은 반사광을 놓치지 않도록
+// 지평선(0°)이 아니라 -6°를 쓴다.
+export const DARK_SUN_ELEVATION_DEG = -6
 
 function paths(root) {
   const dir = path.join(root, 'satellite', 'visible')
@@ -155,6 +162,21 @@ export async function processSatelliteVisible({ now = new Date(), fillAll = fals
     return { saved: false, tm, reason: 'already-collected' }
   }
 
+  const recordNight = (extra) => {
+    const nightMeta = {
+      type: 'GK2A_VISIBLE', ...(previous || {}), updatedAt: new Date().toISOString(),
+      processedTms: [...new Set([...processedTms, tm])].sort().slice(-maxFrames),
+    }
+    delete nightMeta.lastCheckedTm
+    if (!nightMeta.frames) nightMeta.frames = []
+    writeAtomic(target.meta, `${JSON.stringify(nightMeta, null, 2)}\n`)
+    return { saved: false, tm, reason: 'night', ...extra }
+  }
+
+  const observedMs = Date.UTC(+tmUtc.slice(0, 4), +tmUtc.slice(4, 6) - 1, +tmUtc.slice(6, 8), +tmUtc.slice(8, 10), +tmUtc.slice(10, 12))
+  const sunElevation = (deps.sunElevation || maxSolarElevationDeg)(observedMs, KO_DISPLAY_GRID.bounds)
+  if (sunElevation < DARK_SUN_ELEVATION_DEG) return recordNight({ sunElevation: Math.round(sunElevation * 10) / 10 })
+
   const url = `${activeConfig.satellite.url}/${CHANNEL}/${REGION}/data?date=${tmUtc}&authKey=${activeConfig.api.radar_satellite_auth_key}`
   const fetchNc = deps.fetchNc || (async (target) => {
     const response = await fetchWithTimeout(target, activeConfig.satellite?.timeout_ms || 60_000)
@@ -166,16 +188,7 @@ export async function processSatelliteVisible({ now = new Date(), fillAll = fals
 
   const rendered = await renderVisible(parsed)
   // 밤에는 볼 것이 없다 — 저장하면 지도에 검은 판이 덮인다. 그림은 버리되 확인한 시각은 남긴다.
-  if (rendered.maxLevel < NIGHT_MAX_LEVEL) {
-    const nightMeta = {
-      type: 'GK2A_VISIBLE', ...(previous || {}), updatedAt: new Date().toISOString(),
-      processedTms: [...new Set([...processedTms, tm])].sort().slice(-maxFrames),
-    }
-    delete nightMeta.lastCheckedTm
-    if (!nightMeta.frames) nightMeta.frames = []
-    writeAtomic(target.meta, `${JSON.stringify(nightMeta, null, 2)}\n`)
-    return { saved: false, tm, reason: 'night', maxLevel: rendered.maxLevel }
-  }
+  if (rendered.maxLevel < NIGHT_MAX_LEVEL) return recordNight({ maxLevel: rendered.maxLevel })
 
   const webp = await sharp(rendered.buffer, { raw: { width: rendered.width, height: rendered.height, channels: 4 } })
     .webp({ quality: 82 }).toBuffer()

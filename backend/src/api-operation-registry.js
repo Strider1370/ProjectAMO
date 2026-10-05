@@ -29,18 +29,20 @@ const groundForecastFallback = {
 }
 function apiHubPolicyFor(id) {
   if (['radar_wissdom', 'radar_qpf', 'radar_hsr', 'radar_hci'].includes(id)) return { timeoutMs: 30_000, maxAttempts: 1, allowedOverrides: ['signal'] }
-  if (id === 'asos_ceiling') return { timeoutMs: config.asos_ceiling.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }
+  // 기상청 API 허브는 가끔 연결만 받고 응답하지 않는다(AMOS 하루 26%, 2026-10-04). 정상 응답은 1초 안에 오므로
+  // 짧게 기다리고 한 번 더 부른다. 응답 없는 시도는 0바이트로 기록돼 하루 한도에 거의 영향이 없다.
+  if (id === 'asos_ceiling') return { timeoutMs: config.asos_ceiling.timeout_ms, maxAttempts: 2, retryDelayMs: 1_000, allowedOverrides: ['signal'] }
   if (id === 'radar_qcd') return { timeoutMs: config.radar_echo_top.timeout_ms, maxAttempts: 1 + config.radar_echo_top.retry, allowedOverrides: ['signal'] }
   if (id === 'sfc_vis') return { timeoutMs: 30_000, maxAttempts: 1, allowedOverrides: ['signal'] }
   if (id === 'kim_grid' || id === 'kim_grid_gktg' || id === 'kim_grid_trop') return { timeoutMs: config.kim_surface_wind.timeout_ms, maxAttempts: 2, retryDelayMs: 2_000, allowedOverrides: ['signal'] }
   if (id === 'kim_grid_chart') return { timeoutMs: config.kim_surface_chart.timeout_ms, maxAttempts: 2, retryDelayMs: 2_000, allowedOverrides: ['signal'] }
   if (id === 'ktg') return { timeoutMs: config.ktg.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }
   if (id.startsWith('satellite_')) return { timeoutMs: config.satellite.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }
-  if (id === 'amos') return { timeoutMs: config.amos.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }
+  if (id === 'amos') return { timeoutMs: config.amos.timeout_ms, maxAttempts: 2, retryDelayMs: 1_000, allowedOverrides: ['signal'] }
   if (id === 'lightning') return { timeoutMs: 30_000, maxAttempts: 3, retryDelayMs: 3_000, allowedOverrides: ['signal'] }
-  if (id === 'typhoon_now' || id === 'typhoon_list') return { timeoutMs: 15_000, maxAttempts: 1, allowedOverrides: ['signal'] }
+  if (id === 'typhoon_now' || id === 'typhoon_list') return { timeoutMs: 10_000, maxAttempts: 2, retryDelayMs: 1_000, allowedOverrides: ['signal'] }
   if (['ground_forecast', 'mid_land', 'mid_ta'].includes(id)) return { timeoutMs: config.ground_forecast.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'], transportFallback: groundForecastFallback }
-  if (id === 'uv') return { timeoutMs: config.environment.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }
+  if (id === 'uv') return { timeoutMs: config.environment.timeout_ms, maxAttempts: 2, retryDelayMs: 1_000, allowedOverrides: ['signal'] }
   return { timeoutMs: config.api.timeout_ms, maxAttempts: config.api.max_retries, allowedOverrides: ['signal', 'maxAttempts', 'retryDelayMs', 'skipApiHeader'] }
 }
 

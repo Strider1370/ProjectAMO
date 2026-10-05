@@ -26,6 +26,8 @@ function formatKstMinuteTm(isoOrDate) {
   return `${y}${m}${d}${hh}${mm}`;
 }
 
+const AMOS_CONCURRENCY = 4;
+
 function buildAmosUrl(stn, tm) {
   const params = new URLSearchParams({
     tm,
@@ -81,17 +83,18 @@ async function process() {
   const airportErrors = {};
   const targetTm = formatKstMinuteTm(result.fetched_at);
 
-  for (const airport of config.airports) {
+  // 공항을 하나씩 부르면 기상청이 응답하지 않는 요청 하나가 다음 공항까지 잡아 둔다.
+  // 몇 개씩 동시에 부르고, 결과는 공항 목록 순서대로 모은다.
+  const collectAirport = async (airport) => {
     const stn = airport.amos_stn;
     if (stn == null) {
-      result.airports[airport.icao] = {
+      return {
         icao: airport.icao,
         amos_stn: null,
         hourly_rainfall: [],
         daily_rainfall: emptyDailyRainfall(targetTm, false),
         observation: emptyObservation(),
       };
-      continue;
     }
 
     try {
@@ -103,7 +106,7 @@ async function process() {
         targetTm,
         config.amos.stale_tolerance_minutes
       ) || emptyObservation();
-      result.airports[airport.icao] = {
+      return {
         icao: airport.icao,
         amos_stn: stn,
         hourly_rainfall: buildAmosHourlySamples(rows),
@@ -131,10 +134,29 @@ async function process() {
         },
       };
     } catch (error) {
-      failedAirports.push(airport.icao);
-      airportErrors[airport.icao] = error.message || "Unknown error";
+      return { error };
     }
-  }
+  };
+
+  const airports = config.airports;
+  const entries = new Array(airports.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < airports.length) {
+      const index = next++;
+      entries[index] = await collectAirport(airports[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(AMOS_CONCURRENCY, airports.length) }, worker));
+  airports.forEach((airport, index) => {
+    const entry = entries[index];
+    if (entry?.error) {
+      failedAirports.push(airport.icao);
+      airportErrors[airport.icao] = entry.error.message || "Unknown error";
+    } else {
+      result.airports[airport.icao] = entry;
+    }
+  });
 
   if (failedAirports.length > 0) {
     store.mergeWithPrevious(result, "amos", failedAirports);

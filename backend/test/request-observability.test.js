@@ -356,3 +356,21 @@ test('장부 기록이 실패해도 관측 응답은 그대로 돌려준다', as
   assert.match(warnings.join('\n'), /usage_record_failed/)
   assert.doesNotMatch(warnings.join('\n'), /outcome=failed/)
 })
+
+test('a request the API Hub never answers is retried once and the second answer succeeds', async () => {
+  let calls = 0
+  const testSeams = observedRequest({
+    policy: { timeoutMs: 20, maxAttempts: 2, retryDelayMs: 1, allowedOverrides: ['signal'] },
+    fetchImpl: (_url, { signal }) => {
+      calls += 1
+      if (calls === 1) return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
+      return Promise.resolve(new Response('ok', { status: 200 }))
+    },
+  })
+
+  const response = await testSeams.requestObservedApi(requestArgs())
+  assert.equal(await response.text(), 'ok')
+  assert.equal(calls, 2)
+  assert.deepEqual(testSeams.ledger.map(([, entry]) => [entry.status, entry.bytes]), [[0, 0], [200, 2]])
+  assert.deepEqual(testSeams.events.filter(([kind]) => ['start', 'success', 'failure'].includes(kind)), [['start', 'metar'], ['success', 'metar']])
+})

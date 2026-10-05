@@ -126,19 +126,19 @@ test('preserves current IIAC, NOAA, and collector request contracts', () => {
   const graphics = API_OPERATION_REGISTRY.find((operation) => operation.id === 'radar_wissdom')
   const asos = API_OPERATION_REGISTRY.find((operation) => operation.id === 'asos_ceiling')
   assert.deepEqual(graphics.requestPolicy, { timeoutMs: 30_000, maxAttempts: 1, allowedOverrides: ['signal'] })
-  assert.deepEqual(asos.requestPolicy, { timeoutMs: config.asos_ceiling.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] })
+  assert.deepEqual(asos.requestPolicy, { timeoutMs: config.asos_ceiling.timeout_ms, maxAttempts: 2, retryDelayMs: 1_000, allowedOverrides: ['signal'] })
 })
 
 test('preserves direct API Hub transport timeout, attempt, and retry-delay contracts', () => {
   const cases = [
-    ['amos', { timeoutMs: config.amos.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
+    ['amos', { timeoutMs: config.amos.timeout_ms, maxAttempts: 2, retryDelayMs: 1_000, allowedOverrides: ['signal'] }],
     ['lightning', { timeoutMs: 30_000, maxAttempts: 3, retryDelayMs: 3_000, allowedOverrides: ['signal'] }],
-    ['typhoon_now', { timeoutMs: 15_000, maxAttempts: 1, allowedOverrides: ['signal'] }],
-    ['typhoon_list', { timeoutMs: 15_000, maxAttempts: 1, allowedOverrides: ['signal'] }],
+    ['typhoon_now', { timeoutMs: 10_000, maxAttempts: 2, retryDelayMs: 1_000, allowedOverrides: ['signal'] }],
+    ['typhoon_list', { timeoutMs: 10_000, maxAttempts: 2, retryDelayMs: 1_000, allowedOverrides: ['signal'] }],
     ['ground_forecast', { timeoutMs: config.ground_forecast.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
     ['mid_land', { timeoutMs: config.ground_forecast.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
     ['mid_ta', { timeoutMs: config.ground_forecast.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
-    ['uv', { timeoutMs: config.environment.timeout_ms, maxAttempts: 1, allowedOverrides: ['signal'] }],
+    ['uv', { timeoutMs: config.environment.timeout_ms, maxAttempts: 2, retryDelayMs: 1_000, allowedOverrides: ['signal'] }],
   ]
   for (const [id, policy] of cases) {
     const actual = { ...API_OPERATION_REGISTRY.find((operation) => operation.id === id).requestPolicy }

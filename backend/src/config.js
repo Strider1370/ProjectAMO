@@ -184,7 +184,7 @@ export const lightning = {
 
 export const amos = {
   dtm_minutes: 60,
-  timeout_ms: 12000,
+  timeout_ms: 8000,
   stale_tolerance_minutes: 60,
 }
 
@@ -263,7 +263,7 @@ export const flight_category = {
 }
 
 export const asos_ceiling = {
-  timeout_ms: 30000,
+  timeout_ms: 15000,
   collect_on_startup: process.env.ASOS_CEILING_ON_STARTUP !== '0',
 }
 

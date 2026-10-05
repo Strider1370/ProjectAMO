@@ -34,6 +34,8 @@ function depsFor(dataRoot, counter) {
     },
     fetchNc: async () => { counter.calls += 1; return Buffer.from('not-really-netcdf') },
     parseNc: async () => nightGrid(),
+    // 해 고도로 미리 거르지 않는 박명 프레임: 받아서 화면 밝기로 밤을 판정하는 경로를 시험한다.
+    sunElevation: () => -3,
   }
 }
 

@@ -11,10 +11,12 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''))
 }
 
+// 들여쓰기 없이 쓴다. 격자 배열을 한 줄에 하나씩 펼치면 같은 격자가 3.4배(1.69MB → 5.74MB) 커져
+// 회차마다 1.7GB를 쓰고, 쓰고 읽는 동안 백엔드 메모리도 그만큼 더 들었다.
 function writeJsonAtomic(filePath, payload) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`
-  fs.writeFileSync(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+  fs.writeFileSync(tmpPath, `${JSON.stringify(payload)}\n`, 'utf8')
   fs.renameSync(tmpPath, filePath)
 }
 
