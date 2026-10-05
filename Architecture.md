@@ -222,6 +222,7 @@ ProjectAMO/
 - `backend/src/dev/snapshot-store.js` -> 파일시스템 스냅샷 캡처·레거시 복원·준비 점검. 시연 가능 상태는 기준시각, 핵심 자료 21종, 레이더 36장, 위성 18장, 참조 파일, KIM/KTG 인덱스, ADS-B 기준시각 오차(30분 이하)를 검사한다.
 - `backend/src/dev/demo-mode.js` -> 활성 데이터 뷰에서 시연 여부와 유효 현재시각을 파생하는 호환 adapter. 서버·브라우저의 시간 의존 로직은 실제 `Date.now()` 대신 이 유효 시각을 주입받는다.
 - `backend/src/admin/router.js` -> 관리자 스냅샷 저장·점검·시연 시작·종료 HTTP adapter. 데이터 교체와 시각 토글을 따로 호출하는 우회 interface는 제공하지 않는다.
+- `backend/src/admin/collector-runs.js` -> 수집 실행 한 번을 SQLite `collector_runs` 한 줄로 남기고(3일 보관, `stats.setRunListener`가 호출), 실제 cron 설정에서 KST 하루 일정을 풀어 `/api/admin/collection-timeline`으로 낸다. `frontend/src/features/admin/screens/DataCollectionScreen.jsx`가 이를 수집 × 24시간 표와 오른쪽 상세 패널로 그린다(셀 계산은 `lib/collectionBoard.js`).
 - `backend/src/parsers/satellite-parser.js` + `lib/{ctps-grid,satellite-ko-grid}.js` -> shared GK2A NetCDF validation, CTPS geographic lookup, and KO display resampling contract.
 - `backend/src/processors/convective-satellite-{model,store,processor}.js` -> CI/CTPS conversion, atomic independent satellite/convective asset publication, retention, and last-good preservation.
 - `backend/src/satellite/{worker-protocol,worker-jobs,worker-entry,worker-runner,work-queue}.js` -> one-shot, serialized IR/FOG, CI/CTPS, and VI006 satellite workers. The long-lived scheduler sends a constrained IPC job, retains locks/cancellation/follow-up timing, and never loads the satellite h5wasm/sharp processing modules itself.

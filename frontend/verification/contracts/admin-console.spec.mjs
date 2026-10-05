@@ -24,6 +24,16 @@ const MENUS = [
 
 const menuButton = (page, label) => page.locator('nav.ac-side').getByRole('button', { name: new RegExp(`^${label}`) })
 
+// 자료 수집은 수집 × 24시간 시간표다. 행을 누르면 넓은 화면은 오른쪽 패널, 좁은 화면은 대화상자에 상세가 뜬다.
+async function openCollectionDetail(page, key) {
+  const modal = page.locator('dialog.ac-cb-dialog[open]')
+  if (await modal.count()) { await page.keyboard.press('Escape'); await expect(modal).toHaveCount(0) }
+  await page.locator(`tr[data-health-key="${key}"]`).click()
+  const detail = page.locator(`[data-collection-detail="${key}"]`)
+  await expect(detail).toBeVisible()
+  return detail
+}
+
 async function loginAsAdmin(page, request) {
   // 이 계약은 세 viewport에서 같은 계정으로 연속 실행된다. 매 테스트 로그인하면 보안상
   // 의도된 IP당 로그인 제한(15분 10회)을 계약 자체가 밟는다. 한 worker 안에서 발급한
@@ -99,8 +109,9 @@ test.describe('관리자 콘솔', () => {
 
   test('자료별 API 실행 결과와 정상 호출 예정이 보인다', async ({ page }) => {
     await menuButton(page, '자료 수집').click()
-    await expect(page.getByRole('columnheader', { name: 'API 실행 · 예정' })).toBeVisible()
-    await expect(page.locator('table.ac-t tbody .ac-sub').filter({ hasText: /다음|수집 시|비활성/ }).first()).toBeVisible()
+    const detail = await openCollectionDetail(page, 'metar')
+    await expect(detail.locator('.ac-cb-api .ac-sub').filter({ hasText: /다음|수집 시|비활성/ })).toBeVisible()
+    if (await page.locator('dialog.ac-cb-dialog[open]').count()) await page.keyboard.press('Escape')
     await menuButton(page, 'API 사용량').click()
     await expect(page.getByRole('heading', { name: '온디맨드 API' })).toBeVisible()
   })
@@ -116,11 +127,13 @@ test.describe('관리자 콘솔', () => {
     const region=page.getByRole('region',{name:'자료 수집 목록',exact:true})
     await expect(region).toBeVisible()
     if(testInfo.project.name==='desktop') expect(await region.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true)
-    const row=region.getByRole('row').filter({has:page.getByRole('cell',{name:/^ECMWF IFS/})})
-    await expect(row).toContainText('API 18종 · 성공 17 / 실패 1')
-    expect((await row.boundingBox()).height).toBeLessThan(150)
-    expect(await region.evaluate(el=>el.scrollHeight>el.clientHeight && el.clientHeight<=640)).toBe(true)
-    await row.getByRole('button',{name:'실행 상세 보기',exact:true}).click()
+    // 시간표 행은 긴 오류·API 목록이 있어도 한 줄 높이를 지킨다. 긴 내용은 상세에서 본다.
+    const row=page.locator('tr[data-health-key="nwp_ecmwf"]')
+    expect((await row.boundingBox()).height).toBeLessThan(60)
+    const panel=await openCollectionDetail(page,'nwp_ecmwf')
+    await expect(panel).toContainText('API 18종 · 성공 17 / 실패 1')
+    const openButton=panel.getByRole('button',{name:'실행 상세 보기',exact:true})
+    await openButton.click()
     const dialog=page.getByRole('dialog',{name:'ECMWF IFS 실행 상세',exact:true})
     await expect(dialog).toBeVisible()
     await expect(dialog.getByText('실행별 1시간 간격 · 3회',{exact:true})).toHaveCount(1)
@@ -131,13 +144,13 @@ test.describe('관리자 콘솔', () => {
     await testInfo.attach('api-detail-scroll',{body:await page.screenshot(),contentType:'image/png'})
     await page.keyboard.press('Escape')
     await expect(dialog).not.toBeVisible()
-    await expect(row.getByRole('button',{name:'실행 상세 보기',exact:true})).toBeFocused()
+    await expect(openButton).toBeFocused()
     await testInfo.attach('api-compact-rows',{body:await page.screenshot(),contentType:'image/png'})
   })
 
   test('모델 상세는 시각·공항 수·OFF·실패·다음 점검을 구분한다', async ({ page }) => {
     await menuButton(page, '자료 수집').click()
-    const ec = page.locator('tr[data-health-key="nwp_ecmwf"]')
+    const ec = await openCollectionDetail(page, 'nwp_ecmwf')
     // 공항별 상세는 접혀 있다 — 접힌 채로도 실행시각·공항 수·실패 건수는 요약에 보여야 한다.
     await expect(ec.locator('details.ac-model-health > summary')).toContainText('공항별 상이')
     await expect(ec.locator('details.ac-model-health > summary')).toContainText('공항 7/8')
@@ -153,12 +166,12 @@ test.describe('관리자 콘솔', () => {
     await expect(apiDialog).toContainText('새 실행 요청 가능')
     await apiDialog.getByRole('button',{name:'실행 상세 닫기',exact:true}).click()
 
-    const off = page.locator('tr[data-health-key="nwp_icon"]')
-    await expect(off.getByText('꺼둠', { exact: true })).toBeVisible()
+    await expect(page.locator('tr[data-health-key="nwp_icon"]').getByText('꺼둠', { exact: true })).toBeVisible()
+    const off = await openCollectionDetail(page, 'nwp_icon')
     await expect(off.locator('.ac-model-health').getByText('다음 점검 없음')).toBeVisible()
 
-    const delayed = page.locator('tr[data-health-key="nwp_gfs"]')
-    await expect(delayed.getByText('지연')).toBeVisible()
+    await expect(page.locator('tr[data-health-key="nwp_gfs"]').getByText('지연')).toBeVisible()
+    const delayed = await openCollectionDetail(page, 'nwp_gfs')
     await expect(delayed.locator('.ac-model-health')).toContainText('가용시각')
     await expect(delayed.locator('.ac-model-health')).toContainText('수집시각')
   })
@@ -175,20 +188,33 @@ test.describe('관리자 콘솔', () => {
       expect(next.getTime()).toBeGreaterThan(Date.parse(health.generatedAt))
       expect(next.getUTCMinutes()).toBe(minute)
       expect(hours).toContain(next.getUTCHours() % 6)
-      const label = model.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const row = page.getByRole('row', { name: new RegExp(`^${label}`) })
+      const row = page.locator(`tr[data-health-key="${key}"]`)
       const display = next.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false })
-      await expect(row.getByText(`다음 점검 ${display}`, { exact:true })).toBeVisible()
-      await row.getByRole('button',{name:'실행 상세 보기',exact:true}).click()
-      const dialog=page.getByRole('dialog')
+      const panel = await openCollectionDetail(page, key)
+      await expect(panel.getByText(`다음 점검 ${display}`, { exact:true })).toBeVisible()
+      await panel.getByRole('button',{name:'실행 상세 보기',exact:true}).click()
+      const dialog=page.getByRole('dialog',{name:`${model.label} 실행 상세`,exact:true})
       await expect(dialog).toContainText('실행별 1시간 간격 · 3회')
       await dialog.getByRole('button',{name:'실행 상세 닫기',exact:true}).click()
-      expect((await row.boundingBox()).height).toBeLessThan(400)
+      expect((await row.boundingBox()).height).toBeLessThan(60)
       if (key === 'nwp_ecmwf') {
         await row.scrollIntoViewIfNeeded()
         await testInfo.attach('nwp-schedule-KST', {body:await page.screenshot(),contentType:'image/png'})
       }
     }
+  })
+
+  test('자료 수집 시간표는 24시간 칸과 지금 시각을 보이고, 칸에 올리면 그 시간의 실행을 알려 준다', async ({ page }, testInfo) => {
+    await menuButton(page, '자료 수집').click()
+    const region = page.getByRole('region', { name: '자료 수집 목록', exact: true })
+    await expect(region.locator('th.ac-cb-h')).toHaveCount(24)
+    await expect(region.locator('th.ac-cb-h.cur')).toHaveCount(1)
+    await expect(region.locator('.ac-cb-now').first()).toBeVisible()
+    const metar = page.locator('tr[data-health-key="metar"]')
+    await metar.locator('td.ac-cb-c.cur').hover()
+    await expect(page.getByRole('tooltip')).toContainText('METAR')
+    await expect(page.getByRole('tooltip')).toContainText('5분마다')
+    await testInfo.attach('collection-board', { body: await page.screenshot(), contentType: 'image/png' })
   })
 
   test('이모지를 쓰지 않는다', async ({ page }) => {

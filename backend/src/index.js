@@ -22,6 +22,8 @@ import environmentProcessor from './processors/environment-processor.js'
 import airportInfoProcessor from './processors/airport-info-processor.js'
 import takeoffForecastProcessor from './processors/takeoff-forecast-processor.js'
 import { runKimDerivedWorker } from './processors/kim-derived-worker.js'
+import { recordCollectorRun } from './admin/collector-runs.js'
+import { getDb } from './db/index.js'
 import flightCategoryProcessor from './processors/flight-category-processor.js'
 import asosCeilingProcessor from './processors/asos-ceiling-processor.js'
 import notamProcessor from './processors/notam-processor.js'
@@ -57,7 +59,10 @@ function safeCollectorLog(type, outcome, fields = {}) {
 }
 
 async function runWithLock(type, job, { source = 'manual', apiHubCategories = [], resultOutcomes, isBlocked = (category) => apiHubUsage.snapshot().keys.find((key) => key.category === category)?.status === 'blocked', stats: recorder = stats, logger = console } = {}) {
-  if (['nwp_ecmwf','nwp_icon','nwp_gfs'].includes(type) && !isNwpCollectionDue({model:type.slice(4)})) return {skipped:'nwp_complete_or_disabled'}
+  if (['nwp_ecmwf','nwp_icon','nwp_gfs'].includes(type) && !isNwpCollectionDue({model:type.slice(4)})) {
+    recorder.noteSkippedRun?.(type, 'nwp_complete_or_disabled')
+    return {skipped:'nwp_complete_or_disabled'}
+  }
   const run = recorder.recordStart(type, { source })
   if (apiHubCategories.length > 0 && apiHubCategories.every(isBlocked)) {
     logger.warn?.(safeCollectorLog(type, 'skipped', { code: 'api_hub_key_blocked' }))
@@ -302,6 +307,8 @@ async function main() {
   store.initLiveFromFiles(config.storage.base_path);
   store.initActiveFromFiles(config.storage.active_path);
   stats.initFromFile(config.storage.base_path);
+  // 수집 실행 한 번마다 관리자 콘솔 수집 시간표용 기록을 남긴다.
+  stats.setRunListener((entry) => recordCollectorRun(getDb(), entry))
 
   // 테스트 인스턴스: DISABLE_COLLECTION이면 자동수집(cron)·초기수집을 건너뛴다.
   // store는 이미 파일에서 로드됨(위 initFromFiles) → 데이터가 그 시점으로 "고정". 개발자가 자유 조작 가능.

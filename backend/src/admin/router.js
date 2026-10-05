@@ -9,6 +9,7 @@ import { forecastDiskFull } from './disk-forecast.js'
 import { trafficStats, hourlyPattern } from './visits.js'
 import { readTrends } from './trends.js'
 import { readDataHealth } from './data-health.js'
+import { readCollectionTimeline } from './collector-runs.js'
 import { readAlertWatches } from './alert-watches.js'
 import { processHealth } from './process-health.js'
 import { deploymentInfo } from './deployment.js'
@@ -80,6 +81,9 @@ export function createAdminRouter({ db = null } = {}) {
     health.rows = health.rows.map((row) => ({ ...row, stats: stats.getTypeSummary(row.statsKey) }))
     return health
   }))
+  // 자료 수집 시간표: KST 하루의 수집별 일정과 실제 실행(day=1이면 어제).
+  router.get('/collection-timeline', read('collection-timeline', (req) =>
+    readCollectionTimeline(database(), { dayOffset: req.query.day === '1' ? 1 : 0 })))
   // 서버 전산자원 탭: 재시작 횟수/가동시간/힙 메모리 + 폴더별 디스크 사용량 + 최근 실패 로그.
   // 디스크만 캐시(5분) — 나머지는 계산이 가벼워 매 요청 그대로.
   router.get('/server-health', read('server-health', () => ({

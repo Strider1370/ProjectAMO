@@ -260,10 +260,27 @@ function unresolvedScheduledMissed(execution, run) {
   return execution.last_outcome === 'missed' && run?.source !== 'scheduled'
 }
 
+// 실행 한 번이 끝날 때마다 알린다(관리자 콘솔 수집 시간표용 SQLite 기록). 실패해도 통계는 그대로 남긴다.
+let runListener = null
+export function setRunListener(listener) { runListener = typeof listener === 'function' ? listener : null }
+function notifyRun(type, run, outcome, durationMs, reason) {
+  if (!runListener || !COLLECTOR_TYPES.has(type)) return
+  const finishedMs = persistence.now()
+  const startedMs = Number.isFinite(run?.startedAtMs) ? run.startedAtMs : Number.isFinite(durationMs) ? finishedMs - durationMs : finishedMs
+  try {
+    runListener({ type, startedAt: new Date(startedMs).toISOString(), finishedAt: new Date(finishedMs).toISOString(), outcome,
+      durationMs: Number.isFinite(durationMs) ? durationMs : finishedMs - startedMs, reason: reason ?? null })
+  } catch (error) {
+    console.warn(`[STATS] run record failed: ${error?.message}`)
+  }
+}
+// 시작 기록 없이 정해진 실행을 건너뛸 때(해외 모델이 이미 받은 회차 등) 시간표에만 남긴다.
+export function noteSkippedRun(type, reason) { notifyRun(type, null, 'skipped', 0, reason) }
+
 export function recordStart(type, { source } = {}) {
   const execution = executionFor(type)
   const at = nowIso()
-  const run = { source: source || 'scheduled', id: `${persistence.now()}-${Math.random().toString(36).slice(2)}` }
+  const run = { source: source || 'scheduled', id: `${persistence.now()}-${Math.random().toString(36).slice(2)}`, startedAtMs: persistence.now() }
   if (!execution) return run
   execution.last_started_at = at
   execution.last_start_source = run.source
@@ -347,6 +364,7 @@ export function recordSkip(type, reason = 'already_running', run) {
   entry.skips = (entry.skips || 0) + 1
   addRecentRun(type, true, null, [], null, { skipped: true, reason })
   setExecutionCompletion(type, 'skipped', normalizeCollectorIssue({ outcome: 'skipped', code: reason, message: null, at: nowIso() }), run)
+  notifyRun(type, run, 'skipped', null, reason)
   persistCompletion()
 }
 
@@ -393,6 +411,7 @@ export function recordSuccess(type, result, durationMs, run) {
   bumpHourly(entry, true)
   addRecentRun(type, true, null, failedAirports, durationMs)
   setExecutionCompletion(type, 'succeeded', null, run)
+  notifyRun(type, run, 'succeeded', durationMs, failedAirports.length ? `공항 ${failedAirports.length}곳 실패: ${failedAirports.join(', ')}` : null)
   persistCompletion()
 }
 
@@ -415,6 +434,7 @@ export function recordFailure(type, errorMsg, durationMs, run) {
   bumpHourly(entry, false, safeError)
   addRecentRun(type, false, safeError, [], durationMs)
   setExecutionCompletion(type, 'failed', issue, run)
+  notifyRun(type, run, 'failed', durationMs, safeError)
   persistCompletion()
 }
 
@@ -465,4 +485,4 @@ export function getTypeSummary(type) {
   }
 }
 
-export default { initFromFile, recordStart, recordSuccess, recordFailure, recordSkip, recordMissed, getExecutionState, recordApiOperationStart, recordApiOperationSuccess, recordApiOperationFailure, getStats, getTypeSummary }
+export default { initFromFile, setRunListener, noteSkippedRun, recordStart, recordSuccess, recordFailure, recordSkip, recordMissed, getExecutionState, recordApiOperationStart, recordApiOperationSuccess, recordApiOperationFailure, getStats, getTypeSummary }

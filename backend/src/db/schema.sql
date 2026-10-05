@@ -89,6 +89,16 @@ CREATE TABLE IF NOT EXISTS metrics (        -- 리소스 시계열(60초 샘플,
   proc_rss INTEGER, proc_heap_used INTEGER, proc_heap_total INTEGER, proc_external INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS collector_runs (  -- 수집 실행 한 번 = 한 줄(3일 보관). 관리자 콘솔 수집 시간표
+  type        TEXT NOT NULL,
+  started_at  TEXT NOT NULL,                  -- UTC ISO
+  finished_at TEXT NOT NULL,
+  outcome     TEXT NOT NULL,                  -- succeeded | failed | skipped
+  duration_ms INTEGER,
+  reason      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_collector_runs_started ON collector_runs (started_at);
+
 CREATE TABLE IF NOT EXISTS visits (         -- 익명 포함 방문 추적. 관리자 콘솔
   visitor_id TEXT PRIMARY KEY, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL
 );
