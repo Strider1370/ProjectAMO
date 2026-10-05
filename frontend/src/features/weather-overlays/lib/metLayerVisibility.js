@@ -10,7 +10,7 @@ function savedChildren(prev) {
 }
 export function createInitialMetVisibility(layerIds, overrides = {}) {
   overrides ??= {}
-  const visibility = { ...Object.fromEntries(layerIds.map(id => [id, false])), radarHsr: true, windFlow: true, windSpeed: true, surfaceChartWind: 'barbs', ...overrides }
+  const visibility = { ...Object.fromEntries(layerIds.map(id => [id, id === 'sigmet' || id === 'airmet'])), radarHsr: true, windFlow: true, windSpeed: true, surfaceChartWind: 'barbs', ...overrides }
   // 기존에 둘 중 하나만 켜둔 지도도 시정·운고 통합 보기로 복원한다.
   if (layerIds.includes('visibility') || layerIds.includes('ceiling')) {
     visibility.visibility = visibility.ceiling = !!(overrides.visibility || overrides.ceiling)

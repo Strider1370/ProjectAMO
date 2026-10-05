@@ -34,8 +34,8 @@ async function openAirmet(page) {
   // 타일에는 발효 건수 배지가 붙어 접근성 이름이 'AIRMET'만은 아니다. 상단 알림 알약과
   // 이름이 겹치므로 레이어 타일 그리드로 범위를 좁힌다.
   const airmet = page.locator('.layer-tile').filter({ hasText: 'AIRMET' }).first()
-  if (await airmet.getAttribute('aria-pressed') !== 'true') await airmet.click()
   await expect(airmet).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.layer-tile').filter({ hasText: 'SIGMET(국내)' }).first()).toHaveAttribute('aria-pressed', 'true')
 }
 
 // 합성 마커 이미지의 실제 픽셀을 읽는다. 스크린샷 눈대중이 아니라, 기호가 몇 픽셀로
@@ -71,6 +71,7 @@ const markerInk = (page, phenomenon) => page.evaluate((code) => {
 // 기호 합성 결과는 뷰포트와 무관하다 — 반응형 매트릭스를 돌릴 이유가 없어 desktop만 검증한다.
 test.describe('AIRMET surface phenomena symbols', () => {
   test('surface wind carries its speed inside the symbol and surface visibility renders legibly', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', '기호 합성은 desktop에서 검증한다.')
     // 지도 타일 로드 + 아이콘 PNG 합성 + 두 지점 캡처까지 기본 30초로는 모자란다.
     test.setTimeout(120_000)
     await openAirmet(page)

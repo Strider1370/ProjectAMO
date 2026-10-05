@@ -13,6 +13,17 @@ test('initial MET visibility turns on only the domestic radar', () => {
   )
 })
 
+test('SIGMET and AIRMET start visible while explicit visibility overrides are preserved', () => {
+  const ids = ['radarHsr', 'sigmet', 'sigmet_intl', 'airmet']
+  const initial = createInitialMetVisibility(ids)
+  assert.equal(initial.sigmet, true)
+  assert.equal(initial.airmet, true)
+  assert.equal(initial.sigmet_intl, false)
+  const overridden = createInitialMetVisibility(ids, { sigmet: false, airmet: false })
+  assert.equal(overridden.sigmet, false)
+  assert.equal(overridden.airmet, false)
+})
+
 test('시정·운고는 기본 OFF이고 이전 개별 선택도 통합 보기로 복원한다', () => {
   const ids = ['visibility', 'ceiling']
   const initial = createInitialMetVisibility(ids)

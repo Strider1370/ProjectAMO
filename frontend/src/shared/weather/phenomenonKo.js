@@ -19,6 +19,7 @@ const PHENOMENON_KO = {
   LLWS: '저고도 윈드시어',
   IFR: '계기비행기상',
   SFC_VIS: '지표시정',
+  SFC_WIND: '지상 강풍',
 }
 
 // 한글명만 (없으면 null). 지도 라벨 등 공간 좁은 곳·코드를 따로 렌더할 때.

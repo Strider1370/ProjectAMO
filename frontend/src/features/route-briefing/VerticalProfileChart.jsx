@@ -5,14 +5,14 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { msToKt, windBarbFeathers, windDirectionFromUV, isothermSegments, pressureToFallbackFt } from './lib/crossSectionGrid.js'
 import { buildTropopauseProfileLayers } from './lib/tropopauseProfile.js'
 import { buildProfileNoDataAreas } from './lib/profileNoData.js'
-import { advisorySymbolUrl } from '../weather-overlays/lib/advisoryLayers.js'
+import { formatSurfaceWindChart } from '../weather-overlays/lib/advisoryLayers.js'
+import { phenomenonKo } from '../../shared/weather/phenomenonKo.js'
+import ProfileAdvisorySymbol from './ProfileAdvisorySymbol.jsx'
 import { buildCloudContourModel } from './lib/cloudContour.js'
 import { buildNwpTimeRail } from './lib/nwpTimeSelection.js'
 import { formatBriefingTime } from './lib/briefingTime.js'
 import { useTimeZone } from '../../shared/timezone/TimeZoneContext.jsx'
 import { buildLinkedProfileBands } from './lib/linkedProfileBands.js'
-
-const ADVISORY_ICON_PX = 32 // 평면도 기호의 ~2배. 단면도 맨 앞에 그림.
 
 const M_TO_FT = 3.28084
 
@@ -136,7 +136,7 @@ function pointInGeometry(lon, lat, geometry) {
 const PHEN_LABEL = { SEV_TURB: '난기류', MOD_TURB: '난기류', SEV_ICE: '착빙', MOD_ICE: '착빙', TS: '뇌우', CB: '적란운', TC: '태풍' }
 function phenLabel(code) {
   if (!code) return '?'
-  return PHEN_LABEL[code] ?? code.split('_')[0].slice(0, 4)
+  return PHEN_LABEL[code] ?? phenomenonKo(code) ?? code
 }
 const ADVISORY_COLORS = { sigmet: '#EF4444', airmet: '#F59E0B' }
 function WindBarb({ cx, cy, u, v }) {
@@ -501,6 +501,7 @@ export default function VerticalProfileChart({
               h: yFor(clampedLower) - yFor(clampedUpper),
               label: phenLabel(item.phenomenon_code),
               code: item.phenomenon_code,
+              windLabel: item.phenomenon_code === 'SFC_WIND' ? formatSurfaceWindChart(item) : '',
               kind,
               color: ADVISORY_COLORS[kind] ?? '#888',
             })
@@ -618,12 +619,14 @@ export default function VerticalProfileChart({
           {advisoryBands.map((band) => (
             <rect
               key={band.key}
+              data-testid="profile-advisory-boundary"
               x={band.x} y={band.y} width={band.w} height={band.h}
               fill="none"
               stroke={band.color}
-              strokeWidth={1.5}
+              strokeWidth={2.5}
+              vectorEffect="non-scaling-stroke"
               strokeDasharray="6,4"
-              opacity={0.85}
+              opacity={1}
             />
           ))}
         </g>
@@ -751,26 +754,7 @@ export default function VerticalProfileChart({
           </g>
         )}
         {/* SIGMET/AIRMET 기호 — 맨 앞(다른 요소 위)에 평면도와 같은 아이콘으로, 2배 크기. */}
-        {advisoryBands.map((band) => {
-          const url = advisorySymbolUrl(band.kind, band.code)
-          const cx = band.x + band.w / 2
-          const cy = band.y + band.h / 2
-          return url ? (
-            <image
-              key={`sym-${band.key}`}
-              href={url}
-              x={cx - ADVISORY_ICON_PX / 2}
-              y={cy - ADVISORY_ICON_PX / 2}
-              width={ADVISORY_ICON_PX}
-              height={ADVISORY_ICON_PX}
-              preserveAspectRatio="xMidYMid meet"
-            />
-          ) : (
-            <text key={`sym-${band.key}`} x={cx} y={cy + 5} textAnchor="middle" fontSize={11} fontWeight="bold" fill={band.color}>
-              {band.label}
-            </text>
-          )
-        })}
+        {advisoryBands.map((band) => <ProfileAdvisorySymbol key={`sym-${band.key}`} band={band} />)}
       </svg>
       </div>
       {missingNwpWaypointIds.length > 0 && !nwpMissingNoticeDismissed && <div className="vertical-profile-nwp-missing-notice" role="alert">

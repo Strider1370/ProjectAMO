@@ -36,12 +36,19 @@ export const ADVISORY_LAYER_DEFS = {
   },
 }
 
+// 배포된 기호 파일만 요청한다. 미지원 현상은 단면도에서 현상명으로 표시한다.
+const ADVISORY_SYMBOLS = {
+  icon_SIGMET: new Set(['TURB', 'SEV_TURB', 'VA', 'MTW', 'RDOACT', 'TS', 'EMBD_TS', 'SEV_ICE', 'SS', 'TC', 'TC2', 'TC_6_24', 'TC_12_24', 'TC_18_24', 'TC_24', 'TC_24_24', 'TC_48', 'DS', 'CANCEL', 'TSGR', 'ISOL_TS', 'ICE']),
+  icon_AIRMET: new Set(['MTW', 'ICE', 'TCU', 'CB', 'TS', 'SFC_VIS', 'MTOBSC', 'CLD', 'MOD_ICE', 'CANCEL', 'TURB', 'SFC_WIND', 'MOD_TURB', 'SFCWSPD', 'TSGR', 'ISOL_TS']),
+}
+
 export function advisorySymbolUrl(kind, phenomenonCode) {
   const code = String(phenomenonCode || '').trim().toUpperCase()
   if (!code) return null
-  const folder = kind.startsWith('sigmet') ? 'icon_SIGMET' : 'icon_AIRMET'
+  const folder = String(kind).startsWith('sigmet') ? 'icon_SIGMET' : 'icon_AIRMET'
   // FRQ는 뇌우의 발생 빈도 수식어이며 별도 ICAO 기호 파일이 없다.
-  const symbolCode = code === 'FRQ_TS' ? 'TS' : code
+  const symbolCode = ({ FRQ_TS: 'TS', MT_OBSC: 'MTOBSC' })[code] ?? code
+  if (!ADVISORY_SYMBOLS[folder].has(symbolCode)) return null
   return `/Symbols/Reference%20Symbols/${folder}/${encodeURIComponent(`${symbolCode}.png`)}`
 }
 const PHENOMENON_ICON_SIZE = 40
@@ -253,7 +260,7 @@ function formatSpeedChart(item) {
 
 // motion.speed_kt(현상 덩어리의 이동속도)와 헷갈리지 말 것 — 이건 지상 풍향·풍속 자체다.
 // AMO AIRMET 차트처럼 마름모 안에 "050/30KT"로 적는다. 풍향이 없으면 풍속만.
-function formatSurfaceWindChart(item) {
+export function formatSurfaceWindChart(item) {
   const speed = item?.surface_wind?.speed_kt
   if (!Number.isFinite(speed) || speed <= 0) return ''
   const direction = item?.surface_wind?.direction_deg

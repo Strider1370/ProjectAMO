@@ -45,6 +45,50 @@ async function createBriefing(page) {
 }
 
 test.describe('briefing-view', () => {
+  test('profile-advisory-symbols show wind values, missing-symbol labels and thicker boundaries', async ({ page }, testInfo) => {
+    const now = Date.now()
+    const geometry = { type: 'Polygon', coordinates: [[[125, 33], [130, 33], [130, 39], [125, 39], [125, 33]]] }
+    const advisory = (code, lower, upper) => ({
+      id: `profile-${code}`, phenomenon_code: code, geometry,
+      valid_from: new Date(now - 3600000).toISOString(), valid_to: new Date(now + 3600000).toISOString(),
+      altitude: { lower_fl: lower, upper_fl: upper },
+    })
+    await page.route('**/api/sigmet', route => route.fulfill({ json: { items: [advisory('OBSC_TS', 80, 100)] } }))
+    await page.route('**/api/airmet', route => route.fulfill({ json: { items: [
+      { ...advisory('SFC_WIND', 0, 30), surface_wind: { direction_deg: 270, speed_kt: 30 }, motion: { speed_kt: 0 } },
+      advisory('MT_OBSC', 30, 50), advisory('MOD_ICE', 50, 70),
+    ] } }))
+    // 이미지 로드에 실패해도 현상명으로 표시한다.
+    await page.route('**/icon_AIRMET/MOD_ICE.png', route => route.abort())
+    await createBriefing(page)
+    let profile = page.getByRole('region', { name: '연직단면도', exact: true })
+    if (testInfo.project.name === 'mobile') {
+      await profile.getByRole('button', { name: '단면도 크게 열기', exact: true }).click()
+      profile = page.getByRole('dialog', { name: '단면도 전체화면', exact: true })
+    }
+    await profile.locator('.vertical-profile-chart').scrollIntoViewIfNeeded()
+    const symbols = profile.getByTestId('profile-advisory-symbol')
+    const wind = symbols.filter({ has: page.locator('text').filter({ hasText: /^270\/30KT$/ }) })
+    await expect(wind).toBeVisible()
+    await expect(wind.locator('image')).toHaveAttribute('href', /SFC_WIND\.png$/)
+    await expect(symbols.locator('text').filter({ hasText: '가림뇌우' })).toBeVisible()
+    const mountain = profile.locator('[data-phenomenon="MT_OBSC"]')
+    await expect(mountain.locator('image')).toHaveAttribute('href', /MTOBSC\.png$/)
+    const icing = profile.locator('[data-phenomenon="MOD_ICE"]')
+    await icing.scrollIntoViewIfNeeded()
+    await expect(icing.locator('text')).toHaveText('착빙')
+    await expect(icing.locator('image')).toHaveCount(0)
+    const boundaries = profile.getByTestId('profile-advisory-boundary')
+    await expect(boundaries).toHaveCount(4)
+    expect(await boundaries.evaluateAll(nodes => nodes.every(node =>
+      getComputedStyle(node).strokeWidth === '2.5px' && getComputedStyle(node).opacity === '1',
+    ))).toBe(true)
+    await profile.locator('.vertical-profile-chart').screenshot({ path: testInfo.outputPath('profile-advisory-symbols.png') })
+    await profile.getByRole('button', { name: 'SIGMET/AIRMET', exact: true }).click()
+    await expect(profile.getByTestId('profile-advisory-symbol')).toHaveCount(0)
+    await expect(profile.getByTestId('profile-advisory-boundary')).toHaveCount(0)
+  })
+
   test('keeps NAVLOG in the desktop table layout on iPad landscape', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'ipad-landscape', 'iPad 가로 전용 NAVLOG 레이아웃')
     await createBriefing(page)

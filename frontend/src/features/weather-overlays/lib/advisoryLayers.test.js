@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
 
 import {
   ADVISORY_LAYER_DEFS,
@@ -75,6 +76,18 @@ test('advisory marker layers retain their shared interior point data', () => {
 
 test('frequent thunderstorm uses the shared thunderstorm symbol', () => {
   assert.match(advisorySymbolUrl('sigmet_intl', 'FRQ_TS'), /icon_SIGMET\/TS\.png$/)
+})
+
+test('advisory symbol aliases resolve to deployed files and unsupported codes use a text fallback', () => {
+  for (const [kind, code] of [['sigmet', 'FRQ_TS'], ['sigmet_intl', 'EMBD_TS'], ['airmet', 'MT_OBSC'], ['airmet', 'SFC_WIND']]) {
+    const url = advisorySymbolUrl(kind, code)
+    assert.ok(url)
+    assert.ok(existsSync(new URL(`../../../../public${decodeURIComponent(url)}`, import.meta.url)), `${kind} ${code}`)
+  }
+  assert.match(advisorySymbolUrl('airmet', 'MT_OBSC'), /MTOBSC\.png$/)
+  for (const code of ['OBSC_TS', 'SQL_TS', 'LLWS', 'UNKNOWN']) {
+    assert.equal(advisorySymbolUrl('sigmet', code), null)
+  }
 })
 
 test('spelled-out intensity codes are abbreviated to match the standard chart format', () => {
