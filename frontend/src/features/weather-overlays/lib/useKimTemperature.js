@@ -10,6 +10,7 @@ import {
   selectKimNwpAvailability,
 } from './useKimSurfaceWind.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
+import { kimFieldCache } from './kimFieldCache.js'
 import { pressureKimIndex } from './cloudIcingModel.js'
 
 function selectionKey(selection) {
@@ -30,7 +31,7 @@ export function useKimTemperature(enabled, selection, setSelection, { dataMode =
   const [temperatureIndex, setTemperatureIndex] = useState(null)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState(null)
-  const cacheRef = useRef(new Map())
+  const cacheRef = useRef(kimFieldCache.view('temperature'))
   const requestTokenRef = useRef(0)
   const metaHashRef = useRef(null)
   const pinned = dataMode === 'pinned'

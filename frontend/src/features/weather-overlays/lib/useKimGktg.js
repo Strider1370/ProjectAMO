@@ -9,6 +9,7 @@ import {
   selectKimNwpAvailability,
 } from './useKimSurfaceWind.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
+import { kimFieldCache } from './kimFieldCache.js'
 
 function isAbortError(error) {
   return error?.name === 'AbortError'
@@ -45,7 +46,7 @@ export function useKimGktg(enabled, selection, setSelection, { dataMode = 'live'
   const [gktgIndex, setGktgIndex] = useState(null)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState(null)
-  const cacheRef = useRef(new Map())
+  const cacheRef = useRef(kimFieldCache.view('gktg'))
   const requestTokenRef = useRef(0)
   const metaHashRef = useRef(null)
   const pinned = dataMode === 'pinned'

@@ -13,6 +13,17 @@ KIM 난류는 공통 `kim_nwp` 저장소의 GKTG를 사용한다. Python 환경�
 격자 영역 확대 시 저장 형식 비교, 계산 메모리 검증, 지도 표시와 수치 조회의 분리는
 [KIM 격자 확대 검토](kim-grid-scaling.md)에 기록한다.
 
+KIM 저장 형식(`KIM_STORE_FORMAT`, 기본 `json`):
+
+- `both`: JSON과 NC를 함께 쓰고 JSON을 읽는다. NC는 쓰자마자 다시 읽어 비교하고, 다르면 NC를 지우고
+  회차 기록(`events.jsonl`)에 `store_check_mismatch`를 남긴다. 원문 텍스트 캐시는 gzip으로 쓴다.
+- `nc`: NC만 쓰고 NC를 읽는다. NC가 없는 이전 회차·시연 스냅샷은 JSON을 읽는다.
+- 전환 순서: `both`로 1주 운영 → 매일 `node scripts/kim-inspect.mjs --data /opt/projectamo/shared/data --run <tmfc> --compare`
+  불일치 0 확인 → `nc`로 바꾸고 `node scripts/kim-store-convert.mjs --data ... --remove-json --gzip-raw`로 남은 JSON 회차를 옮긴다.
+  되돌릴 때는 `json`으로 바꾸면 된다(`both` 기간에는 JSON이 남아 있다).
+- 회차 상태·진행 기록: `node scripts/kim-inspect.mjs --data /opt/projectamo/shared/data [--run <tmfc> --events 30]`.
+- 새 npm 의존성은 없다(`h5wasm`은 위성 파서가 이미 쓴다). 설정 변경은 fast deploy와 PM2 환경 갱신으로 충분하다.
+
 Terrain runtime path:
 
 - PM2 sets `DATA_PATH=/opt/projectamo/shared/data`.

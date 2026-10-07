@@ -16,6 +16,9 @@ module.exports = {
         DATA_PATH: '/opt/projectamo/shared/data',
         KIM_GKTG_PYTHON: '/opt/projectamo/shared/venvs/kim-gktg/bin/python',
         NUMBA_CACHE_DIR: '/opt/projectamo/shared/data/.numba-cache',
+        // KIM 격자 저장 형식(backend/src/processors/kim-doc-store.js). both = JSON+NC 동시 저장·대조 기간(2026-10-08~).
+        // 1주 불일치 0이면 nc로 바꾸고 scripts/kim-store-convert.mjs로 남은 JSON 회차를 옮긴다. docs/operations/operations.md.
+        KIM_STORE_FORMAT: 'both',
       },
     },
   ],

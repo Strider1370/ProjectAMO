@@ -5,6 +5,7 @@ import {
   fetchKimSurfaceWind,
 } from '../../../api/weatherApi.js'
 import { useKimSnapshotMeta } from './useKimSnapshotMeta.js'
+import { kimFieldCache } from './kimFieldCache.js'
 
 function getLowPowerState() {
   if (typeof window === 'undefined') return false
@@ -97,7 +98,7 @@ export function useKimSurfaceWind(enabled, controlledSelection = null, onSelecti
   const [meta, setMeta] = useState(null)
   const [refreshToken, setRefreshToken] = useState(0)
   const lowPower = useMemo(() => getLowPowerState(), [])
-  const cacheRef = useRef(new Map())
+  const cacheRef = useRef(kimFieldCache.view('wind'))
   const requestTokenRef = useRef(0)
   const metaHashRef = useRef(null)
   const pinned = dataMode === 'pinned'

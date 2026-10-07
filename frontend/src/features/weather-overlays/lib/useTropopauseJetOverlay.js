@@ -4,11 +4,13 @@ import { coordinatesForGrid } from './overlayUtils.js'
 import { createTropopauseJetRenderer } from './tropopauseJetRenderer.js'
 import { buildTropopauseJetModel, pickTropopauseTime } from './tropopauseJetModel.js'
 import { formatSigwxStamp, formatUtcTmfcStamp } from './weatherOverlayModel.js'
+import { kimFieldCache } from './kimFieldCache.js'
 
 export const TROPOPAUSE_JET_SOURCE_ID = 'kim-tropopause-jet-source'
 export const TROPOPAUSE_JET_LAYER_ID = 'kim-tropopause-jet-layer'
 const INDEX_REFRESH_MS = 10 * 60 * 1000
-const fieldCache = new Map()
+// 다른 KIM 레이어와 같은 바이트 상한을 나눠 쓴다(kimFieldCache.js).
+const fieldCache = kimFieldCache.view('tropopause')
 
 function rasterUrl(raster) {
   const canvas = document.createElement('canvas')
@@ -73,7 +75,6 @@ export function useTropopauseJetOverlay({ mapRef, isStyleReady, styleRevision, e
     const controller = new AbortController()
     fetchKimTropopauseField({ tmfc: time.tmfc, hf: time.hf, revision: time.revision }, { signal: controller.signal })
       .then(value => {
-        if (fieldCache.size > 6) fieldCache.delete(fieldCache.keys().next().value)
         fieldCache.set(requestKey, value); setField(value); setProblem(null)
       })
       .catch(() => { if (!controller.signal.aborted) setProblem('권계면·제트 자료를 불러오지 못했습니다') })
