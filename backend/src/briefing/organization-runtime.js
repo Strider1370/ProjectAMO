@@ -17,7 +17,8 @@ export function organizationModelStorageRevision(dataRoot, sourceState) {
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       const filename = path.join(directory, entry.name)
       if (entry.isDirectory()) visit(filename)
-      else if (['grid.json', 'coords.json'].includes(entry.name) || /gktg\/[a-f0-9]+\.json$/.test(filename)) {
+      // 격자·GKTG 결과는 JSON 또는 NC(kim-doc-store.js)로 저장된다.
+      else if (['grid.json', 'grid.nc', 'coords.json'].includes(entry.name) || /gktg\/[a-f0-9]+\.(?:json|nc)$/.test(filename)) {
         const stat = safeRead(() => fs.statSync(filename, { bigint: true }))
         files.push([filename, ...(stat ? [stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs].map(String) : ['missing'])])
       }

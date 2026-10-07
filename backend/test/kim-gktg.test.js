@@ -81,11 +81,16 @@ test('snapshots capture GKTG inside the KIM directory and detect missing immutab
   const inspection = inspectSnapshot(root, 'gktg')
   assert.equal(inspection.summaries.kim_gktg.fields, 21)
   const entry = manifest.entries[0]
-  fs.unlinkSync(path.join(snapshotRoot, 'kim_nwp/runs', manifest.runId, 'normalized/hf000', entry.levelId, 'gktg', `${entry.revision}.json`))
+  const removed = path.join(snapshotRoot, 'kim_nwp/runs', manifest.runId, 'normalized/hf000', entry.levelId, 'gktg', `${entry.revision}`)
+  for (const extension of ['json', 'nc']) fs.rmSync(`${removed}.${extension}`, { force: true })
   assert.ok(inspectSnapshot(root, 'gktg').blockers.includes(`kim_gktg:missing_field:0:${entry.levelId}`))
 })
 
 test('a corrupt immutable field is rejected and restored only from recalculation, preserving damaged bytes', t => {
+  // JSON 파일 손상을 직접 만든다. NC 손상은 kim-doc-store.test.js에서 본다.
+  const savedFormat = process.env.KIM_STORE_FORMAT
+  process.env.KIM_STORE_FORMAT = 'json'
+  t.after(() => { if (savedFormat === undefined) delete process.env.KIM_STORE_FORMAT; else process.env.KIM_STORE_FORMAT = savedFormat })
   const root = temporary(t)
   const manifest = seedGktg(root)
   const entry = manifest.entries[0]

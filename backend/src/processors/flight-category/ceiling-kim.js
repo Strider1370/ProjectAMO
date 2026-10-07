@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { contours } from 'd3-contour'
 import { KIM_CLOUD_CONTOUR_THRESHOLD } from '../kim-cloud-threshold.js'
+import { kimDocumentExists, readKimDocument } from '../kim-doc-store.js'
 
 // 항공 ceiling 관례는 BKN(5/8) 이상. 흐린 날 표본으로 재조정할 수 있게 상수로 둔다.
 export const CLD_THRESHOLD = KIM_CLOUD_CONTOUR_THRESHOLD
@@ -96,10 +97,10 @@ export function loadKimCeiling(root, nowMs = Date.now()) {
   let grid = null
   for (const id of CEILING_SEARCH_LEVELS) {
     const file = path.join(runDir, id, 'grid.json')
-    if (!fs.existsSync(file)) continue
+    if (!kimDocumentExists(file)) continue
     let doc
     try {
-      doc = JSON.parse(fs.readFileSync(file, 'utf8'))
+      doc = readKimDocument(file)
     } catch {
       continue
     }

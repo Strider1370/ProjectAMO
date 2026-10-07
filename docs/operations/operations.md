@@ -10,6 +10,9 @@
 
 KIM 난류는 공통 `kim_nwp` 저장소의 GKTG를 사용한다. Python 환경·발표회차별 키 배분·실패 처리·보존 정책은 [GKTG 운영 안내](kim-gktg.md)를 따른다. 최초 Python 의존성 설치는 full deploy가 필요하다.
 
+격자 영역 확대 시 저장 형식 비교, 계산 메모리 검증, 지도 표시와 수치 조회의 분리는
+[KIM 격자 확대 검토](kim-grid-scaling.md)에 기록한다.
+
 Terrain runtime path:
 
 - PM2 sets `DATA_PATH=/opt/projectamo/shared/data`.

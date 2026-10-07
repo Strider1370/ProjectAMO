@@ -11,7 +11,9 @@ import { collectionResult } from '../collector-execution.js'
 import { selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours } from './kim-nwp-model.js'
 import { decodeGktgInput } from './kim-gktg-processor.js'
-import { readKimNwpLatest, readKimNwpGrid, readKimTropopauseField, readKimTropopauseUpper, readKimTropopauseLatest, resolveKimNwpRunDir, writeKimTropopauseField, writeKimTropopauseUpper, writeKimTropopauseAttempt, publishKimTropopauseRun, fingerprintKimNwpBase, fingerprintKimTropopauseOutputs } from './kim-nwp-store.js'
+import { cleanupKimNwpRuns, readKimNwpLatest, readKimNwpGrid, readKimTropopauseField, readKimTropopauseUpper, readKimTropopauseLatest, resolveKimNwpRunDir, writeKimTropopauseField, writeKimTropopauseUpper, writeKimTropopauseAttempt, publishKimTropopauseRun, fingerprintKimNwpBase, fingerprintKimTropopauseOutputs } from './kim-nwp-store.js'
+import { readKimRawText, writeKimRawText } from './kim-doc-store.js'
+import { appendKimRunEvent } from './kim-run-events.js'
 
 // 권계면 판정에는 150 hPa 위의 기온·고도가 필요하다. 기본 KIM 수집은 150 hPa까지이므로
 // 100·70 hPa의 T·hgt를 이 processor가 추가로 받는다. 같은 두 층의 u·v는 연직단면의 상층 등풍속선용이며
@@ -42,9 +44,9 @@ export function validateTropopauseSupplement(text, { name, level, tmfc, hf, grid
 
 async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid }) {
   const file = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'raw', 'trop', `hf${hf}-${name}-${level}.txt`)
-  let text
-  if (fs.existsSync(file)) text = fs.readFileSync(file, 'utf8')
-  else {
+  const cached = readKimRawText(file)
+  let text = cached
+  if (cached === null) {
     // 기본 KIM 격자·GKTG 추가 입력과 같은 키: 발표회차(tmfc)로 고른다(00·06 KIM, 12 레이더·위성, 18 항공).
     // 키가 없거나 막혀도 다른 키로 대체하지 않는다.
     const credential = selectKimRunCredential({
@@ -57,11 +59,7 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
     text = await fetchGrid({ data: 'P', name, level, tmfc, hf, sub: config.kim_surface_wind.sub, credential, signal })
   }
   const values = validateTropopauseSupplement(text, { name, level, tmfc, hf, grid })
-  if (!fs.existsSync(file)) {
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(`${file}.tmp`, text)
-    fs.renameSync(`${file}.tmp`, file)
-  }
+  if (cached === null) writeKimRawText(file, text)
   return values
 }
 
@@ -111,7 +109,9 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
       collection: collectionResult('complete', { fields: previous.entries.length, expectedFields: forecastHours.length }) }
   }
   writeKimTropopauseAttempt(root, tmfc, { tmfc, started_at: new Date().toISOString(), outcome: 'running', expectedHours: forecastHours })
+  const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc })
   for (const hf of forecastHours) {
+    const hourStarted = Date.now()
     // 시각마다 한 번 이벤트 루프에 양보해 계산 중에도 API 요청을 처리한다.
     await nextTurn()
     if (signal?.aborted) cancelled()
@@ -159,9 +159,11 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
       writeKimTropopauseUpper(root, { tmfc, hf, revision, grid, levels: TROPOPAUSE_SUPPLEMENT_LEVELS.map((pressure, k) => ({
         pressure, hgt: upper.hgt[k], T: upper.T[k], u: upper.u[k], v: upper.v[k] })) })
       entries.push({ hf, validTime: cube.validTime, revision, inputRevision })
+      appendKimRunEvent(runDir, { type: 'tropopause_hour', hf, computed: !exists, ms: Date.now() - hourStarted, revision })
     } catch (error) {
       if (signal?.aborted) cancelled()
       failures.push({ hf, reason: error.code || error.message })
+      appendKimRunEvent(runDir, { type: 'tropopause_hour_failed', hf, ms: Date.now() - hourStarted, reason: String(error.code || error.message).slice(0, 300) })
     } finally { if (stage) fs.rmSync(stage, { recursive: true, force: true }) }
   }
   // 계산 중 기본 수집기가 입력을 바꿨으면 그 시각은 게시하지 않는다.
@@ -178,7 +180,11 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
   }
   const complete = failures.length === 0
   let published = null
-  if (complete) published = publishKimTropopauseRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: TROPOPAUSE_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() })
+  if (complete) {
+    published = publishKimTropopauseRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: TROPOPAUSE_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() })
+    cleanupKimNwpRuns({ root, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId: readKimNwpLatest(root)?.latestRunId, onlyComplete: true, reason: 'tropopause_published' })
+  }
+  appendKimRunEvent(runDir, { type: complete ? 'tropopause_published' : 'tropopause_partial', revision: published?.revision || null, fields: entries.length, failures: failures.length })
   writeKimTropopauseAttempt(root, tmfc, { tmfc, outcome: complete ? 'complete' : 'partial', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() })
   return { type: 'kim_tropopause', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete,
     collection: collectionResult(complete ? 'complete' : 'partial', { fields: entries.length, expectedFields: forecastHours.length }, complete ? {} : { reason: 'kim_tropopause_incomplete' }) }

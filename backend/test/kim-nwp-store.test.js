@@ -60,11 +60,19 @@ test('writeKimNwpGrid writes one selected time level grid', () => {
     variables: { u: { values: [1] }, v: { values: [2] } },
   }
 
-  const filePath = writeKimNwpGrid({ root, grid })
+  // JSON 파일 내용을 직접 확인한다. NC 저장은 kim-doc-store.test.js에서 본다.
+  const savedFormat = process.env.KIM_STORE_FORMAT
+  process.env.KIM_STORE_FORMAT = 'json'
+  try {
+    const filePath = writeKimNwpGrid({ root, grid })
 
-  assert.equal(fs.existsSync(filePath), true)
-  assert.equal(JSON.parse(fs.readFileSync(filePath, 'utf8')).type, 'kim_nwp_grid')
-  assert.deepEqual(readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc: '2026051900', hf: 3, levelId: '925hPa' }), grid)
+    assert.equal(fs.existsSync(filePath), true)
+    assert.equal(JSON.parse(fs.readFileSync(filePath, 'utf8')).type, 'kim_nwp_grid')
+    assert.deepEqual(readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc: '2026051900', hf: 3, levelId: '925hPa' }), grid)
+  } finally {
+    if (savedFormat === undefined) delete process.env.KIM_STORE_FORMAT
+    else process.env.KIM_STORE_FORMAT = savedFormat
+  }
 })
 
 test('writeKimNwpIndex writes compact index without grid values', () => {

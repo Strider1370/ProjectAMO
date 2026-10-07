@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { initFromFiles, loadLatest } from '../store.js'
+import { kimDocumentExists } from '../processors/kim-doc-store.js'
 
 const SNAPSHOT_EXCLUDE = new Set(['snapshots', 'stats']) // 캡처 대상에서 제외(메타/재귀 방지)
 const NAME_RE = /^[a-zA-Z0-9_-]+$/ // 경로 이탈(../) 방지 — 영문/숫자/-/_ 만 허용
@@ -414,7 +415,8 @@ export function inspectSnapshot(basePath, name) {
       if (!manifest.complete || !manifest.entries?.length) blockers.push('kim_gktg:incomplete_manifest')
       for (const entry of manifest.entries || []) {
         const field = path.join(snapshotRoot, 'kim_nwp', 'runs', manifest.runId, 'normalized', `hf${String(entry.hf).padStart(3, '0')}`, entry.levelId, 'gktg', `${entry.revision}.json`)
-        if (!fs.existsSync(field)) blockers.push(`kim_gktg:missing_field:${entry.hf}:${entry.levelId}`)
+        // 결과는 JSON 또는 NC로 저장된다(kim-doc-store.js).
+        if (!kimDocumentExists(field)) blockers.push(`kim_gktg:missing_field:${entry.hf}:${entry.levelId}`)
       }
       summaries.kim_gktg = { latestRun: manifest.tmfc, revision: manifest.revision, fields: manifest.entries?.length || 0 }
     } catch { blockers.push('kim_gktg:invalid_manifest') }

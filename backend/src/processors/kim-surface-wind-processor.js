@@ -35,6 +35,8 @@ import {
   writeKimNwpLatest,
   writeKimNwpManifest,
 } from './kim-nwp-store.js'
+import { writeKimRawText } from './kim-doc-store.js'
+import { appendKimRunEvent } from './kim-run-events.js'
 import { selectNearestForecastHour } from './kim-forecast-hour.js'
 import { selectKimRunCredential } from './kim-run-credential.js'
 
@@ -175,8 +177,7 @@ function writeRawComponent({ level, tmfc, hf, name, variable, text }) {
   if (config.kim_nwp?.keep_raw === false) return
   const runDir = resolveKimNwpRunDir({ root: config.storage.base_path, model: KIM_NWP_MODEL, tmfc })
   const rawPath = path.join(runDir, 'raw', `hf${String(Number(hf)).padStart(3, '0')}`, level.id, rawComponentFileName({ level, name, variable }))
-  fs.mkdirSync(path.dirname(rawPath), { recursive: true })
-  fs.writeFileSync(rawPath, text, 'utf8')
+  writeKimRawText(rawPath, text)
 }
 
 async function fetchComponentForLevel({ name, level, tmfc, hf, credential }) {
@@ -683,6 +684,8 @@ export async function process({
 
     const latestRunId = buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: candidate.tmfc })
     const expectedGridCount = forecastHours.length * KIM_NWP_LEVELS.length
+    const runDir = resolveKimNwpRunDir({ root: config.storage.base_path, model: KIM_NWP_MODEL, tmfc: candidate.tmfc })
+    const collectStarted = Date.now()
 
     // A single upstream failure must not stop the remaining tasks: the failed grid is
     // retried on the next run (incremental retry), while every other grid still lands.
@@ -717,7 +720,10 @@ export async function process({
     })
     signal?.throwIfAborted()
 
+    appendKimRunEvent(runDir, { type: 'base_collected', grids: entries.length, expected: expectedGridCount, failedTasks: failedTaskCount,
+      ms: Date.now() - collectStarted, lastError: lastError ? String(lastError.code || lastError.message).slice(0, 300) : null })
     if (!shouldPublishKimNwpRun({ entries, expectedGridCount })) {
+      appendKimRunEvent(runDir, { type: 'base_not_usable', grids: entries.length, expected: expectedGridCount })
       writeKimNwpManifest(config.storage.base_path, {
         type: 'kim_nwp_manifest',
         model: KIM_NWP_MODEL,
@@ -763,6 +769,7 @@ export async function process({
       previousManifest: previousLatestRunId ? readKimNwpManifest(config.storage.base_path, previousLatestRunId) : null,
     })) {
       // Keep the partial run on disk so the next collection resumes it; drop older partials.
+      appendKimRunEvent(runDir, { type: 'base_partial_kept_previous', grids: entries.length, expected: expectedGridCount, serving: previousLatestRunId })
       cleanupKimNwpRuns({ root: config.storage.base_path, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId })
       const error = new Error(`kim_nwp_run_incomplete ${entries.length}/${expectedGridCount}; serving ${previousLatestRunId}`)
       error.code = 'kim_nwp_run_incomplete'
@@ -778,6 +785,7 @@ export async function process({
       updated_at: new Date().toISOString(),
       content_hash: store.canonicalHash(index),
     })
+    appendKimRunEvent(runDir, { type: 'base_published', complete, grids: entries.length, expected: expectedGridCount })
     cleanupKimNwpRuns({ root: config.storage.base_path, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId })
 
     const comparison = await collectAirportComparison()

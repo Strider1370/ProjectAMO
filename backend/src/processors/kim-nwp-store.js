@@ -4,6 +4,8 @@ import { isDeepStrictEqual } from 'node:util'
 import { createHash, randomUUID } from 'node:crypto'
 
 import { KIM_NWP_FORECAST_HOURS, KIM_NWP_LEVELS, KIM_NWP_MODEL, buildKimNwpIndex } from './kim-nwp-model.js'
+import { kimDocumentExists, kimDocumentStoragePath, quarantineKimDocument, readKimDocument, writeKimDocument } from './kim-doc-store.js'
+import { appendKimRunEvent } from './kim-run-events.js'
 
 const ROOT_DIR = 'kim_nwp'
 
@@ -80,7 +82,7 @@ export function writeKimNwpGrid({ root, grid }) {
     hf: grid.hf,
     levelId: grid.level.id,
   })
-  writeJsonAtomic(filePath, grid)
+  writeKimDocument(filePath, grid)
   return filePath
 }
 
@@ -98,7 +100,7 @@ export function writeKimNwpManifest(root, manifest) {
 }
 
 export function readKimNwpGrid({ root, model, tmfc, hf, levelId }) {
-  return readJson(resolveKimNwpGridPath({ root, model, tmfc, hf, levelId }))
+  return readKimDocument(resolveKimNwpGridPath({ root, model, tmfc, hf, levelId }))
 }
 
 export function readKimNwpGridSafe({ root, model, tmfc, hf, levelId }) {
@@ -136,7 +138,9 @@ export function listKimNwpRuns(root) {
     .sort((a, b) => b.localeCompare(a))
 }
 
-export function cleanupKimNwpRuns({ root, maxRuns, latestRunId }) {
+// onlyComplete: 파생 결과 게시 직후처럼 기본 수집이 다른 회차를 받고 있을 수 있는 때 쓴다. 받는 중인 회차는
+// 끝날 때까지 manifest가 없으므로, 완성된 회차만 지울 수 있게 해 수집 중 폴더를 건드리지 않는다.
+export function cleanupKimNwpRuns({ root, maxRuns, latestRunId, onlyComplete = false, reason = 'base_published' }) {
   const limit = Number(maxRuns)
   if (!Number.isFinite(limit) || limit <= 0) return
   const runsDir = path.join(resolveKimNwpRoot(root), 'runs')
@@ -144,6 +148,7 @@ export function cleanupKimNwpRuns({ root, maxRuns, latestRunId }) {
     const manifest = readKimNwpManifest(root, runId)
     return manifest?.usable === true && manifest.complete !== false
   })
+  const completeSet = new Set(completeRuns)
   const keep = new Set(completeRuns.slice(0, limit))
   if (latestRunId) keep.add(latestRunId)
   for (const derivedLatest of [readKimGktgLatest(root), readKimTropopauseLatest(root)]) if (derivedLatest?.runId) keep.add(derivedLatest.runId)
@@ -157,17 +162,23 @@ export function cleanupKimNwpRuns({ root, maxRuns, latestRunId }) {
     }
     if (fs.existsSync(path.join(dir, 'pins.json'))) keep.add(runId)
   }
+  const removed = []
   for (const runId of listKimNwpRuns(root)) {
-    if (keep.has(runId)) continue
+    if (keep.has(runId) || (onlyComplete && !completeSet.has(runId))) continue
     fs.rmSync(path.join(runsDir, runId), { recursive: true, force: true })
+    removed.push(runId)
   }
+  if (removed.length) for (const runId of keep) appendKimRunEvent(path.join(runsDir, runId), { type: 'runs_cleaned', reason, removed, kept: [...keep] })
+  return removed
 }
 
 // 파일 크기·수정 시각·inode만으로 만든 지문. 내용을 읽지 않아 수백 개 격자도 수 ms에 끝난다.
 // 저장은 모두 임시 파일 + rename이라 내용이 바뀌면 inode·수정 시각이 함께 바뀐다. 파일이 없으면 null.
 function statFingerprint(files) {
   const parts = []
-  for (const file of files) {
+  for (const document of files) {
+    const file = kimDocumentStoragePath(document)
+    if (!file) return null
     let stat
     try { stat = fs.statSync(file) } catch { return null }
     parts.push(`${file}:${stat.ino}:${stat.size}:${stat.mtimeMs}`)
@@ -215,21 +226,21 @@ function gktgContentHash(field) {
 export function writeKimGktgField(root, field) {
   field = { ...field, content_hash: gktgContentHash(field) }
   const file = resolveKimGktgFieldPath({ root, tmfc: field.time.tmfc, hf: field.time.hf, levelId: field.level.id, revision: field.revision })
-  if (fs.existsSync(file)) {
+  if (kimDocumentExists(file)) {
     let existing
     let validExisting = false
     try {
-      existing = readJson(file)
+      existing = readKimDocument(file)
       validExisting = existing.content_hash === gktgContentHash(existing)
     } catch {}
     if (validExisting) {
-      if (!isDeepStrictEqual(existing, field)) throw new Error('GKTG immutable field collision')
+      if (!isDeepStrictEqual(existing, JSON.parse(JSON.stringify(field)))) throw new Error('GKTG immutable field collision')
       return file
     }
     // Quarantine damaged bytes; a valid immutable result is never overwritten.
-    fs.renameSync(file, `${file}.corrupt-${Date.now()}-${randomUUID()}`)
+    quarantineKimDocument(file, `${Date.now()}-${randomUUID()}`)
   }
-  writeJsonAtomic(file, field)
+  writeKimDocument(file, field)
   return file
 }
 
@@ -237,7 +248,7 @@ export function readKimGktgField({ root, tmfc, hf, levelId, revision }) {
   const latest = readKimGktgLatest(root)
   const selectedRevision = revision || (latest?.tmfc === tmfc ? latest.entries?.find(entry => entry.hf === Number(hf) && entry.levelId === levelId)?.revision : null)
   if (!selectedRevision) throw new Error('GKTG revision unavailable for requested run')
-  const field = readJson(resolveKimGktgFieldPath({ root, tmfc, hf, levelId, revision: selectedRevision }))
+  const field = readKimDocument(resolveKimGktgFieldPath({ root, tmfc, hf, levelId, revision: selectedRevision }))
   if (field.time?.tmfc !== tmfc || field.time?.hf !== Number(hf) || field.level?.id !== levelId || field.revision !== selectedRevision
     || field.gktg?.length !== field.grid.nx * field.grid.ny || field.content_hash !== gktgContentHash(field)) throw new Error('Corrupt GKTG immutable field')
   return field
@@ -308,20 +319,20 @@ export function writeKimTropopauseField(root, field) {
   if (!validTropopauseShape(field)) throw new Error('Invalid tropopause field')
   field = { ...field, content_hash: tropopauseContentHash(field) }
   const file = resolveKimTropopauseFieldPath({ root, tmfc: field.time.tmfc, hf: field.time.hf, revision: field.revision })
-  if (fs.existsSync(file)) {
+  if (kimDocumentExists(file)) {
     let existing
     let validExisting = false
     try {
-      existing = readJson(file)
+      existing = readKimDocument(file)
       validExisting = existing.content_hash === tropopauseContentHash(existing)
     } catch {}
     if (validExisting) {
-      if (!isDeepStrictEqual(existing, field)) throw new Error('Tropopause immutable field collision')
+      if (!isDeepStrictEqual(existing, JSON.parse(JSON.stringify(field)))) throw new Error('Tropopause immutable field collision')
       return file
     }
-    fs.renameSync(file, `${file}.corrupt-${Date.now()}-${randomUUID()}`)
+    quarantineKimDocument(file, `${Date.now()}-${randomUUID()}`)
   }
-  writeJsonAtomic(file, field)
+  writeKimDocument(file, field)
   return file
 }
 
@@ -334,7 +345,7 @@ export function writeKimTropopauseUpper(root, upper) {
   const size = upper.grid.nx * upper.grid.ny
   if (!upper.levels?.length || !upper.levels.every(l => ['hgt', 'T', 'u', 'v'].every(k => l[k]?.length === size))) throw new Error('Invalid tropopause upper levels')
   const file = resolveKimTropopauseUpperPath({ root, ...upper })
-  if (!fs.existsSync(file)) writeJsonAtomic(file, { type: 'kim_nwp_tropopause_upper', ...upper })
+  if (!kimDocumentExists(file)) writeKimDocument(file, { type: 'kim_nwp_tropopause_upper', ...upper })
   return file
 }
 
@@ -345,7 +356,7 @@ export function fingerprintKimTropopauseOutputs(root, { tmfc, entries }) {
 }
 
 export function readKimTropopauseUpper({ root, tmfc, hf, revision }) {
-  const upper = readJson(resolveKimTropopauseUpperPath({ root, tmfc, hf, revision }))
+  const upper = readKimDocument(resolveKimTropopauseUpperPath({ root, tmfc, hf, revision }))
   if (upper.tmfc !== tmfc || upper.hf !== Number(hf) || upper.revision !== revision) throw new Error('Corrupt tropopause upper levels')
   return upper
 }
@@ -354,7 +365,7 @@ export function readKimTropopauseField({ root, tmfc, hf, revision }) {
   const latest = readKimTropopauseLatest(root)
   const selectedRevision = revision || (latest?.tmfc === tmfc ? latest.entries?.find(entry => entry.hf === Number(hf))?.revision : null)
   if (!selectedRevision) throw new Error('Tropopause revision unavailable for requested run')
-  const field = readJson(resolveKimTropopauseFieldPath({ root, tmfc, hf, revision: selectedRevision }))
+  const field = readKimDocument(resolveKimTropopauseFieldPath({ root, tmfc, hf, revision: selectedRevision }))
   if (field.time?.tmfc !== tmfc || field.time?.hf !== Number(hf) || field.revision !== selectedRevision
     || !validTropopauseShape(field) || field.content_hash !== tropopauseContentHash(field)) throw new Error('Corrupt tropopause immutable field')
   return field
@@ -385,9 +396,8 @@ export function listKimTropopauseFields(root) {
     if (!tmfc || !fs.existsSync(dir)) continue
     for (const hour of fs.readdirSync(dir).filter(name => /^hf\d{3}$/.test(name))) {
       const hf = Number(hour.slice(2))
-      for (const file of fs.readdirSync(path.join(dir, hour)).filter(name => /^[a-f0-9]{20,64}\.json$/.test(name))) {
-        out.push({ tmfc, hf, validTime: addHoursIso(tmfc, hf), revision: file.slice(0, -5) })
-      }
+      const revisions = new Set(fs.readdirSync(path.join(dir, hour)).map(name => name.match(/^([a-f0-9]{20,64})\.(?:json|nc)$/)?.[1]).filter(Boolean))
+      for (const revision of revisions) out.push({ tmfc, hf, validTime: addHoursIso(tmfc, hf), revision })
     }
   }
   return out.sort((a, b) => a.validTime.localeCompare(b.validTime) || a.revision.localeCompare(b.revision))

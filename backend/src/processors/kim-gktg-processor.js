@@ -10,7 +10,9 @@ import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { collectionResult } from '../collector-execution.js'
 import { selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours, decodeComponent, buildKimGktgFieldFromGrid } from './kim-nwp-model.js'
-import { readKimNwpLatest, readKimNwpGrid, readKimGktgField, readKimGktgLatest, resolveKimNwpRunDir, resolveKimGktgFieldPath, writeKimGktgField, writeKimGktgAttempt, publishKimGktgRun, fingerprintKimNwpBase, fingerprintKimGktgOutputs } from './kim-nwp-store.js'
+import { kimRawTextExists, readKimRawText, writeKimRawText } from './kim-doc-store.js'
+import { appendKimRunEvent } from './kim-run-events.js'
+import { cleanupKimNwpRuns, readKimNwpLatest, readKimNwpGrid, readKimGktgField, readKimGktgLatest, resolveKimNwpRunDir, resolveKimGktgFieldPath, writeKimGktgField, writeKimGktgAttempt, publishKimGktgRun, fingerprintKimNwpBase, fingerprintKimGktgOutputs } from './kim-nwp-store.js'
 
 const engineDir = fileURLToPath(new URL('../../python/kim_turbulence/', import.meta.url))
 const pressures = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
@@ -46,13 +48,13 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
   // Terrain is static within a run and shared by all thirteen hours.
   const directory = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'raw', 'gktg')
   const sharedTerrain = name === 'topo' ? path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'raw', 'hf000', '10m', 'topo.txt') : null
-  if (sharedTerrain && fs.existsSync(sharedTerrain)) return validateGktgSupplement(fs.readFileSync(sharedTerrain, 'utf8'), { name, level, tmfc, hf: 0, grid })
-  const cachedTerrain = name === 'topo' && fs.existsSync(directory) ? fs.readdirSync(directory).find(file => /^hf\d+-topo-0\.txt$/.test(file)) : null
+  if (sharedTerrain && kimRawTextExists(sharedTerrain)) return validateGktgSupplement(readKimRawText(sharedTerrain), { name, level, tmfc, hf: 0, grid })
+  const cachedTerrain = name === 'topo' && fs.existsSync(directory) ? fs.readdirSync(directory).find(file => /^hf\d+-topo-0\.txt(?:\.gz)?$/.test(file)) : null
   const requestedHf = cachedTerrain ? Number(cachedTerrain.match(/^hf(\d+)/)[1]) : name === 'topo' ? 0 : hf
   const file = path.join(directory, `hf${requestedHf}-${name}-${level}.txt`)
-  let text
-  if (fs.existsSync(file)) text = fs.readFileSync(file, 'utf8')
-  else {
+  const cached = readKimRawText(file)
+  let text = cached
+  if (cached === null) {
     const credential = selectKimRunCredential({
       tmfc,
       kimCredential: config.api.kim_nwp_auth_key,
@@ -63,11 +65,7 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
     text = await fetchGrid({ data: level ? 'P' : 'U', name, level, tmfc, hf: requestedHf, sub: config.kim_surface_wind.sub, credential, signal })
   }
   const values = validateGktgSupplement(text, { name, level, tmfc, hf: requestedHf, grid })
-  if (!fs.existsSync(file)) {
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(`${file}.tmp`, text)
-    fs.renameSync(`${file}.tmp`, file)
-  }
+  if (cached === null) writeKimRawText(file, text)
   return values
 }
 
@@ -105,7 +103,9 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
       collection: collectionResult('complete', { fields: previous.entries.length, expectedFields: forecastHours.length * pressures.length }) }
   }
   writeKimGktgAttempt(root, tmfc, { tmfc, started_at: new Date().toISOString(), outcome: 'running', expectedHours: forecastHours })
+  const runDir = resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc })
   for (const hf of forecastHours) {
+    const hourStarted = Date.now()
     // 시각마다 한 번 이벤트 루프에 양보해 계산 중에도 API 요청을 처리한다.
     await nextTurn()
     if (signal?.aborted) {
@@ -148,12 +148,14 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
       }
       for (const level of pressures) entries.push({ levelId: level.id, hf, validTime: cube.validTime, variables: ['gktg'], hashes: { gktg: revision }, revision, inputRevision, grid,
         path: path.relative(root, resolveKimGktgFieldPath({ root, tmfc, hf, levelId: level.id, revision })) })
+      appendKimRunEvent(runDir, { type: 'gktg_hour', hf, computed: !exists, ms: Date.now() - hourStarted, revision })
     } catch (error) {
       if (signal?.aborted) {
         writeKimGktgAttempt(root, tmfc, { tmfc, outcome: 'cancelled', expectedHours: forecastHours, fields: entries.length, completed_at: new Date().toISOString() })
         signal.throwIfAborted()
       }
       failures.push({ hf, reason: error.code || error.message })
+      appendKimRunEvent(runDir, { type: 'gktg_hour_failed', hf, ms: Date.now() - hourStarted, reason: String(error.code || error.message).slice(0, 300) })
     } finally { if (stage) fs.rmSync(stage, { recursive: true, force: true }) }
   }
   // A base collector may update inputs while Python runs. Keep the previous
@@ -171,7 +173,12 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
   }
   const complete = failures.length === 0
   let published = null
-  if (complete) published = publishKimGktgRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: GKTG_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() })
+  if (complete) {
+    published = publishKimGktgRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: GKTG_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() })
+    // 이전 회차를 붙잡고 있던 파생 게시가 넘어왔으니 여기서도 정리한다(기본 게시 때는 아직 이전 회차를 가리킨다).
+    cleanupKimNwpRuns({ root, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId: readKimNwpLatest(root)?.latestRunId, onlyComplete: true, reason: 'gktg_published' })
+  }
+  appendKimRunEvent(runDir, { type: complete ? 'gktg_published' : 'gktg_partial', revision: published?.revision || null, fields: entries.length, failures: failures.length })
   writeKimGktgAttempt(root, tmfc, { tmfc, outcome: complete ? 'complete' : 'partial', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() })
   return { type: 'kim_gktg', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete,
     collection: collectionResult(complete ? 'complete' : 'partial', { fields: entries.length, expectedFields: forecastHours.length * pressures.length }, complete ? {} : { reason: 'kim_gktg_incomplete' }) }

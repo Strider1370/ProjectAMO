@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto'
-import fs from 'node:fs'
 import path from 'node:path'
 
 import config from '../config.js'
@@ -8,6 +7,7 @@ import { fetchKimGrid } from '../api-client.js'
 import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { decodeComponent, KIM_AIRPORT_SURFACE_REQUESTS, KIM_NWP_LEVELS, KIM_NWP_MODEL } from '../processors/kim-nwp-model.js'
 import { readKimNwpGridSafe, resolveKimNwpRunDir } from '../processors/kim-nwp-store.js'
+import { readKimRawText, writeKimRawText } from '../processors/kim-doc-store.js'
 import { estimateCeiling, selectForecastWindow, WEATHER_FIELDS } from './model.js'
 import { cleanupComparisonRuns, publishAirportWindow, readAirportComparison, writeCollectionAttempt } from './store.js'
 
@@ -42,12 +42,11 @@ export function createKimComparisonHourLoader({ root, credential, signal, fetchG
   let topoCache = null
   const readOrFetch = async ({ tmfc, hf, levelId, request }) => {
     const file = rawPath({ root, tmfc, hf, levelId, name: request.name })
-    let text
-    try { text = fs.readFileSync(file, 'utf8') } catch (error) { if (error.code !== 'ENOENT') throw error }
+    let text = readKimRawText(file)
     if (!text) {
       signal?.throwIfAborted()
       text = await fetchGrid({ data: request.data, name: request.name, level: request.level, tmfc, hf, sub: config.kim_surface_wind.sub, map: 'S', disp: 'A', credential, signal })
-      if (config.kim_nwp.keep_raw !== false) { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text, 'utf8') }
+      if (config.kim_nwp.keep_raw !== false) writeKimRawText(file, text)
     }
     return { ...decodeKimMissingValues(parseKimGridText(text, { variable: request.name, level: request.level, bounds })), precision_source: 'raw' }
   }
@@ -70,7 +69,7 @@ export function createKimComparisonHourLoader({ root, credential, signal, fetchG
       for (const [output, variable] of [['hgt','hgt'],['cld','cld'],['tqc','tqc'],['tqi','tqi']]) {
         const file = rawPath({ root, tmfc, hf, levelId: level.id, name: variable })
         let raw = null
-        try { raw = decodeKimMissingValues(parseKimGridText(fs.readFileSync(file, 'utf8'), { variable, level: level.level, bounds })) } catch {}
+        try { raw = decodeKimMissingValues(parseKimGridText(readKimRawText(file), { variable, level: level.level, bounds })) } catch {}
         const normalized = componentFromStored(stored, variable)
         layer[output] = raw ? { ...raw, precision_source: 'raw' } : normalized ? { ...normalized, precision_source: 'normalized_scaled' } : await readOrFetch({ tmfc, hf, levelId: level.id, request: { data: 'P', name: variable, level: level.level, unit: variable === 'hgt' ? 'm' : variable === 'cld' ? '1' : 'kg/kg' } })
       }

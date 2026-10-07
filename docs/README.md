@@ -5,6 +5,7 @@
 - [Evaluation](evaluation/): reusable evaluation material.
 - [Research](research/): investigations and evidence.
 - 내 지도: [UI/UX 명세](design/proposals/2026-09-19-flight-map-ux-design.md) · [HTML 시안과 사용법](design/mockups/2026-09-19-flight-map.README.md) · [구현 계획](design/proposals/2026-09-19-flight-map-implementation-plan.md).
+- KIM 확대 영역: [검토·결정](operations/kim-grid-scaling.md) · [구현 계획](design/proposals/2026-10-08-kim-expanded-grid-implementation-plan.md) — 대용량 키, NC 저장, 블록 계산, 프론트 전송, 관리 규칙.
 - [Repository-wide refactoring](refactoring/README.md): active plan, audit coverage, work queue, and cross-session progress.
 - [Development history](archive/development/): preserved design decisions, implementation plans, and status records.
 - [Archive](archive/): historical drafts and handoffs; not a current implementation source.

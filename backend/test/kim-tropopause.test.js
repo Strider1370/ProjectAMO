@@ -124,7 +124,7 @@ test('an unchanged published run is skipped without rereading; a rewritten input
   assert.equal((await run()).unchanged, true)
   // 게시된 결과가 사라지면 건너뛰지 않고 다시 계산한다.
   const { revision } = readKimTropopauseLatest(root).entries[0]
-  fs.rmSync(path.join(root, `kim_nwp/runs/KIMG_NE57_${TMFC}/derived/tropopause/hf000/${revision}.json`))
+  for (const extension of ['json', 'nc']) fs.rmSync(path.join(root, `kim_nwp/runs/KIMG_NE57_${TMFC}/derived/tropopause/hf000/${revision}.${extension}`), { force: true })
   assert.equal((await run()).collection.outcome, 'complete')
   assert.equal(calculations, 2)
 })
