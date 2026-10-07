@@ -10,6 +10,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { kimDocumentExists, readKimDocument } from '../../backend/src/processors/kim-doc-store.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const KIM_DIR = path.join(ROOT, 'backend/data/kim_nwp')
@@ -136,8 +137,9 @@ function readProfile({ lat, lon, hf }) {
 
   for (const levelDir of levelDirs) {
     const file = path.join(hfDir, levelDir, 'grid.json')
-    if (!fs.existsSync(file)) continue
-    const g = JSON.parse(fs.readFileSync(file, 'utf8'))
+    // 격자는 JSON 또는 NC로 저장된다(backend/src/processors/kim-doc-store.js).
+    if (!kimDocumentExists(file)) continue
+    const g = readKimDocument(file)
     if (!point) point = gridIndex(g.grid, lat, lon)
     if (!meta) meta = { tmfc: g.tmfc, hf: g.hf, validTime: g.validTime, model: g.model, runId: path.basename(runDir) }
 

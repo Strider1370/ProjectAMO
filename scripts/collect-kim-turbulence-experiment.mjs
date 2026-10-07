@@ -8,6 +8,7 @@ import config from '../backend/src/config.js'
 import { fetchKimGrid } from '../backend/src/api-client.js'
 import { parseKimGridText } from '../backend/src/parsers/kim-grid-parser.js'
 import { readKimNwpGrid } from '../backend/src/processors/kim-nwp-store.js'
+import { readKimRawText } from '../backend/src/processors/kim-doc-store.js'
 import { KIM_NWP_LEVELS } from '../backend/src/processors/kim-nwp-model.js'
 import { publishExperiment } from '../backend/src/turbulence/experiment-store.js'
 
@@ -51,9 +52,9 @@ function decode(variable, name, size) {
 
 async function supplemental(name, level, hf, grid) {
   const file = path.join(cache, `hf${hf}-${name}-${level}.txt`)
-  let text
-  if (fs.existsSync(file)) text = fs.readFileSync(file, 'utf8')
-  else {
+  // 운영 저장소는 원문 캐시를 .txt 또는 .txt.gz로 둔다(kim-doc-store.js). 둘 다 없을 때만 API를 부른다.
+  let text = readKimRawText(file)
+  if (text === null) {
     console.log(`KIM radar/satellite key: ${args.tmfc} +${hf} ${name} ${level}`)
     text = await fetchKimGrid({ data: level ? 'P' : 'U', name, level, tmfc: args.tmfc, hf,
       sub: '1429,1441,1633,1609', credential })
