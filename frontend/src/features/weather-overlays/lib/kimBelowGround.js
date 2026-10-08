@@ -16,7 +16,10 @@ export function decodeKimBelowGround(field) {
 }
 
 // 지면 아래 칸의 색. 난류 칸처럼 같은 이미지의 격자 칸을 단색으로 칠한다.
-const BELOW_GROUND_RGBA = Object.freeze([128, 134, 144, 120])
+// 지형을 뜻하는 탁한 황갈색(2026-10-09). 회색은 구름층(T−Td) 회색 단계와 구분되지 않았다.
+// 착빙·풍속(파랑), 난류(초록·노랑·빨강), 구름(무채색)과 겹치지 않는다.
+const BELOW_GROUND_RGBA = Object.freeze([150, 125, 95, 140])
+export const KIM_BELOW_GROUND_COLOR = 'rgba(150, 125, 95, 0.55)'
 export function belowGroundCellRgba() {
   return BELOW_GROUND_RGBA
 }

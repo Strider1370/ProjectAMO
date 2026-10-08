@@ -4,7 +4,7 @@ import { createIcingPotentialSampler, pickIcingColor } from './icingPotentialFie
 import { createTemperatureFieldSampler, pickTemperatureColor } from './temperatureField.js'
 import { createWindFieldSampler, pickWindSpeedColor } from './windField.js'
 import { KTG_COLOR_RAMP, pickKtgRgba } from './ktgTurbulenceField.js'
-import { decodeKimBelowGround, KIM_BELOW_GROUND_LABEL } from './kimBelowGround.js'
+import { decodeKimBelowGround, KIM_BELOW_GROUND_COLOR, KIM_BELOW_GROUND_LABEL } from './kimBelowGround.js'
 
 const MS_TO_KT = 1.943844
 
@@ -148,7 +148,7 @@ function buildTurbulenceRow(field, sampler, metadata) {
   const value = sampler.sample(metadata.lon, metadata.lat)
   if (sampler.isBelowGround?.(metadata.lon, metadata.lat)) {
     return { key: 'turbulence', label: '난류', value: KIM_BELOW_GROUND_LABEL, detail: '지상기압보다 높은 기압면', altitude: formatAltitude(field),
-      geopotentialHeight: null, color: 'rgba(120, 128, 140, 0.6)', ...metadata.time }
+      geopotentialHeight: null, color: KIM_BELOW_GROUND_COLOR, ...metadata.time }
   }
   if (!Number.isFinite(value)) return null
   const band = field.product === 'GKTG' ? gktgBand(value) : null
@@ -189,7 +189,7 @@ function belowGroundAt(field, lon, lat) {
 
 function belowGroundRow(key, label, field, metadata) {
   return { key, label, value: KIM_BELOW_GROUND_LABEL, detail: '지상기압보다 높은 기압면', altitude: formatAltitude(field),
-    geopotentialHeight: null, color: 'rgba(120, 128, 140, 0.6)', ...metadata.time }
+    geopotentialHeight: null, color: KIM_BELOW_GROUND_COLOR, ...metadata.time }
 }
 
 export function buildWeatherPointRows({

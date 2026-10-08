@@ -92,7 +92,7 @@ function buildWindSpeedImage(windField) {
   if (!ctx) return null
 
   const imageData = ctx.createImageData?.(grid.nx, sourceRows.length)
-  // 지면 아래 칸은 회색으로 칠한다(다른 KIM 레이어와 같다).
+  // 지면 아래 칸은 지형색으로 칠한다(다른 KIM 레이어와 같다).
   const belowGround = decodeKimBelowGround(windField)
   if (imageData?.data) {
     for (let y = 0; y < sourceRows.length; y += 1) {

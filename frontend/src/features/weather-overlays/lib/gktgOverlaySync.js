@@ -23,7 +23,7 @@ function buildGktgImage(field) {
     const sourceY = sourceRows[y]
     for (let x = 0; x < grid.nx; x += 1) {
       const sourceIndex = sourceY * grid.nx + x
-      // 지면 아래 칸은 난류 칸처럼 같은 이미지에 회색으로 칠한다.
+      // 지면 아래 칸은 난류 칸처럼 같은 이미지에 지형색으로 칠한다(kimBelowGround.js).
       const rgba = belowGround?.[sourceIndex] ? belowGroundCellRgba() : gktgBand(field.gktg[sourceIndex])?.rgba || [0, 0, 0, 0]
       const targetIndex = (y * grid.nx + x) * 4
       imageData.data[targetIndex] = rgba[0]
