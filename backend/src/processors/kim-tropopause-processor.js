@@ -118,7 +118,8 @@ async function calculatePython(job, stage, { signal, python }) {
   const timeoutSignal = AbortSignal.timeout(config.kim_tropopause.calculation_timeout_ms)
   const calculationSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
   await new Promise((resolve, reject) => {
-    const child = spawn(python, [path.join(engineDir, 'calculate.py'), input, stage], { signal: calculationSignal, stdio: ['ignore', 'ignore', 'pipe'] })
+    // 열적 권계면 판정은 Numba로 컴파일한다. 컴파일 결과는 GKTG와 같은 캐시 폴더에 둔다(배포 폴더는 쓰지 않는다).
+    const child = spawn(python, [path.join(engineDir, 'calculate.py'), input, stage], { signal: calculationSignal, env: { ...process.env, NUMBA_CACHE_DIR: config.kim_gktg.cache_path }, stdio: ['ignore', 'ignore', 'pipe'] })
     let error = ''
     child.stderr.on('data', chunk => { error = (error + chunk).slice(-4000) })
     child.on('error', reject)
