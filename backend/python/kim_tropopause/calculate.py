@@ -1,8 +1,9 @@
 """One forecast hour: KIM thermal tropopause and jet stream.
 
-Input JSON: {grid, hf, validTime, pressures (hPa, descending), windPressures (hPa, descending),
-fields: {T (K), hgt (m)} per pressure, {u, v (m/s)} per wind pressure; each level a flat ny*nx list}.
-Output JSON: grids trop (hPa), tropT (degC), vmax (kt), pmax (hPa) as flat lists with null for
+Input: job.json {grid, hf, validTime, pressures (hPa, descending), windPressures (hPa, descending), cube} and the
+float64 file cube.f8 written by Node: T (K) and hgt (m) for every pressure, then u and v (m/s) for every wind pressure,
+each level ny*nx. Node sends winds only for 500-150 hPa, the layer the jet search uses.
+Output JSON (result.json): grids trop (hPa), tropT (degC), vmax (kt), pmax (hPa) as flat lists with null for
 missing values, tropAboveTop (1 where the tropopause is above the model top), jet axis features and checks.
 """
 import argparse
@@ -18,7 +19,7 @@ ALGORITHM = "kim-tropopause-jet-v1"
 def _cube(values, levels, shape, name, lo, hi):
     if len(values) != levels:
         raise ValueError(f"{name}: expected {levels} levels")
-    a = np.array(values, dtype=float)
+    a = np.asarray(values, dtype=float)
     if a.shape != (levels, shape[0] * shape[1]):
         raise ValueError(f"{name}: grid size mismatch")
     if not np.all(np.isfinite(a)) or np.any((a < lo) | (a > hi)):
@@ -67,12 +68,27 @@ def calculate(cube):
     }
 
 
+def load(job_path):
+    """job.json + cube.f8 -> the cube dict calculate() takes (arrays are views of one read, no copies)."""
+    job = json.loads(job_path.read_text())
+    size = int(job["grid"]["ny"]) * int(job["grid"]["nx"])
+    counts = {"T": len(job["pressures"]), "hgt": len(job["pressures"]), "u": len(job["windPressures"]), "v": len(job["windPressures"])}
+    data = np.fromfile(job_path.parent / job["cube"], dtype="<f8")
+    if data.size != sum(counts.values()) * size:
+        raise ValueError("Unexpected tropopause input size")
+    fields, start = {}, 0
+    for name, levels in counts.items():
+        fields[name] = data[start:start + levels * size].reshape(levels, size)
+        start += levels * size
+    return {**job, "fields": fields}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", type=Path)
+    parser.add_argument("job", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
-    result = calculate(json.loads(args.input.read_text()))
+    result = calculate(load(args.job))
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "result.json").write_text(json.dumps(result, allow_nan=False))
 

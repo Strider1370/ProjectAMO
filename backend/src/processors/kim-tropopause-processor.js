@@ -10,8 +10,8 @@ import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { collectionResult } from '../collector-execution.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours } from './kim-nwp-model.js'
-import { decodeGktgInput, supplementBoundsMatch } from './kim-gktg-processor.js'
-import { cleanupKimNwpRuns, readKimNwpLatest, readKimNwpGrid, readKimTropopauseField, readKimTropopauseUpper, readKimTropopauseLatest, resolveKimNwpRunDir, writeKimTropopauseField, writeKimTropopauseUpper, writeKimTropopauseAttempt, publishKimTropopauseRun, fingerprintKimNwpBase, fingerprintKimTropopauseOutputs } from './kim-nwp-store.js'
+import { decodeGktgInputArray, supplementBoundsMatch } from './kim-gktg-processor.js'
+import { cleanupKimNwpRuns, readKimNwpLatest, readKimNwpGridVariables, readKimTropopauseField, readKimTropopauseUpper, readKimTropopauseLatest, resolveKimNwpRunDir, writeKimTropopauseField, writeKimTropopauseUpper, writeKimTropopauseAttempt, publishKimTropopauseRun, fingerprintKimNwpBase, fingerprintKimTropopauseOutputs } from './kim-nwp-store.js'
 import { readKimRawText, writeKimRawText } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import { KIM_DEFAULT_DOMAIN, kimDomain, kimDomainRequest } from './kim-domain.js'
@@ -29,7 +29,8 @@ const sha = value => crypto.createHash('sha256').update(value).digest('hex').sli
 const engineRevision = () => sha(['calculate.py', 'thermal.py', 'jet.py'].map(name => fs.readFileSync(path.join(engineDir, name)))
   .reduce((result, value) => Buffer.concat([result, value]), Buffer.from('kim-tropopause-field-v1\n')))
 const sameGrid = (a, b) => ['nx', 'ny', 'lonMin', 'lonMax', 'latMin', 'latMax'].every(key => a[key] === b[key])
-const baseRevision = layers => sha(JSON.stringify(layers.map(l => [l.tmfc, l.hf, l.validTime, l.level, l.grid, l.variables.T, l.variables.hgt, l.variables.u, l.variables.v])))
+// 제트 탐색(jet.py SEARCH_BOTTOM_HPA~SEARCH_TOP_HPA)이 쓰는 바람 층. Python에는 이 층의 u·v만 넘긴다.
+const windLevels = pressures.filter(level => level.value <= 500 && level.value >= 150)
 const RANGES = { T: [150, 340, ['K']], hgt: [5000, 30000, ['m', 'gpm']], u: [-150, 150, ['m/s']], v: [-150, 150, ['m/s']] }
 
 export function validateTropopauseSupplement(text, { name, level, tmfc, hf, grid }) {
@@ -65,9 +66,55 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
   return values
 }
 
-async function calculatePython(cube, stage, { signal, python }) {
-  const input = path.join(stage, 'input.json')
-  fs.writeFileSync(input, JSON.stringify(cube))
+// 한 예보시각 계산 입력을 stage에 쓴다: job.json + cube.f8(float64; T·hgt 21층+100·70 hPa, u·v 500~150 hPa).
+// 권계면 계산은 float64로 하므로 값을 decode 결과 그대로 넘긴다. 기본 격자는 한 층씩, 필요한 변수만 읽는다.
+// 100·70 hPa u·v는 계산 입력이 아니지만 단면용 상층 결과로 함께 게시하므로 inputRevision에 넣는다.
+async function writeTropopauseInput({ root, tmfc, hf, stage, signal, fetchGrid, domain }) {
+  const validTime = addForecastHours(tmfc, hf)
+  const levels = pressures.length + TROPOPAUSE_SUPPLEMENT_LEVELS.length
+  const offsets = { T: 0, hgt: levels, u: 2 * levels, v: 2 * levels + windLevels.length }
+  const hash = crypto.createHash('sha256')
+  let grid = null
+  let size = 0
+  let cube = null
+  const write = (name, k, values) => {
+    const array = values instanceof Float64Array ? values : Float64Array.from(values)
+    fs.writeSync(cube, array, 0, array.byteLength, (offsets[name] + k) * size * 8)
+    hash.update(`${name}:${k}\n`)
+    hash.update(new Uint8Array(array.buffer))
+  }
+  const upper = { T: [], hgt: [], u: [], v: [] }
+  try {
+    // 기본 21층을 모두 확보한 시각만 추가 API를 요청한다.
+    for (const [k, level] of pressures.entries()) {
+      const wind = windLevels.indexOf(level)
+      const layer = readKimNwpGridVariables({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, names: wind >= 0 ? ['T', 'hgt', 'u', 'v'] : ['T', 'hgt'], domain })
+      if (!grid) {
+        grid = layer.grid
+        size = grid.nx * grid.ny
+        hash.update(JSON.stringify({ format: 'kim-tropopause-input-v2', grid, hf, validTime, pressures: pressures.map(p => p.value), windPressures: windLevels.map(p => p.value) }))
+        cube = fs.openSync(path.join(stage, 'cube.f8'), 'w')
+        fs.ftruncateSync(cube, (2 * levels + 2 * windLevels.length) * size * 8)
+      }
+      if (layer.tmfc !== tmfc || Number(layer.hf) !== hf || layer.level.id !== level.id || layer.validTime !== validTime || !sameGrid(layer.grid, grid)) throw new Error('Mixed tropopause base grids')
+      for (const name of ['T', 'hgt']) write(name, k, decodeGktgInputArray(layer.variables[name], name, size, Float64Array))
+      if (wind >= 0) for (const name of ['u', 'v']) write(name, wind, decodeGktgInputArray(layer.variables[name], name, size, Float64Array))
+    }
+    for (const [j, level] of TROPOPAUSE_SUPPLEMENT_LEVELS.entries()) for (const name of TROPOPAUSE_SUPPLEMENT_NAMES) {
+      const values = await supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid, domain })
+      upper[name].push(values)
+      if (name === 'T' || name === 'hgt') write(name, pressures.length + j, values)
+      else { hash.update(`upper-${name}:${level}\n`); hash.update(new Uint8Array(Float64Array.from(values).buffer)) }
+    }
+  } finally { if (cube !== null) fs.closeSync(cube) }
+  const job = { grid, hf, validTime, pressures: [...pressures.map(p => p.value), ...TROPOPAUSE_SUPPLEMENT_LEVELS],
+    windPressures: windLevels.map(p => p.value), cube: 'cube.f8' }
+  fs.writeFileSync(path.join(stage, 'job.json'), JSON.stringify(job))
+  return { job, upper, inputRevision: hash.digest('hex').slice(0, 20) }
+}
+
+async function calculatePython(job, stage, { signal, python }) {
+  const input = path.join(stage, 'job.json')
   const timeoutSignal = AbortSignal.timeout(config.kim_tropopause.calculation_timeout_ms)
   const calculationSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
   await new Promise((resolve, reject) => {
@@ -95,7 +142,7 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
   if (!Array.isArray(forecastHours) || !forecastHours.length || forecastHours.some(h => !kimDomain(domain).forecastHours.includes(h))) throw new Error('Invalid tropopause forecast hours')
   const entries = []
   const failures = []
-  const baseRevisions = new Map()
+  const baseFingerprints = new Map()
   const engine = engineRevision()
   const cancelled = () => {
     writeKimTropopauseAttempt(root, tmfc, { tmfc, outcome: 'cancelled', expectedHours: forecastHours, fields: entries.length, completed_at: new Date().toISOString() }, domain)
@@ -119,39 +166,23 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
     if (signal?.aborted) cancelled()
     let stage
     try {
-      // 기본 21층을 모두 확보한 시각만 추가 API를 요청한다.
-      const layers = pressures.map(level => readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, domain }))
-      const grid = layers[0].grid
-      for (let k = 0; k < layers.length; k++) {
-        if (layers[k].tmfc !== tmfc || Number(layers[k].hf) !== hf || layers[k].level.id !== pressures[k].id || layers[k].validTime !== addForecastHours(tmfc, hf) || !sameGrid(layers[k].grid, grid)) throw new Error('Mixed tropopause base grids')
-      }
-      baseRevisions.set(hf, baseRevision(layers))
+      // 계산 중 기본 수집기가 이 시각 입력을 바꾸면 게시하지 않는다. 파일 지문(inode·크기·수정 시각)으로 본다.
+      baseFingerprints.set(hf, fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }))
+      const stages = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'tropopause', '.staging')
+      fs.mkdirSync(stages, { recursive: true })
+      stage = fs.mkdtempSync(path.join(stages, 'hour-'))
+      const { job, upper, inputRevision } = await writeTropopauseInput({ root, tmfc, hf, stage, signal, fetchGrid, domain })
+      const { grid } = job
       const size = grid.nx * grid.ny
-      const base = Object.fromEntries(['u', 'v', 'T', 'hgt'].map(name => [name, layers.map(l => decodeGktgInput(l.variables[name], name, size))]))
-      const upper = { T: [], hgt: [], u: [], v: [] }
-      for (const level of TROPOPAUSE_SUPPLEMENT_LEVELS) for (const name of TROPOPAUSE_SUPPLEMENT_NAMES) {
-        upper[name].push(await supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid, domain }))
-      }
-      const cube = {
-        grid, hf, validTime: addForecastHours(tmfc, hf),
-        pressures: [...pressures.map(p => p.value), ...TROPOPAUSE_SUPPLEMENT_LEVELS],
-        windPressures: pressures.map(p => p.value),
-        fields: { T: [...base.T, ...upper.T], hgt: [...base.hgt, ...upper.hgt], u: base.u, v: base.v },
-      }
-      // 상층 바람은 계산 입력이 아니지만 같은 결과로 함께 게시하므로 revision에 포함한다.
-      const inputRevision = sha(JSON.stringify([cube, upper.u, upper.v]))
       const revision = sha(`${engine}:${inputRevision}`)
       let exists = true
       try { readKimTropopauseField({ root, tmfc, hf, revision, domain }); readKimTropopauseUpper({ root, tmfc, hf, revision, domain }) } catch { exists = false }
       if (!exists) {
-        const stages = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'tropopause', '.staging')
-        fs.mkdirSync(stages, { recursive: true })
-        stage = fs.mkdtempSync(path.join(stages, 'hour-'))
-        const result = await calculate(cube, stage, { python, signal })
+        const result = await calculate(job, stage, { python, signal })
         validateResult(result, size)
         writeKimTropopauseField(root, {
           type: 'kim_nwp_tropopause', product: 'TROP_JET', model: KIM_NWP_MODEL, grid,
-          time: { tmfc, hf, validTime: cube.validTime }, encoding: 'float-json-v1',
+          time: { tmfc, hf, validTime: job.validTime }, encoding: 'float-json-v1',
           units: { trop: 'hPa', tropT: '°C', vmax: 'kt', pmax: 'hPa' },
           trop: result.trop, tropT: result.tropT, tropAboveTop: result.tropAboveTop, vmax: result.vmax, pmax: result.pmax,
           jets: result.jets, checks: result.checks, revision, inputRevision, algorithm: TROPOPAUSE_ALGORITHM, engineRevision: engine,
@@ -160,7 +191,7 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
       // 단면용 상층(100·70 hPa) 원 격자. 지도 결과와 분리해 지도 요청 크기를 늘리지 않는다.
       writeKimTropopauseUpper(root, { tmfc, hf, revision, grid, levels: TROPOPAUSE_SUPPLEMENT_LEVELS.map((pressure, k) => ({
         pressure, hgt: upper.hgt[k], T: upper.T[k], u: upper.u[k], v: upper.v[k] })) }, domain)
-      entries.push({ hf, validTime: cube.validTime, revision, inputRevision })
+      entries.push({ hf, validTime: job.validTime, revision, inputRevision })
       appendKimRunEvent(runDir, { type: 'tropopause_hour', hf, computed: !exists, ms: Date.now() - hourStarted, revision })
     } catch (error) {
       if (signal?.aborted) cancelled()
@@ -169,12 +200,11 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
     } finally { if (stage) fs.rmSync(stage, { recursive: true, force: true }) }
   }
   // 계산 중 기본 수집기가 입력을 바꿨으면 그 시각은 게시하지 않는다.
-  for (const [hf, captured] of baseRevisions) {
+  for (const [hf, captured] of baseFingerprints) {
     if (failures.some(failure => failure.hf === hf)) continue
     await nextTurn()
     try {
-      const current = pressures.map(level => readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, domain }))
-      if (baseRevision(current) !== captured) throw new Error('kim_tropopause_base_changed')
+      if (!captured || fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }) !== captured) throw new Error('kim_tropopause_base_changed')
     } catch (error) {
       failures.push({ hf, reason: error.code || error.message })
       for (let i = entries.length - 1; i >= 0; i--) if (entries[i].hf === hf) entries.splice(i, 1)

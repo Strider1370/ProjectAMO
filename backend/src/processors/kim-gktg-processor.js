@@ -34,9 +34,9 @@ export function decodeGktgInput(variable, name, size) {
   return values
 }
 
-// decodeGktgInput과 같은 검사·같은 값을 float32로 바로 만든다. 저장된 int16 배열(TypedArray)이나 일반 배열을 받는다.
-// 일반 배열로 펼치지 않아 층 문서 하나를 읽는 메모리·시간이 준다. float32 반올림은 Float32Array.from(decode 결과)와 같다.
-export function decodeGktgInputFloat32(variable, name, size) {
+// decodeGktgInput과 같은 검사·같은 값을 TypedArray(GKTG float32, 권계면 float64)로 바로 만든다. 저장된 int16 배열(TypedArray)이나
+// 일반 배열을 받는다. 일반 배열로 펼치지 않아 층 문서 하나를 읽는 메모리·시간이 준다. 값은 decodeGktgInput 결과를 Typed에 담은 것과 같다.
+export function decodeGktgInputArray(variable, name, size, Typed = Float32Array) {
   const units = { u: ['m/s'], v: ['m/s'], w: ['m/s'], T: ['K'], hgt: ['m', 'gpm'], q: ['kg/kg', 'kg kg-1', '1'] }
   const values = variable?.values
   if (!variable || !units[name]?.includes(variable.unit?.replace(/,$/, '')) || values?.length !== size) throw new Error(`Invalid GKTG input ${name}`)
@@ -44,7 +44,7 @@ export function decodeGktgInputFloat32(variable, name, size) {
   const scale = variable.scale ?? 1
   const offset = variable.offset ?? 0
   if (packed && (!Number.isFinite(variable.scale) || variable.scale <= 0)) throw new Error(`Invalid/saturated GKTG input ${name}`)
-  const out = new Float32Array(size)
+  const out = new Typed(size)
   for (let i = 0; i < size; i++) {
     const value = values[i]
     if (packed && Math.abs(value) === 32767) throw new Error(`Invalid/saturated GKTG input ${name}`)
@@ -132,7 +132,7 @@ async function writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain
       if (layer.tmfc !== tmfc || Number(layer.hf) !== hf || layer.level.id !== pressures[k].id || layer.validTime !== validTime || !sameGrid(layer.grid, grid)) throw new Error('Mixed GKTG base grids')
       for (const [f, name] of CUBE_FIELDS.entries()) {
         if (name === 'w' && !layer.variables.w) { missingW.push(k); continue }
-        write(cube, f * nz + k, decodeGktgInputFloat32(layer.variables[name], name, size), `${name}:${k}`)
+        write(cube, f * nz + k, decodeGktgInputArray(layer.variables[name], name, size), `${name}:${k}`)
       }
     }
     for (const k of missingW) {

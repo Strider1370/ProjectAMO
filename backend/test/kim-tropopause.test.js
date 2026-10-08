@@ -88,7 +88,8 @@ test('processor fetches only 100/70 hPa T, hgt, u and v with the run key, caches
   assert.deepEqual(requests.map(r => `${r.name}@${r.level}`).sort(), ['T@100', 'T@70', 'hgt@100', 'hgt@70', 'u@100', 'u@70', 'v@100', 'v@70'])
   assert.ok(requests.every(r => r.credential === 'kim-key' && r.data === 'P')) // 00 UTC run → KIM key
   assert.deepEqual(cube.pressures.slice(-3), [150, 100, 70])
-  assert.equal(cube.windPressures.length, 21)
+  // 바람은 제트 탐색 층(500~150 hPa)만 넘긴다.
+  assert.deepEqual(cube.windPressures, [500, 450, 400, 350, 300, 250, 200, 150])
   assert.equal(readKimTropopauseIndex(root).times.length, 1)
   // Cached raw supplements and the immutable result are reused without new requests.
   await run()
@@ -184,8 +185,11 @@ test('Python calculator finds the ISA tropopause and a synthetic jet', { skip: !
     T: full.map(p => Array(size).fill(isa(p).t)), hgt: full.map(p => Array(size).fill(isa(p).h)),
     u: pressures.map(p => Array.from({ length: size }, (_, i) => 10 + jetSpeed(p.value, Math.floor(i / nx)))), v: pressures.map(() => Array(size).fill(0)),
   }
-  fs.writeFileSync(path.join(dir, 'input.json'), JSON.stringify({ grid, hf: 0, pressures: full, windPressures: pressures.map(p => p.value), fields }))
-  const run = spawnSync(python, [path.join(import.meta.dirname, '../python/kim_tropopause/calculate.py'), path.join(dir, 'input.json'), dir], { encoding: 'utf8' })
+  // Node가 쓰는 입력과 같은 모양: job.json + cube.f8(T·hgt 전 기압면, u·v 바람 기압면 순서의 float64).
+  const cube = Float64Array.from(['T', 'hgt', 'u', 'v'].flatMap(name => fields[name].flat()))
+  fs.writeFileSync(path.join(dir, 'cube.f8'), Buffer.from(cube.buffer))
+  fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify({ grid, hf: 0, pressures: full, windPressures: pressures.map(p => p.value), cube: 'cube.f8' }))
+  const run = spawnSync(python, [path.join(import.meta.dirname, '../python/kim_tropopause/calculate.py'), path.join(dir, 'job.json'), dir], { encoding: 'utf8' })
   assert.equal(run.status, 0, run.stderr)
   const result = JSON.parse(fs.readFileSync(path.join(dir, 'result.json'), 'utf8'))
   assert.equal(result.algorithm, TROPOPAUSE_ALGORITHM)
