@@ -29,6 +29,7 @@ export function runKimDerivedWorker(kind, { jobGate = kimDerivedJobGate, ...opti
 }
 
 function runOnce(kind, {
+  jobOptions = {},
   gate = heavyChildGate,
   waitForMemory = waitForMemoryReserve,
   signal,
@@ -156,7 +157,7 @@ function runOnce(kind, {
     child.once('exit', onExit)
     signal?.addEventListener('abort', onAbort, { once: true })
     armTimeout()
-    sendToChild({ type: 'job', kind })
+    sendToChild({ type: 'job', kind, ...(Object.keys(jobOptions).length ? { options: jobOptions } : {}) })
   })
 }
 

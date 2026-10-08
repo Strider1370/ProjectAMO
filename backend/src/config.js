@@ -302,9 +302,19 @@ export const kim_surface_wind = {
 
 // KIM 확대 영역(90~160°E, 6~50°N, 841×529). 대용량 키로만 받는다. 영역별 저장 폴더·예보시각은 processors/kim-domain.js.
 // 요청 범위는 KIM 격자 번호(x = 경도×12+1, y = (위도+90)×12+1)다.
+// 수집(kim-expanded-collector.js)은 enabled일 때만 돈다. 회차별 예보시각을 앞쪽부터 받고, 대용량 키가 닫히기 전
+// stop_requests_kst에 새 요청을 멈춘다(키 사용시간 KST 15~24시, config.kim_bulk).
+const expandedHours = (last) => [...Array.from({ length: 25 }, (_, hf) => hf), ...Array.from({ length: (last - 24) / 3 }, (_, i) => 27 + i * 3)]
 export const kim_expanded = {
+  enabled: process.env.KIM_EXPANDED_ENABLED === '1',
   sub: process.env.KIM_EXPANDED_SUB || '1081,1153,1921,1681',
   bounds: { lonMin: 90, latMin: 6, lonMax: 160, latMax: 50, dx: 0.083333, dy: 0.083333 },
+  concurrency: Number(process.env.KIM_EXPANDED_CONCURRENCY || 8),
+  // 00 UTC +0~24h 1시간·+27~36h 3시간(29개), 06 UTC +0~24h 1시간·+27~48h 3시간(33개).
+  cycles: { '00': expandedHours(36), '06': expandedHours(48) },
+  // 부분 회차 게시 기준: 앞에서부터 끊김 없이 이 예보시각까지 받았으면 게시한다(다음 회차 게시 예정 + 1시간).
+  publish_min_hour: { '00': 15, '06': 27 },
+  stop_requests_kst: process.env.KIM_EXPANDED_STOP_KST || '23:50',
 }
 
 // KIM 지상 일기도(등압선·H/L·3시간 강수·지상바람). 기존 KIM 수집과 달리 동아시아 넓은 영역을 받는다.

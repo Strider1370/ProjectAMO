@@ -27,6 +27,27 @@ export function restoreError(payload) {
   return error
 }
 
+// 부모가 정할 수 있는 작업 인자(확대 영역 시각별 계산 등). IPC로 온 값이므로 모양을 확인하고 이것만 넘긴다.
+export function jobOptions(options) {
+  const out = {}
+  if (options == null) return out
+  if (typeof options !== 'object') throw new Error('invalid kim derived worker options')
+  if (options.domain !== undefined) {
+    if (!['kr', 'ea'].includes(options.domain)) throw new Error('invalid kim derived worker domain')
+    out.domain = options.domain
+  }
+  if (options.tmfc !== undefined) {
+    if (!/^\d{10}$/.test(String(options.tmfc))) throw new Error('invalid kim derived worker tmfc')
+    out.tmfc = String(options.tmfc)
+  }
+  if (options.forecastHours !== undefined) {
+    if (!Array.isArray(options.forecastHours) || !options.forecastHours.every(Number.isInteger)) throw new Error('invalid kim derived worker hours')
+    out.forecastHours = [...options.forecastHours]
+  }
+  if (options.publish !== undefined) out.publish = options.publish === true
+  return out
+}
+
 export function createWorkerSide({ send, load = loadProcessor }) {
   const controller = new AbortController()
   const pending = new Map()
@@ -86,11 +107,11 @@ export function createWorkerSide({ send, load = loadProcessor }) {
     }
   }
 
-  async function run(kind) {
+  async function run(kind, options) {
     try {
       if (!KIM_DERIVED_JOBS.includes(kind)) throw new Error('invalid kim derived worker job')
       const processor = await load[kind]()
-      const result = await processor.process({ signal: controller.signal, fetchGrid, turn })
+      const result = await processor.process({ ...jobOptions(options), signal: controller.signal, fetchGrid, turn })
       await send({ type: 'done', ok: true, result })
       return 0
     } catch (error) {
@@ -112,7 +133,7 @@ function runProcessWorker() {
   process.on('SIGTERM', () => worker.abort())
   process.on('message', async (message) => {
     if (message?.type !== 'job') return worker.onMessage(message)
-    const exitCode = await worker.run(message.kind)
+    const exitCode = await worker.run(message.kind, message.options)
     process.disconnect?.()
     process.exit(exitCode)
   })

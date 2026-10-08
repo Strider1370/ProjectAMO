@@ -113,6 +113,14 @@ async function writeTropopauseInput({ root, tmfc, hf, stage, signal, fetchGrid, 
   return { job, upper, inputRevision: hash.digest('hex').slice(0, 20) }
 }
 
+// 한 예보시각의 권계면 추가 입력(100·70 hPa T·hgt·u·v)을 미리 받아 원문 캐시에 둔다(GKTG 미리 받기와 같은 이유).
+export async function prefetchTropopauseSupplements({ root = config.storage.base_path, domain = KIM_DEFAULT_DOMAIN, tmfc, hf, signal, fetchGrid = fetchKimGrid }) {
+  const { grid } = readKimNwpGridVariables({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: pressures[0].id, names: [], domain })
+  for (const level of TROPOPAUSE_SUPPLEMENT_LEVELS) for (const name of TROPOPAUSE_SUPPLEMENT_NAMES) {
+    await supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid, domain })
+  }
+}
+
 async function calculatePython(job, stage, { signal, python }) {
   const input = path.join(stage, 'job.json')
   const timeoutSignal = AbortSignal.timeout(config.kim_tropopause.calculation_timeout_ms)
@@ -138,7 +146,7 @@ function validateResult(result, size) {
 
 export async function process({ root = config.storage.base_path, domain = KIM_DEFAULT_DOMAIN, tmfc = readKimNwpLatest(root, domain)?.latestRun || readKimNwpLatest(root, domain)?.tmfc,
   forecastHours = config.kim_nwp.forecast_hours, signal, fetchGrid = fetchKimGrid, calculate = calculatePython,
-  python = config.kim_tropopause.python, turn = async () => () => {} } = {}) {
+  python = config.kim_tropopause.python, turn = async () => () => {}, publish = true } = {}) {
   if (!/^\d{10}$/.test(String(tmfc || ''))) return { type: 'kim_tropopause', collection: collectionResult('partial', { waiting: true }, { reason: 'kim_tropopause_base_waiting' }) }
   if (!Array.isArray(forecastHours) || !forecastHours.length || forecastHours.some(h => !kimDomain(domain).forecastHours.includes(h))) throw new Error('Invalid tropopause forecast hours')
   const entries = []
@@ -219,12 +227,13 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
   }
   const complete = failures.length === 0
   let published = null
-  if (complete) {
+  // publish=false: 시각별 결과만 계산해 둔다(GKTG와 같다).
+  if (complete && publish) {
     published = publishKimTropopauseRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: TROPOPAUSE_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() }, domain)
     cleanupKimNwpRuns({ root, domain, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId: readKimNwpLatest(root, domain)?.latestRunId, onlyComplete: true, reason: 'tropopause_published' })
   }
-  appendKimRunEvent(runDir, { type: complete ? 'tropopause_published' : 'tropopause_partial', revision: published?.revision || null, fields: entries.length, failures: failures.length })
-  writeKimTropopauseAttempt(root, tmfc, { tmfc, outcome: complete ? 'complete' : 'partial', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() }, domain)
+  appendKimRunEvent(runDir, { type: !complete ? 'tropopause_partial' : publish ? 'tropopause_published' : 'tropopause_computed', hours: forecastHours, revision: published?.revision || null, fields: entries.length, failures: failures.length })
+  writeKimTropopauseAttempt(root, tmfc, { tmfc, outcome: !complete ? 'partial' : publish ? 'complete' : 'computed', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() }, domain)
   return { type: 'kim_tropopause', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete,
     collection: collectionResult(complete ? 'complete' : 'partial', { fields: entries.length, expectedFields: forecastHours.length }, complete ? {} : { reason: 'kim_tropopause_incomplete' }) }
 }

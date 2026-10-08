@@ -146,3 +146,20 @@ test('GKTG takes one heavy-compute turn per forecast hour and records a refused 
   assert.equal(refused.collection.outcome, 'partial')
   assert.equal(calculated, false)
 })
+
+test('GKTG can compute an hour without publishing, then publish it later without recalculating', async t => {
+  const root = seed(t)
+  const saved = config.api.kim_nwp_auth_key
+  config.api.kim_nwp_auth_key = 'kim-key'
+  t.after(() => { config.api.kim_nwp_auth_key = saved })
+  let calculations = 0
+  const calculate = async input => { calculations++; return input.pressures.map(() => Array(size).fill(Math.fround(0.2))) }
+  const fetchGrid = async request => supplementText(request)
+  const computed = await collect({ root, tmfc: TMFC, forecastHours: [0], fetchGrid, calculate, publish: false })
+  assert.equal(computed.collection.outcome, 'complete')
+  assert.equal(readKimGktgLatest(root), null)
+  const published = await collect({ root, tmfc: TMFC, forecastHours: [0], fetchGrid: async () => assert.fail('must not fetch'), calculate, publish: true })
+  assert.equal(published.saved, true)
+  assert.equal(calculations, 1)
+  assert.equal(readKimGktgLatest(root).tmfc, TMFC)
+})

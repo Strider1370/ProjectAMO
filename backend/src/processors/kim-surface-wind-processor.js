@@ -175,7 +175,8 @@ export function rawComponentFileName({ level, name, variable }) {
 }
 
 function writeRawComponent({ level, tmfc, hf, name, variable, text, domain }) {
-  if (config.kim_nwp?.keep_raw === false) return
+  // 확대 영역은 기본 격자 원문을 남기지 않는다(회차당 수 GB). GKTG·권계면 추가 입력 원문은 각 processor가 따로 남긴다.
+  if (config.kim_nwp?.keep_raw === false || (domain && domain !== KIM_DEFAULT_DOMAIN)) return
   const runDir = resolveKimNwpRunDir({ root: config.storage.base_path, model: KIM_NWP_MODEL, tmfc, domain })
   const rawPath = path.join(runDir, 'raw', `hf${String(Number(hf)).padStart(3, '0')}`, level.id, rawComponentFileName({ level, name, variable }))
   writeKimRawText(rawPath, text)

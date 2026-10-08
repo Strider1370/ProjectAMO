@@ -181,9 +181,21 @@ export function readGktgOutput(stage, job) {
   return k => Array.from(values.subarray(k * size, (k + 1) * size), v => (Number.isNaN(v) ? null : v))
 }
 
+// 한 예보시각의 GKTG 추가 입력(기본 격자에 없는 층의 w, 지상 ps·topo·hpbl)을 미리 받아 원문 캐시에 둔다. 계산 때는
+// 캐시를 읽어 API를 부르지 않는다. 확대 영역은 대용량 키가 자정에 닫혀, 계산이 늦어져도 입력은 그 전에 받아 둬야 한다.
+export async function prefetchGktgSupplements({ root = config.storage.base_path, domain = KIM_DEFAULT_DOMAIN, tmfc, hf, signal, fetchGrid = fetchKimGrid }) {
+  let grid = null
+  for (const level of pressures) {
+    const layer = readKimNwpGridVariables({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, names: [], domain })
+    grid ||= layer.grid
+    if (!layer.variables?.w) await supplement({ root, tmfc, hf, name: 'w', level: level.value, grid, signal, fetchGrid, domain })
+  }
+  for (const name of ['ps', 'topo', 'hpbl']) await supplement({ root, tmfc, hf, name, level: 0, grid, signal, fetchGrid, domain })
+}
+
 export async function process({ root = config.storage.base_path, domain = KIM_DEFAULT_DOMAIN, tmfc = readKimNwpLatest(root, domain)?.latestRun || readKimNwpLatest(root, domain)?.tmfc,
   forecastHours = config.kim_nwp.forecast_hours, signal, fetchGrid = fetchKimGrid, calculate = calculatePython,
-  python = config.kim_gktg.python, turn = async () => () => {} } = {}) {
+  python = config.kim_gktg.python, turn = async () => () => {}, publish = true } = {}) {
   if (!/^\d{10}$/.test(String(tmfc || ''))) return { type: 'kim_gktg', collection: collectionResult('partial', { waiting: true }, { reason: 'kim_gktg_base_waiting' }) }
   if (!Array.isArray(forecastHours) || !forecastHours.length || forecastHours.some(h => !kimDomain(domain).forecastHours.includes(h))) throw new Error('Invalid GKTG forecast hours')
   const entries = []
@@ -268,13 +280,14 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
   }
   const complete = failures.length === 0
   let published = null
-  if (complete) {
+  // publish=false: 시각별 결과만 계산해 두고 게시는 나중에 한다(확대 영역은 받으면서 시각마다 계산한다).
+  if (complete && publish) {
     published = publishKimGktgRun(root, { tmfc, model: KIM_NWP_MODEL, algorithm: GKTG_ALGORITHM, engineRevision: engine, revision: sha(JSON.stringify(entries)), expectedHours: forecastHours, entries, baseFingerprint, fetched_at: new Date().toISOString() }, domain)
     // 이전 회차를 붙잡고 있던 파생 게시가 넘어왔으니 여기서도 정리한다(기본 게시 때는 아직 이전 회차를 가리킨다).
     cleanupKimNwpRuns({ root, domain, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId: readKimNwpLatest(root, domain)?.latestRunId, onlyComplete: true, reason: 'gktg_published' })
   }
-  appendKimRunEvent(runDir, { type: complete ? 'gktg_published' : 'gktg_partial', revision: published?.revision || null, fields: entries.length, failures: failures.length })
-  writeKimGktgAttempt(root, tmfc, { tmfc, outcome: complete ? 'complete' : 'partial', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() }, domain)
+  appendKimRunEvent(runDir, { type: !complete ? 'gktg_partial' : publish ? 'gktg_published' : 'gktg_computed', hours: forecastHours, revision: published?.revision || null, fields: entries.length, failures: failures.length })
+  writeKimGktgAttempt(root, tmfc, { tmfc, outcome: !complete ? 'partial' : publish ? 'complete' : 'computed', expectedHours: forecastHours, fields: entries.length, failures, completed_at: new Date().toISOString() }, domain)
   return { type: 'kim_gktg', tmfc, fields: entries.length, revision: published?.revision, failures, saved: complete,
     collection: collectionResult(complete ? 'complete' : 'partial', { fields: entries.length, expectedFields: forecastHours.length * pressures.length }, complete ? {} : { reason: 'kim_gktg_incomplete' }) }
 }
