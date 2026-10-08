@@ -50,12 +50,20 @@ export function encodeKimBelowGround(mask) {
 
 // 지도 응답에 지면 아래 표시를 붙이고, 그 격자의 값을 비운다. 마스크를 만들 수 없으면 필드를 그대로 돌려준다.
 // missing: 비운 칸에 넣을 값. GKTG(실수 배열)는 null, int16 인코딩 배열(바람·기온·구름·착빙)은 결측값 -32768.
-export function applyKimBelowGround(field, { root, arrays, domain = KIM_DEFAULT_DOMAIN, missing = null }) {
+// edgeCells: 영역 가장자리 이 칸 수 안쪽만 표시한다. GKTG는 가장자리 10칸을 계산하지 않아(값 없음) 그 띠에
+// 회색만 남지 않게 한다(2026-10-09, 확대 영역 서쪽 경계가 티베트 고원 동쪽에 걸림).
+export function applyKimBelowGround(field, { root, arrays, domain = KIM_DEFAULT_DOMAIN, missing = null, edgeCells = 0 }) {
   const pressureHpa = field?.level?.kind === 'pressure' ? Number(field.level.value) : NaN
   const tmfc = field?.time?.tmfc ?? field?.tmfc
   const hf = field?.time?.hf ?? field?.hf
   const mask = kimBelowGroundMask({ root, tmfc, hf, pressureHpa, grid: field?.grid, domain })
   if (!mask) return field
+  if (edgeCells > 0) {
+    const { nx, ny } = field.grid
+    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+      if (x < edgeCells || y < edgeCells || x >= nx - edgeCells || y >= ny - edgeCells) mask[y * nx + x] = 0
+    }
+  }
   const out = { ...field, belowGround: encodeKimBelowGround(mask), belowGroundEncoding: KIM_BELOW_GROUND_ENCODING }
   for (const name of arrays) {
     if (!Array.isArray(field[name])) continue

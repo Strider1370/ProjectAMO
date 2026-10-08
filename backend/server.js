@@ -930,8 +930,9 @@ app.get('/api/kim/gktg/field', (req, res) => {
     const domain = parseKimDomain(req.query.domain)
     const stored = readKimGktgField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), levelId: String(req.query.level || ''), revision: req.query.revision, domain })
     // 지면 아래 기압면은 비우고 표시를 붙인다(kim-surface-mask.js). ETag에 표시 방식을 넣어 이전 응답 캐시와 구분한다.
-    const field = applyKimBelowGround(stored, { root: DATA_ROOT, arrays: ['gktg'], domain })
-    sendImmutableJson(res, field, `kim-gktg:${kimDomainEtagScope(domain)}${field.time.tmfc}:${field.time.hf}:${field.level.id}:${field.revision}:below-ground-v1`)
+    // GKTG가 계산하지 않는 가장자리 10칸에는 표시하지 않는다.
+    const field = applyKimBelowGround(stored, { root: DATA_ROOT, arrays: ['gktg'], domain, edgeCells: 10 })
+    sendImmutableJson(res, field, `kim-gktg:${kimDomainEtagScope(domain)}${field.time.tmfc}:${field.time.hf}:${field.level.id}:${field.revision}:below-ground-v2`)
   } catch (error) {
     setNoStore(res)
     res.status(error.code === 'ENOENT' ? 404 : 400).json({ error: error.message })
