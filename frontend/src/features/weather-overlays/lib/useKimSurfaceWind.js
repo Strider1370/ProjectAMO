@@ -40,7 +40,12 @@ export function selectDefaultKimNwp(index, nowMs = null) {
   if (!preferredLevel) return null
   const time = getSelectableTimes(index.times, nowMs).find((candidate) =>
     selectKimNwpAvailability(index, { level: preferredLevel.id, hf: candidate.hf }))
-  return time ? { tmfc: index.latestRun, level: preferredLevel.id, hf: time.hf } : null
+  return time ? withDomain(index, { tmfc: index.latestRun, level: preferredLevel.id, hf: time.hf }) : null
+}
+
+// 목록이 정한 KIM 영역(한반도 kr·확대 ea)을 선택값에 싣는다. 필드 요청·캐시 키가 이 값을 따른다.
+function withDomain(index, selection) {
+  return index?.domain && index.domain !== 'kr' ? { ...selection, domain: index.domain } : (({ domain, ...rest }) => rest)(selection)
 }
 
 export function selectFallbackKimNwpSelection(index, currentSelection, nowMs = null) {
@@ -48,14 +53,14 @@ export function selectFallbackKimNwpSelection(index, currentSelection, nowMs = n
   if (selectKimNwpAvailability(index, currentSelection)) {
     const currentTime = (index.times || []).find((time) => Number(time.hf) === Number(currentSelection.hf))
     if (getSelectableTimes(index.times, nowMs).some((time) => Number(time.hf) === Number(currentTime?.hf))) {
-      return { ...currentSelection, tmfc: index.latestRun }
+      return withDomain(index, { ...currentSelection, tmfc: index.latestRun })
     }
   }
   const currentLevel = currentSelection?.level
   if (currentLevel) {
     const time = getSelectableTimes(index.times, nowMs).find((candidate) =>
       selectKimNwpAvailability(index, { level: currentLevel, hf: candidate.hf }))
-    if (time) return { tmfc: index.latestRun, level: currentLevel, hf: time.hf }
+    if (time) return withDomain(index, { tmfc: index.latestRun, level: currentLevel, hf: time.hf })
   }
   return selectDefaultKimNwp(index, nowMs)
 }
@@ -71,7 +76,9 @@ export function normalizeKimNwpIndex(index, nowMs = null) {
 
 function selectionKey(selection) {
   if (!selection?.tmfc || !selection?.level || !Number.isFinite(Number(selection.hf))) return null
-  const base = `${selection.tmfc}:${Number(selection.hf)}:${selection.level}`
+  // 확대 영역(ea) 회차는 같은 발표시각의 한반도 회차와 다른 자료라 키를 나눈다. 한반도 키는 그대로 둔다.
+  const scope = selection.domain && selection.domain !== 'kr' ? `${selection.domain}:` : ''
+  const base = `${scope}${selection.tmfc}:${Number(selection.hf)}:${selection.level}`
   return selection.mode === 'pinned'
     ? `${selection.bundleId || 'bundle'}:${base}:${selection.revision || 'missing-revision'}`
     : base
@@ -220,7 +227,7 @@ export function useKimSurfaceWind(enabled, controlledSelection = null, onSelecti
 
     loadField()
     return () => controller.abort()
-  }, [enabled, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId])
+  }, [enabled, selection?.domain, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId])
 
   useEffect(() => {
     if (!enabled || pinned || !snapshotMeta) return

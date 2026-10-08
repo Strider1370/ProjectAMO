@@ -60,6 +60,12 @@ test('KIM map API serves the expanded domain only when asked and keeps Korea as 
     assert.equal((await json(`/api/kim/temp/field?tmfc=${tmfc}&hf=30&level=850hPa`)).status, 400)
     assert.equal((await json(`/api/kim/temp/field?domain=ea&tmfc=${tmfc}&hf=0&level=850hPa`)).status, 400)
 
+    // 지도는 domain=auto: 확대 회차가 있으면 확대 영역을 고르고, 목록에 그 영역을 싣는다.
+    const auto = await json('/api/kim/temp/index?domain=auto')
+    assert.equal(auto.status, 200)
+    assert.equal(auto.body.domain, 'ea')
+    assert.equal((await json('/api/snapshot-meta')).body.kimNwp.domain, 'ea')
+
     assert.equal((await json('/api/kim/temp/index?domain=xx')).status, 400)
     assert.equal((await json(`/api/kim/temp/field?domain=xx&tmfc=${tmfc}&hf=0&level=850hPa`)).status, 400)
     assert.equal((await json('/api/kim/gktg/index?domain=xx')).status, 400)

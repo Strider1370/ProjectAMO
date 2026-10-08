@@ -17,7 +17,9 @@ function isAbortError(error) {
 
 export function makeKimGktgSelectionKey(selection) {
   if (!selection?.tmfc || !selection?.level || !Number.isFinite(Number(selection.hf))) return null
-  const base = `${selection.tmfc}:${Number(selection.hf)}:${selection.level}`
+  // 확대 영역(ea) 회차는 같은 발표시각의 한반도 회차와 다른 자료라 키를 나눈다. 한반도 키는 그대로 둔다.
+  const scope = selection.domain && selection.domain !== 'kr' ? `${selection.domain}:` : ''
+  const base = `${scope}${selection.tmfc}:${Number(selection.hf)}:${selection.level}`
   return selection.mode === 'pinned'
     ? `${selection.bundleId || 'bundle'}:${base}:${selection.revision || 'missing-revision'}:gktg`
     : `${base}:${selection.revision || 'missing-revision'}:gktg`
@@ -140,7 +142,7 @@ export function useKimGktg(enabled, selection, setSelection, { dataMode = 'live'
 
     loadField()
     return () => controller.abort()
-  }, [enabled, pinned, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId, gktgIndex])
+  }, [enabled, pinned, selection?.domain, selection?.tmfc, selection?.hf, selection?.level, selection?.revision, selection?.bundleId, gktgIndex])
 
   useEffect(() => {
     if (!enabled || pinned || !snapshotMeta) return

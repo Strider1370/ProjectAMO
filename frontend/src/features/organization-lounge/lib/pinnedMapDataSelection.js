@@ -57,6 +57,8 @@ export function pinnedKimSelection(mapDataSelection, { level = null, variable = 
     validTime: model.validTime || null,
     revision: String(revision),
     resourceId: resource?.resourceId || resource?.url || null,
+    // 해외 항로 브리핑은 확대 영역(ea) 회차를 고정한다(서버 mapDataSelection.kim.domain).
+    ...(model.domain && model.domain !== 'kr' ? { domain: model.domain } : {}),
   }
 }
 

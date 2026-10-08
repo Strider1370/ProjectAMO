@@ -89,3 +89,14 @@ test('a GKTG NIL point keeps the inspector rows of other active weather layers',
   const rows = buildWeatherPointRows({ lon: 127, lat: 37, visibility: { wind: true, turbulence: true }, fields: gktgFields, samplers: createWeatherPointSamplers(gktgFields) })
   assert.deepEqual(rows.map(row => row.key), ['wind'])
 })
+
+test('a below-ground cell reads "지면 아래" for that layer only', () => {
+  // 서버가 지면 아래 칸 값을 결측(-32768)으로 비우고 bitset으로 표시한다. (127, 37)은 index 3 → 첫 바이트 bit 3.
+  const temperatureField = { ...fields.temperatureField, T: [27315, 26315, 26315, -32768], belowGround: 'CA==', belowGroundEncoding: 'bitset-base64-v1' }
+  const withMask = { ...fields, temperatureField }
+  const rows = buildWeatherPointRows({ lon: 127, lat: 37, visibility: { wind: true, temp: true }, fields: withMask, samplers: createWeatherPointSamplers(withMask) })
+  assert.deepEqual(rows.map((row) => [row.key, row.value]).slice(1), [['temp', '지면 아래']])
+  assert.match(rows[0].value, /^풍향/)
+  const elsewhere = buildWeatherPointRows({ lon: 126, lat: 36, visibility: { temp: true }, fields: withMask, samplers: createWeatherPointSamplers(withMask) })
+  assert.equal(elsewhere[0].value, '0.0 °C')
+})

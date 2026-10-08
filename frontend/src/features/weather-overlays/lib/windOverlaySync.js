@@ -2,6 +2,7 @@ import CanvasWindRenderer from './canvasWindRenderer.js'
 import WebGLWindRenderer from './webglWindRenderer.js'
 import { decodeWindComponent, interpolateWindSpeedColor } from './windField.js'
 import { cellCoordinatesForGrid, parseRgba, mercatorSourceRows } from './overlayUtils.js'
+import { belowGroundCellRgba, decodeKimBelowGround } from './kimBelowGround.js'
 
 const overlays = new WeakMap()
 const canvasFallbackMaps = new WeakSet()
@@ -91,6 +92,8 @@ function buildWindSpeedImage(windField) {
   if (!ctx) return null
 
   const imageData = ctx.createImageData?.(grid.nx, sourceRows.length)
+  // 지면 아래 칸은 회색으로 칠한다(다른 KIM 레이어와 같다).
+  const belowGround = decodeKimBelowGround(windField)
   if (imageData?.data) {
     for (let y = 0; y < sourceRows.length; y += 1) {
       const sourceY = sourceRows[y]
@@ -98,7 +101,7 @@ function buildWindSpeedImage(windField) {
         const sourceIndex = sourceY * grid.nx + x
         const u = decodeWindComponent(windField.u[sourceIndex], windField)
         const v = decodeWindComponent(windField.v[sourceIndex], windField)
-        const [r, g, b, a] = u == null || v == null
+        const [r, g, b, a] = belowGround?.[sourceIndex] ? belowGroundCellRgba() : u == null || v == null
           ? [0, 0, 0, 0]
           : parseRgba(interpolateWindSpeedColor(Math.hypot(u, v)))
         const targetIndex = (y * grid.nx + x) * 4

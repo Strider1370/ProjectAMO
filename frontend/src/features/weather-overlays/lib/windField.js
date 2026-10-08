@@ -22,7 +22,8 @@ export const WIND_SPEED_COLOR_RAMP = [
 ]
 
 export function decodeWindComponent(value, field) {
-  if (!Number.isFinite(value)) return null
+  // -32768은 int16 인코딩의 결측값(지면 아래 칸 등)이다.
+  if (!Number.isFinite(value) || (value === -32768 && field?.encoding === 'int16-scaled-json-v1')) return null
   if (field?.encoding === 'int16-scaled-json-v1') {
     return value * (field.scale ?? 1) + (field.offset ?? 0)
   }

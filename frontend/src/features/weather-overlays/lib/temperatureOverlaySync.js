@@ -1,5 +1,6 @@
 import { decodeTemperatureValue, kelvinToCelsius, pickTemperatureColor } from './temperatureField.js'
 import { cellCoordinatesForGrid, parseRgba, mercatorSourceRows } from './overlayUtils.js'
+import { belowGroundCellRgba, decodeKimBelowGround } from './kimBelowGround.js'
 
 const TEMPERATURE_IMAGE_SOURCE_ID = 'kim-temperature-image-source'
 const TEMPERATURE_IMAGE_LAYER_ID = 'kim-temperature-image-layer'
@@ -15,13 +16,15 @@ function buildTemperatureImage(field) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
   const imageData = ctx.createImageData(grid.nx, sourceRows.length)
+  // 지면 아래 칸(지상기압보다 큰 기압면)은 난류처럼 같은 이미지에 회색으로 칠한다.
+  const belowGround = decodeKimBelowGround(field)
 
   for (let y = 0; y < sourceRows.length; y += 1) {
     const sourceY = sourceRows[y]
     for (let x = 0; x < grid.nx; x += 1) {
       const sourceIndex = sourceY * grid.nx + x
       const kelvin = decodeTemperatureValue(field.T[sourceIndex], field)
-      const rgba = kelvin == null ? [0, 0, 0, 0] : parseRgba(pickTemperatureColor(kelvinToCelsius(kelvin)).color)
+      const rgba = belowGround?.[sourceIndex] ? belowGroundCellRgba() : kelvin == null ? [0, 0, 0, 0] : parseRgba(pickTemperatureColor(kelvinToCelsius(kelvin)).color)
       const targetIndex = (y * grid.nx + x) * 4
       imageData.data[targetIndex] = rgba[0]
       imageData.data[targetIndex + 1] = rgba[1]

@@ -442,10 +442,12 @@ function buildHashEntry(type) {
   return { hash: data.content_hash || store.canonicalHash(data) }
 }
 
+// 지도가 쓰는 영역(resolveKimDomain('auto'))의 회차 지문. 확대 회차가 새로 게시되면 지도가 다시 읽는다.
 function buildKimNwpSnapshotEntry() {
-  const latest = readKimNwpLatest(DATA_ROOT)
+  const domain = resolveKimDomain('auto')
+  const latest = readKimNwpLatest(DATA_ROOT, domain)
   if (!latest) return null
-  const index = readKimNwpIndex(DATA_ROOT)
+  const index = readKimNwpIndex(DATA_ROOT, domain)
   const uvIndex = index ? filterKimNwpIndexForVariables(index, ['u', 'v']) : null
   const tempIndex = index ? filterKimNwpIndexForVariables(index, ['T']) : null
   const cloudIndex = index
@@ -455,6 +457,7 @@ function buildKimNwpSnapshotEntry() {
     ? filterKimNwpIndexForLevels(filterKimNwpIndexForVariables(index, KIM_ICING_REQUIRED_VARIABLES), KIM_NWP_ICING_LEVEL_IDS)
     : null
   return {
+    domain,
     hash: latest.content_hash || store.canonicalHash(latest),
     tmfc: latest.latestRun || null,
     updated_at: latest.updated_at || null,
@@ -463,7 +466,7 @@ function buildKimNwpSnapshotEntry() {
       T: { hash: tempIndex ? store.canonicalHash(tempIndex) : null },
       cloud: { hash: cloudIndex ? store.canonicalHash(cloudIndex) : null },
       icing: { hash: icingIndex ? store.canonicalHash(icingIndex) : null },
-      gktg: { hash: readKimGktgLatest(DATA_ROOT)?.revision || null },
+      gktg: { hash: readKimGktgLatest(DATA_ROOT, domain)?.revision || null },
     },
   }
 }
@@ -542,7 +545,7 @@ const SNAPSHOT_SOURCES = [
   { keys: ['lightning'], files: [snapshotMetaLatest('lightning')], build: () => buildHashEntry('lightning') },
   { keys: ['typhoon'], files: [snapshotMetaLatest('typhoon')], build: () => buildHashEntry('typhoon') },
   { keys: ['adsb'], files: [snapshotMetaLatest('adsb')], build: () => buildHashEntry('adsb') },
-  { keys: ['kimNwp', 'kim_nwp'], files: [snapshotMetaFile('kim_nwp', 'index.json'), snapshotMetaFile('kim_nwp', 'latest.json'), snapshotMetaFile('kim_nwp', 'derived', 'gktg', 'latest.json')], build: buildKimNwpSnapshotEntry },
+  { keys: ['kimNwp', 'kim_nwp'], files: ['kim_nwp', 'kim_nwp_ea'].flatMap((dir) => [snapshotMetaFile(dir, 'index.json'), snapshotMetaFile(dir, 'latest.json'), snapshotMetaFile(dir, 'derived', 'gktg', 'latest.json')]), build: buildKimNwpSnapshotEntry },
   { keys: ['kimSurfaceWind', 'kim_surface_wind'], files: [snapshotMetaLatest('kim_surface_wind')], build: buildKimSurfaceWindEntry },
   { keys: ['kimSurfaceChart'], files: [snapshotMetaLatest('kim_surface_chart')], build: buildKimSurfaceChartEntry },
   { keys: ['groundForecast', 'ground_forecast'], files: [snapshotMetaLatest('ground_forecast')], build: () => buildHashEntry('ground_forecast') },
@@ -684,7 +687,15 @@ function readSelectedKimField(selection, buildFn) {
   return buildFn(grid)
 }
 
-// KIM 지도 API의 영역(?domain=kr|ea, 없으면 kr). 한반도 ETag는 영역 도입 전과 같게 두어 브라우저 캐시를 유지한다.
+// 지도 레이어가 쓸 KIM 영역(?domain=auto): 확대 영역(ea) 회차가 게시돼 있으면 확대 영역, 없으면 한반도.
+// 모든 지도 레이어가 같은 기준(확대 기본 격자 latest)으로 골라 한 화면에서 영역이 섞이지 않는다.
+// 확대 회차는 GKTG·권계면을 먼저 게시한 뒤 기본 격자 latest를 바꾼다(kim-expanded-collector.js).
+function resolveKimDomain(value) {
+  if (value === 'auto') return readKimNwpLatest(DATA_ROOT, 'ea')?.latestRun ? 'ea' : KIM_DEFAULT_DOMAIN
+  return parseKimDomain(value)
+}
+
+// KIM 지도 API의 영역(?domain=kr|ea|auto, 없으면 kr). 한반도 ETag는 영역 도입 전과 같게 두어 브라우저 캐시를 유지한다.
 function kimDomainEtagScope(domain) {
   return domain === KIM_DEFAULT_DOMAIN ? '' : `${domain}:`
 }
@@ -695,6 +706,13 @@ function readSelectedKimCloudField(selection) {
 }
 function readSelectedKimIcingField(selection) {
   return readSelectedKimField(selection, buildKimIcingFieldFromGrid)
+}
+
+// 지면 아래 칸을 비울 필드 배열(int16, 결측 -32768). 바람 10 m 같은 높이 고도는 kim-surface-mask가 건드리지 않는다.
+const KIM_BELOW_GROUND_ARRAYS = { wind: ['u', 'v'], temp: ['T'], cloud: ['spread', 'cloudPotential'], icing: ['icingScore', 'icingGrade'] }
+const KIM_BELOW_GROUND_VIEW = 'below-ground-v1'
+function withKimBelowGround(field, type, domain) {
+  return applyKimBelowGround(field, { root: DATA_ROOT, arrays: KIM_BELOW_GROUND_ARRAYS[type], domain, missing: -32768 })
 }
 
 function sendKimField(req, res, { type, buildFn, errorLabel }) {
@@ -709,16 +727,17 @@ function sendKimField(req, res, { type, buildFn, errorLabel }) {
       const exact = readExactKimMapGrid(DATA_ROOT, { ...selection, revision: req.query.revision })
       setNoStore(res)
       if (exact.status !== 200) return res.status(exact.status).json({ error: exact.error })
-      return res.json({ ...buildFn(exact.grid), revision: exact.revision })
+      return res.json({ ...withKimBelowGround(buildFn(exact.grid), type, selection.domain), revision: exact.revision })
     }
     // Early 304: (domain, tmfc, hf, level) uniquely identifies an immutable KIM field — no need to read the grid.
-    const etagSeed = `kim-${type}:${kimDomainEtagScope(selection.domain)}${selection.tmfc}:${selection.hf}:${selection.level}`
+    // 지면 아래 표시 방식을 ETag에 넣어 이전 응답 캐시와 구분한다.
+    const etagSeed = `kim-${type}:${kimDomainEtagScope(selection.domain)}${selection.tmfc}:${selection.hf}:${selection.level}:${KIM_BELOW_GROUND_VIEW}`
     const etag = etagOf(etagSeed)
     if (requestHasMatchingEtag(req, etag)) {
       res.status(304).end()
       return
     }
-    const field = readSelectedKimField(selection, buildFn)
+    const field = withKimBelowGround(readSelectedKimField(selection, buildFn), type, selection.domain)
     sendImmutableJson(res, field, etagSeed)
   } catch (error) {
     res.status(400).json({ error: error.message || errorLabel })
@@ -728,7 +747,7 @@ function sendKimField(req, res, { type, buildFn, errorLabel }) {
 // KIM index 라우트 공통: index 읽기 → buildPayload로 변환 후 revalidated 전송, 없으면 503.
 function sendKimIndex(req, res, { buildPayload, errorLabel }) {
   let domain
-  try { domain = parseKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }
+  try { domain = resolveKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }
   const index = readKimNwpIndex(DATA_ROOT, domain)
   if (index) {
     const payload = { ...buildPayload(index, getEffectiveNow().getTime()), domain }
@@ -764,15 +783,15 @@ function sendKimWindField(req, res, { allowDefault = false } = {}) {
       const exact = readExactKimMapGrid(DATA_ROOT, { ...selection, revision: req.query.revision })
       setNoStore(res)
       if (exact.status !== 200) return res.status(exact.status).json({ error: exact.error })
-      return res.json({ ...buildKimSurfaceWindFieldFromWindGrid(exact.grid), revision: exact.revision })
+      return res.json({ ...withKimBelowGround(buildKimSurfaceWindFieldFromWindGrid(exact.grid), 'wind', selection.domain), revision: exact.revision })
     }
-    const etagSeed = `kim-wind:${kimDomainEtagScope(selection.domain)}${selection.tmfc}:${selection.hf}:${selection.level}`
+    const etagSeed = `kim-wind:${kimDomainEtagScope(selection.domain)}${selection.tmfc}:${selection.hf}:${selection.level}:${KIM_BELOW_GROUND_VIEW}`
     const etag = etagOf(etagSeed)
     if (requestHasMatchingEtag(req, etag)) {
       res.status(304).end()
       return
     }
-    const field = readSelectedKimField(selection, buildKimSurfaceWindFieldFromWindGrid)
+    const field = withKimBelowGround(readSelectedKimField(selection, buildKimSurfaceWindFieldFromWindGrid), 'wind', selection.domain)
     sendImmutableJson(res, field, etagSeed)
   } catch (error) {
     res.status(400).json({ error: error.message || 'invalid kim wind selection' })
@@ -901,7 +920,7 @@ app.get('/api/kim/icing/field', (req, res) =>
 )
 app.get('/api/kim/gktg/index', (req, res) => {
   let domain
-  try { domain = parseKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }
+  try { domain = resolveKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }
   const index = readKimGktgIndex(DATA_ROOT, domain)
   if (!index) return res.status(503).json({ error: 'kim gktg index unavailable' })
   sendRevalidatedJson(res, { ...index, domain }, `${kimDomainEtagScope(domain)}${index.revision}`)
@@ -921,7 +940,7 @@ app.get('/api/kim/gktg/field', (req, res) => {
 
 app.get('/api/kim/tropopause/index', (req, res) => {
   let domain
-  try { domain = parseKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }
+  try { domain = resolveKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }
   const index = readKimTropopauseIndex(DATA_ROOT, domain)
   if (!index) return res.status(503).json({ error: 'kim tropopause index unavailable' })
   sendRevalidatedJson(res, { ...index, domain }, `${kimDomainEtagScope(domain)}${index.revision}`)
@@ -929,7 +948,7 @@ app.get('/api/kim/tropopause/index', (req, res) => {
 app.get('/api/kim/tropopause/runs', (req, res) => {
   setNoStore(res)
   let domain
-  try { domain = parseKimDomain(req.query.domain) } catch (error) { return res.status(400).json({ error: error.message }) }
+  try { domain = resolveKimDomain(req.query.domain) } catch (error) { return res.status(400).json({ error: error.message }) }
   res.json({ type: 'kim_nwp_tropopause_runs', domain, fields: listKimTropopauseFields(DATA_ROOT, domain) })
 })
 app.get('/api/kim/tropopause/field', (req, res) => {

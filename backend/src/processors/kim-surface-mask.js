@@ -49,7 +49,8 @@ export function encodeKimBelowGround(mask) {
 }
 
 // 지도 응답에 지면 아래 표시를 붙이고, 그 격자의 값을 비운다. 마스크를 만들 수 없으면 필드를 그대로 돌려준다.
-export function applyKimBelowGround(field, { root, arrays, domain = KIM_DEFAULT_DOMAIN }) {
+// missing: 비운 칸에 넣을 값. GKTG(실수 배열)는 null, int16 인코딩 배열(바람·기온·구름·착빙)은 결측값 -32768.
+export function applyKimBelowGround(field, { root, arrays, domain = KIM_DEFAULT_DOMAIN, missing = null }) {
   const pressureHpa = field?.level?.kind === 'pressure' ? Number(field.level.value) : NaN
   const tmfc = field?.time?.tmfc ?? field?.tmfc
   const hf = field?.time?.hf ?? field?.hf
@@ -58,7 +59,7 @@ export function applyKimBelowGround(field, { root, arrays, domain = KIM_DEFAULT_
   const out = { ...field, belowGround: encodeKimBelowGround(mask), belowGroundEncoding: KIM_BELOW_GROUND_ENCODING }
   for (const name of arrays) {
     if (!Array.isArray(field[name])) continue
-    out[name] = field[name].map((value, i) => (mask[i] ? null : value))
+    out[name] = field[name].map((value, i) => (mask[i] ? missing : value))
   }
   return out
 }

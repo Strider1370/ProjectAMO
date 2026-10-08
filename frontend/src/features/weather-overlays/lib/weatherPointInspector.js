@@ -175,6 +175,23 @@ export function createWeatherPointSamplers({ windField, temperatureField, cloudF
   }
 }
 
+// 지면 아래(지상기압보다 큰 기압면) 칸이면 값 대신 "지면 아래"를 보인다. 서버가 그 칸 값을 비우고 표시를 붙인다.
+function belowGroundAt(field, lon, lat) {
+  const mask = decodeKimBelowGround(field)
+  const grid = field?.grid
+  if (!mask || !grid) return false
+  const dx = (grid.lonMax - grid.lonMin) / Math.max(1, grid.nx - 1)
+  const dy = (grid.latMax - grid.latMin) / Math.max(1, grid.ny - 1)
+  const x = Math.round((lon - grid.lonMin) / dx)
+  const y = Math.round((lat - grid.latMin) / dy)
+  return x >= 0 && y >= 0 && x < grid.nx && y < grid.ny && mask[y * grid.nx + x] === 1
+}
+
+function belowGroundRow(key, label, field, metadata) {
+  return { key, label, value: KIM_BELOW_GROUND_LABEL, detail: '지상기압보다 높은 기압면', altitude: formatAltitude(field),
+    geopotentialHeight: null, color: 'rgba(120, 128, 140, 0.6)', ...metadata.time }
+}
+
 export function buildWeatherPointRows({
   lon,
   lat,
@@ -189,10 +206,11 @@ export function buildWeatherPointRows({
   const metadata = { lon, lat, time: { issueLabel, validLabel } }
   const turbulenceMetadata = { lon, lat, time: { issueLabel: turbulenceIssueLabel, validLabel: turbulenceValidLabel } }
   const rows = []
-  if (visibility.wind && fields.windField) rows.push(buildWindRow(fields.windField, samplers.wind, metadata))
-  if (visibility.temp && fields.temperatureField) rows.push(buildTemperatureRow(fields.temperatureField, samplers.temp, metadata))
-  if (visibility.cloud && fields.cloudField) rows.push(buildCloudRow(fields.cloudField, samplers.cloud, metadata))
-  if (visibility.icing && fields.icingField) rows.push(buildIcingRow(fields.icingField, samplers.icing, metadata))
+  const row = (key, label, field, build) => (belowGroundAt(field, lon, lat) ? belowGroundRow(key, label, field, metadata) : build())
+  if (visibility.wind && fields.windField) rows.push(row('wind', '바람', fields.windField, () => buildWindRow(fields.windField, samplers.wind, metadata)))
+  if (visibility.temp && fields.temperatureField) rows.push(row('temp', '기온', fields.temperatureField, () => buildTemperatureRow(fields.temperatureField, samplers.temp, metadata)))
+  if (visibility.cloud && fields.cloudField) rows.push(row('cloud', '구름층 추정', fields.cloudField, () => buildCloudRow(fields.cloudField, samplers.cloud, metadata)))
+  if (visibility.icing && fields.icingField) rows.push(row('icing', '착빙', fields.icingField, () => buildIcingRow(fields.icingField, samplers.icing, metadata)))
   if (visibility.turbulence && fields.ktgGrid) rows.push(buildTurbulenceRow(fields.ktgGrid, samplers.turbulence, turbulenceMetadata))
   return rows.filter(Boolean)
 }

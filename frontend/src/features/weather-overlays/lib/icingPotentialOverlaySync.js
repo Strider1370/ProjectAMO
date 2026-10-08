@@ -1,5 +1,6 @@
 import { decodeIcingGrade, pickIcingColor } from './icingPotentialField.js'
 import { cellCoordinatesForGrid, parseRgba, mercatorSourceRows } from './overlayUtils.js'
+import { belowGroundCellRgba, decodeKimBelowGround } from './kimBelowGround.js'
 
 const ICING_IMAGE_SOURCE_ID = 'kim-icing-image-source'
 const ICING_IMAGE_LAYER_ID = 'kim-icing-image-layer'
@@ -15,13 +16,15 @@ function buildIcingPotentialImage(field) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
   const imageData = ctx.createImageData(grid.nx, sourceRows.length)
+  // 지면 아래 칸(지상기압보다 큰 기압면)은 난류처럼 같은 이미지에 회색으로 칠한다.
+  const belowGround = decodeKimBelowGround(field)
 
   for (let y = 0; y < sourceRows.length; y += 1) {
     const sourceY = sourceRows[y]
     for (let x = 0; x < grid.nx; x += 1) {
       const sourceIndex = sourceY * grid.nx + x
       const grade = decodeIcingGrade(field.icingGrade[sourceIndex], field)
-      const rgba = grade == null ? [0, 0, 0, 0] : parseRgba(pickIcingColor(grade).color)
+      const rgba = belowGround?.[sourceIndex] ? belowGroundCellRgba() : grade == null ? [0, 0, 0, 0] : parseRgba(pickIcingColor(grade).color)
       const targetIndex = (y * grid.nx + x) * 4
       imageData.data[targetIndex] = rgba[0]
       imageData.data[targetIndex + 1] = rgba[1]

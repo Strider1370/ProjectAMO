@@ -282,71 +282,78 @@ export async function fetchKimSurfaceWind() {
   return fetchJson('/api/kim/surface-wind')
 }
 
-export async function fetchKimNwpIndex(options = {}) {
-  return fetchJson('/api/kim/wind/index', options)
+// 지도 KIM 레이어의 영역: 서버가 확대 영역(ea) 회차가 있으면 그것을, 없으면 한반도(kr)를 고르고 목록에 domain을 싣는다.
+// 필드 요청은 선택값의 domain(목록에서 온 값)을 그대로 보낸다. 한반도는 인자를 붙이지 않아 주소·캐시가 그대로다.
+export const KIM_MAP_DOMAIN = 'auto'
+
+function kimFieldParams({ tmfc, hf, level, revision, domain }) {
+  const params = new URLSearchParams({ tmfc, hf: String(hf) })
+  if (level !== undefined) {
+    params.set('level', level)
+    // 기압면 필드는 지면 아래 칸을 비운 새 응답이다. 이전 응답의 브라우저 캐시를 쓰지 않게 한다(KIM_FIELD_VIEW).
+    params.set('view', KIM_FIELD_VIEW)
+  }
+  if (revision) params.set('revision', revision)
+  if (domain && domain !== 'kr') params.set('domain', domain)
+  return params
 }
 
-export async function fetchKimNwpField({ tmfc, hf, level, revision }, options = {}) {
-  const params = new URLSearchParams({ tmfc, hf: String(hf), level })
-  if (revision) params.set('revision', revision)
-  return fetchJson(`/api/kim/wind/field?${params.toString()}`, options)
+export async function fetchKimNwpIndex(options = {}) {
+  return fetchJson(`/api/kim/wind/index?domain=${KIM_MAP_DOMAIN}`, options)
+}
+
+export async function fetchKimNwpField(selection, options = {}) {
+  return fetchJson(`/api/kim/wind/field?${kimFieldParams(selection).toString()}`, options)
 }
 
 export async function fetchKimTemperatureIndex(options = {}) {
-  return fetchJson('/api/kim/temp/index', options)
+  return fetchJson(`/api/kim/temp/index?domain=${KIM_MAP_DOMAIN}`, options)
 }
 
-export async function fetchKimTemperatureField({ tmfc, hf, level, revision }, options = {}) {
-  const params = new URLSearchParams({ tmfc, hf: String(hf), level })
-  if (revision) params.set('revision', revision)
-  return fetchJson(`/api/kim/temp/field?${params.toString()}`, options)
+export async function fetchKimTemperatureField(selection, options = {}) {
+  return fetchJson(`/api/kim/temp/field?${kimFieldParams(selection).toString()}`, options)
 }
 
 export async function fetchKimCloudPotentialIndex(options = {}) {
-  return fetchJson('/api/kim/cloud/index', options)
+  return fetchJson(`/api/kim/cloud/index?domain=${KIM_MAP_DOMAIN}`, options)
 }
 
-export async function fetchKimCloudPotentialField({ tmfc, hf, level, revision }, options = {}) {
-  const params = new URLSearchParams({ tmfc, hf: String(hf), level })
-  if (revision) params.set('revision', revision)
-  return fetchJson(`/api/kim/cloud/field?${params.toString()}`, options)
+export async function fetchKimCloudPotentialField(selection, options = {}) {
+  return fetchJson(`/api/kim/cloud/field?${kimFieldParams(selection).toString()}`, options)
 }
 
 export async function fetchKimIcingIndex(options = {}) {
-  return fetchJson('/api/kim/icing/index', options)
+  return fetchJson(`/api/kim/icing/index?domain=${KIM_MAP_DOMAIN}`, options)
 }
 
-export async function fetchKimIcingField({ tmfc, hf, level, revision }, options = {}) {
-  const params = new URLSearchParams({ tmfc, hf: String(hf), level })
-  if (revision) params.set('revision', revision)
-  return fetchJson(`/api/kim/icing/field?${params.toString()}`, options)
+export async function fetchKimIcingField(selection, options = {}) {
+  return fetchJson(`/api/kim/icing/field?${kimFieldParams(selection).toString()}`, options)
 }
 
 export async function fetchKimGktgIndex(options = {}) {
-  return fetchJson('/api/kim/gktg/index', options)
+  return fetchJson(`/api/kim/gktg/index?domain=${KIM_MAP_DOMAIN}`, options)
 }
 
 export async function fetchKimTropopauseIndex(options = {}) {
-  return fetchJson('/api/kim/tropopause/index', options)
+  return fetchJson(`/api/kim/tropopause/index?domain=${KIM_MAP_DOMAIN}`, options)
 }
 
 export async function fetchKimTropopauseRuns(options = {}) {
-  return fetchJson('/api/kim/tropopause/runs', options)
+  return fetchJson(`/api/kim/tropopause/runs?domain=${KIM_MAP_DOMAIN}`, options)
 }
 
-export async function fetchKimTropopauseField({ tmfc, hf, revision }, options = {}) {
-  const params = new URLSearchParams({ tmfc, hf: String(hf) })
-  if (revision) params.set('revision', revision)
-  return fetchJson(`/api/kim/tropopause/field?${params.toString()}`, options)
+export async function fetchKimTropopauseField({ tmfc, hf, revision, domain }, options = {}) {
+  return fetchJson(`/api/kim/tropopause/field?${kimFieldParams({ tmfc, hf, revision, domain }).toString()}`, options)
 }
 
 // 필드 응답은 브라우저에 immutable로 캐시된다. 서버가 응답 모양을 바꾸면(예: 지면 아래 표시) 이 값을 올려
 // 이전 캐시를 쓰지 않게 한다. 서버는 이 인자를 읽지 않는다.
 export const KIM_FIELD_VIEW = 'bg1'
 
-export async function fetchKimGktgField({ tmfc, hf, level, revision }, options = {}) {
+export async function fetchKimGktgField({ tmfc, hf, level, revision, domain }, options = {}) {
   const params = new URLSearchParams({ tmfc, hf: String(hf), level, view: KIM_FIELD_VIEW })
   if (revision) params.set('revision', revision)
+  if (domain && domain !== 'kr') params.set('domain', domain)
   return fetchJson(`/api/kim/gktg/field?${params.toString()}`, options)
 }
 

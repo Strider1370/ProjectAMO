@@ -61,27 +61,29 @@ export function useTropopauseJetOverlay({ mapRef, isStyleReady, styleRevision, e
   useEffect(() => {
     if (!enabled || !listCases) return undefined
     const controller = new AbortController()
-    fetchKimTropopauseRuns({ signal: controller.signal }).then(value => setCases(value?.fields ?? [])).catch(() => {})
+    fetchKimTropopauseRuns({ signal: controller.signal }).then(value => setCases((value?.fields ?? []).map(field => ({ ...field, domain: value?.domain })))).catch(() => {})
     return () => controller.abort()
   }, [enabled, listCases])
 
   const picked = useMemo(() => enabled ? pickTropopauseTime(index?.times, selectedMs) : null, [enabled, index, selectedMs])
   const chosenCase = caseKey ? cases.find(c => `${c.tmfc}:${c.hf}:${c.revision}` === caseKey) ?? null : null
-  const time = chosenCase ?? (picked ? { ...picked, tmfc: index.latestRun } : null)
-  const requestKey = time ? `${time.tmfc}:${time.hf}:${time.revision}` : null
+  // 목록이 정한 KIM 영역(한반도 kr·확대 ea). 같은 발표시각이라도 영역이 다르면 다른 결과라 키를 나눈다.
+  const time = chosenCase ?? (picked ? { ...picked, tmfc: index.latestRun, domain: index.domain } : null)
+  const scope = time?.domain && time.domain !== 'kr' ? `${time.domain}:` : ''
+  const requestKey = time ? `${scope}${time.tmfc}:${time.hf}:${time.revision}` : null
   useEffect(() => {
     if (!enabled || !requestKey) return undefined
     if (fieldCache.has(requestKey)) { setField(fieldCache.get(requestKey)); return undefined }
     const controller = new AbortController()
-    fetchKimTropopauseField({ tmfc: time.tmfc, hf: time.hf, revision: time.revision }, { signal: controller.signal })
+    fetchKimTropopauseField({ tmfc: time.tmfc, hf: time.hf, revision: time.revision, domain: time.domain }, { signal: controller.signal })
       .then(value => {
         fieldCache.set(requestKey, value); setField(value); setProblem(null)
       })
       .catch(() => { if (!controller.signal.aborted) setProblem('권계면·제트 자료를 불러오지 못했습니다') })
     return () => controller.abort()
-  }, [enabled, requestKey, time?.tmfc, time?.hf, time?.revision])
+  }, [enabled, requestKey, time?.tmfc, time?.hf, time?.revision, time?.domain])
 
-  const current = enabled && field && `${field.time.tmfc}:${field.time.hf}:${field.revision}` === requestKey ? field : null
+  const current = enabled && field && `${scope}${field.time.tmfc}:${field.time.hf}:${field.revision}` === requestKey ? field : null
   const model = useMemo(() => current ? buildTropopauseJetModel(current) : null, [current])
   const url = useMemo(() => model ? rasterUrl(model.raster) : null, [model])
 

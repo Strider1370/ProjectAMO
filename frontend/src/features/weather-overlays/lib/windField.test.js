@@ -148,3 +148,10 @@ test('formatKimWindMetaLabel renders selected pressure level', () => {
 
   assert.equal(formatKimWindMetaLabel(field), 'KIM 8km \u00b7 925hPa \u00b7 05/18 12:00 KST')
 })
+
+test('the int16 missing marker decodes as missing wind, not -327.68 m/s', async () => {
+  const { decodeWindComponent } = await import('./windField.js')
+  const field = { encoding: 'int16-scaled-json-v1', scale: 0.01, offset: 0 }
+  assert.equal(decodeWindComponent(-32768, field), null)
+  assert.equal(decodeWindComponent(-32767, field), -327.67)
+})
