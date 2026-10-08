@@ -4,8 +4,8 @@ import { readKimGktgIndex, readKimGktgField } from '../processors/kim-nwp-store.
 
 // Keep native pressure layers and sample the height from the identical calculation input.
 // The ktg member remains a transport compatibility alias; product identifies its thresholds.
-export function loadGktgCrossSection({ root, axis, validTime, timeRules = null }) {
-  const index = readKimGktgIndex(root)
+export function loadGktgCrossSection({ root, axis, validTime, timeRules = null, domain }) {
+  const index = readKimGktgIndex(root, domain)
   if (!index) return { available: false, product: 'GKTG' }
   const time = index.times.find(t => t.validTime === validTime)
   if (!time && !timeRules) return { available: false, product: 'GKTG', reason: 'gktg_time_unavailable' }
@@ -23,7 +23,7 @@ export function loadGktgCrossSection({ root, axis, validTime, timeRules = null }
       const entry = index.availability?.[level.id]?.[String(target.hf)]
       if (!entry?.hashes?.gktg) return missing
       if (!cache.has(target.hf)) {
-        try { cache.set(target.hf, readKimGktgField({ root, tmfc: index.latestRun, hf: target.hf, levelId: level.id, revision: entry.hashes.gktg })) } catch { cache.set(target.hf, null) }
+        try { cache.set(target.hf, readKimGktgField({ root, tmfc: index.latestRun, hf: target.hf, levelId: level.id, revision: entry.hashes.gktg, domain })) } catch { cache.set(target.hf, null) }
       }
       const field = cache.get(target.hf)
       if (!field || sample.lon < field.grid.lonMin || sample.lon > field.grid.lonMax || sample.lat < field.grid.latMin || sample.lat > field.grid.latMax) return missing

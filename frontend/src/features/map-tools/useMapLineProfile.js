@@ -69,7 +69,8 @@ export function useMapLineProfile() {
     setHourLoading(true)
     setWarning(null)
     try {
-      const next = await fetchCrossSection({ routeGeometry: geometryRef.current, tmfc: crossSection.run.tmfc, hf }, { signal: controller.signal })
+      const domain = crossSection.run.domain
+      const next = await fetchCrossSection({ routeGeometry: geometryRef.current, tmfc: crossSection.run.tmfc, hf, ...(domain ? { domain } : {}) }, { signal: controller.signal })
       if (!controller.signal.aborted) setCrossSection(next)
     } catch {
       if (!controller.signal.aborted) setWarning('선택한 예보시각의 기상 단면 자료를 불러오지 못했습니다.')

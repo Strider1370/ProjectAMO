@@ -10,15 +10,15 @@ export function pressureAltitudeFt(hPa) {
 }
 
 // 항로 표본점의 권계면·연직 최대풍. 같은 유효시각 결과만 읽고 다른 시각으로 채우지 않는다.
-export function loadTropopauseCrossSection({ root, axis, validTime, timeRules = null }) {
-  const index = readKimTropopauseIndex(root)
+export function loadTropopauseCrossSection({ root, axis, validTime, timeRules = null, domain }) {
+  const index = readKimTropopauseIndex(root, domain)
   if (!index) return { available: false, product: 'TROP_JET' }
   const time = index.times.find(t => t.validTime === validTime)
   if (!time && !timeRules) return { available: false, product: 'TROP_JET', reason: 'tropopause_time_unavailable' }
   const cache = new Map()
   const fieldFor = target => {
     if (!cache.has(target.hf)) {
-      try { cache.set(target.hf, readKimTropopauseField({ root, tmfc: index.latestRun, hf: target.hf, revision: target.revision })) } catch { cache.set(target.hf, null) }
+      try { cache.set(target.hf, readKimTropopauseField({ root, tmfc: index.latestRun, hf: target.hf, revision: target.revision, domain })) } catch { cache.set(target.hf, null) }
     }
     return cache.get(target.hf)
   }
@@ -48,7 +48,7 @@ export function loadTropopauseCrossSection({ root, axis, validTime, timeRules = 
   const upperCache = new Map()
   const upperFor = target => {
     if (!upperCache.has(target.hf)) {
-      try { upperCache.set(target.hf, readKimTropopauseUpper({ root, tmfc: index.latestRun, hf: target.hf, revision: target.revision })) } catch { upperCache.set(target.hf, null) }
+      try { upperCache.set(target.hf, readKimTropopauseUpper({ root, tmfc: index.latestRun, hf: target.hf, revision: target.revision, domain })) } catch { upperCache.set(target.hf, null) }
     }
     return upperCache.get(target.hf)
   }

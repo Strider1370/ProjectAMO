@@ -24,10 +24,14 @@ export function organizationModelStorageRevision(dataRoot, sourceState) {
       }
     }
   }
-  const kim = sourceState?.kim?.latest ?? safeRead(() => readKimNwpLatest(dataRoot))
-  const ktg = sourceState?.ktg?.latest ?? safeRead(() => readKimGktgLatest(dataRoot))
-  if (kim?.latestRun) visit(path.join(resolveKimNwpRunDir({ root: dataRoot, model: kim.model || 'KIMG/NE57', tmfc: kim.latestRun }), 'normalized'))
-  if (ktg?.tmfc) visit(path.join(resolveKimNwpRunDir({ root: dataRoot, model: 'KIMG/NE57', tmfc: ktg.tmfc }), 'normalized'))
+  // 해외 항로는 확대 영역(ea) 회차를 쓰므로 두 영역의 게시 회차를 모두 본다.
+  for (const domain of ['kr', 'ea']) {
+    const state = domain === 'kr' ? sourceState : sourceState?.ea
+    const kim = state?.kim?.latest ?? safeRead(() => readKimNwpLatest(dataRoot, domain))
+    const ktg = state?.ktg?.latest ?? safeRead(() => readKimGktgLatest(dataRoot, domain))
+    if (kim?.latestRun) visit(path.join(resolveKimNwpRunDir({ root: dataRoot, model: kim.model || 'KIMG/NE57', tmfc: kim.latestRun, domain }), 'normalized'))
+    if (ktg?.tmfc) visit(path.join(resolveKimNwpRunDir({ root: dataRoot, model: 'KIMG/NE57', tmfc: ktg.tmfc, domain }), 'normalized'))
+  }
   return digest(files)
 }
 
@@ -35,10 +39,12 @@ export function createOrganizationWeatherDependencies({ dataRoot, readWeather, g
   function readWeatherSnapshot() {
     const context = getDataContext()
     const weather = Object.fromEntries(TYPES.map((type) => [type, readWeather(type)]))
-    const sourceState = {
-      kim: { index: safeRead(() => readKimNwpIndex(dataRoot)), latest: safeRead(() => readKimNwpLatest(dataRoot)) },
-      ktg: { index: safeRead(() => { const index = readKimGktgIndex(dataRoot); return index && { ...index, hours: index.times } }), latest: safeRead(() => readKimGktgLatest(dataRoot)) },
-    }
+    const modelState = (domain) => ({
+      kim: { index: safeRead(() => readKimNwpIndex(dataRoot, domain)), latest: safeRead(() => readKimNwpLatest(dataRoot, domain)) },
+      ktg: { index: safeRead(() => { const index = readKimGktgIndex(dataRoot, domain); return index && { ...index, hours: index.times } }), latest: safeRead(() => readKimGktgLatest(dataRoot, domain)) },
+    })
+    // 한반도 상태는 기존 자리에, 확대 영역(해외 항로용)은 ea에 둔다.
+    const sourceState = { ...modelState('kr'), ea: modelState('ea') }
     const frameMetadata = Object.fromEntries(['radar/echo_meta.json', 'satellite/sat_meta.json'].map((name) => [name,
       safeRead(() => JSON.parse(fs.readFileSync(path.join(dataRoot, name), 'utf8'))),
     ]))

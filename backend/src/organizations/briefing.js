@@ -123,19 +123,21 @@ export function validateOrganizationCrossSection({ request, result, sourceState 
       composerInput: EMPTY_SECTION, displayData: null,
     }
   }
+  // 단면이 쓴 영역(한반도·확대)의 게시 상태로 시각 범위를 판단한다.
+  const state = sourceState && raw?.domain === 'ea' ? (sourceState.ea ?? { kim: null, ktg: null }) : sourceState
   const inspected = inspectVariables(raw)
   const times = requestedTimes(request)
   const coverage = timeCoverage(raw.availableTimes ?? [])
   const selectedValidTime = iso(raw.crossSection?.run?.validTime)
   const outside = !coverage.from || !coverage.to || times.some((time) => time < coverage.from || time > coverage.to)
-  const ktgCoverage = sourceState ? timeCoverage(sourceState?.ktg?.index?.hours ?? []) : {
+  const ktgCoverage = state ? timeCoverage(state?.ktg?.index?.hours ?? []) : {
     from: iso(raw.turbulence?.run?.validTime), to: iso(raw.turbulence?.run?.validTime),
   }
   const ktgRun = raw.turbulence?.run
-  const indexedKtgRun = !sourceState || (sourceState?.ktg?.index?.hours ?? []).some((entry) =>
+  const indexedKtgRun = !state || (state?.ktg?.index?.hours ?? []).some((entry) =>
     iso(entry?.validTime) === iso(ktgRun?.validTime)
     && (entry?.hf == null || Number(entry.hf) === Number(ktgRun?.hf))
-    && (sourceState?.ktg?.latest?.tmfc == null || String(sourceState.ktg.latest.tmfc) === String(ktgRun?.tmfc)))
+    && (state?.ktg?.latest?.tmfc == null || String(state.ktg.latest.tmfc) === String(ktgRun?.tmfc)))
   const ktgOutside = !ktgRun?.validTime || !indexedKtgRun || !ktgCoverage.from || !ktgCoverage.to
     || times.some((time) => time < ktgCoverage.from || time > ktgCoverage.to)
   const ktgUsable = !ktgOutside && inspected.turbulence.any
@@ -193,6 +195,7 @@ export function validateOrganizationCrossSection({ request, result, sourceState 
     composerInput,
     displayData: {
       ...(raw.crossSection ?? { available: false, run: null, levels: [] }),
+      domain: raw.domain ?? 'kr',
       turbulence: raw.turbulence ?? { available: false, run: null, levels: [] },
       availableTimes: raw.availableTimes,
       timeRules: raw.timeRules,
@@ -206,11 +209,12 @@ export function buildOrganizationMapDataSelection(snapshot, validated) {
   const kimRun = validated.displayData?.run ?? null
   const ktgRun = validated.displayData?.turbulence?.run ?? null
   const map = snapshot?.mapDataSelection ?? {}
+  const domain = validated.displayData?.domain ?? 'kr'
   return {
     mode: 'pinned',
     contextRevision: snapshot?.contextRevision ?? null,
-    kim: kimRun ? { tmfc: kimRun.tmfc, hf: kimRun.hf, validTime: kimRun.validTime, status: validated.modelStatus?.kim?.status ?? validated.status } : null,
-    ktg: ktgRun ? { tmfc: ktgRun.tmfc, hf: ktgRun.hf, validTime: ktgRun.validTime, product: ktgRun.product, revision: ktgRun.revision, status: validated.modelStatus?.ktg?.status ?? validated.status } : null,
+    kim: kimRun ? { tmfc: kimRun.tmfc, hf: kimRun.hf, validTime: kimRun.validTime, domain, status: validated.modelStatus?.kim?.status ?? validated.status } : null,
+    ktg: ktgRun ? { tmfc: ktgRun.tmfc, hf: ktgRun.hf, validTime: ktgRun.validTime, domain, product: ktgRun.product, revision: ktgRun.revision, status: validated.modelStatus?.ktg?.status ?? validated.status } : null,
     frames: map.frames ?? null,
     radar: map.frames?.radar ?? map.radar ?? null,
     satellite: map.frames?.satellite ?? map.satellite ?? null,
@@ -222,17 +226,20 @@ function withExactModelResources(selection, snapshot, validated) {
   const root = snapshot?.dataRoot
   if (!root) return selection
   const kim = selection.kim
+  // 해외 항로는 확대 영역 회차를 고정한다. 한반도 주소는 영역 도입 전과 같게 둔다.
+  const domain = kim?.domain ?? selection.ktg?.domain ?? 'kr'
+  const domainQuery = domain === 'kr' ? '' : `&domain=${domain}`
   if (kim && ['available', 'partial', 'out_of_range'].includes(kim.status)) {
     const levels = validated.displayData?.levels ?? []
     const levelIds = levels.map((level) => `${Number(level.pressure)}hPa`)
       .filter((level) => /^\d+hPa$/.test(level))
     const exact = levelIds.flatMap((levelId) => {
-      const result = readExactKimMapGrid(root, { tmfc: kim.tmfc, hf: kim.hf, level: levelId })
+      const result = readExactKimMapGrid(root, { tmfc: kim.tmfc, hf: kim.hf, level: levelId, domain })
       return result.status === 200 ? [{ levelId, revision: result.revision }] : []
     })
     const forVariable = (endpoint, allowed = () => true) => exact.filter((resource) => allowed(resource.levelId)).map((resource) => ({
       ...resource,
-      resourceId: `/api/kim/${endpoint}/field?tmfc=${encodeURIComponent(kim.tmfc)}&hf=${kim.hf}&level=${encodeURIComponent(resource.levelId)}&revision=${resource.revision}`,
+      resourceId: `/api/kim/${endpoint}/field?tmfc=${encodeURIComponent(kim.tmfc)}&hf=${kim.hf}&level=${encodeURIComponent(resource.levelId)}&revision=${resource.revision}${domainQuery}`,
     }))
     const icingLevels = new Set(levels.filter((level) => (level.values ?? []).some((value) => Number.isFinite(value?.icing)))
       .map((level) => `${Number(level.pressure)}hPa`))
@@ -243,22 +250,22 @@ function withExactModelResources(selection, snapshot, validated) {
   }
   if (selection.ktg?.product === 'GKTG') {
     const model = selection.ktg
-    const manifest = readKimGktgManifest(root, model.tmfc, model.revision)
+    const manifest = readKimGktgManifest(root, model.tmfc, model.revision, domain)
     const resources = (manifest?.entries || []).filter(entry => entry.hf === model.hf).flatMap(entry => {
       const level = { id: entry.levelId }
       const revision = entry.revision
       if (!revision) return []
       try {
-        readKimGktgField({ root, tmfc: model.tmfc, hf: model.hf, levelId: level.id, revision })
-        return [{ levelId: level.id, revision, resourceId: `/api/kim/gktg/field?tmfc=${model.tmfc}&hf=${model.hf}&level=${level.id}&revision=${revision}` }]
+        readKimGktgField({ root, tmfc: model.tmfc, hf: model.hf, levelId: level.id, revision, domain })
+        return [{ levelId: level.id, revision, resourceId: `/api/kim/gktg/field?tmfc=${model.tmfc}&hf=${model.hf}&level=${level.id}&revision=${revision}${domainQuery}` }]
       } catch { return [] }
     })
     selection.gktg = { ...model, levelIds: resources.map(r => r.levelId), resources: { gktg: resources } }
     if (selection.kim) {
       selection.kim.resources.gktg = resources
-      fs.writeFileSync(path.join(resolveKimNwpRunDir({ root, model: 'KIMG/NE57', tmfc: selection.kim.tmfc }), 'pins.json'), JSON.stringify({ reason: 'organization_briefing' }))
+      fs.writeFileSync(path.join(resolveKimNwpRunDir({ root, model: 'KIMG/NE57', tmfc: selection.kim.tmfc, domain }), 'pins.json'), JSON.stringify({ reason: 'organization_briefing' }))
     }
-    fs.writeFileSync(path.join(resolveKimNwpRunDir({ root, model: 'KIMG/NE57', tmfc: model.tmfc }), 'pins.json'), JSON.stringify({ reason: 'organization_briefing', revision: model.revision }))
+    fs.writeFileSync(path.join(resolveKimNwpRunDir({ root, model: 'KIMG/NE57', tmfc: model.tmfc, domain }), 'pins.json'), JSON.stringify({ reason: 'organization_briefing', revision: model.revision }))
     selection.models = { kim: selection.kim, gktg: selection.gktg }
     return selection
   }

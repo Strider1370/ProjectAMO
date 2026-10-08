@@ -2467,7 +2467,8 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
     return buildRouteProfileMarkersPayload({ routeResult, vfrWaypoints: appliedVfrWaypoints })
   }
 
-  async function reloadCrossSectionForNwpSelection({ routeGeometry, nextSelection, tmfc = crossSection?.run?.tmfc, hf } = {}) {
+  // domain: 단면이 쓴 KIM 영역(한반도 kr·확대 ea). 같은 회차를 다시 받도록 함께 보낸다.
+  async function reloadCrossSectionForNwpSelection({ routeGeometry, nextSelection, tmfc = crossSection?.run?.tmfc, hf, domain = crossSection?.run?.domain } = {}) {
     if (briefingContextRef.current?.kind === 'organization') {
       return loadOrganizationBundle({ nwpTimeSelection: nextSelection })
     }
@@ -2482,7 +2483,7 @@ export function useRouteBriefing({ activePanel, airports = [], metarData = null,
       })
       const refreshed = await fetchNwpTimeRefresh({
         ...profileRequest,
-        etd, eta, tmfc, ...(Number.isFinite(Number(hf)) ? { hf: Number(hf) } : {}),
+        etd, eta, tmfc, ...(Number.isFinite(Number(hf)) ? { hf: Number(hf) } : {}), ...(domain ? { domain } : {}),
         nwpTimeSelection: nextSelection,
         departureAirport: routeForm.departureAirport, arrivalAirport: routeForm.arrivalAirport,
         alternateAirport: alternateAirport || null,

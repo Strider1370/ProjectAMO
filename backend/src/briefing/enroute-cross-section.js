@@ -17,6 +17,7 @@ import {
   icingGradeFor,
 } from '../processors/kim-nwp-model.js'
 import { readKimNwpGrid, readKimNwpIndex, readKimNwpLatest, readKimGktgLatest } from '../processors/kim-nwp-store.js'
+import { KIM_DEFAULT_DOMAIN, kimDomainRequest, parseKimDomain } from '../processors/kim-domain.js'
 import { buildNwpTimeSegments, normalizeNwpTimeSelection } from '../../../shared/nwp-time-selection.js'
 
 const KIM_ICING_REQUIRED_VARIABLES = ['T', 'rh_liq', 'w', 'tqc', 'tqi', 'tqr', 'tqs', 'cld']
@@ -56,6 +57,22 @@ export function routeCrossSectionCacheMetrics() {
   return Object.fromEntries(Object.entries(routeGridCache).map(([family, cache]) => [family, {
     hits: cache.hits, misses: cache.misses, retainedGrids: cache.grids.size,
   }]))
+}
+
+// GKTG가 영역 가장자리 10칸을 비우므로, 이 안쪽에 항로가 모두 들어와야 한반도 회차로 단면 전체를 그릴 수 있다.
+const KOREA_EDGE_CELLS = 10
+
+// 항로 단면에 쓸 KIM 영역. 항로 전체가 한반도 격자(가장자리 제외) 안이면 한반도(하루 4회, 더 최신),
+// 밖으로 나가면 확대 영역(있을 때). 한 단면 안에서 두 영역을 섞지 않는다. 요청이 영역을 정하면 그대로 쓴다.
+export function selectRouteKimDomain({ root, samples, requested }) {
+  if (requested !== undefined && requested !== null && requested !== '') return parseKimDomain(requested)
+  const { bounds } = kimDomainRequest(config, KIM_DEFAULT_DOMAIN)
+  const marginLon = KOREA_EDGE_CELLS * bounds.dx
+  const marginLat = KOREA_EDGE_CELLS * bounds.dy
+  const insideKorea = (samples ?? []).every((sample) => sample.lon >= bounds.lonMin + marginLon && sample.lon <= bounds.lonMax - marginLon
+    && sample.lat >= bounds.latMin + marginLat && sample.lat <= bounds.latMax - marginLat)
+  if (insideKorea) return KIM_DEFAULT_DOMAIN
+  return readKimNwpLatest(root, 'ea')?.latestRun || readKimGktgLatest(root, 'ea')?.tmfc ? 'ea' : KIM_DEFAULT_DOMAIN
 }
 
 function decodeAt(variable, idx) {
@@ -161,15 +178,17 @@ function sampleLevelValuesForRules({ samples, segments, readGrid }) {
 
 // 경로의 KIM/KTG 단면 필드를 로드한다. KIM run이 없으면 { available: false }.
 export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRevision = '', allowPartialModels = false }) {
-  let latest = readKimNwpLatest(root)
+  const axis = buildRouteAxis(routeGeometry, body.sampleSpacingMeters ?? 250)
+  const domain = selectRouteKimDomain({ root, samples: axis.samples, requested: body.domain })
+  let latest = readKimNwpLatest(root, domain)
   const kimAvailable = Boolean(latest?.latestRun)
   if (!latest?.latestRun) {
-    const fallback = allowPartialModels ? readKimGktgLatest(root) : null
-    if (!fallback?.tmfc) return { available: false, reason: 'kim run unavailable' }
+    const fallback = allowPartialModels ? readKimGktgLatest(root, domain) : null
+    if (!fallback?.tmfc) return { available: false, domain, reason: 'kim run unavailable' }
     // A missing KIM file must not prevent independent KTG sampling for organizations.
     latest = { latestRun: fallback.tmfc }
   }
-  const index = readKimNwpIndex(root)
+  const index = readKimNwpIndex(root, domain)
   const tmfc = String(body.tmfc || latest.latestRun)
   // 압력면 바람(u/v) 데이터가 실제로 있는 시각만 후보로 삼는다.
   const pressureWindIndex = filterKimNwpIndexForVariables(index, ['u', 'v'])
@@ -195,9 +214,7 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRev
     baseTime: selectedKimTime?.validTime,
     candidateTimes,
   })
-  const kimBundleKey = `${root}|${tmfc}|${hf}|${latest.content_hash ?? latest.updated_at ?? ''}|${cacheRevision}`
-
-  const axis = buildRouteAxis(routeGeometry, body.sampleSpacingMeters ?? 250)
+  const kimBundleKey = `${root}|${domain}|${tmfc}|${hf}|${latest.content_hash ?? latest.updated_at ?? ''}|${cacheRevision}`
   const ruleMarkers = body.nwpTimeSelection && Array.isArray(body.routeMarkers)
     ? body.routeMarkers.map((marker) => ({
         ...marker,
@@ -220,13 +237,13 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRev
           samples: axis.samples,
           segments: timeRules.segments,
           readGrid: (sourceHf) => {
-            try { return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf: sourceHf, levelId }) } catch { return null }
+            try { return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf: sourceHf, levelId, domain }) } catch { return null }
           },
         }),
       }
     }
     const grid = cachedGrid('kim', kimBundleKey, levelId, () => {
-      try { return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf, levelId }) } catch { return null }
+      try { return readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf, levelId, domain }) } catch { return null }
     })
     if (!grid) return null
     return { pressure: level.value, values: sampleLevelValues(grid, axis.samples) }
@@ -234,17 +251,17 @@ export function loadRouteCrossSection({ root, routeGeometry, body = {}, cacheRev
 
   const crossSection = buildCrossSection({
     axis,
-    run: { tmfc, hf, validTime: selectedKimTime?.validTime ?? null },
+    run: { tmfc, hf, validTime: selectedKimTime?.validTime ?? null, domain },
     levelIds: KIM_NWP_LEVELS.filter((l) => l.kind === 'pressure').map((l) => l.id),
     loadLevel,
   })
 
-  const turbulence = loadGktgCrossSection({ root, axis, validTime: selectedKimTime?.validTime, timeRules })
-  const tropopause = loadTropopauseCrossSection({ root, axis, validTime: selectedKimTime?.validTime, timeRules })
+  const turbulence = loadGktgCrossSection({ root, axis, validTime: selectedKimTime?.validTime, timeRules, domain })
+  const tropopause = loadTropopauseCrossSection({ root, axis, validTime: selectedKimTime?.validTime, timeRules, domain })
 
   // 사용자가 단면도에서 다른 예보시간(hf)을 골라볼 수 있도록, 바람 자료가 실제로 있는 시각 목록을 함께 내려준다.
   return {
-    available: kimAvailable || Boolean(turbulence?.available), axis, crossSection: kimAvailable ? crossSection : null, turbulence, tropopause, totalDistanceNm: axis.totalDistanceNm,
+    available: kimAvailable || Boolean(turbulence?.available), domain, axis, crossSection: kimAvailable ? crossSection : null, turbulence, tropopause, totalDistanceNm: axis.totalDistanceNm,
     timeRules,
     nwpTimeAvailability,
     availableTimes: !kimAvailable ? [] : candidateTimes.map((time) => selectClosestForecastTime({

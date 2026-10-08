@@ -291,6 +291,7 @@ test('cross-section selects KIM closest to ETD and never falls back to archived 
       tmfc,
       hf: 9,
       validTime: '2026-07-22T09:00:00.000Z',
+      domain: 'kr',
     })
     assert.equal(result.turbulence.product, 'GKTG')
     assert.equal(result.turbulence.available, false)
