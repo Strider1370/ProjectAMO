@@ -3,12 +3,14 @@ import numpy as np
 from python_core import F,D,irregular,regular
 
 
-def front_theta(u,v,theta,geo):
+def front_theta(u,v,theta,geo,theta_range=None):
     nz,ny,nx=theta.shape
     # interp_to_theta2 searches the expanded requested domain, but theta was
     # initialized to RMISSD outside mask by tvcomp.
-    thmin=F(max(np.floor(float(np.nanmin(theta))+.5),225))
-    thmax=F(min(np.floor(float(np.nanmax(theta))+.5),800))
+    # 블록 계산은 영역 전체의 온위 최솟값·최댓값(theta_range)을 받아 같은 온위면을 쓴다.
+    lo,hi=theta_range if theta_range is not None else (float(np.nanmin(theta)),float(np.nanmax(theta)))
+    thmin=F(max(np.floor(lo+.5),225))
+    thmax=F(min(np.floor(hi+.5),800))
     ruc=np.array([240,250,260,265,270,272,274,276,278,280,282,284,286,288,290,292,294,296,298,300,302,304,306,308,310,312,314,316,318,320,322,325,328,331,334,337,340,343,346,349,352,355,359,365,372,385,400,422,450,500],dtype='f4')
     levels=ruc if thmin>=240 and thmax<=500 and nz>=50 else thmin+np.arange(nz,dtype='f4')*((thmax-thmin)/F(nz-1))
     adjusted=theta.copy()

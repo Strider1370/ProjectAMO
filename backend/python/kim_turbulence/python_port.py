@@ -10,20 +10,25 @@ from python_theta import front_theta
 from python_structure import structure_fields
 
 
-def preprocess(cube):
+def theta_from(q,t,pressures):
+    """tvcomp: specific humidity -> mixing ratio (smoothed) -> virtual temperature -> potential temperature."""
+    q=np.asarray(q,dtype='f4').astype('f8')
+    qmix=smooth((q/(D(1)-q)).astype('f4'),1,1)
+    tv=(np.asarray(t,dtype='f4').astype('f8')*((D(1)+qmix.astype('f8')/EPS)/(D(1)+qmix.astype('f8')))).astype('f4')
+    p=np.asarray(pressures,dtype='f4')[:,None,None]
+    rpk=(D(100000)/p.astype('f8'))**KAPPA
+    # tvcomp stores rpk in a REAL scalar before multiplying.
+    return qmix,tv,p,(tv*rpk.astype('f4')).astype('f4')
+
+
+def preprocess(cube,frame=None):
     grid=cube['grid']
     shape=(len(cube['pressures']),grid['ny'],grid['nx'])
     a={key:np.asarray(cube['fields'][key],dtype='f4').reshape(shape) for key in ('u','v','w','T','q','hgt')}
     surface={key:np.asarray(cube['surface'][key],dtype='f4').reshape(shape[1:]) for key in ('ps','topo','hpbl')}
     z,u,v,t=a['hgt'],a['u'],a['v'],a['T']
-    geo=Geometry(grid,z)
-    q=a['q'].astype('f8')
-    qmix=smooth((q/(D(1)-q)).astype('f4'),1,1)
-    tv=(t.astype('f8')*((D(1)+qmix.astype('f8')/EPS)/(D(1)+qmix.astype('f8')))).astype('f4')
-    p=np.asarray(cube['pressures'],dtype='f4')[:,None,None]
-    rpk=(D(100000)/p.astype('f8'))**KAPPA
-    # tvcomp stores rpk in a REAL scalar before multiplying.
-    theta=(tv*rpk.astype('f4')).astype('f4')
+    geo=Geometry(grid,z,frame=frame)
+    qmix,tv,p,theta=theta_from(a['q'],t,cube['pressures'])
     theta=np.where(geo.mask,theta,np.nan).astype('f4')
     tv=np.where(geo.mask,tv,np.nan).astype('f4')
     uz,vz=geo.dz(u),geo.dz(v)
@@ -84,8 +89,10 @@ def mountain_multiplier(u,v,z,topo,geo):
     return smooth(mws,1,domain=geo.mask),flag
 
 
-def calculate(cube):
-    a,s,geo,p,tv,theta,nsq,shear,mapped,ri,stages=preprocess(cube)
+def calculate(cube,context=None):
+    """context(블록 계산): frame(영역 전체 격자·블록 시작 행), theta_range, bands. 없으면 cube 전체가 영역이다."""
+    context=context or {}
+    a,s,geo,p,tv,theta,nsq,shear,mapped,ri,stages=preprocess(cube,context.get('frame'))
     u,v,w,t,z=(a[n] for n in ('u','v','w','T','hgt'))
     domain=geo.mask
     result={}
@@ -132,7 +139,7 @@ def calculate(cube):
     save('edrlun',roach(u,v,w,theta,ri,geo),4,3,floor=1e-6)
     save('f3d_ri',rinorm(front3(u,v,w,theta,geo),ri),floor=1e-17)
     save('ncsu2_ri',rinorm(ncsu(u,v,t,theta,geo),ri),2,2)
-    save('fth_ri',rinorm(front_theta(u,v,theta,geo),ri),floor=1e-10)
+    save('fth_ri',rinorm(front_theta(u,v,theta,geo,context.get('theta_range')),ri),floor=1e-10)
     edr,edrll,ctsq,varw=structure_fields(np.stack((u,v,t,w)),z,geo.mx.ravel(),geo.dx)
     save('edr',np.sqrt(edr),0,0,floor=1e-12)
     save('edrll',np.sqrt(edrll),0,0,floor=1e-12)
@@ -143,7 +150,7 @@ def calculate(cube):
     save('mwt7',mountain(varw),0,0)
     save('mwt2',mountain(ctsq))
     calibration=json.loads(Path(__file__).with_name('calibration.json').read_text())
-    bands=bounds(z,geo.mask)
+    bands=[tuple(band) for band in context['bands']] if 'bands' in context else bounds(z,geo.mask)
     codes={code:result[name] for name,_,code,_ in CATALOG if name in result}
     result.update(combine(codes,bands,calibration,geo.mask))
     return result,stages,{'bounds':bands,'theta':theta,'ri':ri,'mws':mws}

@@ -119,13 +119,18 @@ def rinorm(a, ri):
 
 
 class Geometry:
-    def __init__(self, grid, z, halo=10):
+    def __init__(self, grid, z, halo=10, frame=None):
+        # frame: 블록 계산일 때 영역 전체 격자와 이 블록의 시작 행. 위도·격자 간격은 영역 전체 기준으로 구해
+        # 블록을 이어 붙인 결과가 영역 전체를 한 번에 계산한 결과와 같다.
         self.z = z
         ny,nx = z.shape[1:]
-        lat = F(grid['latMin']) + (F(grid['latMax'])-F(grid['latMin']))*np.arange(ny,dtype='f4')/F(ny-1)
+        full = frame['grid'] if frame else grid
+        y0 = frame['y0'] if frame else 0
+        fny,fnx = int(full['ny']),int(full['nx'])
+        lat = (F(full['latMin']) + (F(full['latMax'])-F(full['latMin']))*np.arange(fny,dtype='f4')/F(fny-1))[y0:y0+ny]
         self.mx = (D(1)/np.cos(lat.astype('f8')*np.pi/D(180))).astype('f4')[None,:,None]
-        self.dx = F(RE*D(F(grid['lonMax'])-F(grid['lonMin']))*np.pi/D(180)/D(nx-1))
-        self.dy = F(RE*D(F(grid['latMax'])-F(grid['latMin']))*np.pi/D(180)/D(ny-1))
+        self.dx = F(RE*D(F(full['lonMax'])-F(full['lonMin']))*np.pi/D(180)/D(fnx-1))
+        self.dy = F(RE*D(F(full['latMax'])-F(full['latMin']))*np.pi/D(180)/D(fny-1))
         self.f = (D(F(1.45444e-4))*np.sin(lat.astype('f8')*np.pi/D(180))).astype('f4')[None,:,None]
         self.mask = np.zeros((ny,nx), dtype=bool)
         self.mask[halo:ny-halo,halo:nx-halo] = True

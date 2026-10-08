@@ -21,7 +21,9 @@ export const GKTG_ALGORITHM = 'kim-gktg-python-v5'
 const sha = value => crypto.createHash('sha256').update(value).digest('hex').slice(0, 20)
 const engineRevision = () => sha(['python_core.py', 'python_port.py', 'python_dynamics.py', 'python_theta.py', 'python_structure.py', 'python_combine.py', 'calibration.json', 'calculate.py', 'input_validation.py', 'products.py', 'requirements.txt'].map(name => fs.readFileSync(path.join(engineDir, name))).reduce((result, value) => Buffer.concat([result, value]), Buffer.from('kim-gktg-field-v1\n')))
 const sameGrid = (a, b) => ['nx', 'ny', 'lonMin', 'lonMax', 'latMin', 'latMax'].every(key => a[key] === b[key])
-const baseRevision = layers => sha(JSON.stringify(layers.map(l => [l.tmfc, l.hf, l.validTime, l.level, l.grid, l.variables])))
+// calculate.py의 FIELDS·SURFACE와 같은 순서.
+const CUBE_FIELDS = ['u', 'v', 'w', 'T', 'q', 'hgt']
+const SURFACE_FIELDS = ['ps', 'topo', 'hpbl']
 
 export function decodeGktgInput(variable, name, size) {
   const units = { u: ['m/s'], v: ['m/s'], w: ['m/s'], T: ['K'], hgt: ['m', 'gpm'], q: ['kg/kg', 'kg kg-1', '1'] }
@@ -77,18 +79,83 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
   return values
 }
 
-async function calculatePython(cube, stage, { signal, python }) {
-  const input = path.join(stage, 'input.json')
-  fs.writeFileSync(input, JSON.stringify(cube))
-  const timeoutSignal = AbortSignal.timeout(config.kim_gktg.calculation_timeout_ms)
-  const calculationSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
-  await new Promise((resolve, reject) => {
-    const child = spawn(python, [path.join(engineDir, 'calculate.py'), input, stage], { signal: calculationSignal, env: { ...process.env, NUMBA_CACHE_DIR: config.kim_gktg.cache_path }, stdio: ['ignore', 'ignore', 'pipe'] })
-    let error = ''
-    child.stderr.on('data', chunk => { error = (error + chunk).slice(-4000) })
-    child.on('error', reject)
-    child.on('exit', code => code === 0 ? resolve() : reject(new Error(`gktg_python_failed (${code}): ${error}`)))
-  })
+// 한 예보시각 계산 입력을 stage에 쓴다: job.json + float32 파일(cube.f32 변수×기압면×y×x, surface.f32).
+// 기본 격자를 한 층씩 읽어 바로 쓰므로 Node가 21층 전체를 들고 있지 않는다(확대 영역 JSON 큐브는 Node 약 4 GB였다).
+// inputRevision은 쓴 값(float32, 계산 엔진이 쓰는 정밀도)과 격자·시각으로 만든다.
+async function writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain }) {
+  const validTime = addForecastHours(tmfc, hf)
+  const nz = pressures.length
+  const hash = crypto.createHash('sha256')
+  let grid = null
+  let size = 0
+  let cube = null
+  const missingW = []
+  const write = (fd, index, values, label) => {
+    const array = Float32Array.from(values)
+    fs.writeSync(fd, array, 0, array.byteLength, index * size * 4)
+    hash.update(`${label}\n`)
+    hash.update(new Uint8Array(array.buffer))
+  }
+  try {
+    // 기본 21층을 모두 확인한 다음에만 추가 입력을 요청한다.
+    for (let k = 0; k < nz; k++) {
+      const layer = readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: pressures[k].id, domain })
+      if (!grid) {
+        grid = layer.grid
+        size = grid.nx * grid.ny
+        hash.update(JSON.stringify({ format: 'kim-gktg-input-v2', grid, hf, validTime, pressures: pressures.map(p => p.value * 100) }))
+        cube = fs.openSync(path.join(stage, 'cube.f32'), 'w')
+        fs.ftruncateSync(cube, CUBE_FIELDS.length * nz * size * 4)
+      }
+      if (layer.tmfc !== tmfc || Number(layer.hf) !== hf || layer.level.id !== pressures[k].id || layer.validTime !== validTime || !sameGrid(layer.grid, grid)) throw new Error('Mixed GKTG base grids')
+      for (const [f, name] of CUBE_FIELDS.entries()) {
+        if (name === 'w' && !layer.variables.w) { missingW.push(k); continue }
+        write(cube, f * nz + k, decodeGktgInput(layer.variables[name], name, size), `${name}:${k}`)
+      }
+    }
+    for (const k of missingW) {
+      write(cube, CUBE_FIELDS.indexOf('w') * nz + k, await supplement({ root, tmfc, hf, name: 'w', level: pressures[k].value, grid, signal, fetchGrid, domain }), `w:${k}`)
+    }
+  } finally { if (cube !== null) fs.closeSync(cube) }
+  const surface = fs.openSync(path.join(stage, 'surface.f32'), 'w')
+  try {
+    for (const [s, name] of SURFACE_FIELDS.entries()) write(surface, s, await supplement({ root, tmfc, hf, name, level: 0, grid, signal, fetchGrid, domain }), name)
+  } finally { fs.closeSync(surface) }
+  const job = { grid, hf, validTime, pressures: pressures.map(p => p.value * 100), cube: 'cube.f32', surface: 'surface.f32' }
+  fs.writeFileSync(path.join(stage, 'job.json'), JSON.stringify(job))
+  return { job, inputRevision: hash.digest('hex').slice(0, 20) }
+}
+
+// Python은 블록마다 stdout에 진행 한 줄을 쓴다. 제한시간은 블록 하나(한반도는 한 번에 계산하는 한 덩어리) 기준이다.
+async function calculatePython(job, stage, { signal, python }) {
+  const watchdog = new AbortController()
+  let timer = null
+  const arm = () => {
+    clearTimeout(timer)
+    timer = setTimeout(() => watchdog.abort(new Error('gktg_python_block_timeout')), config.kim_gktg.calculation_timeout_ms)
+  }
+  const calculationSignal = signal ? AbortSignal.any([signal, watchdog.signal]) : watchdog.signal
+  arm()
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn(python, [path.join(engineDir, 'calculate.py'), path.join(stage, 'job.json'), stage], { signal: calculationSignal, env: { ...process.env, NUMBA_CACHE_DIR: config.kim_gktg.cache_path }, stdio: ['ignore', 'pipe', 'pipe'] })
+      let error = ''
+      child.stdout.on('data', chunk => { if (String(chunk).includes('"block"')) arm() })
+      child.stderr.on('data', chunk => { error = (error + chunk).slice(-4000) })
+      child.on('error', reject)
+      child.on('exit', code => code === 0 ? resolve() : reject(new Error(`gktg_python_failed (${code}): ${error}`)))
+    })
+  } finally { clearTimeout(timer) }
+  return readGktgOutput(stage, job)
+}
+
+// gktg.f32(기압면×y×x, 결측 NaN) → 기압면별 배열(결측 null). float32 값을 그대로 숫자로 둔다.
+export function readGktgOutput(stage, job) {
+  const size = job.grid.nx * job.grid.ny
+  const buffer = fs.readFileSync(path.join(stage, 'gktg.f32'))
+  if (buffer.byteLength !== job.pressures.length * size * 4) throw new Error('Invalid GKTG output size')
+  const values = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4)
+  return job.pressures.map((_, k) => Array.from(values.subarray(k * size, (k + 1) * size), v => (Number.isNaN(v) ? null : v)))
 }
 
 export async function process({ root = config.storage.base_path, domain = KIM_DEFAULT_DOMAIN, tmfc = readKimNwpLatest(root, domain)?.latestRun || readKimNwpLatest(root, domain)?.tmfc,
@@ -98,7 +165,7 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
   if (!Array.isArray(forecastHours) || !forecastHours.length || forecastHours.some(h => !kimDomain(domain).forecastHours.includes(h))) throw new Error('Invalid GKTG forecast hours')
   const entries = []
   const failures = []
-  const baseRevisions = new Map()
+  const baseFingerprints = new Map()
   const engine = engineRevision()
   // 입력 격자·계산 코드·게시 결과가 지난 게시와 같으면 다시 읽지 않고 끝낸다. 모두 다시 읽어 확인하면
   // 백엔드가 100초 넘게 다른 요청을 받지 못했다(2026-10-04).
@@ -122,38 +189,28 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
     }
     let stage
     try {
-      const layers = pressures.map(level => readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, domain }))
-      const grid = layers[0].grid
-      for (let k = 0; k < layers.length; k++) {
-        if (layers[k].tmfc !== tmfc || Number(layers[k].hf) !== hf || layers[k].level.id !== pressures[k].id || layers[k].validTime !== addForecastHours(tmfc, hf) || !sameGrid(layers[k].grid, grid)) throw new Error('Mixed GKTG base grids')
-      }
-      baseRevisions.set(hf, baseRevision(layers))
-      const fields = Object.fromEntries(['u', 'v', 'T', 'hgt', 'q'].map(name => [name, layers.map(l => decodeGktgInput(l.variables[name], name, grid.nx * grid.ny))]))
-      fields.w = []
-      for (let k = 0; k < layers.length; k++) fields.w.push(layers[k].variables.w
-        ? decodeGktgInput(layers[k].variables.w, 'w', grid.nx * grid.ny)
-        : await supplement({ root, tmfc, hf, name: 'w', level: pressures[k].value, grid, signal, fetchGrid, domain }))
-      const surface = {}
-      for (const name of ['ps', 'topo', 'hpbl']) surface[name] = await supplement({ root, tmfc, hf, name, level: 0, grid, signal, fetchGrid, domain })
-      const cube = { grid, hf, validTime: addForecastHours(tmfc, hf), pressures: pressures.map(p => p.value * 100), fields, surface }
-      const inputRevision = sha(JSON.stringify(cube))
+      // 계산 중 기본 수집기가 이 시각 입력을 바꾸면 게시하지 않는다. 파일 지문(inode·크기·수정 시각)으로 본다.
+      baseFingerprints.set(hf, fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }))
+      const stages = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'gktg', '.staging')
+      fs.mkdirSync(stages, { recursive: true })
+      stage = fs.mkdtempSync(path.join(stages, 'hour-'))
+      const { job, inputRevision } = await writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain })
+      const { grid } = job
       const revision = sha(`${engine}:${inputRevision}`)
       const exists = pressures.every(level => {
         try { readKimGktgField({ root, tmfc, hf, levelId: level.id, revision, domain }); return true }
         catch { return false }
       })
       if (!exists) {
-        const stages = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'gktg', '.staging')
-        fs.mkdirSync(stages, { recursive: true })
-        stage = fs.mkdtempSync(path.join(stages, 'hour-'))
-        await calculate(cube, stage, { python, signal })
+        const output = await calculate(job, stage, { python, signal })
         for (let k = 0; k < pressures.length; k++) {
-          const gktg = JSON.parse(fs.readFileSync(path.join(stage, `${pressures[k].id}.json`), 'utf8'))
-          if (gktg.length !== grid.nx * grid.ny || !gktg.some(Number.isFinite) || gktg.some(v => v !== null && (!Number.isFinite(v) || v < 0 || v > 1.5))) throw new Error('Invalid GKTG output field')
-          writeKimGktgField(root, buildKimGktgFieldFromGrid(layers[k], { gktg, revision, inputRevision, algorithm: GKTG_ALGORITHM, engineRevision: engine }), domain)
+          const gktg = output[k]
+          if (gktg?.length !== grid.nx * grid.ny || !gktg.some(Number.isFinite) || gktg.some(v => v !== null && (!Number.isFinite(v) || v < 0 || v > 1.5))) throw new Error('Invalid GKTG output field')
+          const layer = readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: pressures[k].id, domain })
+          writeKimGktgField(root, buildKimGktgFieldFromGrid(layer, { gktg, revision, inputRevision, algorithm: GKTG_ALGORITHM, engineRevision: engine }), domain)
         }
       }
-      for (const level of pressures) entries.push({ levelId: level.id, hf, validTime: cube.validTime, variables: ['gktg'], hashes: { gktg: revision }, revision, inputRevision, grid,
+      for (const level of pressures) entries.push({ levelId: level.id, hf, validTime: job.validTime, variables: ['gktg'], hashes: { gktg: revision }, revision, inputRevision, grid,
         path: path.relative(root, resolveKimGktgFieldPath({ root, tmfc, hf, levelId: level.id, revision, domain })) })
       appendKimRunEvent(runDir, { type: 'gktg_hour', hf, computed: !exists, ms: Date.now() - hourStarted, revision })
     } catch (error) {
@@ -167,12 +224,11 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
   }
   // A base collector may update inputs while Python runs. Keep the previous
   // complete publication until every captured hour still matches its inputs.
-  for (const [hf, captured] of baseRevisions) {
+  for (const [hf, captured] of baseFingerprints) {
     if (failures.some(failure => failure.hf === hf)) continue
     await nextTurn()
     try {
-      const current = pressures.map(level => readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, domain }))
-      if (baseRevision(current) !== captured) throw new Error('kim_gktg_base_changed')
+      if (!captured || fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }) !== captured) throw new Error('kim_gktg_base_changed')
     } catch (error) {
       failures.push({ hf, reason: error.code || error.message })
       for (let i = entries.length - 1; i >= 0; i--) if (entries[i].hf === hf) entries.splice(i, 1)
