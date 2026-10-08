@@ -1,6 +1,6 @@
 // KIM 회차 점검(읽기 전용). 저장 형식(JSON·NC)과 관계없이 회차 상태·값·진행 기록을 본다.
 //
-//   node scripts/kim-inspect.mjs [--data <DATA_PATH>]                 회차 목록·게시 상태·예보시각 완성도·용량
+//   node scripts/kim-inspect.mjs [--data <DATA_PATH>] [--domain ea]   회차 목록·게시 상태·예보시각 완성도·용량(영역 기본 kr)
 //   node scripts/kim-inspect.mjs --run 2026100700 --hf 6 --level 850hPa [--point 37.5,127]
 //                                                                     변수별 최솟값·최댓값·결측 수, 지점 값
 //   node scripts/kim-inspect.mjs --run 2026100700 --events 30         회차 진행 기록(events.jsonl) 마지막 30줄
@@ -13,7 +13,7 @@ import { isDeepStrictEqual, parseArgs } from 'node:util'
 
 const { values: args } = parseArgs({ options: {
   data: { type: 'string' }, run: { type: 'string' }, hf: { type: 'string' }, level: { type: 'string' },
-  point: { type: 'string' }, events: { type: 'string' }, compare: { type: 'boolean' },
+  point: { type: 'string' }, events: { type: 'string' }, compare: { type: 'boolean' }, domain: { type: 'string' },
 } })
 
 const root = path.resolve(args.data || process.env.DATA_PATH || 'backend/data')
@@ -21,13 +21,15 @@ const { readKimNcDocument } = await import('../backend/src/processors/kim-doc-st
 const { decodeComponent, KIM_NWP_LEVELS, KIM_NWP_MODEL } = await import('../backend/src/processors/kim-nwp-model.js')
 const store = await import('../backend/src/processors/kim-nwp-store.js')
 const { readKimRunEvents } = await import('../backend/src/processors/kim-run-events.js')
+const { parseKimDomain } = await import('../backend/src/processors/kim-domain.js')
 
-const kimRoot = path.join(root, 'kim_nwp')
+const domain = parseKimDomain(args.domain)
+const kimRoot = store.resolveKimNwpRoot(root, domain)
 if (!fs.existsSync(kimRoot)) {
   console.error(`KIM 저장소가 없습니다: ${kimRoot}`)
   process.exit(1)
 }
-const runDir = tmfc => store.resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc })
+const runDir = tmfc => store.resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain })
 const mb = bytes => `${(bytes / 1e6).toFixed(1)} MB`
 const out = (value) => console.log(JSON.stringify(value, null, 2))
 
@@ -66,12 +68,12 @@ function hourCompleteness(tmfc) {
 }
 
 function summary() {
-  const latest = store.readKimNwpLatest(root)
-  const gktg = store.readKimGktgLatest(root)
-  const trop = store.readKimTropopauseLatest(root)
-  const runs = store.listKimNwpRuns(root).map((runId) => {
+  const latest = store.readKimNwpLatest(root, domain)
+  const gktg = store.readKimGktgLatest(root, domain)
+  const trop = store.readKimTropopauseLatest(root, domain)
+  const runs = store.listKimNwpRuns(root, domain).map((runId) => {
     const tmfc = runId.match(/_(\d{10})$/)?.[1]
-    const manifest = store.readKimNwpManifest(root, runId)
+    const manifest = store.readKimNwpManifest(root, runId, domain)
     const usage = runUsage(path.join(kimRoot, 'runs', runId))
     const events = readKimRunEvents(path.join(kimRoot, 'runs', runId))
     return {
@@ -110,13 +112,13 @@ function nearestIndex(grid, lat, lon) {
 function levelDetail() {
   const hf = Number(args.hf ?? 0)
   const levelId = args.level || '850hPa'
-  const grid = store.readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc: args.run, hf, levelId })
+  const grid = store.readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc: args.run, hf, levelId, domain })
   const point = args.point ? nearestIndex(grid.grid, ...args.point.split(',').map(Number)) : null
   const variables = Object.fromEntries(Object.entries(grid.variables).map(([name, variable]) => {
     const decoded = decodeComponent(variable.values, variable)
     return [name, { unit: variable.unit, ...stats(decoded), ...(point ? { atPoint: decoded[point.index] } : {}) }]
   }))
-  const storagePath = ['grid.nc', 'grid.json'].map(name => path.join(path.dirname(store.resolveKimNwpGridPath({ root, model: KIM_NWP_MODEL, tmfc: args.run, hf, levelId })), name)).filter(file => fs.existsSync(file))
+  const storagePath = ['grid.nc', 'grid.json'].map(name => path.join(path.dirname(store.resolveKimNwpGridPath({ root, model: KIM_NWP_MODEL, tmfc: args.run, hf, levelId, domain })), name)).filter(file => fs.existsSync(file))
   return { run: args.run, hf, level: levelId, validTime: grid.validTime, grid: grid.grid, files: storagePath.map(file => path.relative(root, file)), point, variables }
 }
 

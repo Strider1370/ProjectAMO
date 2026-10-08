@@ -300,6 +300,13 @@ export const kim_surface_wind = {
   },
 }
 
+// KIM 확대 영역(90~160°E, 6~50°N, 841×529). 대용량 키로만 받는다. 영역별 저장 폴더·예보시각은 processors/kim-domain.js.
+// 요청 범위는 KIM 격자 번호(x = 경도×12+1, y = (위도+90)×12+1)다.
+export const kim_expanded = {
+  sub: process.env.KIM_EXPANDED_SUB || '1081,1153,1921,1681',
+  bounds: { lonMin: 90, latMin: 6, lonMax: 160, latMax: 50, dx: 0.083333, dy: 0.083333 },
+}
+
 // KIM 지상 일기도(등압선·H/L·3시간 강수·지상바람). 기존 KIM 수집과 달리 동아시아 넓은 영역을 받는다.
 // 표시 영역보다 사방 margin_deg 넓게 받아야 가장자리 근처의 약한 H/L을 판정할 수 있다
 // (docs/design/proposals/2026-09-22-kim-surface-chart.md). KIM 격자 번호는 [1,1]부터: x = 경도×12+1, y = (위도+90)×12+1.
@@ -602,6 +609,7 @@ export default {
   satellite,
   adsb,
   kim_surface_wind,
+  kim_expanded,
   kim_surface_chart,
   kim_bulk,
   kim_nwp,

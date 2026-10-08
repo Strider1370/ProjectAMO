@@ -19,8 +19,9 @@ export function kimBulkWindowOpen({ now = Date.now(), validUntilKst, startHourKs
 }
 
 // config에서 대용량 키 선택 인자를 만든다. 쓰지 않으면 빈 객체라 기존 키 배분이 그대로다.
-export function kimBulkCredentialOptions(config, now = Date.now()) {
-  if (!config?.kim_bulk?.use) return {}
+// required: 확대 영역처럼 대용량 키로만 받아야 하는 영역(kim-domain.js bulkOnly)은 설정과 관계없이 그 키만 쓴다.
+export function kimBulkCredentialOptions(config, now = Date.now(), { required = false } = {}) {
+  if (!config?.kim_bulk?.use && !required) return {}
   return { bulkCredential: config.api?.kma_bulk_auth_key || null, bulkRequired: true, now,
     bulkWindow: { validUntilKst: config.kim_bulk.valid_until_kst, startHourKst: config.kim_bulk.window_start_hour_kst, endHourKst: config.kim_bulk.window_end_hour_kst } }
 }

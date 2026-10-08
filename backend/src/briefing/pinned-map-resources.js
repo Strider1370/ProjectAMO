@@ -59,11 +59,11 @@ export function readExactKtgMapGrid(root, { tmfc, hf, altFt, revision } = {}) {
   } }
 }
 
-export function readExactKimMapGrid(root, { tmfc, hf, level, revision } = {}) {
-  try { validateKimNwpSelection({ tmfc, hf, levelId: level }) }
+export function readExactKimMapGrid(root, { tmfc, hf, level, revision, domain } = {}) {
+  try { validateKimNwpSelection({ tmfc, hf, levelId: level, domain }) }
   catch { return { status: 400, error: 'invalid_map_selection' } }
   let grid
-  try { grid = readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf: Number(hf), levelId: level }) }
+  try { grid = readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc, hf: Number(hf), levelId: level, domain }) }
   catch { return { status: 410, error: 'map_resource_expired' } }
   if (!grid) return { status: 410, error: 'map_resource_expired' }
   const actualRevision = mapResourceRevision(grid)

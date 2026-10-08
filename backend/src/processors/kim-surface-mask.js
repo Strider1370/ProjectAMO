@@ -8,15 +8,16 @@ import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { readKimRawText } from './kim-doc-store.js'
 import { KIM_NWP_MODEL } from './kim-nwp-model.js'
 import { resolveKimNwpRunDir } from './kim-nwp-store.js'
+import { KIM_DEFAULT_DOMAIN } from './kim-domain.js'
 
 export const KIM_BELOW_GROUND_ENCODING = 'bitset-base64-v1'
 const cache = new Map()
 const CACHE_SIZE = 6
 
-export function readKimSurfacePressure({ root, tmfc, hf }) {
-  const key = `${root}:${tmfc}:${hf}`
+export function readKimSurfacePressure({ root, tmfc, hf, domain = KIM_DEFAULT_DOMAIN }) {
+  const key = `${root}:${domain}:${tmfc}:${hf}`
   if (cache.has(key)) return cache.get(key)
-  const file = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'raw', 'gktg', `hf${Number(hf)}-ps-0.txt`)
+  const file = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'raw', 'gktg', `hf${Number(hf)}-ps-0.txt`)
   const text = readKimRawText(file)
   let value = null
   if (text) {
@@ -31,9 +32,9 @@ export function readKimSurfacePressure({ root, tmfc, hf }) {
 }
 
 // 기압면(hPa)이 지면 아래인 격자를 1로 둔 Uint8Array. 지상기압이 없거나 격자가 다르면 null.
-export function kimBelowGroundMask({ root, tmfc, hf, pressureHpa, grid }) {
+export function kimBelowGroundMask({ root, tmfc, hf, pressureHpa, grid, domain = KIM_DEFAULT_DOMAIN }) {
   if (!Number.isFinite(pressureHpa)) return null
-  const ps = readKimSurfacePressure({ root, tmfc, hf })
+  const ps = readKimSurfacePressure({ root, tmfc, hf, domain })
   if (!ps || ps.nx !== grid?.nx || ps.ny !== grid?.ny) return null
   const mask = new Uint8Array(ps.values.length)
   const levelPa = pressureHpa * 100
@@ -48,11 +49,11 @@ export function encodeKimBelowGround(mask) {
 }
 
 // 지도 응답에 지면 아래 표시를 붙이고, 그 격자의 값을 비운다. 마스크를 만들 수 없으면 필드를 그대로 돌려준다.
-export function applyKimBelowGround(field, { root, arrays }) {
+export function applyKimBelowGround(field, { root, arrays, domain = KIM_DEFAULT_DOMAIN }) {
   const pressureHpa = field?.level?.kind === 'pressure' ? Number(field.level.value) : NaN
   const tmfc = field?.time?.tmfc ?? field?.tmfc
   const hf = field?.time?.hf ?? field?.hf
-  const mask = kimBelowGroundMask({ root, tmfc, hf, pressureHpa, grid: field?.grid })
+  const mask = kimBelowGroundMask({ root, tmfc, hf, pressureHpa, grid: field?.grid, domain })
   if (!mask) return field
   const out = { ...field, belowGround: encodeKimBelowGround(mask), belowGroundEncoding: KIM_BELOW_GROUND_ENCODING }
   for (const name of arrays) {

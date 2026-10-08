@@ -80,6 +80,7 @@ import {
   validateKimNwpSelection,
 } from './src/processors/kim-nwp-store.js'
 import { applyKimBelowGround } from './src/processors/kim-surface-mask.js'
+import { KIM_DEFAULT_DOMAIN, parseKimDomain } from './src/processors/kim-domain.js'
 import { loadRouteCrossSection } from './src/briefing/enroute-cross-section.js'
 import { buildNavlogNwpPatch } from './src/briefing/navlog-nwp-patch.js'
 import { buildRouteExposure } from './src/briefing/route-exposure.js'
@@ -670,15 +671,22 @@ function selectDefaultKimNwpField(index) {
 }
 
 function readSelectedKimField(selection, buildFn) {
-  validateKimNwpSelection({ tmfc: selection.tmfc, hf: selection.hf, levelId: selection.level })
+  const domain = selection.domain || KIM_DEFAULT_DOMAIN
+  validateKimNwpSelection({ tmfc: selection.tmfc, hf: selection.hf, levelId: selection.level, domain })
   const grid = readKimNwpGrid({
     root: DATA_ROOT,
     model: 'KIMG/NE57',
     tmfc: selection.tmfc,
     hf: Number(selection.hf),
     levelId: selection.level,
+    domain,
   })
   return buildFn(grid)
+}
+
+// KIM 지도 API의 영역(?domain=kr|ea, 없으면 kr). 한반도 ETag는 영역 도입 전과 같게 두어 브라우저 캐시를 유지한다.
+function kimDomainEtagScope(domain) {
+  return domain === KIM_DEFAULT_DOMAIN ? '' : `${domain}:`
 }
 
 // Kept as named exports for backwards compatibility (used in cross-section route and tests).
@@ -692,6 +700,7 @@ function readSelectedKimIcingField(selection) {
 function sendKimField(req, res, { type, buildFn, errorLabel }) {
   try {
     const selection = {
+      domain: parseKimDomain(req.query.domain),
       tmfc: String(req.query.tmfc || ''),
       hf: Number(req.query.hf),
       level: String(req.query.level || ''),
@@ -702,8 +711,8 @@ function sendKimField(req, res, { type, buildFn, errorLabel }) {
       if (exact.status !== 200) return res.status(exact.status).json({ error: exact.error })
       return res.json({ ...buildFn(exact.grid), revision: exact.revision })
     }
-    // Early 304: (tmfc, hf, level) uniquely identifies an immutable KIM field — no need to read the grid.
-    const etagSeed = `kim-${type}:${selection.tmfc}:${selection.hf}:${selection.level}`
+    // Early 304: (domain, tmfc, hf, level) uniquely identifies an immutable KIM field — no need to read the grid.
+    const etagSeed = `kim-${type}:${kimDomainEtagScope(selection.domain)}${selection.tmfc}:${selection.hf}:${selection.level}`
     const etag = etagOf(etagSeed)
     if (requestHasMatchingEtag(req, etag)) {
       res.status(304).end()
@@ -717,10 +726,12 @@ function sendKimField(req, res, { type, buildFn, errorLabel }) {
 }
 
 // KIM index 라우트 공통: index 읽기 → buildPayload로 변환 후 revalidated 전송, 없으면 503.
-function sendKimIndex(res, { buildPayload, errorLabel }) {
-  const index = readKimNwpIndex(DATA_ROOT)
+function sendKimIndex(req, res, { buildPayload, errorLabel }) {
+  let domain
+  try { domain = parseKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }
+  const index = readKimNwpIndex(DATA_ROOT, domain)
   if (index) {
-    const payload = buildPayload(index, getEffectiveNow().getTime())
+    const payload = { ...buildPayload(index, getEffectiveNow().getTime()), domain }
     sendRevalidatedJson(res, payload, store.canonicalHash(payload))
     return
   }
@@ -730,15 +741,18 @@ function sendKimIndex(res, { buildPayload, errorLabel }) {
 
 function sendKimWindField(req, res, { allowDefault = false } = {}) {
   try {
+    const domain = parseKimDomain(req.query.domain)
     let selection = {
+      domain,
       tmfc: String(req.query.tmfc || ''),
       hf: Number(req.query.hf),
       level: String(req.query.level || ''),
     }
 
     if (allowDefault && (!selection.tmfc || !selection.level || !Number.isFinite(selection.hf))) {
-      const index = readKimNwpIndex(DATA_ROOT)
-      selection = index ? selectDefaultKimNwpField(filterKimNwpIndexForMap(index, getEffectiveNow().getTime())) : null
+      const index = readKimNwpIndex(DATA_ROOT, domain)
+      const fallback = index ? selectDefaultKimNwpField(filterKimNwpIndexForMap(index, getEffectiveNow().getTime())) : null
+      selection = fallback && { ...fallback, domain }
     }
 
     if (!selection) {
@@ -752,7 +766,7 @@ function sendKimWindField(req, res, { allowDefault = false } = {}) {
       if (exact.status !== 200) return res.status(exact.status).json({ error: exact.error })
       return res.json({ ...buildKimSurfaceWindFieldFromWindGrid(exact.grid), revision: exact.revision })
     }
-    const etagSeed = `kim-wind:${selection.tmfc}:${selection.hf}:${selection.level}`
+    const etagSeed = `kim-wind:${kimDomainEtagScope(selection.domain)}${selection.tmfc}:${selection.hf}:${selection.level}`
     const etag = etagOf(etagSeed)
     if (requestHasMatchingEtag(req, etag)) {
       res.status(304).end()
@@ -859,62 +873,70 @@ app.get('/api/kim/surface-wind', (req, res) => {
   }
   sendLatest(res, 'kim_surface_wind')
 })
-app.get('/api/kim/wind/index', (_req, res) => sendKimIndex(res, {
+app.get('/api/kim/wind/index', (req, res) => sendKimIndex(req, res, {
   buildPayload: (index, nowMs) => filterKimNwpIndexForMapVariables(index, ['u', 'v'], nowMs),
   errorLabel: 'kim wind index unavailable',
 }))
 app.get('/api/kim/wind/field', (req, res) => sendKimWindField(req, res))
-app.get('/api/kim/temp/index', (_req, res) => sendKimIndex(res, {
+app.get('/api/kim/temp/index', (req, res) => sendKimIndex(req, res, {
   buildPayload: (index, nowMs) => ({ ...filterKimNwpIndexForMapVariables(index, ['T'], nowMs), type: 'kim_nwp_temp_index' }),
   errorLabel: 'kim temp index unavailable',
 }))
 app.get('/api/kim/temp/field', (req, res) =>
   sendKimField(req, res, { type: 'temp', buildFn: buildKimTemperatureFieldFromGrid, errorLabel: 'invalid kim temp selection' })
 )
-app.get('/api/kim/cloud/index', (_req, res) => sendKimIndex(res, {
+app.get('/api/kim/cloud/index', (req, res) => sendKimIndex(req, res, {
   buildPayload: (index, nowMs) => ({ ...filterKimCloudIndexForMap(index, nowMs), type: 'kim_nwp_cloud_index' }),
   errorLabel: 'kim cloud index unavailable',
 }))
 app.get('/api/kim/cloud/field', (req, res) =>
   sendKimField(req, res, { type: 'cloud', buildFn: buildKimCloudPotentialFieldFromGrid, errorLabel: 'invalid kim cloud selection' })
 )
-app.get('/api/kim/icing/index', (_req, res) => sendKimIndex(res, {
+app.get('/api/kim/icing/index', (req, res) => sendKimIndex(req, res, {
   buildPayload: (index, nowMs) => ({ ...filterKimIcingIndexForMap(index, nowMs), type: 'kim_nwp_icing_index' }),
   errorLabel: 'kim icing index unavailable',
 }))
 app.get('/api/kim/icing/field', (req, res) =>
   sendKimField(req, res, { type: 'icing', buildFn: buildKimIcingFieldFromGrid, errorLabel: 'invalid kim icing selection' })
 )
-app.get('/api/kim/gktg/index', (_req, res) => {
-  const index = readKimGktgIndex(DATA_ROOT)
+app.get('/api/kim/gktg/index', (req, res) => {
+  let domain
+  try { domain = parseKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }
+  const index = readKimGktgIndex(DATA_ROOT, domain)
   if (!index) return res.status(503).json({ error: 'kim gktg index unavailable' })
-  sendRevalidatedJson(res, index, index.revision)
+  sendRevalidatedJson(res, { ...index, domain }, `${kimDomainEtagScope(domain)}${index.revision}`)
 })
 app.get('/api/kim/gktg/field', (req, res) => {
   try {
-    const stored = readKimGktgField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), levelId: String(req.query.level || ''), revision: req.query.revision })
+    const domain = parseKimDomain(req.query.domain)
+    const stored = readKimGktgField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), levelId: String(req.query.level || ''), revision: req.query.revision, domain })
     // 지면 아래 기압면은 비우고 표시를 붙인다(kim-surface-mask.js). ETag에 표시 방식을 넣어 이전 응답 캐시와 구분한다.
-    const field = applyKimBelowGround(stored, { root: DATA_ROOT, arrays: ['gktg'] })
-    sendImmutableJson(res, field, `kim-gktg:${field.time.tmfc}:${field.time.hf}:${field.level.id}:${field.revision}:below-ground-v1`)
+    const field = applyKimBelowGround(stored, { root: DATA_ROOT, arrays: ['gktg'], domain })
+    sendImmutableJson(res, field, `kim-gktg:${kimDomainEtagScope(domain)}${field.time.tmfc}:${field.time.hf}:${field.level.id}:${field.revision}:below-ground-v1`)
   } catch (error) {
     setNoStore(res)
     res.status(error.code === 'ENOENT' ? 404 : 400).json({ error: error.message })
   }
 })
 
-app.get('/api/kim/tropopause/index', (_req, res) => {
-  const index = readKimTropopauseIndex(DATA_ROOT)
+app.get('/api/kim/tropopause/index', (req, res) => {
+  let domain
+  try { domain = parseKimDomain(req.query.domain) } catch (error) { setNoStore(res); return res.status(400).json({ error: error.message }) }
+  const index = readKimTropopauseIndex(DATA_ROOT, domain)
   if (!index) return res.status(503).json({ error: 'kim tropopause index unavailable' })
-  sendRevalidatedJson(res, index, index.revision)
+  sendRevalidatedJson(res, { ...index, domain }, `${kimDomainEtagScope(domain)}${index.revision}`)
 })
-app.get('/api/kim/tropopause/runs', (_req, res) => {
+app.get('/api/kim/tropopause/runs', (req, res) => {
   setNoStore(res)
-  res.json({ type: 'kim_nwp_tropopause_runs', fields: listKimTropopauseFields(DATA_ROOT) })
+  let domain
+  try { domain = parseKimDomain(req.query.domain) } catch (error) { return res.status(400).json({ error: error.message }) }
+  res.json({ type: 'kim_nwp_tropopause_runs', domain, fields: listKimTropopauseFields(DATA_ROOT, domain) })
 })
 app.get('/api/kim/tropopause/field', (req, res) => {
   try {
-    const field = readKimTropopauseField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), revision: req.query.revision })
-    sendImmutableJson(res, field, `kim-tropopause:${field.time.tmfc}:${field.time.hf}:${field.revision}`)
+    const domain = parseKimDomain(req.query.domain)
+    const field = readKimTropopauseField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), revision: req.query.revision, domain })
+    sendImmutableJson(res, field, `kim-tropopause:${kimDomainEtagScope(domain)}${field.time.tmfc}:${field.time.hf}:${field.revision}`)
   } catch (error) {
     setNoStore(res)
     res.status(error.code === 'ENOENT' ? 404 : 400).json({ error: error.message })

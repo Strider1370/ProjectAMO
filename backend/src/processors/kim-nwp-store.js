@@ -3,12 +3,13 @@ import path from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 import { createHash, randomUUID } from 'node:crypto'
 
-import { KIM_NWP_FORECAST_HOURS, KIM_NWP_LEVELS, KIM_NWP_MODEL, buildKimNwpIndex } from './kim-nwp-model.js'
+import { KIM_NWP_LEVELS, KIM_NWP_MODEL, buildKimNwpIndex } from './kim-nwp-model.js'
+import { KIM_DEFAULT_DOMAIN, kimDomain } from './kim-domain.js'
 import { kimDocumentExists, kimDocumentStoragePath, quarantineKimDocument, readKimDocument, writeKimDocument } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 
-const ROOT_DIR = 'kim_nwp'
-
+// 모든 함수는 영역(domain, 기본 'kr')을 받는다. 영역마다 저장 폴더가 따로라(kim-domain.js) 회차·latest·index·
+// 파생 결과·정리가 영역 사이에 섞이지 않는다.
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''))
 }
@@ -40,97 +41,102 @@ export function buildKimNwpRunId({ model, tmfc }) {
   return `${safeSegment(model)}_${tmfc}`
 }
 
-export function validateKimNwpSelection({ tmfc, hf, levelId }) {
+function validateForecastHour(hf, domain) {
+  if (!kimDomain(domain).forecastHours.includes(Number(hf))) throw new Error('Invalid KIM NWP forecast hour')
+}
+
+export function validateKimNwpSelection({ tmfc, hf, levelId, domain = KIM_DEFAULT_DOMAIN }) {
   if (!/^\d{10}$/.test(String(tmfc || ''))) throw new Error('Invalid KIM NWP tmfc')
-  if (!KIM_NWP_FORECAST_HOURS.includes(Number(hf))) throw new Error('Invalid KIM NWP forecast hour')
+  validateForecastHour(hf, domain)
   if (!KIM_NWP_LEVELS.some((level) => level.id === levelId)) throw new Error('Invalid KIM NWP level')
 }
 
-export function resolveKimNwpRoot(root) {
-  return path.join(root, ROOT_DIR)
+export function resolveKimNwpRoot(root, domain = KIM_DEFAULT_DOMAIN) {
+  return path.join(root, kimDomain(domain).storeDir)
 }
 
-export function resolveKimNwpRunDir({ root, model, tmfc }) {
-  return path.join(resolveKimNwpRoot(root), 'runs', buildKimNwpRunId({ model, tmfc }))
+export function resolveKimNwpRunDir({ root, model, tmfc, domain = KIM_DEFAULT_DOMAIN }) {
+  return path.join(resolveKimNwpRoot(root, domain), 'runs', buildKimNwpRunId({ model, tmfc }))
 }
 
-export function resolveKimNwpGridPath({ root, model, tmfc, hf, levelId }) {
-  validateKimNwpSelection({ tmfc, hf, levelId })
+export function resolveKimNwpGridPath({ root, model, tmfc, hf, levelId, domain = KIM_DEFAULT_DOMAIN }) {
+  validateKimNwpSelection({ tmfc, hf, levelId, domain })
   const filePath = path.join(
-    resolveKimNwpRunDir({ root, model, tmfc }),
+    resolveKimNwpRunDir({ root, model, tmfc, domain }),
     'normalized',
     `hf${String(Number(hf)).padStart(3, '0')}`,
     levelId,
     'grid.json',
   )
-  assertInsideRoot(resolveKimNwpRoot(root), filePath)
+  assertInsideRoot(resolveKimNwpRoot(root, domain), filePath)
   return filePath
 }
 
-function resolveKimNwpManifestPath(root, runId) {
+function resolveKimNwpManifestPath(root, runId, domain) {
   if (!/^[a-zA-Z0-9_]+_\d{10}$/.test(String(runId || ''))) throw new Error('Invalid KIM NWP run id')
-  const filePath = path.join(resolveKimNwpRoot(root), 'runs', runId, 'manifest.json')
-  assertInsideRoot(resolveKimNwpRoot(root), filePath)
+  const filePath = path.join(resolveKimNwpRoot(root, domain), 'runs', runId, 'manifest.json')
+  assertInsideRoot(resolveKimNwpRoot(root, domain), filePath)
   return filePath
 }
 
-export function writeKimNwpGrid({ root, grid }) {
+export function writeKimNwpGrid({ root, grid, domain = KIM_DEFAULT_DOMAIN }) {
   const filePath = resolveKimNwpGridPath({
     root,
     model: grid.model,
     tmfc: grid.tmfc,
     hf: grid.hf,
     levelId: grid.level.id,
+    domain,
   })
   writeKimDocument(filePath, grid)
   return filePath
 }
 
-export function writeKimNwpLatest(root, latest) {
-  writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'latest.json'), latest)
+export function writeKimNwpLatest(root, latest, domain = KIM_DEFAULT_DOMAIN) {
+  writeJsonAtomic(path.join(resolveKimNwpRoot(root, domain), 'latest.json'), latest)
 }
 
-export function writeKimNwpIndex(root, index) {
-  writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'index.json'), index)
+export function writeKimNwpIndex(root, index, domain = KIM_DEFAULT_DOMAIN) {
+  writeJsonAtomic(path.join(resolveKimNwpRoot(root, domain), 'index.json'), index)
 }
 
-export function writeKimNwpManifest(root, manifest) {
+export function writeKimNwpManifest(root, manifest, domain = KIM_DEFAULT_DOMAIN) {
   const runId = manifest.runId || buildKimNwpRunId({ model: manifest.model, tmfc: manifest.tmfc })
-  writeJsonAtomic(resolveKimNwpManifestPath(root, runId), { ...manifest, runId })
+  writeJsonAtomic(resolveKimNwpManifestPath(root, runId, domain), { ...manifest, runId })
 }
 
-export function readKimNwpGrid({ root, model, tmfc, hf, levelId }) {
-  return readKimDocument(resolveKimNwpGridPath({ root, model, tmfc, hf, levelId }))
+export function readKimNwpGrid({ root, model, tmfc, hf, levelId, domain = KIM_DEFAULT_DOMAIN }) {
+  return readKimDocument(resolveKimNwpGridPath({ root, model, tmfc, hf, levelId, domain }))
 }
 
-export function readKimNwpGridSafe({ root, model, tmfc, hf, levelId }) {
+export function readKimNwpGridSafe({ root, model, tmfc, hf, levelId, domain = KIM_DEFAULT_DOMAIN }) {
   try {
-    return readKimNwpGrid({ root, model, tmfc, hf, levelId })
+    return readKimNwpGrid({ root, model, tmfc, hf, levelId, domain })
   } catch {
     return null
   }
 }
 
-export function readKimNwpIndex(root) {
-  const filePath = path.join(resolveKimNwpRoot(root), 'index.json')
+export function readKimNwpIndex(root, domain = KIM_DEFAULT_DOMAIN) {
+  const filePath = path.join(resolveKimNwpRoot(root, domain), 'index.json')
   if (!fs.existsSync(filePath)) return null
   return readJson(filePath)
 }
 
-export function readKimNwpLatest(root) {
-  const filePath = path.join(resolveKimNwpRoot(root), 'latest.json')
+export function readKimNwpLatest(root, domain = KIM_DEFAULT_DOMAIN) {
+  const filePath = path.join(resolveKimNwpRoot(root, domain), 'latest.json')
   if (!fs.existsSync(filePath)) return null
   return readJson(filePath)
 }
 
-export function readKimNwpManifest(root, runId) {
-  const filePath = resolveKimNwpManifestPath(root, runId)
+export function readKimNwpManifest(root, runId, domain = KIM_DEFAULT_DOMAIN) {
+  const filePath = resolveKimNwpManifestPath(root, runId, domain)
   if (!fs.existsSync(filePath)) return null
   return readJson(filePath)
 }
 
-export function listKimNwpRuns(root) {
-  const runsDir = path.join(resolveKimNwpRoot(root), 'runs')
+export function listKimNwpRuns(root, domain = KIM_DEFAULT_DOMAIN) {
+  const runsDir = path.join(resolveKimNwpRoot(root, domain), 'runs')
   if (!fs.existsSync(runsDir)) return []
   return fs.readdirSync(runsDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -140,20 +146,21 @@ export function listKimNwpRuns(root) {
 
 // onlyComplete: 파생 결과 게시 직후처럼 기본 수집이 다른 회차를 받고 있을 수 있는 때 쓴다. 받는 중인 회차는
 // 끝날 때까지 manifest가 없으므로, 완성된 회차만 지울 수 있게 해 수집 중 폴더를 건드리지 않는다.
-export function cleanupKimNwpRuns({ root, maxRuns, latestRunId, onlyComplete = false, reason = 'base_published' }) {
+// 영역마다 따로 센다(영역별 저장 폴더).
+export function cleanupKimNwpRuns({ root, maxRuns, latestRunId, onlyComplete = false, reason = 'base_published', domain = KIM_DEFAULT_DOMAIN }) {
   const limit = Number(maxRuns)
   if (!Number.isFinite(limit) || limit <= 0) return
-  const runsDir = path.join(resolveKimNwpRoot(root), 'runs')
-  const completeRuns = listKimNwpRuns(root).filter((runId) => {
-    const manifest = readKimNwpManifest(root, runId)
+  const runsDir = path.join(resolveKimNwpRoot(root, domain), 'runs')
+  const completeRuns = listKimNwpRuns(root, domain).filter((runId) => {
+    const manifest = readKimNwpManifest(root, runId, domain)
     return manifest?.usable === true && manifest.complete !== false
   })
   const completeSet = new Set(completeRuns)
   const keep = new Set(completeRuns.slice(0, limit))
   if (latestRunId) keep.add(latestRunId)
-  for (const derivedLatest of [readKimGktgLatest(root), readKimTropopauseLatest(root)]) if (derivedLatest?.runId) keep.add(derivedLatest.runId)
+  for (const derivedLatest of [readKimGktgLatest(root, domain), readKimTropopauseLatest(root, domain)]) if (derivedLatest?.runId) keep.add(derivedLatest.runId)
   // Partial calculations and institution-pinned runs must survive base retention.
-  for (const runId of listKimNwpRuns(root)) {
+  for (const runId of listKimNwpRuns(root, domain)) {
     const dir = path.join(runsDir, runId)
     for (const product of ['gktg', 'tropopause']) {
       const attemptFile = path.join(dir, 'derived', product, 'last-attempt.json')
@@ -163,7 +170,7 @@ export function cleanupKimNwpRuns({ root, maxRuns, latestRunId, onlyComplete = f
     if (fs.existsSync(path.join(dir, 'pins.json'))) keep.add(runId)
   }
   const removed = []
-  for (const runId of listKimNwpRuns(root)) {
+  for (const runId of listKimNwpRuns(root, domain)) {
     if (keep.has(runId) || (onlyComplete && !completeSet.has(runId))) continue
     fs.rmSync(path.join(runsDir, runId), { recursive: true, force: true })
     removed.push(runId)
@@ -187,45 +194,45 @@ function statFingerprint(files) {
 }
 
 // 파생 계산(GKTG·권계면)의 입력인 기압면 기본 격자 전체의 지문. 지난 게시와 같으면 다시 계산·검증하지 않는다.
-export function fingerprintKimNwpBase({ root, tmfc, hours }) {
+export function fingerprintKimNwpBase({ root, tmfc, hours, domain = KIM_DEFAULT_DOMAIN }) {
   const levels = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
-  return statFingerprint(hours.flatMap(hf => levels.map(level => resolveKimNwpGridPath({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id }))))
+  return statFingerprint(hours.flatMap(hf => levels.map(level => resolveKimNwpGridPath({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id, domain }))))
 }
 
 function validateGktgRevision(revision) {
   if (!/^[a-f0-9]{20,64}$/.test(String(revision || ''))) throw new Error('Invalid GKTG revision')
 }
 
-export function resolveKimGktgFieldPath({ root, tmfc, hf, levelId, revision }) {
+export function resolveKimGktgFieldPath({ root, tmfc, hf, levelId, revision, domain = KIM_DEFAULT_DOMAIN }) {
   validateGktgRevision(revision)
-  validateKimNwpSelection({ tmfc, hf, levelId })
+  validateKimNwpSelection({ tmfc, hf, levelId, domain })
   if (!levelId.endsWith('hPa')) throw new Error('GKTG requires a pressure level')
-  return path.join(path.dirname(resolveKimNwpGridPath({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId })), 'gktg', `${revision}.json`)
+  return path.join(path.dirname(resolveKimNwpGridPath({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId, domain })), 'gktg', `${revision}.json`)
 }
 
-export function readKimGktgLatest(root) {
-  const file = path.join(resolveKimNwpRoot(root), 'derived', 'gktg', 'latest.json')
+export function readKimGktgLatest(root, domain = KIM_DEFAULT_DOMAIN) {
+  const file = path.join(resolveKimNwpRoot(root, domain), 'derived', 'gktg', 'latest.json')
   return fs.existsSync(file) ? readJson(file) : null
 }
 
-export function readKimGktgManifest(root, tmfc, revision) {
+export function readKimGktgManifest(root, tmfc, revision, domain = KIM_DEFAULT_DOMAIN) {
   validateGktgRevision(revision)
-  const file = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'derived', 'gktg', revision, 'manifest.json')
+  const file = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'gktg', revision, 'manifest.json')
   return fs.existsSync(file) ? readJson(file) : null
 }
 
-export function writeKimGktgAttempt(root, tmfc, attempt) {
-  writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'derived', 'gktg', 'last-attempt.json'), attempt)
-  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'derived', 'gktg', 'last-attempt.json'), attempt)
+export function writeKimGktgAttempt(root, tmfc, attempt, domain = KIM_DEFAULT_DOMAIN) {
+  writeJsonAtomic(path.join(resolveKimNwpRoot(root, domain), 'derived', 'gktg', 'last-attempt.json'), attempt)
+  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'gktg', 'last-attempt.json'), attempt)
 }
 
 function gktgContentHash(field) {
   return createHash('sha256').update(JSON.stringify([field.time, field.level.id, field.grid, field.gktg, field.geopotentialHeight, field.geopotentialHeightEncoding, field.inputRevision, field.engineRevision || null])).digest('hex')
 }
 
-export function writeKimGktgField(root, field) {
+export function writeKimGktgField(root, field, domain = KIM_DEFAULT_DOMAIN) {
   field = { ...field, content_hash: gktgContentHash(field) }
-  const file = resolveKimGktgFieldPath({ root, tmfc: field.time.tmfc, hf: field.time.hf, levelId: field.level.id, revision: field.revision })
+  const file = resolveKimGktgFieldPath({ root, tmfc: field.time.tmfc, hf: field.time.hf, levelId: field.level.id, revision: field.revision, domain })
   if (kimDocumentExists(file)) {
     let existing
     let validExisting = false
@@ -244,17 +251,17 @@ export function writeKimGktgField(root, field) {
   return file
 }
 
-export function readKimGktgField({ root, tmfc, hf, levelId, revision }) {
-  const latest = readKimGktgLatest(root)
+export function readKimGktgField({ root, tmfc, hf, levelId, revision, domain = KIM_DEFAULT_DOMAIN }) {
+  const latest = readKimGktgLatest(root, domain)
   const selectedRevision = revision || (latest?.tmfc === tmfc ? latest.entries?.find(entry => entry.hf === Number(hf) && entry.levelId === levelId)?.revision : null)
   if (!selectedRevision) throw new Error('GKTG revision unavailable for requested run')
-  const field = readKimDocument(resolveKimGktgFieldPath({ root, tmfc, hf, levelId, revision: selectedRevision }))
+  const field = readKimDocument(resolveKimGktgFieldPath({ root, tmfc, hf, levelId, revision: selectedRevision, domain }))
   if (field.time?.tmfc !== tmfc || field.time?.hf !== Number(hf) || field.level?.id !== levelId || field.revision !== selectedRevision
     || field.gktg?.length !== field.grid.nx * field.grid.ny || field.content_hash !== gktgContentHash(field)) throw new Error('Corrupt GKTG immutable field')
   return field
 }
 
-export function publishKimGktgRun(root, manifest) {
+export function publishKimGktgRun(root, manifest, domain = KIM_DEFAULT_DOMAIN) {
   validateGktgRevision(manifest.revision)
   const levels = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
   if (!manifest.expectedHours?.length || !manifest.expectedHours.every(hf => levels.every(level =>
@@ -262,23 +269,23 @@ export function publishKimGktgRun(root, manifest) {
     throw new Error('Incomplete GKTG run cannot be published')
   }
   for (const entry of manifest.entries) {
-    const field = readKimGktgField({ root, tmfc: manifest.tmfc, hf: entry.hf, levelId: entry.levelId, revision: entry.revision })
+    const field = readKimGktgField({ root, tmfc: manifest.tmfc, hf: entry.hf, levelId: entry.levelId, revision: entry.revision, domain })
     if (field.inputRevision !== entry.inputRevision || field.gktg.length !== field.grid.nx * field.grid.ny) throw new Error('Invalid GKTG published field')
   }
   const payload = { ...manifest, type: 'kim_gktg_manifest', complete: true, usable: true, runId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: manifest.tmfc }),
-    outputFingerprint: fingerprintKimGktgOutputs(root, manifest) }
-  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: manifest.tmfc }), 'derived', 'gktg', manifest.revision, 'manifest.json'), payload)
-  writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'derived', 'gktg', 'latest.json'), payload)
+    outputFingerprint: fingerprintKimGktgOutputs(root, manifest, domain) }
+  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: manifest.tmfc, domain }), 'derived', 'gktg', manifest.revision, 'manifest.json'), payload)
+  writeJsonAtomic(path.join(resolveKimNwpRoot(root, domain), 'derived', 'gktg', 'latest.json'), payload)
   return payload
 }
 
 // 게시한 결과 파일의 지문. 손상·삭제되면 달라져 다음 실행이 건너뛰지 않고 다시 확인·복구한다.
-export function fingerprintKimGktgOutputs(root, { tmfc, entries }) {
-  return statFingerprint(entries.map(entry => resolveKimGktgFieldPath({ root, tmfc, hf: entry.hf, levelId: entry.levelId, revision: entry.revision })))
+export function fingerprintKimGktgOutputs(root, { tmfc, entries }, domain = KIM_DEFAULT_DOMAIN) {
+  return statFingerprint(entries.map(entry => resolveKimGktgFieldPath({ root, tmfc, hf: entry.hf, levelId: entry.levelId, revision: entry.revision, domain })))
 }
 
-export function readKimGktgIndex(root) {
-  const manifest = readKimGktgLatest(root)
+export function readKimGktgIndex(root, domain = KIM_DEFAULT_DOMAIN) {
+  const manifest = readKimGktgLatest(root, domain)
   if (!manifest?.complete) return null
   const index = buildKimNwpIndex({ tmfc: manifest.tmfc, entries: manifest.entries })
   return { ...index, type: 'kim_nwp_gktg_index', product: 'GKTG', revision: manifest.revision, algorithm: manifest.algorithm }
@@ -287,23 +294,23 @@ export function readKimGktgIndex(root) {
 // 권계면·제트(TROP_JET): 시각별 2차원 불변 결과. 기압층이 없으므로 run/derived/tropopause/hfNNN/<revision>.json에 둔다.
 export const KIM_TROPOPAUSE_GRIDS = ['trop', 'tropT', 'tropAboveTop', 'vmax', 'pmax']
 
-export function resolveKimTropopauseFieldPath({ root, tmfc, hf, revision }) {
+export function resolveKimTropopauseFieldPath({ root, tmfc, hf, revision, domain = KIM_DEFAULT_DOMAIN }) {
   validateGktgRevision(revision)
   if (!/^\d{10}$/.test(String(tmfc || ''))) throw new Error('Invalid KIM NWP tmfc')
-  if (!KIM_NWP_FORECAST_HOURS.includes(Number(hf))) throw new Error('Invalid KIM NWP forecast hour')
-  const file = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'derived', 'tropopause', `hf${String(Number(hf)).padStart(3, '0')}`, `${revision}.json`)
-  assertInsideRoot(resolveKimNwpRoot(root), file)
+  validateForecastHour(hf, domain)
+  const file = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'tropopause', `hf${String(Number(hf)).padStart(3, '0')}`, `${revision}.json`)
+  assertInsideRoot(resolveKimNwpRoot(root, domain), file)
   return file
 }
 
-export function readKimTropopauseLatest(root) {
-  const file = path.join(resolveKimNwpRoot(root), 'derived', 'tropopause', 'latest.json')
+export function readKimTropopauseLatest(root, domain = KIM_DEFAULT_DOMAIN) {
+  const file = path.join(resolveKimNwpRoot(root, domain), 'derived', 'tropopause', 'latest.json')
   return fs.existsSync(file) ? readJson(file) : null
 }
 
-export function writeKimTropopauseAttempt(root, tmfc, attempt) {
-  writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'derived', 'tropopause', 'last-attempt.json'), attempt)
-  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc }), 'derived', 'tropopause', 'last-attempt.json'), attempt)
+export function writeKimTropopauseAttempt(root, tmfc, attempt, domain = KIM_DEFAULT_DOMAIN) {
+  writeJsonAtomic(path.join(resolveKimNwpRoot(root, domain), 'derived', 'tropopause', 'last-attempt.json'), attempt)
+  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'tropopause', 'last-attempt.json'), attempt)
 }
 
 function tropopauseContentHash(field) {
@@ -315,10 +322,10 @@ function validTropopauseShape(field) {
   return Number.isInteger(size) && size > 0 && KIM_TROPOPAUSE_GRIDS.every(name => field[name]?.length === size) && Array.isArray(field.jets)
 }
 
-export function writeKimTropopauseField(root, field) {
+export function writeKimTropopauseField(root, field, domain = KIM_DEFAULT_DOMAIN) {
   if (!validTropopauseShape(field)) throw new Error('Invalid tropopause field')
   field = { ...field, content_hash: tropopauseContentHash(field) }
-  const file = resolveKimTropopauseFieldPath({ root, tmfc: field.time.tmfc, hf: field.time.hf, revision: field.revision })
+  const file = resolveKimTropopauseFieldPath({ root, tmfc: field.time.tmfc, hf: field.time.hf, revision: field.revision, domain })
   if (kimDocumentExists(file)) {
     let existing
     let validExisting = false
@@ -337,62 +344,62 @@ export function writeKimTropopauseField(root, field) {
 }
 
 // 단면용 상층 격자(hgt·T·u·v): 같은 revision 옆 <revision>.upper.json. 지도 API로는 내보내지 않는다.
-function resolveKimTropopauseUpperPath({ root, tmfc, hf, revision }) {
-  return resolveKimTropopauseFieldPath({ root, tmfc, hf, revision }).replace(/\.json$/, '.upper.json')
+function resolveKimTropopauseUpperPath({ root, tmfc, hf, revision, domain }) {
+  return resolveKimTropopauseFieldPath({ root, tmfc, hf, revision, domain }).replace(/\.json$/, '.upper.json')
 }
 
-export function writeKimTropopauseUpper(root, upper) {
+export function writeKimTropopauseUpper(root, upper, domain = KIM_DEFAULT_DOMAIN) {
   const size = upper.grid.nx * upper.grid.ny
   if (!upper.levels?.length || !upper.levels.every(l => ['hgt', 'T', 'u', 'v'].every(k => l[k]?.length === size))) throw new Error('Invalid tropopause upper levels')
-  const file = resolveKimTropopauseUpperPath({ root, ...upper })
+  const file = resolveKimTropopauseUpperPath({ root, tmfc: upper.tmfc, hf: upper.hf, revision: upper.revision, domain })
   if (!kimDocumentExists(file)) writeKimDocument(file, { type: 'kim_nwp_tropopause_upper', ...upper })
   return file
 }
 
 // 게시한 지도 결과와 단면용 상층 파일의 지문(GKTG와 같은 용도).
-export function fingerprintKimTropopauseOutputs(root, { tmfc, entries }) {
-  return statFingerprint(entries.flatMap(entry => [resolveKimTropopauseFieldPath({ root, tmfc, hf: entry.hf, revision: entry.revision }),
-    resolveKimTropopauseUpperPath({ root, tmfc, hf: entry.hf, revision: entry.revision })]))
+export function fingerprintKimTropopauseOutputs(root, { tmfc, entries }, domain = KIM_DEFAULT_DOMAIN) {
+  return statFingerprint(entries.flatMap(entry => [resolveKimTropopauseFieldPath({ root, tmfc, hf: entry.hf, revision: entry.revision, domain }),
+    resolveKimTropopauseUpperPath({ root, tmfc, hf: entry.hf, revision: entry.revision, domain })]))
 }
 
-export function readKimTropopauseUpper({ root, tmfc, hf, revision }) {
-  const upper = readKimDocument(resolveKimTropopauseUpperPath({ root, tmfc, hf, revision }))
+export function readKimTropopauseUpper({ root, tmfc, hf, revision, domain = KIM_DEFAULT_DOMAIN }) {
+  const upper = readKimDocument(resolveKimTropopauseUpperPath({ root, tmfc, hf, revision, domain }))
   if (upper.tmfc !== tmfc || upper.hf !== Number(hf) || upper.revision !== revision) throw new Error('Corrupt tropopause upper levels')
   return upper
 }
 
-export function readKimTropopauseField({ root, tmfc, hf, revision }) {
-  const latest = readKimTropopauseLatest(root)
+export function readKimTropopauseField({ root, tmfc, hf, revision, domain = KIM_DEFAULT_DOMAIN }) {
+  const latest = readKimTropopauseLatest(root, domain)
   const selectedRevision = revision || (latest?.tmfc === tmfc ? latest.entries?.find(entry => entry.hf === Number(hf))?.revision : null)
   if (!selectedRevision) throw new Error('Tropopause revision unavailable for requested run')
-  const field = readKimDocument(resolveKimTropopauseFieldPath({ root, tmfc, hf, revision: selectedRevision }))
+  const field = readKimDocument(resolveKimTropopauseFieldPath({ root, tmfc, hf, revision: selectedRevision, domain }))
   if (field.time?.tmfc !== tmfc || field.time?.hf !== Number(hf) || field.revision !== selectedRevision
     || !validTropopauseShape(field) || field.content_hash !== tropopauseContentHash(field)) throw new Error('Corrupt tropopause immutable field')
   return field
 }
 
-export function publishKimTropopauseRun(root, manifest) {
+export function publishKimTropopauseRun(root, manifest, domain = KIM_DEFAULT_DOMAIN) {
   validateGktgRevision(manifest.revision)
   if (!manifest.expectedHours?.length || !manifest.expectedHours.every(hf => manifest.entries?.some(entry => entry.hf === hf))) {
     throw new Error('Incomplete tropopause run cannot be published')
   }
   for (const entry of manifest.entries) {
-    const field = readKimTropopauseField({ root, tmfc: manifest.tmfc, hf: entry.hf, revision: entry.revision })
+    const field = readKimTropopauseField({ root, tmfc: manifest.tmfc, hf: entry.hf, revision: entry.revision, domain })
     if (field.inputRevision !== entry.inputRevision) throw new Error('Invalid tropopause published field')
   }
   const payload = { ...manifest, type: 'kim_tropopause_manifest', complete: true, usable: true, runId: buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: manifest.tmfc }),
-    outputFingerprint: fingerprintKimTropopauseOutputs(root, manifest) }
-  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: manifest.tmfc }), 'derived', 'tropopause', manifest.revision, 'manifest.json'), payload)
-  writeJsonAtomic(path.join(resolveKimNwpRoot(root), 'derived', 'tropopause', 'latest.json'), payload)
+    outputFingerprint: fingerprintKimTropopauseOutputs(root, manifest, domain) }
+  writeJsonAtomic(path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc: manifest.tmfc, domain }), 'derived', 'tropopause', manifest.revision, 'manifest.json'), payload)
+  writeJsonAtomic(path.join(resolveKimNwpRoot(root, domain), 'derived', 'tropopause', 'latest.json'), payload)
   return payload
 }
 
 // 저장된 권계면·제트 결과 목록(회차·시각·revision). 게시 여부와 무관하게 남아 있는 불변 결과를 고를 때 쓴다.
-export function listKimTropopauseFields(root) {
+export function listKimTropopauseFields(root, domain = KIM_DEFAULT_DOMAIN) {
   const out = []
-  for (const runId of listKimNwpRuns(root)) {
+  for (const runId of listKimNwpRuns(root, domain)) {
     const tmfc = runId.match(/_(\d{10})$/)?.[1]
-    const dir = path.join(resolveKimNwpRoot(root), 'runs', runId, 'derived', 'tropopause')
+    const dir = path.join(resolveKimNwpRoot(root, domain), 'runs', runId, 'derived', 'tropopause')
     if (!tmfc || !fs.existsSync(dir)) continue
     for (const hour of fs.readdirSync(dir).filter(name => /^hf\d{3}$/.test(name))) {
       const hf = Number(hour.slice(2))
@@ -407,8 +414,8 @@ function addHoursIso(tmfc, hf) {
   return new Date(Date.UTC(+tmfc.slice(0, 4), +tmfc.slice(4, 6) - 1, +tmfc.slice(6, 8), +tmfc.slice(8, 10) + hf)).toISOString()
 }
 
-export function readKimTropopauseIndex(root) {
-  const manifest = readKimTropopauseLatest(root)
+export function readKimTropopauseIndex(root, domain = KIM_DEFAULT_DOMAIN) {
+  const manifest = readKimTropopauseLatest(root, domain)
   if (!manifest?.complete) return null
   const times = manifest.entries.map(entry => ({ hf: entry.hf, validTime: entry.validTime, revision: entry.revision })).sort((a, b) => a.hf - b.hf)
   return { type: 'kim_nwp_tropopause_index', product: 'TROP_JET', model: manifest.model, latestRun: manifest.tmfc,

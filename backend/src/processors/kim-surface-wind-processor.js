@@ -39,6 +39,7 @@ import { writeKimRawText } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import { selectNearestForecastHour } from './kim-forecast-hour.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
+import { KIM_DEFAULT_DOMAIN, kimDomain, kimDomainRequest } from './kim-domain.js'
 
 const TYPE = 'kim_surface_wind'
 const MODEL = 'KIMG/NE57'
@@ -173,15 +174,15 @@ export function rawComponentFileName({ level, name, variable }) {
   return `${name === level.uName ? 'u' : 'v'}.txt`
 }
 
-function writeRawComponent({ level, tmfc, hf, name, variable, text }) {
+function writeRawComponent({ level, tmfc, hf, name, variable, text, domain }) {
   if (config.kim_nwp?.keep_raw === false) return
-  const runDir = resolveKimNwpRunDir({ root: config.storage.base_path, model: KIM_NWP_MODEL, tmfc })
+  const runDir = resolveKimNwpRunDir({ root: config.storage.base_path, model: KIM_NWP_MODEL, tmfc, domain })
   const rawPath = path.join(runDir, 'raw', `hf${String(Number(hf)).padStart(3, '0')}`, level.id, rawComponentFileName({ level, name, variable }))
   writeKimRawText(rawPath, text)
 }
 
-async function fetchComponentForLevel({ name, level, tmfc, hf, credential }) {
-  const kim = config.kim_surface_wind
+async function fetchComponentForLevel({ name, level, tmfc, hf, credential, domain }) {
+  const kim = kimDomainRequest(config, domain)
   const text = await fetchKimGrid({
     data: level.kind === 'pressure' ? 'P' : 'U',
     name,
@@ -193,7 +194,7 @@ async function fetchComponentForLevel({ name, level, tmfc, hf, credential }) {
     disp: 'A',
     credential,
   })
-  writeRawComponent({ level, tmfc, hf, name, variable: name, text })
+  writeRawComponent({ level, tmfc, hf, name, variable: name, text, domain })
   return parseKimGridText(text, {
     variable: name,
     level: level.level,
@@ -201,8 +202,8 @@ async function fetchComponentForLevel({ name, level, tmfc, hf, credential }) {
   })
 }
 
-async function fetchTemperatureComponent({ level, tmfc, hf, credential }) {
-  const kim = config.kim_surface_wind
+async function fetchTemperatureComponent({ level, tmfc, hf, credential, domain }) {
+  const kim = kimDomainRequest(config, domain)
   const request = resolveKimTemperatureComponentRequest({ level })
   const text = await fetchKimGrid({
     data: request.data,
@@ -215,7 +216,7 @@ async function fetchTemperatureComponent({ level, tmfc, hf, credential }) {
     disp: 'A',
     credential,
   })
-  writeRawComponent({ level, tmfc, hf, name: request.name, variable: 'T', text })
+  writeRawComponent({ level, tmfc, hf, name: request.name, variable: 'T', text, domain })
   const grid = parseKimGridText(text, {
     variable: request.name,
     level: request.level,
@@ -224,8 +225,8 @@ async function fetchTemperatureComponent({ level, tmfc, hf, credential }) {
   return { ...grid, variable: request.variable, unit: request.unit }
 }
 
-async function fetchHumidityComponent({ level, tmfc, hf, credential }) {
-  const kim = config.kim_surface_wind
+async function fetchHumidityComponent({ level, tmfc, hf, credential, domain }) {
+  const kim = kimDomainRequest(config, domain)
   const request = resolveKimHumidityComponentRequest({ level })
   if (!request) return null
   const text = await fetchKimGrid({
@@ -239,7 +240,7 @@ async function fetchHumidityComponent({ level, tmfc, hf, credential }) {
     disp: 'A',
     credential,
   })
-  writeRawComponent({ level, tmfc, hf, name: request.name, variable: 'rh', text })
+  writeRawComponent({ level, tmfc, hf, name: request.name, variable: 'rh', text, domain })
   const grid = parseKimGridText(text, {
     variable: request.name,
     level: request.level,
@@ -248,8 +249,8 @@ async function fetchHumidityComponent({ level, tmfc, hf, credential }) {
   return { ...grid, variable: request.variable, unit: request.unit }
 }
 
-async function fetchIcingComponent({ request, level, tmfc, hf, credential }) {
-  const kim = config.kim_surface_wind
+async function fetchIcingComponent({ request, level, tmfc, hf, credential, domain }) {
+  const kim = kimDomainRequest(config, domain)
   const text = await fetchKimGrid({
     data: request.data,
     name: request.name,
@@ -261,7 +262,7 @@ async function fetchIcingComponent({ request, level, tmfc, hf, credential }) {
     disp: 'A',
     credential,
   })
-  writeRawComponent({ level, tmfc, hf, name: request.name, variable: request.variable, text })
+  writeRawComponent({ level, tmfc, hf, name: request.name, variable: request.variable, text, domain })
   const grid = parseKimGridText(text, {
     variable: request.name,
     level: request.level,
@@ -270,13 +271,13 @@ async function fetchIcingComponent({ request, level, tmfc, hf, credential }) {
   return { ...grid, variable: request.variable, unit: request.unit }
 }
 
-export async function fetchIcingComponents({ level, tmfc, hf, credential }) {
+export async function fetchIcingComponents({ level, tmfc, hf, credential, domain }) {
   const components = []
   let lastError = null
   const requests = resolveKimIcingComponentRequests({ level })
   for (const request of requests) {
     try {
-      components.push(await fetchIcingComponent({ request, level, tmfc, hf, credential }))
+      components.push(await fetchIcingComponent({ request, level, tmfc, hf, credential, domain }))
     } catch (error) {
       lastError = error
     }
@@ -284,10 +285,10 @@ export async function fetchIcingComponents({ level, tmfc, hf, credential }) {
   return { components, lastError }
 }
 
-async function fetchWindGrid({ level, tmfc, hf, credential }) {
+async function fetchWindGrid({ level, tmfc, hf, credential, domain }) {
   const [uComponent, vComponent] = await Promise.all([
-    fetchComponentForLevel({ name: level.uName, level, tmfc, hf, credential }),
-    fetchComponentForLevel({ name: level.vName, level, tmfc, hf, credential }),
+    fetchComponentForLevel({ name: level.uName, level, tmfc, hf, credential, domain }),
+    fetchComponentForLevel({ name: level.vName, level, tmfc, hf, credential, domain }),
   ])
   validateGridBounds(uComponent)
   return buildKimWindGrid({
@@ -302,8 +303,8 @@ async function fetchWindGrid({ level, tmfc, hf, credential }) {
   })
 }
 
-async function addTemperatureToGrid({ grid, level, tmfc, hf, credential }) {
-  const tempComponent = await fetchTemperatureComponent({ level, tmfc, hf, credential })
+async function addTemperatureToGrid({ grid, level, tmfc, hf, credential, domain }) {
+  const tempComponent = await fetchTemperatureComponent({ level, tmfc, hf, credential, domain })
   validateGridBounds(tempComponent)
   return {
     ...grid,
@@ -362,13 +363,13 @@ export function mergeHgtComponentIntoGrid({ grid, level, tmfc, hf, hgtComponent,
   }
 }
 
-async function addHumidityToGrid({ grid, level, tmfc, hf, credential }) {
-  const humidityComponent = await fetchHumidityComponent({ level, tmfc, hf, credential })
+async function addHumidityToGrid({ grid, level, tmfc, hf, credential, domain }) {
+  const humidityComponent = await fetchHumidityComponent({ level, tmfc, hf, credential, domain })
   return mergeHumidityComponentIntoGrid({ grid, level, tmfc, hf, humidityComponent })
 }
 
-async function fetchHgtComponent({ level, tmfc, hf, credential }) {
-  const kim = config.kim_surface_wind
+async function fetchHgtComponent({ level, tmfc, hf, credential, domain }) {
+  const kim = kimDomainRequest(config, domain)
   const request = resolveKimHgtComponentRequest({ level })
   if (!request) return null
   const text = await fetchKimGrid({
@@ -382,7 +383,7 @@ async function fetchHgtComponent({ level, tmfc, hf, credential }) {
     disp: 'A',
     credential,
   })
-  writeRawComponent({ level, tmfc, hf, name: request.name, variable: 'hgt', text })
+  writeRawComponent({ level, tmfc, hf, name: request.name, variable: 'hgt', text, domain })
   const grid = parseKimGridText(text, {
     variable: request.name,
     level: request.level,
@@ -391,13 +392,13 @@ async function fetchHgtComponent({ level, tmfc, hf, credential }) {
   return { ...grid, variable: request.variable, unit: request.unit }
 }
 
-async function addHgtToGrid({ grid, level, tmfc, hf, credential }) {
-  const hgtComponent = await fetchHgtComponent({ level, tmfc, hf, credential })
+async function addHgtToGrid({ grid, level, tmfc, hf, credential, domain }) {
+  const hgtComponent = await fetchHgtComponent({ level, tmfc, hf, credential, domain })
   return mergeHgtComponentIntoGrid({ grid, level, tmfc, hf, hgtComponent })
 }
 
-async function fetchSpecificHumidityComponent({ level, tmfc, hf, credential }) {
-  const kim = config.kim_surface_wind
+async function fetchSpecificHumidityComponent({ level, tmfc, hf, credential, domain }) {
+  const kim = kimDomainRequest(config, domain)
   const request = resolveKimSpecificHumidityComponentRequest({ level })
   if (!request) return null
   const text = await fetchKimGrid({
@@ -411,7 +412,7 @@ async function fetchSpecificHumidityComponent({ level, tmfc, hf, credential }) {
     disp: 'A',
     credential,
   })
-  writeRawComponent({ level, tmfc, hf, name: request.name, variable: 'q', text })
+  writeRawComponent({ level, tmfc, hf, name: request.name, variable: 'q', text, domain })
   const grid = parseKimGridText(text, {
     variable: request.name,
     level: request.level,
@@ -440,8 +441,8 @@ export function mergeSpecificHumidityComponentIntoGrid({ grid, level, tmfc, hf, 
   }
 }
 
-async function addSpecificHumidityToGrid({ grid, level, tmfc, hf, credential }) {
-  const specificHumidityComponent = await fetchSpecificHumidityComponent({ level, tmfc, hf, credential })
+async function addSpecificHumidityToGrid({ grid, level, tmfc, hf, credential, domain }) {
+  const specificHumidityComponent = await fetchSpecificHumidityComponent({ level, tmfc, hf, credential, domain })
   return mergeSpecificHumidityComponentIntoGrid({ grid, level, tmfc, hf, specificHumidityComponent })
 }
 
@@ -466,8 +467,8 @@ export function mergeIcingComponentsIntoGrid({ grid, level, tmfc, hf, icingCompo
   }
 }
 
-async function addIcingToGrid({ grid, level, tmfc, hf, credential }) {
-  const { components, lastError } = await fetchIcingComponents({ level, tmfc, hf, credential })
+async function addIcingToGrid({ grid, level, tmfc, hf, credential, domain }) {
+  const { components, lastError } = await fetchIcingComponents({ level, tmfc, hf, credential, domain })
   return {
     grid: mergeIcingComponentsIntoGrid({ grid, level, tmfc, hf, icingComponents: components }),
     lastError,
@@ -503,14 +504,15 @@ export async function collectKimNwpTask({
   collectIcing = config.kim_nwp?.collect_icing !== false,
   collectSpecificHumidity = config.kim_nwp?.collect_specific_humidity !== false,
   incrementalRetry = config.kim_nwp?.incremental_retry !== false,
-  readExistingGrid = ({ level, tmfc, hf }) => readKimNwpGridSafe({
+  readExistingGrid = ({ level, tmfc, hf, domain }) => readKimNwpGridSafe({
     root: config.storage.base_path,
     model: KIM_NWP_MODEL,
     tmfc,
     hf,
     levelId: level.id,
+    domain,
   }),
-  writeGrid = (grid) => writeKimNwpGrid({ root: config.storage.base_path, grid }),
+  writeGrid = (grid) => writeKimNwpGrid({ root: config.storage.base_path, grid, domain: task.domain }),
 }) {
   if (incrementalRetry) {
     const existingGrid = readExistingGrid(task)
@@ -636,7 +638,11 @@ export async function collectKimComparisonIfEligible({ tmfc, forecastHours, cred
   }
 }
 
+// domain: 'kr'(기본, 한반도) 또는 'ea'(확대 영역). 공항 비교와 지상바람 스냅샷은 한반도 전용이다.
+// forecastHours: 받을 예보시각. 없으면 한반도는 config.kim_nwp.forecast_hours, 확대 영역은 영역의 전체 예보시각.
 export async function process({
+  domain = KIM_DEFAULT_DOMAIN,
+  forecastHours: requestedHours,
   candidates = resolveKimSurfaceWindCandidates(),
   signal,
   collectComparison = collectKimAirportComparison,
@@ -650,18 +656,18 @@ export async function process({
       kimCredential: config.api.kim_nwp_auth_key,
       aviationCredential: config.api.auth_key,
       radarCredential: config.api.radar_satellite_auth_key,
-      ...kimBulkCredentialOptions(config),
+      ...kimBulkCredentialOptions(config, Date.now(), { required: kimDomain(domain).bulkOnly }),
     })
-    const candidateHours = config.kim_nwp?.forecast_hours || KIM_NWP_FORECAST_HOURS
+    const candidateHours = requestedHours || (domain === KIM_DEFAULT_DOMAIN ? config.kim_nwp?.forecast_hours || KIM_NWP_FORECAST_HOURS : kimDomain(domain).forecastHours)
     const forecastHours = resolveCollectedForecastHours({
       tmfc: candidate.tmfc,
       candidateHours,
       single: config.kim_nwp?.single_forecast !== false,
     })
-    const collectAirportComparison = () => collectKimComparisonIfEligible({ tmfc: candidate.tmfc, forecastHours, credential, signal, root: config.storage.base_path, airports: comparisonAirports, single: config.kim_nwp?.single_forecast !== false, collectComparison })
+    const collectAirportComparison = () => domain !== KIM_DEFAULT_DOMAIN ? { skipped: true, reason: 'kim_comparison_korea_domain_only' } : collectKimComparisonIfEligible({ tmfc: candidate.tmfc, forecastHours, credential, signal, root: config.storage.base_path, airports: comparisonAirports, single: config.kim_nwp?.single_forecast !== false, collectComparison })
     if (hasCompleteKimNwpRun({
-      latest: readKimNwpLatest(config.storage.base_path),
-      index: readKimNwpIndex(config.storage.base_path),
+      latest: readKimNwpLatest(config.storage.base_path, domain),
+      index: readKimNwpIndex(config.storage.base_path, domain),
       tmfc: candidate.tmfc,
       forecastHours,
       levels: KIM_NWP_LEVELS,
@@ -680,12 +686,12 @@ export async function process({
     let surfaceGrid = null
     const tasks = []
     for (const hf of forecastHours) {
-      for (const level of KIM_NWP_LEVELS) tasks.push({ level, tmfc: candidate.tmfc, hf, credential })
+      for (const level of KIM_NWP_LEVELS) tasks.push({ level, tmfc: candidate.tmfc, hf, credential, domain })
     }
 
     const latestRunId = buildKimNwpRunId({ model: KIM_NWP_MODEL, tmfc: candidate.tmfc })
     const expectedGridCount = forecastHours.length * KIM_NWP_LEVELS.length
-    const runDir = resolveKimNwpRunDir({ root: config.storage.base_path, model: KIM_NWP_MODEL, tmfc: candidate.tmfc })
+    const runDir = resolveKimNwpRunDir({ root: config.storage.base_path, model: KIM_NWP_MODEL, tmfc: candidate.tmfc, domain })
     const collectStarted = Date.now()
 
     // A single upstream failure must not stop the remaining tasks: the failed grid is
@@ -708,6 +714,7 @@ export async function process({
             tmfc: grid.tmfc,
             hf: grid.hf,
             levelId: grid.level.id,
+            domain,
           }),
         ).replace(/\\/g, '/')))
         if (grid.level?.id === '10m' && Number(grid.hf) === 0) surfaceGrid = grid
@@ -734,7 +741,7 @@ export async function process({
         gridCount: entries.length,
         expectedGridCount,
         updated_at: new Date().toISOString(),
-      })
+      }, domain)
       continue
     }
     const index = buildKimNwpIndex({
@@ -761,35 +768,36 @@ export async function process({
       expectedGridCount,
       failedTaskCount,
       updated_at: new Date().toISOString(),
-    })
-    const previousLatestRunId = readKimNwpLatest(config.storage.base_path)?.latestRunId || null
+    }, domain)
+    const previousLatestRunId = readKimNwpLatest(config.storage.base_path, domain)?.latestRunId || null
     if (!shouldReplaceKimNwpLatest({
       complete,
       previousLatestRunId,
       runId: latestRunId,
-      previousManifest: previousLatestRunId ? readKimNwpManifest(config.storage.base_path, previousLatestRunId) : null,
+      previousManifest: previousLatestRunId ? readKimNwpManifest(config.storage.base_path, previousLatestRunId, domain) : null,
     })) {
       // Keep the partial run on disk so the next collection resumes it; drop older partials.
       appendKimRunEvent(runDir, { type: 'base_partial_kept_previous', grids: entries.length, expected: expectedGridCount, serving: previousLatestRunId })
-      cleanupKimNwpRuns({ root: config.storage.base_path, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId })
+      cleanupKimNwpRuns({ root: config.storage.base_path, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId, domain })
       const error = new Error(`kim_nwp_run_incomplete ${entries.length}/${expectedGridCount}; serving ${previousLatestRunId}`)
       error.code = 'kim_nwp_run_incomplete'
       throw error
     }
-    writeKimNwpIndex(config.storage.base_path, index)
+    writeKimNwpIndex(config.storage.base_path, index, domain)
     writeKimNwpLatest(config.storage.base_path, {
       type: 'kim_nwp_latest',
       model: KIM_NWP_MODEL,
       latestRun: candidate.tmfc,
       latestRunId,
-      indexPath: 'kim_nwp/index.json',
+      indexPath: `${kimDomain(domain).storeDir}/index.json`,
       updated_at: new Date().toISOString(),
       content_hash: store.canonicalHash(index),
-    })
+    }, domain)
     appendKimRunEvent(runDir, { type: 'base_published', complete, grids: entries.length, expected: expectedGridCount })
-    cleanupKimNwpRuns({ root: config.storage.base_path, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId })
+    cleanupKimNwpRuns({ root: config.storage.base_path, maxRuns: config.kim_nwp?.max_runs || 2, latestRunId, domain })
 
     const comparison = await collectAirportComparison()
+    if (domain !== KIM_DEFAULT_DOMAIN) return { type: TYPE, domain, latestRun: candidate.tmfc, comparison }
     if (!surfaceGrid) {
       return {
         type: TYPE,
