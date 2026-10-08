@@ -8,6 +8,7 @@ export const SOURCES = {
   kma_aviation: { label: '기상청 항공키', apiHubCategory: 'aviation' },
   kma_radar: { label: '레이더·위성키', apiHubCategory: 'radar_satellite' },
   kma_nwp: { label: '수치예보키', apiHubCategory: 'kim_nwp' },
+  kma_bulk: { label: '대용량 키(KIM)', apiHubCategory: 'bulk' },
   noaa: { label: 'NOAA', apiHubCategory: null },
   open_meteo: { label: 'Open-Meteo', apiHubCategory: null },
   kac: { label: '공항공사', apiHubCategory: null },
@@ -75,6 +76,8 @@ export const CATALOG = [
   { key: 'kim_nwp', label: 'KIM 수치예보 격자', source: 'kma_nwp', character: 'nwp', comparisonModel: 'kim', statsKey: 'kim_surface_wind', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/latest.json', disabledWhen: OFF.kimNwp,},
   { key: 'kim_surface_chart', label: 'KIM 지상 일기도', source: 'kma_nwp', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_surface_chart/latest.json', disabledWhen: anyOf(OFF.kimNwp, OFF.kimSurfaceChart, OFF.radarKey),},
   { key: 'kim_gktg', label: '난류(GKTG)', source: 'kma_radar', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/derived/gktg/latest.json', disabledWhen: c => c.kim_nwp?.enabled === false || c.kim_gktg?.enabled === false },
+  // 확대 영역(90~160°E)은 하루 두 회차(00 UTC 약 17시·06 UTC 약 23시 KST 게시). 수집 기록은 06 UTC 행 기준.
+  { key: 'kim_expanded', label: 'KIM 확대 영역', source: 'kma_bulk', character: 'nwp', statsKey: 'kim_expanded_06', normalMs: h(16), lateMs: h(30), stoppedMs: h(48), meta: 'kim_nwp_ea/latest.json', disabledWhen: c => c.kim_nwp?.enabled === false || c.kim_expanded?.enabled !== true },
   { key: 'kim_tropopause', label: '권계면·제트', source: 'kma_radar', character: 'nwp', normalMs: h(6), lateMs: h(9), stoppedMs: h(18), meta: 'kim_nwp/derived/tropopause/latest.json', disabledWhen: c => c.kim_nwp?.enabled === false || c.kim_tropopause?.enabled === false },
 
   { key: 'metar_overseas', label: 'METAR 해외', source: 'noaa', character: 'report', normalMs: m(5), lateMs: m(20), stoppedMs: m(40) },

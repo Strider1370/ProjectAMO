@@ -52,6 +52,9 @@ export const COLLECTOR_REGISTRY = [
   collector('nwp_ecmwf', overseasNwpSchedule('nwp_ecmwf_interval', 90 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
   collector('nwp_icon', overseasNwpSchedule('nwp_icon_interval', 60 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
   collector('nwp_gfs', overseasNwpSchedule('nwp_gfs_interval', 75 * MINUTE), (config) => config.overseas_nwp?.enabled !== false),
+  // 확대 영역(대용량 키). 하루 한 번씩이라 늦음 판단은 하루+여유로 둔다. 쓸 수 없는 날(키 만료·거부)은 empty.
+  ...['00', '06'].map((cycle) => collector(`kim_expanded_${cycle}`, kst(`kim_expanded_${cycle}_interval`, 24 * HOUR, 6 * HOUR),
+    (config) => config.kim_nwp?.enabled !== false && config.kim_expanded?.enabled === true, [], EMPTY_ALLOWED_RESULT_OUTCOMES)),
   collector('kim_gktg', utc('kim_gktg_interval', 4 * HOUR, 35 * MINUTE), config => config.kim_nwp?.enabled !== false && config.kim_gktg?.enabled !== false),
   collector('kim_tropopause', utc('kim_tropopause_interval', 4 * HOUR, 35 * MINUTE), config => config.kim_nwp?.enabled !== false && config.kim_tropopause?.enabled !== false),
   collector('ground_forecast', kst('ground_forecast_interval', 3 * HOUR, 35 * MINUTE), enabled, ['aviation']),

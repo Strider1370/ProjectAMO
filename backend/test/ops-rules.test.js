@@ -145,3 +145,21 @@ test('꺼둔 자료는 대규모 장애 분모에서 빠진다', () => {
 test('전부 꺼둔 출처는 판정하지 않는다', () => {
   assert.deepEqual(sourceOutages(health(['disabled', 'disabled'])), [])
 })
+
+test('KIM expanded: bulk key expiry 7 and 1 day before, and no expanded run published for 30 hours', async () => {
+  const { expandedWarnings, renderAlert } = await import('../src/alerts/ops-rules.js')
+  const at = (iso) => Date.parse(iso)
+  const base = { enabled: true, validUntilKst: '2026-11-06', publishedAt: '2026-10-29T08:00:00Z' }
+  assert.deepEqual(expandedWarnings({ ...base, enabled: false }, at('2026-11-06T00:00:00Z')), [])
+  assert.deepEqual(expandedWarnings(base, at('2026-10-29T09:00:00Z')), [])
+  const week = expandedWarnings({ ...base, publishedAt: '2026-10-31T08:00:00Z' }, at('2026-10-31T09:00:00Z'))
+  assert.deepEqual(week.map(w => [w.kind, w.subject]), [['bulk_key_expiring', '7']])
+  const lastDay = expandedWarnings({ ...base, publishedAt: '2026-11-06T08:00:00Z' }, at('2026-11-06T09:00:00Z'))
+  assert.deepEqual(lastDay.map(w => [w.kind, w.subject]), [['bulk_key_expiring', '1']])
+  assert.match(renderAlert(lastDay[0]).title, /대용량 키 1일 후 만료/)
+  const stale = expandedWarnings({ ...base, publishedAt: '2026-10-20T08:00:00Z' }, at('2026-10-21T15:00:00Z'))
+  assert.deepEqual(stale.map(w => w.kind), ['expanded_unpublished'])
+  assert.equal(stale[0].hours, 31)
+  // 만료 뒤에는 미게시 알림을 보내지 않는다(수집이 스스로 멈춘다).
+  assert.deepEqual(expandedWarnings(base, at('2026-11-08T00:00:00Z')), [])
+})

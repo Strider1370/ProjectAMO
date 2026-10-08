@@ -16,6 +16,7 @@ import radarGraphicsProcessor from './processors/radar-graphics-processor.js'
 import echoTopProcessor from './processors/echo-top-processor.js'
 import rainviewerProcessor from './processors/rainviewer-processor.js'
 import kimSurfaceWindProcessor from './processors/kim-surface-wind-processor.js'
+import { processExpandedCycle } from './processors/kim-expanded-processor.js'
 import kimSurfaceChartProcessor from './processors/kim-surface-chart-processor.js'
 import groundForecastProcessor from './processors/ground-forecast-processor.js'
 import environmentProcessor from './processors/environment-processor.js'
@@ -46,7 +47,7 @@ net.setDefaultAutoSelectFamily(false)
 // GKTG·권계면은 백엔드 이벤트 루프를 막지 않도록 자식 프로세스에서 돈다(kim-derived-worker.js).
 const kimGktgJob = (options) => runKimDerivedWorker('kim_gktg', options)
 const kimTropopauseJob = (options) => runKimDerivedWorker('kim_tropopause', options)
-const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, kim_surface_chart: false, kim_gktg: false, kim_tropopause: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
+const locks = { metar: false, taf: false, warning: false, kma_special_warning: false, sigmet: false, airmet: false, amos: false, lightning: false, wissdom: false, satellite_visible: false, qpf: false, echo_top: false, rainviewer: false, kim_surface_wind: false, kim_surface_chart: false, kim_gktg: false, kim_tropopause: false, kim_expanded_00: false, kim_expanded_06: false, satellite: false, ground_forecast: false, environment: false, airport_info: false, takeoff_fcst: false, asos_ceiling: false, notam: false, metar_overseas: false, taf_overseas: false, sigmet_overseas: false, terminal_flights: false, overseas_forecast: false };
 const activeControllers = new Map()
 const satelliteWorkQueue = createSatelliteWorkQueue({ runWorker: runSatelliteWorker })
 let collectorWatchdog = null
@@ -172,6 +173,12 @@ const processorBindings = {
   wissdom: radarGraphicsProcessor.processWissdom, qpf: radarGraphicsProcessor.processQpf, hsr: radarGraphicsProcessor.processHsr, hci: radarGraphicsProcessor.processHci,
   echo_top: echoTopProcessor.process, rainviewer: rainviewerProcessor.process, kim_surface_wind: kimSurfaceWindProcessor.process,
   kim_surface_chart: kimSurfaceChartProcessor.process,
+  // 06 UTC 한반도 회차를 확대 영역에서 잘라 게시하면 한반도 GKTG·권계면을 이어서 계산한다(기본 수집 뒤와 같다).
+  ...Object.fromEntries(['00', '06'].map((cycle) => [`kim_expanded_${cycle}`, ({ signal }) => processExpandedCycle({ cycle, signal,
+    onKoreaPublished: async () => {
+      if (config.kim_gktg?.enabled !== false) await runWithLock('kim_gktg', kimGktgJob, { source: 'kim_korea_from_expanded' })
+      if (config.kim_tropopause?.enabled !== false) await runWithLock('kim_tropopause', kimTropopauseJob, { source: 'kim_korea_from_expanded' })
+    } })])),
   ground_forecast: groundForecastProcessor.process, environment: environmentProcessor.process, airport_info: airportInfoProcessor.process,
   takeoff_fcst: takeoffForecastProcessor.process, kim_gktg: kimGktgJob, kim_tropopause: kimTropopauseJob, flight_category: flightCategoryProcessor.process,
   asos_ceiling: asosCeilingProcessor.process, notam: notamProcessor.process, metar_overseas: overseasProcessor.processMetar,

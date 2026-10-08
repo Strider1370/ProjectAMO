@@ -40,6 +40,7 @@ import { appendKimRunEvent } from './kim-run-events.js'
 import { selectNearestForecastHour } from './kim-forecast-hour.js'
 import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_DEFAULT_DOMAIN, kimDomain, kimDomainRequest } from './kim-domain.js'
+import { koreaSixFromExpanded } from './kim-expanded-processor.js'
 
 const TYPE = 'kim_surface_wind'
 const MODEL = 'KIMG/NE57'
@@ -652,6 +653,8 @@ export async function process({
   let lastError = null
 
   for (const candidate of candidates) {
+    // 06 UTC 한반도 회차는 확대 영역에서 잘라 게시한다. 21:30 KST까지 안 되면(또는 확대 수집을 쓸 수 없으면) 여기서 일반 키로 받는다.
+    if (domain === KIM_DEFAULT_DOMAIN && koreaSixFromExpanded({ tmfc: candidate.tmfc })) continue
     const credential = selectKimRunCredential({
       tmfc: candidate.tmfc,
       kimCredential: config.api.kim_nwp_auth_key,

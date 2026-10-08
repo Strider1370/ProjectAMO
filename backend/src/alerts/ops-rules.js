@@ -11,6 +11,9 @@ export const DISK_WARN_DAYS = 7
 export const RESTART_WINDOW_MS = 3_600_000
 export const RESTART_WARN_COUNT = 5
 export const CERTIFICATE_WARNING_DAYS = [1, 7, 14, 30]
+// KIM 확대 영역: 대용량 키 승인 만료 7일·1일 전, 확대 회차가 30시간(하루 두 회차 연속) 넘게 게시되지 않음.
+export const BULK_KEY_WARNING_DAYS = [1, 7]
+export const EXPANDED_UNPUBLISHED_MS = 30 * 3_600_000
 
 const isDown = (status) => status === 'stopped' || status === 'never'
 // 판정에서 빼는 상태 — 쉬는 시간(정상적으로 안 받는 시간)과 꺼둠(일부러 끈 것).
@@ -92,14 +95,34 @@ export function publicSiteWarnings(site, now = Date.now()) {
   return warnings
 }
 
+// KIM 확대 영역. expanded: { enabled, validUntilKst(YYYY-MM-DD), publishedAt(ISO|null), startedAt(ISO, 처음 켠 시각) }.
+// 꺼져 있으면 보내지 않는다. 만료 뒤에는 수집이 스스로 멈추므로(kim-expanded-processor.js) 만료 알림만 남긴다.
+export function expandedWarnings(expanded, now = Date.now()) {
+  if (!expanded?.enabled) return []
+  const warnings = []
+  const expiresAt = Date.parse(`${expanded.validUntilKst}T24:00:00+09:00`)
+  if (Number.isFinite(expiresAt)) {
+    const daysLeft = Math.ceil((expiresAt - now) / 86_400_000)
+    const threshold = BULK_KEY_WARNING_DAYS.find((day) => daysLeft <= day)
+    if (daysLeft > 0 && threshold !== undefined) warnings.push({ kind: 'bulk_key_expiring', subject: String(threshold), daysLeft, validUntilKst: expanded.validUntilKst })
+    if (daysLeft <= 0) return warnings
+  }
+  const since = Date.parse(expanded.publishedAt ?? expanded.startedAt ?? '')
+  if (Number.isFinite(since) && now - since >= EXPANDED_UNPUBLISHED_MS) {
+    warnings.push({ kind: 'expanded_unpublished', subject: '', hours: Math.floor((now - since) / 3_600_000), publishedAt: expanded.publishedAt ?? null })
+  }
+  return warnings
+}
+
 // 즉시 보낼 것들(①②③). ④는 하루 한 번이라 따로 부른다.
-export function immediateAlerts({ health, usage, forecast, recentBoots, site, now = Date.now() } = {}) {
+export function immediateAlerts({ health, usage, forecast, recentBoots, site, expanded, now = Date.now() } = {}) {
   return [
     ...sourceOutages(health),
     ...quotaWarnings(usage),
     diskWarning(forecast),
     restartWarning(recentBoots, now),
     ...publicSiteWarnings(site, now),
+    ...expandedWarnings(expanded, now),
   ].filter(Boolean)
 }
 
@@ -118,6 +141,10 @@ export function renderAlert(alert) {
       return { title: '공개 HTTPS 인증서 오류', body: `projectamo.co.kr TLS 검증에 실패했습니다. ${alert.error}` }
     case 'cert_expiring':
       return { title: `HTTPS 인증서 ${alert.daysLeft}일 후 만료`, body: `인증서 만료 시각: ${alert.notAfter}` }
+    case 'bulk_key_expiring':
+      return { title: `KIM 대용량 키 ${alert.daysLeft}일 후 만료`, body: `승인 만료일 ${alert.validUntilKst}(KST). 연장되지 않으면 확대 영역 수집이 멈추고 한반도 06 UTC는 일반 키로 돌아갑니다.` }
+    case 'expanded_unpublished':
+      return { title: `KIM 확대 영역 ${alert.hours}시간 미게시`, body: alert.publishedAt ? `마지막 게시 ${alert.publishedAt}. 관리자 수집 시간표의 확대 00·06 UTC 기록을 확인하세요.` : '아직 게시된 확대 회차가 없습니다. 관리자 수집 시간표를 확인하세요.' }
     case 'site_health':
       return { title: '공개 HTTPS 상태 오류', body: alert.status ? `/api/health 응답: HTTP ${alert.status}` : `/api/health 요청 실패: ${alert.error ?? '알 수 없는 오류'}` }
     default:
@@ -138,7 +165,7 @@ export function renderDailySummary(rows, now = Date.now()) {
 
 export default {
   sourceOutages, longStopped, quotaWarnings, diskWarning, restartWarning,
-  publicSiteWarnings,
+  publicSiteWarnings, expandedWarnings,
   immediateAlerts, renderAlert, renderDailySummary,
   LONG_STOP_MS, QUOTA_WARN_PCT, DISK_WARN_DAYS, RESTART_WINDOW_MS, RESTART_WARN_COUNT,
 }

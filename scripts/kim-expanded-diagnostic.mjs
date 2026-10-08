@@ -11,7 +11,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 
-const { values: args } = parseArgs({ options: { tmfc: { type: 'string' }, hours: { type: 'string' }, 'no-publish': { type: 'boolean' }, health: { type: 'string' } } })
+const { values: args } = parseArgs({ options: { tmfc: { type: 'string' }, hours: { type: 'string' }, 'no-publish': { type: 'boolean' }, health: { type: 'string' }, crop: { type: 'boolean' } } })
 const dataPath = path.resolve(process.env.DATA_PATH || '')
 if (!process.env.DATA_PATH || dataPath.startsWith('/opt/projectamo')) throw new Error('진단은 운영 데이터 폴더 밖의 DATA_PATH로만 실행한다')
 if (!/^\d{8}(00|06)$/.test(args.tmfc || '')) throw new Error('--tmfc YYYYMMDD00|06')
@@ -24,6 +24,7 @@ const write = (name, value) => fs.appendFileSync(path.join(outDir, name), `${JSO
 
 const config = (await import('../backend/src/config.js')).default
 const { collectExpandedRun, expandedCycle } = await import('../backend/src/processors/kim-expanded-collector.js')
+const { publishKoreaFromExpanded } = await import('../backend/src/processors/kim-korea-crop.js')
 const { hours: cycleHours } = expandedCycle(args.tmfc)
 const hours = args.hours
   ? cycleHours.filter(hf => { const [a, b] = args.hours.split('-').map(Number); return hf >= a && hf <= (b ?? a) })
@@ -77,16 +78,24 @@ const sampler = setInterval(async () => {
 }, 5000)
 
 const startedAt = Date.now()
+let cropped = null
 write('progress.jsonl', { type: 'start', tmfc: args.tmfc, hours, publish: !args['no-publish'], concurrency: config.kim_expanded.concurrency })
 let result
 try {
   result = await collectExpandedRun({ tmfc: args.tmfc, hours, signal: controller.signal, publish: !args['no-publish'],
-    onProgress: event => { write('progress.jsonl', event); console.log(JSON.stringify(event)) } })
+    onProgress: event => { write('progress.jsonl', event); console.log(JSON.stringify(event)) },
+    // --crop: 06 UTC +0~12h가 모이면 한반도 회차를 잘라 이 DATA_PATH의 kim_nwp/에 게시한다(운영 한반도 06 UTC와 비교용).
+    onHourDownloaded: async ({ downloaded }) => {
+      if (!args.crop || cropped || !config.kim_nwp.forecast_hours.every(hf => downloaded.includes(hf))) return
+      const at = Date.now()
+      cropped = publishKoreaFromExpanded({ tmfc: args.tmfc, hours: config.kim_nwp.forecast_hours })
+      write('progress.jsonl', { type: 'korea_cropped', ms: Date.now() - at, ...cropped })
+    } })
 } catch (error) {
   result = { error: String(error.code || error.message).slice(0, 300) }
 } finally {
   clearInterval(sampler)
 }
-const summary = { tmfc: args.tmfc, ...result, guardStop: stopped, seconds: Math.round((Date.now() - startedAt) / 1000), peak, diskMiB: mib(du(path.join(dataPath, 'kim_nwp_ea'))) }
+const summary = { tmfc: args.tmfc, ...result, korea: cropped, guardStop: stopped, seconds: Math.round((Date.now() - startedAt) / 1000), peak, diskMiB: mib(du(path.join(dataPath, 'kim_nwp_ea'))) }
 fs.writeFileSync(path.join(outDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`)
 console.log(JSON.stringify(summary))

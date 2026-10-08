@@ -63,6 +63,10 @@ export async function collectExpandedRun({
   prefetch = [prefetchGktgSupplements, prefetchTropopauseSupplements],
   runDerived = runKimDerivedWorker,
   onProgress = () => {},
+  // 시각마다 받기 전에 부른다. 이유 문자열을 돌려주면 새 시각을 받지 않는다(디스크 보호선, 다음 회차 시작 등).
+  beforeHour = () => null,
+  // 시각 하나를 다 받았을 때(계산 전). 06 UTC는 +0~12h가 모이면 한반도 회차를 잘라 게시한다.
+  onHourDownloaded = async () => {},
 } = {}) {
   const { hours: cycleHours, minHour } = expandedCycle(tmfc)
   const hours = plannedHours ?? cycleHours
@@ -103,6 +107,8 @@ export async function collectExpandedRun({
   for (const hf of hours) {
     if (signal?.aborted) { stopReason = 'cancelled'; break }
     if (now() >= stopAt) { stopReason = 'request_cutoff'; break }
+    const blocked = beforeHour({ hf, downloaded: [...downloaded] })
+    if (blocked) { stopReason = blocked; break }
     const at = now()
     let credential
     try {
@@ -144,11 +150,15 @@ export async function collectExpandedRun({
     entries.set(hf, hourEntries)
     downloaded.push(hf)
     compute(hf)
+    try { await onHourDownloaded({ hf, downloaded: [...downloaded] }) } catch (error) {
+      appendKimRunEvent(runDir, { type: 'expanded_hour_hook_failed', hf, error: String(error.code || error.message).slice(0, 300) })
+    }
   }
   await computeChain
 
   const publishable = contiguousHours(hours, downloaded.filter(hf => computed.includes(hf)))
   const lastHour = publishable.at(-1)
+  if (failures.some(failure => /HTTP (401|403)|unauthori[sz]ed|forbidden/i.test(failure.reason || ''))) stopReason ||= 'credential_rejected'
   const meetsMinimum = Number.isFinite(lastHour) && lastHour >= minHour
   let published = null
   if (publish && meetsMinimum) published = await publishExpandedRun({ root, tmfc, hours: publishable, entries, runDerived, signal, complete: publishable.length === hours.length })

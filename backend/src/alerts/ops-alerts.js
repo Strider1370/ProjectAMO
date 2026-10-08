@@ -9,6 +9,7 @@ import { processHealth } from '../admin/process-health.js'
 import { sendTelegram } from './sender.js'
 import { immediateAlerts, longStopped, renderAlert, renderDailySummary } from './ops-rules.js'
 import { probePublicSite } from './public-site.js'
+import { readKimNwpLatest } from '../processors/kim-nwp-store.js'
 
 // 운영 알림 — 판정(ops-rules.js)과 발송(sender.js)을 잇고, 같은 사건을 두 번 보내지 않게 한다.
 //
@@ -42,7 +43,7 @@ function clearSent(db, kind, subject) {
 function shouldSend(db, alert, nowMs) {
   const at = lastSent(db, alert.kind, alert.subject)
   if (!at) return true
-  if (alert.kind === 'source_down' || alert.kind === 'cert_expiring') return false
+  if (alert.kind === 'source_down' || alert.kind === 'cert_expiring' || alert.kind === 'bulk_key_expiring') return false
   return nowMs - Date.parse(at) >= REPEAT_AFTER_MS
 }
 
@@ -58,6 +59,11 @@ export async function collectState(db, now = Date.now(), { probeSite = probePubl
     forecast: forecastDiskFull(readMetrics(db, '7d').series),
     recentBoots: processHealth().recentBoots ?? [],
     site,
+    expanded: config.kim_expanded?.enabled ? {
+      enabled: true, validUntilKst: config.kim_bulk?.valid_until_kst,
+      publishedAt: readKimNwpLatest(config.storage.active_path, 'ea')?.updated_at ?? null,
+      startedAt: processHealth().recentBoots?.at(-1) ?? null,
+    } : null,
     now,
   }
 }
