@@ -1,4 +1,4 @@
-import { coordinatesForGrid } from './overlayUtils.js'
+import { cellCoordinatesForGrid, mercatorSourceRows } from './overlayUtils.js'
 
 export const EXPERIMENT_SOURCE = 'kim-turbulence-experiment-image'
 export const EXPERIMENT_LAYER = 'kim-turbulence-experiment-raster'
@@ -31,9 +31,10 @@ export function experimentColor(value, max, combined = false) {
 
 export function buildExperimentPixels(field) {
   const { nx, ny } = field.grid
-  const pixels = new Uint8ClampedArray(nx * ny * 4)
-  for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    const value = field.values[(ny - 1 - y) * nx + x]
+  const sourceRows = mercatorSourceRows(field.grid)
+  const pixels = new Uint8ClampedArray(nx * sourceRows.length * 4)
+  for (let y = 0; y < sourceRows.length; y++) for (let x = 0; x < nx; x++) {
+    const value = field.values[sourceRows[y] * nx + x]
     pixels.set(experimentColor(value, field.diagnostic.colorMax, field.diagnostic.combined), (y * nx + x) * 4)
   }
   return pixels
@@ -59,13 +60,13 @@ export function syncExperimentOverlay(map, field, visible) {
   if (stateByMap.get(map) !== field || !source) {
     const canvas = document.createElement('canvas')
     canvas.width = field.grid.nx
-    canvas.height = field.grid.ny
+    canvas.height = mercatorSourceRows(field.grid).length
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     const pixels = ctx.createImageData(canvas.width, canvas.height)
     pixels.data.set(buildExperimentPixels(field))
     ctx.putImageData(pixels, 0, 0)
-    const image = { url: canvas.toDataURL('image/png'), coordinates: coordinatesForGrid(field.grid) }
+    const image = { url: canvas.toDataURL('image/png'), coordinates: cellCoordinatesForGrid(field.grid) }
     if (source) source.updateImage(image)
     else map.addSource(EXPERIMENT_SOURCE, { type: 'image', ...image })
     stateByMap.set(map, field)

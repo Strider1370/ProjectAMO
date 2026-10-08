@@ -4,6 +4,7 @@ import { createIcingPotentialSampler, pickIcingColor } from './icingPotentialFie
 import { createTemperatureFieldSampler, pickTemperatureColor } from './temperatureField.js'
 import { createWindFieldSampler, pickWindSpeedColor } from './windField.js'
 import { KTG_COLOR_RAMP, pickKtgRgba } from './ktgTurbulenceField.js'
+import { decodeKimBelowGround, KIM_BELOW_GROUND_LABEL } from './kimBelowGround.js'
 
 const MS_TO_KT = 1.943844
 
@@ -114,13 +115,22 @@ function createKtgSampler(field) {
   if (!field || !grid || !Array.isArray(field.gktg || field.ktg)) return { sample: () => null }
   const dx = (grid.lonMax - grid.lonMin) / Math.max(1, grid.nx - 1)
   const dy = (grid.latMax - grid.latMin) / Math.max(1, grid.ny - 1)
+  const belowGround = decodeKimBelowGround(field)
+  const indexAt = (lon, lat) => {
+    if (!Number.isFinite(dx) || !Number.isFinite(dy) || dx <= 0 || dy <= 0) return null
+    const x = Math.round((lon - grid.lonMin) / dx)
+    const y = Math.round((lat - grid.latMin) / dy)
+    if (x < 0 || y < 0 || x >= grid.nx || y >= grid.ny) return null
+    return y * grid.nx + x
+  }
   return {
     sample(lon, lat) {
-      if (!Number.isFinite(dx) || !Number.isFinite(dy) || dx <= 0 || dy <= 0) return null
-      const x = Math.round((lon - grid.lonMin) / dx)
-      const y = Math.round((lat - grid.latMin) / dy)
-      if (x < 0 || y < 0 || x >= grid.nx || y >= grid.ny) return null
-      return (field.gktg || field.ktg)[y * grid.nx + x]
+      const index = indexAt(lon, lat)
+      return index === null ? null : (field.gktg || field.ktg)[index]
+    },
+    isBelowGround(lon, lat) {
+      const index = indexAt(lon, lat)
+      return index !== null && belowGround?.[index] === 1
     },
   }
 }
@@ -136,6 +146,10 @@ function ktgColor(value) {
 
 function buildTurbulenceRow(field, sampler, metadata) {
   const value = sampler.sample(metadata.lon, metadata.lat)
+  if (sampler.isBelowGround?.(metadata.lon, metadata.lat)) {
+    return { key: 'turbulence', label: '난류', value: KIM_BELOW_GROUND_LABEL, detail: '지상기압보다 높은 기압면', altitude: formatAltitude(field),
+      geopotentialHeight: null, color: 'rgba(120, 128, 140, 0.6)', ...metadata.time }
+  }
   if (!Number.isFinite(value)) return null
   const band = field.product === 'GKTG' ? gktgBand(value) : null
   if (field.product === 'GKTG' && (!band || band.min === 0)) return null

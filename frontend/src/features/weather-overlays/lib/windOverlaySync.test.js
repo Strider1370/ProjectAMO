@@ -1,4 +1,6 @@
 import test from 'node:test'
+
+import { RASTER_ROW_SCALE } from './overlayUtils.js'
 import assert from 'node:assert/strict'
 
 import WebGLWindRenderer from './webglWindRenderer.js'
@@ -560,7 +562,8 @@ test('speed layer installs a map-anchored image overlay and does not redraw on m
     syncWindOverlay(map, { windField: FIELD_A, visibility: { wind: true, windFlow: false, windSpeed: true } })
     const source = map.getSource('kim-wind-speed-image-source')
     assert.equal(source.type, 'image')
-    assert.deepEqual(source.coordinates, [[126, 37], [127, 37], [127, 36], [126, 36]])
+    // 이미지 모서리는 격자 칸 바깥 경계(격자점 ± 반 칸)다.
+    assert.deepEqual(source.coordinates, [[125.5, 37.5], [127.5, 37.5], [127.5, 35.5], [125.5, 35.5]])
     assert.equal(map.getLayer('kim-wind-speed-image-layer').type, 'raster')
     assert.equal(map.getLayer('kim-wind-speed-image-layer').paint['raster-resampling'], 'linear')
     const initialUrl = source.url
@@ -769,7 +772,10 @@ test('WebGL renderer applies configured flow width and trail persistence', () =>
     )
     assert.equal(pointSizeUniform?.args[1], 2.55)
     assert.equal(fadeUniform?.args[1], 0.76)
-    assert.ok(state.renderer.gl.__calls.some((call) => call.method === 'lineWidth' && call.args[0] === 1.7))
+    // 꼬리는 사각형이라 첫 두 꼭짓점(같은 끝점의 양옆) 사이가 선 굵기다. WebGL 선(lineWidth)은 쓰지 않는다.
+    const v = state.renderer.particleVertexData
+    if (Math.hypot(v[0] - v[4], v[1] - v[5]) > 0) assert.ok(Math.abs(Math.hypot(v[0] - v[4], v[1] - v[5]) - 1.7) < 1e-4)
+    assert.ok(!state.renderer.gl.__calls.some((call) => call.method === 'lineWidth'))
   } finally {
     dom.restore()
   }
@@ -991,7 +997,7 @@ test('WebGL renderer uploads wind data and updates backing-store viewport size',
     const flowCalls = state.renderer.gl.__calls
     assert.ok(flowCalls.some((call) => call.method === 'texImage2D'))
     assert.ok(flowCalls.some((call) => call.method === 'viewport' && call.args[2] === 1280 && call.args[3] === 720))
-    assert.ok(flowCalls.some((call) => call.method === 'drawArrays' && call.args[0] === state.renderer.gl.LINES))
+    assert.ok(flowCalls.some((call) => call.method === 'drawArrays' && call.args[0] === state.renderer.gl.TRIANGLES))
     assert.ok(flowCalls.some((call) => call.method === 'drawArrays' && call.args[0] === state.renderer.gl.POINTS))
     assert.equal(map.getSource('kim-wind-speed-image-source').type, 'image')
     assert.equal(map.getLayer('kim-wind-speed-image-layer').type, 'raster')
@@ -1181,9 +1187,10 @@ test('WebGL renderer does not draw long stale segments after particle reseed', (
 
     assert.equal(particle.prevLon, null)
     assert.equal(particle.prevLat, null)
-    const [fromX, fromY, , , toX, toY] = state.renderer.particleVertexData
-    assert.equal(fromX, toX)
-    assert.equal(fromY, toY)
+    // 꼭짓점 0은 출발점 쪽, 꼭짓점 2는 도착점 쪽(같은 옆면)이다. 재시작한 입자는 길이 0이라 둘이 같다.
+    const data = state.renderer.particleVertexData
+    assert.equal(data[0], data[8])
+    assert.equal(data[1], data[9])
   } finally {
     dom.restore()
   }
@@ -1337,7 +1344,7 @@ test('speed image overlay rasterizes wind speed colors once per field', () => {
     assert.equal(source.type, 'image')
     assert.match(source.url, /^data:image\/png/)
     const rasterCanvas = dom.createdCanvases.find((child) => child.__calls?.some((call) => call.method === 'toDataURL'))
-    assert.ok(rasterCanvas.__calls.some((call) => call.method === 'createImageData' && call.args[0] === 2 && call.args[1] === 2))
+    assert.ok(rasterCanvas.__calls.some((call) => call.method === 'createImageData' && call.args[0] === 2 && call.args[1] === 2 * RASTER_ROW_SCALE))
     assert.ok(rasterCanvas.__calls.some((call) => call.method === 'putImageData'))
   } finally {
     dom.restore()

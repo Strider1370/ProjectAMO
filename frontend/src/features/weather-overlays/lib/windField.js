@@ -4,17 +4,21 @@ function kt(value) {
   return value * KT_TO_MS
 }
 
+// 모든 고도가 같은 범례를 쓴다(같은 색 = 같은 풍속). 저층 바람의 90%가 0~30 kt에 있어 그 구간에서 색이 빨리 바뀌게 했다
+// (기존 범례는 0~30 kt가 파랑~초록 3~4색이라 저층 속도 차이가 안 보였다, 2026-10-08). 상층 제트는 자주~보라로 구분한다.
 export const WIND_SPEED_COLOR_RAMP = [
-  { min: kt(0), max: kt(5), label: '0-5 kt', color: 'rgba(0, 126, 255, 0.38)' },
-  { min: kt(5), max: kt(10), label: '5-10 kt', color: 'rgba(0, 190, 210, 0.38)' },
-  { min: kt(10), max: kt(20), label: '10-20 kt', color: 'rgba(0, 220, 165, 0.38)' },
-  { min: kt(20), max: kt(30), label: '20-30 kt', color: 'rgba(42, 220, 42, 0.38)' },
-  { min: kt(30), max: kt(40), label: '30-40 kt', color: 'rgba(180, 225, 0, 0.38)' },
-  { min: kt(40), max: kt(60), label: '40-60 kt', color: 'rgba(255, 205, 0, 0.38)' },
-  { min: kt(60), max: kt(80), label: '60-80 kt', color: 'rgba(255, 150, 0, 0.38)' },
-  { min: kt(80), max: kt(100), label: '80-100 kt', color: 'rgba(240, 45, 20, 0.38)' },
-  { min: kt(100), max: kt(130), label: '100-130 kt', color: 'rgba(222, 0, 190, 0.38)' },
-  { min: kt(130), max: Infinity, label: '130+ kt', color: 'rgba(126, 34, 206, 0.38)' },
+  { min: kt(0), max: kt(5), label: '0-5 kt', color: 'rgba(120, 140, 170, 0.38)' },
+  { min: kt(5), max: kt(10), label: '5-10 kt', color: 'rgba(40, 110, 230, 0.38)' },
+  { min: kt(10), max: kt(15), label: '10-15 kt', color: 'rgba(0, 180, 220, 0.38)' },
+  { min: kt(15), max: kt(20), label: '15-20 kt', color: 'rgba(0, 200, 120, 0.38)' },
+  { min: kt(20), max: kt(25), label: '20-25 kt', color: 'rgba(130, 215, 40, 0.38)' },
+  { min: kt(25), max: kt(30), label: '25-30 kt', color: 'rgba(240, 220, 0, 0.38)' },
+  { min: kt(30), max: kt(40), label: '30-40 kt', color: 'rgba(255, 160, 0, 0.38)' },
+  { min: kt(40), max: kt(60), label: '40-60 kt', color: 'rgba(240, 70, 30, 0.38)' },
+  { min: kt(60), max: kt(80), label: '60-80 kt', color: 'rgba(200, 20, 90, 0.38)' },
+  { min: kt(80), max: kt(100), label: '80-100 kt', color: 'rgba(190, 0, 170, 0.38)' },
+  { min: kt(100), max: kt(130), label: '100-130 kt', color: 'rgba(130, 40, 210, 0.38)' },
+  { min: kt(130), max: Infinity, label: '130+ kt', color: 'rgba(80, 30, 140, 0.38)' },
 ]
 
 export function decodeWindComponent(value, field) {

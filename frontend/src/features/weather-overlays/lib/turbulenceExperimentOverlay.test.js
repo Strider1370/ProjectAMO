@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { mercatorSourceRows } from './overlayUtils.js'
 import { buildExperimentPixels, experimentColor, gktgBand, sampleExperimentField, syncExperimentOverlay, destroyExperimentOverlay, EXPERIMENT_LAYER } from './turbulenceExperimentOverlay.js'
 
 const field = { grid: { nx: 2, ny: 2, lonMin: 120, lonMax: 121, latMin: 30, latMax: 31 },
@@ -10,9 +11,12 @@ test('raw zero is valid, missing is transparent, image flips north/south', () =>
   assert.equal(experimentColor(null, 10)[3], 0)
   assert.equal(experimentColor(NaN, 10)[3], 0)
   const pixels = buildExperimentPixels(field)
+  const rows = mercatorSourceRows(field.grid)
+  const last = (rows.length - 1) * 2 * 4
+  assert.equal(rows[0], 1, 'top image row is the northern grid row')
   assert.deepEqual([...pixels.slice(0, 4)], experimentColor(10, 10))
-  assert.deepEqual([...pixels.slice(8, 12)], experimentColor(0, 10))
-  assert.equal(pixels[15], 0)
+  assert.deepEqual([...pixels.slice(last, last + 4)], experimentColor(0, 10))
+  assert.equal(pixels[last + 7], 0)
   assert.equal(sampleExperimentField(field, 120, 30), 0)
   assert.equal(sampleExperimentField(field, 121, 30), null)
   assert.equal(sampleExperimentField(field, 119, 30), null)
@@ -34,14 +38,17 @@ test('combined results use original TURB thresholds and gui_default colours, ind
     assert.equal(experimentColor(value, .5, true)[3], 0)
   }
   const combined = { ...field, diagnostic: { combined: true, colorMax: .5 }, values: [0, null, .15, .34] }
-  assert.deepEqual([...buildExperimentPixels(combined)], [51, 255, 0, 185, 255, 41, 0, 185, 0, 0, 0, 0, 0, 0, 0, 0])
+  const rows = mercatorSourceRows(combined.grid)
+  const expected = [...rows].flatMap((row) => [0, 1].flatMap((x) => experimentColor(combined.values[row * 2 + x], .5, true)))
+  assert.deepEqual([...buildExperimentPixels(combined)], expected)
+  assert.deepEqual(expected.slice(0, 8), [51, 255, 0, 185, 255, 41, 0, 185])
   assert.equal(sampleExperimentField(combined, 120, 30), 0)
 })
 
 test('recreates source after style reload, hides and destroys without stale imagery', () => {
   const previous = globalThis.document
   globalThis.document = { createElement: () => ({ getContext: () => ({
-    createImageData: () => ({ data: new Uint8ClampedArray(16) }), putImageData() {},
+    createImageData: (width, height) => ({ data: new Uint8ClampedArray(width * height * 4) }), putImageData() {},
   }), toDataURL: () => 'data:image/png;base64,test' }) }
   const sources = new Map(), layers = new Map()
   const map = {

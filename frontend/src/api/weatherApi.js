@@ -340,8 +340,12 @@ export async function fetchKimTropopauseField({ tmfc, hf, revision }, options = 
   return fetchJson(`/api/kim/tropopause/field?${params.toString()}`, options)
 }
 
+// 필드 응답은 브라우저에 immutable로 캐시된다. 서버가 응답 모양을 바꾸면(예: 지면 아래 표시) 이 값을 올려
+// 이전 캐시를 쓰지 않게 한다. 서버는 이 인자를 읽지 않는다.
+export const KIM_FIELD_VIEW = 'bg1'
+
 export async function fetchKimGktgField({ tmfc, hf, level, revision }, options = {}) {
-  const params = new URLSearchParams({ tmfc, hf: String(hf), level })
+  const params = new URLSearchParams({ tmfc, hf: String(hf), level, view: KIM_FIELD_VIEW })
   if (revision) params.set('revision', revision)
   return fetchJson(`/api/kim/gktg/field?${params.toString()}`, options)
 }

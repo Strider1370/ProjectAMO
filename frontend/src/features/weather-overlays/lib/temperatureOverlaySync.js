@@ -1,5 +1,5 @@
 import { decodeTemperatureValue, kelvinToCelsius, pickTemperatureColor } from './temperatureField.js'
-import { coordinatesForGrid, parseRgba } from './overlayUtils.js'
+import { cellCoordinatesForGrid, parseRgba, mercatorSourceRows } from './overlayUtils.js'
 
 const TEMPERATURE_IMAGE_SOURCE_ID = 'kim-temperature-image-source'
 const TEMPERATURE_IMAGE_LAYER_ID = 'kim-temperature-image-layer'
@@ -8,15 +8,16 @@ const stateByMap = new WeakMap()
 function buildTemperatureImage(field) {
   const grid = field?.grid
   if (!grid?.nx || !grid?.ny || !Array.isArray(field.T)) return null
+  const sourceRows = mercatorSourceRows(grid)
   const canvas = document.createElement('canvas')
   canvas.width = grid.nx
-  canvas.height = grid.ny
+  canvas.height = sourceRows.length
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
-  const imageData = ctx.createImageData(grid.nx, grid.ny)
+  const imageData = ctx.createImageData(grid.nx, sourceRows.length)
 
-  for (let y = 0; y < grid.ny; y += 1) {
-    const sourceY = grid.ny - 1 - y
+  for (let y = 0; y < sourceRows.length; y += 1) {
+    const sourceY = sourceRows[y]
     for (let x = 0; x < grid.nx; x += 1) {
       const sourceIndex = sourceY * grid.nx + x
       const kelvin = decodeTemperatureValue(field.T[sourceIndex], field)
@@ -44,7 +45,7 @@ export function syncTemperatureOverlay(map, model = {}) {
     if (map) setVisible(map, false)
     return null
   }
-  const coordinates = coordinatesForGrid(model.temperatureField.grid)
+  const coordinates = cellCoordinatesForGrid(model.temperatureField.grid)
   if (!coordinates) return null
   const state = stateByMap.get(map) || { field: null }
   let source = map.getSource?.(TEMPERATURE_IMAGE_SOURCE_ID)

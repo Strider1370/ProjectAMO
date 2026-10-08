@@ -163,10 +163,13 @@ function getDensityFactor(windField, enabled) {
   return 1
 }
 
+// 넓은 영역을 멀리서 볼 때 화면 넓이 비례 입자 수(데스크톱 최대 약 3,200개)가 화면을 덮었다. 줌 5 이하에서 줄인다.
 function getZoomDensityFactor(map, enabled) {
   if (!enabled) return 1
   const zoom = map.getZoom?.()
-  if (!Number.isFinite(zoom) || zoom <= 5) return 1
+  if (!Number.isFinite(zoom)) return 1
+  if (zoom <= 3) return 0.45
+  if (zoom <= 5) return 0.45 + ((zoom - 3) / 2) * 0.55
   if (zoom >= 11) return 0.65
   if (zoom <= 7) return 1 - ((zoom - 5) / 2) * 0.1
   if (zoom <= 9) return 0.9 - ((zoom - 7) / 2) * 0.15
@@ -470,15 +473,26 @@ export class WebGLWindRenderer {
     this.buildParticleGeometry()
   }
 
+  // 꼬리는 사각형(삼각형 2개 = 꼭짓점 6개)으로, 머리는 점(꼭짓점 1개)으로 그린다. WebGL 선은 대부분의 브라우저에서
+  // 굵기가 1px로 고정되어 선 굵기 설정이 꼬리에 반영되지 않았다(2026-10-08).
   buildParticleGeometry() {
     if (!this.windField || !this.width || !this.height) return
-    const requiredLength = this.particles.length * 8
+    const requiredLength = this.particles.length * 7 * 4
     const needsAllocation = !this.particleVertexData || this.particleVertexData.length !== requiredLength
     if (needsAllocation) {
       this.particleVertexData = new Float32Array(requiredLength)
     }
 
+    const data = this.particleVertexData
+    const halfWidth = clamp(this.options.flowWidth, 0.6, 3) / 2
+    const heads = []
     let offset = 0
+    const put = (x, y, speed, alpha) => {
+      data[offset++] = x
+      data[offset++] = y
+      data[offset++] = speed
+      data[offset++] = alpha
+    }
     for (const particle of this.particles) {
       const from = this.map.project([
         Number.isFinite(particle.prevLon) ? particle.prevLon : particle.lon,
@@ -487,18 +501,22 @@ export class WebGLWindRenderer {
       const to = this.map.project([particle.lon, particle.lat])
       const speed = particle.speed ?? 0
       const alpha = getParticleAgeAlpha(particle)
-      this.particleVertexData[offset++] = from.x
-      this.particleVertexData[offset++] = from.y
-      this.particleVertexData[offset++] = speed
-      this.particleVertexData[offset++] = alpha
-      this.particleVertexData[offset++] = to.x
-      this.particleVertexData[offset++] = to.y
-      this.particleVertexData[offset++] = speed
-      this.particleVertexData[offset++] = alpha
+      const dx = to.x - from.x
+      const dy = to.y - from.y
+      const length = Math.hypot(dx, dy)
+      const nx = length > 1e-6 ? (-dy / length) * halfWidth : 0
+      const ny = length > 1e-6 ? (dx / length) * halfWidth : halfWidth
+      put(from.x + nx, from.y + ny, speed, alpha)
+      put(from.x - nx, from.y - ny, speed, alpha)
+      put(to.x + nx, to.y + ny, speed, alpha)
+      put(to.x + nx, to.y + ny, speed, alpha)
+      put(from.x - nx, from.y - ny, speed, alpha)
+      put(to.x - nx, to.y - ny, speed, alpha)
+      heads.push(to.x, to.y, speed, alpha)
     }
-
     this.segmentVertexCount = offset / 4
-    this.pointVertexCount = this.segmentVertexCount
+    for (let i = 0; i < heads.length; i += 1) data[offset++] = heads[i]
+    this.pointVertexCount = heads.length / 4
 
     const gl = this.gl
     gl.bindBuffer(gl.ARRAY_BUFFER, this.particleBuffer)
@@ -578,8 +596,7 @@ export class WebGLWindRenderer {
     gl.vertexAttribPointer(alphaLocation, 1, gl.FLOAT, false, 16, 12)
     const resolutionLocation = gl.getUniformLocation(this.particleProgram, 'u_resolution')
     gl.uniform2f(resolutionLocation, this.width, this.height)
-    const flowWidth = clamp(this.options.flowWidth, 0.6, 2.4)
-    gl.lineWidth?.(flowWidth)
+    const flowWidth = clamp(this.options.flowWidth, 0.6, 3)
     const pointSizeLocation = gl.getUniformLocation(this.particleProgram, 'u_point_size')
     gl.uniform1f(pointSizeLocation, flowWidth * 1.5)
     const flowColorLocation = gl.getUniformLocation(this.particleProgram, 'u_flow_color')
@@ -588,8 +605,8 @@ export class WebGLWindRenderer {
     gl.uniform1i(colorModeLocation, this.options.flowColorMode === 'speed' ? 1 : 0)
     const opacityLocation = gl.getUniformLocation(this.particleProgram, 'u_flow_opacity')
     gl.uniform1f(opacityLocation, clamp(this.options.flowOpacity, 0.2, 1))
-    gl.drawArrays(gl.LINES, 0, this.segmentVertexCount)
-    gl.drawArrays(gl.POINTS, 0, this.pointVertexCount)
+    gl.drawArrays(gl.TRIANGLES, 0, this.segmentVertexCount)
+    gl.drawArrays(gl.POINTS, this.segmentVertexCount, this.pointVertexCount)
   }
 
   destroy() {

@@ -1,6 +1,7 @@
 import { syncKtgTurbulenceOverlay, destroyKtgTurbulenceOverlay } from './ktgTurbulenceOverlaySync.js'
 import { gktgBand } from '../../../../../shared/gktg.js'
-import { coordinatesForGrid } from './overlayUtils.js'
+import { cellCoordinatesForGrid, mercatorSourceRows } from './overlayUtils.js'
+import { belowGroundCellRgba, decodeKimBelowGround } from './kimBelowGround.js'
 
 const GKTG_IMAGE_SOURCE_ID = 'kim-gktg-image-source'
 const GKTG_IMAGE_LAYER_ID = 'kim-gktg-image-layer'
@@ -9,18 +10,21 @@ const stateByMap = new WeakMap()
 function buildGktgImage(field) {
   const grid = field?.grid
   if (!grid?.nx || !grid?.ny || !Array.isArray(field.gktg)) return null
+  const sourceRows = mercatorSourceRows(grid)
   const canvas = document.createElement('canvas')
   canvas.width = grid.nx
-  canvas.height = grid.ny
+  canvas.height = sourceRows.length
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
-  const imageData = ctx.createImageData(grid.nx, grid.ny)
+  const imageData = ctx.createImageData(grid.nx, sourceRows.length)
+  const belowGround = decodeKimBelowGround(field)
 
-  for (let y = 0; y < grid.ny; y += 1) {
-    const sourceY = grid.ny - 1 - y
+  for (let y = 0; y < sourceRows.length; y += 1) {
+    const sourceY = sourceRows[y]
     for (let x = 0; x < grid.nx; x += 1) {
       const sourceIndex = sourceY * grid.nx + x
-      const rgba = gktgBand(field.gktg[sourceIndex])?.rgba || [0, 0, 0, 0]
+      // 지면 아래 칸은 난류 칸처럼 같은 이미지에 회색으로 칠한다.
+      const rgba = belowGround?.[sourceIndex] ? belowGroundCellRgba() : gktgBand(field.gktg[sourceIndex])?.rgba || [0, 0, 0, 0]
       const targetIndex = (y * grid.nx + x) * 4
       imageData.data[targetIndex] = rgba[0]
       imageData.data[targetIndex + 1] = rgba[1]
@@ -50,7 +54,7 @@ export function syncGktgOverlay(map, model = {}) {
     if (map) setVisible(map, false)
     return null
   }
-  const coordinates = coordinatesForGrid(model.ktgGrid.grid)
+  const coordinates = cellCoordinatesForGrid(model.ktgGrid.grid)
   if (!coordinates) return null
   const state = stateByMap.get(map) || { field: null }
   let source = map.getSource?.(GKTG_IMAGE_SOURCE_ID)

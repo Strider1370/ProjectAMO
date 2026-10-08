@@ -84,6 +84,8 @@ export function useNwpOverlays({
     adaptiveParticleDensity: true,
     zoomAdaptiveDensity: true,
     samplerLod: true,
+    // 지상일기도 바람처럼 줌 6보다 멀리 볼수록 입자 속도를 올려 화면상 꼬리 길이를 유지한다(확대 영역에서 점처럼 보였다).
+    zoomSpeedReference: 6,
     flowColorMode: metVisibility.windSpeed ? 'neutral' : 'speed',
     flowOpacity: windFlowOpacity,
     flowWidth: windFlowWidth,

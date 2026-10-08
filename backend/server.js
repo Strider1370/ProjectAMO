@@ -79,6 +79,7 @@ import {
   readKimNwpLatest,
   validateKimNwpSelection,
 } from './src/processors/kim-nwp-store.js'
+import { applyKimBelowGround } from './src/processors/kim-surface-mask.js'
 import { loadRouteCrossSection } from './src/briefing/enroute-cross-section.js'
 import { buildNavlogNwpPatch } from './src/briefing/navlog-nwp-patch.js'
 import { buildRouteExposure } from './src/briefing/route-exposure.js'
@@ -891,8 +892,10 @@ app.get('/api/kim/gktg/index', (_req, res) => {
 })
 app.get('/api/kim/gktg/field', (req, res) => {
   try {
-    const field = readKimGktgField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), levelId: String(req.query.level || ''), revision: req.query.revision })
-    sendImmutableJson(res, field, `kim-gktg:${field.time.tmfc}:${field.time.hf}:${field.level.id}:${field.revision}`)
+    const stored = readKimGktgField({ root: DATA_ROOT, tmfc: String(req.query.tmfc || ''), hf: Number(req.query.hf), levelId: String(req.query.level || ''), revision: req.query.revision })
+    // 지면 아래 기압면은 비우고 표시를 붙인다(kim-surface-mask.js). ETag에 표시 방식을 넣어 이전 응답 캐시와 구분한다.
+    const field = applyKimBelowGround(stored, { root: DATA_ROOT, arrays: ['gktg'] })
+    sendImmutableJson(res, field, `kim-gktg:${field.time.tmfc}:${field.time.hf}:${field.level.id}:${field.revision}:below-ground-v1`)
   } catch (error) {
     setNoStore(res)
     res.status(error.code === 'ENOENT' ? 404 : 400).json({ error: error.message })

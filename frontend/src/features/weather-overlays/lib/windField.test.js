@@ -116,27 +116,23 @@ test('createDownsampledWindField keeps bounds and samples a coarser grid', () =>
 
 test('wind speed ramp keeps fixed thresholds with kt display labels', () => {
   assert.deepEqual(WIND_SPEED_COLOR_RAMP.map((entry) => entry.label), [
-    '0-5 kt',
-    '5-10 kt',
-    '10-20 kt',
-    '20-30 kt',
-    '30-40 kt',
-    '40-60 kt',
-    '60-80 kt',
-    '80-100 kt',
-    '100-130 kt',
-    '130+ kt',
+    '0-5 kt', '5-10 kt', '10-15 kt', '15-20 kt', '20-25 kt', '25-30 kt',
+    '30-40 kt', '40-60 kt', '60-80 kt', '80-100 kt', '100-130 kt', '130+ kt',
   ])
   assert.equal(pickWindSpeedColor(1).label, '0-5 kt')
   assert.equal(pickWindSpeedColor(70).label, '130+ kt')
+  // 저층 바람이 몰린 0~30 kt는 5 kt마다 색이 바뀐다.
+  assert.equal(new Set(WIND_SPEED_COLOR_RAMP.slice(0, 6).map((entry) => entry.color)).size, 6)
 })
 
 test('interpolateWindSpeedColor only blends near speed bin boundaries', () => {
-  assert.equal(interpolateWindSpeedColor(0), 'rgba(0, 126, 255, 0.38)')
-  assert.equal(interpolateWindSpeedColor(1), 'rgba(0, 126, 255, 0.38)')
-  assert.equal(interpolateWindSpeedColor(2.57222), 'rgba(0, 158, 233, 0.38)')
-  assert.equal(interpolateWindSpeedColor(8), 'rgba(0, 220, 165, 0.38)')
-  assert.equal(interpolateWindSpeedColor(70), 'rgba(126, 34, 206, 0.38)')
+  const kt = (value) => value * 0.514444
+  assert.equal(interpolateWindSpeedColor(0), WIND_SPEED_COLOR_RAMP[0].color)
+  assert.equal(interpolateWindSpeedColor(kt(12.5)), WIND_SPEED_COLOR_RAMP[2].color)
+  assert.equal(interpolateWindSpeedColor(70), WIND_SPEED_COLOR_RAMP.at(-1).color)
+  const boundary = interpolateWindSpeedColor(kt(5))
+  assert.notEqual(boundary, WIND_SPEED_COLOR_RAMP[0].color)
+  assert.notEqual(boundary, WIND_SPEED_COLOR_RAMP[1].color)
 })
 
 test('formatKimWindMetaLabel renders a compact model height and valid time label', () => {

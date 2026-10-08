@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { RASTER_ROW_SCALE } from './overlayUtils.js'
+
 import {
   ICING_IMAGE_LAYER_IDS,
   ICING_IMAGE_SOURCE_IDS,
@@ -100,7 +102,7 @@ test('syncIcingPotentialOverlay creates, hides, and destroys a Mapbox image laye
     assert.equal(map.getLayer(ICING_IMAGE_LAYER_IDS[0]).paint['raster-opacity'], 1)
     assert.match(map.getSource(ICING_IMAGE_SOURCE_IDS[0]).url, /^data:image\/png/)
     const imageDataCall = dom.createdCanvases[0].__calls.find((call) => call.method === 'createImageData')
-    assert.deepEqual(imageDataCall.args, [2, 2])
+    assert.deepEqual(imageDataCall.args, [2, 2 * RASTER_ROW_SCALE])
     const putImageCall = dom.createdCanvases[0].__calls.find((call) => call.method === 'putImageData')
     assert.ok(putImageCall)
     const pixels = putImageCall.imageData.data

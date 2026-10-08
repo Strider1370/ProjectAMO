@@ -1,5 +1,5 @@
 import { pickKtgRgba } from './ktgTurbulenceField.js'
-import { coordinatesForGrid } from './overlayUtils.js'
+import { cellCoordinatesForGrid, mercatorSourceRows } from './overlayUtils.js'
 
 const KTG_IMAGE_SOURCE_ID = 'ktg-turbulence-image-source'
 const KTG_IMAGE_LAYER_ID = 'ktg-turbulence-image-layer'
@@ -8,16 +8,17 @@ const stateByMap = new WeakMap()
 function buildKtgImage(ktgData) {
   const { grid, ktg } = ktgData
   if (!grid?.nx || !grid?.ny || !Array.isArray(ktg)) return null
+  const sourceRows = mercatorSourceRows(grid)
   const canvas = document.createElement('canvas')
   canvas.width = grid.nx
-  canvas.height = grid.ny
+  canvas.height = sourceRows.length
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
-  const imageData = ctx.createImageData(grid.nx, grid.ny)
+  const imageData = ctx.createImageData(grid.nx, sourceRows.length)
 
-  for (let y = 0; y < grid.ny; y += 1) {
+  for (let y = 0; y < sourceRows.length; y += 1) {
     // KTG NetCDF rows are ordered south→north; canvas top = north, so flip.
-    const sourceY = grid.ny - 1 - y
+    const sourceY = sourceRows[y]
     for (let x = 0; x < grid.nx; x += 1) {
       const rgba = pickKtgRgba(ktg[sourceY * grid.nx + x])
       const ti = (y * grid.nx + x) * 4
@@ -46,7 +47,7 @@ export function syncKtgTurbulenceOverlay(map, model = {}) {
     if (map) setVisible(map, false)
     return null
   }
-  const coordinates = coordinatesForGrid(model.ktgGrid.grid)
+  const coordinates = cellCoordinatesForGrid(model.ktgGrid.grid)
   if (!coordinates) return null
   const state = stateByMap.get(map) || { ktgGrid: null }
   let source = map.getSource?.(KTG_IMAGE_SOURCE_ID)

@@ -7,6 +7,19 @@ KST 15:00~24:00, 일 2 TB, 호출 건수 제한 없음)로 받는다.
 **근거와 결정:** [KIM 격자 확대 검토](../../operations/kim-grid-scaling.md). 이 계획은 그 문서의 결정 사항,
 운영안, 관리 방법, 프론트엔드 제공 방식을 구현 순서로 옮긴 것이다. 수치(호출·시간·용량)는 그 문서가 정본이다.
 
+## 영역 변경 (2026-10-08 결정)
+
+확대 영역을 **90~160°E, 6~50°N(841×529, 기존 확대 시험 영역의 1.55배)** 으로 정했다. 데스크톱 가로 화면 비율, 그리고
+100°E·145°E 경계에 방콕(100.5°E)·괌(144.8°E)이 걸려 GKTG 가장자리 10칸(약 0.83°) 비움에 들어가는 문제 때문이다.
+요청 범위 `sub=1081,1153,1921,1681`.
+
+운영 서버 대용량 API 전송 실측(2026-10-08 18시대, 이 영역, 예보시각당 147건·858 MB): 동시 4건 초당 2.7 MB,
+동시 8건 초당 9.1~9.7 MB. **확대 영역 수집은 동시 8건**으로 한다. 이때 06 UTC 33개(약 51 GB) 다운로드는 약 90분
+(20:15 → 약 21:45). 측정 중 서버 사용 가능 RAM 최소 867 MiB, health 200 유지.
+로컬 실측(100~145°E, 13시각, 동시 4건): 기본 수집 24.5분·3,818건·실패 0.
+
+아래 표의 시간·용량은 100~145°E 기준이며 이 영역에서는 약 1.55배다.
+
 ## 결정 요약
 
 | 항목 | 결정 |
@@ -81,6 +94,115 @@ NC 전환 문제는 한반도 영역에서 먼저 드러나게 하고, 확대 �
 - 변환 20초·최대 RSS 264 MB. 문서 읽기 JSON 4.6 ms → NC 7.9 ms(GKTG 한 회차 입력 273개 기준 약 +1초).
 - `h5wasm`은 shuffle 필터를 쓸 수 없어 벤치마크(shuffle+zlib 4)보다 약 34% 크다. 확대 영역 최대 디스크 추정은 약 7.9 GB → 약 9.5 GB.
 - 백엔드 시험은 json·both·nc 세 형식 모두 1,497개 통과, 프론트 1,845개 통과, 빌드 정상.
+
+## 2차 진행 기록 (2026-10-08, 로컬 시제품)
+
+운영 반영 전, 이 PC에서 대용량 키로 확대 영역을 받아 화면에 띄우며 확인했다(`artifacts/kim-expanded-local/`,
+데이터 `artifacts/kim-expanded-local/data`, 실행 `node artifacts/kim-expanded-local/run.mjs [base|gktg|tropopause|all]`,
+화면 `DATA_PATH=... KIM_STORE_FORMAT=nc npm run dev:test`). 영역은 시제품 당시 100~145°E였고, 이후 90~160°E로 정했다.
+
+### 백엔드 (커밋 `3ba430b4`, 미배포)
+
+- 대용량 키: `KIM_USE_BULK_KEY=1`이면 KIM 격자 호출이 모두 `KMA_BULK_AUTH_KEY`·대용량 호스트로 간다. KST 15~24시·
+  승인 기간 밖이면 일반 키로 넘어가지 않고 실패한다(`kim-run-credential.js`). API 등록부가 대용량 호스트를 인정하고,
+  사용량 장부에 `bulk` 분류(한도 2 TB, 키가 설정된 서버에서만 표시)가 생겼다. 4-1 일부.
+- GKTG 격자 고정(205×169) 검사 제거(JS·Python). 1/12° 간격·최소 크기만 확인. 2-1 일부.
+  배포하면 GKTG 엔진 revision이 바뀌어 한반도 회차를 한 번 다시 계산한다(결과 동일).
+- 추가 입력 머리말 영역 비교를 공백 개수와 무관하게 했다. 기상청은 한 자리 위도를 `lat1 =  6.0`처럼 두 칸 띄워
+  확대 영역 GKTG·권계면 추가 입력이 모두 "identity mismatch"로 거부됐다.
+
+### 로컬 실측 (100~145°E, 00 UTC 13시각, 동시 4건)
+
+- 기본 수집 24.5분, 3,818건, 실패 0. NC 약 0.98 GB(예보시각당 약 75 MB).
+- GKTG 영역 전체 한 번 계산 예보시각당 약 61초, Node 최대 RSS 약 4.07 GB, 계산용 임시 `input.json` 약 300 MB.
+  Node가 큐브를 JSON으로 넘기는 구조 때문이라 서버에는 3-2(Python이 NC 직접 읽기)가 필요하다.
+- 권계면 예보시각당 약 60초, 최대 RSS 약 1.47 GB.
+- 화면: 바람·기온·난류·권계면이 확대 영역 전체에 표시되고 시각·고도 전환도 빠르다(사용자 확인).
+
+### 지면 아래 기압면 표시 (미커밋)
+
+- 고원·산지에서 지상기압보다 큰 기압면은 모델 외삽값이다. 확대 영역 서쪽(티베트 고원 동쪽)에서 850·700 hPa GKTG가
+  지면 아래인데도 LGT~SEV로 칠해졌다. 예보관용 고층 일기도(지형 회색 처리)·AWC 뷰어("Below Surface")의 관례를 따라 가린다.
+- `backend/src/processors/kim-surface-mask.js`: GKTG 추가 입력으로 이미 받은 `ps` 원문 캐시로 지면 아래 격자를 구한다
+  (새 API 호출 없음). `/api/kim/gktg/field`가 그 격자 값을 비우고 `belowGround`(bitset-base64-v1)를 붙인다.
+  ETag에 `below-ground-v1`, 프론트 요청에 `view=bg1`을 붙여 immutable 캐시의 이전 응답과 구분한다.
+- 프론트: 난류 이미지 안에서 지면 아래 칸을 회색 단색으로 칠한다(`kimBelowGround.js`). 별도 벡터 빗금 레이어는
+  이미지 칸과 미세하게 어긋나 버렸다. 지점 조회는 "난류 · 지면 아래".
+- 지금은 GKTG만 적용. 바람·기온·구름·착빙은 같은 방식으로 이어 적용한다.
+- 마스크 경계 바로 바깥에 난류 띠가 남는 것은 GKTG 특성이다. 지면 위 0~25 hPa에서 700 hPa MOD 이상 35%,
+  200 hPa 이상 0.6%. 산악파 항이 지형+1,500 m 이하를 키우는 원본 설계(`python_port.py` `mountain_multiplier`)라 지우지 않는다.
+
+### 이미지 레이어 위치 보정 (미커밋, 운영 한반도에도 해당)
+
+- 이미지 레이어(난류·기온·구름·착빙·바람 풍속·KTG·난류 실험)는 위도 간격이 일정한 격자 이미지를 지도 네 모서리에
+  늘려 붙였다. 지도는 Web Mercator라 중간 위도가 밀렸다: **한반도 30~44°N 최대 약 36 km, 확대 6~50°N 최대 약 270 km**.
+  권계면만 이미 보정돼 있었다.
+- `overlayUtils.js`: `cellCoordinatesForGrid`(이미지 모서리를 격자 칸 바깥 경계에) + `mercatorSourceRows`(이미지 각 행의
+  Mercator 위도에 해당하는 격자 행). 행 배율 `RASTER_ROW_SCALE=1`: 4배로 했더니 고도·시간 전환이 눈에 띄게 늦어 되돌렸다.
+  남는 오차는 반 칸(약 4 km) 이내.
+
+### 바람 애니메이션 (미커밋)
+
+현황: 넓은 화면에서 입자가 점처럼 보이고, 너무 빽빽하고, 저층 속도 차이가 안 보였다.
+
+| 원인 | 조치 |
+|---|---|
+| 입자 이동이 경위도 고정량이라 축소하면 프레임당 0.15 px(꼬리 1~2 px) | 수치모델 바람에도 `zoomSpeedReference: 6`(지상일기도 바람과 같은 보정) |
+| WebGL 선 굵기가 대부분 브라우저에서 1 px 고정이라 선 굵기 설정이 꼬리에 반영 안 됨 | 꼬리를 사각형(삼각형 2개)으로 그림 |
+| 입자 수가 화면 넓이 비례(데스크톱 약 3,200개), 줌 5 이하 감소 없음 | 줌 3 이하 45%, 3~5 선형 증가 |
+| 전 고도 공통 범례에서 저층(바람 90%가 0~30 kt)이 파랑~초록 3~4색 | 범례는 하나로 유지(같은 색 = 같은 풍속), 0~30 kt를 5 kt마다 다른 색, 12구간 |
+
+고도별 범례는 같은 색이 고도마다 다른 풍속이 되어 고도 간 비교가 헷갈려 택하지 않았다.
+실제 분포(00 UTC +9h): 10m 중앙값 7 kt·상위 10% 18 kt, 850 hPa 10·20 kt, 250 hPa 28·86 kt.
+
+### 임시 기능
+
+- `frontend/src/features/map/KimDomainPreview.jsx`: 개발 서버 전용 "KIM 영역 비교" 버튼(영역 후보 사각형, 가장자리 10칸
+  경계, 주요 공항). 영역을 정했으므로 다음 커밋 전에 지운다.
+
+### 재개 안내 (2026-10-08 19시경 기준)
+
+2차는 로컬 시제품으로 "되는지 확인"까지 끝났다. 운영에는 아직 아무것도 들어가지 않았다.
+
+| 작업 | 상태 |
+|---|---|
+| 영역 결정(90~160°E)·서버 전송 실측 | 완료 |
+| 대용량 키 사용(4-1 일부)·GKTG 격자 고정 해제(2-1 일부)·머리말 공백 수정 | 커밋 `3ba430b4`, 미배포 |
+| 지면 아래 표시 | GKTG만, **미커밋** |
+| 이미지 위치 보정·바람 애니메이션 | 완료, **미커밋** |
+| 영역 일반화(2-1~2-3) | 미착수 |
+| 계산 구조(3-1~3-3) | 미착수. 서버(RAM 2 GB)에서는 이것 없이 확대 영역 GKTG 불가(로컬 Node 4 GB) |
+| 확대 영역 수집기(4단계) | 미착수 |
+| 프론트 전송(5-2·5-4) | 미착수 |
+| 운영 적용(6단계) | 미착수 |
+
+작업 위치: 브랜치 `feat/kim-nc-store`(origin/main = `99c56d3d` + 커밋 `3ba430b4`). 미커밋 파일:
+`backend/server.js`, `backend/src/processors/kim-surface-mask.js`(신규), `frontend/src/api/weatherApi.js`,
+`frontend/src/features/weather-overlays/lib/`의 `overlayUtils.js`·`kimBelowGround.js`(신규)·`gktgOverlaySync.js`·
+`temperatureOverlaySync.js`·`cloudPotentialOverlaySync.js`·`icingPotentialOverlaySync.js`·`ktgTurbulenceOverlaySync.js`·
+`turbulenceExperimentOverlay.js`·`windOverlaySync.js`·`webglWindRenderer.js`·`windField.js`·`useNwpOverlays.js`·
+`weatherPointInspector.js`와 해당 시험 파일(`mercatorSourceRows.test.js` 신규), `Architecture.md`, 이 문서.
+`frontend/src/features/map/KimDomainPreview.jsx`(신규)와 `MapView.jsx`의 그 마운트 한 줄은 임시 기능이라 커밋하지 않고 지운다.
+`docs/operations/kim-tropopause.md`, `tropopauseJetModel.js`·`.test.js`, `tropopauseJetPresentation.js`는 다른 작업(권계면 제트)의
+미커밋 변경이라 이 작업 커밋에 넣지 않는다.
+
+다음 순서(권장):
+
+1. **정리·먼저 배포.** 임시 영역 비교 버튼 삭제 → 미커밋 변경 커밋(위 제외 파일 빼고) → `npm test`(백엔드·프론트) →
+   main 병합·push → 운영 fast deploy. 한반도 운영의 이미지 최대 36 km 어긋남과 바람 애니메이션이 바로 개선된다.
+   함께 배포되는 대용량 키 지원은 운영에 키가 없어 동작이 바뀌지 않고, GKTG는 엔진 revision 변경으로 한 번 재계산된다.
+   배포 후 브라우저에서 바람·난류를 보고, 사용자 브라우저 캐시는 `view=bg1`로 구분된다.
+2. **지면 아래 표시 확대.** 바람·기온·구름·착빙 필드 응답에도 `applyKimBelowGround`를 적용하고, 각 이미지 빌더에서 회색 칸,
+   지점 조회 "지면 아래". 정수 인코딩 배열(u·v·T 등)은 결측값(-32768)으로 비우는 방식과 렌더러 결측 처리를 확인한다.
+   각 필드 요청에도 `view` 인자를 붙여 캐시를 구분한다.
+3. **계산 구조(3-1~3-3).** Python이 NC를 직접 읽고(3-2), GKTG 192×192 창·24격자 겹침 블록 계산(3-1, `scripts/benchmark-kim-compute.py`의
+   `install_tile_context`를 정식화), 예보시각 단위 순번·메모리 보호(3-3).
+4. **영역 일반화(2-1~2-3) → 수집기(4단계, 90~160°E·`sub=1081,1153,1921,1681`·동시 8건) → 운영 적용(6단계).**
+5. 프론트 전송(5-2·5-4)은 운영 적용 후 반응을 보고 진행.
+
+로컬 시제품 재현: 대용량 키 사용시간(KST 15~24시)에만 수집 가능. 이미 받은 00 UTC 회차가
+`artifacts/kim-expanded-local/data`에 있어 화면 확인은 언제든 `DATA_PATH=/home/john_doe/ProjectAMO/artifacts/kim-expanded-local/data
+KIM_STORE_FORMAT=nc KIM_USE_BULK_KEY=0 npm run dev:test`로 할 수 있다(100~145°E 자료).
 
 ## 디버깅 기반
 

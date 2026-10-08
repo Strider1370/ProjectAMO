@@ -1,5 +1,5 @@
 import { decodeSpreadValue, pickCloudPotentialColor } from './cloudPotentialField.js'
-import { coordinatesForGrid, parseRgba } from './overlayUtils.js'
+import { cellCoordinatesForGrid, parseRgba, mercatorSourceRows } from './overlayUtils.js'
 
 const CLOUD_POTENTIAL_IMAGE_SOURCE_ID = 'kim-cloud-potential-image-source'
 const CLOUD_POTENTIAL_IMAGE_LAYER_ID = 'kim-cloud-potential-image-layer'
@@ -8,15 +8,16 @@ const stateByMap = new WeakMap()
 function buildCloudPotentialImage(field) {
   const grid = field?.grid
   if (!grid?.nx || !grid?.ny || !Array.isArray(field.spread)) return null
+  const sourceRows = mercatorSourceRows(grid)
   const canvas = document.createElement('canvas')
   canvas.width = grid.nx
-  canvas.height = grid.ny
+  canvas.height = sourceRows.length
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
-  const imageData = ctx.createImageData(grid.nx, grid.ny)
+  const imageData = ctx.createImageData(grid.nx, sourceRows.length)
 
-  for (let y = 0; y < grid.ny; y += 1) {
-    const sourceY = grid.ny - 1 - y
+  for (let y = 0; y < sourceRows.length; y += 1) {
+    const sourceY = sourceRows[y]
     for (let x = 0; x < grid.nx; x += 1) {
       const sourceIndex = sourceY * grid.nx + x
       const value = decodeSpreadValue(field.spread[sourceIndex], field)
@@ -44,7 +45,7 @@ export function syncCloudPotentialOverlay(map, model = {}) {
     if (map) setVisible(map, false)
     return null
   }
-  const coordinates = coordinatesForGrid(model.cloudPotentialField.grid)
+  const coordinates = cellCoordinatesForGrid(model.cloudPotentialField.grid)
   if (!coordinates) return null
   const state = stateByMap.get(map) || { field: null }
   let source = map.getSource?.(CLOUD_POTENTIAL_IMAGE_SOURCE_ID)

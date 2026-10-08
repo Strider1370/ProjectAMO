@@ -60,6 +60,8 @@ ProjectAMO/
 - `shared/gktg.js` → 지도·연직단면·브리핑·고도 비교가 공유하는 0.15/0.22/0.34 강도 기준과 원본 색상.
 - `backend/python/kim_tropopause/` + `backend/src/processors/kim-tropopause-processor.js` → KIM 21층 재사용과 100·70 hPa T·hgt·u·v 추가 입력(기본 격자와 같은 회차별 키)으로 시각별 WMO 열적 권계면과 연직 최대풍·제트 축을 계산한다. F000–F012가 완성되면 `kim_nwp/derived/tropopause/latest.json`을 게시한다. `backend/src/briefing/tropopause-cross-section.js`가 항로 단면 표본을 만든다. [권계면·제트 운영 안내](docs/operations/kim-tropopause.md).
 - `frontend/src/features/weather-overlays/lib/useTropopauseJetOverlay.js` → `권계면·제트` 레이어의 자료 선택·래스터(권계면 색 단계·제트 빗금)·화면 렌더러 수명주기. `tropopauseJetModel.js`는 순수 표출 규칙(FL450 상한·평활, SIGWX식 깃 배치), `tropopauseJetRenderer.js`는 TROP 라벨·제트 축·깃을 그린다. 깃·제트 라벨은 SIGWX HIGH와 공용인 `jetSymbols.js`를 쓴다. 단면 상층 선은 `route-briefing/lib/tropopauseProfile.js`.
+- `frontend/src/features/weather-overlays/lib/overlayUtils.js` → KIM 격자 이미지 레이어의 지도 배치. `cellCoordinatesForGrid`(격자 칸 경계)와 `mercatorSourceRows`(Web Mercator 행 → 격자 행)로 위도 간격이 일정한 격자를 지도 투영에 맞춘다.
+- `frontend/src/features/weather-overlays/lib/kimBelowGround.js` → 지면 아래 표시(bitset) 해석과 색.
 - `frontend/src/features/weather-overlays/lib/kimFieldCache.js` → KIM 레이어(바람·기온·구름·착빙·난류·권계면)가 함께 쓰는 필드 캐시. 바이트 상한(64 MB) 안에서 오래 안 쓴 필드부터 지운다.
 - `frontend/src/features/weather-overlays/lib/useKimGktg.js`·`gktgOverlaySync.js` → 기존 난류 버튼의 KIM 공통 기압층/시각/revision 선택과 지도 렌더링·스타일 복구. 기관의 과거 KTG 고정 자료는 제품 식별자에 따라 기존 읽기/색상 계약을 보존한다.
 
@@ -276,6 +278,7 @@ ProjectAMO/
 - `backend/src/lib/kim-surface-chart.js` -> pure surface chart computation: pressure coarsening and Gaussian smoothing, isobars, CycloneDetector + TempestExtremes H/L detection, Web Mercator 3-hour precip PNG, and 0.25° wind field.
 - `backend/src/processors/kim-nwp-store.js` -> canonical `DATA_PATH/kim_nwp/` store helpers for safe path resolution, atomic manifest/grid/index/latest writes, reads, usable-run manifest checks, and run retention.
 - `backend/src/processors/kim-doc-store.js` -> KIM 격자·GKTG·권계면 문서의 저장 형식. `KIM_STORE_FORMAT`(json·both·nc)에 따라 같은 `.json` 경로 옆에 gzip NetCDF-4(HDF5, `h5wasm`)를 쓰고 읽으며, 읽은 객체는 JSON과 키 순서까지 같다. 원문 텍스트 캐시(raw)의 gzip 읽기·쓰기도 소유한다.
+- `backend/src/processors/kim-surface-mask.js` -> KIM 기압면이 지면 아래인 격자(GKTG 추가 입력 `ps` 캐시 기준)를 구해 지도 응답의 값을 비우고 `belowGround` 표시를 붙인다.
 - `backend/src/processors/kim-run-events.js` -> 회차별 진행 기록 `kim_nwp/runs/<runId>/events.jsonl`(수집·계산·게시·정리·저장 대조, 2 MB 상한).
 - `scripts/kim-inspect.mjs`·`kim-store-convert.mjs`·`kim-replay.mjs` -> KIM 회차 점검(읽기 전용), 기존 JSON 회차의 NC 변환, 복사한 데이터로 네트워크 없이 GKTG·권계면 재계산.
 - `backend/src/processors/kim-nwp-model.js` -> KIM NWP levels/forecast hours/moisture/icing levels, per-variable scaled grid builder, compact index filtering with per-variable hashes, and wind/temperature/dewpoint-spread/icing renderer-compatible field conversion.

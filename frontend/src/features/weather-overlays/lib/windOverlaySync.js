@@ -1,7 +1,7 @@
 import CanvasWindRenderer from './canvasWindRenderer.js'
 import WebGLWindRenderer from './webglWindRenderer.js'
 import { decodeWindComponent, interpolateWindSpeedColor } from './windField.js'
-import { coordinatesForGrid, parseRgba } from './overlayUtils.js'
+import { cellCoordinatesForGrid, parseRgba, mercatorSourceRows } from './overlayUtils.js'
 
 const overlays = new WeakMap()
 const canvasFallbackMaps = new WeakSet()
@@ -83,16 +83,17 @@ function applyVisibility(renderer, visibility = {}) {
 function buildWindSpeedImage(windField) {
   const grid = windField?.grid
   if (!grid?.nx || !grid?.ny || !Array.isArray(windField.u) || !Array.isArray(windField.v)) return null
+  const sourceRows = mercatorSourceRows(grid)
   const canvas = document.createElement('canvas')
   canvas.width = grid.nx
-  canvas.height = grid.ny
+  canvas.height = sourceRows.length
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  const imageData = ctx.createImageData?.(grid.nx, grid.ny)
+  const imageData = ctx.createImageData?.(grid.nx, sourceRows.length)
   if (imageData?.data) {
-    for (let y = 0; y < grid.ny; y += 1) {
-      const sourceY = grid.ny - 1 - y
+    for (let y = 0; y < sourceRows.length; y += 1) {
+      const sourceY = sourceRows[y]
       for (let x = 0; x < grid.nx; x += 1) {
         const sourceIndex = sourceY * grid.nx + x
         const u = decodeWindComponent(windField.u[sourceIndex], windField)
@@ -109,8 +110,8 @@ function buildWindSpeedImage(windField) {
     }
     ctx.putImageData(imageData, 0, 0)
   } else {
-    for (let y = 0; y < grid.ny; y += 1) {
-      const sourceY = grid.ny - 1 - y
+    for (let y = 0; y < sourceRows.length; y += 1) {
+      const sourceY = sourceRows[y]
       for (let x = 0; x < grid.nx; x += 1) {
         const sourceIndex = sourceY * grid.nx + x
         const u = decodeWindComponent(windField.u[sourceIndex], windField)
@@ -143,7 +144,7 @@ function syncWindSpeedImageLayer(map, state, windField, visibility = {}) {
     return
   }
 
-  const coordinates = coordinatesForGrid(windField?.grid)
+  const coordinates = cellCoordinatesForGrid(windField?.grid)
   if (!coordinates) return
 
   const source = map.getSource?.(WIND_SPEED_SOURCE_ID)
