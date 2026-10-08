@@ -55,23 +55,29 @@ function fakeChild() {
   return child
 }
 
-test('a satellite worker is not forked while a KIM derived worker holds the turn, and its timeout starts after it gets the turn', async () => {
+test('a satellite worker is not forked while a KIM derived worker holds an hour turn, and its timeout starts after it gets the turn', async () => {
   const gate = createExclusiveGate()
   const kimChild = fakeChild()
   const satelliteChild = fakeChild()
   let satelliteForked = false
-  const kim = runKimDerivedWorker('kim_gktg', { gate, forkImpl: () => kimChild, setPriority: () => {}, workerConfig: { timeout_ms: 1_000, max_old_space_mb: 512, nice: 10 } })
+  const kim = runKimDerivedWorker('kim_gktg', { gate, waitForMemory: async () => 0, forkImpl: () => kimChild, setPriority: () => {}, workerConfig: { timeout_ms: 1_000, max_old_space_mb: 512, nice: 10 } })
+  await flush()
+  // KIM 자식이 한 예보시각의 계산 순번을 받는다.
+  kimChild.emit('message', { type: 'turn', id: 1 })
+  await flush(); await flush()
   const satellite = runSatelliteWorker({ kind: 'satellite', mode: 'current', now: '2026-10-04T14:30:00.000Z' }, {
     gate, timeoutMs: 20, forkImpl: () => { satelliteForked = true; return satelliteChild },
   })
   await new Promise((resolve) => setTimeout(resolve, 50))
   assert.equal(satelliteForked, false)
-  kimChild.emit('message', { type: 'done', ok: true, result: { type: 'kim_gktg' } })
-  kimChild.emit('exit', 0, null)
-  await kim
+  // 그 시각이 끝나 순번을 돌려주면, KIM 작업이 끝나기 전이라도 위성이 들어간다.
+  kimChild.emit('message', { type: 'turn_release', id: 1 })
   await flush()
   assert.equal(satelliteForked, true)
   satelliteChild.emit('message', successMessage({ result: { saved: true }, followUps: [] }))
   satelliteChild.emit('exit', 0, null)
   assert.deepEqual(await satellite, { result: { saved: true }, followUps: [] })
+  kimChild.emit('message', { type: 'done', ok: true, result: { type: 'kim_gktg' } })
+  kimChild.emit('exit', 0, null)
+  await kim
 })

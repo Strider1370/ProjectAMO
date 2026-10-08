@@ -2,13 +2,16 @@
 //
 // 백엔드 안에서 돌 때는 격자 수백 장을 읽고 검증하는 동안 이벤트 루프가 100초 넘게 막혀 사이트 요청이
 // 504로 끝났다(2026-10-04). 자식은 낮은 CPU 우선순위와 자기 힙 한도로 돌고, 끝나면 종료해 쓴 메모리를
-// 모두 운영체제에 돌려준다. 메모리가 작은 서버라 위성 워커와 같은 순번(heavyChildGate)을 받아 한 번에 하나만 띄운다.
+// 모두 운영체제에 돌려준다. 메모리가 작은 서버라 위성 워커와 같은 순번(heavyChildGate)을 받아 한 번에 하나만 계산한다.
+// 순번은 자식이 예보시각마다 요청한다(turn → turn_result, 끝나면 turn_release). 받은 뒤 서버 남은 메모리가 기준
+// 이상인지 확인하고 넘겨준다. 예보시각 사이에는 위성 처리가 순번을 받을 수 있다.
 import { fork } from 'node:child_process'
 import os from 'node:os'
 
 import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
-import { heavyChildGate } from '../lib/heavy-child-gate.js'
+import { createExclusiveGate, heavyChildGate } from '../lib/heavy-child-gate.js'
+import { waitForMemoryReserve } from '../lib/memory-reserve.js'
 import { KIM_DERIVED_JOBS, errorPayload, restoreError } from './kim-derived-worker-entry.js'
 
 const ENTRY = new URL('./kim-derived-worker-entry.js', import.meta.url)
@@ -17,12 +20,17 @@ const DEFAULT_KILL_GRACE_MS = 10_000
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype
 
-export function runKimDerivedWorker(kind, { gate = heavyChildGate, ...options } = {}) {
+// GKTG·권계면 자식은 서로 하나씩만 띄운다. 쉬는 자식도 메모리를 잡고 있어 둘이 함께 떠 있으면 계산 하나와 겹쳐 서버가 모자란다.
+export const kimDerivedJobGate = createExclusiveGate()
+
+export function runKimDerivedWorker(kind, { jobGate = kimDerivedJobGate, ...options } = {}) {
   if (!KIM_DERIVED_JOBS.includes(kind)) return Promise.reject(new Error('invalid kim derived worker job'))
-  return gate.run(() => runOnce(kind, options), { signal: options.signal })
+  return jobGate.run(() => runOnce(kind, options), { signal: options.signal })
 }
 
 function runOnce(kind, {
+  gate = heavyChildGate,
+  waitForMemory = waitForMemoryReserve,
   signal,
   forkImpl = fork,
   fetchGrid = fetchKimGrid,
@@ -41,10 +49,25 @@ function runOnce(kind, {
     let settled = false
     let timeoutId
     let killId
+    let heldTurn = null
+    let turnPending = false
+
+    // 진행이 없는 시간의 한도. 순번을 받거나 돌려줄 때 다시 재고, 순번을 기다리는 동안은 멈춘다.
+    const armTimeout = () => {
+      clearTimeout(timeoutId)
+      if (!settled) timeoutId = setTimeout(() => stop(new Error(`${kind}_worker_timeout`)), workerConfig.timeout_ms)
+    }
+
+    const releaseTurn = () => {
+      const release = heldTurn
+      heldTurn = null
+      release?.()
+    }
 
     const finish = (error, result) => {
       if (settled) return
       settled = true
+      releaseTurn()
       clearTimeout(timeoutId)
       clearTimeout(killId)
       signal?.removeEventListener('abort', onAbort)
@@ -78,8 +101,32 @@ function runOnce(kind, {
       }
     }
 
+    async function grantTurn(message) {
+      if (!Number.isInteger(message.id) || heldTurn || turnPending) return stop(new Error('invalid kim derived worker turn'))
+      turnPending = true
+      clearTimeout(timeoutId)
+      try {
+        const release = await gate.acquire({ signal: fetches.signal })
+        if (settled) return release()
+        heldTurn = release
+        const waitedMs = await waitForMemory({ minBytes: workerConfig.memory_reserve_mb * 1048576, timeoutMs: workerConfig.memory_wait_ms, signal: fetches.signal })
+        sendToChild({ type: 'turn_result', id: message.id, ok: true, waitedMs })
+      } catch (error) {
+        releaseTurn()
+        sendToChild({ type: 'turn_result', id: message.id, ok: false, error: errorPayload(error) })
+      } finally {
+        turnPending = false
+        armTimeout()
+      }
+    }
+
     function onMessage(message) {
       if (message?.type === 'fetch') return relayFetch(message)
+      if (message?.type === 'turn') return grantTurn(message)
+      if (message?.type === 'turn_release') {
+        releaseTurn()
+        return armTimeout()
+      }
       if (message?.type === 'done' && !terminal) {
         if (message.ok && isPlainObject(message.result) && message.result.type === kind) terminal = { ok: true, result: message.result }
         else terminal = { ok: false, error: message.ok ? new Error('invalid kim derived worker result') : restoreError(message.error) }
@@ -108,7 +155,7 @@ function runOnce(kind, {
     child.once('error', (error) => { stop(error); if (!child.pid) finish(error) })
     child.once('exit', onExit)
     signal?.addEventListener('abort', onAbort, { once: true })
-    timeoutId = setTimeout(() => stop(new Error(`${kind}_worker_timeout`)), workerConfig.timeout_ms)
+    armTimeout()
     sendToChild({ type: 'job', kind })
   })
 }

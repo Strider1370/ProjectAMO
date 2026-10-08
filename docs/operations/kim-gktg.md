@@ -52,13 +52,15 @@ npm run collect:gktg -- --tmfc 2026091006 --hours 6,9
 
 `kim_gktg`는 기존 UTC 공개 지연/재시도 시간에 점검하고 기본 KIM 수집이 끝난 뒤에도 실행한다. registry가 스케줄·활성 상태를 소유하고 동일한 lock이 정기/수동 중복 실행을 막는다. 시험 모드의 `DISABLE_COLLECTION=1`은 자동 수집을 생략한다.
 
-GKTG와 권계면은 백엔드 안이 아니라 일마다 새로 띄우는 Node 자식 프로세스(`backend/src/processors/kim-derived-worker{,-entry}.js`)에서 돈다. 위성 워커와 같은 순번(`backend/src/lib/heavy-child-gate.js`)을 받아 서버 전체에서 무거운 계산 자식 프로세스는 한 번에 하나만 뜬다. 위성이 5분마다 시작하므로 새 KIM 회차를 계산하는 1~3분 동안 위성 갱신이 그만큼 늦어질 수 있다. 순번을 기다리는 시간은 각 작업의 제한 시간에 들어가지 않는다. 백엔드 안에서 돌 때 격자 재검증이 이벤트 루프를 100초 넘게 막아 사이트가 504를 냈다(2026-10-04). 자식은 낮은 CPU 우선순위와 자기 힙 한도로 돌고, 추가 입력 API는 부모에게 IPC로 요청한다. 사용량 장부·하루 한도 차단·API 실행 기록은 부모 한 곳에서만 다룬다. 취소·제한 시간에는 먼저 자식에게 취소를 보내 Python과 `cancelled` 기록을 정리하게 하고, 10초 뒤에도 남아 있으면 강제 종료한다.
+GKTG와 권계면은 백엔드 안이 아니라 일마다 새로 띄우는 Node 자식 프로세스(`backend/src/processors/kim-derived-worker{,-entry}.js`)에서 돈다. GKTG·권계면 자식은 서로 하나씩만 뜬다(`kimDerivedJobGate`). 무거운 계산 순번(`backend/src/lib/heavy-child-gate.js`, 위성 워커와 공유)은 자식이 **예보시각마다** 부모에게 받고 그 시각이 끝나면 돌려준다. 그래서 시각 사이에 위성 처리가 들어갈 수 있다(확대 영역 06 UTC는 계산이 1시간 넘게 걸린다). 부모는 순번을 넘기기 전에 서버 남은 메모리(`/proc/meminfo` MemAvailable)가 `KIM_DERIVED_MEMORY_RESERVE_MB` 이상인지 확인하고, 모자라면 `KIM_DERIVED_MEMORY_WAIT_MS`까지 기다린다. 그래도 모자라면 그 시각은 `memory_reserve_timeout`으로 실패하고 다음 실행에서 다시 계산한다. 제한 시간(`KIM_DERIVED_WORKER_TIMEOUT_MS`)은 진행이 없는 시간의 한도로, 순번을 받거나 돌려줄 때마다 다시 재고 순번을 기다리는 동안은 재지 않는다. 백엔드 안에서 돌 때 격자 재검증이 이벤트 루프를 100초 넘게 막아 사이트가 504를 냈다(2026-10-04). 자식은 낮은 CPU 우선순위와 자기 힙 한도로 돌고, 추가 입력 API는 부모에게 IPC로 요청한다. 사용량 장부·하루 한도 차단·API 실행 기록은 부모 한 곳에서만 다룬다. 취소·제한 시간에는 먼저 자식에게 취소를 보내 Python과 `cancelled` 기록을 정리하게 하고, 10초 뒤에도 남아 있으면 강제 종료한다.
 
 | 환경 변수 | 기본 |
 |---|---|
-| `KIM_DERIVED_WORKER_TIMEOUT_MS` | 2700000 (45분) |
-| `KIM_DERIVED_WORKER_HEAP_MB` | 1024 |
+| `KIM_DERIVED_WORKER_TIMEOUT_MS` | 1200000 (20분, 진행 없음 기준) |
+| `KIM_DERIVED_WORKER_HEAP_MB` | 512 |
 | `KIM_DERIVED_WORKER_NICE` | 10 |
+| `KIM_DERIVED_MEMORY_RESERVE_MB` | 512 |
+| `KIM_DERIVED_MEMORY_WAIT_MS` | 600000 (10분) |
 
 게시 manifest에는 입력 격자와 게시 결과 파일의 지문(inode·크기·수정 시각)이 함께 남는다. 다음 실행에서 입력·계산 코드·결과 파일이 모두 같으면 파일을 다시 읽지 않고 바로 끝낸다.
 

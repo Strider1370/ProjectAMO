@@ -94,7 +94,8 @@ test('Python GKTG output file maps NaN to null and keeps float32 values', t => {
   t.after(() => fs.rmSync(stage, { recursive: true, force: true }))
   const job = { grid: { nx: 2, ny: 1 }, pressures: [100000, 85000] }
   fs.writeFileSync(path.join(stage, 'gktg.f32'), Buffer.from(new Float32Array([NaN, 0.1, 0.2, NaN]).buffer))
-  assert.deepEqual(readGktgOutput(stage, job), [[null, Math.fround(0.1)], [Math.fround(0.2), null]])
+  const level = readGktgOutput(stage, job)
+  assert.deepEqual([level(0), level(1)], [[null, Math.fround(0.1)], [Math.fround(0.2), null]])
   fs.writeFileSync(path.join(stage, 'gktg.f32'), Buffer.from(new Float32Array(3).buffer))
   assert.throws(() => readGktgOutput(stage, job), /size/)
 })
@@ -119,4 +120,29 @@ print(json.dumps(out))`
   const run = spawnSync(config.kim_gktg.python, ['-c', code], { cwd: engineDir, encoding: 'utf8' })
   assert.equal(run.status, 0, run.stderr)
   assert.deepEqual(JSON.parse(run.stdout), { kr: 1, ea: 24, proto: 16 })
+})
+
+test('GKTG takes one heavy-compute turn per forecast hour and records a refused turn as a failed hour', async t => {
+  const root = seed(t)
+  const saved = config.api.kim_nwp_auth_key
+  config.api.kim_nwp_auth_key = 'kim-key'
+  t.after(() => { config.api.kim_nwp_auth_key = saved })
+  const events = []
+  const fake = async input => input.pressures.map(() => Array(size).fill(Math.fround(0.1)))
+  const turn = async () => { events.push('take'); return () => events.push('give') }
+  const result = await collect({ root, tmfc: TMFC, forecastHours: [0], fetchGrid: async request => supplementText(request), calculate: fake, turn })
+  assert.equal(result.collection.outcome, 'complete')
+  assert.deepEqual(events, ['take', 'give'])
+  // 입력·결과가 그대로면 이전 게시를 재사용하고 순번도 받지 않는다.
+  const unchanged = await collect({ root, tmfc: TMFC, forecastHours: [0], fetchGrid: async request => supplementText(request), calculate: fake, turn })
+  assert.equal(unchanged.unchanged, true)
+  assert.deepEqual(events, ['take', 'give'])
+  // 순번을 못 받으면(서버 메모리 부족) 그 시각은 계산하지 않고 실패로 남는다.
+  let calculated = false
+  const refused = await collect({ root: seed(t), tmfc: TMFC, forecastHours: [0], fetchGrid: async request => supplementText(request),
+    calculate: async input => { calculated = true; return fake(input) },
+    turn: async () => { throw Object.assign(new Error('memory_reserve_timeout'), { code: 'memory_reserve_timeout' }) } })
+  assert.deepEqual(refused.failures, [{ hf: 0, reason: 'memory_reserve_timeout' }])
+  assert.equal(refused.collection.outcome, 'partial')
+  assert.equal(calculated, false)
 })

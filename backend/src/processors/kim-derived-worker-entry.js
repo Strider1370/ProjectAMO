@@ -30,6 +30,7 @@ export function restoreError(payload) {
 export function createWorkerSide({ send, load = loadProcessor }) {
   const controller = new AbortController()
   const pending = new Map()
+  const turns = new Map()
   let nextId = 0
 
   const fetchGrid = ({ signal: _signal, ...params }) => new Promise((resolve, reject) => {
@@ -42,15 +43,39 @@ export function createWorkerSide({ send, load = loadProcessor }) {
     })
   })
 
+  // 무거운 계산 순번을 부모에게 받는다. 돌려받은 함수를 부르면 순번을 돌려준다.
+  const turn = () => new Promise((resolve, reject) => {
+    if (controller.signal.aborted) return reject(controller.signal.reason)
+    const id = ++nextId
+    turns.set(id, { resolve, reject })
+    Promise.resolve(send({ type: 'turn', id })).catch((error) => {
+      turns.delete(id)
+      reject(error)
+    })
+  })
+
   function abort(reason = new Error('kim derived worker cancelled')) {
     if (controller.signal.aborted) return
     controller.abort(reason)
-    for (const { reject } of pending.values()) reject(reason)
+    for (const { reject } of [...pending.values(), ...turns.values()]) reject(reason)
     pending.clear()
+    turns.clear()
   }
 
   function onMessage(message) {
-    if (message?.type === 'fetch_result') {
+    if (message?.type === 'turn_result') {
+      const waiter = turns.get(message.id)
+      if (!waiter) return
+      turns.delete(message.id)
+      let released = false
+      const release = () => {
+        if (released) return
+        released = true
+        Promise.resolve(send({ type: 'turn_release', id: message.id })).catch(() => {})
+      }
+      if (message.ok) waiter.resolve(release)
+      else waiter.reject(restoreError(message.error))
+    } else if (message?.type === 'fetch_result') {
       const waiter = pending.get(message.id)
       if (!waiter) return
       pending.delete(message.id)
@@ -65,7 +90,7 @@ export function createWorkerSide({ send, load = loadProcessor }) {
     try {
       if (!KIM_DERIVED_JOBS.includes(kind)) throw new Error('invalid kim derived worker job')
       const processor = await load[kind]()
-      const result = await processor.process({ signal: controller.signal, fetchGrid })
+      const result = await processor.process({ signal: controller.signal, fetchGrid, turn })
       await send({ type: 'done', ok: true, result })
       return 0
     } catch (error) {

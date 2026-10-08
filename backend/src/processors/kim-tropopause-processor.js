@@ -138,7 +138,7 @@ function validateResult(result, size) {
 
 export async function process({ root = config.storage.base_path, domain = KIM_DEFAULT_DOMAIN, tmfc = readKimNwpLatest(root, domain)?.latestRun || readKimNwpLatest(root, domain)?.tmfc,
   forecastHours = config.kim_nwp.forecast_hours, signal, fetchGrid = fetchKimGrid, calculate = calculatePython,
-  python = config.kim_tropopause.python } = {}) {
+  python = config.kim_tropopause.python, turn = async () => () => {} } = {}) {
   if (!/^\d{10}$/.test(String(tmfc || ''))) return { type: 'kim_tropopause', collection: collectionResult('partial', { waiting: true }, { reason: 'kim_tropopause_base_waiting' }) }
   if (!Array.isArray(forecastHours) || !forecastHours.length || forecastHours.some(h => !kimDomain(domain).forecastHours.includes(h))) throw new Error('Invalid tropopause forecast hours')
   const entries = []
@@ -166,7 +166,10 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
     await nextTurn()
     if (signal?.aborted) cancelled()
     let stage
+    let releaseTurn = null
     try {
+      // 무거운 계산 순번을 예보시각마다 받는다(GKTG와 같다).
+      releaseTurn = await turn()
       // 계산 중 기본 수집기가 이 시각 입력을 바꾸면 게시하지 않는다. 파일 지문(inode·크기·수정 시각)으로 본다.
       baseFingerprints.set(hf, fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }))
       const stages = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'tropopause', '.staging')
@@ -198,7 +201,10 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
       if (signal?.aborted) cancelled()
       failures.push({ hf, reason: error.code || error.message })
       appendKimRunEvent(runDir, { type: 'tropopause_hour_failed', hf, ms: Date.now() - hourStarted, reason: String(error.code || error.message).slice(0, 300) })
-    } finally { if (stage) fs.rmSync(stage, { recursive: true, force: true }) }
+    } finally {
+      if (stage) fs.rmSync(stage, { recursive: true, force: true })
+      releaseTurn?.()
+    }
   }
   // 계산 중 기본 수집기가 입력을 바꿨으면 그 시각은 게시하지 않는다.
   for (const [hf, captured] of baseFingerprints) {

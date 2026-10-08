@@ -189,7 +189,7 @@ test('Python calculator finds the ISA tropopause and a synthetic jet', { skip: !
   const cube = Float64Array.from(['T', 'hgt', 'u', 'v'].flatMap(name => fields[name].flat()))
   fs.writeFileSync(path.join(dir, 'cube.f8'), Buffer.from(cube.buffer))
   fs.writeFileSync(path.join(dir, 'job.json'), JSON.stringify({ grid, hf: 0, pressures: full, windPressures: pressures.map(p => p.value), cube: 'cube.f8' }))
-  const run = spawnSync(python, [path.join(import.meta.dirname, '../python/kim_tropopause/calculate.py'), path.join(dir, 'job.json'), dir], { encoding: 'utf8' })
+  const run = spawnSync(python, [path.join(import.meta.dirname, '../python/kim_tropopause/calculate.py'), path.join(dir, 'job.json'), dir], { encoding: 'utf8', env: { ...process.env, NUMBA_CACHE_DIR: path.join(dir, 'numba-cache') } })
   assert.equal(run.status, 0, run.stderr)
   const result = JSON.parse(fs.readFileSync(path.join(dir, 'result.json'), 'utf8'))
   assert.equal(result.algorithm, TROPOPAUSE_ALGORITHM)

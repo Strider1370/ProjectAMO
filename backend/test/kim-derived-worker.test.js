@@ -127,3 +127,90 @@ test('a real child process loads the processor and reports base waiting without 
   assert.equal(result.type, 'kim_gktg')
   assert.equal(result.collection.outcome, 'partial')
 })
+
+test('the heavy-compute turn is taken per request and lets other heavy jobs in between', async () => {
+  const { createExclusiveGate } = await import('../src/lib/heavy-child-gate.js')
+  const gate = createExclusiveGate()
+  const child = fakeChild()
+  const memoryChecks = []
+  const run = runKimDerivedWorker('kim_gktg', { workerConfig: { ...workerConfig, memory_reserve_mb: 512, memory_wait_ms: 1_000 }, gate,
+    waitForMemory: async (options) => { memoryChecks.push(options.minBytes); return 7 },
+    forkImpl: () => child, setPriority: () => {} })
+  await flush()
+  // 다른 무거운 작업(위성)이 순번을 잡고 있으면 기다린다.
+  const releaseSatellite = await gate.acquire()
+  child.emit('message', { type: 'turn', id: 1 })
+  await flush()
+  assert.equal(child.sent.some(m => m.type === 'turn_result'), false)
+  releaseSatellite()
+  await flush(); await flush()
+  assert.deepEqual(child.sent.find(m => m.type === 'turn_result'), { type: 'turn_result', id: 1, ok: true, waitedMs: 7 })
+  assert.deepEqual(memoryChecks, [512 * 1048576])
+  assert.equal(gate.busy, true)
+  // 시각 하나가 끝나 순번을 돌려주면 위성이 바로 받을 수 있다.
+  child.emit('message', { type: 'turn_release', id: 1 })
+  assert.equal(gate.busy, false)
+  // 순번을 쥔 채 끝나도 순번이 풀린다.
+  child.emit('message', { type: 'turn', id: 2 })
+  await flush(); await flush()
+  assert.equal(gate.busy, true)
+  child.emit('message', { type: 'done', ok: true, result: { type: 'kim_gktg' } })
+  child.emit('exit', 0, null)
+  assert.equal((await run).type, 'kim_gktg')
+  assert.equal(gate.busy, false)
+})
+
+test('a memory shortage fails the turn, frees the gate and the worker can still finish', async () => {
+  const { createExclusiveGate } = await import('../src/lib/heavy-child-gate.js')
+  const gate = createExclusiveGate()
+  const child = fakeChild()
+  const run = runKimDerivedWorker('kim_tropopause', { workerConfig: { ...workerConfig, memory_reserve_mb: 512, memory_wait_ms: 10 }, gate,
+    waitForMemory: async () => { throw Object.assign(new Error('memory_reserve_timeout'), { code: 'memory_reserve_timeout' }) },
+    forkImpl: () => child, setPriority: () => {} })
+  await flush()
+  child.emit('message', { type: 'turn', id: 1 })
+  await flush(); await flush()
+  const reply = child.sent.find(m => m.type === 'turn_result')
+  assert.equal(reply.ok, false)
+  assert.equal(reply.error.code, 'memory_reserve_timeout')
+  assert.equal(gate.busy, false)
+  child.emit('message', { type: 'done', ok: true, result: { type: 'kim_tropopause' } })
+  child.emit('exit', 0, null)
+  assert.equal((await run).type, 'kim_tropopause')
+})
+
+test('waiting for the turn does not count toward the worker timeout', async () => {
+  const { createExclusiveGate } = await import('../src/lib/heavy-child-gate.js')
+  const gate = createExclusiveGate()
+  const child = fakeChild()
+  const run = runKimDerivedWorker('kim_gktg', { workerConfig: { ...workerConfig, timeout_ms: 30 }, gate, waitForMemory: async () => 0,
+    forkImpl: () => child, setPriority: () => {}, killGraceMs: 5 })
+  await flush()
+  const releaseSatellite = await gate.acquire()
+  child.emit('message', { type: 'turn', id: 1 })
+  await new Promise(resolve => setTimeout(resolve, 80))
+  assert.equal(child.sent.some(m => m.type === 'abort'), false)
+  releaseSatellite()
+  await flush(); await flush()
+  assert.equal(child.sent.find(m => m.type === 'turn_result').ok, true)
+  child.emit('message', { type: 'done', ok: true, result: { type: 'kim_gktg' } })
+  child.emit('exit', 0, null)
+  await run
+})
+
+test('worker side asks the parent for a turn and hands it back once', async () => {
+  const sent = []
+  const processor = { process: async ({ turn }) => {
+    const release = await turn()
+    release()
+    release()
+    return { type: 'kim_gktg' }
+  } }
+  const side = createWorkerSide({ send: async (message) => { sent.push(message) }, load: { kim_gktg: async () => processor } })
+  const done = side.run('kim_gktg')
+  await flush()
+  assert.deepEqual(sent[0], { type: 'turn', id: 1 })
+  side.onMessage({ type: 'turn_result', id: 1, ok: true, waitedMs: 0 })
+  assert.equal(await done, 0)
+  assert.deepEqual(sent.filter(m => m.type === 'turn_release'), [{ type: 'turn_release', id: 1 }])
+})

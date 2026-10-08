@@ -26,3 +26,4 @@ test-results/
 
 .venvs/
 backend/python/kim_turbulence/__pycache__/
+backend/python/kim_tropopause/__pycache__/

@@ -347,11 +347,16 @@ export const kim_tropopause = {
 
 // GKTG·권계면은 별도 Node 자식 프로세스에서 하나씩 돈다. 백엔드 이벤트 루프를 막지 않게 하고(2026-10-04
 // 100초 넘는 멈춤), 낮은 CPU 우선순위·힙 한도로 사이트 요청이 먼저 자원을 쓰게 한다.
-// 제한 시간은 13개 시각 × Python 계산 제한(기본 120초)에 준비·검증 여유를 더한 값이다.
+// 무거운 계산 순번(heavyChildGate)은 예보시각마다 받고, 받기 전에 서버 남은 메모리가 memory_reserve_mb 이상인지 본다
+// (확대 영역 06 UTC는 33시각·1시간 넘게 걸려 작업 전체로 순번을 잡으면 그동안 위성 처리가 멈춘다).
+// timeout_ms는 진행이 없는 시간의 한도다. 순번을 받거나 돌려줄 때마다 다시 재고, 순번을 기다리는 동안은 재지 않는다.
+// 힙: 결과를 한 층씩 저장한 뒤 확대 영역 한 시각 Node 최대 약 300 MiB(2026-10-08).
 export const kim_derived_worker = {
-  timeout_ms: Number(process.env.KIM_DERIVED_WORKER_TIMEOUT_MS || 45 * 60_000),
-  max_old_space_mb: Number(process.env.KIM_DERIVED_WORKER_HEAP_MB || 1024),
+  timeout_ms: Number(process.env.KIM_DERIVED_WORKER_TIMEOUT_MS || 20 * 60_000),
+  max_old_space_mb: Number(process.env.KIM_DERIVED_WORKER_HEAP_MB || 512),
   nice: Number(process.env.KIM_DERIVED_WORKER_NICE || 10),
+  memory_reserve_mb: Number(process.env.KIM_DERIVED_MEMORY_RESERVE_MB || 512),
+  memory_wait_ms: Number(process.env.KIM_DERIVED_MEMORY_WAIT_MS || 10 * 60_000),
 }
 
 export const ktg = {

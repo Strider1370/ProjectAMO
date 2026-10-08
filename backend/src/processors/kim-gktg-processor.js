@@ -171,18 +171,19 @@ async function calculatePython(job, stage, { signal, python }) {
   return readGktgOutput(stage, job)
 }
 
-// gktg.f32(기압면×y×x, 결측 NaN) → 기압면별 배열(결측 null). float32 값을 그대로 숫자로 둔다.
+// gktg.f32(기압면×y×x, 결측 NaN) → 기압면 k의 배열(결측 null)을 꺼내는 함수. float32 값을 그대로 숫자로 둔다.
+// 결측이 섞인 JS 배열은 값마다 따로 포장돼 확대 영역 한 층이 약 10 MB라, 21층을 한꺼번에 펼치지 않고 한 층씩 꺼낸다.
 export function readGktgOutput(stage, job) {
   const size = job.grid.nx * job.grid.ny
   const buffer = fs.readFileSync(path.join(stage, 'gktg.f32'))
   if (buffer.byteLength !== job.pressures.length * size * 4) throw new Error('Invalid GKTG output size')
   const values = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4)
-  return job.pressures.map((_, k) => Array.from(values.subarray(k * size, (k + 1) * size), v => (Number.isNaN(v) ? null : v)))
+  return k => Array.from(values.subarray(k * size, (k + 1) * size), v => (Number.isNaN(v) ? null : v))
 }
 
 export async function process({ root = config.storage.base_path, domain = KIM_DEFAULT_DOMAIN, tmfc = readKimNwpLatest(root, domain)?.latestRun || readKimNwpLatest(root, domain)?.tmfc,
   forecastHours = config.kim_nwp.forecast_hours, signal, fetchGrid = fetchKimGrid, calculate = calculatePython,
-  python = config.kim_gktg.python } = {}) {
+  python = config.kim_gktg.python, turn = async () => () => {} } = {}) {
   if (!/^\d{10}$/.test(String(tmfc || ''))) return { type: 'kim_gktg', collection: collectionResult('partial', { waiting: true }, { reason: 'kim_gktg_base_waiting' }) }
   if (!Array.isArray(forecastHours) || !forecastHours.length || forecastHours.some(h => !kimDomain(domain).forecastHours.includes(h))) throw new Error('Invalid GKTG forecast hours')
   const entries = []
@@ -210,7 +211,10 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
       signal.throwIfAborted()
     }
     let stage
+    let releaseTurn = null
     try {
+      // 무거운 계산 순번을 예보시각마다 받는다(부모가 서버 남은 메모리도 확인한다). 시각 사이에 위성 처리가 들어올 수 있다.
+      releaseTurn = await turn()
       // 계산 중 기본 수집기가 이 시각 입력을 바꾸면 게시하지 않는다. 파일 지문(inode·크기·수정 시각)으로 본다.
       baseFingerprints.set(hf, fingerprintKimNwpBase({ root, tmfc, hours: [hf], domain }))
       const stages = path.join(resolveKimNwpRunDir({ root, model: KIM_NWP_MODEL, tmfc, domain }), 'derived', 'gktg', '.staging')
@@ -225,8 +229,9 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
       })
       if (!exists) {
         const output = await calculate(job, stage, { python, signal })
+        const levelValues = typeof output === 'function' ? output : k => output[k]
         for (let k = 0; k < pressures.length; k++) {
-          const gktg = output[k]
+          const gktg = levelValues(k)
           if (gktg?.length !== grid.nx * grid.ny || !gktg.some(Number.isFinite) || gktg.some(v => v !== null && (!Number.isFinite(v) || v < 0 || v > 1.5))) throw new Error('Invalid GKTG output field')
           // 결과 문서에는 같은 입력의 지위고도만 붙인다.
           const layer = readKimNwpGridVariables({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: pressures[k].id, names: ['hgt'], domain })
@@ -244,7 +249,10 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
       }
       failures.push({ hf, reason: error.code || error.message })
       appendKimRunEvent(runDir, { type: 'gktg_hour_failed', hf, ms: Date.now() - hourStarted, reason: String(error.code || error.message).slice(0, 300) })
-    } finally { if (stage) fs.rmSync(stage, { recursive: true, force: true }) }
+    } finally {
+      if (stage) fs.rmSync(stage, { recursive: true, force: true })
+      releaseTurn?.()
+    }
   }
   // A base collector may update inputs while Python runs. Keep the previous
   // complete publication until every captured hour still matches its inputs.
