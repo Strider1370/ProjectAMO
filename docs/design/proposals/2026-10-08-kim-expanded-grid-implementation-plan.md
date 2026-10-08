@@ -307,49 +307,40 @@ health 모두 200(최대 0.008초), 서버 남은 메모리 최저 864 MiB.
 - 프론트: 단면 예보시각 이동·NWP 시각 다시 받기에 단면의 `domain`을 함께 보낸다.
 - 확인: 로컬 확대 영역 자료(100~145°E)로 인천→마닐라 1,408 NM 단면 2,500점 모두 바람·기온·GKTG·권계면 값. 시험 `kim-route-domain.test.js`.
 
-### 재개 안내 (2026-10-08 19시경 기준)
+### 재개 안내 (2026-10-09 03시경 기준)
 
-2차는 로컬 시제품으로 "되는지 확인"까지 끝났다. 운영에는 아직 아무것도 들어가지 않았다.
+2단계·3단계·5단계(지금 할 부분)는 끝났고, 4단계는 코드까지 끝났다. 운영에는 아직 아무것도 들어가지 않았다(`99c56d3d` 이후 미배포).
 
 | 작업 | 상태 |
 |---|---|
 | 영역 결정(90~160°E)·서버 전송 실측 | 완료 |
-| 대용량 키 사용(4-1 일부)·GKTG 격자 고정 해제(2-1 일부)·머리말 공백 수정 | 커밋 `3ba430b4`, 미배포 |
-| 지면 아래 표시 | GKTG만, 커밋 `20cea312` |
-| 이미지 위치 보정·바람 애니메이션 | 커밋 `20cea312` |
-| 영역 일반화(2-1~2-3, 예보시각, API 영역 인자) | 완료(위 "영역 일반화") |
-| 계산 구조(3-1~3-3) | 완료(위 기록). 미배포 |
-| 확대 영역 수집기(4단계) | 4-1~4-6 구현 완료(미배포). 서버 진단 실행(실측) 남음 |
-| 프론트 전송(5-2·5-4) | 미착수 |
+| 이미지 위치 보정·바람 애니메이션·지면 아래(전 KIM 레이어, 지형색) | 완료 |
+| 영역 일반화(2단계) | 완료 |
+| 계산 구조(3단계)·계산 가속(Numba)·서버 계산 측정 | 완료 |
+| 확대 영역 수집기(4-1~4-6) | 코드 완료(가짜 수집기 시험). **실제 API 확인·서버 진단 실행·한반도 잘라내기 값 비교 남음** |
+| 지도 확대 회차·지면 아래 확대(5-0) | 완료. 마지막 두 수정(GKTG 가장자리, 지형색)은 화면 확인 전 |
+| 5-2 바이너리 전송·5-4 화면 범위 요청 | 운영 적용 후 반응 보고 결정 |
 | 운영 적용(6단계) | 미착수 |
 
-작업 위치: 브랜치 `feat/kim-nc-store`(origin/main = `99c56d3d` + 커밋 `3ba430b4`). 미커밋 파일:
-`backend/server.js`, `backend/src/processors/kim-surface-mask.js`(신규), `frontend/src/api/weatherApi.js`,
-`frontend/src/features/weather-overlays/lib/`의 `overlayUtils.js`·`kimBelowGround.js`(신규)·`gktgOverlaySync.js`·
-`temperatureOverlaySync.js`·`cloudPotentialOverlaySync.js`·`icingPotentialOverlaySync.js`·`ktgTurbulenceOverlaySync.js`·
-`turbulenceExperimentOverlay.js`·`windOverlaySync.js`·`webglWindRenderer.js`·`windField.js`·`useNwpOverlays.js`·
-`weatherPointInspector.js`와 해당 시험 파일(`mercatorSourceRows.test.js` 신규), `Architecture.md`, 이 문서.
-`frontend/src/features/map/KimDomainPreview.jsx`(신규)와 `MapView.jsx`의 그 마운트 한 줄은 임시 기능이라 커밋하지 않고 지운다.
-`docs/operations/kim-tropopause.md`, `tropopauseJetModel.js`·`.test.js`, `tropopauseJetPresentation.js`는 다른 작업(권계면 제트)의
-미커밋 변경이라 이 작업 커밋에 넣지 않는다.
+작업 위치: 브랜치 `feat/kim-nc-store`. 이 작업의 변경은 모두 커밋돼 있다. 남은 미커밋 파일
+(`docs/operations/kim-tropopause.md`, `tropopauseJetModel.js`·`.test.js`, `tropopauseJetPresentation.js`)은 다른 작업(권계면 제트)이라 넣지 않는다.
 
-다음 순서(권장):
+다음 순서:
 
-1. **정리·먼저 배포.** 임시 영역 비교 버튼 삭제 → 미커밋 변경 커밋(위 제외 파일 빼고) → `npm test`(백엔드·프론트) →
-   main 병합·push → 운영 fast deploy. 한반도 운영의 이미지 최대 36 km 어긋남과 바람 애니메이션이 바로 개선된다.
-   함께 배포되는 대용량 키 지원은 운영에 키가 없어 동작이 바뀌지 않고, GKTG는 엔진 revision 변경으로 한 번 재계산된다.
-   배포 후 브라우저에서 바람·난류를 보고, 사용자 브라우저 캐시는 `view=bg1`로 구분된다.
-2. **지면 아래 표시 확대.** 바람·기온·구름·착빙 필드 응답에도 `applyKimBelowGround`를 적용하고, 각 이미지 빌더에서 회색 칸,
-   지점 조회 "지면 아래". 정수 인코딩 배열(u·v·T 등)은 결측값(-32768)으로 비우는 방식과 렌더러 결측 처리를 확인한다.
-   각 필드 요청에도 `view` 인자를 붙여 캐시를 구분한다.
-3. **계산 구조(3-1~3-3).** Python이 NC를 직접 읽고(3-2), GKTG 192×192 창·24격자 겹침 블록 계산(3-1, `scripts/benchmark-kim-compute.py`의
-   `install_tile_context`를 정식화), 예보시각 단위 순번·메모리 보호(3-3).
-4. **영역 일반화(2-1~2-3) → 수집기(4단계, 90~160°E·`sub=1081,1153,1921,1681`·동시 8건) → 운영 적용(6단계).**
-5. 프론트 전송(5-2·5-4)은 운영 적용 후 반응을 보고 진행.
+1. **실제 API 짧게(KST 15시 이후, 이 PC):** 별도 DATA_PATH로 `scripts/kim-expanded-diagnostic.mjs --tmfc <오늘>00 --hours 0-2`.
+   로컬 `.env`의 대용량 키를 쓴다. 기본 DATA_PATH(backend/data)로 돌리지 않는다.
+2. **운영 서버 진단 실행(KST 20:15, 06 UTC 33시각):** 브랜치 코드를 서버 별도 폴더(예: `~/kim-ea-diag/code`)에 올리고
+   `DATA_PATH=~/kim-ea-diag/data`, `KIM_STORE_FORMAT=nc`, `KIM_GKTG_PYTHON=/opt/projectamo/shared/venvs/kim-gktg/bin/python`,
+   `NUMBA_CACHE_DIR=~/kim-ea-diag/numba`로 `--tmfc <오늘>06 --crop` 실행. 대용량 키는 이 PC에서 환경변수로만 넘긴다(서버 `.env`에 없음).
+   결과 `~/kim-ea-diag/diagnostic/summary.json`·`samples.jsonl`. 23시 이후
+   `node scripts/kim-crop-compare.mjs --a /opt/projectamo/shared/data --b ~/kim-ea-diag/data --tmfc <오늘>06`로 운영 한반도 06 UTC와 비교
+   (운영 한반도 06 UTC는 20:12 이후 운영 수집기가 일반 키로 받는다). 끝나면 서버 진단 폴더를 지운다.
+3. 실측을 이 문서·`docs/operations/kim-grid-scaling.md`에 기록하고 문제를 고친 뒤 **6단계**: main 병합·fast deploy(새 의존성 없음),
+   서버 `.env`에 `KMA_BULK_AUTH_KEY`·`KIM_EXPANDED_ENABLED=1`, 3일 관찰, 만료 전환 리허설, 문서 반영.
+   배포하면 한반도 GKTG·권계면을 한 번 다시 계산한다(결과 같음).
 
-로컬 시제품 재현: 대용량 키 사용시간(KST 15~24시)에만 수집 가능. 이미 받은 00 UTC 회차가
-`artifacts/kim-expanded-local/data`에 있어 화면 확인은 언제든 `DATA_PATH=/home/john_doe/ProjectAMO/artifacts/kim-expanded-local/data
-KIM_STORE_FORMAT=nc KIM_USE_BULK_KEY=0 npm run dev:test`로 할 수 있다(100~145°E 자료).
+로컬 화면 확인: `DATA_PATH=/home/john_doe/ProjectAMO/artifacts/kim-route-ea-data KIM_STORE_FORMAT=nc npm run dev:test`
+(`kim_nwp_ea` → 시제품 100~145°E 자료, `terrain` → backend 지형 링크. 한반도 회차 없음).
 
 ## 디버깅 기반
 
