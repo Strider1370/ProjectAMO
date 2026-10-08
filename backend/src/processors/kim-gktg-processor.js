@@ -8,7 +8,7 @@ import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
 import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { collectionResult } from '../collector-execution.js'
-import { selectKimRunCredential } from './kim-run-credential.js'
+import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours, decodeComponent, buildKimGktgFieldFromGrid } from './kim-nwp-model.js'
 import { kimRawTextExists, readKimRawText, writeKimRawText } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
@@ -31,10 +31,16 @@ export function decodeGktgInput(variable, name, size) {
   return values
 }
 
+// 응답 머리말의 영역 표기. 한 자리 위도는 자리를 맞추느라 공백이 두 칸이다("lat1 =  6.0", 2026-10-08 확대 영역).
+export function supplementBoundsMatch(text, grid) {
+  const number = value => value.toFixed(1).replace('.', '\\.').replace('-', '\\-')
+  return new RegExp(`lon1\\s*=\\s*${number(grid.lonMin)},\\s*lat1\\s*=\\s*${number(grid.latMin)},\\s*lon2\\s*=\\s*${number(grid.lonMax)},\\s*lat2\\s*=\\s*${number(grid.latMax)}(?:\\D|$)`).test(text)
+}
+
 export function validateGktgSupplement(text, { name, level, tmfc, hf, grid }) {
   const stamp = `.ft${String(hf).padStart(3, '0')}.${tmfc}.nc`
   if (!text.includes(stamp) || !new RegExp(`=\\s*${name},\\s*unit`).test(text) || !new RegExp(`level\\s*[:=]\\s*${level}(?:\\s|,)`).test(text)
-    || !text.includes(`lon1 = ${grid.lonMin.toFixed(1)}, lat1 = ${grid.latMin.toFixed(1)}, lon2 = ${grid.lonMax.toFixed(1)}, lat2 = ${grid.latMax.toFixed(1)}`)) throw new Error(`GKTG supplemental identity mismatch: ${name}`)
+    || !supplementBoundsMatch(text, grid)) throw new Error(`GKTG supplemental identity mismatch: ${name}`)
   const parsed = parseKimGridText(text, { variable: name, level })
   const unit = parsed.unit?.replace(/,$/, '')
   if (parsed.nx !== grid.nx || parsed.ny !== grid.ny || unit !== (name === 'ps' ? 'Pa' : name === 'w' ? 'm/s' : 'm')) throw new Error(`GKTG supplemental grid/unit mismatch: ${name}`)
@@ -60,6 +66,7 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
       kimCredential: config.api.kim_nwp_auth_key,
       aviationCredential: config.api.auth_key,
       radarCredential: config.api.radar_satellite_auth_key,
+      ...kimBulkCredentialOptions(config),
     })
     if (!credential) throw new Error('gktg_run_credential_unavailable')
     text = await fetchGrid({ data: level ? 'P' : 'U', name, level, tmfc, hf: requestedHf, sub: config.kim_surface_wind.sub, credential, signal })
@@ -116,7 +123,6 @@ export async function process({ root = config.storage.base_path, tmfc = readKimN
     try {
       const layers = pressures.map(level => readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: level.id }))
       const grid = layers[0].grid
-      if (!sameGrid(grid, { nx: 205, ny: 169, lonMin: 119, lonMax: 136, latMin: 30, latMax: 44 })) throw new Error('Unsupported GKTG grid')
       for (let k = 0; k < layers.length; k++) {
         if (layers[k].tmfc !== tmfc || Number(layers[k].hf) !== hf || layers[k].level.id !== pressures[k].id || layers[k].validTime !== addForecastHours(tmfc, hf) || !sameGrid(layers[k].grid, grid)) throw new Error('Mixed GKTG base grids')
       }

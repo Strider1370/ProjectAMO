@@ -8,9 +8,9 @@ import config from '../config.js'
 import { fetchKimGrid } from '../api-client.js'
 import { parseKimGridText } from '../parsers/kim-grid-parser.js'
 import { collectionResult } from '../collector-execution.js'
-import { selectKimRunCredential } from './kim-run-credential.js'
+import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours } from './kim-nwp-model.js'
-import { decodeGktgInput } from './kim-gktg-processor.js'
+import { decodeGktgInput, supplementBoundsMatch } from './kim-gktg-processor.js'
 import { cleanupKimNwpRuns, readKimNwpLatest, readKimNwpGrid, readKimTropopauseField, readKimTropopauseUpper, readKimTropopauseLatest, resolveKimNwpRunDir, writeKimTropopauseField, writeKimTropopauseUpper, writeKimTropopauseAttempt, publishKimTropopauseRun, fingerprintKimNwpBase, fingerprintKimTropopauseOutputs } from './kim-nwp-store.js'
 import { readKimRawText, writeKimRawText } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
@@ -34,7 +34,7 @@ const RANGES = { T: [150, 340, ['K']], hgt: [5000, 30000, ['m', 'gpm']], u: [-15
 export function validateTropopauseSupplement(text, { name, level, tmfc, hf, grid }) {
   const stamp = `.ft${String(hf).padStart(3, '0')}.${tmfc}.nc`
   if (!text.includes(stamp) || !new RegExp(`=\\s*${name},\\s*unit`).test(text) || !new RegExp(`level\\s*[:=]\\s*${level}(?:\\s|,)`).test(text)
-    || !text.includes(`lon1 = ${grid.lonMin.toFixed(1)}, lat1 = ${grid.latMin.toFixed(1)}, lon2 = ${grid.lonMax.toFixed(1)}, lat2 = ${grid.latMax.toFixed(1)}`)) throw new Error(`Tropopause supplemental identity mismatch: ${name}`)
+    || !supplementBoundsMatch(text, grid)) throw new Error(`Tropopause supplemental identity mismatch: ${name}`)
   const parsed = parseKimGridText(text, { variable: name, level })
   const [lo, hi, units] = RANGES[name]
   if (parsed.nx !== grid.nx || parsed.ny !== grid.ny || !units.includes(parsed.unit?.replace(/,$/, ''))) throw new Error(`Tropopause supplemental grid/unit mismatch: ${name}`)
@@ -54,6 +54,7 @@ async function supplement({ root, tmfc, hf, name, level, grid, signal, fetchGrid
       kimCredential: config.api.kim_nwp_auth_key,
       aviationCredential: config.api.auth_key,
       radarCredential: config.api.radar_satellite_auth_key,
+      ...kimBulkCredentialOptions(config),
     })
     if (!credential) throw new Error('tropopause_run_credential_unavailable')
     text = await fetchGrid({ data: 'P', name, level, tmfc, hf, sub: config.kim_surface_wind.sub, credential, signal })

@@ -14,6 +14,16 @@ export const API_HUB_KEY_CATEGORIES = {
   aviation: '항공·일반',
   radar_satellite: '레이더·위성',
   kim_nwp: 'KIM NWP',
+  bulk: '대용량 (KIM)',
+}
+
+// 키 분류별 하루 한도. 대용량 키만 2 TB이고 나머지는 5 GB다.
+export function apiHubLimitBytes(category) {
+  return category === 'bulk' ? config.kim_bulk.limit_bytes : API_HUB_LIMIT_BYTES
+}
+
+export function apiHubThresholdBytes(category) {
+  return category === 'bulk' ? Math.floor(config.kim_bulk.limit_bytes * 0.95) : API_HUB_THRESHOLD_BYTES
 }
 
 // Only these fixed labels may reach the persisted admin ledger.
@@ -136,7 +146,7 @@ export function createApiHubUsage({ root, keys }) {
     else endpointItem.failures += 1
     endpointItem.lastCalledAt = calledAt
     item.endpoints[endpoint] = endpointItem
-    if (item.bytes >= API_HUB_THRESHOLD_BYTES) item.blockedReason = 'daily_budget'
+    if (item.bytes >= apiHubThresholdBytes(resolveCategory(credential))) item.blockedReason = 'daily_budget'
     else if (Number(status) === 403) {
       item.blockedReason = 'upstream_403'
       item.last403At = calledAt
@@ -153,7 +163,8 @@ export function createApiHubUsage({ root, keys }) {
     const dayData = data.days[day]?.keys || {}
     return {
       generatedAt: new Date(now).toISOString(),
-      keys: Object.entries(API_HUB_KEY_CATEGORIES).map(([category, label]) => {
+      // 대용량 키는 한시 승인이라 설정된 서버에서만 보인다.
+      keys: Object.entries(API_HUB_KEY_CATEGORIES).filter(([category]) => category !== 'bulk' || configuredKeys.bulk).map(([category, label]) => {
         const credential = configuredKeys[category]
         const id = credential ? fingerprint(credential) : null
         const record = id ? (dayData[id] || emptyRecord()) : emptyRecord()
@@ -164,8 +175,8 @@ export function createApiHubUsage({ root, keys }) {
           fingerprintSuffix: id ? id.slice(-8) : null,
           dayKst: day,
           bytes: record.bytes,
-          limitBytes: API_HUB_LIMIT_BYTES,
-          thresholdBytes: API_HUB_THRESHOLD_BYTES,
+          limitBytes: apiHubLimitBytes(category),
+          thresholdBytes: apiHubThresholdBytes(category),
           requests: record.requests,
           successes: record.successes,
           failures: record.failures,
@@ -190,6 +201,7 @@ const apiHubUsage = createApiHubUsage({
     aviation: config.api.auth_key,
     radar_satellite: config.api.radar_satellite_auth_key,
     kim_nwp: config.api.kim_nwp_auth_key,
+    bulk: config.api.kma_bulk_auth_key,
   },
 })
 

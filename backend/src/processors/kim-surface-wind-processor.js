@@ -38,7 +38,7 @@ import {
 import { writeKimRawText } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import { selectNearestForecastHour } from './kim-forecast-hour.js'
-import { selectKimRunCredential } from './kim-run-credential.js'
+import { kimBulkCredentialOptions, selectKimRunCredential } from './kim-run-credential.js'
 
 const TYPE = 'kim_surface_wind'
 const MODEL = 'KIMG/NE57'
@@ -650,6 +650,7 @@ export async function process({
       kimCredential: config.api.kim_nwp_auth_key,
       aviationCredential: config.api.auth_key,
       radarCredential: config.api.radar_satellite_auth_key,
+      ...kimBulkCredentialOptions(config),
     })
     const candidateHours = config.kim_nwp?.forecast_hours || KIM_NWP_FORECAST_HOURS
     const forecastHours = resolveCollectedForecastHours({

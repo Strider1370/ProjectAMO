@@ -174,7 +174,9 @@ export function buildKimGridUrl({
     disp,
     authKey: credential,
   })
-  return `${api.kim_grid_url}?${params.toString()}`
+  // 대용량 키는 별도 호스트로만 받는다(config.api.kim_grid_bulk_url).
+  const baseUrl = credential && credential === api.kma_bulk_auth_key ? api.kim_grid_bulk_url : api.kim_grid_url
+  return `${baseUrl}?${params.toString()}`
 }
 
 // operation: 기존 KIM 수집은 'kim_grid', 지상 일기도는 'kim_grid_chart'(요청 영역 sub로 구분, 레이더·위성 키).

@@ -110,3 +110,13 @@ test('a corrupt immutable field is rejected and restored only from recalculation
   writeKimGktgField(root, original)
   assert.equal(readKimGktgField({ root, tmfc: manifest.tmfc, hf: 0, levelId: entry.levelId, revision: entry.revision }).product, 'GKTG')
 })
+
+test('supplement bounds accept the padded single-digit latitude of the expanded domain', async () => {
+  const { supplementBoundsMatch } = await import('../src/processors/kim-gktg-processor.js')
+  const expanded = '# w, unit = m/s, level =     250, i =     541, j =     529, map = S (lon1 = 100.0, lat1 =  6.0, lon2 = 145.0, lat2 = 50.0, x_min = 1201'
+  const korea = 'map = S (lon1 = 119.0, lat1 = 30.0, lon2 = 136.0, lat2 = 44.0, x_min = 1429'
+  assert.equal(supplementBoundsMatch(expanded, { lonMin: 100, latMin: 6, lonMax: 145, latMax: 50 }), true)
+  assert.equal(supplementBoundsMatch(korea, { lonMin: 119, latMin: 30, lonMax: 136, latMax: 44 }), true)
+  assert.equal(supplementBoundsMatch(korea, { lonMin: 100, latMin: 6, lonMax: 145, latMax: 50 }), false)
+  assert.equal(supplementBoundsMatch(expanded, { lonMin: 100, latMin: 6, lonMax: 145, latMax: 5 }), false)
+})

@@ -4,8 +4,13 @@ import numpy as np
 
 def validate_cube(cube):
     grid=cube['grid']
-    expected={'nx':205,'ny':169,'lonMin':119,'lonMax':136,'latMin':30,'latMax':44}
-    if any(grid.get(key)!=value for key,value in expected.items()):
+    # 영역은 설정으로 바뀐다(한반도·확대). KIM 전구 1/12° 간격과 계산에 필요한 최소 크기만 확인한다.
+    try:
+        nx,ny=int(grid['nx']),int(grid['ny'])
+        spacing=((float(grid['lonMax'])-float(grid['lonMin']))/(nx-1),(float(grid['latMax'])-float(grid['latMin']))/(ny-1))
+    except (KeyError,TypeError,ValueError,ZeroDivisionError):
+        raise ValueError('Unsupported regional KIM grid')
+    if nx<24 or ny<24 or any(abs(step-1/12)>1e-3 for step in spacing) or not -90<=float(grid['latMin'])<float(grid['latMax'])<=90:
         raise ValueError('Unsupported regional KIM grid')
     pressures=np.asarray(cube['pressures'],dtype=float)
     if (pressures.ndim!=1 or not 17<=len(pressures)<=201 or not np.isfinite(pressures).all()

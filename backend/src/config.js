@@ -88,6 +88,8 @@ export const api = {
   airkorea_pm_url: process.env.AIRKOREA_PM_URL || 'https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty',
   kma_uv_url: process.env.KMA_UV_URL || 'https://apihub.kma.go.kr/api/typ01/url/kma_sfctm_uv.php',
   kim_grid_url: process.env.KIM_GRID_API_URL || 'https://apihub.kma.go.kr/api/typ06/cgi-bin/url/nph-kim_nc_xy_txt2_std',
+  // 대용량 API(별도 호스트·키). 같은 KIM 격자 경로를 쓴다. kim_bulk 참고.
+  kim_grid_bulk_url: process.env.KIM_GRID_BULK_API_URL || 'https://apihub-org.kma.go.kr/api/typ06/cgi-bin/url/nph-kim_nc_xy_txt2_std',
   typhoon_now_url: process.env.TYPHOON_NOW_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_now.php',
   typhoon_list_url: process.env.TYPHOON_LIST_API_URL || 'https://apihub.kma.go.kr/api/typ01/url/typ_lst.php',
   // 인천국제공항공사 항공기 운항 현황 상세 조회. 한국공항공사는 인천을 운영하지 않아
@@ -114,6 +116,7 @@ export const api = {
   kma_special_warning_auth_key: process.env.KMA_SPECIAL_WARNING_AUTH_KEY || aviationAuthKey,
   radar_satellite_auth_key: radarSatelliteAuthKey,
   kim_nwp_auth_key: kimNwpAuthKey,
+  kma_bulk_auth_key: process.env.KMA_BULK_AUTH_KEY || '',
   airkorea_key: process.env.AIRKOREA_API_KEY || '',
   // 공공데이터포털은 계정당 키 하나를 여러 API에 함께 쓴다. 운항정보용 키를 따로 두지 않았으면
   // 에어코리아 키가 그대로 통한다(활용신청만 돼 있으면 된다).
@@ -353,6 +356,16 @@ export const ktg = {
   collect_on_startup: process.env.KTG_COLLECT_ON_STARTUP !== '0',
 }
 
+// 대용량 API 키: 2026-10-07~11-06, 하루 2 TB, KST 15~24시에만 쓸 수 있다. use=1이면 KIM 격자 호출이 모두 이 키로
+// 가고, 사용시간·승인 기간 밖이면 일반 키로 넘어가지 않고 실패한다(kim-run-credential.js).
+export const kim_bulk = {
+  use: process.env.KIM_USE_BULK_KEY === '1',
+  valid_until_kst: process.env.KMA_BULK_VALID_UNTIL || '2026-11-06',
+  window_start_hour_kst: Number(process.env.KMA_BULK_WINDOW_START_KST || 15),
+  window_end_hour_kst: Number(process.env.KMA_BULK_WINDOW_END_KST || 24),
+  limit_bytes: Number(process.env.KMA_BULK_LIMIT_BYTES || 2_000_000_000_000),
+}
+
 export const kim_nwp = {
   enabled: process.env.KIM_NWP_DISABLED !== '1',
   max_runs: Number(process.env.KIM_NWP_MAX_RUNS || 2),
@@ -590,6 +603,7 @@ export default {
   adsb,
   kim_surface_wind,
   kim_surface_chart,
+  kim_bulk,
   kim_nwp,
   overseas_nwp,
   schedule,

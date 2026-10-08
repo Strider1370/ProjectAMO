@@ -57,7 +57,8 @@ test('admin endpoints require admin and return data', async () => {
     assert.equal(traffic.measurement.visitors.unit, 'unique_browser_cookie_visitor_ids')
     assert.equal(traffic.measurement.hourlyRequests.timezone, 'Asia/Seoul')
     const apiHubUsage = await (await fetch(at(server, '/api/admin/api-hub-usage'), getWith(cookie))).json()
-    assert.equal(apiHubUsage.keys.length, 3)
+    // 대용량 키는 설정된 환경에서만 목록에 나온다.
+    assert.equal(apiHubUsage.keys.length, process.env.KMA_BULK_AUTH_KEY ? 4 : 3)
     assert.ok(apiHubUsage.keys.every((key) => Array.isArray(key.endpoints)))
     assert.ok(apiHubUsage.keys.every((key) => !('credential' in key) && !('url' in key)))
     assert.ok(apiHubUsage.keys.every((key) => key.endpoints.every((endpoint) => Object.keys(endpoint).every((field) => ['label', 'bytes', 'requests', 'successes', 'failures', 'lastCalledAt'].includes(field)))))
