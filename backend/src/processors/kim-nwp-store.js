@@ -5,7 +5,7 @@ import { createHash, randomUUID } from 'node:crypto'
 
 import { KIM_NWP_LEVELS, KIM_NWP_MODEL, buildKimNwpIndex } from './kim-nwp-model.js'
 import { KIM_DEFAULT_DOMAIN, kimDomain } from './kim-domain.js'
-import { kimDocumentExists, kimDocumentStoragePath, quarantineKimDocument, readKimDocument, writeKimDocument } from './kim-doc-store.js'
+import { kimDocumentExists, kimDocumentStoragePath, quarantineKimDocument, readKimDocument, readKimDocumentArrays, writeKimDocument } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 
 // 모든 함수는 영역(domain, 기본 'kr')을 받는다. 영역마다 저장 폴더가 따로라(kim-domain.js) 회차·latest·index·
@@ -107,6 +107,11 @@ export function writeKimNwpManifest(root, manifest, domain = KIM_DEFAULT_DOMAIN)
 
 export function readKimNwpGrid({ root, model, tmfc, hf, levelId, domain = KIM_DEFAULT_DOMAIN }) {
   return readKimDocument(resolveKimNwpGridPath({ root, model, tmfc, hf, levelId, domain }))
+}
+
+// 지정한 변수의 값 배열만 읽는다(readKimDocumentArrays). 다른 변수는 values가 null이고, 읽은 값은 TypedArray일 수 있다.
+export function readKimNwpGridVariables({ root, model, tmfc, hf, levelId, names, domain = KIM_DEFAULT_DOMAIN }) {
+  return readKimDocumentArrays(resolveKimNwpGridPath({ root, model, tmfc, hf, levelId, domain }), names.map(name => `/variables/${name}/values`))
 }
 
 export function readKimNwpGridSafe({ root, model, tmfc, hf, levelId, domain = KIM_DEFAULT_DOMAIN }) {

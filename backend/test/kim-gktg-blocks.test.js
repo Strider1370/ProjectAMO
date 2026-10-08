@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import config from '../src/config.js'
 import { KIM_NWP_LEVELS, addForecastHours } from '../src/processors/kim-nwp-model.js'
-import { writeKimNwpGrid, readKimGktgField, readKimGktgLatest } from '../src/processors/kim-nwp-store.js'
+import { writeKimNwpGrid, readKimGktgField, readKimGktgLatest, readKimNwpGrid, readKimNwpGridVariables } from '../src/processors/kim-nwp-store.js'
 import { process as collect, readGktgOutput } from '../src/processors/kim-gktg-processor.js'
 
 const engineDir = fileURLToPath(new URL('../python/kim_turbulence/', import.meta.url))
@@ -36,7 +36,10 @@ function supplementText({ hf, name, level }) {
     + Array(grid.ny).fill(Array(grid.nx).fill(value).join(' ')).join('\n') + '\n'
 }
 
-test('GKTG hands Python float32 input files laid out field × level × y × x and publishes its float32 output', async t => {
+for (const format of ['json', 'nc']) test(`GKTG hands Python float32 input files laid out field × level × y × x and publishes its float32 output (${format} store)`, async t => {
+  const savedFormat = process.env.KIM_STORE_FORMAT
+  process.env.KIM_STORE_FORMAT = format
+  t.after(() => { if (savedFormat === undefined) delete process.env.KIM_STORE_FORMAT; else process.env.KIM_STORE_FORMAT = savedFormat })
   const root = seed(t)
   const saved = config.api.kim_nwp_auth_key
   config.api.kim_nwp_auth_key = 'kim-key'
@@ -68,6 +71,22 @@ test('GKTG hands Python float32 input files laid out field × level × y × x an
   const field = readKimGktgField({ root, tmfc: TMFC, hf: 0, levelId: '500hPa', revision: latest.entries.find(e => e.levelId === '500hPa').revision })
   assert.equal(field.gktg[0], null)
   assert.equal(field.gktg[grid.nx], Math.fround(0.01 * (pressures.findIndex(p => p.id === '500hPa') + 1)))
+  assert.equal(field.geopotentialHeight[0], 100 + pressures.findIndex(p => p.id === '500hPa') * 500)
+  assert.ok(Array.isArray(field.geopotentialHeight))
+})
+
+test('NC partial read opens only the requested arrays', t => {
+  const savedFormat = process.env.KIM_STORE_FORMAT
+  process.env.KIM_STORE_FORMAT = 'nc'
+  t.after(() => { if (savedFormat === undefined) delete process.env.KIM_STORE_FORMAT; else process.env.KIM_STORE_FORMAT = savedFormat })
+  const root = seed(t)
+  const layer = readKimNwpGridVariables({ root, model: 'KIMG/NE57', tmfc: TMFC, hf: 0, levelId: '850hPa', names: ['T', 'w'] })
+  assert.ok(ArrayBuffer.isView(layer.variables.T.values))
+  assert.equal(layer.variables.T.values.length, size)
+  assert.equal(layer.variables.u.values, null)
+  assert.equal(layer.variables.T.unit, 'K')
+  const full = readKimNwpGrid({ root, model: 'KIMG/NE57', tmfc: TMFC, hf: 0, levelId: '850hPa' })
+  assert.deepEqual(Array.from(layer.variables.T.values), full.variables.T.values)
 })
 
 test('Python GKTG output file maps NaN to null and keeps float32 values', t => {

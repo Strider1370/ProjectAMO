@@ -13,7 +13,7 @@ import { KIM_NWP_MODEL, KIM_NWP_LEVELS, addForecastHours, decodeComponent, build
 import { kimRawTextExists, readKimRawText, writeKimRawText } from './kim-doc-store.js'
 import { appendKimRunEvent } from './kim-run-events.js'
 import { KIM_DEFAULT_DOMAIN, kimDomain, kimDomainRequest } from './kim-domain.js'
-import { cleanupKimNwpRuns, readKimNwpLatest, readKimNwpGrid, readKimGktgField, readKimGktgLatest, resolveKimNwpRunDir, resolveKimGktgFieldPath, writeKimGktgField, writeKimGktgAttempt, publishKimGktgRun, fingerprintKimNwpBase, fingerprintKimGktgOutputs } from './kim-nwp-store.js'
+import { cleanupKimNwpRuns, readKimNwpLatest, readKimNwpGridVariables, readKimGktgField, readKimGktgLatest, resolveKimNwpRunDir, resolveKimGktgFieldPath, writeKimGktgField, writeKimGktgAttempt, publishKimGktgRun, fingerprintKimNwpBase, fingerprintKimGktgOutputs } from './kim-nwp-store.js'
 
 const engineDir = fileURLToPath(new URL('../../python/kim_turbulence/', import.meta.url))
 const pressures = KIM_NWP_LEVELS.filter(level => level.kind === 'pressure')
@@ -32,6 +32,27 @@ export function decodeGktgInput(variable, name, size) {
   const values = decodeComponent(variable.values, variable)
   if (!values.every(value => typeof value === 'number' && Number.isFinite(value))) throw new Error(`Incomplete GKTG input ${name}`)
   return values
+}
+
+// decodeGktgInput과 같은 검사·같은 값을 float32로 바로 만든다. 저장된 int16 배열(TypedArray)이나 일반 배열을 받는다.
+// 일반 배열로 펼치지 않아 층 문서 하나를 읽는 메모리·시간이 준다. float32 반올림은 Float32Array.from(decode 결과)와 같다.
+export function decodeGktgInputFloat32(variable, name, size) {
+  const units = { u: ['m/s'], v: ['m/s'], w: ['m/s'], T: ['K'], hgt: ['m', 'gpm'], q: ['kg/kg', 'kg kg-1', '1'] }
+  const values = variable?.values
+  if (!variable || !units[name]?.includes(variable.unit?.replace(/,$/, '')) || values?.length !== size) throw new Error(`Invalid GKTG input ${name}`)
+  const packed = variable.encoding === 'int16-scaled-json-v1'
+  const scale = variable.scale ?? 1
+  const offset = variable.offset ?? 0
+  if (packed && (!Number.isFinite(variable.scale) || variable.scale <= 0)) throw new Error(`Invalid/saturated GKTG input ${name}`)
+  const out = new Float32Array(size)
+  for (let i = 0; i < size; i++) {
+    const value = values[i]
+    if (packed && Math.abs(value) === 32767) throw new Error(`Invalid/saturated GKTG input ${name}`)
+    const decoded = packed ? (value === -32768 || !Number.isFinite(value) ? Number.NaN : value * scale + offset) : value
+    if (typeof decoded !== 'number' || !Number.isFinite(decoded)) throw new Error(`Incomplete GKTG input ${name}`)
+    out[i] = decoded
+  }
+  return out
 }
 
 // 응답 머리말의 영역 표기. 한 자리 위도는 자리를 맞추느라 공백이 두 칸이다("lat1 =  6.0", 2026-10-08 확대 영역).
@@ -91,7 +112,7 @@ async function writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain
   let cube = null
   const missingW = []
   const write = (fd, index, values, label) => {
-    const array = Float32Array.from(values)
+    const array = values instanceof Float32Array ? values : Float32Array.from(values)
     fs.writeSync(fd, array, 0, array.byteLength, index * size * 4)
     hash.update(`${label}\n`)
     hash.update(new Uint8Array(array.buffer))
@@ -99,7 +120,8 @@ async function writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain
   try {
     // 기본 21층을 모두 확인한 다음에만 추가 입력을 요청한다.
     for (let k = 0; k < nz; k++) {
-      const layer = readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: pressures[k].id, domain })
+      // 계산에 쓰는 6개 변수만 읽는다(층 문서의 나머지 바람·습도·착빙 변수는 열지 않는다).
+      const layer = readKimNwpGridVariables({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: pressures[k].id, names: CUBE_FIELDS, domain })
       if (!grid) {
         grid = layer.grid
         size = grid.nx * grid.ny
@@ -110,7 +132,7 @@ async function writeGktgInput({ root, tmfc, hf, stage, signal, fetchGrid, domain
       if (layer.tmfc !== tmfc || Number(layer.hf) !== hf || layer.level.id !== pressures[k].id || layer.validTime !== validTime || !sameGrid(layer.grid, grid)) throw new Error('Mixed GKTG base grids')
       for (const [f, name] of CUBE_FIELDS.entries()) {
         if (name === 'w' && !layer.variables.w) { missingW.push(k); continue }
-        write(cube, f * nz + k, decodeGktgInput(layer.variables[name], name, size), `${name}:${k}`)
+        write(cube, f * nz + k, decodeGktgInputFloat32(layer.variables[name], name, size), `${name}:${k}`)
       }
     }
     for (const k of missingW) {
@@ -206,7 +228,9 @@ export async function process({ root = config.storage.base_path, domain = KIM_DE
         for (let k = 0; k < pressures.length; k++) {
           const gktg = output[k]
           if (gktg?.length !== grid.nx * grid.ny || !gktg.some(Number.isFinite) || gktg.some(v => v !== null && (!Number.isFinite(v) || v < 0 || v > 1.5))) throw new Error('Invalid GKTG output field')
-          const layer = readKimNwpGrid({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: pressures[k].id, domain })
+          // 결과 문서에는 같은 입력의 지위고도만 붙인다.
+          const layer = readKimNwpGridVariables({ root, model: KIM_NWP_MODEL, tmfc, hf, levelId: pressures[k].id, names: ['hgt'], domain })
+          layer.variables = { hgt: { ...layer.variables.hgt, values: Array.from(layer.variables.hgt.values, v => (Number.isNaN(v) ? null : v)) } }
           writeKimGktgField(root, buildKimGktgFieldFromGrid(layer, { gktg, revision, inputRevision, algorithm: GKTG_ALGORITHM, engineRevision: engine }), domain)
         }
       }

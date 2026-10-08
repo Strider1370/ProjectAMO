@@ -267,6 +267,33 @@ export function readKimDocument(jsonPath, options) {
   return storagePath.endsWith('.nc') ? readKimNcDocument(storagePath) : readJsonFile(storagePath)
 }
 
+// 문서에서 지정한 배열(JSON 포인터, 예: '/variables/u/values')만 읽는다. NC는 그 배열만 풀고 나머지 배열 자리는 null로 둔다.
+// 읽은 배열은 저장된 자료형 그대로의 TypedArray다(int16은 Int16Array, float의 결측은 NaN). 계산 입력처럼 문서의 일부
+// 변수만 필요할 때 쓴다(GKTG는 층 문서의 15개 안팎 배열 중 6개만 쓴다). JSON 문서는 통째로 읽어 일반 배열로 돌려준다.
+export function readKimDocumentArrays(jsonPath, pointers, options) {
+  const storagePath = kimDocumentStoragePath(jsonPath, options)
+  if (!storagePath) {
+    const error = new Error(`ENOENT: no such file, open '${jsonPath}'`)
+    error.code = 'ENOENT'
+    throw error
+  }
+  if (!storagePath.endsWith('.nc')) return readJsonFile(storagePath)
+  const wanted = new Set(pointers)
+  const file = new h5wasm.File(storagePath, 'r')
+  try {
+    const { arrays, meta } = readNcHeader(file)
+    for (const { pointer, name, length } of arrays) {
+      if (!wanted.has(pointer)) continue
+      const typed = file.get(name).value
+      if (typed.length !== length) throw new Error(`Corrupt KIM NC array ${pointer}`)
+      setAtPointer(meta, pointer, typed)
+    }
+    return meta
+  } finally {
+    file.close()
+  }
+}
+
 // 손상된 불변 결과를 지우지 않고 옆으로 옮긴다(JSON·NC 둘 다).
 export function quarantineKimDocument(jsonPath, suffix) {
   for (const candidate of [jsonPath, kimNcPath(jsonPath)]) {
